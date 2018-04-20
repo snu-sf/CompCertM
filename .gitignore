@@ -1,0 +1,9 @@
+_CoqProject
+Makefile.coq
+Makefile.coq.conf
+.build
+
+*.vo
+*.vio
+*.v.d
+*.glob

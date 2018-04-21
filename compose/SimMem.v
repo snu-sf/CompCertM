@@ -15,51 +15,106 @@ Require Import Integers.
 
 Require Import Skeleton.
 Require Import ModSem.
+Require Import SimSymb.
 
-Class SimMem :=
+
+Module SimMem.
+
+  Class class (SS: SimSymb.class) :=
+  {
+    t: Type;
+    src_mem: t -> mem;
+    tgt_mem: t -> mem;
+    valid: t -> Prop;
+    le: t -> t -> Prop;
+    lift: t -> t;
+    (* Time order: unlift second arg into first arg. *)
+    (* TODO: reorder arg? from->to? *)
+    unlift: t -> t -> t;
+
+    le_PreOrder :> PreOrder le;
+
+    (* lift_le: forall mrel, le mrel (lift mrel); *)
+    lift_valid: forall mrel, valid mrel -> valid (lift mrel);
+    lift_src: forall mrel, (lift mrel).(src_mem) = mrel.(src_mem);
+    lift_tgt: forall mrel, (lift mrel).(tgt_mem) = mrel.(tgt_mem);
+    unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(src_mem) = mrel1.(src_mem);
+    unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(tgt_mem) = mrel1.(tgt_mem);
+    unlift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> valid mrel0 -> le mrel0 (unlift mrel0 mrel1);
+    unlift_valid: forall mrel0 mrel1,
+        valid mrel0 -> valid mrel1 -> le (lift mrel0) mrel1 -> valid (unlift mrel0 mrel1);
+
+    sim_val: t -> val -> val -> Prop;
+    lift_sim_rel: forall mrel v0 v1, sim_val mrel v0 v1 -> sim_val (lift mrel) v0 v1;
+
+  (* val_rel_list: t -> list val -> list val -> Prop; *)
+  (* val_rel_list_spec: forall mrel vs0 vs1, val_rel_list mrel vs0 vs1 <-> List.Forall2 (val_rel mrel) vs0 vs1; *)
+
+  (* lift_val_rel_list: forall mrel vs0 vs1, val_rel_list mrel vs0 vs1 -> val_rel_list (lift mrel) vs0 vs1; *)
+  (* val_rel_int: forall mrel i v, val_rel mrel (Vint i) v -> v = Vint i; *)
+
+    load_exact_preserved: forall
+        ss sk_src sk_tgt
+        (WF: SimSymb.wf ss)
+        (CLOSED: SimSymb.closed ss sk_src sk_tgt)
+        skenv_src skenv_tgt m_src m_tgt
+        (LOADSRC: skenv_src = sk_src.(Sk.load_skenv) /\ sk_src.(Sk.load_mem) = Some m_src)
+        (LOADTGT: skenv_tgt = sk_tgt.(Sk.load_skenv) /\ sk_tgt.(Sk.load_mem) = Some m_tgt)
+      ,
+        exists sm,
+          (<<SRCM: sm.(src_mem) = m_src>>) /\
+          (<<TGTM: sm.(tgt_mem) = m_tgt>>) /\
+          (<<EXACT: forall
+              id_src id_tgt b_src b_tgt
+              (SRCFIND: skenv_src.(Genv.find_symbol) id_src = Some b_src)
+              (TGTFIND: skenv_tgt.(Genv.find_symbol) id_tgt = Some b_tgt)
+            ,
+              sm.(sim_val) (Vptr b_src Ptrofs.zero true) (Vptr b_tgt Ptrofs.zero true) <->
+              ss id_src id_tgt>>)
+    ;
+  }
+  .
+
+  Definition sim_val_list `{SM: class} (sm0: t) (vs_src vs_tgt: list val): Prop :=
+    List.Forall2 (sim_val sm0) vs_src vs_tgt
+  .
+
+  Definition sim_regset `{SM: class} (sm0: t) (rs_src rs_tgt: regset): Prop :=
+    forall pr, sim_val sm0 (rs_src pr) (rs_tgt pr)
+  .
+
+End SimMem.
+
+Record t' := mkrelation {
+  src_mem: mem;
+  tgt_mem: mem;
+}.
+
+Program Instance MemRelId : SimMem.class ss_ident :=
 {
-  t: Type;
-  src_mem: t -> mem;
-  tgt_mem: t -> mem;
-  valid: t -> Prop;
-  le: t -> t -> Prop;
-  lift: t -> t;
-  (* Time order: unlift second arg into first arg. *)
-  (* TODO: reorder arg? from->to? *)
-  unlift: t -> t -> t;
+  t := t';
+  src_mem := src_mem;
+  tgt_mem := tgt_mem;
+  valid := fun (rel: t') => rel.(src_mem) = rel.(tgt_mem);
+  le := fun (mrel0 mrel1: t') => True;
+  lift := id;
+  unlift := fun _ => id;
+  sim_val := fun (_: t') => eq;
+}.
+Next Obligation.
+  ss.
+Qed.
+Next Obligation.
+  eexists (mkrelation _ _).
+  esplits; ss; eauto.
+  ii.
+  
+Qed.
 
-  le_PreOrder :> PreOrder le;
 
-  (* lift_le: forall mrel, le mrel (lift mrel); *)
-  lift_valid: forall mrel, valid mrel -> valid (lift mrel);
-  lift_src: forall mrel, (lift mrel).(src_mem) = mrel.(src_mem);
-  lift_tgt: forall mrel, (lift mrel).(tgt_mem) = mrel.(tgt_mem);
-  unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(src_mem) = mrel1.(src_mem);
-  unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(tgt_mem) = mrel1.(tgt_mem);
-  unlift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> valid mrel0 -> le mrel0 (unlift mrel0 mrel1);
-  unlift_valid: forall mrel0 mrel1,
-      valid mrel0 -> valid mrel1 -> le (lift mrel0) mrel1 -> valid (unlift mrel0 mrel1);
-
-  sim_val: t -> val -> val -> Prop;
-  lift_sim_rel: forall mrel v0 v1, sim_val mrel v0 v1 -> sim_val (lift mrel) v0 v1;
-
-(* val_rel_list: t -> list val -> list val -> Prop; *)
-(* val_rel_list_spec: forall mrel vs0 vs1, val_rel_list mrel vs0 vs1 <-> List.Forall2 (val_rel mrel) vs0 vs1; *)
-
-(* lift_val_rel_list: forall mrel vs0 vs1, val_rel_list mrel vs0 vs1 -> val_rel_list (lift mrel) vs0 vs1; *)
-(* val_rel_int: forall mrel i v, val_rel mrel (Vint i) v -> v = Vint i; *)
+Program Instance sm_ident: SimMem.class ss_ident :=
+{
 }
-.
-
-Definition sim_val_list `{SM: SimMem} (sm0: t) (vs_src vs_tgt: list val): Prop :=
-  List.Forall2 (sim_val sm0) vs_src vs_tgt
-.
-
-Definition sim_regset `{SM: SimMem} (sm0: t) (rs_src rs_tgt: regset): Prop :=
-  forall pr, sim_val sm0 (rs_src pr) (rs_tgt pr)
-.
-
-
 
 
 Inductive senv_incl (se0 se1: Senv.t): Prop :=

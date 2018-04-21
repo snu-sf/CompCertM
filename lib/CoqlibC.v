@@ -144,6 +144,13 @@ Definition less1 X0 (p q: X0 -> Prop) := (forall x0 (PR: p x0 : Prop), q x0 : Pr
 Hint Unfold less1.
 Notation "p <1= q" := (less1 p q) (at level 50).
 
+Notation "p =1= q" := (forall x0, eq (p x0) (q x0)) (at level 50, no associativity).
+
+Notation top1 := (fun _ => True).
+Notation top2 := (fun _ _ => True).
+Notation top3 := (fun _ _ _ => True).
+
+
 (* Originally in sflib, (t):Prop *)
 (* Removed it for use in "privs" of ASTM *)
 (* Notation "<< x : t >>" := (NW (fun x => (t))) (at level 80, x ident, no associativity). *)

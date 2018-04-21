@@ -3,6 +3,8 @@ Require Import CoqlibC Maps Errors ASTC.
 Require Import sflib.
 Require Import RelationClasses.
 
+Require Export Maps.
+
 Set Implicit Arguments.
 
 Lemma PTree_elements_map

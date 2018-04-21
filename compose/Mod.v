@@ -8,7 +8,7 @@ Require Import Smallstep.
 Require Import CoqlibC.
 Require Import Skeleton.
 Require Import ModSem.
-Require Import SymbInj.
+Require Import SimSymb.
 Require Import Integers.
 Require Import ASTC.
 
@@ -41,16 +41,12 @@ End Mod.
 Coercion Mod.sk: Mod.t >-> Sk.t.
 
 
-Require Import LinkingC.
-Require SimMem.
-
-End SimSymb.
-
 Module ModPair.
 
   Record t: Type := {
     src: Mod.t;
     tgt: Mod.t;
+    SS:> SimSymb.class;
     ss: SimSymb.t;
   }
   .

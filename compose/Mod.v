@@ -11,6 +11,7 @@ Require Import ModSem.
 Require Import SimSymb.
 Require Import Integers.
 Require Import ASTC.
+Require Import Maps.
 
 Set Implicit Arguments.
 
@@ -43,11 +44,34 @@ Coercion Mod.sk: Mod.t >-> Sk.t.
 
 Module ModPair.
 
+  Inductive wf' `{SimSymb.class} (ss: SimSymb.t) (src tgt: Mod.t): Prop :=
+  | wf_intro
+      (WF: SimSymb.wf ss)
+      (INSRC: ss.(SimSymb.privs) <1= src.(Mod.sk).(defs))
+      (INTGT: ss.(SimSymb.privs) <1= tgt.(Mod.sk).(defs))
+      (PUBS: forall
+          id
+          (PUBS: ~ ss.(SimSymb.privs) id)
+        ,
+          <<EQ: PTree.get id src.(Mod.sk).(prog_defmap) = PTree.get id tgt.(Mod.sk).(prog_defmap)>>)
+  .
+
   Record t: Type := {
     src: Mod.t;
     tgt: Mod.t;
     SS:> SimSymb.class;
     ss: SimSymb.t;
+    wf:= wf' ss src tgt
+  }
+  .
+
+  Reset t. (* Need to state SS = SS in SimMem... JMEQ THINGS !!!!!!!!!!!!! *)
+
+  Record t `{SimSymb.class}: Type := {
+    src: Mod.t;
+    tgt: Mod.t;
+    ss: SimSymb.t;
+    wf:= wf' ss src tgt
   }
   .
 
@@ -76,4 +100,4 @@ End ModPair.
 (*   (* Q: Can we encode it inside SM? *) *)
 
 (* End ModPair. *)
- 
+

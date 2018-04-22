@@ -9,6 +9,7 @@ Require Import sflib.
 Require Import Basics.
 Require Import CoqlibC.
 Require Import Values Integers.
+Require Import SimSymb.
 
 Set Implicit Arguments.
 
@@ -26,12 +27,13 @@ Inductive sim_sig (sg_src sg_tgt: option signature): Prop :=
 Section SIMMODSEM.
 
   Variables ms_src ms_tgt: ModSem.t.
-  Context {SM: SimMem}.
+  Context {SS: SimSymb.class}.
+  Context {SM: SimMem.class SS}.
 
   Inductive mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | mem_compat_intro
-      (MCOMPAT_SRC: ms_src.(get_mem) st_src0 = sm0.(src_mem))
-      (MCOMPAT_TGT: ms_tgt.(get_mem) st_tgt0 = sm0.(tgt_mem))
+      (MCOMPAT_SRC: ms_src.(get_mem) st_src0 = sm0.(SimMem.src_mem))
+      (MCOMPAT_TGT: ms_tgt.(get_mem) st_tgt0 = sm0.(SimMem.tgt_mem))
   .
   Variable index: Type.
   Variable order: index -> index -> Prop.
@@ -111,27 +113,29 @@ Section SIMMODSEM.
       m_arg_src m_arg_tgt
       (ATSRC: ms_src.(at_external) st_src0 fptr_src sg_arg_src rs_arg_src m_arg_src)
       (ATTGT: ms_tgt.(at_external) st_tgt0 fptr_tgt sg_arg_tgt rs_arg_tgt m_arg_tgt)
-      (FPTRREL: sm0.(sim_val) fptr_src fptr_tgt)
-      (ARGSREL: sm0.(sim_regset) rs_arg_src rs_arg_tgt)
-      (VALID: valid sm0)
+      (FPTRREL: sm0.(SimMem.sim_val) fptr_src fptr_tgt)
+      (ARGSREL: sm0.(SimMem.sim_regset) rs_arg_src rs_arg_tgt)
+      (VALID: SimMem.wf sm0)
       (AFTER: forall
           rs_ret_src rs_ret_tgt sm1
-          (MLE: le (lift sm0) sm1)
-          (VALID: valid sm1)
-          (RETVREL: sm1.(sim_regset) rs_ret_src rs_ret_tgt)
+          (MLE: SimMem.le (SimMem.lift sm0) sm1)
+          (VALID: SimMem.wf sm1)
+          (RETVREL: sm1.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
           st_tgt1
-          (AFTERTGT: ms_tgt.(after_external) st_tgt0 sg_arg_tgt rs_arg_tgt rs_ret_tgt sm1.(tgt_mem) st_tgt1)
+          (AFTERTGT: ms_tgt.(after_external) st_tgt0 sg_arg_tgt rs_arg_tgt rs_ret_tgt sm1.(SimMem.tgt_mem)
+                                                                                            st_tgt1)
         ,
           exists i1 st_src1,
-          (<<AFTERSRC: ms_src.(after_external) st_src0 sg_arg_src rs_arg_src rs_ret_src sm1.(src_mem) st_src1>>)
+          (<<AFTERSRC: ms_src.(after_external) st_src0 sg_arg_src rs_arg_src rs_ret_src sm1.(SimMem.src_mem)
+                                                                                              st_src1>>)
           /\
-          (<<LXSIM: lxsim i1 st_src1 st_tgt1 (unlift sm0 sm1)>>))
+          (<<LXSIM: lxsim i1 st_src1 st_tgt1 (SimMem.unlift sm0 sm1)>>))
 
   | lxsim_exit
       retv_src retv_tgt
-      (MLE: le sm_init sm0)
-      (VALID: valid sm0)
-      (RETVREL: sm0.(sim_val) retv_src retv_tgt)
+      (MLE: SimMem.le sm_init sm0)
+      (VALID: SimMem.wf sm0)
+      (RETVREL: sm0.(SimMem.sim_val) retv_src retv_tgt)
       rs_ret_src rs_ret_tgt m_ret_src m_ret_tgt
       (EXITSRC: ms_src.(final_machine) sg_init_src rs_init_src st_src0 rs_ret_src m_ret_src)
       (EXITTGT: ms_tgt.(final_machine) sg_init_tgt rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt)
@@ -163,40 +167,42 @@ End SIMMODSEM.
 Hint Unfold lxsim.
 Hint Resolve lxsim_mon: paco.
 
+Print HintDb typeclass_instances.
 
 (* ####################### TODO: Rename initial_machine/final_machine into initial_frame/final_frame *)
-Inductive sim_modsem `{SM: SimMem} (ms_src ms_tgt: ModSem.t): Prop :=
+Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class} (ms_src ms_tgt: ModSem.t): Prop :=
 | sim_modsem_intro
     (idx: Type) (order: idx -> idx -> Prop)
     (SIM: forall
         fptr_init_src fptr_init_tgt
         sm_init
-        (FPTRREL: sm_init.(sim_val) fptr_init_src fptr_init_tgt)
+        (FPTRREL: sm_init.(SimMem.sim_val) fptr_init_src fptr_init_tgt)
         sg_init_src sg_init_tgt
         (SIGREL: sim_sig sg_init_src sg_init_tgt)
         rs_init_src rs_init_tgt
-        (RSREL: sm_init.(sim_regset) rs_init_src rs_init_tgt)
-        (VALID: valid sm_init)
+        (RSREL: sm_init.(SimMem.sim_regset) rs_init_src rs_init_tgt)
+        (VALID: SimMem.wf sm_init)
       ,
         (<<STEP: forall
             st_init_tgt
             (INITTGT: ms_tgt.(initial_machine) fptr_init_tgt sg_init_tgt rs_init_tgt
-                                               sm_init.(tgt_mem) st_init_tgt)
+                                               sm_init.(SimMem.tgt_mem) st_init_tgt)
           ,
             exists st_init_src idx_init,
               (* (<<MCOMPAT: mem_compat ms_src ms_tgt st_init_src st_init_tgt sm_init>>) /\ *)
               (* Can be proved with initial_states_get_mem *)
               (<<INITSRC: ms_src.(initial_machine) fptr_init_src sg_init_src
-                                              rs_init_src sm_init.(src_mem) st_init_src>>) /\
+                                              rs_init_src sm_init.(SimMem.src_mem) st_init_src>>) /\
               (<<SIM: lxsim ms_src ms_tgt order sg_init_src sg_init_tgt rs_init_src rs_init_tgt sm_init
                             idx_init st_init_src st_init_tgt sm_init>>)>>)
         /\
         (<<PROGRESS: forall
             st_init_src
             (INITSRC: ms_src.(initial_machine) fptr_init_src sg_init_src rs_init_src
-                                               sm_init.(src_mem) st_init_src)
+                                               sm_init.(SimMem.src_mem) st_init_src)
           ,
             exists st_init_tgt,
               (<<INITTGT: ms_tgt.(initial_machine) fptr_init_tgt sg_init_tgt
-                                                   rs_init_tgt sm_init.(tgt_mem) st_init_tgt>>)>>))
+                                                   rs_init_tgt sm_init.(SimMem.tgt_mem) st_init_tgt>>)>>))
 .
+

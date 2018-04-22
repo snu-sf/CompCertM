@@ -68,13 +68,13 @@ Module SimSymb.
           y0 = y1)
   .
 
-  Inductive wf' (sim_symb: ident -> ident -> Prop) (src_ids: ident -> Prop) (tgt_ids: ident -> Prop) :=
+  Inductive wf' (sim_symb: ident -> ident -> Prop) (privs: ident -> Prop) :=
   | wf_intro
       (CLOSED: forall
           id_src id_tgt
           (SIM: sim_symb id_src id_tgt)
         ,
-          <<SRC: src_ids id_src>> /\ <<TGT: tgt_ids id_tgt>>)
+          <<SRC: privs id_src>> /\ <<TGT: privs id_tgt>>)
       (INJ: injective_rel sim_symb)
   .
 
@@ -82,10 +82,9 @@ Module SimSymb.
   Class class :=
     {
       t: Type;
-      src_ids: t -> ident -> Prop;
-      tgt_ids: t -> ident -> Prop;
+      privs: t -> ident -> Prop;
       sim_symb: t -> ident -> ident -> Prop;
-      wf: t -> Prop := fun ss => wf' ss.(sim_symb) ss.(src_ids) ss.(tgt_ids);
+      wf: t -> Prop := fun ss => wf' ss.(sim_symb) ss.(privs);
       (* closed (ss: t) (sk_src: Sk.t) (sk_tgt: Sk.t): Prop; *)
       linker :> Linker t;
       (* link (ss0 ss1 ss_link: t): Prop; *)
@@ -112,8 +111,8 @@ Module SimSymb.
           (* (flesh_tgt: list (ident * globdef (AST.fundef F_tgt) V_tgt)) *)
           skenv_proj_src skenv_proj_tgt
           pubs
-          (LESRC: skenv_src.(SkEnv.project) (ss_link.(src_ids) \1/ pubs) skenv_proj_src)
-          (LETGT: skenv_tgt.(SkEnv.project) (ss_link.(tgt_ids) \1/ pubs) skenv_proj_tgt)
+          (LESRC: skenv_src.(SkEnv.project) (ss_link.(privs) \1/ pubs) skenv_proj_src)
+          (LETGT: skenv_tgt.(SkEnv.project) (ss_link.(privs) \1/ pubs) skenv_proj_tgt)
           ss
           (LE: linkorder ss ss_link)
         ,
@@ -124,12 +123,14 @@ Module SimSymb.
   .
 
   Module TMP.
+    Section TMP.
     Context `{SS: class}.
     Axiom ss0: t.
     Axiom i: ident.
     Fail Check (ss0 i).
     Coercion sim_symb: t >-> Funclass.
     Check (ss0 i).
+    End TMP.
   End TMP.
 
 

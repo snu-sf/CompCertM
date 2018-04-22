@@ -21,14 +21,47 @@ Set Implicit Arguments.
 Inductive closed `{SimSymb.class} (ss: SimSymb.t) (sk_src sk_tgt: Sk.t): Prop :=
 | closed_intro
     (WF: SimSymb.wf ss)
-    (INSRC: ss.(SimSymb.privs) <1= sk_src.(privs))
-    (INTGT: ss.(SimSymb.privs) <1= sk_tgt.(privs))
-    (PUBS: forall
+    (INSRC: ss.(SimSymb.coverage) <1= sk_src.(privs))
+    (INTGT: ss.(SimSymb.coverage) <1= sk_tgt.(privs))
+    (NOCOVER: forall
         id
-        (PUBS: ~ ss.(SimSymb.privs) id)
+        (PUBS: ~ ss.(SimSymb.coverage) id)
       ,
         <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>)
+    (KEPT: forall
+        id
+        (COVER: ss.(SimSymb.coverage) id)
+        (KEPT: ss.(SimSymb.kept) id)
+      ,
+        <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>)
+    (NOKEPT: forall
+        id
+        (COVER: ss.(SimSymb.coverage) id)
+        (NOKEPT: ~ ss.(SimSymb.kept) id)
+      ,
+        <<NOKEPT: None = sk_tgt.(prog_defmap) ! id>>)
 .
+
+
+
+Lemma closed_def_bsim
+      `{SimSymb.class}
+      ss sk_src sk_tgt
+      (CLOSED: closed ss sk_src sk_tgt)
+      id gd
+      (DEFTGT: sk_tgt.(prog_defmap) ! id = Some gd)
+  :
+    <<DEFSRC: sk_src.(prog_defmap) ! id = Some gd>>
+.
+Proof.
+  inv CLOSED.
+  destruct (classic (ss.(SimSymb.coverage) id)).
+  - destruct (classic (ss.(SimSymb.kept) id)).
+    + exploit KEPT; eauto. intro EQ. rewrite EQ. ss.
+    + exploit NOKEPT; eauto. i. congruence.
+  - exploit NOCOVER; eauto. i. congruence.
+Qed.
+
 
 
 Module ModPair.

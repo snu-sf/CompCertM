@@ -75,7 +75,7 @@ Let dm2 := prog_defmap p2.
 
 Inductive link_prog_spec (p: program F V): Prop :=
 | link_prog_spec_intro
-    (MAIN: p.(prog_main) = p1.(prog_main))
+    (MAIN: p.(prog_main) = p1.(prog_main) /\ p.(prog_main) = p2.(prog_main))
     (PUBLIC: p.(prog_public) = p1.(prog_public) ++ p2.(prog_public))
     (DEFS: p.(prog_defs) = PTree.elements (PTree.combine link_prog_merge dm1 dm2))
     (BOTHHIT: (forall id gd1 gd2,
@@ -107,7 +107,7 @@ Proof.
   assert(GOOD2: good_prog p2) by admit "good".
 
   hexploit (link_prog_inv _ _ _ LINK). intro LINKSPEC; des.
-  assert(MAIN: prog_main p = prog_main p1).
+  assert(MAIN: prog_main p = prog_main p1 /\ prog_main p = prog_main p2).
   { clarify; ss. }
   assert(PUBLIC: prog_public p = prog_public p1 ++ prog_public p2).
   { clarify; ss. }

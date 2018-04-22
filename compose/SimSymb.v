@@ -82,9 +82,10 @@ Module SimSymb.
   Class class :=
     {
       t: Type;
-      privs: t -> ident -> Prop;
-      sim_symb: t -> ident -> ident -> Prop;
-      wf: t -> Prop := fun ss => wf' ss.(sim_symb) ss.(privs);
+      coverage: t -> ident -> Prop;
+      kept: t -> ident -> Prop;
+      wf := fun ss => ss.(kept) <1= ss.(coverage);
+      (* wf: t -> Prop := fun ss => wf' ss.(sim_symb) ss.(privs); *)
       (* closed (ss: t) (sk_src: Sk.t) (sk_tgt: Sk.t): Prop; *)
       linker :> Linker t;
       (* link (ss0 ss1 ss_link: t): Prop; *)
@@ -120,8 +121,8 @@ Module SimSymb.
           (* (flesh_tgt: list (ident * globdef (AST.fundef F_tgt) V_tgt)) *)
           skenv_proj_src skenv_proj_tgt
           pubs
-          (LESRC: skenv_src.(SkEnv.project) (ss_link.(privs) \1/ pubs) skenv_proj_src)
-          (LETGT: skenv_tgt.(SkEnv.project) (ss_link.(privs) \1/ pubs) skenv_proj_tgt)
+          (LESRC: skenv_src.(SkEnv.project) (ss_link.(coverage) \1/ pubs) skenv_proj_src)
+          (LETGT: skenv_tgt.(SkEnv.project) (ss_link.(coverage) \1/ pubs) skenv_proj_tgt)
           ss
           (LE: linkorder ss ss_link)
         ,
@@ -131,21 +132,21 @@ Module SimSymb.
     }
   .
 
-  Module TMP.
-    Section TMP.
-    Context `{SS: class}.
-    Axiom ss0: t.
-    Axiom i: ident.
-    Fail Check (ss0 i).
-    Coercion sim_symb: t >-> Funclass.
-    Check (ss0 i).
-    End TMP.
-  End TMP.
+  (* Module TMP. *)
+  (*   Section TMP. *)
+  (*   Context `{SS: class}. *)
+  (*   Axiom ss0: t. *)
+  (*   Axiom i: ident. *)
+  (*   Fail Check (ss0 i). *)
+  (*   Coercion sim_symb: t >-> Funclass. *)
+  (*   Check (ss0 i). *)
+  (*   End TMP. *)
+  (* End TMP. *)
 
 
 End SimSymb.
 
-Coercion SimSymb.sim_symb: SimSymb.t >-> Funclass.
+(* Coercion SimSymb.sim_symb: SimSymb.t >-> Funclass. *)
 
 (* Module TMP. *)
 (*   Variable T: Type. *)

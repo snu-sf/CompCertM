@@ -40,8 +40,8 @@ Inductive sim_skenv (skenv0 skenv1: SkEnv.t): Prop :=
 
 Global Program Instance SimSymbId: SimSymb.class := {
   t := unit;
-  privs := bot2;
-  sim_symb := bot3;
+  coverage := bot2;
+  kept := bot2;
   sim_skenv (_: unit) := sim_skenv;
 }
 .

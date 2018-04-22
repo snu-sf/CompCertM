@@ -64,44 +64,16 @@ Section SIM.
 
     {
       exploit (link_prog_succeeds mp0.(ModPair.tgt).(Mod.sk) mp1.(ModPair.tgt).(Mod.sk)); eauto.
-      - admit "easy".
+        inv SPEC. des. congruence.
       - intros ? ? ? TGT0 TGT1.
+        exploit closed_def_bsim; try apply TGT0; eauto. intro SRC0.
+        exploit closed_def_bsim; try apply TGT1; eauto. intro SRC1.
         inv SPEC.
-        exploit BOTHHIT; eauto.
-        esplits; eauto.
+        exploit BOTHHIT; eauto. i; des.
+        esplits; eauto; try congruence.
     }
 
     Print link_prog_check.
-    unfold link_prog in *. des_ifs_safe. simpl_bool. des. des_sumbool. clarify.
-    rewrite <- MAIN. rewrite <- MAIN0.
-    destruct ident_eq; ss.
-    rename Heq0 into LINKSRC.
-    assert(LINKTGT: PTree_Properties.for_all mp0.(ModPair.tgt).(Mod.sk).(prog_defmap)
-                      (link_prog_check mp0.(ModPair.tgt).(Mod.sk) mp1.(ModPair.tgt).(Mod.sk)) = true).
-    {
-      rewrite PTree_Properties.for_all_correct in LINKSRC.
-      rewrite PTree_Properties.for_all_correct.
-      intros id def DEFTGT.
-      destruct (in_dec peq id mp0.(ModPair.tgt).(Mod.sk).(prog_public)). rename i into IPUB.
-      - specialize (LINKSRC id def).
-        assert(DEFSRC: mp0.(ModPair.src).(Mod.sk).(prog_defmap) ! id = Some def).
-        { clear - DEFTGT IPUB CLOSED LINKSRC.
-          inv CLOSED.
-          erewrite PUBS; eauto.
-          ii.
-          assert(~ mp0.(ModPair.tgt).(Mod.sk).(privs) id).
-          { ii. clear - H0 IPUB. u. des. ss. }
-          eauto.
-        }
-        specialize (LINKSRC DEFSRC).
-        clear - LINKSRC.
-        admit "".
-      - unfold link_prog_check.
-        des_ifs_safe. destruct in_dec; ss.
-        admit "".
-    }
-    des_ifs.
-    esplits; eauto.
   Qed.
 
 End SIM.

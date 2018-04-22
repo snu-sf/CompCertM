@@ -21,13 +21,13 @@ Set Implicit Arguments.
 Inductive closed `{SimSymb.class} (ss: SimSymb.t) (sk_src sk_tgt: Sk.t): Prop :=
 | closed_intro
     (WF: SimSymb.wf ss)
-    (INSRC: ss.(SimSymb.privs) <1= sk_src.(defs))
-    (INTGT: ss.(SimSymb.privs) <1= sk_tgt.(defs))
+    (INSRC: ss.(SimSymb.privs) <1= sk_src.(privs))
+    (INTGT: ss.(SimSymb.privs) <1= sk_tgt.(privs))
     (PUBS: forall
         id
         (PUBS: ~ ss.(SimSymb.privs) id)
       ,
-        <<EQ: PTree.get id sk_src.(prog_defmap) = PTree.get id sk_tgt.(prog_defmap)>>)
+        <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>)
 .
 
 
@@ -48,16 +48,24 @@ Module ModPair.
     src: Mod.t;
     tgt: Mod.t;
     ss: SimSymb.t;
-    wf:= closed ss src.(Mod.sk) tgt.(Mod.sk)
   }
   .
+
+  Inductive wf `{SimSymb.class} (mp: t): Prop :=
+  | wf_intro
+      (CLOSED: closed mp.(ss) mp.(src).(Mod.sk) mp.(tgt).(Mod.sk))
+      (PUB: mp.(src).(Mod.sk).(prog_public) = mp.(tgt).(Mod.sk).(prog_public))
+      (MAIN: mp.(src).(Mod.sk).(prog_main) = mp.(tgt).(Mod.sk).(prog_main))
+  .
+  (* Design: ModPair only has data, properties are stated in sim_modpair *)
 
   (* Change sim_modsem to be sensitive to si. *)
   (* Only when initial memory is respecting si, it can guarantee something. *)
   (* Q: Can we encode it inside SM? *)
 
 End ModPair.
- 
+
+
 (* Module ModPair. *)
 
 (*   Record t: Type := { *)

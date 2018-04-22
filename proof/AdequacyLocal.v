@@ -22,21 +22,6 @@ Section ADEQUACY.
   Let p_src := pp.(ProgPair.src).
   Let p_tgt := pp.(ProgPair.src).
 
-  Theorem sim_load
-        sem_src
-        (LOADSRC: sem p_src = Some sem_src)
-    :
-      exists sem_tgt, <<LOADTGT: sem p_tgt = Some sem_tgt>>
-  .
-  Proof.
-    unfold sem in *.
-    des_ifs.
-    { esplits; eauto. }
-    exfalso.
-    unfold init_sk in *.
-    admit "".
-  Qed.
-
   Theorem adequacy_local
           sem_src
           (LOADSRC: sem p_src = Some sem_src)

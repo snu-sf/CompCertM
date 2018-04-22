@@ -7,3 +7,6 @@ Makefile.coq.conf
 *.vio
 *.v.d
 *.glob
+
+graph.png
+graph.dot

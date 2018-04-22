@@ -10,7 +10,6 @@ Require Import FSets.
 Require Import Ordered.
 Require Import AST.
 Require Import Asmregs.
-Require Import SymbInj.
 Require Import Integers.
 
 Require Import Skeleton.
@@ -35,7 +34,7 @@ Program Instance MemRelId : SimMem.class SimSymbId :=
   t := t';
   src_mem := src_mem;
   tgt_mem := tgt_mem;
-  valid := fun (rel: t') => rel.(src_mem) = rel.(tgt_mem);
+  wf := fun (rel: t') => rel.(src_mem) = rel.(tgt_mem);
   le := fun (mrel0 mrel1: t') => True;
   lift := id;
   unlift := fun _ => id;
@@ -47,10 +46,9 @@ Qed.
 Next Obligation.
   eexists (mkrelation _ _).
   esplits; ss; eauto.
-  destruct mp; ss.
   inv WF. ss.
   inv WF0. ss. clear_tac.
-  assert(PUBS0: forall id, <<EQ: src.(Mod.sk).(prog_defmap) ! id = tgt.(Mod.sk).(prog_defmap) ! id>>).
+  assert(PUBS0: forall id, <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>).
   { i. eapply PUBS. eauto. }
   clear PUBS.
   econs; eauto.

@@ -10,10 +10,9 @@ Require Import Asmregs.
 Require Import Linking.
 Require Import CoqlibC.
 Require Import sflib.
-Require Import ModSem.
-Require Import Mod.
-Require Import Skeleton.
-Require Import LinkingC.
+
+Require Import ModSem Mod Skeleton LinkingC.
+Require Export Syntax.
 
 Set Implicit Arguments.
 
@@ -150,15 +149,6 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 
 
 
-Definition program := list Mod.t.
-
-Definition option_join A (a: option (option A)): option A :=
-  match a with
-  | Some a => a
-  | None => None
-  end
-.
-
 Section SEMANTICS.
 
   Variable p: program.
@@ -218,7 +208,10 @@ Section SEMANTICS.
   Definition sem: option semantics :=
     match init_sk with
     | Some sk => Some (Semantics_gen step initial_state final_state
-                                     (load_genv sk.(Sk.load_skenv)) (load_genv sk.(Sk.load_skenv)).(Ge.skenv))
+                                     (load_genv sk.(Sk.load_skenv))
+                                     (* (load_genv sk.(Sk.load_skenv)).(Ge.skenv) *)
+                                     (admit "dummy for now. it is not used")
+                      )
     | None => None
     end
   .

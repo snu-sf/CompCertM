@@ -179,3 +179,34 @@ Proof.
   i.
   eapply Acc_clos_trans. eauto.
 Qed.
+
+Inductive Forall3 X Y Z (R: X -> Y -> Z -> Prop): list X -> list Y -> list Z -> Prop :=
+| Forall3_nil: Forall3 R [] [] []
+| Forall3_cons
+    x y z
+    xs ys zs
+    (TAIL: Forall3 R xs ys zs)
+  :
+    Forall3 R (x :: xs) (y :: ys) (z :: zs)
+.
+
+Lemma Forall3_impl
+      X Y Z
+      (xs: list X) (ys: list Y) (zs: list Z)
+      P Q
+      (IMPL: P <3= Q)
+      (FORALL: Forall3 P xs ys zs)
+  :
+    <<FORALL: Forall3 Q xs ys zs>>
+.
+Proof.
+  admit "easy".
+Qed.
+
+Definition option_join A (a: option (option A)): option A :=
+  match a with
+  | Some a => a
+  | None => None
+  end
+.
+

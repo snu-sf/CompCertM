@@ -7,7 +7,6 @@ Require Import Globalenvs.
 Require Import Smallstep.
 From Paco Require Import paco.
 Require Import sflib.
-Require Import SymbInj.
 Require Import Skeleton.
 
 Set Implicit Arguments.
@@ -80,20 +79,4 @@ End ModSem.
 Coercion ModSem.to_semantics: ModSem.t >-> semantics.
 (* I want to use definitions like "Star" or "determinate_at" *)
 
-
-(* Module ModSemPair. *)
-
-(*   Record t: Type := { *)
-(*     src: ModSem.t; *)
-(*     tgt: ModSem.t; *)
-(*     si: symbinj; *)
-(*     (* TODO: unify closed & private *) *)
-(*     closed: symbinj_closed si src tgt; *)
-(*     private: symbinj_private si src tgt; *)
-(*     (* TODO: which unary/binary property it expects *) *)
-(*     (* TODO: analysis *) *)
-(*   } *)
-(*   . *)
-
-(* End ModSemPair. *)
 

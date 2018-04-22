@@ -10,13 +10,13 @@ Require Import FSets.
 Require Import Ordered.
 Require Import AST.
 Require Import Asmregs.
-Require Import SymbInj.
 Require Import Integers.
 
 Require Import Skeleton.
 Require Import ModSem.
 Require Import Mod.
 Require Import SimSymb.
+Require Import Pair.
 
 Set Implicit Arguments.
 
@@ -57,18 +57,18 @@ Module SimMem.
   (* lift_val_rel_list: forall mrel vs0 vs1, val_rel_list mrel vs0 vs1 -> val_rel_list (lift mrel) vs0 vs1; *)
   (* val_rel_int: forall mrel i v, val_rel mrel (Vint i) v -> v = Vint i; *)
 
-    mod_pair_load: forall
-        mp
+    load_respects_ss: forall
+        ss sk_src sk_tgt
         (* (SS: mp.(ModPair.SS) = SS) *)
-        (WF: mp.(ModPair.wf))
+        (WF: closed ss sk_src sk_tgt)
         skenv_src skenv_tgt m_src m_tgt
-        (LOADSRC: skenv_src = mp.(ModPair.src).(Sk.load_skenv) /\ mp.(ModPair.src).(Sk.load_mem) = Some m_src)
-        (LOADTGT: skenv_tgt = mp.(ModPair.tgt).(Sk.load_skenv) /\ mp.(ModPair.tgt).(Sk.load_mem) = Some m_tgt)
+        (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src /\ sk_src.(Sk.load_mem) = Some m_src)
+        (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt /\ sk_tgt.(Sk.load_mem) = Some m_tgt)
       ,
         exists sm,
            (<<SRCM: sm.(src_mem) = m_src>>) /\
            (<<TGTM: sm.(tgt_mem) = m_tgt>>) /\
-           (<<SIM: mp.(ModPair.ss).(SimSymb.sim_skenv) skenv_src skenv_tgt>>)
+           (<<SIM: SimSymb.sim_skenv ss skenv_src skenv_tgt>>)
     ;
 
     (* load_exact_preserved: forall *)

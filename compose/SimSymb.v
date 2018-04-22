@@ -103,6 +103,15 @@ Module SimSymb.
       (*                     (<<EXACT1: link_exact_preserved ss1.(sim_symb) sk_src1 sk_tgt1 ss_link.(sim_symb)>>) *)
       (* ; *)
       sim_skenv: t -> SkEnv.t -> SkEnv.t -> Prop;
+      sim_skenv_monotone_ss: forall
+          ss_link skenv_src skenv_tgt
+          (SIMSKENV: sim_skenv ss_link skenv_src skenv_tgt)
+          ss
+          (LE: linkorder ss ss_link)
+        ,
+          <<SIMSKENV: sim_skenv ss skenv_src skenv_tgt>>
+      ;
+      (* TODO: Can we separate sim_skenv_monotone_skenv, like sim_skenv_monotone_ss? *)
       sim_skenv_monotone: forall
           ss_link skenv_src skenv_tgt
           (SIMSKENV: sim_skenv ss_link skenv_src skenv_tgt)

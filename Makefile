@@ -3,6 +3,9 @@ COQTHEORIES  := $(wildcard */*.v) #*/*.v
 
 .PHONY: all proof proof-quick
 
+graph:
+		sh make_graph.sh
+
 ### Quick
 # proof-quick: Makefile.coq $(COQTHEORIES)
 # 	$(MAKE) -f Makefile.coq quick

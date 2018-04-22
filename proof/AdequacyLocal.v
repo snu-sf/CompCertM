@@ -6,7 +6,8 @@ Require Import ModSem.
 Require Import LinkingC.
 Require Import Skeleton.
 
-Require Import Pair SimSymb SimMem SimProg Ord SimModSem.
+Require Import Pair SimSymb SimMem Ord SimModSem.
+Require Import SimProg.
 
 Set Implicit Arguments.
 
@@ -29,6 +30,8 @@ Section ADEQUACY.
       exists sem_tgt, <<LOADTGT: sem p_tgt = Some sem_tgt>> /\ <<SIM: mixed_simulation sem_src sem_tgt>>
   .
   Proof.
+    exploit sim_progpair_sim_ge; eauto.
+    tttttttttttttttttttttttt
     exploit sim_load; eauto. i; des.
     esplits; eauto.
 

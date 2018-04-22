@@ -42,6 +42,51 @@ Section SIM.
 
 
 
+  Lemma link_list_cons
+        X `{Linker X}
+        hd tl restl res
+        (TL: link_list tl = Some restl)
+        (HD: link hd restl = Some res)
+    :
+      <<LINK: link_list (hd :: tl) = Some res>>
+  .
+  Proof.
+    admit "This should hold".
+  Qed.
+
+  Lemma link_list_cons_inv
+        X `{Linker X}
+        hd tl res
+        (LINK: link_list (hd :: tl) = Some res)
+    :
+      exists restl, <<TL: link_list tl = Some restl>> /\ <<HD: link hd restl = Some res>>
+  .
+  Proof.
+    admit "This should hold".
+  Qed.
+
+  Theorem sim_load_sk
+          sk_src
+          (LOADSRC: p_src.(init_sk) = Some sk_src)
+    :
+      exists sk_tgt, <<LOADTGT: p_tgt.(init_sk) = Some sk_tgt>>
+  .
+  Proof.
+    unfold init_sk in *.
+    subst p_src p_tgt.
+    ginduction pp; ii; ss.
+    eapply link_list_cons_inv in LOADSRC. des.
+    exploit IHt; eauto.
+    { inv WF. ss. }
+    { inv SIMPROG. inv SIMMPS. ss. }
+    i; des.
+    esplits; eauto.
+    eapply link_list_cons; eauto.
+    admit "TODO: Strengthen conclusion so that IH becomes stronger too. Somehow sk_src ~ sk_tgt".
+  Unshelve.
+    all: ss.
+  Qed.
+
   Theorem sim_load
         sem_src
         (LOADSRC: sem p_src = Some sem_src)
@@ -50,11 +95,9 @@ Section SIM.
   .
   Proof.
     unfold sem in *.
-    des_ifs.
-    { esplits; eauto. }
-    exfalso.
-    unfold init_sk in *.
-    admit "".
+    des_ifs_safe.
+    exploit sim_load_sk; eauto. i; des.
+    esplits; eauto. des_ifs.
   Qed.
 
   Variable ss_link: SimSymb.t.
@@ -67,10 +110,24 @@ Section SIM.
   Hypothesis LOADTGT: sem p_tgt = Some sem_tgt.
   Hypothesis SSLINK: pp.(ProgPair.ss_link) = Some ss_link.
 
-  Inductive sim_ge (ge_src ge_tgt: Ge.t): Prop :=
-  | sim_ge_intro
-      (SKENV: SimSymb.sim_skenv ss_link ge_src.(Ge.skenv) ge_tgt.(Ge.skenv))
-      (MSS: List.Forall2 sim_modsem ge_src.(Ge.mss) ge_tgt.(Ge.mss))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  Inductive sim_gepair (gep: GePair.t): Prop :=
+  | sim_gepair_intro
+      (SKENV: SimSymb.sim_skenv gep.(GePair.ss) gep.(GePair.skenv_src) gep.(GePair.skenv_tgt))
+      (MSS: List.Forall sim_modsempair gep.(GePair.msps))
   .
 
   Let skenv_src := sk_src.(Sk.load_skenv).
@@ -78,13 +135,18 @@ Section SIM.
   Variable m_src m_tgt: mem.
   Hypothesis LOADMEMSRC: sk_src.(Sk.load_mem) = Some m_src.
   Hypothesis LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt.
+  Let mss_src := p_src.(load_modsem) skenv_src.
+  Let mss_tgt := p_tgt.(load_modsem) skenv_tgt.
   Let ge_src := (p_src.(load_genv) skenv_src).
   (* TODO: I want to use "sem_src.(globalenv)" here, without unfolding it. *)
   Let ge_tgt := (p_tgt.(load_genv) skenv_tgt).
 
   Theorem sim_progpair_sim_ge
     :
-      sim_ge ge_src ge_tgt
+      exists ss msps,
+        <<SIM: sim_gepair (GePair.mk skenv_src skenv_tgt ss msps)>>
+        /\ <<SRC: List.map ModSemPair.src msps = mss_src>>
+        /\ <<TGT: List.map ModSemPair.tgt msps = mss_tgt>>
   .
   Proof.
     assert(SIMSKENV: SimSymb.sim_skenv ss_link ge_src.(Ge.skenv) ge_tgt.(Ge.skenv)).
@@ -110,6 +172,8 @@ Section SIM.
     - eapply IHt; eauto.
       admit "link_list_linkorder".
   Qed.
+
+  Theorem sim_modsem
 
 End SIM.
 

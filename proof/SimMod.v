@@ -30,13 +30,15 @@ Section SIM.
   Inductive sim_modpair (mp: ModPair.t): Prop :=
   | intro_sim_modpair
       (WF: ModPair.wf mp)
-      (SIMMS: forall
+      (SIMMSP: forall
           skenv_src skenv_tgt
           (SIMSKENV: SimSymb.sim_skenv mp.(ModPair.ss) skenv_src skenv_tgt)
         ,
-          sim_modsem
-            (mp.(ModPair.src).(Mod.get_modsem) skenv_src mp.(ModPair.src).(Mod.data))
-            (mp.(ModPair.tgt).(Mod.get_modsem) skenv_tgt mp.(ModPair.tgt).(Mod.data)))
+          exists (idx: Type) (order: idx -> idx -> Prop),
+            <<SIM: sim_modsempair (ModSemPair.mk
+                                     (mp.(ModPair.src).(Mod.get_modsem) skenv_src mp.(ModPair.src).(Mod.data))
+                                     (mp.(ModPair.tgt).(Mod.get_modsem) skenv_tgt mp.(ModPair.tgt).(Mod.data))
+                                     order)>>)
   .
 
   Inductive sim_progpair (pp: ProgPair.t): Prop :=
@@ -60,7 +62,7 @@ Section SIM.
     Local Opaque Linker_prog.
     unfold Sk.t in *.
     exploit (@link_prog_inv (fundef (option signature)) unit); eauto. intro SPEC.
-    inv SIM0. inv SIM1. clear SIMMS SIMMS0. inv WF. inv WF0.
+    inv SIM0. inv SIM1. clear SIMMSP SIMMSP0. inv WF. inv WF0.
 
     {
       exploit (link_prog_succeeds mp0.(ModPair.tgt).(Mod.sk) mp1.(ModPair.tgt).(Mod.sk)); eauto.

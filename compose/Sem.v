@@ -28,7 +28,7 @@ Set Implicit Arguments.
 Module Frame.
 
   (* Naming Candidates *)
-  (* Frame -> Short pronunciation. its shorhand "m" conflicts with "m" of "memory". *)
+  (* Module -> Short pronunciation. its shorhand "m" conflicts with "m" of "memory". *)
   (* StackFrame (Activation Record) -> Too long *)
   (* Frame -> Short, also it is quite clear (Frame is not used elsewhere in this level) *)
 

@@ -16,7 +16,6 @@ Require Import Skeleton.
 Require Import ModSem.
 Require Import Mod.
 Require Import SimSymb.
-Require Import Pair.
 
 Set Implicit Arguments.
 

@@ -9,7 +9,8 @@ Require Import sflib.
 Require Import Basics.
 Require Import CoqlibC.
 Require Import Values Integers.
-Require Import SimSymb.
+
+Require Import Pair SimSymb.
 
 Set Implicit Arguments.
 
@@ -170,9 +171,9 @@ Hint Resolve lxsim_mon: paco.
 Print HintDb typeclass_instances.
 
 (* ####################### TODO: Rename initial_machine/final_machine into initial_frame/final_frame *)
-Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class} (ms_src ms_tgt: ModSem.t): Prop :=
+Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class} (ms_src ms_tgt: ModSem.t)
+          (idx: Type) (order: idx -> idx -> Prop): Prop :=
 | sim_modsem_intro
-    (idx: Type) (order: idx -> idx -> Prop)
     (SIM: forall
         fptr_init_src fptr_init_tgt
         sm_init
@@ -204,5 +205,10 @@ Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class} (ms_src ms_tgt: Mo
             exists st_init_tgt,
               (<<INITTGT: ms_tgt.(initial_machine) fptr_init_tgt sg_init_tgt
                                                    rs_init_tgt sm_init.(SimMem.tgt_mem) st_init_tgt>>)>>))
+.
+
+Inductive sim_modsempair `{SS: SimSymb.class} `{SM: SimMem.class} (msp: ModSemPair.t): Prop :=
+| intro_sim_modsempair
+    (SIM: sim_modsem msp.(ModSemPair.src) msp.(ModSemPair.tgt) msp.(ModSemPair.order))
 .
 

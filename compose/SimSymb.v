@@ -10,6 +10,7 @@ Require Import Skeleton.
 Require Import Integers.
 Require Import ASTC.
 Require Import LinkingC.
+Require Import Maps.
 
 
 Set Implicit Arguments.
@@ -175,3 +176,27 @@ End SimSymb.
 (* Coercion sim_symb: forall (X: Type) `{SimSymb X}, X >-> Funclass. *)
 
 
+(* TODO: name? *)
+Inductive closed `{SimSymb.class} (ss: SimSymb.t) (sk_src sk_tgt: Sk.t): Prop :=
+| closed_intro
+    (WF: SimSymb.wf ss)
+    (INSRC: ss.(SimSymb.coverage) <1= sk_src.(privs))
+    (INTGT: ss.(SimSymb.coverage) <1= sk_tgt.(privs))
+    (NOCOVER: forall
+        id
+        (PUBS: ~ ss.(SimSymb.coverage) id)
+      ,
+        <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>)
+    (KEPT: forall
+        id
+        (COVER: ss.(SimSymb.coverage) id)
+        (KEPT: ss.(SimSymb.kept) id)
+      ,
+        <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>)
+    (NOKEPT: forall
+        id
+        (COVER: ss.(SimSymb.coverage) id)
+        (NOKEPT: ~ ss.(SimSymb.kept) id)
+      ,
+        <<NOKEPT: None = sk_tgt.(prog_defmap) ! id>>)
+.

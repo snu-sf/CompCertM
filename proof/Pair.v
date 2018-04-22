@@ -12,35 +12,11 @@ Require Import ASTC.
 Require Import Maps.
 Require Import LinkingC.
 
-Require Import Syntax Mod ModSem SimSymb.
+Require Import Syntax Sem Mod ModSem SimMem SimSymb.
 
 Set Implicit Arguments.
 
 
-(* TODO: name? *)
-Inductive closed `{SimSymb.class} (ss: SimSymb.t) (sk_src sk_tgt: Sk.t): Prop :=
-| closed_intro
-    (WF: SimSymb.wf ss)
-    (INSRC: ss.(SimSymb.coverage) <1= sk_src.(privs))
-    (INTGT: ss.(SimSymb.coverage) <1= sk_tgt.(privs))
-    (NOCOVER: forall
-        id
-        (PUBS: ~ ss.(SimSymb.coverage) id)
-      ,
-        <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>)
-    (KEPT: forall
-        id
-        (COVER: ss.(SimSymb.coverage) id)
-        (KEPT: ss.(SimSymb.kept) id)
-      ,
-        <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>)
-    (NOKEPT: forall
-        id
-        (COVER: ss.(SimSymb.coverage) id)
-        (NOKEPT: ~ ss.(SimSymb.kept) id)
-      ,
-        <<NOKEPT: None = sk_tgt.(prog_defmap) ! id>>)
-.
 
 
 
@@ -66,7 +42,7 @@ Qed.
 
 Module ModPair.
 
-  Record t: Type := {
+  Record t: Type := mk {
     src: Mod.t;
     tgt: Mod.t;
     SS:> SimSymb.class;
@@ -77,7 +53,10 @@ Module ModPair.
 
   Reset t. (* Need to state SS = SS in SimMem... JMEQ THINGS !!!!!!!!!!!!! *)
 
-  Record t `{SimSymb.class}: Type := {
+Section MODPAIR.
+Context `{SS: SimSymb.class}.
+
+  Record t: Type := mk {
     src: Mod.t;
     tgt: Mod.t;
     ss: SimSymb.t;
@@ -96,6 +75,7 @@ Module ModPair.
   (* Only when initial memory is respecting si, it can guarantee something. *)
   (* Q: Can we encode it inside SM? *)
 
+End MODPAIR.
 End ModPair.
 
 
@@ -143,22 +123,6 @@ End ModPair.
 
 
 
-(* Module ModSemPair. *)
-
-(*   Record t: Type := { *)
-(*     src: ModSem.t; *)
-(*     tgt: ModSem.t; *)
-(*     si: symbinj; *)
-(*     (* TODO: unify closed & private *) *)
-(*     closed: symbinj_closed si src tgt; *)
-(*     private: symbinj_private si src tgt; *)
-(*     (* TODO: which unary/binary property it expects *) *)
-(*     (* TODO: analysis *) *)
-(*   } *)
-(*   . *)
-
-(* End ModSemPair. *)
-
 
 Module ProgPair.
 Section PROGPAIR.
@@ -179,4 +143,89 @@ Context `{SS: SimSymb.class}.
 
 End PROGPAIR.
 End ProgPair.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Module ModSemPair.
+Section MODSEMPAIR.
+
+(* Context `{SS: SimSymb.class} `{SM: SimMem.class}. *)
+  Record t : Type := mk {
+    src: ModSem.t;
+    tgt: ModSem.t;
+    idx: Type;
+    order: idx -> idx -> Prop;
+    (* TODO: which unary/binary property it expects *)
+    (* TODO: analysis *)
+  }
+  .
+
+End MODSEMPAIR.
+End ModSemPair.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Module GePair.
+Section GEPAIR.
+
+Context `{SS: SimSymb.class} `{SM: SimMem.class}.
+  Record t: Type := mk {
+    skenv_src: SkEnv.t;
+    skenv_tgt: SkEnv.t;
+    ss: SimSymb.t;
+    msps: list ModSemPair.t;
+  }
+  .
+
+  Definition src (gep: t): Ge.t := (Ge.mk gep.(skenv_src) (List.map (ModSemPair.src) gep.(msps))).
+  Definition tgt (gep: t): Ge.t := (Ge.mk gep.(skenv_tgt) (List.map (ModSemPair.tgt) gep.(msps))).
+
+End GEPAIR.
+End GePair.
 

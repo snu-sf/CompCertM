@@ -6,7 +6,7 @@ Require Import ModSem.
 Require Import LinkingC.
 Require Import Skeleton.
 
-Require Import Pair SimSymb SimMem Ord SimModSem.
+Require Import Pair SimDef SimSymb SimMem Ord SimModSem.
 Require Import SimProg.
 
 Set Implicit Arguments.

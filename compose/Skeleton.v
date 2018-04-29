@@ -58,3 +58,5 @@ Module Sk.
 
 End Sk.
 
+Hint Unfold Sk.load_skenv Sk.load_mem.
+

@@ -41,4 +41,5 @@ End Mod.
 
 Coercion Mod.sk: Mod.t >-> Sk.t.
 
+Hint Unfold Mod.sk Mod.modsem.
 

@@ -14,71 +14,82 @@ Require Import ASTC.
 Require Import Maps.
 Require Import LinkingC.
 
-Require Import Syntax Sem Mod Pair ModSem SimMem SimModSem SimMod.
+Require Import Syntax Sem Mod ModSem.
+Require Import SimMem SimModSem SimMod.
 
 Set Implicit Arguments.
 
 
 
 
+Section TMP.
+
+  Context `{SS: SimSymb.class} `{SM: SimMem.class}.
+
+  Goal True. Abort.
+  (* TODO: SS and SS0. I want to avoid this, without adding "@" on SM. *)
+  (* I think making SimMem.class' argument explicit should be easy, but I don't know how to do that *)
+
+End TMP.
+
+
+
+
+
+Module ProgPair.
+Section PROGPAIR.
+Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
+
+  Definition t := list ModPair.t.
+  (* Record t := mk { *)
+  (*   src: list Mod.t; *)
+  (*   tgt: list Mod.t; *)
+  (*   sss: list SimSymb.t; *)
+  (* } *)
+  (* . *)
+
+  Definition sim (pp: t) := List.Forall ModPair.sim pp.
+
+  Definition src (pp: t): program := List.map ModPair.src pp.
+  Definition tgt (pp: t): program := List.map ModPair.tgt pp.
+
+  Definition ss_link (pp: t): option SimSymb.t := link_list (List.map ModPair.ss pp).
+  (* ############ TODO: *)
+  (* ModPair.wf mp0 /\ ModPair.wf mp1 /\ link mp0.(src) mp1.(src) = Some /\ link mp1.(tgt) mp1.(tgt) = Some *)
+  (* =================> link mp0.(ss) mp1.(ss) suceeds. *)
+  (* Move ModPair.wf into SimSymb and obligate its proof? *)
+
+End PROGPAIR.
+End ProgPair.
+
+Hint Unfold ProgPair.sim ProgPair.src ProgPair.tgt ProgPair.ss_link.
+
+
 
 
 Section SIM.
 
-  Context `{SS: SimSymb.class} `{SM: SimMem.class}.
-
-  Inductive sim_progpair (pp: ProgPair.t): Prop :=
-  | intro_sim_modpairs
-      (SIMMPS: List.Forall sim_modpair pp)
-  .
-
-
+  Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
 
   Variable pp: ProgPair.t.
-  Hypothesis WF: ProgPair.wf pp.
-  Hypothesis SIMPROG: sim_progpair pp.
+  Hypothesis SIMPROG: ProgPair.sim pp.
   Let p_src := pp.(ProgPair.src).
   Let p_tgt := pp.(ProgPair.tgt).
 
 
 
-  Lemma link_list_cons
-        X `{Linker X}
-        hd tl restl res
-        (TL: link_list tl = Some restl)
-        (HD: link hd restl = Some res)
+  Theorem sim_link_sk
+          sk_link_src
+          (LOADSRC: p_src.(link_sk) = Some sk_link_src)
     :
-      <<LINK: link_list (hd :: tl) = Some res>>
+      exists sk_link_tgt, <<LOADTGT: p_tgt.(link_sk) = Some sk_link_tgt>>
   .
   Proof.
-    admit "This should hold".
-  Qed.
-
-  Lemma link_list_cons_inv
-        X `{Linker X}
-        hd tl res
-        (LINK: link_list (hd :: tl) = Some res)
-    :
-      exists restl, <<TL: link_list tl = Some restl>> /\ <<HD: link hd restl = Some res>>
-  .
-  Proof.
-    admit "This should hold".
-  Qed.
-
-  Theorem sim_load_sk
-          sk_src
-          (LOADSRC: p_src.(init_sk) = Some sk_src)
-    :
-      exists sk_tgt, <<LOADTGT: p_tgt.(init_sk) = Some sk_tgt>>
-  .
-  Proof.
-    unfold init_sk in *.
-    subst p_src p_tgt.
+    u. subst_locals.
     ginduction pp; ii; ss.
     eapply link_list_cons_inv in LOADSRC. des.
+    inv SIMPROG.
     exploit IHt; eauto.
-    { inv WF. ss. }
-    { inv SIMPROG. inv SIMMPS. ss. }
     i; des.
     esplits; eauto.
     eapply link_list_cons; eauto.
@@ -96,86 +107,21 @@ Section SIM.
   Proof.
     unfold sem in *.
     des_ifs_safe.
-    exploit sim_load_sk; eauto. i; des.
+    exploit sim_link_sk; eauto. i; des.
     esplits; eauto. des_ifs.
   Qed.
 
-  Variable ss_link: SimSymb.t.
-  Variable sem_src sem_tgt: semantics.
-  Variable sk_src sk_tgt: Sk.t.
-  Hypothesis CLOSED: closed ss_link sk_src sk_tgt.
-  Hypothesis LINKSRC: p_src.(init_sk) = Some sk_src.
-  Hypothesis LINKTGT: p_tgt.(init_sk) = Some sk_tgt.
-  Hypothesis LOADSRC: sem p_src = Some sem_src.
-  Hypothesis LOADTGT: sem p_tgt = Some sem_tgt.
-  Hypothesis SSLINK: pp.(ProgPair.ss_link) = Some ss_link.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  Inductive sim_gepair (gep: GePair.t): Prop :=
-  | sim_gepair_intro
-      (SKENV: SimSymb.sim_skenv gep.(GePair.ss) gep.(GePair.skenv_src) gep.(GePair.skenv_tgt))
-      (MSS: List.Forall sim_modsempair gep.(GePair.msps))
-  .
-
-  Let skenv_src := sk_src.(Sk.load_skenv).
-  Let skenv_tgt := sk_tgt.(Sk.load_skenv).
-  Variable m_src m_tgt: mem.
-  Hypothesis LOADMEMSRC: sk_src.(Sk.load_mem) = Some m_src.
-  Hypothesis LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt.
-  Let mss_src := p_src.(load_modsem) skenv_src.
-  Let mss_tgt := p_tgt.(load_modsem) skenv_tgt.
-  Let ge_src := (p_src.(load_genv) skenv_src).
-  (* TODO: I want to use "sem_src.(globalenv)" here, without unfolding it. *)
-  Let ge_tgt := (p_tgt.(load_genv) skenv_tgt).
-
-  Theorem sim_progpair_sim_ge
-    :
-      exists ss msps,
-        <<SIM: sim_gepair (GePair.mk skenv_src skenv_tgt ss msps)>>
-        /\ <<SRC: List.map ModSemPair.src msps = mss_src>>
-        /\ <<TGT: List.map ModSemPair.tgt msps = mss_tgt>>
-  .
-  Proof.
-    assert(SIMSKENV: SimSymb.sim_skenv ss_link ge_src.(Ge.skenv) ge_tgt.(Ge.skenv)).
-    { exploit SimMem.load_respects_ss; eauto. i; des. ss. }
-    econs; eauto.
-    inv SIMPROG.
-    cbn.
-    clear - SIMMPS SIMSKENV SSLINK.
-    unfold ProgPair.ss_link in *.
-    assert(LINKORDER: forall
-              ss
-              (IN: List.In ss (map ModPair.ss pp))
-            ,
-              <<LO: linkorder ss ss_link>>).
-    { i. admit "link_list_linkorder". }
-    subst skenv_src skenv_tgt ge_src ge_tgt p_src p_tgt.
-    ginduction pp; ii; ss.
-    unfold flip. inv SIMMPS.
-    econs; eauto.
-    - eapply H1; eauto.
-      eapply SimSymb.sim_skenv_monotone_ss; eauto.
-      admit "link_list_linkorder".
-    - eapply IHt; eauto.
-      admit "link_list_linkorder".
-  Qed.
-
-  Theorem sim_modsem
 
 End SIM.
+
+
+
+
+
+
+
+
+
 
 
 

@@ -155,7 +155,7 @@ Section SEMANTICS.
   (* Variable init_skel: Skel.t. *)
   (* Hypothesis LINKED: link_list (List.map Mod.skel p) = Some init_skel. *)
 
-  Definition init_sk: option Sk.t := link_list (List.map Mod.sk p).
+  Definition link_sk: option Sk.t := link_list (List.map Mod.sk p).
 
   (* Definition init_skenv: option SkEnv.t := option_map (@Genv.globalenv (fundef unit) unit) init_sk. *)
   (* Definition init_skenv (init_sk: Sk.t): SkEnv.t := (@Genv.globalenv (fundef (option signature)) unit) init_sk. *)
@@ -172,14 +172,14 @@ Section SEMANTICS.
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
   Inductive initial_state: state -> Prop :=
   | initial_state_intro
-      sk skenv m ge
-      (INITSK: init_sk = Some sk)
-      (INITSKENV: sk.(Sk.load_skenv) = skenv)
-      (INITMEM: sk.(Sk.load_mem) = Some m)
-      (INITGENV: load_genv skenv = ge)
+      sk_link skenv_link m ge
+      (INITSK: link_sk = Some sk_link)
+      (INITSKENV: sk_link.(Sk.load_skenv) = skenv_link)
+      (INITMEM: sk_link.(Sk.load_mem) = Some m)
+      (INITGENV: load_genv skenv_link = ge)
 
       fptr_arg
-      (INITFPTR: Genv.symbol_address skenv sk.(prog_main) Ptrofs.zero = fptr_arg)
+      (INITFPTR: Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero = fptr_arg)
       ms
       (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
 
@@ -206,15 +206,17 @@ Section SEMANTICS.
   .
 
   Definition sem: option semantics :=
-    match init_sk with
-    | Some sk => Some (Semantics_gen step initial_state final_state
-                                     (load_genv sk.(Sk.load_skenv))
-                                     (* (load_genv sk.(Sk.load_skenv)).(Ge.skenv) *)
-                                     (admit "dummy for now. it is not used")
-                      )
+    match link_sk with
+    | Some sk_link => Some (Semantics_gen step initial_state final_state
+                                          (load_genv sk_link.(Sk.load_skenv))
+                                          (* (load_genv sk.(Sk.load_skenv)).(Ge.skenv) *)
+                                          (admit "dummy for now. it is not used")
+                           )
     | None => None
     end
   .
 
 End SEMANTICS.
+
+Hint Unfold link_sk load_modsem load_genv.
 

@@ -100,8 +100,8 @@ Section SYMBINJ_PROPS.
 
   Inductive symbinj_closed2 (si: symbinj) (prog_src prog_tgt: Sk.t): Prop :=
   | symbinj_closed2_intro
-      (DOMAIN: si.(domain) <1= prog_src.(defs))
-      (IMAGE: si.(image) <1= prog_tgt.(defs))
+      (DOMAIN: all1 (si.(domain) <1= prog_src.(defs)))
+      (IMAGE: all1 (si.(image) <1= prog_tgt.(defs)))
       (MATCH: forall
           id_src id_tgt
           (INJ: si$ id_src = Some id_tgt)
@@ -149,8 +149,8 @@ Section SYMBINJ_PROPS.
 
   Inductive symbinj_private2 (si: symbinj) (prog_src prog_tgt: Sk.t): Prop :=
   | symbinj_private2_intro
-      (DOMAIN: si.(domain) <1= prog_src.(privs))
-      (IMAGE: si.(image) <1= prog_tgt.(privs))
+      (DOMAIN: all1 (si.(domain) <1= prog_src.(privs)))
+      (IMAGE: all1 (si.(image) <1= prog_tgt.(privs)))
   .
 
   Lemma symbinj_private_iff
@@ -218,13 +218,14 @@ Section SYMBINJ_PROPS.
         prog_tgt_linked
         (LINKEDTGT: link prog_tgt0 prog_tgt1 = Some prog_tgt_linked)
     :
-      exists inj_linked, <<MERGE: link_symbinj inj0 inj1 inj_linked>>
-                         /\ <<CONF: symbinj_closed inj_linked prog_src_linked prog_tgt_linked>>
-                         /\ <<PRIV: symbinj_private inj_linked prog_src_linked prog_tgt_linked>>
-                         /\ <<UNMAPPEDSRC0: inj0.(domain_c) /1\ prog_src0.(privs) <1= inj_linked.(domain_c)>>
-                         /\ <<UNMAPPEDTGT0: inj0.(image_c) /1\ prog_tgt0.(privs) <1= inj_linked.(image_c)>>
-                         /\ <<UNMAPPEDSRC1: inj1.(domain_c) /1\ prog_src1.(privs) <1= inj_linked.(domain_c)>>
-                         /\ <<UNMAPPEDTGT1: inj1.(image_c) /1\ prog_tgt1.(privs) <1= inj_linked.(image_c)>>
+      exists inj_linked,
+        <<MERGE: link_symbinj inj0 inj1 inj_linked>>
+        /\ <<CONF: symbinj_closed inj_linked prog_src_linked prog_tgt_linked>>
+        /\ <<PRIV: symbinj_private inj_linked prog_src_linked prog_tgt_linked>>
+        /\ <<UNMAPPEDSRC0: all1 (inj0.(domain_c) /1\ prog_src0.(privs) <1= inj_linked.(domain_c))>>
+        /\ <<UNMAPPEDTGT0: all1 (inj0.(image_c) /1\ prog_tgt0.(privs) <1= inj_linked.(image_c))>>
+        /\ <<UNMAPPEDSRC1: all1 (inj1.(domain_c) /1\ prog_src1.(privs) <1= inj_linked.(domain_c))>>
+        /\ <<UNMAPPEDTGT1: all1 (inj1.(image_c) /1\ prog_tgt1.(privs) <1= inj_linked.(image_c))>>
   .
   Proof.
     i.

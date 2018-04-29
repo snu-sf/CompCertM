@@ -56,19 +56,26 @@ Module SimMem.
   (* lift_val_rel_list: forall mrel vs0 vs1, val_rel_list mrel vs0 vs1 -> val_rel_list (lift mrel) vs0 vs1; *)
   (* val_rel_int: forall mrel i v, val_rel mrel (Vint i) v -> v = Vint i; *)
 
-    load_respects_ss: forall
-        ss sk_src sk_tgt
-        (* (SS: mp.(ModPair.SS) = SS) *)
-        (WF: closed ss sk_src sk_tgt)
-        skenv_src skenv_tgt m_src m_tgt
-        (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src /\ sk_src.(Sk.load_mem) = Some m_src)
-        (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt /\ sk_tgt.(Sk.load_mem) = Some m_tgt)
-      ,
-        exists sm,
-           (<<SRCM: sm.(src_mem) = m_src>>) /\
-           (<<TGTM: sm.(tgt_mem) = m_tgt>>) /\
-           (<<SIM: SimSymb.sim_skenv ss skenv_src skenv_tgt>>)
-    ;
+
+
+
+    (* load_respects_ss: forall *)
+    (*     ss sk_src sk_tgt *)
+    (*     (* (SS: mp.(ModPair.SS) = SS) *) *)
+    (*     (CLOSED: SimSymb.closed ss sk_src sk_tgt) *)
+    (*     skenv_src skenv_tgt m_src m_tgt *)
+    (*     (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src /\ sk_src.(Sk.load_mem) = Some m_src) *)
+    (*     (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt /\ sk_tgt.(Sk.load_mem) = Some m_tgt) *)
+    (*   , *)
+    (*     exists sm, *)
+    (*        (<<SRCM: sm.(src_mem) = m_src>>) /\ *)
+    (*        (<<TGTM: sm.(tgt_mem) = m_tgt>>) /\ *)
+    (*        (<<SIM: SimSymb.sim_skenv ss skenv_src skenv_tgt>>) *)
+    (* ; *)
+
+
+
+
 
     (* load_exact_preserved: forall *)
     (*     ss sk_src sk_tgt *)
@@ -91,6 +98,10 @@ Module SimMem.
     (* ; *)
   }
   .
+
+  (* Arguments Build_class: clear implicits. *)
+  (* Arguments class: clear implicits. *)
+  Fail Context `{SS: SimSymb.class} `{SM: SimMem.class SS}. (* TODO: I don't want to add @ on SimMem here! *)
 
   Definition sim_val_list `{SM: class} (sm0: t) (vs_src vs_tgt: list val): Prop :=
     List.Forall2 (sim_val sm0) vs_src vs_tgt

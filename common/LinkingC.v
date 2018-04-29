@@ -54,9 +54,31 @@ Definition link_list X `{Linker X} (xs: list X): option X :=
   end
 .
 
+Lemma link_list_cons
+      X `{Linker X}
+      hd tl restl res
+      (TL: link_list tl = Some restl)
+      (HD: link hd restl = Some res)
+  :
+    <<LINK: link_list (hd :: tl) = Some res>> /\ <<LINKORDER: Forall (fun x => linkorder x res) (hd :: tl)>>
+.
+Proof.
+  admit "This should hold".
+Qed.
+
+Lemma link_list_cons_inv
+      X `{Linker X}
+      hd tl res
+      (LINK: link_list (hd :: tl) = Some res)
+  :
+    exists restl, <<TL: link_list tl = Some restl>> /\ <<HD: link hd restl = Some res>>
+                    /\ <<LINKORDER: Forall (fun x => linkorder x res) (hd :: tl)>>
+.
+Proof.
+  admit "This should hold".
+Qed.
+
 (* Just forget about nlist. We will use link_list in the final syntactic linking, too *)
-
-
 
 
 

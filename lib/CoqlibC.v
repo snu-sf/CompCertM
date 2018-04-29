@@ -134,30 +134,52 @@ Definition is_none {X} := negb <*> (@is_some X).
 Hint Unfold is_some is_none.
 
 
-
 Notation "x $" := (x.(proj1_sig)) (at level 50, no associativity (* , only parsing *)).
 
+Notation " 'all1' p" := (forall x0, p x0) (at level 50, no associativity).
+Notation " 'all2' p" := (forall x0 x1, p x0 x1) (at level 50, no associativity).
+Notation " 'all3' p" := (forall x0 x1 x2, p x0 x1 x2) (at level 50, no associativity).
+Notation " 'all4' p" := (forall x0 x1 x2 x3, p x0 x1 x2 x3) (at level 50, no associativity).
+
 Notation " ~1 p" := (fun x0 => ~ (p x0)) (at level 50, no associativity).
+Notation " ~2 p" := (fun x0 x1 => ~ (p x0 x1)) (at level 50, no associativity).
+Notation " ~3 p" := (fun x0 x1 x2 => ~ (p x0 x1 x2)) (at level 50, no associativity).
+Notation " ~4 p" := (fun x0 x1 x2 x3 => ~ (p x0 x1 x2 x3)) (at level 50, no associativity).
 
 Notation "p /1\ q" := (fun x0 => and (p x0) (q x0)) (at level 50, no associativity).
+Notation "p /2\ q" := (fun x0 x1 => and (p x0 x1) (q x0 x1)) (at level 50, no associativity).
+Notation "p /3\ q" := (fun x0 x1 x2 => and (p x0 x1 x2) (q x0 x1 x2)) (at level 50, no associativity).
+Notation "p /4\ q" := (fun x0 x1 x2 x3 => and (p x0 x1 x2 x3) (q x0 x1 x2 x3)) (at level 50, no associativity).
 
-Definition less1 X0 (p q: X0 -> Prop) := (forall x0 (PR: p x0 : Prop), q x0 : Prop).
-Hint Unfold less1.
-Notation "p <1= q" := (less1 p q) (at level 50).
+(* Definition less1 X0 (p q: X0 -> Prop) := (forall x0 (PR: p x0 : Prop), q x0 : Prop). *)
+(* Hint Unfold less1. *)
+(* Notation "p <1= q" := (less1 p q) (at level 50). *)
+(* Global Program Instance less1_PreOrder X0: PreOrder (@less1 X0). *)
 
-Notation "p =1= q" := (forall x0, eq (p x0) (q x0)) (at level 50, no associativity).
+Notation "p <1= q" := (fun x0 => (forall (PR: p x0: Prop), q x0): Prop).
+Notation "p <2= q" := (fun x0 x1 => (forall (PR: p x0 x1: Prop), q x0 x1): Prop).
+Notation "p <3= q" := (fun x0 x1 x2 => ((forall (PR: p x0 x1 x2: Prop), q x0 x1 x2): Prop)).
+Notation "p <4= q" := (fun x0 x1 x2 x3 => (forall (PR: p x0 x1 x2 x3: Prop), q x0 x1 x2 x3): Prop).
+
+(* Notation "p =1= q" := (forall x0, eq (p x0) (q x0)) (at level 50, no associativity). *)
+Notation "p =1= q" := (fun x0 => eq (p x0) (q x0)) (at level 50, no associativity).
+Notation "p =2= q" := (fun x0 x1 => eq (p x0 x1) (q x0 x1)) (at level 50, no associativity).
+Notation "p =3= q" := (fun x0 x1 x2 => eq (p x0 x1 x2) (q x0 x1 x2)) (at level 50, no associativity).
+Notation "p =4= q" := (fun x0 x1 x2 x3 => eq (p x0 x1 x2 x3) (q x0 x1 x2 x3)) (at level 50, no associativity).
 
 Notation top1 := (fun _ => True).
 Notation top2 := (fun _ _ => True).
 Notation top3 := (fun _ _ _ => True).
+Notation top4 := (fun _ _ _ => True).
 
+Goal all1 ((bot1: unit -> Prop) <1= top1).
+(* Goal ((bot1: unit -> Prop) <1= top1). *)
+Proof. ii. ss. Qed.
 
 (* Originally in sflib, (t):Prop *)
 (* Removed it for use in "privs" of ASTM *)
 (* Notation "<< x : t >>" := (NW (fun x => (t))) (at level 80, x ident, no associativity). *)
 
-
-Global Program Instance less1_PreOrder X0: PreOrder (@less1 X0).
 
 Print Ltac uf.
 Ltac u := repeat (autounfold with * in *; cbn in *).
@@ -181,6 +203,20 @@ Proof.
   eapply Acc_clos_trans. eauto.
 Qed.
 
+Lemma Forall2_impl
+      X Y
+      (xs: list X) (ys: list Y)
+      (P Q: X -> Y -> Prop)
+      (* (IMPL: all3 (P <3= Q)) *)
+      (IMPL: all2 (P <2= Q))
+      (FORALL: Forall2 P xs ys)
+  :
+    <<FORALL: Forall2 Q xs ys>>
+.
+Proof.
+  admit "easy".
+Qed.
+
 Inductive Forall3 X Y Z (R: X -> Y -> Z -> Prop): list X -> list Y -> list Z -> Prop :=
 | Forall3_nil: Forall3 R [] [] []
 | Forall3_cons
@@ -194,8 +230,9 @@ Inductive Forall3 X Y Z (R: X -> Y -> Z -> Prop): list X -> list Y -> list Z -> 
 Lemma Forall3_impl
       X Y Z
       (xs: list X) (ys: list Y) (zs: list Z)
-      P Q
-      (IMPL: P <3= Q)
+      (P Q: X -> Y -> Z -> Prop)
+      (* (IMPL: all3 (P <3= Q)) *)
+      (IMPL: all3 (P <3= Q))
       (FORALL: Forall3 P xs ys zs)
   :
     <<FORALL: Forall3 Q xs ys zs>>
@@ -211,3 +248,6 @@ Definition option_join A (a: option (option A)): option A :=
   end
 .
 
+Ltac subst_locals := all ltac:(fun H => is_local_definition H; subst H).
+
+Hint Unfold flip.

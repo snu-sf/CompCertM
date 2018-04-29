@@ -12,6 +12,7 @@ Require Import ASTC.
 Require Import LinkingC.
 Require Import Maps.
 
+Require Import SimDef.
 
 Set Implicit Arguments.
 
@@ -79,16 +80,73 @@ Module SimSymb.
       (INJ: injective_rel sim_symb)
   .
 
+
+
+  (* Properties that are needed in meta-theory. *)
+  (* TODO: minimize this property!! *)
+  Inductive weak_closed (coverage kept: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
+  | weak_closed_intro
+      (WF: all1 (kept <1= coverage))
+      (* We can pull "WF" out, it dosen't require sk_src/sk_tgt. But is it meaningful? *)
+      (INSRC: all1 (coverage <1= sk_src.(privs)))
+      (INTGT: all1 (coverage <1= sk_tgt.(privs)))
+      (* Is both are needed? *)
+      (NOCOVER: forall
+          id
+          (PUBS: ~ coverage id)
+        ,
+          <<SIM: sim_odef (sk_src.(prog_defmap) ! id) (sk_tgt.(prog_defmap) ! id)>>)
+      (* Further, we can say equality instead of sim, for public defs. Is it needed? *)
+      (KEPT: forall
+          id
+          (COVER: coverage id)
+          (KEPT: kept id)
+        ,
+          <<SIM: sim_odef (sk_src.(prog_defmap) ! id) (sk_tgt.(prog_defmap) ! id)>>)
+      (NOKEPT: forall
+          id
+          (COVER: coverage id)
+          (NOKEPT: ~ kept id)
+        ,
+          <<NOKEPT: None = sk_tgt.(prog_defmap) ! id>>)
+  .
+
   (* TODO: Try moving t into argument? sim_symb coercion gets broken and I don't know how to fix it. *)
   Class class :=
     {
       t: Type;
       coverage: t -> ident -> Prop;
       kept: t -> ident -> Prop;
-      wf := fun ss => ss.(kept) <1= ss.(coverage);
+      (* wf := fun ss => all1 (ss.(kept) <1= ss.(coverage)); *)
       (* wf: t -> Prop := fun ss => wf' ss.(sim_symb) ss.(privs); *)
       (* closed (ss: t) (sk_src: Sk.t) (sk_tgt: Sk.t): Prop; *)
       linker :> Linker t;
+      link_success: forall
+          (ss0 ss1: t)
+          (DISJOINT: all1 (~1 (ss0.(coverage) /1\ ss1.(coverage))))
+        ,
+          exists ss_link, <<LINK: link ss0 ss1 = Some ss_link>>
+      ;
+
+      closed: t -> Sk.t -> Sk.t -> Prop;
+      closed_weak_closed: forall
+          ss sk_src sk_tgt
+          (CLOSED: closed ss sk_src sk_tgt)
+          ,
+            <<CLOSED: weak_closed ss.(coverage) ss.(kept) sk_src sk_tgt>>
+      ;
+      link_preserves_closed: forall
+          ss0 (sk_src0 sk_tgt0: Sk.t)
+          (CLOSED0: closed ss0 sk_src0 sk_tgt0)
+          ss1 sk_src1 sk_tgt1
+          (CLOSED1: closed ss1 sk_src1 sk_tgt1)
+          sk_src sk_tgt
+          (LINKSRC: link sk_src0 sk_src1 = Some sk_src)
+          (LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt)
+        ,
+          exists ss, <<LINKSS: link ss0 ss1 = Some ss>> /\ <<CLOSED: closed ss sk_src sk_tgt>>
+      ;
+
       (* link (ss0 ss1 ss_link: t): Prop; *)
       (* link_spec: forall *)
       (*     ss0 sk_src0 sk_tgt0 *)
@@ -104,7 +162,17 @@ Module SimSymb.
       (*                     (<<EXACT0: link_exact_preserved ss0.(sim_symb) sk_src0 sk_tgt0 ss_link.(sim_symb)>>) /\ *)
       (*                     (<<EXACT1: link_exact_preserved ss1.(sim_symb) sk_src1 sk_tgt1 ss_link.(sim_symb)>>) *)
       (* ; *)
+
       sim_skenv: t -> SkEnv.t -> SkEnv.t -> Prop;
+      load_respects_ss: forall
+          ss sk_src sk_tgt
+          (CLOSED: closed ss sk_src sk_tgt)
+          skenv_src skenv_tgt
+          (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src)
+          (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt)
+        ,
+          (<<SIM: sim_skenv ss skenv_src skenv_tgt>>)
+      ;
       sim_skenv_monotone_ss: forall
           ss_link skenv_src skenv_tgt
           (SIMSKENV: sim_skenv ss_link skenv_src skenv_tgt)
@@ -177,26 +245,55 @@ End SimSymb.
 
 
 (* TODO: name? *)
-Inductive closed `{SimSymb.class} (ss: SimSymb.t) (sk_src sk_tgt: Sk.t): Prop :=
-| closed_intro
-    (WF: SimSymb.wf ss)
-    (INSRC: ss.(SimSymb.coverage) <1= sk_src.(privs))
-    (INTGT: ss.(SimSymb.coverage) <1= sk_tgt.(privs))
-    (NOCOVER: forall
-        id
-        (PUBS: ~ ss.(SimSymb.coverage) id)
-      ,
-        <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>)
-    (KEPT: forall
-        id
-        (COVER: ss.(SimSymb.coverage) id)
-        (KEPT: ss.(SimSymb.kept) id)
-      ,
-        <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>)
-    (NOKEPT: forall
-        id
-        (COVER: ss.(SimSymb.coverage) id)
-        (NOKEPT: ~ ss.(SimSymb.kept) id)
-      ,
-        <<NOKEPT: None = sk_tgt.(prog_defmap) ! id>>)
+(* Inductive closed `{SimSymb.class} (ss: SimSymb.t) (sk_src sk_tgt: Sk.t): Prop := *)
+(* | closed_intro *)
+(*     (WF: SimSymb.wf ss) *)
+(*     (INSRC: all1 (ss.(SimSymb.coverage) <1= sk_src.(privs))) *)
+(*     (INTGT: all1 (ss.(SimSymb.coverage) <1= sk_tgt.(privs))) *)
+(*     (NOCOVER: forall *)
+(*         id *)
+(*         (PUBS: ~ ss.(SimSymb.coverage) id) *)
+(*       , *)
+(*         <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>) *)
+(*     (KEPT: forall *)
+(*         id *)
+(*         (COVER: ss.(SimSymb.coverage) id) *)
+(*         (KEPT: ss.(SimSymb.kept) id) *)
+(*       , *)
+(*         <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>) *)
+(*     (NOKEPT: forall *)
+(*         id *)
+(*         (COVER: ss.(SimSymb.coverage) id) *)
+(*         (NOKEPT: ~ ss.(SimSymb.kept) id) *)
+(*       , *)
+(*         <<NOKEPT: None = sk_tgt.(prog_defmap) ! id>>) *)
+(* . *)
+
+
+
+
+Lemma closed_def_bsim
+      `{SimSymb.class}
+      ss sk_src sk_tgt
+      (CLOSED: SimSymb.closed ss sk_src sk_tgt)
+      id def_tgt
+      (DEFTGT: sk_tgt.(prog_defmap) ! id = Some def_tgt)
+  :
+    exists def_src, <<DEFSRC: sk_src.(prog_defmap) ! id = Some def_src>> /\ <<SIM: sim_def def_src def_tgt>>
 .
+Proof.
+  eapply SimSymb.closed_weak_closed in CLOSED.
+  inv CLOSED.
+  destruct (classic (ss.(SimSymb.coverage) id)).
+  - destruct (classic (ss.(SimSymb.kept) id)).
+    + exploit KEPT; eauto. intro SIM.
+      inv SIM.
+      { eq_closure_tac. esplits; eauto. }
+      exfalso. congruence.
+    + exploit NOKEPT; eauto. i. congruence.
+  - exploit NOCOVER; eauto. intro SIM.
+    inv SIM.
+    { eq_closure_tac. esplits; eauto. }
+    exfalso. congruence.
+Qed.
+

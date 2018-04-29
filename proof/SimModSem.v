@@ -10,20 +10,11 @@ Require Import Basics.
 Require Import CoqlibC.
 Require Import Values Integers.
 
-Require Import Pair SimSymb.
+Require Import SimDef SimSymb Ord.
 
 Set Implicit Arguments.
 
 
-
-Inductive sim_sig (sg_src sg_tgt: option signature): Prop :=
-| sim_sig_same
-    sg
-    (SRC: sg_src = Some sg)
-    (TGT: sg_tgt = Some sg)
-| sim_sig_drop
-    (TGT: sg_tgt = None)
-.
 
 Section SIMMODSEM.
 
@@ -37,7 +28,7 @@ Section SIMMODSEM.
       (MCOMPAT_TGT: ms_tgt.(get_mem) st_tgt0 = sm0.(SimMem.tgt_mem))
   .
   Variable index: Type.
-  Variable order: index -> index -> Prop.
+  Variable ord: index -> index -> Prop.
 
   Variable sg_init_src: option signature.
   Variable sg_init_tgt: option signature.
@@ -54,11 +45,11 @@ Section SIMMODSEM.
           (STEPSRC: Step ms_src st_src0 tr st_src1)
         ,
           exists i1 st_tgt1,
-            (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order i1 i0>>)
+            (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ ord i1 i0>>)
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm0>>)
   | fsim_step_stutter
       i1 st_tgt1
-      (STAR: DStar ms_tgt st_tgt0 nil st_tgt1 /\ order i1 i0)
+      (STAR: DStar ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
       (BSIM: fsim i1 st_src0 st_tgt1 sm0)
   .
 
@@ -70,12 +61,12 @@ Section SIMMODSEM.
           (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1)
         ,
           exists i1 st_src1 sm1,
-            (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ order i1 i0>>)
+            (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>)
             /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>>
             /\ <<BSIM: bsim i1 st_src1 st_tgt1 sm1>>)
   | bsim_step_stutter
       i1 st_src1
-      (STAR: Star ms_src st_src0 nil st_src1 /\ order i1 i0)
+      (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
       (BSIM: bsim i1 st_src1 st_tgt0 sm0)
   .
 
@@ -92,22 +83,18 @@ Section SIMMODSEM.
       (* sd_determ_at_final becomes nothing, but it is OK. *)
       (* In composed semantics, when it stepped, it must not be final *)
 
-  | lxsim_step_backward
-      (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0)
-      (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0)
-      (BSTEP: forall
-          (SAFESRC: safe ms_src st_src0)
-        ,
-          <<BSTEP: bsim_step lxsim i0 st_src0 st_tgt0 sm0>>)
-      (PROGRESS: forall
-          (SAFESRC: safe ms_src st_src0)
-        ,
-          <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)
+  (* | lxsim_step_backward *)
+  (*     (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
+  (*     (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
+  (*     (BSTEP: forall *)
+  (*         (SAFESRC: safe ms_src st_src0) *)
+  (*       , *)
+  (*         <<BSTEP: bsim_step lxsim i0 st_src0 st_tgt0 sm0>>) *)
+  (*     (PROGRESS: forall *)
+  (*         (SAFESRC: safe ms_src st_src0) *)
+  (*       , *)
+  (*         <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>) *)
 
-  (* TODO: is this the best spec? *)
-  (* 1) forall src tgt -> src~tgt *)
-  (* 2) forall src, exists tgt -> src~tgt *)
-  (* Two different forall->exists, then "exists" may give two different value? determinacy to rescue? *)
   | lxsim_at_external
       fptr_src fptr_tgt sg_arg_src sg_arg_tgt rs_arg_src rs_arg_tgt
       (MCOMPAT: mem_compat st_src0 st_tgt0 sm0)
@@ -153,14 +140,17 @@ Section SIMMODSEM.
       inv FSTEP. 
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
-    - econs 2; ss.
-      i. specialize (BSTEP SAFESRC).
-      inv BSTEP.
-      + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
-      + econs 2; eauto.
-    - econs 3; eauto.
+    (* - econs 2; ss. *)
+    (*   i. specialize (BSTEP SAFESRC). *)
+    (*   inv BSTEP. *)
+    (*   + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto. *)
+    (*   + econs 2; eauto. *)
+    (* - econs 3; eauto. *)
+    (*   i; ss. exploit AFTER; eauto. i; des. esplits; eauto. *)
+    (* - econs 4; eauto. *)
+    - econs 2; eauto.
       i; ss. exploit AFTER; eauto. i; des. esplits; eauto.
-    - econs 4; eauto.
+    - econs 3; eauto.
   Qed.
 
 End SIMMODSEM.
@@ -171,8 +161,9 @@ Hint Resolve lxsim_mon: paco.
 Print HintDb typeclass_instances.
 
 (* ####################### TODO: Rename initial_machine/final_machine into initial_frame/final_frame *)
-Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class} (ms_src ms_tgt: ModSem.t)
-          (idx: Type) (order: idx -> idx -> Prop): Prop :=
+Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class}
+          (idx: Type) (ord: idx -> idx -> Prop)
+          (ms_src ms_tgt: ModSem.t): Prop :=
 | sim_modsem_intro
     (SIM: forall
         fptr_init_src fptr_init_tgt
@@ -194,7 +185,7 @@ Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class} (ms_src ms_tgt: Mo
               (* Can be proved with initial_states_get_mem *)
               (<<INITSRC: ms_src.(initial_machine) fptr_init_src sg_init_src
                                               rs_init_src sm_init.(SimMem.src_mem) st_init_src>>) /\
-              (<<SIM: lxsim ms_src ms_tgt order sg_init_src sg_init_tgt rs_init_src rs_init_tgt sm_init
+              (<<SIM: lxsim ms_src ms_tgt ord sg_init_src sg_init_tgt rs_init_src rs_init_tgt sm_init
                             idx_init st_init_src st_init_tgt sm_init>>)>>)
         /\
         (<<PROGRESS: forall
@@ -207,8 +198,24 @@ Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class} (ms_src ms_tgt: Mo
                                                    rs_init_tgt sm_init.(SimMem.tgt_mem) st_init_tgt>>)>>))
 .
 
-Inductive sim_modsempair `{SS: SimSymb.class} `{SM: SimMem.class} (msp: ModSemPair.t): Prop :=
-| intro_sim_modsempair
-    (SIM: sim_modsem msp.(ModSemPair.src) msp.(ModSemPair.tgt) msp.(ModSemPair.order))
+(* Inductive sim_modsempair `{SS: SimSymb.class} `{SM: SimMem.class} (msp: ModSemPair.t): Prop := *)
+(* | intro_sim_modsempair *)
+(*     (SIM: sim_modsem msp.(ModSemPair.src) msp.(ModSemPair.tgt) msp.(ModSemPair.order)) *)
+(* . *)
+
+
+Lemma embedding_preserves_sim
+      `{SS: SimSymb.class} `{SM: SimMem.class}
+      (idx: Type) (ord: idx -> idx -> Prop)
+      ms_src ms_tgt
+      (SIMMS: sim_modsem ord ms_src ms_tgt)
+      (link_idx: Type) (link_ord: link_idx -> link_idx -> Prop)
+      (EMBED: embedded ord link_ord)
+  :
+    <<SIMMS: sim_modsem link_ord ms_src ms_tgt>>
 .
+Proof.
+  admit "this should hold".
+Qed.
+
 

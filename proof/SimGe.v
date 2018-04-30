@@ -39,6 +39,7 @@ Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
   | intro_sim
       (SIMSKENV: SimSymb.sim_skenv gep.(ss) gep.(skenv_src) gep.(skenv_tgt))
       (idx: Type) (order: idx -> idx -> Prop)
+      (WF: well_founded order)
       (SIMMSS: List.Forall2 (sim_modsem order) gep.(mss_src) gep.(mss_tgt))
   .
 
@@ -73,7 +74,7 @@ Section SIMGE.
   (* TODO: Using "let" breaks tactics like "des" and "generalize dependent", even after "subst"ing it, *)
   (* but I don't know why... *)
 
-  Theorem sim_progpair_sim_ge
+  Theorem sim_progpair_sim_gepair
           pp
           (SIMPROG: ProgPair.sim pp)
           p_src p_tgt
@@ -92,11 +93,12 @@ Section SIMGE.
     :
       exists ss_link,
         <<SIM: GePair.sim (GePair.mk skenv_src skenv_tgt ss_link mss_src mss_tgt)>>
+        /\ <<LINKSS: pp.(ProgPair.ss_link) = Some ss_link>> 
   .
   Proof.
     subst. u. ss.
     assert(exists ss_link, <<LINKSS: pp.(ProgPair.ss_link) = Some ss_link>> /\
-                           <<CLOSED: SimSymb.closed ss_link sk_src sk_tgt>> /\
+                           <<SIMSK: SimSymb.sim_sk ss_link sk_src sk_tgt>> /\
                            <<LINKORDER: Forall (fun mp => linkorder mp.(ModPair.ss) ss_link) pp>>).
     { u.
       revert_until pp.
@@ -106,7 +108,7 @@ Section SIMGE.
       exploit IHpp; eauto.
       i; des.
       rename pp into pp_tl. rename a into pp_hd. rename ss_link into ss_link_tl.
-      exploit SimSymb.link_preserves_closed; revgoals.
+      exploit SimSymb.link_preserves_sim_sk; revgoals.
       { i; des. esplits; eauto.
         - eapply link_list_cons; eauto.
         - econs; eauto.
@@ -129,30 +131,124 @@ Section SIMGE.
       (* admit "TODO: closed is monotone!!". *)
     }
     des. exists ss_link.
+    split; ss.
     remember (Genv.globalenv sk_src) as skenv_src.
     remember (Genv.globalenv sk_tgt) as skenv_tgt.
     assert(SIMSKENV: SimSymb.sim_skenv ss_link skenv_src skenv_tgt).
     { eapply SimSymb.load_respects_ss; eauto. }
-    clear Heqskenv_src Heqskenv_tgt. clear LINKSRC LINKTGT LINKSS CLOSED.
+    clear Heqskenv_src Heqskenv_tgt. clear LINKSRC LINKTGT LINKSS SIMSK.
     assert(SIMMS: exists (idx : Type) (order : idx -> idx -> Prop),
-              Forall2 (sim_modsem order) (pp.(ProgPair.src).(load_modsem) skenv_src)
-                                         (pp.(ProgPair.tgt).(load_modsem) skenv_tgt)).
+              <<SIM: Forall2 (sim_modsem order) (pp.(ProgPair.src).(load_modsem) skenv_src)
+                                         (pp.(ProgPair.tgt).(load_modsem) skenv_tgt)>>
+              /\ <<WF: well_founded order>>).
     { induction pp.
-      - unshelve esplits; eauto. unshelve econs; eauto.
+      - esplits; eauto.
+        { econs; eauto. }
+        eapply lt_wf.
       - inv SIMPROG. inv LINKORDER.
         exploit IHpp; eauto. i; des.
         inv H1.
         exploit SIMMS; eauto. { eapply SimSymb.sim_skenv_monotone_ss; eauto. } i; des. clear SIMMS.
         exists (idx_link idx idx0), (ord_link order order0).
         ss. u.
-        econs; eauto.
-        + u. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto.
-        + eapply Forall2_impl; try apply H.
-          i. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto.
+        esplits; eauto.
+        + econs; eauto.
+          * u. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto.
+          * eapply Forall2_impl; try apply SIM.
+            i. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto.
+        + eapply ord_link_wf; eauto.
     }
     des.
+    esplits; eauto.
     econs; eauto.
   Qed.
+
+  (* Theorem sim_progpair_sim_gepair____________ *)
+  (*         pp *)
+  (*         (SIMPROG: ProgPair.sim pp) *)
+  (*         p_src p_tgt *)
+  (*         (PSRC: p_src = pp.(ProgPair.src)) *)
+  (*         (PTGT: p_tgt = pp.(ProgPair.tgt)) *)
+  (*         sk_src sk_tgt *)
+  (*         (LINKSRC: p_src.(link_sk) = Some sk_src) *)
+  (*         (LINKTGT: p_tgt.(link_sk) = Some sk_tgt) *)
+  (*         ss *)
+  (*         (SIMSK: SimSymb.sim_sk ss sk_src sk_tgt) *)
+  (*         skenv_src skenv_tgt *)
+  (*         (SKENVSRC: skenv_src = sk_src.(Sk.load_skenv)) *)
+  (*         (SKENVTGT: skenv_tgt = sk_tgt.(Sk.load_skenv)) *)
+  (*         mss_src mss_tgt *)
+  (*         (MSSSRC: mss_src = p_src.(load_modsem) skenv_src) *)
+  (*         (MSSTGT: mss_tgt = p_tgt.(load_modsem) skenv_tgt) *)
+          
+  (*   : *)
+  (*     <<SIM: GePair.sim (GePair.mk skenv_src skenv_tgt ss mss_src mss_tgt)>> *)
+  (* . *)
+  (* Proof. *)
+  (*   subst. u. ss. *)
+  (*   assert(<<LINKSS: pp.(ProgPair.ss) = Some ss_link>> /\ *)
+  (*                    <<SIMSK: SimSymb.sim_sk ss_link sk_src sk_tgt>> /\ *)
+  (*                             <<LINKORDER: Forall (fun mp => linkorder mp.(ModPair.ss) ss_link) pp>>). *)
+  (*   { u. *)
+  (*     revert_until pp. *)
+  (*     induction pp; ii; ss. *)
+  (*     inv SIMPROG. *)
+  (*     apply link_list_cons_inv in LINKSRC. apply link_list_cons_inv in LINKTGT. des. *)
+  (*     exploit IHpp; eauto. *)
+  (*     i; des. *)
+  (*     rename pp into pp_tl. rename a into pp_hd. rename ss_link into ss_link_tl. *)
+  (*     exploit SimSymb.link_preserves_sim_sk; revgoals. *)
+  (*     { i; des. esplits; eauto. *)
+  (*       - eapply link_list_cons; eauto. *)
+  (*       - econs; eauto. *)
+  (*         + exploit link_linkorder; try apply LINKSS; eauto. i; des. ss. *)
+  (*         + eapply Forall_impl; eauto. *)
+  (*           i. ss. eapply linkorder_trans; eauto. *)
+  (*           exploit link_linkorder; try apply LINKSS; eauto. i; des. ss. *)
+  (*     } *)
+  (*     all: eauto. *)
+  (*     apply H1. *)
+  (*     (* assert(exists ss_link, <<LINK: link pp_hd.(ModPair.ss) ss_link_tl = Some ss_link>>). *) *)
+  (*     (* { *) *)
+  (*     (*   eapply SimSymb.link_success; eauto. *) *)
+  (*     (*   admit "closed -> coverage <1= privs. Privs are disjoint, assuming they are good_prog". *) *)
+  (*     (* } *) *)
+  (*     (* des. exploit link_list_cons; eauto. *) *)
+  (*     (* esplits; eauto. *) *)
+  (*     (* exploit SimSymb.link_preserves_closed; revgoals. *) *)
+  (*     (* [..|i; des; esplits; eauto]. *) *)
+  (*     (* admit "TODO: closed is monotone!!". *) *)
+  (*   } *)
+  (*   des. exists ss_link. *)
+  (*   remember (Genv.globalenv sk_src) as skenv_src. *)
+  (*   remember (Genv.globalenv sk_tgt) as skenv_tgt. *)
+  (*   assert(SIMSKENV: SimSymb.sim_skenv ss_link skenv_src skenv_tgt). *)
+  (*   { eapply SimSymb.load_respects_ss; eauto. } *)
+  (*   clear Heqskenv_src Heqskenv_tgt. clear LINKSRC LINKTGT LINKSS SIMSK. *)
+  (*   assert(SIMMS: exists (idx : Type) (order : idx -> idx -> Prop), *)
+  (*             <<SIM: Forall2 (sim_modsem order) (pp.(ProgPair.src).(load_modsem) skenv_src) *)
+  (*                                        (pp.(ProgPair.tgt).(load_modsem) skenv_tgt)>> *)
+  (*             /\ <<WF: well_founded order>>). *)
+  (*   { induction pp. *)
+  (*     - esplits; eauto. *)
+  (*       { econs; eauto. } *)
+  (*       eapply lt_wf. *)
+  (*     - inv SIMPROG. inv LINKORDER. *)
+  (*       exploit IHpp; eauto. i; des. *)
+  (*       inv H1. *)
+  (*       exploit SIMMS; eauto. { eapply SimSymb.sim_skenv_monotone_ss; eauto. } i; des. clear SIMMS. *)
+  (*       exists (idx_link idx idx0), (ord_link order order0). *)
+  (*       ss. u. *)
+  (*       esplits; eauto. *)
+  (*       + econs; eauto. *)
+  (*         * u. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. *)
+  (*         * eapply Forall2_impl; try apply SIM. *)
+  (*           i. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. *)
+  (*       + eapply ord_link_wf; eauto. *)
+  (*   } *)
+  (*   des. *)
+  (*   econs; eauto. *)
+  (* Qed. *)
 
 End SIMGE.
 

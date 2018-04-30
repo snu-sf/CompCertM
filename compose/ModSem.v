@@ -43,11 +43,13 @@ Module ModSem.
     (* symbolenv: Senv.t; *)
     (* Or we can add globalenv >-> Genv.t unit unit, *)
     (* but this is confusing with Sk/SkEnv, which are conceptually different from this. *)
-    skenv: SkEnv.t;
+    (* skenv: SkEnv.t; *)
     (* ########################################## I added SkEnv.t only for defining "compat" in sim_mem. *)
     (* If it is not used, remove it *)
 
-    internals: list block;
+    (* internals: list block; *)
+    internals: block -> Prop;
+    (* main_fptr: block; *)
 
     (* good properties *)
     initial_machine_get_mem: forall
@@ -55,6 +57,33 @@ Module ModSem.
         (INIT: initial_machine fptr_arg sg_arg rs_arg m_arg st0)
       ,
         <<MEM: st0.(get_mem) = m_arg>>
+    ;
+    step_at_external_disjoint: forall
+        st0
+        tr st1
+        (STEP: step globalenv st0 tr st1)
+        fptr_arg sg_arg rs_arg m_arg
+        (ATEXT: at_external st0 fptr_arg sg_arg rs_arg m_arg)
+      ,
+        False
+    ;
+    at_external_final_machine_disjoint: forall
+        st0
+        fptr_arg sg_arg rs_arg m_arg
+        (ATEXT: at_external st0 fptr_arg sg_arg rs_arg m_arg)
+        sg_init rs_init rs_ret m_ret
+        (FINAL: final_machine sg_init rs_init st0 rs_ret m_ret)
+      ,
+        False
+    ;
+    step_final_machine_disjoint: forall
+        st0
+        tr st1
+        (STEP: step globalenv st0 tr st1)
+        sg_init rs_init rs_ret m_ret
+        (FINAL: final_machine sg_init rs_init st0 rs_ret m_ret)
+      ,
+        False
     ;
   }.
 
@@ -65,13 +94,13 @@ Module ModSem.
   (* . *)
 
   (* TODO: which one is right? above or below? *)
-  Definition is_internal (ms0: t) (st0: ms0.(state)): Prop :=
-    <<NOTCALL: forall fptr_arg sg_arg rs_arg m_arg, ~ ms0.(at_external) st0 fptr_arg sg_arg rs_arg m_arg>> /\
-    <<NOTRETURN: forall sg_arg rs_arg rs_ret m_ret, ~ ms0.(final_machine) sg_arg rs_arg st0 rs_ret m_ret>>
-  .
+  (* Definition is_internal (ms0: t) (st0: ms0.(state)): Prop := *)
+  (*   <<NOTCALL: forall fptr_arg sg_arg rs_arg m_arg, ~ ms0.(at_external) st0 fptr_arg sg_arg rs_arg m_arg>> /\ *)
+  (*   <<NOTRETURN: forall sg_arg rs_arg rs_ret m_ret, ~ ms0.(final_machine) sg_arg rs_arg st0 rs_ret m_ret>> *)
+  (* . *)
 
   Definition to_semantics (ms: t) :=
-    (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) ms.(skenv))
+    (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) (admit "dummy for now"))
   .
 
 End ModSem.

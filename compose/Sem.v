@@ -46,7 +46,7 @@ Module Frame.
   .
 
 (* Definition is_internal (fr0: t): Prop := fr0.(ms).(ModSem.is_internal) fr0.(st) fr0.(sg_arg) fr0.(rs_arg). *)
-  Definition is_internal (fr0: t): Prop := fr0.(ms).(ModSem.is_internal) fr0.(st).
+  (* Definition is_internal (fr0: t): Prop := fr0.(ms).(ModSem.is_internal) fr0.(st). *)
 
 End Frame.
 
@@ -66,7 +66,7 @@ Module Ge.
       blk
       (FPTR: fptr = Vptr blk Ptrofs.zero true)
       (MODSEM: List.In ms ge.(mss))
-      (INTERNAL: List.In blk ms.(ModSem.internals))
+      (INTERNAL: ms.(ModSem.internals) blk)
   .
 
   Definition no_fptr_owner (ge: t) (fptr: val): Prop :=
@@ -76,6 +76,7 @@ End Ge.
 
 Definition state: Type := list Frame.t.
 
+(* If both are some, they are equal. *)
 Definition compat_sig (sg0: option signature) (sg1: option signature): bool :=
   match sg0 with
   | None => true
@@ -116,7 +117,7 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
          E0 ((fr1.(Frame.update_st) st0) :: frs)
 | step_internal
     fr0 frs
-    (INTERNAL: fr0.(Frame.is_internal))
+    (* (INTERNAL: fr0.(Frame.is_internal)) *)
     tr st0
     (STEP: fr0.(Frame.ms).(ModSem.step) fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
   :
@@ -205,7 +206,7 @@ Section SEMANTICS.
       final_state [fr0] retv
   .
 
-  Definition sem: option semantics :=
+  Definition load: option semantics :=
     match link_sk with
     | Some sk_link => Some (Semantics_gen step initial_state final_state
                                           (load_genv sk_link.(Sk.load_skenv))
@@ -218,5 +219,5 @@ Section SEMANTICS.
 
 End SEMANTICS.
 
-Hint Unfold link_sk load_modsem load_genv.
+Hint Unfold link_sk load_modsem load_genv load.
 

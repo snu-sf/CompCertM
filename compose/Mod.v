@@ -7,11 +7,11 @@ Require Import Globalenvs.
 Require Import Smallstep.
 Require Import CoqlibC.
 Require Import Skeleton.
-Require Import ModSem.
-Require Import SimSymb.
 Require Import Integers.
 Require Import ASTC.
 Require Import Maps.
+
+Require Import ModSem.
 
 Set Implicit Arguments.
 
@@ -19,6 +19,15 @@ Set Implicit Arguments.
 
 Module Mod.
   (* TRANSLATION UNIT *)
+
+  Inductive get_internals (sk: Sk.t) (skenv: SkEnv.t) (internals: block -> Prop): Prop :=
+  | get_internals_intro
+      (INTERNALS: forall
+          id
+        ,
+          <<FIND: exists if_sig, sk.(prog_defmap) ! id = Some (Gfun (Internal if_sig))>> <->
+          <<INTERNAL: internals id>>)
+  .
 
   (* I intentionally left "datatype" in to_skel and to_moduleenv. *)
   (* 1) defining translation becomes more lightweight. *)
@@ -30,6 +39,11 @@ Module Mod.
     get_sk: datatype -> Sk.t;
     get_modsem: SkEnv.t -> datatype -> ModSem.t;
     data: datatype;
+    get_modsem_respects_internals: forall
+        skenv
+      ,
+        <<INTERNALS: get_internals data.(get_sk) skenv data.(get_modsem skenv).(ModSem.internals)>>
+    ;
   }
   .
 

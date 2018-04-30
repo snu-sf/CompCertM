@@ -30,20 +30,6 @@ Module SimSymb.
           <<EXACT: ss0 id_src id_tgt <-> ss_linked id_src id_tgt>>)
   .
 
-  (* Inductive load_exact_preserved `{SS: SimSymb.SimSymb} `{SM: SimMem.SimMem} *)
-  (*           (ss0: SimSymb.t) (sk_src sk_tgt: Sk.t) *)
-  (*           (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop := *)
-  (* | exact_preserved_intro *)
-  (*     (COMPAT: forall *)
-  (*         id_src id_tgt b_src b_tgt *)
-  (*         (SRCB: skenv_src.(Genv.find_symbol) id_src = Some b_src) *)
-  (*         (TGTB: skenv_tgt.(Genv.find_symbol) id_tgt = Some b_tgt) *)
-  (*       , *)
-  (*         sm0.(SimMem.sim_val) (Vptr b_src Ptrofs.zero true) (Vptr b_tgt Ptrofs.zero true) <-> *)
-  (*         ss0.(SimSymb.sim_symb) id_src id_tgt) *)
-  (* . *)
-
-
   Definition injective_func X Y (inj: X -> option Y): Prop := forall
       x0 x1 y
       (INJ0: inj x0 = Some y)
@@ -83,9 +69,8 @@ Module SimSymb.
 
 
   (* Properties that are needed in meta-theory. *)
-  (* TODO: minimize this property!! *)
-  Inductive weak_closed (coverage kept: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
-  | weak_closed_intro
+  Inductive sim_sk_weak (coverage kept: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
+  | sim_sk_weak_intro
       (WF: all1 (kept <1= coverage))
       (* We can pull "WF" out, it dosen't require sk_src/sk_tgt. But is it meaningful? *)
       (INSRC: all1 (coverage <1= sk_src.(privs)))
@@ -99,7 +84,7 @@ Module SimSymb.
       (* Further, we can say equality instead of sim, for public defs. Is it needed? *)
       (KEPT: forall
           id
-          (COVER: coverage id)
+          (* (COVER: coverage id) *)
           (KEPT: kept id)
         ,
           <<SIM: sim_odef (sk_src.(prog_defmap) ! id) (sk_tgt.(prog_defmap) ! id)>>)
@@ -109,7 +94,86 @@ Module SimSymb.
           (NOKEPT: ~ kept id)
         ,
           <<NOKEPT: None = sk_tgt.(prog_defmap) ! id>>)
+      (MAINKEPT: <<KEPT: kept sk_src.(prog_main)>> \/ <<NOCOVER: ~ coverage sk_src.(prog_main)>>)
+      (* TODO: Remove PUB/MAIN from SimModPair *)
+      (PUB: sk_src.(prog_public) = sk_tgt.(prog_public))
+      (MAIN: sk_src.(prog_main) = sk_tgt.(prog_main))
   .
+
+  Lemma sim_sk_weak_def_bsim
+        coverage kept sk_src sk_tgt
+        (CLOSED: sim_sk_weak coverage kept sk_src sk_tgt)
+        id def_tgt
+        (DEFTGT: sk_tgt.(prog_defmap) ! id = Some def_tgt)
+    :
+      exists def_src, <<DEFSRC: sk_src.(prog_defmap) ! id = Some def_src>> /\ <<SIM: sim_def def_src def_tgt>>
+  .
+  Proof.
+    inv CLOSED.
+    destruct (classic (coverage id)).
+    - destruct (classic (kept id)).
+      + exploit KEPT; eauto. intro SIM.
+        inv SIM.
+        { eq_closure_tac. esplits; eauto. }
+        exfalso. congruence.
+      + exploit NOKEPT; eauto. i. congruence.
+    - exploit NOCOVER; eauto. intro SIM.
+      inv SIM.
+      { eq_closure_tac. esplits; eauto. }
+      exfalso. congruence.
+  Qed.
+
+  Lemma sim_sk_weak_enables_link
+        (sk_src0 sk_tgt0: Sk.t)
+        kept0 coverage0
+        (CLOSED0: sim_sk_weak coverage0 kept0 sk_src0 sk_tgt0)
+        sk_src1 sk_tgt1
+        kept1 coverage1
+        (CLOSED1: sim_sk_weak coverage1 kept1 sk_src1 sk_tgt1)
+        sk_src
+        (LINKSRC: link sk_src0 sk_src1 = Some sk_src)
+    :
+      exists sk_tgt, <<LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt>>
+  .
+  Proof.
+    Local Transparent Linker_prog. ss. Local Opaque Linker_prog.
+    exploit (link_prog_inv sk_src0 sk_src1); eauto. intro LINKSPEC; des. inv LINKSPEC. des.
+    exploit (link_prog_succeeds sk_tgt0 sk_tgt1); eauto.
+    - inv CLOSED0. inv CLOSED1. ss.
+      eq_closure_tac.
+    - i.
+      exploit sim_sk_weak_def_bsim; try apply H; eauto. i; des.
+      exploit sim_sk_weak_def_bsim; try apply H0; eauto. i; des.
+      exploit BOTHHIT; eauto. i; des.
+      inv CLOSED0. inv CLOSED1. ss.
+      esplits; eauto.
+      + rewrite <- PUB; ss.
+      + rewrite <- PUB0; ss.
+      + exploit sim_def_preserves_link; eauto. i; des_safe. ii. clarify.
+  Qed.
+
+  (* Inductive load_exact_preserved `{SS: SimSymb.SimSymb} `{SM: SimMem.SimMem} *)
+  (*           (ss0: SimSymb.t) (sk_src sk_tgt: Sk.t) *)
+  (*           (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop := *)
+  (* | exact_preserved_intro *)
+  (*     (COMPAT: forall *)
+  (*         id_src id_tgt b_src b_tgt *)
+  (*         (SRCB: skenv_src.(Genv.find_symbol) id_src = Some b_src) *)
+  (*         (TGTB: skenv_tgt.(Genv.find_symbol) id_tgt = Some b_tgt) *)
+  (*       , *)
+  (*         sm0.(SimMem.sim_val) (Vptr b_src Ptrofs.zero true) (Vptr b_tgt Ptrofs.zero true) <-> *)
+  (*         ss0.(SimSymb.sim_symb) id_src id_tgt) *)
+  (* . *)
+
+
+  (* Inductive sim_skenv_spec (coverage kept: ident -> Prop) (skenv_src skenv_tgt: SkEnv.t): Prop := *)
+  (* | sim_skenv_spec_intro *)
+  (*     (SPEC: forall *)
+  (*         id *)
+  (*         (KEPT: kept id) *)
+  (*       , *)
+  (*         skenv_src.(Genv.find_symbol) id = skenv_src.(Genv.find_symbol) id) *)
+  (* . *)
 
   (* TODO: Try moving t into argument? sim_symb coercion gets broken and I don't know how to fix it. *)
   Class class :=
@@ -128,23 +192,23 @@ Module SimSymb.
           exists ss_link, <<LINK: link ss0 ss1 = Some ss_link>>
       ;
 
-      closed: t -> Sk.t -> Sk.t -> Prop;
-      closed_weak_closed: forall
+      sim_sk: t -> Sk.t -> Sk.t -> Prop;
+      sim_sk_sim_sk_weak: forall
           ss sk_src sk_tgt
-          (CLOSED: closed ss sk_src sk_tgt)
+          (SIMSK: sim_sk ss sk_src sk_tgt)
           ,
-            <<CLOSED: weak_closed ss.(coverage) ss.(kept) sk_src sk_tgt>>
+            <<SIMSK: sim_sk_weak ss.(coverage) ss.(kept) sk_src sk_tgt>>
       ;
-      link_preserves_closed: forall
+      link_preserves_sim_sk: forall
           ss0 (sk_src0 sk_tgt0: Sk.t)
-          (CLOSED0: closed ss0 sk_src0 sk_tgt0)
+          (CLOSED0: sim_sk ss0 sk_src0 sk_tgt0)
           ss1 sk_src1 sk_tgt1
-          (CLOSED1: closed ss1 sk_src1 sk_tgt1)
+          (CLOSED1: sim_sk ss1 sk_src1 sk_tgt1)
           sk_src sk_tgt
           (LINKSRC: link sk_src0 sk_src1 = Some sk_src)
           (LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt)
         ,
-          exists ss, <<LINKSS: link ss0 ss1 = Some ss>> /\ <<CLOSED: closed ss sk_src sk_tgt>>
+          exists ss, <<LINKSS: link ss0 ss1 = Some ss>> /\ <<CLOSED: sim_sk ss sk_src sk_tgt>>
       ;
 
       (* link (ss0 ss1 ss_link: t): Prop; *)
@@ -166,7 +230,7 @@ Module SimSymb.
       sim_skenv: t -> SkEnv.t -> SkEnv.t -> Prop;
       load_respects_ss: forall
           ss sk_src sk_tgt
-          (CLOSED: closed ss sk_src sk_tgt)
+          (CLOSED: sim_sk ss sk_src sk_tgt)
           skenv_src skenv_tgt
           (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src)
           (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt)
@@ -268,32 +332,4 @@ End SimSymb.
 (*       , *)
 (*         <<NOKEPT: None = sk_tgt.(prog_defmap) ! id>>) *)
 (* . *)
-
-
-
-
-Lemma closed_def_bsim
-      `{SimSymb.class}
-      ss sk_src sk_tgt
-      (CLOSED: SimSymb.closed ss sk_src sk_tgt)
-      id def_tgt
-      (DEFTGT: sk_tgt.(prog_defmap) ! id = Some def_tgt)
-  :
-    exists def_src, <<DEFSRC: sk_src.(prog_defmap) ! id = Some def_src>> /\ <<SIM: sim_def def_src def_tgt>>
-.
-Proof.
-  eapply SimSymb.closed_weak_closed in CLOSED.
-  inv CLOSED.
-  destruct (classic (ss.(SimSymb.coverage) id)).
-  - destruct (classic (ss.(SimSymb.kept) id)).
-    + exploit KEPT; eauto. intro SIM.
-      inv SIM.
-      { eq_closure_tac. esplits; eauto. }
-      exfalso. congruence.
-    + exploit NOKEPT; eauto. i. congruence.
-  - exploit NOCOVER; eauto. intro SIM.
-    inv SIM.
-    { eq_closure_tac. esplits; eauto. }
-    exfalso. congruence.
-Qed.
 

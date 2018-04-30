@@ -43,7 +43,7 @@ Inductive sim_skenv (skenv0 skenv1: SkEnv.t): Prop :=
     (DEFS: True) (* TODO: There are almost no info except unit. Also, flesh will overwrite these info. *)
 .
 
-Inductive closed (u: unit) (sk_src sk_tgt: Sk.t): Prop :=
+Inductive sim_sk (u: unit) (sk_src sk_tgt: Sk.t): Prop :=
 | closed_intro
     (SIM: match_program (fun _ => sim_fun) eq sk_src sk_tgt)
 .
@@ -52,7 +52,7 @@ Global Program Instance SimSymbId: SimSymb.class := {
   t := unit;
   coverage := bot2;
   kept := bot2;
-  closed := closed;
+  sim_sk := sim_sk;
   sim_skenv (_: unit) := sim_skenv;
 }
 .
@@ -60,13 +60,15 @@ Next Obligation.
   esplits; eauto. ss.
 Qed.
 Next Obligation.
+  inv SIMSK.
   econs; ss; eauto.
-  ii; ss.
-  inv CLOSED.
-  unfold match_program in *.
-  generalize (Genv.globalenvs_match SIM); intro SIMGE.
-  inv SIMGE.
-  admit "this should hold.".
+  - ii; ss.
+    unfold match_program in *.
+    generalize (Genv.globalenvs_match SIM); intro SIMGE.
+    inv SIMGE.
+    admit "this should hold.".
+  - inv SIM. des. ss.
+  - inv SIM. des. ss.
 Qed.
 Next Obligation.
   exists tt.

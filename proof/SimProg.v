@@ -27,8 +27,12 @@ Section TMP.
   Context `{SS: SimSymb.class} `{SM: SimMem.class}.
 
   Goal True. Abort.
+
   (* TODO: SS and SS0. I want to avoid this, without adding "@" on SM. *)
   (* I think making SimMem.class' argument explicit should be easy, but I don't know how to do that *)
+
+  Context `{_SS: SimSymb.class} {_SM: SimMem.class _SS}.
+  (* Ah, ommiting "`" makes it to work *)
 
 End TMP.
 
@@ -66,6 +70,17 @@ Hint Unfold ProgPair.sim ProgPair.src ProgPair.tgt ProgPair.ss_link.
 
 
 
+(* Section SIMSK. *)
+
+(*   Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}. *)
+
+(*   Inductive sim_sk (ss_link: SimSymb.t) (sk_src sk_tgt: Sk.t): Prop := *)
+(*   | sim_sk_intro *)
+(*   . *)
+
+(* End SIMSK. *)
+
+
 
 Section SIM.
 
@@ -82,30 +97,38 @@ Section SIM.
           sk_link_src
           (LOADSRC: p_src.(link_sk) = Some sk_link_src)
     :
-      exists sk_link_tgt, <<LOADTGT: p_tgt.(link_sk) = Some sk_link_tgt>>
+      exists ss_link sk_link_tgt,
+        <<LOADTGT: p_tgt.(link_sk) = Some sk_link_tgt>>
+        /\ <<LINKSS: pp.(ProgPair.ss_link) = Some ss_link>> 
+        /\ <<SIMSK: SimSymb.sim_sk ss_link sk_link_src sk_link_tgt>>
   .
   Proof.
     u. subst_locals.
     ginduction pp; ii; ss.
     eapply link_list_cons_inv in LOADSRC. des.
     inv SIMPROG.
-    exploit IHt; eauto.
+    exploit IHt; eauto. intro IH; des.
+    inv H1.
+    rename sk_link_src into sk_link_link_src.
+    rename restl into sk_link_src.
+    exploit SimSymb.sim_sk_weak_enables_link; eauto.
+    { eapply SimSymb.sim_sk_sim_sk_weak; eauto. }
+    { eapply SimSymb.sim_sk_sim_sk_weak; eauto. }
     i; des.
+    exploit SimSymb.link_preserves_sim_sk; [exact SIMSK|exact IH1|..]; eauto. i; des.
     esplits; eauto.
-    eapply link_list_cons; eauto.
-    admit "TODO: Strengthen conclusion so that IH becomes stronger too. Somehow sk_src ~ sk_tgt".
-  Unshelve.
-    all: ss.
+    - eapply link_list_cons; eauto.
+    - eapply link_list_cons; eauto.
   Qed.
 
-  Theorem sim_load
+  Corollary sim_load
         sem_src
-        (LOADSRC: sem p_src = Some sem_src)
+        (LOADSRC: load p_src = Some sem_src)
     :
-      exists sem_tgt, <<LOADTGT: sem p_tgt = Some sem_tgt>>
+      exists sem_tgt, <<LOADTGT: load p_tgt = Some sem_tgt>>
   .
   Proof.
-    unfold sem in *.
+    unfold load in *.
     des_ifs_safe.
     exploit sim_link_sk; eauto. i; des.
     esplits; eauto. des_ifs.

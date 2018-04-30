@@ -31,7 +31,7 @@ Module ModPair.
     tgt: Mod.t;
     SS:> SimSymb.class;
     ss: SimSymb.t;
-    wf:= SimSymb.closed ss src.(Mod.sk) tgt.(Mod.sk)
+    wf:= SimSymb.sim_sk ss src.(Mod.sk) tgt.(Mod.sk)
   }
   .
 
@@ -49,14 +49,16 @@ Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
 
   Inductive sim (mp: t): Prop :=
   | intro_sim
-      (CLOSED: SimSymb.closed mp.(ss) mp.(src).(Mod.sk) mp.(tgt).(Mod.sk))
-      (PUB: mp.(src).(Mod.sk).(prog_public) = mp.(tgt).(Mod.sk).(prog_public))
-      (MAIN: mp.(src).(Mod.sk).(prog_main) = mp.(tgt).(Mod.sk).(prog_main))
+      (SIMSK: SimSymb.sim_sk mp.(ss) mp.(src).(Mod.sk) mp.(tgt).(Mod.sk))
       (SIMMS: forall
           skenv_src skenv_tgt
           (SIMSKENV: SimSymb.sim_skenv mp.(ss) skenv_src skenv_tgt)
         ,
+          (* TODO: pull idx/order out of exists, and put above SIMMS? *)
+          (* - Conceptually, this is runtime property? *)
+          (* - Is it any easier? Unshelving might be annoying *)
           exists (idx: Type) (order: idx -> idx -> Prop),
+            <<WF: well_founded order>> /\
             <<SIM: sim_modsem order
                               (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data))
                               (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))
@@ -99,45 +101,28 @@ End ModPair.
 
 
 
-Section SIM.
+(* Section SIM. *)
 
-  Context `{SS: SimSymb.class} `{SM: SimMem.class}.
+(*   Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}. *)
 
-  Lemma sim_load_mod
-        mp0 mp1
-        (SIM0: ModPair.sim mp0)
-        (SIM1: ModPair.sim mp1)
-        sk_src
-        (LINKSRC: link mp0.(ModPair.src).(Mod.sk) mp1.(ModPair.src).(Mod.sk) = Some sk_src)
-    :
-      exists sk_tgt,
-        <<LINKTGT: link mp0.(ModPair.tgt).(Mod.sk) mp1.(ModPair.tgt).(Mod.sk) = Some sk_tgt>>
-  .
-  Proof.
-    Local Transparent Linker_prog.
-    ss.
-    Local Opaque Linker_prog.
-    unfold Sk.t in *.
-    exploit (@link_prog_inv (fundef (option signature)) unit); eauto. intro SPEC.
-    inv SIM0. inv SIM1. clear SIMMS SIMMS0.
+(*   Lemma sim_load_mod *)
+(*         mp0 mp1 *)
+(*         (SIM0: ModPair.sim mp0) *)
+(*         (SIM1: ModPair.sim mp1) *)
+(*         sk_src *)
+(*         (LINKSRC: link mp0.(ModPair.src).(Mod.sk) mp1.(ModPair.src).(Mod.sk) = Some sk_src) *)
+(*     : *)
+(*       exists sk_tgt, *)
+(*         <<LINKTGT: link mp0.(ModPair.tgt).(Mod.sk) mp1.(ModPair.tgt).(Mod.sk) = Some sk_tgt>> *)
+(*   . *)
+(*   Proof. *)
+(*     inv SIM0. inv SIM1. *)
+(*     exploit SimSymb.sim_sk_weak_enables_link; eauto. *)
+(*     { eapply SimSymb.sim_sk_sim_sk_weak; eauto. } *)
+(*     { eapply SimSymb.sim_sk_sim_sk_weak; eauto. } *)
+(*   Qed. *)
 
-    {
-      exploit (link_prog_succeeds mp0.(ModPair.tgt).(Mod.sk) mp1.(ModPair.tgt).(Mod.sk)); eauto.
-      - inv SPEC. des. congruence.
-      - intros ? ? ? TGT0 TGT1.
-        exploit closed_def_bsim; try apply TGT0; eauto. intro SRC0.
-        exploit closed_def_bsim; try apply TGT1; eauto. intro SRC1.
-        des.
-        inv SPEC.
-        exploit BOTHHIT; eauto. i; des.
-        esplits; eauto; try congruence.
-        exploit sim_def_preserves_link; eauto. i ;des. rewrite LINK. ss.
-    }
-
-    Print link_prog_check.
-  Qed.
-
-End SIM.
+(* End SIM. *)
 
 
 

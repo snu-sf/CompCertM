@@ -75,8 +75,8 @@ Section SIMMODSEM.
   CoInductive _lxsim (lxsim: index -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
               (i0: index) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | lxsim_step_forward
-      (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0)
-      (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0)
+      (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
+      (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (FSTEP: fsim_step lxsim i0 st_src0 st_tgt0 sm0)
       (RECEP: receptive_at ms_src st_src0)
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
@@ -161,7 +161,7 @@ Hint Resolve lxsim_mon: paco.
 Print HintDb typeclass_instances.
 
 (* ####################### TODO: Rename initial_machine/final_machine into initial_frame/final_frame *)
-Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class}
+Inductive sim_modsem `{SS: SimSymb.class} `{SM: @SimMem.class SS}
           (idx: Type) (ord: idx -> idx -> Prop)
           (ms_src ms_tgt: ModSem.t): Prop :=
 | sim_modsem_intro
@@ -205,7 +205,7 @@ Inductive sim_modsem `{SS: SimSymb.class} `{SM: SimMem.class}
 
 
 Lemma embedding_preserves_sim
-      `{SS: SimSymb.class} `{SM: SimMem.class}
+      `{SS: SimSymb.class} `{SM: @SimMem.class SS}
       (idx: Type) (ord: idx -> idx -> Prop)
       ms_src ms_tgt
       (SIMMS: sim_modsem ord ms_src ms_tgt)

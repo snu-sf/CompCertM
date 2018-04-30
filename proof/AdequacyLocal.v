@@ -5,9 +5,9 @@ Require Import Sem.
 Require Import ModSem.
 Require Import LinkingC.
 Require Import Skeleton.
+Require Import Values.
 
-Require Import Pair SimDef SimSymb SimMem Ord SimModSem.
-Require Import SimProg.
+Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg SimGe.
 
 Set Implicit Arguments.
 
@@ -19,18 +19,39 @@ Section ADEQUACY.
   Context `{SM: SimMem.class}.
 
   Variable pp: ProgPair.t.
-  Hypothesis SIMPROG: sim_progpair pp.
+  Hypothesis SIMPROG: ProgPair.sim pp.
   Let p_src := pp.(ProgPair.src).
   Let p_tgt := pp.(ProgPair.src).
 
   Theorem adequacy_local
           sem_src
-          (LOADSRC: sem p_src = Some sem_src)
+          (LOADSRC: load p_src = Some sem_src)
     :
-      exists sem_tgt, <<LOADTGT: sem p_tgt = Some sem_tgt>> /\ <<SIM: mixed_simulation sem_src sem_tgt>>
+      exists sem_tgt, <<LOADTGT: load p_tgt = Some sem_tgt>> /\ <<SIM: mixed_simulation sem_src sem_tgt>>
   .
   Proof.
-    exploit sim_progpair_sim_ge; eauto.
+    exploit sim_load; eauto. i; des.
+    subst_locals. unfold load in *. des_ifs_safe.
+    exploit sim_link_sk; eauto. i; des. clarify.
+    rename t into sk_src. rename t0 into sk_tgt.
+    exploit sim_progpair_sim_gepair; eauto. i; des. esplits; eauto. clarify.
+    inv SIM; ss.
+    econstructor 1 with (order := order); eauto.
+    econs; eauto.
+    eapply xsim_init_backward; ss.
+    { (* progress *)
+      i. inv INITSRC. ss.
+      inv MSFIND. ss.
+      unfold Genv.symbol_address in *. des_ifs.
+      Print SimSymb.sim_sk_weak.
+      apply SimSymb.sim_sk_sim_sk_weak in SIMSK.
+      admit "sim_skenv should have some info################!!!!!!!!!!!!!!!!!!!!".
+    }
+    { (* init *)
+      i. inv INITSRC. inv MSFIND. ss. clarify.
+      unfold Genv.symbol_address in *. des_ifs.
+    }
+    i. ss.
     tttttttttttttttttttttttt
     exploit sim_load; eauto. i; des.
     esplits; eauto.

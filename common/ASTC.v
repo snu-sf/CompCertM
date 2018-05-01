@@ -147,3 +147,16 @@ I think the same is true for prog_public thing too.
 End PROGRAMS.
 
 Hint Unfold defs privs.
+
+(* Only "is_internal" defs will remain in ModSem-SkEnv/Genv. *)
+(* Note: Other module's gvar will flow in. Is it OK? *)
+(* Proof: More def: less UB. C physical -> C logical: OK. // Asm logical -> Asm physical: OK. *)
+(* Conceptually: OK. block should be passed through modules freely, just like passing fptr. *)
+Definition is_internal (skd: globdef (AST.fundef (option signature)) unit): bool :=
+  match skd with
+  | Gfun (Internal _) => true
+  | Gfun (External _) => false
+  | Gvar _ => true
+  end
+.
+

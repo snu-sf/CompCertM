@@ -39,10 +39,10 @@ Module Mod.
     get_sk: datatype -> Sk.t;
     get_modsem: SkEnv.t -> datatype -> ModSem.t;
     data: datatype;
-    get_modsem_respects_internals: forall
+    get_modsem_sk_skenv_iso: forall
         skenv
       ,
-        <<INTERNALS: get_internals data.(get_sk) skenv data.(get_modsem skenv).(ModSem.internals)>>
+        <<INTERNALS: sk_skenv_iso data.(get_sk) data.(get_modsem skenv).(ModSem.skenv)>>
     ;
   }
   .

@@ -40,16 +40,15 @@ Module ModSem.
                    (rs_ret: regset) (m_ret: mem)
                    (st1: state): Prop;
     globalenv: genvtype;
-    (* symbolenv: Senv.t; *)
-    (* Or we can add globalenv >-> Genv.t unit unit, *)
-    (* but this is confusing with Sk/SkEnv, which are conceptually different from this. *)
+    (* internals: list block; *)
+    (* internals: block -> Prop; *)
+    (* main_fptr: block; *)
+    (* Note: "internals" is not enough! A ModSemPair should be able to specify which SimMem it relys. *)
+    skenv: SkEnv.t;
     (* skenv: SkEnv.t; *)
     (* ########################################## I added SkEnv.t only for defining "compat" in sim_mem. *)
     (* If it is not used, remove it *)
 
-    (* internals: list block; *)
-    internals: block -> Prop;
-    (* main_fptr: block; *)
 
     (* good properties *)
     initial_machine_get_mem: forall

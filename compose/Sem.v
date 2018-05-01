@@ -66,7 +66,8 @@ Module Ge.
       blk
       (FPTR: fptr = Vptr blk Ptrofs.zero true)
       (MODSEM: List.In ms ge.(mss))
-      (INTERNAL: ms.(ModSem.internals) blk)
+      if_sig
+      (INTERNAL: Genv.find_def ms.(ModSem.skenv) blk = Some (Gfun (Internal if_sig)))
   .
 
   Definition no_fptr_owner (ge: t) (fptr: val): Prop :=

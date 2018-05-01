@@ -2,7 +2,9 @@ Require Import CoqlibC.
 Require Export Globalenvs.
 Require Import Memory.
 Require Import Ctypes.
-Require Export AST.
+Require Export ASTC.
+Require Import MapsC.
+Require Import Values.
 
 Set Implicit Arguments.
 
@@ -43,6 +45,10 @@ Module SkEnv.
   (*   admit "". *)
   (* Defined. *)
 
+  Definition internals (skenv: t): list block :=
+    List.map fst (skenv.(Genv.genv_defs).(PTree.elements))
+  .
+
 End SkEnv.
 
 (* Skeleton *)
@@ -59,4 +65,89 @@ Module Sk.
 End Sk.
 
 Hint Unfold Sk.load_skenv Sk.load_mem.
+
+
+
+(* They are just located, without any add/remove *)
+About Genv.find_def_symbol.
+Inductive sk_skenv_iso (sk: Sk.t) (skenv: SkEnv.t): Prop :=
+| sk_skenv_iso_intro
+    (ISO: forall
+        id skd
+      ,
+        <<SK: sk.(prog_defmap) ! id = Some skd /\ is_internal skd>> <->
+        <<SKENV: exists blk, skenv.(Genv.find_symbol) id = Some blk
+                             /\ skenv.(Genv.find_def) blk = Some skd>>)
+.
+
+
+
+
+(* Question: How does genv affect semantics? *)
+Module PLAYGROUND.
+
+Require Import RTL.
+
+Theorem eval_addressing_irr
+        F V
+        (ge0 ge1: Genv.t F V)
+        (SYMB: all1 (Genv.find_symbol ge0 =1= Genv.find_symbol ge1))
+  :
+    <<OP: all3 (Op.eval_addressing ge0 =3= Op.eval_addressing ge1)>>
+.
+Proof.
+  u.
+  ii. unfold Op.eval_addressing. des_ifs.
+  destruct x1; ss.
+  { des_ifs. unfold Genv.symbol_address. rewrite SYMB. ss. }
+Qed.
+
+Theorem eval_operation_irr
+        F V
+        (ge0 ge1: Genv.t F V)
+        (SYMB: all1 (Genv.find_symbol ge0 =1= Genv.find_symbol ge1))
+  :
+    <<OP: all4 (Op.eval_operation ge0 =4= Op.eval_operation ge1)>>
+.
+Proof.
+  u.
+  ii.
+  destruct x1; ss.
+  { des_ifs. unfold Genv.symbol_address. rewrite SYMB. ss. }
+  { erewrite eval_addressing_irr; eauto. }
+Qed.
+
+Goal forall ge0 ge1 st0 tr st1
+            (STEP: step ge0 st0 tr st1)
+            (SYMB: all1 (Genv.find_symbol ge0 =1= Genv.find_symbol ge1))
+  ,
+    <<STEP: step ge1 st0 tr st1>>
+.
+Proof.
+  i. inv STEP; try (by econs; eauto).
+  - erewrite eval_operation_irr in *; eauto. econs; eauto.
+  - erewrite eval_addressing_irr in *; eauto. econsby eauto.
+  - erewrite eval_addressing_irr in *; eauto. econsby eauto.
+  - econs; eauto.
+    unfold find_function_ptr in *. des_ifs_safe. rewrite SYMB in *. ss.
+  - econs; eauto.
+    unfold find_function_ptr in *. des_ifs_safe. rewrite SYMB in *. ss.
+  - eapply Events.eval_builtin_args_preserved with (ge2 := ge1) in H0; eauto.
+    econs; eauto. eapply Events.external_call_symbols_preserved; eauto.
+    econs; eauto.
+    split.
+    admit "Publics".
+    Print Genv.block_is_volatile.
+    admit "Genv.find_def with Gvar. (volatile)".
+  - econs; eauto.
+    unfold Genv.find_funct in *. des_ifs.
+    unfold Genv.find_funct_ptr in *.
+    admit "Genv.find_def with Gfun. internals".
+  - unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
+    admit "Genv.find_def with Gfun. externals".
+Abort.
+
+End PLAYGROUND.
+
+
 

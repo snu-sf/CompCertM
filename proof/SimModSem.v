@@ -53,22 +53,22 @@ Section SIMMODSEM.
       (BSIM: fsim i1 st_src0 st_tgt1 sm0)
   .
 
-  Inductive bsim_step (bsim: index -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
-            (i0: index) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
-  | bsim_step_step
-      (STEP: forall
-          st_tgt1 tr
-          (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1)
-        ,
-          exists i1 st_src1 sm1,
-            (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>)
-            /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>>
-            /\ <<BSIM: bsim i1 st_src1 st_tgt1 sm1>>)
-  | bsim_step_stutter
-      i1 st_src1
-      (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
-      (BSIM: bsim i1 st_src1 st_tgt0 sm0)
-  .
+  (* Inductive bsim_step (bsim: index -> state ms_src -> state ms_tgt -> SimMem.t -> Prop) *)
+  (*           (i0: index) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop := *)
+  (* | bsim_step_step *)
+  (*     (STEP: forall *)
+  (*         st_tgt1 tr *)
+  (*         (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1) *)
+  (*       , *)
+  (*         exists i1 st_src1 sm1, *)
+  (*           (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>) *)
+  (*           /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>> *)
+  (*           /\ <<BSIM: bsim i1 st_src1 st_tgt1 sm1>>) *)
+  (* | bsim_step_stutter *)
+  (*     i1 st_src1 *)
+  (*     (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0) *)
+  (*     (BSIM: bsim i1 st_src1 st_tgt0 sm0) *)
+  (* . *)
 
   Print xsim.
 

@@ -21,7 +21,7 @@ Section ADEQUACY.
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.
   Let p_src := pp.(ProgPair.src).
-  Let p_tgt := pp.(ProgPair.src).
+  Let p_tgt := pp.(ProgPair.tgt).
 
   Theorem adequacy_local
           sem_src
@@ -30,11 +30,12 @@ Section ADEQUACY.
       exists sem_tgt, <<LOADTGT: load p_tgt = Some sem_tgt>> /\ <<SIM: mixed_simulation sem_src sem_tgt>>
   .
   Proof.
-    exploit sim_load; eauto. i; des.
+    (* exploit sim_load; eauto. i; des. *)
     subst_locals. unfold load in *. des_ifs_safe.
-    exploit sim_link_sk; eauto. i; des. clarify.
-    rename t into sk_src. rename t0 into sk_tgt.
-    exploit sim_progpair_sim_gepair; eauto. i; des. esplits; eauto. clarify.
+    exploit sim_link_sk; eauto. i; des. des_ifs_safe. clarify.
+    rename t into sk_src. rename sk_link_tgt into sk_tgt.
+    exploit sim_progpair_sim_gepair; eauto. i; des. ss.
+    esplits; eauto. clarify.
     inv SIM; ss.
     econstructor 1 with (order := order); eauto.
     econs; eauto.
@@ -48,8 +49,61 @@ Section ADEQUACY.
       admit "sim_skenv should have some info################!!!!!!!!!!!!!!!!!!!!".
     }
     { (* init *)
+      i. inv INITTGT.
+      rename ms into ms_tgt.
+      assert(exists ms_src, <<SIMMS: sim_modsem order ms_src ms_tgt>>).
+      { admit "". } i; des.
+      inv SIMMS.
+      inv MSFIND.
+      unfold Genv.symbol_address in *. des_ifs.
+      rename Heq0 into MAINTGT. rename blk into blk_tgt. rename m into m_tgt. rename INITMEM into MEMTGT.
+      (* assert(exists blk_tgt m_tgt sm0, *)
+      (*           <<WF: SimMem.wf sm0>> *)
+      (*           /\ <<MEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt>> *)
+      (*           /\ <<MAINTGT: Genv.find_symbol (Sk.load_skenv sk_src) (prog_main sk_src) = Some blk_tgt>> *)
+      (*           /\ <<SIMFPTR: SimMem.sim_block sm0 blk_src blk_tgt>> *)
+      (*           /\ <<MCOMPAT: sm0.(SimMem.src_mem) = m_src /\ sm0.(SimMem.tgt_mem) = m_tgt>>). *)
+      assert(exists blk_src m_src sm0,
+                <<WF: SimMem.wf sm0>>
+                /\ <<MEMSRC: sk_src.(Sk.load_mem) = Some m_src>>
+                /\ <<MAINSRC: Genv.find_symbol (Sk.load_skenv sk_src) (prog_main sk_src) = Some blk_src>>
+                /\ <<SIMFPTR: SimMem.sim_block sm0 blk_src blk_tgt>>
+                /\ <<MCOMPAT: sm0.(SimMem.src_mem) = m_src /\ sm0.(SimMem.tgt_mem) = m_tgt>>).
+      { admit "sim_skenv should have some info################!!!!!!!!!!!!!!!!!!!!". }
+      i; des.
+
+      hexploit SIM; eauto.
+      { instantiate (1:= None). instantiate (1:= None). econs 2; eauto. }
+      { instantiate (1:= (Asmregs.Pregmap.init Vundef)). instantiate (1:= (Asmregs.Pregmap.init Vundef)).
+        admit "undef sim_val".
+      }
+      i; des.
+      exploit STEP; eauto.
+      { rewrite MCOMPAT0. eauto. }
+      i; des.
+      esplits; eauto.
+      esplits; eauto.
+      rename m into m_tgt.
+      rename st_init into st_init_tgt.
+      rename ms into ms_tgt.
+      rename INITSK into INITSKTGT.
+      rename INITMEM into INITMEMTGT.
+      inv MSFIND. ss. clarify.
+      rename MODSEM into MODSEMTGT.
+      rename 
+    }
+    { (* init *)
       i. inv INITSRC. inv MSFIND. ss. clarify.
       unfold Genv.symbol_address in *. des_ifs.
+      rename Heq into MAINSRC. rename blk into blk_src. rename m into m_src. rename INITMEM into MEMSRC.
+      assert(exists blk_tgt m_tgt sm0,
+                <<MEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt>>
+                /\ <<MAINTGT: Genv.find_symbol (Sk.load_skenv sk_src) (prog_main sk_src) = Some blk_tgt>>
+                /\ <<SIMFPTR: SimMem.sim_block sm0 blk_src blk_tgt>>
+                /\ <<SIMMS: sm0.(SimMem.src_mem) = m_src /\ sm0.(SimMem.tgt_mem) = m_tgt>>).
+      { admit "sim_skenv should have some info################!!!!!!!!!!!!!!!!!!!!". }
+      des.
+      esplits; eauto.
     }
     i. ss.
     tttttttttttttttttttttttt

@@ -87,8 +87,8 @@ Section SIMGE.
           (SKENVSRC: skenv_src = sk_src.(Sk.load_skenv))
           (SKENVTGT: skenv_tgt = sk_tgt.(Sk.load_skenv))
           mss_src mss_tgt
-          (MSSSRC: mss_src = p_src.(load_modsem) skenv_src)
-          (MSSTGT: mss_tgt = p_tgt.(load_modsem) skenv_tgt)
+          (MSSSRC: mss_src = p_src.(load_modsems) skenv_src)
+          (MSSTGT: mss_tgt = p_tgt.(load_modsems) skenv_tgt)
           
     :
       exists ss_link,
@@ -138,8 +138,8 @@ Section SIMGE.
     { eapply SimSymb.load_respects_ss; eauto. }
     clear Heqskenv_src Heqskenv_tgt. clear LINKSRC LINKTGT LINKSS SIMSK.
     assert(SIMMS: exists (idx : Type) (order : idx -> idx -> Prop),
-              <<SIM: Forall2 (sim_modsem order) (pp.(ProgPair.src).(load_modsem) skenv_src)
-                                         (pp.(ProgPair.tgt).(load_modsem) skenv_tgt)>>
+              <<SIM: Forall2 (sim_modsem order) (pp.(ProgPair.src).(load_modsems) skenv_src)
+                                         (pp.(ProgPair.tgt).(load_modsems) skenv_tgt)>>
               /\ <<WF: well_founded order>>).
     { induction pp.
       - esplits; eauto.

@@ -161,14 +161,14 @@ Section SEMANTICS.
   (* Definition init_skenv: option SkEnv.t := option_map (@Genv.globalenv (fundef unit) unit) init_sk. *)
   (* Definition init_skenv (init_sk: Sk.t): SkEnv.t := (@Genv.globalenv (fundef (option signature)) unit) init_sk. *)
 
-  Definition load_modsem (skenv: SkEnv.t): list ModSem.t := List.map ((flip Mod.modsem) skenv) p.
+  Definition load_modsems (skenv: SkEnv.t): list ModSem.t := List.map ((flip Mod.modsem) skenv) p.
 
   (* Definition init_mem: option mem := option_join (option_map (@Genv.init_mem (fundef unit) unit) init_sk). *)
   (* Definition init_mem (init_sk: Sk.t): option mem := (@Genv.init_mem (fundef (option signature)) unit) init_sk. *)
 
   (* Definition init_genv: option Ge.t := *)
   (*   option_map (fun skenv => (Ge.mk skenv (init_modsem skenv))) init_skenv. *)
-  Definition load_genv (init_skenv: SkEnv.t): Ge.t := Ge.mk init_skenv (load_modsem init_skenv).
+  Definition load_genv (init_skenv: SkEnv.t): Ge.t := Ge.mk init_skenv (load_modsems init_skenv).
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
   Inductive initial_state: state -> Prop :=
@@ -219,5 +219,5 @@ Section SEMANTICS.
 
 End SEMANTICS.
 
-Hint Unfold link_sk load_modsem load_genv load.
+Hint Unfold link_sk load_modsems load_genv load.
 

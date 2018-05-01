@@ -104,11 +104,15 @@ Module SimMem.
   Fail Context `{SS: SimSymb.class} `{SM: SimMem.class SS}. (* TODO: I don't want to add @ on SimMem here! *)
 
   Definition sim_val_list `{SM: class} (sm0: t) (vs_src vs_tgt: list val): Prop :=
-    List.Forall2 (sim_val sm0) vs_src vs_tgt
+    List.Forall2 sm0.(sim_val) vs_src vs_tgt
+  .
+
+  Definition sim_block `{SM: class} (sm0: t) (blk_src blk_tgt: block): Prop :=
+    sm0.(sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)
   .
 
   Definition sim_regset `{SM: class} (sm0: t) (rs_src rs_tgt: regset): Prop :=
-    forall pr, sim_val sm0 (rs_src pr) (rs_tgt pr)
+    forall pr, sm0.(sim_val) (rs_src pr) (rs_tgt pr)
   .
 
 End SimMem.

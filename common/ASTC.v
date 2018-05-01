@@ -138,7 +138,7 @@ I think the same is true for prog_public thing too.
 
   Lemma privs_defs
     :
-      <<LE: all1 (privs <1= defs)>>
+      <<LE: (privs <1= defs)>>
   .
   Proof.
     ii. inv PR. eauto.

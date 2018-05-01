@@ -155,7 +155,7 @@ Section SIMGE.
         + econs; eauto.
           * u. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto.
           * eapply Forall2_impl; try apply SIM.
-            i. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto.
+            ii. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto.
         + eapply ord_link_wf; eauto.
     }
     des.

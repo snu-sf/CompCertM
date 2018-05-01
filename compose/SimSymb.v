@@ -71,10 +71,10 @@ Module SimSymb.
   (* Properties that are needed in meta-theory. *)
   Inductive sim_sk_weak (coverage kept: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
   | sim_sk_weak_intro
-      (WF: all1 (kept <1= coverage))
+      (WF: (kept <1= coverage))
       (* We can pull "WF" out, it dosen't require sk_src/sk_tgt. But is it meaningful? *)
-      (INSRC: all1 (coverage <1= sk_src.(privs)))
-      (INTGT: all1 (coverage <1= sk_tgt.(privs)))
+      (INSRC: (coverage <1= sk_src.(privs)))
+      (INTGT: (coverage <1= sk_tgt.(privs)))
       (* Is both are needed? *)
       (NOCOVER: forall
           id

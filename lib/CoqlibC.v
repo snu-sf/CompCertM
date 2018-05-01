@@ -136,6 +136,11 @@ Hint Unfold is_some is_none.
 
 Notation "x $" := (x.(proj1_sig)) (at level 50, no associativity (* , only parsing *)).
 
+Notation top1 := (fun _ => True).
+Notation top2 := (fun _ _ => True).
+Notation top3 := (fun _ _ _ => True).
+Notation top4 := (fun _ _ _ => True).
+
 Notation " 'all1' p" := (forall x0, p x0) (at level 50, no associativity).
 Notation " 'all2' p" := (forall x0 x1, p x0 x1) (at level 50, no associativity).
 Notation " 'all3' p" := (forall x0 x1 x2, p x0 x1 x2) (at level 50, no associativity).
@@ -151,30 +156,48 @@ Notation "p /2\ q" := (fun x0 x1 => and (p x0 x1) (q x0 x1)) (at level 50, no as
 Notation "p /3\ q" := (fun x0 x1 x2 => and (p x0 x1 x2) (q x0 x1 x2)) (at level 50, no associativity).
 Notation "p /4\ q" := (fun x0 x1 x2 x3 => and (p x0 x1 x2 x3) (q x0 x1 x2 x3)) (at level 50, no associativity).
 
-(* Definition less1 X0 (p q: X0 -> Prop) := (forall x0 (PR: p x0 : Prop), q x0 : Prop). *)
-(* Hint Unfold less1. *)
-(* Notation "p <1= q" := (less1 p q) (at level 50). *)
-(* Global Program Instance less1_PreOrder X0: PreOrder (@less1 X0). *)
+Notation "p -1> q" := (fun x0 => (forall (PR: p x0: Prop), q x0): Prop) (at level 50, no associativity).
+Notation "p -2> q" := (fun x0 x1 => (forall (PR: p x0 x1: Prop), q x0 x1): Prop) (at level 50, no associativity).
+Notation "p -3> q" := (fun x0 x1 x2 => ((forall (PR: p x0 x1 x2: Prop), q x0 x1 x2): Prop)) (at level 50, no associativity).
+Notation "p -4> q" := (fun x0 x1 x2 x3 => (forall (PR: p x0 x1 x2 x3: Prop), q x0 x1 x2 x3): Prop) (at level 50, no associativity).
 
-Notation "p <1= q" := (fun x0 => (forall (PR: p x0: Prop), q x0): Prop).
-Notation "p <2= q" := (fun x0 x1 => (forall (PR: p x0 x1: Prop), q x0 x1): Prop).
-Notation "p <3= q" := (fun x0 x1 x2 => ((forall (PR: p x0 x1 x2: Prop), q x0 x1 x2): Prop)).
-Notation "p <4= q" := (fun x0 x1 x2 x3 => (forall (PR: p x0 x1 x2 x3: Prop), q x0 x1 x2 x3): Prop).
+Goal all1 ((bot1: unit -> Prop) -1> top1). ii. ss. Qed.
+Goal ((bot1: unit -> Prop) <1= top1). ii. ss. Qed.
+Goal (bot2: unit -> unit -> Prop) <2= top2. ii. ss. Qed.
+
+
+Definition less1 X0 (p q: X0 -> Prop) := (forall x0 (PR: p x0 : Prop), q x0 : Prop).
+Definition less2 X0 X1 (p q: X0 -> X1 -> Prop) := (forall x0 x1 (PR: p x0 x1 : Prop), q x0 x1 : Prop).
+Definition less3 X0 X1 X2 (p q: X0 -> X1 -> X2 -> Prop) := (forall x0 x1 x2 (PR: p x0 x1 x2 : Prop), q x0 x1 x2 : Prop).
+Definition less4 X0 X1 X2 X3 (p q: X0 -> X1 -> X2 -> X3 -> Prop) := (forall x0 x1 x2 x3 (PR: p x0 x1 x2 x3 : Prop), q x0 x1 x2 x3 : Prop).
+
+Notation "p <1= q" := (less1 p q) (at level 50).
+Notation "p <2= q" := (less2 p q) (at level 50).
+Notation "p <3= q" := (less3 p q) (at level 50).
+Notation "p <4= q" := (less4 p q) (at level 50).
+
+Global Program Instance less1_PreOrder X0: PreOrder (@less1 X0).
+Next Obligation. ii. ss. Qed.
+Next Obligation. ii. eapply H0; eauto. Qed.
+Global Program Instance less2_PreOrder X0 X1: PreOrder (@less2 X0 X1).
+Next Obligation. ii. ss. Qed.
+Next Obligation. ii. eapply H0; eauto. Qed.
+Global Program Instance less3_PreOrder X0 X1 X2: PreOrder (@less3 X0 X1 X2).
+Next Obligation. ii. ss. Qed.
+Next Obligation. ii. eapply H0; eauto. Qed.
+Global Program Instance less4_PreOrder X0 X1 X2 X3 : PreOrder (@less4 X0 X1 X2 X3).
+Next Obligation. ii. ss. Qed.
+Next Obligation. ii. eapply H0; eauto. Qed.
+Hint Unfold less1 less2 less3 less4.
+
+Goal ((bot1: unit -> Prop) <1= top1). ii. ss. Qed.
+Goal (bot2: unit -> unit -> Prop) <2= top2. ii. ss. Qed.
 
 (* Notation "p =1= q" := (forall x0, eq (p x0) (q x0)) (at level 50, no associativity). *)
 Notation "p =1= q" := (fun x0 => eq (p x0) (q x0)) (at level 50, no associativity).
 Notation "p =2= q" := (fun x0 x1 => eq (p x0 x1) (q x0 x1)) (at level 50, no associativity).
 Notation "p =3= q" := (fun x0 x1 x2 => eq (p x0 x1 x2) (q x0 x1 x2)) (at level 50, no associativity).
 Notation "p =4= q" := (fun x0 x1 x2 x3 => eq (p x0 x1 x2 x3) (q x0 x1 x2 x3)) (at level 50, no associativity).
-
-Notation top1 := (fun _ => True).
-Notation top2 := (fun _ _ => True).
-Notation top3 := (fun _ _ _ => True).
-Notation top4 := (fun _ _ _ => True).
-
-Goal all1 ((bot1: unit -> Prop) <1= top1).
-(* Goal ((bot1: unit -> Prop) <1= top1). *)
-Proof. ii. ss. Qed.
 
 (* Originally in sflib, (t):Prop *)
 (* Removed it for use in "privs" of ASTM *)
@@ -208,7 +231,7 @@ Lemma Forall2_impl
       (xs: list X) (ys: list Y)
       (P Q: X -> Y -> Prop)
       (* (IMPL: all3 (P <3= Q)) *)
-      (IMPL: all2 (P <2= Q))
+      (IMPL: (P <2= Q))
       (FORALL: Forall2 P xs ys)
   :
     <<FORALL: Forall2 Q xs ys>>
@@ -232,7 +255,7 @@ Lemma Forall3_impl
       (xs: list X) (ys: list Y) (zs: list Z)
       (P Q: X -> Y -> Z -> Prop)
       (* (IMPL: all3 (P <3= Q)) *)
-      (IMPL: all3 (P <3= Q))
+      (IMPL: (P <3= Q))
       (FORALL: Forall3 P xs ys zs)
   :
     <<FORALL: Forall3 Q xs ys zs>>

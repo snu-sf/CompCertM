@@ -22,27 +22,10 @@ Set Implicit Arguments.
 
 
 
-Section TMP.
-
-  Context `{SS: SimSymb.class} `{SM: SimMem.class}.
-
-  Goal True. Abort.
-
-  (* TODO: SS and SS0. I want to avoid this, without adding "@" on SM. *)
-  (* I think making SimMem.class' argument explicit should be easy, but I don't know how to do that *)
-
-  Context `{_SS: SimSymb.class} {_SM: SimMem.class _SS}.
-  (* Ah, ommiting "`" makes it to work *)
-
-End TMP.
-
-
-
-
 
 Module ProgPair.
 Section PROGPAIR.
-Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
 
   Definition t := list ModPair.t.
   (* Record t := mk { *)
@@ -83,8 +66,7 @@ Hint Unfold ProgPair.sim ProgPair.src ProgPair.tgt ProgPair.ss_link.
 
 
 Section SIM.
-
-  Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.

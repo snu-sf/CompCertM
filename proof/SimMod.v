@@ -29,7 +29,8 @@ Module ModPair.
   Record t: Type := mk {
     src: Mod.t;
     tgt: Mod.t;
-    SS:> SimSymb.class;
+    SM:> SimMem.class;
+    SS:> SimSymb.class SM;
     ss: SimSymb.t;
     wf:= SimSymb.sim_sk ss src.(Mod.sk) tgt.(Mod.sk)
   }
@@ -38,7 +39,7 @@ Module ModPair.
   Reset t. (* Need to state SS = SS in SimMem... JMEQ THINGS !!!!!!!!!!!!! *)
 
 Section MODPAIR.
-Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
 
   Record t: Type := mk {
     src: Mod.t;
@@ -47,32 +48,26 @@ Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
   }
   .
 
+  Definition to_msp (skenv_src skenv_tgt: SkEnv.t) (mp: t): ModSemPair.t :=
+    ModSemPair.mk (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data))
+                  (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))
+                  mp.(ss)
+  .
+
   Inductive sim (mp: t): Prop :=
-  | intro_sim
+  | sim_intro
       (SIMSK: SimSymb.sim_sk mp.(ss) mp.(src).(Mod.sk) mp.(tgt).(Mod.sk))
       (SIMMS: forall
           skenv_src skenv_tgt
-          (SIMSKENV: SimSymb.sim_skenv mp.(ss) skenv_src skenv_tgt)
         ,
-          (* TODO: pull idx/order out of exists, and put above SIMMS? *)
-          (* - Conceptually, this is runtime property? *)
-          (* - Is it any easier? Unshelving might be annoying *)
-          exists (idx: Type) (order: idx -> idx -> Prop),
-            <<WF: well_founded order>> /\
-            <<SIM: sim_modsem order
-                              (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data))
-                              (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))
-                              >>)
-            (* <<SIM: sim_modsempair (ModSemPair.mk *)
-            (*                          (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data)) *)
-            (*                          (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data)) *)
-            (*                          order)>>) *)
+          exists msp,
+            (* TODO: get_modsem always suceeds??? I think not. *)
+            <<SRC: msp.(ModSemPair.src) = (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data))>>
+            /\ <<TGT: msp.(ModSemPair.tgt) = (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))>>
+            /\ <<SIM: ModSemPair.sim msp>>)
   .
-  (* Design: ModPair only has data, properties are stated in sim *)
 
-  (* Change sim_modsem to be sensitive to si. *)
-  (* Only when initial memory is respecting si, it can guarantee something. *)
-  (* Q: Can we encode it inside SM? *)
+  (* Design: ModPair only has data, properties are stated in sim *)
 
 End MODPAIR.
 End ModPair.

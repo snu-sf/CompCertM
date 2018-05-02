@@ -12,7 +12,7 @@ Require Import ASTC.
 Require Import LinkingC.
 Require Import Maps.
 
-Require Import SimDef.
+Require Import SimDef SimMem.
 
 Set Implicit Arguments.
 
@@ -69,6 +69,7 @@ Module SimSymb.
 
 
   (* Properties that are needed in meta-theory. *)
+Module DEPRECATED.
   Inductive sim_sk_weak (coverage kept: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
   | sim_sk_weak_intro
       (WF: (kept <1= coverage))
@@ -152,6 +153,81 @@ Module SimSymb.
       + exploit sim_def_preserves_link; eauto. i; des_safe. ii. clarify.
   Qed.
 
+End DEPRECATED.
+
+  Inductive sim_sk_weak (coverage: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
+  | sim_sk_weak_intro
+      (* (INSRC: (coverage <1= sk_src.(privs))) *)
+      (COVERAGE: (coverage <1= sk_tgt.(privs)))
+      (PRIVS: sk_tgt.(privs) <1= sk_src.(privs))
+      (NOCOVER: forall
+          id
+          (PUBS: ~ coverage id)
+        ,
+          <<SIM: sim_odef (sk_src.(prog_defmap) ! id) (sk_tgt.(prog_defmap) ! id)>>)
+      (COVER: forall
+          id
+          (COVER: coverage id)
+          def_tgt
+          (DEFTGT: sk_tgt.(prog_defmap) ! id = Some def_tgt)
+        ,
+          exists def_src, <<DEFSRC: sk_src.(prog_defmap) ! id = Some def_src>>)
+      (PUB: sk_src.(prog_public) = sk_tgt.(prog_public))
+      (MAIN: sk_src.(prog_main) = sk_tgt.(prog_main))
+  .
+
+  Lemma sim_sk_weak_def_bsim
+        coverage sk_src sk_tgt
+        (CLOSED: sim_sk_weak coverage sk_src sk_tgt)
+        id def_tgt
+        (DEFTGT: sk_tgt.(prog_defmap) ! id = Some def_tgt)
+    :
+      exists def_src, <<DEFSRC: sk_src.(prog_defmap) ! id = Some def_src>>
+                     /\ <<SIM: ~(coverage id) -> sim_def def_src def_tgt>>
+  .
+  Proof.
+    inv CLOSED.
+    destruct (classic (coverage id)).
+    - exploit COVER; eauto. i; des.
+      esplits; eauto. ii. ss.
+    - exploit NOCOVER; eauto. intro SIM.
+      inv SIM.
+      { eq_closure_tac. esplits; eauto. }
+      exfalso. congruence.
+  Qed.
+
+  Lemma sim_sk_weak_enables_link
+        (sk_src0 sk_tgt0: Sk.t)
+        coverage0
+        (CLOSED0: sim_sk_weak coverage0 sk_src0 sk_tgt0)
+        sk_src1 sk_tgt1
+        coverage1
+        (CLOSED1: sim_sk_weak coverage1 sk_src1 sk_tgt1)
+        sk_src
+        (LINKSRC: link sk_src0 sk_src1 = Some sk_src)
+    :
+      exists sk_tgt, <<LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt>>
+  .
+  Proof.
+    Local Transparent Linker_prog. ss. Local Opaque Linker_prog.
+    exploit (link_prog_inv sk_src0 sk_src1); eauto. intro LINKSPEC; des. inv LINKSPEC. des.
+    exploit (link_prog_succeeds sk_tgt0 sk_tgt1); eauto.
+    - inv CLOSED0. inv CLOSED1. ss.
+      eq_closure_tac.
+    - i.
+      exploit sim_sk_weak_def_bsim; try apply H; eauto. i; des.
+      exploit sim_sk_weak_def_bsim; try apply H0; eauto. i; des.
+      exploit BOTHHIT; eauto. i; des.
+      inv CLOSED0. inv CLOSED1. ss.
+      exploit SIM. { intro T. eapply COVERAGE in T. inv T; des. eapply H5. rewrite <- PUB; ss. } i; des.
+      exploit SIM0. { intro T. eapply COVERAGE0 in T. inv T; des. eapply H6. rewrite <- PUB0; ss. } i; des.
+      esplits; eauto.
+      + rewrite <- PUB; ss.
+      + rewrite <- PUB0; ss.
+      + exploit sim_def_preserves_link; eauto. i; des_safe. ii. clarify.
+  Qed.
+
+
   (* Inductive load_exact_preserved `{SS: SimSymb.SimSymb} `{SM: SimMem.SimMem} *)
   (*           (ss0: SimSymb.t) (sk_src sk_tgt: Sk.t) *)
   (*           (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop := *)
@@ -165,6 +241,33 @@ Module SimSymb.
   (*         ss0.(SimSymb.sim_symb) id_src id_tgt) *)
   (* . *)
 
+  (* Inductive sim_skenv *)
+  (*           (kept: ident -> Prop) (sm: SimMem.t) *)
+  (*           (skenv_src skenv_tgt: SkEnv.t): Prop := *)
+  (* | sim_skenv_intro *)
+  (*     (SIMSYMB1: forall *)
+  (*         id blk_src blk_tgt delta *)
+  (*         (SIMVAL: SimMem.sim_val sm (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)) *)
+  (*         (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src) *)
+  (*       , *)
+  (*         <<DELTA: delta = 0>> /\ <<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) *)
+  (*     (SIMSYMB2: forall *)
+  (*         id *)
+  (*         (KEPT: kept id) *)
+  (*         blk_src *)
+  (*         (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src) *)
+  (*       , *)
+  (*         exists blk_tgt, *)
+  (*           <<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>> /\ *)
+  (*           <<SIM: SimMem.sim_val sm (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)>>) *)
+  (*     (SIMSYMB3: forall *)
+  (*         id blk_tgt *)
+  (*         (BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt) *)
+  (*       , *)
+  (*         exists blk_src, *)
+  (*           <<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>> /\ *)
+  (*           <<SIM: SimMem.sim_val sm (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)>>) *)
+  (* . *)
 
   (* Inductive sim_skenv_spec (coverage kept: ident -> Prop) (skenv_src skenv_tgt: SkEnv.t): Prop := *)
   (* | sim_skenv_spec_intro *)
@@ -176,15 +279,15 @@ Module SimSymb.
   (* . *)
 
   (* TODO: Try moving t into argument? sim_symb coercion gets broken and I don't know how to fix it. *)
-  Class class :=
+  Class class (SM: SimMem.class) :=
     {
       t: Type;
       coverage: t -> ident -> Prop;
-      kept: t -> ident -> Prop;
       (* wf := fun ss => all1 (ss.(kept) <1= ss.(coverage)); *)
       (* wf: t -> Prop := fun ss => wf' ss.(sim_symb) ss.(privs); *)
       (* closed (ss: t) (sk_src: Sk.t) (sk_tgt: Sk.t): Prop; *)
       linker :> Linker t;
+      (* TODO: Remove coverage!!!!!!!!! *)
       link_success: forall
           (ss0 ss1: t)
           (DISJOINT: all1 (~1 (ss0.(coverage) /1\ ss1.(coverage))))
@@ -197,7 +300,7 @@ Module SimSymb.
           ss sk_src sk_tgt
           (SIMSK: sim_sk ss sk_src sk_tgt)
           ,
-            <<SIMSK: sim_sk_weak ss.(coverage) ss.(kept) sk_src sk_tgt>>
+            <<SIMSK: sim_sk_weak ss.(coverage) sk_src sk_tgt>>
       ;
       link_preserves_sim_sk: forall
           ss0 (sk_src0 sk_tgt0: Sk.t)
@@ -227,39 +330,57 @@ Module SimSymb.
       (*                     (<<EXACT1: link_exact_preserved ss1.(sim_symb) sk_src1 sk_tgt1 ss_link.(sim_symb)>>) *)
       (* ; *)
 
-      sim_skenv: t -> SkEnv.t -> SkEnv.t -> Prop;
-      load_respects_ss: forall
+      sim_skenv: SimMem.t -> t -> SkEnv.t -> SkEnv.t -> Prop;
+
+      sim_sk_load_sim_skenv: forall
           ss sk_src sk_tgt
-          (CLOSED: sim_sk ss sk_src sk_tgt)
+          (SIMSK: sim_sk ss sk_src sk_tgt)
           skenv_src skenv_tgt
           (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src)
           (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt)
+          m_src m_tgt
+          (LOADMEMSRC: sk_src.(Sk.load_mem) = Some m_src)
+          (LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt)
         ,
-          (<<SIM: sim_skenv ss skenv_src skenv_tgt>>)
+          exists sm, (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
+                     (<<MEMSRC: sm.(SimMem.src_mem) = m_src>>) /\
+                     (<<MEMTGT: sm.(SimMem.tgt_mem) = m_tgt>>)
       ;
+
+      le_preserves_sim_skenv: forall
+          sm0 sm1
+          (WF0: SimMem.wf sm0)
+          (WF1: SimMem.wf sm0)
+          (LE: SimMem.le sm0 sm1)
+          ss skenv_src skenv_tgt
+          (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
+        ,
+          <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>
+      ;
+
       sim_skenv_monotone_ss: forall
-          ss_link skenv_src skenv_tgt
-          (SIMSKENV: sim_skenv ss_link skenv_src skenv_tgt)
+          sm ss_link skenv_src skenv_tgt
+          (SIMSKENV: sim_skenv sm ss_link skenv_src skenv_tgt)
           ss
           (LE: linkorder ss ss_link)
         ,
-          <<SIMSKENV: sim_skenv ss skenv_src skenv_tgt>>
+          <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>
+      (* Note: this should be trivial. kept becomes smaller *)
       ;
+
       (* TODO: Can we separate sim_skenv_monotone_skenv, like sim_skenv_monotone_ss? *)
-      sim_skenv_monotone: forall
-          ss_link skenv_src skenv_tgt
-          (SIMSKENV: sim_skenv ss_link skenv_src skenv_tgt)
+      sim_skenv_monotone_skenv: forall
+          sm ss skenv_link_src skenv_link_tgt
+          (SIMSKENV: sim_skenv sm ss skenv_link_src skenv_link_tgt)
           (* F_src V_src F_tgt V_tgt *)
           (* (flesh_src: list (ident * globdef (AST.fundef F_src) V_src)) *)
           (* (flesh_tgt: list (ident * globdef (AST.fundef F_tgt) V_tgt)) *)
-          skenv_proj_src skenv_proj_tgt
+          skenv_src skenv_tgt
           pubs
-          (LESRC: skenv_src.(SkEnv.project) (ss_link.(coverage) \1/ pubs) skenv_proj_src)
-          (LETGT: skenv_tgt.(SkEnv.project) (ss_link.(coverage) \1/ pubs) skenv_proj_tgt)
-          ss
-          (LE: linkorder ss ss_link)
+          (LESRC: skenv_link_src.(SkEnv.project) (ss.(coverage) \1/ pubs) skenv_src)
+          (LETGT: skenv_link_tgt.(SkEnv.project) (ss.(coverage) \1/ pubs) skenv_tgt)
         ,
-          <<SIMSKENV: sim_skenv ss skenv_proj_src skenv_proj_tgt>>
+          <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>
       ;
           
     }

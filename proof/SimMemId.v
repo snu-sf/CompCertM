@@ -12,11 +12,7 @@ Require Import AST.
 Require Import Asmregs.
 Require Import Integers.
 
-Require Import Skeleton.
-Require Import Mod.
-Require Import ModSem.
-Require Import SimSymb.
-Require Import SimSymbId.
+Require Import Skeleton Mod ModSem.
 Require Import SimMem.
 
 Set Implicit Arguments.
@@ -24,12 +20,12 @@ Set Implicit Arguments.
 
 
 
-Record t' := mkrelation {
+Record t' := mk {
   src_mem: mem;
   tgt_mem: mem;
 }.
 
-Program Instance MemRelId : SimMem.class SimSymbId :=
+Program Instance SimMemId : SimMem.class :=
 {
   t := t';
   src_mem := src_mem;

@@ -15,7 +15,6 @@ Require Import Integers.
 Require Import Skeleton.
 Require Import ModSem.
 Require Import Mod.
-Require Import SimSymb.
 
 Set Implicit Arguments.
 
@@ -23,7 +22,7 @@ Set Implicit Arguments.
 
 Module SimMem.
 
-  Class class (SS: SimSymb.class) :=
+  Class class :=
   {
     t: Type;
     src_mem: t -> mem;
@@ -98,10 +97,6 @@ Module SimMem.
     (* ; *)
   }
   .
-
-  (* Arguments Build_class: clear implicits. *)
-  (* Arguments class: clear implicits. *)
-  Fail Context `{SS: SimSymb.class} `{SM: SimMem.class SS}. (* TODO: I don't want to add @ on SimMem here! *)
 
   Definition sim_val_list `{SM: class} (sm0: t) (vs_src vs_tgt: list val): Prop :=
     List.Forall2 sm0.(sim_val) vs_src vs_tgt

@@ -13,6 +13,7 @@ Require Import ASTC.
 Require Import Maps.
 Require Import LinkingC.
 
+Require Import Program.
 Require Import Syntax Sem Mod ModSem.
 Require Import SimSymb SimMem SimModSem SimMod SimProg Ord.
 
@@ -23,25 +24,32 @@ Set Implicit Arguments.
 
 Module GePair.
 Section GEPAIR.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
 
-Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
   Record t: Type := mk {
     skenv_src: SkEnv.t;
     skenv_tgt: SkEnv.t;
     ss: SimSymb.t;
-    mss_src: list ModSem.t;
-    mss_tgt: list ModSem.t;
-    (* msps: list ModSemPair.t; *)
+    (* mss_src: list ModSem.t; *)
+    (* mss_tgt: list ModSem.t; *)
+    msps: list ModSemPair.t;
   }
   .
 
   Inductive sim (gep: t): Prop :=
   | intro_sim
-      (SIMSKENV: SimSymb.sim_skenv gep.(ss) gep.(skenv_src) gep.(skenv_tgt))
-      (idx: Type) (order: idx -> idx -> Prop)
-      (WF: well_founded order)
-      (SIMMSS: List.Forall2 (sim_modsem order) gep.(mss_src) gep.(mss_tgt))
+      (* (SIMSKENV: SimSymb.sim_skenv gep.(ss) gep.(skenv_src) gep.(skenv_tgt)) *)
+      (SIMSKENV: True) (* I dont' have sm here. *)
+      (idx: Type) (ord: idx -> idx -> Prop)
+      (WF: well_founded ord)
+      (* (SIMMSS: List.Forall2 (sim_modsem order) gep.(mss_src) gep.(mss_tgt)) *)
+      (SIMMSS: List.Forall (ModSemPair.sim) gep.(msps))
+      (ORD: List.Forall (fun msp => msp.(ModSemPair.ord) ~= ord) gep.(msps))
+      (* TODO: Remove JMeq. 1) Try Heq 2) Re-structure code *)
   .
+
+  Definition mss_src (gep: t): list ModSem.t := (List.map (ModSemPair.src) gep.(msps)).
+  Definition mss_tgt (gep: t): list ModSem.t := (List.map (ModSemPair.tgt) gep.(msps)).
 
   (* Definition src (gep: t): Ge.t := (Ge.mk gep.(skenv_src) (List.map (ModSemPair.src) gep.(msps))). *)
   (* Definition tgt (gep: t): Ge.t := (Ge.mk gep.(skenv_tgt) (List.map (ModSemPair.tgt) gep.(msps))). *)
@@ -49,10 +57,11 @@ Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
 End GEPAIR.
 End GePair.
 
+Hint Unfold GePair.mss_src GePair.mss_tgt.
+
 
 Section SIMGE.
-
-  Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
 
   (* Variable pp: ProgPair.t. *)
   (* Hypothesis SIMPROG: ProgPair.sim pp. *)
@@ -86,14 +95,16 @@ Section SIMGE.
           skenv_src skenv_tgt
           (SKENVSRC: skenv_src = sk_src.(Sk.load_skenv))
           (SKENVTGT: skenv_tgt = sk_tgt.(Sk.load_skenv))
-          mss_src mss_tgt
-          (MSSSRC: mss_src = p_src.(load_modsems) skenv_src)
-          (MSSTGT: mss_tgt = p_tgt.(load_modsems) skenv_tgt)
+          (* mss_src mss_tgt *)
+          (* (MSSSRC: mss_src = p_src.(load_modsems) skenv_src) *)
+          (* (MSSTGT: mss_tgt = p_tgt.(load_modsems) skenv_tgt) *)
           
     :
-      exists ss_link,
-        <<SIM: GePair.sim (GePair.mk skenv_src skenv_tgt ss_link mss_src mss_tgt)>>
-        /\ <<LINKSS: pp.(ProgPair.ss_link) = Some ss_link>> 
+      exists gep,
+        <<SRC: gep.(GePair.mss_src) = p_src.(load_modsems) skenv_src>>
+        /\ <<TGT: gep.(GePair.mss_tgt) = p_tgt.(load_modsems) skenv_tgt>>
+        /\ <<SS: pp.(ProgPair.ss_link) = Some gep.(GePair.ss)>> 
+        /\ <<SIM: GePair.sim gep>>
   .
   Proof.
     subst. u. ss.
@@ -130,10 +141,12 @@ Section SIMGE.
       (* [..|i; des; esplits; eauto]. *)
       (* admit "TODO: closed is monotone!!". *)
     }
-    des. exists ss_link.
-    split; ss.
+    des.
     remember (Genv.globalenv sk_src) as skenv_src.
     remember (Genv.globalenv sk_tgt) as skenv_tgt.
+    Check (List.map (fun m => Mod.get_modsem m skenv_src (Mod.data m)) (List.map (ModPair.src) pp)).
+    eexists (GePair.mk _ _ ss_link _). esplits; ss.
+    split; ss.
     assert(SIMSKENV: SimSymb.sim_skenv ss_link skenv_src skenv_tgt).
     { eapply SimSymb.load_respects_ss; eauto. }
     clear Heqskenv_src Heqskenv_tgt. clear LINKSRC LINKTGT LINKSS SIMSK.

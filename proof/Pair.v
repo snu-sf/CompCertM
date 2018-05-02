@@ -102,26 +102,6 @@ End ProgPair.
 
 
 
-Module ModSemPair.
-Section MODSEMPAIR.
-
-(* Context `{SS: SimSymb.class} `{SM: SimMem.class}. *)
-  Record t : Type := mk {
-    src: ModSem.t;
-    tgt: ModSem.t;
-    idx: Type;
-    order: idx -> idx -> Prop;
-    (* TODO: which unary/binary property it expects *)
-    (* TODO: analysis *)
-  }
-  .
-
-End MODSEMPAIR.
-End ModSemPair.
-
-
-
-
 
 
 

@@ -14,6 +14,8 @@ Require Import MapsC.
 
 
 Require Import SimDef SimSymb.
+Require Import SimMem.
+Require Import SimMemId.
 
 
 Set Implicit Arguments.
@@ -48,12 +50,12 @@ Inductive sim_sk (u: unit) (sk_src sk_tgt: Sk.t): Prop :=
     (SIM: match_program (fun _ => sim_fun) eq sk_src sk_tgt)
 .
 
-Global Program Instance SimSymbId: SimSymb.class := {
+Global Program Instance SimSymbId: SimSymb.class SimMemId := {
   t := unit;
   coverage := bot2;
-  kept := bot2;
+  (* kept := bot2; *)
   sim_sk := sim_sk;
-  sim_skenv (_: unit) := sim_skenv;
+  sim_skenv (_: SimMem.t) (_: unit) := sim_skenv;
 }
 .
 Next Obligation.
@@ -62,6 +64,7 @@ Qed.
 Next Obligation.
   inv SIMSK.
   econs; ss; eauto.
+  - admit "easy. pull out as lemma".
   - ii; ss.
     unfold match_program in *.
     generalize (Genv.globalenvs_match SIM); intro SIMGE.
@@ -97,13 +100,29 @@ Qed.
 (*     admit "this should hold, if not, add uniqueness condition on good_prog to make it hold.". *)
 (*     ss. *)
 (* Qed. *)
+
+
+
+
 Next Obligation.
-  inv CLOSED.
-  unfold match_program in *.
-  generalize (Genv.globalenvs_match SIM); intro SIMGE.
-  inv SIMGE.
+  eexists (SimMemId.mk _ _).
+  esplits; ss; eauto.
+  u. inv SIMSK.
+  Print Genv.init_mem_transf.
+  Print Genv.init_mem_transf_partial.
+  About Genv.init_mem_match.
+  exploit (Genv.init_mem_match SIM); eauto. i. clarify.
   econs; eauto.
+  - admit "easy; Genv.init_mem_genv_next".
+  - i. admit "this should hold... Genv.find_symbol_match".
 Qed.
+(* Next Obligation. *)
+(*   inv CLOSED. *)
+(*   unfold match_program in *. *)
+(*   generalize (Genv.globalenvs_match SIM); intro SIMGE. *)
+(*   inv SIMGE. *)
+(*   econs; eauto. *)
+(* Qed. *)
 Next Obligation.
   inv LESRC.
   inv LETGT.
@@ -122,4 +141,9 @@ Next Obligation.
       rewrite <- H0. rewrite <- H1.
       ss.
 Qed.
+
+
+
+(* TODO: Prove this for SimSymbExt/Inj too *)
+
 

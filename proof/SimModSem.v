@@ -19,8 +19,8 @@ Set Implicit Arguments.
 Section SIMMODSEM.
 
   Variables ms_src ms_tgt: ModSem.t.
-  Context {SS: SimSymb.class}.
-  Context {SM: SimMem.class SS}.
+  Context {SM: SimMem.class}.
+  Context {SS: SimSymb.class SM}.
 
   Inductive mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | mem_compat_intro
@@ -160,62 +160,127 @@ Hint Resolve lxsim_mon: paco.
 
 Print HintDb typeclass_instances.
 
-(* ####################### TODO: Rename initial_machine/final_machine into initial_frame/final_frame *)
-Inductive sim_modsem `{SS: SimSymb.class} `{SM: @SimMem.class SS}
-          (idx: Type) (ord: idx -> idx -> Prop)
-          (ms_src ms_tgt: ModSem.t): Prop :=
-| sim_modsem_intro
-    (SIM: forall
-        fptr_init_src fptr_init_tgt
-        sm_init
-        (FPTRREL: sm_init.(SimMem.sim_val) fptr_init_src fptr_init_tgt)
-        sg_init_src sg_init_tgt
-        (SIGREL: sim_sig sg_init_src sg_init_tgt)
-        rs_init_src rs_init_tgt
-        (RSREL: sm_init.(SimMem.sim_regset) rs_init_src rs_init_tgt)
-        (VALID: SimMem.wf sm_init)
-      ,
-        (<<STEP: forall
-            st_init_tgt
-            (INITTGT: ms_tgt.(initial_machine) fptr_init_tgt sg_init_tgt rs_init_tgt
-                                               sm_init.(SimMem.tgt_mem) st_init_tgt)
-          ,
-            exists st_init_src idx_init,
-              (* (<<MCOMPAT: mem_compat ms_src ms_tgt st_init_src st_init_tgt sm_init>>) /\ *)
-              (* Can be proved with initial_states_get_mem *)
-              (<<INITSRC: ms_src.(initial_machine) fptr_init_src sg_init_src
-                                              rs_init_src sm_init.(SimMem.src_mem) st_init_src>>) /\
-              (<<SIM: lxsim ms_src ms_tgt ord sg_init_src sg_init_tgt rs_init_src rs_init_tgt sm_init
-                            idx_init st_init_src st_init_tgt sm_init>>)>>)
-        /\
-        (<<PROGRESS: forall
-            st_init_src
-            (INITSRC: ms_src.(initial_machine) fptr_init_src sg_init_src rs_init_src
-                                               sm_init.(SimMem.src_mem) st_init_src)
-          ,
-            exists st_init_tgt,
-              (<<INITTGT: ms_tgt.(initial_machine) fptr_init_tgt sg_init_tgt
-                                                   rs_init_tgt sm_init.(SimMem.tgt_mem) st_init_tgt>>)>>))
-.
 
-(* Inductive sim_modsempair `{SS: SimSymb.class} `{SM: SimMem.class} (msp: ModSemPair.t): Prop := *)
-(* | intro_sim_modsempair *)
-(*     (SIM: sim_modsem msp.(ModSemPair.src) msp.(ModSemPair.tgt) msp.(ModSemPair.order)) *)
+
+Module ModSemPair.
+Section MODSEMPAIR.
+Context {SM: SimMem.class} {SS: SimSymb.class SM}.
+
+  Record t: Type := mk {
+    src: ModSem.t;
+    tgt: ModSem.t;
+    ss: SimSymb.t;
+    idx: Type;
+    ord: idx -> idx -> Prop;
+    (* TODO: which unary/binary property it expects *)
+    (* TODO: analysis *)
+  }
+  .
+
+  (* ####################### TODO: Rename initial_machine/final_machine into initial_frame/final_frame *)
+  Inductive sim (msp: t): Prop :=
+  | sim_intro
+      (WELLF: well_founded msp.(ord))
+      (SIM: forall
+          fptr_init_src fptr_init_tgt
+          sm_init
+          (FPTRREL: sm_init.(SimMem.sim_val) fptr_init_src fptr_init_tgt)
+          sg_init_src sg_init_tgt
+          (SIGREL: sim_sig sg_init_src sg_init_tgt)
+          rs_init_src rs_init_tgt
+          (RSREL: sm_init.(SimMem.sim_regset) rs_init_src rs_init_tgt)
+          (WF: SimMem.wf sm_init)
+          (SIMSKENV: SimSymb.sim_skenv sm_init msp.(ss) msp.(src).(skenv) msp.(tgt).(skenv))
+        ,
+          (<<INITSIM: forall
+              st_init_tgt
+              (INITTGT: msp.(tgt).(initial_machine) fptr_init_tgt sg_init_tgt rs_init_tgt
+                                                 sm_init.(SimMem.tgt_mem) st_init_tgt)
+            ,
+              exists st_init_src idx_init,
+                (* (<<MCOMPAT: mem_compat ms_src ms_tgt st_init_src st_init_tgt sm_init>>) /\ *)
+                (* Can be proved with initial_states_get_mem *)
+                (<<INITSRC: msp.(src).(initial_machine) fptr_init_src sg_init_src
+                                                     rs_init_src sm_init.(SimMem.src_mem) st_init_src>>) /\
+                (<<SIM: lxsim msp.(src) msp.(tgt) msp.(ord) sg_init_src sg_init_tgt rs_init_src rs_init_tgt sm_init
+                              idx_init st_init_src st_init_tgt sm_init>>)>>)
+          /\
+          (<<INITPROGRESS: forall
+              st_init_src
+              (INITSRC: msp.(src).(initial_machine) fptr_init_src sg_init_src rs_init_src
+                                                 sm_init.(SimMem.src_mem) st_init_src)
+            ,
+              exists st_init_tgt,
+                (<<INITTGT: msp.(tgt).(initial_machine) fptr_init_tgt sg_init_tgt
+                                                     rs_init_tgt sm_init.(SimMem.tgt_mem) st_init_tgt>>)>>))
+  .
+
+  Lemma embedding_preserves_sim
+        msp0 msp1
+        (SIMMS: sim msp0)
+        (EMBED: embedded msp0.(ord) msp1.(ord))
+    :
+      <<SIMMS: sim msp1>>
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+End MODSEMPAIR.
+End ModSemPair.
+
+
+(* Inductive sim_modsem `{SM: SimMem.class} {SS: SimSymb.class SM} *)
+(*           (idx: Type) (ord: idx -> idx -> Prop) *)
+(*           (ms_src ms_tgt: ModSem.t): Prop := *)
+(* | sim_modsem_intro *)
+(*     (SIM: forall *)
+(*         fptr_init_src fptr_init_tgt *)
+(*         sm_init *)
+(*         (FPTRREL: sm_init.(SimMem.sim_val) fptr_init_src fptr_init_tgt) *)
+(*         sg_init_src sg_init_tgt *)
+(*         (SIGREL: sim_sig sg_init_src sg_init_tgt) *)
+(*         rs_init_src rs_init_tgt *)
+(*         (RSREL: sm_init.(SimMem.sim_regset) rs_init_src rs_init_tgt) *)
+(*         (VALID: SimMem.wf sm_init) *)
+(*         (SIMSKENV: SimSymb.sim_skenv ------------- sm//ss from modsempair?//skenv from ms_src/tgt. ) *)
+(*       , *)
+(*         (<<STEP: forall *)
+(*             st_init_tgt *)
+(*             (INITTGT: ms_tgt.(initial_machine) fptr_init_tgt sg_init_tgt rs_init_tgt *)
+(*                                                sm_init.(SimMem.tgt_mem) st_init_tgt) *)
+(*           , *)
+(*             exists st_init_src idx_init, *)
+(*               (* (<<MCOMPAT: mem_compat ms_src ms_tgt st_init_src st_init_tgt sm_init>>) /\ *) *)
+(*               (* Can be proved with initial_states_get_mem *) *)
+(*               (<<INITSRC: ms_src.(initial_machine) fptr_init_src sg_init_src *)
+(*                                               rs_init_src sm_init.(SimMem.src_mem) st_init_src>>) /\ *)
+(*               (<<SIM: lxsim ms_src ms_tgt ord sg_init_src sg_init_tgt rs_init_src rs_init_tgt sm_init *)
+(*                             idx_init st_init_src st_init_tgt sm_init>>)>>) *)
+(*         /\ *)
+(*         (<<PROGRESS: forall *)
+(*             st_init_src *)
+(*             (INITSRC: ms_src.(initial_machine) fptr_init_src sg_init_src rs_init_src *)
+(*                                                sm_init.(SimMem.src_mem) st_init_src) *)
+(*           , *)
+(*             exists st_init_tgt, *)
+(*               (<<INITTGT: ms_tgt.(initial_machine) fptr_init_tgt sg_init_tgt *)
+(*                                                    rs_init_tgt sm_init.(SimMem.tgt_mem) st_init_tgt>>)>>)) *)
 (* . *)
 
 
-Lemma embedding_preserves_sim
-      `{SS: SimSymb.class} `{SM: @SimMem.class SS}
-      (idx: Type) (ord: idx -> idx -> Prop)
-      ms_src ms_tgt
-      (SIMMS: sim_modsem ord ms_src ms_tgt)
-      (link_idx: Type) (link_ord: link_idx -> link_idx -> Prop)
-      (EMBED: embedded ord link_ord)
-  :
-    <<SIMMS: sim_modsem link_ord ms_src ms_tgt>>
-.
-Proof.
-  admit "this should hold".
-Qed.
+(* Lemma embedding_preserves_sim *)
+(*       `{SS: SimSymb.class} `{SM: @SimMem.class SS} *)
+(*       (idx: Type) (ord: idx -> idx -> Prop) *)
+(*       ms_src ms_tgt *)
+(*       (SIMMS: sim_modsem ord ms_src ms_tgt) *)
+(*       (link_idx: Type) (link_ord: link_idx -> link_idx -> Prop) *)
+(*       (EMBED: embedded ord link_ord) *)
+(*   : *)
+(*     <<SIMMS: sim_modsem link_ord ms_src ms_tgt>> *)
+(* . *)
+(* Proof. *)
+(*   admit "this should hold". *)
+(* Qed. *)
 
 

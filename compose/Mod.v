@@ -39,11 +39,12 @@ Module Mod.
     get_sk: datatype -> Sk.t;
     get_modsem: SkEnv.t -> datatype -> ModSem.t;
     data: datatype;
-    get_modsem_sk_skenv_iso: forall
-        skenv
-      ,
-        <<INTERNALS: sk_skenv_iso data.(get_sk) data.(get_modsem skenv).(ModSem.skenv)>>
-    ;
+    (* TODO: What is the exact spec we need here? *)
+    (* get_modsem_sk_skenv_iso: forall *)
+    (*     skenv *)
+    (*   , *)
+    (*     <<ISO: sk_skenv_iso data.(get_sk) data.(get_modsem skenv).(ModSem.skenv)>> *)
+    (* ; *)
   }
   .
 

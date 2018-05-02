@@ -9,6 +9,7 @@ Require Import sflib.
 Require Import Basics.
 Require Import CoqlibC.
 Require Import Values Integers.
+Require Import Program.
 
 Require Import SimDef SimSymb Ord.
 
@@ -180,7 +181,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
   (* ####################### TODO: Rename initial_machine/final_machine into initial_frame/final_frame *)
   Inductive sim (msp: t): Prop :=
   | sim_intro
-      (WELLF: well_founded msp.(ord))
+      (WF: well_founded msp.(ord))
       (SIM: forall
           fptr_init_src fptr_init_tgt
           sm_init
@@ -219,6 +220,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
         msp0 msp1
         (SIMMS: sim msp0)
         (EMBED: embedded msp0.(ord) msp1.(ord))
+        (WF: well_founded msp1.(ord))
     :
       <<SIMMS: sim msp1>>
   .
@@ -226,8 +228,48 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
     admit "this should hold".
   Qed.
 
+  Definition update_ord (msp: t) (idx: Type) (ord: idx -> idx -> Prop): t :=
+    (mk msp.(src) msp.(tgt) msp.(ss) ord)
+  .
+
+  Lemma update_ord_spec
+        msp0
+        (SIM: sim msp0)
+        (idx0: Type) (ord0: idx0 -> idx0 -> Prop)
+        (EMBED: embedded msp0.(ord) ord0)
+        (WF: well_founded ord0)
+    :
+      <<SIM: sim (msp0.(update_ord) ord0)>>
+  .
+  Proof.
+    eapply embedding_preserves_sim; eauto.
+  Qed.
+
+  Lemma update_ord_spec_list
+        msps
+        (SIMMSS: Forall sim msps)
+        (idx0: Type) (ord0: idx0 -> idx0 -> Prop)
+        (IDX: Forall (fun msp => msp.(idx) = idx0) msps)
+        (ORD: Forall (fun msp => msp.(ord) ~= ord0) msps)
+        (idx1: Type) (ord1: idx1 -> idx1 -> Prop)
+        (EMBED: embedded ord0 ord1)
+        (WF: well_founded ord1)
+    :
+        <<SIMMSS: Forall sim (List.map (fun msp => msp.(update_ord) ord1) msps)>>
+  .
+  Proof.
+    induction msps; eauto.
+    inv SIMMSS. ss.
+    inv IDX. inv ORD. ss.
+    econs; eauto.
+    - eapply update_ord_spec; eauto.
+    - exploit IHmsps; eauto.
+  Qed.
+
+
 End MODSEMPAIR.
 End ModSemPair.
+
 
 
 (* Inductive sim_modsem `{SM: SimMem.class} {SS: SimSymb.class SM} *)

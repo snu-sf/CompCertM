@@ -6,6 +6,7 @@ Require Import ModSem.
 Require Import LinkingC.
 Require Import Skeleton.
 Require Import Values.
+Require Import JMeq.
 
 Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg SimGe.
 
@@ -15,8 +16,8 @@ Set Implicit Arguments.
 
 Section ADEQUACY.
 
-  Context `{SS: SimSymb.class}.
   Context `{SM: SimMem.class}.
+  Context {SS: SimSymb.class SM}.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.
@@ -37,7 +38,7 @@ Section ADEQUACY.
     exploit sim_progpair_sim_gepair; eauto. i; des. ss.
     esplits; eauto. clarify.
     inv SIM; ss.
-    econstructor 1 with (order := order); eauto.
+    econstructor 1 with (order := gep.(GePair.ord)); eauto.
     econs; eauto.
     eapply xsim_init_backward; ss.
     { (* progress *)

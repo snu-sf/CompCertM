@@ -290,7 +290,7 @@ End DEPRECATED.
       (* TODO: Remove coverage!!!!!!!!! *)
       link_success: forall
           (ss0 ss1: t)
-          (DISJOINT: all1 (~1 (ss0.(coverage) /1\ ss1.(coverage))))
+          (DISJOINT: (ss0.(coverage) /1\ ss1.(coverage)) <1= bot1)
         ,
           exists ss_link, <<LINK: link ss0 ss1 = Some ss_link>>
       ;

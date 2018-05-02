@@ -33,19 +33,22 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
     (* mss_src: list ModSem.t; *)
     (* mss_tgt: list ModSem.t; *)
     msps: list ModSemPair.t;
+    idx: Type;
+    ord: idx -> idx -> Prop;
   }
   .
 
   Inductive sim (gep: t): Prop :=
   | intro_sim
       (* (SIMSKENV: SimSymb.sim_skenv gep.(ss) gep.(skenv_src) gep.(skenv_tgt)) *)
-      (SIMSKENV: True) (* I dont' have sm here. *)
-      (idx: Type) (ord: idx -> idx -> Prop)
-      (WF: well_founded ord)
+      (SIMSKENV: True) (* I dont' have sm here. Injection mapping changes in runtime, so we should not state this here. *)
+      (WF: well_founded gep.(ord))
       (* (SIMMSS: List.Forall2 (sim_modsem order) gep.(mss_src) gep.(mss_tgt)) *)
       (SIMMSS: List.Forall (ModSemPair.sim) gep.(msps))
-      (ORD: List.Forall (fun msp => msp.(ModSemPair.ord) ~= ord) gep.(msps))
+      (IDX: List.Forall (fun msp => msp.(ModSemPair.idx) = gep.(idx)) gep.(msps))
+      (ORD: List.Forall (fun msp => msp.(ModSemPair.ord) ~= gep.(ord)) gep.(msps))
       (* TODO: Remove JMeq. 1) Try Heq 2) Re-structure code *)
+      (* (ORD: List.Forall (fun msp => embedded msp.(ModSemPair.ord) gep.(ord)) gep.(msps)) *)
   .
 
   Definition mss_src (gep: t): list ModSem.t := (List.map (ModSemPair.src) gep.(msps)).
@@ -53,6 +56,34 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
 
   (* Definition src (gep: t): Ge.t := (Ge.mk gep.(skenv_src) (List.map (ModSemPair.src) gep.(msps))). *)
   (* Definition tgt (gep: t): Ge.t := (Ge.mk gep.(skenv_tgt) (List.map (ModSemPair.tgt) gep.(msps))). *)
+
+  Definition update_ord (gep: t) (idx: Type) (ord: idx -> idx -> Prop): t :=
+    (mk gep.(skenv_src) gep.(skenv_tgt) gep.(ss)
+           (List.map (fun msp => msp.(ModSemPair.update_ord) ord) gep.(msps)) ord)
+  .
+
+  Definition cons_msp (gep: t) (msp: ModSemPair.t): t :=
+     (mk gep.(skenv_src) gep.(skenv_tgt) gep.(ss) (msp :: gep.(msps)) gep.(ord))
+  .
+
+  Lemma update_ord_spec
+        gep0
+        (SIM: sim gep0)
+        (idx0: Type) (ord0: idx0 -> idx0 -> Prop)
+        (EMBED: embedded gep0.(ord) ord0)
+        (WF: well_founded ord0)
+    :
+      <<SIM: sim (gep0.(update_ord) ord0)>>
+  .
+  Proof.
+    destruct gep0; ss. inv SIM; ss.
+    econs; ss; eauto.
+    { eapply ModSemPair.update_ord_spec_list; eauto. }
+    { clear - IDX. clear IDX.
+      apply Forall_forall. i. apply list_in_map_inv in H. des. clarify. }
+    { clear - IDX. clear IDX.
+      apply Forall_forall. i. apply list_in_map_inv in H. des. clarify. }
+  Qed.
 
 End GEPAIR.
 End GePair.
@@ -145,36 +176,93 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
     remember (Genv.globalenv sk_src) as skenv_src.
     remember (Genv.globalenv sk_tgt) as skenv_tgt.
     Check (List.map (fun m => Mod.get_modsem m skenv_src (Mod.data m)) (List.map (ModPair.src) pp)).
-    eexists (GePair.mk _ _ ss_link _). esplits; ss.
-    split; ss.
-    assert(SIMSKENV: SimSymb.sim_skenv ss_link skenv_src skenv_tgt).
-    { eapply SimSymb.load_respects_ss; eauto. }
-    clear Heqskenv_src Heqskenv_tgt. clear LINKSRC LINKTGT LINKSS SIMSK.
-    assert(SIMMS: exists (idx : Type) (order : idx -> idx -> Prop),
-              <<SIM: Forall2 (sim_modsem order) (pp.(ProgPair.src).(load_modsems) skenv_src)
-                                         (pp.(ProgPair.tgt).(load_modsems) skenv_tgt)>>
-              /\ <<WF: well_founded order>>).
-    { induction pp.
-      - esplits; eauto.
-        { econs; eauto. }
-        eapply lt_wf.
-      - inv SIMPROG. inv LINKORDER.
-        exploit IHpp; eauto. i; des.
-        inv H1.
-        exploit SIMMS; eauto. { eapply SimSymb.sim_skenv_monotone_ss; eauto. } i; des. clear SIMMS.
-        exists (idx_link idx idx0), (ord_link order order0).
-        ss. u.
-        esplits; eauto.
-        + econs; eauto.
-          * u. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto.
-          * eapply Forall2_impl; try apply SIM.
-            ii. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto.
-        + eapply ord_link_wf; eauto.
+    clear Heqskenv_src Heqskenv_tgt.
+    u. rewrite LINKSS.
+    clear LINKSRC LINKTGT LINKSS SIMSK.
+    (* eexists (GePair.mk _ _ ss_link _). esplits; ss. *)
+    induction pp; ii; ss.
+    { eexists (GePair.mk _ _ _ [] _).
+      esplits; ss; eauto.
+      - econs; ss; eauto.
+        apply lt_wf.
     }
-    des.
+    inv SIMPROG. inv LINKORDER.
+    exploit IHpp; eauto. i; des.
+    inv H1.
+    specialize (SIMMS skenv_src skenv_tgt). des.
+    set (idx_link gep.(GePair.idx) msp.(ModSemPair.idx)) as idx.
+    set (ord_link gep.(GePair.ord) msp.(ModSemPair.ord)) as ord.
+    (* eapply ModSemPair.embedding_preserves_sim with (msp1:= (msp.(ModSemPair.update_ord) ord)) in SIM; cycle 1. *)
+    (* { eapply ord_link_embedded; eauto. } *)
+    eexists ((gep.(GePair.update_ord) ord).(GePair.cons_msp) (msp.(ModSemPair.update_ord) ord)).
+    ss. u.
     esplits; eauto.
-    econs; eauto.
+    - rewrite SRC. f_equal. rewrite map_map. ss.
+    - rewrite TGT. f_equal. rewrite map_map. ss.
+    - hexploit ord_link_wf; eauto. { apply H6. } { apply SIM. } intro WF; des.
+      econs; ss; eauto.
+      + econs; eauto.
+        { eapply ModSemPair.embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. }
+        inv H6.
+        eapply ModSemPair.update_ord_spec_list; eauto.
+        { eapply ord_link_embedded; eauto. }
+      + inv H6. econs; eauto.
+        apply Forall_forall. intros ? IN. apply list_in_map_inv in IN. des. clarify.
+      + inv H6. econs; eauto.
+        apply Forall_forall. intros ? IN. apply list_in_map_inv in IN. des. clarify.
+  Unshelve.
+   all: ss.
   Qed.
+  (*     + econs; eauto. *)
+  (*     * u. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. *)
+  (*     * eapply Forall2_impl; try apply SIM. *)
+  (*       ii. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. *)
+
+  (*   eexists (GePair.mk skenv_src skenv_tgt ss_link *)
+  (*                      ((ModSemPair.update_ord msp ord) *)
+  (*                         :: List.map (fun msp => msp.(ModSemPair.update_ord) ord) gep.(GePair.msps)) ord). *)
+  (*   ss. u. *)
+  (*   esplits; eauto. *)
+  (*   - rewrite SRC. f_equal. rewrite map_map. ss. *)
+  (*   - rewrite TGT. f_equal. rewrite map_map. ss. *)
+  (*   - hexploit ord_link_wf; eauto. { apply H6. } { apply SIM. } intro WF; des. *)
+  (*     econs; ss; eauto. *)
+  (*     + econs; eauto. *)
+  (*       { eapply ModSemPair.embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. } *)
+  (*       inv H6. *)
+  (*     + inv H6. econs; eauto. *)
+  (*     + econs; eauto. *)
+  (*     * u. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. *)
+  (*     * eapply Forall2_impl; try apply SIM. *)
+  (*       ii. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. *)
+  (*   + eapply ord_link_wf; eauto. *)
+  (*   assert(SIMMS: exists (idx : Type) (order : idx -> idx -> Prop), *)
+  (*             <<SIM: Forall2 (sim_modsem order) (pp.(ProgPair.src).(load_modsems) skenv_src) *)
+  (*                                        (pp.(ProgPair.tgt).(load_modsems) skenv_tgt)>> *)
+  (*             /\ <<WF: well_founded order>>). *)
+  (*   { induction pp. *)
+  (*     - esplits; eauto. *)
+  (*       { econs; eauto. } *)
+  (*       eapply lt_wf. *)
+  (*     - inv SIMPROG. inv LINKORDER. *)
+  (*       exploit IHpp; eauto. i; des. *)
+  (*       inv H1. *)
+  (*       exploit SIMMS; eauto. { eapply SimSymb.sim_skenv_monotone_ss; eauto. } i; des. clear SIMMS. *)
+  (*       exists (idx_link idx idx0), (ord_link order order0). *)
+  (*       ss. u. *)
+  (*       esplits; eauto. *)
+  (*       + econs; eauto. *)
+  (*         * u. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. *)
+  (*         * eapply Forall2_impl; try apply SIM. *)
+  (*           ii. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. *)
+  (*       + eapply ord_link_wf; eauto. *)
+  (*   } *)
+  (*   des. *)
+  (*   esplits; eauto. *)
+  (*   econs; eauto. *)
+  (* Qed. *)
+
+
 
   (* Theorem sim_progpair_sim_gepair____________ *)
   (*         pp *)

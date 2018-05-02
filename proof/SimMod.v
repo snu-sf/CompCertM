@@ -48,12 +48,8 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
   }
   .
 
-  Definition to_msp (skenv_src skenv_tgt: SkEnv.t) (mp: t): ModSemPair.t :=
-    ModSemPair.mk (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data))
-                  (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))
-                  mp.(ss)
-  .
-
+  (* TODO: Actually, ModPair can have idx/ord and transfer it to ModSemPair. *)
+  (* Advantage: We can unify ord at Mod state. *)
   Inductive sim (mp: t): Prop :=
   | sim_intro
       (SIMSK: SimSymb.sim_sk mp.(ss) mp.(src).(Mod.sk) mp.(tgt).(Mod.sk))
@@ -64,7 +60,9 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
             (* TODO: get_modsem always suceeds??? I think not. *)
             <<SRC: msp.(ModSemPair.src) = (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data))>>
             /\ <<TGT: msp.(ModSemPair.tgt) = (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))>>
-            /\ <<SIM: ModSemPair.sim msp>>)
+            /\ <<SS: msp.(ModSemPair.ss) = mp.(ss)>>
+            /\ <<SIM: ModSemPair.sim msp>>
+      )
   .
 
   (* Design: ModPair only has data, properties are stated in sim *)

@@ -102,14 +102,14 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     ms
     (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
     st_init
-    (INIT: ms.(ModSem.initial_machine) fptr_arg sg_arg rs_arg m_arg st_init)
+    (INIT: ms.(ModSem.initial_frame) fptr_arg sg_arg rs_arg m_arg st_init)
   :
     step ge (fr0 :: frs)
          E0 ((Frame.mk ms st_init sg_arg if_sig rs_arg) :: fr0 :: frs)
 | step_return
     fr0 fr1 frs
     rs_ret m_ret
-    (FINAL: fr0.(Frame.ms).(ModSem.final_machine) fr0.(Frame.sg_init) fr0.(Frame.rs_arg) fr0.(Frame.st)
+    (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.sg_init) fr0.(Frame.rs_arg) fr0.(Frame.st)
                                                   rs_ret m_ret)
     st0
     (RETURN: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) fr0.(Frame.sg_arg) fr0.(Frame.rs_arg) rs_ret m_ret st0)
@@ -190,7 +190,7 @@ Section SEMANTICS.
       rs_arg
       (INITREG: rs_arg = Pregmap.init Vundef)
       st_init
-      (INIT: ms.(ModSem.initial_machine) fptr_arg sg_arg rs_arg m st_init)
+      (INIT: ms.(ModSem.initial_frame) fptr_arg sg_arg rs_arg m st_init)
     :
       initial_state ((Frame.mk ms st_init None sg_arg rs_arg) :: nil)
   .
@@ -199,7 +199,7 @@ Section SEMANTICS.
   | final_state_intro
       fr0
       rs_ret m_ret
-      (FINAL: fr0.(Frame.ms).(ModSem.final_machine) fr0.(Frame.sg_arg) fr0.(Frame.rs_arg) fr0.(Frame.st)
+      (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.sg_arg) fr0.(Frame.rs_arg) fr0.(Frame.st)
                                                     rs_ret m_ret)
       retv
       (RETV: rs_ret RAX = Vint retv)

@@ -28,10 +28,10 @@ Module ModSem.
     (* set_mem (m0: mem) (st0: state): state; *) (* This is not used, after_external is enough *)
     at_external (st0: state)
                 (fptr_arg: val) (sg_arg: option signature) (rs_arg: regset) (m_arg: mem): Prop;
-    initial_machine (fptr_arg: val) (sg_arg: option signature) (rs_arg: regset) (m_arg: mem)
+    initial_frame (fptr_arg: val) (sg_arg: option signature) (rs_arg: regset) (m_arg: mem)
                     (st0: state): Prop;
     (* time: rs_arg >> st0 *)
-    final_machine (sg_init: option signature) (rs_init: regset)
+    final_frame (sg_init: option signature) (rs_init: regset)
     (* What is sg_arg/rs_arg for? Just auxiliary data. rs_arg: returning from C/ *)
                   (st0: state)
                   (rs_ret: regset) (m_ret: mem): Prop;
@@ -53,7 +53,7 @@ Module ModSem.
     (* good properties *)
     initial_machine_get_mem: forall
         fptr_arg sg_arg rs_arg m_arg st0
-        (INIT: initial_machine fptr_arg sg_arg rs_arg m_arg st0)
+        (INIT: initial_frame fptr_arg sg_arg rs_arg m_arg st0)
       ,
         <<MEM: st0.(get_mem) = m_arg>>
     ;
@@ -71,7 +71,7 @@ Module ModSem.
         fptr_arg sg_arg rs_arg m_arg
         (ATEXT: at_external st0 fptr_arg sg_arg rs_arg m_arg)
         sg_init rs_init rs_ret m_ret
-        (FINAL: final_machine sg_init rs_init st0 rs_ret m_ret)
+        (FINAL: final_frame sg_init rs_init st0 rs_ret m_ret)
       ,
         False
     ;
@@ -80,7 +80,7 @@ Module ModSem.
         tr st1
         (STEP: step globalenv st0 tr st1)
         sg_init rs_init rs_ret m_ret
-        (FINAL: final_machine sg_init rs_init st0 rs_ret m_ret)
+        (FINAL: final_frame sg_init rs_init st0 rs_ret m_ret)
       ,
         False
     ;

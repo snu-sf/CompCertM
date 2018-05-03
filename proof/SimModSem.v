@@ -126,8 +126,8 @@ Section SIMMODSEM.
       (VALID: SimMem.wf sm0)
       (RETVREL: sm0.(SimMem.sim_val) retv_src retv_tgt)
       rs_ret_src rs_ret_tgt m_ret_src m_ret_tgt
-      (EXITSRC: ms_src.(final_machine) sg_init_src rs_init_src st_src0 rs_ret_src m_ret_src)
-      (EXITTGT: ms_tgt.(final_machine) sg_init_tgt rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt)
+      (EXITSRC: ms_src.(final_frame) sg_init_src rs_init_src st_src0 rs_ret_src m_ret_src)
+      (EXITTGT: ms_tgt.(final_frame) sg_init_tgt rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt)
 
   .
 
@@ -195,24 +195,24 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
         ,
           (<<INITSIM: forall
               st_init_tgt
-              (INITTGT: msp.(tgt).(initial_machine) fptr_init_tgt sg_init_tgt rs_init_tgt
+              (INITTGT: msp.(tgt).(initial_frame) fptr_init_tgt sg_init_tgt rs_init_tgt
                                                  sm_init.(SimMem.tgt_mem) st_init_tgt)
             ,
               exists st_init_src idx_init,
                 (* (<<MCOMPAT: mem_compat ms_src ms_tgt st_init_src st_init_tgt sm_init>>) /\ *)
                 (* Can be proved with initial_states_get_mem *)
-                (<<INITSRC: msp.(src).(initial_machine) fptr_init_src sg_init_src
+                (<<INITSRC: msp.(src).(initial_frame) fptr_init_src sg_init_src
                                                      rs_init_src sm_init.(SimMem.src_mem) st_init_src>>) /\
                 (<<SIM: lxsim msp.(src) msp.(tgt) msp.(ord) sg_init_src sg_init_tgt rs_init_src rs_init_tgt sm_init
                               idx_init st_init_src st_init_tgt sm_init>>)>>)
           /\
           (<<INITPROGRESS: forall
               st_init_src
-              (INITSRC: msp.(src).(initial_machine) fptr_init_src sg_init_src rs_init_src
+              (INITSRC: msp.(src).(initial_frame) fptr_init_src sg_init_src rs_init_src
                                                  sm_init.(SimMem.src_mem) st_init_src)
             ,
               exists st_init_tgt,
-                (<<INITTGT: msp.(tgt).(initial_machine) fptr_init_tgt sg_init_tgt
+                (<<INITTGT: msp.(tgt).(initial_frame) fptr_init_tgt sg_init_tgt
                                                      rs_init_tgt sm_init.(SimMem.tgt_mem) st_init_tgt>>)>>))
   .
 

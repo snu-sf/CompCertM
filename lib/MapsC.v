@@ -7,6 +7,41 @@ Require Export Maps.
 
 Set Implicit Arguments.
 
+Local Open Scope o_monad_scope.
+
+
+
+(* partial mapping *)
+Definition PTree_filter_map A B (f: positive -> A -> option B) (m: PTree.t A): PTree.t B.
+  admit "".
+Qed.
+
+About PTree.gmap.
+
+Lemma PTree_filter_map_spec
+      A B (f: positive -> A -> option B) i m
+  :
+      (PTree_filter_map f m) ! i = o_bind (m ! i) (f i)
+.
+Proof.
+  admit "".
+Qed.
+
+About PTree.filter1.
+Definition PTree_filter_key A (f: positive -> bool) (m: PTree.t A): PTree.t A.
+  admit "".
+Qed.
+
+Lemma PTree_filter_key_spec
+      A (f: positive -> bool) i (m: PTree.t A)
+  :
+      (PTree_filter_key f m) ! i = assertion (f i); m ! i
+.
+Proof.
+  admit "".
+Qed.
+
+
 Lemma PTree_elements_map
       X Y (f: X -> Y) xm
   :

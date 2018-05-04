@@ -264,13 +264,49 @@ Proof.
   admit "easy".
 Qed.
 
-Definition option_join A (a: option (option A)): option A :=
+
+Definition o_map A B (oa: option A) (f: A -> B): option B :=
+  match oa with
+  | Some a => Some (f a)
+  | None => None
+  end
+.
+
+Definition o_join A (a: option (option A)): option A :=
   match a with
   | Some a => a
   | None => None
   end
 .
 
+Definition o_bind A B (oa: option A) (f: A -> option B): option B := o_join (o_map oa f).
+Hint Unfold o_map o_join o_bind.
+
+Definition curry2 A B C (f: A -> B -> C): (A * B) -> C := fun ab => f ab.(fst) ab.(snd).
+
+Definition o_bind2 A B C (oab: option (A * B)) (f: A -> B -> option C) : option C :=
+o_join (o_map oab f.(curry2)).
+
+(* Notation "o >>= f" := (o_bind o f) (at level 50, no associativity) : option_monad_scope. *)
+
+(* Copied from Errors.v *)
+
+Notation "'do' X <- A ; B" := (o_bind A (fun X => B))
+ (at level 200, X ident, A at level 100, B at level 200)
+ : o_monad_scope.
+
+
+Notation "'do' ( X , Y ) <- A ; B" := (o_bind2 A (fun X Y => B))
+ (at level 200, X ident, Y ident, A at level 100, B at level 200)
+ : o_monad_scope.
+
+Notation "'assertion' A ; B" := (if A then B else None)
+  (at level 200, A at level 100, B at level 200)
+  : o_monad_scope.
+
+Open Scope o_monad_scope.
+
 Ltac subst_locals := all ltac:(fun H => is_local_definition H; subst H).
 
 Hint Unfold flip.
+

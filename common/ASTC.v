@@ -21,7 +21,7 @@ Section FUNCTIONS.
     | _ => false
     end.
 
-  Definition is_external F (f: fundef F): bool :=
+  Definition is_external_fd F (f: fundef F): bool :=
     match f with
     | External ef => is_external_ef ef
     | _ => false
@@ -31,9 +31,9 @@ Section FUNCTIONS.
         A B
         (transf: A -> B)
         f
-        (ISEXT: is_external (transf_fundef transf f))
+        (ISEXT: is_external_fd (transf_fundef transf f))
     :
-      <<ISEXT: is_external f>>
+      <<ISEXT: is_external_fd f>>
   .
   Proof.
     compute in ISEXT. des_ifs.
@@ -51,14 +51,14 @@ Section FUNCTIONS.
     compute in EXT. des_ifs.
   Qed.
 
-  Lemma transf_partial_fundef_is_external
+  Lemma transf_partial_fundef_is_external_fd
         A B
         (transf_partial: A -> res B)
         f tf
         (TRANSF: (transf_partial_fundef transf_partial f) = OK tf)
-        (ISEXT: is_external tf)
+        (ISEXT: is_external_fd tf)
     :
-      <<ISEXT: is_external f>>
+      <<ISEXT: is_external_fd f>>
   .
   Proof.
     compute in ISEXT. des_ifs.
@@ -96,6 +96,21 @@ Section FUNCTIONS.
   .
 
 End FUNCTIONS.
+
+
+
+
+
+
+
+Definition is_external F V (gd: globdef (fundef F) V): bool :=
+  match gd with
+  | Gfun fd => is_external_fd fd
+  | Gvar _ => true
+  end
+.
+
+
 
 
 

@@ -17,6 +17,19 @@ Set Implicit Arguments.
 
 Section SYSMODSEM.
 
+  Variable skenv_link: SkEnv.t.
+
+  Definition genvtype: Type := Genv.t external_function unit.
+
+  Definition globalenv: genvtype :=
+    skenv_link.(Genv_map_defs) (fun gd =>
+                                  match gd with
+                                  | Gfun (External ef) => Some (Gfun ef)
+                                  | Gfun _ => None
+                                  | Gvar gv => Some (Gvar gv)
+                                  end)
+  .
+
   Inductive state: Type :=
   | state_call
       (fptr_arg: val)
@@ -27,9 +40,7 @@ Section SYSMODSEM.
       (m_ret: mem)
   .
 
-  Definition genv: Type := Genv.t external_function unit.
-
-  Inductive step (ge: genv): state -> trace -> state -> Prop :=
+  Inductive step (ge: genvtype): state -> trace -> state -> Prop :=
   | step_intro
       fptr_arg rs_arg m_arg ef
       (FPTR: ge.(Genv.find_funct) fptr_arg = Some ef)
@@ -67,20 +78,18 @@ Section SYSMODSEM.
 
   Program Definition modsem: ModSem.t := {|
     ModSem.state := state;
-    ModSem.genvtype := genv;
+    ModSem.genvtype := genvtype;
     ModSem.step := step;
     ModSem.get_mem := get_mem;
     ModSem.at_external := bot5;
     ModSem.initial_frame := initial_frame;
     ModSem.final_frame := final_frame;
     ModSem.after_external := bot6;
-    
+    ModSem.globalenv:= globalenv;
   |}
   .
-  Next Obligation.
-  Qed.
-
-
+  Next Obligation. inv INIT; ss. Qed.
+  Next Obligation. inv STEP; inv FINAL; ss. Qed.
 
 End SYSMODSEM.
 
@@ -91,7 +100,7 @@ Section SYSMOD.
   Program Definition mod: Mod.t := {|
     Mod.datatype := unit;
     Mod.get_sk := fun _ => (mkprogram [] [] prog_main);
-    Mod.get_modsem := admit;
+    Mod.get_modsem := fun skenv _ => modsem skenv;
     Mod.data := tt;
   |}
   .

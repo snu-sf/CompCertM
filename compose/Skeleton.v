@@ -1,5 +1,5 @@
 Require Import CoqlibC.
-Require Export Globalenvs.
+Require Export GlobalenvsC.
 Require Import Memory.
 Require Import Ctypes.
 Require Export ASTC.
@@ -7,6 +7,8 @@ Require Import MapsC.
 Require Import Values.
 
 Set Implicit Arguments.
+
+
 
 (* I don't want it to be "AST.program"-dependent, because of Ctypes.program *)
 (* TODO: In high level, prog_public can be dropped, as the data is already linked. Is it really so? *)
@@ -47,6 +49,15 @@ Module SkEnv.
 
   Definition internals (skenv: t): list block :=
     List.map fst (skenv.(Genv.genv_defs).(PTree.elements))
+  .
+
+  (* We will not need this for now. Fix it when we need it (dynamic linking/incremental compilation) *)
+  Definition filter_symbols (skenv: t) (symbols: list ident): t :=
+    skenv.(Genv_filter_symb) (fun id => List.in_dec ident_eq id symbols)
+  .
+
+  Definition drop_external_defs (skenv: t): t :=
+    skenv.(Genv_map_defs) (fun gd => assertion (negb (is_external gd)); Some gd)
   .
 
 End SkEnv.

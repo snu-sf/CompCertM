@@ -5,13 +5,13 @@ Require Import Values.
 Require Import Memory.
 Require Import Events.
 Require Import Smallstep.
-Require Import Globalenvs.
+Require Import GlobalenvsC.
 Require Import Asmregs.
-Require Import Linking.
+Require Import LinkingC.
 Require Import CoqlibC.
 Require Import sflib.
 
-Require Import ModSem Mod Skeleton LinkingC.
+Require Import ModSem Mod Skeleton System.
 Require Export Syntax.
 
 Set Implicit Arguments.
@@ -56,7 +56,6 @@ Module Ge.
 
   (* NAMING: Consistency with SkEnv.t -> GEnv.t? but this is confusing with Genv *)
   Record t: Type := mk {
-    skenv: SkEnv.t;
     mss: list ModSem.t;
   }
   .
@@ -96,11 +95,11 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     (CALL: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) fptr_arg sg_arg rs_arg m_arg)
     (* id *)
     (* (IDFIND: ge.(Ge.skenv).(Genv.invert_symbol) fptr_arg = Some id) *)
-    if_sig
-    (SIGFIND: ge.(Ge.skenv).(Genv.find_funct) fptr_arg = Some (Internal if_sig))
-    (SIG: compat_sig sg_arg if_sig)
     ms
     (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
+    if_sig
+    (SIGFIND: ms.(ModSem.skenv).(Genv.find_funct) fptr_arg = Some (Internal if_sig))
+    (SIG: compat_sig sg_arg if_sig)
     st_init
     (INIT: ms.(ModSem.initial_frame) fptr_arg sg_arg rs_arg m_arg st_init)
   :
@@ -124,28 +123,28 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
   :
     step ge (fr0 :: frs)
          tr ((fr0.(Frame.update_st) st0) :: frs)
-| step_syscall
-    fr0 frs
-    fptr_arg sg_arg rs_arg m_arg
-    (CALL: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) fptr_arg sg_arg rs_arg m_arg)
-    (MSNOTFIND: ge.(Ge.no_fptr_owner) fptr_arg)
-    ef
-    (SYSFIND: ge.(Ge.skenv).(Genv.find_funct) fptr_arg = Some (External ef))
-    (SIG: compat_sig sg_arg (Some ef.(ef_sig)))
-    (* Below is copied from Asm.v *)
-    vs_arg
-    (SYSARGS: extcall_arguments rs_arg m_arg (ef_sig ef) vs_arg)
-    tr v_ret m_ret
-    (SYSSEM: external_call ef ge.(Ge.skenv) vs_arg m_arg tr v_ret m_ret)
-    rs_ret
-    (RETREGS: rs_ret= (Pregmap.set PC (rs_arg RA)
-                                   (set_pair (loc_external_result (ef_sig ef)) v_ret
-                                             (undef_regs (map preg_of Conventions1.destroyed_at_call) rs_arg))))
-    st0
-    (RETURN: fr0.(Frame.ms).(ModSem.after_external) fr0.(Frame.st) sg_arg rs_arg rs_ret m_ret st0)
-  :
-    step ge (fr0 :: frs)
-         E0 ((fr0.(Frame.update_st) st0) :: frs)
+(* | step_syscall *)
+(*     fr0 frs *)
+(*     fptr_arg sg_arg rs_arg m_arg *)
+(*     (CALL: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) fptr_arg sg_arg rs_arg m_arg) *)
+(*     (MSNOTFIND: ge.(Ge.no_fptr_owner) fptr_arg) *)
+(*     ef *)
+(*     (SYSFIND: ge.(Ge.skenv).(Genv.find_funct) fptr_arg = Some (External ef)) *)
+(*     (SIG: compat_sig sg_arg (Some ef.(ef_sig))) *)
+(*     (* Below is copied from Asm.v *) *)
+(*     vs_arg *)
+(*     (SYSARGS: extcall_arguments rs_arg m_arg (ef_sig ef) vs_arg) *)
+(*     tr v_ret m_ret *)
+(*     (SYSSEM: external_call ef ge.(Ge.skenv) vs_arg m_arg tr v_ret m_ret) *)
+(*     rs_ret *)
+(*     (RETREGS: rs_ret= (Pregmap.set PC (rs_arg RA) *)
+(*                                    (set_pair (loc_external_result (ef_sig ef)) v_ret *)
+(*                                              (undef_regs (map preg_of Conventions1.destroyed_at_call) rs_arg)))) *)
+(*     st0 *)
+(*     (RETURN: fr0.(Frame.ms).(ModSem.after_external) fr0.(Frame.st) sg_arg rs_arg rs_ret m_ret st0) *)
+(*   : *)
+(*     step ge (fr0 :: frs) *)
+(*          E0 ((fr0.(Frame.update_st) st0) :: frs) *)
 .
 
 
@@ -162,14 +161,15 @@ Section SEMANTICS.
   (* Definition init_skenv: option SkEnv.t := option_map (@Genv.globalenv (fundef unit) unit) init_sk. *)
   (* Definition init_skenv (init_sk: Sk.t): SkEnv.t := (@Genv.globalenv (fundef (option signature)) unit) init_sk. *)
 
-  Definition load_modsems (skenv: SkEnv.t): list ModSem.t := List.map ((flip Mod.modsem) skenv) p.
+  Definition load_modsems (skenv: SkEnv.t): list ModSem.t :=
+    (System.modsem skenv) :: List.map ((flip Mod.modsem) skenv) p.
 
   (* Definition init_mem: option mem := option_join (option_map (@Genv.init_mem (fundef unit) unit) init_sk). *)
   (* Definition init_mem (init_sk: Sk.t): option mem := (@Genv.init_mem (fundef (option signature)) unit) init_sk. *)
 
   (* Definition init_genv: option Ge.t := *)
   (*   option_map (fun skenv => (Ge.mk skenv (init_modsem skenv))) init_skenv. *)
-  Definition load_genv (init_skenv: SkEnv.t): Ge.t := Ge.mk init_skenv (load_modsems init_skenv).
+  Definition load_genv (init_skenv: SkEnv.t): Ge.t := Ge.mk (load_modsems init_skenv).
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
   Inductive initial_state: state -> Prop :=

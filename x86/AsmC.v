@@ -49,7 +49,7 @@ Section MODSEM.
   (*     at_external (State rs_arg m_arg) (Vptr b_arg Ptrofs.zero true) None rs_arg m_arg *)
   (* . *)
 
-  Inductive at_external (st0: state): val -> option signature -> regset -> mem -> Prop :=
+  Inductive at_external (st0: state): val -> regset -> mem -> Prop :=
   | at_external_intro
       fb_arg
       (FPTR: st0.(st_rs) # PC = Vptr fb_arg Ptrofs.zero true)
@@ -57,14 +57,14 @@ Section MODSEM.
       fd
       (RAINTERNAL: Genv.find_funct ge (st0.(st_rs) # RA) = Some (Internal fd)) (* Only for disjointness with final_frame *)
     :
-      at_external st0 (Vptr fb_arg Ptrofs.zero true) None st0.(st_rs) st0.(st_m)
+      at_external st0 (Vptr fb_arg Ptrofs.zero true) st0.(st_rs) st0.(st_m)
   .
 
-  Inductive initial_frame (fptr_arg: val) (sg_arg: option signature) (rs_arg: regset) (m_arg: mem)
+  Inductive initial_frame (fptr_arg: val) (rs_arg: regset) (m_arg: mem)
     : state -> Prop :=
   | initial_frame_intro
     :
-      initial_frame fptr_arg sg_arg rs_arg m_arg (State (rs_arg # PC <- fptr_arg) m_arg)
+      initial_frame fptr_arg rs_arg m_arg (State (rs_arg # PC <- fptr_arg) m_arg)
   .
 
   Inductive final_frame (sg_init: option signature) (rs_init: regset) (st0: state): regset -> mem -> Prop :=
@@ -77,11 +77,11 @@ Section MODSEM.
       final_frame sg_init rs_init st0 st0.(st_rs) st0.(st_m)
   .
 
-  Inductive after_external (st0: state) (sg_arg: option signature) (rs_arg: regset)
+  Inductive after_external (st0: state) (rs_arg: regset)
             (rs_ret: regset) (m_ret: mem): state -> Prop :=
   | after_external_intro
     :
-      after_external st0 sg_arg rs_arg rs_ret m_ret (State rs_ret m_ret)
+      after_external st0 rs_arg rs_ret m_ret (State rs_ret m_ret)
   .
 
   Program Definition modsem: ModSem.t :=

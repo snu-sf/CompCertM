@@ -222,21 +222,21 @@ Section MODSEM.
   Variable p: program.
   Let ge := p.(Genv.globalenv).
 
-  Inductive at_external: state -> val -> option signature -> regset -> mem -> Prop :=
+  Inductive at_external: state -> val -> regset -> mem -> Prop :=
   | at_external_intro
       fptr_arg stack rs_arg m_arg
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
 
     :
       at_external (Callstate stack fptr_arg rs_arg m_arg)
-                  fptr_arg None rs_arg m_arg
+                  fptr_arg rs_arg m_arg
   .
 
-  Inductive initial_frame (fptr_arg: val) (sg_arg: option signature) (rs_arg: regset) (m_arg: mem)
+  Inductive initial_frame (fptr_arg: val) (rs_arg: regset) (m_arg: mem)
     : state -> Prop :=
   | initial_frame_intro
     :
-      initial_frame fptr_arg sg_arg rs_arg m_arg
+      initial_frame fptr_arg rs_arg m_arg
                     (Callstate [(dummy_stack (rs_arg SP) (rs_arg RA))] fptr_arg rs_arg m_arg)
   .
 
@@ -248,12 +248,12 @@ Section MODSEM.
       final_frame sg_init rs_init (Returnstate [dummy_stack] rs_ret m_ret) rs_ret m_ret
   .
 
-  Inductive after_external: state -> option signature -> regset -> regset -> mem -> state -> Prop :=
+  Inductive after_external: state -> regset -> regset -> mem -> state -> Prop :=
   | after_external_intro
       stack fptr_arg rs_arg m_arg
       rs_ret m_ret
     :
-      after_external (Callstate stack fptr_arg rs_arg m_arg) None rs_arg rs_ret m_ret
+      after_external (Callstate stack fptr_arg rs_arg m_arg) rs_arg rs_ret m_ret
                      (Returnstate stack rs_ret m_ret)
   .
 

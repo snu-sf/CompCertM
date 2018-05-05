@@ -62,11 +62,11 @@ Section SYSMODSEM.
     end
   .
 
-  Inductive initial_frame (fptr_arg: val) (sg_arg: option signature) (rs_arg: regset) (m_arg: mem):
+  Inductive initial_frame (fptr_arg: val) (rs_arg: regset) (m_arg: mem):
     state -> Prop :=
   | initial_frame_intro
     :
-      initial_frame fptr_arg sg_arg rs_arg m_arg (state_call fptr_arg rs_arg m_arg)
+      initial_frame fptr_arg rs_arg m_arg (state_call fptr_arg rs_arg m_arg)
   .
 
   Inductive final_frame (sg_init: option signature) (rs_init: regset): state -> regset -> mem -> Prop :=
@@ -81,10 +81,10 @@ Section SYSMODSEM.
     ModSem.genvtype := genvtype;
     ModSem.step := step;
     ModSem.get_mem := get_mem;
-    ModSem.at_external := bot5;
+    ModSem.at_external := bot4;
     ModSem.initial_frame := initial_frame;
     ModSem.final_frame := final_frame;
-    ModSem.after_external := bot6;
+    ModSem.after_external := bot5;
     ModSem.globalenv:= globalenv;
   |}
   .

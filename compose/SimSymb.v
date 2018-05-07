@@ -310,7 +310,7 @@ End DEPRECATED.
   Class class (SM: SimMem.class) :=
     {
       t: Type;
-      linker :> Linker t;
+      le: t -> Sk.t -> Sk.t -> t -> Prop;
 
       sim_sk: t -> Sk.t -> Sk.t -> Prop;
       (* Do we need this ? *)
@@ -330,7 +330,8 @@ End DEPRECATED.
         ,
           exists ss sk_tgt,
             <<LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt>> /\
-            <<LINKSS: link ss0 ss1 = Some ss>> /\
+            <<LE0: le ss0 sk_src0 sk_tgt0 ss>> /\
+            <<LE1: le ss1 sk_src1 sk_tgt1 ss>> /\
             <<SIMSK: sim_sk ss sk_src sk_tgt>>
       ;
 
@@ -397,7 +398,7 @@ End DEPRECATED.
           (* (flesh_tgt: list (ident * globdef (AST.fundef F_tgt) V_tgt)) *)
           ss sk_src sk_tgt
           (SIMSK: sim_sk ss sk_src sk_tgt)
-          (LE: linkorder ss ss_link)
+          (LE: le ss sk_src sk_tgt ss_link)
           skenv_src skenv_tgt
           (LESRC: skenv_link_src.(SkEnv.project) sk_src.(defs) skenv_src)
           (LETGT: skenv_link_tgt.(SkEnv.project) sk_tgt.(defs) skenv_tgt)

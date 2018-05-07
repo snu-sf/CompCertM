@@ -20,6 +20,20 @@ Require Import SimDef SimSymb.
 Require Import SimMem.
 Require Import SimMemInj.
 
+
+(* TODO: move to CoqlibC. *)
+Notation "p -1 q" := (p /1\ ~1 q) (at level 50).
+Notation "p -2 q" := (p /2\ ~2 q) (at level 50).
+Notation "p -3 q" := (p /3\ ~3 q) (at level 50).
+Notation "p -4 q" := (p /4\ ~4 q) (at level 50).
+
+Tactic Notation "u" "in" hyp(H) := repeat (autounfold with * in H; cbn in H).
+Tactic Notation "u" := repeat (autounfold with *; cbn).
+Tactic Notation "u" "in" "*" := repeat (autounfold with * in *; cbn in *).
+
+
+
+
 (* Definition t': Type := ident -> bool. *)
 Definition t': Type := ident -> Prop.
 
@@ -39,6 +53,7 @@ Inductive sim_sk (ss: t') (sk_src sk_tgt: Sk.t): Prop :=
     (*     id *)
     (*   , *)
     (*    sk_tgt.(prog_defmap) ! id = if ss id then None else sk_src.(prog_defmap) ! id) *)
+    (CLOSED: ss <1= sk_src.(privs))
     (PUB: sk_src.(prog_public) = sk_tgt.(prog_public))
     (MAIN: sk_src.(prog_main) = sk_tgt.(prog_main))
 .
@@ -81,6 +96,16 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
                           <<SIM: sim_def def_src def_tgt>>)
 .
 
+Inductive le (ss0: t') (sk_src sk_tgt: Sk.t) (ss1: t'): Prop :=
+| le_intro
+    (LE: ss0 <1= ss1)
+    (OUTSIDE: forall
+        id
+        (IN: (ss1 -1 ss0) id)
+      ,
+        <<OUTSIDESRC: ~ sk_src.(defs) id>> /\ <<OUTSIDETGT: ~ sk_tgt.(defs) id>>)
+.
+
 Global Program Definition link_ss (ss0 ss1: t'): option t' :=
   (* Some (fun id => orb (ss0 id) (ss1 id)) *)
   Some (ss0 \1/ ss1)
@@ -101,12 +126,9 @@ Qed.
 
 
 
-Tactic Notation "u" "in" hyp(H) := repeat (autounfold with * in H; cbn in H).
-Tactic Notation "u" := repeat (autounfold with *; cbn).
-Tactic Notation "u" "in" "*" := repeat (autounfold with * in *; cbn in *).
-
 Global Program Instance SimSymbDrop: SimSymb.class SimMemInj := {
   t := t';
+  le := le;
   sim_sk := sim_sk;
   sim_skenv := sim_skenv;
 }
@@ -153,10 +175,17 @@ Next Obligation.
       u.
       destruct (classic (ss id)); cycle 1.
       - erewrite KEPT0; ss.
-      - exfalso. apply KEPT. eauto.
+      - exfalso. apply KEPT. inv LE. eauto.
     }
     erewrite SYMBKEEP0; ss.
     esplits; eauto.
+    {
+      clear - LE H0 KEPT.
+      inv LE.
+      ii. apply KEPT.
+      apply NNPP. ii.
+      exploit OUTSIDE; eauto. { split; eauto. }
+    }
   -
     inv LESRC.
     destruct (classic (defs sk_src id)); cycle 1.

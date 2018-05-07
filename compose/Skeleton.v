@@ -27,8 +27,9 @@ Module SkEnv.
   (* TODO: Is it OK to define it in Prop? I just need backward simulation of this. *)
   Inductive project (skenv: t) (ids: ident -> Prop) (skenv_proj: t): Prop :=
   | project_intro
-      (PUBLIC: skenv_proj.(Genv.genv_public) = [])
+      (* (PUBLIC: skenv_proj.(Genv.genv_public) = []) *)
       (* TODO: is this OK? Check if this info affects semantics except for linking *)
+      (PUBLIC: skenv_proj.(Genv.genv_public) = skenv.(Genv.genv_public))
       (NEXT: skenv.(Genv.genv_next) = skenv_proj.(Genv.genv_next))
       (PROJ: forall
           id
@@ -58,6 +59,15 @@ Module SkEnv.
 
   Definition drop_external_defs (skenv: t): t :=
     skenv.(Genv_map_defs) (fun gd => assertion (negb (is_external gd)); Some gd)
+  .
+
+  Print Genv.public_symbol.
+  Definition privs (skenv: SkEnv.t): ident -> bool :=
+    fun id =>
+      match skenv.(Genv.find_symbol) id with
+      | Some _ => negb (proj_sumbool (in_dec ident_eq id skenv.(Genv.genv_public)))
+      | None => false
+      end
   .
 
 End SkEnv.

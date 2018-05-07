@@ -358,31 +358,48 @@ End DEPRECATED.
           <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>
       ;
 
-      sim_skenv_monotone_ss: forall
-          sm ss_link skenv_src skenv_tgt
-          (SIMSKENV: sim_skenv sm ss_link skenv_src skenv_tgt)
-          ss
-          (LE: linkorder ss ss_link)
-        ,
-          <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>
-      (* Note: this should be trivial. kept becomes smaller *)
-      ;
+      (* sim_skenv_monotone_ss: forall *)
+      (*     sm ss_link skenv_src skenv_tgt *)
+      (*     (SIMSKENV: sim_skenv sm ss_link skenv_src skenv_tgt) *)
+      (*     ss *)
+      (*     (LE: linkorder ss ss_link) *)
+      (*   , *)
+      (*     <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>> *)
+      (* (* Note: this should be trivial. kept becomes smaller *) *)
+      (* ; *)
 
+      (* (* TODO: Can we separate sim_skenv_monotone_skenv, like sim_skenv_monotone_ss? *) *)
+      (* sim_skenv_monotone_skenv: forall *)
+      (*     sm ss skenv_link_src skenv_link_tgt *)
+      (*     (SIMSKENV: sim_skenv sm ss skenv_link_src skenv_link_tgt) *)
+      (*     (* F_src V_src F_tgt V_tgt *) *)
+      (*     (* (flesh_src: list (ident * globdef (AST.fundef F_src) V_src)) *) *)
+      (*     (* (flesh_tgt: list (ident * globdef (AST.fundef F_tgt) V_tgt)) *) *)
+      (*     sk_src sk_tgt *)
+      (*     (SIMSK: sim_sk ss sk_src sk_tgt) *)
+      (*     skenv_src skenv_tgt *)
+      (*     (LESRC: skenv_link_src.(SkEnv.project) sk_src.(defs) skenv_src) *)
+      (*     (LETGT: skenv_link_tgt.(SkEnv.project) sk_tgt.(defs) skenv_tgt) *)
+      (*   , *)
+      (*     <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>> *)
+      (* ; *)
+          
       (* TODO: Can we separate sim_skenv_monotone_skenv, like sim_skenv_monotone_ss? *)
-      sim_skenv_monotone_skenv: forall
-          sm ss skenv_link_src skenv_link_tgt
-          (SIMSKENV: sim_skenv sm ss skenv_link_src skenv_link_tgt)
+      sim_skenv_monotone: forall
+          sm ss_link skenv_link_src skenv_link_tgt
+          (SIMSKENV: sim_skenv sm ss_link skenv_link_src skenv_link_tgt)
           (* F_src V_src F_tgt V_tgt *)
           (* (flesh_src: list (ident * globdef (AST.fundef F_src) V_src)) *)
           (* (flesh_tgt: list (ident * globdef (AST.fundef F_tgt) V_tgt)) *)
+          ss sk_src sk_tgt
+          (SIMSK: sim_sk ss sk_src sk_tgt)
+          (LE: linkorder ss ss_link)
           skenv_src skenv_tgt
-          pubs
-          (LESRC: skenv_link_src.(SkEnv.project) (ss.(coverage) \1/ pubs) skenv_src)
-          (LETGT: skenv_link_tgt.(SkEnv.project) (ss.(coverage) \1/ pubs) skenv_tgt)
+          (LESRC: skenv_link_src.(SkEnv.project) sk_src.(defs) skenv_src)
+          (LETGT: skenv_link_tgt.(SkEnv.project) sk_tgt.(defs) skenv_tgt)
         ,
           <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>
       ;
-          
     }
   .
 

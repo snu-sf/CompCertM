@@ -177,6 +177,9 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
   }
   .
 
+  Definition sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
+    SimSymb.sim_skenv sm0 msp.(ss) msp.(src).(ModSem.skenv) msp.(tgt).(ModSem.skenv).
+
   (* ####################### TODO: Rename initial_machine/final_machine into initial_frame/final_frame *)
   Inductive sim (msp: t): Prop :=
   | sim_intro
@@ -192,7 +195,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
           rs_init_src rs_init_tgt
           (RSREL: sm_init.(SimMem.sim_regset) rs_init_src rs_init_tgt)
           (WF: SimMem.wf sm_init)
-          (SIMSKENV: SimSymb.sim_skenv sm_init msp.(ss) msp.(src).(skenv) msp.(tgt).(skenv))
+          (SIMSKENV: sim_skenv msp sm_init)
         ,
           (<<INITSIM: forall
               st_init_tgt

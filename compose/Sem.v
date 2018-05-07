@@ -54,22 +54,37 @@ End Frame.
 Module Ge.
 
   (* NAMING: Consistency with SkEnv.t -> GEnv.t? but this is confusing with Genv *)
-  Record t: Type := mk {
-    mss: list ModSem.t;
-  }
-  .
+  (* Record t: Type := mk { *)
+  (*   mss: list ModSem.t; *)
+  (* } *)
+  (* . *)
 
-  Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=
+  Definition t: Type := list ModSem.t.
+
+  (* Note: nat is much more convenient in SimLoad. (find_fptr_owner bsim) && stating disjointness. *)
+  (* If needed, fefactor later to hide these details *)
+  Inductive find_fptr_owner (ge: t) (fptr: val) (n: nat): Prop :=
   | find_fptr_owner_intro
       blk
       (FPTR: fptr = Vptr blk Ptrofs.zero true)
-      (MODSEM: List.In ms ge.(mss))
+      ms
+      (MODSEM: List.nth_error ge n = Some ms)
       if_sig
       (INTERNAL: Genv.find_def ms.(ModSem.skenv) blk = Some (Gfun (Internal if_sig)))
   .
 
-  Definition no_fptr_owner (ge: t) (fptr: val): Prop :=
-    List.Forall (not <*> find_fptr_owner ge fptr) ge.(mss).
+  (* Definition no_fptr_owner (ge: t) (fptr: val): Prop := *)
+  (*   List.Forall (not <*> find_fptr_owner ge fptr) ge. *)
+
+  Inductive disjoint (ge: t): Prop :=
+  | disjoint_intro
+      (DISJOINT: forall
+          fptr n0 n1
+          (FIND0: ge.(find_fptr_owner) fptr n0)
+          (FIND1: ge.(find_fptr_owner) fptr n1)
+        ,
+          False)
+  .
 
 End Ge.
 
@@ -94,8 +109,8 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) fptr_arg rs_arg m_arg)
     (* id *)
     (* (IDFIND: ge.(Ge.skenv).(Genv.invert_symbol) fptr_arg = Some id) *)
-    ms
-    (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
+    n ms
+    (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms)
     sg_init
     (SIGFIND: ms.(ModSem.skenv).(Genv.find_funct) fptr_arg = Some (Internal sg_init))
     st_init
@@ -167,7 +182,7 @@ Section SEMANTICS.
 
   (* Definition init_genv: option Ge.t := *)
   (*   option_map (fun skenv => (Ge.mk skenv (init_modsem skenv))) init_skenv. *)
-  Definition load_genv (init_skenv: SkEnv.t): Ge.t := Ge.mk (load_modsems init_skenv).
+  Definition load_genv (init_skenv: SkEnv.t): Ge.t := (load_modsems init_skenv).
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
   Inductive initial_state: state -> Prop :=
@@ -180,8 +195,8 @@ Section SEMANTICS.
 
       fptr_arg
       (INITFPTR: Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero = fptr_arg)
-      ms
-      (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
+      n ms
+      (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms)
 
       rs_arg
       (INITREG: rs_arg = Pregmap.init Vundef)

@@ -278,57 +278,61 @@ End DEPRECATED.
   (*         skenv_src.(Genv.find_symbol) id = skenv_src.(Genv.find_symbol) id) *)
   (* . *)
 
+  Inductive sk_def_bsim (sk_src sk_tgt: Sk.t): Prop :=
+  | sk_def_bsim_intro
+      (DEFBSIM: forall
+          id def_tgt
+          (DEFTGT: sk_tgt.(prog_defmap) ! id = Some def_tgt)
+        ,
+          exists def_src, <<DEFSRC: sk_src.(prog_defmap) ! id = Some def_src>> /\
+                                    <<SIM: sim_def def_src def_tgt>>)
+  .
+
+
+(* I think this is the minimal spec required for lock-step modsem finding *)
+  Inductive skenv_def_bsim `{SimMem.class} (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop :=
+  | skenv_def_bsim_intro
+      (DEFBSIM: forall
+          blk_src blk_tgt delta def_tgt
+(* These statements are direct copy from Unusedglobproof.v - defs_rev_inject *)
+(* IMPORTANT!!!!!!!!! We should give UB if fptr is offset. So, we safely get src pointer's offset is zero. *)
+(* TODO: Do we need defs_inject too? *)
+(* TODO: Do similar things as delta on fakeness of ptr too? *)
+          (SIMFPTR: sm0.(SimMem.sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta true))
+          (DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt)
+        ,
+          exists def_src, <<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>> /\
+                          <<DELTA: delta = Ptrofs.zero>> /\
+                          <<SIM: sim_def def_src def_tgt>>)
+  .
+
   (* TODO: Try moving t into argument? sim_symb coercion gets broken and I don't know how to fix it. *)
   Class class (SM: SimMem.class) :=
     {
       t: Type;
-      coverage: t -> ident -> Prop;
-      (* wf := fun ss => all1 (ss.(kept) <1= ss.(coverage)); *)
-      (* wf: t -> Prop := fun ss => wf' ss.(sim_symb) ss.(privs); *)
-      (* closed (ss: t) (sk_src: Sk.t) (sk_tgt: Sk.t): Prop; *)
       linker :> Linker t;
-      (* TODO: Remove coverage!!!!!!!!! *)
-      link_success: forall
-          (ss0 ss1: t)
-          (DISJOINT: (ss0.(coverage) /1\ ss1.(coverage)) <1= bot1)
-        ,
-          exists ss_link, <<LINK: link ss0 ss1 = Some ss_link>>
-      ;
 
       sim_sk: t -> Sk.t -> Sk.t -> Prop;
-      sim_sk_sim_sk_weak: forall
-          ss sk_src sk_tgt
-          (SIMSK: sim_sk ss sk_src sk_tgt)
-          ,
-            <<SIMSK: sim_sk_weak ss.(coverage) sk_src sk_tgt>>
-      ;
-      link_preserves_sim_sk: forall
-          ss0 (sk_src0 sk_tgt0: Sk.t)
-          (CLOSED0: sim_sk ss0 sk_src0 sk_tgt0)
-          ss1 sk_src1 sk_tgt1
-          (CLOSED1: sim_sk ss1 sk_src1 sk_tgt1)
-          sk_src sk_tgt
-          (LINKSRC: link sk_src0 sk_src1 = Some sk_src)
-          (LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt)
-        ,
-          exists ss, <<LINKSS: link ss0 ss1 = Some ss>> /\ <<CLOSED: sim_sk ss sk_src sk_tgt>>
-      ;
-
-      (* link (ss0 ss1 ss_link: t): Prop; *)
-      (* link_spec: forall *)
-      (*     ss0 sk_src0 sk_tgt0 *)
-      (*     ss1 sk_src1 sk_tgt1 *)
-      (*     (WF0: wf ss0) *)
-      (*     (WF1: wf ss1) *)
-      (*     sk_link_src sk_link_tgt *)
-      (*     (LINKSRC: link sk_src0 sk_tgt0 = Some sk_link_src) *)
-      (*     (LINKTGT: link sk_tgt0 sk_tgt0 = Some sk_link_tgt) *)
+      (* Do we need this ? *)
+      (* sim_sk_def_bsim: forall *)
+      (*     ss sk_src sk_tgt *)
+      (*     (SIMSK: sim_sk ss sk_src sk_tgt) *)
       (*   , *)
-      (*     exists ss_link, (<<WF: wf ss_link>>) /\ *)
-      (*                     (<<LINK: link ss0 ss1 = Some ss_link>>) /\ *)
-      (*                     (<<EXACT0: link_exact_preserved ss0.(sim_symb) sk_src0 sk_tgt0 ss_link.(sim_symb)>>) /\ *)
-      (*                     (<<EXACT1: link_exact_preserved ss1.(sim_symb) sk_src1 sk_tgt1 ss_link.(sim_symb)>>) *)
+      (*     <<DEF: sk_def_bsim sk_src sk_tgt>> *)
       (* ; *)
+      sim_sk_link: forall
+          ss0 (sk_src0 sk_tgt0: Sk.t)
+          (SIMSK: sim_sk ss0 sk_src0 sk_tgt0)
+          ss1 sk_src1 sk_tgt1
+          (SIMSK: sim_sk ss1 sk_src1 sk_tgt1)
+          sk_src
+          (LINKSRC: link sk_src0 sk_src1 = Some sk_src)
+        ,
+          exists ss sk_tgt,
+            <<LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt>> /\
+            <<LINKSS: link ss0 ss1 = Some ss>> /\
+            <<SIMSK: sim_sk ss sk_src sk_tgt>>
+      ;
 
       sim_skenv: SimMem.t -> t -> SkEnv.t -> SkEnv.t -> Prop;
 
@@ -399,6 +403,13 @@ End DEPRECATED.
           (LETGT: skenv_link_tgt.(SkEnv.project) sk_tgt.(defs) skenv_tgt)
         ,
           <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>
+      ;
+
+      sim_skenv_def_bsim: forall
+          sm ss skenv_src skenv_tgt
+          (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)
+        ,
+          <<DEF: skenv_def_bsim sm skenv_src skenv_tgt>>
       ;
     }
   .

@@ -10,6 +10,13 @@ Set Implicit Arguments.
 
 
 
+Definition is_gvar F V (gd: globdef F V): bool :=
+  match gd with
+  | Gvar _ => true
+  | _ => false
+  end
+.
+
 (* I don't want it to be "AST.program"-dependent, because of Ctypes.program *)
 (* TODO: In high level, prog_public can be dropped, as the data is already linked. Is it really so? *)
 (* Definition flesh F V := list (ident * globdef F V)%type. *)
@@ -25,23 +32,50 @@ Module SkEnv.
   (* Defined. *)
 
   (* TODO: Is it OK to define it in Prop? I just need backward simulation of this. *)
-  Inductive project (skenv: t) (ids: ident -> Prop) (skenv_proj: t): Prop :=
+  Inductive project (skenv: t) (keep: ident -> Prop)
+            (skenv_proj: t): Prop :=
   | project_intro
       (* (PUBLIC: skenv_proj.(Genv.genv_public) = []) *)
       (* TODO: is this OK? Check if this info affects semantics except for linking *)
       (PUBLIC: skenv_proj.(Genv.genv_public) = skenv.(Genv.genv_public))
       (NEXT: skenv.(Genv.genv_next) = skenv_proj.(Genv.genv_next))
-      (PROJ: forall
+      (* (SYMBKEEP: forall *)
+      (*     id *)
+      (*     (KEEP: keep id) *)
+      (*     blk *)
+      (*     (BIG: skenv.(Genv.find_symbol) id = Some blk) *)
+      (*   , *)
+      (*     (<<SMALL: skenv_proj.(Genv.find_symbol) id = Some blk>>)) *)
+      (SYMBKEEP: forall
           id
-          (IN: ids id)
+          (KEEP: keep id)
         ,
-          (<<SYMB: skenv.(Genv.find_symbol) id = skenv_proj.(Genv.find_symbol) id>>))
-      (* TODO: I don't need def here. IT will be overwritten. *)
-      (NPROJ: forall
+          (<<KEEP: skenv_proj.(Genv.find_symbol) id = skenv.(Genv.find_symbol) id>>))
+      (SYMBDROP: forall
           id
-          (NIN: ~ ids id)
+          (DROP: ~ keep id)
         ,
           <<NONE: skenv_proj.(Genv.find_symbol) id = None>>)
+      (* (DEFKEEP: forall *)
+      (*     id blk *)
+      (*     (INV: skenv.(Genv.invert_symbol) blk = Some id) *)
+      (*     (KEEP: keep id) *)
+      (*     gd *)
+      (*     (BIG: skenv.(Genv.find_def) id = Some gd) *)
+      (*   , *)
+      (*     <<SMALL: skenv_proj.(Genv.find_def) id = Some gd>>) *)
+      (DEFKEEP: forall
+          id blk
+          (INV: skenv.(Genv.invert_symbol) blk = Some id)
+          (KEEP: keep id)
+        ,
+          <<SMALL: skenv_proj.(Genv.find_def) id = skenv.(Genv.find_def) id>>)
+      (DEFDROP: forall
+          id blk
+          (INV: skenv.(Genv.invert_symbol) blk = Some id)
+          (DROP: ~ keep id)
+        ,
+          <<SMALL: skenv.(Genv.find_def) id = None>>)
   .
 
   (* Definition project (skenv: t) (ids: list ident): option SkEnv.t. *)

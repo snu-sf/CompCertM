@@ -69,7 +69,7 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
         exists blk_src,
           <<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>
            /\ <<SIM: SimMem.sim_val sm0 (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)>>
-             (* /\ <<KEPT: ss.(kept) id>> *)
+             (* /\ <<KEPT: ss.(kept) id>> <---------- This can be obtained via SIMSYMB1. *)
     )
     (SIMDEF: forall
           blk_src blk_tgt delta def_tgt
@@ -135,7 +135,8 @@ Next Obligation.
 (* THIS IS TOP *)
   inv SIMSKENV. ss.
   econs; eauto; ii; ss.
-  - inv LESRC.
+  -
+    inv LESRC.
     destruct (classic (defs sk_src id)); cycle 1.
     { exfalso. exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro KEEP; des.
@@ -146,17 +147,25 @@ Next Obligation.
     destruct (classic (defs sk_tgt id)); cycle 1.
     { erewrite SYMBDROP0; ss.
       exfalso.
-      clear - H H0 SIMSK.
+      clear - LE KEPT H H0 SIMSK.
       inv SIMSK.
       apply H0.
       u.
       destruct (classic (ss id)); cycle 1.
-      - erewrite KEPT; ss.
-      - !!!!!!!!!!!!!!!!! Somehow we need to know that, dropped ids are not in injection.
+      - erewrite KEPT0; ss.
+      - exfalso. apply KEPT. eauto.
     }
-      clear - SIMSK. admit "". }
     erewrite SYMBKEEP0; ss.
+    esplits; eauto.
   -
+    inv LESRC.
+    destruct (classic (defs sk_src id)); cycle 1.
+    { exfalso. exploit SYMBDROP; eauto. i; des. clarify. }
+    exploit SYMBKEEP; eauto. intro KEEP; des.
+
+    exploit SIMSYMB2; eauto.
+    { ************ Somehow we need to know: ss_link - ss are all outside of sk_src. }
+    esplits; eauto.
 Qed.
 Next Obligation.
   inv SIMSKENV.

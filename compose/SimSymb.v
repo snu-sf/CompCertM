@@ -312,6 +312,16 @@ End DEPRECATED.
       t: Type;
       le: t -> Sk.t -> Sk.t -> t -> Prop;
 
+      le_trans: forall
+          ss0 sk_src0 sk_tgt0 ss1 sk_src1 sk_tgt1 ss2
+          (LE0: le ss0 sk_src0 sk_tgt0 ss1)
+          (LE1: le ss1 sk_src1 sk_tgt1 ss2)
+          (LINKORD0: linkorder sk_src0 sk_src1)
+          (LINKORD1: linkorder sk_tgt0 sk_tgt1)
+        ,
+          <<LE: le ss0 sk_src0 sk_tgt0 ss2>>
+      ;
+
       sim_sk: t -> Sk.t -> Sk.t -> Prop;
       (* Do we need this ? *)
       (* sim_sk_def_bsim: forall *)

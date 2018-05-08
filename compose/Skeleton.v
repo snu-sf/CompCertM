@@ -69,13 +69,18 @@ Module SkEnv.
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
           (KEEP: keep id)
         ,
-          <<SMALL: skenv_proj.(Genv.find_def) id = skenv.(Genv.find_def) id>>)
+          <<SMALL: skenv_proj.(Genv.find_def) blk = skenv.(Genv.find_def) blk>>)
       (DEFDROP: forall
           id blk
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
           (DROP: ~ keep id)
         ,
-          <<SMALL: skenv.(Genv.find_def) id = None>>)
+          <<SMALL: skenv.(Genv.find_def) blk = None>>)
+      (DEFORPHAN: forall (* TODO: is it needed? *)
+          blk
+          (INV: skenv.(Genv.invert_symbol) blk = None)
+        ,
+          <<SMALL: skenv_proj.(Genv.find_def) blk = None>>)
   .
 
   (* Definition project (skenv: t) (ids: list ident): option SkEnv.t. *)

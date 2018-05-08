@@ -125,6 +125,46 @@ Next Obligation.
 Qed.
 
 
+Lemma linkorder_defs
+      F V
+      `{Linker F} `{Linker V}
+      (p0 p1: AST.program F V)
+      (LINKORD: linkorder p0 p1)
+  :
+    <<DEFS: p0.(defs) <1= p1.(defs)>>
+.
+Proof.
+  inv LINKORD.
+  ii. u in PR. des.
+  exploit H3; eauto.
+  i; des.
+  u.
+  esplits; eauto.
+Qed.
+
+Lemma Genv_invert_symbol_none_spec
+      F V
+      (ge: Genv.t F V)
+      b
+  :
+    <<INV: Genv.invert_symbol ge b = None>> <-> <<FIND: forall id, Genv.find_symbol ge id <> Some b>>
+.
+Proof.
+  unfold Genv.find_symbol, Genv.invert_symbol in *.
+  abstr (Genv.genv_symb ge) tree.
+  split; i; des; red.
+  - generalize dependent H.
+    eapply PTree_Properties.fold_rec; ii; ss; clarify.
+    + eapply H0; eauto. erewrite H; eauto.
+    + erewrite PTree.gempty in H0. ss.
+    + des_ifs.
+      rewrite PTree.gsspec in *. des_ifs.
+      eapply H1; eauto.
+  -
+    eapply PTree_Properties.fold_rec; ii; ss; clarify.
+    des_ifs.
+    contradict H. ii. eapply H; eauto.
+Qed.
 
 Global Program Instance SimSymbDrop: SimSymb.class SimMemInj := {
   t := t';
@@ -144,6 +184,19 @@ Global Program Instance SimSymbDrop: SimSymb.class SimMemInj := {
 (*     reflexivity. *)
 (* Qed. *)
 Next Obligation.
+  inv LE0. inv LE1.
+  econs; eauto.
+  ii; des.
+  specialize (OUTSIDE id).
+  specialize (OUTSIDE0 id).
+  destruct (classic (ss1 id)).
+  - exploit OUTSIDE; eauto.
+  - exploit OUTSIDE0; eauto. i; des.
+    hexploit (linkorder_defs LINKORD0); eauto. i; des.
+    hexploit (linkorder_defs LINKORD1); eauto. i; des.
+    esplits; eauto.
+Qed.
+Next Obligation.
   admit "See 'link_match_program' in Unusedglobproof.v.
 Note that we have one more goal (exists ss) but it is OK, as the 'link_match_program' proof already proves it.".
 Qed.
@@ -157,6 +210,7 @@ Next Obligation.
 (* THIS IS TOP *)
   inv SIMSKENV. ss.
   econs; eauto; ii; ss.
+
   -
     inv LESRC.
     destruct (classic (defs sk_src id)); cycle 1.
@@ -170,8 +224,8 @@ Next Obligation.
     { erewrite SYMBDROP0; ss.
       exfalso.
       clear - LE KEPT H H0 SIMSK.
+      apply H0. clear H0.
       inv SIMSK.
-      apply H0.
       u.
       destruct (classic (ss id)); cycle 1.
       - erewrite KEPT0; ss.
@@ -186,15 +240,72 @@ Next Obligation.
       apply NNPP. ii.
       exploit OUTSIDE; eauto. { split; eauto. }
     }
+
+
   -
     inv LESRC.
     destruct (classic (defs sk_src id)); cycle 1.
     { exfalso. exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro KEEP; des.
 
-    exploit SIMSYMB2; eauto.
-    { ************ Somehow we need to know: ss_link - ss are all outside of sk_src. }
+    rewrite KEEP in *.
+    exploit (SIMSYMB2 id); eauto.
+    { inv LE. ii. eapply KEPT. specialize (OUTSIDE id).
+      exploit OUTSIDE; eauto. i; des. ss.
+    }
+    i; des.
     esplits; eauto.
+
+    inv LETGT.
+    erewrite SYMBKEEP0; ss.
+    destruct (classic (defs sk_tgt id)); ss.
+    { exfalso.
+      clear - LE KEPT H H0 SIMSK.
+      apply H0. clear H0.
+      inv SIMSK.
+      u.
+      destruct (classic (ss id)); cycle 1.
+      - erewrite KEPT0; ss.
+      - exfalso. apply KEPT. ss.
+    }
+
+  -
+    inv LETGT.
+    destruct (classic (defs sk_tgt id)); cycle 1. 
+    { exploit SYMBDROP; eauto. i; des. clarify. }
+
+    erewrite SYMBKEEP in *; ss.
+    exploit SIMSYMB3; eauto. i; des.
+    esplits; eauto.
+
+    inv LESRC.
+    erewrite SYMBKEEP0; ss.
+
+    { clear - H SIMSK.
+      inv SIMSK.
+      u. u in H. des.
+      destruct (classic (ss id)); ss.
+      { erewrite DROP in *; ss. }
+      exploit KEPT; eauto. i; des. rewrite <- H1. esplits; eauto.
+    }
+
+  -
+    inv LETGT.
+    assert(Genv.find_def skenv_link_tgt blk_tgt = Some def_tgt).
+    {
+      destruct (Genv.invert_symbol skenv_link_tgt blk_tgt) eqn:T.
+      - erewrite <- DEFKEEP; eauto.
+        apply Genv.invert_find_symbol in T.
+        apply NNPP; ii. exploit SYMBDROP; eauto. i; des. admit "wf?".
+      - exploit DEFORPHAN; eauto. i; des. clarify.
+    }
+    { dup T. eapply Genv_invert_symbol_none_spec in T. des.
+
+      exploit DEFORPHAN; eauto.
+
+      ********************* We might need wf condition on skenv. is it real?
+    }
+    exploit DEFDROP; eauto.
 Qed.
 Next Obligation.
   inv SIMSKENV.

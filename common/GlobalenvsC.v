@@ -24,11 +24,11 @@ Section MAP.
   Variable F1 V1 F2 V2: Type.
 
   Program Definition Genv_map_defs (ge0: Genv.t F1 V1)
-          (f: globdef F1 V1 -> option (globdef F2 V2)): Genv.t F2 V2 :=
+          (f: block -> globdef F1 V1 -> option (globdef F2 V2)): Genv.t F2 V2 :=
   {|
     Genv.genv_public := ge0.(Genv.genv_public);
     Genv.genv_symb := ge0.(Genv.genv_symb);
-    Genv.genv_defs := ge0.(Genv.genv_defs).(PTree_filter_map (fun _ => f));
+    Genv.genv_defs := ge0.(Genv.genv_defs).(PTree_filter_map f);
     Genv.genv_next := ge0.(Genv.genv_next);
   |}
   .

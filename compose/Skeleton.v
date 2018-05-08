@@ -41,10 +41,6 @@ Module SkEnv.
        <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>>)
   .
 
-  (* Definition project F V (skenv: t) (fl: flesh F V): option (Genv.t F V). *)
-  (*   admit "". *)
-  (* Defined. *)
-
   (* TODO: Is it OK to define it in Prop? I just need backward simulation of this. *)
   Inductive project (skenv: t) (keep: ident -> Prop)
             (skenv_proj: t): Prop :=
@@ -89,13 +85,43 @@ Module SkEnv.
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
           (DROP: ~ keep id)
         ,
-          <<SMALL: skenv.(Genv.find_def) blk = None>>)
+          <<SMALL: skenv_proj.(Genv.find_def) blk = None>>)
       (DEFORPHAN: forall (* TODO: is it needed? *)
           blk
           (INV: skenv.(Genv.invert_symbol) blk = None)
         ,
           <<SMALL: skenv_proj.(Genv.find_def) blk = None>>)
   .
+
+  (* NOTE: it is total function! This is helpful because we don't need to state bsim of this, like
+"(PROGRESS: project src succed -> project tgt succeed) /\ (BSIM: project tgt ~ projet src)".
+I think "sim_skenv_monotone" should be sufficient.
+   *)
+  Definition project_impl (skenv: t) (keep: ident -> bool): t :=
+    (skenv.(Genv_filter_symb) (fun id => keep id))
+    .(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk; assertion(keep id); Some gd))
+  .
+
+  Lemma project_impl_spec
+        skenv keep skenv_proj
+        (PROJ: project_impl skenv keep = skenv_proj)
+    :
+      <<PROJ: project skenv keep skenv_proj>>
+  .
+  Proof.
+    unfold project_impl in *. ss.
+    repeat autounfold with * in PROJ; cbn in PROJ.
+    des_ifs.
+    econs; eauto; unfold Genv.find_symbol, Genv.find_def, Genv_map_defs in *; ss; ii.
+    - rewrite PTree_filter_key_spec. des_ifs.
+    - rewrite PTree_filter_key_spec. des_ifs.
+    - rewrite PTree_filter_map_spec. des_ifs.
+      u. des_ifs.
+    - rewrite PTree_filter_map_spec. des_ifs.
+      u. des_ifs.
+    - rewrite PTree_filter_map_spec. des_ifs.
+      u. des_ifs.
+  Qed.
 
   Lemma project_preserves_wf
         skenv
@@ -140,7 +166,7 @@ Module SkEnv.
   .
 
   Definition drop_external_defs (skenv: t): t :=
-    skenv.(Genv_map_defs) (fun gd => assertion (negb (is_external gd)); Some gd)
+    skenv.(Genv_map_defs) (fun _ gd => assertion (negb (is_external gd)); Some gd)
   .
 
   Print Genv.public_symbol.

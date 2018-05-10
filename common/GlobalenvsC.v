@@ -33,7 +33,7 @@ Section MAP.
   |}
   .
   Next Obligation. eapply Genv.genv_symb_range; eauto. Qed.
-  Next Obligation. rewrite PTree_filter_map_spec in H. u. des_ifs. eapply Genv.genv_defs_range; eauto. Qed.
+  Next Obligation. rewrite PTree_filter_map_spec in H. u in *. des_ifs. eapply Genv.genv_defs_range; eauto. Qed.
   Next Obligation. eapply Genv.genv_vars_inj; eauto. Qed.
 
   (* Note: genv_defs will have spurious data, but this is actually Compcert's interpretation. *)

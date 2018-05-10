@@ -24,8 +24,8 @@ Module SimSymb.
   | link_exact_preserved_intro
       (EXACT: forall
           id_src id_tgt
-          (SRCIN: sk_src.(privs) id_src)
-          (TGTIN: sk_tgt.(privs) id_tgt)
+          (SRCIN: sk_src.(privs_old) id_src)
+          (TGTIN: sk_tgt.(privs_old) id_tgt)
         ,
           <<EXACT: ss0 id_src id_tgt <-> ss_linked id_src id_tgt>>)
   .
@@ -56,13 +56,13 @@ Module SimSymb.
           y0 = y1)
   .
 
-  Inductive wf' (sim_symb: ident -> ident -> Prop) (privs: ident -> Prop) :=
+  Inductive wf' (sim_symb: ident -> ident -> Prop) (privs_old: ident -> Prop) :=
   | wf_intro
       (CLOSED: forall
           id_src id_tgt
           (SIM: sim_symb id_src id_tgt)
         ,
-          <<SRC: privs id_src>> /\ <<TGT: privs id_tgt>>)
+          <<SRC: privs_old id_src>> /\ <<TGT: privs_old id_tgt>>)
       (INJ: injective_rel sim_symb)
   .
 
@@ -74,8 +74,8 @@ Module DEPRECATED.
   | sim_sk_weak_intro
       (WF: (kept <1= coverage))
       (* We can pull "WF" out, it dosen't require sk_src/sk_tgt. But is it meaningful? *)
-      (INSRC: (coverage <1= sk_src.(privs)))
-      (INTGT: (coverage <1= sk_tgt.(privs)))
+      (INSRC: (coverage <1= sk_src.(privs_old)))
+      (INTGT: (coverage <1= sk_tgt.(privs_old)))
       (* Is both are needed? *)
       (NOCOVER: forall
           id
@@ -157,9 +157,9 @@ End DEPRECATED.
 
   Inductive sim_sk_weak (coverage: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
   | sim_sk_weak_intro
-      (* (INSRC: (coverage <1= sk_src.(privs))) *)
-      (COVERAGE: (coverage <1= sk_tgt.(privs)))
-      (PRIVS: sk_tgt.(privs) <1= sk_src.(privs))
+      (* (INSRC: (coverage <1= sk_src.(privs_old))) *)
+      (COVERAGE: (coverage <1= sk_tgt.(privs_old)))
+      (PRIVS_OLD: sk_tgt.(privs_old) <1= sk_src.(privs_old))
       (NOCOVER: forall
           id
           (PUBS: ~ coverage id)
@@ -402,6 +402,8 @@ End DEPRECATED.
       (* TODO: Can we separate sim_skenv_monotone_skenv, like sim_skenv_monotone_ss? *)
       sim_skenv_monotone: forall
           sm ss_link skenv_link_src skenv_link_tgt
+          (WFSRC: SkEnv.wf skenv_link_src)
+          (WFTGT: SkEnv.wf skenv_link_tgt)
           (SIMSKENV: sim_skenv sm ss_link skenv_link_src skenv_link_tgt)
           (* F_src V_src F_tgt V_tgt *)
           (* (flesh_src: list (ident * globdef (AST.fundef F_src) V_src)) *)
@@ -410,8 +412,8 @@ End DEPRECATED.
           (SIMSK: sim_sk ss sk_src sk_tgt)
           (LE: le ss sk_src sk_tgt ss_link)
           skenv_src skenv_tgt
-          (LESRC: skenv_link_src.(SkEnv.project) sk_src.(defs) skenv_src)
-          (LETGT: skenv_link_tgt.(SkEnv.project) sk_tgt.(defs) skenv_tgt)
+          (LESRC: SkEnv.project_spec skenv_link_src sk_src.(defs) skenv_src)
+          (LETGT: SkEnv.project_spec skenv_link_tgt sk_tgt.(defs) skenv_tgt)
         ,
           <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>
       ;
@@ -472,8 +474,8 @@ End SimSymb.
 (* Inductive closed `{SimSymb.class} (ss: SimSymb.t) (sk_src sk_tgt: Sk.t): Prop := *)
 (* | closed_intro *)
 (*     (WF: SimSymb.wf ss) *)
-(*     (INSRC: all1 (ss.(SimSymb.coverage) <1= sk_src.(privs))) *)
-(*     (INTGT: all1 (ss.(SimSymb.coverage) <1= sk_tgt.(privs))) *)
+(*     (INSRC: all1 (ss.(SimSymb.coverage) <1= sk_src.(privs_old))) *)
+(*     (INTGT: all1 (ss.(SimSymb.coverage) <1= sk_tgt.(privs_old))) *)
 (*     (NOCOVER: forall *)
 (*         id *)
 (*         (PUBS: ~ ss.(SimSymb.coverage) id) *)

@@ -145,15 +145,27 @@ I think the same is true for prog_public thing too.
    ***)
   .
 
-  Definition defs: ident -> Prop := fun id => exists gd, p.(prog_defmap)!id = Some gd.
+  Definition defs: ident -> bool := fun id => In_dec ident_eq id p.(prog_defs_names).
+  Check (defs: ident -> Prop).
+  Definition defs_old: ident -> Prop := fun id => exists gd, p.(prog_defmap)!id = Some gd.
+  Goal defs <1= defs_old.
+  Proof.
+    ii. exploit prog_defmap_dom; eauto. inv PR.
+    unfold defs in *. 
+    des_sumbool; ss.
+  Qed.
 
-  Definition privs: ident -> Prop :=
-    <<DEFS: defs>> /1\ <<PRIVS: (fun id => ~ In id p.(prog_public))>>
+  Definition privs: ident -> bool :=
+    fun id => andb (<<DEFS: defs id>>) (<<PRIVS: negb (In_dec ident_eq id p.(prog_public))>>)
+    (* fun id => andb (<<DEFS: defs id>>) (<<PRIVS: negb (In_dec ident_eq id p.(prog_public))>>) *)
+  .
+  Definition privs_old: ident -> Prop :=
+    <<DEFS: defs_old>> /1\ <<PRIVS: (fun id => ~ In id p.(prog_public))>>
   .
 
-  Lemma privs_defs
+  Lemma privs_defs_old
     :
-      <<LE: (privs <1= defs)>>
+      <<LE: (privs_old <1= defs_old)>>
   .
   Proof.
     ii. inv PR. eauto.
@@ -162,6 +174,7 @@ I think the same is true for prog_public thing too.
 End PROGRAMS.
 
 Hint Unfold defs privs.
+Hint Unfold defs_old privs_old.
 
 (* Only "is_internal" defs will remain in ModSem-SkEnv/Genv. *)
 (* Note: Other module's gvar will flow in. Is it OK? *)
@@ -174,4 +187,21 @@ Definition is_internal (skd: globdef (AST.fundef (option signature)) unit): bool
   | Gvar _ => true
   end
 .
+
+Lemma prog_defmap_spec
+      F V
+      (p: program F V)
+      id
+  :
+    In id p.(prog_defs_names) <-> exists g, p.(prog_defmap) ! id = Some g
+.
+Proof.
+  split; ii.
+  - exploit prog_defmap_dom; eauto.
+  - des. exploit in_prog_defmap; eauto. i.
+    clear - H0.
+    destruct p; ss.
+    u.
+    apply in_map_iff. esplits; eauto. ss.
+Qed.
 

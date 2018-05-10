@@ -41,10 +41,9 @@ Module SkEnv.
        <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>>)
   .
 
-  (* TODO: Is it OK to define it in Prop? I just need backward simulation of this. *)
-  Inductive project (skenv: t) (keep: ident -> Prop)
+  Inductive project_spec (skenv: t) (keep: ident -> Prop)
             (skenv_proj: t): Prop :=
-  | project_intro
+  | project_spec_intro
       (* (PUBLIC: skenv_proj.(Genv.genv_public) = []) *)
       (* TODO: is this OK? Check if this info affects semantics except for linking *)
       (PUBLIC: skenv_proj.(Genv.genv_public) = skenv.(Genv.genv_public))
@@ -97,19 +96,19 @@ Module SkEnv.
 "(PROGRESS: project src succed -> project tgt succeed) /\ (BSIM: project tgt ~ projet src)".
 I think "sim_skenv_monotone" should be sufficient.
    *)
-  Definition project_impl (skenv: t) (keep: ident -> bool): t :=
+  Definition project (skenv: t) (keep: ident -> bool): t :=
     (skenv.(Genv_filter_symb) (fun id => keep id))
     .(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk; assertion(keep id); Some gd))
   .
 
   Lemma project_impl_spec
         skenv keep skenv_proj
-        (PROJ: project_impl skenv keep = skenv_proj)
+        (PROJ: project skenv keep = skenv_proj)
     :
-      <<PROJ: project skenv keep skenv_proj>>
+      <<PROJ: project_spec skenv keep skenv_proj>>
   .
   Proof.
-    unfold project_impl in *. ss.
+    unfold project in *. ss.
     repeat autounfold with * in PROJ; cbn in PROJ.
     des_ifs.
     econs; eauto; unfold Genv.find_symbol, Genv.find_def, Genv_map_defs in *; ss; ii.
@@ -123,11 +122,11 @@ I think "sim_skenv_monotone" should be sufficient.
       u. des_ifs.
   Qed.
 
-  Lemma project_preserves_wf
+  Lemma project_spec_preserves_wf
         skenv
         (WF: wf skenv)
         keep skenv_proj
-        (PROJ: project skenv keep skenv_proj)
+        (PROJ: project_spec skenv keep skenv_proj)
     :
       <<WF: wf skenv_proj>>
   .

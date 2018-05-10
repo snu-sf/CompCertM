@@ -110,11 +110,11 @@ Inductive link_prog_spec (p: program F V): Prop :=
     (SMALLHIT: (forall id,
                    (exists gd1, dm1!id = Some gd1) \/ (exists gd2, dm2!id = Some gd2) ->
                    exists gd, p.(prog_defmap)!id = Some gd))
-    (PRIVSPEC0: (forall id,
-                    p1.(privs) id ->
+    (PRIVS_OLDPEC0: (forall id,
+                    p1.(privs_old) id ->
                     p.(prog_defmap)!id = dm1!id /\ dm2!id = None))
-    (PRIVSPEC1: (forall id,
-                    p2.(privs) id ->
+    (PRIVS_OLDPEC1: (forall id,
+                    p2.(privs_old) id ->
                     p.(prog_defmap)!id = dm2!id /\ dm1!id = None))
 .
 
@@ -180,7 +180,7 @@ Proof.
     ss.
     Local Opaque Linker_prog.
     des.
-    u; des.
+    u in *; des.
     split; ss.
     - exploit ORD4; eauto. i; des.
       rewrite H. rewrite H1; ss.
@@ -201,7 +201,7 @@ Proof.
     ss.
     Local Opaque Linker_prog.
     des.
-    u; des.
+    u in *; des.
     split; ss.
     - exploit ORD2; eauto. i; des.
       rewrite H. rewrite H1; ss.
@@ -220,13 +220,13 @@ Corollary link_prog_private_exclusive
           p
           (LINK: link_prog p1 p2 = Some p)
           id
-          (PRIV1: p1.(privs) id)
-          (PRIV2: p2.(privs) id)
+          (PRIV1: p1.(privs_old) id)
+          (PRIV2: p2.(privs_old) id)
   :
     False
 .
 Proof.
-  u.
+  u in *.
   des.
   hexploit (link_prog_inv LINK). intro LINKSPEC; inv LINKSPEC.
   exploit BOTHHIT; eauto. i; des. clarify.
@@ -236,12 +236,12 @@ Lemma link_prog_private_rev
       p
       (LINK: link_prog p1 p2 = Some p)
   :
-    forall id, p.(privs) id -> p1.(privs) id \/ p2.(privs) id
+    forall id, p.(privs_old) id -> p1.(privs_old) id \/ p2.(privs_old) id
 .
 Proof.
   hexploit (link_prog_inv LINK). intro LINKSPEC; inv LINKSPEC.
   i.
-  u. des.
+  u in *. des.
   rewrite PUBLIC in *.
   exploit LARGEHIT; eauto. i; des.
   - left; esplits; eauto.
@@ -256,13 +256,13 @@ Lemma link_prog_private
       (GOOD1: good_prog p1)
       (GOOD2: good_prog p2)
   :
-    forall id, p1.(privs) id \/ p2.(privs) id -> p.(privs) id
+    forall id, p1.(privs_old) id \/ p2.(privs_old) id -> p.(privs_old) id
 .
 Proof.
   hexploit (link_prog_inv LINK). intro LINKSPEC; inv LINKSPEC.
   (* apply Axioms.functional_extensionality. i. *)
   (* rewrite ClassicalFacts.prop_extensionality. *)
-  i. u; ss.
+  i. u in *; ss.
   unfold prog_defmap in *; ss.
   rewrite PUBLIC in *.
   des.
@@ -307,7 +307,7 @@ Lemma link_prog_private_eq
       (GOOD1: good_prog p1)
       (GOOD2: good_prog p2)
   :
-    p.(privs) = (p1.(privs) \1/ p2.(privs))
+    p.(privs_old) = (p1.(privs_old) \1/ p2.(privs_old))
 .
 Proof.
   symmetry.

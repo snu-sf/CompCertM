@@ -22,7 +22,7 @@ Section SYSMODSEM.
   Definition genvtype: Type := Genv.t external_function unit.
 
   Definition globalenv: genvtype :=
-    skenv_link.(Genv_map_defs) (fun gd =>
+    skenv_link.(Genv_map_defs) (fun _ gd =>
                                   match gd with
                                   | Gfun (External ef) => Some (Gfun ef)
                                   | Gfun _ => None
@@ -93,17 +93,20 @@ Section SYSMODSEM.
 
 End SYSMODSEM.
 
-Section SYSMOD.
 
-  Variable prog_main: ident.
 
-  Program Definition mod: Mod.t := {|
-    Mod.datatype := unit;
-    Mod.get_sk := fun _ => (mkprogram [] [] prog_main);
-    Mod.get_modsem := fun skenv _ => modsem skenv;
-    Mod.data := tt;
-  |}
-  .
 
-End SYSMOD.
+(* Section SYSMOD. *)
+
+(*   Variable prog_main: ident. *)
+
+(*   Program Definition mod: Mod.t := {| *)
+(*     Mod.datatype := unit; *)
+(*     Mod.get_sk := fun _ => (mkprogram [] [] prog_main); *)
+(*     Mod.get_modsem := fun skenv _ => modsem skenv; *)
+(*     Mod.data := tt; *)
+(*   |} *)
+(*   . *)
+
+(* End SYSMOD. *)
 

@@ -204,10 +204,6 @@ Notation "p =4= q" := (fun x0 x1 x2 x3 => eq (p x0 x1 x2 x3) (q x0 x1 x2 x3)) (a
 (* Notation "<< x : t >>" := (NW (fun x => (t))) (at level 80, x ident, no associativity). *)
 
 
-Print Ltac uf.
-Ltac u := repeat (autounfold with * in *; cbn in *).
-(* TODO add in sflib *)
-
 Hint Unfold Basics.compose.
 
 
@@ -309,4 +305,64 @@ Open Scope o_monad_scope.
 Ltac subst_locals := all ltac:(fun H => is_local_definition H; subst H).
 
 Hint Unfold flip.
+
+Notation "p -1 q" := (p /1\ ~1 q) (at level 50).
+Notation "p -2 q" := (p /2\ ~2 q) (at level 50).
+Notation "p -3 q" := (p /3\ ~3 q) (at level 50).
+Notation "p -4 q" := (p /4\ ~4 q) (at level 50).
+
+Print Ltac uf.
+Tactic Notation "u" "in" hyp(H) := repeat (autounfold with * in H; cbn in H).
+Tactic Notation "u" := repeat (autounfold with *; cbn).
+Tactic Notation "u" "in" "*" := repeat (autounfold with * in *; cbn in *).
+
+Lemma dependent_split_right
+      (A B: Prop)
+      (PA: A)
+      (PB: <<HINTLEFT: A>> -> B)
+  :
+    <<PAB: A /\ B>>
+.
+Proof. eauto. Qed.
+
+Lemma dependent_split_left
+      (A B: Prop)
+      (PA: <<HINTRIGHT: B>> -> A)
+      (PB: B)
+  :
+    <<PAB: A /\ B>>
+.
+Proof. eauto. Qed.
+
+Ltac dsplit_r := eapply dependent_split_right.
+Ltac dsplit_l := eapply dependent_split_left.
+Ltac dsplits :=
+  repeat (let NAME := fresh "SPLITHINT" in try (dsplit_r; [|intro NAME]))
+.
+
+Locate des_sumbool.
+(* TODO: Update Coqlib *)
+Lemma proj_sumbool_is_false
+      P
+      (a: {P} + {~ P})
+      (FALSE: ~ P)
+  :
+    <<FALSE: proj_sumbool a = false>>
+.
+Proof. unfold proj_sumbool. des_ifs. Qed.
+
+Ltac des_sumbool :=
+  repeat
+    match goal with
+    | [ H: proj_sumbool ?x = true |- _ ] => apply proj_sumbool_true in H
+    | [ H: proj_sumbool ?x = false |- _ ] => apply proj_sumbool_false in H
+    | [ H: true = proj_sumbool ?x |- _ ] => symmetry in H; apply proj_sumbool_true in H
+    | [ H: false = proj_sumbool ?x |- _ ] => symmetry in H; apply proj_sumbool_false in H
+
+    | [ |- proj_sumbool ?x = true ] => apply proj_sumbool_is_true
+    | [ |- proj_sumbool ?x = false ] => apply proj_sumbool_is_false
+    | [ |- true = proj_sumbool ?x ] => symmetry; apply proj_sumbool_is_true
+    | [ |- false = proj_sumbool ?x ] => symmetry; apply proj_sumbool_is_false
+    end
+.
 

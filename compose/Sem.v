@@ -63,28 +63,38 @@ Module Ge.
 
   (* Note: nat is much more convenient in SimLoad. (find_fptr_owner bsim) && stating disjointness. *)
   (* If needed, fefactor later to hide these details *)
-  Inductive find_fptr_owner (ge: t) (fptr: val) (n: nat): Prop :=
+
+  Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=
   | find_fptr_owner_intro
       blk
       (FPTR: fptr = Vptr blk Ptrofs.zero true)
-      ms
-      (MODSEM: List.nth_error ge n = Some ms)
+      (MODSEM: In ms ge)
       if_sig
       (INTERNAL: Genv.find_def ms.(ModSem.skenv) blk = Some (Gfun (Internal if_sig)))
   .
 
+  (* Inductive find_fptr_owner (ge: t) (fptr: val) (n: nat): Prop := *)
+  (* | find_fptr_owner_intro *)
+  (*     blk *)
+  (*     (FPTR: fptr = Vptr blk Ptrofs.zero true) *)
+  (*     ms *)
+  (*     (MODSEM: List.nth_error ge n = Some ms) *)
+  (*     if_sig *)
+  (*     (INTERNAL: Genv.find_def ms.(ModSem.skenv) blk = Some (Gfun (Internal if_sig))) *)
+  (* . *)
+
   (* Definition no_fptr_owner (ge: t) (fptr: val): Prop := *)
   (*   List.Forall (not <*> find_fptr_owner ge fptr) ge. *)
 
-  Inductive disjoint (ge: t): Prop :=
-  | disjoint_intro
-      (DISJOINT: forall
-          fptr n0 n1
-          (FIND0: ge.(find_fptr_owner) fptr n0)
-          (FIND1: ge.(find_fptr_owner) fptr n1)
-        ,
-          False)
-  .
+  (* Inductive disjoint (ge: t): Prop := *)
+  (* | disjoint_intro *)
+  (*     (DISJOINT: forall *)
+  (*         fptr n0 n1 *)
+  (*         (FIND0: ge.(find_fptr_owner) fptr n0) *)
+  (*         (FIND1: ge.(find_fptr_owner) fptr n1) *)
+  (*       , *)
+  (*         False) *)
+  (* . *)
 
 End Ge.
 
@@ -109,8 +119,10 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) fptr_arg rs_arg m_arg)
     (* id *)
     (* (IDFIND: ge.(Ge.skenv).(Genv.invert_symbol) fptr_arg = Some id) *)
-    n ms
-    (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms)
+    (* n ms *)
+    (* (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms) *)
+    ms
+    (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
     sg_init
     (SIGFIND: ms.(ModSem.skenv).(Genv.find_funct) fptr_arg = Some (Internal sg_init))
     st_init
@@ -195,8 +207,10 @@ Section SEMANTICS.
 
       fptr_arg
       (INITFPTR: Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero = fptr_arg)
-      n ms
-      (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms)
+      (* n ms *)
+      (* (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms) *)
+      ms
+      (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
 
       rs_arg
       (INITREG: rs_arg = Pregmap.init Vundef)

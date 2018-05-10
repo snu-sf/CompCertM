@@ -15,7 +15,7 @@ Require Import LinkingC.
 
 Require Import Program.
 Require Import Syntax Sem Mod ModSem.
-Require Import SimSymb SimMem SimModSem SimMod SimProg Ord.
+Require Import SimDef SimSymb SimMem SimModSem SimMod SimProg Ord.
 
 Set Implicit Arguments.
 
@@ -44,8 +44,8 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
       (SIMMSS: List.Forall (ModSemPair.sim) lp.(msps))
       (IDX: List.Forall (fun msp => msp.(ModSemPair.idx) = lp.(idx)) lp.(msps))
       (ORD: List.Forall (fun msp => msp.(ModSemPair.ord) ~= lp.(ord)) lp.(msps))
-      (DISJSRC: lp.(ge_src).(Ge.disjoint))
-      (DISJTGT: lp.(ge_src).(Ge.disjoint))
+      (* (DISJSRC: lp.(ge_src).(Ge.disjoint)) *)
+      (* (DISJTGT: lp.(ge_src).(Ge.disjoint)) *)
   .
 
   (* Definition src (lp: t): Ge.t := (Ge.mk lp.(skenv_src) (List.map (ModSemPair.src) lp.(msps))). *)
@@ -77,14 +77,18 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
       apply Forall_forall. i. apply list_in_map_inv in H. des. clarify. }
     { clear - IDX. clear IDX.
       apply Forall_forall. i. apply list_in_map_inv in H. des. clarify. }
-    { admit "trivial". }
-    { admit "trivial". }
+    (* { admit "trivial". } *)
+    (* { admit "trivial". } *)
   Qed.
+
+  Definition mss_src (lp: t): list ModSem.t := map ModSemPair.src lp.(msps).
+  Definition mss_tgt (lp: t): list ModSem.t := map ModSemPair.tgt lp.(msps).
 
 End LOADPAIR.
 End LoadPair.
 
 Hint Unfold LoadPair.ge_src LoadPair.ge_tgt.
+Hint Unfold LoadPair.mss_src LoadPair.mss_tgt.
 
 
 
@@ -97,16 +101,30 @@ Theorem find_fptr_owner_bsim
         (SIMLP: lp.(LoadPair.sim))
         fptr_src fptr_tgt
         (SIMFPTR: lp.(LoadPair.sm).(SimMem.sim_val) fptr_src fptr_tgt)
-        n
-        (FINDTGT: Ge.find_fptr_owner lp.(LoadPair.ge_tgt) fptr_tgt n)
+        ms_tgt
+        (FINDTGT: Ge.find_fptr_owner lp.(LoadPair.ge_tgt) fptr_tgt ms_tgt)
+        _ms_src
+        (SAFESRC: Ge.find_fptr_owner lp.(LoadPair.ge_src) fptr_src _ms_src)
   :
-    <<FINDSRC: Ge.find_fptr_owner lp.(LoadPair.ge_src) fptr_src n>>
+    exists msp, <<FINDSRC: Ge.find_fptr_owner lp.(LoadPair.ge_src) fptr_src msp.(ModSemPair.src)>>
+                 /\ <<MSTGT: msp.(ModSemPair.tgt) = ms_tgt>>
 .
 Proof.
   inv SIMLP.
-  ss.
+  rewrite Forall_forall in *.
+  inv FINDTGT.
+  unfold LoadPair.ge_tgt in *. rewrite in_map_iff in MODSEM. des. rename x into msp.
+  esplits; eauto.
+  clarify.
+  specialize (SIMMSS msp). exploit SIMMSS; eauto. clear SIMMSS. intro SIMMS.
+  specialize (SIMSKENV msp). exploit SIMSKENV; eauto. clear SIMSKENV. intro SIMSKENV.
+  assert(exists blk_src, fptr_src = Vptr blk_src Ptrofs.zero true).
+  { inv SAFESRC. esplits; eauto. } clear SAFESRC. des. clarify.
+  exploit SimSymb.sim_skenv_def_bsim; eauto. intro SIMDEF; des.
+  inv SIMDEF. exploit DEFBSIM; eauto. i; des. clear_tac. inv SIM. inv SIM0.
+  econs; eauto.
+  - apply in_map_iff. esplits; eauto.
 Qed.
-
 
 
 End SIMLP.
@@ -153,11 +171,13 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
           
     :
       exists lp,
-        <<SRC: lp.(Lpair.mss_src) = p_src.(load_modsems) skenv_src>>
-        /\ <<TGT: lp.(Lpair.mss_tgt) = p_tgt.(load_modsems) skenv_tgt>>
-        /\ <<SS: pp.(ProgPair.ss_link) = Some lp.(Lpair.ss)>> 
-        /\ <<SIM: Lpair.sim lp>>
+        <<SRC: lp.(LoadPair.mss_src) = p_src.(load_modsems) skenv_src>>
+        /\ <<TGT: lp.(LoadPair.mss_tgt) = p_tgt.(load_modsems) skenv_tgt>>
+        /\ <<SIM: LoadPair.sim lp>>
   .
+  Proof.
+  Qed.
+
   Proof.
     subst. u. ss.
     assert(exists ss_link, <<LINKSS: pp.(ProgPair.ss_link) = Some ss_link>> /\
@@ -200,9 +220,9 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
     clear Heqskenv_src Heqskenv_tgt.
     u. rewrite LINKSS.
     clear LINKSRC LINKTGT LINKSS SIMSK.
-    (* eexists (Lpair.mk _ _ ss_link _). esplits; ss. *)
+    (* eexists (LoadPair.mk _ _ ss_link _). esplits; ss. *)
     induction pp; ii; ss.
-    { eexists (Lpair.mk _ _ _ [] _).
+    { eexists (LoadPair.mk _ _ _ [] _).
       esplits; ss; eauto.
       - econs; ss; eauto.
         apply lt_wf.
@@ -211,11 +231,11 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
     exploit IHpp; eauto. i; des.
     inv H1.
     specialize (SIMMS skenv_src skenv_tgt). des.
-    set (idx_link lp.(Lpair.idx) msp.(ModSemPair.idx)) as idx.
-    set (ord_link lp.(Lpair.ord) msp.(ModSemPair.ord)) as ord.
+    set (idx_link lp.(LoadPair.idx) msp.(ModSemPair.idx)) as idx.
+    set (ord_link lp.(LoadPair.ord) msp.(ModSemPair.ord)) as ord.
     (* eapply ModSemPair.embedding_preserves_sim with (msp1:= (msp.(ModSemPair.update_ord) ord)) in SIM; cycle 1. *)
     (* { eapply ord_link_embedded; eauto. } *)
-    eexists ((lp.(Lpair.update_ord) ord).(Lpair.cons_msp) (msp.(ModSemPair.update_ord) ord)).
+    eexists ((lp.(LoadPair.update_ord) ord).(LoadPair.cons_msp) (msp.(ModSemPair.update_ord) ord)).
     ss. u.
     esplits; eauto.
     - rewrite SRC. f_equal. rewrite map_map. ss.
@@ -239,9 +259,9 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
   (*     * eapply Forall2_impl; try apply SIM. *)
   (*       ii. eapply embedding_preserves_sim; eauto. eapply ord_link_embedded; eauto. *)
 
-  (*   eexists (Lpair.mk skenv_src skenv_tgt ss_link *)
+  (*   eexists (LoadPair.mk skenv_src skenv_tgt ss_link *)
   (*                      ((ModSemPair.update_ord msp ord) *)
-  (*                         :: List.map (fun msp => msp.(ModSemPair.update_ord) ord) lp.(Lpair.msps)) ord). *)
+  (*                         :: List.map (fun msp => msp.(ModSemPair.update_ord) ord) lp.(LoadPair.msps)) ord). *)
   (*   ss. u. *)
   (*   esplits; eauto. *)
   (*   - rewrite SRC. f_equal. rewrite map_map. ss. *)
@@ -304,7 +324,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
   (*         (MSSTGT: mss_tgt = p_tgt.(load_modsem) skenv_tgt) *)
           
   (*   : *)
-  (*     <<SIM: Lpair.sim (Lpair.mk skenv_src skenv_tgt ss mss_src mss_tgt)>> *)
+  (*     <<SIM: LoadPair.sim (LoadPair.mk skenv_src skenv_tgt ss mss_src mss_tgt)>> *)
   (* . *)
   (* Proof. *)
   (*   subst. u. ss. *)
@@ -383,7 +403,7 @@ End SIMGE.
 (*   Theorem sim_progpair_sim_ge *)
 (*     : *)
 (*       exists ss_link, *)
-(*         <<SIM: Lpair.sim (Lpair.mk skenv_src skenv_tgt ss_link mss_src mss_tgt)>> *)
+(*         <<SIM: LoadPair.sim (LoadPair.mk skenv_src skenv_tgt ss_link mss_src mss_tgt)>> *)
 (*   . *)
 (*   Proof. *)
 (*     ss. *)

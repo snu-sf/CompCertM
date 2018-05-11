@@ -72,7 +72,7 @@ Section SIMMODSEM.
 
   Print xsim.
 
-  CoInductive _lxsim (lxsim: index -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
+  Inductive _lxsim (lxsim: index -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
               (i0: index) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | lxsim_step_forward
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
@@ -120,13 +120,12 @@ Section SIMMODSEM.
           (<<LXSIM: lxsim i1 st_src1 st_tgt1 (SimMem.unlift sm0 sm1)>>))
 
   | lxsim_final
-      retv_src retv_tgt
-      (MLE: SimMem.le sm_init sm0)
-      (VALID: SimMem.wf sm0)
-      (RETVREL: sm0.(SimMem.sim_val) retv_src retv_tgt)
+      (MEMLE: SimMem.le sm_init sm0)
+      (MEMWF: SimMem.wf sm0)
       rs_ret_src rs_ret_tgt m_ret_src m_ret_tgt
-      (EXITSRC: ms_src.(final_frame) sg_init_src rs_init_src st_src0 rs_ret_src m_ret_src)
-      (EXITTGT: ms_tgt.(final_frame) sg_init_tgt rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt)
+      (RETRSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
+      (FINALSRC: ms_src.(final_frame) sg_init_src rs_init_src st_src0 rs_ret_src m_ret_src)
+      (FINALTGT: ms_tgt.(final_frame) sg_init_tgt rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt)
 
   .
 

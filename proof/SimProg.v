@@ -66,59 +66,77 @@ Hint Unfold ProgPair.sim ProgPair.src ProgPair.tgt.
 
 
 
-(* Section SIM. *)
-(* Context `{SM: SimMem.class} {SS: SimSymb.class SM}. *)
+Section SIM.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
 
-(*   Variable pp: ProgPair.t. *)
-(*   Hypothesis SIMPROG: ProgPair.sim pp. *)
-(*   Let p_src := pp.(ProgPair.src). *)
-(*   Let p_tgt := pp.(ProgPair.tgt). *)
-
-
-
-(*   Theorem sim_link_sk *)
-(*           sk_link_src *)
-(*           (LOADSRC: p_src.(link_sk) = Some sk_link_src) *)
-(*     : *)
-(*       exists ss_link sk_link_tgt, *)
-(*         <<LOADTGT: p_tgt.(link_sk) = Some sk_link_tgt>> *)
-(*         /\ <<LINKSS: pp.(ProgPair.ss_link) = Some ss_link>>  *)
-(*         /\ <<SIMSK: SimSymb.sim_sk ss_link sk_link_src sk_link_tgt>> *)
-(*   . *)
-(*   Proof. *)
-(*     u. subst_locals. *)
-(*     ginduction pp; ii; ss. *)
-(*     eapply link_list_cons_inv in LOADSRC. des. *)
-(*     inv SIMPROG. *)
-(*     exploit IHt; eauto. intro IH; des. *)
-(*     inv H1. *)
-(*     rename sk_link_src into sk_link_link_src. *)
-(*     rename restl into sk_link_src. *)
-(*     exploit SimSymb.sim_sk_weak_enables_link; eauto. *)
-(*     { eapply SimSymb.sim_sk_sim_sk_weak; eauto. } *)
-(*     { eapply SimSymb.sim_sk_sim_sk_weak; eauto. } *)
-(*     i; des. *)
-(*     exploit SimSymb.link_preserves_sim_sk; [exact SIMSK|exact IH1|..]; eauto. i; des. *)
-(*     esplits; eauto. *)
-(*     - eapply link_list_cons; eauto. *)
-(*     - eapply link_list_cons; eauto. *)
-(*   Qed. *)
-
-(*   Corollary sim_load *)
-(*         sem_src *)
-(*         (LOADSRC: load p_src = Some sem_src) *)
-(*     : *)
-(*       exists sem_tgt, <<LOADTGT: load p_tgt = Some sem_tgt>> *)
-(*   . *)
-(*   Proof. *)
-(*     unfold load in *. *)
-(*     des_ifs_safe. *)
-(*     exploit sim_link_sk; eauto. i; des. *)
-(*     esplits; eauto. des_ifs. *)
-(*   Qed. *)
+  Variable pp: ProgPair.t.
+  Hypothesis SIMPROG: ProgPair.sim pp.
+  Let p_src := pp.(ProgPair.src).
+  Let p_tgt := pp.(ProgPair.tgt).
 
 
-(* End SIM. *)
+
+  Theorem sim_link_sk
+          sk_link_src
+          (LOADSRC: p_src.(link_sk) = Some sk_link_src)
+    :
+      exists ss_link sk_link_tgt,
+        <<LOADTGT: p_tgt.(link_sk) = Some sk_link_tgt>>
+        /\ <<SIMSK: SimSymb.sim_sk ss_link sk_link_src sk_link_tgt>>
+        /\ <<LE: Forall (fun mp => (SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link)) pp>>
+  .
+  Proof.
+    {
+      u. subst_locals.
+      ginduction pp; ii; ss.
+      destruct a; ss.
+      unfold ProgPair.src in *.
+      unfold link_sk in *. ss.
+      eapply link_list_cons_inv in LOADSRC. des.
+      rename sk_link_src into sk_link_link_src.
+      rename restl into sk_link_src.
+      inv SIMPROG.
+      exploit IHt; eauto. intro IH; des.
+      inv H1. ss.
+      exploit SimSymb.sim_sk_link.
+      { apply SIMSK. }
+      { apply IH0. }
+      { eauto. }
+      i; des.
+      esplits; eauto.
+      - eapply link_list_cons; eauto.
+      - econs; eauto.
+        rewrite Forall_forall in *.
+        ii.
+        all ltac:(fun H => apply link_list_linkorder in H). des.
+        rewrite Forall_forall in *.
+        eapply SimSymb.le_trans; eauto.
+        + eapply TL; eauto.
+          destruct x; ss.
+          apply in_map_iff. esplits; ss; eauto.
+          apply in_map_iff. esplits; ss; eauto. ss.
+        + eapply IH; eauto.
+          destruct x; ss.
+          apply in_map_iff. esplits; ss; eauto.
+          apply in_map_iff. esplits; ss; eauto. ss.
+    }
+  Qed.
+
+  (* Corollary sim_load *)
+  (*       sem_src *)
+  (*       (LOADSRC: load p_src = Some sem_src) *)
+  (*   : *)
+  (*     exists sem_tgt, <<LOADTGT: load p_tgt = Some sem_tgt>> *)
+  (* . *)
+  (* Proof. *)
+  (*   unfold load in *. *)
+  (*   des_ifs_safe. *)
+  (*   exploit sim_link_sk; eauto. i; des. *)
+  (*   esplits; eauto. des_ifs. *)
+  (* Qed. *)
+
+
+End SIM.
 
 
 

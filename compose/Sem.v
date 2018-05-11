@@ -34,7 +34,7 @@ Module Frame.
 
   Record t: Type := mk {
     ms: ModSem.t;
-    st: ms.(ModSem.state);
+    lst: ms.(ModSem.state); (* local state *)
     sg_init: option signature;
     rs_init: regset;
   }
@@ -203,7 +203,7 @@ Section SEMANTICS.
       (INITSK: link_sk = Some sk_link)
       (INITSKENV: sk_link.(Sk.load_skenv) = skenv_link)
       (INITMEM: sk_link.(Sk.load_mem) = Some m)
-      (INITGENV: load_genv skenv_link = ge)
+      (INITGENV: load_genv (skenv_link) = ge)
 
       fptr_arg
       (INITFPTR: Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero = fptr_arg)
@@ -232,18 +232,41 @@ Section SEMANTICS.
       final_state [fr0] retv
   .
 
-  Definition load: option semantics :=
-    match link_sk with
-    | Some sk_link => Some (Semantics_gen step initial_state final_state
-                                          (load_genv sk_link.(Sk.load_skenv))
-                                          (* (load_genv sk.(Sk.load_skenv)).(Ge.skenv) *)
-                                          (admit "dummy for now. it is not used")
-                           )
-    | None => None
-    end
+  (* Definition load: option semantics := *)
+  (*   match link_sk with *)
+  (*   | Some sk_link => Some (Semantics_gen step initial_state final_state *)
+  (*                                         (load_genv sk_link.(Sk.load_skenv)) *)
+  (*                                         (* (load_genv sk.(Sk.load_skenv)).(Ge.skenv) *) *)
+  (*                                         (admit "dummy for now. it is not used") *)
+  (*                          ) *)
+  (*   | None => None *)
+  (*   end *)
+  (* . *)
+
+  Definition semantics: semantics :=
+    (Semantics_gen step initial_state final_state
+                   (match link_sk with
+                    | Some sk_link => load_genv sk_link.(Sk.load_skenv)
+                    | None => nil
+                    end)
+                   (admit "dummy for now. it is not used"))
   .
+  (* Note: I don't want to make it option type. If it is option type, there is a problem. *)
+  (* I have to state this way:
+```
+Variable sem_src: semantics.
+Hypothesis LOADSRC: load p_src = Some sem_src.
+```
+Then, sem_src.(state) is not evaluatable.
+   *)
+  (* However, if it is not option type.
+```
+Let sem_src := semantics prog.
+```
+Then, sem_src.(state) is evaluatable.
+   *)
 
 End SEMANTICS.
 
-Hint Unfold link_sk load_modsems load_genv load.
+Hint Unfold link_sk load_modsems load_genv.
 

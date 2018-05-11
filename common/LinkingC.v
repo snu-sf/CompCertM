@@ -66,13 +66,29 @@ Proof.
   admit "This should hold".
 Qed.
 
+Lemma link_list_linkorder
+      X `{Linker X}
+      xs xs_res
+      (LINK: link_list xs = Some xs_res)
+(*       x *)
+(*       (IN: In x xs) *)
+(*   : *)
+(*     <<LINKORDER: linkorder x xs_res>> *)
+(* . *)
+  :
+    <<LINKORDER: Forall (fun x => linkorder x xs_res) xs>>
+.
+
+Proof.
+  admit "This should hold".
+Qed.
+
 Lemma link_list_cons_inv
       X `{Linker X}
       hd tl res
       (LINK: link_list (hd :: tl) = Some res)
   :
     exists restl, <<TL: link_list tl = Some restl>> /\ <<HD: link hd restl = Some res>>
-                    /\ <<LINKORDER: Forall (fun x => linkorder x res) (hd :: tl)>>
 .
 Proof.
   admit "This should hold".

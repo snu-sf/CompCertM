@@ -8,10 +8,108 @@ Require Import Skeleton.
 Require Import Values.
 Require Import JMeq.
 
-Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg SimGe.
+Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg SimLoad.
+Require Import Smallstep.
 
 Set Implicit Arguments.
 
+
+Section ADEQUACYSTEP.
+
+  Context `{SM: SimMem.class}.
+  Context {SS: SimSymb.class SM}.
+
+  Variable pp: ProgPair.t.
+  Hypothesis SIMPROG: ProgPair.sim pp.
+  Let p_src := pp.(ProgPair.src).
+  Let p_tgt := pp.(ProgPair.tgt).
+  Variable rp: RTL.program.
+  Let rsem := (RTL.semantics rp).
+  Compute rsem.(state).
+  Let sem_src := Sem.semantics p_src.
+  Let sem_tgt := Sem.semantics p_tgt.
+  Compute sem_src.(state).
+  Variable index: Type.
+  Variable ord: index -> index -> Prop.
+
+  Print Frame.t.
+  (* Record t : Type := mk *)
+  (* { ms : ModSem.t;  st : ModSem.state ms;  sg_init : option signature;  rs_init : Asmregs.regset } *)
+
+  Inductive lxsim_tail: sem_src.(state) -> sem_tgt.(state) -> SimMem.t -> Prop :=
+  | lxsim_stack_nil
+      i0 sm0
+    :
+      lxsim_stack i0 [] [] sm0
+  | lxsim_stack_cons
+      tail_st_src0 tail_st_tgt0 tail_sm_init
+      (STACK: lfsim_tail tail_st_src0 tail_st_tgt0 tail_sm_init)
+      ms_src ms_tgt
+      (K: forall
+          ms_src ms_tgt lst_src lst_tgt sm1 retv0 retv1
+          rs_ret_src rs_ret_tgt m_ret_src m_ret_tgt
+          (MEMLE: SimMem.le (SimMem.lift) sm1)
+          (MEMWF: SimMem.wf sm1)
+          (RETSRC: ms_src.(ModSem.final_frame) sg_init_src rs_init_src lst_src rs_ret_src m_ret_src)
+          (RETTGT: ms_tgt.(ModSem.final_frame) sg_init_tgt rs_init_tgt lst_tgt rs_ret_tgt m_ret_tgt)
+          (RETRSREL: sm1.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
+        ,
+          exists i0, lxsim _ _ _ _ )
+  .
+
+
+
+Inductive lfsim_stack (s1: L1@lang_state) (s2: L2@lang_state): t -> Prop :=
+| lfsim_stack_nil: forall mrel0
+    (SRCINIT: L1.(initial_state) (ProgramState s1 mrel0.(src_mem)))
+    (TGTINIT: L2.(initial_state) (ProgramState s2 mrel0.(tgt_mem))),
+    lfsim_stack s1 s2 mrel0
+| lfsim_stack_cons: forall s10 s20 mrel0_init mrel0
+    (STACK: lfsim_stack s10 s20 mrel0_init)
+    (LOCAL: forall mrel1 v1 v2 s1' s2'
+              (MEMINV: le (lift mrel0) mrel1)
+              (VALID: valid mrel1)
+              (SRCRET: L1@final_state_local
+                         (ProgramState s1 (lift mrel0).(src_mem))
+                         (ProgramState s1' mrel1.(src_mem)) v1)
+              (TGTRET: L2@final_state_local
+                         (ProgramState s2 (lift mrel0).(tgt_mem))
+                         (ProgramState s2' mrel1.(tgt_mem)) v2)
+              (RETVALREL: val_rel mrel1 v1 v2),
+        forall i', _lfsim_step L1 L2 order
+                               (local_forward_sim L1 L2 order mrel0_init s10 s20)
+                               (unlift mrel0 mrel1) i' s1' s2'),
+    lfsim_stack s1 s2 (lift mrel0)
+.
+
+Inductive lfsim_lift (mrel: t) (i: index) (s1: L1@lang_state) (s2: L2@lang_state): Prop :=
+| lfsim_lift_intro s1_init s2_init mrel_init
+    (STACK: lfsim_stack s1_init s2_init mrel_init)
+    (LOCAL: local_forward_sim L1 L2 order mrel_init s1_init s2_init mrel i s1 s2)
+.
+
+
+  Inductive match_states: index -> sem_src.(state) -> sem_tgt.(state) -> SimMem.t -> Prop :=
+  | match_states_nil
+      i0 sm0
+    :
+      match_states i0 [] [] sm0
+  | match_states_cons
+      i_tl st_tl_src st_tl_tgt sm_tl
+      (TLMATCH: match_states i_tl st_tl_src st_tl_tgt sm_tl)
+      ms_src ms_tgt ss
+      (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss ord))
+      st_hd_src st_hd_tgt
+      sg_init_src sg_init_tgt rs_init_src rs_init_tgt
+      i0 sm0 sm_init
+      (HDMATCH: lxsim ms_src ms_tgt ord sg_init_src sg_init_tgt rs_init_src rs_init_tgt
+                      sm_init i0 st_hd_src st_hd_tgt sm0)
+      (LE: SimMem.le sm_tl sm_init
+    :
+      match_states i_tl st_tl_src st_tl_tgt sm_tl
+  .
+
+End ADEQUACYSTEP.
 
 
 Section ADEQUACY.
@@ -35,6 +133,51 @@ Section ADEQUACY.
     subst_locals. unfold load in *. des_ifs_safe.
     exploit sim_link_sk; eauto. i; des. des_ifs_safe. clarify.
     rename t into sk_src. rename sk_link_tgt into sk_tgt.
+    esplits; eauto.
+
+
+    exploit sim_progpair_sim_loadpair; eauto. i; des.
+    assert(LPSIM := SIM).
+    inv SIM.
+    econs; eauto.
+    econs; eauto.
+
+    eapply xsim_init_forward; ss.
+    ii. inv INITSRC. clarify.
+    exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des. clarify.
+    exploit find_fptr_owner_bsim; eauto.
+    { instantiate (2:= (Genv.symbol_address (Sk.load_skenv sk_src) (prog_main sk_src) Integers.Ptrofs.zero)).
+      instantiate (1:= (Genv.symbol_address (Sk.load_skenv sk_tgt) (prog_main sk_tgt) Integers.Ptrofs.zero)).
+      admit "main ptr should be related. obligate this to sim_skenv". }
+    { admit "???". }
+    { unfold LoadPair.ge_src. unfold load_genv, load_modsems in MSFIND.
+      admit "???".
+    }
+    i; des.
+
+    esplits; eauto.
+    - econs; ss; eauto.
+      + admit "".
+      + admit "determinacy".
+    -
+
+    ii.
+    inv ujjj
+    eapply xsim_init_backward; ss.
+    {
+      ii. inv INITSRC. clarify.
+      exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des. clarify.
+      exploit find_fptr_owner_bsim; eauto.
+      { instantiate (2:= (Genv.symbol_address (Sk.load_skenv sk_src) (prog_main sk_src) Integers.Ptrofs.zero)).
+        instantiate (1:= (Genv.symbol_address (Sk.load_skenv sk_tgt) (prog_main sk_tgt) Integers.Ptrofs.zero)).
+        admit "main ptr should be related. obligate this to sim_skenv". }
+      { }
+      esplits; eauto. econs; ss; eauto.
+      -
+      admit "progress".
+    }
+
+
     exploit sim_progpair_sim_gepair; eauto. i; des. ss.
     esplits; eauto. clarify.
     inv SIM; ss.

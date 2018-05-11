@@ -353,13 +353,14 @@ End DEPRECATED.
           skenv_src skenv_tgt
           (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src)
           (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt)
-          m_src m_tgt
+          m_src
           (LOADMEMSRC: sk_src.(Sk.load_mem) = Some m_src)
-          (LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt)
         ,
-          exists sm, (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
-                     (<<MEMSRC: sm.(SimMem.src_mem) = m_src>>) /\
-                     (<<MEMTGT: sm.(SimMem.tgt_mem) = m_tgt>>)
+          exists m_tgt sm,
+            (<<LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt>>) /\
+            (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
+            (<<MEMSRC: sm.(SimMem.src_mem) = m_src>>) /\
+            (<<MEMTGT: sm.(SimMem.tgt_mem) = m_tgt>>)
       ;
 
       le_preserves_sim_skenv: forall

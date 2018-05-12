@@ -77,3 +77,146 @@ Section LINK_WFO.
 
 End LINK_WFO.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Require Import Program.
+Require Import Axioms.
+
+
+Record idx := mk {
+                  local_idx: Type;
+                  local_ord: local_idx -> local_idx -> Prop;
+                  wf_local_ord: well_founded local_ord;
+                  elem: local_idx;
+                }.
+
+(* Require Import Coq.Logic.ClassicalFacts. *)
+(* Require Import Coq.Logic.ClassicalDescription. *)
+(* Require Import Coq.Logic.ChoiceFacts. *)
+
+(* About constructive_definite_description. *)
+(* Program Definition ord (x0 x1: idx): Prop := *)
+(*   match classic (x0.(local_idx) = x1.(local_idx)) with *)
+(*   | or_introl _ => False *)
+(*   | or_intror _ => False *)
+(*   end *)
+(* . *)
+(*     (<<EQLOCAL_IDX: x0.(local_idx) = x1.(local_idx)>>) *)
+(*     /\ *)
+(*     (<<EQORD: x0.(local_ord) ~= x1.(local_ord)>>) *)
+(*     /\ *)
+(*     (<<ORD: _>>) *)
+(* . *)
+(* Next Obligation. *)
+(*   destruct x0, x1; ss. *)
+(* Defined. *)
+(* Defined. *)
+(* | ord_intro *)
+(*     (EQLOCAL_IDX: x0.(local_idx) = x1.(local_idx)) *)
+(*     (EQORD: x0.(local_ord) ~= x1.(local_ord)) *)
+(*     (ORD: x0.(local_ord) x0.(elem) x1.(elem)) *)
+(* . *)
+
+Section TMP.
+  Variable X Y: Type.
+  Hypothesis EQ: X = Y.
+  Hypothesis ORDX: X -> X -> Prop.
+  Hypothesis ORDY: Y -> Y -> Prop.
+  Definition my_funcX (x: X) (y: Y): Prop.
+    rewrite <- EQ in y.
+    specialize (ORDX x y).
+    apply ORDX.
+  Defined.
+
+  Definition my_funcY (x: X) (y: Y): Prop.
+    rewrite EQ in x.
+    specialize (ORDY x y).
+    apply ORDY.
+  Defined.
+
+  About eq_rect.
+  (* eq_rect : forall (A : Local_Idxpe) (x : A) (P : A -> Local_Idxpe), P x -> forall y : A, x = y -> P y *)
+  About eq_rect_r.
+(* eq_rect_r : forall (A : Local_Idxpe) (x : A) (P : A -> Local_Idxpe), P x -> forall y : A, y = x -> P y *)
+
+End TMP.
+
+(* I wish I had a program inductive local_idxpe *)
+Inductive ord (x0 x1: idx): Prop :=
+| ord_intro
+    (EQLOCAL_IDX: x0.(local_idx) = x1.(local_idx))
+    (EQORD: x0.(local_ord) ~= x1.(local_ord))
+    (ORD: x1.(local_ord) (eq_rect x0.(local_idx) id x0.(elem) x1.(local_idx) EQLOCAL_IDX) x1.(elem))
+.
+
+Theorem wf_ord
+  :
+    well_founded ord
+.
+Proof.
+  econs; eauto.
+  ii. inv H.
+  destruct a, y; ss. clarify.
+  apply JMeq_eq in EQORD. clarify.
+  clear_tac.
+  unfold eq_rect in *.
+  Ltac swapname NAME1 NAME2 :=
+    let tmp := fresh "TMP" in
+    rename NAME1 into tmp; rename NAME2 into NAME1; idtac NAME1; rename tmp into NAME1
+  .
+  Fail swapname elem1 elem0. (* TODO: somehow fix this and put this into CoqlibC.v *)
+  rename elem1 into tmp; rename elem0 into elem1; rename tmp into elem0.
+
+  clear ORD. clear_tac.
+
+  {
+    pattern elem0. eapply well_founded_ind; try eassumption. ii. clear_tac.
+    econs; eauto. ii. destruct y; ss.
+    inv H0. ss. clarify.
+    eapply H. Undo 1. (* IDK why but apply acts in weird way. *)
+    specialize (H elem0). unfold eq_rect in *.
+    specialize (H ORD).
+    apply JMeq_eq in EQORD. clarify. clear_tac.
+    generalize proof_irr. intro IRR. unfold ClassicalFacts.proof_irrelevance in *.
+    specialize (IRR _ wf_local_ord0 wf_local_ord1).
+    clarify.
+  }
+Qed.
+
+Theorem idx_greatest
+        (local_idx: Type) (local_ord: local_idx -> local_idx -> Prop)
+        (WF: well_founded local_ord)
+  :
+    embedded local_ord ord
+.
+Proof.
+  apply embedded_intro with (f:= fun local_elem => mk WF local_elem).
+  ii.
+  econs; eauto. ss. instantiate (1:= eq_refl). ss.
+Qed.
+

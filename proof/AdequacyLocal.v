@@ -16,6 +16,14 @@ Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg SimLoad.
 Set Implicit Arguments.
 
 
+Ltac bar :=
+  let NAME := fresh
+                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
+  in
+  assert(NAME: True) by ss
+.
+(* TODO: Move to CoqlibC *)
+
 Section SIMGE.
 
   Context `{SM: SimMem.class}.
@@ -79,7 +87,7 @@ Section SIMGE.
     rewrite in_map_iff in *. des.
   Abort.
 
-  Theorem le_preserves_sim_ge
+  Theorem mle_preserves_sim_ge
           sm0 ge_src ge_tgt
           (SIMGE: sim_ge sm0 ge_src ge_tgt)
           sm1
@@ -92,7 +100,22 @@ Section SIMGE.
     econs; eauto.
     rewrite Forall_forall in *. ii.
     u.
-    eapply SimSymb.le_preserves_sim_skenv; eauto.
+    eapply SimSymb.mle_preserves_sim_skenv; eauto.
+    eapply SIMSKENV; eauto.
+  Qed.
+
+  Theorem mlift_preserves_sim_ge
+          sm0 ge_src ge_tgt
+          (SIMGE: sim_ge sm0 ge_src ge_tgt)
+    :
+      <<SIMGE: sim_ge (SimMem.lift sm0) ge_src ge_tgt>>
+  .
+  Proof.
+    inv SIMGE.
+    econs; eauto.
+    rewrite Forall_forall in *. ii.
+    u.
+    eapply SimSymb.mlift_preserves_sim_skenv; eauto.
     eapply SIMSKENV; eauto.
   Qed.
 
@@ -133,43 +156,53 @@ Section ADEQUACYSTEP.
       ms_tgt lst_tgt0 rs_init_tgt
       rs_arg_src rs_arg_tgt
       sm_arg
-      (* (MLE: SimMem.le tail_sm sm_arg) *)
-      (MLE: True)
+      (MLE: SimMem.le tail_sm sm_arg)
       (K: forall
           sm_ret rs_ret_src rs_ret_tgt
           (MEMLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
           (MEMWF: SimMem.wf sm_ret)
-          (* (RETSRC: ms_src.(ModSem.final_frame) rs_arg_src lst_src rs_ret_src sm_ret.(SimMem.src_mem)) *)
-          (* (RETTGT: ms_tgt.(ModSem.final_frame) rs_arg_tgt lst_tgt rs_ret_tgt sm_ret.(SimMem.tgt_mem)) *)
-          (RETRSREL: sm_ret.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
-          lst_tgt1
-          (AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt_mem))
-                                                    lst_tgt1)
+          (RSREL: sm_ret.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
         ,
-          exists i0 lst_src1,
-            (<<AFTERSRC: ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
-                                                        lst_src1>>)
-            /\
-            (<<LXSIM: lxsim ms_src ms_tgt ord rs_arg_src rs_arg_tgt sm_arg
-                            i0 lst_src1 lst_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>))
+          (<<KSTEP: forall
+              lst_tgt1
+              (AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt_mem))
+                                                        lst_tgt1)
+            ,
+              exists i0 lst_src1,
+                (<<AFTERSRC:
+                   ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
+                                                  lst_src1>>)
+                /\
+                (<<LXSIM: lxsim ms_src ms_tgt ord rs_init_src rs_init_tgt tail_sm
+                                i0 lst_src1 lst_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>)>>)
+          /\
+          (<<KPROGRESS: forall
+              st_src1
+              (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
+                                                        st_src1)
+            ,
+              exists lst_tgt1,
+                (<<AFTERTGT:
+                   ms_tgt.(ModSem.after_external) lst_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt_mem))
+                                                  lst_tgt1>>)>>))
     :
       lxsim_stack ((Frame.mk ms_src rs_init_src lst_src0) :: tail_src)
                   ((Frame.mk ms_tgt rs_init_tgt lst_tgt0) :: tail_tgt)
-                  sm_arg
+                  (SimMem.lift sm_arg)
   .
 
   Inductive lxsim_lift: index -> sem_src.(state) -> sem_tgt.(state) -> SimMem.t -> Prop :=
   | lxsim_lift_intro
+      sm0
+      (GE: sim_ge sm0 sem_src.(globalenv) sem_tgt.(globalenv))
       tail_src tail_tgt tail_sm
       (STACK: lxsim_stack tail_src tail_tgt tail_sm)
-      i0 sm0
+      (MLE: SimMem.le tail_sm sm0)
+      i0
       ms_src lst_src rs_init_src
       ms_tgt lst_tgt rs_init_tgt
-      (* (MLE: SimMem.le tail_sm sm0) *)
-      (MLE: True)
       (TOP: lxsim ms_src ms_tgt ord rs_init_src rs_init_tgt tail_sm
                   i0 lst_src lst_tgt sm0)
-      (GE: sim_ge sm0 sem_src.(globalenv) sem_tgt.(globalenv))
     :
       lxsim_lift i0
                  ((Frame.mk ms_src rs_init_src lst_src) :: tail_src)
@@ -235,7 +268,7 @@ Section ADEQUACYSTEP.
       rename rs_arg into rs_arg_tgt.
       exploit CALLBSIM; eauto. i; des.
 
-      eapply le_preserves_sim_ge with (sm2:= sm_arg) in GE; eauto.
+      eapply mle_preserves_sim_ge with (sm2:= sm_arg) in GE; eauto.
       (* Note: Coq bug STILL not fixed!!! there is no name like sm2. *)
 
       exploit find_fptr_owner_bsim; eauto.
@@ -245,21 +278,33 @@ Section ADEQUACYSTEP.
       inv SIMMS.
       dup FINDSRC. dup MSFIND.
       inv FINDSRC0; ss. inv MSFIND0; ss.
+      specialize (SIM (SimMem.lift sm_arg)).
       exploit SIM; eauto.
+      { eapply SimMem.lift_sim_val; eauto. }
       { instantiate (2:= PC). rewrite FPTR; ss. des_ifs. unfold Genv.find_funct_ptr. des_ifs. }
       { rewrite FPTR0. ss. des_ifs. unfold Genv.find_funct_ptr. des_ifs. }
+      { ii. eapply SimMem.lift_sim_val; eauto. }
+      { eapply SimMem.lift_wf; eauto. }
+      { u. eapply SimSymb.mlift_preserves_sim_skenv; eauto. }
       i; des_safe.
-      exploit INITSIM; eauto. i; des_safe.
+      exploit INITSIM; eauto. { rewrite SimMem.lift_tgt. eauto. } i; des_safe.
       esplits; eauto.
-      + left. apply plus_one. econs; ss; eauto.
+      + left. apply plus_one. econs; ss; eauto. { erewrite <- SimMem.lift_src. eauto. }
       + right. eapply CIH; eauto.
-        econs; ss; eauto; cycle 1.
-        * instantiate (1:= sm_arg). instantiate (2:= sm_arg).
-          admit "use Ord.idx/Ord.ord".
-        * des_ifs.
-        * econs; ss; eauto.
-          ii. exploit K; eauto. i; des_safe.
-          pclearbot. esplits; eauto.
+        {
+          instantiate (1:= (SimMem.lift sm_arg)).
+          econs.
+          * ss. des_ifs. eapply mlift_preserves_sim_ge; eauto.
+          * instantiate (1:= (SimMem.lift sm_arg)).
+            econs; swap 2 3.
+            { eauto. }
+            { ii. exploit K; eauto. i; des_safe. esplits; eauto.
+              ii. exploit KSTEP; eauto. i; des_safe. pclearbot. esplits; eauto.
+            }
+            { etransitivity; eauto. }
+          * reflexivity.
+          * admit "use Ord.idx/Ord.ord".
+        }
 
 
     - (* return *)
@@ -287,11 +332,26 @@ Section ADEQUACYSTEP.
         right. ss. des_ifs.
         exploit RETBSIM; try apply PROGRESS; eauto. i; des.
         inv SAFESRC; ss.
-        { exfalso. eapply ModSem.call_return_disjoint; eauto. esplits; eauto. u. eauto. }
-        { exfalso. eapply ModSem.step_return_disjoint; eauto. esplits; eauto. u. eauto. }
+        { exfalso. 
+          eapply ModSem.call_return_disjoint; eauto. esplits; eauto. u. eauto. }
+        { exfalso.
+          eapply ModSem.step_return_disjoint; eauto. esplits; eauto. u. eauto. }
+        (* clear PROGRESS. *)
+        bar.
+        move AFTER at bottom.
+        move STACK at bottom.
+        inv STACK. ss.
+        exploit K; try apply RSREL0; eauto. i; des.
+        exploit KPROGRESS; eauto.
+        move AFTER at bottom. {
+
+
         exploit RETBSIM; try apply FINAL; eauto. i; des.
         inv STACK. ss.
-        exploit K; eauto.
+        exploit K; try apply RSREL0; eauto. i; des.
+        exploit KPROGRESS; eauto. move AFTER at bottom. {
+        tttttttttttt
+        { etransitivity; eauto. 
         esplits; eauto.
         econs 3; ss; eauto.
 

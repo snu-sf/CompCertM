@@ -146,7 +146,7 @@ Section SIMMODSEM.
                 (MWF: SimMem.wf sm_ret)
                 (RSREL: sm_ret.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
               ,
-                (<<STEP: forall
+                (<<KSTEP: forall
                     st_tgt1
                     (AFTERTGT: ms_tgt.(after_external) st_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt_mem))
                                                        st_tgt1)
@@ -156,10 +156,10 @@ Section SIMMODSEM.
                          ms_src.(after_external) st_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
                                                            st_src1>>)
                       /\
-                      (<<LXSIM: lxsim rs_arg_src rs_arg_tgt sm_arg
+                      (<<LXSIM: lxsim rs_init_src rs_init_tgt sm_init
                                       i1 st_src1 st_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>)>>)
                 /\
-                (<<PROGRESS: forall
+                (<<KPROGRESS: forall
                     st_src1
                     (AFTERSRC: ms_src.(after_external) st_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
                                                        st_src1)
@@ -211,7 +211,7 @@ Section SIMMODSEM.
       i; ss. exploit CALLBSIM; eauto. i; des.
       esplits; eauto. ii.
       exploit K; eauto. i; des. esplits; eauto.
-      ii. exploit STEP; eauto. i; des. esplits; eauto.
+      ii. exploit KSTEP; eauto. i; des. esplits; eauto.
     - econs 3; eauto.
   Qed.
 
@@ -247,8 +247,8 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
   | sim_intro
       (WF: well_founded msp.(ord))
       (SIM: forall
-          fptr_init_src fptr_init_tgt
           sm_init
+          fptr_init_src fptr_init_tgt
           (FPTRREL: sm_init.(SimMem.sim_val) fptr_init_src fptr_init_tgt)
           sg_init_src sg_init_tgt
           (SIGSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) fptr_init_src = Some (Internal sg_init_src))

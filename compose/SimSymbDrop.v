@@ -244,6 +244,10 @@ Next Obligation.
   admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr".
 Qed.
 Next Obligation.
+  inv SIMSKENV.
+  econs; eauto.
+Qed.
+Next Obligation.
   exploit SkEnv.project_spec_preserves_wf; try apply LESRC; eauto. intro WFSMALLSRC.
   exploit SkEnv.project_spec_preserves_wf; try apply LETGT; eauto. intro WFSMALLTGT.
 (* THIS IS TOP *)

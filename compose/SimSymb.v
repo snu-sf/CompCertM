@@ -363,14 +363,23 @@ End DEPRECATED.
             (<<MEMTGT: sm.(SimMem.tgt_mem) = m_tgt>>)
       ;
 
-      le_preserves_sim_skenv: forall
+      mle_preserves_sim_skenv: forall
           sm0 sm1
-          (LE: SimMem.le sm0 sm1)
+          (MLE: SimMem.le sm0 sm1)
           ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
         ,
           <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>
       ;
+
+      mlift_preserves_sim_skenv: forall
+          sm0
+          ss skenv_src skenv_tgt
+          (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
+        ,
+          <<SIMSKENV: sim_skenv (SimMem.lift sm0) ss skenv_src skenv_tgt>>
+      ;
+
 
       (* sim_skenv_monotone_ss: forall *)
       (*     sm ss_link skenv_src skenv_tgt *)

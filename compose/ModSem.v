@@ -27,11 +27,11 @@ Module ModSem.
     get_mem (st0: state): mem;
     (* set_mem (m0: mem) (st0: state): state; *) (* This is not used, after_external is enough *)
     at_external (st0: state)
-                (fptr_arg: val) (rs_arg: regset) (m_arg: mem): Prop;
-    initial_frame (fptr_arg: val) (rs_arg: regset) (m_arg: mem)
+                (rs_arg: regset) (m_arg: mem): Prop;
+    initial_frame (rs_arg: regset) (m_arg: mem)
                     (st0: state): Prop;
     (* time: rs_arg >> st0 *)
-    final_frame (sg_init: option signature) (rs_init: regset)
+    final_frame (rs_init: regset)
     (* What is sg_arg/rs_arg for? Just auxiliary data. rs_arg: returning from C/ *)
                   (st0: state)
                   (rs_ret: regset) (m_ret: mem): Prop;
@@ -52,38 +52,55 @@ Module ModSem.
 
     (* good properties *)
     initial_machine_get_mem: forall
-        fptr_arg rs_arg m_arg st0
-        (INIT: initial_frame fptr_arg rs_arg m_arg st0)
+        rs_arg m_arg st0
+        (INIT: initial_frame rs_arg m_arg st0)
       ,
         <<MEM: st0.(get_mem) = m_arg>>
     ;
-    step_at_external_disjoint: forall
-        st0
-        tr st1
-        (STEP: step globalenv st0 tr st1)
-        fptr_arg rs_arg m_arg
-        (ATEXT: at_external st0 fptr_arg rs_arg m_arg)
-      ,
-        False
-    ;
-    at_external_final_machine_disjoint: forall
-        st0
-        fptr_arg rs_arg m_arg
-        (ATEXT: at_external st0 fptr_arg rs_arg m_arg)
-        sg_init rs_init rs_ret m_ret
-        (FINAL: final_frame sg_init rs_init st0 rs_ret m_ret)
-      ,
-        False
-    ;
-    step_final_machine_disjoint: forall
-        st0
-        tr st1
-        (STEP: step globalenv st0 tr st1)
-        sg_init rs_init rs_ret m_ret
-        (FINAL: final_frame sg_init rs_init st0 rs_ret m_ret)
-      ,
-        False
-    ;
+
+
+    is_call (st0: state): Prop := exists rs_arg m_arg, at_external st0 rs_arg m_arg;
+    is_step (st0: state): Prop := exists tr st1, step globalenv st0 tr st1;
+    is_return (rs_init: regset) (st0: state): Prop := exists rs_ret m_ret, final_frame rs_init st0 rs_ret m_ret;
+    may_return (st0: state): Prop := exists rs_init, is_return rs_init st0;
+      (* exists rs_init rs_ret m_ret, final_frame rs_init st0 rs_ret m_ret; *)
+    (* Note: "forall" or "exists" for rs_init? *)
+    (* "forall" -> easy for opt/hard for meta *)
+    (* "exists" -> hard for opt/easy for meta *)
+    (* I think "exists" is OK here. *)
+    (* We can think of something like "forall rs_init (FUTURE: st0 is future of rs_init)", but is overkill. *)
+
+    call_step_disjoint: is_call /1\ is_step <1= bot1;
+    step_return_disjoint: is_step /1\ may_return <1= bot1;
+    call_return_disjoint: is_call /1\ may_return <1= bot1;
+
+    (* step_at_external_disjoint: forall *)
+    (*     st0 *)
+    (*     tr st1 *)
+    (*     (STEP: step globalenv st0 tr st1) *)
+    (*     rs_arg m_arg *)
+    (*     (ATEXT: at_external st0 rs_arg m_arg) *)
+    (*   , *)
+    (*     False *)
+    (* ; *)
+    (* at_external_final_machine_disjoint: forall *)
+    (*     st0 *)
+    (*     rs_arg m_arg *)
+    (*     (ATEXT: at_external st0 rs_arg m_arg) *)
+    (*     rs_init rs_ret m_ret *)
+    (*     (FINAL: final_frame rs_init st0 rs_ret m_ret) *)
+    (*   , *)
+    (*     False *)
+    (* ; *)
+    (* step_final_machine_disjoint: forall *)
+    (*     st0 *)
+    (*     tr st1 *)
+    (*     (STEP: step globalenv st0 tr st1) *)
+    (*     rs_init rs_ret m_ret *)
+    (*     (FINAL: final_frame rs_init st0 rs_ret m_ret) *)
+    (*   , *)
+    (*     False *)
+    (* ; *)
   }.
 
 
@@ -103,6 +120,8 @@ Module ModSem.
   .
 
 End ModSem.
+
+Hint Unfold ModSem.is_call ModSem.is_step ModSem.may_return ModSem.is_return.
 
 Coercion ModSem.to_semantics: ModSem.t >-> semantics.
 (* I want to use definitions like "Star" or "determinate_at" *)

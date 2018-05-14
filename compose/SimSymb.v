@@ -365,8 +365,6 @@ End DEPRECATED.
 
       le_preserves_sim_skenv: forall
           sm0 sm1
-          (WF0: SimMem.wf sm0)
-          (WF1: SimMem.wf sm0)
           (LE: SimMem.le sm0 sm1)
           ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)

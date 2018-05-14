@@ -16,7 +16,7 @@ Require Export Syntax.
 
 Set Implicit Arguments.
 
-
+Local Open Scope asm.
 
 
 
@@ -34,14 +34,13 @@ Module Frame.
 
   Record t: Type := mk {
     ms: ModSem.t;
-    lst: ms.(ModSem.state); (* local state *)
-    sg_init: option signature;
     rs_init: regset;
+    st: ms.(ModSem.state); (* local state *)
   }
   .
 
-  Definition update_st (fr0: t) (st: fr0.(ms).(ModSem.state)): t :=
-    (mk fr0.(ms) st fr0.(sg_init) fr0.(rs_init))
+  Definition update_st (fr0: t) (st0: fr0.(ms).(ModSem.state)): t :=
+    (mk fr0.(ms) fr0.(rs_init) st0)
   .
 
 (* Definition is_internal (fr0: t): Prop := fr0.(ms).(ModSem.is_internal) fr0.(st) fr0.(sg_arg) fr0.(rs_arg). *)
@@ -116,30 +115,21 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 | step_call
     fr0 frs
     fptr_arg rs_arg m_arg
-    (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) fptr_arg rs_arg m_arg)
+    (FPTR: fptr_arg = rs_arg PC)
+    (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) rs_arg m_arg)
     (* id *)
     (* (IDFIND: ge.(Ge.skenv).(Genv.invert_symbol) fptr_arg = Some id) *)
     (* n ms *)
     (* (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms) *)
     ms
     (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
-    sg_init
-    (SIGFIND: ms.(ModSem.skenv).(Genv.find_funct) fptr_arg = Some (Internal sg_init))
+    (* sg_init *)
+    (* (SIGFIND: ms.(ModSem.skenv).(Genv.find_funct) fptr_arg = Some (Internal sg_init)) *)
     st_init
-    (INIT: ms.(ModSem.initial_frame) fptr_arg rs_arg m_arg st_init)
+    (INIT: ms.(ModSem.initial_frame) rs_arg m_arg st_init)
   :
     step ge (fr0 :: frs)
-         E0 ((Frame.mk ms st_init sg_init rs_arg) :: fr0 :: frs)
-| step_return
-    fr0 fr1 frs
-    rs_ret m_ret
-    (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.sg_init) fr0.(Frame.rs_init) fr0.(Frame.st)
-                                                  rs_ret m_ret)
-    st0
-    (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) fr0.(Frame.rs_init) rs_ret m_ret st0)
-  :
-    step ge (fr0 :: fr1 :: frs)
-         E0 ((fr1.(Frame.update_st) st0) :: frs)
+         E0 ((Frame.mk ms rs_arg st_init) :: fr0 :: frs)
 | step_internal
     fr0 frs
     (* (INTERNAL: fr0.(Frame.is_internal)) *)
@@ -148,6 +138,16 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
   :
     step ge (fr0 :: frs)
          tr ((fr0.(Frame.update_st) st0) :: frs)
+| step_return
+    fr0 fr1 frs
+    rs_ret m_ret
+    (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.rs_init) fr0.(Frame.st)
+                                                  rs_ret m_ret)
+    st0
+    (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) fr0.(Frame.rs_init) rs_ret m_ret st0)
+  :
+    step ge (fr0 :: fr1 :: frs)
+         E0 ((fr1.(Frame.update_st) st0) :: frs)
 (* | step_syscall *)
 (*     fr0 frs *)
 (*     fptr_arg sg_arg rs_arg m_arg *)
@@ -205,31 +205,36 @@ Section SEMANTICS.
       (INITMEM: sk_link.(Sk.load_mem) = Some m)
       (INITGENV: load_genv (skenv_link) = ge)
 
-      fptr_arg
-      (INITFPTR: Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero = fptr_arg)
       (* n ms *)
       (* (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms) *)
+
+      rs_arg
+      (INITREG: rs_arg = (Pregmap.init Vundef)
+                           # PC <- (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero)
+                           # RA <- Vnullptr
+                           # RSP <- Vnullptr)
+      fptr_arg
+      (INITFPTR: fptr_arg = rs_arg PC)
       ms
       (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
 
-      rs_arg
-      (INITREG: rs_arg = Pregmap.init Vundef)
       st_init
-      (INIT: ms.(ModSem.initial_frame) fptr_arg rs_arg m st_init)
+      (INIT: ms.(ModSem.initial_frame) rs_arg m st_init)
     :
-      initial_state ((Frame.mk ms st_init (admit "this is not used. put None or main's sig or anything") rs_arg) :: nil)
+      initial_state ((Frame.mk ms rs_arg st_init) :: nil)
   .
 
   Inductive final_state: state -> int -> Prop :=
   | final_state_intro
       fr0
       rs_ret m_ret
-      (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.sg_init) fr0.(Frame.rs_init) fr0.(Frame.st)
+      (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.rs_init) fr0.(Frame.st)
                                                     rs_ret m_ret)
-      retv
-      (RETV: rs_ret RAX = Vint retv)
+      reti
+      (RETPC: rs_ret#PC = Vnullptr)
+      (RETV: rs_ret#RAX = Vint reti)
     :
-      final_state [fr0] retv
+      final_state [fr0] reti
   .
 
   (* Definition load: option semantics := *)
@@ -269,4 +274,5 @@ Then, sem_src.(state) is evaluatable.
 End SEMANTICS.
 
 Hint Unfold link_sk load_modsems load_genv.
+
 

@@ -47,6 +47,7 @@ Module SimMem.
         wf mrel0 -> wf mrel1 -> le (lift mrel0) mrel1 -> wf (unlift mrel0 mrel1);
 
     sim_val: t -> val -> val -> Prop;
+    sim_val_le: forall mrel0 mrel1 (MLE: le mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
     lift_sim_rel: forall mrel v0 v1, sim_val mrel v0 v1 -> sim_val (lift mrel) v0 v1;
 
   (* val_rel_list: t -> list val -> list val -> Prop; *)

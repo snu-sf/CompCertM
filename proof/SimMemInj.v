@@ -301,5 +301,8 @@ Proof.
   contradict H1.
   eapply UNCHANGED; eauto.
 Qed.
+Next Obligation.
+  ii. inv MLE. eapply val_inject_incr; eauto.
+Qed.
 
 End MEMINJ.

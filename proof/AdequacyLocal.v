@@ -162,6 +162,8 @@ Section ADEQUACYSTEP.
       ms_tgt lst_tgt0
       rs_arg_src rs_arg_tgt
       sm_arg
+      (MWF: SimMem.wf sm_arg)
+      (GE: sim_ge sm_arg sem_src.(globalenv) sem_tgt.(globalenv))
       (MLE: SimMem.le tail_sm sm_arg)
       (K: forall
           sm_ret rs_ret_src rs_ret_tgt
@@ -305,12 +307,13 @@ Section ADEQUACYSTEP.
           econs.
           * ss. des_ifs. eapply mlift_preserves_sim_ge; eauto.
           * instantiate (1:= (SimMem.lift sm_arg)).
-            econs; swap 2 3.
-            { eauto. }
+            econs; [eassumption|..]; revgoals.
             { ii. exploit K; eauto. i; des_safe. esplits; eauto.
               ii. exploit KSTEP; eauto. i; des_safe. pclearbot. esplits; eauto.
             }
             { etransitivity; eauto. }
+            { ss. des_ifs. }
+            { eauto. }
           * reflexivity.
           * admit "use Ord.idx/Ord.ord".
         }
@@ -372,15 +375,16 @@ Section ADEQUACYSTEP.
         econs; ss; cycle 1.
         { eauto. }
         { etransitivity; eauto.
-          eapply SimMem.unlift_spec; eauto.
-          admit "wf". }
+          eapply SimMem.unlift_spec; eauto. }
         { eauto. }
         { des_ifs.
-          admit "1) unlift preserves sim_ge. 2) Add sim_ge in lxsim_stack? I think this is the right way".
-        }
+          eapply mle_preserves_sim_ge; eauto.
+          eapply SimMem.unlift_spec; eauto. }
   Unshelve.
     all: ss.
   Qed.
+
+  
           eapply mle_preserves_sim_ge; eauto.
           eapply SimMem.unlift_spec; eauto.
         }

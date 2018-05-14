@@ -172,15 +172,18 @@ Section SIMMODSEM.
   | lxsim_final
       (MEMLE: SimMem.le sm_init sm0)
       (MEMWF: SimMem.wf sm0)
-      (PROGRESS: ms_tgt.(is_return) rs_init_tgt st_tgt0)
-      (* (PROGSRC: ms_src.(may_return) st_src0) *)
-      (RETBSIM: forall          
-          rs_ret_tgt m_ret_tgt
-          (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt)
-        ,
-          exists rs_ret_src m_ret_src,
-            (<<RSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt>>)
-            /\ (<<FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src m_ret_src>>))
+      (* (PROGRESS: ms_tgt.(is_return) rs_init_tgt st_tgt0) *)
+      (* (RETBSIM: forall           *)
+      (*     rs_ret_tgt m_ret_tgt *)
+      (*     (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt) *)
+      (*   , *)
+      (*     exists rs_ret_src m_ret_src, *)
+      (*       (<<RSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt>>) *)
+      (*       /\ (<<FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src m_ret_src>>)) *)
+      rs_ret_src rs_ret_tgt
+      (FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src sm0.(SimMem.src_mem))
+      (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt sm0.(SimMem.tgt_mem))
+      (RSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
 
       (* Note: Actually, final_frame can be defined as a function. *)
 

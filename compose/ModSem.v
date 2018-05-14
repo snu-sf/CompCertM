@@ -57,6 +57,13 @@ Module ModSem.
       ,
         <<MEM: st0.(get_mem) = m_arg>>
     ;
+    final_frame_dtm: forall
+        rs_init st rs_ret0 m_ret0 rs_ret1 m_ret1
+        (FINAL0: final_frame rs_init st rs_ret0 m_ret0)
+        (FINAL1: final_frame rs_init st rs_ret1 m_ret1)
+      ,
+        rs_ret0 = rs_ret1 /\ m_ret0 = m_ret1
+    ;
 
 
     is_call (st0: state): Prop := exists rs_arg m_arg, at_external st0 rs_arg m_arg;

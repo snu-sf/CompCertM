@@ -144,16 +144,22 @@ Section ADEQUACYSTEP.
   Print Frame.t.
   (* Record t : Type := mk { ms : ModSem.t;  lst : ModSem.state ms;  rs_init : regset } *)
 
-  Inductive lxsim_stack: sem_src.(state) -> sem_tgt.(state) -> SimMem.t -> Prop :=
+  (* Interpretation: the stack called top with following regset/regset/SimMem.t as arguments. *)
+  (* (SimMem.t is lifted. lifting/unlifting is caller's duty) *)
+  (* Simulation can go continuation when SimMem.t bigger than argument is given, (after unlifting it) *)
+  (* with after_external fed with regsets sent. *)
+  Inductive lxsim_stack: regset -> regset -> SimMem.t ->
+                         sem_src.(state) -> sem_tgt.(state) -> Prop :=
   | lxsim_stack_nil
-      sm0
+      rs_init_src rs_init_tgt sm0
     :
-      lxsim_stack [] [] sm0
+      lxsim_stack rs_init_src rs_init_tgt sm0 [] []
   | lxsim_stack_cons
       tail_src tail_tgt tail_sm
-      (STACK: lxsim_stack tail_src tail_tgt tail_sm)
-      ms_src lst_src0 rs_init_src
-      ms_tgt lst_tgt0 rs_init_tgt
+      rs_init_src rs_init_tgt
+      (STACK: lxsim_stack rs_init_src rs_init_tgt tail_sm tail_src tail_tgt)
+      ms_src lst_src0
+      ms_tgt lst_tgt0
       rs_arg_src rs_arg_tgt
       sm_arg
       (MLE: SimMem.le tail_sm sm_arg)
@@ -186,9 +192,11 @@ Section ADEQUACYSTEP.
                    ms_tgt.(ModSem.after_external) lst_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt_mem))
                                                   lst_tgt1>>)>>))
     :
-      lxsim_stack ((Frame.mk ms_src rs_init_src lst_src0) :: tail_src)
-                  ((Frame.mk ms_tgt rs_init_tgt lst_tgt0) :: tail_tgt)
+      lxsim_stack rs_arg_src rs_arg_tgt
                   (SimMem.lift sm_arg)
+                  ((Frame.mk ms_src rs_init_src lst_src0) :: tail_src)
+                  ((Frame.mk ms_tgt rs_init_tgt lst_tgt0) :: tail_tgt)
+
   .
 
   Inductive lxsim_lift: index -> sem_src.(state) -> sem_tgt.(state) -> SimMem.t -> Prop :=
@@ -196,11 +204,12 @@ Section ADEQUACYSTEP.
       sm0
       (GE: sim_ge sm0 sem_src.(globalenv) sem_tgt.(globalenv))
       tail_src tail_tgt tail_sm
-      (STACK: lxsim_stack tail_src tail_tgt tail_sm)
+      rs_init_src rs_init_tgt
+      (STACK: lxsim_stack rs_init_src rs_init_tgt tail_sm tail_src tail_tgt)
       (MLE: SimMem.le tail_sm sm0)
       i0
-      ms_src lst_src rs_init_src
-      ms_tgt lst_tgt rs_init_tgt
+      ms_src lst_src
+      ms_tgt lst_tgt
       (TOP: lxsim ms_src ms_tgt ord rs_init_src rs_init_tgt tail_sm
                   i0 lst_src lst_tgt sm0)
     :
@@ -311,6 +320,85 @@ Section ADEQUACYSTEP.
       des_ifs.
       right.
       econs; eauto; swap 2 3.
+      { (* final *)
+        ii. inv FINALTGT0. ss. des_ifs.
+        esplits; [apply star_refl|]; eauto.
+        inv STACK.
+        econs; ss; eauto.
+        - admit "obligate to SimMem.val".
+        - admit "obligate to SimMem.val".
+      }
+      { (* progress *)
+        ii.
+        specialize (SAFESRC _ (star_refl _ _ _)). des.
+        { left. inv SAFESRC. inv STACK. ss.
+          determ_tac ModSem.final_frame_dtm. clear_tac.
+          esplits; eauto. econs; eauto.
+          - admit "obligate to SimMem.val".
+          - admit "obligate to SimMem.val". }
+
+        right. ss. des_ifs.
+        inv SAFESRC; ss.
+        { exfalso. 
+          eapply ModSem.call_return_disjoint; eauto. esplits; eauto. u. eauto. }
+        { exfalso.
+          eapply ModSem.step_return_disjoint; eauto. esplits; eauto. u. eauto. }
+        determ_tac ModSem.final_frame_dtm. clear_tac.
+        bar.
+        move AFTER at bottom.
+        move STACK at bottom.
+        inv STACK. ss.
+        exploit K; try apply RSREL0; eauto. i; des.
+        exploit KPROGRESS; eauto. i; des.
+        esplits; eauto.
+        econs 3; ss; eauto.
+      }
+      i.
+      econs 1; eauto. ss. des_ifs.
+      ii. inv STEPTGT; ss.
+      { exfalso. eapply ModSem.call_return_disjoint; eauto. esplits; eauto. u. eauto. }
+      { exfalso. eapply ModSem.step_return_disjoint; eauto. esplits; eauto. u. eauto. }
+      exploit ModSem.final_frame_dtm.
+      { eapply FINALTGT. }
+      { eapply FINAL. }
+      i; des. clarify. clear_tac.
+      inv STACK. ss.
+      exploit K; eauto. i; des. exploit KSTEP; eauto. i; des.
+      esplits; eauto.
+      + left. apply plus_one.
+        econs 3; ss; eauto.
+      + right. eapply CIH; eauto.
+        instantiate (1:= (SimMem.unlift sm_arg sm0)).
+        econs; ss; cycle 1.
+        { eauto. }
+        { etransitivity; eauto.
+          eapply SimMem.unlift_spec; eauto.
+          admit "wf". }
+        { eauto. }
+        { des_ifs.
+          admit "1) unlift preserves sim_ge. 2) Add sim_ge in lxsim_stack? I think this is the right way".
+        }
+  Unshelve.
+    all: ss.
+  Qed.
+          eapply mle_preserves_sim_ge; eauto.
+          eapply SimMem.unlift_spec; eauto.
+        }
+        eauto.
+        * eapply mle_preserves_sim_ge; eauto.
+          { ss. des_ifs. eauto. }
+          About SimMem.unlift_spec.
+          admit "".
+        * 
+          move GE at bottom.
+          eauto.
+          u in GE. ss.
+        rpapply step_return; ss; eauto.
+        * instantiate (3:= Frame.mk _ _ _). ss. apply FINALSRC.
+        * ss.
+      ss.
+
+
       { (* final *)
         ii. inv FINALTGT. ss. des_ifs.
         esplits; [apply star_refl|]; eauto.

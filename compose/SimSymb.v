@@ -293,16 +293,33 @@ End DEPRECATED.
   Inductive skenv_def_bsim `{SimMem.class} (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop :=
   | skenv_def_bsim_intro
       (DEFBSIM: forall
-          blk_src blk_tgt delta def_tgt
+          fptr_src fptr_tgt def_tgt
 (* These statements are direct copy from Unusedglobproof.v - defs_rev_inject *)
 (* IMPORTANT!!!!!!!!! We should give UB if fptr is offset. So, we safely get src pointer's offset is zero. *)
 (* TODO: Do we need defs_inject too? *)
 (* TODO: Do similar things as delta on fakeness of ptr too? *)
-          (SIMFPTR: sm0.(SimMem.sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta true))
-          (DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt)
+          isreal
+          (SIMFPTR: sm0.(SimMem.sim_val) fptr_src fptr_tgt)
+          (DEFTGT: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt)
         ,
           exists def_src, <<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>> /\
                           <<DELTA: delta = Ptrofs.zero>> /\
+                          <<REAL: isreal = true>> /\
+                          <<SIM: sim_def def_src def_tgt>>)
+  .
+
+(* These statements are direct copy from Unusedglobproof.v - defs_inject, EXCEPT for ref_def *)
+  Inductive skenv_def_fsim `{SimMem.class} (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop :=
+  | skenv_def_fsim_intro
+      (DEFFSIM: forall
+          blk_src blk_tgt delta def_src
+          isreal
+          (SIMFPTR: sm0.(SimMem.sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta isreal))
+          (DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src)
+        ,
+          exists def_tgt, <<DEFSRC: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>> /\
+                          <<DELTA: delta = Ptrofs.zero>> /\
+                          <<REAL: isreal = true>> /\
                           <<SIM: sim_def def_src def_tgt>>)
   .
 
@@ -426,6 +443,20 @@ End DEPRECATED.
           <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>
       ;
 
+      (* sim_skenv_def_bsim: forall *)
+      (*     sm ss skenv_src skenv_tgt *)
+      (*     (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt) *)
+      (*   , *)
+      (*     <<DEF: skenv_def_bsim sm skenv_src skenv_tgt>> *)
+      (* ; *)
+
+      sim_skenv_def_fsim: forall
+          sm ss skenv_src skenv_tgt
+          (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)
+        ,
+          <<DEF: skenv_def_fsim sm skenv_src skenv_tgt>>
+      ;
+      (* TODO: Remove below later. *)
       sim_skenv_def_bsim: forall
           sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)

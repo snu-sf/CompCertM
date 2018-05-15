@@ -63,13 +63,20 @@ Module Ge.
   (* Note: nat is much more convenient in SimLoad. (find_fptr_owner bsim) && stating disjointness. *)
   (* If needed, fefactor later to hide these details *)
 
+  (* Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop := *)
+  (* | find_fptr_owner_intro *)
+  (*     blk *)
+  (*     (FPTR: fptr = Vptr blk Ptrofs.zero true) *)
+  (*     (MODSEM: In ms ge) *)
+  (*     if_sig *)
+  (*     (INTERNAL: Genv.find_def ms.(ModSem.skenv) blk = Some (Gfun (Internal if_sig))) *)
+  (* . *)
+
   Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=
   | find_fptr_owner_intro
-      blk
-      (FPTR: fptr = Vptr blk Ptrofs.zero true)
       (MODSEM: In ms ge)
       if_sig
-      (INTERNAL: Genv.find_def ms.(ModSem.skenv) blk = Some (Gfun (Internal if_sig)))
+      (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig))
   .
 
   (* Inductive find_fptr_owner (ge: t) (fptr: val) (n: nat): Prop := *)

@@ -11,7 +11,8 @@ Require Import Asmregs.
 Require Import Smallstep.
 Require Import Integers.
 
-Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg SimLoad.
+Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg SimLoad SimProg.
+Require Import Ord.
 
 Set Implicit Arguments.
 
@@ -23,6 +24,72 @@ Ltac bar :=
   assert(NAME: True) by ss
 .
 (* TODO: Move to CoqlibC *)
+
+
+
+
+
+
+
+
+
+
+
+
+Section INITDTM.
+
+  Print fsim_properties.
+  Print determinate.
+
+  Context `{SM: SimMem.class}.
+  Context {SS: SimSymb.class SM}.
+  Variable p: program.
+  Let sem := Sem.semantics p.
+
+  Lemma find_fptr_owner_determ
+        fptr ms0 ms1
+        (FIND0: Ge.find_fptr_owner sem.(globalenv) fptr ms0)
+        (FIND1: Ge.find_fptr_owner sem.(globalenv) fptr ms1)
+    :
+      ms0 = ms1
+  .
+  Proof.
+    inv FIND0; inv FIND1. ss. des_ifs.
+    unfold load_genv in *. ss.
+    admit "use Mod.get_modsem_projected_sk".
+  Qed.
+
+  Theorem initial_determ
+          st_init0 st_init1
+          (INIT0: sem.(initial_state) st_init0)
+          (INIT1: sem.(initial_state) st_init1)
+    :
+      st_init0 = st_init1
+  .
+  Proof.
+    inv INIT0; inv INIT1; ss.
+    clarify.
+    exploit find_fptr_owner_determ; ss; des_ifs.
+    { eapply MSFIND. }
+    { eapply MSFIND0. }
+    i; des. clarify.
+    determ_tac ModSem.initial_frame_dtm.
+  Qed.
+
+End INITDTM.
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 Section SIMGE.
 
@@ -37,6 +104,43 @@ Section SIMGE.
     :
       sim_ge sm0 (map (ModSemPair.src) msps) (map (ModSemPair.tgt) msps)
   .
+
+
+
+  Lemma find_fptr_owner_fsim
+        sm0 ge_src ge_tgt
+        (SIMGE: sim_ge sm0 ge_src ge_tgt)
+        fptr_src fptr_tgt
+        (SIMFPTR: SimMem.sim_val sm0 fptr_src fptr_tgt)
+        ms_src
+        (FINDSRC: Ge.find_fptr_owner ge_src fptr_src ms_src)
+    :
+      exists msp,
+        <<FINDTGT: Ge.find_fptr_owner ge_tgt fptr_tgt msp.(ModSemPair.tgt)>>
+        /\ <<SIMMS: ModSemPair.sim msp>>
+        /\ <<SIMSKENV: ModSemPair.sim_skenv msp sm0>>
+  .
+  Proof.
+    inv SIMGE.
+    rewrite Forall_forall in *.
+    inv FINDSRC.
+    rewrite in_map_iff in MODSEM. des. rename x into msp.
+    esplits; eauto.
+    clarify.
+    specialize (SIMMSS msp). exploit SIMMSS; eauto. clear SIMMSS. intro SIMMS.
+    specialize (SIMSKENV msp). exploit SIMSKENV; eauto. clear SIMSKENV. intro SIMSKENV.
+
+    exploit SimSymb.sim_skenv_def_fsim; eauto. intro SIMDEF; des.
+    inv SIMDEF. exploit DEFFSIM; eauto. i; des. clear_tac. inv SIM. inv SIM0.
+   
+    assert(exists blk_tgt, fptr_tgt = Vptr blk_tgt Ptrofs.zero true).
+    { inv SAFESRC. esplits; eauto. } clear SAFESRC. des. clarify.
+    econs; eauto.
+    - apply in_map_iff. esplits; eauto.
+ 
+  Qed.
+ 
+
 
   Lemma find_fptr_owner_bsim
         sm0 ge_src ge_tgt
@@ -69,6 +173,52 @@ Section SIMGE.
     econs; eauto.
     - apply in_map_iff. esplits; eauto.
   Qed.
+
+
+
+  Lemma find_fptr_owner_bsim_without_sim_skenv_def_bsim
+        sm0 ge_src ge_tgt
+        (SIMGE: sim_ge sm0 ge_src ge_tgt)
+        fptr_src fptr_tgt
+        (SIMFPTR: SimMem.sim_val sm0 fptr_src fptr_tgt)
+        ms_tgt
+        (FINDTGT: Ge.find_fptr_owner ge_tgt fptr_tgt ms_tgt)
+        ms_src
+        (SAFESRC: Ge.find_fptr_owner ge_src fptr_src ms_src)
+    :
+      exists msp,
+        <<SRC: ModSemPair.src msp = ms_src>>
+        /\ <<TGT: ModSemPair.tgt msp = ms_tgt>>
+        /\ <<SIMMS: ModSemPair.sim msp>>
+        /\ <<SIMSKENV: ModSemPair.sim_skenv msp sm0>>
+  .
+  Proof.
+    inv SIMGE.
+    rewrite Forall_forall in *.
+    dup SAFESRC.
+    inv SAFESRC.
+    rewrite in_map_iff in MODSEM. des. rename x into msp.
+    specialize (SIMMSS msp). exploit SIMMSS; eauto. clear SIMMSS. intro SIMMS.
+    specialize (SIMSKENV msp). exploit SIMSKENV; eauto. clear SIMSKENV. intro SIMSKENV.
+
+    assert(exists blk_tgt, fptr_tgt = Vptr blk_tgt Ptrofs.zero true).
+    { inv FINDTGT. esplits; eauto. } des. clarify.
+    exploit SimSymb.sim_skenv_def_fsim; eauto. intro SIMDEF; des.
+    inv SIMDEF. exploit DEFFSIM; eauto. i; des. clear_tac. inv SIM. inv SIM0.
+
+    assert(FINDSRC: Ge.find_fptr_owner (map ModSemPair.tgt msps)
+                                       (Vptr blk_tgt Ptrofs.zero true) msp.(ModSemPair.tgt)).
+    { econs; eauto. rewrite in_map_iff. esplits; eauto. }
+    esplits; eauto.
+    assert(exists tp tsk, tp.(Sem.semantics).(globalenv) = (map ModSemPair.tgt msps) /\ link_sk tp = Some tsk).
+    { admit "". }
+    des.
+    eapply find_fptr_owner_determ with (p:= tp); eauto.
+    { ss. des_ifs. rewrite H. eauto. }
+    { ss. des_ifs. rewrite H. eauto. }
+  Qed.
+
+
 
   Lemma msp_in_sim
         sm0 ge_src ge_tgt
@@ -121,7 +271,16 @@ Section SIMGE.
 
 End SIMGE.
 
-Section ADEQUACYSTEP.
+
+
+
+
+
+
+
+
+
+Section ADQMATCH.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
@@ -138,8 +297,6 @@ Section ADEQUACYSTEP.
   Let sem_src := Sem.semantics p_src.
   Let sem_tgt := Sem.semantics p_tgt.
   Compute sem_src.(state).
-  Variable index: Type.
-  Variable ord: index -> index -> Prop.
 
   Print Frame.t.
   (* Record t : Type := mk { ms : ModSem.t;  lst : ModSem.state ms;  rs_init : regset } *)
@@ -201,7 +358,7 @@ Section ADEQUACYSTEP.
 
   .
 
-  Inductive lxsim_lift: index -> sem_src.(state) -> sem_tgt.(state) -> SimMem.t -> Prop :=
+  Inductive lxsim_lift: idx -> sem_src.(state) -> sem_tgt.(state) -> SimMem.t -> Prop :=
   | lxsim_lift_intro
       sm0
       (GE: sim_ge sm0 sem_src.(globalenv) sem_tgt.(globalenv))
@@ -220,6 +377,155 @@ Section ADEQUACYSTEP.
                  ((Frame.mk ms_tgt rs_init_tgt lst_tgt) :: tail_tgt)
                  sm0
   .
+
+End ADQMATCH.
+
+
+
+
+
+
+
+
+
+
+
+
+
+Section ADQINIT.
+
+  Context `{SM: SimMem.class}.
+  Context {SS: SimSymb.class SM}.
+
+  Variable pp: ProgPair.t.
+  Hypothesis SIMPROG: ProgPair.sim pp.
+  Let p_src := pp.(ProgPair.src).
+  Let p_tgt := pp.(ProgPair.tgt).
+  Let lxsim_lift := (@lxsim_lift _ _ p_src p_tgt).
+  Let sem_src := Sem.semantics p_src.
+  Let sem_tgt := Sem.semantics p_tgt.
+  Print Sem.initial_state.
+
+  Theorem init_lxsim_lift
+          st_init_src
+          (INITSRC: sem_src.(initial_state) st_init_src)
+    :
+      exists idx st_init_tgt sm_init,
+        <<INITTGT: sem_tgt.(initial_state) st_init_tgt>>
+        /\ <<SIM: lxsim_lift idx st_init_src st_init_tgt sm_init>>
+  .
+  Proof.
+    inv INITSRC; ss.
+    rename sk_link into sk_link_src.
+    rename st_init into st_init_src.
+    rename ms into ms_src. rename m into m_src.
+    rename INIT into INITSRC. rename INITSK into INITSKSRC. rename INITMEM into INITMEMSRC.
+    (* inv MSFIND. *)
+    (* rename blk into blk_src. rename if_sig into if_sig_src. rename FPTR into FPTRSRC. *)
+    (* rename MODSEM into MODSEMSRC. rename INTERNAL into INTERNALSRC. *)
+
+    exploit sim_link_sk; eauto. i; des.
+    exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des.
+
+    esplits; eauto.
+    - econs; eauto.
+      + econs; eauto.
+    -
+
+    inv INITTGT; ss.
+    rename sk_link into sk_link_tgt.
+    rename st_init into st_init_tgt.
+    rename ms into ms_tgt. rename m into m_tgt.
+    inv INITSRC; ss.
+
+    assert(MEM: exists sm: SimMem.t, True).
+    { admit "". }
+    des.
+    assert(GE: sim_ge sm (load_genv p_src (Sk.load_skenv sk_link)) (load_genv p_src (Sk.load_skenv sk_link))).
+    {
+      u.
+      econs; eauto.
+    }
+    exploit find_fptr_owner_bsim; eauto.
+    esplits; eauto.
+    econs; eauto.
+  Qed.
+
+  Theorem init_progress
+          st_init_src
+          (INITSRC: sem_src.(initial_state) st_init_src)
+    :
+      exists st_init_tgt,
+        <<INITTGT: sem_tgt.(initial_state) st_init_tgt>>
+  .
+  Proof.
+    inv INITSRC. ss.
+    exploit sim_link_sk; eauto. i; des.
+    esplits; eauto.
+    econs; eauto.
+    admit "raw admit".
+    admit "raw admit".
+    admit "raw".
+  Abort.
+
+  Print Build_xsim_properties.
+  About xsim_init_backward.
+  (* TODO: rename Ord.idx into Ord.index. Use the name "idx" as an element of it. *)
+  Theorem init_lxsim_lift
+          st_init_tgt
+          (INITTGT: sem_tgt.(initial_state) st_init_tgt)
+          _st_init_src
+          (INITSRC: sem_src.(initial_state) _st_init_src)
+    :
+      exists idx st_init_src sm_init,
+        <<INITSRC: sem_src.(initial_state) st_init_src>>
+        /\ <<SIM: lxsim_lift idx st_init_src st_init_tgt sm_init>>
+  .
+  Proof.
+    inv INITTGT; ss.
+    rename sk_link into sk_link_tgt.
+    rename st_init into st_init_tgt.
+    rename ms into ms_tgt. rename m into m_tgt.
+    inv INITSRC; ss.
+    rename sk_link into _sk_link_src.
+    rename st_init into _st_init_src.
+    rename ms into _ms_src. rename m into _m_src.
+
+    assert(MEM: exists sm: SimMem.t, True).
+    { admit "". }
+    des.
+    assert(GE: sim_ge sm (load_genv p_src (Sk.load_skenv sk_link)) (load_genv p_src (Sk.load_skenv sk_link))).
+    {
+      u.
+      econs; eauto.
+    }
+    exploit find_fptr_owner_bsim; eauto.
+    esplits; eauto.
+    econs; eauto.
+  Qed.
+
+  Variable sk_link_src sk_link_tgt: Sk.t.
+  Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
+  Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
+  Let sem_src := Sem.semantics p_src.
+  Let sem_tgt := Sem.semantics p_tgt.
+  Compute sem_src.(state).
+  Variable index: Type.
+  Variable ord: index -> index -> Prop.
+
+End ADQINIT.
+
+
+
+
+
+
+
+
+
+
+
+Section ADQSTEP.
 
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
@@ -383,6 +689,16 @@ Section ADEQUACYSTEP.
   Unshelve.
     all: ss.
   Qed.
+
+End ADEQUACYSTEP.
+
+
+
+
+Section ADEQUACYINIT.
+
+
+End ADEQUACYINIT.
 
   
           eapply mle_preserves_sim_ge; eauto.

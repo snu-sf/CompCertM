@@ -57,6 +57,14 @@ Module ModSem.
       ,
         <<MEM: st0.(get_mem) = m_arg>>
     ;
+    initial_frame_dtm: forall
+        rs_arg m_arg
+        st0 st1
+        (INIT0: initial_frame rs_arg m_arg st0)
+        (INIT1: initial_frame rs_arg m_arg st1)
+      ,
+        st0 = st1
+    ;
     final_frame_dtm: forall
         rs_init st rs_ret0 m_ret0 rs_ret1 m_ret1
         (FINAL0: final_frame rs_init st rs_ret0 m_ret0)

@@ -88,6 +88,7 @@ Section SYSMODSEM.
   |}
   .
   Next Obligation. inv INIT; ss. Qed.
+  Next Obligation. inv INIT0; inv INIT1; ss. Qed.
   Next Obligation. inv FINAL0; inv FINAL1; ss. Qed.
   Next Obligation. inv H5; inv H3; ss. Qed.
 

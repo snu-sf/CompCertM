@@ -36,6 +36,19 @@ Section MAP.
   Next Obligation. rewrite PTree_filter_map_spec in H. u in *. des_ifs. eapply Genv.genv_defs_range; eauto. Qed.
   Next Obligation. eapply Genv.genv_vars_inj; eauto. Qed.
 
+  Lemma Genv_map_defs_spec
+        ge (f: block -> globdef F1 V1 -> option (globdef F2 V2))
+        blk gd2
+        (FIND: (ge.(Genv_map_defs) f).(Genv.find_def) blk = Some gd2)
+    :
+      exists gd1, <<FIND: ge.(Genv.find_def) blk = Some gd1>> /\ <<MAP: f blk gd1 = Some gd2>>
+  .
+  Proof.
+    unfold Genv.find_def in *. unfold Genv_map_defs in *. ss.
+    rewrite PTree_filter_map_spec in *. u in FIND. des_ifs.
+    esplits; eauto.
+  Qed.
+
   (* Note: genv_defs will have spurious data, but this is actually Compcert's interpretation. *)
   Program Definition Genv_filter_symb (ge0: Genv.t F1 V1)
           (f: ident -> bool): Genv.t F1 V1 :=

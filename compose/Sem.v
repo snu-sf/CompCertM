@@ -92,15 +92,15 @@ Module Ge.
   (* Definition no_fptr_owner (ge: t) (fptr: val): Prop := *)
   (*   List.Forall (not <*> find_fptr_owner ge fptr) ge. *)
 
-  (* Inductive disjoint (ge: t): Prop := *)
-  (* | disjoint_intro *)
-  (*     (DISJOINT: forall *)
-  (*         fptr n0 n1 *)
-  (*         (FIND0: ge.(find_fptr_owner) fptr n0) *)
-  (*         (FIND1: ge.(find_fptr_owner) fptr n1) *)
-  (*       , *)
-  (*         False) *)
-  (* . *)
+  Inductive disjoint (ge: t): Prop :=
+  | disjoint_intro
+      (DISJOINT: forall
+          fptr ms0 ms1
+          (FIND0: ge.(find_fptr_owner) fptr ms0)
+          (FIND1: ge.(find_fptr_owner) fptr ms1)
+        ,
+          ms0 = ms1)
+  .
 
 End Ge.
 
@@ -216,10 +216,7 @@ Section SEMANTICS.
       (* (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms) *)
 
       rs_arg
-      (INITREG: rs_arg = (Pregmap.init Vundef)
-                           # PC <- (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero)
-                           # RA <- Vnullptr
-                           # RSP <- Vnullptr)
+      (INITREG: rs_arg = init_regs (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero))
       fptr_arg
       (INITFPTR: fptr_arg = rs_arg PC)
       ms

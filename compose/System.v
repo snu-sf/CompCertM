@@ -19,15 +19,29 @@ Section SYSMODSEM.
 
   Variable skenv_link: SkEnv.t.
 
-  Definition genvtype: Type := Genv.t external_function unit.
+  Definition genvtype: Type := Genv.t (AST.fundef external_function) unit.
 
   Definition globalenv: genvtype :=
     skenv_link.(Genv_map_defs) (fun _ gd =>
                                   match gd with
-                                  | Gfun (External ef) => Some (Gfun ef)
+                                  | Gfun (External ef) => Some (Gfun (Internal ef))
                                   | Gfun _ => None
                                   | Gvar gv => Some (Gvar gv)
                                   end)
+  .
+
+  Definition skd: Type := globdef (fundef (option signature)) unit.
+
+  Definition gd_to_skd V (gd: globdef (AST.fundef external_function) V): option skd :=
+    match gd with
+    | Gfun (Internal ef) => Some (Gfun (Internal (Some ef.(ef_sig))))
+    | Gfun (External _) => None (* This should not happen *)
+    | Gvar (mkglobvar info init ro volatile) => Some (Gvar (mkglobvar tt init ro volatile))
+    end
+  .
+
+  Definition skenv: SkEnv.t :=
+    globalenv.(Genv_map_defs) (fun _ gd => gd.(gd_to_skd))
   .
 
   Inductive state: Type :=
@@ -42,7 +56,7 @@ Section SYSMODSEM.
   Inductive step (ge: genvtype): state -> trace -> state -> Prop :=
   | step_intro
       rs_arg m_arg ef
-      (FPTR: ge.(Genv.find_funct) (rs_arg PC) = Some ef)
+      (FPTR: ge.(Genv.find_funct) (rs_arg PC) = Some (Internal ef))
       vs
       (ARGS: extcall_arguments rs_arg m_arg ef.(ef_sig) vs)
       tr v_ret m_ret
@@ -85,6 +99,7 @@ Section SYSMODSEM.
     ModSem.final_frame := final_frame;
     ModSem.after_external := bot5;
     ModSem.globalenv:= globalenv;
+    ModSem.skenv := skenv;
   |}
   .
   Next Obligation. inv INIT; ss. Qed.
@@ -93,6 +108,10 @@ Section SYSMODSEM.
   Next Obligation. inv H5; inv H3; ss. Qed.
 
 End SYSMODSEM.
+
+
+
+
 
 
 

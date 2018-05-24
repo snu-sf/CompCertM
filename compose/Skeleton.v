@@ -102,15 +102,13 @@ I think "sim_skenv_monotone" should be sufficient.
   .
 
   Lemma project_impl_spec
-        skenv keep skenv_proj
-        (PROJ: project skenv keep = skenv_proj)
+        skenv (keep: ident -> bool)
     :
-      <<PROJ: project_spec skenv keep skenv_proj>>
+      <<PROJ: project_spec skenv keep (project skenv keep)>>
   .
   Proof.
+    u.
     unfold project in *. ss.
-    repeat autounfold with * in PROJ; cbn in PROJ.
-    des_ifs.
     econs; eauto; unfold Genv.find_symbol, Genv.find_def, Genv_map_defs in *; ss; ii.
     - rewrite PTree_filter_key_spec. des_ifs.
     - rewrite PTree_filter_key_spec. des_ifs.

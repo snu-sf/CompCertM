@@ -290,37 +290,34 @@ End DEPRECATED.
 
 
 (* I think this is the minimal spec required for lock-step modsem finding *)
-  Inductive skenv_def_bsim `{SimMem.class} (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop :=
+  Inductive skenv_func_bsim `{SimMem.class} (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop :=
   | skenv_def_bsim_intro
-      (DEFBSIM: forall
+      (FUNCBSIM: forall
           fptr_src fptr_tgt def_tgt
-(* These statements are direct copy from Unusedglobproof.v - defs_rev_inject *)
-(* IMPORTANT!!!!!!!!! We should give UB if fptr is offset. So, we safely get src pointer's offset is zero. *)
-(* TODO: Do we need defs_inject too? *)
-(* TODO: Do similar things as delta on fakeness of ptr too? *)
-          isreal
           (SIMFPTR: sm0.(SimMem.sim_val) fptr_src fptr_tgt)
-          (DEFTGT: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt)
+          (FUNCTGT: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt)
+          (SAFESRC: exists _def_src, skenv_src.(Genv.find_funct) fptr_src = Some _def_src)
         ,
-          exists def_src, <<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>> /\
-                          <<DELTA: delta = Ptrofs.zero>> /\
-                          <<REAL: isreal = true>> /\
-                          <<SIM: sim_def def_src def_tgt>>)
+          exists def_src, <<FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src>> /\
+                          <<SIM: sim_fun def_src def_tgt>>)
+      (FUNCPROGRESS: forall
+          fptr_src fptr_tgt
+          (SIMFPTR: sm0.(SimMem.sim_val) fptr_src fptr_tgt)
+          (SAFESRC: exists _def_src, skenv_src.(Genv.find_funct) fptr_src = Some _def_src)
+        ,
+          exists def_tgt, <<PROGRESS: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt>>)
   .
 
 (* These statements are direct copy from Unusedglobproof.v - defs_inject, EXCEPT for ref_def *)
-  Inductive skenv_def_fsim `{SimMem.class} (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop :=
+  Inductive skenv_func_fsim `{SimMem.class} (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop :=
   | skenv_def_fsim_intro
-      (DEFFSIM: forall
-          blk_src blk_tgt delta def_src
-          isreal
-          (SIMFPTR: sm0.(SimMem.sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta isreal))
-          (DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src)
+      (FUNCSIM: forall
+          fptr_src fptr_tgt def_src
+          (SIMFPTR: sm0.(SimMem.sim_val) fptr_src fptr_tgt)
+          (FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src)
         ,
-          exists def_tgt, <<DEFSRC: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>> /\
-                          <<DELTA: delta = Ptrofs.zero>> /\
-                          <<REAL: isreal = true>> /\
-                          <<SIM: sim_def def_src def_tgt>>)
+          exists def_tgt, <<FUNCSRC: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt>> /\
+                          <<SIM: sim_fun def_src def_tgt>>)
   .
 
   (* TODO: Try moving t into argument? sim_symb coercion gets broken and I don't know how to fix it. *)
@@ -450,18 +447,18 @@ End DEPRECATED.
       (*     <<DEF: skenv_def_bsim sm skenv_src skenv_tgt>> *)
       (* ; *)
 
-      sim_skenv_def_fsim: forall
+      sim_skenv_func_fsim: forall
           sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)
         ,
-          <<DEF: skenv_def_fsim sm skenv_src skenv_tgt>>
+          <<DEF: skenv_func_fsim sm skenv_src skenv_tgt>>
       ;
       (* TODO: Remove below later. *)
-      sim_skenv_def_bsim: forall
+      sim_skenv_func_bsim: forall
           sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)
         ,
-          <<DEF: skenv_def_bsim sm skenv_src skenv_tgt>>
+          <<DEF: skenv_func_bsim sm skenv_src skenv_tgt>>
       ;
     }
   .

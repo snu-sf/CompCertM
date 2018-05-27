@@ -297,7 +297,7 @@ Notation "'do' ( X , Y ) <- A ; B" := (o_bind2 A (fun X Y => B))
  : o_monad_scope.
 
 Notation "'assertion' A ; B" := (if A then B else None)
-  (at level 200, A at level 100, B at level 200)
+  (at level 200, A at level 100, B at level 200, only parsing)
   : o_monad_scope.
 
 Open Scope o_monad_scope.
@@ -365,4 +365,20 @@ Ltac des_sumbool :=
     | [ |- false = proj_sumbool ?x ] => symmetry; apply proj_sumbool_is_false
     end
 .
+
+Ltac is_prop H :=
+  let ty := type of H in
+  match type of ty with
+  | Prop => idtac
+  | _ => fail 1
+  end
+.
+
+Ltac all_prop TAC := all ltac:(fun H => tryif is_prop H then TAC H else idtac).
+
+Ltac all_prop_inv := all_prop inv.
+(* TODO: infinite loop when inv-ing "a+b = c+d". "progress" tactic does not help here. *)
+(* TODO: add all_once, which captures only current hypotheses and apply TAC *)
+
+Ltac all_rewrite := all ltac:(fun H => rewrite_all H).
 

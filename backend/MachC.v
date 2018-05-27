@@ -156,6 +156,7 @@ Inductive step: state -> trace -> state -> Prop :=
 End NEWSTEP.
 
 Definition dummy_stack (parent_sp parent_ra: val): stackframe := Stackframe 1%positive parent_sp parent_ra [].
+Hint Unfold dummy_stack.
 Global Opaque dummy_stack.
 Require Import Asmregs.
 
@@ -222,30 +223,34 @@ Section MODSEM.
   Variable p: program.
   Let ge := p.(Genv.globalenv).
 
-  Inductive at_external: state -> val -> regset -> mem -> Prop :=
+  Inductive at_external: state -> regset -> mem -> Prop :=
   | at_external_intro
       fptr_arg stack rs_arg m_arg
+      (FPTR: fptr_arg = rs_arg PC)
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
 
     :
-      at_external (Callstate stack fptr_arg rs_arg m_arg)
-                  fptr_arg rs_arg m_arg
+      at_external (Callstate stack fptr_arg rs_arg.(mregset_of) m_arg)
+                  rs_arg m_arg
   .
 
-  Inductive initial_frame (fptr_arg: val) (rs_arg: regset) (m_arg: mem)
+  Inductive initial_frame (rs_arg: regset) (m_arg: mem)
     : state -> Prop :=
   | initial_frame_intro
+      fptr_arg
+      (FPTR: fptr_arg = rs_arg PC)
+      (* TODO: add genv.find_funct succeeds and it finds internal def. it also implies is_real_ptr *)
     :
-      initial_frame fptr_arg rs_arg m_arg
+      initial_frame rs_arg m_arg
                     (Callstate [(dummy_stack (rs_arg SP) (rs_arg RA))] fptr_arg rs_arg m_arg)
   .
 
-  Inductive final_frame (sg_init: option signature) (rs_init: regset): state -> regset -> mem -> Prop :=
+  Inductive final_frame (rs_init: regset): state -> regset -> mem -> Prop :=
   | final_frame_intro
       rs_ret m_ret
       dummy_stack
     :
-      final_frame sg_init rs_init (Returnstate [dummy_stack] rs_ret m_ret) rs_ret m_ret
+      final_frame rs_init (Returnstate [dummy_stack] rs_ret m_ret) rs_ret m_ret
   .
 
   Inductive after_external: state -> regset -> regset -> mem -> state -> Prop :=
@@ -256,6 +261,7 @@ Section MODSEM.
       after_external (Callstate stack fptr_arg rs_arg m_arg) rs_arg rs_ret m_ret
                      (Returnstate stack rs_ret m_ret)
   .
+
 
   Program Definition modsem: ModSem.t :=
     {|
@@ -270,9 +276,13 @@ Section MODSEM.
     |}
   .
   Next Obligation. inv INIT; ss. Qed.
-  Next Obligation. inv STEP; inv ATEXT; ss; try rewrite FPTR in *; des_ifs. Qed.
-  Next Obligation. inv ATEXT; inv FINAL; ss; try rewrite FPTR in *; clarify. Qed.
-  Next Obligation. inv STEP; inv FINAL; ss; try rewrite FPTR in *; clarify. Qed.
+  Next Obligation. inv INIT0; inv INIT1; ss. Qed.
+  Next Obligation. all_prop_inv; ss. Qed.
+  Next Obligation.
+    hnf. inv H4; inv H2; subst_locals; all_rewrite; ss; des_ifs.
+  Qed.
+  Next Obligation. all_prop_inv; ss. Qed.
+  Next Obligation. all_prop_inv; ss. Qed.
 
 End MODSEM.
 

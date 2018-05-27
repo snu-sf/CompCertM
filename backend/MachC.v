@@ -14,6 +14,7 @@ Require Stacklayout.
 (** newly added **)
 Require Export Mach.
 Require Import ModSem.
+Require Import Integers.
 
 Set Implicit Arguments.
 
@@ -239,7 +240,14 @@ Section MODSEM.
   | initial_frame_intro
       fptr_arg
       (FPTR: fptr_arg = rs_arg PC)
-      (* TODO: add genv.find_funct succeeds and it finds internal def. it also implies is_real_ptr *)
+      fd
+      (FIND: Genv.find_funct ge fptr_arg = Some (Internal fd))
+      (* sp delta *)
+      (* (RSPPTR: rs_arg RSP = Vptr sp (Ptrofs.repr delta) true) *)
+      (* (ARGSPERM: Mem.range_perm m_arg sp delta (size_arguments fd.(fn_sig)) Cur Writable) *)
+      sp
+      (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
+      (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable)
     :
       initial_frame rs_arg m_arg
                     (Callstate [(dummy_stack (rs_arg SP) (rs_arg RA))] fptr_arg rs_arg m_arg)

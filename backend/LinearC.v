@@ -262,6 +262,12 @@ Section MODSEM.
       (FINDFUNC: Genv.find_funct ge fptr_arg = Some (Internal fd))
       (SIG: sg_init = fd.(fn_sig))
       (LOCSET: fill_slots rs_arg.(to_locset) (loc_arguments sg_init) rs_arg m_arg ls_init)
+      (* sp delta *)
+      (* (RSPPTR: rs_arg RSP = Vptr sp (Ptrofs.repr delta) true) *)
+      (* (ARGSPERM: Mem.range_perm m_arg sp delta (size_arguments fd.(fn_sig)) Cur Writable) *)
+      sp
+      (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
+      (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable)
     :
       initial_frame rs_arg m_arg
                     (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_arg)

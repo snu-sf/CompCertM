@@ -173,18 +173,30 @@ Local Opaque Z.add Z.mul Z.div.
 
 Print typesize.
 Print loc_arguments_64. (* always + 2 *)
-(* Lemma size_arguments_loc_arguments_64 *)
+(* Lemma loc_arguments_64_complete *)
 (*       x tys ir fr *)
-(*       (SIZE: 0 <= x < 4 * size_arguments_64 tys ir fr 0) *)
+(*       (SIZE0: x < 4 * size_arguments_64 tys ir fr 0) *)
+(*       (SIZE1: 0 <= x) *)
+(*       (IR: 0 <= ir) *)
+(*       (FR: 0 <= fr) *)
 (*   : *)
-(*     exists sl pos ty, In (S sl pos ty) (loc_arguments_64 tys ir fr 0).(regs_of_rpairs) *)
+(*     exists sl pos ty, <<IN: In (S sl pos ty) (loc_arguments_64 tys ir fr 0).(regs_of_rpairs)>> *)
+(*                             /\ <<OFS: pos <= x < pos + 4 * ty.(typesize)>> *)
 (* . *)
 (* Proof. *)
 (*   ginduction tys; ii; ss. *)
 (*   { xomega. } *)
 (*   destruct a; ss. *)
-(*   - des_ifs. *)
-(*     + esplits; eauto. *)
+(*   - des. *)
+(*     des_ifs; try (exploit IHtys; eauto; try xomega; i; des; []; esplits; eauto; ss; right; eauto). *)
+(*     assert(6 <= ir). *)
+(*     { xomega. } *)
+(*     ss. esplits; eauto; try xomega. ss. rewrite Z.add_0_l in *. rewrite Z.mul_1_r. *)
+(*     unfold size_arguments_64 in SIZE0. ss. des_ifs. *)
+(*     u in SIZE0. *)
+(*     destruct ir; try xomega. *)
+(*     ss. *)
+(*   - *)
 (* Qed. *)
 
 (* Lemma size_arguments_loc_arguments *)
@@ -199,6 +211,14 @@ Print loc_arguments_64. (* always + 2 *)
 (*   { xomega. } *)
 (* Qed. *)
 
+
+
+
+
+
+
+
+
 Section PRESERVATION.
 
 Local Existing Instance Val.mi_normal.
@@ -209,6 +229,22 @@ Hypothesis TRANSF: match_prog prog tprog.
 Variable return_address_offset: function -> code -> ptrofs -> Prop.
 Let match_states := match_states prog tprog return_address_offset.
 
+Lemma functions_translated_inject
+      j
+      (GENV: True)
+      fptr_src fd_src
+      (FUNCSRC: Genv.find_funct (Genv.globalenv prog) fptr_src = Some fd_src)
+      fptr_tgt
+      (INJ: Val.inject j fptr_src fptr_tgt)
+  :
+    exists fd_tgt,
+      <<FUNCTGT: Genv.find_funct (Genv.globalenv tprog) fptr_tgt = Some fd_tgt>>
+      /\ <<TRANSF: transf_fundef fd_src = OK fd_tgt>>
+.
+Proof.
+  admit "easy".
+Qed.
+
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (LinearC.modsem prog) (MachC.modsem return_address_offset tprog) (admit "simsymb") Nat.lt.
 
@@ -216,7 +252,9 @@ Local Transparent dummy_stack.
 
 Ltac sep_split := econs; [|split]; swap 2 3.
 Hint Unfold fe_ofs_arg.
- 
+Hint Unfold SimMem.SimMem.sim_regset. (* TODO: move to proper place *)
+Hint Unfold mregset_of.
+
 Theorem init_match_states
         (sm_init: SimMem.SimMem.t) fptr_init_src fptr_init_tgt
         (FPTRREL: Val.inject (inj sm_init) fptr_init_src fptr_init_tgt)
@@ -228,14 +266,34 @@ Theorem init_match_states
         (INITSRC: LinearC.initial_frame prog rs_init_src sm_init.(src_mem) st_init_src)
   :
     exists st_init_tgt,
-      <<INITTGT: initial_frame rs_init_tgt (tgt_mem sm_init) st_init_tgt>>
+      <<INITTGT: initial_frame tprog rs_init_tgt (tgt_mem sm_init) st_init_tgt>>
                                /\ <<MATCH: match_states st_init_src st_init_tgt>>
 .
 Proof.
   ss. u in *. unfold ModSemPair.sim_skenv in *. ss. clear SIMSKENV.
   inv INITSRC.
+  exploit (functions_translated_inject); eauto. intro FPTRTGT; des.
+  destruct fd_tgt; ss; unfold bind in *; ss; des_ifs.
+  rename fd into fd_src. rename f into fd_tgt.
+  assert(RSPINJ:= RSREL SP).
+  ss. rewrite RSPPTR in *. inv RSPINJ.
+  rename H1 into RSPPTRTGT. symmetry in RSPPTRTGT. rename H2 into RSPINJ.
+  rename sp into sp_src. rename b2 into sp_tgt.
+  assert(delta = 0).
+  { admit "
+1) Use stronger version of sim_val for RSP. --> it will not work. identical asm modules can't call!
+   Note that RSP can be changed with normal instructions like Padd
+2) Give UB in sem --> I think this sounds OK.
+".
+  } clarify.
+  rewrite Ptrofs.add_zero_l in *.
   esplits; eauto.
   - econs; eauto.
+    + hexploit Mem.range_perm_inject; eauto.
+      { apply WF. }
+      rewrite Z.add_0_l. rewrite Z.add_0_r.
+      i.
+      admit "RAW ADMITttttttttttttttttttttt".
   -
     assert(PTRRSP: is_real_fptr (rs_init_tgt RSP)).
     { admit "corollary of sem.". }
@@ -243,14 +301,14 @@ Proof.
     { admit "add to sem". }
 
     econs; eauto.
-    + instantiate (1:= sm_init.(inj)).
+    +
       u in *. des_ifs.
-      generalize (Ptrofs.eq_spec i0 Ptrofs.zero). i; des_ifs. clarify. clear_tac.
+      (* generalize (Ptrofs.eq_spec i Ptrofs.zero). i; des_ifs. clarify. clear_tac. *)
       econs; eauto.
       i.
       assert(ACC: loc_argument_acceptable (S Outgoing ofs ty)).
       { eapply loc_arguments_acceptable_2; eauto. }
-      assert(VALID: slot_valid (dummy_function (Linear.fn_sig fd)) Outgoing ofs ty).
+      assert(VALID: slot_valid (dummy_function (Linear.fn_sig fd_src)) Outgoing ofs ty).
       { destruct ACC. unfold slot_valid, proj_sumbool.
         rewrite zle_true by omega. rewrite pred_dec_true by auto. reflexivity. }
       {
@@ -262,15 +320,12 @@ Proof.
       }
     + ii.
       u in RSREL.
-      Hint Unfold SimMem.SimMem.sim_regset. (* TODO: move to proper place *)
       u in RSREL. u.
-      Hint Unfold mregset_of.
       u.
       inv LOCSET.
       rewrite <- REGS.
       eapply RSREL.
     + ii. des_ifs.
-    + eapply RSREL.
     +
       {
         Local Opaque sepconj.

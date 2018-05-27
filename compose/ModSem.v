@@ -51,12 +51,13 @@ Module ModSem.
 
 
     (* good properties *)
-    initial_machine_get_mem: forall
-        rs_arg m_arg st0
-        (INIT: initial_frame rs_arg m_arg st0)
-      ,
-        <<MEM: st0.(get_mem) = m_arg>>
-    ;
+    (* We need to drop permission ! *)
+    (* initial_machine_get_mem: forall *)
+    (*     rs_arg m_arg st0 *)
+    (*     (INIT: initial_frame rs_arg m_arg st0) *)
+    (*   , *)
+    (*     <<MEM: st0.(get_mem) = m_arg>> *)
+    (* ; *)
     initial_frame_dtm: forall
         rs_arg m_arg
         st0 st1

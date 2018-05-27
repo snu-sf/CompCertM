@@ -1,5 +1,5 @@
 Require Import CoqlibC.
-Require Import ASTC Integers Values Memory Events GlobalenvsC Smallstep.
+Require Import ASTC Integers Values MemoryC Events GlobalenvsC Smallstep.
 Require Import Op Locations LTL Conventions.
 (** newly added **)
 Require Export Linear.
@@ -265,12 +265,18 @@ Section MODSEM.
       (* sp delta *)
       (* (RSPPTR: rs_arg RSP = Vptr sp (Ptrofs.repr delta) true) *)
       (* (ARGSPERM: Mem.range_perm m_arg sp delta (size_arguments fd.(fn_sig)) Cur Writable) *)
+
+      (* sp *)
+      (* (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true) *)
+      (* (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable) *)
       sp
       (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
-      (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable)
+      m_init
+      (MPERM: Mem_set_perm m_arg sp Stacklayout.fe_ofs_arg
+                           (4 * (size_arguments sg_init)) None = Some m_init)
     :
       initial_frame rs_arg m_arg
-                    (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_arg)
+                    (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_init)
   .
 
   Inductive final_frame (rs_init: regset): state -> regset -> mem -> Prop :=
@@ -329,12 +335,11 @@ Section MODSEM.
       ModSem.skenv := (admit "TODO")
     |}
   .
-  Next Obligation. inv INIT; ss. Qed.
   Next Obligation.
     inv INIT0; inv INIT1; ss. clarify.
     assert(ls_init = ls_init0).
     { eapply fill_slots_dtm; eauto. }
-    clarify.
+    clarify. eq_closure_tac.
   Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.

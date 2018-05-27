@@ -1395,9 +1395,10 @@ Inductive match_stacks (j: meminj):
           In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)) ->
           slot_within_bounds (function_bounds (dummy_function dummy_sig)) Outgoing ofs ty)
       (* (TAILCALL: tailcall_possible sg) *)
-      (RA: is_real_ptr ra)
+      (RAPTR: is_real_ptr ra)
+      (SPPTR: is_real_ptr sp)
     :
-      match_stacks j [LinearC.dummy_stack dummy_sig ls_init] [MachC.dummy_stack (Vptr sp Ptrofs.zero true) ra] sg
+      match_stacks j [LinearC.dummy_stack dummy_sig ls_init] [MachC.dummy_stack sp ra] sg
   | match_stacks_cons: forall f sp ls c cs fb sp' ra c' cs' sg trf
         (TAIL: is_tail c (Linear.fn_code f))
         (FINDF: Genv.find_funct_ptr tge fb = Some (Internal trf))
@@ -1464,6 +1465,10 @@ Lemma match_stacks_type_sp:
   Val.has_type (parent_sp cs') Tptr.
 Proof.
   induction 1; ii; ss.
+  u in *. Fail autounfold in *.
+  Local Transparent dummy_stack. u in *.
+  (* TODO: update tactic "u in *" to manually to autounfold in all hypotheses. *)
+  des_ifs.
 Qed.
 
 Lemma match_stacks_type_retaddr:
@@ -1471,11 +1476,7 @@ Lemma match_stacks_type_retaddr:
   match_stacks j cs cs' sg ->
   Val.has_type (parent_ra cs') Tptr.
 Proof.
-  induction 1; ii; ss. u in *.
-  Fail autounfold in *.
-  (* TODO: update tactic "u in *" to manually to autounfold in all hypotheses. *)
-Local Transparent dummy_stack.
-  u in *. des_ifs.
+  induction 1; ii; ss. u in *. des_ifs.
 Qed.
 
 (** * Syntactic properties of the translation *)
@@ -1689,7 +1690,7 @@ Proof.
   { apply ARGS; ss. }
   des_ifs.
   exploit frame_get_outgoing; eauto. intros (v & A & B).
-  ss. u in Heq. clarify.
+  ss. u in Heq. des_ifs.
   exists v; split.
   constructor. exact A. red in AGCS. rewrite AGCS; auto.
 + simpl in SEP. unfold parent_sp.
@@ -1919,6 +1920,7 @@ Proof.
   inversion STACKS; clear STACKS.
   {
     subst s cs'.
+    destruct sp; try by ss. rename b0 into sp. simpl in SPPTR. des_ifs. clear_tac.
     exploit frame_get_outgoing.
     apply sep_proj2 in SEP. simpl in SEP. rewrite sep_assoc in SEP. eexact SEP.
     eapply ARGS; eauto.

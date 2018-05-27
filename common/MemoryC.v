@@ -80,6 +80,34 @@ Next Obligation.
   apply Mem.contents_default.
 Qed.
 
+(* TODO: move to CoqlibC *)
+Notation "p <2> q" := (fun x0 x1 => (p x0 x1) <-> (q x0 x1)) (at level 50, no associativity).
+
+Lemma Mem_set_perm_none_spec
+      m0 blk0 lo hi m1
+      (DROP: Mem_set_perm m0 blk0 lo hi None = Some m1)
+  :
+    (<<OUTSIDE: forall
+      blk1 ofs
+      (DISJOINT: blk0 <> blk1 \/ ofs < lo \/ hi <= ofs)
+    ,
+      all2 (Mem.perm m0 blk1 ofs <2> Mem.perm m1 blk1 ofs)>>)
+    /\
+    (<<INSIDE: forall
+        ofs
+        (INSIDE: lo <= ofs < hi)
+    ,
+      all2 ~2 Mem.perm m1 blk0 ofs>>)
+.
+Proof.
+  ii.
+  unfold Mem_set_perm in *. des_ifs.
+  unfold Mem.perm in *. ss. rewrite PMap.gsspec in *. des_ifs.
+  split; ii; ss.
+  - rewrite PMap.gsspec.
+    des_ifs. simpl_bool. des_safe. des_sumbool. admit "IDK WHY BUT IT MAKES xomega SLOW IN STACKINGPROOFC1.v!!!!!! des; try xomega".
+  - des_ifs. simpl_bool. des_safe. admit "des; des_sumbool; try xomega".
+Qed.
 
 Lemma Mem_set_perm_none_impl
       m0 blk lo hi m1

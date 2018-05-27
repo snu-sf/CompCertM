@@ -156,7 +156,15 @@ Inductive step: state -> trace -> state -> Prop :=
 
 End NEWSTEP.
 
-Definition dummy_stack (parent_sp parent_ra: val): stackframe := Stackframe 1%positive parent_sp parent_ra [].
+Definition dummy_stack (parent_sp parent_ra: val): stackframe :=
+  match parent_sp with
+  | Vptr sp _ true => Stackframe 1%positive (Vptr sp Ptrofs.zero true) parent_ra []
+  | _ => Stackframe 1%positive Vundef parent_ra [] (* This should not occur. *)
+  end
+.
+(* See "stack_contents" of the stackingproof. It ignores sp's offset. *)
+(* "stack_contents" is used in match_states, and we want to use it... *)
+
 Hint Unfold dummy_stack.
 Global Opaque dummy_stack.
 Require Import Asmregs.
@@ -245,9 +253,10 @@ Section MODSEM.
       (* sp delta *)
       (* (RSPPTR: rs_arg RSP = Vptr sp (Ptrofs.repr delta) true) *)
       (* (ARGSPERM: Mem.range_perm m_arg sp delta (size_arguments fd.(fn_sig)) Cur Writable) *)
-      sp
-      (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
-      (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable)
+
+      (* sp *)
+      (* (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true) *)
+      (* (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable) *)
     :
       initial_frame rs_arg m_arg
                     (Callstate [(dummy_stack (rs_arg SP) (rs_arg RA))] fptr_arg rs_arg m_arg)
@@ -283,7 +292,6 @@ Section MODSEM.
       ModSem.skenv := (admit "TODO")
     |}
   .
-  Next Obligation. inv INIT; ss. Qed.
   Next Obligation. inv INIT0; inv INIT1; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.

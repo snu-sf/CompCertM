@@ -1,6 +1,6 @@
 Require Import CoqlibC Errors.
 Require Import Integers ASTC Linking.
-Require Import ValuesC Memory Separation Events GlobalenvsC Smallstep.
+Require Import ValuesC MemoryC Separation Events GlobalenvsC Smallstep.
 Require Import LTL Op Locations LinearC MachC.
 Require Import Bounds Conventions Stacklayout Lineartyping.
 Require Import Stacking.
@@ -106,6 +106,7 @@ Hint Rewrite align_idempotence: align.
 
 
 
+Local Opaque Z.add Z.mul Z.div.
 
 Section DUMMY_FUNCTION.
 
@@ -146,19 +147,69 @@ Section DUMMY_FUNCTION.
   .
   Proof. ss. Qed.
 
-  Hint Rewrite dummy_function_size_callee_save_area: dummy.
+  Lemma dummy_function_fe_ofs_local
+    :
+      (dummy_function sg).(function_bounds).(make_env).(fe_ofs_local) = (align (4 * size_arguments sg) 8 + 8)
+  .
+  Proof.
+    unfold make_env. ss. des_ifs_safe.
+    cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1.
+    { generalize (size_arguments_above sg). i. xomega. }
+    rewrite align_divisible; try xomega.
+    apply Z.divide_add_r; try xomega.
+    - apply align_divides; auto. xomega.
+    - reflexivity.
+  Qed.
+
+  Lemma dummy_function_fe_ofs_link
+    :
+      (dummy_function sg).(function_bounds).(make_env).(fe_ofs_link) = (align (4 * size_arguments sg) 8)
+  .
+  Proof.
+    unfold make_env. ss. des_ifs_safe.
+    cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1.
+    { generalize (size_arguments_above sg). i. xomega. }
+    ss.
+  Qed.
+
+  Lemma dummy_function_fe_ofs_retaddr
+    :
+      (dummy_function sg).(function_bounds).(make_env).(fe_ofs_retaddr) = (align (4 * size_arguments sg) 8 + 8)
+  .
+  Proof.
+    unfold make_env. ss. des_ifs_safe.
+    cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1.
+    { generalize (size_arguments_above sg). i. xomega. }
+    rewrite Z.mul_0_r. rewrite ! Z.add_0_r.
+    rewrite align_divisible; try xomega; cycle 1.
+    { apply align_divides. xomega. }
+    rewrite align_divisible; try xomega; cycle 1.
+    { apply align_divides. xomega. }
+    rewrite align_divisible; try xomega; cycle 1.
+    apply Z.divide_add_r; try xomega.
+    - apply align_divides; auto. xomega.
+    - reflexivity.
+  Qed.
 
   Lemma dummy_function_fe_size
     :
-      (dummy_function sg).(function_bounds).(make_env).(fe_size) = 0
+      (dummy_function sg).(function_bounds).(make_env).(fe_size) = (align (4 * size_arguments sg) 8 + 8 + 8)
   .
   Proof.
     unfold make_env.
     (*??????????????? simpl. -> inf loop, but cbn works!!!!!!!!!!!!! *)
     cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1.
     { generalize (size_arguments_above sg). i. xomega. }
-    autorewrite with align. des_ifs.
-  Abort.
+    rewrite Z.mul_0_r. rewrite ! Z.add_0_r.
+    rewrite align_divisible; try xomega; cycle 1.
+    { apply align_divides. xomega. }
+    rewrite align_divisible; try xomega; cycle 1.
+    { apply align_divides. xomega. }
+    rewrite align_divisible; try xomega; cycle 1.
+    apply Z.divide_add_r; try xomega.
+    - apply align_divides; auto. xomega.
+    - reflexivity.
+  Qed.
 
 End DUMMY_FUNCTION.
 
@@ -167,9 +218,10 @@ Hint Rewrite dummy_function_bound_local: dummy.
 Hint Rewrite dummy_function_bound_outgoing: dummy.
 Hint Rewrite dummy_function_bound_stack_data: dummy.
 Hint Rewrite dummy_function_size_callee_save_area: dummy.
-
-Local Opaque Z.add Z.mul Z.div.
-
+Hint Rewrite dummy_function_fe_ofs_local: dummy.
+Hint Rewrite dummy_function_fe_ofs_link: dummy.
+Hint Rewrite dummy_function_fe_ofs_retaddr: dummy.
+Hint Rewrite dummy_function_fe_size: dummy.
 
 Print typesize.
 Print loc_arguments_64. (* always + 2 *)
@@ -278,33 +330,19 @@ Proof.
   assert(RSPINJ:= RSREL SP).
   ss. rewrite RSPPTR in *. inv RSPINJ.
   rename H1 into RSPPTRTGT. symmetry in RSPPTRTGT. rename H2 into RSPINJ.
-  rename sp into sp_src. rename b2 into sp_tgt.
-  assert(delta = 0).
-  { admit "
-1) Use stronger version of sim_val for RSP. --> it will not work. identical asm modules can't call!
-   Note that RSP can be changed with normal instructions like Padd
-2) Give UB in sem --> I think this sounds OK.
-".
-  } clarify.
+  rename sp into sp_src. rename b2 into sp_tgt. rename m_init into m_init_src.
   rewrite Ptrofs.add_zero_l in *.
   esplits; eauto.
   - econs; eauto.
-    + hexploit Mem.range_perm_inject; eauto.
-      { apply WF. }
-      rewrite Z.add_0_l. rewrite Z.add_0_r.
-      i.
-      admit "RAW ADMITttttttttttttttttttttt".
   -
-    assert(PTRRSP: is_real_fptr (rs_init_tgt RSP)).
-    { admit "corollary of sem.". }
     assert(PTRRA: is_real_ptr (rs_init_tgt RA)).
-    { admit "add to sem". }
+    { admit "add to sem (of LinearC)". }
+    u in PTRRA. des_ifs. clear_tac.
+    rename b into ra. rename i into delta_ra. rename delta into delta_sp. clear_tac.
 
     econs; eauto.
-    +
-      u in *. des_ifs.
-      (* generalize (Ptrofs.eq_spec i Ptrofs.zero). i; des_ifs. clarify. clear_tac. *)
-      econs; eauto.
+    + econs 1; eauto; cycle 1.
+      { rewrite RSPPTRTGT. ss. }
       i.
       assert(ACC: loc_argument_acceptable (S Outgoing ofs ty)).
       { eapply loc_arguments_acceptable_2; eauto. }
@@ -329,9 +367,8 @@ Proof.
     +
       {
         Local Opaque sepconj.
-        simpl. des_ifs.
-        u in PTRRA. des_ifs. u in PTRRSP. des_ifs.
-        generalize (Ptrofs.eq_spec i Ptrofs.zero). i; des_ifs. clarify. clear_tac.
+        simpl. rewrite RSPPTRTGT. ss.
+        (* generalize (Ptrofs.eq_spec i Ptrofs.zero). i; des_ifs. clarify. clear_tac. *)
 
         rewrite sep_assoc. rewrite sep_comm. rewrite sep_assoc.
         rewrite sep_pure. split; ss.
@@ -343,8 +380,31 @@ Proof.
         { ii. ss. }
         rewrite sep_comm.
         sep_split.
-        { simpl. apply WF. }
-        { ii. admit "raw admit. footprint". }
+        { simpl. eapply Mem_set_perm_none_left_inject; eauto. apply WF. }
+        { ii.
+          Local Opaque function_bounds.
+          Local Opaque make_env.
+          Print loc_out_of_reach.
+          ss. des.
+          -
+            Local Transparent sepconj.
+            ss.
+            Local Opaque sepconj.
+            autorewrite with dummy in *.
+            rewrite Z.mul_0_r in *. rewrite Z.add_0_r in *.
+            exploit Mem_set_perm_none_spec; eauto. i; des_safe.
+            des; clarify; try xomega.
+            + Print Mem.meminj_no_overlap.
+              destruct (classic (b0 = sp_src)).
+              * clarify.
+                rewrite Z.add_0_l in *.
+                eapply INSIDE; [|eauto].
+                split; try xomega.
+                u.
+              * admit "focus on sm_init.(src_mem). sp_src has permission (fill_slots can read it)".
+          -
+            
+          admit "raw admit. footprint". }
         unfold frame_contents.
         econs.
         - sep_split.

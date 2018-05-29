@@ -24,6 +24,21 @@ Require Import sflib.
 
 Local Open Scope sep_scope.
 
+Lemma Ptrofs_add_repr
+      x y
+  :
+    <<EQ: (Ptrofs.add (Ptrofs.repr x) (Ptrofs.repr y)) = Ptrofs.repr (x + y)>>
+.
+Proof.
+  apply Ptrofs.eqm_repr_eq.
+  eapply Ptrofs.eqm_sym.
+  eapply Ptrofs.eqm_trans.
+  - apply Ptrofs.eqm_sym. apply Ptrofs.eqm_unsigned_repr.
+  - apply Ptrofs.eqm_add.
+    + apply Ptrofs.eqm_unsigned_repr.
+    + apply Ptrofs.eqm_unsigned_repr.
+Qed.
+
 Definition match_prog (p: Linear.program) (tp: Mach.program) :=
   match_program (fun _ f tf => transf_fundef f = OK tf) eq p tp.
 
@@ -187,15 +202,17 @@ Qed.
   reason about the values of [Local] slots, the other about the values of
   [Outgoing] slots. *)
 
-Program Definition contains_locations (j: meminj) (sp: block) (pos bound: Z) (sl: slot) (ls: locset) : massert := {|
+Program Definition contains_locations (j: meminj) (sp: block) (spofs: Z) (pos bound: Z) (sl: slot) (ls: locset) : massert := {|
   m_pred := fun m =>
-    (8 | pos) /\ 0 <= pos /\ pos + 4 * bound <= Ptrofs.modulus /\
-    Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable /\
-    forall ofs ty, 0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
-    exists v, Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v
-           /\ Val.inject j (ls (S sl ofs ty)) v;
+    (8 | spofs + pos) /\ 0 <= (spofs + pos) /\ (spofs + pos) + 4 * bound <= Ptrofs.modulus /\
+    Mem.range_perm m sp (spofs + pos) ((spofs + pos) + 4 * bound) Cur Freeable /\
+    (forall ofs ty, 0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
+    exists v, Mem.load (chunk_of_type ty) m sp ((spofs + pos) + 4 * ofs) = Some v
+           /\ Val.inject j (ls (S sl ofs ty)) v)
+    (* /\ <<SPOFSDIV: (8 | spofs)>> *)
+  ;
   m_footprint := fun b ofs =>
-    b = sp /\ pos <= ofs < pos + 4 * bound
+    b = sp /\ spofs + pos <= ofs < spofs + pos + 4 * bound
 |}.
 Next Obligation.
   intuition auto.
@@ -226,32 +243,32 @@ Proof.
 Qed.
 
 Lemma get_location:
-  forall m j sp pos bound sl ls ofs ty,
-  m |= contains_locations j sp pos bound sl ls ->
+  forall m j sp spofs pos bound sl ls ofs ty,
+  m |= contains_locations j sp spofs pos bound sl ls ->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   exists v,
-     load_stack m (Vptr sp Ptrofs.zero true) ty (Ptrofs.repr (pos + 4 * ofs)) = Some v
+     load_stack m (Vptr sp spofs.(Ptrofs.repr) true) ty (Ptrofs.repr (pos + 4 * ofs)) = Some v
   /\ Val.inject j (ls (S sl ofs ty)) v.
 Proof.
   intros. destruct H as (D & E & F & G & H).
   exploit H; eauto. intros (v & U & V). exists v; split; auto.
-  unfold load_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; auto.
+  unfold load_stack; simpl. rewrite Ptrofs_add_repr, Ptrofs.unsigned_repr; auto. rewrite Z.add_assoc; ss.
   unfold Ptrofs.max_unsigned. generalize (typesize_pos ty). omega.
 Qed.
 
 Lemma set_location:
-  forall m j sp pos bound sl ls P ofs ty v v',
-  m |= contains_locations j sp pos bound sl ls ** P ->
+  forall m j sp spofs pos bound sl ls P ofs ty v v',
+  m |= contains_locations j sp spofs pos bound sl ls ** P ->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   Val.inject j v v' ->
   exists m',
-     store_stack m (Vptr sp Ptrofs.zero true) ty (Ptrofs.repr (pos + 4 * ofs)) v' = Some m'
-  /\ m' |= contains_locations j sp pos bound sl (Locmap.set (S sl ofs ty) v ls) ** P.
+     store_stack m (Vptr sp Ptrofs.zero true) ty (Ptrofs.repr (spofs + pos + 4 * ofs)) v' = Some m'
+  /\ m' |= contains_locations j sp spofs pos bound sl (Locmap.set (S sl ofs ty) v ls) ** P.
 Proof.
   intros. destruct H as (A & B & C). destruct A as (D & E & F & G & H).
   edestruct Mem.valid_access_store as [m' STORE].
   eapply valid_access_location; eauto.
-  assert (PERM: Mem.range_perm m' sp pos (pos + 4 * bound) Cur Freeable).
+  assert (PERM: Mem.range_perm m' sp (spofs + pos) (spofs + pos + 4 * bound) Cur Freeable).
   { red; intros; eauto with mem. }
   exists m'; split.
 - unfold store_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; eauto.

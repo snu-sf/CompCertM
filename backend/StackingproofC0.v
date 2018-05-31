@@ -24,22 +24,6 @@ Require Import sflib.
 
 Local Open Scope sep_scope.
 
-Lemma Ptrofs_add_repr
-      x y
-  :
-    <<EQ: (Ptrofs.add (Ptrofs.repr x) (Ptrofs.repr y)) = Ptrofs.repr (x + y)>>
-.
-Proof.
-  apply Ptrofs.eqm_repr_eq.
-  eapply Ptrofs.eqm_sym.
-  eapply Ptrofs.eqm_trans.
-  - apply Ptrofs.eqm_sym. apply Ptrofs.eqm_unsigned_repr.
-  - apply Ptrofs.eqm_add.
-    + apply Ptrofs.eqm_unsigned_repr.
-    + apply Ptrofs.eqm_unsigned_repr.
-Qed.
-
-
 Definition match_prog (p: Linear.program) (tp: Mach.program) :=
   match_program (fun _ f tf => transf_fundef f = OK tf) eq p tp.
 
@@ -203,17 +187,15 @@ Qed.
   reason about the values of [Local] slots, the other about the values of
   [Outgoing] slots. *)
 
-Program Definition contains_locations (j: meminj) (sp: block) (spofs: Z) (pos bound: Z) (sl: slot) (ls: locset) : massert := {|
+Program Definition contains_locations (j: meminj) (sp: block) (pos bound: Z) (sl: slot) (ls: locset) : massert := {|
   m_pred := fun m =>
-    (8 | spofs + pos) /\ 0 <= (spofs + pos) /\ (spofs + pos) + 4 * bound <= Ptrofs.modulus /\
-    Mem.range_perm m sp (spofs + pos) ((spofs + pos) + 4 * bound) Cur Freeable /\
-    (forall ofs ty, 0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
-    exists v, Mem.load (chunk_of_type ty) m sp ((spofs + pos) + 4 * ofs) = Some v
-           /\ Val.inject j (ls (S sl ofs ty)) v)
-    (* /\ <<SPOFSDIV: (8 | spofs)>> *)
-  ;
+    DUMMY_PROP /\ 0 <= pos /\ pos + 4 * bound <= Ptrofs.modulus /\
+    Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable /\
+    forall ofs ty, 0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
+    exists v, Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v
+           /\ Val.inject j (ls (S sl ofs ty)) v;
   m_footprint := fun b ofs =>
-    b = sp /\ spofs + pos <= ofs < spofs + pos + 4 * bound
+    b = sp /\ pos <= ofs < pos + 4 * bound
 |}.
 Next Obligation.
   intuition auto.
@@ -237,7 +219,7 @@ Lemma valid_access_typealign_divides
             Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v /\ Val.inject j (ls (S sl ofs ty)) v)
       (TYBOUND: typesize ty <= bound)
   :
-    <<DIVIDES: (4 * typealign ty | (pos))>>
+    <<DIVIDES: (4 * typealign ty | pos)>>
 .
 Proof.
   specialize (VALID 0).
@@ -272,7 +254,7 @@ Remark valid_access_location_new:
   (TYBOUND: ofs + typesize ty <= bound)
   ,
   DUMMY_PROP ->
-  Mem.range_perm m sp (pos) (pos + 4 * bound) Cur Freeable ->
+  Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable ->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   Mem.valid_access m (chunk_of_type ty) sp (pos + 4 * ofs) p.
 Proof.
@@ -285,33 +267,33 @@ Proof.
 Qed.
 
 Lemma get_location:
-  forall m j sp spofs pos bound sl ls ofs ty,
-  m |= contains_locations j sp spofs pos bound sl ls ->
+  forall m j sp pos bound sl ls ofs ty,
+  m |= contains_locations j sp pos bound sl ls ->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   exists v,
-     load_stack m (Vptr sp spofs.(Ptrofs.repr) true) ty (Ptrofs.repr (pos + 4 * ofs)) = Some v
+     load_stack m (Vptr sp Ptrofs.zero true) ty (Ptrofs.repr (pos + 4 * ofs)) = Some v
   /\ Val.inject j (ls (S sl ofs ty)) v.
 Proof.
   intros. destruct H as (D & E & F & G & H).
   exploit H; eauto. intros (v & U & V). exists v; split; auto.
-  unfold load_stack; simpl. rewrite Ptrofs_add_repr, Ptrofs.unsigned_repr; auto. rewrite Z.add_assoc; ss.
+  unfold load_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; auto.
   unfold Ptrofs.max_unsigned. generalize (typesize_pos ty). omega.
 Qed.
 
 Lemma set_location:
-  forall m j sp spofs pos bound sl ls P ofs ty v v',
-  m |= contains_locations j sp spofs pos bound sl ls ** P ->
+  forall m j sp pos bound sl ls P ofs ty v v',
+  m |= contains_locations j sp pos bound sl ls ** P ->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   Val.inject j v v' ->
   exists m',
-     store_stack m (Vptr sp Ptrofs.zero true) ty (Ptrofs.repr (spofs + pos + 4 * ofs)) v' = Some m'
-  /\ m' |= contains_locations j sp spofs pos bound sl (Locmap.set (S sl ofs ty) v ls) ** P.
+     store_stack m (Vptr sp Ptrofs.zero true) ty (Ptrofs.repr (pos + 4 * ofs)) v' = Some m'
+  /\ m' |= contains_locations j sp pos bound sl (Locmap.set (S sl ofs ty) v ls) ** P.
 Proof.
   intros. destruct H as (A & B & C). destruct A as (D & E & F & G & H).
   edestruct Mem.valid_access_store as [m' STORE].
   eapply valid_access_location; eauto.
   { eapply valid_access_typealign_divides; eauto; xomega. }
-  assert (PERM: Mem.range_perm m' sp (spofs + pos) (spofs + pos + 4 * bound) Cur Freeable).
+  assert (PERM: Mem.range_perm m' sp pos (pos + 4 * bound) Cur Freeable).
   { red; intros; eauto with mem. }
   exists m'; split.
 - unfold store_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; eauto.
@@ -329,7 +311,7 @@ Proof.
   rewrite <- X; eapply Mem.load_store_other; eauto.
   destruct d. congruence. right. rewrite ! size_type_chunk, ! typesize_typesize. omega.
 * (* overlapping locations *)
-  destruct (Mem.valid_access_load m' (chunk_of_type ty0) sp (spofs + pos + 4 * ofs0)) as [v'' LOAD].
+  destruct (Mem.valid_access_load m' (chunk_of_type ty0) sp (pos + 4 * ofs0)) as [v'' LOAD].
   apply Mem.valid_access_implies with Writable; auto with mem.
   eapply valid_access_location; eauto.
   { eapply valid_access_typealign_divides; eauto; xomega. }
@@ -352,15 +334,15 @@ Proof.
 Qed.
 
 Lemma initial_locations:
-  forall j sp spofs pos bound P sl ls m,
-  m |= range sp (spofs + pos) (spofs + pos + 4 * bound) ** P ->
-  (8 | (spofs + pos)) ->
+  forall j sp pos bound P sl ls m,
+  m |= range sp pos (pos + 4 * bound) ** P ->
+  (8 | pos) ->
   (forall ofs ty, ls (S sl ofs ty) = Vundef) ->
-  m |= contains_locations j sp spofs pos bound sl ls ** P.
+  m |= contains_locations j sp pos bound sl ls ** P.
 Proof.
   intros. destruct H as (A & B & C). destruct A as (D & E & F). split.
 - simpl; intuition auto. red; intros; eauto with mem.
-  destruct (Mem.valid_access_load m (chunk_of_type ty) sp (spofs + pos + 4 * ofs)) as [v LOAD].
+  destruct (Mem.valid_access_load m (chunk_of_type ty) sp (pos + 4 * ofs)) as [v LOAD].
   eapply valid_access_location; eauto.
   { etransitivity; eauto. apply typealign_divide_8. }
   red; intros; eauto with mem.
@@ -369,20 +351,20 @@ Proof.
 Qed.
 
 Lemma contains_locations_exten:
-  forall ls ls' j sp spofs pos bound sl,
+  forall ls ls' j sp pos bound sl,
   (forall ofs ty, ls' (S sl ofs ty) = ls (S sl ofs ty)) ->
-  massert_imp (contains_locations j sp spofs pos bound sl ls)
-              (contains_locations j sp spofs pos bound sl ls').
+  massert_imp (contains_locations j sp pos bound sl ls)
+              (contains_locations j sp pos bound sl ls').
 Proof.
   intros; split; simpl; intros; auto.
   intuition auto. rewrite H. eauto.
 Qed.
 
 Lemma contains_locations_incr:
-  forall j j' sp spofs pos bound sl ls,
+  forall j j' sp pos bound sl ls,
   inject_incr j j' ->
-  massert_imp (contains_locations j sp spofs pos bound sl ls)
-              (contains_locations j' sp spofs pos bound sl ls).
+  massert_imp (contains_locations j sp pos bound sl ls)
+              (contains_locations j' sp pos bound sl ls).
 Proof.
   intros; split; simpl; intros; auto.
   intuition auto. exploit H5; eauto. intros (v & A & B). exists v; eauto.
@@ -441,12 +423,12 @@ In addition, we use a nonseparating conjunction to record the fact that
 we have full access rights on the stack frame, except the part that
 represents the Linear stack data. *)
 
-Definition frame_contents_1 (j: meminj) (sp: block) (spofs: Z) (ls ls0: locset) (parent retaddr: val) :=
-    contains_locations j sp spofs fe.(fe_ofs_local) b.(bound_local) Local ls
- ** contains_locations j sp spofs fe_ofs_arg b.(bound_outgoing) Outgoing ls
- ** hasvalue Mptr sp (spofs + fe.(fe_ofs_link)) parent
- ** hasvalue Mptr sp (spofs + fe.(fe_ofs_retaddr)) retaddr
- ** contains_callee_saves j sp (spofs + fe.(fe_ofs_callee_save)) b.(used_callee_save) ls0.
+Definition frame_contents_1 (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) :=
+    contains_locations j sp fe.(fe_ofs_local) b.(bound_local) Local ls
+ ** contains_locations j sp fe_ofs_arg b.(bound_outgoing) Outgoing ls
+ ** hasvalue Mptr sp fe.(fe_ofs_link) parent
+ ** hasvalue Mptr sp fe.(fe_ofs_retaddr) retaddr
+ ** contains_callee_saves j sp fe.(fe_ofs_callee_save) b.(used_callee_save) ls0.
 
 Definition frame_contents (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) :=
   mconj (frame_contents_1 j sp ls ls0 parent retaddr)
@@ -2393,6 +2375,21 @@ Require Import Stacking.
 Require Import sflib.
 
 Local Open Scope sep_scope.
+
+Lemma Ptrofs_add_repr
+      x y
+  :
+    <<EQ: (Ptrofs.add (Ptrofs.repr x) (Ptrofs.repr y)) = Ptrofs.repr (x + y)>>
+.
+Proof.
+  apply Ptrofs.eqm_repr_eq.
+  eapply Ptrofs.eqm_sym.
+  eapply Ptrofs.eqm_trans.
+  - apply Ptrofs.eqm_sym. apply Ptrofs.eqm_unsigned_repr.
+  - apply Ptrofs.eqm_add.
+    + apply Ptrofs.eqm_unsigned_repr.
+    + apply Ptrofs.eqm_unsigned_repr.
+Qed.
 
 Definition match_prog (p: Linear.program) (tp: Mach.program) :=
   match_program (fun _ f tf => transf_fundef f = OK tf) eq p tp.

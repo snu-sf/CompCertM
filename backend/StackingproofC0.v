@@ -18,11 +18,28 @@ Require Import CoqlibC Errors.
 Require Import Integers AST Linking.
 Require Import ValuesC Memory Separation Events Globalenvs Smallstep.
 Require Import LTL Op Locations LinearC MachC.
-Require Import Bounds Conventions Stacklayout Lineartyping.
+Require Import BoundsC Conventions StacklayoutC Lineartyping.
 Require Import Stacking.
 Require Import sflib.
 
 Local Open Scope sep_scope.
+
+
+Lemma Ptrofs_add_repr
+      x y
+  :
+    <<EQ: (Ptrofs.add (Ptrofs.repr x) (Ptrofs.repr y)) = Ptrofs.repr (x + y)>>
+.
+Proof.
+  apply Ptrofs.eqm_repr_eq.
+  eapply Ptrofs.eqm_sym.
+  eapply Ptrofs.eqm_trans.
+  - apply Ptrofs.eqm_sym. apply Ptrofs.eqm_unsigned_repr.
+  - apply Ptrofs.eqm_add.
+    + apply Ptrofs.eqm_unsigned_repr.
+    + apply Ptrofs.eqm_unsigned_repr.
+Qed.
+
 
 Definition match_prog (p: Linear.program) (tp: Mach.program) :=
   match_program (fun _ f tf => transf_fundef f = OK tf) eq p tp.
@@ -96,11 +113,16 @@ Section FRAME_PROPERTIES.
 
 Variable f: Linear.function.
 Let b := function_bounds f.
-Let fe := make_env b.
+Variable fe_ofs_arg: Z.
+Hypothesis (OFSARG: fe_ofs_arg >= 0).
+Let fe := make_env_ofs fe_ofs_arg b.
 Variable tf: Mach.function.
 Hypothesis TRANSF_F: transf_function f = OK tf.
 
-Lemma unfold_transf_function:
+Ltac zero_tac := subst fe_ofs_arg; rewrite <- make_env_ofs_zero in *.
+Lemma unfold_transf_function
+      (OFSARGZERO: fe_ofs_arg = 0)
+  :
   tf = Mach.mkfunction
          f.(Linear.fn_sig)
          (transl_body f fe)
@@ -112,7 +134,7 @@ Proof.
   destruct (wt_function f); simpl negb.
   destruct (zlt Ptrofs.max_unsigned (fe_size (make_env (function_bounds f)))).
   intros; discriminate.
-  intros. unfold fe. unfold b. congruence.
+  intros. unfold fe. unfold b. zero_tac. congruence.
   intros; discriminate.
 Qed.
 
@@ -123,13 +145,13 @@ Proof.
   destruct (wt_function f); simpl negb. auto. intros; discriminate.
 Qed.
 
-Lemma size_no_overflow: fe.(fe_size) <= Ptrofs.max_unsigned.
+Lemma size_no_overflow (OFSARGZERO: fe_ofs_arg = 0): fe.(fe_size) <= Ptrofs.max_unsigned.
 Proof.
   generalize TRANSF_F. unfold transf_function.
   destruct (wt_function f); simpl negb.
   destruct (zlt Ptrofs.max_unsigned (fe_size (make_env (function_bounds f)))).
   intros; discriminate.
-  intros. unfold fe. unfold b. omega.
+  intros. unfold fe. unfold b. zero_tac. omega.
   intros; discriminate.
 Qed.
 
@@ -271,12 +293,12 @@ Lemma get_location:
   m |= contains_locations j sp pos bound sl ls ->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   exists v,
-     load_stack m (Vptr sp Ptrofs.zero true) ty (Ptrofs.repr (pos + 4 * ofs)) = Some v
+     load_stack m (Vptr sp fe_ofs_arg.(Ptrofs.repr) true) ty (Ptrofs.repr (pos + 4 * ofs)) = Some v
   /\ Val.inject j (ls (S sl ofs ty)) v.
 Proof.
   intros. destruct H as (D & E & F & G & H).
   exploit H; eauto. intros (v & U & V). exists v; split; auto.
-  unfold load_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; auto.
+  unfold load_stack; simpl. rewrite Ptrofs_add_repr, Ptrofs.unsigned_repr; auto.
   unfold Ptrofs.max_unsigned. generalize (typesize_pos ty). omega.
 Qed.
 
@@ -432,7 +454,7 @@ Definition frame_contents_1 (j: meminj) (sp: block) (ls ls0: locset) (parent ret
 
 Definition frame_contents (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) :=
   mconj (frame_contents_1 j sp ls ls0 parent retaddr)
-        (range sp 0 fe.(fe_stack_data) **
+        (range sp fe_ofs_arg fe.(fe_stack_data) **
          range sp (fe.(fe_stack_data) + b.(bound_stack_data)) fe.(fe_size)).
 
 (** Accessing components of the frame. *)
@@ -455,7 +477,7 @@ Lemma frame_get_outgoing:
   m |= frame_contents j sp ls ls0 parent retaddr ** P ->
   slot_within_bounds b Outgoing ofs ty -> slot_valid f Outgoing ofs ty = true ->
   exists v,
-     load_stack m (Vptr sp Ptrofs.zero true) ty (Ptrofs.repr (offset_arg ofs)) = Some v
+     load_stack m (Vptr sp fe_ofs_arg.(Ptrofs.repr) true) ty (Ptrofs.repr (offset_arg ofs)) = Some v
   /\ Val.inject j (ls (S Outgoing ofs ty)) v.
 Proof.
   unfold frame_contents, frame_contents_1; intros. unfold slot_valid in H1; InvBooleans.
@@ -2375,21 +2397,6 @@ Require Import Stacking.
 Require Import sflib.
 
 Local Open Scope sep_scope.
-
-Lemma Ptrofs_add_repr
-      x y
-  :
-    <<EQ: (Ptrofs.add (Ptrofs.repr x) (Ptrofs.repr y)) = Ptrofs.repr (x + y)>>
-.
-Proof.
-  apply Ptrofs.eqm_repr_eq.
-  eapply Ptrofs.eqm_sym.
-  eapply Ptrofs.eqm_trans.
-  - apply Ptrofs.eqm_sym. apply Ptrofs.eqm_unsigned_repr.
-  - apply Ptrofs.eqm_add.
-    + apply Ptrofs.eqm_unsigned_repr.
-    + apply Ptrofs.eqm_unsigned_repr.
-Qed.
 
 Definition match_prog (p: Linear.program) (tp: Mach.program) :=
   match_program (fun _ f tf => transf_fundef f = OK tf) eq p tp.

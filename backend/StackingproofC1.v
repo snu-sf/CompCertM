@@ -2,7 +2,7 @@ Require Import CoqlibC Errors.
 Require Import Integers ASTC Linking.
 Require Import ValuesC MemoryC Separation Events GlobalenvsC Smallstep.
 Require Import LTL Op Locations LinearC MachC.
-Require Import Bounds Conventions Stacklayout Lineartyping.
+Require Import BoundsC Conventions StacklayoutC Lineartyping.
 Require Import Stacking.
 
 Local Open Scope sep_scope.
@@ -266,6 +266,69 @@ Print loc_arguments_64. (* always + 2 *)
 
 
 
+Section SEPARATIONC.
+
+  Lemma disjoint_footprint_drop_empty
+        P Q0 Q1
+        (EMPTY: Q0.(m_footprint) <2= bot2)
+        (DISJ: disjoint_footprint P Q1)
+  :
+    <<DISJ: disjoint_footprint P (Q0 ** Q1)>>
+  .
+  Proof.
+    ii. ss. unfold disjoint_footprint in *. des; eauto.
+    eapply EMPTY; eauto.
+  Qed.
+
+  Lemma disjoint_footprint_mconj
+        P Q0 Q1
+        (DISJ0: disjoint_footprint P Q0)
+        (DISJ1: disjoint_footprint P Q1)
+  :
+    <<DISJ: disjoint_footprint P (mconj Q0 Q1)>>
+  .
+  Proof.
+    ii. ss. unfold disjoint_footprint in *. des; eauto.
+  Qed.
+
+  Lemma disjoint_footprint_sepconj
+        P Q0 Q1
+        (DISJ0: disjoint_footprint P Q0)
+        (DISJ1: disjoint_footprint P Q1)
+  :
+    <<DISJ: disjoint_footprint P (Q0 ** Q1)>>
+  .
+  Proof.
+    ii. ss. unfold disjoint_footprint in *. des; eauto.
+  Qed.
+
+  (* Lemma mconj_sym *)
+  (*       P Q *)
+  (*   : *)
+  (*     <<EQ: massert_eqv (mconj P Q) (mconj Q P)>> *)
+  (* . *)
+  (* Proof. *)
+  (*   red. *)
+  (*   split; ii. *)
+  (*   - econs. *)
+  (*     + ii. unfold mconj in *. ss. des; ss. *)
+  (*     + ii. ss. des; eauto. *)
+  (*   - econs. *)
+  (*     + ii. unfold mconj in *. ss. des; ss. *)
+  (*     + ii. ss. des; eauto. *)
+  (* Qed. *)
+
+  Lemma mconj_sym
+        P Q
+    :
+      <<EQ: (mconj P Q) = (mconj Q P)>>
+  .
+  Proof.
+    admit "".
+  Qed.
+
+End SEPARATIONC.
+
 
 
 
@@ -306,6 +369,157 @@ Ltac sep_split := econs; [|split]; swap 2 3.
 Hint Unfold fe_ofs_arg.
 Hint Unfold SimMem.SimMem.sim_regset. (* TODO: move to proper place *)
 Hint Unfold mregset_of.
+
+Lemma match_stack_contents
+      sm_init
+      (MWF: SimMem.SimMem.wf sm_init)
+      ra_blk delta_ra
+      rs_init_src rs_init_tgt
+      (RSREL: (SimMem.SimMem.sim_regset) sm_init rs_init_src rs_init_tgt)
+      (RA: rs_init_tgt RA = Vptr ra_blk delta_ra true)
+      fd_src fd_tgt
+      (FINDFSRC: Genv.find_funct (Genv.globalenv prog) (rs_init_src PC) = Some (Internal fd_src))
+      (FINDFTGT: Genv.find_funct (Genv.globalenv tprog) (rs_init_tgt PC) = Some (Internal fd_tgt))
+      (TRANSFF: transf_function fd_src = OK fd_tgt)
+      ls_init
+      (LOCSET: fill_slots (to_locset rs_init_src) (loc_arguments (Linear.fn_sig fd_src)) rs_init_src
+                          (src_mem sm_init) ls_init)
+      sp_src m_init_src
+      (MPERM: Mem_set_perm (src_mem sm_init) sp_src fe_ofs_arg
+                           (4 * size_arguments (Linear.fn_sig fd_src)) None = Some m_init_src)
+      sp_tgt delta_sp
+      (RSPSRC: rs_init_src RSP = Vptr sp_src Ptrofs.zero true)
+      (RSPSTKSRC: m_init_src.(is_stack_block) sp_src)
+      (RSPTGT: rs_init_tgt RSP = Vptr sp_tgt (Ptrofs.repr delta_sp) true)
+      (RSPINJ: inj sm_init sp_src = Some (sp_tgt, delta_sp))
+  :
+    <<MATCHSTACK:
+    sm_init.(tgt_mem) |= stack_contents tprog return_address_offset (inj sm_init)
+                      [LinearC.dummy_stack (Linear.fn_sig fd_src) ls_init]
+                      [dummy_stack (rs_init_tgt RSP) (Vptr ra_blk delta_ra true)] **
+                      minjection (inj sm_init) m_init_src **
+                      globalenv_inject (Genv.globalenv prog) sm_init.(inj)>>
+.
+Proof.
+  u in RSREL.
+Local Opaque sepconj.
+Local Opaque function_bounds.
+Local Opaque make_env_ofs.
+  rewrite RSPTGT. u.
+  rewrite sep_assoc. rewrite sep_comm. rewrite sep_assoc. rewrite sep_pure. split; ss. rewrite sep_assoc.
+  assert(MINJ: Mem.inject (inj sm_init) m_init_src (tgt_mem sm_init)).
+  { eapply Mem_set_perm_none_left_inject; eauto. apply MWF. }
+  sep_split.
+  { simpl. eassumption. }
+  { apply disjoint_footprint_drop_empty.
+    { ss. }
+Local Transparent make_env_ofs.
+    unfold frame_contents. rewrite mconj_sym.
+    apply disjoint_footprint_mconj.
+    - apply disjoint_footprint_sepconj.
+      + cbn. des_ifs. autorewrite with dummy in *. rewrite Z.mul_0_r. rewrite Z.add_0_r.
+        repeat (autorewrite with align; try xomega).
+        rewrite align_divisible; try xomega; cycle 1.
+        { admit "easy". }
+        assert(PRIVTGT: forall
+                  ofs
+                  (OFS: delta_sp <= ofs <= delta_sp + (align (4 * size_arguments (Linear.fn_sig fd_src)) 8 + 8))
+                ,
+                  loc_out_of_reach sm_init.(inj) sm_init.(tgt_mem) sp_tgt ofs).
+        { admit "this should hold. Perm none". }
+
+
+        intros blk_src delta INJDUP. ii. ss. des. clarify.
+        rename delta into ofstgt. rename b0 into sp_src'. rename delta0 into delta_sp'.
+
+        assert(sp_src = sp_src').
+        { apply NNPP. intro DISJ.
+          (* exploit Mem.mi_perm; try apply INJDUP; try apply MINJ; eauto. *)
+          (* rewrite ! Z.sub_add. ii. *)
+          Print Mem.meminj_no_overlap.
+          hexploit Mem.mi_no_overlap; eauto. intro OVERLAP.
+          exploit OVERLAP; eauto; cycle 1.
+          { intro TMP. des; eauto. apply TMP; eauto.
+            instantiate (1:= ofstgt - delta_sp). rewrite ! Z.sub_add. ss.
+          }
+          Print Mem.inject'.
+        }
+        specialize (PRIVTGT delta). special PRIVTGT.
+        { admit "easy". }
+        unfold loc_out_of_reach in *.
+        dup PRIVTGT.
+        specialize (PRIVTGT _ _ RSPINJ).
+        specialize (PRIVTGT0 _ _ INJ).
+        special PRIVTGT.
+        assert(b0 = sp_src).
+        { apply NNPP.
+          ii.
+          (* ofs0 + delta0 = ofs1 + delta_sp *)
+          (* sp_tgt + delta has permisison. *)
+        }
+      +
+  }
+    unfold frame_contents.
+    
+    ii.
+    Print loc_out_of_reach.
+    ss. des.
+    -
+      Local Transparent sepconj.
+      ss.
+      Local Opaque sepconj.
+      autorewrite with dummy in *.
+      rewrite Z.mul_0_r in *. rewrite Z.add_0_r in *.
+      exploit Mem_set_perm_none_spec; eauto. i; des_safe.
+      des; clarify; try xomega.
+      + Print Mem.meminj_no_overlap.
+        destruct (classic (b0 = sp_src)).
+        * clarify.
+          rewrite Z.add_0_l in *.
+          eapply INSIDE; [|eauto].
+          split; try xomega.
+          u.
+        * admit "focus on sm_init.(src_mem). sp_src has permission (fill_slots can read it)".
+    -
+      
+      admit "raw admit. footprint".
+  }
+  { 
+  unfold 
+Qed.
+
+
+  1 subgoal (ID 4488)
+  
+  prog : Linear.program
+  tprog : program
+  TRANSF : match_prog prog tprog
+  return_address_offset : function -> code -> ptrofs -> Prop
+  match_states := StackingproofC0.match_states prog tprog return_address_offset : Linear.state -> state -> Prop
+  fptr_init_src, fptr_init_tgt : val
+  FPTRREL : Val.inject (inj sm_init) fptr_init_src fptr_init_tgt
+  rs_init_src, rs_init_tgt : regset
+  RSREL : forall pr : PregEq.t, Val.inject (inj sm_init) (rs_init_src pr) (rs_init_tgt pr)
+  WF : wf' sm_init
+  fd_src : Linear.function
+  ls_init : locset
+  sp_src : block
+  m_init_src : mem
+  FINDFUNC : Genv.find_funct (Genv.globalenv prog) (rs_init_src PC) = Some (Internal fd_src)
+  LOCSET : fill_slots (to_locset rs_init_src) (loc_arguments (Linear.fn_sig fd_src)) rs_init_src
+             (src_mem sm_init) ls_init
+  RSPPTR : rs_init_src RSP = Vptr sp_src Ptrofs.zero true
+  MPERM : Mem_set_perm (src_mem sm_init) sp_src fe_ofs_arg (4 * size_arguments (Linear.fn_sig fd_src)) None =
+          Some m_init_src
+  fd_tgt : function
+  FUNCTGT : Genv.find_funct (Genv.globalenv tprog) (rs_init_tgt PC) = Some (Internal fd_tgt)
+  Heq : transf_function fd_src = OK fd_tgt
+  sp_tgt : block
+  delta_sp : Z
+  RSPINJ : inj sm_init sp_src = Some (sp_tgt, delta_sp)
+  RSPPTRTGT : rs_init_tgt RSP = Vptr sp_tgt (Ptrofs.repr delta_sp) true
+  ra : block
+  :
 
 Theorem init_match_states
         (sm_init: SimMem.SimMem.t) fptr_init_src fptr_init_tgt
@@ -404,7 +618,8 @@ Proof.
               * admit "focus on sm_init.(src_mem). sp_src has permission (fill_slots can read it)".
           -
             
-          admit "raw admit. footprint". }
+          admit "raw admit. footprint".
+        }
         unfold frame_contents.
         econs.
         - sep_split.

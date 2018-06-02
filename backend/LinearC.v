@@ -271,6 +271,7 @@ Section MODSEM.
       (* (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable) *)
       sp
       (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
+      (RSPSTK: m_arg.(is_stack_block) sp)
       m_init
       (MPERM: Mem_set_perm m_arg sp Stacklayout.fe_ofs_arg
                            (4 * (size_arguments sg_init)) None = Some m_init)

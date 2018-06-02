@@ -159,3 +159,13 @@ Proof.
 Qed.
 
 Global Opaque Mem_set_perm.
+
+(* heap(malloc) has permission on (b, -1) *)
+(* TODO: Name is not precise... malloc && drop_perm will satsify this condition. *)
+Definition is_stack_block (m: mem) (blk: block): Prop := forall
+    ofs kind perm
+    (PERM: Mem.perm m blk ofs kind perm)
+  ,
+    <<POS: 0 <= ofs>>
+.
+Hint Unfold is_stack_block.

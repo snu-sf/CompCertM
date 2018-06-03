@@ -13,7 +13,7 @@ Require Export StackingproofC0.
 Require Import SimModSem.
 Require Import SimMemInj.
 Require SimSymb.
-Require Import Asmregs.
+Require Import AsmregsC.
 
 Set Implicit Arguments.
 
@@ -381,15 +381,12 @@ Lemma match_stack_contents
       (FINDFSRC: Genv.find_funct (Genv.globalenv prog) (rs_init_src PC) = Some (Internal fd_src))
       (FINDFTGT: Genv.find_funct (Genv.globalenv tprog) (rs_init_tgt PC) = Some (Internal fd_tgt))
       (TRANSFF: transf_function fd_src = OK fd_tgt)
-      ls_init
-      (LOCSET: fill_slots (to_locset rs_init_src) (loc_arguments (Linear.fn_sig fd_src)) rs_init_src
-                          (src_mem sm_init) ls_init)
-      sp_src m_init_src
-      (MPERM: Mem_set_perm (src_mem sm_init) sp_src fe_ofs_arg
-                           (4 * size_arguments (Linear.fn_sig fd_src)) None = Some m_init_src)
-      sp_tgt delta_sp
+      ls_init vs_init m_init_src
+      (LOADARGSSRC: load_arguments rs_init_src (src_mem sm_init) (Linear.fn_sig fd_src) vs_init m_init_src)
+      (LOCSET: fill_arguments (Locmap.init Vundef) vs_init (Linear.fn_sig fd_src).(loc_arguments)
+               = Some ls_init)
+      sp_src sp_tgt delta_sp
       (RSPSRC: rs_init_src RSP = Vptr sp_src Ptrofs.zero true)
-      (RSPSTKSRC: m_init_src.(is_stack_block) sp_src)
       (RSPTGT: rs_init_tgt RSP = Vptr sp_tgt (Ptrofs.repr delta_sp) true)
       (RSPINJ: inj sm_init sp_src = Some (sp_tgt, delta_sp))
   :
@@ -407,6 +404,16 @@ Local Opaque function_bounds.
 Local Opaque make_env_ofs.
   rewrite RSPTGT. u.
   rewrite sep_assoc. rewrite sep_comm. rewrite sep_assoc. rewrite sep_pure. split; ss. rewrite sep_assoc.
+  inv LOADARGSSRC. rename PERM into PERMSRC. rename VAL into VALSRC. rename DROP into DROPSRC.
+  rewrite RSPSRC in *. clarify. rename sp into sp_src.
+  assert(DELTA: 0 < size_arguments (Linear.fn_sig fd_src) -> 0 <= delta_sp <= Ptrofs.max_unsigned).
+  {
+    i.
+    Print Mem.inject'.
+    exploit Mem.mi_representable; try apply MWF; eauto; cycle 1.
+    { instantiate (1:= Ptrofs.zero). rewrite Ptrofs.unsigned_zero. xomega. }
+    left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max. eapply PERMSRC. split; try xomega.
+  }
   assert(MINJ: Mem.inject (inj sm_init) m_init_src (tgt_mem sm_init)).
   { eapply Mem_set_perm_none_left_inject; eauto. apply MWF. }
   sep_split.
@@ -421,28 +428,34 @@ Local Transparent make_env_ofs.
         repeat (autorewrite with align; try xomega).
         rewrite align_divisible; try xomega; cycle 1.
         { admit "easy". }
-        assert(PRIVTGT: forall
-                  ofs
-                  (OFS: delta_sp <= ofs <= delta_sp + (align (4 * size_arguments (Linear.fn_sig fd_src)) 8 + 8))
-                ,
-                  loc_out_of_reach sm_init.(inj) sm_init.(tgt_mem) sp_tgt ofs).
-        { admit "this should hold. Perm none". }
+
+        (* assert(PRIVTGT: forall *)
+        (*           ofs *)
+        (*           (OFS: delta_sp <= ofs <= delta_sp + (align (4 * size_arguments (Linear.fn_sig fd_src)) 8 + 8)) *)
+        (*         , *)
+        (*           loc_out_of_reach sm_init.(inj) sm_init.(tgt_mem) sp_tgt ofs). *)
+        (* { admit "this should hold. Perm none". } *)
 
 
         intros blk_src delta INJDUP. ii. ss. des. clarify.
         rename delta into ofstgt. rename b0 into sp_src'. rename delta0 into delta_sp'.
+        exploit Mem_set_perm_none_impl; eauto. clear INJDUP0. intro INJDUP0.
 
         assert(sp_src = sp_src').
         { apply NNPP. intro DISJ.
           (* exploit Mem.mi_perm; try apply INJDUP; try apply MINJ; eauto. *)
           (* rewrite ! Z.sub_add. ii. *)
           Print Mem.meminj_no_overlap.
-          hexploit Mem.mi_no_overlap; eauto. intro OVERLAP.
+          hexploit Mem.mi_no_overlap; try apply MWF. intro OVERLAP.
           exploit OVERLAP; eauto; cycle 1.
           { intro TMP. des; eauto. apply TMP; eauto.
             instantiate (1:= ofstgt - delta_sp). rewrite ! Z.sub_add. ss.
           }
+          eapply Mem.perm_cur_max.
+          eapply PERMSRC. rewrite Ptrofs.unsigned_repr in *.
+          split; try xomega.
           Print Mem.inject'.
+          eapply PERMSRC.
         }
         specialize (PRIVTGT delta). special PRIVTGT.
         { admit "easy". }

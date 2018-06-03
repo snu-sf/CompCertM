@@ -4,7 +4,7 @@ Require Import Op Locations LTL Conventions.
 (** newly added **)
 Require Export Linear.
 Require Import ModSem.
-Require Import Asmregs.
+Require Import AsmregsC.
 
 Set Implicit Arguments.
 
@@ -224,7 +224,7 @@ Section MODSEM.
   Print extcall_arg_pair.
   Print extcall_arg.
 
-  Inductive fill_slots (ls0: locset) (locs: list (rpair loc)) (rs: regset) (m: mem) (ls1: locset): Prop :=
+  Inductive fill_slots_old (ls0: locset) (locs: list (rpair loc)) (rs: regset) (m: mem) (ls1: locset): Prop :=
   | update_slots_intro
       (SLOTIN: forall
           sl pos ty
@@ -243,7 +243,7 @@ Section MODSEM.
           <<EQ: ls0 r = ls1 r>>)
   .
 
-  (* Definition fill_slots (ls0: locset) (locs: list (rpair loc)) (rs: regset) (m: mem): locset := *)
+  (* Definition fill_slots_old (ls0: locset) (locs: list (rpair loc)) (rs: regset) (m: mem): locset := *)
   (*   fun loc => *)
   (*     match loc with *)
   (*     | R _ => ls0 loc *)
@@ -254,14 +254,33 @@ Section MODSEM.
   (*       else Vundef *)
   (* . *)
 
+  Fixpoint fill_arguments (ls0: locset) (args: list val) (locs: list (rpair loc)): option locset :=
+    match args, locs with
+    | [], [] => Some ls0
+    | arg :: args, loc :: locs =>
+      match loc with
+      | One loc => Some (Locmap.set loc arg ls0)
+      | Twolong hi lo => Some (Locmap.set lo arg.(Val.loword) (Locmap.set hi arg.(Val.hiword) ls0))
+      end
+    | _, _ => None
+    end
+  .
+
   Inductive initial_frame (rs_arg: regset) (m_arg: mem)
     : state -> Prop :=
   | initial_frame_intro
-      fptr_arg fd sg_init ls_init
+      fptr_arg fd sg_init
       (FPTR: fptr_arg = rs_arg PC)
       (FINDFUNC: Genv.find_funct ge fptr_arg = Some (Internal fd))
       (SIG: sg_init = fd.(fn_sig))
-      (LOCSET: fill_slots rs_arg.(to_locset) (loc_arguments sg_init) rs_arg m_arg ls_init)
+
+      vs_init m_init
+      (LOADARG: load_arguments rs_arg m_arg sg_init vs_init m_init)
+
+      (* (LOCSET: fill_slots rs_arg.(to_locset) (loc_arguments sg_init) rs_arg m_arg ls_init) *)
+      ls_init
+      (LOCSET: fill_arguments (Locmap.init Vundef) vs_init (loc_arguments sg_init) = Some ls_init)
+
       (* sp delta *)
       (* (RSPPTR: rs_arg RSP = Vptr sp (Ptrofs.repr delta) true) *)
       (* (ARGSPERM: Mem.range_perm m_arg sp delta (size_arguments fd.(fn_sig)) Cur Writable) *)
@@ -269,12 +288,7 @@ Section MODSEM.
       (* sp *)
       (* (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true) *)
       (* (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable) *)
-      sp
-      (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
-      (RSPSTK: m_arg.(is_stack_block) sp)
-      m_init
-      (MPERM: Mem_set_perm m_arg sp Stacklayout.fe_ofs_arg
-                           (4 * (size_arguments sg_init)) None = Some m_init)
+      (* (RSPSTK: m_arg.(is_stack_block) sp) *)
     :
       initial_frame rs_arg m_arg
                     (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_init)
@@ -301,28 +315,28 @@ Section MODSEM.
                      (Returnstate stack ls_ret m_ret)
   .
 
-  Lemma fill_slots_dtm
-        ls0 locs rs m ls1 ls2
-        (FILL0: fill_slots ls0 locs rs m ls1)
-        (FILL1: fill_slots ls0 locs rs m ls2)
-    :
-      ls1 = ls2
-  .
-  Proof.
-    inv FILL0. inv FILL1.
-    eapply Axioms.functional_extensionality.
-    i. destruct x; ss.
-    - erewrite <- REGS. erewrite <- REGS0. ss.
-    - destruct (classic (In (S sl pos ty) (regs_of_rpairs locs))).
-      + exploit SLOTIN; eauto. i; des.
-        exploit SLOTIN0; eauto. i; des.
-        clarify.
-        inv H0; inv H2; ss. des_ifs.
-        (* TODO: Move determinacy lemma for extcall_arg into Asmregs, and use it *)
-      + exploit SLOTNOTIN; eauto. i; des.
-        exploit SLOTNOTIN0; eauto. i; des.
-        congruence.
-  Qed.
+  (* Lemma fill_slots_old_dtm *)
+  (*       ls0 locs rs m ls1 ls2 *)
+  (*       (FILL0: fill_slots_old ls0 locs rs m ls1) *)
+  (*       (FILL1: fill_slots_old ls0 locs rs m ls2) *)
+  (*   : *)
+  (*     ls1 = ls2 *)
+  (* . *)
+  (* Proof. *)
+  (*   inv FILL0. inv FILL1. *)
+  (*   eapply Axioms.functional_extensionality. *)
+  (*   i. destruct x; ss. *)
+  (*   - erewrite <- REGS. erewrite <- REGS0. ss. *)
+  (*   - destruct (classic (In (S sl pos ty) (regs_of_rpairs locs))). *)
+  (*     + exploit SLOTIN; eauto. i; des. *)
+  (*       exploit SLOTIN0; eauto. i; des. *)
+  (*       clarify. *)
+  (*       inv H0; inv H2; ss. des_ifs. *)
+  (*       (* TODO: Move determinacy lemma for extcall_arg into Asmregs, and use it *) *)
+  (*     + exploit SLOTNOTIN; eauto. i; des. *)
+  (*       exploit SLOTNOTIN0; eauto. i; des. *)
+  (*       congruence. *)
+  (* Qed. *)
 
   Program Definition modsem: ModSem.t :=
     {|
@@ -338,9 +352,8 @@ Section MODSEM.
   .
   Next Obligation.
     inv INIT0; inv INIT1; ss. clarify.
-    assert(ls_init = ls_init0).
-    { eapply fill_slots_dtm; eauto. }
-    clarify. eq_closure_tac.
+    determ_tac extcall_arguments_determ.
+    rewrite RSPPTR in *. clarify.
   Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.

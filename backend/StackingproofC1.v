@@ -2,7 +2,8 @@ Require Import CoqlibC Errors.
 Require Import Integers ASTC Linking.
 Require Import ValuesC MemoryC Separation Events GlobalenvsC Smallstep.
 Require Import LTL Op Locations LinearC MachC.
-Require Import BoundsC Conventions StacklayoutC Lineartyping.
+(* Require Import BoundsC Conventions StacklayoutC Lineartyping. *)
+Require Import Bounds Conventions Stacklayout Lineartyping.
 Require Import Stacking.
 
 Local Open Scope sep_scope.
@@ -108,120 +109,120 @@ Hint Rewrite align_idempotence: align.
 
 Local Opaque Z.add Z.mul Z.div.
 
-Section DUMMY_FUNCTION.
+(* Section DUMMY_FUNCTION. *)
 
-  Variable sg: signature.
+(*   Variable sg: signature. *)
   
-  Lemma dummy_function_used_callee_save
-    :
-    (dummy_function sg).(function_bounds).(used_callee_save) = []
-  .
-  Proof. ss. Qed.
+(*   Lemma dummy_function_used_callee_save *)
+(*     : *)
+(*     (dummy_function sg).(function_bounds).(used_callee_save) = [] *)
+(*   . *)
+(*   Proof. ss. Qed. *)
 
-  Lemma dummy_function_bound_local
-    :
-      (dummy_function sg).(function_bounds).(bound_local) = 0
-  .
-  Proof. ss. Qed.
+(*   Lemma dummy_function_bound_local *)
+(*     : *)
+(*       (dummy_function sg).(function_bounds).(bound_local) = 0 *)
+(*   . *)
+(*   Proof. ss. Qed. *)
 
-  Lemma dummy_function_bound_outgoing
-    :
-      (dummy_function sg).(function_bounds).(bound_outgoing) = (size_arguments sg)
-  .
-  Proof.
-    ss. unfold dummy_function. cbn.
-    rewrite Z.max_l; try xomega. rewrite Z.max_r; try xomega.
-    generalize (size_arguments_above sg). i. xomega.
-  Qed.
+(*   Lemma dummy_function_bound_outgoing *)
+(*     : *)
+(*       (dummy_function sg).(function_bounds).(bound_outgoing) = (size_arguments sg) *)
+(*   . *)
+(*   Proof. *)
+(*     ss. unfold dummy_function. cbn. *)
+(*     rewrite Z.max_l; try xomega. rewrite Z.max_r; try xomega. *)
+(*     generalize (size_arguments_above sg). i. xomega. *)
+(*   Qed. *)
 
-  Lemma dummy_function_bound_stack_data
-    :
-      (dummy_function sg).(function_bounds).(bound_stack_data) = 0
-  .
-  Proof. ss. Qed.
+(*   Lemma dummy_function_bound_stack_data *)
+(*     : *)
+(*       (dummy_function sg).(function_bounds).(bound_stack_data) = 0 *)
+(*   . *)
+(*   Proof. ss. Qed. *)
 
-  Lemma dummy_function_size_callee_save_area
-        ofs
-    :
-      (dummy_function sg).(function_bounds).(size_callee_save_area) ofs = ofs
-  .
-  Proof. ss. Qed.
+(*   Lemma dummy_function_size_callee_save_area *)
+(*         ofs *)
+(*     : *)
+(*       (dummy_function sg).(function_bounds).(size_callee_save_area) ofs = ofs *)
+(*   . *)
+(*   Proof. ss. Qed. *)
 
-  Lemma dummy_function_fe_ofs_local
-    :
-      (dummy_function sg).(function_bounds).(make_env).(fe_ofs_local) = (align (4 * size_arguments sg) 8 + 8)
-  .
-  Proof.
-    unfold make_env. ss. des_ifs_safe.
-    cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1.
-    { generalize (size_arguments_above sg). i. xomega. }
-    rewrite align_divisible; try xomega.
-    apply Z.divide_add_r; try xomega.
-    - apply align_divides; auto. xomega.
-    - reflexivity.
-  Qed.
+(*   Lemma dummy_function_fe_ofs_local *)
+(*     : *)
+(*       (dummy_function sg).(function_bounds).(make_env).(fe_ofs_local) = (align (4 * size_arguments sg) 8 + 8) *)
+(*   . *)
+(*   Proof. *)
+(*     unfold make_env. ss. des_ifs_safe. *)
+(*     cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1. *)
+(*     { generalize (size_arguments_above sg). i. xomega. } *)
+(*     rewrite align_divisible; try xomega. *)
+(*     apply Z.divide_add_r; try xomega. *)
+(*     - apply align_divides; auto. xomega. *)
+(*     - reflexivity. *)
+(*   Qed. *)
 
-  Lemma dummy_function_fe_ofs_link
-    :
-      (dummy_function sg).(function_bounds).(make_env).(fe_ofs_link) = (align (4 * size_arguments sg) 8)
-  .
-  Proof.
-    unfold make_env. ss. des_ifs_safe.
-    cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1.
-    { generalize (size_arguments_above sg). i. xomega. }
-    ss.
-  Qed.
+(*   Lemma dummy_function_fe_ofs_link *)
+(*     : *)
+(*       (dummy_function sg).(function_bounds).(make_env).(fe_ofs_link) = (align (4 * size_arguments sg) 8) *)
+(*   . *)
+(*   Proof. *)
+(*     unfold make_env. ss. des_ifs_safe. *)
+(*     cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1. *)
+(*     { generalize (size_arguments_above sg). i. xomega. } *)
+(*     ss. *)
+(*   Qed. *)
 
-  Lemma dummy_function_fe_ofs_retaddr
-    :
-      (dummy_function sg).(function_bounds).(make_env).(fe_ofs_retaddr) = (align (4 * size_arguments sg) 8 + 8)
-  .
-  Proof.
-    unfold make_env. ss. des_ifs_safe.
-    cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1.
-    { generalize (size_arguments_above sg). i. xomega. }
-    rewrite Z.mul_0_r. rewrite ! Z.add_0_r.
-    rewrite align_divisible; try xomega; cycle 1.
-    { apply align_divides. xomega. }
-    rewrite align_divisible; try xomega; cycle 1.
-    { apply align_divides. xomega. }
-    rewrite align_divisible; try xomega; cycle 1.
-    apply Z.divide_add_r; try xomega.
-    - apply align_divides; auto. xomega.
-    - reflexivity.
-  Qed.
+(*   Lemma dummy_function_fe_ofs_retaddr *)
+(*     : *)
+(*       (dummy_function sg).(function_bounds).(make_env).(fe_ofs_retaddr) = (align (4 * size_arguments sg) 8 + 8) *)
+(*   . *)
+(*   Proof. *)
+(*     unfold make_env. ss. des_ifs_safe. *)
+(*     cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1. *)
+(*     { generalize (size_arguments_above sg). i. xomega. } *)
+(*     rewrite Z.mul_0_r. rewrite ! Z.add_0_r. *)
+(*     rewrite align_divisible; try xomega; cycle 1. *)
+(*     { apply align_divides. xomega. } *)
+(*     rewrite align_divisible; try xomega; cycle 1. *)
+(*     { apply align_divides. xomega. } *)
+(*     rewrite align_divisible; try xomega; cycle 1. *)
+(*     apply Z.divide_add_r; try xomega. *)
+(*     - apply align_divides; auto. xomega. *)
+(*     - reflexivity. *)
+(*   Qed. *)
 
-  Lemma dummy_function_fe_size
-    :
-      (dummy_function sg).(function_bounds).(make_env).(fe_size) = (align (4 * size_arguments sg) 8 + 8 + 8)
-  .
-  Proof.
-    unfold make_env.
-    (*??????????????? simpl. -> inf loop, but cbn works!!!!!!!!!!!!! *)
-    cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1.
-    { generalize (size_arguments_above sg). i. xomega. }
-    rewrite Z.mul_0_r. rewrite ! Z.add_0_r.
-    rewrite align_divisible; try xomega; cycle 1.
-    { apply align_divides. xomega. }
-    rewrite align_divisible; try xomega; cycle 1.
-    { apply align_divides. xomega. }
-    rewrite align_divisible; try xomega; cycle 1.
-    apply Z.divide_add_r; try xomega.
-    - apply align_divides; auto. xomega.
-    - reflexivity.
-  Qed.
+(*   Lemma dummy_function_fe_size *)
+(*     : *)
+(*       (dummy_function sg).(function_bounds).(make_env).(fe_size) = (align (4 * size_arguments sg) 8 + 8 + 8) *)
+(*   . *)
+(*   Proof. *)
+(*     unfold make_env. *)
+(*     (*??????????????? simpl. -> inf loop, but cbn works!!!!!!!!!!!!! *) *)
+(*     cbn. des_ifs_safe. rewrite Z.max_l; try xomega. rewrite Z.max_r; cycle 1. *)
+(*     { generalize (size_arguments_above sg). i. xomega. } *)
+(*     rewrite Z.mul_0_r. rewrite ! Z.add_0_r. *)
+(*     rewrite align_divisible; try xomega; cycle 1. *)
+(*     { apply align_divides. xomega. } *)
+(*     rewrite align_divisible; try xomega; cycle 1. *)
+(*     { apply align_divides. xomega. } *)
+(*     rewrite align_divisible; try xomega; cycle 1. *)
+(*     apply Z.divide_add_r; try xomega. *)
+(*     - apply align_divides; auto. xomega. *)
+(*     - reflexivity. *)
+(*   Qed. *)
 
-End DUMMY_FUNCTION.
+(* End DUMMY_FUNCTION. *)
 
-Hint Rewrite dummy_function_used_callee_save: dummy.
-Hint Rewrite dummy_function_bound_local: dummy.
-Hint Rewrite dummy_function_bound_outgoing: dummy.
-Hint Rewrite dummy_function_bound_stack_data: dummy.
-Hint Rewrite dummy_function_size_callee_save_area: dummy.
-Hint Rewrite dummy_function_fe_ofs_local: dummy.
-Hint Rewrite dummy_function_fe_ofs_link: dummy.
-Hint Rewrite dummy_function_fe_ofs_retaddr: dummy.
-Hint Rewrite dummy_function_fe_size: dummy.
+(* Hint Rewrite dummy_function_used_callee_save: dummy. *)
+(* Hint Rewrite dummy_function_bound_local: dummy. *)
+(* Hint Rewrite dummy_function_bound_outgoing: dummy. *)
+(* Hint Rewrite dummy_function_bound_stack_data: dummy. *)
+(* Hint Rewrite dummy_function_size_callee_save_area: dummy. *)
+(* Hint Rewrite dummy_function_fe_ofs_local: dummy. *)
+(* Hint Rewrite dummy_function_fe_ofs_link: dummy. *)
+(* Hint Rewrite dummy_function_fe_ofs_retaddr: dummy. *)
+(* Hint Rewrite dummy_function_fe_size: dummy. *)
 
 Print typesize.
 Print loc_arguments_64. (* always + 2 *)
@@ -318,13 +319,37 @@ Section SEPARATIONC.
   (*     + ii. ss. des; eauto. *)
   (* Qed. *)
 
+  Lemma massert_eq
+        pred0 footprint0 INVAR0 VALID0
+        pred1 footprint1 INVAR1 VALID1
+        (EQ0: pred0 = pred1)
+        (EQ1: footprint0 = footprint1)
+    :
+      Build_massert pred0 footprint0 INVAR0 VALID0 = Build_massert pred1 footprint1 INVAR1 VALID1
+  .
+  Proof.
+    clarify.
+    f_equal.
+    apply Axioms.proof_irr.
+    apply Axioms.proof_irr.
+  Qed.
+
+  Axiom prop_ext: ClassicalFacts.prop_extensionality.
+
   Lemma mconj_sym
         P Q
     :
       <<EQ: (mconj P Q) = (mconj Q P)>>
   .
   Proof.
-    admit "".
+    apply massert_eq; ss.
+    - apply Axioms.functional_extensionality. ii; ss.
+      apply prop_ext.
+      split; i; des; split; ss.
+    - apply Axioms.functional_extensionality. ii; ss.
+      apply Axioms.functional_extensionality. ii; ss.
+      apply prop_ext.
+      split; i; des; eauto.
   Qed.
 
 End SEPARATIONC.
@@ -401,18 +426,44 @@ Proof.
   u in RSREL.
 Local Opaque sepconj.
 Local Opaque function_bounds.
-Local Opaque make_env_ofs.
+Local Opaque make_env.
   rewrite RSPTGT. u.
-  rewrite sep_assoc. rewrite sep_comm. rewrite sep_assoc. rewrite sep_pure. split; ss. rewrite sep_assoc.
+  unfold dummy_frame_contents.
+  rewrite sep_comm. rewrite sep_assoc.
   inv LOADARGSSRC. rename PERM into PERMSRC. rename VAL into VALSRC. rename DROP into DROPSRC.
   rewrite RSPSRC in *. clarify. rename sp into sp_src.
-  assert(DELTA: 0 < size_arguments (Linear.fn_sig fd_src) -> 0 <= delta_sp <= Ptrofs.max_unsigned).
+  assert(DELTA: 0 < size_arguments (Linear.fn_sig fd_src) ->
+                0 <= delta_sp <= Ptrofs.max_unsigned
+                /\ 4 * size_arguments (Linear.fn_sig fd_src) + delta_sp <= Ptrofs.max_unsigned).
   {
     i.
     Print Mem.inject'.
-    exploit Mem.mi_representable; try apply MWF; eauto; cycle 1.
-    { instantiate (1:= Ptrofs.zero). rewrite Ptrofs.unsigned_zero. xomega. }
-    left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max. eapply PERMSRC. split; try xomega.
+    split.
+    - exploit Mem.mi_representable; try apply MWF; eauto; cycle 1.
+      { instantiate (1:= Ptrofs.zero). rewrite Ptrofs.unsigned_zero. xomega. }
+      left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max. eapply PERMSRC. split; try xomega.
+    -
+      assert(SZARGBOUND: 4 * size_arguments (Linear.fn_sig fd_src) <= Ptrofs.max_unsigned).
+      {
+        hexploit size_no_overflow; eauto. intro OVERFLOW.
+        clear - OVERFLOW.
+        Local Transparent function_bounds.
+        Local Transparent make_env.
+        u in *.
+        ss.
+        des_ifs. unfold function_bounds in *. cbn in *.
+        admit "Add this in initial_frame of LinearC".
+      }
+      exploit Mem.mi_representable; try apply MWF; eauto; cycle 1.
+      { instantiate (1:= (4 * size_arguments (Linear.fn_sig fd_src)).(Ptrofs.repr)).
+        rewrite Ptrofs.unsigned_repr; cycle 1.
+        { split; try xomega. }
+        i. des. xomega.
+      }
+      right.
+      rewrite Ptrofs.unsigned_repr; cycle 1.
+      { split; try xomega. }
+      eapply Mem.perm_cur_max. eapply PERMSRC. split; try xomega.
   }
   assert(MINJ: Mem.inject (inj sm_init) m_init_src (tgt_mem sm_init)).
   { eapply Mem_set_perm_none_left_inject; eauto. apply MWF. }
@@ -420,8 +471,75 @@ Local Opaque make_env_ofs.
   { simpl. eassumption. }
   { apply disjoint_footprint_drop_empty.
     { ss. }
-Local Transparent make_env_ofs.
-    unfold frame_contents. rewrite mconj_sym.
+    intros ? delta INJDUP. ii. ss. des. clarify.
+    rename delta into ofstgt. rename b0 into sp_src'. rename delta0 into delta_sp'.
+    destruct (classic (0 < size_arguments (Linear.fn_sig fd_src))); cycle 1.
+    { omega. }
+    special DELTA; ss. clear_tac.
+    rewrite Ptrofs.unsigned_repr in *; try omega.
+    (* exploit Mem_set_perm_none_impl; eauto. clear INJDUP0. intro INJDUP0. *)
+    assert(sp_src' = sp_src).
+    { apply NNPP. intro DISJ.
+      hexploit Mem.mi_no_overlap; try apply MWF. intro OVERLAP.
+      exploit OVERLAP; eauto.
+      { eapply Mem_set_perm_none_impl; eauto. }
+      { eapply Mem.perm_cur_max. eapply PERMSRC. instantiate (1:= ofstgt - delta_sp). xomega. }
+      { intro TMP. des; eauto. apply TMP; eauto. rewrite ! Z.sub_add. ss. }
+    }
+    clarify.
+    hexploit Mem_set_perm_none_spec; eauto. i; des.
+    eapply INSIDE; eauto. omega.
+  }
+  sep_split.
+  { ss. admit "sim_genv". }
+  { ss. }
+  ss. rewrite Ptrofs.unsigned_repr_eq.
+  assert(POSBOUND: forall p, 0 <= p mod Ptrofs.modulus < Ptrofs.modulus).
+  { i. eapply Z.mod_pos_bound; eauto. admit "easy". }
+  split; eauto.
+  split; eauto.
+  { eapply POSBOUND. }
+  destruct (classic (0 < size_arguments (Linear.fn_sig fd_src))); cycle 1.
+  { esplits; auto.
+    - specialize (POSBOUND delta_sp). xomega.
+    - ii. xomega.
+    - i. generalize (typesize_pos ty). i. xomega.
+  }
+  special DELTA; ss.
+  des.
+  specialize (POSBOUND delta_sp). unfold Ptrofs.max_unsigned in *.
+  erewrite Z.mod_small; try xomega.
+  split; try xomega.
+  split; try xomega.
+  { rewrite Z.add_comm.
+    change (delta_sp) with (0 + delta_sp).
+    eapply Mem.range_perm_inject; try apply MWF; eauto.
+    replace Nonempty with Freeable in PERMSRC; cycle 1.
+    { admit "Check if it is needed. If so, update LinearC.". }
+    eauto.
+  }
+  ii.
+  assert(LOADSRC: Mem.load (chunk_of_type ty) (src_mem sm_init) sp_src (4 * ofs)
+                  = Some (ls_init (S Outgoing ofs ty))).
+  { clear - PERMSRC VALSRC LOCSET DROPSRC.
+    THIS DOES NOT HOLD!!
+    0    1    2
+    [Int][???]
+    When you load [1, 2), you get non-det value, not undef!!!
+  }
+  esplits; eauto.
+  rewrite 
+  destruct 
+  split; eauto.
+  esplits; eauto.
+  { eapply POSBOUND. }
+  { eapply DELTA.
+  }
+  { esplits; eauto; try xomega.
+  }
+  esplits; eauto.
+  
+    (* unfold frame_contents. rewrite mconj_sym. *)
     apply disjoint_footprint_mconj.
     - apply disjoint_footprint_sepconj.
       + cbn. des_ifs. autorewrite with dummy in *. rewrite Z.mul_0_r. rewrite Z.add_0_r.

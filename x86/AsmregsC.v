@@ -168,7 +168,7 @@ Inductive load_arguments (rs_arg: regset) (m_arg: mem) (sg_init: signature)
 | load_arguments_intro
     sp
     (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
-    (PERM: Mem.range_perm m_arg sp 0 (4 * (size_arguments sg_init)) Cur Nonempty)
+    (PERM: Mem.range_perm m_arg sp 0 (4 * (size_arguments sg_init)) Cur Writable)
     (VAL: extcall_arguments rs_arg m_arg sg_init vs_init)
     (DROP: Mem_set_perm m_arg sp 0 (4 * (size_arguments sg_init)) None = Some m_init)
 .

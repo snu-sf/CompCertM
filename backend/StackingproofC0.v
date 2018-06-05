@@ -221,7 +221,7 @@ Qed.
 Program Definition contains_locations (j: meminj) (sp: block) (pos bound: Z) (sl: slot) (ls: locset) : massert := {|
   m_pred := fun m =>
     DUMMY_PROP /\ 0 <= pos /\ pos + 4 * bound <= Ptrofs.modulus /\
-    Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable /\
+    Mem.range_perm m sp pos (pos + 4 * bound) Cur Writable /\
     forall ofs ty, 0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
     exists v, Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v
            /\ Val.inject j (ls (S sl ofs ty)) v;
@@ -260,14 +260,14 @@ Proof.
 Qed.
 
 Remark valid_access_location:
-  forall m sp pos bound ofs ty p,
+  forall m sp pos bound ofs ty p (PERMORD: perm_order Writable p),
   (4 * typealign ty | pos) ->
-  Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable ->
+  Mem.range_perm m sp pos (pos + 4 * bound) Cur Writable ->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   Mem.valid_access m (chunk_of_type ty) sp (pos + 4 * ofs) p.
 Proof.
   intros; split.
-- red; intros. apply Mem.perm_implies with Freeable; auto with mem.
+- red; intros. apply Mem.perm_implies with Writable; auto with mem.
   apply H0. rewrite size_type_chunk, typesize_typesize in H4. omega.
 - rewrite align_type_chunk. apply Z.divide_add_r.
   { ss. }
@@ -275,7 +275,7 @@ Proof.
 Qed.
 
 Remark valid_access_location_new:
-  forall m sp pos bound ofs ty p
+  forall m sp pos bound ofs ty p (PERMORD: perm_order Writable p)
          ls sl j
   (VALID: forall ofs ty, 0 <= ofs ->
           ofs + typesize ty <= bound ->
@@ -285,12 +285,12 @@ Remark valid_access_location_new:
   (TYBOUND: ofs + typesize ty <= bound)
   ,
   DUMMY_PROP ->
-  Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable ->
+  Mem.range_perm m sp pos (pos + 4 * bound) Cur Writable->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   Mem.valid_access m (chunk_of_type ty) sp (pos + 4 * ofs) p.
 Proof.
   intros; split.
-- red; intros. apply Mem.perm_implies with Freeable; auto with mem.
+- red; intros. apply Mem.perm_implies with Writable; auto with mem.
   apply H0. rewrite size_type_chunk, typesize_typesize in H4. omega.
 - rewrite align_type_chunk. apply Z.divide_add_r.
   { ss. eapply valid_access_typealign_divides; eauto. try xomega. }
@@ -322,9 +322,9 @@ Lemma set_location:
 Proof.
   intros. destruct H as (A & B & C). destruct A as (D & E & F & G & H).
   edestruct Mem.valid_access_store as [m' STORE].
-  eapply valid_access_location; eauto.
+  eapply valid_access_location; eauto with mem.
   { eapply valid_access_typealign_divides; eauto; xomega. }
-  assert (PERM: Mem.range_perm m' sp pos (pos + 4 * bound) Cur Freeable).
+  assert (PERM: Mem.range_perm m' sp pos (pos + 4 * bound) Cur Writable).
   { red; intros; eauto with mem. }
   exists m'; split.
 - unfold store_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; eauto.
@@ -344,7 +344,7 @@ Proof.
 * (* overlapping locations *)
   destruct (Mem.valid_access_load m' (chunk_of_type ty0) sp (pos + 4 * ofs0)) as [v'' LOAD].
   apply Mem.valid_access_implies with Writable; auto with mem.
-  eapply valid_access_location; eauto.
+  eapply valid_access_location; eauto with mem.
   { eapply valid_access_typealign_divides; eauto; xomega. }
   exists v''; auto.
 + apply (m_invar P) with m; auto.
@@ -363,7 +363,7 @@ Proof.
   intros. destruct H as (A & B & C). destruct A as (D & E & F). split.
 - simpl; intuition auto. red; intros; eauto with mem.
   destruct (Mem.valid_access_load m (chunk_of_type ty) sp (pos + 4 * ofs)) as [v LOAD].
-  eapply valid_access_location; eauto.
+  eapply valid_access_location; eauto with mem.
   { etransitivity; eauto. apply typealign_divide_8. }
   red; intros; eauto with mem.
   exists v; split; auto. rewrite H1; auto.

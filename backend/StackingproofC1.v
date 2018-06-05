@@ -19,7 +19,27 @@ Require Import AsmregsC.
 Set Implicit Arguments.
 
 
-
+Lemma fill_arguments_spec
+      (rs: regset) m sg vs ls
+      sp
+      (RSP: (rs RSP) = Vptr sp Ptrofs.zero true)
+      (EXT: extcall_arguments rs m sg vs)
+      (FILL: fill_arguments (Locmap.init Vundef) vs (loc_arguments sg) = Some ls)
+      (SZBOUND: size_arguments sg <= Ptrofs.max_unsigned / 4)
+  :
+    (<<SPEC: forall
+        ofs ty
+      ,
+        (<<INSIDE: forall (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg))),
+          (<<LOAD: Mem.load (chunk_of_type ty) m sp (4 * ofs) = Some (ls (S Outgoing ofs ty))>>)
+          \/ (<<UNDEF: ls (S Outgoing ofs ty) = Vundef>>)>>)
+        /\
+        (<<OUTSIDE: forall (OUT: ~ In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg))),
+            (<<UNDEF: (ls (S Outgoing ofs ty)) = Vundef>>)>>)>>)
+.
+Proof.
+  admit "".
+Qed.
 
 
 Section ALIGN.
@@ -358,7 +378,6 @@ End SEPARATIONC.
 
 
 
-
 Section PRESERVATION.
 
 Local Existing Instance Val.mi_normal.
@@ -394,6 +413,7 @@ Ltac sep_split := econs; [|split]; swap 2 3.
 Hint Unfold fe_ofs_arg.
 Hint Unfold SimMem.SimMem.sim_regset. (* TODO: move to proper place *)
 Hint Unfold mregset_of.
+Ltac perm_impl_tac := eapply Mem.perm_implies with Writable; [|eauto with mem].
 
 Lemma match_stack_contents
       sm_init
@@ -441,7 +461,8 @@ Local Opaque make_env.
     split.
     - exploit Mem.mi_representable; try apply MWF; eauto; cycle 1.
       { instantiate (1:= Ptrofs.zero). rewrite Ptrofs.unsigned_zero. xomega. }
-      left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max. eapply PERMSRC. split; try xomega.
+      left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max.
+      perm_impl_tac. eapply PERMSRC. split; try xomega.
     -
       assert(SZARGBOUND: 4 * size_arguments (Linear.fn_sig fd_src) <= Ptrofs.max_unsigned).
       {
@@ -463,7 +484,8 @@ Local Opaque make_env.
       right.
       rewrite Ptrofs.unsigned_repr; cycle 1.
       { split; try xomega. }
-      eapply Mem.perm_cur_max. eapply PERMSRC. split; try xomega.
+      eapply Mem.perm_cur_max. perm_impl_tac.
+      eapply PERMSRC. split; try xomega.
   }
   assert(MINJ: Mem.inject (inj sm_init) m_init_src (tgt_mem sm_init)).
   { eapply Mem_set_perm_none_left_inject; eauto. apply MWF. }
@@ -483,7 +505,7 @@ Local Opaque make_env.
       hexploit Mem.mi_no_overlap; try apply MWF. intro OVERLAP.
       exploit OVERLAP; eauto.
       { eapply Mem_set_perm_none_impl; eauto. }
-      { eapply Mem.perm_cur_max. eapply PERMSRC. instantiate (1:= ofstgt - delta_sp). xomega. }
+      { eapply Mem.perm_cur_max. perm_impl_tac. eapply PERMSRC. instantiate (1:= ofstgt - delta_sp). xomega. }
       { intro TMP. des; eauto. apply TMP; eauto. rewrite ! Z.sub_add. ss. }
     }
     clarify.
@@ -495,7 +517,7 @@ Local Opaque make_env.
   { ss. }
   ss. rewrite Ptrofs.unsigned_repr_eq.
   assert(POSBOUND: forall p, 0 <= p mod Ptrofs.modulus < Ptrofs.modulus).
-  { i. eapply Z.mod_pos_bound; eauto. admit "easy". }
+  { i. eapply Z.mod_pos_bound; eauto. generalize Ptrofs.modulus_pos. xomega. }
   split; eauto.
   split; eauto.
   { eapply POSBOUND. }
@@ -510,18 +532,69 @@ Local Opaque make_env.
   specialize (POSBOUND delta_sp). unfold Ptrofs.max_unsigned in *.
   erewrite Z.mod_small; try xomega.
   split; try xomega.
-  split; try xomega.
+  Ltac dsplit_r := let name := fresh "DSPLIT" in eapply dependent_split_right; [|intro name].
+  dsplit_r; try xomega.
   { rewrite Z.add_comm.
     change (delta_sp) with (0 + delta_sp).
     eapply Mem.range_perm_inject; try apply MWF; eauto.
-    replace Nonempty with Freeable in PERMSRC; cycle 1.
-    { admit "Check if it is needed. If so, update LinearC.". }
-    eauto.
   }
-  ii.
-  assert(LOADSRC: Mem.load (chunk_of_type ty) (src_mem sm_init) sp_src (4 * ofs)
-                  = Some (ls_init (S Outgoing ofs ty))).
-  { clear - PERMSRC VALSRC LOCSET DROPSRC.
+  ii; des.
+  {
+    rename H1 into OFS0. rename H2 into OFS1. rename H3 into OFS2.
+    clear - VALSRC LOCSET PERMSRC DSPLIT (* DROPSRC *) RSPSRC RSPTGT RSPINJ OFS0 OFS1 OFS2 MWF.
+    abstr (Linear.fn_sig fd_src) sg.
+    unfold extcall_arguments in *.
+    exploit fill_arguments_spec; eauto.
+    { admit "Add this in initial_frame of LinearC". }
+    i; des.
+    set (loc_arguments sg) as locs in *.
+    assert(LOADTGT: exists v, Mem.load (chunk_of_type ty) (tgt_mem sm_init) sp_tgt (delta_sp + 4 * ofs) = Some v).
+    { eapply Mem.valid_access_load; eauto.
+      hnf.
+      rewrite align_type_chunk. rewrite <- PLAYGROUND.typesize_chunk.
+      split; try xomega.
+      - ii. perm_impl_tac. eapply DSPLIT. xomega.
+      - apply Z.divide_add_r.
+        + rewrite <- align_type_chunk.
+          eapply Mem.mi_align; try apply MWF; eauto.
+          instantiate (1:= Nonempty).
+          instantiate (1:= 0).
+          rewrite Z.add_0_l.
+          ii. apply Mem.perm_cur_max. perm_impl_tac. eapply PERMSRC.
+          rewrite <- PLAYGROUND.typesize_chunk in *. xomega.
+        + apply Z.mul_divide_mono_l. ss.
+    }
+    destruct (classic (In (S Outgoing ofs ty) (regs_of_rpairs locs))).
+    - exploit INSIDE; eauto. i; des.
+      + rewrite Z.add_comm.
+        eapply Mem.load_inject; try apply MWF; eauto.
+      + rewrite UNDEF.
+        esplits; eauto.
+    - exploit OUTSIDE; eauto. intro LOCSRC; des.
+      rewrite LOCSRC.
+      exploit Mem.valid_access_load; eauto.
+      { hnf. instantiate (2:= chunk_of_type ty).
+        rewrite align_type_chunk. rewrite <- PLAYGROUND.typesize_chunk.
+        instantiate (1:= delta_sp + 4 * ofs).
+        instantiate (1:= sp_tgt).
+        instantiate (1:= sm_init.(tgt_mem)).
+        split; try xomega.
+        - ii. perm_impl_tac. eapply DSPLIT. xomega.
+        - apply Z.divide_add_r.
+          + rewrite <- align_type_chunk.
+            eapply Mem.mi_align; try apply MWF; eauto.
+            instantiate (1:= Nonempty).
+            instantiate (1:= 0).
+            rewrite Z.add_0_l.
+            ii. apply Mem.perm_cur_max. perm_impl_tac. eapply PERMSRC.
+            rewrite <- PLAYGROUND.typesize_chunk in *. xomega.
+          + apply Z.mul_divide_mono_l. ss.
+      }
+  }
+Qed.
+  {
+    - 
+    -
     THIS DOES NOT HOLD!!
     0    1    2
     [Int][???]

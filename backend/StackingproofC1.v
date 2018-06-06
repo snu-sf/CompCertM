@@ -19,28 +19,6 @@ Require Import AsmregsC.
 Set Implicit Arguments.
 
 
-Lemma fill_arguments_spec
-      (rs: regset) m sg vs ls
-      sp
-      (RSP: (rs RSP) = Vptr sp Ptrofs.zero true)
-      (EXT: extcall_arguments rs m sg vs)
-      (FILL: fill_arguments (Locmap.init Vundef) vs (loc_arguments sg) = Some ls)
-      (SZBOUND: size_arguments sg <= Ptrofs.max_unsigned / 4)
-  :
-    (<<SPEC: forall
-        ofs ty
-      ,
-        (<<INSIDE: forall (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg))),
-          (<<LOAD: Mem.load (chunk_of_type ty) m sp (4 * ofs) = Some (ls (S Outgoing ofs ty))>>)
-          \/ (<<UNDEF: ls (S Outgoing ofs ty) = Vundef>>)>>)
-        /\
-        (<<OUTSIDE: forall (OUT: ~ In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg))),
-            (<<UNDEF: (ls (S Outgoing ofs ty)) = Vundef>>)>>)>>)
-.
-Proof.
-  admit "".
-Qed.
-
 
 Section ALIGN.
 
@@ -544,7 +522,7 @@ Local Opaque make_env.
     clear - VALSRC LOCSET PERMSRC DSPLIT (* DROPSRC *) RSPSRC RSPTGT RSPINJ OFS0 OFS1 OFS2 MWF.
     abstr (Linear.fn_sig fd_src) sg.
     unfold extcall_arguments in *.
-    exploit fill_arguments_spec; eauto.
+    exploit fill_arguments_spec_slot; eauto.
     { admit "Add this in initial_frame of LinearC". }
     i; des.
     set (loc_arguments sg) as locs in *.
@@ -592,138 +570,6 @@ Local Opaque make_env.
       }
   }
 Qed.
-  {
-    - 
-    -
-    THIS DOES NOT HOLD!!
-    0    1    2
-    [Int][???]
-    When you load [1, 2), you get non-det value, not undef!!!
-  }
-  esplits; eauto.
-  rewrite 
-  destruct 
-  split; eauto.
-  esplits; eauto.
-  { eapply POSBOUND. }
-  { eapply DELTA.
-  }
-  { esplits; eauto; try xomega.
-  }
-  esplits; eauto.
-  
-    (* unfold frame_contents. rewrite mconj_sym. *)
-    apply disjoint_footprint_mconj.
-    - apply disjoint_footprint_sepconj.
-      + cbn. des_ifs. autorewrite with dummy in *. rewrite Z.mul_0_r. rewrite Z.add_0_r.
-        repeat (autorewrite with align; try xomega).
-        rewrite align_divisible; try xomega; cycle 1.
-        { admit "easy". }
-
-        (* assert(PRIVTGT: forall *)
-        (*           ofs *)
-        (*           (OFS: delta_sp <= ofs <= delta_sp + (align (4 * size_arguments (Linear.fn_sig fd_src)) 8 + 8)) *)
-        (*         , *)
-        (*           loc_out_of_reach sm_init.(inj) sm_init.(tgt_mem) sp_tgt ofs). *)
-        (* { admit "this should hold. Perm none". } *)
-
-
-        intros blk_src delta INJDUP. ii. ss. des. clarify.
-        rename delta into ofstgt. rename b0 into sp_src'. rename delta0 into delta_sp'.
-        exploit Mem_set_perm_none_impl; eauto. clear INJDUP0. intro INJDUP0.
-
-        assert(sp_src = sp_src').
-        { apply NNPP. intro DISJ.
-          (* exploit Mem.mi_perm; try apply INJDUP; try apply MINJ; eauto. *)
-          (* rewrite ! Z.sub_add. ii. *)
-          Print Mem.meminj_no_overlap.
-          hexploit Mem.mi_no_overlap; try apply MWF. intro OVERLAP.
-          exploit OVERLAP; eauto; cycle 1.
-          { intro TMP. des; eauto. apply TMP; eauto.
-            instantiate (1:= ofstgt - delta_sp). rewrite ! Z.sub_add. ss.
-          }
-          eapply Mem.perm_cur_max.
-          eapply PERMSRC. rewrite Ptrofs.unsigned_repr in *.
-          split; try xomega.
-          Print Mem.inject'.
-          eapply PERMSRC.
-        }
-        specialize (PRIVTGT delta). special PRIVTGT.
-        { admit "easy". }
-        unfold loc_out_of_reach in *.
-        dup PRIVTGT.
-        specialize (PRIVTGT _ _ RSPINJ).
-        specialize (PRIVTGT0 _ _ INJ).
-        special PRIVTGT.
-        assert(b0 = sp_src).
-        { apply NNPP.
-          ii.
-          (* ofs0 + delta0 = ofs1 + delta_sp *)
-          (* sp_tgt + delta has permisison. *)
-        }
-      +
-  }
-    unfold frame_contents.
-    
-    ii.
-    Print loc_out_of_reach.
-    ss. des.
-    -
-      Local Transparent sepconj.
-      ss.
-      Local Opaque sepconj.
-      autorewrite with dummy in *.
-      rewrite Z.mul_0_r in *. rewrite Z.add_0_r in *.
-      exploit Mem_set_perm_none_spec; eauto. i; des_safe.
-      des; clarify; try xomega.
-      + Print Mem.meminj_no_overlap.
-        destruct (classic (b0 = sp_src)).
-        * clarify.
-          rewrite Z.add_0_l in *.
-          eapply INSIDE; [|eauto].
-          split; try xomega.
-          u.
-        * admit "focus on sm_init.(src_mem). sp_src has permission (fill_slots can read it)".
-    -
-      
-      admit "raw admit. footprint".
-  }
-  { 
-  unfold 
-Qed.
-
-
-  1 subgoal (ID 4488)
-  
-  prog : Linear.program
-  tprog : program
-  TRANSF : match_prog prog tprog
-  return_address_offset : function -> code -> ptrofs -> Prop
-  match_states := StackingproofC0.match_states prog tprog return_address_offset : Linear.state -> state -> Prop
-  fptr_init_src, fptr_init_tgt : val
-  FPTRREL : Val.inject (inj sm_init) fptr_init_src fptr_init_tgt
-  rs_init_src, rs_init_tgt : regset
-  RSREL : forall pr : PregEq.t, Val.inject (inj sm_init) (rs_init_src pr) (rs_init_tgt pr)
-  WF : wf' sm_init
-  fd_src : Linear.function
-  ls_init : locset
-  sp_src : block
-  m_init_src : mem
-  FINDFUNC : Genv.find_funct (Genv.globalenv prog) (rs_init_src PC) = Some (Internal fd_src)
-  LOCSET : fill_slots (to_locset rs_init_src) (loc_arguments (Linear.fn_sig fd_src)) rs_init_src
-             (src_mem sm_init) ls_init
-  RSPPTR : rs_init_src RSP = Vptr sp_src Ptrofs.zero true
-  MPERM : Mem_set_perm (src_mem sm_init) sp_src fe_ofs_arg (4 * size_arguments (Linear.fn_sig fd_src)) None =
-          Some m_init_src
-  fd_tgt : function
-  FUNCTGT : Genv.find_funct (Genv.globalenv tprog) (rs_init_tgt PC) = Some (Internal fd_tgt)
-  Heq : transf_function fd_src = OK fd_tgt
-  sp_tgt : block
-  delta_sp : Z
-  RSPINJ : inj sm_init sp_src = Some (sp_tgt, delta_sp)
-  RSPPTRTGT : rs_init_tgt RSP = Vptr sp_tgt (Ptrofs.repr delta_sp) true
-  ra : block
-  :
 
 Theorem init_match_states
         (sm_init: SimMem.SimMem.t) fptr_init_src fptr_init_tgt
@@ -778,93 +624,19 @@ Proof.
       u in RSREL.
       u in RSREL. u.
       u.
-      inv LOCSET.
-      rewrite <- REGS.
-      eapply RSREL.
+      assert((ls_init (R r)) = Vundef \/ (ls_init (R r)) = rs_init_src (preg_of r)).
+      { hexploit fill_arguments_spec_reg; eauto.
+        { apply LOADARG. }
+        i; des.
+        specialize (H r). des.
+        destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (Linear.fn_sig fd_src))))).
+        - special INSIDE; ss. des; eauto.
+        - special OUTSIDE; ss. eauto. }
+      des.
+      * rewrite H. econs; eauto.
+      * rewrite H. eapply RSREL.
     + ii. des_ifs.
-    +
-      {
-        Local Opaque sepconj.
-        simpl. rewrite RSPPTRTGT. ss.
-        (* generalize (Ptrofs.eq_spec i Ptrofs.zero). i; des_ifs. clarify. clear_tac. *)
-
-        rewrite sep_assoc. rewrite sep_comm. rewrite sep_assoc.
-        rewrite sep_pure. split; ss.
-        rewrite sep_assoc.
-        rewrite sep_comm.
-        rewrite sep_assoc.
-        sep_split.
-        { simpl. esplits; eauto. admit "SimSymbId". admit "SimSymbId". }
-        { ii. ss. }
-        rewrite sep_comm.
-        sep_split.
-        { simpl. eapply Mem_set_perm_none_left_inject; eauto. apply WF. }
-        { ii.
-          Local Opaque function_bounds.
-          Local Opaque make_env.
-          Print loc_out_of_reach.
-          ss. des.
-          -
-            Local Transparent sepconj.
-            ss.
-            Local Opaque sepconj.
-            autorewrite with dummy in *.
-            rewrite Z.mul_0_r in *. rewrite Z.add_0_r in *.
-            exploit Mem_set_perm_none_spec; eauto. i; des_safe.
-            des; clarify; try xomega.
-            + Print Mem.meminj_no_overlap.
-              destruct (classic (b0 = sp_src)).
-              * clarify.
-                rewrite Z.add_0_l in *.
-                eapply INSIDE; [|eauto].
-                split; try xomega.
-                u.
-              * admit "focus on sm_init.(src_mem). sp_src has permission (fill_slots can read it)".
-          -
-            
-          admit "raw admit. footprint".
-        }
-        unfold frame_contents.
-        econs.
-        - sep_split.
-          { unfold make_env in *.
-            autorewrite with dummy.
-            des_ifs. cbn.
-            esplits; eauto.
-            - apply align_divides. xomega.
-            - admit "easy".
-            - rewrite Z.mul_0_r. rewrite Z.add_0_r.
-              About size_no_overflow.
-              admit "[SIZE]
-1) transf_function is succeeded -> size is somehow bound.
-2) worst case, add to sem.".
-            -
-              (* Print Hint *. *)
-              (* Print HintDb typeclass_instances. *)
-              Fail autorewrite with zarith. (* TODO *)
-              rewrite Z.mul_0_r. rewrite Z.add_0_r.
-              ii. des. xomega.
-            - ii.
-              generalize (typesize_pos ty). i. xomega.
-          }
-          { cbn. des_ifs.
-            ii. ss. des. clarify.
-Local Transparent sepconj.
-            ss. des; ss; clarify; clear_tac; try xomega.
-Local Opaque sepconj.
-          }
-
-          sep_split.
-          { autorewrite with dummy.
-            ss.
-            esplits; eauto; u; try xomega.
-            - apply Z.divide_0_r.
-            - admit "[SIZE] ditto.".
-            - rewrite Z.add_0_l. ii.
-              inv LOCSET.
-          }
-        -
-      }
+    + eapply match_stack_contents; eauto. ss.
 Qed.
 
 Theorem sim

@@ -1,3 +1,5 @@
+Ltac check_safe := let n := numgoals in guard n < 2.
+
 Require Import CoqlibC.
 Require Import ASTC Integers Values MemoryC Events GlobalenvsC Smallstep.
 Require Import Op Locations LTL Conventions.
@@ -145,13 +147,16 @@ Proof.
 Qed.
 
 Ltac _locmap_tac :=
-  try (rewrite Locmap.gss; ss; []);
-  try (rewrite Locmap.gso; ss);
+  try (first[rewrite Locmap.gss; ss; check_safe|rewrite Locmap.gso; ss]);
   try match goal with
       | [H: Loc.notin _ (_ :: _) |- _] => inv H
       | [H: Loc.norepet (_ :: _) |- _] => inv H
       | [ |- Loc.diff _ _] => by (eapply Loc.in_notin_diff; eauto)
       | [H: Loc.diff ?A ?B |- Loc.diff ?B ?A] => apply Loc.diff_sym; assumption
+      | [H: R ?x <> R ?y |- _] =>
+        tryif exists_prop (x <> y)
+        then idtac
+        else assert(x <> y) by (ii; clarify; ss)
       end;
   des_safe;
   idtac
@@ -159,7 +164,7 @@ Ltac _locmap_tac :=
 Local Opaque Loc.diff.
 Ltac locmap_tac := repeat _locmap_tac.
 
-Lemma fill_arguments_spec
+Lemma fill_arguments_spec_slot
       (rs: regset) m sg vs ls
       sp
       (RSP: (rs RSP) = Vptr sp Ptrofs.zero true)
@@ -167,7 +172,7 @@ Lemma fill_arguments_spec
       (FILL: fill_arguments (Locmap.init Vundef) vs (loc_arguments sg) = Some ls)
       (SZBOUND: size_arguments sg <= Ptrofs.max_unsigned / 4)
   :
-    (<<SPEC: forall
+    (<<SLOT: forall
         ofs ty
       ,
         (<<INSIDE: forall (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg))),
@@ -275,7 +280,73 @@ Proof.
   }
 Qed.
 
-
+Lemma fill_arguments_spec_reg
+      (rs: regset) m sg vs ls
+      sp
+      (RSP: (rs RSP) = Vptr sp Ptrofs.zero true)
+      (EXT: extcall_arguments rs m sg vs)
+      (FILL: fill_arguments (Locmap.init Vundef) vs (loc_arguments sg) = Some ls)
+  :
+    (<<REG: forall
+        r
+      ,
+        (<<INSIDE: forall (IN: In (R r) (regs_of_rpairs (loc_arguments sg))),
+            <<EQ: ls (R r) = rs (preg_of r)>> \/ <<UNDEF: ls (R r) = Vundef>>>>)
+        /\
+        (<<OUTSIDE: forall (OUT: ~ In (R r) (regs_of_rpairs (loc_arguments sg))),
+            <<UNDEF: ls (R r) = Vundef>>>>)>>)
+.
+Proof.
+  unfold extcall_arguments in *.
+  assert(NOREPT: Loc.norepet (regs_of_rpairs (loc_arguments sg))).
+  { apply loc_arguments_norepet. }
+  abstr (loc_arguments sg) locs. clears sg. clear sg.
+  ginduction locs; ii; ss.
+  { split; ii; ss. destruct vs; ss. clarify. }
+  split; ii; ss.
+  {
+    apply in_app_or in IN.
+    inv EXT. ss. des_ifs_safe.
+    rename l into ls0.
+    hexploit IHlocs; eauto.
+    { admit "easy". }
+    i; des_safe. specialize (H r). des_safe.
+    inv H1; ss; clarify.
+    - inv H; des; ss; clarify.
+      + locmap_tac; eauto.
+      + destruct (mreg_eq r0 r); ss; clarify; locmap_tac; eauto.
+      + locmap_tac; eauto.
+    - destruct (classic ((Val.longofwords vhi vlo) = Vundef)) eqn:T; clear T.
+      + rewrite e in *. ss.
+        des; ss; clarify; inv H; ss; locmap_tac; eauto.
+      + rewrite Val_loword_spec in *; ss.
+        rewrite Val_hiword_spec in *; ss.
+        des; ss; clarify; inv H; inv H0; ss; locmap_tac; eauto.
+  }
+  {
+    inv EXT. ss. des_ifs_safe.
+    rename l into ls0.
+    hexploit IHlocs; eauto.
+    { admit "easy". }
+    i; des_safe. specialize (H r). des_safe.
+    inv H1; ss; clarify.
+    - apply not_or_and in OUT. des.
+      inv H; des; ss; clarify; locmap_tac; eauto.
+    - apply not_or_and in OUT. des.
+      apply not_or_and in OUT0. des.
+      destruct (classic ((Val.longofwords vhi vlo) = Vundef)) eqn:T; clear T.
+      + rewrite e in *. ss.
+        rewrite <- OUTSIDE; ss.
+        des; ss; clarify; inv H; ss; locmap_tac; eauto.
+        * destruct lo; locmap_tac.
+        * destruct lo; locmap_tac.
+      + rewrite Val_loword_spec in *; ss.
+        rewrite Val_hiword_spec in *; ss.
+        rewrite <- OUTSIDE; ss.
+        des; ss; clarify; inv H; inv H0; ss; try (by locmap_tac; eauto).
+        destruct (classic (r0 = r)); ss; clarify; locmap_tac.
+  }
+Qed.
 
 Section NEWSTEP.
 
@@ -541,8 +612,8 @@ Section MODSEM.
       (* (RSPPTR: rs_arg RSP = Vptr sp (Ptrofs.repr delta) true) *)
       (* (ARGSPERM: Mem.range_perm m_arg sp delta (size_arguments fd.(fn_sig)) Cur Writable) *)
 
-      (* sp *)
-      (* (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true) *)
+      sp
+      (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
       (* (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable) *)
       (* (RSPSTK: m_arg.(is_stack_block) sp) *)
     :

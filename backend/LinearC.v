@@ -526,21 +526,12 @@ Definition to_locset (prs: regset): locset :=
   update_locset (Locmap.init Vundef) prs
 .
 
-(* TODO: remove redundancy with MachC. *)
-Definition mreg_of (r: preg): option mreg := admit "inverse of 'pref_of'".
-
 Definition to_regset (ls: locset): regset :=
   fun pr =>
-    match mreg_of pr with
+    match to_mreg pr with
     | Some mr => ls (R mr)
     | None => Vundef
     end
-.
-
-Inductive callee_saved (sg: signature) (rs0 rs1: regset): Prop :=
-| callee_saved_intro
-    (TODO: True)
-    (* In Compcert' sg is not needed (see is_callee_save). Is it true in real-world too? *)
 .
 
 Section MODSEM.
@@ -683,6 +674,7 @@ Section MODSEM.
     determ_tac extcall_arguments_determ.
     rewrite RSPPTR in *. clarify.
   Qed.
+  Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.
     hnf. inv H4; inv H2; subst_locals; all_rewrite; ss; des_ifs.

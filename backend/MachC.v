@@ -170,7 +170,7 @@ Definition dummy_stack (parent_sp parent_ra: val): stackframe :=
 
 Hint Unfold dummy_stack.
 Global Opaque dummy_stack.
-Require Import Asmregs.
+Require Import AsmregsC.
 
 Definition get_mem (st: state): mem :=
   match st with
@@ -179,44 +179,9 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end.
 
-Definition mreg_of (r: preg): option mreg := admit "inverse of 'pref_of'".
-
-Lemma mreg_of_preg_of
-      pr0 mr0
-      (SOME: (mreg_of pr0) = Some mr0)
-  :
-    preg_of mr0 = pr0
-.
-Proof.
-  admit "".
-Qed.
-
-Lemma preg_of_injective
-      mr0 mr1
-      (EQ: preg_of mr0 = preg_of mr1)
-  :
-    <<EQ: mr0 = mr1>>
-.
-Proof. destruct mr0, mr1; ss. Qed.
-
-Lemma preg_of_mreg_of
-      mr0 mr1
-      (INV: mreg_of (preg_of mr0) = Some mr1)
-  :
-    mr0 = mr1
-.
-Proof.
-  exploit mreg_of_preg_of; eauto. i.
-  ss.
-  apply preg_of_injective; eauto.
-Qed.
-
-Print Conventions1.
-(* Note: callee_save registers all reside in mregs. So we can just put undef on preg\mreg. *)
-
 Definition pregset_of (mrs: Mach.regset): regset :=
   fun pr =>
-    match mreg_of pr with
+    match pr.(to_mreg) with
     | Some mr => mrs mr
     | None => Vundef
     end
@@ -296,6 +261,7 @@ Section MODSEM.
     |}
   .
   Next Obligation. inv INIT0; inv INIT1; ss. Qed.
+  Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.
     hnf. inv H4; inv H2; subst_locals; all_rewrite; ss; des_ifs.

@@ -5,8 +5,7 @@ Require Import Asmregs.
 Require Import Memory.
 Require Import Globalenvs.
 Require Import Smallstep.
-From Paco Require Import paco.
-Require Import sflib.
+Require Import CoqlibC.
 Require Import Asmregs Conventions1.
 
 Require Import Mod ModSem Skeleton.
@@ -102,10 +101,10 @@ Section SYSMODSEM.
     ModSem.skenv := skenv;
   |}
   .
-  Next Obligation. inv INIT; ss. Qed.
-  Next Obligation. inv INIT0; inv INIT1; ss. Qed.
-  Next Obligation. inv FINAL0; inv FINAL1; ss. Qed.
-  Next Obligation. inv H5; inv H3; ss. Qed.
+  Next Obligation. all_prop_inv; ss. Qed.
+  Next Obligation. all_prop_inv; ss. Qed.
+  Next Obligation. all_prop_inv; ss. Qed.
+  Next Obligation. all_prop_inv; ss. Qed.
 
 End SYSMODSEM.
 

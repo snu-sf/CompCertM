@@ -73,6 +73,13 @@ Module ModSem.
       ,
         rs_ret0 = rs_ret1 /\ m_ret0 = m_ret1
     ;
+    after_external_dtm: forall
+        st_call rs_arg rs_ret m_ret st0 st1
+        (AFTER0: after_external st_call rs_arg rs_ret m_ret st0)
+        (AFTER1: after_external st_call rs_arg rs_ret m_ret st1)
+      ,
+        st0 = st1
+    ;
 
 
     is_call (st0: state): Prop := exists rs_arg m_arg, at_external st0 rs_arg m_arg;

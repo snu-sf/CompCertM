@@ -188,6 +188,16 @@ Module Sk.
   Definition load_mem: t -> option mem := @Genv.init_mem (AST.fundef (option signature)) unit.
   (* No coercion! *)
 
+  Lemma load_skenv_wf
+        sk
+    :
+      <<WF: SkEnv.wf sk.(load_skenv)>>
+  .
+  Proof.
+    unfold load_skenv. u.
+    admit "easy. follow induction proofs on Globalenvs.v".
+  Qed.
+
 End Sk.
 
 Hint Unfold Sk.load_skenv Sk.load_mem.

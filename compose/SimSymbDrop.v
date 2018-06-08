@@ -242,6 +242,9 @@ Global Program Instance SimSymbDrop: SimSymb.class SimMemInj := {
 (*     reflexivity. *)
 (* Qed. *)
 Next Obligation.
+  econs; eauto. ii. des; ss.
+Qed.
+Next Obligation.
   inv LE0. inv LE1.
   econs; eauto.
   ii; des.

@@ -48,21 +48,29 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
   }
   .
 
+  Definition to_msp (skenv_link_src skenv_link_tgt: SkEnv.t) (mp: t): ModSemPair.t :=
+    ModSemPair.mk (Mod.modsem (mp.(src)) skenv_link_src) (Mod.modsem (mp.(tgt)) skenv_link_tgt) mp.(ss)
+  .
+
   (* TODO: Actually, ModPair can have idx/ord and transfer it to ModSemPair. *)
   (* Advantage: We can unify ord at Mod state. *)
   Inductive sim (mp: t): Prop :=
   | sim_intro
       (SIMSK: SimSymb.sim_sk mp.(ss) mp.(src).(Mod.sk) mp.(tgt).(Mod.sk))
+      (* (SIMMS: forall *)
+      (*     skenv_src skenv_tgt *)
+      (*   , *)
+      (*     exists msp, *)
+      (*       (* TODO: get_modsem always suceeds??? I think not. *) *)
+      (*       <<SRC: msp.(ModSemPair.src) = (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data))>> *)
+      (*       /\ <<TGT: msp.(ModSemPair.tgt) = (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))>> *)
+      (*       /\ <<SS: msp.(ModSemPair.ss) = mp.(ss)>> *)
+      (*       /\ <<SIM: ModSemPair.sim msp>> *)
+      (* ) *)
       (SIMMS: forall
           skenv_src skenv_tgt
         ,
-          exists msp,
-            (* TODO: get_modsem always suceeds??? I think not. *)
-            <<SRC: msp.(ModSemPair.src) = (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data))>>
-            /\ <<TGT: msp.(ModSemPair.tgt) = (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))>>
-            /\ <<SS: msp.(ModSemPair.ss) = mp.(ss)>>
-            /\ <<SIM: ModSemPair.sim msp>>
-      )
+          <<SIMMSP: ModSemPair.sim mp.(to_msp skenv_src skenv_tgt)>>)
   .
 
   (* Design: ModPair only has data, properties are stated in sim *)
@@ -70,6 +78,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
 End MODPAIR.
 End ModPair.
 
+Hint Unfold ModPair.to_msp.
 
 (* Module ModPair. *)
 

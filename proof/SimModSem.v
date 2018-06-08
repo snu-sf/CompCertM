@@ -72,6 +72,7 @@ Section SIMMODSEM.
   | lxsim_step_forward
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
+      (SAFESRC: ms_src.(ModSem.is_step) st_src0)
       (FSTEP: fsim_step (lxsim rs_init_src rs_init_tgt sm_init) i0 st_src0 st_tgt0 sm0)
       (RECEP: receptive_at ms_src st_src0)
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
@@ -122,7 +123,7 @@ Section SIMMODSEM.
       (*   , *)
       (*     exists rs_arg_tgt m_arg_tgt, <<ATTGT: ms_tgt.(at_external) st_tgt0 rs_arg_tgt m_arg_tgt>>) *)
       (* (SAFESRC: exists rs_arg_src m_arg_src, <<ATSRC: ms_src.(at_external) st_src0 rs_arg_src m_arg_src>>) *)
-      (PROGRESS: ms_tgt.(is_call) st_tgt0)
+      (SAFESRC: ms_tgt.(is_call) st_tgt0)
       (* (PROGSRC: ms_src.(is_call) st_src0) *)
       (CALLBSIM: forall
           rs_arg_tgt m_arg_tgt

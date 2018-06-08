@@ -345,6 +345,11 @@ End DEPRECATED.
       t: Type;
       le: t -> Sk.t -> Sk.t -> t -> Prop;
 
+      le_refl: forall
+          ss0 sk_src0 sk_tgt0
+        ,
+          <<LE: le ss0 sk_src0 sk_tgt0 ss0>>
+      ;
       le_trans: forall
           ss0 sk_src0 sk_tgt0 ss1 sk_src1 sk_tgt1 ss2
           (LE0: le ss0 sk_src0 sk_tgt0 ss1)

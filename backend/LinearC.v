@@ -1,5 +1,3 @@
-Ltac check_safe := let n := numgoals in guard n < 2.
-
 Require Import CoqlibC.
 Require Import ASTC Integers Values MemoryC Events GlobalenvsC Smallstep.
 Require Import Op Locations LTL Conventions.

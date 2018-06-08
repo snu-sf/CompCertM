@@ -15,37 +15,6 @@ Require Import Ord.
 Set Implicit Arguments.
 
 
-Definition bar_True: Type := True.
-Global Opaque bar_True.
-Ltac bar :=
-  let NAME := fresh
-                "TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT"
-  in
-  assert(NAME: bar_True) by ss
-.
-(* TODO: Move to CoqlibC *)
-
-Ltac clear_until id :=
-  on_last_hyp ltac:(fun id' => match id' with
-                               | id => idtac
-                               | _ => clear id'; clear_until id
-                               end)
-.
-
-Ltac clear_until_bar :=
-  on_last_hyp ltac:(fun id' => match (type of id') with
-                               | bar_True => idtac
-                               | _ => clear id'; clear_until_bar
-                               end)
-.
-
-Goal True -> True -> False.
-  intro. bar. intro.
-  clear_until H0. clear_until H. Undo 2.
-  clear_until_bar.
-  clear_tac.
-Abort.
-
 
 
 

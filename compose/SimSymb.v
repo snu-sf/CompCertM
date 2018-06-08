@@ -320,6 +320,25 @@ End DEPRECATED.
                           <<SIM: sim_fun def_src def_tgt>>)
   .
 
+  Inductive skenv_func_bisim `{SimMem.class} (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop :=
+  | skenv_func_bisim_intro
+      (FUNCFSIM: forall
+          fptr_src fptr_tgt def_src
+          (SIMFPTR: sm0.(SimMem.sim_val) fptr_src fptr_tgt)
+          (FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src)
+        ,
+          exists def_tgt, <<FUNCSRC: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt>> /\
+                          <<SIM: sim_fun def_src def_tgt>>)
+      (FUNCBSIM: forall
+          fptr_src fptr_tgt def_tgt
+          (SAFESRC: fptr_src <> Vundef)
+          (SIMFPTR: sm0.(SimMem.sim_val) fptr_src fptr_tgt)
+          (FUNCTGT: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt)
+        ,
+          exists def_src, <<FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src>> /\
+                          <<SIM: sim_fun def_src def_tgt>>)
+  .
+
   (* TODO: Try moving t into argument? sim_symb coercion gets broken and I don't know how to fix it. *)
   Class class (SM: SimMem.class) :=
     {
@@ -447,18 +466,24 @@ End DEPRECATED.
       (*     <<DEF: skenv_def_bsim sm skenv_src skenv_tgt>> *)
       (* ; *)
 
-      sim_skenv_func_fsim: forall
+
+      (* sim_skenv_func_fsim: forall *)
+      (*     sm ss skenv_src skenv_tgt *)
+      (*     (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt) *)
+      (*   , *)
+      (*     <<DEF: skenv_func_fsim sm skenv_src skenv_tgt>> *)
+      (* ; *)
+      (* sim_skenv_func_bsim: forall *)
+      (*     sm ss skenv_src skenv_tgt *)
+      (*     (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt) *)
+      (*   , *)
+      (*     <<DEF: skenv_func_bsim sm skenv_src skenv_tgt>> *)
+      (* ; *)
+      sim_skenv_func_bisim: forall
           sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)
         ,
-          <<DEF: skenv_func_fsim sm skenv_src skenv_tgt>>
-      ;
-      (* TODO: Remove below later. *)
-      sim_skenv_func_bsim: forall
-          sm ss skenv_src skenv_tgt
-          (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)
-        ,
-          <<DEF: skenv_func_bsim sm skenv_src skenv_tgt>>
+          <<DEF: skenv_func_bisim sm skenv_src skenv_tgt>>
       ;
     }
   .

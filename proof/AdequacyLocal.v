@@ -9,7 +9,7 @@ Require Import Smallstep.
 Require Import Integers.
 
 Require Import Skeleton ModSem Mod Sem.
-Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg SimLoad SimProg.
+Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
 Require Import Ord.
 
 Set Implicit Arguments.
@@ -363,8 +363,8 @@ Section SIMGE.
     specialize (SIMMSS msp). exploit SIMMSS; eauto. clear SIMMSS. intro SIMMS.
     specialize (SIMSKENV msp). exploit SIMSKENV; eauto. clear SIMSKENV. intro SIMSKENV.
 
-    exploit SimSymb.sim_skenv_func_fsim; eauto. intro SIMFUNC; des.
-    inv SIMFUNC. exploit FUNCSIM; eauto. i; des. clear_tac. inv SIM.
+    exploit SimSymb.sim_skenv_func_bisim; eauto. intro SIMFUNC; des.
+    inv SIMFUNC. exploit FUNCFSIM; eauto. i; des. clear_tac. inv SIM.
     econs; eauto.
     - apply in_map_iff. esplits; eauto.
  
@@ -372,7 +372,7 @@ Section SIMGE.
  
 
 
-  Lemma find_fptr_owner_bsim_deprecated
+  Lemma find_fptr_owner_bsim
         sm0 ge_src ge_tgt
         (SIMGE: sim_ge sm0 ge_src ge_tgt)
         fptr_src fptr_tgt
@@ -392,26 +392,25 @@ Section SIMGE.
     { des. inv SAFESRC; ss. }
     rewrite Forall_forall in *.
     {
-      des.
-      inv SAFESRC.
+      assert(SAFESRC0: fptr_src <> Vundef).
+      { ii; ss; clarify. des; ss. inv SAFESRC. ss. }
+      clear SAFESRC.
+
+      inv FINDTGT.
       rewrite in_map_iff in MODSEM. des. rename x into msp.
       clarify.
-
+      
       specialize (SIMMSS msp). exploit SIMMSS; eauto. clear SIMMSS. intro SIMMS.
       specialize (SIMSKENV msp). exploit SIMSKENV; eauto. clear SIMSKENV. intro SIMSKENV.
-      exploit SimSymb.sim_skenv_func_bsim; eauto. intro SIMFUNC; des.
+      exploit SimSymb.sim_skenv_func_bisim; eauto. intro SIMFUNC; des.
       inv SIMFUNC.
-      exploit FUNCPROGRESS; eauto. i; des.
       exploit FUNCBSIM; try apply PROGRESS; eauto. i; des. clarify. clear_tac. inv SIM.
       exists msp. esplits; eauto.
       { econs; eauto. rewrite in_map_iff; eauto. }
-      { admit "use determinacy of find_fptr_owner_determ". }
     }
   Qed.
 
-
-
-  Lemma find_fptr_owner_bsim
+  Lemma find_fptr_owner_bsim_deprecated
         sm0 ge_src ge_tgt
         (SIMGE: sim_ge sm0 ge_src ge_tgt)
         fptr_src fptr_tgt
@@ -593,7 +592,7 @@ Section ADQMATCH.
                    ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
                                                   lst_src1>>)
                 /\
-                (<<LXSIM: lxsim ms_src ms_tgt ord rs_init_src rs_init_tgt tail_sm
+                (<<LXSIM: lxsim ms_src ms_tgt rs_init_src rs_init_tgt tail_sm
                                 i0 lst_src1 lst_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>)>>)
           /\
           (<<KPROGRESS: forall
@@ -624,7 +623,7 @@ Section ADQMATCH.
       i0
       ms_src lst_src
       ms_tgt lst_tgt
-      (TOP: lxsim ms_src ms_tgt ord rs_init_src rs_init_tgt tail_sm
+      (TOP: lxsim ms_src ms_tgt rs_init_src rs_init_tgt tail_sm
                   i0 lst_src lst_tgt sm0)
     :
       lxsim_lift i0
@@ -826,7 +825,7 @@ Section ADQINIT.
     { admit "strengthen sim_skenv specs". }
 
     inv INITTGT. clarify.
-    exploit find_fptr_owner_bsim_deprecated; eauto.
+    exploit find_fptr_owner_bsim; eauto.
     { unguard. des. inv SAFESRC. clarify. esplits; eauto. } i; des. clarify.
     inv SIMMS.
     inv MSFIND. inv FINDSRC.
@@ -907,77 +906,22 @@ Section ADQINIT.
 
     inv SIMMS. inv FINDTGT.
     exploit SIM; eauto. i; des.
+    exploit INITPROGRESS; eauto. i; des.
     exploit INITSIM; eauto. i; des.
+    assert(st_init_src = st_init_src0).
+    { eapply ModSem.initial_frame_dtm; eauto. }
+    clarify.
 
     esplits; eauto.
     - econs; ss; cycle 1.
       { ii. eapply initial_state_determ; ss; eauto. }
       econs; eauto.
-      u.
-    -
-  Qed.
-
-  Theorem init_progress
-          st_init_src
-          (INITSRC: sem_src.(initial_state) st_init_src)
-    :
-      exists st_init_tgt,
-        <<INITTGT: sem_tgt.(initial_state) st_init_tgt>>
-  .
-  Proof.
-    inv INITSRC. ss.
-    exploit sim_link_sk; eauto. i; des.
-    esplits; eauto.
-    econs; eauto.
-    admit "raw admit".
-    admit "raw admit".
-    admit "raw".
-  Abort.
-
-  Print Build_xsim_properties.
-  About xsim_init_backward.
-  (* TODO: rename Ord.idx into Ord.index. Use the name "idx" as an element of it. *)
-  Theorem init_lxsim_lift
-          st_init_tgt
-          (INITTGT: sem_tgt.(initial_state) st_init_tgt)
-          _st_init_src
-          (INITSRC: sem_src.(initial_state) _st_init_src)
-    :
-      exists idx st_init_src sm_init,
-        <<INITSRC: sem_src.(initial_state) st_init_src>>
-        /\ <<SIM: lxsim_lift idx st_init_src st_init_tgt sm_init>>
-  .
-  Proof.
-    inv INITTGT; ss.
-    rename sk_link into sk_link_tgt.
-    rename st_init into st_init_tgt.
-    rename ms into ms_tgt. rename m into m_tgt.
-    inv INITSRC; ss.
-    rename sk_link into _sk_link_src.
-    rename st_init into _st_init_src.
-    rename ms into _ms_src. rename m into _m_src.
-
-    assert(MEM: exists sm: SimMem.t, True).
-    { admit "". }
-    des.
-    assert(GE: sim_ge sm (load_genv p_src (Sk.load_skenv sk_link)) (load_genv p_src (Sk.load_skenv sk_link))).
-    {
-      u.
       econs; eauto.
-    }
-    exploit find_fptr_owner_bsim; eauto.
-    esplits; eauto.
-    econs; eauto.
+    - econs; eauto.
+      + ss. des_ifs.
+      + econs; eauto.
+      + reflexivity.
   Qed.
-
-  Variable sk_link_src sk_link_tgt: Sk.t.
-  Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
-  Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
-  Let sem_src := Sem.semantics p_src.
-  Let sem_tgt := Sem.semantics p_tgt.
-  Compute sem_src.(state).
-  Variable index: Type.
-  Variable ord: index -> index -> Prop.
 
 End ADQINIT.
 
@@ -992,6 +936,22 @@ End ADQINIT.
 
 
 Section ADQSTEP.
+
+  Context `{SM: SimMem.class}.
+  Context {SS: SimSymb.class SM}.
+
+  Variable pp: ProgPair.t.
+  Hypothesis SIMPROG: ProgPair.sim pp.
+  Let p_src := pp.(ProgPair.src).
+  Let p_tgt := pp.(ProgPair.tgt).
+  Let lxsim_lift := (@lxsim_lift _ _ p_src p_tgt).
+  Hint Unfold lxsim_lift.
+  Let sem_src := Sem.semantics p_src.
+  Let sem_tgt := Sem.semantics p_tgt.
+  Variable sk_link_src sk_link_tgt: Sk.t.
+  Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
+  Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
+
 
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
@@ -1064,8 +1024,8 @@ Section ADQSTEP.
       specialize (SIM (SimMem.lift sm_arg)).
       exploit SIM; eauto.
       { eapply SimMem.lift_sim_val; eauto. }
-      { instantiate (2:= PC). rewrite FPTR; ss. des_ifs. unfold Genv.find_funct_ptr. des_ifs. }
-      { rewrite FPTR0. ss. des_ifs. unfold Genv.find_funct_ptr. des_ifs. }
+      (* { instantiate (2:= PC). rewrite FPTR; ss. des_ifs. unfold Genv.find_funct_ptr. des_ifs. } *)
+      (* { rewrite FPTR0. ss. des_ifs. unfold Genv.find_funct_ptr. des_ifs. } *)
       { ii. eapply SimMem.lift_sim_val; eauto. }
       { eapply SimMem.lift_wf; eauto. }
       { u. eapply SimSymb.mlift_preserves_sim_skenv; eauto. }
@@ -1156,118 +1116,9 @@ Section ADQSTEP.
     all: ss.
   Qed.
 
-End ADEQUACYSTEP.
+End ADQSTEP.
 
 
-
-
-Section ADEQUACYINIT.
-
-
-End ADEQUACYINIT.
-
-  
-          eapply mle_preserves_sim_ge; eauto.
-          eapply SimMem.unlift_spec; eauto.
-        }
-        eauto.
-        * eapply mle_preserves_sim_ge; eauto.
-          { ss. des_ifs. eauto. }
-          About SimMem.unlift_spec.
-          admit "".
-        * 
-          move GE at bottom.
-          eauto.
-          u in GE. ss.
-        rpapply step_return; ss; eauto.
-        * instantiate (3:= Frame.mk _ _ _). ss. apply FINALSRC.
-        * ss.
-      ss.
-
-
-      { (* final *)
-        ii. inv FINALTGT. ss. des_ifs.
-        esplits; [apply star_refl|]; eauto.
-        inv STACK.
-        exploit RETBSIM; eauto. i; des.
-        econs; ss; eauto.
-        - admit "obligate to SimMem.val".
-        - admit "obligate to SimMem.val".
-      }
-      { (* progress *)
-        ii. u in PROGRESS. des.
-        specialize (SAFESRC _ (star_refl _ _ _)). des.
-        { left. inv SAFESRC. inv STACK. ss.
-          exploit RETBSIM; eauto. i; des.
-          esplits; eauto. econs; eauto.
-          - admit "obligate to SimMem.val".
-          - admit "obligate to SimMem.val". }
-
-        right. ss. des_ifs.
-        exploit RETBSIM; try apply PROGRESS; eauto. i; des.
-        inv SAFESRC; ss.
-        { exfalso. 
-          eapply ModSem.call_return_disjoint; eauto. esplits; eauto. u. eauto. }
-        { exfalso.
-          eapply ModSem.step_return_disjoint; eauto. esplits; eauto. u. eauto. }
-        (* clear PROGRESS. *)
-        bar.
-        move AFTER at bottom.
-        move STACK at bottom.
-        inv STACK. ss.
-        exploit K; try apply RSREL0; eauto. i; des.
-        exploit KPROGRESS; eauto.
-        move AFTER at bottom. {
-
-
-        exploit RETBSIM; try apply FINAL; eauto. i; des.
-        inv STACK. ss.
-        exploit K; try apply RSREL0; eauto. i; des.
-        exploit KPROGRESS; eauto. move AFTER at bottom. {
-        tttttttttttt
-        { etransitivity; eauto. 
-        esplits; eauto.
-        econs 3; ss; eauto.
-
-        eapply ModSem.step_return_disjoint; eauto. esplits; eauto.
-        u. esplits; eauto.
-        
-        exploit RETBSIM; eauto. i; des.
-        ss; des_ifs.
-        left. inv STACK.
-        esplits; eauto. econs; eauto.
-        esplits; eauto. econs; ss; eauto.
-        - admit "find fptr owner progress".
-        - admit "initial_frame progress". }
-  Qed.
-
-        econs; ss; eauto.
-        * econs; ss; eauto.
-          instantiate (1:= sm_arg).
-          ii. exploit K; eauto. i; des_safe.
-          pclearbot. esplits; eauto.
-        * eauto.
-          admit "?".
-        * des_ifs. admit "this should be easy".
-    -
-      +
-      { instantiate (1:= rs_arg_src PC). ss.
-        eapply SimMem.sim_val_le; eauto.
-        instantiate (1:= rs_arg PC). instantiate (1:= LoadPair.mk _ _ _).
-        ss. eauto.
-      }
-      esplits; eauto.
-
-
-      exploit AFTER; eauto.
-      { reflexivity. }
-      { eapply SimMem.lift_wf; eauto. }
-      { ii. eapply SimMem.lift_sim_rel; eauto. (* TODO: rename lemma *) }
-      { 
-  Qed.
-
-  
-End ADEQUACYSTEP.
 
 
 Section ADEQUACY.

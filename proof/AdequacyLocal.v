@@ -729,180 +729,7 @@ End ADQINIT.
 
 
 
-(* Note: I didn't want to define this tactic. I wanted to use eauto + Hint Resolve, but it didn't work. *)
-Ltac modsem_tac :=
-  try(
-      let TAC := u; esplits; eauto in
-      u in *; des_safe;
-      first[
-          exfalso; eapply ModSem.call_step_disjoint; TAC; fail
-        |
-        exfalso; eapply ModSem.step_return_disjoint; TAC; fail
-        |
-        exfalso; eapply ModSem.call_return_disjoint; TAC; fail
-        ]
-    )
-.
 
-
-(* TODO: Move to EventsC *)
-Lemma eventval_valid_le
-      se_small ev se_big
-      (VALID: eventval_valid se_small ev)
-      (LE: se_small.(Senv.public_symbol) <1= se_big.(Senv.public_symbol))
-  :
-    <<VALID: eventval_valid se_big ev>>
-.
-Proof.
-  u in *.
-  unfold eventval_valid in *. des_ifs. erewrite LE; eauto.
-Qed.
-
-Lemma match_traces_le
-      se_small tr0 tr1 se_big
-      (MATCH: match_traces se_small tr0 tr1)
-      (LE: se_small.(Senv.public_symbol) <1= se_big.(Senv.public_symbol))
-  :
-    <<MATCH: match_traces se_big tr0 tr1>>
-.
-Proof.
-  u in *.
-  inv MATCH; econs; eauto; eapply eventval_valid_le; eauto.
-Qed.
-
-Lemma lift_step
-      (ms: ModSem.t) st0 tr st1
-      (STEP: Step ms st0 tr st1)
-  :
-    forall prog rs_init tail,
-    <<STEP: Step (Sem.semantics prog)
-                 ((Frame.mk ms rs_init st0) :: tail) tr
-                 ((Frame.mk ms rs_init st1) :: tail)>>
-.
-Proof.
-  ii. econs 2; eauto.
-Qed.
-
-Lemma lift_star
-      (ms: ModSem.t) st0 tr st1
-      (STAR: Star ms st0 tr st1)
-  :
-    forall prog rs_init tail,
-    <<STAR: Star (Sem.semantics prog)
-                 ((Frame.mk ms rs_init st0) :: tail) tr
-                 ((Frame.mk ms rs_init st1) :: tail)>>
-.
-Proof.
-  ii. ginduction STAR; ii; ss.
-  - econs 1; eauto.
-  - clarify. econs 2; eauto.
-    + eapply lift_step; eauto.
-    + eapply IHSTAR; eauto.
-Qed.
-
-Lemma lift_plus
-      (ms: ModSem.t) st0 tr st1
-      (PLUS: Plus ms st0 tr st1)
-  :
-    forall prog rs_init tail,
-    <<PLUS: Plus (Sem.semantics prog)
-                 ((Frame.mk ms rs_init st0) :: tail) tr
-                 ((Frame.mk ms rs_init st1) :: tail)>>
-.
-Proof.
-  i. inv PLUS; ii; ss.
-  econs; eauto.
-  - eapply lift_step; eauto.
-  - eapply lift_star; eauto.
-Qed.
-
-Lemma lift_dstep
-      (ms: ModSem.t) st0 tr st1
-      (DSTEP: DStep ms st0 tr st1)
-  :
-    forall prog rs_init tail,
-    <<DSTEP: DStep (Sem.semantics prog)
-                   ((Frame.mk ms rs_init st0) :: tail) tr
-                   ((Frame.mk ms rs_init st1) :: tail)>>
-.
-Proof.
-  ii. destruct DSTEP as [DTM STEP].
-  econs; eauto; cycle 1.
-  - econs; ss; eauto.
-  - inv DTM.
-    econs; eauto.
-    + ii. ss.
-      inv H; ss; modsem_tac.
-      inv H0; ss; modsem_tac.
-      clear STEP.
-      determ_tac sd_determ_at.
-      esplits; auto.
-      * eapply match_traces_le; eauto.
-        admit "this should hold".
-      * ii. clarify. special H0; ss. clarify.
-    + ii. ss.
-      inv STEP0; ss; modsem_tac.
-      inv FINAL; ss; modsem_tac.
-    + ii. inv H; ss; modsem_tac.
-      exploit sd_traces_at; eauto.
-Qed.
-
-Lemma lift_dstar
-      (ms: ModSem.t) st0 tr st1
-      (DSTAR: DStar ms st0 tr st1)
-  :
-    forall prog rs_init tail,
-    <<DSTAR: DStar (Sem.semantics prog)
-                   ((Frame.mk ms rs_init st0) :: tail) tr
-                   ((Frame.mk ms rs_init st1) :: tail)>>
-.
-Proof.
-  i. ginduction DSTAR; ii; ss.
-  - econs 1; eauto.
-  - clarify. econs 2; eauto.
-    + eapply lift_dstep; eauto.
-    + eapply IHDSTAR; eauto.
-Qed.
-
-Lemma lift_dplus
-      (ms: ModSem.t) st0 tr st1
-      (DPLUS: DPlus ms st0 tr st1)
-  :
-    forall prog rs_init tail,
-    <<DPLUS: DPlus (Sem.semantics prog)
-                   ((Frame.mk ms rs_init st0) :: tail) tr
-                   ((Frame.mk ms rs_init st1) :: tail)>>
-.
-Proof.
-  i. inv DPLUS; ii; ss.
-  econs; eauto.
-  - eapply lift_dstep; eauto.
-  - eapply lift_dstar; eauto.
-Qed.
-
-Lemma lift_receptive_at
-      (ms: ModSem.t) st0
-      (RECEP: receptive_at ms st0)
-  :
-    forall prog rs_init tail,
-    <<RECEP: receptive_at (Sem.semantics prog)
-                          ((Frame.mk ms rs_init st0) :: tail)>>
-.
-Proof.
-  ii. inv RECEP. ss.
-  econs; eauto; ii.
-  - inv H.
-    + inv H0. esplits; eauto. econs 1; eauto.
-    + ss.
-      exploit sr_receptive_at; eauto.
-      { eapply match_traces_le; eauto. admit "this should hold". }
-      i; des.
-      esplits; eauto.
-      econs; eauto.
-    + inv H0. esplits; eauto. econs 3; eauto.
-  - inv H; s; try omega.
-    exploit sr_traces_at; eauto.
-Qed.
 
 Section ADQSTEP.
 
@@ -941,10 +768,10 @@ Section ADQSTEP.
     - (* fstep *)
       left.
       econs; ss; eauto.
-      + ii. inv FINALSRC; ss. modsem_tac.
+      + ii. inv FINALSRC; ss. ModSem.tac.
       + inv FSTEP.
         * econs 1. ii. ss. rewrite LINKSRC in *.
-          inv STEPSRC; ss; modsem_tac.
+          inv STEPSRC; ss; ModSem.tac.
           exploit STEP; eauto. i; des_safe.
           exists i1, ((Frame.mk ms_tgt rs_init_tgt st_tgt1) :: tail_tgt).
           esplits; eauto.
@@ -964,11 +791,11 @@ Section ADQSTEP.
     - (* bstep *)
       right. ss.
       econs; ss; eauto.
-      + ii. inv FINALTGT. ss. modsem_tac.
+      + ii. inv FINALTGT. ss. ModSem.tac.
       + ii.
         inv BSTEP.
         * econs 1; eauto.
-          ii. inv STEPTGT; modsem_tac.
+          ii. inv STEPTGT; ModSem.tac.
           ss. exploit STEP; eauto. i; des_safe.
           exists i1, ((Frame.mk ms_src rs_init_src st_src1) :: tail_src).
           esplits; eauto.
@@ -996,7 +823,7 @@ Section ADQSTEP.
         specialize (SAFESRC0 _ (star_refl _ _ _)). des.
         { inv SAFESRC0. ss. exfalso. eapply ModSem.call_return_disjoint; eauto. u. esplits; eauto. }
         ss; des_ifs.
-        inv SAFESRC0; ss; modsem_tac.
+        inv SAFESRC0; ss; ModSem.tac.
         esplits; eauto. econs; ss; eauto.
         - admit "find fptr owner progress".
         - admit "initial_frame progress". }
@@ -1010,7 +837,7 @@ Section ADQSTEP.
       (* { exfalso. eapply ModSem.step_at_external_disjoint; try apply FINAL; eauto. } *)
 
       econs 1; ss; eauto. i. des_ifs.
-      inv STEPTGT; ss; modsem_tac.
+      inv STEPTGT; ss; ModSem.tac.
       clear SAFESRC.
       rename rs_arg into rs_arg_tgt.
       exploit CALLBSIM; eauto. i; des.

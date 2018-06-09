@@ -8,6 +8,7 @@ Require Import Smallstep.
 From Paco Require Import paco.
 Require Import sflib.
 Require Import Skeleton.
+Require Import CoqlibC.
 
 Set Implicit Arguments.
 
@@ -126,6 +127,20 @@ Module ModSem.
     (* ; *)
   }.
 
+  (* Note: I didn't want to define this tactic. I wanted to use eauto + Hint Resolve, but it didn't work. *)
+  Ltac tac :=
+    try(
+        let TAC := u; esplits; eauto in
+        u in *; des_safe;
+        first[
+            exfalso; eapply ModSem.call_step_disjoint; TAC; fail
+          |
+          exfalso; eapply ModSem.step_return_disjoint; TAC; fail
+          |
+          exfalso; eapply ModSem.call_return_disjoint; TAC; fail
+          ]
+      )
+  .
 
   (* Definition is_internal (ms0: t) (st0: ms0.(state)) (sg_arg: option signature) (rs_arg: regset): Prop := *)
   (*   <<NOTCALL: forall fptr_arg sg_arg rs_arg m_arg, ~ ms0.(at_external) st0 fptr_arg sg_arg rs_arg m_arg>> /\ *)

@@ -104,7 +104,9 @@ Section SYSMODSEM.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.
-  Next Obligation. all_prop_inv; ss. Qed.
+  Next Obligation. ii; des; ss; all_prop_inv; ss. Qed.
+  Next Obligation. ii; des; ss; all_prop_inv; ss. Qed.
+  Next Obligation. ii; des; ss; all_prop_inv; ss. Qed.
 
 End SYSMODSEM.
 

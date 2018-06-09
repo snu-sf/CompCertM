@@ -7,6 +7,7 @@ Require Import JMeq.
 Require Import Asmregs.
 Require Import Smallstep.
 Require Import Integers.
+Require Import Events.
 
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem.
@@ -240,4 +241,163 @@ End INITDTM.
 
 
 
+
+(* TODO: Move to EventsC *)
+Lemma eventval_valid_le
+      se_small ev se_big
+      (VALID: eventval_valid se_small ev)
+      (LE: se_small.(Senv.public_symbol) <1= se_big.(Senv.public_symbol))
+  :
+    <<VALID: eventval_valid se_big ev>>
+.
+Proof.
+  u in *.
+  unfold eventval_valid in *. des_ifs. erewrite LE; eauto.
+Qed.
+
+Lemma match_traces_le
+      se_small tr0 tr1 se_big
+      (MATCH: match_traces se_small tr0 tr1)
+      (LE: se_small.(Senv.public_symbol) <1= se_big.(Senv.public_symbol))
+  :
+    <<MATCH: match_traces se_big tr0 tr1>>
+.
+Proof.
+  u in *.
+  inv MATCH; econs; eauto; eapply eventval_valid_le; eauto.
+Qed.
+
+Lemma lift_step
+      (ms: ModSem.t) st0 tr st1
+      (STEP: Step ms st0 tr st1)
+  :
+    forall prog rs_init tail,
+    <<STEP: Step (Sem.semantics prog)
+                 ((Frame.mk ms rs_init st0) :: tail) tr
+                 ((Frame.mk ms rs_init st1) :: tail)>>
+.
+Proof.
+  ii. econs 2; eauto.
+Qed.
+
+Lemma lift_star
+      (ms: ModSem.t) st0 tr st1
+      (STAR: Star ms st0 tr st1)
+  :
+    forall prog rs_init tail,
+    <<STAR: Star (Sem.semantics prog)
+                 ((Frame.mk ms rs_init st0) :: tail) tr
+                 ((Frame.mk ms rs_init st1) :: tail)>>
+.
+Proof.
+  ii. ginduction STAR; ii; ss.
+  - econs 1; eauto.
+  - clarify. econs 2; eauto.
+    + eapply lift_step; eauto.
+    + eapply IHSTAR; eauto.
+Qed.
+
+Lemma lift_plus
+      (ms: ModSem.t) st0 tr st1
+      (PLUS: Plus ms st0 tr st1)
+  :
+    forall prog rs_init tail,
+    <<PLUS: Plus (Sem.semantics prog)
+                 ((Frame.mk ms rs_init st0) :: tail) tr
+                 ((Frame.mk ms rs_init st1) :: tail)>>
+.
+Proof.
+  i. inv PLUS; ii; ss.
+  econs; eauto.
+  - eapply lift_step; eauto.
+  - eapply lift_star; eauto.
+Qed.
+
+Lemma lift_dstep
+      (ms: ModSem.t) st0 tr st1
+      (DSTEP: DStep ms st0 tr st1)
+  :
+    forall prog rs_init tail,
+    <<DSTEP: DStep (Sem.semantics prog)
+                   ((Frame.mk ms rs_init st0) :: tail) tr
+                   ((Frame.mk ms rs_init st1) :: tail)>>
+.
+Proof.
+  ii. destruct DSTEP as [DTM STEP].
+  econs; eauto; cycle 1.
+  - econs; ss; eauto.
+  - inv DTM.
+    econs; eauto.
+    + ii. ss.
+      inv H; ss; ModSem.tac.
+      inv H0; ss; ModSem.tac.
+      clear STEP.
+      determ_tac sd_determ_at.
+      esplits; auto.
+      * eapply match_traces_le; eauto.
+        admit "this should hold".
+      * ii. clarify. special H0; ss. clarify.
+    + ii. ss.
+      inv STEP0; ss; ModSem.tac.
+      inv FINAL; ss; ModSem.tac.
+    + ii. inv H; ss; ModSem.tac.
+      exploit sd_traces_at; eauto.
+Qed.
+
+Lemma lift_dstar
+      (ms: ModSem.t) st0 tr st1
+      (DSTAR: DStar ms st0 tr st1)
+  :
+    forall prog rs_init tail,
+    <<DSTAR: DStar (Sem.semantics prog)
+                   ((Frame.mk ms rs_init st0) :: tail) tr
+                   ((Frame.mk ms rs_init st1) :: tail)>>
+.
+Proof.
+  i. ginduction DSTAR; ii; ss.
+  - econs 1; eauto.
+  - clarify. econs 2; eauto.
+    + eapply lift_dstep; eauto.
+    + eapply IHDSTAR; eauto.
+Qed.
+
+Lemma lift_dplus
+      (ms: ModSem.t) st0 tr st1
+      (DPLUS: DPlus ms st0 tr st1)
+  :
+    forall prog rs_init tail,
+    <<DPLUS: DPlus (Sem.semantics prog)
+                   ((Frame.mk ms rs_init st0) :: tail) tr
+                   ((Frame.mk ms rs_init st1) :: tail)>>
+.
+Proof.
+  i. inv DPLUS; ii; ss.
+  econs; eauto.
+  - eapply lift_dstep; eauto.
+  - eapply lift_dstar; eauto.
+Qed.
+
+Lemma lift_receptive_at
+      (ms: ModSem.t) st0
+      (RECEP: receptive_at ms st0)
+  :
+    forall prog rs_init tail,
+    <<RECEP: receptive_at (Sem.semantics prog)
+                          ((Frame.mk ms rs_init st0) :: tail)>>
+.
+Proof.
+  ii. inv RECEP. ss.
+  econs; eauto; ii.
+  - inv H.
+    + inv H0. esplits; eauto. econs 1; eauto.
+    + ss.
+      exploit sr_receptive_at; eauto.
+      { eapply match_traces_le; eauto. admit "this should hold". }
+      i; des.
+      esplits; eauto.
+      econs; eauto.
+    + inv H0. esplits; eauto. econs 3; eauto.
+  - inv H; s; try omega.
+    exploit sr_traces_at; eauto.
+Qed.
 

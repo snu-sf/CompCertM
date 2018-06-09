@@ -770,6 +770,52 @@ Proof.
   inv MATCH; econs; eauto; eapply eventval_valid_le; eauto.
 Qed.
 
+Lemma lift_step
+      (ms: ModSem.t) st0 tr st1
+      (STEP: Step ms st0 tr st1)
+  :
+    forall prog rs_init tail,
+    <<STEP: Step (Sem.semantics prog)
+                 ((Frame.mk ms rs_init st0) :: tail) tr
+                 ((Frame.mk ms rs_init st1) :: tail)>>
+.
+Proof.
+  ii. econs 2; eauto.
+Qed.
+
+Lemma lift_star
+      (ms: ModSem.t) st0 tr st1
+      (STAR: Star ms st0 tr st1)
+  :
+    forall prog rs_init tail,
+    <<STAR: Star (Sem.semantics prog)
+                 ((Frame.mk ms rs_init st0) :: tail) tr
+                 ((Frame.mk ms rs_init st1) :: tail)>>
+.
+Proof.
+  ii. ginduction STAR; ii; ss.
+  - econs 1; eauto.
+  - clarify. econs 2; eauto.
+    + eapply lift_step; eauto.
+    + eapply IHSTAR; eauto.
+Qed.
+
+Lemma lift_plus
+      (ms: ModSem.t) st0 tr st1
+      (PLUS: Plus ms st0 tr st1)
+  :
+    forall prog rs_init tail,
+    <<PLUS: Plus (Sem.semantics prog)
+                 ((Frame.mk ms rs_init st0) :: tail) tr
+                 ((Frame.mk ms rs_init st1) :: tail)>>
+.
+Proof.
+  i. inv PLUS; ii; ss.
+  econs; eauto.
+  - eapply lift_step; eauto.
+  - eapply lift_star; eauto.
+Qed.
+
 Lemma lift_dstep
       (ms: ModSem.t) st0 tr st1
       (DSTEP: DStep ms st0 tr st1)
@@ -892,7 +938,7 @@ Section ADQSTEP.
     punfold TOP. inv TOP.
 
 
-    - (* step *)
+    - (* fstep *)
       left.
       econs; ss; eauto.
       + ii. inv FINALSRC; ss. modsem_tac.
@@ -906,11 +952,37 @@ Section ADQSTEP.
             - left. eapply lift_dplus; eauto.
             - right. esplits; eauto. eapply lift_dstar; eauto.
           }
-          pclearbot. right. eapply CIH; eauto. econs; eauto. ss. des_ifs.
+          pclearbot. right. eapply CIH with (sm0 := sm1); eauto. econs; eauto.
+          { ss; des_ifs. eapply mle_preserves_sim_ge; eauto. }
+          etransitivity; eauto.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dstar; eauto. }
           right. eapply CIH; eauto. econs; eauto. ss; des_ifs.
       + eapply lift_receptive_at; eauto.
+
+
+    - (* bstep *)
+      right. ss.
+      econs; ss; eauto.
+      + ii. inv FINALTGT. ss. modsem_tac.
+      + ii.
+        inv BSTEP.
+        * econs 1; eauto.
+          ii. inv STEPTGT; modsem_tac.
+          ss. exploit STEP; eauto. i; des_safe.
+          exists i1, ((Frame.mk ms_src rs_init_src st_src1) :: tail_src).
+          esplits; eauto.
+          { des.
+            - left. eapply lift_plus; eauto.
+            - right. esplits; eauto. eapply lift_star; eauto.
+          }
+          pclearbot. right. eapply CIH with (sm0 := sm1); eauto. econs; eauto.
+          { ss; des_ifs. eapply mle_preserves_sim_ge; eauto. }
+          etransitivity; eauto.
+        * des. pclearbot. econs 2.
+          { esplits; eauto. eapply lift_star; eauto. }
+          right. eapply CIH; eauto. econs; eauto. ss; des_ifs.
+      + ii. right. des. esplits; eauto. eapply lift_step; eauto.
 
 
     - (* call *)

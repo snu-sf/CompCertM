@@ -76,7 +76,8 @@ Section SIMMODSEM.
   | lxsim_step_forward
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
-      (SAFESRC: ms_src.(ModSem.is_step) st_src0)
+      (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
+      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.may_return) st_src0)
       (FSTEP: fsim_step (lxsim rs_init_src rs_init_tgt sm_init) i0 st_src0 st_tgt0 sm0)
       (RECEP: receptive_at ms_src st_src0)
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
@@ -148,6 +149,9 @@ Section SIMMODSEM.
                 (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
                 (MWF: SimMem.wf sm_ret)
                 (RSREL: sm_ret.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
+                (SAFESRC: exists st_src1,
+                    <<AFTERSRC: ms_src.(after_external) st_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
+                                                        st_src1>>)
               ,
                 (<<KSTEP: forall
                     st_tgt1
@@ -162,11 +166,11 @@ Section SIMMODSEM.
                       (<<LXSIM: lxsim rs_init_src rs_init_tgt sm_init
                                       i1 st_src1 st_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>)>>)
                 /\
-                (<<KPROGRESS: forall
-                    st_src1
-                    (AFTERSRC: ms_src.(after_external) st_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
-                                                       st_src1)
-                  ,
+                (<<KPROGRESS:(*  forall *)
+                  (*   st_src1 *)
+                  (*   (AFTERSRC: ms_src.(after_external) st_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem)) *)
+                  (*                                      st_src1) *)
+                  (* , *)
                     exists st_tgt1,
                       (<<AFTERTGT:
                          ms_tgt.(after_external) st_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt_mem))

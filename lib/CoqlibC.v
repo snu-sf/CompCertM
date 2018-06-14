@@ -15,6 +15,7 @@ Require Import Relations.
 Require Import RelationClasses.
 Require Import Wellfounded.
 Require Export Classical_Prop.
+Require Import AxiomsC.
 
 Set Implicit Arguments.
 
@@ -199,6 +200,47 @@ Notation "p =1= q" := (fun x0 => eq (p x0) (q x0)) (at level 50, no associativit
 Notation "p =2= q" := (fun x0 x1 => eq (p x0 x1) (q x0 x1)) (at level 50, no associativity).
 Notation "p =3= q" := (fun x0 x1 x2 => eq (p x0 x1 x2) (q x0 x1 x2)) (at level 50, no associativity).
 Notation "p =4= q" := (fun x0 x1 x2 x3 => eq (p x0 x1 x2 x3) (q x0 x1 x2 x3)) (at level 50, no associativity).
+
+Notation "p <1> q" := (fun x0 => iff (p x0) (q x0)) (at level 50, no associativity).
+Notation "p <2> q" := (fun x0 x1 => iff (p x0 x1) (q x0 x1)) (at level 50, no associativity).
+Notation "p <3> q" := (fun x0 x1 x2 => iff (p x0 x1 x2) (q x0 x1 x2)) (at level 50, no associativity).
+Notation "p <4> q" := (fun x0 x1 x2 x3 => iff (p x0 x1 x2 x3) (q x0 x1 x2 x3)) (at level 50, no associativity).
+
+Lemma prop_ext1
+      X0
+      (P Q: X0 -> Prop)
+      (IFF: all1 (P <1> Q))
+  :
+    <<EQ: all1 (P =1= Q)>>
+.
+Proof. ss. ii. eapply prop_ext; eauto. Qed.
+
+Lemma prop_ext2
+      X0 X1
+      (P Q: X0 -> X1 -> Prop)
+      (IFF: all2 (P <2> Q))
+  :
+    <<EQ: all2 (P =2= Q)>>
+.
+Proof. ss. ii. eapply prop_ext; eauto. Qed.
+
+Lemma prop_ext3
+      X0 X1 X2
+      (P Q: X0 -> X1 -> X2 -> Prop)
+      (IFF: all3 (P <3> Q))
+  :
+    <<EQ: all3 (P =3= Q)>>
+.
+Proof. ss. ii. eapply prop_ext; eauto. Qed.
+
+Lemma prop_ext4
+      X0 X1 X2 X3
+      (P Q: X0 -> X1 -> X2 -> X3 -> Prop)
+      (IFF: all4 (P <4> Q))
+  :
+    <<EQ: all4 (P =4= Q)>>
+.
+Proof. ss. ii. eapply prop_ext; eauto. Qed.
 
 (* Originally in sflib, (t):Prop *)
 (* Removed it for use in "privs" of ASTM *)

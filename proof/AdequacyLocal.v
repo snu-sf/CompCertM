@@ -470,6 +470,10 @@ Section ADQMATCH.
           (MEMLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
           (MEMWF: SimMem.wf sm_ret)
           (RSREL: sm_ret.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
+          (SAFESRC: exists lst_src1,
+              <<AFTERSRC: ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src
+                                                         (sm_ret.(SimMem.src_mem))
+                                                         lst_src1>>)
         ,
           (<<KSTEP: forall
               lst_tgt1
@@ -484,11 +488,11 @@ Section ADQMATCH.
                 (<<LXSIM: lxsim ms_src ms_tgt rs_init_src rs_init_tgt tail_sm
                                 i0 lst_src1 lst_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>)>>)
           /\
-          (<<KPROGRESS: forall
-              st_src1
-              (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
-                                                        st_src1)
-            ,
+          (<<KPROGRESS: (* forall *)
+              (* st_src1 *)
+              (* (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem)) *)
+              (*                                           st_src1) *)
+            (* , *)
               exists lst_tgt1,
                 (<<AFTERTGT:
                    ms_tgt.(ModSem.after_external) lst_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt_mem))
@@ -768,10 +772,13 @@ Section ADQSTEP.
     - (* fstep *)
       left.
       econs; ss; eauto.
-      + ii. inv FINALSRC; ss. ModSem.tac.
+      + ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto.
       + inv FSTEP.
         * econs 1. ii. ss. rewrite LINKSRC in *.
-          inv STEPSRC; ss; ModSem.tac.
+          des.
+          inv STEPSRC; ss; ModSem.tac; swap 2 3.
+          { exfalso. eauto. }
+          { exfalso. eapply SAFESRC0. u. eauto. }
           exploit STEP; eauto. i; des_safe.
           exists i1, ((Frame.mk ms_tgt rs_init_tgt st_tgt1) :: tail_tgt).
           esplits; eauto.
@@ -915,7 +922,6 @@ Section ADQSTEP.
         move STACK at bottom.
         inv STACK. ss.
         exploit K; try apply RSREL0; eauto. i; des.
-        exploit KPROGRESS; eauto. i; des.
         esplits; eauto.
         econs 3; ss; eauto.
       }
@@ -929,7 +935,14 @@ Section ADQSTEP.
       { eapply FINAL. }
       i; des. clarify. clear_tac.
       inv STACK. ss.
-      exploit K; eauto. i; des. exploit KSTEP; eauto. i; des.
+      exploit K; eauto.
+      { specialize (SAFESRC _ (star_refl _ _ _)).
+        des; ss.
+        { inv SAFESRC. }
+        inv SAFESRC; ModSem.tac. ss.
+        determ_tac ModSem.final_frame_dtm. eauto.
+      }
+      i; des. exploit KSTEP; eauto. i; des.
       esplits; eauto.
       + left. apply plus_one.
         econs 3; ss; eauto.
@@ -939,7 +952,7 @@ Section ADQSTEP.
         { eauto. }
         { etransitivity; eauto.
           eapply SimMem.unlift_spec; eauto. }
-        { eauto. }
+        { determ_tac ModSem.after_external_dtm. eauto. }
         { des_ifs.
           eapply mle_preserves_sim_ge; eauto.
           eapply SimMem.unlift_spec; eauto. }
@@ -961,6 +974,21 @@ Section ADEQUACY.
   Hypothesis SIMPROG: ProgPair.sim pp.
   Let p_src := pp.(ProgPair.src).
   Let p_tgt := pp.(ProgPair.tgt).
+  Let sem_src := Sem.semantics p_src.
+  Let sem_tgt := Sem.semantics p_tgt.
+
+  Theorem adequacy_local
+    :
+      mixed_simulation sem_src sem_tgt
+  .
+  Proof.
+    subst_locals.
+    econstructor 1 with (order := ord); eauto.
+    econs; eauto.
+    { eapply wf_ord; eauto. }
+    econs 2; ss; eauto.
+    -
+  Qed.
 
   Theorem adequacy_local
           sem_src

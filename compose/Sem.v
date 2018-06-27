@@ -147,11 +147,11 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
          tr ((fr0.(Frame.update_st) st0) :: frs)
 | step_return
     fr0 fr1 frs
-    rs_ret m_ret
-    (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.rs_init) fr0.(Frame.st)
-                                                  rs_ret m_ret)
+    rs_ret
+    (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.rs_init) fr0.(Frame.st) rs_ret)
     st0
-    (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) fr0.(Frame.rs_init) rs_ret m_ret st0)
+    (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) fr0.(Frame.rs_init) rs_ret
+                                                   fr0.(Frame.st).(ModSem.get_mem fr0.(Frame.ms)) st0)
   :
     step ge (fr0 :: fr1 :: frs)
          E0 ((fr1.(Frame.update_st) st0) :: frs)
@@ -231,9 +231,9 @@ Section SEMANTICS.
   Inductive final_state: state -> int -> Prop :=
   | final_state_intro
       fr0
-      rs_ret m_ret
+      rs_ret
       (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.rs_init) fr0.(Frame.st)
-                                                    rs_ret m_ret)
+                                                    rs_ret)
       reti
       (RETPC: rs_ret#PC = Vnullptr)
       (RETV: rs_ret#RAX = Vint reti)

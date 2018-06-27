@@ -146,22 +146,43 @@ Section FRAME_PROPERTIES.
 
 Variable f: Linear.function.
 Let b := function_bounds f.
+Let fe := make_env b.
 Variable tf: Mach.function.
 Hypothesis TRANSF_F: transf_function f = OK tf.
 
-(* Section OFSGENERAL. *)
-
-(* Variable fe_ofs_arg: Z. *)
-(* Hypothesis (OFSARG: fe_ofs_arg >= 0). *)
-(* Let fe := make_env_ofs fe_ofs_arg b. *)
-(* Ltac zero_tac := subst fe_ofs_arg; rewrite <- make_env_ofs_zero in *. *)
-Let fe := make_env b.
+Lemma unfold_transf_function
+  :
+  tf = Mach.mkfunction
+         f.(Linear.fn_sig)
+         (transl_body f fe)
+         fe.(fe_size)
+         (Ptrofs.repr fe.(fe_ofs_link))
+         (Ptrofs.repr fe.(fe_ofs_retaddr)).
+Proof.
+  generalize TRANSF_F. unfold transf_function.
+  destruct (wt_function f); simpl negb.
+  destruct (zlt Ptrofs.max_unsigned (fe_size (make_env (function_bounds f)))).
+  intros; discriminate.
+  intros. unfold fe. unfold b. congruence.
+  intros; discriminate.
+Qed.
 
 Lemma transf_function_well_typed:
   wt_function f = true.
 Proof.
   generalize TRANSF_F. unfold transf_function.
   destruct (wt_function f); simpl negb. auto. intros; discriminate.
+Qed.
+
+Lemma size_no_overflow: fe.(fe_size) <= Ptrofs.max_unsigned.
+Proof.
+  i.
+  generalize TRANSF_F. unfold transf_function.
+  destruct (wt_function f); simpl negb.
+  destruct (zlt Ptrofs.max_unsigned (fe_size (make_env (function_bounds f)))).
+  intros; discriminate.
+  intros. unfold fe. unfold b. omega.
+  intros; discriminate.
 Qed.
 
 Remark bound_stack_data_stacksize:
@@ -1136,40 +1157,6 @@ Proof.
 - auto.
 - unfold Locmap.set. destruct (Loc.eq (R a) l). red; auto.
   destruct (Loc.diff_dec (R a) l); auto. red; auto.
-Qed.
-
-(* Section OFSZERO. *)
-(* Let fe := make_env b. *)
-
-(* Local Opaque Z.add Z.mul Z.divide. *)
-(* Local Opaque sepconj. *)
-
-Lemma unfold_transf_function
-  :
-  tf = Mach.mkfunction
-         f.(Linear.fn_sig)
-         (transl_body f fe)
-         fe.(fe_size)
-         (Ptrofs.repr fe.(fe_ofs_link))
-         (Ptrofs.repr fe.(fe_ofs_retaddr)).
-Proof.
-  generalize TRANSF_F. unfold transf_function.
-  destruct (wt_function f); simpl negb.
-  destruct (zlt Ptrofs.max_unsigned (fe_size (make_env (function_bounds f)))).
-  intros; discriminate.
-  intros. unfold fe. unfold b. congruence.
-  intros; discriminate.
-Qed.
-
-Lemma size_no_overflow: fe.(fe_size) <= Ptrofs.max_unsigned.
-Proof.
-  i.
-  generalize TRANSF_F. unfold transf_function.
-  destruct (wt_function f); simpl negb.
-  destruct (zlt Ptrofs.max_unsigned (fe_size (make_env (function_bounds f)))).
-  intros; discriminate.
-  intros. unfold fe. unfold b. omega.
-  intros; discriminate.
 Qed.
 
 Lemma save_callee_save_correct:

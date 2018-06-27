@@ -24,10 +24,15 @@ Section SIMMODSEM.
   Context {SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
 
-  Inductive mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
-  | mem_compat_intro
-      (MCOMPAT_SRC: ms_src.(get_mem) st_src0 = sm0.(SimMem.src_mem))
-      (MCOMPAT_TGT: ms_tgt.(get_mem) st_tgt0 = sm0.(SimMem.tgt_mem))
+  (* Inductive mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop := *)
+  (* | mem_compat_intro *)
+  (*     (MCOMPATSRC: ms_src.(get_mem) st_src0 = sm0.(SimMem.src_mem)) *)
+  (*     (MCOMPATTGT: ms_tgt.(get_mem) st_tgt0 = sm0.(SimMem.tgt_mem)) *)
+  (* . *)
+  Record mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop := {
+    mcompat_src: <<MCOMPATSRC: ms_src.(get_mem) st_src0 = sm0.(SimMem.src_mem)>>;
+    mcompat_tgt: <<MCOMPATTGT: ms_tgt.(get_mem) st_tgt0 = sm0.(SimMem.tgt_mem)>>;
+  }
   .
 
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
@@ -77,7 +82,7 @@ Section SIMMODSEM.
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
-      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.may_return) st_src0)
+      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) rs_init_src st_src0)
       (FSTEP: fsim_step (lxsim rs_init_src rs_init_tgt sm_init) i0 st_src0 st_tgt0 sm0)
       (RECEP: receptive_at ms_src st_src0)
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
@@ -177,8 +182,9 @@ Section SIMMODSEM.
                                                  st_tgt1>>)>>)>>))
 
   | lxsim_final
-      (MEMLE: SimMem.le sm_init sm0)
-      (MEMWF: SimMem.wf sm0)
+      (MCOMPAT: mem_compat st_src0 st_tgt0 sm0)
+      (MLE: SimMem.le sm_init sm0)
+      (MWF: SimMem.wf sm0)
       (* (PROGRESS: ms_tgt.(is_return) rs_init_tgt st_tgt0) *)
       (* (RETBSIM: forall           *)
       (*     rs_ret_tgt m_ret_tgt *)
@@ -188,8 +194,8 @@ Section SIMMODSEM.
       (*       (<<RSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt>>) *)
       (*       /\ (<<FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src m_ret_src>>)) *)
       rs_ret_src rs_ret_tgt
-      (FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src sm0.(SimMem.src_mem))
-      (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt sm0.(SimMem.tgt_mem))
+      (FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src)
+      (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt)
       (RSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
 
       (* Note: Actually, final_frame can be defined as a function. *)

@@ -823,7 +823,7 @@ Section ADQSTEP.
       right.
       econs; eauto; swap 2 3.
       { (* final *)
-        ii. inv FINALTGT. ss. exfalso. eapply ModSem.call_return_disjoint; eauto. esplits; eauto. u. eauto. }
+        ii. inv FINALTGT. ss. exfalso. eapply ModSem.call_return_disjoint; eauto. esplits; eauto. }
       { (* progress *)
         ii. right. u in SAFESRC. des.
         exploit CALLBSIM; eauto. i; des.
@@ -913,23 +913,24 @@ Section ADQSTEP.
         right. ss. des_ifs.
         inv SAFESRC; ss.
         { exfalso. 
-          eapply ModSem.call_return_disjoint; eauto. esplits; eauto. u. eauto. }
+          eapply ModSem.call_return_disjoint; eauto. esplits; eauto. }
         { exfalso.
-          eapply ModSem.step_return_disjoint; eauto. esplits; eauto. u. eauto. }
+          eapply ModSem.step_return_disjoint; eauto. esplits; eauto. }
         determ_tac ModSem.final_frame_dtm. clear_tac.
         bar.
         move AFTER at bottom.
         move STACK at bottom.
         inv STACK. ss.
-        exploit K; try apply RSREL0; eauto. i; des.
+        exploit K; try apply RSREL0; eauto. { erewrite <- mcompat_src; eauto. } i; des.
         esplits; eauto.
         econs 3; ss; eauto.
+        erewrite mcompat_tgt; eauto.
       }
       i.
       econs 1; eauto. ss. des_ifs.
       ii. inv STEPTGT; ss.
-      { exfalso. eapply ModSem.call_return_disjoint; eauto. esplits; eauto. u. eauto. }
-      { exfalso. eapply ModSem.step_return_disjoint; eauto. esplits; eauto. u. eauto. }
+      { exfalso. eapply ModSem.call_return_disjoint; eauto. esplits; eauto. }
+      { exfalso. eapply ModSem.step_return_disjoint; eauto. esplits; eauto. }
       exploit ModSem.final_frame_dtm.
       { eapply FINALTGT. }
       { eapply FINAL. }
@@ -940,19 +941,20 @@ Section ADQSTEP.
         des; ss.
         { inv SAFESRC. }
         inv SAFESRC; ModSem.tac. ss.
-        determ_tac ModSem.final_frame_dtm. eauto.
+        determ_tac ModSem.final_frame_dtm. erewrite <- mcompat_src; eauto.
       }
       i; des. exploit KSTEP; eauto. i; des.
       esplits; eauto.
       + left. apply plus_one.
         econs 3; ss; eauto.
+        erewrite mcompat_src; eauto.
       + right. eapply CIH; eauto.
         instantiate (1:= (SimMem.unlift sm_arg sm0)).
         econs; ss; cycle 1.
         { eauto. }
         { etransitivity; eauto.
           eapply SimMem.unlift_spec; eauto. }
-        { determ_tac ModSem.after_external_dtm. eauto. }
+        { erewrite mcompat_tgt in AFTER; eauto. determ_tac ModSem.after_external_dtm. eauto. }
         { des_ifs.
           eapply mle_preserves_sim_ge; eauto.
           eapply SimMem.unlift_spec; eauto. }

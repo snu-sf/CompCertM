@@ -35,7 +35,7 @@ Module ModSem.
     final_frame (rs_init: regset)
     (* What is sg_arg/rs_arg for? Just auxiliary data. rs_arg: returning from C/ *)
                   (st0: state)
-                  (rs_ret: regset) (m_ret: mem): Prop;
+                  (rs_ret: regset) (* (m_ret: mem) *): Prop;
     (* time: st0 >> rs_arg *)
     after_external (st0: state) (rs_arg: regset)
                    (rs_ret: regset) (m_ret: mem)
@@ -59,6 +59,13 @@ Module ModSem.
     (*   , *)
     (*     <<MEM: st0.(get_mem) = m_arg>> *)
     (* ; *)
+    after_external_get_mem: forall
+        st0 rs_arg rs_ret m_ret st1
+        (AFTER: after_external st0 rs_arg rs_ret m_ret st1)
+      ,
+        <<MEM: st1.(get_mem) = m_ret>>
+    ;
+
     initial_frame_dtm: forall
         rs_arg m_arg
         st0 st1
@@ -68,12 +75,19 @@ Module ModSem.
         st0 = st1
     ;
     final_frame_dtm: forall
-        rs_init st rs_ret0 m_ret0 rs_ret1 m_ret1
-        (FINAL0: final_frame rs_init st rs_ret0 m_ret0)
-        (FINAL1: final_frame rs_init st rs_ret1 m_ret1)
+        rs_init st rs_ret0 rs_ret1
+        (FINAL0: final_frame rs_init st rs_ret0)
+        (FINAL1: final_frame rs_init st rs_ret1)
       ,
-        rs_ret0 = rs_ret1 /\ m_ret0 = m_ret1
+        rs_ret0 = rs_ret1
     ;
+    (* final_frame_dtm: forall *)
+    (*     rs_init st rs_ret0 m_ret0 rs_ret1 m_ret1 *)
+    (*     (FINAL0: final_frame rs_init st rs_ret0 m_ret0) *)
+    (*     (FINAL1: final_frame rs_init st rs_ret1 m_ret1) *)
+    (*   , *)
+    (*     rs_ret0 = rs_ret1 /\ m_ret0 = m_ret1 *)
+    (* ; *)
     after_external_dtm: forall
         st_call rs_arg rs_ret m_ret st0 st1
         (AFTER0: after_external st_call rs_arg rs_ret m_ret st0)
@@ -85,7 +99,7 @@ Module ModSem.
 
     is_call (st0: state): Prop := exists rs_arg m_arg, at_external st0 rs_arg m_arg;
     is_step (st0: state): Prop := exists tr st1, step globalenv st0 tr st1;
-    is_return (rs_init: regset) (st0: state): Prop := exists rs_ret m_ret, final_frame rs_init st0 rs_ret m_ret;
+    is_return (rs_init: regset) (st0: state): Prop := exists rs_ret, final_frame rs_init st0 rs_ret;
     may_return (st0: state): Prop := exists rs_init, is_return rs_init st0;
       (* exists rs_init rs_ret m_ret, final_frame rs_init st0 rs_ret m_ret; *)
     (* Note: "forall" or "exists" for rs_init? *)

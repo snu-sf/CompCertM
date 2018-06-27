@@ -124,6 +124,21 @@ Section MATCHSIMMODSEM.
                                idx1 st_src1 st_tgt1 (SimMem.unlift sm_arg sm_ret)>>)
   .
 
+  Hypothesis FINALFSIM: forall
+      rs_init_src rs_init_tgt sm_init
+      idx0 st_src0 st_tgt0 sm0
+      (MATCH: match_states rs_init_src rs_init_tgt sm_init
+                           idx0 st_src0 st_tgt0 sm0)
+      (MCOMPAT: mem_compat st_src0 st_tgt0 sm0)
+      rs_ret_src
+      (FINALSRC: ms_src.(ModSem.final_frame) rs_init_src st_src0 rs_ret_src)
+    ,
+      exists rs_ret_tgt,
+        (<<FINALTGT: ms_tgt.(ModSem.final_frame) rs_init_tgt st_tgt0 rs_ret_tgt>>)
+        /\
+        (<<RSREL: SimMem.sim_regset sm0 rs_ret_src rs_ret_tgt>>)
+  .
+
   Hypothesis BAR: bar_True.
 
   Lemma init_match_states
@@ -173,7 +188,9 @@ Section MATCHSIMMODSEM.
 
   Lemma match_states_lxsim
         rs_init_src rs_init_tgt sm_init i0 st_src0 st_tgt0 sm0
+        (MLE: SimMem.le sm_init sm0)
         (MWF: SimMem.wf sm0)
+        (MCOMPAT: mem_compat st_src0 st_tgt0 sm0)
         (MATCH: match_states rs_init_src rs_init_tgt sm_init i0 st_src0 st_tgt0 sm0)
     :
       <<LXSIM: lxsim ms_src ms_tgt rs_init_src rs_init_tgt sm_init i0.(to_idx) st_src0 st_tgt0 sm0>>
@@ -184,7 +201,6 @@ Section MATCHSIMMODSEM.
     generalize (classic (ModSem.is_call ms_src st_src0)). intro CALLSRC; des.
     {
       eapply lxsim_at_external; eauto.
-      { admit "easy". }
       {
         u in CALLSRC. des. rename rs_arg into rs_arg_src. rename m_arg into m_arg_src.
         exploit ATPROGRESS; eauto.
@@ -199,20 +215,31 @@ Section MATCHSIMMODSEM.
       i; des.
       esplits; eauto.
       - i.
+        revert SAFESRC. determ_tac ModSem.after_external_dtm. clear_tac.
         esplits; eauto.
-        right. eapply CIH; eauto.
+        right.
+        eapply CIH; eauto.
+        { etransitivity; cycle 1.
+          - eapply SimMem.unlift_spec; eauto.
+          - etransitivity; eauto.
+        }
         { eapply SimMem.unlift_wf; eauto. }
-        clear SAFESRC. determ_tac ModSem.after_external_dtm. eauto.
+        { econs.
+          - erewrite ModSem.after_external_get_mem; try eassumption. erewrite SimMem.unlift_src; eauto.
+          - erewrite ModSem.after_external_get_mem; try eassumption. erewrite SimMem.unlift_tgt; eauto.
+        }
     }
-    generalize (classic (ModSem.may_return ms_src st_src0)). intro RETSRC; des.
-    (* generalize (classic (ModSem.is_return ms_src rs_init_src st_src0)). intro RETSRC; des. *)
+    generalize (classic (ModSem.is_return ms_src rs_init_src st_src0)). intro RETSRC; des.
     {
-      u in RETSRC.
+      u in RETSRC. des.
+      exploit FINALFSIM; eauto. i; des.
       eapply lxsim_final; eauto.
-      - admit "easy".
-      - admit "???".
-      -
-      -
+    }
+    {
+      eapply lxsim_step_forward; eauto.
+      { econs 1. (* TODO: SIMPLIFY THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! *)
+        ii.
+      }
     }
   Qed.
 

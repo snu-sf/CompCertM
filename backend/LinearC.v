@@ -610,13 +610,13 @@ Section MODSEM.
                     (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_init)
   .
 
-  Inductive final_frame (rs_init: regset): state -> regset -> mem -> Prop :=
+  Inductive final_frame (rs_init: regset): state -> regset -> Prop :=
   | final_frame_intro
       ls_ret rs_ret m_ret
       dummy_stack
       (REGSET: rs_ret = ls_ret.(to_regset))
     :
-      final_frame rs_init (Returnstate [dummy_stack] ls_ret m_ret) rs_ret m_ret
+      final_frame rs_init (Returnstate [dummy_stack] ls_ret m_ret) rs_ret
   .
 
   Inductive after_external: state -> regset -> regset -> mem -> state -> Prop :=
@@ -666,6 +666,7 @@ Section MODSEM.
       ModSem.skenv := (admit "TODO")
     |}
   .
+  Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.
     inv INIT0; inv INIT1; ss. clarify.
     inv LOADARG. inv LOADARG0.
@@ -675,10 +676,11 @@ Section MODSEM.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.
-    hnf. inv H4; inv H2; subst_locals; all_rewrite; ss; des_ifs.
+    ii. des. inv PR. inv PR0; ss.
+    (* hnf. inv H4; inv H2; subst_locals; all_rewrite; ss; des_ifs. *)
   Qed.
-  Next Obligation. all_prop_inv; ss. Qed.
-  Next Obligation. all_prop_inv; ss. Qed.
+  Next Obligation. ii. des. all_prop_inv; ss. Qed.
+  Next Obligation. ii. des. all_prop_inv; ss. Qed.
 
 End MODSEM.
 

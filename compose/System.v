@@ -81,11 +81,11 @@ Section SYSMODSEM.
       initial_frame rs_arg m_arg (state_call rs_arg m_arg)
   .
 
-  Inductive final_frame (rs_init: regset): state -> regset -> mem -> Prop :=
+  Inductive final_frame (rs_init: regset): state -> regset -> Prop :=
   | final_frame_intro
       rs_ret m_ret
     :
-      final_frame rs_init (state_return rs_ret m_ret) rs_ret m_ret
+      final_frame rs_init (state_return rs_ret m_ret) rs_ret
   .
 
   Program Definition modsem: ModSem.t := {|
@@ -101,6 +101,7 @@ Section SYSMODSEM.
     ModSem.skenv := skenv;
   |}
   .
+  Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.

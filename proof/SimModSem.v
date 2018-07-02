@@ -48,6 +48,7 @@ Section SIMMODSEM.
             /\ <<MLE: SimMem.le sm0 sm1>>
 (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm1>>)
+      (RECEP: receptive_at ms_src st_src0)
   | fsim_step_stutter
       i1 st_tgt1
       (STAR: DStar ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
@@ -84,7 +85,6 @@ Section SIMMODSEM.
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
       (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) rs_init_src st_src0)
       (FSTEP: fsim_step (lxsim rs_init_src rs_init_tgt sm_init) i0 st_src0 st_tgt0 sm0)
-      (RECEP: receptive_at ms_src st_src0)
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
       (* sd_determ_at_final becomes nothing, but it is OK. *)
       (* In composed semantics, when it stepped, it must not be final *)

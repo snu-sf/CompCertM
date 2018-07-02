@@ -774,7 +774,9 @@ Section ADQSTEP.
       econs; ss; eauto.
       + ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto.
       + inv FSTEP.
-        * econs 1. ii. ss. rewrite LINKSRC in *.
+        * econs 1; cycle 1.
+          { eapply lift_receptive_at; eauto. }
+          ii. ss. rewrite LINKSRC in *.
           des.
           inv STEPSRC; ss; ModSem.tac; swap 2 3.
           { exfalso. eauto. }
@@ -792,7 +794,6 @@ Section ADQSTEP.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dstar; eauto. }
           right. eapply CIH; eauto. econs; eauto. ss; des_ifs.
-      + eapply lift_receptive_at; eauto.
 
 
     - (* bstep *)

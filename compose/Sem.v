@@ -104,7 +104,14 @@ Module Ge.
 
 End Ge.
 
-Definition state: Type := list Frame.t.
+Inductive state: Type :=
+| Callstate
+    (rs: regset)
+    (m: mem)
+    (frs: list Frame.t)
+| State
+    (frs: list Frame.t)
+.
 
 (* If both are some, they are equal. *)
 Definition compat_sig (sg0: option signature) (sg1: option signature): bool :=
@@ -121,30 +128,31 @@ Definition compat_sig (sg0: option signature) (sg1: option signature): bool :=
 Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 | step_call
     fr0 frs
-    fptr_arg rs_arg m_arg
-    (FPTR: fptr_arg = rs_arg PC)
+    rs_arg m_arg
     (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) rs_arg m_arg)
-    (* id *)
-    (* (IDFIND: ge.(Ge.skenv).(Genv.invert_symbol) fptr_arg = Some id) *)
-    (* n ms *)
-    (* (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms) *)
-    ms
+  :
+    step ge (State (fr0 :: frs))
+         E0 (Callstate rs_arg m_arg (fr0 :: frs))
+
+| step_init
+    rs_arg m_arg frs
+    fptr_arg ms
+    (FPTR: fptr_arg = rs_arg PC)
     (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
-    (* sg_init *)
-    (* (SIGFIND: ms.(ModSem.skenv).(Genv.find_funct) fptr_arg = Some (Internal sg_init)) *)
     st_init
     (INIT: ms.(ModSem.initial_frame) rs_arg m_arg st_init)
   :
-    step ge (fr0 :: frs)
-         E0 ((Frame.mk ms rs_arg st_init) :: fr0 :: frs)
+    step ge (Callstate rs_arg m_arg frs)
+         E0 (State ((Frame.mk ms rs_arg st_init) :: frs))
+
 | step_internal
     fr0 frs
     (* (INTERNAL: fr0.(Frame.is_internal)) *)
     tr st0
     (STEP: fr0.(Frame.ms).(ModSem.step) fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
   :
-    step ge (fr0 :: frs)
-         tr ((fr0.(Frame.update_st) st0) :: frs)
+    step ge (State (fr0 :: frs))
+         tr (State ((fr0.(Frame.update_st) st0) :: frs))
 | step_return
     fr0 fr1 frs
     rs_ret
@@ -153,30 +161,8 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) fr0.(Frame.rs_init) rs_ret
                                                    fr0.(Frame.st).(ModSem.get_mem fr0.(Frame.ms)) st0)
   :
-    step ge (fr0 :: fr1 :: frs)
-         E0 ((fr1.(Frame.update_st) st0) :: frs)
-(* | step_syscall *)
-(*     fr0 frs *)
-(*     fptr_arg sg_arg rs_arg m_arg *)
-(*     (CALL: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) fptr_arg sg_arg rs_arg m_arg) *)
-(*     (MSNOTFIND: ge.(Ge.no_fptr_owner) fptr_arg) *)
-(*     ef *)
-(*     (SYSFIND: ge.(Ge.skenv).(Genv.find_funct) fptr_arg = Some (External ef)) *)
-(*     (SIG: compat_sig sg_arg (Some ef.(ef_sig))) *)
-(*     (* Below is copied from Asm.v *) *)
-(*     vs_arg *)
-(*     (SYSARGS: extcall_arguments rs_arg m_arg (ef_sig ef) vs_arg) *)
-(*     tr v_ret m_ret *)
-(*     (SYSSEM: external_call ef ge.(Ge.skenv) vs_arg m_arg tr v_ret m_ret) *)
-(*     rs_ret *)
-(*     (RETREGS: rs_ret= (Pregmap.set PC (rs_arg RA) *)
-(*                                    (set_pair (loc_external_result (ef_sig ef)) v_ret *)
-(*                                              (undef_regs (map preg_of Conventions1.destroyed_at_call) rs_arg)))) *)
-(*     st0 *)
-(*     (RETURN: fr0.(Frame.ms).(ModSem.after_external) fr0.(Frame.st) sg_arg rs_arg rs_ret m_ret st0) *)
-(*   : *)
-(*     step ge (fr0 :: frs) *)
-(*          E0 ((fr0.(Frame.update_st) st0) :: frs) *)
+    step ge (State (fr0 :: fr1 :: frs))
+         E0 (State ((fr1.(Frame.update_st) st0) :: frs))
 .
 
 
@@ -206,26 +192,16 @@ Section SEMANTICS.
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
   Inductive initial_state: state -> Prop :=
   | initial_state_intro
-      sk_link skenv_link m ge
+      sk_link skenv_link m_init ge
       (INITSK: link_sk = Some sk_link)
       (INITSKENV: sk_link.(Sk.load_skenv) = skenv_link)
-      (INITMEM: sk_link.(Sk.load_mem) = Some m)
+      (INITMEM: sk_link.(Sk.load_mem) = Some m_init)
       (INITGENV: load_genv (skenv_link) = ge)
 
-      (* n ms *)
-      (* (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg n /\ List.nth_error ge n = Some ms) *)
-
-      rs_arg
-      (INITREG: rs_arg = init_regs (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero))
-      fptr_arg
-      (INITFPTR: fptr_arg = rs_arg PC)
-      ms
-      (MSFIND: ge.(Ge.find_fptr_owner) fptr_arg ms)
-
-      st_init
-      (INIT: ms.(ModSem.initial_frame) rs_arg m st_init)
+      rs_init
+      (INITREG: rs_init = init_regs (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero))
     :
-      initial_state ((Frame.mk ms rs_arg st_init) :: nil)
+      initial_state (Callstate rs_init m_init [])
   .
 
   Inductive final_state: state -> int -> Prop :=
@@ -238,19 +214,8 @@ Section SEMANTICS.
       (RETPC: rs_ret#PC = Vnullptr)
       (RETV: rs_ret#RAX = Vint reti)
     :
-      final_state [fr0] reti
+      final_state (State [fr0]) reti
   .
-
-  (* Definition load: option semantics := *)
-  (*   match link_sk with *)
-  (*   | Some sk_link => Some (Semantics_gen step initial_state final_state *)
-  (*                                         (load_genv sk_link.(Sk.load_skenv)) *)
-  (*                                         (* (load_genv sk.(Sk.load_skenv)).(Ge.skenv) *) *)
-  (*                                         (admit "dummy for now. it is not used") *)
-  (*                          ) *)
-  (*   | None => None *)
-  (*   end *)
-  (* . *)
 
   Definition semantics: semantics :=
     (Semantics_gen step initial_state final_state

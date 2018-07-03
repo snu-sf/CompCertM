@@ -230,11 +230,6 @@ Local Transparent Linker_prog.
     ss.
     inv INIT0; inv INIT1; ss.
     clarify.
-    exploit find_fptr_owner_determ; ss; des_ifs.
-    { eapply MSFIND. }
-    { eapply MSFIND0. }
-    i; des. clarify.
-    determ_tac ModSem.initial_frame_dtm.
   Qed.
 
 End INITDTM.
@@ -273,11 +268,11 @@ Lemma lift_step
   :
     forall prog rs_init tail,
     <<STEP: Step (Sem.semantics prog)
-                 ((Frame.mk ms rs_init st0) :: tail) tr
-                 ((Frame.mk ms rs_init st1) :: tail)>>
+                 (State ((Frame.mk ms rs_init st0) :: tail)) tr
+                 (State ((Frame.mk ms rs_init st1) :: tail))>>
 .
 Proof.
-  ii. econs 2; eauto.
+  ii. econs 3; eauto.
 Qed.
 
 Lemma lift_star
@@ -286,8 +281,8 @@ Lemma lift_star
   :
     forall prog rs_init tail,
     <<STAR: Star (Sem.semantics prog)
-                 ((Frame.mk ms rs_init st0) :: tail) tr
-                 ((Frame.mk ms rs_init st1) :: tail)>>
+                 (State ((Frame.mk ms rs_init st0) :: tail)) tr
+                 (State ((Frame.mk ms rs_init st1) :: tail))>>
 .
 Proof.
   ii. ginduction STAR; ii; ss.
@@ -303,8 +298,8 @@ Lemma lift_plus
   :
     forall prog rs_init tail,
     <<PLUS: Plus (Sem.semantics prog)
-                 ((Frame.mk ms rs_init st0) :: tail) tr
-                 ((Frame.mk ms rs_init st1) :: tail)>>
+                 (State ((Frame.mk ms rs_init st0) :: tail)) tr
+                 (State ((Frame.mk ms rs_init st1) :: tail))>>
 .
 Proof.
   i. inv PLUS; ii; ss.
@@ -319,8 +314,8 @@ Lemma lift_dstep
   :
     forall prog rs_init tail,
     <<DSTEP: DStep (Sem.semantics prog)
-                   ((Frame.mk ms rs_init st0) :: tail) tr
-                   ((Frame.mk ms rs_init st1) :: tail)>>
+                   (State ((Frame.mk ms rs_init st0) :: tail)) tr
+                   (State ((Frame.mk ms rs_init st1) :: tail))>>
 .
 Proof.
   ii. destruct DSTEP as [DTM STEP].
@@ -350,8 +345,8 @@ Lemma lift_dstar
   :
     forall prog rs_init tail,
     <<DSTAR: DStar (Sem.semantics prog)
-                   ((Frame.mk ms rs_init st0) :: tail) tr
-                   ((Frame.mk ms rs_init st1) :: tail)>>
+                   (State ((Frame.mk ms rs_init st0) :: tail)) tr
+                   (State ((Frame.mk ms rs_init st1) :: tail))>>
 .
 Proof.
   i. ginduction DSTAR; ii; ss.
@@ -367,8 +362,8 @@ Lemma lift_dplus
   :
     forall prog rs_init tail,
     <<DPLUS: DPlus (Sem.semantics prog)
-                   ((Frame.mk ms rs_init st0) :: tail) tr
-                   ((Frame.mk ms rs_init st1) :: tail)>>
+                   (State ((Frame.mk ms rs_init st0) :: tail)) tr
+                   (State ((Frame.mk ms rs_init st1) :: tail))>>
 .
 Proof.
   i. inv DPLUS; ii; ss.
@@ -383,7 +378,7 @@ Lemma lift_receptive_at
   :
     forall prog rs_init tail,
     <<RECEP: receptive_at (Sem.semantics prog)
-                          ((Frame.mk ms rs_init st0) :: tail)>>
+                          (State ((Frame.mk ms rs_init st0) :: tail))>>
 .
 Proof.
   ii. inv RECEP. ss.
@@ -396,8 +391,46 @@ Proof.
       i; des.
       esplits; eauto.
       econs; eauto.
-    + inv H0. esplits; eauto. econs 3; eauto.
+    + inv H0. esplits; eauto. econs 4; eauto.
   - inv H; s; try omega.
     exploit sr_traces_at; eauto.
+Qed.
+
+Lemma callstate_receptive_at
+      prog
+      rs m frs
+  :
+    <<RECEP: receptive_at (Sem.semantics prog) (Callstate rs m frs)>>
+.
+Proof.
+  econs; eauto.
+  - ii. ss. des_ifs.
+    + inv H. inv H0. esplits; eauto. econs; eauto.
+    + inv H. inv MSFIND. ss.
+  - ii. inv H. ss. omega.
+Qed.
+
+Lemma callstate_determinate_at
+      prog
+      rs m frs
+  :
+    <<RECEP: determinate_at (Sem.semantics prog) (Callstate rs m frs)>>
+.
+Proof.
+  econs; eauto.
+  - ii. ss. des_ifs.
+    + inv H. inv H0. esplits; eauto.
+      * econs; eauto.
+      * i. repeat f_equal. clear_tac.
+        exploit find_fptr_owner_determ; eauto.
+        { ss. rewrite Heq. eapply MSFIND. }
+        { ss. rewrite Heq. eapply MSFIND0. }
+        i; clarify.
+        determ_tac ModSem.initial_frame_dtm.
+    + exfalso. inv H. inv MSFIND. ss.
+  - ii. ss. des_ifs.
+    + inv FINAL.
+    + inv FINAL.
+  - ii. inv H. ss. omega.
 Qed.
 

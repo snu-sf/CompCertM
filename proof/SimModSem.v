@@ -257,37 +257,29 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
   Inductive sim (msp: t): Prop :=
   | sim_intro
       (SIM: forall
-          sm_init
+          sm_arg
           fptr_init_src fptr_init_tgt
-          (FPTRREL: sm_init.(SimMem.sim_val) fptr_init_src fptr_init_tgt)
+          (FPTRREL: sm_arg.(SimMem.sim_val) fptr_init_src fptr_init_tgt)
           sg_init_src sg_init_tgt
           (SIGSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) fptr_init_src = Some (Internal sg_init_src))
           (SIGTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) fptr_init_tgt = Some (Internal sg_init_tgt))
           (* (SIGREL: sim_sig sg_init_src sg_init_tgt) *)
           rs_init_src rs_init_tgt
-          (RSREL: sm_init.(SimMem.sim_regset) rs_init_src rs_init_tgt)
-          (WF: SimMem.wf sm_init)
-          (SIMSKENV: sim_skenv msp sm_init)
+          (RSREL: sm_arg.(SimMem.sim_regset) rs_init_src rs_init_tgt)
+          (WF: SimMem.wf sm_arg)
+          (SIMSKENV: sim_skenv msp sm_arg)
         ,
-          (<<INITSIM: forall
-              st_init_tgt
-              (INITTGT: msp.(tgt).(initial_frame) rs_init_tgt
-                                                 sm_init.(SimMem.tgt_mem) st_init_tgt)
-            ,
-              exists st_init_src idx_init,
-                (* (<<MCOMPAT: mem_compat ms_src ms_tgt st_init_src st_init_tgt sm_init>>) /\ *)
-                (* Can be proved with initial_states_get_mem *)
-                (<<INITSRC: msp.(src).(initial_frame) rs_init_src sm_init.(SimMem.src_mem) st_init_src>>) /\
-                (<<SIM: lxsim msp.(src) msp.(tgt) rs_init_src rs_init_tgt sm_init
-                              idx_init st_init_src st_init_tgt sm_init>>)>>)
-          /\
-          (<<INITPROGRESS: forall
+          (<<INITFSIM: forall
               st_init_src
               (INITSRC: msp.(src).(initial_frame) rs_init_src
-                                                 sm_init.(SimMem.src_mem) st_init_src)
+                                                 sm_arg.(SimMem.src_mem) st_init_src)
             ,
-              exists st_init_tgt,
-                (<<INITTGT: msp.(tgt).(initial_frame) rs_init_tgt sm_init.(SimMem.tgt_mem) st_init_tgt>>)>>))
+              exists st_init_tgt sm_init idx_init,
+                (<<MCOMPAT: mem_compat msp.(src) msp.(tgt) st_init_src st_init_tgt sm_init>>) /\
+                (<<MLE: SimMem.le sm_arg sm_init>>) /\
+                (<<INITTGT: msp.(tgt).(initial_frame) rs_init_tgt sm_arg.(SimMem.tgt_mem) st_init_tgt>>) /\
+                (<<SIM: lxsim msp.(src) msp.(tgt) rs_init_src rs_init_tgt sm_arg
+                              idx_init st_init_src st_init_tgt sm_init>>)>>))
   .
 
 End MODSEMPAIR.

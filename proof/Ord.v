@@ -220,3 +220,18 @@ Proof.
   econs; eauto. ss. instantiate (1:= eq_refl). ss.
 Qed.
 
+Program Definition idx_bot: idx := @mk unit bot2 _ tt.
+Next Obligation.
+  econs; eauto. ii; ss.
+Qed.
+
+Lemma idx_bot_spec
+      i0
+      (ORD: ord i0 idx_bot)
+  :
+    False
+.
+Proof.
+  inv ORD. ss.
+Qed.
+

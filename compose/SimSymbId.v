@@ -50,100 +50,70 @@ Inductive sim_sk (u: unit) (sk_src sk_tgt: Sk.t): Prop :=
     (SIM: match_program (fun _ => sim_fun) eq sk_src sk_tgt)
 .
 
-Global Program Instance SimSymbId: SimSymb.class SimMemId := {
+Global Program Instance SimSymbId (smclass: SimMem.class): SimSymb.class smclass := {
   t := unit;
-  coverage := bot2;
-  (* kept := bot2; *)
+  le := top4;
   sim_sk := sim_sk;
   sim_skenv (_: SimMem.t) (_: unit) := sim_skenv;
 }
 .
 Next Obligation.
-  esplits; eauto. ss.
+  inv SIMSK. inv SIMSK0.
+  SearchAbout TransfLink.
+  admit "this should hold".
 Qed.
 Next Obligation.
-  inv SIMSK.
-  econs; ss; eauto.
-  - admit "easy. pull out as lemma".
-  - ii; ss.
-    unfold match_program in *.
-    generalize (Genv.globalenvs_match SIM); intro SIMGE.
-    inv SIMGE.
-    admit "this should hold.".
-  - inv SIM. des. ss.
-  - inv SIM. des. ss.
-Qed.
-Next Obligation.
-  exists tt.
-  split.
-  - ss.
-  - econs; eauto. inv CLOSED0. inv CLOSED1.
-  admit "This should hold".
-  Print TransfLink.
-  (* exploit link_match_program; eauto. *)
-Qed.
-(* Next Obligation. *)
-(*   inv CLOSED. clear_tac. *)
-(*   assert(SIMID: forall id, (prog_defmap sk_src) ! id = (prog_defmap sk_tgt) ! id). *)
-(*   { i. eapply NOCOVER; eauto. } clear NOCOVER. *)
-(*   u. ss. *)
-(*   econs; eauto. *)
-(*   - admit "this should hold, if not, 1) add uniqueness condition on good_prog to make it hold. *)
-(* 2) Replace Genv.globalenv with my_globalenv, which makes it unique". *)
-(*   - intro id. *)
-(*     specialize (SIMID id). *)
-(*     generalize Genv.find_def_symbol. intro LEMMA. *)
-(*     destruct ((prog_defmap sk_src) ! id) eqn:T. *)
-(*     + eapply LEMMA in T. symmetry in SIMID. eapply LEMMA in SIMID. des. *)
-(*       rewrite T. rewrite SIMID. ss. *)
-(*     + *)
-(*     admit "this should hold, if not, add uniqueness condition on good_prog to make it hold.". *)
-(*     ss. *)
-(* Qed. *)
-
-
-
-
-Next Obligation.
-  eexists (SimMemId.mk _ _).
-  esplits; ss; eauto.
-  u. inv SIMSK.
+  u in *. inv SIMSK.
   Print Genv.init_mem_transf.
   Print Genv.init_mem_transf_partial.
   About Genv.init_mem_match.
   exploit (Genv.init_mem_match SIM); eauto. i. clarify.
-  econs; eauto.
-  - admit "easy; Genv.init_mem_genv_next".
-  - i. admit "this should hold... Genv.find_symbol_match".
+  esplits; eauto.
+  - econs; eauto.
+    + admit "easy; Genv.init_mem_genv_next".
+    + i. admit "this should hold... Genv.find_symbol_match".
+  - admit "add init in SimMem.".
+  - admit "add init in SimMem.".
+Unshelve.
+  admit "add init in SimMem".
 Qed.
-(* Next Obligation. *)
-(*   inv CLOSED. *)
-(*   unfold match_program in *. *)
-(*   generalize (Genv.globalenvs_match SIM); intro SIMGE. *)
-(*   inv SIMGE. *)
-(*   econs; eauto. *)
-(* Qed. *)
 Next Obligation.
   inv LESRC.
   inv LETGT.
   inv SIMSKENV.
+  inv SIMSK. unfold match_program in *.
+  assert(DEFSEQ: sk_src.(defs) = sk_tgt.(defs)).
+  { apply Axioms.functional_extensionality. intro id.
+    hexploit (@match_program_defmap _ _ _ _ _ _ _ _ _ _ _ SIM).
+    instantiate (1:= id).
+    i.
+    inv H; ss.
+    - unfold defs.
+      admit "this is weak. add list_norept or prove my own theorem with induction.".
+    - admit "this will hold".
+  }
   econs; eauto.
   - eq_closure_tac.
   - intro id.
-    destruct (Classical_Prop.classic (pubs id)); cycle 1.
-    + exploit NPROJ; eauto. { ii; des; eauto. } i; des.
-      exploit NPROJ0; eauto. { ii; des; eauto. } i; des.
-      eq_closure_tac. (* TODO: debug this *)
+    destruct (Classical_Prop.classic (sk_src.(defs) id)); cycle 1.
+    + exploit SYMBDROP; eauto. i; des.
+      exploit SYMBDROP0; eauto. { rewrite <- DEFSEQ. eauto. } i; des.
       rewrite H0. rewrite H1. ss.
-    + exploit PROJ; eauto. i; des.
-      exploit PROJ0; eauto. i; des.
-      eq_closure_tac. (* TODO: debug this *)
-      rewrite <- H0. rewrite <- H1.
-      ss.
+    + exploit SYMBKEEP; eauto. i; des.
+      exploit SYMBKEEP0; eauto. { rewrite <- DEFSEQ. eauto. } i; des.
+      rewrite H0. rewrite H1. ss.
 Qed.
-
-
-
-(* TODO: Prove this for SimSymbExt/Inj too *)
-
-
+Next Obligation.
+  inv SIMSKENV.
+  econs; eauto.
+  - ii.
+    assert(fptr_src = fptr_tgt).
+    { admit "add to SimMem.init's spec". }
+    clarify. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+    admit "add to sim_skenv".
+  - ii.
+    assert(fptr_src = fptr_tgt).
+    { admit "add to SimMem.init's spec". }
+    clarify. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+    admit "add to sim_skenv".
+Qed.

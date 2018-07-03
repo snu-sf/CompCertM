@@ -141,7 +141,7 @@ Notation "x $" := (x.(proj1_sig)) (at level 50, no associativity (* , only parsi
 Notation top1 := (fun _ => True).
 Notation top2 := (fun _ _ => True).
 Notation top3 := (fun _ _ _ => True).
-Notation top4 := (fun _ _ _ => True).
+Notation top4 := (fun _ _ _ _ => True).
 
 Notation " 'all1' p" := (forall x0, p x0) (at level 50, no associativity).
 Notation " 'all2' p" := (forall x0 x1, p x0 x1) (at level 50, no associativity).

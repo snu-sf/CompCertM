@@ -7,7 +7,7 @@ Require Import Asmregs.
 Require Import sflib.
 (* newly added *)
 Require Import Asmgenproof.
-Require Import ModSem SimModSem SimSymbId SimMemId.
+Require Import ModSem SimModSem SimSymbId SimMemId SimSymbId.
 
 Set Implicit Arguments.
 
@@ -19,7 +19,7 @@ Variable tprog: Asm.program.
 Hypothesis TRANSF: match_prog prog tprog.
 
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (MachC.modsem return_address_offset prog) (AsmC.modsem tprog) (admit "simsymb") Nat.lt.
+  ModSemPair.mk (MachC.modsem return_address_offset prog) (AsmC.modsem tprog) tt.
 
 Theorem sim
   :

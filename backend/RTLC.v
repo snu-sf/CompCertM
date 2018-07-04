@@ -16,11 +16,7 @@ Set Implicit Arguments.
 
 
 
-
 Section RTLEXTRA.
-
-  Variable prog: RTL.program.
-  Let sem := RTL.semantics prog.
 
   Definition is_external (ge: genv) (st: RTL.state): Prop :=
     match st with
@@ -33,11 +29,16 @@ Section RTLEXTRA.
     end
   .
 
+  Variable prog: RTL.program.
+  Variable ge: genv.
+  Definition semantics_with_ge := Semantics step (initial_state prog) final_state ge.
+  (* *************** ge is parameterized *******************)
+
   Lemma semantics_receptive
         st
-        (INTERNAL: ~is_external sem.(globalenv) st)
+        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      receptive_at sem st
+      receptive_at semantics_with_ge st
   .
   Proof.
     admit "this should hold".
@@ -45,9 +46,9 @@ Section RTLEXTRA.
 
   Lemma semantics_determinate
         st
-        (INTERNAL: ~is_external sem.(globalenv) st)
+        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      determinate_at sem st
+      determinate_at semantics_with_ge st
   .
   Proof.
     admit "this should hold".
@@ -185,6 +186,44 @@ Section MODSEM.
     repeat all_once_fast ltac:(fun H => try apply Genv_map_defs_spec in H; des).
     des_ifs_safe. des_ifs.
   Qed.
+
+  Lemma lift_receptive_at
+        st
+        (RECEP: receptive_at (semantics_with_ge p ge) st)
+    :
+      receptive_at modsem st
+  .
+  Proof.
+    inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
+    eapply match_traces_preserved; try eassumption. ii; ss.
+  Qed.
+
+  Lemma modsem_receptive
+        st
+    :
+      receptive_at modsem st
+  .
+  Proof. eapply lift_receptive_at. eapply semantics_receptive. eapply not_external. Qed.
+
+  Lemma lift_determinate_at
+        st0
+        (DTM: determinate_at (semantics_with_ge p ge) st0)
+    :
+      determinate_at modsem st0
+  .
+  Proof.
+    inv DTM. econs; eauto; ii; ss.
+    determ_tac sd_determ_at. esplits; eauto.
+    eapply match_traces_preserved; try eassumption. ii; ss.
+  Qed.
+
+  Lemma modsem_determinate
+        st
+    :
+      determinate_at modsem st
+  .
+  Proof. eapply lift_determinate_at. eapply semantics_determinate. eapply not_external. Qed.
+
 
 End MODSEM.
 

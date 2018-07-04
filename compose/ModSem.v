@@ -168,7 +168,7 @@ Module ModSem.
   (* . *)
 
   Definition to_semantics (ms: t) :=
-    (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) (admit "dummy for now"))
+    (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) ms.(skenv))
   .
 
 End ModSem.

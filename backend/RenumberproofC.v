@@ -6,7 +6,7 @@ Require Import sflib.
 (** newly added **)
 Require Export Renumberproof.
 Require Import Simulation.
-Require Import Mod ModSem SimMod SimModSem SimSymbId SimMemId SimMem AsmregsC MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymbId SimMemId SimMem AsmregsC MatchSimModSem.
 
 Set Implicit Arguments.
 
@@ -20,13 +20,14 @@ Section RNMBREXTRA.
 
   Variables prog tprog: program.
   Hypothesis TRANSL: match_prog prog tprog.
-  Let ge := Genv.globalenv prog.
-  Let tge := Genv.globalenv tprog.
+  (* Let ge := Genv.globalenv prog. *)
+  (* Let tge := Genv.globalenv tprog. *)
+  Variable ge tge: genv.
 
-  Lemma step_simulation:
-  forall S1 t S2 (NOTEXT: ~ is_external ge S1), RTL.step ge S1 t S2 ->
+  Lemma step_simulation (SIMGE: False):
+  forall S1 t S2 (NOTEXT: ~ RTLC.is_external ge S1), Step (semantics_with_ge prog ge) S1 t S2 ->
   forall S1', match_states S1 S1' ->
-  exists S2', DStep (semantics tprog) S1' t S2' /\ match_states S2 S2'.
+  exists S2', DStep (semantics_with_ge tprog tge) S1' t S2' /\ match_states S2 S2'.
   Proof.
     admit "".
   Qed.
@@ -37,105 +38,20 @@ End RNMBREXTRA.
 
 
 
-Section RTLCEXTRA.
-
-  Variable prog: RTL.program.
-  Let ge := Genv.globalenv prog.
-  Let sem := RTL.semantics prog.
-
-  Lemma not_external
-        st0
-        (* (STEP: ModSem.is_step (modsem prog) st0) *)
-    :
-      ~ is_external ge st0
-  .
-  Proof.
-    ii. hnf in H. des_ifs.
-    admit "this does not happen here!".
-  Qed.
-
-  Lemma is_external_at_external
-        st0
-        (ISEXT: is_external ge st0)
-    :
-      <<ATEXT: ModSem.is_call (modsem prog) st0>>
-  .
-  Proof.
-    u in *. unfold is_external in *. des_ifs.
-    esplits; eauto.
-    econs; eauto.
-  Abort.
-
-  Lemma lift_receptive_at
-        st
-        (RECEP: receptive_at sem st)
-    :
-      receptive_at (modsem prog) st
-  .
-  Proof.
-    inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
-    admit "skenv admit".
-  Qed.
-
-  Lemma modsem_receptive
-        st
-    :
-      receptive_at (modsem prog) st
-  .
-  Proof.
-    eapply lift_receptive_at; eauto. eapply semantics_receptive; eauto. eapply not_external; eauto.
-    (* destruct (classic (is_external sem.(globalenv) st)); cycle 1. *)
-    (* { eapply lift_receptive_at; eauto. eapply semantics_receptive; eauto. } *)
-    (* u in H. hnf in H. des_ifs. *)
-    (* exfalso. *)
-    (* admit "this should not happen here!". *)
-  Qed.
-
-  Lemma lift_determinate_at
-        st0
-        (DTM: determinate_at sem st0)
-    :
-      determinate_at (modsem prog) st0 
-  .
-  Proof.
-    inv DTM. econs; eauto; ii; ss.
-    determ_tac sd_determ_at. esplits; eauto.
-    admit "skenv admit".
-  Qed.
-
-  Lemma modsem_determinate
-        st
-    :
-      determinate_at (modsem prog) st
-  .
-  Proof.
-    eapply lift_determinate_at; eauto. eapply semantics_determinate; eauto. eapply not_external; eauto.
-    (* destruct (classic (is_external sem.(globalenv) st)); cycle 1. *)
-    (* { eapply lift_determinate_at; eauto. eapply semantics_determinate; eauto. } *)
-    (* u in H. hnf in H. des_ifs. *)
-    (* exfalso. *)
-    (* admit "this should not happen here!". *)
-  Qed.
-
-End RTLCEXTRA.
 
 
 
 
+Section SIMMODSEM.
 
-Section PRESERVATION.
-
+Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variables prog tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := Genv.globalenv prog.
-Let tge := Genv.globalenv tprog.
-
-Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.mod prog) (RTLC.mod tprog) tt
-.
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (RTLC.modsem prog) (RTLC.modsem tprog) tt
+  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt
 .
 
 Inductive match_states (rs_init_src rs_init_tgt: regset)
@@ -147,11 +63,7 @@ Inductive match_states (rs_init_src rs_init_tgt: regset)
     (MCOMPAT: mem_compat msp.(ModSemPair.src) msp.(ModSemPair.tgt) st_src0 st_tgt0 sm0)
 .
 
-Theorem sim
-  :
-    ModPair.sim
-.
-Theorem sim
+Theorem sim_modsem
   :
     ModSemPair.sim msp
 .
@@ -163,14 +75,17 @@ Proof.
     inv INITSRC.
     esplits; eauto.
     + econs; eauto.
-      * admit "simskenv".
+      * inv SIMSKENV. ss.
+        unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+        admit "simskenv".
     + instantiate (1:= SimMemId.mk _ _). econs; ss; eauto.
     + u. econs; ss; eauto. econs; ss; eauto. econs; ss; eauto.
   - inv CALLSRC. des. inv MATCH. ss. destruct sm0; ss.
     inv MATCHST; inv H; ss; clarify.
-    inv MCOMPAT. ss. u in *. clarify.
+    inv MCOMPAT. ss. fold_all ge. u in *. clarify.
     esplits; eauto.
     econs; eauto.
+    fold_all tge.
     admit "simskenv".
   - inv CALLTGT. inv MATCH; ss. u in *. destruct sm0; ss. inv MCOMPAT; ss. u in *. clarify.
     do 2 eexists. eexists (SimMemId.mk _ _).
@@ -198,7 +113,8 @@ Proof.
     { apply modsem_receptive. }
     inv MATCH.
     apply Axioms.functional_extensionality in SIMRSINIT. clarify.
-    ii. exploit (step_simulation prog tprog); eauto.
+    ii. hexploit (@step_simulation prog tprog ge tge); eauto.
+    { admit "WE SHOULD ADDRESS THIS". }
     { apply not_external. }
     i; des.
     esplits; eauto.
@@ -209,5 +125,29 @@ Unshelve.
   all: try (by econs).
 Qed.
 
-End PRESERVATION.
+End SIMMODSEM.
+
+
+
+
+Section SIMMOD.
+
+Variables prog tprog: program.
+Hypothesis TRANSL: match_prog prog tprog.
+
+Definition mp: ModPair.t :=
+  ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt
+.
+
+Theorem sim_mod
+  :
+    ModPair.sim mp
+.
+Proof.
+  econs; ss.
+  - econs; eauto. admit "easy".
+  - ii. eapply sim_modsem; eauto.
+Qed.
+
+End SIMMOD.
 

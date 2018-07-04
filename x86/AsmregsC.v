@@ -130,8 +130,8 @@ Inductive callee_saved (sg: signature) (rs0 rs1: regset): Prop :=
         r
         (CALLEESAVE: is_callee_save sg r = true)
       ,
-        <<SAVE: (rs0 r) = (rs1 r)>>
-        (* <<SAVE: Val.lessdef (rs0 r) (rs1 r)>> *)
+        (* <<SAVE: (rs0 r) = (rs1 r)>> *)
+        <<SAVE: Val.lessdef (rs0 r) (rs1 r)>>
     )
 (* In Compcert' sg is not needed (see is_callee_save). Is it true in real-world too? *)
 .
@@ -576,7 +576,7 @@ Proof.
   esplits.
   - econs; eauto.
     eapply callee_saved_set_pair; eauto.
-    { inv GARBAGE. econs; eauto. }
+    { inv GARBAGE. econs; eauto. ii. erewrite CALLEESAVE; eauto. }
     eapply (loc_external_result_caller_save sg); eauto.
   - eapply getpair_setpair; eauto.
     unfold loc_external_result. unfold loc_result, loc_result_64, loc_result_32. des_ifs.
@@ -625,5 +625,17 @@ Lemma store_result_dtm
 Proof.
   inv STORE. inv STORE0.
   determ_tac fill_garbage_dtm.
+Qed.
+
+Lemma load_result_dtm
+      rs_init v_ret sg_init rs_ret0 rs_ret1
+      (LOAD: load_result rs_init v_ret sg_init rs_ret0)
+      (LOAD0: load_result rs_init v_ret sg_init rs_ret1)
+  :
+    <<EQ: rs_ret0 = rs_ret1>>
+.
+Proof.
+  inv LOAD. inv LOAD0.
+  ss.
 Qed.
 

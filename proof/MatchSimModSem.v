@@ -28,33 +28,12 @@ Section MATCHSIMFORWARD.
       Prop
   .
 
-  (* Hypothesis INITMATCHBACKWARD: forall *)
-  (*     sm_arg *)
-  (*     (MWF: SimMem.wf sm_arg) *)
-  (*     fptr_src fptr_tgt *)
-  (*     (FPTRREL: SimMem.sim_val sm_arg fptr_src fptr_tgt) *)
-  (*     rs_arg_src rs_arg_tgt *)
-  (*     (RSREL: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt) *)
-  (*     st_init_tgt *)
-  (*     (INITTGT: ms_tgt.(ModSem.initial_frame) rs_arg_tgt sm_arg.(SimMem.tgt_mem) st_init_tgt) *)
-  (*   , *)
-  (*     exists st_init_src sm_init, *)
-  (*       (<<INITSRC: ms_src.(ModSem.initial_frame) rs_arg_src sm_arg.(SimMem.src_mem) st_init_src>>) *)
-  (*       /\ *)
-  (*       (<<MLE: SimMem.le sm_arg sm_init>>) *)
-  (*       /\ *)
-  (*       (<<MCOMPAT: mem_compat st_init_src st_init_tgt sm_init>>) *)
-  (*       /\ *)
-  (*       (<<MATCH: match_states rs_arg_src rs_arg_tgt sm_init st_init_src st_init_tgt sm_init>>) *)
-  (* . *)
-
   Hypothesis INITFSIM: forall
       sm_arg
+      (SIMSKENV: ModSemPair.sim_skenv msp sm_arg)
       (MWF: SimMem.wf sm_arg)
-      fptr_src fptr_tgt
-      (FPTRREL: SimMem.sim_val sm_arg fptr_src fptr_tgt)
       rs_arg_src rs_arg_tgt
-      (RSREL: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt)
+      (SIMRS: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt)
       st_init_src
       (INITSRC: ms_src.(ModSem.initial_frame) rs_arg_src sm_arg.(SimMem.src_mem) st_init_src)
     ,
@@ -72,6 +51,7 @@ Section MATCHSIMFORWARD.
   Hypothesis ATPROGRESS: forall
       rs_init_src rs_init_tgt sm_init
       idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states rs_init_src rs_init_tgt sm_init
                            idx0 st_src0 st_tgt0 sm0)
       (CALLSRC: ms_src.(ModSem.is_call) st_src0)
@@ -84,6 +64,7 @@ Section MATCHSIMFORWARD.
   Hypothesis ATBSIM: forall
       rs_init_src rs_init_tgt sm_init
       idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states rs_init_src rs_init_tgt sm_init
                            idx0 st_src0 st_tgt0 sm0)
       rs_arg_tgt m_arg_tgt
@@ -96,7 +77,7 @@ Section MATCHSIMFORWARD.
         /\
         (<<MTGT: sm_arg.(SimMem.tgt_mem) = m_arg_tgt>>)
         /\
-        (<<RSREL: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt>>)
+        (<<SIMRS: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt>>)
         /\
         (<<MLE: SimMem.le sm0 sm_arg>>)
         /\
@@ -106,16 +87,19 @@ Section MATCHSIMFORWARD.
   Hypothesis AFTERFSIM: forall
       rs_init_src rs_init_tgt sm_init
       idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states rs_init_src rs_init_tgt sm_init
                            idx0 st_src0 st_tgt0 sm0)
       sm_arg
       (MLE: SimMem.le sm0 sm_arg)
+      (* (MWF: SimMem.wf sm_arg) *)
       sm_arg rs_arg_src rs_arg_tgt
-      (RSRELARG: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt)
+      (SIMRSARG: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt)
       sm_ret
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
+      (MWF: SimMem.wf sm_ret)
       rs_ret_src rs_ret_tgt
-      (RSRELRET: SimMem.sim_regset sm_ret rs_ret_src rs_ret_tgt)
+      (SIMRSRET: SimMem.sim_regset sm_ret rs_ret_src rs_ret_tgt)
       st_src1
       (AFTERSRC: ms_src.(ModSem.after_external) st_src0 rs_arg_src rs_ret_src sm_ret.(SimMem.src_mem) st_src1)
     ,
@@ -130,6 +114,7 @@ Section MATCHSIMFORWARD.
   Hypothesis FINALFSIM: forall
       rs_init_src rs_init_tgt sm_init
       idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states rs_init_src rs_init_tgt sm_init
                            idx0 st_src0 st_tgt0 sm0)
       (MCOMPAT: mem_compat st_src0 st_tgt0 sm0)
@@ -139,13 +124,15 @@ Section MATCHSIMFORWARD.
       exists rs_ret_tgt,
         (<<FINALTGT: ms_tgt.(ModSem.final_frame) rs_init_tgt st_tgt0 rs_ret_tgt>>)
         /\
-        (<<RSREL: SimMem.sim_regset sm0 rs_ret_src rs_ret_tgt>>)
+        (<<SIMRS: SimMem.sim_regset sm0 rs_ret_src rs_ret_tgt>>)
         /\
         (<<MWF: SimMem.wf sm0>>)
   .
 
   Hypothesis STEPFSIM: forall
       rs_init_src rs_init_tgt sm_init idx0 st_src0 st_tgt0 sm0
+      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
+      (NOTRET: ~ ModSem.is_return ms_src rs_init_src st_src0)
       (MATCH: match_states rs_init_src rs_init_tgt sm_init
                            idx0 st_src0 st_tgt0 sm0)
     ,
@@ -169,16 +156,13 @@ Section MATCHSIMFORWARD.
 
   Lemma init_match_states
         sm_arg
-        fptr_init_src fptr_init_tgt
-        (FPTRREL: sm_arg.(SimMem.sim_val) fptr_init_src fptr_init_tgt)
         sg_init_src sg_init_tgt
-        (SIGSRC: msp.(ModSemPair.src).(ModSem.skenv).(Genv.find_funct) fptr_init_src =
-                 Some (Internal sg_init_src))
-        (SIGTGT: msp.(ModSemPair.tgt).(ModSem.skenv).(Genv.find_funct) fptr_init_tgt =
-                 Some (Internal sg_init_tgt))
-        (* (SIGREL: sim_sig sg_init_src sg_init_tgt) *)
         rs_init_src rs_init_tgt
-        (RSREL: sm_arg.(SimMem.sim_regset) rs_init_src rs_init_tgt)
+        (FINDFSRC: msp.(ModSemPair.src).(ModSem.skenv).(Genv.find_funct) (rs_init_src PC) =
+                 Some (Internal sg_init_src))
+        (FINDFTGT: msp.(ModSemPair.tgt).(ModSem.skenv).(Genv.find_funct) (rs_init_tgt PC) =
+                 Some (Internal sg_init_tgt))
+        (SIMRS: sm_arg.(SimMem.sim_regset) rs_init_src rs_init_tgt)
         (MWF: SimMem.wf sm_arg)
         (SIMSKENV: ModSemPair.sim_skenv msp sm_arg)
     :
@@ -224,6 +208,7 @@ Section MATCHSIMFORWARD.
 
   Lemma match_states_lxsim
         rs_init_src rs_init_tgt sm_init i0 st_src0 st_tgt0 sm0
+        (SIMSKENV: ModSemPair.sim_skenv msp sm0)
         (MLE: SimMem.le sm_init sm0)
         (* (MWF: SimMem.wf sm0) *)
         (MCOMPAT: mem_compat st_src0 st_tgt0 sm0)
@@ -248,7 +233,7 @@ Section MATCHSIMFORWARD.
       esplits; eauto.
       { rewrite MSRC. ss. }
       i; des.
-      exploit AFTERFSIM; try apply SAFESRC; try apply RSREL; eauto.
+      exploit AFTERFSIM; try apply SAFESRC; try apply SIMRS; eauto.
       i; des.
       esplits; eauto.
       - i.
@@ -256,6 +241,8 @@ Section MATCHSIMFORWARD.
         esplits; eauto.
         right.
         eapply CIH; eauto.
+        { eapply SimSymb.mle_preserves_sim_skenv; eauto.
+          etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
         { etransitivity; cycle 1.
           - eapply SimMem.unlift_spec; eauto.
           - etransitivity; eauto.
@@ -281,6 +268,7 @@ Section MATCHSIMFORWARD.
         + left. eauto.
         + right. esplits; eauto. eapply to_idx_spec; eauto.
       - right. eapply CIH; eauto.
+        { eapply SimSymb.mle_preserves_sim_skenv; eauto. }
         { etransitivity; eauto. }
     }
   Qed.
@@ -299,6 +287,7 @@ Section MATCHSIMFORWARD.
     exploit init_match_states; eauto. i; des.
     esplits; eauto.
     eapply match_states_lxsim; eauto.
+    { eapply SimSymb.mle_preserves_sim_skenv; eauto. }
   Qed.
 
 End MATCHSIMFORWARD.

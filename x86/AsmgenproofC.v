@@ -6,7 +6,7 @@ Require Import Asmgen Asmgenproof0 Asmgenproof1.
 Require Import Asmregs.
 Require Import sflib.
 (* newly added *)
-Require Import Asmgenproof.
+Require Export Asmgenproof.
 Require Import ModSem SimModSem SimSymbId SimMemId SimSymbId.
 
 Set Implicit Arguments.

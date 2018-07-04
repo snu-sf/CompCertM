@@ -173,7 +173,7 @@ Module ModSem.
 
 End ModSem.
 
-Hint Unfold ModSem.is_call ModSem.is_step ModSem.may_return ModSem.is_return.
+Hint Unfold ModSem.is_call ModSem.is_step ModSem.may_return ModSem.is_return ModSem.get_mem.
 
 Coercion ModSem.to_semantics: ModSem.t >-> semantics.
 (* I want to use definitions like "Star" or "determinate_at" *)

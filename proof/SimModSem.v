@@ -258,13 +258,10 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
   | sim_intro
       (SIM: forall
           sm_arg
-          fptr_init_src fptr_init_tgt
-          (FPTRREL: sm_arg.(SimMem.sim_val) fptr_init_src fptr_init_tgt)
           sg_init_src sg_init_tgt
-          (SIGSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) fptr_init_src = Some (Internal sg_init_src))
-          (SIGTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) fptr_init_tgt = Some (Internal sg_init_tgt))
-          (* (SIGREL: sim_sig sg_init_src sg_init_tgt) *)
           rs_init_src rs_init_tgt
+          (FINDFSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) (rs_init_src PC) = Some (Internal sg_init_src))
+          (FINDFTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) (rs_init_tgt PC) = Some (Internal sg_init_tgt))
           (RSREL: sm_arg.(SimMem.sim_regset) rs_init_src rs_init_tgt)
           (WF: SimMem.wf sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)

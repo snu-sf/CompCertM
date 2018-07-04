@@ -6,49 +6,11 @@ Require Import sflib.
 (** newly added **)
 Require Export Renumberproof.
 Require Import Simulation.
-Require Import ModSem SimModSem SimSymbId SimMemId SimMem AsmregsC MatchSimModSem.
+Require Import Mod ModSem SimMod SimModSem SimSymbId SimMemId SimMem AsmregsC MatchSimModSem.
 
 Set Implicit Arguments.
 
 
-
-Section RTLEXTRA.
-
-  Variable prog: RTL.program.
-  Let sem := RTL.semantics prog.
-
-  Definition is_external (ge: genv) (st: RTL.state): Prop :=
-    match st with
-    | Callstate stack fptr sg args m =>
-      match Genv.find_funct ge fptr with
-      | Some (AST.External ef) => True
-      | _ => False
-      end
-    | _ => False
-    end
-  .
-
-  Lemma semantics_receptive
-        st
-        (INTERNAL: ~is_external sem.(globalenv) st)
-    :
-      receptive_at sem st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-  Lemma semantics_determinate
-        st
-        (INTERNAL: ~is_external sem.(globalenv) st)
-    :
-      determinate_at sem st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-End RTLEXTRA.
 
 
 
@@ -168,8 +130,13 @@ Hypothesis TRANSL: match_prog prog tprog.
 Let ge := Genv.globalenv prog.
 Let tge := Genv.globalenv tprog.
 
+Definition mp: ModPair.t :=
+  ModPair.mk (RTLC.mod prog) (RTLC.mod tprog) tt
+.
+
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (RTLC.modsem prog) (RTLC.modsem tprog) tt.
+  ModSemPair.mk (RTLC.modsem prog) (RTLC.modsem tprog) tt
+.
 
 Inductive match_states (rs_init_src rs_init_tgt: regset)
           (sm_init: SimMem.t)
@@ -180,6 +147,10 @@ Inductive match_states (rs_init_src rs_init_tgt: regset)
     (MCOMPAT: mem_compat msp.(ModSemPair.src) msp.(ModSemPair.tgt) st_src0 st_tgt0 sm0)
 .
 
+Theorem sim
+  :
+    ModPair.sim
+.
 Theorem sim
   :
     ModSemPair.sim msp

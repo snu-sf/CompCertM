@@ -4,13 +4,72 @@ Require Import Op Registers.
 Require Import sflib.
 Require Import SmallstepC.
 (** newly added **)
-Require Export RTL.
-Require Import ModSem.
+Require Export Simulation RTL.
+Require Import Skeleton Mod ModSem.
 Require Import AsmregsC.
 Require Import Conventions.
 (* Require Import Locations. *)
 
 Set Implicit Arguments.
+
+
+
+
+
+
+Section RTLEXTRA.
+
+  Variable prog: RTL.program.
+  Let sem := RTL.semantics prog.
+
+  Definition is_external (ge: genv) (st: RTL.state): Prop :=
+    match st with
+    | Callstate stack fptr sg args m =>
+      match Genv.find_funct ge fptr with
+      | Some (AST.External ef) => is_external_ef ef
+      | _ => False
+      end
+    | _ => False
+    end
+  .
+
+  Lemma semantics_receptive
+        st
+        (INTERNAL: ~is_external sem.(globalenv) st)
+    :
+      receptive_at sem st
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+  Lemma semantics_determinate
+        st
+        (INTERNAL: ~is_external sem.(globalenv) st)
+    :
+      determinate_at sem st
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+End RTLEXTRA.
+(*** !!!!!!!!!!!!!!! REMOVE ABOVE AFTER MERGING WITH MIXED SIM BRANCH !!!!!!!!!!!!!!!!!! ***)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -26,8 +85,10 @@ Definition get_mem (st: state): mem :=
 
 Section MODSEM.
 
+  Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let ge := p.(Genv.globalenv).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> regset -> mem -> Prop :=
   | at_external_intro
@@ -86,8 +147,8 @@ Section MODSEM.
       ModSem.initial_frame := initial_frame;
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external;
-      ModSem.globalenv := ge; (* TODO: Change this properly *)
-      ModSem.skenv := (admit "TODO")
+      ModSem.globalenv := ge;
+      ModSem.skenv := skenv; 
     |}
   .
   Next Obligation. all_prop_inv; ss. Qed.
@@ -110,5 +171,38 @@ Section MODSEM.
     ii; ss; des; all_once_fast ltac:(fun H => try inv H).
   Qed.
 
+  Lemma not_external
+        st0
+    :
+      ~ is_external ge st0
+  .
+  Proof.
+    ii. hnf in H. des_ifs.
+    subst_locals.
+    Local Opaque Genv.invert_symbol.
+    u in *. des_ifs.
+    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
+    repeat all_once_fast ltac:(fun H => try apply Genv_map_defs_spec in H; des).
+    des_ifs_safe. des_ifs.
+  Qed.
+
 End MODSEM.
+
+Section MODULE.
+
+  Variable p: program.
+
+  Program Definition module: Mod.t :=
+    {|
+      Mod.data := p;
+      Mod.get_sk := Sk.of_program;
+      Mod.get_modsem := modsem;
+    |}
+  .
+  Next Obligation.
+    rewrite Sk.of_program_defs.
+    eapply SkEnv.project_impl_spec; eauto.
+  Qed.
+
+End MODULE.
 

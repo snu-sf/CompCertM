@@ -325,10 +325,10 @@ Section SIMGE.
   .
   Proof.
     (* inv SIMMP. specialize (SIMMS skenv_src skenv_tgt). *)
-    u. rewrite <- ! Mod.get_modsem_projected_sk.
+    u.
     eapply SimSymb.sim_skenv_monotone; revgoals.
-    - apply SkEnv.project_impl_spec.
-    - apply SkEnv.project_impl_spec.
+    - eapply Mod.get_modsem_projected_sk.
+    - eapply Mod.get_modsem_projected_sk.
     - eauto. (* eapply SimSymb.le_refl. *)
     - apply SIMMP.
     - eauto.

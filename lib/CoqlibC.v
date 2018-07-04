@@ -143,10 +143,10 @@ Notation top2 := (fun _ _ => True).
 Notation top3 := (fun _ _ _ => True).
 Notation top4 := (fun _ _ _ _ => True).
 
-Notation " 'all1' p" := (forall x0, p x0) (at level 50, no associativity).
-Notation " 'all2' p" := (forall x0 x1, p x0 x1) (at level 50, no associativity).
-Notation " 'all3' p" := (forall x0 x1 x2, p x0 x1 x2) (at level 50, no associativity).
-Notation " 'all4' p" := (forall x0 x1 x2 x3, p x0 x1 x2 x3) (at level 50, no associativity).
+Notation " 'all1' p" := (forall x0, p x0) (at level 50, no associativity, only parsing).
+Notation " 'all2' p" := (forall x0 x1, p x0 x1) (at level 50, no associativity, only parsing).
+Notation " 'all3' p" := (forall x0 x1 x2, p x0 x1 x2) (at level 50, no associativity, only parsing).
+Notation " 'all4' p" := (forall x0 x1 x2 x3, p x0 x1 x2 x3) (at level 50, no associativity, only parsing).
 
 Notation " ~1 p" := (fun x0 => ~ (p x0)) (at level 50, no associativity).
 Notation " ~2 p" := (fun x0 x1 => ~ (p x0 x1)) (at level 50, no associativity).

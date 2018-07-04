@@ -41,9 +41,8 @@ Section INITDTM.
       False
   .
   Proof.
-    erewrite <- Mod.get_modsem_projected_sk in *.
-    hexploit (SkEnv.project_impl_spec skenv_link (defs (Mod.get_sk md (Mod.data md)))); eauto. intro SPEC.
-    remember (SkEnv.project skenv_link (defs (Mod.get_sk md (Mod.data md)))) as skenv_proj eqn:T in *.
+    hexploit (@Mod.get_modsem_projected_sk md skenv_link); eauto. intro SPEC; des.
+    remember (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) as skenv_proj eqn:T in *.
     assert(WFSMALL: skenv_proj.(SkEnv.wf)).
     { eapply SkEnv.project_spec_preserves_wf; eauto. }
     clarify. des. inv SPEC.
@@ -153,14 +152,15 @@ Local Transparent Linker_prog.
     clarify.
     destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs.
     rename Heq0 into DEF0. rename Heq into DEF1.
-    rewrite <- Mod.get_modsem_projected_sk in *.
-    hexploit (SkEnv.project_impl_spec skenv_link (defs (Mod.get_sk md0 (Mod.data md0)))); eauto. intro SPEC0.
-    hexploit (SkEnv.project_impl_spec skenv_link (defs (Mod.get_sk md1 (Mod.data md1)))); eauto. intro SPEC1.
-    des.
 
-    assert(WFSMALL0: (SkEnv.project skenv_link (defs (Mod.get_sk md0 (Mod.data md0)))).(SkEnv.wf)).
+    hexploit (@Mod.get_modsem_projected_sk md0 skenv_link); eauto. intro SPEC0; des.
+    hexploit (@Mod.get_modsem_projected_sk md1 skenv_link); eauto. intro SPEC1; des.
+    remember (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
+    remember (ModSem.skenv (Mod.get_modsem md1 skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *.
+
+    assert(WFSMALL0: skenv_proj0.(SkEnv.wf)).
     { eapply SkEnv.project_spec_preserves_wf; try apply SPEC0; eauto. }
-    assert(WFSMALL1: (SkEnv.project skenv_link (defs (Mod.get_sk md1 (Mod.data md1)))).(SkEnv.wf)).
+    assert(WFSMALL1: skenv_proj1.(SkEnv.wf)).
     { eapply SkEnv.project_spec_preserves_wf; try apply SPEC1; eauto. }
 
     bar.

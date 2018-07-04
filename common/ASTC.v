@@ -106,9 +106,11 @@ End FUNCTIONS.
 Definition is_external F V (gd: globdef (fundef F) V): bool :=
   match gd with
   | Gfun fd => is_external_fd fd
-  | Gvar _ => true
+  | Gvar _ => false
   end
 .
+
+Hint Unfold is_external is_external_fd is_external_ef.
 
 
 

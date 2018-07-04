@@ -162,8 +162,12 @@ I think "sim_skenv_monotone" should be sufficient.
     skenv.(Genv_filter_symb) (fun id => List.in_dec ident_eq id symbols)
   .
 
-  Definition drop_external_defs (skenv: t): t :=
-    skenv.(Genv_map_defs) (fun _ gd => assertion (negb (is_external gd)); Some gd)
+  (* Note: We only remove definitions. One can still get the address of external identifier. *)
+  Definition revive {F V} (skenv: SkEnv.t) (prog: AST.program (AST.fundef F) V): Genv.t (AST.fundef F) V :=
+    skenv.(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
+                                            do gd <- prog.(prog_defmap) ! id;
+                                            assertion (negb (is_external gd));
+                                            Some gd))
   .
 
   Print Genv.public_symbol.
@@ -176,6 +180,23 @@ I think "sim_skenv_monotone" should be sufficient.
   .
 
 End SkEnv.
+
+Hint Unfold SkEnv.revive.
+
+
+
+Definition skdef_of_gdef {F V} (gdef: globdef (AST.fundef F) V): globdef (AST.fundef (option signature)) unit :=
+  match gdef with
+  | Gfun (Internal f) => Gfun (Internal None)
+  | Gfun (External ef) => Gfun (External ef)
+  | Gvar v => Gvar (mkglobvar tt v.(gvar_init) v.(gvar_readonly) v.(gvar_volatile))
+  end
+.
+
+Definition skdefs_of_gdefs {F V} (gdefs: list (ident * globdef (AST.fundef F) V)):
+  list (ident * globdef (AST.fundef (option signature)) unit) :=
+  map (update_snd skdef_of_gdef) gdefs
+.
 
 (* Skeleton *)
 Module Sk.
@@ -198,9 +219,29 @@ Module Sk.
     admit "easy. follow induction proofs on Globalenvs.v".
   Qed.
 
+  Definition of_program {F V} (prog: AST.program (AST.fundef F) V): t :=
+    mkprogram (skdefs_of_gdefs prog.(prog_defs)) prog.(prog_public) prog.(prog_main)
+  .
+
+  Lemma of_program_defs
+        F V
+        (p: AST.program (AST.fundef F) V)
+    :
+      (of_program p).(defs) = p.(defs)
+  .
+  Proof.
+    destruct p; ss.
+    Local Opaque in_dec.
+    u; ss.
+    Local Transparent in_dec.
+    apply Axioms.functional_extensionality. intro id; ss.
+    Check (in_dec ident_eq id (map fst prog_defs)).
+    rewrite map_map. ss.
+  Qed.
+
 End Sk.
 
-Hint Unfold Sk.load_skenv Sk.load_mem.
+Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem.
 
 
 

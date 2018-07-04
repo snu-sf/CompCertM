@@ -455,3 +455,38 @@ Goal True -> True -> False.
   clear_tac.
 Abort.
 
+
+
+Definition aof_true: Type := True.
+Global Opaque aof_true.
+
+Ltac all_once_fast TAC :=
+  generalize (I: aof_true);
+  let name := fresh "bar" in
+  assert(name: aof_true) by constructor; move name at top; revert_until name;
+  repeat
+    match goal with
+    | [ |- aof_true -> _ ] => fail 1
+    | _ => intro; on_last_hyp TAC
+    end;
+  intro; on_last_hyp ltac:(fun H => clear H);
+  clear name
+.
+
+Goal forall (a b c d e: bool) f,
+    (negb true = false) -> (* IT SHOULD NOT RUN INF LOOP *)
+    (negb false = true) ->
+    (negb a = true) ->
+    (negb b = true) ->
+    (negb c = true) ->
+    True -> (* SHOULD IGNORE THIS *)
+    (negb d = true) ->
+    (negb e = true) ->
+    (0 :: 2 :: nil = f) -> (* SHOULD IGNORE THIS *)
+    (negb (true && false) = true) -> True -> False
+.
+Proof.
+  i. revert H9.
+  all_once_fast ltac:(fun H => try apply negb_true_iff in H).
+Abort.
+

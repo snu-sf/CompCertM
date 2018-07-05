@@ -42,7 +42,8 @@ Inductive sim_skenv (skenv0 skenv1: SkEnv.t): Prop :=
     (NEXT: skenv0.(Genv.genv_next) = skenv1.(Genv.genv_next))
     (SYMB: all1 (skenv0.(Genv.find_symbol) =1= skenv1.(Genv.find_symbol))) (* <--- gives bad name when "intros": x0 *)
     (* (SYMB: forall id, skenv0.(Genv.find_symbol) id = skenv1.(Genv.find_symbol) id) *)
-    (DEFS: True) (* TODO: There are almost no info except unit. Also, flesh will overwrite these info. *)
+    (* (DEFS: True) *) (* TODO: There are almost no info except unit. Also, flesh will overwrite these info. *)
+    (DEFS: all1 (skenv0.(Genv.find_def) =1= skenv1.(Genv.find_def)))
 .
 
 Inductive sim_sk (u: unit) (sk_src sk_tgt: Sk.t): Prop :=
@@ -72,6 +73,7 @@ Next Obligation.
   - econs; eauto.
     + admit "easy; Genv.init_mem_genv_next".
     + i. admit "this should hold... Genv.find_symbol_match".
+    + admit "remove sig then this will hold // or just now this will hold if we don't drop sig on opt".
   - admit "add init in SimMem.".
   - admit "add init in SimMem.".
 Unshelve.
@@ -102,6 +104,28 @@ Next Obligation.
     + exploit SYMBKEEP; eauto. i; des.
       exploit SYMBKEEP0; eauto. { rewrite <- DEFSEQ. eauto. } i; des.
       rewrite H0. rewrite H1. ss.
+  - intro blk.
+    destruct (Genv.invert_symbol skenv_link_src blk) eqn:T0; cycle 1.
+    + rewrite DEFORPHAN; ss.
+      destruct (Genv.invert_symbol skenv_link_tgt blk) eqn:T1; cycle 1.
+      * rewrite DEFORPHAN0; ss.
+      * repeat all_once_fast ltac:(fun H => try apply Genv.invert_find_symbol in H; des).
+        rewrite <- SYMB in *.
+        repeat all_once_fast ltac:(fun H => try apply Genv.find_invert_symbol in H; des).
+        clarify.
+    + destruct (Genv.invert_symbol skenv_link_tgt blk) eqn:T1; cycle 1.
+      * repeat all_once_fast ltac:(fun H => try apply Genv.invert_find_symbol in H; des).
+        rewrite SYMB in *.
+        repeat all_once_fast ltac:(fun H => try apply Genv.find_invert_symbol in H; des).
+        clarify.
+      * repeat all_once_fast ltac:(fun H => try apply Genv.invert_find_symbol in H; des).
+        assert(i = i0).
+        { eapply Genv.genv_vars_inj; eauto. unfold Genv.find_symbol in *. rewrite SYMB. ss. }
+        clarify.
+        repeat all_once_fast ltac:(fun H => try apply Genv.find_invert_symbol in H; des).
+        destruct (classic (defs sk_src i0)).
+        { erewrite DEFKEEP; eauto. erewrite DEFKEEP0; eauto. rewrite <- DEFSEQ; ss. }
+        { erewrite DEFDROP; eauto. erewrite DEFDROP0; eauto. rewrite <- DEFSEQ; ss. }
 Qed.
 Next Obligation.
   inv SIMSKENV.

@@ -326,37 +326,51 @@ End PLAYGROUND.
 
 
 
-Inductive store_arguments (vs: list val) (m0: mem) (sg: signature):
+Inductive store_arguments (fptr: val) (vs: list val) (m0: mem) (sg: signature):
   regset -> mem -> Prop :=
 | store_arguments_intro
     m1 sp
     (ALLOC: Mem.alloc m0 Stacklayout.fe_ofs_arg (size_arguments sg) = (m1, sp))
     (rs_arg: regset)
     (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
+    (FPTR: rs_arg PC = fptr)
     m_arg
     (STORE: extcall_arguments rs_arg m_arg sg vs /\ Mem.unchanged_on top2 m0 m_arg /\
             m1.(Mem.nextblock) = m_arg.(Mem.nextblock) /\
             (forall ofs (OUTSIDE: ~ 0 <= ofs < 4 * size_arguments sg), ~Mem.perm m_arg sp ofs Cur Nonempty) /\
             Mem.range_perm m_arg sp 0 (4 * size_arguments sg) Cur Freeable)
   :
-    store_arguments vs m0 sg rs_arg m_arg
+    store_arguments fptr vs m0 sg rs_arg m_arg
 .
 
 Inductive load_arguments (rs_arg: regset) (m_arg: mem) (sg_init: signature)
-          (vs_init: list val) (m_init: mem): Prop :=
+          (fptr_init: val) (vs_init: list val) (m_init: mem): Prop :=
 | load_arguments_intro
     sp
     (RSPPTR: rs_arg RSP = Vptr sp Ptrofs.zero true)
+    (FPTR: rs_arg PC = fptr_init)
     (PERM: Mem.range_perm m_arg sp 0 (4 * (size_arguments sg_init)) Cur Writable)
     (VAL: extcall_arguments rs_arg m_arg sg_init vs_init)
     (DROP: Mem_set_perm m_arg sp 0 (4 * (size_arguments sg_init)) None = Some m_init)
 .
 
-Lemma load_arguments_dtm
+Lemma load_arguments_dtm0
+      rs_arg m_arg sg_init0 sg_init1
+      fptr_init0 fptr_init1 vs_init0 vs_init1 m_init0 m_init1
+      (LOAD0: load_arguments rs_arg m_arg sg_init0 fptr_init0 vs_init0 m_init0)
+      (LOAD1: load_arguments rs_arg m_arg sg_init1 fptr_init1 vs_init1 m_init1)
+  :
+    fptr_init0 = fptr_init1
+.
+Proof.
+  inv LOAD0. inv LOAD1. clarify.
+Qed.
+
+Lemma load_arguments_dtm1
       rs_arg m_arg sg_init
-      vs_init0 vs_init1 m_init0 m_init1
-      (LOAD0: load_arguments rs_arg m_arg sg_init vs_init0 m_init0)
-      (LOAD1: load_arguments rs_arg m_arg sg_init vs_init1 m_init1)
+      fptr_init0 fptr_init1 vs_init0 vs_init1 m_init0 m_init1
+      (LOAD0: load_arguments rs_arg m_arg sg_init fptr_init0 vs_init0 m_init0)
+      (LOAD1: load_arguments rs_arg m_arg sg_init fptr_init1 vs_init1 m_init1)
   :
     vs_init0 = vs_init1 /\ m_init0 = m_init1
 .
@@ -392,10 +406,10 @@ Qed.
 Local Opaque Z.mul.
 
 Theorem store_arguments_progress
-        vs0 m0 sg
+        fptr vs0 m0 sg
   :
     exists rs_arg m_arg,
-      <<STORE: store_arguments vs0 m0 sg rs_arg m_arg>>
+      <<STORE: store_arguments fptr vs0 m0 sg rs_arg m_arg>>
 .
 Proof.
   admit "This is needed for user to reason about their program. This will be complex job,
@@ -406,11 +420,11 @@ I checked this commit, there is a pass called Reload which deals this problem.".
 Qed.
 
 Theorem store_load_arguments_progress
-        vs0 m0 sg rs_arg m_arg
-        (STORE: store_arguments vs0 m0 sg rs_arg m_arg)
+        fptr vs0 m0 sg rs_arg m_arg
+        (STORE: store_arguments fptr vs0 m0 sg rs_arg m_arg)
   :
     exists vs1 m1,
-      <<LOAD: load_arguments rs_arg m_arg sg vs1 m1>>
+      <<LOAD: load_arguments rs_arg m_arg sg fptr vs1 m1>>
 .
 Proof.
   inv STORE. des.
@@ -423,12 +437,12 @@ Proof.
 Qed.
 
 Theorem store_load_arguments_spec
-        vs0 m0 sg rs_arg m_arg
-        (STORE: store_arguments vs0 m0 sg rs_arg m_arg)
+        fptr0 fptr1 vs0 m0 sg rs_arg m_arg
+        (STORE: store_arguments fptr0 vs0 m0 sg rs_arg m_arg)
         vs1 m1
-        (LOAD: load_arguments rs_arg m_arg sg vs1 m1)
+        (LOAD: load_arguments rs_arg m_arg sg fptr1 vs1 m1)
   :
-    <<VAL: vs0 = vs1>> /\ <<MEM: Mem.unchanged_on top2 m0 m1
+    <<FPTR: fptr0 = fptr1 >> /\ <<VAL: vs0 = vs1>> /\ <<MEM: Mem.unchanged_on top2 m0 m1
                                  /\ dead_block m1 m0.(Mem.nextblock)
                                  /\ Pos.succ m0.(Mem.nextblock) = m1.(Mem.nextblock)>>
 .

@@ -374,7 +374,7 @@ Proof.
     inv MATCH.
     apply Axioms.functional_extensionality in SIMRSINIT. clarify.
     ii. hexploit (@step_simulation prog tprog ge tge); eauto.
-    { apply not_external. }
+    { ii. eapply not_external; eauto. }
     i; des.
     esplits; eauto.
     + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.

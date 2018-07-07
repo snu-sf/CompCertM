@@ -95,8 +95,8 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg_arg vs_arg m0
       m_arg_pre rs_arg m_arg
-      (STORE: store_arguments vs_arg m_arg_pre sg_arg rs_arg m_arg)
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
+      (STORE: store_arguments fptr_arg vs_arg m_arg_pre sg_arg rs_arg m_arg)
     :
       at_external (Callstate stack fptr_arg sg_arg vs_arg m0)
                   rs_arg m_arg
@@ -106,10 +106,9 @@ Section MODSEM.
     : state -> Prop :=
   | initial_frame_intro
       fptr_arg fd
-      (FPTR: fptr_arg = rs_arg PC)
       (FINDF: Genv.find_funct ge fptr_arg = Some (Internal fd))
       vs_arg m_init
-      (LOAD: load_arguments rs_arg m_arg fd.(fn_sig) vs_arg m_init)
+      (LOAD: load_arguments rs_arg m_arg fd.(fn_sig) fptr_arg vs_arg m_init)
     :
       initial_frame rs_arg m_arg
                     (Callstate [] fptr_arg fd.(fn_sig) vs_arg m_init)
@@ -153,8 +152,8 @@ Section MODSEM.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.
     all_once_fast ltac:(fun H => try inv H).
-    rewrite FINDF in *. clarify.
-    determ_tac load_arguments_dtm.
+    determ_tac load_arguments_dtm0.
+    determ_tac load_arguments_dtm1.
   Qed.
   Next Obligation.
     all_once_fast ltac:(fun H => try inv H); rewrite FINDF in *; clarify. determ_tac store_result_dtm.
@@ -171,12 +170,11 @@ Section MODSEM.
   Qed.
 
   Lemma not_external
-        st0
     :
-      ~ is_external ge st0
+      is_external ge <1= bot1
   .
   Proof.
-    ii. hnf in H. des_ifs.
+    ii. hnf in PR. des_ifs.
     subst_locals.
     Local Opaque Genv.invert_symbol.
     u in *. des_ifs.
@@ -201,7 +199,7 @@ Section MODSEM.
     :
       receptive_at modsem st
   .
-  Proof. eapply lift_receptive_at. eapply semantics_receptive. eapply not_external. Qed.
+  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
 
   Lemma lift_determinate_at
         st0
@@ -220,7 +218,7 @@ Section MODSEM.
     :
       determinate_at modsem st
   .
-  Proof. eapply lift_determinate_at. eapply semantics_determinate. eapply not_external. Qed.
+  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
 
 
 End MODSEM.

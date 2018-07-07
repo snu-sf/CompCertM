@@ -94,10 +94,8 @@ Section MODSEM.
   Inductive at_external: state -> regset -> mem -> Prop :=
   | at_external_intro
       stack fptr_arg sg_arg vs_arg m0
-      m_arg sp
-      (ALLOC: Mem.alloc m_arg Stacklayout.fe_ofs_arg (size_arguments sg_arg) = (m_arg, sp))
-      rs_arg
-      (STORE: extcall_arguments rs_arg m_arg sg_arg vs_arg)
+      m_arg_pre rs_arg m_arg
+      (STORE: store_arguments vs_arg m_arg_pre sg_arg rs_arg m_arg)
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
     :
       at_external (Callstate stack fptr_arg sg_arg vs_arg m0)
@@ -184,7 +182,7 @@ Section MODSEM.
     u in *. des_ifs.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
     repeat all_once_fast ltac:(fun H => try apply Genv_map_defs_spec in H; des).
-    des_ifs_safe. des_ifs.
+    u in *. des_ifs_safe. des_ifs.
   Qed.
 
   Lemma lift_receptive_at
@@ -226,6 +224,10 @@ Section MODSEM.
 
 
 End MODSEM.
+
+
+
+
 
 Section MODULE.
 

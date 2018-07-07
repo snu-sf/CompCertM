@@ -391,6 +391,20 @@ Qed.
 
 Local Opaque Z.mul.
 
+Theorem store_arguments_progress
+        vs0 m0 sg
+  :
+    exists rs_arg m_arg,
+      <<STORE: store_arguments vs0 m0 sg rs_arg m_arg>>
+.
+Proof.
+  admit "This is needed for user to reason about their program. This will be complex job,
+and Compcert avoided it by translation validation, so we should do this from the scratch.
+NOTE: Old version of Compcert should have related code.
+> 6224148 - (HEAD -> master) Reorganization test directory (2010-02-17 13:44:32 +0000) <xleroy>
+I checked this commit, there is a pass called Reload which deals this problem.".
+Qed.
+
 Theorem store_load_arguments_progress
         vs0 m0 sg rs_arg m_arg
         (STORE: store_arguments vs0 m0 sg rs_arg m_arg)

@@ -13,9 +13,7 @@ Set Implicit Arguments.
 
 
 
-
-
-
+Module RNMBREXTRA.
 Section RNMBREXTRA.
 
   Variables prog tprog: program.
@@ -24,8 +22,25 @@ Section RNMBREXTRA.
   (* Let tge := Genv.globalenv tprog. *)
   Variable ge tge: genv.
 
+Inductive match_states: RTL.state -> RTL.state -> Prop :=
+  | match_regular_states: forall stk f sp pc rs m stk'
+    (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge)
+        (STACKS: list_forall2 match_frames stk stk')
+        (REACH: reach f pc),
+      match_states (State stk f sp pc rs m)
+                   (State stk' (transf_function f) sp (renum_pc (pnum f) pc) rs m)
+  | match_callstates: forall stk fptr sg args m stk'
+    (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge)
+        (STACKS: list_forall2 match_frames stk stk'),
+      match_states (Callstate stk fptr sg args m)
+                   (Callstate stk' fptr sg args m)
+  | match_returnstates: forall stk v m stk'
+    (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge)
+        (STACKS: list_forall2 match_frames stk stk'),
+      match_states (Returnstate stk v m)
+                   (Returnstate stk' v m).
+
   Lemma step_simulation
-        (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge)
     :
   forall S1 t S2 (NOTEXT: ~ RTLC.is_external ge S1), Step (semantics_with_ge prog ge) S1 t S2 ->
   forall S1', match_states S1 S1' ->
@@ -35,12 +50,45 @@ Section RNMBREXTRA.
   Qed.
 
 End RNMBREXTRA.
+End RNMBREXTRA.
+Import RNMBREXTRA.
 
 
+
+
+
+
+Lemma func_ext1
+      X0 Y0
+      (P Q: X0 -> Y0)
+      (EQ: all1 (P =1= Q))
+  :
+    <<EQ: P = Q>>
+.
+Proof. apply Axioms.functional_extensionality. ii; ss. Qed.
+
+Lemma find_symbol_eq_invert_symbol_eq
+      F0 V0 F1 V1
+      (ge0: Genv.t F0 V0) (ge1: Genv.t F1 V1)
+      (FIND: all1 (Genv.find_symbol ge0 =1= Genv.find_symbol ge1))
+  :
+    <<INVERT: all1 (Genv.invert_symbol ge0 =1= Genv.invert_symbol ge1)>>
+.
+Proof.
+  ii.
+  destruct (Genv.invert_symbol ge0 x0) eqn:T0.
+  - apply Genv.invert_find_symbol in T0.
+    rewrite FIND in T0.
+    apply Genv.find_invert_symbol in T0.
+    ss.
+  - destruct (Genv.invert_symbol ge1 x0) eqn:T1.
+    { apply Genv.invert_find_symbol in T1. rewrite <- FIND in *. apply Genv.find_invert_symbol in T1. clarify. }
+    ss.
+Qed.
 
 Section MATCHEXTRA.
 
-  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker F1} {LV: Linker V1}.
+  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker (AST.fundef F1)} {LV: Linker V1}.
   Variable match_fundef: C -> AST.fundef F1 -> AST.fundef F2 -> Prop.
   Variable match_varinfo: V1 -> V2 -> Prop.
   Hypothesis MATCH_FUNDEF_EXTERNAL: forall
@@ -51,16 +99,16 @@ Section MATCHEXTRA.
   .
 
   Variables (ctx: C) (p_src: AST.program (AST.fundef F1) V1) (p_tgt: AST.program (AST.fundef F2) V2).
+  Hypothesis (MATCHPROG: match_program_gen match_fundef match_varinfo ctx p_src p_tgt).
 
   Lemma match_program_gen_defs
-        (MATCH: match_program_gen match_fundef match_varinfo ctx p_src p_tgt)
     :
       <<EQ: p_src.(defs) = p_tgt.(defs)>>
   .
   Proof.
     apply Axioms.functional_extensionality. ii; ss. u.
     (* hexploit (match_program_defmap _ _ ctx p_src p_tgt MATCH x). intro REL. *)
-    inv MATCH. des.
+    inv MATCHPROG. des.
     assert((prog_defs_names p_src) = (prog_defs_names p_tgt)).
     { unfold prog_defs_names.
       clear - H.
@@ -73,7 +121,6 @@ Section MATCHEXTRA.
   Lemma match_program_gen_preserves_sim_skenv
         skenv_link_src skenv_link_tgt
         (SIMSKENV: SimSymbId.sim_skenv skenv_link_src skenv_link_tgt)
-        (MATCH: match_program_gen match_fundef match_varinfo ctx p_src p_tgt)
         proj_src proj_tgt
         (PROJSRC: SkEnv.project_spec skenv_link_src p_src.(defs) proj_src)
         (PROJTGT: SkEnv.project_spec skenv_link_tgt p_tgt.(defs) proj_tgt)
@@ -118,7 +165,7 @@ Section MATCHEXTRA.
           { erewrite DEFDROP; eauto. erewrite DEFDROP0; eauto. erewrite <- match_program_gen_defs; eauto. }
   Admitted. (* COQ BUG!!!!!!!!!!!!!!!! HOW TO FIX THIS?????????? *)
 
-  Lemma o_bind_assertion
+  Lemma o_bind_ignore
         X Y
         (x: option X) (y: option Y)
     :
@@ -137,7 +184,6 @@ Section MATCHEXTRA.
   Lemma match_program_gen_revive_match_genvs
         skenv_link_src skenv_link_tgt
         (SIMSKENV: SimSymbId.sim_skenv skenv_link_src skenv_link_tgt)
-        (MATCH: match_program_gen match_fundef match_varinfo ctx p_src p_tgt)
         proj_src proj_tgt
         (PROJSRC: SkEnv.project_spec skenv_link_src p_src.(defs) proj_src)
         (PROJTGT: SkEnv.project_spec skenv_link_tgt p_tgt.(defs) proj_tgt)
@@ -153,7 +199,7 @@ Section MATCHEXTRA.
     intro blk; ss.
     inv PROJSRC. inv PROJTGT. rewrite ! MapsC.PTree_filter_map_spec in *.
     {
-      rewrite ! o_bind_assertion.
+      rewrite ! o_bind_ignore.
       destruct (Genv.invert_symbol proj_src blk) eqn:T0; cbn; cycle 1.
       - destruct (Genv.invert_symbol proj_tgt blk) eqn:T1; cbn; cycle 1.
         + u. des_ifs; econs; eauto.
@@ -171,8 +217,8 @@ Section MATCHEXTRA.
         unfold Genv.find_def in *.
         des_ifs; clarify; cycle 1.
         { econs; eauto. }
-        apply match_program_defmap with (id0 := id) in MATCH.
-        inv MATCH; cbn.
+        apply match_program_defmap with (id0 := id) in MATCHPROG.
+        inv MATCHPROG; cbn.
         { econs; eauto. }
         erewrite match_globdef_external; eauto.
         des_ifs; econs; eauto.
@@ -182,7 +228,6 @@ Section MATCHEXTRA.
   Lemma match_program_gen_revive_match_genvs_deprecated
         skenv_link_src skenv_link_tgt
         (SIMSKENV: SimSymbId.sim_skenv skenv_link_src skenv_link_tgt)
-        (MATCH: match_program_gen match_fundef match_varinfo ctx p_src p_tgt)
         ge_src ge_tgt
         (REVIVESRC: ge_src = SkEnv.revive (SkEnv.project skenv_link_src (defs p_src)) p_src)
         (REVIVETGT: ge_tgt = SkEnv.revive (SkEnv.project skenv_link_tgt (defs p_tgt)) p_tgt)
@@ -190,7 +235,7 @@ Section MATCHEXTRA.
       <<SIMGE: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge_src ge_tgt>>
   .
   Proof.
-    clarify. dup MATCH. inv MATCH. des; ss. inv SIMSKENV. ss.
+    clarify. dup MATCHPROG. inv MATCHPROG0. des; ss. inv SIMSKENV. ss.
     hexploit (@SkEnv.project_impl_spec skenv_link_src p_src.(defs)). intro SPECSRC.
     hexploit (@SkEnv.project_impl_spec skenv_link_tgt p_tgt.(defs)). intro SPECTGT.
     abstr ((SkEnv.project skenv_link_src (defs p_src))) proj_src.
@@ -214,6 +259,33 @@ Section MATCHEXTRA.
           congruence.
       - ii.
   Abort.
+
+  Lemma sim_skenv_revive
+        skenv_proj_src skenv_proj_tgt
+        ge_src ge_tgt
+        (REVIVESRC: ge_src = SkEnv.revive skenv_proj_src p_src)
+        (REVIVETGT: ge_tgt = SkEnv.revive skenv_proj_tgt p_tgt)
+        (SIMSKENV: SimSymbId.sim_skenv skenv_proj_src skenv_proj_tgt)
+    :
+      <<SIMGE: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge_src ge_tgt>>
+  .
+  Proof.
+    clarify.
+    inv SIMSKENV.
+    econs; eauto.
+    ii. specialize (DEFS b). unfold SkEnv.revive. ss.
+    rewrite ! MapsC.PTree_filter_map_spec. rewrite ! o_bind_ignore.
+    unfold Genv.find_def in *. rewrite DEFS. des_ifs; try (by econs; eauto).
+    dup SYMB. apply find_symbol_eq_invert_symbol_eq in SYMB0. erewrite <- SYMB0.
+    destruct (Genv.invert_symbol skenv_proj_src b) eqn:T; cbn; try (by econs; eauto).
+    apply match_program_defmap with (id := i) in MATCHPROG.
+    inv MATCHPROG; cbn; try (by econs; eauto).
+    inv H1; ss; cycle 1.
+    { econs; eauto. econs; eauto. }
+    erewrite MATCH_FUNDEF_EXTERNAL; eauto.
+    des_ifs; try (by econs; eauto).
+    econs; eauto. econs; eauto.
+  Qed.
 
 End MATCHEXTRA.
 
@@ -240,8 +312,9 @@ Inductive match_states (rs_init_src rs_init_tgt: regset)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (SIMRSINIT: SimMem.sim_regset sm0 rs_init_src rs_init_tgt)
-    (MATCHST: Renumberproof.match_states st_src0 st_tgt0)
+    (MATCHST: RNMBREXTRA.match_states prog ge tge st_src0 st_tgt0)
     (MCOMPAT: mem_compat msp.(ModSemPair.src) msp.(ModSemPair.tgt) st_src0 st_tgt0 sm0)
+    (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge)
 .
 
 Theorem sim_modsem
@@ -254,25 +327,30 @@ Proof.
   - destruct sm_arg; ss. clarify.
     unfold SimMem.sim_regset in *. ss. apply Axioms.functional_extensionality in SIMRS. clarify.
     inv INITSRC.
+    assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
+    { subst_locals. eapply sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
     esplits; eauto.
-    + econs; eauto.
-      * inv SIMSKENV. ss.
-        unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-        admit "simskenv".
+    + apply initial_frame_intro with (fd := transf_function fd); eauto.
+      fold_all ge. fold_all tge. clearbody ge tge.
+      unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+      inv SIMGE. specialize (mge_defs b). inv mge_defs; eq_closure_tac. unfold Genv.find_def. rewrite <- H0.
+      inv H1; ss.
     + instantiate (1:= SimMemId.mk _ _). econs; ss; eauto.
-    + u. econs; ss; eauto. econs; ss; eauto. econs; ss; eauto.
+    + u. repeat (econs; ss; eauto).
   - inv CALLSRC. des. inv MATCH. ss. destruct sm0; ss.
     inv MATCHST; inv H; ss; clarify.
-    inv MCOMPAT. ss. fold_all ge. u in *. clarify.
-    esplits; eauto.
+    inv MCOMPAT. ss. fold_all ge. des. clarify.
+    u. esplits; eauto.
     econs; eauto.
     fold_all tge.
-    admit "simskenv".
-  - inv CALLTGT. inv MATCH; ss. u in *. destruct sm0; ss. inv MCOMPAT; ss. u in *. clarify.
+    clearbody ge tge.
+    admit "simskenv - ez".
+  - inv CALLTGT. inv MATCH; ss. fold_all tge. u in *. destruct sm0; ss. inv MCOMPAT; ss. u in *. clarify.
     do 2 eexists. eexists (SimMemId.mk _ _).
     esplits; ss; eauto. inv MATCHST; ss.
     econs; eauto.
-    admit "simskenv".
+    u. fold_all ge.
+    admit "simskenv - ez".
   - apply Axioms.functional_extensionality in SIMRSRET. clarify.
     apply Axioms.functional_extensionality in SIMRSARG. clarify.
     inv AFTERSRC. inv MATCH; ss. inv MCOMPAT. u in *. clarify.
@@ -287,21 +365,15 @@ Proof.
     inv STACKS; ss. inv MCOMPAT; ss. u in *. des_ifs. clear_tac.
     apply Axioms.functional_extensionality in SIMRSINIT. clarify.
     esplits; eauto.
-    + econs; eauto.
-      admit "simskenv".
+    + apply final_frame_intro with (fd:= transf_function fd); eauto.
+      fold_all ge. u. fold_all tge.
+      admit "simskenv - ez".
     + ii; ss.
   - esplits; eauto.
     { apply modsem_receptive. }
     inv MATCH.
     apply Axioms.functional_extensionality in SIMRSINIT. clarify.
     ii. hexploit (@step_simulation prog tprog ge tge); eauto.
-    { unfold match_prog, match_program in *.
-      eapply match_program_gen_revive_match_genvs; [| |unshelve eapply TRANSL; eauto|..].
-      { ii; ss. clarify. u. des_ifs. }
-      admit "".
-      admit "".
-      apply TRANSL.
-      admit "WE SHOULD ADDRESS THIS". }
     { apply not_external. }
     i; des.
     esplits; eauto.

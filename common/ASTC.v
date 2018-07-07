@@ -110,7 +110,7 @@ Definition is_external F V (gd: globdef (fundef F) V): bool :=
   end
 .
 
-Hint Unfold is_external is_external_fd is_external_ef.
+Hint Unfold is_external is_external_fd (* is_external_ef *).
 
 
 

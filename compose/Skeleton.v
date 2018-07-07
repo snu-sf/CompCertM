@@ -181,7 +181,7 @@ I think "sim_skenv_monotone" should be sufficient.
 
 End SkEnv.
 
-Hint Unfold SkEnv.revive.
+(* Hint Unfold SkEnv.revive. *)
 
 
 

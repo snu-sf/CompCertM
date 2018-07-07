@@ -51,7 +51,6 @@ Section MATCHSIMFORWARD.
   Hypothesis ATPROGRESS: forall
       rs_init_src rs_init_tgt sm_init
       idx0 st_src0 st_tgt0 sm0
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states rs_init_src rs_init_tgt sm_init
                            idx0 st_src0 st_tgt0 sm0)
       (CALLSRC: ms_src.(ModSem.is_call) st_src0)
@@ -64,7 +63,6 @@ Section MATCHSIMFORWARD.
   Hypothesis ATBSIM: forall
       rs_init_src rs_init_tgt sm_init
       idx0 st_src0 st_tgt0 sm0
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states rs_init_src rs_init_tgt sm_init
                            idx0 st_src0 st_tgt0 sm0)
       rs_arg_tgt m_arg_tgt
@@ -87,7 +85,6 @@ Section MATCHSIMFORWARD.
   Hypothesis AFTERFSIM: forall
       rs_init_src rs_init_tgt sm_init
       idx0 st_src0 st_tgt0 sm0
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states rs_init_src rs_init_tgt sm_init
                            idx0 st_src0 st_tgt0 sm0)
       sm_arg
@@ -114,7 +111,6 @@ Section MATCHSIMFORWARD.
   Hypothesis FINALFSIM: forall
       rs_init_src rs_init_tgt sm_init
       idx0 st_src0 st_tgt0 sm0
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states rs_init_src rs_init_tgt sm_init
                            idx0 st_src0 st_tgt0 sm0)
       (MCOMPAT: mem_compat st_src0 st_tgt0 sm0)

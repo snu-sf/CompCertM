@@ -15,30 +15,15 @@
 (** This file proves semantic preservation for the [Stacking] pass. *)
 
 Require Import CoqlibC Errors.
-Require Import Integers AST Linking.
+Require Import IntegersC AST Linking.
 Require Import ValuesC Memory Separation Events Globalenvs Smallstep.
-Require Import LTL Op Locations LinearC MachC.
+Require Import LTL Op LocationsC LinearC MachC.
 Require Import Bounds Conventions Stacklayout Lineartyping.
 Require Import Stacking.
 Require Import sflib.
 
 Local Open Scope sep_scope.
 
-
-Lemma Ptrofs_add_repr
-      x y
-  :
-    <<EQ: (Ptrofs.add (Ptrofs.repr x) (Ptrofs.repr y)) = Ptrofs.repr (x + y)>>
-.
-Proof.
-  apply Ptrofs.eqm_repr_eq.
-  eapply Ptrofs.eqm_sym.
-  eapply Ptrofs.eqm_trans.
-  - apply Ptrofs.eqm_sym. apply Ptrofs.eqm_unsigned_repr.
-  - apply Ptrofs.eqm_add.
-    + apply Ptrofs.eqm_unsigned_repr.
-    + apply Ptrofs.eqm_unsigned_repr.
-Qed.
 
 Lemma load_stack_transf_ofs
       m sp spofs ty ofs
@@ -62,16 +47,6 @@ Proof.
   rewrite Ptrofs.add_zero_l. ss.
 Qed.
 
-Lemma typealign_divide_8
-      ty
-  :
-    <<DIV: (4 * typealign ty | 8)>>
-.
-Proof.
-  red. change 8 with (4 * 2).
-  eapply Z.mul_divide_mono_l.
-  destruct ty; ss; try reflexivity; try apply Z.divide_1_l.
-Qed.
 
 
 Definition match_prog (p: Linear.program) (tp: Mach.program) :=
@@ -1199,6 +1174,11 @@ Proof.
   split. exact PERMS. exact AG'.
 Qed.
 
+(** As a corollary of the previous lemmas, we obtain the following
+  correctness theorem for the execution of a function prologue
+  (allocation of the frame + saving of the link and return address +
+  saving of the used callee-save registers). *)
+
 Lemma function_prologue_correct:
   forall j ls ls0 ls1 rs rs1 m1 m1' m2 sp parent ra cs (CSNOTNIL: cs <> []) fb k P,
   agree_regs j ls rs ->
@@ -1495,14 +1475,9 @@ Qed.
 
 Fixpoint stack_contents (j: meminj) (cs: list Linear.stackframe) (cs': list Mach.stackframe) : massert :=
   match cs, cs' with
-  (* | nil, _ => pure False *)
-  (* | _, nil => pure False *)
   | [Linear.Stackframe f _ ls _], [Mach.Stackframe fb (Vptr sp' spofs true) ra _] =>
     dummy_frame_contents j ls f.(Linear.fn_sig) sp' spofs.(Ptrofs.unsigned)
-  (* | [dummy_stack_src], _ => pure False *)
-  (* | _, [dummy_stack_tgt] => pure False *)
   | Linear.Stackframe f _ ls c :: cs, Mach.Stackframe fb (Vptr sp' spofs true) ra c' :: cs' =>
-      (* <<NOTNIL: pure (cs <> nil /\ cs' <> nil)>> ** *)
       frame_contents f (* spofs.(Ptrofs.unsigned) *) j sp' ls (parent_locset cs) (parent_sp cs') (parent_ra cs')
       ** stack_contents j cs cs'
   | _, _ => pure False
@@ -1527,27 +1502,14 @@ Proof. destruct cs; ss. des_ifs. Qed.
 
 Inductive match_stacks (j: meminj):
        list Linear.stackframe -> list stackframe -> signature -> Prop :=
-  (* | match_stacks_empty: forall sg, *)
-  (*     tailcall_possible sg -> *)
-  (*     match_stacks j nil nil sg *)
   | match_stacks_dummy
       sg_init sp ra ls_init
       sg
-      (* (ARGS: forall ofs ty, *)
-      (*     In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)) -> *)
-      (*     slot_within_bounds (function_bounds (dummy_function sg_init)) Outgoing ofs ty) *)
-
-
-      (* (SZARG: size_arguments sg <= size_arguments sg_init) *)
-      (* Note: I think this will also work. but I need to prove something like *)
-      (* "tailcall_possible -> size_arguments = 0", which is not proven. (and is it false for other architectures? *)
-      (* below is just a rephrase of above *)
       (ARGS: forall
           ofs ty
           (LOC: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))
         ,
           <<BOUND: ofs + typesize ty <= size_arguments sg_init>>)
-
       (RAPTR: is_real_ptr ra)
       (SPPTR: is_real_ptr sp)
     :

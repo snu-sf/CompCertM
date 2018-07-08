@@ -12,6 +12,17 @@ Require Import Conventions Integers Asmregs Memory.
 Set Implicit Arguments.
 
 
+Lemma typealign_divide_8
+      ty
+  :
+    <<DIV: (4 * typealign ty | 8)>>
+.
+Proof.
+  red. change 8 with (4 * 2).
+  eapply Z.mul_divide_mono_l.
+  destruct ty; ss; try reflexivity; try apply Z.divide_1_l.
+Qed.
+
 Definition locset := Locmap.t.
 
 Fixpoint fill_arguments (ls0: locset) (args: list val) (locs: list (rpair loc)): option locset :=

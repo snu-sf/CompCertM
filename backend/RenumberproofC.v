@@ -42,9 +42,9 @@ Inductive match_states: RTL.state -> RTL.state -> Prop :=
 
   Lemma step_simulation
     :
-  forall S1 t S2 (NOTEXT: ~ RTLC.is_external ge S1), Step (semantics_with_ge prog ge) S1 t S2 ->
+  forall S1 t S2 (NOTEXT: ~ RTLC.is_external ge S1), Step (semantics_with_ge ge) S1 t S2 ->
   forall S1', match_states S1 S1' ->
-  exists S2', DStep (semantics_with_ge tprog tge) S1' t S2' /\ match_states S2 S2'.
+  exists S2', DStep (semantics_with_ge tge) S1' t S2' /\ match_states S2 S2'.
   Proof.
     admit "".
   Qed.
@@ -373,7 +373,7 @@ Proof.
     { apply modsem_receptive. }
     inv MATCH.
     apply Axioms.functional_extensionality in SIMRSINIT. clarify.
-    ii. hexploit (@step_simulation prog tprog ge tge); eauto.
+    ii. hexploit (@step_simulation prog ge tge); eauto.
     { ii. eapply not_external; eauto. }
     i; des.
     esplits; eauto.

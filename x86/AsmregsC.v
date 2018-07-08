@@ -1,5 +1,5 @@
 Require Import CoqlibC Maps.
-Require Import Values.
+Require Import ValuesC.
 Require Import Locations Stacklayout Conventions.
 Require Import MemoryC Integers AST.
 (** newly added **)
@@ -135,6 +135,64 @@ Inductive callee_saved (sg: signature) (rs0 rs1: regset): Prop :=
     )
 (* In Compcert' sg is not needed (see is_callee_save). Is it true in real-world too? *)
 .
+
+Ltac spc H :=
+  let TAC := ss; eauto in
+  match type of H with
+  | forall (a: ?A), _ =>
+    match goal with
+    | [a0: A, a1: A |- _] => fail 2 "More than one specialization is possible!"
+    | [a0: A |- _] => specialize (H a0)
+    | _ =>
+      tryif is_prop A
+      then
+        let name := fresh in
+        assert(name: A) by TAC; specialize (H name); clear name
+      else
+        fail 2 "No specialization possible!"
+    end
+  | _ => fail 1 "Nothing to specialize!"
+  end
+.
+
+Theorem callee_saved_lessdef
+        rs_src0 rs_src1 sg rs_tgt0 rs_tgt1
+        (SAVED: callee_saved sg rs_src0 rs_src1)
+        (LD0: forall pr, eq (rs_src0 pr) (rs_tgt0 pr))
+        (LD1: forall pr, Val.lessdef (rs_src1 pr) (rs_tgt1 pr))
+  :
+    <<SAVED: callee_saved sg rs_tgt0 rs_tgt1>>
+.
+Proof.
+  inv SAVED. econs.
+  ii.
+  spc CALLEESAVE. spc CALLEESAVE.
+  unfold PregEq.t in *. spc LD0. spc LD1.
+  rewrite LD0 in *.
+  inv CALLEESAVE.
+  - rewrite H1. ss.
+  - eauto.
+Qed.
+
+Theorem callee_saved_inject
+        rs_src0 rs_src1 sg rs_tgt0 rs_tgt1 j
+        (SAVED: callee_saved sg rs_src0 rs_src1)
+        (PTRFREE: forall pr, ~ (rs_tgt0 pr).(is_real_ptr))
+        (LD0: forall pr, eq (rs_src0 pr) (rs_tgt0 pr))
+        (LD1: forall pr, @Val.inject Val.mi_normal j (rs_src1 pr) (rs_tgt1 pr))
+  :
+    <<SAVED: callee_saved sg rs_tgt0 rs_tgt1>>
+.
+Proof.
+  inv SAVED. econs.
+  ii.
+  spc CALLEESAVE. spc CALLEESAVE.
+  unfold PregEq.t in *. spc LD0. spc LD1. spc PTRFREE.
+  rewrite LD0 in *.
+  inv CALLEESAVE.
+  - rewrite H1. inv LD1; eauto. rewrite H1 in *. rewrite <- H in *. ss.
+  - eauto.
+Qed.
 
 Inductive fill_garbage (sg: signature) (rs0 rs1: regset): Prop :=
 | fill_garbage_intro

@@ -18,7 +18,7 @@ Set Implicit Arguments.
 
 Section RTLEXTRA.
 
-  Definition is_external (ge: genv) (st: RTL.state): Prop :=
+  Definition is_external (ge: genv) (st: state): Prop :=
     match st with
     | Callstate stack fptr sg args m =>
       match Genv.find_funct ge fptr with
@@ -29,9 +29,8 @@ Section RTLEXTRA.
     end
   .
 
-  Variable prog: RTL.program.
   Variable ge: genv.
-  Definition semantics_with_ge := Semantics step (initial_state prog) final_state ge.
+  Definition semantics_with_ge := Semantics step bot1 final_state ge.
   (* *************** ge is parameterized *******************)
 
   Lemma semantics_receptive
@@ -130,6 +129,7 @@ Section MODSEM.
       rs_ret m_ret
       v_ret rs_arg
       (LOAD: load_result rs_arg rs_ret sg_arg v_ret)
+      (CALLEESAVE: callee_saved sg_arg rs_arg rs_ret)
     :
       after_external (Callstate stack fptr_arg sg_arg vs_arg m_arg)
                      rs_arg
@@ -176,8 +176,6 @@ Section MODSEM.
   Proof.
     ii. hnf in PR. des_ifs.
     subst_locals.
-    Local Opaque Genv.invert_symbol.
-    u in *. des_ifs.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
     repeat all_once_fast ltac:(fun H => try apply Genv_map_defs_spec in H; des).
     u in *. des_ifs_safe. des_ifs.
@@ -185,7 +183,7 @@ Section MODSEM.
 
   Lemma lift_receptive_at
         st
-        (RECEP: receptive_at (semantics_with_ge p ge) st)
+        (RECEP: receptive_at (semantics_with_ge ge) st)
     :
       receptive_at modsem st
   .
@@ -203,7 +201,7 @@ Section MODSEM.
 
   Lemma lift_determinate_at
         st0
-        (DTM: determinate_at (semantics_with_ge p ge) st0)
+        (DTM: determinate_at (semantics_with_ge ge) st0)
     :
       determinate_at modsem st0
   .

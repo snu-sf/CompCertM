@@ -1060,6 +1060,7 @@ Section SAVE_CALLEE_SAVE.
 
 Variable j: meminj.
 Variable cs: list stackframe.
+Hypothesis CSNOTNIL: cs <> [].
 Variable fb: block.
 Variable sp: block.
 Variable ls: locset.
@@ -1116,7 +1117,7 @@ Local Opaque mreg_type.
   exploit (IHl (pos1 + sz) rs1 m1); eauto.
   intros (rs2 & m2 & A & B & C & D).
   exists rs2, m2.
-  split. eapply star_left; eauto. constructor. exact STORE. auto. traceEq.
+  split. eapply star_left; eauto. constructor. constructor. exact STORE. auto. ss. traceEq.
   split. rewrite sep_assoc, sep_swap. exact B.
   split. intros. apply C. unfold store_stack in STORE; simpl in STORE. eapply Mem.perm_store_1; eauto.
   auto.
@@ -1160,7 +1161,7 @@ Proof.
 Qed.
 
 Lemma save_callee_save_correct:
-  forall j ls ls0 rs sp cs fb k m P,
+  forall j ls ls0 rs sp cs (CSNOTNIL: cs <> []) fb k m P,
   m |= range sp fe.(fe_ofs_callee_save) (size_callee_save_area b fe.(fe_ofs_callee_save)) ** P ->
   (forall r, Val.has_type (ls (R r)) (mreg_type r)) ->
   agree_callee_save ls ls0 ->
@@ -1176,7 +1177,7 @@ Lemma save_callee_save_correct:
   /\ agree_regs j ls1 rs'.
 Proof.
   intros until P; intros SEP TY AGCS AG; intros ls1 rs1.
-  exploit (save_callee_save_rec_correct j cs fb sp ls1).
+  exploit (save_callee_save_rec_correct j cs CSNOTNIL fb sp ls1).
 - intros. unfold ls1. apply LTL_undef_regs_same. eapply destroyed_by_setstack_function_entry; eauto.
 - intros. unfold ls1. apply undef_regs_type. apply TY.
 - exact b.(used_callee_save_prop).
@@ -1199,7 +1200,7 @@ Proof.
 Qed.
 
 Lemma function_prologue_correct:
-  forall j ls ls0 ls1 rs rs1 m1 m1' m2 sp parent ra cs fb k P,
+  forall j ls ls0 ls1 rs rs1 m1 m1' m2 sp parent ra cs (CSNOTNIL: cs <> []) fb k P,
   agree_regs j ls rs ->
   agree_callee_save ls ls0 ->
   (forall r, Val.has_type (ls (R r)) (mreg_type r)) ->
@@ -1322,6 +1323,7 @@ Section RESTORE_CALLEE_SAVE.
 
 Variable j: meminj.
 Variable cs: list stackframe.
+Hypothesis CSNOTNIL: cs <> [].
 Variable fb: block.
 Variable sp: block.
 Variable ls0: locset.
@@ -1364,7 +1366,7 @@ Local Opaque mreg_type.
   intros (rs' & A & B & C & D).
   exists rs'.
   split. eapply star_step; eauto.
-    econstructor. exact LOAD. traceEq.
+    econs. econstructor. exact LOAD. ss. traceEq.
   split. intros.
     destruct (In_dec mreg_eq r0 l). auto.
     assert (r = r0) by tauto. subst r0.
@@ -1377,7 +1379,7 @@ Qed.
 End RESTORE_CALLEE_SAVE.
 
 Lemma restore_callee_save_correct:
-  forall m j sp ls ls0 pa ra P rs k cs fb,
+  forall m j sp ls ls0 pa ra P rs k cs (CSNOTNIL: cs <> []) fb,
   m |= frame_contents j sp ls ls0 pa ra ** P ->
   agree_unused j ls0 rs ->
   exists rs',
@@ -1410,7 +1412,7 @@ Qed.
   of the frame). *)
 
 Lemma function_epilogue_correct:
-  forall m' j sp' ls ls0 pa ra P m rs sp m1 k cs fb,
+  forall m' j sp' ls ls0 pa ra P m rs sp m1 k cs (CSNOTNIL: cs <> []) fb,
   m' |= frame_contents j sp' ls ls0 pa ra ** minjection j m ** P ->
   agree_regs j ls rs ->
   agree_locs ls ls0 ->
@@ -1437,6 +1439,7 @@ Proof.
   intros (m1' & FREE' & SEP').
   (* Reloading the callee-save registers *)
   exploit restore_callee_save_correct.
+    apply CSNOTNIL.
     eexact SEP.
     instantiate (1 := rs).
     red; intros. destruct AGL. rewrite <- agree_unused_reg0 by auto. apply AGR.
@@ -2058,12 +2061,22 @@ Inductive match_states: Linear.state -> Mach.state -> Prop :=
       match_states (Linear.Returnstate cs ls m)
                   (Mach.Returnstate cs' rs m').
 
+Lemma match_stacks_not_nil
+      j cs cs' sg
+      (MATCH: match_stacks j cs cs' sg)
+  :
+    cs <> [] /\ cs' <> []
+.
+Proof. inv MATCH; ss. Qed.
+Ltac notnil_tac := try by (ss; eapply match_stacks_not_nil; eauto).
+Ltac step_tac := econs; [|notnil_tac].
+
 Theorem transf_step_correct:
   forall s1 t s2, LinearC.step ge s1 t s2 ->
   forall (WTS: wt_state s1) s1' (MS: match_states s1 s1'),
   exists s2', plus step tge s1' t s2' /\ match_states s2 s2'.
 Proof.
-  induction 1; intros;
+  induction 1; inv STEP; intros;
   try inv MS;
   try rewrite transl_code_eq;
   try (generalize (function_is_within_bounds f _ (is_tail_in TAIL));
@@ -2077,7 +2090,7 @@ Proof.
 + (* Lgetstack, local *)
   exploit frame_get_local; eauto. intros (v & A & B).
   econstructor; split.
-  apply plus_one. apply exec_Mgetstack. exact A.
+  apply plus_one. step_tac. apply exec_Mgetstack. exact A. { notnil_tac. }
   econstructor; eauto with coqlib.
   apply agree_regs_set_reg; auto.
   apply agree_locs_set_reg; auto.
@@ -2102,9 +2115,10 @@ Proof.
       rewrite <- Ptrofs_add_repr in *. rewrite Ptrofs.repr_unsigned in *.
       rewrite <- load_stack_transf_ofs in *.
       esplits; eauto.
-      - apply plus_one. eapply exec_Mgetparam; eauto.
+      - apply plus_one. step_tac. eapply exec_Mgetparam; eauto.
         + rewrite (unfold_transf_function _ _ TRANSL). unfold fn_link_ofs.
           eapply frame_get_parent. eexact SEP.
+        + notnil_tac.
       - econstructor; eauto with coqlib. econstructor; eauto.
         apply agree_regs_set_reg. apply agree_regs_set_reg. auto. auto.
         erewrite agree_incoming by eauto. exact B.
@@ -2120,9 +2134,10 @@ Proof.
   eapply slot_outgoing_argument_valid; eauto.
   intros (v & A & B).
   econstructor; split.
-  apply plus_one. eapply exec_Mgetparam; eauto.
+  apply plus_one. step_tac. eapply exec_Mgetparam; eauto.
   rewrite (unfold_transf_function _ _ TRANSL). unfold fn_link_ofs.
   eapply frame_get_parent. eexact SEP.
+  { notnil_tac. }
   econstructor; eauto with coqlib. econstructor; eauto.
   apply agree_regs_set_reg. apply agree_regs_set_reg. auto. auto.
   erewrite agree_incoming by eauto. exact B.
@@ -2132,7 +2147,7 @@ Proof.
 + (* Lgetstack, outgoing *)
   exploit frame_get_outgoing; eauto. intros (v & A & B).
   econstructor; split.
-  apply plus_one. apply exec_Mgetstack. exact A.
+  apply plus_one. step_tac. apply exec_Mgetstack. exact A. { notnil_tac. }
   econstructor; eauto with coqlib.
   apply agree_regs_set_reg; auto.
   apply agree_locs_set_reg; auto.
@@ -2157,9 +2172,10 @@ Proof.
     eapply frame_set_outgoing; eauto. }
   clear SEP; destruct A as (m'' & STORE & SEP).
   econstructor; split.
-  apply plus_one. destruct sl; try discriminate.
+  apply plus_one. step_tac. destruct sl; try discriminate.
     econstructor. eexact STORE. eauto.
     econstructor. eexact STORE. eauto.
+    notnil_tac.
   econstructor. eauto. eauto. eauto.
   apply agree_regs_set_slot. apply agree_regs_undef_regs. auto.
   apply agree_locs_set_slot. apply agree_locs_undef_locs. auto. apply destroyed_by_setstack_caller_save. auto.
@@ -2175,9 +2191,10 @@ Proof.
   apply sep_proj2 in SEP. apply sep_proj2 in SEP. apply sep_proj1 in SEP. exact SEP.
   destruct H0 as [v' [A B]].
   econstructor; split.
-  apply plus_one. econstructor.
+  apply plus_one. step_tac. econstructor.
   instantiate (1 := v'). rewrite <- A. apply eval_operation_preserved.
   exact symbols_preserved. eauto.
+  notnil_tac.
   econstructor; eauto with coqlib.
   apply agree_regs_set_reg; auto.
   rewrite transl_destroyed_by_op.  apply agree_regs_undef_regs; auto.
@@ -2197,9 +2214,10 @@ Proof.
   eauto. eauto.
   intros [v' [C D]].
   econstructor; split.
-  apply plus_one. econstructor.
+  apply plus_one. step_tac. econstructor.
   instantiate (1 := a'). rewrite <- A. apply eval_addressing_preserved. exact symbols_preserved.
   eexact C. eauto.
+  notnil_tac.
   econstructor; eauto with coqlib.
   apply agree_regs_set_reg. rewrite transl_destroyed_by_load. apply agree_regs_undef_regs; auto. auto.
   apply agree_locs_set_reg. apply agree_locs_undef_locs. auto. apply destroyed_by_load_caller_save. auto.
@@ -2217,9 +2235,10 @@ Proof.
   clear SEP; intros (m1' & C & SEP).
   rewrite sep_swap3 in SEP.
   econstructor; split.
-  apply plus_one. econstructor.
+  apply plus_one. step_tac. econstructor.
   instantiate (1 := a'). rewrite <- A. apply eval_addressing_preserved. exact symbols_preserved.
   eexact C. eauto.
+  notnil_tac.
   econstructor. eauto. eauto. eauto.
   rewrite transl_destroyed_by_store. apply agree_regs_undef_regs; auto.
   apply agree_locs_undef_locs. auto. apply destroyed_by_store_caller_save.
@@ -2234,7 +2253,7 @@ Proof.
   rewrite transl_code_eq in IST. simpl in IST.
   exploit return_address_offset_exists. { rewrite Genv.find_funct_find_funct_ptr. fold tge. eauto. } eexact IST. intros [ra D].
   econstructor; split.
-  apply plus_one. econstructor; eauto. econs; eauto.
+  apply plus_one. step_tac. econstructor; eauto. econs; eauto. notnil_tac.
   econstructor; eauto.
   econstructor; eauto with coqlib.
   apply Val.Vptr_has_type.
@@ -2248,13 +2267,14 @@ Proof.
 - (* Ltailcall *)
   rewrite (sep_swap (stack_contents j s cs')) in SEP.
   exploit function_epilogue_correct; eauto.
+  { notnil_tac. }
   clear SEP. intros (rs1 & m1' & P & Q & R & S & T & U & SEP).
   rewrite sep_swap in SEP.
   exploit find_function_ptr_translated; eauto.
     eapply sep_proj2. eapply sep_proj2. eexact SEP.
   i; des.
   econstructor; split.
-  eapply plus_right. eexact S. econstructor; eauto. econs; eauto. traceEq.
+  eapply plus_right. eexact S. step_tac. econstructor; eauto. econs; eauto. notnil_tac. traceEq.
   econstructor; eauto.
   apply match_stacks_change_sig with (Linear.fn_sig f); auto.
   apply zero_size_arguments_tailcall_possible. eapply wt_state_tailcall; eauto.
@@ -2272,9 +2292,10 @@ Proof.
   clear SEP; intros (j' & res' & m1' & EC & RES & SEP & INCR & ISEP).
   rewrite <- sep_assoc, sep_comm, sep_assoc in SEP.
   econstructor; split.
-  apply plus_one. econstructor; eauto.
+  apply plus_one. step_tac. econstructor; eauto.
   eapply eval_builtin_args_preserved with (ge1 := ge); eauto. exact symbols_preserved.
   eapply external_call_symbols_preserved; eauto. apply senv_preserved.
+  notnil_tac.
   eapply match_states_intro with (j := j'); eauto with coqlib.
   eapply match_stacks_change_meminj; eauto.
   apply agree_regs_set_res; auto. apply agree_regs_undef_regs; auto. eapply agree_regs_inject_incr; eauto.
@@ -2285,21 +2306,23 @@ Proof.
 
 - (* Llabel *)
   econstructor; split.
-  apply plus_one; apply exec_Mlabel.
+  apply plus_one. step_tac. apply exec_Mlabel. notnil_tac.
   econstructor; eauto with coqlib.
 
 - (* Lgoto *)
   econstructor; split.
-  apply plus_one; eapply exec_Mgoto; eauto.
+  apply plus_one. step_tac. eapply exec_Mgoto; eauto.
   apply transl_find_label; eauto.
+  notnil_tac.
   econstructor; eauto.
   eapply find_label_tail; eauto.
 
 - (* Lcond, true *)
   econstructor; split.
-  apply plus_one. eapply exec_Mcond_true; eauto.
+  apply plus_one. step_tac. eapply exec_Mcond_true; eauto.
   eapply eval_condition_inject with (m1 := m). eapply agree_reglist; eauto. apply sep_pick3 in SEP; exact SEP. auto.
   eapply transl_find_label; eauto.
+  notnil_tac.
   econstructor. eauto. eauto. eauto.
   apply agree_regs_undef_regs; auto.
   apply agree_locs_undef_locs. auto. apply destroyed_by_cond_caller_save.
@@ -2309,8 +2332,9 @@ Proof.
 
 - (* Lcond, false *)
   econstructor; split.
-  apply plus_one. eapply exec_Mcond_false; eauto.
+  apply plus_one. step_tac. eapply exec_Mcond_false; eauto.
   eapply eval_condition_inject with (m1 := m). eapply agree_reglist; eauto. apply sep_pick3 in SEP; exact SEP. auto.
+  notnil_tac.
   econstructor. eauto. eauto. eauto.
   apply agree_regs_undef_regs; auto.
   apply agree_locs_undef_locs. auto. apply destroyed_by_cond_caller_save.
@@ -2321,8 +2345,9 @@ Proof.
   assert (rs0 arg = Vint n).
   { generalize (AGREGS arg). rewrite H. intro IJ; inv IJ; auto. }
   econstructor; split.
-  apply plus_one; eapply exec_Mjumptable; eauto.
+  apply plus_one; step_tac. eapply exec_Mjumptable; eauto.
   apply transl_find_label; eauto.
+  notnil_tac.
   econstructor. eauto. eauto. eauto.
   apply agree_regs_undef_regs; auto.
   apply agree_locs_undef_locs. auto. apply destroyed_by_jumptable_caller_save.
@@ -2332,9 +2357,10 @@ Proof.
 - (* Lreturn *)
   rewrite (sep_swap (stack_contents j s cs')) in SEP.
   exploit function_epilogue_correct; eauto.
+  { notnil_tac. }
   intros (rs' & m1' & A & B & C & D & E & F & G).
   econstructor; split.
-  eapply plus_right. eexact D. econstructor; eauto. traceEq.
+  eapply plus_right. eexact D. step_tac. econstructor; eauto. notnil_tac. traceEq.
   econstructor; eauto.
   rewrite sep_swap; exact G.
 
@@ -2348,6 +2374,7 @@ Proof.
   intros EQ; inversion EQ; clear EQ; subst tf.
   rewrite sep_comm, sep_assoc in SEP.
   exploit function_prologue_correct; eauto.
+  { notnil_tac. }
   red; intros; eapply wt_callstate_wt_regs; eauto.
   eapply match_stacks_type_sp; eauto.
   eapply match_stacks_type_retaddr; eauto.
@@ -2356,7 +2383,8 @@ Proof.
   rewrite (sep_comm (globalenv_inject ge j')) in SEP.
   rewrite (sep_swap (minjection j' m')) in SEP.
   econstructor; split.
-  eapply plus_left. econstructor; eauto.
+  eapply plus_left. step_tac. econstructor; eauto.
+  notnil_tac.
   rewrite (unfold_transf_function _ _ TRANSL). unfold fn_code. unfold transl_body.
   eexact D. traceEq.
   eapply match_states_intro with (j := j'); eauto with coqlib.
@@ -2374,8 +2402,9 @@ Proof.
   exploit external_call_parallel_rule; eauto.
   intros (j' & res' & m1' & A & B & C & D & E).
   econstructor; split.
-  apply plus_one. eapply exec_function_external; eauto.
+  apply plus_one. step_tac. eapply exec_function_external; eauto.
   eapply external_call_symbols_preserved; eauto. apply senv_preserved.
+  notnil_tac.
   eapply match_states_return with (j := j').
   eapply match_stacks_change_meminj; eauto.
   apply agree_regs_set_pair. apply agree_regs_inject_incr with j; auto.
@@ -2388,7 +2417,7 @@ Proof.
 - (* return *)
   inv STACKS. { ss. } simpl in AGLOCS. simpl in SEP. des_ifs. rewrite sep_assoc in SEP.
   econstructor; split.
-  apply plus_one. apply exec_return.
+  apply plus_one. step_tac. apply exec_return.
   { inv STK; ss. }
   econstructor; eauto.
   apply agree_locs_return with rs0; auto.

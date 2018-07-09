@@ -1780,7 +1780,7 @@ Proof.
   - esplits; eauto.
   - erewrite symbols_preserved. des_ifs.
     + esplits; eauto.
-      inv H0. exploit SYMBOLS; eauto.
+      inv H3. exploit DOMAIN; eauto. eapply Genv.genv_symb_range; eauto.
     + esplits; eauto.
 Qed.
 
@@ -1995,6 +1995,7 @@ Inductive match_states: Linear.state -> Mach.state -> Prop :=
         (AGLOCS: agree_locs f ls (parent_locset cs))
         (INJSP: j sp = Some(sp', fe_stack_data (make_env (function_bounds f))))
         (TAIL: is_tail c (Linear.fn_code f))
+        (MG: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge)
         (SEP: m' |= frame_contents f j sp' ls (parent_locset cs) (parent_sp cs') (parent_ra cs')
                  ** stack_contents j cs cs'
                  ** minjection j m
@@ -2007,6 +2008,7 @@ Inductive match_states: Linear.state -> Mach.state -> Prop :=
         (AGREGS: agree_regs j ls rs)
         (AGLOCS: agree_callee_save ls (parent_locset cs))
         (FPTR: Val.inject j fptr tfptr)
+        (MG: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge)
         (SEP: m' |= stack_contents j cs cs'
                  ** minjection j m
                  ** globalenv_inject ge j),
@@ -2017,6 +2019,7 @@ Inductive match_states: Linear.state -> Mach.state -> Prop :=
         (STACKS: match_stacks j cs cs' sg)
         (AGREGS: agree_regs j ls rs)
         (AGLOCS: agree_callee_save ls (parent_locset cs))
+        (MG: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge)
         (SEP: m' |= stack_contents j cs cs'
                  ** minjection j m
                  ** globalenv_inject ge j),
@@ -2142,6 +2145,7 @@ Proof.
   apply agree_regs_set_slot. apply agree_regs_undef_regs. auto.
   apply agree_locs_set_slot. apply agree_locs_undef_locs. auto. apply destroyed_by_setstack_caller_save. auto.
   eauto. eauto with coqlib. eauto.
+  eauto.
 
 - (* Lop *)
   assert (exists v',
@@ -2205,6 +2209,7 @@ Proof.
   rewrite transl_destroyed_by_store. apply agree_regs_undef_regs; auto.
   apply agree_locs_undef_locs. auto. apply destroyed_by_store_caller_save.
   auto. eauto with coqlib.
+  eauto.
   eapply frame_undef_regs; eauto.
 
 - (* Lcall *)
@@ -2290,6 +2295,7 @@ Proof.
   apply agree_locs_undef_locs. auto. apply destroyed_by_cond_caller_save.
   auto.
   eapply find_label_tail; eauto.
+  eauto.
   apply frame_undef_regs; auto.
 
 - (* Lcond, false *)
@@ -2301,6 +2307,7 @@ Proof.
   apply agree_regs_undef_regs; auto.
   apply agree_locs_undef_locs. auto. apply destroyed_by_cond_caller_save.
   auto. eauto with coqlib.
+  eauto.
   apply frame_undef_regs; auto.
 
 - (* Ljumptable *)
@@ -2314,6 +2321,7 @@ Proof.
   apply agree_regs_undef_regs; auto.
   apply agree_locs_undef_locs. auto. apply destroyed_by_jumptable_caller_save.
   auto. eapply find_label_tail; eauto.
+  eauto.
   apply frame_undef_regs; auto.
 
 - (* Lreturn *)
@@ -2330,7 +2338,7 @@ Proof.
   exploit functions_translated; eauto. intros (tf & FIND & TRANSL).
   assert(fptr = tfptr /\ exists fb, fptr = Vptr fb Ptrofs.zero true).
   { repeat apply sep_proj2 in SEP. inv SEP. des. inv H1. unfold Genv.find_funct in *. des_ifs. inv FPTR0.
-    exploit FUNCTIONS; eauto. i. exploit DOMAIN; eauto. i; des. clarify. esplits; eauto. } des. clarify.
+    unfold Genv.find_funct_ptr in *; des_ifs. exploit DOMAIN; eauto. { eapply Genv.genv_defs_range; eauto. } i; des. clarify. esplits; eauto. } des. clarify.
   revert TRANSL. unfold transf_fundef, transf_partial_fundef.
   destruct (transf_function f) as [tfn|] eqn:TRANSL; simpl; try congruence.
   intros EQ; inversion EQ; clear EQ; subst tf.
@@ -2357,7 +2365,7 @@ Proof.
   exploit functions_translated; eauto. intros (tf & FIND & TRANSL).
   assert(fptr = tfptr /\ exists fb, fptr = Vptr fb Ptrofs.zero true).
   { repeat apply sep_proj2 in SEP. inv SEP. des. inv H1. unfold Genv.find_funct in *. des_ifs. inv FPTR0.
-    exploit FUNCTIONS; eauto. i. exploit DOMAIN; eauto. i; des. clarify. esplits; eauto. } des. clarify.
+    unfold Genv.find_funct_ptr in *; des_ifs. exploit DOMAIN; eauto. { eapply Genv.genv_defs_range; eauto. } i; des. clarify. esplits; eauto. } des. clarify.
   simpl in TRANSL. inversion TRANSL; subst tf.
   exploit transl_external_arguments; eauto. apply sep_proj1 in SEP; eauto. intros [vl [ARGS VINJ]].
   rewrite sep_comm, sep_assoc in SEP.
@@ -2373,6 +2381,7 @@ Proof.
   apply agree_regs_undef_regs; auto. auto.
   apply agree_callee_save_set_result; auto.
   apply agree_callee_save_extcall; auto.
+  eauto.
   apply stack_contents_change_meminj with j; auto.
   rewrite sep_comm, sep_assoc; auto.
 

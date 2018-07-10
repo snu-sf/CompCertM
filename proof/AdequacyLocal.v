@@ -243,6 +243,7 @@ Section SIMGE.
 
   Theorem mlift_preserves_sim_ge
           sm0 ge_src ge_tgt
+          (MWF: SimMem.wf sm0)
           (SIMGE: sim_ge sm0 ge_src ge_tgt)
     :
       <<SIMGE: sim_ge (SimMem.lift sm0) ge_src ge_tgt>>
@@ -366,8 +367,6 @@ Section SIMGE.
   Proof.
     clarify.
     exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des. rename sm into sm_init. clarify.
-    assert(MWF: SimMem.wf sm_init).
-    { admit "obligate". }
     esplits; eauto.
     unfold load_genv in *.
     eapply sim_ge_cons.

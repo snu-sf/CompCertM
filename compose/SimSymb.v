@@ -398,7 +398,8 @@ End DEPRECATED.
             (<<LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt>>) /\
             (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
             (<<MEMSRC: sm.(SimMem.src_mem) = m_src>>) /\
-            (<<MEMTGT: sm.(SimMem.tgt_mem) = m_tgt>>)
+            (<<MEMTGT: sm.(SimMem.tgt_mem) = m_tgt>>) /\
+            (<<MWF: sm.(SimMem.wf)>>)
       ;
 
       mle_preserves_sim_skenv: forall
@@ -412,6 +413,7 @@ End DEPRECATED.
 
       mlift_preserves_sim_skenv: forall
           sm0
+          (MWF: SimMem.wf sm0)
           ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
         ,

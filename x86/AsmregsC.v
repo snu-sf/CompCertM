@@ -397,6 +397,9 @@ Inductive store_arguments (fptr: val) (vs: list val) (m0: mem) (sg: signature):
             m1.(Mem.nextblock) = m_arg.(Mem.nextblock) /\
             (forall ofs (OUTSIDE: ~ 0 <= ofs < 4 * size_arguments sg), ~Mem.perm m_arg sp ofs Cur Nonempty) /\
             Mem.range_perm m_arg sp 0 (4 * size_arguments sg) Cur Freeable)
+    (PCPTR: is_ptr (rs_arg PC))
+    (RAPTR: is_ptr (rs_arg RA))
+    (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned) (* Note: if this is not satisfied, compilation fails in stacking pass. *)
   :
     store_arguments fptr vs m0 sg rs_arg m_arg
 .
@@ -410,6 +413,8 @@ Inductive load_arguments (rs_arg: regset) (m_arg: mem) (sg_init: signature)
     (PERM: Mem.range_perm m_arg sp 0 (4 * (size_arguments sg_init)) Cur Writable)
     (VAL: extcall_arguments rs_arg m_arg sg_init vs_init)
     (DROP: Mem_set_perm m_arg sp 0 (4 * (size_arguments sg_init)) None = Some m_init)
+    (RAPTR: is_ptr (rs_arg RA))
+    (BOUND: 4 * size_arguments sg_init <= Ptrofs.max_unsigned)
 .
 
 Lemma load_arguments_dtm0
@@ -487,7 +492,7 @@ Theorem store_load_arguments_progress
 Proof.
   inv STORE. des.
   assert(exists m2, Mem_set_perm m_arg sp 0 (4 * size_arguments sg) None = Some m2).
-  { admit "it always suceeds". }
+  { admit "ez - drop_perm". }
   des.
   esplits; eauto. econs; eauto.
   - eapply Mem.range_perm_implies; eauto.

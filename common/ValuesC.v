@@ -24,6 +24,15 @@ Require Import sflib.
 (** newly added **)
 Require Export Values.
 
+Definition is_ptr (v: val): bool :=
+  match v with
+  | Vptr _ _ _ => true
+  | _ => false
+  end
+.
+
+Hint Unfold is_ptr.
+
 Definition is_real_ptr (v: val): bool :=
   match v with
   | Vptr _ _ true => true

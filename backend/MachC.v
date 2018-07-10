@@ -18,6 +18,7 @@ Require Import Simulation Integers.
 
 Set Implicit Arguments.
 
+Local Open Scope asm.
 
 
 Section MACHEXTRA.
@@ -237,7 +238,7 @@ Definition dummy_stack (parent_sp parent_ra: val): stackframe :=
 .
 
 Hint Unfold dummy_stack.
-Global Opaque dummy_stack.
+(* Global Opaque dummy_stack. *)
 Require Import AsmregsC.
 
 Definition get_mem (st: state): mem :=
@@ -247,7 +248,7 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end.
 
-Definition pregset_of (mrs: Mach.regset): regset :=
+Definition to_pregset (mrs: Mach.regset): regset :=
   fun pr =>
     match pr.(to_mreg) with
     | Some mr => mrs mr
@@ -255,12 +256,12 @@ Definition pregset_of (mrs: Mach.regset): regset :=
     end
 .
 
-Definition mregset_of (prs: regset): Mach.regset :=
-  fun mr => prs (preg_of mr)
+Definition to_mregset (prs: regset): Mach.regset :=
+  fun mr => prs (to_preg mr)
 .
 
-Coercion pregset_of: Mach.regset >-> regset.
-Coercion mregset_of: regset >-> Mach.regset.
+(* Coercion pregset_of: Mach.regset >-> regset. *)
+(* Coercion mregset_of: regset >-> Mach.regset. *)
 
 Section MODSEM.
 
@@ -279,13 +280,12 @@ Section MODSEM.
 
   Inductive at_external: state -> regset -> mem -> Prop :=
   | at_external_intro
-      fptr_arg stack rs_arg m_arg
-      (FPTR: fptr_arg = rs_arg PC)
+      fptr_arg stack (rs_arg: Mach.regset) m_arg
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
 
     :
-      at_external (Callstate stack fptr_arg rs_arg.(mregset_of) m_arg)
-                  rs_arg m_arg
+      at_external (Callstate stack fptr_arg rs_arg m_arg)
+                  (rs_arg.(to_pregset) # PC <- fptr_arg) m_arg
   .
 
   Inductive initial_frame (rs_arg: regset) (m_arg: mem)
@@ -304,7 +304,7 @@ Section MODSEM.
       (* (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable) *)
     :
       initial_frame rs_arg m_arg
-                    (Callstate [(dummy_stack (rs_arg SP) (rs_arg RA))] fptr_arg rs_arg m_arg)
+                    (Callstate [(dummy_stack (rs_arg SP) (rs_arg RA))] fptr_arg rs_arg.(to_mregset) m_arg)
   .
 
   Inductive final_frame (rs_init: regset): state -> regset -> Prop :=
@@ -312,16 +312,16 @@ Section MODSEM.
       rs_ret m_ret
       dummy_stack
     :
-      final_frame rs_init (Returnstate [dummy_stack] rs_ret m_ret) rs_ret
+      final_frame rs_init (Returnstate [dummy_stack] rs_ret m_ret) rs_ret.(to_pregset)
   .
 
   Inductive after_external: state -> regset -> regset -> mem -> state -> Prop :=
   | after_external_intro
-      stack fptr_arg rs_arg m_arg
+      stack fptr_arg _rs_arg (* TODO: We can just ignore _rs_arg. Can we unify this with rs_arg? *) rs_arg m_arg
       rs_ret m_ret
     :
-      after_external (Callstate stack fptr_arg rs_arg m_arg) rs_arg rs_ret m_ret
-                     (Returnstate stack rs_ret m_ret)
+      after_external (Callstate stack fptr_arg _rs_arg m_arg) rs_arg rs_ret m_ret
+                     (Returnstate stack rs_ret.(to_mregset) m_ret)
   .
 
 

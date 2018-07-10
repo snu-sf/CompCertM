@@ -6,7 +6,7 @@ Require Import sflib.
 (** newly added **)
 Require Export Renumberproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimSymbId SimMem SimMemId AsmregsC MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem SimMemId AsmregsC MatchSimModSem.
 
 Set Implicit Arguments.
 
@@ -120,12 +120,12 @@ Section MATCHEXTRA.
 
   Lemma match_program_gen_preserves_sim_skenv
         skenv_link_src skenv_link_tgt
-        (SIMSKENV: SimSymbId.sim_skenv skenv_link_src skenv_link_tgt)
+        (SIMSKENV: sim_skenv skenv_link_src skenv_link_tgt)
         proj_src proj_tgt
         (PROJSRC: SkEnv.project_spec skenv_link_src p_src.(defs) proj_src)
         (PROJTGT: SkEnv.project_spec skenv_link_tgt p_tgt.(defs) proj_tgt)
     :
-      <<SIMSKENV: SimSymbId.sim_skenv proj_src proj_tgt>>
+      <<SIMSKENV: sim_skenv proj_src proj_tgt>>
   .
   Proof.
     clarify. inv SIMSKENV. inv PROJSRC. inv PROJTGT.
@@ -183,7 +183,7 @@ Section MATCHEXTRA.
 
   Lemma match_program_gen_revive_match_genvs
         skenv_link_src skenv_link_tgt
-        (SIMSKENV: SimSymbId.sim_skenv skenv_link_src skenv_link_tgt)
+        (SIMSKENV: sim_skenv skenv_link_src skenv_link_tgt)
         proj_src proj_tgt
         (PROJSRC: SkEnv.project_spec skenv_link_src p_src.(defs) proj_src)
         (PROJTGT: SkEnv.project_spec skenv_link_tgt p_tgt.(defs) proj_tgt)
@@ -227,7 +227,7 @@ Section MATCHEXTRA.
 
   Lemma match_program_gen_revive_match_genvs_deprecated
         skenv_link_src skenv_link_tgt
-        (SIMSKENV: SimSymbId.sim_skenv skenv_link_src skenv_link_tgt)
+        (SIMSKENV: sim_skenv skenv_link_src skenv_link_tgt)
         ge_src ge_tgt
         (REVIVESRC: ge_src = SkEnv.revive (SkEnv.project skenv_link_src (defs p_src)) p_src)
         (REVIVETGT: ge_tgt = SkEnv.revive (SkEnv.project skenv_link_tgt (defs p_tgt)) p_tgt)
@@ -265,7 +265,7 @@ Section MATCHEXTRA.
         ge_src ge_tgt
         (REVIVESRC: ge_src = SkEnv.revive skenv_proj_src p_src)
         (REVIVETGT: ge_tgt = SkEnv.revive skenv_proj_tgt p_tgt)
-        (SIMSKENV: SimSymbId.sim_skenv skenv_proj_src skenv_proj_tgt)
+        (SIMSKENV: sim_skenv skenv_proj_src skenv_proj_tgt)
     :
       <<SIMGE: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge_src ge_tgt>>
   .
@@ -314,7 +314,7 @@ Inductive match_states (rs_init_src rs_init_tgt: regset)
     (SIMRSINIT: SimMem.sim_regset sm0 rs_init_src rs_init_tgt)
     (MATCHST: RNMBREXTRA.match_states prog ge tge st_src0 st_tgt0)
     (MCOMPAT: mem_compat msp.(ModSemPair.src) msp.(ModSemPair.tgt) st_src0 st_tgt0 sm0)
-    (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge)
+    (* (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge) *)
 .
 
 Theorem sim_modsem

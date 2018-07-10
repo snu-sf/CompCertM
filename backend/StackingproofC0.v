@@ -1510,8 +1510,8 @@ Inductive match_stacks (j: meminj):
           (LOC: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))
         ,
           <<BOUND: ofs + typesize ty <= size_arguments sg_init>>)
-      (RAPTR: is_real_ptr ra)
-      (SPPTR: is_real_ptr sp)
+      (RAPTR: is_ptr ra)
+      (SPPTR: is_ptr sp)
     :
       match_stacks j [LinearC.dummy_stack sg_init ls_init] [MachC.dummy_stack sp ra] sg
   | match_stacks_cons: forall f sp ls c cs fb sp' ra c' cs' sg trf
@@ -1597,10 +1597,9 @@ Lemma match_stacks_type_sp:
   Val.has_type (parent_sp cs') Tptr.
 Proof.
   induction 1; ii; ss.
-  u in *. Fail autounfold in *.
-  Local Transparent dummy_stack. u in *.
+  u in *. des_ifs.
+  (* Local Transparent dummy_stack. unfold dummy_stack in *. clarify. *)
   (* TODO: update tactic "u in *" to manually to autounfold in all hypotheses. *)
-  des_ifs.
 Qed.
 
 Lemma match_stacks_type_retaddr:
@@ -2067,7 +2066,8 @@ Proof.
     exploit (slot_outgoing_argument_valid f); eauto. intro VALID.
     Local Opaque Z.mul Z.add Z.div Z.sub make_env.
     unfold slot_valid in *. simpl_bool. des. des_sumbool. ss.
-    cbn in SEP.
+    des_ifs; cycle 1.
+    { exfalso. sep_simpl_tac. }
     {
       exploit get_location; eauto.
       apply sep_pick2 in SEP. eauto.

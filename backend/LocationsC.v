@@ -177,13 +177,31 @@ Ltac _locmap_tac :=
 Local Opaque Loc.diff.
 Ltac locmap_tac := repeat _locmap_tac.
 
+Lemma mul_le_div
+      a b
+      (LE: 4 * a <= b)
+  :
+    <<LE: a <= b / 4>>
+.
+Proof.
+  red.
+  assert(4 * a / 4 = a).
+  { rewrite Z.mul_comm.
+    SearchAbout(_ * _ / _).
+    rewrite Z.div_mul; ss.
+  }
+  rewrite <- H.
+  eapply Z_div_le; eauto.
+  xomega.
+Qed.
+
 Lemma fill_arguments_spec_slot
       (rs: regset) m sg vs ls
       sp
       (RSP: (rs RSP) = Vptr sp Ptrofs.zero true)
       (EXT: extcall_arguments rs m sg vs)
       (FILL: fill_arguments (Locmap.init Vundef) vs (loc_arguments sg) = Some ls)
-      (SZBOUND: size_arguments sg <= Ptrofs.max_unsigned / 4)
+      (SZBOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
   :
     (<<SLOT: forall
         ofs ty
@@ -206,6 +224,7 @@ Proof.
     esplits; ss; try xomega.
     etransitivity; eauto.
     generalize (loc_arguments_bounded sg); eauto.
+    eapply mul_le_div; eauto.
   }
   assert(NOREPT: Loc.norepet (regs_of_rpairs (loc_arguments sg))).
   { apply loc_arguments_norepet. }

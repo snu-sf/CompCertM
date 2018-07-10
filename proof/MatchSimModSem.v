@@ -67,6 +67,7 @@ Section MATCHSIMFORWARD.
                            idx0 st_src0 st_tgt0 sm0)
       rs_arg_tgt m_arg_tgt
       (CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 rs_arg_tgt m_arg_tgt)
+      (SAFESRC: ms_src.(ModSem.is_call) st_src0)
     ,
       exists rs_arg_src m_arg_src sm_arg,
         (<<CALLSRC: ms_src.(ModSem.at_external) st_src0 rs_arg_src m_arg_src>>)
@@ -223,7 +224,6 @@ Section MATCHSIMFORWARD.
       (*   u in CALLSRC. des. rename rs_arg into rs_arg_src. rename m_arg into m_arg_src. *)
       (*   exploit ATPROGRESS; eauto. *)
       (* } *)
-      clear CALLSRC.
       i.
       exploit ATBSIM; eauto. i; des.
       esplits; eauto.

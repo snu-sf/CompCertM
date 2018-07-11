@@ -659,6 +659,16 @@ Proof.
 }
 Qed.
 
+Lemma match_stacks_parent_sp
+      j cs stack sg
+      (MATCH: match_stacks tprog j cs stack sg)
+  :
+    <<RSPPTR: is_real_ptr (parent_sp stack)>>
+.
+Proof.
+  induction MATCH; ss.
+Qed.
+
 Theorem sim_modsem
   :
     ModSemPair.sim msp
@@ -693,20 +703,43 @@ Proof.
   - inv CALLTGT.
     inv MATCH; ss.
     inv MATCHST; ss.
+    rename m into m_src.
     exploit transl_external_arguments; eauto.
     { apply sep_pick1 in SEP. eauto. }
     intro ARGS; des.
 
-    bar. move SAFESRC at bottom. u in SAFESRC. des. inv SAFESRC. inv STORE. bar.
+    bar. move SAFESRC at bottom. u in SAFESRC. des.
+    rename m_arg into m_arg_src. rename rs_arg0 into rs_arg_src. inv SAFESRC. inv STORE.
+    rename sp into sp_src. des. bar.
 
     fold_all ge. fold_all tge.
-    do 2 eexists; eexists (mk _ _ _ _ _ _ _ _ _). cbn.
+    exploit match_stacks_parent_sp; eauto. intro PTR; des. u in PTR. des_ifs.
+    rename b into sp_tgt. rename i into spofs_tgt.
+    set (sm_arg := (mk (fun blk => if eq_block blk sp_src
+                                   then Some (sp_tgt, spofs_tgt.(Ptrofs.unsigned))
+                                   else sm0.(inj) blk)
+                       sm0.(src_private) sm0.(tgt_private)
+                       sm0.(src_external) sm0.(tgt_external)
+                       m_arg_src sm0.(tgt_mem)
+                       sm0.(src_mem_parent) sm0.(tgt_mem_parent))).
+    do 2 eexists; exists sm_arg. cbn.
     esplits; eauto.
     + econs; eauto.
-      * econs; eauto.
+      econs; eauto.
+    + inv MCOMPAT; ss.
+    + admit "ttttttttttttttttttttttttttttttttttttttt raw admit!!!!!!!!!!!!!!!!!!!8".
+    + econs; eauto.
+      * admit "this should hold".
+      * admit "this should hold".
+      * admit "this should hold".
+      * admit "this should hold".
+      * admit "this should hold".
+      * admit "this should hold".
+    + econs; ss; try apply MWF; eauto.
       *
-      
 
+
+        ttttttttttttttttttttttttt
     inv FPTR; ss.
     + esplits; eauto.
       instantiate (2:= mregset_of _). ss.

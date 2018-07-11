@@ -1511,7 +1511,7 @@ Inductive match_stacks (j: meminj):
         ,
           <<BOUND: ofs + typesize ty <= size_arguments sg_init>>)
       (RAPTR: is_ptr ra)
-      (SPPTR: is_ptr sp)
+      (SPPTR: is_real_ptr sp)
     :
       match_stacks j [LinearC.dummy_stack sg_init ls_init] [MachC.dummy_stack sp ra] sg
   | match_stacks_cons: forall f sp ls c cs fb sp' ra c' cs' sg trf
@@ -2067,7 +2067,6 @@ Proof.
     Local Opaque Z.mul Z.add Z.div Z.sub make_env.
     unfold slot_valid in *. simpl_bool. des. des_sumbool. ss.
     des_ifs; cycle 1.
-    { exfalso. sep_simpl_tac. }
     {
       exploit get_location; eauto.
       apply sep_pick2 in SEP. eauto.

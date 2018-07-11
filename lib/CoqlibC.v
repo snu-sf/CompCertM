@@ -490,3 +490,22 @@ Proof.
   all_once_fast ltac:(fun H => try apply negb_true_iff in H).
 Abort.
 
+Ltac spc H :=
+  let TAC := ss; eauto in
+  match type of H with
+  | forall (a: ?A), _ =>
+    match goal with
+    | [a0: A, a1: A |- _] => fail 2 "More than one specialization is possible!"
+    | [a0: A |- _] => specialize (H a0)
+    | _ =>
+      tryif is_prop A
+      then
+        let name := fresh in
+        assert(name: A) by TAC; specialize (H name); clear name
+      else
+        fail 2 "No specialization possible!"
+    end
+  | _ => fail 1 "Nothing to specialize!"
+  end
+.
+

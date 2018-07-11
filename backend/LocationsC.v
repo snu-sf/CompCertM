@@ -44,6 +44,26 @@ Fixpoint fill_arguments (ls0: locset) (args: list val) (locs: list (rpair loc)):
 Local Opaque Z.mul Z.add.
 Local Opaque list_nth_z.
 
+Definition is_one A (ap: rpair A): bool :=
+  match ap with
+  | One _ => true
+  | Twolong _ _ => false
+  end
+.
+
+(* THIS IS HACKING *)
+Lemma loc_arguments_one
+      sg
+  :
+    forall lp (IN: In lp (loc_arguments sg)), <<ONE: is_one lp>>
+.
+Proof.
+  destruct sg; ss. unfold loc_arguments in *. ss. des_ifs. clear_tac.
+  generalize 0 at 1 as ir. generalize 0 at 1 as fr. generalize 0 at 1 as ofs.
+  ginduction sig_args; ii; ss.
+  - des_ifs; repeat (des; ss; clarify); eapply IHsig_args; eauto.
+Qed.
+
 Lemma chunk_type_chunk
       ty
   :

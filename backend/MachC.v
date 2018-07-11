@@ -248,18 +248,6 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end.
 
-Definition to_pregset (mrs: Mach.regset): regset :=
-  fun pr =>
-    match pr.(to_mreg) with
-    | Some mr => mrs mr
-    | None => Vundef
-    end
-.
-
-Definition to_mregset (prs: regset): Mach.regset :=
-  fun mr => prs (to_preg mr)
-.
-
 (* Coercion pregset_of: Mach.regset >-> regset. *)
 (* Coercion mregset_of: regset >-> Mach.regset. *)
 

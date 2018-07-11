@@ -1,10 +1,11 @@
 Require Import CoqlibC Maps.
 Require Import ValuesC.
-Require Import Locations Stacklayout Conventions.
+Require Import LocationsC Stacklayout Conventions.
 Require Import MemoryC Integers AST.
 (** newly added **)
 Require Export Asmregs.
 Require Import Locations.
+Require Mach.
 
 Set Implicit Arguments.
 
@@ -108,6 +109,18 @@ Proof.
   rewrite to_preg_to_mreg; ss.
 Qed.
 
+Definition to_pregset (mrs: Mach.regset): regset :=
+  fun pr =>
+    match pr.(to_mreg) with
+    | Some mr => mrs mr
+    | None => Vundef
+    end
+.
+
+Definition to_mregset (prs: regset): Mach.regset :=
+  fun mr => prs (to_preg mr)
+.
+
 Print Conventions1.
 (* Note: callee_save registers all reside in mregs. So we can just put undef on preg\mreg. *)
 
@@ -134,25 +147,6 @@ Inductive callee_saved (sg: signature) (rs0 rs1: regset): Prop :=
         <<SAVE: Val.lessdef (rs0 r) (rs1 r)>>
     )
 (* In Compcert' sg is not needed (see is_callee_save). Is it true in real-world too? *)
-.
-
-Ltac spc H :=
-  let TAC := ss; eauto in
-  match type of H with
-  | forall (a: ?A), _ =>
-    match goal with
-    | [a0: A, a1: A |- _] => fail 2 "More than one specialization is possible!"
-    | [a0: A |- _] => specialize (H a0)
-    | _ =>
-      tryif is_prop A
-      then
-        let name := fresh in
-        assert(name: A) by TAC; specialize (H name); clear name
-      else
-        fail 2 "No specialization possible!"
-    end
-  | _ => fail 1 "Nothing to specialize!"
-  end
 .
 
 Theorem callee_saved_lessdef
@@ -380,10 +374,6 @@ End PLAYGROUND.
 
 
 
-
-
-
-
 Inductive store_arguments (fptr: val) (vs: list val) (m0: mem) (sg: signature):
   regset -> mem -> Prop :=
 | store_arguments_intro
@@ -412,7 +402,7 @@ Inductive load_arguments (rs_arg: regset) (m_arg: mem) (sg_init: signature)
     (FPTR: rs_arg PC = fptr_init)
     (PERM: Mem.range_perm m_arg sp 0 (4 * (size_arguments sg_init)) Cur Writable)
     (VAL: extcall_arguments rs_arg m_arg sg_init vs_init)
-    (DROP: Mem_set_perm m_arg sp 0 (4 * (size_arguments sg_init)) None = Some m_init)
+    (DROP: Mem_drop_perm_none m_arg sp 0 (4 * (size_arguments sg_init)) = m_init)
     (RAPTR: is_ptr (rs_arg RA))
     (BOUND: 4 * size_arguments sg_init <= Ptrofs.max_unsigned)
 .
@@ -443,29 +433,6 @@ Proof.
   determ_tac extcall_arguments_determ.
 Qed.
 
-Definition dead_block (m: mem) (b: block): Prop := forall ofs, ~Mem.perm m b ofs Cur Nonempty.
-
-Lemma Mem_unchanged_on_trans_strong
-      P m0 m1 m2
-      (UNCH0: Mem.unchanged_on P m0 m1)
-      (UNCH1: Mem.unchanged_on (P /2\ (fun b _ => Mem.valid_block m0 b)) m1 m2)
-  :
-    <<UNCH2: Mem.unchanged_on P m0 m2>>
-.
-Proof.
-  inv UNCH0. inv UNCH1.
-  econs; i.
-  - xomega.
-  - etransitivity.
-    { eapply unchanged_on_perm; eauto. }
-    eapply unchanged_on_perm0; eauto.
-    { unfold Mem.valid_block in *. xomega. }
-  - erewrite <- unchanged_on_contents; eauto.
-    dup H0. apply Mem.perm_valid_block in H1. unfold Mem.valid_block in *.
-    erewrite <- unchanged_on_contents0; eauto.
-    eapply unchanged_on_perm; eauto.
-Qed.
-
 Local Opaque Z.mul.
 
 Theorem store_arguments_progress
@@ -491,9 +458,6 @@ Theorem store_load_arguments_progress
 .
 Proof.
   inv STORE. des.
-  assert(exists m2, Mem_set_perm m_arg sp 0 (4 * size_arguments sg) None = Some m2).
-  { admit "ez - drop_perm". }
-  des.
   esplits; eauto. econs; eauto.
   - eapply Mem.range_perm_implies; eauto.
     econs; eauto.
@@ -513,23 +477,25 @@ Proof.
   inv STORE. inv LOAD.
   rewrite RSPPTR in *. clarify.
   determ_tac extcall_arguments_determ; eauto.
-  exploit Mem_set_perm_none_spec; eauto. i; des.
   assert(sp0 = (Mem.nextblock m0)).
   { exploit Mem.alloc_result; eauto. }
   clarify.
-  rename m1 into tt. rename m2 into m1. rename tt into m2.
+  exploit (Mem_drop_perm_none_spec m_arg m0.(Mem.nextblock) 0 (4 * size_arguments sg)); eauto. i; des.
   esplits; eauto.
   - eapply Mem_unchanged_on_trans_strong; eauto.
-    admit "Add to set_perm_none_spec. this should hold".
+    eapply Mem.unchanged_on_implies.
+    { eapply UNCH. }
+    ii; des. left. ii; ss. clarify. unfold Mem.valid_block in *. xomega.
   - hnf. ii.
     destruct (classic (0 <= ofs < 4 * size_arguments sg)).
     + eapply INSIDE; eauto.
-    + erewrite <- OUTSIDE in H; cycle 1.
-      { right. xomega. }
-      eapply STORE3; eauto.
+    + rewrite <- Mem.unchanged_on_perm in H; ss; eauto.
+      { eapply STORE3; eauto. }
+      { cbn. right; xomega. }
+      unfold Mem.valid_block.
+      rewrite <- STORE2. erewrite Mem.nextblock_alloc with (m2 := m2); eauto. xomega.
   - exploit Mem.nextblock_alloc; eauto. i; des. rewrite <- H.
-    rewrite STORE2.
-    admit "Add to set_perm_none_spec. this should hold".
+    rewrite STORE2. rewrite <- NB. ss.
 Qed.
 
 

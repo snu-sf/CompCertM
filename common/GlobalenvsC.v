@@ -1,7 +1,7 @@
 Require Recdef.
 Require Import Zwf.
 Require Import Axioms CoqlibC Errors MapsC AST Linking.
-Require Import Integers Floats Values Memory.
+Require Import Integers Floats ValuesC Memory.
 Require Import sflib.
 
 Require Export Globalenvs.
@@ -18,6 +18,56 @@ Set Implicit Arguments.
 
 
 
+
+Definition is_call {F V} (ge: Genv.t F V) (fptr: val): Prop :=
+  Genv.find_funct ge fptr = None /\ is_ptr fptr (* TODO: or, not_undef? or, is_real_ptr? *)
+.
+
+Hint Unfold is_call.
+
+Section ISCALL.
+
+  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker F1} {LV: Linker V1}.
+  Variable ge1: Genv.t F1 V1.
+  Variable ge2: Genv.t F2 V2.
+  Variable ctx: C.
+  Variable match_fundef: C -> F1 -> F2 -> Prop.
+  Variable match_varinfo: V1 -> V2 -> Prop.
+  Hypothesis (GEMATCH: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge1 ge2).
+
+  Lemma is_call_lessdef_progress
+        fptr1 fptr2
+        (LD: Val.lessdef fptr1 fptr2)
+        (SRCCALL: is_call ge1 fptr1)
+    :
+      <<TGTCALL: is_call ge2 fptr2>>
+  .
+  Proof.
+    u in *. des. inv LD; ss. des_ifs.
+    esplits; eauto.
+    ss. des_ifs.
+    unfold Genv.find_funct_ptr, Genv.find_def in *. inv GEMATCH.
+    specialize (mge_defs b). inv mge_defs; ss.
+    inv H1; ss. des_ifs.
+  Qed.
+
+  Lemma is_call_lessdef_bsim
+        fptr1 fptr2
+        (LD: Val.lessdef fptr1 fptr2)
+        (TGTCALL: is_call ge2 fptr2)
+    :
+      <<SRCCALL: is_call ge1 fptr1>> \/ <<SRCUB: fptr1 = Vundef>>
+  .
+  Proof.
+    u in *. des. inv LD; ss; cycle 1. { right; ss. } left. des_ifs.
+    esplits; eauto.
+    ss. des_ifs; try (by left; esplits; eauto).
+    unfold Genv.find_funct_ptr, Genv.find_def in *. inv GEMATCH.
+    specialize (mge_defs b). inv mge_defs; ss.
+    inv H1; ss. des_ifs.
+  Qed.
+
+End ISCALL.
 
 Section MAP.
 

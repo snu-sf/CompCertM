@@ -14,7 +14,7 @@ Require Stacklayout.
 (** newly added **)
 Require Export Mach.
 Require Import Skeleton Mod ModSem.
-Require Import Simulation Integers.
+Require Import Simulation Integers ArgPassing.
 
 Set Implicit Arguments.
 
@@ -239,7 +239,6 @@ Definition dummy_stack (parent_sp parent_ra: val): stackframe :=
 
 Hint Unfold dummy_stack.
 (* Global Opaque dummy_stack. *)
-Require Import AsmregsC.
 
 Definition get_mem (st: state): mem :=
   match st with
@@ -248,6 +247,7 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end.
 
+Require Import AsmregsC.
 (* Coercion pregset_of: Mach.regset >-> regset. *)
 (* Coercion mregset_of: regset >-> Mach.regset. *)
 
@@ -270,10 +270,11 @@ Section MODSEM.
   | at_external_intro
       fptr_arg stack (rs_arg: Mach.regset) m_arg
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
-
+      prs_arg
+      (CD: C2D rs_arg fptr_arg (parent_sp stack) prs_arg)
     :
       at_external (Callstate stack fptr_arg rs_arg m_arg)
-                  (rs_arg.(to_pregset) # PC <- fptr_arg) m_arg
+                  prs_arg m_arg
   .
 
   Inductive initial_frame (rs_arg: regset) (m_arg: mem)

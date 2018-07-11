@@ -8,6 +8,25 @@ Require Mach.
 
 Set Implicit Arguments.
 
+Local Open Scope asm.
+
+
+
+Lemma map_ext_strong
+      X Y
+      (f g: X -> Y)
+      xs
+      (EXT: forall x (IN: In x xs), f x = g x)
+  :
+    map f xs = map g xs
+.
+Proof.
+  ginduction xs; ii; ss.
+  exploit EXT; eauto. i; des.
+  f_equal; ss.
+  eapply IHxs; eauto.
+Qed.
+
 
 (* Notation rtc := (Relation_Operators.clos_refl_trans_1n _). (* reflexive transitive closure *) *)
 (* Definition stores: mem -> mem -> Prop := *)
@@ -28,33 +47,38 @@ Section STYLES.
   Print Mach.extcall_arg.
   About extcall_arguments.
 
-  Inductive A2B (vs: list val) (ls: locset): Prop :=
+  Inductive A2B (vs_arg: list val)
+            (ls_arg: locset): Prop :=
   | A2B_intro
-      (ARGS: vs = (map (fun p => Locmap.getpair p ls) (loc_arguments sg)))
+      (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg)))
       (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
   .
 
-  Inductive B2C (m0: mem) (ls: locset) (m1: mem) (mrs: Mach.regset) (rsp: val): Prop :=
+  Inductive B2A (ls_arg: locset)
+            (vs_arg: list val): Prop :=
+  | B2A_intro
+      (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg)))
+  .
+
+  Inductive B2C (ls_arg: locset) (m_arg0: mem)
+            (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg1: mem): Prop :=
   | B2C_intro
-      (REGS: forall
-          mr
-        ,
-          ls (R mr) = mrs mr)
+      (REGS: mrs_arg = fun mr => ls_arg (R mr))
       m_alloc blk
-      (ALLOC: Mem.alloc m0 fe_ofs_arg (4 * (size_arguments sg)) = (m_alloc, blk))
-      (NB: m_alloc.(Mem.nextblock) = m1.(Mem.nextblock))
-      (PERM: all4 (Mem.perm m_alloc <4> Mem.perm m1))
+      (ALLOC: Mem.alloc m_arg0 fe_ofs_arg (4 * (size_arguments sg)) = (m_alloc, blk))
+      (NB: m_alloc.(Mem.nextblock) = m_arg1.(Mem.nextblock))
+      (PERM: all4 (Mem.perm m_alloc <4> Mem.perm m_arg1))
       (SLOTS: forall
           l0
           (IN: In l0 (regs_of_rpairs (loc_arguments sg)))
         ,
           match l0 with
           | S Outgoing ofs ty =>
-            Mach.load_stack m1 rsp ty (Ptrofs.repr (fe_ofs_arg + 4 * ofs)) = Some (ls l0)
+            Mach.load_stack m_arg1 rsp_arg ty (Ptrofs.repr (fe_ofs_arg + 4 * ofs)) = Some (ls_arg l0)
           | _ => True
           end)
-      (UNCH: Mem.unchanged_on top2 m0 m1)
-      (RSPPTR: rsp = (Vptr blk Ptrofs.zero true))
+      (UNCH: Mem.unchanged_on top2 m_arg0 m_arg1)
+      (RSPPTR: rsp_arg = (Vptr blk Ptrofs.zero true))
       (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
   .
   (* Inductive B2C (m0: mem) (ls: locset) (m1: mem) (mrs: Mach.regset) (rsp: val): Prop := *)
@@ -79,30 +103,98 @@ Section STYLES.
   (*     (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
   (* . *)
 
+  Definition C2B_locset (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg: mem): locset :=
+    fun l0 =>
+      match l0 with
+      | R mr => mrs_arg mr
+      | S sl ofs ty =>
+        if Loc.notin_dec l0 (regs_of_rpairs (loc_arguments sg))
+        then Vundef
+        else
+          match Mach.load_stack m_arg rsp_arg ty (Ptrofs.repr (fe_ofs_arg + 4 * ofs)) with
+          | Some v => v
+          | None => Vundef
+          end
+      end
+  .
+
+  Inductive C2B (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg: mem)
+            (ls_arg: locset) (m_init: mem): Prop :=
+  | C2B_intro
+      (LOCSET: ls_arg = C2B_locset mrs_arg rsp_arg m_arg)
+      blk
+      (RSPPTR: rsp_arg = (Vptr blk Ptrofs.zero true))
+      (PERM: Mem.range_perm m_arg blk 0 (4 * (size_arguments sg)) Cur Writable)
+      (DROP: Mem_drop_perm_none m_arg blk 0 (4 * (size_arguments sg)) = m_init)
+  .
+
   Compute (to_mreg RSP).
   Compute (to_mreg PC).
   Compute (to_mreg RA).
 
-  Inductive C2D (mrs: Mach.regset) (fptr: val) (rsp: val) (prs: Asmregs.regset): Prop :=
+  Definition C2D_pregset (mrs_arg: Mach.regset) (ra: val) (fptr_arg: val) (rsp_arg: val): Asmregs.regset :=
+    (mrs_arg.(to_pregset)
+               # PC <- fptr_arg
+               # RA <- ra
+               # RSP <- rsp_arg)
+  .
+  Inductive C2D (mrs_arg: Mach.regset) (fptr_arg: val) (rsp_arg: val)
+            (prs_arg: Asmregs.regset): Prop :=
   | C2D_intro
       ra
-      (REGSET: prs = fun pr =>
-                       match to_mreg pr with
-                       | Some mr => mrs mr
-                       | None =>
-                         match pr with
-                         | RSP => rsp
-                         | PC => fptr
-                         | RA => ra
-                         | _ => Vundef
-                         end
-                       end)
+      (REGSET: prs_arg = fun pr =>
+                           match to_mreg pr with
+                           | Some mr => mrs_arg mr
+                           | None =>
+                             match pr with
+                             | RSP => rsp_arg
+                             | PC => fptr_arg
+                             | RA => ra
+                             | _ => Vundef
+                             end
+                           end)
       (RAPTR: is_ptr ra)
+  .
+
+  Inductive B2D (fptr_arg: val) (ls_arg: locset) (m_arg_pre: mem)
+            (prs_arg: Asmregs.regset) (m_arg: mem): Prop :=
+  | B2D_intro
+      mrs rsp_arg
+      (BC: B2C ls_arg m_arg_pre mrs rsp_arg m_arg)
+      (CD: C2D mrs fptr_arg rsp_arg prs_arg)
+  .
+
+  Inductive A2D (fptr_arg: val) (vs_arg: list val) (m_arg_pre: mem)
+             (prs_arg: Asmregs.regset) (m_arg: mem): Prop :=
+  | A2D_intro
+      ls
+      (AB: A2B vs_arg ls)
+      mrs rsp_arg
+      (BC: B2C ls m_arg_pre mrs rsp_arg m_arg)
+      (CD: C2D mrs fptr_arg rsp_arg prs_arg)
+  .
+
+  Inductive D2C (prs_arg: Asmregs.regset)
+            (mrs: Mach.regset) (fptr: val) (rsp: val): Prop :=
+  | D2C_intro
+      (FPTR: prs_arg PC = fptr)
+      (RSPPTR: prs_arg RSP = rsp)
+      (REGSET: mrs = prs_arg.(to_mregset))
+      (RAPTR: is_ptr (prs_arg RA))
   .
 
   Inductive D2A (prs_arg: regset) (m_arg: mem)
             (fptr_init: val) (vs_init: list val) (m_init: mem): Prop :=
   | D2A_intro
+      rsp mrs_arg ls_arg
+      (DC: D2C prs_arg mrs_arg fptr_init rsp)
+      (CB: C2B mrs_arg rsp m_arg ls_arg m_init)
+      (BA: B2A ls_arg vs_init)
+  .
+
+  Inductive D2A_old (prs_arg: regset) (m_arg: mem)
+            (fptr_init: val) (vs_init: list val) (m_init: mem): Prop :=
+  | D2A_old_intro
       sp
       (RSPPTR: prs_arg RSP = Vptr sp Ptrofs.zero true)
       (FPTR: prs_arg PC = fptr_init)
@@ -113,14 +205,20 @@ Section STYLES.
       (BOUND: DUMMY_PROP) (* 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
   .
 
-  Inductive A2D (fptr_arg: val) (vs_arg: list val) (m_arg_pre: mem)
-             (prs_arg: Asmregs.regset) (m_arg: mem): Prop :=
-  | A2D_intro
-      ls
-      (AB: A2B vs_arg ls)
-      mrs rsp_arg
-      (BC: B2C m_arg_pre ls m_arg mrs rsp_arg)
-      (CD: C2D mrs fptr_arg rsp_arg prs_arg)
+  Inductive D2B_old (prs_arg: Asmregs.regset) (m_arg: mem)
+            (fptr_init: val) (ls_init: locset) (m_init: mem): Prop :=
+  | D2B_intro_old
+      vs_init
+      (DA: D2A prs_arg m_arg fptr_init vs_init m_init)
+      (AB: A2B vs_init ls_init)
+  .
+
+  Inductive D2B (prs_arg: Asmregs.regset) (m_arg: mem)
+            (fptr_init: val) (ls_init: locset) (m_init: mem): Prop :=
+  | D2B_intro
+      rsp mrs
+      (DC: D2C prs_arg mrs fptr_init rsp)
+      (CB: C2B mrs rsp m_arg ls_init m_init)
   .
 
   Lemma A2D_progress
@@ -138,11 +236,11 @@ NOTE: Old version of Compcert should have related code.
 I checked this commit, there is a pass called Reload which deals this problem.".
   Qed.
 
-  Lemma A2D2A
+  Lemma A2D2A_old
         fptr vs m0 prs m1
         (AD: A2D fptr vs m0 prs m1)
     :
-      exists m2, <<DA :D2A prs m1 fptr vs m2>> /\ <<MEM: mem_equiv m0 m2>>
+      exists m2, <<DA :D2A_old prs m1 fptr vs m2>> /\ <<MEM: mem_equiv m0 m2>>
   .
   Proof.
     inv AD.
@@ -155,7 +253,7 @@ I checked this commit, there is a pass called Reload which deals this problem.".
         generalize (loc_arguments_one sg). intro ONES.
         abstr (loc_arguments sg) locs.
         clears sg; clear sg.
-        clear - ACCPS ONES SLOTS REGS.
+        clear - ACCPS ONES SLOTS.
         ginduction locs; ii; ss.
         * econs; eauto.
         * econs; eauto; cycle 1.
@@ -165,7 +263,7 @@ I checked this commit, there is a pass called Reload which deals this problem.".
           exploit ONES; eauto. i; des.
           destruct a; ss.
           destruct r; ss; econs; eauto.
-          -- erewrite REGS. rpapply extcall_arg_reg. u. rewrite to_preg_to_mreg. ss.
+          -- rpapply extcall_arg_reg. u. rewrite to_preg_to_mreg. ss.
           -- exploit ACCPS; eauto. intro ACCP. ss. des_ifs.
              econs; eauto. exploit SLOTS; eauto.
     - hexploit (Mem_drop_perm_none_spec m1 m0.(Mem.nextblock) 0 (4 * size_arguments sg)); eauto. i; des.
@@ -186,6 +284,40 @@ I checked this commit, there is a pass called Reload which deals this problem.".
     all: ss.
   Qed.
 
+  Lemma A2D2A
+        fptr vs m0 prs m1
+        (AD: A2D fptr vs m0 prs m1)
+    :
+      exists m2, <<DA :D2A prs m1 fptr vs m2>> /\ <<MEM: mem_equiv m0 m2>>
+  .
+  Proof.
+    inv AD; ss. inv AB; inv BC; inv CD; ss.
+    esplits; eauto.
+    - econs; eauto.
+      + econs; eauto.
+      + cbn. unfold to_mregset.
+        econs; eauto.
+        * ii. rewrite <- PERM. eauto with mem.
+      + econs; eauto.
+        generalize (loc_arguments_acceptable sg). intro ACCPS.
+        generalize (loc_arguments_one sg). intro ONES.
+        clear - ACCPS SLOTS ONES.
+        Local Opaque Loc.notin_dec.
+        eapply map_ext_strong.
+        ii; ss.
+        exploit ONES; eauto. i; des. destruct x; ss.
+        destruct r; ss.
+        { rewrite to_preg_to_mreg. reflexivity. }
+        exploit ACCPS; eauto. i; des. ss. des_ifs_safe.
+        specialize (SLOTS (S Outgoing pos ty)). ss.
+        assert(INN: In (S Outgoing pos ty) (regs_of_rpairs (loc_arguments sg))).
+        { admit "ez". }
+        exploit SLOTS; eauto. i; des.
+        des_ifs.
+        exfalso. eapply Loc.notin_not_in; eauto.
+    - admit "ez".
+  Qed.
+
   Lemma mem_future
     :
       True
@@ -200,4 +332,119 @@ Two possibilities.
 
 End STYLES.
 
+
+
+Lemma D2C_dtm
+      prs_arg mrs0 fptr0 rsp0 mrs1 fptr1 rsp1
+      (DC0: D2C prs_arg mrs0 fptr0 rsp0)
+      (DC1: D2C prs_arg mrs1 fptr1 rsp1)
+  :
+    mrs0 = mrs1 /\ fptr0 = fptr1 /\ rsp0 = rsp1
+.
+Proof.
+  inv DC0; inv DC1; ss; clarify.
+Qed.
+
+Lemma C2B_dtm
+      sg_arg mrs_arg rsp_arg m_arg ls_arg0 m_init0 ls_arg1 m_init1
+      (CB0: C2B sg_arg mrs_arg rsp_arg m_arg ls_arg0 m_init0)
+      (CB1: C2B sg_arg mrs_arg rsp_arg m_arg ls_arg1 m_init1)
+  :
+    ls_arg0 = ls_arg1 /\ m_init0 = m_init1
+.
+Proof.
+  inv CB0; inv CB1; ss; clarify.
+Qed.
+
+Lemma B2A_dtm
+      sg_arg ls_arg vs_arg0 vs_arg1
+      (BA0: B2A sg_arg ls_arg vs_arg0)
+      (BA1: B2A sg_arg ls_arg vs_arg1)
+  :
+    vs_arg0 = vs_arg1
+.
+Proof.
+  inv BA0; inv BA1; ss; clarify.
+Qed.
+
+Lemma D2A_dtm0
+      rs_arg m_arg sg_init0 sg_init1
+      fptr_init0 fptr_init1 vs_init0 vs_init1 m_init0 m_init1
+      (DA0: D2A sg_init0 rs_arg m_arg fptr_init0 vs_init0 m_init0)
+      (DA1: D2A sg_init1 rs_arg m_arg fptr_init1 vs_init1 m_init1)
+  :
+    fptr_init0 = fptr_init1
+.
+Proof.
+  inv DA0; inv DA1; ss; clarify.
+  determ_tac D2C_dtm.
+Qed.
+
+Lemma D2A_dtm1
+      rs_arg m_arg sg_init
+      fptr_init vs_init0 vs_init1 m_init0 m_init1
+      (DA0: D2A sg_init rs_arg m_arg fptr_init vs_init0 m_init0)
+      (DA1: D2A sg_init rs_arg m_arg fptr_init vs_init1 m_init1)
+  :
+    vs_init0 = vs_init1 /\ m_init0 = m_init1
+.
+Proof.
+  inv DA0; inv DA1; ss; clarify.
+  determ_tac D2C_dtm.
+  determ_tac C2B_dtm.
+  determ_tac B2A_dtm.
+Qed.
+
+Lemma D2A_old_dtm0
+      rs_arg m_arg sg_init0 sg_init1
+      fptr_init0 fptr_init1 vs_init0 vs_init1 m_init0 m_init1
+      (DA0: D2A_old sg_init0 rs_arg m_arg fptr_init0 vs_init0 m_init0)
+      (DA1: D2A_old sg_init1 rs_arg m_arg fptr_init1 vs_init1 m_init1)
+  :
+    fptr_init0 = fptr_init1
+.
+Proof.
+  inv DA0. inv DA1. clarify.
+Qed.
+
+Lemma D2A_old_dtm1
+      rs_arg m_arg sg_init
+      fptr_init vs_init0 vs_init1 m_init0 m_init1
+      (DA0: D2A_old sg_init rs_arg m_arg fptr_init vs_init0 m_init0)
+      (DA1: D2A_old sg_init rs_arg m_arg fptr_init vs_init1 m_init1)
+  :
+    vs_init0 = vs_init1 /\ m_init0 = m_init1
+.
+Proof.
+  inv DA0. inv DA1.
+  rewrite RSPPTR in *. clarify.
+  determ_tac extcall_arguments_determ.
+Qed.
+
+Lemma D2B_dtm0
+      rs_arg m_arg sg_init0 sg_init1
+      fptr_init0 fptr_init1 ls_init0 ls_init1 m_init0 m_init1
+      (DB0: D2B sg_init0 rs_arg m_arg fptr_init0 ls_init0 m_init0)
+      (DB1: D2B sg_init1 rs_arg m_arg fptr_init1 ls_init1 m_init1)
+  :
+    fptr_init0 = fptr_init1
+.
+Proof.
+  inv DB0; inv DB1; ss; clarify.
+  determ_tac D2C_dtm.
+Qed.
+
+Lemma D2B_dtm1
+      rs_arg m_arg sg_init
+      fptr_init ls_init0 ls_init1 m_init0 m_init1
+      (DB0: D2B sg_init rs_arg m_arg fptr_init ls_init0 m_init0)
+      (DB1: D2B sg_init rs_arg m_arg fptr_init ls_init1 m_init1)
+  :
+    ls_init0 = ls_init1 /\ m_init0 = m_init1
+.
+Proof.
+  inv DB0; inv DB1; ss; clarify.
+  determ_tac D2C_dtm.
+  determ_tac C2B_dtm.
+Qed.
 

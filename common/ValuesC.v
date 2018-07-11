@@ -41,11 +41,27 @@ Definition is_real_ptr (v: val): bool :=
 .
 Hint Unfold is_real_ptr.
 
-Definition is_real_fptr (v: val): bool :=
+Definition is_fake_ptr (v: val): bool :=
   match v with
-  | Vptr _ ofs true => if (Ptrofs.eq ofs Ptrofs.zero) then true else false
+  | Vptr _ _ false => true
   | _ => false
   end
 .
-Hint Unfold is_real_fptr.
+Hint Unfold is_fake_ptr.
+
+Definition to_fake (v: val): val :=
+  match v with
+  | Vptr blk ofs true => Vptr blk ofs false
+  | _ => v
+  end
+.
+
+
+(* Definition is_real_fptr (v: val): bool := *)
+(*   match v with *)
+(*   | Vptr _ ofs true => if (Ptrofs.eq ofs Ptrofs.zero) then true else false *)
+(*   | _ => false *)
+(*   end *)
+(* . *)
+(* Hint Unfold is_real_fptr. *)
 

@@ -4,7 +4,7 @@ Require Import Op LocationsC LTL Conventions.
 (** newly added **)
 Require Export Linear.
 Require Import Skeleton Mod ModSem.
-Require Import Simulation AsmregsC.
+Require Import Simulation AsmregsC ArgPassing.
 
 Set Implicit Arguments.
 
@@ -265,9 +265,10 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg_arg ls_arg rs_arg m_arg_pre m_arg
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
-      vs_arg
-      (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg_arg)))
-      (STORE: store_arguments fptr_arg vs_arg m_arg_pre sg_arg rs_arg m_arg)
+      (BD: B2D sg_arg fptr_arg ls_arg m_arg_pre rs_arg m_arg)
+      (* vs_arg *)
+      (* (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg_arg))) *)
+      (* (STORE: store_arguments fptr_arg vs_arg m_arg_pre sg_arg rs_arg m_arg) *)
     :
       at_external (Callstate stack fptr_arg sg_arg ls_arg m_arg_pre)
                   rs_arg m_arg
@@ -291,24 +292,37 @@ Section MODSEM.
       fptr_arg fd sg_init
       (FINDFUNC: Genv.find_funct ge fptr_arg = Some (Internal fd))
       (SIG: sg_init = fd.(fn_sig))
-
-      vs_init m_init
-      (LOADARG: load_arguments rs_arg m_arg sg_init fptr_arg vs_init m_init)
-
-      (* (LOCSET: fill_slots rs_arg.(to_locset) (loc_arguments sg_init) rs_arg m_arg ls_init) *)
-      ls_init
-      (LOCSET: fill_arguments (Locmap.init Vundef) vs_init (loc_arguments sg_init) = Some ls_init)
-
-      (* sp delta *)
-      (* (RSPPTR: rs_arg RSP = Vptr sp (Ptrofs.repr delta) true) *)
-      (* (ARGSPERM: Mem.range_perm m_arg sp delta (size_arguments fd.(fn_sig)) Cur Writable) *)
-
-      (* (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable) *)
-      (* (RSPSTK: m_arg.(is_stack_block) sp) *)
+      ls_init m_init
+      (DB: D2B sg_init rs_arg m_arg fptr_arg ls_init m_init)
     :
       initial_frame rs_arg m_arg
                     (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_init)
   .
+
+  (* Inductive initial_frame_old (rs_arg: regset) (m_arg: mem) *)
+  (*   : state -> Prop := *)
+  (* | initial_frame_intro_old *)
+  (*     fptr_arg fd sg_init *)
+  (*     (FINDFUNC: Genv.find_funct ge fptr_arg = Some (Internal fd)) *)
+  (*     (SIG: sg_init = fd.(fn_sig)) *)
+
+  (*     vs_init m_init *)
+  (*     (LOADARG: load_arguments rs_arg m_arg sg_init fptr_arg vs_init m_init) *)
+
+  (*     (* (LOCSET: fill_slots rs_arg.(to_locset) (loc_arguments sg_init) rs_arg m_arg ls_init) *) *)
+  (*     ls_init *)
+  (*     (LOCSET: fill_arguments (Locmap.init Vundef) vs_init (loc_arguments sg_init) = Some ls_init) *)
+
+  (*     (* sp delta *) *)
+  (*     (* (RSPPTR: rs_arg RSP = Vptr sp (Ptrofs.repr delta) true) *) *)
+  (*     (* (ARGSPERM: Mem.range_perm m_arg sp delta (size_arguments fd.(fn_sig)) Cur Writable) *) *)
+
+  (*     (* (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable) *) *)
+  (*     (* (RSPSTK: m_arg.(is_stack_block) sp) *) *)
+  (*   : *)
+  (*     initial_frame rs_arg m_arg *)
+  (*                   (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_init) *)
+  (* . *)
 
   Inductive final_frame (rs_init: regset): state -> regset -> Prop :=
   | final_frame_intro
@@ -345,11 +359,9 @@ Section MODSEM.
   .
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.
-    inv INIT0; inv INIT1; ss. clarify.
-    inv LOADARG. inv LOADARG0.
-    rewrite FINDFUNC in *. clarify.
-    determ_tac extcall_arguments_determ.
-    rewrite RSPPTR in *. clarify.
+    inv INIT0; inv INIT1; ss.
+    determ_tac D2B_dtm0.
+    determ_tac D2B_dtm1.
   Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.

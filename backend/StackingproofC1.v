@@ -639,6 +639,8 @@ Proof.
   induction MATCH; ss.
 Qed.
 
+Definition dummy_fake_ptr: val := Vptr 1%positive Ptrofs.zero false.
+
 Theorem sim_modsem
   :
     ModSemPair.sim msp
@@ -665,7 +667,7 @@ Proof.
       admit "this should hold. is_call_progress".
     + econs; eauto.
       { reflexivity. }
-      u. instantiate (1:= (Vptr blk Ptrofs.zero true)). ss.
+      instantiate (1:= dummy_fake_ptr). ss.
     (* inv STORE; ss. *)
     (* u in PCPTR. des_ifs. clear_tac. ss. *)
     (* destruct b0; ss; cycle 1. *)
@@ -756,7 +758,7 @@ IDEA: we only need 'external', not private. !!!!!!!!!
     + des_ifs; try (by econs; eauto).
       * eapply val_inject_incr; eauto. apply MLE.
       * rewrite Heq. econs; eauto. des_ifs. rewrite Ptrofs.add_zero_l. rewrite Ptrofs.repr_unsigned; ss.
-      * admit "ra sholud be a fake ptr so that we can always inject it.".
+      * u in RAPTR. des_ifs. econs; eauto.
 }
   -
     +

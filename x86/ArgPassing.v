@@ -52,6 +52,11 @@ Section STYLES.
   | A2B_intro
       (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg)))
       (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+      (PTRFREE: forall
+          r
+          (NOTIN: Loc.notin (R r) (regs_of_rpairs (loc_arguments sg)))
+        ,
+          <<PTRFREE: ~ is_real_ptr (ls_arg (R r))>>)
   .
 
   Inductive B2A (ls_arg: locset)
@@ -153,7 +158,7 @@ Section STYLES.
                              | _ => Vundef
                              end
                            end)
-      (RAPTR: is_ptr ra)
+      (RAPTR: is_fake_ptr ra)
   .
 
   Inductive B2D (fptr_arg: val) (ls_arg: locset) (m_arg_pre: mem)
@@ -180,7 +185,7 @@ Section STYLES.
       (FPTR: prs_arg PC = fptr)
       (RSPPTR: prs_arg RSP = rsp)
       (REGSET: mrs = prs_arg.(to_mregset))
-      (RAPTR: is_ptr (prs_arg RA))
+      (RAPTR: is_fake_ptr (prs_arg RA))
   .
 
   Inductive D2A (prs_arg: regset) (m_arg: mem)
@@ -201,7 +206,7 @@ Section STYLES.
       (PERM: Mem.range_perm m_arg sp 0 (4 * (size_arguments sg)) Cur Writable)
       (VAL: extcall_arguments prs_arg m_arg sg vs_init)
       (DROP: Mem_drop_perm_none m_arg sp 0 (4 * (size_arguments sg)) = m_init)
-      (RAPTR: is_ptr (prs_arg RA))
+      (RAPTR: is_fake_ptr (prs_arg RA))
       (BOUND: DUMMY_PROP) (* 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
   .
 

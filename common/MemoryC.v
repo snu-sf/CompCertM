@@ -332,3 +332,40 @@ Proof.
       eapply Mem.perm_valid_block; eauto.
 Qed.
 
+Lemma Mem_alloc_range_perm
+      m0 lo hi m1 blk
+      (ALLOC: Mem.alloc m0 lo hi = (m1, blk))
+  :
+    <<PERM: Mem.range_perm m1 blk lo hi Cur Freeable>>
+.
+Proof.
+  ii. eapply Mem.perm_alloc_2; eauto.
+Qed.
+
+Hint Resolve Mem_alloc_range_perm : mem.
+
+
+
+Inductive future_imm (m0 m1: mem): Prop :=
+| future_imm_alloc
+    blk lo hi
+    (FREE: Mem.alloc m0 lo hi = (m1, blk))
+| future_imm_store
+    chunk blk ofs v
+    (STORE: Mem.store chunk m0 blk ofs v = Some m1)
+| future_imm_storebytes
+    ofs blk mvs
+    (STOREB: Mem.storebytes m0 blk ofs mvs = Some m1)
+| future_imm_free
+    blk lo hi
+    (FREE: Mem.free m0 blk lo hi = Some m1)
+| future_imm_drop_perm_none
+    blk lo hi
+    (DROPN: Mem_drop_perm_none m0 blk lo hi = m1)
+(* TODO: drop_perm? *)
+.
+Hint Constructors future_imm.
+
+Definition future: mem -> mem -> Prop := rtc future_imm.
+Hint Unfold future.
+

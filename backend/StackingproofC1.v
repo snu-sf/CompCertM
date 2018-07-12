@@ -639,8 +639,6 @@ Proof.
   induction MATCH; ss.
 Qed.
 
-Definition dummy_fake_ptr: val := Vptr 1%positive Ptrofs.zero false.
-
 Theorem sim_modsem
   :
     ModSemPair.sim msp

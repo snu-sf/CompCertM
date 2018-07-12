@@ -12,26 +12,6 @@ Local Open Scope asm.
 
 
 
-Lemma map_ext_strong
-      X Y
-      (f g: X -> Y)
-      xs
-      (EXT: forall x (IN: In x xs), f x = g x)
-  :
-    map f xs = map g xs
-.
-Proof.
-  ginduction xs; ii; ss.
-  exploit EXT; eauto. i; des.
-  f_equal; ss.
-  eapply IHxs; eauto.
-Qed.
-
-
-(* Notation rtc := (Relation_Operators.clos_refl_trans_1n _). (* reflexive transitive closure *) *)
-(* Definition stores: mem -> mem -> Prop := *)
-(*   rtc (fun m0 m1 => exists chunk ptr val, Mem.storev chunk m0 ptr val = Some m1). *)
-
 Local Opaque Z.mul Z.add Z.div Z.sub.
 Local Opaque list_nth_z.
 
@@ -65,24 +45,50 @@ Section STYLES.
       (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg)))
   .
 
+  (* Q: Why * 4? See Stackig.v "Definition offset_arg (x: Z) := fe_ofs_arg + 4 * x." *)
+  Fixpoint B2C_mem (m0: mem) (rsp: val) (ls: locset) (locs: list loc): option mem :=
+    match locs with
+    | [] =>  Some m0
+    | loc :: locs =>
+      do m1 <- B2C_mem m0 rsp ls locs ;
+        match loc with
+        | S Outgoing ofs ty => Mach.store_stack m1 rsp ty (4 * ofs).(Ptrofs.repr) (ls loc)
+        | _ => Some m1
+        end
+    end
+  .
+
+  Lemma B2C_mem_spec
+        m0 rsp ls
+        (PERM: Mem.range_perm m0 rsp fe_ofs_arg (4 * (size_arguments sg)) Cur Freeable)
+    :
+      exists m1,
+        (<<BCM: B2C_mem m0 (Vptr rsp Ptrofs.zero true) ls (regs_of_rpairs (loc_arguments sg)) = Some m1>>)
+        /\ (<<NB: m0.(Mem.nextblock) = m1.(Mem.nextblock)>>)
+        /\ (<<PERM: all4 (Mem.perm m0 <4> Mem.perm m1)>>)
+        /\ (<<UNCH: Mem.unchanged_on (fun blk _ => blk <> rsp) m0 m1>>)
+        /\ (<<STORED: forall
+               l0
+               (IN: In l0 (regs_of_rpairs (loc_arguments sg)))
+             ,
+               match l0 with
+               | S Outgoing ofs ty =>
+                 Mach.load_stack m1 (Vptr rsp Ptrofs.zero true) ty
+                                 (Ptrofs.repr (fe_ofs_arg + 4 * ofs)) = Some (ls l0)
+               | _ => True
+               end>>)
+  .
+  Proof.
+    admit "ez".
+  Qed.
+
   Inductive B2C (ls_arg: locset) (m_arg0: mem)
             (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg1: mem): Prop :=
   | B2C_intro
       (REGS: mrs_arg = fun mr => ls_arg (R mr))
       m_alloc blk
       (ALLOC: Mem.alloc m_arg0 fe_ofs_arg (4 * (size_arguments sg)) = (m_alloc, blk))
-      (NB: m_alloc.(Mem.nextblock) = m_arg1.(Mem.nextblock))
-      (PERM: all4 (Mem.perm m_alloc <4> Mem.perm m_arg1))
-      (SLOTS: forall
-          l0
-          (IN: In l0 (regs_of_rpairs (loc_arguments sg)))
-        ,
-          match l0 with
-          | S Outgoing ofs ty =>
-            Mach.load_stack m_arg1 rsp_arg ty (Ptrofs.repr (fe_ofs_arg + 4 * ofs)) = Some (ls_arg l0)
-          | _ => True
-          end)
-      (UNCH: Mem.unchanged_on top2 m_arg0 m_arg1)
+      (MEM: B2C_mem m_alloc rsp_arg ls_arg (regs_of_rpairs (loc_arguments sg)) = Some m_arg1)
       (RSPPTR: rsp_arg = (Vptr blk Ptrofs.zero true))
       (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
   .
@@ -226,6 +232,24 @@ Section STYLES.
       (CB: C2B mrs rsp m_arg ls_init m_init)
   .
 
+  Lemma A2B_progress
+        vs
+    :
+      exists ls, <<AB: A2B vs ls>>
+  .
+  Proof.
+    admit "This is needed for user to reason about their program.
+(or to prove refinement of C-phys >= C-logic)
+This is a complex job, and Compcert avoided it by translation validation.
+We might need to revert some old code.
+NOTE: Old version of Compcert should have related code.
+> 6224148 - (HEAD -> master) Reorganization test directory (2010-02-17 13:44:32 +0000) <xleroy>
+I checked this commit, there is a pass called Reload which deals this problem.
+--------------------------------------------
+just define something like 'fill_arguments' in locationsC
+".
+  Qed.
+
   Lemma A2D_progress
         fptr vs m0
         (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
@@ -233,61 +257,71 @@ Section STYLES.
       exists prs m1, <<AD: A2D fptr vs m0 prs m1>>
   .
   Proof.
-    admit "This is needed for user to reason about their program. (or to prove refinement of C-phys >= C-logic)
-This is a complex job, and Compcert avoided it by translation validation.
-We might need to revert some old code.
-NOTE: Old version of Compcert should have related code.
-> 6224148 - (HEAD -> master) Reorganization test directory (2010-02-17 13:44:32 +0000) <xleroy>
-I checked this commit, there is a pass called Reload which deals this problem.".
+    destruct (Mem.alloc m0 fe_ofs_arg (4 * size_arguments sg)) eqn:ALLOC.
+    rename m into m1. rename b into rsp.
+    hexploit (A2B_progress vs); eauto. i; des.
+    exploit (@B2C_mem_spec m1 rsp ls); eauto. { eapply Mem_alloc_range_perm; eauto. } i; des.
+    esplits; eauto.
+    econs; eauto.
+    - econs; eauto.
+      reflexivity.
+    - econs; eauto.
+      + reflexivity.
+      + instantiate (1:= fake_ptr_one). ss.
   Qed.
 
-  Lemma A2D2A_old
-        fptr vs m0 prs m1
-        (AD: A2D fptr vs m0 prs m1)
-    :
-      exists m2, <<DA :D2A_old prs m1 fptr vs m2>> /\ <<MEM: mem_equiv m0 m2>>
-  .
-  Proof.
-    inv AD.
-    inv AB; inv BC; inv CD. ss.
-    esplits; eauto.
-    - econs; cbn; eauto.
-      + ii. eapply PERM. eapply Mem.perm_implies; eauto with mem.
-      + hnf.
-        generalize (loc_arguments_acceptable_2 sg). intro ACCPS.
-        generalize (loc_arguments_one sg). intro ONES.
-        abstr (loc_arguments sg) locs.
-        clears sg; clear sg.
-        clear - ACCPS ONES SLOTS.
-        ginduction locs; ii; ss.
-        * econs; eauto.
-        * econs; eauto; cycle 1.
-          { eapply IHlocs; eauto.
-            - ii. eapply SLOTS; eauto. apply in_app_iff. eauto.
-            - ii. eapply ACCPS. eauto. apply in_app_iff. eauto. }
-          exploit ONES; eauto. i; des.
-          destruct a; ss.
-          destruct r; ss; econs; eauto.
-          -- rpapply extcall_arg_reg. u. rewrite to_preg_to_mreg. ss.
-          -- exploit ACCPS; eauto. intro ACCP. ss. des_ifs.
-             econs; eauto. exploit SLOTS; eauto.
-    - hexploit (Mem_drop_perm_none_spec m1 m0.(Mem.nextblock) 0 (4 * size_arguments sg)); eauto. i; des.
-      exploit Mem.alloc_result; eauto. i; des. clarify.
-      econs; eauto.
-      + eapply Mem_unchanged_on_trans_strong; eauto.
-        eapply Mem.unchanged_on_implies; eauto.
-        ii; des.
-        left. ii. unfold Mem.valid_block in *. subst. xomega.
-      + i. rewrite <- NB0 in *. rewrite <- NB in *.
-        assert(b = Mem.nextblock m0).
-        { admit "ez". }
-        clarify.
-        eapply drop_perm_none_dead_block; eauto. ii; ss.
-        rewrite <- PERM in PERM0.
-        eapply Mem.perm_alloc_3; eauto.
-  Unshelve.
-    all: ss.
-  Qed.
+  (* Lemma A2D2A_old *)
+  (*       fptr vs m0 prs m1 *)
+  (*       (AD: A2D fptr vs m0 prs m1) *)
+  (*   : *)
+  (*     exists m2, <<DA :D2A_old prs m1 fptr vs m2>> /\ <<MEM: mem_equiv m0 m2>> *)
+  (* . *)
+  (* Proof. *)
+  (*   inv AD. *)
+  (*   inv AB; inv BC; inv CD. ss. *)
+  (*   esplits; eauto. *)
+  (*   - econs; cbn; eauto. *)
+  (*     + ii. eapply PERM. eapply Mem.perm_implies; eauto with mem. *)
+  (*     + hnf. *)
+  (*       generalize (loc_arguments_acceptable_2 sg). intro ACCPS. *)
+  (*       generalize (loc_arguments_one sg). intro ONES. *)
+  (*       abstr (loc_arguments sg) locs. *)
+  (*       clears sg; clear sg. *)
+  (*       clear - ACCPS ONES MEM. *)
+  (*       ginduction locs; ii; ss. *)
+  (*       * econs; eauto. *)
+  (*       * exploit ONES; eauto. i; des. destruct a; ss. clear_tac. *)
+  (*         exploit ACCPS; eauto. i; des. *)
+  (*         u in *. des_ifs_safe. ss. *)
+  (*         destruct r; ss; clarify. *)
+  (*         { econs; eauto. *)
+  (*           - econs; eauto. econs; eauto. *)
+  (*         } *)
+  (*         econs; eauto; cycle 1. *)
+  (*         { eapply IHlocs; eauto. *)
+  (*           - ii. eapply SLOTS; eauto. apply in_app_iff. eauto. *)
+  (*           - ii. eapply ACCPS. eauto. apply in_app_iff. eauto. } *)
+  (*         destruct r; ss; econs; eauto. *)
+  (*         -- rpapply extcall_arg_reg. u. rewrite to_preg_to_mreg. ss. *)
+  (*         -- exploit ACCPS; eauto. intro ACCP. ss. des_ifs. *)
+  (*            econs; eauto. exploit SLOTS; eauto. *)
+  (*   - hexploit (Mem_drop_perm_none_spec m1 m0.(Mem.nextblock) 0 (4 * size_arguments sg)); eauto. i; des. *)
+  (*     exploit Mem.alloc_result; eauto. i; des. clarify. *)
+  (*     econs; eauto. *)
+  (*     + eapply Mem_unchanged_on_trans_strong; eauto. *)
+  (*       eapply Mem.unchanged_on_implies; eauto. *)
+  (*       ii; des. *)
+  (*       left. ii. unfold Mem.valid_block in *. subst. xomega. *)
+  (*     + i. rewrite <- NB0 in *. rewrite <- NB in *. *)
+  (*       assert(b = Mem.nextblock m0). *)
+  (*       { admit "ez". } *)
+  (*       clarify. *)
+  (*       eapply drop_perm_none_dead_block; eauto. ii; ss. *)
+  (*       rewrite <- PERM in PERM0. *)
+  (*       eapply Mem.perm_alloc_3; eauto. *)
+  (* Unshelve. *)
+  (*   all: ss. *)
+  (* Qed. *)
 
   Lemma A2D2A
         fptr vs m0 prs m1
@@ -297,6 +331,7 @@ I checked this commit, there is a pass called Reload which deals this problem.".
   .
   Proof.
     inv AD; ss. inv AB; inv BC; inv CD; ss.
+    exploit (@B2C_mem_spec m_alloc blk ls); eauto. { eapply Mem_alloc_range_perm; eauto. } i; des. clarify.
     esplits; eauto.
     - econs; eauto.
       + econs; eauto.
@@ -306,7 +341,7 @@ I checked this commit, there is a pass called Reload which deals this problem.".
       + econs; eauto.
         generalize (loc_arguments_acceptable sg). intro ACCPS.
         generalize (loc_arguments_one sg). intro ONES.
-        clear - ACCPS SLOTS ONES.
+        clear - ACCPS ONES STORED.
         Local Opaque Loc.notin_dec.
         eapply map_ext_strong.
         ii; ss.
@@ -314,10 +349,10 @@ I checked this commit, there is a pass called Reload which deals this problem.".
         destruct r; ss.
         { rewrite to_preg_to_mreg. reflexivity. }
         exploit ACCPS; eauto. i; des. ss. des_ifs_safe.
-        specialize (SLOTS (S Outgoing pos ty)). ss.
+        specialize (STORED (S Outgoing pos ty)). ss.
         assert(INN: In (S Outgoing pos ty) (regs_of_rpairs (loc_arguments sg))).
         { admit "ez". }
-        exploit SLOTS; eauto. i; des.
+        exploit STORED; eauto. i; des.
         des_ifs.
         exfalso. eapply Loc.notin_not_in; eauto.
     - admit "ez".

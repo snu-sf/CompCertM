@@ -65,3 +65,5 @@ Definition to_fake (v: val): val :=
 (* . *)
 (* Hint Unfold is_real_fptr. *)
 
+Definition fake_ptr_one: val := Vptr 1%positive Ptrofs.zero false.
+

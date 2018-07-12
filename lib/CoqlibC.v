@@ -509,3 +509,21 @@ Ltac spc H :=
   end
 .
 
+Lemma map_ext_strong
+      X Y
+      (f g: X -> Y)
+      xs
+      (EXT: forall x (IN: In x xs), f x = g x)
+  :
+    map f xs = map g xs
+.
+Proof.
+  ginduction xs; ii; ss.
+  exploit EXT; eauto. i; des.
+  f_equal; ss.
+  eapply IHxs; eauto.
+Qed.
+
+Notation rtc := (Relation_Operators.clos_refl_trans_1n _).
+(* copied from promising code. TODO: also copy needed lemmas *)
+

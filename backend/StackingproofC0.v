@@ -16,9 +16,9 @@
 
 Require Import CoqlibC Errors.
 Require Import IntegersC AST Linking.
-Require Import ValuesC Memory Separation Events Globalenvs Smallstep.
+Require Import ValuesC Memory SeparationC Events Globalenvs Smallstep.
 Require Import LTL Op LocationsC LinearC MachC.
-Require Import Bounds Conventions Stacklayout Lineartyping.
+Require Import Bounds ConventionsC Stacklayout Lineartyping.
 Require Import Stacking.
 Require Import sflib.
 
@@ -217,7 +217,7 @@ Qed.
 Program Definition contains_locations (j: meminj) (sp: block) (pos bound: Z) (sl: slot) (ls: locset) : massert := {|
   m_pred := fun m =>
     DUMMY_PROP /\ 0 <= pos /\ pos + 4 * bound <= Ptrofs.modulus /\
-    Mem.range_perm m sp pos (pos + 4 * bound) Cur Writable /\
+    Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable /\
     forall ofs ty, 0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
     exists v, Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v
            /\ Val.inject j (ls (S sl ofs ty)) v;
@@ -256,14 +256,14 @@ Proof.
 Qed.
 
 Remark valid_access_location:
-  forall m sp pos bound ofs ty p (PERMORD: perm_order Writable p),
+  forall m sp pos bound ofs ty p,
   (4 * typealign ty | pos) ->
-  Mem.range_perm m sp pos (pos + 4 * bound) Cur Writable ->
+  Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable ->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   Mem.valid_access m (chunk_of_type ty) sp (pos + 4 * ofs) p.
 Proof.
   intros; split.
-- red; intros. apply Mem.perm_implies with Writable; auto with mem.
+- red; intros. apply Mem.perm_implies with Freeable; auto with mem.
   apply H0. rewrite size_type_chunk, typesize_typesize in H4. omega.
 - rewrite align_type_chunk. apply Z.divide_add_r.
   { ss. }
@@ -271,7 +271,7 @@ Proof.
 Qed.
 
 Remark valid_access_location_new:
-  forall m sp pos bound ofs ty p (PERMORD: perm_order Writable p)
+  forall m sp pos bound ofs ty p
          ls sl j
   (VALID: forall ofs ty, 0 <= ofs ->
           ofs + typesize ty <= bound ->
@@ -281,12 +281,12 @@ Remark valid_access_location_new:
   (TYBOUND: ofs + typesize ty <= bound)
   ,
   DUMMY_PROP ->
-  Mem.range_perm m sp pos (pos + 4 * bound) Cur Writable->
+  Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable ->
   0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
   Mem.valid_access m (chunk_of_type ty) sp (pos + 4 * ofs) p.
 Proof.
   intros; split.
-- red; intros. apply Mem.perm_implies with Writable; auto with mem.
+- red; intros. apply Mem.perm_implies with Freeable; auto with mem.
   apply H0. rewrite size_type_chunk, typesize_typesize in H4. omega.
 - rewrite align_type_chunk. apply Z.divide_add_r.
   { ss. eapply valid_access_typealign_divides; eauto. try xomega. }
@@ -320,7 +320,7 @@ Proof.
   edestruct Mem.valid_access_store as [m' STORE].
   eapply valid_access_location; eauto with mem.
   { eapply valid_access_typealign_divides; eauto; xomega. }
-  assert (PERM: Mem.range_perm m' sp pos (pos + 4 * bound) Cur Writable).
+  assert (PERM: Mem.range_perm m' sp pos (pos + 4 * bound) Cur Freeable).
   { red; intros; eauto with mem. }
   exists m'; split.
 - unfold store_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; eauto.
@@ -339,7 +339,7 @@ Proof.
   destruct d. congruence. right. rewrite ! size_type_chunk, ! typesize_typesize. omega.
 * (* overlapping locations *)
   destruct (Mem.valid_access_load m' (chunk_of_type ty0) sp (pos + 4 * ofs0)) as [v'' LOAD].
-  apply Mem.valid_access_implies with Writable; auto with mem.
+  apply Mem.valid_access_implies with Freeable; auto with mem.
   eapply valid_access_location; eauto with mem.
   { eapply valid_access_typealign_divides; eauto; xomega. }
   exists v''; auto.
@@ -1507,9 +1507,10 @@ Inductive match_stacks (j: meminj):
       sg
       (ARGS: forall
           ofs ty
-          (LOC: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))
+          (LOC: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg_init)))
         ,
           <<BOUND: ofs + typesize ty <= size_arguments sg_init>>)
+      (LE: sg = sg_init \/ tailcall_possible sg)
       (RAPTR: is_ptr ra)
       (SPPTR: is_real_ptr sp)
     :
@@ -1525,7 +1526,8 @@ Inductive match_stacks (j: meminj):
         (ARGS: forall ofs ty,
            In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)) ->
            slot_within_bounds (function_bounds f) Outgoing ofs ty)
-        (STK: match_stacks j cs cs' (Linear.fn_sig f)),
+        (STK: match_stacks j cs cs' (Linear.fn_sig f))
+        (SZARG: size_arguments sg <= bound_outgoing (function_bounds f)),
       match_stacks j
                    (Linear.Stackframe f (Vptr sp Ptrofs.zero true) ls c :: cs)
                    (Stackframe fb (Vptr sp' Ptrofs.zero true) ra c' :: cs')
@@ -1585,8 +1587,9 @@ Lemma match_stacks_change_sig:
   match_stacks j cs cs' sg1.
 Proof.
   induction 1; intros.
-  { econstructor; eauto. i. ss. exploit H; eauto. i. des_ifs. }
+  { econstructor; eauto. }
   econstructor; eauto. intros. elim (H0 _ H1).
+  rewrite tailcall_size; try assumption; try xomega. hexploit (size_arguments_above sg); eauto. i; xomega.
 Qed.
 
 (** Typing properties of [match_stacks]. *)
@@ -1783,7 +1786,76 @@ Proof.
     + esplits; eauto.
 Qed.
 
+Local Opaque Z.add Z.mul make_env function_bounds.
+Lemma arguments_private
+      sp_tgt spdelta
+      m_src m_tgt
+      stk_src stk_tgt
+      F
+      sg
+      (MATCH: m_tgt |= stack_contents F stk_src stk_tgt ** minjection F m_src)
+      (STACKS: match_stacks F stk_src stk_tgt sg)
+      (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
+      ofs
+      (OFS: 0 <= ofs < size_arguments sg)
+  :
+    (<<PRIV: loc_out_of_reach F m_src sp_tgt (spdelta.(Ptrofs.unsigned) + ofs)>>)
+.
+Proof.
+  eapply separation_private; eauto.
+  destruct stk_tgt; ss. des_ifs. destruct stk_src; ss.
+  { sep_simpl_tac. des; ss. }
+  des_ifs_safe.
+  des_ifs; sep_simpl_tac.
+  - unfold dummy_frame_contents in *. inv MATCH. ss.
+    inv STACKS; ss; cycle 1.
+    { inv STK; ss. }
+    des; cycle 1.
+    { apply tailcall_size in LE. xomega. }
+    clarify. esplits; eauto; try xomega.
+  - Local Transparent sepconj. cbn.
+    left. left. right. left.
+    split; [ss|].
+    Local Opaque sepconj.
+    apply sep_pick1 in MATCH. unfold frame_contents in *.
+    unfold fe_ofs_arg. rewrite ! Z.add_0_l in *.
+    inv STACKS; ss. des_ifs_safe. des.
+    rewrite Ptrofs.unsigned_zero in *.
+    esplits; eauto; try xomega.
+Qed.
 
+Lemma arguments_perm
+      sp_tgt spdelta
+      m_src m_tgt
+      stk_src stk_tgt
+      F
+      sg
+      (MATCH: m_tgt |= stack_contents F stk_src stk_tgt ** minjection F m_src)
+      (STACKS: match_stacks F stk_src stk_tgt sg)
+      (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
+      ofs
+      (OFS: 0 <= ofs < size_arguments sg)
+  :
+    (<<PERM: Mem.perm m_tgt sp_tgt (spdelta.(Ptrofs.unsigned) + ofs) Cur Freeable>>)
+.
+Proof.
+  destruct stk_tgt; ss. des_ifs. destruct stk_src; ss.
+  { sep_simpl_tac. des; ss. }
+  des_ifs_safe.
+  des_ifs; sep_simpl_tac.
+  - unfold dummy_frame_contents in *. inv MATCH. ss.
+    inv STACKS; ss; cycle 1.
+    { inv STK; ss. }
+    des; cycle 1.
+    { apply tailcall_size in LE. xomega. }
+    clarify. eapply H3; eauto. xomega.
+  - apply sep_pick1 in MATCH. unfold frame_contents in *.
+    ss. des_ifs. des.
+    apply sep_pick2 in MATCH.
+    unfold fe_ofs_arg in *. inv MATCH. des; ss. eapply H2; eauto.
+    inv STACKS; ss.
+    rewrite ! Z.add_0_l in *. xomega.
+Qed.
 
 (** Preservation of the arguments to an external call. *)
 
@@ -1813,7 +1885,9 @@ Proof.
 - exists (rs r); split. constructor. auto.
 - destruct sl; try contradiction.
   inv MS.
-+ ss. des_ifs. des. clear_tac. unfold dummy_frame_contents in *.
++ ss. des_ifs. des; cycle 1.
+  { hnf in LE. exploit LE; eauto. i; des. ss. }
+  clarify. clear_tac. unfold dummy_frame_contents in *.
 Local Opaque contains_locations.
   hexploit loc_arguments_bounded; eauto. i.
   specialize (ARGS _ _ H). des.
@@ -2065,7 +2139,8 @@ Proof.
     (* specialize (ARGS _ _ IN_ARGS). des. *)
     exploit (slot_outgoing_argument_valid f); eauto. intro VALID.
     Local Opaque Z.mul Z.add Z.div Z.sub make_env.
-    unfold slot_valid in *. simpl_bool. des. des_sumbool. ss.
+    unfold slot_valid in *. simpl_bool. des; cycle 1.
+    { hnf in LE. exploit LE; eauto. ss. } clarify. des_sumbool. ss.
     des_ifs; cycle 1.
     {
       exploit get_location; eauto.

@@ -369,3 +369,144 @@ Hint Constructors future_imm.
 Definition future: mem -> mem -> Prop := rtc future_imm.
 Hint Unfold future.
 
+
+
+
+
+
+
+
+Require Import Events.
+
+Context `{CTX: Val.meminj_ctx}.
+
+Import Mem.
+
+Theorem alloc_left_mapped_inject:
+  forall f m1 m2 lo hi m1' b1 b2 delta,
+  inject f m1 m2 ->
+  alloc m1 lo hi = (m1', b1) ->
+  valid_block m2 b2 ->
+  0 <= delta <= Ptrofs.max_unsigned ->
+  (forall ofs k p, perm m2 b2 ofs k p -> delta = 0 \/ 0 <= ofs < Ptrofs.max_unsigned) ->
+  (forall ofs k p, lo <= ofs < hi -> perm m2 b2 (ofs + delta) k p) ->
+  inj_offset_aligned delta (hi-lo) ->
+  (forall b delta' ofs k p,
+   f b = Some (b2, delta') ->
+   perm m1 b ofs k p ->
+   lo + delta <= ofs + delta' < hi + delta -> False) ->
+  exists f',
+     inject f' m1' m2
+  /\ inject_incr f f'
+  /\ f' b1 = Some(b2, delta)
+  /\ (forall b, b <> b1 -> f' b = f b)
+  /\ f' = fun b => if eq_block b b1 then Some(b2, delta) else f b.
+Proof.
+  intros. inversion H.
+  set (f' := fun b => if eq_block b b1 then Some(b2, delta) else f b).
+  assert (inject_incr f f').
+    red; unfold f'; intros. destruct (eq_block b b1). subst b.
+    assert (f b1 = None). eauto with mem. congruence.
+    auto.
+  assert (mem_inj f' m1 m2).
+    inversion mi_inj0; constructor; eauto with mem.
+    unfold f'; intros. destruct (eq_block b0 b1).
+      inversion H8. subst b0 b3 delta0.
+      elim (fresh_block_alloc _ _ _ _ _ H0). eauto with mem.
+      eauto.
+    unfold f'; intros. destruct (eq_block b0 b1).
+      inversion H8. subst b0 b3 delta0.
+      elim (fresh_block_alloc _ _ _ _ _ H0).
+      eapply perm_valid_block with (ofs := ofs). apply H9. generalize (size_chunk_pos chunk); omega.
+      eauto.
+    unfold f'; intros. destruct (eq_block b0 b1).
+      inversion H8. subst b0 b3 delta0.
+      elim (fresh_block_alloc _ _ _ _ _ H0). eauto with mem.
+      apply memval_inject_incr with f; auto.
+  exists f'. split. constructor.
+(* inj *)
+  eapply alloc_left_mapped_inj; eauto. unfold f'; apply dec_eq_true.
+(* freeblocks *)
+  unfold f'; intros. destruct (eq_block b b1). subst b.
+  elim H9. eauto with mem.
+  eauto with mem.
+(* mappedblocks *)
+  unfold f'; intros. destruct (eq_block b b1). congruence. eauto.
+(* overlap *)
+  unfold f'; red; intros.
+  exploit perm_alloc_inv. eauto. eexact H12. intros P1.
+  exploit perm_alloc_inv. eauto. eexact H13. intros P2.
+  destruct (eq_block b0 b1); destruct (eq_block b3 b1).
+  congruence.
+  inversion H10; subst b0 b1' delta1.
+    destruct (eq_block b2 b2'); auto. subst b2'. right; red; intros.
+    eapply H6; eauto. omega.
+  inversion H11; subst b3 b2' delta2.
+    destruct (eq_block b1' b2); auto. subst b1'. right; red; intros.
+    eapply H6; eauto. omega.
+  eauto.
+(* representable *)
+  unfold f'; intros.
+  destruct (eq_block b b1).
+   subst. injection H9; intros; subst b' delta0. destruct H10.
+    exploit perm_alloc_inv; eauto; rewrite dec_eq_true; intro.
+    {
+      generalize (Ptrofs.unsigned_range_2 ofs). i.
+      exploit H3. apply H4 with (k := Max) (p := Nonempty); eauto. i.
+      omega. }
+   exploit perm_alloc_inv; eauto; rewrite dec_eq_true; intro.
+   {
+   generalize (Ptrofs.unsigned_range_2 ofs). i.
+   exploit H3. apply H4 with (k := Max) (p := Nonempty); eauto. i.
+   omega. }
+  eapply mi_representable0; try eassumption.
+  destruct H10; eauto using perm_alloc_4.
+(* perm inv *)
+  intros. unfold f' in H9; destruct (eq_block b0 b1).
+  inversion H9; clear H9; subst b0 b3 delta0.
+  assert (EITHER: lo <= ofs < hi \/ ~(lo <= ofs < hi)) by omega.
+  destruct EITHER.
+  left. apply perm_implies with Freeable; auto with mem. eapply perm_alloc_2; eauto.
+  right; intros A. eapply perm_alloc_inv in A; eauto. rewrite dec_eq_true in A. tauto.
+  exploit mi_perm_inv0; eauto. intuition eauto using perm_alloc_1, perm_alloc_4.
+(* incr *)
+  split. auto.
+(* image of b1 *)
+  split. unfold f'; apply dec_eq_true.
+(* image of others *)
+  split; auto.
+  intros. unfold f'; apply dec_eq_false; auto.
+Qed.
+
+Lemma max_unsigned_zero
+  :
+    0 <= Ptrofs.max_unsigned
+.
+Proof.
+  etransitivity; try unshelve apply Ptrofs.unsigned_range_2.
+  apply Ptrofs.zero.
+Qed.
+
+Lemma alloc_left_inject
+      j0
+      m_src0 m_src1 m_tgt sz blk_src
+      (INJ: Mem.inject j0 m_src0 m_tgt)
+      (ALLOC: Mem.alloc m_src0 0 sz = (m_src1, blk_src))
+      blk_tgt
+      (VALID: Mem.valid_block m_tgt blk_tgt)
+      (TGTPRIV: forall ofs (BOUND: 0 <= ofs < sz), loc_out_of_reach j0 m_src0 blk_tgt ofs)
+      (TGTPERM: forall ofs k p (BOUND: 0 <= ofs < sz), Mem.perm m_tgt blk_tgt ofs k p)
+  :
+    Mem.inject (fun blk => if eq_block blk blk_src
+                           then Some (blk_tgt, 0)
+                           else j0 blk) m_src1 m_tgt
+.
+Proof.
+  exploit alloc_left_mapped_inject; eauto.
+  { split; try xomega. eapply max_unsigned_zero. }
+  { ii. rewrite Z.add_0_r. eapply TGTPERM; eauto. }
+  { hnf. ii. apply Z.divide_0_r. }
+  { ii. rewrite ! Z.add_0_r in *. eapply TGTPRIV; eauto. rewrite Z.add_simpl_r. eauto with mem. }
+  i; des. clarify.
+Qed.
+

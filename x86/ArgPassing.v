@@ -135,8 +135,9 @@ Section STYLES.
       (LOCSET: ls_arg = C2B_locset mrs_arg rsp_arg m_arg)
       blk
       (RSPPTR: rsp_arg = (Vptr blk Ptrofs.zero true))
-      (PERM: Mem.range_perm m_arg blk 0 (4 * (size_arguments sg)) Cur Writable)
-      (DROP: Mem_drop_perm_none m_arg blk 0 (4 * (size_arguments sg)) = m_init)
+      (* (PERM: Mem.range_perm m_arg blk 0 (4 * (size_arguments sg)) Cur Freeable) *)
+      (* (DROP: Mem_drop_perm_none m_arg blk 0 (4 * (size_arguments sg)) = m_init) *)
+      (FREE: Mem.free m_arg blk 0 (4 * (size_arguments sg)) = Some m_init)
   .
 
   Compute (to_mreg RSP).
@@ -332,12 +333,14 @@ just define something like 'fill_arguments' in locationsC
   Proof.
     inv AD; ss. inv AB; inv BC; inv CD; ss.
     exploit (@B2C_mem_spec m_alloc blk ls); eauto. { eapply Mem_alloc_range_perm; eauto. } i; des. clarify.
+    hexploit Mem.range_perm_free; eauto.
+    { ii. rewrite <- PERM. eapply Mem.perm_alloc_2; eauto. }
+    i; des. inv X.
     esplits; eauto.
     - econs; eauto.
       + econs; eauto.
       + cbn. unfold to_mregset.
         econs; eauto.
-        * ii. rewrite <- PERM. eauto with mem.
       + econs; eauto.
         generalize (loc_arguments_acceptable sg). intro ACCPS.
         generalize (loc_arguments_one sg). intro ONES.

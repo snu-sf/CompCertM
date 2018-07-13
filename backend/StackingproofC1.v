@@ -418,7 +418,7 @@ Ltac sep_split := econs; [|split]; swap 2 3.
 Hint Unfold fe_ofs_arg.
 Hint Unfold SimMem.SimMem.sim_regset. (* TODO: move to proper place *)
 Hint Unfold to_mregset.
-Ltac perm_impl_tac := eapply Mem.perm_implies with Writable; [|eauto with mem].
+Ltac perm_impl_tac := eapply Mem.perm_implies with Freeable; [|eauto with mem].
 
 Lemma delta_range
       F m_src m_tgt
@@ -427,7 +427,7 @@ Lemma delta_range
       (TRANSFUNC: transf_function fd_src = OK fd_tgt)
       blk_src blk_tgt delta
       (INJVAL: F blk_src = Some (blk_tgt, delta))
-      (PERM: Mem.range_perm m_src blk_src 0 (4 * size_arguments (Linear.fn_sig fd_src)) Cur Writable)
+      (PERM: Mem.range_perm m_src blk_src 0 (4 * size_arguments (Linear.fn_sig fd_src)) Cur Freeable)
       (SIZEARG: 0 < 4 * size_arguments (Linear.fn_sig fd_src) <= Ptrofs.max_unsigned)
   :
    <<DELTA: 0 <= delta <= Ptrofs.max_unsigned>> /\
@@ -484,18 +484,19 @@ Proof.
   ss. rewrite RSPPTR in *. inv RSPINJ.
   rename H1 into RSPPTRTGT. symmetry in RSPPTRTGT. rename H2 into RSPINJ.
   rename blk into sp_src. rename b2 into sp_tgt.
-  set (Mem_drop_perm_none (src_mem sm_arg) sp_src 0 (4 * size_arguments (Linear.fn_sig fd_src)))
-    as m_init_src in *.
+  rename m_init into m_init_src.
   rewrite Ptrofs.add_zero_l in *.
+  hexploit Mem.free_range_perm; eauto. intro PERMSRC.
   set (sm_init := (mk sm_arg.(inj)
                    sm_arg.(src_private) sm_arg.(tgt_private)
                    sm_arg.(src_external) sm_arg.(tgt_external)
                    m_init_src sm_arg.(tgt_mem)
                    sm_arg.(src_mem_parent) sm_arg.(tgt_mem_parent))).
+  exploit Mem.free_result; eauto. i; des. clarify.
   assert(MWF0: SimMem.wf sm_init).
   { ss. econs; ss; try apply MWF; eauto.
-    + eapply Mem_set_perm_none_left_inject; eauto. apply MWF. unfold m_init_src; eauto.
-    + etransitivity; try apply MWF; eauto. admit "drop_perm ez".
+    + eapply Mem.free_left_inject; eauto. apply MWF.
+    + etransitivity; try apply MWF; eauto. admit "ez".
   }
   eexists _, sm_init, 0%nat; cbn.
   esplits; eauto.
@@ -537,7 +538,6 @@ Proof.
     + ii. des_ifs.
     + u. des_ifs.
       rename Heq0 into RSPTGT.
-      rename PERM into PERMSRC.
       assert(DELTA: 0 < size_arguments (Linear.fn_sig fd_src) ->
                     0 <= delta_sp <= Ptrofs.max_unsigned
                     /\ 4 * size_arguments (Linear.fn_sig fd_src) + delta_sp <= Ptrofs.max_unsigned).
@@ -558,7 +558,7 @@ Proof.
         { apply NNPP. intro DISJ.
           hexploit Mem.mi_no_overlap; try apply MWF. intro OVERLAP.
           exploit OVERLAP; eauto.
-          { eapply Mem_set_perm_none_impl; eauto. }
+          { eapply Mem.perm_free_3; eauto. }
           { eapply Mem.perm_cur_max. perm_impl_tac. eapply PERMSRC. instantiate (1:= ofstgt - delta_sp). xomega. }
           { intro TMP. des; eauto. apply TMP; eauto. rewrite ! Z.sub_add. ss. }
         }
@@ -639,6 +639,47 @@ Proof.
   induction MATCH; ss.
 Qed.
 
+Definition update_meminj (F: meminj) (blk_src blk_tgt: block) (delta: Z): meminj :=
+  fun blk: block => if eq_block blk blk_src then Some (blk_tgt, delta) else F blk
+.
+Hint Unfold update_meminj.
+
+Lemma no_overlap_equiv
+      F m0 m1
+      (PERM: all4 (Mem.perm m0 <4> Mem.perm m1))
+      (OVERLAP: Mem.meminj_no_overlap F m0)
+  :
+    <<OVERLAP: Mem.meminj_no_overlap F m1>>
+.
+Proof.
+  ii; ss. eapply OVERLAP; eauto; eapply PERM; eauto.
+Qed.
+
+Lemma update_no_overlap
+      F m0
+      (OVERLAP: Mem.meminj_no_overlap F m0)
+      sz blk_src blk_tgt delta m1
+      (ALLOC: Mem.alloc m0 0 sz = (m1, blk_src))
+      (PRIVTGT: forall
+          ofs
+          (SZ: 0 <= ofs < sz)
+        ,
+          loc_out_of_reach F m0 blk_tgt (ofs + delta))
+  :
+    <<OVERLAP: Mem.meminj_no_overlap
+                 (update_meminj F blk_src blk_tgt delta)
+                 (* (fun blk: block => if eq_block blk_src blk then Some (blk_tgt, delta) else F blk) *)
+                 m1>>
+.
+Proof.
+  u.
+  hnf. ii; ss.
+  destruct (classic (b1' = b2')); cycle 1.
+  { left; ss. }
+  right. clarify.
+  des_ifs; ss; cycle 1.
+Admitted.
+
 Theorem sim_modsem
   :
     ModSemPair.sim msp
@@ -665,7 +706,7 @@ Proof.
       admit "this should hold. is_call_progress".
     + econs; eauto.
       { reflexivity. }
-      instantiate (1:= dummy_fake_ptr). ss.
+      instantiate (1:= fake_ptr_one). ss.
     (* inv STORE; ss. *)
     (* u in PCPTR. des_ifs. clear_tac. ss. *)
     (* destruct b0; ss; cycle 1. *)
@@ -715,12 +756,22 @@ Proof.
                      m_arg_src sm0.(tgt_mem)
                      sm0.(src_mem_parent) sm0.(tgt_mem_parent))).
   unfold load_stack in *. ss.
+
+  exploit (@B2C_mem_spec sg_arg m_alloc sp_src ls_arg); eauto.
+  { eapply Mem_alloc_range_perm; eauto. }
+  i; des. clarify.
+
   assert(MLE: SimMem.le sm0 sm_arg).
   {
     subst sm_arg.
     econs; cbn; eauto with mem; try xomega.
-    - ii; ss. des_ifs; ss. exfalso. admit "mi_freeblocks".
-    - eapply Mem.unchanged_on_implies; eauto. ii; ss.
+    - ii; ss. des_ifs; ss. exfalso.
+      exploit Mem.mi_freeblocks; try apply MWF; eauto.
+      { eauto with mem. }
+      i; ss. clarify.
+    - eapply Mem_unchanged_on_trans_strong; eauto.
+      { eapply Mem.alloc_unchanged_on; eauto. }
+      eapply Mem.unchanged_on_implies; eauto. cbn. admit "ez".
     - econs; eauto.
       ii; ss. des; ss. des_ifs.
       split; ss.
@@ -728,10 +779,50 @@ Proof.
       + admit "we should add this into match_states".
     - admit "ez".
   }
+  exploit Mem.alloc_result; eauto. i; des. clarify.
+  exploit Mem.nextblock_alloc; eauto. intro ALLOCNB.
   assert(MWF0: SimMem.wf sm_arg).
   { subst sm_arg.
     econs; cbn; try apply MWF; eauto.
-    - admit "big admit!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".
+    - move MWF at bottom. inv MWF. clear_until PUBLIC.
+      econs; eauto; unfold Mem.valid_block in *.
+      + inv PUBLIC.
+        econs; ss; eauto.
+        * ii; des_ifs; ss; cycle 1.
+          { eapply mi_inj; eauto. rewrite <- PERM in *; ss. eapply Mem.perm_alloc_4; eauto. }
+          admit "????????????????".
+          (* assert(ARGSRC: exists pos ty, *)
+          (*           In (S Outgoing pos ty) (regs_of_rpairs (loc_arguments sg_arg)) /\ *)
+          (*           pos <= ofs < pos + (typesize ty) * 4 *)
+          (*       ). *)
+          (* { admit "only turn on permission when it has argument". } *)
+          (* des. exploit ARGSTGT; eauto. i; des. inv H. unfold load_stack in *; ss. *)
+          (* exploit Mem.load_valid_access; eauto. *)
+        * ii; des_ifs; ss; cycle 1.
+          { eapply mi_inj; eauto. ii. exploit H0; eauto. i; des. rewrite <- PERM in *; ss.
+            eapply Mem.perm_alloc_4; eauto. }
+          admit "??".
+        * ii; des_ifs; ss; cycle 1.
+          { eapply memval_inject_incr; eauto; try apply MLE.
+            inv mi_inj.
+            admit "unchanged_on ez".
+          }
+          admit "??".
+      + ii; des_ifs; ss; cycle 1.
+        { apply PUBLIC. unfold Mem.valid_block in *. rewrite <- NB in *. rewrite ALLOCNB in *. xomega. }
+        unfold Mem.valid_block in *. rewrite <- NB in *. rewrite ALLOCNB in *. xomega.
+      + ii; des_ifs; ss; try (by eapply PUBLIC; eauto); cycle 1.
+        inv STACKS; ss; clarify.
+        { admit "strengthen match_stacks". }
+        eapply PUBLIC; eauto.
+      + eapply no_overlap_equiv; eauto. eapply update_no_overlap; try apply PUBLIC; eauto.
+        { admit "loc_out_of_reach". }
+      + ii; des_ifs; ss; cycle 1.
+        { eapply PUBLIC; eauto. rewrite <- ! PERM in *. des; ss.
+          - left. eapply Mem.perm_alloc_4; eauto.
+          - right. eapply Mem.perm_alloc_4; eauto. }
+        admit "somehow..".
+      + admit "???".
     - ii; ss. hnf. des_ifs.
       + admit "wf -> valid_block".
       + inv MWF. eapply SRCDISJ; eauto.

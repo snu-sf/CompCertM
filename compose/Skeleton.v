@@ -170,6 +170,49 @@ I think "sim_skenv_monotone" should be sufficient.
                                             Some gd))
   .
 
+  Inductive genv_precise {F V} (ge: Genv.t (AST.fundef F) V) (p: program (AST.fundef F) V): Prop :=
+  | genv_compat_intro
+      (FIND_MAP: forall id g,
+          p.(prog_defmap) ! id = Some g ->
+          (exists b, Genv.find_symbol ge id = Some b /\
+                     Genv.find_def ge b = if negb (is_external g) then Some g else None))
+      (FIND_MAP_INV: forall id b g,
+          (Genv.find_symbol ge id = Some b /\ Genv.find_def ge b = Some g) ->
+          p.(prog_defmap) ! id = Some g)
+  .
+
+  Lemma revive_precise
+        F V
+        skenv (prog: AST.program (AST.fundef F) V)
+        (DEFS: prog.(defs) <1= fun id => is_some (skenv.(Genv.find_symbol) id))
+        (WF: wf skenv)
+    :
+      <<PRECISE: genv_precise (SkEnv.revive skenv prog) prog>>
+  .
+  Proof.
+    econs; eauto; i; ss; cycle 1.
+    - des.
+      unfold revive in *. u in *. apply Genv_map_defs_spec in H0. des. des_ifs_safe. ss.
+      apply Genv.invert_find_symbol in Heq0.
+      unfold Genv_map_defs, Genv.find_symbol in *. cbn in *.
+      determ_tac Genv.genv_vars_inj.
+    - des.
+      dup H. u in DEFS. unfold ident in *. spc DEFS.
+      exploit DEFS; clear DEFS.
+      { unfold proj_sumbool. des_ifs; ss. exfalso. apply n. eapply prog_defmap_spec; eauto. }
+      i; des.
+      des_ifs_safe.
+      esplits; eauto.
+      unfold revive. u.
+      unfold Genv.find_def, Genv_map_defs. cbn. rewrite PTree_filter_map_spec.
+      clear_tac.
+      inv WF.
+      exploit SYMBDEF; eauto. i; des.
+      unfold Genv.find_def in *. rewrite H. cbn.
+      apply Genv.find_invert_symbol in Heq.
+      des_ifs; ss.
+  Qed.
+
   Print Genv.public_symbol.
   Definition privs (skenv: SkEnv.t): ident -> bool :=
     fun id =>

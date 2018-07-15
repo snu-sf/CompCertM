@@ -487,7 +487,7 @@ Proof.
   apply Ptrofs.zero.
 Qed.
 
-Lemma alloc_left_inject
+Lemma Mem_alloc_left_inject
       j0
       m_src0 m_src1 m_tgt sz blk_src
       (INJ: Mem.inject j0 m_src0 m_tgt)
@@ -509,4 +509,45 @@ Proof.
   { ii. rewrite ! Z.add_0_r in *. eapply TGTPRIV; eauto. rewrite Z.add_simpl_r. eauto with mem. }
   i; des. clarify.
 Qed.
+
+Lemma Mem_store_perm_eq
+      chunk m0 blk ofs v m1
+      (STORE: Mem.store chunk m0 blk ofs v = Some m1)
+  :
+    <<EQ: all4 (Mem.perm m0 =4= Mem.perm m1)>>
+.
+Proof.
+  eapply prop_ext4.
+  ii; split; ss.
+  - eapply Mem.perm_store_1; eauto.
+  - eapply Mem.perm_store_2; eauto.
+Qed.
+
+Lemma Mem_store_left_inject
+      j0 m_src0 m_src1 m_tgt
+      (INJ: Mem.inject j0 m_src0 m_tgt)
+      v_src v_tgt
+      (INJV: Val.inject j0 v_src v_tgt) 
+      ty rsp_src rsp_tgt rspdelta ofs
+      (SRC: Mem.storev (chunk_of_type ty) m_src0 (Vptr rsp_src ofs true) v_src = Some m_src1)
+      (TGT: Mem.loadv (chunk_of_type ty) m_tgt (Vptr rsp_tgt (Ptrofs.add ofs rspdelta) true) = Some v_tgt)
+      (INJRSP: j0 rsp_src = Some (rsp_tgt, rspdelta.(Ptrofs.unsigned)))
+  :
+    <<INJ: Mem.inject j0 m_src1 m_tgt>>
+.
+Proof.
+  unfold storev in *. des_ifs. ss.
+  hexploit Mem_store_perm_eq; eauto. intro PERM.
+  econs; try apply INJ; eauto.
+  - econs; ii; try eapply INJ; ii; eauto with mem congruence.
+    Local Transparent Mem.store. unfold Mem.store in *. des_ifs; ss.
+    rewrite PMap.gsspec. des_ifs.
+    + Local Transparent Mem.load. unfold Mem.load in *. des_ifs; ss.
+      destruct (classic
+                  (Ptrofs.unsigned ofs <= ofs0 <
+                   Ptrofs.unsigned ofs + Z.of_nat (length (encode_val (chunk_of_type ty) v_src)))); cycle 1.
+      { rewrite setN_outside; try omega. eapply INJ; eauto. }
+      clear - INJV H H1. abstr (chunk_of_type ty) chnk.
+      admit "this should hold".
+Admitted.
 

@@ -10,3 +10,5 @@ Makefile.coq.conf
 
 graph.png
 graph.dot
+
+.lia.cache

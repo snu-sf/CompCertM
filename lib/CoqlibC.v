@@ -15,6 +15,7 @@ Require Import Relations.
 Require Import RelationClasses.
 Require Import Wellfounded.
 Require Export Classical_Prop.
+Require Export Lia.
 Require Import AxiomsC.
 
 Set Implicit Arguments.
@@ -492,8 +493,10 @@ Abort.
 
 Ltac spc H :=
   let TAC := ss; eauto in
-  match type of H with
+  let ty := type of H in
+  match eval hnf in ty with
   | forall (a: ?A), _ =>
+    (* let A := (eval compute in _A) in *)
     match goal with
     | [a0: A, a1: A |- _] => fail 2 "More than one specialization is possible!"
     | [a0: A |- _] => specialize (H a0)
@@ -508,6 +511,13 @@ Ltac spc H :=
   | _ => fail 1 "Nothing to specialize!"
   end
 .
+
+Goal let my_nat := nat in
+     let my_f := my_nat -> Prop in
+     forall (f: my_f) (g: nat -> Prop) (x: nat) (y: my_nat), False.
+  i.
+  spc f. spc g.
+Abort.
 
 Lemma map_ext_strong
       X Y
@@ -526,4 +536,9 @@ Qed.
 
 Notation rtc := (Relation_Operators.clos_refl_trans_1n _).
 (* copied from promising code. TODO: also copy needed lemmas *)
+
+(* copied from : https://robbertkrebbers.nl/research/ch2o/tactics.html *)
+Hint Extern 998 (_ = _) => f_equal : f_equal.
+Hint Extern 999 => congruence : congruence.
+Hint Extern 1000 => lia : lia.
 

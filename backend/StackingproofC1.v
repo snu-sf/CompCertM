@@ -784,7 +784,23 @@ Proof.
   assert(MWF0: SimMem.wf sm_arg).
   { subst sm_arg.
     econs; cbn; try apply MWF; eauto.
-    - move MWF at bottom. inv MWF. clear_until PUBLIC.
+    -
+
+
+      assert(spdelta = Ptrofs.zero).
+      { inv STACKS; ss; clarify.
+      }
+      assert(Mem.inject
+               (fun blk : block =>
+                  if eq_block blk (Mem.nextblock (src_mem sm0))
+                  then Some (sp_tgt, Ptrofs.unsigned spdelta)
+                  else inj sm0 blk) m_alloc sm0.(tgt_mem)).
+      { eapply Mem_alloc_left_inject. }
+
+
+
+
+      move MWF at bottom. inv MWF. clear_until PUBLIC.
       econs; eauto; unfold Mem.valid_block in *.
       + inv PUBLIC.
         econs; ss; eauto.

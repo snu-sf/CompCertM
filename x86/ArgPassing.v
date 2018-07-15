@@ -5,11 +5,29 @@ Require Import LocationsC Stacklayout Conventions.
 (** newly added **)
 Require Import AsmregsC.
 Require Mach.
+(* Require Lineartyping. *)
 
 Set Implicit Arguments.
 
 Local Open Scope asm.
 
+
+Inductive wt_locset (sg: signature) (ls: locset): Prop :=
+| wt_locset_intro
+    (SLOT: forall
+        ofs ty
+        (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))
+      ,
+        Val.has_type (ls (S Outgoing ofs ty)) ty)
+.
+
+Theorem Val_load_result_undef
+        v ty
+        (UNTYPED: ~Val.has_type v ty)
+  :
+    <<UNDEF: Val.load_result (chunk_of_type ty) v = Vundef>>
+.
+Proof. i. destruct v, ty; ss. Qed.
 
 
 Local Opaque Z.mul Z.add Z.div Z.sub.
@@ -46,20 +64,27 @@ Section STYLES.
   .
 
   (* Q: Why * 4? See Stackig.v "Definition offset_arg (x: Z) := fe_ofs_arg + 4 * x." *)
-  Fixpoint B2C_mem (m0: mem) (rsp: val) (ls: locset) (locs: list loc): option mem :=
-    match locs with
-    | [] =>  Some m0
-    | loc :: locs =>
-      do m1 <- B2C_mem m0 rsp ls locs ;
-        match loc with
-        | S Outgoing ofs ty => Mach.store_stack m1 rsp ty (4 * ofs).(Ptrofs.repr) (ls loc)
-        | _ => Some m1
-        end
-    end
+  Definition B2C_mem (m0: mem) (rsp: val) (ls: locset) (locs: list loc): option mem :=
+    fold_right (fun i s => do m1 <- s ;
+                            match i with
+                            | S Outgoing ofs ty => Mach.store_stack m1 rsp ty (4 * ofs).(Ptrofs.repr) (ls i)
+                            | _ => Some m1
+                            end)
+               (Some m0) locs
   .
+
+  Lemma typealign
+        ty
+    :
+      align_chunk (chunk_of_type ty) = 4 * typealign ty
+  .
+  Proof.
+    destruct ty; ss.
+  Qed.
 
   Lemma B2C_mem_spec
         m0 rsp ls
+        (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
         (PERM: Mem.range_perm m0 rsp fe_ofs_arg (4 * (size_arguments sg)) Cur Freeable)
     :
       exists m1,
@@ -73,13 +98,67 @@ Section STYLES.
              ,
                match l0 with
                | S Outgoing ofs ty =>
-                 Mach.load_stack m1 (Vptr rsp Ptrofs.zero true) ty
-                                 (Ptrofs.repr (fe_ofs_arg + 4 * ofs)) = Some (ls l0)
+                 (forall (TYPE: Val.has_type (ls l0) ty),
+                   Mach.load_stack m1 (Vptr rsp Ptrofs.zero true) ty
+                                   (Ptrofs.repr (fe_ofs_arg + 4 * ofs)) = Some (ls l0))
+                 /\
+                 (forall (NOTYPE: ~ Val.has_type (ls l0) ty),
+                    Mach.load_stack m1 (Vptr rsp Ptrofs.zero true) ty
+                                   (Ptrofs.repr (fe_ofs_arg + 4 * ofs)) = Some Vundef)
                | _ => True
                end>>)
   .
   Proof.
-    admit "ez".
+    generalize (loc_arguments_bounded sg); eauto. intro SZ.
+    generalize (loc_arguments_acceptable_2 sg); eauto. intro ACCP.
+    generalize (loc_arguments_norepet sg). intro DISJ.
+    abstr (size_arguments sg) sz.
+    abstr (regs_of_rpairs (loc_arguments sg)) locs.
+    ginduction locs; ii; ss.
+    - u. esplits; eauto.
+      + eapply Mem.unchanged_on_refl.
+      + ii; ss.
+    - inv DISJ; ss. exploit IHlocs; eauto. i; des.
+      rewrite BCM. cbn.
+      exploit ACCP; eauto. i.
+      destruct a; ss.
+      + esplits; eauto.
+        ii. des; clarify. exploit STORED; eauto.
+      + des_ifs. des; ss.
+        hexploit SZ; eauto. i.
+        rewrite ! Ptrofs.add_zero_l.
+        generalize (typesize_pos ty); intro TY.
+        rewrite Ptrofs.unsigned_repr; [|xomega].
+        edestruct Mem.valid_access_store with (m1 := m1) (ofs := 4 * pos) (chunk := chunk_of_type ty)
+          as [m2 STORE].
+        { split; ss.
+          - eapply Mem.range_perm_implies with (p1 := Freeable); [|eauto with mem].
+            rewrite <- PLAYGROUND.typesize_chunk.
+            ii. erewrite <- PERM0. eapply PERM; eauto. unfold fe_ofs_arg. xomega.
+          - rewrite typealign. eapply Z.mul_divide_mono_l; eauto.
+        }
+        esplits; try apply STORE; eauto.
+        * exploit Mem.nextblock_store; eauto. i. congruence.
+        * etransitivity; eauto. eauto with mem.
+        * eapply Mem.unchanged_on_trans; eauto. eapply Mem.store_unchanged_on; eauto.
+        * ii. des; clarify.
+          { rewrite Ptrofs.add_zero_l. unfold fe_ofs_arg. rewrite Ptrofs.unsigned_repr; [|xomega].
+            rewrite Z.add_0_l. erewrite Mem.load_store_same; eauto.
+            split; i; f_equal.
+            - eapply Val.load_result_same; ss.
+            - eapply Val_load_result_undef; eauto.
+          }
+          des_ifs; ss.
+          exploit STORED; eauto. i. ss. unfold Mach.load_stack in *. ss.
+          erewrite Mem.load_store_other; eauto.
+          right. rewrite Ptrofs.add_zero_l in *. unfold fe_ofs_arg. rewrite Z.add_0_l.
+          rewrite <- ! PLAYGROUND.typesize_chunk.
+          exploit Loc.in_notin_diff; eauto. i. ss.
+          hexploit SZ. { right. eauto. }  i.
+          generalize (typesize_pos ty0); intro TY0.
+          exploit ACCP. { right. eauto. } i. ss. des_safe.
+          rewrite Ptrofs.unsigned_repr; [|xomega].
+          des; ss; try xomega.
   Qed.
 
   Inductive B2C (ls_arg: locset) (m_arg0: mem)
@@ -92,27 +171,6 @@ Section STYLES.
       (RSPPTR: rsp_arg = (Vptr blk Ptrofs.zero true))
       (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
   .
-  (* Inductive B2C (m0: mem) (ls: locset) (m1: mem) (mrs: Mach.regset) (rsp: val): Prop := *)
-  (* | B2C_intro *)
-  (*     (REGS: forall *)
-  (*         mr *)
-  (*       , *)
-  (*         ls (R mr) = mrs mr) *)
-  (*     (NB: Pos.succ m0.(Mem.nextblock) = m1.(Mem.nextblock)) *)
-  (*     (RSPPTR: rsp = (Vptr m0.(Mem.nextblock) Ptrofs.zero true)) *)
-  (*     (PERM: Mem.range_perm m1 m0.(Mem.nextblock) 0 (4 * (size_arguments sg)) Cur Freeable) *)
-  (*     (SLOTS: forall *)
-  (*         l0 *)
-  (*         (IN: In l0 (regs_of_rpairs (loc_arguments sg))) *)
-  (*       , *)
-  (*         match l0 with *)
-  (*         | S Outgoing ofs ty => *)
-  (*           Mach.load_stack m1 rsp ty (Ptrofs.repr (fe_ofs_arg + 4 * ofs)) = Some (ls l0) *)
-  (*         | _ => True *)
-  (*         end) *)
-  (*     (UNCH: Mem.unchanged_on top2 m0 m1) *)
-  (*     (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
-  (* . *)
 
   Definition C2B_locset (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg: mem): locset :=
     fun l0 =>
@@ -251,6 +309,25 @@ just define something like 'fill_arguments' in locationsC
 ".
   Qed.
 
+  Lemma A2B_preservation
+        vs
+        (WTA: Val.has_type_list vs sg.(sig_args))
+        (* (WT: Forall2 Val.has_type vs sg.(sig_args)) *)
+        ls
+        (AB: A2B vs ls)
+    :
+      <<WTB: wt_locset sg ls>>
+  .
+  Proof.
+    inv AB; ss.
+    econs; eauto. clear BOUND PTRFREE.
+    destruct sg; ss. unfold loc_arguments in *. ss. des_ifs. clear_tac.
+    revert WTA.
+    generalize 0 at 1 4 as ir. generalize 0 at 1 3 as fr. generalize 0 at 1 2 as ofs.
+    ginduction sig_args; ii; ss.
+    destruct a; ss; des_ifs; ss; des; ss; clarify; eapply IHsig_args; eauto.
+  Qed.
+
   Lemma A2D_progress
         fptr vs m0
         (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
@@ -271,67 +348,17 @@ just define something like 'fill_arguments' in locationsC
       + instantiate (1:= fake_ptr_one). ss.
   Qed.
 
-  (* Lemma A2D2A_old *)
-  (*       fptr vs m0 prs m1 *)
-  (*       (AD: A2D fptr vs m0 prs m1) *)
-  (*   : *)
-  (*     exists m2, <<DA :D2A_old prs m1 fptr vs m2>> /\ <<MEM: mem_equiv m0 m2>> *)
-  (* . *)
-  (* Proof. *)
-  (*   inv AD. *)
-  (*   inv AB; inv BC; inv CD. ss. *)
-  (*   esplits; eauto. *)
-  (*   - econs; cbn; eauto. *)
-  (*     + ii. eapply PERM. eapply Mem.perm_implies; eauto with mem. *)
-  (*     + hnf. *)
-  (*       generalize (loc_arguments_acceptable_2 sg). intro ACCPS. *)
-  (*       generalize (loc_arguments_one sg). intro ONES. *)
-  (*       abstr (loc_arguments sg) locs. *)
-  (*       clears sg; clear sg. *)
-  (*       clear - ACCPS ONES MEM. *)
-  (*       ginduction locs; ii; ss. *)
-  (*       * econs; eauto. *)
-  (*       * exploit ONES; eauto. i; des. destruct a; ss. clear_tac. *)
-  (*         exploit ACCPS; eauto. i; des. *)
-  (*         u in *. des_ifs_safe. ss. *)
-  (*         destruct r; ss; clarify. *)
-  (*         { econs; eauto. *)
-  (*           - econs; eauto. econs; eauto. *)
-  (*         } *)
-  (*         econs; eauto; cycle 1. *)
-  (*         { eapply IHlocs; eauto. *)
-  (*           - ii. eapply SLOTS; eauto. apply in_app_iff. eauto. *)
-  (*           - ii. eapply ACCPS. eauto. apply in_app_iff. eauto. } *)
-  (*         destruct r; ss; econs; eauto. *)
-  (*         -- rpapply extcall_arg_reg. u. rewrite to_preg_to_mreg. ss. *)
-  (*         -- exploit ACCPS; eauto. intro ACCP. ss. des_ifs. *)
-  (*            econs; eauto. exploit SLOTS; eauto. *)
-  (*   - hexploit (Mem_drop_perm_none_spec m1 m0.(Mem.nextblock) 0 (4 * size_arguments sg)); eauto. i; des. *)
-  (*     exploit Mem.alloc_result; eauto. i; des. clarify. *)
-  (*     econs; eauto. *)
-  (*     + eapply Mem_unchanged_on_trans_strong; eauto. *)
-  (*       eapply Mem.unchanged_on_implies; eauto. *)
-  (*       ii; des. *)
-  (*       left. ii. unfold Mem.valid_block in *. subst. xomega. *)
-  (*     + i. rewrite <- NB0 in *. rewrite <- NB in *. *)
-  (*       assert(b = Mem.nextblock m0). *)
-  (*       { admit "ez". } *)
-  (*       clarify. *)
-  (*       eapply drop_perm_none_dead_block; eauto. ii; ss. *)
-  (*       rewrite <- PERM in PERM0. *)
-  (*       eapply Mem.perm_alloc_3; eauto. *)
-  (* Unshelve. *)
-  (*   all: ss. *)
-  (* Qed. *)
-
   Lemma A2D2A
         fptr vs m0 prs m1
+        (WTA: Val.has_type_list vs sg.(sig_args))
         (AD: A2D fptr vs m0 prs m1)
     :
-      exists m2, <<DA :D2A prs m1 fptr vs m2>> /\ <<MEM: mem_equiv m0 m2>>
+      exists m2, <<DA: D2A prs m1 fptr vs m2>> /\ <<MEM: mem_equiv m0 m2>>
   .
   Proof.
-    inv AD; ss. inv AB; inv BC; inv CD; ss.
+    inv AD; ss.
+    exploit A2B_preservation; eauto. intro WTB; des.
+    inv AB; inv BC; inv CD; ss.
     exploit (@B2C_mem_spec m_alloc blk ls); eauto. { eapply Mem_alloc_range_perm; eauto. } i; des. clarify.
     hexploit Mem.range_perm_free; eauto.
     { ii. rewrite <- PERM. eapply Mem.perm_alloc_2; eauto. }
@@ -344,7 +371,7 @@ just define something like 'fill_arguments' in locationsC
       + econs; eauto.
         generalize (loc_arguments_acceptable sg). intro ACCPS.
         generalize (loc_arguments_one sg). intro ONES.
-        clear - ACCPS ONES STORED.
+        clear - ACCPS ONES STORED WTB.
         Local Opaque Loc.notin_dec.
         eapply map_ext_strong.
         ii; ss.
@@ -355,22 +382,11 @@ just define something like 'fill_arguments' in locationsC
         specialize (STORED (S Outgoing pos ty)). ss.
         assert(INN: In (S Outgoing pos ty) (regs_of_rpairs (loc_arguments sg))).
         { admit "ez". }
-        exploit STORED; eauto. i; des.
-        des_ifs.
-        exfalso. eapply Loc.notin_not_in; eauto.
+        exploit STORED; eauto. i; des_safe.
+        destruct (Loc.notin_dec (S Outgoing pos ty) (regs_of_rpairs (loc_arguments sg))) eqn:T.
+        { exfalso. eapply Loc.notin_not_in; eauto. }
+        inv WTB. exploit SLOT; eauto. i. rewrite H1; ss.
     - admit "ez".
-  Qed.
-
-  Lemma mem_future
-    :
-      True
-  .
-  Proof.
-    admit "
-Two possibilities.
-1) all these operations can be presented with memory primitives. (alloc/store/etc)
-2) put these as primitive, and show that they comply to axioms. (readonly things)
-".
   Qed.
 
 End STYLES.

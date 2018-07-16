@@ -378,7 +378,10 @@ Hint Unfold future.
 
 Require Import Events.
 
-Context `{CTX: Val.meminj_ctx}.
+Section ARGPASSING.
+
+(* Context `{CTX: Val.meminj_ctx}. *)
+Local Existing Instance Val.mi_normal.
 
 Import Mem.
 
@@ -510,6 +513,86 @@ Proof.
   i; des. clarify.
 Qed.
 
+
+Lemma Mem_alloc_left_inject_empty
+      j0
+      m_src0 m_src1 m_tgt blk_src
+      (INJ: Mem.inject j0 m_src0 m_tgt)
+      (ALLOC: Mem.alloc m_src0 0 0 = (m_src1, blk_src))
+      blk_tgt delta
+      (VALID: Mem.valid_block m_tgt blk_tgt)
+      (* (DELTABD: 0 <= delta <= Ptrofs.max_unsigned) *)
+  :
+    Mem.inject (fun blk => if eq_block blk blk_src
+                           then Some (blk_tgt, delta)
+                           else j0 blk) m_src1 m_tgt
+.
+Proof.
+(* NOTE: "alloc_left_mapped_inject" is not good enough. *)
+  assert(NOPERM: forall ofs p k, ~Mem.perm m_src1 blk_src ofs k p).
+  {
+    ii; clarify.
+    exploit Mem.perm_alloc_3; eauto. i; xomega.
+  }
+
+  assert(PERM: all4 (Mem.perm m_src0 -4> Mem.perm m_src1) /\ all4 (Mem.perm m_src1 -4> Mem.perm m_src0)).
+  { split; ii.
+    - eapply Mem.perm_alloc_1; eauto.
+    - eapply Mem.perm_alloc_4; eauto.
+      ii; clarify. eapply NOPERM; eauto.
+  } ss; des.
+
+  assert(INCR: inject_incr j0 (fun blk => if eq_block blk blk_src then Some (blk_tgt, delta) else j0 blk)).
+  { ii; des_ifs. inv INJ. exfalso. exploit mi_freeblocks0; eauto with mem. i; ss. clarify. }
+  econs; try eapply INJ.
+  - econs; try eapply INJ.
+    + ii. des_ifs; eauto.
+      { exfalso. eapply NOPERM; eauto. }
+      eapply INJ; eauto.
+    + ii. des_ifs; eauto.
+      { exfalso. eapply NOPERM. eapply H0; eauto. instantiate (1:= ofs).
+        generalize (size_chunk_pos chunk); intro. xomega. }
+      eapply INJ; eauto.
+      ii. apply PERM0. eapply H0; eauto.
+    + ii. des_ifs; eauto.
+      { exfalso. eapply NOPERM; eauto. }
+      (* it should only inject more. not less *)
+      inv INJ. clear_until mi_inj0. inv mi_inj0.
+      exploit mi_memval0; eauto. i.
+      eapply memval_inject_incr; eauto; cycle 1.
+Local Transparent Mem.alloc.
+      exploit alloc_result; eauto. i; clarify.
+      clear - n H1 ALLOC.
+      unfold alloc in *. clarify; ss.
+      rewrite PMap.gsspec. des_ifs.
+Local Opaque Mem.alloc.
+  - ii. des_ifs; try eapply INJ; eauto with mem.
+    { admit "ez". }
+  - ii. des_ifs; try eapply INJ; eauto with mem.
+  - ii. des_ifs; try (by exploit NOPERM; eauto).
+    eapply INJ; [apply H|..]; eauto.
+  - ii. des_ifs.
+    { des; try (by exploit NOPERM; eauto). }
+    eapply INJ; [apply H|..]; eauto.
+    des; eauto.
+  - ii. des_ifs; try eapply INJ; eauto.
+    inv INJ. exploit mi_perm_inv0; eauto.
+    i; des; eauto.
+Qed.
+
+
+Lemma Mem_store_perm_iff
+      chunk m0 blk ofs v m1
+      (STORE: Mem.store chunk m0 blk ofs v = Some m1)
+  :
+    <<EQ: all4 (Mem.perm m0 <4> Mem.perm m1)>>
+.
+Proof.
+  ii; split; ss.
+  - eapply Mem.perm_store_1; eauto.
+  - eapply Mem.perm_store_2; eauto.
+Qed.
+
 Lemma Mem_store_perm_eq
       chunk m0 blk ofs v m1
       (STORE: Mem.store chunk m0 blk ofs v = Some m1)
@@ -517,37 +600,7 @@ Lemma Mem_store_perm_eq
     <<EQ: all4 (Mem.perm m0 =4= Mem.perm m1)>>
 .
 Proof.
-  eapply prop_ext4.
-  ii; split; ss.
-  - eapply Mem.perm_store_1; eauto.
-  - eapply Mem.perm_store_2; eauto.
+  eapply prop_ext4. eapply Mem_store_perm_iff; eauto.
 Qed.
 
-Lemma Mem_store_left_inject
-      j0 m_src0 m_src1 m_tgt
-      (INJ: Mem.inject j0 m_src0 m_tgt)
-      v_src v_tgt
-      (INJV: Val.inject j0 v_src v_tgt) 
-      ty rsp_src rsp_tgt rspdelta ofs
-      (SRC: Mem.storev (chunk_of_type ty) m_src0 (Vptr rsp_src ofs true) v_src = Some m_src1)
-      (TGT: Mem.loadv (chunk_of_type ty) m_tgt (Vptr rsp_tgt (Ptrofs.add ofs rspdelta) true) = Some v_tgt)
-      (INJRSP: j0 rsp_src = Some (rsp_tgt, rspdelta.(Ptrofs.unsigned)))
-  :
-    <<INJ: Mem.inject j0 m_src1 m_tgt>>
-.
-Proof.
-  unfold storev in *. des_ifs. ss.
-  hexploit Mem_store_perm_eq; eauto. intro PERM.
-  econs; try apply INJ; eauto.
-  - econs; ii; try eapply INJ; ii; eauto with mem congruence.
-    Local Transparent Mem.store. unfold Mem.store in *. des_ifs; ss.
-    rewrite PMap.gsspec. des_ifs.
-    + Local Transparent Mem.load. unfold Mem.load in *. des_ifs; ss.
-      destruct (classic
-                  (Ptrofs.unsigned ofs <= ofs0 <
-                   Ptrofs.unsigned ofs + Z.of_nat (length (encode_val (chunk_of_type ty) v_src)))); cycle 1.
-      { rewrite setN_outside; try omega. eapply INJ; eauto. }
-      clear - INJV H H1. abstr (chunk_of_type ty) chnk.
-      admit "this should hold".
-Admitted.
-
+End ARGPASSING.

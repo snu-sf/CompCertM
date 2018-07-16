@@ -627,6 +627,7 @@ Proof.
     clarify.
   }
 }
+    + i; des; ss. clear - FINDFUNC H. admit "ge".
 Qed.
 
 Lemma match_stacks_parent_sp
@@ -748,6 +749,11 @@ Proof.
   clarify.
   exploit match_stacks_parent_sp; eauto. i; des.
   u in H. des_ifs. clear_tac. rename b into sp_tgt. rename i into spdelta.
+
+  exploit (@B2C_mem_spec sg_arg m_alloc sp_src ls_arg); eauto.
+  { eapply Mem_alloc_range_perm; eauto. }
+  i; des. clarify.
+
   set (sm_arg := (mk (fun blk => if eq_block blk sp_src
                                  then Some (sp_tgt, spdelta.(Ptrofs.unsigned))
                                  else sm0.(inj) blk)
@@ -757,9 +763,38 @@ Proof.
                      sm0.(src_mem_parent) sm0.(tgt_mem_parent))).
   unfold load_stack in *. ss.
 
-  exploit (@B2C_mem_spec sg_arg m_alloc sp_src ls_arg); eauto.
-  { eapply Mem_alloc_range_perm; eauto. }
-  i; des. clarify.
+  destruct (classic (length stack = 1%nat)).
+  { inv STACKS; ss; cycle 1.
+    { inv STK; ss. } 
+    hexploit ABCD; eauto.
+    { esplits; eauto. admit "genv". }
+    intro TAIL.
+    assert(m_alloc = m_arg_src).
+    { admit "tailcall_possible". }
+    clarify.
+    inv CD. ss.
+    assert(MLE: SimMem.le sm0 sm_arg).
+    { admit "??". }
+    assert(MWF0: SimMem.wf sm_arg).
+    { admit "??". }
+    do 2 eexists. exists sm_arg. cbn.
+    esplits; cbn; try reflexivity; eauto.
+    - econs; eauto.
+      + fold tge. admit "this should hold".
+      + econs; eauto.
+        * reflexivity.
+    - u. i. destruct (to_mreg pr) eqn:T; ss.
+      + unfold agree_regs in AGREGS.
+        eapply val_inject_incr; eauto. eapply MLE.
+      + des_ifs; try (by econs; eauto).
+        * eapply val_inject_incr; eauto. apply MLE.
+        * econs; eauto. des_ifs. rewrite Ptrofs.add_zero_l. rewrite Ptrofs.repr_unsigned; ss.
+        * u in RAPTR. des_ifs. u in RAPTR0. des_ifs. econs; eauto.
+  }
+
+  assert(spdelta = Ptrofs.zero).
+  { inv STACKS; ss; clarify. }
+  clarify.
 
   assert(MLE: SimMem.le sm0 sm_arg).
   {
@@ -781,21 +816,24 @@ Proof.
   }
   exploit Mem.alloc_result; eauto. i; des. clarify.
   exploit Mem.nextblock_alloc; eauto. intro ALLOCNB.
+
   assert(MWF0: SimMem.wf sm_arg).
   { subst sm_arg.
     econs; cbn; try apply MWF; eauto.
     -
-
-
-      assert(spdelta = Ptrofs.zero).
-      { inv STACKS; ss; clarify.
-      }
       assert(Mem.inject
                (fun blk : block =>
                   if eq_block blk (Mem.nextblock (src_mem sm0))
-                  then Some (sp_tgt, Ptrofs.unsigned spdelta)
+                  then Some (sp_tgt, 0)
                   else inj sm0 blk) m_alloc sm0.(tgt_mem)).
-      { eapply Mem_alloc_left_inject. }
+      { rewrite sep_comm in SEP. rewrite sep_assoc in SEP. apply sep_drop2 in SEP. rewrite sep_comm in SEP.
+        eapply Mem_alloc_left_inject; try apply MWF; eauto.
+        { admit "ez". }
+        { i. rpapply arguments_private; eauto. }
+        { i. apply Mem.perm_cur. eapply Mem.perm_implies.
+          - rpapply arguments_perm; eauto.
+          - eauto with mem. }
+      }
 
 
 

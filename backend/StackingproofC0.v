@@ -25,6 +25,232 @@ Require Import sflib.
 Local Open Scope sep_scope.
 
 
+Section STORED.
+
+
+Inductive Mem_stored (chunk: memory_chunk) (m0: mem) (b: block) (ofs: Z) (v: val): Prop :=
+| stored_intro
+    (STORED: (Mem.getN (size_chunk_nat chunk) ofs (Maps.PMap.get b m0.(Mem.mem_contents)))
+             = (encode_val chunk v))
+    (WRITABLE: Mem.valid_access m0 chunk b ofs Writable)
+.
+
+Theorem Mem_store_stored
+        chunk m0 b ofs v m1
+        (STORE: Mem.store chunk m0 b ofs v = Some m1)
+  :
+    <<STORED: Mem_stored chunk m1 b ofs v>>
+.
+Proof.
+  econs; eauto with mem.
+  erewrite Mem.store_mem_contents; eauto.
+  rewrite Maps.PMap.gsspec. des_ifs.
+  erewrite <- encode_val_length; eauto.
+  rewrite Mem.getN_setN_same. ss.
+Qed.
+
+(* Local Transparent Mem.load. *)
+(* Lemma Mem_stored_load *)
+(*       chunk m0 b ofs v *)
+(*       (STORE: Mem_stored chunk m0 b ofs v) *)
+(*   : *)
+(*     <<LOAD: Mem.load chunk m0 b ofs = Some v>> *)
+(* . *)
+(* Proof. *)
+(*   inv STORE. *)
+(*   unfold Mem.load. des_ifs; cycle 1. *)
+(*   { exfalso. eapply n. eauto with mem. } *)
+(*   red. f_equal. *)
+(*   destruct chunk; ss; des_ifs. *)
+(*   - unfold encode_val in *. *)
+(*   destruct chunk; ss. *)
+(*   - unfold Maps.PMap.get. des_ifs. econs; eauto. *)
+(* Qed. *)
+(* Local Opaque Mem.load. *)
+
+(* Local Transparent Mem.store. *)
+
+(* Definition ZMap_equal {X} (eqX: X -> X -> Prop) (EQUIV: RelationClasses.Equivalence eqX) *)
+(*            (zm0 zm1: Maps.ZMap.t X): Prop := *)
+(*   zm0.(fst) = zm1.(fst) /\ Maps.PTree_Properties.Equal EQUIV zm0.(snd) zm1.(snd) *)
+(* . *)
+
+(* Inductive Mem_equal (m0 m1: mem): Prop := *)
+(* | equal_intro *)
+(*       (EQ0: m0.(Mem.mem_contents).(fst) = m1.(Mem.mem_contents).(fst)) *)
+(*       (EQ1: @Maps.PTree_Properties.Equal _ (ZMap_equal eq (@Eqsth _)) *)
+(*                                          (admit "") *)
+(*                                          m0.(Mem.mem_contents).(snd) m1.(Mem.mem_contents).(snd)) *)
+(*       (EQ2: m0.(Mem.mem_access) = m1.(Mem.mem_access)) *)
+(*       (EQ3: m0.(Mem.nextblock) = m1.(Mem.nextblock)) *)
+(* . *)
+
+(* Theorem Mem_stored_store *)
+(*         chunk m0 b ofs v *)
+(*         (STORED: Mem_stored chunk m0 b ofs v) *)
+(*   : *)
+(*     exists m1, <<STORE: Mem.store chunk m0 b ofs v = Some m1>> /\ *)
+(*                         <<EQUIV: Mem_equal m0 m1>> *)
+(* . *)
+(* Proof. *)
+(*   inv STORED. *)
+(*   unfold Mem.store. des_ifs. destruct m0; ss. *)
+(*   esplits; eauto. *)
+(*   econs; eauto. cbn. *)
+(*   destruct mem_contents; ss. *)
+(*   hnf. ii; ss. *)
+(*   destruct (Maps.PTree.get x t0) eqn:T. *)
+(*   - rewrite Maps.PTree.gsspec. rewrite T. *)
+(*     unfold Maps.PMap.get in *. ss. des_ifs; try reflexivity. *)
+(*     econs; ss. *)
+(*     { rewrite Mem.setN_default. ss. } *)
+(*     hnf. ii. *)
+(*     destruct (Maps.PTree.get x (snd t1)) eqn:U. *)
+(*     + *)
+(*     des_ifs. *)
+(*     rewrite <- STORED0. erewrite <- encode_val_length with (v:=v); eauto. *)
+(*     rewrite Mem.getN_setN_same. ss. *)
+(*     econs; eauto. *)
+(*   unfold Maps.PMap.set. ss. f_equal. *)
+(*   Maps.PTree_Properties.Equal *)
+(*   assert(forall i, Maps.PTree.set b (Mem.setN (encode_val chunk v) ofs (Maps.PMap.get b (t, t0))) t0 *)
+(*   rewrite Maps.PTree.gsspec. *)
+(*   eapply Axioms.functional_extensionality. *)
+(*   cbn. *)
+(*   Set Printing All. *)
+(*   rewrite Maps.PMap.gsspec. *)
+(*   rewrite Mem.getN_setN_same. ss. *)
+(*   econs; eauto. *)
+(*   econs; eauto with mem. *)
+(*   erewrite Mem.store_mem_contents; eauto. *)
+(*   rewrite Maps.PMap.gsspec. des_ifs. *)
+(*   erewrite <- encode_val_length; eauto. *)
+(*   rewrite Mem.getN_setN_same. ss. *)
+(* Qed. *)
+
+
+(* Lemma Mem_equal_proof_irr *)
+(*       m0 m1 *)
+(*       (EQ0: m0.(Mem.mem_contents) = m1.(Mem.mem_contents)) *)
+(*       (EQ1: m0.(Mem.mem_access) = m1.(Mem.mem_access)) *)
+(*       (EQ2: m0.(Mem.nextblock) = m1.(Mem.nextblock)) *)
+(*   : *)
+(*     m0 = m1 *)
+(* . *)
+(* Proof. *)
+(*   destruct m0, m1; ss. clarify. *)
+(*   f_equal; eapply Axioms.proof_irr. *)
+(* Qed. *)
+
+(* Theorem Mem_stored_store *)
+(*         chunk m0 b ofs v *)
+(*         (STORED: Mem_stored chunk m0 b ofs v) *)
+(*   : *)
+(*     exists m1, <<STORE: Mem.store chunk m0 b ofs v = Some m1>> /\ *)
+(*                         <<EQUIV: m0 = m1>> *)
+(* . *)
+(* Proof. *)
+(*   inv STORED. *)
+(*   unfold Mem.store. des_ifs. destruct m0; ss. *)
+(*   esplits; eauto. cbn. *)
+(*   f_equal. eapply Mem_equal_proof_irr; eauto. *)
+(*   ss. *)
+(*   destruct mem_contents; ss. *)
+(*   unfold Maps.PMap.set. ss. f_equal. *)
+(*   Maps.PTree_Properties.Equal *)
+(*   assert(forall i, Maps.PTree.set b (Mem.setN (encode_val chunk v) ofs (Maps.PMap.get b (t, t0))) t0 *)
+(*   rewrite Maps.PTree.gsspec. *)
+(*   eapply Axioms.functional_extensionality. *)
+(*   cbn. *)
+(*   Set Printing All. *)
+(*   rewrite Maps.PMap.gsspec. *)
+(*   rewrite Mem.getN_setN_same. ss. *)
+(*   econs; eauto. *)
+(*   econs; eauto with mem. *)
+(*   erewrite Mem.store_mem_contents; eauto. *)
+(*   rewrite Maps.PMap.gsspec. des_ifs. *)
+(*   erewrite <- encode_val_length; eauto. *)
+(*   rewrite Mem.getN_setN_same. ss. *)
+(* Qed. *)
+
+
+Local Existing Instance Val.mi_normal.
+
+Lemma memval_inject_refl
+      mv
+  : 
+    memval_inject (fun b0 : block => Some (b0, 0)) mv mv
+.
+Proof.
+  destruct mv; ss; econs; eauto.
+  apply val_inject_id. ss. 
+Qed.
+
+Lemma store_stored_inject
+      j0 m_src0 m_src1 m_tgt
+      (INJ: Mem.inject j0 m_src0 m_tgt)
+      v_src v_tgt
+      (INJV: Val.inject j0 v_src v_tgt) 
+      ty rsp_src rsp_tgt rspdelta ofs
+      (SRC: Mem.storev (chunk_of_type ty) m_src0 (Vptr rsp_src ofs true) v_src = Some m_src1)
+      (TGT: Mem_stored (chunk_of_type ty) m_tgt rsp_tgt (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) v_tgt)
+      (INJRSP: j0 rsp_src = Some (rsp_tgt, rspdelta.(Ptrofs.unsigned)))
+      (BOUND: Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta <= Ptrofs.max_unsigned)
+  :
+    <<INJ: Mem.inject j0 m_src1 m_tgt>>
+.
+Proof.
+  ss. red.
+  exploit Mem.store_mapped_inject; eauto. i; des.
+  eapply Mem.inject_extends_compose; eauto.
+  clear - TGT H BOUND.
+Local Transparent Mem.store.
+  hexploit MemoryC.Mem_store_perm_eq; eauto. intro PERM. des.
+  replace (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) with
+      (Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta) in *; cycle 1.
+  { rewrite Ptrofs.add_unsigned. rewrite Ptrofs.unsigned_repr; ss. split; try xomega.
+    hexploit (Ptrofs.unsigned_range ofs); eauto. i.
+    hexploit (Ptrofs.unsigned_range rspdelta); eauto. i.
+    xomega.
+  }
+  abstr (Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta) ofs0.
+  unfold Mem.store in *. inv TGT. des_ifs.
+  econs; eauto.
+  unfold inject_id.
+  econs; ss; eauto.
+  - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss.
+  - ii; clarify. unfold Mem.range_perm, Mem.perm in *. ss. rewrite Z.divide_0_r. reflexivity.
+  - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss.
+    rewrite Maps.PMap.gsspec. des_ifs; cycle 1.
+    { apply memval_inject_refl. }
+    rewrite <- STORED.
+    rename rsp_tgt into b. abstr (chunk_of_type ty) chunk. clear_tac.
+    destruct chunk; ss; rewrite ! Maps.ZMap.gsspec; des_ifs; try apply memval_inject_refl.
+Qed.
+
+Lemma Mem_stored_unchanged_on
+      P m0 m1
+      (UNCH: Mem.unchanged_on P m0 m1)
+      b ofs v chunk
+      (INSIDE: forall i : Z, ofs <= i < ofs + size_chunk chunk -> P b i)
+      (STORED: Mem_stored chunk m0 b ofs v)
+  :
+    <<STORED: Mem_stored chunk m1 b ofs v>>
+.
+Proof.
+  inv UNCH.
+  inv STORED. econs; eauto.
+  - erewrite <- STORED0.
+    unfold Mem.valid_access in *. ss. des; ss.
+    apply Mem.range_perm_implies with (p2:= Readable) in WRITABLE; eauto with mem.
+    destruct chunk; ss; rewrite ! unchanged_on_contents; eauto with lia.
+  - hnf in WRITABLE. des.
+    hnf. splits; eauto. ii. eapply unchanged_on_perm; eauto.
+    eauto with mem.
+Qed.
+
+End STORED.
+
 Lemma load_stack_transf_ofs
       m sp spofs ty ofs
   :
@@ -219,17 +445,26 @@ Program Definition contains_locations (j: meminj) (sp: block) (pos bound: Z) (sl
     DUMMY_PROP /\ 0 <= pos /\ pos + 4 * bound <= Ptrofs.modulus /\
     Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable /\
     forall ofs ty, 0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
-    exists v, Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v
-           /\ Val.inject j (ls (S sl ofs ty)) v;
+    (exists v, Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v
+           /\ Val.inject j (ls (S sl ofs ty)) v)
+      /\
+      ((ls (S sl ofs ty)) = Vundef \/
+       exists v, Mem_stored (chunk_of_type ty) m sp (pos + 4 * ofs) v
+                 /\ Val.inject j (ls (S sl ofs ty)) v)
+  ;
   m_footprint := fun b ofs =>
     b = sp /\ pos <= ofs < pos + 4 * bound
 |}.
 Next Obligation.
   intuition auto.
 - red; intros. eapply Mem.perm_unchanged_on; eauto. simpl; auto.
-- exploit H4; eauto. intros (v & A & B). exists v; split; auto.
+- exploit H4; eauto. i; des_safe. exists v; split; auto.
   eapply Mem.load_unchanged_on; eauto.
-  simpl; intros. rewrite size_type_chunk, typesize_typesize in H8.
+  simpl; intros. rewrite size_type_chunk, typesize_typesize in *.
+  split; auto. omega.
+- exploit H4; eauto. i; des; eauto. right. exists v0; split; auto.
+  eapply Mem_stored_unchanged_on; eauto.
+  simpl; intros. rewrite size_type_chunk, typesize_typesize in *.
   split; auto. omega.
 Qed.
 Next Obligation.
@@ -302,7 +537,7 @@ Lemma get_location:
   /\ Val.inject j (ls (S sl ofs ty)) v.
 Proof.
   intros. destruct H as (D & E & F & G & H).
-  exploit H; eauto. intros (v & U & V). exists v; split; auto.
+  exploit H; eauto. i; des_safe. exists v; split; auto.
   unfold load_stack; simpl. rewrite Ptrofs.add_zero_l, Ptrofs.unsigned_repr; auto.
   unfold Ptrofs.max_unsigned. generalize (typesize_pos ty). omega.
 Qed.
@@ -319,7 +554,7 @@ Proof.
   intros. destruct H as (A & B & C). destruct A as (D & E & F & G & H).
   edestruct Mem.valid_access_store as [m' STORE].
   eapply valid_access_location; eauto with mem.
-  { eapply valid_access_typealign_divides; eauto; xomega. }
+  { eapply valid_access_typealign_divides; eauto. ii; eapply H; eauto. xomega. }
   assert (PERM: Mem.range_perm m' sp pos (pos + 4 * bound) Cur Freeable).
   { red; intros; eauto with mem. }
   exists m'; split.
@@ -334,15 +569,39 @@ Proof.
   eapply Mem.load_store_similar_2; eauto. omega.
   apply Val.load_result_inject; auto.
 * (* different locations *)
-  exploit H; eauto. intros (v0 & X & Y). exists v0; split; auto.
-  rewrite <- X; eapply Mem.load_store_other; eauto.
+  exploit H; eauto. i; des_safe. exists v0; split; auto.
+  rewrite <- H7; eapply Mem.load_store_other; eauto.
   destruct d. congruence. right. rewrite ! size_type_chunk, ! typesize_typesize. omega.
 * (* overlapping locations *)
   destruct (Mem.valid_access_load m' (chunk_of_type ty0) sp (pos + 4 * ofs0)) as [v'' LOAD].
   apply Mem.valid_access_implies with Freeable; auto with mem.
   eapply valid_access_location; eauto with mem.
-  { eapply valid_access_typealign_divides; eauto; xomega. }
+  { eapply valid_access_typealign_divides; eauto. ii; eapply H; eauto. xomega. }
   exists v''; auto.
++ unfold Locmap.set. des_ifs.
+* (* same location *)
+  rename ofs0 into ofs. rename ty0 into ty.
+(*   rename v into __v. *)
+(* Val.load_result_type: *)
+(*   forall (chunk : memory_chunk) (v : val), Val.has_type (Val.load_result chunk v) (type_of_chunk chunk) *)
+(* Val.load_result_same: forall (v : val) (ty : typ), Val.has_type v ty -> Val.load_result (chunk_of_type ty) v = v *)
+  right.
+  esplits; eauto.
+  { eapply Mem_store_stored; eauto. }
+  { destruct ty; ss; des_ifs. }
+* (* different locations *)
+  exploit H; eauto. i; des_safe. des; eauto. right. esplits; eauto.
+  destruct d.
+  { congruence. }
+  eapply Mem.store_unchanged_on in STORE; cycle 1.
+  { instantiate (1:= fun blk i => ~pos + 4 * ofs <= i < pos + 4 * ofs + size_chunk (chunk_of_type ty)).
+    cbn. ii. xomega. }
+  eapply Mem_stored_unchanged_on; eauto.
+  { cbn. ii.
+    rewrite ! size_type_chunk, ! typesize_typesize in *. omega. }
+* (* overlapping locations *)
+  left. ss.
+
 + apply (m_invar P) with m; auto.
   eapply Mem.store_unchanged_on; eauto.
   intros i; rewrite size_type_chunk, typesize_typesize. intros; red; intros.
@@ -373,7 +632,8 @@ Lemma contains_locations_exten:
               (contains_locations j sp pos bound sl ls').
 Proof.
   intros; split; simpl; intros; auto.
-  intuition auto. rewrite H. eauto.
+  i. des. esplits; eauto. i. exploit H4; eauto. i; des_safe; eauto.
+  rewrite H. eauto.
 Qed.
 
 Lemma contains_locations_incr:
@@ -383,7 +643,9 @@ Lemma contains_locations_incr:
               (contains_locations j' sp pos bound sl ls).
 Proof.
   intros; split; simpl; intros; auto.
-  intuition auto. exploit H5; eauto. intros (v & A & B). exists v; eauto.
+  i. des. esplits; eauto. i. exploit H4; eauto. i; des_safe; eauto.
+  esplits; eauto.
+  des; eauto.
 Qed.
 
 (** [contains_callee_saves j sp pos rl ls] is a memory assertion that holds
@@ -1797,7 +2059,7 @@ Lemma arguments_private
       (STACKS: match_stacks F stk_src stk_tgt sg)
       (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
       ofs
-      (OFS: 0 <= ofs < size_arguments sg)
+      (OFS: 0 <= ofs < 4 * size_arguments sg)
   :
     (<<PRIV: loc_out_of_reach F m_src sp_tgt (spdelta.(Ptrofs.unsigned) + ofs)>>)
 .
@@ -1834,7 +2096,7 @@ Lemma arguments_perm
       (STACKS: match_stacks F stk_src stk_tgt sg)
       (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
       ofs
-      (OFS: 0 <= ofs < size_arguments sg)
+      (OFS: 0 <= ofs < 4 *size_arguments sg)
   :
     (<<PERM: Mem.perm m_tgt sp_tgt (spdelta.(Ptrofs.unsigned) + ofs) Cur Freeable>>)
 .
@@ -2082,7 +2344,8 @@ Inductive match_states: Linear.state -> Mach.state -> Prop :=
         (FPTR: Val.inject j fptr tfptr)
         (SEP: m' |= stack_contents j cs cs'
                  ** minjection j m
-                 ** globalenv_inject ge j),
+                 ** globalenv_inject ge j)
+        (ABCD: Genv.find_funct ge fptr = None /\ length cs = 1%nat -> tailcall_possible sg),
       match_states (Linear.Callstate cs fptr sg ls m)
                    (Mach.Callstate cs' tfptr rs m')
   | match_states_return:
@@ -2299,6 +2562,7 @@ Proof.
   simpl; red; auto.
   { inv FPTR. eauto. }
   simpl. inv STACKS; sep_simpl_tac; ss.
+  { i; des; ss. inv STACKS; ss. }
 
 - (* Ltailcall *)
   rewrite (sep_swap (stack_contents j s cs')) in SEP.
@@ -2315,6 +2579,10 @@ Proof.
   apply match_stacks_change_sig with (Linear.fn_sig f); auto.
   apply zero_size_arguments_tailcall_possible. eapply wt_state_tailcall; eauto.
   { inv FPTR. eauto. }
+  { i; des; ss. inv STACKS; cycle 1; ss.
+    { inv STK; ss. }
+    apply zero_size_arguments_tailcall_possible. eapply wt_state_tailcall; eauto.
+  }
 
 - (* Lbuiltin *)
   destruct BOUND as [BND1 BND2].

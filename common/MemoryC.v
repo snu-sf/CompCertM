@@ -5,13 +5,15 @@ Require Intv.
 Require Import MapsC.
 Require Archi.
 Require Import ASTC.
-Require Import Integers.
+Require Import IntegersC.
 Require Import Floats.
 Require Import ValuesC.
 Require Export Memdata.
 Require Export Memtype.
 Require Import sflib.
 Require Import Lia.
+Require Import Events.
+
 
 Local Notation "a # b" := (PMap.get b a) (at level 1).
 (** Above is exactly copied from Memory.v **)
@@ -374,9 +376,83 @@ Hint Unfold future.
 
 
 
+Definition update_meminj (F: meminj) (blk_src blk_tgt: block) (delta: Z): meminj :=
+  fun blk: block => if eq_block blk blk_src then Some (blk_tgt, delta) else F blk
+.
+Hint Unfold update_meminj.
+
+Lemma no_overlap_equiv
+      F m0 m1
+      (PERM: all4 (Mem.perm m0 <4> Mem.perm m1))
+      (OVERLAP: Mem.meminj_no_overlap F m0)
+  :
+    <<OVERLAP: Mem.meminj_no_overlap F m1>>
+.
+Proof.
+  ii; ss. eapply OVERLAP; eauto; eapply PERM; eauto.
+Qed.
+
+Lemma Mem_alloc_fresh_perm
+      m0 lo hi blk m1
+      (ALLOC: Mem.alloc m0 lo hi = (m1, blk))
+  :
+    <<NOPERM: forall ofs p k, ~Mem.perm m0 blk ofs p k>>
+     /\
+    <<NOPERM: forall ofs (OUTSIDE: ~ lo <= ofs < hi) p k, ~Mem.perm m1 blk ofs p k>>
+.
+Proof.
+  ii.
+  exploit Mem.alloc_result; eauto. i; clarify.
+  esplits; eauto.
+  - ii.
+    exploit (Mem.nextblock_noaccess m0 m0.(Mem.nextblock)); eauto with mem.
+    { ii. xomega. }
+    i. unfold Mem.perm in *.
+    rewrite H0 in *. ss.
+  - ii.
+    exploit (Mem.nextblock_noaccess m0 m0.(Mem.nextblock)); eauto with mem.
+Unshelve.
+  all: ss.
+Qed.
+
+Lemma update_no_overlap
+      F m0
+      (OVERLAP: Mem.meminj_no_overlap F m0)
+      sz blk_src blk_tgt delta m1
+      (ALLOC: Mem.alloc m0 0 sz = (m1, blk_src))
+      (PRIVTGT: forall
+          ofs
+          (SZ: 0 <= ofs < sz)
+        ,
+          loc_out_of_reach F m0 blk_tgt (ofs + delta))
+  :
+    <<OVERLAP: Mem.meminj_no_overlap
+                 (update_meminj F blk_src blk_tgt delta)
+                 (* (fun blk: block => if eq_block blk_src blk then Some (blk_tgt, delta) else F blk) *)
+                 m1>>
+.
+Proof.
+  u.
+  hnf. ii; ss.
+  destruct (classic (b1' = b2')); cycle 1.
+  { left; ss. }
+  right. clarify.
+  exploit Mem.alloc_result; eauto. i; clarify.
+  des_ifs; ss; cycle 1.
+  - ii.
+    exploit Mem.perm_alloc_3; eauto. i.
+    exploit PRIVTGT; try apply H3; eauto; cycle 1.
+    replace (ofs2 + delta2 - delta1) with ofs1 by xomega.
+    eauto with mem.
+  - exploit OVERLAP; [|apply H0|apply H1|..]; eauto with mem. ii; des; ss.
+  - ii.
+    exploit Mem.perm_alloc_3; eauto. i.
+    exploit PRIVTGT; try apply H3; eauto; cycle 1.
+    replace (ofs1 + delta1 - delta2) with ofs2 by xomega.
+    eauto with mem.
+Qed.
 
 
-Require Import Events.
 
 Section ARGPASSING.
 
@@ -479,15 +555,6 @@ Proof.
 (* image of others *)
   split; auto.
   intros. unfold f'; apply dec_eq_false; auto.
-Qed.
-
-Lemma max_unsigned_zero
-  :
-    0 <= Ptrofs.max_unsigned
-.
-Proof.
-  etransitivity; try unshelve apply Ptrofs.unsigned_range_2.
-  apply Ptrofs.zero.
 Qed.
 
 Lemma Mem_alloc_left_inject
@@ -618,11 +685,14 @@ Proof.
     + ii; clarify. eapply INJ; eauto. eapply PERM; eauto.
     + ii; clarify. eapply INJ; eauto. ii. eapply PERM; eauto.
     + ii; clarify.
-      unfold store in *. des_ifs. ss.
+      unfold store in *.
+      Local Opaque encode_val.
+      des_ifs. ss.
       unfold ZMap.get; rewrite PMap.gsspec. des_ifs; cycle 1.
       { eapply INJ; eauto. }
       unfold perm in *. ss.
       (* inv INJ. clear_until mi_inj0. inv mi_inj0. clear mi_perm0 mi_align0. *)
+      Local Transparent encode_val.
       destruct chunk; ss; repeat (unfold ZMap.set in *; rewrite PMap.gsspec; des_ifs; [econs; eauto|]);
         eapply INJ; eauto.
  - admit "ez".
@@ -820,7 +890,7 @@ Proof.
   eapply Mem.inject_extends_compose; eauto.
   clear - TGT H BOUND.
 Local Transparent Mem.store.
-  hexploit MemoryC.Mem_store_perm_eq; eauto. intro PERM. des.
+  hexploit Mem_store_perm_eq; eauto. intro PERM. des.
   replace (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) with
       (Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta) in *; cycle 1.
   { rewrite Ptrofs.add_unsigned. rewrite Ptrofs.unsigned_repr; ss. split; try xomega.

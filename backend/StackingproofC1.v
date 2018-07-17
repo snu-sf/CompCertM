@@ -464,6 +464,60 @@ Proof.
   psimpl. rpapply H1.
 Qed.
 
+Lemma B2C_mem_simmem
+      ls_arg sg sm0 m_src1
+      (MWF: SimMem.wf sm0)
+      blk_src blk_tgt (* delta *)
+      (INJRSP: sm0.(inj) blk_src = Some (blk_tgt, 0))
+      (BCM: B2C_mem sm0.(SimMem.src) (Vptr blk_src Ptrofs.zero true) ls_arg
+                    (regs_of_rpairs (loc_arguments sg)) = Some m_src1)
+      (ARGSTGTSTRONG: forall ofs ty,
+          In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)) ->
+          <<UNDEF: ls_arg (S Outgoing ofs ty) = Vundef >> \/
+          (exists v,
+              <<STORED: Mem_storedv (chunk_of_type ty) sm0.(SimMem.tgt)
+                                    (Val.offset_ptr (Vptr blk_tgt Ptrofs.zero(* delta.(Ptrofs.repr) *) true)
+                                                    (Ptrofs.repr (4 * ofs))) v >> /\
+              <<INJECT: Val.inject sm0.(inj) (ls_arg (S Outgoing ofs ty)) v >>))
+      (SZARG: 4 * (size_arguments sg) <= Ptrofs.max_unsigned)
+  :
+    let sm1 := (mk sm0.(inj) m_src1 sm0.(m_tgt)
+                         sm0.(src_external) sm0.(tgt_external)
+                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in
+    <<MWF: SimMem.wf sm1>> /\ <<MLE: SimMem.le sm0 sm1>>
+.
+Proof.
+  generalize (loc_arguments_acceptable_2 sg); eauto. i.
+  generalize (loc_arguments_bounded sg); eauto. i.
+  abstr (regs_of_rpairs (loc_arguments sg)) locs.
+  subst_locals.
+  ss.
+  ginduction locs; ii; ss; psimpl.
+  { clarify. destruct sm0; ss. esplits; eauto. reflexivity. }
+  u in *.
+  des_ifs; ss; try (by eapply IHlocs; eauto).
+  exploit IHlocs; try eassumption; eauto. intro INJ0.
+  (* rewrite Ptrofs.add_unsigned in H0. *)
+  exploit ARGSTGTSTRONG; eauto. i; des_safe.
+  des.
+  { rewrite H1 in *. eapply store_undef_simmem in INJ0; eauto; cycle 1.
+    { u. unfold loc_unmapped. i; des. clarify. }
+    ss. des. esplits; eauto. etransitivity; eauto. }
+  psimpl.
+  exploit store_stored_simmem; try apply INJ0; eauto; ss.
+  { rpapply H1. rewrite Ptrofs.add_zero. eauto. }
+  { rewrite INJRSP. repeat f_equal; eauto. }
+  { psimpl.
+    hexploit H; eauto. i; des.
+    hexploit H0; eauto. i; des.
+    generalize (typesize_pos ty); i.
+    rewrite Ptrofs.unsigned_repr; ss; try xomega.
+  }
+  i; des.
+  esplits; eauto.
+  etransitivity; eauto.
+Qed.
+
 End ARGPASSING.
 
 
@@ -743,73 +797,6 @@ Proof.
   induction MATCH; ss.
 Qed.
 
-Definition update_meminj (F: meminj) (blk_src blk_tgt: block) (delta: Z): meminj :=
-  fun blk: block => if eq_block blk blk_src then Some (blk_tgt, delta) else F blk
-.
-Hint Unfold update_meminj.
-
-Lemma no_overlap_equiv
-      F m0 m1
-      (PERM: all4 (Mem.perm m0 <4> Mem.perm m1))
-      (OVERLAP: Mem.meminj_no_overlap F m0)
-  :
-    <<OVERLAP: Mem.meminj_no_overlap F m1>>
-.
-Proof.
-  ii; ss. eapply OVERLAP; eauto; eapply PERM; eauto.
-Qed.
-
-Lemma Mem_alloc_fresh_perm
-      m0 lo hi blk m1
-      (ALLOC: Mem.alloc m0 lo hi = (m1, blk))
-  :
-    <<NOPERM: forall ofs p k, ~Mem.perm m0 blk ofs p k>>
-.
-Proof.
-  ii.
-  exploit Mem.alloc_result; eauto. i; clarify.
-  exploit (Mem.nextblock_noaccess m0 m0.(Mem.nextblock)); eauto with mem.
-  { ii. xomega. }
-  i. unfold Mem.perm in *. rewrite H0 in *. ss.
-Qed.
-
-Lemma update_no_overlap
-      F m0
-      (OVERLAP: Mem.meminj_no_overlap F m0)
-      sz blk_src blk_tgt delta m1
-      (ALLOC: Mem.alloc m0 0 sz = (m1, blk_src))
-      (PRIVTGT: forall
-          ofs
-          (SZ: 0 <= ofs < sz)
-        ,
-          loc_out_of_reach F m0 blk_tgt (ofs + delta))
-  :
-    <<OVERLAP: Mem.meminj_no_overlap
-                 (update_meminj F blk_src blk_tgt delta)
-                 (* (fun blk: block => if eq_block blk_src blk then Some (blk_tgt, delta) else F blk) *)
-                 m1>>
-.
-Proof.
-  u.
-  hnf. ii; ss.
-  destruct (classic (b1' = b2')); cycle 1.
-  { left; ss. }
-  right. clarify.
-  exploit Mem.alloc_result; eauto. i; clarify.
-  des_ifs; ss; cycle 1.
-  - ii.
-    exploit Mem.perm_alloc_3; eauto. i.
-    exploit PRIVTGT; try apply H3; eauto; cycle 1.
-    replace (ofs2 + delta2 - delta1) with ofs1 by xomega.
-    eauto with mem.
-  - exploit OVERLAP; [|apply H0|apply H1|..]; eauto with mem. ii; des; ss.
-  - ii.
-    exploit Mem.perm_alloc_3; eauto. i.
-    exploit PRIVTGT; try apply H3; eauto; cycle 1.
-    replace (ofs1 + delta1 - delta2) with ofs2 by xomega.
-    eauto with mem.
-Qed.
-
 Theorem sim_modsem
   :
     ModSemPair.sim msp
@@ -878,6 +865,7 @@ Proof.
   clarify.
   exploit match_stacks_parent_sp; eauto. i; des.
   u in H. des_ifs. clear_tac. rename b into sp_tgt. rename i into spdelta.
+  rename Heq into PARENTPTR.
 
   exploit (@B2C_mem_spec sg_arg m_alloc sp_src ls_arg); eauto.
   { eapply Mem_alloc_range_perm; eauto. }
@@ -892,7 +880,8 @@ Proof.
   unfold load_stack in *. ss.
 
   destruct (classic (length stack = 1%nat)).
-  { inv STACKS; ss; cycle 1.
+  { (* this case, alloc with size 0 /\ no more store. *)
+    inv STACKS; ss; cycle 1.
     { inv STK; ss. } 
     hexploit ABCD; eauto.
     { esplits; eauto. admit "genv". }
@@ -934,111 +923,63 @@ Proof.
   { inv STACKS; ss; clarify. }
   clarify.
 
-  assert(MLE: SimMem.le sm0 sm_arg).
-  {
-    subst sm_arg.
-    econs; cbn; eauto with mem; try xomega.
-    - ii; ss. des_ifs; ss. exfalso.
-      exploit Mem.mi_freeblocks; try apply MWF; eauto.
-      { eauto with mem. }
-      i; ss. clarify.
-    - eapply Mem_unchanged_on_trans_strong; eauto.
-      { eapply Mem.alloc_unchanged_on; eauto. }
-      eapply Mem.unchanged_on_implies; eauto. cbn. admit "ez".
-    - econs; eauto.
-      ii; ss. des; ss. des_ifs.
-      split; ss.
-      + admit "ez".
-      + admit "we should add this into match_states".
-    - admit "ez".
-  }
+  (* assert(MLE: SimMem.le sm0 sm_arg). *)
+  (* { *)
+  (*   subst sm_arg. *)
+  (*   econs; cbn; eauto with mem; try xomega. *)
+  (*   - ii; ss. des_ifs; ss. exfalso. *)
+  (*     exploit Mem.mi_freeblocks; try apply MWF; eauto. *)
+  (*     { eauto with mem. } *)
+  (*     i; ss. clarify. *)
+  (*   - eapply Mem_unchanged_on_trans_strong; eauto. *)
+  (*     { eapply Mem.alloc_unchanged_on; eauto. } *)
+  (*     eapply Mem.unchanged_on_implies; eauto. cbn. admit "ez". *)
+  (*   - econs; eauto. *)
+  (*     ii; ss. des; ss. des_ifs. *)
+  (*     split; ss. *)
+  (*     + admit "ez". *)
+  (*     + admit "we should add this into match_states". *)
+  (*   - admit "ez". *)
+  (* } *)
   exploit Mem.alloc_result; eauto. i; des. clarify.
   exploit Mem.nextblock_alloc; eauto. intro ALLOCNB.
 
-  assert(MWF0: SimMem.wf sm_arg).
-  { subst sm_arg.
-    econs; cbn; try apply MWF; eauto.
-    -
-      assert(Mem.inject
-               (fun blk : block =>
-                  if eq_block blk (Mem.nextblock (sm0.(SimMem.src)))
-                  then Some (sp_tgt, 0)
-                  else inj sm0 blk) m_alloc sm0.(SimMem.tgt)).
-      { rewrite sep_comm in SEP. rewrite sep_assoc in SEP. apply sep_drop2 in SEP. rewrite sep_comm in SEP.
-        eapply Mem_alloc_left_inject; try apply MWF; eauto.
-        { admit "ez". }
-        { i. rpapply arguments_private; eauto. }
-        { i. apply Mem.perm_cur. eapply Mem.perm_implies.
-          - rpapply arguments_perm; eauto.
-          - eauto with mem. }
-      }
-
-      rewrite Heq in *. ss.
-      eapply B2C_mem_inject; try apply BCM; eauto.
-      { des_ifs. }
-      { ii. exploit ARGSTGTSTRONG; eauto. i; des; eauto. right. ss.
-        psimpl.
-        esplits; eauto.
-        eapply val_inject_incr; eauto.
-        apply MLE.
-      }
-    - admit "MWF".
-    - admit "MWF".
-    - admit "MWF".
-    - admit "MWF".
-  }
-
-
-      move MWF at bottom. inv MWF. clear_until PUBLIC.
-      econs; eauto; unfold Mem.valid_block in *.
-      + inv PUBLIC.
-        econs; ss; eauto.
-        * ii; des_ifs; ss; cycle 1.
-          { eapply mi_inj; eauto. rewrite <- PERM in *; ss. eapply Mem.perm_alloc_4; eauto. }
-          admit "????????????????".
-          (* assert(ARGSRC: exists pos ty, *)
-          (*           In (S Outgoing pos ty) (regs_of_rpairs (loc_arguments sg_arg)) /\ *)
-          (*           pos <= ofs < pos + (typesize ty) * 4 *)
-          (*       ). *)
-          (* { admit "only turn on permission when it has argument". } *)
-          (* des. exploit ARGSTGT; eauto. i; des. inv H. unfold load_stack in *; ss. *)
-          (* exploit Mem.load_valid_access; eauto. *)
-        * ii; des_ifs; ss; cycle 1.
-          { eapply mi_inj; eauto. ii. exploit H0; eauto. i; des. rewrite <- PERM in *; ss.
-            eapply Mem.perm_alloc_4; eauto. }
-          admit "??".
-        * ii; des_ifs; ss; cycle 1.
-          { eapply memval_inject_incr; eauto; try apply MLE.
-            inv mi_inj.
-            admit "unchanged_on ez".
-          }
-          admit "??".
-      + ii; des_ifs; ss; cycle 1.
-        { apply PUBLIC. unfold Mem.valid_block in *. rewrite <- NB in *. rewrite ALLOCNB in *. xomega. }
-        unfold Mem.valid_block in *. rewrite <- NB in *. rewrite ALLOCNB in *. xomega.
-      + ii; des_ifs; ss; try (by eapply PUBLIC; eauto); cycle 1.
-        inv STACKS; ss; clarify.
-        { admit "strengthen match_stacks". }
-        eapply PUBLIC; eauto.
-      + eapply no_overlap_equiv; eauto. eapply update_no_overlap; try apply PUBLIC; eauto.
-        { admit "loc_out_of_reach". }
-      + ii; des_ifs; ss; cycle 1.
-        { eapply PUBLIC; eauto. rewrite <- ! PERM in *. des; ss.
-          - left. eapply Mem.perm_alloc_4; eauto.
-          - right. eapply Mem.perm_alloc_4; eauto. }
-        admit "somehow..".
-      + admit "???".
-    - ii; ss. hnf. des_ifs.
-      + admit "wf -> valid_block".
-      + inv MWF. eapply SRCDISJ; eauto.
-    - admit "remove tgt private.
-REFACTORING NEEDED !!!!!!!!
-Note: we can just keep tgt_privae = bot in match_states. we make private right before call, and remove it again right after call.
-IDEA: we only need 'external', not private. !!!!!!!!!
-".
+  set (sm_alloc := (mk (fun blk => if eq_block blk (Mem.nextblock (m_src sm0))
+                                 then Some (sp_tgt, 0)
+                                 else sm0.(inj) blk)
+                     m_alloc sm0.(m_tgt)
+                     sm0.(src_external) sm0.(tgt_external)
+                     sm0.(src_parent_nb) sm0.(tgt_parent_nb))).
+  assert(MWF0: SimMem.wf sm_alloc /\ <<MLE0: SimMem.le sm0 sm_alloc>>).
+  { rewrite sep_comm in SEP. rewrite sep_assoc in SEP. apply sep_drop2 in SEP. rewrite sep_comm in SEP.
+    eapply alloc_left_zero_simmem; eauto.
+    - u. ii. esplits; eauto.
+      + rpapply arguments_private; eauto.
+      + admit "ez".
+    - admit "should add this in match_states".
+    - i. apply Mem.perm_cur. eapply Mem.perm_implies.
+      + rpapply arguments_perm; eauto.
+      + eauto with mem.
     - admit "ez".
-    - admit "ez".
+    - admit "should add this in match_states".
   }
+  des.
+  rewrite PARENTPTR in *.
+  assert(MWF1: SimMem.wf sm_arg /\ <<MLE1: SimMem.le sm0 sm_arg>>).
+  { subst_locals. exploit B2C_mem_simmem; eauto; ss.
+    { des_ifs. }
+    { ii. exploit ARGSTGTSTRONG; eauto. i; des; eauto. right. ss.
+      psimpl. ss.
+      esplits; eauto.
+      eapply val_inject_incr; eauto.
+      apply MLE0.
+    }
+    i; des.
+    esplits; eauto.
+    etransitivity; eauto.
+  }
+  des.
+
   inv CD. ss.
   do 2 eexists. exists sm_arg. cbn.
   esplits; cbn; try reflexivity; eauto.
@@ -1048,148 +989,16 @@ IDEA: we only need 'external', not private. !!!!!!!!!
       * reflexivity.
   - u. i. destruct (to_mreg pr) eqn:T; ss.
     + unfold agree_regs in AGREGS.
-      eapply val_inject_incr; eauto. eapply MLE.
+      eapply val_inject_incr; eauto. eapply MLE1.
     + des_ifs; try (by econs; eauto).
-      * eapply val_inject_incr; eauto. apply MLE.
-      * rewrite Heq. econs; eauto. des_ifs. rewrite Ptrofs.add_zero_l. rewrite Ptrofs.repr_unsigned; ss.
+      * eapply val_inject_incr; eauto. apply MLE1.
+      * rewrite PARENTPTR. econs; eauto. des_ifs. rewrite Ptrofs.add_zero_l. rewrite Ptrofs.repr_unsigned; ss.
       * u in RAPTR. des_ifs. econs; eauto.
 }
-  -
-    +
-  destruct (classic ((regs_of_rpairs (loc_arguments sg_arg)) = [])).
-  { inv CD.
-    do 2 eexists. eexists (mk _ _ _ _ _ _ _ _ _). cbn.
-    esplits; cbn; try reflexivity; eauto.
-    - econs; eauto.
-      + fold tge. admit "this should hold".
-      + econs; eauto. reflexivity.
-    - u. i. destruct (to_mreg pr) eqn:T; ss.
-      des_ifs; try (by econs; eauto).
-      + unfold agree_regs in AGREGS.
-        (fun blk =>
-           if eq_block blk sp_src
-           then Some (sp_tgt, spofs_tgt.(Ptrofs.unsigned))
-           else sm0.(inj) blk)
-  }
-  set (sm_arg := (mk (fun blk => if eq_block blk sp_src
-                                 then Some (sp_tgt, spofs_tgt.(Ptrofs.unsigned))
-                                 else sm0.(inj) blk)
-                     sm0.(src_private) sm0.(tgt_private)
-                     sm0.(src_external) sm0.(tgt_external)
-                     m_arg_src sm0.(tgt_mem)
-                     sm0.(src_mem_parent) sm0.(tgt_mem_parent))).
-  esplits; eauto.
-}
-
-  - (* ATBSIM *)
-    inv CALLTGT.
-    inv MATCH; ss.
-    inv MATCHST; ss.
-    rename m into m_src.
-    exploit transl_external_arguments; eauto.
-    { apply sep_pick1 in SEP. eauto. }
-    intro ARGS; des.
-
-    bar. move SAFESRC at bottom. u in SAFESRC. des.
-    rename m_arg into m_arg_src. rename rs_arg0 into rs_arg_src. inv SAFESRC. inv STORE.
-    rename sp into sp_src. des. bar.
-
-    fold_all ge. fold_all tge.
-    exploit match_stacks_parent_sp; eauto. intro PTR; des. u in PTR. des_ifs.
-    rename b into sp_tgt. rename i into spofs_tgt.
-    set (sm_arg := (mk (fun blk => if eq_block blk sp_src
-                                   then Some (sp_tgt, spofs_tgt.(Ptrofs.unsigned))
-                                   else sm0.(inj) blk)
-                       sm0.(src_private) sm0.(tgt_private)
-                       sm0.(src_external) sm0.(tgt_external)
-                       m_arg_src sm0.(tgt_mem)
-                       sm0.(src_mem_parent) sm0.(tgt_mem_parent))).
-    do 2 eexists; exists sm_arg. cbn.
-    esplits; eauto.
-    + econs; eauto.
-      econs; eauto.
-    + inv MCOMPAT; ss.
-    + admit "ttttttttttttttttttttttttttttttttttttttt raw admit!!!!!!!!!!!!!!!!!!!8".
-    + econs; eauto.
-      * admit "this should hold".
-      * admit "this should hold".
-      * admit "this should hold".
-      * admit "this should hold".
-      * admit "this should hold".
-      * admit "this should hold".
-    + econs; ss; try apply MWF; eauto.
-      *
-
-
-        ttttttttttttttttttttttttt
-    inv FPTR; ss.
-    + esplits; eauto.
-      instantiate (2:= mregset_of _). ss.
-      Set Printing All.
-      econs; eauto.
-      eapply at_external_intro.
-    econs; eauto.
-    eapply at_external_intro.
-    econs; eauto.
-    inv CALLSRC.
-    ss. u. des.
-    esplits
-    destruct sm_arg; ss. clarify.
-    unfold SimMem.sim_regset in *. ss. apply Axioms.functional_extensionality in SIMRS. clarify.
-    inv INITSRC.
-    assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
-    { subst_locals. eapply sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
-    esplits; eauto.
-    + apply initial_frame_intro with (fd := transf_function fd); eauto.
-      fold_all ge. fold_all tge. clearbody ge tge.
-      unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-      inv SIMGE. specialize (mge_defs b). inv mge_defs; eq_closure_tac. unfold Genv.find_def. rewrite <- H0.
-      inv H1; ss.
-    + instantiate (1:= SimMemId.mk _ _). econs; ss; eauto.
-    + u. repeat (econs; ss; eauto).
-  - inv CALLSRC. des. inv MATCH. ss. destruct sm0; ss.
-    inv MATCHST; inv H; ss; clarify.
-    inv MCOMPAT. ss. fold_all ge. des. clarify.
-    u. esplits; eauto.
-    econs; eauto.
-    fold_all tge.
-    clearbody ge tge.
-    admit "simskenv - ez".
-  - inv CALLTGT. inv MATCH; ss. fold_all tge. u in *. destruct sm0; ss. inv MCOMPAT; ss. u in *. clarify.
-    do 2 eexists. eexists (SimMemId.mk _ _).
-    esplits; ss; eauto. inv MATCHST; ss.
-    econs; eauto.
-    u. fold_all ge.
-    admit "simskenv - ez".
-  - apply Axioms.functional_extensionality in SIMRSRET. clarify.
-    apply Axioms.functional_extensionality in SIMRSARG. clarify.
-    inv AFTERSRC. inv MATCH; ss. inv MCOMPAT. u in *. clarify.
-    apply Axioms.functional_extensionality in SIMRSINIT. clarify.
-    inv MATCHST; ss. des_ifs. clear_tac. destruct sm0; ss. clarify.
-    destruct sm_ret; ss. clarify.
-    esplits; eauto.
-    + econs; eauto.
-    + econs; ss; eauto.
-      econs; eauto.
-  - inv FINALSRC. inv MATCH; ss. inv MATCHST; ss. inv MCOMPAT0; ss. u in *. destruct sm0; ss. des_ifs.
-    inv STACKS; ss. inv MCOMPAT; ss. u in *. des_ifs. clear_tac.
-    apply Axioms.functional_extensionality in SIMRSINIT. clarify.
-    esplits; eauto.
-    + apply final_frame_intro with (fd:= transf_function fd); eauto.
-      fold_all ge. u. fold_all tge.
-      admit "simskenv - ez".
-    + ii; ss.
-  - esplits; eauto.
-    { apply modsem_receptive. }
-    inv MATCH.
-    apply Axioms.functional_extensionality in SIMRSINIT. clarify.
-    ii. hexploit (@step_simulation prog ge tge); eauto.
-    { ii. eapply not_external; eauto. }
-    i; des.
-    esplits; eauto.
-    + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.
-    + instantiate (1:= SimMemId.mk _ _). econs; ss.
-    + econs; ss; eauto.
+    admit "fix metatheory to deal with fsim".
+  - admit "todo".
+  - admit "todo".
+  - admit "todo".
 Unshelve.
   all: try (by econs).
 Qed.
@@ -1201,11 +1010,12 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Variables prog tprog: program.
+Variables prog: Linear.program.
+Variables tprog: Mach.program.
 Hypothesis TRANSL: match_prog prog tprog.
 
 Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt
+  ModPair.mk (LinearC.module prog) (MachC.module tprog) tt
 .
 
 Theorem sim_mod
@@ -1219,6 +1029,20 @@ Proof.
 Qed.
 
 End SIMMOD.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

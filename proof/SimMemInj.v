@@ -1,5 +1,5 @@
 Require Import CoqlibC.
-Require Import Memory.
+Require Import MemoryC.
 Require Import Values.
 Require Import Maps.
 Require Import Events.
@@ -229,6 +229,34 @@ Definition unlift' (mrel0 mrel1: t'): t' :=
       mrel0.(src_parent_nb) mrel0.(tgt_parent_nb))
 .
 
+Global Program Instance le'_PreOrder: RelationClasses.PreOrder le'.
+Next Obligation.
+  econs; eauto; try reflexivity; try apply Mem.unchanged_on_refl; eauto.
+  eapply frozen_refl; eauto.
+Qed.
+Next Obligation.
+  ii. inv H; inv H0.
+  des; clarify.
+  econs; eauto with mem congruence.
+  + eapply inject_incr_trans; eauto.
+  + eapply Mem.unchanged_on_trans; eauto with congruence.
+  + eapply Mem.unchanged_on_trans; eauto with congruence.
+  + econs; eauto.
+    ii; des.
+    destruct (inj y b_src) eqn:T.
+    * destruct p.
+      exploit INCR0; eauto. i; clarify.
+      inv FROZEN.
+      hexploit NEW_IMPLIES_OUTSIDE; eauto.
+    * inv FROZEN0.
+      hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des.
+      split; ss; red; etransitivity; eauto.
+      { rewrite <- SRCPARENTEQNB. reflexivity. }
+      { rewrite <- TGTPARENTEQNB. reflexivity. }
+  + etransitivity; eauto.
+  + etransitivity; eauto.
+Qed.
+
 (* TODO: Let's have this as policy. (giving explicit name) *)
 (* TODO: apply this policy for identity/extension *)
 
@@ -244,31 +272,6 @@ Global Program Instance SimMemInj : SimMem.class :=
   unlift := unlift';
   sim_val := fun (mrel: t') => Val.inject mrel.(inj);
 }.
-Next Obligation.
-  econs.
-  - i. econs; eauto; try reflexivity; try apply Mem.unchanged_on_refl; eauto.
-    { eapply frozen_refl; eauto. }
-  - ii. inv H; inv H0.
-    des; clarify.
-    econs; eauto with mem congruence.
-    + eapply inject_incr_trans; eauto.
-    + eapply Mem.unchanged_on_trans; eauto with congruence.
-    + eapply Mem.unchanged_on_trans; eauto with congruence.
-    + econs; eauto.
-      ii; des.
-      destruct (inj y b_src) eqn:T.
-      * destruct p.
-        exploit INCR0; eauto. i; clarify.
-        inv FROZEN.
-        hexploit NEW_IMPLIES_OUTSIDE; eauto.
-      * inv FROZEN0.
-        hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des.
-        split; ss; red; etransitivity; eauto.
-        { rewrite <- SRCPARENTEQNB. reflexivity. }
-        { rewrite <- TGTPARENTEQNB. reflexivity. }
-    + etransitivity; eauto.
-    + etransitivity; eauto.
-Qed.
 Next Obligation.
   rename H into VALID.
   inv VALID. econs; ss; eauto; ii; des; ss; eauto.
@@ -308,8 +311,144 @@ Next Obligation.
   ii. inv MLE. eapply val_inject_incr; eauto.
 Qed.
 
+Definition range (lo hi: Z): Z -> Prop := fun x => lo <= x < hi. (* TODO: Use Notation instead *)
+Hint Unfold range.
+
+Lemma alloc_left_zero_simmem
+      sm0
+      (MWF: SimMem.wf sm0)
+      blk_src sz m_src1 blk_tgt
+      (ALLOC: Mem.alloc sm0.(SimMem.src) 0 sz = (m_src1, blk_src))
+      (TGTPRIV: (range 0 sz) <1= sm0.(tgt_private) blk_tgt)
+      (TGTNOTEXT: ((range 0 sz) /1\ sm0.(tgt_external) blk_tgt) <1= bot1)
+      (TGTPERM: forall ofs k p (BOUND: 0 <= ofs < sz), Mem.perm sm0.(SimMem.tgt) blk_tgt ofs k p)
+      (* (SZPOS: 0 < sz) *)
+      (VALID: Mem.valid_block sm0.(m_tgt) blk_tgt)
+      (PARENT: (sm0.(tgt_parent_nb) <= blk_tgt)%positive)
+  :
+    let sm1 := (mk (fun blk => if eq_block blk blk_src
+                                     then Some (blk_tgt, 0)
+                                     else sm0.(inj) blk)
+                         m_src1
+                         sm0.(m_tgt)
+                         sm0.(src_external) sm0.(tgt_external)
+                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in
+    <<MWF: SimMem.wf sm1>>
+    /\
+    <<MLE: SimMem.le sm0 sm1>>
+.
+Proof.
+  i. subst_locals.
+  inv MWF; ss.
+  (* assert(VALID: Mem.valid_block (m_tgt sm0) blk_tgt). *)
+  (* { specialize (TGTPRIV 0). eapply TGTPRIV. u. lia. } *)
+  exploit Mem.alloc_result; eauto. i; clarify.
+  esplits; eauto.
+  * econs; ss; eauto.
+    - eapply Mem_alloc_left_inject; eauto.
+      ii. eapply TGTPRIV; eauto.
+    - etransitivity; eauto.
+      u. ii; ss. des.
+      esplits; eauto.
+      + hnf. des_ifs. exfalso. unfold Mem.valid_block in *. xomega.
+      + eauto with mem.
+    - u. ii; ss. dup PR. eapply TGTEXT in PR0. u in PR0. des.
+      esplits; eauto.
+      hnf. hnf in PR0. ii. des_ifs; eauto.
+      + eapply TGTNOTEXT; eauto. esplits; eauto. u. rewrite Z.sub_0_r in *.
+        apply NNPP. ii. eapply Mem_alloc_fresh_perm; eauto.
+      + eapply PR0; eauto. eauto with mem.
+    - etransitivity; eauto.
+      exploit Mem.nextblock_alloc; eauto. i. rewrite H. xomega.
+  * econs; cbn; eauto with mem; try xomega.
+    - ii; ss. des_ifs; ss. exfalso.
+      exploit Mem.mi_freeblocks; try apply MWF; eauto.
+      { eauto with mem. }
+      i; ss. clarify.
+    - eapply Mem_unchanged_on_trans_strong; eauto.
+      { eapply Mem.alloc_unchanged_on; eauto. }
+      eauto with mem.
+    - econs; eauto.
+      ii; ss. des; ss. des_ifs.
+    - exploit Mem.nextblock_alloc; eauto. i. rewrite H. xomega.
+Qed.
+
+Lemma store_undef_simmem
+      sm0
+      (MWF: SimMem.wf sm0)
+      chunk blk ofs m_src1
+      (STORE: Mem.store chunk sm0.(SimMem.src) blk ofs Vundef = Some m_src1)
+      (PUBLIC: ~ sm0.(src_private) blk ofs)
+  :
+    let sm1 := (mk sm0.(inj) m_src1 sm0.(m_tgt)
+                         sm0.(src_external) sm0.(tgt_external)
+                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in
+    <<MWF: SimMem.wf sm1>> /\
+    <<MLE: SimMem.le sm0 sm1>>
+.
+Proof.
+  inv STORE.
+  exploit Mem_store_mapped_inject_undef; try apply MWF; eauto.
+  i; des. inv MWF.
+  subst_locals.
+  esplits; eauto.
+  - econs; ss; eauto.
+    + etransitivity; eauto. u. ii; des; esplits; eauto with mem.
+    + etransitivity; eauto. u. unfold loc_out_of_reach. ii; des; esplits; eauto with mem.
+      ii. eapply PR; eauto. eauto with mem.
+    + etransitivity; eauto. eauto with mem.
+      exploit Mem.nextblock_store; eauto. i. rewrite H1. xomega.
+  - econs; ss; eauto with mem; try xomega.
+    + eapply Mem.unchanged_on_implies with (P:= sm0.(src_private)).
+      { eapply Mem.store_unchanged_on; eauto. }
+      i. eauto.
+    + eapply frozen_refl; eauto.
+    + exploit Mem.nextblock_store; eauto. i. rewrite H1. xomega.
+Qed.
+
+Lemma store_stored_simmem
+      sm0
+      (MWF: SimMem.wf sm0)
+      m_src1
+      v_src v_tgt
+      (INJV: Val.inject sm0.(inj) v_src v_tgt) 
+      ty rsp_src rsp_tgt rspdelta ofs
+      (SRC: Mem.storev (chunk_of_type ty) sm0.(m_src) (Vptr rsp_src ofs true) v_src = Some m_src1)
+      (TGT: Mem_stored (chunk_of_type ty) sm0.(m_tgt) rsp_tgt (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) v_tgt)
+      (INJRSP: sm0.(inj) rsp_src = Some (rsp_tgt, rspdelta.(Ptrofs.unsigned)))
+      (BOUND: Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta <= Ptrofs.max_unsigned)
+  :
+    let sm1 := (mk sm0.(inj) m_src1 sm0.(m_tgt)
+                         sm0.(src_external) sm0.(tgt_external)
+                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in
+    <<MWF: SimMem.wf sm1>> /\
+    <<MLE: SimMem.le sm0 sm1>>
+.
+Proof.
+  exploit store_stored_inject; eauto. { apply MWF. } i; des.
+  subst_locals. inv MWF.
+  esplits; eauto.
+  - econs; ss; eauto.
+    + etransitivity; eauto. u; ss. ii; des. esplits; eauto with mem.
+    + etransitivity; eauto. u. unfold loc_out_of_reach. ii; des; esplits; eauto with mem.
+      ii. eapply PR; eauto. eauto with mem.
+    + etransitivity; eauto. eauto with mem.
+      exploit Mem.nextblock_store; eauto. i. rewrite H0. xomega.
+  - econs; ss; eauto with mem; try xomega.
+    + eapply Mem.unchanged_on_implies with (P:= sm0.(src_private)).
+      { eapply Mem.store_unchanged_on; eauto. u. unfold loc_unmapped. ii; des; ss. clarify. }
+      i. eauto.
+    + eapply frozen_refl; eauto.
+    + exploit Mem.nextblock_store; eauto. i. rewrite H0. xomega.
+Qed.
+
+
+
+
+
 End MEMINJ.
 
+Hint Unfold valid_blocks src_private tgt_private range.
 
 
 

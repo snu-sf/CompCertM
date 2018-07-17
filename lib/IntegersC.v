@@ -19,3 +19,12 @@ Proof.
     + apply Ptrofs.eqm_unsigned_repr.
 Qed.
 
+Lemma max_unsigned_zero
+  :
+    0 <= Ptrofs.max_unsigned
+.
+Proof.
+  etransitivity; try unshelve apply Ptrofs.unsigned_range_2.
+  apply Ptrofs.zero.
+Qed.
+

@@ -20,7 +20,10 @@ Set Implicit Arguments.
 
 
 Definition is_call {F V} (ge: Genv.t F V) (fptr: val): Prop :=
-  Genv.find_funct ge fptr = None /\ is_ptr fptr (* TODO: or, not_undef? or, is_real_ptr? *)
+  match fptr with
+  | Vptr blk ofs true => Genv.find_funct_ptr ge blk = None
+  | _ => False
+  end
 .
 
 Hint Unfold is_call.
@@ -67,7 +70,63 @@ Section ISCALL.
     inv H1; ss. des_ifs.
   Qed.
 
+  Local Existing Instance Val.mi_normal.
+
+  Inductive skenv_inject {F V} (ge: Genv.t F V) (j: meminj): Prop :=
+  | sken_inject_intro
+      (DOMAIN: forall b, Plt b ge.(Genv.genv_next) -> j b = Some(b, 0))
+      (IMAGE: forall b1 b2 delta, j b1 = Some(b2, delta) -> Plt b2 ge.(Genv.genv_next) -> b1 = b2)
+  .
+
+  Variable F: meminj.
+  Hypothesis (GEINJ: skenv_inject ge1 F).
+
+  Lemma is_call_inject_progress
+        fptr1 fptr2
+        (INJ: Val.inject F fptr1 fptr2)
+        (SRCCALL: is_call ge1 fptr1)
+    :
+      <<TGTCALL: is_call ge2 fptr2>>
+  .
+  Proof.
+    u in *. des. inv INJ; ss. des_ifs.
+    esplits; eauto.
+    ss. des_ifs.
+    unfold Genv.find_funct_ptr, Genv.find_def in *. inv GEMATCH.
+    des_ifs_safe.
+    inv GEINJ.
+    exploit Genv.genv_defs_range; eauto. i.
+    exploit IMAGE; eauto. { eauto with congruence lia. }
+    exploit DOMAIN; eauto. { rewrite <- mge_next. eauto with congruence lia. }
+    i; clarify.
+    specialize (mge_defs b2). inv mge_defs; ss; eauto with congruence.
+    - des_ifs. inv H3; ss. rewrite <- H2 in *. clarify.
+  Qed.
+
+  Lemma is_call_inject_bsim
+        fptr1 fptr2
+        (INJ: Val.inject F fptr1 fptr2)
+        (TGTCALL: is_call ge2 fptr2)
+    :
+      <<SRCCALL: is_call ge1 fptr1>> \/ <<SRCUB: fptr1 = Vundef>>
+  .
+  Proof.
+    u in *. des. inv INJ; ss; cycle 1. { right; ss. } left.
+    unfold Genv.find_funct_ptr, Genv.find_def in *. inv GEMATCH.
+    des_ifs_safe.
+    specialize (mge_defs b1). inv mge_defs; eauto with congruence.
+    inv GEINJ.
+    exploit Genv.genv_defs_range; eauto. i.
+    exploit DOMAIN; eauto. i. clarify.
+
+    des_ifs; eq_closure_tac.
+    inv H2; ss.
+  Qed.
+
+
 End ISCALL.
+
+
 
 Section MAP.
 

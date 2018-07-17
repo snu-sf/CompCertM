@@ -424,7 +424,7 @@ Lemma B2C_mem_inject
       blk_src blk_tgt (* delta *)
       (INJRSP: j blk_src = Some (blk_tgt, 0))
       (* (DELTA: 0 <= delta <= Ptrofs.max_unsigned) *)
-      (BCM: B2C_mem m_alloc (Vptr blk_src Ptrofs.zero true) ls_arg
+      (BCM: Call.B2C_mem m_alloc (Vptr blk_src Ptrofs.zero true) ls_arg
                     (regs_of_rpairs (loc_arguments sg)) = Some m_arg)
       (ARGSTGTSTRONG: forall ofs ty,
           In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)) ->
@@ -469,7 +469,7 @@ Lemma B2C_mem_simmem
       (MWF: SimMem.wf sm0)
       blk_src blk_tgt (* delta *)
       (INJRSP: sm0.(inj) blk_src = Some (blk_tgt, 0))
-      (BCM: B2C_mem sm0.(SimMem.src) (Vptr blk_src Ptrofs.zero true) ls_arg
+      (BCM: Call.B2C_mem sm0.(SimMem.src) (Vptr blk_src Ptrofs.zero true) ls_arg
                     (regs_of_rpairs (loc_arguments sg)) = Some m_src1)
       (ARGSTGTSTRONG: forall ofs ty,
           In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)) ->
@@ -867,7 +867,7 @@ Proof.
   u in H. des_ifs. clear_tac. rename b into sp_tgt. rename i into spdelta.
   rename Heq into PARENTPTR.
 
-  exploit (@B2C_mem_spec sg_arg m_alloc sp_src ls_arg); eauto.
+  exploit (@Call.B2C_mem_spec sg_arg m_alloc sp_src ls_arg); eauto.
   { eapply Mem_alloc_range_perm; eauto. }
   i; des. clarify.
 

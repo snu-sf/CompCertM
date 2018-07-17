@@ -271,7 +271,7 @@ Section MODSEM.
       fptr_arg stack (rs_arg: Mach.regset) m_arg
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
       prs_arg
-      (CD: C2D rs_arg fptr_arg (parent_sp stack) prs_arg)
+      (CD: Call.C2D rs_arg fptr_arg (parent_sp stack) prs_arg)
     :
       at_external (Callstate stack fptr_arg rs_arg m_arg)
                   prs_arg m_arg

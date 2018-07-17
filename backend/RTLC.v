@@ -96,7 +96,7 @@ Section MODSEM.
       stack fptr_arg sg_arg vs_arg m0
       m_arg_pre rs_arg m_arg
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
-      (AD: A2D sg_arg fptr_arg vs_arg m_arg_pre rs_arg m_arg)
+      (AD: Call.A2D sg_arg fptr_arg vs_arg m_arg_pre rs_arg m_arg)
     :
       at_external (Callstate stack fptr_arg sg_arg vs_arg m0)
                   rs_arg m_arg
@@ -108,7 +108,7 @@ Section MODSEM.
       fptr_arg fd
       (FINDF: Genv.find_funct ge fptr_arg = Some (Internal fd))
       vs_arg m_init
-      (DA: D2A fd.(fn_sig) rs_arg m_arg fptr_arg vs_arg m_init)
+      (DA: Call.D2A fd.(fn_sig) rs_arg m_arg fptr_arg vs_arg m_init)
     :
       initial_frame rs_arg m_arg
                     (Callstate [] fptr_arg fd.(fn_sig) vs_arg m_init)
@@ -153,8 +153,8 @@ Section MODSEM.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.
     all_once_fast ltac:(fun H => try inv H).
-    determ_tac D2A_dtm0.
-    determ_tac D2A_dtm1.
+    determ_tac Call.D2A_dtm0.
+    determ_tac Call.D2A_dtm1.
   Qed.
   Next Obligation.
     all_once_fast ltac:(fun H => try inv H); rewrite FINDF in *; clarify. determ_tac store_result_dtm.

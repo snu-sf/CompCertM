@@ -29,6 +29,15 @@ Theorem Val_load_result_undef
 .
 Proof. i. destruct v, ty; ss. Qed.
 
+(* TODO: Move to proper place *)
+Lemma typealign
+      ty
+  :
+    align_chunk (chunk_of_type ty) = 4 * typealign ty
+.
+Proof.
+  destruct ty; ss.
+Qed.
 
 Local Opaque Z.mul Z.add Z.div Z.sub.
 Local Opaque list_nth_z.
@@ -38,6 +47,7 @@ Local Opaque list_nth_z.
 (* C: Mach: Mach.regset + mem *)
 (* D: Asm: Asm.regset + mem *)
 
+Module Call.
 Section STYLES.
 
   Variable sg: signature.
@@ -72,15 +82,6 @@ Section STYLES.
                             end)
                (Some m0) locs
   .
-
-  Lemma typealign
-        ty
-    :
-      align_chunk (chunk_of_type ty) = 4 * typealign ty
-  .
-  Proof.
-    destruct ty; ss.
-  Qed.
 
   Lemma B2C_mem_spec
         m0 rsp ls
@@ -391,8 +392,6 @@ just define something like 'fill_arguments' in locationsC
 
 End STYLES.
 
-
-
 Lemma D2C_dtm
       prs_arg mrs0 fptr0 rsp0 mrs1 fptr1 rsp1
       (DC0: D2C prs_arg mrs0 fptr0 rsp0)
@@ -506,4 +505,16 @@ Proof.
   determ_tac D2C_dtm.
   determ_tac C2B_dtm.
 Qed.
+
+End Call.
+
+
+
+Module Ret.
+
+  (* TODO: Fill this please! *)
+  (* NOTE: Important spec: D2A should fill callee-save registers properly. *)
+  (* If not, compilation from physical-C into logical-C will be broken. all C program will have UB! *)
+
+End Ret.
 

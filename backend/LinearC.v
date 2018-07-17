@@ -265,7 +265,7 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg_arg ls_arg rs_arg m_arg_pre m_arg
       (EXTERNAL: Genv.find_funct ge fptr_arg = None)
-      (BD: B2D sg_arg fptr_arg ls_arg m_arg_pre rs_arg m_arg)
+      (BD: Call.B2D sg_arg fptr_arg ls_arg m_arg_pre rs_arg m_arg)
       (* vs_arg *)
       (* (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg_arg))) *)
       (* (STORE: store_arguments fptr_arg vs_arg m_arg_pre sg_arg rs_arg m_arg) *)
@@ -293,7 +293,7 @@ Section MODSEM.
       (FINDFUNC: Genv.find_funct ge fptr_arg = Some (Internal fd))
       (SIG: sg_init = fd.(fn_sig))
       ls_init m_init
-      (DB: D2B sg_init rs_arg m_arg fptr_arg ls_init m_init)
+      (DB: Call.D2B sg_init rs_arg m_arg fptr_arg ls_init m_init)
     :
       initial_frame rs_arg m_arg
                     (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_init)
@@ -360,8 +360,8 @@ Section MODSEM.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation.
     inv INIT0; inv INIT1; ss.
-    determ_tac D2B_dtm0.
-    determ_tac D2B_dtm1.
+    determ_tac Call.D2B_dtm0.
+    determ_tac Call.D2B_dtm1.
   Qed.
   Next Obligation. all_prop_inv; ss. Qed.
   Next Obligation. all_prop_inv; ss. Qed.

@@ -360,8 +360,8 @@ Section SIMGE.
                                               (load_genv p_src (Sk.load_skenv sk_link_src))
                                               (load_genv p_tgt (Sk.load_skenv sk_link_tgt))>>
                /\ <<MWF: SimMem.wf sm_init>>
-               /\ <<LOADTGT: Sk.load_mem sk_link_tgt = Some sm_init.(SimMem.tgt_mem)>>
-               /\ <<MSRC: sm_init.(SimMem.src_mem) = m_src>>
+               /\ <<LOADTGT: Sk.load_mem sk_link_tgt = Some sm_init.(SimMem.tgt)>>
+               /\ <<MSRC: sm_init.(SimMem.src) = m_src>>
                /\ <<SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_link_src skenv_link_tgt>>
   .
   Proof.
@@ -473,17 +473,17 @@ Section ADQMATCH.
           (RSREL: sm_ret.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
           (SAFESRC: exists lst_src1,
               <<AFTERSRC: ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src
-                                                         (sm_ret.(SimMem.src_mem))
+                                                         (sm_ret.(SimMem.src))
                                                          lst_src1>>)
         ,
           (<<KSTEP: forall
               lst_tgt1
-              (AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt_mem))
+              (AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt))
                                                         lst_tgt1)
             ,
               exists i0 lst_src1,
                 (<<AFTERSRC:
-                   ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem))
+                   ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src))
                                                   lst_src1>>)
                 /\
                 (<<LXSIM: lxsim ms_src ms_tgt rs_init_src rs_init_tgt tail_sm
@@ -491,12 +491,12 @@ Section ADQMATCH.
           /\
           (<<KPROGRESS: (* forall *)
               (* st_src1 *)
-              (* (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src_mem)) *)
+              (* (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src)) *)
               (*                                           st_src1) *)
             (* , *)
               exists lst_tgt1,
                 (<<AFTERTGT:
-                   ms_tgt.(ModSem.after_external) lst_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt_mem))
+                   ms_tgt.(ModSem.after_external) lst_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt))
                                                   lst_tgt1>>)>>))
     :
       lxsim_stack rs_arg_src rs_arg_tgt
@@ -550,8 +550,8 @@ Section ADQMATCH.
        (SIMRS: (SimMem.sim_regset) sm_arg rs_arg_src rs_arg_tgt)
     :
       lxsim_lift idx_bot
-                 (Callstate rs_arg_src sm_arg.(SimMem.src_mem) tail_src)
-                 (Callstate rs_arg_tgt sm_arg.(SimMem.tgt_mem) tail_tgt)
+                 (Callstate rs_arg_src sm_arg.(SimMem.src) tail_src)
+                 (Callstate rs_arg_tgt sm_arg.(SimMem.tgt) tail_tgt)
                  sm_arg
   .
 

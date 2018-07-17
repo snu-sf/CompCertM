@@ -29,8 +29,8 @@ Record t' := mk {
 Program Instance SimMemId : SimMem.class :=
 {
   t := t';
-  src_mem := src_mem;
-  tgt_mem := tgt_mem;
+  src := src_mem;
+  tgt := tgt_mem;
   wf := fun (rel: t') => rel.(src_mem) = rel.(tgt_mem);
   le := fun (mrel0 mrel1: t') => True;
   lift := id;

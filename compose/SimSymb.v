@@ -397,8 +397,8 @@ End DEPRECATED.
           exists m_tgt sm,
             (<<LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt>>) /\
             (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
-            (<<MEMSRC: sm.(SimMem.src_mem) = m_src>>) /\
-            (<<MEMTGT: sm.(SimMem.tgt_mem) = m_tgt>>) /\
+            (<<MEMSRC: sm.(SimMem.src) = m_src>>) /\
+            (<<MEMTGT: sm.(SimMem.tgt) = m_tgt>>) /\
             (<<MWF: sm.(SimMem.wf)>>)
       ;
 

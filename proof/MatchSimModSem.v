@@ -35,10 +35,10 @@ Section MATCHSIMFORWARD.
       rs_arg_src rs_arg_tgt
       (SIMRS: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt)
       st_init_src
-      (INITSRC: ms_src.(ModSem.initial_frame) rs_arg_src sm_arg.(SimMem.src_mem) st_init_src)
+      (INITSRC: ms_src.(ModSem.initial_frame) rs_arg_src sm_arg.(SimMem.src) st_init_src)
     ,
       exists st_init_tgt sm_init idx_init,
-        (<<INITTGT: ms_tgt.(ModSem.initial_frame) rs_arg_tgt sm_arg.(SimMem.tgt_mem) st_init_tgt>>)
+        (<<INITTGT: ms_tgt.(ModSem.initial_frame) rs_arg_tgt sm_arg.(SimMem.tgt) st_init_tgt>>)
         /\
         (<<MLE: SimMem.le sm_arg sm_init>>)
         /\
@@ -72,9 +72,9 @@ Section MATCHSIMFORWARD.
       exists rs_arg_src m_arg_src sm_arg,
         (<<CALLSRC: ms_src.(ModSem.at_external) st_src0 rs_arg_src m_arg_src>>)
         /\
-        (<<MSRC: sm_arg.(SimMem.src_mem) = m_arg_src>>)
+        (<<MSRC: sm_arg.(SimMem.src) = m_arg_src>>)
         /\
-        (<<MTGT: sm_arg.(SimMem.tgt_mem) = m_arg_tgt>>)
+        (<<MTGT: sm_arg.(SimMem.tgt) = m_arg_tgt>>)
         /\
         (<<SIMRS: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt>>)
         /\
@@ -99,11 +99,11 @@ Section MATCHSIMFORWARD.
       rs_ret_src rs_ret_tgt
       (SIMRSRET: SimMem.sim_regset sm_ret rs_ret_src rs_ret_tgt)
       st_src1
-      (AFTERSRC: ms_src.(ModSem.after_external) st_src0 rs_arg_src rs_ret_src sm_ret.(SimMem.src_mem) st_src1)
+      (AFTERSRC: ms_src.(ModSem.after_external) st_src0 rs_arg_src rs_ret_src sm_ret.(SimMem.src) st_src1)
     ,
       exists idx1 st_tgt1,
         (<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 rs_arg_tgt rs_ret_tgt
-                                                    sm_ret.(SimMem.tgt_mem) st_tgt1>>)
+                                                    sm_ret.(SimMem.tgt) st_tgt1>>)
         /\
         (<<MATCH: match_states rs_init_src rs_init_tgt sm_init
                                idx1 st_src1 st_tgt1 (SimMem.unlift sm_arg sm_ret)>>)
@@ -166,13 +166,13 @@ Section MATCHSIMFORWARD.
       (<<INITSIM: forall
           st_init_src
           (INITSRC: msp.(ModSemPair.src).(ModSem.initial_frame) rs_init_src
-                                                                sm_arg.(SimMem.src_mem) st_init_src)
+                                                                sm_arg.(SimMem.src) st_init_src)
         ,
           exists st_init_tgt sm_init idx_init,
             (<<MCOMPAT: mem_compat st_init_src st_init_tgt sm_init>>)
             /\
             (<<INITTGT: msp.(ModSemPair.tgt).(ModSem.initial_frame) rs_init_tgt
-                                                                    sm_arg.(SimMem.tgt_mem) st_init_tgt>>)
+                                                                    sm_arg.(SimMem.tgt) st_init_tgt>>)
             /\
             (<<MLE: SimMem.le sm_arg sm_init>>)
             /\

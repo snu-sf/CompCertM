@@ -25,8 +25,8 @@ Module SimMem.
   Class class :=
   {
     t: Type;
-    src_mem: t -> mem;
-    tgt_mem: t -> mem;
+    src: t -> mem;
+    tgt: t -> mem;
     wf: t -> Prop;
     le: t -> t -> Prop;
     lift: t -> t;
@@ -38,10 +38,10 @@ Module SimMem.
 
     (* lift_le: forall mrel, le mrel (lift mrel); *)
     lift_wf: forall mrel, wf mrel -> wf (lift mrel);
-    lift_src: forall mrel, (lift mrel).(src_mem) = mrel.(src_mem);
-    lift_tgt: forall mrel, (lift mrel).(tgt_mem) = mrel.(tgt_mem);
-    unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(src_mem) = mrel1.(src_mem);
-    unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(tgt_mem) = mrel1.(tgt_mem);
+    lift_src: forall mrel, (lift mrel).(src) = mrel.(src);
+    lift_tgt: forall mrel, (lift mrel).(tgt) = mrel.(tgt);
+    unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(src) = mrel1.(src);
+    unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(tgt) = mrel1.(tgt);
     unlift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> wf mrel0 -> le mrel0 (unlift mrel0 mrel1);
     unlift_wf: forall mrel0 mrel1,
         wf mrel0 -> wf mrel1 -> le (lift mrel0) mrel1 -> wf (unlift mrel0 mrel1);

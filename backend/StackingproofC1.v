@@ -13,7 +13,7 @@ Local Open Scope sep_scope.
 Require Export StackingproofC0.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC ArgPassing MatchSimModSem.
-Require Import SimSymbId SimMemInj.
+Require Import SimMemInj.
 
 Set Implicit Arguments.
 
@@ -565,10 +565,10 @@ Theorem init_match_states
         rs_arg_src rs_arg_tgt
         (SIMRS: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt)
         st_init_src
-        (INITSRC: LinearC.initial_frame skenv_link_src prog rs_arg_src sm_arg.(src_mem) st_init_src)
+        (INITSRC: LinearC.initial_frame skenv_link_src prog rs_arg_src sm_arg.(SimMem.src) st_init_src)
   :
     exists st_init_tgt sm_init idx_init,
-    <<INITTGT: initial_frame skenv_link_tgt tprog rs_arg_tgt sm_arg.(tgt_mem) st_init_tgt >> /\
+    <<INITTGT: initial_frame skenv_link_tgt tprog rs_arg_tgt sm_arg.(SimMem.tgt) st_init_tgt >> /\
     <<MCOMPAT: mem_compat (LinearC.modsem skenv_link_src prog) (modsem rao skenv_link_tgt tprog)
                           st_init_src st_init_tgt sm_init >> /\
     <<MLE: SimMem.le sm_arg sm_init >> /\
@@ -592,10 +592,9 @@ Proof.
   rewrite Ptrofs.add_zero_l in *.
   hexploit Mem.free_range_perm; eauto. intro PERMSRC.
   set (sm_init := (mk sm_arg.(inj)
-                   sm_arg.(src_private) sm_arg.(tgt_private)
+                   m_init_src sm_arg.(m_tgt)
                    sm_arg.(src_external) sm_arg.(tgt_external)
-                   m_init_src sm_arg.(tgt_mem)
-                   sm_arg.(src_mem_parent) sm_arg.(tgt_mem_parent))).
+                   sm_arg.(src_parent_nb) sm_arg.(tgt_parent_nb))).
   exploit Mem.free_result; eauto. i; des. clarify.
   assert(MWF0: SimMem.wf sm_init).
   { ss. econs; ss; try apply MWF; eauto.
@@ -667,7 +666,7 @@ Proof.
           { intro TMP. des; eauto. apply TMP; eauto. rewrite ! Z.sub_add. ss. }
         }
         clarify.
-        hexploit (Mem_drop_perm_none_spec (src_mem sm_arg) sp_src 0
+        hexploit (Mem_drop_perm_none_spec (SimMem.src sm_arg) sp_src 0
                                           (4 * size_arguments (Linear.fn_sig fd_src))); eauto. i; des.
         eapply INSIDE; eauto. omega.
       }
@@ -700,7 +699,7 @@ Proof.
   }
   ii; des.
   {
-    assert(LOADTGT: exists v, Mem.load (chunk_of_type ty) (tgt_mem sm_arg) sp_tgt (delta_sp + 4 * ofs) = Some v).
+    assert(LOADTGT: exists v, Mem.load (chunk_of_type ty) (SimMem.tgt sm_arg) sp_tgt (delta_sp + 4 * ofs) = Some v).
     { eapply Mem.valid_access_load; eauto.
       hnf.
       rewrite align_type_chunk. rewrite <- PLAYGROUND.typesize_chunk.
@@ -859,10 +858,10 @@ Proof.
               rs_arg_src m_arg_src
               (ATSRC: LinearC.at_external skenv_link_src prog st_src0 rs_arg_src m_arg_src)
             ,
-              exists (rs_arg_tgt : regset) (m_arg_tgt : mem) (sm_arg : t'),
+              exists (rs_arg_tgt : regset) (m_arg_tgt : mem) (sm_arg : SimMem.t),
                 (<<ATEXT: MachC.at_external skenv_link_tgt tprog st_tgt0 rs_arg_tgt m_arg_tgt >>) /\
-                (<<MSRC: src_mem sm_arg = m_arg_src >>) /\
-                (<<MTGT: tgt_mem sm_arg = m_arg_tgt >>) /\
+                (<<MSRC: SimMem.src sm_arg = m_arg_src >>) /\
+                (<<MTGT: SimMem.tgt sm_arg = m_arg_tgt >>) /\
                 (<<SIMRS: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt >>) /\
                 (<<MLE: le' sm0 sm_arg >>) /\ (<<MWF: wf' sm_arg >>)).
 {
@@ -887,10 +886,9 @@ Proof.
   set (sm_arg := (mk (fun blk => if eq_block blk sp_src
                                  then Some (sp_tgt, spdelta.(Ptrofs.unsigned))
                                  else sm0.(inj) blk)
-                     sm0.(src_private) sm0.(tgt_private)
+                     m_arg_src sm0.(m_tgt)
                      sm0.(src_external) sm0.(tgt_external)
-                     m_arg_src sm0.(tgt_mem)
-                     sm0.(src_mem_parent) sm0.(tgt_mem_parent))).
+                     sm0.(src_parent_nb) sm0.(tgt_parent_nb))).
   unfold load_stack in *. ss.
 
   destruct (classic (length stack = 1%nat)).
@@ -926,7 +924,7 @@ Proof.
           <<UNDEF: ls_arg (S Outgoing ofs ty) = Vundef>>
            \/
            exists v,
-             <<STORED: Mem_storedv (chunk_of_type ty) (tgt_mem sm0)
+             <<STORED: Mem_storedv (chunk_of_type ty) (SimMem.tgt sm0)
                                    (Val.offset_ptr (parent_sp cs') (Ptrofs.repr (4 * ofs))) v>>
           /\
           <<INJECT: Val.inject (inj sm0) (ls_arg (S Outgoing ofs ty)) v>>).
@@ -963,9 +961,9 @@ Proof.
     -
       assert(Mem.inject
                (fun blk : block =>
-                  if eq_block blk (Mem.nextblock (src_mem sm0))
+                  if eq_block blk (Mem.nextblock (sm0.(SimMem.src)))
                   then Some (sp_tgt, 0)
-                  else inj sm0 blk) m_alloc sm0.(tgt_mem)).
+                  else inj sm0 blk) m_alloc sm0.(SimMem.tgt)).
       { rewrite sep_comm in SEP. rewrite sep_assoc in SEP. apply sep_drop2 in SEP. rewrite sep_comm in SEP.
         eapply Mem_alloc_left_inject; try apply MWF; eauto.
         { admit "ez". }

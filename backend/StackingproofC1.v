@@ -357,10 +357,114 @@ End SEPARATIONC.
 
 
 
+(* TODO: Move to CoqlibC *)
+Ltac psimpl :=
+  repeat (try rewrite ! Ptrofs.unsigned_zero in *;
+          try rewrite ! Ptrofs.add_zero in *;
+          try rewrite ! Ptrofs.add_zero_l in *;
+          try (rewrite Ptrofs.unsigned_repr in *; ss; try xomega; [])
+         )
+.
 
 
 
 
+
+
+Section ARGPASSING.
+
+Local Existing Instance Val.mi_normal.
+
+(* Lemma store_stored_inject *)
+(*       j0 m_src0 m_src1 m_tgt *)
+(*       (INJ: Mem.inject j0 m_src0 m_tgt) *)
+(*       v_src v_tgt *)
+(*       (INJV: Val.inject j0 v_src v_tgt)  *)
+(*       ty rsp_src rsp_tgt rspdelta ofs *)
+(*       (SRC: Mem.storev (chunk_of_type ty) m_src0 (Vptr rsp_src ofs true) v_src = Some m_src1) *)
+(*       (TGT: Mem_stored (chunk_of_type ty) m_tgt rsp_tgt (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) v_tgt) *)
+(*       (INJRSP: j0 rsp_src = Some (rsp_tgt, rspdelta.(Ptrofs.unsigned))) *)
+(*   : *)
+(*     <<INJ: Mem.inject j0 m_src1 m_tgt>> *)
+(* . *)
+(* Proof. *)
+(*   ss. red. *)
+(*   exploit Mem.store_mapped_inject; eauto. i; des. *)
+(*   eapply Mem.inject_extends_compose; eauto. *)
+(*   clear - TGT H. *)
+(* Local Transparent Mem.store. *)
+(*   hexploit MemoryC.Mem_store_perm_eq; eauto. intro PERM. des. *)
+(*   replace (Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta) with *)
+(*       (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) in *; cycle 1. *)
+(*   { rewrite Ptrofs.add_unsigned. rewrite Ptrofs.unsigned_repr; ss. split; try xomega. *)
+(*     hexploit (Ptrofs.unsigned_range ofs); eauto. i. *)
+(*     hexploit (Ptrofs.unsigned_range rspdelta); eauto. i. *)
+(*     xomega. *)
+(*   } *)
+(*   abstr (Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta) ofs0. *)
+(*   unfold Mem.store in *. inv TGT. des_ifs. *)
+(*   econs; eauto. *)
+(*   unfold inject_id. *)
+(*   econs; ss; eauto. *)
+(*   - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss. *)
+(*   - ii; clarify. unfold Mem.range_perm, Mem.perm in *. ss. rewrite Z.divide_0_r. reflexivity. *)
+(*   - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss. *)
+(*     rewrite Maps.PMap.gsspec. des_ifs; cycle 1. *)
+(*     { apply memval_inject_refl. } *)
+(*     rewrite <- STORED. *)
+(*     rename rsp_tgt into b. abstr (chunk_of_type ty) chunk. clear_tac. *)
+(*     destruct chunk; ss; rewrite ! Maps.ZMap.gsspec; des_ifs; try apply memval_inject_refl. *)
+(* Qed. *)
+
+Lemma B2C_mem_inject
+      j m_alloc ls_arg sg m_arg m_tgt
+      (INJ: Mem.inject j m_alloc m_tgt)
+      (* rsp_src rsp_tgt *)
+      (* (INJRSP: Val.inject j rsp_src rsp_tgt) *)
+      blk_src blk_tgt (* delta *)
+      (INJRSP: j blk_src = Some (blk_tgt, 0))
+      (* (DELTA: 0 <= delta <= Ptrofs.max_unsigned) *)
+      (BCM: B2C_mem m_alloc (Vptr blk_src Ptrofs.zero true) ls_arg
+                    (regs_of_rpairs (loc_arguments sg)) = Some m_arg)
+      (ARGSTGTSTRONG: forall ofs ty,
+          In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)) ->
+          <<UNDEF: ls_arg (S Outgoing ofs ty) = Vundef >> \/
+          (exists v,
+              <<STORED: Mem_storedv (chunk_of_type ty) m_tgt
+                                    (Val.offset_ptr (Vptr blk_tgt Ptrofs.zero(* delta.(Ptrofs.repr) *) true)
+                                                    (Ptrofs.repr (4 * ofs))) v >> /\
+              <<INJECT: Val.inject j (ls_arg (S Outgoing ofs ty)) v >>))
+      (SZARG: 4 * (size_arguments sg) <= Ptrofs.max_unsigned)
+  :
+    <<INJ: Mem.inject j m_arg m_tgt>>
+.
+Proof.
+  generalize (loc_arguments_acceptable_2 sg); eauto. i.
+  generalize (loc_arguments_bounded sg); eauto. i.
+  abstr (regs_of_rpairs (loc_arguments sg)) locs.
+  ss.
+  ginduction locs; ii; ss; psimpl.
+  { clarify. }
+  u in *.
+  des_ifs; ss; try (by eapply IHlocs; eauto).
+  exploit IHlocs; try eassumption; eauto. intro INJ0.
+  (* rewrite Ptrofs.add_unsigned in H0. *)
+  exploit ARGSTGTSTRONG; eauto. i; des.
+  { eapply Mem_store_mapped_inject_undef; eauto. rewrite H1 in *. eauto. }
+  eapply store_stored_inject; eauto; cycle 1.
+  { rewrite INJRSP. repeat f_equal; eauto.
+    rewrite Ptrofs.unsigned_repr; ss.
+  }
+  { rewrite Ptrofs.unsigned_repr; ss. psimpl.
+    hexploit H; eauto. i; des.
+    hexploit H0; eauto. i; des.
+    generalize (typesize_pos ty); i.
+    rewrite Ptrofs.unsigned_repr; ss; try xomega.
+  }
+  psimpl. rpapply H1.
+Qed.
+
+End ARGPASSING.
 
 
 Section SIMMODSEM.
@@ -614,17 +718,17 @@ Proof.
     }
     des.
     esplits; eauto.
-    des_ifs; try (by econs; eauto).
-    Local Opaque Ptrofs.modulus.
-    unfold load_stack in *. ss.
-    rewrite ! Ptrofs.add_zero_l in *. unfold fe_ofs_arg in *. rewrite Z.add_0_l in *.
-    exploit Mem.load_inject; try apply MWF; eauto. intro LOADTGT0; des.
-    assert(v = v2).
-    { erewrite Ptrofs.unsigned_repr in LOADTGT0; eauto. rewrite Z.add_comm in LOADTGT0. clarify.
-      split; try xomega.
-      admit " < sz_arg < ptrofs.max_unsigned".
-    }
-    clarify.
+    - des_ifs; try (by econs; eauto).
+      Local Opaque Ptrofs.modulus.
+      unfold load_stack in *. ss.
+      rewrite ! Ptrofs.add_zero_l in *. unfold fe_ofs_arg in *. rewrite Z.add_0_l in *.
+      exploit Mem.load_inject; try apply MWF; eauto. intro LOADTGT0; des.
+      assert(v = v2).
+      { erewrite Ptrofs.unsigned_repr in LOADTGT0; eauto. rewrite Z.add_comm in LOADTGT0. clarify.
+        split; try xomega.
+        admit " < sz_arg < ptrofs.max_unsigned".
+      }
+      clarify.
   }
 }
     + i; des; ss. clear - FINDFUNC H. admit "ge".
@@ -656,6 +760,20 @@ Proof.
   ii; ss. eapply OVERLAP; eauto; eapply PERM; eauto.
 Qed.
 
+Lemma Mem_alloc_fresh_perm
+      m0 lo hi blk m1
+      (ALLOC: Mem.alloc m0 lo hi = (m1, blk))
+  :
+    <<NOPERM: forall ofs p k, ~Mem.perm m0 blk ofs p k>>
+.
+Proof.
+  ii.
+  exploit Mem.alloc_result; eauto. i; clarify.
+  exploit (Mem.nextblock_noaccess m0 m0.(Mem.nextblock)); eauto with mem.
+  { ii. xomega. }
+  i. unfold Mem.perm in *. rewrite H0 in *. ss.
+Qed.
+
 Lemma update_no_overlap
       F m0
       (OVERLAP: Mem.meminj_no_overlap F m0)
@@ -678,8 +796,20 @@ Proof.
   destruct (classic (b1' = b2')); cycle 1.
   { left; ss. }
   right. clarify.
+  exploit Mem.alloc_result; eauto. i; clarify.
   des_ifs; ss; cycle 1.
-Admitted.
+  - ii.
+    exploit Mem.perm_alloc_3; eauto. i.
+    exploit PRIVTGT; try apply H3; eauto; cycle 1.
+    replace (ofs2 + delta2 - delta1) with ofs1 by xomega.
+    eauto with mem.
+  - exploit OVERLAP; [|apply H0|apply H1|..]; eauto with mem. ii; des; ss.
+  - ii.
+    exploit Mem.perm_alloc_3; eauto. i.
+    exploit PRIVTGT; try apply H3; eauto; cycle 1.
+    replace (ofs1 + delta1 - delta2) with ofs2 by xomega.
+    eauto with mem.
+Qed.
 
 Theorem sim_modsem
   :
@@ -741,7 +871,7 @@ Proof.
   rename blk into sp_src.
   inv MATCH; ss. inv MATCHST; ss.
   assert(ARGSTGT: forall l (IN: In l (regs_of_rpairs (loc_arguments sg_arg))),
-            (exists v : val, Mach.extcall_arg rs m' (parent_sp cs') l v /\ Val.inject j (ls_arg l) v)).
+            (exists v, Mach.extcall_arg rs m' (parent_sp cs') l v /\ Val.inject j (ls_arg l) v)).
   { eapply transl_external_argument; eauto. apply sep_pick1 in SEP. eauto. }
   inv MCOMPAT; ss. des. clarify.
   assert(sm0.(inj) = j).
@@ -792,6 +922,16 @@ Proof.
         * u in RAPTR. des_ifs. u in RAPTR0. des_ifs. econs; eauto.
   }
 
+  assert(ARGSTGTSTRONG: forall ofs ty (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg_arg))),
+          <<UNDEF: ls_arg (S Outgoing ofs ty) = Vundef>>
+           \/
+           exists v,
+             <<STORED: Mem_storedv (chunk_of_type ty) (tgt_mem sm0)
+                                   (Val.offset_ptr (parent_sp cs') (Ptrofs.repr (4 * ofs))) v>>
+          /\
+          <<INJECT: Val.inject (inj sm0) (ls_arg (S Outgoing ofs ty)) v>>).
+  { eapply transl_external_arguments_strong; eauto. apply sep_pick1 in SEP. eauto. }
+
   assert(spdelta = Ptrofs.zero).
   { inv STACKS; ss; clarify. }
   clarify.
@@ -835,7 +975,20 @@ Proof.
           - eauto with mem. }
       }
 
-
+      rewrite Heq in *. ss.
+      eapply B2C_mem_inject; try apply BCM; eauto.
+      { des_ifs. }
+      { ii. exploit ARGSTGTSTRONG; eauto. i; des; eauto. right. ss.
+        psimpl.
+        esplits; eauto.
+        eapply val_inject_incr; eauto.
+        apply MLE.
+      }
+    - admit "MWF".
+    - admit "MWF".
+    - admit "MWF".
+    - admit "MWF".
+  }
 
 
       move MWF at bottom. inv MWF. clear_until PUBLIC.

@@ -16,240 +16,15 @@
 
 Require Import CoqlibC Errors.
 Require Import IntegersC AST Linking.
-Require Import ValuesC Memory SeparationC Events Globalenvs Smallstep.
+Require Import ValuesC MemoryC SeparationC Events Globalenvs Smallstep.
 Require Import LTL Op LocationsC LinearC MachC.
 Require Import Bounds ConventionsC Stacklayout Lineartyping.
 Require Import Stacking.
 Require Import sflib.
 
 Local Open Scope sep_scope.
-
-
-Section STORED.
-
-
-Inductive Mem_stored (chunk: memory_chunk) (m0: mem) (b: block) (ofs: Z) (v: val): Prop :=
-| stored_intro
-    (STORED: (Mem.getN (size_chunk_nat chunk) ofs (Maps.PMap.get b m0.(Mem.mem_contents)))
-             = (encode_val chunk v))
-    (WRITABLE: Mem.valid_access m0 chunk b ofs Writable)
-.
-
-Theorem Mem_store_stored
-        chunk m0 b ofs v m1
-        (STORE: Mem.store chunk m0 b ofs v = Some m1)
-  :
-    <<STORED: Mem_stored chunk m1 b ofs v>>
-.
-Proof.
-  econs; eauto with mem.
-  erewrite Mem.store_mem_contents; eauto.
-  rewrite Maps.PMap.gsspec. des_ifs.
-  erewrite <- encode_val_length; eauto.
-  rewrite Mem.getN_setN_same. ss.
-Qed.
-
-(* Local Transparent Mem.load. *)
-(* Lemma Mem_stored_load *)
-(*       chunk m0 b ofs v *)
-(*       (STORE: Mem_stored chunk m0 b ofs v) *)
-(*   : *)
-(*     <<LOAD: Mem.load chunk m0 b ofs = Some v>> *)
-(* . *)
-(* Proof. *)
-(*   inv STORE. *)
-(*   unfold Mem.load. des_ifs; cycle 1. *)
-(*   { exfalso. eapply n. eauto with mem. } *)
-(*   red. f_equal. *)
-(*   destruct chunk; ss; des_ifs. *)
-(*   - unfold encode_val in *. *)
-(*   destruct chunk; ss. *)
-(*   - unfold Maps.PMap.get. des_ifs. econs; eauto. *)
-(* Qed. *)
-(* Local Opaque Mem.load. *)
-
-(* Local Transparent Mem.store. *)
-
-(* Definition ZMap_equal {X} (eqX: X -> X -> Prop) (EQUIV: RelationClasses.Equivalence eqX) *)
-(*            (zm0 zm1: Maps.ZMap.t X): Prop := *)
-(*   zm0.(fst) = zm1.(fst) /\ Maps.PTree_Properties.Equal EQUIV zm0.(snd) zm1.(snd) *)
-(* . *)
-
-(* Inductive Mem_equal (m0 m1: mem): Prop := *)
-(* | equal_intro *)
-(*       (EQ0: m0.(Mem.mem_contents).(fst) = m1.(Mem.mem_contents).(fst)) *)
-(*       (EQ1: @Maps.PTree_Properties.Equal _ (ZMap_equal eq (@Eqsth _)) *)
-(*                                          (admit "") *)
-(*                                          m0.(Mem.mem_contents).(snd) m1.(Mem.mem_contents).(snd)) *)
-(*       (EQ2: m0.(Mem.mem_access) = m1.(Mem.mem_access)) *)
-(*       (EQ3: m0.(Mem.nextblock) = m1.(Mem.nextblock)) *)
-(* . *)
-
-(* Theorem Mem_stored_store *)
-(*         chunk m0 b ofs v *)
-(*         (STORED: Mem_stored chunk m0 b ofs v) *)
-(*   : *)
-(*     exists m1, <<STORE: Mem.store chunk m0 b ofs v = Some m1>> /\ *)
-(*                         <<EQUIV: Mem_equal m0 m1>> *)
-(* . *)
-(* Proof. *)
-(*   inv STORED. *)
-(*   unfold Mem.store. des_ifs. destruct m0; ss. *)
-(*   esplits; eauto. *)
-(*   econs; eauto. cbn. *)
-(*   destruct mem_contents; ss. *)
-(*   hnf. ii; ss. *)
-(*   destruct (Maps.PTree.get x t0) eqn:T. *)
-(*   - rewrite Maps.PTree.gsspec. rewrite T. *)
-(*     unfold Maps.PMap.get in *. ss. des_ifs; try reflexivity. *)
-(*     econs; ss. *)
-(*     { rewrite Mem.setN_default. ss. } *)
-(*     hnf. ii. *)
-(*     destruct (Maps.PTree.get x (snd t1)) eqn:U. *)
-(*     + *)
-(*     des_ifs. *)
-(*     rewrite <- STORED0. erewrite <- encode_val_length with (v:=v); eauto. *)
-(*     rewrite Mem.getN_setN_same. ss. *)
-(*     econs; eauto. *)
-(*   unfold Maps.PMap.set. ss. f_equal. *)
-(*   Maps.PTree_Properties.Equal *)
-(*   assert(forall i, Maps.PTree.set b (Mem.setN (encode_val chunk v) ofs (Maps.PMap.get b (t, t0))) t0 *)
-(*   rewrite Maps.PTree.gsspec. *)
-(*   eapply Axioms.functional_extensionality. *)
-(*   cbn. *)
-(*   Set Printing All. *)
-(*   rewrite Maps.PMap.gsspec. *)
-(*   rewrite Mem.getN_setN_same. ss. *)
-(*   econs; eauto. *)
-(*   econs; eauto with mem. *)
-(*   erewrite Mem.store_mem_contents; eauto. *)
-(*   rewrite Maps.PMap.gsspec. des_ifs. *)
-(*   erewrite <- encode_val_length; eauto. *)
-(*   rewrite Mem.getN_setN_same. ss. *)
-(* Qed. *)
-
-
-(* Lemma Mem_equal_proof_irr *)
-(*       m0 m1 *)
-(*       (EQ0: m0.(Mem.mem_contents) = m1.(Mem.mem_contents)) *)
-(*       (EQ1: m0.(Mem.mem_access) = m1.(Mem.mem_access)) *)
-(*       (EQ2: m0.(Mem.nextblock) = m1.(Mem.nextblock)) *)
-(*   : *)
-(*     m0 = m1 *)
-(* . *)
-(* Proof. *)
-(*   destruct m0, m1; ss. clarify. *)
-(*   f_equal; eapply Axioms.proof_irr. *)
-(* Qed. *)
-
-(* Theorem Mem_stored_store *)
-(*         chunk m0 b ofs v *)
-(*         (STORED: Mem_stored chunk m0 b ofs v) *)
-(*   : *)
-(*     exists m1, <<STORE: Mem.store chunk m0 b ofs v = Some m1>> /\ *)
-(*                         <<EQUIV: m0 = m1>> *)
-(* . *)
-(* Proof. *)
-(*   inv STORED. *)
-(*   unfold Mem.store. des_ifs. destruct m0; ss. *)
-(*   esplits; eauto. cbn. *)
-(*   f_equal. eapply Mem_equal_proof_irr; eauto. *)
-(*   ss. *)
-(*   destruct mem_contents; ss. *)
-(*   unfold Maps.PMap.set. ss. f_equal. *)
-(*   Maps.PTree_Properties.Equal *)
-(*   assert(forall i, Maps.PTree.set b (Mem.setN (encode_val chunk v) ofs (Maps.PMap.get b (t, t0))) t0 *)
-(*   rewrite Maps.PTree.gsspec. *)
-(*   eapply Axioms.functional_extensionality. *)
-(*   cbn. *)
-(*   Set Printing All. *)
-(*   rewrite Maps.PMap.gsspec. *)
-(*   rewrite Mem.getN_setN_same. ss. *)
-(*   econs; eauto. *)
-(*   econs; eauto with mem. *)
-(*   erewrite Mem.store_mem_contents; eauto. *)
-(*   rewrite Maps.PMap.gsspec. des_ifs. *)
-(*   erewrite <- encode_val_length; eauto. *)
-(*   rewrite Mem.getN_setN_same. ss. *)
-(* Qed. *)
-
-
-Local Existing Instance Val.mi_normal.
-
-Lemma memval_inject_refl
-      mv
-  : 
-    memval_inject (fun b0 : block => Some (b0, 0)) mv mv
-.
-Proof.
-  destruct mv; ss; econs; eauto.
-  apply val_inject_id. ss. 
-Qed.
-
-Lemma store_stored_inject
-      j0 m_src0 m_src1 m_tgt
-      (INJ: Mem.inject j0 m_src0 m_tgt)
-      v_src v_tgt
-      (INJV: Val.inject j0 v_src v_tgt) 
-      ty rsp_src rsp_tgt rspdelta ofs
-      (SRC: Mem.storev (chunk_of_type ty) m_src0 (Vptr rsp_src ofs true) v_src = Some m_src1)
-      (TGT: Mem_stored (chunk_of_type ty) m_tgt rsp_tgt (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) v_tgt)
-      (INJRSP: j0 rsp_src = Some (rsp_tgt, rspdelta.(Ptrofs.unsigned)))
-      (BOUND: Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta <= Ptrofs.max_unsigned)
-  :
-    <<INJ: Mem.inject j0 m_src1 m_tgt>>
-.
-Proof.
-  ss. red.
-  exploit Mem.store_mapped_inject; eauto. i; des.
-  eapply Mem.inject_extends_compose; eauto.
-  clear - TGT H BOUND.
-Local Transparent Mem.store.
-  hexploit MemoryC.Mem_store_perm_eq; eauto. intro PERM. des.
-  replace (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) with
-      (Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta) in *; cycle 1.
-  { rewrite Ptrofs.add_unsigned. rewrite Ptrofs.unsigned_repr; ss. split; try xomega.
-    hexploit (Ptrofs.unsigned_range ofs); eauto. i.
-    hexploit (Ptrofs.unsigned_range rspdelta); eauto. i.
-    xomega.
-  }
-  abstr (Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta) ofs0.
-  unfold Mem.store in *. inv TGT. des_ifs.
-  econs; eauto.
-  unfold inject_id.
-  econs; ss; eauto.
-  - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss.
-  - ii; clarify. unfold Mem.range_perm, Mem.perm in *. ss. rewrite Z.divide_0_r. reflexivity.
-  - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss.
-    rewrite Maps.PMap.gsspec. des_ifs; cycle 1.
-    { apply memval_inject_refl. }
-    rewrite <- STORED.
-    rename rsp_tgt into b. abstr (chunk_of_type ty) chunk. clear_tac.
-    destruct chunk; ss; rewrite ! Maps.ZMap.gsspec; des_ifs; try apply memval_inject_refl.
-Qed.
-
-Lemma Mem_stored_unchanged_on
-      P m0 m1
-      (UNCH: Mem.unchanged_on P m0 m1)
-      b ofs v chunk
-      (INSIDE: forall i : Z, ofs <= i < ofs + size_chunk chunk -> P b i)
-      (STORED: Mem_stored chunk m0 b ofs v)
-  :
-    <<STORED: Mem_stored chunk m1 b ofs v>>
-.
-Proof.
-  inv UNCH.
-  inv STORED. econs; eauto.
-  - erewrite <- STORED0.
-    unfold Mem.valid_access in *. ss. des; ss.
-    apply Mem.range_perm_implies with (p2:= Readable) in WRITABLE; eauto with mem.
-    destruct chunk; ss; rewrite ! unchanged_on_contents; eauto with lia.
-  - hnf in WRITABLE. des.
-    hnf. splits; eauto. ii. eapply unchanged_on_perm; eauto.
-    eauto with mem.
-Qed.
-
-End STORED.
+(** newly added **)
+Require Stackingproof.
 
 Lemma load_stack_transf_ofs
       m sp spofs ty ofs
@@ -740,6 +515,27 @@ Proof.
   apply mconj_proj1 in H. apply sep_proj1 in H. apply sep_pick2 in H.
   rewrite load_stack_transf_ofs. rewrite Ptrofs_add_repr.
   eapply get_location; eauto.
+Qed.
+
+Lemma frame_get_outgoing_strong:
+  forall ofs ty j sp ls ls0 parent retaddr m P,
+  m |= frame_contents j sp ls ls0 parent retaddr ** P ->
+  slot_within_bounds b Outgoing ofs ty -> slot_valid f Outgoing ofs ty = true ->
+  <<UNDEF: ls (S Outgoing ofs ty) = Vundef>> \/
+  exists v,
+    <<STORED: Mem_storedv (chunk_of_type ty) m
+                          (Val.offset_ptr (Vptr sp fe_ofs_arg.(Ptrofs.repr) true)
+                                          (Ptrofs.repr (offset_arg ofs))) v>>
+         /\ <<INJECT: Val.inject j (ls (S Outgoing ofs ty)) v>>
+.
+Proof.
+  unfold frame_contents, frame_contents_1; intros. unfold slot_valid in H1; InvBooleans.
+  apply mconj_proj1 in H. apply sep_proj1 in H. apply sep_pick2 in H.
+  cbn. rewrite Ptrofs_add_repr.
+  ss. des. exploit H6; eauto. i; des_safe. des; eauto. right. esplits; eauto. unfold offset_arg.
+  unfold fe_ofs_arg in *. rewrite ! Z.add_0_l in *. rewrite Ptrofs.unsigned_repr; ss.
+  generalize (typesize_pos ty); i.
+  unfold Ptrofs.max_unsigned. lia.
 Qed.
 
 Lemma frame_get_parent:
@@ -1716,9 +1512,8 @@ End FRAME_PROPERTIES.
 
 (** This is the memory assertion that captures the contents of the stack frames
   mentioned in the call stacks. *)
-
 Definition dummy_frame_contents (j: meminj) (ls: locset) (sg: signature) (sp: block) (spofs: Z): massert :=
-  (contains_locations j sp spofs (size_arguments sg) Outgoing ls)
+  (Stackingproof.contains_locations tprog return_address_offset j sp spofs (size_arguments sg) Outgoing ls)
 .
 
 Lemma dummy_frame_contents_incr
@@ -1731,7 +1526,7 @@ Lemma dummy_frame_contents_incr
 .
 Proof.
   red. unfold dummy_frame_contents.
-  rewrite <- (contains_locations_incr j j') by auto.
+  rewrite <- (Stackingproof.contains_locations_incr tprog return_address_offset j j') by auto.
   assumption.
 Qed.
 
@@ -2153,7 +1948,7 @@ Proof.
 Local Opaque contains_locations.
   hexploit loc_arguments_bounded; eauto. i.
   specialize (ARGS _ _ H). des.
-  exploit get_location; eauto; try xomega. i; des.
+  exploit Stackingproof.get_location; eauto; try xomega. i; des.
   rewrite <- Ptrofs_add_repr in *. rewrite Ptrofs.repr_unsigned in *.
   rewrite <- load_stack_transf_ofs in *.
   esplits; eauto.
@@ -2207,6 +2002,33 @@ Proof.
   unfold extcall_arguments.
   apply transl_external_arguments_rec.
   auto with coqlib.
+Qed.
+
+Lemma transl_external_arguments_strong
+      (NOTINIT: length cs <> 1%nat)
+  :
+    forall
+      ofs ty
+      (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))
+    ,
+    <<UNDEF: ls (S Outgoing ofs ty) = Vundef>> \/
+    exists v,
+      <<STORED: Mem_storedv (chunk_of_type ty) m' (Val.offset_ptr (parent_sp cs') (Ptrofs.repr (4 * ofs))) v>>
+           /\ <<INJECT: Val.inject j (ls (S Outgoing ofs ty)) v>>
+.
+Proof.
+  intros.
+  assert (loc_argument_acceptable (S Outgoing ofs ty)) by (apply loc_arguments_acceptable_2 with sg; auto).
+  ss.
+  inv MS; ss.
+  des_ifs. des.
+  simpl in SEP. des_ifs_safe. destruct cs'0; ss; (try by inv STK).
+  des_ifs_safe.
+  assert (slot_valid f Outgoing ofs ty = true).
+  { unfold slot_valid, proj_sumbool.
+    rewrite zle_true by omega. rewrite pred_dec_true by auto. reflexivity. }
+  assert (slot_within_bounds (function_bounds f) Outgoing ofs ty) by (simpl; eauto).
+  exploit frame_get_outgoing_strong; eauto. i; des_safe. rewrite AGCS; ss.
 Qed.
 
 End EXTERNAL_ARGUMENTS.
@@ -2406,7 +2228,7 @@ Proof.
     { hnf in LE. exploit LE; eauto. ss. } clarify. des_sumbool. ss.
     des_ifs; cycle 1.
     {
-      exploit get_location; eauto.
+      exploit Stackingproof.get_location; eauto.
       apply sep_pick2 in SEP. eauto.
       eapply ARGS; eauto.
       intros (v & A & B).

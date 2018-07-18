@@ -1,6 +1,6 @@
 Require Recdef.
 Require Import Zwf.
-Require Import Axioms CoqlibC Errors MapsC AST Linking.
+Require Import Axioms CoqlibC Errors MapsC ASTC Linking.
 Require Import Integers Floats ValuesC Memory.
 Require Import sflib.
 
@@ -298,23 +298,23 @@ Qed.
 
 
 
-Inductive good_genv {F V} (ge: Genv.t F V): Prop :=
-| good_genv_intro
-    (FIND_SYMBOL: forall id b,
-        Genv.find_symbol ge id = Some b -> (exists g, Genv.find_def ge b = Some g))
-    (FIND_DEF: forall b g,
-        Genv.find_def ge b = Some g -> (exists id, Genv.find_symbol ge id = Some b))
-.
+(* Inductive good_genv {F V} (ge: Genv.t F V): Prop := *)
+(* | good_genv_intro *)
+(*     (FIND_SYMBOL: forall id b, *)
+(*         Genv.find_symbol ge id = Some b -> (exists g, Genv.find_def ge b = Some g)) *)
+(*     (FIND_DEF: forall b g, *)
+(*         Genv.find_def ge b = Some g -> (exists id, Genv.find_symbol ge id = Some b)) *)
+(* . *)
 
-Inductive genv_precise {F V} (ge: Genv.t F V) (p: program F V): Prop :=
-| genv_compat_intro
-    (FIND_MAP: forall id g,
-        p.(prog_defmap) ! id = Some g ->
-        (exists b, Genv.find_symbol ge id = Some b /\ Genv.find_def ge b = Some g))
-    (FIND_MAP_INV: forall id b g,
-        (Genv.find_symbol ge id = Some b /\ Genv.find_def ge b = Some g) ->
-        p.(prog_defmap) ! id = Some g)
-.
+(* Inductive genv_precise {F V} (ge: Genv.t F V) (p: program F V): Prop := *)
+(* | genv_compat_intro *)
+(*     (FIND_MAP: forall id g, *)
+(*         p.(prog_defmap) ! id = Some g -> *)
+(*         (exists b, Genv.find_symbol ge id = Some b /\ Genv.find_def ge b = Some g)) *)
+(*     (FIND_MAP_INV: forall id b g, *)
+(*         (Genv.find_symbol ge id = Some b /\ Genv.find_def ge b = Some g) -> *)
+(*         p.(prog_defmap) ! id = Some g) *)
+(* . *)
 
 
 
@@ -470,3 +470,49 @@ Inductive genv_precise {F V} (ge: Genv.t F V) (p: program F V): Prop :=
 (* End PLAYGROUND1. *)
 
 
+Lemma find_symbol_eq_invert_symbol_eq
+      F0 V0 F1 V1
+      (ge0: Genv.t F0 V0) (ge1: Genv.t F1 V1)
+      (FIND: all1 (Genv.find_symbol ge0 =1= Genv.find_symbol ge1))
+  :
+    <<INVERT: all1 (Genv.invert_symbol ge0 =1= Genv.invert_symbol ge1)>>
+.
+Proof.
+  ii.
+  destruct (Genv.invert_symbol ge0 x0) eqn:T0.
+  - apply Genv.invert_find_symbol in T0.
+    rewrite FIND in T0.
+    apply Genv.find_invert_symbol in T0.
+    ss.
+  - destruct (Genv.invert_symbol ge1 x0) eqn:T1.
+    { apply Genv.invert_find_symbol in T1. rewrite <- FIND in *. apply Genv.find_invert_symbol in T1. clarify. }
+    ss.
+Qed.
+
+
+Section MATCHPROG.
+
+  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker (AST.fundef F1)} {LV: Linker V1}.
+  Variable match_fundef: C -> AST.fundef F1 -> AST.fundef F2 -> Prop.
+  Variable match_varinfo: V1 -> V2 -> Prop.
+  Variables (ctx: C) (p_src: AST.program (AST.fundef F1) V1) (p_tgt: AST.program (AST.fundef F2) V2).
+  Hypothesis (MATCHPROG: match_program_gen match_fundef match_varinfo ctx p_src p_tgt).
+
+  Lemma match_program_gen_defs
+    :
+      <<EQ: p_src.(defs) = p_tgt.(defs)>>
+  .
+  Proof.
+    apply Axioms.functional_extensionality. ii; ss. u.
+    (* hexploit (match_program_defmap _ _ ctx p_src p_tgt MATCH x). intro REL. *)
+    inv MATCHPROG. des.
+    assert((prog_defs_names p_src) = (prog_defs_names p_tgt)).
+    { unfold prog_defs_names.
+      clear - H.
+      ginduction H; ii; ss.
+      inv H; ss. f_equal; ss.
+    }
+    rewrite H2; ss.
+  Qed.
+
+End MATCHPROG.

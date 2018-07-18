@@ -3,7 +3,7 @@ Require Import Values.
 Require Import AST.
 Require Import Asmregs.
 Require Import Memory.
-Require Import Globalenvs.
+Require Import GlobalenvsC.
 Require Import Smallstep.
 Require Import CoqlibC.
 Require Import Skeleton.
@@ -186,3 +186,46 @@ Proof.
     admit "just use eq".
 Qed.
 
+
+Section REVIVE.
+
+  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker (AST.fundef F1)} {LV: Linker V1}.
+  Variable match_fundef: C -> AST.fundef F1 -> AST.fundef F2 -> Prop.
+  Variable match_varinfo: V1 -> V2 -> Prop.
+  Variables (ctx: C) (p_src: AST.program (AST.fundef F1) V1) (p_tgt: AST.program (AST.fundef F2) V2).
+  Hypothesis (MATCHPROG: match_program_gen match_fundef match_varinfo ctx p_src p_tgt).
+  Hypothesis MATCH_FUNDEF_EXTERNAL: forall
+      ctx f_src f_tgt
+      (MATCH: match_fundef ctx f_src f_tgt)
+    ,
+      is_external_fd f_src = is_external_fd f_tgt
+  .
+
+  Lemma sim_skenv_revive
+        skenv_proj_src skenv_proj_tgt
+        ge_src ge_tgt
+        (REVIVESRC: ge_src = SkEnv.revive skenv_proj_src p_src)
+        (REVIVETGT: ge_tgt = SkEnv.revive skenv_proj_tgt p_tgt)
+        (SIMSKENV: sim_skenv skenv_proj_src skenv_proj_tgt)
+    :
+      <<SIMGE: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge_src ge_tgt>>
+  .
+  Proof.
+    clarify.
+    inv SIMSKENV.
+    econs; eauto.
+    ii. specialize (DEFS b). unfold SkEnv.revive. ss.
+    rewrite ! MapsC.PTree_filter_map_spec. rewrite ! o_bind_ignore.
+    unfold Genv.find_def in *. rewrite DEFS. des_ifs; try (by econs; eauto).
+    dup SYMB. apply find_symbol_eq_invert_symbol_eq in SYMB0. erewrite <- SYMB0.
+    destruct (Genv.invert_symbol skenv_proj_src b) eqn:T; cbn; try (by econs; eauto).
+    apply match_program_defmap with (id := i) in MATCHPROG.
+    inv MATCHPROG; cbn; try (by econs; eauto).
+    inv H1; ss; cycle 1.
+    { econs; eauto. econs; eauto. }
+    erewrite MATCH_FUNDEF_EXTERNAL; eauto.
+    des_ifs; try (by econs; eauto).
+    econs; eauto. econs; eauto.
+  Qed.
+
+End REVIVE.

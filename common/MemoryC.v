@@ -936,3 +936,38 @@ Qed.
 
 End STORED.
 
+Ltac perm_impl_tac := eapply Mem.perm_implies with Freeable; [|eauto with mem].
+
+Lemma delta_range
+      `{Val.meminj_ctx}
+      F m_src m_tgt
+      (INJECT: Mem.inject F m_src m_tgt)
+      blk_src blk_tgt delta
+      (INJVAL: F blk_src = Some (blk_tgt, delta))
+      sz
+      (PERM: Mem.range_perm m_src blk_src 0 sz Cur Freeable)
+      (SIZEARG: 0 < sz <= Ptrofs.max_unsigned)
+  :
+   <<DELTA: 0 <= delta <= Ptrofs.max_unsigned>> /\
+   <<DELTA: sz + delta <= Ptrofs.max_unsigned>>
+.
+Proof.
+  unfold NW.
+  split.
+  - exploit Mem.mi_representable; eauto; cycle 1.
+    { instantiate (1:= Ptrofs.zero). rewrite Ptrofs.unsigned_zero. xomega. }
+    left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max.
+    perm_impl_tac. eapply PERM. split; try xomega.
+  - exploit Mem.mi_representable; try apply MWF; eauto; cycle 1.
+    { instantiate (1:= sz.(Ptrofs.repr)).
+      rewrite Ptrofs.unsigned_repr; cycle 1.
+      { split; try xomega. }
+      i. des. xomega.
+    }
+    right.
+    rewrite Ptrofs.unsigned_repr; cycle 1.
+    { split; try xomega. }
+    eapply Mem.perm_cur_max. perm_impl_tac.
+    eapply PERM. split; try xomega.
+Qed.
+

@@ -407,40 +407,6 @@ Ltac sep_split := econs; [|split]; swap 2 3.
 Hint Unfold fe_ofs_arg.
 Hint Unfold SimMem.SimMem.sim_regset. (* TODO: move to proper place *)
 Hint Unfold to_mregset.
-Ltac perm_impl_tac := eapply Mem.perm_implies with Freeable; [|eauto with mem].
-
-Lemma delta_range
-      F m_src m_tgt
-      (INJECT: Mem.inject F m_src m_tgt)
-      fd_src fd_tgt
-      (TRANSFUNC: transf_function fd_src = OK fd_tgt)
-      blk_src blk_tgt delta
-      (INJVAL: F blk_src = Some (blk_tgt, delta))
-      (PERM: Mem.range_perm m_src blk_src 0 (4 * size_arguments (Linear.fn_sig fd_src)) Cur Freeable)
-      (SIZEARG: 0 < 4 * size_arguments (Linear.fn_sig fd_src) <= Ptrofs.max_unsigned)
-  :
-   <<DELTA: 0 <= delta <= Ptrofs.max_unsigned>> /\
-   <<DELTA: 4 * size_arguments (Linear.fn_sig fd_src) + delta <= Ptrofs.max_unsigned>>
-.
-Proof.
-  unfold NW.
-  split.
-  - exploit Mem.mi_representable; eauto; cycle 1.
-    { instantiate (1:= Ptrofs.zero). rewrite Ptrofs.unsigned_zero. xomega. }
-    left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max.
-    perm_impl_tac. eapply PERM. split; try xomega.
-  - exploit Mem.mi_representable; try apply MWF; eauto; cycle 1.
-    { instantiate (1:= (4 * size_arguments (Linear.fn_sig fd_src)).(Ptrofs.repr)).
-      rewrite Ptrofs.unsigned_repr; cycle 1.
-      { split; try xomega. }
-      i. des. xomega.
-    }
-    right.
-    rewrite Ptrofs.unsigned_repr; cycle 1.
-    { split; try xomega. }
-    eapply Mem.perm_cur_max. perm_impl_tac.
-    eapply PERM. split; try xomega.
-Qed.
 
 Theorem init_match_states
         sm_arg
@@ -529,7 +495,7 @@ Proof.
       assert(DELTA: 0 < size_arguments (Linear.fn_sig fd_src) ->
                     0 <= delta_sp <= Ptrofs.max_unsigned
                     /\ 4 * size_arguments (Linear.fn_sig fd_src) + delta_sp <= Ptrofs.max_unsigned).
-      { i; eapply delta_range; eauto. apply MWF. admit "max_unsigned". (* xomega. *) }
+      { i; eapply delta_range; eauto. apply MWF. xomega. }
       rewrite sep_comm. rewrite sep_assoc.
       sep_split.
       { simpl. apply MWF0. }
@@ -610,7 +576,9 @@ Proof.
       assert(v = v2).
       { erewrite Ptrofs.unsigned_repr in LOADTGT0; eauto. rewrite Z.add_comm in LOADTGT0. clarify.
         split; try xomega.
-        admit " < sz_arg < ptrofs.max_unsigned".
+        unfold Ptrofs.max_unsigned.
+        generalize (typesize_pos ty); i.
+        xomega.
       }
       clarify.
   }

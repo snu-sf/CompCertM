@@ -58,8 +58,8 @@ Section STYLES.
   Inductive A2B (vs_arg: list val)
             (ls_arg: locset): Prop :=
   | A2B_intro
-      (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg)))
       (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+      (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg)))
       (PTRFREE: forall
           r
           (NOTIN: Loc.notin (R r) (regs_of_rpairs (loc_arguments sg)))
@@ -70,6 +70,7 @@ Section STYLES.
   Inductive B2A (ls_arg: locset)
             (vs_arg: list val): Prop :=
   | B2A_intro
+      (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg)))
   .
 
@@ -165,12 +166,12 @@ Section STYLES.
   Inductive B2C (ls_arg: locset) (m_arg0: mem)
             (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg1: mem): Prop :=
   | B2C_intro
+      (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (REGS: mrs_arg = fun mr => ls_arg (R mr))
       m_alloc blk
       (ALLOC: Mem.alloc m_arg0 fe_ofs_arg (4 * (size_arguments sg)) = (m_alloc, blk))
       (MEM: B2C_mem m_alloc rsp_arg ls_arg (regs_of_rpairs (loc_arguments sg)) = Some m_arg1)
       (RSPPTR: rsp_arg = (Vptr blk Ptrofs.zero true))
-      (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
   .
 
   Definition C2B_locset (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg: mem): locset :=
@@ -191,6 +192,7 @@ Section STYLES.
   Inductive C2B (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg: mem)
             (ls_arg: locset) (m_init: mem): Prop :=
   | C2B_intro
+      (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (LOCSET: ls_arg = C2B_locset mrs_arg rsp_arg m_arg)
       blk
       (RSPPTR: rsp_arg = (Vptr blk Ptrofs.zero true))

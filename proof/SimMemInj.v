@@ -9,6 +9,7 @@ Require Import AST.
 Require Import IntegersC LinkingC.
 Require Import SimDef SimSymb Skeleton Mod ModSem.
 Require Import SimMem.
+Require SimSymbId.
 
 Set Implicit Arguments.
 
@@ -461,14 +462,6 @@ Hint Unfold valid_blocks src_private tgt_private range.
 
 
 
-Inductive sim_skenv (skenv0 skenv1: SkEnv.t): Prop :=
-| sim_skenv_intro
-    (NEXT: skenv0.(Genv.genv_next) = skenv1.(Genv.genv_next))
-    (SYMB: all1 (skenv0.(Genv.find_symbol) =1= skenv1.(Genv.find_symbol)))
-    (DEFS: all1 (skenv0.(Genv.find_def) =1= skenv1.(Genv.find_def)))
-    (PUBS: skenv0.(Genv.genv_public) = skenv1.(Genv.genv_public))
-.
-
 Inductive skenv_inject (skenv: SkEnv.t) (j: meminj): Prop :=
 | sken_inject_intro
     (DOMAIN: forall b, Plt b skenv.(Genv.genv_next) -> j b = Some(b, 0))
@@ -480,61 +473,38 @@ Inductive sim_skenv_inj (sm: SimMem.t) (__noname__: unit) (skenv_src skenv_tgt: 
     (INJECT: skenv_inject skenv_src sm.(inj))
     (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm.(src_parent_nb))
     (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(tgt_parent_nb))
-    (SIMSKENV: sim_skenv skenv_src skenv_tgt)
-.
-
-Inductive sim_sk (u: unit) (sk_src sk_tgt: Sk.t): Prop :=
-| sim_sk_intro
-    (SIM: match_program (fun _ => sim_fun) eq sk_src sk_tgt)
+    (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
 .
 
 Global Program Instance SimSymbId: SimSymb.class SimMemInj := {
   t := unit;
-  le := top4;
-  sim_sk := sim_sk;
+  le := SimSymbId.le;
+  sim_sk := SimSymbId.sim_sk;
   sim_skenv := sim_skenv_inj;
 }
 .
 Next Obligation.
-  inv SIMSK. inv SIMSK0.
-  SearchAbout TransfLink.
-  admit "this should hold".
+  ss.
 Qed.
 Next Obligation.
-  rename m_src0 into m_src.
-  u in *. inv SIMSK.
-  Print Genv.init_mem_transf.
-  Print Genv.init_mem_transf_partial.
-  About Genv.init_mem_match.
-  exploit (Genv.init_mem_match SIM); eauto. i. clarify.
-  esplits; eauto.
-  - instantiate (1:= mk (Mem.flat_inj m_src.(Mem.nextblock))
-                        m_src m_src bot2 bot2 m_src.(Mem.nextblock) m_src.(Mem.nextblock)).
-    econs; ss; eauto.
+  eapply SimSymbId.sim_sk_link; eauto.
+Qed.
+Next Obligation.
+  exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
+  eexists. eexists (mk (Mem.flat_inj m_src0.(Mem.nextblock)) m_src0 m_src0
+                       bot2 bot2 m_src0.(Mem.nextblock) m_src0.(Mem.nextblock)). ss.
+  esplits; ss; eauto.
+  - econs; ss; eauto.
     + econs; eauto; ii; ss.
       * unfold Mem.flat_inj in *. erewrite ! Genv.init_mem_genv_next in *; eauto. des_ifs.
       * unfold Mem.flat_inj in *. erewrite ! Genv.init_mem_genv_next in *; eauto. des_ifs.
     + ss. erewrite ! Genv.init_mem_genv_next; eauto. reflexivity.
     + ss. erewrite ! Genv.init_mem_genv_next; eauto. reflexivity.
-    + econs; eauto.
-      * erewrite ! Genv.init_mem_genv_next; eauto.
-      * i. symmetry. apply (Genv.find_symbol_match SIM).
-      * ii. hexploit (Genv.find_def_match_2 SIM x0); eauto. intro REL.
-        inv REL; ss. inv H2; ss.
-        { admit "remove sig then this will hold // or just now this will hold if we don't drop sig on opt". }
-        inv H3; ss.
-      * inv SIM; des; ss. rewrite ! Genv.globalenv_public. ss.
-  - ss.
-  - ss.
   - econs; ss; try xomega; ii; des; ss; eauto.
     eapply Genv.initmem_inject; eauto.
-Unshelve.
+    u in *. eauto.
 Qed.
 Next Obligation.
-  (* assert(BOUNDSRC: Ple (Genv.genv_next skenv_src) (Mem.nextblock (m_src_parent sm1))). *)
-  (* { inv MLE. rewrite <- SRCPARENTEQ. eapply SIMSKENV. } *)
-  (* assert(BOUNDTGT: Ple (Genv.genv_next skenv_src) (Mem.nextblock (m_tgt_parent sm1))). *)
-  (* { inv MLE. rewrite <- TGTPARENTEQ. eapply SIMSKENV. } *)
   inv SIMSKENV. inv INJECT.
   econs; eauto.
   econs; eauto.
@@ -553,20 +523,9 @@ Next Obligation.
   - etransitivity; try apply TGTLE; eauto.
 Qed.
 Next Obligation.
-  inv LESRC.
-  inv LETGT.
-  inv SIMSKENV. inv SIMSKENV0.
-  inv SIMSK. unfold match_program in *.
-  assert(DEFSEQ: sk_src.(defs) = sk_tgt.(defs)).
-  { apply Axioms.functional_extensionality. intro id.
-    hexploit (@match_program_defmap _ _ _ _ _ _ _ _ _ _ _ SIM).
-    instantiate (1:= id).
-    i.
-    inv H; ss.
-    - unfold defs.
-      admit "this is weak. add list_norept or prove my own theorem with induction.".
-    - admit "this will hold".
-  }
+  exploit SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto.
+  i; des.
+  inv SIMSKENV. inv LESRC. inv LETGT.
   econs; eauto.
   { inv INJECT.
     econs; ii; eauto.
@@ -575,61 +534,25 @@ Next Obligation.
   }
   { rewrite <- NEXT. ss. }
   { rewrite <- NEXT. ss. }
-  econs; eauto.
-  - eq_closure_tac.
-  - intro id.
-    destruct (Classical_Prop.classic (sk_src.(defs) id)); cycle 1.
-    + exploit SYMBDROP; eauto. i; des.
-      exploit SYMBDROP0; eauto. { rewrite <- DEFSEQ. eauto. } i; des.
-      rewrite H0. rewrite H1. ss.
-    + exploit SYMBKEEP; eauto. i; des.
-      exploit SYMBKEEP0; eauto. { rewrite <- DEFSEQ. eauto. } i; des.
-      rewrite H0. rewrite H1. ss.
-  - intro blk.
-    destruct (Genv.invert_symbol skenv_link_src blk) eqn:T0; cycle 1.
-    + rewrite DEFORPHAN; ss.
-      destruct (Genv.invert_symbol skenv_link_tgt blk) eqn:T1; cycle 1.
-      * rewrite DEFORPHAN0; ss.
-      * repeat all_once_fast ltac:(fun H => try apply Genv.invert_find_symbol in H; des).
-        rewrite <- SYMB in *.
-        repeat all_once_fast ltac:(fun H => try apply Genv.find_invert_symbol in H; des).
-        clarify.
-    + destruct (Genv.invert_symbol skenv_link_tgt blk) eqn:T1; cycle 1.
-      * repeat all_once_fast ltac:(fun H => try apply Genv.invert_find_symbol in H; des).
-        rewrite SYMB in *.
-        repeat all_once_fast ltac:(fun H => try apply Genv.find_invert_symbol in H; des).
-        clarify.
-      * repeat all_once_fast ltac:(fun H => try apply Genv.invert_find_symbol in H; des).
-        assert(i = i0).
-        { eapply Genv.genv_vars_inj; eauto. unfold Genv.find_symbol in *. rewrite SYMB. ss. }
-        clarify.
-        repeat all_once_fast ltac:(fun H => try apply Genv.find_invert_symbol in H; des).
-        destruct (classic (defs sk_src i0)).
-        { erewrite DEFKEEP; eauto. erewrite DEFKEEP0; eauto. rewrite <- DEFSEQ; ss. }
-        { erewrite DEFDROP; eauto. erewrite DEFDROP0; eauto. rewrite <- DEFSEQ; ss. }
-  - rewrite PUBLIC. rewrite PUBLIC0. ss.
 Qed.
 Next Obligation.
-  inv SIMSKENV. inv SIMSKENV0. inv INJECT.
+  exploit SimSymbId.sim_skenv_func_bisim; eauto. { eapply SIMSKENV. } i; des.
+  inv H. inv SIMSKENV. inv INJECT. inv SIMSKENV0.
   econs; eauto.
-  - ii. ss.
-    assert(fptr_src = fptr_tgt).
+  - ii; ss.
+    eapply FUNCFSIM; eauto.
+    rpapply FUNCSRC. f_equal.
     { inv SIMFPTR; ss. des_ifs. rewrite Ptrofs.add_zero_l.
       unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
       exploit DOMAIN; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify. }
-    clarify. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-    erewrite <- DEFS; eauto. des_ifs. esplits; eauto.
-    admit "just use eq".
-  - ii.
-    assert(fptr_src = fptr_tgt).
+  - ii; ss.
+    eapply FUNCBSIM; eauto.
+    rpapply FUNCTGT. f_equal.
     { inv SIMFPTR; ss. des_ifs.
       unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
       exploit IMAGE; eauto. { rewrite NEXT. eapply Genv.genv_defs_range; eauto. } i; clarify.
       exploit DOMAIN; eauto. { rewrite <- DEFS in *. eapply Genv.genv_defs_range; eauto. } i; clarify.
       rewrite e. rewrite Ptrofs.add_zero in *. clarify.
     }
-    clarify. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-    erewrite DEFS; eauto. des_ifs. esplits; eauto.
-    admit "just use eq".
 Qed.
 

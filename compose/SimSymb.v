@@ -320,11 +320,11 @@ End DEPRECATED.
                           <<SIM: sim_fun def_src def_tgt>>)
   .
 
-  Inductive skenv_func_bisim `{SimMem.class} (sm0: SimMem.t) (skenv_src skenv_tgt: SkEnv.t): Prop :=
+  Inductive skenv_func_bisim (sim_val: val -> val -> Prop) (skenv_src skenv_tgt: SkEnv.t): Prop :=
   | skenv_func_bisim_intro
       (FUNCFSIM: forall
           fptr_src fptr_tgt def_src
-          (SIMFPTR: sm0.(SimMem.sim_val) fptr_src fptr_tgt)
+          (SIMFPTR: sim_val fptr_src fptr_tgt)
           (FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src)
         ,
           exists def_tgt, <<FUNCSRC: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt>> /\
@@ -332,7 +332,7 @@ End DEPRECATED.
       (FUNCBSIM: forall
           fptr_src fptr_tgt def_tgt
           (SAFESRC: fptr_src <> Vundef)
-          (SIMFPTR: sm0.(SimMem.sim_val) fptr_src fptr_tgt)
+          (SIMFPTR: sim_val fptr_src fptr_tgt)
           (FUNCTGT: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt)
         ,
           exists def_src, <<FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src>> /\
@@ -490,7 +490,7 @@ End DEPRECATED.
           sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)
         ,
-          <<DEF: skenv_func_bisim sm skenv_src skenv_tgt>>
+          <<DEF: skenv_func_bisim sm.(SimMem.sim_val) skenv_src skenv_tgt>>
       ;
     }
   .

@@ -27,3 +27,84 @@ Qed.
 
 End INJ.
 
+Lemma disjoint_footprint_drop_empty
+      P Q0 Q1
+      (EMPTY: Q0.(m_footprint) <2= bot2)
+      (DISJ: disjoint_footprint P Q1)
+  :
+    <<DISJ: disjoint_footprint P (Q0 ** Q1)>>
+.
+Proof.
+  ii. ss. unfold disjoint_footprint in *. des; eauto.
+  eapply EMPTY; eauto.
+Qed.
+
+Lemma disjoint_footprint_mconj
+      P Q0 Q1
+      (DISJ0: disjoint_footprint P Q0)
+      (DISJ1: disjoint_footprint P Q1)
+  :
+    <<DISJ: disjoint_footprint P (mconj Q0 Q1)>>
+.
+Proof.
+  ii. ss. unfold disjoint_footprint in *. des; eauto.
+Qed.
+
+Lemma disjoint_footprint_sepconj
+      P Q0 Q1
+      (DISJ0: disjoint_footprint P Q0)
+      (DISJ1: disjoint_footprint P Q1)
+  :
+    <<DISJ: disjoint_footprint P (Q0 ** Q1)>>
+.
+Proof.
+  ii. ss. unfold disjoint_footprint in *. des; eauto.
+Qed.
+
+(* Lemma mconj_sym *)
+(*       P Q *)
+(*   : *)
+(*     <<EQ: massert_eqv (mconj P Q) (mconj Q P)>> *)
+(* . *)
+(* Proof. *)
+(*   red. *)
+(*   split; ii. *)
+(*   - econs. *)
+(*     + ii. unfold mconj in *. ss. des; ss. *)
+(*     + ii. ss. des; eauto. *)
+(*   - econs. *)
+(*     + ii. unfold mconj in *. ss. des; ss. *)
+(*     + ii. ss. des; eauto. *)
+(* Qed. *)
+
+Lemma massert_eq
+      pred0 footprint0 INVAR0 VALID0
+      pred1 footprint1 INVAR1 VALID1
+      (EQ0: pred0 = pred1)
+      (EQ1: footprint0 = footprint1)
+  :
+    Build_massert pred0 footprint0 INVAR0 VALID0 = Build_massert pred1 footprint1 INVAR1 VALID1
+.
+Proof.
+  clarify.
+  f_equal.
+  apply Axioms.proof_irr.
+  apply Axioms.proof_irr.
+Qed.
+
+Lemma mconj_sym
+      P Q
+  :
+    <<EQ: (mconj P Q) = (mconj Q P)>>
+.
+Proof.
+  apply massert_eq; ss.
+  - apply Axioms.functional_extensionality. ii; ss.
+    apply prop_ext.
+    split; i; des; split; ss.
+  - apply Axioms.functional_extensionality. ii; ss.
+    apply Axioms.functional_extensionality. ii; ss.
+    apply prop_ext.
+    split; i; des; eauto.
+Qed.
+

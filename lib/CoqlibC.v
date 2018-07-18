@@ -542,3 +542,87 @@ Hint Extern 998 (_ = _) => f_equal : f_equal.
 Hint Extern 999 => congruence : congruence.
 Hint Extern 1000 => lia : lia.
 
+
+
+Section ALIGN.
+
+  Lemma align_refl
+        x
+        (NONNEG: x >= 0)
+  :
+    <<ALIGN: align x x = x>>
+  .
+  Proof.
+    destruct (Z.eqb x 0) eqn: T.
+    { rewrite Z.eqb_eq in T. clarify. }
+    rewrite Z.eqb_neq in T.
+    red.
+    unfold align.
+    replace ((x + x - 1) / x) with 1.
+    { xomega. }
+    replace (x + x - 1) with (1 * x + (1 * x + (- 1))); cycle 1.
+    { xomega. }
+    rewrite Z.div_add_l; try eassumption.
+    rewrite Z.div_add_l; try eassumption.
+    replace (Z.div (Zneg xH) x) with (Zneg xH).
+    { xomega. }
+    destruct x; ss.
+    clear - p.
+    unfold Z.div. des_ifs.
+    ginduction p; i; ss; des_ifs.
+  Qed.
+
+  Lemma align_zero
+        x
+    :
+      <<ALIGN: align x 0 = 0>>
+  .
+  Proof.
+    unfold align. red. ss.
+    xomega.
+  Qed.
+
+  Lemma align_divisible
+        z y
+        (DIV: (y | z))
+        (NONNEG: y > 0)
+    :
+      <<ALIGN: align z y = z>>
+  .
+  Proof.
+    red.
+    unfold align.
+    replace ((z + y - 1) / y) with (z / y + (y - 1) / y); cycle 1.
+    {
+      unfold Z.divide in *. des. clarify.
+      rewrite Z_div_mult; ss.
+      replace (z0 * y + y - 1) with (z0 * y + (y - 1)); cycle 1.
+      { xomega. }
+      rewrite Z.div_add_l with (b := y); ss.
+      xomega.
+    }
+    replace ((y - 1) / y) with 0; cycle 1.
+    { erewrite Zdiv_small; ss. xomega. }
+    unfold Z.divide in *. des. clarify.
+    rewrite Z_div_mult; ss.
+    rewrite Z.add_0_r.
+    xomega.
+  Qed.
+
+  Lemma align_idempotence
+        x y
+        (NONNEG: y > 0)
+    :
+      <<ALIGN: align (align x y) y = align x y>>
+  .
+  Proof.
+    apply align_divisible; ss.
+    apply align_divides; ss.
+  Qed.
+
+End ALIGN.
+
+Hint Rewrite align_refl: align.
+Hint Rewrite align_zero: align.
+Hint Rewrite align_idempotence: align.
+

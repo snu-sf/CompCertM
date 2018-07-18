@@ -1,6 +1,6 @@
 Require Import CoqlibC Errors.
 Require Import Integers ASTC Linking.
-Require Import ValuesC MemoryC Separation Events GlobalenvsC Smallstep.
+Require Import ValuesC MemoryC SeparationC Events GlobalenvsC Smallstep.
 Require Import LTL Op LocationsC LinearC MachC.
 (* Require Import BoundsC Conventions StacklayoutC Lineartyping. *)
 Require Import Bounds Conventions Stacklayout Lineartyping.
@@ -18,88 +18,6 @@ Require Import SimMemInj.
 Set Implicit Arguments.
 
 
-
-Section ALIGN.
-
-  Lemma align_refl
-        x
-        (NONNEG: x >= 0)
-  :
-    <<ALIGN: align x x = x>>
-  .
-  Proof.
-    destruct (Z.eqb x 0) eqn: T.
-    { rewrite Z.eqb_eq in T. clarify. }
-    rewrite Z.eqb_neq in T.
-    red.
-    unfold align.
-    replace ((x + x - 1) / x) with 1.
-    { xomega. }
-    replace (x + x - 1) with (1 * x + (1 * x + (- 1))); cycle 1.
-    { xomega. }
-    rewrite Z.div_add_l; try eassumption.
-    rewrite Z.div_add_l; try eassumption.
-    replace (Z.div (Zneg xH) x) with (Zneg xH).
-    { xomega. }
-    destruct x; ss.
-    clear - p.
-    unfold Z.div. des_ifs.
-    ginduction p; i; ss; des_ifs.
-  Qed.
-
-  Lemma align_zero
-        x
-    :
-      <<ALIGN: align x 0 = 0>>
-  .
-  Proof.
-    unfold align. red. ss.
-    xomega.
-  Qed.
-
-  Lemma align_divisible
-        z y
-        (DIV: (y | z))
-        (NONNEG: y > 0)
-    :
-      <<ALIGN: align z y = z>>
-  .
-  Proof.
-    red.
-    unfold align.
-    replace ((z + y - 1) / y) with (z / y + (y - 1) / y); cycle 1.
-    {
-      unfold Z.divide in *. des. clarify.
-      rewrite Z_div_mult; ss.
-      replace (z0 * y + y - 1) with (z0 * y + (y - 1)); cycle 1.
-      { xomega. }
-      rewrite Z.div_add_l with (b := y); ss.
-      xomega.
-    }
-    replace ((y - 1) / y) with 0; cycle 1.
-    { erewrite Zdiv_small; ss. xomega. }
-    unfold Z.divide in *. des. clarify.
-    rewrite Z_div_mult; ss.
-    rewrite Z.add_0_r.
-    xomega.
-  Qed.
-
-  Lemma align_idempotence
-        x y
-        (NONNEG: y > 0)
-    :
-      <<ALIGN: align (align x y) y = align x y>>
-  .
-  Proof.
-    apply align_divisible; ss.
-    apply align_divides; ss.
-  Qed.
-
-End ALIGN.
-
-Hint Rewrite align_refl: align.
-Hint Rewrite align_zero: align.
-Hint Rewrite align_idempotence: align.
 
 
 
@@ -263,93 +181,6 @@ Print loc_arguments_64. (* always + 2 *)
 
 
 
-
-Section SEPARATIONC.
-
-  Lemma disjoint_footprint_drop_empty
-        P Q0 Q1
-        (EMPTY: Q0.(m_footprint) <2= bot2)
-        (DISJ: disjoint_footprint P Q1)
-  :
-    <<DISJ: disjoint_footprint P (Q0 ** Q1)>>
-  .
-  Proof.
-    ii. ss. unfold disjoint_footprint in *. des; eauto.
-    eapply EMPTY; eauto.
-  Qed.
-
-  Lemma disjoint_footprint_mconj
-        P Q0 Q1
-        (DISJ0: disjoint_footprint P Q0)
-        (DISJ1: disjoint_footprint P Q1)
-  :
-    <<DISJ: disjoint_footprint P (mconj Q0 Q1)>>
-  .
-  Proof.
-    ii. ss. unfold disjoint_footprint in *. des; eauto.
-  Qed.
-
-  Lemma disjoint_footprint_sepconj
-        P Q0 Q1
-        (DISJ0: disjoint_footprint P Q0)
-        (DISJ1: disjoint_footprint P Q1)
-  :
-    <<DISJ: disjoint_footprint P (Q0 ** Q1)>>
-  .
-  Proof.
-    ii. ss. unfold disjoint_footprint in *. des; eauto.
-  Qed.
-
-  (* Lemma mconj_sym *)
-  (*       P Q *)
-  (*   : *)
-  (*     <<EQ: massert_eqv (mconj P Q) (mconj Q P)>> *)
-  (* . *)
-  (* Proof. *)
-  (*   red. *)
-  (*   split; ii. *)
-  (*   - econs. *)
-  (*     + ii. unfold mconj in *. ss. des; ss. *)
-  (*     + ii. ss. des; eauto. *)
-  (*   - econs. *)
-  (*     + ii. unfold mconj in *. ss. des; ss. *)
-  (*     + ii. ss. des; eauto. *)
-  (* Qed. *)
-
-  Lemma massert_eq
-        pred0 footprint0 INVAR0 VALID0
-        pred1 footprint1 INVAR1 VALID1
-        (EQ0: pred0 = pred1)
-        (EQ1: footprint0 = footprint1)
-    :
-      Build_massert pred0 footprint0 INVAR0 VALID0 = Build_massert pred1 footprint1 INVAR1 VALID1
-  .
-  Proof.
-    clarify.
-    f_equal.
-    apply Axioms.proof_irr.
-    apply Axioms.proof_irr.
-  Qed.
-
-  Axiom prop_ext: ClassicalFacts.prop_extensionality.
-
-  Lemma mconj_sym
-        P Q
-    :
-      <<EQ: (mconj P Q) = (mconj Q P)>>
-  .
-  Proof.
-    apply massert_eq; ss.
-    - apply Axioms.functional_extensionality. ii; ss.
-      apply prop_ext.
-      split; i; des; split; ss.
-    - apply Axioms.functional_extensionality. ii; ss.
-      apply Axioms.functional_extensionality. ii; ss.
-      apply prop_ext.
-      split; i; des; eauto.
-  Qed.
-
-End SEPARATIONC.
 
 
 

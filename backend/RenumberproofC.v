@@ -58,15 +58,6 @@ Import RNMBREXTRA.
 
 
 
-Lemma func_ext1
-      X0 Y0
-      (P Q: X0 -> Y0)
-      (EQ: all1 (P =1= Q))
-  :
-    <<EQ: P = Q>>
-.
-Proof. apply Axioms.functional_extensionality. ii; ss. Qed.
-
 Lemma find_symbol_eq_invert_symbol_eq
       F0 V0 F1 V1
       (ge0: Genv.t F0 V0) (ge1: Genv.t F1 V1)
@@ -164,14 +155,6 @@ Section MATCHEXTRA.
           { erewrite DEFKEEP; eauto. erewrite DEFKEEP0; eauto. erewrite <- match_program_gen_defs; eauto. }
           { erewrite DEFDROP; eauto. erewrite DEFDROP0; eauto. erewrite <- match_program_gen_defs; eauto. }
   Admitted. (* COQ BUG!!!!!!!!!!!!!!!! HOW TO FIX THIS?????????? *)
-
-  Lemma o_bind_ignore
-        X Y
-        (x: option X) (y: option Y)
-    :
-      (do _ <- x ; y) = assertion(x) ; y
-  .
-  Proof. u. des_ifs. Qed.
 
   Lemma match_globdef_external
         x y

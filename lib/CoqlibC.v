@@ -243,6 +243,15 @@ Lemma prop_ext4
 .
 Proof. ss. ii. eapply prop_ext; eauto. Qed.
 
+Lemma func_ext1
+      X0 Y0
+      (P Q: X0 -> Y0)
+      (EQ: all1 (P =1= Q))
+  :
+    <<EQ: P = Q>>
+.
+Proof. apply Axioms.functional_extensionality. ii; ss. Qed.
+
 (* Originally in sflib, (t):Prop *)
 (* Removed it for use in "privs" of ASTM *)
 (* Notation "<< x : t >>" := (NW (fun x => (t))) (at level 80, x ident, no associativity). *)
@@ -345,6 +354,14 @@ Notation "'assertion' A ; B" := (if A then B else None)
   : o_monad_scope.
 
 Open Scope o_monad_scope.
+
+Lemma o_bind_ignore
+      X Y
+      (x: option X) (y: option Y)
+  :
+    (do _ <- x ; y) = assertion(x) ; y
+.
+Proof. des_ifs. Qed.
 
 Ltac subst_locals := all ltac:(fun H => is_local_definition H; subst H).
 

@@ -456,8 +456,8 @@ Qed.
 
 Section ARGPASSING.
 
-(* Context `{CTX: Val.meminj_ctx}. *)
-Local Existing Instance Val.mi_normal.
+Context `{CTX: Val.meminj_ctx}.
+(* Local Existing Instance Val.mi_normal. *)
 
 Import Mem.
 
@@ -859,16 +859,16 @@ Qed.
 (* Qed. *)
 
 
-Local Existing Instance Val.mi_normal.
+Context `{CTX: Val.meminj_ctx}.
 
 Lemma memval_inject_refl
       mv
-  : 
-    memval_inject (fun b0 : block => Some (b0, 0)) mv mv
+  :
+    @memval_inject Val.mi_normal (fun b0 : block => Some (b0, 0)) mv mv
 .
 Proof.
   destruct mv; ss; econs; eauto.
-  apply val_inject_id. ss. 
+  apply val_inject_id. ss.
 Qed.
 
 Lemma store_stored_inject

@@ -48,6 +48,41 @@ Section MATCHSIMFORWARD.
                                idx_init st_init_src st_init_tgt sm_init>>)
   .
 
+  Let ATDTM (st_tgt: ms_tgt.(ModSem.state)): Prop := forall
+      rs_arg_tgt0 rs_arg_tgt1
+      m_arg_tgt0 m_arg_tgt1
+      (AT0: ms_tgt.(ModSem.at_external) st_tgt rs_arg_tgt0 m_arg_tgt0)
+      (AT1: ms_tgt.(ModSem.at_external) st_tgt rs_arg_tgt1 m_arg_tgt1)
+    ,
+      rs_arg_tgt0 = rs_arg_tgt1 /\ m_arg_tgt0 = m_arg_tgt1
+  .
+
+  Let ATFSIM := forall
+      rs_init_src rs_init_tgt sm_init
+      idx0 st_src0 st_tgt0 sm0
+      (MATCH: match_states rs_init_src rs_init_tgt sm_init
+                           idx0 st_src0 st_tgt0 sm0)
+      rs_arg_src m_arg_src
+      (CALLSRC: ms_src.(ModSem.at_external) st_src0 rs_arg_src m_arg_src)
+    ,
+      (<<DTMTGT: ATDTM st_tgt0>>)
+      /\
+      (<<MWF: SimMem.wf sm0>>)
+      /\
+      exists rs_arg_tgt m_arg_tgt sm_arg,
+        (<<CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 rs_arg_tgt m_arg_tgt>>)
+        /\
+        (<<MSRC: sm_arg.(SimMem.src) = m_arg_src>>)
+        /\
+        (<<MTGT: sm_arg.(SimMem.tgt) = m_arg_tgt>>)
+        /\
+        (<<SIMRS: SimMem.sim_regset sm_arg rs_arg_src rs_arg_tgt>>)
+        /\
+        (<<MLE: SimMem.le sm0 sm_arg>>)
+        /\
+        (<<MWF: SimMem.wf sm_arg>>)
+  .
+
   Hypothesis ATPROGRESS: forall
       rs_init_src rs_init_tgt sm_init
       idx0 st_src0 st_tgt0 sm0
@@ -218,35 +253,63 @@ Section MATCHSIMFORWARD.
     pcofix CIH. i. pfold.
     generalize (classic (ModSem.is_call ms_src st_src0)). intro CALLSRC; des.
     {
-      exploit ATPROGRESS; eauto. i; des.
-      eapply lxsim_at_external; eauto.
-      (* { *)
-      (*   u in CALLSRC. des. rename rs_arg into rs_arg_src. rename m_arg into m_arg_src. *)
-      (*   exploit ATPROGRESS; eauto. *)
-      (* } *)
-      i.
-      exploit ATBSIM; eauto. i; des.
-      esplits; eauto.
-      { rewrite MSRC. ss. }
-      i; des.
-      exploit AFTERFSIM; try apply SAFESRC; try apply SIMRS; eauto.
-      i; des.
-      esplits; eauto.
-      - i.
-        revert SAFESRC. determ_tac ModSem.after_external_dtm. clear_tac.
+      (* destruct ATSIM as [ATFSIM0 | ATBSIM0]. *)
+      (* - subst ATFSIM. *)
+      (*   u in CALLSRC. des. *)
+      (*   exploit ATFSIM0; eauto. i; des. *)
+      (*   subst ATDTM. ss. *)
+      (*   eapply lxsim_at_external; eauto. *)
+      (*   i. *)
+      (*   determ_tac DTMTGT. *)
+      (*   esplits; eauto. *)
+      (*   i. des. *)
+      (*   exploit AFTERFSIM; try apply SAFESRC; try apply SIMRS; eauto. *)
+      (*   i; des. *)
+      (*   esplits; eauto. *)
+      (*   + i. *)
+      (*     revert SAFESRC. determ_tac ModSem.after_external_dtm. clear_tac. *)
+      (*     esplits; eauto. *)
+      (*     right. *)
+      (*     eapply CIH; eauto. *)
+      (*     { eapply SimSymb.mle_preserves_sim_skenv; eauto. *)
+      (*       etransitivity; eauto. eapply SimMem.unlift_spec; eauto. } *)
+      (*     { etransitivity; cycle 1. *)
+      (*       - eapply SimMem.unlift_spec; eauto. *)
+      (*       - etransitivity; eauto. *)
+      (*     } *)
+      (*     { econs. *)
+      (*       - erewrite ModSem.after_external_get_mem; try eassumption. erewrite SimMem.unlift_src; eauto. *)
+      (*       - erewrite ModSem.after_external_get_mem; try eassumption. erewrite SimMem.unlift_tgt; eauto. *)
+      (*     } *)
+      - exploit ATPROGRESS; eauto. i; des.
+        eapply lxsim_at_external; eauto.
+        (* { *)
+        (*   u in CALLSRC. des. rename rs_arg into rs_arg_src. rename m_arg into m_arg_src. *)
+        (*   exploit ATPROGRESS; eauto. *)
+        (* } *)
+        i.
+        exploit ATBSIM; eauto. i; des.
         esplits; eauto.
-        right.
-        eapply CIH; eauto.
-        { eapply SimSymb.mle_preserves_sim_skenv; eauto.
-          etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
-        { etransitivity; cycle 1.
-          - eapply SimMem.unlift_spec; eauto.
-          - etransitivity; eauto.
-        }
-        { econs.
-          - erewrite ModSem.after_external_get_mem; try eassumption. erewrite SimMem.unlift_src; eauto.
-          - erewrite ModSem.after_external_get_mem; try eassumption. erewrite SimMem.unlift_tgt; eauto.
-        }
+        { rewrite MSRC. ss. }
+        i; des.
+        exploit AFTERFSIM; try apply SAFESRC; try apply SIMRS; eauto.
+        i; des.
+        esplits; eauto.
+        + i.
+          revert SAFESRC. determ_tac ModSem.after_external_dtm. clear_tac.
+          esplits; eauto.
+          right.
+          eapply CIH; eauto.
+          { eapply SimSymb.mle_preserves_sim_skenv; eauto.
+            etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
+          { etransitivity; cycle 1.
+            - eapply SimMem.unlift_spec; eauto.
+            - etransitivity; eauto.
+          }
+          { econs.
+            - erewrite ModSem.after_external_get_mem; try eassumption. erewrite SimMem.unlift_src; eauto.
+            - erewrite ModSem.after_external_get_mem; try eassumption. erewrite SimMem.unlift_tgt; eauto.
+          }
     }
     generalize (classic (ModSem.is_return ms_src rs_init_src st_src0)). intro RETSRC; des.
     {

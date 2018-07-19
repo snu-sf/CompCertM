@@ -164,7 +164,7 @@ Section STYLES.
   Qed.
 
   Inductive B2C (ls_arg: locset) (m_arg0: mem)
-            (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg1: mem): Prop :=
+            (mrs_arg: Mach.regset) (rsp_arg: val) (ra_arg: val) (m_arg1: mem): Prop :=
   | B2C_intro
       (BOUND: 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (REGS: mrs_arg = fun mr => ls_arg (R mr))
@@ -172,6 +172,7 @@ Section STYLES.
       (ALLOC: Mem.alloc m_arg0 fe_ofs_arg (4 * (size_arguments sg)) = (m_alloc, blk))
       (MEM: B2C_mem m_alloc rsp_arg ls_arg (regs_of_rpairs (loc_arguments sg)) = Some m_arg1)
       (RSPPTR: rsp_arg = (Vptr blk Ptrofs.zero true))
+      (RAPTR: is_fake_ptr ra_arg)
   .
 
   Definition C2B_locset (mrs_arg: Mach.regset) (rsp_arg: val) (m_arg: mem): locset :=
@@ -211,10 +212,9 @@ Section STYLES.
                # RA <- ra
                # RSP <- rsp_arg)
   .
-  Inductive C2D (mrs_arg: Mach.regset) (fptr_arg: val) (rsp_arg: val)
+  Inductive C2D (mrs_arg: Mach.regset) (fptr_arg: val) (rsp_arg: val) (ra_arg: val)
             (prs_arg: Asmregs.regset): Prop :=
   | C2D_intro
-      ra
       (REGSET: prs_arg = fun pr =>
                            match to_mreg pr with
                            | Some mr => mrs_arg mr
@@ -222,19 +222,18 @@ Section STYLES.
                              match pr with
                              | RSP => rsp_arg
                              | PC => fptr_arg
-                             | RA => ra
+                             | RA => ra_arg
                              | _ => Vundef
                              end
                            end)
-      (RAPTR: is_fake_ptr ra)
   .
 
   Inductive B2D (fptr_arg: val) (ls_arg: locset) (m_arg_pre: mem)
             (prs_arg: Asmregs.regset) (m_arg: mem): Prop :=
   | B2D_intro
-      mrs rsp_arg
-      (BC: B2C ls_arg m_arg_pre mrs rsp_arg m_arg)
-      (CD: C2D mrs fptr_arg rsp_arg prs_arg)
+      mrs rsp_arg ra_arg
+      (BC: B2C ls_arg m_arg_pre mrs rsp_arg ra_arg m_arg)
+      (CD: C2D mrs fptr_arg rsp_arg ra_arg prs_arg)
   .
 
   Inductive A2D (fptr_arg: val) (vs_arg: list val) (m_arg_pre: mem)
@@ -242,9 +241,9 @@ Section STYLES.
   | A2D_intro
       ls
       (AB: A2B vs_arg ls)
-      mrs rsp_arg
-      (BC: B2C ls m_arg_pre mrs rsp_arg m_arg)
-      (CD: C2D mrs fptr_arg rsp_arg prs_arg)
+      mrs rsp_arg ra_arg
+      (BC: B2C ls m_arg_pre mrs rsp_arg ra_arg m_arg)
+      (CD: C2D mrs fptr_arg rsp_arg ra_arg prs_arg)
   .
 
   Inductive D2C (prs_arg: Asmregs.regset)
@@ -345,10 +344,10 @@ just define something like 'fill_arguments' in locationsC
     esplits; eauto.
     econs; eauto.
     - econs; eauto.
-      reflexivity.
-    - econs; eauto.
       + reflexivity.
       + instantiate (1:= fake_ptr_one). ss.
+    - econs; eauto.
+      + reflexivity.
   Qed.
 
   Lemma A2D2A

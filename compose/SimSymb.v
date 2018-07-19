@@ -1,5 +1,5 @@
 Require Import Events.
-Require Import Values.
+Require Import ValuesC.
 Require Import AST.
 Require Import Asmregs.
 Require Import Memory.
@@ -331,7 +331,7 @@ End DEPRECATED.
                           <<SIM: sim_fun def_src def_tgt>>)
       (FUNCBSIM: forall
           fptr_src fptr_tgt def_tgt
-          (SAFESRC: fptr_src <> Vundef)
+          (SAFESRC: is_real_ptr fptr_src)
           (SIMFPTR: sim_val fptr_src fptr_tgt)
           (FUNCTGT: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt)
         ,

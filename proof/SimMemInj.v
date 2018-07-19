@@ -168,7 +168,8 @@ Qed.
 
 Section MEMINJ.
 
-Local Existing Instance Val.mi_normal.
+(* Local Existing Instance Val.mi_normal. *)
+Context `{CTX: Val.meminj_ctx}.
 (* Variable gbound_src gbound_tgt: block. *)
 
 Record t' := mk {
@@ -459,8 +460,9 @@ Hint Unfold valid_blocks src_private tgt_private range.
 
 
 
+Section SIMSYMB.
 
-
+Context `{CTX: Val.meminj_ctx}.
 
 Inductive skenv_inject (skenv: SkEnv.t) (j: meminj): Prop :=
 | sken_inject_intro
@@ -556,3 +558,4 @@ Next Obligation.
     }
 Qed.
 
+End SIMSYMB.

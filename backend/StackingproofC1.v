@@ -193,6 +193,8 @@ Ltac psimpl :=
   repeat (try rewrite ! Ptrofs.unsigned_zero in *;
           try rewrite ! Ptrofs.add_zero in *;
           try rewrite ! Ptrofs.add_zero_l in *;
+          try rewrite ! Ptrofs.repr_unsigned in *;
+          try rewrite ! IntegersC.Ptrofs_add_repr in *;
           try (rewrite Ptrofs.unsigned_repr in *; ss; try xomega; [])
          )
 .
@@ -204,7 +206,7 @@ Ltac psimpl :=
 
 Section ARGPASSING.
 
-Local Existing Instance Val.mi_normal.
+Local Existing Instance Val.mi_final.
 
 (* Lemma store_stored_inject *)
 (*       j0 m_src0 m_src1 m_tgt *)
@@ -354,7 +356,7 @@ End ARGPASSING.
 
 Section SIMMODSEM.
 
-Local Existing Instance Val.mi_normal.
+Local Existing Instance Val.mi_final.
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable prog: Linear.program.
 Variable tprog: Mach.program.
@@ -622,7 +624,6 @@ Proof.
       admit "this should hold. is_call_progress".
     + econs; eauto.
       { reflexivity. }
-      instantiate (1:= fake_ptr_one). ss.
     (* inv STORE; ss. *)
     (* u in PCPTR. des_ifs. clear_tac. ss. *)
     (* destruct b0; ss; cycle 1. *)
@@ -638,7 +639,7 @@ Proof.
     (* econs; eauto. *)
     (* ss. fold_all tge. des_ifs. *)
     (* admit "by genv match". *)
-  - (* ATFSIM *)
+  - (* ATBSIM *)
     revert_until MATCH.
     assert(ATFSIM: forall
               rs_arg_src m_arg_src
@@ -705,7 +706,7 @@ Proof.
       + des_ifs; try (by econs; eauto).
         * eapply val_inject_incr; eauto. apply MLE.
         * econs; eauto. des_ifs. rewrite Ptrofs.add_zero_l. rewrite Ptrofs.repr_unsigned; ss.
-        * u in RAPTR. des_ifs. u in RAPTR0. des_ifs. econs; eauto.
+        * u in RAPTR. des_ifs. u in RAPTR0. des_ifs. admit "RA inject. unprovable?".
   }
 
   assert(ARGSTGTSTRONG: forall ofs ty (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg_arg))),
@@ -792,9 +793,170 @@ Proof.
     + des_ifs; try (by econs; eauto).
       * eapply val_inject_incr; eauto. apply MLE1.
       * rewrite PARENTPTR. econs; eauto. des_ifs. rewrite Ptrofs.add_zero_l. rewrite Ptrofs.repr_unsigned; ss.
-      * u in RAPTR. des_ifs. econs; eauto.
+      * u in RAPTR. des_ifs. admit "ra inject. unprovable?".
 }
-    admit "fix metatheory to deal with fsim".
+
+
+
+
+    ii; ss. u in SAFESRC. des.
+    inv SAFESRC; ss. rename rs_arg into rs_arg_src. rename m_arg into m_arg_src.
+    inv BD. rename mrs into mrs_src. rename rsp_arg into rsp_arg_src. rename ra_arg into ra_arg_src.
+    inv BC. rename blk into sp_src.
+    inv MATCH; ss. inv MATCHST; ss.
+    assert(ARGSTGT: forall l (IN: In l (regs_of_rpairs (loc_arguments sg_arg))),
+              (exists v, Mach.extcall_arg rs m' (parent_sp cs') l v /\ Val.inject j (ls_arg l) v)).
+    { eapply transl_external_argument; eauto. apply sep_pick1 in SEP. eauto. }
+    inv MCOMPAT; ss. des. clarify.
+    assert(sm0.(inj) = j).
+    { admit "put sm inside match_states". }
+    clarify.
+    exploit match_stacks_parent_sp; eauto. i; des.
+    u in H. des_ifs. clear_tac. rename b into sp_tgt. rename i into spdelta.
+    rename Heq into PARENTPTR.
+
+    exploit (@Call.B2C_mem_spec sg_arg m_alloc sp_src ls_arg); eauto.
+    { eapply Mem_alloc_range_perm; eauto. }
+    i; des. clarify.
+
+    set (sm_arg := (mk (fun blk => if eq_block blk sp_src
+                                   then Some (sp_tgt, spdelta.(Ptrofs.unsigned))
+                                   else sm0.(inj) blk)
+                       m_arg_src sm0.(m_tgt)
+                       sm0.(src_external) sm0.(tgt_external)
+                       sm0.(src_parent_nb) sm0.(tgt_parent_nb))).
+    unfold load_stack in *. ss.
+
+    destruct (classic (length stack = 1%nat)).
+    { (* this case, alloc with size 0 /\ no more store. *)
+      inv STACKS; ss; cycle 1.
+      { inv STK; ss. } 
+      hexploit ABCD; eauto.
+      { esplits; eauto. admit "genv". }
+      intro TAIL.
+      assert(m_alloc = m_arg_src).
+      { admit "tailcall_possible". }
+      clarify.
+      inv CD. ss.
+      assert(MLE: SimMem.le sm0 sm_arg).
+      { admit "??". }
+      assert(MWF0: SimMem.wf sm_arg).
+      { admit "??". }
+
+      inv CALLTGT. ss.
+      do 2 eexists. exists sm_arg. cbn.
+      esplits; cbn; try reflexivity; eauto.
+      - econs; eauto.
+        econs; eauto.
+        + instantiate (1:= ra.(to_fake)).
+          econs; eauto.
+          reflexivity.
+          destruct ra; ss. des_ifs.
+        + econs; eauto.
+          reflexivity.
+      - inv CD. ii; ss. des_ifs.
+        + eapply val_inject_incr; eauto. apply MLE.
+        + eapply val_inject_incr; eauto. apply MLE.
+        + econs; eauto. { des_ifs. } psimpl. ss.
+        + destruct ra; ss. des_ifs. econs; eauto.
+      - econs; eauto.
+        + fold tge. admit "this should hold".
+        + econs; eauto.
+          * reflexivity.
+      - u. i. destruct (to_mreg pr) eqn:T; ss.
+        + unfold agree_regs in AGREGS.
+          eapply val_inject_incr; eauto. eapply MLE.
+        + des_ifs; try (by econs; eauto).
+          * eapply val_inject_incr; eauto. apply MLE.
+          * econs; eauto. des_ifs. rewrite Ptrofs.add_zero_l. rewrite Ptrofs.repr_unsigned; ss.
+          * u in RAPTR. des_ifs. u in RAPTR0. des_ifs. admit "RA inject. unprovable?".
+    }
+
+  assert(ARGSTGTSTRONG: forall ofs ty (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg_arg))),
+          <<UNDEF: ls_arg (S Outgoing ofs ty) = Vundef>>
+           \/
+           exists v,
+             <<STORED: Mem_storedv (chunk_of_type ty) (SimMem.tgt sm0)
+                                   (Val.offset_ptr (parent_sp cs') (Ptrofs.repr (4 * ofs))) v>>
+          /\
+          <<INJECT: Val.inject (inj sm0) (ls_arg (S Outgoing ofs ty)) v>>).
+  { eapply transl_external_arguments_strong; eauto. apply sep_pick1 in SEP. eauto. }
+
+  assert(spdelta = Ptrofs.zero).
+  { inv STACKS; ss; clarify. }
+  clarify.
+
+  (* assert(MLE: SimMem.le sm0 sm_arg). *)
+  (* { *)
+  (*   subst sm_arg. *)
+  (*   econs; cbn; eauto with mem; try xomega. *)
+  (*   - ii; ss. des_ifs; ss. exfalso. *)
+  (*     exploit Mem.mi_freeblocks; try apply MWF; eauto. *)
+  (*     { eauto with mem. } *)
+  (*     i; ss. clarify. *)
+  (*   - eapply Mem_unchanged_on_trans_strong; eauto. *)
+  (*     { eapply Mem.alloc_unchanged_on; eauto. } *)
+  (*     eapply Mem.unchanged_on_implies; eauto. cbn. admit "ez". *)
+  (*   - econs; eauto. *)
+  (*     ii; ss. des; ss. des_ifs. *)
+  (*     split; ss. *)
+  (*     + admit "ez". *)
+  (*     + admit "we should add this into match_states". *)
+  (*   - admit "ez". *)
+  (* } *)
+  exploit Mem.alloc_result; eauto. i; des. clarify.
+  exploit Mem.nextblock_alloc; eauto. intro ALLOCNB.
+
+  set (sm_alloc := (mk (fun blk => if eq_block blk (Mem.nextblock (m_src sm0))
+                                 then Some (sp_tgt, 0)
+                                 else sm0.(inj) blk)
+                     m_alloc sm0.(m_tgt)
+                     sm0.(src_external) sm0.(tgt_external)
+                     sm0.(src_parent_nb) sm0.(tgt_parent_nb))).
+  assert(MWF0: SimMem.wf sm_alloc /\ <<MLE0: SimMem.le sm0 sm_alloc>>).
+  { rewrite sep_comm in SEP. rewrite sep_assoc in SEP. apply sep_drop2 in SEP. rewrite sep_comm in SEP.
+    eapply alloc_left_zero_simmem; eauto.
+    - u. ii. esplits; eauto.
+      + rpapply arguments_private; eauto.
+      + admit "ez".
+    - admit "should add this in match_states".
+    - i. apply Mem.perm_cur. eapply Mem.perm_implies.
+      + rpapply arguments_perm; eauto.
+      + eauto with mem.
+    - admit "ez".
+    - admit "should add this in match_states".
+  }
+  des.
+  rewrite PARENTPTR in *.
+  assert(MWF1: SimMem.wf sm_arg /\ <<MLE1: SimMem.le sm0 sm_arg>>).
+  { subst_locals. exploit B2C_mem_simmem; eauto; ss.
+    { des_ifs. }
+    { ii. exploit ARGSTGTSTRONG; eauto. i; des; eauto. right. ss.
+      psimpl. ss.
+      esplits; eauto.
+      eapply val_inject_incr; eauto.
+      apply MLE0.
+    }
+    i; des.
+    esplits; eauto.
+    etransitivity; eauto.
+  }
+  des.
+
+  inv CD. ss.
+  do 2 eexists. exists sm_arg. cbn.
+  esplits; cbn; try reflexivity; eauto.
+  - econs; eauto.
+    + fold tge. admit "this should hold".
+    + econs; eauto.
+      * reflexivity.
+  - u. i. destruct (to_mreg pr) eqn:T; ss.
+    + unfold agree_regs in AGREGS.
+      eapply val_inject_incr; eauto. eapply MLE1.
+    + des_ifs; try (by econs; eauto).
+      * eapply val_inject_incr; eauto. apply MLE1.
+      * rewrite PARENTPTR. econs; eauto. des_ifs. rewrite Ptrofs.add_zero_l. rewrite Ptrofs.repr_unsigned; ss.
+      * u in RAPTR. des_ifs. admit "ra inject. unprovable?".
   - admit "todo".
   - admit "todo".
   - admit "todo".

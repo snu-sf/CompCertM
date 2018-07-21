@@ -88,7 +88,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(internals).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -213,7 +213,7 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    rewrite Sk.of_program_defs.
+    rewrite Sk.of_program_internals.
     eapply SkEnv.project_impl_spec; eauto.
   Qed.
 

@@ -538,3 +538,15 @@ Section MATCHPROG.
   Qed.
 
 End MATCHPROG.
+
+Inductive includes {F V} (skenv: Genv.t F V) (sk: program F V): Prop :=
+| includes_intro
+    (INCL: forall
+        id g
+        (* (DEF: (prog_defmap sk) ! id = Some g) *)
+        (DEF: In (id, g) sk.(prog_defs))
+      ,
+        (exists blk, <<SYMB: Genv.find_symbol skenv id = Some blk>>
+                             /\ <<DEF: Genv.find_def skenv blk = Some g>>))
+.
+

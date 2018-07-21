@@ -12,7 +12,7 @@ Require Import Values Integers.
 Require Import Globalenvs.
 Require Import Program.
 
-Require Import SimDef SimSymb Ord.
+Require Import SimSymb Ord.
 
 Set Implicit Arguments.
 

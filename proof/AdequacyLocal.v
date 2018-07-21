@@ -10,7 +10,7 @@ Require Import Integers.
 Require Import Events.
 
 Require Import Skeleton ModSem Mod Sem.
-Require Import SimDef SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
+Require Import SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
 Require Import SemProps Ord.
 
 Set Implicit Arguments.

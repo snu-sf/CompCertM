@@ -43,7 +43,7 @@ Module Mod.
       skenv
       ,
         (* SkEnv.project skenv data.(get_sk).(defs) = data.(get_modsem skenv).(ModSem.skenv) *)
-        <<PROJECTED: SkEnv.project_spec skenv data.(get_sk).(internals) data.(get_modsem skenv).(ModSem.skenv)>>
+        <<PROJECTED: SkEnv.project_spec skenv data.(get_sk).(defs) data.(get_modsem skenv).(ModSem.skenv)>>
     ;
     (* TODO: What is the exact spec we need here? *)
     (* get_modsem_sk_skenv_iso: forall *)

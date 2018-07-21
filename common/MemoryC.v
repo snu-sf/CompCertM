@@ -871,6 +871,32 @@ Proof.
   apply val_inject_id. ss.
 Qed.
 
+Lemma store_stored_extends
+      m0 m1
+      chunk rsp pos v
+      (STORED: Mem_stored chunk m0 rsp pos v)
+      (STORE: Mem.store chunk m0 rsp pos v = Some m1)
+  :
+    <<EXTENDS: Mem.extends m1 m0>>
+.
+Proof.
+Local Transparent Mem.store.
+  hexploit Mem_store_perm_eq; eauto. intro PERM. des.
+  unfold Mem.store in *. inv STORE. des_ifs.
+  econs; eauto.
+  unfold inject_id.
+  econs; ss; eauto.
+  - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss.
+  - ii; clarify. unfold Mem.range_perm, Mem.perm in *. ss. rewrite Z.divide_0_r. reflexivity.
+  - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss.
+    rewrite Maps.PMap.gsspec. des_ifs; cycle 1.
+    { apply memval_inject_refl. }
+    inv STORED.
+    rewrite <- STORED0.
+    destruct chunk; ss; rewrite ! Maps.ZMap.gsspec; des_ifs; try apply memval_inject_refl.
+Local Opaque Mem.store.
+Qed.
+
 Lemma store_stored_inject
       j0 m_src0 m_src1 m_tgt
       (INJ: Mem.inject j0 m_src0 m_tgt)
@@ -888,29 +914,12 @@ Proof.
   ss. red.
   exploit Mem.store_mapped_inject; eauto. i; des.
   eapply Mem.inject_extends_compose; eauto.
-  clear - TGT H BOUND.
-Local Transparent Mem.store.
-  hexploit Mem_store_perm_eq; eauto. intro PERM. des.
-  replace (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) with
-      (Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta) in *; cycle 1.
-  { rewrite Ptrofs.add_unsigned. rewrite Ptrofs.unsigned_repr; ss. split; try xomega.
-    hexploit (Ptrofs.unsigned_range ofs); eauto. i.
-    hexploit (Ptrofs.unsigned_range rspdelta); eauto. i.
-    xomega.
-  }
-  abstr (Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta) ofs0.
-  unfold Mem.store in *. inv TGT. des_ifs.
-  econs; eauto.
-  unfold inject_id.
-  econs; ss; eauto.
-  - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss.
-  - ii; clarify. unfold Mem.range_perm, Mem.perm in *. ss. rewrite Z.divide_0_r. reflexivity.
-  - ii; clarify. unfold Mem.perm in *; ss. rewrite Z.add_0_r. ss.
-    rewrite Maps.PMap.gsspec. des_ifs; cycle 1.
-    { apply memval_inject_refl. }
-    rewrite <- STORED.
-    rename rsp_tgt into b. abstr (chunk_of_type ty) chunk. clear_tac.
-    destruct chunk; ss; rewrite ! Maps.ZMap.gsspec; des_ifs; try apply memval_inject_refl.
+  eapply store_stored_extends; try apply SRC; eauto.
+  rpapply H. f_equal.
+  rewrite Ptrofs.add_unsigned. rewrite Ptrofs.unsigned_repr; ss. split; try xomega.
+  hexploit (Ptrofs.unsigned_range ofs); eauto. i.
+  hexploit (Ptrofs.unsigned_range rspdelta); eauto. i.
+  xomega.
 Qed.
 
 Lemma Mem_stored_unchanged_on

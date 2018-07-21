@@ -414,17 +414,18 @@ Proof. unfold proj_sumbool. des_ifs. Qed.
 
 Ltac des_sumbool :=
   repeat
-    match goal with
-    | [ H: proj_sumbool ?x = true |- _ ] => apply proj_sumbool_true in H
-    | [ H: proj_sumbool ?x = false |- _ ] => apply proj_sumbool_false in H
-    | [ H: true = proj_sumbool ?x |- _ ] => symmetry in H; apply proj_sumbool_true in H
-    | [ H: false = proj_sumbool ?x |- _ ] => symmetry in H; apply proj_sumbool_false in H
+    (unfold Datatypes.is_true, is_true in *;
+     match goal with
+     | [ H: proj_sumbool ?x = true |- _ ] => apply proj_sumbool_true in H
+     | [ H: proj_sumbool ?x = false |- _ ] => apply proj_sumbool_false in H
+     | [ H: true = proj_sumbool ?x |- _ ] => symmetry in H; apply proj_sumbool_true in H
+     | [ H: false = proj_sumbool ?x |- _ ] => symmetry in H; apply proj_sumbool_false in H
 
-    | [ |- proj_sumbool ?x = true ] => apply proj_sumbool_is_true
-    | [ |- proj_sumbool ?x = false ] => apply proj_sumbool_is_false
-    | [ |- true = proj_sumbool ?x ] => symmetry; apply proj_sumbool_is_true
-    | [ |- false = proj_sumbool ?x ] => symmetry; apply proj_sumbool_is_false
-    end
+     | [ |- proj_sumbool ?x = true ] => apply proj_sumbool_is_true
+     | [ |- proj_sumbool ?x = false ] => apply proj_sumbool_is_false
+     | [ |- true = proj_sumbool ?x ] => symmetry; apply proj_sumbool_is_true
+     | [ |- false = proj_sumbool ?x ] => symmetry; apply proj_sumbool_is_false
+     end)
 .
 
 Ltac is_prop H :=
@@ -642,4 +643,18 @@ End ALIGN.
 Hint Rewrite align_refl: align.
 Hint Rewrite align_zero: align.
 Hint Rewrite align_idempotence: align.
+
+Ltac inv_all_once := all_once_fast ltac:(fun H => try inv H).
+Ltac apply_all_once LEMMA :=  all_once_fast ltac:(fun H => try apply LEMMA in H).
+
+Lemma find_map
+      X Y (f: Y -> bool) (x2y: X -> Y)
+      xs
+  :
+    find f (map x2y xs) = o_map (find (f <*> x2y) xs) x2y
+.
+Proof.
+  u. ginduction xs; ii; ss.
+  des_ifs; ss.
+Qed.
 

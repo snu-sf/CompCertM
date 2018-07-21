@@ -88,60 +88,49 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(internals).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
-  Inductive at_external: state -> regset -> mem -> Prop :=
+  Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       stack fptr_arg sg_arg vs_arg m0
-      m_arg_pre rs_arg m_arg
-      (EXTERNAL: Genv.find_funct ge fptr_arg = None)
-      (AD: Call.A2D sg_arg fptr_arg vs_arg m_arg_pre rs_arg m_arg)
+      (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
+      (SIG: skenv_link.(Genv.find_funct) fptr_arg = Some (Internal sg_arg))
     :
       at_external (Callstate stack fptr_arg sg_arg vs_arg m0)
-                  rs_arg m_arg
+                  (Args.mk fptr_arg vs_arg m0)
   .
 
-  Inductive initial_frame (rs_arg: regset) (m_arg: mem)
+  Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fptr_arg fd
-      (FINDF: Genv.find_funct ge fptr_arg = Some (Internal fd))
-      vs_arg m_init
-      (DA: Call.D2A fd.(fn_sig) rs_arg m_arg fptr_arg vs_arg m_init)
-    :
-      initial_frame rs_arg m_arg
-                    (Callstate [] fptr_arg fd.(fn_sig) vs_arg m_init)
-  .
-
-  Inductive final_frame (rs_init: regset): state -> regset -> Prop :=
-  | final_frame_intro
       fd
-      (FINDF: Genv.find_funct ge (rs_init PC) = Some (Internal fd))
-      v_ret m_ret rs_ret
-      (STORE: store_result rs_init v_ret fd.(fn_sig) rs_ret)
+      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
     :
-      final_frame rs_init (Returnstate [] v_ret m_ret) rs_ret
+      initial_frame args
+                    (Callstate [] args.(Args.fptr) fd.(fn_sig) args.(Args.vs) args.(Args.m))
   .
 
-  Inductive after_external: state -> regset -> regset -> mem -> state -> Prop :=
+  Inductive final_frame: state -> Retv.t -> Prop :=
+  | final_frame_intro
+      v_ret m_ret
+    :
+      final_frame (Returnstate [] v_ret m_ret) (Retv.mk v_ret m_ret)
+  .
+
+  Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       stack fptr_arg sg_arg vs_arg m_arg
-      rs_ret m_ret
-      v_ret rs_arg
-      (LOAD: load_result rs_arg rs_ret sg_arg v_ret)
-      (CALLEESAVE: callee_saved sg_arg rs_arg rs_ret)
+      retv
     :
       after_external (Callstate stack fptr_arg sg_arg vs_arg m_arg)
-                     rs_arg
-                     rs_ret m_ret
-                     (Returnstate stack v_ret m_ret)
+                     retv
+                     (Returnstate stack retv.(Retv.v) retv.(Retv.m))
   .
 
   Program Definition modsem: ModSem.t :=
     {|
       ModSem.step := step;
-      ModSem.get_mem := get_mem;
       ModSem.at_external := at_external;
       ModSem.initial_frame := initial_frame;
       ModSem.final_frame := final_frame;
@@ -150,25 +139,12 @@ Section MODSEM.
       ModSem.skenv := skenv; 
     |}
   .
-  Next Obligation. all_prop_inv; ss. Qed.
-  Next Obligation.
-    all_once_fast ltac:(fun H => try inv H).
-    determ_tac Call.D2A_dtm0.
-    determ_tac Call.D2A_dtm1.
-  Qed.
-  Next Obligation.
-    all_once_fast ltac:(fun H => try inv H); rewrite FINDF in *; clarify. determ_tac store_result_dtm.
-  Qed.
-  Next Obligation. all_prop_inv; ss. Qed.
-  Next Obligation.
-    ii; ss; des; all_once_fast ltac:(fun H => try inv H); rewrite EXTERNAL in *; clarify.
-  Qed.
-  Next Obligation.
-    ii; ss; des; all_once_fast ltac:(fun H => try inv H); rewrite EXTERNAL in *; clarify.
-  Qed.
-  Next Obligation.
-    ii; ss; des; all_once_fast ltac:(fun H => try inv H).
-  Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
   Lemma not_external
     :
@@ -178,8 +154,7 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    repeat all_once_fast ltac:(fun H => try apply Genv_map_defs_spec in H; des).
-    u in *. des_ifs_safe. des_ifs.
+    eapply SkEnv.revive_no_external; eauto.
   Qed.
 
   Lemma lift_receptive_at
@@ -233,12 +208,12 @@ Section MODULE.
   Program Definition module: Mod.t :=
     {|
       Mod.data := p;
-      Mod.get_sk := Sk.of_program;
+      Mod.get_sk := Sk.of_program fn_sig;
       Mod.get_modsem := modsem;
     |}
   .
   Next Obligation.
-    rewrite Sk.of_program_defs.
+    rewrite Sk.of_program_internals.
     eapply SkEnv.project_impl_spec; eauto.
   Qed.
 

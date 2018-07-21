@@ -175,7 +175,25 @@ I think the same is true for prog_public thing too.
 
 End PROGRAMS.
 
-Hint Unfold defs privs.
+Section PROGRAMS2.
+
+  Variable F V: Type.
+  Variable p: program (AST.fundef F) V.
+
+  Definition internals: ident -> bool :=
+    fun id => is_some
+                (List.find (fun idg => andb (ident_eq id idg.(fst)) (is_external idg.(snd))) p.(prog_defs)).
+
+  Definition internals_old: ident -> bool :=
+    fun id => match p.(prog_defmap)!id with
+              | Some gd => negb (is_external gd)
+              | None => false
+              end
+  .
+
+End PROGRAMS2.
+
+Hint Unfold defs privs internals.
 Hint Unfold defs_old privs_old.
 
 (* Only "is_internal" defs will remain in ModSem-SkEnv/Genv. *)

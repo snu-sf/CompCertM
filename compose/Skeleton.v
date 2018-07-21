@@ -25,7 +25,7 @@ Definition is_gvar F V (gd: globdef F V): bool :=
 Module SkEnv.
 
   (* TODO: Fix properly to cope with Ctypes.fundef *)
-  Definition t := Genv.t (AST.fundef (option signature)) unit.
+  Definition t := Genv.t (AST.fundef signature) unit.
 
   Inductive wf (skenv: t): Prop :=
   | wf_intro
@@ -181,20 +181,38 @@ I think "sim_skenv_monotone" should be sufficient.
           p.(prog_defmap) ! id = Some g)
   .
 
+  Lemma revive_no_external
+        F V (prog: AST.program (AST.fundef F) V)
+        skenv blk gd
+        (DEF: Genv.find_def (SkEnv.revive skenv prog) blk = Some gd)
+        (EXTERNAL: is_external gd)
+    :
+      False
+  .
+  Proof.
+    unfold revive in *.
+    apply_all_once Genv_map_defs_def. des.
+    u in *. des_ifs.
+  Qed.
+
   Lemma revive_precise
         F V
         skenv (prog: AST.program (AST.fundef F) V)
-        (DEFS: prog.(defs) <1= fun id => is_some (skenv.(Genv.find_symbol) id))
+        (DEFS0: forall id, In id prog.(prog_defs_names) -> is_some (skenv.(Genv.find_symbol) id))
         (WF: wf skenv)
     :
       <<PRECISE: genv_precise (SkEnv.revive skenv prog) prog>>
   .
   Proof.
+    assert(DEFS: prog.(defs) <1= fun id => is_some (skenv.(Genv.find_symbol) id)).
+    { ii; ss. eapply DEFS0; eauto. u in *. des_sumbool. ss. }
+    clear DEFS0.
     econs; eauto; i; ss; cycle 1.
     - des.
-      unfold revive in *. u in *. apply Genv_map_defs_spec in H0. des. des_ifs_safe. ss.
-      apply Genv.invert_find_symbol in Heq0.
-      unfold Genv_map_defs, Genv.find_symbol in *. cbn in *.
+      unfold revive in *.
+      apply_all_once Genv_map_defs_def. des; ss.
+      rewrite Genv_map_defs_symb in *. u in *. des_ifs_safe. simpl_bool.
+      apply_all_once Genv.invert_find_symbol.
       determ_tac Genv.genv_vars_inj.
     - des.
       dup H. u in DEFS. unfold ident in *. spc DEFS.
@@ -224,32 +242,45 @@ I think "sim_skenv_monotone" should be sufficient.
 
 End SkEnv.
 
+
 (* Hint Unfold SkEnv.revive. *)
 
 
 
-Definition skdef_of_gdef {F V} (gdef: globdef (AST.fundef F) V): globdef (AST.fundef (option signature)) unit :=
+Definition skdef_of_gdef {F V} (get_sg: F -> signature)
+           (gdef: globdef (AST.fundef F) V): globdef (AST.fundef signature) unit :=
   match gdef with
-  | Gfun (Internal f) => Gfun (Internal None)
+  | Gfun (Internal f) => Gfun (Internal f.(get_sg))
   | Gfun (External ef) => Gfun (External ef)
   | Gvar v => Gvar (mkglobvar tt v.(gvar_init) v.(gvar_readonly) v.(gvar_volatile))
   end
 .
 
-Definition skdefs_of_gdefs {F V} (gdefs: list (ident * globdef (AST.fundef F) V)):
-  list (ident * globdef (AST.fundef (option signature)) unit) :=
-  map (update_snd skdef_of_gdef) gdefs
+Lemma skdef_of_gdef_is_external
+      F V get_sg
+      (gdef: globdef (AST.fundef F) V)
+  :
+    is_external (skdef_of_gdef get_sg gdef) = is_external gdef
+.
+Proof.
+  u. des_ifs. ss. clarify.
+Qed.
+
+Definition skdefs_of_gdefs {F V} (get_sg: F -> signature)
+           (gdefs: list (ident * globdef (AST.fundef F) V)):
+  list (ident * globdef (AST.fundef signature) unit) :=
+  map (update_snd (skdef_of_gdef get_sg)) gdefs
 .
 
 (* Skeleton *)
 Module Sk.
 
-  Definition t := AST.program (AST.fundef (option signature)) unit.
+  Definition t := AST.program (AST.fundef signature) unit.
 
-  Definition load_skenv: t -> SkEnv.t := @Genv.globalenv (AST.fundef (option signature)) unit.
+  Definition load_skenv: t -> SkEnv.t := @Genv.globalenv (AST.fundef signature) unit.
   (* No coercion! *)
 
-  Definition load_mem: t -> option mem := @Genv.init_mem (AST.fundef (option signature)) unit.
+  Definition load_mem: t -> option mem := @Genv.init_mem (AST.fundef signature) unit.
   (* No coercion! *)
 
   Lemma load_skenv_wf
@@ -262,15 +293,40 @@ Module Sk.
     admit "easy. follow induction proofs on Globalenvs.v".
   Qed.
 
-  Definition of_program {F V} (prog: AST.program (AST.fundef F) V): t :=
-    mkprogram (skdefs_of_gdefs prog.(prog_defs)) prog.(prog_public) prog.(prog_main)
+  Definition of_program {F V} (get_sg: F -> signature) (prog: AST.program (AST.fundef F) V): t :=
+    mkprogram (skdefs_of_gdefs get_sg prog.(prog_defs)) prog.(prog_public) prog.(prog_main)
   .
+
+  Let match_fundef F0 F1 (_: unit): AST.fundef F0 -> AST.fundef F1 -> Prop :=
+    fun f0 f1 =>
+      match f0, f1 with
+      | Internal _, Internal _ => true
+      | External ef0, External ef1 => external_function_eq ef0 ef1
+      | _, _ => false
+      end
+  .
+
+  Lemma of_program_prog_defmap
+        F V
+        (p: AST.program (AST.fundef F) V)
+        get_sg
+    :
+      <<SIM: forall id, option_rel (@Linking.match_globdef unit _ _ _ _ _
+                                                           (@match_fundef _ _)
+                                                           top2
+                                                           tt)
+                                   (p.(prog_defmap) ! id) ((of_program get_sg p).(prog_defmap) ! id)>>
+  .
+  Proof.
+    admit "ez".
+  Qed.
 
   Lemma of_program_defs
         F V
+        get_sg
         (p: AST.program (AST.fundef F) V)
     :
-      (of_program p).(defs) = p.(defs)
+      (of_program get_sg p).(defs) = p.(defs)
   .
   Proof.
     destruct p; ss.
@@ -282,23 +338,52 @@ Module Sk.
     rewrite map_map. ss.
   Qed.
 
+  Lemma of_program_internals_old
+        F V
+        get_sg
+        (p: AST.program (AST.fundef F) V)
+    :
+      (of_program get_sg p).(internals_old) = p.(internals_old)
+  .
+  Proof.
+    unfold internals_old.
+    destruct p; ss.
+    apply Axioms.functional_extensionality. intro id; ss.
+    Local Opaque prog_defmap.
+    u.
+    exploit (of_program_prog_defmap). i. inv H.
+    - rewrite <- H2. rewrite <- H1. ss.
+    - des_ifs_safe. inv H2; ss. unfold match_fundef in *. des_ifs. des_sumbool. clarify.
+  Qed.
+
+  Lemma of_program_internals
+        F V
+        get_sg
+        (p: AST.program (AST.fundef F) V)
+    :
+      (of_program get_sg p).(internals) = p.(internals)
+  .
+  Proof.
+    destruct p; ss.
+    unfold internals, of_program. ss.
+    apply Axioms.functional_extensionality. intro id; ss.
+    unfold skdefs_of_gdefs. rewrite find_map.
+    unfold compose. ss.
+    unfold ident.
+    replace (fun (x: positive * globdef (fundef F) V) =>
+               ident_eq id (fst x) && is_external (skdef_of_gdef get_sg (snd x))) with
+        (fun (x: positive * globdef (fundef F) V) => ident_eq id (fst x) && is_external (snd x)).
+    - u. des_ifs.
+    - apply Axioms.functional_extensionality. i; ss.
+      rewrite skdef_of_gdef_is_external. ss.
+  Qed.
+
 End Sk.
 
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem.
 
 
 
-(* They are just located, without any add/remove *)
-About Genv.find_def_symbol.
-Inductive sk_skenv_iso (sk: Sk.t) (skenv: SkEnv.t): Prop :=
-| sk_skenv_iso_intro
-    (ISO: forall
-        id skd
-      ,
-        <<SK: sk.(prog_defmap) ! id = Some skd /\ is_internal skd>> <->
-        <<SKENV: exists blk, skenv.(Genv.find_symbol) id = Some blk
-                             /\ skenv.(Genv.find_def) blk = Some skd>>)
-.
 
 
 

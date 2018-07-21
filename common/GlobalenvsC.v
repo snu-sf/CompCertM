@@ -145,7 +145,7 @@ Section MAP.
   Next Obligation. rewrite PTree_filter_map_spec in H. u in *. des_ifs. eapply Genv.genv_defs_range; eauto. Qed.
   Next Obligation. eapply Genv.genv_vars_inj; eauto. Qed.
 
-  Lemma Genv_map_defs_spec
+  Lemma Genv_map_defs_def
         ge (f: block -> globdef F1 V1 -> option (globdef F2 V2))
         blk gd2
         (FIND: (ge.(Genv_map_defs) f).(Genv.find_def) blk = Some gd2)
@@ -156,6 +156,28 @@ Section MAP.
     unfold Genv.find_def in *. unfold Genv_map_defs in *. ss.
     rewrite PTree_filter_map_spec in *. u in FIND. des_ifs.
     esplits; eauto.
+  Qed.
+
+  Lemma Genv_map_defs_def_inv
+        ge
+        blk gd
+        (FIND: ge.(Genv.find_def) blk = Some gd)
+    :
+      <<FIND: forall (f: block -> globdef F1 V1 -> option (globdef F2 V2)),
+        (ge.(Genv_map_defs) f).(Genv.find_def) blk = f blk gd>>
+  .
+  Proof.
+    ii. unfold Genv.find_def in *. unfold Genv_map_defs in *. ss.
+    rewrite PTree_filter_map_spec in *. u. des_ifs.
+  Qed.
+
+  Lemma Genv_map_defs_symb
+        ge (f: block -> globdef F1 V1 -> option (globdef F2 V2))
+    :
+      <<FIND: all1 ((ge.(Genv_map_defs) f).(Genv.find_symbol) =1= ge.(Genv.find_symbol))>>
+  .
+  Proof.
+    ii; ss.
   Qed.
 
   (* Note: genv_defs will have spurious data, but this is actually Compcert's interpretation. *)

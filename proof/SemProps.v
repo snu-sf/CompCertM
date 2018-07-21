@@ -25,7 +25,70 @@ Section INITDTM.
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
   Variable p: program.
-  Let sem := Sem.semantics p.
+  Let sem := Sem.sem p.
+
+  Lemma skenv_fill_internals_preserves_wf
+        skenv0 skenv1
+        (WF: SkEnv.wf skenv0)
+        (FILL: skenv0.(skenv_fill_internals) = skenv1)
+    :
+      <<WF: SkEnv.wf skenv1>>
+  .
+  Proof.
+    inv WF. unfold skenv_fill_internals.
+    econs; ii; ss; eauto.
+    - rewrite Genv_map_defs_symb in *. exploit SYMBDEF; eauto. i; des.
+      hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto.
+      rewrite H0; ss.
+    - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs.
+      exploit DEFSYMB; eauto.
+  Qed.
+
+  Lemma system_disjoint
+        skenv_link
+        (WFBIG: SkEnv.wf skenv_link)
+        sys_def
+        fptr
+        (SYSTEM: Genv.find_funct (System.skenv skenv_link) fptr = Some (Internal sys_def))
+        md md_def
+        (MOD: In md p)
+        (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md (skenv_fill_internals skenv_link)
+                                                               (Mod.data md))) fptr =
+                 Some (Internal md_def))
+    :
+      False
+  .
+  Proof.
+    set (skenv_fill_internals skenv_link) as skenv_link2 in *.
+    hexploit (@Mod.get_modsem_projected_sk md skenv_link2); eauto. intro SPEC; des.
+    remember (ModSem.skenv (Mod.get_modsem md skenv_link2 (Mod.data md))) as skenv_proj eqn:T in *.
+    assert(WFBIG2: SkEnv.wf skenv_link2).
+    { eapply skenv_fill_internals_preserves_wf; eauto. }
+    assert(WFSMALL: skenv_proj.(SkEnv.wf)).
+    { eapply SkEnv.project_spec_preserves_wf; eauto. }
+    clarify. des. inv SPEC.
+    exploit Genv.find_funct_inv; eauto. i; des. clarify. ss. des_ifs.
+    unfold Genv.find_funct_ptr in *. des_ifs.
+    inv WFSMALL. exploit DEFSYMB; eauto. intro SYMBSMALL; des.
+    assert((internals (Mod.get_sk md (Mod.data md))) id).
+    { apply NNPP. ii.
+      exploit SYMBDROP; eauto. i; des. clarify.
+    }
+    exploit SYMBKEEP; eauto. intro SYMBBIG; des.
+    rewrite SYMBSMALL in *. symmetry in SYMBBIG.
+    exploit DEFKEEP; eauto.
+    { eapply Genv.find_invert_symbol; eauto. }
+    intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL.
+    clear - Heq0 DEFSMALL.
+    unfold System.skenv in *. ss.
+    subst_locals.
+    apply_all_once Genv_map_defs_def. des. des_ifs_safe.
+    unfold System.gd_to_skd in *. unfold System.globalenv in *.
+    apply_all_once Genv_map_defs_def. des. des_ifs_safe. clear_tac.
+    destruct f; ss; des_ifs; clear_tac. des_ifs; ss.
+    clear Heq0.
+    exploit Genv_map_defs_def; eauto. i; des. des_ifs.
+  Qed.
 
   Lemma system_disjoint
         skenv_link
@@ -60,9 +123,9 @@ Section INITDTM.
     intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL.
     clear - Heq0 DEFSMALL.
     unfold System.skenv in *. ss.
-    exploit Genv_map_defs_spec; eauto. i; des. unfold System.gd_to_skd in MAP. des_ifs.
+    exploit Genv_map_defs_def; eauto. i; des. unfold System.gd_to_skd in MAP. des_ifs.
     clear Heq0.
-    exploit Genv_map_defs_spec; eauto. i; des. des_ifs.
+    exploit Genv_map_defs_def; eauto. i; des. des_ifs.
   Qed.
 
   (* Lemma link_sk_disjoint_aux *)

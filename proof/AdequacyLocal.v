@@ -291,6 +291,7 @@ Section SIMGE.
       apply link_list_cons_inv in SKSRC. des. rename restl into sk_src_tl.
       apply link_list_cons_inv in SKTGT. des. rename restl into sk_tgt_tl.
       inv SIMPROG. rename H1 into SIMMP. rename H2 into SIMPROG.
+      inv SSLE. rename H1 into SSLEHD. rename H2 into SSLETL.
       unfold flip.
       Check (mp :: pp).
       set (skenv_src := (Sk.load_skenv sk_link_src)) in *.
@@ -304,16 +305,14 @@ Section SIMGE.
       + ss. f_equal. rewrite to_msp_tgt; ss.
       + ss. f_equal. rewrite to_msp_src; ss.
       + ss. econs; ss; eauto.
-        * apply SIMMP.
+        * eapply SIMMP; eauto.
         * rewrite Forall_forall in *.
           i. apply in_map_iff in H. des.
-          specialize (SIMPROG x0). special SIMPROG; ss. clarify. eapply SIMPROG.
+          specialize (SIMPROG x0). special SIMPROG; ss. clarify. eapply SIMPROG; eauto.
       + ss. econs; ss; eauto.
         * eapply to_msp_sim_skenv; eauto.
-          rewrite Forall_forall in *. apply SSLE; ss; eauto.
         * rewrite Forall_forall in *. i. rewrite in_map_iff in *. des. clarify.
           eapply to_msp_sim_skenv; eauto.
-          apply SSLE; ss; eauto.
   Qed.
 
 End SIMGE.

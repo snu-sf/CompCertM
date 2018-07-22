@@ -68,9 +68,13 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
       (*       /\ <<SIM: ModSemPair.sim msp>> *)
       (* ) *)
       (SIMMS: forall
-          skenv_src skenv_tgt
+          skenv_link_src skenv_link_tgt
+          ss_link
+          (SSLE: SimSymb.le mp.(ss) mp.(src) mp.(tgt) ss_link)
+          sm_init_link
+          (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt)
         ,
-          <<SIMMSP: ModSemPair.sim mp.(to_msp skenv_src skenv_tgt)>>)
+          <<SIMMSP: ModSemPair.sim mp.(to_msp skenv_link_src skenv_link_tgt)>>)
   .
 
   (* Design: ModPair only has data, properties are stated in sim *)

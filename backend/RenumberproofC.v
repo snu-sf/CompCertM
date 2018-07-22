@@ -227,14 +227,13 @@ Definition msp: ModSemPair.t :=
   ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt
 .
 
-Inductive match_states (rs_init_src rs_init_tgt: regset)
+Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (SIMRSINIT: SimMem.sim_regset sm0 rs_init_src rs_init_tgt)
     (MATCHST: RNMBREXTRA.match_states prog ge tge st_src0 st_tgt0)
-    (MCOMPAT: mem_compat msp.(ModSemPair.src) msp.(ModSemPair.tgt) st_src0 st_tgt0 sm0)
-    (* (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge) *)
+    (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
+    (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
 .
 
 Theorem sim_modsem
@@ -244,19 +243,36 @@ Theorem sim_modsem
 Proof.
   eapply match_states_sim with (match_states := match_states); eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
-  - destruct sm_arg; ss. clarify.
-    unfold SimMem.sim_regset in *. ss. apply Axioms.functional_extensionality in SIMRS. clarify.
-    inv INITSRC.
+  - (* init bsim *)
+    destruct sm_arg; ss. clarify.
+    inv SIMARGS; ss. clarify.
+    inv INITTGT.
     assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
     { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
+
+    eexists. eexists (mk _ _).
     esplits; eauto.
-    + apply initial_frame_intro with (fd := transf_function fd); eauto.
-      fold_all ge. fold_all tge. clearbody ge tge.
-      unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-      inv SIMGE. specialize (mge_defs b). inv mge_defs; eq_closure_tac. unfold Genv.find_def. rewrite <- H0.
-      inv H1; ss.
-    + instantiate (1:= SimMemId.mk _ _). econs; ss; eauto.
-    + u. repeat (econs; ss; eauto).
+    + econs; eauto.
+      instantiate (1:= (transf_function fd)).
+      admit "ez: match_genvs".
+    + econs; eauto; ss.
+      * rpapply match_callstates; eauto.
+        { econs; eauto. }
+        f_equal; try congruence.
+        admit "ez".
+  - (* init progress *)
+    des. inv SAFESRC. esplits; eauto. econs; eauto.
+    admit "ez: match_genvs".
+  - (* call fsim *)
+    inv MATCH; ss. destruct sm0; ss. clarify.
+    inv CALLSRC. inv MATCHST; ss.
+    fold_all ge.
+    esplits; eauto.
+    + econs; eauto.
+      * fold_all tge.
+        admit "ez: match_genvs".
+      * esplits; eauto.
+        ttttttttttt
   - inv CALLSRC. des. inv MATCH. ss. destruct sm0; ss.
     inv MATCHST; inv H; ss; clarify.
     inv MCOMPAT. ss. fold_all ge. des. clarify.

@@ -146,7 +146,7 @@ Section SEMANTICS.
   (*   option_map (fun skenv => (Ge.mk skenv (init_modsem skenv))) init_skenv. *)
   Definition load_genv (init_skenv: SkEnv.t): Ge.t :=
     let (system, skenv) := load_system init_skenv in
-    system :: (load_modsems skenv)
+    system :: (load_modsems init_skenv)
   .
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)

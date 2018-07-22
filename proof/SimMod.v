@@ -14,7 +14,7 @@ Require Import Maps.
 Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.
-Require Import SimDef SimSymb SimMem SimModSem.
+Require Import SimSymb SimMem SimModSem.
 
 Set Implicit Arguments.
 

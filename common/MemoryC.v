@@ -943,6 +943,130 @@ Proof.
     eauto with mem.
 Qed.
 
+
+
+Goal forall ty, type_of_chunk (chunk_of_type ty) = ty.
+Proof. i; destruct ty; ss. Qed.
+
+Goal forall chunk, (chunk_of_type (type_of_chunk chunk)) = chunk.
+Proof. i. destruct chunk; ss. Abort.
+
+Lemma float32_eq
+      f0 f1
+      (EQ: Float32.to_bits f0 = Float32.to_bits f1)
+  :
+    f0 = f1
+.
+Proof.
+  rewrite <- Float32.of_to_bits. symmetry. rewrite <- Float32.of_to_bits.
+  rewrite EQ. ss.
+Qed.
+
+Lemma float_eq
+      f0 f1
+      (EQ: Float.to_bits f0 = Float.to_bits f1)
+  :
+    f0 = f1
+.
+Proof.
+  rewrite <- Float.of_to_bits. symmetry. rewrite <- Float.of_to_bits.
+  rewrite EQ. ss.
+Qed.
+
+Lemma mod_eq
+      x y
+      A
+      (EQ0: x mod A = y mod A)
+      (EQ1: x / A = y / A)
+      (BOUND: 0 < A)
+  :
+    x = y
+.
+Proof.
+  des. try lia. try xomega.
+  rewrite Z_div_mod_eq with (b:=A); try lia.
+  symmetry.
+  rewrite Z_div_mod_eq with (b:=A); try lia.
+  congruence.
+Qed.
+
+Lemma Mem_stored_dtm
+      ty m b ofs v0 v1
+      (TY0: Val.has_type v0 ty)
+      (TY1: Val.has_type v1 ty)
+      (STORED0: Mem_stored (chunk_of_type ty) m b ofs v0)
+      (STORED1: Mem_stored (chunk_of_type ty) m b ofs v1)
+  :
+    v0 = v1
+.
+Proof.
+Local Transparent Byte.repr.
+  inv STORED0. inv STORED1.
+  clear WRITABLE WRITABLE0.
+  clear_tac.
+  rewrite STORED in *. clear STORED. clear_tac.
+  unfold encode_val in *; ss.
+  pose v0 as X. pose v1 as Y. pose ty as TY.
+  unfold inj_bytes, encode_int, rev_if_be in *.
+  destruct Archi.big_endian eqn:T; ss.
+  assert(BYTE: Byte.modulus = 256).
+  { unfold Byte.modulus in *. unfold Byte.wordsize. ss. }
+  destruct ty; ss.
+  -  des_ifs.
+    unfold Byte.repr in *. ss. clarify.
+    f_equal.
+    destruct i, i0; ss.
+    rewrite ! Byte.Z_mod_modulus_eq in *.
+    rewrite BYTE in *.
+    eapply Int.mkint_eq.
+    { unfold Int.modulus in *. unfold two_power_nat in *. ss.
+      do 4 (eapply mod_eq with (A:=256); try xomega).
+      rewrite ! Zdiv.Zdiv_Zdiv; try xomega. ss.
+      rewrite ! Z.div_small; xomega.
+    }
+  - des_ifs.
+    f_equal.
+    rewrite ! Byte.Z_mod_modulus_eq in *.
+    rewrite BYTE in *.
+    apply float_eq.
+    abstr (Float.to_bits f) F0.
+    abstr (Float.to_bits f0) F1.
+    destruct F0, F1; ss.
+    eapply Int64.mkint_eq.
+    { unfold Int64.modulus in *. unfold two_power_nat in *. ss.
+      do 8 (eapply mod_eq with (A:=256); try xomega).
+      rewrite ! Zdiv.Zdiv_Zdiv; try xomega. ss.
+      rewrite ! Z.div_small; xomega.
+    }
+  - des_ifs.
+    f_equal.
+    rewrite ! Byte.Z_mod_modulus_eq in *.
+    rewrite BYTE in *.
+    destruct i, i0; ss.
+    eapply Int64.mkint_eq.
+    { unfold Int64.modulus in *. unfold two_power_nat in *. ss.
+      do 8 (eapply mod_eq with (A:=256); try xomega).
+      rewrite ! Zdiv.Zdiv_Zdiv; try xomega. ss.
+      rewrite ! Z.div_small; xomega.
+    }
+  - des_ifs.
+    f_equal.
+    rewrite ! Byte.Z_mod_modulus_eq in *.
+    rewrite BYTE in *.
+    apply float32_eq.
+    abstr (Float32.to_bits f) F0.
+    abstr (Float32.to_bits f0) F1.
+    destruct F0, F1; ss.
+    eapply Int.mkint_eq.
+    { unfold Int.modulus in *. unfold two_power_nat in *. ss.
+      do 4 (eapply mod_eq with (A:=256); try xomega).
+      rewrite ! Zdiv.Zdiv_Zdiv; try xomega. ss.
+      rewrite ! Z.div_small; xomega.
+    }
+  - des_ifs.
+  - des_ifs.
+Qed.
+
 End STORED.
 
 Ltac perm_impl_tac := eapply Mem.perm_implies with Freeable; [|eauto with mem].

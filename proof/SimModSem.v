@@ -12,7 +12,7 @@ Require Import Values Integers.
 Require Import Globalenvs.
 Require Import Program.
 
-Require Import SimDef SimSymb Ord.
+Require Import SimSymb Ord.
 
 Set Implicit Arguments.
 
@@ -24,15 +24,25 @@ Section SIMMODSEM.
   Context {SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
 
-  (* Inductive mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop := *)
-  (* | mem_compat_intro *)
-  (*     (MCOMPATSRC: ms_src.(get_mem) st_src0 = sm0.(SimMem.src)) *)
-  (*     (MCOMPATTGT: ms_tgt.(get_mem) st_tgt0 = sm0.(SimMem.tgt)) *)
+  (* Record mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop := { *)
+  (*   mcompat_src: <<MCOMPATSRC: ms_src.(get_mem) st_src0 = sm0.(SimMem.src)>>; *)
+  (*   mcompat_tgt: <<MCOMPATTGT: ms_tgt.(get_mem) st_tgt0 = sm0.(SimMem.tgt)>>; *)
+  (* } *)
   (* . *)
-  Record mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop := {
-    mcompat_src: <<MCOMPATSRC: ms_src.(get_mem) st_src0 = sm0.(SimMem.src)>>;
-    mcompat_tgt: <<MCOMPATTGT: ms_tgt.(get_mem) st_tgt0 = sm0.(SimMem.tgt)>>;
-  }
+
+  Inductive sim_args (args_src args_tgt: Args.t) (sm0: SimMem.t): Prop :=
+  | sim_args_intro
+      (FPTR: sm0.(SimMem.sim_val) args_src.(Args.fptr) args_tgt.(Args.fptr))
+      (VALS: sm0.(SimMem.sim_val_list) args_src.(Args.vs) args_tgt.(Args.vs))
+      (MEMSRC: args_src.(Args.m) = sm0.(SimMem.src))
+      (MEMTGT: args_tgt.(Args.m) = sm0.(SimMem.tgt))
+  .
+
+  Inductive sim_retv (retv_src retv_tgt: Retv.t) (sm0: SimMem.t): Prop :=
+  | sim_retv_intro
+      (RETV: sm0.(SimMem.sim_val) retv_src.(Retv.v) retv_tgt.(Retv.v))
+      (MEMSRC: retv_src.(Retv.m) = sm0.(SimMem.src))
+      (MEMTGT: retv_tgt.(Retv.m) = sm0.(SimMem.tgt))
   .
 
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
@@ -44,7 +54,7 @@ Section SIMMODSEM.
         ,
           exists i1 st_tgt1 sm1,
             (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ ord i1 i0>>)
-            /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>> (* TODO: <-------- is this needed??????? *)
+            (* /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>> *)
             /\ <<MLE: SimMem.le sm0 sm1>>
 (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm1>>)
@@ -64,7 +74,7 @@ Section SIMMODSEM.
         ,
           exists i1 st_src1 sm1,
             (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>)
-            /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>>
+            (* /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>> *)
             /\ <<MLE: SimMem.le sm0 sm1>>
             /\ <<BSIM: bsim i1 st_src1 st_tgt1 sm1>>)
   | bsim_step_stutter
@@ -75,16 +85,16 @@ Section SIMMODSEM.
 
   Print xsim.
 
-  Inductive _lxsim (lxsim: regset -> regset -> SimMem.t ->
+  Inductive _lxsim (lxsim: SimMem.t ->
                            idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
-            (rs_init_src rs_init_tgt: regset) (sm_init: SimMem.t)
+            (sm_init: SimMem.t)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | lxsim_step_forward
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
-      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) rs_init_src st_src0)
-      (FSTEP: fsim_step (lxsim rs_init_src rs_init_tgt sm_init) i0 st_src0 st_tgt0 sm0)
+      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
+      (FSTEP: fsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0)
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
       (* sd_determ_at_final becomes nothing, but it is OK. *)
       (* In composed semantics, when it stepped, it must not be final *)
@@ -97,7 +107,7 @@ Section SIMMODSEM.
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
         (* , *)
-          <<BSTEP: bsim_step (lxsim rs_init_src rs_init_tgt sm_init) i0 st_src0 st_tgt0 sm0>>)
+          <<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)
       (PROGRESS:
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
@@ -128,7 +138,7 @@ Section SIMMODSEM.
   (*         (<<LXSIM: lxsim i1 st_src1 st_tgt1 (SimMem.unlift sm0 sm1)>>)) *)
 
   | lxsim_at_external
-      (MCOMPAT: mem_compat st_src0 st_tgt0 sm0)
+      (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
       (MWF: SimMem.wf sm0)
       (* (CALLPROGRESS: forall *)
       (*     rs_arg_src m_arg_src *)
@@ -136,53 +146,34 @@ Section SIMMODSEM.
       (*   , *)
       (*     exists rs_arg_tgt m_arg_tgt, <<ATTGT: ms_tgt.(at_external) st_tgt0 rs_arg_tgt m_arg_tgt>>) *)
       (* (SAFESRC: exists rs_arg_src m_arg_src, <<ATSRC: ms_src.(at_external) st_src0 rs_arg_src m_arg_src>>) *)
-      (SAFESRC: ms_tgt.(is_call) st_tgt0)
+      (* (SAFESRC: ms_tgt.(is_call) st_tgt0) *)
+      (SAFESRC: ms_src.(is_call) st_src0)
       (* (PROGSRC: ms_src.(is_call) st_src0) *)
-      (CALLBSIM: forall
-          rs_arg_tgt m_arg_tgt
-          (ATTGT: ms_tgt.(at_external) st_tgt0 rs_arg_tgt m_arg_tgt)
+      (CALLFSIM: forall
+          args_src
+          (ATSRC: ms_src.(at_external) st_src0 args_src)
         ,
-          exists rs_arg_src sm_arg,
-            (<<MTGT: sm_arg.(SimMem.tgt) = m_arg_tgt>>)
+          exists args_tgt sm_arg,
+            (<<SIMARGS: sim_args args_src args_tgt sm_arg>>
             /\ (<<MWF: SimMem.wf sm_arg>>)
             /\ (<<MLE: SimMem.le sm0 sm_arg>>)
-            /\ (<<ATSRC: ms_src.(at_external) st_src0 rs_arg_src sm_arg.(SimMem.src)>>)
-            /\ (<<RSREL: sm_arg.(SimMem.sim_regset) rs_arg_src rs_arg_tgt>>)
+            /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 args_tgt>>)
             /\
             (<<K: forall
-                sm_ret rs_ret_src rs_ret_tgt
+                sm_ret retv_src retv_tgt
                 (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
                 (MWF: SimMem.wf sm_ret)
-                (RSREL: sm_ret.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
-                (SAFESRC: exists st_src1,
-                    <<AFTERSRC: ms_src.(after_external) st_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src))
-                                                        st_src1>>)
+                (SIMRETV: sim_retv retv_src retv_tgt sm_ret)
+                st_src1
+                (AFTERSRC: ms_src.(after_external) st_src0 retv_src st_src1)
               ,
-                (<<KSTEP: forall
-                    st_tgt1
-                    (AFTERTGT: ms_tgt.(after_external) st_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt))
-                                                       st_tgt1)
-                  ,
-                    exists i1 st_src1,
-                      (<<AFTERSRC:
-                         ms_src.(after_external) st_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src))
-                                                           st_src1>>)
-                      /\
-                      (<<LXSIM: lxsim rs_init_src rs_init_tgt sm_init
-                                      i1 st_src1 st_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>)>>)
-                /\
-                (<<KPROGRESS:(*  forall *)
-                  (*   st_src1 *)
-                  (*   (AFTERSRC: ms_src.(after_external) st_src0 rs_arg_src rs_ret_src (sm_ret.(SimMem.src)) *)
-                  (*                                      st_src1) *)
-                  (* , *)
-                    exists st_tgt1,
-                      (<<AFTERTGT:
-                         ms_tgt.(after_external) st_tgt0 rs_arg_tgt rs_ret_tgt (sm_ret.(SimMem.tgt))
-                                                 st_tgt1>>)>>)>>))
+                exists i1 st_tgt1,
+                  (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>)
+                  /\
+                  (<<LXSIM: lxsim sm_init i1 st_src1 st_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>)>>)
+                  ))
 
   | lxsim_final
-      (MCOMPAT: mem_compat st_src0 st_tgt0 sm0)
       (MLE: SimMem.le sm_init sm0)
       (MWF: SimMem.wf sm0)
       (* (PROGRESS: ms_tgt.(is_return) rs_init_tgt st_tgt0) *)
@@ -193,10 +184,10 @@ Section SIMMODSEM.
       (*     exists rs_ret_src m_ret_src, *)
       (*       (<<RSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt>>) *)
       (*       /\ (<<FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src m_ret_src>>)) *)
-      rs_ret_src rs_ret_tgt
-      (FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src)
-      (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt)
-      (RSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt)
+      retv_src retv_tgt
+      (FINALSRC: ms_src.(final_frame) st_src0 retv_src)
+      (FINALTGT: ms_tgt.(final_frame) st_tgt0 retv_tgt)
+      (SIMRETV: sim_retv retv_src retv_tgt sm0)
 
       (* Note: Actually, final_frame can be defined as a function. *)
 
@@ -205,10 +196,10 @@ Section SIMMODSEM.
 
   .
 
-  Definition lxsim: _ -> _ -> _ -> _ -> _ -> _ -> _ -> Prop := paco7 _lxsim bot7.
+  Definition lxsim: _ -> _ -> _ -> _ -> _ -> Prop := paco5 _lxsim bot5.
 
   Lemma lxsim_mon:
-    monotone7 _lxsim.
+    monotone5 _lxsim.
   Proof.
     repeat intro. inv IN; eauto.
     - econs 1; ss.
@@ -221,10 +212,9 @@ Section SIMMODSEM.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 3; eauto.
-      i; ss. exploit CALLBSIM; eauto. i; des.
+      i; ss. exploit CALLFSIM; eauto. i; des.
       esplits; eauto. ii.
       exploit K; eauto. i; des. esplits; eauto.
-      ii. exploit KSTEP; eauto. i; des. esplits; eauto.
     - econs 4; eauto.
   Qed.
 
@@ -258,25 +248,30 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
   | sim_intro
       (SIM: forall
           sm_arg
+          args_src args_tgt
           sg_init_src sg_init_tgt
-          rs_init_src rs_init_tgt
-          (FINDFSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) (rs_init_src PC) = Some (Internal sg_init_src))
-          (FINDFTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) (rs_init_tgt PC) = Some (Internal sg_init_tgt))
-          (RSREL: sm_arg.(SimMem.sim_regset) rs_init_src rs_init_tgt)
+          (FINDFSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) args_src.(Args.fptr) =
+                     Some (Internal sg_init_src))
+          (FINDFTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.fptr) =
+                     Some (Internal sg_init_tgt))
+          (SIMARGS: sim_args args_src args_tgt sm_arg)
           (WF: SimMem.wf sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
         ,
-          (<<INITFSIM: forall
-              st_init_src
-              (INITSRC: msp.(src).(initial_frame) rs_init_src
-                                                 sm_arg.(SimMem.src) st_init_src)
+          (<<INITBSIM: forall
+              st_init_tgt
+              (INITTGT: msp.(tgt).(initial_frame) args_tgt st_init_tgt)
             ,
-              exists st_init_tgt sm_init idx_init,
-                (<<MCOMPAT: mem_compat msp.(src) msp.(tgt) st_init_src st_init_tgt sm_init>>) /\
+              exists st_init_src sm_init idx_init,
                 (<<MLE: SimMem.le sm_arg sm_init>>) /\
-                (<<INITTGT: msp.(tgt).(initial_frame) rs_init_tgt sm_arg.(SimMem.tgt) st_init_tgt>>) /\
-                (<<SIM: lxsim msp.(src) msp.(tgt) rs_init_src rs_init_tgt sm_arg
-                              idx_init st_init_src st_init_tgt sm_init>>)>>))
+                (<<INITSRC: msp.(src).(initial_frame) args_src st_init_src>>) /\
+                (<<SIM: lxsim msp.(src) msp.(tgt) sm_arg idx_init st_init_src st_init_tgt sm_init>>)>>)
+          /\
+          (<<INITPROGRESS: forall
+              (SAFESRC: exists st_init_src, msp.(src).(initial_frame) args_src st_init_src)
+            ,
+              exists st_init_tgt,
+                (<<INITTGT: msp.(tgt).(initial_frame) args_tgt st_init_tgt>>)>>))
   .
 
 End MODSEMPAIR.

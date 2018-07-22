@@ -240,6 +240,13 @@ I think "sim_skenv_monotone" should be sufficient.
       end
   .
 
+  Definition sig_compat (skdef: (AST.fundef signature)) (sg1: signature): Prop :=
+    match skdef with
+    | Internal sg0 => sg0 = sg1
+    | External ef => ef.(ef_sig) = sg1
+    end
+  .
+
 End SkEnv.
 
 

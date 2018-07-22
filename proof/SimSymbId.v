@@ -13,7 +13,7 @@ Require Import LinkingC.
 Require Import MapsC.
 
 
-Require Import SimDef SimSymb.
+Require Import SimSymb.
 
 
 Set Implicit Arguments.
@@ -41,7 +41,7 @@ Qed.
 
 Inductive sim_sk (u: unit) (sk_src sk_tgt: Sk.t): Prop :=
 | closed_intro
-    (SIM: match_program (fun _ => sim_fun) eq sk_src sk_tgt)
+    (SIM: match_program (fun _ => eq) eq sk_src sk_tgt)
 .
 
 Definition le: unit -> Sk.t -> Sk.t -> unit -> Prop := top4.
@@ -91,7 +91,6 @@ Proof.
     + i. symmetry. apply (Genv.find_symbol_match SIM).
     + ii. hexploit (Genv.find_def_match_2 SIM x0); eauto. intro REL.
       inv REL; ss. inv H2; ss.
-      * admit "remove sig then this will hold // or just now this will hold if we don't drop sig on opt".
       * inv H3; ss.
     + inv SIM; des; ss. rewrite ! Genv.globalenv_public. ss.
 Qed.
@@ -177,13 +176,11 @@ Proof.
     { ss. }
     clarify. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
     erewrite <- DEFS; eauto. des_ifs. esplits; eauto.
-    admit "just use eq".
   - ii.
     assert(fptr_src = fptr_tgt).
     { ss. }
     clarify. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
     erewrite DEFS; eauto. des_ifs. esplits; eauto.
-    admit "just use eq".
 Qed.
 
 

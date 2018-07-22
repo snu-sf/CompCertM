@@ -107,9 +107,9 @@ Module SimMem.
     sm0.(sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)
   .
 
-  Definition sim_regset `{SM: class} (sm0: t) (rs_src rs_tgt: regset): Prop :=
-    forall pr, sm0.(sim_val) (rs_src pr) (rs_tgt pr)
-  .
+  (* Definition sim_regset `{SM: class} (sm0: t) (rs_src rs_tgt: regset): Prop := *)
+  (*   forall pr, sm0.(sim_val) (rs_src pr) (rs_tgt pr) *)
+  (* . *)
 
 End SimMem.
 

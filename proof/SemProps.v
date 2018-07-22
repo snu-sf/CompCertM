@@ -52,52 +52,6 @@ Section INITDTM.
         (SYSTEM: Genv.find_funct (System.skenv skenv_link) fptr = Some (Internal sys_def))
         md md_def
         (MOD: In md p)
-        (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md (skenv_fill_internals skenv_link)
-                                                               (Mod.data md))) fptr =
-                 Some (Internal md_def))
-    :
-      False
-  .
-  Proof.
-    set (skenv_fill_internals skenv_link) as skenv_link2 in *.
-    hexploit (@Mod.get_modsem_projected_sk md skenv_link2); eauto. intro SPEC; des.
-    remember (ModSem.skenv (Mod.get_modsem md skenv_link2 (Mod.data md))) as skenv_proj eqn:T in *.
-    assert(WFBIG2: SkEnv.wf skenv_link2).
-    { eapply skenv_fill_internals_preserves_wf; eauto. }
-    assert(WFSMALL: skenv_proj.(SkEnv.wf)).
-    { eapply SkEnv.project_spec_preserves_wf; eauto. }
-    clarify. des. inv SPEC.
-    exploit Genv.find_funct_inv; eauto. i; des. clarify. ss. des_ifs.
-    unfold Genv.find_funct_ptr in *. des_ifs.
-    inv WFSMALL. exploit DEFSYMB; eauto. intro SYMBSMALL; des.
-    assert((internals (Mod.get_sk md (Mod.data md))) id).
-    { apply NNPP. ii.
-      exploit SYMBDROP; eauto. i; des. clarify.
-    }
-    exploit SYMBKEEP; eauto. intro SYMBBIG; des.
-    rewrite SYMBSMALL in *. symmetry in SYMBBIG.
-    exploit DEFKEEP; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL.
-    clear - Heq0 DEFSMALL.
-    unfold System.skenv in *. ss.
-    subst_locals.
-    apply_all_once Genv_map_defs_def. des. des_ifs_safe.
-    unfold System.gd_to_skd in *. unfold System.globalenv in *.
-    apply_all_once Genv_map_defs_def. des. des_ifs_safe. clear_tac.
-    destruct f; ss; des_ifs; clear_tac. des_ifs; ss.
-    clear Heq0.
-    exploit Genv_map_defs_def; eauto. i; des. des_ifs.
-  Qed.
-
-  Lemma system_disjoint
-        skenv_link
-        (WFBIG: SkEnv.wf skenv_link)
-        sys_def
-        fptr
-        (SYSTEM: Genv.find_funct (System.skenv skenv_link) fptr = Some (Internal sys_def))
-        md md_def
-        (MOD: In md p)
         (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
                  Some (Internal md_def))
     :
@@ -329,10 +283,10 @@ Lemma lift_step
       (ms: ModSem.t) st0 tr st1
       (STEP: Step ms st0 tr st1)
   :
-    forall prog rs_init tail,
-    <<STEP: Step (Sem.semantics prog)
-                 (State ((Frame.mk ms rs_init st0) :: tail)) tr
-                 (State ((Frame.mk ms rs_init st1) :: tail))>>
+    forall prog tail,
+    <<STEP: Step (Sem.sem prog)
+                 (State ((Frame.mk ms st0) :: tail)) tr
+                 (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
   ii. econs 3; eauto.
@@ -342,10 +296,10 @@ Lemma lift_star
       (ms: ModSem.t) st0 tr st1
       (STAR: Star ms st0 tr st1)
   :
-    forall prog rs_init tail,
-    <<STAR: Star (Sem.semantics prog)
-                 (State ((Frame.mk ms rs_init st0) :: tail)) tr
-                 (State ((Frame.mk ms rs_init st1) :: tail))>>
+    forall prog tail,
+    <<STAR: Star (Sem.sem prog)
+                 (State ((Frame.mk ms st0) :: tail)) tr
+                 (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
   ii. ginduction STAR; ii; ss.
@@ -359,10 +313,10 @@ Lemma lift_plus
       (ms: ModSem.t) st0 tr st1
       (PLUS: Plus ms st0 tr st1)
   :
-    forall prog rs_init tail,
-    <<PLUS: Plus (Sem.semantics prog)
-                 (State ((Frame.mk ms rs_init st0) :: tail)) tr
-                 (State ((Frame.mk ms rs_init st1) :: tail))>>
+    forall prog tail,
+    <<PLUS: Plus (Sem.sem prog)
+                 (State ((Frame.mk ms st0) :: tail)) tr
+                 (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
   i. inv PLUS; ii; ss.
@@ -375,10 +329,10 @@ Lemma lift_dstep
       (ms: ModSem.t) st0 tr st1
       (DSTEP: DStep ms st0 tr st1)
   :
-    forall prog rs_init tail,
-    <<DSTEP: DStep (Sem.semantics prog)
-                   (State ((Frame.mk ms rs_init st0) :: tail)) tr
-                   (State ((Frame.mk ms rs_init st1) :: tail))>>
+    forall prog tail,
+    <<DSTEP: DStep (Sem.sem prog)
+                   (State ((Frame.mk ms st0) :: tail)) tr
+                   (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
   ii. destruct DSTEP as [DTM STEP].
@@ -406,10 +360,10 @@ Lemma lift_dstar
       (ms: ModSem.t) st0 tr st1
       (DSTAR: DStar ms st0 tr st1)
   :
-    forall prog rs_init tail,
-    <<DSTAR: DStar (Sem.semantics prog)
-                   (State ((Frame.mk ms rs_init st0) :: tail)) tr
-                   (State ((Frame.mk ms rs_init st1) :: tail))>>
+    forall prog tail,
+    <<DSTAR: DStar (Sem.sem prog)
+                   (State ((Frame.mk ms st0) :: tail)) tr
+                   (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
   i. ginduction DSTAR; ii; ss.
@@ -423,10 +377,10 @@ Lemma lift_dplus
       (ms: ModSem.t) st0 tr st1
       (DPLUS: DPlus ms st0 tr st1)
   :
-    forall prog rs_init tail,
-    <<DPLUS: DPlus (Sem.semantics prog)
-                   (State ((Frame.mk ms rs_init st0) :: tail)) tr
-                   (State ((Frame.mk ms rs_init st1) :: tail))>>
+    forall prog tail,
+    <<DPLUS: DPlus (Sem.sem prog)
+                   (State ((Frame.mk ms st0) :: tail)) tr
+                   (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
   i. inv DPLUS; ii; ss.
@@ -439,9 +393,9 @@ Lemma lift_receptive_at
       (ms: ModSem.t) st0
       (RECEP: receptive_at ms st0)
   :
-    forall prog rs_init tail,
-    <<RECEP: receptive_at (Sem.semantics prog)
-                          (State ((Frame.mk ms rs_init st0) :: tail))>>
+    forall prog tail,
+    <<RECEP: receptive_at (Sem.sem prog)
+                          (State ((Frame.mk ms st0) :: tail))>>
 .
 Proof.
   ii. inv RECEP. ss.
@@ -459,41 +413,41 @@ Proof.
     exploit sr_traces_at; eauto.
 Qed.
 
-Lemma callstate_receptive_at
-      prog
-      rs m frs
-  :
-    <<RECEP: receptive_at (Sem.semantics prog) (Callstate rs m frs)>>
-.
-Proof.
-  econs; eauto.
-  - ii. ss. des_ifs.
-    + inv H. inv H0. esplits; eauto. econs; eauto.
-    + inv H. inv MSFIND. ss.
-  - ii. inv H. ss. omega.
-Qed.
+(* Lemma callstate_receptive_at *)
+(*       prog *)
+(*       args frs *)
+(*   : *)
+(*     <<RECEP: receptive_at (Sem.sem prog) (Callstate args frs)>> *)
+(* . *)
+(* Proof. *)
+(*   econs; eauto. *)
+(*   - ii. ss. des_ifs. *)
+(*     + inv H. inv H0. esplits; eauto. econs; eauto. *)
+(*     + inv H. inv MSFIND. ss. *)
+(*   - ii. inv H. ss. omega. *)
+(* Qed. *)
 
-Lemma callstate_determinate_at
-      prog
-      rs m frs
-  :
-    <<RECEP: determinate_at (Sem.semantics prog) (Callstate rs m frs)>>
-.
-Proof.
-  econs; eauto.
-  - ii. ss. des_ifs.
-    + inv H. inv H0. esplits; eauto.
-      * econs; eauto.
-      * i. repeat f_equal. clear_tac.
-        exploit find_fptr_owner_determ; eauto.
-        { ss. rewrite Heq. eapply MSFIND. }
-        { ss. rewrite Heq. eapply MSFIND0. }
-        i; clarify.
-        determ_tac ModSem.initial_frame_dtm.
-    + exfalso. inv H. inv MSFIND. ss.
-  - ii. ss. des_ifs.
-    + inv FINAL.
-    + inv FINAL.
-  - ii. inv H. ss. omega.
-Qed.
+(* Lemma callstate_determinate_at *)
+(*       prog *)
+(*       args frs *)
+(*   : *)
+(*     <<RECEP: determinate_at (Sem.sem prog) (Callstate args frs)>> *)
+(* . *)
+(* Proof. *)
+(*   econs; eauto. *)
+(*   - ii. ss. des_ifs. *)
+(*     + inv H. inv H0. esplits; eauto. *)
+(*       * econs; eauto. *)
+(*       * i. repeat f_equal. clear_tac. *)
+(*         exploit find_fptr_owner_determ; eauto. *)
+(*         { ss. rewrite Heq. eapply MSFIND. } *)
+(*         { ss. rewrite Heq. eapply MSFIND0. } *)
+(*         i; clarify. *)
+(*         determ_tac ModSem.initial_frame_dtm. *)
+(*     + exfalso. inv H. inv MSFIND. ss. *)
+(*   - ii. ss. des_ifs. *)
+(*     + inv FINAL. *)
+(*     + inv FINAL. *)
+(*   - ii. inv H. ss. omega. *)
+(* Qed. *)
 

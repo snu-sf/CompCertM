@@ -992,8 +992,10 @@ Qed.
 
 Lemma Mem_stored_dtm
       ty m b ofs v0 v1
-      (TY0: Val.has_type v0 ty)
-      (TY1: Val.has_type v1 ty)
+      (* (TY0: Val.has_type v0 ty) *)
+      (* (TY1: Val.has_type v1 ty) *)
+      (WELLDEF0: ~ In Undef (encode_val (chunk_of_type ty) v0))
+      (WELLDEF1: ~ In Undef (encode_val (chunk_of_type ty) v0))
       (STORED0: Mem_stored (chunk_of_type ty) m b ofs v0)
       (STORED1: Mem_stored (chunk_of_type ty) m b ofs v1)
   :
@@ -1012,7 +1014,7 @@ Local Transparent Byte.repr.
   assert(BYTE: Byte.modulus = 256).
   { unfold Byte.modulus in *. unfold Byte.wordsize. ss. }
   destruct ty; ss.
-  -  des_ifs.
+  - des_ifs; ss; try (by exfalso; eauto).
     unfold Byte.repr in *. ss. clarify.
     f_equal.
     destruct i, i0; ss.
@@ -1024,7 +1026,7 @@ Local Transparent Byte.repr.
       rewrite ! Zdiv.Zdiv_Zdiv; try xomega. ss.
       rewrite ! Z.div_small; xomega.
     }
-  - des_ifs.
+  - des_ifs; ss; try (by exfalso; eauto).
     f_equal.
     rewrite ! Byte.Z_mod_modulus_eq in *.
     rewrite BYTE in *.
@@ -1038,7 +1040,7 @@ Local Transparent Byte.repr.
       rewrite ! Zdiv.Zdiv_Zdiv; try xomega. ss.
       rewrite ! Z.div_small; xomega.
     }
-  - des_ifs.
+  - des_ifs; ss; try (by exfalso; eauto).
     f_equal.
     rewrite ! Byte.Z_mod_modulus_eq in *.
     rewrite BYTE in *.
@@ -1049,7 +1051,7 @@ Local Transparent Byte.repr.
       rewrite ! Zdiv.Zdiv_Zdiv; try xomega. ss.
       rewrite ! Z.div_small; xomega.
     }
-  - des_ifs.
+  - des_ifs; ss; try (by exfalso; eauto).
     f_equal.
     rewrite ! Byte.Z_mod_modulus_eq in *.
     rewrite BYTE in *.

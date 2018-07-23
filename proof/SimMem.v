@@ -107,12 +107,17 @@ Module SimMem.
     sm0.(sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)
   .
 
+  Definition lifted `{SM: class} (sm0 sm1: t): Prop := SimMem.lift sm0 = sm1 /\ SimMem.wf sm0.
+
+  Definition future `{SM: class}: t -> t -> Prop := rtc (le \2/ lifted).
+
   (* Definition sim_regset `{SM: class} (sm0: t) (rs_src rs_tgt: regset): Prop := *)
   (*   forall pr, sm0.(sim_val) (rs_src pr) (rs_tgt pr) *)
   (* . *)
 
 End SimMem.
 
+Hint Unfold SimMem.future SimMem.lifted.
 
 (* Program Instance sm_ident: SimMem.class ss_ident := *)
 (* { *)

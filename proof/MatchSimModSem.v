@@ -7,6 +7,30 @@ Require Import SimModSem SimMem SimSymb.
 Set Implicit Arguments.
 
 
+Section ORD.
+
+  Variable index: Type.
+  Variable order: index -> index -> Prop.
+  Hypothesis WFORD: well_founded order.
+
+  Definition to_idx (i0: index): Ord.idx := (Ord.mk WFORD i0).
+
+  Hint Unfold to_idx.
+
+  Lemma to_idx_spec
+        i0 i1
+        (ORD: order i0 i1)
+    :
+      <<ORD: Ord.ord i0.(to_idx) i1.(to_idx)>>
+  .
+  Proof.
+    econs; eauto. cbn. instantiate (1:= eq_refl). cbn. ss.
+  Qed.
+
+End ORD.
+
+
+
 Section MATCHSIMFORWARD.
 
   Context {SM: SimMem.class} {SS: SimSymb.class SM}.
@@ -17,6 +41,8 @@ Section MATCHSIMFORWARD.
   Hypothesis WFORD: well_founded order.
   Let ms_src: ModSem.t := msp.(ModSemPair.src).
   Let ms_tgt: ModSem.t := msp.(ModSemPair.tgt).
+
+  Hypothesis SIMSKENV: ModSemPair.sim_skenv msp msp.(ModSemPair.sm).
 
   Variable match_states: forall
       (sm_arg: SimMem.t)
@@ -133,29 +159,15 @@ Section MATCHSIMFORWARD.
 
   Hypothesis BAR: bar_True.
 
-  Definition to_idx (i0: index): Ord.idx := (Ord.mk WFORD i0).
-
-  Hint Unfold to_idx.
-
-  Lemma to_idx_spec
-        i0 i1
-        (ORD: order i0 i1)
-    :
-      <<ORD: Ord.ord i0.(to_idx) i1.(to_idx)>>
-  .
-  Proof.
-    econs; eauto. cbn. instantiate (1:= eq_refl). cbn. ss.
-  Qed.
-
   Lemma match_states_lxsim
         sm_init i0 st_src0 st_tgt0 sm0
-        (SIMSKENV: ModSemPair.sim_skenv msp sm0)
+        (SIMSKENV0: ModSemPair.sim_skenv msp sm0)
         (MLE: SimMem.le sm_init sm0)
         (* (MWF: SimMem.wf sm0) *)
         (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
         (MATCH: match_states sm_init i0 st_src0 st_tgt0 sm0)
     :
-      <<LXSIM: lxsim ms_src ms_tgt sm_init i0.(to_idx) st_src0 st_tgt0 sm0>>
+      <<LXSIM: lxsim ms_src ms_tgt sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.
     revert_until BAR.
@@ -206,9 +218,12 @@ Section MATCHSIMFORWARD.
       <<SIM: msp.(ModSemPair.sim)>>
   .
   Proof.
-    econs.
+    econs; eauto.
     ii; ss.
     u in SIMSKENV.
+    folder.
+    assert(SIMSKENV0: ModSemPair.sim_skenv msp sm_arg).
+    { u. eapply SimSymb.mfuture_preserves_sim_skenv; eauto. }
     exploit SimSymb.sim_skenv_func_bisim; eauto. intro FSIM; des.
     Print SimSymb.sim_skenv.
     inv FSIM. exploit FUNCFSIM; eauto. { apply SIMARGS. } i; des.
@@ -218,7 +233,7 @@ Section MATCHSIMFORWARD.
       eapply match_states_lxsim; eauto.
       { eapply SimSymb.mle_preserves_sim_skenv; eauto. }
     - exploit INITPROGRESS; eauto.
-  Qed.
+  Admitted. (* TODO: COQ BUG !!!!!!!!!!!!!!!!!!!!!!!!!!! *)
 
 End MATCHSIMFORWARD.
 

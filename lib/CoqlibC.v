@@ -17,6 +17,7 @@ Require Import Wellfounded.
 Require Export Classical_Prop.
 Require Export Lia.
 Require Import AxiomsC.
+Require Import Relation_Operators.
 
 Set Implicit Arguments.
 
@@ -552,9 +553,6 @@ Proof.
   eapply IHxs; eauto.
 Qed.
 
-Notation rtc := (Relation_Operators.clos_refl_trans_1n _).
-(* copied from promising code. TODO: also copy needed lemmas *)
-
 (* copied from : https://robbertkrebbers.nl/research/ch2o/tactics.html *)
 Hint Extern 998 (_ = _) => f_equal : f_equal.
 Hint Extern 999 => congruence : congruence.
@@ -658,3 +656,86 @@ Proof.
   des_ifs; ss.
 Qed.
 
+Ltac revert_until_bar :=
+  on_last_hyp ltac:(fun id' => match (type of id') with
+                               | bar_True => idtac
+                               | _ => revert id'; revert_until_bar
+                               end)
+.
+
+Ltac folder := all_once_fast ltac:(fun H => try (is_local_definition H; fold_all H)).
+
+
+(* copied from promising/lib/Basic.v *)
+
+Ltac refl := reflexivity.
+Ltac etrans := etransitivity.
+Ltac congr := congruence.
+
+Notation rtc := (clos_refl_trans_1n _). (* reflexive transitive closure *)
+Notation rc := (clos_refl _). (* reflexive transitive closure *)
+Notation tc := (clos_trans _). (* transitive closure *)
+Hint Immediate rt1n_refl rt1n_trans t_step.
+
+Program Instance rtc_PreOrder A (R:A -> A -> Prop): PreOrder (rtc R).
+Next Obligation.
+  ii. revert H0. induction H; auto. i.
+  exploit IHclos_refl_trans_1n; eauto.
+Qed.
+
+Lemma rtc_tail A R
+      (a1 a3:A)
+      (REL: rtc R a1 a3):
+  (exists a2, rtc R a1 a2 /\ R a2 a3) \/
+  (a1 = a3).
+Proof.
+  induction REL; auto. des; subst.
+  - left. eexists. splits; [|eauto].
+    econs; eauto.
+  - left. eexists. splits.
+    econs. eauto.
+Qed.
+
+Lemma rtc_implies A (R1 R2: A -> A -> Prop)
+      (IMPL: R1 <2= R2):
+  rtc R1 <2= rtc R2.
+Proof.
+  ii. induction PR; eauto.
+  etrans; [|eauto]. econs 2; [|econs 1].
+  apply IMPL. auto.
+Qed.
+
+Lemma rtc_refl
+      A R (a b:A)
+      (EQ: a = b):
+  rtc R a b.
+Proof. subst. econs. Qed.
+
+Lemma rtc_n1
+      A R (a b c:A)
+      (AB: rtc R a b)
+      (BC: R b c):
+  rtc R a c.
+Proof.
+  etrans; eauto. econs 2; eauto.
+Qed.
+
+Lemma rtc_reverse
+      A R (a b:A)
+      (RTC: rtc R a b):
+  rtc (fun x y => R y x) b a.
+Proof.
+  induction RTC; eauto.
+  etrans; eauto. econs 2; eauto.
+Qed.
+
+Lemma rtc_once
+      A (R: A -> A -> Prop)
+      a b
+      (ONCE: R a b)
+  :
+    rtc R a b
+.
+Proof.
+  econs; eauto.
+Qed.

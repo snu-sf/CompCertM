@@ -16,7 +16,7 @@ Require Import MapsC.
 
 Set Implicit Arguments.
 
-Require Import SimDef SimSymb.
+Require Import SimSymb.
 Require Import SimMem.
 Require Import SimMemInj.
 

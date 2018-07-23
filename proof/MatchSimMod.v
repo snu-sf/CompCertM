@@ -13,7 +13,8 @@ Section MATCHSIMFORWARD.
 
   Variable mp: ModPair.t.
   Variable skenv_link_src skenv_link_tgt: SkEnv.t.
-  Let msp: ModSemPair.t := (ModPair.to_msp skenv_link_src skenv_link_tgt mp).
+  Variable sm_init_link: SimMem.t.
+  Let msp: ModSemPair.t := (ModPair.to_msp skenv_link_src skenv_link_tgt sm_init_link mp).
   Variable index: Type.
   Variable order: index -> index -> Prop.
   Hypothesis WFORD: well_founded order.
@@ -215,14 +216,26 @@ Section MATCHSIMFORWARD.
   Proof.
     econs; eauto.
     ii; ss.
+    assert(SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp skenv_link_src0 skenv_link_tgt0 sm_init_link0 mp)
+                                          sm_init_link0).
+    { u.
+      eapply SimSymb.sim_skenv_monotone; eauto.
+      - admit "ez".
+      - admit "ez".
+      - eapply Mod.get_modsem_projected_sk.
+      - eapply Mod.get_modsem_projected_sk.
+    }
     econs; eauto.
-    ii; ss.
-    u in SIMSKENV.
-    exploit SimSymb.sim_skenv_func_bisim; eauto. intro FSIM; des.
-    Print SimSymb.sim_skenv.
-    inv FSIM. exploit FUNCFSIM; eauto. { apply SIMARGS. } i; des.
+    ii.
+    assert(SIMSKENV0: ModSemPair.sim_skenv (ModPair.to_msp skenv_link_src0 skenv_link_tgt0 sm_init_link0 mp)
+                                          sm_arg).
+    { eapply SimSymb.mfuture_preserves_sim_skenv; eauto. }
+    exploit SimSymb.sim_skenv_func_bisim; try apply SIMSKENV0; eauto. intro FSIM; des.
+    inv FSIM. exploit FUNCFSIM; eauto. { apply SIMARGS. } i; des. clarify.
     split; ii.
-    - exploit INITBSIM; eauto. i; des.
+    - exploit INITBSIM; eauto.
+      { esplits; eauto. eapply SimSymb.mfuture_preserves_sim_skenv; eauto. ss. }
+      i; des.
       esplits; eauto.
       eapply match_states_lxsim; eauto.
       { eapply SimSymb.mle_preserves_sim_skenv; eauto. }

@@ -235,6 +235,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
     src: ModSem.t;
     tgt: ModSem.t;
     ss: SimSymb.t;
+    sm: SimMem.t;
     (* TODO: which unary/binary property it expects *)
     (* TODO: analysis *)
   }
@@ -246,6 +247,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
   (* ####################### TODO: Rename initial_machine/final_machine into initial_frame/final_frame *)
   Inductive sim (msp: t): Prop :=
   | sim_intro
+      (SIMSKENV: sim_skenv msp msp.(sm))
       (SIM: forall
           sm_arg
           args_src args_tgt
@@ -255,8 +257,8 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
           (FINDFTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.fptr) =
                      Some (Internal sg_init_tgt))
           (SIMARGS: sim_args args_src args_tgt sm_arg)
-          (WF: SimMem.wf sm_arg)
-          (SIMSKENV: sim_skenv msp sm_arg)
+          (MFUTURE: SimMem.future msp.(sm) sm_arg)
+          (MWF: SimMem.wf sm_arg)
         ,
           (<<INITBSIM: forall
               st_init_tgt

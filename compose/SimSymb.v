@@ -168,5 +168,21 @@ Module SimSymb.
     }
   .
 
+  Lemma mfuture_preserves_sim_skenv
+        `{SM: SimMem.class} `{SS: @class SM}
+        sm0 sm1
+        ss skenv_src skenv_tgt
+        (MFUTURE: SimMem.future sm0 sm1)
+        (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
+    :
+      <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>
+  .
+  Proof.
+    induction MFUTURE; ss.
+    des.
+    - eapply IHMFUTURE; eauto. eapply mle_preserves_sim_skenv; eauto.
+    - u in H. des. eapply IHMFUTURE; eauto. clarify. eapply mlift_preserves_sim_skenv; eauto.
+  Qed.
+
 End SimSymb.
 

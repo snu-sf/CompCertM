@@ -48,8 +48,8 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
   }
   .
 
-  Definition to_msp (skenv_link_src skenv_link_tgt: SkEnv.t) (mp: t): ModSemPair.t :=
-    ModSemPair.mk (Mod.modsem (mp.(src)) skenv_link_src) (Mod.modsem (mp.(tgt)) skenv_link_tgt) mp.(ss)
+  Definition to_msp (skenv_link_src skenv_link_tgt: SkEnv.t) (sm: SimMem.t) (mp: t): ModSemPair.t :=
+    ModSemPair.mk (Mod.modsem (mp.(src)) skenv_link_src) (Mod.modsem (mp.(tgt)) skenv_link_tgt) mp.(ss) sm
   .
 
   (* TODO: Actually, ModPair can have idx/ord and transfer it to ModSemPair. *)
@@ -74,7 +74,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
           sm_init_link
           (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt)
         ,
-          <<SIMMSP: ModSemPair.sim mp.(to_msp skenv_link_src skenv_link_tgt)>>)
+          <<SIMMSP: ModSemPair.sim mp.(to_msp skenv_link_src skenv_link_tgt sm_init_link)>>)
   .
 
   (* Design: ModPair only has data, properties are stated in sim *)

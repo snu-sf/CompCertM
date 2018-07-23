@@ -247,7 +247,11 @@ I think "sim_skenv_monotone" should be sufficient.
     end
   .
 
+  Definition empty: t := @Genv.empty_genv _ _ [].
+
 End SkEnv.
+
+Hint Unfold SkEnv.empty.
 
 
 (* Hint Unfold SkEnv.revive. *)
@@ -385,9 +389,11 @@ Module Sk.
       rewrite skdef_of_gdef_is_external. ss.
   Qed.
 
+  Definition empty: t := (mkprogram [] [] 1%positive).
+
 End Sk.
 
-Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem.
+Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
 
 
 

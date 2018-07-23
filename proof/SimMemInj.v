@@ -7,7 +7,7 @@ Require Import Globalenvs.
 Require Import AST.
 
 Require Import IntegersC LinkingC.
-Require Import SimDef SimSymb Skeleton Mod ModSem.
+Require Import SimSymb Skeleton Mod ModSem.
 Require Import SimMem.
 Require SimSymbId.
 

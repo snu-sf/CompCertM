@@ -224,7 +224,7 @@ Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt (admit "")
+  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt
 .
 
 Inductive match_states

@@ -237,7 +237,6 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
     src: ModSem.t;
     tgt: ModSem.t;
     ss: SimSymb.t;
-    sm: SimMem.t;
     (* TODO: which unary/binary property it expects *)
     (* TODO: analysis *)
   }
@@ -260,7 +259,6 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
                      Some (Internal sg_init_tgt))
           (SIMARGS: sim_args args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
-          (MFUTURE: SimMem.future msp.(sm) sm_arg)
           (MWF: SimMem.wf sm_arg)
         ,
           (<<INITBSIM: forall

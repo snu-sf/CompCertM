@@ -49,7 +49,6 @@ Section SIMGE.
       msps
       (SIMSKENV: List.Forall (fun msp => ModSemPair.sim_skenv msp sm0) msps)
       (SIMMSS: List.Forall (ModSemPair.sim) msps)
-      (MFUTURE: List.Forall (fun msp => SimMem.future msp.(ModSemPair.sm) sm0) msps)
       ge_src ge_tgt
       (GESRC: ge_src = (map (ModSemPair.src) msps))
       (GETGT: ge_tgt = (map (ModSemPair.tgt) msps))
@@ -83,7 +82,6 @@ Section SIMGE.
     :
       exists msp,
         <<SRC: msp.(ModSemPair.src) = ms_src>>
-        /\ <<MFUTURE: SimMem.future msp.(ModSemPair.sm) sm0>>
         /\ <<FINDTGT: Ge.find_fptr_owner ge_tgt fptr_tgt msp.(ModSemPair.tgt)>>
         /\ <<SIMMS: ModSemPair.sim msp>>
         /\ <<SIMSKENV: ModSemPair.sim_skenv msp sm0>>
@@ -141,9 +139,6 @@ Section SIMGE.
     - rewrite Forall_forall in *. ii.
       eapply SimSymb.mle_preserves_sim_skenv; eauto.
       eapply SIMSKENV; eauto.
-    - rewrite Forall_forall in *. ii.
-      etrans; try apply MFUTURE; eauto.
-      econs; try left; eauto.
     - des. esplits; eauto. eapply SimSymb.mle_preserves_sim_skenv; eauto.
   Qed.
 
@@ -162,9 +157,6 @@ Section SIMGE.
       u.
       eapply SimSymb.mlift_preserves_sim_skenv; eauto.
       eapply SIMSKENV; eauto.
-    - rewrite Forall_forall in *. ii.
-      etrans; try apply MFUTURE; eauto.
-      econs; try right; eauto.
     - des. esplits; eauto. eapply SimSymb.mlift_preserves_sim_skenv; eauto.
   Qed.
 
@@ -190,7 +182,6 @@ Section SIMGE.
         (SAFESRC: tl_src <> [])
         msp
         (SIMMSP: ModSemPair.sim msp)
-        (MFUTURE: msp.(ModSemPair.sm) = sm_init)
         skenv_link_src skenv_link_tgt
         (SIMGETL: sim_ge sm_init (tl_src, skenv_link_src) (tl_tgt, skenv_link_tgt))
         (SIMSKENV: ModSemPair.sim_skenv msp sm_init)
@@ -221,9 +212,9 @@ Section SIMGE.
   (* Qed. *)
 
   Lemma to_msp_tgt
-        skenv_tgt skenv_src sm pp
+        skenv_tgt skenv_src pp
     :
-          map ModSemPair.tgt (map (ModPair.to_msp skenv_src skenv_tgt sm) pp) =
+          map ModSemPair.tgt (map (ModPair.to_msp skenv_src skenv_tgt) pp) =
           map (fun md => Mod.modsem md skenv_tgt) (ProgPair.tgt pp)
   .
   Proof.
@@ -232,9 +223,9 @@ Section SIMGE.
   Qed.
 
   Lemma to_msp_src
-        skenv_tgt skenv_src sm pp
+        skenv_tgt skenv_src pp
     :
-          map ModSemPair.src (map (ModPair.to_msp skenv_src skenv_tgt sm) pp) =
+          map ModSemPair.src (map (ModPair.to_msp skenv_src skenv_tgt) pp) =
           map (fun md => Mod.modsem md skenv_src) (ProgPair.src pp)
   .
   Proof.
@@ -252,7 +243,7 @@ Section SIMGE.
                           (Mod.get_sk (ModPair.tgt mp) (Mod.data (ModPair.tgt mp))) ss_link)
         (SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_src skenv_tgt)
       :
-        <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp skenv_src skenv_tgt sm_init mp) sm_init>>
+        <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp skenv_src skenv_tgt mp) sm_init>>
   .
   Proof.
     (* inv SIMMP. specialize (SIMMS skenv_src skenv_tgt). *)
@@ -303,7 +294,6 @@ Section SIMGE.
     assert(exists msp_sys,
               (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem (Sk.load_skenv sk_link_src)>>)
               /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem (Sk.load_skenv sk_link_tgt)>>)
-              /\ (<<SYSSM: msp_sys.(ModSemPair.sm) = sm_init>>)
               /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>).
     { admit "raw admit. this should hold.". }
     des.
@@ -327,13 +317,9 @@ Section SIMGE.
       assert(WFTGT: SkEnv.wf skenv_tgt).
       { eapply Sk.load_skenv_wf. }
       econstructor 2 with
-          (msps := (map (ModPair.to_msp skenv_src skenv_tgt sm_init) (mp :: pp))); eauto; revgoals.
+          (msps := (map (ModPair.to_msp skenv_src skenv_tgt) (mp :: pp))); eauto; revgoals.
       + ss. f_equal. rewrite to_msp_tgt; ss.
       + ss. f_equal. rewrite to_msp_src; ss.
-      + ss. econs; eauto.
-        rewrite Forall_forall in *.
-        i. apply in_map_iff in H. des.
-        clarify. ss. reflexivity.
       + ss. econs; ss; eauto.
         * eapply SIMMP; eauto.
         * rewrite Forall_forall in *.

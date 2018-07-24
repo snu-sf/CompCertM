@@ -95,7 +95,7 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg_arg vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.sig_compat skd sg_arg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg)
     :
       at_external skenv_link (Callstate stack fptr_arg sg_arg vs_arg m0)
                   (Args.mk fptr_arg vs_arg m0)

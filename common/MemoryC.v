@@ -703,8 +703,10 @@ Qed.
 
 End ARGPASSING.
 
-Section STORED.
 
+
+
+Section STORED.
 
 Inductive Mem_stored (chunk: memory_chunk) (m0: mem) (b: block) (ofs: Z) (v: val): Prop :=
 | stored_intro
@@ -1070,6 +1072,66 @@ Local Transparent Byte.repr.
 Qed.
 
 End STORED.
+
+
+
+
+
+Section LOADABLE.
+
+Inductive Mem_loadable (chunk: memory_chunk) (m0: mem) (b: block) (ofs: Z) (v: val): Prop :=
+| loadable_intro
+    (LOADABLE: Mem.load chunk m0 b ofs = Some v)
+.
+
+End LOADABLE.
+
+
+
+
+Section UNFREE.
+
+Program Definition Mem_unfree (m: mem) (b: block) (lo hi: Z): option mem :=
+  if plt b m.(Mem.nextblock)
+  then
+    Some (Mem.mkmem
+            (PMap.set b (Mem.setN (list_repeat (hi-lo+1).(Z.to_nat) Undef) lo ((Mem.mem_contents m) # b))
+                      (Mem.mem_contents m))
+            (PMap.set b
+                      (fun ofs k =>
+                         if zle lo ofs && zlt ofs hi
+                         then Some Freeable
+                         else m.(Mem.mem_access)#b ofs k)
+                      m.(Mem.mem_access))
+            m.(Mem.nextblock) _ _ _)
+  else None
+.
+Next Obligation.
+  generalize (Mem.access_max m). intro PERM.
+  unfold Mem.perm_order'' in *.
+  rewrite ! PMap.gsspec in *.
+  des_ifs; simpl_bool; des; des_sumbool; eauto with mem.
+  - specialize (PERM b ofs). des_ifs.
+  - specialize (PERM b ofs). des_ifs.
+  - specialize (PERM b0 ofs). des_ifs.
+  - specialize (PERM b ofs). des_ifs.
+  - specialize (PERM b ofs). des_ifs.
+  - specialize (PERM b0 ofs). des_ifs.
+Defined.
+Next Obligation.
+  rewrite ! PMap.gsspec in *.
+  generalize (Mem.nextblock_noaccess m); eauto. i.
+  des_ifs; simpl_bool; des; des_sumbool; eauto with mem.
+Defined.
+Next Obligation.
+  generalize (Mem.contents_default m); eauto. i.
+  rewrite ! PMap.gsspec in *.
+  des_ifs; ss.
+  rewrite Mem.setN_default. ss.
+Defined.
+
+End UNFREE.
+
 
 Ltac perm_impl_tac := eapply Mem.perm_implies with Freeable; [|eauto with mem].
 

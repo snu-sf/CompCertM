@@ -233,8 +233,8 @@ Section SIMGE.
     (* inv SIMMP. specialize (SIMMS skenv_src skenv_tgt). *)
     u.
     eapply SimSymb.sim_skenv_monotone; revgoals.
-    - eapply Mod.get_modsem_skenv.
-    - eapply Mod.get_modsem_skenv.
+    - eapply Mod.get_modsem_projected_sk.
+    - eapply Mod.get_modsem_projected_sk.
     - eauto. (* eapply SimSymb.le_refl. *)
     - apply SIMMP.
     - eauto.

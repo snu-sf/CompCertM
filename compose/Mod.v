@@ -39,20 +39,12 @@ Module Mod.
     get_sk: datatype -> Sk.t;
     get_modsem: SkEnv.t -> datatype -> ModSem.t;
     data: datatype;
-    get_modsem_skenv: forall
-      skenv_link
+    get_modsem_projected_sk: forall
+      skenv
       ,
         (* SkEnv.project skenv data.(get_sk).(defs) = data.(get_modsem skenv).(ModSem.skenv) *)
-        <<PROJECTED: SkEnv.project_spec skenv_link
-                                        data.(get_sk).(defs)
-                                        data.(get_modsem skenv_link).(ModSem.skenv)>>
+        <<PROJECTED: SkEnv.project_spec skenv data.(get_sk).(defs) data.(get_modsem skenv).(ModSem.skenv)>>
     ;
-    get_modsem_skenv_link: forall
-      skenv_link
-      ,
-        data.(get_modsem skenv_link).(ModSem.skenv_link) = skenv_link
-    ;
-
     (* TODO: What is the exact spec we need here? *)
     (* get_modsem_sk_skenv_iso: forall *)
     (*     skenv *)

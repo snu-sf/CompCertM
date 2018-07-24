@@ -222,8 +222,8 @@ Section MATCHSIMFORWARD.
       eapply SimSymb.sim_skenv_monotone; eauto.
       - admit "ez".
       - admit "ez".
-      - eapply Mod.get_modsem_skenv.
-      - eapply Mod.get_modsem_skenv.
+      - eapply Mod.get_modsem_projected_sk.
+      - eapply Mod.get_modsem_projected_sk.
     }
     econs; eauto.
     ii.

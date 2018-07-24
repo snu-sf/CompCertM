@@ -66,7 +66,6 @@ Module ModSem.
     (* main_fptr: block; *)
     (* Note: "internals" is not enough! A ModSemPair should be able to specify which SimMem it relys. *)
     skenv: SkEnv.t;
-    skenv_link: SkEnv.t;
     (* skenv: SkEnv.t; *)
     (* ########################################## I added SkEnv.t only for defining "compat" in sim_mem. *)
     (* If it is not used, remove it *)

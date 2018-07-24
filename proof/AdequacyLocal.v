@@ -42,8 +42,9 @@ Section SIMGE.
   Inductive sim_ge (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
   | sim_ge_src_stuck
       ge_tgt
+      skenv_link_src skenv_link_tgt
     :
-      sim_ge sm0 [] ge_tgt
+      sim_ge sm0 ([], skenv_link_src) (ge_tgt, skenv_link_tgt)
   | sim_ge_intro
       msps
       (SIMSKENV: List.Forall (fun msp => ModSemPair.sim_skenv msp sm0) msps)
@@ -52,8 +53,10 @@ Section SIMGE.
       ge_src ge_tgt
       (GESRC: ge_src = (map (ModSemPair.src) msps))
       (GETGT: ge_tgt = (map (ModSemPair.tgt) msps))
+      skenv_link_src skenv_link_tgt
+      (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm0 ss_link skenv_link_src skenv_link_tgt)
     :
-      sim_ge sm0 ge_src ge_tgt 
+      sim_ge sm0 (ge_src, skenv_link_src) (ge_tgt, skenv_link_tgt)
   (* | sim_ge_intro *)
   (*     msps *)
   (*     (SIMSKENV: List.Forall (fun msp => ModSemPair.sim_skenv msp sm0) msps) *)
@@ -90,6 +93,7 @@ Section SIMGE.
     { inv FINDSRC; ss. }
     rewrite Forall_forall in *.
     inv FINDSRC.
+    ss.
     rewrite in_map_iff in MODSEM. des. rename x into msp.
     esplits; eauto.
     clarify.
@@ -119,7 +123,7 @@ Section SIMGE.
     { ss. }
     rewrite Forall_forall in *.
     { 
-    rewrite in_map_iff in *. des.
+    ss. rewrite in_map_iff in *. des.
   Abort.
 
   Theorem mle_preserves_sim_ge
@@ -140,6 +144,7 @@ Section SIMGE.
     - rewrite Forall_forall in *. ii.
       etrans; try apply MFUTURE; eauto.
       econs; try left; eauto.
+    - des. esplits; eauto. eapply SimSymb.mle_preserves_sim_skenv; eauto.
   Qed.
 
   Theorem mlift_preserves_sim_ge
@@ -160,6 +165,7 @@ Section SIMGE.
     - rewrite Forall_forall in *. ii.
       etrans; try apply MFUTURE; eauto.
       econs; try right; eauto.
+    - des. esplits; eauto. eapply SimSymb.mlift_preserves_sim_skenv; eauto.
   Qed.
 
   (* Lemma load_modsems_sim_ge_aux *)
@@ -180,20 +186,39 @@ Section SIMGE.
   (* Qed. *)
 
   Lemma sim_ge_cons
-        sm_init hd_src hd_tgt tl_src tl_tgt
+        sm_init tl_src tl_tgt
         (SAFESRC: tl_src <> [])
-        (SIMGEHD: sim_ge sm_init [hd_src] [hd_tgt])
-        (SIMGETL: sim_ge sm_init tl_src tl_tgt)
+        msp
+        (SIMMSP: ModSemPair.sim msp)
+        (MFUTURE: msp.(ModSemPair.sm) = sm_init)
+        skenv_link_src skenv_link_tgt
+        (SIMGETL: sim_ge sm_init (tl_src, skenv_link_src) (tl_tgt, skenv_link_tgt))
+        (SIMSKENV: ModSemPair.sim_skenv msp sm_init)
     :
-      <<SIMGE: sim_ge sm_init (hd_src :: tl_src) (hd_tgt :: tl_tgt)>>
+      <<SIMGE: sim_ge sm_init (msp.(ModSemPair.src) :: tl_src, skenv_link_src)
+                      (msp.(ModSemPair.tgt) :: tl_tgt, skenv_link_tgt)>>
   .
   Proof.
     red.
-    inv SIMGEHD. destruct msps; ss. destruct msps; ss. clarify. inv SIMMSS. inv SIMSKENV.
     inv SIMGETL; ss.
-    econstructor 2 with (msps := t :: msps); eauto.
-    inv MFUTURE. econs; eauto.
+    econstructor 2 with (msps := msp :: msps); eauto.
   Qed.
+
+  (* Lemma sim_ge_cons *)
+  (*       sm_init hd_src hd_tgt tl_src tl_tgt *)
+  (*       (SAFESRC: tl_src <> []) *)
+  (*       (SIMGEHD: sim_ge sm_init [hd_src] [hd_tgt]) *)
+  (*       (SIMGETL: sim_ge sm_init tl_src tl_tgt) *)
+  (*   : *)
+  (*     <<SIMGE: sim_ge sm_init (hd_src :: tl_src) (hd_tgt :: tl_tgt)>> *)
+  (* . *)
+  (* Proof. *)
+  (*   red. *)
+  (*   inv SIMGEHD. destruct msps; ss. destruct msps; ss. clarify. inv SIMMSS. inv SIMSKENV. *)
+  (*   inv SIMGETL; ss. *)
+  (*   econstructor 2 with (msps := t :: msps); eauto. *)
+  (*   inv MFUTURE. econs; eauto. *)
+  (* Qed. *)
 
   Lemma to_msp_tgt
         skenv_tgt skenv_src sm pp
@@ -273,21 +298,20 @@ Section SIMGE.
     clarify.
     exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des. rename sm into sm_init. clarify.
     esplits; eauto.
-    unfold load_genv in *.
-    eapply sim_ge_cons.
+    unfold load_genv in *. ss.
+    bar.
+    assert(exists msp_sys,
+              (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem (Sk.load_skenv sk_link_src)>>)
+              /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem (Sk.load_skenv sk_link_tgt)>>)
+              /\ (<<SYSSM: msp_sys.(ModSemPair.sm) = sm_init>>)
+              /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>).
+    { admit "raw admit. this should hold.". }
+    des.
+    rewrite <- SYSSRC. rewrite <- SYSTGT.
+    eapply sim_ge_cons; ss.
     - ii. destruct pp; ss.
-    - assert(exists msp_sys,
-                (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem (Genv.globalenv sk_link_src)>>)
-                /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem (Genv.globalenv sk_link_tgt)>>)
-                /\ (<<SYSSM: msp_sys.(ModSemPair.sm) = sm_init>>)
-                /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>).
-      { admit "raw admit. this should hold.". }
-      des.
-      econstructor 2 with (msps := [msp_sys]); ss; eauto.
-      + econs; eauto. eapply rtc_once. clarify. left. refl.
-      + rewrite SYSSRC. ss.
-      + rewrite SYSTGT. ss.
-    - ginduction pp; ii; ss.
+    - clear_until_bar. clear TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.
+      ginduction pp; ii; ss.
       unfold link_sk in *. ss.
       rename a into mp.
       apply link_list_cons_inv in SKSRC. des. rename restl into sk_src_tl.
@@ -329,44 +353,6 @@ End SIMGE.
 
 
 
-Section SIMSKENVLINK.
-
-  Context `{SM: SimMem.class}.
-  Context {SS: SimSymb.class SM}.
-
-  Definition sim_skenv_link (sm0: SimMem.t) (skenv_link_src skenv_link_tgt: SkEnv.t): Prop :=
-    exists ss_link, SimSymb.sim_skenv sm0 ss_link skenv_link_src skenv_link_tgt
-  .
-
-  Theorem mle_preserves_sim_skenv_link
-          sm0 ge_src ge_tgt
-          (SIMSKENV: sim_skenv_link sm0 ge_src ge_tgt)
-          sm1
-          (MLE: SimMem.le sm0 sm1)
-    :
-      <<SIMSKENV: sim_skenv_link sm1 ge_src ge_tgt>>
-  .
-  Proof.
-    inv SIMSKENV.
-    econs; eauto.
-    eapply SimSymb.mle_preserves_sim_skenv; eauto.
-  Qed.
-
-  Theorem mlift_preserves_sim_skenv_link
-          sm0 ge_src ge_tgt
-          (MWF: SimMem.wf sm0)
-          (SIMSKENV: sim_skenv_link sm0 ge_src ge_tgt)
-    :
-      <<SIMSKENV: sim_skenv_link (SimMem.lift sm0) ge_src ge_tgt>>
-  .
-  Proof.
-    inv SIMSKENV.
-    econs; eauto.
-    eapply SimSymb.mlift_preserves_sim_skenv; eauto.
-  Qed.
-
-
-End SIMSKENVLINK.
 
 
 
@@ -413,7 +399,6 @@ Section ADQMATCH.
       sm_arg
       (MWF: SimMem.wf sm_arg)
       (GE: sim_ge sm_arg sem_src.(globalenv) sem_tgt.(globalenv))
-      (SKENV: sim_skenv_link sm_arg skenv_link_src skenv_link_tgt)
       (MLE: SimMem.le tail_sm sm_arg)
       sm_init
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
@@ -455,7 +440,6 @@ Section ADQMATCH.
   | lxsim_lift_intro
       sm0
       (GE: sim_ge sm0 sem_src.(globalenv) sem_tgt.(globalenv))
-      (SKENV: sim_skenv_link sm0 skenv_link_src skenv_link_tgt)
       tail_src tail_tgt tail_sm
       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
       (MLE: SimMem.le tail_sm sm0)
@@ -472,7 +456,6 @@ Section ADQMATCH.
   | lxsim_lift_callstate
        sm_arg
        (GE: sim_ge sm_arg sem_src.(globalenv) sem_tgt.(globalenv))
-       (SKENV: sim_skenv_link sm_arg skenv_link_src skenv_link_tgt)
        tail_src tail_tgt tail_sm
        (STACK: lxsim_stack tail_sm tail_src tail_tgt)
        (MLE: SimMem.le tail_sm sm_arg)
@@ -515,7 +498,7 @@ Section ADQINIT.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
   Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
 
-  Let lxsim_lift := (@lxsim_lift _ _ pp sk_link_src sk_link_tgt).
+  Let lxsim_lift := (@lxsim_lift _ _ pp).
   Hint Unfold lxsim_lift.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
@@ -556,7 +539,6 @@ Section ADQINIT.
     - econs; eauto.
       + ss. folder. des_ifs.
       + hnf. econs; eauto.
-      + econs; eauto.
       + reflexivity.
     (* exploit SIM; eauto. i; des. *)
     (* bar. *)
@@ -605,7 +587,7 @@ Section ADQSTEP.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
   Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
 
-  Let lxsim_lift := (@lxsim_lift _ _ pp sk_link_src sk_link_tgt).
+  Let lxsim_lift := (@lxsim_lift _ _ pp).
   Hint Unfold lxsim_lift.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
@@ -677,7 +659,6 @@ Section ADQSTEP.
         instantiate (1:= sm_init).
         econs; try apply SIM0; eauto.
         + ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto.
-        + eapply mle_preserves_sim_skenv_link; eauto.
         + eapply lxsim_stack_le; eauto.
 
     }
@@ -697,7 +678,7 @@ Section ADQSTEP.
           ii. ss. rewrite LINKSRC in *.
           des.
           inv STEPSRC; ss; ModSem.tac; swap 2 3.
-          { exfalso. eauto. }
+          { exfalso. eapply SAFESRC; eauto. }
           { exfalso. eapply SAFESRC0. u. eauto. }
           exploit STEP; eauto. i; des_safe.
           exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt)).
@@ -708,7 +689,6 @@ Section ADQSTEP.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto. econs; eauto.
           { ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto. }
-          { eapply mle_preserves_sim_skenv_link; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dstar; eauto. }
@@ -732,7 +712,6 @@ Section ADQSTEP.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto. econs; eauto.
           { folder. ss; des_ifs. eapply mle_preserves_sim_ge; eauto. }
-          { eapply mle_preserves_sim_skenv_link; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_star; eauto. }
@@ -748,10 +727,11 @@ Section ADQSTEP.
       { eapply lift_receptive_at. admit "Add in ModSem.v". }
       i.
       inv STEPSRC; ss; ModSem.tac.
+      des_ifs.
       exploit CALLFSIM; eauto.
+      { clear - GE. inv GE. des. ss. eapply SimSymb.sim_skenv_func_bisim; eauto. }
       i; des.
       eapply mle_preserves_sim_ge with (sm2:= sm_arg) in GE; eauto.
-      eapply mle_preserves_sim_skenv_link with (sm2:= sm_arg) in SKENV; eauto.
       esplits; eauto.
       + left. apply plus_one.
         econs; ss; eauto.
@@ -763,13 +743,11 @@ Section ADQSTEP.
           instantiate (1:= (SimMem.lift sm_arg)).
           econs 2; eauto.
           * ss. folder. des_ifs. eapply mlift_preserves_sim_ge; eauto.
-          * eapply mlift_preserves_sim_skenv_link; eauto.
           * instantiate (1:= (SimMem.lift sm_arg)).
             econs; [eassumption|..]; revgoals.
             { ii. exploit K; eauto. i; des_safe. pclearbot. esplits; eauto. }
             { reflexivity. }
             { etransitivity; eauto. }
-            { ss. }
             { ss. folder. des_ifs. }
             { eauto. }
           * reflexivity.
@@ -813,17 +791,14 @@ Section ADQSTEP.
         econs 4; ss; eauto.
       + right. eapply CIH; eauto.
         instantiate (1:= (SimMem.unlift sm_arg sm0)).
-        econs; ss; cycle 2.
-        { eauto. }
-        { etransitivity; eauto.
-          eapply SimMem.unlift_spec; eauto.
-          etransitivity; eauto. }
+        econs; ss; cycle 3.
         { eauto. }
         { folder. des_ifs.
           eapply mle_preserves_sim_ge; eauto.
           eapply SimMem.unlift_spec; eauto.
           etransitivity; eauto. }
-        { eapply mle_preserves_sim_skenv_link; eauto.
+        { eauto. }
+        { etransitivity; eauto.
           eapply SimMem.unlift_spec; eauto.
           etransitivity; eauto. }
   Qed.

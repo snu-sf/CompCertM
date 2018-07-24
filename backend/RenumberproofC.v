@@ -224,7 +224,7 @@ Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt
+  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt (admit "")
 .
 
 Inductive match_states
@@ -250,7 +250,7 @@ Proof.
     assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
     { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
 
-    eexists. eexists (mk _ _).
+    eexists. eexists (SimMemId.mk _ _).
     esplits; eauto.
     + econs; eauto.
       instantiate (1:= (transf_function fd)).
@@ -263,61 +263,48 @@ Proof.
   - (* init progress *)
     des. inv SAFESRC. esplits; eauto. econs; eauto.
     admit "ez: match_genvs".
+  - (* call wf *)
+    inv MATCH; ss. destruct sm0; ss. clarify.
+    inv CALLSRC. inv MATCHST; ss.
   - (* call fsim *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     inv CALLSRC. inv MATCHST; ss.
-    fold_all ge.
+    folder.
     esplits; eauto.
     + econs; eauto.
       * fold_all tge.
         admit "ez: match_genvs".
-      * esplits; eauto.
-        ttttttttttt
-  - inv CALLSRC. des. inv MATCH. ss. destruct sm0; ss.
-    inv MATCHST; inv H; ss; clarify.
-    inv MCOMPAT. ss. fold_all ge. des. clarify.
-    u. esplits; eauto.
-    econs; eauto.
-    fold_all tge.
-    clearbody ge tge.
-    admit "simskenv - ez".
-  - inv CALLTGT. inv MATCH; ss. fold_all tge. u in *. destruct sm0; ss. inv MCOMPAT; ss. u in *. clarify.
-    do 2 eexists. eexists (SimMemId.mk _ _).
-    esplits; ss; eauto. inv MATCHST; ss.
-    econs; eauto.
-    u. fold_all ge.
-    admit "simskenv - ez".
-  - apply Axioms.functional_extensionality in SIMRSRET. clarify.
-    apply Axioms.functional_extensionality in SIMRSARG. clarify.
-    inv AFTERSRC. inv MATCH; ss. inv MCOMPAT. u in *. clarify.
-    apply Axioms.functional_extensionality in SIMRSINIT. clarify.
-    inv MATCHST; ss. des_ifs. clear_tac. destruct sm0; ss. clarify.
-    destruct sm_ret; ss. clarify.
+      * des. esplits; eauto. inv SIMSKENVLINK. exploit FUNCFSIM; eauto. i; des. clarify.
+    + econs; ss; eauto.
+      * admit "ez".
+      * instantiate (1:= SimMemId.mk _ _). ss.
+      * ss.
+    + ss.
+  - (* after fsim *)
+    inv AFTERSRC.
+    inv SIMRSRET. ss. destruct sm_ret; ss. clarify.
+    inv MATCH; ss. inv MATCHST; ss.
     esplits; eauto.
     + econs; eauto.
-    + econs; ss; eauto.
-      econs; eauto.
-  - inv FINALSRC. inv MATCH; ss. inv MATCHST; ss. inv MCOMPAT0; ss. u in *. destruct sm0; ss. des_ifs.
-    inv STACKS; ss. inv MCOMPAT; ss. u in *. des_ifs. clear_tac.
-    apply Axioms.functional_extensionality in SIMRSINIT. clarify.
+    + econs; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
+  - (* final fsim *)
+    inv MATCH. inv FINALSRC; inv MATCHST; ss.
+    inv STACKS; ss. destruct sm0; ss. clarify.
     esplits; eauto.
-    + apply final_frame_intro with (fd:= transf_function fd); eauto.
-      fold_all ge. u. fold_all tge.
-      admit "simskenv - ez".
-    + ii; ss.
+    + econs; eauto.
+    + econs; eauto. ss.
   - esplits; eauto.
     { apply modsem_receptive. }
     inv MATCH.
-    apply Axioms.functional_extensionality in SIMRSINIT. clarify.
+    (* apply Axioms.functional_extensionality in SIMRSINIT. clarify. *)
     ii. hexploit (@step_simulation prog ge tge); eauto.
     { ii. eapply not_external; eauto. }
     i; des.
     esplits; eauto.
     + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.
     + instantiate (1:= SimMemId.mk _ _). econs; ss.
-    + econs; ss; eauto.
 Unshelve.
-  all: try (by econs).
+  all: ss; try (by econs).
 Qed.
 
 End SIMMODSEM.

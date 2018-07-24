@@ -91,13 +91,13 @@ Section MODSEM.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
-  Inductive at_external: state -> Args.t -> Prop :=
+  Inductive at_external (skenv_link: SkEnv.t): state -> Args.t -> Prop :=
   | at_external_intro
       stack fptr_arg sg_arg vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.sig_compat skd sg_arg)
     :
-      at_external (Callstate stack fptr_arg sg_arg vs_arg m0)
+      at_external skenv_link (Callstate stack fptr_arg sg_arg vs_arg m0)
                   (Args.mk fptr_arg vs_arg m0)
   .
 

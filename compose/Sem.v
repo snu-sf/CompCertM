@@ -44,11 +44,11 @@ End Frame.
 
 Module Ge.
 
-  Definition t: Type := list ModSem.t.
+  Definition t: Type := (list ModSem.t * SkEnv.t).
 
   Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=
   | find_fptr_owner_intro
-      (MODSEM: In ms ge)
+      (MODSEM: In ms ge.(fst))
       if_sig
       (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig))
   .
@@ -76,7 +76,7 @@ Inductive state: Type :=
 Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 | step_call
     fr0 frs args
-    (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) args)
+    (AT: fr0.(Frame.ms).(ModSem.at_external) ge.(snd) fr0.(Frame.st) args)
   :
     step ge (State (fr0 :: frs))
          E0 (Callstate args (fr0 :: frs))
@@ -146,7 +146,7 @@ Section SEMANTICS.
   (*   option_map (fun skenv => (Ge.mk skenv (init_modsem skenv))) init_skenv. *)
   Definition load_genv (init_skenv: SkEnv.t): Ge.t :=
     let (system, skenv) := load_system init_skenv in
-    system :: (load_modsems init_skenv)
+    (system :: (load_modsems init_skenv), init_skenv)
   .
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
@@ -177,7 +177,7 @@ Section SEMANTICS.
     (Semantics_gen step initial_state final_state
                    (match link_sk with
                     | Some sk_link => load_genv sk_link.(Sk.load_skenv)
-                    | None => nil
+                    | None => (nil, SkEnv.empty)
                     end)
                    (admit "dummy for now. it is not used"))
   .

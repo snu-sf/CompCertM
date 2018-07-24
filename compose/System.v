@@ -76,7 +76,7 @@ Section SYSMODSEM.
     ModSem.state := state;
     ModSem.genvtype := genvtype;
     ModSem.step := step;
-    ModSem.at_external := bot2;
+    ModSem.at_external := bot3;
     ModSem.initial_frame := initial_frame;
     ModSem.final_frame := final_frame;
     ModSem.after_external := bot3;

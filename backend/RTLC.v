@@ -8,7 +8,6 @@ Require Export Simulation RTL.
 Require Import Skeleton Mod ModSem.
 Require Import AsmregsC.
 Require Import Conventions.
-Require Import ArgPassing.
 (* Require Import Locations. *)
 
 Set Implicit Arguments.

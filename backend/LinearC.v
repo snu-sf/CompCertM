@@ -4,7 +4,7 @@ Require Import Op LocationsC LTL Conventions.
 (** newly added **)
 Require Export Linear.
 Require Import Skeleton Mod ModSem.
-Require Import Simulation AsmregsC ArgPassing.
+Require Import Simulation AsmregsC.
 
 Set Implicit Arguments.
 

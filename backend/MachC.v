@@ -14,7 +14,7 @@ Require Stacklayout.
 (** newly added **)
 Require Export Mach.
 Require Import Skeleton Mod ModSem.
-Require Import Simulation Integers ArgPassing.
+Require Import Simulation Integers.
 
 Set Implicit Arguments.
 

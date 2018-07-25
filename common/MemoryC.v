@@ -25,8 +25,46 @@ Require Export Memory.
 
 
 
+Lemma Mem_unchanged_on_trans_strong
+      P m0 m1 m2
+      (UNCH0: Mem.unchanged_on P m0 m1)
+      (UNCH1: Mem.unchanged_on (P /2\ (fun b _ => Mem.valid_block m0 b)) m1 m2)
+  :
+    <<UNCH2: Mem.unchanged_on P m0 m2>>
+.
+Proof.
+  inv UNCH0. inv UNCH1.
+  econs; i.
+  - xomega.
+  - etransitivity.
+    { eapply unchanged_on_perm; eauto. }
+    eapply unchanged_on_perm0; eauto.
+    { unfold Mem.valid_block in *. xomega. }
+  - erewrite <- unchanged_on_contents; eauto.
+    dup H0. apply Mem.perm_valid_block in H1. unfold Mem.valid_block in *.
+    erewrite <- unchanged_on_contents0; eauto.
+    eapply unchanged_on_perm; eauto.
+Qed.
+
+Lemma Mem_alloc_range_perm
+      m0 lo hi m1 blk
+      (ALLOC: Mem.alloc m0 lo hi = (m1, blk))
+  :
+    <<PERM: Mem.range_perm m1 blk lo hi Cur Freeable>>
+.
+Proof.
+  ii. eapply Mem.perm_alloc_2; eauto.
+Qed.
+
+Hint Resolve Mem_alloc_range_perm : mem.
 
 Definition dead_block (m: mem) (b: block): Prop := forall ofs, ~Mem.perm m b ofs Cur Nonempty.
+
+Inductive mem_equiv (m0 m1: mem): Prop :=
+| mem_equiv_intro
+    (UNCH: Mem.unchanged_on top2 m0 m1)
+    (DEAD: forall b (BETWEEN: (m0.(Mem.nextblock) <= b < m1.(Mem.nextblock))%positive), dead_block m1 b)
+.
 
 Definition update_meminj (F: meminj) (blk_src blk_tgt: block) (delta: Z): meminj :=
   fun blk: block => if eq_block blk blk_src then Some (blk_tgt, delta) else F blk

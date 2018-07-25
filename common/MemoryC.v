@@ -727,16 +727,6 @@ End STORED.
 
 
 
-Section LOADABLE.
-
-Inductive Mem_loadable (chunk: memory_chunk) (m0: mem) (b: block) (ofs: Z) (v: val): Prop :=
-| loadable_intro
-    (LOADABLE: Mem.load chunk m0 b ofs = Some v)
-.
-
-End LOADABLE.
-
-
 
 
 Section UNFREE.

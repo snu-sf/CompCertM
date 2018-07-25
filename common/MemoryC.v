@@ -26,6 +26,8 @@ Require Export Memory.
 
 
 
+Definition dead_block (m: mem) (b: block): Prop := forall ofs, ~Mem.perm m b ofs Cur Nonempty.
+
 Definition update_meminj (F: meminj) (blk_src blk_tgt: block) (delta: Z): meminj :=
   fun blk: block => if eq_block blk blk_src then Some (blk_tgt, delta) else F blk
 .

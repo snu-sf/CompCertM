@@ -675,8 +675,6 @@ Hint Unfold is_stack_block.
 
 End DEPRECATED.
 
-Definition dead_block (m: mem) (b: block): Prop := forall ofs, ~Mem.perm m b ofs Cur Nonempty.
-
 Inductive mem_equiv (m0 m1: mem): Prop :=
 | mem_equiv_intro
     (UNCH: Mem.unchanged_on top2 m0 m1)

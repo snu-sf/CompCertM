@@ -408,41 +408,41 @@ Proof.
     + exploit Mem.nextblock_store; eauto. i. rewrite H1. xomega.
 Qed.
 
-Lemma store_stored_simmem
-      sm0
-      (MWF: SimMem.wf sm0)
-      m_src1
-      v_src v_tgt
-      (INJV: Val.inject sm0.(inj) v_src v_tgt) 
-      ty rsp_src rsp_tgt rspdelta ofs
-      (SRC: Mem.storev (chunk_of_type ty) sm0.(m_src) (Vptr rsp_src ofs true) v_src = Some m_src1)
-      (TGT: Mem_stored (chunk_of_type ty) sm0.(m_tgt) rsp_tgt (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) v_tgt)
-      (INJRSP: sm0.(inj) rsp_src = Some (rsp_tgt, rspdelta.(Ptrofs.unsigned)))
-      (BOUND: Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta <= Ptrofs.max_unsigned)
-  :
-    let sm1 := (mk sm0.(inj) m_src1 sm0.(m_tgt)
-                         sm0.(src_external) sm0.(tgt_external)
-                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in
-    <<MWF: SimMem.wf sm1>> /\
-    <<MLE: SimMem.le sm0 sm1>>
-.
-Proof.
-  exploit store_stored_inject; eauto. { apply MWF. } i; des.
-  subst_locals. inv MWF.
-  esplits; eauto.
-  - econs; ss; eauto.
-    + etransitivity; eauto. u; ss. ii; des. esplits; eauto with mem.
-    + etransitivity; eauto. u. unfold loc_out_of_reach. ii; des; esplits; eauto with mem.
-      ii. eapply PR; eauto. eauto with mem.
-    + etransitivity; eauto. eauto with mem.
-      exploit Mem.nextblock_store; eauto. i. rewrite H0. xomega.
-  - econs; ss; eauto with mem; try xomega.
-    + eapply Mem.unchanged_on_implies with (P:= sm0.(src_private)).
-      { eapply Mem.store_unchanged_on; eauto. u. unfold loc_unmapped. ii; des; ss. clarify. }
-      i. eauto.
-    + eapply frozen_refl; eauto.
-    + exploit Mem.nextblock_store; eauto. i. rewrite H0. xomega.
-Qed.
+(* Lemma store_stored_simmem *)
+(*       sm0 *)
+(*       (MWF: SimMem.wf sm0) *)
+(*       m_src1 *)
+(*       v_src v_tgt *)
+(*       (INJV: Val.inject sm0.(inj) v_src v_tgt)  *)
+(*       ty rsp_src rsp_tgt rspdelta ofs *)
+(*       (SRC: Mem.storev (chunk_of_type ty) sm0.(m_src) (Vptr rsp_src ofs true) v_src = Some m_src1) *)
+(*       (TGT: Mem_stored (chunk_of_type ty) sm0.(m_tgt) rsp_tgt (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) v_tgt) *)
+(*       (INJRSP: sm0.(inj) rsp_src = Some (rsp_tgt, rspdelta.(Ptrofs.unsigned))) *)
+(*       (BOUND: Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta <= Ptrofs.max_unsigned) *)
+(*   : *)
+(*     let sm1 := (mk sm0.(inj) m_src1 sm0.(m_tgt) *)
+(*                          sm0.(src_external) sm0.(tgt_external) *)
+(*                          sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in *)
+(*     <<MWF: SimMem.wf sm1>> /\ *)
+(*     <<MLE: SimMem.le sm0 sm1>> *)
+(* . *)
+(* Proof. *)
+(*   exploit store_stored_inject; eauto. { apply MWF. } i; des. *)
+(*   subst_locals. inv MWF. *)
+(*   esplits; eauto. *)
+(*   - econs; ss; eauto. *)
+(*     + etransitivity; eauto. u; ss. ii; des. esplits; eauto with mem. *)
+(*     + etransitivity; eauto. u. unfold loc_out_of_reach. ii; des; esplits; eauto with mem. *)
+(*       ii. eapply PR; eauto. eauto with mem. *)
+(*     + etransitivity; eauto. eauto with mem. *)
+(*       exploit Mem.nextblock_store; eauto. i. rewrite H0. xomega. *)
+(*   - econs; ss; eauto with mem; try xomega. *)
+(*     + eapply Mem.unchanged_on_implies with (P:= sm0.(src_private)). *)
+(*       { eapply Mem.store_unchanged_on; eauto. u. unfold loc_unmapped. ii; des; ss. clarify. } *)
+(*       i. eauto. *)
+(*     + eapply frozen_refl; eauto. *)
+(*     + exploit Mem.nextblock_store; eauto. i. rewrite H0. xomega. *)
+(* Qed. *)
 
 
 

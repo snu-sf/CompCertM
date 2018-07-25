@@ -454,32 +454,6 @@ Proof.
   determ_tac B2A_dtm.
 Qed.
 
-Lemma D2A_old_dtm0
-      rs_arg m_arg sg_init0 sg_init1
-      fptr_init0 fptr_init1 vs_init0 vs_init1 m_init0 m_init1
-      (DA0: D2A_old sg_init0 rs_arg m_arg fptr_init0 vs_init0 m_init0)
-      (DA1: D2A_old sg_init1 rs_arg m_arg fptr_init1 vs_init1 m_init1)
-  :
-    fptr_init0 = fptr_init1
-.
-Proof.
-  inv DA0. inv DA1. clarify.
-Qed.
-
-Lemma D2A_old_dtm1
-      rs_arg m_arg sg_init
-      fptr_init vs_init0 vs_init1 m_init0 m_init1
-      (DA0: D2A_old sg_init rs_arg m_arg fptr_init vs_init0 m_init0)
-      (DA1: D2A_old sg_init rs_arg m_arg fptr_init vs_init1 m_init1)
-  :
-    vs_init0 = vs_init1 /\ m_init0 = m_init1
-.
-Proof.
-  inv DA0. inv DA1.
-  rewrite RSPPTR in *. clarify.
-  determ_tac extcall_arguments_determ.
-Qed.
-
 Lemma D2B_dtm0
       rs_arg m_arg sg_init0 sg_init1
       fptr_init0 fptr_init1 ls_init0 ls_init1 m_init0 m_init1

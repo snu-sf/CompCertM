@@ -1,5 +1,5 @@
 Require Import CoqlibC.
-Require Import ASTC Integers Values MemoryC Events GlobalenvsC Smallstep.
+Require Import ASTC Integers ValuesC MemoryC Events GlobalenvsC Smallstep.
 Require Import Op LocationsC LTL Conventions.
 (** newly added **)
 Require Export Linear.
@@ -261,116 +261,127 @@ Section MODSEM.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
-  Inductive at_external: state -> regset -> mem -> Prop :=
+  Inductive at_external (skenv_link: SkEnv.t): state -> Args.t -> Prop :=
   | at_external_intro
-      stack fptr_arg sg_arg ls_arg rs_arg m_arg_pre m_arg
-      (EXTERNAL: Genv.find_funct ge fptr_arg = None)
-      (BD: Call.B2D sg_arg fptr_arg ls_arg m_arg_pre rs_arg m_arg)
-      (* vs_arg *)
-      (* (ARGS: vs_arg = (map (fun p => Locmap.getpair p ls_arg) (loc_arguments sg_arg))) *)
-      (* (STORE: store_arguments fptr_arg vs_arg m_arg_pre sg_arg rs_arg m_arg) *)
+      stack fptr_arg sg ls vs_arg m0
+      (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg)
+      (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg))
     :
-      at_external (Callstate stack fptr_arg sg_arg ls_arg m_arg_pre)
-                  rs_arg m_arg
+      at_external skenv_link (Callstate stack fptr_arg sg ls m0)
+                  (Args.mk fptr_arg vs_arg m0)
   .
 
-  (* Inductive initial_frame (rs_arg: regset) (m_arg: mem) *)
-  (*   : state -> Prop := *)
-  (* | initial_frame_intro *)
-  (*     fptr_arg fd *)
-  (*     (FINDF: Genv.find_funct ge fptr_arg = Some (Internal fd)) *)
-  (*     vs_arg m_init *)
-  (*     (LOAD: load_arguments rs_arg m_arg fd.(fn_sig) fptr_arg vs_arg m_init) *)
-  (*   : *)
-  (*     initial_frame rs_arg m_arg *)
-  (*                   (Callstate [] fptr_arg fd.(fn_sig) vs_arg m_init) *)
-  (* . *)
-
-  Inductive initial_frame (rs_arg: regset) (m_arg: mem)
+  Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fptr_arg fd sg_init
-      (FINDFUNC: Genv.find_funct ge fptr_arg = Some (Internal fd))
-      (SIG: sg_init = fd.(fn_sig))
-      ls_init m_init
-      (DB: Call.D2B sg_init rs_arg m_arg fptr_arg ls_init m_init)
+      fd ls_init sg
+      (SIG: sg = fd.(fn_sig))
+      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
+      (LOCSET: args.(Args.vs) = map (fun p => Locmap.getpair p ls_init) (loc_arguments sg))
+      (PTRFREE: forall
+          loc
+          (NOTIN: Loc.notin loc (regs_of_rpairs (loc_arguments sg)))
+        ,
+          <<PTRFREE: ~ is_real_ptr (ls_init loc)>>)
     :
-      initial_frame rs_arg m_arg
-                    (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_init)
+      initial_frame args
+                    (Callstate [dummy_stack sg ls_init] args.(Args.fptr) sg ls_init args.(Args.m))
   .
 
-  (* Inductive initial_frame_old (rs_arg: regset) (m_arg: mem) *)
-  (*   : state -> Prop := *)
-  (* | initial_frame_intro_old *)
-  (*     fptr_arg fd sg_init *)
-  (*     (FINDFUNC: Genv.find_funct ge fptr_arg = Some (Internal fd)) *)
-  (*     (SIG: sg_init = fd.(fn_sig)) *)
-
-  (*     vs_init m_init *)
-  (*     (LOADARG: load_arguments rs_arg m_arg sg_init fptr_arg vs_init m_init) *)
-
-  (*     (* (LOCSET: fill_slots rs_arg.(to_locset) (loc_arguments sg_init) rs_arg m_arg ls_init) *) *)
-  (*     ls_init *)
-  (*     (LOCSET: fill_arguments (Locmap.init Vundef) vs_init (loc_arguments sg_init) = Some ls_init) *)
-
-  (*     (* sp delta *) *)
-  (*     (* (RSPPTR: rs_arg RSP = Vptr sp (Ptrofs.repr delta) true) *) *)
-  (*     (* (ARGSPERM: Mem.range_perm m_arg sp delta (size_arguments fd.(fn_sig)) Cur Writable) *) *)
-
-  (*     (* (ARGSPERM: Mem.range_perm m_arg sp 0 (size_arguments fd.(fn_sig)) Cur Writable) *) *)
-  (*     (* (RSPSTK: m_arg.(is_stack_block) sp) *) *)
-  (*   : *)
-  (*     initial_frame rs_arg m_arg *)
-  (*                   (Callstate [(dummy_stack sg_init ls_init)] fptr_arg sg_init ls_init m_init) *)
-  (* . *)
-
-  Inductive final_frame (rs_init: regset): state -> regset -> Prop :=
+  Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_intro
-      ls_ret rs_ret m_ret
-      dummy_stack
-      (REGSET: rs_ret = ls_ret.(to_regset))
+      ls0 m0
+      sg_init ls_init v0
+      (VAL: Locmap.getpair (map_rpair R (loc_result sg_init)) ls0 = v0)
     :
-      final_frame rs_init (Returnstate [dummy_stack] ls_ret m_ret) rs_ret
+      final_frame (Returnstate [dummy_stack sg_init ls_init] ls0 m0) (Retv.mk v0 m0)
   .
 
-  Inductive after_external: state -> regset -> regset -> mem -> state -> Prop :=
+  Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
-      stack fptr_arg sg_arg ls_arg m_arg
-      rs_arg rs_ret m_ret
-      ls_ret
-      (CALLEESAVE: callee_saved sg_arg rs_arg rs_ret)
-      (LOCSET: ls_ret = update_locset ls_arg rs_ret)
+      stack fptr_arg sg_arg ls_arg m_arg retv
+      ls_after
+      (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg) retv.(Retv.v) (locset_after_external ls_arg))
     :
-      after_external (Callstate stack fptr_arg sg_arg ls_arg m_arg) rs_arg rs_ret m_ret
-                     (Returnstate stack ls_ret m_ret)
+      after_external (Callstate stack fptr_arg sg_arg ls_arg m_arg)
+                     retv
+                     (Returnstate stack ls_after retv.(Retv.m))
   .
 
   Program Definition modsem: ModSem.t :=
     {|
       ModSem.step := step;
-      ModSem.get_mem := get_mem;
       ModSem.at_external := at_external;
       ModSem.initial_frame := initial_frame;
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external;
-      ModSem.globalenv := ge; (* TODO: Change this properly *)
-      ModSem.skenv := skenv;
+      ModSem.globalenv := ge;
+      ModSem.skenv := skenv; 
     |}
   .
-  Next Obligation. all_prop_inv; ss. Qed.
-  Next Obligation.
-    inv INIT0; inv INIT1; ss.
-    determ_tac Call.D2B_dtm0.
-    determ_tac Call.D2B_dtm1.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. do 2 inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. do 2 inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. do 2 inv_all_once; ss; clarify. Qed.
+
+
+  Lemma not_external
+    :
+      is_external ge <1= bot1
+  .
+  Proof.
+    ii. hnf in PR. des_ifs.
+    subst_locals.
+    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
+    eapply SkEnv.revive_no_external; eauto.
   Qed.
-  Next Obligation. all_prop_inv; ss. Qed.
-  Next Obligation. all_prop_inv; ss. Qed.
-  Next Obligation.
-    ii. des. inv PR. inv PR0; inv STEP; ss; clarify.
-    (* hnf. inv H4; inv H2; subst_locals; all_rewrite; ss; des_ifs. *)
+
+
+
+  Lemma lift_determinate_at
+        st0
+        (DTM: determinate_at (semantics_with_ge ge) st0)
+    :
+      determinate_at modsem st0
+  .
+  Proof.
+    inv DTM. econs; eauto; ii; ss.
+    - inv H. inv H0. determ_tac sd_determ_at. esplits; eauto.
+      eapply match_traces_preserved; try eassumption. ii; ss.
+    - inv H. exploit sd_traces_at; eauto.
   Qed.
-  Next Obligation. ii. des. all_prop_inv; ss. Qed.
-  Next Obligation. ii. des. all_prop_inv; ss. Qed.
+
+  Lemma modsem_determinate
+        st
+    :
+      determinate_at modsem st
+  .
+  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
+
+  Lemma lift_receptive_at
+        st
+        (RECEP: receptive_at (semantics_with_ge ge) st)
+    :
+      receptive_at modsem st
+  .
+  Proof.
+    inv RECEP. econs; eauto; ii; ss.
+    - inv H. exploit sr_receptive_at; eauto.
+      { eapply match_traces_preserved; try eassumption. ii; ss. }
+      i; des. esplits; eauto. econs; eauto. admit "prove get_stack length is deterministic or something..".
+    - inv H. exploit sr_traces_at; eauto.
+  Qed.
+
+  Lemma modsem_receptive
+        st
+    :
+      receptive_at modsem st
+  .
+  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
+
 
 End MODSEM.
 

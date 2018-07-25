@@ -272,7 +272,7 @@ Section STYLES.
       (FPTR: prs_arg PC = fptr_init)
       (PERM: Mem.range_perm m_arg sp 0 (4 * (size_arguments sg)) Cur Writable)
       (VAL: extcall_arguments prs_arg m_arg sg vs_init)
-      (DROP: Mem_drop_perm_none m_arg sp 0 (4 * (size_arguments sg)) = m_init)
+      (DROP: Mem.free m_arg sp 0 (4 * (size_arguments sg)) = Some m_init)
       (RAPTR: is_fake_ptr (prs_arg RA))
       (BOUND: DUMMY_PROP) (* 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
   .

@@ -22,6 +22,9 @@ Require Import SimMemInj.
 
 
 
+Section MEMINJ.
+  
+Context `{CTX: Val.meminj_ctx}.
 
 (* Definition t': Type := ident -> bool. *)
 Definition t': Type := ident -> Prop.
@@ -83,7 +86,7 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
         exists def_tgt, <<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>> /\
                                   <<DELTA: delta = Ptrofs.zero>> /\
                                            <<REAL: isreal = true>> /\
-                                                   <<SIM: sim_def def_src def_tgt>>)
+                                                   <<SIM: def_src = def_tgt>>)
     (SIMDEFINV: forall
         blk_src blk_tgt delta def_tgt isreal
         (SIMFPTR: sm0.(SimMem.sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta isreal))
@@ -92,7 +95,7 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
         exists def_src, <<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>> /\
                                   <<DELTA: delta = Ptrofs.zero>> /\
                                            <<REAL: isreal = true>> /\
-                                                   <<SIM: sim_def def_src def_tgt>>)
+                                                   <<SIM: def_src = def_tgt>>)
 .
 
 Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
@@ -133,7 +136,7 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
         exists def_tgt, <<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>> /\
                                   <<DELTA: delta = Ptrofs.zero>> /\
                                            <<REAL: isreal = true>> /\
-                                                   (<<SIM: sim_def def_src def_tgt>>)>>)
+                                                   (<<SIM: def_src = def_tgt>>)>>)
     /\
     (<<SIMDEFINV: forall
         blk_src blk_tgt delta def_tgt isreal
@@ -143,7 +146,7 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
         exists def_src, <<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>> /\
                                   <<DELTA: delta = Ptrofs.zero>> /\
                                            <<REAL: isreal = true>> /\
-                                                   <<SIM: sim_def def_src def_tgt>>>>)
+                                                   <<SIM: def_src = def_tgt>>>>)
 .
 
 Theorem sim_skenv_splittable_spec
@@ -173,14 +176,6 @@ Global Program Instance Linker_t: Linker t' := {|
   link := link_ss;
   linkorder (ss0 ss1: t') := ss0 <1= ss1;
 |}.
-
-Global Program Instance sim_def_PreOrder: RelationClasses.PreOrder sim_def.
-Next Obligation.
-  admit "easy".
-Qed.
-Next Obligation.
-  admit "easy".
-Qed.
 
 
 Lemma linkorder_defs
@@ -370,7 +365,7 @@ Next Obligation.
 
     exploit SPLITHINT; eauto. i; des.
     move DEFSRC at bottom. move H0 at bottom.
-    assert(def_src = skd).
+    assert(def_src = def_tgt).
     { exploit DEFKEEP; eauto. eapply Genv.find_invert_symbol; eauto. i.
       rewrite DEFSRC in *. rewrite H0 in *. des. clarify. } clarify.
     esplits; eauto.
@@ -417,8 +412,8 @@ Next Obligation.
       { admit "". }
       inv MEMWF. inv PUBLIC0.
       apply NNPP. ii.
-      move SIMFPTR at bottom. move SIM0 at bottom.
-      inv SIMFPTR. inv SIM0. rewrite Ptrofs.add_zero_l in *.
+      move SIMFPTR at bottom. move SIM at bottom.
+      inv SIMFPTR. inv SIM. rewrite Ptrofs.add_zero_l in *.
       About mi_no_overlap.
       assert(delta = 0).
       { admit "This is not true!".
@@ -436,7 +431,8 @@ Next Obligation.
         (* dependent destruction H6. *)
         (* inv H6. clarify. *)
       }
-      admit "Add disjointness in sim_skenv or relax meminj_no_overlap with Ptrofs.modulus or somehow...". }
+      admit "Add disjointness in sim_skenv or relax meminj_no_overlap with Ptrofs.modulus or somehow...".
+    }
     clarify.
 
     inv LESRC.
@@ -469,4 +465,6 @@ Next Obligation.
     apply n.
     rewrite Ptrofs.add_zero_l in *. rewrite DELTA in *. rewrite Ptrofs.add_zero in *. clarify.
 Qed.
+
+End MEMINJ.
 

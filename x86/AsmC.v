@@ -111,20 +111,20 @@ Section MODSEM.
       (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (1 + ofs.(Ptrofs.unsigned) + (size_arguments sg)) = Some m1)
       init_rs
     :
-      at_external skenv_link (mkstate init_rs (State rs m0)) (Args.mk fptr vs m0)
+      at_external skenv_link (mkstate init_rs (State rs m0)) (Args.mk fptr vs m1)
   .
 
   Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fd m0 rs blk
+      fd m0 m1 rs blk
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (ALLOC: Mem.alloc args.(Args.m) 0 (size_arguments fd.(fn_sig)) = (m0, blk))
       (PC: rs # PC = args.(Args.fptr))
       (RPS: rs # RSP = Vptr blk Ptrofs.zero true)
-      (VALS: extcall_arguments rs m0 fd.(fn_sig) args.(Args.vs))
+      (VALS: extcall_arguments rs m1 fd.(fn_sig) args.(Args.vs))
     :
-      initial_frame args (mkstate rs (State rs m0))
+      initial_frame args (mkstate rs (State rs m1))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
@@ -140,29 +140,12 @@ Section MODSEM.
       final_frame (mkstate init_rs (State rs m0)) (Retv.mk (rs mr.(to_preg)) m1)
   .
 
-  (* TODO: Push this into original compcert *)
-  Definition after_external_rs (rs0: regset): regset :=
-    fun pr =>
-      match pr.(to_mreg) with
-      | Some mr =>
-        if Conventions1.is_callee_save mr
-        then rs0 pr
-        else Vundef
-      | None =>
-        match pr with
-        | RSP => rs0 pr
-        | PC => rs0 RA
-        | _ => Vundef
-        end
-      end
-  .
-
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       init_rs rs0 m0 rs1 m1 retv
       sg blk ofs
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC) = Some skd /\ SkEnv.get_sig skd = sg)
-      (RS: rs1 = (set_pair (loc_external_result sg) retv.(Retv.v) (after_external_rs rs0)))
+      (RS: rs1 = (set_pair (loc_external_result sg) retv.(Retv.v) (Asmregs.regset_after_external rs0)))
       (RSP: rs0 RSP = Vptr blk ofs true)
       (UNFREE: Mem_unfree m0 blk ofs.(Ptrofs.unsigned) (1 + ofs.(Ptrofs.unsigned) + (size_arguments sg)) = Some m1)
     :
@@ -188,7 +171,10 @@ Section MODSEM.
       ModSem.skenv := skenv; 
     |}
   .
-  Next Obligation. ii; ss; des. inv_all_once; des; ss; clarify. determ_tac extcall_arguments_determ. Qed.
+  Next Obligation.
+    ii; ss; des. inv_all_once; des; ss; clarify. rewrite RSP in *. clarify.
+    determ_tac extcall_arguments_determ.
+  Qed.
   Next Obligation.
     ii; ss; des. inv_all_once; des; ss; clarify.
     rewrite INITRSP in *. clarify.

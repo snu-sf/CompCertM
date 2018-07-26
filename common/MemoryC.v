@@ -25,6 +25,11 @@ Require Export Memory.
 
 
 
+Global Program Instance mem_unchanged_on_PreOrder P: RelationClasses.PreOrder (Mem.unchanged_on P).
+Next Obligation. ii; ss. eapply Mem.unchanged_on_refl. Qed.
+Next Obligation. ii; ss. eapply Mem.unchanged_on_trans; eauto. Qed.
+
+
 Lemma Mem_unchanged_on_trans_strong
       P m0 m1 m2
       (UNCH0: Mem.unchanged_on P m0 m1)

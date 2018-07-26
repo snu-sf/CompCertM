@@ -398,10 +398,6 @@ Proof.
   admit "ez".
 Qed.
 
-Global Program Instance mem_unchanged_on_PreOrder P: RelationClasses.PreOrder (Mem.unchanged_on P).
-Next Obligation. ii; ss. eapply Mem.unchanged_on_refl. Qed.
-Next Obligation. ii; ss. eapply Mem.unchanged_on_trans; eauto. Qed.
-
 Local Opaque sepconj.
 Local Opaque function_bounds.
 Local Opaque make_env.

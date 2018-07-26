@@ -25,22 +25,6 @@ Qed.
 
 Definition locset := Locmap.t.
 
-Fixpoint fill_arguments (ls0: locset) (args: list val) (locs: list (rpair loc)): option locset :=
-  match args, locs with
-  | [], [] => Some ls0
-  | arg :: args, loc :: locs =>
-    match fill_arguments ls0 args locs with
-    | Some ls1 =>
-      match loc with
-      | One loc => Some (Locmap.set loc arg ls1)
-      | Twolong hi lo => Some (Locmap.set lo arg.(Val.loword) (Locmap.set hi arg.(Val.hiword) ls1))
-      end
-    | None => None
-    end
-  | _, _ => None
-  end
-.
-
 Local Opaque Z.mul Z.add.
 Local Opaque list_nth_z.
 
@@ -51,7 +35,7 @@ Definition is_one A (ap: rpair A): bool :=
   end
 .
 
-(* THIS IS HACKING *)
+(* Note: this is hacking for 64bit. It just simplifies proof, we don't exploit anything weird *)
 Lemma loc_arguments_one
       sg
   :
@@ -214,6 +198,24 @@ Proof.
   eapply Z_div_le; eauto.
   xomega.
 Qed.
+
+Module DEPR.
+
+Fixpoint fill_arguments (ls0: locset) (args: list val) (locs: list (rpair loc)): option locset :=
+  match args, locs with
+  | [], [] => Some ls0
+  | arg :: args, loc :: locs =>
+    match fill_arguments ls0 args locs with
+    | Some ls1 =>
+      match loc with
+      | One loc => Some (Locmap.set loc arg ls1)
+      | Twolong hi lo => Some (Locmap.set lo arg.(Val.loword) (Locmap.set hi arg.(Val.hiword) ls1))
+      end
+    | None => None
+    end
+  | _, _ => None
+  end
+.
 
 Lemma fill_arguments_spec_slot
       (rs: regset) m sg vs ls
@@ -400,4 +402,78 @@ Proof.
   }
 Qed.
 
+End DEPR.
+
+
+Definition locmap_put (l: loc) (v: val) (ls: locset): locset :=
+  fun loc =>
+    if Loc.eq loc l
+    then v
+    else ls loc
+.
+
+Hint Unfold locmap_put.
+
+Fixpoint fill_arguments (ls0: locset) (args: list val) (locs: list (rpair loc)): option locset :=
+  match args, locs with
+  | [], [] => Some ls0
+  | arg :: args, loc :: locs =>
+    match fill_arguments ls0 args locs with
+    | Some ls1 =>
+      match loc with
+      | One loc => Some (locmap_put loc arg ls1)
+      | Twolong hi lo => (* not used *)
+        Some (Locmap.set lo arg.(Val.loword) (Locmap.set hi arg.(Val.hiword) ls1))
+      end
+    | None => None
+    end
+  | _, _ => None
+  end
+.
+
+Lemma fill_arguments_progress
+      ls0 args locs
+      (LEN: length args = length locs)
+  :
+      exists ls1, <<LS: fill_arguments ls0 args locs =Some ls1>>
+.
+Proof.
+  ginduction args; ii; destruct locs; ss.
+  - esplits; eauto.
+  - exploit IHargs; eauto. i; des. rewrite LS. des_ifs; esplits; eauto.
+Qed.
+
+Lemma fill_arguments_spec
+      vs sg locs ls0 ls1
+      (LOCS: locs = loc_arguments sg)
+      (FILL: fill_arguments ls0 vs locs = Some ls1)
+  :
+    <<FILL: vs = map (fun p => Locmap.getpair p ls1) locs>> /\
+    <<OUT: forall
+              loc
+              (NOTIN: Loc.notin loc (regs_of_rpairs locs))
+            ,
+              ls1 loc = ls0 loc>>
+.
+Proof.
+  subst.
+  assert(ONES: forall lp, In lp (loc_arguments sg) -> is_one lp).
+  { i. eapply loc_arguments_one; eauto. }
+  assert(NOREPT: Loc.norepet (regs_of_rpairs (loc_arguments sg))).
+  { apply loc_arguments_norepet. }
+  abstr (loc_arguments sg) locs. clear_tac.
+  ginduction locs; ii; destruct vs; ss.
+  { clarify. }
+  des_ifs_safe.
+  exploit IHlocs; eauto. { admit "norept app - ez". } i; des.
+  spc ONES. exploit ONES; eauto. i; des; ss. des_ifs; ss. clear_tac.
+  split; ss.
+  - red. f_equal; ss.
+    + u. des_ifs.
+    + admit "this should hold".
+  - ii; des.
+    u. des_ifs.
+    + exploit Loc.same_not_diff; eauto. i; des. ss.
+    + erewrite OUT; eauto.
+Qed.
 

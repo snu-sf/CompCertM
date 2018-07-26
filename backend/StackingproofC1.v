@@ -21,6 +21,34 @@ Set Implicit Arguments.
 
 
 
+(*** put this into MachC. ***)
+Section MACHEXTRA.
+
+  Lemma extcall_arguments_dtm
+        rs m rsp sg vs0 vs1
+        (ARGS0: Mach.extcall_arguments rs m rsp sg vs0)
+        (ARGS1: Mach.extcall_arguments rs m rsp sg vs1)
+  :
+    vs0 = vs1
+  .
+  Proof.
+    admit "merge with mixed sim".
+  Qed.
+
+  Lemma extcall_arguments_length
+        rs m rsp sg vs
+        (ARGS: Mach.extcall_arguments rs m rsp sg vs)
+    :
+      length (loc_arguments sg) = length vs
+  .
+  Proof.
+    unfold Mach.extcall_arguments in *.
+    abstr (loc_arguments sg) locs.
+    ginduction vs; ii; inv ARGS; ss.
+    f_equal. erewrite IHvs; eauto.
+  Qed.
+
+End MACHEXTRA.
 
 Local Opaque Z.add Z.mul Z.div.
 
@@ -70,6 +98,14 @@ Qed.
 
 Hypothesis TRANSL: match_prog prog tprog.
 
+Definition locset_copy (rs: Mach.regset): locset :=
+  fun loc =>
+    match loc with
+    | S _ _ _ => Vundef
+    | R r => rs r
+    end
+.
+
 Theorem sim_modsem
   :
     ModSemPair.sim msp
@@ -85,9 +121,13 @@ Proof.
       { admit "match genvs ez". }
       i; des.
       destruct fd_src; ss. unfold bind in *. des_ifs.
+      exploit fill_arguments_progress; eauto. { symmetry. eapply extcall_arguments_length; eauto. } i; des.
+      exploit (fill_arguments_spec args_src.(Args.vs) fd.(fn_sig)); eauto.
+      instantiate (1:= (locset_copy rs)) in LS.
       esplits; eauto.
       - econs; eauto.
-        + admit "".
+        + instantiate (1:= ls1).
+          admit "".
         + admit "".
       - instantiate (1:= mk _ _ _ _ _ _ _). admit "".
       - econs; ss; eauto.

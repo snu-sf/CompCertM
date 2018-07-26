@@ -739,3 +739,35 @@ Lemma rtc_once
 Proof.
   econs; eauto.
 Qed.
+
+Lemma Forall2_length
+      X Y (P: X -> Y -> Prop) xs ys
+      (FORALL2: Forall2 P xs ys)
+  :
+    length xs = length ys
+.
+Proof.
+  ginduction FORALL2; ii; ss.
+  xomega.
+Qed.
+
+Ltac hexpl_aux H TAC :=
+  let n := fresh H in
+  first[hexploit H; TAC; check_safe; repeat intro n; des]
+.
+Tactic Notation "hexpl" constr(H) := hexpl_aux H eauto.
+Tactic Notation "hexpl" constr(H) tactic(TAC) := hexpl_aux H TAC.
+
+(* 0 goal *)
+Goal forall (mytt: unit) (H: unit -> False), False.
+  i. hexpl H.
+Qed.
+
+(* 1 goal *)
+Goal forall (H: nat -> False), False.
+  i. hexpl H.
+Abort.
+
+Goal forall (H: nat -> nat -> False), False.
+  i. Fail hexpl H.
+Abort.

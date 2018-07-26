@@ -20,6 +20,9 @@ Set Implicit Arguments.
 
 
 
+
+
+
 Module SimMem.
 
   Class class :=
@@ -100,6 +103,18 @@ Module SimMem.
     (* ; *)
   }
   .
+
+  Lemma sim_val_list_length
+        `{SM: class} (sm0: t)
+        vs_src vs_tgt
+        (SIMVS: sm0.(sim_val_list) vs_src vs_tgt)
+    :
+      length vs_src = length vs_tgt
+  .
+  Proof.
+    rewrite <- sim_val_list_spec in SIMVS.
+    
+  Qed.
 
   Definition sim_block `{SM: class} (sm0: t) (blk_src blk_tgt: block): Prop :=
     sm0.(sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)

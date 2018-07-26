@@ -37,9 +37,19 @@ Program Instance SimMemId : SimMem.class :=
   lift := id;
   unlift := fun _ => id;
   sim_val := fun (_: t') => eq;
+  sim_val_list := fun (_: t') => eq;
 }.
 Next Obligation.
   ss.
+Qed.
+Next Obligation.
+  do 2 (apply Axioms.functional_extensionality; i).
+  apply prop_ext.
+  split; i; ss; clarify.
+  - ginduction x; ii; inv H; ss.
+    erewrite IHx; eauto.
+  - ginduction x0; ii; ss.
+    econs; eauto.
 Qed.
 (* Next Obligation. *)
 (*   eexists (mkrelation _ _). *)

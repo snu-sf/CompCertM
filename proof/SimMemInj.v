@@ -273,6 +273,7 @@ Global Program Instance SimMemInj : SimMem.class :=
   lift := lift';
   unlift := unlift';
   sim_val := fun (mrel: t') => Val.inject mrel.(inj);
+  sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
 }.
 Next Obligation.
   rename H into VALID.
@@ -311,6 +312,15 @@ Next Obligation.
 Qed.
 Next Obligation.
   ii. inv MLE. eapply val_inject_incr; eauto.
+Qed.
+Next Obligation.
+  do 2 (apply Axioms.functional_extensionality; i).
+  apply prop_ext.
+  split; i; ss; clarify.
+  - ginduction x; ii; inv H; ss.
+    econs; eauto.
+  - ginduction x0; ii; inv H; ss.
+    econs; eauto.
 Qed.
 
 Definition range (lo hi: Z): Z -> Prop := fun x => lo <= x < hi. (* TODO: Use Notation instead *)

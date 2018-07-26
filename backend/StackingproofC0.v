@@ -1506,7 +1506,7 @@ Proof. destruct cs; ss. des_ifs. Qed.
 Inductive match_stacks (j: meminj):
        list Linear.stackframe -> list stackframe -> signature -> Prop :=
   | match_stacks_dummy
-      sg_init sp ra ls_init
+      sg_init sp ls_init
       sg
       (ARGS: forall
           ofs ty
@@ -1514,10 +1514,9 @@ Inductive match_stacks (j: meminj):
         ,
           <<BOUND: ofs + typesize ty <= size_arguments sg_init>>)
       (LE: sg = sg_init \/ tailcall_possible sg)
-      (RAPTR: is_ptr ra)
-      (SPPTR: is_real_ptr sp)
     :
-      match_stacks j [LinearC.dummy_stack sg_init ls_init] [MachC.dummy_stack sp ra] sg
+      match_stacks j [LinearC.dummy_stack sg_init ls_init]
+                   [MachC.dummy_stack (Vptr sp Ptrofs.zero true) Vundef] sg
   | match_stacks_cons: forall f sp ls c cs fb sp' ra c' cs' sg trf
         (TAIL: is_tail c (Linear.fn_code f))
         (FINDF: Genv.find_funct_ptr tge fb = Some (Internal trf))
@@ -1603,9 +1602,14 @@ Lemma match_stacks_type_sp:
   Val.has_type (parent_sp cs') Tptr.
 Proof.
   induction 1; ii; ss.
-  u in *. des_ifs.
-  (* Local Transparent dummy_stack. unfold dummy_stack in *. clarify. *)
-  (* TODO: update tactic "u in *" to manually to autounfold in all hypotheses. *)
+Qed.
+
+Lemma match_stacks_sp_ofs:
+  forall j cs cs' sg,
+  match_stacks j cs cs' sg ->
+  exists sp, (parent_sp cs') = Vptr sp Ptrofs.zero true.
+Proof.
+  induction 1; ii; ss; esplits; eauto.
 Qed.
 
 Lemma match_stacks_type_retaddr:
@@ -1613,7 +1617,7 @@ Lemma match_stacks_type_retaddr:
   match_stacks j cs cs' sg ->
   Val.has_type (parent_ra cs') Tptr.
 Proof.
-  induction 1; ii; ss. u in *. des_ifs.
+  induction 1; ii; ss.
 Qed.
 
 (** * Syntactic properties of the translation *)
@@ -1815,7 +1819,7 @@ Proof.
     { inv STK; ss. }
     des; cycle 1.
     { apply tailcall_size in LE. xomega. }
-    clarify. esplits; eauto; try xomega.
+    clarify.
   - Local Transparent sepconj. cbn.
     left. left. right. left.
     split; [ss|].
@@ -1851,7 +1855,7 @@ Proof.
     { inv STK; ss. }
     des; cycle 1.
     { apply tailcall_size in LE. xomega. }
-    clarify. eapply H3; eauto. xomega.
+    clarify. eapply H4; eauto.
   - apply sep_pick1 in MATCH. unfold frame_contents in *.
     ss. des_ifs. des.
     apply sep_pick2 in MATCH.
@@ -1887,11 +1891,11 @@ Proof.
   destruct l; red in H0.
 - exists (rs r); split. constructor. auto.
 - destruct sl; try contradiction.
+Local Opaque contains_locations.
   inv MS.
 + ss. des_ifs. des; cycle 1.
   { hnf in LE. exploit LE; eauto. i; des. ss. }
   clarify. clear_tac. unfold dummy_frame_contents in *.
-Local Opaque contains_locations.
   hexploit loc_arguments_bounded; eauto. i.
   specialize (ARGS _ _ H). des.
   exploit get_location; eauto; try xomega. i; des.
@@ -2142,7 +2146,6 @@ Proof.
   inversion STACKS; clear STACKS.
   {
     subst s cs'.
-    destruct sp; try by ss. rename b0 into sp. simpl in SPPTR. des_ifs. clear_tac. rename i into spofs.
     (* specialize (ARGS _ _ IN_ARGS). des. *)
     exploit (slot_outgoing_argument_valid f); eauto. intro VALID.
     Local Opaque Z.mul Z.add Z.div Z.sub make_env.

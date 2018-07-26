@@ -47,8 +47,10 @@ Module SimMem.
         wf mrel0 -> wf mrel1 -> le (lift mrel0) mrel1 -> wf (unlift mrel0 mrel1);
 
     sim_val: t -> val -> val -> Prop;
+    sim_val_list: t -> list val -> list val -> Prop;
     le_sim_val: forall mrel0 mrel1 (MLE: le mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
     lift_sim_val: forall mrel, sim_val mrel <2= sim_val (lift mrel);
+    sim_val_list_spec: forall sm0, List.Forall2 sm0.(sim_val) = sm0.(sim_val_list);
 
   (* val_rel_list: t -> list val -> list val -> Prop; *)
   (* val_rel_list_spec: forall mrel vs0 vs1, val_rel_list mrel vs0 vs1 <-> List.Forall2 (val_rel mrel) vs0 vs1; *)
@@ -97,10 +99,6 @@ Module SimMem.
     (*       (*     ss id_src id_tgt>>) *) *)
     (* ; *)
   }
-  .
-
-  Definition sim_val_list `{SM: class} (sm0: t) (vs_src vs_tgt: list val): Prop :=
-    List.Forall2 sm0.(sim_val) vs_src vs_tgt
   .
 
   Definition sim_block `{SM: class} (sm0: t) (blk_src blk_tgt: block): Prop :=

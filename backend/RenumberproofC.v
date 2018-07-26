@@ -259,7 +259,6 @@ Proof.
       * rpapply match_callstates; eauto.
         { econs; eauto. }
         f_equal; try congruence.
-        admit "ez".
   - (* init progress *)
     des. inv SAFESRC. esplits; eauto. econs; eauto.
     admit "ez: match_genvs".
@@ -276,7 +275,6 @@ Proof.
         admit "ez: match_genvs".
       * des. esplits; eauto. inv SIMSKENVLINK. exploit FUNCFSIM; eauto. i; des. clarify.
     + econs; ss; eauto.
-      * admit "ez".
       * instantiate (1:= SimMemId.mk _ _). ss.
       * ss.
     + ss.

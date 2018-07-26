@@ -371,7 +371,7 @@ Section MODSEM.
     inv RECEP. econs; eauto; ii; ss.
     - inv H. exploit sr_receptive_at; eauto.
       { eapply match_traces_preserved; try eassumption. ii; ss. }
-      i; des. esplits; eauto. econs; eauto. admit "prove get_stack length is deterministic or something..".
+      i; des. esplits; eauto. econs; eauto. admit "See Mach.v for same admit".
     - inv H. exploit sr_traces_at; eauto.
   Qed.
 

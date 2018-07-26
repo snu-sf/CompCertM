@@ -2,7 +2,7 @@ Require Import CoqlibC.
 Require Import Maps.
 Require Import AST.
 Require Import Integers.
-Require Import Values.
+Require Import ValuesC.
 Require Import MemoryC.
 Require Import Globalenvs.
 Require Import Events.
@@ -293,6 +293,11 @@ Section MODSEM.
                                                 then ~ (0 <= ofs < 4 * size_arguments sg)
                                                 else True) m0 m1
               /\ Mem.range_perm m1 blk 0 (4 * size_arguments sg) Cur Freeable)
+      (PTRFREE: forall
+          mr
+          (NOTIN: Loc.notin (R mr) (regs_of_rpairs (loc_arguments sg)))
+        ,
+          <<PTRFREE: ~ is_real_ptr (rs mr)>>)
     :
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack (Vptr blk Ptrofs.zero true) Vundef]

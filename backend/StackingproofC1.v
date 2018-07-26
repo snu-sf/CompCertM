@@ -87,8 +87,8 @@ Proof.
       destruct fd_src; ss. unfold bind in *. des_ifs.
       esplits; eauto.
       - econs; eauto.
-        admit "".
-        admit "".
+        + admit "".
+        + admit "".
       - instantiate (1:= mk _ _ _ _ _ _ _). admit "".
       - econs; ss; eauto.
         + econs; ss; eauto.

@@ -222,10 +222,6 @@ Program Definition contains_locations (j: meminj) (sp: block) (pos bound: Z) (sl
     forall ofs ty, 0 <= ofs -> ofs + typesize ty <= bound -> (typealign ty | ofs) ->
     (exists v, Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v
            /\ Val.inject j (ls (S sl ofs ty)) v)
-      /\
-      ((ls (S sl ofs ty)) = Vundef \/
-       exists v, Mem_stored (chunk_of_type ty) m sp (pos + 4 * ofs) v
-                 /\ Val.inject j (ls (S sl ofs ty)) v)
   ;
   m_footprint := fun b ofs =>
     b = sp /\ pos <= ofs < pos + 4 * bound
@@ -235,10 +231,6 @@ Next Obligation.
 - red; intros. eapply Mem.perm_unchanged_on; eauto. simpl; auto.
 - exploit H4; eauto. i; des_safe. exists v; split; auto.
   eapply Mem.load_unchanged_on; eauto.
-  simpl; intros. rewrite size_type_chunk, typesize_typesize in *.
-  split; auto. omega.
-- exploit H4; eauto. i; des; eauto. right. exists v0; split; auto.
-  eapply Mem_stored_unchanged_on; eauto.
   simpl; intros. rewrite size_type_chunk, typesize_typesize in *.
   split; auto. omega.
 Qed.
@@ -329,7 +321,7 @@ Proof.
   intros. destruct H as (A & B & C). destruct A as (D & E & F & G & H).
   edestruct Mem.valid_access_store as [m' STORE].
   eapply valid_access_location; eauto with mem.
-  { eapply valid_access_typealign_divides; eauto. ii; eapply H; eauto. xomega. }
+  { eapply valid_access_typealign_divides; eauto. xomega. }
   assert (PERM: Mem.range_perm m' sp pos (pos + 4 * bound) Cur Freeable).
   { red; intros; eauto with mem. }
   exists m'; split.
@@ -351,32 +343,8 @@ Proof.
   destruct (Mem.valid_access_load m' (chunk_of_type ty0) sp (pos + 4 * ofs0)) as [v'' LOAD].
   apply Mem.valid_access_implies with Freeable; auto with mem.
   eapply valid_access_location; eauto with mem.
-  { eapply valid_access_typealign_divides; eauto. ii; eapply H; eauto. xomega. }
+  { eapply valid_access_typealign_divides; eauto. xomega. }
   exists v''; auto.
-+ unfold Locmap.set. des_ifs.
-* (* same location *)
-  rename ofs0 into ofs. rename ty0 into ty.
-(*   rename v into __v. *)
-(* Val.load_result_type: *)
-(*   forall (chunk : memory_chunk) (v : val), Val.has_type (Val.load_result chunk v) (type_of_chunk chunk) *)
-(* Val.load_result_same: forall (v : val) (ty : typ), Val.has_type v ty -> Val.load_result (chunk_of_type ty) v = v *)
-  right.
-  esplits; eauto.
-  { eapply Mem_store_stored; eauto. }
-  { destruct ty; ss; des_ifs. }
-* (* different locations *)
-  exploit H; eauto. i; des_safe. des; eauto. right. esplits; eauto.
-  destruct d.
-  { congruence. }
-  eapply Mem.store_unchanged_on in STORE; cycle 1.
-  { instantiate (1:= fun blk i => ~pos + 4 * ofs <= i < pos + 4 * ofs + size_chunk (chunk_of_type ty)).
-    cbn. ii. xomega. }
-  eapply Mem_stored_unchanged_on; eauto.
-  { cbn. ii.
-    rewrite ! size_type_chunk, ! typesize_typesize in *. omega. }
-* (* overlapping locations *)
-  left. ss.
-
 + apply (m_invar P) with m; auto.
   eapply Mem.store_unchanged_on; eauto.
   intros i; rewrite size_type_chunk, typesize_typesize. intros; red; intros.
@@ -402,13 +370,14 @@ Qed.
 
 Lemma contains_locations_exten:
   forall ls ls' j sp pos bound sl,
-  (forall ofs ty, ls' (S sl ofs ty) = ls (S sl ofs ty)) ->
+  (forall ofs ty, Val.lessdef (ls' (S sl ofs ty)) (ls (S sl ofs ty))) ->
   massert_imp (contains_locations j sp pos bound sl ls)
               (contains_locations j sp pos bound sl ls').
 Proof.
   intros; split; simpl; intros; auto.
-  i. des. esplits; eauto. i. exploit H4; eauto. i; des_safe; eauto.
-  rewrite H. eauto.
+  intuition auto.
+  exploit H5; eauto. intros [v [LOAD INJ]]. eexists. split; eauto.
+  eapply Mem.val_lessdef_inject_compose; try eassumption. eapply H; eauto.
 Qed.
 
 Lemma contains_locations_incr:
@@ -419,8 +388,6 @@ Lemma contains_locations_incr:
 Proof.
   intros; split; simpl; intros; auto.
   i. des. esplits; eauto. i. exploit H4; eauto. i; des_safe; eauto.
-  esplits; eauto.
-  des; eauto.
 Qed.
 
 (** [contains_callee_saves j sp pos rl ls] is a memory assertion that holds
@@ -517,27 +484,6 @@ Proof.
   eapply get_location; eauto.
 Qed.
 
-Lemma frame_get_outgoing_strong:
-  forall ofs ty j sp ls ls0 parent retaddr m P,
-  m |= frame_contents j sp ls ls0 parent retaddr ** P ->
-  slot_within_bounds b Outgoing ofs ty -> slot_valid f Outgoing ofs ty = true ->
-  <<UNDEF: ls (S Outgoing ofs ty) = Vundef>> \/
-  exists v,
-    <<STORED: Mem_storedv (chunk_of_type ty) m
-                          (Val.offset_ptr (Vptr sp fe_ofs_arg.(Ptrofs.repr) true)
-                                          (Ptrofs.repr (offset_arg ofs))) v>>
-         /\ <<INJECT: Val.inject j (ls (S Outgoing ofs ty)) v>>
-.
-Proof.
-  unfold frame_contents, frame_contents_1; intros. unfold slot_valid in H1; InvBooleans.
-  apply mconj_proj1 in H. apply sep_proj1 in H. apply sep_pick2 in H.
-  cbn. rewrite Ptrofs_add_repr.
-  ss. des. exploit H6; eauto. i; des_safe. des; eauto. right. esplits; eauto. unfold offset_arg.
-  unfold fe_ofs_arg in *. rewrite ! Z.add_0_l in *. rewrite Ptrofs.unsigned_repr; ss.
-  generalize (typesize_pos ty); i.
-  unfold Ptrofs.max_unsigned. lia.
-Qed.
-
 Lemma frame_get_parent:
   forall j sp ls ls0 parent retaddr m P,
   m |= frame_contents j sp ls ls0 parent retaddr ** P ->
@@ -616,7 +562,7 @@ Qed.
 
 Lemma frame_contents_exten:
   forall ls ls0 ls' ls0' j sp parent retaddr P m,
-  (forall sl ofs ty, ls' (S sl ofs ty) = ls (S sl ofs ty)) ->
+  (forall sl ofs ty, Val.lessdef (ls' (S sl ofs ty)) (ls (S sl ofs ty))) ->
   (forall r, In r b.(used_callee_save) -> ls0' (R r) = ls0 (R r)) ->
   m |= frame_contents j sp ls ls0 parent retaddr ** P ->
   m |= frame_contents j sp ls' ls0' parent retaddr ** P.
@@ -1513,7 +1459,7 @@ End FRAME_PROPERTIES.
 (** This is the memory assertion that captures the contents of the stack frames
   mentioned in the call stacks. *)
 Definition dummy_frame_contents (j: meminj) (ls: locset) (sg: signature) (sp: block) (spofs: Z): massert :=
-  (Stackingproof.contains_locations tprog return_address_offset j sp spofs (size_arguments sg) Outgoing ls)
+  (contains_locations j sp spofs (size_arguments sg) Outgoing ls)
 .
 
 Lemma dummy_frame_contents_incr
@@ -1526,7 +1472,7 @@ Lemma dummy_frame_contents_incr
 .
 Proof.
   red. unfold dummy_frame_contents.
-  rewrite <- (Stackingproof.contains_locations_incr tprog return_address_offset j j') by auto.
+  rewrite <- (contains_locations_incr j j') by auto.
   assumption.
 Qed.
 
@@ -1948,7 +1894,7 @@ Proof.
 Local Opaque contains_locations.
   hexploit loc_arguments_bounded; eauto. i.
   specialize (ARGS _ _ H). des.
-  exploit Stackingproof.get_location; eauto; try xomega. i; des.
+  exploit get_location; eauto; try xomega. i; des.
   rewrite <- Ptrofs_add_repr in *. rewrite Ptrofs.repr_unsigned in *.
   rewrite <- load_stack_transf_ofs in *.
   esplits; eauto.
@@ -2002,33 +1948,6 @@ Proof.
   unfold extcall_arguments.
   apply transl_external_arguments_rec.
   auto with coqlib.
-Qed.
-
-Lemma transl_external_arguments_strong
-      (NOTINIT: length cs <> 1%nat)
-  :
-    forall
-      ofs ty
-      (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))
-    ,
-    <<UNDEF: ls (S Outgoing ofs ty) = Vundef>> \/
-    exists v,
-      <<STORED: Mem_storedv (chunk_of_type ty) m' (Val.offset_ptr (parent_sp cs') (Ptrofs.repr (4 * ofs))) v>>
-           /\ <<INJECT: Val.inject j (ls (S Outgoing ofs ty)) v>>
-.
-Proof.
-  intros.
-  assert (loc_argument_acceptable (S Outgoing ofs ty)) by (apply loc_arguments_acceptable_2 with sg; auto).
-  ss.
-  inv MS; ss.
-  des_ifs. des.
-  simpl in SEP. des_ifs_safe. destruct cs'0; ss; (try by inv STK).
-  des_ifs_safe.
-  assert (slot_valid f Outgoing ofs ty = true).
-  { unfold slot_valid, proj_sumbool.
-    rewrite zle_true by omega. rewrite pred_dec_true by auto. reflexivity. }
-  assert (slot_within_bounds (function_bounds f) Outgoing ofs ty) by (simpl; eauto).
-  exploit frame_get_outgoing_strong; eauto. i; des_safe. rewrite AGCS; ss.
 Qed.
 
 End EXTERNAL_ARGUMENTS.
@@ -2174,7 +2093,10 @@ Inductive match_states: Linear.state -> Mach.state -> Prop :=
       forall cs ls m cs' rs m' j sg
         (STACKS: match_stacks j cs cs' sg)
         (AGREGS: agree_regs j ls rs)
-        (AGLOCS: agree_callee_save ls (parent_locset cs))
+        (AGLOCS: (Stackingproof.agree_callee_save_after ls (parent_locset cs)
+                  /\ forall ofs ty, ls (S Outgoing ofs ty) = Vundef)
+                 \/ (agree_callee_save ls (parent_locset cs)))
+
         (SEP: m' |= stack_contents j cs cs'
                  ** minjection j m
                  ** globalenv_inject ge j),
@@ -2228,7 +2150,7 @@ Proof.
     { hnf in LE. exploit LE; eauto. ss. } clarify. des_sumbool. ss.
     des_ifs; cycle 1.
     {
-      exploit Stackingproof.get_location; eauto.
+      exploit get_location; eauto.
       apply sep_pick2 in SEP. eauto.
       eapply ARGS; eauto.
       intros (v & A & B).
@@ -2534,9 +2456,15 @@ Proof.
   eapply match_states_return with (j := j').
   eapply match_stacks_change_meminj; eauto.
   apply agree_regs_set_pair. apply agree_regs_inject_incr with j; auto.
-  apply agree_regs_undef_regs; auto. auto.
-  apply agree_callee_save_set_result; auto.
-  apply agree_callee_save_extcall; auto.
+  eapply Stackingproof.agree_regs_after_external; eauto.
+  auto.
+  { left.
+    split; auto.
+    - apply Stackingproof.agree_callee_save_after_set_result; auto.
+      apply Stackingproof.agree_callee_save_after_external; auto.
+    - intros. rewrite Locmap.gpo; simpl; auto.
+      destruct (loc_result (ef_sig ef)); simpl; auto.
+  }
   apply stack_contents_change_meminj with j; auto.
   rewrite sep_comm, sep_assoc; auto.
 
@@ -2546,8 +2474,19 @@ Proof.
   apply plus_one. step_tac. apply exec_return.
   { inv STK; ss. }
   econstructor; eauto.
-  apply agree_locs_return with rs0; auto.
+  {
+    destruct AGLOCS as [[AGLOCS0 AGLOCS1] | AGLOCS]; cycle 1.
+    { apply agree_locs_return with rs0; auto. }
+    inv AGL. econstructor; eauto; intros.
+    - rewrite <- agree_unused_reg0; eauto. rewrite AGLOCS0; auto. unfold mreg_within_bounds in *. tauto.
+    - rewrite <- agree_incoming0; auto. rewrite AGLOCS0; auto. congruence.
+  }
   eapply frame_contents_exten with rs0 _; auto.
+  { intros. destruct AGLOCS as [[AGLOCS0 AGLOCS1] | AGLOCS].
+    - destruct sl; try (rewrite AGLOCS0; eauto; congruence); eauto.
+      rewrite AGLOCS1. eauto.
+    - rewrite AGLOCS; eauto.
+  }
 Qed.
 
 (* Lemma transf_initial_states: *)

@@ -264,7 +264,7 @@ Section MODSEM.
 
   Record state := mkstate {
     init_rs: Mach.regset;
-    init_fptr: val;
+    init_sg: signature;
     st: Mach.state;
   }.
 
@@ -288,45 +288,48 @@ Section MODSEM.
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (ALLOC: Mem.alloc args.(Args.m) 0 (size_arguments sg) = (m0, blk))
-      (VALS: extcall_arguments rs m1 (Vptr blk Ptrofs.zero true) sg args.(Args.vs))
+      (STORE: extcall_arguments rs m1 (Vptr blk Ptrofs.zero true) sg args.(Args.vs)
+              /\ Mem.unchanged_on (fun b ofs => if eq_block b blk
+                                                then ~ (0 <= ofs < 4 * size_arguments sg)
+                                                else True) m0 m1
+              /\ Mem.range_perm m1 blk 0 (4 * size_arguments sg) Cur Freeable)
     :
-      initial_frame args (mkstate rs (args.(Args.fptr))
+      initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack (Vptr blk Ptrofs.zero true) Vundef]
                                              args.(Args.fptr) rs m1))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_intro
-      (init_rs rs: regset) init_fptr init_sp m0 m1 blk sg mr
+      (init_rs rs: regset) init_sp m0 m1 blk init_sg mr
       (CALLEESAVE: forall mr, Conventions1.is_callee_save mr -> Val.lessdef (init_rs mr) (rs mr))
       (INITRSP: init_sp = Vptr blk Ptrofs.zero true)
-      (INITSIG: exists skd, skenv_link.(Genv.find_funct) init_fptr = Some skd /\ SkEnv.get_sig skd = sg)
-      (FREE: Mem.free m0 blk 0 (size_arguments sg) = Some m1)
-      (RETV: loc_result sg = One mr)
+      (FREE: Mem.free m0 blk 0 (size_arguments init_sg) = Some m1)
+      (RETV: loc_result init_sg = One mr)
     :
-      final_frame (mkstate init_rs init_fptr (Returnstate [dummy_stack init_sp Vundef] rs m0))
+      final_frame (mkstate init_rs init_sg (Returnstate [dummy_stack init_sp Vundef] rs m0))
                   (Retv.mk (rs mr) m1)
   .
 
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
-      init_rs init_fptr stack fptr ls0 m0 ls1 m1 retv
+      init_rs init_sg stack fptr ls0 m0 ls1 m1 retv
       sg blk ofs
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs true)
       (UNFREE: Mem_unfree m0 blk ofs.(Ptrofs.unsigned) (1 + ofs.(Ptrofs.unsigned) + (size_arguments sg)) = Some m1)
     :
-      after_external (mkstate init_rs init_fptr (Callstate stack fptr ls0 m0))
+      after_external (mkstate init_rs init_sg (Callstate stack fptr ls0 m0))
                      retv
-                     (mkstate init_rs init_fptr (Returnstate stack ls1 m1))
+                     (mkstate init_rs init_sg (Returnstate stack ls1 m1))
   .
 
   Inductive step' (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
   | step'_intro
       (STEP: Mach.step rao ge st0.(st) tr st1.(st))
       (INITRS: st0.(init_rs) = st1.(init_rs))
-      (INITFPTR: st0.(init_fptr) = st1.(init_fptr))
+      (INITFPTR: st0.(init_sg) = st1.(init_sg))
       (NOTDUMMY: st1.(st).(get_stack) <> [])
   .
 
@@ -384,7 +387,7 @@ Section MODSEM.
         st
         (RECEP: receptive_at (semantics_with_ge rao ge) st)
     :
-      forall init_rs init_fptr, receptive_at modsem (mkstate init_rs init_fptr st)
+      forall init_rs init_sg, receptive_at modsem (mkstate init_rs init_sg st)
   .
   Proof.
     inv RECEP. econs; eauto; ii; ss.
@@ -392,7 +395,7 @@ Section MODSEM.
       exploit sr_receptive_at; eauto.
       { eapply match_traces_preserved; try eassumption. ii; ss. }
       i; des. destruct s1; ss.
-      exists (mkstate init_rs1 init_fptr1 s2).
+      exists (mkstate init_rs1 init_sg1 s2).
       econs; eauto. ss.
       { admit "1) prove get_stack dtm 2) at first place, prove full determinacy instead of determinate". }
     - inv H.
@@ -410,7 +413,7 @@ Section MODSEM.
         st0
         (DTM: determinate_at (semantics_with_ge rao ge) st0)
     :
-      forall init_rs init_fptr, determinate_at modsem (mkstate init_rs init_fptr st0)
+      forall init_rs init_sg, determinate_at modsem (mkstate init_rs init_sg st0)
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.

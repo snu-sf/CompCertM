@@ -751,12 +751,13 @@ Proof.
   xomega.
 Qed.
 
-Ltac hexpl_aux H TAC :=
-  let n := fresh H in
-  first[hexploit H; TAC; check_safe; repeat intro n; des]
+Ltac hexpl_aux H NAME :=
+  let n := fresh NAME in
+  first[hexploit H; eauto; check_safe; repeat intro n; des]
 .
-Tactic Notation "hexpl" constr(H) := hexpl_aux H eauto.
-Tactic Notation "hexpl" constr(H) tactic(TAC) := hexpl_aux H TAC.
+Tactic Notation "hexpl" constr(H) := hexpl_aux H H.
+(* Tactic Notation "hexpl" constr(H) tactic(TAC) := hexpl_aux H TAC. *)
+Tactic Notation "hexpl" constr(H) ident(NAME) := hexpl_aux H NAME.
 
 (* 0 goal *)
 Goal forall (mytt: unit) (H: unit -> False), False.
@@ -771,3 +772,39 @@ Abort.
 Goal forall (H: nat -> nat -> False), False.
   i. Fail hexpl H.
 Abort.
+
+(* name *)
+Goal forall (mytt: unit) (HH: unit -> (True -> True /\ True)), False.
+  i. hexpl HH ABC.
+  hexpl HH.
+Abort.
+
+Hint Extern 997 => xomega : xomega.
+
+Hint Rewrite
+     Z.add_0_l Z.add_0_r Z.add_assoc Z.add_simpl_l Z.add_simpl_r Z.add_opp_r Z.add_opp_l
+     Z.mul_0_l Z.mul_0_r Z.mul_assoc
+     Z.sub_0_r Z.sub_diag Z.sub_simpl_l Z.sub_simpl_r Z.sub_0_l
+     Z.div_0_l Zdiv_0_r Z.div_1_r
+     Z.mod_1_r Z.mod_0_l Z.mod_same Z.mod_mul Z.mod_mod
+     Z.sub_add 
+  : zsimpl
+.
+
+Ltac zsimpl := repeat autorewrite with zsimpl in *.
+
+Ltac rp := first [erewrite f_equal8|
+                  erewrite f_equal7|
+                  erewrite f_equal6|
+                  erewrite f_equal5|
+                  erewrite f_equal4|
+                  erewrite f_equal3|
+                  erewrite f_equal2|
+                  erewrite f_equal|
+                  fail]
+.
+
+Ltac bsimpl := simpl_bool.
+
+Definition range (lo hi: Z): Z -> Prop := fun x => lo <= x < hi. (* TODO: Use Notation instead *)
+Hint Unfold range.

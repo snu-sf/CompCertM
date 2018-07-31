@@ -20,6 +20,29 @@ Set Implicit Arguments.
 
 
 
+Lemma Loc_not_in_notin_R
+      r locs
+      (NOTIN: ~ In (R r) locs)
+  :
+    <<NOTIN: Loc.notin (R r) locs>>
+.
+Proof. red. ginduction locs; ii; ss. esplits; eauto. destruct a; ss. ii; clarify. eauto. Qed.
+
+Section INJECT.
+
+Local Existing Instance Val.mi_normal.
+
+Lemma fakeptr_inject
+      F fptr
+      (FAKE: ~ is_real_ptr fptr)
+  :
+    <<INJECT: Val.inject F fptr fptr>>
+.
+Proof. destruct fptr; ss. des_ifs. econs; eauto. Qed.
+
+End INJECT.
+
+
 
 (*** put this into MachC. ***)
 Section MACHEXTRA.
@@ -50,7 +73,36 @@ Section MACHEXTRA.
 
 End MACHEXTRA.
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 Local Opaque Z.add Z.mul Z.div.
+Local Opaque sepconj.
+Local Opaque function_bounds.
+Local Opaque make_env.
+Ltac sep_split := econs; [|split]; swap 2 3.
+
+
+
+
+
+
+
+
+
 
 
 
@@ -65,6 +117,9 @@ Hypothesis TRANSF: match_prog prog tprog.
 Variable rao: Mach.function -> Mach.code -> ptrofs -> Prop.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
+
+Print Instances SimMem.class.
+Print Instances SimSymb.class.
 
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (LinearC.modsem skenv_link_src prog) (MachC.modsem rao skenv_link_tgt tprog) tt
@@ -105,6 +160,86 @@ Definition locset_copy (rs: Mach.regset): locset :=
     | R r => rs r
     end
 .
+Hint Unfold locset_copy.
+
+Lemma transf_function_sig
+      f tf
+      (TRANSFF: transf_function f = OK tf)
+  :
+    f.(Linear.fn_sig) = tf.(fn_sig)
+.
+Proof. unfold transf_function in *. des_ifs. Qed.
+
+Hint Rewrite Ptrofs.unsigned_zero Ptrofs.add_zero Ptrofs.add_zero_l
+     Ptrofs.repr_unsigned IntegersC.Ptrofs_add_repr : psimpl
+.
+
+Ltac psimpl := repeat (autorewrite with psimpl in *;
+                       try (rewrite Ptrofs.unsigned_repr in *; ss; try xomega; []))
+.
+
+Lemma init_match_frame_contents
+      sm_arg sg
+      m_tgt0 rs vs_src vs_tgt ls
+      (STORE: MachC.store_arguments sm_arg.(m_tgt) rs vs_tgt sg m_tgt0)
+      (SG: 4 * size_arguments sg <= Ptrofs.modulus)
+      (LS: fill_arguments (locset_copy rs) vs_src (loc_arguments sg) = Some ls)
+      (SIMVS: Val.inject_list (inj sm_arg) vs_src vs_tgt)
+      sm_init
+      (SM: sm_init = (mk sm_arg.(inj) sm_arg.(m_src) m_tgt0
+                         sm_arg.(src_external) sm_arg.(tgt_external)
+                         sm_arg.(src_parent_nb) sm_arg.(tgt_parent_nb)))
+      (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
+          tgt_private sm_init (Mem.nextblock (m_tgt sm_arg)) ofs)
+      (MWF: SimMem.wf sm_init)
+  :
+    m_tgt0
+      |= dummy_frame_contents tprog rao (inj sm_arg) ls sg (Mem.nextblock sm_arg.(m_tgt)) 0
+      ** minjection (inj sm_arg) sm_arg.(m_src)
+      ** globalenv_inject (Genv.globalenv prog) (inj sm_arg)
+.
+Proof.
+  sep_split.
+  { ss. zsimpl. esplits; eauto with lia.
+    - inv STORE. hexpl Mem.alloc_result NB. clarify.
+    - clear - SG SIMVS STORE LS. inv STORE.
+      hexpl fill_arguments_spec. clear LS. clarify.
+      hexpl Mem.alloc_result. clarify.
+      intros ? ? OFS0 OFS1 ALIGN. zsimpl.
+      destruct (classic (In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))).
+      + hnf in VALS. generalize (loc_arguments_one sg); intro ONES. abstr (loc_arguments sg) locs.
+        clear - OFS0 OFS1 SG H SIMVS VALS locs ONES.
+        ginduction locs; ii; ss.
+        exploit ONES; eauto. i.
+        destruct a; ss.
+        des; ss; clarify.
+        * inv VALS. inv H2. inv H1. cbn in H5. inv SIMVS. esplits; eauto.
+          psimpl. unfold fe_ofs_arg in *. zsimpl.
+          split; try lia. unfold Ptrofs.max_unsigned.
+          generalize (typesize_pos ty); i. xomega.
+        * inv SIMVS. inv VALS. eapply IHlocs; eauto.
+      + exploit OUT; eauto. i; des. ss. rewrite H0.
+        exploit (Mem.valid_access_load m_tgt0 (chunk_of_type ty)); cycle 1.
+        { i; des. esplits; eauto. }
+        red. esplits; eauto.
+        * erewrite Stackingproof.size_type_chunk in *. rewrite Stackingproof.typesize_typesize in *.
+          ii. eapply Mem.perm_implies.
+          { eapply PERM. xomega. }
+          eauto with mem.
+        * rewrite Stackingproof.align_type_chunk. eapply Z.mul_divide_mono_l; eauto.
+  }
+  { apply disjoint_footprint_sepconj. split.
+    - ii; ss. des. clarify. zsimpl. specialize (PRIV ofs). exploit PRIV; eauto with lia.
+      intro TPRIV. hnf in TPRIV. ss. des. eapply TPRIV; eauto.
+    - ii; ss.
+  }
+  sep_split.
+  { ss. subst sm_init. eapply MWF. }
+  { ss. }
+  ss.
+  admit "ge relax - sim_skenv_inj - ez".
+Qed.
+
 
 Theorem sim_modsem
   :
@@ -115,50 +250,114 @@ Proof.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - (* init bsim *)
     {
-      inv INITTGT. des. folder.
+      inv INITTGT. inv STORE. folder.
       inv SIMARGS. ss.
       exploit functions_translated_inject; eauto.
       { admit "match genvs ez". }
       i; des.
       destruct fd_src; ss. unfold bind in *. des_ifs.
-      exploit fill_arguments_progress; eauto. { symmetry. eapply extcall_arguments_length; eauto. } i; des.
-      exploit (fill_arguments_spec args_src.(Args.vs) fd.(fn_sig)); eauto.
-      instantiate (1:= (locset_copy rs)) in LS.
+      hexpl transf_function_sig SG.
+      exploit (fill_arguments_progress (locset_copy rs) args_src.(Args.vs)
+                                       (loc_arguments f.(Linear.fn_sig))); eauto.
+      { etransitivity.
+        - eapply SimMem.sim_val_list_length; try apply VALS0.
+        - symmetry. eapply extcall_arguments_length; eauto with congruence.
+          rewrite SG. eauto.
+      } i; des.
+      exploit (fill_arguments_spec args_src.(Args.vs) f.(Linear.fn_sig)); eauto. i; des.
+      exploit mach_store_arguments_simmem; eauto.
+      { econs; eauto with congruence. rp; eauto. }
+      i; des.
+
       esplits; eauto.
-      - econs; eauto.
-        + instantiate (1:= ls1).
-          admit "".
-        + admit "".
-      - instantiate (1:= mk _ _ _ _ _ _ _). admit "".
-      - econs; ss; eauto.
-        + econs; ss; eauto.
-          * econs; ss; eauto.
-            admit "".
-          * admit "".
-          * admit "".
-          * i; des. admit "ge relax, ez".
-        + admit "".
+      { (* initial frame *)
+        econs; eauto with congruence; cycle 1.
+        ii. hexpl OUT.
+        destruct loc; ss.
+        - hexploit PTRFREE; eauto.
+          { rewrite <- SG. eauto. }
+          ii; eauto with congruence.
+        - rewrite OUT0 in *. ss.
+      }
+      { (* match states *)
+        econs; ss; eauto.
+        - econs; ss; eauto.
+          + econs; ss; eauto. eapply loc_arguments_bounded.
+          + ii. destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (Linear.fn_sig f))))).
+            * red in VALS. rewrite <- SG in VALS. clear - FILL VALS VALS0 H.
+              generalize (loc_arguments_one (Linear.fn_sig f)). i.
+              abstr (loc_arguments (Linear.fn_sig f)) locs. clear_tac.
+              abstr (Args.vs args_src) vals_src. abstr (Args.vs args_tgt) vals_tgt. clear_tac.
+              ginduction locs; ii; ss.
+              exploit H0; eauto. i. destruct a; ss. des; clarify.
+              { inv VALS. inv VALS0. inv H3; ss. inv H2; ss. }
+              inv VALS. inv VALS0.
+              eapply IHlocs; eauto.
+            * (* eapply Loc_not_in_notin_R in H; eauto. *)
+              hexploit PTRFREE; eauto.
+              { rewrite <- SG. eauto. }
+              i. rewrite OUT; ss.
+              eapply fakeptr_inject; eauto.
+          + psimpl. zsimpl. rewrite SG.
+            rewrite MEMSRC. rewrite MEMTGT.
+            eapply init_match_frame_contents; eauto.
+            * econs; eauto. rewrite <- MEMTGT. ss.
+            * eauto with congruence.
+          + i; des. admit "ge relax, ez".
+        - clarify.
+        - clarify.
+      }
     }
   - (* init progress *)
-    admit "".
+    admit "Use MachC.store_arguments_progress".
   - (* callstate wf *)
-    admit "".
-  - inv CALLSRC. inv MATCH; ss. clarify.
-    inv MATCHST; ss. destruct st_tgt0; ss. clarify.
-    (* assert(RSP: is_real_ptr (parent_sp cs')). *)
-    (* { inv STACKS; ss. } *)
-    (* unfold is_real_ptr in *. des_ifs. rename b into blk. rename i into ofs. clear_tac. *)
-    (* assert(ofs = Ptrofs.zero). *)
-    (* { bar. inv STACKS; cycle 1. *)
-    (*   - ss. clarify. *)
-    (*   - *)
-    (* } *)
+    admit "strengthen Stackingproof".
+
+  - (* call fsim *)
+    inv CALLSRC. inv MATCH; ss. clarify.
+    inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
+    assert(MCOMPAT: sm0.(inj) = j). { admit "strengthen Stackingproof.v". } clarify.
+
+    hexpl match_stacks_sp_ofs RSP.
+    hexploit arguments_perm; eauto. { eapply sep_drop_tail3 in SEP. eauto. } i; des. psimpl.
+    hexploit arguments_private; eauto. { eapply sep_drop_tail3 in SEP. eauto. } i; des. psimpl.
+    hexploit Mem.range_perm_free. { ii. spc H. zsimpl. eapply H; eauto. } intros [m_tgt0 FREETGT].
+    exploit transl_external_arguments; eauto. { apply sep_pick1 in SEP. eauto. } intro ARGS; des.
+    exploit free_right_simmem; eauto.
+    { u. ii. esplits; eauto.
+      - do 2 spc H0. zsimpl. eauto.
+      - admit "Strengthen match_states - this might be done while strengthening Stackingproof.v".
+    }
+    i; des. clarify.
+
     esplits; eauto.
     + econs; eauto.
       * folder. admit "ge relax - ez".
       * admit "SIMSKENVLINK - ez".
-      * admit "".
-      * ss.
+    + econs; ss; eauto with congruence.
+
+  - (* after fsim *)
+    inv AFTERSRC. inv MATCH; ss. clarify.
+    inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
+    assert(MCOMPAT: sm0.(inj) = j). { admit "strengthen Stackingproof.v". } clarify.
+
+    hexpl match_stacks_sp_ofs RSP.
+    inv SIMRET.
+
+    esplits; eauto.
+    + econs; eauto.
+      * admit "SIMSKENVLINK - ez".
+      * admit "unfreeable !!! ".
+    + econs; ss; eauto with congruence.
+      * econs; ss; auto.
+      * econs; ss; eauto.
+      *
+
+    admit "".
+  - (* final fsim *)
+    admit "".
+  - (* step lemma *)
+    admit "".
 Qed.
 
 (* Section DUMMY_FUNCTION. *)

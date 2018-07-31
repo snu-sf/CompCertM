@@ -169,10 +169,12 @@ Section SIMMODSEM.
                 st_src1
                 (AFTERSRC: ms_src.(after_external) st_src0 retv_src st_src1)
               ,
-                exists i1 st_tgt1,
+                exists st_tgt1 sm_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>)
                   /\
-                  (<<LXSIM: lxsim sm_init i1 st_src1 st_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>)>>)
+                  (<<MLE: SimMem.le (sm_arg.(SimMem.unlift) sm_ret) sm_after>>)
+                  /\
+                  (<<LXSIM: lxsim sm_init i1 st_src1 st_tgt1 sm_after>>)>>)
                   ))
 
   | lxsim_final

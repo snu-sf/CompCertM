@@ -118,14 +118,20 @@ Section MATCHSIMFORWARD.
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
       (MWF: SimMem.wf sm_ret)
       retv_src retv_tgt
-      (SIMRSRET: sim_retv retv_src retv_tgt sm_ret)
+      (SIMRET: sim_retv retv_src retv_tgt sm_ret)
       st_src1
       (AFTERSRC: ms_src.(ModSem.after_external) st_src0 retv_src st_src1)
+
+      (* just helpers *)
+      (MWFAFTR: SimMem.wf (SimMem.unlift sm_arg sm_ret))
+      (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret))
     ,
-      exists idx1 st_tgt1,
+      exists sm_after idx1 st_tgt1,
         (<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>)
         /\
-        (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 (SimMem.unlift sm_arg sm_ret)>>)
+        (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm_after>>)
+        /\
+        (<<MLE: SimMem.le (SimMem.unlift sm_arg sm_ret) sm_after>>)
   .
 
   Hypothesis FINALFSIM: forall
@@ -138,7 +144,7 @@ Section MATCHSIMFORWARD.
       exists retv_tgt,
         (<<FINALTGT: ms_tgt.(ModSem.final_frame) st_tgt0 retv_tgt>>)
         /\
-        (<<SIMRS: sim_retv retv_src retv_tgt sm0>>)
+        (<<SIMRET: sim_retv retv_src retv_tgt sm0>>)
         /\
         (<<MWF: SimMem.wf sm0>>)
   .
@@ -188,17 +194,16 @@ Section MATCHSIMFORWARD.
         exploit ATFSIM; eauto. i; des.
         (* determ_tac ModSem.at_external_dtm. clear_tac. *)
         esplits; eauto. i.
-        exploit AFTERFSIM; try apply SAFESRC; try apply SIMRS; eauto.
+        exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
+        { eapply SimMem.unlift_wf; eauto. }
+        { eapply SimMem.unlift_spec; eauto. }
         i; des.
         esplits; eauto.
         right.
         eapply CIH; eauto.
-        { eapply SimSymb.mle_preserves_sim_skenv; eauto.
-          etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
-        { etransitivity; cycle 1.
-          - eapply SimMem.unlift_spec; eauto.
-          - etransitivity; eauto.
-        }
+        { eapply SimSymb.mle_preserves_sim_skenv; try apply SIMSKENV; eauto.
+          etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
+        { etransitivity; eauto. etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
     }
     generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
     {

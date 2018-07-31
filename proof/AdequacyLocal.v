@@ -396,10 +396,12 @@ Section ADQMATCH.
           lst_src1
           (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 retv_src lst_src1)
         ,
-          exists i1 lst_tgt1,
+          exists lst_tgt1 sm_after i1,
             (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 retv_tgt lst_tgt1>>)
             /\
-            (<<LXSIM: lxsim ms_src ms_tgt tail_sm i1 lst_src1 lst_tgt1 (sm_arg.(SimMem.unlift) sm_ret)>>))
+            (<<MLE: SimMem.le (sm_arg.(SimMem.unlift) sm_ret) sm_after>>)
+            /\
+            (<<LXSIM: lxsim ms_src ms_tgt tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
     :
       lxsim_stack sm_init
                   ((Frame.mk ms_src lst_src0) :: tail_src)
@@ -512,7 +514,9 @@ Section ADQINIT.
     set(Args.mk (Genv.symbol_address (Sk.load_skenv sk_link_tgt) (prog_main sk_link_tgt) Ptrofs.zero)
                 [] sm_init.(SimMem.tgt)) as args_tgt in *.
     assert(SIMARGS: sim_args args_src args_tgt sm_init).
-    { econs; ss; eauto. admit "strengthen sim_skenv specs". }
+    { econs; ss; eauto.
+      - admit "strengthen sim_skenv specs".
+      - rewrite <- SimMem.sim_val_list_spec. econs; eauto. }
 
     esplits; eauto.
     - econs; ss; cycle 1.
@@ -776,15 +780,17 @@ Section ADQSTEP.
         { admit "Add to semprops. / Modsem". }
         econs 4; ss; eauto.
       + right. eapply CIH; eauto.
-        instantiate (1:= (SimMem.unlift sm_arg sm0)).
+        instantiate (1:= sm_after).
         econs; ss; cycle 3.
         { eauto. }
         { folder. des_ifs.
           eapply mle_preserves_sim_ge; eauto.
+          etransitivity; eauto.
           eapply SimMem.unlift_spec; eauto.
           etransitivity; eauto. }
         { eauto. }
         { etransitivity; eauto.
+          etransitivity; eauto.
           eapply SimMem.unlift_spec; eauto.
           etransitivity; eauto. }
   Qed.

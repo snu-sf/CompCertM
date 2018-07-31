@@ -1803,12 +1803,12 @@ Lemma arguments_private
       (MATCH: m_tgt |= stack_contents F stk_src stk_tgt ** minjection F m_src)
       (STACKS: match_stacks F stk_src stk_tgt sg)
       (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
-      ofs
-      (OFS: 0 <= ofs < 4 * size_arguments sg)
   :
-    (<<PRIV: loc_out_of_reach F m_src sp_tgt (spdelta.(Ptrofs.unsigned) + ofs)>>)
+    <<_ : forall ofs (OFS: 0 <= ofs < 4 * size_arguments sg),
+    (<<PRIV: loc_out_of_reach F m_src sp_tgt (spdelta.(Ptrofs.unsigned) + ofs)>>)>>
 .
 Proof.
+  ii.
   eapply separation_private; eauto.
   destruct stk_tgt; ss. des_ifs. destruct stk_src; ss.
   { sep_simpl_tac. des; ss. }
@@ -1840,12 +1840,12 @@ Lemma arguments_perm
       (MATCH: m_tgt |= stack_contents F stk_src stk_tgt ** minjection F m_src)
       (STACKS: match_stacks F stk_src stk_tgt sg)
       (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
-      ofs
-      (OFS: 0 <= ofs < 4 *size_arguments sg)
   :
-    (<<PERM: Mem.perm m_tgt sp_tgt (spdelta.(Ptrofs.unsigned) + ofs) Cur Freeable>>)
+    <<_ : forall ofs (OFS: 0 <= ofs < 4 *size_arguments sg),
+    (<<PERM: Mem.perm m_tgt sp_tgt (spdelta.(Ptrofs.unsigned) + ofs) Cur Freeable>>)>>
 .
 Proof.
+  ii.
   destruct stk_tgt; ss. des_ifs. destruct stk_src; ss.
   { sep_simpl_tac. des; ss. }
   des_ifs_safe.

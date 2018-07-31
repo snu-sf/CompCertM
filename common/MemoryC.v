@@ -13,6 +13,7 @@ Require Export Memtype.
 Require Import sflib.
 Require Import Lia.
 Require Import Events.
+Require Import Classical_Pred_Type.
 
 
 Local Notation "a # b" := (PMap.get b a) (at level 1).
@@ -22,6 +23,13 @@ Local Notation "a # b" := (PMap.get b a) (at level 1).
 Require Export Memory.
 
 
+
+(* TODO: Move to MemdataC *)
+Program Instance memval_inject_Reflexive: RelationClasses.Reflexive (@memval_inject Val.mi_normal inject_id).
+Next Obligation.
+  destruct x; ss; econs; eauto.
+  apply val_inject_id. ss.
+Qed.
 
 
 
@@ -146,6 +154,83 @@ Proof.
     replace (ofs1 + delta1 - delta2) with ofs2 by xomega.
     eauto with mem.
 Qed.
+
+
+Section INJECT.
+
+Context `{CTX: Val.meminj_ctx}.
+
+Lemma private_unchanged_inject
+      F m_src m_tgt0 m_tgt1
+      P
+      (INJ: Mem.inject F m_src m_tgt0)
+      (UNCH: Mem.unchanged_on P m_tgt0 m_tgt1)
+      (PRIV: ~2 loc_out_of_reach F m_src <2= P)
+      (NB: (Mem.nextblock m_tgt0) = (Mem.nextblock m_tgt1))
+  :
+    <<INJ: Mem.inject F m_src m_tgt1>>
+.
+Proof.
+  inv UNCH.
+  econs; eauto.
+  - econs; cycle 1.
+    + apply INJ; eauto.
+    + ii.
+      destruct (classic (P b2 (ofs + delta))).
+      * (* publics *)
+        erewrite unchanged_on_contents; eauto.
+        { eapply INJ; eauto with mem. }
+        { inv INJ. inv mi_inj. eauto. }
+      * (* privs *)
+        assert(loc_out_of_reach F m_src b2 (ofs + delta)).
+        { ii. hnf in PRIV.
+          exploit PRIV.
+          { unfold loc_out_of_reach. ii. exploit H4; eauto. }
+          i. ss.
+        }
+        unfold loc_out_of_reach in H2.
+        exploit H2; eauto.
+        { replace (ofs + delta - delta) with ofs by lia. eauto with mem. }
+        i; ss.
+    + ii.
+      destruct (classic (P b2 (ofs + delta) /\ Mem.valid_block m_tgt1 b2)).
+      * (* publics *)
+        des.
+        erewrite <- unchanged_on_perm; eauto.
+        { eapply INJ; eauto with mem. }
+        { eauto with congruence. }
+      * (* privs *)
+        apply not_and_or in H1. des; cycle 1.
+        { exfalso. inv INJ.
+          exploit mi_mappedblocks; eauto. i. eauto with congruence. }
+        exfalso.
+        apply H1. apply PRIV. unfold loc_out_of_reach. ii. exploit H2; eauto.
+        replace (ofs + delta - delta) with ofs by lia.
+        eauto with mem.
+  - ii. eapply INJ; eauto with mem congruence.
+  - ii. unfold Mem.valid_block. rewrite <- NB.
+    eapply INJ; eauto with mem congruence.
+  - ii. eapply INJ; eauto with mem congruence.
+  - ii. eapply INJ; eauto with mem congruence.
+  - ii.
+    destruct (classic (P b2 (ofs + delta) /\ Mem.valid_block m_tgt1 b2)).
+    + (* publics *)
+      des.
+      eapply INJ; eauto.
+      eapply unchanged_on_perm; eauto with mem congruence.
+    + (* privs *)
+      apply not_and_or in H1. des; cycle 1.
+      { exfalso. inv INJ.
+        exploit mi_mappedblocks; eauto. i. eauto with congruence. }
+      assert(~ Mem.perm m_src b1 ofs Max Nonempty).
+      { ii. apply H1. apply PRIV. ii. exploit H3; eauto.
+        replace (ofs + delta - delta) with ofs by lia.
+        eauto with mem.
+      }
+      eauto.
+Qed.
+
+End INJECT.
 
 
 
@@ -409,19 +494,57 @@ End ARGPASSING.
 
 Section UNFREE.
 
+Definition Mem_range_noperm (m: mem) (b: block) (lo hi: Z) :=
+  forall ofs (BDD: lo <= ofs < hi), ~ Mem.perm m b ofs Max Nonempty
+.
+Hint Unfold Mem_range_noperm.
+
+Lemma Mem_range_noperm_dec:
+  forall m b lo hi, {Mem_range_noperm m b lo hi} + {~ Mem_range_noperm m b lo hi}.
+Proof.
+  intros.
+  induction lo using (well_founded_induction_type (Zwf_up_well_founded hi)).
+  destruct (zlt lo hi); cycle 1.
+  { left; red; intros. omegaContradiction. }
+  destruct (Mem.perm_dec m b lo Max Nonempty).
+  { right. ii. eapply H0; eauto. xomega. }
+  destruct (H (lo + 1)).
+  { red. omega. }
+  - left; red; intros. destruct (zeq lo ofs). congruence. apply m0. omega.
+  - right; red; intros. elim n0. red; intros; apply H0; omega.
+Defined.
+
+Lemma free_noperm
+      m0 blk lo hi m1
+      (FREE: Mem.free m0 blk lo hi = Some m1)
+  :
+    <<NOPERM: Mem_range_noperm m1 blk lo hi>>
+.
+Proof.
+  Local Transparent Mem.free.
+  unfold Mem.free in *. des_ifs.
+  unfold Mem.unchecked_free. ss. ii; ss. unfold Mem.perm in *. ss.
+  rewrite PMap.gsspec in *. des_ifs.
+  simpl_bool. des; des_sumbool; clarify.
+  Local Opaque Mem.free.
+Qed.
+
 Program Definition Mem_unfree (m: mem) (b: block) (lo hi: Z): option mem :=
   if plt b m.(Mem.nextblock)
   then
-    Some (Mem.mkmem
-            (PMap.set b (Mem.setN (list_repeat (hi-lo+1).(Z.to_nat) Undef) lo ((Mem.mem_contents m) # b))
-                      (Mem.mem_contents m))
-            (PMap.set b
-                      (fun ofs k =>
-                         if zle lo ofs && zlt ofs hi
-                         then Some Freeable
-                         else m.(Mem.mem_access)#b ofs k)
-                      m.(Mem.mem_access))
-            m.(Mem.nextblock) _ _ _)
+    if Mem_range_noperm_dec m b lo hi
+    then
+      Some (Mem.mkmem
+              (PMap.set b (Mem.setN (list_repeat (hi-lo).(Z.to_nat) Undef) lo ((Mem.mem_contents m) # b))
+                        (Mem.mem_contents m))
+              (PMap.set b
+                        (fun ofs k =>
+                           if zle lo ofs && zlt ofs hi
+                           then Some Freeable
+                           else m.(Mem.mem_access)#b ofs k)
+                        m.(Mem.mem_access))
+              m.(Mem.nextblock) _ _ _)
+    else None
   else None
 .
 Next Obligation.
@@ -447,6 +570,56 @@ Next Obligation.
   des_ifs; ss.
   rewrite Mem.setN_default. ss.
 Defined.
+
+Context `{CTX: Val.meminj_ctx}.
+
+Lemma Mem_unfree_suceeds
+      m0 blk lo hi
+      (VALID: Mem.valid_block m0 blk)
+      (NOPERM: Mem_range_noperm m0 blk lo hi)
+  :
+    exists m1, <<UNFR: Mem_unfree m0 blk lo hi = Some m1>>
+.
+Proof.
+  unfold Mem_unfree. des_ifs. esplits; eauto.
+Qed.
+
+Lemma Mem_unfree_extends
+      m0 m1 blk lo hi
+      (UNFR: Mem_unfree m0 blk lo hi = Some m1)
+  :
+    <<EXT: Mem.extends m0 m1>>
+.
+Proof.
+  unfold Mem_unfree in *. des_ifs.
+  econs; unfold Mem.perm in *; ss; eauto.
+  - unfold inject_id.
+    econs; unfold Mem.perm in *; ii; ss; clarify; eauto with mem.
+    + rewrite PMap.gsspec. zsimpl. des_ifs; bsimpl; des; ss; des_sumbool; clarify; eauto with mem.
+    + eapply Z.divide_0_r.
+    + zsimpl. rewrite PMap.gsspec. des_ifs; cycle 1.
+      { refl. }
+      destruct (classic (lo <= ofs < hi)).
+      * exfalso. red in H0. des_ifs. eapply m; eauto. eapply Mem.perm_cur_max; eauto.
+        unfold Mem.perm. rewrite Heq. econs; eauto.
+      * rewrite Mem.setN_other; cycle 1.
+        { ii. rewrite length_list_repeat in *. clarify.
+          destruct (classic (0 <= hi - lo)).
+          - rewrite Z2Nat.id in *; ss. xomega.
+          - abstr (hi - lo) x. destruct x; try xomega. rewrite Z2Nat.inj_neg in *. xomega.
+        }
+        refl.
+  - ii. rewrite PMap.gsspec in *. des_ifs; bsimpl; des; ss; des_sumbool; clarify; eauto with mem.
+Qed.
+
+Lemma Mem_unfree_right_inject
+      F m_src0 m_tgt0 blk lo hi m_tgt1
+      (INJ: Mem.inject F m_src0 m_tgt0)
+      (UNFR: Mem_unfree m_tgt0 blk lo hi = Some m_tgt1)
+  :
+    <<INJ: Mem.inject F m_src0 m_tgt1>>
+.
+Proof. eapply Mem.inject_extends_compose; eauto. eapply Mem_unfree_extends; eauto. Qed.
 
 End UNFREE.
 

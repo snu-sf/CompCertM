@@ -10,6 +10,7 @@ Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.
 Require Import SimMem.
 Require SimSymbId.
+Require Import Conventions1 MachC.
 
 Set Implicit Arguments.
 
@@ -323,8 +324,132 @@ Next Obligation.
     econs; eauto.
 Qed.
 
-Definition range (lo hi: Z): Z -> Prop := fun x => lo <= x < hi. (* TODO: Use Notation instead *)
-Hint Unfold range.
+Section ORIGINALS.
+
+Lemma store_mapped_simmem
+      sm0 chunk v_src v_tgt blk_src ofs blk_tgt delta m_src0
+      (MWF: wf' sm0)
+      (STRSRC: Mem.store chunk sm0.(m_src) blk_src ofs v_src = Some m_src0)
+      (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
+      (SIMV: Val.inject sm0.(inj) v_src v_tgt)
+  :
+    exists sm1,
+      (<<MSRC: sm1.(m_src) = m_src0>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<STRTGT: Mem.store chunk sm0.(m_tgt) blk_tgt (ofs + delta) v_tgt = Some sm1.(m_tgt)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+.
+Proof.
+  exploit Mem.store_mapped_inject; try apply MWF; eauto. i; des.
+  inv MWF.
+  eexists (mk _ _ _ _ _ _ _).
+  esplits; ss; eauto; cycle 1.
+  - econs; ss; eauto.
+    + eapply Mem.store_unchanged_on; eauto.
+      ii. apply SRCEXT in H2. red in H2. des. red in H2. clarify.
+    + eapply Mem.store_unchanged_on; eauto.
+      ii. apply TGTEXT in H2. red in H2. des. red in H2.
+      eapply H2; eauto. clear - STRSRC H1 H4.
+      apply Mem.store_valid_access_3 in STRSRC. destruct STRSRC.
+      eauto with mem xomega.
+    + eapply frozen_refl.
+    + erewrite <- Mem.nextblock_store; eauto. xomega.
+    + erewrite <- Mem.nextblock_store; eauto. xomega.
+  - econs; ss; eauto.
+    + etransitivity; eauto. unfold src_private. ss. ii; des. esplits; eauto.
+      unfold valid_blocks in *. eauto with mem.
+    + etransitivity; eauto. unfold tgt_private. ss. ii; des. esplits; eauto.
+      { ii. eapply PR; eauto with mem. }
+      unfold valid_blocks in *. eauto with mem.
+    + etransitivity; eauto. erewrite <- Mem.nextblock_store; eauto. xomega.
+    + etransitivity; eauto. erewrite <- Mem.nextblock_store; eauto. xomega.
+Qed.
+Lemma storev_mapped_simmem
+      sm0 chunk v_src v_tgt addr_src addr_tgt m_src0
+      (MWF: wf' sm0)
+      (STRSRC: Mem.storev chunk sm0.(m_src) addr_src v_src = Some m_src0)
+      (SIMADDR: Val.inject sm0.(inj) addr_src addr_tgt)
+      (SIMV: Val.inject sm0.(inj) v_src v_tgt)
+  :
+    exists sm1,
+      (<<MSRC: sm1.(m_src) = m_src0>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<STRTGT: Mem.storev chunk sm0.(m_tgt) addr_tgt v_tgt = Some sm1.(m_tgt)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+.
+Proof.
+  admit "This should hold. - Mem.storev_mapped_inject".
+Qed.
+Lemma free_parallel_simmem
+      sm0 lo hi blk_src blk_tgt delta m_src0
+      (MWF: wf' sm0)
+      (FREESRC: Mem.free sm0.(m_src) blk_src lo hi = Some m_src0)
+      (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
+  :
+    exists sm1,
+      (<<MSRC: sm1.(m_src) = m_src0>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<FREETGT: Mem.free sm0.(m_tgt) blk_tgt (lo + delta) (hi + delta) = Some sm1.(m_tgt)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+.
+Proof.
+  admit "This should hold. - Mem.free_parallel_inject".
+Qed.
+Lemma free_left_simmem
+      sm0 lo hi blk_src blk_tgt delta m_src0
+      (MWF: wf' sm0)
+      (FREESRC: Mem.free sm0.(m_src) blk_src lo hi = Some m_src0)
+      (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
+  :
+    exists sm1,
+      (<<MSRC: sm1.(m_src) = m_src0>>)
+      /\ (<<MTGT: sm1.(m_tgt) = sm0.(m_tgt)>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+.
+Proof.
+  admit "This should hold. - Mem.free_left_inject".
+Qed.
+Lemma free_right_simmem
+      sm0 lo hi blk_tgt m_tgt0
+      (MWF: wf' sm0)
+      (FREETGT: Mem.free sm0.(m_tgt) blk_tgt lo hi = Some m_tgt0)
+      (PRIVTGT: range lo hi <1= sm0.(tgt_private) blk_tgt)
+  :
+    exists sm1,
+      (<<MSRC: sm1.(m_src) = sm0.(m_src)>>)
+      /\ (<<MTGT: sm1.(m_tgt) = m_tgt0>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<MSRC: sm1.(m_tgt) = sm0.(m_tgt)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+.
+Proof.
+  admit "This should hold. - Mem.free_right_inject".
+Qed.
+Lemma alloc_parallel_simmem
+      sm0 lo_src hi_src lo_tgt hi_tgt blk_src blk_tgt m_src0
+      (MWF: wf' sm0)
+      (ALCSRC: Mem.alloc sm0.(m_src) lo_src hi_src = (m_src0, blk_src))
+      (LO: lo_tgt <= lo_src)
+      (HI: hi_src <= hi_tgt)
+  :
+    exists sm1,
+      (<<MSRC: sm1.(m_src) = m_src0>>)
+      /\ (<<ALCTGT: Mem.alloc sm0.(m_tgt) lo_tgt hi_tgt = (sm1.(m_tgt), blk_tgt)>>)
+      /\ (<<INJ: sm1.(inj) blk_src = Some (blk_tgt, 0) /\ forall b, b <> blk_src -> sm1.(inj) b = sm0.(inj) b>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+.
+Proof.
+  admit "This should hold. - Mem.alloc_parallel_inject".
+Qed.
+
+End ORIGINALS.
 
 Lemma alloc_left_zero_simmem
       sm0
@@ -454,8 +579,54 @@ Qed.
 (*     + exploit Mem.nextblock_store; eauto. i. rewrite H0. xomega. *)
 (* Qed. *)
 
+Local Opaque Z.mul.
 
-
+Lemma mach_store_arguments_simmem
+      sm0 rs vs sg m_tgt0
+      (MWF: SimMem.wf sm0)
+      (STORE: store_arguments sm0.(SimMem.tgt) rs vs sg m_tgt0)
+      (*** TODO: don't use unchanged_on, it is needlessly complex for our use. just define my own. *)
+  :
+    exists sm1,
+    <<SM: sm1 = (mk sm0.(inj) sm0.(m_src) m_tgt0
+                         sm0.(src_external) sm0.(tgt_external)
+                         sm0.(src_parent_nb) sm0.(tgt_parent_nb))>> /\
+    <<MWF: SimMem.wf sm1>> /\
+    <<MLE: SimMem.le sm0 sm1>> /\
+    <<PRIV: forall ofs (IN: 0 <= ofs < 4 * size_arguments sg),
+             sm1.(tgt_private) sm0.(SimMem.tgt).(Mem.nextblock) ofs>>
+.
+Proof.
+  i. subst_locals.
+  inv STORE.
+  exploit Mem.alloc_right_inject; try apply MWF; eauto. i; des.
+  hexpl Mem.alloc_result. clarify.
+  hexpl Mem.nextblock_alloc.
+  esplits; eauto.
+  - econs; ss; try apply MWF; eauto.
+    + eapply Mem.inject_extends_compose; eauto.
+      admit "ez".
+    + etransitivity; try apply MWF; eauto.
+      unfold tgt_private. ss. u. ii; des. esplits; eauto with congruence.
+      unfold Mem.valid_block in *. rewrite <- NB in *. eauto with xomega.
+    + etransitivity; try apply MWF; eauto with mem congruence.
+      rewrite <- NB. lia.
+  - econs; ss; eauto with mem xomega.
+    + inv MWF.
+      etrans.
+      { eapply Mem.alloc_unchanged_on; eauto. }
+      eapply Mem.unchanged_on_implies; eauto.
+      i. ss. des_ifs. apply TGTEXT in H0. u in H0. des.
+      exfalso. eapply Mem.fresh_block_alloc; eauto.
+    + eapply frozen_refl.
+    + rewrite <- NB. eauto with xomega.
+  - ii. u. esplits; eauto.
+    + ii.
+      exploit Mem.mi_perm; try apply MWF; eauto. i.
+      zsimpl.
+      hexpl Mem_alloc_fresh_perm. eapply NOPERM; eauto.
+    + unfold Mem.valid_block. rewrite <- NB. ss. eauto with xomega.
+Qed.
 
 
 End MEMINJ.

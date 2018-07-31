@@ -2,6 +2,7 @@ Require Import Setoid Program.Basics.
 Require Import CoqlibC Decidableplus.
 Require Import AST Integers Values Memory Events Globalenvs.
 (** newly added **)
+Require Import AxiomsC.
 Require Export Separation.
 
 Local Open Scope sep_scope.
@@ -52,13 +53,14 @@ Qed.
 
 Lemma disjoint_footprint_sepconj
       P Q0 Q1
-      (DISJ0: disjoint_footprint P Q0)
-      (DISJ1: disjoint_footprint P Q1)
   :
-    <<DISJ: disjoint_footprint P (Q0 ** Q1)>>
+    (<<DISJ0: disjoint_footprint P Q0>>) /\ (<<DISJ1: disjoint_footprint P Q1>>)
+    <->
+    (<<DISJ: disjoint_footprint P (Q0 ** Q1)>>)
 .
 Proof.
-  ii. ss. unfold disjoint_footprint in *. des; eauto.
+  unfold disjoint_footprint in *.
+  split; esplits; ii; ss; des; eauto.
 Qed.
 
 (* Lemma mconj_sym *)
@@ -106,5 +108,18 @@ Proof.
     apply Axioms.functional_extensionality. ii; ss.
     apply prop_ext.
     split; i; des; eauto.
+Qed.
+
+Local Transparent sepconj.
+
+Lemma sep_drop_tail3
+      P Q R
+  :
+    massert_imp (P ** Q ** R) (P ** Q)
+.
+Proof.
+  unfold massert_imp. ss. split; ii; eauto.
+  - des; esplits; eauto. apply disjoint_footprint_sepconj in H1. des; ss.
+  - ss. des; eauto.
 Qed.
 

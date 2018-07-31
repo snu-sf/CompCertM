@@ -281,9 +281,11 @@ Section MODSEM.
       (LOCSET: args.(Args.vs) = map (fun p => Locmap.getpair p ls_init) (loc_arguments sg))
       (PTRFREE: forall
           loc
-          (NOTIN: Loc.notin loc (regs_of_rpairs (loc_arguments sg)))
+          (* (NOTIN: Loc.notin loc (regs_of_rpairs (loc_arguments sg))) *)
+          (NOTIN: ~In loc (regs_of_rpairs (loc_arguments sg)))
         ,
           <<PTRFREE: ~ is_real_ptr (ls_init loc)>>)
+      (SZ: 4 * size_arguments sg <= Ptrofs.modulus)
     :
       initial_frame args
                     (Callstate [dummy_stack sg ls_init] args.(Args.fptr) sg ls_init args.(Args.m))

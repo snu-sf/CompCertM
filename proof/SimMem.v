@@ -9,12 +9,7 @@ Require Import RelationClasses.
 Require Import FSets.
 Require Import Ordered.
 Require Import AST.
-Require Import Asmregs.
 Require Import Integers.
-
-Require Import Skeleton.
-Require Import ModSem.
-Require Import Mod.
 
 Set Implicit Arguments.
 
@@ -53,7 +48,7 @@ Module SimMem.
     sim_val_list: t -> list val -> list val -> Prop;
     le_sim_val: forall mrel0 mrel1 (MLE: le mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
     lift_sim_val: forall mrel, sim_val mrel <2= sim_val (lift mrel);
-    sim_val_list_spec: forall sm0, List.Forall2 sm0.(sim_val) = sm0.(sim_val_list);
+    sim_val_list_spec: forall sm0, (List.Forall2 sm0.(sim_val) = sm0.(sim_val_list));
 
   (* val_rel_list: t -> list val -> list val -> Prop; *)
   (* val_rel_list_spec: forall mrel vs0 vs1, val_rel_list mrel vs0 vs1 <-> List.Forall2 (val_rel mrel) vs0 vs1; *)
@@ -113,7 +108,8 @@ Module SimMem.
   .
   Proof.
     rewrite <- sim_val_list_spec in SIMVS.
-    
+    ginduction SIMVS; ii; ss.
+    congruence.
   Qed.
 
   Definition sim_block `{SM: class} (sm0: t) (blk_src blk_tgt: block): Prop :=

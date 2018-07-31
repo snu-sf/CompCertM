@@ -451,7 +451,8 @@ Lemma fill_arguments_spec
     <<FILL: vs = map (fun p => Locmap.getpair p ls1) locs>> /\
     <<OUT: forall
               loc
-              (NOTIN: Loc.notin loc (regs_of_rpairs locs))
+              (* (NOTIN: Loc.notin loc (regs_of_rpairs locs)) *)
+              (NOTIN: ~ In loc (regs_of_rpairs locs))
             ,
               ls1 loc = ls0 loc>>
 .
@@ -473,7 +474,7 @@ Proof.
     + admit "this should hold".
   - ii; des.
     u. des_ifs.
-    + exploit Loc.same_not_diff; eauto. i; des. ss.
+    + contradict NOTIN. eauto.
     + erewrite OUT; eauto.
 Qed.
 

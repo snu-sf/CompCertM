@@ -23,16 +23,16 @@ Set Implicit Arguments.
 
 
 Record t' := mk {
-  src_mem: mem;
-  tgt_mem: mem;
+  src: mem;
+  tgt: mem;
 }.
 
 Program Instance SimMemId : SimMem.class :=
 {
   t := t';
-  src := src_mem;
-  tgt := tgt_mem;
-  wf := fun (rel: t') => rel.(src_mem) = rel.(tgt_mem);
+  src := src;
+  tgt := tgt;
+  wf := fun (rel: t') => rel.(src) = rel.(tgt);
   le := fun (mrel0 mrel1: t') => True;
   lift := id;
   unlift := fun _ => id;

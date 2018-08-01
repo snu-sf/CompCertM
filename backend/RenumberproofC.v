@@ -6,7 +6,8 @@ Require Import sflib.
 (** newly added **)
 Require Export Renumberproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem SimMemId AsmregsC MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
+Require SimMemId.
 
 Set Implicit Arguments.
 
@@ -241,7 +242,7 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states); eauto; ii; ss.
+  eapply match_states_sim with (match_states := match_states) (match_states_at := top4); eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
@@ -280,11 +281,11 @@ Proof.
     + ss.
   - (* after fsim *)
     inv AFTERSRC.
-    inv SIMRSRET. ss. destruct sm_ret; ss. clarify.
+    inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss.
     esplits; eauto.
     + econs; eauto.
-    + econs; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
+    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv STACKS; ss. destruct sm0; ss. clarify.

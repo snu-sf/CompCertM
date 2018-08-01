@@ -491,6 +491,8 @@ End ARGPASSING.
 
 
 
+Definition brange (blk: block) (lo hi: Z): block -> Z -> Prop := fun b ofs => b= blk /\ lo <= ofs < hi. (* TODO: Use Notation instead *)
+Hint Unfold brange.
 
 Section UNFREE.
 
@@ -498,6 +500,19 @@ Definition Mem_range_noperm (m: mem) (b: block) (lo hi: Z) :=
   forall ofs (BDD: lo <= ofs < hi), ~ Mem.perm m b ofs Max Nonempty
 .
 Hint Unfold Mem_range_noperm.
+
+Lemma Mem_unchanged_noperm
+      P m0 m1 blk lo hi
+      (UNCH: Mem.unchanged_on P m0 m1)
+      (VALID: Mem.valid_block m0 blk)
+      (NOPERM: Mem_range_noperm m0 blk lo hi)
+      (RANGE: brange blk lo hi <2= P)
+  :
+    <<NOPERM: Mem_range_noperm m1 blk lo hi>>
+.
+Proof.
+  ii. eapply NOPERM; eauto. inv UNCH. eapply unchanged_on_perm; eauto.
+Qed.
 
 Lemma Mem_range_noperm_dec:
   forall m b lo hi, {Mem_range_noperm m b lo hi} + {~ Mem_range_noperm m b lo hi}.
@@ -514,7 +529,7 @@ Proof.
   - right; red; intros. elim n0. red; intros; apply H0; omega.
 Defined.
 
-Lemma free_noperm
+Lemma Mem_free_noperm
       m0 blk lo hi m1
       (FREE: Mem.free m0 blk lo hi = Some m1)
   :
@@ -570,6 +585,44 @@ Next Obligation.
   des_ifs; ss.
   rewrite Mem.setN_default. ss.
 Defined.
+
+Lemma Mem_nextblock_unfree
+      m0 m1 blk lo hi
+      (UNFR: Mem_unfree m0 blk lo hi = Some m1)
+  :
+    m0.(Mem.nextblock) = m1.(Mem.nextblock)
+.
+Proof. unfold Mem_unfree in *. des_ifs; ss. Qed.
+
+Lemma Mem_valid_block_unfree
+      m0 m1 blk lo hi
+      (UNFR: Mem_unfree m0 blk lo hi = Some m1)
+  :
+    all1 (m0.(Mem.valid_block) <1> m1.(Mem.valid_block))
+.
+Proof. unfold Mem_unfree in *. des_ifs; ss. Qed.
+
+Lemma Mem_unfree_unchanged_on
+      m0 m1 blk lo hi P
+      (UNFR: Mem_unfree m0 blk lo hi = Some m1)
+      (RANGE: brange blk lo hi <2= ~2 P)
+  :
+    <<UNCH: Mem.unchanged_on P m0 m1>>
+.
+Proof.
+  unfold Mem_unfree in *. des_ifs; ss.
+  econs; ss; eauto.
+  - refl.
+  - ii. unfold Mem.perm. ss.
+    rewrite PMap.gsspec. des_ifs. exfalso. simpl_bool. des. des_sumbool.
+    eapply RANGE; eauto.
+  - ii. rewrite PMap.gsspec. des_ifs. rewrite Mem.setN_outside; ss. rewrite length_list_repeat.
+    apply NNPP; ii. apply not_or_and in H1. des. eapply RANGE; eauto.
+    u. esplits; eauto; try lia.
+    destruct (classic (0 <= hi - lo)).
+    + rewrite Z2Nat.id in *; ss. xomega.
+    + abstr (hi - lo) x. destruct x; try xomega. rewrite Z2Nat.inj_neg in *. xomega.
+Qed.
 
 Context `{CTX: Val.meminj_ctx}.
 

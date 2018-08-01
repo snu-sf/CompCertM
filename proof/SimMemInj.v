@@ -169,65 +169,68 @@ Qed.
 
 Section MEMINJ.
 
-(* Local Existing Instance Val.mi_normal. *)
 Context `{CTX: Val.meminj_ctx}.
-(* Variable gbound_src gbound_tgt: block. *)
 
 Record t' := mk {
+  src: mem;
+  tgt: mem;
   inj: meminj;
-  m_src: mem;
-  m_tgt: mem;
   src_external: block -> Z -> Prop;
   tgt_external: block -> Z -> Prop;
   src_parent_nb: block;
   tgt_parent_nb: block;
 }.
 
+Definition update (sm0: t') (src tgt: mem) (inj: meminj): t' :=
+  mk src tgt inj sm0.(src_external) sm0.(tgt_external) sm0.(src_parent_nb) sm0.(tgt_parent_nb)
+.
+Hint Unfold update.
+
 Definition valid_blocks (m: mem): block -> Z -> Prop := fun b _ => m.(Mem.valid_block) b.
 Hint Unfold valid_blocks.
 
 Definition src_private (sm: t'): block -> Z -> Prop :=
-  loc_unmapped sm.(inj) /2\ sm.(m_src).(valid_blocks)
+  loc_unmapped sm.(inj) /2\ sm.(src).(valid_blocks)
 .
 
 Definition tgt_private (sm: t'): block -> Z -> Prop :=
-  loc_out_of_reach sm.(inj) sm.(m_src) /2\ sm.(m_tgt).(valid_blocks)
+  loc_out_of_reach sm.(inj) sm.(src) /2\ sm.(tgt).(valid_blocks)
 .
 
 Hint Unfold src_private tgt_private.
 
 Inductive wf' (sm0: t'): Prop :=
 | wf_intro
-    (PUBLIC: Mem.inject sm0.(inj) sm0.(m_src) sm0.(m_tgt))
+    (PUBLIC: Mem.inject sm0.(inj) sm0.(src) sm0.(tgt))
     (SRCEXT: sm0.(src_external) <2= sm0.(src_private))
     (TGTEXT: sm0.(tgt_external) <2= sm0.(tgt_private))
-    (SRCLE: (sm0.(src_parent_nb) <= sm0.(m_src).(Mem.nextblock))%positive)
-    (TGTLE: (sm0.(tgt_parent_nb) <= sm0.(m_tgt).(Mem.nextblock))%positive)
+    (SRCLE: (sm0.(src_parent_nb) <= sm0.(src).(Mem.nextblock))%positive)
+    (TGTLE: (sm0.(tgt_parent_nb) <= sm0.(tgt).(Mem.nextblock))%positive)
 .
 
 Inductive le' (mrel0 mrel1: t'): Prop :=
 | le_intro
     (INCR: inject_incr mrel0.(inj) mrel1.(inj))
-    (SRCUNCHANGED: Mem.unchanged_on mrel0.(src_external) mrel0.(m_src) mrel1.(m_src))
-    (TGTUNCHANGED: Mem.unchanged_on mrel0.(tgt_external) mrel0.(m_tgt) mrel1.(m_tgt))
+    (SRCUNCHANGED: Mem.unchanged_on mrel0.(src_external) mrel0.(src) mrel1.(src))
+    (TGTUNCHANGED: Mem.unchanged_on mrel0.(tgt_external) mrel0.(tgt) mrel1.(tgt))
     (SRCPARENTEQ: mrel0.(src_external) = mrel1.(src_external))
     (SRCPARENTEQNB: mrel0.(src_parent_nb) = mrel1.(src_parent_nb))
     (TGTPARENTEQ: mrel0.(tgt_external) = mrel1.(tgt_external))
     (TGTPARENTEQNB: mrel0.(tgt_parent_nb) = mrel1.(tgt_parent_nb))
     (FROZEN: frozen mrel0.(inj) mrel1.(inj) (mrel0.(src_parent_nb))
                                             (mrel0.(tgt_parent_nb)))
-    (SRCBOUND: (mrel0.(m_src).(Mem.nextblock) <= mrel1.(m_src).(Mem.nextblock))%positive)
-    (TGTBOUND: (mrel0.(m_tgt).(Mem.nextblock) <= mrel1.(m_tgt).(Mem.nextblock))%positive)
+    (SRCBOUND: (mrel0.(src).(Mem.nextblock) <= mrel1.(src).(Mem.nextblock))%positive)
+    (TGTBOUND: (mrel0.(tgt).(Mem.nextblock) <= mrel1.(tgt).(Mem.nextblock))%positive)
 .
 
 Definition lift' (mrel0: t'): t' :=
-  (mk mrel0.(inj) mrel0.(m_src) mrel0.(m_tgt)
+  (mk mrel0.(src) mrel0.(tgt) mrel0.(inj)
       mrel0.(src_private) mrel0.(tgt_private)
-      mrel0.(m_src).(Mem.nextblock) mrel0.(m_tgt).(Mem.nextblock))
+      mrel0.(src).(Mem.nextblock) mrel0.(tgt).(Mem.nextblock))
 .
 
 Definition unlift' (mrel0 mrel1: t'): t' :=
-  (mk mrel1.(inj) mrel1.(m_src) mrel1.(m_tgt)
+  (mk mrel1.(src) mrel1.(tgt) mrel1.(inj)
       mrel0.(src_external) mrel0.(tgt_external)
       mrel0.(src_parent_nb) mrel0.(tgt_parent_nb))
 .
@@ -267,8 +270,8 @@ Qed.
 Global Program Instance SimMemInj : SimMem.class :=
 {
   t := t';
-  src := m_src;
-  tgt := m_tgt;
+  src := src;
+  tgt := tgt;
   wf := wf';
   le := le';
   lift := lift';
@@ -326,17 +329,17 @@ Qed.
 
 Section ORIGINALS.
 
-Lemma store_mapped_simmem
+Lemma store_mapped
       sm0 chunk v_src v_tgt blk_src ofs blk_tgt delta m_src0
       (MWF: wf' sm0)
-      (STRSRC: Mem.store chunk sm0.(m_src) blk_src ofs v_src = Some m_src0)
+      (STRSRC: Mem.store chunk sm0.(src) blk_src ofs v_src = Some m_src0)
       (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
       (SIMV: Val.inject sm0.(inj) v_src v_tgt)
   :
     exists sm1,
-      (<<MSRC: sm1.(m_src) = m_src0>>)
+      (<<MSRC: sm1.(src) = m_src0>>)
       /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<STRTGT: Mem.store chunk sm0.(m_tgt) blk_tgt (ofs + delta) v_tgt = Some sm1.(m_tgt)>>)
+      /\ (<<STRTGT: Mem.store chunk sm0.(tgt) blk_tgt (ofs + delta) v_tgt = Some sm1.(tgt)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
 .
@@ -365,48 +368,48 @@ Proof.
     + etransitivity; eauto. erewrite <- Mem.nextblock_store; eauto. xomega.
     + etransitivity; eauto. erewrite <- Mem.nextblock_store; eauto. xomega.
 Qed.
-Lemma storev_mapped_simmem
+Lemma storev_mapped
       sm0 chunk v_src v_tgt addr_src addr_tgt m_src0
       (MWF: wf' sm0)
-      (STRSRC: Mem.storev chunk sm0.(m_src) addr_src v_src = Some m_src0)
+      (STRSRC: Mem.storev chunk sm0.(src) addr_src v_src = Some m_src0)
       (SIMADDR: Val.inject sm0.(inj) addr_src addr_tgt)
       (SIMV: Val.inject sm0.(inj) v_src v_tgt)
   :
     exists sm1,
-      (<<MSRC: sm1.(m_src) = m_src0>>)
+      (<<MSRC: sm1.(src) = m_src0>>)
       /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<STRTGT: Mem.storev chunk sm0.(m_tgt) addr_tgt v_tgt = Some sm1.(m_tgt)>>)
+      /\ (<<STRTGT: Mem.storev chunk sm0.(tgt) addr_tgt v_tgt = Some sm1.(tgt)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
 .
 Proof.
   admit "This should hold. - Mem.storev_mapped_inject".
 Qed.
-Lemma free_parallel_simmem
+Lemma free_parallel
       sm0 lo hi blk_src blk_tgt delta m_src0
       (MWF: wf' sm0)
-      (FREESRC: Mem.free sm0.(m_src) blk_src lo hi = Some m_src0)
+      (FREESRC: Mem.free sm0.(src) blk_src lo hi = Some m_src0)
       (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
   :
     exists sm1,
-      (<<MSRC: sm1.(m_src) = m_src0>>)
+      (<<MSRC: sm1.(src) = m_src0>>)
       /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<FREETGT: Mem.free sm0.(m_tgt) blk_tgt (lo + delta) (hi + delta) = Some sm1.(m_tgt)>>)
+      /\ (<<FREETGT: Mem.free sm0.(tgt) blk_tgt (lo + delta) (hi + delta) = Some sm1.(tgt)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
 .
 Proof.
   admit "This should hold. - Mem.free_parallel_inject".
 Qed.
-Lemma free_left_simmem
+Lemma free_left
       sm0 lo hi blk_src blk_tgt delta m_src0
       (MWF: wf' sm0)
-      (FREESRC: Mem.free sm0.(m_src) blk_src lo hi = Some m_src0)
+      (FREESRC: Mem.free sm0.(src) blk_src lo hi = Some m_src0)
       (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
   :
     exists sm1,
-      (<<MSRC: sm1.(m_src) = m_src0>>)
-      /\ (<<MTGT: sm1.(m_tgt) = sm0.(m_tgt)>>)
+      (<<MSRC: sm1.(src) = m_src0>>)
+      /\ (<<MTGT: sm1.(tgt) = sm0.(tgt)>>)
       /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
@@ -414,33 +417,33 @@ Lemma free_left_simmem
 Proof.
   admit "This should hold. - Mem.free_left_inject".
 Qed.
-Lemma free_right_simmem
+Lemma free_right
       sm0 lo hi blk_tgt m_tgt0
       (MWF: wf' sm0)
-      (FREETGT: Mem.free sm0.(m_tgt) blk_tgt lo hi = Some m_tgt0)
+      (FREETGT: Mem.free sm0.(tgt) blk_tgt lo hi = Some m_tgt0)
       (PRIVTGT: range lo hi <1= sm0.(tgt_private) blk_tgt)
   :
     exists sm1,
-      (<<MSRC: sm1.(m_src) = sm0.(m_src)>>)
-      /\ (<<MTGT: sm1.(m_tgt) = m_tgt0>>)
+      (<<MSRC: sm1.(src) = sm0.(src)>>)
+      /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
       /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<MSRC: sm1.(m_tgt) = sm0.(m_tgt)>>)
+      /\ (<<MSRC: sm1.(tgt) = sm0.(tgt)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
 .
 Proof.
   admit "This should hold. - Mem.free_right_inject".
 Qed.
-Lemma alloc_parallel_simmem
+Lemma alloc_parallel
       sm0 lo_src hi_src lo_tgt hi_tgt blk_src blk_tgt m_src0
       (MWF: wf' sm0)
-      (ALCSRC: Mem.alloc sm0.(m_src) lo_src hi_src = (m_src0, blk_src))
+      (ALCSRC: Mem.alloc sm0.(src) lo_src hi_src = (m_src0, blk_src))
       (LO: lo_tgt <= lo_src)
       (HI: hi_src <= hi_tgt)
   :
     exists sm1,
-      (<<MSRC: sm1.(m_src) = m_src0>>)
-      /\ (<<ALCTGT: Mem.alloc sm0.(m_tgt) lo_tgt hi_tgt = (sm1.(m_tgt), blk_tgt)>>)
+      (<<MSRC: sm1.(src) = m_src0>>)
+      /\ (<<ALCTGT: Mem.alloc sm0.(tgt) lo_tgt hi_tgt = (sm1.(tgt), blk_tgt)>>)
       /\ (<<INJ: sm1.(inj) blk_src = Some (blk_tgt, 0) /\ forall b, b <> blk_src -> sm1.(inj) b = sm0.(inj) b>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
@@ -448,7 +451,35 @@ Lemma alloc_parallel_simmem
 Proof.
   admit "This should hold. - Mem.alloc_parallel_inject".
 Qed.
-
+Lemma unfree_right
+      sm0 lo hi blk m_tgt0
+      (MWF: wf' sm0)
+      (UNFR: Mem_unfree sm0.(tgt) blk lo hi = Some m_tgt0)
+      (RANGE: brange blk lo hi <2= ~2 sm0.(tgt_external))
+  :
+    exists sm1,
+      (<<MSRC: sm1.(src) = sm0.(src)>>)
+      /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+.
+Proof.
+  exists (sm0.(update) sm0.(src) m_tgt0 sm0.(inj)).
+  esplits; u; ss; eauto.
+  - econs; ss; eauto.
+    + inv MWF. eapply Mem_unfree_right_inject; eauto.
+    + etransitivity; try eapply MWF; eauto.
+    + etransitivity; try apply MWF; eauto.
+      u. ii; des; esplits; eauto. erewrite <- Mem_valid_block_unfree; eauto.
+    + etransitivity; try apply MWF; eauto. reflexivity.
+    + etransitivity; try apply MWF; eauto. erewrite Mem_nextblock_unfree; eauto. refl.
+  - econs; ss; eauto.
+    + refl.
+    + eapply Mem_unfree_unchanged_on; eauto.
+    + eapply frozen_refl.
+    + refl.
+    + erewrite Mem_nextblock_unfree; eauto. refl.
+Qed.
 End ORIGINALS.
 
 Lemma alloc_left_zero_simmem
@@ -460,14 +491,14 @@ Lemma alloc_left_zero_simmem
       (TGTNOTEXT: ((range 0 sz) /1\ sm0.(tgt_external) blk_tgt) <1= bot1)
       (TGTPERM: forall ofs k p (BOUND: 0 <= ofs < sz), Mem.perm sm0.(SimMem.tgt) blk_tgt ofs k p)
       (* (SZPOS: 0 < sz) *)
-      (VALID: Mem.valid_block sm0.(m_tgt) blk_tgt)
+      (VALID: Mem.valid_block sm0.(tgt) blk_tgt)
       (PARENT: (sm0.(tgt_parent_nb) <= blk_tgt)%positive)
   :
-    let sm1 := (mk (fun blk => if eq_block blk blk_src
-                                     then Some (blk_tgt, 0)
-                                     else sm0.(inj) blk)
-                         m_src1
-                         sm0.(m_tgt)
+    let sm1 := (mk m_src1
+                   sm0.(tgt)
+                   (fun blk => if eq_block blk blk_src
+                               then Some (blk_tgt, 0)
+                               else sm0.(inj) blk)
                          sm0.(src_external) sm0.(tgt_external)
                          sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in
     <<MWF: SimMem.wf sm1>>
@@ -517,7 +548,7 @@ Lemma store_undef_simmem
       (STORE: Mem.store chunk sm0.(SimMem.src) blk ofs Vundef = Some m_src1)
       (PUBLIC: ~ sm0.(src_private) blk ofs)
   :
-    let sm1 := (mk sm0.(inj) m_src1 sm0.(m_tgt)
+    let sm1 := (mk m_src1 sm0.(tgt) sm0.(inj)
                          sm0.(src_external) sm0.(tgt_external)
                          sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in
     <<MWF: SimMem.wf sm1>> /\
@@ -550,12 +581,12 @@ Qed.
 (*       v_src v_tgt *)
 (*       (INJV: Val.inject sm0.(inj) v_src v_tgt)  *)
 (*       ty rsp_src rsp_tgt rspdelta ofs *)
-(*       (SRC: Mem.storev (chunk_of_type ty) sm0.(m_src) (Vptr rsp_src ofs true) v_src = Some m_src1) *)
-(*       (TGT: Mem_stored (chunk_of_type ty) sm0.(m_tgt) rsp_tgt (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) v_tgt) *)
+(*       (SRC: Mem.storev (chunk_of_type ty) sm0.(src) (Vptr rsp_src ofs true) v_src = Some m_src1) *)
+(*       (TGT: Mem_stored (chunk_of_type ty) sm0.(tgt) rsp_tgt (Ptrofs.unsigned (Ptrofs.add ofs rspdelta)) v_tgt) *)
 (*       (INJRSP: sm0.(inj) rsp_src = Some (rsp_tgt, rspdelta.(Ptrofs.unsigned))) *)
 (*       (BOUND: Ptrofs.unsigned ofs + Ptrofs.unsigned rspdelta <= Ptrofs.max_unsigned) *)
 (*   : *)
-(*     let sm1 := (mk sm0.(inj) m_src1 sm0.(m_tgt) *)
+(*     let sm1 := (mk sm0.(inj) m_src1 sm0.(tgt) *)
 (*                          sm0.(src_external) sm0.(tgt_external) *)
 (*                          sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in *)
 (*     <<MWF: SimMem.wf sm1>> /\ *)
@@ -588,7 +619,7 @@ Lemma mach_store_arguments_simmem
       (*** TODO: don't use unchanged_on, it is needlessly complex for our use. just define my own. *)
   :
     exists sm1,
-    <<SM: sm1 = (mk sm0.(inj) sm0.(m_src) m_tgt0
+    <<SM: sm1 = (mk sm0.(src) m_tgt0 sm0.(inj)
                          sm0.(src_external) sm0.(tgt_external)
                          sm0.(src_parent_nb) sm0.(tgt_parent_nb))>> /\
     <<MWF: SimMem.wf sm1>> /\
@@ -674,8 +705,8 @@ Next Obligation.
 Qed.
 Next Obligation.
   exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
-  eexists. eexists (mk (Mem.flat_inj m_src0.(Mem.nextblock)) m_src0 m_src0
-                       bot2 bot2 m_src0.(Mem.nextblock) m_src0.(Mem.nextblock)). ss.
+  eexists. eexists (mk m_src m_src (Mem.flat_inj m_src.(Mem.nextblock))
+                       bot2 bot2 m_src.(Mem.nextblock) m_src.(Mem.nextblock)). ss.
   esplits; ss; eauto.
   - econs; ss; eauto.
     + econs; eauto; ii; ss.

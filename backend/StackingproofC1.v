@@ -13,7 +13,7 @@ Local Open Scope sep_scope.
 Require Export StackingproofC0.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC ArgPassing MatchSimModSem.
-Require Import SimMemInj.
+Require SimMemInj.
 
 Set Implicit Arguments.
 
@@ -181,22 +181,20 @@ Ltac psimpl := repeat (autorewrite with psimpl in *;
 Lemma init_match_frame_contents
       sm_arg sg
       m_tgt0 rs vs_src vs_tgt ls
-      (STORE: MachC.store_arguments sm_arg.(m_tgt) rs vs_tgt sg m_tgt0)
+      (STORE: MachC.store_arguments sm_arg.(SimMemInj.tgt) rs vs_tgt sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
       (LS: fill_arguments (locset_copy rs) vs_src (loc_arguments sg) = Some ls)
-      (SIMVS: Val.inject_list (inj sm_arg) vs_src vs_tgt)
+      (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
       sm_init
-      (SM: sm_init = (mk sm_arg.(inj) sm_arg.(m_src) m_tgt0
-                         sm_arg.(src_external) sm_arg.(tgt_external)
-                         sm_arg.(src_parent_nb) sm_arg.(tgt_parent_nb)))
+      (SM: sm_init = sm_arg.(SimMemInj.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
-          tgt_private sm_init (Mem.nextblock (m_tgt sm_arg)) ofs)
+          SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
   :
     m_tgt0
-      |= dummy_frame_contents tprog rao (inj sm_arg) ls sg (Mem.nextblock sm_arg.(m_tgt)) 0
-      ** minjection (inj sm_arg) sm_arg.(m_src)
-      ** globalenv_inject (Genv.globalenv prog) (inj sm_arg)
+      |= dummy_frame_contents tprog rao sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
+      ** minjection sm_arg.(SimMemInj.inj) sm_arg.(SimMemInj.src)
+      ** globalenv_inject (Genv.globalenv prog) sm_arg.(SimMemInj.inj)
 .
 Proof.
   sep_split.
@@ -240,6 +238,9 @@ Proof.
   admit "ge relax - sim_skenv_inj - ez".
 Qed.
 
+Definition match_states_at (st_src0: ms_src.(ModSem.state)) (st_tgt0: ms_tgt.(ModSem.state))
+           (sm_at sm_arg: SimMem.t): Prop :=
+.
 
 Theorem sim_modsem
   :
@@ -265,7 +266,7 @@ Proof.
           rewrite SG. eauto.
       } i; des.
       exploit (fill_arguments_spec args_src.(Args.vs) f.(Linear.fn_sig)); eauto. i; des.
-      exploit mach_store_arguments_simmem; eauto.
+      exploit SimMemInj.mach_store_arguments_simmem; eauto.
       { econs; eauto with congruence. rp; eauto. }
       i; des.
 
@@ -316,14 +317,14 @@ Proof.
   - (* call fsim *)
     inv CALLSRC. inv MATCH; ss. clarify.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
-    assert(MCOMPAT: sm0.(inj) = j). { admit "strengthen Stackingproof.v". } clarify.
+    assert(MCOMPAT: sm0.(SimMemInj.inj) = j). { admit "strengthen Stackingproof.v". } clarify.
 
     hexpl match_stacks_sp_ofs RSP.
     hexploit arguments_perm; eauto. { eapply sep_drop_tail3 in SEP. eauto. } i; des. psimpl.
     hexploit arguments_private; eauto. { eapply sep_drop_tail3 in SEP. eauto. } i; des. psimpl.
     hexploit Mem.range_perm_free. { ii. spc H. zsimpl. eapply H; eauto. } intros [m_tgt0 FREETGT].
     exploit transl_external_arguments; eauto. { apply sep_pick1 in SEP. eauto. } intro ARGS; des.
-    exploit free_right_simmem; eauto.
+    exploit SimMemInj.free_right; eauto.
     { u. ii. esplits; eauto.
       - do 2 spc H0. zsimpl. eauto.
       - admit "Strengthen match_states - this might be done while strengthening Stackingproof.v".
@@ -335,22 +336,45 @@ Proof.
       * folder. admit "ge relax - ez".
       * admit "SIMSKENVLINK - ez".
     + econs; ss; eauto with congruence.
+    +
 
   - (* after fsim *)
     inv AFTERSRC. inv MATCH; ss. clarify.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
-    assert(MCOMPAT: sm0.(inj) = j). { admit "strengthen Stackingproof.v". } clarify.
+    assert(MCOMPAT: sm0.(SimMemInj.inj) = j). { admit "strengthen Stackingproof.v". } clarify.
 
     hexpl match_stacks_sp_ofs RSP.
     inv SIMRET.
 
+    assert(VALID: Mem.valid_block (SimMemInj.tgt sm0) sp).
+    { admit "Add in match_stacks". }
+    assert(exists m_tgt0, <<UNFR: Mem_unfree sm_ret.(SimMemInj.tgt) sp 0 (4 * size_arguments sg_arg)
+                                  = Some m_tgt0>>).
+    { eapply Mem_unfree_suceeds; eauto.
+      - unfold Mem.valid_block in *. eapply Plt_Ple_trans; eauto. etransitivity; try eapply MLE. eapply MLEAFTR.
+      - inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl. inv SIMARGS. ss. clarify.
+        assert(sg = sg_arg).
+        { des. clarify. clear - SIG SIG0 FPTR0 SIMSKENVLINK. admit "ez". }
+        clarify.
+        assert(NP: Mem_range_noperm (SimMemInj.tgt sm_arg) blk 0 (4 * size_arguments sg_arg)).
+        { eapply Mem_free_noperm; eauto. }
+        eapply Mem_unchanged_noperm; try apply NP; eauto.
+        + eapply Mem.unchanged_on_implies; try apply MLE0. ii. ss.
+          u. esplits; eauto.
+          hexploit arguments_private; eauto. { eapply sep_drop_tail3 in SEP. eauto. } i; des. psimpl. spc H1. zsimpl. eapply H1.
+    }
     esplits; eauto.
     + econs; eauto.
       * admit "SIMSKENVLINK - ez".
-      * admit "unfreeable !!! ".
+      * psimpl. zsimpl.
+        admit "unfreeable !!! ".
     + econs; ss; eauto with congruence.
-      * econs; ss; auto.
-      * econs; ss; eauto.
+      instantiate (1:= sg_arg).
+      econs; ss; eauto.
+      * eapply agree_regs_set_pair; cycle 1.
+        { eapply val_inject_incr. eapply MLEAFTR.
+        eapply Stackingproof.agree_regs_after_external.
+        ii. econs; ss; eauto.
       *
 
     admit "".

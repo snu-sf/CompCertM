@@ -49,6 +49,28 @@ Section MATCHSIMFORWARD.
       Prop
   .
 
+  Variable match_states_at: forall
+      (st_src0: ms_src.(ModSem.state)) (st_tgt0: ms_tgt.(ModSem.state)) (sm_at sm_arg: SimMem.t)
+    ,
+      Prop
+  .
+
+  Inductive match_states_at_helper
+            (sm_init: SimMem.t)
+            (idx_at: index) (st_src0: ms_src.(ModSem.state)) (st_tgt0: ms_tgt.(ModSem.state)) (sm_at sm_arg: SimMem.t): Prop :=
+  | match_states_at_intro
+      skenv_link_src skenv_link_tgt
+      (SIMSKENVLINK: SimSymb.skenv_func_bisim sm_at.(SimMem.sim_val) skenv_link_src skenv_link_tgt)
+      (MATCH: match_states sm_init idx_at st_src0 st_tgt0 sm_at)
+      args_src args_tgt
+      (CALLSRC: ms_src.(ModSem.at_external) skenv_link_src st_src0 args_src)
+      (CALLTGT: ms_tgt.(ModSem.at_external) skenv_link_tgt st_tgt0 args_tgt)
+      (SIMARGS: sim_args args_src args_tgt sm_arg)
+      (MLE: SimMem.le sm_at sm_arg)
+      (MWF: SimMem.wf sm_arg)
+      (MATCHARG: match_states_at st_src0 st_tgt0 sm_at sm_arg)
+  .
+
   Hypothesis INITBSIM: forall
       sm_arg
       (SIMSKENV: ModSemPair.sim_skenv msp sm_arg)
@@ -105,6 +127,8 @@ Section MATCHSIMFORWARD.
         (<<MLE: SimMem.le sm0 sm_arg>>)
         /\
         (<<MWF: SimMem.wf sm_arg>>)
+        /\
+        (<<MATCHAT: match_states_at st_src0 st_tgt0 sm0 sm_arg>>)
   .
 
   Hypothesis AFTERFSIM: forall
@@ -121,6 +145,9 @@ Section MATCHSIMFORWARD.
       (SIMRET: sim_retv retv_src retv_tgt sm_ret)
       st_src1
       (AFTERSRC: ms_src.(ModSem.after_external) st_src0 retv_src st_src1)
+
+      (* history *)
+      (HISTORY: match_states_at_helper sm_init idx0 st_src0 st_tgt0 sm0 sm_arg)
 
       (* just helpers *)
       (MWFAFTR: SimMem.wf (SimMem.unlift sm_arg sm_ret))
@@ -195,6 +222,7 @@ Section MATCHSIMFORWARD.
         (* determ_tac ModSem.at_external_dtm. clear_tac. *)
         esplits; eauto. i.
         exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
+        { econs; eauto. }
         { eapply SimMem.unlift_wf; eauto. }
         { eapply SimMem.unlift_spec; eauto. }
         i; des.

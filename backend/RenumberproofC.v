@@ -43,9 +43,9 @@ Inductive match_states: RTL.state -> RTL.state -> Prop :=
 
   Lemma step_simulation
     :
-  forall S1 t S2 (NOTEXT: ~ RTLC.is_external ge S1), Step (semantics_with_ge ge) S1 t S2 ->
+  forall S1 t S2, Step (semantics_with_ge ge) S1 t S2 ->
   forall S1', match_states S1 S1' ->
-  exists S2', DStep (semantics_with_ge tge) S1' t S2' /\ match_states S2 S2'.
+  exists S2', Step (semantics_with_ge tge) S1' t S2' /\ match_states S2 S2'.
   Proof.
     admit "".
   Qed.
@@ -242,7 +242,7 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := top4); eauto; ii; ss.
+  eapply match_states_sim with (match_states := match_states) (match_states_at := top6); eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
@@ -297,7 +297,6 @@ Proof.
     inv MATCH.
     (* apply Axioms.functional_extensionality in SIMRSINIT. clarify. *)
     ii. hexploit (@step_simulation prog ge tge); eauto.
-    { ii. eapply not_external; eauto. }
     i; des.
     esplits; eauto.
     + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.

@@ -103,6 +103,133 @@ Ltac sep_split := econs; [|split]; swap 2 3.
 
 
 
+Local Existing Instance Val.mi_normal.
+
+Lemma external_call_parallel_rule:
+  forall (F V: Type) ef (ge: Genv.t F V) vargs1 m1 t vres1 m1' m2 j P vargs2,
+  external_call ef ge vargs1 m1 t vres1 m1' ->
+  m2 |= minjection j m1 ** globalenv_inject ge j ** P ->
+  Val.inject_list j vargs1 vargs2 ->
+  exists j' vres2 m2',
+     external_call ef ge vargs2 m2 t vres2 m2'
+  /\ Val.inject j' vres1 vres2
+  /\ m2' |= minjection j' m1' ** globalenv_inject ge j' ** P
+  /\ inject_incr j j'
+  /\ inject_separated j j' m1 m2.
+Proof.
+  intros until vargs2; intros CALL SEP ARGS.
+  destruct SEP as (A & B & C). simpl in A.
+  exploit external_call_mem_inject; eauto.
+  eapply globalenv_inject_preserves_globals. eapply sep_pick1; eauto.
+  intros (j' & vres2 & m2' & CALL' & RES & INJ' & UNCH1 & UNCH2 & INCR & ISEP).
+  assert (MAXPERMS: forall b ofs p,
+            Mem.valid_block m1 b -> Mem.perm m1' b ofs Max p -> Mem.perm m1 b ofs Max p).
+  { intros. eapply external_call_max_perm; eauto. }
+  exists j', vres2, m2'; intuition auto.
+  split; [|split].
+- exact INJ'.
+- apply m_invar with (m0 := m2).
++ apply globalenv_inject_incr with j m1; auto.
++ eapply Mem.unchanged_on_implies; eauto.
+  intros; red; intros; red; intros.
+  eelim C; eauto. simpl. exists b0, delta; auto.
+- red; intros. destruct H as (b0 & delta & J' & E).
+  destruct (j b0) as [[b' delta'] | ] eqn:J.
++ erewrite INCR in J' by eauto. inv J'.
+  eelim C; eauto. simpl. exists b0, delta; split; auto. apply MAXPERMS; auto.
+  eapply Mem.valid_block_inject_1; eauto.
++ exploit ISEP; eauto. intros (X & Y). elim Y. eapply m_valid; eauto.
+Qed.
+
+Lemma minjection_disjoint_footprint_private
+      sm0 P
+      (SEP: (SimMemInj.tgt sm0) |= P)
+      (DISJ: disjoint_footprint (minjection (SimMemInj.inj sm0) (SimMemInj.src sm0)) P)
+  :
+    P.(m_footprint) <2= sm0.(SimMemInj.tgt_private)
+.
+Proof.
+  u.
+  - ii. esplits; eauto.
+    + ii. eapply DISJ; eauto. ss. esplits; eauto.
+    + destruct P; ss. eapply m_valid; eauto.
+Qed.
+
+Lemma minjection_private_disjoint_footprint
+      sm0 P
+      (PRIV: P.(m_footprint) <2= sm0.(SimMemInj.tgt_private))
+  :
+    <<DISJ: disjoint_footprint (minjection (SimMemInj.inj sm0) (SimMemInj.src sm0)) P>>
+.
+Proof.
+  - ii. ss. des. eapply PRIV; eauto.
+Qed.
+
+Lemma external_call_parallel_rule_simmem
+      (F V: Type) (ge0: Genv.t F V)
+      sm_at sm_after P
+      (SEP: sm_at.(SimMem.tgt) |= (minjection sm_at.(SimMemInj.inj) sm_at.(SimMem.src))
+                             ** globalenv_inject ge0 sm_at.(SimMemInj.inj) ** P)
+      sm_arg sm_ret
+      (MWF: SimMem.wf sm_at)
+      (MWF0: SimMem.wf sm_arg)
+      (MWF1: SimMem.wf sm_ret)
+      (MWF2: SimMem.wf sm_after)
+      (MWFAFTR : SimMem.wf (SimMemInj.unlift' sm_arg sm_ret))
+      (MLE: SimMem.le sm_at sm_arg)
+      (MLE0: SimMem.le (SimMem.lift sm_arg) sm_ret)
+      (MLE1: SimMem.le (SimMem.unlift sm_at sm_ret) sm_after)
+      (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret))
+      (* (PRIV0: loc_out_of_reach (SimMemInj.inj sm_at) (SimMemInj.src sm_at) = *)
+      (*         loc_out_of_reach (SimMemInj.inj sm_arg) (SimMemInj.src sm_arg)) *)
+      (* (PRIV1: loc_out_of_reach (SimMemInj.inj sm_ret) (SimMemInj.src sm_ret) = *)
+      (*         loc_out_of_reach (SimMemInj.inj sm_after) (SimMemInj.src sm_after)) *)
+      (PRIV0: sm_at.(SimMemInj.tgt_private) = sm_arg.(SimMemInj.tgt_private))
+      (PRIV1: sm_ret.(SimMemInj.tgt_private) = sm_after.(SimMemInj.tgt_private))
+      (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg))
+      (UNCH1: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_ret) (SimMemInj.tgt sm_after))
+  :
+    <<SEP: sm_after.(SimMem.tgt) |= (minjection sm_after.(SimMemInj.inj) sm_after.(SimMem.src))
+                            ** globalenv_inject ge0 sm_at.(SimMemInj.inj) ** P>>
+.
+Proof.
+  (* See external_call_parallel_rule *)
+  destruct SEP as (A & B & C). simpl in A.
+  apply disjoint_footprint_sepconj in C. des. ss.
+  eapply minjection_disjoint_footprint_private in DISJ1; cycle 1.
+  { apply sep_drop in B. ss. }
+  sep_split.
+  { ss. eapply MWF2. }
+  { apply disjoint_footprint_sepconj. ss.
+    split; ss.
+    apply minjection_private_disjoint_footprint.
+    etrans; eauto.
+    rewrite PRIV0. rewrite <- PRIV1.
+    inv MLEAFTR. inv MLE0. inv MWF0. inv MWF1. ss.
+    etrans; try apply TGTEXT0; eauto. rewrite TGTPARENTEQ0. reflexivity. }
+  sep_split.
+  { eapply globalenv_inject_incr in B; eauto.
+    - apply sep_pick1 in B. ss. des. esplits; eauto.
+      etrans; eauto. inv MLE. inv MLE0. inv MLE1. inv MLEAFTR.
+      etrans; eauto. etrans; eauto.
+    - apply SimMemInj.inject_separated_frozen; eauto.
+      eapply SimMemInj.frozen_refl; eauto.
+  }
+  { ss. }
+  destruct B as (X & Y & Z); ss.
+  eapply m_invar; eauto.
+  eapply Mem.unchanged_on_implies; cycle 1.
+  { ii. exploit DISJ1; eauto. }
+  rewrite PRIV0.
+  etrans.
+  { instantiate (1:= (SimMemInj.tgt sm_arg)). eauto. }
+  etrans; cycle 1.
+  { instantiate (1:= (SimMemInj.tgt sm_ret)). eauto. }
+  clears sm_after. clear sm_after. clears sm_at. clear sm_at.
+  inv MLE0. ss.
+Unshelve.
+  all: try apply Mem.empty.
+Qed.
 
 
 
@@ -238,8 +365,121 @@ Proof.
   admit "ge relax - sim_skenv_inj - ez".
 Qed.
 
-Definition match_states_at (st_src0: ms_src.(ModSem.state)) (st_tgt0: ms_tgt.(ModSem.state))
-           (sm_at sm_arg: SimMem.t): Prop :=
+Lemma after_match_contents
+      sm_at sm_arg sm_ret sm_after
+      stack cs'
+      (SEP: SimMemInj.tgt sm_at |= stack_contents tprog rao (SimMemInj.inj sm_at) stack cs' **
+                          minjection (SimMemInj.inj sm_at) (SimMemInj.src sm_at) **
+                          globalenv_inject (Genv.globalenv prog) (SimMemInj.inj sm_at))
+      sp sg_arg
+      (UNFR : Mem_unfree (SimMemInj.tgt sm_ret) sp 0 (4 * size_arguments sg_arg) = Some sm_after.(SimMem.tgt))
+      (MSRC: SimMemInj.src sm_after = SimMemInj.src sm_ret)
+      (MWF1: SimMemInj.wf' sm_after)
+      (MLE: SimMemInj.le' sm_at sm_arg)
+      (MLE0: SimMemInj.le' (SimMemInj.lift' sm_arg) sm_ret)
+      (MLE1: SimMemInj.le' (SimMemInj.unlift' sm_at sm_ret) sm_after)
+      (MLEAFTR : SimMemInj.le' sm_arg (SimMemInj.unlift' sm_arg sm_ret))
+  :
+    sm_after.(SimMem.tgt)
+      |= stack_contents tprog rao (SimMemInj.inj sm_ret) stack cs' **
+      minjection (SimMemInj.inj sm_ret) (SimMemInj.src sm_ret) **
+      globalenv_inject (Genv.globalenv prog) (SimMemInj.inj sm_ret)
+.
+Proof.
+  (* eapply stack_contents_change_meminj with (j:= (SimMemInj.inj sm_at)). *)
+  (* { eapply inject_incr_trans; try apply MLEAFTR; eauto. *)
+  (*   eapply inject_incr_trans; try apply MLE; eauto. } *)
+  rewrite <- ! MSRC.
+  assert(INJ: (SimMemInj.inj sm_ret) = (SimMemInj.inj sm_after)).
+  { admit "". }
+  rewrite ! INJ.
+
+  rewrite sep_comm. rewrite sep_assoc. ss.
+  eapply external_call_parallel_rule_simmem with (sm_at := sm_at); eauto.tttttttttttttttttt
+  { 
+  destruct SEP as (A & B & C).
+  sep_split.
+  - eapply m_invar; eauto.
+    unfold m_footprint.
+  eapply sep_imp; eauto.
+Qed.
+
+1 focused subgoal
+(shelved: 2) (ID 18272)
+  
+  skenv_link_src, skenv_link_tgt : SkEnv.t
+  prog : Linear.program
+  tprog : program
+  TRANSF : match_prog prog tprog
+  rao : function -> code -> ptrofs -> Prop
+  ge := SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog : Genv.t (AST.fundef Linear.function) unit
+  tge := SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog : Genv.t (AST.fundef function) unit
+  TRANSL : match_prog prog tprog
+  sm_init : SimMemInj.t'
+  idx0 : nat
+  init_rs : Mach.regset
+  init_sg : signature
+  sm0 : SimMemInj.t'
+  stack : list Linear.stackframe
+  fptr_arg : val
+  sg_arg : signature
+  ls_arg : Locmap.t
+  sm_arg : SimMemInj.t'
+  MLE : SimMemInj.le' sm0 sm_arg
+  sm_ret : SimMemInj.t'
+  MLE0 : SimMemInj.le' (SimMemInj.lift' sm_arg) sm_ret
+  MWF : SimMemInj.wf' sm_ret
+  retv_src, retv_tgt : Retv.t
+  cs' : list stackframe
+  tfptr : val
+  rs : Mach.regset
+  HISTORY : match_states_at_helper msp match_states match_states_at sm_init idx0
+              (Linear.Callstate stack fptr_arg sg_arg ls_arg (SimMemInj.src sm0))
+              {| init_rs := init_rs; init_sg := init_sg; st := Callstate cs' tfptr rs (SimMemInj.tgt sm0) |} sm0
+              sm_arg
+  MWFAFTR : SimMemInj.wf' (SimMemInj.unlift' sm_arg sm_ret)
+  MLEAFTR : SimMemInj.le' sm_arg (SimMemInj.unlift' sm_arg sm_ret)
+  MWF0 : SimMemInj.wf' sm0
+  AGREGS : agree_regs (SimMemInj.inj sm0) ls_arg rs
+  STACKS : match_stacks tprog (SimMemInj.inj sm0) stack cs' sg_arg
+  AGLOCS : agree_callee_save ls_arg (parent_locset stack)
+  SEP : SimMemInj.tgt sm0
+        |= stack_contents tprog rao (SimMemInj.inj sm0) stack cs' **
+           minjection (SimMemInj.inj sm0) (SimMemInj.src sm0) **
+           globalenv_inject (Genv.globalenv prog) (SimMemInj.inj sm0)
+  FPTR : Val.inject (SimMemInj.inj sm0) fptr_arg tfptr
+  ABCD : Genv.find_funct (Genv.globalenv prog) fptr_arg = None /\ length stack = 1%nat ->
+         tailcall_possible sg_arg
+  sp : block
+  RSP : parent_sp cs' = Vptr sp Ptrofs.zero true
+  RETV : Val.inject (SimMemInj.inj sm_ret) (Retv.v retv_src) (Retv.v retv_tgt)
+  MEMSRC : Retv.m retv_src = SimMemInj.src sm_ret
+  MEMTGT : Retv.m retv_tgt = SimMemInj.tgt sm_ret
+  VALID : Mem.valid_block (SimMemInj.tgt sm0) sp
+  m_tgt0 : mem
+  UNFR : Mem_unfree (SimMemInj.tgt sm_ret) sp 0 (4 * size_arguments sg_arg) = Some m_tgt0
+  sm1 : SimMemInj.t'
+  MSRC : SimMemInj.src sm1 = SimMemInj.src sm_ret
+  MTGT : SimMemInj.tgt sm1 = m_tgt0
+  MWF1 : SimMemInj.wf' sm1
+  MLE1 : SimMemInj.le' (SimMemInj.unlift' sm_arg sm_ret) sm1
+  ============================
+  m_tgt0
+  |= stack_contents tprog rao (SimMemInj.inj sm_ret) stack cs' **
+     minjection (SimMemInj.inj sm_ret) (Retv.m retv_src) **
+     globalenv_inject (Genv.globalenv prog) (SimMemInj.inj sm_ret)
+
+Inductive match_states_at (skenv_link_src skenv_link_tgt: SkEnv.t)
+          (st_src0: Linear.state) (st_tgt0: MachC.state) (sm_at sm_arg: SimMem.t): Prop :=
+| match_states_at_intro
+    (INJ: sm_at.(SimMemInj.inj) = sm_arg.(SimMemInj.inj))
+    init_rs init_sg cs' tfptr rs sm0 sp skd fptr cs ls
+    (TGTST: st_tgt0 = mkstate init_rs init_sg (Callstate cs' tfptr rs (SimMemInj.tgt sm0)))
+    (SRCST: st_src0 = Linear.Callstate cs fptr (SkEnv.get_sig skd) ls (SimMemInj.src sm0))
+    (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
+    (PRIV: brange sp 0 (4 * size_arguments (SkEnv.get_sig skd)) <2= sm0.(SimMemInj.tgt_private))
+    (SIG: Genv.find_funct skenv_link_src fptr = Some skd)
+    (VALID: Mem.valid_block (SimMemInj.tgt sm0) sp)
 .
 
 Theorem sim_modsem
@@ -247,7 +487,8 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states); eauto; ii; ss.
+  eapply match_states_sim with (match_states := match_states) (match_states_at := match_states_at);
+    eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - (* init bsim *)
     {
@@ -324,10 +565,13 @@ Proof.
     hexploit arguments_private; eauto. { eapply sep_drop_tail3 in SEP. eauto. } i; des. psimpl.
     hexploit Mem.range_perm_free. { ii. spc H. zsimpl. eapply H; eauto. } intros [m_tgt0 FREETGT].
     exploit transl_external_arguments; eauto. { apply sep_pick1 in SEP. eauto. } intro ARGS; des.
+
+    assert(VALID: Mem.valid_block (SimMemInj.tgt sm0) sp).
+    { admit "Strengthen match_states - this might be done while strengthening Stackingproof.v". }
+
     exploit SimMemInj.free_right; eauto.
     { u. ii. esplits; eauto.
-      - do 2 spc H0. zsimpl. eauto.
-      - admit "Strengthen match_states - this might be done while strengthening Stackingproof.v".
+      do 2 spc H0. zsimpl. eauto.
     }
     i; des. clarify.
 
@@ -336,7 +580,9 @@ Proof.
       * folder. admit "ge relax - ez".
       * admit "SIMSKENVLINK - ez".
     + econs; ss; eauto with congruence.
-    +
+    + econs; eauto.
+      u. ii. des; clarify. specialize (H0 x1). zsimpl. esplits; eauto.
+      { eapply H0; eauto. }
 
   - (* after fsim *)
     inv AFTERSRC. inv MATCH; ss. clarify.
@@ -347,7 +593,7 @@ Proof.
     inv SIMRET.
 
     assert(VALID: Mem.valid_block (SimMemInj.tgt sm0) sp).
-    { admit "Add in match_stacks". }
+    { inv HISTORY. inv MATCHARG. ss. clarify. eauto with congruence. }
     assert(exists m_tgt0, <<UNFR: Mem_unfree sm_ret.(SimMemInj.tgt) sp 0 (4 * size_arguments sg_arg)
                                   = Some m_tgt0>>).
     { eapply Mem_unfree_suceeds; eauto.
@@ -361,19 +607,48 @@ Proof.
         eapply Mem_unchanged_noperm; try apply NP; eauto.
         + eapply Mem.unchanged_on_implies; try apply MLE0. ii. ss.
           u. esplits; eauto.
-          hexploit arguments_private; eauto. { eapply sep_drop_tail3 in SEP. eauto. } i; des. psimpl. spc H1. zsimpl. eapply H1.
+          hexploit arguments_private; eauto.
+          { eapply sep_drop_tail3 in SEP. eauto. }
+          i; des. psimpl. spc H1. zsimpl. inv MATCHARG. rewrite <- MEMSRC0. rewrite <- INJ. u in H. des; clarify.
+          eapply H1. eauto.
+        + eapply Mem.valid_block_free_1; eauto.
     }
-    esplits; eauto.
+    des.
+
+    exploit (@SimMemInj.unfree_right _ (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
+    { admit "strengthen match_stacks". }
+    i; des. ss.
+
+    exists sm1; esplits; eauto.
     + econs; eauto.
       * admit "SIMSKENVLINK - ez".
-      * psimpl. zsimpl.
-        admit "unfreeable !!! ".
+      * psimpl. zsimpl. rp; eauto.
     + econs; ss; eauto with congruence.
-      instantiate (1:= sg_arg).
-      econs; ss; eauto.
-      * eapply agree_regs_set_pair; cycle 1.
-        { eapply val_inject_incr. eapply MLEAFTR.
-        eapply Stackingproof.agree_regs_after_external.
+      eapply match_states_return with (j:= sm_ret.(SimMemInj.inj)); eauto.
+      * eapply match_stacks_change_meminj; try apply STACKS.
+        eapply inject_incr_trans; try apply MLE0. ss. apply MLE.
+      * eapply agree_regs_set_pair; ss.
+        eapply agree_regs_inject_incr.
+        { eapply Stackingproof.agree_regs_after_external; eauto. }
+        eapply inject_incr_trans; try apply MLE0. ss. apply MLE.
+      * left.
+        split.
+        { eapply Stackingproof.agree_callee_save_after_set_result; eauto.
+          eapply Stackingproof.agree_callee_save_after_external; eauto. }
+        { ii. rewrite Locmap.gpo; ss. hnf. des_ifs. }
+      * {
+          sep_split.
+        }
+        eapply stack_contents_change_meminj; eauto.
+        ii. econs; eauto.
+          econs; eauto.
+          
+Stackingproof.agree_callee_save_after_external:
+  forall ls0 ls1 : locset,
+  Stackingproof.agree_callee_save ls0 ls1 ->
+  Stackingproof.agree_callee_save_after (locset_after_external ls0) ls1
+Stackingproof.agree_callee_save_after_set_result:
+        ss. split.
         ii. econs; ss; eauto.
       *
 

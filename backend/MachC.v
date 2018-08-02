@@ -343,7 +343,7 @@ Section MODSEM.
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs true)
-      (UNFREE: Mem_unfree m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
+      (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
     :
       after_external (mkstate init_rs init_sg (Callstate stack fptr ls0 m0))
                      retv

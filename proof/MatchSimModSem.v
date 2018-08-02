@@ -2,7 +2,7 @@ Require Import CoqlibC.
 Require Import SmallstepC.
 Require Import Simulation.
 Require Import ModSem AsmregsC GlobalenvsC MemoryC ASTC.
-Require Import SimModSem SimMem SimSymb.
+Require Import Skeleton SimModSem SimMem SimSymb.
 
 Set Implicit Arguments.
 
@@ -50,6 +50,7 @@ Section MATCHSIMFORWARD.
   .
 
   Variable match_states_at: forall
+      (skenv_link_src skenv_link_tgt: SkEnv.t)
       (st_src0: ms_src.(ModSem.state)) (st_tgt0: ms_tgt.(ModSem.state)) (sm_at sm_arg: SimMem.t)
     ,
       Prop
@@ -68,7 +69,7 @@ Section MATCHSIMFORWARD.
       (SIMARGS: sim_args args_src args_tgt sm_arg)
       (MLE: SimMem.le sm_at sm_arg)
       (MWF: SimMem.wf sm_arg)
-      (MATCHARG: match_states_at st_src0 st_tgt0 sm_at sm_arg)
+      (MATCHARG: match_states_at skenv_link_src skenv_link_tgt st_src0 st_tgt0 sm_at sm_arg)
   .
 
   Hypothesis INITBSIM: forall
@@ -128,7 +129,7 @@ Section MATCHSIMFORWARD.
         /\
         (<<MWF: SimMem.wf sm_arg>>)
         /\
-        (<<MATCHAT: match_states_at st_src0 st_tgt0 sm0 sm_arg>>)
+        (<<MATCHAT: match_states_at skenv_link_src skenv_link_tgt st_src0 st_tgt0 sm0 sm_arg>>)
   .
 
   Hypothesis AFTERFSIM: forall

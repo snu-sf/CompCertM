@@ -185,6 +185,10 @@ Definition update (sm0: t') (src tgt: mem) (inj: meminj): t' :=
   mk src tgt inj sm0.(src_external) sm0.(tgt_external) sm0.(src_parent_nb) sm0.(tgt_parent_nb)
 .
 Hint Unfold update.
+(* Notation "sm0 '.(update_tgt)' tgt" := (sm0.(update) sm0.(src) tgt sm0.(inj)) (at level 50). *)
+(* Definition update_tgt (sm0: t') (tgt: mem) := (sm0.(update) sm0.(src) tgt sm0.(inj)). *)
+(* Definition update_src (sm0: t') (src: mem) := (sm0.(update) src sm0.(tgt) sm0.(inj)). *)
+(* Hint Unfold update_src update_tgt. *)
 
 Definition valid_blocks (m: mem): block -> Z -> Prop := fun b _ => m.(Mem.valid_block) b.
 Hint Unfold valid_blocks.
@@ -198,6 +202,55 @@ Definition tgt_private (sm: t'): block -> Z -> Prop :=
 .
 
 Hint Unfold src_private tgt_private.
+
+Lemma update_src_private
+      sm0 sm1
+      (INJ: sm0.(inj) = sm1.(inj))
+      (SRC: sm0.(src).(Mem.nextblock) = sm1.(src).(Mem.nextblock))
+  :
+    sm0.(src_private) = (sm1).(src_private)
+.
+Proof.
+  repeat (apply Axioms.functional_extensionality; i). apply prop_ext.
+  u. split; ii; des; esplits; eauto with congruence.
+Qed.
+
+Lemma update_tgt_private
+      sm0 sm1
+      (SRC: sm0.(src) = sm1.(src))
+      (TGT: sm0.(tgt).(Mem.nextblock) = sm1.(tgt).(Mem.nextblock))
+      (INJ: sm0.(inj) = sm1.(inj))
+  :
+    sm0.(tgt_private) = sm1.(tgt_private)
+.
+Proof.
+  repeat (apply Axioms.functional_extensionality; i). apply prop_ext.
+  u. split; ii; des; esplits; eauto with congruence.
+  - rewrite <- INJ. rewrite <- SRC. ss.
+  - rewrite INJ. rewrite SRC. ss.
+Qed.
+
+(* Lemma update_src_private *)
+(*       sm0 m_src *)
+(*       (NB: sm0.(src).(Mem.nextblock) = m_src.(Mem.nextblock)) *)
+(*   : *)
+(*     sm0.(src_private) = (sm0.(update_src) m_src).(src_private) *)
+(* . *)
+(* Proof. *)
+(*   repeat (apply Axioms.functional_extensionality; i). apply prop_ext. *)
+(*   u. split; ii; des; esplits; eauto with congruence. *)
+(* Qed. *)
+
+(* Lemma update_tgt_private *)
+(*       sm0 m_tgt *)
+(*       (NB: sm0.(tgt).(Mem.nextblock) = m_tgt.(Mem.nextblock)) *)
+(*   : *)
+(*     sm0.(tgt_private) = (sm0.(update_tgt) m_tgt).(tgt_private) *)
+(* . *)
+(* Proof. *)
+(*   repeat (apply Axioms.functional_extensionality; i). apply prop_ext. *)
+(*   u. split; ii; des; esplits; eauto with congruence. *)
+(* Qed. *)
 
 Inductive wf' (sm0: t'): Prop :=
 | wf_intro
@@ -424,10 +477,10 @@ Lemma free_right
       (PRIVTGT: range lo hi <1= sm0.(tgt_private) blk_tgt)
   :
     exists sm1,
+      (* (<<EXACT: sm1 = sm0.(update_tgt) m_tgt0>>) *)
       (<<MSRC: sm1.(src) = sm0.(src)>>)
       /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
       /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<MSRC: sm1.(tgt) = sm0.(tgt)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
 .
@@ -458,8 +511,10 @@ Lemma unfree_right
       (RANGE: brange blk lo hi <2= ~2 sm0.(tgt_external))
   :
     exists sm1,
+      (* (<<EXACT: sm1 = sm0.(update_tgt) m_tgt0>>) *)
       (<<MSRC: sm1.(src) = sm0.(src)>>)
       /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
 .

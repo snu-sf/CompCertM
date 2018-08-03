@@ -234,24 +234,11 @@ but then corresponding MachM's part should be transl_code another_dummy_code ...
 .
 Hint Unfold dummy_stack.
 
-Definition update_locset (ls: locset) (prs: regset): locset :=
-  fun loc =>
-    match loc with
-    | R mr => prs (preg_of mr)
-    | S _ _ _ => ls loc
-    end
-.
-
-Definition to_locset (prs: regset): locset :=
-  update_locset (Locmap.init Vundef) prs
-.
-
-Definition to_regset (ls: locset): regset :=
-  fun pr =>
-    match to_mreg pr with
-    | Some mr => ls (R mr)
-    | None => Vundef
-    end
+Definition stackframes_after_external (stack: list stackframe): list stackframe :=
+  match stack with
+  | nil => nil
+  | Stackframe f sp ls bb :: tl => Stackframe f sp ls.(locset_after_external) bb :: tl
+  end
 .
 
 Section MODSEM.
@@ -308,7 +295,7 @@ Section MODSEM.
     :
       after_external (Callstate stack fptr_arg sg_arg ls_arg m_arg)
                      retv
-                     (Returnstate stack ls_after retv.(Retv.m))
+                     (Returnstate stack.(stackframes_after_external) ls_after retv.(Retv.m))
   .
 
   Program Definition modsem: ModSem.t :=

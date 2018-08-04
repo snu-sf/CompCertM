@@ -817,13 +817,14 @@ Inductive match_states_at (skenv_link_src skenv_link_tgt: SkEnv.t)
 | match_states_at_intro
     (INJ: sm_at.(SimMemInj.inj) = sm_arg.(SimMemInj.inj))
     (INJ: sm_at.(SimMem.src) = sm_arg.(SimMem.src))
-    init_rs init_sg cs' tfptr rs sm0 sp skd fptr cs ls
-    (SRCST: st_src0 = Linear.Callstate cs fptr (SkEnv.get_sig skd) ls (SimMemInj.src sm0))
-    (TGTST: st_tgt0 = mkstate init_rs init_sg (Callstate cs' tfptr rs (SimMemInj.tgt sm0)))
+    init_rs init_sg cs' tfptr rs sp skd fptr cs ls
+    (SRCST: st_src0 = Linear.Callstate cs fptr (SkEnv.get_sig skd) ls (SimMemInj.src sm_arg))
+    (TGTST: st_tgt0 = mkstate init_rs init_sg (Callstate cs' tfptr rs (SimMemInj.tgt sm_at)))
     (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
-    (PRIV: brange sp 0 (4 * size_arguments (SkEnv.get_sig skd)) <2= sm0.(SimMemInj.tgt_private))
+    (PRIV: brange sp 0 (4 * size_arguments (SkEnv.get_sig skd)) <2= sm_arg.(SimMemInj.tgt_private))
     (SIG: Genv.find_funct skenv_link_src fptr = Some skd)
-    (VALID: Mem.valid_block (SimMemInj.tgt sm0) sp)
+    (VALID: Mem.valid_block (SimMemInj.tgt sm_arg) sp)
+    (NB: sm_at.(SimMem.tgt).(Mem.nextblock) = sm_arg.(SimMem.tgt).(Mem.nextblock))
     (SEP: SimMemInj.tgt sm_arg |= stack_contents_at_external (SimMemInj.inj sm_arg) cs cs' (SkEnv.get_sig skd)
                         ** minjection (SimMemInj.inj sm_arg) (SimMemInj.src sm_arg) **
                         globalenv_inject (Genv.globalenv prog) (SimMemInj.inj sm_arg))
@@ -925,30 +926,34 @@ Proof.
     }
     i; des. clarify.
 
+    hexpl Mem.nextblock_free NB.
     esplits; eauto.
     + econs; eauto.
       * folder. admit "ge relax - ez".
       * admit "SIMSKENVLINK - ez".
     + econs; ss; eauto with congruence.
-    + econs; eauto.
-      u. ii. des; clarify. specialize (H0 x1). zsimpl. esplits; eauto.
-      { eapply H0; eauto. }
-      { rewrite <- sep_assoc. rewrite sep_comm.
-        eapply globalenv_inject_incr with (j:= sm0.(SimMemInj.inj)); eauto.
-        { rewrite <- MINJ. eapply inject_incr_refl. }
-        { eapply SimMemInj.inject_separated_frozen. rewrite <- MINJ. eapply SimMemInj.frozen_refl. }
-        rewrite <- sep_assoc in SEP. rewrite sep_comm in SEP. bar. move SEP at bottom.
-        destruct SEP as (A & B & C).
-        sep_split.
-        { eapply m_invar; eauto. ss. admit "ez - separate this as a lemma in MemoryC". }
-        { ss. }
-        destruct B as (D & E & F).
-        sep_split; revgoals.
-        { ss. eapply MWF0. }
-        { admit "Compared to C, left footprint: <=. right footprint: =.". }
-        rewrite MINJ.
-        eapply stack_contents_at_external_spec; eauto.
-      }
+    + econs; eauto with congruence.
+      * rp; eauto.
+      * u. ii. des; clarify. specialize (H0 x1). zsimpl. esplits; eauto.
+        { rp; [eapply H0; eauto|..]; eauto. }
+        { unfold Mem.valid_block in *. eauto with congruence. }
+      * { rewrite <- sep_assoc. rewrite sep_comm.
+          eapply globalenv_inject_incr with (j:= sm0.(SimMemInj.inj)); eauto.
+          { rewrite <- MINJ. eapply inject_incr_refl. }
+          { eapply SimMemInj.inject_separated_frozen. rewrite <- MINJ. eapply SimMemInj.frozen_refl. }
+          rewrite <- sep_assoc in SEP. rewrite sep_comm in SEP. bar. move SEP at bottom.
+          destruct SEP as (A & B & C).
+          sep_split.
+          { eapply m_invar; eauto. ss. eapply Mem_unchanged_on_bot; eauto.
+            rewrite NB. refl. }
+          { ss. }
+          destruct B as (D & E & F).
+          sep_split; revgoals.
+          { ss. eapply MWF0. }
+          { admit "Compared to C, left footprint: <=. right footprint: =.". }
+          rewrite MINJ.
+          eapply stack_contents_at_external_spec; eauto.
+        }
 
   - (* after fsim *)
     inv AFTERSRC. inv MATCH; ss. clarify.

@@ -251,6 +251,68 @@ Qed.
 (* Proof. *)
 (* Qed. *)
 
+Local Transparent make_env sepconj.
+Lemma contains_callee_saves_footprint
+      j sp b rs0 ofs
+      (FOOT: m_footprint
+            (contains_callee_saves j sp (fe_ofs_callee_save (make_env b)) (used_callee_save b) rs0)
+            sp ofs)
+  :
+    <<BOUND: fe_ofs_callee_save (make_env b) <=
+             ofs < size_callee_save_area b (fe_ofs_callee_save (make_env b))>>
+.
+Proof.
+  destruct b; ss. des_ifs.
+  unfold size_callee_save_area. ss.
+  clear_tac.
+  assert(4 | 8).
+  { admit "so ez". }
+  assert(0 < align (4 * bound_outgoing) 8 + 8 /\ (4 | align (4 * bound_outgoing) 8 + 8)).
+  { hexploit (align_le (4 * bound_outgoing) 8); try lia. i. split; try lia.
+    eapply Z.divide_add_r; try lia; ss.
+    - etrans; cycle 1. eapply align_divides; try lia. eauto.
+  (* TODO: strengthen zsimpl. *)
+  }
+  (* assert(0 < align (4 * bound_outgoing) 8 + 8 /\ (8 | align (4 * bound_outgoing) 8 + 8)). *)
+  (* { hexploit (align_le (4 * bound_outgoing) 8); try lia. i. split; try lia. *)
+  (*   eapply Z.divide_add_r; try lia. *)
+  (*   - eapply align_divides; try lia. *)
+  (*   - refl. *)
+  (* (* TODO: strengthen zsimpl. *) *)
+  (* } *)
+  abstr (align (4 * bound_outgoing) 8 + 8) initofs.
+  clear bound_outgoing_pos bound_stack_data_pos bound_local_pos. clear_tac.
+  ginduction used_callee_save; ii; ss.
+  (* assert((AST.typesize (mreg_type a)) = 4 \/ (AST.typesize (mreg_type a)) = 8). *)
+  assert((4 | (AST.typesize (mreg_type a))) /\
+         ((AST.typesize (mreg_type a)) | 8) /\ 0 < (AST.typesize (mreg_type a))).
+  { destruct a; ss; des_ifs; cbn; splits; try refl; try lia; ss. }
+  destruct FOOT.
+  - des.
+    split.
+    + etrans; eauto.
+      eapply align_le; try lia.
+    + eapply Z.lt_le_trans; eauto.
+      etrans; cycle 1.
+      { eapply size_callee_save_area_rec_incr; eauto. }
+      rewrite ! size_type_chunk.
+      refl.
+  - exploit IHused_callee_save; revgoals; cycle 1; swap 1 3.
+    { eauto. }
+    { ss. }
+    { esplits; eauto.
+      - admit "so ez".
+      - admit "so ez".
+    }
+    { ii. eapply used_callee_save_prop; eauto. }
+    { inv used_callee_save_norepet. ss. }
+    { ss.
+      split.
+      - admit "so ze".
+      - admit "so ez".
+    }
+Qed.
+Local Opaque make_env sepconj.
 
 Section SIMMODSEM.
 
@@ -392,7 +454,7 @@ Lemma after_external_parallel_rule
 .
 Proof.
   admit "".
-Qed.
+Abort.
 
 Lemma mle_preserves_tgt_private
       sm_at sm_arg P
@@ -612,6 +674,65 @@ Proof.
   ii; ss. des_ifs.
 Qed.
 
+Lemma frame_contents_at_external_impl
+      f j sp rs rs0 sp2 retaddr0 sg
+      (SZ: 0 <= 4 * size_arguments sg <= fe_stack_data (make_env (function_bounds f)))
+  :
+    massert_imp
+      (frame_contents tprog rao f j sp rs rs0 sp2 retaddr0 )
+      (frame_contents_at_external f j sp rs rs0 sp2 retaddr0 sg)
+.
+Proof.
+  unfold frame_contents, frame_contents_at_external in *.
+  unfold fe_ofs_arg.
+  econs; eauto.
+  - ii. ss. des. esplits; eauto.
+    + unfold frame_contents_1, frame_contents_1_at_external in *.
+      rewrite sep_comm. rewrite sep_assoc.
+      rewrite sep_comm in H. rewrite sep_assoc in H.
+      repeat rewrite sep_assoc in *.
+      clear H0.
+      eapply sep_imp; eauto. ss.
+    + eapply range_drop_left; eauto.
+  - ss. ii.
+    des; eauto.
+    + left. unfold frame_contents_1, frame_contents_1_at_external in *.
+      Local Transparent sepconj.
+      ss. des; ss; clarify; eauto.
+      * right. right. left. esplits; eauto.
+      * right. right. right. left. esplits; eauto.
+    + right.
+      ss. des; ss; clarify; eauto.
+      left. esplits; eauto. lia.
+      Local Opaque sepconj.
+Qed.
+
+Lemma bound_outgoing_stack_data
+      b
+  :
+    (4 * bound_outgoing b <= fe_stack_data (make_env b))
+.
+Proof.
+  Local Transparent make_env.
+  ss.
+  Local Opaque make_env.
+  des_ifs.
+  etrans; cycle 1.
+  { eapply align_le; eauto. lia. }
+  etrans; cycle 1.
+  { generalize (bound_local_pos b); i.
+    instantiate (1:= align (size_callee_save_area b (align (4 * bound_outgoing b) 8 + 8)) 8).
+    lia.
+  }
+  etrans; cycle 1.
+  { eapply align_le; eauto. lia. }
+  etrans; cycle 1.
+  { eapply size_callee_save_area_incr. }
+  etrans; cycle 1.
+  { instantiate (1:= align (4 * bound_outgoing b) 8). lia. }
+  eapply align_le; eauto. lia.
+Qed.
+
 Lemma stack_contents_at_external_spec
       sm0 stack cs' sg sp sm1
       (STACKS: match_stacks tprog (SimMemInj.inj sm0) stack cs' sg)
@@ -641,11 +762,16 @@ Proof.
   { apply mconj_proj2 in SEP. rewrite sep_assoc in *. eauto. }
   intro RANGE; des.
 
+  hexploit (bound_outgoing_stack_data (function_bounds f)); eauto. intro OUTGOING.
+
   eapply sepconj_isolated_mutation_stronger with
       (CHNG:= fun blk ofs => blk = sp /\ (0 <= ofs < 4 * size_arguments sg)); try apply SEP.
   - eapply Mem.unchanged_on_implies; eauto.
     ii; ss. apply not_and_or. eauto.
-  - admit "ez".
+  - eapply frame_contents_at_external_impl; eauto.
+    generalize (size_arguments_above sg); intro.
+    inv STACKS.
+    split; try lia.
   - intros blk ofs. ii. des. clarify.
     unfold frame_contents. ss.
     right.
@@ -655,11 +781,6 @@ Proof.
     esplits; eauto.
     inv STACKS.
     eapply Z.lt_le_trans; eauto.
-    clear - RANGE SZARG SEP.
-    abstr (function_bounds f) b.
-    hexploit (frame_env_aligned b); eauto. intro ALIGN.
-    assert(4 * (bound_outgoing b) <= fe_stack_data (make_env b)).
-    { admit "". }
     lia.
   - intros blk ofs. ii. des. clarify.
     simpl in PR.
@@ -672,7 +793,6 @@ Proof.
     move RANGE at bottom.
     repeat rewrite <- sep_assoc in RANGE. apply sep_pick1 in RANGE. repeat rewrite sep_assoc in RANGE.
     unfold fe_ofs_arg in *. zsimpl.
-    (* destruct RANGE as (A & (B & (C & (D & E & F) & G) & H) & I). *)
     destruct RANGE as (_ & (_ & (_ & (_ & E & F) & G) & H) & I).
 
     repeat (apply_all_once disjoint_footprint_sepconj; des_safe).
@@ -686,135 +806,10 @@ Proof.
       * lia.
       * eapply DISJ2; eauto.
       * eapply DISJ1; eauto.
-      * eapply DISJ8; eauto. split; eauto. admit "".
+      * eapply DISJ8; eauto. split; eauto. eapply contains_callee_saves_footprint; eauto.
     + des.
       * lia.
-      * assert(4 * (bound_outgoing b) <= fe_stack_data (make_env b)).
-        { admit "". }
-        generalize (bound_stack_data_pos b); i.
-        lia.
-Qed.
-
-
-
-
-Lemma stack_contents_at_external_spec
-      sm0 stack cs' sg sp sm1
-      (STACKS: match_stacks tprog (SimMemInj.inj sm0) stack cs' sg)
-      (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
-      (FREETGT: Mem.free (SimMemInj.tgt sm0) sp 0 (4 * size_arguments sg) = Some (SimMemInj.tgt sm1))
-      (SEP: SimMemInj.tgt sm0 |= stack_contents tprog rao (SimMemInj.inj sm0) stack cs')
-  :
-  <<SEP: SimMemInj.tgt sm1 |= stack_contents_at_external (SimMemInj.inj sm0) stack cs' sg>>
-.
-Proof.
-  eapply sepconj_isolated_mutation_strong; eauto; cycle 1.
-  - admit "".
-  - hexploit Mem.nextblock_free; eauto. intro NB.
-    destruct stack; ss. destruct cs'; ss.
-    des_ifs_safe.
-    destruct stack.
-    { des_ifs; sep_simpl_tac.
-      eapply Mem_unchanged_on_bot. rewrite NB; refl. }
-    Local Opaque stack_contents.
-    destruct cs'; ss.
-    { inv STACKS. inv STK. }
-    des_ifs_safe.
-tttttttttttttttttttt
-    rewrite stack_contents_at_external_footprint_split.
-    destruct (classic (stack = [])).
-    { clarify. }
-    rewrite stack_contents_at_external_footprint_split.
-    
-    destruct stack; ss.
-    induction STACKS; ii; ss.
-    { eapply Mem_unchanged_on_bot. rewrite NB; refl. }
-    des_ifs; sep_simpl_tac.
-    { eapply Mem_unchanged_on_bot. rewrite NB; refl. }
-    ss.
-
-    (* clear SEP. *)
-    inv STACKS; ss.
-    { eapply Mem_unchanged_on_bot. rewrite NB; refl. }
-    destruct cs; ss.
-    { des_ifs; sep_simpl_tac.
-      eapply Mem_unchanged_on_bot. rewrite NB; refl.
-    }
-    des_ifs_safe.
-    +
-Qed.
-
-Lemma stack_contents_at_external_spec
-      sm0 stack cs' sg sp sm1
-      (STACKS: match_stacks tprog (SimMemInj.inj sm0) stack cs' sg)
-      (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
-      (FREETGT: Mem.free (SimMemInj.tgt sm0) sp 0 (4 * size_arguments sg) = Some (SimMemInj.tgt sm1))
-      (SEP: SimMemInj.tgt sm0 |= stack_contents tprog rao (SimMemInj.inj sm0) stack cs')
-  :
-  <<SEP: SimMemInj.tgt sm1 |= stack_contents_at_external (SimMemInj.inj sm0) stack cs'>>
-.
-Proof.
-  Local Opaque sepconj.
-  pose (length stack) as X. pose (length cs') as Y.
-  inv STACKS; ss. des_ifs_safe.
-  des_ifs.
-  { ss. des_ifs_safe. apply sep_drop in SEP. ss. }
-  bar. move SEP at bottom. (* destruct SEP as (A & B & C). *)
-
-  destruct cs'0; ss; sep_simpl_tac. {inv STK. }
-  des_ifs_safe. des_ifs; sep_simpl_tac.
-  { unfold frame_contents_at_external, frame_contents in *.
-    unfold frame_contents_1_at_external, frame_contents_1 in *.
-    sep_simpl_tac.
-    eapply sepconj_isolated_mutation1; eauto.
-  }
-  { sep_split.
-    - des. s. esplits; eauto.
-      + unfold frame_contents_1, frame_contents_1_at_external in *.
-        rewrite sep_swap. rewrite sep_swap in A.
-        apply sep_pure. split; ss. apply sep_drop in A.
-        eapply m_invar; eauto.
-        admit "UNCH".
-      + eapply m_invar; eauto.
-        admit "UNCH".
-    - admit "ez".
-    - eapply m_invar; eauto. admit "".
-  }
-  { sep_split.
-    - des. s. esplits; eauto.
-      + unfold frame_contents_1, frame_contents_1_at_external in *.
-        rewrite sep_swap. rewrite sep_swap in A.
-        apply sep_pure. split; ss. apply sep_drop in A.
-        eapply m_invar; eauto.
-        admit "UNCH".
-      + eapply m_invar; eauto.
-        admit "UNCH".
-    - admit "ez".
-    - eapply m_invar; eauto. admit "".
-  }
-  { sep_split.
-  -
-  admit "".
-
-  sep_split; revgoals.
-  { eapply m_invar; eauto. eapply Mem.free_unchanged_on; eauto.
-    ii. eapply C; eauto.
-    s. des_ifs_safe.
-
-    right.
-    Local Transparent sepconj.
-    s.
-    hexploit (frame_env_range (function_bounds f)). i; des.
-    left.
-    esplits; eauto.
-    ss.
-    unfold sepconj.
-    ii. destruct l; ss.
-    - des_ifs; sep_simpl_tac. ss. des. clarify.
-    s. des_ifs_safe.
-    rename l into lll.
-    destruct lll.
-  destruct stack; ss.
+      * generalize (bound_stack_data_pos b); i. lia.
 Qed.
 
 Inductive match_states_at (skenv_link_src skenv_link_tgt: SkEnv.t)
@@ -829,7 +824,7 @@ Inductive match_states_at (skenv_link_src skenv_link_tgt: SkEnv.t)
     (PRIV: brange sp 0 (4 * size_arguments (SkEnv.get_sig skd)) <2= sm0.(SimMemInj.tgt_private))
     (SIG: Genv.find_funct skenv_link_src fptr = Some skd)
     (VALID: Mem.valid_block (SimMemInj.tgt sm0) sp)
-    (SEP: SimMemInj.tgt sm_arg |= stack_contents_at_external (SimMemInj.inj sm_arg) cs cs'
+    (SEP: SimMemInj.tgt sm_arg |= stack_contents_at_external (SimMemInj.inj sm_arg) cs cs' (SkEnv.get_sig skd)
                         ** minjection (SimMemInj.inj sm_arg) (SimMemInj.src sm_arg) **
                         globalenv_inject (Genv.globalenv prog) (SimMemInj.inj sm_arg))
 .
@@ -899,7 +894,7 @@ Proof.
             rewrite MEMSRC. rewrite MEMTGT.
             eapply init_match_frame_contents; eauto.
             * econs; eauto. rewrite <- MEMTGT. ss.
-            * eauto with congruence.
+            * rewrite <- SG. eauto with congruence.
           + i; des. admit "ge relax, ez".
         - clarify.
         - clarify.
@@ -952,7 +947,7 @@ Proof.
         { ss. eapply MWF0. }
         { admit "Compared to C, left footprint: <=. right footprint: =.". }
         rewrite MINJ.
-        clear - D FREETGT RSP STACKS ABCD. abstr (SkEnv.get_sig skd) sg. clear_tac.
+        eapply stack_contents_at_external_spec; eauto.
       }
 
   - (* after fsim *)
@@ -1008,24 +1003,12 @@ Proof.
         { eapply Stackingproof.agree_callee_save_after_set_result; eauto.
           eapply agree_callee_save_after_external; eauto. }
         { ii. rewrite Locmap.gpo; ss. hnf. des_ifs. }
-      * { rewrite MEMSRC.
-          rename sm0 into sm_at.
-          sep_split.
+      * { bar. move HISTORY at bottom. inv HISTORY. inv MATCHARG. ss. clarify.
+          rename sm0 into sm_at. rename sm1 into sm_after.
+          rewrite RSP0 in *. clarify.
+          admit "-----------------------------------------------------------------------------------".
         }
-        eapply stack_contents_change_meminj; eauto.
-        ii. econs; eauto.
-          econs; eauto.
-          
-Stackingproof.agree_callee_save_after_external:
-  forall ls0 ls1 : locset,
-  Stackingproof.agree_callee_save ls0 ls1 ->
-  Stackingproof.agree_callee_save_after (locset_after_external ls0) ls1
-Stackingproof.agree_callee_save_after_set_result:
-        ss. split.
-        ii. econs; ss; eauto.
-      *
 
-    admit "".
   - (* final fsim *)
     admit "".
   - (* step lemma *)

@@ -67,3 +67,17 @@ Definition to_fake (v: val): val :=
 
 Definition fake_ptr_one: val := Vptr 1%positive Ptrofs.zero false.
 
+Section INJECT.
+
+Local Existing Instance Val.mi_normal.
+
+Lemma fakeptr_inject_id
+      F fptr
+      (FAKE: ~ is_real_ptr fptr)
+  :
+    <<INJECT: Val.inject F fptr fptr>>
+.
+Proof. destruct fptr; ss. des_ifs. econs; eauto. Qed.
+
+End INJECT.
+

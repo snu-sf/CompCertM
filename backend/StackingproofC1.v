@@ -2,8 +2,7 @@ Require Import CoqlibC Errors.
 Require Import Integers ASTC Linking.
 Require Import ValuesC MemoryC SeparationC Events GlobalenvsC Smallstep.
 Require Import LTL Op LocationsC LinearC MachC.
-(* Require Import BoundsC Conventions StacklayoutC Lineartyping. *)
-Require Import Bounds Conventions Stacklayout Lineartyping.
+Require Import Bounds Conventions StacklayoutC Lineartyping.
 Require Import Stacking.
 
 Local Open Scope string_scope.
@@ -21,27 +20,7 @@ Set Implicit Arguments.
 
 
 
-Lemma Loc_not_in_notin_R
-      r locs
-      (NOTIN: ~ In (R r) locs)
-  :
-    <<NOTIN: Loc.notin (R r) locs>>
-.
-Proof. red. ginduction locs; ii; ss. esplits; eauto. destruct a; ss. ii; clarify. eauto. Qed.
 
-Section INJECT.
-
-Local Existing Instance Val.mi_normal.
-
-Lemma fakeptr_inject
-      F fptr
-      (FAKE: ~ is_real_ptr fptr)
-  :
-    <<INJECT: Val.inject F fptr fptr>>
-.
-Proof. destruct fptr; ss. des_ifs. econs; eauto. Qed.
-
-End INJECT.
 
 
 
@@ -94,7 +73,6 @@ Local Opaque Z.add Z.mul Z.div.
 Local Opaque sepconj.
 Local Opaque function_bounds.
 Local Opaque make_env.
-Ltac sep_split := econs; [|split]; swap 2 3.
 
 
 
@@ -314,6 +292,12 @@ Proof.
 Qed.
 Local Opaque make_env sepconj.
 
+
+
+
+
+
+
 Section SIMMODSEM.
 
 Local Existing Instance Val.mi_normal.
@@ -456,23 +440,6 @@ Proof.
   admit "".
 Abort.
 
-Lemma mle_preserves_tgt_private
-      sm_at sm_arg P
-      (SEP: SimMemInj.tgt sm_at |= P ** minjection (SimMemInj.inj sm_at) (SimMemInj.src sm_at))
-      (MLE: SimMem.le sm_at sm_arg)
-      (INJ: sm_at.(SimMemInj.inj) = sm_arg.(SimMemInj.inj))
-      (SRC: sm_at.(SimMemInj.src) = sm_arg.(SimMemInj.src))
-  :
-    <<SEP: SimMemInj.tgt sm_arg |= P ** minjection (SimMemInj.inj sm_arg) (SimMemInj.src sm_arg)>>
-.
-Proof.
-  destruct SEP as (A & B & DISJ). ss.
-  sep_split; ss.
-  - eapply m_invar; eauto.
-    eapply Mem.unchanged_on_implies; try apply MLE; eauto.
-    ii. hnf in DISJ. do 3 spc DISJ.
-Abort.
-
 (* Lemma after_external_match_contents *)
 (*       sm_at sm_arg sm_ret sm_after *)
 (*       stack cs' *)
@@ -584,79 +551,6 @@ Ltac sep_simpl_tac :=
          )
 .
 
-Lemma sepconj_isolated_mutation0
-      m0 m1 P Q
-      (SEP: m0 |= P ** Q)
-      (* (UNCH: Mem.unchanged_on (~2 P.(m_footprint)) m0 m1) *)
-      (UNCH: Mem.unchanged_on (fun blk ofs => ~ P.(m_footprint) blk ofs /\ Mem.valid_block m0 blk) m0 m1)
-  :
-    <<SEP: m1 |= Q>>
-.
-Proof.
-  destruct SEP as (A & B & C).
-  eapply m_invar; eauto.
-  eapply Mem.unchanged_on_implies; eauto. ii. ss. esplits; eauto.
-Qed.
-
-Lemma sepconj_isolated_mutation1
-      m0 m1 P Q
-      (SEP: m0 |= P ** Q)
-      (UNCH: Mem.unchanged_on (~2 P.(m_footprint)) m0 m1)
-  :
-    <<SEP: m1 |= Q>>
-.
-Proof.
-  eapply sepconj_isolated_mutation0; eauto.
-  eapply Mem.unchanged_on_implies; eauto. ii. des; ss.
-Qed.
-
-Lemma sepconj_isolated_mutation_strong
-      m0 m1 P0 P1 Q
-      (SEP: m0 |= P0)
-      (UNCH: Mem.unchanged_on Q m0 m1)
-      (IMP: massert_imp P0 P1)
-      (FOOT: P1.(m_footprint) <2= Q)
-  :
-    <<SEP: m1 |= P1>>
-.
-Proof.
-  hnf in IMP. des.
-  eapply m_invar; eauto.
-  eapply Mem.unchanged_on_implies; eauto.
-Qed.
-
-Lemma sepconj_isolated_mutation_stronger
-      m0 m1 P0 P1 CTX CHNG
-      (SEP: m0 |= P0 ** CTX)
-      (UNCH: Mem.unchanged_on (~2 CHNG) m0 m1)
-      (IMP: massert_imp P0 P1)
-      (ISOL0: CHNG <2= P0.(m_footprint))
-      (ISOL1: P1.(m_footprint) <2= ~2 CHNG)
-  :
-    <<SEP: m1 |= P1 ** CTX>>
-.
-Proof.
-  destruct SEP as (A & B & C).
-  hnf in IMP. des.
-  sep_split; eauto.
-  - eapply m_invar; eauto.
-    eapply Mem.unchanged_on_implies; eauto.
-    ii. eapply ISOL1; eauto.
-  - ii. eapply C; eauto.
-  - eapply m_invar; eauto.
-    eapply Mem.unchanged_on_implies; eauto.
-    ii. apply ISOL0 in H1. eauto.
-Qed.
-
-(* TODO: Move to MemoryC *)
-Lemma Mem_unchanged_on_bot
-      m0 m1
-      (NB: ((Mem.nextblock m0) <= (Mem.nextblock m1))%positive)
-  :
-    Mem.unchanged_on bot2 m0 m1
-.
-Proof. econs; ss; eauto. Qed.
-
 Lemma stack_contents_at_external_footprint_split
       j cs cs'
       f sp ls c fb sp' spofs ra c' sg
@@ -705,32 +599,6 @@ Proof.
       ss. des; ss; clarify; eauto.
       left. esplits; eauto. lia.
       Local Opaque sepconj.
-Qed.
-
-Lemma bound_outgoing_stack_data
-      b
-  :
-    (4 * bound_outgoing b <= fe_stack_data (make_env b))
-.
-Proof.
-  Local Transparent make_env.
-  ss.
-  Local Opaque make_env.
-  des_ifs.
-  etrans; cycle 1.
-  { eapply align_le; eauto. lia. }
-  etrans; cycle 1.
-  { generalize (bound_local_pos b); i.
-    instantiate (1:= align (size_callee_save_area b (align (4 * bound_outgoing b) 8 + 8)) 8).
-    lia.
-  }
-  etrans; cycle 1.
-  { eapply align_le; eauto. lia. }
-  etrans; cycle 1.
-  { eapply size_callee_save_area_incr. }
-  etrans; cycle 1.
-  { instantiate (1:= align (4 * bound_outgoing b) 8). lia. }
-  eapply align_le; eauto. lia.
 Qed.
 
 Lemma stack_contents_at_external_spec
@@ -890,7 +758,7 @@ Proof.
               hexploit PTRFREE; eauto.
               { rewrite <- SG. eauto. }
               i. rewrite OUT; ss.
-              eapply fakeptr_inject; eauto.
+              eapply fakeptr_inject_id; eauto.
           + psimpl. zsimpl. rewrite SG.
             rewrite MEMSRC. rewrite MEMTGT.
             eapply init_match_frame_contents; eauto.

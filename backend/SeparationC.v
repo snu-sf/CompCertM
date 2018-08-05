@@ -8,6 +8,7 @@ Require Export Separation.
 Local Open Scope sep_scope.
 
 
+Ltac sep_split := econs; [|split]; swap 2 3.
 
 
 Section INJ.
@@ -121,5 +122,69 @@ Proof.
   unfold massert_imp. ss. split; ii; eauto.
   - des; esplits; eauto. apply disjoint_footprint_sepconj in H1. des; ss.
   - ss. des; eauto.
+Qed.
+
+Lemma sepconj_isolated_mutation0
+      m0 m1 P Q
+      (SEP: m0 |= P ** Q)
+      (* (UNCH: Mem.unchanged_on (~2 P.(m_footprint)) m0 m1) *)
+      (UNCH: Mem.unchanged_on (fun blk ofs => ~ P.(m_footprint) blk ofs /\ Mem.valid_block m0 blk) m0 m1)
+  :
+    <<SEP: m1 |= Q>>
+.
+Proof.
+  destruct SEP as (A & B & C).
+  eapply m_invar; eauto.
+  eapply Mem.unchanged_on_implies; eauto. ii. ss. esplits; eauto.
+Qed.
+
+Lemma sepconj_isolated_mutation1
+      m0 m1 P Q
+      (SEP: m0 |= P ** Q)
+      (UNCH: Mem.unchanged_on (~2 P.(m_footprint)) m0 m1)
+  :
+    <<SEP: m1 |= Q>>
+.
+Proof.
+  eapply sepconj_isolated_mutation0; eauto.
+  eapply Mem.unchanged_on_implies; eauto. ii. des; ss.
+Qed.
+
+Lemma sepconj_isolated_mutation_strong
+      m0 m1 P0 P1 Q
+      (SEP: m0 |= P0)
+      (UNCH: Mem.unchanged_on Q m0 m1)
+      (IMP: massert_imp P0 P1)
+      (FOOT: P1.(m_footprint) <2= Q)
+  :
+    <<SEP: m1 |= P1>>
+.
+Proof.
+  hnf in IMP. des.
+  eapply m_invar; eauto.
+  eapply Mem.unchanged_on_implies; eauto.
+Qed.
+
+Lemma sepconj_isolated_mutation_stronger
+      m0 m1 P0 P1 CTX CHNG
+      (SEP: m0 |= P0 ** CTX)
+      (UNCH: Mem.unchanged_on (~2 CHNG) m0 m1)
+      (IMP: massert_imp P0 P1)
+      (ISOL0: CHNG <2= P0.(m_footprint))
+      (ISOL1: P1.(m_footprint) <2= ~2 CHNG)
+  :
+    <<SEP: m1 |= P1 ** CTX>>
+.
+Proof.
+  destruct SEP as (A & B & C).
+  hnf in IMP. des.
+  sep_split; eauto.
+  - eapply m_invar; eauto.
+    eapply Mem.unchanged_on_implies; eauto.
+    ii. eapply ISOL1; eauto.
+  - ii. eapply C; eauto.
+  - eapply m_invar; eauto.
+    eapply Mem.unchanged_on_implies; eauto.
+    ii. apply ISOL0 in H1. eauto.
 Qed.
 

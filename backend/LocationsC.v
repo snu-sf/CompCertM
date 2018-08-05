@@ -12,6 +12,15 @@ Require Import Conventions Integers Asmregs Memory.
 Set Implicit Arguments.
 
 
+
+Lemma Loc_not_in_notin_R
+      r locs
+      (NOTIN: ~ In (R r) locs)
+  :
+    <<NOTIN: Loc.notin (R r) locs>>
+.
+Proof. red. ginduction locs; ii; ss. esplits; eauto. destruct a; ss. ii; clarify. eauto. Qed.
+
 Lemma typealign_divide_8
       ty
   :

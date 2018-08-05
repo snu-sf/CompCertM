@@ -220,3 +220,44 @@ Proof.
   ii. apply DISJ0 in H. apply DISJ1 in H0. ss.
 Qed.
 
+Program Definition freed_range (b: block) (lo hi: Z): massert := {|
+  m_pred := fun m =>
+              <<RANGE: 0 <= lo /\ hi <= Ptrofs.modulus>> /\ <<VALID: lo < hi -> m.(Mem.valid_block) b>>
+  ;
+  m_footprint := brange b lo hi
+  ;
+|}
+.
+Next Obligation. des. esplits; eauto. i. eapply Mem.valid_block_unchanged_on; eauto. Qed.
+Next Obligation. hnf in H0. des; clarify. eapply H1. lia. Qed.
+
+Lemma add_pure_r
+      m P
+  :
+    <<SEP: m |= P>> <->
+    <<SEP: m |= P ** pure True>>
+.
+Proof. split; ii. - sep_split; ss. - destruct H. ss. Qed.
+
+Lemma range_split0
+      b lo mid hi m
+      (RANEG: lo <= mid <= hi)
+      (SEP: m |= range b lo hi)
+  :
+    <<SEP: m |= range b lo mid ** range b mid hi>>
+.
+Proof. apply add_pure_r. apply add_pure_r in SEP. r. rewrite sep_assoc. eapply range_split; eauto. Qed.
+
+Lemma range_freed_range
+      sp lo hi
+  :
+    massert_imp (range sp lo hi) (freed_range sp lo hi)
+.
+Proof.
+  econs; ii; ss.
+  des; esplits; eauto. i. specialize (H1 lo).
+  exploit H1; eauto with mem lia.
+Unshelve.
+  all: econs.
+Qed.
+

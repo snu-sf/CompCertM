@@ -523,13 +523,16 @@ Definition frame_contents_at_external f (j: meminj) (sp: block) (ls ls0: locset)
   let fe := make_env b in
   mconj (frame_contents_1_at_external f j sp ls ls0 parent retaddr)
         ((* range sp fe_ofs_arg fe.(fe_stack_data) ** *)
+         freed_range sp fe_ofs_arg (4 * (size_arguments sg)) **
          range sp (4 * (size_arguments sg)) fe.(fe_stack_data) **
          range sp (fe.(fe_stack_data) + b.(bound_stack_data)) fe.(fe_size)).
 
 Fixpoint stack_contents_at_external (j: meminj) (cs: list Linear.stackframe) (cs': list Mach.stackframe) sg : massert :=
   match cs, cs' with
   | [Linear.Stackframe f _ ls _], [Mach.Stackframe fb (Vptr sp' spofs true) ra _] =>
-    pure True
+    (freed_range sp' spofs.(Ptrofs.unsigned) (4 * (size_arguments sg)))
+      ** range sp' (4 * (size_arguments sg)) (4 * (size_arguments f.(Linear.fn_sig)))
+    (* pure True *)
   | Linear.Stackframe f _ ls c :: cs, Mach.Stackframe fb (Vptr sp' spofs true) ra c' :: cs' =>
       frame_contents_at_external f j sp' ls (parent_locset cs) (parent_sp cs') (parent_ra cs') sg
       ** stack_contents tprog rao j cs cs'
@@ -550,6 +553,14 @@ Ltac sep_simpl_tac :=
           idtac
          )
 .
+
+Lemma contains_locations_range
+      m j sp pos bound slot ls
+      (SEP: m |= contains_locations tprog rao j sp pos bound slot ls)
+  :
+    <<RANEG: m |= range sp pos (pos + 4 * bound)>>
+.
+Proof. ss. des. esplits; eauto. ii. eauto with mem. Qed.
 
 Lemma stack_contents_at_external_footprint_split
       j cs cs'
@@ -587,7 +598,7 @@ Proof.
       repeat rewrite sep_assoc in *.
       clear H0.
       eapply sep_imp; eauto. ss.
-    + eapply range_drop_left; eauto.
+    + admit "". (* eapply range_split; eauto. *)
   - ss. ii.
     des; eauto.
     + left. unfold frame_contents_1, frame_contents_1_at_external in *.
@@ -596,9 +607,38 @@ Proof.
       * right. right. left. esplits; eauto.
       * right. right. right. left. esplits; eauto.
     + right.
-      ss. des; ss; clarify; eauto.
-      left. esplits; eauto. lia.
+      ss. unfold brange in *. des; ss; clarify; eauto.
+      * left. esplits; eauto. lia.
+      * left. esplits; eauto. lia.
       Local Opaque sepconj.
+Qed.
+
+Lemma sepconj_isolated_mutation_strongest
+      m0 m1 P P0 P1 CTX CHNG
+      (SEP: m0 |= P ** CTX)
+      (UNCH: Mem.unchanged_on (~2 CHNG) m0 m1)
+      (IMP: massert_imp P P1)
+      (PRED: m1 |= P0)
+      (ISOL: P0.(m_footprint) <2= P.(m_footprint))
+      (ISOL0: CHNG <2= P0.(m_footprint))
+      (ISOL1: P1.(m_footprint) <2= ~2 CHNG)
+      (DISJ: disjoint_footprint P0 P1)
+  :
+    <<SEP: m1 |= P0 ** P1 ** CTX>>
+.
+Proof.
+  destruct SEP as (A & B & C).
+  hnf in IMP. des.
+  sep_split; eauto.
+  { apply disjoint_footprint_sepconj. split; ss. ii. eapply C; eauto. }
+  sep_split.
+  - eapply m_invar; eauto.
+    eapply Mem.unchanged_on_implies; eauto.
+    ii. eapply ISOL1; eauto.
+  - ii. eapply C; eauto.
+  - eapply m_invar; eauto.
+    eapply Mem.unchanged_on_implies; eauto.
+    ii. apply ISOL0 in H1. eauto.
 Qed.
 
 Lemma stack_contents_at_external_spec
@@ -615,7 +655,21 @@ Proof.
   destruct stack; ss. destruct cs'; ss.
   des_ifs_safe.
   destruct stack.
-  { des_ifs; sep_simpl_tac. }
+  { des_ifs; sep_simpl_tac. psimpl. unfold dummy_frame_contents in *.
+    apply contains_locations_range in SEP. zsimpl.
+    eapply range_split0 with (mid := (4 * size_arguments sg)) in SEP; cycle 1.
+    { generalize (size_arguments_above sg); i. inv STACKS; des; clarify; ss; split; try lia.
+      - erewrite ConventionsC.tailcall_size; eauto. generalize (size_arguments_above sg_init); i. lia.
+      - inv STK.
+    }
+    destruct SEP as (A & B & C).
+    sep_split; eauto.
+    - ss. esplits; eauto; try lia. i.
+      eapply Mem.valid_block_free_1; eauto.
+      des. hexploit A1; eauto. i. eapply Mem.perm_valid_block; eauto.
+    - eapply m_invar; eauto. hexpl Mem.free_unchanged_on UNCH. ii. ss. des; clarify. lia.
+      (* TODO: Fix hexpl tactic *)
+  }
   Local Opaque stack_contents.
   destruct cs'; ss.
   { inv STACKS. inv STK. }
@@ -632,7 +686,7 @@ Proof.
 
   hexploit (bound_outgoing_stack_data (function_bounds f)); eauto. intro OUTGOING.
 
-  eapply sepconj_isolated_mutation_stronger with
+  eapply sepconj_isolated_mutation_strongest with
       (CHNG:= fun blk ofs => blk = sp /\ (0 <= ofs < 4 * size_arguments sg)); try apply SEP.
   - eapply Mem.unchanged_on_implies; eauto.
     ii; ss. apply not_and_or. eauto.
@@ -640,7 +694,12 @@ Proof.
     generalize (size_arguments_above sg); intro.
     inv STACKS.
     split; try lia.
-  - intros blk ofs. ii. des. clarify.
+  - instantiate (1:= freed_range sp 0 (4 * size_arguments sg)). ss.
+    apply sep_pick2 in RANGE. ss. unfold fe_ofs_arg in *. des. inv STACKS.
+    esplits; eauto with lia.
+    i. exploit RANGE1; eauto. { instantiate (1:= 0). lia. } i. eapply Mem.valid_block_free_1; eauto.
+    eapply Mem.perm_valid_block; eauto.
+  - intros blk ofs. ii. u in PR. des. clarify.
     unfold frame_contents. ss.
     right.
     Local Transparent sepconj.
@@ -650,6 +709,7 @@ Proof.
     inv STACKS.
     eapply Z.lt_le_trans; eauto.
     lia.
+  - intros blk ofs. u. ii. des. clarify.
   - intros blk ofs. ii. des. clarify.
     simpl in PR.
     Local Transparent sepconj.

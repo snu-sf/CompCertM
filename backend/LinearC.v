@@ -198,13 +198,13 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end.
 
-Definition get_stackframe (st: state): list stackframe :=
-  match st with
-  | State stks _ _ _ _ _ => stks
-  | Callstate stks _ _ _ _ => stks
-  | Returnstate stks _ _ => stks
-  end
-.
+(* Definition get_stackframe (st: state): list stackframe := *)
+(*   match st with *)
+(*   | State stks _ _ _ _ _ => stks *)
+(*   | Callstate stks _ _ _ _ => stks *)
+(*   | Returnstate stks _ _ => stks *)
+(*   end *)
+(* . *)
 
 Definition get_locset (st: state): locset :=
   match st with

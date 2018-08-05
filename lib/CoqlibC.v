@@ -810,3 +810,7 @@ Ltac bsimpl := simpl_bool.
 
 Definition range (lo hi: Z): Z -> Prop := fun x => lo <= x < hi. (* TODO: Use Notation instead *)
 Hint Unfold range.
+
+Ltac sym := symmetry.
+Tactic Notation "sym" "in" hyp(H) := symmetry in H.
+

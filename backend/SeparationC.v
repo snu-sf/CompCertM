@@ -10,6 +10,9 @@ Local Open Scope sep_scope.
 
 Ltac sep_split := econs; [|split]; swap 2 3.
 
+Global Program Instance disjoint_footprint_sym: Symmetric disjoint_footprint.
+Next Obligation. ii. eapply H; eauto. Qed.
+
 
 Section INJ.
 
@@ -41,15 +44,26 @@ Proof.
   eapply EMPTY; eauto.
 Qed.
 
+(* Lemma disjoint_footprint_mconj *)
+(*       P Q0 Q1 *)
+(*       (DISJ0: disjoint_footprint P Q0) *)
+(*       (DISJ1: disjoint_footprint P Q1) *)
+(*   : *)
+(*     <<DISJ: disjoint_footprint P (mconj Q0 Q1)>> *)
+(* . *)
+(* Proof. *)
+(*   ii. ss. unfold disjoint_footprint in *. des; eauto. *)
+(* Qed. *)
+
 Lemma disjoint_footprint_mconj
       P Q0 Q1
-      (DISJ0: disjoint_footprint P Q0)
-      (DISJ1: disjoint_footprint P Q1)
   :
     <<DISJ: disjoint_footprint P (mconj Q0 Q1)>>
+    <-> <<DISJ0: disjoint_footprint P Q0>> /\ <<DISJ1: disjoint_footprint P Q1>>
 .
 Proof.
-  ii. ss. unfold disjoint_footprint in *. des; eauto.
+  split; ii; ss; unfold disjoint_footprint in *; des; eauto.
+  esplits; ii; ss; eauto.
 Qed.
 
 Lemma disjoint_footprint_sepconj
@@ -105,6 +119,24 @@ Proof.
   - apply Axioms.functional_extensionality. ii; ss.
     apply prop_ext.
     split; i; des; split; ss.
+  - apply Axioms.functional_extensionality. ii; ss.
+    apply Axioms.functional_extensionality. ii; ss.
+    apply prop_ext.
+    split; i; des; eauto.
+Qed.
+
+Lemma sepconj_sym
+      P Q
+  :
+    <<EQ: (sepconj P Q) = (sepconj Q P)>>
+.
+Proof.
+  apply massert_eq; ss.
+  - apply Axioms.functional_extensionality. ii; ss.
+    apply prop_ext.
+    split; i; des; esplits; ss.
+    + sym; ss.
+    + sym; ss.
   - apply Axioms.functional_extensionality. ii; ss.
     apply Axioms.functional_extensionality. ii; ss.
     apply prop_ext.
@@ -231,6 +263,8 @@ Program Definition freed_range (b: block) (lo hi: Z): massert := {|
 Next Obligation. des. esplits; eauto. i. eapply Mem.valid_block_unchanged_on; eauto. Qed.
 Next Obligation. hnf in H0. des; clarify. eapply H1. lia. Qed.
 
+Hint Unfold freed_range.
+
 Lemma add_pure_r
       m P
   :
@@ -240,13 +274,16 @@ Lemma add_pure_r
 Proof. split; ii. - sep_split; ss. - destruct H. ss. Qed.
 
 Lemma range_split0
-      b lo mid hi m
+      b lo mid hi
       (RANEG: lo <= mid <= hi)
-      (SEP: m |= range b lo hi)
   :
-    <<SEP: m |= range b lo mid ** range b mid hi>>
+    massert_imp (range b lo hi) (range b lo mid ** range b mid hi)
 .
-Proof. apply add_pure_r. apply add_pure_r in SEP. r. rewrite sep_assoc. eapply range_split; eauto. Qed.
+Proof.
+  econs; ii.
+  - apply add_pure_r. apply add_pure_r in H. r. rewrite sep_assoc. eapply range_split; eauto.
+  - ss. des; esplits; eauto; try lia.
+Qed.
 
 Lemma range_freed_range
       sp lo hi
@@ -257,6 +294,52 @@ Proof.
   econs; ii; ss.
   des; esplits; eauto. i. specialize (H1 lo).
   exploit H1; eauto with mem lia.
+Unshelve.
+  all: econs.
+Qed.
+
+Lemma add_pure_r_eq
+      P
+  :
+    P = P ** pure True
+.
+Proof.
+  destruct P; ss. unfold sepconj. ss.
+  eapply massert_eq.
+  - apply functional_extensionality. ii; ss.
+    apply prop_ext. split; ii; des; esplits; ss.
+  - repeat (apply functional_extensionality; ii; ss).
+    apply prop_ext. split; ii; des; ss; eauto.
+Qed.
+
+Lemma mconj_distr
+      m P Q CTX
+  :
+    <<SEP: m |= (mconj P Q) ** CTX>> <->
+    <<SEP: m |= P ** CTX>> /\ <<SEP: m |= Q ** CTX>>
+.
+Proof.
+  split; ii.
+  - destruct H as (A & B & C). ss. des. sym in C. apply disjoint_footprint_mconj in C. des.
+    esplits; eauto.
+    + sym; ss.
+    + sym; ss.
+  - des. destruct SEP. destruct SEP0. des.
+    sep_split; ss.
+    sym. apply disjoint_footprint_mconj. esplits; eauto.
+    + sym; ss.
+    + sym; ss.
+Qed.
+
+Lemma range_nonnil_valid_block
+      m b lo hi
+      (SEP: m |= range b lo hi)
+      (RANGE: lo < hi)
+  :
+    <<VALID: m.(Mem.valid_block) b>>
+.
+Proof.
+  ss. des. specialize (SEP1 lo). exploit SEP1; eauto. { lia. } i. eapply Mem.perm_valid_block; eauto.
 Unshelve.
   all: econs.
 Qed.

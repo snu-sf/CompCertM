@@ -12,7 +12,7 @@ From Paco Require Export paco.
 Require Export Basics.
 
 Require Import Relations.
-Require Import RelationClasses.
+Require Export RelationClasses.
 Require Import Wellfounded.
 Require Export Classical_Prop.
 Require Export Lia.

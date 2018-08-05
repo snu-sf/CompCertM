@@ -67,7 +67,7 @@ Definition to_fake (v: val): val :=
 
 Definition fake_ptr_one: val := Vptr 1%positive Ptrofs.zero false.
 
-Section INJECT.
+Section INJECTNORMAL.
 
 Local Existing Instance Val.mi_normal.
 
@@ -79,5 +79,10 @@ Lemma fakeptr_inject_id
 .
 Proof. destruct fptr; ss. des_ifs. econs; eauto. Qed.
 
-End INJECT.
+End INJECTNORMAL.
+
+Global Program Instance inject_incr_PreOrder: PreOrder inject_incr.
+Next Obligation.
+  ii. eapply inject_incr_trans; eauto.
+Qed.
 

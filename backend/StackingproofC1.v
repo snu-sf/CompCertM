@@ -187,8 +187,8 @@ Proof.
     - apply sep_pick1 in B. ss. des. esplits; eauto.
       etrans; eauto. inv MLE. inv MLE0. inv MLE1. inv MLEAFTR.
       etrans; eauto. etrans; eauto.
-    - apply SimMemInj.inject_separated_frozen; eauto.
-      eapply SimMemInj.frozen_refl; eauto.
+    - apply inject_separated_frozen; eauto.
+      eapply frozen_refl; eauto.
   }
   { ss. }
   destruct B as (X & Y & Z); ss.
@@ -680,6 +680,27 @@ Proof.
       * generalize (bound_stack_data_pos b); i. lia.
 Qed.
 
+Local Transparent stack_contents.
+Lemma stack_contents_at_external_after_footprint
+      j0 j1 j2 cs cs' sg
+      (STACKS: match_stacks tprog j2 cs cs' sg)
+      sp
+      (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
+  :
+    m_footprint (stack_contents tprog rao j0 (stackframes_after_external cs) cs') <2=
+    (m_footprint (stack_contents_at_external j1 cs cs' sg) \2/ (brange sp 0 (4 * size_arguments sg)))
+.
+Proof.
+  pose cs as X. pose cs' as Y.
+  destruct cs; ss. des_ifs_safe.
+  inv STACKS; ss.
+  - ii. des_safe. right. u. esplits; eauto. psimpl. zsimpl. des; clarify.
+    ttttttttttttttttttttttttttt
+    admit "".
+  - des_ifs_safe.
+  (* - ii. ss. destruct cs; ss. *)
+Qed.
+
 Inductive match_states_at (skenv_link_src skenv_link_tgt: SkEnv.t)
           (st_src0: Linear.state) (st_tgt0: MachC.state) (sm_at sm_arg: SimMem.t): Prop :=
 | match_states_at_intro
@@ -805,23 +826,22 @@ Proof.
       * u. ii. des; clarify. specialize (H0 x1). zsimpl. esplits; eauto.
         { rp; [eapply H0; eauto|..]; eauto. }
         { unfold Mem.valid_block in *. eauto with congruence. }
-      * { rewrite <- sep_assoc. rewrite sep_comm.
-          eapply globalenv_inject_incr with (j:= sm0.(SimMemInj.inj)); eauto.
-          { rewrite <- MINJ. eapply inject_incr_refl. }
-          { eapply SimMemInj.inject_separated_frozen. rewrite <- MINJ. eapply SimMemInj.frozen_refl. }
-          rewrite <- sep_assoc in SEP. rewrite sep_comm in SEP. bar. move SEP at bottom.
-          destruct SEP as (A & B & C).
-          sep_split.
-          { eapply m_invar; eauto. ss. eapply Mem_unchanged_on_bot; eauto.
-            rewrite NB. refl. }
-          { ss. }
-          destruct B as (D & E & F).
-          sep_split; revgoals.
-          { ss. eapply MWF0. }
-          { admit "Compared to C, left footprint: <=. right footprint: =.". }
-          rewrite MINJ.
-          eapply stack_contents_at_external_spec; eauto.
-        }
+      * rewrite <- sep_assoc. rewrite sep_comm.
+        eapply globalenv_inject_incr with (j:= sm0.(SimMemInj.inj)); eauto.
+        { rewrite <- MINJ. eapply inject_incr_refl. }
+        { eapply inject_separated_frozen. rewrite <- MINJ. eapply frozen_refl. }
+        rewrite <- sep_assoc in SEP. rewrite sep_comm in SEP. bar. move SEP at bottom.
+        destruct SEP as (A & B & C).
+        sep_split.
+        { eapply m_invar; eauto. ss. eapply Mem_unchanged_on_bot; eauto.
+          rewrite NB. refl. }
+        { ss. }
+        destruct B as (D & E & F).
+        sep_split; revgoals.
+        { ss. eapply MWF0. }
+        { admit "Compared to C, left footprint: <=. right footprint: =.". }
+        rewrite MINJ.
+        eapply stack_contents_at_external_spec; eauto.
 
   - (* after fsim *)
     inv AFTERSRC. inv MATCH; ss. clarify.
@@ -876,9 +896,68 @@ Proof.
         { eapply Stackingproof.agree_callee_save_after_set_result; eauto.
           eapply agree_callee_save_after_external; eauto. }
         { ii. rewrite Locmap.gpo; ss. hnf. des_ifs. }
-      * { bar. move HISTORY at bottom. inv HISTORY. inv MATCHARG. ss. clarify.
-          rename sm0 into sm_at. rename sm1 into sm_after.
-          rewrite RSP0 in *. clarify.
+      * bar. move HISTORY at bottom. inv HISTORY. inv MATCHARG. ss. clarify.
+        rename sm0 into sm_at. rename sm1 into sm_after.
+        rewrite RSP0 in *. clarify.
+        hexpl Mem_nextblock_unfree NB.
+        rewrite <- sep_assoc. rewrite sep_comm.
+        rewrite <- sep_assoc in SEP0. rewrite sep_comm in SEP0. destruct SEP0 as (A & B & C).
+        sep_split.
+        { eapply globalenv_inject_incr_strong with (j:= sm_arg.(SimMemInj.inj)); eauto.
+          - inv MLE0. ss.
+          - eapply inject_separated_frozen.
+            inv MLE0. ss. inv MWF2.
+            eapply frozen_shortened; eauto.
+            + refl.
+            + refl.
+          - rewrite <- NB0. inv MLE0; ss.
+        }
+        { ss. }
+        rewrite sep_comm. rewrite sep_comm in B. destruct B as (D & E & F).
+        sep_split.
+        { ss. rp; try eapply MWF1; eauto with congruence. }
+        { hexploit minjection_disjoint_footprint_private; eauto. intro PRIV0.
+          rewrite MEMSRC. eapply minjection_private_disjoint_footprint.
+          assert(SimMemInj.tgt_private sm_arg <2= SimMemInj.tgt_external sm_ret).
+          { clear - MLE0. inv MLE0. ss. rewrite <- TGTPARENTEQ. ss. }
+          inv MWF.
+          etrans; try eassumption; eauto.
+          etrans; try eassumption; eauto.
+          Lemma less2_divide_r
+                X0 X1
+                (A B0 B1 B: X0 -> X1 -> Prop)
+                (LESS0: B0 <2= B)
+                (LESS1: B1 <2= B)
+                (LESS: A <2= (B0 \2/ B1))
+            :
+              A <2= B
+          .
+          Proof. ii. apply LESS in PR. des; eauto. Qed.
+          eapply less2_divide_r.
+          { eapply PRIV. }
+          { eapply PRIV0. }
+          etrans; try eassumption; eauto.
+        }
+          ss.
+          - clear - MLE0. ss. u. ii. des. hexpl Mem.perm_valid_block VL. inv MLE0. ss.
+            destruct (SimMemInj.inj sm_arg b0) eqn:T.
+            exploit H; eauto.
+            esplits; eauto.
+            + ii. exploit INCR; eauto. i; clarify.
+        }
+          ss.
+        rewrite <- sep_assoc in SEP. rewrite sep_comm in SEP. bar. move SEP at bottom.
+        destruct SEP as (A & B & C).
+        sep_split.
+        { eapply m_invar; eauto. ss. eapply Mem_unchanged_on_bot; eauto.
+          rewrite NB. refl. }
+        { ss. }
+        destruct B as (D & E & F).
+        sep_split; revgoals.
+        { ss. eapply MWF0. }
+        { admit "Compared to C, left footprint: <=. right footprint: =.". }
+        rewrite MINJ.
+        eapply stack_contents_at_external_spec; eauto.
           admit "-----------------------------------------------------------------------------------".
         }
 

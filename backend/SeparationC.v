@@ -1,6 +1,6 @@
 Require Import Setoid Program.Basics.
 Require Import CoqlibC Decidableplus.
-Require Import AST Integers Values Memory Events Globalenvs.
+Require Import AST Integers Values MemoryC Events Globalenvs.
 (** newly added **)
 Require Import AxiomsC.
 Require Export Separation.
@@ -186,5 +186,37 @@ Proof.
   - eapply m_invar; eauto.
     eapply Mem.unchanged_on_implies; eauto.
     ii. apply ISOL0 in H1. eauto.
+Qed.
+
+Lemma globalenv_inject_incr_strong
+      j j' m_src m_tgt0 m_tgt1 F V (ge: Genv.t F V)
+      (INCR: inject_incr j j')
+      (INJ: inject_separated j j' m_src m_tgt0)
+      (SEP: m_tgt0 |= globalenv_inject ge j)
+      (MLE: (m_tgt0.(Mem.nextblock) <= m_tgt1.(Mem.nextblock))%positive)
+  :
+    <<SEP: m_tgt1 |= globalenv_inject ge j'>>
+.
+Proof.
+  assert(m_tgt0 |= globalenv_inject ge j').
+  { ss. des. esplits; eauto. inv SEP0. econs; eauto. ii. eapply IMAGE; eauto.
+    rr in INJ. destruct (j b1) eqn:T.
+    - destruct p; ss. exploit INCR; eauto. i; clarify.
+    - exploit INJ; eauto. i; des. exfalso.
+      eapply H2. r. eapply Plt_Ple_trans; eauto.
+  }
+  eapply m_invar; eauto.
+  ss.
+Qed.
+
+Lemma disjoint_footprint_sep
+      A WALL B
+      (DISJ0: A.(m_footprint) <2= WALL)
+      (DISJ1: B.(m_footprint) <2= ~2 WALL)
+  :
+    <<DISJ: disjoint_footprint A B>>
+.
+Proof.
+  ii. apply DISJ0 in H. apply DISJ1 in H0. ss.
 Qed.
 

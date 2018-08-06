@@ -121,8 +121,6 @@ Inductive le' (mrel0 mrel1: t'): Prop :=
     (TGTPARENTEQNB: mrel0.(tgt_parent_nb) = mrel1.(tgt_parent_nb))
     (FROZEN: frozen mrel0.(inj) mrel1.(inj) (mrel0.(src_parent_nb))
                                             (mrel0.(tgt_parent_nb)))
-    (SRCBOUND: (mrel0.(src).(Mem.nextblock) <= mrel1.(src).(Mem.nextblock))%positive)
-    (TGTBOUND: (mrel0.(tgt).(Mem.nextblock) <= mrel1.(tgt).(Mem.nextblock))%positive)
 .
 
 Definition lift' (mrel0: t'): t' :=
@@ -161,8 +159,6 @@ Next Obligation.
       split; ss; red; etransitivity; eauto.
       { rewrite <- SRCPARENTEQNB. reflexivity. }
       { rewrite <- TGTPARENTEQNB. reflexivity. }
-  + etransitivity; eauto.
-  + etransitivity; eauto.
 Qed.
 
 (* TODO: Let's have this as policy. (giving explicit name) *)
@@ -215,6 +211,8 @@ Next Obligation.
   - (* etransitivity; eauto. *)
     rewrite TGTPARENTEQ.
     etransitivity; eauto.
+  - inv SRCUNCHANGED; ss.
+  - inv TGTUNCHANGED; ss.
 Qed.
 Next Obligation.
   ii. inv MLE. eapply val_inject_incr; eauto.
@@ -259,8 +257,6 @@ Proof.
       apply Mem.store_valid_access_3 in STRSRC. destruct STRSRC.
       eauto with mem xomega.
     + eapply frozen_refl.
-    + erewrite <- Mem.nextblock_store; eauto. xomega.
-    + erewrite <- Mem.nextblock_store; eauto. xomega.
   - econs; ss; eauto.
     + etransitivity; eauto. unfold src_private. ss. ii; des. esplits; eauto.
       unfold valid_blocks in *. eauto with mem.
@@ -381,8 +377,6 @@ Proof.
     + refl.
     + eapply Mem_unfree_unchanged_on; eauto.
     + eapply frozen_refl.
-    + refl.
-    + erewrite Mem_nextblock_unfree; eauto. refl.
 Qed.
 End ORIGINALS.
 
@@ -442,7 +436,6 @@ Proof.
       eauto with mem.
     - econs; eauto.
       ii; ss. des; ss. des_ifs.
-    - exploit Mem.nextblock_alloc; eauto. i. rewrite H. xomega.
 Qed.
 
 Lemma store_undef_simmem
@@ -475,7 +468,6 @@ Proof.
       { eapply Mem.store_unchanged_on; eauto. }
       i. eauto.
     + eapply frozen_refl; eauto.
-    + exploit Mem.nextblock_store; eauto. i. rewrite H1. xomega.
 Qed.
 
 (* Lemma store_stored_simmem *)
@@ -554,7 +546,6 @@ Proof.
       i. ss. des_ifs. apply TGTEXT in H0. u in H0. des.
       exfalso. eapply Mem.fresh_block_alloc; eauto.
     + eapply frozen_refl.
-    + rewrite <- NB. eauto with xomega.
   - ii. u. esplits; eauto.
     + ii.
       exploit Mem.mi_perm; try apply MWF; eauto. i.

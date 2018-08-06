@@ -4,6 +4,7 @@ Require Import MemoryC Integers AST.
 Require Import LocationsC Stacklayout Conventions.
 (** newly added **)
 Require Import AsmregsC.
+Require Import Asm.
 Require Mach.
 (* Require Lineartyping. *)
 
@@ -206,14 +207,14 @@ Section STYLES.
   Compute (to_mreg PC).
   Compute (to_mreg RA).
 
-  Definition C2D_pregset (mrs_arg: Mach.regset) (ra: val) (fptr_arg: val) (rsp_arg: val): Asmregs.regset :=
+  Definition C2D_pregset (mrs_arg: Mach.regset) (ra: val) (fptr_arg: val) (rsp_arg: val): regset :=
     (mrs_arg.(to_pregset)
                # PC <- fptr_arg
                # RA <- ra
                # RSP <- rsp_arg)
   .
   Inductive C2D (mrs_arg: Mach.regset) (fptr_arg: val) (rsp_arg: val) (ra_arg: val)
-            (prs_arg: Asmregs.regset): Prop :=
+            (prs_arg: regset): Prop :=
   | C2D_intro
       (REGSET: prs_arg = fun pr =>
                            match to_mreg pr with
@@ -229,7 +230,7 @@ Section STYLES.
   .
 
   Inductive B2D (fptr_arg: val) (ls_arg: locset) (m_arg_pre: mem)
-            (prs_arg: Asmregs.regset) (m_arg: mem): Prop :=
+            (prs_arg: regset) (m_arg: mem): Prop :=
   | B2D_intro
       mrs rsp_arg ra_arg
       (BC: B2C ls_arg m_arg_pre mrs rsp_arg ra_arg m_arg)
@@ -237,7 +238,7 @@ Section STYLES.
   .
 
   Inductive A2D (fptr_arg: val) (vs_arg: list val) (m_arg_pre: mem)
-             (prs_arg: Asmregs.regset) (m_arg: mem): Prop :=
+             (prs_arg: regset) (m_arg: mem): Prop :=
   | A2D_intro
       ls
       (AB: A2B vs_arg ls)
@@ -246,7 +247,7 @@ Section STYLES.
       (CD: C2D mrs fptr_arg rsp_arg ra_arg prs_arg)
   .
 
-  Inductive D2C (prs_arg: Asmregs.regset)
+  Inductive D2C (prs_arg: regset)
             (mrs: Mach.regset) (fptr: val) (rsp: val): Prop :=
   | D2C_intro
       (FPTR: prs_arg PC = fptr)
@@ -277,7 +278,7 @@ Section STYLES.
       (BOUND: DUMMY_PROP) (* 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
   .
 
-  Inductive D2B_old (prs_arg: Asmregs.regset) (m_arg: mem)
+  Inductive D2B_old (prs_arg: regset) (m_arg: mem)
             (fptr_init: val) (ls_init: locset) (m_init: mem): Prop :=
   | D2B_intro_old
       vs_init
@@ -285,7 +286,7 @@ Section STYLES.
       (AB: A2B vs_init ls_init)
   .
 
-  Inductive D2B (prs_arg: Asmregs.regset) (m_arg: mem)
+  Inductive D2B (prs_arg: regset) (m_arg: mem)
             (fptr_init: val) (ls_init: locset) (m_init: mem): Prop :=
   | D2B_intro
       rsp mrs

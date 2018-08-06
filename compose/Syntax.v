@@ -6,7 +6,6 @@ Require Import Memory.
 Require Import Events.
 Require Import Smallstep.
 Require Import Globalenvs.
-Require Import Asmregs.
 Require Import Linking.
 Require Import CoqlibC.
 Require Import sflib.

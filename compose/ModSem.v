@@ -1,7 +1,6 @@
 Require Import Events.
 Require Import Values.
 Require Import AST.
-Require Import Asmregs.
 Require Import Memory.
 Require Import Globalenvs.
 Require Import Smallstep.
@@ -41,9 +40,6 @@ Module Retv.
 End Retv.
 
 Module ModSem.
-
-  (* Stores callee data that will be used only in meta-steps. *)
-  Definition aux_data: Type := (option signature * regset)%type.
 
   Record t: Type := mk {
     state: Type;

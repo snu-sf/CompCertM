@@ -3,7 +3,7 @@ Require Import ValuesC.
 Require Import LocationsC Stacklayout Conventions.
 Require Import MemoryC Integers AST.
 (** newly added **)
-Require Export Asmregs.
+Require Import Asm.
 Require Import Locations.
 Require Mach.
 

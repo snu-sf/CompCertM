@@ -9,7 +9,6 @@ Require Import RelationClasses.
 Require Import FSets.
 Require Import Ordered.
 Require Import ASTC.
-Require Import Asmregs.
 Require Import Skeleton.
 Require Import LinkingC.
 From Paco Require Import paco.

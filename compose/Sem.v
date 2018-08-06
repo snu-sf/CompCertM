@@ -6,7 +6,6 @@ Require Import Memory.
 Require Import Events.
 Require Import Smallstep.
 Require Import GlobalenvsC.
-Require Import Asmregs.
 Require Import LinkingC.
 Require Import CoqlibC.
 Require Import sflib.
@@ -16,7 +15,6 @@ Require Export Syntax.
 
 Set Implicit Arguments.
 
-Local Open Scope asm.
 
 
 

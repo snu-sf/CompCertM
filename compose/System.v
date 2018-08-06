@@ -1,12 +1,10 @@
 Require Import Events.
 Require Import Values.
 Require Import AST.
-Require Import Asmregs.
 Require Import Memory.
 Require Import Globalenvs.
 Require Import Smallstep.
 Require Import CoqlibC.
-Require Import Asmregs Conventions1.
 
 Require Import Mod ModSem Skeleton.
 

@@ -18,7 +18,6 @@ Require Import Simulation Integers.
 
 Set Implicit Arguments.
 
-Local Open Scope asm.
 
 
 Section MACHEXTRA.

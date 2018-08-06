@@ -4,7 +4,6 @@ Require Import Simulation.
 Require Import AST.
 From Paco Require Import paco.
 Import ModSem.
-Require Import Asmregs.
 Require Import sflib.
 Require Import Basics.
 Require Import CoqlibC.

@@ -806,6 +806,7 @@ Ltac rp := first [erewrite f_equal8|
                   fail]
 .
 
+Ltac simpl_bool := unfold Datatypes.is_true in *; unfold is_true in *; autorewrite with simpl_bool in *.
 Ltac bsimpl := simpl_bool.
 
 Definition range (lo hi: Z): Z -> Prop := fun x => lo <= x < hi. (* TODO: Use Notation instead *)

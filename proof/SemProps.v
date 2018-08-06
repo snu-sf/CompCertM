@@ -4,7 +4,6 @@ Require Import LinkingC.
 Require Import Skeleton.
 Require Import Values.
 Require Import JMeq.
-Require Import Asmregs.
 Require Import Smallstep.
 Require Import Integers.
 Require Import Events.

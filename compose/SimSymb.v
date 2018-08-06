@@ -1,7 +1,6 @@
 Require Import Events.
 Require Import ValuesC.
 Require Import AST.
-Require Import Asmregs.
 Require Import Memory.
 Require Import Globalenvs.
 Require Import Smallstep.

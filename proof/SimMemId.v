@@ -9,7 +9,6 @@ Require Import RelationClasses.
 Require Import FSets.
 Require Import Ordered.
 Require Import AST.
-Require Import Asmregs.
 Require Import Integers.
 
 Require Import IntegersC LinkingC.

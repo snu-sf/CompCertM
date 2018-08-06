@@ -1,3 +1,5 @@
+*.swp
+
 _CoqProject
 Makefile.coq
 Makefile.coq.conf

@@ -232,7 +232,10 @@ Local Transparent Linker_prog.
   Proof.
     inv FIND0; inv FIND1. ss. des_ifs.
     unfold load_genv in *. ss.
-    admit "use Mod.get_modsem_projected_sk".
+    generalize genv_disjoint; i. inv H.
+    eapply DISJOINT; eauto.
+    - econs; eauto. ss. des_ifs.
+    - econs; eauto. ss. des_ifs.
   Qed.
 
   Theorem initial_state_determ

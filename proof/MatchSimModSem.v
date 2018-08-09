@@ -182,6 +182,7 @@ Section MATCHSIMFORWARD.
       sm_init idx0 st_src0 st_tgt0 sm0
       (NOTCALL: ~ ModSem.may_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
     ,
       (<<RECEP: receptive_at ms_src st_src0>>)

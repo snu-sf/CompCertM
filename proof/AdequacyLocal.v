@@ -628,7 +628,6 @@ Section ADQSTEP.
       { rewrite Heq. apply MSFIND. }
       i; des. clarify.
 
-      clears st_init0; clear st_init0.
       (* revert_until_bar. *)
       (* on_last_hyp ltac:(fun H => clear H). *)
       (* clear_until_bar. *)
@@ -641,6 +640,7 @@ Section ADQSTEP.
       exploit SIM; eauto. i; des.
 
       exploit INITBSIM; eauto. i; des.
+      clears st_init0; clear st_init0.
 
       esplits; eauto.
       - left. apply plus_one. econs; eauto. econs; eauto.

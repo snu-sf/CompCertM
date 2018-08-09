@@ -80,6 +80,7 @@ Section MATCHSIMFORWARD.
       (SIMARGS: sim_args args_src args_tgt sm_arg)
       st_init_tgt
       (INITTGT: ms_tgt.(ModSem.initial_frame) args_tgt st_init_tgt)
+      (SAFESRC: exists _st_init_src, ms_src.(ModSem.initial_frame) args_src _st_init_src)
     ,
       exists st_init_src sm_init idx_init,
         (<<INITSRC: ms_src.(ModSem.initial_frame) args_src st_init_src>>)

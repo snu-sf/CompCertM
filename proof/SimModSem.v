@@ -265,6 +265,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
           (<<INITBSIM: forall
               st_init_tgt
               (INITTGT: msp.(tgt).(initial_frame) args_tgt st_init_tgt)
+              (SAFESRC: exists _st_init_src, msp.(src).(initial_frame) args_src _st_init_src)
             ,
               exists st_init_src sm_init idx_init,
                 (<<MLE: SimMem.le sm_arg sm_init>>) /\

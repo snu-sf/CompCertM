@@ -7,7 +7,7 @@ Require Import Globalenvs.
 Require Import AST.
 
 Require Import IntegersC LinkingC.
-Require Import SimDef SimSymb Skeleton Mod ModSem.
+Require Import SimSymb Skeleton Mod ModSem.
 Require Import SimMem.
 
 Set Implicit Arguments.
@@ -205,6 +205,7 @@ Inductive wf' (rel: t'): Prop :=
     (SRCPBOUND: (rel.(m_src_parent).(Mem.nextblock) <= rel.(m_src).(Mem.nextblock))%positive)
     (TGTPBOUND: (rel.(m_tgt_parent).(Mem.nextblock) <= rel.(m_tgt).(Mem.nextblock))%positive)
     (PUBLICPARENT: Mem.inject rel.(inj_parent) rel.(m_src_parent) rel.(m_tgt_parent))
+    (INCR: inject_incr rel.(inj) rel.(inj_parent))
 .
 
 Lemma wf_corollary
@@ -218,7 +219,10 @@ Proof.
   ii; ss. des; ss. inv WF.
   unfold loc_unmapped in *.
   esplits; eauto.
-  -
+  - destruct (inj sm0 x0) eqn:T; ss.
+    destruct p; ss.
+    exploit INCR; eauto. i; clarify.
+  - eapply Plt_Ple_trans; eauto.
 Qed.
 
 Inductive le' (mrel0 mrel1: t'): Prop :=

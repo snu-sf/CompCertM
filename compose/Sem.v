@@ -74,7 +74,7 @@ Inductive state: Type :=
 Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 | step_call
     fr0 frs args
-    (AT: fr0.(Frame.ms).(ModSem.at_external) ge.(snd) fr0.(Frame.st) args)
+    (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) args)
   :
     step ge (State (fr0 :: frs))
          E0 (Callstate args (fr0 :: frs))

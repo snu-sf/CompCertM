@@ -48,7 +48,7 @@ Module ModSem.
     (* TOOD: is ge needed? I follow compcert for now. *)
 
     (* set_mem (m0: mem) (st0: state): state; *) (* This is not used, after_external is enough *)
-    at_external (skenv_link: SkEnv.t) (st0: state) (args: Args.t): Prop;
+    at_external (st0: state) (args: Args.t): Prop;
     initial_frame (args: Args.t) (st0: state): Prop;
     (* time: rs_arg >> st0 *)
     final_frame (* (st_init: state) *) (st0: state)
@@ -77,9 +77,9 @@ Module ModSem.
     (* ; *)
 
     at_external_dtm: forall
-        skenv_link st args0 args1
-        (AT0: at_external skenv_link st args0)
-        (AT1: at_external skenv_link st args1)
+        st args0 args1
+        (AT0: at_external st args0)
+        (AT1: at_external st args1)
       ,
         args0 = args1
     ;
@@ -107,8 +107,7 @@ Module ModSem.
     ;
 
 
-    is_call (st0: state) (skenv_link: SkEnv.t): Prop := exists args, at_external skenv_link st0 args;
-    may_call (st0: state): Prop := exists skenv_link, is_call st0 skenv_link;
+    is_call (st0: state): Prop := exists args, at_external st0 args;
     is_step (st0: state): Prop := exists tr st1, step globalenv st0 tr st1;
     is_return (st0: state): Prop := exists retv, final_frame st0 retv;
       (* exists rs_init rs_ret m_ret, final_frame rs_init st0 rs_ret m_ret; *)
@@ -118,9 +117,9 @@ Module ModSem.
     (* I think "exists" is OK here. *)
     (* We can think of something like "forall rs_init (FUTURE: st0 is future of rs_init)", but is overkill. *)
 
-    call_step_disjoint: may_call /1\ is_step <1= bot1;
+    call_step_disjoint: is_call /1\ is_step <1= bot1;
     step_return_disjoint: is_step /1\ is_return <1= bot1;
-    call_return_disjoint: may_call /1\ is_return <1= bot1;
+    call_return_disjoint: is_call /1\ is_return <1= bot1;
 
     (* step_at_external_disjoint: forall *)
     (*     st0 *)
@@ -183,7 +182,7 @@ Module ModSem.
 
 End ModSem.
 
-Hint Unfold ModSem.may_call ModSem.is_call ModSem.is_step ModSem.is_return.
+Hint Unfold ModSem.is_call ModSem.is_step ModSem.is_return.
 
 Coercion ModSem.to_semantics: ModSem.t >-> semantics.
 (* I want to use definitions like "Star" or "determinate_at" *)

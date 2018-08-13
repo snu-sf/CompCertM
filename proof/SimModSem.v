@@ -1,9 +1,7 @@
-Require Import ModSem.
 Require Import SimMem.
 Require Import Simulation.
 Require Import AST.
 From Paco Require Import paco.
-Import ModSem.
 Require Import sflib.
 Require Import Basics.
 Require Import CoqlibC.
@@ -12,6 +10,8 @@ Require Import Globalenvs.
 Require Import Program.
 
 Require Import Skeleton SimSymb Ord.
+Require Import ModSem.
+Import ModSem.
 
 Set Implicit Arguments.
 
@@ -92,7 +92,7 @@ Section SIMMODSEM.
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
-      (SAFESRC: ~ ms_src.(ModSem.may_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
+      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
       (FSTEP: fsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0)
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
       (* sd_determ_at_final becomes nothing, but it is OK. *)
@@ -146,19 +146,17 @@ Section SIMMODSEM.
       (*     exists rs_arg_tgt m_arg_tgt, <<ATTGT: ms_tgt.(at_external) st_tgt0 rs_arg_tgt m_arg_tgt>>) *)
       (* (SAFESRC: exists rs_arg_src m_arg_src, <<ATSRC: ms_src.(at_external) st_src0 rs_arg_src m_arg_src>>) *)
       (* (SAFESRC: ms_tgt.(is_call) st_tgt0) *)
-      (SAFESRC: ms_src.(may_call) st_src0)
+      (SAFESRC: ms_src.(is_call) st_src0)
       (* (PROGSRC: ms_src.(is_call) st_src0) *)
       (CALLFSIM: forall
-          skenv_link_src skenv_link_tgt
-          (FUNCSIM: SimSymb.skenv_func_bisim sm0.(SimMem.sim_val) skenv_link_src skenv_link_tgt)
           args_src
-          (ATSRC: ms_src.(at_external) skenv_link_src st_src0 args_src)
+          (ATSRC: ms_src.(at_external) st_src0 args_src)
         ,
           exists args_tgt sm_arg,
             (<<SIMARGS: sim_args args_src args_tgt sm_arg>>
             /\ (<<MWF: SimMem.wf sm_arg>>)
             /\ (<<MLE: SimMem.le sm0 sm_arg>>)
-            /\ (<<ATTGT: ms_tgt.(at_external) skenv_link_tgt st_tgt0 args_tgt>>)
+            /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 args_tgt>>)
             /\
             (<<K: forall
                 sm_ret retv_src retv_tgt
@@ -238,6 +236,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
     src: ModSem.t;
     tgt: ModSem.t;
     ss: SimSymb.t;
+    sm: SimMem.t;
     (* TODO: which unary/binary property it expects *)
     (* TODO: analysis *)
   }
@@ -260,6 +259,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
                      Some (Internal sg_init_tgt))
           (SIMARGS: sim_args args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
+          (MFUTURE: SimMem.future msp.(sm) sm_arg)
           (MWF: SimMem.wf sm_arg)
         ,
           (<<INITBSIM: forall

@@ -248,14 +248,14 @@ Section MODSEM.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
-  Inductive at_external (skenv_link: SkEnv.t): state -> Args.t -> Prop :=
+  Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       stack fptr_arg sg ls vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg))
     :
-      at_external skenv_link (Callstate stack fptr_arg sg ls m0)
+      at_external (Callstate stack fptr_arg sg ls m0)
                   (Args.mk fptr_arg vs_arg m0)
   .
 
@@ -375,4 +375,22 @@ Section MODSEM.
 End MODSEM.
 
 
+
+Section MODULE.
+
+  Variable p: program.
+
+  Program Definition module: Mod.t :=
+    {|
+      Mod.data := p;
+      Mod.get_sk := Sk.of_program fn_sig;
+      Mod.get_modsem := modsem;
+    |}
+  .
+  Next Obligation.
+    rewrite Sk.of_program_defs.
+    eapply SkEnv.project_impl_spec; eauto.
+  Qed.
+
+End MODULE.
 

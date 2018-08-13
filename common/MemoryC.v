@@ -881,3 +881,5 @@ Lemma Mem_unchanged_on_bot
     Mem.unchanged_on bot2 m0 m1
 .
 Proof. econs; ss; eauto. Qed.
+
+Hint Resolve Mem.unchanged_on_nextblock: mem.

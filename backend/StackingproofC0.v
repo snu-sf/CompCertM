@@ -1810,7 +1810,7 @@ Lemma arguments_private
 Proof.
   ii.
   eapply separation_private; eauto.
-  destruct stk_tgt; ss. des_ifs. destruct stk_src; ss.
+  destruct stk_tgt; ss. inv STACKS. des_ifs. destruct stk_src; ss.
   { sep_simpl_tac. des; ss. }
   des_ifs_safe.
   des_ifs; sep_simpl_tac.
@@ -1846,7 +1846,7 @@ Lemma arguments_perm
 .
 Proof.
   ii.
-  destruct stk_tgt; ss. des_ifs. destruct stk_src; ss.
+  destruct stk_tgt; ss. inv STACKS. des_ifs. destruct stk_src; ss.
   { sep_simpl_tac. des; ss. }
   des_ifs_safe.
   des_ifs; sep_simpl_tac.

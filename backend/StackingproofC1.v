@@ -187,7 +187,7 @@ Proof.
   { eapply globalenv_inject_incr in B; eauto.
     - apply sep_pick1 in B. ss. des. esplits; eauto.
       etrans; eauto. inv MLE. inv MLE0. inv MLE1. inv MLEAFTR.
-      etrans; eauto. etrans; eauto.
+      etrans; eauto with mem. etrans; eauto with mem.
     - apply inject_separated_frozen; eauto.
       eapply frozen_refl; eauto.
   }
@@ -671,7 +671,7 @@ Lemma stack_contents_at_external_spec
 .
 Proof.
   hexploit Mem.nextblock_free; eauto. intro NB.
-  destruct stack; ss. destruct cs'; ss.
+  destruct stack; ss. destruct cs'; ss. inv STACKS.
   des_ifs_safe.
   destruct stack.
   { des_ifs; sep_simpl_tac. psimpl. unfold dummy_frame_contents in *.
@@ -964,7 +964,7 @@ Proof.
       { econs; eauto with congruence. rp; eauto. }
       i; des.
 
-      esplits; eauto.
+      esplits.
       { (* initial frame *)
         econs; eauto with congruence; cycle 1.
         ii. hexpl OUT.
@@ -974,6 +974,7 @@ Proof.
           ii; eauto with congruence.
         - rewrite OUT0 in *. ss.
       }
+      { eauto. }
       { (* match states *)
         assert(INITRS: agree_regs (SimMemInj.inj sm_arg) ls1 rs).
         {
@@ -1131,7 +1132,7 @@ Proof.
             eapply frozen_shortened; eauto.
             + refl.
             + refl.
-          - rewrite <- NB0. inv MLE0; ss.
+          - rewrite <- NB0. inv MLE0; ss. clear - TGTUNCHANGED. change Pos.le with Ple. eauto with mem.
         }
         { ss. }
         rewrite sep_comm. rewrite sep_comm in B. destruct B as (D & E & F).
@@ -1220,7 +1221,7 @@ Unshelve.
   all: ss.
   all: try (by econs).
   all: try apply Mem.empty.
-Qed.
+Admitted.
 
 (* (* Section DUMMY_FUNCTION. *) *)
 

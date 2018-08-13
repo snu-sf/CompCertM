@@ -29,21 +29,6 @@ Section SIMMODSEM.
   (* } *)
   (* . *)
 
-  Inductive sim_args (args_src args_tgt: Args.t) (sm0: SimMem.t): Prop :=
-  | sim_args_intro
-      (FPTR: sm0.(SimMem.sim_val) args_src.(Args.fptr) args_tgt.(Args.fptr))
-      (VALS: sm0.(SimMem.sim_val_list) args_src.(Args.vs) args_tgt.(Args.vs))
-      (MEMSRC: args_src.(Args.m) = sm0.(SimMem.src))
-      (MEMTGT: args_tgt.(Args.m) = sm0.(SimMem.tgt))
-  .
-
-  Inductive sim_retv (retv_src retv_tgt: Retv.t) (sm0: SimMem.t): Prop :=
-  | sim_retv_intro
-      (RETV: sm0.(SimMem.sim_val) retv_src.(Retv.v) retv_tgt.(Retv.v))
-      (MEMSRC: retv_src.(Retv.m) = sm0.(SimMem.src))
-      (MEMTGT: retv_tgt.(Retv.m) = sm0.(SimMem.tgt))
-  .
-
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | fsim_step_step
@@ -153,7 +138,7 @@ Section SIMMODSEM.
           (ATSRC: ms_src.(at_external) st_src0 args_src)
         ,
           exists args_tgt sm_arg,
-            (<<SIMARGS: sim_args args_src args_tgt sm_arg>>
+            (<<SIMARGS: SimMem.sim_args args_src args_tgt sm_arg>>
             /\ (<<MWF: SimMem.wf sm_arg>>)
             /\ (<<MLE: SimMem.le sm0 sm_arg>>)
             /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 args_tgt>>)
@@ -162,7 +147,7 @@ Section SIMMODSEM.
                 sm_ret retv_src retv_tgt
                 (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
                 (MWF: SimMem.wf sm_ret)
-                (SIMRETV: sim_retv retv_src retv_tgt sm_ret)
+                (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
                 st_src1
                 (AFTERSRC: ms_src.(after_external) st_src0 retv_src st_src1)
               ,
@@ -188,7 +173,7 @@ Section SIMMODSEM.
       retv_src retv_tgt
       (FINALSRC: ms_src.(final_frame) st_src0 retv_src)
       (FINALTGT: ms_tgt.(final_frame) st_tgt0 retv_tgt)
-      (SIMRETV: sim_retv retv_src retv_tgt sm0)
+      (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm0)
 
       (* Note: Actually, final_frame can be defined as a function. *)
 
@@ -257,7 +242,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM}.
                      Some (Internal sg_init_src))
           (FINDFTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.fptr) =
                      Some (Internal sg_init_tgt))
-          (SIMARGS: sim_args args_src args_tgt sm_arg)
+          (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
           (MFUTURE: SimMem.future msp.(sm) sm_arg)
           (MWF: SimMem.wf sm_arg)

@@ -401,7 +401,7 @@ Section ADQMATCH.
           sm_ret retv_src retv_tgt
           (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
           (MWF: SimMem.wf sm_ret)
-          (SIMRETV: sim_retv retv_src retv_tgt sm_ret)
+          (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
           lst_src1
           (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 retv_src lst_src1)
         ,
@@ -458,7 +458,7 @@ Section ADQMATCH.
        (MLE: SimMem.le tail_sm sm_arg)
        (MWF: SimMem.wf sm_arg)
        args_src args_tgt
-       (SIMARGS: sim_args args_src args_tgt sm_arg)
+       (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
     :
       lxsim_lift idx_bot
                  (Callstate args_src tail_src)
@@ -522,7 +522,7 @@ Section ADQINIT.
                 [] sm_init.(SimMem.src)) as args_src in *.
     set(Args.mk (Genv.symbol_address (Sk.load_skenv sk_link_tgt) (prog_main sk_link_tgt) Ptrofs.zero)
                 [] sm_init.(SimMem.tgt)) as args_tgt in *.
-    assert(SIMARGS: sim_args args_src args_tgt sm_init).
+    assert(SIMARGS: SimMem.sim_args args_src args_tgt sm_init).
     { econs; ss; eauto.
       - admit "strengthen sim_skenv specs".
       - rewrite <- SimMem.sim_val_list_spec. econs; eauto. }

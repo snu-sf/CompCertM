@@ -112,6 +112,7 @@ Section MATCHSIMFORWARD.
   Hypothesis ATFSIM: forall
       sm_init
       idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       args_src
       (CALLSRC: ms_src.(ModSem.at_external) st_src0 args_src)
@@ -131,6 +132,7 @@ Section MATCHSIMFORWARD.
   Hypothesis AFTERFSIM: forall
       sm_init
       idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       sm_arg
       (MLE: SimMem.le sm0 sm_arg)
@@ -161,6 +163,7 @@ Section MATCHSIMFORWARD.
   Hypothesis FINALFSIM: forall
       sm_init
       idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       retv_src
       (FINALSRC: ms_src.(ModSem.final_frame) st_src0 retv_src)
@@ -175,9 +178,9 @@ Section MATCHSIMFORWARD.
 
   Hypothesis STEPFSIM: forall
       sm_init idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
     ,
       (<<RECEP: receptive_at ms_src st_src0>>)

@@ -13,6 +13,7 @@ Require Import MapsC.
 
 
 Require Import SimSymb.
+Require Import System.
 
 
 Set Implicit Arguments.
@@ -36,6 +37,47 @@ Proof.
     destruct ((Genv.genv_defs x0) ! b) eqn:T; econs; eauto.
   - unfold Genv.find_def in *. i. specialize (mge_defs x1). inv mge_defs; ss.
   - admit "".
+Qed.
+
+Lemma sim_skenv_equiv
+      skenv_src skenv_tgt
+      (SIMSKENV: sim_skenv skenv_src skenv_tgt)
+  :
+    <<EQUIV: Senv.equiv skenv_src skenv_tgt>>
+.
+Proof.
+  About Genv.senv_match_genv.
+  About Unnamed_thm.
+  admit "this should hold".
+Qed.
+
+Lemma system_sim_skenv
+      skenv_src skenv_tgt
+      (SIMSKENV: sim_skenv skenv_src skenv_tgt)
+  :
+    <<SIMSKENV: sim_skenv (skenv_src).(System.skenv) (skenv_tgt).(System.skenv)>>
+.
+Proof.
+  inv SIMSKENV.
+  econs; eauto.
+  unfold System.skenv in *.
+  i. spc DEFS.
+  match goal with
+  | [ |- ?LHS = ?RHS ] => destruct RHS eqn:T
+  end.
+  { apply_all_once Genv_map_defs_def. des.
+    rewrite <- DEFS in *.
+    eapply_all_once Genv_map_defs_def_inv. erewrite FIND.
+    des_ifs.
+  }
+  match goal with
+  | [ |- ?LHS = ?RHS ] => destruct LHS eqn:T0
+  end; ss.
+  { apply_all_once Genv_map_defs_def. des.
+    rewrite DEFS in *.
+    eapply_all_once Genv_map_defs_def_inv. erewrite FIND in *.
+    des_ifs.
+  }
 Qed.
 
 Inductive sim_sk (u: unit) (sk_src sk_tgt: Sk.t): Prop :=

@@ -121,6 +121,11 @@ Inductive le' (mrel0 mrel1: t'): Prop :=
     (TGTPARENTEQNB: mrel0.(tgt_parent_nb) = mrel1.(tgt_parent_nb))
     (FROZEN: frozen mrel0.(inj) mrel1.(inj) (mrel0.(src_parent_nb))
                                             (mrel0.(tgt_parent_nb)))
+    (MAX: forall
+        b ofs
+        (VALID: Mem.valid_block mrel0.(src) b)
+      ,
+        <<MAX: Mem.perm mrel1.(src) b ofs Max <1= Mem.perm mrel0.(src) b ofs Max>>)
 .
 
 Definition lift' (mrel0: t'): t' :=
@@ -159,6 +164,9 @@ Next Obligation.
       split; ss; red; etransitivity; eauto.
       { rewrite <- SRCPARENTEQNB. reflexivity. }
       { rewrite <- TGTPARENTEQNB. reflexivity. }
+  + i. r. etrans.
+    { eapply MAX0; eauto. eapply Plt_Ple_trans; eauto with mem. }
+    eapply MAX; eauto.
 Qed.
 
 (* TODO: Let's have this as policy. (giving explicit name) *)
@@ -227,6 +235,39 @@ Next Obligation.
     econs; eauto.
 Qed.
 
+Lemma after_private_src
+      sm0 sm1
+      (FROZEN: frozen sm0.(inj) sm1.(inj) sm0.(src).(Mem.nextblock) sm0.(tgt).(Mem.nextblock))
+      (MLE: le' sm0.(lift') sm1)
+  :
+    sm0.(src_private) <2= sm1.(src_private)
+.
+Proof.
+  inv MLE. inv SRCUNCHANGED. ss.
+  u; ii; des; esplits; eauto.
+  - eapply loc_unmapped_frozen; eauto.
+  - unfold Mem.valid_block in *. xomega.
+Qed.
+
+Lemma after_private_tgt
+      sm0 sm1
+      (FROZEN: frozen sm0.(inj) sm1.(inj) sm0.(src).(Mem.nextblock) sm0.(tgt).(Mem.nextblock))
+      (MWF: wf' sm0)
+      (MLE: le' sm0.(lift') sm1)
+  :
+    sm0.(tgt_private) <2= sm1.(tgt_private)
+.
+Proof.
+  inv MLE. inv TGTUNCHANGED. ss.
+  u; ii; des; esplits; eauto.
+  - eapply loc_out_of_reach_frozen; eauto.
+    ii.
+    assert(VALID: Mem.valid_block (src sm0) b0).
+    { apply NNPP. ii. exploit Mem.mi_freeblocks; try apply MWF; eauto. ii. clarify. }
+    eapply MAX; eauto.
+  - unfold Mem.valid_block in *. xomega.
+Qed.
+
 Section ORIGINALS.
 
 Lemma store_mapped
@@ -257,6 +298,7 @@ Proof.
       apply Mem.store_valid_access_3 in STRSRC. destruct STRSRC.
       eauto with mem xomega.
     + eapply frozen_refl.
+    + ii. eapply Mem.perm_store_2; eauto.
   - econs; ss; eauto.
     + etransitivity; eauto. unfold src_private. ss. ii; des. esplits; eauto.
       unfold valid_blocks in *. eauto with mem.
@@ -577,6 +619,20 @@ Inductive skenv_inject (skenv: SkEnv.t) (j: meminj): Prop :=
     (IMAGE: forall b1 b2 delta, j b1 = Some(b2, delta) -> Plt b2 skenv.(Genv.genv_next) -> b1 = b2)
 .
 
+Lemma skenv_inject_meminj_preserves_globals
+      skenv j
+      (INJECT: skenv_inject skenv j)
+  :
+    <<INJECT: meminj_preserves_globals skenv j>>
+.
+Proof.
+  inv INJECT.
+  rr. esplits; ii; ss; eauto.
+  - eapply DOMAIN; eauto. eapply Genv.genv_symb_range; eauto.
+  - eapply DOMAIN; eauto. unfold Genv.find_var_info in *. des_ifs. eapply Genv.genv_defs_range; eauto.
+  - symmetry. eapply IMAGE; eauto. unfold Genv.find_var_info in *. des_ifs. eapply Genv.genv_defs_range; eauto.
+Qed.
+
 Inductive sim_skenv_inj (sm: SimMem.t) (__noname__: unit) (skenv_src skenv_tgt: SkEnv.t): Prop :=
 | sim_skenv_inj_intro
     (INJECT: skenv_inject skenv_src sm.(inj))
@@ -663,6 +719,38 @@ Next Obligation.
       exploit DOMAIN; eauto. { rewrite <- DEFS in *. eapply Genv.genv_defs_range; eauto. } i; clarify.
       rewrite e. rewrite Ptrofs.add_zero in *. clarify.
     }
+Qed.
+Next Obligation.
+  inv SIMSKENV.
+  econs; eauto.
+  - inv INJECT. econs; eauto.
+  - eapply SimSymbId.system_sim_skenv; eauto.
+Qed.
+Next Obligation.
+  destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
+  (* Note: It may be easier && more natural to use
+"external_call_mem_inject" with "external_call_symbols_preserved", instead of "external_call_mem_inject_gen" *)
+  (* exploit external_call_mem_inject_gen; eauto. *)
+  exploit external_call_mem_inject; eauto.
+  { eapply skenv_inject_meminj_preserves_globals; eauto. inv SIMSKENV; ss. }
+  i; des.
+  do 2 eexists.
+  dsplits; eauto.
+  - instantiate (1:= Retv.mk _ _); ss.
+    eapply external_call_symbols_preserved; eauto.
+    eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV.
+  - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
+  - econs; ss; eauto.
+    + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+    + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+    + eapply inject_separated_frozen; eauto.
+    + ii. eapply external_call_max_perm; eauto.
+  - apply inject_separated_frozen in H5.
+    econs; ss.
+    + eapply after_private_src; ss; eauto.
+    + eapply after_private_tgt; ss; eauto.
+    + inv H2. xomega.
+    + inv H3. xomega.
 Qed.
 
 End SIMSYMB.

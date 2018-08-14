@@ -163,8 +163,8 @@ Lemma loc_out_of_reach_frozen
       (BOUND: Plt b fbound_tgt)
       m0 m1
       (UNMAPPED: loc_out_of_reach F m0 b ofs)
-      (UNCHANGED: forall k p b0 delta (MAPPED: F b0 = Some (b, delta)),
-          Mem.perm m0 b0 (ofs - delta) k p <-> Mem.perm m1 b0 (ofs - delta) k p)
+      (MAXPERM: forall b0 delta (MAPPED: F b0 = Some (b, delta)),
+          Mem.perm m1 b0 (ofs - delta) Max Nonempty -> Mem.perm m0 b0 (ofs - delta) Max Nonempty)
   :
     loc_out_of_reach F' m1 b ofs
 .
@@ -173,10 +173,7 @@ Proof.
   i.
   exploit frozen_preserves_tgt; eauto.
   i. des.
-  hexploit UNMAPPED; eauto. i.
-  ii.
-  contradict H1.
-  eapply UNCHANGED; eauto.
+  hexploit UNMAPPED; eauto.
 Qed.
 
 End FROZEN.

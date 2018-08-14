@@ -303,7 +303,51 @@ Section SIMGE.
               /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>
               /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) sm_init>>)
           ).
-    { admit "raw admit. this should hold.". }
+    { exploit SimSymb.system_sim_skenv; eauto. i; des.
+      eexists (ModSemPair.mk _ _ ss_link sm_init). ss.
+      esplits; eauto.
+      (* eapply SimSymb.sim_skenv_func_bisim in SIMSKENV. des. *)
+      (* clears sm_init; clear sm_init. *)
+      - econs; ss.
+        unfold ModSemPair.sim_skenv. ss.
+        split; cycle 1.
+        { ii; des. esplits; eauto. econs; eauto. }
+        ii. sguard in SAFESRC. des. inv INITTGT.
+        esplits; eauto.
+        { refl. }
+        { econs. }
+        pfold.
+        econs; eauto.
+        { u. esplits; ii; des; ss; eauto. inv H0. }
+        econs; ss; cycle 1.
+        { admit "ez". }
+        ii. inv STEPSRC.
+        exploit SimSymb.system_axiom; eauto.
+        { eapply external_call_symbols_preserved; eauto.
+          symmetry. apply System.skenv_globlaenv_equiv. }
+        i; des.
+        inv SIMARGS.
+        assert(SIMGE: SimSymb.sim_skenv sm_arg ss_link (System.globalenv (Sk.load_skenv sk_link_src))
+                                        (System.globalenv (Sk.load_skenv sk_link_tgt))).
+        { eapply SimSymb.mfuture_preserves_sim_skenv; eauto. }
+        hexpl SimSymb.sim_skenv_func_bisim SIMGE0.
+        inv SIMGE0. exploit FUNCFSIM; eauto. i; des. clarify.
+        esplits; eauto.
+        { left. apply plus_one. econs.
+          - admit "ez".
+          - ss. econs; eauto.
+            eapply external_call_symbols_preserved; eauto.
+            apply System.skenv_globlaenv_equiv.
+        }
+        { eapply SimMem.unlift_spec; eauto. }
+        left. pfold.
+        econs 4; eauto.
+        { eapply SimMem.unlift_spec; eauto. }
+        { eapply SimMem.unlift_wf; eauto. }
+        { econs; eauto. }
+        { econs; eauto. }
+        { clear - RETV. admit "ez - add as lemma in SimMem". }
+    }
     des.
     rewrite <- SYSSRC. rewrite <- SYSTGT.
     eapply sim_ge_cons; ss.
@@ -338,6 +382,8 @@ Section SIMGE.
         * eapply to_msp_sim_skenv; eauto.
         * rewrite Forall_forall in *. i. rewrite in_map_iff in *. des. clarify.
           eapply to_msp_sim_skenv; eauto.
+  Unshelve.
+    all: try apply idx_bot.
   Qed.
 
 End SIMGE.

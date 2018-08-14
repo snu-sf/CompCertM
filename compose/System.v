@@ -20,8 +20,6 @@ Section SYSMODSEM.
 
   Definition globalenv: genvtype := skenv_link.
 
-  Definition skd: Type := globdef (fundef signature) unit.
-
   Definition skenv: SkEnv.t :=
     skenv_link.(Genv_map_defs)(fun _ gd =>
                                  match gd with
@@ -30,6 +28,20 @@ Section SYSMODSEM.
                                  | Gvar gv => Some gd
                                  end)
   .
+
+  Lemma skenv_globlaenv_equiv
+    :
+      Senv.equiv skenv globalenv
+  .
+  Proof.
+    rr. splits; ii; ss; eauto.
+    unfold skenv, globalenv.
+    (* unfold skenv, globalenv. *)
+    unfold Genv.block_is_volatile, Genv.find_var_info.
+    des_ifs; repeat (apply_all_once Genv_map_defs_def; des); ss; des_ifs.
+    eapply_all_once Genv_map_defs_def_inv.
+    all_once_fast ltac:(fun H => try erewrite H in *; ss).
+  Qed.
 
   Inductive state: Type :=
   | Callstate

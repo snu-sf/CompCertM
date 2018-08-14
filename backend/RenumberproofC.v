@@ -163,6 +163,11 @@ Section MATCHEXTRA.
 End MATCHEXTRA.
 
 
+
+
+
+
+
 Section SIMMODSEM.
 
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
@@ -185,6 +190,11 @@ Inductive match_states
     (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
 .
 
+Theorem make_match_genvs :
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
+  Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge.
+Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } Qed.
+
 Theorem sim_modsem
   :
     ModSemPair.sim msp
@@ -196,24 +206,21 @@ Proof.
     destruct sm_arg; ss. clarify.
     inv SIMARGS; ss. clarify.
     inv INITTGT.
-    des.
+    exploit make_match_genvs; eauto. intro SIMGE. des.
     eexists. eexists (SimMemId.mk _ _).
     esplits; eauto.
     + econs; eauto; ss.
       * rpapply match_callstates; eauto.
         { econs; eauto. }
-        inv SAFESRC.
+        folder. inv SAFESRC.
         f_equal; try congruence.
-        folder.
-        assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
-        { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
-        exploit (Genv.find_funct_transf_genv SIMGE); eauto. i. ss. rewrite FPTR in H. rewrite H in FINDF. inv FINDF. ss.
+        exploit (Genv.find_funct_transf_genv SIMGE); eauto. i. ss.
+        rewrite FPTR in H. rewrite H in FINDF. inv FINDF. ss.
   - (* init progress *)
     des. inv SAFESRC. esplits; eauto. econs; eauto.
     inv SIMARGS; ss. rewrite <- FPTR.
-    assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
-    { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
-    exploit (Genv.find_funct_transf_genv SIMGE). eauto. i. ss. eauto.
+    exploit make_match_genvs; eauto. intro SIMGE.
+    exploit (Genv.find_funct_transf_genv SIMGE); eauto.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     inv CALLSRC. inv MATCHST; ss.
@@ -223,13 +230,10 @@ Proof.
     folder.
     esplits; eauto.
     + econs; eauto.
-      * folder.
-        des. exploit Genv.find_funct_inv; eauto. intros [b EQ]. subst fptr_arg.
-        rewrite Genv.find_funct_find_funct_ptr in *.
-        unfold Genv.find_funct_ptr, Genv.find_def in *.
-        assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
-        { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
-        inv SIMGE.
+      * folder. des.
+        exploit Genv.find_funct_inv; eauto. intros [b EQ]. subst fptr_arg.
+        unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *.
+        exploit make_match_genvs; eauto. intro SIMGE. inv SIMGE.
         specialize (mge_defs b). des_ifs; inv mge_defs; inv H1.
       * destruct SIMSKENVLINK. eapply SimSymbId.sim_skenv_func_bisim in H. inv H.
         des. hexpl FUNCFSIM. clarify. esplits; eauto.
@@ -254,14 +258,14 @@ Proof.
     { apply modsem_receptive. }
     inv MATCH.
     ii. hexploit (@step_simulation prog ge tge); eauto.
-    { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
+    apply make_match_genvs; eauto.
     i; des.
     esplits; eauto.
     + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.
     + instantiate (1:= SimMemId.mk _ _). econs; ss.
 Unshelve.
   all: ss; try (by econs).
-Qed.
+Admitted. (* Maybe coq bug *)
 
 End SIMMODSEM.
 

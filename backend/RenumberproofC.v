@@ -219,13 +219,14 @@ End MATCHEXTRA.
 Section SIMMODSEM.
 
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
+Variable sm_link: SimMem.t.
+Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 Variables prog tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
-
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt
+  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt sm_link
 .
 
 Inductive match_states
@@ -242,7 +243,7 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := top6); eauto; ii; ss.
+  eapply match_states_sim with (match_states := match_states) (match_states_at := top4); eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
@@ -274,7 +275,9 @@ Proof.
     + econs; eauto.
       * fold_all tge.
         admit "ez: match_genvs".
-      * des. esplits; eauto. inv SIMSKENVLINK. exploit FUNCFSIM; eauto. i; des. clarify.
+      * destruct SIMSKENVLINK. eapply SimSymbId.sim_skenv_func_bisim in H. inv H.
+        des. hexpl FUNCFSIM. clarify. esplits; eauto.
+      (* * des. esplits; eauto. inv SIMSKENVLINK. exploit FUNCFSIM; eauto. i; des. clarify. *)
     + econs; ss; eauto.
       * instantiate (1:= SimMemId.mk _ _). ss.
       * ss.
@@ -327,6 +330,8 @@ Proof.
   econs; ss.
   - econs; eauto. admit "easy".
   - ii. eapply sim_modsem; eauto.
+Unshelve.
+  ss.
 Qed.
 
 End SIMMOD.

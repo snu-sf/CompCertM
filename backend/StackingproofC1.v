@@ -304,6 +304,8 @@ Section SIMMODSEM.
 Local Existing Instance Val.mi_normal.
 
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
+Variable sm_link: SimMem.t.
+Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 Variable prog: Linear.program.
 Variable tprog: Mach.program.
 Hypothesis TRANSF: match_prog prog tprog.
@@ -315,7 +317,7 @@ Print Instances SimMem.class.
 Print Instances SimSymb.class.
 
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (LinearC.modsem skenv_link_src prog) (MachC.modsem rao skenv_link_tgt tprog) tt
+  ModSemPair.mk (LinearC.modsem skenv_link_src prog) (MachC.modsem rao skenv_link_tgt tprog) tt sm_link
 .
 
 Fixpoint last_option X (xs: list X): option X :=
@@ -909,7 +911,7 @@ Inductive match_states
         <<SIG: dummy_stack_src.(current_function).(Linear.fn_sig) = st_tgt0.(init_sg)>>)
 .
 
-Inductive match_states_at (skenv_link_src skenv_link_tgt: SkEnv.t)
+Inductive match_states_at
           (st_src0: Linear.state) (st_tgt0: MachC.state) (sm_at sm_arg: SimMem.t): Prop :=
 | match_states_at_intro
     (INJ: sm_at.(SimMemInj.inj) = sm_arg.(SimMemInj.inj))
@@ -1222,6 +1224,35 @@ Unshelve.
   all: try (by econs).
   all: try apply Mem.empty.
 Admitted.
+
+End SIMMODSEM.
+
+
+Section SIMMOD.
+
+Variable prog: Linear.program.
+Variable tprog: Mach.program.
+Variable rao: function -> code -> ptrofs -> Prop.
+
+Hypothesis TRANSF: match_prog prog tprog.
+
+Definition mp: ModPair.t :=
+  ModPair.mk (LinearC.module prog) (MachC.module tprog rao) tt
+.
+
+Theorem sim_mod
+  :
+    ModPair.sim mp
+.
+Proof.
+  econs; ss.
+  - econs; eauto. admit "easy".
+  - ii. eapply sim_modsem; eauto.
+Unshelve.
+Qed.
+
+End SIMMOD.
+
 
 (* (* Section DUMMY_FUNCTION. *) *)
 

@@ -53,6 +53,7 @@ Section SIMGE.
       (GETGT: ge_tgt = (map (ModSemPair.tgt) msps))
       skenv_link_src skenv_link_tgt
       (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm0 ss_link skenv_link_src skenv_link_tgt)
+      (MFUTURE: List.Forall (fun msp => SimMem.future msp.(ModSemPair.sm) sm0) msps)
     :
       sim_ge sm0 (ge_src, skenv_link_src) (ge_tgt, skenv_link_tgt)
   (* | sim_ge_intro *)
@@ -84,6 +85,7 @@ Section SIMGE.
         /\ <<FINDTGT: Ge.find_fptr_owner ge_tgt fptr_tgt msp.(ModSemPair.tgt)>>
         /\ <<SIMMS: ModSemPair.sim msp>>
         /\ <<SIMSKENV: ModSemPair.sim_skenv msp sm0>>
+        /\ <<MFUTURE: SimMem.future msp.(ModSemPair.sm) sm0>>
   .
   Proof.
     inv SIMGE.
@@ -139,6 +141,8 @@ Section SIMGE.
       eapply SimSymb.mle_preserves_sim_skenv; eauto.
       eapply SIMSKENV; eauto.
     - des. esplits; eauto. eapply SimSymb.mle_preserves_sim_skenv; eauto.
+    - rewrite Forall_forall in *. ii.
+      etrans; eauto. apply rtc_once. eauto.
   Qed.
 
   Theorem mlift_preserves_sim_ge
@@ -157,6 +161,8 @@ Section SIMGE.
       eapply SimSymb.mlift_preserves_sim_skenv; eauto.
       eapply SIMSKENV; eauto.
     - des. esplits; eauto. eapply SimSymb.mlift_preserves_sim_skenv; eauto.
+    - rewrite Forall_forall in *. ii.
+      etrans; eauto. apply rtc_once. eauto.
   Qed.
 
   (* Lemma load_modsems_sim_ge_aux *)
@@ -184,6 +190,7 @@ Section SIMGE.
         skenv_link_src skenv_link_tgt
         (SIMGETL: sim_ge sm_init (tl_src, skenv_link_src) (tl_tgt, skenv_link_tgt))
         (SIMSKENV: ModSemPair.sim_skenv msp sm_init)
+        (MFUTURE: SimMem.future (ModSemPair.sm msp) sm_init)
     :
       <<SIMGE: sim_ge sm_init (msp.(ModSemPair.src) :: tl_src, skenv_link_src)
                       (msp.(ModSemPair.tgt) :: tl_tgt, skenv_link_tgt)>>
@@ -211,9 +218,9 @@ Section SIMGE.
   (* Qed. *)
 
   Lemma to_msp_tgt
-        skenv_tgt skenv_src pp
+        skenv_tgt skenv_src pp sm_init
     :
-          map ModSemPair.tgt (map (ModPair.to_msp skenv_src skenv_tgt) pp) =
+          map ModSemPair.tgt (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) =
           map (fun md => Mod.modsem md skenv_tgt) (ProgPair.tgt pp)
   .
   Proof.
@@ -222,9 +229,9 @@ Section SIMGE.
   Qed.
 
   Lemma to_msp_src
-        skenv_tgt skenv_src pp
+        skenv_tgt skenv_src pp sm_init
     :
-          map ModSemPair.src (map (ModPair.to_msp skenv_src skenv_tgt) pp) =
+          map ModSemPair.src (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) =
           map (fun md => Mod.modsem md skenv_src) (ProgPair.src pp)
   .
   Proof.
@@ -242,7 +249,7 @@ Section SIMGE.
                           (Mod.get_sk (ModPair.tgt mp) (Mod.data (ModPair.tgt mp))) ss_link)
         (SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_src skenv_tgt)
       :
-        <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp skenv_src skenv_tgt mp) sm_init>>
+        <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp skenv_src skenv_tgt sm_init mp) sm_init>>
   .
   Proof.
     (* inv SIMMP. specialize (SIMMS skenv_src skenv_tgt). *)
@@ -293,7 +300,9 @@ Section SIMGE.
     assert(exists msp_sys,
               (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem (Sk.load_skenv sk_link_src)>>)
               /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem (Sk.load_skenv sk_link_tgt)>>)
-              /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>).
+              /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>
+              /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) sm_init>>)
+          ).
     { admit "raw admit. this should hold.". }
     des.
     rewrite <- SYSSRC. rewrite <- SYSTGT.
@@ -316,7 +325,8 @@ Section SIMGE.
       assert(WFTGT: SkEnv.wf skenv_tgt).
       { eapply Sk.load_skenv_wf. }
       econstructor 2 with
-          (msps := (map (ModPair.to_msp skenv_src skenv_tgt) (mp :: pp))); eauto; revgoals.
+          (msps := (map (ModPair.to_msp skenv_src skenv_tgt sm_init) (mp :: pp))); eauto; revgoals.
+      + ss. econs; eauto. rewrite Forall_forall in *. ii. rewrite in_map_iff in H. des. clarify. ss. refl.
       + ss. f_equal. rewrite to_msp_tgt; ss.
       + ss. f_equal. rewrite to_msp_src; ss.
       + ss. econs; ss; eauto.
@@ -718,7 +728,7 @@ Section ADQSTEP.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
       exploit CALLFSIM; eauto.
-      { clear - GE. inv GE. des. ss. eapply SimSymb.sim_skenv_func_bisim; eauto. }
+      (* { clear - GE. inv GE. des. ss. eapply SimSymb.sim_skenv_func_bisim; eauto. } *)
       i; des.
       eapply mle_preserves_sim_ge with (sm2:= sm_arg) in GE; eauto.
       esplits; eauto.

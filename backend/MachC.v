@@ -289,7 +289,7 @@ Section MODSEM.
     st: Mach.state;
   }.
 
-  Inductive at_external (skenv_link: SkEnv.t): state -> Args.t -> Prop :=
+  Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       stack rs m0 m1 fptr sg vs blk ofs
       (EXTERNAL: Genv.find_funct ge fptr = None)
@@ -299,7 +299,7 @@ Section MODSEM.
       (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
       init_rs init_sg
     :
-      at_external skenv_link (mkstate init_rs init_sg (Callstate stack fptr rs m0)) (Args.mk fptr vs m1)
+      at_external (mkstate init_rs init_sg (Callstate stack fptr rs m0)) (Args.mk fptr vs m1)
   .
 
   Inductive initial_frame (args: Args.t)
@@ -461,3 +461,23 @@ End MODSEM.
 
 
 
+
+Section MODULE.
+
+  Variable p: program.
+
+  Variable rao: function -> code -> ptrofs -> Prop.
+
+  Program Definition module: Mod.t :=
+    {|
+      Mod.data := p;
+      Mod.get_sk := Sk.of_program fn_sig;
+      Mod.get_modsem := modsem rao;
+    |}
+  .
+  Next Obligation.
+    rewrite Sk.of_program_defs.
+    eapply SkEnv.project_impl_spec; eauto.
+  Qed.
+
+End MODULE.

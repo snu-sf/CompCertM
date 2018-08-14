@@ -11,54 +11,6 @@ Require SimMemId.
 
 Set Implicit Arguments.
 
-
-
-
-Module RNMBREXTRA.
-Section RNMBREXTRA.
-
-  Variables prog tprog: program.
-  Hypothesis TRANSL: match_prog prog tprog.
-  (* Let ge := Genv.globalenv prog. *)
-  (* Let tge := Genv.globalenv tprog. *)
-  Variable ge tge: genv.
-
-Inductive match_states: RTL.state -> RTL.state -> Prop :=
-  | match_regular_states: forall stk f sp pc rs m stk'
-    (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge)
-        (STACKS: list_forall2 match_frames stk stk')
-        (REACH: reach f pc),
-      match_states (State stk f sp pc rs m)
-                   (State stk' (transf_function f) sp (renum_pc (pnum f) pc) rs m)
-  | match_callstates: forall stk fptr sg args m stk'
-    (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge)
-        (STACKS: list_forall2 match_frames stk stk'),
-      match_states (Callstate stk fptr sg args m)
-                   (Callstate stk' fptr sg args m)
-  | match_returnstates: forall stk v m stk'
-    (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge)
-        (STACKS: list_forall2 match_frames stk stk'),
-      match_states (Returnstate stk v m)
-                   (Returnstate stk' v m).
-
-  Lemma step_simulation
-    :
-  forall S1 t S2, Step (semantics_with_ge ge) S1 t S2 ->
-  forall S1', match_states S1 S1' ->
-  exists S2', Step (semantics_with_ge tge) S1' t S2' /\ match_states S2 S2'.
-  Proof.
-    admit "".
-  Qed.
-
-End RNMBREXTRA.
-End RNMBREXTRA.
-Import RNMBREXTRA.
-
-
-
-
-
-
 Section MATCHEXTRA.
 
   Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker (AST.fundef F1)} {LV: Linker V1}.
@@ -211,11 +163,6 @@ Section MATCHEXTRA.
 End MATCHEXTRA.
 
 
-
-
-
-
-
 Section SIMMODSEM.
 
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
@@ -233,7 +180,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: RNMBREXTRA.match_states prog ge tge st_src0 st_tgt0)
+    (MATCHST: Renumberproof.match_states st_src0 st_tgt0)
     (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
 .
@@ -249,21 +196,24 @@ Proof.
     destruct sm_arg; ss. clarify.
     inv SIMARGS; ss. clarify.
     inv INITTGT.
-    assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
-    { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
-
+    des.
     eexists. eexists (SimMemId.mk _ _).
     esplits; eauto.
-    + econs; eauto.
-      instantiate (1:= (transf_function fd)).
-      admit "ez: match_genvs".
     + econs; eauto; ss.
       * rpapply match_callstates; eauto.
         { econs; eauto. }
+        inv SAFESRC.
         f_equal; try congruence.
+        folder.
+        assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
+        { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
+        exploit (Genv.find_funct_transf_genv SIMGE); eauto. i. ss. rewrite FPTR in H. rewrite H in FINDF. inv FINDF. ss.
   - (* init progress *)
     des. inv SAFESRC. esplits; eauto. econs; eauto.
-    admit "ez: match_genvs".
+    inv SIMARGS; ss. rewrite <- FPTR.
+    assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
+    { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
+    exploit (Genv.find_funct_transf_genv SIMGE). eauto. i. ss. eauto.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     inv CALLSRC. inv MATCHST; ss.
@@ -273,11 +223,16 @@ Proof.
     folder.
     esplits; eauto.
     + econs; eauto.
-      * fold_all tge.
-        admit "ez: match_genvs".
+      * folder.
+        des. exploit Genv.find_funct_inv; eauto. intros [b EQ]. subst fptr_arg.
+        rewrite Genv.find_funct_find_funct_ptr in *.
+        unfold Genv.find_funct_ptr, Genv.find_def in *.
+        assert(SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge).
+        { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
+        inv SIMGE.
+        specialize (mge_defs b). des_ifs; inv mge_defs; inv H1.
       * destruct SIMSKENVLINK. eapply SimSymbId.sim_skenv_func_bisim in H. inv H.
         des. hexpl FUNCFSIM. clarify. esplits; eauto.
-      (* * des. esplits; eauto. inv SIMSKENVLINK. exploit FUNCFSIM; eauto. i; des. clarify. *)
     + econs; ss; eauto.
       * instantiate (1:= SimMemId.mk _ _). ss.
       * ss.
@@ -298,8 +253,8 @@ Proof.
   - esplits; eauto.
     { apply modsem_receptive. }
     inv MATCH.
-    (* apply Axioms.functional_extensionality in SIMRSINIT. clarify. *)
     ii. hexploit (@step_simulation prog ge tge); eauto.
+    { subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } }
     i; des.
     esplits; eauto.
     + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.

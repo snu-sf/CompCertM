@@ -815,3 +815,6 @@ Hint Unfold range.
 Ltac sym := symmetry.
 Tactic Notation "sym" "in" hyp(H) := symmetry in H.
 
+Ltac eapply_all_once LEMMA :=
+  all_once_fast ltac:(fun H => try eapply LEMMA in H; try eassumption; check_safe)
+.

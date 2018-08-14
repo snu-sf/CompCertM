@@ -1,7 +1,7 @@
 Require Import Events.
 Require Import Values.
 Require Import AST.
-Require Import Memory.
+Require Import MemoryC.
 Require Import Globalenvs.
 Require Import Smallstep.
 Require Import CoqlibC.
@@ -18,6 +18,7 @@ Set Implicit Arguments.
 Require Import SimSymb.
 Require Import SimMem.
 Require Import SimMemInj.
+Require Import ModSem.
 
 
 
@@ -95,6 +96,7 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
                                   <<DELTA: delta = Ptrofs.zero>> /\
                                            <<REAL: isreal = true>> /\
                                                    <<SIM: def_src = def_tgt>>)
+    (PUBS: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
 .
 
 Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
@@ -146,6 +148,8 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
                                   <<DELTA: delta = Ptrofs.zero>> /\
                                            <<REAL: isreal = true>> /\
                                                    <<SIM: def_src = def_tgt>>>>)
+    /\
+    (<<PUBS: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss>>)
 .
 
 Theorem sim_skenv_splittable_spec
@@ -415,7 +419,7 @@ Next Obligation.
       inv SIMFPTR. inv SIM. rewrite Ptrofs.add_zero_l in *.
       About mi_no_overlap.
       assert(delta = 0).
-      { admit "This is not true!".
+      { admit "This is not true! [ADMIT UID: c82ce12b5f6f1e33e194129e030a5e93ad8767227d8b854207cf0797c994d484]".
         (* clear - H6. *)
         (* unfold Ptrofs.zero in *. *)
         (* hexploit (Ptrofs.intrange (Ptrofs.repr delta)); eauto. i. *)
@@ -442,6 +446,10 @@ Next Obligation.
     exploit SYMBKEEP0; eauto. i; des. rewrite BLKSRC in *. symmetry in H2.
     erewrite DEFKEEP0; eauto.
     { apply Genv.find_invert_symbol; eauto. }
+  - inv LESRC.
+    rewrite PUBLIC in *.
+    exploit PUBS; eauto.
+    inv LE. eauto.
 Qed.
 Next Obligation.
   inv SIMSKENV.
@@ -463,6 +471,73 @@ Next Obligation.
     exfalso.
     apply n.
     rewrite Ptrofs.add_zero_l in *. rewrite DELTA in *. rewrite Ptrofs.add_zero in *. clarify.
+Qed.
+Next Obligation.
+  inv SIMSKENV.
+  unfold System.skenv in *.
+  esplits; eauto.
+  econs; ii; ss; eauto; try rewrite Genv_map_defs_symb in *; apply_all_once Genv_map_defs_def; eauto.
+  - des. exploit SIMDEF; eauto. i; des. clarify.
+    esplits; eauto.
+    eapply Genv_map_defs_def_inv in DEFTGT. rewrite DEFTGT. ss.
+  - des. exploit SIMDEFINV; eauto. i; des. clarify.
+    esplits; eauto.
+    eapply Genv_map_defs_def_inv in DEFSRC. rewrite DEFSRC. ss.
+  - eapply PUBS; eauto.
+Qed.
+Next Obligation.
+  destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
+  inv SIMSKENV; ss.
+  exploit external_call_mem_inject_gen; eauto.
+  { instantiate (1:= skenv_sys_tgt).
+    rr. esplits; ii; ss.
+    - admit "We 'Unusedglob.v' don't remove unused ids from publics, 'good_prog' property will be broken.
+As we don't want to change 'Unusedglob.v', we might remove the notion of 'good_prog'".
+    - exploit SIMSYMB1; eauto. i; des. rewrite Ptrofs.add_zero_l in *.
+      esplits; eauto.
+      admit "Same as c82ce12b5f6f1e33e194129e030a5e93ad8767227d8b854207cf0797c994d484".
+    - exploit SIMSYMB2; eauto.
+      { ii. eapply PUBS; eauto. unfold Genv.public_symbol in H. des_ifs. des_sumbool. ss. }
+      i; des.
+      esplits; eauto.
+      inv SIM; ss. rewrite Ptrofs.add_zero_l in *.
+      admit "Same as c82ce12b5f6f1e33e194129e030a5e93ad8767227d8b854207cf0797c994d484".
+    - unfold Genv.block_is_volatile, Genv.find_var_info.
+      destruct (Genv.find_def skenv_sys_src b1) eqn:T0.
+      { exploit SIMDEF; try eassumption.
+        { econs; eauto. }
+        i; des.
+        des_ifs.
+      }
+      destruct (Genv.find_def skenv_sys_tgt b2) eqn:T1.
+      { exploit SIMDEFINV; try eassumption.
+        { econs; eauto. }
+        i; des.
+        des_ifs.
+      }
+      ss.
+  }
+  i; des.
+
+
+
+
+  (* TODO: almost exactly copied from SimMemInj. we may remove duplicate code some way *)
+  do 2 eexists.
+  dsplits; eauto.
+  - instantiate (1:= Retv.mk _ _); ss. eauto.
+  - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
+  - econs; ss; eauto.
+    + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+    + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+    + eapply inject_separated_frozen; eauto.
+    + ii. eapply external_call_max_perm; eauto.
+  - apply inject_separated_frozen in H5.
+    econs; ss.
+    + eapply after_private_src; ss; eauto.
+    + eapply after_private_tgt; ss; eauto.
+    + inv H2. xomega.
+    + inv H3. xomega.
 Qed.
 
 End MEMINJ.

@@ -76,8 +76,6 @@ Section INITDTM.
     intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL.
     clear - Heq0 DEFSMALL.
     unfold System.skenv in *. ss.
-    exploit Genv_map_defs_def; eauto. i; des. unfold System.gd_to_skd in MAP. des_ifs.
-    clear Heq0.
     exploit Genv_map_defs_def; eauto. i; des. des_ifs.
   Qed.
 

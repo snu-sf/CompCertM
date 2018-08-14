@@ -63,7 +63,7 @@ Section MATCHSIMFORWARD.
       args_src args_tgt
       (CALLSRC: ms_src.(ModSem.at_external) st_src0 args_src)
       (CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 args_tgt)
-      (SIMARGS: sim_args args_src args_tgt sm_arg)
+      (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
       (MLE: SimMem.le sm_at sm_arg)
       (MWF: SimMem.wf sm_arg)
       (MATCHARG: match_states_at st_src0 st_tgt0 sm_at sm_arg)
@@ -74,7 +74,7 @@ Section MATCHSIMFORWARD.
       (SIMSKENV: ModSemPair.sim_skenv msp sm_arg)
       (MWF: SimMem.wf sm_arg)
       args_src args_tgt
-      (SIMARGS: sim_args args_src args_tgt sm_arg)
+      (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
       st_init_tgt
       (INITTGT: ms_tgt.(ModSem.initial_frame) args_tgt st_init_tgt)
       (SAFESRC: exists _st_init_src, ms_src.(ModSem.initial_frame) args_src _st_init_src)
@@ -93,7 +93,7 @@ Section MATCHSIMFORWARD.
       (SIMSKENV: ModSemPair.sim_skenv msp sm_arg)
       (MWF: SimMem.wf sm_arg)
       args_src args_tgt
-      (SIMARGS: sim_args args_src args_tgt sm_arg)
+      (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
       (SAFESRC: exists st_init_src, ms_src.(ModSem.initial_frame) args_src st_init_src)
     ,
       exists st_init_tgt,
@@ -119,7 +119,7 @@ Section MATCHSIMFORWARD.
       exists args_tgt sm_arg,
         (<<CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 args_tgt>>)
         /\
-        (<<SIMARGS: sim_args args_src args_tgt sm_arg>>)
+        (<<SIMARGS: SimMem.sim_args args_src args_tgt sm_arg>>)
         /\
         (<<MLE: SimMem.le sm0 sm_arg>>)
         /\
@@ -139,7 +139,7 @@ Section MATCHSIMFORWARD.
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
       (MWF: SimMem.wf sm_ret)
       retv_src retv_tgt
-      (SIMRET: sim_retv retv_src retv_tgt sm_ret)
+      (SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret)
       st_src1
       (AFTERSRC: ms_src.(ModSem.after_external) st_src0 retv_src st_src1)
 
@@ -168,7 +168,7 @@ Section MATCHSIMFORWARD.
       exists retv_tgt,
         (<<FINALTGT: ms_tgt.(ModSem.final_frame) st_tgt0 retv_tgt>>)
         /\
-        (<<SIMRET: sim_retv retv_src retv_tgt sm0>>)
+        (<<SIMRET: SimMem.sim_retv retv_src retv_tgt sm0>>)
         /\
         (<<MWF: SimMem.wf sm0>>)
   .

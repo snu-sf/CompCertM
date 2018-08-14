@@ -16,29 +16,32 @@ Section SYSMODSEM.
 
   Variable skenv_link: SkEnv.t.
 
-  Definition genvtype: Type := Genv.t external_function unit.
+  Definition genvtype: Type := SkEnv.t.
 
-  Definition globalenv: genvtype :=
-    skenv_link.(Genv_map_defs) (fun _ gd =>
-                                  match gd with
-                                  | Gfun (External ef) => Some (Gfun ef)
-                                  | Gfun _ => None
-                                  | Gvar gv => Some (Gvar gv)
-                                  end)
-  .
-
-  Definition skd: Type := globdef (fundef signature) unit.
-
-  Definition gd_to_skd V (gd: globdef external_function V): skd :=
-    match gd with
-    | Gfun ef => (Gfun (Internal ef.(ef_sig)))
-    | Gvar (mkglobvar info init ro volatile) => (Gvar (mkglobvar tt init ro volatile))
-    end
-  .
+  Definition globalenv: genvtype := skenv_link.
 
   Definition skenv: SkEnv.t :=
-    globalenv.(Genv_map_defs) (fun _ gd => Some gd.(gd_to_skd))
+    skenv_link.(Genv_map_defs)(fun _ gd =>
+                                 match gd with
+                                 | Gfun (External ef) => Some (Gfun (Internal ef.(ef_sig)))
+                                 | Gfun _ => None
+                                 | Gvar gv => Some gd
+                                 end)
   .
+
+  Lemma skenv_globlaenv_equiv
+    :
+      Senv.equiv skenv globalenv
+  .
+  Proof.
+    rr. splits; ii; ss; eauto.
+    unfold skenv, globalenv.
+    (* unfold skenv, globalenv. *)
+    unfold Genv.block_is_volatile, Genv.find_var_info.
+    des_ifs; repeat (apply_all_once Genv_map_defs_def; des); ss; des_ifs.
+    eapply_all_once Genv_map_defs_def_inv.
+    all_once_fast ltac:(fun H => try erewrite H in *; ss).
+  Qed.
 
   Inductive state: Type :=
   | Callstate
@@ -50,7 +53,7 @@ Section SYSMODSEM.
   Inductive step (ge: genvtype): state -> trace -> state -> Prop :=
   | step_intro
       args ef
-      (FPTR: ge.(Genv.find_funct) args.(Args.fptr) = Some ef)
+      (FPTR: ge.(Genv.find_funct) args.(Args.fptr) = Some (External ef))
       tr retv
       (EXTCALL: external_call ef ge args.(Args.vs) args.(Args.m) tr retv.(Retv.v) retv.(Retv.m))
     :

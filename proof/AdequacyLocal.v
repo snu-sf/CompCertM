@@ -654,7 +654,10 @@ Section ADQSTEP.
     { (* init *)
       folder.
       des_ifs. right.
-      econs; eauto; cycle 2.
+      econs; eauto.
+      { i. ss. inv FINALTGT. }
+      i.
+      econs; eauto; cycle 1.
       { ii.
         specialize (SAFESRC _ (star_refl _ _ _)). des; ss.
         - inv SAFESRC.
@@ -667,10 +670,7 @@ Section ADQSTEP.
           esplits; eauto.
           econs; eauto.
           econs; eauto.
-      }
-      { i. ss. inv FINALTGT. }
-      i.
-      econs; eauto.
+      }      
       i. inv STEPTGT.
       specialize (SAFESRC _ (star_refl _ _ _)). des.
       { inv SAFESRC. }
@@ -746,7 +746,8 @@ Section ADQSTEP.
       + ii. inv FINALTGT. ss. ModSem.tac.
       + ii.
         inv BSTEP.
-        * econs 1; eauto.
+        * econs 1; eauto; cycle 1.
+          { ii. right. des. esplits; eauto. eapply lift_step; eauto. }          
           ii. inv STEPTGT; ModSem.tac.
           ss. exploit STEP; eauto. i; des_safe.
           exists i1, (State ((Frame.mk ms_src st_src1) :: tail_src)).
@@ -761,7 +762,6 @@ Section ADQSTEP.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_star; eauto. }
           right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
-      + ii. right. des. esplits; eauto. eapply lift_step; eauto.
 
 
     - (* call *)

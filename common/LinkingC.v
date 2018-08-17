@@ -63,35 +63,53 @@ Lemma link_list_cons
     <<LINK: link_list (hd :: tl) = Some res>> /\ <<LINKORDER: Forall (fun x => linkorder x res) (hd :: tl)>>
 .
 Proof.
-  admit "This should hold".
+  split; red.
+  - unfold link_list in *. des_ifs; ss; des_ifs.
+  - eapply link_linkorder in HD. des.
+    econs; auto. clear HD.
+    unfold link_list in TL. des_ifs.
+    generalize dependent restl. generalize dependent res.
+    induction tl as [|h l]; auto.
+    i. econs; unfold link_list_aux in *; des_ifs.
+    { eapply link_linkorder in Heq1. des. eapply linkorder_trans; eauto. }
+    { destruct l; auto. des_ifs. }
+    eapply IHl; eauto. eapply link_linkorder in Heq1. des. eapply linkorder_trans; eauto.
 Qed.
 
 Lemma link_list_linkorder
       X `{Linker X}
       xs xs_res
       (LINK: link_list xs = Some xs_res)
-(*       x *)
-(*       (IN: In x xs) *)
-(*   : *)
-(*     <<LINKORDER: linkorder x xs_res>> *)
-(* . *)
   :
     <<LINKORDER: Forall (fun x => linkorder x xs_res) xs>>
 .
-
 Proof.
-  admit "This should hold".
+  destruct xs as [| hd tl]; auto.
+  unfold link_list in LINK. des_ifs.
+  unfold link_list_aux in Heq. des_ifs; fold link_list_aux in *.
+  { destruct tl; ss. econs. apply linkorder_refl. econs. des_ifs. }
+  econs. { eapply link_linkorder in Heq1. des. auto. }
+  assert (link_list tl = Some x).
+  { unfold link_list. rewrite Heq0. auto. }
+  exploit link_list_cons; eauto. i. des.
+  inv LINKORDER. auto.
 Qed.
 
 Lemma link_list_cons_inv
       X `{Linker X}
       hd tl res
       (LINK: link_list (hd :: tl) = Some res)
+      (LENGTH: Zlength tl >= 1)
   :
     exists restl, <<TL: link_list tl = Some restl>> /\ <<HD: link hd restl = Some res>>
 .
 Proof.
-  admit "This should hold".
+  unfold link_list in LINK. des_ifs.
+  unfold link_list_aux in Heq. des_ifs; fold link_list_aux in *.
+  { destruct tl; ss. econs. des_ifs. }
+  exists x. split; auto.
+  unfold link_list. rewrite Heq0. auto.
+  Unshelve. auto.
 Qed.
 
 (* Just forget about nlist. We will use link_list in the final syntactic linking, too *)

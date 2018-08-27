@@ -251,9 +251,7 @@ Proof.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv STACKS; ss. destruct sm0; ss. clarify.
-    esplits; eauto.
-    + econs; eauto.
-    + econs; eauto. ss.
+    eexists (SimMemId.mk _ _). esplits; ss; eauto.
   - esplits; eauto.
     { apply modsem_receptive. }
     inv MATCH.

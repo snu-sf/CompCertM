@@ -328,7 +328,7 @@ Section MODSEM.
       (init_rs rs: regset) init_sp m0 m1 blk init_sg mr
       (CALLEESAVE: forall mr, Conventions1.is_callee_save mr -> Val.lessdef (init_rs mr) (rs mr))
       (INITRSP: init_sp = Vptr blk Ptrofs.zero true)
-      (FREE: Mem.free m0 blk 0 (size_arguments init_sg) = Some m1)
+      (FREE: Mem.free m0 blk 0 (4 * size_arguments init_sg) = Some m1)
       (RETV: loc_result init_sg = One mr)
     :
       final_frame (mkstate init_rs init_sg (Returnstate [dummy_stack init_sp Vundef] rs m0))

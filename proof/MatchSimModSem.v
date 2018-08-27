@@ -168,12 +168,14 @@ Section MATCHSIMFORWARD.
       retv_src
       (FINALSRC: ms_src.(ModSem.final_frame) st_src0 retv_src)
     ,
-      exists retv_tgt,
+      exists sm_ret retv_tgt,
         (<<FINALTGT: ms_tgt.(ModSem.final_frame) st_tgt0 retv_tgt>>)
         /\
-        (<<SIMRET: SimMem.sim_retv retv_src retv_tgt sm0>>)
+        (<<SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret>>)
         /\
-        (<<MWF: SimMem.wf sm0>>)
+        (<<MLE: SimMem.le sm0 sm_ret>>)
+        /\
+        (<<MWF: SimMem.wf sm_ret>>)
   .
 
   Hypothesis STEPFSIM: forall
@@ -238,7 +240,8 @@ Section MATCHSIMFORWARD.
     {
       u in RETSRC. des.
       exploit FINALFSIM; eauto. i; des.
-      eapply lxsim_final; eauto.
+      eapply lxsim_final; try apply SIMRET; eauto.
+      etrans; eauto.
     }
     {
       eapply lxsim_step_forward; eauto.

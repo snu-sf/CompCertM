@@ -1189,7 +1189,15 @@ Proof.
         admit "ez".
 
   - (* final fsim *)
-    inv FINALSRC. inv MATCH. inv MATCHST. ss; clarify.
+    inv FINALSRC. inv MATCH. inv MATCHST.
+    exploit match_stacks_sp_ofs; eauto; intro RSP; des_safe.
+
+    (* note: this lemma is not useful here *)
+    (* hexploit arguments_private; eauto. *)
+    (* { apply sep_drop_tail3 in SEP. eauto. } *)
+    (* intro PRIVTGT. *)
+
+    ss; clarify.
     des_ifs; sep_simpl_tac; des; ss. Undo 1.
     des_ifs; sep_simpl_tac; des_safe; ss. Undo 1. (*** TODO: Fix des_safe with check_safe!! ***)
     assert(AGLOCS0: Stackingproof.agree_callee_save_after ls0 ls_init).
@@ -1202,10 +1210,31 @@ Proof.
     destruct st_tgt0; ss. clarify. ss. clarify. ss.
     inv STACKS.
     hexploit (loc_result_one init_sg); eauto. i; des_safe.
-    esplits; eauto; cycle 1.
+    unfold dummy_frame_contents in *. psimpl.
+    hexploit (Mem.range_perm_free sm0.(SimMemInj.tgt) sp 0 (4 * (size_arguments init_sg))); eauto.
+    { clear - SEP. apply sep_pick1 in SEP. rr in SEP. des. eauto with xomega. }
+    intros (sm_tgt1 & FREETGT).
+
+    assert(j = sm0.(SimMemInj.inj)).
+    { admit "Strengthen stackingproof". }
+    clarify.
+
+    exploit SimMemInj.free_right; eauto.
+    { clear - SEP.
+      apply sep_drop_tail3 in SEP.
+      destruct SEP as (A & B & DISJ). ss. des. zsimpl. clear_tac.
+      ii. rr in PR.
+      rr. esplits; eauto; cycle 1.
+      { admit "sp is valid block". }
+      specialize (DISJ sp x0). ss.
+      ii. exploit DISJ; eauto.
+    }
+    i; des_safe. rename sm1 into sm_ret.
+ 
+    eexists sm_ret, (Retv.mk _ _). esplits; eauto; cycle 1.
     + econs; ss; eauto.
-      * rewrite ONE. ss. specialize (AGREGS mr_res). admit "j = SimMemInj.inj sm0".
-      * instantiate (1:= Retv.mk _ _). s. eauto.
+      * rewrite ONE. ss. specialize (AGREGS mr_res).
+        eapply val_inject_incr; try apply MLE; eauto.
     + econs; eauto.
       * ii. specialize (AGLOCS0 (R mr)). des_ifs. specialize (GOOD r H). des_safe.
         rewrite <- GOOD. rewrite <- AGLOCS0; ss.
@@ -1214,7 +1243,6 @@ Proof.
         specialize (AGREGS r). inv AGREGS; ss.
         exfalso.
         eapply GOOD0. rewrite <- GOOD. rewrite <- AGLOCS0; ss. rewrite <- H0. ss.
-      * unfold dummy_frame_contents in *. psimpl. admit "it is freeable.".
 
   - (* step lemma *)
     admit "".

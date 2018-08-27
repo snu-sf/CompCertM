@@ -160,8 +160,9 @@ Section SIMMODSEM.
                   ))
 
   | lxsim_final
-      (MLE: SimMem.le sm_init sm0)
-      (MWF: SimMem.wf sm0)
+      sm_ret
+      (MLE: SimMem.le sm_init sm_ret)
+      (MWF: SimMem.wf sm_ret)
       (* (PROGRESS: ms_tgt.(is_return) rs_init_tgt st_tgt0) *)
       (* (RETBSIM: forall           *)
       (*     rs_ret_tgt m_ret_tgt *)
@@ -173,7 +174,7 @@ Section SIMMODSEM.
       retv_src retv_tgt
       (FINALSRC: ms_src.(final_frame) st_src0 retv_src)
       (FINALTGT: ms_tgt.(final_frame) st_tgt0 retv_tgt)
-      (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm0)
+      (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
 
       (* Note: Actually, final_frame can be defined as a function. *)
 

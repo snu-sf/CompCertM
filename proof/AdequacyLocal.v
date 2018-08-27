@@ -341,7 +341,7 @@ Section SIMGE.
         }
         { eapply SimMem.unlift_spec; eauto. }
         left. pfold.
-        econs 4; eauto.
+        econs 4.
         { eapply SimMem.unlift_spec; eauto. }
         { eapply SimMem.unlift_wf; eauto. }
         { econs; eauto. }

@@ -91,7 +91,16 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
       destruct a; ss.
       unfold ProgPair.src in *.
       unfold link_sk in *. ss.
-      eapply link_list_cons_inv in LOADSRC. des.
+      destruct (classic (t = [])).
+      { clarify; ss. cbn in *. clarify. clear IHt. inv SIMPROG. inv H2. inv H1. ss.
+        esplits; eauto.
+        econs; eauto.
+        ss. apply SimSymb.le_refl.
+      }
+      rename H into NNIL.
+      eapply link_list_cons_inv in LOADSRC; cycle 1.
+      { destruct t; ss. }
+      des.
       rename sk_link_src into sk_link_link_src.
       rename restl into sk_link_src.
       inv SIMPROG.

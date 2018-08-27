@@ -99,7 +99,7 @@ Lemma link_list_cons_inv
       X `{Linker X}
       hd tl res
       (LINK: link_list (hd :: tl) = Some res)
-      (LENGTH: Zlength tl >= 1)
+      (LEN: tl <> [])
   :
     exists restl, <<TL: link_list tl = Some restl>> /\ <<HD: link hd restl = Some res>>
 .

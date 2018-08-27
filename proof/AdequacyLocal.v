@@ -356,8 +356,23 @@ Section SIMGE.
       ginduction pp; ii; ss.
       unfold link_sk in *. ss.
       rename a into mp.
-      apply link_list_cons_inv in SKSRC. des. rename restl into sk_src_tl.
-      apply link_list_cons_inv in SKTGT. des. rename restl into sk_tgt_tl.
+      destruct (classic (pp = [])).
+      { clarify. ss. clear IHpp. inv SSLE. inv H2. cbn in *. clarify.
+        set (skenv_src := (Sk.load_skenv (ModPair.src mp))) in *.
+        set (skenv_tgt := (Sk.load_skenv (ModPair.tgt mp))) in *.
+        inv SIMPROG. inv H3. rename H2 into SIMMP. inv SIMMP.
+        econstructor 2 with (msps := (map (ModPair.to_msp skenv_src skenv_tgt sm_init) [mp])); eauto; ss; revgoals.
+        - econs; eauto.
+        - econs; eauto. eapply SIMMS; eauto.
+        - econs; eauto. r. ss. eapply SimSymb.sim_skenv_monotone; eauto.
+          + eapply Sk.load_skenv_wf.
+          + eapply Sk.load_skenv_wf.
+          + eapply Mod.get_modsem_projected_sk.
+          + eapply Mod.get_modsem_projected_sk.
+      }
+      rename H into NNIL.
+      apply link_list_cons_inv in SKSRC; cycle 1. { destruct pp; ss. } des. rename restl into sk_src_tl.
+      apply link_list_cons_inv in SKTGT; cycle 1. { destruct pp; ss. } des. rename restl into sk_tgt_tl.
       inv SIMPROG. rename H1 into SIMMP. rename H2 into SIMPROG.
       inv SSLE. rename H1 into SSLEHD. rename H2 into SSLETL.
       unfold flip.

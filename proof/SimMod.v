@@ -13,6 +13,7 @@ Require Import Maps.
 Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.
+Require Import Sound.
 Require Import SimSymb SimMem SimModSem.
 
 Set Implicit Arguments.
@@ -38,7 +39,7 @@ Module ModPair.
   Reset t. (* Need to state SS = SS in SimMem... JMEQ THINGS !!!!!!!!!!!!! *)
 
 Section MODPAIR.
-Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Record t: Type := mk {
     src: Mod.t;

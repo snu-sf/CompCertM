@@ -11,6 +11,7 @@ Require Import Events.
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
 Require Import SemProps Ord.
+Require Import Sound Preservation.
 
 Set Implicit Arguments.
 
@@ -37,6 +38,7 @@ Section SIMGE.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
+  Context `{SU: Sound.class}.
   (* Inductive sim_gepair (sm0: SimMem.t) (ge_src ge_tgt: list ModSem.t): Prop := *)
   Inductive sim_ge (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
   | sim_ge_src_stuck
@@ -308,7 +310,9 @@ Section SIMGE.
       esplits; eauto.
       (* eapply SimSymb.sim_skenv_func_bisim in SIMSKENV. des. *)
       (* clears sm_init; clear sm_init. *)
-      - econs; ss.
+      - exploit system_local_preservation; eauto. intro PRSV; des.
+        econs; ss.
+        { eauto. }
         unfold ModSemPair.sim_skenv. ss.
         split; cycle 1.
         { ii; des. esplits; eauto. econs; eauto. }
@@ -318,7 +322,8 @@ Section SIMGE.
         { econs. }
         pfold.
         econs; eauto.
-        { u. esplits; ii; des; ss; eauto. inv H0. }
+        i. split.
+        { u. i. esplits; ii; des; ss; eauto. inv H0. }
         econs; ss; cycle 1.
         { admit "ez". }
         ii. inv STEPSRC.
@@ -418,6 +423,7 @@ Section ADQMATCH.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
+  Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
   (* Hypothesis SIMPROG: ProgPair.sim pp. *)
@@ -458,6 +464,7 @@ Section ADQMATCH.
       (MLE: SimMem.le tail_sm sm_arg)
       sm_init
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
+      sound_state
       (K: forall
           sm_ret retv_src retv_tgt
           (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
@@ -471,7 +478,8 @@ Section ADQMATCH.
             /\
             (<<MLE: SimMem.le (sm_arg.(SimMem.unlift) sm_ret) sm_after>>)
             /\
-            (<<LXSIM: lxsim ms_src ms_tgt tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
+            (<<LXSIM: lxsim ms_src ms_tgt (fun st => exists su, sound_state su st) tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
+      (PRSV: local_preservation ms_src sound_state)
     :
       lxsim_stack sm_init
                   ((Frame.mk ms_src lst_src0) :: tail_src)

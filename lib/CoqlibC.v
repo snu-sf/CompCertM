@@ -665,8 +665,12 @@ Ltac revert_until_bar :=
                                end)
 .
 
-Ltac folder := all_once_fast ltac:(fun H => try (is_local_definition H; fold_all H)).
-
+(* Ltac folder := all_once_fast ltac:(fun H => try (is_local_definition H; fold_all H)). *)
+Ltac folder :=
+  repeat multimatch goal with
+         | [ H: _ |- _ ] => is_local_definition H; fold_all H
+         end
+.
 
 (* copied from promising/lib/Basic.v *)
 

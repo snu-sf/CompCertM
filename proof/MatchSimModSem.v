@@ -272,7 +272,7 @@ Section MATCHSIMFORWARD.
       eapply match_states_lxsim; eauto.
       { eapply SimSymb.mle_preserves_sim_skenv; eauto. }
     - exploit INITPROGRESS; eauto.
-  Admitted. (* TODO: COQ BUG !!!!!!!!!!!!!!!!!!!!!!!!!!! *)
+  Qed.
 
 End MATCHSIMFORWARD.
 

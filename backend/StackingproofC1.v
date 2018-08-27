@@ -1223,7 +1223,7 @@ Unshelve.
   all: ss.
   all: try (by econs).
   all: try apply Mem.empty.
-Admitted.
+Qed.
 
 End SIMMODSEM.
 

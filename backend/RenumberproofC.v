@@ -265,7 +265,7 @@ Proof.
     + instantiate (1:= SimMemId.mk _ _). econs; ss.
 Unshelve.
   all: ss; try (by econs).
-Admitted. (* Maybe coq bug *)
+Qed.
 
 End SIMMODSEM.
 

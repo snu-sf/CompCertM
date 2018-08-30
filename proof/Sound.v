@@ -114,7 +114,10 @@ Module Sound.
         (SUM: su.(mem) m_arg)
         (EXT: (external_call ef) senv vs_arg m_arg tr v_ret m_ret)
       ,
-        <<SURETV: su.(val) v_ret>> /\ <<SUM: su.(mem) m_ret>> /\ <<MLE: su.(mle) m_arg m_ret>>
+        <<SURETV: su.(val) v_ret>> /\ <<SUM: su.(mem) m_ret>> /\ <<MLE: su.(mle) m_arg m_ret>>;
+
+    top: t;
+    top_spec: top1 <1= top.(val) /\ top1 <1= top.(mem);
   }
   .
 
@@ -134,6 +137,17 @@ Module Sound.
       (VAL: su.(val) retv0.(Retv.v))
       (MEM: su.(mem) retv0.(Retv.m))
   .
+
+  Lemma top_args
+        args0
+    :
+      top.(args) args0
+  .
+  Proof.
+    econs; eauto; try eapply top_spec; ss.
+    rewrite <- val_list_spec.
+    rewrite Forall_forall. ii. apply top_spec; ss.
+  Qed.
 
   End SOUND.
 

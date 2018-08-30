@@ -414,11 +414,6 @@ End SIMGE.
 
 
 
-
-
-
-
-
 Section ADQMATCH.
 
   Context `{SM: SimMem.class}.
@@ -447,15 +442,15 @@ Section ADQMATCH.
   (* (SimMem.t is lifted. lifting/unlifting is caller's duty) *)
   (* Simulation can go continuation when SimMem.t bigger than argument is given, (after unlifting it) *)
   (* with after_external fed with regsets sent. *)
-  Inductive lxsim_stack: SimMem.t ->
+  Inductive lxsim_stack: Sound.t -> SimMem.t ->
                          list Frame.t -> list Frame.t -> Prop :=
   | lxsim_stack_nil
-      sm0
+      su0 sm0
     :
-      lxsim_stack sm0 [] []
+      lxsim_stack su0 sm0 [] []
   | lxsim_stack_cons
-      tail_src tail_tgt tail_sm
-      (STACK: lxsim_stack tail_sm tail_src tail_tgt)
+      tail_src tail_tgt tail_su tail_sm
+      (STACK: lxsim_stack tail_su tail_sm tail_src tail_tgt)
       ms_src lst_src0
       ms_tgt lst_tgt0
       sm_arg
@@ -463,6 +458,7 @@ Section ADQMATCH.
       (GE: sim_ge sm_arg sem_src.(globalenv) sem_tgt.(globalenv))
       (MLE: SimMem.le tail_sm sm_arg)
       sm_init
+      su_init
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
       sound_state
       (K: forall
@@ -479,21 +475,30 @@ Section ADQMATCH.
             (<<MLE: SimMem.le (sm_arg.(SimMem.unlift) sm_ret) sm_after>>)
             /\
             (<<LXSIM: lxsim ms_src ms_tgt (fun st => exists su, sound_state su st) tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
+      (K: forall
+          retv lst_src1
+          su_lifted
+          (SURETV: Sound.retv su_lifted retv)
+          (MLE: Sound.mle su_lifted sm_arg.(SimMem.src) retv.(Retv.m))
+          (AFTER: ms_src.(ModSem.after_external) lst_src0 retv lst_src1)
+        ,
+          <<SUST: sound_state su_init lst_src1>>)
       (PRSV: local_preservation ms_src sound_state)
+      (SUST: sound_state su_init lst_src0)
     :
-      lxsim_stack sm_init
+      lxsim_stack su_init sm_init
                   ((Frame.mk ms_src lst_src0) :: tail_src)
                   ((Frame.mk ms_tgt lst_tgt0) :: tail_tgt)
 
   .
 
   Lemma lxsim_stack_le
-        sm0 frs_src frs_tgt
-        (SIMSTACK: lxsim_stack sm0 frs_src frs_tgt)
+        su0 sm0 frs_src frs_tgt
+        (SIMSTACK: lxsim_stack su0 sm0 frs_src frs_tgt)
         sm1
         (MLE: SimMem.le sm0 sm1)
     :
-      <<SIMSTACK: lxsim_stack sm1 frs_src frs_tgt>>
+      <<SIMSTACK: lxsim_stack su0 sm1 frs_src frs_tgt>>
   .
   Proof.
     inv SIMSTACK.
@@ -502,37 +507,42 @@ Section ADQMATCH.
     etransitivity; eauto.
   Qed.
 
-  Inductive lxsim_lift: idx -> sem_src.(Smallstep.state) -> sem_tgt.(Smallstep.state) -> SimMem.t -> Prop :=
+  Inductive lxsim_lift: idx -> sem_src.(Smallstep.state) -> sem_tgt.(Smallstep.state) -> Sound.t -> SimMem.t -> Prop :=
   | lxsim_lift_intro
       sm0
       (GE: sim_ge sm0 sem_src.(globalenv) sem_tgt.(globalenv))
-      tail_src tail_tgt tail_sm
-      (STACK: lxsim_stack tail_sm tail_src tail_tgt)
+      tail_src tail_tgt tail_su tail_sm
+      (STACK: lxsim_stack tail_su tail_sm tail_src tail_tgt)
       (MLE: SimMem.le tail_sm sm0)
       i0
       ms_src lst_src
       ms_tgt lst_tgt
-      (TOP: lxsim ms_src ms_tgt tail_sm
+      sound_state su0
+      (TOP: lxsim ms_src ms_tgt (fun st => exists su, sound_state su st) tail_sm
                   i0 lst_src lst_tgt sm0)
+      (PRSV: local_preservation ms_src sound_state)
+      (SUST: sound_state su0 lst_src)
     :
       lxsim_lift i0
                  (State ((Frame.mk ms_src lst_src) :: tail_src))
                  (State ((Frame.mk ms_tgt lst_tgt) :: tail_tgt))
-                 sm0
+                 su0 sm0
   | lxsim_lift_callstate
        sm_arg
        (GE: sim_ge sm_arg sem_src.(globalenv) sem_tgt.(globalenv))
-       tail_src tail_tgt tail_sm
-       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
+       tail_src tail_tgt tail_su tail_sm
+       (STACK: lxsim_stack tail_su tail_sm tail_src tail_tgt)
        (MLE: SimMem.le tail_sm sm_arg)
        (MWF: SimMem.wf sm_arg)
        args_src args_tgt
        (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
+       su_arg
+       (SUARGS: Sound.args su_arg args_src)
     :
       lxsim_lift idx_bot
                  (Callstate args_src tail_src)
                  (Callstate args_tgt tail_tgt)
-                 sm_arg
+                 su_arg sm_arg
   .
 
 End ADQMATCH.
@@ -553,6 +563,7 @@ Section ADQINIT.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
+  Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
   Hypothesis NOTNIL: pp <> [].
@@ -564,7 +575,7 @@ Section ADQINIT.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
   Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
 
-  Let lxsim_lift := (@lxsim_lift _ _ pp).
+  Let lxsim_lift := (@lxsim_lift _ _ _ pp).
   Hint Unfold lxsim_lift.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
@@ -574,9 +585,9 @@ Section ADQINIT.
           st_init_src
           (INITSRC: sem_src.(Smallstep.initial_state) st_init_src)
     :
-      exists idx st_init_tgt sm_init,
+      exists idx st_init_tgt su_init sm_init,
         <<INITTGT: sem_tgt.(Dinitial_state) st_init_tgt>>
-        /\ <<SIM: lxsim_lift idx st_init_src st_init_tgt sm_init>>
+        /\ <<SIM: lxsim_lift idx st_init_src st_init_tgt su_init sm_init>>
   .
   Proof.
     ss.
@@ -608,6 +619,7 @@ Section ADQINIT.
       + ss. folder. des_ifs.
       + hnf. econs; eauto.
       + reflexivity.
+      + apply Sound.top_args.
     (* exploit SIM; eauto. i; des. *)
     (* bar. *)
     (* exploit INITPROGRESS; eauto. i; des. *)
@@ -633,6 +645,8 @@ Section ADQINIT.
     (*   + ss. des_ifs. *)
     (*   + econs; eauto. *)
     (*   + reflexivity. *)
+  Unshelve.
+    exact Sound.top.
   Qed.
 
 End ADQINIT.
@@ -645,6 +659,7 @@ Section ADQSTEP.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
+  Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.
@@ -655,20 +670,21 @@ Section ADQSTEP.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
   Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
 
-  Let lxsim_lift := (@lxsim_lift _ _ pp).
+  Let lxsim_lift := (@lxsim_lift _ _ _ pp).
   Hint Unfold lxsim_lift.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
 
 
   Theorem lxsim_lift_xsim
-          i0 st_src0 st_tgt0 sm0
-          (LXSIM: lxsim_lift i0 st_src0 st_tgt0 sm0)
+          i0 st_src0 st_tgt0 su0 sm0
+          (LXSIM: lxsim_lift i0 st_src0 st_tgt0 su0 sm0)
     :
       <<XSIM: xsim sem_src sem_tgt ord i0 st_src0 st_tgt0>>
   .
   Proof.
     generalize dependent sm0.
+    generalize dependent su0.
     generalize dependent st_src0.
     generalize dependent st_tgt0.
     generalize dependent i0.
@@ -728,6 +744,7 @@ Section ADQSTEP.
         econs; try apply SIM0; eauto.
         + ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto.
         + eapply lxsim_stack_le; eauto.
+        + s. inv PRSV. exploit INIT0; eauto.
 
     }
 
@@ -738,6 +755,7 @@ Section ADQSTEP.
 
     - (* fstep *)
       left.
+      exploit SU0; eauto. i; des.
       econs; ss; eauto.
       + ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto.
       + inv FSTEP.
@@ -757,7 +775,8 @@ Section ADQSTEP.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto. econs; eauto.
           { ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto. }
-          etransitivity; eauto.
+          { etransitivity; eauto. }
+          { inv PRSV. eapply STEP1; eauto. }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dstar; eauto. }
           right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
@@ -781,10 +800,15 @@ Section ADQSTEP.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto. econs; eauto.
           { folder. ss; des_ifs. eapply mle_preserves_sim_ge; eauto. }
-          etransitivity; eauto.
+          { etransitivity; eauto. }
+          { inv PRSV.
+            admit "this should hold".
+          }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_star; eauto. }
-          right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
+          right. eapply CIH; eauto. econs; eauto.
+          { folder. ss; des_ifs. }
+          { admit "this should hold". }
 
 
     - (* call *)
@@ -806,13 +830,26 @@ Section ADQSTEP.
         { admit "eapply lift_determinate_at // Add in ModSem.v". }
         des_ifs.
         econs 1; eauto.
-      + right. eapply CIH; eauto.
+      + right.
+        dup PRSV. inv PRSV0. exploit CALL; eauto. i; des.
+        eapply CIH; eauto.
         {
           instantiate (1:= (SimMem.lift sm_arg)).
+          instantiate (1:= su_lifted).
           econs 2; eauto.
           * ss. folder. des_ifs. eapply mlift_preserves_sim_ge; eauto.
           * instantiate (1:= (SimMem.lift sm_arg)).
             econs; [eassumption|..]; revgoals.
+            { eauto. }
+            { econs; eauto. }
+            { ii.
+              assert(su_lifted0 = su_lifted).
+              { admit "greatest". }
+              clarify.
+              eapply K0; eauto.
+              inv SIMARGS.
+              rewrite MEMSRC. eauto.
+            }
             { ii. exploit K; eauto. i; des_safe. pclearbot. esplits; eauto. }
             { reflexivity. }
             { etransitivity; eauto. }
@@ -861,6 +898,10 @@ Section ADQSTEP.
         instantiate (1:= sm_after).
         econs; ss; cycle 3.
         { eauto. }
+        { eauto. }
+        { dup PRSV. inv PRSV.
+          exploit RET; eauto. i; des.
+          eapply K0; eauto. }
         { folder. des_ifs.
           eapply mle_preserves_sim_ge; eauto.
           etransitivity; eauto.

@@ -42,7 +42,7 @@ Section MATCHSIMFORWARD.
   Hypothesis WFORD: well_founded order.
   Let ms_src: ModSem.t := msp.(ModSemPair.src).
   Let ms_tgt: ModSem.t := msp.(ModSemPair.tgt).
-  Variable sound_state: Sound.t -> ms_src.(state) -> Prop.
+  Variable sound_state: Sound.t -> mem -> ms_src.(state) -> Prop.
   Hypothesis PRSV: local_preservation ms_src sound_state.
 
   Variable match_states: forall
@@ -187,7 +187,7 @@ Section MATCHSIMFORWARD.
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
-      (SOUND: exists su0, sound_state su0 st_src0)
+      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
     ,
       (<<RECEP: receptive_at ms_src st_src0>>)
       /\
@@ -216,7 +216,7 @@ Section MATCHSIMFORWARD.
         (* su0 *)
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsim ms_src ms_tgt (fun st => exists su0, sound_state su0 st) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>>
+      <<LXSIM: lxsim ms_src ms_tgt (fun st => exists su0 m_init, sound_state su0 m_init st) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.
     (* move su0 at top. *)

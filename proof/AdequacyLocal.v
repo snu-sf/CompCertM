@@ -7,6 +7,7 @@ Require Import JMeq.
 Require Import Smallstep.
 Require Import Integers.
 Require Import Events.
+Require Import Memory.
 
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
@@ -442,23 +443,24 @@ Section ADQMATCH.
   (* (SimMem.t is lifted. lifting/unlifting is caller's duty) *)
   (* Simulation can go continuation when SimMem.t bigger than argument is given, (after unlifting it) *)
   (* with after_external fed with regsets sent. *)
-  Inductive lxsim_stack: Sound.t -> SimMem.t ->
+  Inductive lxsim_stack: Sound.t -> mem -> SimMem.t ->
                          list Frame.t -> list Frame.t -> Prop :=
   | lxsim_stack_nil
-      su0 sm0
+      su0 m_init sm0
     :
-      lxsim_stack su0 sm0 [] []
+      lxsim_stack su0 m_init sm0 [] []
   | lxsim_stack_cons
-      tail_src tail_tgt tail_su tail_sm
-      (STACK: lxsim_stack tail_su tail_sm tail_src tail_tgt)
+      tail_src tail_tgt tail_su tail_m tail_sm
+      (STACK: lxsim_stack tail_su tail_m tail_sm tail_src tail_tgt)
       ms_src lst_src0
       ms_tgt lst_tgt0
       sm_arg
       (MWF: SimMem.wf sm_arg)
       (GE: sim_ge sm_arg sem_src.(globalenv) sem_tgt.(globalenv))
       (MLE: SimMem.le tail_sm sm_arg)
-      sm_init
       su_init
+      m_init
+      sm_init
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
       sound_state
       (K: forall
@@ -474,31 +476,31 @@ Section ADQMATCH.
             /\
             (<<MLE: SimMem.le (sm_arg.(SimMem.unlift) sm_ret) sm_after>>)
             /\
-            (<<LXSIM: lxsim ms_src ms_tgt (fun st => exists su, sound_state su st) tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
-      (K: forall
+            (<<LXSIM: lxsim ms_src ms_tgt (fun st => exists su m_init, sound_state su m_init st) tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
+      (KSU: forall
           retv lst_src1
           su_lifted
           (SURETV: Sound.retv su_lifted retv)
           (MLE: Sound.mle su_lifted sm_arg.(SimMem.src) retv.(Retv.m))
           (AFTER: ms_src.(ModSem.after_external) lst_src0 retv lst_src1)
         ,
-          <<SUST: sound_state su_init lst_src1>>)
+          <<SUST: sound_state su_init m_init lst_src1>>)
       (PRSV: local_preservation ms_src sound_state)
-      (SUST: sound_state su_init lst_src0)
+      (SUST: sound_state su_init m_init lst_src0)
     :
-      lxsim_stack su_init sm_init
+      lxsim_stack su_init m_init sm_init
                   ((Frame.mk ms_src lst_src0) :: tail_src)
                   ((Frame.mk ms_tgt lst_tgt0) :: tail_tgt)
 
   .
 
   Lemma lxsim_stack_le
-        su0 sm0 frs_src frs_tgt
-        (SIMSTACK: lxsim_stack su0 sm0 frs_src frs_tgt)
+        su0 m_init0 sm0 frs_src frs_tgt
+        (SIMSTACK: lxsim_stack su0 m_init0 sm0 frs_src frs_tgt)
         sm1
         (MLE: SimMem.le sm0 sm1)
     :
-      <<SIMSTACK: lxsim_stack su0 sm1 frs_src frs_tgt>>
+      <<SIMSTACK: lxsim_stack su0 m_init0 sm1 frs_src frs_tgt>>
   .
   Proof.
     inv SIMSTACK.
@@ -507,31 +509,32 @@ Section ADQMATCH.
     etransitivity; eauto.
   Qed.
 
-  Inductive lxsim_lift: idx -> sem_src.(Smallstep.state) -> sem_tgt.(Smallstep.state) -> Sound.t -> SimMem.t -> Prop :=
+  Inductive lxsim_lift: idx -> sem_src.(Smallstep.state) -> sem_tgt.(Smallstep.state) -> Sound.t -> mem -> SimMem.t -> Prop :=
   | lxsim_lift_intro
       sm0
       (GE: sim_ge sm0 sem_src.(globalenv) sem_tgt.(globalenv))
-      tail_src tail_tgt tail_su tail_sm
-      (STACK: lxsim_stack tail_su tail_sm tail_src tail_tgt)
+      tail_src tail_tgt tail_su tail_m tail_sm
+      (STACK: lxsim_stack tail_su tail_m tail_sm tail_src tail_tgt)
       (MLE: SimMem.le tail_sm sm0)
       i0
       ms_src lst_src
       ms_tgt lst_tgt
       sound_state su0
-      (TOP: lxsim ms_src ms_tgt (fun st => exists su, sound_state su st) tail_sm
+      (TOP: lxsim ms_src ms_tgt (fun st => exists su m_init, sound_state su m_init st) tail_sm
                   i0 lst_src lst_tgt sm0)
       (PRSV: local_preservation ms_src sound_state)
-      (SUST: sound_state su0 lst_src)
+      m_init
+      (SUST: sound_state su0 m_init lst_src)
     :
       lxsim_lift i0
                  (State ((Frame.mk ms_src lst_src) :: tail_src))
                  (State ((Frame.mk ms_tgt lst_tgt) :: tail_tgt))
-                 su0 sm0
+                 su0 m_init sm0
   | lxsim_lift_callstate
        sm_arg
        (GE: sim_ge sm_arg sem_src.(globalenv) sem_tgt.(globalenv))
-       tail_src tail_tgt tail_su tail_sm
-       (STACK: lxsim_stack tail_su tail_sm tail_src tail_tgt)
+       tail_src tail_tgt tail_su tail_m tail_sm
+       (STACK: lxsim_stack tail_su tail_m tail_sm tail_src tail_tgt)
        (MLE: SimMem.le tail_sm sm_arg)
        (MWF: SimMem.wf sm_arg)
        args_src args_tgt
@@ -542,7 +545,7 @@ Section ADQMATCH.
       lxsim_lift idx_bot
                  (Callstate args_src tail_src)
                  (Callstate args_tgt tail_tgt)
-                 su_arg sm_arg
+                 su_arg args_src.(Args.m) sm_arg
   .
 
 End ADQMATCH.

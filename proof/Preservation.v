@@ -85,49 +85,51 @@ Section SOUND.
 
 Context `{SU: Sound.class}.
 
-Inductive local_preservation (ms: ModSem.t) (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=
+Inductive local_preservation (ms: ModSem.t) (sound_state: Sound.t -> mem -> ms.(state) -> Prop): Prop :=
 | local_preservation_intro
     (INIT: forall
         su_init args st_init
         (SUARG: Sound.args su_init args)
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
-        <<SUST: sound_state su_init st_init>>)
+        <<SUST: sound_state su_init args.(Args.m) st_init>>)
     (STEP: forall
-        su0 st0 tr st1
-        (SUST: sound_state su0 st0)
+        m_arg su0 st0 tr st1
+        (SUST: sound_state m_arg su0 st0)
         (SAFE: ~ ms.(ModSem.is_call) st0 /\ ~ ms.(ModSem.is_return) st0)
         (STEP: Step ms st0 tr st1)
       ,
-        <<SUST: sound_state su0 st1>>)
+        <<SUST: sound_state m_arg su0 st1>>)
     (CALL: forall
-        su0 st0 args
-        (SUST: sound_state su0 st0)
+        m_arg su0 st0 args
+        (SUST: sound_state su0 m_arg st0)
         (AT: ms.(ModSem.at_external) st0 args)
       ,
-        exists su_lifted,
-          (<<LE: Sound.le su0 su_lifted>>) /\
-          (<<ARGS: su_lifted.(Sound.args) args>>) /\
+        (<<ARGS: su0.(Sound.args) args>>) /\
+        exists su_gr,
+          (<<GR: Sound.get_greatest args su_gr>>) /\
+          (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
+          (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
               retv st1
-              (RETV: su_lifted.(Sound.retv) retv)
-              (MLE: Sound.mle su_lifted args.(Args.m) retv.(Retv.m))
+              (RETV: su_gr.(Sound.retv) retv)
+              (MLE: Sound.mle su_gr args.(Args.m) retv.(Retv.m))
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
-              (<<SUST: sound_state su0 st1>>)>>))
+              (<<SUST: sound_state su0 m_arg st1>>)>>))
     (RET: forall
-        su0 st0 retv
-        (SUST: sound_state su0 st0)
+        m_arg su0 st0 retv
+        (SUST: sound_state su0 m_arg st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv)
       ,
-        <<RETV: su0.(Sound.retv) retv>>)
+        <<RETV: su0.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) m_arg retv.(Retv.m)>>)
 .
 
-Definition system_sound_state: Sound.t -> System.state -> Prop :=
-  fun su st =>
+Definition system_sound_state: Sound.t -> mem -> System.state -> Prop :=
+  fun su m_arg st =>
     match st with
-    | System.Callstate args => su.(Sound.args) args
-    | System.Returnstate retv => su.(Sound.retv) retv
+    | System.Callstate args => su.(Sound.args) args /\ su.(Sound.mle) m_arg args.(Args.m)
+    | System.Returnstate retv => su.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m)
     end
 .
 
@@ -140,7 +142,11 @@ Proof.
   exists system_sound_state.
   econs; ii; ss; eauto.
   - inv INIT. inv SUARG. econs; eauto.
-  - inv STEP. ss. inv SUST. exploit Sound.system_axiom; eauto. i; des. econs; eauto.
+    + econs; eauto.
+    + refl.
+  - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply H; eauto. i; des. esplits; eauto.
+    + econs; eauto.
+    + etrans; eauto.
   - inv FINAL. ss.
 Qed.
 

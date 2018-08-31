@@ -72,6 +72,9 @@ Module Sound.
     wf: t -> Prop;
     mem: t -> mem -> Prop;
     val: t -> val -> Prop;
+    val_list: t -> list Values.val -> Prop;
+    val_list_spec: forall su0, (List.Forall su0.(val) = su0.(val_list));
+
     mle: t -> Memory.mem -> Memory.mem -> Prop;
     mle_PreOrder su0 :> PreOrder (mle su0);
 
@@ -92,6 +95,39 @@ Module Sound.
         <<MLE: mle su0 m0 m1>>
     ;
 
+    args su args0 := 
+      <<VAL: su.(val) args0.(Args.fptr)>> /\
+      <<VALS: su.(val_list) args0.(Args.vs)>> /\
+      <<MEM: su.(mem) args0.(Args.m)>>
+    ;
+    get_greatest: Args.t -> t -> Prop;
+    greatest_dtm: forall
+        args0
+        su0 su1
+        (GR0: args0.(get_greatest) su0)
+        (GR0: args0.(get_greatest) su1)
+      ,
+        su0 = su1
+    ;
+    greatest_le: forall
+        args0 su0 su_gr
+        (ARGS: su0.(args) args0)
+        (GR: get_greatest args0 su_gr)
+      ,
+        le su0 su_gr
+    ;
+    greatest_ex: forall
+        args0
+      ,
+        exists su_gr, <<GR: get_greatest args0 su_gr>>
+    ;
+    greatest_spec: forall
+        args0 su_gr
+        (GR: get_greatest args0 su_gr)
+      ,
+        <<SUARGS: args su_gr args0>>
+    ;
+
     lub: t -> t -> t;
     lub_le: forall x y, <<LE: le x (lub x y)>> /\ <<LE: le y (lub x y)>>;
     (* lub_val: forall x y, (lub x y).(val) <1= x.(val); *)
@@ -101,8 +137,6 @@ Module Sound.
     (* liftdata: Type; *)
     (* lift: t -> liftdata -> t; *)
     (* unlift: t -> t -> t; *)
-    val_list: t -> list Values.val -> Prop;
-    val_list_spec: forall su0, (List.Forall su0.(val) = su0.(val_list));
 
     (* (* refined type *) *)
     (* refined (m0: Memory.mem) :=  { su: t | su.(mem) m0 }; *)
@@ -125,12 +159,12 @@ Module Sound.
   Context {SU: class}.
 
 
-  Inductive args (su: t) (args0: Args.t): Prop :=
-  | args_intro
-      (VAL: su.(val) args0.(Args.fptr))
-      (VALS: su.(val_list) args0.(Args.vs))
-      (MEM: su.(mem) args0.(Args.m))
-  .
+  (* Inductive args (su: t) (args0: Args.t): Prop := *)
+  (* | args_intro *)
+  (*     (VAL: su.(val) args0.(Args.fptr)) *)
+  (*     (VALS: su.(val_list) args0.(Args.vs)) *)
+  (*     (MEM: su.(mem) args0.(Args.m)) *)
+  (* . *)
 
   Inductive retv (su: t) (retv0: Retv.t): Prop :=
   | retv_intro
@@ -144,7 +178,7 @@ Module Sound.
       top.(args) args0
   .
   Proof.
-    econs; eauto; try eapply top_spec; ss.
+    rr. esplits; eauto; try eapply top_spec; ss.
     rewrite <- val_list_spec.
     rewrite Forall_forall. ii. apply top_spec; ss.
   Qed.

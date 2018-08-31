@@ -8,6 +8,7 @@ Require Import CoqlibC.
 Require Import Values Integers.
 Require Import Globalenvs.
 Require Import Program.
+Require Import MemoryC.
 
 Require Import Skeleton SimSymb Ord.
 Require Import ModSem.
@@ -262,7 +263,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
               exists st_init_src sm_init idx_init,
                 (<<MLE: SimMem.le sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(src).(initial_frame) args_src st_init_src>>) /\
-                (<<SIM: lxsim msp.(src) msp.(tgt) (fun st => exists su, sound_state su st)
+                (<<SIM: lxsim msp.(src) msp.(tgt) (fun st => exists su m_init, sound_state su m_init st)
                                                   sm_arg idx_init st_init_src st_init_tgt sm_init>>)>>)
           /\
           (<<INITPROGRESS: forall

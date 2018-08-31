@@ -54,9 +54,9 @@ Section CSPECIFIC.
     apply_all_once Genv_map_defs_def. des.
     u in *. des_ifs.
   Qed.
-  
+
   Definition signature_of_function (f: function) :=
-    {| sig_args := map typ_of_type (map snd (fn_params f));
+    {| sig_args := typlist_of_typelist (type_of_params (fn_params f));
        sig_res  := opttyp_of_type (fn_return f);
        sig_cc   := fn_callconv f |}.
   

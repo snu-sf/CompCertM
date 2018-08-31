@@ -18,7 +18,7 @@ Set Implicit Arguments.
 
 Section CEXTRA.
 
-  Definition is_external (ge: genv) (s:state) : Prop:=
+  Definition is_external (ge: genv) (s:state) : Prop :=
     match s with
     | Callstate fptr ty args k m  =>
       match Genv.find_funct ge fptr with
@@ -30,6 +30,36 @@ Section CEXTRA.
       | None => False
       end
     | _ => False
+    end
+  .
+
+  Definition internal_function_state (ge: genv) (s:state) : Prop :=
+    match s with
+    | Callstate fptr ty args k m  =>
+      match Genv.find_funct ge fptr with
+      | Some f =>
+        match f with
+        | Internal func => type_of_fundef f = Tfunction Tnil type_int32s cc_default
+        | _ => False
+        end
+      | None => False
+      end
+    | _ => False
+    end
+  .
+
+  Definition external_state (ge: genv) (s:state) : bool :=
+    match s with
+    | Callstate fptr ty args k m  =>
+      match Genv.find_funct ge fptr with
+      | Some f =>
+        match f with
+        | External ef targs tres cconv => is_external_ef ef
+        | _ => false
+        end
+      | None => false
+      end
+    | _ => false
     end
   .
 
@@ -86,31 +116,31 @@ Section MODSEM.
   Let ge_ge: Genv.t fundef type := revive skenv p.
   Let ge: genv := Build_genv ge_ge ce_ge.
 
-  Inductive at_external (skenv_link: SkEnv.t): state -> Args.t -> Prop :=
+  Inductive at_external : state -> Args.t -> Prop :=
   | at_external_intro
       fptr_arg tyf vs_arg sg_arg targs tres cconv k m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                   /\ SkEnv.get_sig skd = sg_arg
-                   /\ tyf = Tfunction targs tres cconv
-                   /\ signature_of_type targs tres cconv = sg_arg)                  
-    (* /\ type_of_fundef skd = tyf) *)
+                   /\ (SkEnv.get_sig skd = sg_arg
+                      -> tyf = Tfunction targs tres cconv
+                      -> signature_of_type targs tres cconv = sg_arg))
+                   (* /\ type_of_fundef skd = tyf) *)
     (* how can i check sg_args and tyf are same type? *)
     (* typ_of_type function is a projection type to typ. it delete some info *)
     :
-      at_external skenv_link (Callstate fptr_arg tyf vs_arg k m0)
+      at_external (Callstate fptr_arg tyf vs_arg k m0)
                   (Args.mk fptr_arg vs_arg m0)
   .
 
   Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fd k tyf
+      fd tyf
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYPE: type_of_fundef (Internal fd) = tyf)
     :
       initial_frame args
-                    (Callstate args.(Args.fptr) tyf args.(Args.vs) k args.(Args.m))
+                    (Callstate args.(Args.fptr) tyf args.(Args.vs) Kstop args.(Args.m))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=

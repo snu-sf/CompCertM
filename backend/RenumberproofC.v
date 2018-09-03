@@ -234,10 +234,11 @@ Proof.
     esplits; eauto.
     + econs; eauto.
       * folder. des.
-        exploit Genv.find_funct_inv; eauto. intros [b EQ]. subst fptr_arg.
-        unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *.
-        exploit make_match_genvs; eauto. intro SIMGE. inv SIMGE.
-        specialize (mge_defs b). des_ifs; inv mge_defs; inv H1.
+        r in TRANSL. r in TRANSL.
+        exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
+        { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
+        intro GE.
+        apply (sim_external_id GE); ss.
       * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. destruct SIMSKENVLINK. ss.
     + econs; ss; eauto.
       * instantiate (1:= SimMemId.mk _ _). ss.

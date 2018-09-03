@@ -124,14 +124,6 @@ Lemma revive_signature v fd
       Genv.find_funct skenv_link_tgt v = Some (Internal fd.(fn_sig)).
 Admitted.
 
-(* TODO: pull out a lemma in language-agnostic way, and reuse it in every optimization proof *)
-Lemma sim_external v
-      (FIND: Genv.find_funct ge v = None)
-  :
-    Genv.find_funct tge v = None.
-Proof.
-Admitted.
-
 Lemma sim_find_funct_ptr b fd_src fd_tgt
       (FINDSRC: Genv.find_funct_ptr ge b = Some (Internal fd_src))
       (FINDTGT: Genv.find_funct_ptr tge b = Some (Internal fd_tgt))
@@ -234,7 +226,11 @@ Proof.
     exploit Mem.free_parallel_extends; eauto. intros TGTFREE. des.
     esplits; ss.
     + econs; eauto.
-      * eapply sim_external. ss.
+      * r in TRANSF. r in TRANSF.
+        exploit (SimSymbId.sim_skenv_revive TRANSF); eauto.
+        { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
+        intro GE.
+        apply (sim_external_id GE); ss.
       * exists skd0. des_ifs. esplits; auto.
         destruct SIMSKENVLINK.
         eapply SimSymb.simskenv_func_fsim; eauto.

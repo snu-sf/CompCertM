@@ -104,56 +104,19 @@ Proof.
   - eapply asm_star_dstar; eauto.
 Qed.
 
-Lemma MATCH_GENV: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
+Let SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
 Proof.
-  admit "ez. See SimSymbId.Unnamed_thm".
+  admit "this does not hold -- TODO: unify with RenumberproofC
+-- TODO: by exploiting MFUTURE in SimModSem.v, we may able to simplify this.".
 Qed.
 
-Theorem unfree_parallel_extends:
-  forall m1 m2 b lo hi m1',
-  Mem.extends m1 m2 ->
-  Mem_unfree m1 b lo hi = Some m1' ->
-  exists m2',
-     Mem_unfree m2 b lo hi = Some m2'
-  /\ Mem.extends m1' m2'.
-Proof.
-  admit "this should hold...".
-Qed.
-
-Lemma sim_find_funct_ptr b fd_src fd_tgt
-      (FINDSRC: Genv.find_funct_ptr ge b = Some (Internal fd_src))
-      (FINDTGT: Genv.find_funct_ptr tge b = Some (Internal fd_tgt))
+Lemma transf_function_sig
+      fd_src fd_tgt
+      (TRANS: transf_function fd_src = OK fd_tgt)
   :
-      fd_tgt.(fn_sig) = fd_src.(Mach.fn_sig).
-Admitted.
-
-Lemma sim_find_funct_ptr2 b fd_src
-      (FINDSRC: Genv.find_funct_ptr ge b = Some (Internal fd_src))
-  :
-    exists fd_tgt,
-      <<FINDF: Genv.find_funct_ptr tge b = Some (Internal fd_tgt)>> /\
-      <<SIGEQ: fd_tgt.(fn_sig) = fd_src.(Mach.fn_sig)>>.
-Admitted.
-
-Lemma sim_find_funct v_src v_tgt fd_src fd_tgt (LE: Val.lessdef v_src v_tgt)
-      (FINDSRC: Genv.find_funct ge v_src = Some (Internal fd_src))
-      (FINDTGT: Genv.find_funct tge v_tgt = Some (Internal fd_tgt))
-  :
-      fd_tgt.(fn_sig) = fd_src.(Mach.fn_sig).
-Proof.
-  destruct v_src, v_tgt; ss. inv LE. des_ifs.
-  eapply sim_find_funct_ptr; eauto.
-Qed.
-Lemma sim_find_funct2 v_src v_tgt fd_src (LE: Val.lessdef v_src v_tgt)
-      (FINDSRC: Genv.find_funct ge v_src = Some (Internal fd_src))
-  :
-    exists fd_tgt,
-      <<FINDF: Genv.find_funct tge v_tgt = Some (Internal fd_tgt)>> /\
-      <<SIGEQ: fd_tgt.(fn_sig) = fd_src.(Mach.fn_sig)>>.
-Proof.
-  destruct (v_src); ss. des_ifs. inv LE.
-  exploit sim_find_funct_ptr2; eauto.
-Qed.
+    fd_src.(Mach.fn_sig) = fd_tgt.(fn_sig)
+.
+Proof. repeat unfold transf_function, bind, transl_function in *. des_ifs. Qed.
 
 Theorem sim_modsem
   :
@@ -171,7 +134,10 @@ Proof.
                MachC.store_arguments src rs_src vs (fn_sig fd) m_src /\
            agree_eq rs_src (Vptr (Mem.nextblock src)
                           Ptrofs.zero true) rs /\ Mem.extends m_src m).
-    { admit "". } destruct SRCSTORE as [rs_src [m_src [SRCSTORE [AGREE EXTENDS]]]].
+    { clear - SAFESRC STORE VALS.
+      admit "this should hold...".
+    }
+    destruct SRCSTORE as [rs_src [m_src [SRCSTORE [AGREE EXTENDS]]]].
     inv AGREE.
     exists (MachC.mkstate
               rs_src (fn_sig fd)
@@ -180,10 +146,14 @@ Proof.
                     (Vptr (Mem.nextblock src)
                           Ptrofs.zero true) (rs RA)]
                  fptr rs_src m_src)).
+    inv FPTR; cycle 1.
+    { clear - SAFESRC. inv SAFESRC. ss. }
     esplits; auto.
     + inv SAFESRC. ss.
       econs; auto.
-      * eapply sim_find_funct; eauto.
+      * instantiate (1:= fd0). hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
+        folder. ss; try unfold bind in *; des_ifs.
+        symmetry. eapply transf_function_sig; eauto.
       * ss.
       * ii. exploit PTRFREE; eauto.
         eapply Asm.to_preg_to_mreg.
@@ -195,7 +165,7 @@ Proof.
 
   - ss. des. inv SIMARGS. destruct sm_arg. ss. clarify.
     inv SAFESRC.
-    exploit sim_find_funct2; eauto. i. des.
+    hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des. ss; unfold bind in *; des_ifs. rename f into fd_tgt.
     assert (exists rs_tgt m_tgt,
                <<STORE: AsmC.store_arguments (Args.m args_tgt) rs_tgt (Args.vs args_tgt)
                                     (fn_sig fd_tgt) m_tgt>> /\
@@ -205,9 +175,10 @@ Proof.
                  Asm.to_mreg pr = Some mr ->
                  ~ In (R mr) (regs_of_rpairs (loc_arguments (fn_sig fd_tgt))) ->
                  ~ ValuesC.is_real_ptr (rs_tgt pr)>>).
-    { admit "". } des.
+    { admit "this should hold...". } des.
     eexists. econs; eauto.
-    + rewrite SIGEQ. auto.
+    + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
+    + rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
     + rewrite RSRA. econs; ss.
 
   - inv MATCH; ss. destruct st_src0, st_tgt0, sm0. ss. inv MATCHST; ss.
@@ -239,7 +210,7 @@ Proof.
 
   - inv AFTERSRC. ss. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
     inv INITDATA. inv SIMRET. destruct sm_ret. ss. clarify.
-    exploit unfree_parallel_extends; try eapply UNFREE; eauto.
+    exploit Mem_unfree_parallel_extends; try eapply UNFREE; eauto.
     intros TRTUNFREE. des.
     esplits; auto.
     + econs.
@@ -298,7 +269,6 @@ Proof.
     + i. inv STEPSRC. inv MATCH. set (INITDATA0 := INITDATA). inv INITDATA0.
       inv INITRAPTR. inv INITRS0. clarify.
       exploit step_simulation; ss; try apply agree_sp_def0; eauto.
-      { apply MATCH_GENV. }
       i. des; ss; esplits; auto; clarify.
       * left. instantiate (1 := mkstate st_tgt0.(init_rs) S2'). ss.
         destruct st_tgt0. eapply asm_plus_dplus; eauto.

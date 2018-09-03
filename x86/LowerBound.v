@@ -110,14 +110,6 @@ Section PRESERVATION.
     admit "ez".
   Qed.
 
-  Lemma skenv_link_main
-    :
-      Genv.find_funct skenv_link (Genv.symbol_address tge (prog_main tprog) Ptrofs.zero) = Some (Internal signature_main)
-  .
-  Proof.
-    admit "".
-  Qed.
-
   Lemma local_genv_skenv_signature p fptr fd
         (FIND: Genv.find_funct (local_genv p) fptr = Some (Internal fd))
     :
@@ -495,6 +487,7 @@ Section PRESERVATION.
       init_rs m
       (MEM: m = m_init)
       (INITRS: init_rs = initial_regset)
+      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal signature_main))
     :
       match_stack_call j m init_rs nil
   | match_stack_call_cons
@@ -749,6 +742,7 @@ Section PRESERVATION.
     - econs; eauto.
     - econs; ss; eauto; ss.
       + econs; ss; eauto.
+        admit "This should hold..".
       + unfold initial_regset.
         rewrite Pregmap.gso; clarify.
         rewrite Pregmap.gso; clarify. ss.
@@ -912,7 +906,9 @@ Section PRESERVATION.
       + eapply inject_incr_trans with (f2 := j); auto.
         apply callee_injection_incr; auto.
       + reflexivity.
-      + inv STACK; econs; ss; [apply skenv_link_main| |].
+      + inv STACK.
+        { econs; ss. }
+        econs; ss.
         * eapply match_stack_incr; [|eauto].
           apply callee_injection_incr; auto.
         * set (AGREERSP := AGREE RSP).
@@ -1131,11 +1127,7 @@ Section PRESERVATION.
       inv STACK.
       { exfalso. clarify.
         rewrite FPTR in *.
-        unfold System.globalenv, initial_regset in *.
-        rewrite Pregmap.gso in FPTR0; [| intros EQ; inv EQ].
-        rewrite Pregmap.gso in FPTR0; [| intros EQ; inv EQ].
-        rewrite Pregmap.gss in FPTR0.
-        rewrite skenv_link_main in FPTR0. clarify.
+        unfold System.globalenv, initial_regset in *. unfold Pregmap.set in *. ss. clarify.
       }
       assert (SIGEQ: SkEnv.get_sig skd = ef_sig ef).
       { eapply external_function_sig; eauto. }

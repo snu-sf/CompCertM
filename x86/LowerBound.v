@@ -113,8 +113,25 @@ Section PRESERVATION.
   Lemma local_genv_skenv_signature p fptr fd
         (FIND: Genv.find_funct (local_genv p) fptr = Some (Internal fd))
     :
-      Genv.find_funct skenv_link fptr = Some (Internal (fn_sig fd)).
-  Admitted.
+      Genv.find_funct skenv_link fptr = Some (Internal (fn_sig fd))
+  .
+  Proof.
+    admit "this should hold...".
+  Qed.
+
+  Lemma local_global_consistent
+        (p: Asm.program) (* "p participated in linking" *)
+        fptr fd
+        (LOCAL: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (defs p)) p) fptr = Some (Internal fd))
+        skd
+        (GLOBAL: Genv.find_funct skenv_link fptr = Some skd)
+    :
+      SkEnv.get_sig skd = fd.(fn_sig)
+  .
+  Proof.
+    exploit local_genv_skenv_signature; eauto. i. clarify.
+  Qed.
+
   
 (** ********************* initial memory *********************************)
   
@@ -161,13 +178,16 @@ Section PRESERVATION.
       symbols_inject j (System.globalenv skenv_link) tge.
   Admitted.
 
-  Lemma external_function_sig v skd ef
-        (FIND0: Genv.find_funct (System.globalenv skenv_link) v =
-               Some (External ef))
+  Lemma external_function_sig
+        v skd ef
+        (FIND0: Genv.find_funct (System.globalenv skenv_link) v = Some (External ef))
         (FIND1: Genv.find_funct skenv_link v = Some skd)
     :
-      SkEnv.get_sig skd = ef_sig ef.
-  Admitted.
+      SkEnv.get_sig skd = ef_sig ef
+  .
+  Proof.
+    unfold System.globalenv in *. clarify.
+  Qed.
 
   Lemma system_function_ofs j b_src b_tgt delta fd
         (INCR: inject_incr init_inject j)
@@ -179,8 +199,7 @@ Section PRESERVATION.
 
   Lemma system_sig j b_src b_tgt delta ef
         (INCR: inject_incr init_inject j)
-        (FIND: Genv.find_funct_ptr (System.globalenv skenv_link) b_src =
-               Some (External ef))
+        (FIND: Genv.find_funct_ptr (System.globalenv skenv_link) b_src = Some (External ef))
         (INJ: j b_src = Some (b_tgt, delta))
     :
       Genv.find_funct_ptr tge b_tgt = Some (External ef).
@@ -203,6 +222,7 @@ Section PRESERVATION.
     :
       Genv.find_funct (System.skenv skenv_link) v =
       Some (External ef).
+  Proof.
   Admitted.
 
   Lemma asm_step_preserve_injection
@@ -751,19 +771,6 @@ Section PRESERVATION.
         unfold Genv.symbol_address. unfold skenv_link, tge in *. rewrite MAIN. auto.
       + econs.
       + apply init_mem_freed_from.
-  Qed.
-
-  Lemma local_global_consistent
-        (p: Asm.program) (* "p participated in linking" *)
-        fptr fd
-        (LOCAL: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (defs p)) p) fptr = Some (Internal fd))
-        skd
-        (GLOBAL: Genv.find_funct skenv_link fptr = Some skd)
-    :
-      SkEnv.get_sig skd = fd.(fn_sig)
-  .
-  Proof.
-    admit "this should hold".
   Qed.
 
   Lemma transf_final_states:

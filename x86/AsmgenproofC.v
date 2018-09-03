@@ -51,7 +51,7 @@ Inductive match_init_data init_sp init_ra
     (INITRA: init_ra = init_rs_tgt RA)
     (INITRAPTR: wf_RA (init_ra))
     (INITRS: agree_eq init_rs_src init_sp init_rs_tgt)
-    (SIG: exists skd, skenv_link_tgt.(Genv.find_funct) (init_rs_tgt PC) = Some skd /\ SkEnv.get_sig skd = init_sg_src)
+    (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src)
 .
 
 Inductive match_states
@@ -106,7 +106,8 @@ Qed.
 
 Lemma MATCH_GENV: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
 Proof.
-Admitted.
+  admit "ez. See SimSymbId.Unnamed_thm".
+Qed.
 
 Theorem unfree_parallel_extends:
   forall m1 m2 b lo hi m1',
@@ -116,13 +117,8 @@ Theorem unfree_parallel_extends:
      Mem_unfree m2 b lo hi = Some m2'
   /\ Mem.extends m1' m2'.
 Proof.
-Admitted.
-
-Lemma revive_signature v fd
-      (FIND: Genv.find_funct tge v = Some (Internal fd))
-  :
-      Genv.find_funct skenv_link_tgt v = Some (Internal fd.(fn_sig)).
-Admitted.
+  admit "this should hold...".
+Qed.
 
 Lemma sim_find_funct_ptr b fd_src fd_tgt
       (FINDSRC: Genv.find_funct_ptr ge b = Some (Internal fd_src))
@@ -194,8 +190,6 @@ Proof.
         rewrite (agree_mregs0 mr) in *. auto.
     + instantiate (1:= mk m_src m).
       econs; ss; econs; ss; eauto; try by (econs; eauto).
-      * exists (Internal fd.(fn_sig)). esplits; auto.
-        eapply revive_signature. auto.
       * econs; ss.
         i. rewrite agree_mregs0. econs.
 
@@ -231,7 +225,7 @@ Proof.
         { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
         intro GE.
         apply (sim_external_id GE); ss.
-      * exists skd0. des_ifs. esplits; auto.
+      * exists skd. des_ifs. esplits; auto.
         destruct SIMSKENVLINK.
         eapply SimSymb.simskenv_func_fsim; eauto.
         { econs. }
@@ -273,7 +267,7 @@ Proof.
         i. eapply Val.lessdef_trans. rewrite <- agree_mregs0.
         eapply CALLEESAVE; auto. auto.
       * inv INITRS. inv STACKS; [|inv H7]; rewrite H0. ss.
-      * exists skd. instantiate (1:=init_sg). esplits; auto.
+      * exists fd. eauto.
       * instantiate (1 := m2'). eauto.
       * eapply RETV.
       * inv STACKS; [|inv H7].

@@ -163,8 +163,8 @@ Section MODSEM.
       (CALLEESAVE: forall mr, Conventions1.is_callee_save mr ->
                               Val.lessdef (init_rs mr.(to_preg)) (rs mr.(to_preg)))
       (INITRSP: init_rs # RSP = Vptr blk Ptrofs.zero true)
-      (INITSIG: exists skd, skenv_link.(Genv.find_funct) (init_rs # PC)
-                            = Some skd /\ SkEnv.get_sig skd = sg)
+      (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC)
+                            = Some (Internal fd) /\ fd.(fn_sig) = sg)
       (FREE: Mem.free m0 blk 0 (4 * size_arguments sg) = Some m1)
       (RETV: loc_result sg = One mr)
       (EXTERNAL: external_state ge (rs # PC))

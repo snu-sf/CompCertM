@@ -405,7 +405,6 @@ Section PRESERVATION.
   Lemma callee_save_agree j rs_caller init_rs rs_callee rs_tgt sg mr rs
         (WF: wf_init_rs j rs_caller init_rs)
         (AGREE: agree j rs_callee rs_tgt)
-        (INITSIG: exists skd, skenv_link.(Genv.find_funct) (init_rs # PC) = Some skd /\ SkEnv.get_sig skd = sg)
         (RETV: loc_result sg = One mr)
         (CALLEESAVE: forall mr, Conventions1.is_callee_save mr ->
                                 Val.lessdef (init_rs mr.(to_preg)) (rs_callee mr.(to_preg)))
@@ -719,6 +718,19 @@ Section PRESERVATION.
       + apply init_mem_freed_from.
   Qed.
 
+  Lemma local_global_consistent
+        (p: Asm.program) (* "p participated in linking" *)
+        fptr fd
+        (LOCAL: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (defs p)) p) fptr = Some (Internal fd))
+        skd
+        (GLOBAL: Genv.find_funct skenv_link fptr = Some skd)
+    :
+      SkEnv.get_sig skd = fd.(fn_sig)
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
   Lemma transf_final_states:
     forall st1 st2 r n,
       match_states st1 st2 n -> Sem.final_state st1 r -> Asm.final_state st2 r.
@@ -727,7 +739,7 @@ Section PRESERVATION.
     inv FINAL0. clarify. inv STACK. econs.
     - specialize (AGREE PC). rewrite RSRA in *. rewrite RSRA0 in *.
       inv AGREE; ss.
-    - des. rewrite RSPC in *. rewrite SIG in *. clarify.
+    - des. rewrite RSPC in *. exploit local_global_consistent; eauto. intro SGEQ. rewrite <- SGEQ in *. clarify.
       ss. unfold signature_main, loc_arguments, loc_result in *.
       Transparent Archi.ptr64. ss. unfold loc_result_64 in *. ss. clarify.
       ss. specialize (AGREE RAX). rewrite INT in *. inv AGREE; auto.
@@ -791,10 +803,11 @@ Section PRESERVATION.
     - eapply unfree_free_inj; eauto. 
       + instantiate (1 := Ptrofs.zero).
         rewrite Ptrofs.unsigned_zero. rewrite Z.add_0_l.
-        apply FREE.
+        rp; eauto. repeat f_equal.
+        eapply local_global_consistent; eauto.
       + econs; eauto.
     - ss.
-    - ss.
+    - unfold Frame.update_st. s. repeat f_equal. eapply local_global_consistent; eauto.
     - ss.
     - ss.
     - des_ifs. omega.

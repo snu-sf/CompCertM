@@ -103,14 +103,15 @@ Section ADQSOUND.
   Lemma sound_init
         st0
         (INIT: sem_src.(Smallstep.initial_state) st0)
+        m_init
     :
-      exists m_init su0, sound_state su0 m_init st0
+      exists su0, sound_state su0 m_init st0
   .
   Proof.
     inv INIT.
     hexploit (Sound.greatest_ex (Args.mk (Genv.symbol_address (Sk.load_skenv sk_link) (prog_main sk_link) Ptrofs.zero)
                                          []
-                                         m_init)); eauto. i; des.
+                                         m_init0)); eauto. i; des.
     esplits; eauto. econs; s; eauto.
     - eapply Sound.greatest_spec; eauto.
     - econs; eauto.
@@ -197,6 +198,21 @@ Section ADQSOUND.
   Unshelve.
     all: ss.
     admit "related to above admit".
+  Qed.
+
+  Lemma sound_progress_star
+        su0 st0 m_arg0 tr st1
+        (SUST: sound_state su0 m_arg0 st0)
+        (STEP: Star sem_src st0 tr st1)
+    :
+      <<SUST: exists su1 m_arg1, sound_state su1 m_arg1 st1>>
+  .
+  Proof.
+    generalize dependent m_arg0.
+    generalize dependent su0.
+    induction STEP.
+    - esplits; eauto.
+    - clarify. i. exploit sound_progress; eauto. i; des. eapply IHSTEP; eauto.
   Qed.
 
 End ADQSOUND.

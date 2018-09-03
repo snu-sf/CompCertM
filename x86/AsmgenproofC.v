@@ -124,18 +124,7 @@ Lemma revive_signature v fd
       Genv.find_funct skenv_link_tgt v = Some (Internal fd.(fn_sig)).
 Admitted.
 
-Lemma revive_none v
-      (FIND: Genv.find_funct skenv_link_tgt v = None)
-  :
-    Genv.find_funct tge v = None.
-Admitted.
-
-Lemma sim_skd_src skd v_src v_tgt (LE: Val.lessdef v_src v_tgt)
-      (FIND: Genv.find_funct skenv_link_src v_src = Some skd)
-  :
-    Genv.find_funct skenv_link_tgt v_tgt = Some skd.
-Admitted.
-
+(* TODO: pull out a lemma in language-agnostic way, and reuse it in every optimization proof *)
 Lemma sim_external v
       (FIND: Genv.find_funct ge v = None)
   :
@@ -202,9 +191,10 @@ Proof.
                  [dummy_stack
                     (Vptr (Mem.nextblock src)
                           Ptrofs.zero true) (rs RA)]
-                 fptr rs_src m_src)). esplits; auto.
-    inv SAFESRC. ss.
-    + econs; auto.
+                 fptr rs_src m_src)).
+    esplits; auto.
+    + inv SAFESRC. ss.
+      econs; auto.
       * eapply sim_find_funct; eauto.
       * ss.
       * ii. exploit PTRFREE; eauto.
@@ -246,7 +236,10 @@ Proof.
     + econs; eauto.
       * eapply sim_external. ss.
       * exists skd0. des_ifs. esplits; auto.
-        eapply sim_skd_src. econs. ss.
+        destruct SIMSKENVLINK.
+        eapply SimSymb.simskenv_func_fsim; eauto.
+        { econs. }
+        { ss. }
       * inv AG. rewrite agree_sp0. clarify.
       * inv INITRAPTR. inv STACKS; ss.
         -- inv ATLR; auto. exfalso; auto.
@@ -262,7 +255,7 @@ Proof.
     + econs.
       * exists skd. esplits; eauto.
         replace (r PC) with fptr; auto.
-        { eapply sim_skd_src. econs. eauto. }
+        { destruct SIMSKENVLINK. eapply SimSymb.simskenv_func_fsim; eauto. econs; eauto. }
         inv FPTR; ss.
       * ss.
       * inv AG. rewrite agree_sp0. eauto.
@@ -328,7 +321,9 @@ Proof.
         econs; ss; eauto.
         rewrite <- INITRS. rewrite <- INITFPTR. auto.
 
-  Unshelve. apply 0%nat.
+  Unshelve.
+    all: ss.
+    apply 0%nat.
 Qed.
     
 End PRESERVATION.

@@ -238,8 +238,7 @@ Proof.
         unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *.
         exploit make_match_genvs; eauto. intro SIMGE. inv SIMGE.
         specialize (mge_defs b). des_ifs; inv mge_defs; inv H1.
-      * destruct SIMSKENVLINK. eapply SimSymbId.sim_skenv_func_bisim in H. inv H.
-        des. hexpl FUNCFSIM. clarify. esplits; eauto.
+      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. destruct SIMSKENVLINK. ss.
     + econs; ss; eauto.
       * instantiate (1:= SimMemId.mk _ _). ss.
       * ss.

@@ -11,6 +11,43 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul.
 
+
+Section LINKABILITY.
+
+  Variable asms: list Asm.program.
+  Let p_src: Syntax.program := List.map AsmC.module asms.
+
+  Theorem link_sim
+          link_src
+          (SRC: link_sk p_src = Some link_src)
+    :
+      exists link_tgt, <<TGT: link_list asms = Some link_tgt>>
+  .
+  Proof.
+    ginduction asms; ii; ss.
+    subst p_src. u in SRC.
+    destruct l; ss.
+    { esplits; eauto. ss. }
+    eapply link_list_cons_inv in SRC; cycle 1.
+    { ss. }
+    des.
+    exploit IHl; eauto. i; des.
+    rename link_tgt into link_tgt_middle.
+    assert(exists link_tgt, <<LINK: link a link_tgt_middle = Some link_tgt>>).
+    { admit "this should hold". }
+    des.
+    exploit (@link_list_cons Asm.program); eauto. i; des.
+    esplits; eauto.
+  Qed.
+
+End LINKABILITY.
+
+
+
+
+
+
+
 Section PRESERVATION.
 
   Existing Instance Val.mi_final.
@@ -61,21 +98,25 @@ Section PRESERVATION.
       Senv.public_symbol (symbolenv (semantics tprog)) id =
       Senv.public_symbol (symbolenv (sem prog)) id.
   Proof.
-  Admitted.
+    ss.
+    admit "this should hold. fill in `symbolenv` of `Sem.v`".
+  Qed.
 
   Lemma symb_main :
     Genv.find_symbol skenv_link (prog_main sk) =
     Genv.find_symbol tge (prog_main tprog).
   Proof.
     unfold Genv.find_symbol in *.
- admit "". Qed.
+    admit "ez".
+  Qed.
 
   Lemma skenv_link_main
     :
-      Genv.find_funct
-        skenv_link (Genv.symbol_address tge (prog_main tprog) Ptrofs.zero)
-      = Some (Internal signature_main).
-  Admitted.
+      Genv.find_funct skenv_link (Genv.symbol_address tge (prog_main tprog) Ptrofs.zero) = Some (Internal signature_main)
+  .
+  Proof.
+    admit "".
+  Qed.
 
   Lemma local_genv_skenv_signature p fptr fd
         (FIND: Genv.find_funct (local_genv p) fptr = Some (Internal fd))

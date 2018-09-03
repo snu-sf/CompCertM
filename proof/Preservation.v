@@ -116,6 +116,7 @@ Inductive local_preservation (ms: ModSem.t) (sound_state: Sound.t -> mem -> ms.(
               (MLE: Sound.mle su_gr args.(Args.m) retv.(Retv.m))
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
+              (* (<<SUST: sound_state su0 args.(Args.m) st1>>)>>)) *)
               (<<SUST: sound_state su0 m_arg st1>>)>>))
     (RET: forall
         m_arg su0 st0 retv

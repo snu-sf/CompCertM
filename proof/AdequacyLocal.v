@@ -588,9 +588,9 @@ Section ADQINIT.
           st_init_src
           (INITSRC: sem_src.(Smallstep.initial_state) st_init_src)
     :
-      exists idx st_init_tgt su_init sm_init,
+      exists idx st_init_tgt su_init m_init sm_init,
         <<INITTGT: sem_tgt.(Dinitial_state) st_init_tgt>>
-        /\ <<SIM: lxsim_lift idx st_init_src st_init_tgt su_init sm_init>>
+        /\ <<SIM: lxsim_lift idx st_init_src st_init_tgt su_init m_init sm_init>>
   .
   Proof.
     ss.
@@ -650,6 +650,7 @@ Section ADQINIT.
     (*   + reflexivity. *)
   Unshelve.
     exact Sound.top.
+    exact (admit "this is weird").
   Qed.
 
 End ADQINIT.

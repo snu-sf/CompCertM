@@ -1,7 +1,6 @@
 Require Import CoqlibC.
 Require Export GlobalenvsC.
 Require Import Memory.
-Require Import Ctypes.
 Require Export ASTC.
 Require Import MapsC.
 Require Import Values.

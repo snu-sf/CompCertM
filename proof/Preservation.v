@@ -81,11 +81,13 @@ Set Implicit Arguments.
 (* End SOUNDMODSEM. *)
 
 
-Section SOUND.
+Section PRSV.
 
 Context `{SU: Sound.class}.
 
-Inductive local_preservation (ms: ModSem.t) (sound_state: Sound.t -> mem -> ms.(state) -> Prop): Prop :=
+Variable ms: ModSem.t.
+
+Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop): Prop :=
 | local_preservation_intro
     (INIT: forall
         su_init args st_init
@@ -134,7 +136,69 @@ Definition system_sound_state: Sound.t -> mem -> System.state -> Prop :=
     end
 .
 
+Variable get_mem: ms.(ModSem.state) -> mem.
+
+Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=
+| local_preservation_strong_intro
+    (INIT: forall
+        su_init args st_init
+        (SUARG: Sound.args su_init args)
+        (INIT: ms.(ModSem.initial_frame) args st_init)
+      ,
+        <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) args.(Args.m) st_init.(get_mem)>>)
+    (STEP: forall
+        su0 st0 tr st1
+        (SUST: sound_state su0 st0)
+        (SAFE: ~ ms.(ModSem.is_call) st0 /\ ~ ms.(ModSem.is_return) st0)
+        (STEP: Step ms st0 tr st1)
+      ,
+        <<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) st1.(get_mem)>>)
+    (CALL: forall
+        su0 st0 args
+        (SUST: sound_state su0 st0)
+        (AT: ms.(ModSem.at_external) st0 args)
+      ,
+        (<<ARGS: su0.(Sound.args) args>>) /\
+        exists su_gr,
+          (<<GR: Sound.get_greatest args su_gr>>) /\
+          (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
+          (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
+          (<<K: forall
+              retv st1
+              (RETV: su_gr.(Sound.retv) retv)
+              (MLE: Sound.mle su_gr args.(Args.m) retv.(Retv.m))
+              (AFTER: ms.(ModSem.after_external) st0 retv st1)
+            ,
+              (* (<<SUST: sound_state su0 args.(Args.m) st1>>)>>)) *)
+              (<<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) st1.(get_mem)>>)>>))
+    (RET: forall
+        su0 st0 retv
+        (SUST: sound_state su0 st0)
+        (FINAL: ms.(ModSem.final_frame) st0 retv)
+      ,
+        <<RETV: su0.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.m)>>)
+.
+
+Theorem local_preservation_strong_spec
+        sound_state
+        (PRSV: local_preservation_strong sound_state)
+  :
+    <<PRSV: local_preservation (fun su m_init st => sound_state su st /\ su.(Sound.mle) m_init st.(get_mem))>>
+.
+Proof.
+  inv PRSV.
+  econs; eauto.
+  - ii. des. exploit STEP; eauto. i; des. esplits; eauto. etrans; eauto.
+  - ii. des. exploit CALL; eauto. i; des. esplits; eauto.
+    ii. exploit K; eauto. i; des. esplits; eauto. etrans; eauto.
+  - ii; des. exploit RET; eauto. i; des. esplits; eauto.
+    etrans; eauto.
+Qed.
+
+End PRSV.
+
 Lemma system_local_preservation
+      `{SU: Sound.class}
       skenv
   :
     exists system_sound_state, local_preservation (System.modsem skenv) system_sound_state
@@ -150,5 +214,3 @@ Proof.
     + etrans; eauto.
   - inv FINAL. ss.
 Qed.
-
-End SOUND.

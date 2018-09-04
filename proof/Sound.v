@@ -69,7 +69,7 @@ Module Sound.
   Class class :=
   {
     t: Type;
-    wf: t -> Prop;
+    (* wf: t -> Prop; *)
     mem: t -> mem -> Prop;
     val: t -> val -> Prop;
     val_list: t -> list Values.val -> Prop;
@@ -128,12 +128,14 @@ Module Sound.
         <<SUARGS: args su_gr args0>>
     ;
 
-    lub: t -> t -> t;
-    lub_le: forall x y, <<LE: le x (lub x y)>> /\ <<LE: le y (lub x y)>>;
-    (* lub_val: forall x y, (lub x y).(val) <1= x.(val); *)
-    (* lub_mem: forall x y, (lub x y).(mem) <1= x.(mem); *)
-    lub_val: forall x y, x.(val) /1\ y.(val) <1= (lub x y).(val);
-    lub_mem: forall x y, x.(mem) /1\ y.(mem) <1= (lub x y).(mem);
+    (* lub: t -> t -> t; *)
+    (* lub_le: forall x y, <<LE: le x (lub x y)>> /\ <<LE: le y (lub x y)>>; *)
+    (* (* lub_val: forall x y, (lub x y).(val) <1= x.(val); *) *)
+    (* (* lub_mem: forall x y, (lub x y).(mem) <1= x.(mem); *) *)
+    (* lub_val: forall x y, x.(val) /1\ y.(val) <1= (lub x y).(val); *)
+    (* lub_mem: forall x y, x.(mem) /1\ y.(mem) <1= (lub x y).(mem); *)
+
+
     (* liftdata: Type; *)
     (* lift: t -> liftdata -> t; *)
     (* unlift: t -> t -> t; *)

@@ -5,7 +5,7 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib AsmC Sem Syntax LinkingC Program SemProps.
-Require Import MemoryC2 Lia.
+Require Import GlobalenvsC MemoryC2 Lia.
 
 Set Implicit Arguments.
 
@@ -59,13 +59,11 @@ Section PRESERVATION.
 
   Variable tprog : Asm.program.
   Hypothesis LINK : link_list progs = Some tprog.
-  (* TODO: tprog always exists *)
 
 (** ********************* genv *********************************)
   
   Variable sk : Sk.t.
   Hypothesis LINK_SK : link_sk prog = Some sk.
-  (* TODO: consider linking fail case *)
   Let skenv_link := Sk.load_skenv sk.
   Let ge := load_genv prog skenv_link.
   Let tge := Genv.globalenv tprog.
@@ -73,25 +71,35 @@ Section PRESERVATION.
   Definition local_genv (p : Asm.program) :=
     (skenv_link.(SkEnv.project) p.(defs)).(SkEnv.revive) p.
 
-  Inductive genv_le (j: meminj) (src_ge tgt_ge: Genv.t fundef unit): Prop :=
-  | genv_le_intro 
-      (SYMB: forall id b (FIND: Genv.find_symbol src_ge id = Some b),
-          Genv.find_symbol tgt_ge id = Some b
-          /\ j b = Some (b, 0)) (* is it needed? *)
-      (DEFS: forall b0 d (FIND: Genv.find_def src_ge b0 = Some d),
-          exists b1, j b0 = Some (b1, 0)
-                     /\ Genv.find_def tgt_ge b1 = Some d).
+  Inductive genv_le (ge_src ge_tgt: Genv.t fundef unit): Prop :=
+  | genv_le_intro
+      (SYMB: forall id b (FIND: Genv.find_symbol ge_src id = Some b),
+          Genv.find_symbol ge_tgt id = Some b)
+      (DEFS: forall b d (FIND: Genv.find_def ge_src b = Some d),
+          Genv.find_def ge_tgt b = Some d)
+      .
+  
+  (* Inductive genv_le (j: meminj) (src_ge tgt_ge: Genv.t fundef unit): Prop := *)
+  (* | genv_le_intro  *)
+  (*     (SYMB: forall id b (FIND: Genv.find_symbol src_ge id = Some b), *)
+  (*         Genv.find_symbol tgt_ge id = Some b *)
+  (*         /\ j b = Some (b, 0)) (* is it needed? *) *)
+  (*     (DEFS: forall b0 d (FIND: Genv.find_def src_ge b0 = Some d), *)
+  (*         exists b1, j b0 = Some (b1, 0) *)
+  (*                    /\ Genv.find_def tgt_ge b1 = Some d) *)
+  (*     (GEINJECT: skenv_inject src_ge j) *)
+  (* . *)
 
-  Lemma genv_le_incr j0 j1 src_ge tgt_ge
-        (INCR: inject_incr j0 j1)
-        (GENVLE: genv_le j0 src_ge tgt_ge)
-    :      
-       genv_le j1 src_ge tgt_ge.
-  Proof.
-    inv GENVLE. econs; ii; ss.
-    - specialize (SYMB _ _ FIND). des. eauto.
-    - specialize (DEFS _ _ FIND). des. esplits; eauto.
-  Qed.
+  (* Lemma genv_le_incr j0 j1 src_ge tgt_ge *)
+  (*       (INCR: inject_incr j0 j1) *)
+  (*       (GENVLE: genv_le j0 src_ge tgt_ge) *)
+  (*   :       *)
+  (*      genv_le j1 src_ge tgt_ge. *)
+  (* Proof. *)
+  (*   inv GENVLE. econs; ii; ss. *)
+  (*   - specialize (SYMB _ _ FIND). des. eauto. *)
+  (*   - specialize (DEFS _ _ FIND). des. esplits; eauto. *)
+  (* Qed. *)
 
   Lemma symb_preserved id
     :
@@ -159,24 +167,27 @@ Section PRESERVATION.
     eapply Genv.initmem_inject. unfold Sk.load_mem in INIT_MEM. eauto.
   Qed.
 
-  Lemma init_inject_genv_le p: genv_le init_inject (local_genv p) tge.
-  Admitted.
+  (* Lemma init_inject_genv_le p: genv_le init_inject ge tge. *)
+  (* Admitted. *)
+  
+  (* Lemma init_inject_genv_le p: genv_le init_inject (local_genv p) tge. *)
+  (* Admitted. *)
 
-  Lemma local_genv_le j p
-        (INCR: inject_incr init_inject j)
-    : genv_le j (local_genv p) tge.
-  Proof.
-    eapply genv_le_incr; eauto. apply init_inject_genv_le.
-  Qed.  
+  (* Lemma local_genv_le j p *)
+  (*       (INCR: inject_incr init_inject j) *)
+  (*   : genv_le j (local_genv p) tge. *)
+  (* Proof. *)
+  (*   eapply genv_le_incr; eauto. apply init_inject_genv_le. *)
+  (* Qed.   *)
 
   Definition agree (j: meminj) (rs_src rs_tgt: regset) : Prop :=
     forall pr, Val.inject j (rs_src pr) (rs_tgt pr).
 
-  Lemma system_symbols_inject j
-        (INCR: inject_incr init_inject j)
-    :
-      symbols_inject j (System.globalenv skenv_link) tge.
-  Admitted.
+  (* Lemma system_symbols_inject j *)
+  (*       (INCR: inject_incr init_inject j) *)
+  (*   : *)
+  (*     symbols_inject j (System.globalenv skenv_link) tge. *)
+  (* Admitted. *)
 
   Lemma external_function_sig
         v skd ef
@@ -189,48 +200,44 @@ Section PRESERVATION.
     unfold System.globalenv in *. clarify.
   Qed.
 
-  Lemma system_function_ofs j b_src b_tgt delta fd
-        (INCR: inject_incr init_inject j)
-        (FIND: Genv.find_funct_ptr (System.globalenv skenv_link) b_src = Some fd)
-        (INJ: j b_src = Some (b_tgt, delta))
+  Section SYSTEM.
+    
+    Lemma system_function_ofs j b_src b_tgt delta fd
+          (INCR: inject_incr init_inject j)
+          (FIND: Genv.find_funct_ptr (System.globalenv skenv_link) b_src = Some fd)
+          (INJ: j b_src = Some (b_tgt, delta))
     :
       delta = 0.
-  Admitted.
+    Admitted.
 
-  Lemma system_sig j b_src b_tgt delta ef
-        (INCR: inject_incr init_inject j)
-        (FIND: Genv.find_funct_ptr (System.globalenv skenv_link) b_src = Some (External ef))
-        (INJ: j b_src = Some (b_tgt, delta))
-    :
-      Genv.find_funct_ptr tge b_tgt = Some (External ef).
-  Admitted.
+    Lemma system_sig j b_src b_tgt delta ef
+          (INCR: inject_incr init_inject j)
+          (FIND: Genv.find_funct_ptr (System.globalenv skenv_link) b_src = Some (External ef))
+          (INJ: j b_src = Some (b_tgt, delta))
+      :
+        Genv.find_funct_ptr tge b_tgt = Some (External ef).
+    Admitted.
 
-  Lemma system_receptive_at st frs
-    :
-      receptive_at (sem prog)
-                   (State ((Frame.mk (System.modsem skenv_link) st) :: frs)).
-  Admitted.
-
+    Lemma system_receptive_at st frs
+      :
+        receptive_at (sem prog)
+                     (State ((Frame.mk (System.modsem skenv_link) st) :: frs)).
+    Admitted.
+    
+  End SYSTEM.
+    
   Lemma asm_determinate_at p st
     :
       determinate_at (semantics p) st.
-  Admitted.
-
-  Lemma system_genv_skenv v ef
-        (GEFIND: Genv.find_funct (System.globalenv skenv_link) v =
-                 Some (External ef))
-    :
-      Genv.find_funct (System.skenv skenv_link) v =
-      Some (External ef).
   Proof.
-  Admitted.
+  Admitted.  
 
   Lemma asm_step_preserve_injection
         rs_src0 rs_src1 m_src0 m_src1 tr j0
         rs_tgt0 m_tgt0
         ge_src ge_tgt
-        (GENVLE: genv_le j0 ge_src ge_tgt)
-        (GE: genv_le j0 ge_src ge_tgt)
+        (GENVLE: genv_le ge_src ge_tgt)
+        (GEINJECT: skenv_inject ge_src j0)
         (AGREE: agree j0 rs_src0 rs_tgt0)
         (INJ: Mem.inject j0 m_src0 m_tgt0)
         (STEP: Asm.step ge_src (Asm.State rs_src0 m_src0) tr (Asm.State rs_src1 m_src1))
@@ -239,7 +246,10 @@ Section PRESERVATION.
         (Asm.step ge_tgt (Asm.State rs_tgt0 m_tgt0) tr (Asm.State rs_tgt1 m_tgt1)) /\
         (agree j1 rs_src1 rs_tgt1) /\
         (Mem.inject j1 m_src1 m_tgt1) /\
-        (inject_incr j0 j1).
+        (inject_incr j0 j1) /\
+        (skenv_inject ge_src j0) /\
+        (inject_separated j0 j1 m_src1 m_tgt1) 
+  .
   Admitted.
 
   Lemma ALLOC_NEXT_INCR F V (gen: Genv.t F V) x m0 m1
@@ -498,6 +508,7 @@ Section PRESERVATION.
       (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate init_rs1 st))
       (STACK: match_stack j init_rs1 frs)
       (WF: wf_init_rs j st.(st_rs) init_rs0)
+      (IN: genv_le (local_genv p) tge)
     :
       match_stack j init_rs0 (fr::frs)
   .
@@ -516,7 +527,8 @@ Section PRESERVATION.
                             (AsmC.mkstate init_rs1 st))
       (INITRS: init_rs0 = st.(st_rs))
       (STACK: match_stack j init_rs1 frs)
-      (MEM: m = st.(st_m))      
+      (MEM: m = st.(st_m))
+      (IN: In p progs)
     :
       match_stack_call j m init_rs0 (fr::frs)
   .
@@ -720,9 +732,11 @@ Section PRESERVATION.
       (AGREE: agree j rs_src rs_tgt)
       (INJ: Mem.inject j m_src m_tgt)
       (INITINCR: inject_incr init_inject j)
+      
       (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p)
                             (AsmC.mkstate init_rs (Asm.State rs_src m_src)))
       (STACK: match_stack j init_rs frs)
+      (IN: In p progs)
       (* (RAPTR: wf_RA (init_rs RA)) *)
       (ORD: n = if (external_state (local_genv p) (rs_src # PC))
                 then (length frs + 2)%nat else 0%nat)
@@ -805,10 +819,11 @@ Section PRESERVATION.
     inv MTCHST. apply asm_frame_inj in FRAME. clarify. destruct st_src1.
     exploit asm_step_preserve_injection; ss; eauto.
     - apply local_genv_le. ss.
-    - apply local_genv_le; auto.
+    - admit "".
     - ii. des. esplits; eauto; econs; eauto.
       + etrans. apply INITINCR. auto.
       + eapply match_stack_incr; eauto.
+      + 
   Qed.
 
   Lemma step_internal_simulation
@@ -864,7 +879,7 @@ Section PRESERVATION.
   Proof.
     inv MTCHST. ss. inv AT.
     econs; ss; eauto.
-    - econs; eauto.
+    - econs; eauto. des_ifs. rename p into eeeeeeeeeeeeeee.
     - eapply free_freed_from; eauto.
   Qed.
 
@@ -1195,7 +1210,7 @@ Section PRESERVATION.
         * etrans; eauto.
       + ss. des_ifs; omega.
   Qed.
-
+  
   Lemma match_states_call_ord_1 args frs st_tgt n
         (MTCHST: match_states (Callstate args frs) st_tgt n)
     :
@@ -1206,9 +1221,17 @@ Section PRESERVATION.
         (MTCHST: match_states st_src st_tgt n)
     :
       receptive_at (sem prog) st_src.
-  Proof.
-  Admitted.
-
+  Proof.    
+    inv MTCHST; ss.
+    - eapply SemProps.lift_receptive_at. ss.
+      eapply AsmC.lift_receptive_at.
+      eapply semantics_receptive.
+      intros EXTERN. eapply not_external in EXTERN. auto.
+    - econs; i.
+      + set (STEP := H). inv STEP. inv H0. eexists. eauto.
+      + ii. inv H. ss. omega.
+  Qed.
+  
   Lemma match_state_xsim
     :
       forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n),
@@ -1251,12 +1274,16 @@ Section PRESERVATION.
         { left. apply plus_one. econs; [apply asm_determinate_at|]. auto. }
         left. pfold. left.
         econs.
-        { i. exfalso. inv STEPSRC. ss.
+        {
+          i. exfalso. inv STEPSRC. ss.
           destruct (find_fptr_owner_determ SYSMOD MSFIND).
           inv INIT. inv STEPSRC0; ss; [|inv FINAL].
           inv STEP. inv FINALSRC. ss. inv MTCHST.
           inv STACK. inv SYSMOD. ss.
-          exploit system_genv_skenv; eauto. i. clarify.
+          unfold System.globalenv in *.
+          clear - FPTR SIG0 FPTR0.
+          unfold initial_regset, Pregmap.set in *. des_ifs.
+          rewrite FPTR0 in *. clarify.
         }
         econs; auto.
         i.

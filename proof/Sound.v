@@ -87,6 +87,7 @@ Module Sound.
     (*     <<LE: su1.(val) <1= su0.(val)>> *)
     (* ; *)
 
+    (* TODO: rename it into le_monotone *)
     le_spec: forall
         su0 su1 m0 m1
         (MLE: mle su1 m0 m1)

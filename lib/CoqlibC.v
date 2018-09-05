@@ -822,3 +822,5 @@ Tactic Notation "sym" "in" hyp(H) := symmetry in H.
 Ltac eapply_all_once LEMMA :=
   all_once_fast ltac:(fun H => try eapply LEMMA in H; try eassumption; check_safe)
 .
+
+Ltac Nsimpl := all_once_fast ltac:(fun H => try apply NNPP in H; try apply not_and_or in H; try apply not_or_and in H).

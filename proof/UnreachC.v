@@ -28,6 +28,39 @@ Set Implicit Arguments.
 
 Local Open Scope nat.
 
+
+
+
+
+
+
+
+
+
+
+(* Remark: if econs/econsr gives different goal, at least 2 econs is possible *)
+Ltac econsr :=
+  first
+    [
+    econstructor 16
+    |econstructor 15
+    |econstructor 14
+    |econstructor 13
+    |econstructor 12
+    |econstructor 11
+    |econstructor 10
+    |econstructor  9
+    |econstructor  8
+    |econstructor  7
+    |econstructor  6
+    |econstructor  5
+    |econstructor  4
+    |econstructor  3
+    |econstructor  2
+    |econstructor  1
+    ]
+.
+
 (* Let cons_sig *)
 (*     X (P: X -> Prop) (Q: X -> Prop) (R: X -> Prop) *)
 (*     (PR: P <1= R) *)
@@ -103,7 +136,7 @@ Definition args' (su: Unreach.t) (args0: Args.t) :=
   /\ (<<MEM: mem' su (Args.m args0)>>)
 .
 
-Let lub (x y: t): t := x \1/ y.
+Let lub (x y: t): t := fun blk => orb (x blk) (y blk).
 Hint Unfold lub.
 
 (* Inductive flatten_list: block -> list t -> Prop := *)
@@ -153,6 +186,36 @@ Proof.
   clarify.
 Qed.
 
+Lemma finite_map_prop
+      X (P: X -> Prop) Y
+      (j: X -> Y -> Prop)
+      (INJ: forall x0 x1 y, P x0 -> P x1 -> j x0 y -> j x1 y -> x0 = x1)
+      (FUNC: forall x, P x -> exists y, j x y)
+      (* (FUNC: forall x, exists ! y, j x y) *)
+      (FIN: exists ly, forall x y, P x -> j x y -> In y ly)
+  :
+    <<FIN: exists lx, forall x, P x -> In x lx>>
+.
+Proof.
+  rr in FIN. des.
+  ginduction ly; ii; ss.
+  { exists []. ii. exploit FUNC; eauto. i; des. (* destruct H0. destruct H0. *) exploit FIN; eauto. }
+  rename a into y0.
+  specialize (IHly X (fun x => P x /\ ~(j x y0)) j).
+  exploit IHly; eauto.
+  { ii. des. eauto. }
+  { ii. des. eauto. }
+  { ii. des. exploit FIN; eauto. i; des; ss; clarify. }
+  i; des.
+  destruct (classic (exists x0, j x0 y0 /\ P x0)); cycle 1.
+  { eapply not_ex_all_not in H0. exists lx. i. eapply H. esplits; eauto. ii. eapply H0; eauto. }
+  des.
+  exists (x0 :: lx).
+  i. ss.
+  destruct (classic (x0 = x)); eauto.
+  right. eapply H; eauto.
+Qed.
+
 Fixpoint range (n: nat): list nat :=
   match n with
   | 0%nat => [0]
@@ -195,6 +258,274 @@ Proof.
   rewrite in_map_iff. esplits; eauto. eapply range_spec; eauto.
 Qed.
 
+Lemma finite_nat_prop
+      X (P: X -> Prop)
+      (j: positive -> X -> nat -> Prop)
+      (fuel: positive)
+      (INJ: forall x0 x1 n, P x0 -> P x1 -> j fuel x0 n -> j fuel x1 n -> x0 = x1)
+      (FUNC: forall x, P x -> exists y, j fuel x y)
+      (* (FIN: exists bound, forall x, P x -> exists n, j fuel x n /\ (n <= bound)) *)
+      (FIN: exists bound, forall x n, P x -> j fuel x n -> (n <= bound))
+  :
+    <<FIN: exists lx, forall x, P x -> In x lx>>
+.
+Proof.
+  eapply finite_map_prop with (j := j fuel); eauto.
+  des.
+  exists (range bound). ii. exploit FIN; eauto. i.
+  eapply range_spec; eauto.
+Qed.
+
+Lemma finite_pos_prop
+      X (P: X -> Prop)
+      (j: positive -> X -> positive -> Prop)
+      (fuel: positive)
+      (INJ: forall x0 x1 n, P x0 -> P x1 -> j fuel x0 n -> j fuel x1 n -> x0 = x1)
+      (FUNC: forall x, P x -> exists y, j fuel x y)
+      (* (FIN: exists bound, forall x, P x -> exists n, j fuel x n /\ (n <= bound)) *)
+      (FIN: exists bound, forall x n, P x -> j fuel x n -> (n <= bound)%positive)
+  :
+    <<FIN: exists lx, forall x, P x -> In x lx>>
+.
+Proof.
+Admitted.
+(* Function J (fuel: positive) (su: t): option nat := *)
+(*   match fuel with *)
+(*   | 0%positive => None *)
+(*   | Pos.succ n *)
+(*   end *)
+(* . *)
+(*   match fuel.(Pos.to_nat) with *)
+(*   | 0 => None *)
+(*   | S n => J n su *)
+(*   end *)
+(* . *)
+(*   match fuel with *)
+(*   | *)
+
+Inductive J: positive -> Unreach.t -> nat -> Prop :=
+| J_runout
+    su 
+  :
+    J (1%positive) su 0
+| J_true
+    fuel su n
+    (PRED: J fuel su n)
+    (TRUE: su fuel = true)
+  :
+    J fuel.(Pos.succ) su (2 * n + 1)
+| J_false
+    fuel su n
+    (PRED: J fuel su n)
+    (FALSE: su fuel = false)
+  :
+    J fuel.(Pos.succ) su (2 * n)
+.
+
+Compute (Pos.to_nat ((1%positive) ~ 0 ~ 0 ~ 1)).
+Inductive Jpos: positive -> Unreach.t -> positive -> Prop :=
+| Jpos_runout
+    su 
+  :
+    Jpos (1%positive) su (1%positive)
+| Jpos_true
+    fuel su n
+    (PRED: Jpos fuel su n)
+    (TRUE: su fuel = true)
+  :
+    Jpos fuel.(Pos.succ) su (n ~ 1)
+| Jpos_false
+    fuel su n
+    (PRED: Jpos fuel su n)
+    (FALSE: su fuel = false)
+  :
+    Jpos fuel.(Pos.succ) su (n ~ 0) 
+.
+
+(* Let Jpos_injective: forall *)
+(*     fuel x0 x1 n *)
+(*     (J0: Jpos fuel x0 n) *)
+(*     (J1: Jpos fuel x1 n) *)
+(*     (BDD0: forall blk, x0 blk = true -> Plt blk fuel) *)
+(*     (BDD1: forall blk, x1 blk = true -> Plt blk fuel) *)
+(*   , *)
+(*     x0 = x1 *)
+(* . *)
+(* Proof. *)
+(*   i. *)
+(*   apply func_ext1. *)
+(*   revert_until fuel. *)
+(*   pattern fuel. *)
+(*   eapply Pos.peano_ind; clear fuel; i. *)
+(*   - destruct (x0 x2) eqn:T0; ss. *)
+(*     { exfalso. exploit BDD0; eauto. i. xomega. } *)
+(*     destruct (x1 x2) eqn:T1; ss. *)
+(*     { exfalso. exploit BDD1; eauto. i. xomega. } *)
+(*   - inv J0; inv J1; ss. *)
+(*     { xomega. } *)
+(*     + assert(p = fuel) by (eapply Pos.succ_inj; eauto). *)
+(*       assert(p = fuel0) by (eapply Pos.succ_inj; eauto). *)
+(*       clarify. clear_tac. *)
+(*       exploit H; [exact PRED|exact PRED0|..]; eauto. *)
+(*       { i. exploit BDD0; eauto. i. xomega. *)
+(* Qed. *)
+
+Lemma pos_elim_succ
+      p
+  :
+    <<ONE: p = 1%positive>> \/
+    <<SUCC: exists q, q.(Pos.succ) = p>>
+.
+Proof.
+  hexploit (Pos.succ_pred_or p); eauto. i; des; ss; eauto.
+Qed.
+
+Ltac it TERM := instantiate (1:=TERM).
+Ltac itl TERM :=
+  first[
+      instantiate (10:=TERM)|
+      instantiate (9:=TERM)|
+      instantiate (8:=TERM)|
+      instantiate (7:=TERM)|
+      instantiate (6:=TERM)|
+      instantiate (5:=TERM)|
+      instantiate (4:=TERM)|
+      instantiate (3:=TERM)|
+      instantiate (2:=TERM)|
+      instantiate (1:=TERM)|
+      fail
+    ]
+.
+
+Lemma ple_elim_succ
+      p q
+      (PLE: Ple p q)
+  :
+    <<EQ: p = q>> \/
+    <<SUCC: Ple p.(Pos.succ) q>>
+.
+Proof.
+  revert_until p.
+  pattern p. apply Pos.peano_ind; clear p; i.
+  { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto.
+    right. r. xomega. }
+  hexploit (pos_elim_succ q); eauto. i.
+  des; clarify.
+  { left. xomega. }
+  exploit H; eauto.
+  { it q0. xomega. }
+  i; des; clarify.
+  - left. r. xomega.
+  - right. r. xomega.
+Qed.
+
+Let Jpos_injective: forall
+    fuel x0 x1 n
+    (J0: Jpos fuel x0 n)
+    (J1: Jpos fuel x1 n)
+    (BDD: forall blk, Ple fuel blk -> x0 blk = x1 blk)
+  ,
+    x0 = x1
+.
+Proof.
+  i.
+  apply func_ext1.
+  revert_until fuel.
+  pattern fuel.
+  eapply Pos.peano_ind; clear fuel; i.
+  - eapply BDD; eauto. xomega.
+  - inv J0; inv J1; ss.
+    { xomega. }
+    + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
+      assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
+      clarify. clear_tac.
+      exploit H; [exact PRED|exact PRED0|..]; eauto.
+      { i. eapply ple_elim_succ in H0. des; clarify.
+        eapply BDD; eauto.
+      }
+    + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
+      assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
+      clarify. clear_tac.
+      exploit H; [exact PRED|exact PRED0|..]; eauto.
+      { i. eapply ple_elim_succ in H0. des; clarify.
+        eapply BDD; eauto.
+      }
+Qed.
+
+Let Jpos_func: forall
+    fuel x
+  ,
+    exists n, Jpos fuel x n
+.
+Proof.
+  intro fuel. pattern fuel.
+  eapply Pos.peano_ind; clear fuel; i.
+  - esplits; eauto. econs; eauto.
+  - specialize (H x). des.
+    destruct (x p) eqn:T.
+    + esplits; eauto.
+      econs; eauto.
+    + esplits; eauto.
+      econsr; eauto.
+Qed.
+
+Let Jpos_bound: forall
+    fuel x n
+    (J: Jpos fuel x n)
+  ,
+    (n <= 3 ^ fuel)%positive
+.
+Proof.
+  intro fuel. pattern fuel.
+  eapply Pos.peano_ind; clear fuel; i.
+  { inv J0; try xomega. }
+  inv J0; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
+  - ss. rewrite Pos.pow_succ_r. xomega.
+  - ss. rewrite Pos.pow_succ_r. xomega.
+Unshelve.
+  all: ss.
+Qed.
+
+Let to_inj (su: t) (bound: positive): meminj :=
+  fun blk =>
+    if (su blk)
+    then None
+    else
+      (if plt blk bound
+       then Some (blk, 0%Z)
+       else None)
+.
+
+Let to_inj_mem: forall
+    su m
+    (SUM: mem' su m)
+  ,
+    @Mem.inject Val.mi_normal (to_inj su m.(Mem.nextblock)) m m
+.
+Proof.
+  i. unfold to_inj. inv SUM. u in BOUND.
+  econs; eauto; ii; ss; des_ifs; zsimpl; ss; try tauto.
+  - econs; ii; ss; des_ifs; zsimpl; eauto.
+    + apply Z.divide_0_r.
+    + spc SOUND. spc SOUND.
+      hexploit SOUND; eauto.
+      { ii. bsimpl. clarify. }
+      intro MV; des.
+      r in MV.
+      abstr (ZMap.get ofs (Mem.mem_contents m) !! b2) mv.
+      destruct mv; ss; try (by econs; eauto).
+      destruct v; ss; try (by econs; eauto).
+      destruct b0; ss; try (by econs; eauto).
+      destruct (su b) eqn:T.
+      { exploit MV; ss; eauto. }
+      econs; eauto. econs; eauto.
+      { des_ifs. admit "we need nb". }
+      rewrite Ptrofs.add_zero. ss.
+  - split.
+    + eauto with xomega.
+    + eapply Ptrofs.unsigned_range_2; eauto.
+Qed.
+
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
   le := le';
@@ -202,11 +533,14 @@ Global Program Instance Unreach: Sound.class := {
   mem := mem';
   val_list := fun (su0: Unreach.t) => List.Forall su0.(val');
   get_greatest (args: Args.t) := greatest le' (fun su => su.(args') args);
-  top := bot1;
+  top := Unreach.top;
 }
 .
 Next Obligation.
-  eapply mle_monotone; eauto.
+  econs; ii; ss; eauto.
+Qed.
+Next Obligation.
+  eapply mle_monotone; try apply MLE; eauto.
 Qed.
 Next Obligation.
   rr in GR0. rr in GR1. des.
@@ -216,7 +550,9 @@ Next Obligation.
   { eauto. }
   rr in H. rr in H0.
   apply func_ext1; i.
-  apply prop_ext1. split; i; eauto.
+  destruct (su0 x0) eqn:T0, (su1 x0) eqn:T1; ss.
+  { rewrite H in *; eauto. }
+  { rewrite H0 in *; eauto. }
 Qed.
 Next Obligation.
   rr in GR. des. eapply MAX; eauto. econs; eauto.
@@ -224,30 +560,53 @@ Qed.
 Next Obligation.
   eapply find_greatest with (lub:= lub); eauto.
   - econs; ii; eauto.
-  - ii. esplits; rr; eauto.
+  - ii. unfold lub. esplits; ii; rr; bsimpl; ss; eauto.
   - rr. destruct args0.
-    eapply finite_nat; eauto.
+    eapply finite_pos_prop with (j:= Jpos) (fuel := m.(Mem.nextblock)); eauto.
+    + ii. inv H. inv H0. des; ss.
+      inv MEM0. inv MEM.
+      eapply Jpos_injective; eauto.
+      ii. u in BOUND. u in BOUND0. destruct (x0 blk) eqn:T0, (x1 blk) eqn:T1; ss.
+      { hexploit BOUND; eauto. i. r in H4. xomega. }
+      { hexploit BOUND0; eauto. i. r in H4. xomega. }
+    + ii. eapply Jpos_func.
+    + i. exists (3 ^ (m.(Mem.nextblock)))%positive. i.
+      eapply Jpos_bound; eauto.
   - ii. inv PX. inv PY. des. u in *.
     rewrite Forall_forall in *.
-    econs; esplits; u; ii; ss; des; eauto.
-    { rewrite Forall_forall in *. ii; ss; des; eauto. }
+    econs; esplits; u; ii; bsimpl; ss; des; eauto.
+    { rewrite Forall_forall in *. ii; bsimpl; ss; des; eauto. }
     inv MEM0. inv MEM.
     econs; ss.
-    + ii; clarify. Nsimpl. des_safe; eauto.
+    + ii; clarify. bsimpl. Nsimpl. des_safe; eauto.
       unfold memval', val' in *.
       hexpl SOUND; hexpl SOUND0; eauto.
-    + ii. des; eauto.
-  - exists bot1. rr. esplits; ii; ss; eauto.
+    + ii. bsimpl. des; eauto.
+  - exists Unreach.top. rr. esplits; ii; ss; eauto.
     + rewrite Forall_forall. ii; ss.
-    + econs; eauto. ii; ss.
 Qed.
 Next Obligation.
   rr in GR. des. eauto.
 Qed.
 Next Obligation.
-  admit "---------------------------------------------".
+  set (CTX := Val.mi_normal).
+  exploit (@external_call_mem_inject_gen CTX ef senv senv vs_arg m_arg tr v_ret m_ret
+                                         (to_inj su m_arg.(Mem.nextblock)) m_arg vs_arg); eauto.
+  { admit "we need to either 1) parameterize `forced_public` 2) meminj_preserves_globals". }
+  { eapply to_inj_mem; eauto. }
+  { clear - SUVS. ginduction vs_arg; ii; ss. inv SUVS. econs; eauto. destruct a; ss.
+    unfold to_inj. r in H1. destruct b0; ss; cycle 1.
+    { econs; eauto. }
+    hexploit H1; ss; eauto.  i.
+    econs; eauto.
+    - des_ifs. admit "we need nb".
+    - rewrite Ptrofs.add_zero. ss.
+  }
+  i; des.
+  esplits; eauto.
+  -
 Qed.
 Next Obligation.
-  esplits; ii; ss; eauto. econs; ii; ss; eauto.
+  esplits; ii; ss; eauto.
 Qed.
 

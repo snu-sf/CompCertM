@@ -117,7 +117,6 @@ Section ADQSOUND.
     - econs; eauto.
   Unshelve.
     all: ss.
-    all: try exact Sound.top.
   Qed.
 
   Lemma sound_progress

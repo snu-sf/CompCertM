@@ -70,10 +70,6 @@ Module Sound.
   {
     t: Type;
     (* wf: t -> Prop; *)
-    mem: t -> mem -> Prop;
-    val: t -> val -> Prop;
-    val_list: t -> list Values.val -> Prop;
-    val_list_spec: forall su0, (List.Forall su0.(val) = su0.(val_list));
 
     mle: t -> Memory.mem -> Memory.mem -> Prop;
     mle_PreOrder su0 :> PreOrder (mle su0);
@@ -96,11 +92,8 @@ Module Sound.
         <<MLE: mle su0 m0 m1>>
     ;
 
-    args su args0 := 
-      <<VAL: su.(val) args0.(Args.fptr)>> /\
-      <<VALS: su.(val_list) args0.(Args.vs)>> /\
-      <<MEM: su.(mem) args0.(Args.m)>>
-    ;
+    args: t -> Args.t -> Prop;
+    retv: t -> Retv.t -> Prop;
     get_greatest: Args.t -> t -> Prop;
     greatest_dtm: forall
         args0
@@ -145,16 +138,15 @@ Module Sound.
     (* refined (m0: Memory.mem) :=  { su: t | su.(mem) m0 }; *)
     (* refined_finite: forall m0, Finite (refined m0); *)
     system_axiom: forall
-        ef senv su vs_arg m_arg
+        ef senv su args0
         tr v_ret m_ret
-        (SUVS: su.(val_list) vs_arg)
-        (SUM: su.(mem) m_arg)
-        (EXT: (external_call ef) senv vs_arg m_arg tr v_ret m_ret)
+        (ARGS: su.(args) args0)
+        (EXT: (external_call ef) senv args0.(Args.vs) args0.(Args.m) tr v_ret m_ret)
       ,
-        <<SURETV: su.(val) v_ret>> /\ <<SUM: su.(mem) m_ret>> /\ <<MLE: su.(mle) m_arg m_ret>>;
+        <<RETV: su.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su.(mle) args0.(Args.m) m_ret>>;
 
-    top: t;
-    top_spec: top1 <1= top.(val) /\ top1 <1= top.(mem);
+    (* top: t; *)
+    (* top_spec: top1 <1= top.(val) /\ top1 <1= top.(mem); *)
   }
   .
 
@@ -168,23 +160,6 @@ Module Sound.
   (*     (VALS: su.(val_list) args0.(Args.vs)) *)
   (*     (MEM: su.(mem) args0.(Args.m)) *)
   (* . *)
-
-  Inductive retv (su: t) (retv0: Retv.t): Prop :=
-  | retv_intro
-      (VAL: su.(val) retv0.(Retv.v))
-      (MEM: su.(mem) retv0.(Retv.m))
-  .
-
-  Lemma top_args
-        args0
-    :
-      top.(args) args0
-  .
-  Proof.
-    rr. esplits; eauto; try eapply top_spec; ss.
-    rewrite <- val_list_spec.
-    rewrite Forall_forall. ii. apply top_spec; ss.
-  Qed.
 
   End SOUND.
 

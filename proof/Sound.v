@@ -138,12 +138,12 @@ Module Sound.
     (* refined (m0: Memory.mem) :=  { su: t | su.(mem) m0 }; *)
     (* refined_finite: forall m0, Finite (refined m0); *)
     system_axiom: forall
-        ef senv su args0
+        ef senv su0 args0
         tr v_ret m_ret
-        (ARGS: su.(args) args0)
+        (ARGS: su0.(args) args0)
         (EXT: (external_call ef) senv args0.(Args.vs) args0.(Args.m) tr v_ret m_ret)
       ,
-        <<RETV: su.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su.(mle) args0.(Args.m) m_ret>>;
+        exists su1, <<LE: le su0 su1>> /\ <<RETV: su1.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su0.(mle) args0.(Args.m) m_ret>>;
 
     (* top: t; *)
     (* top_spec: top1 <1= top.(val) /\ top1 <1= top.(mem); *)

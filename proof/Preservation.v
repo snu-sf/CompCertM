@@ -206,11 +206,10 @@ Lemma system_local_preservation
 Proof.
   exists system_sound_state.
   econs; ii; ss; eauto.
-  - inv INIT. inv SUARG. econs; eauto.
-    + econs; eauto.
+  - inv INIT. econs; eauto.
     + refl.
   - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply H; eauto. i; des. esplits; eauto.
-    + econs; eauto.
+    + admit "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt".
     + etrans; eauto.
   - inv FINAL. ss.
 Qed.

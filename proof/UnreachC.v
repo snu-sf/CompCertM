@@ -500,6 +500,29 @@ Let to_inj (su: t) (bound: positive): meminj :=
        else None)
 .
 
+(* Let to_su (j: meminj) (bound: positive): t := *)
+(*   fun blk => *)
+(*     if plt blk bound *)
+(*     then *)
+(*       match j blk with *)
+(*       | Some _ => false *)
+(*       | None => true *)
+(*       end *)
+(*     else *)
+(*       false *)
+(* . *)
+Let to_su (j: meminj) (bound: positive): t :=
+  fun blk =>
+    if plt blk bound
+    then
+      match j blk with
+      | Some _ => false
+      | None => true
+      end
+    else
+      false
+.
+
 Let to_inj_mem: forall
     su m
     (SUM: mem' su m)
@@ -598,7 +621,7 @@ Next Obligation.
   set (CTX := Val.mi_normal).
   r in ARGS. des.
   exploit (@external_call_mem_inject_gen CTX ef senv senv (Args.vs args0) (Args.m args0) tr v_ret m_ret
-                                         (to_inj su (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
+                                         (to_inj su0 (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
   { admit "we need to either 1) parameterize `forced_public` 2) meminj_preserves_globals". }
   { eapply to_inj_mem; eauto. }
   { clear - VALS. abstr (Args.vs args0) vs_arg.
@@ -611,19 +634,27 @@ Next Obligation.
     - rewrite Ptrofs.add_zero. ss.
   }
   intro AX; des.
+  exists (to_su f' m_ret.(Mem.nextblock)). unfold to_su.
   esplits; eauto.
+  - r. ii. unfold to_inj in AX4, AX5. r in AX4. r in AX5.
+    inv MEM. exploit BOUND; eauto. i. des_ifs; cycle 1.
+    { unfold Mem.valid_block in *. inv AX2. xomega. }
+    destruct p0; ss.
+    exploit AX5; eauto.
+    { des_ifs. }
+    i; des.
+    ss.
   - r. esplits; eauto.
-    + s. r. ii; ss. clarify. inv AX0.
+    + s. r. ii; ss. clarify. inv AX0. des_ifs.
       esplits; eauto.
-      * ii. exploit AX5; eauto.
-        { unfold to_inj. des_ifs. }
-        i; des.
-        inv MEM. exploit BOUND; eauto.
-      * inv AX1. apply NNPP. ii. exploit mi_freeblocks; eauto. i; clarify.
+      inv AX1. apply NNPP. ii. exploit mi_freeblocks; eauto. i; clarify.
     + s. econs; cycle 1; eauto.
-      { ii. inv MEM. exploit BOUND; eauto. i; des. unfold Mem.valid_block in *. inv AX2. xomega. }
-      ii. clarify. inv AX1. inv mi_inj. specialize (mi_memval blk ofs).
-      admit "------------------------------------------_".
+      { ii. des_ifs. }
+      { ii. clarify. exploit Mem.perm_valid_block; eauto. i. unfold Mem.valid_block in H. des_ifs_safe.
+        inv AX1. inv mi_inj. destruct p0; ss. exploit mi_memval; eauto. intro MV.
+        rewrite PTR in *. inv MV. inv H1. des_ifs_safe.
+        exploit mi_freeblocks; eauto. i; clarify.
+      }
   - econs; eauto.
     + ii; ss. eapply external_call_max_perm; try apply EXT; eauto.
     + ii; ss. eapply external_call_readonly; try apply EXT; eauto.

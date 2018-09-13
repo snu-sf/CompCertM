@@ -1195,6 +1195,12 @@ Proof.
     exists sm1; esplits; eauto.
     + econs; eauto.
       * admit "SIMSKENVLINK - ez".
+      * rewrite MEMTGT. inv MWFAFTR. ss.
+        etrans; eauto.
+        inv MLE. rewrite <- TGTPARENTEQNB.
+        inv SIMSKENV. ss.
+        destruct SIMSKENVLINK. inv H. inv SIMSKENV.
+        rewrite <- NEXT. auto.
       * psimpl. zsimpl. rp; eauto.
     + econs; ss; eauto with congruence.
       eapply match_states_return with (j:= sm_ret.(SimMemInj.inj)); eauto.

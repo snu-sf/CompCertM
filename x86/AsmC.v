@@ -131,6 +131,7 @@ Section MODSEM.
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (OFSZERO: ofs = Ptrofs.zero)
       (FREE: Mem.free m0 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
+      (NOTVOL: Senv.block_is_volatile skenv_link blk1 = false) 
       init_rs
     :
       at_external (mkstate init_rs (State rs m0))
@@ -145,6 +146,7 @@ Section MODSEM.
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (RSPC: rs # PC = args.(Args.fptr))
       (SZ: 4 * size_arguments sg <= Ptrofs.modulus)
+      (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
       (STORE: store_arguments args.(Args.m) rs args.(Args.vs) sg m)
       (RAPTR: wf_RA (rs RA))
       (PTRFREE: forall

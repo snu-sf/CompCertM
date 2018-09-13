@@ -317,6 +317,7 @@ Section MODSEM.
           (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
         ,
           <<PTRFREE: ~ is_real_ptr (rs mr)>>)
+      (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
       (SZ: 4 * size_arguments sg <= Ptrofs.modulus)
     :
       initial_frame args (mkstate rs sg
@@ -344,6 +345,7 @@ Section MODSEM.
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs true)
+      (MEMWF: Ple (Senv.nextblock skenv_link) retv.(Retv.m).(Mem.nextblock))
       (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
     :
       after_external (mkstate init_rs init_sg (Callstate stack fptr ls0 m0))

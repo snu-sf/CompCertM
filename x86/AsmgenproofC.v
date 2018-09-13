@@ -63,7 +63,8 @@ Inductive match_states
     (INITDATA: match_init_data
                  init_sp init_ra
                  st_src0.(MachC.init_rs) st_src0.(init_sg) st_tgt0.(init_rs))
-    (MATCHST: AsmgenproofC1.match_states ge init_sp init_ra st_src0.(MachC.st) st_tgt0)
+    (MATCHST: AsmgenproofC1.match_states ge skenv_link_src init_sp init_ra st_src0.(MachC.st) st_tgt0)
+    (NOTVOL: not_volatile skenv_link_src (st_tgt0.(init_rs) RSP))
     (MCOMPATSRC: st_src0.(MachC.st).(MachC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
     (IDX: measure st_src0.(MachC.st) = idx)
@@ -159,9 +160,22 @@ Proof.
         eapply Asm.to_preg_to_mreg.
         rewrite (agree_mregs0 mr) in *. auto.
     + instantiate (1:= mk m_src m).
-      econs; ss; econs; ss; eauto; try by (econs; eauto).
-      * econs; ss.
-        i. rewrite agree_mregs0. econs.
+      assert (NOTVOL: not_volatile skenv_link_src (Vptr (Mem.nextblock src) Ptrofs.zero true)).
+      { econs. destruct (Senv.block_is_volatile skenv_link_src (Mem.nextblock src)) eqn: EQ; auto.
+        exfalso. eapply Senv.block_is_volatile_below in EQ. subst ge.
+        clear - SIMSKENVLINK MWF MEMWF EQ. apply Mem.mext_next in MWF. rewrite MWF in *.
+        eapply Plt_strict. eapply Plt_Ple_trans. eapply EQ.
+        destruct SIMSKENVLINK. inv H. ss. rewrite NEXT. auto. }
+      econs; ss.
+      * econs; ss; eauto. econs; eauto.
+      * econs; eauto; ss; try by (econs; eauto).
+        -- econs; eauto. i. rewrite agree_mregs0. econs.
+        -- destruct SIMSKENVLINK. inv H. rewrite NEXT. etrans; eauto.
+           clear - MWF SRCSTORE.
+           apply Mem.mext_next in MWF. rewrite <- MWF in *.
+           inv SRCSTORE. rewrite <- NB.
+           eapply Mem.nextblock_alloc in ALC. rewrite ALC. eapply Ple_succ.
+      * rewrite agree_sp0. auto.
 
   - ss. des. inv SIMARGS. destruct sm_arg. ss. clarify.
     inv SAFESRC.
@@ -179,6 +193,8 @@ Proof.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
     + rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
+    + ss. destruct SIMSKENVLINK. inv H0. rewrite <- NEXT.
+      apply Mem.mext_next in MWF. rewrite <- MWF in *. auto.
     + rewrite RSRA. econs; ss.
 
   - inv MATCH; ss. destruct st_src0, st_tgt0, sm0. ss. inv MATCHST; ss.
@@ -205,6 +221,9 @@ Proof.
       * inv INITRAPTR. inv STACKS; ss.
         -- inv ATLR; auto. exfalso; auto.
         -- destruct ra; ss; try inv H0. inv ATLR. ss.
+      * rewrite RSP in *. inv NOTVOL0. ss. unfold Genv.block_is_volatile in *.
+        destruct SIMSKENVLINK. inv H. specialize (DEFS blk).
+        unfold Genv.find_var_info in *. des_ifs; ss; clarify.
     + instantiate (1:=mk m1 m2'). econs; ss; eauto.
     + ss.
 
@@ -223,12 +242,13 @@ Proof.
       * eauto.
     + instantiate (1:= mk m1 m2'). inv INITRS. inv AG.
       econs; ss; eauto; econs; eauto.
-      econs; eauto.
-      unfold loc_external_result, regset_after_external, Mach.regset_after_external.
-      apply agree_set_other; auto. apply agree_set_pair; auto.
-      econstructor; ss; eauto.
-      intros. rewrite to_preg_to_mreg.
-      destruct (Conventions1.is_callee_save r0) eqn:T; eauto.
+      * econs; eauto.
+      * unfold loc_external_result, regset_after_external, Mach.regset_after_external.
+        apply agree_set_other; auto. apply agree_set_pair; auto.
+        econstructor; ss; eauto.
+        intros. rewrite to_preg_to_mreg.
+        destruct (Conventions1.is_callee_save r0) eqn:T; eauto.
+      * eapply Mem_nextblock_unfree in UNFREE. rewrite <- UNFREE. auto.
   - ss. inv FINALSRC. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
     inv INITDATA. destruct sm0. ss. clarify.
     exploit Mem.free_parallel_extends; eauto. intros TGTFREE. des.

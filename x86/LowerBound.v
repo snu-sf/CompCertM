@@ -69,7 +69,7 @@ Section PRESERVATION.
   Record sub_match_genvs A B V W (R: globdef A V -> globdef B W -> Prop)
          (ge1: Genv.t A V) (ge2: Genv.t B W): Prop :=
     {
-      mge_next : Ple (Genv.genv_next ge1) (Genv.genv_next ge2);
+      sub_mge_next : Ple (Genv.genv_next ge1) (Genv.genv_next ge2);
       sub_mge_symb id b (FIND: Genv.find_symbol ge1 id = Some b):
         Genv.find_symbol ge2 id = Some b;
       sub_mge_defs b d0 (FIND: Genv.find_def ge1 b = Some d0):
@@ -82,7 +82,7 @@ Section PRESERVATION.
       sub_match_genvs R ge1 ge2.
   Proof.
     inv MATCHGE. econs; i; ss; eauto.
-    - rewrite mge_next0. refl.
+    - rewrite mge_next. refl.
     - etrans; eauto.
     - unfold Genv.find_def in *. specialize (mge_defs b).
       inv mge_defs; eq_closure_tac. eauto.
@@ -97,17 +97,31 @@ Section PRESERVATION.
   Definition genv_le (ge_src ge_tgt: Genv.t fundef unit): Prop :=
     sub_match_genvs eq ge_src ge_tgt.
 
-  Lemma sub_match_inj A B V W R (ge0: Genv.t A V) (ge1: Genv.t B W) j
-        (MATCHGE: sub_match_genvs R ge0 ge1)
-        (SKINJ: skenv_inject ge1 j)
-    :
-      skenv_inject ge0 j.
-  Proof.
-    inv SKINJ. inv MATCHGE. econs.
-    - i. eapply DOMAIN. eapply Plt_Ple_trans; eauto.
-    - i. eapply IMAGE; eauto.
-      eapply Plt_Ple_trans; eauto.
-  Qed.
+  Inductive skenv_inject {F V} (ge: Genv.t F V) (j: meminj): Prop :=
+  | sken_inject_intro
+      (DOMAIN: forall b, Plt b ge.(Genv.genv_next) -> j b = Some(b, 0))
+      (IMAGE: forall b1 b2 delta (INJ: j b1 = Some(b2, delta)),
+          Senv.block_is_volatile ge b2 = Senv.block_is_volatile ge b1)
+  .
+
+  (* Lemma sub_match_inj A B V W R (ge0: Genv.t A V) (ge1: Genv.t B W) j *)
+  (*       (MATCHGE: sub_match_genvs R ge0 ge1) *)
+  (*       (RESPECT: forall g_src g_tgt (REL: R g_src g_tgt), *)
+  (*           match g_src, g_tgt with *)
+  (*           | Gfun _, Gfun _ => True *)
+  (*           | Gfun _, Gvar _ => False *)
+  (*           | Gvar _, Gfun _ => False *)
+  (*           | Gvar g_src', Gvar g_tgt' => *)
+  (*             gvar_volatile g_src' = gvar_volatile g_tgt' *)
+  (*           end) *)
+  (*       (SKINJ: skenv_inject ge1 j) *)
+  (*   : *)
+  (*     skenv_inject ge0 j. *)
+  (* Proof. *)
+  (*   inv SKINJ. inv MATCHGE. econs. *)
+  (*   - i. eapply DOMAIN. eapply Plt_Ple_trans; eauto. *)
+  (*   - i. ss. admit "". *)
+  (* Qed. *)
 
   Lemma sub_match_local_genv ge_local
         (MATCHGE: genv_le ge_local tge)
@@ -116,7 +130,7 @@ Section PRESERVATION.
   Proof.
     destruct match_skenv_link_tge. inv MATCHGE.
     unfold Genv.find_symbol, Genv.find_def in *. econs.
-    - rewrite <- mge_next0. eauto.
+    - rewrite <- mge_next. eauto.
     - i. eapply sub_mge_symb0 in FIND.
       rewrite mge_symb in FIND. eauto.
     - i. eapply sub_mge_defs0 in FIND. des.
@@ -220,7 +234,23 @@ Section PRESERVATION.
     :
       symbols_inject j (System.globalenv skenv_link) tge.
   Proof.
-  Admitted.
+    destruct match_skenv_link_tge. inv SKINJ.
+    unfold System.globalenv. econs; ss; i.
+    - unfold Genv.public_symbol, Genv.find_symbol.
+      rewrite mge_symb. admit "should hold".
+    - splits; ss; i.
+      + exploit (DOMAIN b1).
+        * eapply Genv.genv_symb_range. eauto.
+        * i. clarify. split; auto.
+          unfold Genv.find_symbol in *. rewrite mge_symb. auto.
+      + exists b1. split.
+        * eapply DOMAIN. eapply Genv.genv_symb_range. eauto.
+        * unfold Genv.find_symbol in *. rewrite mge_symb. auto.
+      + auto. rewrite <- (IMAGE _ _ _ H).
+        unfold Genv.block_is_volatile, Genv.find_var_info, Genv.find_def in *.
+        specialize (mge_defs b2). unfold fundef in *. inv mge_defs; ss.
+        des_ifs; ss; clarify. des_ifs.
+  Qed.
 
   Lemma external_function_sig
         v skd ef
@@ -265,12 +295,23 @@ Section PRESERVATION.
   Proof.
   Admitted.  
 
+  Definition no_extern_fun (ge: Genv.t fundef unit): Prop :=
+    forall b ef, ~ Genv.find_funct_ptr ge b = Some (External ef).
+
+  Lemma local_genv_no_extern_fun p :
+    no_extern_fun (local_genv p).
+  Proof.
+    admit "ez".
+  Qed.
+
   Lemma asm_step_preserve_injection
         rs_src0 rs_src1 m_src0 m_src1 tr j0
         rs_tgt0 m_tgt0
         ge_src ge_tgt
         (GENVLE: genv_le ge_src ge_tgt)
-        (GEINJECT: skenv_inject ge_src j0)
+        (DOMAIN: forall b (LT: Plt b ge_src.(Genv.genv_next)),
+            j0 b = Some(b, 0))
+        (NOEXTFUN: no_extern_fun ge_src)
         (AGREE: agree j0 rs_src0 rs_tgt0)
         (INJ: Mem.inject j0 m_src0 m_tgt0)
         (STEP: Asm.step ge_src (Asm.State rs_src0 m_src0) tr (Asm.State rs_src1 m_src1))
@@ -283,10 +324,6 @@ Section PRESERVATION.
         (inject_separated j0 j1 m_src0 m_tgt0) 
   .
   Proof.
-    
-
-
-
   Admitted.
 
   Lemma ALLOC_NEXT_INCR F V (gen: Genv.t F V) x m0 m1
@@ -808,6 +845,7 @@ Section PRESERVATION.
                         = Some skd /\ SkEnv.get_sig skd = sg)
       (ARGS: extcall_arguments init_rs m_src sg args.(Args.vs))
       (RSPPTR: init_rs # RSP = Vptr blk ofs true)
+      (NOTVOL: Senv.block_is_volatile skenv_link blk = false) 
       (OFSZERO: ofs = Ptrofs.zero)
       (* (RAPTR: wf_RA (init_rs RA)) *)
       (RAPTR: <<TPTR: Val.has_type (init_rs RA) Tptr>> /\ <<RADEF: init_rs RA <> Vundef>>)
@@ -840,6 +878,7 @@ Section PRESERVATION.
         set (MAIN:= symb_main).
         unfold Genv.symbol_address. unfold skenv_link, tge in *. rewrite MAIN. auto.
       + econs.
+      + admit "should hold".
       + apply init_mem_freed_from.
   Qed.
 
@@ -876,8 +915,10 @@ Section PRESERVATION.
     apply asm_frame_inj2 in FRAME. inv FRAME0. destruct st_src1.
     rewrite <- FRAME in GELE.
     exploit asm_step_preserve_injection; eauto.
-    - eapply sub_match_inj; eauto.
-      admit "TODO use GEINJECT".
+    - inv GEINJECT. i. eapply DOMAIN.
+      eapply sub_mge_next in GELE. destruct match_skenv_link_tge. 
+      rewrite <- mge_next. eapply Plt_Ple_trans; eauto.
+    - eapply local_genv_no_extern_fun.
     - ii. des. esplits; eauto; econs; eauto.
       + 
         {
@@ -885,17 +926,19 @@ Section PRESERVATION.
           inv GEINJECT. econs.
           - i. unfold inject_incr in *. 
             eapply H2. eapply DOMAIN. eauto.
-          - i. unfold inject_incr,inject_separated in *.
-            destruct (j b1) eqn : EQ.
-            + destruct p. dup EQ.
-              apply H2 in EQ. clarify.
-              eapply IMAGE in EQ0. auto. auto.
-            + specialize (H3 _ _ _ EQ H).
-              des. unfold Mem.valid_block in *.
-              inv INJ. clear mi_freeblocks mi_no_overlap mi_representable mi_perm_inv.
-              exfalso. apply H1. eapply mi_mappedblocks.
-              eapply DOMAIN. eauto.
-              (* refactor it*)
+          - i. ss.
+            destruct (Genv.block_is_volatile skenv_link b2) eqn:EQ1;
+            destruct (Genv.block_is_volatile skenv_link b1) eqn:EQ2;
+            auto; rewrite <- EQ1; rewrite <- EQ2; eapply IMAGE.
+
+            + set (Genv.block_is_volatile_below _ _ EQ1).
+              destruct (j b1) eqn : EQ.
+              * destruct p0. apply H2 in EQ. clarify.
+              * exfalso. eapply H3 in EQ. specialize (EQ INJ0). des.
+                inv INJ. unfold Mem.valid_block in *. eauto.
+            + eapply Genv.block_is_volatile_below in EQ2.
+              set (DOMAIN _ EQ2).
+              set (H2 _ _ _ e). clarify. auto.
         }
       + eapply match_stack_incr; eauto.
   Qed.
@@ -958,6 +1001,16 @@ Section PRESERVATION.
     - eapply free_freed_from; eauto.
   Qed.
 
+  Lemma below_block_is_volatile F V (ge': Genv.t F V) b
+        (LE: ~ Plt b (Genv.genv_next ge'))
+    :
+      Genv.block_is_volatile ge' b = false.
+  Proof.
+    destruct (Genv.block_is_volatile ge' b) eqn: EQ; auto.
+    apply Genv.block_is_volatile_below in EQ.
+    exfalso. auto.
+  Qed.    
+
   Lemma asm_step_init_simulation
         args frs st_tgt p n
         (MTCHST: match_states (Callstate args frs) st_tgt n)
@@ -991,6 +1044,16 @@ Section PRESERVATION.
       + apply FINDF.
       + ss.
       + ss.
+      + clear - GEINJECT INJECT FREE.
+        erewrite freed_from_nextblock; eauto.
+        set (LE:=Registers.Regset.MSet.Raw.MX.OrderTac.TO.lt_total
+                 (Senv.nextblock skenv_link) (Mem.nextblock m_src)). des.
+        * apply Plt_Ple. auto.
+        * rewrite LE. refl.
+        * inv GEINJECT. apply DOMAIN in LE.
+          inv INJECT. unfold Mem.valid_block in *.
+          specialize (mi_freeblocks _ (Plt_strict (Mem.nextblock m_src))).
+          clarify.
       + eapply memcpy_store_arguments; ss; eauto.
       + unfold src_init_rs. ss.
         destruct (init_rs RA); ss; eauto. destruct b1; ss; eauto.
@@ -1002,17 +1065,13 @@ Section PRESERVATION.
         eapply src_init_rs_agree; eauto.
       + eapply memcpy_inject; eauto.
       + eapply valid_owner_genv_le. econs; eauto.
-      + {
-          (* clear - GEINJECT. *)
-          unfold callee_injection. inv GEINJECT. econs; i.
-          - des_ifs; eauto. exploit (DOMAIN b); auto. i. clarify.
-          - admit "fix AsmC #215".
-        }
+      + unfold callee_injection. inv GEINJECT. econs; i.
+        { des_ifs; eauto. exploit (DOMAIN b); auto. i. clarify. }
+        des_ifs; [| eauto].
+        rewrite (IMAGE _ _ _ INJ). ss. rewrite NOTVOL.
+        symmetry. eapply below_block_is_volatile. intros EQ.
+        eapply DOMAIN in EQ. clarify.
       + reflexivity.
-
-      (* + eapply inject_incr_trans with (f2 := j); auto. *)
-      (*   apply callee_injection_incr; auto. *)
-      (* + reflexivity. *)
       + inv STACK.
         { econs; ss. }
         econs; ss.
@@ -1195,6 +1254,7 @@ Section PRESERVATION.
     eapply system_receptive_at.
   Qed.  
 
+
   Lemma syscall_simulation
         st_src0 st_src1 st_src2 st_tgt0 args frs fptr tr0 tr1 n0
         (STATE: st_src0 = Callstate args frs)
@@ -1264,21 +1324,24 @@ Section PRESERVATION.
         { des. rewrite FPTR in *. clarify. } clarify.
         econs; cycle 3.
         * instantiate (1 := f').
-          { clear - INJECT H6 H7 GEINJECT.
-            inv GEINJECT. econs.
+          { inv GEINJECT. econs.
             - i. unfold inject_incr in *. 
               eapply H6. eapply DOMAIN. eauto.
             - i. unfold inject_incr,inject_separated in *.
               destruct (j b1) eqn : EQ.
-              + destruct p. dup EQ.
+              + destruct p0. dup EQ.
                 apply H6 in EQ. clarify.
-                eapply IMAGE in EQ0. auto. auto.
-              + specialize (H7 _ _ _ EQ H).
-                des. unfold Mem.valid_block in *.
-                inv INJECT. clear mi_freeblocks mi_no_overlap mi_representable mi_perm_inv.
-                exfalso. apply H1. eapply mi_mappedblocks.
-                eapply DOMAIN. eauto.
-          (* refactor it*)
+                eapply IMAGE in EQ0. auto.
+
+              + ss. specialize (H7 _ _ _ EQ INJ). des.
+                unfold Mem.valid_block in *.
+                erewrite below_block_is_volatile; cycle 1.
+                { intros LE. specialize (DOMAIN _ LE).
+                  clear - INJECT H8 DOMAIN.
+                  inv INJECT.
+                  eapply mi_mappedblocks in DOMAIN. auto. }
+                erewrite below_block_is_volatile. auto.
+                { intros LE. specialize (DOMAIN _ LE). clarify. }                
           }
         * ss.
         * eapply match_stack_incr; eauto.

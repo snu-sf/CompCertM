@@ -94,6 +94,12 @@ Module Sound.
 
     args: t -> Args.t -> Prop;
     retv: t -> Retv.t -> Prop;
+    retv_le: forall
+        su0 su1
+        (LE: le su0 su1)
+      ,
+        su1.(retv) <1= su0.(retv)
+    ;
     get_greatest: Args.t -> t -> Prop;
     greatest_dtm: forall
         args0

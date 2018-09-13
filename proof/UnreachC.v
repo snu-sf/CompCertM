@@ -663,3 +663,58 @@ Next Obligation.
       rr. unfold to_inj. des_ifs.
 Qed.
 
+
+Local Opaque Z.mul Z.add Z.sub Z.div.
+Local Transparent Mem.load.
+Lemma mem'_load_val'
+      su m0
+      (MEM: mem' su m0)
+      chunk blk ofs v
+      (PUB: ~ su blk)
+      (LOAD: Mem.load chunk m0 blk ofs = Some v)
+  :
+    <<VAL: val' su m0.(Mem.nextblock) v>>
+.
+Proof.
+  inv MEM.
+  unfold Mem.load in *. des_ifs. ii.
+  hexploit SOUND; eauto.
+  { admit "ez". }
+  intro MV; des.
+  unfold decode_val in *.
+  Local Opaque Mem.getN.
+  des_ifs; cbn in *; unfold Pos.to_nat in *; ss.
+  -
+    (* Local Opaque ZMap.get. *)
+    ss. des_ifs.
+    unfold proj_value in *. des_ifs.
+    ss.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    clear_tac.
+    Local Transparent Mem.getN. ss. clarify.
+    specialize (SOUND blk ofs PUB).
+    exploit MV; eauto.
+  - ss. des_ifs.
+  - Local Opaque Mem.getN.
+    unfold proj_value in *. des_ifs.
+    ss.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    bsimpl. des_safe. des_sumbool. clarify. repeat (destruct n; ss; []). des_ifs_safe.
+    clear_tac.
+    Local Transparent Mem.getN. ss. clarify.
+    specialize (SOUND blk ofs PUB).
+    exploit MV; eauto.
+Qed.

@@ -116,6 +116,8 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
               su_ret retv st1
               (LE: Sound.le su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
+              (* retv st1 *)
+              (* (RETV: su_gr.(Sound.retv) retv) *)
               (MLE: Sound.mle su_gr args.(Args.m) retv.(Retv.m))
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
@@ -126,7 +128,8 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
         (SUST: sound_state su0 m_arg st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv)
       ,
-        <<RETV: su0.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) m_arg retv.(Retv.m)>>)
+        exists su_ret, <<LE: Sound.le su0 su_ret>> /\
+        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) m_arg retv.(Retv.m)>>)
 .
 
 Variable get_mem: ms.(ModSem.state) -> mem.
@@ -160,6 +163,8 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
               su_ret retv st1
               (LE: Sound.le su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
+              (* retv st1 *)
+              (* (RETV: su_gr.(Sound.retv) retv) *)
               (MLE: Sound.mle su_gr args.(Args.m) retv.(Retv.m))
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
@@ -170,7 +175,8 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
         (SUST: sound_state su0 st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv)
       ,
-        <<RETV: su0.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.m)>>)
+        exists su_ret, <<LE: Sound.le su0 su_ret>> /\
+        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.m)>>)
 .
 
 Theorem local_preservation_strong_spec
@@ -197,7 +203,9 @@ Definition system_sound_state `{SU: Sound.class}: Sound.t -> mem -> System.state
   fun su m_arg st =>
     match st with
     | System.Callstate args => su.(Sound.args) args /\ su.(Sound.mle) m_arg args.(Args.m)
-    | System.Returnstate retv => exists su_ret, Sound.le su su_ret /\ su_ret.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m)
+    | System.Returnstate retv =>
+      exists su_ret, Sound.le su su_ret /\ su_ret.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m)
+      (* su.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m) *)
     end
 .
 
@@ -215,6 +223,6 @@ Proof.
   - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply H; eauto. i; des. esplits; eauto.
     + destruct retv; ss.
     + etrans; eauto.
-  - inv FINAL. ss. des. esplits; eauto. eapply Sound.retv_le; eauto.
+  - inv FINAL. ss.
 Qed.
 

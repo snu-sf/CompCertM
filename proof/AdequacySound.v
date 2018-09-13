@@ -58,7 +58,9 @@ Section ADQSOUND.
               retv lst1
               su_greatest
               (GR: Sound.get_greatest args su_greatest)
-              (SURETV: Sound.retv su_greatest retv)
+              su_ret
+              (LE: Sound.le su_greatest su_ret)
+              (SURETV: Sound.retv su_ret retv)
               (MLE: Sound.mle su_greatest args.(Args.m) retv.(Retv.m))
               (AFTER: ms.(ModSem.after_external) lst0 retv lst1)
             ,

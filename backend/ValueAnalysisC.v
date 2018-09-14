@@ -14,8 +14,10 @@ Require Import Sound.
 Require Import ModSem.
 
 
-Definition bc2su (bc: block_classification): Unreach.t :=
-  (fun blk => block_class_eq (bc blk) BCinvalid)
+Definition bc2su (bc: block_classification) (bound: block): Unreach.t :=
+  (fun blk => if plt blk bound
+              then block_class_eq (bc blk) BCinvalid
+              else false)
 .
 Hint Unfold bc2su.
 
@@ -126,7 +128,7 @@ Section PRSV.
   Proof.
     econs; eauto.
     - admit "init".
-    - admit "step".
+    - ii; ss. eapply sound_step; eauto.
     - i; ss. inv SUST.
       assert(GR: exists su_gr, SemiLattice.greatest le' (fun su : Unreach.t => args' su args) su_gr).
       { admit "". }
@@ -142,19 +144,19 @@ Section PRSV.
         eapply GR. eauto.
       }
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
-        assert(BCARGS: (bc2su bc).(Sound.args) args).
+        assert(BCARGS: (bc2su bc m_arg.(Mem.nextblock)).(Sound.args) args).
         { ss. r. esplits; eauto.
           - admit "fptr".
           - rewrite Forall_forall. i. spcN 1%nat ARGS. inv AT. ss. spc ARGS. ii; clarify.
             assert(BCV: bc blk <> BCinvalid).
             { inv ARGS; ss. inv H1; ss. }
             esplits; eauto.
-            + u. ii. des_sumbool. ss.
+            + u. ii. des_ifs. des_sumbool. ss.
             + inv MM. eapply mmatch_below; eauto.
           - inv MM. econs; eauto.
             + ii. clarify.
               assert(BCV: bc blk <> BCinvalid).
-              { u in PUB. ii. rewrite H in *.  ss. }
+              { u in PUB. ii. rewrite H in *. ss. exploit Mem.perm_valid_block; eauto. i; des. inv AT. des_ifs. }
               assert(BCV0: bc blk0 <> BCinvalid).
               {
                 exploit mmatch_top; eauto.
@@ -167,11 +169,11 @@ Section PRSV.
                 inv PM. ss.
               }
               esplits; eauto.
-              { u. i; des_sumbool; ss. }
+              { u. des_ifs. i; des_sumbool; ss. }
               inv AT. s. eapply mmatch_below; eauto.
-            + u. ii. des_sumbool; clarify.
+            + u. ii. des_ifs. des_sumbool; clarify. inv AT; ss.
         }
-        assert(BCLE: Sound.le (bc2su bc) su_gr).
+        assert(BCLE: Sound.le (bc2su bc m_arg.(Mem.nextblock)) su_gr).
         { ii. eapply GR; eauto. }
         exploit sound_stack_unreach_compat; eauto. intros CPT. des.
         (* set (f := fun b => if plt b retv.(Retv.m).(Mem.nextblock) *)
@@ -217,10 +219,10 @@ Section PRSV.
           exploit H; eauto. i; des. rewrite IMG. subst f. s. des_ifs.
           assert(NSU: ~su_gr b).
           { ii. exploit LE; eauto. i; ss. congruence. }
-          assert(NBC: ~(bc.(bc2su)) b).
+          assert(NBC: ~ (bc2su bc m_arg.(Mem.nextblock)) b).
           { ii. exploit BCLE; eauto. }
-          clear - NBC.
-          ii. unfold bc2su in *. rewrite H in *. ss.
+          clear - NBC p0.
+          ii. unfold bc2su in *. rewrite H in *. ss. des_ifs.
         }
         assert (SMTOP: forall b, bc' b <> BCinvalid -> smatch bc' retv.(Retv.m) b Ptop).
         {
@@ -245,7 +247,8 @@ Section PRSV.
               * rewrite IMG in *. subst f. ss. des_ifs.
           }
         * admit "ez".
-        * ii. rewrite IMG in *. subst f. ss. des_ifs.
+        * red; simpl; intros. rewrite IMG. unfold f. des_ifs.
+          eapply NOSTK; auto.
     - admit "final".
   Qed.
 

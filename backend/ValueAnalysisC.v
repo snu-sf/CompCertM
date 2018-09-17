@@ -113,6 +113,52 @@ Ltac spcN n H :=
 (* Tactic Notation "spc" hyp(H) := spc H. *)
 (* Tactic Notation "spc" hyp(H) constr(n) := spcN H n. *)
 
+
+
+Lemma sound_state_sound_args
+      bc m0 stack su0 p skenv_link vs_arg cunit
+      (STK: sound_stack cunit (SkEnv.revive (SkEnv.project skenv_link (defs p)) p) su0 bc stack m0 (Mem.nextblock m0))
+      (ARGS: forall v : val, In v vs_arg -> vmatch bc v Vtop)
+      (RO: romatch bc m0 (romem_for cunit))
+      (MM: mmatch bc m0 mtop)
+      (GE: genv_match bc (SkEnv.revive (SkEnv.project skenv_link (defs p)) p))
+      (NOSTK: bc_nostack bc)
+      fptr_arg sg_arg
+      (SIG: exists skd, Genv.find_funct skenv_link fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg)
+  :
+    args' (bc2su bc m0.(Mem.nextblock)) (Args.mk fptr_arg vs_arg m0)
+.
+Proof.
+  { r. s. esplits; eauto.
+    - admit "fptr".
+    - rewrite Forall_forall. i. spcN 1%nat ARGS. spc ARGS. ii; clarify.
+      assert(BCV: bc blk <> BCinvalid).
+      { inv ARGS; ss. inv H1; ss. }
+      esplits; eauto.
+      + u. ii. des_ifs. des_sumbool. ss.
+      + inv MM. eapply mmatch_below; eauto.
+    - inv MM. econs; eauto.
+      + ii. clarify.
+        assert(BCV: bc blk <> BCinvalid).
+        { u in PUB. ii. rewrite H in *. ss. exploit Mem.perm_valid_block; eauto. i; des. des_ifs. }
+        assert(BCV0: bc blk0 <> BCinvalid).
+        {
+          exploit mmatch_top; eauto.
+          (* spcN 0%nat mmatch_top. spc mmatch_top. inv mmatch_top. *)
+          intro SM. inv SM.
+          specialize (H0 0%Z blk0 ofs0 true q n).
+          exploit H0.
+          { admit "ez - memory lemma". }
+          intro PM.
+          inv PM. ss.
+        }
+        esplits; eauto.
+        { u. des_ifs. i; des_sumbool; ss. }
+        s. eapply mmatch_below; eauto.
+      + u. ii. des_ifs.
+  }
+Qed.
+
 Section PRSV.
 
   Variable skenv_link: SkEnv.t.
@@ -131,48 +177,27 @@ Section PRSV.
     - ii; ss. eapply sound_step; eauto.
     - i; ss. inv SUST.
       assert(GR: exists su_gr, SemiLattice.greatest le' (fun su : Unreach.t => args' su args) su_gr).
-      { admit "". }
-      assert(SUARGS: su0.(Sound.args) args).
-      { admit "". }
+      { hexploit (Sound.greatest_ex args); eauto. }
       des.
       esplits; eauto.
+      { r in GR. des. eauto. }
       ii.
       r in RETV. des.
       esplits; eauto; cycle 1.
       { inv AT; inv AFTER; ss.
         eapply mle_monotone; try apply MLE; eauto.
-        eapply GR. eauto.
+        specialize (H p (linkorder_refl _)). bar. inv H.
+        assert(LE0: su0 <1= (bc2su bc m0.(Mem.nextblock))).
+        { ii. exploit sound_stack_unreach_compat; eauto.
+          intro CPT. inv CPT. u. repeat spc BOUND. des_ifs. rewrite PRIV; ss.
+        }
+        assert(LE1: (bc2su bc m0.(Mem.nextblock)) <1= su_gr).
+        { ii. eapply GR; eauto. eapply sound_state_sound_args; eauto. }
+        i; ss. eauto.
       }
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
         assert(BCARGS: (bc2su bc m_arg.(Mem.nextblock)).(Sound.args) args).
-        { ss. r. esplits; eauto.
-          - admit "fptr".
-          - rewrite Forall_forall. i. spcN 1%nat ARGS. inv AT. ss. spc ARGS. ii; clarify.
-            assert(BCV: bc blk <> BCinvalid).
-            { inv ARGS; ss. inv H1; ss. }
-            esplits; eauto.
-            + u. ii. des_ifs. des_sumbool. ss.
-            + inv MM. eapply mmatch_below; eauto.
-          - inv MM. econs; eauto.
-            + ii. clarify.
-              assert(BCV: bc blk <> BCinvalid).
-              { u in PUB. ii. rewrite H in *. ss. exploit Mem.perm_valid_block; eauto. i; des. inv AT. des_ifs. }
-              assert(BCV0: bc blk0 <> BCinvalid).
-              {
-                exploit mmatch_top; eauto.
-                (* spcN 0%nat mmatch_top. spc mmatch_top. inv mmatch_top. *)
-                intro SM. inv SM.
-                specialize (H0 0%Z blk0 ofs0 true q n).
-                exploit H0.
-                { admit "ez - memory lemma". }
-                intro PM.
-                inv PM. ss.
-              }
-              esplits; eauto.
-              { u. des_ifs. i; des_sumbool; ss. }
-              inv AT. s. eapply mmatch_below; eauto.
-            + u. ii. des_ifs. des_sumbool; clarify. inv AT; ss.
-        }
+        { ss. inv AT; ss. eapply sound_state_sound_args; eauto. }
         assert(BCLE: Sound.le (bc2su bc m_arg.(Mem.nextblock)) su_gr).
         { ii. eapply GR; eauto. }
         exploit sound_stack_unreach_compat; eauto. intros CPT. des.

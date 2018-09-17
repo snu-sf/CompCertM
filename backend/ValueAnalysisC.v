@@ -240,7 +240,6 @@ Section PRSV.
       { hexploit (Sound.greatest_ex args); eauto. }
       des.
       esplits; eauto.
-      { r in GR. des. eauto. }
       ii.
       r in RETV. des.
       esplits; eauto; cycle 1.

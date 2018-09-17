@@ -173,7 +173,67 @@ Section PRSV.
   .
   Proof.
     econs; eauto.
-    - admit "init".
+    - i. inv INIT. ss.
+      esplits; eauto; cycle 1.
+      { refl. }
+      econs; eauto. i.
+      set (ge := (SkEnv.revive (SkEnv.project skenv_link (defs p)) p)) in *.
+      set (f := fun b =>
+                  if plt b (Genv.genv_next ge) then
+                    match Genv.invert_symbol ge b with None => BCother | Some id => BCglob id end
+                  else
+                    if (plt b args.(Args.m).(Mem.nextblock)) && (negb (su_init b))
+                    then BCother
+                    else BCinvalid).
+      (* set (f := fun b => *)
+      (*             if (plt b args.(Args.m).(Mem.nextblock)) *)
+      (*             then *)
+      (*               match Genv.invert_symbol ge b with *)
+      (*               | None => if su_init b then BCinvalid else BCother *)
+      (*               | Some id => BCglob id *)
+      (*               end *)
+      (*             else *)
+      (*               BCinvalid). *)
+      assert(IMG: exists bc, bc.(bc_img) = f).
+      { unshelve eexists (BC _ _ _); s; eauto.
+        - ii. subst f. ss. des_ifs.
+        - ii. subst f. ss. des_ifs. apply_all_once Genv.invert_find_symbol. clarify.
+      }
+      subst f. des.
+      r in SUARG. des. rewrite Forall_forall in *.
+      assert(FP: forall blk, su_init blk -> Ple ge.(Genv.genv_next) blk).
+      { admit "forced public". }
+      assert(NB: Ple ge.(Genv.genv_next) args.(Args.m).(Mem.nextblock)).
+      { admit "forced public". }
+      eapply sound_call_state with (bc:= bc); eauto.
+      + econs; eauto. econs; eauto.
+        * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
+        * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
+        * ii. inv MEM. eapply BOUND; eauto.
+      + ii. repeat spc VALS. destruct v; econs; eauto. destruct b0; econs; eauto. rewrite IMG.
+        repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
+        des_ifs; ss. bsimpl. des; ss. des_sumbool. ss.
+      + admit "forced public".
+      + assert(SUMEM: forall b : block, bc b <> BCinvalid -> smatch bc (Args.m args) b Ptop).
+        { admit "mem'. this should hold...". }
+        econs; s; eauto.
+        * rewrite IMG. ii. des_ifs; ss.
+        * rewrite IMG. ii. des_ifs; ss. rewrite PTree.gempty in *. ss.
+        * intros ? A. rewrite IMG in A. des_ifs; try xomega. bsimpl. des. des_sumbool. xomega.
+      + r.
+        esplits; eauto.
+        * ii. rewrite IMG in *. split; i.
+          { exploit Genv.genv_symb_range; eauto. i.
+            apply_all_once Genv.find_invert_symbol.
+            unfold fundef in *.
+            des_ifs.
+          }
+          des_ifs. apply Genv.invert_find_symbol; eauto.
+        * rewrite IMG. ii.
+          assert(Plt b (Mem.nextblock (Args.m args))).
+          { eapply Plt_Ple_trans; eauto. }
+          des_ifs.
+      + r. rewrite IMG. i. des_ifs.
     - ii; ss. eapply sound_step; eauto.
     - i; ss. inv SUST.
       assert(GR: exists su_gr, SemiLattice.greatest le' (fun su : Unreach.t => args' su args) su_gr).

@@ -110,15 +110,15 @@ Section ADQSOUND.
       exists su0, sound_state su0 m_init st0
   .
   Proof.
-    inv INIT.
-    hexploit (Sound.greatest_ex (Args.mk (Genv.symbol_address (Sk.load_skenv sk_link) (prog_main sk_link) Ptrofs.zero)
-                                         []
-                                         m_init0)); eauto. i; des.
-    esplits; eauto. econs; s; eauto.
+    inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT.
+    hexploit Sound.init_spec; eauto. i; des.
+    exploit Sound.greatest_ex; eauto. i; des.
+    esplits; eauto.
+    econs; eauto.
     - eapply Sound.greatest_spec; eauto.
     - econs; eauto.
   Unshelve.
-    all: ss.
+    ss.
   Qed.
 
   Lemma sound_progress
@@ -132,6 +132,14 @@ Section ADQSOUND.
     inv STEP.
     - (* CALL *)
       inv SUST. ss.
+      exploit (@Sound.greatest_ex _ args); eauto.
+      { des. dup EX. inv EX. exploit CALL; eauto.
+        { eapply HD; eauto. }
+        i; des.
+        eapply Sound.greatest_spec in GR0.
+        esplits; eauto.
+      }
+      i; des.
       generalize (Sound.greatest_ex args). i; des.
       exists su_gr.
       exists args.(Args.m).

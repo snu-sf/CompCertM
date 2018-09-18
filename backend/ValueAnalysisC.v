@@ -149,7 +149,11 @@ Section PRSV.
     - ii; ss. eapply sound_step; eauto.
     - i; ss. inv SUST.
       assert(GR: exists su_gr, SemiLattice.greatest le' (fun su : Unreach.t => args' su args) su_gr).
-      { hexploit (Sound.greatest_ex args); eauto. }
+      { hexploit (Sound.greatest_ex args); eauto.
+        specialize (H p (linkorder_refl _)).
+        inv AT. inv H; ss.
+        exploit sound_state_sound_args; eauto.
+      }
       des.
       esplits; eauto.
       ii.

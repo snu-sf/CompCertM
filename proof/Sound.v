@@ -118,6 +118,7 @@ Module Sound.
     ;
     greatest_ex: forall
         args0
+        (INHAB: exists inhab, inhab.(args) args0)
       ,
         exists su_gr, <<GR: get_greatest args0 su_gr>>
     ;
@@ -153,6 +154,24 @@ Module Sound.
 
     (* top: t; *)
     (* top_spec: top1 <1= top.(val) /\ top1 <1= top.(mem); *)
+    skenv: t -> SkEnv.t -> Prop;
+    init_spec: forall
+        sk_link skenv_link m_init
+        (MEM: Sk.load_mem sk_link = Some m_init)
+        (SKE: Sk.load_skenv sk_link = skenv_link)
+      ,
+        exists su_init,
+          (<<SUARGS: su_init.(args) (Args.mk (Genv.symbol_address skenv_link (prog_main sk_link) Ptrofs.zero) [] m_init)>>) /\
+          (<<SUSKE: su_init.(skenv) skenv_link>>)
+    ;
+    skenv_le: forall
+        su skenv_link
+        (SKE: su.(skenv) skenv_link)
+        defs0 skenv0
+        (LE: SkEnv.project_spec skenv_link defs0 skenv0)
+      ,
+        <<SKE: su.(skenv) skenv0>>
+    ;
   }
   .
 

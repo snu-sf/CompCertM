@@ -13,7 +13,7 @@ Require Import Integers.
 
 (* Require Import IntegersC LinkingC. *)
 (* Require Import SimSymb Skeleton Mod ModSem. *)
-Require Import ModSem.
+Require Import ModSem Skeleton.
 (* Require SimSymbId. *)
 (* Require Import SimMem. *)
 
@@ -553,6 +553,8 @@ Proof.
     + eapply Ptrofs.unsigned_range_2; eauto.
 Qed.
 
+Definition skenv (su: Unreach.t) (skenv: SkEnv.t): Prop := True.
+
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
   le := le';
@@ -560,6 +562,7 @@ Global Program Instance Unreach: Sound.class := {
   args := args';
   retv := retv';
   (* mle := Unreach.mle; *) (* TODO: How did `Program` guess the implementation of `mle` ???? *)
+  skenv := skenv;
 }
 .
 Next Obligation.
@@ -584,6 +587,7 @@ Next Obligation.
   rr in GR. des. eapply MAX; eauto. (* econs; eauto. *)
 Qed.
 Next Obligation.
+  rename INHAB into inhab. rename H into INHAB.
   eapply find_greatest with (lub:= lub); eauto.
   - econs; ii; eauto.
   - ii. unfold lub. esplits; ii; rr; bsimpl; ss; eauto.
@@ -610,9 +614,6 @@ Next Obligation.
       hexpl SOUND; hexpl SOUND0; eauto.
       esplits; eauto. ii. des; eauto.
     + ii. bsimpl. des; eauto.
-  - admit "We will remove this".
-  (* - exists Unreach.top. rr. esplits; ii; ss; eauto. *)
-  (*   + rewrite Forall_forall. ii; ss. *)
 Qed.
 Next Obligation.
   rr in GR. des. eauto.
@@ -661,6 +662,18 @@ Next Obligation.
     + eapply Mem.unchanged_on_implies; eauto.
       unfold flip in *. ii; ss.
       rr. unfold to_inj. des_ifs.
+Qed.
+Next Obligation.
+  exists (fun _ => false).
+  esplits; eauto.
+  - rr; ss. esplits; eauto.
+    + ii. esplits; eauto. unfold Genv.symbol_address in *. des_ifs. u in MEM. erewrite <- Genv.init_mem_genv_next; eauto.
+      eapply Genv.genv_symb_range; eauto.
+    + econs; eauto.
+      * ii; ss. clarify. esplits; eauto.
+        admit "ez. see Genv.initmem_inject".
+      * ii; ss.
+  - econs; eauto.
 Qed.
 
 

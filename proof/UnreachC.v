@@ -558,7 +558,7 @@ Definition skenv (su: Unreach.t) (skenv: SkEnv.t): Prop := True.
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
   le := le';
-  get_greatest (args: Args.t) := greatest le' (fun su => su.(args') args);
+  get_greatest (su0: t) (args: Args.t) := greatest le' (fun su => <<LE: le' su0 su>> /\ su.(args') args);
   args := args';
   retv := retv';
   (* mle := Unreach.mle; *) (* TODO: How did `Program` guess the implementation of `mle` ???? *)
@@ -573,27 +573,27 @@ Next Obligation.
 Qed.
 Next Obligation.
   rr in GR0. rr in GR1. des.
-  assert(le' su0 su1).
+  assert(le' su_gr0 su_gr1).
   { eauto. }
-  assert(le' su1 su0).
+  assert(le' su_gr1 su_gr0).
   { eauto. }
   rr in H. rr in H0.
   apply func_ext1; i.
-  destruct (su0 x0) eqn:T0, (su1 x0) eqn:T1; ss.
+  destruct (su_gr0 x0) eqn:T0, (su_gr1 x0) eqn:T1; ss.
   { rewrite H in *; eauto. }
   { rewrite H0 in *; eauto. }
 Qed.
+(* Next Obligation. *)
+(*   rr in GR. des. eapply MAX; eauto. (* econs; eauto. *) *)
+(* Qed. *)
 Next Obligation.
-  rr in GR. des. eapply MAX; eauto. (* econs; eauto. *)
-Qed.
-Next Obligation.
-  rename INHAB into inhab. rename H into INHAB.
+  rename INHAB into inhab. rename H into INHAB. rename H0 into INHAB0.
   eapply find_greatest with (lub:= lub); eauto.
   - econs; ii; eauto.
   - ii. unfold lub. esplits; ii; rr; bsimpl; ss; eauto.
   - rr. destruct args0.
     eapply finite_pos_prop with (j:= Jpos) (fuel := m.(Mem.nextblock)); eauto.
-    + ii. inv H. inv H0. des; ss.
+    + ii. des. inv H0. inv H3. des; ss.
       inv MEM0. inv MEM.
       eapply Jpos_injective; eauto.
       ii. u in BOUND. u in BOUND0. destruct (x0 blk) eqn:T0, (x1 blk) eqn:T1; ss.
@@ -602,8 +602,10 @@ Next Obligation.
     + ii. eapply Jpos_func.
     + i. exists (3 ^ (m.(Mem.nextblock)))%positive. i.
       eapply Jpos_bound; eauto.
-  - ii. inv PX. inv PY. des. u in *.
+  - ii. des. inv PX0. inv PY0. des. u in *.
     rewrite Forall_forall in *.
+    esplits; eauto.
+    { clear - LE LE0. r in LE. r in LE0. u in *. r. ii; ss. bsimpl. repeat spc LE. repeat spc LE0. left; ss. }
     r; esplits; u; ii; bsimpl; ss; des; eauto.
     { repeat (spc H). repeat (spc H1). des. esplits; eauto. ii; des; eauto. }
     { rewrite Forall_forall in *. i. repeat (spc VALS0). repeat (spc VALS). des. esplits; eauto. ii; bsimpl; ss; des; eauto. }

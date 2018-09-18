@@ -109,7 +109,7 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
       ,
         (* (<<ARGS: su0.(Sound.args) args>>) /\ *)
         exists su_gr,
-          (<<GR: Sound.get_greatest args su_gr>>) /\
+          (<<GR: Sound.get_greatest su0 args su_gr>>) /\
           (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
@@ -155,7 +155,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
         (AT: ms.(ModSem.at_external) st0 args)
       ,
         exists su_gr,
-          (<<GR: Sound.get_greatest args su_gr>>) /\
+          (<<GR: Sound.get_greatest su0 args su_gr>>) /\
           (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall

@@ -100,33 +100,33 @@ Module Sound.
     (*   , *)
     (*     su1.(retv) <1= su0.(retv) *)
     (* ; *)
-    get_greatest: Args.t -> t -> Prop;
+    get_greatest: t -> Args.t -> t -> Prop;
     greatest_dtm: forall
         args0
-        su0 su1
-        (GR0: args0.(get_greatest) su0)
-        (GR0: args0.(get_greatest) su1)
+        su0 su_gr0 su_gr1
+        (GR0: get_greatest su0 args0 su_gr0)
+        (GR1: get_greatest su0 args0 su_gr1)
       ,
-        su0 = su1
+        su_gr0 = su_gr1
     ;
-    greatest_le: forall
-        args0 su0 su_gr
-        (ARGS: su0.(args) args0)
-        (GR: get_greatest args0 su_gr)
-      ,
-        le su0 su_gr
-    ;
+    (* greatest_le: forall *)
+    (*     args0 su0 su_gr *)
+    (*     (ARGS: su0.(args) args0) *)
+    (*     (GR: get_greatest args0 su_gr) *)
+    (*   , *)
+    (*     le su0 su_gr *)
+    (* ; *)
     greatest_ex: forall
-        args0
-        (INHAB: exists inhab, inhab.(args) args0)
+        su0 args0
+        (INHAB: exists inhab, <<LE: le su0 inhab>> /\ <<ARGS: inhab.(args) args0>>)
       ,
-        exists su_gr, <<GR: get_greatest args0 su_gr>>
+        exists su_gr, <<GR: get_greatest su0 args0 su_gr>>
     ;
-    greatest_spec: forall
-        args0 su_gr
-        (GR: get_greatest args0 su_gr)
+    greatest_adq: forall
+        su0 args0 su_gr
+        (GR: get_greatest su0 args0 su_gr)
       ,
-        <<SUARGS: args su_gr args0>>
+        <<SUARGS: args su_gr args0>> /\ <<LE: le su0 su_gr>>
     ;
 
     (* lub: t -> t -> t; *)

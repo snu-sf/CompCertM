@@ -57,7 +57,7 @@ Section ADQSOUND.
           (<<K: forall
               retv lst1
               su_greatest
-              (GR: Sound.get_greatest args su_greatest)
+              (GR: Sound.get_greatest su0 args su_greatest)
               su_ret
               (LE: Sound.le su_greatest su_ret)
               (SURETV: Sound.retv su_ret retv)
@@ -67,7 +67,7 @@ Section ADQSOUND.
               (* sound_state_all su0 args.(Args.m) lst1>>) *)
               sound_state_all su0 args_tail.(Args.m) lst1>>)
       )
-      (GR: Sound.get_greatest args_tail su0)
+      (GR: Sound.get_greatest su_tail args_tail su0)
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
       (* sound_state_ex *)
       (* (PRSV: local_preservation ms sound_state_ex) *)
@@ -81,7 +81,7 @@ Section ADQSOUND.
       su_tail args_tail tail
       ms lst0
       m_arg
-      (GR: Sound.get_greatest args_tail su0)
+      (GR: Sound.get_greatest su_tail args_tail su0)
       (TL: sound_stack su_tail args_tail tail)
       (HD: forall
           sound_state_all
@@ -95,7 +95,7 @@ Section ADQSOUND.
   | sound_state_call
       su_tail m_tail frs
       args
-      (GR: Sound.get_greatest args su0)
+      (GR: Sound.get_greatest su_tail args su0)
       (ARGS: Sound.args su0 args)
       (STK: sound_stack su_tail args frs)
     :
@@ -112,13 +112,15 @@ Section ADQSOUND.
   Proof.
     inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT.
     hexploit Sound.init_spec; eauto. i; des.
-    exploit Sound.greatest_ex; eauto. i; des.
+    exploit Sound.greatest_ex; eauto.
+    { esplits; eauto. refl. }
+    i; des.
     esplits; eauto.
     econs; eauto.
-    - eapply Sound.greatest_spec; eauto.
+    - eapply Sound.greatest_adq; eauto.
     - econs; eauto.
   Unshelve.
-    ss.
+    all: ss.
   Qed.
 
   Lemma sound_progress
@@ -132,20 +134,20 @@ Section ADQSOUND.
     inv STEP.
     - (* CALL *)
       inv SUST. ss.
-      exploit (@Sound.greatest_ex _ args); eauto.
+      exploit (@Sound.greatest_ex _ su0 args); eauto.
       { des. dup EX. inv EX. exploit CALL; eauto.
         { eapply HD; eauto. }
         i; des.
-        eapply Sound.greatest_spec in GR0.
+        eapply Sound.greatest_adq in GR0. des.
         esplits; eauto.
       }
       i; des.
-      generalize (Sound.greatest_ex args). i; des.
+      generalize (Sound.greatest_ex su0 args). i; des.
       exists su_gr.
       exists args.(Args.m).
       esplits; eauto.
       econs; eauto.
-      { eapply Sound.greatest_spec; eauto. }
+      { eapply Sound.greatest_adq; eauto. }
       econs; eauto.
       {
         ii. dup PRSV. bar. inv PRSV. exploit CALL; eauto; cycle 1.

@@ -210,22 +210,32 @@ Section SemiLatticeProps.
 
   Variable t: Type.
   Variable le: t -> t -> Prop.
-  Variable lub: t -> t -> t.
-  Hypothesis LEORD: PreOrder le.
-  Hypothesis LUBSPEC: forall
-      x y
-    ,
-      (<<LE: le x (lub x y)>>) /\ (<<LE: le y (lub x y)>>)
-  .
+  Variable lub: t -> t -> option t.
   Variable P: t -> Prop.
+  Hypothesis LEORD: PreOrder le.
+  Hypothesis LUBSUCC: forall
+      x y
+      (PX: P x)
+      (PY: P y)
+    ,
+      exists z, lub x y = Some z
+  .
+  Hypothesis LUBSPEC: forall
+      x y z
+      (LUB: lub x y = Some z)
+    ,
+      (<<LE: le x z>>) /\ (<<LE: le y z>>)
+  .
   (* Hypothesis FIN: Finite { x: t | P x }. *) (* <-- this is pain in the ass *)
   Hypothesis FIN: exists l, forall x (PROP: P x), In x l.
   Hypothesis CLOSED: forall
       x y
       (PX: P x)
       (PY: P y)
+      z
+      (LUB: lub x y = Some z)
     ,
-      <<PXY: P (lub x y)>>
+      <<PXY: P z>>
   .
   Let find_greatest_aux: forall
       l
@@ -252,14 +262,14 @@ Section SemiLatticeProps.
       des; clarify.
       eapply LE; eauto.
     }
-    exists (lub max a). esplits; eauto.
-    { eapply CLOSED; eauto. }
+    exploit (@LUBSUCC max a); eauto. i; des.
+    exploit (@CLOSED max a); eauto. i; des.
+    exists z. esplits; eauto.
     ii.
-    des; clarify.
-    { eapply LUBSPEC; eauto. }
+    exploit LUBSPEC; eauto. i; des_safe.
     etrans.
     { eapply LE; eauto. }
-    eapply LUBSPEC; eauto.
+    eauto.
   Qed.
 
   Lemma find_greatest

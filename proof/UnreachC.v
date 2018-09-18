@@ -553,7 +553,7 @@ Proof.
     + eapply Ptrofs.unsigned_range_2; eauto.
 Qed.
 
-Global Program Instance Unreach (ge_nb: block): Sound.class := {
+Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
   le := le';
   get_greatest (args: Args.t) := greatest le' (fun su => su.(args') args);
@@ -601,8 +601,8 @@ Next Obligation.
   - ii. inv PX. inv PY. des. u in *.
     rewrite Forall_forall in *.
     r; esplits; u; ii; bsimpl; ss; des; eauto.
-    { repeat (spcN (- 1)%Z H). repeat (spcN (- 1)%Z H1). des. esplits; eauto. ii; des; eauto. }
-    { rewrite Forall_forall in *. i. repeat (spcN (- 1)%Z VALS0). repeat (spcN (- 1)%Z VALS). des. esplits; eauto. ii; bsimpl; ss; des; eauto. }
+    { repeat (spc H). repeat (spc H1). des. esplits; eauto. ii; des; eauto. }
+    { rewrite Forall_forall in *. i. repeat (spc VALS0). repeat (spc VALS). des. esplits; eauto. ii; bsimpl; ss; des; eauto. }
     inv MEM0. inv MEM.
     econs; ss.
     + ii; clarify. bsimpl. Nsimpl. des_safe; eauto.

@@ -77,8 +77,7 @@ Section PRSV.
   Variable p: program.
   Let modsem := RTLC.modsem skenv_link p.
 
-  Let UR := (Unreach skenv_link.(Genv.genv_next)).
-  Local Existing Instance UR.
+  Local Existing Instance Unreach.
 
   Theorem sound_state_preservation
     :

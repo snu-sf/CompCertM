@@ -14,10 +14,11 @@ Require Import Sound.
 Require Import ModSem.
 
 
-Definition bc2su (bc: block_classification) (bound: block): Unreach.t :=
-  (fun blk => if plt blk bound
-              then block_class_eq (bc blk) BCinvalid
-              else false)
+Definition bc2su (bc: block_classification) (ge_nb: block) (bound: block): Unreach.t :=
+  mk (fun blk => if plt blk bound
+                 then block_class_eq (bc blk) BCinvalid
+                 else false)
+     ge_nb
 .
 Hint Unfold bc2su.
 
@@ -29,16 +30,18 @@ Hint Unfold bc2su.
 
 Lemma sound_state_sound_args
       bc m0 stack su0 p skenv_link vs_arg cunit
-      (STK: sound_stack cunit (SkEnv.revive (SkEnv.project skenv_link (defs p)) p) su0 bc stack m0 (Mem.nextblock m0))
+      ge
+      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link (defs p)) p))
+      (STK: sound_stack cunit ge su0 bc stack m0 (Mem.nextblock m0))
       (ARGS: forall v : val, In v vs_arg -> vmatch bc v Vtop)
       (RO: romatch bc m0 (romem_for cunit))
       (MM: mmatch bc m0 mtop)
-      (GE: genv_match bc (SkEnv.revive (SkEnv.project skenv_link (defs p)) p))
+      (GE: genv_match bc ge)
       (NOSTK: bc_nostack bc)
       fptr_arg sg_arg
       (SIG: exists skd, Genv.find_funct skenv_link fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg)
   :
-    args' (bc2su bc m0.(Mem.nextblock)) (Args.mk fptr_arg vs_arg m0)
+    args' (bc2su bc ge.(Genv.genv_next) m0.(Mem.nextblock)) (Args.mk fptr_arg vs_arg m0)
 .
 Proof.
   { r. s. esplits; eauto.
@@ -68,6 +71,9 @@ Proof.
         { u. des_ifs. i; des_sumbool; ss. }
         s. eapply mmatch_below; eauto.
       + u. ii. des_ifs.
+    - exploit sound_stack_unreach_compat; eauto. i; des.
+      des_ifs. ss. des_sumbool. inv SU.
+      r in GE. des. ss. exploit GE0; eauto. i; des. congruence.
   }
 Qed.
 
@@ -122,6 +128,7 @@ Section PRSV.
         * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
         * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
         * ii. inv MEM. eapply BOUND; eauto.
+        * rewrite IMG. ii. des_ifs; ss.
       + ii. repeat spc VALS. destruct v; econs; eauto. destruct b0; econs; eauto. rewrite IMG.
         repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
         des_ifs; ss. bsimpl. des; ss. des_sumbool. ss.

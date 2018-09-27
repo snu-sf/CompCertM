@@ -92,6 +92,7 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
     (INIT: forall
         su_init args st_init
         (SUARG: Sound.args su_init args)
+        (SKENV: Sound.skenv su_init ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         <<SUST: sound_state su_init args.(Args.m) st_init>>)

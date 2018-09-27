@@ -39,6 +39,27 @@ Section ADQSOUND.
   Let skenv_link_src := sk_link_src.(Sk.load_skenv).
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
 
+  (* Let ge: Ge.t := sem_src.(Smallstep.globalenv). *)
+
+  Inductive sound_ge (su0: Sound.t): Prop :=
+  | sound_ge_intro
+      (GE: Forall (fun ms => su0.(Sound.skenv) ms.(ModSem.skenv)) sem_src.(Smallstep.globalenv).(fst))
+  .
+
+  Lemma le_preserves_sound_ge
+        su0 su1
+        (GE: sound_ge su0)
+        (LE: Sound.le su0 su1)
+    :
+      <<GE: sound_ge su1>>
+  .
+  Proof.
+    inv GE.
+    econs; eauto.
+    rewrite Forall_forall in *.
+    ii. eapply Sound.skenv_le; eauto.
+  Qed.
+
   (* stack can go preservation when su0 is given *)
   Inductive sound_stack (su0: Sound.t) (args: Args.t): list Frame.t -> Prop :=
   | sound_stack_nil
@@ -69,6 +90,7 @@ Section ADQSOUND.
       )
       (GR: Sound.get_greatest su_tail args_tail su0)
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
+      (GE: sound_ge su0)
       (* sound_state_ex *)
       (* (PRSV: local_preservation ms sound_state_ex) *)
       (* (HD: sound_state_ex su0 lst0) *)
@@ -90,6 +112,7 @@ Section ADQSOUND.
           <<SUST: sound_state_all su0 m_arg lst0>>)
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
       (ABCD: args_tail.(Args.m) = m_arg)
+      (GE: sound_ge su0)
     :
       sound_state su0 m_arg (State ((Frame.mk ms lst0) :: tail))
   | sound_state_call
@@ -98,6 +121,7 @@ Section ADQSOUND.
       (GR: Sound.get_greatest su_tail args su0)
       (ARGS: Sound.args su0 args)
       (STK: sound_stack su_tail args frs)
+      (GE: sound_ge su0)
     :
       sound_state su0 m_tail (Callstate args frs)
   .
@@ -119,6 +143,14 @@ Section ADQSOUND.
     econs; eauto.
     - eapply Sound.greatest_adq; eauto.
     - econs; eauto.
+    - econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
+      eapply Sound.skenv_le; cycle 1; eauto.
+      { eapply Sound.greatest_adq; eauto. }
+      rewrite in_map_iff in IN.
+      des; ss; clarify.
+      + s. eapply Sound.system_skenv; eauto.
+      + eapply Sound.skenv_project; eauto.
+        eapply Mod.get_modsem_projected_sk; eauto.
   Unshelve.
     all: ss.
   Qed.
@@ -159,6 +191,7 @@ Section ADQSOUND.
         }
         eapply HD; eauto.
       }
+      { eapply le_preserves_sound_ge; eauto. eapply Sound.greatest_adq; eauto. }
       (* intros ? ?. *)
       (* bar. dup PRSV. inv PRSV. bar. exploit CALL; eauto. { eapply HD; eauto. } i; des. *)
       (* dsplits; eauto. *)
@@ -173,6 +206,7 @@ Section ADQSOUND.
       esplits; eauto.
       econs; eauto.
       + ii. inv PRSV. exploit INIT0; eauto.
+        { inv GE. rewrite Forall_forall in *. eapply GE0. inv MSFIND. ss. des_ifs. }
       + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *.
         des; clarify.
         { eapply system_local_preservation. }

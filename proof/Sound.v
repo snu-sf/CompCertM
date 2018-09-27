@@ -144,13 +144,6 @@ Module Sound.
     (* (* refined type *) *)
     (* refined (m0: Memory.mem) :=  { su: t | su.(mem) m0 }; *)
     (* refined_finite: forall m0, Finite (refined m0); *)
-    system_axiom: forall
-        ef senv su0 args0
-        tr v_ret m_ret
-        (ARGS: su0.(args) args0)
-        (EXT: (external_call ef) senv args0.(Args.vs) args0.(Args.m) tr v_ret m_ret)
-      ,
-        exists su1, <<LE: le su0 su1>> /\ <<RETV: su1.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su0.(mle) args0.(Args.m) m_ret>>;
 
     (* top: t; *)
     (* top_spec: top1 <1= top.(val) /\ top1 <1= top.(mem); *)
@@ -164,13 +157,39 @@ Module Sound.
           (<<SUARGS: su_init.(args) (Args.mk (Genv.symbol_address skenv_link (prog_main sk_link) Ptrofs.zero) [] m_init)>>) /\
           (<<SUSKE: su_init.(skenv) skenv_link>>)
     ;
+
     skenv_le: forall
+        su0 su1 ske
+        (SKE: su0.(skenv) ske)
+        (LE: le su0 su1)
+      ,
+        <<SKE: su1.(skenv) ske>>
+    ;
+
+    skenv_project: forall
         su skenv_link
         (SKE: su.(skenv) skenv_link)
         defs0 skenv0
         (LE: SkEnv.project_spec skenv_link defs0 skenv0)
       ,
         <<SKE: su.(skenv) skenv0>>
+    ;
+
+    system_skenv: forall
+        su skenv_link
+        (SKE: su.(skenv) skenv_link)
+      ,
+        <<SKE: su.(skenv) skenv_link.(System.skenv)>>
+    ;
+
+    system_axiom: forall
+        ef skenv0 su0 args0
+        tr v_ret m_ret
+        (ARGS: su0.(args) args0)
+        (SKE: skenv su0 skenv0)
+        (EXT: (external_call ef) skenv0 args0.(Args.vs) args0.(Args.m) tr v_ret m_ret)
+      ,
+        exists su1, <<LE: le su0 su1>> /\ <<RETV: su1.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su0.(mle) args0.(Args.m) m_ret>>
     ;
   }
   .

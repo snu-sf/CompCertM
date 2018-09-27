@@ -119,6 +119,7 @@ Inductive mem': Unreach.t -> Memory.mem -> Prop :=
         su.(memval') m0.(Mem.nextblock) (ZMap.get ofs (Mem.mem_contents m0) !! blk))
     (BOUND: su.(unreach) <1= m0.(Mem.valid_block))
     (* (BOUND: Ple su.(Unreach.nb) m0.(Mem.nextblock)) *)
+    (GENB: Ple su.(Unreach.ge_nb) m0.(Mem.nextblock))
   :
     mem' su m0
 .
@@ -657,11 +658,36 @@ Next Obligation.
   rr in GR. des. eauto.
 Qed.
 Next Obligation.
+  set (Sk.load_skenv sk_link) as skenv.
+  exists (mk (fun _ => false) skenv.(Genv.genv_next)).
+  esplits; eauto.
+  - rr; ss. esplits; eauto.
+    + ii. esplits; eauto. unfold Genv.symbol_address in *. des_ifs. u in MEM. erewrite <- Genv.init_mem_genv_next; eauto.
+      eapply Genv.genv_symb_range; eauto.
+    + econs; eauto.
+      * ii; ss. clarify. esplits; eauto.
+        admit "this should hold. see Genv.initmem_inject".
+      * ii; ss.
+      * ss. u in *. erewrite <- Genv.init_mem_genv_next; eauto. folder. refl.
+  - econs; eauto.
+Qed.
+Next Obligation.
+  inv LE.
+  rr in SKE. rr. congruence.
+Qed.
+Next Obligation.
+  inv LE.
+  rr in SKE. rr. congruence.
+Qed.
+Next Obligation.
   set (CTX := Val.mi_normal).
   r in ARGS. des.
-  exploit (@external_call_mem_inject_gen CTX ef senv senv (Args.vs args0) (Args.m args0) tr v_ret m_ret
+  exploit (@external_call_mem_inject_gen CTX ef skenv0 skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret
                                          (to_inj su0 (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
-  { admit "we need to either 1) parameterize `forced_public` 2) meminj_preserves_globals". }
+  { unfold to_inj. r. esplits; ii; ss; des_ifs; eauto.
+    - exfalso. eapply WF; eauto. rewrite SKE. admit "ez".
+    - exfalso. apply n; clear n. admit "ez".
+  }
   { eapply to_inj_mem; eauto. }
   { clear - VALS. abstr (Args.vs args0) vs_arg.
     ginduction vs_arg; ii; ss. inv VALS. econs; eauto. destruct a; ss.
@@ -690,6 +716,7 @@ Next Obligation.
       inv AX1. apply NNPP. ii. exploit mi_freeblocks; eauto. i; clarify.
     + s. econs; cycle 1; ss; eauto.
       { ii. des_ifs. }
+      { inv MEM. etrans; eauto. inv AX2; ss. }
       { ii. clarify. exploit Mem.perm_valid_block; eauto. i. unfold Mem.valid_block in H. des_ifs_safe.
         inv AX1. inv mi_inj. destruct p0; ss. exploit mi_memval; eauto. intro MV.
         rewrite PTR in *. inv MV. inv H1. des_ifs_safe.
@@ -701,23 +728,6 @@ Next Obligation.
     + eapply Mem.unchanged_on_implies; eauto.
       unfold flip in *. ii; ss.
       rr. unfold to_inj. des_ifs.
-Qed.
-Next Obligation.
-  set (Sk.load_skenv sk_link) as skenv.
-  exists (mk (fun _ => false) skenv.(Genv.genv_next)).
-  esplits; eauto.
-  - rr; ss. esplits; eauto.
-    + ii. esplits; eauto. unfold Genv.symbol_address in *. des_ifs. u in MEM. erewrite <- Genv.init_mem_genv_next; eauto.
-      eapply Genv.genv_symb_range; eauto.
-    + econs; eauto.
-      * ii; ss. clarify. esplits; eauto.
-        admit "this should hold. see Genv.initmem_inject".
-      * ii; ss.
-  - econs; eauto.
-Qed.
-Next Obligation.
-  inv LE.
-  rr in SKE. rr. congruence.
 Qed.
 
 

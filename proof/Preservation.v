@@ -140,6 +140,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
     (INIT: forall
         su_init args st_init
         (SUARG: Sound.args su_init args)
+        (SKENV: Sound.skenv su_init ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) args.(Args.m) st_init.(get_mem)>>)
@@ -199,13 +200,14 @@ End PRSV.
 
 
 
-Definition system_sound_state `{SU: Sound.class}: Sound.t -> mem -> System.state -> Prop :=
+Definition system_sound_state `{SU: Sound.class} (ms: ModSem.t): Sound.t -> mem -> System.state -> Prop :=
   fun su m_arg st =>
     match st with
-    | System.Callstate args => su.(Sound.args) args /\ su.(Sound.mle) m_arg args.(Args.m)
+    | System.Callstate args => su.(Sound.args) args /\ su.(Sound.mle) m_arg args.(Args.m) /\ su.(Sound.skenv) ms.(ModSem.skenv)
     | System.Returnstate retv =>
       exists su_ret, Sound.le su su_ret /\ su_ret.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m)
       (* su.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m) *)
+        /\ su.(Sound.skenv) ms.(ModSem.skenv)
     end
 .
 
@@ -216,13 +218,15 @@ Lemma system_local_preservation
     exists system_sound_state, local_preservation (System.modsem skenv) system_sound_state
 .
 Proof.
-  exists system_sound_state.
+  exists (system_sound_state (System.modsem skenv)).
   econs; ii; ss; eauto.
-  - inv INIT. econs; eauto.
+  - inv INIT. rr. esplits; eauto.
     + refl.
-  - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply H; eauto. i; des. esplits; eauto.
+  - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply EXTCALL; eauto.
+    { eapply Sound.system_skenv; eauto. }
+    i; des. esplits; eauto.
     + destruct retv; ss.
     + etrans; eauto.
-  - inv FINAL. ss.
+  - inv FINAL. ss. des. eauto.
 Qed.
 

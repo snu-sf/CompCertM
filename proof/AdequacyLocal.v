@@ -669,7 +669,7 @@ Section ADQSTEP.
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
           (LXSIM: lxsim_lift i0 st_src0 st_tgt0 sm0)
-          (SUST: __GUARD__ (exists su0 m_arg, sound_state su0 m_arg st_src0))
+          (SUST: __GUARD__ (exists su0 m_arg, sound_state pp su0 m_arg st_src0))
     :
       <<XSIM: xsim sem_src sem_tgt ord i0 st_src0 st_tgt0>>
   .

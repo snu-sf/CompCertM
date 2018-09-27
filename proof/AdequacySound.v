@@ -148,7 +148,7 @@ Section ADQSOUND.
       { eapply Sound.greatest_adq; eauto. }
       rewrite in_map_iff in IN.
       des; ss; clarify.
-      + s. eapply Sound.system_skenv; eauto.
+      + s. rewrite <- Sound.system_skenv; eauto.
       + eapply Sound.skenv_project; eauto.
         eapply Mod.get_modsem_projected_sk; eauto.
   Unshelve.

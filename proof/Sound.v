@@ -175,11 +175,18 @@ Module Sound.
         <<SKE: su.(skenv) skenv0>>
     ;
 
+    (* system_skenv: forall *)
+    (*     su skenv_link *)
+    (*     (SKE: su.(skenv) skenv_link) *)
+    (*   , *)
+    (*     <<SKE: su.(skenv) skenv_link.(System.skenv)>> *)
+    (* ; *)
+
     system_skenv: forall
         su skenv_link
-        (SKE: su.(skenv) skenv_link)
       ,
-        <<SKE: su.(skenv) skenv_link.(System.skenv)>>
+        (* <<SKE: su.(skenv) skenv_link <-> su.(skenv) skenv_link.(System.skenv)>> *)
+        su.(skenv) skenv_link <-> su.(skenv) skenv_link.(System.skenv)
     ;
 
     system_axiom: forall

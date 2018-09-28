@@ -154,12 +154,6 @@ Definition retv' (su: Unreach.t) (retv0: Retv.t) :=
   (<<VAL: val' su retv0.(Retv.m).(Mem.nextblock) (Retv.v retv0)>>)
   /\ (<<MEM: mem' su (Retv.m retv0)>>)
 .
-Let lub (x y: t): option t :=
-  if eq_block x.(ge_nb) y.(ge_nb)
-  then Some (mk (fun blk => orb (x blk) (y blk)) x.(ge_nb))
-  else None
-.
-Hint Unfold lub.
 
 (* Inductive flatten_list: block -> list t -> Prop := *)
 (* | flatten_list_nil *)
@@ -584,6 +578,65 @@ Proof.
     + eapply Ptrofs.unsigned_range_2; eauto.
 Qed.
 
+Definition lub (x y: t): option t :=
+  if eq_block x.(ge_nb) y.(ge_nb)
+  then Some (mk (fun blk => orb (x blk) (y blk)) x.(ge_nb))
+  else None
+.
+Hint Unfold lub.
+
+Lemma lubsucc: forall
+    su0 x y args
+    (PX: le' su0 x /\ args' x args)
+    (PY: le' su0 y /\ args' y args)
+  ,
+    exists z, <<LUB: lub x y = Some z>>
+.
+Proof.
+  ii. des. unfold le', args' in *. des.
+  u. des_ifs; try congruence. econs; ii; eauto.
+Qed.
+
+Lemma lubspec: forall
+    x y z
+    (LUB: lub x y = Some z)
+  ,
+    (<<LE: le' x z>>) /\ (<<LE: le' y z>>)
+.
+Proof.
+  ii. unfold lub in *. des_ifs. unfold le'.
+  esplits; ii; ss; bsimpl; ss; eauto.
+Qed.
+
+Lemma lubclosed: forall
+    su0 args x y
+    (PX: <<LE: le' su0 x>> /\ args' x args)
+    (PY: <<LE: le' su0 y>> /\ args' y args)
+    z
+    (LUB: lub x y = Some z)
+  ,
+    <<PXY: le' su0 z /\ args' z args>>
+.
+Proof.
+  ii. des. unfold lub in *. des_ifs. inv PX0. inv PY0. des. u in *.
+  rewrite Forall_forall in *.
+  esplits; eauto.
+  { clear - LE LE0. r in LE. r in LE0. u in *. r. ii; ss. bsimpl. des. esplits; ii; ss.
+    repeat spc LE. repeat spc LE0. bsimpl. eauto. }
+  r; esplits; u; ii; bsimpl; ss; des; eauto.
+  { repeat (spc H). repeat (spc H1). des. esplits; eauto. ii; des; eauto. }
+  { rewrite Forall_forall in *. i. repeat (spc VALS0). repeat (spc VALS). des. esplits; eauto. ii; bsimpl; ss; des; eauto. }
+  { inv MEM0. inv MEM.
+    econs; ss.
+    + ii; clarify. bsimpl. Nsimpl. des_safe; eauto.
+      unfold memval', val' in *.
+      hexpl SOUND; hexpl SOUND0; eauto.
+      esplits; eauto. ii. ss. bsimpl. des; eauto.
+    + ii. bsimpl. des; eauto.
+  }
+  { eapply WF; eauto with congruence. }
+Qed.
+
 Definition skenv (su: Unreach.t) (skenv: SkEnv.t): Prop := <<PUB: su.(ge_nb) = skenv.(Genv.genv_next)>>.
 
 Global Program Instance Unreach: Sound.class := {
@@ -620,10 +673,8 @@ Next Obligation.
   rename INHAB into inhab. rename H into INHAB. rename H0 into INHAB0.
   eapply find_greatest with (lub:= lub); eauto.
   - typeclasses eauto.
-  - ii. des. unfold le', args' in *. des.
-    u. des_ifs; try congruence. econs; ii; eauto.
-  - ii. unfold lub in *. des_ifs. unfold le'.
-    esplits; ii; ss; bsimpl; ss; eauto.
+  - ii. eapply lubsucc; eauto.
+  - ii. eapply lubspec; eauto.
   - rr. destruct args0.
     eapply finite_pos_prop with (j:= Jpos) (fuel := m.(Mem.nextblock)); eauto.
     + ii. des. inv H0. inv H3. des; ss.
@@ -636,23 +687,7 @@ Next Obligation.
     + ii. eapply Jpos_func.
     + i. exists (3 ^ (m.(Mem.nextblock)))%positive. i.
       eapply Jpos_bound; eauto.
-  - ii. des. unfold lub in *. des_ifs. inv PX0. inv PY0. des. u in *.
-    rewrite Forall_forall in *.
-    esplits; eauto.
-    { clear - LE LE0. r in LE. r in LE0. u in *. r. ii; ss. bsimpl. des. esplits; ii; ss.
-      repeat spc LE. repeat spc LE0. bsimpl. eauto. }
-    r; esplits; u; ii; bsimpl; ss; des; eauto.
-    { repeat (spc H). repeat (spc H1). des. esplits; eauto. ii; des; eauto. }
-    { rewrite Forall_forall in *. i. repeat (spc VALS0). repeat (spc VALS). des. esplits; eauto. ii; bsimpl; ss; des; eauto. }
-    { inv MEM0. inv MEM.
-      econs; ss.
-      + ii; clarify. bsimpl. Nsimpl. des_safe; eauto.
-        unfold memval', val' in *.
-        hexpl SOUND; hexpl SOUND0; eauto.
-        esplits; eauto. ii. ss. bsimpl. des; eauto.
-      + ii. bsimpl. des; eauto.
-    }
-    { eapply WF; eauto with congruence. }
+  - ii. eapply lubclosed; try apply LUB; eauto.
 Qed.
 Next Obligation.
   rr in GR. des. eauto.

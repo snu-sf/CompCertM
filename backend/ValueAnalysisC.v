@@ -71,11 +71,81 @@ Proof.
         { u. des_ifs. i; des_sumbool; ss. }
         s. eapply mmatch_below; eauto.
       + u. ii. des_ifs.
+      + ss. r in GE. ss. des. r in mmatch_below.
+        apply NNPP. ii. apply Pos.lt_nle in H.
+        exploit GE0; eauto. i; des.
+        exploit mmatch_below; eauto. i; des.
+        xomega.
     - exploit sound_stack_unreach_compat; eauto. i; des.
       des_ifs. ss. des_sumbool. inv SU.
       r in GE. des. ss. exploit GE0; eauto. i; des. congruence.
   }
 Qed.
+
+
+
+
+Section IRR.
+
+  Variable t: Type.
+  Variable le: t -> t -> Prop.
+  Variable lub: t -> t -> option t.
+  Variable P: t -> Prop.
+  Hypothesis LEORD: PreOrder le.
+  Hypothesis LUBSUCC: forall
+      su0 x y
+      (PX: le su0 x /\ P x)
+      (PY: le su0 y /\ P y)
+    ,
+      exists z, lub x y = Some z
+  .
+  Hypothesis LUBSPEC: forall
+      x y z
+      (LUB: lub x y = Some z)
+    ,
+      (<<LE: le x z>>) /\ (<<LE: le y z>>)
+  .
+  (* Hypothesis FIN: Finite { x: t | P x }. *) (* <-- this is pain in the ass *)
+  Hypothesis FIN: exists l, forall x (PROP: P x), In x l.
+  Hypothesis CLOSED: forall
+      su0 x y
+      (PX: le su0 x /\ P x)
+      (PY: le su0 y /\ P y)
+      z
+      (LUB: lub x y = Some z)
+    ,
+      <<PXY: P z>>
+  .
+
+  Lemma greatest_le_irr (* better name!!! *)
+        a0 a1 max
+        (LE: le a0 a1)
+        (P1: P a1)
+        (GR: SemiLattice.greatest le (fun a => le a1 a /\ P a) max)
+    :
+      <<GR: SemiLattice.greatest le (fun a => le a0 a /\ P a) max>>
+  .
+  Proof.
+    r in GR. rr. des.
+    esplits; eauto.
+    { etrans; eauto. }
+    ii. des.
+    exploit LUBSUCC.
+    { esplits; cycle 1. eapply P1. eauto. }
+    { esplits; cycle 1. eapply PROP2. eauto. }
+    intro LUB; des.
+    exploit LUBSPEC; eauto. i; des.
+    exploit CLOSED; try apply LUB; eauto. i; des.
+    specialize (MAX z).
+    exploit MAX; eauto. i; des.
+    etrans; eauto.
+  Qed.
+
+End IRR.
+
+
+
+
 
 Section PRSV.
 
@@ -124,11 +194,13 @@ Section PRSV.
       assert(NB: Ple ge.(Genv.genv_next) args.(Args.m).(Mem.nextblock)).
       { admit "forced public". }
       eapply sound_call_state with (bc:= bc); eauto.
-      + econs; eauto. econs; eauto.
+      + econs; eauto; cycle 1.
+        econs; eauto.
         * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
         * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
         * ii. inv MEM. eapply BOUND; eauto.
-        * rewrite IMG. ii. des_ifs; ss.
+        * rewrite IMG. ii. des_ifs; ss. r in SKENV. rewrite SKENV in *; ss.
+        * r in SKENV. rewrite SKENV in *. ss.
       + ii. repeat spc VALS. destruct v; econs; eauto. destruct b0; econs; eauto. rewrite IMG.
         repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
         des_ifs; ss. bsimpl. des; ss. des_sumbool. ss.
@@ -155,11 +227,26 @@ Section PRSV.
       + r. rewrite IMG. i. des_ifs.
     - ii; ss. eapply sound_step; eauto.
     - i; ss. inv SUST.
-      assert(GR: exists su_gr, SemiLattice.greatest le' (fun su : Unreach.t => args' su args) su_gr).
-      { hexploit (Sound.greatest_ex args); eauto.
-        specialize (H p (linkorder_refl _)).
+      assert(GR: exists su_gr, SemiLattice.greatest le'
+                                                    (* (fun su => su0.(UnreachC.ge_nb) = su.(UnreachC.ge_nb) /\ args' su args) *)
+                                                    (fun su =>  le' su0 su /\ args' su args)
+                                                    su_gr).
+      { specialize (H p (linkorder_refl _)).
+        set (args0 := args).
         inv AT. inv H; ss.
-        exploit sound_state_sound_args; eauto.
+        exploit sound_state_sound_args; eauto. i.
+        hexploit (Sound.greatest_ex (bc2su bc (Genv.genv_next skenv_link) (Mem.nextblock m0)) args0); eauto.
+        { esplits; eauto. ss. refl. }
+        i; des. ss.
+        esplits; eauto.
+
+        eapply greatest_le_irr with (lub := UnreachC.lub); eauto.
+        - typeclasses eauto.
+        - ii. eapply lubsucc; eauto.
+        - ii. eapply lubspec; eauto.
+        - ii. eapply lubclosed; try apply LUB; eauto.
+        - exploit sound_stack_unreach_compat; eauto. i; des. ss.
+          r; u; ss. esplits; eauto. i. inv SU. exploit BOUND; eauto. i; des. des_ifs. rewrite PRIV; ss.
       }
       des.
       esplits; eauto.
@@ -169,7 +256,7 @@ Section PRSV.
       { inv AT; inv AFTER; ss.
         eapply mle_monotone; try apply MLE; eauto.
         specialize (H p (linkorder_refl _)). bar. inv H.
-        assert(LE0: su0 <1= (bc2su bc m0.(Mem.nextblock))).
+        assert(LE0: su0 (bc2su bc (Genv.genv_next skenv_link) m0.(Mem.nextblock))).
         { ii. exploit sound_stack_unreach_compat; eauto.
           intro CPT. inv CPT. u. repeat spc BOUND. des_ifs. rewrite PRIV; ss.
         }

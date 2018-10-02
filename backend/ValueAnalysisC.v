@@ -256,19 +256,21 @@ Section PRSV.
       { inv AT; inv AFTER; ss.
         eapply mle_monotone; try apply MLE; eauto.
         specialize (H p (linkorder_refl _)). bar. inv H.
-        assert(LE0: su0 (bc2su bc (Genv.genv_next skenv_link) m0.(Mem.nextblock))).
-        { ii. exploit sound_stack_unreach_compat; eauto.
-          intro CPT. inv CPT. u. repeat spc BOUND. des_ifs. rewrite PRIV; ss.
-        }
-        assert(LE1: (bc2su bc m0.(Mem.nextblock)) <1= su_gr).
-        { ii. eapply GR; eauto. eapply sound_state_sound_args; eauto. }
-        i; ss. eauto.
+        exploit sound_stack_unreach_compat; eauto. intro CPT. des.
+        assert(LE0: Sound.le su0 (bc2su bc (Genv.genv_next skenv_link) m0.(Mem.nextblock))).
+        { split; ss. ii. inv SU. repeat spc BOUND. des_ifs. rewrite PRIV; ss. }
+        assert(LE1: Sound.le (bc2su bc (Genv.genv_next skenv_link) m0.(Mem.nextblock)) su_gr).
+        { eapply GR; eauto. esplits; eauto. rpapply sound_state_sound_args; eauto. }
+        i. eapply LE1. eapply LE0. ss.
       }
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
-        assert(BCARGS: (bc2su bc m_arg.(Mem.nextblock)).(Sound.args) args).
-        { ss. inv AT; ss. eapply sound_state_sound_args; eauto. }
-        assert(BCLE: Sound.le (bc2su bc m_arg.(Mem.nextblock)) su_gr).
-        { ii. eapply GR; eauto. }
+        exploit sound_stack_unreach_compat; eauto. intro CPT. des.
+        assert(BCARGS: (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)).(Sound.args) args).
+        { ss. inv AT; ss. rpapply sound_state_sound_args; eauto. }
+        assert(BCLE0: Sound.le su0 (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock))).
+        { split; ss. ii. inv SU. repeat spc BOUND. des_ifs. rewrite PRIV; ss. }
+        assert(BCLE1: Sound.le (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) su_gr).
+        { eapply GR; eauto. }
         exploit sound_stack_unreach_compat; eauto. intros CPT. des.
         (* set (f := fun b => if plt b retv.(Retv.m).(Mem.nextblock) *)
         (*                    then *)
@@ -312,11 +314,11 @@ Section PRSV.
         { i. r in H. destruct v; econs; eauto. destruct b0; econs; eauto.
           exploit H; eauto. i; des. rewrite IMG. subst f. s. des_ifs.
           assert(NSU: ~su_gr b).
-          { ii. exploit LE; eauto. i; ss. congruence. }
-          assert(NBC: ~ (bc2su bc m_arg.(Mem.nextblock)) b).
-          { ii. exploit BCLE; eauto. }
+          { ii. r in LE. des. exploit PRIV; eauto. i; ss. congruence. }
+          assert(NBC: ~ (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) b).
+          { ii. ss. r in BCLE1. des. exploit PRIV; eauto. des_ifs. }
           clear - NBC p0.
-          ii. unfold bc2su in *. rewrite H in *. ss. des_ifs.
+          ii. unfold bc2su in *. ss. rewrite H in *. ss. des_ifs.
         }
         assert (SMTOP: forall b, bc' b <> BCinvalid -> smatch bc' retv.(Retv.m) b Ptop).
         {

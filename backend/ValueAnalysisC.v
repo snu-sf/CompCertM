@@ -45,7 +45,15 @@ Lemma sound_state_sound_args
 .
 Proof.
   { r. s. esplits; eauto.
-    - admit "fptr".
+    - des. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs. ss. r. ii; clarify. ss.
+      r in GE. des. specialize (GE0 blk). exploit GE0; eauto.
+      { ss. eapply Genv.genv_defs_range; eauto. }
+      i; des.
+      (* exploit sound_stack_unreach_compat; eauto. intro CPT. des. *)
+      (* inv SU. ss. *)
+      esplits; eauto.
+      + ii. des_ifs. des_sumbool. ss.
+      + inv MM. eapply mmatch_below; eauto.
     - rewrite Forall_forall. i. spcN 1 ARGS. spc ARGS. ii; clarify.
       assert(BCV: bc blk <> BCinvalid).
       { inv ARGS; ss. inv H1; ss. }
@@ -190,28 +198,11 @@ Section PRSV.
       subst f. des.
       r in SUARG. des. rewrite Forall_forall in *.
       assert(FP: forall blk, su_init blk -> Ple ge.(Genv.genv_next) blk).
-      { admit "forced public". }
+      { r in SKENV. ss. i. inv MEM. rewrite <- SKENV. apply NNPP. ii. exploit WF; eauto. xomega. }
       assert(NB: Ple ge.(Genv.genv_next) args.(Args.m).(Mem.nextblock)).
-      { admit "forced public". }
-      eapply sound_call_state with (bc:= bc); eauto.
-      + econs; eauto; cycle 1.
-        econs; eauto.
-        * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
-        * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
-        * ii. inv MEM. eapply BOUND; eauto.
-        * rewrite IMG. ii. des_ifs; ss. r in SKENV. rewrite SKENV in *; ss.
-        * r in SKENV. rewrite SKENV in *. ss.
-      + ii. repeat spc VALS. destruct v; econs; eauto. destruct b0; econs; eauto. rewrite IMG.
-        repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
-        des_ifs; ss. bsimpl. des; ss. des_sumbool. ss.
-      + admit "forced public".
-      + assert(SUMEM: forall b : block, bc b <> BCinvalid -> smatch bc (Args.m args) b Ptop).
-        { admit "mem'. this should hold...". }
-        econs; s; eauto.
-        * rewrite IMG. ii. des_ifs; ss.
-        * rewrite IMG. ii. des_ifs; ss. rewrite PTree.gempty in *. ss.
-        * intros ? A. rewrite IMG in A. des_ifs; try xomega. bsimpl. des. des_sumbool. xomega.
-      + r.
+      { r in SKENV. ss. inv MEM. rewrite <- SKENV. ss. }
+      assert(GE: genv_match bc ge).
+      { r.
         esplits; eauto.
         * ii. rewrite IMG in *. split; i.
           { exploit Genv.genv_symb_range; eauto. i.
@@ -224,6 +215,31 @@ Section PRSV.
           assert(Plt b (Mem.nextblock (Args.m args))).
           { eapply Plt_Ple_trans; eauto. }
           des_ifs.
+      }
+      eapply sound_call_state with (bc:= bc); eauto.
+      + econs; eauto; cycle 1.
+        econs; eauto.
+        * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
+        * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
+        * ii. inv MEM. eapply BOUND; eauto.
+        * rewrite IMG. ii. des_ifs; ss. r in SKENV. rewrite SKENV in *; ss.
+        * r in SKENV. rewrite SKENV in *. ss.
+      + ii. repeat spc VALS. destruct v; econs; eauto. destruct b0; econs; eauto. rewrite IMG.
+        repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
+        des_ifs; ss. bsimpl. des; ss. des_sumbool. ss.
+      + ii. rewrite IMG in *. des_ifs.
+        exploit romem_for_consistent_2; eauto. intro ROMEM; des.
+        clarify.
+        esplits; eauto.
+        * eapply store_init_data_list_summary. ss. econs; eauto.
+        * admit "raw admit".
+        * admit "this does not hold - we need to strengthen".
+      + assert(SUMEM: forall b : block, bc b <> BCinvalid -> smatch bc (Args.m args) b Ptop).
+        { admit "mem'. this should hold...". }
+        econs; s; eauto.
+        * rewrite IMG. ii. des_ifs; ss.
+        * rewrite IMG. ii. des_ifs; ss. rewrite PTree.gempty in *. ss.
+        * intros ? A. rewrite IMG in A. des_ifs; try xomega. bsimpl. des. des_sumbool. xomega.
       + r. rewrite IMG. i. des_ifs.
     - ii; ss. eapply sound_step; eauto.
     - i; ss. inv SUST.
@@ -306,8 +322,8 @@ Section PRSV.
                                else BCinvalid).
         assert(exists bc', <<IMG: bc'.(bc_img) = f>>).
         { unshelve eexists (BC _ _ _); ss.
-          - admit "ez".
-          - admit "ez".
+          - ii. subst f. ss. des_ifs. eapply bc_stack; eauto.
+          - ii. subst f. ss. des_ifs. eapply bc_glob; eauto.
         } des.
 
         assert (VMTOP: forall v, val' su_ret (Mem.nextblock retv.(Retv.m)) v -> vmatch bc' v Vtop).

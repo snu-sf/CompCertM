@@ -637,7 +637,96 @@ Proof.
   { eapply WF; eauto with congruence. }
 Qed.
 
-Definition skenv (su: Unreach.t) (skenv: SkEnv.t): Prop := <<PUB: su.(ge_nb) = skenv.(Genv.genv_next)>>.
+(* copied from Globalenvs.v - store_init_data *)
+Definition loadable_init_data (m: mem) (ske: SkEnv.t) (b: block) (p: Z) (id: init_data): Prop :=
+  match id with
+  | Init_int8 n => Mem.load Mint8unsigned m b p = Some (Vint n)
+  | Init_int16 n => Mem.load Mint16unsigned m b p = Some (Vint n)
+  | Init_int32 n => Mem.load Mint32 m b p = Some (Vint n)
+  | Init_int64 n => Mem.load Mint64 m b p = Some (Vlong n)
+  | Init_float32 n => Mem.load Mfloat32 m b p = Some (Vsingle n)
+  | Init_float64 n => Mem.load Mfloat64 m b p = Some (Vfloat n)
+  | Init_addrof symb ofs =>
+      match ske.(Genv.find_symbol) symb with
+      | None => False
+      | Some b' => Mem.load Mptr m b p = Some (Vptr b' ofs true)
+      end
+  | Init_space n => True
+  end
+.
+
+Fixpoint loadable_init_data_list (m: mem) (ske: SkEnv.t) (b: block) (p: Z) (idl: list init_data): Prop :=
+  match idl with
+  | nil => True
+  | id :: idl' => <<HD: loadable_init_data m ske b p id>> /\ <<TL: loadable_init_data_list m ske b (p + init_data_size id) idl'>>
+  end.
+
+(* TODO: Move to CoqlibC.v *)
+Lemma app_eq_inv
+      A
+      (x0 x1 y0 y1: list A)
+      (EQ: x0 ++ x1 = y0 ++ y1)
+      (LEN: x0.(length) = y0.(length))
+  :
+    x0 = y0 /\ x1 = y1
+.
+Proof.
+  ginduction x0; ii; ss.
+  { destruct y0; ss. }
+  destruct y0; ss. clarify.
+  exploit IHx0; eauto. i; des. clarify.
+Qed.
+
+(* copied from ValueAnalysis.v *)
+Definition definitive_initializer (init: list init_data) : bool :=
+  match init with
+  | nil => false
+  | Init_space _ :: nil => false
+  | _ => true
+  end.
+
+Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
+| skenv_intro
+    (PUB: su.(ge_nb) = ske.(Genv.genv_next))
+    (RO: forall
+        blk gv
+        (GVAR: ske.(Genv.find_var_info) blk = Some gv)
+        (* copied from ValueAnalysis - alloc_global *)
+        (GRO: gv.(gvar_readonly))
+        (GVOL: ~ gv.(gvar_volatile))
+        (GDEF: definitive_initializer gv.(gvar_init))
+      ,
+        (* <<LABLE: loadable_init_data_list m0 ske blk 0 gv.(gvar_init)>> *)
+        <<LABLE: Genv.load_store_init_data ske m0 blk 0 gv.(gvar_init)>>)
+.
+
+(* Lemma loadbytes_loadable *)
+(*       sk_link m0 blk ids lo *)
+(*       (LO: (0 <= lo)%Z) *)
+(*       (GDEF: definitive_initializer ids) *)
+(*       (LOAD: Mem.loadbytes m0 blk lo (init_data_list_size ids) = *)
+(*              Some (Genv.bytes_of_init_data_list (Genv.globalenv sk_link) ids)) *)
+(*   : *)
+(*     <<LOADABLE: loadable_init_data_list m0 (Genv.globalenv sk_link) blk lo ids>> *)
+(* . *)
+(* Proof. *)
+(*   ginduction ids; ii; ss. *)
+(*   eapply Mem.loadbytes_split in LOAD; cycle 1. *)
+(*   { eapply init_data_size_pos. } *)
+(*   { eapply init_data_list_size_pos. } *)
+(*   des. ss. *)
+(*   eapply app_eq_inv in LOAD1; cycle 1. *)
+(*   { set (X := a). *)
+(*     destruct a; ss; *)
+(*       repeat (rewrite length_inj_bytes; ss; check_safe); *)
+(*       repeat (rewrite encode_int_length; ss; check_safe); *)
+(*       repeat (rewrite length_list_repeat; ss; check_safe); *)
+(*       repeat (erewrite Mem.loadbytes_length; eauto; ss; check_safe). *)
+(*     - des_ifs. *)
+(*     { instantiate (1:= (init_data_size a)). *)
+(*       ss. } *)
+(*   exploit IHids; eauto. *)
+(* Qed. *)
 
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
@@ -705,14 +794,26 @@ Next Obligation.
       * ii; ss.
       * ss. u in *. erewrite <- Genv.init_mem_genv_next; eauto. folder. refl.
   - econs; eauto.
+    ii. u in *. subst skenv. hexploit Genv.init_mem_characterization; eauto. ii. des.
+    destruct gv; ss. destruct gvar_volatile; ss. eauto.
 Qed.
 Next Obligation.
   inv LE.
-  rr in SKE. rr. congruence.
+  inv SKE. econs; eauto.
+  congruence.
 Qed.
 Next Obligation.
-  inv LE.
-  rr in SKE. rr. congruence.
+  inv MLE.
+  inv SKE. econs; eauto.
+  ii. exploit RO0; eauto. i; des.
+  eapply Genv.load_store_init_data_invariant; try apply H; eauto.
+  unfold Genv.find_var_info in *. des_ifs.
+  i. eapply Mem.load_unchanged_on_1; try apply RO; eauto.
+  { admit "raw admit ". }
+  tttttttttttttttttttttttttttttttttttttttttttttt
+  u. ii.
+  inv H.
+  congruence.
 Qed.
 Next Obligation.
   set (CTX := Val.mi_normal).

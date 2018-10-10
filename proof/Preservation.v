@@ -92,7 +92,7 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
     (INIT: forall
         su_init args st_init
         (SUARG: Sound.args su_init args)
-        (SKENV: Sound.skenv su_init ms.(ModSem.skenv))
+        (SKENV: Sound.skenv su_init args.(Args.m) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         <<SUST: sound_state su_init args.(Args.m) st_init>>)
@@ -109,6 +109,7 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
         (AT: ms.(ModSem.at_external) st0 args)
       ,
         (* (<<ARGS: su0.(Sound.args) args>>) /\ *)
+        <<MLE: Sound.mle su0 m_arg args.(Args.m)>> /\
         exists su_gr,
           (<<GR: Sound.get_greatest su0 args su_gr>>) /\
           (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
@@ -140,7 +141,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
     (INIT: forall
         su_init args st_init
         (SUARG: Sound.args su_init args)
-        (SKENV: Sound.skenv su_init ms.(ModSem.skenv))
+        (SKENV: Sound.skenv su_init args.(Args.m) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) args.(Args.m) st_init.(get_mem)>>)
@@ -156,6 +157,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
         (SUST: sound_state su0 st0)
         (AT: ms.(ModSem.at_external) st0 args)
       ,
+        <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
         exists su_gr,
           (<<GR: Sound.get_greatest su0 args su_gr>>) /\
           (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
@@ -191,6 +193,7 @@ Proof.
   econs; eauto.
   - ii. des. exploit STEP; eauto. i; des. esplits; eauto. etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des. esplits; eauto.
+    { etrans; eauto. }
     ii. exploit K; eauto. i; des. esplits; eauto. etrans; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; eauto.
     etrans; eauto.
@@ -203,11 +206,12 @@ End PRSV.
 Definition system_sound_state `{SU: Sound.class} (ms: ModSem.t): Sound.t -> mem -> System.state -> Prop :=
   fun su m_arg st =>
     match st with
-    | System.Callstate args => su.(Sound.args) args /\ su.(Sound.mle) m_arg args.(Args.m) /\ su.(Sound.skenv) ms.(ModSem.skenv)
+    | System.Callstate args => su.(Sound.args) args /\ su.(Sound.mle) m_arg args.(Args.m)
+                               /\ su.(Sound.skenv) m_arg ms.(ModSem.skenv)
     | System.Returnstate retv =>
       exists su_ret, Sound.le su su_ret /\ su_ret.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m)
       (* su.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m) *)
-        /\ su.(Sound.skenv) ms.(ModSem.skenv)
+        /\ su.(Sound.skenv) retv.(Retv.m) ms.(ModSem.skenv)
     end
 .
 
@@ -223,10 +227,11 @@ Proof.
   - inv INIT. rr. esplits; eauto.
     + refl.
   - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply EXTCALL; eauto.
-    { eapply Sound.system_skenv; eauto. }
+    { eapply Sound.system_skenv; eauto. eapply Sound.skenv_mle; eauto. }
     i; des. esplits; eauto.
     + destruct retv; ss.
     + etrans; eauto.
+    + eapply Sound.skenv_mle; eauto. etrans; eauto.
   - inv FINAL. ss. des. eauto.
 Qed.
 

@@ -147,7 +147,7 @@ Module Sound.
 
     (* top: t; *)
     (* top_spec: top1 <1= top.(val) /\ top1 <1= top.(mem); *)
-    skenv: t -> SkEnv.t -> Prop;
+    skenv: t -> mem -> SkEnv.t -> Prop;
     init_spec: forall
         sk_link skenv_link m_init
         (MEM: Sk.load_mem sk_link = Some m_init)
@@ -155,24 +155,32 @@ Module Sound.
       ,
         exists su_init,
           (<<SUARGS: su_init.(args) (Args.mk (Genv.symbol_address skenv_link (prog_main sk_link) Ptrofs.zero) [] m_init)>>) /\
-          (<<SUSKE: su_init.(skenv) skenv_link>>)
+          (<<SUSKE: su_init.(skenv) m_init skenv_link>>)
     ;
 
     skenv_le: forall
-        su0 su1 ske
-        (SKE: su0.(skenv) ske)
+        m0 su0 su1 ske
+        (SKE: su0.(skenv) m0 ske)
         (LE: le su0 su1)
       ,
-        <<SKE: su1.(skenv) ske>>
+        <<SKE: su1.(skenv) m0 ske>>
+    ;
+
+    skenv_mle: forall
+        m0 m1 su0 ske
+        (SKE: su0.(skenv) m0 ske)
+        (MLE: su0.(mle) m0 m1)
+      ,
+        <<SKE: su0.(skenv) m1 ske>>
     ;
 
     skenv_project: forall
-        su skenv_link
-        (SKE: su.(skenv) skenv_link)
+        su m0 skenv_link
+        (SKE: su.(skenv) m0 skenv_link)
         defs0 skenv0
         (LE: SkEnv.project_spec skenv_link defs0 skenv0)
       ,
-        <<SKE: su.(skenv) skenv0>>
+        <<SKE: su.(skenv) m0 skenv0>>
     ;
 
     (* system_skenv: forall *)
@@ -183,17 +191,17 @@ Module Sound.
     (* ; *)
 
     system_skenv: forall
-        su skenv_link
+        su m0 skenv_link
       ,
         (* <<SKE: su.(skenv) skenv_link <-> su.(skenv) skenv_link.(System.skenv)>> *)
-        su.(skenv) skenv_link <-> su.(skenv) skenv_link.(System.skenv)
+        su.(skenv) m0 skenv_link <-> su.(skenv) m0 skenv_link.(System.skenv)
     ;
 
     system_axiom: forall
         ef skenv0 su0 args0
         tr v_ret m_ret
         (ARGS: su0.(args) args0)
-        (SKE: skenv su0 skenv0)
+        (SKE: skenv su0 args0.(Args.m) skenv0)
         (EXT: (external_call ef) skenv0 args0.(Args.vs) args0.(Args.m) tr v_ret m_ret)
       ,
         exists su1, <<LE: le su0 su1>> /\ <<RETV: su1.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su0.(mle) args0.(Args.m) m_ret>>

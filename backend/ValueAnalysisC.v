@@ -229,11 +229,51 @@ Section PRSV.
         repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
         des_ifs; ss. bsimpl. des; ss. des_sumbool. ss.
       + ii. rewrite IMG in *. des_ifs.
-        exploit romem_for_consistent_2; eauto. intro ROMEM; des.
+        hexploit romem_for_consistent_2; eauto. intro ROM; des.
+        exploit ROM; eauto. intro ROMEM; des.
         clarify.
         esplits; eauto.
         * eapply store_init_data_list_summary. ss. econs; eauto.
-        * admit "raw admit".
+        *
+          hexploit (@SkEnv.revive_precise _ _ (SkEnv.project skenv_link (defs p)) p); eauto.
+          { intros jd IN. dup IN. rewrite prog_defmap_spec in IN. des.
+            hexploit (SkEnv.project_impl_spec skenv_link (defs p)). intro SPEC.
+            inv SPEC.
+            rewrite SYMBKEEP; ss.
+            { erewrite Genv.invert_find_symbol; ss. eauto.
+              apply Genv.find_def_symbol in IN. des. ss.
+              exploit Genv.invert_find_symbol; eauto. intro SYMB.
+              unfold ge in SYMB. unfold SkEnv.revive in SYMB. rewrite Genv_map_defs_symb in SYMB.
+              admit "idk".
+            }
+            { u. destruct (in_dec ident_eq jd (prog_defs_names p)) eqn:T; ss. }
+          }
+          { admit "ez". }
+          intro PRC; des.
+
+          inv PRC.
+          exploit FIND_MAP; eauto. i; des. des_ifs. clear_tac.
+          folder.
+
+          assert(CONTAINS: forall id (IN: p.(defs) id), exists skd, skenv_link.(Genv.find_symbol) id = Some skd).
+          { admit "raw admit. add in meta-theory". }
+
+          exploit Genv.invert_find_symbol; eauto. intro SYMB. clarify.
+
+          inv SKENV.
+          exploit RO; eauto.
+          { tttttttttttttttttttttttttttttttttttttt unfold Genv.find_var_info. rewrite Genv.find_def. des_ifs.
+          r. esplits; eauto.
+          { r.
+            { r.
+          hexploit (SkEnv.project_spec); eauto.
+          (* apply Genv.find_def_symbol in ROMEM. des. ss. *)
+          inv SKENV.
+          exploit RO; eauto.
+          { unfold Genv.find_var_info in *. des_ifs.
+            ss. r. esplits; eauto.
+          {
+          admit "raw admit".
         * admit "this does not hold - we need to strengthen".
       + assert(SUMEM: forall b : block, bc b <> BCinvalid -> smatch bc (Args.m args) b Ptop).
         { admit "mem'. this should hold...". }

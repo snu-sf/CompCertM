@@ -697,7 +697,13 @@ Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
         (GDEF: definitive_initializer gv.(gvar_init))
       ,
         (* <<LABLE: loadable_init_data_list m0 ske blk 0 gv.(gvar_init)>> *)
-        <<LABLE: Genv.load_store_init_data ske m0 blk 0 gv.(gvar_init)>>)
+        (<<PERM: forall
+            ofs p
+            (PERM: Mem.perm m0 blk ofs Max p)
+          ,
+            <<OFS: (0 <= ofs < init_data_list_size gv.(gvar_init))%Z>> /\ <<ORD: perm_order Readable p>>>>) /\
+        (<<LABLE: Genv.load_store_init_data ske m0 blk 0 gv.(gvar_init)>>))
+    (NB: Ple ske.(Genv.genv_next) m0.(Mem.nextblock))
 .
 
 (* Lemma loadbytes_loadable *)
@@ -793,9 +799,15 @@ Next Obligation.
         admit "this should hold. see Genv.initmem_inject".
       * ii; ss.
       * ss. u in *. erewrite <- Genv.init_mem_genv_next; eauto. folder. refl.
-  - econs; eauto.
-    ii. u in *. subst skenv. hexploit Genv.init_mem_characterization; eauto. ii. des.
-    destruct gv; ss. destruct gvar_volatile; ss. eauto.
+  - econs; eauto; cycle 1.
+    { subst skenv. u in *. erewrite Genv.init_mem_genv_next; eauto. refl. }
+    ii. u in *. subst skenv.
+    hexploit Genv.init_mem_characterization; eauto. intro CHAR. des.
+    hexploit Genv.init_mem_characterization_gen; eauto. intro X. r in X.
+    unfold Genv.find_var_info in *. des_ifs.
+    exploit (X blk (Gvar gv)); eauto. intro GEN; des.
+    unfold Genv.perm_globvar in *. des_ifs.
+    esplits; eauto.
 Qed.
 Next Obligation.
   inv LE.
@@ -804,16 +816,54 @@ Next Obligation.
 Qed.
 Next Obligation.
   inv MLE.
-  inv SKE. econs; eauto.
+  inv SKE. econs; eauto; cycle 1.
+  { etrans; eauto. eauto with mem. }
   ii. exploit RO0; eauto. i; des.
-  eapply Genv.load_store_init_data_invariant; try apply H; eauto.
+  esplits; eauto.
+  - ii. eapply PERM0; eauto. eapply PERM; eauto.
+    { r. eapply Plt_Ple_trans; eauto.
+      admit "ez".
+    }
+  - eapply Genv.load_store_init_data_invariant; try apply LABLE; eauto.
+    unfold Genv.find_var_info in *. des_ifs.
+    i. eapply Mem.load_unchanged_on_1; try apply RO; eauto.
+    { admit "ez". }
+    ii. exploit PERM0; eauto. i; des. inv ORD.
+Qed.
+Next Obligation.
+  exploit SkEnv.project_spec_preserves_wf; eauto. intro WFSMALL.
+  inv SKE. inv LE. inv WFSMALL.
+  econs; eauto; swap 2 3.
+  { congruence. }
+  { etrans; eauto. rewrite NEXT. refl. }
+  ii.
   unfold Genv.find_var_info in *. des_ifs.
-  i. eapply Mem.load_unchanged_on_1; try apply RO; eauto.
-  { admit "raw admit ". }
-  tttttttttttttttttttttttttttttttttttttttttttttt
-  u. ii.
-  inv H.
-  congruence.
+  exploit DEFSYMB; eauto. i; des.
+  destruct (classic (defs0 id)); cycle 1.
+  { exploit SYMBDROP; eauto. i; des. clarify. }
+  exploit SYMBKEEP; eauto. i; des. rewrite H in *. symmetry in H1.
+  inv WF.
+  exploit SYMBDEF0; eauto. intro DEF; des.
+  exploit DEFKEEP; eauto.
+  { eapply Genv.find_invert_symbol; eauto. }
+  intro DEF2; des. rewrite DEF in *. clarify.
+  exploit RO; eauto.
+  { rewrite DEF. ss. }
+  i; des.
+  admit "raw admit: we need good_prog".
+Qed.
+Next Obligation.
+  split; i; inv H; ss.
+  - econs; eauto.
+    i. eapply RO; eauto.
+    unfold Genv.find_var_info in *. des_ifs_safe.
+    unfold System.skenv in *.
+    apply_all_once Genv_map_defs_def. des. des_ifs.
+  - econs; eauto.
+    i. eapply RO; eauto.
+    unfold Genv.find_var_info in *. des_ifs_safe.
+    unfold System.skenv.
+    eapply_all_once Genv_map_defs_def_inv. rewrite Heq. ss.
 Qed.
 Next Obligation.
   set (CTX := Val.mi_normal).
@@ -821,7 +871,7 @@ Next Obligation.
   exploit (@external_call_mem_inject_gen CTX ef skenv0 skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret
                                          (to_inj su0 (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
   { unfold to_inj. r. esplits; ii; ss; des_ifs; eauto.
-    - exfalso. eapply WF; eauto. rewrite SKE. admit "ez".
+    - exfalso. eapply WF; eauto. inv SKE. rewrite PUB. admit "ez".
     - exfalso. apply n; clear n. admit "ez".
   }
   { eapply to_inj_mem; eauto. }

@@ -176,6 +176,7 @@ Module Sound.
 
     skenv_project: forall
         su m0 skenv_link
+        (WF: SkEnv.wf skenv_link)
         (SKE: su.(skenv) m0 skenv_link)
         defs0 skenv0
         (LE: SkEnv.project_spec skenv_link defs0 skenv0)

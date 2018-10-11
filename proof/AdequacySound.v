@@ -156,6 +156,8 @@ Section ADQSOUND.
     { esplits; eauto. refl. }
     i; des.
     esplits; eauto.
+    assert(WF: SkEnv.wf (Sk.load_skenv sk_link_src)).
+    { eapply Sk.load_skenv_wf. }
     assert(GE: sound_ge su_init m_init).
     {
       econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.

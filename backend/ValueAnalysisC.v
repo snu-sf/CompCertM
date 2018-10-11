@@ -235,46 +235,65 @@ Section PRSV.
         esplits; eauto.
         * eapply store_init_data_list_summary. ss. econs; eauto.
         *
-          hexploit (@SkEnv.revive_precise _ _ (SkEnv.project skenv_link (defs p)) p); eauto.
-          { intros jd IN. dup IN. rewrite prog_defmap_spec in IN. des.
-            hexploit (SkEnv.project_impl_spec skenv_link (defs p)). intro SPEC.
-            inv SPEC.
-            rewrite SYMBKEEP; ss.
-            { erewrite Genv.invert_find_symbol; ss. eauto.
-              apply Genv.find_def_symbol in IN. des. ss.
-              exploit Genv.invert_find_symbol; eauto. intro SYMB.
-              unfold ge in SYMB. unfold SkEnv.revive in SYMB. rewrite Genv_map_defs_symb in SYMB.
-              admit "idk".
-            }
-            { u. destruct (in_dec ident_eq jd (prog_defs_names p)) eqn:T; ss. }
-          }
-          { admit "ez". }
-          intro PRC; des.
+          (* hexploit (@SkEnv.revive_precise _ _ (SkEnv.project skenv_link (defs p)) p); eauto. *)
+          (* { intros jd IN. dup IN. rewrite prog_defmap_spec in IN. des. *)
+          (*   hexploit (SkEnv.project_impl_spec skenv_link (defs p)). intro SPEC. *)
+          (*   inv SPEC. *)
+          (*   rewrite SYMBKEEP; ss. *)
+          (*   { erewrite Genv.invert_find_symbol; ss. eauto. *)
+          (*     apply Genv.find_def_symbol in IN. des. ss. *)
+          (*     exploit Genv.invert_find_symbol; eauto. intro SYMB. *)
+          (*     unfold ge in SYMB. unfold SkEnv.revive in SYMB. rewrite Genv_map_defs_symb in SYMB. *)
+          (*     admit "idk". *)
+          (*   } *)
+          (*   { u. destruct (in_dec ident_eq jd (prog_defs_names p)) eqn:T; ss. } *)
+          (* } *)
+          (* { admit "ez". } *)
+          (* intro PRC; des. *)
 
-          inv PRC.
-          exploit FIND_MAP; eauto. i; des. des_ifs. clear_tac.
-          folder.
+          (* inv PRC. *)
+          (* exploit FIND_MAP; eauto. i; des. des_ifs. clear_tac. *)
+          (* folder. *)
 
-          assert(CONTAINS: forall id (IN: p.(defs) id), exists skd, skenv_link.(Genv.find_symbol) id = Some skd).
+          assert(CONTAINS: forall
+                    id
+                    (IN: p.(defs) id)
+                    gv
+                    (DEF: (Sk.of_program fn_sig p).(prog_defmap) ! id = Some (Gvar gv))
+                  ,
+                    exists blk, <<SYMB: skenv_link.(Genv.find_symbol) id = Some blk>> /\
+                                        <<DEF: skenv_link.(Genv.find_def) blk = Some (Gvar gv)>>).
           { admit "raw admit. add in meta-theory". }
 
           exploit Genv.invert_find_symbol; eauto. intro SYMB. clarify.
+          hexploit (Sk.of_program_prog_defmap p fn_sig id); eauto. intro REL.
+          unfold fundef in *. inv REL.
+          {  rewrite ROMEM in *. clarify. }
+          symmetry in H0. clarify. symmetry in H2. inv H3. inv H5. ss. clear_tac.
+          exploit (CONTAINS id); eauto.
+          { u.
+            des_sumbool.
+            eapply prog_defmap_spec; eauto.
+          }
+          i; des.
 
           inv SKENV.
-          exploit RO; eauto.
-          { tttttttttttttttttttttttttttttttttttttt unfold Genv.find_var_info. rewrite Genv.find_def. des_ifs.
+          set (gv := {| gvar_info := i2; gvar_init := init; gvar_readonly := true; gvar_volatile := false |}).
+          exploit (RO b gv); eauto; ss.
+          { unfold Genv.find_var_info.
+            admit "ez".
+          }
+          i; des.
+
           r. esplits; eauto.
-          { r.
-            { r.
-          hexploit (SkEnv.project_spec); eauto.
-          (* apply Genv.find_def_symbol in ROMEM. des. ss. *)
-          inv SKENV.
+          { admit "this should hold". }
+          { admit "this should hold". }
+        * inv SKENV.
           exploit RO; eauto.
-          { unfold Genv.find_var_info in *. des_ifs.
-            ss. r. esplits; eauto.
-          {
-          admit "raw admit".
-        * admit "this does not hold - we need to strengthen".
+          { admit "copy from above". }
+          { rewrite ROMEM1. ss. }
+          i; des.
+          ii. exploit PERM; eauto. i; des. inv ORD.
       + assert(SUMEM: forall b : block, bc b <> BCinvalid -> smatch bc (Args.m args) b Ptop).
         { admit "mem'. this should hold...". }
         econs; s; eauto.

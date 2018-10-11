@@ -198,9 +198,9 @@ Section PRSV.
       subst f. des.
       r in SUARG. des. rewrite Forall_forall in *.
       assert(FP: forall blk, su_init blk -> Ple ge.(Genv.genv_next) blk).
-      { r in SKENV. ss. i. inv MEM. rewrite <- SKENV. apply NNPP. ii. exploit WF; eauto. xomega. }
+      { inv SKENV. ss. i. inv MEM. rewrite <- PUB. apply NNPP. ii. exploit WF; eauto. xomega. }
       assert(NB: Ple ge.(Genv.genv_next) args.(Args.m).(Mem.nextblock)).
-      { r in SKENV. ss. inv MEM. rewrite <- SKENV. ss. }
+      { inv SKENV. ss. }
       assert(GE: genv_match bc ge).
       { r.
         esplits; eauto.
@@ -218,12 +218,13 @@ Section PRSV.
       }
       eapply sound_call_state with (bc:= bc); eauto.
       + econs; eauto; cycle 1.
+        { inv SKENV. ss. }
         econs; eauto.
         * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
         * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss.
         * ii. inv MEM. eapply BOUND; eauto.
-        * rewrite IMG. ii. des_ifs; ss. r in SKENV. rewrite SKENV in *; ss.
-        * r in SKENV. rewrite SKENV in *. ss.
+        * rewrite IMG. ii. des_ifs; ss. inv SKENV. rewrite PUB0 in *; ss.
+        * inv SKENV. rewrite PUB in *. ss.
       + ii. repeat spc VALS. destruct v; econs; eauto. destruct b0; econs; eauto. rewrite IMG.
         repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
         des_ifs; ss. bsimpl. des; ss. des_sumbool. ss.
@@ -266,6 +267,7 @@ Section PRSV.
       }
       des.
       esplits; eauto.
+      { inv AT; ss. refl. }
       ii.
       r in RETV. des.
       esplits; eauto; cycle 1.

@@ -90,6 +90,55 @@ Proof.
   }
 Qed.
 
+(* copied from above *)
+Lemma sound_state_sound_retv
+      bc m_ret su0 p skenv_link v_ret cunit
+      ge
+      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link (defs p)) p))
+      (STK: sound_stack cunit ge su0 bc [] m_ret (Mem.nextblock m_ret))
+      (RES: vmatch bc v_ret Vtop)
+      (RO: romatch bc m_ret (romem_for cunit))
+      (MM: mmatch bc m_ret mtop)
+      (GE: genv_match bc ge)
+      (NOSTK: bc_nostack bc)
+  :
+    retv' (bc2su bc ge.(Genv.genv_next) m_ret.(Mem.nextblock)) (Retv.mk v_ret m_ret)
+.
+Proof.
+  { r. s. esplits; eauto.
+    - ii; clarify.
+      assert(BCV: bc blk <> BCinvalid).
+      { inv RES; ss. inv H0; ss. }
+      esplits; eauto.
+      + u. ii. des_ifs. des_sumbool. ss.
+      + inv MM. eapply mmatch_below; eauto.
+    - inv MM. econs; eauto.
+      + ii. clarify.
+        assert(BCV: bc blk <> BCinvalid).
+        { u in PUB. ii. rewrite H in *. ss. exploit Mem.perm_valid_block; eauto. i; des. des_ifs. }
+        assert(BCV0: bc blk0 <> BCinvalid).
+        {
+          exploit mmatch_top; eauto.
+          (* spcN 0%nat mmatch_top. spc mmatch_top. inv mmatch_top. *)
+          intro SM. inv SM.
+          specialize (H0 0%Z blk0 ofs0 true q n).
+          exploit H0.
+          { admit "ez - memory lemma". }
+          intro PM.
+          inv PM. ss.
+        }
+        esplits; eauto.
+        { u. des_ifs. i; des_sumbool; ss. }
+        s. eapply mmatch_below; eauto.
+      + u. ii. des_ifs.
+      + ss. r in GE. ss. des. r in mmatch_below.
+        apply NNPP. ii. apply Pos.lt_nle in H.
+        exploit GE0; eauto. i; des.
+        exploit mmatch_below; eauto. i; des.
+        xomega.
+  }
+Qed.
+
 
 
 
@@ -422,7 +471,21 @@ Section PRSV.
         * admit "ez".
         * red; simpl; intros. rewrite IMG. unfold f. des_ifs.
           eapply NOSTK; auto.
-    - admit "final".
+    - ii.
+      inv FINAL. s.
+      inv SUST. specialize (H p (linkorder_refl _)). inv H.
+      exists (bc2su bc (Genv.genv_next skenv_link) m_ret.(Mem.nextblock)).
+      esplits; try refl; ss; eauto.
+      { r.
+        exploit sound_stack_unreach_compat; eauto. intro CPT; des. inv SU.
+        split; ss.
+        ii.
+        exploit PRIV; eauto. i.
+        exploit BOUND; eauto. i.
+        des_ifs.
+        des_sumbool; ss.
+      }
+      rp; [eapply sound_state_sound_retv; eauto|..]; eauto.
   Qed.
 
 End PRSV.

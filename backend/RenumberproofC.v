@@ -8,6 +8,7 @@ Require Export Renumberproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemId.
+Require SoundTop.
 
 Set Implicit Arguments.
 
@@ -200,8 +201,10 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := top4); eauto; ii; ss.
+  eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := SoundTop.sound_state);
+    eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
+  - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
     inv SIMARGS; ss. clarify.

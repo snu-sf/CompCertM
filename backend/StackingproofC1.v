@@ -15,6 +15,7 @@ Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC ArgP
 Require Import Conventions1.
 Require SimMemInj.
 Require Import AxiomsC.
+Require SoundTop.
 
 Set Implicit Arguments.
 
@@ -945,6 +946,7 @@ Proof.
   eapply match_states_sim with (match_states := match_states) (match_states_at := match_states_at);
     eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
+  - eapply SoundTop.sound_state_local_preservation; eauto.
   - (* init bsim *)
     {
       inv INITTGT. inv STORE. folder.

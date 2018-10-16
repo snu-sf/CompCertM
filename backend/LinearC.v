@@ -265,14 +265,20 @@ Section MODSEM.
       fd ls_init sg
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
-      (LOCSET: args.(Args.vs) = map (fun p => Locmap.getpair p ls_init) (loc_arguments sg))
+      (LOCSET: typify_list args.(Args.vs) sg.(sig_args) = map (fun p => Locmap.getpair p ls_init) (loc_arguments sg))
       (PTRFREE: forall
           loc
           (* (NOTIN: Loc.notin loc (regs_of_rpairs (loc_arguments sg))) *)
           (NOTIN: ~In loc (regs_of_rpairs (loc_arguments sg)))
         ,
           <<PTRFREE: ~ is_real_ptr (ls_init loc)>>)
+      (SLOT: forall
+          sl ty ofs
+          (NOTIN: ~In (S sl ty ofs) (regs_of_rpairs (loc_arguments sg)))
+        ,
+          <<UNDEF: ls_init (S sl ty ofs) = Vundef>>)
       (SZ: 4 * size_arguments sg <= Ptrofs.modulus)
+      (LEN: args.(Args.vs).(length) = sg.(sig_args).(length))
     :
       initial_frame args
                     (Callstate [dummy_stack sg ls_init] args.(Args.fptr) sg ls_init args.(Args.m))
@@ -291,7 +297,9 @@ Section MODSEM.
   | after_external_intro
       stack fptr_arg sg_arg ls_arg m_arg retv
       ls_after
-      (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg) retv.(Retv.v) (locset_after_external ls_arg))
+      (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg)
+                                          (typify retv.(Retv.v) sg_arg.(proj_sig_res))
+                                          (locset_after_external ls_arg))
     :
       after_external (Callstate stack fptr_arg sg_arg ls_arg m_arg)
                      retv

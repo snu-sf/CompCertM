@@ -519,7 +519,90 @@ Ltac spc H :=
   | forall (a: ?A), _ =>
     (* let A := (eval compute in _A) in *)
     match goal with
-    | [a0: A, a1: A |- _] => fail 2 "More than one specialization is possible!"
+    | [a0: A, a1: A, a2: A, a3: A, a4: A, a5: A |- _] => fail 2 "6 candidates!" a0 "," a1 "," a2 "," a3 "," a4 "," a5
+    | [a0: A, a1: A, a2: A, a3: A, a4: A |- _] => fail 2 "5 candidates!" a0 "," a1 "," a2 "," a3 "," a4
+    | [a0: A, a1: A, a2: A, a3: A |- _] => fail 2 "4 candidates!" a0 "," a1 "," a2 "," a3
+    | [a0: A, a1: A, a2: A |- _] => fail 2 "3 candidates!" a0 "," a1 "," a2
+    | [a0: A, a1: A |- _] => fail 2 "2 candidates!" a0 "," a1
+    | [a0: A |- _] => specialize (H a0)
+    | _ =>
+      tryif is_prop A
+      then
+        let name := fresh in
+        assert(name: A) by TAC; specialize (H name); clear name
+      else
+        fail 2 "No specialization possible!"
+    end
+  | _ => fail 1 "Nothing to specialize!"
+  end
+.
+
+Ltac spcN n H :=
+  let TAC := ss; eauto in
+  let ty := type of H in
+  match type of n with
+  | Z => idtac
+  | _ => fail "second argument should be 'Z'"
+  end;
+  match eval hnf in ty with
+  | forall (a: ?A), _ =>
+    (* let A := (eval compute in _A) in *)
+    match goal with
+    | [a0: A, a1: A, a2: A, a3: A, a4: A, a5: A |- _] =>
+      match n with
+      | - 5 => specialize (H a1)
+      | - 4 => specialize (H a2)
+      | - 3 => specialize (H a3)
+      | - 2 => specialize (H a4)
+      | - 1 => specialize (H a5)
+      | 0%Z => specialize (H a0)
+      | 1%Z => specialize (H a1)
+      | 2%Z => specialize (H a2)
+      | 3%Z => specialize (H a3)
+      | 4%Z => specialize (H a4)
+      | 5%Z => specialize (H a5)
+      | _ => fail 2 "6 candidates!" a0 "," a1 "," a2 "," a3 "," a4 "," a5
+      end
+    | [a0: A, a1: A, a2: A, a3: A, a4: A |- _] =>
+      match n with
+      | - 4 => specialize (H a1)
+      | - 3 => specialize (H a2)
+      | - 2 => specialize (H a3)
+      | - 1 => specialize (H a4)
+      | 0%Z => specialize (H a0)
+      | 1%Z => specialize (H a1)
+      | 2%Z => specialize (H a2)
+      | 3%Z => specialize (H a3)
+      | 4%Z => specialize (H a4)
+      | _ => fail 2 "5 candidates!" a0 "," a1 "," a2 "," a3 "," a4
+      end
+    | [a0: A, a1: A, a2: A, a3: A |- _] =>
+      match n with
+      | - 3 => specialize (H a1)
+      | - 2 => specialize (H a2)
+      | - 1 => specialize (H a3)
+      | 0%Z => specialize (H a0)
+      | 1%Z => specialize (H a1)
+      | 2%Z => specialize (H a2)
+      | 3%Z => specialize (H a3)
+      | _ => fail 2 "4 candidates!" a0 "," a1 "," a2 "," a3
+      end
+    | [a0: A, a1: A, a2: A |- _] =>
+      match n with
+      | - 2 => specialize (H a1)
+      | - 1 => specialize (H a2)
+      | 0%Z => specialize (H a0)
+      | 1%Z => specialize (H a1)
+      | 2%Z => specialize (H a2)
+      | _ => fail 2 "3 candidates!" a0 "," a1 "," a2
+      end
+    | [a0: A, a1: A |- _] =>
+      match n with
+      | - 1 => specialize (H a1)
+      | 0%Z => specialize (H a0)
+      | 1%Z => specialize (H a1)
+      | _ => fail 2 "2 candidates!" a0 "," a1
+      end
     | [a0: A |- _] => specialize (H a0)
     | _ =>
       tryif is_prop A
@@ -822,3 +905,5 @@ Tactic Notation "sym" "in" hyp(H) := symmetry in H.
 Ltac eapply_all_once LEMMA :=
   all_once_fast ltac:(fun H => try eapply LEMMA in H; try eassumption; check_safe)
 .
+
+Ltac Nsimpl := all_once_fast ltac:(fun H => try apply NNPP in H; try apply not_and_or in H; try apply not_or_and in H).

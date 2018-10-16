@@ -15,6 +15,7 @@ Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.
 Require Import SimMem SimModSem SimMod.
+Require Import Sound.
 
 Set Implicit Arguments.
 
@@ -24,7 +25,7 @@ Set Implicit Arguments.
 
 Module ProgPair.
 Section PROGPAIR.
-Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Definition t := list ModPair.t.
   (* Record t := mk { *)
@@ -66,7 +67,7 @@ Hint Unfold ProgPair.sim ProgPair.src ProgPair.tgt.
 
 
 Section SIM.
-Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.

@@ -4,13 +4,15 @@ Require Import LinkingC.
 Require Import Skeleton.
 Require Import Values.
 Require Import JMeq.
-Require Import Smallstep.
+Require Import SmallstepC.
 Require Import Integers.
 Require Import Events.
 
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
 Require Import SemProps Ord.
+Require Import Sound Preservation AdequacySound.
+Require Import Program.
 
 Set Implicit Arguments.
 
@@ -36,6 +38,7 @@ Set Implicit Arguments.
 Section SIMGE.
 
   Context `{SM: SimMem.class}.
+  Context `{SU: Sound.class}.
   Context {SS: SimSymb.class SM}.
   (* Inductive sim_gepair (sm0: SimMem.t) (ge_src ge_tgt: list ModSem.t): Prop := *)
   Inductive sim_ge (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
@@ -308,7 +311,9 @@ Section SIMGE.
       esplits; eauto.
       (* eapply SimSymb.sim_skenv_func_bisim in SIMSKENV. des. *)
       (* clears sm_init; clear sm_init. *)
-      - econs; ss.
+      - exploit system_local_preservation. intro SYSSU; des.
+        econs; ss.
+        { eauto. }
         unfold ModSemPair.sim_skenv. ss.
         split; cycle 1.
         { ii; des. esplits; eauto. econs; eauto. }
@@ -318,6 +323,7 @@ Section SIMGE.
         { econs. }
         pfold.
         econs; eauto.
+        i. split.
         { u. esplits; ii; des; ss; eauto. inv H0. }
         econs; ss; cycle 1.
         { admit "ez". }
@@ -418,6 +424,7 @@ Section ADQMATCH.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
+  Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
   (* Hypothesis SIMPROG: ProgPair.sim pp. *)
@@ -458,6 +465,8 @@ Section ADQMATCH.
       (MLE: SimMem.le tail_sm sm_arg)
       sm_init
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
+      sound_state_local
+      (PRSV: local_preservation ms_src sound_state_local)
       (K: forall
           sm_ret retv_src retv_tgt
           (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
@@ -471,7 +480,8 @@ Section ADQMATCH.
             /\
             (<<MLE: SimMem.le (sm_arg.(SimMem.unlift) sm_ret) sm_after>>)
             /\
-            (<<LXSIM: lxsim ms_src ms_tgt tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
+            (<<LXSIM: lxsim ms_src ms_tgt (fun st => exists su m_arg, sound_state_local su m_arg st)
+                            tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
     :
       lxsim_stack sm_init
                   ((Frame.mk ms_src lst_src0) :: tail_src)
@@ -504,7 +514,9 @@ Section ADQMATCH.
       i0
       ms_src lst_src
       ms_tgt lst_tgt
-      (TOP: lxsim ms_src ms_tgt tail_sm
+      sound_state_local
+      (PRSV: local_preservation ms_src sound_state_local)
+      (TOP: lxsim ms_src ms_tgt (fun st => exists su m_arg, sound_state_local su m_arg st) tail_sm
                   i0 lst_src lst_tgt sm0)
     :
       lxsim_lift i0
@@ -545,6 +557,7 @@ Section ADQINIT.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
+  Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
   Hypothesis NOTNIL: pp <> [].
@@ -556,7 +569,7 @@ Section ADQINIT.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
   Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
 
-  Let lxsim_lift := (@lxsim_lift _ _ pp).
+  Let lxsim_lift := (lxsim_lift pp).
   Hint Unfold lxsim_lift.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
@@ -632,11 +645,11 @@ End ADQINIT.
 
 
 
-
 Section ADQSTEP.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
+  Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.
@@ -647,7 +660,7 @@ Section ADQSTEP.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
   Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
 
-  Let lxsim_lift := (@lxsim_lift _ _ pp).
+  Let lxsim_lift := (lxsim_lift pp).
   Hint Unfold lxsim_lift.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
@@ -656,6 +669,7 @@ Section ADQSTEP.
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
           (LXSIM: lxsim_lift i0 st_src0 st_tgt0 sm0)
+          (SUST: __GUARD__ (exists su0 m_arg, sound_state pp su0 m_arg st_src0))
     :
       <<XSIM: xsim sem_src sem_tgt ord i0 st_src0 st_tgt0>>
   .
@@ -716,6 +730,10 @@ Section ADQSTEP.
       esplits; eauto.
       - left. apply plus_one. econs; eauto. econs; eauto.
       - right. eapply CIH.
+        { unsguard SUST. unfold __GUARD__. des.
+          eapply sound_progress; eauto.
+          ss. folder. des_ifs. econs 2; eauto. econs; eauto.
+        }
         instantiate (1:= sm_init).
         econs; try apply SIM0; eauto.
         + ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto.
@@ -730,6 +748,10 @@ Section ADQSTEP.
 
     - (* fstep *)
       left.
+      exploit SU0.
+      { unsguard SUST. des. inv SUST.
+        simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
+      i; des. clear SU0.
       econs; ss; eauto.
       + ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto.
       + inv FSTEP.
@@ -747,7 +769,9 @@ Section ADQSTEP.
             - left. eapply lift_dplus; eauto.
             - right. esplits; eauto. eapply lift_dstar; eauto.
           }
-          pclearbot. right. eapply CIH with (sm0 := sm1); eauto. econs; eauto.
+          pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
+          { unsguard SUST. des_safe. eapply sound_progress; eauto. eapply lift_step; eauto. }
+          econs; eauto.
           { ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
@@ -771,12 +795,21 @@ Section ADQSTEP.
             - left. eapply lift_plus; eauto.
             - right. esplits; eauto. eapply lift_star; eauto.
           }
-          pclearbot. right. eapply CIH with (sm0 := sm1); eauto. econs; eauto.
+          pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
+          { unsguard SUST. des_safe. destruct H.
+            - eapply sound_progress_plus; eauto. eapply lift_plus; eauto.
+            - des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto.
+          }
+          econs; eauto.
           { folder. ss; des_ifs. eapply mle_preserves_sim_ge; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_star; eauto. }
-          right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
+          right. eapply CIH; eauto.
+          { unsguard SUST. des_safe.
+            eapply sound_progress_star; eauto. eapply lift_star; eauto.
+          }
+          econs; eauto. folder. ss; des_ifs.
 
 
     - (* call *)
@@ -799,6 +832,7 @@ Section ADQSTEP.
         des_ifs.
         econs 1; eauto.
       + right. eapply CIH; eauto.
+        { unsguard SUST. des_safe. eapply sound_progress; eauto. ss. folder. des_ifs_safe. econs; eauto. }
         {
           instantiate (1:= (SimMem.lift sm_arg)).
           econs 2; eauto.
@@ -806,6 +840,7 @@ Section ADQSTEP.
           * instantiate (1:= (SimMem.lift sm_arg)).
             econs; [eassumption|..]; revgoals.
             { ii. exploit K; eauto. i; des_safe. pclearbot. esplits; eauto. }
+            { ss. }
             { reflexivity. }
             { etransitivity; eauto. }
             { ss. folder. des_ifs. }
@@ -850,8 +885,10 @@ Section ADQSTEP.
         { admit "Add to semprops. / Modsem". }
         econs 4; ss; eauto.
       + right. eapply CIH; eauto.
+        { unsguard SUST. des_safe. eapply sound_progress; eauto. ss. folder. des_ifs_safe. econs; eauto. }
         instantiate (1:= sm_after).
         econs; ss; cycle 3.
+        { eauto. }
         { eauto. }
         { folder. des_ifs.
           eapply mle_preserves_sim_ge; eauto.
@@ -874,6 +911,7 @@ Section ADQ.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
+  Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.
@@ -904,6 +942,11 @@ Section ADQ.
     exploit sim_link_sk; eauto. i; des.
     exploit init_lxsim_lift_forward; eauto. { econs; eauto. } i; des.
     hexploit lxsim_lift_xsim; eauto.
+    exploit sound_init; eauto.
+    { ss. econs; eauto. }
+    i; des. rr. esplits; eauto.
+  Unshelve.
+    all: ss.
   Qed.
 
 End ADQ.

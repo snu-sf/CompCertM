@@ -24,6 +24,9 @@ Require Import sflib.
 (** newly added **)
 Require Export Values.
 
+Set Implicit Arguments.
+
+
 Definition is_ptr (v: val): bool :=
   match v with
   | Vptr _ _ _ => true
@@ -85,4 +88,76 @@ Global Program Instance inject_incr_PreOrder: PreOrder inject_incr.
 Next Obligation.
   ii. eapply inject_incr_trans; eauto.
 Qed.
+
+
+
+(* Fixpoint zip X Y Z (f: option X -> option Y -> Z) (xs: list X) (ys: list Y): list Z := *)
+(*   match xs, ys with *)
+(*   | [], [] => [] *)
+(*   | xhd :: xtl, [] => f (Some xhd) None :: zip f xtl [] *)
+(*   | [], yhd :: ytl => f None (Some yhd) :: zip f [] ytl *)
+(*   | xhd :: xtl, yhd :: ytl => f (Some xhd) (Some yhd) :: zip f xtl ytl *)
+(*   end *)
+(* . *)
+
+Fixpoint zip X Y Z (f: X -> Y -> Z) (xs: list X) (ys: list Y): list Z :=
+  match xs, ys with
+  | xhd :: xtl, yhd :: ytl => f xhd yhd :: zip f xtl ytl
+  | _, _ => []
+  end
+.
+
+Lemma zip_length
+      X Y Z (f: X -> Y -> Z) xs ys
+  :
+    length (zip f xs ys) = min xs.(length) ys.(length)
+.
+Proof.
+  ginduction xs; ii; ss.
+  des_ifs.
+  ss. rewrite IHxs. xomega.
+Qed.
+
+(* From stdpp Require Import list. *)
+Section TYPIFY.
+
+  Lemma Val_has_type_dec
+        v ty
+  :
+    {Val.has_type v ty} + {~ Val.has_type v ty}
+  .
+  Proof.
+    destruct v, ty; ss; eauto.
+  Qed.
+
+  Definition typify (v: val) (ty: typ): val :=
+    if Val_has_type_dec v ty
+    then v
+    else Vundef
+  .
+
+  (* Definition typify' (v: val) (ty: option typ): val := *)
+  (*   match ty with *)
+  (*   | None => Vundef *)
+  (*   | Some ty => typify v ty *)
+  (*   end *)
+  (* . *)
+
+  Lemma typify_has_type
+        v ty
+    :
+      <<TYP: Val.has_type (typify v ty) ty>>
+  .
+  Proof.
+    unfold typify. des_ifs.
+  Qed.
+
+  Definition typify_list (vs: list val) (tys: list typ): list val :=
+    zip typify vs tys
+  .
+
+End TYPIFY.
+
+Hint Unfold typify typify_list.
+(* Hint Unfold typify_. *)
 

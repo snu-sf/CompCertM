@@ -42,3 +42,25 @@ Proof.
   - inv H. econs; eauto. eapply IFF; eauto.
 Qed.
 
+Lemma star_inv
+      G ST
+      (step: G -> ST -> trace -> ST -> Prop) (ge: G) st0 tr st1
+      (STAR: star step ge st0 tr st1)
+  :
+    <<EQ: st0 = st1 /\ tr = []>> \/ <<PLUS: plus step ge st0 tr st1>>
+.
+Proof.
+  inv STAR; eauto.
+  right. econs; eauto.
+Qed.
+
+Lemma plus_or_star_inv
+      G ST
+      (step: G -> ST -> trace -> ST -> Prop) (ge: G) st0 tr st1
+      (STAR: plus step ge st0 tr st1 \/ star step ge st0 tr st1)
+  :
+    <<EQ: st0 = st1 /\ tr = []>> \/ <<PLUS: plus step ge st0 tr st1>>
+.
+Proof.
+  des; eauto. eapply star_inv; eauto.
+Qed.

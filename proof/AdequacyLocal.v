@@ -4,7 +4,7 @@ Require Import LinkingC.
 Require Import Skeleton.
 Require Import Values.
 Require Import JMeq.
-Require Import Smallstep.
+Require Import SmallstepC.
 Require Import Integers.
 Require Import Events.
 
@@ -770,7 +770,7 @@ Section ADQSTEP.
             - right. esplits; eauto. eapply lift_dstar; eauto.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
-          { unsguard SUST. des_safe. eapply sound_progress; eauto. ss. folder. des_ifs_safe. econs; eauto. }
+          { unsguard SUST. des_safe. eapply sound_progress; eauto. eapply lift_step; eauto. }
           econs; eauto.
           { ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto. }
           etransitivity; eauto.
@@ -796,14 +796,19 @@ Section ADQSTEP.
             - right. esplits; eauto. eapply lift_star; eauto.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
-          { admit "ez - follow fstep case.". }
+          { unsguard SUST. des_safe. destruct H.
+            - eapply sound_progress_plus; eauto. eapply lift_plus; eauto.
+            - des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto.
+          }
           econs; eauto.
           { folder. ss; des_ifs. eapply mle_preserves_sim_ge; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_star; eauto. }
           right. eapply CIH; eauto.
-          { admit "ez - follow fstep case.". }
+          { unsguard SUST. des_safe.
+            eapply sound_progress_star; eauto. eapply lift_star; eauto.
+          }
           econs; eauto. folder. ss; des_ifs.
 
 

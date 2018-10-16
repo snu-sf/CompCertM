@@ -300,4 +300,15 @@ Section ADQSOUND.
     - clarify. i. exploit sound_progress; eauto. i; des. eapply IHSTEP; eauto.
   Qed.
 
+  Lemma sound_progress_plus
+        su0 st0 m_arg0 tr st1
+        (SUST: sound_state su0 m_arg0 st0)
+        (STEP: Plus sem_src st0 tr st1)
+    :
+      <<SUST: exists su1 m_arg1, sound_state su1 m_arg1 st1>>
+  .
+  Proof.
+    eapply sound_progress_star; eauto. eapply plus_star; eauto.
+  Qed.
+
 End ADQSOUND.

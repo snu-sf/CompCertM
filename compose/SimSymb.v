@@ -225,5 +225,17 @@ Module SimSymb.
     - u in H. des. eapply IHMFUTURE; eauto. clarify. eapply mlift_preserves_sim_skenv; eauto.
   Qed.
 
+  Lemma simskenv_func_fsim
+        `{SM: SimMem.class} `{SS: @class SM}
+        ss0 sm0 skd v_src v_tgt
+        skenv_link_src skenv_link_tgt
+        (SIMSKENV: sim_skenv sm0 ss0 skenv_link_src skenv_link_tgt)
+        (SIMV: sm0.(SimMem.sim_val) v_src v_tgt)
+        (FIND: Genv.find_funct skenv_link_src v_src = Some skd)
+    :
+      Genv.find_funct skenv_link_tgt v_tgt = Some skd
+  .
+  Proof. exploit SimSymb.sim_skenv_func_bisim; eauto. i; des. inv H. exploit FUNCFSIM; eauto. i; des. clarify. Qed.
+
 End SimSymb.
 

@@ -250,7 +250,7 @@ Definition get_mem (st: state): mem :=
 Inductive store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem): Prop :=
 | store_arguments_intro
     m1 blk
-    (ALC: Mem.alloc m0 0 (size_arguments sg) = (m1, blk))
+    (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
     (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs)
     (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk
                                           then ~ (0 <= ofs < 4 * size_arguments sg)
@@ -296,6 +296,7 @@ Section MODSEM.
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: extcall_arguments rs m0 (parent_sp stack) sg vs)
       (RSP: (parent_sp stack) = Vptr blk ofs true)
+      (OFSZERO: ofs = Ptrofs.zero)
       (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
       init_rs init_sg
     :
@@ -305,7 +306,8 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fd m0 rs sg
+      fd m0 rs sg ra
+      (RAPTR: Val.has_type ra Tptr)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (STORE: store_arguments args.(Args.m) rs args.(Args.vs) sg m0)
@@ -315,23 +317,24 @@ Section MODSEM.
           (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
         ,
           <<PTRFREE: ~ is_real_ptr (rs mr)>>)
+      (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
       (SZ: 4 * size_arguments sg <= Ptrofs.modulus)
     :
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack
-                                                (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) Vundef]
+                                                (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) ra]
                                              args.(Args.fptr) rs m0))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_intro
-      (init_rs rs: regset) init_sp m0 m1 blk init_sg mr
+      (init_rs rs: regset) init_sp m0 m1 blk init_sg mr ra
       (CALLEESAVE: forall mr, Conventions1.is_callee_save mr -> Val.lessdef (init_rs mr) (rs mr))
       (INITRSP: init_sp = Vptr blk Ptrofs.zero true)
       (FREE: Mem.free m0 blk 0 (4 * size_arguments init_sg) = Some m1)
       (RETV: loc_result init_sg = One mr)
     :
-      final_frame (mkstate init_rs init_sg (Returnstate [dummy_stack init_sp Vundef] rs m0))
+      final_frame (mkstate init_rs init_sg (Returnstate [dummy_stack init_sp ra] rs m0))
                   (Retv.mk (rs mr) m1)
   .
 
@@ -342,6 +345,7 @@ Section MODSEM.
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs true)
+      (MEMWF: Ple (Senv.nextblock skenv_link) retv.(Retv.m).(Mem.nextblock))
       (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
     :
       after_external (mkstate init_rs init_sg (Callstate stack fptr ls0 m0))

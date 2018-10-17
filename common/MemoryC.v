@@ -832,6 +832,17 @@ Lemma Mem_unfree_right_inject
 .
 Proof. eapply Mem.inject_extends_compose; eauto. eapply Mem_unfree_extends; eauto. Qed.
 
+Theorem Mem_unfree_parallel_extends:
+  forall m1 m2 b lo hi m1',
+  Mem.extends m1 m2 ->
+  Mem_unfree m1 b lo hi = Some m1' ->
+  exists m2',
+     Mem_unfree m2 b lo hi = Some m2'
+  /\ Mem.extends m1' m2'.
+Proof.
+  admit "this should hold...".
+Qed.
+
 End UNFREE.
 
 

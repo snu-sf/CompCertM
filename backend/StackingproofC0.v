@@ -1507,7 +1507,8 @@ Inductive match_stacks (j: meminj):
        list Linear.stackframe -> list stackframe -> signature -> Prop :=
   | match_stacks_dummy
       sg_init sp ls_init
-      sg
+      sg ra
+      (RAPTR: Val.has_type ra Tptr)
       (ARGS: forall
           ofs ty
           (LOC: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg_init)))
@@ -1516,7 +1517,7 @@ Inductive match_stacks (j: meminj):
       (LE: sg = sg_init \/ tailcall_possible sg)
     :
       match_stacks j [LinearC.dummy_stack sg_init ls_init]
-                   [MachC.dummy_stack (Vptr sp Ptrofs.zero true) Vundef] sg
+                   [MachC.dummy_stack (Vptr sp Ptrofs.zero true) ra] sg
   | match_stacks_cons: forall f sp ls c cs fb sp' ra c' cs' sg trf
         (TAIL: is_tail c (Linear.fn_code f))
         (FINDF: Genv.find_funct_ptr tge fb = Some (Internal trf))

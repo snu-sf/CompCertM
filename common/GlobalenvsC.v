@@ -17,8 +17,48 @@ Local Open Scope pair_scope.
 Set Implicit Arguments.
 
 
+Section EXTERNAL.
 
+  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker F1} {LV: Linker V1}.
+  Variable ge1: Genv.t F1 V1.
+  Variable ge2: Genv.t F2 V2.
+  Variable ctx: C.
+  Variable match_fundef: C -> F1 -> F2 -> Prop.
+  Variable match_varinfo: V1 -> V2 -> Prop.
+  Hypothesis (GEMATCH: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge1 ge2).
 
+  Lemma sim_external_id
+        v
+        (FIND: Genv.find_funct ge1 v = None)
+    :
+      Genv.find_funct ge2 v = None.
+  Proof.
+    unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
+    hexploit (Genv.mge_defs GEMATCH); eauto. i. rewrite Heq in *. inv H. inv H2. des_ifs.
+  Qed.
+
+  Local Existing Instance Val.mi_normal.
+
+  Inductive skenv_inject {F V} (ge: Genv.t F V) (j: meminj): Prop :=
+  | sken_inject_intro
+      (DOMAIN: forall b, Plt b ge.(Genv.genv_next) -> j b = Some(b, 0))
+      (IMAGE: forall b1 b2 delta, j b1 = Some(b2, delta) -> Plt b2 ge.(Genv.genv_next) -> b1 = b2)
+  .
+
+  Lemma sim_external_inject
+        j v_src v_tgt
+        (INJ: Val.inject j v_src v_tgt)
+        (GE: skenv_inject ge1 j)
+        (FIND: Genv.find_funct ge1 v_src = None)
+    :
+      Genv.find_funct ge2 v_tgt = None.
+  Proof.
+    admit "somehow this should be true. see below 'is_call_inject_progress'".
+  Qed.
+
+End EXTERNAL.
+
+Module DEPRECATED.
 Definition is_call {F V} (ge: Genv.t F V) (fptr: val): Prop :=
   match fptr with
   | Vptr blk ofs true => Genv.find_funct_ptr ge blk = None
@@ -125,6 +165,8 @@ Section ISCALL.
 
 
 End ISCALL.
+
+End DEPRECATED.
 
 
 

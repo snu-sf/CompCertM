@@ -9,6 +9,7 @@ Require Export Asmgenproof AsmgenproofC0 AsmgenproofC1.
 Require Import ModSem SimModSem SimSymbId SimMemExtends SimSymbId MemoryC.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.
+Require SoundTop.
 
 Local Opaque Z.mul.
 
@@ -128,7 +129,8 @@ Proof.
                                (match_states_at := top4); eauto; ii.
 
   - apply lt_wf.
-
+  - eapply SoundTop.sound_state_local_preservation.
+    
   - destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
     inv INITTGT. des. ss. clarify. inv RAPTR.
     assert (SRCSTORE: exists rs_src m_src,

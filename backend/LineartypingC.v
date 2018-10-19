@@ -101,7 +101,7 @@ Section SOUNDNESS.
           eapply ls_init_has_type; eauto.
         - erewrite SLOT; eauto.
       }
-      econs; eauto.
+      econs; ss; eauto.
       econs; eauto.
       econs; eauto.
     - inv STEP.
@@ -114,20 +114,25 @@ Section SOUNDNESS.
       ii.
       inv AFTER.
       inv SUST.
-      econs; eauto.
-      { destruct stack; ss.
-        des_ifs. inv WTSTK.
-        econs; eauto.
-        unfold locset_after_external. repeat intro. destruct l; eauto.
-        + destruct (is_callee_save r) eqn:T; eauto; simpl; eauto.
-        + destruct sl; eauto; simpl; eauto.
-      }
-      apply wt_setpair; auto.
-      { eapply typify_has_type; eauto. }
-      ii.
-      unfold locset_after_external. repeat intro. destruct l; eauto.
-      + destruct (is_callee_save r) eqn:T; eauto; simpl; eauto.
-      + destruct sl; eauto; simpl; eauto.
+      hexploit (loc_result_caller_save sg_arg); eauto. intro RES.
+      hexploit (loc_result_one sg_arg); eauto. intro ONE.
+      (* clear AGARGS. *)
+      (* abstr (loc_result sg_arg) lres. *)
+      (* destruct lres; ss. *)
+
+      econs; ss; eauto.
+      + ii. unfold Locmap.setpair. des_ifs. ss.
+        apply wt_setreg; ss; cycle 1.
+        { apply wt_undef_caller_save_regs; ss. }
+        rewrite mreg_type_any. apply has_type_any.
+      + ii.
+        destruct l; ss.
+        { rewrite locmap_get_set_loc_result; ss. des_ifs. rewrite AGCS; ss. }
+        { rewrite locmap_get_set_loc_result; ss. des_ifs.
+          - rewrite AGCS; ss.
+          - rewrite AGCS; ss.
+        }
+      + ii. rewrite locmap_get_set_loc_result; ss.
   Qed.
 
 End SOUNDNESS.

@@ -18,6 +18,7 @@ Require Export Classical_Prop.
 Require Export Lia.
 Require Import AxiomsC.
 Require Import Relation_Operators.
+Require Export List.
 
 Set Implicit Arguments.
 

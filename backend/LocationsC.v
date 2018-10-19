@@ -8,6 +8,7 @@ Require Export Machregs.
 (** newly added **)
 Require Export Locations.
 Require Import Conventions Integers Memory.
+Require Import List.
 
 Set Implicit Arguments.
 
@@ -55,6 +56,15 @@ Proof.
   generalize 0 at 1 as ir. generalize 0 at 1 as fr. generalize 0 at 1 as ofs.
   ginduction sig_args; ii; ss.
   - des_ifs; repeat (des; ss; clarify); eapply IHsig_args; eauto.
+Qed.
+
+Lemma loc_result_one
+      sg
+  :
+    is_one (loc_result sg)
+.
+Proof.
+  unfold loc_result. des_ifs. unfold loc_result_64. des_ifs.
 Qed.
 
 Lemma chunk_type_chunk

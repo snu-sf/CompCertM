@@ -213,10 +213,12 @@ Section MATCHSIMFORWARD.
         (* (MWF: SimMem.wf sm0) *)
         (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
         (MATCH: match_states sm_init i0 st_src0 st_tgt0 sm0)
+        (SUST: exists su0 m_init, sound_state su0 m_init st_src0)
         (* su0 *)
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsim ms_src ms_tgt (fun st => exists su0 m_init, sound_state su0 m_init st) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>>
+      <<LXSIM: lxsim ms_src ms_tgt (fun st => exists su0 m_init, sound_state su0 m_init st)
+                     sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.
     (* move su0 at top. *)
@@ -243,6 +245,7 @@ Section MATCHSIMFORWARD.
         { eapply SimSymb.mle_preserves_sim_skenv; try apply SIMSKENV; eauto.
           etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
         { etransitivity; eauto. etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
+        { inv PRSV. exploit CALL; eauto. i; des. exploit K; eauto. }
     }
     generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
     {

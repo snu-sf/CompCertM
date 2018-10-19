@@ -184,7 +184,7 @@ Section MODSEM.
       sg blk ofs
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
                         = Some skd /\ SkEnv.get_sig skd = sg)
-      (RS: rs1 = (set_pair (loc_external_result sg) retv.(Retv.v) (regset_after_external rs0)) #PC <- (rs0 RA))
+      (RS: rs1 = (set_pair (loc_external_result sg) retv.(Retv.v) (undef_caller_save_regs rs0)) #PC <- (rs0 RA))
       (RSRSP: rs0 RSP = Vptr blk ofs true)
       (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
     :

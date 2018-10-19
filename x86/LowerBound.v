@@ -682,7 +682,7 @@ Section PRESERVATION.
       0 <= delta /\
       4 * delta + size_chunk (chunk_of_type ty) <= 4 * size_arguments sg.
   Proof.
-    set (loc_arguments_acceptable_2 _ _ IN). ss. des_ifs.
+    generalize (loc_arguments_acceptable_2 _ _ IN). i. ss. des_ifs.
     set (loc_arguments_bounded _ _ _ IN).
     splits; eauto; [omega|].
     unfold typesize in *. des_ifs; ss; lia.
@@ -983,6 +983,7 @@ Section PRESERVATION.
     - eapply IN.
     - ss.
     - unfold Frame.update_st. s. repeat f_equal. eapply local_global_consistent; try apply GELE; eauto.
+      rewrite regset_after_external_eq. ss.
     - ss.
     - ss.
     - des_ifs. omega.
@@ -1346,7 +1347,7 @@ Section PRESERVATION.
         * ss.
         * eapply match_stack_incr; eauto.
         * ss.
-        * unfold set_pair. des_ifs; repeat (eapply update_agree2; eauto).
+        * rewrite <- regset_after_external_eq. unfold set_pair. des_ifs; repeat (eapply update_agree2; eauto).
           -- unfold regset_after_external.
              intros []; des_ifs; try econs; eauto.
           -- unfold regset_after_external.

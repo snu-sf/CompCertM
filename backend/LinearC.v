@@ -234,13 +234,6 @@ but then corresponding MachM's part should be transl_code another_dummy_code ...
 .
 Hint Unfold dummy_stack.
 
-Definition stackframes_after_external (stack: list stackframe): list stackframe :=
-  match stack with
-  | nil => nil
-  | Stackframe f sp ls bb :: tl => Stackframe f sp ls.(locset_after_external) bb :: tl
-  end
-.
-
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
@@ -299,11 +292,11 @@ Section MODSEM.
       ls_after
       (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg)
                                           (typify retv.(Retv.v) sg_arg.(proj_sig_res))
-                                          (locset_after_external ls_arg))
+                                          (undef_caller_save_regs ls_arg))
     :
       after_external (Callstate stack fptr_arg sg_arg ls_arg m_arg)
                      retv
-                     (Returnstate stack.(stackframes_after_external) ls_after retv.(Retv.m))
+                     (Returnstate stack ls_after retv.(Retv.m))
   .
 
   Program Definition modsem: ModSem.t :=

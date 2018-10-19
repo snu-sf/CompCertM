@@ -2,7 +2,7 @@ Require Import CoqlibC Errors.
 Require Import Integers ASTC Linking.
 Require Import ValuesC MemoryC SeparationC Events GlobalenvsC Smallstep.
 Require Import LTL Op LocationsC LinearC MachC.
-Require Import Bounds Conventions StacklayoutC Lineartyping.
+Require Import Bounds Conventions StacklayoutC LineartypingC.
 Require Import Stacking.
 
 Local Open Scope string_scope.
@@ -553,35 +553,41 @@ Abort.
 (*   admit "". *)
 (* Qed. *)
 
-Lemma agree_callee_save_after_external
-      ls0 stk
-      (AGLOCS: agree_callee_save ls0 (parent_locset stk))
-  :
-    Stackingproof.agree_callee_save_after (locset_after_external ls0)
-                                          (parent_locset (stackframes_after_external stk))
-.
-Proof.
-  intro. unfold agree_callee_save, stackframes_after_external, locset_after_external in *.
-  destruct stk; simpl in *; eauto.
-  - destruct l; eauto.
-    + intros. rewrite H; eauto.
-    + intros. destruct sl; eauto.
-  - destruct s; simpl. destruct l; intro; auto.
-    + rewrite H. rewrite <- AGLOCS; auto.
-    + destruct sl; auto.
-Qed.
 
-Lemma match_stacks_after_external
-      j s ts sg
-      (MATCH: match_stacks tprog j s ts sg)
-  :
-    match_stacks tprog j s.(stackframes_after_external) ts sg
-.
-Proof.
-  inv MATCH; econstructor; eauto. inv AGL. econstructor; eauto. intros. erewrite <- agree_unused_reg; eauto.
-  unfold mreg_within_bounds in *. unfold locset_after_external.
-  destruct (Conventions1.is_callee_save r) eqn:T; simpl; eauto; try tauto. exfalso. apply H. intros. inv H0.
-Qed.
+
+(* Lemma agree_callee_save_after_external *)
+(*       ls0 stk *)
+(*       (AGLOCS: agree_callee_save ls0 (parent_locset stk)) *)
+(*   : *)
+(*     Stackingproof.agree_callee_save_after (locset_after_external ls0) *)
+(*                                           (parent_locset (stackframes_after_external stk)) *)
+(* . *)
+(* Proof. *)
+(*   intro. unfold agree_callee_save, stackframes_after_external, locset_after_external in *. *)
+(*   destruct stk; simpl in *; eauto. *)
+(*   - destruct l; eauto. *)
+(*     + intros. rewrite H; eauto. *)
+(*     + intros. destruct sl; eauto. *)
+(*   - destruct s; simpl. destruct l; intro; auto. *)
+(*     + rewrite H. rewrite <- AGLOCS; auto. *)
+(*     + destruct sl; auto. *)
+(* Qed. *)
+
+
+
+(* Lemma match_stacks_after_external *)
+(*       j s ts sg *)
+(*       (MATCH: match_stacks tprog j s ts sg) *)
+(*   : *)
+(*     match_stacks tprog j s.(stackframes_after_external) ts sg *)
+(* . *)
+(* Proof. *)
+(*   inv MATCH; econstructor; eauto. inv AGL. econstructor; eauto. intros. erewrite <- agree_unused_reg; eauto. *)
+(*   unfold mreg_within_bounds in *. unfold LTL.undef_caller_save_regs. *)
+(*   destruct (Conventions1.is_callee_save r) eqn:T; simpl; eauto; try tauto. exfalso. apply H. intros. inv H0. *)
+(* Qed. *)
+
+
 
 Definition frame_contents_1_at_external f (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) :=
   let b := function_bounds f in
@@ -1011,10 +1017,12 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := match_states_at);
+  eapply match_states_sim with (match_states := match_states) (match_states_at := match_states_at)
+                               (sound_state := fun _ _ => wt_state);
     eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
-  - eapply SoundTop.sound_state_local_preservation; eauto.
+  - eapply wt_state_local_preservation; eauto.
+    eapply wt_prog; eauto.
   - (* init bsim *)
     {
       inv INITTGT. inv STORE. folder.
@@ -1112,6 +1120,7 @@ Proof.
   - (* call fsim *)
     inv CALLSRC. inv MATCH; ss. clarify.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
+    exploit wt_callstate_agree; eauto. intros [AGCS AGARGS].
     assert(MCOMPAT: sm0.(SimMemInj.inj) = j). { admit "strengthen Stackingproof.v". } clarify.
 
     hexpl match_stacks_sp_ofs RSP.

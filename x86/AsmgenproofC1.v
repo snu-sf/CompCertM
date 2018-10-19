@@ -906,13 +906,8 @@ Transparent destroyed_at_function_entry.
   apply plus_one. eapply exec_step_external; eauto.
   eapply external_call_symbols_preserved; eauto. apply senv_preserved.
   econstructor; eauto.
-  unfold loc_external_result.
-  apply agree_set_other; auto. apply agree_set_pair; auto.
-  { inv AG. econstructor; eauto.
-    intros. unfold regset_after_external. unfold Mach.regset_after_external.
-    rewrite to_preg_to_mreg.
-    destruct (is_callee_save r) eqn:T; eauto.
-  }
+  unfold loc_external_result. apply agree_set_other; auto. apply agree_set_pair; auto.
+  apply agree_undef_caller_save_regs; auto. 
   { eapply external_call_nextblock in H1. etransitivity; eauto. }
 
 - (* return *)

@@ -562,7 +562,8 @@ Qed.
 
 Lemma frame_contents_exten:
   forall ls ls0 ls' ls0' j sp parent retaddr P m,
-  (forall sl ofs ty, Val.lessdef (ls' (S sl ofs ty)) (ls (S sl ofs ty))) ->
+  (forall ofs ty, Val.lessdef (ls' (S Local ofs ty)) (ls (S Local ofs ty))) ->
+  (forall ofs ty, Val.lessdef (ls' (S Outgoing ofs ty)) (ls (S Outgoing ofs ty))) ->
   (forall r, In r b.(used_callee_save) -> ls0' (R r) = ls0 (R r)) ->
   m |= frame_contents j sp ls ls0 parent retaddr ** P ->
   m |= frame_contents j sp ls' ls0' parent retaddr ** P.
@@ -654,16 +655,6 @@ Record agree_locs (ls ls0: locset) : Prop :=
        ls (S Incoming ofs ty) = ls0 (S Outgoing ofs ty)
 }.
 
-(** Auxiliary predicate used at call points *)
-
-Definition agree_callee_save (ls ls0: locset) : Prop :=
-  forall l,
-  match l with
-  | R r => is_callee_save r = true
-  | S _ _ _ => True
-  end ->
-  ls l = ls0 l.
-
 (** ** Properties of [agree_regs]. *)
 
 (** Values of registers *)
@@ -745,6 +736,16 @@ Proof.
   induction rl; simpl; intros.
   auto.
   apply agree_regs_set_reg; auto.
+Qed.
+
+Lemma agree_regs_undef_caller_save_regs:
+  forall j ls rs,
+  agree_regs j ls rs ->
+  agree_regs j (LTL.undef_caller_save_regs ls) (Mach.undef_caller_save_regs rs).
+Proof.
+  intros; red; intros. 
+  unfold LTL.undef_caller_save_regs, Mach.undef_caller_save_regs. 
+  destruct (is_callee_save r); auto. 
 Qed.
 
 (** Preservation under assignment of stack slot *)
@@ -881,31 +882,10 @@ Lemma agree_locs_return:
 Proof.
   intros. red in H0. inv H; constructor; auto; intros.
 - rewrite H0; auto. unfold mreg_within_bounds in H. tauto.
-- rewrite H0; auto.
-Qed.
-
-(** Preservation at tailcalls (when [ls0] is changed but not [ls]). *)
-
-Lemma agree_locs_tailcall:
-  forall ls ls0 ls0',
-  agree_locs ls ls0 ->
-  agree_callee_save ls0 ls0' ->
-  agree_locs ls ls0'.
-Proof.
-  intros. red in H0. inv H; constructor; auto; intros.
-- rewrite <- H0; auto. unfold mreg_within_bounds in H. tauto.
-- rewrite <- H0; auto.
+- rewrite <- agree_incoming0 by auto. apply H0. congruence.
 Qed.
 
 (** ** Properties of [agree_callee_save]. *)
-
-Lemma agree_callee_save_return_regs:
-  forall ls1 ls2,
-  agree_callee_save (return_regs ls1 ls2) ls1.
-Proof.
-  intros; red; intros.
-  unfold return_regs. destruct l; auto. rewrite H; auto.
-Qed.
 
 Lemma undef_regs_outside:
   forall ml ls l,
@@ -946,8 +926,19 @@ Lemma agree_callee_save_set_result:
 Proof.
   intros; red; intros. rewrite Locmap.gpo. apply H; auto.
   assert (X: forall r, is_callee_save r = false -> Loc.diff l (R r)).
-  { intros. destruct l; auto. simpl; congruence. }
+  { intros. destruct l; auto. simpl; congruence. simpl. auto. }
   generalize (loc_result_caller_save sg). destruct (loc_result sg); simpl; intuition auto.
+Qed.
+
+Lemma agree_callee_save_after:
+  forall ls1 ls2,
+  agree_callee_save ls1 ls2 ->
+  agree_callee_save (LTL.undef_caller_save_regs ls1) ls2.
+Proof.
+  intros; red; intros. unfold LTL.undef_caller_save_regs.
+  destruct l; simpl in *; auto.
+  - rewrite H0. auto.
+  - destruct sl; auto. congruence.
 Qed.
 
 (** ** Properties of destroyed registers. *)
@@ -1187,6 +1178,7 @@ Lemma function_prologue_correct:
   forall j ls ls0 ls1 rs rs1 m1 m1' m2 sp parent ra cs (CSNOTNIL: cs <> []) fb k P,
   agree_regs j ls rs ->
   agree_callee_save ls ls0 ->
+  agree_outgoing_arguments (Linear.fn_sig f) ls ls0 ->
   (forall r, Val.has_type (ls (R r)) (mreg_type r)) ->
   ls1 = LTL.undef_regs destroyed_at_function_entry (LTL.call_regs ls) ->
   rs1 = undef_regs destroyed_at_function_entry rs ->
@@ -1206,7 +1198,7 @@ Lemma function_prologue_correct:
   /\ j' sp = Some(sp', fe.(fe_stack_data))
   /\ inject_incr j j'.
 Proof.
-  intros until P; intros AGREGS AGCS WTREGS LS1 RS1 ALLOC TYPAR TYRA SEP.
+  intros until P; intros AGREGS AGCS AGARGS WTREGS LS1 RS1 ALLOC TYPAR TYRA SEP.
   rewrite unfold_transf_function.
   unfold fn_stacksize, fn_link_ofs, fn_retaddr_ofs.
   (* Stack layout info *)
@@ -1292,7 +1284,7 @@ Local Opaque b fe.
   split. rewrite LS1. apply agree_locs_undef_locs; [|reflexivity].
     constructor; intros. unfold call_regs. apply AGCS.
     unfold mreg_within_bounds in H; tauto.
-    unfold call_regs. apply AGCS. auto.
+    unfold call_regs. apply AGARGS. apply incoming_slot_in_parameters; auto.
   split. exact SEPFINAL.
   split. exact SAME. exact INCR.
   (* omega. *)
@@ -1446,7 +1438,7 @@ Proof.
     apply CS; auto.
     rewrite NCS by auto. apply AGR.
   split. red; unfold return_regs; intros.
-    destruct l; auto. rewrite H; auto.
+    destruct l. rewrite H; auto. destruct sl; auto; contradiction. 
   assumption.
 Qed.
 
@@ -1879,6 +1871,7 @@ Variable ls: locset.
 Variable rs: regset.
 Hypothesis AGR: agree_regs j ls rs.
 Hypothesis AGCS: agree_callee_save ls (parent_locset cs).
+Hypothesis AGARGS: agree_outgoing_arguments sg ls (parent_locset cs).
 Variable m': mem.
 Hypothesis SEP: m' |= stack_contents j cs cs'.
 
@@ -1904,7 +1897,7 @@ Local Opaque contains_locations.
   rewrite <- load_stack_transf_ofs in *.
   esplits; eauto.
   { econs; eauto. }
-  rewrite AGCS; ss.
+  rewrite AGARGS; ss.
 + simpl in SEP. unfold parent_sp.
   des_ifs; sep_simpl_tac; try (by inv STK).
   assert (slot_valid f Outgoing pos ty = true).
@@ -1913,7 +1906,7 @@ Local Opaque contains_locations.
   assert (slot_within_bounds (function_bounds f) Outgoing pos ty) by eauto.
   exploit frame_get_outgoing; eauto. intros (v & A & B).
   exists v; split.
-  constructor. exact A. red in AGCS. rewrite AGCS; auto.
+  constructor. exact A. rewrite AGARGS by auto. exact B. 
 Qed.
 
 Lemma transl_external_argument_2:
@@ -2098,10 +2091,10 @@ Inductive match_states: Linear.state -> Mach.state -> Prop :=
       forall cs ls m cs' rs m' j sg
         (STACKS: match_stacks j cs cs' sg)
         (AGREGS: agree_regs j ls rs)
-        (AGLOCS: (Stackingproof.agree_callee_save_after ls (parent_locset cs)
-                  /\ forall ofs ty, ls (S Outgoing ofs ty) = Vundef)
-                 \/ (agree_callee_save ls (parent_locset cs)))
-
+        (AGLOCS: agree_callee_save ls (parent_locset cs))
+        (* (AGLOCS: (Stackingproof.agree_callee_save_after ls (parent_locset cs) *)
+        (*           /\ forall ofs ty, ls (S Outgoing ofs ty) = Vundef) *)
+        (*          \/ (agree_callee_save ls (parent_locset cs))) *)
         (SEP: m' |= stack_contents j cs cs'
                  ** minjection j m
                  ** globalenv_inject ge j),
@@ -2425,6 +2418,7 @@ Proof.
   destruct (transf_function f) as [tfn|] eqn:TRANSL; simpl; try congruence.
   intros EQ; inversion EQ; clear EQ; subst tf.
   rewrite sep_comm, sep_assoc in SEP.
+  exploit wt_callstate_agree; eauto. intros [AGCS AGARGS].
   exploit function_prologue_correct; eauto.
   { notnil_tac. }
   red; intros; eapply wt_callstate_wt_regs; eauto.
@@ -2449,6 +2443,7 @@ Proof.
   { repeat apply sep_proj2 in SEP. inv SEP. des. inv H1. unfold Genv.find_funct in *. des_ifs. inv FPTR0.
     exploit FUNCTIONS; eauto. i. exploit DOMAIN; eauto. i; des. clarify. esplits; eauto. } des. clarify.
   simpl in TRANSL. inversion TRANSL; subst tf.
+  exploit wt_callstate_agree; eauto. intros [AGCS AGARGS].
   exploit transl_external_arguments; eauto. apply sep_proj1 in SEP; eauto. intros [vl [ARGS VINJ]].
   rewrite sep_comm, sep_assoc in SEP.
   exploit external_call_parallel_rule; eauto.
@@ -2459,38 +2454,24 @@ Proof.
   notnil_tac.
   eapply match_states_return with (j := j').
   eapply match_stacks_change_meminj; eauto.
-  apply agree_regs_set_pair. apply agree_regs_inject_incr with j; auto.
-  eapply Stackingproof.agree_regs_after_external; eauto.
+  apply agree_regs_set_pair. apply agree_regs_undef_caller_save_regs. 
+  apply agree_regs_inject_incr with j; auto.
   auto.
-  { left.
-    split; auto.
-    - apply Stackingproof.agree_callee_save_after_set_result; auto.
-      apply Stackingproof.agree_callee_save_after_external; auto.
-    - intros. rewrite Locmap.gpo; simpl; auto.
-      destruct (loc_result (ef_sig ef)); simpl; auto.
-  }
+  apply agree_callee_save_set_result.
+  apply agree_callee_save_after; auto.
   apply stack_contents_change_meminj with j; auto.
   rewrite sep_comm, sep_assoc; auto.
 
 - (* return *)
-  inv STACKS. { ss. } simpl in AGLOCS. simpl in SEP. des_ifs. rewrite sep_assoc in SEP.
+  inv STACKS. { ss. } simpl in AGLOCS. simpl in SEP. des_ifs. rewrite sep_assoc in SEP. exploit wt_returnstate_agree; eauto. intros [AGCS OUTU].
   econstructor; split.
   apply plus_one. step_tac. apply exec_return.
   { inv STK; ss. }
   econstructor; eauto.
-  {
-    destruct AGLOCS as [[AGLOCS0 AGLOCS1] | AGLOCS]; cycle 1.
-    { apply agree_locs_return with rs0; auto. }
-    inv AGL. econstructor; eauto; intros.
-    - rewrite <- agree_unused_reg0; eauto. rewrite AGLOCS0; auto. unfold mreg_within_bounds in *. tauto.
-    - rewrite <- agree_incoming0; auto. rewrite AGLOCS0; auto. congruence.
-  }
-  eapply frame_contents_exten with rs0 _; auto.
-  { intros. destruct AGLOCS as [[AGLOCS0 AGLOCS1] | AGLOCS].
-    - destruct sl; try (rewrite AGLOCS0; eauto; congruence); eauto.
-      rewrite AGLOCS1. eauto.
-    - rewrite AGLOCS; eauto.
-  }
+  apply agree_locs_return with rs0; auto.
+  apply frame_contents_exten with rs0 (parent_locset (s0 :: l)); auto.
+  intros; apply Val.lessdef_same; apply AGCS; red; congruence.
+  intros; rewrite (OUTU ty ofs); auto. 
 Qed.
 
 (* Lemma transf_initial_states: *)

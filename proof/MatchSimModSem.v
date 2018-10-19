@@ -119,6 +119,7 @@ Section MATCHSIMFORWARD.
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       args_src
       (CALLSRC: ms_src.(ModSem.at_external) st_src0 args_src)
+      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
     ,
       exists args_tgt sm_arg,
         (<<CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 args_tgt>>)
@@ -147,6 +148,7 @@ Section MATCHSIMFORWARD.
       (SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret)
       st_src1
       (AFTERSRC: ms_src.(ModSem.after_external) st_src0 retv_src st_src1)
+      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
 
       (* history *)
       (HISTORY: match_states_at_helper sm_init idx0 st_src0 st_tgt0 sm0 sm_arg)
@@ -213,7 +215,6 @@ Section MATCHSIMFORWARD.
         (* (MWF: SimMem.wf sm0) *)
         (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
         (MATCH: match_states sm_init i0 st_src0 st_tgt0 sm0)
-        (SUST: exists su0 m_init, sound_state su0 m_init st_src0)
         (* su0 *)
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
@@ -230,7 +231,7 @@ Section MATCHSIMFORWARD.
       - (* u in CALLSRC. des. *)
         exploit ATMWF; eauto. i; des.
         eapply lxsim_at_external; eauto.
-        i. clear CALLSRC.
+        ii. clear CALLSRC.
         exploit ATFSIM; eauto. i; des.
         (* determ_tac ModSem.at_external_dtm. clear_tac. *)
         esplits; eauto. i.
@@ -245,7 +246,6 @@ Section MATCHSIMFORWARD.
         { eapply SimSymb.mle_preserves_sim_skenv; try apply SIMSKENV; eauto.
           etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
         { etransitivity; eauto. etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
-        { inv PRSV. exploit CALL; eauto. i; des. exploit K; eauto. }
     }
     generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
     {

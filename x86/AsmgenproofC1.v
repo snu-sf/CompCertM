@@ -907,6 +907,7 @@ Transparent destroyed_at_function_entry.
   eapply external_call_symbols_preserved; eauto. apply senv_preserved.
   econstructor; eauto.
   unfold loc_external_result. apply agree_set_other; auto. apply agree_set_pair; auto.
+  rewrite regset_after_external_eq.
   apply agree_undef_caller_save_regs; auto. 
   { eapply external_call_nextblock in H1. etransitivity; eauto. }
 

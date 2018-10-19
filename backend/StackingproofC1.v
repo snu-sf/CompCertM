@@ -1120,7 +1120,7 @@ Proof.
   - (* call fsim *)
     inv CALLSRC. inv MATCH; ss. clarify.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
-    exploit wt_callstate_agree; eauto. intros [AGCS AGARGS].
+    des. exploit wt_callstate_agree; eauto. intros [AGCS AGARGS].
     assert(MCOMPAT: sm0.(SimMemInj.inj) = j). { admit "strengthen Stackingproof.v". } clarify.
 
     hexpl match_stacks_sp_ofs RSP.
@@ -1167,6 +1167,17 @@ Proof.
         eapply stack_contents_at_external_spec; eauto.
 
   - (* after fsim *)
+    des.
+    (* assert(WTST1: wt_state st_src1). *)
+    (* { hexploit (@wt_state_local_preservation prog (wt_prog _ _ TRANSL) skenv_link_src); eauto. *)
+    (*   intro PRSV. inv PRSV. *)
+    (*   inv HISTORY. ss. *)
+    (*   hexploit CALL; eauto. *)
+    (*   { eapply sm_init.(SimMemInj.src). } *)
+    (*   { apply tt. } *)
+    (*   i; des. *)
+    (*   eapply K; eauto. *)
+    (* } *)
     inv AFTERSRC. inv MATCH; ss. clarify.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
     assert(MCOMPAT: sm0.(SimMemInj.inj) = j). { admit "strengthen Stackingproof.v". } clarify.
@@ -1211,21 +1222,30 @@ Proof.
         destruct SIMSKENVLINK. inv H. inv SIMSKENV.
         rewrite <- NEXT. auto.
       * psimpl. zsimpl. rp; eauto.
-    + econs; ss; eauto with congruence.
+    + econs; ss; eauto with congruence; cycle 1.
+      { assert(MLE2: SimMemInj.le' sm0 sm1).
+        { etrans; eauto. etrans; eauto. }
+        clear - MLE2 GOOD DUMMY AGREE STACKS. destruct stack; ss; des_ifs; ss.
+        { esplits; ss; eauto; ss. eapply agree_regs_inject_incr; eauto. apply MLE2. }
+        rewrite DUMMY. esplits; eauto.
+        eapply agree_regs_inject_incr; eauto. apply MLE2.
+      }
+      assert(WTST: wt_state (Linear.Returnstate stack
+       (Locmap.setpair (loc_result sg_arg) (typify (Retv.v retv_src) (proj_sig_res sg_arg))
+          (LTL.undef_caller_save_regs ls_arg)) (Retv.m retv_src))).
+      { admit "somehow". }
+      inv WTST.
       eapply match_states_return with (j:= sm_ret.(SimMemInj.inj)); eauto.
-      * eapply match_stacks_after_external; eauto.
+      * (* eapply match_stacks_after_external; eauto. *)
         eapply match_stacks_change_meminj; try apply STACKS.
         { eapply inject_incr_trans; try apply MLE0. apply MLE. }
-      * eapply agree_regs_set_pair; ss.
-        eapply agree_regs_inject_incr.
-        { eapply Stackingproof.agree_regs_after_external; eauto. }
+      * eapply agree_regs_set_pair; cycle 1.
+        { unfold typify. des_ifs. }
+        (* TODO: Remove Mach.regset_after_external *)
+        change regset_after_external with undef_caller_save_regs.
+        eapply agree_regs_undef_caller_save_regs; eauto.
+        eapply agree_regs_inject_incr; eauto.
         eapply inject_incr_trans; try apply MLE0. ss. apply MLE.
-        unfold typify. des_ifs.
-      * left.
-        split.
-        { eapply Stackingproof.agree_callee_save_after_set_result; eauto.
-          eapply agree_callee_save_after_external; eauto. }
-        { ii. rewrite Locmap.gpo; ss. hnf. des_ifs. }
       * bar. move HISTORY at bottom. inv HISTORY. inv MATCHARG. ss. clarify.
         rename sm0 into sm_at. rename sm1 into sm_after.
         rewrite RSP0 in *. clarify.
@@ -1289,10 +1309,6 @@ Proof.
         { About stack_contents_change_meminj. admit "this should hold". }
 
         admit "this shold hold in high level. Low level details may differ".
-      * clear - GOOD DUMMY AGREE STACKS. destruct stack; ss; des_ifs; ss.
-        { esplits; ss; eauto; ss. admit "ez". ii. des_ifs. exploit GOOD; eauto. }
-        rewrite DUMMY. esplits; eauto.
-        admit "ez".
 
   - (* final fsim *)
     inv FINALSRC. inv MATCH. inv MATCHST.
@@ -1306,9 +1322,9 @@ Proof.
     ss; clarify.
     des_ifs; sep_simpl_tac; des; ss. Undo 1.
     des_ifs; sep_simpl_tac; des_safe; ss. Undo 1. (*** TODO: Fix des_safe with check_safe!! ***)
-    assert(AGLOCS0: Stackingproof.agree_callee_save_after ls0 ls_init).
-    { des; ss. ii. eapply AGLOCS. des_ifs; ss. }
-    clear AGLOCS.
+    (* assert(AGLOCS0: Stackingproof.agree_callee_save_after ls0 ls_init). *)
+    (* { des; ss. ii. eapply AGLOCS. des_ifs; ss. } *)
+    (* clear AGLOCS. *)
     (* sguard in AGLOCS. *)
     des.
     des_ifs; sep_simpl_tac; des; ss.
@@ -1342,13 +1358,13 @@ Proof.
       * rewrite ONE. ss. specialize (AGREGS mr_res).
         eapply val_inject_incr; try apply MLE; eauto.
     + econs; eauto.
-      * ii. specialize (AGLOCS0 (R mr)). des_ifs. specialize (GOOD r H). des_safe.
-        rewrite <- GOOD. rewrite <- AGLOCS0; ss.
-        destruct (Val.eq (ls0 (R r)) Vundef).
+      * ii. specialize (AGLOCS (R mr)). ss. specialize (GOOD mr H). des_safe.
+        rewrite <- GOOD. rewrite <- AGLOCS; ss.
+        destruct (Val.eq (ls0 (R mr)) Vundef).
         { rewrite e. ss. }
-        specialize (AGREGS r). inv AGREGS; ss.
+        specialize (AGREGS mr). inv AGREGS; ss.
         exfalso.
-        eapply GOOD0. rewrite <- GOOD. rewrite <- AGLOCS0; ss. rewrite <- H0. ss.
+        eapply GOOD0. rewrite <- GOOD. rewrite <- AGLOCS; ss. rewrite <- H0. ss.
 
   - (* step lemma *)
     admit "".

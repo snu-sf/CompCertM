@@ -84,6 +84,11 @@ Section ADQSOUND.
       su_tail args_tail tail
       ms lst0
       (TL: sound_stack su_tail args_tail tail)
+      (HD: forall
+          sound_state_all
+          (PRSV: local_preservation ms sound_state_all)
+        ,
+          <<SUST: sound_state_all su0 args_tail.(Args.m) lst0>>)
       (K: forall
           sound_state_all
           (PRSV: local_preservation ms sound_state_all)

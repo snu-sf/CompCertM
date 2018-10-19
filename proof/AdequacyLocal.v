@@ -473,6 +473,15 @@ Section ADQMATCH.
           (MWF: SimMem.wf sm_ret)
           (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
           lst_src1
+          (* (SU: forall *)
+          (*     su_ret *)
+          (*     (LE: Sound.le su_gr su_ret) *)
+          (*     (RETV: Sound.retv su_ret retv_src) *)
+          (*     (MLE: Sound.mle su_gr (Args.m args) (Retv.m retv_src)) *)
+          (*   , *)
+          (*     exists su m_arg, sound_state_local su m_arg lst_src1) *)
+          (* (SU: exists su m_arg, sound_state_local su m_arg lst_src1) *)
+          (SU: exists su m_arg, sound_state_local su m_arg lst_src0)
           (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 retv_src lst_src1)
         ,
           exists lst_tgt1 sm_after i1,
@@ -821,6 +830,17 @@ Section ADQSTEP.
       i.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
+      Ltac hexploit1 H :=
+        match goal with
+        | [ H: ?A -> ?B |- _ ] =>
+          apply (@mp B); [apply H|clear H; intro H]
+        end
+      .
+      hexploit1 SU0.
+      { unsguard SUST. des_safe. inv SUST. simpl_depind. clarify.
+        esplits. eapply HD; eauto. }
+      rename SU0 into CALLFSIM.
+
       exploit CALLFSIM; eauto.
       (* { clear - GE. inv GE. des. ss. eapply SimSymb.sim_skenv_func_bisim; eauto. } *)
       i; des.
@@ -839,7 +859,15 @@ Section ADQSTEP.
           * ss. folder. des_ifs. eapply mlift_preserves_sim_ge; eauto.
           * instantiate (1:= (SimMem.lift sm_arg)).
             econs; [eassumption|..]; revgoals.
-            { ii. exploit K; eauto. i; des_safe. pclearbot. esplits; eauto. }
+            { ii. exploit K; eauto.
+              (* { unsguard SUST. des_safe. inv SUST. simpl_depind. clarify. *)
+              (*   dup PRSV. inv PRSV. *)
+              (*   exploit CALL; eauto. *)
+              (*   { eapply HD; eauto. } *)
+              (*   i; des. esplits. eapply K0; eauto. *)
+                
+              (* } *)
+              i; des_safe. pclearbot. esplits; eauto. }
             { ss. }
             { reflexivity. }
             { etransitivity; eauto. }
@@ -878,6 +906,11 @@ Section ADQSTEP.
       determ_tac ModSem.final_frame_dtm. clear_tac.
       exploit K; try apply SIMRETV; eauto.
       { etransitivity; eauto. }
+      {
+        unsguard SUST. des_safe. inv SUST. simpl_depind. clarify.
+        inv TL. simpl_depind. clarify.
+        esplits; eauto. eapply HD0; eauto.
+      }
       i; des.
       esplits; eauto.
       + left. apply plus_one.

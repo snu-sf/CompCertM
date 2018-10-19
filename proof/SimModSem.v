@@ -138,7 +138,8 @@ Section SIMMODSEM.
       (* (SAFESRC: ms_tgt.(is_call) st_tgt0) *)
       (SAFESRC: ms_src.(is_call) st_src0)
       (* (PROGSRC: ms_src.(is_call) st_src0) *)
-      (CALLFSIM: forall
+      (SU: forall (SU: sound_state st_src0),
+      <<CALLFSIM: forall
           args_src
           (ATSRC: ms_src.(at_external) st_src0 args_src)
         ,
@@ -154,6 +155,7 @@ Section SIMMODSEM.
                 (MWF: SimMem.wf sm_ret)
                 (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
                 st_src1
+                (SU: sound_state st_src0)
                 (AFTERSRC: ms_src.(after_external) st_src0 retv_src st_src1)
               ,
                 exists st_tgt1 sm_after i1,
@@ -162,7 +164,7 @@ Section SIMMODSEM.
                   (<<MLE: SimMem.le (sm_arg.(SimMem.unlift) sm_ret) sm_after>>)
                   /\
                   (<<LXSIM: lxsim sm_init i1 st_src1 st_tgt1 sm_after>>)>>)
-                  ))
+                  )>>)
 
   | lxsim_final
       sm_ret
@@ -205,7 +207,7 @@ Section SIMMODSEM.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 3; eauto.
-      i; ss. exploit CALLFSIM; eauto. i; des.
+      ii; ss. exploit SU; eauto. i; des.
       esplits; eauto. ii.
       exploit K; eauto. i; des. esplits; eauto.
     - econs 4; eauto.

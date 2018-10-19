@@ -983,7 +983,6 @@ Section PRESERVATION.
     - eapply IN.
     - ss.
     - unfold Frame.update_st. s. repeat f_equal. eapply local_global_consistent; try apply GELE; eauto.
-      rewrite regset_after_external_eq. ss.
     - ss.
     - ss.
     - des_ifs. omega.
@@ -1347,7 +1346,7 @@ Section PRESERVATION.
         * ss.
         * eapply match_stack_incr; eauto.
         * ss.
-        * rewrite <- regset_after_external_eq. unfold set_pair. des_ifs; repeat (eapply update_agree2; eauto).
+        * unfold set_pair. des_ifs; repeat (eapply update_agree2; eauto).
           -- unfold regset_after_external.
              intros []; des_ifs; try econs; eauto.
           -- unfold regset_after_external.

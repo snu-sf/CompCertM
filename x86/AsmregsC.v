@@ -184,7 +184,7 @@ Proof.
   unfold PregEq.t in *. spc LD0. spc LD1. spc PTRFREE.
   rewrite LD0 in *.
   inv CALLEESAVE.
-  - rewrite H1. inv LD1; eauto. rewrite H1 in *. rewrite <- H in *. ss.
+  - rewrite H1. inv LD1; ss; eauto. rewrite H1 in *. rewrite <- H in *. ss.
   - eauto.
 Qed.
 

@@ -1,6 +1,6 @@
 COQMODULE    := compcomp
 COQTHEORIES  := $(wildcard */*.v) #*/*.v
-COQTHEORIES  := $(filter-out proof/SimMemInjNew.v proof/SimMemInj_old.v common/MemoryExplore.v, $(COQTHEORIES))
+COQTHEORIES  := $(filter-out compose/SymbInj.v proof/SimMemInjNew.v proof/SimMemInj_old.v common/MemoryExplore.v, $(COQTHEORIES))
 
 .PHONY: all proof proof-quick
 
@@ -13,6 +13,9 @@ graph:
 
 proof-quick: Makefile.coq $(COQTHEORIES)
 	$(MAKE) -f Makefile.coq $(patsubst %.v,%.vio,$(COQTHEORIES))
+
+proof: Makefile.coq $(COQTHEORIES)
+	$(MAKE) -f Makefile.coq $(patsubst %.v,%.vo,$(COQTHEORIES))
 
 Makefile.coq: Makefile $(COQTHEORIES)
 	(echo "-R ../lib compcert.lib"; \

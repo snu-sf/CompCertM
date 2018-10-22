@@ -6,7 +6,7 @@ Require Import Asmgen Asmgenproof0 Asmgenproof1.
 Require Import sflib.
 (* newly added *)
 Require Export Asmgenproof AsmgenproofC0 AsmgenproofC1.
-Require Import ModSem SimModSem SimSymbId SimMemExtends SimSymbId MemoryC.
+Require Import ModSem SimModSem SimSymbId SimMemExt SimSymbId MemoryC.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.
 Require SoundTop.

@@ -9,7 +9,7 @@ Require Import sflib.
 Require Export Deadcodeproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
-Require SimMemExtends.
+Require SimMemExt.
 Require UnreachC.
 
 Set Implicit Arguments.
@@ -68,7 +68,7 @@ Proof.
     inv SIMARGS; ss. clarify.
     inv INITTGT.
     exploit make_match_genvs; eauto. intro SIMGE. des.
-    eexists. eexists (SimMemExtends.mk _ _).
+    eexists. eexists (SimMemExt.mk _ _).
     esplits; eauto.
     + econs; eauto; ss.
       * rpapply match_call_states; eauto.
@@ -107,7 +107,7 @@ Proof.
         inv FPTR; ss.
       * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. destruct SIMSKENVLINK. ss.
     + econs; ss; eauto.
-      * instantiate (1:= SimMemExtends.mk _ _). ss.
+      * instantiate (1:= SimMemExt.mk _ _). ss.
       * ss.
     + ss.
   - (* after fsim *)
@@ -120,7 +120,7 @@ Proof.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv STACKS; ss. destruct sm0; ss. clarify.
-    eexists (SimMemExtends.mk _ _). esplits; ss; eauto.
+    eexists (SimMemExt.mk _ _). esplits; ss; eauto.
   - esplits; eauto.
     { apply modsem_receptive. }
     inv MATCH.
@@ -130,7 +130,7 @@ Proof.
     i; des.
     esplits; eauto.
     + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.
-    + instantiate (1:= (SimMemExtends.mk _ _)). ss.
+    + instantiate (1:= (SimMemExt.mk _ _)). ss.
 Unshelve.
   all: ss.
 Qed.

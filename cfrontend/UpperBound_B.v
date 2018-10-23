@@ -953,7 +953,7 @@ c0 + empty
                         exploit external_call_determ. eapply EXTCALL.
                         eapply EXTCALL0. i. des.
                         splits; eauto.
-                        { admit "why?". }
+                        { admit "fill in `symbolenv` of `Sem.v`". }
                         { i. subst.
                           exploit H0; eauto. i. des.
                           assert (retv = retv0).
@@ -1092,7 +1092,7 @@ c0 + empty
                           inv H3; inv H4; ss; try (by ss); try (by inv FINAL).
                           - inv AT; inv AT0. ss.
                             splits.
-                            { admit "true". }
+                            { admit "fill in `symbolenv` of `Sem.v`". }
                             i. des_ifs.
                           - inv AT. ss. des_ifs.
                             unfold fundef in *.
@@ -1107,7 +1107,7 @@ c0 + empty
                             + des_ifs.
                               exploit alloc_variables_determ. eapply H16. eauto. i. des. subst.
                               exploit bind_parameters_determ. eapply H17. eapply H19. i. subst.
-                              split. admit "true". i. auto.
+                              split; [admit "fill in `symbolenv` of `Sem.v`"| i; auto].
                             + unfold fundef in *.
                               exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero true)); eauto.
                               i. ss. des_ifs.

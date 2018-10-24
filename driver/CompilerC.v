@@ -67,7 +67,7 @@ Require Asmgenproof.
 (** Command-line flags. *)
 Require Import Compopts.
 (** newly added **)
-Require Import Behaviors.
+Require Import BehaviorsC.
 Require Export Compiler.
 Require Import Simulation.
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
@@ -335,33 +335,6 @@ Proof.
   idtac "SINGLE EVENTS!!!!".
 Abort.
 
-Definition improves (L1 L2: semantics): Prop := forall
-    beh2
-    (BEH: program_behaves L2 beh2)
-  ,
-    exists beh1, <<BEH: program_behaves L1 beh1>> /\ <<IMPRV: behavior_improves beh1 beh2>>
-.
-
-Global Program Instance improves_PreOrder: PreOrder improves.
-Next Obligation.
-  ii. esplits; eauto. eapply behavior_improves_refl.
-Qed.
-Next Obligation.
-  ii. r in H. r in H0. repeat spc H0. des. specialize (H _ BEH0). des.
-  esplits; eauto. eapply behavior_improves_trans; eauto.
-Qed.
-
-Lemma bsim_improves
-      L1 L2
-      (BSIM: backward_simulation L1 L2)
-  :
-    <<IMRPV: improves L1 L2>>
-.
-Proof.
-  ii.
-  eapply backward_simulation_behavior_improves; eauto.
-  eapply backward_to_compcert_backward_simulation; eauto.
-Qed.
 
 
 
@@ -386,8 +359,6 @@ Module PLAYGROUND.
   Check M a1.
 
 End PLAYGROUND.
-
-
 
 (* Inductive world_cases (SM: SimMem.class): SimSymb.class SM -> Sound.class -> Prop := *)
 (* | world_cases_id *)

@@ -1494,3 +1494,28 @@ Section PRESERVATION.
   Qed.    
 
 End PRESERVATION.
+
+
+Require Import BehaviorsC.
+
+Theorem lower_bound_correct
+        (asms: list Asm.program)
+  :
+    (<<INITUB: program_behaves (sem (map AsmC.module asms)) (Goes_wrong E0)>>) \/
+    exists link_tgt,
+      (<<TGT: link_list asms = Some link_tgt>>)
+      /\ (<<REFINE: improves (sem (map AsmC.module asms)) (Asm.semantics link_tgt)>>)
+.
+Proof.
+  destruct (link_sk (map module asms)) eqn:T; cycle 1.
+  { left. econs 2. ii. ss. inv H. clarify. }
+  destruct (Sk.load_mem t) eqn:T2; cycle 1.
+  { left. econs 2. ii. ss. inv H. clarify. }
+  right.
+  exploit link_sim; eauto. i; des.
+  rewrite TGT. esplits; eauto.
+  eapply bsim_improves.
+  eapply mixed_to_backward_simulation.
+  eapply transf_program_correct; eauto.
+Qed.
+

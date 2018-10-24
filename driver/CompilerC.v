@@ -73,6 +73,7 @@ Require Import Simulation.
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
 Require Import AdequacyLocal.
 
+Require SimMemInj SoundTop SimSymbDrop.
 
 
 Set Implicit Arguments.
@@ -82,24 +83,27 @@ Local Open Scope list_scope.
 
 
 
+Local Existing Instance Values.Val.mi_normal.
+
 Parameter C2R: Csyntax.program -> res RTL.program.
-Parameter C2R_SM: SimMem.class.
-Parameter C2R_SU: Sound.class.
-Parameter C2R_SS: SimSymb.class C2R_SM.
+(* Parameter C2R_SM: SimMem.class. *)
+(* Parameter C2R_SU: Sound.class. *)
+(* Parameter C2R_SS: SimSymb.class C2R_SM. *)
 Parameter C_module: Csyntax.program -> Mod.t.
 Parameter C2R_sim_mod: forall
     src tgt
     (TRANSF: C2R src = OK tgt)
   ,
     exists ss,
-      <<SIM: @ModPair.sim C2R_SM C2R_SS C2R_SU (ModPair.mk (C_module src) (RTLC.module tgt) ss)>>
+      <<SIM: @ModPair.sim SimMemInj.SimMemInj SimMemInj.SimSymbId SoundTop.Top (ModPair.mk (C_module src) (RTLC.module tgt) ss)>>
 .
 
 Section C2R.
 
-  Local Existing Instance C2R_SM.
-  Local Existing Instance C2R_SU.
-  Local Existing Instance C2R_SS.
+  (* Local Existing Instance C2R_SM. *)
+  (* Local Existing Instance C2R_SU. *)
+  (* Local Existing Instance C2R_SS. *)
+  Local Existing Instance SimMemInj.SimSymbId | 0.
 
   Variable cps: list ModPair.t.
   Variable aps: list ModPair.t.
@@ -202,22 +206,22 @@ End Deadcode.
 
 
 Parameter R2A: RTL.program -> res Asm.program.
-Parameter R2A_SM: SimMem.class.
-Parameter R2A_SU: Sound.class.
-Parameter R2A_SS: SimSymb.class R2A_SM.
 Parameter R2A_sim_mod: forall
     src tgt
     (TRANSF: R2A src = OK tgt)
   ,
     exists ss,
-      <<SIM: @ModPair.sim R2A_SM R2A_SS R2A_SU (ModPair.mk (RTLC.module src) (AsmC.module tgt) ss)>>
+      <<SIM: @ModPair.sim SimMemInj.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top (ModPair.mk (RTLC.module src) (AsmC.module tgt) ss)>>
 .
 
 Section R2A.
 
-  Local Existing Instance R2A_SM.
-  Local Existing Instance R2A_SU.
-  Local Existing Instance R2A_SS.
+  (* Local Existing Instance R2A_SM. *)
+  (* Local Existing Instance R2A_SU. *)
+  (* Local Existing Instance R2A_SS. *)
+  Local Existing Instance SimMemInj.SimMemInj | 0.
+  Local Existing Instance SimSymbDrop.SimSymbDrop | 0.
+  Local Existing Instance SoundTop.Top | 0.
 
   Variable cps: list ModPair.t.
   Variable aps: list ModPair.t.
@@ -401,9 +405,10 @@ End PLAYGROUND.
 (* | ss_cases_id: ss_cases SimMemId.SimSymbId *)
 (* . *)
 
+
 Module IdSim.
 
-  Lemma tgt_id_id_top
+  Lemma tgt_id
         (tgt: Asm.program)
   :
     exists mp,
@@ -415,7 +420,7 @@ Module IdSim.
     admit "this should hold".
   Qed.
 
-  Lemma tgt_ext_id_top
+  Lemma tgt_ext_top
         (tgt: Asm.program)
   :
     exists mp,
@@ -427,7 +432,7 @@ Module IdSim.
     admit "this should hold".
   Qed.
 
-  Lemma tgt_ext_id_unreach
+  Lemma tgt_ext_unreach
         (tgt: Asm.program)
   :
     exists mp,
@@ -439,41 +444,114 @@ Module IdSim.
     admit "this should hold".
   Qed.
 
-  Lemma src_id_id_top
+  Lemma tgt_inj_id
+        (tgt: Asm.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimMemInj.SimSymbId SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = tgt.(AsmC.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = tgt.(AsmC.module)>>)
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+  Lemma tgt_inj_drop
+        (tgt: Asm.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = tgt.(AsmC.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = tgt.(AsmC.module)>>)
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+
+
+
+  Lemma src_id
         (src: Csyntax.program)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
-      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
   .
   Proof.
     admit "this should hold".
   Qed.
 
-  Lemma src_ext_id_top
+  Lemma src_ext_top
         (src: Csyntax.program)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExtends SimMemExt.SimSymbExtends SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
-      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
   .
   Proof.
     admit "this should hold".
   Qed.
 
-  Lemma src_ext_id_unreach
+  Lemma src_ext_unreach
         (src: Csyntax.program)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExtends SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
       /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
-      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
   .
   Proof.
     admit "this should hold".
   Qed.
+
+  Lemma src_inj_id
+        (src: Csyntax.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimMemInj.SimSymbId SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+  Lemma src_inj_drop
+        (src: Csyntax.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+
+
+  Lemma lift
+        `{SM: SimMem.class} `{@SimSymb.class SM} `{Sound.class}
+        X (to_mod: X -> Mod.t)
+        (MOD: forall x, exists mp,
+              ModPair.sim mp /\ mp.(ModPair.src) = x.(to_mod) /\ mp.(ModPair.tgt) = x.(to_mod))
+    :
+      <<PROG: forall xs, exists pp,
+          ProgPair.sim pp /\ ProgPair.src pp = map to_mod xs /\ ProgPair.tgt pp = map to_mod xs
+          >>
+  .
+  Proof.
+    ii.
+    induction xs; ii; ss.
+    { esplits; eauto. }
+    des.
+    specialize (MOD a). des.
+    exists (mp :: pp). esplits; ss; eauto with congruence.
+  Qed.
+
 
 End IdSim.
 
@@ -492,31 +570,74 @@ Lemma compiler_correct_single
 Proof.
   unfold transf_c_program in *. unfold apply_total, apply_partial in *. des_ifs.
 
-  assert(C2R_SM = SimMemId.SimMemId).
-  { admit "somehow". }
+  (* assert(exists cps, <<SIM: ProgPair.sim cps>> /\ <<SRC: ProgPair.src cps = map C_module cs>>). *)
+  (* { eapply IdSim.lift. *)
+  (*   i. *)
+  (*   eapply Morphisms_Prop.ex_impl_morphism_obligation_1; cycle 1. *)
+  (*   { apply IdSim.src_inj_id. } *)
+  (*   ii. des; eauto. *)
+  (* } *)
+  (* des. *)
 
-  assert(exists cps, <<SRC: ProgPair.src cps = map C_module cs>> /\ <<SIM: ProgPair.sim cps>>).
-  { admit "somehow". }
-  des.
-  assert(exists aps, <<SRC: ProgPair.src aps = map AsmC.module asms>> /\ <<SIM: ProgPair.sim aps>>).
-  { admit "somehow". }
-  des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_inj_drop cs). intro SRCINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_inj_id cs). intro SRCINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_ext_top cs). intro SRCEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_ext_unreach cs). intro SRCEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_id cs). intro SRCID; des.
+
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_inj_drop asms). intro TGTINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_inj_id asms). intro TGTINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_ext_top asms). intro TGTEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_ext_unreach asms). intro TGTEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_id asms). intro TGTID; des.
+
+  Ltac find_replacer := 
+    repeat
+      match goal with
+      | [H0: ?L0 = ?R0, H1: ?L1 = ?R1 |- _ ] =>
+        rewrite <- H0; rewrite <- H1; refl
+      end
+  .
 
   etrans.
   {
-    rewrite <- SRC. rewrite <- SRC0.
     eapply bsim_improves.
-    rp; [eapply C2R_correct|..]; try eassumption; try reflexivity; revgoals.
-    { Set Printing All. reflexivity.
-    { rewrite SRC.
-    Fail eapply C2R_correct. admit "pairing".
+    rp; [eapply C2R_correct|..]; try refl; revgoals.
+    { find_replacer. }
+    all: eauto.
   }
+  repeat all ltac:(fun H => rewrite H).
+
   etrans.
-  { eapply bsim_improves. admit "renumber". }
-  admit "R2A".
-Unshelve.
-  all: admit "somehow".
+  {
+    eapply bsim_improves.
+    rp; [eapply Renumber_correct|..]; try refl; revgoals.
+    { find_replacer. }
+    all: eauto.
+  }
+  repeat all ltac:(fun H => rewrite H).
+  
+  etrans.
+  {
+    eapply bsim_improves.
+    rp; [eapply Deadcode_correct|..]; try refl; revgoals.
+    { find_replacer. }
+    all: eauto.
+  }
+  repeat all ltac:(fun H => rewrite H).
+
+  etrans.
+  {
+    eapply bsim_improves.
+    rp; [eapply R2A_correct|..]; try refl; revgoals.
+    { find_replacer. }
+    all: eauto.
+  }
+  repeat all ltac:(fun H => rewrite H).
+  refl.
 Qed.
+
+
 
 
 (**

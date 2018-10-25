@@ -19,15 +19,6 @@ Set Implicit Arguments.
 Module Mod.
   (* TRANSLATION UNIT *)
 
-  Inductive get_internals (sk: Sk.t) (skenv: SkEnv.t) (internals: block -> Prop): Prop :=
-  | get_internals_intro
-      (INTERNALS: forall
-          id
-        ,
-          <<FIND: exists if_sig, sk.(prog_defmap) ! id = Some (Gfun (Internal if_sig))>> <->
-          <<INTERNAL: internals id>>)
-  .
-
   (* I intentionally left "datatype" in to_skel and to_moduleenv. *)
   (* 1) defining translation becomes more lightweight. *)
   (* Consider RTL -> RTL. to_skel/to_moduleenv remains the same *)

@@ -72,18 +72,34 @@ Module SkEnv.
       (*     (BIG: skenv.(Genv.find_def) id = Some gd) *)
       (*   , *)
       (*     <<SMALL: skenv_proj.(Genv.find_def) id = Some gd>>) *)
+
+      (* (DEFKEEP: forall *)
+      (*     id blk *)
+      (*     (INV: skenv.(Genv.invert_symbol) blk = Some id) *)
+      (*     (KEEP: keep id) *)
+      (*   , *)
+      (*     <<SMALL: skenv_proj.(Genv.find_def) blk = skenv.(Genv.find_def) blk>>) *)
+      (* (DEFDROP: forall *)
+      (*     id blk *)
+      (*     (INV: skenv.(Genv.invert_symbol) blk = Some id) *)
+      (*     (DROP: ~ keep id) *)
+      (*   , *)
+      (*     <<SMALL: skenv_proj.(Genv.find_def) blk = None>>) *)
       (DEFKEEP: forall
-          id blk
+          id blk gd
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
           (KEEP: keep id)
+          (INTERNAL: ~ is_external gd)
+          (BIG: skenv.(Genv.find_def) blk = Some gd)
         ,
-          <<SMALL: skenv_proj.(Genv.find_def) blk = skenv.(Genv.find_def) blk>>)
-      (DEFDROP: forall
+          <<SMALL: skenv_proj.(Genv.find_def) blk = Some gd>>)
+      (DEFKEPT: forall
           id blk
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
-          (DROP: ~ keep id)
+          gd
+          (SMALL: skenv_proj.(Genv.find_def) blk = Some gd)
         ,
-          <<SMALL: skenv_proj.(Genv.find_def) blk = None>>)
+          <<KEEP: keep id>> /\ <<INTERNAL: ~is_external gd>> /\ <<BIG: skenv.(Genv.find_def) blk = Some gd>>)
       (DEFORPHAN: forall (* TODO: is it needed? *)
           blk
           (INV: skenv.(Genv.invert_symbol) blk = None)
@@ -97,7 +113,10 @@ I think "sim_skenv_monotone" should be sufficient.
    *)
   Definition project (skenv: t) (keep: ident -> bool): t :=
     (skenv.(Genv_filter_symb) (fun id => keep id))
-    .(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk; assertion(keep id); Some gd))
+    .(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
+                                       assertion(keep id);
+                                       assertion(negb (is_external gd));
+                                       Some gd))
   .
 
   Lemma project_impl_spec
@@ -112,12 +131,20 @@ I think "sim_skenv_monotone" should be sufficient.
     - rewrite PTree_filter_key_spec. des_ifs.
     - rewrite PTree_filter_key_spec. des_ifs.
     - rewrite PTree_filter_map_spec. des_ifs.
-      u. des_ifs.
-    - rewrite PTree_filter_map_spec. des_ifs.
-      u. des_ifs.
+      u. des_ifs. bsimpl. ss.
+    - rewrite PTree_filter_map_spec in *. u in *. des_ifs. esplits; eauto. ii. bsimpl. congruence.
     - rewrite PTree_filter_map_spec. des_ifs.
       u. des_ifs.
   Qed.
+
+  Inductive wf_proj (skenv: t): Prop :=
+  | wf_proj_intro
+    (DEFSYMB: forall
+        blk skd
+        (DEF: skenv.(Genv.find_def) blk = Some skd)
+     ,
+       <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>> /\ <<INTERNAL: ~is_external skd>>)
+  .
 
   Lemma project_spec_preserves_wf
         skenv
@@ -125,27 +152,19 @@ I think "sim_skenv_monotone" should be sufficient.
         keep skenv_proj
         (PROJ: project_spec skenv keep skenv_proj)
     :
-      <<WF: wf skenv_proj>>
+      <<WF: wf_proj skenv_proj>>
   .
   Proof.
     inv WF. inv PROJ.
     econs; eauto.
-    - ii.
-      destruct (classic (keep id)).
-      + erewrite SYMBKEEP in *; eauto.
-        erewrite DEFKEEP; eauto.
-        apply Genv.find_invert_symbol; ss.
-      + erewrite SYMBDROP in *; eauto. ss.
-    - ii.
-      destruct (Genv.invert_symbol skenv blk) eqn:T; cycle 1.
-      { exploit DEFORPHAN; eauto. i; des. clarify. }
-      rename i into id.
-
-      exploit Genv.invert_find_symbol; eauto. intro TT.
-      destruct (classic (keep id)).
-      + esplits; eauto. erewrite SYMBKEEP; eauto.
-      + exploit DEFDROP; eauto. i; des.
-        exploit SYMBDEF; eauto. i; des. clarify.
+    ii.
+    destruct (Genv.invert_symbol skenv blk) eqn:T; cycle 1.
+    { exploit DEFORPHAN; eauto. i; des. clarify. }
+    rename i into id.
+    exploit Genv.invert_find_symbol; eauto. intro TT.
+    exploit DEFKEPT; eauto. i; des.
+    esplits; eauto.
+    erewrite SYMBKEEP; eauto.
   Qed.
 
   (* Definition project (skenv: t) (ids: list ident): option SkEnv.t. *)

@@ -194,10 +194,21 @@ Proof.
         assert(i = i0).
         { eapply Genv.genv_vars_inj; eauto. unfold Genv.find_symbol in *. rewrite SYMB. ss. }
         clarify.
+        destruct (Genv.find_def skenv_link_src blk) eqn:T2; cycle 1.
+        { inv WFSRC. exploit SYMBDEF; eauto. i ;des. clarify. }
+        destruct (Genv.find_def skenv_link_tgt blk) eqn:T3; cycle 1.
+        { inv WFTGT. exploit SYMBDEF; eauto. i ;des. clarify. }
+
         repeat all_once_fast ltac:(fun H => try apply Genv.find_invert_symbol in H; des).
-        destruct (classic (defs sk_src i0)).
-        { erewrite DEFKEEP; eauto. erewrite DEFKEEP0; eauto. rewrite <- DEFSEQ; ss. }
-        { erewrite DEFDROP; eauto. erewrite DEFDROP0; eauto. rewrite <- DEFSEQ; ss. }
+        destruct (Genv.find_def skenv_src blk) eqn:T4.
+        { exploit DEFKEPT; eauto. i; des.
+          exploit DEFKEEP0; eauto with congruence.
+        }
+        destruct (Genv.find_def skenv_tgt blk) eqn:T5.
+        { exploit DEFKEPT0; eauto. i; des.
+          exploit DEFKEEP; eauto with congruence.
+        }
+        ss.
   - eq_closure_tac. ss. (* TODO: debug this *)
     rewrite PUBLIC. rewrite PUBS. rewrite PUBLIC0. ss.
 Qed.

@@ -276,7 +276,7 @@ Next Obligation.
   inv SIMSKENV. ss.
   apply sim_skenv_splittable_spec.
   dsplits; eauto; ii; ss.
-  -
+  - (* SIMSYMB1 *)
     inv LESRC.
     destruct (classic (defs sk_src id)); cycle 1.
     { exfalso. exploit SYMBDROP; eauto. i; des. clarify. }
@@ -307,7 +307,7 @@ Next Obligation.
     }
 
 
-  -
+  - (* SIMSYMB2 *)
     inv LESRC.
     destruct (classic (defs sk_src id)); cycle 1.
     { exfalso. exploit SYMBDROP; eauto. i; des. clarify. }
@@ -335,7 +335,7 @@ Next Obligation.
       - exfalso. apply KEPT. ss.
     }
 
-  -
+  - (* SIMSYMB3 *)
     inv LETGT.
     destruct (classic (defs sk_tgt id)); cycle 1. 
     { exploit SYMBDROP; eauto. i; des. clarify. }
@@ -355,28 +355,61 @@ Next Obligation.
       exploit KEPT; eauto. i; des. rewrite <- H1. esplits; eauto.
     }
 
-  - 
+  - (* SIMDEF *)
 
     inv LESRC.
-    inv WFSMALLSRC. exploit DEFSYMB; eauto. intro SYMBSMALL; des.
+    inv WFSMALLSRC. exploit DEFSYMB; eauto. intro SYMBSMALL; des. rename SYMB into SYMBSMALL.
     destruct (classic (defs sk_src id)); cycle 1.
     { exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro SYMBBIG; des. rewrite SYMBSMALL in *. symmetry in SYMBBIG.
     inv WFSRC.
-    exploit SYMBDEF0; eauto. i; des.
+    exploit SYMBDEF; eauto. i; des.
     exploit SIMDEF; eauto. i; des. clarify.
 
     exploit SPLITHINT; eauto. i; des.
     move DEFSRC at bottom. move H0 at bottom.
-    assert(def_src = def_tgt).
-    { exploit DEFKEEP; eauto. eapply Genv.find_invert_symbol; eauto. i.
-      rewrite DEFSRC in *. rewrite H0 in *. des. clarify. } clarify.
+
+    exploit DEFKEPT; eauto.
+    { eapply Genv.find_invert_symbol; eauto. }
+    i; des.
+    clarify.
+
+    (* assert(def_src = def_tgt). *)
+    (* { exploit DEFKEEP; eauto. eapply Genv.find_invert_symbol; eauto. i. *)
+    (*   rewrite DEFSRC in *. rewrite H0 in *. des. clarify. } clarify. *)
     esplits; eauto.
 
     inv LETGT.
     exploit SIMSYMB1; eauto. i; des.
+
+    destruct (Genv.find_def skenv_tgt blk_tgt) eqn:T.
+    { exploit DEFKEPT0; eauto.
+      { eapply Genv.find_invert_symbol; eauto. }
+      i; des.
+      clarify.
+    }
+    exploit DEFKEEP0; eauto.
+    { eapply Genv.find_invert_symbol; eauto. }
+    { inv SIMSK. exploit KEPT1; eauto. i.
+      Lemma defs_prog_defmap
+            F V (prog: AST.program F V)
+            (NORP: list_norepet (prog_defs_names prog))
+        :
+          forall id, (exists gd, (prog_defmap prog) ! id = Some gd) <-> defs prog id
+      .
+      Proof.
+        ii. unfold defs, prog_defs_names. split; i; des; des_sumbool.
+        - exploit in_prog_defmap; eauto. i; des. rewrite in_map_iff. esplits; eauto; ss.
+        - rewrite in_map_iff in *. des. destruct x; ss. clarify.
+          exploit prog_defmap_norepet; eauto.
+      Qed.
+      ttttttttttttttttttttt
+    }
+    inv WFSMALLTGT.
+    exploit SYMBDEF1; eauto. i; des. clarify.
+
     erewrite DEFKEEP0; eauto.
-    { eapply Genv.find_invert_symbol; eauto.  }
+    { eapply Genv.find_invert_symbol; eauto. }
     { apply NNPP. ii.
       exploit DEFDROP0; eauto.
       { eapply Genv.find_invert_symbol; eauto. }
@@ -385,7 +418,7 @@ Next Obligation.
       exploit SYMBDEF1; eauto. i; des. clarify.
     }
 
-  -
+  - (* SIMDEFINV *)
     inv LETGT.
 
     assert(Genv.find_def skenv_link_tgt blk_tgt = Some def_tgt).
@@ -446,7 +479,8 @@ Next Obligation.
     exploit SYMBKEEP0; eauto. i; des. rewrite BLKSRC in *. symmetry in H2.
     erewrite DEFKEEP0; eauto.
     { apply Genv.find_invert_symbol; eauto. }
-  - inv LESRC.
+  - (* PUBS *)
+    inv LESRC.
     rewrite PUBLIC in *.
     exploit PUBS; eauto.
     inv LE. eauto.

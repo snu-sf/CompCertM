@@ -841,14 +841,15 @@ Next Obligation.
   exploit DEFSYMB; eauto. i; des.
   destruct (classic (defs0 id)); cycle 1.
   { exploit SYMBDROP; eauto. i; des. clarify. }
-  exploit SYMBKEEP; eauto. i; des. rewrite H in *. symmetry in H1.
+  exploit SYMBKEEP; eauto. i; des. rewrite SYMB in *. symmetry in H0.
   inv WF.
-  exploit SYMBDEF0; eauto. intro DEF; des.
-  exploit DEFKEEP; eauto.
+  exploit SYMBDEF; eauto. intro DEF; des.
+  exploit DEFKEPT; eauto.
   { eapply Genv.find_invert_symbol; eauto. }
-  intro DEF2; des. rewrite DEF in *. clarify.
+  i; des. clarify.
+  rename Heq into SMALL.
   exploit RO; eauto.
-  { rewrite DEF. ss. }
+  { rewrite BIG. ss. }
   i; des.
   admit "raw admit: we need good_prog".
 Qed.

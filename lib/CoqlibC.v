@@ -915,3 +915,59 @@ Ltac hexploit1 H :=
     apply (@mp B); [apply H|clear H; intro H]
   end
 .
+
+Lemma rev_nil
+      X (xs: list X)
+      (NIL: rev xs = [])
+  :
+    xs = []
+.
+Proof.
+  generalize (f_equal (@length _) NIL). i. ss.
+  destruct xs; ss.
+  rewrite app_length in *. ss. xomega.
+Qed.
+
+Fixpoint last_opt X (xs: list X): option X :=
+  match xs with
+  | [] => None
+  | [hd] => Some hd
+  | hd :: tl => last_opt tl
+  end
+.
+
+Lemma last_none
+      X (xs: list X)
+      (NONE: last_opt xs = None)
+  :
+    xs = []
+.
+Proof.
+  ginduction xs; ii; ss.
+  des_ifs. spc IHxs. ss.
+Qed.
+
+Lemma last_some
+      X (xs: list X) x
+      (SOME: last_opt xs = Some x)
+  :
+    exists hds, xs = hds ++ [x]
+.
+Proof.
+  ginduction xs; ii; ss.
+  des_ifs.
+  { exists nil. ss. }
+  exploit IHxs; eauto. i; des.
+  rewrite H. exists (a :: hds). ss.
+Qed.
+
+Lemma forall2_eq
+      X Y (P: X -> Y -> Prop) xs ys
+  :
+    list_forall2 P xs ys <-> Forall2 P xs ys
+.
+Proof.
+  split; i.
+  - ginduction xs; ii; ss; inv H; ss; econs; eauto.
+  - ginduction xs; ii; ss; inv H; ss; econs; eauto.
+Qed.

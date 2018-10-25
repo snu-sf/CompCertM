@@ -306,19 +306,7 @@ Proof.
   i. r in SAFESRC. specialize (SAFESRC st (star_refl _ _ _)). ss.
 Qed.
 
-From stdpp Require list.
-
-Lemma rev_nil
-      X (xs: list X)
-      (NIL: rev xs = [])
-  :
-    xs = []
-.
-Proof.
-  generalize (f_equal (@length _) NIL). i. ss.
-  destruct xs; ss.
-  rewrite app_length in *. ss. xomega.
-Qed.
+(* From stdpp Require list. *)
 
 Lemma compiler_correct_single
         (src: Csyntax.program)
@@ -619,50 +607,6 @@ Note: we can't vertically compose in simulation level, because
 induction: src/tgt length is fixed (we don't do horizontal composition in behavior level)
 **)
 
-(* Fixpoint last X (xs: list X): option X := *)
-(*   match xs with *)
-(*   | [] => None *)
-(*   | [hd] => Some hd *)
-(*   | hd :: tl => last tl *)
-(*   end *)
-(* . *)
-
-Lemma last_none
-      X (xs: list X)
-      (NONE: list.last xs = None)
-  :
-    xs = []
-.
-Proof.
-  ginduction xs; ii; ss.
-  des_ifs. spc IHxs. ss.
-Qed.
-
-Lemma last_some
-      X (xs: list X) x
-      (SOME: list.last xs = Some x)
-  :
-    exists hds, xs = hds ++ [x]
-.
-Proof.
-  ginduction xs; ii; ss.
-  des_ifs.
-  { exists nil. ss. }
-  exploit IHxs; eauto. i; des.
-  rewrite H. exists (a :: hds). ss.
-Qed.
-
-Lemma forall2_eq
-      X Y (P: X -> Y -> Prop) xs ys
-  :
-    list_forall2 P xs ys <-> Forall2 P xs ys
-.
-Proof.
-  split; i.
-  - ginduction xs; ii; ss; inv H; ss; econs; eauto.
-  - ginduction xs; ii; ss; inv H; ss; econs; eauto.
-Qed.
-
 Theorem compiler_correct
         (srcs: list Csyntax.program)
         (tgts hands: list Asm.program)
@@ -681,7 +625,7 @@ Proof.
   induction len; i; ss.
   { destruct srcs; ss. inv TR. refl. }
 
-  destruct (list.last srcs) eqn:T2; cycle 1.
+  destruct (last_opt srcs) eqn:T2; cycle 1.
   {
     eapply last_none in T2. clarify.
   }

@@ -908,3 +908,10 @@ Ltac eapply_all_once LEMMA :=
 .
 
 Ltac Nsimpl := all_once_fast ltac:(fun H => try apply NNPP in H; try apply not_and_or in H; try apply not_or_and in H).
+
+Ltac hexploit1 H :=
+  match goal with
+  | [ H: ?A -> ?B |- _ ] =>
+    apply (@mp B); [apply H|clear H; intro H]
+  end
+.

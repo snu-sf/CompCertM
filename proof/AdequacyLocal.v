@@ -830,12 +830,6 @@ Section ADQSTEP.
       i.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
-      Ltac hexploit1 H :=
-        match goal with
-        | [ H: ?A -> ?B |- _ ] =>
-          apply (@mp B); [apply H|clear H; intro H]
-        end
-      .
       hexploit1 SU0.
       { unsguard SUST. des_safe. inv SUST. simpl_depind. clarify.
         esplits. eapply HD; eauto. }

@@ -382,6 +382,7 @@ Next Obligation.
     inv LETGT.
     exploit SIMSYMB1; eauto. i; des.
 
+
     destruct (Genv.find_def skenv_tgt blk_tgt) eqn:T.
     { exploit DEFKEPT0; eauto.
       { eapply Genv.find_invert_symbol; eauto. }
@@ -391,32 +392,10 @@ Next Obligation.
     exploit DEFKEEP0; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
     { inv SIMSK. exploit KEPT1; eauto. i.
-      Lemma defs_prog_defmap
-            F V (prog: AST.program F V)
-            (NORP: list_norepet (prog_defs_names prog))
-        :
-          forall id, (exists gd, (prog_defmap prog) ! id = Some gd) <-> defs prog id
-      .
-      Proof.
-        ii. unfold defs, prog_defs_names. split; i; des; des_sumbool.
-        - exploit in_prog_defmap; eauto. i; des. rewrite in_map_iff. esplits; eauto; ss.
-        - rewrite in_map_iff in *. des. destruct x; ss. clarify.
-          exploit prog_defmap_norepet; eauto.
-      Qed.
-      ttttttttttttttttttttt
+      apply defs_prog_defmap in KEEP. des. rewrite KEEP in *.
+      apply defs_prog_defmap. esplits; eauto.
     }
-    inv WFSMALLTGT.
-    exploit SYMBDEF1; eauto. i; des. clarify.
-
-    erewrite DEFKEEP0; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    { apply NNPP. ii.
-      exploit DEFDROP0; eauto.
-      { eapply Genv.find_invert_symbol; eauto. }
-      i; des. clarify.
-      inv WFSMALLTGT.
-      exploit SYMBDEF1; eauto. i; des. clarify.
-    }
+    i; des. clarify.
 
   - (* SIMDEFINV *)
     inv LETGT.
@@ -424,17 +403,13 @@ Next Obligation.
     assert(Genv.find_def skenv_link_tgt blk_tgt = Some def_tgt).
     {
       destruct (Genv.invert_symbol skenv_link_tgt blk_tgt) eqn:T.
-      - erewrite <- DEFKEEP; eauto.
-        apply Genv.invert_find_symbol in T.
-        apply NNPP; ii. exploit SYMBDROP; eauto. i; des.
-        exploit DEFDROP; eauto.
-        { apply Genv.find_invert_symbol. eauto. } i; des. clarify.
+      - exploit DEFKEPT; eauto. i; des. ss.
       - exploit DEFORPHAN; eauto. i; des. clarify.
     }
     exploit SIMDEFINV; eauto. i; des. clarify.
     esplits; eauto.
 
-    inv WFSMALLTGT. exploit DEFSYMB; eauto. intro SYMBSMALLTGT; des.
+    inv WFSMALLTGT. exploit DEFSYMB; eauto. intro SYMBSMALLTGT; des. rename SYMB into SYMBSMALLTGT.
     exploit SPLITHINT1; eauto. i; des.
     Fail clears blk_src.
     assert(blk_src = blk_src0).
@@ -476,7 +451,7 @@ Next Obligation.
     assert(id = id0). { eapply Genv.genv_vars_inj. apply SYMBSMALLTGT. eauto. } clarify.
     assert(defs sk_src id0).
     { apply NNPP. ii. erewrite SYMBDROP0 in *; eauto. ss. }
-    exploit SYMBKEEP0; eauto. i; des. rewrite BLKSRC in *. symmetry in H2.
+    exploit SYMBKEEP0; eauto. i; des. rewrite BLKSRC in *. symmetry in H1.
     erewrite DEFKEEP0; eauto.
     { apply Genv.find_invert_symbol; eauto. }
   - (* PUBS *)

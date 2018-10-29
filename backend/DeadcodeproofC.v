@@ -1,7 +1,7 @@
 Require Import FunInd.
 Require Import CoqlibC Maps Errors Integers Floats Lattice Kildall.
 Require Import AST Linking.
-Require Import Values Memory Globalenvs Events Smallstep.
+Require Import ValuesC Memory Globalenvs Events Smallstep.
 Require Import Registers Op RTLC.
 Require Import ValueDomain ValueAnalysisC NeedDomain NeedOp Deadcode.
 Require Import sflib.
@@ -73,8 +73,9 @@ Proof.
     + econs; eauto; ss.
       * rpapply match_call_states; eauto.
         { econs; eauto. }
+        { eapply lessdef_list_typify_list; try apply VALS; eauto. rewrite <- LEN.
+          symmetry. eapply lessdef_list_length; eauto. }
         folder. inv SAFESRC.
-        f_equal; try congruence.
         exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. unfold bind in *. folder. des_ifs.
         inv FPTR; cycle 1.
         { rewrite <- H2 in *. ss. }
@@ -87,7 +88,9 @@ Proof.
     { rewrite <- H0 in *. ss. }
     exploit make_match_genvs; eauto. intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. unfold bind in *. folder. des_ifs.
-    esplits; eauto. econs; eauto. folder. rewrite <- H1. eauto.
+    esplits; eauto. econs; eauto.
+    + folder. rewrite <- H1. eauto.
+    + erewrite <- lessdef_list_length; eauto. replace (fn_sig f) with (fn_sig fd); ss. unfold transf_function in *; des_ifs.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     u in CALLSRC. des. inv CALLSRC. inv MATCHST; ss.

@@ -91,33 +91,6 @@ Qed.
 
 
 
-(* Fixpoint zip X Y Z (f: option X -> option Y -> Z) (xs: list X) (ys: list Y): list Z := *)
-(*   match xs, ys with *)
-(*   | [], [] => [] *)
-(*   | xhd :: xtl, [] => f (Some xhd) None :: zip f xtl [] *)
-(*   | [], yhd :: ytl => f None (Some yhd) :: zip f [] ytl *)
-(*   | xhd :: xtl, yhd :: ytl => f (Some xhd) (Some yhd) :: zip f xtl ytl *)
-(*   end *)
-(* . *)
-
-Fixpoint zip X Y Z (f: X -> Y -> Z) (xs: list X) (ys: list Y): list Z :=
-  match xs, ys with
-  | xhd :: xtl, yhd :: ytl => f xhd yhd :: zip f xtl ytl
-  | _, _ => []
-  end
-.
-
-Lemma zip_length
-      X Y Z (f: X -> Y -> Z) xs ys
-  :
-    length (zip f xs ys) = min xs.(length) ys.(length)
-.
-Proof.
-  ginduction xs; ii; ss.
-  des_ifs.
-  ss. rewrite IHxs. xomega.
-Qed.
-
 (* From stdpp Require Import list. *)
 Section TYPIFY.
 
@@ -156,8 +129,52 @@ Section TYPIFY.
     zip typify vs tys
   .
 
+  (* Definition typify_list (vs: list val) (tys: list typ): option (list val) := *)
+  (*   if Nat.eqb vs.(length) tys.(length) *)
+  (*   then Some (zip typify vs tys) *)
+  (*   else None *)
+  (* . *)
+
 End TYPIFY.
 
 Hint Unfold typify typify_list.
 (* Hint Unfold typify_. *)
 
+Lemma lessdef_typify
+      x y ty
+      (LD: Val.lessdef x y)
+  :
+    <<LD: Val.lessdef (typify x ty) (typify y ty)>>
+.
+Proof.
+  unfold typify. des_ifs.
+  inv LD; ss.
+Qed.
+
+Lemma lessdef_list_typify_list
+      xs ys tys
+      (LEN: length tys = length xs)
+      (LD: Val.lessdef_list xs ys)
+  :
+    <<LD: Val.lessdef_list (typify_list xs tys) (typify_list ys tys)>>
+.
+Proof.
+  ginduction LD; ii; ss.
+  unfold typify_list. ss. des_ifs. ss.
+  econs; eauto.
+  - eapply lessdef_typify; eauto.
+  - eapply IHLD; eauto.
+Qed.
+
+Lemma lessdef_list_length
+      xs ys
+      (LD: Val.lessdef_list xs ys)
+  :
+    <<LEN: xs.(length) = ys.(length)>>
+.
+Proof.
+  ginduction LD; ii; ss.
+  des. red. xomega.
+Qed.
+
+      

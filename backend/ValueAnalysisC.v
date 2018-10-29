@@ -1,7 +1,7 @@
 Require Import FunInd.
 Require Import CoqlibC Maps Integers Floats Lattice Kildall.
 Require Import Compopts AST Linking.
-Require Import Values Memory Globalenvs Events.
+Require Import ValuesC Memory Globalenvs Events.
 Require Import Registers Op RTLC.
 Require Import ValueDomain ValueAOp Liveness.
 Require Import sflib.
@@ -275,6 +275,9 @@ Section PRSV.
         * rewrite IMG. ii. des_ifs; ss. inv SKENV. rewrite PUB0 in *; ss.
         * inv SKENV. rewrite PUB in *. ss.
       + ii. repeat spc VALS. destruct v; econs; eauto. destruct b0; econs; eauto. rewrite IMG.
+        apply in_zip_iff in H0. des. unfold typify in *. des_ifs.
+        hexploit1 VALS.
+        { eapply nth_error_In; eauto. }
         repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
         des_ifs; ss. bsimpl. des; ss. des_sumbool. ss.
       + ii. rewrite IMG in *. des_ifs.

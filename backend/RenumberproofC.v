@@ -215,15 +215,17 @@ Proof.
     + econs; eauto; ss.
       * rpapply match_callstates; eauto.
         { econs; eauto. }
-        folder. inv SAFESRC.
-        f_equal; try congruence.
-        exploit (Genv.find_funct_transf_genv SIMGE); eauto. i. ss.
-        rewrite FPTR in H. rewrite H in FINDF. inv FINDF. ss.
+        inv SAFESRC. folder.
+        exploit (Genv.find_funct_transf_genv SIMGE); eauto. rewrite <- FPTR in *. intro FINDFSRC; clarify.
+        ss. f_equal; try congruence.
   - (* init progress *)
-    des. inv SAFESRC. esplits; eauto. econs; eauto.
-    inv SIMARGS; ss. rewrite <- FPTR.
+    des. inv SAFESRC.
+    inv SIMARGS; ss.
     exploit make_match_genvs; eauto. intro SIMGE.
-    exploit (Genv.find_funct_transf_genv SIMGE); eauto.
+    exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
+    esplits; eauto. econs; eauto.
+    + folder. rewrite <- FPTR. eauto.
+    + rewrite <- VALS. ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     inv CALLSRC. inv MATCHST; ss.

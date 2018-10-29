@@ -971,3 +971,57 @@ Proof.
   - ginduction xs; ii; ss; inv H; ss; econs; eauto.
   - ginduction xs; ii; ss; inv H; ss; econs; eauto.
 Qed.
+
+(* Fixpoint zip X Y Z (f: option X -> option Y -> Z) (xs: list X) (ys: list Y): list Z := *)
+(*   match xs, ys with *)
+(*   | [], [] => [] *)
+(*   | xhd :: xtl, [] => f (Some xhd) None :: zip f xtl [] *)
+(*   | [], yhd :: ytl => f None (Some yhd) :: zip f [] ytl *)
+(*   | xhd :: xtl, yhd :: ytl => f (Some xhd) (Some yhd) :: zip f xtl ytl *)
+(*   end *)
+(* . *)
+
+Fixpoint zip X Y Z (f: X -> Y -> Z) (xs: list X) (ys: list Y): list Z :=
+  match xs, ys with
+  | xhd :: xtl, yhd :: ytl => f xhd yhd :: zip f xtl ytl
+  | _, _ => []
+  end
+.
+
+Lemma zip_length
+      X Y Z (f: X -> Y -> Z) xs ys
+  :
+    length (zip f xs ys) = min xs.(length) ys.(length)
+.
+Proof.
+  ginduction xs; ii; ss.
+  des_ifs.
+  ss. rewrite IHxs. xomega.
+Qed.
+
+Lemma in_zip_iff
+      X Y Z
+      (f: X -> Y -> Z)
+      xs ys z
+  :
+    (<<ZIP: In z (zip f xs ys)>>)
+    <-> (exists x y, <<F: f x y = z>> /\
+                          exists n, <<X: nth_error xs n = Some x>> /\ <<Y: nth_error ys n = Some y>>)
+.
+Proof.
+  split; ii.
+  - ginduction xs; ii; ss.
+    des_ifs. ss. des; ss.
+    + esplits; eauto.
+      * instantiate (1:= 0%nat). ss.
+      * ss.
+    + exploit IHxs; eauto. i; des. esplits; eauto.
+      * instantiate (1:= (1+n)%nat). ss.
+      * ss.
+  - des.
+    ginduction n; ii; ss.
+    { des_ifs. ss. left; ss. }
+    des_ifs. ss.
+    exploit (@IHn _ _ _ f); eauto.
+Qed.
+

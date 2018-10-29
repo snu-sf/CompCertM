@@ -223,16 +223,187 @@ Definition callee_injection (j: meminj) old_blk new_blk: meminj :=
              then j old_blk
              else (j blk).
 
+Local Ltac simp := repeat (bsimpl; des; des_sumbool; ss; clarify).
+
+Local Transparent Mem.alloc.
 Lemma memcpy_inject
       j m_src0 m_src1 m_src2 m_tgt blk_old blk_new lo hi
       (INJ: Mem.inject j m_src0 m_tgt)
       (NEQ: blk_old <> blk_new)
       (FREE: freed_from m_src0 m_src1 blk_old lo hi)
       (ALLOC: Mem.alloc m_src1 lo hi = (m_src2, blk_new))
+      blk_tgt delta
+      (INJBLK: j blk_old = Some (blk_tgt, delta))
+      (PERM: Mem.range_perm m_tgt blk_tgt (delta + lo) (delta + hi) Cur Freeable)
   :
     Mem.inject (callee_injection j blk_old blk_new)
-               (memcpy m_src2 blk_old blk_new) m_tgt.
-Admitted. 
+               (memcpy m_src2 blk_old blk_new) m_tgt
+.
+Proof.
+  assert(JEMPTY: j blk_new = None).
+  { eapply Mem.mi_freeblocks; eauto. unfold Mem.valid_block. erewrite <- freed_from_nextblock; eauto.
+    ii.
+    exploit Mem.alloc_result; eauto. i. clarify. xomega.
+  }
+  assert(INCR: inject_incr j (callee_injection j blk_old blk_new)).
+  { ii; ss. unfold callee_injection. des_ifs. }
+  unfold callee_injection, memcpy in *.
+  dup INJ.
+  inv INJ.
+  econs; eauto.
+  - clear_until mi_inj.
+    inv mi_inj.
+    econs.
+    + ii; ss.
+      unfold Mem.perm in *. ss.
+      des_ifs.
+      { eapply Mem.perm_cur.
+        eapply Mem.perm_implies with Freeable; try eauto with mem.
+        eapply PERM.
+        exploit Mem.perm_alloc_3; eauto. i.
+        xomega.
+      }
+      destruct (peq b1 blk_old); clarify.
+      { assert(~lo <= ofs < hi).
+        { ii.
+          exploit freed_from_noperm; eauto.
+          eauto with mem.
+        }
+        assert(PERM0: Mem.perm_order' ((Mem.mem_access m_src1) !! blk_old ofs k) p).
+        { eapply Mem.perm_alloc_4; eauto. }
+        eapply mi_perm; eauto.
+        inv FREE.
+        eapply Mem.unchanged_on_perm; eauto.
+        - ii; ss. des_ifs.
+        - apply NNPP. ii. exploit Mem.mi_freeblocks; eauto. i; clarify.
+      }
+      eapply mi_perm; eauto.
+      assert(PERM0: Mem.perm_order' ((Mem.mem_access m_src1) !! b1 ofs k) p).
+      { eapply Mem.perm_alloc_4; eauto. }
+      inv FREE.
+      eapply Mem.unchanged_on_perm; eauto.
+      * ii; ss. des_ifs.
+      * apply NNPP. ii. exploit Mem.mi_freeblocks; eauto. i; clarify.
+    + ii; ss.
+      admit "this does not hold".
+    + ii; ss. rewrite PMap.gsspec. des_ifs.
+      { specialize (mi_memval _ ofs _ _ H).
+        unfold Mem.perm in *. ss.
+        exploit Mem.perm_alloc_3; eauto. i.
+        hexploit1 mi_memval.
+        { eapply Mem.perm_implies with Freeable; eauto with mem.
+          eapply freed_from_perm; eauto.
+        }
+        eapply memval_lessdef_inject_compose; eauto; cycle 1.
+        { eapply memval_inject_incr; eauto. }
+        unfold Mem.alloc in *.
+        clarify.
+        ss.
+        rewrite PMap.gsspec. des_ifs.
+        erewrite <- freed_from_contents; eauto. refl.
+      }
+      clear_tac.
+      eapply memval_inject_incr; eauto.
+      unfold Mem.alloc in *. clarify. ss. unfold Mem.perm in *. ss.
+      rewrite PMap.gsspec in *. des_ifs.
+      erewrite Mem.unchanged_on_contents; try apply FREE; eauto.
+      { eapply mi_memval; eauto.
+        eapply freed_from_perm_le; eauto.
+      }
+      { ii; ss. des_ifs. ii.
+        exploit freed_from_noperm; eauto. eauto with mem.
+      }
+      { des_ifs. ii.
+        exploit freed_from_noperm; eauto. eauto with mem.
+      }
+      { apply NNPP. ii. exploit Mem.mi_freeblocks; eauto. i; clarify. }
+  - ii; ss. unfold Mem.valid_block in *. ss.
+    exploit Mem.alloc_result; eauto. i; subst.
+    exploit Mem.nextblock_alloc; eauto. i.
+    des_ifs.
+    + exfalso. eapply H. rewrite H0. xomega.
+    + eapply mi_freeblocks; eauto. ii. eapply H.
+      rewrite H0. erewrite freed_from_nextblock; eauto. xomega.
+  - ii. des_ifs; eauto.
+  - ii. unfold Mem.perm in *. ss.
+    destruct (eq_block b1 blk_new); clarify.
+    { specialize (mi_no_overlap blk_old blk_tgt delta b2 b2' delta2).
+      des_ifs.
+      destruct (peq b2 blk_old).
+      { clarify. right. ii.
+        exploit Mem.perm_alloc_3; eauto. i.
+        hexploit freed_from_noperm; eauto. i. specialize (H5 ofs1 H4).
+        exploit Mem.perm_alloc_4; eauto. i.
+        assert(ofs1 = ofs2) by xomega. clarify.
+      }
+      eapply mi_no_overlap; eauto.
+      - exploit Mem.perm_alloc_3; eauto. i.
+        eapply Mem.perm_cur_max. eapply Mem.perm_implies with Freeable; (eauto with mem).
+        eapply freed_from_perm; eauto.
+      - assert(Mem.perm_order' ((Mem.mem_access m_src1) !! b2 ofs2 Max) Nonempty).
+        { eapply Mem.perm_alloc_4; eauto. }
+        inv FREE.
+        eapply Mem.unchanged_on_perm; eauto.
+        { ss. des_ifs. }
+        { apply NNPP. ii. exploit Mem.mi_freeblocks; eauto. i; clarify. }
+    }
+    destruct (eq_block b2 blk_new); clarify.
+    {
+      specialize (mi_no_overlap b1 b1' delta1 blk_old blk_tgt delta).
+      destruct (peq b1 blk_old).
+      { clarify. right. ii.
+        exploit Mem.perm_alloc_3; eauto. i.
+        hexploit freed_from_noperm; eauto. i. specialize (H5 ofs2 H4).
+        exploit Mem.perm_alloc_4; try apply H2; eauto. i.
+        assert(ofs1 = ofs2) by xomega. clarify.
+      }
+      eapply mi_no_overlap; eauto.
+      - assert(Mem.perm_order' ((Mem.mem_access m_src1) !! b1 ofs1 Max) Nonempty).
+        { eapply Mem.perm_alloc_4; eauto. }
+        inv FREE.
+        eapply Mem.unchanged_on_perm; eauto.
+        { ss. des_ifs. }
+        { apply NNPP. ii. exploit Mem.mi_freeblocks; eauto. i; clarify. }
+      - exploit Mem.perm_alloc_3; eauto. i.
+        eapply Mem.perm_cur_max. eapply Mem.perm_implies with Freeable; (eauto with mem).
+        eapply freed_from_perm; eauto.
+    }
+    specialize (mi_no_overlap b1 b1' delta1 b2 b2' delta2).
+    eapply mi_no_overlap; eauto.
+    + assert(Mem.perm m_src1 b1 ofs1 Max Nonempty).
+      { eapply Mem.perm_alloc_4; eauto. }
+      eapply freed_from_perm_le; eauto.
+    + assert(Mem.perm m_src1 b2 ofs2 Max Nonempty).
+      { eapply Mem.perm_alloc_4; eauto. }
+      eapply freed_from_perm_le; eauto.
+  - unfold Mem.perm. ss.
+    admit "this does not hold".
+  - unfold Mem.perm. ss.
+    ii. des_ifs.
+    + destruct (classic (lo <= ofs < hi)).
+      { left. eapply Mem.perm_cur. eapply Mem.perm_implies with Freeable; eauto with mem. }
+      { right. ii. exploit Mem.perm_alloc_3; eauto. }
+    + exploit mi_perm_inv; eauto. i.
+      unfold Mem.alloc in *. clarify. ss. rewrite PMap.gsspec. des_ifs.
+      destruct (classic (b1 = blk_old /\ lo <= ofs < hi)).
+      { des_safe; clarify. right. eapply freed_from_noperm; eauto. }
+      { apply not_and_or in H2.
+        destruct H2.
+        - des; ss.
+          + left. inv FREE.
+            eapply Mem.unchanged_on_perm with (m_after := m_src1) (m_before := m_src0); eauto.
+            { ii; ss. des_ifs. }
+            { apply NNPP. ii. exploit Mem.mi_freeblocks; eauto. i; clarify. }
+          + right. ii. eapply H1. eapply freed_from_perm_le; eauto.
+        - des; ss.
+          + left. inv FREE.
+            eapply Mem.unchanged_on_perm with (m_after := m_src1) (m_before := m_src0); eauto.
+            { ii; ss. des_ifs. }
+            { apply NNPP. ii. exploit Mem.mi_freeblocks; eauto. i; clarify. }
+          + right. ii. eapply H1. eapply freed_from_perm_le; eauto.
+      }
+Qed.
+Local Opaque Mem.alloc.
 
 Lemma free_freed_from m0 m1 blk lo hi
       (FREE: Mem.free m0 blk lo hi = Some m1)

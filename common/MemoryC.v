@@ -978,16 +978,6 @@ Proof.
     + rewrite PMap.gsspec. des_ifs_safe. left. ss. eauto with mem.
 Qed.
 
-Lemma Mem_unfree_left_inject
-      F m_src0 m_tgt0 blk lo hi m_src1
-      (INJ: Mem.inject F m_src0 m_tgt0)
-      (UNFR: Mem_unfree m_src0 blk lo hi = Some m_src1)
-  :
-    <<INJ: Mem.inject F m_src1 m_tgt0>>
-.
-Proof.
-Qed.
-
 Theorem Mem_unfree_parallel_extends:
   forall m1 m2 b lo hi m1',
   Mem.extends m1 m2 ->

@@ -1063,7 +1063,8 @@ Section PRESERVATION.
       econs.
       + instantiate (2 := callee_injection j blk b).
         eapply src_init_rs_agree; eauto.
-      + eapply memcpy_inject; eauto.
+      + specialize (AGREE RSP). rewrite RSPPTR in *. inv AGREE; ss.
+        eapply memcpy_inject; eauto.
       + eapply valid_owner_genv_le. econs; eauto.
       + unfold callee_injection. inv GEINJECT. econs; i.
         { des_ifs; eauto. exploit (DOMAIN b); auto. i. clarify. }

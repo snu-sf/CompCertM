@@ -234,7 +234,6 @@ Lemma memcpy_inject
       (ALLOC: Mem.alloc m_src1 lo hi = (m_src2, blk_new))
       blk_tgt delta
       (INJBLK: j blk_old = Some (blk_tgt, delta))
-      (PERM: Mem.range_perm m_tgt blk_tgt (delta + lo) (delta + hi) Cur Freeable)
   :
     Mem.inject (callee_injection j blk_old blk_new)
                (memcpy m_src2 blk_old blk_new) m_tgt
@@ -247,6 +246,13 @@ Proof.
   }
   assert(INCR: inject_incr j (callee_injection j blk_old blk_new)).
   { ii; ss. unfold callee_injection. des_ifs. }
+  assert(PERM: Mem.range_perm m_tgt blk_tgt (delta + lo) (delta + hi) Cur Freeable).
+  { clear - INJBLK INJ FREE. ii.
+    assert(exists ofs', ofs = ofs' + delta).
+    { exists (ofs - delta). xomega. } des. clarify.
+    eapply Mem.mi_perm; try apply INJ; try apply INJBLK; eauto.
+    eapply freed_from_perm; eauto. xomega.
+  }
   unfold callee_injection, memcpy in *.
   dup INJ.
   inv INJ.

@@ -59,7 +59,7 @@ Section CSPECIFIC.
     {| sig_args := typlist_of_typelist (type_of_params (fn_params f));
        sig_res  := opttyp_of_type (fn_return f);
        sig_cc   := fn_callconv f |}.
-  
+
   Definition of_program {F} (get_sg: F -> signature) (prog: Ctypes.program F): Sk.t :=
     mkprogram (skdefs_of_gdefs get_sg (map (update_snd (@globdef_of_globdef F type)) prog.(prog_defs))) prog.(prog_public) prog.(prog_main)
   .
@@ -82,5 +82,3 @@ Section CSPECIFIC.
   Qed.
 
 End CSPECIFIC.
-
-

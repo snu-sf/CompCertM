@@ -14,13 +14,6 @@ Require UnreachC.
 
 Set Implicit Arguments.
 
-Lemma unit_ord_wf
-  :
-    well_founded (bot2: unit -> unit -> Prop)
-.
-Proof.
-  ii. induction a; ii; ss.
-Qed.
 
 
 

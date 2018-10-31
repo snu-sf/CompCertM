@@ -235,3 +235,26 @@ Proof.
   inv ORD. ss.
 Qed.
 
+
+Section LIFT.
+
+  Variable index: Type.
+  Variable order: index -> index -> Prop.
+  Hypothesis WFORD: well_founded order.
+
+  Definition lift_idx (i0: index): idx := (mk WFORD i0).
+
+  Lemma lift_idx_spec
+        i0 i1
+        (ORD: order i0 i1)
+    :
+      <<ORD: ord i0.(lift_idx) i1.(lift_idx)>>
+  .
+  Proof.
+    econs; eauto. cbn. instantiate (1:= eq_refl). cbn. ss.
+  Qed.
+
+  Hint Unfold lift_idx.
+
+End LIFT.
+

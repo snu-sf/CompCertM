@@ -29,7 +29,7 @@ Variable sm_link: SimMem.t.
 Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (SM := SimMemExtends)
+  ModSemPair.mk (SM := SimMemExt)
                 (MachC.modsem return_address_offset skenv_link_src prog)
                 (AsmC.modsem skenv_link_tgt tprog) tt sm_link.
 

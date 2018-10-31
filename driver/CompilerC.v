@@ -383,7 +383,7 @@ Module IdSim.
         (tgt: Asm.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemExt.SimMemExtends SimMemExt.SimSymbExtends SoundTop.Top mp>>)
+      (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = tgt.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = tgt.(AsmC.module)>>)
   .
@@ -395,7 +395,7 @@ Module IdSim.
         (tgt: Asm.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemExt.SimMemExtends SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
+      (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
       /\ (<<SRC: mp.(ModPair.src) = tgt.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = tgt.(AsmC.module)>>)
   .
@@ -446,7 +446,7 @@ Module IdSim.
         (src: Csyntax.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemExt.SimMemExtends SimMemExt.SimSymbExtends SoundTop.Top mp>>)
+      (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
   .
@@ -458,7 +458,7 @@ Module IdSim.
         (src: Csyntax.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemExt.SimMemExtends SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
+      (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
       /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
   .

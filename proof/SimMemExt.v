@@ -26,7 +26,7 @@ Record t' := mk {
   tgt: mem;
 }.
 
-Program Instance SimMemExtends : SimMem.class :=
+Program Instance SimMemExt : SimMem.class :=
 {
   t := t';
   src := src;
@@ -50,7 +50,7 @@ Next Obligation.
   - induction H; econs; eauto.
 Qed.
 
-Global Program Instance SimSymbExtends: SimSymb.class SimMemExtends := {
+Global Program Instance SimSymbExtends: SimSymb.class SimMemExt := {
   t := unit;
   le := SimSymbId.le;
   sim_sk := SimSymbId.sim_sk;

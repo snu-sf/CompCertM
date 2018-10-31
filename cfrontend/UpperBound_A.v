@@ -67,12 +67,24 @@ c0 + empty
   Let tge := load_genv tprog skenv_link_tgt.
 (* Inductive match_states_aux : Csem.State -> Sem.state -> nat -> Prop := *)
 
+  
   (*
   (c0 * c1) + ctx
   >=
   (c0 + c1) + ctx
   src : physical
   tgt : logical
+
+  src has 3 Modules (C0*C1), ctx, Sys
+  tgt has 4 Modules C0, C1, ctx, Sys
+
+  there are "5" kinds of match states needed(maybe)
+  1. reg - reg 
+  2. call - call
+  3. call - reg ----> only btw c maybe
+  4. ret - ret
+  5. ret - reg
+  what is reg state? 1. internal 
    *)
   Inductive match_states : Sem.state -> Sem.state -> nat -> Prop :=
   | match_regular_states
@@ -80,9 +92,27 @@ c0 + empty
       (FRLENSRC: (length fr_src <= 2)%nat)
       (FRLENSRC: (length fr_src <= 3)%nat)
     :
-      match_states (State fr_src) (State fr_tgt) 0.
+      match_states (State fr_src) (State fr_tgt) 0
+  | match_call_states
+
+    :
+      match_states 
+      
       
 
+  (* 
+  Inlining
+  src - not inlined 
+  tgt - inlined 
+
+  so....
+  src has more "function call"
+  1. reg - reg 
+  2. call - call
+  3. call - reg
+  4. ret - ret
+  5. ret - reg
+  *)
 
   Inductive match_states: RTL.state -> RTL.state -> Prop :=
   | match_regular_states: forall stk f sp pc rs m stk' f' sp' rs' m' F fenv ctx

@@ -348,15 +348,15 @@ Module Sk.
     rewrite map_map. ss.
   Qed.
 
-  Lemma of_program_internals_old
+  Lemma of_program_internals
         F V
         get_sg
         (p: AST.program (AST.fundef F) V)
     :
-      (of_program get_sg p).(internals_old) = p.(internals_old)
+      (of_program get_sg p).(internals) = p.(internals)
   .
   Proof.
-    unfold internals_old.
+    unfold internals.
     destruct p; ss.
     apply Axioms.functional_extensionality. intro id; ss.
     Local Opaque prog_defmap.
@@ -366,16 +366,16 @@ Module Sk.
     - des_ifs_safe. inv H2; ss. unfold match_fundef in *. des_ifs. des_sumbool. clarify.
   Qed.
 
-  Lemma of_program_internals
+  Lemma of_program_internals'
         F V
         get_sg
         (p: AST.program (AST.fundef F) V)
     :
-      (of_program get_sg p).(internals) = p.(internals)
+      (of_program get_sg p).(internals') = p.(internals')
   .
   Proof.
     destruct p; ss.
-    unfold internals, of_program. ss.
+    unfold internals', of_program. ss.
     apply Axioms.functional_extensionality. intro id; ss.
     unfold skdefs_of_gdefs. rewrite find_map.
     unfold compose. ss.

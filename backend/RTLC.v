@@ -1,5 +1,5 @@
 Require Import CoqlibC Maps.
-Require Import ASTC Integers Values Events Memory Globalenvs.
+Require Import ASTC Integers ValuesC Events Memory Globalenvs.
 Require Import Op Registers.
 Require Import sflib.
 Require Import SmallstepC.
@@ -103,11 +103,13 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fd
+      fd tvs
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
+      (TYP: typify_list args.(Args.vs) fd.(fn_sig).(sig_args) = tvs)
+      (LEN: args.(Args.vs).(length) = fd.(fn_sig).(sig_args).(length))
     :
       initial_frame args
-                    (Callstate [] args.(Args.fptr) fd.(fn_sig) args.(Args.vs) args.(Args.m))
+                    (Callstate [] args.(Args.fptr) fd.(fn_sig) tvs args.(Args.m))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
@@ -120,7 +122,8 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       stack fptr_arg sg_arg vs_arg m_arg
-      retv
+      retv tv
+      (TYP: typify retv.(Retv.v) sg_arg.(proj_sig_res) = tv)
     :
       after_external (Callstate stack fptr_arg sg_arg vs_arg m_arg)
                      retv

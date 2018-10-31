@@ -258,7 +258,7 @@ Section MODSEM.
       fd ls_init sg
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
-      (LOCSET: typify_list args.(Args.vs) sg.(sig_args) = map (fun p => Locmap.getpair p ls_init) (loc_arguments sg))
+      (LOCSET: typify_list args.(Args.vs) sg.(sig_args) = (map (fun p => Locmap.getpair p ls_init) (loc_arguments sg)))
       (PTRFREE: forall
           loc
           (* (NOTIN: Loc.notin loc (regs_of_rpairs (loc_arguments sg))) *)

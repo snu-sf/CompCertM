@@ -181,32 +181,32 @@ Section PROGRAMS2.
   Variable p: program (AST.fundef F) V.
 
   Definition internals: ident -> bool :=
-    fun id => is_some
-                (List.find (fun idg => andb (ident_eq id idg.(fst)) (is_external idg.(snd))) p.(prog_defs)).
-
-  Definition internals_old: ident -> bool :=
     fun id => match p.(prog_defmap)!id with
               | Some gd => negb (is_external gd)
               | None => false
               end
   .
 
+  Definition internals': ident -> bool :=
+    fun id => is_some
+                (List.find (fun idg => andb (ident_eq id idg.(fst)) (is_external idg.(snd))) p.(prog_defs)).
+
 End PROGRAMS2.
 
 Hint Unfold defs privs internals.
-Hint Unfold defs_old privs_old.
+Hint Unfold defs_old privs_old internals'.
 
 (* Only "is_internal" defs will remain in ModSem-SkEnv/Genv. *)
 (* Note: Other module's gvar will flow in. Is it OK? *)
 (* Proof: More def: less UB. C physical -> C logical: OK. // Asm logical -> Asm physical: OK. *)
 (* Conceptually: OK. block should be passed through modules freely, just like passing fptr. *)
-Definition is_internal (skd: globdef (AST.fundef (option signature)) unit): bool :=
-  match skd with
-  | Gfun (Internal _) => true
-  | Gfun (External _) => false
-  | Gvar _ => true
-  end
-.
+(* Definition is_internal (skd: globdef (AST.fundef (option signature)) unit): bool := *)
+(*   match skd with *)
+(*   | Gfun (Internal _) => true *)
+(*   | Gfun (External _) => false *)
+(*   | Gvar _ => true *)
+(*   end *)
+(* . *)
 
 Lemma prog_defmap_spec
       F V

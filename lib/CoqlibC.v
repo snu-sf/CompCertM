@@ -908,3 +908,120 @@ Ltac eapply_all_once LEMMA :=
 .
 
 Ltac Nsimpl := all_once_fast ltac:(fun H => try apply NNPP in H; try apply not_and_or in H; try apply not_or_and in H).
+
+Ltac hexploit1 H :=
+  match goal with
+  | [ H: ?A -> ?B |- _ ] =>
+    apply (@mp B); [apply H|clear H; intro H]
+  end
+.
+
+Lemma rev_nil
+      X (xs: list X)
+      (NIL: rev xs = [])
+  :
+    xs = []
+.
+Proof.
+  generalize (f_equal (@length _) NIL). i. ss.
+  destruct xs; ss.
+  rewrite app_length in *. ss. xomega.
+Qed.
+
+Fixpoint last_opt X (xs: list X): option X :=
+  match xs with
+  | [] => None
+  | [hd] => Some hd
+  | hd :: tl => last_opt tl
+  end
+.
+
+Lemma last_none
+      X (xs: list X)
+      (NONE: last_opt xs = None)
+  :
+    xs = []
+.
+Proof.
+  ginduction xs; ii; ss.
+  des_ifs. spc IHxs. ss.
+Qed.
+
+Lemma last_some
+      X (xs: list X) x
+      (SOME: last_opt xs = Some x)
+  :
+    exists hds, xs = hds ++ [x]
+.
+Proof.
+  ginduction xs; ii; ss.
+  des_ifs.
+  { exists nil. ss. }
+  exploit IHxs; eauto. i; des.
+  rewrite H. exists (a :: hds). ss.
+Qed.
+
+Lemma forall2_eq
+      X Y (P: X -> Y -> Prop) xs ys
+  :
+    list_forall2 P xs ys <-> Forall2 P xs ys
+.
+Proof.
+  split; i.
+  - ginduction xs; ii; ss; inv H; ss; econs; eauto.
+  - ginduction xs; ii; ss; inv H; ss; econs; eauto.
+Qed.
+
+(* Fixpoint zip X Y Z (f: option X -> option Y -> Z) (xs: list X) (ys: list Y): list Z := *)
+(*   match xs, ys with *)
+(*   | [], [] => [] *)
+(*   | xhd :: xtl, [] => f (Some xhd) None :: zip f xtl [] *)
+(*   | [], yhd :: ytl => f None (Some yhd) :: zip f [] ytl *)
+(*   | xhd :: xtl, yhd :: ytl => f (Some xhd) (Some yhd) :: zip f xtl ytl *)
+(*   end *)
+(* . *)
+
+Fixpoint zip X Y Z (f: X -> Y -> Z) (xs: list X) (ys: list Y): list Z :=
+  match xs, ys with
+  | xhd :: xtl, yhd :: ytl => f xhd yhd :: zip f xtl ytl
+  | _, _ => []
+  end
+.
+
+Lemma zip_length
+      X Y Z (f: X -> Y -> Z) xs ys
+  :
+    length (zip f xs ys) = min xs.(length) ys.(length)
+.
+Proof.
+  ginduction xs; ii; ss.
+  des_ifs.
+  ss. rewrite IHxs. xomega.
+Qed.
+
+Lemma in_zip_iff
+      X Y Z
+      (f: X -> Y -> Z)
+      xs ys z
+  :
+    (<<ZIP: In z (zip f xs ys)>>)
+    <-> (exists x y, <<F: f x y = z>> /\
+                          exists n, <<X: nth_error xs n = Some x>> /\ <<Y: nth_error ys n = Some y>>)
+.
+Proof.
+  split; ii.
+  - ginduction xs; ii; ss.
+    des_ifs. ss. des; ss.
+    + esplits; eauto.
+      * instantiate (1:= 0%nat). ss.
+      * ss.
+    + exploit IHxs; eauto. i; des. esplits; eauto.
+      * instantiate (1:= (1+n)%nat). ss.
+      * ss.
+  - des.
+    ginduction n; ii; ss.
+    { des_ifs. ss. left; ss. }
+    des_ifs. ss.
+    exploit (@IHn _ _ _ f); eauto.
+Qed.
+

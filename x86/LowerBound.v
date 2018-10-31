@@ -1063,7 +1063,8 @@ Section PRESERVATION.
       econs.
       + instantiate (2 := callee_injection j blk b).
         eapply src_init_rs_agree; eauto.
-      + eapply memcpy_inject; eauto.
+      + specialize (AGREE RSP). rewrite RSPPTR in *. inv AGREE; ss.
+        eapply memcpy_inject; eauto.
       + eapply valid_owner_genv_le. econs; eauto.
       + unfold callee_injection. inv GEINJECT. econs; i.
         { des_ifs; eauto. exploit (DOMAIN b); auto. i. clarify. }
@@ -1494,3 +1495,28 @@ Section PRESERVATION.
   Qed.    
 
 End PRESERVATION.
+
+
+Require Import BehaviorsC.
+
+Theorem lower_bound_correct
+        (asms: list Asm.program)
+  :
+    (<<INITUB: program_behaves (sem (map AsmC.module asms)) (Goes_wrong E0)>>) \/
+    exists link_tgt,
+      (<<TGT: link_list asms = Some link_tgt>>)
+      /\ (<<REFINE: improves (sem (map AsmC.module asms)) (Asm.semantics link_tgt)>>)
+.
+Proof.
+  destruct (link_sk (map module asms)) eqn:T; cycle 1.
+  { left. econs 2. ii. ss. inv H. clarify. }
+  destruct (Sk.load_mem t) eqn:T2; cycle 1.
+  { left. econs 2. ii. ss. inv H. clarify. }
+  right.
+  exploit link_sim; eauto. i; des.
+  rewrite TGT. esplits; eauto.
+  eapply bsim_improves.
+  eapply mixed_to_backward_simulation.
+  eapply transf_program_correct; eauto.
+Qed.
+

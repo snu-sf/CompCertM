@@ -580,3 +580,15 @@ Section MATCHPROG.
   Qed.
 
 End MATCHPROG.
+
+Lemma Global_match_genvs_refl
+      F V
+      (ge0: Genv.t F V)
+  :
+    Genv.match_genvs eq ge0 ge0
+.
+Proof.
+  econs; eauto.
+  ii. destruct ((Genv.genv_defs ge0) ! b) eqn:T; econs; eauto.
+Qed.
+

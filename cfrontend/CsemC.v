@@ -218,8 +218,7 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    rewrite CtypesC.of_program_defs.
-    eapply SkEnv.project_impl_spec; eauto.
+    rewrite CtypesC.of_program_defs. ss.
   Qed.
 
 End MODULE.

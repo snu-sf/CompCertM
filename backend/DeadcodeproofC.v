@@ -156,7 +156,11 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - econs; eauto. admit "easy".
+  - r. eapply Sk.match_program_eq; eauto.
+    ii.
+    admit "ez".
+    (* transf_partial_fundef_external *)
+    (* transf_partial_fundef_is_external_fd *)
   - ii. eapply sim_modsem; eauto.
 Unshelve.
   ss.

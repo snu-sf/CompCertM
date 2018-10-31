@@ -258,8 +258,8 @@ Section SIMGE.
     (* inv SIMMP. specialize (SIMMS skenv_src skenv_tgt). *)
     u.
     eapply SimSymb.sim_skenv_monotone; revgoals.
-    - eapply Mod.get_modsem_projected_sk.
-    - eapply Mod.get_modsem_projected_sk.
+    - eapply Mod.get_modsem_skenv_spec.
+    - eapply Mod.get_modsem_skenv_spec.
     - eauto. (* eapply SimSymb.le_refl. *)
     - apply SIMMP.
     - eauto.
@@ -373,8 +373,8 @@ Section SIMGE.
         - econs; eauto. r. ss. eapply SimSymb.sim_skenv_monotone; eauto.
           + eapply Sk.load_skenv_wf.
           + eapply Sk.load_skenv_wf.
-          + eapply Mod.get_modsem_projected_sk.
-          + eapply Mod.get_modsem_projected_sk.
+          + eapply Mod.get_modsem_skenv_spec.
+          + eapply Mod.get_modsem_skenv_spec.
       }
       rename H into NNIL.
       apply link_list_cons_inv in SKSRC; cycle 1. { destruct pp; ss. } des. rename restl into sk_src_tl.

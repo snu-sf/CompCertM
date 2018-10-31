@@ -4,6 +4,7 @@ Require Import Memory.
 Require Export ASTC.
 Require Import MapsC.
 Require Import Values.
+Require Import Linking.
 
 Set Implicit Arguments.
 
@@ -306,6 +307,48 @@ Module Sk.
   Definition of_program {F V} (get_sg: F -> signature) (prog: AST.program (AST.fundef F) V): t :=
     mkprogram (skdefs_of_gdefs get_sg prog.(prog_defs)) prog.(prog_public) prog.(prog_main)
   .
+
+  Definition wf_match_fundef CTX F1 F2 (match_fundef: CTX -> fundef F1 -> fundef F2 -> Prop): Prop := forall
+      ctx f1 f2
+      (MATCH: match_fundef ctx f1 f2)
+    ,
+      (<<EXT: exists ef, f1 = External ef /\ f2 = External ef>>)
+      \/ (<<INT: exists fd1 fd2, f1 = Internal fd1 /\ f2 = Internal fd2>>)
+  .
+
+  Definition is_external_weak F (f: AST.fundef F): bool :=
+    match f with
+    | Internal _ => false
+    | External _ => true
+    end
+  .
+
+  Lemma match_program_eq
+        F1 V1 F2 V2
+        `{Linker (fundef F1)} `{Linker V1}
+        match_fundef match_varinfo
+        (p1: AST.program (fundef F1) V1)
+        (p2: AST.program (fundef F2) V2)
+        (MATCH: match_program match_fundef match_varinfo p1 p2)
+        fn_sig1 fn_sig2
+        (WF: wf_match_fundef match_fundef)
+    :
+      <<EQ: Sk.of_program fn_sig1 p1 = Sk.of_program fn_sig2 p2>>
+  .
+  Proof.
+    rr in MATCH. des.
+    unfold of_program. r. f_equal; ss.
+    revert MATCH. generalize p1 at 1 as CTX. i.
+    destruct p1, p2; ss.
+    clear - MATCH WF.
+    ginduction prog_defs; ii; ss; inv MATCH; ss.
+    erewrite IHprog_defs; eauto. f_equal; eauto.
+    inv H3. destruct a, b1; ss. clarify.
+    inv H2; ss.
+    - unfold update_snd. exploit WF; eauto. i; des; clarify; ss.
+      + repeat f_equal. admit "ez".
+    - inv H1. ss.
+  Qed.
 
   Let match_fundef F0 F1 (_: unit): AST.fundef F0 -> AST.fundef F1 -> Prop :=
     fun f0 f1 =>

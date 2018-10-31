@@ -293,7 +293,7 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - econs; eauto. admit "easy".
+  - r. admit "easy - see DeadcodeproofC".
   - ii. eapply sim_modsem; eauto.
 Unshelve.
   ss.

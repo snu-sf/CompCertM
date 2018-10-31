@@ -953,7 +953,9 @@ c0 + empty
                         exploit external_call_determ. eapply EXTCALL.
                         eapply EXTCALL0. i. des.
                         splits; eauto.
-                        { admit "fill in `symbolenv` of `Sem.v`". }
+                        { eapply match_traces_le; eauto. ii.
+                          destruct senv_equiv_ge_link. des. rewrite symb_preserved.
+                          rewrite <- H2. auto. }
                         { i. subst.
                           exploit H0; eauto. i. des.
                           assert (retv = retv0).
@@ -976,8 +978,7 @@ c0 + empty
                         rewrite Genv.find_funct_ptr_iff in *.
                         specialize (mge_defs b). inv mge_defs; unfold Genv.find_def in *; unfold fundef.
                         { rewrite SIG in H. inv H. }
-                        assert (x = (Gfun (External ef targs0 tres0 cc))).
-                        { admit "FPTR and H". } subst; ss. }
+                        unfold fundef in *. rewrite FPTR in H. inv H; ss. }
                       unfold System.globalenv.
                       exploit external_call_symbols_preserved; eauto.
                       eapply senv_equiv_ge_link.
@@ -1092,7 +1093,7 @@ c0 + empty
                           inv H3; inv H4; ss; try (by ss); try (by inv FINAL).
                           - inv AT; inv AT0. ss.
                             splits.
-                            { admit "fill in `symbolenv` of `Sem.v`". }
+                            { apply match_traces_E0. }
                             i. des_ifs.
                           - inv AT. ss. des_ifs.
                             unfold fundef in *.
@@ -1102,12 +1103,11 @@ c0 + empty
                             unfold fundef in *.
                             exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero true)); eauto.
                             i. ss. des_ifs.
-                          - (* inv STEP; inv H3. *)
-                            inv STEP; inv STEP0; inv H3; inv H4; ss; des_ifs.
+                          - inv STEP; inv STEP0; inv H3; inv H4; ss; des_ifs.
                             + des_ifs.
                               exploit alloc_variables_determ. eapply H16. eauto. i. des. subst.
                               exploit bind_parameters_determ. eapply H17. eapply H19. i. subst.
-                              split; [admit "fill in `symbolenv` of `Sem.v`"| i; auto].
+                              split; [ apply match_traces_E0 | i; auto].
                             + unfold fundef in *.
                               exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero true)); eauto.
                               i. ss. des_ifs.

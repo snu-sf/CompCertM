@@ -1040,27 +1040,24 @@ Section PRESERVATION.
   Proof.
     inv MTCHST. inv STACK. ss. inv FINAL. inv AFTER. set WF as WF2. inv WF2. ss.
     inv RSPSAME. rewrite RSRSP0 in *. rewrite INITRSP in *. clarify.
-    rewrite PCSAME in *. des. ss. clarify. esplits.
-    econs; simpl in *.
+    rewrite PCSAME in *. des. ss. clarify.
+    exploit unfree_free_inj_inj_wf; eauto.
+    { instantiate (1 := Ptrofs.zero).
+      rewrite Ptrofs.unsigned_zero. rewrite Z.add_0_l.
+      rp; eauto. repeat f_equal.
+      eapply local_global_consistent; try apply GELE; eauto. }
+    { econs; eauto. }
+    i. des.
+    esplits. econs; s.
     - eapply callee_save_agree; eauto.
       etrans; eauto.
-    - eapply unfree_free_inj; eauto.
-      + instantiate (1 := Ptrofs.zero).
-        rewrite Ptrofs.unsigned_zero. rewrite Z.add_0_l.
-        rp; eauto. repeat f_equal.
-        eapply local_global_consistent; try apply GELE; eauto.
-      + econs; eauto.
+    - eauto.
     - eapply IN.
     - ss.
-   - unfold Frame.update_st. s. repeat f_equal. eapply local_global_consistent; try apply GELE; eauto.
+    - unfold Frame.update_st. s. repeat f_equal. eapply local_global_consistent; try apply GELE; eauto.
     - eapply match_stack_incr; [eauto| | eauto]. instantiate (1:=P). eauto.
-    - eapply unfree_free_inj_wf; eauto.
-      + instantiate (1 := Ptrofs.zero).
-        rewrite Ptrofs.unsigned_zero. rewrite Z.add_0_l.
-        rp; eauto. repeat f_equal.
-        eapply local_global_consistent; try apply GELE; eauto.
-      + econs; eauto.
-    - ss.
+    - auto.
+    - des_ifs.
     - des_ifs. omega.
   Qed.
 
@@ -1456,6 +1453,42 @@ Section PRESERVATION.
         ss. unfold Frame.update_st. ss. inv AFTER. ss. clarify.
         assert (SGEQ: sg = ef_sig ef).
         { des. rewrite FPTR in *. clarify. } clarify.
+        assert (INJWF: inj_range_wf f' m1 P /\  Mem.inject f' m1 m2').
+        { set (AGREE RSP). rewrite RSPPTR in *. clarify.
+          inv i.
+          exploit private_unfree_inj_inj_wf; [eauto|eauto|..].
+          - instantiate (2:=Ptrofs.unsigned Ptrofs.zero).
+            instantiate (1:=4 * size_arguments (ef_sig ef)).
+            ii. rewrite Ptrofs.unsigned_zero in *.
+            exploit Mem.unchanged_on_perm; eauto.
+            + eapply freed_from_out_of_reach; eauto.
+              rewrite SIGEQ. eauto.
+              instantiate (1:= ofs). lia.
+            + eapply Mem.mi_mappedblocks; eauto.
+            + intros PERM. eapply PERM.
+              exploit Mem.perm_inject; eauto.
+              eapply freed_from_perm; eauto. instantiate (1:=ofs-delta).
+              rewrite SIGEQ. omega.
+              i. replace ofs with (ofs - delta + delta); [auto|omega].
+          - intros delta' BOUND. eapply separated_out_of_reach; cycle 2; eauto.
+            + eapply Mem.mi_mappedblocks; eauto.
+            + eapply freed_from_out_of_reach; eauto.
+               rewrite Ptrofs.unsigned_zero in *. rewrite SIGEQ.
+               unfold range in *. lia.
+            + i. eapply ec_max_perm; eauto. eapply external_call_spec.
+            + eapply freed_from_inject; eauto.
+          - eauto.
+          - eapply inj_range_wf_step; try apply WFINJ; eauto.
+            i. destruct (classic (Mem.valid_block (Args.m args) blk)).
+            + eapply external_call_max_perm in EXTCALL; eauto.
+            + right. eapply Mem.mi_freeblocks; eauto.
+              unfold Mem.valid_block in *. inv FREE.
+              rewrite <- freed_from_nextblock. ss.
+          - ii. eapply RAGNE. right. split; eauto.
+            unfold range in *. rewrite Ptrofs.unsigned_zero in *.
+            des. rewrite FPTR in *. clarify. rewrite SIGEQ. lia.
+          - i. des. eauto.
+        } des.
         econs; cycle 3.
         * instantiate (1 := f').
           { inv GEINJECT. econs.
@@ -1479,39 +1512,7 @@ Section PRESERVATION.
           }
         * ss.
         * instantiate (1:=P). eapply match_stack_incr; [| |eauto]; eauto.
-        * set (AGREE RSP). rewrite RSPPTR in *. clarify.
-          inv i.
-          eapply private_unfree_inj_wf; [eauto|eauto|..].
-          { instantiate (2:=Ptrofs.unsigned Ptrofs.zero).
-            instantiate (1:=4 * size_arguments (ef_sig ef)).
-            ii. rewrite Ptrofs.unsigned_zero in *.
-            exploit Mem.unchanged_on_perm; eauto.
-            - eapply freed_from_out_of_reach; eauto.
-              rewrite SIGEQ. eauto.
-              instantiate (1:= ofs). lia.
-            - eapply Mem.mi_mappedblocks; eauto.
-            - intros PERM. eapply PERM.
-              exploit Mem.perm_inject; eauto.
-              eapply freed_from_perm; eauto. instantiate (1:=ofs-delta).
-              rewrite SIGEQ. omega.
-              i. replace ofs with (ofs - delta + delta); [auto|omega]. }
-          { intros delta' BOUND. eapply separated_out_of_reach; cycle 2; eauto.
-            - eapply Mem.mi_mappedblocks; eauto.
-            - eapply freed_from_out_of_reach; eauto.
-               rewrite Ptrofs.unsigned_zero in *. rewrite SIGEQ.
-               unfold range in *. lia.
-            - i. eapply ec_max_perm; eauto. eapply external_call_spec.
-            - eapply freed_from_inject; eauto. }
-          { eauto. }
-          { eapply inj_range_wf_step; try apply WFINJ; eauto.
-            i. destruct (classic (Mem.valid_block (Args.m args) blk)).
-            - eapply external_call_max_perm in EXTCALL; eauto.
-            - right. eapply Mem.mi_freeblocks; eauto.
-              unfold Mem.valid_block in *. inv FREE.
-              rewrite <- freed_from_nextblock. ss. }
-          { ii. eapply RAGNE. right. split; eauto.
-            unfold range in *. rewrite Ptrofs.unsigned_zero in *.
-            des. rewrite FPTR in *. clarify. rewrite SIGEQ. lia. }
+        * tauto.
         * ss.
         * unfold set_pair. des_ifs; repeat (eapply update_agree2; eauto).
           -- unfold regset_after_external.
@@ -1520,39 +1521,7 @@ Section PRESERVATION.
              intros []; des_ifs; try econs; eauto.
           -- eapply Val.hiword_inject; eauto.
           -- eapply Val.loword_inject; eauto.
-        * set (AGREE RSP). rewrite RSPPTR in *. clarify.
-          inv i.
-          eapply private_unfree_inj; [eauto|eauto|..].
-          { instantiate (2:=Ptrofs.unsigned Ptrofs.zero).
-            instantiate (1:=4 * size_arguments (ef_sig ef)).
-            ii. rewrite Ptrofs.unsigned_zero in *.
-            exploit Mem.unchanged_on_perm; eauto.
-            - eapply freed_from_out_of_reach; eauto.
-              rewrite SIGEQ. eauto.
-              instantiate (1:= ofs). lia.
-            - eapply Mem.mi_mappedblocks; eauto.
-            - intros PERM. eapply PERM.
-              exploit Mem.perm_inject; eauto.
-              eapply freed_from_perm; eauto. instantiate (1:=ofs-delta).
-              rewrite SIGEQ. omega.
-              i. replace ofs with (ofs - delta + delta); [auto|omega]. }
-          { intros delta' BOUND. eapply separated_out_of_reach; cycle 2; eauto.
-            - eapply Mem.mi_mappedblocks; eauto.
-            - eapply freed_from_out_of_reach; eauto.
-               rewrite Ptrofs.unsigned_zero in *. rewrite SIGEQ.
-               unfold range in *. lia.
-            - i. eapply ec_max_perm; eauto. eapply external_call_spec.
-            - eapply freed_from_inject; eauto. }
-          { eauto. }
-          { eapply inj_range_wf_step; try apply WFINJ; eauto.
-            i. destruct (classic (Mem.valid_block (Args.m args) blk)).
-            - eapply external_call_max_perm in EXTCALL; eauto.
-            - right. eapply Mem.mi_freeblocks; eauto.
-              unfold Mem.valid_block in *. inv FREE.
-              rewrite <- freed_from_nextblock. ss. }
-          { ii. eapply RAGNE. right. split; eauto.
-            unfold range in *. rewrite Ptrofs.unsigned_zero in *.
-            des. rewrite FPTR in *. clarify. rewrite SIGEQ. lia. }
+        * tauto.
         * ss.
       + ss. des_ifs; omega.
   Qed.

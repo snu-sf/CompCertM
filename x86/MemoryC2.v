@@ -193,6 +193,25 @@ Proof.
     + rewrite PMap.gsspec. des_ifs_safe. left. ss. eauto with mem.
 Qed.
 
+Lemma private_unfree_inj_inj_wf
+      P j m_src0 m_src1 m_tgt blk_src blk_tgt delta lo hi
+      (INJ: Mem.inject j m_src0 m_tgt)
+      (DELTA: j blk_src = Some (blk_tgt, delta))
+      (PERM: Mem.range_perm m_tgt blk_tgt (delta + lo) (delta + hi) Cur Freeable)
+      (PRVT: range (delta + lo) (delta + hi) <1= loc_out_of_reach j m_src0 blk_tgt)
+      (UNFREE: Mem_unfree m_src0 blk_src lo hi = Some m_src1)
+      (* --------------------------------------------------------- *)
+      (WFINJ: inj_range_wf j m_src0 P)
+      (RANGE: range lo hi <1= P blk_src)
+  :
+    <<INJ: Mem.inject j m_src1 m_tgt>> /\ <<WFINJ: inj_range_wf j m_src1 P>>
+.
+Proof.
+  split.
+  - eapply private_unfree_inj; eauto.
+  - eapply private_unfree_inj_wf; eauto.
+Qed.
+
 Lemma separated_out_of_reach j0 j1 m_src0 m_src1 m_tgt0 blk delta
       (INJ: Mem.inject j0 m_src0 m_tgt0)
       (INCR: inject_incr j0 j1)
@@ -234,79 +253,6 @@ Lemma unfree_nextblock m_src0 m_src1 blk_src lo hi
 Proof.
   unfold Mem_unfree in *. des_ifs.
 Qed.
-
-(* Lemma private_unfree_inj j m_src0 m_src1 m_tgt blk_src blk_tgt delta lo hi *)
-(*       (DELTA: j blk_src = Some (blk_tgt, delta)) *)
-(*       (PERM: Mem.range_perm m_tgt blk_tgt (lo+delta) (hi+delta) Cur Freeable)  *)
-(*       (PRVT: forall delta' (BOUND: delta + lo <= delta' <delta + hi), *)
-(*           loc_out_of_reach j m_src0 blk_tgt delta') *)
-(*       (UNFREE: Mem_unfree m_src0 blk_src lo hi = Some m_src1) *)
-(*       (INJ: Mem.inject j m_src0 m_tgt) *)
-(*   : *)
-(*     Mem.inject j m_src1 m_tgt. *)
-(* Proof.  *)
-(* (*   econs; i. *) *)
-(* (*   assert (UNCHANGED: Mem.unchanged_on (~2 brange blk_src lo hi) m_src0 m_src1). *) *)
-(* (*   { eapply Mem_unfree_unchanged_on; eauto. } *) *)
-(* (*   - econs; i. *) *)
-(* (*     destruct (classic (brange blk_src lo hi b1 ofs)); unfold brange in *; ss; *) *)
-(* (*       des; clarify. *) *)
-(* (*     + eapply Mem.perm_implies. eapply Mem.perm_cur. eapply PERM. *) *)
-(* (*       omega. econs. *) *)
-(* (*     + eapply Mem.mi_perm;[eapply INJ|..]; eauto. *) *)
-(* (*       exploit Mem.unchanged_on_perm; eauto. *) *)
-(* (*       instantiate (1 := ofs). instantiate (1 := b1). *) *)
-(* (*       unfold brange. ss. *) *)
-(* (*       unfold Mem.valid_block. erewrite unfree_nextblock; eauto. *) *)
-(* (*       eapply Mem.perm_valid_block; eauto. *) *)
-(* (*       i. des. eauto. *) *)
-(* (*     + *) *)
-(* (*  eapply Mem.mi_align;[eapply INJ|..]; eauto.  *) *)
-(* (*     destruct (classic (brange blk_src lo hi b1 (ofs+size_chunk chunk))); unfold brange in *; ss; *) *)
-(* (*       des; clarify. *) *)
-(* (*     * eapply Mem.perm_implies. eapply Mem.perm_cur. eapply PERM. *) *)
-(* (*       omega. econs. *) *)
-(* (*     * eapply Mem.mi_perm;[eapply INJ|..]; eauto. *) *)
-(* (*       exploit Mem.unchanged_on_perm; eauto. *) *)
-(* (*       instantiate (1 := ofs). instantiate (1 := b1). *) *)
-(* (*       unfold brange. ss. *) *)
-(* (*       unfold Mem.valid_block. erewrite unfree_nextblock; eauto. *) *)
-(* (*       eapply Mem.perm_valid_block; eauto. *) *)
-(* (*       i. des. eauto. *) *)
-(* (* admit "". *) *)
-(* (*     + admit "". *) *)
-(* (*   - admit "". *) *)
-(* (*   - admit "". *) *)
-(* (*   - admit "". *) *)
-(* (*   - admit "". *) *)
-(* (*   - admit "". *) *)
-(* (* destruct (eq_block b1 blk_src). *) *)
-(* (*     + clarify. destruct (classic (lo <= ofs < hi)). *) *)
-(* (*       * eapply Mem.perm_implies. eapply Mem.perm_cur. eapply PERM. *) *)
-(* (*         omega. econs. *) *)
-(* (*       * eapply Mem.mi_perm;[eapply INJ|..]; eauto. *) *)
-(* (*         exploit Mem.unchanged_on_perm; eauto. *) *)
-(* (*         instantiate (1 := ofs). instantiate (1 := blk_src). *) *)
-(* (*         unfold brange. ss. tauto. *) *)
-(* (*         unfold Mem.valid_block. erewrite unfree_nextblock; eauto. *) *)
-(* (*         eapply Mem.perm_valid_block; eauto. *) *)
-(* (*         i. des. eauto. *) *)
-(* (*     + eapply Mem.mi_perm;[eapply INJ|..]; eauto. *) *)
-(* (*       exploit Mem.unchanged_on_perm; eauto. *) *)
-(* (*       instantiate (1 := ofs). instantiate (1 := b1). *) *)
-(* (*       unfold brange. ss. tauto. *) *)
-(* (*       unfold Mem.valid_block. erewrite unfree_nextblock; eauto. *) *)
-(* (*       eapply Mem.perm_valid_block; eauto. *) *)
-(* (*       i. des. eauto. *) *)
-(* (*     + eapply Mem.mi_align;[eapply INJ|..]; eauto. admit "". *) *)
-(* (*     + admit "". *) *)
-(* (*   - admit "". *) *)
-(* (*   - admit "". *) *)
-(* (*   - admit "". *) *)
-(* (*   - admit "". *) *)
-(* (*   - admit "". *) *)
-(* (*     admit "". *) *)
-(* Admitted. *)
 
 Record freed_from m0 m1 blk lo hi : Prop :=
   mk_freed_from
@@ -701,7 +647,7 @@ Lemma to_fake_inj2 j v_src v_tgt
     Val.inject j v_src v_tgt.
 Proof. unfold to_fake in *. des_ifs; inv INJ; clarify. econs; eauto. Qed.
 
-Lemma unfree_free_inj P j (m_src0 m_src1 m_src2 m_tgt: mem)
+Lemma unfree_free_inj_inj_wf P j (m_src0 m_src1 m_src2 m_tgt: mem)
       blk0 blk1 delta1 delta2 ofs1 ofs2 size
       (DELTA1: delta1 = Ptrofs.unsigned ofs1)
       (DELTA2: delta2 = Ptrofs.unsigned ofs2)
@@ -711,51 +657,10 @@ Lemma unfree_free_inj P j (m_src0 m_src1 m_src2 m_tgt: mem)
       (INJ: Mem.inject j m_src0 m_tgt)
       (WFINJ: inj_range_wf j m_src0 P)
       (RANGE: range delta2 (delta2 + size) <1= P blk1)
-      (* (WFINJ: inj_range_wf j m_src0 blk1 delta2 (delta2 + size)) *)
   :
-    Mem.inject j m_src2 m_tgt.
+    <<INJ: Mem.inject j m_src2 m_tgt>> /\ <<WFINJ: inj_range_wf j m_src2 P>>.
 Proof.
-  inv SAME. clarify. des_ifs. eapply private_unfree_inj; cycle 4; eauto.
-  - ii. destruct (WFINJ blk0).
-    + econs 1; eauto.
-    + econs 2; eauto.
-      i. eapply ALIGN. ii. eapply H in PR. des; eauto.
-      left. eapply Mem.perm_free_3; eauto.
-  - eapply Mem.free_left_inject; eauto.
-  - rewrite Z.add_comm.
-    replace (delta + (Ptrofs.unsigned Ptrofs.zero + size)) with ((Ptrofs.unsigned Ptrofs.zero + size)+delta) by lia.
-    eapply Mem.range_perm_inj; try apply INJ; eauto.
-    eapply Mem.free_range_perm; eauto.
-  - intros delta' RANGE0 blk' ofs' INJECT. unfold range in *.
-    destruct (eq_block blk' blk_callee); clarify.
-    + eapply Mem.perm_free_2; eauto. lia.
-    + intros PERM. eapply Mem.perm_free_3 in PERM; eauto.
-      eapply Mem.free_range_perm in FREE.
-      exploit Mem.inject_no_overlap; eauto.
-      eapply Mem.perm_max; eauto.
-      eapply Mem.perm_implies; eauto.
-      eapply FREE; eauto.
-      * assert (Ptrofs.unsigned Ptrofs.zero <= delta' - delta < Ptrofs.unsigned Ptrofs.zero + size).
-        rewrite Ptrofs.unsigned_zero in *. lia. eauto.
-      * econs.
-      * splits. des; eauto. lia.
-Qed.
-
-Lemma unfree_free_inj_wf P j (m_src0 m_src1 m_src2 m_tgt: mem)
-      blk0 blk1 delta1 delta2 ofs1 ofs2 size
-      (DELTA1: delta1 = Ptrofs.unsigned ofs1)
-      (DELTA2: delta2 = Ptrofs.unsigned ofs2)
-      (FREE: Mem.free m_src0 blk0 delta1 (delta1 + size) = Some m_src1)
-      (UNFREE: Mem_unfree m_src1 blk1 delta2 (delta2 + size) = Some m_src2)
-      (SAME: inj_same j (Vptr blk1 ofs2 true) (Vptr blk0 ofs1 true))
-      (INJ: Mem.inject j m_src0 m_tgt)
-      (WFINJ: inj_range_wf j m_src0 P)
-      (RANGE: range delta2 (delta2 + size) <1= P blk1)
-      (* (WFINJ: inj_range_wf j m_src0 blk1 delta2 (delta2 + size)) *)
-  :
-    inj_range_wf j m_src2 P.
-Proof.
-  inv SAME. clarify. des_ifs. eapply private_unfree_inj_wf; cycle 4; eauto.
+  inv SAME. clarify. des_ifs. eapply private_unfree_inj_inj_wf; cycle 4; eauto.
   - ii. destruct (WFINJ blk0).
     + econs 1; eauto.
     + econs 2; eauto.

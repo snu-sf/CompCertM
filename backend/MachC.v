@@ -247,6 +247,71 @@ Definition get_mem (st: state): mem :=
   end.
 
 
+<<<<<<< HEAD
+||||||| merged common ancestors
+Inductive store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem): Prop :=
+| store_arguments_intro
+    m1 blk
+    (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
+    (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs)
+    (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk
+                                          then ~ (0 <= ofs < 4 * size_arguments sg)
+                                          else True) m1 m2)
+    (NB: m1.(Mem.nextblock) = m2.(Mem.nextblock))
+    (PERM: Mem.range_perm m2 blk 0 (4 * size_arguments sg) Cur Freeable)
+.
+
+Lemma store_arguments_progress
+      m0 vs sg
+  :
+    exists rs m2, <<STR: store_arguments m0 rs vs sg m2>>
+.
+Proof.
+  admit "".
+Qed.
+
+=======
+Inductive store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem): Prop :=
+| store_arguments_intro
+    m1 blk
+    (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
+    (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs)
+    (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk
+                                          then ~ (0 <= ofs < 4 * size_arguments sg)
+                                          else True) m1 m2)
+    (NB: m1.(Mem.nextblock) = m2.(Mem.nextblock))
+    (PERM: Mem.range_perm m2 blk 0 (4 * size_arguments sg) Cur Freeable)
+.
+
+Local Opaque Z.mul.
+Local Transparent size_arguments.
+Local Transparent loc_arguments.
+
+Lemma store_arguments_progress
+      m0 vs sg
+      (LEN: length vs = length sg.(sig_args))
+  :
+    exists rs m2, <<STR: store_arguments m0 rs vs sg m2>>
+.
+Proof.
+  (* set (SG := sg). *)
+  (* destruct sg; ss. *)
+  (* ginduction sig_args; ii; ss; clarify. *)
+  (* { destruct (Mem.alloc m0 0 (4 * (size_arguments SG))) eqn:ALC. *)
+  (*   destruct vs; ss. *)
+  (*   esplits; eauto. econs; ss; eauto. *)
+  (*   - r. unfold loc_arguments. des_ifs. ss. econs; eauto. *)
+  (*   - refl. *)
+  (*   - ii; ss. unfold size_arguments in *. ss. des_ifs. xomega. *)
+  (* } *)
+  (* destruct vs; ss. clarify. *)
+  (* exploit IHsig_args; eauto. i; des. *)
+  (* esplits; eauto. *)
+  (* des. *)
+  admit "".
+Qed.
+
+>>>>>>> WIP on UnreachC - local preservation
 Section MODSEM.
 
   Variable rao: function -> code -> ptrofs -> Prop.

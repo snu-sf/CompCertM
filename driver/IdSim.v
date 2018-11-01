@@ -189,15 +189,23 @@ Proof.
   ii. clarify. exploit SU; eauto. i; des. esplits; eauto. xomega.
 Qed.
 
-Lemma asm_unreach_lprsv
+(* Inductive Mem_future (P: val -> Prop) (m0 m1: Mem.mem): Prop := *)
+(* | Mem_future_alloc *)
+(*     lo hi blk *)
+(*     (ALLOC: m0.(Mem.alloc) lo hi = (m1, blk)) *)
+(*   : *)
+(*     Mem_future P m0 m1 *)
+(* | Mem_future_store *)
+(*     ( *)
+(* . *)
+
+Lemma asm_unreach_local_preservation
       asm skenv_link
   :
-    exists sound_state,
-      <<PRSV: Preservation.local_preservation (modsem skenv_link asm) sound_state>>
+    <<PRSV: Preservation.local_preservation (modsem skenv_link asm) (sound_state skenv_link)>>
 .
 Proof.
   s.
-  exists (sound_state skenv_link).
   econs; ii; ss; eauto.
   - (* init *)
     inv INIT. econs; eauto; ss.
@@ -276,7 +284,7 @@ Proof.
   ii. inv SSLE. clear_tac.
 
   econs; ss; eauto.
-  { eapply SoundTop.sound_state_local_preservation; eauto. }
+  { eapply asm_unreach_local_preservation; eauto. }
   ii; ss.
 
   exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.

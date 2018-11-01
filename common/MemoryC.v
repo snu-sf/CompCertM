@@ -26,7 +26,7 @@ Require Export Memory.
 
 
 Section FROZEN.
-  
+
 (* Copied from CRELLVM *)
 Inductive frozen (f_old f_new: meminj) (bound_src bound_tgt: block): Prop :=
 | frozen_intro
@@ -883,111 +883,159 @@ Proof.
   apply in_list_repeat in H. ss.
 Qed.
 
-Lemma private_unfree_inj
-      j m_src0 m_src1 m_tgt blk_src blk_tgt delta lo hi
-      (INJ: Mem.inject j m_src0 m_tgt)
-      (DELTA: j blk_src = Some (blk_tgt, delta))
-      (PERM: Mem.range_perm m_tgt blk_tgt (delta + lo) (delta + hi) Cur Freeable)
-      (PRVT: range (delta + lo) (delta + hi) <1= loc_out_of_reach j m_src0 blk_tgt)
-      (UNFREE: Mem_unfree m_src0 blk_src lo hi = Some m_src1)
-  :
-    <<INJ: Mem.inject j m_src1 m_tgt>>
-.
-Proof.
-  unfold Mem.inject in *.
-  unfold Mem_unfree in *. des_ifs.
-  inv INJ.
-  econs; eauto.
-  - clear_until mi_inj.
-    inv mi_inj. econs; ii; ss; eauto.
-    + unfold Mem.perm, Mem.perm_order' in H0. ss. des_ifs_safe.
-      rewrite PMap.gsspec in *.
-      destruct (peq b1 blk_src && zle lo ofs && zlt ofs hi) eqn:T; clarify; cycle 1.
-      * eapply mi_perm; eauto. unfold Mem.perm. bsimpl.
-        assert(((Mem.mem_access m_src0) # b1) ofs k = Some p1).
-        { des_ifs; simp. }
-        rewrite H1; ss.
-      * des_ifs; simp.
-        eapply Mem.perm_cur. eapply Mem.perm_implies with Freeable; eauto with mem.
-        eapply PERM; eauto with xomega.
-    + admit "this does not hold".
-    + unfold Mem.range_perm, Mem.perm in H0; ss.
-      destruct (peq b1 blk_src && zle lo ofs && zlt ofs hi) eqn:T; clarify; cycle 1.
-      * assert(Mem.perm m_src0 b1 ofs Cur Readable).
-        { rewrite PMap.gsspec in H0. des_ifs; simp. }
-        clear H0.
-        rewrite PMap.gsspec.
-        des_ifs; ss; cycle 1.
-        { eapply mi_memval; eauto. }
-        destruct (classic (0 <= hi - lo)); cycle 1.
-        { assert(NEG: exists n, hi - lo = Z.neg n).
-          { assert(Z.sgn (hi - lo) = - 1).
-            { eapply Z.sgn_neg. xomega. }
-            unfold Z.sgn in *. des_ifs. eauto.
-          }
-          des. rewrite NEG. rewrite Z2Nat.inj_neg. ss.
-          eapply mi_memval; eauto.
-        }
-        rewrite Mem.setN_other; ss.
-        { eapply mi_memval; eauto. }
-        ii. rewrite length_list_repeat in *.
-        simp.
-        { rewrite Z2Nat.id in *; ss. xomega. }
-      * simp. rewrite PMap.gsspec. des_ifs.
-        destruct (classic (0 <= hi - lo)); cycle 1.
-        { rewrite PMap.gsspec in *. des_ifs; simp. xomega. }
-        rewrite Mem_setN_in_repeat; ss.
-        { econs; eauto. }
-        rewrite Z2Nat.id; ss.
-        xomega.
-  - clear_until mi_no_overlap.
-    rr. unfold Mem.perm; ss. ii.
-    destruct (peq b1 blk_src && zle lo ofs1 && zlt ofs1 hi) eqn:T1; clarify.
-    { simp. clear mi_no_overlap.
-      rewrite PMap.gss in *. des_ifs; simp. clear H2.
-      rewrite PMap.gso in *; cycle 1.
-      { ii; clarify. }
-      eapply not_and_or. ii. des. clarify.
-      eapply PRVT; try apply H1; eauto; cycle 1.
-      { instantiate (1:= ofs2 + delta2). zsimpl. eauto. }
-      { rr. xomega. }
-    }
-    destruct (peq b2 blk_src && zle lo ofs2 && zlt ofs2 hi) eqn:T2; clarify.
-    { sguard in T1. simp. clear mi_no_overlap.
-      rewrite PMap.gss in *. des_ifs; simp. clear H3.
-      rewrite PMap.gso in *; cycle 1.
-      { ii; clarify. }
-      eapply not_and_or. ii. des. clarify.
-      eapply PRVT; try apply H0; eauto; cycle 1.
-      { instantiate (1:= ofs1 + delta1). zsimpl. eauto. }
-      { rr. xomega. }
-    }
-    specialize (mi_no_overlap b1 b1' delta1 b2 b2' delta2 ofs1 ofs2).
-    do 3 (hexploit1 mi_no_overlap; ss).
-    eapply mi_no_overlap.
-    + rewrite PMap.gsspec in H2. des_ifs; simp.
-    + rewrite PMap.gsspec in H3. des_ifs; simp.
-  - unfold Mem.perm. ss.
-    ii.
-    admit "this does not hold".
-  - unfold Mem.perm. ss.
-    ii.
-    exploit mi_perm_inv; eauto. i.
-    destruct (peq b1 blk_src && zle lo ofs && zlt ofs hi) eqn:T; clarify.
-    + bsimpl. des_safe. des_sumbool. rewrite PMap.gsspec. des_ifs_safe. ss. left. eauto with mem.
-    + rewrite PMap.gsspec. des_ifs_safe. left. ss. eauto with mem.
-Qed.
+(* Inductive inj_range_block_wf (j: meminj) (m: mem) blk_src (P: Z -> Prop) := *)
+(* | inj_range_wf_intro *)
+(*     delta blk_tgt *)
+(*     (DELTA: j blk_src = Some (blk_tgt, delta)) *)
+(*     (ALLIGN: forall chunk ofs k p, (range ofs (ofs + size_chunk chunk) <1= ((fun ofs => Mem.perm m blk_src ofs k p) \1/ P)) -> (align_chunk chunk | delta)) *)
+(*     (RANGE: forall ofs, *)
+(*         (P (Ptrofs.unsigned ofs) \/ *)
+(*          P (Ptrofs.unsigned ofs - 1) -> *)
+(*          delta >= 0 /\ 0 <= Ptrofs.unsigned ofs + delta <= Ptrofs.max_unsigned)) *)
+(* . *)
 
-Theorem Mem_unfree_parallel_extends:
-  forall m1 m2 b lo hi m1',
-  Mem.extends m1 m2 ->
-  Mem_unfree m1 b lo hi = Some m1' ->
-  exists m2',
-     Mem_unfree m2 b lo hi = Some m2'
-  /\ Mem.extends m1' m2'.
-Proof.
-  admit "this should hold...".
-Qed.
+(* Definition inj_range_wf (j: meminj) (m: mem) (P: block -> Z -> Prop) := *)
+(*   forall blk, inj_range_block_wf j m blk (P blk).   *)
+
+(* (* Inductive inj_range_wf (j: meminj) (m: mem) (blk_src: block) (lo hi: Z) := *) *)
+(* (* | inj_range_wf_intro *) *)
+(* (*     delta blk_tgt *) *)
+(* (*     (DELTA: j blk_src = Some (blk_tgt, delta)) *) *)
+(* (*     (ALLIGN: forall chunk ofs k p, (range ofs (ofs + size_chunk chunk) <1= ((fun ofs => Mem.perm m blk_src ofs k p) \1/ range lo hi)) -> (align_chunk chunk | delta)) *) *)
+(* (*     (RANGE: forall ofs, *) *)
+(* (*         (lo <= (Ptrofs.unsigned ofs) < hi \/ *) *)
+(* (*          lo <= (Ptrofs.unsigned ofs - 1) < hi) -> *) *)
+(* (*         delta >= 0 /\ 0 <= Ptrofs.unsigned ofs + delta <= Ptrofs.max_unsigned) *) *)
+(* (* . *) *)
+
+(* Lemma private_unfree_inj *)
+(*       P j m_src0 m_src1 m_tgt blk_src blk_tgt delta lo hi *)
+(*       (INJ: Mem.inject j m_src0 m_tgt) *)
+(*       (DELTA: j blk_src = Some (blk_tgt, delta)) *)
+(*       (PERM: Mem.range_perm m_tgt blk_tgt (delta + lo) (delta + hi) Cur Freeable) *)
+(*       (PRVT: range (delta + lo) (delta + hi) <1= loc_out_of_reach j m_src0 blk_tgt) *)
+(*       (UNFREE: Mem_unfree m_src0 blk_src lo hi = Some m_src1) *)
+(*       (* --------------------------------------------------------- *) *)
+(*       (WFINJ: inj_range_wf j m_src0 P) *)
+(*       (RANGE: range lo hi <1= P blk_src) *)
+(*   : *)
+(*     <<INJ: Mem.inject j m_src1 m_tgt>> *)
+(* . *)
+(* Proof. *)
+(*   unfold Mem.inject in *. *)
+(*   unfold Mem_unfree in *. des_ifs. *)
+(*   inv INJ. *)
+(*   econs; eauto. *)
+(*   - *)
+(*     (* clear_until mi_inj. *) *)
+
+(*     inv mi_inj. econs; ii; ss; eauto. *)
+(*     + unfold Mem.perm, Mem.perm_order' in H0. ss. des_ifs_safe. *)
+(*       rewrite PMap.gsspec in *. *)
+(*       destruct (peq b1 blk_src && zle lo ofs && zlt ofs hi) eqn:T; clarify; cycle 1. *)
+(*       * eapply mi_perm; eauto. unfold Mem.perm. bsimpl. *)
+(*         assert(((Mem.mem_access m_src0) # b1) ofs k = Some p1). *)
+(*         { des_ifs; simp. } *)
+(*         rewrite H1; ss. *)
+(*       * des_ifs; simp. *)
+(*         eapply Mem.perm_cur. eapply Mem.perm_implies with Freeable; eauto with mem. *)
+(*         eapply PERM; eauto with xomega. *)
+(*     + destruct (WFINJ blk_src). *)
+(*       destruct (eq_block b1 blk_src); clarify. *)
+(*       { eapply ALLIGN. *)
+(*         instantiate (1:=p0). instantiate (1:=Max). instantiate (1:=ofs). ii. *)
+(*         unfold Mem.range_perm, Mem.perm in *. ss. *)
+(*         rewrite PMap.gss in H0; eauto. *)
+(*         specialize (H0 _ PR). unfold proj_sumbool in *. des_ifs; ss; eauto. } *)
+(*       * assert (Mem.range_perm m_src0 b1 ofs (ofs + size_chunk chunk) Max p0). *)
+(*         { unfold Mem.range_perm, Mem.perm in *. ss. *)
+(*           i. specialize (H0 ofs0 H1). *)
+(*           rewrite PMap.gso in H0; eauto. } clear H0. *)
+(*         eapply mi_align; eauto. *)
+(*     + unfold Mem.range_perm, Mem.perm in H0; ss. *)
+(*       destruct (peq b1 blk_src && zle lo ofs && zlt ofs hi) eqn:T; clarify; cycle 1. *)
+(*       * assert(Mem.perm m_src0 b1 ofs Cur Readable). *)
+(*         { rewrite PMap.gsspec in H0. des_ifs; simp. } *)
+(*         clear H0. *)
+(*         rewrite PMap.gsspec. *)
+(*         des_ifs; ss; cycle 1. *)
+(*         { eapply mi_memval; eauto. } *)
+(*         destruct (classic (0 <= hi - lo)); cycle 1. *)
+(*         { assert(NEG: exists n, hi - lo = Z.neg n). *)
+(*           { assert(Z.sgn (hi - lo) = - 1). *)
+(*             { eapply Z.sgn_neg. xomega. } *)
+(*             unfold Z.sgn in *. des_ifs. eauto. *)
+(*           } *)
+(*           des. rewrite NEG. rewrite Z2Nat.inj_neg. ss. *)
+(*           eapply mi_memval; eauto. *)
+(*         } *)
+(*         rewrite Mem.setN_other; ss. *)
+(*         { eapply mi_memval; eauto. } *)
+(*         ii. rewrite length_list_repeat in *. *)
+(*         simp. *)
+(*         { rewrite Z2Nat.id in *; ss. xomega. } *)
+(*       * simp. rewrite PMap.gsspec. des_ifs. *)
+(*         destruct (classic (0 <= hi - lo)); cycle 1. *)
+(*         { rewrite PMap.gsspec in *. des_ifs; simp. xomega. } *)
+(*         rewrite Mem_setN_in_repeat; ss. *)
+(*         { econs; eauto. } *)
+(*         rewrite Z2Nat.id; ss. *)
+(*         xomega. *)
+(*   - clear_until mi_no_overlap. *)
+(*     rr. unfold Mem.perm; ss. ii. *)
+(*     destruct (peq b1 blk_src && zle lo ofs1 && zlt ofs1 hi) eqn:T1; clarify. *)
+(*     { simp. clear mi_no_overlap. *)
+(*       rewrite PMap.gss in *. des_ifs; simp. clear H2. *)
+(*       rewrite PMap.gso in *; cycle 1. *)
+(*       { ii; clarify. } *)
+(*       eapply not_and_or. ii. des. clarify. *)
+(*       eapply PRVT; try apply H1; eauto; cycle 1. *)
+(*       { instantiate (1:= ofs2 + delta2). zsimpl. eauto. } *)
+(*       { rr. xomega. } *)
+(*     } *)
+(*     destruct (peq b2 blk_src && zle lo ofs2 && zlt ofs2 hi) eqn:T2; clarify. *)
+(*     { sguard in T1. simp. clear mi_no_overlap. *)
+(*       rewrite PMap.gss in *. des_ifs; simp. clear H3. *)
+(*       rewrite PMap.gso in *; cycle 1. *)
+(*       { ii; clarify. } *)
+(*       eapply not_and_or. ii. des. clarify. *)
+(*       eapply PRVT; try apply H0; eauto; cycle 1. *)
+(*       { instantiate (1:= ofs1 + delta1). zsimpl. eauto. } *)
+(*       { rr. xomega. } *)
+(*     } *)
+(*     specialize (mi_no_overlap b1 b1' delta1 b2 b2' delta2 ofs1 ofs2). *)
+(*     do 3 (hexploit1 mi_no_overlap; ss). *)
+(*     eapply mi_no_overlap. *)
+(*     + rewrite PMap.gsspec in H2. des_ifs; simp. *)
+(*     + rewrite PMap.gsspec in H3. des_ifs; simp. *)
+(*   - i. ss. destruct (WFINJ blk_src). *)
+(*    destruct (eq_block b blk_src). subst. *)
+(*     + des; unfold Mem.perm in *; ss; rewrite PMap.gss in H0. *)
+(*       * unfold proj_sumbool in *; des_ifs; eauto 6. *)
+(*       * unfold proj_sumbool in *; des_ifs; eauto 6. *)
+(*     + assert (Mem.perm m_src0 b (Ptrofs.unsigned ofs) Max Nonempty \/ *)
+(*               Mem.perm m_src0 b (Ptrofs.unsigned ofs - 1) Max Nonempty). *)
+(*       { unfold Mem.range_perm, Mem.perm in *. ss. *)
+(*         rewrite PMap.gso in H0; eauto. } clear H0. *)
+(*       eapply mi_representable; eauto. *)
+(*   - unfold Mem.perm. ss. *)
+(*     ii. *)
+(*     exploit mi_perm_inv; eauto. i. *)
+(*     destruct (peq b1 blk_src && zle lo ofs && zlt ofs hi) eqn:T; clarify. *)
+(*     + bsimpl. des_safe. des_sumbool. rewrite PMap.gsspec. des_ifs_safe. ss. left. eauto with mem. *)
+(*     + rewrite PMap.gsspec. des_ifs_safe. left. ss. eauto with mem. *)
+(* Qed. *)
+
+(* Theorem Mem_unfree_parallel_extends: *)
+(*   forall m1 m2 b lo hi m1', *)
+(*   Mem.extends m1 m2 -> *)
+(*   Mem_unfree m1 b lo hi = Some m1' -> *)
+(*   exists m2', *)
+(*      Mem_unfree m2 b lo hi = Some m2' *)
+(*   /\ Mem.extends m1' m2'. *)
+(* Proof. *)
+(*   admit "this should hold...". *)
+(* Qed. *)
 
 End UNFREE.
 

@@ -19,8 +19,6 @@ Require Import ModSem Skeleton.
 (* Require Import SimMem. *)
 
 Require Import Sound.
-Require Unreach.
-Include Unreach.
 Require Import SemiLattice.
 Require Import FinFun.
 

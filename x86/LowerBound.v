@@ -1161,8 +1161,9 @@ Section PRESERVATION.
       + eapply memcpy_store_arguments; ss; eauto.
       + unfold src_init_rs. ss.
         destruct (init_rs RA); ss; eauto. destruct b1; ss; eauto.
-      + apply src_init_rs_PTRFREE.
-    - rewrite <- (freed_from_nextblock FREE) in *.
+      + i. unfold src_init_rs in *. ss.
+        des_ifs; eauto; try (exfalso; eapply to_fake_fake_ptr; eauto; fail).
+   - rewrite <- (freed_from_nextblock FREE) in *.
       rewrite <- (Mem.alloc_result _ _ _ _ _ MEQ) in *.
       econs.
       + instantiate (2 := callee_injection j blk b).

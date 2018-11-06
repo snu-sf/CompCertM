@@ -81,11 +81,12 @@ c0 + empty
   there are "5" kinds of match states needed(maybe)
   1. reg - reg 
   2. call - call
-  3. call - reg ----> only btw c maybe
+  3. reg - call ----> only btw c maybe
   4. ret - ret
-  5. ret - reg
+  5. reg - call
   what is reg state? 1. internal 
    *)
+
   Inductive match_states : Sem.state -> Sem.state -> nat -> Prop :=
   | match_regular_states
       fr_src fr_tgt
@@ -94,11 +95,15 @@ c0 + empty
     :
       match_states (State fr_src) (State fr_tgt) 0
   | match_call_states
-
+      args_src frs_src args_tgt frs_tgt ms1 ms2
+      (OWNER1: Ge.find_fptr_owner ge (Args.fptr args_src) ms1)
+      (OWNER2: Ge.find_fptr_owner tge (Args.fptr args_tgt) ms2)
+      (SYSCTX: (ms1 = System.modsem skenv_link_src /\ m2 = System.modsem skenv_link_tgt)
+               \/ (ms1 = 
     :
-      match_states 
+      match_states (Callstate args_src frs_src) (Callstate args_tgt frs_tgt) 0 
       
-      
+  .
 
   (* 
   Inlining

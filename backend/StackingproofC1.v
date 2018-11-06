@@ -381,7 +381,7 @@ Lemma init_match_frame_contents_depr
       m_tgt0 rs vs_src vs_tgt ls
       (STORE: MachC.store_arguments sm_arg.(SimMemInj.tgt) rs vs_tgt sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
-      (LS: fill_arguments (locset_copy rs) vs_src (loc_arguments sg) = Some ls)
+      (LS: LocationsC.fill_arguments (locset_copy rs) vs_src (loc_arguments sg) = Some ls)
       (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
       sm_init
       (SM: sm_init = sm_arg.(SimMemInjC.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
@@ -399,7 +399,7 @@ Proof.
   { ss. zsimpl. esplits; eauto with lia.
     - inv STORE. hexpl Mem.alloc_result NB. clarify.
     - clear - SG SIMVS STORE LS. inv STORE.
-      hexpl fill_arguments_spec. clear LS. clarify.
+      hexpl LocationsC.fill_arguments_spec. clear LS. clarify.
       hexpl Mem.alloc_result. clarify.
       intros ? ? OFS0 OFS1 ALIGN. zsimpl.
       destruct (classic (In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))).
@@ -438,12 +438,20 @@ Proof.
   admit "ge relax - sim_skenv_inj - ez".
 Qed.
 
+Ltac extcall_simpl :=
+  repeat match goal with
+         | [ H: extcall_arg_pair _ _ _ (One _) _ |- _ ] => inv H
+         | [ H: extcall_arg _ _ _ (S _ _ _) _ |- _ ] => inv H
+         | [ H: extcall_arg _ _ _ (R _) _ |- _ ] => inv H
+         end
+.
+
 Lemma init_match_frame_contents
       sm_arg sg
       m_tgt0 rs vs_src vs_tgt ls
       (STORE: MachC.store_arguments sm_arg.(SimMemInj.tgt) rs (typify_list vs_tgt sg.(sig_args)) sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
-      (LS: fill_arguments (locset_copy rs) (typify_list vs_src sg.(sig_args)) (loc_arguments sg) = Some ls)
+      (LS: LocationsC.fill_arguments (locset_copy rs) (typify_list vs_src sg.(sig_args)) (loc_arguments sg) = Some ls)
       (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
       sm_init
       (SM: sm_init = sm_arg.(SimMemInjC.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
@@ -461,7 +469,7 @@ Proof.
   { ss. zsimpl. esplits; eauto with lia.
     - inv STORE. hexpl Mem.alloc_result NB. clarify.
     - clear - SG SIMVS STORE LS. inv STORE.
-      hexpl fill_arguments_spec. clear LS. clarify.
+      hexpl LocationsC.fill_arguments_spec. clear LS. clarify.
       hexpl Mem.alloc_result. clarify.
       intros ? ? OFS0 OFS1 ALIGN. zsimpl.
       destruct (classic (In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))).
@@ -473,14 +481,7 @@ Proof.
         destruct a; ss.
         des; ss; clarify.
         * inv VALS.
-          Ltac extcall_tac :=
-            repeat match goal with
-            | [ H: extcall_arg_pair _ _ _ (One _) _ |- _ ] => inv H
-            | [ H: extcall_arg _ _ _ (S _ _ _) _ |- _ ] => inv H
-            | [ H: extcall_arg _ _ _ (R _) _ |- _ ] => inv H
-            end
-          .
-          extcall_tac.
+          extcall_simpl.
           unfold typify_list in *.
           destruct vs_src; ss. des_ifs. cbn in *. psimpl. zsimpl. inv SIMVS.
           rewrite Ptrofs.unsigned_repr in *; cycle 1.
@@ -1035,7 +1036,9 @@ Proof.
     eapply wt_prog; eauto.
   - (* init bsim *)
     {
-      inv INITTGT. inv STORE. folder.
+      inv INITTGT. inv TYP.
+      exploit fill_arguments_spec; eauto. intro STORE. inv STORE. folder. rewrite ALC in *. clarify.
+      rename m2 into tmp. rename m1 into m2. rename tmp into m1.
       inv SIMARGS. ss.
       exploit functions_translated_inject; eauto.
       { admit "match genvs ez". }
@@ -1048,15 +1051,15 @@ Proof.
         etransitivity.
         - unfold typify_list. rewrite zip_length. erewrite SimMem.sim_val_list_length; try apply VALS0. ss.
         - symmetry. rewrite SG. erewrite extcall_arguments_length; eauto with congruence.
-          assert((length targs) = (length (sig_args (fn_sig fd)))).
+          assert((length (typify_list (Args.vs args_tgt) (sig_args (fn_sig fd)))) = (length (sig_args (fn_sig fd)))).
           { erewrite <- extcall_arguments_length; eauto. erewrite loc_arguments_length; eauto. }
-          inv TYP. xomega.
+          xomega.
       }
-      exploit (fill_arguments_progress (locset_copy rs)
+      exploit (LocationsC.fill_arguments_progress (locset_copy rs1)
                                        (typify_list (Args.vs args_src) (sig_args (Linear.fn_sig f)))
                                        (* args_src.(Args.vs) *)
                                        (loc_arguments f.(Linear.fn_sig))); eauto. i; des.
-      exploit (fill_arguments_spec
+      exploit (LocationsC.fill_arguments_spec
                  (typify_list (Args.vs args_src) (sig_args (Linear.fn_sig f)))
                  (* args_src.(Args.vs) *)
                  f.(Linear.fn_sig)); eauto. i; des.
@@ -1070,7 +1073,6 @@ Proof.
         - ii. hexpl OUT.
         - econs; eauto with congruence.
           erewrite SimMem.sim_val_list_length; try apply VALS0. ss.
-          inv TYP.
           etrans; eauto with congruence.
         - ii. hexpl OUT.
           destruct loc; ss.
@@ -1081,10 +1083,10 @@ Proof.
       }
       { eauto. }
       { (* match states *)
-        assert(INITRS: agree_regs (SimMemInj.inj sm_arg) ls1 rs).
+        assert(INITRS: agree_regs (SimMemInj.inj sm_arg) ls1 rs1).
         {
           ii. destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (Linear.fn_sig f))))).
-          * red in VALS. inv TYP. rewrite <- SG in *. clear - FILL VALS VALS0 H.
+          * red in VALS. rewrite <- SG in *. clear - FILL0 VALS VALS0 H.
             generalize (loc_arguments_one (Linear.fn_sig f)). i.
             abstr (loc_arguments (Linear.fn_sig f)) locs. clear_tac.
             abstr (Args.vs args_src) vals_src. abstr (Args.vs args_tgt) vals_tgt. clear_tac.
@@ -1094,8 +1096,9 @@ Proof.
             ginduction locs; ii; ss.
             exploit H0; eauto. i. destruct a; ss. des; clarify.
             { inv VALS. destruct vals_tgt; ss. des_ifs. inv VALS0.
-              rename H4 into EARGP. inv EARGP. rename H2 into EARG. inv EARG; ss.
-              clarify. rewrite <- H4. rewrite H.
+              extcall_simpl. ss.
+              rewrite H.
+              clarify. rewrite <- H4.
               eapply inject_typify; eauto.
             }
             inv VALS. destruct vals_tgt; ss. des_ifs. inv VALS0.
@@ -1107,7 +1110,7 @@ Proof.
             i. rewrite OUT; ss.
             eapply fakeptr_inject_id; eauto.
         }
-        rename targs into targs_tgt. rename TYP into TYPTGT.
+        (* rename targs into targs_tgt. rename TYP into TYPTGT. *)
         (* assert(TYPSRC: exists targs_src, typecheck (Args.vs args_src) (fn_sig fd) targs_src). *)
         (* { esplits; eauto. econs; eauto. inv TYPTGT. rewrite <- LEN. clear - VALS0. admit "ez". } *)
         (* des. *)
@@ -1118,7 +1121,9 @@ Proof.
             rewrite MEMSRC. rewrite MEMTGT.
             eapply init_match_frame_contents with (vs_src := (Args.vs args_src))
                                                   (vs_tgt := (Args.vs args_tgt)(* targs_tgt *)); eauto.
-            * inv TYPTGT. econs; eauto. rewrite <- MEMTGT. ss.
+            * econs; eauto.
+              { rewrite <- MEMTGT. eauto. }
+            * unfold Ptrofs.max_unsigned in *. xomega.
             * rewrite <- SG. eauto with congruence.
           + i; des. admit "ge relax, ez".
         - clarify.

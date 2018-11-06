@@ -130,25 +130,44 @@ Proof.
 
   - apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
-
-  - destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
+    
+  - (* init bsim *)
+    destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
     inv INITTGT. des. ss. clarify. inv RAPTR.
-    assert (SRCSTORE: exists rs_src m_src,
-               MachC.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
-           agree_eq rs_src (Vptr (Mem.nextblock src)
-                          Ptrofs.zero true) rs /\ Mem.extends m_src m).
-    { clear - SAFESRC STORE VALS.
-      admit "this should hold...".
+    (* assert (SRCSTORE: exists rs_src m_src, *)
+    (*            MachC.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\ *)
+    (*        agree_eq rs_src (Vptr (Mem.nextblock src) *)
+    (*                       Ptrofs.zero true) rs /\ Mem.extends m_src m). *)
+    (* { clear - SAFESRC STORE VALS. *)
+    (*   admit "this should hold...". *)
+    (* } *)
+    destruct (Mem.alloc src 0 (4 * size_arguments (fn_sig fd))) eqn:ALC.
+    rename b into sp. (* rename src into m_src0. *)
+    assert (exists rs_src0 rs_src1 m_src,
+               <<SRCFILL: MachC.fill_arguments sp rs_src0 m0 (typify_list vs (sig_args (fn_sig fd)))
+                                    (loc_arguments (fn_sig fd)) = Some (rs_src1, m_src)>>
+               /\ <<AGREE: agree_eq rs_src1 (Vptr (Mem.nextblock src) Ptrofs.zero true) rs>>
+               /\ <<EXTENDS: Mem.extends m_src m>>).
+    { clear - SAFESRC STORE VALS ALC FINDF SIMGE.
+      inv SAFESRC. ss.
+      assert(SG: (fn_sig fd) = (Mach.fn_sig fd0)).
+      { admit "ez: see below". }
+      rewrite SG in *. rewrite ALC in *. clarify. esplits; eauto.
+      - admit "reg".
+      - admit "mem".
     }
-    destruct SRCSTORE as [rs_src [m_src [SRCSTORE [AGREE EXTENDS]]]].
+    des.
+    exploit fill_arguments_spec; eauto.
+    { admit "ez". }
+    intro SRCSTORE.
     inv AGREE.
     exists (MachC.mkstate
-              rs_src (fn_sig fd)
+              rs_src1 (fn_sig fd)
               (Callstate
                  [dummy_stack
                     (Vptr (Mem.nextblock src)
                           Ptrofs.zero true) (rs RA)]
-                 fptr rs_src m_src)).
+                 fptr rs_src1 m_src)).
     inv FPTR; cycle 1.
     { clear - SAFESRC. inv SAFESRC. ss. }
     esplits; auto.
@@ -160,11 +179,8 @@ Proof.
         folder. ss; try unfold bind in *; des_ifs.
         symmetry. eapply transf_function_sig; eauto.
       }
-      econs; auto.
-      * eauto.
-      * ss.
+      econs; ss; eauto.
       * econs; eauto. ss. eauto with congruence.
-      * ss.
       * ii. rewrite (agree_mregs0 mr) in *. exploit PTRFREE; eauto.
         i. des.
         -- rewrite Asm.to_preg_to_mreg in *. clarify.
@@ -188,7 +204,8 @@ Proof.
            eapply Mem.nextblock_alloc in ALC. rewrite ALC. eapply Ple_succ.
       * rewrite agree_sp0. auto.
 
-  - ss. des. inv SIMARGS. destruct sm_arg. ss. clarify.
+  - (* init progress *)
+    ss. des. inv SIMARGS. destruct sm_arg. ss. clarify.
     inv SAFESRC.
     hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des. ss; unfold bind in *; des_ifs. rename f into fd_tgt.
     assert (exists rs_tgt m_tgt,
@@ -205,7 +222,7 @@ Proof.
     { admit "this should hold...". } des.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
-    + rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
+    + inv TYP. rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
     + ss. destruct SIMSKENVLINK. inv H0. rewrite <- NEXT.
       apply Mem.mext_next in MWF. rewrite <- MWF in *. auto.
     + rewrite RSRA. econs; ss.

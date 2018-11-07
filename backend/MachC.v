@@ -260,7 +260,7 @@ Inductive store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) 
     (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
     (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs)
     (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk
-                                          then ~ (0 <= ofs < 4 * size_arguments sg)
+                                          then (* ~ (0 <= ofs < 4 * size_arguments sg) *) False
                                           else True) m1 m2)
     (NB: m1.(Mem.nextblock) = m2.(Mem.nextblock))
     (PERM: Mem.range_perm m2 blk 0 (4 * size_arguments sg) Cur Freeable)
@@ -451,7 +451,10 @@ Lemma fill_arguments_unchanged_on
       (LEN: length args = length tys)
       (FILL: fill_arguments sp rs0 m0 args (loc_arguments_64 tys x y z) = Some (rs1, m1))
   :
-    <<UNCH: Mem.unchanged_on (brange sp 0 (4 * z)) m0 m1>>
+    (* <<UNCH: Mem.unchanged_on (brange sp 0 (4 * z)) m0 m1>> *)
+    <<UNCH: Mem.unchanged_on (fun b ofs => if eq_block b sp
+                                           then (0 <= ofs < 4 * z)
+                                           else True) m0 m1>>
 .
 Proof.
   ginduction args; ii; ss; des_ifs_safe; destruct tys; ss.
@@ -464,35 +467,35 @@ Proof.
   { des_ifs_safe. destruct p; ss.
     des_ifs.
     - r. etrans; cycle 1.
-      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. xomega. }
+      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
       exploit IHargs; eauto. i.
       eapply Mem.unchanged_on_implies; eauto.
-      u. ii; ss. des. clarify. esplits; eauto. xomega.
+      u. ii; ss. des. des_ifs. esplits; eauto; try xomega.
     - exploit IHargs; eauto. i; des.
       r. etrans; eauto.
       { eapply Mem.unchanged_on_implies; eauto.
-        u. ii; ss. des. clarify. esplits; eauto. xomega. }
-      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. xomega. }
+        u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
+      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
     - exploit IHargs; eauto. i; des.
       r. etrans; eauto.
       { eapply Mem.unchanged_on_implies; eauto.
-        u. ii; ss. des. clarify. esplits; eauto. xomega. }
-      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. xomega. }
+        u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
+      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
     - exploit IHargs; eauto. i; des.
       r. etrans; eauto.
       { eapply Mem.unchanged_on_implies; eauto.
-        u. ii; ss. des. clarify. esplits; eauto. xomega. }
-      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. xomega. }
+        u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
+      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
     - exploit IHargs; eauto. i; des.
       r. etrans; eauto.
       { eapply Mem.unchanged_on_implies; eauto.
-        u. ii; ss. des. clarify. esplits; eauto. xomega. }
-      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. xomega. }
+        u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
+      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
     - exploit IHargs; eauto. i; des.
       r. etrans; eauto.
       { eapply Mem.unchanged_on_implies; eauto.
-        u. ii; ss. des. clarify. esplits; eauto. xomega. }
-      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. xomega. }
+        u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
+      { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
   }
 Qed.
 
@@ -934,7 +937,22 @@ Proof.
         }
 Qed.
 
-Lemma fill_arguments_spec
+Let fill_arguments_perm: forall
+    sp rs0 m0 args locs rs1 m1
+    (FILL: fill_arguments sp rs0 m0 args locs = Some (rs1, m1))
+  ,
+    <<PERM: forall ofs k p, Mem.perm m0 sp ofs k p -> Mem.perm m1 sp ofs k p>>
+.
+Proof.
+  i.
+  ginduction args; ii; ss; des_ifs_safe.
+  { des_ifs. }
+  u in FILL. des_ifs_safe. des_ifs.
+  - destruct p0; ss. eapply IHargs; eauto.
+  - destruct p0; ss. eapply Mem.perm_store_1; eauto. eapply IHargs; eauto.
+Qed.
+
+Theorem fill_arguments_spec
       sg m0 rs0 m1 sp args targs
       (* (LEN: length args = length sg.(sig_args)) *)
       (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, sp))
@@ -952,16 +970,19 @@ Proof.
   (* destruct sg; ss. unfold size_arguments, loc_arguments in *. *)
   ss. des_ifs. clear_tac.
   unfold loc_arguments in *. des_ifs.
+  assert(LEN2: length (typify_list args (sig_args sg)) = length (sig_args sg)).
+  { u. rewrite zip_length. lia. }
   econs; eauto.
   - rr.
     eapply fill_arguments_spec_aux; ss; eauto.
-    + unfold typify_list. rewrite zip_length. lia.
-    + admit "ez".
+    + eapply typify_has_type_list; eauto.
     + ii. eapply loc_arguments_acceptable; eauto. unfold loc_arguments. des_ifs. eauto.
     + i. eapply loc_arguments_bounded; eauto.
-  - admit "unchanged on".
-  - admit "ez".
-  - admit "unchanged on".
+  - eapply Mem.unchanged_on_implies.
+    { eapply fill_arguments_unchanged_on; try apply FILL; eauto. }
+    i. des_ifs.
+  - admit "ez - nextblock".
+  - ii. eapply fill_arguments_perm; eauto. eauto with mem.
 Qed.
 
 Lemma store_arguments_progress

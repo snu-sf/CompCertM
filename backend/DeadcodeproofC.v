@@ -71,11 +71,12 @@ Proof.
     eexists. eexists (SimMemExt.mk _ _).
     esplits; eauto.
     + econs; eauto; ss.
-      * rpapply match_call_states; eauto.
+      * inv TYP. rpapply match_call_states; eauto.
         { econs; eauto. }
         { eapply lessdef_list_typify_list; try apply VALS; eauto. rewrite <- LEN.
           symmetry. eapply lessdef_list_length; eauto. }
         folder. inv SAFESRC.
+        inv TYP.
         exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. unfold bind in *. folder. des_ifs.
         inv FPTR; cycle 1.
         { rewrite <- H2 in *. ss. }
@@ -88,9 +89,13 @@ Proof.
     { rewrite <- H0 in *. ss. }
     exploit make_match_genvs; eauto. intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. unfold bind in *. folder. des_ifs.
+    inv TYP.
+    unfold transf_function in *. des_ifs.
     esplits; eauto. econs; eauto.
     + folder. rewrite <- H1. eauto.
-    + erewrite <- lessdef_list_length; eauto. replace (fn_sig f) with (fn_sig fd); ss. unfold transf_function in *; des_ifs.
+    + econs; eauto.
+      erewrite <- lessdef_list_length; eauto.
+    + erewrite <- lessdef_list_length; eauto.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     u in CALLSRC. des. inv CALLSRC. inv MATCHST; ss.

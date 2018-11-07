@@ -275,6 +275,7 @@ Section PRSV.
         * rewrite IMG. ii. des_ifs; ss. inv SKENV. rewrite PUB0 in *; ss.
         * inv SKENV. rewrite PUB in *. ss.
       + ii. repeat spc VALS. destruct v; econs; eauto. destruct b0; econs; eauto. rewrite IMG.
+        inv TYP. ss.
         apply in_zip_iff in H0. des. unfold typify in *. des_ifs.
         hexploit1 VALS.
         { eapply nth_error_In; eauto. }

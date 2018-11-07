@@ -310,7 +310,9 @@ Section MODSEM.
       (RAPTR: Val.has_type ra Tptr)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
-      (STORE: store_arguments args.(Args.m) rs args.(Args.vs) sg m0)
+      targs
+      (TYP: typecheck args.(Args.vs) sg targs)
+      (STORE: store_arguments args.(Args.m) rs targs sg m0)
       (PTRFREE: forall
           mr
           (* (NOTIN: Loc.notin (R mr) (regs_of_rpairs (loc_arguments sg))) *)

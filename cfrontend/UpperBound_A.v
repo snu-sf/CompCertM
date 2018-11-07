@@ -82,16 +82,62 @@ c0 + empty
   1. reg - reg 
   2. call - call
   3. reg - call ----> only btw c maybe
-  4. ret - ret
-  5. reg - call
+  (* 4. ret - ret *)
+  (* 5. reg - ret *)
   what is reg state? 1. internal 
    *)
+  Fixpoint app_cont (c1 c2: cont) : cont :=
+    match c1 with
+    | Kstop => c2
+    | Kdo c => Kdo (app_cont c c2)
+    | Kseq s c => Kseq s (app_cont c c2)
+    | Kifthenelse s1 s2 c => Kifthenelse s1 s2 (app_cont c c2)
+    | Kwhile1 e s c => Kwhile1 e s (app_cont c c2)
+    | Kwhile2 e s c => Kwhile2 e s (app_cont c c2)
+    | Kdowhile1 e s c => Kdowhile1 e s (app_cont c c2)
+    | Kdowhile2 e s c => Kdowhile2 e s (app_cont c c2)
+    | Kfor2 e s1 s2 c => Kfor2 e s1 s2 (app_cont c c2)
+    | Kfor3 e s1 s2 c => Kfor3 e s1 s2 (app_cont c c2)
+    | Kfor4 e s1 s2 c => Kfor4 e s1 s2 (app_cont c c2)
+    | Kswitch1 ls c =>  Kswitch1 ls (app_cont c c2)
+    | Kswitch2 c =>  Kswitch2 (app_cont c c2)
+    | Kreturn c => Kreturn (app_cont c c2)
+    | Kcall f e em ty c => Kcall f e em ty (app_cont c c2)
+    end.
+
+  Inductive match_frames : list Frame.t -> list Frame.t -> Prop :=
+  | match_frames_nil
+    :
+      match_frames nil nil
+  | match_frames_cons_sys
+      fr_src frs_src fr_tgt frs_tgt st
+      (MATCH: match_frames frs_src frs_tgt)
+      (SYS1: fr_src = Frame.mk (System.modsem skenv_link_src) st)
+      (SYS1: fr_tgt = Frame.mk (System.modsem skenv_link_tgt) st)
+    :
+      match_frames (fr_src::frs_tgt) (fr_src::frs_tgt)
+  | match_frames_cons_ctx
+      fr_src frs_src fr_tgt frs_tgt
+      m st1 st2 (* state must be same?? i dont think so *)
+      (MATCH: match_frames frs_src frs_tgt)
+      (MOD: In m ctx)
+      (CTX1: fr_src = Frame.mk (Mod.get_modsem m skenv_link_src (Mod.data m)) st1)
+      (CTX2: fr_tgt = Frame.mk (Mod.get_modsem m skenv_link_tgt (Mod.data m)) st2)
+    :
+      match_frames (fr_src::frs_tgt) (fr_src::frs_tgt)
+  | match_frames_cons_c
+      fr_src frs_src fr_tgt frs_tgt
+      m st1 st2 (* state must be same?? i dont think so *)
+
+      fr1 frs1 frc0 frc1
+  .
+
+  
 
   Inductive match_states : Sem.state -> Sem.state -> nat -> Prop :=
   | match_regular_states
       fr_src fr_tgt
-      (FRLENSRC: (length fr_src <= 2)%nat)
-      (FRLENSRC: (length fr_src <= 3)%nat)
+      
     :
       match_states (State fr_src) (State fr_tgt) 0
   | match_call_states
@@ -174,3 +220,58 @@ c0 + empty
         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)),
       match_states (Returnstate stk v m)
                    (State stk' f' (Vptr sp' Ptrofs.zero true) pc' rs' m').
+
+
+  Inductive match_stacks (F: meminj) (m m': mem):
+             list stackframe -> list stackframe -> block -> Prop :=
+  | match_stacks_nil: forall bound1 bound
+        (MG: match_globalenvs F bound1)
+        (BELOW: Ple bound1 bound),
+      match_stacks F m m' nil nil bound
+  | match_stacks_cons: forall res f sp pc rs stk f' sp' rs' stk' bound fenv ctx
+        (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs')
+        (COMPAT: fenv_compat prog fenv)
+        (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code))
+        (AG: agree_regs F ctx rs rs')
+        (SP: F sp = Some(sp', ctx.(dstk)))
+        (PRIV: range_private F m m' sp' (ctx.(dstk) + ctx.(mstk)) f'.(fn_stacksize))
+        (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned)
+        (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize))
+        (RES: Ple res ctx.(mreg))
+        (BELOW: Plt sp' bound),
+      match_stacks F m m'
+                   (Stackframe res f (Vptr sp Ptrofs.zero true) pc rs :: stk)
+                   (Stackframe (sreg ctx res) f' (Vptr sp' Ptrofs.zero true) (spc ctx pc) rs' :: stk')
+                   bound
+  | match_stacks_untailcall: forall stk res f' sp' rpc rs' stk' bound ctx
+        (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs')
+        (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize))
+        (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned)
+        (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize))
+        (RET: ctx.(retinfo) = Some (rpc, res))
+        (BELOW: Plt sp' bound),
+      match_stacks F m m'
+                   stk
+                   (Stackframe res f' (Vptr sp' Ptrofs.zero true) rpc rs' :: stk')
+                   bound
+
+with match_stacks_inside (F: meminj) (m m': mem):
+        list stackframe -> list stackframe -> function -> context -> block -> regset -> Prop :=
+  | match_stacks_inside_base: forall stk stk' f' ctx sp' rs'
+        (MS: match_stacks F m m' stk stk' sp')
+        (RET: ctx.(retinfo) = None)
+        (DSTK: ctx.(dstk) = 0),
+      match_stacks_inside F m m' stk stk' f' ctx sp' rs'
+  | match_stacks_inside_inlined: forall res f sp pc rs stk stk' f' fenv ctx sp' rs' ctx'
+        (MS: match_stacks_inside F m m' stk stk' f' ctx' sp' rs')
+        (COMPAT: fenv_compat prog fenv)
+        (FB: tr_funbody fenv f'.(fn_stacksize) ctx' f f'.(fn_code))
+        (AG: agree_regs F ctx' rs rs')
+        (SP: F sp = Some(sp', ctx'.(dstk)))
+        (PAD: range_private F m m' sp' (ctx'.(dstk) + ctx'.(mstk)) ctx.(dstk))
+        (RES: Ple res ctx'.(mreg))
+        (RET: ctx.(retinfo) = Some (spc ctx' pc, sreg ctx' res))
+        (BELOW: context_below ctx' ctx)
+        (SBELOW: context_stack_call ctx' ctx),
+      match_stacks_inside F m m' (Stackframe res f (Vptr sp Ptrofs.zero true) pc rs :: stk)
+                                 stk' f' ctx sp' rs'.

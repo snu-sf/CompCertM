@@ -1,6 +1,6 @@
 Require Import CoqlibC Errors.
 Require Import Integers Floats AST Linking.
-Require Import Values Memory Events Globalenvs Smallstep.
+Require Import ValuesC Memory Events Globalenvs Smallstep.
 Require Import Op Locations MachC Conventions AsmC.
 Require Import Asmgen Asmgenproof0 Asmgenproof1.
 Require Import sflib.
@@ -134,7 +134,7 @@ Proof.
   - destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
     inv INITTGT. des. ss. clarify. inv RAPTR.
     assert (SRCSTORE: exists rs_src m_src,
-               MachC.store_arguments src rs_src vs (fn_sig fd) m_src /\
+               MachC.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
            agree_eq rs_src (Vptr (Mem.nextblock src)
                           Ptrofs.zero true) rs /\ Mem.extends m_src m).
     { clear - SAFESRC STORE VALS.
@@ -153,10 +153,17 @@ Proof.
     { clear - SAFESRC. inv SAFESRC. ss. }
     esplits; auto.
     + inv SAFESRC. ss.
-      econs; auto.
-      * instantiate (1:= fd0). hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
+      inv TYP. clear_tac.
+      assert(SIG: fn_sig fd = Mach.fn_sig fd0).
+      {
+        hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
         folder. ss; try unfold bind in *; des_ifs.
         symmetry. eapply transf_function_sig; eauto.
+      }
+      econs; auto.
+      * eauto.
+      * ss.
+      * econs; eauto. ss. eauto with congruence.
       * ss.
       * ii. exploit PTRFREE; eauto.
         eapply Asm.to_preg_to_mreg.

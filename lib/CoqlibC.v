@@ -1025,3 +1025,5 @@ Proof.
     exploit (@IHn _ _ _ f); eauto.
 Qed.
 
+Global Opaque Z.mul.
+

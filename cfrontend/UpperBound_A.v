@@ -105,6 +105,27 @@ c0 + empty
     | Kcall f e em ty c => Kcall f e em ty (app_cont c c2)
     end.
 
+  Inductive similar_state : Csem.state -> Csem.state -> cont -> Prop :=
+  | reg_state_similar
+      f s c c0 c1 e m
+      (CONT: c = app_cont c1 c0)
+    : similar_state (Csem.State f s c e m) (Csem.State f s c1 e m) c0
+  | expr_state_similar
+      f ex c c0 c1 e m
+      (CONT: c = app_cont c1 c0)
+    : similar_state (Csem.ExprState f ex c e m) (Csem.ExprState f ex c1 e m) c0
+  | call_sate_similar
+      fptr tyf vargs c c0 c1 m
+      (CONT: c = app_cont c1 c0)
+    : similar_state (Csem.Callstate fptr tyf vargs c m) (Csem.Callstate fptr tyf vargs c1 m) c0
+  | return_sate_similar
+      vres c c0 c1 m
+      (CONT: c = app_cont c1 c0)
+    : similar_state (Csem.Returnstate vres c m) (Csem.Returnstate vres c1 m) c0
+  | stuck_state_similar
+      c0
+    : similar_state Csem.Stuckstate Csem.Stuckstate c0.
+
   Inductive match_frames : list Frame.t -> list Frame.t -> Prop :=
   | match_frames_nil
     :
@@ -115,7 +136,7 @@ c0 + empty
       (SYS1: fr_src = Frame.mk (System.modsem skenv_link_src) st)
       (SYS1: fr_tgt = Frame.mk (System.modsem skenv_link_tgt) st)
     :
-      match_frames (fr_src::frs_tgt) (fr_src::frs_tgt)
+      match_frames (fr_src::frs_src) (fr_src::frs_tgt)
   | match_frames_cons_ctx
       fr_src frs_src fr_tgt frs_tgt
       m st1 st2 (* state must be same?? i dont think so *)
@@ -124,30 +145,64 @@ c0 + empty
       (CTX1: fr_src = Frame.mk (Mod.get_modsem m skenv_link_src (Mod.data m)) st1)
       (CTX2: fr_tgt = Frame.mk (Mod.get_modsem m skenv_link_tgt (Mod.data m)) st2)
     :
-      match_frames (fr_src::frs_tgt) (fr_src::frs_tgt)
-  | match_frames_cons_c
-      fr_src frs_src fr_tgt frs_tgt
-      m st1 st2 (* state must be same?? i dont think so *)
+      match_frames (fr_src::frs_src) (fr_src::frs_tgt)
+  | match_frames_cons_c_one
+      fr_src frs_src fr_tgt frs_tgt prog_tgt st_src st_tgt
+      (MATCH: match_frames frs_src frs_tgt)
+      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
+      (CSTATE1: fr_src = Frame.mk (CsemC.modsem skenv_link_src prog') st_src)
+      (CSTATE2: fr_tgt = Frame.mk (CsemC.modsem skenv_link_src prog_tgt) st_tgt)
+      (SAME: st_src = st_tgt) (* everything is the same, including cont *)
+    :
+      match_frames (fr_src::frs_src) (fr_tgt::frs_tgt) (* this case needed? *)
+  | match_frames_cons_c_two
+      fr_src frs_src fr_tgt0 fr_tgt1 frs_tgt
+      st_src st_tgt0 st_tgt1 fptr tyf vs_arg c0 m0 prog_tgt
+      (MATCH: match_frames frs_src frs_tgt)
+      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
+      (C0STATE: st_tgt0 = Csem.Callstate fptr tyf vs_arg c0 m0)      
+      (C0EXT: at_external skenv_link_tgt prog_tgt st_tgt0 (Args.mk fptr vs_arg m0))
+      (SIMILAR: similar_state st_src st_tgt1 c0)
+    :
+      match_frames (fr_src::frs_src) (fr_tgt1::fr_tgt0::frs_tgt).
 
-      fr1 frs1 frc0 frc1
-  .
-
-  
+  Inductive match_owner : ModSem.t -> ModSem.t -> Prop :=
+  | match_sys
+      ms1 ms2
+      (SYS1: ms1 = System.modsem skenv_link_src)
+      (SYS2: ms2 = System.modsem skenv_link_tgt)
+    :
+      match_owner ms1 ms2
+  | match_ctx
+      m ms1 ms2
+      (MOD: In m ctx)
+      (CTX1: ms1 = Mod.get_modsem m skenv_link_src (Mod.data m))
+      (CTX2: ms2 = Mod.get_modsem m skenv_link_tgt (Mod.data m))
+    :
+      match_owner ms1 ms2
+  | match_cmod
+      prog_tgt ms1 ms2
+      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
+      (CMOD1: ms1 = CsemC.modsem skenv_link_src prog')
+      (CMOD2: ms2 = CsemC.modsem skenv_link_tgt prog_tgt)
+    :
+      match_owner ms1 ms2.
 
   Inductive match_states : Sem.state -> Sem.state -> nat -> Prop :=
   | match_regular_states
-      fr_src fr_tgt
-      
+      frs_src frs_tgt
+      (FMATCH: match_frames frs_src frs_tgt)
     :
-      match_states (State fr_src) (State fr_tgt) 0
+      match_states (State frs_src) (State frs_tgt) 0
   | match_call_states
       args_src frs_src args_tgt frs_tgt ms1 ms2
       (OWNER1: Ge.find_fptr_owner ge (Args.fptr args_src) ms1)
       (OWNER2: Ge.find_fptr_owner tge (Args.fptr args_tgt) ms2)
-      (SYSCTX: (ms1 = System.modsem skenv_link_src /\ m2 = System.modsem skenv_link_tgt)
-               \/ (ms1 = 
+      (FMATCH: match_frames frs_src frs_tgt)
+      (OWNER: match_owner ms1 ms2)
     :
-      match_states (Callstate args_src frs_src) (Callstate args_tgt frs_tgt) 0 
+      match_states (Callstate args_src frs_src) (Callstate args_tgt frs_tgt) 0
+  | 
       
   .
 

@@ -6,7 +6,7 @@ Require Import Asmgen Asmgenproof0 Asmgenproof1.
 Require Import sflib.
 (* newly added *)
 Require Export Asmgenproof AsmgenproofC0 AsmgenproofC1.
-Require Import ModSem SimModSem SimSymbId SimMemExt SimSymbId MemoryC.
+Require Import ModSem SimModSem SimSymbId SimMemExt SimSymbId MemoryC ValuesC.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.
 Require SoundTop.
@@ -130,7 +130,7 @@ Proof.
 
   - apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
-    
+
   - destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
     inv INITTGT. des. ss. clarify. inv RAPTR.
     assert (SRCSTORE: exists rs_src m_src,
@@ -165,9 +165,11 @@ Proof.
       * ss.
       * econs; eauto. ss. eauto with congruence.
       * ss.
-      * ii. exploit PTRFREE; eauto.
-        eapply Asm.to_preg_to_mreg.
-        rewrite (agree_mregs0 mr) in *. auto.
+      * ii. rewrite (agree_mregs0 mr) in *. exploit PTRFREE; eauto.
+        i. des.
+        -- rewrite Asm.to_preg_to_mreg in *. clarify.
+        -- destruct mr; clarify.
+        -- destruct mr; clarify.
     + instantiate (1:= mk m_src m).
       assert (NOTVOL: not_volatile skenv_link_src (Vptr (Mem.nextblock src) Ptrofs.zero true)).
       { econs. destruct (Senv.block_is_volatile skenv_link_src (Mem.nextblock src)) eqn: EQ; auto.
@@ -190,14 +192,16 @@ Proof.
     inv SAFESRC.
     hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des. ss; unfold bind in *; des_ifs. rename f into fd_tgt.
     assert (exists rs_tgt m_tgt,
-               <<STORE: AsmC.store_arguments (Args.m args_tgt) rs_tgt (Args.vs args_tgt)
-                                    (fn_sig fd_tgt) m_tgt>> /\
-               <<RSPC: rs_tgt PC = Args.fptr args_tgt>> /\
-               <<RSRA: rs_tgt RA = Vnullptr>> /\
-               <<PTRFREE: forall (pr : preg) (mr : mreg),
-                 Asm.to_mreg pr = Some mr ->
-                 ~ In (R mr) (regs_of_rpairs (loc_arguments (fn_sig fd_tgt))) ->
-                 ~ ValuesC.is_real_ptr (rs_tgt pr)>>).
+               (<<STORE: AsmC.store_arguments (Args.m args_tgt) rs_tgt (Args.vs args_tgt)
+                                              (fn_sig fd_tgt) m_tgt>>) /\
+               (<<RSPC: rs_tgt PC = Args.fptr args_tgt>>) /\
+               (<<RSRA: rs_tgt RA = Vnullptr>>) /\
+               (<<PTRFREE: forall pr (PTR: is_real_ptr (rs_tgt pr)),
+                   (<<INARG: exists mr,
+                       (<<MR: to_mreg pr = Some mr>>) /\
+                       (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments (Mach.fn_sig fd)))>>)>>) \/
+                   (<<INPC: pr = PC>>) \/
+                   (<<INRSP: pr = RSP>>)>>)).
     { admit "this should hold...". } des.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
@@ -205,7 +209,7 @@ Proof.
     + ss. destruct SIMSKENVLINK. inv H0. rewrite <- NEXT.
       apply Mem.mext_next in MWF. rewrite <- MWF in *. auto.
     + rewrite RSRA. econs; ss.
-
+    + erewrite <- transf_function_sig; eauto.
   - inv MATCH; ss. destruct st_src0, st_tgt0, sm0. ss. inv MATCHST; ss.
 
   - ss. inv CALLSRC. inv MATCH. inv INITDATA. inv MATCHST. ss.
@@ -314,5 +318,5 @@ Proof.
     all: ss.
     apply 0%nat.
 Qed.
-    
+
 End PRESERVATION.

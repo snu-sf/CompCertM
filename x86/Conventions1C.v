@@ -37,20 +37,47 @@ Let size_arguments_loc_arguments_aux: forall
     x y z
     (IN: z <= ofs < size_arguments_64 tys x y z)
   ,
-    exists base ty, <<IN: In (S Outgoing base ty) (regs_of_rpairs (loc_arguments_64 tys x y z))>>
+    exists base ty, (<<IN: In (S Outgoing base ty) (regs_of_rpairs (loc_arguments_64 tys x y z))>>)
+                    /\
+                    (<<RANGE: base <= ofs < base + (Memdata.size_chunk (chunk_of_type ty))>>)
 .
 Proof.
   i. ginduction tys; ii; ss.
   { xomega. }
-  destruct a; ss; des_ifs; ss; try (by esplits; eauto);
-    try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto).
+  destruct a; ss; des_ifs; ss; try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto).
+  - des.
+    destruct (classic (z + 2 <= ofs)).
+    { try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto). }
+    esplits; eauto; ss. lia.
+  - des.
+    destruct (classic (z + 2 <= ofs)).
+    { try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto). }
+    esplits; eauto; ss. lia.
+  - des.
+    destruct (classic (z + 2 <= ofs)).
+    { try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto). }
+    esplits; eauto; ss. lia.
+  - des.
+    destruct (classic (z + 2 <= ofs)).
+    { try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto). }
+    esplits; eauto; ss. lia.
+  - des.
+    destruct (classic (z + 2 <= ofs)).
+    { try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto). }
+    esplits; eauto; ss. lia.
+  - des.
+    destruct (classic (z + 2 <= ofs)).
+    { try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto). }
+    esplits; eauto; ss. lia.
 Qed.
 
 Lemma size_arguments_loc_arguments
       sg ofs
       (IN: 0 <= ofs < size_arguments sg)
   :
-    exists ofs ty, <<IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg))>>
+    exists base ty, (<<IN: In (S Outgoing base ty) (regs_of_rpairs (loc_arguments sg))>>)
+                    /\
+                    (<<RANGE: base <= ofs < base + (Memdata.size_chunk (chunk_of_type ty))>>)
 .
 Proof.
   destruct sg; ss.

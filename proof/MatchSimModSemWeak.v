@@ -67,16 +67,6 @@ Section MATCHSIMFORWARD.
       <<LE0: strong_mle st_init_src st_init_tgt sm0 sm2>>
   .
 
-  (* Hypothesis strong_weak_mle_dual: forall *)
-  (*     st_init_src st_init_tgt *)
-  (*     sm0 sm1 sm2 sm3 *)
-  (*     (LE0: strong_mle st_init_src st_init_tgt sm0 sm1) *)
-  (*     (LE1: SimMem.le sm1 sm2) *)
-  (*     (LE2: weak_mle st_init_src st_init_tgt sm2 sm3) *)
-  (*   , *)
-  (*     <<LE: SimMem.le sm0 sm3>> *)
-  (* . *)
-
   Hypothesis strong_weak_mle_dual: forall
       st_init_src st_init_tgt
       sm0 sm1 sm2
@@ -114,7 +104,7 @@ Section MATCHSIMFORWARD.
       exists st_init_src sm_init idx_init,
         (<<INITSRC: ms_src.(ModSem.initial_frame) args_src st_init_src>>)
         /\
-        (<<MLE: strong_mle st_init_src st_init_tgt sm_arg sm_init>>)
+        (<<MLE: SimMem.le sm_arg sm_init>>)
         /\
         (<<MATCH: match_states sm_arg
                                st_init_src st_init_tgt
@@ -156,7 +146,7 @@ Section MATCHSIMFORWARD.
         /\
         (<<SIMARGS: SimMem.sim_args args_src args_tgt sm_arg>>)
         /\
-        (<<MLE: SimMem.le sm0 sm_arg>>)
+        (<<MLE: strong_mle st_init_src st_init_tgt sm0 sm_arg>>)
         /\
         (<<MWF: SimMem.wf sm_arg>>)
         /\
@@ -192,7 +182,7 @@ Section MATCHSIMFORWARD.
         /\
         (<<MATCH: match_states sm_init st_init_src st_init_tgt idx1 st_src1 st_tgt1 sm_after>>)
         /\
-        (<<MLE: SimMem.le (SimMem.unlift sm_arg sm_ret) sm_after>>)
+        (<<MLE: weak_mle st_init_src st_init_tgt (SimMem.unlift sm_arg sm_ret) sm_after>>)
   .
 
   Hypothesis FINALFSIM: forall
@@ -209,7 +199,7 @@ Section MATCHSIMFORWARD.
         /\
         (<<SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret>>)
         /\
-        (<<MLE: weak_mle st_init_src st_init_tgt sm0 sm_ret>>)
+        (<<MLE: SimMem.le sm0 sm_ret>>)
         /\
         (<<MWF: SimMem.wf sm_ret>>)
   .
@@ -242,7 +232,7 @@ Section MATCHSIMFORWARD.
   Lemma match_states_lxsim
         sm_init st_init_src st_init_tgt i0 st_src0 st_tgt0 sm0
         (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-        (MLE: strong_mle st_init_src st_init_tgt sm_init sm0)
+        (MLE: SimMem.le sm_init sm0)
         (* (MWF: SimMem.wf sm0) *)
         (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
         (MATCH: match_states sm_init st_init_src st_init_tgt i0 st_src0 st_tgt0 sm0)
@@ -265,6 +255,7 @@ Section MATCHSIMFORWARD.
         ii. clear CALLSRC.
         exploit ATFSIM; eauto. i; des.
         (* determ_tac ModSem.at_external_dtm. clear_tac. *)
+        exploit strong_mle_weaken; eauto. intro LE0.
         esplits; eauto. i.
         exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
         { econs; eauto. }
@@ -272,6 +263,7 @@ Section MATCHSIMFORWARD.
         { eapply SimMem.unlift_spec; eauto. }
         i; des.
         esplits; eauto.
+        { eapply strong_weak_mle_dual; eauto. TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT }
         right.
         eapply CIH; eauto.
         { eapply SimSymb.mle_preserves_sim_skenv; try apply SIMSKENV; eauto.

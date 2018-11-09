@@ -124,6 +124,25 @@ Inductive mem': Unreach.t -> Memory.mem -> Prop :=
     mem' su m0
 .
 
+Lemma mle_mem
+      su0 m0 m1
+      (MEM: mem' su0 m0)
+      (MLE: mle su0 m0 m1)
+      (NB: Ple m0.(Mem.nextblock) m1.(Mem.nextblock))
+  :
+    <<MEM: mem' su0 m1>>
+.
+Proof.
+  inv MEM.
+  inv MLE.
+  econs; eauto; cycle 1.
+  { ii. unfold Mem.valid_block in *. exploit BOUND; eauto. i. xomega. }
+  { xomega. }
+  ii. clarify.
+  (* MLE: private is not changed *)
+  (* we need to show: public may changed, but still not pointing private *)
+Abort.
+
 Hint Unfold val' memval'.
 
 Definition le' (x y: Unreach.t): Prop :=

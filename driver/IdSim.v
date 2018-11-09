@@ -15,7 +15,10 @@ Require Import SmallstepC.
 Require Import Events.
 Require Import Preservation.
 Require Import Integers.
-Require Import Locations Conventions.
+Require Import LocationsC Conventions.
+
+Require Import AsmregsC.
+Require Import MatchSimModSem.
 
 Set Implicit Arguments.
 
@@ -199,6 +202,14 @@ Qed.
 (*     ( *)
 (* . *)
 
+Lemma to_mreg_preg_of
+      pr mr
+      (MR: Asm.to_mreg pr = Some mr)
+  :
+    <<PR: preg_of mr = pr>>
+.
+Proof. destruct mr, pr; ss; des_ifs. Qed.
+
 Lemma asm_unreach_local_preservation
       asm skenv_link
   :
@@ -208,15 +219,87 @@ Proof.
   s.
   econs; ii; ss; eauto.
   - (* init *)
-    inv INIT. econs; eauto; ss.
-    + admit "this is nontrivial - this may be false, we should adjust it
-(we are not using Mem.store, but just quantifying. There may be unquantified memory area.)".
-    + admit "this should hold: TODO: fix PTRFREE".
-    + rr in SUARG. des; ss.
+    inv INIT.
+    r in SUARG. des.
+    rename m into m2.
+    assert(SURS: forall pr, UnreachC.val' su_init (Mem.nextblock m2) (rs pr)).
+    {
+      ii. unfold PregEq.t in *. spc PTRFREE.
+
+      inv STORE.
+      exploit Mem.alloc_result; eauto. i; clarify.
+      exploit Mem.nextblock_alloc; eauto. intro SUCC.
+
+      hexploit PTRFREE; eauto.
+      { rewrite PTR. ss. }
+      clear PTRFREE.
+      i; des; clarify; cycle 1.
+      { rewrite PTR in *. rewrite <- NB in *. erewrite Mem.nextblock_alloc; eauto.
+        clear - VAL RSPC. rr in VAL. symmetry in RSPC. repeat spc VAL. des. split; ss. eauto with xomega.
+      }
+      { rewrite PTR in *. clarify.
+        clear - MEM NB SUCC.
+        inv MEM. unfold Mem.valid_block in *.
+        split; ss.
+        - ii. exploit BOUND; eauto. i. xomega.
+        - rewrite <- NB. rewrite SUCC. xomega.
+      }
+      rewrite Forall_forall in *.
+      (* TODO: pull out as a lemma *)
+      assert(IN: In (rs pr) (Args.vs args)).
+      { clear - ARG VALS0 MR.
+        r in VALS0.
+        generalize (loc_arguments_one (fn_sig fd)); intro ONES.
+        abstr (loc_arguments (fn_sig fd)) locs. abstr (Args.vs args) vs.
+        ginduction vs; ii; ss; inv VALS0; ss.
+        rewrite in_app_iff in ARG.
+        des; eauto.
+        exploit ONES; eauto. i; des. destruct a1; ss. des; ss.
+        inv H2. inv H1. left. f_equal. clear - MR. eapply to_mreg_preg_of; eauto.
+      }
+      Fail spc VALS. (* TODO: fix spc *)
+      specialize (VALS _ IN). rewrite PTR in *.
+      clear - VALS NB SUCC.
+      exploit VALS; eauto. i; des. esplits; eauto.
+      rewrite <- NB.
+      rewrite SUCC.
+      xomega.
+    }
+    econs; eauto; ss.
+    + (* mle *)
+
+      inv STORE.
+      exploit Mem.alloc_result; eauto. i; clarify.
+      exploit Mem.nextblock_alloc; eauto. intro SUCC.
+
+      econs; eauto.
+      * ii.
+        eapply Mem.perm_alloc_4; eauto.
+        eapply UNCH; eauto.
+        { unfold Mem.valid_block in *. des_ifs. xomega. }
+        { unfold Mem.valid_block in *. rewrite SUCC. xomega. }
+      * eapply Mem_unchanged_on_trans_strong; eauto; cycle 1.
+        { eapply Mem.unchanged_on_implies; eauto.
+          ii. ss. des. des_ifs. unfold Mem.valid_block in *. xomega. }
+        { eapply Mem.alloc_unchanged_on; eauto. }
+      * eapply Mem_unchanged_on_trans_strong; eauto; cycle 1.
+        { eapply Mem.unchanged_on_implies; eauto.
+          ii. ss. des. des_ifs. unfold Mem.valid_block in *. xomega. }
+        { eapply Mem.alloc_unchanged_on; eauto. }
+    + (* mem *)
+
+      inv STORE.
+      exploit Mem.alloc_result; eauto. i; clarify.
+      exploit Mem.nextblock_alloc; eauto. intro SUCC.
+
+      inv MEM.
+      econs; ss; eauto; cycle 1.
+      { ii. exploit BOUND; eauto. i. unfold Mem.valid_block in *. rewrite <- NB. rewrite SUCC. xomega. }
+      { rewrite <- NB. rewrite SUCC. xomega. }
+      i.
       admit "this should hold".
-    + admit "this should hold: TODO: fix PTRFREE".
-    + inv SUARG. des. ss.
-    + inv SKENV. rewrite PUB in *. ss.
+    + (* ske *)
+      inv SKENV. rewrite PUB in *. ss.
   - (* step *)
       admit "ez".
   - (* call *)
@@ -265,6 +348,25 @@ Unshelve.
   all: ss.
 Qed.
 
+Let asm_ext_unreach_lxsim: forall
+    asm skenv_link
+    m_src0 m_tgt0
+    (GENV: Genv.match_genvs (match_globdef (fun _ : AST.program fundef unit => eq) eq asm)
+                            (SkEnv.revive (SkEnv.project skenv_link (defs asm)) asm)
+                            (SkEnv.revive (SkEnv.project skenv_link (defs asm)) asm))
+    m_src1 m_tgt1
+    st_init_src st_init_tgt
+  ,
+  <<LXSIM: lxsim (modsem skenv_link asm) (modsem skenv_link asm)
+                 (fun st => exists su m_init, sound_state skenv_link su m_init st)
+                 (SimMemExt.mk m_src0 m_tgt0) (lift_idx unit_ord_wf tt) st_init_src st_init_tgt
+                 (SimMemExt.mk m_src1 m_tgt1)>>
+.
+Proof.
+  i. revert_until m_tgt1.
+  pcofix CIH. ii. pfold.
+Abort.
+
 Lemma asm_ext_unreach
       (asm: Asm.program)
   :
@@ -283,6 +385,18 @@ Proof.
   econs; ss; eauto.
   ii. inv SSLE. clear_tac.
 
+
+  eapply match_states_sim; ss.
+  - (* WF *)
+    eapply unit_ord_wf.
+  - (* lprsv *)
+    eapply asm_unreach_local_preservation; eauto.
+  - (* init bsim *)
+    admit "".
+  - (* init progress *)
+    admit "".
+  - (* call bsim *)
+    admit "".
   econs; ss; eauto.
   { eapply asm_unreach_local_preservation; eauto. }
   ii; ss.
@@ -293,11 +407,63 @@ Proof.
   inv SIMSKENVLINK. inv SIMSKENV. ss.
 
   inv SIMARGS. destruct args_src, args_tgt; ss. clarify. destruct sm_arg; ss. clarify.
+  rename fptr into fptr_src. rename fptr0 into fptr_tgt.
+  rename vs into vs_src. rename vs0 into vs_tgt.
   fold fundef in *.
+  inv FPTR; ss.
   split; ii; cycle 1.
-  { des. exists st_init_src. inv SAFESRC. econs; ss; eauto. }
-  rename tgt into m0.
-  admit "this should hold".
+  { (* tgt progress *)
+    des. inv SAFESRC. esplits. econs; ss; eauto.
+    - rp; eauto. symmetry. eapply Mem.mext_next; eauto.
+    - admit "this should hold - store_arguments_progress".
+  }
+  (* bsim *)
+  rename src into m_src0. rename tgt into m_tgt0.
+  bar.
+  inv INITTGT. rename m into m_tgt1.
+  assert(exists m_src1, <<STORESRC: AsmC.store_arguments m_src0 rs vs_src (fn_sig fd) m_src1>>).
+  { admit "this should hold - store_arguments_progress". }
+  des.
+  esplits; eauto.
+  ss.
+  instantiate (1:= (SimMemExt.mk m_src1 m_tgt1)). instantiate (1:= Ord.lift_idx unit_ord_wf tt).
+  clear - GENV.
+  rename _st_init_src into st_init_src. abstr {| init_rs := rs; st := State rs m_tgt1 |} st_init_tgt.
+  generalize dependent st_init_src.
+  generalize dependent st_init_tgt.
+  pcofix CIH. ii. pfold.
+  destruct (classic ((modsem skenv_link asm).(ModSem.is_call) st0)).
+  { ss. rr in H. des.
+    econs 3; eauto.
+    { econs; eauto. }
+    ii. des. clear_tac.
+    exists args_src. exists (SimMemId.mk args_src.(Args.m) args_src.(Args.m)). ss.
+    esplits; eauto.
+    { econs; ss; eauto. }
+    ii. ss. des.
+    esplits; eauto.
+    inv SIMRETV. ss. destruct retv_src, retv_tgt; ss. clarify. destruct sm_ret; ss. clarify.
+  }
+  destruct (classic ((modsem skenv_link asm).(ModSem.is_return) st0)).
+  { ss. rr in H0. des.
+    dup H0. set (R:= retv). inv H0.
+    econs 4; eauto.
+    { instantiate (1:= SimMemId.mk m2 m2). ss. }
+    { econs; eauto. }
+    { ss. }
+  }
+  econs 1; eauto.
+  ii; des. clear_tac.
+  esplits; eauto.
+  econs; eauto; cycle 1.
+  { admit "ez". }
+  ii. ss. inv STEPSRC.
+  esplits; eauto. left. apply plus_one. econs; eauto.
+  { admit "ez". }
+  econs; eauto.
+Unshelve.
+  all: ss.
+Qed.
 Qed.
 
 Lemma asm_inj_id

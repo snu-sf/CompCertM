@@ -101,29 +101,32 @@ Proof.
   econs; ss; eauto.
   ii. inv SSLE. clear_tac.
 
+  exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.
+  { i; ss. clarify. }
+  intro GENV; des.
+  inv SIMSKENVLINK.
+ 
   econs; ss; eauto.
   { eapply SoundTop.sound_state_local_preservation; eauto. }
   ii; ss.
 
-  exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.
-  { i; ss. clarify. }
-  intro GENV; des.
-  inv SIMSKENVLINK. inv SIMSKENV. ss.
-
   inv SIMARGS. destruct args_src, args_tgt; ss. clarify. destruct sm_arg; ss. clarify.
   fold fundef in *.
   split; ii; cycle 1.
-  { des. exists st_init_src. inv SAFESRC. econs; ss; eauto. }
+  { (* init progress *) des. exists st_init_src. inv SAFESRC. econs; ss; eauto. }
   rename tgt into m0.
   rename st_init_tgt into st0.
   rename skenv_link_tgt into skenv_link.
+  (* init bsim *)
   esplits; eauto.
+  (* lxsim *)
   instantiate (1:= (SimMemId.mk m0 m0)). instantiate (1:= Ord.lift_idx unit_ord_wf tt).
   clear - GENV.
   generalize dependent st0.
   pcofix CIH. ii. pfold.
   destruct (classic ((modsem skenv_link asm).(ModSem.is_call) st0)).
-  { ss. rr in H. des.
+  { (* call *)
+    ss. rr in H. des.
     econs 3; eauto.
     { econs; eauto. }
     ii. des. clear_tac.
@@ -135,7 +138,8 @@ Proof.
     inv SIMRETV. ss. destruct retv_src, retv_tgt; ss. clarify. destruct sm_ret; ss. clarify.
   }
   destruct (classic ((modsem skenv_link asm).(ModSem.is_return) st0)).
-  { ss. rr in H0. des.
+  { (* final *)
+    ss. rr in H0. des.
     dup H0. set (R:= retv). inv H0.
     econs 4; eauto.
     { instantiate (1:= SimMemId.mk m2 m2). ss. }
@@ -146,11 +150,78 @@ Proof.
   ii; des. clear_tac.
   esplits; eauto.
   econs; eauto; cycle 1.
-  { admit "ez". }
+  { admit "ez - receptive". }
   ii. ss. inv STEPSRC.
   esplits; eauto. left. apply plus_one. econs; eauto.
-  { admit "ez". }
+  { admit "ez - determinate". }
   econs; eauto.
+Unshelve.
+  all: ss.
+Qed.
+
+Lemma asm_id_trial2
+      (asm: Asm.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
+.
+Proof.
+  eexists (ModPair.mk _ _ _); s.
+  assert(PROGSKEL: match_program (fun _ => eq) eq (Sk.of_program fn_sig asm) (Sk.of_program fn_sig asm)).
+  { econs; eauto. ss. eapply match_program_refl; eauto. }
+  assert(PROG: match_program (fun _ => eq) eq asm asm).
+  { econs; eauto. ss. eapply match_program_refl; eauto. }
+  esplits; eauto.
+  econs; ss; eauto.
+  ii. inv SSLE. clear_tac.
+
+  exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.
+  { i; ss. clarify. }
+  intro GENV; des.
+  inv SIMSKENVLINK.
+ 
+  eapply match_states_sim with (index := unit)
+                               (sound_state := SoundTop.sound_state)
+                               (match_states := fun sm_arg idx st_src0 st_tgt0 sm =>
+                                                  st_src0 = st_tgt0 /\ SimMem.wf sm)
+                               (match_states_at := top4); ss.
+  - (* WF *)
+    eapply unit_ord_wf.
+  - (* lprsv *)
+    eapply SoundTop.sound_state_local_preservation; eauto.
+  - (* init bsim *)
+    ii. des. exists st_init_tgt. inv SAFESRC. econs; ss; eauto.
+    esplits; ss; eauto.
+    inv SIMARGS. destruct args_src, args_tgt; ss. clarify. destruct sm_arg; ss. clarify.
+  - (* init progress *)
+    ii. des.
+    inv SIMARGS. destruct args_src, args_tgt; ss. clarify. destruct sm_arg; ss. clarify.
+    exists st_init_src. inv SAFESRC. econs; ss; eauto.
+  - (* call wf *)
+    ii; des; ss.
+  - (* call fsim *)
+    ii; des; ss.
+    destruct sm0; ss. clarify.
+    eexists _, (SimMemId.mk _ _); ss. esplits; eauto.
+    econs; ss; eauto.
+  - (* after fsim *)
+    ii; des; ss.
+    destruct sm_ret; ss. clarify. clear_tac.
+    destruct retv_src, retv_tgt; ss. inv SIMRET. ss. clarify.
+    esplits; eauto.
+  - (* final fsim *)
+    ii; des; ss. clarify.
+    destruct retv_src; ss.
+    exists (SimMemId.mk m m).
+    esplits; ss; eauto.
+  - (* step fsim *)
+    ii; ss. des. clarify. clear_tac.
+    esplits; eauto.
+    { admit "ez - receptive". }
+    ii; des. esplits; eauto. left. apply plus_one. econs; eauto.
+    { admit "ez - determinate". }
 Unshelve.
   all: ss.
 Qed.
@@ -397,6 +468,7 @@ Proof.
     admit "".
   - (* call bsim *)
     admit "".
+  - 
   econs; ss; eauto.
   { eapply asm_unreach_local_preservation; eauto. }
   ii; ss.

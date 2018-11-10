@@ -201,9 +201,9 @@ Proof.
     etrans; eauto.
 Qed.
 
-Inductive local_preservation_strong_weak (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=
-| local_preservation_strong_weak_intro
-    (has_footprint: ms.(state) -> mem -> Prop) (weak_mle: Sound.t -> ms.(state) -> mem -> mem -> Prop)
+Inductive local_preservation_excl (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=
+| local_preservation_excl_intro
+    (has_footprint: ms.(state) -> mem -> Prop) (mle_excl: ms.(state) -> Sound.t -> mem -> mem -> Prop)
     (FOOTLE: forall
         su0 st_at m0 m1
         (FOOT: has_footprint st_at m0)
@@ -213,7 +213,7 @@ Inductive local_preservation_strong_weak (sound_state: Sound.t -> ms.(state) -> 
     (FOOTWEAK: forall
         su0 st_at m0 m1
         (FOOT: has_footprint st_at m0)
-        (MLE: weak_mle su0 st_at m0 m1)
+        (MLE: (mle_excl st_at) su0 m0 m1)
       ,
         <<MLE: Sound.mle su0 m0 m1>>)
     (INIT: forall
@@ -246,7 +246,7 @@ Inductive local_preservation_strong_weak (sound_state: Sound.t -> ms.(state) -> 
               (MLE: Sound.mle su_gr args.(Args.m) retv.(Retv.m))
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
-              (<<SUST: sound_state su0 st1>> /\ <<MLE: weak_mle su0 st0 retv.(Retv.m) st1.(get_mem)>>)>>))
+              (<<SUST: sound_state su0 st1>> /\ <<MLE: (mle_excl st0) su0 retv.(Retv.m) st1.(get_mem)>>)>>))
     (RET: forall
         su0 st0 retv
         (SUST: sound_state su0 st0)
@@ -258,7 +258,7 @@ Inductive local_preservation_strong_weak (sound_state: Sound.t -> ms.(state) -> 
 
 Theorem local_preservation_strong_weak_spec
         sound_state
-        (PRSV: local_preservation_strong_weak sound_state)
+        (PRSV: local_preservation_excl sound_state)
   :
     <<PRSV: local_preservation (fun su m_init st => sound_state su st /\ su.(Sound.mle) m_init st.(get_mem))>>
 .

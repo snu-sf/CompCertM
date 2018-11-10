@@ -46,8 +46,7 @@ Section MATCHSIMFORWARD.
       Prop
   .
 
-  (* view shift? *)
-  Variable weak_mle: forall
+  Variable mle_excl: forall
       (st_init_src: ms_src.(ModSem.state)) (st_init_tgt: ms_tgt.(ModSem.state)) (sm0: SimMem.t) (sm1: SimMem.t)
     ,
       Prop
@@ -62,11 +61,11 @@ Section MATCHSIMFORWARD.
       <<LE0: has_footprint st_at_src st_at_tgt sm1>>
   .
 
-  Hypothesis has_footprint_weak_mle: forall
+  Hypothesis has_footprint_mle_excl: forall
       st_at_src st_at_tgt
       sm0 sm1
       (FOOT: has_footprint st_at_src st_at_tgt sm0)
-      (LE: weak_mle st_at_src st_at_tgt sm0 sm1)
+      (LE: mle_excl st_at_src st_at_tgt sm0 sm1)
     ,
       <<LE: SimMem.le sm0 sm1>>
   .
@@ -177,7 +176,7 @@ Section MATCHSIMFORWARD.
         /\
         (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm_after>>)
         /\
-        (<<MLE: weak_mle st_src0 st_tgt0 (SimMem.unlift sm_arg sm_ret) sm_after>>)
+        (<<MLE: mle_excl st_src0 st_tgt0 (SimMem.unlift sm_arg sm_ret) sm_after>>)
   .
 
   Hypothesis FINALFSIM: forall
@@ -256,7 +255,7 @@ Section MATCHSIMFORWARD.
         { eapply SimMem.unlift_spec; eauto. }
         i; des.
         assert(MLE3: SimMem.le (SimMem.unlift sm_arg sm_ret) sm_after).
-        { eapply has_footprint_weak_mle; eauto.
+        { eapply has_footprint_mle_excl; eauto.
           eapply has_footprint_mle; eauto.
           etrans; eauto.
           eapply SimMem.unlift_spec; eauto.

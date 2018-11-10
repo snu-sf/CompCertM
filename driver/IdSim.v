@@ -464,6 +464,17 @@ Module TRIAL2.
       mle_excl st0 su0 m0 m1
   .
 
+  (* TODO: move to proper place *)
+  Lemma loc_external_result_one
+        sg
+    :
+      is_one (loc_external_result sg)
+  .
+  Proof.
+    unfold loc_external_result. generalize (loc_result_one sg); i.
+    destruct (loc_result sg) eqn:T; ss.
+  Qed.
+
   Lemma asm_unreach_local_preservation
         asm
     :
@@ -581,6 +592,7 @@ Module TRIAL2.
             admit "extcall-arguments".
           * clear - FREE MEM. admit "ez - Unreach.mem - free - Unreach.mem".
       }
+      i; des.
       esplits; eauto.
       + inv SUST.
         exploit RS; eauto. intro SU; des.
@@ -588,20 +600,28 @@ Module TRIAL2.
       + des_ifs. des. clarify. econs; eauto.
         * eapply Mem_free_noperm; eauto.
         * admit "ez - valid block".
-      + admit "somehow... this should have been proven in somewhere else".
       + ii. inv AFTER. ss.
         destruct retv; ss. rename m into m2.
-        econs; eauto.
-        { inv SUST. etrans; eauto.
-          admit "free-mle-unfree dual".
+        esplits; eauto; cycle 1.
+        { admit "---------------------------------------------mle_excl". }
+        inv SUST.
+        generalize (loc_external_result_one sg0); intro ONE.
+        destruct (loc_external_result sg0) eqn:T; ss. clear_tac.
+        unfold Pregmap.set.
+        econs; ss; eauto.
+        { i.
+          set pr as PR.
+          des_ifs.
+          - ii. exploit (RS RA); eauto. intro VAL; des. esplits; eauto. admit "ez".
+          - move RETV at bottom. rr in RETV. des. ss.
+            clear - VAL GR LE.
+            admit "ez".
+          - ii. unfold regset_after_external in PTR. des_ifs.
+            + exploit (RS pr); eauto. i; des. esplits; eauto. admit "ez".
+            + exploit (RS Asm.RSP); eauto. i; des. esplits; eauto. admit "ez".
         }
-        { admit "this should hold". }
-        { inv SUST. admit "nontrivial... free-mle-unfree". }
-        { inv SUST.
-          ii. exploit INIT; eauto. i; des. esplits; eauto. admit "ez".
-        }
-        { inv SUST. ss. }
-        { inv SUST. ss. }
+        { rr in RETV. des. ss. WE NEED su_ret TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT }
+        { ii. exploit INIT; eauto. i; des. esplits; eauto. admit "ez". }
     - (* return *)
       inv SUST. inv FINAL. ss. clarify.
       exists su0. esplits; eauto.

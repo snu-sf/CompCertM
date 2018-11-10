@@ -256,7 +256,7 @@ Inductive local_preservation_excl (sound_state: Sound.t -> ms.(state) -> Prop): 
         <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.m)>>)
 .
 
-Theorem local_preservation_strong_weak_spec
+Theorem local_preservation_excl_spec
         sound_state
         (PRSV: local_preservation_excl sound_state)
   :

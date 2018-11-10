@@ -172,7 +172,8 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
               (* (<<SUST: sound_state su0 args.(Args.m) st1>>)>>)) *)
-              (<<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) st1.(get_mem)>>)>>))
+              (* (<<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) st1.(get_mem)>>)>>)) *)
+              (<<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) retv.(Retv.m) st1.(get_mem)>>)>>))
     (RET: forall
         su0 st0 retv
         (SUST: sound_state su0 st0)
@@ -195,6 +196,83 @@ Proof.
   - ii. des. exploit CALL; eauto. i; des. esplits; eauto.
     { etrans; eauto. }
     ii. exploit K; eauto. i; des. esplits; eauto. etrans; eauto.
+    etrans; eauto. etrans; eauto. eapply Sound.le_spec; eauto. eapply Sound.greatest_adq; eauto.
+  - ii; des. exploit RET; eauto. i; des. esplits; eauto.
+    etrans; eauto.
+Qed.
+
+Inductive local_preservation_strong_weak (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=
+| local_preservation_strong_weak_intro
+    (has_footprint: ms.(state) -> mem -> Prop) (weak_mle: Sound.t -> ms.(state) -> mem -> mem -> Prop)
+    (FOOTLE: forall
+        su0 st_at m0 m1
+        (FOOT: has_footprint st_at m0)
+        (MLE: su0.(Sound.mle) m0 m1)
+      ,
+        <<FOOT: has_footprint st_at m1>>)
+    (FOOTWEAK: forall
+        su0 st_at m0 m1
+        (FOOT: has_footprint st_at m0)
+        (MLE: weak_mle su0 st_at m0 m1)
+      ,
+        <<MLE: Sound.mle su0 m0 m1>>)
+    (INIT: forall
+        su_init args st_init
+        (SUARG: Sound.args su_init args)
+        (SKENV: Sound.skenv su_init args.(Args.m) ms.(ModSem.skenv))
+        (INIT: ms.(ModSem.initial_frame) args st_init)
+      ,
+        <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) args.(Args.m) st_init.(get_mem)>>)
+    (STEP: forall
+        su0 st0 tr st1
+        (SUST: sound_state su0 st0)
+        (SAFE: ~ ms.(ModSem.is_call) st0 /\ ~ ms.(ModSem.is_return) st0)
+        (STEP: Step ms st0 tr st1)
+      ,
+        <<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) st1.(get_mem)>>)
+    (CALL: forall
+        su0 st0 args
+        (SUST: sound_state su0 st0)
+        (AT: ms.(ModSem.at_external) st0 args)
+      ,
+        <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
+        <<FOOT: has_footprint st0 args.(Args.m)>> /\
+        exists su_gr,
+          (<<GR: Sound.get_greatest su0 args su_gr>>) /\
+          (<<K: forall
+              su_ret retv st1
+              (LE: Sound.le su_gr su_ret)
+              (RETV: su_ret.(Sound.retv) retv)
+              (MLE: Sound.mle su_gr args.(Args.m) retv.(Retv.m))
+              (AFTER: ms.(ModSem.after_external) st0 retv st1)
+            ,
+              (<<SUST: sound_state su0 st1>> /\ <<MLE: weak_mle su0 st0 retv.(Retv.m) st1.(get_mem)>>)>>))
+    (RET: forall
+        su0 st0 retv
+        (SUST: sound_state su0 st0)
+        (FINAL: ms.(ModSem.final_frame) st0 retv)
+      ,
+        exists su_ret, <<LE: Sound.le su0 su_ret>> /\
+        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.m)>>)
+.
+
+Theorem local_preservation_strong_weak_spec
+        sound_state
+        (PRSV: local_preservation_strong_weak sound_state)
+  :
+    <<PRSV: local_preservation (fun su m_init st => sound_state su st /\ su.(Sound.mle) m_init st.(get_mem))>>
+.
+Proof.
+  inv PRSV.
+  econs; eauto.
+  - ii. des. exploit STEP; eauto. i; des. esplits; eauto. etrans; eauto.
+  - ii. des. exploit CALL; eauto. i; des. esplits; eauto.
+    { etrans; eauto. }
+    ii. exploit K; eauto. i; des. esplits; eauto. etrans; eauto.
+    etrans; eauto. etrans; eauto.
+    { eapply Sound.le_spec; eauto. eapply Sound.greatest_adq; eauto. }
+    eapply FOOTWEAK; eauto.
+    eapply FOOTLE; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; eauto.
     etrans; eauto.
 Qed.

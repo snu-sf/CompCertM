@@ -396,16 +396,7 @@ Section PRSV.
       ii.
       r in RETV. des.
       esplits; eauto; cycle 1.
-      { inv AT; inv AFTER; ss.
-        eapply mle_monotone; try apply MLE; eauto.
-        specialize (H p (linkorder_refl _)). bar. inv H.
-        exploit sound_stack_unreach_compat; eauto. intro CPT. des.
-        assert(LE0: Sound.le su0 (bc2su bc (Genv.genv_next skenv_link) m0.(Mem.nextblock))).
-        { split; ss. ii. inv SU. repeat spc BOUND. des_ifs. rewrite PRIV; ss. }
-        assert(LE1: Sound.le (bc2su bc (Genv.genv_next skenv_link) m0.(Mem.nextblock)) su_gr).
-        { eapply GR; eauto. esplits; eauto. rpapply sound_state_sound_args; eauto. }
-        i. eapply LE1. eapply LE0. ss.
-      }
+      { inv AT; inv AFTER; ss. refl. }
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
         exploit sound_stack_unreach_compat; eauto. intro CPT. des.
         assert(BCARGS: (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)).(Sound.args) args).

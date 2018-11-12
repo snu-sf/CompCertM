@@ -482,11 +482,12 @@ Module TRIAL2.
   .
   Proof.
     esplits.
-    eapply local_preservation_excl_spec with (sound_state := (sound_state)); eauto.
+    eapply local_preservation_strong_horizontal_excl_spec with (sound_state := (sound_state)); eauto.
     instantiate (1:= AsmC.get_mem).
     ss.
-    eapply local_preservation_excl_intro with (has_footprint := has_footprint)
-                                              (mle_excl := mle_excl); ii; ss; eauto.
+    eapply local_preservation_strong_horizontal_excl_intro with
+        (has_footprint := has_footprint)
+        (mle_excl := mle_excl); ii; ss; eauto.
     - (* FOOTMLE *)
       inv FOOT. inv MLE. econs; eauto; cycle 1.
       { eapply Mem.valid_block_unchanged_on; eauto. }
@@ -498,7 +499,8 @@ Module TRIAL2.
       inv INIT.
       r in SUARG. des.
       rename m into m2.
-      assert(SURS: forall pr, UnreachC.val' su_init (Mem.nextblock m2) (rs pr)).
+      exists su_arg.
+      assert(SURS: forall pr, UnreachC.val' su_arg (Mem.nextblock m2) (rs pr)).
       {
         ii. unfold PregEq.t in *. spc PTRFREE.
 
@@ -542,7 +544,7 @@ Module TRIAL2.
         xomega.
       }
       ss.
-      esplits; eauto; cycle 1.
+      esplits; eauto; try refl; cycle 1.
       { (* store_arguments mle *)
         inv STORE.
         exploit Mem.alloc_result; eauto. i; clarify.
@@ -582,37 +584,47 @@ Module TRIAL2.
       admit "ez".
     - (* call *)
       inv AT. ss.
-      exploit (Sound.greatest_ex su0 (Args.mk (Vptr blk0 Ptrofs.zero true) vs m1)); ss; eauto.
-      { exists su0. esplits; eauto.
-        { refl. }
-        inv SUST. econs; ss; eauto.
-        + ii. exploit (RS PC); eauto. i; des. clarify. esplits; eauto. admit "ez".
-        + esplits; eauto.
-          * rewrite Forall_forall. i.
-            admit "extcall-arguments".
-          * clear - FREE MEM. admit "ez - Unreach.mem - free - Unreach.mem".
+      assert(SUARGS: UnreachC.args' su0 (Args.mk (Vptr blk0 Ptrofs.zero true) vs m1)).
+      {
+        inv SUST. r. splits; ss.
+        + eapply val_nextblock; eauto.
+          { rewrite <- FPTR. eapply RS; eauto. }
+          admit "ez".
+        + rewrite Forall_forall. i.
+          admit "extcall-arguments - (MEM && UnreachC.mem'_load_val') \/ (RS)".
+        + clear - FREE MEM. admit "ez - Unreach.mem - free - Unreach.mem".
       }
+      exploit (Sound.greatest_ex su0 (Args.mk (Vptr blk0 Ptrofs.zero true) vs m1)); ss; eauto.
+      { exists su0. esplits; eauto. refl. }
       i; des.
+      des_ifs. clear_tac.
       esplits; eauto.
-      + inv SUST.
+      + (* mle *)
+        inv SUST.
         exploit RS; eauto. intro SU; des.
         eapply Unreach.free_mle; eauto.
-      + des_ifs. des. clarify. econs; eauto.
+      + (* footprint *)
+        des_ifs. des. clarify. econs; eauto.
         * eapply Mem_free_noperm; eauto.
         * admit "ez - valid block".
-      + ii. inv AFTER. ss.
+      + (* K *)
+        ii. inv AFTER. ss.
         destruct retv; ss. rename m into m2.
-        esplits; eauto; cycle 1.
+        esplits; eauto; cycle 2.
         { admit "---------------------------------------------mle_excl". }
+        { refl. }
         inv SUST.
-        generalize (loc_external_result_one sg0); intro ONE.
-        destruct (loc_external_result sg0) eqn:T; ss. clear_tac.
+        generalize (loc_external_result_one sg); intro ONE.
+        destruct (loc_external_result sg) eqn:T; ss. clear_tac.
         unfold Pregmap.set.
         econs; ss; eauto.
         { i.
           set pr as PR.
           des_ifs.
-          - ii. exploit (RS RA); eauto. intro VAL; des. esplits; eauto. admit "ez".
+          - eapply val_nextblock; eauto.
+            { Fali eapply RS; eauto. ttttttttttttttttttttttttttttttttttttttttttttttttttttt
+                                       we need horizontal le preserves some property...
+            ii. exploit (RS RA); eauto. intro VAL; des. esplits; eauto. admit "ez".
           - move RETV at bottom. rr in RETV. des. ss.
             clear - VAL GR LE.
             admit "ez".

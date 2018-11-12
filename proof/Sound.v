@@ -128,6 +128,23 @@ Module Sound.
       ,
         <<SUARGS: args su_gr args0>> /\ <<LE: le su0 su_gr>>
     ;
+    (* get_greatest_irr: forall *)
+    (*     su0 su1 args0 su_gr0 su_gr1 *)
+    (*     (GR0: get_greatest su0 args0 su_gr0) *)
+    (*     (GR1: get_greatest su1 args0 su_gr1) *)
+    (*     (SUARG: args su1 args0) *)
+    (*     (LE: le su0 su1) *)
+    (*   , *)
+    (*     <<EQ: su_gr0 = su_gr1>> *)
+    (* ; *)
+    get_greatest_le: forall
+        su0 su1 args0 su_gr
+        (GR: get_greatest su1 args0 su_gr)
+        (SUARG: args su1 args0)
+        (LE: le su0 su1)
+      ,
+        <<GR: get_greatest su0 args0 su_gr>>
+    ;
 
     (* lub: t -> t -> t; *)
     (* lub_le: forall x y, <<LE: le x (lub x y)>> /\ <<LE: le y (lub x y)>>; *)
@@ -213,6 +230,21 @@ Module Sound.
   Section SOUND.
   Context {SU: class}.
 
+  (* Lemma get_greatest_le *)
+  (*       su0 su1 args0 su_gr *)
+  (*       (GR: get_greatest su1 args0 su_gr) *)
+  (*       (LE: le su0 su1) *)
+  (*   : *)
+  (*     <<GR: get_greatest su0 args0 su_gr>> *)
+  (* . *)
+  (* Proof. *)
+  (*    exploit Sound.greatest_adq; eauto. i; des. *)
+  (*    exploit (Sound.greatest_ex su0); eauto. *)
+  (*    { esplits; try apply SUARGS; eauto. etrans; eauto. } *)
+  (*    i; des. *)
+  (*    rp; eauto. symmetry. *)
+  (*    eapply Sound.get_greatest_irr; eauto. *)
+  (* Qed. *)
 
   (* Inductive args (su: t) (args0: Args.t): Prop := *)
   (* | args_intro *)

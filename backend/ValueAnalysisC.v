@@ -142,63 +142,6 @@ Qed.
 
 
 
-Section IRR.
-
-  Variable t: Type.
-  Variable le: t -> t -> Prop.
-  Variable lub: t -> t -> option t.
-  Variable P: t -> Prop.
-  Hypothesis LEORD: PreOrder le.
-  Hypothesis LUBSUCC: forall
-      su0 x y
-      (PX: le su0 x /\ P x)
-      (PY: le su0 y /\ P y)
-    ,
-      exists z, lub x y = Some z
-  .
-  Hypothesis LUBSPEC: forall
-      x y z
-      (LUB: lub x y = Some z)
-    ,
-      (<<LE: le x z>>) /\ (<<LE: le y z>>)
-  .
-  (* Hypothesis FIN: Finite { x: t | P x }. *) (* <-- this is pain in the ass *)
-  Hypothesis FIN: exists l, forall x (PROP: P x), In x l.
-  Hypothesis CLOSED: forall
-      su0 x y
-      (PX: le su0 x /\ P x)
-      (PY: le su0 y /\ P y)
-      z
-      (LUB: lub x y = Some z)
-    ,
-      <<PXY: P z>>
-  .
-
-  Lemma greatest_le_irr (* better name!!! *)
-        a0 a1 max
-        (LE: le a0 a1)
-        (P1: P a1)
-        (GR: SemiLattice.greatest le (fun a => le a1 a /\ P a) max)
-    :
-      <<GR: SemiLattice.greatest le (fun a => le a0 a /\ P a) max>>
-  .
-  Proof.
-    r in GR. rr. des.
-    esplits; eauto.
-    { etrans; eauto. }
-    ii. des.
-    exploit LUBSUCC.
-    { esplits; cycle 1. eapply P1. eauto. }
-    { esplits; cycle 1. eapply PROP2. eauto. }
-    intro LUB; des.
-    exploit LUBSPEC; eauto. i; des.
-    exploit CLOSED; try apply LUB; eauto. i; des.
-    specialize (MAX z).
-    exploit MAX; eauto. i; des.
-    etrans; eauto.
-  Qed.
-
-End IRR.
 
 
 
@@ -382,11 +325,14 @@ Section PRSV.
         i; des. ss.
         esplits; eauto.
 
-        eapply greatest_le_irr with (lub := UnreachC.lub); eauto.
-        - typeclasses eauto.
-        - ii. eapply lubsucc; eauto.
-        - ii. eapply lubspec; eauto.
-        - ii. eapply lubclosed; try apply LUB; eauto.
+        (* eapply SemiLattice.greatest_le_irr with (lub := UnreachC.lub); eauto. *)
+        (* - typeclasses eauto. *)
+        (* - ii. eapply lubsucc; eauto. *)
+        (* - ii. eapply lubspec; eauto. *)
+        (* - ii. eapply lubclosed; try apply LUB; eauto. *)
+        (* - exploit sound_stack_unreach_compat; eauto. i; des. ss. *)
+        (*   r; u; ss. esplits; eauto. i. inv SU. exploit BOUND; eauto. i; des. des_ifs. rewrite PRIV; ss. *)
+        exploit Sound.get_greatest_le; ss; eauto.
         - exploit sound_stack_unreach_compat; eauto. i; des. ss.
           r; u; ss. esplits; eauto. i. inv SU. exploit BOUND; eauto. i; des. des_ifs. rewrite PRIV; ss.
       }

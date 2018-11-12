@@ -226,6 +226,8 @@ Inductive local_preservation_strong_horizontal (sound_state: Sound.t -> ms.(stat
         (AT: ms.(ModSem.at_external) st0 args)
       ,
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
+        (<<ARGS: su0.(Sound.args) args>>) /\
+        (* (exists su_lifted, <<LE: Sound.le su0 su_lifted>> /\ <<ARGS: su_lifted.(Sound.args) args>>) /\ *)
         exists su_gr,
           (<<GR: Sound.get_greatest su0 args su_gr>>) /\
           (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
@@ -271,15 +273,7 @@ Proof.
       eapply Sound.le_spec; eauto.
     + etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des.
-    assert(exists su_grh, <<GRH: Sound.get_greatest su0 args su_grh>>).
-    { exploit Sound.greatest_adq; eauto. i; des.
-      exploit (Sound.greatest_ex su0); eauto.
-      { esplits; try apply SUARGS; eauto. etrans; eauto. }
-    }
-    des.
-    assert(su_grh = su_gr).
-    { admit "ValueAnalysisC - irr". }
-    clarify.
+    exploit Sound.get_greatest_le; eauto. intro GRH. des.
     assert(LE1: Sound.le su_h su_gr).
     { eapply Sound.greatest_adq; eauto. }
     esplits; eauto.
@@ -412,6 +406,7 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
         (AT: ms.(ModSem.at_external) st0 args)
       ,
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
+        (<<ARGS: su0.(Sound.args) args>>) /\
         <<FOOT: has_footprint st0 args.(Args.m)>> /\
         exists su_gr,
           (<<GR: Sound.get_greatest su0 args su_gr>>) /\
@@ -458,15 +453,7 @@ Proof.
       eapply Sound.le_spec; eauto.
     + etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des.
-    assert(exists su_grh, <<GRH: Sound.get_greatest su0 args su_grh>>).
-    { exploit Sound.greatest_adq; eauto. i; des.
-      exploit (Sound.greatest_ex su0); eauto.
-      { esplits; try apply SUARGS; eauto. etrans; eauto. }
-    }
-    des.
-    assert(su_grh = su_gr).
-    { admit "ValueAnalysisC - irr". }
-    clarify.
+    exploit Sound.get_greatest_le; eauto. intro GRH. des.
     assert(LE1: Sound.le su_h su_gr).
     { eapply Sound.greatest_adq; eauto. }
     esplits; eauto.

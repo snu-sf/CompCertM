@@ -807,6 +807,13 @@ Next Obligation.
   rr in GR. des. eauto.
 Qed.
 Next Obligation.
+  hexploit (@greatest_le_irr _ le' lub (fun su => args' su args0)); eauto.
+  { typeclasses eauto. }
+  { i. eapply lubsucc; eauto. }
+  { i. eapply lubspec; eauto. }
+  { i. eapply lubclosed; revgoals; eauto. }
+Qed.
+Next Obligation.
   set (Sk.load_skenv sk_link) as skenv.
   exists (mk (fun _ => false) skenv.(Genv.genv_next)).
   esplits; eauto.

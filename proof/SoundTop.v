@@ -44,6 +44,9 @@ Qed.
 Next Obligation.
   esplits; eauto.
 Qed.
+(* Next Obligation. *)
+  (* destruct su_gr0, su_gr1; ss. *)
+(* Qed. *)
 Next Obligation.
   esplits; eauto. econs; eauto.
 Qed.

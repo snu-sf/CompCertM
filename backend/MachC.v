@@ -8,16 +8,16 @@ Require Import Globalenvs.
 Require Import Events.
 Require Import Smallstep.
 Require Import Op.
-Require Import Locations.
+Require Import LocationsC.
 Require Import Conventions.
 Require Stacklayout.
 (** newly added **)
 Require Export Mach.
+Require MachExtra. Include MachExtra.
 Require Import Skeleton Mod ModSem.
 Require Import Simulation Integers.
 
 Set Implicit Arguments.
-
 
 
 Section MACHEXTRA.
@@ -247,27 +247,6 @@ Definition get_mem (st: state): mem :=
   end.
 
 
-Inductive store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem): Prop :=
-| store_arguments_intro
-    m1 blk
-    (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
-    (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs)
-    (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk
-                                          then ~ (0 <= ofs < 4 * size_arguments sg)
-                                          else True) m1 m2)
-    (NB: m1.(Mem.nextblock) = m2.(Mem.nextblock))
-    (PERM: Mem.range_perm m2 blk 0 (4 * size_arguments sg) Cur Freeable)
-.
-
-Lemma store_arguments_progress
-      m0 vs sg
-  :
-    exists rs m2, <<STR: store_arguments m0 rs vs sg m2>>
-.
-Proof.
-  admit "".
-Qed.
-
 Section MODSEM.
 
   Variable rao: function -> code -> ptrofs -> Prop.
@@ -320,12 +299,12 @@ Section MODSEM.
         ,
           <<PTRFREE: ~ is_real_ptr (rs mr)>>)
       (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
-      (SZ: 4 * size_arguments sg <= Ptrofs.modulus)
     :
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack
                                                 (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) ra]
                                              args.(Args.fptr) rs m0))
+  (* TODO: change (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) into sp *)
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=

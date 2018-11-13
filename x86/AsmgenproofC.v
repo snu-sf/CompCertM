@@ -205,7 +205,7 @@ Proof.
     { admit "this should hold...". } des.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
-    + rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
+    + inv TYP. rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
     + ss. destruct SIMSKENVLINK. inv H0. rewrite <- NEXT.
       apply Mem.mext_next in MWF. rewrite <- MWF in *. auto.
     + rewrite RSRA. econs; ss.

@@ -381,7 +381,7 @@ Lemma init_match_frame_contents_depr
       m_tgt0 rs vs_src vs_tgt ls
       (STORE: MachC.store_arguments sm_arg.(SimMemInj.tgt) rs vs_tgt sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
-      (LS: fill_arguments (locset_copy rs) vs_src (loc_arguments sg) = Some ls)
+      (LS: LocationsC.fill_arguments (locset_copy rs) vs_src (loc_arguments sg) = Some ls)
       (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
       sm_init
       (SM: sm_init = sm_arg.(SimMemInjC.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
@@ -399,7 +399,7 @@ Proof.
   { ss. zsimpl. esplits; eauto with lia.
     - inv STORE. hexpl Mem.alloc_result NB. clarify.
     - clear - SG SIMVS STORE LS. inv STORE.
-      hexpl fill_arguments_spec. clear LS. clarify.
+      hexpl LocationsC.fill_arguments_spec. clear LS. clarify.
       hexpl Mem.alloc_result. clarify.
       intros ? ? OFS0 OFS1 ALIGN. zsimpl.
       destruct (classic (In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))).
@@ -443,7 +443,7 @@ Lemma init_match_frame_contents
       m_tgt0 rs vs_src vs_tgt ls
       (STORE: MachC.store_arguments sm_arg.(SimMemInj.tgt) rs (typify_list vs_tgt sg.(sig_args)) sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
-      (LS: fill_arguments (locset_copy rs) (typify_list vs_src sg.(sig_args)) (loc_arguments sg) = Some ls)
+      (LS: LocationsC.fill_arguments (locset_copy rs) (typify_list vs_src sg.(sig_args)) (loc_arguments sg) = Some ls)
       (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
       sm_init
       (SM: sm_init = sm_arg.(SimMemInjC.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
@@ -461,7 +461,7 @@ Proof.
   { ss. zsimpl. esplits; eauto with lia.
     - inv STORE. hexpl Mem.alloc_result NB. clarify.
     - clear - SG SIMVS STORE LS. inv STORE.
-      hexpl fill_arguments_spec. clear LS. clarify.
+      hexpl LocationsC.fill_arguments_spec. clear LS. clarify.
       hexpl Mem.alloc_result. clarify.
       intros ? ? OFS0 OFS1 ALIGN. zsimpl.
       destruct (classic (In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))).
@@ -1052,11 +1052,11 @@ Proof.
           { erewrite <- extcall_arguments_length; eauto. erewrite loc_arguments_length; eauto. }
           inv TYP. xomega.
       }
-      exploit (fill_arguments_progress (locset_copy rs)
+      exploit (LocationsC.fill_arguments_progress (locset_copy rs)
                                        (typify_list (Args.vs args_src) (sig_args (Linear.fn_sig f)))
                                        (* args_src.(Args.vs) *)
                                        (loc_arguments f.(Linear.fn_sig))); eauto. i; des.
-      exploit (fill_arguments_spec
+      exploit (LocationsC.fill_arguments_spec
                  (typify_list (Args.vs args_src) (sig_args (Linear.fn_sig f)))
                  (* args_src.(Args.vs) *)
                  f.(Linear.fn_sig)); eauto. i; des.
@@ -1068,9 +1068,9 @@ Proof.
       { (* initial frame *)
         econs; eauto with congruence; cycle 2.
         - ii. hexpl OUT.
-        - econs; eauto with congruence.
+        - inv TYP.
+          econs; eauto with congruence.
           erewrite SimMem.sim_val_list_length; try apply VALS0. ss.
-          inv TYP.
           etrans; eauto with congruence.
         - ii. hexpl OUT.
           destruct loc; ss.
@@ -1119,6 +1119,7 @@ Proof.
             eapply init_match_frame_contents with (vs_src := (Args.vs args_src))
                                                   (vs_tgt := (Args.vs args_tgt)(* targs_tgt *)); eauto.
             * inv TYPTGT. econs; eauto. rewrite <- MEMTGT. ss.
+            * inv TYPTGT. unfold Ptrofs.max_unsigned in *. xomega.
             * rewrite <- SG. eauto with congruence.
           + i; des. admit "ge relax, ez".
         - clarify.

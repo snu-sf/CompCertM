@@ -223,7 +223,7 @@ Section PRESERVATION.
       fd
       (MSFIND: ge.(Ge.find_fptr_owner) fptr (AsmC.modsem skenv_link p))
       (FINDF: Genv.find_funct (local_genv p) fptr = Some (Internal fd))
-      (SIZEWF: 4 * size_arguments (fn_sig fd) <= Ptrofs.modulus).
+      (SIZEWF: 4 * size_arguments (fn_sig fd) < Ptrofs.modulus).
 
   Inductive _genv_le : forall A:Type, A -> Genv.t fundef unit -> Prop :=
   | _genv_le_intro
@@ -1381,7 +1381,7 @@ Section PRESERVATION.
       + apply (eq_refl (fn_sig fd)).
       + apply FINDF.
       + ss.
-      + ss.
+      + unfold Ptrofs.max_unsigned in *. xomega.
       + clear - GEINJECT INJECT FREE.
         erewrite freed_from_nextblock; eauto.
         set (LE:=Registers.Regset.MSet.Raw.MX.OrderTac.TO.lt_total
@@ -1393,6 +1393,7 @@ Section PRESERVATION.
           specialize (mi_freeblocks _ (Plt_strict (Mem.nextblock m_src))).
           clarify.
       + eapply memcpy_store_arguments; ss; eauto.
+        unfold Ptrofs.max_unsigned in *. xomega.
       + unfold src_init_rs. ss.
         destruct (init_rs RA); ss; eauto. destruct b1; ss; eauto.
       + i. unfold src_init_rs in *. ss.
@@ -1547,6 +1548,7 @@ Section PRESERVATION.
           ss. rewrite LINK_SK in *.
           rewrite <- (find_fptr_owner_determ OWNER MSFIND) in *. i.
           inv INIT. econs; eauto.
+          unfold Ptrofs.max_unsigned in *. xomega.
       + right. left. clarify.
     - right. right. intros SAFE. clarify. exploit SAFE; [econs|].
       i. des.

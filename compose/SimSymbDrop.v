@@ -17,7 +17,7 @@ Set Implicit Arguments.
 
 Require Import SimSymb.
 Require Import SimMem.
-Require Import SimMemInj.
+Require Import SimMemInjC.
 Require Import ModSem.
 
 

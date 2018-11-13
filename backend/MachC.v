@@ -12,7 +12,8 @@ Require Import LocationsC.
 Require Import Conventions.
 Require Stacklayout.
 (** newly added **)
-Require Export Mach MachExtra.
+Require Export Mach.
+Require MachExtra. Include MachExtra.
 Require Import Skeleton Mod ModSem.
 Require Import Simulation Integers.
 

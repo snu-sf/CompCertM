@@ -17,6 +17,18 @@ Local Open Scope pair_scope.
 Set Implicit Arguments.
 
 
+Section INCLUDEDEFS.
+
+Context {A B V W: Type} (R: globdef A V -> globdef B W -> Prop).
+
+Definition include_defs (p: AST.program A V) (ge: Genv.t B W) : Prop :=
+  forall id def0 (DEF: p.(prog_defmap) ! id = Some def0),
+  exists blk def1, (<<SYMB: ge.(Genv.find_symbol) id = Some blk>>) /\
+                   (<<DEF: ge.(Genv.find_def) blk = Some def1>>) /\
+                   (<<MATCH: R def0 def1>>).
+
+End INCLUDEDEFS.
+
 Section EXTERNAL.
 
   Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker F1} {LV: Linker V1}.

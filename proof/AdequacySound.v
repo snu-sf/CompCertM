@@ -39,6 +39,8 @@ Section ADQSOUND.
   Let skenv_link_src := sk_link_src.(Sk.load_skenv).
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
 
+  Hypothesis INCLUDE: forall p (IN: In p p_src), include_defs eq p.(Mod.sk) skenv_link_src.
+
   (* Let ge: Ge.t := sem_src.(Smallstep.globalenv). *)
 
   Inductive sound_ge (su0: Sound.t) (m0: mem): Prop :=
@@ -256,6 +258,7 @@ Section ADQSOUND.
         exploit SIMPROG; eauto. intros MPSIM. inv MPSIM.
         exploit SIMMS.
         { eapply SimSymb.le_refl. }
+        { eapply INCLUDE. eauto. }
         { admit "somehow. 1) fat module / skinny modsem. 2) require as premise". }
         i; des. inv H0. ss. esplits; eauto.
     - (* INTERNAL *)

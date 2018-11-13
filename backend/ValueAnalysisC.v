@@ -208,6 +208,11 @@ Section PRSV.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
+
+  Hypothesis INCLUDE: include_defs
+                        (fun fdef skdef => skdef_of_gdef fn_sig fdef = skdef)
+                        p skenv_link.
+
   Let modsem := RTLC.modsem skenv_link p.
 
   Local Existing Instance Unreach.
@@ -316,7 +321,15 @@ Section PRSV.
                   ,
                     exists blk, <<SYMB: skenv_link.(Genv.find_symbol) id = Some blk>> /\
                                         <<DEF: skenv_link.(Genv.find_def) blk = Some (Gvar gv)>>).
-          { admit "raw admit. add in meta-theory". }
+          { i. exploit (INCLUDE id0); cycle 1; eauto.
+            - i. des. esplits; eauto. instantiate (1:=Gvar gv) in MATCH.
+              ss. clarify. ss. destruct gv. ss. destruct gvar_info. ss.
+            - clear - DEF.
+              exploit Sk.of_program_prog_defmap. i. inv H.
+              + rewrite DEF in *. clarify.
+              + rewrite DEF in *. clarify. inv H2. inv H3. ss.
+                destruct i2, i1. ss.
+          }
 
           exploit Genv.invert_find_symbol; eauto. intro SYMB. clarify.
           hexploit (Sk.of_program_prog_defmap p fn_sig id); eauto. intro REL.
@@ -493,4 +506,3 @@ Section PRSV.
   Qed.
 
 End PRSV.
-

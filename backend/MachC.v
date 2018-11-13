@@ -1036,26 +1036,25 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fd m0 sp m1 rs0 rs1 sg ra
+      fd m0 rs sg ra
       (RAPTR: Val.has_type ra Tptr)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       targs
       (TYP: typecheck args.(Args.vs) sg targs)
-      (ALC: Mem.alloc args.(Args.m) 0 (4 * size_arguments sg) = (m0, sp))
-      (FILL: fill_arguments sp rs0 m0 (typify_list args.(Args.vs) sg.(sig_args)) (loc_arguments sg) = Some (rs1, m1))
+      (STORE: store_arguments args.(Args.m) rs targs sg m0)
       (PTRFREE: forall
           mr
           (* (NOTIN: Loc.notin (R mr) (regs_of_rpairs (loc_arguments sg))) *)
           (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
         ,
-          <<PTRFREE: ~ is_real_ptr (rs1 mr)>>)
+          <<PTRFREE: ~ is_real_ptr (rs mr)>>)
       (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
     :
-      initial_frame args (mkstate rs1 sg
+      initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack
                                                 (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) ra]
-                                             args.(Args.fptr) rs1 m1))
+                                             args.(Args.fptr) rs m0))
   (* TODO: change (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) into sp *)
   .
 

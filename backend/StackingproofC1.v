@@ -13,7 +13,7 @@ Require Export StackingproofC0.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC ArgPassing MatchSimModSem.
 Require Import Conventions1C.
-Require SimMemInj.
+Require SimMemInjC.
 Require Import AxiomsC.
 Require SoundTop.
 
@@ -189,8 +189,8 @@ Proof.
     - apply sep_pick1 in B. ss. des. esplits; eauto.
       etrans; eauto. inv MLE. inv MLE0. inv MLE1. inv MLEAFTR.
       etrans; eauto with mem. etrans; eauto with mem.
-    - apply inject_separated_frozen; eauto.
-      eapply frozen_refl; eauto.
+    - apply SimMemInj.inject_separated_frozen; eauto.
+      eapply SimMemInj.frozen_refl; eauto.
   }
   { ss. }
   destruct B as (X & Y & Z); ss.
@@ -384,7 +384,7 @@ Lemma init_match_frame_contents_depr
       (LS: fill_arguments (locset_copy rs) vs_src (loc_arguments sg) = Some ls)
       (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
       sm_init
-      (SM: sm_init = sm_arg.(SimMemInj.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
+      (SM: sm_init = sm_arg.(SimMemInjC.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
@@ -446,7 +446,7 @@ Lemma init_match_frame_contents
       (LS: fill_arguments (locset_copy rs) (typify_list vs_src sg.(sig_args)) (loc_arguments sg) = Some ls)
       (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
       sm_init
-      (SM: sm_init = sm_arg.(SimMemInj.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
+      (SM: sm_init = sm_arg.(SimMemInjC.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
@@ -1060,7 +1060,7 @@ Proof.
                  (typify_list (Args.vs args_src) (sig_args (Linear.fn_sig f)))
                  (* args_src.(Args.vs) *)
                  f.(Linear.fn_sig)); eauto. i; des.
-      exploit SimMemInj.mach_store_arguments_simmem; eauto.
+      exploit SimMemInjC.mach_store_arguments_simmem; eauto.
       { econs; eauto with congruence. rp; eauto. }
       i; des.
 
@@ -1170,7 +1170,7 @@ Proof.
       * rewrite <- sep_assoc. rewrite sep_comm.
         eapply globalenv_inject_incr with (j:= sm0.(SimMemInj.inj)); eauto.
         { rewrite <- MINJ. eapply inject_incr_refl. }
-        { eapply inject_separated_frozen. rewrite <- MINJ. eapply frozen_refl. }
+        { eapply SimMemInj.inject_separated_frozen. rewrite <- MINJ. eapply SimMemInj.frozen_refl. }
         rewrite <- sep_assoc in SEP. rewrite sep_comm in SEP. bar. move SEP at bottom.
         destruct SEP as (A & B & C).
         sep_split.
@@ -1226,7 +1226,7 @@ Proof.
     }
     des.
 
-    exploit (@SimMemInj.unfree_right _ (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
+    exploit (@SimMemInjC.unfree_right _ (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
     { admit "strengthen match_stacks". }
     i; des. ss.
 
@@ -1273,9 +1273,9 @@ Proof.
         sep_split.
         { eapply globalenv_inject_incr_strong with (j:= sm_arg.(SimMemInj.inj)); eauto.
           - inv MLE0. ss.
-          - eapply inject_separated_frozen.
+          - eapply SimMemInj.inject_separated_frozen.
             inv MLE0. ss. inv MWF2.
-            eapply frozen_shortened; eauto.
+            eapply SimMemInj.frozen_shortened; eauto.
             + refl.
             + refl.
           - rewrite <- NB0. inv MLE0; ss. clear - TGTUNCHANGED. change Pos.le with Ple. eauto with mem.
@@ -1363,10 +1363,10 @@ Proof.
     { clear - SEP.
       apply sep_drop_tail3 in SEP.
       destruct SEP as (A & B & DISJ). ss. des. zsimpl. clear_tac.
-      ii. rr in PR.
+      ii. rr in DISJ.
       rr. esplits; eauto; cycle 1.
       { admit "sp is valid block". }
-      specialize (DISJ sp x0). ss.
+      specialize (DISJ sp ofs). ss.
       ii. exploit DISJ; eauto.
     }
     i; des_safe. rename sm1 into sm_ret.

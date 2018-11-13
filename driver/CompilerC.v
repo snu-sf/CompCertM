@@ -95,7 +95,7 @@ Parameter C2R_sim_mod: forall
     (TRANSF: C2R src = OK tgt)
   ,
     exists ss,
-      <<SIM: @ModPair.sim SimMemInj.SimMemInj SimMemInj.SimSymbId SoundTop.Top (ModPair.mk (C_module src) (RTLC.module tgt) ss)>>
+      <<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top (ModPair.mk (C_module src) (RTLC.module tgt) ss)>>
 .
 
 Section C2R.
@@ -103,7 +103,7 @@ Section C2R.
   (* Local Existing Instance C2R_SM. *)
   (* Local Existing Instance C2R_SU. *)
   (* Local Existing Instance C2R_SS. *)
-  Local Existing Instance SimMemInj.SimSymbId | 0.
+  Local Existing Instance SimMemInjC.SimSymbId | 0.
 
   Variable cps: list ModPair.t.
   Variable aps: list ModPair.t.
@@ -211,7 +211,7 @@ Parameter R2A_sim_mod: forall
     (TRANSF: R2A src = OK tgt)
   ,
     exists ss,
-      <<SIM: @ModPair.sim SimMemInj.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top (ModPair.mk (RTLC.module src) (AsmC.module tgt) ss)>>
+      <<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top (ModPair.mk (RTLC.module src) (AsmC.module tgt) ss)>>
 .
 
 Section R2A.
@@ -219,7 +219,7 @@ Section R2A.
   (* Local Existing Instance R2A_SM. *)
   (* Local Existing Instance R2A_SU. *)
   (* Local Existing Instance R2A_SS. *)
-  Local Existing Instance SimMemInj.SimMemInj | 0.
+  Local Existing Instance SimMemInjC.SimMemInj | 0.
   Local Existing Instance SimSymbDrop.SimSymbDrop | 0.
   Local Existing Instance SoundTop.Top | 0.
 
@@ -407,7 +407,7 @@ Module IdSim.
         (tgt: Asm.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimMemInj.SimSymbId SoundTop.Top mp>>)
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = tgt.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = tgt.(AsmC.module)>>)
   .
@@ -419,7 +419,7 @@ Module IdSim.
         (tgt: Asm.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = tgt.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = tgt.(AsmC.module)>>)
   .
@@ -470,7 +470,7 @@ Module IdSim.
         (src: Csyntax.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimMemInj.SimSymbId SoundTop.Top mp>>)
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
   .
@@ -482,7 +482,7 @@ Module IdSim.
         (src: Csyntax.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
   .

@@ -18,20 +18,30 @@ Set Implicit Arguments.
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+Lemma link_include_defs p sk_link_src
+      (LINK: link_sk p = Some sk_link_src)
+      md
+      (IN: In md p)
+  :
+    include_defs eq md.(Mod.sk) (Sk.load_skenv sk_link_src)
+.
+Proof.
+  revert sk_link_src LINK md IN.
+  induction p; ss; i; des; ss; clarify.
+  - clear IHp. u in *. unfold link_list in *. ss. des_ifs; ss.
+    + destruct p; ss; des_ifs. ii.
+      eapply Genv.find_def_symbol in DEF. des.
+      esplits; eauto.
+    + admit "should hold".
+      (* Local Transparent Linker_prog. ss. unfold link_prog in *. des_ifs. *)
+      (* unfold proj_sumbool, andb in *. des_ifs. *)
+      (* ii. unfold Genv.globalenv. ss. esplits. *)
+      (* unfold Genv.add_globals. *)
+  - u in *. unfold link_list in *. ss. des_ifs; ss.
+    + ss. exfalso. destruct p; ss; des_ifs.
+    + specialize (IHp _ eq_refl _ IN).
+      admit "should hold".
+Qed.
 
 
 
@@ -106,7 +116,7 @@ Section SIMGE.
     inv SIMFUNC. exploit FUNCFSIM; eauto. i; des. clear_tac. inv SIM.
     econs; eauto.
     - apply in_map_iff. esplits; eauto.
- 
+
   Qed.
 
   Lemma msp_in_sim
@@ -124,7 +134,7 @@ Section SIMGE.
     inv SIMGE.
     { ss. }
     rewrite Forall_forall in *.
-    { 
+    {
     ss. rewrite in_map_iff in *. des.
   Abort.
 
@@ -258,8 +268,8 @@ Section SIMGE.
     (* inv SIMMP. specialize (SIMMS skenv_src skenv_tgt). *)
     u.
     eapply SimSymb.sim_skenv_monotone; revgoals.
-    - eapply Mod.get_modsem_projected_sk.
-    - eapply Mod.get_modsem_projected_sk.
+    - eapply Mod.get_modsem_skenv_spec.
+    - eapply Mod.get_modsem_skenv_spec.
     - eauto. (* eapply SimSymb.le_refl. *)
     - apply SIMMP.
     - eauto.
@@ -295,6 +305,9 @@ Section SIMGE.
                /\ <<SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_link_src skenv_link_tgt>>
   .
   Proof.
+    assert (INCLUDE: forall md (IN: In md p_src),
+               include_defs eq md.(Mod.sk) skenv_link_src).
+    { ii. clarify. exploit link_include_defs; cycle 2; eauto. }
     clarify.
     exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des. rename sm into sm_init. clarify.
     esplits; eauto.
@@ -373,8 +386,8 @@ Section SIMGE.
         - econs; eauto. r. ss. eapply SimSymb.sim_skenv_monotone; eauto.
           + eapply Sk.load_skenv_wf.
           + eapply Sk.load_skenv_wf.
-          + eapply Mod.get_modsem_projected_sk.
-          + eapply Mod.get_modsem_projected_sk.
+          + eapply Mod.get_modsem_skenv_spec.
+          + eapply Mod.get_modsem_skenv_spec.
       }
       rename H into NNIL.
       apply link_list_cons_inv in SKSRC; cycle 1. { destruct pp; ss. } des. rename restl into sk_src_tl.
@@ -399,6 +412,9 @@ Section SIMGE.
         * rewrite Forall_forall in *.
           i. apply in_map_iff in H. des.
           specialize (SIMPROG x0). special SIMPROG; ss. clarify. eapply SIMPROG; eauto.
+          { eapply INCLUDE. right. unfold ProgPair.src in *.
+            eapply in_map. eauto.
+          }
       + ss. econs; ss; eauto.
         * eapply to_msp_sim_skenv; eauto.
         * rewrite Forall_forall in *. i. rewrite in_map_iff in *. des. clarify.
@@ -708,7 +724,7 @@ Section ADQSTEP.
           esplits; eauto.
           econs; eauto.
           econs; eauto.
-      }      
+      }
       i. inv STEPTGT.
       specialize (SAFESRC _ (star_refl _ _ _)). des.
       { inv SAFESRC. }
@@ -741,6 +757,8 @@ Section ADQSTEP.
       - right. eapply CIH.
         { unsguard SUST. unfold __GUARD__. des.
           eapply sound_progress; eauto.
+          { unfold p_src in *. clear - Heq1.
+            ii. exploit link_include_defs; eauto. }
           ss. folder. des_ifs. econs 2; eauto. econs; eauto.
         }
         instantiate (1:= sm_init).
@@ -779,7 +797,9 @@ Section ADQSTEP.
             - right. esplits; eauto. eapply lift_dstar; eauto.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
-          { unsguard SUST. des_safe. eapply sound_progress; eauto. eapply lift_step; eauto. }
+          { unsguard SUST. des_safe. eapply sound_progress; eauto.
+            { ii. exploit link_include_defs; cycle 2; eauto. }
+            eapply lift_step; eauto. }
           econs; eauto.
           { ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto. }
           etransitivity; eauto.
@@ -795,7 +815,7 @@ Section ADQSTEP.
       + ii.
         inv BSTEP.
         * econs 1; eauto; cycle 1.
-          { ii. right. des. esplits; eauto. eapply lift_step; eauto. }          
+          { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
           ii. inv STEPTGT; ModSem.tac.
           ss. exploit STEP; eauto. i; des_safe.
           exists i1, (State ((Frame.mk ms_src st_src1) :: tail_src)).
@@ -806,8 +826,12 @@ Section ADQSTEP.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
           { unsguard SUST. des_safe. destruct H.
-            - eapply sound_progress_plus; eauto. eapply lift_plus; eauto.
-            - des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto.
+            - eapply sound_progress_plus; eauto.
+              { ii. exploit link_include_defs; cycle 2; eauto. }
+              eapply lift_plus; eauto.
+            - des_safe. eapply sound_progress_star; eauto.
+              { ii. exploit link_include_defs; cycle 2; eauto. }
+              eapply lift_star; eauto.
           }
           econs; eauto.
           { folder. ss; des_ifs. eapply mle_preserves_sim_ge; eauto. }
@@ -816,7 +840,9 @@ Section ADQSTEP.
           { esplits; eauto. eapply lift_star; eauto. }
           right. eapply CIH; eauto.
           { unsguard SUST. des_safe.
-            eapply sound_progress_star; eauto. eapply lift_star; eauto.
+            eapply sound_progress_star; eauto.
+            { ii. exploit link_include_defs; cycle 2; eauto. }
+            eapply lift_star; eauto.
           }
           econs; eauto. folder. ss; des_ifs.
 
@@ -846,7 +872,9 @@ Section ADQSTEP.
         des_ifs.
         econs 1; eauto.
       + right. eapply CIH; eauto.
-        { unsguard SUST. des_safe. eapply sound_progress; eauto. ss. folder. des_ifs_safe. econs; eauto. }
+        { unsguard SUST. des_safe. eapply sound_progress; eauto.
+          { ii. exploit link_include_defs; cycle 2; eauto. }
+          ss. folder. des_ifs_safe. econs; eauto. }
         {
           instantiate (1:= (SimMem.lift sm_arg)).
           econs 2; eauto.
@@ -859,7 +887,7 @@ Section ADQSTEP.
               (*   exploit CALL; eauto. *)
               (*   { eapply HD; eauto. } *)
               (*   i; des. esplits. eapply K0; eauto. *)
-                
+
               (* } *)
               i; des_safe. pclearbot. esplits; eauto. }
             { ss. }
@@ -912,7 +940,9 @@ Section ADQSTEP.
         { admit "Add to semprops. / Modsem". }
         econs 4; ss; eauto.
       + right. eapply CIH; eauto.
-        { unsguard SUST. des_safe. eapply sound_progress; eauto. ss. folder. des_ifs_safe. econs; eauto. }
+        { unsguard SUST. des_safe. eapply sound_progress; eauto.
+          { ii. exploit link_include_defs; cycle 2; eauto. }
+          ss. folder. des_ifs_safe. econs; eauto. }
         instantiate (1:= sm_after).
         econs; ss; cycle 3.
         { eauto. }
@@ -977,4 +1007,3 @@ Section ADQ.
   Qed.
 
 End ADQ.
-

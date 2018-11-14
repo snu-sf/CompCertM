@@ -11,6 +11,7 @@ Require Import SimSymb Skeleton Mod ModSem.
 Require Import SimMem.
 Require SimSymbId.
 Require Import Conventions1 MachC.
+Require Export SimMemInj.
 
 Set Implicit Arguments.
 
@@ -20,16 +21,6 @@ Section MEMINJ.
 
 Context `{CTX: Val.meminj_ctx}.
 
-Record t' := mk {
-  src: mem;
-  tgt: mem;
-  inj: meminj;
-  src_external: block -> Z -> Prop;
-  tgt_external: block -> Z -> Prop;
-  src_parent_nb: block;
-  tgt_parent_nb: block;
-}.
-
 Definition update (sm0: t') (src tgt: mem) (inj: meminj): t' :=
   mk src tgt inj sm0.(src_external) sm0.(tgt_external) sm0.(src_parent_nb) sm0.(tgt_parent_nb)
 .
@@ -38,19 +29,6 @@ Hint Unfold update.
 (* Definition update_tgt (sm0: t') (tgt: mem) := (sm0.(update) sm0.(src) tgt sm0.(inj)). *)
 (* Definition update_src (sm0: t') (src: mem) := (sm0.(update) src sm0.(tgt) sm0.(inj)). *)
 (* Hint Unfold update_src update_tgt. *)
-
-Definition valid_blocks (m: mem): block -> Z -> Prop := fun b _ => m.(Mem.valid_block) b.
-Hint Unfold valid_blocks.
-
-Definition src_private (sm: t'): block -> Z -> Prop :=
-  loc_unmapped sm.(inj) /2\ sm.(src).(valid_blocks)
-.
-
-Definition tgt_private (sm: t'): block -> Z -> Prop :=
-  loc_out_of_reach sm.(inj) sm.(src) /2\ sm.(tgt).(valid_blocks)
-.
-
-Hint Unfold src_private tgt_private.
 
 Lemma update_src_private
       sm0 sm1
@@ -101,74 +79,6 @@ Qed.
 (*   u. split; ii; des; esplits; eauto with congruence. *)
 (* Qed. *)
 
-Inductive wf' (sm0: t'): Prop :=
-| wf_intro
-    (PUBLIC: Mem.inject sm0.(inj) sm0.(src) sm0.(tgt))
-    (SRCEXT: sm0.(src_external) <2= sm0.(src_private))
-    (TGTEXT: sm0.(tgt_external) <2= sm0.(tgt_private))
-    (SRCLE: (sm0.(src_parent_nb) <= sm0.(src).(Mem.nextblock))%positive)
-    (TGTLE: (sm0.(tgt_parent_nb) <= sm0.(tgt).(Mem.nextblock))%positive)
-.
-
-Inductive le' (mrel0 mrel1: t'): Prop :=
-| le_intro
-    (INCR: inject_incr mrel0.(inj) mrel1.(inj))
-    (SRCUNCHANGED: Mem.unchanged_on mrel0.(src_external) mrel0.(src) mrel1.(src))
-    (TGTUNCHANGED: Mem.unchanged_on mrel0.(tgt_external) mrel0.(tgt) mrel1.(tgt))
-    (SRCPARENTEQ: mrel0.(src_external) = mrel1.(src_external))
-    (SRCPARENTEQNB: mrel0.(src_parent_nb) = mrel1.(src_parent_nb))
-    (TGTPARENTEQ: mrel0.(tgt_external) = mrel1.(tgt_external))
-    (TGTPARENTEQNB: mrel0.(tgt_parent_nb) = mrel1.(tgt_parent_nb))
-    (FROZEN: frozen mrel0.(inj) mrel1.(inj) (mrel0.(src_parent_nb))
-                                            (mrel0.(tgt_parent_nb)))
-    (MAX: forall
-        b ofs
-        (VALID: Mem.valid_block mrel0.(src) b)
-      ,
-        <<MAX: Mem.perm mrel1.(src) b ofs Max <1= Mem.perm mrel0.(src) b ofs Max>>)
-.
-
-Definition lift' (mrel0: t'): t' :=
-  (mk mrel0.(src) mrel0.(tgt) mrel0.(inj)
-      mrel0.(src_private) mrel0.(tgt_private)
-      mrel0.(src).(Mem.nextblock) mrel0.(tgt).(Mem.nextblock))
-.
-
-Definition unlift' (mrel0 mrel1: t'): t' :=
-  (mk mrel1.(src) mrel1.(tgt) mrel1.(inj)
-      mrel0.(src_external) mrel0.(tgt_external)
-      mrel0.(src_parent_nb) mrel0.(tgt_parent_nb))
-.
-
-Global Program Instance le'_PreOrder: RelationClasses.PreOrder le'.
-Next Obligation.
-  econs; eauto; try reflexivity; try apply Mem.unchanged_on_refl; eauto.
-  eapply frozen_refl; eauto.
-Qed.
-Next Obligation.
-  ii. inv H; inv H0.
-  des; clarify.
-  econs; eauto with mem congruence.
-  + eapply inject_incr_trans; eauto.
-  + eapply Mem.unchanged_on_trans; eauto with congruence.
-  + eapply Mem.unchanged_on_trans; eauto with congruence.
-  + econs; eauto.
-    ii; des.
-    destruct (inj y b_src) eqn:T.
-    * destruct p.
-      exploit INCR0; eauto. i; clarify.
-      inv FROZEN.
-      hexploit NEW_IMPLIES_OUTSIDE; eauto.
-    * inv FROZEN0.
-      hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des.
-      split; ss; red; etransitivity; eauto.
-      { rewrite <- SRCPARENTEQNB. reflexivity. }
-      { rewrite <- TGTPARENTEQNB. reflexivity. }
-  + i. r. etrans.
-    { eapply MAX0; eauto. eapply Plt_Ple_trans; eauto with mem. }
-    eapply MAX; eauto.
-Qed.
-
 (* TODO: Let's have this as policy. (giving explicit name) *)
 (* TODO: apply this policy for identity/extension *)
 
@@ -196,31 +106,10 @@ Next Obligation.
   (* - eapply Mem.unchanged_on_refl. *)
 Qed.
 Next Obligation.
-  inv H; ss.
-  econs; ss; eauto; ii; des; ss.
-  - eapply Mem.unchanged_on_implies; eauto.
-    ii. eapply H0; eauto.
-  - eapply Mem.unchanged_on_implies; eauto.
-    ii. eapply H0; eauto.
-  - inv H0. ss.
-    eapply frozen_shortened; eauto.
+  eapply unlift_spec; eauto.
 Qed.
 Next Obligation.
-  inv H. inv H0. inv H1.
-  des; clarify.
-  econs; ss; try etransitivity; eauto. (* eauto did well here *)
-  - (* etransitivity; eauto. *)
-    rewrite SRCPARENTEQ.
-    etransitivity; eauto.
-
-    (* u. bar. i; des. esplits; eauto. *)
-    (* + eapply loc_unmapped_frozen; eauto. *)
-    (* + unfold Mem.valid_block in *. xomega. *)
-  - (* etransitivity; eauto. *)
-    rewrite TGTPARENTEQ.
-    etransitivity; eauto.
-  - inv SRCUNCHANGED; ss.
-  - inv TGTUNCHANGED; ss.
+  eapply unlift_wf; eauto.
 Qed.
 Next Obligation.
   ii. inv MLE. eapply val_inject_incr; eauto.
@@ -235,162 +124,8 @@ Next Obligation.
     econs; eauto.
 Qed.
 
-Lemma after_private_src
-      sm0 sm1
-      (FROZEN: frozen sm0.(inj) sm1.(inj) sm0.(src).(Mem.nextblock) sm0.(tgt).(Mem.nextblock))
-      (MLE: le' sm0.(lift') sm1)
-  :
-    sm0.(src_private) <2= sm1.(src_private)
-.
-Proof.
-  inv MLE. inv SRCUNCHANGED. ss.
-  u; ii; des; esplits; eauto.
-  - eapply loc_unmapped_frozen; eauto.
-  - unfold Mem.valid_block in *. xomega.
-Qed.
-
-Lemma after_private_tgt
-      sm0 sm1
-      (FROZEN: frozen sm0.(inj) sm1.(inj) sm0.(src).(Mem.nextblock) sm0.(tgt).(Mem.nextblock))
-      (MWF: wf' sm0)
-      (MLE: le' sm0.(lift') sm1)
-  :
-    sm0.(tgt_private) <2= sm1.(tgt_private)
-.
-Proof.
-  inv MLE. inv TGTUNCHANGED. ss.
-  u; ii; des; esplits; eauto.
-  - eapply loc_out_of_reach_frozen; eauto.
-    ii.
-    assert(VALID: Mem.valid_block (src sm0) b0).
-    { apply NNPP. ii. exploit Mem.mi_freeblocks; try apply MWF; eauto. ii. clarify. }
-    eapply MAX; eauto.
-  - unfold Mem.valid_block in *. xomega.
-Qed.
-
 Section ORIGINALS.
 
-Lemma store_mapped
-      sm0 chunk v_src v_tgt blk_src ofs blk_tgt delta m_src0
-      (MWF: wf' sm0)
-      (STRSRC: Mem.store chunk sm0.(src) blk_src ofs v_src = Some m_src0)
-      (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
-      (SIMV: Val.inject sm0.(inj) v_src v_tgt)
-  :
-    exists sm1,
-      (<<MSRC: sm1.(src) = m_src0>>)
-      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<STRTGT: Mem.store chunk sm0.(tgt) blk_tgt (ofs + delta) v_tgt = Some sm1.(tgt)>>)
-      /\ (<<MWF: wf' sm1>>)
-      /\ (<<MLE: le' sm0 sm1>>)
-.
-Proof.
-  exploit Mem.store_mapped_inject; try apply MWF; eauto. i; des.
-  inv MWF.
-  eexists (mk _ _ _ _ _ _ _).
-  esplits; ss; eauto; cycle 1.
-  - econs; ss; eauto.
-    + eapply Mem.store_unchanged_on; eauto.
-      ii. apply SRCEXT in H2. red in H2. des. red in H2. clarify.
-    + eapply Mem.store_unchanged_on; eauto.
-      ii. apply TGTEXT in H2. red in H2. des. red in H2.
-      eapply H2; eauto. clear - STRSRC H1 H4.
-      apply Mem.store_valid_access_3 in STRSRC. destruct STRSRC.
-      eauto with mem xomega.
-    + eapply frozen_refl.
-    + ii. eapply Mem.perm_store_2; eauto.
-  - econs; ss; eauto.
-    + etransitivity; eauto. unfold src_private. ss. ii; des. esplits; eauto.
-      unfold valid_blocks in *. eauto with mem.
-    + etransitivity; eauto. unfold tgt_private. ss. ii; des. esplits; eauto.
-      { ii. eapply PR; eauto with mem. }
-      unfold valid_blocks in *. eauto with mem.
-    + etransitivity; eauto. erewrite <- Mem.nextblock_store; eauto. xomega.
-    + etransitivity; eauto. erewrite <- Mem.nextblock_store; eauto. xomega.
-Qed.
-Lemma storev_mapped
-      sm0 chunk v_src v_tgt addr_src addr_tgt m_src0
-      (MWF: wf' sm0)
-      (STRSRC: Mem.storev chunk sm0.(src) addr_src v_src = Some m_src0)
-      (SIMADDR: Val.inject sm0.(inj) addr_src addr_tgt)
-      (SIMV: Val.inject sm0.(inj) v_src v_tgt)
-  :
-    exists sm1,
-      (<<MSRC: sm1.(src) = m_src0>>)
-      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<STRTGT: Mem.storev chunk sm0.(tgt) addr_tgt v_tgt = Some sm1.(tgt)>>)
-      /\ (<<MWF: wf' sm1>>)
-      /\ (<<MLE: le' sm0 sm1>>)
-.
-Proof.
-  admit "This should hold. - Mem.storev_mapped_inject".
-Qed.
-Lemma free_parallel
-      sm0 lo hi blk_src blk_tgt delta m_src0
-      (MWF: wf' sm0)
-      (FREESRC: Mem.free sm0.(src) blk_src lo hi = Some m_src0)
-      (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
-  :
-    exists sm1,
-      (<<MSRC: sm1.(src) = m_src0>>)
-      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<FREETGT: Mem.free sm0.(tgt) blk_tgt (lo + delta) (hi + delta) = Some sm1.(tgt)>>)
-      /\ (<<MWF: wf' sm1>>)
-      /\ (<<MLE: le' sm0 sm1>>)
-.
-Proof.
-  admit "This should hold. - Mem.free_parallel_inject".
-Qed.
-Lemma free_left
-      sm0 lo hi blk_src blk_tgt delta m_src0
-      (MWF: wf' sm0)
-      (FREESRC: Mem.free sm0.(src) blk_src lo hi = Some m_src0)
-      (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
-  :
-    exists sm1,
-      (<<MSRC: sm1.(src) = m_src0>>)
-      /\ (<<MTGT: sm1.(tgt) = sm0.(tgt)>>)
-      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<MWF: wf' sm1>>)
-      /\ (<<MLE: le' sm0 sm1>>)
-.
-Proof.
-  admit "This should hold. - Mem.free_left_inject".
-Qed.
-Lemma free_right
-      sm0 lo hi blk_tgt m_tgt0
-      (MWF: wf' sm0)
-      (FREETGT: Mem.free sm0.(tgt) blk_tgt lo hi = Some m_tgt0)
-      (PRIVTGT: range lo hi <1= sm0.(tgt_private) blk_tgt)
-  :
-    exists sm1,
-      (* (<<EXACT: sm1 = sm0.(update_tgt) m_tgt0>>) *)
-      (<<MSRC: sm1.(src) = sm0.(src)>>)
-      /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
-      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<MWF: wf' sm1>>)
-      /\ (<<MLE: le' sm0 sm1>>)
-.
-Proof.
-  admit "This should hold. - Mem.free_right_inject".
-Qed.
-Lemma alloc_parallel
-      sm0 lo_src hi_src lo_tgt hi_tgt blk_src blk_tgt m_src0
-      (MWF: wf' sm0)
-      (ALCSRC: Mem.alloc sm0.(src) lo_src hi_src = (m_src0, blk_src))
-      (LO: lo_tgt <= lo_src)
-      (HI: hi_src <= hi_tgt)
-  :
-    exists sm1,
-      (<<MSRC: sm1.(src) = m_src0>>)
-      /\ (<<ALCTGT: Mem.alloc sm0.(tgt) lo_tgt hi_tgt = (sm1.(tgt), blk_tgt)>>)
-      /\ (<<INJ: sm1.(inj) blk_src = Some (blk_tgt, 0) /\ forall b, b <> blk_src -> sm1.(inj) b = sm0.(inj) b>>)
-      /\ (<<MWF: wf' sm1>>)
-      /\ (<<MLE: le' sm0 sm1>>)
-.
-Proof.
-  admit "This should hold. - Mem.alloc_parallel_inject".
-Qed.
 Lemma unfree_right
       sm0 lo hi blk m_tgt0
       (MWF: wf' sm0)
@@ -420,6 +155,7 @@ Proof.
     + eapply Mem_unfree_unchanged_on; eauto.
     + eapply frozen_refl.
 Qed.
+
 End ORIGINALS.
 
 Lemma alloc_left_zero_simmem
@@ -688,17 +424,17 @@ Next Obligation.
   - etransitivity; try apply TGTLE; eauto.
 Qed.
 Next Obligation.
+  set (SkEnv.project skenv_link_src (defs sk_src)) as skenv_proj_src.
+  generalize (SkEnv.project_impl_spec skenv_link_src (defs sk_src)); intro LESRC.
+  set (SkEnv.project skenv_link_tgt (defs sk_tgt)) as skenv_proj_tgt.
+  generalize (SkEnv.project_impl_spec skenv_link_tgt (defs sk_tgt)); intro LETGT.
   exploit SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto.
   i; des.
   inv SIMSKENV. inv LESRC. inv LETGT.
   econs; eauto.
   { inv INJECT.
     econs; ii; eauto.
-    - eapply DOMAIN; eauto. rewrite NEXT. ss.
-    - eapply IMAGE; eauto. rewrite NEXT. ss.
   }
-  { rewrite <- NEXT. ss. }
-  { rewrite <- NEXT. ss. }
 Qed.
 Next Obligation.
   exploit SimSymbId.sim_skenv_func_bisim; eauto. { eapply SIMSKENV. } i; des.
@@ -715,8 +451,8 @@ Next Obligation.
     rpapply FUNCTGT. f_equal.
     { inv SIMFPTR; ss. des_ifs.
       unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-      exploit IMAGE; eauto. { rewrite NEXT. eapply Genv.genv_defs_range; eauto. } i; clarify.
-      exploit DOMAIN; eauto. { rewrite <- DEFS in *. eapply Genv.genv_defs_range; eauto. } i; clarify.
+      exploit IMAGE; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify.
+      exploit DOMAIN; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify.
       rewrite e. rewrite Ptrofs.add_zero in *. clarify.
     }
 Qed.

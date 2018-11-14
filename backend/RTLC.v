@@ -105,7 +105,7 @@ Section MODSEM.
   | initial_frame_intro
       fd tvs
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
-      (TYP: typify_list args.(Args.vs) fd.(fn_sig).(sig_args) = tvs)
+      (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
       (LEN: args.(Args.vs).(length) = fd.(fn_sig).(sig_args).(length))
     :
       initial_frame args
@@ -215,8 +215,7 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    rewrite Sk.of_program_defs.
-    eapply SkEnv.project_impl_spec; eauto.
+    rewrite Sk.of_program_defs. ss.
   Qed.
 
 End MODULE.

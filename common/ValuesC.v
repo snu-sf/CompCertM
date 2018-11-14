@@ -23,6 +23,7 @@ Require Import Floats.
 Require Import sflib.
 (** newly added **)
 Require Export Values.
+Require Import Conventions1.
 
 Set Implicit Arguments.
 
@@ -151,6 +152,18 @@ Proof.
   inv LD; ss.
 Qed.
 
+Lemma inject_typify
+      `{Val.meminj_ctx}
+      j x y ty
+      (INJ: Val.inject j x y)
+  :
+    <<INJ: Val.inject j (typify x ty) (typify y ty)>>
+.
+Proof.
+  unfold typify. des_ifs.
+  inv INJ; ss.
+Qed.
+
 Lemma lessdef_list_typify_list
       xs ys tys
       (LEN: length tys = length xs)
@@ -177,4 +190,38 @@ Proof.
   des. red. xomega.
 Qed.
 
-      
+Lemma inject_list_length
+      `{Val.meminj_ctx}
+      j xs ys
+      (INJ: Val.inject_list j xs ys)
+  :
+    <<LEN: xs.(length) = ys.(length)>>
+.
+Proof.
+  ginduction INJ; ii; ss.
+  des. red. xomega.
+Qed.
+
+Lemma typify_has_type_list
+      vs tys
+      (LEN: length vs = length tys)
+  :
+    <<TYS: Val.has_type_list (typify_list vs tys) tys>>
+.
+Proof.
+  ginduction vs; ii; ss.
+  { des_ifs. }
+  destruct tys; ss.
+  clarify.
+  esplits; eauto.
+  - eapply typify_has_type.
+  - eapply IHvs; eauto.
+Qed.
+
+Inductive typecheck (vs: list val) (sg: signature) (tvs: list val): Prop :=
+| typecheck_intro
+    (LEN: length vs = length sg.(sig_args))
+    (TYP: typify_list vs sg.(sig_args) = tvs)
+    (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+.
+

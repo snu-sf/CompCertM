@@ -63,35 +63,6 @@ Section CEXTRA.
     end
   .
 
-  (* Variable ge_ge: Genv.t fundef type. *)
-  (* Variable ce_ge: composite_env. *)
-
-  (* Definition ge := Build_genv ge_ge ce_ge. *)
-  
-  (* Definition semantics_with_ge := Semantics_gen step bot1 final_state ge ge. *)
-
-  (* (* *************** ge is parameterized *******************) *)
-
-  (* Lemma semantics_receptive *)
-  (*       st *)
-  (*       (INTERNAL: ~ is_external ge st) *)
-  (*   : *)
-  (*     receptive_at semantics_with_ge st *)
-  (* . *)
-  (* Proof. *)
-  (*   admit "this should hold". *)
-  (* Qed. *)
-
-(*   Lemma semantics_determinate *)
-(*         st *)
-(*         (INTERNAL: ~is_external ge st) *)
-(*     : *)
-(*       determinate_at semantics_with_ge st *)
-(*   . *)
-(*   Proof. *)
-(*     admit "this should hold". *)
-(*   Qed. *)
-
 End CEXTRA.
 (*** !!!!!!!!!!!!!!! REMOVE ABOVE AFTER MERGING WITH MIXED SIM BRANCH !!!!!!!!!!!!!!!!!! ***)
 
@@ -169,7 +140,7 @@ Section MODSEM.
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
-      ModSem.skenv := skenv; 
+      ModSem.skenv := skenv;
     |}
   .
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
@@ -247,8 +218,7 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    rewrite CtypesC.of_program_defs.
-    eapply SkEnv.project_impl_spec; eauto.
+    rewrite CtypesC.of_program_defs. ss.
   Qed.
 
 End MODULE.

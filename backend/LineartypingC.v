@@ -93,7 +93,8 @@ Section SOUNDNESS.
         destruct l; ss.
         { rewrite mreg_type_any. apply has_type_any. }
         destruct (classic (In (S sl pos ty) (regs_of_rpairs (loc_arguments (fn_sig fd))))).
-        - clear - LOCSET H LEN.
+        - clear - TYP H.
+          inv TYP.
           abstr (fn_sig fd) sg.
           abstr (Args.vs args) vs. clear_tac.
           generalize (loc_arguments_one sg). intro ONES.

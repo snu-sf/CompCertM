@@ -1,12 +1,12 @@
 Require Import CoqlibC Errors.
 Require Import Integers Floats AST Linking.
-Require Import Values Memory Events Globalenvs Smallstep.
+Require Import ValuesC Memory Events Globalenvs Smallstep.
 Require Import Op Locations MachC Conventions AsmC.
 Require Import Asmgen Asmgenproof0 Asmgenproof1.
 Require Import sflib.
 (* newly added *)
 Require Export Asmgenproof AsmgenproofC0 AsmgenproofC1.
-Require Import ModSem SimModSem SimSymbId SimMemExt SimSymbId MemoryC.
+Require Import ModSem SimModSem SimSymbId SimMemExt SimSymbId MemoryC ValuesC.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.
 Require SoundTop.
@@ -29,7 +29,7 @@ Variable sm_link: SimMem.t.
 Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (SM := SimMemExtends)
+  ModSemPair.mk (SM := SimMemExt)
                 (MachC.modsem return_address_offset skenv_link_src prog)
                 (AsmC.modsem skenv_link_tgt tprog) tt sm_link.
 
@@ -130,11 +130,11 @@ Proof.
 
   - apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
-    
+
   - destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
     inv INITTGT. des. ss. clarify. inv RAPTR.
     assert (SRCSTORE: exists rs_src m_src,
-               MachC.store_arguments src rs_src vs (fn_sig fd) m_src /\
+               MachC.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
            agree_eq rs_src (Vptr (Mem.nextblock src)
                           Ptrofs.zero true) rs /\ Mem.extends m_src m).
     { clear - SAFESRC STORE VALS.
@@ -153,26 +153,35 @@ Proof.
     { clear - SAFESRC. inv SAFESRC. ss. }
     esplits; auto.
     + inv SAFESRC. ss.
-      econs; auto.
-      * instantiate (1:= fd0). hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
+      inv TYP. clear_tac.
+      assert(SIG: fn_sig fd = Mach.fn_sig fd0).
+      {
+        hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
         folder. ss; try unfold bind in *; des_ifs.
         symmetry. eapply transf_function_sig; eauto.
+      }
+      econs; auto.
+      * eauto.
       * ss.
-      * ii. exploit PTRFREE; eauto.
-        eapply Asm.to_preg_to_mreg.
-        rewrite (agree_mregs0 mr) in *. auto.
+      * econs; eauto. ss. eauto with congruence.
+      * ss.
+      * ii. rewrite (agree_mregs0 mr) in *. exploit PTRFREE; eauto.
+        i. des.
+        -- rewrite Asm.to_preg_to_mreg in *. clarify.
+        -- destruct mr; clarify.
+        -- destruct mr; clarify.
     + instantiate (1:= mk m_src m).
       assert (NOTVOL: not_volatile skenv_link_src (Vptr (Mem.nextblock src) Ptrofs.zero true)).
       { econs. destruct (Senv.block_is_volatile skenv_link_src (Mem.nextblock src)) eqn: EQ; auto.
         exfalso. eapply Senv.block_is_volatile_below in EQ. subst ge.
         clear - SIMSKENVLINK MWF MEMWF EQ. apply Mem.mext_next in MWF. rewrite MWF in *.
         eapply Plt_strict. eapply Plt_Ple_trans. eapply EQ.
-        destruct SIMSKENVLINK. inv H. ss. rewrite NEXT. auto. }
+        destruct SIMSKENVLINK. inv H. ss. }
       econs; ss.
       * econs; ss; eauto. econs; eauto.
       * econs; eauto; ss; try by (econs; eauto).
         -- econs; eauto. i. rewrite agree_mregs0. econs.
-        -- destruct SIMSKENVLINK. inv H. rewrite NEXT. etrans; eauto.
+        -- destruct SIMSKENVLINK. inv H. etrans; eauto.
            clear - MWF SRCSTORE.
            apply Mem.mext_next in MWF. rewrite <- MWF in *.
            inv SRCSTORE. rewrite <- NB.
@@ -183,22 +192,24 @@ Proof.
     inv SAFESRC.
     hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des. ss; unfold bind in *; des_ifs. rename f into fd_tgt.
     assert (exists rs_tgt m_tgt,
-               <<STORE: AsmC.store_arguments (Args.m args_tgt) rs_tgt (Args.vs args_tgt)
-                                    (fn_sig fd_tgt) m_tgt>> /\
-               <<RSPC: rs_tgt PC = Args.fptr args_tgt>> /\
-               <<RSRA: rs_tgt RA = Vnullptr>> /\
-               <<PTRFREE: forall (pr : preg) (mr : mreg),
-                 Asm.to_mreg pr = Some mr ->
-                 ~ In (R mr) (regs_of_rpairs (loc_arguments (fn_sig fd_tgt))) ->
-                 ~ ValuesC.is_real_ptr (rs_tgt pr)>>).
+               (<<STORE: AsmC.store_arguments (Args.m args_tgt) rs_tgt (Args.vs args_tgt)
+                                              (fn_sig fd_tgt) m_tgt>>) /\
+               (<<RSPC: rs_tgt PC = Args.fptr args_tgt>>) /\
+               (<<RSRA: rs_tgt RA = Vnullptr>>) /\
+               (<<PTRFREE: forall pr (PTR: is_real_ptr (rs_tgt pr)),
+                   (<<INARG: exists mr,
+                       (<<MR: to_mreg pr = Some mr>>) /\
+                       (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments (Mach.fn_sig fd)))>>)>>) \/
+                   (<<INPC: pr = PC>>) \/
+                   (<<INRSP: pr = RSP>>)>>)).
     { admit "this should hold...". } des.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
-    + rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
-    + ss. destruct SIMSKENVLINK. inv H0. rewrite <- NEXT.
+    + inv TYP. rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
+    + ss. destruct SIMSKENVLINK. inv H0.
       apply Mem.mext_next in MWF. rewrite <- MWF in *. auto.
     + rewrite RSRA. econs; ss.
-
+    + erewrite <- transf_function_sig; eauto.
   - inv MATCH; ss. destruct st_src0, st_tgt0, sm0. ss. inv MATCHST; ss.
 
   - ss. inv CALLSRC. inv MATCH. inv INITDATA. inv MATCHST. ss.
@@ -224,8 +235,7 @@ Proof.
         -- inv ATLR; auto. exfalso; auto.
         -- destruct ra; ss; try inv H0. inv ATLR. ss.
       * rewrite RSP in *. inv NOTVOL0. ss. unfold Genv.block_is_volatile in *.
-        destruct SIMSKENVLINK. inv H. specialize (DEFS blk).
-        unfold Genv.find_var_info in *. des_ifs; ss; clarify.
+        destruct SIMSKENVLINK. inv H. des_ifs.
     + instantiate (1:=mk m1 m2'). econs; ss; eauto.
     + ss.
 
@@ -307,5 +317,5 @@ Proof.
     all: ss.
     apply 0%nat.
 Qed.
-    
+
 End PRESERVATION.

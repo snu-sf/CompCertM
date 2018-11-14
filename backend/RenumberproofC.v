@@ -1,6 +1,6 @@
 Require Import CoqlibC Maps Postorder.
 Require Import AST Linking.
-Require Import Values Memory Globalenvs Events Smallstep.
+Require Import ValuesC Memory Globalenvs Events Smallstep.
 Require Import Op Registers RTLC Renumber.
 Require Import sflib.
 (** newly added **)
@@ -213,9 +213,10 @@ Proof.
     eexists. eexists (SimMemId.mk _ _).
     esplits; eauto.
     + econs; eauto; ss.
-      * rpapply match_callstates; eauto.
+      * inv TYP. rpapply match_callstates; eauto.
         { econs; eauto. }
         inv SAFESRC. folder.
+        inv TYP.
         exploit (Genv.find_funct_transf_genv SIMGE); eauto. rewrite <- FPTR in *. intro FINDFSRC; clarify.
         ss. f_equal; try congruence.
   - (* init progress *)
@@ -223,9 +224,11 @@ Proof.
     inv SIMARGS; ss.
     exploit make_match_genvs; eauto. intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
+    inv TYP.
     esplits; eauto. econs; eauto.
     + folder. rewrite <- FPTR. eauto.
     + rewrite <- VALS. ss.
+    + ss. eauto with congruence.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     inv CALLSRC. inv MATCHST; ss.
@@ -290,7 +293,7 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - econs; eauto. admit "easy".
+  - r. admit "easy - see DeadcodeproofC".
   - ii. eapply sim_modsem; eauto.
 Unshelve.
   ss.

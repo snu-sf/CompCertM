@@ -8,27 +8,6 @@ Require Import Sound Preservation.
 Set Implicit Arguments.
 
 
-Section ORD.
-
-  Variable index: Type.
-  Variable order: index -> index -> Prop.
-  Hypothesis WFORD: well_founded order.
-
-  Definition to_idx (i0: index): Ord.idx := (Ord.mk WFORD i0).
-
-  Hint Unfold to_idx.
-
-  Lemma to_idx_spec
-        i0 i1
-        (ORD: order i0 i1)
-    :
-      <<ORD: Ord.ord i0.(to_idx) i1.(to_idx)>>
-  .
-  Proof.
-    econs; eauto. cbn. instantiate (1:= eq_refl). cbn. ss.
-  Qed.
-
-End ORD.
 
 
 
@@ -219,7 +198,7 @@ Section MATCHSIMFORWARD.
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
       <<LXSIM: lxsim ms_src ms_tgt (fun st => exists su0 m_init, sound_state su0 m_init st)
-                     sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>>
+                     sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.
     (* move su0 at top. *)
@@ -265,7 +244,7 @@ Section MATCHSIMFORWARD.
       esplits; eauto.
       - des.
         + left. eauto.
-        + right. esplits; eauto. eapply to_idx_spec; eauto.
+        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
       - right. eapply CIH; eauto.
         { eapply SimSymb.mle_preserves_sim_skenv; eauto. }
         { etransitivity; eauto. }

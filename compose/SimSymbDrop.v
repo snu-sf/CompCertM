@@ -17,7 +17,7 @@ Set Implicit Arguments.
 
 Require Import SimSymb.
 Require Import SimMem.
-Require Import SimMemInj.
+Require Import SimMemInjC.
 Require Import ModSem.
 
 
@@ -270,11 +270,16 @@ Next Obligation.
   econs; eauto.
 Qed.
 Next Obligation.
+  set (SkEnv.project skenv_link_src (defs sk_src)) as skenv_src.
+  generalize (SkEnv.project_impl_spec skenv_link_src (defs sk_src)); intro LESRC.
+  set (SkEnv.project skenv_link_tgt (defs sk_tgt)) as skenv_tgt.
+  generalize (SkEnv.project_impl_spec skenv_link_tgt (defs sk_tgt)); intro LETGT.
   exploit SkEnv.project_spec_preserves_wf; try apply LESRC; eauto. intro WFSMALLSRC.
   exploit SkEnv.project_spec_preserves_wf; try apply LETGT; eauto. intro WFSMALLTGT.
 (* THIS IS TOP *)
   inv SIMSKENV. ss.
   apply sim_skenv_splittable_spec.
+  folder.
   dsplits; eauto; ii; ss.
   -
     inv LESRC.
@@ -446,8 +451,7 @@ Next Obligation.
     exploit SYMBKEEP0; eauto. i; des. rewrite BLKSRC in *. symmetry in H2.
     erewrite DEFKEEP0; eauto.
     { apply Genv.find_invert_symbol; eauto. }
-  - inv LESRC.
-    rewrite PUBLIC in *.
+  -
     exploit PUBS; eauto.
     inv LE. eauto.
 Qed.

@@ -131,7 +131,7 @@ Section MODSEM.
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (OFSZERO: ofs = Ptrofs.zero)
       (FREE: Mem.free m0 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
-      (NOTVOL: Senv.block_is_volatile skenv_link blk1 = false) 
+      (NOTVOL: Senv.block_is_volatile skenv_link blk1 = false)
       init_rs
     :
       at_external (mkstate init_rs (State rs m0))
@@ -145,16 +145,16 @@ Section MODSEM.
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (RSPC: rs # PC = args.(Args.fptr))
-      (SZ: 4 * size_arguments sg <= Ptrofs.modulus)
+      (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
       (STORE: store_arguments args.(Args.m) rs args.(Args.vs) sg m)
       (RAPTR: wf_RA (rs RA))
-      (PTRFREE: forall
-          pr mr
-          (MR: to_mreg pr = Some mr)
-          (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
-        ,
-          <<PTRFREE: ~ is_real_ptr (rs pr)>>)
+      (PTRFREE: forall pr (PTR: is_real_ptr (rs pr)),
+          (<<INARG: exists mr,
+              (<<MR: to_mreg pr = Some mr>>) /\
+              (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments sg))>>)>>) \/
+          (<<INPC: pr = PC>>) \/
+          (<<INRSP: pr = RSP>>))
     :
       initial_frame args (mkstate rs (State rs m))
   .
@@ -201,7 +201,7 @@ Section MODSEM.
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
-      ModSem.skenv := skenv; 
+      ModSem.skenv := skenv;
     |}
   .
   Next Obligation.
@@ -306,8 +306,7 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    rewrite Sk.of_program_defs.
-    eapply SkEnv.project_impl_spec; eauto.
+    rewrite Sk.of_program_defs. ss.
   Qed.
 
 End MODULE.

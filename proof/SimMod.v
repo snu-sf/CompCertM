@@ -72,6 +72,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           ss_link
           (SSLE: SimSymb.le mp.(ss) mp.(src) mp.(tgt) ss_link)
           sm_init_link
+          (INCLUDE: include_defs eq mp.(src).(Mod.sk) skenv_link_src)
           (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt)
         ,
           <<SIMMSP: ModSemPair.sim mp.(to_msp skenv_link_src skenv_link_tgt sm_init_link)>>)
@@ -153,5 +154,3 @@ Hint Unfold ModPair.to_msp.
 (*                    (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data)) *)
 (*                    (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))) *)
 (* . *)
-
- 

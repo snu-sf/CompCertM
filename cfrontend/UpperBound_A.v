@@ -144,6 +144,7 @@ c0 + empty
       (MOD: In m ctx)
       (CTX1: fr_src = Frame.mk (Mod.get_modsem m skenv_link_src (Mod.data m)) st1)
       (CTX2: fr_tgt = Frame.mk (Mod.get_modsem m skenv_link_tgt (Mod.data m)) st2)
+      (* (SAME: st1 = st2) *)
     :
       match_frames (fr_src::frs_src) (fr_src::frs_tgt)
   | match_frames_cons_c_one
@@ -188,6 +189,14 @@ c0 + empty
     :
       match_owner ms1 ms2.
 
+  (*  there are "5" kinds of match states needed(maybe)
+  1. reg - reg 
+  2. call - call
+  3. reg - call ----> only btw c maybe
+  (* 4. ret - ret *)
+  (* 5. reg - ret *)
+   *)
+  
   Inductive match_states : Sem.state -> Sem.state -> nat -> Prop :=
   | match_regular_states
       frs_src frs_tgt
@@ -202,7 +211,18 @@ c0 + empty
       (OWNER: match_owner ms1 ms2)
     :
       match_states (Callstate args_src frs_src) (Callstate args_tgt frs_tgt) 0
-  | 
+  | match_reg_call
+      prog_tgt fr_tgt fr_src fptr_src fptr_tgt
+      tyf vargs_src vargs_tgt k m_src m_tgt frs_src frs_tgt args_tgt
+      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
+      (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog')
+      (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_tgt prog_tgt)
+      (* (STSRC: Frame.st fr_src = Csem.Callstate fptr_src tyf vargs_src k m_src) *)
+      (* (STSRC: Frame.st fr_tgt = Csem.Callstate fptr_tgt tyf vargs_tgt k m_tgt) *)
+      (FMATCH: match_frames (fr_src::frs_src) (fr_tgt::frs_tgt))
+      (ATEXT: at_external skenv_link_tgt prog_tgt (Frame.st fr_tgt) args_tgt)
+    :
+      match_states (State fr_src:frs_src) (Callstate args_tgt fr_tgt::frs_tgt)
       
   .
 

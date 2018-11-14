@@ -263,6 +263,17 @@ Proof.
   ii. clarify. exploit SU; eauto. i; des. esplits; eauto. xomega.
 Qed.
 
+Lemma val_le
+      su0 su1 blk v
+      (SU: UnreachC.val' su1 blk v)
+      (LE: UnreachC.le' su0 su1)
+  :
+    <<SU: UnreachC.val' su0 blk v>>
+.
+Proof.
+  ii. clarify. exploit SU; eauto. i; des. esplits; eauto. ii. eapply H. rr in LE. des.
+  eapply PRIV; eauto.
+Qed.
 (* Inductive Mem_future (P: val -> Prop) (m0 m1: Mem.mem): Prop := *)
 (* | Mem_future_alloc *)
 (*     lo hi blk *)
@@ -610,9 +621,42 @@ Module TRIAL2.
       + (* K *)
         ii. inv AFTER. ss.
         destruct retv; ss. rename m into m2.
-        esplits; eauto; cycle 2.
+        (* set (f := fun b => if su_ret b *)
+        (*                    then BCinvalid *)
+        (*                    else *)
+        (*                      if plt b (Mem.nextblock m_arg) *)
+        (*                      then bc b *)
+        (*                      else *)
+        (*                        if plt b (Mem.nextblock retv.(Retv.m)) *)
+        (*                        then BCother *)
+        (*                        else BCinvalid). *)
+        set (su1 := Unreach.mk (fun blk =>
+                                  (* if su_ret.(Unreach.unreach) blk *)
+                                  (* then true *)
+                                  (* else  *)
+                                  (*   if plt blk (Mem.nextblock m0) *)
+                                  (*   then su0.(Unreach.unreach) blk *)
+                                  (*   else false *)
+                                  if plt blk (Mem.nextblock m0)
+                                  then su0.(Unreach.unreach) blk
+                                  else su_ret.(Unreach.unreach) blk
+                               )
+                               su0.(Unreach.ge_nb)).
+        exists su1.
+        assert(LEA: UnreachC.le' su0 su1).
+        { rr in GR. des. unfold su1.
+          rr. ss. esplits; eauto.
+          ii. des_ifs. eapply LE; eauto. eapply LE0; eauto.
+        }
+        assert(LEB: UnreachC.le' su1 su_ret).
+        { rr in GR. des. unfold su1.
+          rr. ss. esplits; eauto.
+          - ii. des_ifs. eapply LE; eauto. eapply LE0; eauto.
+          - rr in LE. des. rr in LE0. des. congruence.
+        }
+        esplits; eauto; cycle 1.
         { admit "---------------------------------------------mle_excl". }
-        { refl. }
+        (* { inv SUST. inv MEM. rr. split; ss. ii. des_ifs. apply BOUND in PR. unfold Mem.valid_block in *. ss. } *)
         inv SUST.
         generalize (loc_external_result_one sg); intro ONE.
         destruct (loc_external_result sg) eqn:T; ss. clear_tac.
@@ -621,18 +665,46 @@ Module TRIAL2.
         { i.
           set pr as PR.
           des_ifs.
-          - eapply val_nextblock; eauto.
-            { Fali eapply RS; eauto. ttttttttttttttttttttttttttttttttttttttttttttttttttttt
-                                       we need horizontal le preserves some property...
-            ii. exploit (RS RA); eauto. intro VAL; des. esplits; eauto. admit "ez".
-          - move RETV at bottom. rr in RETV. des. ss.
-            clear - VAL GR LE.
+          - (* PC (past RA) *)
+            eapply val_nextblock; eauto.
+            { ii.
+              specialize (RS RA _ _ PTR). des.
+              esplits; eauto. unfold su1. ss. des_ifs.
+            }
             admit "ez".
-          - ii. unfold regset_after_external in PTR. des_ifs.
-            + exploit (RS pr); eauto. i; des. esplits; eauto. admit "ez".
-            + exploit (RS Asm.RSP); eauto. i; des. esplits; eauto. admit "ez".
+          - (* non-PC *)
+            move RETV at bottom. rr in RETV. des. ss.
+            clear - VAL GR LE LEA LEB.
+            eapply val_le; eauto.
+            eapply val_nextblock; eauto.
+            admit "ez".
+          - eapply val_nextblock with (blk0 := m0.(Mem.nextblock)); cycle 1.
+            { admit "ez". }
+            ii. unfold regset_after_external in PTR. des_ifs.
+            + exploit (RS pr); eauto. i; des. esplits; eauto.
+              unfold su1. ss. des_ifs.
+            + exploit (RS Asm.RSP); eauto. i; des. esplits; eauto.
+              unfold su1. ss. des_ifs.
         }
-        { rr in RETV. des. ss. WE NEED su_ret TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT }
+        { bar. move RETV at bottom. rr in RETV. des. ss.
+          assert(UnreachC.mem' su1 m2).
+          { inv MEM0. econs; ss; eauto; cycle 1.
+            - ii. eapply BOUND. des_ifs. eapply LEB. eapply LEA. ss.
+            - admit "ez".
+            - i. destruct (classic (Unreach.unreach su_ret blk2)); cycle 1.
+              { hexploit SOUND; eauto. i.
+                admit "val_le".
+              }
+              des_ifs.
+              assert(UNCH: (ZMap.get ofs0 (Mem.mem_contents m2) !! blk2)
+                           = (ZMap.get ofs0 (Mem.mem_contents m1) !! blk2)).
+              { inv MLE. eapply Mem.unchanged_on_contents; eauto.
+                - u. admit "we don't know this.. we need hle". tttttttttttttttttttttttttt
+                - admit "not sure".
+              }
+          }
+          admit "ez".
+        }
         { ii. exploit INIT; eauto. i; des. esplits; eauto. admit "ez". }
     - (* return *)
       inv SUST. inv FINAL. ss. clarify.

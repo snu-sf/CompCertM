@@ -404,7 +404,17 @@ Section PRSV.
         {
           intros; split; intros.
           - eapply VMTOP; eauto. eapply mem'_load_val'; eauto. rewrite IMG in *. subst f. ss. des_ifs.
-          - admit "ez".
+          -
+            (* destruct (classic (bc b <> BCinvalid)). *)
+            (* + exploit mmatch_top; eauto. i. rr in H2. des. exploit H3; eauto. *)
+            (*   { rp; try apply H0; eauto. admit "----------------". } *)
+            (*   i. ss. inv H4; econs; ss; eauto. *)
+            (*   inv H2. rewrite IMG in *. subst f. ss. des_ifs_safe. ii. *)
+            (* exploit mmatch_top; eauto. rr in MM. *)
+            (* assert(bc b <> BCinvalid). *)
+            (* { rewrite IMG in *. subst f. ss. des_ifs. ii. *)
+            (* exploit mmatch_top; eauto. rr in MM. *)
+            admit "I think this might not be true".
         }
 
         eapply sound_return_state with (bc := bc'); eauto.

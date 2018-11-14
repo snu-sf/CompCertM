@@ -104,8 +104,8 @@ Section C2R.
   (* Local Existing Instance C2R_SM. *)
   (* Local Existing Instance C2R_SU. *)
   (* Local Existing Instance C2R_SS. *)
+  Local Existing Instance SimMemInjC.SimMemInj | 0.
   Local Existing Instance SimMemInjC.SimSymbId | 0.
-  Local Existing Instance SimMemInj.SimSymbId | 0.
   Local Existing Instance SoundTop.Top | 0.
 
   Variable cps: list ModPair.t.
@@ -397,17 +397,17 @@ Proof.
   (* } *)
   (* des. *)
 
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_inj_drop cs). intro SRCINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_inj_id cs). intro SRCINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_ext_top cs). intro SRCEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_ext_unreach cs). intro SRCEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.src_id cs). intro SRCID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_drop cs). intro SRCINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_id cs). intro SRCINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_ext_top cs). intro SRCEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_ext_unreach cs). intro SRCEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_id cs). intro SRCID; des.
 
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_inj_drop asms). intro TGTINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_inj_id asms). intro TGTINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_ext_top asms). intro TGTEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_ext_unreach asms). intro TGTEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.tgt_id asms). intro TGTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop asms). intro TGTINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id asms). intro TGTINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_top asms). intro TGTEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_unreach asms). intro TGTEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms). intro TGTID; des.
 
   Ltac find_replacer := 
     repeat

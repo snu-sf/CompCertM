@@ -70,17 +70,6 @@ Proof.
   - apply proof_irr.
 Qed.
 
-Lemma sim_skenv_eq
-      skenv_link_src skenv_link_tgt
-      (SKE: SimSymbId.sim_skenv skenv_link_src skenv_link_tgt)
-  :
-    skenv_link_src = skenv_link_tgt
-.
-Proof.
-  inv SKE; ss.
-  apply genv_eq; ss.
-  -
-Abort.
 
 
 
@@ -208,10 +197,10 @@ Proof.
 Qed.
 
 Lemma asm_inj_id
-      (tgt: Asm.program)
+      (asm: Asm.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimMemInj.SimSymbId SoundTop.Top mp>>)
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
 .
@@ -220,10 +209,10 @@ Proof.
 Qed.
 
 Lemma asm_inj_drop
-      (tgt: Asm.program)
+      (asm: Asm.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
 .
@@ -236,61 +225,61 @@ Qed.
 
 
 
-Lemma src_id
-      (src: Csyntax.program)
+Lemma ccc_id
+      (ccc: Csyntax.program)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = ccc.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = ccc.(C_module)>>)
 .
 Proof.
   admit "this should hold".
 Qed.
 
-Lemma src_ext_top
-      (src: Csyntax.program)
+Lemma ccc_ext_top
+      (ccc: Csyntax.program)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = ccc.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = ccc.(C_module)>>)
 .
 Proof.
   admit "this should hold".
 Qed.
 
-Lemma src_ext_unreach
-      (src: Csyntax.program)
+Lemma ccc_ext_unreach
+      (ccc: Csyntax.program)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = ccc.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = ccc.(C_module)>>)
 .
 Proof.
   admit "this should hold".
 Qed.
 
-Lemma src_inj_id
-      (src: Csyntax.program)
+Lemma ccc_inj_id
+      (ccc: Csyntax.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimMemInj.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = ccc.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = ccc.(C_module)>>)
 .
 Proof.
   admit "this should hold".
 Qed.
 
-Lemma src_inj_drop
-      (src: Csyntax.program)
+Lemma ccc_inj_drop
+      (ccc: Csyntax.program)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemInj.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = src.(C_module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = src.(C_module)>>)
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = ccc.(C_module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = ccc.(C_module)>>)
 .
 Proof.
   admit "this should hold".

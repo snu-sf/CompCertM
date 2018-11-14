@@ -389,8 +389,7 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    rewrite Sk.of_program_defs.
-    eapply SkEnv.project_impl_spec; eauto.
+    rewrite Sk.of_program_defs. ss.
   Qed.
 
 End MODULE.

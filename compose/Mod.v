@@ -29,11 +29,10 @@ Module Mod.
     get_sk: datatype -> Sk.t;
     get_modsem: SkEnv.t -> datatype -> ModSem.t;
     data: datatype;
-    get_modsem_projected_sk: forall
+    get_modsem_skenv_spec: forall
       skenv
       ,
-        (* SkEnv.project skenv data.(get_sk).(defs) = data.(get_modsem skenv).(ModSem.skenv) *)
-        <<PROJECTED: SkEnv.project_spec skenv data.(get_sk).(defs) data.(get_modsem skenv).(ModSem.skenv)>>
+        <<PROJECTED: SkEnv.project skenv data.(get_sk).(defs) = data.(get_modsem skenv).(ModSem.skenv)>>
     ;
     (* TODO: What is the exact spec we need here? *)
     (* get_modsem_sk_skenv_iso: forall *)
@@ -43,6 +42,18 @@ Module Mod.
     (* ; *)
   }
   .
+
+  Lemma get_modsem_projected_sk
+        (md: t)
+        skenv
+    :
+      <<PROJECTED: SkEnv.project_spec skenv ((md.(get_sk) md.(data)).(defs))
+                                      ((md.(get_modsem) skenv) md.(data)).(ModSem.skenv)>>
+  .
+  Proof.
+    erewrite <- get_modsem_skenv_spec.
+    eapply SkEnv.project_impl_spec.
+  Qed.
 
   Definition sk (md: t): Sk.t := md.(get_sk) md.(data).
 

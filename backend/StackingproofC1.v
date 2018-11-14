@@ -1239,7 +1239,7 @@ Proof.
         inv MLE. rewrite <- TGTPARENTEQNB.
         inv SIMSKENV. ss.
         destruct SIMSKENVLINK. inv H. inv SIMSKENV.
-        rewrite <- NEXT. auto.
+        auto.
       * psimpl. zsimpl. rp; eauto.
     + econs; ss; eauto with congruence; cycle 1.
       { assert(MLE2: SimMemInj.le' sm0 sm1).
@@ -1415,7 +1415,7 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - econs; eauto. admit "easy".
+  - admit "easy".
   - ii. eapply sim_modsem; eauto.
 Unshelve.
 Qed.

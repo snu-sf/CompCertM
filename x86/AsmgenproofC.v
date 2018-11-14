@@ -29,7 +29,7 @@ Variable sm_link: SimMem.t.
 Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (SM := SimMemExtends)
+  ModSemPair.mk (SM := SimMemExt)
                 (MachC.modsem return_address_offset skenv_link_src prog)
                 (AsmC.modsem skenv_link_tgt tprog) tt sm_link.
 
@@ -176,12 +176,12 @@ Proof.
         exfalso. eapply Senv.block_is_volatile_below in EQ. subst ge.
         clear - SIMSKENVLINK MWF MEMWF EQ. apply Mem.mext_next in MWF. rewrite MWF in *.
         eapply Plt_strict. eapply Plt_Ple_trans. eapply EQ.
-        destruct SIMSKENVLINK. inv H. ss. rewrite NEXT. auto. }
+        destruct SIMSKENVLINK. inv H. ss. }
       econs; ss.
       * econs; ss; eauto. econs; eauto.
       * econs; eauto; ss; try by (econs; eauto).
         -- econs; eauto. i. rewrite agree_mregs0. econs.
-        -- destruct SIMSKENVLINK. inv H. rewrite NEXT. etrans; eauto.
+        -- destruct SIMSKENVLINK. inv H. etrans; eauto.
            clear - MWF SRCSTORE.
            apply Mem.mext_next in MWF. rewrite <- MWF in *.
            inv SRCSTORE. rewrite <- NB.
@@ -206,7 +206,7 @@ Proof.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
     + inv TYP. rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
-    + ss. destruct SIMSKENVLINK. inv H0. rewrite <- NEXT.
+    + ss. destruct SIMSKENVLINK. inv H0.
       apply Mem.mext_next in MWF. rewrite <- MWF in *. auto.
     + rewrite RSRA. econs; ss.
     + erewrite <- transf_function_sig; eauto.
@@ -235,8 +235,7 @@ Proof.
         -- inv ATLR; auto. exfalso; auto.
         -- destruct ra; ss; try inv H0. inv ATLR. ss.
       * rewrite RSP in *. inv NOTVOL0. ss. unfold Genv.block_is_volatile in *.
-        destruct SIMSKENVLINK. inv H. specialize (DEFS blk).
-        unfold Genv.find_var_info in *. des_ifs; ss; clarify.
+        destruct SIMSKENVLINK. inv H. des_ifs.
     + instantiate (1:=mk m1 m2'). econs; ss; eauto.
     + ss.
 

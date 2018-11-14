@@ -424,17 +424,17 @@ Next Obligation.
   - etransitivity; try apply TGTLE; eauto.
 Qed.
 Next Obligation.
+  set (SkEnv.project skenv_link_src (defs sk_src)) as skenv_proj_src.
+  generalize (SkEnv.project_impl_spec skenv_link_src (defs sk_src)); intro LESRC.
+  set (SkEnv.project skenv_link_tgt (defs sk_tgt)) as skenv_proj_tgt.
+  generalize (SkEnv.project_impl_spec skenv_link_tgt (defs sk_tgt)); intro LETGT.
   exploit SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto.
   i; des.
   inv SIMSKENV. inv LESRC. inv LETGT.
   econs; eauto.
   { inv INJECT.
     econs; ii; eauto.
-    - eapply DOMAIN; eauto. rewrite NEXT. ss.
-    - eapply IMAGE; eauto. rewrite NEXT. ss.
   }
-  { rewrite <- NEXT. ss. }
-  { rewrite <- NEXT. ss. }
 Qed.
 Next Obligation.
   exploit SimSymbId.sim_skenv_func_bisim; eauto. { eapply SIMSKENV. } i; des.
@@ -451,8 +451,8 @@ Next Obligation.
     rpapply FUNCTGT. f_equal.
     { inv SIMFPTR; ss. des_ifs.
       unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-      exploit IMAGE; eauto. { rewrite NEXT. eapply Genv.genv_defs_range; eauto. } i; clarify.
-      exploit DOMAIN; eauto. { rewrite <- DEFS in *. eapply Genv.genv_defs_range; eauto. } i; clarify.
+      exploit IMAGE; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify.
+      exploit DOMAIN; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify.
       rewrite e. rewrite Ptrofs.add_zero in *. clarify.
     }
 Qed.

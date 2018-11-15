@@ -6,6 +6,7 @@ Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib SemProps.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program.
+Require Import BehaviorsC.
 
 Set Implicit Arguments.
 
@@ -1230,3 +1231,30 @@ c0 + empty
   End PLANB0.
 
 End PRESERVATION.
+
+
+Theorem upperbound_b_correct
+        (cprog: Csyntax.program)
+        (MAIN: exists main_f,
+            (<<INTERNAL: cprog.(prog_defmap) ! (cprog.(prog_main)) = Some (Gfun (Internal main_f))>>)
+            /\
+            (<<SIG: type_of_function main_f = Tfunction Tnil type_int32s cc_default>>))
+  :
+    (<<REFINE: improves (Csem.semantics cprog) (Sem.sem (map CsemC.module [cprog]))>>)
+.
+Proof.
+  eapply bsim_improves.
+  eapply mixed_to_backward_simulation.
+  eapply transf_program_correct; eauto.
+  { ss. }
+  { ii. rr. inv H. ss. des_ifs_safe.
+    des.
+    apply Genv.find_def_symbol in INTERNAL. des. unfold fundef in *.
+    rewrite INTERNAL in *. clarify.
+    unfold Genv.find_funct_ptr. des_ifs.
+  }
+  { admit "remove this". }
+Unshelve.
+  { admit "remove this". }
+Qed.
+

@@ -66,7 +66,13 @@ c0 + empty
   (* Let tge_ce : composite_env := prog_comp_env prog. *)
   Let tge := load_genv tprog skenv_link_tgt.
 (* Inductive match_states_aux : Csem.State -> Sem.state -> nat -> Prop := *)
+  Definition local_genv (p : Csyntax.program) :=
+    (skenv_link_src.(SkEnv.project) p.(defs)).(revive) p.
 
+  Lemma skenv_link_same:
+    skenv_link_src = skenv_link_tgt.
+  Proof.
+  Admitted.
   
   (*
   (c0 * c1) + ctx
@@ -143,8 +149,8 @@ c0 + empty
       (MATCH: match_frames frs_src frs_tgt)
       (MOD: In m ctx)
       (CTX1: fr_src = Frame.mk (Mod.get_modsem m skenv_link_src (Mod.data m)) st1)
-      (CTX2: fr_tgt = Frame.mk (Mod.get_modsem m skenv_link_tgt (Mod.data m)) st2)
-      (* (SAME: st1 = st2) *)
+      (CTX2: fr_tgt = Frame.mk (Mod.get_modsem m skenv_link_src (Mod.data m)) st2)
+      (SAME: st1 = st2)
     :
       match_frames (fr_src::frs_src) (fr_src::frs_tgt)
   | match_frames_cons_c_one
@@ -200,9 +206,9 @@ c0 + empty
   Inductive match_states : Sem.state -> Sem.state -> nat -> Prop :=
   | match_regular_states
       frs_src frs_tgt
-      (FMATCH: match_frames frs_src frs_tgt)
+      (FMATCH: match_frames (frs_src) (frs_tgt))
     :
-      match_states (State frs_src) (State frs_tgt) 0
+      match_states (State (frs_src)) (State (frs_tgt)) 0
   | match_call_states
       args_src frs_src args_tgt frs_tgt ms1 ms2
       (OWNER1: Ge.find_fptr_owner ge (Args.fptr args_src) ms1)
@@ -211,18 +217,42 @@ c0 + empty
       (OWNER: match_owner ms1 ms2)
     :
       match_states (Callstate args_src frs_src) (Callstate args_tgt frs_tgt) 0
-  | match_reg_call
-      prog_tgt fr_tgt fr_src
-      frs_src frs_tgt args_tgt
+  | match_extcall_states
+      fr_src fr_tgt frs_src frs_tgt prog_tgt
+      fptr tyf args k m
       (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
-      (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog')
-      (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_tgt prog_tgt)
       (FMATCH: match_frames (fr_src::frs_src) (fr_tgt::frs_tgt))
-      (ATEXT: ModSem.at_external (Frame.ms fr_tgt) (Frame.st fr_tgt) args_tgt)
+      (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog')
+      (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_src prog_tgt)
+      (FRAMETGT: fr_tgt = Frame.mk (CsemC.modsem skenv_link_src prog_tgt) (Csem.Callstate fptr tyf args k m))
+      (EXTCALL: external_state (Build_genv (local_genv prog_tgt) (prog_comp_env prog_tgt)) (Csem.Callstate fptr tyf args k m))
     :
-      match_states (State (fr_src::frs_src)) (Callstate args_tgt (fr_tgt::frs_tgt)) 0      
+      match_states (State (fr_src::frs_src)) (State (fr_tgt::frs_tgt)) 1
+  | match_ret_states
+      fr_src fr_tgt frs_src frs_tgt prog_tgt
+      m r
+      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
+      (FMATCH: match_frames (fr_src::frs_src) (fr_tgt::frs_tgt))
+      (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog')
+      (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_src prog_tgt)
+      (FRAMETGT: fr_tgt = Frame.mk (CsemC.modsem skenv_link_src prog_tgt) (Csem.Returnstate r Kstop m))
+    :
+      match_states (State (fr_src::frs_src)) (State (fr_tgt::frs_tgt)) 1
   .
+  (* | match_reg_call *) (* this match case isn't necessary *)
+  (*     prog_tgt fr_tgt fr_src *)
+  (*     frs_src frs_tgt args_tgt *)
+  (*     (PROG: prog_tgt = prog1 \/ prog_tgt = prog2) *)
+  (*     (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog') *)
+  (*     (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_tgt prog_tgt) *)
+  (*     (FMATCH: match_frames (fr_src::frs_src) (fr_tgt::frs_tgt)) *)
+  (*     (ATEXT: ModSem.at_external (Frame.ms fr_tgt) (Frame.st fr_tgt) args_tgt) *)
+  (*   : *)
+  (*     match_states (State (fr_src::frs_src)) (Callstate args_tgt (fr_tgt::frs_tgt))       *)
 
+  End PLANB1.
+
+End PRESERVATION.
   (* 
   Inlining
   src - not inlined 
@@ -237,113 +267,113 @@ c0 + empty
   5. ret - reg
   *)
 
-  Inductive match_states: RTL.state -> RTL.state -> Prop :=
-  | match_regular_states: forall stk f sp pc rs m stk' f' sp' rs' m' F fenv ctx
-        (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs')
-        (COMPAT: fenv_compat prog fenv)
-        (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code))
-        (AG: agree_regs F ctx rs rs')
-        (SP: F sp = Some(sp', ctx.(dstk)))
-        (MINJ: Mem.inject F m m')
-        (VB: Mem.valid_block m' sp')
-        (PRIV: range_private F m m' sp' (ctx.(dstk) + ctx.(mstk)) f'.(fn_stacksize))
-        (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned)
-        (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)),
-      match_states (State stk f (Vptr sp Ptrofs.zero true) pc rs m)
-                   (State stk' f' (Vptr sp' Ptrofs.zero true) (spc ctx pc) rs' m')
-  | match_call_states: forall stk fptr sg tfptr args m stk' args' m' F
-        (MS: match_stacks F m m' stk stk' (Mem.nextblock m'))
-        (FPTR: Val.inject F fptr tfptr)
-        (VINJ: Val.inject_list F args args')
-        (MINJ: Mem.inject F m m'),
-      match_states (Callstate stk fptr sg args m)
-                   (Callstate stk' tfptr sg args' m')
-  | match_call_regular_states: forall stk fptr sg f vargs m stk' f' sp' rs' m' F fenv ctx ctx' pc' pc1' rargs
-        (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs')
-        (FPTR: Genv.find_funct ge fptr = Some (Internal f))
-        (COMPAT: fenv_compat prog fenv)
-        (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code))
-        (BELOW: context_below ctx' ctx)
-        (NOP: f'.(fn_code)!pc' = Some(Inop pc1'))
-        (MOVES: tr_moves f'.(fn_code) pc1' (sregs ctx' rargs) (sregs ctx f.(fn_params)) (spc ctx f.(fn_entrypoint)))
-        (VINJ: list_forall2 (val_reg_charact F ctx' rs') vargs rargs)
-        (MINJ: Mem.inject F m m')
-        (VB: Mem.valid_block m' sp')
-        (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize))
-        (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned)
-        (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)),
-      match_states (Callstate stk fptr sg vargs m)
-                   (State stk' f' (Vptr sp' Ptrofs.zero true) pc' rs' m')
-  | match_return_states: forall stk v m stk' v' m' F
-        (MS: match_stacks F m m' stk stk' (Mem.nextblock m'))
-        (VINJ: Val.inject F v v')
-        (MINJ: Mem.inject F m m'),
-      match_states (Returnstate stk v m)
-                   (Returnstate stk' v' m')
-  | match_return_regular_states: forall stk v m stk' f' sp' rs' m' F ctx pc' or rinfo
-        (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs')
-        (RET: ctx.(retinfo) = Some rinfo)
-        (AT: f'.(fn_code)!pc' = Some(inline_return ctx or rinfo))
-        (VINJ: match or with None => v = Vundef | Some r => Val.inject F v rs'#(sreg ctx r) end)
-        (MINJ: Mem.inject F m m')
-        (VB: Mem.valid_block m' sp')
-        (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize))
-        (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned)
-        (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)),
-      match_states (Returnstate stk v m)
-                   (State stk' f' (Vptr sp' Ptrofs.zero true) pc' rs' m').
+(*   Inductive match_states: RTL.state -> RTL.state -> Prop := *)
+(*   | match_regular_states: forall stk f sp pc rs m stk' f' sp' rs' m' F fenv ctx *)
+(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
+(*         (COMPAT: fenv_compat prog fenv) *)
+(*         (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code)) *)
+(*         (AG: agree_regs F ctx rs rs') *)
+(*         (SP: F sp = Some(sp', ctx.(dstk))) *)
+(*         (MINJ: Mem.inject F m m') *)
+(*         (VB: Mem.valid_block m' sp') *)
+(*         (PRIV: range_private F m m' sp' (ctx.(dstk) + ctx.(mstk)) f'.(fn_stacksize)) *)
+(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
+(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)), *)
+(*       match_states (State stk f (Vptr sp Ptrofs.zero true) pc rs m) *)
+(*                    (State stk' f' (Vptr sp' Ptrofs.zero true) (spc ctx pc) rs' m') *)
+(*   | match_call_states: forall stk fptr sg tfptr args m stk' args' m' F *)
+(*         (MS: match_stacks F m m' stk stk' (Mem.nextblock m')) *)
+(*         (FPTR: Val.inject F fptr tfptr) *)
+(*         (VINJ: Val.inject_list F args args') *)
+(*         (MINJ: Mem.inject F m m'), *)
+(*       match_states (Callstate stk fptr sg args m) *)
+(*                    (Callstate stk' tfptr sg args' m') *)
+(*   | match_call_regular_states: forall stk fptr sg f vargs m stk' f' sp' rs' m' F fenv ctx ctx' pc' pc1' rargs *)
+(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
+(*         (FPTR: Genv.find_funct ge fptr = Some (Internal f)) *)
+(*         (COMPAT: fenv_compat prog fenv) *)
+(*         (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code)) *)
+(*         (BELOW: context_below ctx' ctx) *)
+(*         (NOP: f'.(fn_code)!pc' = Some(Inop pc1')) *)
+(*         (MOVES: tr_moves f'.(fn_code) pc1' (sregs ctx' rargs) (sregs ctx f.(fn_params)) (spc ctx f.(fn_entrypoint))) *)
+(*         (VINJ: list_forall2 (val_reg_charact F ctx' rs') vargs rargs) *)
+(*         (MINJ: Mem.inject F m m') *)
+(*         (VB: Mem.valid_block m' sp') *)
+(*         (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize)) *)
+(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
+(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)), *)
+(*       match_states (Callstate stk fptr sg vargs m) *)
+(*                    (State stk' f' (Vptr sp' Ptrofs.zero true) pc' rs' m') *)
+(*   | match_return_states: forall stk v m stk' v' m' F *)
+(*         (MS: match_stacks F m m' stk stk' (Mem.nextblock m')) *)
+(*         (VINJ: Val.inject F v v') *)
+(*         (MINJ: Mem.inject F m m'), *)
+(*       match_states (Returnstate stk v m) *)
+(*                    (Returnstate stk' v' m') *)
+(*   | match_return_regular_states: forall stk v m stk' f' sp' rs' m' F ctx pc' or rinfo *)
+(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
+(*         (RET: ctx.(retinfo) = Some rinfo) *)
+(*         (AT: f'.(fn_code)!pc' = Some(inline_return ctx or rinfo)) *)
+(*         (VINJ: match or with None => v = Vundef | Some r => Val.inject F v rs'#(sreg ctx r) end) *)
+(*         (MINJ: Mem.inject F m m') *)
+(*         (VB: Mem.valid_block m' sp') *)
+(*         (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize)) *)
+(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
+(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)), *)
+(*       match_states (Returnstate stk v m) *)
+(*                    (State stk' f' (Vptr sp' Ptrofs.zero true) pc' rs' m'). *)
 
 
-  Inductive match_stacks (F: meminj) (m m': mem):
-             list stackframe -> list stackframe -> block -> Prop :=
-  | match_stacks_nil: forall bound1 bound
-        (MG: match_globalenvs F bound1)
-        (BELOW: Ple bound1 bound),
-      match_stacks F m m' nil nil bound
-  | match_stacks_cons: forall res f sp pc rs stk f' sp' rs' stk' bound fenv ctx
-        (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs')
-        (COMPAT: fenv_compat prog fenv)
-        (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code))
-        (AG: agree_regs F ctx rs rs')
-        (SP: F sp = Some(sp', ctx.(dstk)))
-        (PRIV: range_private F m m' sp' (ctx.(dstk) + ctx.(mstk)) f'.(fn_stacksize))
-        (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned)
-        (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize))
-        (RES: Ple res ctx.(mreg))
-        (BELOW: Plt sp' bound),
-      match_stacks F m m'
-                   (Stackframe res f (Vptr sp Ptrofs.zero true) pc rs :: stk)
-                   (Stackframe (sreg ctx res) f' (Vptr sp' Ptrofs.zero true) (spc ctx pc) rs' :: stk')
-                   bound
-  | match_stacks_untailcall: forall stk res f' sp' rpc rs' stk' bound ctx
-        (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs')
-        (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize))
-        (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned)
-        (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize))
-        (RET: ctx.(retinfo) = Some (rpc, res))
-        (BELOW: Plt sp' bound),
-      match_stacks F m m'
-                   stk
-                   (Stackframe res f' (Vptr sp' Ptrofs.zero true) rpc rs' :: stk')
-                   bound
+(*   Inductive match_stacks (F: meminj) (m m': mem): *)
+(*              list stackframe -> list stackframe -> block -> Prop := *)
+(*   | match_stacks_nil: forall bound1 bound *)
+(*         (MG: match_globalenvs F bound1) *)
+(*         (BELOW: Ple bound1 bound), *)
+(*       match_stacks F m m' nil nil bound *)
+(*   | match_stacks_cons: forall res f sp pc rs stk f' sp' rs' stk' bound fenv ctx *)
+(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
+(*         (COMPAT: fenv_compat prog fenv) *)
+(*         (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code)) *)
+(*         (AG: agree_regs F ctx rs rs') *)
+(*         (SP: F sp = Some(sp', ctx.(dstk))) *)
+(*         (PRIV: range_private F m m' sp' (ctx.(dstk) + ctx.(mstk)) f'.(fn_stacksize)) *)
+(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
+(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)) *)
+(*         (RES: Ple res ctx.(mreg)) *)
+(*         (BELOW: Plt sp' bound), *)
+(*       match_stacks F m m' *)
+(*                    (Stackframe res f (Vptr sp Ptrofs.zero true) pc rs :: stk) *)
+(*                    (Stackframe (sreg ctx res) f' (Vptr sp' Ptrofs.zero true) (spc ctx pc) rs' :: stk') *)
+(*                    bound *)
+(*   | match_stacks_untailcall: forall stk res f' sp' rpc rs' stk' bound ctx *)
+(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
+(*         (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize)) *)
+(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
+(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)) *)
+(*         (RET: ctx.(retinfo) = Some (rpc, res)) *)
+(*         (BELOW: Plt sp' bound), *)
+(*       match_stacks F m m' *)
+(*                    stk *)
+(*                    (Stackframe res f' (Vptr sp' Ptrofs.zero true) rpc rs' :: stk') *)
+(*                    bound *)
 
-with match_stacks_inside (F: meminj) (m m': mem):
-        list stackframe -> list stackframe -> function -> context -> block -> regset -> Prop :=
-  | match_stacks_inside_base: forall stk stk' f' ctx sp' rs'
-        (MS: match_stacks F m m' stk stk' sp')
-        (RET: ctx.(retinfo) = None)
-        (DSTK: ctx.(dstk) = 0),
-      match_stacks_inside F m m' stk stk' f' ctx sp' rs'
-  | match_stacks_inside_inlined: forall res f sp pc rs stk stk' f' fenv ctx sp' rs' ctx'
-        (MS: match_stacks_inside F m m' stk stk' f' ctx' sp' rs')
-        (COMPAT: fenv_compat prog fenv)
-        (FB: tr_funbody fenv f'.(fn_stacksize) ctx' f f'.(fn_code))
-        (AG: agree_regs F ctx' rs rs')
-        (SP: F sp = Some(sp', ctx'.(dstk)))
-        (PAD: range_private F m m' sp' (ctx'.(dstk) + ctx'.(mstk)) ctx.(dstk))
-        (RES: Ple res ctx'.(mreg))
-        (RET: ctx.(retinfo) = Some (spc ctx' pc, sreg ctx' res))
-        (BELOW: context_below ctx' ctx)
-        (SBELOW: context_stack_call ctx' ctx),
-      match_stacks_inside F m m' (Stackframe res f (Vptr sp Ptrofs.zero true) pc rs :: stk)
-                                 stk' f' ctx sp' rs'.
+(* with match_stacks_inside (F: meminj) (m m': mem): *)
+(*         list stackframe -> list stackframe -> function -> context -> block -> regset -> Prop := *)
+(*   | match_stacks_inside_base: forall stk stk' f' ctx sp' rs' *)
+(*         (MS: match_stacks F m m' stk stk' sp') *)
+(*         (RET: ctx.(retinfo) = None) *)
+(*         (DSTK: ctx.(dstk) = 0), *)
+(*       match_stacks_inside F m m' stk stk' f' ctx sp' rs' *)
+(*   | match_stacks_inside_inlined: forall res f sp pc rs stk stk' f' fenv ctx sp' rs' ctx' *)
+(*         (MS: match_stacks_inside F m m' stk stk' f' ctx' sp' rs') *)
+(*         (COMPAT: fenv_compat prog fenv) *)
+(*         (FB: tr_funbody fenv f'.(fn_stacksize) ctx' f f'.(fn_code)) *)
+(*         (AG: agree_regs F ctx' rs rs') *)
+(*         (SP: F sp = Some(sp', ctx'.(dstk))) *)
+(*         (PAD: range_private F m m' sp' (ctx'.(dstk) + ctx'.(mstk)) ctx.(dstk)) *)
+(*         (RES: Ple res ctx'.(mreg)) *)
+(*         (RET: ctx.(retinfo) = Some (spc ctx' pc, sreg ctx' res)) *)
+(*         (BELOW: context_below ctx' ctx) *)
+(*         (SBELOW: context_stack_call ctx' ctx), *)
+(*       match_stacks_inside F m m' (Stackframe res f (Vptr sp Ptrofs.zero true) pc rs :: stk) *)
+(*                                  stk' f' ctx sp' rs'. *)

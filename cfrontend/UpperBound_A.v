@@ -5,7 +5,7 @@ Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program.
-Require Import Program.
+Require Import Equality.
 
 Set Implicit Arguments.
 
@@ -13,6 +13,44 @@ Set Implicit Arguments.
 
 (* TODO: move to CoqlibC *)
 Ltac et:= eauto.
+
+(* Goal (unit -> nat) = (unit -> Z). *)
+(* Proof. *)
+(* Abort. *)
+
+(* Goal forall A B1 B2, (A -> B1) = (A -> B2) -> B1 = B2. *)
+
+Lemma JMeq_app
+      X1 X2 Y1 Y2 (f1: X1 -> Y1) (f2: X2 -> Y2) x1 x2
+      (TYPX: X1 = X2)
+      (FUNC: f1 ~= f2)
+      (ARG: x1 ~= x2)
+      (TYPY: Y1 = Y2) (* Do we need this? if above goal holds, we can remove this... *)
+  :
+    f1 x1 ~= f2 x2
+.
+Proof.
+  subst.
+  eapply JMeq_eq in ARG.
+  subst.
+  ss.
+Qed.
+
+Lemma JMeq_app_strong
+      X1 X2 Y (f1: X1 -> Y) (f2: X2 -> Y) x1 x2
+      (FUNC: f1 ~= f2)
+      (TYP: X1 = X2)
+      (ARG: x1 ~= x2)
+  :
+    f1 x1 = f2 x2
+.
+Proof.
+  (* exploit JMeq_func2; eauto. intro. subst. eapply JMeq_eq in FUNC. subst. ss. *)
+  subst.
+  eapply JMeq_eq in ARG.
+  eapply JMeq_eq in FUNC.
+  clarify.
+Qed.
 
 (* TODO: move to LinkingC *)
 Lemma link_list_aux_empty_inv
@@ -97,6 +135,16 @@ Fixpoint app_cont (k0 k1: cont) {struct k0}: cont :=
   end
 .
 
+Definition get_cont (st0: Csem.state): option cont :=
+  match st0 with
+  | Csem.State _ _ k0 _ _ => Some k0
+  | Csem.ExprState _ _ k0 _ _ => Some k0
+  | Csem.Callstate _ _ _ k0 _ => Some k0
+  | Csem.Returnstate _ k0 _ => Some k0
+  | _ => None
+  end
+.
+
 (* put k0 inside k1 *)
 (* Fixpoint app_cont (k0 k1: cont) {struct k1}: cont := *)
 (*   match k1 with *)
@@ -145,21 +193,51 @@ Section PRESERVATION.
 
   Variable cp_link cp1 cp2: Csyntax.program.
   Variable ctx: Syntax.program.
-  Hypothesis LINK : link cp1 cp2 = Some cp_link.
+  Hypothesis FOCUS: link cp1 cp2 = Some cp_link.
   (* Let prog_src := cp_link.(CsemC.module) :: ctx. *)
   (* Let prog_tgt := cp1.(CsemC.module) :: cp2.(CsemC.module) :: ctx. *)
   Let prog_src := ctx ++ [cp_link.(CsemC.module)].
   Let prog_tgt := ctx ++ [cp1.(CsemC.module) ; cp2.(CsemC.module)].
+  Variable sk_link: Sk.t.
+  Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
+  Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
 
-  Definition ms_is_c (ms: ModSem.t): Prop :=
+  Lemma link_sk_match
+    :
+      <<EQ: link_sk prog_src = link_sk prog_tgt>>
+  .
+  Proof.
+    subst_locals.
+    unfold link_sk.
+    rewrite ! map_app. ss.
+    symmetry.
+    eapply link_list_snoc_commut; eauto.
+    admit "this should hold - it should be proven somewhere else too. ask @minki".
+  Qed.
+
+  Let LINKTGT: link_sk prog_tgt = Some sk_link.
+  Proof.
+    rewrite link_sk_match in *. ss.
+  Qed.
+
+
+
+
+  Definition ms_is_c0 (ms: ModSem.t): Prop :=
     exists _skenv _cprog, CsemC.modsem _skenv _cprog = ms
   .
 
-  Definition ms_is_c2 (ms: ModSem.t): Prop :=
-    (<<ST: ms.(ModSem.state) = Csem.state>>) /\
-    (<<AFTER: ms.(ModSem.after_external) ~= CsemC.after_external>>)
+  (* Definition ms_is_c1 (ms: ModSem.t): Prop := *)
+  (*   (<<ST: ms.(ModSem.state) = Csem.state>>) /\ *)
+  (*   (<<AFTER: ms.(ModSem.after_external) ~= CsemC.after_external>>) /\ *)
+  (*   (<<FINAL: ms.(ModSem.final_frame) ~= CsemC.final_frame>>) *)
+  (* . *)
+  Notation " 'ms_is_c1' ms" :=
+    ((<<CST0: ms.(ModSem.state) = Csem.state>>) /\
+     (<<CAFT0: ms.(ModSem.after_external) ~= CsemC.after_external>>) /\
+     (<<CFIN0: ms.(ModSem.final_frame) ~= CsemC.final_frame>>))
+      (at level 50, no associativity, only parsing)
   .
-
   (* Inductive cont_frame_wf (conts: list Frame.t): Prop := *)
   (* | cont_wf_intro *)
   (*     (WF: forall *)
@@ -178,13 +256,15 @@ Section PRESERVATION.
       sum_cont [] Kstop
   | sum_cont_cons
       hd _fptr _ty _vs k0 _m
-      (HD: ms_is_c hd.(Frame.ms) /\ hd.(Frame.st) ~= Csem.Callstate _fptr _ty _vs k0 _m)
+      (HD: ms_is_c1 hd.(Frame.ms) /\ hd.(Frame.st) ~= Csem.Callstate _fptr _ty _vs k0 _m)
       tl k1
       (TL: sum_cont tl k1)
     :
       sum_cont (hd :: tl) (app_cont k0 k1)
       
   .
+
+  Variable match_focus_state: Csem.state -> Csem.state -> cont -> Prop.
 
   Inductive match_focus: Frame.t -> list Frame.t -> Prop :=
   (* | match_focus_intro *)
@@ -202,14 +282,17 @@ Section PRESERVATION.
   | match_focus_cons_right
       ms_src ms_tgt
       cst_src cst_tgt
-      (CSRC: ms_src.(ModSem.state) = Csem.state)
-      (CTGT: ms_tgt.(ModSem.state) = Csem.state)
+      (* (CSRC: ms_src.(ModSem.state) = Csem.state) *)
+      (* (CTGT: ms_tgt.(ModSem.state) = Csem.state) *)
+      (MSSRC: ms_is_c1 ms_src)
+      (MSTGT: ms_is_c1 ms_tgt)
       fptr ty vs k_src k_tgt m
-      (STSRC: cst_src ~= Csem.Callstate fptr ty vs k_src m)
-      (STTGT: cst_tgt ~= Csem.Callstate fptr ty vs k_tgt m)
+      (* (STSRC: cst_src ~= Csem.Callstate fptr ty vs k_src m) *)
+      (* (STTGT: cst_tgt ~= Csem.Callstate fptr ty vs k_tgt m) *)
       tl_tgt k_tl_tgt
       (SUM: sum_cont tl_tgt k_tl_tgt)
       (CONT: k_src = app_cont k_tgt k_tl_tgt)
+      (ST: match_focus_state cst_src cst_tgt k_tl_tgt)
     :
       match_focus (Frame.mk ms_src cst_src) ((Frame.mk ms_tgt cst_tgt) :: tl_tgt)
   .
@@ -276,19 +359,6 @@ Section PRESERVATION.
       match_states (Callstate args frs_src) (Callstate args frs_tgt)
   .
 
-  Lemma link_sk_match
-    :
-      <<EQ: link_sk prog_src  = link_sk prog_tgt>>
-  .
-  Proof.
-    subst_locals.
-    unfold link_sk.
-    rewrite ! map_app. ss.
-    symmetry.
-    eapply link_list_snoc_commut; eauto.
-    admit "this should hold - it should be proven somewhere else too. ask @minki".
-  Qed.
-
   Lemma init_fsim
         st_init_src
         (INIT: initial_state prog_src st_init_src)
@@ -315,7 +385,7 @@ Section PRESERVATION.
   Lemma final_bsim
         retv
         frs_src frs_tgt
-        (STK: match_stacks frs_src frs_tgt)
+        (MATCH: match_states (State frs_src) (State frs_tgt))
         (FINAL: final_state (State frs_tgt) retv)
         (SAFESRC: safe (sem prog_src) (State frs_src))
     :
@@ -323,7 +393,7 @@ Section PRESERVATION.
   .
   Proof.
     ss.
-    inv FINAL. inv STK; ss.
+    inv FINAL. inv MATCH; ss. inv STK; ss.
     - (* ctx *)
       exploit match_stacks_right_nil; eauto. i; des; clarify.
       econs; eauto.
@@ -335,62 +405,72 @@ Section PRESERVATION.
       econs; et.
       inv HD. ss. inv SUM.
       rewrite app_cont_stop_right in *.
-      rewrite <- STSRC in STTGT.
-      (* Set Printing All. *)
+      (* abstr (ModSem.state ms_tgt) st_tgt; abstr (ModSem.state ms_src) st_src. *)
+      (* Fail abstr (ModSem.state ms_src) st_src; abstr (ModSem.state ms_tgt) st_tgt. *)
+      erewrite JMeq_app_strong; try apply FINAL0; ss.
+      des. subst. simpl_depind.
+      eapply JMeq_app; eauto.
+      { etrans; eauto. }
+      { etrans; eauto. }
+      { etrans; eauto. }
+  Qed.
 
-      symmetry in STTGT.
-      pattern cst_src.
-      eapply JMeq_ind_r; cycle 1.
-      { clear - STTGT. Set Printing All. eapply STTGT. rewrite STTGT. ss. }
-      
-      eapply STTGT.
-
-
-      clear - CSRC CTGT STTGT.
-
-      remember (ModSem.state ms_tgt) as TT_tgt.
-      Set Printing All.
-      assert(EQ: TT_tgt = (ModSem.state ms_src)).
-      { subst. rewrite CSRC. rewrite CTGT. ss. }
-      clear HeqTT_tgt. clear CTGT.
-      subst TT_tgt.
-      apply JMeq_eq in STTGT.
-      Unset Printing All.
-      rewrite EQ in STTGT.
-      
-
-      Set Printing All.
-      remember (ModSem.state ms_src) as TT_src.
-      Unset Printing All.
-      clear HeqTT_src.
-      Set Printing All.
-      Unset Printing All.
-
-      clear STTGT. clear CSRC. clear - CTGT.
-      Set Printing All.
-      clear CTGT.
-      remember (ModSem.state ms_tgt) as TT_tgt.
-      eapply JMeq_ind_r. eauto.
-      Set Printing All.
-      remember (ModSem.state ms_tgt) as TT_tgt.
-      assert(ms_src ~= True).
-      { subst TT.
-      }
-      pattern ms_src.
-      exfalso.
-      subst TT.
-      exfalso.
-      subst TT.
-      rewrite CSRC in STTGT.
-      remember 
-      subst 
-      rewrite CSRC in STTGT.
-      exploit JMeq_eq; try apply STTGT. Set Printing All. eauto.
-      apply JMeq_eq in STTGT.
-      simpl_depind.
-      JMeq_ind_r
-      rewrite CSRC in cst_src.
-      simpl_depind.
+  Lemma final_fsim
+        retv
+        frs_src frs_tgt
+        (MATCH: match_states (State frs_src) (State frs_tgt))
+        (FINAL: final_state (State frs_src) retv)
+    :
+      <<DFINAL: Dfinal_state (sem prog_tgt) (State frs_tgt) retv>>
+  .
+  Proof.
+    rr. econs; ss; et.
+    {
+      inv FINAL. inv MATCH; ss. inv STK; ss.
+      - (* ctx *)
+        inv TAIL. econs; et.
+      - (* focus *)
+        inv TAIL. rewrite app_nil_r in *. inv HD. des. ss.
+        assert(T: final_frame (Csem.Callstate fptr ty vs (app_cont k_tgt k_tl_tgt) m)
+                              ~= ModSem.final_frame ms_src cst_src).
+        { eapply JMeq_app; eauto. }
+        assert(final_frame (Csem.Callstate fptr ty vs (app_cont k_tgt k_tl_tgt) m) retv0).
+        { erewrite JMeq_app_strong; cycle 1.
+          { apply T. }
+          { refl. }
+          { refl. }
+          ss.
+        }
+        inv H.
+        ss.
+        rewrite CST1 in *.
+        inv FINAL0; ss. inv H; ss; ModSem.tac.
+      admit "".
+    }
+    { ii; ss. inv FINAL0; inv FINAL1; ss. determ_tac ModSem.final_frame_dtm. rewrite INT in *. clarify. }
+    { ii. ss. des_ifs; ss.
+      inv FINAL. inv MATCH; ss. inv STK; ss.
+      - (* ctx *)
+        inv TAIL. inv H; ModSem.tac.
+      - (* focus *)
+        inv TAIL. rewrite app_nil_r in *. inv FINAL0; ss. inv H; ss; ModSem.tac.
+    }
+      + rewrite CFIN1 in FINAL1. inv HD.
+      exploit app_length; try rewrite H1; eauto. intro LEN; ss.
+      hexploit match_focus_nonnil; et. i; des.
+      destruct hds_tgt; ss. destruct tail_tgt; ss; try xomega. destruct hds_tgt; ss. clarify. clear_tac.
+      exploit match_stacks_right_nil; et. i; des; clarify.
+      econs; et.
+      inv HD. ss. inv SUM.
+      rewrite app_cont_stop_right in *.
+      (* abstr (ModSem.state ms_tgt) st_tgt; abstr (ModSem.state ms_src) st_src. *)
+      (* Fail abstr (ModSem.state ms_src) st_src; abstr (ModSem.state ms_tgt) st_tgt. *)
+      erewrite JMeq_app_strong; try apply FINAL0; ss.
+      des. subst. simpl_depind.
+      eapply JMeq_app; eauto.
+      { etrans; eauto. }
+      { etrans; eauto. }
+      { etrans; eauto. }
   Qed.
 
   Lemma match_xsim
@@ -405,7 +485,49 @@ Section PRESERVATION.
     inv MATCH.
     - (* normal state *)
       ss.
+      destruct frs_src; ss.
+      { inv STK. admit "spurious case". }
+      rename t into fr_src.
+      destruct frs_tgt; ss.
+      { exploit match_stacks_right_nil; et. i; des. clarify. }
+      rename t into fr_tgt.
+      destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_call) fr_tgt.(Frame.st))).
+      { (* tgt call *)
+        destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
+        - (* src call *)
+          left. econs; et.
+          admit "ez".
+        - (* src focus *)
+          admit "hard".
+      }
+      destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_return) fr_tgt.(Frame.st))).
+      { (* tgt return *)
+        r in H0. des.
+        right. econs; et.
+        - admit "ez".
+        - i. econs; ss; et. des_ifs.
+        left. econs; et.
+        - ii; ss. inv FINALSRC. inv STK; cycle 1.
+          + inv TAIL. econs. ss. ss.
+      }
+      destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
+      { (* call *)
+        r in H. des.
+        left.
+        econs; eauto.
+        admit "TODO".
+      }
+      destruct (classic (fr_src.(Frame.ms).(ModSem.is_return) fr_src.(Frame.st))).
+      { (* ret *)
+        admit "TODO".
+      }
+      admit "step case".
+    -
+      assert((fr_src.(Frame.ms).(ModSem.is_step) fr_src.(Frame.st))).
       right. econs; eauto.
+      { i. exploit final_bsim; eauto. i; des. esplits; eauto. eapply star_refl. }
+      i.
+      
   Qed.
 
   Theorem upperbound_a_xsim

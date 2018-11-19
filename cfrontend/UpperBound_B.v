@@ -888,9 +888,22 @@ c0 + empty
         instantiate (1:=if_sig). des_ifs.
   Qed.
 
+  Lemma preservation_prog
+        st0 tr st1
+        (WT: wt_state ge st0)
+        (STEP: Csem.step ge st0 tr st1)
+    :
+      <<WT: wt_state ge st1>>
+  .
+  Proof.
+    eapply preservation; try refl; eauto.
+    - ii. eapply Genv.find_def_symbol. esplits; eauto.
+    - i. admit "ez".
+  Qed.
+
   Lemma match_state_xsim
     :
-      forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n) (WTST: wt_state prog st_src),
+      forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n) (WTST: wt_state ge st_src),
         xsim (Csem.semantics prog) (Sem.sem tprog) lt n%nat st_src st_tgt.
   Proof.
     pcofix CIH. i. pfold.
@@ -1000,17 +1013,20 @@ c0 + empty
                         - inv FINAL; inv FINAL0. inv AFTER; inv AFTER0.
                           split; eauto.
                           { econs. }
+                          { ii; ss. repeat f_equal. des.
+                            determ_tac typify_c_dtm.
+                          }
                       }
                       { inv FINAL. }
                       { red. i. inv H; auto. inv STEP. }
                     +++ (* step *)
-                      ss. eapply step_return.
-                      ss. econs.
+                      ss. eapply step_return; ss.
+                      admit "remove this".
                   --- traceEq.
                ** traceEq.
             ++ right. eapply CIH.
                { econs. ss. }
-               { ss. eapply preservation; eauto. }
+               { ss. eapply preservation_prog; eauto. }
       + (* initial state *)
         inversion INITSRC; subst; ss.
         left. econs; i.
@@ -1062,6 +1078,8 @@ c0 + empty
                         rewrite FINDF0 in FINDF1. inversion FINDF1. subst fd0.
                         rewrite TYPE0 in TYPE1.
                         rewrite TYPE1 in *. auto.
+                        repeat f_equal.
+                        inversion TYP. inversion TYP0. congruence.
                       }
                       { inv FINAL. }
                       { red. i. inv H3. auto. }
@@ -1094,6 +1112,10 @@ c0 + empty
                         rewrite H3. econs; ss; des_ifs; eauto.
                         { unfold fundef in *.
                           exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero true)); eauto. }
+                        { unfold type_of_function in *. clarify. econs; ss.
+                          - destruct (fn_params f) eqn:T; ss. des_ifs.
+                          - admit "size_arguments - add in typechecking".
+                        }
                     +++ (* step_internal *)
                       econs; i.
                       *** (* determ *)
@@ -1139,7 +1161,7 @@ c0 + empty
                   right. eapply CIH.
                   { ss. instantiate (1:= 1%nat). inv INITTGT.
                     eapply match_states_intro. ss. }
-                  { ss. eapply preservation; eauto. }
+                  { ss. eapply preservation_prog; eauto. }
             ++ (* main is syscall *)
               inv SYSMOD. inv INITTGT. ss.
               assert (SAME: sk_tgt = sk_link) by (Eq; auto). clear INITSK.
@@ -1180,7 +1202,7 @@ c0 + empty
             ++ left. eapply plus_one. eauto.
             ++ right. eapply CIH.
                { econs; eauto. }
-               { ss. eapply preservation; eauto. }
+               { ss. eapply preservation_prog; eauto. }
         * (* progress *)
           specialize (SAFESRC _ (star_refl _ _ _)). des.
           -- (* final *)
@@ -1213,7 +1235,7 @@ c0 + empty
                     subst. ss. }
                 i. eauto.
               }
-              { inv WTST; ss. eapply WTKS. ii. clarify. ss. congruence. }
+              { inv WTST; ss. exploit WTKS; eauto. { ii. clarify. } esplits; ss; eauto. rr. des. des_ifs. }
             ++ (* internal *)
               exploit progress_step; eauto.
               Unshelve. auto. auto. auto.

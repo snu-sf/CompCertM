@@ -222,9 +222,35 @@ Section PRESERVATION.
   Variable sk_link: Sk.t.
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
   Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
-  Let ge_cp_link := (revive (SkEnv.project skenv_link (defs cp_link)) cp_link).
-  Let ge_cp0 := (revive (SkEnv.project skenv_link (defs cp0)) cp0).
-  Let ge_cp1 := (revive (SkEnv.project skenv_link (defs cp1)) cp1).
+  Notation " 'geof' cp" := (Build_genv (revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env))
+                           (at level 50, no associativity, only parsing).
+  Let ge_cp_link: genv := geof cp_link.
+  Let ge_cp0: genv := geof cp0.
+  Let ge_cp1: genv := geof cp1.
+  (* Let ge_cp_link: genv := Build_genv (revive (SkEnv.project skenv_link (defs cp_link)) cp_link) cp_link.(prog_comp_env). *)
+  (* Let ge_cp0: genv := Build_genv (revive (SkEnv.project skenv_link (defs cp0)) cp0) cp0.(prog_comp_env). *)
+  (* Let ge_cp1: genv := Build_genv (revive (SkEnv.project skenv_link (defs cp1)) cp1) cp1.(prog_comp_env). *)
+
+  Hypothesis WTPROGLINK: wt_program cp_link.
+  Hypothesis WTPROG0: wt_program cp0.
+  Hypothesis WTPROG1: wt_program cp1.
+
+
+  Hypothesis WT_EXTERNALLINK:
+    forall id ef args res cc vargs m t vres m',
+      In (id, Gfun (External ef args res cc)) cp_link.(prog_defs) ->
+      external_call ef ge_cp_link vargs m t vres m' ->
+      wt_val vres res.
+  Hypothesis WT_EXTERNAL0:
+    forall id ef args res cc vargs m t vres m',
+      In (id, Gfun (External ef args res cc)) cp0.(prog_defs) ->
+      external_call ef ge_cp0 vargs m t vres m' ->
+      wt_val vres res.
+  Hypothesis WT_EXTERNAL1:
+    forall id ef args res cc vargs m t vres m',
+      In (id, Gfun (External ef args res cc)) cp1.(prog_defs) ->
+      external_call ef ge_cp1 vargs m t vres m' ->
+      wt_val vres res.
 
   Lemma link_sk_match
     :
@@ -286,7 +312,8 @@ Section PRESERVATION.
     :
       sum_cont [] Kstop
   | sum_cont_cons
-      _fptr _ty _vs k0 _m
+      _fptr _vs k0 _m
+      _targs _tres _cconv
       (CALL: is_call_cont_strong k0)
       tl k1
       (TL: sum_cont tl k1)
@@ -294,8 +321,12 @@ Section PRESERVATION.
       (K: k2 = app_cont k0 k1)
       cp
       (FOCUS: is_focus cp)
+      (K0: exists _f _e _C _k, k0 = (Kcall _f _e _C _tres _k))
+      (* (WTTGT: exists ge_cp, wt_state ge_cp (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m)) *)
+      (WTTGT: wt_state (geof cp) (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m))
     :
-      sum_cont ((Frame.mk (CsemC.modsem skenv_link cp) (Csem.Callstate _fptr _ty _vs k0 _m)) :: tl) k2
+      sum_cont ((Frame.mk (CsemC.modsem skenv_link cp)
+                          (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m)) :: tl) k2
   .
 
   Lemma sum_cont_kstop_inv
@@ -372,6 +403,8 @@ Section PRESERVATION.
       (ST: match_focus_state cst_src cst_tgt k_tl_tgt)
       cp
       (FOCUS: is_focus cp)
+      (WTSRC: wt_state ge_cp_link cst_src)
+      (WTTGT: wt_state (geof cp) cst_tgt)
     :
       match_focus (Frame.mk (CsemC.modsem skenv_link cp_link) cst_src)
                   ((Frame.mk (CsemC.modsem skenv_link cp) cst_tgt) :: tl_tgt)
@@ -608,6 +641,59 @@ Section PRESERVATION.
     r in APP. rr. des_ifs. exploit app_cont_stop_left; et. i.
   Abort.
 
+  Lemma preservation_cp_link
+        st0 tr st1
+        (WT: wt_state ge_cp_link st0)
+        (* (INTERNAL: ~ Ctyping.is_external ge_cp_link st0) *)
+        (STEP: Csem.step ge_cp_link st0 tr st1)
+    :
+      <<WT: wt_state ge_cp_link st1>>
+  .
+  Proof.
+    (* eapply preservation_internal; try refl; et. *)
+    eapply preservation; try refl; et.
+    - admit "ez".
+    - admit "ez".
+  Qed.
+
+  Lemma preservation_cp_focus
+        cp st0 tr st1
+        (FOC: is_focus cp)
+        (WT: wt_state (geof cp) st0)
+        (* (INTERNAL: ~ Ctyping.is_external (geof cp) st0) *)
+        (STEP: Csem.step (geof cp) st0 tr st1)
+    :
+      <<WT: wt_state (geof cp) st1>>
+  .
+  Proof.
+    rr in FOC. des; clarify.
+    (* - eapply preservation_internal; try refl; et. *)
+    - eapply preservation; try refl; et.
+      + admit "ez".
+      + admit "ez".
+    (* - eapply preservation_internal; try refl; et. *)
+    - eapply preservation; try refl; et.
+      + admit "ez".
+      + admit "ez".
+  Qed.
+
+  (* TODO: move to CtypingC.v *)
+  Lemma wt_initial_frame
+        (cp: Csyntax.program) fptr vs_arg m
+        targs tres cconv
+        (INT: exists fd, Genv.find_funct (geof cp) fptr = Some (Internal fd))
+        (WTARGS: list_forall2 Val.has_type vs_arg (typlist_of_typelist targs))
+    :
+      wt_state (geof cp) (Csem.Callstate fptr (Tfunction targs tres cconv) vs_arg Kstop m)
+  .
+  Proof.
+    des.
+    econs; et.
+    - econs; et.
+    - econs; et.
+    - ii. exfalso. eapply EXT; et.
+  Qed.
+
   Lemma match_xsim
         st_src0 st_tgt0
         (MATCH: match_states st_src0 st_tgt0)
@@ -682,7 +768,7 @@ Section PRESERVATION.
           assert(TGTFIND: exists cp_top,
                     <<FINDMS: Ge.find_fptr_owner (load_genv prog_tgt skenv_link)
                                                  fptr_arg (CsemC.modsem skenv_link cp_top)>>
-                              /\ <<FOUCS: is_focus cp_top>>).
+                              /\ <<FOCUS: is_focus cp_top>>).
           (* actually it is counterpart of current cp *)
           { admit "this should hold". }
           des.
@@ -707,23 +793,26 @@ Section PRESERVATION.
               econs 2; ss; et.
               { des_ifs. folder. eauto. }
               ss. econs; ss; et.
-              instantiate (1:= f).
-              admit "this should hold".
+              - instantiate (1:= f). des_ifs.
+                admit "this should hold".
+              - inv WTSRC. ss. clarify.
+                econs; ss; et.
+                + exploit list_forall2_length; et. i. rewrite H. admit "ez".
+                + admit "add size_arguments in typechecking".
             }
             { ss.
-              (* assert(WTST: wt_state cp_top (Csem.Callstate (Vptr blk Ptrofs.zero true) (type_of_function f) vs_arg Kstop m0)). *)
-              (* { admit "WT". } *)
               assert(WTPROG: wt_program cp_top).
-              { admit "WT". }
+              { rr in FOCUS1. des; clarify. }
               bar.
               (* inv WTST. ss. *)
-              inv WTPROG. specialize (H id f). specialize (H (admit "this should hold")).
+              inv WTPROG. specialize (H id f). specialize (H (admit "ez")).
               inv H.
               econs; ss; et.
               { admit "determinate - SemProps.v". }
               des_ifs.
               econs 3; ss; et.
               rr. right.
+              (* ZmFkZDJkODhmOGM1YWI0NDI1YjEzMDFi *)
               econs; ss; et.
               - inv FINDMS. ss. admit "ez".
               - admit "sizeof_stable".
@@ -738,8 +827,37 @@ Section PRESERVATION.
             rewrite ! app_comm_cons.
             econs 3; et.
             econs; et.
+            { econs; et. inv WTTGT.
+              des_ifs.
+              exploit WTKS; et.
+              { ii. ss. des_ifs. }
+              i; des. clarify. inv CLASSIFY. esplits; et.
+            }
             { econs; et. }
-            econs; et.
+            { des_ifs. eapply preservation_cp_link; et.
+              (* { ii. r in H. des_ifs. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe. *)
+              (*   unfold ge_cp_link in *. ss. clarify. } *)
+              right. econs; ss; et. des_ifs. unfold Genv.find_funct_ptr. des_ifs.
+            }
+            {
+              des_ifs. inv FINDMS. ss. des_ifs.
+              eapply preservation_cp_focus; et; revgoals.
+              { right. eapply step_internal_function; ss; et.
+                - unfold Genv.find_funct. instantiate (1:= Vptr blk Ptrofs.zero true). ss. des_ifs.
+                  admit "ditto(ZmFkZDJkODhmOGM1YWI0NDI1YjEzMDFi) - ez".
+                - admit "ditto - sizeof_stable".
+                - admit "ditto - sizeof_stable". }
+              (* { ss. ii. des_ifs_safe. *)
+              (*   unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe. *)
+              (*   exploit revive_no_external; eauto. ss. *)
+              (* } *)
+              econs.
+              - econs; et.
+              - econs; et.
+              - i. ss. des_ifs. exfalso. eapply EXT; ss; et. admit "ditto - ez".
+              - instantiate (1:= vs_arg).
+                inv WTTGT; ss. clarify.
+            } 
           }
       }
 
@@ -787,12 +905,14 @@ Section PRESERVATION.
           rr in STEP. des; inv STEP; ss.
           inv SUM; ss.
           rr in CALL. des_ifs. ss. clarify.
+          hexploit (typify_c_ex v_ret _tres). i; des.
           esplits; eauto.
           + left. eapply plus_two with (t1 := E0) (t2 := E0); ss.
             * econs; et.
               { admit "determinate". }
               ss. des_ifs.
               econs 4; ss; et.
+              econs; ss; et.
             * econs; et.
               { admit "determinate". }
               ss. des_ifs.
@@ -806,7 +926,29 @@ Section PRESERVATION.
             rewrite app_comm_cons.
             econs 3; ss; et.
             econs; ss; et.
-            econs; ss; et.
+            {
+              assert(v_ret = tv).
+              { inv WTSRC.
+                admit "".
+              }
+              clarify.
+              econs; ss; et.
+            }
+            { eapply preservation_cp_link; et.
+              right. econs; ss; et.
+            }
+            {
+              (* MmEyZjBiNDFkYzlkNGY3YWVkNTlhMWE2 *)
+              des_ifs.
+              assert(WTTGT1: wt_state (geof cp2)
+                                      (Returnstate tv (Kcall _f _e _C _tres _k) (m_ret))).
+              { econs; ss; et; cycle 1.
+                { eapply typify_c_spec; et. }
+                inv WTTGT0. ss. clarify.
+              }
+              eapply preservation_cp_focus; et; cycle 1.
+              right. econs; ss; et.
+            }
         - (* src return *)
           inv STK; ss; cycle 1.
           { (* top is focus *)
@@ -835,11 +977,27 @@ Section PRESERVATION.
                 { admit "determinate". }
                 ss. des_ifs.
                 econs 4; ss; et.
+                econs; ss; et.
               + right. eapply CIH. unfold Frame.update_st. econs; ss; et.
                 rewrite app_comm_cons.
                 econs 3; ss; et.
                 econs; ss; et.
-                econs; ss; et.
+                { econs; ss; et. }
+                { inv WTSRC0.
+                  econs; ss; et.
+                  clarify.
+                  eapply typify_c_spec; et.
+                }
+                {
+                  (* copied from: MmEyZjBiNDFkYzlkNGY3YWVkNTlhMWE2 *)
+                  assert(WTTGT1: wt_state (geof cp2)
+                                          (Returnstate tv k2 m_ret)).
+                  { econs; ss; et; cycle 1.
+                    { eapply typify_c_spec; et. }
+                    inv WTTGT0. ss. clarify.
+                  }
+                  ss.
+                }
           }
           { (* top is ctx *)
             assert(frs_tgt <> []).
@@ -863,11 +1021,32 @@ Section PRESERVATION.
                 { admit "determinate". }
                 ss. des_ifs.
                 econs 4; ss; et.
+                econs; ss; et.
               + right. eapply CIH. unfold Frame.update_st. econs; ss; et.
                 rewrite app_comm_cons.
                 econs 3; ss; et.
                 econs; ss; et.
-                econs; ss; et.
+                { econs; ss; et. }
+                {
+                  (* copied from: MmEyZjBiNDFkYzlkNGY3YWVkNTlhMWE2 *)
+                  assert(WTSRC0: wt_state ge_cp_link 
+                                          (Returnstate tv (app_cont k2 k_tl_tgt) (Retv.m retv))).
+                  { econs; ss; et; cycle 1.
+                    { eapply typify_c_spec; et. }
+                    inv WTSRC. ss. clarify.
+                  }
+                  ss.
+                }
+                {
+                  (* copied from: MmEyZjBiNDFkYzlkNGY3YWVkNTlhMWE2 *)
+                  assert(WTTGT0: wt_state (geof cp)
+                                          (Returnstate tv k2 (Retv.m retv))).
+                  { econs; ss; et; cycle 1.
+                    { eapply typify_c_spec; et. }
+                    inv WTTGT. ss. clarify.
+                  }
+                  ss.
+                }
           }
       }
 
@@ -964,14 +1143,21 @@ Section PRESERVATION.
       + clarify. ss. inv INIT.
         esplits; eauto.
         { left. apply plus_one. econs; et.
-          ss. econs; et. ss. instantiate (1:= fd). admit "this should hold".
+          ss. econs; et. ss. admit "this should hold".
         }
         right. eapply CIH. econs; et.
         rewrite cons_app with (xtl := frs_tgt).
         econs 3; ss; et.
         econs; ss; et.
         { econs; ss; et. }
-        econs; ss; et.
+        { econs; ss; et. }
+        { inv TYP. eapply wt_initial_frame; ss; et.
+          - esplits; et. instantiate (1:= fd). admit "ez".
+          - exploit typify_has_type_list; et. i; des. admit "ez".
+        }
+        { inv TYP. eapply wt_initial_frame; ss; et.
+          - exploit typify_has_type_list; et. i; des. admit "ez (ditto)".
+        }
   Unshelve.
     all: ss.
   (*   - *)
@@ -1023,3 +1209,62 @@ Section PRESERVATION.
 
 End PRESERVATION.
 
+Require Import BehaviorsC.
+
+(* Notation " 'geof' skenv_link cp" := (Build_genv (revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env)) *)
+(*                                       (at level 50, no associativity, only parsing). *)
+Let geof := fun skenv_link (cp: Csyntax.program) =>
+              (Build_genv (revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env)).
+
+Theorem upperbound_a_correct
+        (_cp0 _cp1 _cp_link: Csyntax.program) cp0 cp1 cp_link ctx
+        (LINK: link cp0 cp1 = Some _cp_link)
+
+        (TYPED0: typecheck_program _cp0 = Errors.OK cp0)
+        (TYPED1: typecheck_program _cp1 = Errors.OK cp1)
+        (TYPEDLINK: typecheck_program _cp_link = Errors.OK cp_link)
+
+        (WT_EXTERNAL0: forall id ef args res cc vargs m t vres m'
+                              sk_link skenv_link
+                              (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
+                              (SKE: skenv_link = sk_link.(Sk.load_skenv))
+          ,
+            In (id, Gfun (External ef args res cc)) cp0.(prog_defs) ->
+            external_call ef (geof skenv_link cp0) vargs m t vres m' ->
+            wt_val vres res)
+        (WT_EXTERNAL1: forall id ef args res cc vargs m t vres m'
+                              sk_link skenv_link
+                              (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
+                              (SKE: skenv_link = sk_link.(Sk.load_skenv))
+          ,
+            In (id, Gfun (External ef args res cc)) cp1.(prog_defs) ->
+            external_call ef (geof skenv_link cp1) vargs m t vres m' ->
+            wt_val vres res)
+        (WT_EXTERNALLINK: forall id ef args res cc vargs m t vres m'
+                                 sk_link skenv_link
+                                 (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
+                                 (SKE: skenv_link = sk_link.(Sk.load_skenv))
+          ,
+            In (id, Gfun (External ef args res cc)) cp_link.(prog_defs) ->
+            external_call ef (geof skenv_link cp_link) vargs m t vres m' ->
+            wt_val vres res)
+  :
+    (<<REFINE: improves (Sem.sem (ctx ++ [cp_link.(CsemC.module)]))
+                        (Sem.sem (ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)]))
+                        >>)
+.
+Proof.
+  eapply bsim_improves.
+  eapply mixed_to_backward_simulation.
+  destruct (link_sk (ctx ++ [module cp_link])) eqn:LINKSK; cycle 1.
+  { econs; et.
+    econs; et.
+    { eapply unit_ord_wf. }
+    econs; et. i. ss. inv INITSRC. clarify.
+  }
+  rename t into link_sk.
+  eapply upperbound_a_xsim; eauto.
+  { eapply typecheck_program_sound; et. }
+  { eapply typecheck_program_sound; et. }
+  { eapply typecheck_program_sound; et. }
+Qed.

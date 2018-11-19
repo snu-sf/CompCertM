@@ -127,6 +127,7 @@ Qed.
 
 
 
+
 (* put k1 inside k0 (k1 is executed later) *)
 Fixpoint app_cont (k0 k1: cont) {struct k0}: cont :=
   match k0 with
@@ -211,16 +212,19 @@ Qed.
 
 Section PRESERVATION.
 
-  Variable cp_link cp1 cp2: Csyntax.program.
+  Variable cp_link cp0 cp1: Csyntax.program.
   Variable ctx: Syntax.program.
-  Hypothesis FOCUS: link cp1 cp2 = Some cp_link.
+  Hypothesis FOCUS: link cp0 cp1 = Some cp_link.
   (* Let prog_src := cp_link.(CsemC.module) :: ctx. *)
   (* Let prog_tgt := cp1.(CsemC.module) :: cp2.(CsemC.module) :: ctx. *)
   Let prog_src := ctx ++ [cp_link.(CsemC.module)].
-  Let prog_tgt := ctx ++ [cp1.(CsemC.module) ; cp2.(CsemC.module)].
+  Let prog_tgt := ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)].
   Variable sk_link: Sk.t.
-  Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
+  Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
+  Let ge_cp_link := (revive (SkEnv.project skenv_link (defs cp_link)) cp_link).
+  Let ge_cp0 := (revive (SkEnv.project skenv_link (defs cp0)) cp0).
+  Let ge_cp1 := (revive (SkEnv.project skenv_link (defs cp1)) cp1).
 
   Lemma link_sk_match
     :
@@ -252,6 +256,8 @@ Section PRESERVATION.
   (*   (<<AFTER: ms.(ModSem.after_external) ~= CsemC.after_external>>) /\ *)
   (*   (<<FINAL: ms.(ModSem.final_frame) ~= CsemC.final_frame>>) *)
   (* . *)
+
+
   Notation " 'ms_is_c1' ms" :=
     ((<<CST0: ms.(ModSem.state) = Csem.state>>) /\
      (<<CAT0: ms.(ModSem.at_external) ~= CsemC.at_external>>) /\
@@ -259,6 +265,8 @@ Section PRESERVATION.
      (<<CFIN0: ms.(ModSem.final_frame) ~= CsemC.final_frame>>))
       (at level 50, no associativity, only parsing)
   .
+
+
   (* Inductive cont_frame_wf (conts: list Frame.t): Prop := *)
   (* | cont_wf_intro *)
   (*     (WF: forall *)
@@ -271,28 +279,23 @@ Section PRESERVATION.
   (*     ) *)
   (* . *)
 
-  Definition is_call_cont_strong (k0: cont): Prop :=
-    match k0 with
-    | Kcall _ _ _ _ _ => True
-    | _ => False
-    end
-  .
+  Definition is_focus (cp: Csyntax.program): Prop := cp = cp0 \/ cp = cp1.
 
   Inductive sum_cont: list Frame.t -> cont -> Prop :=
   | sum_cont_nil
     :
       sum_cont [] Kstop
   | sum_cont_cons
-      hd _fptr _ty _vs k0 _m
-      (HD: ms_is_c1 hd.(Frame.ms) /\ hd.(Frame.st) ~= Csem.Callstate _fptr _ty _vs k0 _m)
+      _fptr _ty _vs k0 _m
+      (CALL: is_call_cont_strong k0)
       tl k1
       (TL: sum_cont tl k1)
-      (CALL: is_call_cont_strong k0)
       k2
       (K: k2 = app_cont k0 k1)
+      cp
+      (FOCUS: is_focus cp)
     :
-      (* sum_cont (hd :: tl) (app_cont k0 k1) *)
-      sum_cont (hd :: tl) k2
+      sum_cont ((Frame.mk (CsemC.modsem skenv_link cp) (Csem.Callstate _fptr _ty _vs k0 _m)) :: tl) k2
   .
 
   Lemma sum_cont_kstop_inv
@@ -355,14 +358,11 @@ Section PRESERVATION.
 
   Inductive match_focus: Frame.t -> list Frame.t -> Prop :=
   | match_focus_cons_right
-      ms_src ms_tgt
       cst_src cst_tgt
       (* `{ms_src.(ModSem.state) = Csem.state} *)
       (* `{ms_tgt.(ModSem.state) = Csem.state} *)
       (* (CSRC: ms_src.(ModSem.state) = Csem.state) *)
       (* (CTGT: ms_tgt.(ModSem.state) = Csem.state) *)
-      (MSSRC: ms_is_c1 ms_src)
-      (MSTGT: ms_is_c1 ms_tgt)
       (* fptr ty vs k_src k_tgt m *)
       (* (STSRC: cst_src ~= Csem.Callstate fptr ty vs k_src m) *)
       (* (STTGT: cst_tgt ~= Csem.Callstate fptr ty vs k_tgt m) *)
@@ -370,11 +370,11 @@ Section PRESERVATION.
       (SUM: sum_cont tl_tgt k_tl_tgt)
       (* (CONT: k_src = app_cont k_tgt k_tl_tgt) *)
       (ST: match_focus_state cst_src cst_tgt k_tl_tgt)
-      st_src st_tgt
-      (ABCSRC: st_src ~= cst_src)
-      (ABCTGT: st_tgt ~= cst_tgt)
+      cp
+      (FOCUS: is_focus cp)
     :
-      match_focus (Frame.mk ms_src st_src) ((Frame.mk ms_tgt st_tgt) :: tl_tgt)
+      match_focus (Frame.mk (CsemC.modsem skenv_link cp_link) cst_src)
+                  ((Frame.mk (CsemC.modsem skenv_link cp) cst_tgt) :: tl_tgt)
   .
 
   Lemma match_focus_nonnil
@@ -484,16 +484,8 @@ Section PRESERVATION.
       exploit match_stacks_right_nil; et. i; des; clarify.
       econs; et.
       inv HD. ss. inv SUM.
-      (* abstr (ModSem.state ms_tgt) st_tgt; abstr (ModSem.state ms_src) st_src. *)
-      (* Fail abstr (ModSem.state ms_src) st_src; abstr (ModSem.state ms_tgt) st_tgt. *)
-      erewrite f_equal_hr; try apply FINAL0; ss.
-      des. subst. simpl_depind.
-      eapply f_equal_h; eauto.
-      { etrans; eauto. }
-      { etrans; eauto. }
-      { etrans; eauto.
-        inv ST; try rewrite app_cont_stop_right in *; etrans; eauto.
-      }
+      inv FINAL0; ss.
+      inv ST; ss.
   Qed.
 
   Lemma final_fsim
@@ -511,25 +503,10 @@ Section PRESERVATION.
       - (* ctx *)
         inv TAIL. econs; et.
       - (* focus *)
-        inv TAIL. rewrite app_nil_r in *. inv HD. des. ss.
-        assert(T: final_frame cst_src ~= ModSem.final_frame ms_src st_src).
-        { eapply f_equal_h; eauto. }
-        assert(N: final_frame cst_src retv0).
-        { erewrite f_equal_hr; cycle 1.
-          { apply T. }
-          { refl. }
-          { refl. }
-          ss.
-        }
-        inv N.
-        inv ST. ss. clarify.
+        inv TAIL. rewrite app_nil_r in *. inv HD. ss. inv FINAL0; ss. inv ST; ss.
         hexpl app_cont_kstop_inv. clarify.
         hexpl sum_cont_kstop_inv. clarify.
-        ss. clear_tac.
         econs; ss; et.
-        erewrite f_equal_hr; try apply FINAL0; try refl.
-        { eapply f_equal_h; eauto; try (by etrans; eauto). }
-        ss.
     }
     { ii; ss. inv FINAL0; inv FINAL1; ss. determ_tac ModSem.final_frame_dtm. rewrite INT in *. clarify. }
     { ii. ss. des_ifs; ss.
@@ -557,6 +534,80 @@ Section PRESERVATION.
       (* { etrans; eauto. } *)
   Qed.
 
+  Lemma msfind_fsim
+        fptr ms
+        (MSFIND: Ge.find_fptr_owner (load_genv prog_src skenv_link) fptr ms)
+    :
+      (<<MSFIND: Ge.find_fptr_owner (load_genv prog_tgt skenv_link) fptr ms>>) \/
+      (exists cp, (<<ISFOCSRC: ms = CsemC.modsem skenv_link cp_link>>)
+                  /\ (<<ISFOCTGT: is_focus cp>>)
+                  /\ (<<MSFIND: Ge.find_fptr_owner (load_genv prog_tgt skenv_link) fptr (CsemC.modsem skenv_link cp)>>))
+  .
+  Proof.
+    unfold load_genv in *. ss. inv MSFIND. ss. des.
+    { clarify. left. econs; et. ss. left; ss. }
+    unfold load_modsems in *.
+    rewrite in_map_iff in *. des; ss. clarify. unfold prog_src in MODSEM0.
+    rewrite in_app_iff in *. des; ss.
+    { left. econs; et. ss. right. rewrite in_map_iff. esplits; et. unfold prog_tgt. rewrite in_app_iff. left; ss. }
+    des; ss. clarify.
+    right.
+    unfold flip. ss.
+    admit "this should hold".
+  Qed.
+
+  Lemma msfind_bsim
+        fptr ms
+        (MSFIND: Ge.find_fptr_owner (load_genv prog_tgt skenv_link) fptr ms)
+    :
+      (<<MSFIND: Ge.find_fptr_owner (load_genv prog_src skenv_link) fptr ms>>) \/
+      ((<<MSFIND: Ge.find_fptr_owner (load_genv prog_src skenv_link) fptr (CsemC.modsem skenv_link cp_link)>>)
+       /\ exists cp, (<<ISFOCSRC: ms = CsemC.modsem skenv_link cp>>)
+                     /\ (<<ISFOCTGT: is_focus cp>>))
+  .
+  Proof.
+    unfold load_genv in *. ss. inv MSFIND. ss. des.
+    { clarify. left. econs; et. ss. left; ss. }
+    unfold load_modsems in *.
+    rewrite in_map_iff in *. des; ss. clarify. unfold prog_tgt in MODSEM0.
+    rewrite in_app_iff in *. des; ss.
+    { left. econs; et. ss. right. rewrite in_map_iff. esplits; et. unfold prog_src. rewrite in_app_iff. left; ss. }
+    des; ss.
+    - clarify.
+      right.
+      unfold flip. ss.
+      esplits; et; rr; et.
+      econs; ss; et.
+      + right. rewrite in_map_iff. exists (CsemC.module cp_link). ss. esplits; et.
+        unfold prog_src. rewrite in_app_iff. right; ss. left; ss.
+      + instantiate (1:= if_sig). admit" this should hold".
+    - clarify.
+      right.
+      unfold flip. ss.
+      esplits; et; rr; et.
+      econs; ss; et.
+      + right. rewrite in_map_iff. exists (CsemC.module cp_link). ss. esplits; et.
+        unfold prog_src. rewrite in_app_iff. right; ss. left; ss.
+      + instantiate (1:= if_sig). admit" this should hold".
+  Qed.
+
+  Lemma cons_app
+        X xhd (xtl: list X)
+    :
+      xhd :: xtl = [xhd] ++ xtl
+  .
+  Proof. ss. Qed.
+
+  Lemma app_cont_call_cont_strong
+        k0 k1
+        (APP: is_call_cont_strong (app_cont k0 k1))
+    :
+      <<CONT: is_call_cont_strong k0>>
+  .
+  Proof.
+    r in APP. rr. des_ifs. exploit app_cont_stop_left; et. i.
+  Abort.
+
   Lemma match_xsim
         st_src0 st_tgt0
         (MATCH: match_states st_src0 st_tgt0)
@@ -564,7 +615,7 @@ Section PRESERVATION.
       <<XSIM: xsim (sem prog_src) (sem prog_tgt) bot2 tt st_src0 st_tgt0>>
   .
   Proof.
-    revert_until prog_tgt.
+    revert_until LINKTGT.
     pcofix CIH. i. pfold.
     inv MATCH.
     - (* normal state *)
@@ -577,55 +628,385 @@ Section PRESERVATION.
       rename t into fr_tgt.
       destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_call) fr_tgt.(Frame.st))).
       { (* tgt call *)
+
+        (* fsim *)
+        left. econs; et.
+        { i. eapply final_fsim; et. econs; et. }
+
         destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
         - (* src call *)
-          left. econs; et.
-          { i. eapply final_fsim; et. econs; et. }
-          econs; cycle 1.
+          econs; ss; cycle 1.
           { admit "receptive - SemProps.v". }
-          i. inv STEPSRC; ss; ModSem.tac.
+          i; des_ifs.
+          inv STEPSRC; ss; ModSem.tac.
           esplits; eauto.
           { left. eapply plus_one. econs; et.
             { admit "determinate - SemProps.v". }
             econs; eauto.
             instantiate (1:= args).
             inv STK; ss. inv HD; ss. des. clarify. ss.
-            assert(at_external cst_src args).
-            
-            simpl_depind.
+            inv AT; ss.
+            inv ST; ss.
+            econs; ss; et.
+            - admit "ez".
+            - rr in H. des. inv H. ss.
           }
-          admit "ez".
-        - (* src focus *)
-          admit "hard".
+          {
+            right. eapply CIH; et.
+            econs; et.
+          }
+        - (* src step *)
+          inv STK; ss.
+          econs; ss; cycle 1.
+          { admit "receptive - SemProps.v". }
+          i; des_ifs.
+
+          inv STEPSRC; ss; ModSem.tac; swap 2 3.
+          { exfalso. contradict H0. rr. eauto. }
+          { exfalso.
+            inv HD; ss. clarify.
+            clear - FINAL ST H.
+            rr in H. des. ss. inv H; inv FINAL; inv ST.
+          }
+
+          rr in H. des.
+          inv HD; ss. clarify. ss. inv H. ss. clarify.
+          inv ST.
+          rr in STEP. des; try (by inv STEP; ss).
+          folder.
+          (* set (LLL := (Csem.Callstate fptr_arg tyf vs_arg (app_cont k0 k_tl_tgt) m0)). *)
+          (* set (RRR := st0). *)
+          inv STEP; ss; cycle 1.
+          { exfalso. admit "project only internals". }
+
+          assert(TGTFIND: exists cp_top,
+                    <<FINDMS: Ge.find_fptr_owner (load_genv prog_tgt skenv_link)
+                                                 fptr_arg (CsemC.modsem skenv_link cp_top)>>
+                              /\ <<FOUCS: is_focus cp_top>>).
+          (* actually it is counterpart of current cp *)
+          { admit "this should hold". }
+          des.
+          
+          unfold Genv.find_funct, Genv.find_funct_ptr in SIG, FPTR. des_ifs. rename b into blk.
+          assert(SYMB: exists id blk, Genv.find_symbol cp_top.(globalenv) id = Some blk).
+          { admit "1) use SkEnv.wf or 2) change definition of wt_program". }
+          des.
+
+          esplits; eauto.
+          { left.
+            eapply plus_left with (t1 := E0) (t2 := E0); ss.
+            { econs; et.
+              { admit "determinate - SemProps.v". }
+              econs 1; ss; et.
+              econs; ss; et.
+              esplits; eauto. unfold Genv.find_funct_ptr. des_ifs.
+            }
+            eapply star_two with (t1 := E0) (t2 := E0); ss.
+            { econs; et.
+              { admit "determinate - SemProps.v". }
+              econs 2; ss; et.
+              { des_ifs. folder. eauto. }
+              ss. econs; ss; et.
+              instantiate (1:= f).
+              admit "this should hold".
+            }
+            { ss.
+              (* assert(WTST: wt_state cp_top (Csem.Callstate (Vptr blk Ptrofs.zero true) (type_of_function f) vs_arg Kstop m0)). *)
+              (* { admit "WT". } *)
+              assert(WTPROG: wt_program cp_top).
+              { admit "WT". }
+              bar.
+              (* inv WTST. ss. *)
+              inv WTPROG. specialize (H id f). specialize (H (admit "this should hold")).
+              inv H.
+              econs; ss; et.
+              { admit "determinate - SemProps.v". }
+              des_ifs.
+              econs 3; ss; et.
+              rr. right.
+              econs; ss; et.
+              - inv FINDMS. ss. admit "ez".
+              - admit "sizeof_stable".
+              - admit "sizeof_stable".
+            }
+          }
+          {
+            right. eapply CIH; et.
+            ss.
+            econs; ss; et.
+            unfold Frame.update_st. ss.
+            rewrite ! app_comm_cons.
+            econs 3; et.
+            econs; et.
+            { econs; et. }
+            econs; et.
+          }
       }
+
+
+      assert(CALLLE: forall
+                (CALLSRC: ModSem.is_call (Frame.ms fr_src) (Frame.st fr_src))
+              ,
+                <<CALLTGT: ModSem.is_call (Frame.ms fr_tgt) (Frame.st fr_tgt)>>).
+      { admit "this should hold". }
+      rename H into NCALLTGT.
+      assert(NCALLSRC: ~ ModSem.is_call (Frame.ms fr_src) (Frame.st fr_src)).
+      { tauto. }
+
+
       destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_return) fr_tgt.(Frame.st))).
       { (* tgt return *)
-        r in H0. des.
-        right. econs; et.
-        - admit "ez".
-        - i. econs; ss; et. des_ifs.
         left. econs; et.
-        - ii; ss. inv FINALSRC. inv STK; cycle 1.
-          + inv TAIL. econs. ss. ss.
+        { i. eapply final_fsim; et. econs; et. }
+        econs; et; cycle 1.
+        { admit "receptive". }
+        i. ss. des_ifs.
+
+
+        (* inv STK; ss. *)
+        (* { inv STEPSRC; ss; ModSem.tac. *)
+        (*   assert(frs_tgt <> []). *)
+        (*   { inv TAIL; ss. hexploit match_focus_nonnil; et. i; des. admit "ez". } *)
+        (*   destruct frs_tgt as [|fr_snd frs_tgt]; ss. *)
+        (*   esplits; et. *)
+        (*   - left. apply plus_one. econs; ss; et. *)
+        (*     { admit "determinate". } *)
+        (*     des_ifs. *)
+        (*     rpapply step_return; et. *)
+
+
+
+        inv STEPSRC; ss.
+        { contradict NCALLSRC. rr. et. }
+        - (* src step *)
+          inv STK; ss.
+          { ModSem.tac. }
+          inv HD; ss. clarify; ss.
+          rr in H. des. ss. inv H.
+          inv ST. ss.
+          rr in STEP. des; inv STEP; ss.
+          inv SUM; ss.
+          rr in CALL. des_ifs. ss. clarify.
+          esplits; eauto.
+          + left. eapply plus_two with (t1 := E0) (t2 := E0); ss.
+            * econs; et.
+              { admit "determinate". }
+              ss. des_ifs.
+              econs 4; ss; et.
+            * econs; et.
+              { admit "determinate". }
+              ss. des_ifs.
+              unfold Frame.update_st. s.
+              econs 3; ss; et.
+              right.
+              econs; ss; et.
+          + right. ss. eapply CIH.
+            econs; ss; et.
+            unfold Frame.update_st. ss.
+            rewrite app_comm_cons.
+            econs 3; ss; et.
+            econs; ss; et.
+            econs; ss; et.
+        - (* src return *)
+          inv STK; ss; cycle 1.
+          { (* top is focus *)
+            inv HD; ss. clarify; ss.
+            inv FINAL. inv ST. exploit app_cont_kstop_inv; et. i; des. clarify. ss. clear_tac.
+            exploit sum_cont_kstop_inv; et. i; des. clarify. ss.
+            inv SUM.
+            assert(tail_tgt <> []).
+            { inv TAIL; ss. hexploit match_focus_nonnil; et. i; des. admit "ez". }
+            destruct tail_tgt as [|fr_snd frs_tgt]; ss.
+            inv TAIL.
+            - (* snd is ctx *)
+              esplits; et.
+              + left. apply plus_one.
+                econs; et.
+                { admit "determinate". }
+                econs 4; ss; et.
+              + right. eapply CIH. unfold Frame.update_st. econs; ss; et. econs; ss; et.
+            - (* snd is focus *)
+              hexploit match_focus_nonnil; et. i; des. destruct hds_tgt; ss. clarify.
+              inv HD; ss.
+              inv AFTER; ss. inv ST; ss.
+              esplits; et.
+              + left. apply plus_one.
+                econs; et.
+                { admit "determinate". }
+                ss. des_ifs.
+                econs 4; ss; et.
+              + right. eapply CIH. unfold Frame.update_st. econs; ss; et.
+                rewrite app_comm_cons.
+                econs 3; ss; et.
+                econs; ss; et.
+                econs; ss; et.
+          }
+          { (* top is ctx *)
+            assert(frs_tgt <> []).
+            { inv TAIL; ss. hexploit match_focus_nonnil; et. i; des. admit "ez". }
+            destruct frs_tgt as [|fr_snd frs_tgt]; ss.
+            inv TAIL.
+            - (* snd is ctx *)
+              esplits; et.
+              + left. apply plus_one.
+                econs; et.
+                { admit "determinate". }
+                econs 4; ss; et.
+              + right. eapply CIH. unfold Frame.update_st. econs; ss; et. econs; ss; et.
+            - (* snd is focus *)
+              hexploit match_focus_nonnil; et. i; des. destruct hds_tgt; ss. clarify.
+              inv HD; ss.
+              inv AFTER; ss. inv ST; ss.
+              esplits; et.
+              + left. apply plus_one.
+                econs; et.
+                { admit "determinate". }
+                ss. des_ifs.
+                econs 4; ss; et.
+              + right. eapply CIH. unfold Frame.update_st. econs; ss; et.
+                rewrite app_comm_cons.
+                econs 3; ss; et.
+                econs; ss; et.
+                econs; ss; et.
+          }
       }
-      destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
-      { (* call *)
-        r in H. des.
-        left.
-        econs; eauto.
-        admit "TODO".
-      }
-      destruct (classic (fr_src.(Frame.ms).(ModSem.is_return) fr_src.(Frame.st))).
-      { (* ret *)
-        admit "TODO".
-      }
-      admit "step case".
-    -
-      assert((fr_src.(Frame.ms).(ModSem.is_step) fr_src.(Frame.st))).
-      right. econs; eauto.
-      { i. exploit final_bsim; eauto. i; des. esplits; eauto. eapply star_refl. }
+
+
+      assert(RETLE: forall
+                (RETSRC: ModSem.is_return (Frame.ms fr_src) (Frame.st fr_src))
+              ,
+                <<RETTGT: ModSem.is_return (Frame.ms fr_tgt) (Frame.st fr_tgt)>>).
+      { admit "this should hold". }
+      rename H into NRETTGT.
+      assert(NRETSRC: ~ ModSem.is_return (Frame.ms fr_src) (Frame.st fr_src)).
+      { tauto. }
+
+
+
+
+      (* src internal && tgt internal *)
+      right. econs; et.
+      { i. exploit final_bsim; et. { econs; et. } i; des. esplits; et. apply star_refl. }
       i.
-      
+      inv STK.
+      {
+        (* ctx *)
+        clear_tac.
+        econs; cycle 1.
+        - (* progress *)
+          i. right. ss. des_ifs. clear_tac. specialize (SAFESRC _ (star_refl _ _ _)). des; ss.
+          { inv SAFESRC. contradict NRETTGT. rr. et. }
+          des_ifs.
+          inv SAFESRC; swap 2 3.
+          { contradict NCALLTGT. rr. et. }
+          { contradict NRETTGT. rr. et. }
+          esplits; et.
+          econs 3; et.
+        - (* bsim *)
+          i. ss. des_ifs. clear_tac.
+          (* specialize (SAFESRC _ (star_refl _ _ _)). des; ss. *)
+          (* { inv SAFESRC. contradict NRETTGT. rr. et. } *)
+          (* des_ifs. *)
+          inv STEPTGT; swap 2 3.
+          { contradict NCALLTGT. rr. et. }
+          { contradict NRETTGT. rr. et. }
+          esplits; et.
+          { left. apply plus_one. econs 3; et. }
+          right. eapply CIH. econs; et. econs; et.
+      }
+      {
+        (* focus *)
+        inv HD; ss. clarify; ss.
+        econs; cycle 1.
+        - (* progress *)
+          i. right. ss. des_ifs. clear_tac. specialize (SAFESRC _ (star_refl _ _ _)). des; ss.
+          { inv SAFESRC. contradict NRETSRC. rr. et. }
+          des_ifs.
+          inv SAFESRC; swap 2 3.
+          { contradict NCALLSRC. rr. et. }
+          { contradict NRETSRC. rr. et. }
+          ss.
+          esplits; et.
+          econs 3; et. ss.
+          admit "match_focus_state - progress".
+        - (* bsim *)
+          i. ss. des_ifs. clear_tac.
+          (* specialize (SAFESRC _ (star_refl _ _ _)). des; ss. *)
+          (* { inv SAFESRC. contradict NRETTGT. rr. et. } *)
+          (* des_ifs. *)
+          inv STEPTGT; swap 2 3.
+          { contradict NCALLTGT. rr. et. }
+          { contradict NRETTGT. rr. et. }
+          ss.
+          esplits; et.
+          { left. apply plus_one. econs 3; et. ss.
+            admit "match_focus_state - bsim".
+          }
+          right. eapply CIH. econs; et. unfold Frame.update_st. ss. admit "match_focus_state - bsim".
+      }
+    - (* call state *)
+      right.
+      econs; ss; et.
+      { i. inv FINALTGT. }
+      econs; cycle 1.
+      { i. specialize (SAFESRC _ (star_refl _ _ _)). des; ss.
+        { inv SAFESRC. }
+        des_ifs. inv SAFESRC.
+        right. exploit msfind_fsim; eauto. i; des.
+        - esplits; eauto. econs; eauto.
+        - clarify. ss. inv INIT. ss. esplits; eauto. econs; eauto. ss. econs; et. ss. admit "ez".
+      }
+      i. inv STEPTGT. ss. des_ifs.
+      exploit msfind_bsim; et. i; des.
+      + esplits; eauto.
+        { left. apply plus_one. econs; et. }
+        right. eapply CIH. econs; et. econs; et.
+      + clarify. ss. inv INIT.
+        esplits; eauto.
+        { left. apply plus_one. econs; et.
+          ss. econs; et. ss. instantiate (1:= fd). admit "this should hold".
+        }
+        right. eapply CIH. econs; et.
+        rewrite cons_app with (xtl := frs_tgt).
+        econs 3; ss; et.
+        econs; ss; et.
+        { econs; ss; et. }
+        econs; ss; et.
+  Unshelve.
+    all: ss.
+  (*   - *)
+  (*     left. *)
+  (*     econs; ss; et. *)
+  (*     { i. inv FINALSRC. } *)
+  (*     econs; cycle 1. *)
+  (*     { admit "receptive". } *)
+  (*     i. inv STEPSRC. ss. des_ifs. *)
+  (*     exploit msfind_fsim; et. i; des. *)
+  (*     + esplits; eauto. *)
+  (*       { left. apply plus_one. econs; et. *)
+  (*         { admit "determinate". } *)
+  (*         econs; et. *)
+  (*         ss. des_ifs. *)
+  (*       } *)
+  (*       right. eapply CIH. econs; et. econs; et. *)
+  (*     + clarify. ss. inv INIT. *)
+  (*       esplits; eauto. *)
+  (*       { left. apply plus_one. econs; et. *)
+  (*         { admit "determinate". } *)
+  (*         econs. *)
+  (*         { ss. des_ifs. et. } *)
+  (*         ss. econs; et. ss. *)
+  (*         instantiate (1:= fd). *)
+  (*         admit "this should hold". *)
+  (*       } *)
+  (*       right. eapply CIH. econs; et. *)
+  (*       rewrite cons_app with (xtl := frs_tgt). *)
+  (*       econs 3; ss; et. *)
+  (*       econs; ss; et. *)
+  (*       { econs; ss; et. } *)
+  (*       econs; ss; et. *)
+  (* Unshelve. *)
+  (*   all: ss. *)
   Qed.
 
   Theorem upperbound_a_xsim
@@ -637,427 +1018,8 @@ Section PRESERVATION.
     { eapply unit_ord_wf. }
     econs 1.
     ii. exploit init_fsim; eauto. i; des. esplits; eauto.
+    eapply match_xsim; et.
   Qed.
 
-  | match_regular_states
-      frs_src frs_tgt
-      (FMATCH: match_frames (frs_src) (frs_tgt))
-    :
-      match_states (State (frs_src)) (State (frs_tgt)) 0
-  | match_call_states
-      args_src frs_src args_tgt frs_tgt ms1 ms2
-      (OWNER1: Ge.find_fptr_owner ge (Args.fptr args_src) ms1)
-      (OWNER2: Ge.find_fptr_owner tge (Args.fptr args_tgt) ms2)
-      (FMATCH: match_frames frs_src frs_tgt)
-      (OWNER: match_owner ms1 ms2)
-    :
-      match_states (Callstate args_src frs_src) (Callstate args_tgt frs_tgt) 0
-  | match_extcall_states
-      fr_src fr_tgt frs_src frs_tgt prog_tgt
-      fptr tyf args k m
-      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
-      (FMATCH: match_frames (fr_src::frs_src) (fr_tgt::frs_tgt))
-      (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog')
-      (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_src prog_tgt)
-      (FRAMETGT: fr_tgt = Frame.mk (CsemC.modsem skenv_link_src prog_tgt) (Csem.Callstate fptr tyf args k m))
-      (EXTCALL: external_state (Build_genv (local_genv prog_tgt) (prog_comp_env prog_tgt)) (Csem.Callstate fptr tyf args k m))
-    :
-      match_states (State (fr_src::frs_src)) (State (fr_tgt::frs_tgt)) 1
-  | match_ret_states
-      fr_src fr_tgt frs_src frs_tgt prog_tgt
-      m r
-      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
-      (FMATCH: match_frames (fr_src::frs_src) (fr_tgt::frs_tgt))
-      (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog')
-      (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_src prog_tgt)
-      (FRAMETGT: fr_tgt = Frame.mk (CsemC.modsem skenv_link_src prog_tgt) (Csem.Returnstate r Kstop m))
-    :
-      match_states (State (fr_src::frs_src)) (State (fr_tgt::frs_tgt)) 1
-  .
-
-
-
-  Lemma transf_program_correct:
-    mixed_simulation (Sem.sem prog_src) (Sem.sem prog_tgt).
-  Proof.
-    eapply Mixed_simulation. eapply transf_xsim_properties.
-  Qed.
-
-  (** ********************* linking *********************************)    
-  Variable prog1 : Csyntax.program.
-  Variable prog2 : Csyntax.program.
-  Variable prog' : Csyntax.program.
-  Hypothesis LINK : link prog1 prog2 = Some prog'.
-  Let tprog' : Syntax.program := List.map CsemC.module [prog2; prog1].
-  Variable ctx : Syntax.program.
-  Let prog : Syntax.program := CsemC.module prog' :: ctx.
-  Let tprog : Syntax.program := tprog' ++ ctx.
-  (** ********************* linking *********************************)
-  Variable sk_src: Sk.t.
-  Hypothesis LINK_SK_SRC: link_sk prog = Some sk_src.
-  (* TODO: consider linking fail case *)
-  Let skenv_link_src := Sk.load_skenv sk_src.
-  Variable sk_tgt: Sk.t.
-  Hypothesis LINK_SK_TGT: link_sk tprog = Some sk_tgt.
-  (* TODO: consider linking fail case *)
-  Let skenv_link_tgt := Sk.load_skenv sk_tgt.
-  
-  Let ge := load_genv prog skenv_link_src.
-  (* Let ge_ce : composite_env := prog_comp_env prog. *)
-  (* Let tge_ce : composite_env := prog_comp_env prog. *)
-  Let tge := load_genv tprog skenv_link_tgt.
-  (* Inductive match_states_aux : Csem.State -> Sem.state -> nat -> Prop := *)
-  Definition local_genv (p : Csyntax.program) :=
-    (skenv_link_src.(SkEnv.project) p.(defs)).(revive) p.
-  Lemma skenv_link_same:
-    skenv_link_src = skenv_link_tgt.
-  Proof.
-  Admitted.
-  
 End PRESERVATION.
 
-
-
-Local Opaque Z.mul.
-Section PRESERVATION.
-  Existing Instance Val.mi_final.
-(** UpperBound A *)
-(*
-A
-* : Physical
-+ : Logical 
-(c0 * c1) + ctx
->=
-(c0 + c1) + ctx
-*)
-  
-(*
-B
-* : Physical
-+ : Logical 
-c0 * empty
->=
-c0 + empty
-*)
-  
-  Section PLANB1.
-(** ********************* linking *********************************)    
-  Variable prog1 : Csyntax.program.
-  Variable prog2 : Csyntax.program.
-  Variable prog' : Csyntax.program.
-  Hypothesis LINK : link prog1 prog2 = Some prog'.
-  Let tprog' : Syntax.program := List.map CsemC.module [prog2; prog1].
-  Variable ctx : Syntax.program.
-  Let prog : Syntax.program := CsemC.module prog' :: ctx.
-  Let tprog : Syntax.program := tprog' ++ ctx.
-(** ********************* linking *********************************)
-  Variable sk_src: Sk.t.
-  Hypothesis LINK_SK_SRC: link_sk prog = Some sk_src.
-  (* TODO: consider linking fail case *)
-  Let skenv_link_src := Sk.load_skenv sk_src.
-  Variable sk_tgt: Sk.t.
-  Hypothesis LINK_SK_TGT: link_sk tprog = Some sk_tgt.
-  (* TODO: consider linking fail case *)
-  Let skenv_link_tgt := Sk.load_skenv sk_tgt.
-  
-  Let ge := load_genv prog skenv_link_src.
-  (* Let ge_ce : composite_env := prog_comp_env prog. *)
-  (* Let tge_ce : composite_env := prog_comp_env prog. *)
-  Let tge := load_genv tprog skenv_link_tgt.
-(* Inductive match_states_aux : Csem.State -> Sem.state -> nat -> Prop := *)
-  Definition local_genv (p : Csyntax.program) :=
-    (skenv_link_src.(SkEnv.project) p.(defs)).(revive) p.
-  Lemma skenv_link_same:
-    skenv_link_src = skenv_link_tgt.
-  Proof.
-  Admitted.
-  
-  (*
-  (c0 * c1) + ctx
-  >=
-  (c0 + c1) + ctx
-  src : physical
-  tgt : logical
-  src has 3 Modules (C0*C1), ctx, Sys
-  tgt has 4 Modules C0, C1, ctx, Sys
-  there are "5" kinds of match states needed(maybe)
-  1. reg - reg 
-  2. call - call
-  3. reg - call ----> only btw c maybe
-  (* 4. ret - ret *)
-  (* 5. reg - ret *)
-  what is reg state? 1. internal 
-   *)
-  Fixpoint app_cont (c1 c2: cont) : cont :=
-    match c1 with
-    | Kstop => c2
-    | Kdo c => Kdo (app_cont c c2)
-    | Kseq s c => Kseq s (app_cont c c2)
-    | Kifthenelse s1 s2 c => Kifthenelse s1 s2 (app_cont c c2)
-    | Kwhile1 e s c => Kwhile1 e s (app_cont c c2)
-    | Kwhile2 e s c => Kwhile2 e s (app_cont c c2)
-    | Kdowhile1 e s c => Kdowhile1 e s (app_cont c c2)
-    | Kdowhile2 e s c => Kdowhile2 e s (app_cont c c2)
-    | Kfor2 e s1 s2 c => Kfor2 e s1 s2 (app_cont c c2)
-    | Kfor3 e s1 s2 c => Kfor3 e s1 s2 (app_cont c c2)
-    | Kfor4 e s1 s2 c => Kfor4 e s1 s2 (app_cont c c2)
-    | Kswitch1 ls c =>  Kswitch1 ls (app_cont c c2)
-    | Kswitch2 c =>  Kswitch2 (app_cont c c2)
-    | Kreturn c => Kreturn (app_cont c c2)
-    | Kcall f e em ty c => Kcall f e em ty (app_cont c c2)
-    end.
-  Inductive similar_state : Csem.state -> Csem.state -> cont -> Prop :=
-  | reg_state_similar
-      f s c c0 c1 e m
-      (CONT: c = app_cont c1 c0)
-    : similar_state (Csem.State f s c e m) (Csem.State f s c1 e m) c0
-  | expr_state_similar
-      f ex c c0 c1 e m
-      (CONT: c = app_cont c1 c0)
-    : similar_state (Csem.ExprState f ex c e m) (Csem.ExprState f ex c1 e m) c0
-  | call_sate_similar
-      fptr tyf vargs c c0 c1 m
-      (CONT: c = app_cont c1 c0)
-    : similar_state (Csem.Callstate fptr tyf vargs c m) (Csem.Callstate fptr tyf vargs c1 m) c0
-  | return_sate_similar
-      vres c c0 c1 m
-      (CONT: c = app_cont c1 c0)
-    : similar_state (Csem.Returnstate vres c m) (Csem.Returnstate vres c1 m) c0
-  | stuck_state_similar
-      c0
-    : similar_state Csem.Stuckstate Csem.Stuckstate c0.
-  Inductive match_frames : list Frame.t -> list Frame.t -> Prop :=
-  | match_frames_nil
-    :
-      match_frames nil nil
-  | match_frames_cons_sys
-      fr_src frs_src fr_tgt frs_tgt st
-      (MATCH: match_frames frs_src frs_tgt)
-      (SYS1: fr_src = Frame.mk (System.modsem skenv_link_src) st)
-      (SYS1: fr_tgt = Frame.mk (System.modsem skenv_link_tgt) st)
-    :
-      match_frames (fr_src::frs_src) (fr_src::frs_tgt)
-  | match_frames_cons_ctx
-      fr_src frs_src fr_tgt frs_tgt
-      m st1 st2 (* state must be same?? i dont think so *)
-      (MATCH: match_frames frs_src frs_tgt)
-      (MOD: In m ctx)
-      (CTX1: fr_src = Frame.mk (Mod.get_modsem m skenv_link_src (Mod.data m)) st1)
-      (CTX2: fr_tgt = Frame.mk (Mod.get_modsem m skenv_link_src (Mod.data m)) st2)
-      (SAME: st1 = st2)
-    :
-      match_frames (fr_src::frs_src) (fr_src::frs_tgt)
-  | match_frames_cons_c_one
-      fr_src frs_src fr_tgt frs_tgt prog_tgt st_src st_tgt
-      (MATCH: match_frames frs_src frs_tgt)
-      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
-      (CSTATE1: fr_src = Frame.mk (CsemC.modsem skenv_link_src prog') st_src)
-      (CSTATE2: fr_tgt = Frame.mk (CsemC.modsem skenv_link_src prog_tgt) st_tgt)
-      (SAME: st_src = st_tgt) (* everything is the same, including cont *)
-    :
-      match_frames (fr_src::frs_src) (fr_tgt::frs_tgt) (* this case needed? *)
-  | match_frames_cons_c_two
-      fr_src frs_src fr_tgt0 fr_tgt1 frs_tgt
-      st_src st_tgt0 st_tgt1 fptr tyf vs_arg c0 m0 prog_tgt
-      (MATCH: match_frames frs_src frs_tgt)
-      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
-      (C0STATE: st_tgt0 = Csem.Callstate fptr tyf vs_arg c0 m0)      
-      (C0EXT: at_external skenv_link_tgt prog_tgt st_tgt0 (Args.mk fptr vs_arg m0))
-      (SIMILAR: similar_state st_src st_tgt1 c0)
-    :
-      match_frames (fr_src::frs_src) (fr_tgt1::fr_tgt0::frs_tgt).
-  Inductive match_owner : ModSem.t -> ModSem.t -> Prop :=
-  | match_sys
-      ms1 ms2
-      (SYS1: ms1 = System.modsem skenv_link_src)
-      (SYS2: ms2 = System.modsem skenv_link_tgt)
-    :
-      match_owner ms1 ms2
-  | match_ctx
-      m ms1 ms2
-      (MOD: In m ctx)
-      (CTX1: ms1 = Mod.get_modsem m skenv_link_src (Mod.data m))
-      (CTX2: ms2 = Mod.get_modsem m skenv_link_tgt (Mod.data m))
-    :
-      match_owner ms1 ms2
-  | match_cmod
-      prog_tgt ms1 ms2
-      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
-      (CMOD1: ms1 = CsemC.modsem skenv_link_src prog')
-      (CMOD2: ms2 = CsemC.modsem skenv_link_tgt prog_tgt)
-    :
-      match_owner ms1 ms2.
-  (*  there are "5" kinds of match states needed(maybe)
-  1. reg - reg 
-  2. call - call
-  3. reg - call ----> only btw c maybe
-  (* 4. ret - ret *)
-  (* 5. reg - ret *)
-   *)
-  
-  Inductive match_states : Sem.state -> Sem.state -> nat -> Prop :=
-  | match_regular_states
-      frs_src frs_tgt
-      (FMATCH: match_frames (frs_src) (frs_tgt))
-    :
-      match_states (State (frs_src)) (State (frs_tgt)) 0
-  | match_call_states
-      args_src frs_src args_tgt frs_tgt ms1 ms2
-      (OWNER1: Ge.find_fptr_owner ge (Args.fptr args_src) ms1)
-      (OWNER2: Ge.find_fptr_owner tge (Args.fptr args_tgt) ms2)
-      (FMATCH: match_frames frs_src frs_tgt)
-      (OWNER: match_owner ms1 ms2)
-    :
-      match_states (Callstate args_src frs_src) (Callstate args_tgt frs_tgt) 0
-  | match_extcall_states
-      fr_src fr_tgt frs_src frs_tgt prog_tgt
-      fptr tyf args k m
-      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
-      (FMATCH: match_frames (fr_src::frs_src) (fr_tgt::frs_tgt))
-      (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog')
-      (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_src prog_tgt)
-      (FRAMETGT: fr_tgt = Frame.mk (CsemC.modsem skenv_link_src prog_tgt) (Csem.Callstate fptr tyf args k m))
-      (EXTCALL: external_state (Build_genv (local_genv prog_tgt) (prog_comp_env prog_tgt)) (Csem.Callstate fptr tyf args k m))
-    :
-      match_states (State (fr_src::frs_src)) (State (fr_tgt::frs_tgt)) 1
-  | match_ret_states
-      fr_src fr_tgt frs_src frs_tgt prog_tgt
-      m r
-      (PROG: prog_tgt = prog1 \/ prog_tgt = prog2)
-      (FMATCH: match_frames (fr_src::frs_src) (fr_tgt::frs_tgt))
-      (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog')
-      (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_src prog_tgt)
-      (FRAMETGT: fr_tgt = Frame.mk (CsemC.modsem skenv_link_src prog_tgt) (Csem.Returnstate r Kstop m))
-    :
-      match_states (State (fr_src::frs_src)) (State (fr_tgt::frs_tgt)) 1
-  .
-  (* | match_reg_call *) (* this match case isn't necessary *)
-  (*     prog_tgt fr_tgt fr_src *)
-  (*     frs_src frs_tgt args_tgt *)
-  (*     (PROG: prog_tgt = prog1 \/ prog_tgt = prog2) *)
-  (*     (MSSRC: Frame.ms fr_src = CsemC.modsem skenv_link_src prog') *)
-  (*     (MSTGT: Frame.ms fr_tgt = CsemC.modsem skenv_link_tgt prog_tgt) *)
-  (*     (FMATCH: match_frames (fr_src::frs_src) (fr_tgt::frs_tgt)) *)
-  (*     (ATEXT: ModSem.at_external (Frame.ms fr_tgt) (Frame.st fr_tgt) args_tgt) *)
-  (*   : *)
-  (*     match_states (State (fr_src::frs_src)) (Callstate args_tgt (fr_tgt::frs_tgt))       *)
-  End PLANB1.
-End PRESERVATION.
-  (* 
-  Inlining
-  src - not inlined 
-  tgt - inlined 
-  so....
-  src has more "function call"
-  1. reg - reg 
-  2. call - call
-  3. call - reg
-  4. ret - ret
-  5. ret - reg
-  *)
-(*   Inductive match_states: RTL.state -> RTL.state -> Prop := *)
-(*   | match_regular_states: forall stk f sp pc rs m stk' f' sp' rs' m' F fenv ctx *)
-(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
-(*         (COMPAT: fenv_compat prog fenv) *)
-(*         (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code)) *)
-(*         (AG: agree_regs F ctx rs rs') *)
-(*         (SP: F sp = Some(sp', ctx.(dstk))) *)
-(*         (MINJ: Mem.inject F m m') *)
-(*         (VB: Mem.valid_block m' sp') *)
-(*         (PRIV: range_private F m m' sp' (ctx.(dstk) + ctx.(mstk)) f'.(fn_stacksize)) *)
-(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
-(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)), *)
-(*       match_states (State stk f (Vptr sp Ptrofs.zero true) pc rs m) *)
-(*                    (State stk' f' (Vptr sp' Ptrofs.zero true) (spc ctx pc) rs' m') *)
-(*   | match_call_states: forall stk fptr sg tfptr args m stk' args' m' F *)
-(*         (MS: match_stacks F m m' stk stk' (Mem.nextblock m')) *)
-(*         (FPTR: Val.inject F fptr tfptr) *)
-(*         (VINJ: Val.inject_list F args args') *)
-(*         (MINJ: Mem.inject F m m'), *)
-(*       match_states (Callstate stk fptr sg args m) *)
-(*                    (Callstate stk' tfptr sg args' m') *)
-(*   | match_call_regular_states: forall stk fptr sg f vargs m stk' f' sp' rs' m' F fenv ctx ctx' pc' pc1' rargs *)
-(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
-(*         (FPTR: Genv.find_funct ge fptr = Some (Internal f)) *)
-(*         (COMPAT: fenv_compat prog fenv) *)
-(*         (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code)) *)
-(*         (BELOW: context_below ctx' ctx) *)
-(*         (NOP: f'.(fn_code)!pc' = Some(Inop pc1')) *)
-(*         (MOVES: tr_moves f'.(fn_code) pc1' (sregs ctx' rargs) (sregs ctx f.(fn_params)) (spc ctx f.(fn_entrypoint))) *)
-(*         (VINJ: list_forall2 (val_reg_charact F ctx' rs') vargs rargs) *)
-(*         (MINJ: Mem.inject F m m') *)
-(*         (VB: Mem.valid_block m' sp') *)
-(*         (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize)) *)
-(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
-(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)), *)
-(*       match_states (Callstate stk fptr sg vargs m) *)
-(*                    (State stk' f' (Vptr sp' Ptrofs.zero true) pc' rs' m') *)
-(*   | match_return_states: forall stk v m stk' v' m' F *)
-(*         (MS: match_stacks F m m' stk stk' (Mem.nextblock m')) *)
-(*         (VINJ: Val.inject F v v') *)
-(*         (MINJ: Mem.inject F m m'), *)
-(*       match_states (Returnstate stk v m) *)
-(*                    (Returnstate stk' v' m') *)
-(*   | match_return_regular_states: forall stk v m stk' f' sp' rs' m' F ctx pc' or rinfo *)
-(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
-(*         (RET: ctx.(retinfo) = Some rinfo) *)
-(*         (AT: f'.(fn_code)!pc' = Some(inline_return ctx or rinfo)) *)
-(*         (VINJ: match or with None => v = Vundef | Some r => Val.inject F v rs'#(sreg ctx r) end) *)
-(*         (MINJ: Mem.inject F m m') *)
-(*         (VB: Mem.valid_block m' sp') *)
-(*         (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize)) *)
-(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
-(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)), *)
-(*       match_states (Returnstate stk v m) *)
-(*                    (State stk' f' (Vptr sp' Ptrofs.zero true) pc' rs' m'). *)
-(*   Inductive match_stacks (F: meminj) (m m': mem): *)
-(*              list stackframe -> list stackframe -> block -> Prop := *)
-(*   | match_stacks_nil: forall bound1 bound *)
-(*         (MG: match_globalenvs F bound1) *)
-(*         (BELOW: Ple bound1 bound), *)
-(*       match_stacks F m m' nil nil bound *)
-(*   | match_stacks_cons: forall res f sp pc rs stk f' sp' rs' stk' bound fenv ctx *)
-(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
-(*         (COMPAT: fenv_compat prog fenv) *)
-(*         (FB: tr_funbody fenv f'.(fn_stacksize) ctx f f'.(fn_code)) *)
-(*         (AG: agree_regs F ctx rs rs') *)
-(*         (SP: F sp = Some(sp', ctx.(dstk))) *)
-(*         (PRIV: range_private F m m' sp' (ctx.(dstk) + ctx.(mstk)) f'.(fn_stacksize)) *)
-(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
-(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)) *)
-(*         (RES: Ple res ctx.(mreg)) *)
-(*         (BELOW: Plt sp' bound), *)
-(*       match_stacks F m m' *)
-(*                    (Stackframe res f (Vptr sp Ptrofs.zero true) pc rs :: stk) *)
-(*                    (Stackframe (sreg ctx res) f' (Vptr sp' Ptrofs.zero true) (spc ctx pc) rs' :: stk') *)
-(*                    bound *)
-(*   | match_stacks_untailcall: forall stk res f' sp' rpc rs' stk' bound ctx *)
-(*         (MS: match_stacks_inside F m m' stk stk' f' ctx sp' rs') *)
-(*         (PRIV: range_private F m m' sp' ctx.(dstk) f'.(fn_stacksize)) *)
-(*         (SSZ1: 0 <= f'.(fn_stacksize) < Ptrofs.max_unsigned) *)
-(*         (SSZ2: forall ofs, Mem.perm m' sp' ofs Max Nonempty -> 0 <= ofs <= f'.(fn_stacksize)) *)
-(*         (RET: ctx.(retinfo) = Some (rpc, res)) *)
-(*         (BELOW: Plt sp' bound), *)
-(*       match_stacks F m m' *)
-(*                    stk *)
-(*                    (Stackframe res f' (Vptr sp' Ptrofs.zero true) rpc rs' :: stk') *)
-(*                    bound *)
-(* with match_stacks_inside (F: meminj) (m m': mem): *)
-(*         list stackframe -> list stackframe -> function -> context -> block -> regset -> Prop := *)
-(*   | match_stacks_inside_base: forall stk stk' f' ctx sp' rs' *)
-(*         (MS: match_stacks F m m' stk stk' sp') *)
-(*         (RET: ctx.(retinfo) = None) *)
-(*         (DSTK: ctx.(dstk) = 0), *)
-(*       match_stacks_inside F m m' stk stk' f' ctx sp' rs' *)
-(*   | match_stacks_inside_inlined: forall res f sp pc rs stk stk' f' fenv ctx sp' rs' ctx' *)
-(*         (MS: match_stacks_inside F m m' stk stk' f' ctx' sp' rs') *)
-(*         (COMPAT: fenv_compat prog fenv) *)
-(*         (FB: tr_funbody fenv f'.(fn_stacksize) ctx' f f'.(fn_code)) *)
-(*         (AG: agree_regs F ctx' rs rs') *)
-(*         (SP: F sp = Some(sp', ctx'.(dstk))) *)
-(*         (PAD: range_private F m m' sp' (ctx'.(dstk) + ctx'.(mstk)) ctx.(dstk)) *)
-(*         (RES: Ple res ctx'.(mreg)) *)
-(*         (RET: ctx.(retinfo) = Some (spc ctx' pc, sreg ctx' res)) *)
-(*         (BELOW: context_below ctx' ctx) *)
-(*         (SBELOW: context_stack_call ctx' ctx), *)
-(*       match_stacks_inside F m m' (Stackframe res f (Vptr sp Ptrofs.zero true) pc rs :: stk) *)

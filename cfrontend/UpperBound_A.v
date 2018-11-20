@@ -398,13 +398,6 @@ Section PRESERVATION.
       + instantiate (1:= if_sig). admit" this should hold".
   Qed.
 
-  Lemma cons_app
-        X xhd (xtl: list X)
-    :
-      xhd :: xtl = [xhd] ++ xtl
-  .
-  Proof. ss. Qed.
-
   Lemma app_cont_call_cont_strong
         k0 k1
         (APP: is_call_cont_strong (app_cont k0 k1))

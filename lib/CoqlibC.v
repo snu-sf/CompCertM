@@ -1078,3 +1078,10 @@ Lemma f_equal_rh
 Proof.
   eapply f_equal_h; eauto.
 Qed.
+
+Lemma cons_app
+      X xhd (xtl: list X)
+  :
+    xhd :: xtl = [xhd] ++ xtl
+.
+Proof. ss. Qed.

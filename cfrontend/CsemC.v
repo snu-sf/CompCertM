@@ -1,5 +1,5 @@
 Require Import CoqlibC Maps.
-Require Import ASTC Integers Values Events Memory Globalenvs.
+Require Import ASTC Integers ValuesC Events Memory Globalenvs.
 Require Import Op Registers.
 Require Import sflib.
 Require Import SmallstepC.
@@ -15,6 +15,18 @@ Set Implicit Arguments.
 
 
 
+Definition is_call_cont_strong (k0: cont): Prop :=
+  match k0 with
+  | Kcall _ _ _ _ _ => True
+  | _ => False
+  end
+.
+
+(* copied from Cshmgen *)
+Definition signature_of_function (fd: Csyntax.function) :=
+  {| sig_args := map typ_of_type (map snd (Csyntax.fn_params fd));
+     sig_res  := opttyp_of_type (Csyntax.fn_return fd);
+     sig_cc   := Csyntax.fn_callconv fd |}.
 
 Section CEXTRA.
 
@@ -89,29 +101,31 @@ Section MODSEM.
 
   Inductive at_external : state -> Args.t -> Prop :=
   | at_external_intro
-      fptr_arg tyf vs_arg sg_arg targs tres cconv k m0
+      fptr_arg tyf vs_arg sg_arg targs tres cconv k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
                    /\ (SkEnv.get_sig skd = sg_arg
                       -> tyf = Tfunction targs tres cconv
                       -> signature_of_type targs tres cconv = sg_arg))
                    (* /\ type_of_fundef skd = tyf) *)
+      (CALL: is_call_cont_strong k0)
     (* how can i check sg_args and tyf are same type? *)
     (* typ_of_type function is a projection type to typ. it delete some info *)
     :
-      at_external (Callstate fptr_arg tyf vs_arg k m0)
+      at_external (Callstate fptr_arg tyf vs_arg k0 m0)
                   (Args.mk fptr_arg vs_arg m0)
   .
 
   Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fd tyf
+      tvs fd tyf
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
-      (TYPE: type_of_fundef (Internal fd) = tyf)
+      (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
+      (TYP: typecheck args.(Args.vs) (signature_of_function fd) tvs)
     :
       initial_frame args
-                    (Callstate args.(Args.fptr) tyf args.(Args.vs) Kstop args.(Args.m))
+                    (Callstate args.(Args.fptr) tyf tvs Kstop args.(Args.m))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
@@ -122,14 +136,60 @@ Section MODSEM.
       final_frame (Returnstate v_ret Kstop m_ret) (Retv.mk v_ret m_ret)
   .
 
+  Inductive typify_c (v: val) (ty: type): val -> Prop :=
+  | typify_c_ok
+      (WT: wt_val v ty)
+    :
+      typify_c v ty v
+  | typify_c_no
+      (NWT: ~ wt_val v ty)
+    :
+      typify_c v ty Vundef
+  .
+
+  Lemma typify_c_dtm
+        v ty tv0 tv1
+        (TY0: typify_c v ty tv0)
+        (TY1: typify_c v ty tv1)
+    :
+      tv0 = tv1
+  .
+  Proof.
+    admit "ez".
+  Qed.
+
+  Lemma typify_c_ex
+        v ty
+    :
+      exists tv, <<TYP: typify_c v ty tv>>
+  .
+  Proof.
+    destruct (classic (wt_val v ty)).
+    - esplits; econs 1; eauto.
+    - esplits; econs 2; eauto.
+  Qed.
+
+  Lemma typify_c_spec
+        v ty tv
+        (TY: typify_c v ty tv)
+    :
+      <<WT: wt_val tv ty>>
+  .
+  Proof.
+    inv TY; ss. econs.
+  Qed.
+
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
-      fptr_arg tyf vs_arg m_arg
-      k retv
+      fptr_arg vs_arg m_arg
+      k retv tv
+      (* tyf *)
+      targs tres cconv
+      (TYP: typify_c retv.(Retv.v) tres tv)
     :
-      after_external (Callstate fptr_arg tyf vs_arg k m_arg)
+      after_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
                      retv
-                     (Returnstate retv.(Retv.v) k retv.(Retv.m))
+                     (Returnstate tv k retv.(Retv.m))
   .
 
   Program Definition modsem: ModSem.t :=
@@ -145,7 +205,11 @@ Section MODSEM.
   .
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation.
+    ii; ss; des. inv_all_once; ss; clarify. des.
+    f_equal.
+    determ_tac typify_c_dtm.
+  Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. inv H.
                    inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once. inv H. inv H. Qed.

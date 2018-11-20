@@ -384,3 +384,62 @@ End LINKER_PROG.
 
 
 
+
+Lemma link_list_aux_empty_inv
+      X `{Linker X}
+      xs
+      (EMPTY: link_list_aux xs  = empty)
+  :
+    <<NIL: xs = []>>
+.
+Proof.
+  ginduction xs; ii; ss. des_ifs.
+Qed.
+
+Lemma link_list_snoc_commut
+      X `{Linker X}
+      x0 x1 x_link xs
+      (LINK: link x0 x1 = Some x_link)
+  :
+    <<CMT: link_list (xs ++ [x0 ; x1]) = link_list (xs ++ [x_link])>>
+.
+Proof.
+  ginduction xs; ii; ss.
+  { unfold link_list. ss. des_ifs. }
+  exploit IHxs; eauto. intro IH; des.
+  unfold link_list in IH.
+  unfold link_list. ss.
+  des_ifs; apply_all_once link_list_aux_empty_inv; clarify; ss.
+  - destruct xs; ss.
+  - destruct xs; ss.
+Qed.
+
+
+(* Lemma link_list_cons_commut *)
+(*       X `{Linker X} *)
+(*       x0 x1 x_link xs *)
+(*       (LINK: link x0 x1 = Some x_link) *)
+(*   : *)
+(*     <<CMT: link_list (x0 :: x1 :: xs) = link_list (x_link :: xs)>> *)
+(* . *)
+(* Proof. *)
+  
+(*   { *)
+(*     remember (rev xs) as rem. *)
+(*     move rem at top. *)
+(*     revert_until H. *)
+(*     ginduction rem; ii; ss. *)
+(*     { hexpl rev_nil. clarify. ss. unfold link_list; ss. des_ifs. } *)
+    
+(*   } *)
+(*   ginduction xs; ii; ss. *)
+(*   { unfold link_list. ss. des_ifs. } *)
+(*   unfold link_list. ss. *)
+(*   destruct  *)
+(*   destruct (link_list_aux xs) eqn:T. *)
+(*   { ss. *)
+(*   ss. des_ifs. *)
+(*   exploit IHxs; eauto. i; des. *)
+  
+(*   ss. *)
+(* Qed. *)

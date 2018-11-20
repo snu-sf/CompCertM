@@ -11,118 +11,6 @@ Set Implicit Arguments.
 
 
 
-(* TODO: move to CoqlibC *)
-Ltac et:= eauto.
-
-(* Goal (unit -> nat) = (unit -> Z). *)
-(* Proof. *)
-(* Abort. *)
-
-(* Goal forall A B1 B2, (A -> B1) = (A -> B2) -> B1 = B2. *)
-
-Lemma f_equal_h
-      X1 X2 Y1 Y2 (f1: X1 -> Y1) (f2: X2 -> Y2) x1 x2
-      (TYPX: X1 = X2)
-      (FUNC: f1 ~= f2)
-      (ARG: x1 ~= x2)
-      (TYPY: Y1 = Y2) (* Do we need this? if above goal holds, we can remove this... *)
-  :
-    f1 x1 ~= f2 x2
-.
-Proof.
-  subst.
-  eapply JMeq_eq in ARG.
-  subst.
-  ss.
-Qed.
-
-Lemma f_equal_hr
-      X1 X2 Y (f1: X1 -> Y) (f2: X2 -> Y) x1 x2
-      (FUNC: f1 ~= f2)
-      (TYP: X1 = X2)
-      (ARG: x1 ~= x2)
-  :
-    f1 x1 = f2 x2
-.
-Proof.
-  eapply JMeq_eq.
-  eapply f_equal_h; eauto.
-  (* exploit JMeq_func2; eauto. intro. subst. eapply JMeq_eq in FUNC. subst. ss. *)
-  (* subst. *)
-  (* eapply JMeq_eq in ARG. *)
-  (* eapply JMeq_eq in FUNC. *)
-  (* clarify. *)
-Qed.
-
-Lemma f_equal_rh
-      X Y1 Y2 (f1: X -> Y1) (f2: X -> Y2) x
-      (FUNC: f1 ~= f2)
-      (TYP: Y1 = Y2)
-  :
-    f1 x ~= f2 x
-.
-Proof.
-  eapply f_equal_h; eauto.
-Qed.
-
-(* TODO: move to LinkingC *)
-Lemma link_list_aux_empty_inv
-      X `{Linker X}
-      xs
-      (EMPTY: link_list_aux xs  = empty)
-  :
-    <<NIL: xs = []>>
-.
-Proof.
-  ginduction xs; ii; ss. des_ifs.
-Qed.
-
-Lemma link_list_snoc_commut
-      X `{Linker X}
-      x0 x1 x_link xs
-      (LINK: link x0 x1 = Some x_link)
-  :
-    <<CMT: link_list (xs ++ [x0 ; x1]) = link_list (xs ++ [x_link])>>
-.
-Proof.
-  ginduction xs; ii; ss.
-  { unfold link_list. ss. des_ifs. }
-  exploit IHxs; eauto. intro IH; des.
-  unfold link_list in IH.
-  unfold link_list. ss.
-  des_ifs; apply_all_once link_list_aux_empty_inv; clarify; ss.
-  - destruct xs; ss.
-  - destruct xs; ss.
-Qed.
-
-(* Lemma link_list_cons_commut *)
-(*       X `{Linker X} *)
-(*       x0 x1 x_link xs *)
-(*       (LINK: link x0 x1 = Some x_link) *)
-(*   : *)
-(*     <<CMT: link_list (x0 :: x1 :: xs) = link_list (x_link :: xs)>> *)
-(* . *)
-(* Proof. *)
-  
-(*   { *)
-(*     remember (rev xs) as rem. *)
-(*     move rem at top. *)
-(*     revert_until H. *)
-(*     ginduction rem; ii; ss. *)
-(*     { hexpl rev_nil. clarify. ss. unfold link_list; ss. des_ifs. } *)
-    
-(*   } *)
-(*   ginduction xs; ii; ss. *)
-(*   { unfold link_list. ss. des_ifs. } *)
-(*   unfold link_list. ss. *)
-(*   destruct  *)
-(*   destruct (link_list_aux xs) eqn:T. *)
-(*   { ss. *)
-(*   ss. des_ifs. *)
-(*   exploit IHxs; eauto. i; des. *)
-  
-(*   ss. *)
-(* Qed. *)
 
 
 
@@ -149,34 +37,13 @@ Fixpoint app_cont (k0 k1: cont) {struct k0}: cont :=
   end
 .
 
-Definition get_cont (st0: Csem.state): option cont :=
-  match st0 with
-  | Csem.State _ _ k0 _ _ => Some k0
-  | Csem.ExprState _ _ k0 _ _ => Some k0
-  | Csem.Callstate _ _ _ k0 _ => Some k0
-  | Csem.Returnstate _ k0 _ => Some k0
-  | _ => None
-  end
-.
-
-(* put k0 inside k1 *)
-(* Fixpoint app_cont (k0 k1: cont) {struct k1}: cont := *)
-(*   match k1 with *)
-(*   | Kstop => k0 *)
-(*   | Kdo k => Kdo (app_cont k0 k) *)
-(*   | Kseq s k => Kseq s (app_cont k0 k) *)
-(*   | Kifthenelse s1 s2 k => Kifthenelse s1 s2 (app_cont k0 k) *)
-(*   | Kwhile1 e s k => Kwhile1 e s (app_cont k0 k) *)
-(*   | Kwhile2 e s k => Kwhile2 e s (app_cont k0 k) *)
-(*   | Kdowhile1 e s k => Kdowhile1 e s (app_cont k0 k) *)
-(*   | Kdowhile2 e s k => Kdowhile2 e s (app_cont k0 k) *)
-(*   | Kfor2 e s1 s2 k => Kfor2 e s1 s2 (app_cont k0 k) *)
-(*   | Kfor3 e s1 s2 k => Kfor3 e s1 s2 (app_cont k0 k) *)
-(*   | Kfor4 e s1 s2 k => Kfor4 e s1 s2 (app_cont k0 k) *)
-(*   | Kswitch1 ls k =>  Kswitch1 ls (app_cont k0 k) *)
-(*   | Kswitch2 k =>  Kswitch2 (app_cont k0 k) *)
-(*   | Kreturn k => Kreturn (app_cont k0 k) *)
-(*   | Kcall f e em ty k => Kcall f e em ty (app_cont k0 k) *)
+(* Definition get_cont (st0: Csem.state): option cont := *)
+(*   match st0 with *)
+(*   | Csem.State _ _ k0 _ _ => Some k0 *)
+(*   | Csem.ExprState _ _ k0 _ _ => Some k0 *)
+(*   | Csem.Callstate _ _ _ k0 _ => Some k0 *)
+(*   | Csem.Returnstate _ k0 _ => Some k0 *)
+(*   | _ => None *)
 (*   end *)
 (* . *)
 
@@ -227,9 +94,6 @@ Section PRESERVATION.
   Let ge_cp_link: genv := geof cp_link.
   Let ge_cp0: genv := geof cp0.
   Let ge_cp1: genv := geof cp1.
-  (* Let ge_cp_link: genv := Build_genv (revive (SkEnv.project skenv_link (defs cp_link)) cp_link) cp_link.(prog_comp_env). *)
-  (* Let ge_cp0: genv := Build_genv (revive (SkEnv.project skenv_link (defs cp0)) cp0) cp0.(prog_comp_env). *)
-  (* Let ge_cp1: genv := Build_genv (revive (SkEnv.project skenv_link (defs cp1)) cp1) cp1.(prog_comp_env). *)
 
   Hypothesis WTPROGLINK: wt_program cp_link.
   Hypothesis WTPROG0: wt_program cp0.
@@ -272,38 +136,6 @@ Section PRESERVATION.
 
 
 
-
-  Definition ms_is_c0 (ms: ModSem.t): Prop :=
-    exists _skenv _cprog, CsemC.modsem _skenv _cprog = ms
-  .
-
-  (* Definition ms_is_c1 (ms: ModSem.t): Prop := *)
-  (*   (<<ST: ms.(ModSem.state) = Csem.state>>) /\ *)
-  (*   (<<AFTER: ms.(ModSem.after_external) ~= CsemC.after_external>>) /\ *)
-  (*   (<<FINAL: ms.(ModSem.final_frame) ~= CsemC.final_frame>>) *)
-  (* . *)
-
-
-  Notation " 'ms_is_c1' ms" :=
-    ((<<CST0: ms.(ModSem.state) = Csem.state>>) /\
-     (<<CAT0: ms.(ModSem.at_external) ~= CsemC.at_external>>) /\
-     (<<CAFT0: ms.(ModSem.after_external) ~= CsemC.after_external>>) /\
-     (<<CFIN0: ms.(ModSem.final_frame) ~= CsemC.final_frame>>))
-      (at level 50, no associativity, only parsing)
-  .
-
-
-  (* Inductive cont_frame_wf (conts: list Frame.t): Prop := *)
-  (* | cont_wf_intro *)
-  (*     (WF: forall *)
-  (*         cont *)
-  (*         (IN: In cont conts) *)
-  (*       , *)
-  (*         (<<ISC: ms_is_c cont.(Frame.ms)>>) *)
-  (*         /\ *)
-  (*         (<<CONT: exists _fptr _ty _vs _cont.(Frame.st) ~= Csem.Callstate >>) *)
-  (*     ) *)
-  (* . *)
 
   Definition is_focus (cp: Csyntax.program): Prop := cp = cp0 \/ cp = cp1.
 
@@ -358,48 +190,13 @@ Section PRESERVATION.
       vres k k0 k1 m
       (CONT: k = app_cont k1 k0)
     : match_focus_state (Csem.Returnstate vres k m) (Csem.Returnstate vres k1 m) k0
-  (* | stuck_state_similar *)
-  (*     k0 *)
-  (*   : match_focus_state Csem.Stuckstate Csem.Stuckstate k0 *)
   .
-
-  Section TEST.
-
-    Class converter (X Y: Type) := { conv: X -> Y }.
-    Notation "@" := conv (at level 50).
-    Global Program Instance eq_converter X Y (EQ: X = Y): (converter X Y).
-
-    Obligation Tactic := idtac.
-    Program Definition match_focus' (fr_src: Frame.t) (frs_tgt: list Frame.t): Prop :=
-      match fr_src, frs_tgt with
-      | Frame.mk ms_src cst_src, (Frame.mk ms_tgt cst_tgt) :: tl_tgt =>
-        exists ms_src ms_tgt cst_src cst_tgt tl_tgt k_tl_tgt,
-        (<<MSSRC: ms_is_c1 ms_src>>) /\
-        (<<MSTGT: ms_is_c1 ms_tgt>>) /\
-        (<<SUM: sum_cont tl_tgt k_tl_tgt>>) /\
-        (<<ST: match_focus_state cst_src cst_tgt k_tl_tgt>>)
-      | _, _ => False
-      end
-    .
-    Next Obligation.
-      ii. des_ifs.
-      admit "".
-    Defined.
-  End TEST.
 
   Inductive match_focus: Frame.t -> list Frame.t -> Prop :=
   | match_focus_cons_right
       cst_src cst_tgt
-      (* `{ms_src.(ModSem.state) = Csem.state} *)
-      (* `{ms_tgt.(ModSem.state) = Csem.state} *)
-      (* (CSRC: ms_src.(ModSem.state) = Csem.state) *)
-      (* (CTGT: ms_tgt.(ModSem.state) = Csem.state) *)
-      (* fptr ty vs k_src k_tgt m *)
-      (* (STSRC: cst_src ~= Csem.Callstate fptr ty vs k_src m) *)
-      (* (STTGT: cst_tgt ~= Csem.Callstate fptr ty vs k_tgt m) *)
       tl_tgt k_tl_tgt
       (SUM: sum_cont tl_tgt k_tl_tgt)
-      (* (CONT: k_src = app_cont k_tgt k_tl_tgt) *)
       (ST: match_focus_state cst_src cst_tgt k_tl_tgt)
       cp
       (FOCUS: is_focus cp)
@@ -430,13 +227,6 @@ Section PRESERVATION.
       hd
     :
       match_stacks (hd :: tail_src) (hd :: tail_tgt)
-  (* | match_stacks_cons_focus *)
-  (*     tail_src tail_tgt *)
-  (*     (TAIL: match_stacks tail_src tail_tgt) *)
-  (*     hd_src hds_tgt *)
-  (*     (HD: (admit "") hd_src hds_tgt) *)
-  (*   : *)
-  (*     match_stacks (hd_src :: tail_src) (hds_tgt ++ tail_tgt) *)
   | match_stacks_focus
       tail_src tail_tgt
       (TAIL: match_stacks tail_src tail_tgt)
@@ -549,22 +339,6 @@ Section PRESERVATION.
       - (* focus *)
         inv TAIL. rewrite app_nil_r in *. inv FINAL0; ss. inv H; ss; ModSem.tac.
     }
-      (* + rewrite CFIN1 in FINAL1. inv HD. *)
-      (* exploit app_length; try rewrite H1; eauto. intro LEN; ss. *)
-      (* hexploit match_focus_nonnil; et. i; des. *)
-      (* destruct hds_tgt; ss. destruct tail_tgt; ss; try xomega. destruct hds_tgt; ss. clarify. clear_tac. *)
-      (* exploit match_stacks_right_nil; et. i; des; clarify. *)
-      (* econs; et. *)
-      (* inv HD. ss. inv SUM. *)
-      (* rewrite app_cont_stop_right in *. *)
-      (* (* abstr (ModSem.state ms_tgt) st_tgt; abstr (ModSem.state ms_src) st_src. *) *)
-      (* (* Fail abstr (ModSem.state ms_src) st_src; abstr (ModSem.state ms_tgt) st_tgt. *) *)
-      (* erewrite JMeq_app_strong; try apply FINAL0; ss. *)
-      (* des. subst. simpl_depind. *)
-      (* eapply JMeq_app; eauto. *)
-      (* { etrans; eauto. } *)
-      (* { etrans; eauto. } *)
-      (* { etrans; eauto. } *)
   Qed.
 
   Lemma msfind_fsim
@@ -667,11 +441,9 @@ Section PRESERVATION.
   .
   Proof.
     rr in FOC. des; clarify.
-    (* - eapply preservation_internal; try refl; et. *)
     - eapply preservation; try refl; et.
       + admit "ez".
       + admit "ez".
-    (* - eapply preservation_internal; try refl; et. *)
     - eapply preservation; try refl; et.
       + admit "ez".
       + admit "ez".
@@ -760,8 +532,6 @@ Section PRESERVATION.
           inv ST.
           rr in STEP. des; try (by inv STEP; ss).
           folder.
-          (* set (LLL := (Csem.Callstate fptr_arg tyf vs_arg (app_cont k0 k_tl_tgt) m0)). *)
-          (* set (RRR := st0). *)
           inv STEP; ss; cycle 1.
           { exfalso. admit "project only internals". }
 
@@ -835,8 +605,6 @@ Section PRESERVATION.
             }
             { econs; et. }
             { des_ifs. eapply preservation_cp_link; et.
-              (* { ii. r in H. des_ifs. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe. *)
-              (*   unfold ge_cp_link in *. ss. clarify. } *)
               right. econs; ss; et. des_ifs. unfold Genv.find_funct_ptr. des_ifs.
             }
             {
@@ -847,10 +615,6 @@ Section PRESERVATION.
                   admit "ditto(ZmFkZDJkODhmOGM1YWI0NDI1YjEzMDFi) - ez".
                 - admit "ditto - sizeof_stable".
                 - admit "ditto - sizeof_stable". }
-              (* { ss. ii. des_ifs_safe. *)
-              (*   unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe. *)
-              (*   exploit revive_no_external; eauto. ss. *)
-              (* } *)
               econs.
               - econs; et.
               - econs; et.
@@ -1160,39 +924,6 @@ Section PRESERVATION.
         }
   Unshelve.
     all: ss.
-  (*   - *)
-  (*     left. *)
-  (*     econs; ss; et. *)
-  (*     { i. inv FINALSRC. } *)
-  (*     econs; cycle 1. *)
-  (*     { admit "receptive". } *)
-  (*     i. inv STEPSRC. ss. des_ifs. *)
-  (*     exploit msfind_fsim; et. i; des. *)
-  (*     + esplits; eauto. *)
-  (*       { left. apply plus_one. econs; et. *)
-  (*         { admit "determinate". } *)
-  (*         econs; et. *)
-  (*         ss. des_ifs. *)
-  (*       } *)
-  (*       right. eapply CIH. econs; et. econs; et. *)
-  (*     + clarify. ss. inv INIT. *)
-  (*       esplits; eauto. *)
-  (*       { left. apply plus_one. econs; et. *)
-  (*         { admit "determinate". } *)
-  (*         econs. *)
-  (*         { ss. des_ifs. et. } *)
-  (*         ss. econs; et. ss. *)
-  (*         instantiate (1:= fd). *)
-  (*         admit "this should hold". *)
-  (*       } *)
-  (*       right. eapply CIH. econs; et. *)
-  (*       rewrite cons_app with (xtl := frs_tgt). *)
-  (*       econs 3; ss; et. *)
-  (*       econs; ss; et. *)
-  (*       { econs; ss; et. } *)
-  (*       econs; ss; et. *)
-  (* Unshelve. *)
-  (*   all: ss. *)
   Qed.
 
   Theorem upperbound_a_xsim
@@ -1211,8 +942,6 @@ End PRESERVATION.
 
 Require Import BehaviorsC.
 
-(* Notation " 'geof' skenv_link cp" := (Build_genv (revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env)) *)
-(*                                       (at level 50, no associativity, only parsing). *)
 Let geof := fun skenv_link (cp: Csyntax.program) =>
               (Build_genv (revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env)).
 

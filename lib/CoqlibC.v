@@ -1035,3 +1035,46 @@ Proof.
   ii. induction a; ii; ss.
 Qed.
 
+Ltac et:= eauto.
+
+Require Import Program.
+
+Lemma f_equal_h
+      X1 X2 Y1 Y2 (f1: X1 -> Y1) (f2: X2 -> Y2) x1 x2
+      (TYPX: X1 = X2)
+      (FUNC: f1 ~= f2)
+      (ARG: x1 ~= x2)
+      (TYPY: Y1 = Y2) (* Do we need this? *)
+  :
+    f1 x1 ~= f2 x2
+.
+Proof.
+  subst.
+  eapply JMeq_eq in ARG.
+  subst.
+  ss.
+Qed.
+
+Lemma f_equal_hr
+      X1 X2 Y (f1: X1 -> Y) (f2: X2 -> Y) x1 x2
+      (FUNC: f1 ~= f2)
+      (TYP: X1 = X2)
+      (ARG: x1 ~= x2)
+  :
+    f1 x1 = f2 x2
+.
+Proof.
+  eapply JMeq_eq.
+  eapply f_equal_h; eauto.
+Qed.
+
+Lemma f_equal_rh
+      X Y1 Y2 (f1: X -> Y1) (f2: X -> Y2) x
+      (FUNC: f1 ~= f2)
+      (TYP: Y1 = Y2)
+  :
+    f1 x ~= f2 x
+.
+Proof.
+  eapply f_equal_h; eauto.
+Qed.

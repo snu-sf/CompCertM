@@ -692,8 +692,8 @@ Section PRESERVATION.
             econs; ss; et.
             {
               assert(v_ret = tv).
-              { inv WTSRC.
-                admit "".
+              { inv WTSRC. inv TYP; ss. clarify.
+                inv WTK. ss.
               }
               clarify.
               econs; ss; et.

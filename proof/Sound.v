@@ -74,8 +74,8 @@ Module Sound.
     mle: t -> Memory.mem -> Memory.mem -> Prop;
     mle_PreOrder su0 :> PreOrder (mle su0);
 
-    vle: t -> t -> Prop;
-    vle_PreOrder :> PreOrder vle;
+    le: t -> t -> Prop;
+    le_PreOrder :> PreOrder le;
     hle: t -> t -> Prop;
     hle_PreOrder :> PreOrder hle;
     (* le_val: forall *)
@@ -86,17 +86,16 @@ Module Sound.
     (* ; *)
 
     (* TODO: rename it into le_monotone *)
-    hle_spec: forall
-        su0 su1 m0 m1
-        (MLE: mle su1 m0 m1)
-        (LE: hle su0 su1)
+    hle_le: forall
+        su0 su1
+        (HLE: hle su0 su1)
       ,
-        <<MLE: mle su0 m0 m1>>
+        <<LE: le su0 su1>>
     ;
-    vle_spec: forall
+    le_spec: forall
         su0 su1 m0 m1
         (MLE: mle su1 m0 m1)
-        (LE: vle su0 su1)
+        (LE: le su0 su1)
       ,
         <<MLE: mle su0 m0 m1>>
     ;
@@ -127,7 +126,7 @@ Module Sound.
     (* ; *)
     greatest_ex: forall
         su0 args0
-        (INHAB: exists inhab, <<LE: vle su0 inhab>> /\ <<ARGS: inhab.(args) args0>>)
+        (INHAB: exists inhab, <<LE: le su0 inhab>> /\ <<ARGS: inhab.(args) args0>>)
       ,
         exists su_gr, <<GR: get_greatest su0 args0 su_gr>>
     ;
@@ -135,7 +134,7 @@ Module Sound.
         su0 args0 su_gr
         (GR: get_greatest su0 args0 su_gr)
       ,
-        <<SUARGS: args su_gr args0>> /\ <<LE: vle su0 su_gr>>
+        <<SUARGS: args su_gr args0>> /\ <<LE: le su0 su_gr>>
     ;
     (* get_greatest_irr: forall *)
     (*     su0 su1 args0 su_gr0 su_gr1 *)
@@ -187,7 +186,7 @@ Module Sound.
     skenv_le: forall
         m0 su0 su1 ske
         (SKE: su0.(skenv) m0 ske)
-        (LE: vle su0 su1)
+        (LE: le su0 su1)
       ,
         <<SKE: su1.(skenv) m0 ske>>
     ;
@@ -239,6 +238,16 @@ Module Sound.
   Section SOUND.
   Context {SU: class}.
 
+  Lemma hle_spec: forall
+        su0 su1 m0 m1
+        (MLE: mle su1 m0 m1)
+        (LE: hle su0 su1)
+      ,
+        <<MLE: mle su0 m0 m1>>
+  .
+  Proof.
+    i. eapply Sound.le_spec; et. eapply Sound.hle_le; et.
+  Qed.
   (* Lemma get_greatest_le *)
   (*       su0 su1 args0 su_gr *)
   (*       (GR: get_greatest su1 args0 su_gr) *)

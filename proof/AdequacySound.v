@@ -51,7 +51,7 @@ Section ADQSOUND.
   Lemma vle_preserves_sound_ge
         m0 su0 su1
         (GE: sound_ge su0 m0)
-        (LE: Sound.vle su0 su1)
+        (LE: Sound.le su0 su1)
     :
       <<GE: sound_ge su1 m0>>
   .

@@ -808,7 +808,7 @@ Qed.
 
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
-  vle := le';
+  le := le';
   hle := hle';
   get_greatest (su0: t) (args: Args.t) := greatest le' (fun su => <<LE: le' su0 su>> /\ su.(args') args);
   args := args';
@@ -818,13 +818,11 @@ Global Program Instance Unreach: Sound.class := {
 }
 .
 Next Obligation.
-  eapply mle_monotone; try apply MLE; eauto.
-  r in LE. des; ss.
+  eapply hle_le; et.
 Qed.
 Next Obligation.
-  inv MLE. rr in LE. des.
-  econs; eauto.
-  eapply Mem.unchanged_on_implies; eauto. ii. unfold flip in *. eapply PRIV0; eauto.
+  eapply mle_monotone; try apply MLE; eauto.
+  r in LE. des; ss.
 Qed.
 Next Obligation.
   rr in GR0. rr in GR1. des.

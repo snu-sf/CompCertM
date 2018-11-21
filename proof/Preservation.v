@@ -196,7 +196,7 @@ Proof.
   - ii. des. exploit CALL; eauto. i; des. esplits; eauto.
     { etrans; eauto. }
     ii. exploit K; eauto. i; des. esplits; eauto. etrans; eauto.
-    etrans; eauto. etrans; eauto. eapply Sound.vle_spec; eauto. eapply Sound.greatest_adq; eauto.
+    etrans; eauto. etrans; eauto. eapply Sound.le_spec; eauto. eapply Sound.greatest_adq; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; eauto.
     etrans; eauto.
 Qed.
@@ -274,7 +274,7 @@ Proof.
     + etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des.
     exploit Sound.get_greatest_le; eauto. intro GRH. des.
-    assert(LE1: Sound.vle su_h su_gr).
+    assert(LE1: Sound.le su_h su_gr).
     { eapply Sound.greatest_adq; eauto. }
     esplits; eauto.
     { etrans; eauto.
@@ -285,7 +285,7 @@ Proof.
       eapply Sound.hle_spec; eauto.
       etrans; eauto.
       etrans; eauto.
-      eapply Sound.vle_spec; eauto.
+      eapply Sound.le_spec; eauto.
     + etrans; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; try apply RETV; eauto.
     + etrans; eauto.
@@ -361,7 +361,7 @@ Proof.
     { etrans; eauto. }
     ii. exploit K; eauto. i; des. esplits; eauto. etrans; eauto.
     etrans; eauto. etrans; eauto.
-    { eapply Sound.vle_spec; eauto. eapply Sound.greatest_adq; eauto. }
+    { eapply Sound.le_spec; eauto. eapply Sound.greatest_adq; eauto. }
     eapply FOOTWEAK; eauto.
     eapply FOOTLE; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; eauto.
@@ -454,7 +454,7 @@ Proof.
     + etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des.
     exploit Sound.get_greatest_le; eauto. intro GRH. des.
-    assert(LE1: Sound.vle su_h su_gr).
+    assert(LE1: Sound.le su_h su_gr).
     { eapply Sound.greatest_adq; eauto. }
     esplits; eauto.
     { etrans; eauto.
@@ -465,7 +465,7 @@ Proof.
       eapply Sound.hle_spec; eauto.
       etrans; eauto.
       etrans; eauto.
-      * eapply Sound.vle_spec; eauto.
+      * eapply Sound.le_spec; eauto.
       * eapply FOOTWEAK; eauto.
         eapply FOOTLE; eauto.
     + etrans; eauto.

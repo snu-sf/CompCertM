@@ -19,6 +19,7 @@ Definition bc2su (bc: block_classification) (ge_nb: block) (bound: block): Unrea
                  then block_class_eq (bc blk) BCinvalid
                  else false)
      ge_nb
+     bound
 .
 Hint Unfold bc2su.
 
@@ -87,6 +88,7 @@ Proof.
     - exploit sound_stack_unreach_compat; eauto. i; des.
       des_ifs. ss. des_sumbool. inv SU.
       r in GE. des. ss. exploit GE0; eauto. i; des. congruence.
+    - ii. des_ifs. des_sumbool.
   }
 Qed.
 

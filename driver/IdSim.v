@@ -378,8 +378,8 @@ Proof.
       econs; ss; eauto; cycle 1.
       { ii. exploit BOUND; eauto. i. unfold Mem.valid_block in *. rewrite <- NB. rewrite SUCC. xomega. }
       { rewrite <- NB. rewrite SUCC. xomega. }
-      i.
-      admit "this should hold".
+      { admit "idk". }
+      { i. admit "this should hold". }
     + (* ske *)
       inv SKENV. rewrite PUB in *. ss.
   - (* step *)
@@ -395,6 +395,7 @@ Proof.
         * rewrite Forall_forall. i.
           admit "extcall-arguments".
         * admit "this should hold".
+        * admit "idk".
     }
     esplits; eauto.
     + inv SUST.
@@ -441,6 +442,7 @@ Module TRIAL2.
       (MEM: UnreachC.mem' su m0)
       (INIT: forall pr, UnreachC.val' su m0.(Mem.nextblock) (init_rs#pr))
       (WF: forall blk (PRIV: su.(UnreachC.unreach) blk) (PUB: Plt blk su.(Unreach.ge_nb)), False)
+      (WF: forall blk (PRIV: su.(Unreach.unreach) blk) (PUB: Ple su.(Unreach.nb) blk), False)
       (* (SKE: UnreachC.skenv su m0 skenv) *)
       (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
     :
@@ -510,7 +512,7 @@ Module TRIAL2.
       inv INIT.
       r in SUARG. des.
       rename m into m2.
-      exists su_arg.
+      exists (Unreach.mk su_arg.(Unreach.unreach) su_arg.(Unreach.ge_nb) (Pos.succ su_arg.(Unreach.nb))).
       assert(SURS: forall pr, UnreachC.val' su_arg (Mem.nextblock m2) (rs pr)).
       {
         ii. unfold PregEq.t in *. spc PTRFREE.
@@ -555,7 +557,11 @@ Module TRIAL2.
         xomega.
       }
       ss.
-      esplits; eauto; try refl; cycle 1.
+      esplits; eauto; try refl; swap 2 3.
+      { rr. ss. esplits; et.
+        - ii. des; ss.
+        - xomega.
+      }
       { (* store_arguments mle *)
         inv STORE.
         exploit Mem.alloc_result; eauto. i; clarify.
@@ -587,8 +593,10 @@ Module TRIAL2.
         econs; ss; eauto; cycle 1.
         { ii. exploit BOUND; eauto. i. unfold Mem.valid_block in *. rewrite <- NB. rewrite SUCC. xomega. }
         { rewrite <- NB. rewrite SUCC. xomega. }
+        { rewrite NB0. congruence. }
         i.
         admit "this should hold".
+      + ii. eapply WF0; et. xomega.
       + (* ske *)
         inv SKENV. rewrite PUB in *. ss.
     - (* step *)
@@ -641,7 +649,7 @@ Module TRIAL2.
                                   then su0.(Unreach.unreach) blk
                                   else su_ret.(Unreach.unreach) blk
                                )
-                               su0.(Unreach.ge_nb)).
+                               su0.(Unreach.ge_nb) m2.(Mem.nextblock)).
         exists su1.
         assert(LEA: UnreachC.le' su0 su1).
         { rr in GR. des. unfold su1.
@@ -654,7 +662,14 @@ Module TRIAL2.
           - ii. des_ifs. eapply LE; eauto. eapply LE0; eauto.
           - rr in LE. des. rr in LE0. des. congruence.
         }
-        esplits; eauto; cycle 1.
+        esplits; eauto; swap 2 3.
+        { unfold su1. rr. ss.
+          inv SUST. inv MEM. rewrite NB in *.
+          esplits; et.
+          - ii. des_ifs. exfalso. eapply WF0; et. xomega.
+          - ii. des. des_ifs.
+          - admit "ez".
+        }
         { admit "---------------------------------------------mle_excl". }
         (* { inv SUST. inv MEM. rr. split; ss. ii. des_ifs. apply BOUND in PR. unfold Mem.valid_block in *. ss. } *)
         inv SUST.
@@ -691,21 +706,51 @@ Module TRIAL2.
           { inv MEM0. econs; ss; eauto; cycle 1.
             - ii. eapply BOUND. des_ifs. eapply LEB. eapply LEA. ss.
             - admit "ez".
-            - i. destruct (classic (Unreach.unreach su_ret blk2)); cycle 1.
+            - i.
+              destruct (classic (Unreach.unreach su_ret blk2)); cycle 1.
               { hexploit SOUND; eauto. i.
                 admit "val_le".
               }
+              rename H into SURET.
               des_ifs.
+              assert(HLEA: forall
+                        blk
+                        (OLD: Plt blk (Mem.nextblock m0))
+                        (NEW: Unreach.unreach su_ret blk)
+                      ,
+                        <<OLD: Unreach.unreach su_gr blk>>).
+              { ii. rr in LE. des. eapply OLD0. esplits; et. clear - OLD GR FREE. admit "ez". }
+              exploit HLEA; et. intro SUGR; des.
+
               assert(UNCH: (ZMap.get ofs0 (Mem.mem_contents m2) !! blk2)
                            = (ZMap.get ofs0 (Mem.mem_contents m1) !! blk2)).
               { inv MLE. eapply Mem.unchanged_on_contents; eauto.
-                - u. admit "we don't know this.. we need hle". tttttttttttttttttttttttttt
-                - admit "not sure".
+                - eapply PRIV; et.
+                  admit "ez".
               }
+
+
+              move SUARGS at bottom. rr in SUARGS. des. ss. inv MEM0.
+              erewrite UNCH.
+              hexploit SOUND0; et.
+              { inv MLE. eapply PRIV; et. admit "ez". }
+              i; des.
+              admit "this should hold".
           }
           admit "ez".
         }
-        { ii. exploit INIT; eauto. i; des. esplits; eauto. admit "ez". }
+        { ii. exploit INIT; eauto. i; des. esplits; eauto.
+          - unfold su1. ss. des_ifs.
+          - admit "ez".
+        }
+        { ii; ss.
+          rr in SUARGS. des. des_ifs; et.
+          clear - n PUB. admit "ez".
+        }
+        { ii; ss.
+          clear - PUB.
+          admit "ez".
+        }
     - (* return *)
       inv SUST. inv FINAL. ss. clarify.
       exists su0. esplits; eauto.
@@ -714,10 +759,9 @@ Module TRIAL2.
         - erewrite Mem.nextblock_free; eauto.
         - admit "this should hold".
       }
-      etrans; eauto.
       eapply UnreachC.free_mle; eauto.
       exploit INIT; eauto. i; des. ss.
-      Unshelve.
+  Unshelve.
       all: ss.
   Qed.
 

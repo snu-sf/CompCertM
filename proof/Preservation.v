@@ -116,7 +116,7 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
               su_ret retv st1
-              (LE: Sound.le su_gr su_ret)
+              (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
               (* retv st1 *)
               (* (RETV: su_gr.(Sound.retv) retv) *)
@@ -130,7 +130,7 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
         (SUST: sound_state su0 m_arg st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv)
       ,
-        exists su_ret, <<LE: Sound.le su0 su_ret>> /\
+        exists su_ret, <<LE: Sound.hle su0 su_ret>> /\
         <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) m_arg retv.(Retv.m)>>)
 .
 
@@ -164,7 +164,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
               su_ret retv st1
-              (LE: Sound.le su_gr su_ret)
+              (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
               (* retv st1 *)
               (* (RETV: su_gr.(Sound.retv) retv) *)
@@ -179,7 +179,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
         (SUST: sound_state su0 st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv)
       ,
-        exists su_ret, <<LE: Sound.le su0 su_ret>> /\
+        exists su_ret, <<LE: Sound.hle su0 su_ret>> /\
         <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.m)>>)
 .
 
@@ -484,7 +484,7 @@ Definition system_sound_state `{SU: Sound.class} (ms: ModSem.t): Sound.t -> mem 
     | System.Callstate args => su.(Sound.args) args /\ su.(Sound.mle) m_arg args.(Args.m)
                                /\ su.(Sound.skenv) m_arg ms.(ModSem.skenv)
     | System.Returnstate retv =>
-      exists su_ret, Sound.le su su_ret /\ su_ret.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m)
+      exists su_ret, Sound.hle su su_ret /\ su_ret.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m)
       (* su.(Sound.retv) retv /\ su.(Sound.mle) m_arg retv.(Retv.m) *)
         /\ su.(Sound.skenv) retv.(Retv.m) ms.(ModSem.skenv)
     end

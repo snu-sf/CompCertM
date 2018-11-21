@@ -74,8 +74,10 @@ Module Sound.
     mle: t -> Memory.mem -> Memory.mem -> Prop;
     mle_PreOrder su0 :> PreOrder (mle su0);
 
-    le: t -> t -> Prop;
-    le_PreOrder :> PreOrder le;
+    vle: t -> t -> Prop;
+    vle_PreOrder :> PreOrder vle;
+    hle: t -> t -> Prop;
+    hle_PreOrder :> PreOrder hle;
     (* le_val: forall *)
     (*     su0 su1 *)
     (*     (LE: le su0 su1) *)
@@ -87,7 +89,7 @@ Module Sound.
     le_spec: forall
         su0 su1 m0 m1
         (MLE: mle su1 m0 m1)
-        (LE: le su0 su1)
+        (LE: vle su0 su1)
       ,
         <<MLE: mle su0 m0 m1>>
     ;
@@ -118,7 +120,7 @@ Module Sound.
     (* ; *)
     greatest_ex: forall
         su0 args0
-        (INHAB: exists inhab, <<LE: le su0 inhab>> /\ <<ARGS: inhab.(args) args0>>)
+        (INHAB: exists inhab, <<LE: vle su0 inhab>> /\ <<ARGS: inhab.(args) args0>>)
       ,
         exists su_gr, <<GR: get_greatest su0 args0 su_gr>>
     ;
@@ -126,7 +128,7 @@ Module Sound.
         su0 args0 su_gr
         (GR: get_greatest su0 args0 su_gr)
       ,
-        <<SUARGS: args su_gr args0>> /\ <<LE: le su0 su_gr>>
+        <<SUARGS: args su_gr args0>> /\ <<LE: vle su0 su_gr>>
     ;
     (* get_greatest_irr: forall *)
     (*     su0 su1 args0 su_gr0 su_gr1 *)
@@ -178,7 +180,7 @@ Module Sound.
     skenv_le: forall
         m0 su0 su1 ske
         (SKE: su0.(skenv) m0 ske)
-        (LE: le su0 su1)
+        (LE: vle su0 su1)
       ,
         <<SKE: su1.(skenv) m0 ske>>
     ;
@@ -222,7 +224,7 @@ Module Sound.
         (SKE: skenv su0 args0.(Args.m) skenv0)
         (EXT: (external_call ef) skenv0 args0.(Args.vs) args0.(Args.m) tr v_ret m_ret)
       ,
-        exists su1, <<LE: le su0 su1>> /\ <<RETV: su1.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su0.(mle) args0.(Args.m) m_ret>>
+        exists su1, <<LE: hle su0 su1>> /\ <<RETV: su1.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su0.(mle) args0.(Args.m) m_ret>>
     ;
   }
   .

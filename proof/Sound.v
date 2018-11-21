@@ -86,7 +86,14 @@ Module Sound.
     (* ; *)
 
     (* TODO: rename it into le_monotone *)
-    le_spec: forall
+    hle_spec: forall
+        su0 su1 m0 m1
+        (MLE: mle su1 m0 m1)
+        (LE: hle su0 su1)
+      ,
+        <<MLE: mle su0 m0 m1>>
+    ;
+    vle_spec: forall
         su0 su1 m0 m1
         (MLE: mle su1 m0 m1)
         (LE: vle su0 su1)
@@ -143,7 +150,7 @@ Module Sound.
         su0 su1 args0 su_gr
         (GR: get_greatest su1 args0 su_gr)
         (SUARG: args su1 args0)
-        (LE: le su0 su1)
+        (LE: hle su0 su1)
       ,
         <<GR: get_greatest su0 args0 su_gr>>
     ;

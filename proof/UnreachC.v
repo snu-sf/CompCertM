@@ -120,6 +120,7 @@ Inductive mem': Unreach.t -> Memory.mem -> Prop :=
     (BOUND: su.(unreach) <1= m0.(Mem.valid_block))
     (* (BOUND: Ple su.(Unreach.nb) m0.(Mem.nextblock)) *)
     (GENB: Ple su.(Unreach.ge_nb) m0.(Mem.nextblock))
+    (NB: su.(Unreach.nb) = m0.(Mem.nextblock))
   :
     mem' su m0
 .
@@ -149,6 +150,8 @@ Definition le' (x y: Unreach.t): Prop :=
   (<<PRIV: x.(unreach) <1= y.(unreach)>>)
   /\
   (<<PUB: x.(ge_nb) = y.(ge_nb)>>)
+  (* /\ *)
+  (* (<<NB: x.(nb) = y.(nb)>>) *)
 .
 
 Global Program Instance le'_PreOrder: PreOrder le'.
@@ -157,8 +160,7 @@ Next Obligation.
 Qed.
 Next Obligation.
   ii. r in H. r in H0. des.
-  r; esplits; ss; eauto.
-  etrans; eauto.
+  r; esplits; ss; eauto; etrans; eauto.
 Qed.
 
 (* TODO: I really don't want to define this. It is redundant with `Sound.args`, but it seems there is no other way *)
@@ -167,6 +169,7 @@ Definition args' (su: Unreach.t) (args0: Args.t) :=
   /\ (<<VALS: List.Forall (su.(val') args0.(Args.m).(Mem.nextblock)) (Args.vs args0)>>)
   /\ (<<MEM: mem' su (Args.m args0)>>)
   /\ (<<WF: forall blk (PRIV: su blk) (PUB: Plt blk su.(ge_nb)), False>>)
+  /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>)
 .
 
 Definition retv' (su: Unreach.t) (retv0: Retv.t) :=
@@ -458,6 +461,7 @@ Let eta
       x0 x1
       (FIELD0: x0.(unreach) = x1.(unreach))
       (FIELD1: x0.(ge_nb) = x1.(ge_nb))
+      (FIELD2: x0.(nb) = x1.(nb))
   :
     <<EQ: x0 = x1>>
 .
@@ -468,7 +472,8 @@ Let Jpos_injective: forall
     (J0: Jpos fuel x0 n)
     (J1: Jpos fuel x1 n)
     (BDD: forall blk, Ple fuel blk -> x0 blk = x1 blk)
-    (NB: x0.(ge_nb) = x1.(ge_nb))
+    (GENB: x0.(ge_nb) = x1.(ge_nb))
+    (NB: x0.(nb) = x1.(nb))
   ,
     x0 = x1
 .
@@ -565,6 +570,7 @@ Let to_su (j: meminj) (ge_nb: block) (bound: positive): t :=
        else
          false)
     ge_nb
+    bound
 .
 
 Let to_inj_mem: forall
@@ -598,8 +604,10 @@ Proof.
 Qed.
 
 Definition lub (x y: t): option t :=
-  if eq_block x.(ge_nb) y.(ge_nb)
-  then Some (mk (fun blk => orb (x blk) (y blk)) x.(ge_nb))
+  if eq_block x.(ge_nb) y.(ge_nb) then
+    if eq_block x.(nb) y.(nb)
+    then Some (mk (fun blk => orb (x blk) (y blk)) x.(ge_nb) x.(nb))
+    else None
   else None
 .
 Hint Unfold lub.
@@ -613,7 +621,9 @@ Lemma lubsucc: forall
 .
 Proof.
   ii. des. unfold le', args' in *. des.
-  u. des_ifs; try congruence. econs; ii; eauto.
+  u. des_ifs; try congruence.
+  - econs; ii; eauto.
+  - inv MEM. inv MEM0. congruence.
 Qed.
 
 Lemma lubspec: forall
@@ -654,6 +664,7 @@ Proof.
     + ii. bsimpl. des; eauto.
   }
   { eapply WF; eauto with congruence. }
+  { eapply WF0; eauto with congruence. }
 Qed.
 
 (* copied from Globalenvs.v - store_init_data *)
@@ -753,9 +764,52 @@ Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
 (*   exploit IHids; eauto. *)
 (* Qed. *)
 
+Notation "'prange' '#' hi" := (fun blk => Plt blk hi) (at level 50, no associativity (* , only parsing *)).
+Notation "'prange' lo '#'" := (fun blk => Ple blk lo) (at level 50, no associativity (* , only parsing *)).
+Notation "'prange' lo hi" := (fun blk => Ple lo blk /\ Plt blk hi) (at level 50, no associativity (* , only parsing *)).
+(* Definition prange (hi: block): block -> Prop := *)
+(*   fun blk => Plt blk hi *)
+(* . *)
+
+Definition hle' (x y: Unreach.t): Prop :=
+  (<<PRIV: x.(unreach) <1= y.(unreach)>>)
+  /\
+  (<<OLD: y.(unreach) /1\ (prange # x.(nb)) <1= x.(unreach)>>)
+  /\
+  (<<NB: Ple x.(nb) y.(nb)>>)
+  /\
+  (<<GENB: x.(ge_nb) = y.(ge_nb)>>)
+.
+
+Global Program Instance hle_PreOrder: PreOrder hle'.
+Next Obligation.
+  rr. ii; des. esplits; eauto.
+  - ii. des; ss.
+  - xomega.
+Qed.
+Next Obligation.
+  ii; des.
+  unfold hle' in *. des.
+  esplits; eauto.
+  - ii. des; ss. eapply OLD0; eauto. esplits; eauto. eapply OLD; eauto. esplits; eauto. xomega.
+  - xomega.
+  - congruence.
+Qed.
+
+Lemma hle_le
+      su0 su1
+      (HLE: hle' su0 su1)
+  :
+    <<LE: le' su0 su1>>
+.
+Proof.
+  rr. rr in HLE. des. esplits; eauto.
+Qed.
+
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
-  le := le';
+  vle := le';
+  hle := hle';
   get_greatest (su0: t) (args: Args.t) := greatest le' (fun su => <<LE: le' su0 su>> /\ su.(args') args);
   args := args';
   retv := retv';
@@ -766,6 +820,11 @@ Global Program Instance Unreach: Sound.class := {
 Next Obligation.
   eapply mle_monotone; try apply MLE; eauto.
   r in LE. des; ss.
+Qed.
+Next Obligation.
+  inv MLE. rr in LE. des.
+  econs; eauto.
+  eapply Mem.unchanged_on_implies; eauto. ii. unfold flip in *. eapply PRIV0; eauto.
 Qed.
 Next Obligation.
   rr in GR0. rr in GR1. des.
@@ -779,6 +838,7 @@ Next Obligation.
   destruct (su_gr0 x0) eqn:T0, (su_gr1 x0) eqn:T1; ss.
   { rewrite PRIV0 in *; eauto. }
   { rewrite PRIV in *; eauto. }
+  { inv PROP0. inv PROP1. des. inv MEM0. inv MEM. congruence. }
 Qed.
 (* Next Obligation. *)
 (*   rr in GR. des. eapply MAX; eauto. (* econs; eauto. *) *)
@@ -795,6 +855,7 @@ Next Obligation.
       inv MEM0. inv MEM.
       eapply Jpos_injective; eauto; cycle 1.
       { unfold le' in *. des. congruence. }
+      { congruence. }
       ii. u in BOUND. u in BOUND0. destruct (x0 blk) eqn:T0, (x1 blk) eqn:T1; ss.
       { hexploit BOUND; eauto. i. r in H4. xomega. }
       { hexploit BOUND0; eauto. i. r in H4. xomega. }
@@ -812,10 +873,11 @@ Next Obligation.
   { i. eapply lubsucc; eauto. }
   { i. eapply lubspec; eauto. }
   { i. eapply lubclosed; revgoals; eauto. }
+  { eapply hle_le; et. }
 Qed.
 Next Obligation.
   set (Sk.load_skenv sk_link) as skenv.
-  exists (mk (fun _ => false) skenv.(Genv.genv_next)).
+  exists (mk (fun _ => false) skenv.(Genv.genv_next) m_init.(Mem.nextblock)).
   esplits; eauto.
   - rr; ss. esplits; eauto.
     + ii. esplits; eauto. unfold Genv.symbol_address in *. des_ifs. u in MEM. erewrite <- Genv.init_mem_genv_next; eauto.
@@ -913,15 +975,24 @@ Next Obligation.
   intro AX; des.
   exists (to_su f' su0.(ge_nb) m_ret.(Mem.nextblock)). unfold to_su.
   esplits; eauto.
-  - r. s. esplits; eauto.
-    ii. unfold to_inj in AX4, AX5. r in AX4. r in AX5.
-    inv MEM. exploit BOUND; eauto. i. des_ifs; cycle 1.
-    { unfold Mem.valid_block in *. inv AX2. xomega. }
-    destruct p0; ss.
-    exploit AX5; eauto.
-    { des_ifs. }
-    i; des.
-    ss.
+  - r. s.
+    unfold to_inj in AX4, AX5. r in AX4. r in AX5.
+    esplits; eauto.
+    + ii.
+      inv MEM. exploit BOUND; eauto. i. des_ifs; cycle 1.
+      { unfold Mem.valid_block in *. inv AX2. xomega. }
+      destruct p0; ss.
+      exploit AX5; eauto.
+      { des_ifs. }
+      i; des.
+      ss.
+    + ii. des. des_ifs.
+      rename x0 into bb.
+      apply NNPP. ii.
+      exploit (AX4 bb bb); eauto; i; clarify.
+      des_ifs. exfalso.
+      eapply n. eapply Plt_Ple_trans; et. inv MEM. rewrite NB. xomega.
+    + inv MEM. rewrite NB. inv AX2; ss.
   - r. s. esplits; eauto.
     + s. r. ii; ss. clarify. inv AX0. des_ifs.
       esplits; eauto.

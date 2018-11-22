@@ -449,42 +449,32 @@ Module TRIAL2.
       sound_state su (mkstate init_rs (State rs0 m0))
   .
 
-  Inductive has_footprint: AsmC.state -> mem -> mem -> Prop :=
+  Inductive has_footprint: AsmC.state -> mem -> Prop :=
   | has_footprint_intro
       blk0 blk1 ofs
-      init_rs (rs0: regset) m_unused m0 m1 sg
+      init_rs (rs0: regset) m_unused m1 sg
       (FPTR: rs0 # PC = Vptr blk0 Ptrofs.zero true)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero true)
                         = Some skd /\ SkEnv.get_sig skd = sg)
       (RSP: rs0 RSP = Vptr blk1 ofs true)
-      (* (FREE: Mem.free m0 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1) *)
-      (FREEABLE: Mem.range_perm m0 blk1
-                                (ofs.(Ptrofs.unsigned))
-                                (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) Cur Freeable)
-      (* (FREED: Mem_range_noperm m1 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg))) *)
+      (FREED: Mem_range_noperm m1 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)))
       (VALID: Mem.valid_block m1 blk1)
     :
-      has_footprint (mkstate init_rs (State rs0 m_unused)) m0 m1
+      has_footprint (mkstate init_rs (State rs0 m_unused)) m1
   .
 
   Inductive mle_excl: AsmC.state -> Sound.t -> mem -> mem -> Prop :=
   | mle_excl_intro
-      init_rs rs0 m_unused (su0: UnreachC.t) m0 m1
-      blk0 blk1 sg ofs1
-      (FPTR: rs0 # PC = Vptr blk0 Ptrofs.zero true)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero true)
-                        = Some skd /\ SkEnv.get_sig skd = sg)
-      (RSP: rs0 RSP = Vptr blk1 ofs1 true)
+      st0 (su0: UnreachC.t) m0 m1
       (PERM: forall
           blk ofs
           (VALID: m0.(Mem.valid_block) blk)
-          (NFREED: ~ (brange blk1 ofs1.(Ptrofs.unsigned) (ofs1.(Ptrofs.unsigned) + 4 * (size_arguments sg))) blk ofs)
         ,
           m1.(Mem.perm) blk ofs Max <1= m0.(Mem.perm) blk ofs Max)
       (RO: Mem.unchanged_on m0.(loc_not_writable) m0 m1)
       (PRIV: Mem.unchanged_on (fun _ => su0.(UnreachC.unreach)).(Basics.flip) m0 m1)
     :
-      mle_excl (mkstate init_rs (State rs0 m_unused)) su0 m0 m1
+      mle_excl st0 su0 m0 m1
   .
 
   (* TODO: move to proper place *)
@@ -515,24 +505,9 @@ Module TRIAL2.
       inv FOOT. inv MLE. econs; eauto; cycle 1.
       { eapply Mem.valid_block_unchanged_on; eauto. }
       (* r. i. r in FREED. hexploit FREED; eauto. i. *)
-      (* ii. exploit FREED; eauto. *)
+      ii. exploit FREED; eauto.
     - (* FOOTEXCL *)
-      inv MLE. inv FOOT. inv MLE0. ss. des. rewrite FPTR in *. rewrite RSP in *. clarify. econs; et.
-      + i.
-        destruct (classic (brange blk3
-                                  (Ptrofs.unsigned ofs1)
-                                  (Ptrofs.unsigned ofs1 + 4 * size_arguments (SkEnv.get_sig skd0)) blk ofs)).
-        * rr in H. des; clarify. eapply Mem.perm_cur. eapply Mem.perm_implies with Freeable; eauto with mem.
-        * eapply PERM; et.
-          eapply PERM0; et.
-          eapply Mem.valid_block_unchanged_on; et.
-      + eapply Mem_unchanged_on_trans_strong; et.
-        eapply Mem.unchanged_on_implies; try apply RO0; et.
-        i. des.
-        ii. eapply H. eapply RO; et.
-      + eapply Mem_unchanged_on_trans_strong; et.
-        eapply Mem.unchanged_on_implies; try apply PRIV0; et.
-        u. i. des. ss.
+      admit "".
     - (* init *)
       inv INIT.
       r in SUARG. des.
@@ -649,7 +624,7 @@ Module TRIAL2.
         eapply Unreach.free_mle; eauto.
       + (* footprint *)
         des_ifs. des. clarify. econs; eauto.
-        * eapply Mem.free_range_perm; et. (* eapply Mem_free_noperm; eauto. *)
+        * eapply Mem_free_noperm; eauto.
         * admit "ez - valid block".
       + (* K *)
         ii. inv AFTER. ss.
@@ -695,8 +670,7 @@ Module TRIAL2.
           - ii. des. des_ifs.
           - admit "ez".
         }
-        { admit "---------------------------------------------mle_excl".
-        }
+        { admit "---------------------------------------------mle_excl". }
         (* { inv SUST. inv MEM. rr. split; ss. ii. des_ifs. apply BOUND in PR. unfold Mem.valid_block in *. ss. } *)
         inv SUST.
         generalize (loc_external_result_one sg); intro ONE.

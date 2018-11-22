@@ -437,7 +437,7 @@ Module TRIAL2.
 
   Inductive sound_state (su: Sound.t): AsmC.state -> Prop :=
   | sound_state_intro
-      init_rs rs0 m0
+      (init_rs rs0: regset) m0
       (RS: forall pr, UnreachC.val' su m0.(Mem.nextblock) (rs0#pr))
       (MEM: UnreachC.mem' su m0)
       (INIT: forall pr, UnreachC.val' su m0.(Mem.nextblock) (init_rs#pr))
@@ -445,6 +445,7 @@ Module TRIAL2.
       (WF: forall blk (PRIV: su.(Unreach.unreach) blk) (PUB: Ple su.(Unreach.nb) blk), False)
       (* (SKE: UnreachC.skenv su m0 skenv) *)
       (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
+      (STACKPUB: su.(UnreachC.val') m0.(Mem.nextblock) (rs0 RSP))
     :
       sound_state su (mkstate init_rs (State rs0 m0))
   .
@@ -474,15 +475,18 @@ Module TRIAL2.
       (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero true)
                         = Some skd /\ SkEnv.get_sig skd = sg)
       (RSP: rs0 RSP = Vptr blk1 ofs1 true)
+      UNFR
+      (UNFRDEF: UNFR = (brange blk1 ofs1.(Ptrofs.unsigned)
+                                           (ofs1.(Ptrofs.unsigned) + 4 * (size_arguments sg))))
       (PERM: forall
           blk ofs
           (VALID: m0.(Mem.valid_block) blk)
-          (NFREED: ~ (brange blk1 ofs1.(Ptrofs.unsigned)
-                                         (ofs1.(Ptrofs.unsigned) + 4 * (size_arguments sg))) blk ofs)
+          (UNFREE: ~ UNFR blk ofs)
         ,
           m1.(Mem.perm) blk ofs Max <1= m0.(Mem.perm) blk ofs Max)
-      (RO: Mem.unchanged_on m0.(loc_not_writable) m0 m1)
-      (PRIV: Mem.unchanged_on (fun _ => su0.(UnreachC.unreach)).(Basics.flip) m0 m1)
+      (UNCH: Mem.unchanged_on (~2 UNFR) m0 m1)
+      (* (RO: Mem.unchanged_on (~2 UNFR /2\ m0.(loc_not_writable)) m0 m1) *)
+      (* (PRIV: Mem.unchanged_on (~2 UNFR /2\ (fun _ => su0.(UnreachC.unreach)).(Basics.flip)) m0 m1) *)
     :
       mle_excl (mkstate init_rs (State rs0 m_unused)) su0 m0 m1
   .
@@ -526,13 +530,15 @@ Module TRIAL2.
         * eapply PERM; et.
           eapply PERM0; et.
           eapply Mem.valid_block_unchanged_on; et.
-      + eapply Mem_unchanged_on_trans_strong; et.
+      + des_ifs. clear_tac.
+        eapply Mem_unchanged_on_trans_strong; et.
         eapply Mem.unchanged_on_implies; try apply RO0; et.
         i. des.
-        ii. eapply H. eapply RO; et.
+        esplits; et.
+        { u. i; des; clarify. r in H. eapply H. eapply Mem.perm_implies with Freeable; eauto with mem. }
       + eapply Mem_unchanged_on_trans_strong; et.
         eapply Mem.unchanged_on_implies; try apply PRIV0; et.
-        u. i. des. ss.
+        u. i; des; clarify; ss. des_ifs. eapply 
     - (* init *)
       inv INIT.
       r in SUARG. des.

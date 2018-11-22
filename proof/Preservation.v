@@ -295,18 +295,13 @@ Qed.
 Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=
 | local_preservation_strong_excl_intro
     (has_footprint: ms.(state) -> mem -> Prop) (mle_excl: ms.(state) -> Sound.t -> mem -> mem -> Prop)
-    (FOOTLE: forall
-        su0 st_at m0 m1
+    (FOOTEXCL: forall
+        su0 st_at m0 m1 m2
         (FOOT: has_footprint st_at m0)
+        (MLEEXCL: (mle_excl st_at) su0 m1 m2)
         (MLE: su0.(Sound.mle) m0 m1)
       ,
-        <<FOOT: has_footprint st_at m1>>)
-    (FOOTWEAK: forall
-        su0 st_at m0 m1
-        (FOOT: has_footprint st_at m0)
-        (MLE: (mle_excl st_at) su0 m0 m1)
-      ,
-        <<MLE: Sound.mle su0 m0 m1>>)
+        <<MLE: Sound.mle su0 m0 m2>>)
     (INIT: forall
         su_init args st_init
         (SUARG: Sound.args su_init args)
@@ -327,7 +322,7 @@ Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> 
         (AT: ms.(ModSem.at_external) st0 args)
       ,
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
-        <<FOOT: has_footprint st0 args.(Args.m)>> /\
+        <<FOOT: has_footprint st0 st0.(get_mem)>> /\
         exists su_gr,
           (<<GR: Sound.get_greatest su0 args su_gr>>) /\
           (<<K: forall
@@ -359,11 +354,10 @@ Proof.
   - ii. des. exploit STEP; eauto. i; des. esplits; eauto. etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des. esplits; eauto.
     { etrans; eauto. }
-    ii. exploit K; eauto. i; des. esplits; eauto. etrans; eauto.
-    etrans; eauto. etrans; eauto.
-    { eapply Sound.le_spec; eauto. eapply Sound.greatest_adq; eauto. }
-    eapply FOOTWEAK; eauto.
-    eapply FOOTLE; eauto.
+    ii. exploit K; eauto. i; des. esplits; eauto.
+    etrans; eauto.
+    eapply FOOTEXCL; try apply MLE1; eauto.
+    { etrans; eauto. eapply Sound.le_spec; eauto. eapply Sound.greatest_adq; eauto. }
   - ii; des. exploit RET; eauto. i; des. esplits; eauto.
     etrans; eauto.
 Qed.
@@ -371,18 +365,13 @@ Qed.
 Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=
 | local_preservation_strong_horizontal_excl_intro
     (has_footprint: ms.(state) -> mem -> Prop) (mle_excl: ms.(state) -> Sound.t -> mem -> mem -> Prop)
-    (FOOTLE: forall
-        su0 st_at m0 m1
+    (FOOTEXCL: forall
+        su0 st_at m0 m1 m2
         (FOOT: has_footprint st_at m0)
+        (MLEEXCL: (mle_excl st_at) su0 m1 m2)
         (MLE: su0.(Sound.mle) m0 m1)
       ,
-        <<FOOT: has_footprint st_at m1>>)
-    (FOOTWEAK: forall
-        su0 st_at m0 m1
-        (FOOT: has_footprint st_at m0)
-        (MLE: (mle_excl st_at) su0 m0 m1)
-      ,
-        <<MLE: Sound.mle su0 m0 m1>>)
+        <<MLE: Sound.mle su0 m0 m2>>)
     (INIT: forall
         su_arg args st_init
         (SUARG: Sound.args su_arg args)
@@ -407,7 +396,7 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
       ,
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
         (<<ARGS: su0.(Sound.args) args>>) /\
-        <<FOOT: has_footprint st0 args.(Args.m)>> /\
+        <<FOOT: has_footprint st0 st0.(get_mem)>> /\
         exists su_gr,
           (<<GR: Sound.get_greatest su0 args su_gr>>) /\
           (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
@@ -463,11 +452,9 @@ Proof.
     ii. exploit K; eauto. i; des. esplits; try apply SUST; eauto.
     + etrans; eauto.
       eapply Sound.hle_spec; eauto.
+      eapply FOOTEXCL; eauto.
       etrans; eauto.
-      etrans; eauto.
-      * eapply Sound.le_spec; eauto.
-      * eapply FOOTWEAK; eauto.
-        eapply FOOTLE; eauto.
+      eapply Sound.le_spec; eauto.
     + etrans; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; try apply RETV; eauto.
     + etrans; eauto.

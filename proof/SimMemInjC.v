@@ -31,6 +31,8 @@ Hint Unfold update.
 (* Definition update_src (sm0: t') (src: mem) := (sm0.(update) src sm0.(tgt) sm0.(inj)). *)
 (* Hint Unfold update_src update_tgt. *)
 
+Hint Unfold src_private tgt_private valid_blocks.
+
 Lemma update_src_private
       sm0 sm1
       (INJ: sm0.(inj) = sm1.(inj))

@@ -294,10 +294,10 @@ Qed.
 
 Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=
 | local_preservation_strong_excl_intro
-    (has_footprint: ms.(state) -> mem -> Prop) (mle_excl: ms.(state) -> Sound.t -> mem -> mem -> Prop)
+    (has_footprint: ms.(state) -> Sound.t -> mem -> Prop) (mle_excl: ms.(state) -> Sound.t -> mem -> mem -> Prop)
     (FOOTEXCL: forall
         su0 st_at m0 m1 m2
-        (FOOT: has_footprint st_at m0)
+        (FOOT: has_footprint st_at su0 m0)
         (MLEEXCL: (mle_excl st_at) su0 m1 m2)
         (MLE: su0.(Sound.mle) m0 m1)
       ,
@@ -322,7 +322,7 @@ Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> 
         (AT: ms.(ModSem.at_external) st0 args)
       ,
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
-        <<FOOT: has_footprint st0 st0.(get_mem)>> /\
+        <<FOOT: has_footprint st0 su0 st0.(get_mem)>> /\
         exists su_gr,
           (<<GR: Sound.get_greatest su0 args su_gr>>) /\
           (<<K: forall
@@ -364,10 +364,10 @@ Qed.
 
 Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=
 | local_preservation_strong_horizontal_excl_intro
-    (has_footprint: ms.(state) -> mem -> Prop) (mle_excl: ms.(state) -> Sound.t -> mem -> mem -> Prop)
+    (has_footprint: ms.(state) -> Sound.t -> mem -> Prop) (mle_excl: ms.(state) -> Sound.t -> mem -> mem -> Prop)
     (FOOTEXCL: forall
         su0 st_at m0 m1 m2
-        (FOOT: has_footprint st_at m0)
+        (FOOT: has_footprint st_at su0 m0)
         (MLEEXCL: (mle_excl st_at) su0 m1 m2)
         (MLE: su0.(Sound.mle) m0 m1)
       ,
@@ -396,7 +396,7 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
       ,
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
         (<<ARGS: su0.(Sound.args) args>>) /\
-        <<FOOT: has_footprint st0 st0.(get_mem)>> /\
+        <<FOOT: has_footprint st0 su0 st0.(get_mem)>> /\
         exists su_gr,
           (<<GR: Sound.get_greatest su0 args su_gr>>) /\
           (* (<<LE: Sound.le su0 su_lifted>>) /\ *)

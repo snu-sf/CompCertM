@@ -175,6 +175,7 @@ Definition args' (su: Unreach.t) (args0: Args.t) :=
 Definition retv' (su: Unreach.t) (retv0: Retv.t) :=
   (<<VAL: val' su retv0.(Retv.m).(Mem.nextblock) (Retv.v retv0)>>)
   /\ (<<MEM: mem' su (Retv.m retv0)>>)
+  /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>)
 .
 
 (* Inductive flatten_list: block -> list t -> Prop := *)
@@ -1003,6 +1004,7 @@ Next Obligation.
         rewrite PTR in *. inv MV. inv H1. des_ifs_safe.
         exploit mi_freeblocks; eauto. i; clarify.
       }
+    + ii. des_ifs. xomega.
   - econs; eauto.
     + ii; ss. eapply external_call_max_perm; try apply EXT; eauto.
     + ii; ss. eapply external_call_readonly; try apply EXT; eauto.

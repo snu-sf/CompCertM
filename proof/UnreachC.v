@@ -19,7 +19,9 @@ Require Import ModSem Skeleton.
 
 Require Import Sound.
 Require Unreach.
-Include Unreach.
+(* Export Unreach. *)
+(* Include Unreach. *)
+Import Unreach.
 Require Import SemiLattice.
 Require Import FinFun.
 
@@ -28,7 +30,9 @@ Set Implicit Arguments.
 
 Local Open Scope nat.
 
-
+(* Coercion unreach: t >-> Funclass. *)
+(* Coercion Unreach.nb: Unreach.t >-> block. *)
+(* Identity Coercion block_to_pos: block >-> positive. *)
 
 
 
@@ -100,12 +104,12 @@ Ltac econsr :=
 (*   econs; eauto. *)
 (* Qed. *)
 
-Definition val' (su: Unreach.t) (nb: block) (v: val): Prop :=
-  forall blk ofs (PTR: v = Vptr blk ofs true), ~su blk /\ (blk < nb)%positive
+Definition val' (su: Unreach.t) (v: val): Prop :=
+  forall blk ofs (PTR: v = Vptr blk ofs true), ~su blk /\ (blk < su.(nb))%positive
 .
 
-Definition memval' (su: Unreach.t) (nb: block) (mv: memval): Prop :=
-  forall v q n (PTR: mv = Fragment v q n), su.(val') nb v
+Definition memval' (su: Unreach.t) (mv: memval): Prop :=
+  forall v q n (PTR: mv = Fragment v q n), su.(val') v
 .
 
 Inductive mem': Unreach.t -> Memory.mem -> Prop :=
@@ -116,8 +120,8 @@ Inductive mem': Unreach.t -> Memory.mem -> Prop :=
         (PUB: ~ su blk)
         (PERM: Mem.perm m0 blk ofs Cur Readable) (* <------------ Cur? *)
       ,
-        su.(memval') m0.(Mem.nextblock) (ZMap.get ofs (Mem.mem_contents m0) !! blk))
-    (BOUND: su.(unreach) <1= m0.(Mem.valid_block))
+        su.(memval') (ZMap.get ofs (Mem.mem_contents m0) !! blk))
+    (BOUND: su.(Unreach.unreach) <1= m0.(Mem.valid_block))
     (* (BOUND: Ple su.(Unreach.nb) m0.(Mem.nextblock)) *)
     (GENB: Ple su.(Unreach.ge_nb) m0.(Mem.nextblock))
     (NB: su.(Unreach.nb) = m0.(Mem.nextblock))
@@ -165,15 +169,15 @@ Qed.
 
 (* TODO: I really don't want to define this. It is redundant with `Sound.args`, but it seems there is no other way *)
 Definition args' (su: Unreach.t) (args0: Args.t) :=
-  (<<VAL: val' su args0.(Args.m).(Mem.nextblock) (Args.fptr args0)>>)
-  /\ (<<VALS: List.Forall (su.(val') args0.(Args.m).(Mem.nextblock)) (Args.vs args0)>>)
+  (<<VAL: val' su (Args.fptr args0)>>)
+  /\ (<<VALS: List.Forall (su.(val')) (Args.vs args0)>>)
   /\ (<<MEM: mem' su (Args.m args0)>>)
   /\ (<<WF: forall blk (PRIV: su blk) (PUB: Plt blk su.(ge_nb)), False>>)
   /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>)
 .
 
 Definition retv' (su: Unreach.t) (retv0: Retv.t) :=
-  (<<VAL: val' su retv0.(Retv.m).(Mem.nextblock) (Retv.v retv0)>>)
+  (<<VAL: val' su (Retv.v retv0)>>)
   /\ (<<MEM: mem' su (Retv.m retv0)>>)
   /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>)
 .
@@ -597,7 +601,7 @@ Proof.
       destruct (su b) eqn:T.
       { exploit MV; ss; eauto. i; des. ss. }
       econs; eauto. econs; eauto.
-      { des_ifs. exploit MV; eauto. i; des. ss. }
+      { des_ifs. exploit MV; eauto. i; des. rewrite NB in *. ss. }
       rewrite Ptrofs.add_zero. ss.
   - split.
     + eauto with xomega.
@@ -962,13 +966,13 @@ Next Obligation.
     - exfalso. apply n; clear n. admit "ez".
   }
   { eapply to_inj_mem; eauto. }
-  { clear - VALS. abstr (Args.vs args0) vs_arg.
+  { inv MEM. clear - NB VALS. abstr (Args.vs args0) vs_arg.
     ginduction vs_arg; ii; ss. inv VALS. econs; eauto. destruct a; ss.
     unfold to_inj. r in H1. destruct b0; ss; cycle 1.
     { econs; eauto. }
     hexploit H1; ss; eauto.  i.
     econs; eauto.
-    - des. des_ifs.
+    - des. des_ifs. rewrite NB in *. ss.
     - rewrite Ptrofs.add_zero. ss.
   }
   intro AX; des.
@@ -1023,7 +1027,7 @@ Lemma mem'_load_val'
       (PUB: ~ su blk)
       (LOAD: Mem.load chunk m0 blk ofs = Some v)
   :
-    <<VAL: val' su m0.(Mem.nextblock) v>>
+    <<VAL: val' su v>>
 .
 Proof.
   inv MEM.

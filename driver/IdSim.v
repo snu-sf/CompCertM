@@ -872,75 +872,78 @@ Proof.
     admit "".
   - (* call bsim *)
     admit "".
-  - 
-  econs; ss; eauto.
-  { eapply asm_unreach_local_preservation; eauto. }
-  ii; ss.
+  - admit "".
+  - admit "".
+  - admit "".
+  - admit "".
+Admitted.
+(*   econs; ss; eauto. *)
+(*   { eapply asm_unreach_local_preservation; eauto. } *)
+(*   ii; ss. *)
 
-  exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.
-  { i; ss. clarify. }
-  intro GENV; des.
-  inv SIMSKENVLINK. inv SIMSKENV. ss.
+(*   exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto. *)
+(*   { i; ss. clarify. } *)
+(*   intro GENV; des. *)
+(*   inv SIMSKENVLINK. inv SIMSKENV. ss. *)
 
-  inv SIMARGS. destruct args_src, args_tgt; ss. clarify. destruct sm_arg; ss. clarify.
-  rename fptr into fptr_src. rename fptr0 into fptr_tgt.
-  rename vs into vs_src. rename vs0 into vs_tgt.
-  fold fundef in *.
-  inv FPTR; ss.
-  split; ii; cycle 1.
-  { (* tgt progress *)
-    des. inv SAFESRC. esplits. econs; ss; eauto.
-    - rp; eauto. symmetry. eapply Mem.mext_next; eauto.
-    - admit "this should hold - store_arguments_progress".
-  }
-  (* bsim *)
-  rename src into m_src0. rename tgt into m_tgt0.
-  bar.
-  inv INITTGT. rename m into m_tgt1.
-  assert(exists m_src1, <<STORESRC: AsmC.store_arguments m_src0 rs vs_src (fn_sig fd) m_src1>>).
-  { admit "this should hold - store_arguments_progress". }
-  des.
-  esplits; eauto.
-  ss.
-  instantiate (1:= (SimMemExt.mk m_src1 m_tgt1)). instantiate (1:= Ord.lift_idx unit_ord_wf tt).
-  clear - GENV.
-  rename _st_init_src into st_init_src. abstr {| init_rs := rs; st := State rs m_tgt1 |} st_init_tgt.
-  generalize dependent st_init_src.
-  generalize dependent st_init_tgt.
-  pcofix CIH. ii. pfold.
-  destruct (classic ((modsem skenv_link asm).(ModSem.is_call) st0)).
-  { ss. rr in H. des.
-    econs 3; eauto.
-    { econs; eauto. }
-    ii. des. clear_tac.
-    exists args_src. exists (SimMemId.mk args_src.(Args.m) args_src.(Args.m)). ss.
-    esplits; eauto.
-    { econs; ss; eauto. }
-    ii. ss. des.
-    esplits; eauto.
-    inv SIMRETV. ss. destruct retv_src, retv_tgt; ss. clarify. destruct sm_ret; ss. clarify.
-  }
-  destruct (classic ((modsem skenv_link asm).(ModSem.is_return) st0)).
-  { ss. rr in H0. des.
-    dup H0. set (R:= retv). inv H0.
-    econs 4; eauto.
-    { instantiate (1:= SimMemId.mk m2 m2). ss. }
-    { econs; eauto. }
-    { ss. }
-  }
-  econs 1; eauto.
-  ii; des. clear_tac.
-  esplits; eauto.
-  econs; eauto; cycle 1.
-  { admit "ez". }
-  ii. ss. inv STEPSRC.
-  esplits; eauto. left. apply plus_one. econs; eauto.
-  { admit "ez". }
-  econs; eauto.
-Unshelve.
-  all: ss.
-Qed.
-Qed.
+(*   inv SIMARGS. destruct args_src, args_tgt; ss. clarify. destruct sm_arg; ss. clarify. *)
+(*   rename fptr into fptr_src. rename fptr0 into fptr_tgt. *)
+(*   rename vs into vs_src. rename vs0 into vs_tgt. *)
+(*   fold fundef in *. *)
+(*   inv FPTR; ss. *)
+(*   split; ii; cycle 1. *)
+(*   { (* tgt progress *) *)
+(*     des. inv SAFESRC. esplits. econs; ss; eauto. *)
+(*     - rp; eauto. symmetry. eapply Mem.mext_next; eauto. *)
+(*     - admit "this should hold - store_arguments_progress". *)
+(*   } *)
+(*   (* bsim *) *)
+(*   rename src into m_src0. rename tgt into m_tgt0. *)
+(*   bar. *)
+(*   inv INITTGT. rename m into m_tgt1. *)
+(*   assert(exists m_src1, <<STORESRC: AsmC.store_arguments m_src0 rs vs_src (fn_sig fd) m_src1>>). *)
+(*   { admit "this should hold - store_arguments_progress". } *)
+(*   des. *)
+(*   esplits; eauto. *)
+(*   ss. *)
+(*   instantiate (1:= (SimMemExt.mk m_src1 m_tgt1)). instantiate (1:= Ord.lift_idx unit_ord_wf tt). *)
+(*   clear - GENV. *)
+(*   rename _st_init_src into st_init_src. abstr {| init_rs := rs; st := State rs m_tgt1 |} st_init_tgt. *)
+(*   generalize dependent st_init_src. *)
+(*   generalize dependent st_init_tgt. *)
+(*   pcofix CIH. ii. pfold. *)
+(*   destruct (classic ((modsem skenv_link asm).(ModSem.is_call) st0)). *)
+(*   { ss. rr in H. des. *)
+(*     econs 3; eauto. *)
+(*     { econs; eauto. } *)
+(*     ii. des. clear_tac. *)
+(*     exists args_src. exists (SimMemId.mk args_src.(Args.m) args_src.(Args.m)). ss. *)
+(*     esplits; eauto. *)
+(*     { econs; ss; eauto. } *)
+(*     ii. ss. des. *)
+(*     esplits; eauto. *)
+(*     inv SIMRETV. ss. destruct retv_src, retv_tgt; ss. clarify. destruct sm_ret; ss. clarify. *)
+(*   } *)
+(*   destruct (classic ((modsem skenv_link asm).(ModSem.is_return) st0)). *)
+(*   { ss. rr in H0. des. *)
+(*     dup H0. set (R:= retv). inv H0. *)
+(*     econs 4; eauto. *)
+(*     { instantiate (1:= SimMemId.mk m2 m2). ss. } *)
+(*     { econs; eauto. } *)
+(*     { ss. } *)
+(*   } *)
+(*   econs 1; eauto. *)
+(*   ii; des. clear_tac. *)
+(*   esplits; eauto. *)
+(*   econs; eauto; cycle 1. *)
+(*   { admit "ez". } *)
+(*   ii. ss. inv STEPSRC. *)
+(*   esplits; eauto. left. apply plus_one. econs; eauto. *)
+(*   { admit "ez". } *)
+(*   econs; eauto. *)
+(* Unshelve. *)
+(*   all: ss. *)
+(* Qed. *)
 
 Lemma asm_inj_id
       (asm: Asm.program)

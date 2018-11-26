@@ -31,9 +31,10 @@ Global Program Instance top2_PreOrder X: PreOrder (top2: X -> X -> Prop).
 Global Program Instance Top: Sound.class := {
   t := unit;
   le := top2;
+  wf := top1;
   get_greatest := top3;
-  args := top2;
-  retv := top2;
+  val := top2;
+  mem := top2;
   mle := top3;
   skenv := top3;
 }
@@ -48,7 +49,11 @@ Qed.
   (* destruct su_gr0, su_gr1; ss. *)
 (* Qed. *)
 Next Obligation.
-  esplits; eauto. econs; eauto.
+  esplits; eauto. rewrite Forall_forall. i. ss.
+Qed.
+Next Obligation.
+  esplits; eauto.
+  econs; eauto.
 Qed.
 Next Obligation.
   esplits; eauto.
@@ -66,4 +71,8 @@ Lemma sound_state_local_preservation
 .
 Proof.
   econs; ii; ss; eauto.
+  esplits; eauto. ss.
+Unshelve.
+  all: ss.
 Qed.
+

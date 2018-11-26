@@ -134,6 +134,9 @@ Section SOUNDNESS.
           - rewrite AGCS; ss.
         }
       + ii. rewrite locmap_get_set_loc_result; ss.
+    - esplits; eauto. ss.
+  Unshelve.
+    all: ss.
   Qed.
 
 End SOUNDNESS.

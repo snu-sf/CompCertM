@@ -267,19 +267,19 @@ Proof.
   - rr in LE. des. xomega.
 Qed.
 
-Lemma val_hle
-      su0 su1 v
-      (SU: UnreachC.val' su0 v)
-      (LE: UnreachC.hle' su0 su1)
-  :
-    <<SU: UnreachC.val' su1 v>>
-.
-Proof.
-  ii. clarify. exploit SU; eauto. i; des.
-  rr in LE. des.
-  esplits; eauto.
-  xomega.
-Qed.
+(* Lemma val_hle *)
+(*       su0 su1 v *)
+(*       (SU: UnreachC.val' su0 v) *)
+(*       (LE: UnreachC.hle' su0 su1) *)
+(*   : *)
+(*     <<SU: UnreachC.val' su1 v>> *)
+(* . *)
+(* Proof. *)
+(*   ii. clarify. exploit SU; eauto. i; des. *)
+(*   rr in LE. des. *)
+(*   esplits; eauto. *)
+(*   xomega. *)
+(* Qed. *)
 (* Inductive Mem_future (P: val -> Prop) (m0 m1: Mem.mem): Prop := *)
 (* | Mem_future_alloc *)
 (*     lo hi blk *)
@@ -438,6 +438,7 @@ Proof. destruct mr, pr; ss; des_ifs. Qed.
 (* Qed. *)
 
 Module TRIAL2.
+Section TRIAL2.
 
   Variable skenv_link: SkEnv.t.
 
@@ -447,8 +448,9 @@ Module TRIAL2.
       (RS: forall pr, UnreachC.val' su (rs0#pr))
       (MEM: UnreachC.mem' su m0)
       (INIT: forall pr, UnreachC.val' su (init_rs#pr))
-      (WF: forall blk (PRIV: su.(Unreach.unreach) blk) (PUB: Plt blk su.(Unreach.ge_nb)), False)
-      (WF: forall blk (PRIV: su.(Unreach.unreach) blk) (PUB: Ple su.(Unreach.nb) blk), False)
+      (WF: Sound.wf su)
+      (* (WF: forall blk (PRIV: su.(Unreach.unreach) blk) (PUB: Plt blk su.(Unreach.ge_nb)), False) *)
+      (* (WF: forall blk (PRIV: su.(Unreach.unreach) blk) (PUB: Ple su.(Unreach.nb) blk), False) *)
       (* (SKE: UnreachC.skenv su m0 skenv) *)
       (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
       (STACKPUB: su.(UnreachC.val') (rs0 RSP))
@@ -553,10 +555,9 @@ Module TRIAL2.
       rename m into m2.
       set (Unreach.mk su_arg.(Unreach.unreach) su_arg.(Unreach.ge_nb) (Pos.succ su_arg.(Unreach.nb))) as su_init.
       exists su_init.
-      assert(HLE: UnreachC.hle' su_arg su_init).
+      assert(HLE: Unreach.hle su_arg su_init).
       { rr. ss. esplits; et.
-        - ii. des; ss.
-        - xomega.
+        xomega.
       }
       assert(SURS: forall pr, UnreachC.val' su_init (rs pr)).
       {
@@ -579,11 +580,11 @@ Module TRIAL2.
           rewrite PTR in *. clarify.
           rewrite ! NB0 in *.
           esplits; et.
-          - ii. eapply WF0; et. refl.
+          - ii. inv WF. exploit WFHI; et. i. Unreach.nb_tac. xomega.
           - xomega.
         }
 
-        eapply val_hle; et.
+        eapply (@Sound.hle_val UnreachC.Unreach); et.
         (* TODO: pull out as a lemma *)
         assert(IN: In (rs pr) (Args.vs args)).
         { clear - ARG VALS0 MR.
@@ -597,7 +598,7 @@ Module TRIAL2.
           inv H2. inv H1. left. f_equal. clear - MR. eapply to_mreg_preg_of; eauto.
         }
         Fail spc VALS. (* TODO: fix spc *)
-        rewrite Forall_forall in *. eapply VALS; et.
+        rr in VALS. rewrite Forall_forall in *. eapply VALS; et.
       }
       ss.
       esplits; eauto; try refl; swap 2 3.
@@ -635,7 +636,7 @@ Module TRIAL2.
         { rewrite NB0. congruence. }
         i.
         admit "this should hold".
-      + ii. eapply WF0; et. xomega.
+      + unfold su_init. inv WF. econs; ss; et. ii. exploit WFHI; et. i. xomega.
       + (* ske *)
         inv SKENV. rewrite PUB in *. ss.
     - (* step *)
@@ -650,7 +651,7 @@ Module TRIAL2.
           admit "extcall-arguments - (MEM && UnreachC.mem'_load_val') \/ (RS)".
         + clear - FREE MEM. admit "ez - Unreach.mem - free - Unreach.mem".
       }
-      exploit (Sound.greatest_ex su0 (Args.mk (Vptr blk0 Ptrofs.zero true) vs m1)); ss; eauto.
+      exploit (@Sound.greatest_ex _ su0 (Args.mk (Vptr blk0 Ptrofs.zero true) vs m1)); ss; eauto.
       { exists su0. esplits; eauto. refl. }
       i; des.
       des_ifs. clear_tac.
@@ -667,6 +668,10 @@ Module TRIAL2.
       + (* K *)
         ii. inv AFTER. ss.
         destruct retv; ss. rename m into m2.
+        assert(GRARGS: Sound.args su_gr (Args.mk (Vptr blk0 Ptrofs.zero true) vs m1)).
+        { rr in GR. des. ss. }
+        assert(LEOLD: Unreach.hle_old su_gr su_ret).
+        { eapply Unreach.hle_hle_old; et. rr in GRARGS. des. ss. }
         (* set (f := fun b => if su_ret b *)
         (*                    then BCinvalid *)
         (*                    else *)
@@ -689,7 +694,7 @@ Module TRIAL2.
                                )
                                su0.(Unreach.ge_nb) m2.(Mem.nextblock)).
         exists su1.
-        assert(HLEA: UnreachC.hle' su0 su1).
+        assert(HLEA: Sound.hle su0 su1).
         (* { rr in GR. des. unfold su1. *)
         (*   rr. ss. esplits; eauto. *)
         (*   - ii. des_ifs. eapply LE; eauto. eapply LE0; eauto. *)
@@ -699,19 +704,18 @@ Module TRIAL2.
         { unfold su1. rr. ss.
           inv SUST. inv MEM. rewrite NB in *.
           esplits; et.
-          - ii. des_ifs. exfalso. eapply WF0; et. xomega.
-          - ii. des. des_ifs.
+          - ii. des_ifs.
           - admit "ez".
         }
         assert(LEA: UnreachC.le' su0 su1).
         { rr in GR. des. unfold su1.
           rr. ss. esplits; eauto.
-          ii. des_ifs. eapply LE; eauto. eapply LE0; eauto.
+          ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto.
         }
         assert(LEB: UnreachC.le' su1 su_ret).
         { rr in GR. des. unfold su1.
           rr. ss. esplits; eauto.
-          - ii. des_ifs. eapply LE; eauto. eapply LE0; eauto.
+          - ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto.
           - rr in LE. des. rr in LE0. des. congruence.
         }
         esplits; eauto; cycle 1.
@@ -740,13 +744,13 @@ Module TRIAL2.
           set pr as PR.
           des_ifs.
           - (* PC *)
-            eapply val_hle; et.
+            eapply (@Sound.hle_val UnreachC.Unreach); ss; et.
           - (* retv *)
             move RETV at bottom. rr in RETV. des. ss.
             eapply val_le; eauto.
             unfold su1. ss. inv MEM0. rewrite NB. refl.
           - (* others *)
-            eapply val_hle; et.
+            eapply (@Sound.hle_val UnreachC.Unreach); ss; et.
             unfold regset_after_external. des_ifs.
         }
         { bar. move RETV at bottom. rr in RETV. des. ss.
@@ -767,7 +771,7 @@ Module TRIAL2.
                         (NEW: Unreach.unreach su_ret blk)
                       ,
                         <<OLD: Unreach.unreach su_gr blk>>).
-              { ii. rr in LE. des. eapply OLD0. esplits; et. clear - OLD GR FREE. admit "ez". }
+              { ii. rr in LEOLD. des. eapply OLD0. esplits; et. clear - OLD GR FREE. admit "ez". }
               exploit HLE; et. intro SUGR; des.
 
               assert(UNCH: (ZMap.get ofs0 (Mem.mem_contents m2) !! blk2)
@@ -787,25 +791,20 @@ Module TRIAL2.
           }
           admit "ez".
         }
-        { i. eapply val_hle; et. }
+        { i. eapply (@Sound.hle_val UnreachC.Unreach); ss; et. }
         { (* WF *)
-          ii; ss.
-          rr in SUARGS. des. des_ifs; et.
-          clear - n PUB. admit "ez".
-        }
-        { (* WF *)
-          ii; ss.
-          assert(Ple (Mem.nextblock m0) blk2).
-          { admit "ez". }
-          des_ifs; try xomega.
-          rr in RETV. des. ss. eapply WF1; et.
-          inv MEM0. eauto with xomega congruence.
+          inv WF. unfold su1. econs; ss; et.
+          - i. des_ifs; et.
+            inv MEM. xomega.
+          - i. des_ifs; et.
+            { admit "ez". }
+            rr in RETV. des. ss. inv WF. inv MEM0. Unreach.nb_tac. eapply WFHI0; et.
         }
         { unfold regset_after_external. ss.
           des_ifs_safe.
           des_ifs.
           { unfold loc_external_result in *. unfold loc_result in *. unfold loc_result_64 in *. des_ifs; ss. }
-          eapply val_hle; et.
+          eapply (@Sound.hle_val UnreachC.Unreach); ss; et.
         }
     - (* return *)
       inv SUST. inv FINAL. ss. clarify.
@@ -820,7 +819,8 @@ Module TRIAL2.
       all: ss.
   Qed.
 
-End TRIAL1.
+End TRIAL2.
+End TRIAL2.
 
 Let asm_ext_unreach_lxsim: forall
     asm skenv_link
@@ -859,12 +859,13 @@ Proof.
   econs; ss; eauto.
   ii. inv SSLE. clear_tac.
 
-
+  fold SkEnv.t in skenv_link_src.
+  hexploit (TRIAL2.asm_unreach_local_preservation skenv_link_src asm); eauto. i; des.
   eapply match_states_sim; ss.
   - (* WF *)
     eapply unit_ord_wf.
   - (* lprsv *)
-    eapply asm_unreach_local_preservation; eauto.
+    eauto.
   - (* init bsim *)
     admit "".
   - (* init progress *)

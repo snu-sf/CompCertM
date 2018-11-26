@@ -202,7 +202,7 @@ Section ADQSOUND.
         esplits; eauto.
       }
       i; des.
-      generalize (Sound.greatest_ex su0 args). i; des.
+      generalize (@Sound.greatest_ex _ su0 args). i; des.
       exists su_gr.
       exists args.(Args.m).
       esplits; eauto.

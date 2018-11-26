@@ -86,9 +86,11 @@ Module Sound.
     (* ; *)
 
     (* TODO: rename it into le_monotone *)
+    wf: t -> Prop;
     hle_le: forall
         su0 su1
         (HLE: hle su0 su1)
+        (WF: wf su0)
       ,
         <<LE: le su0 su1>>
     ;
@@ -100,8 +102,30 @@ Module Sound.
         <<MLE: mle su0 m0 m1>>
     ;
 
-    args: t -> Args.t -> Prop;
-    retv: t -> Retv.t -> Prop;
+    val: t -> Values.val -> Prop;
+    vals: t -> list Values.val -> Prop := fun su vs => Forall su.(val) vs;
+    mem: t -> mem -> Prop;
+    args: t -> Args.t -> Prop :=
+      fun su args =>
+        (<<VAL: val su args.(Args.fptr)>>) /\
+        (<<VALS: vals su args.(Args.vs)>>) /\
+        (<<MEM: mem su args.(Args.m)>>) /\
+        (<<WF: wf su>>)
+    ;
+    retv: t -> Retv.t -> Prop :=
+      fun su retv =>
+        (<<VAL: val su retv.(Retv.v)>>) /\
+        (<<MEM: mem su retv.(Retv.m)>>) /\
+        (<<WF: wf su>>)
+    ;
+
+    hle_val: forall
+        su0 su1 v
+        (VAL: val su0 v)
+        (HLE: hle su0 su1)
+      ,
+        <<VAL: val su1 v>>
+    ;
     (* retv_le: forall *)
     (*     su0 su1 *)
     (*     (LE: le su0 su1) *)
@@ -149,7 +173,7 @@ Module Sound.
         su0 su1 args0 su_gr
         (GR: get_greatest su1 args0 su_gr)
         (SUARG: args su1 args0)
-        (LE: hle su0 su1)
+        (LE: le su0 su1)
       ,
         <<GR: get_greatest su0 args0 su_gr>>
     ;
@@ -172,7 +196,7 @@ Module Sound.
 
     (* top: t; *)
     (* top_spec: top1 <1= top.(val) /\ top1 <1= top.(mem); *)
-    skenv: t -> mem -> SkEnv.t -> Prop;
+    skenv: t -> Memory.mem -> SkEnv.t -> Prop;
     init_spec: forall
         sk_link skenv_link m_init
         (MEM: Sk.load_mem sk_link = Some m_init)
@@ -242,12 +266,27 @@ Module Sound.
         su0 su1 m0 m1
         (MLE: mle su1 m0 m1)
         (LE: hle su0 su1)
+        (WF: wf su0)
       ,
         <<MLE: mle su0 m0 m1>>
   .
   Proof.
     i. eapply Sound.le_spec; et. eapply Sound.hle_le; et.
   Qed.
+
+  Lemma get_greatest_hle: forall
+      su0 su1 args0 su_gr
+      (GR: get_greatest su1 args0 su_gr)
+      (SUARG: args su1 args0)
+      (HLE: hle su0 su1)
+      (WF: wf su0)
+    ,
+      <<GR: get_greatest su0 args0 su_gr>>
+  .
+  Proof.
+    i. eapply Sound.get_greatest_le; eauto. eapply Sound.hle_le; eauto.
+  Qed.
+
   (* Lemma get_greatest_le *)
   (*       su0 su1 args0 su_gr *)
   (*       (GR: get_greatest su1 args0 su_gr) *)

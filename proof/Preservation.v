@@ -261,19 +261,20 @@ Theorem local_preservation_strong_horizontal_spec
   :
     <<PRSV: local_preservation (fun su m_init st =>
                                   <<MLE: su.(Sound.mle) m_init st.(get_mem)>> /\
+                                  <<WF: Sound.wf su>> /\
                                   exists su_h,
                                     <<LE: Sound.hle su su_h>> /\ sound_state su_h st)>>
 .
 Proof.
   inv PRSV.
   econs; eauto.
-  - ii. exploit INIT; eauto. i; des. esplits; eauto. eapply Sound.hle_spec; eauto.
+  - ii. exploit INIT; eauto. i; des. r in SUARG. des. esplits; eauto. eapply Sound.hle_spec; eauto.
   - ii. des. exploit STEP; eauto. i; des. esplits; try apply SUST; eauto.
     + etrans; eauto.
       eapply Sound.hle_spec; eauto.
     + etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des.
-    exploit Sound.get_greatest_le; eauto. intro GRH. des.
+    exploit Sound.get_greatest_hle; eauto. intro GRH. des.
     assert(LE1: Sound.le su_h su_gr).
     { eapply Sound.greatest_adq; eauto. }
     esplits; eauto.
@@ -430,19 +431,20 @@ Theorem local_preservation_strong_horizontal_excl_spec
   :
     <<PRSV: local_preservation (fun su m_init st =>
                                   <<MLE: su.(Sound.mle) m_init st.(get_mem)>> /\
+                                  <<WF: Sound.wf su>> /\
                                   exists su_h,
                                     <<LE: Sound.hle su su_h>> /\ sound_state su_h st)>>
 .
 Proof.
   inv PRSV.
   econs; eauto.
-  - ii. exploit INIT; eauto. i; des. esplits; eauto. eapply Sound.hle_spec; eauto.
+  - ii. exploit INIT; eauto. i; des. r in SUARG. des. esplits; eauto. eapply Sound.hle_spec; eauto.
   - ii. des. exploit STEP; eauto. i; des. esplits; try apply SUST; eauto.
     + etrans; eauto.
       eapply Sound.hle_spec; eauto.
     + etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des.
-    exploit Sound.get_greatest_le; eauto. intro GRH. des.
+    exploit Sound.get_greatest_hle; eauto. intro GRH. des.
     assert(LE1: Sound.le su_h su_gr).
     { eapply Sound.greatest_adq; eauto. }
     esplits; eauto.
@@ -490,7 +492,7 @@ Proof.
     + refl.
   - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply EXTCALL; eauto.
     { eapply Sound.system_skenv; eauto. eapply Sound.skenv_mle; eauto. }
-    i; des. esplits; eauto.
+    i; des. r in RETV. des. ss. esplits; eauto.
     + destruct retv; ss.
     + etrans; eauto.
     + eapply Sound.skenv_mle; eauto. etrans; eauto.

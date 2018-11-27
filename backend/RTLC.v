@@ -6,8 +6,8 @@ Require Import SmallstepC.
 (** newly added **)
 Require Export Simulation RTL.
 Require Import Skeleton Mod ModSem.
-Require Import AsmregsC.
-Require Import Conventions.
+(* Require Import AsmregsC. *)
+(* Require Import Conventions. *)
 (* Require Import Locations. *)
 
 Set Implicit Arguments.

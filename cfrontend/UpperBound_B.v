@@ -7,6 +7,7 @@ Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib SemProps.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program.
 Require Import BehaviorsC.
+Require Import CtypingC.
 
 Set Implicit Arguments.
 

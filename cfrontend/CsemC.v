@@ -8,7 +8,7 @@ Require Export Simulation Csem Cop Ctypes Ctyping Csyntax Cexec.
 Require Import Skeleton Mod ModSem.
 Require Import AsmregsC CtypesC.
 Require Import Conventions.
-(* Require Import Locations. *)
+Require Import CtypingC.
 
 Set Implicit Arguments.
 
@@ -23,10 +23,10 @@ Definition is_call_cont_strong (k0: cont): Prop :=
 .
 
 (* copied from Cshmgen *)
-Definition signature_of_function (fd: Csyntax.function) :=
-  {| sig_args := map typ_of_type (map snd (Csyntax.fn_params fd));
-     sig_res  := opttyp_of_type (Csyntax.fn_return fd);
-     sig_cc   := Csyntax.fn_callconv fd |}.
+Definition signature_of_function (fd: function) :=
+  {| sig_args := map typ_of_type (map snd (fn_params fd));
+     sig_res  := opttyp_of_type (fn_return fd);
+     sig_cc   := fn_callconv fd |}.
 
 Section CEXTRA.
 
@@ -136,49 +136,6 @@ Section MODSEM.
       final_frame (Returnstate v_ret Kstop m_ret) (Retv.mk v_ret m_ret)
   .
 
-  Inductive typify_c (v: val) (ty: type): val -> Prop :=
-  | typify_c_ok
-      (WT: wt_val v ty)
-    :
-      typify_c v ty v
-  | typify_c_no
-      (NWT: ~ wt_val v ty)
-    :
-      typify_c v ty Vundef
-  .
-
-  Lemma typify_c_dtm
-        v ty tv0 tv1
-        (TY0: typify_c v ty tv0)
-        (TY1: typify_c v ty tv1)
-    :
-      tv0 = tv1
-  .
-  Proof.
-    admit "ez".
-  Qed.
-
-  Lemma typify_c_ex
-        v ty
-    :
-      exists tv, <<TYP: typify_c v ty tv>>
-  .
-  Proof.
-    destruct (classic (wt_val v ty)).
-    - esplits; econs 1; eauto.
-    - esplits; econs 2; eauto.
-  Qed.
-
-  Lemma typify_c_spec
-        v ty tv
-        (TY: typify_c v ty tv)
-    :
-      <<WT: wt_val tv ty>>
-  .
-  Proof.
-    inv TY; ss. econs.
-  Qed.
-
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       fptr_arg vs_arg m_arg
@@ -277,7 +234,7 @@ Section MODULE.
   Program Definition module: Mod.t :=
     {|
       Mod.data := p;
-      Mod.get_sk := of_program signature_of_function ;
+      Mod.get_sk := CtypesC.of_program signature_of_function ;
       Mod.get_modsem := modsem;
     |}
   .
@@ -286,4 +243,10 @@ Section MODULE.
   Qed.
 
 End MODULE.
+
+
+(* Definition geof (skenv_link: SkEnv.t) (cp: program): genv := *)
+(*   (Build_genv (revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env)) *)
+(* . *)
+(* Hint Unfold geof. *)
 

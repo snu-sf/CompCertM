@@ -6,6 +6,7 @@ Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program.
 Require Import Equality.
+Require Import CtypingC.
 
 Set Implicit Arguments.
 
@@ -440,23 +441,6 @@ Section PRESERVATION.
     - eapply preservation; try refl; et.
       + admit "ez".
       + admit "ez".
-  Qed.
-
-  (* TODO: move to CtypingC.v *)
-  Lemma wt_initial_frame
-        (cp: Csyntax.program) fptr vs_arg m
-        targs tres cconv
-        (INT: exists fd, Genv.find_funct (geof cp) fptr = Some (Internal fd))
-        (WTARGS: list_forall2 Val.has_type vs_arg (typlist_of_typelist targs))
-    :
-      wt_state (geof cp) (Csem.Callstate fptr (Tfunction targs tres cconv) vs_arg Kstop m)
-  .
-  Proof.
-    des.
-    econs; et.
-    - econs; et.
-    - econs; et.
-    - ii. exfalso. eapply EXT; et.
   Qed.
 
   Lemma match_xsim

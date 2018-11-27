@@ -672,7 +672,7 @@ Section TRIAL2.
             eapply (@Sound.hle_val UnreachC.Unreach); ss; et.
           - (* retv *)
             move RETV at bottom. rr in RETV. des. ss.
-            eapply val_le; eauto.
+            eapply UnreachC.val_le; eauto.
             unfold su1. ss. inv MEM0. rewrite NB. refl.
           - (* others *)
             eapply (@Sound.hle_val UnreachC.Unreach); ss; et.
@@ -686,7 +686,7 @@ Section TRIAL2.
             - i.
               destruct (classic (Unreach.unreach su_ret blk2)); cycle 1.
               { hexploit SOUND; eauto. i.
-                admit "val_le".
+                eapply UnreachC.memval_le; et. unfold su1. ss. Unreach.nb_tac. xomega.
               }
               rename H into SURET.
               des_ifs.

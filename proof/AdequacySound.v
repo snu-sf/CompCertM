@@ -48,7 +48,7 @@ Section ADQSOUND.
       (GE: Forall (fun ms => su0.(Sound.skenv) m0 ms.(ModSem.skenv)) sem_src.(Smallstep.globalenv).(fst))
   .
 
-  Lemma le_preserves_sound_ge
+  Lemma vle_preserves_sound_ge
         m0 su0 su1
         (GE: sound_ge su0 m0)
         (LE: Sound.le su0 su1)
@@ -102,7 +102,7 @@ Section ADQSOUND.
               su_greatest
               (GR: Sound.get_greatest su0 args su_greatest)
               su_ret
-              (LE: Sound.le su_greatest su_ret)
+              (LE: Sound.hle su_greatest su_ret)
               (SURETV: Sound.retv su_ret retv)
               (MLE: Sound.mle su_greatest args.(Args.m) retv.(Retv.m))
               (AFTER: ms.(ModSem.after_external) lst0 retv lst1)
@@ -177,7 +177,7 @@ Section ADQSOUND.
     econs; eauto.
     - eapply Sound.greatest_adq; eauto.
     - econs; eauto.
-    - eapply le_preserves_sound_ge; eauto.
+    - eapply vle_preserves_sound_ge; eauto.
       eapply Sound.greatest_adq; eauto.
   Unshelve.
     all: ss.
@@ -202,7 +202,7 @@ Section ADQSOUND.
         esplits; eauto.
       }
       i; des.
-      generalize (Sound.greatest_ex su0 args). i; des.
+      generalize (@Sound.greatest_ex _ su0 args). i; des.
       exists su_gr.
       exists args.(Args.m).
       esplits; eauto.
@@ -211,7 +211,7 @@ Section ADQSOUND.
       { dup EX. inv EX. exploit CALL; eauto.
         { eapply HD; eauto. }
         i; des.
-        eapply le_preserves_sound_ge; eauto.
+        eapply vle_preserves_sound_ge; eauto.
         - eapply mle_preserves_sound_ge; eauto.
         - eapply Sound.greatest_adq; eauto.
       }
@@ -283,10 +283,10 @@ Section ADQSOUND.
         eapply K; eauto.
       +
         inv TL0; ss.
-        { eapply le_preserves_sound_ge; eauto.
+        { eapply vle_preserves_sound_ge; eauto.
           eapply Sound.greatest_adq; eauto.
         }
-        eapply le_preserves_sound_ge; eauto.
+        eapply vle_preserves_sound_ge; eauto.
         eapply Sound.greatest_adq; eauto.
   Unshelve.
     all: ss.

@@ -200,21 +200,6 @@ Inductive sound_state (skenv: SkEnv.t) (su: Sound.t) (m_init: mem): AsmC.state -
     sound_state skenv su m_init (mkstate init_rs (State rs0 m0))
 .
 
-Lemma val_le
-      su0 su1 v
-      (SU: UnreachC.val' su1 v)
-      (LE: UnreachC.le' su0 su1)
-      (NB: Ple (Unreach.nb su1) (Unreach.nb su0))
-  :
-    <<SU: UnreachC.val' su0 v>>
-.
-Proof.
-  ii. clarify. exploit SU; eauto. i; des. esplits; eauto.
-  - ii. eapply H. rr in LE. des.
-    eapply PRIV; eauto.
-  - rr in LE. des. xomega.
-Qed.
-
 (* Lemma val_hle *)
 (*       su0 su1 v *)
 (*       (SU: UnreachC.val' su0 v) *)
@@ -237,14 +222,6 @@ Qed.
 (* | Mem_future_store *)
 (*     ( *)
 (* . *)
-
-Lemma to_mreg_preg_of
-      pr mr
-      (MR: Asm.to_mreg pr = Some mr)
-  :
-    <<PR: preg_of mr = pr>>
-.
-Proof. destruct mr, pr; ss; des_ifs. Qed.
 
 (* Lemma asm_unreach_local_preservation *)
 (*       asm skenv_link *)

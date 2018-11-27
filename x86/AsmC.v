@@ -310,3 +310,12 @@ Section MODULE.
   Qed.
 
 End MODULE.
+
+Lemma to_mreg_preg_of
+      pr mr
+      (MR: Asm.to_mreg pr = Some mr)
+  :
+    <<PR: preg_of mr = pr>>
+.
+Proof. destruct mr, pr; ss; des_ifs. Qed.
+

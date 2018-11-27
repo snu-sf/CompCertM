@@ -443,3 +443,34 @@ Qed.
   
 (*   ss. *)
 (* Qed. *)
+
+Lemma match_program_refl
+      F V
+      `{Linker F} `{Linker V}
+      (prog: AST.program F V)
+  :
+    match_program (fun _ => eq) eq prog prog
+.
+Proof.
+  econs; eauto.
+  destruct prog; ss.
+  ginduction prog_defs; ii; ss.
+  { econs; eauto. }
+  destruct a; ss.
+  econs; eauto.
+  - econs; eauto. ss. destruct g; ss.
+    + econs; eauto. eapply linkorder_refl.
+    + econs; eauto. destruct v; ss.
+  - rpapply IHprog_defs; eauto.
+    apply Axioms.functional_extensionality. i.
+    destruct x; ss.
+    apply Axioms.functional_extensionality. i.
+    destruct x; ss.
+    apply prop_ext. split; ii.
+    + inv H1. ss. clarify. inv H3; econs; ss; eauto; econs; ss; eauto.
+      apply linkorder_refl.
+    + inv H1. ss. clarify. inv H3; econs; ss; eauto; econs; ss; eauto.
+      apply linkorder_refl.
+Unshelve.
+  all: ss.
+Qed.

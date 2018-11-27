@@ -308,8 +308,35 @@ Section PRSV.
           { rewrite ROMEM1. ss. }
           i; des.
           ii. exploit PERM; eauto. i; des. inv ORD.
-      + assert(SUMEM: forall b : block, bc b <> BCinvalid -> smatch bc (Args.m args) b Ptop).
-        { admit "mem'. this should hold...". }
+      + assert(BCSU: forall b, bc b <> BCinvalid -> ~ su_init b).
+        { intros ? BC. rewrite IMG in BC.
+          destruct (plt b (Genv.genv_next skenv_link)).
+          - inv SKENV. ss. inv WF. ii. hexploit WFLO; eauto. i. Unreach.nb_tac. xomega.
+          - des_ifs. bsimpl. des. ii. congruence.
+        }
+        assert(SUBC: forall b (VALID: Plt b (Mem.nextblock (Args.m args))), ~ su_init b -> bc b <> BCinvalid).
+        { intros ? ? SU. rewrite IMG. des_ifs. bsimpl. des; ss. des_sumbool.
+          inv SKENV. ss.
+        }
+        assert(SUMEM: forall b : block, bc b <> BCinvalid -> smatch bc (Args.m args) b Ptop).
+        { i. rr. rename H0 into SU.
+          hexploit BCSU; eauto. intro SU0.
+          split; i.
+          - hexploit mem'_load_val'; eauto. intro SUV.
+            { destruct v; econs; et. destruct b1; econs; et. exploit SUV; et. i; des. ii.
+              exploit BCSU; et.
+              exploit SUBC; try apply H1; et.
+              { inv MEM. Unreach.nb_tac. ss. }
+              ss.
+            }
+          - hexploit mem'_loadbytes_val'; eauto. intro SUV.
+            { destruct isreal'; econs; et. exploit SUV; et. i; des. ii.
+              exploit BCSU; et.
+              exploit SUBC; try apply H1; et.
+              { inv MEM. Unreach.nb_tac. ss. }
+              ss.
+            }
+        }
         econs; s; eauto.
         * rewrite IMG. ii. des_ifs; ss.
         * rewrite IMG. ii. des_ifs; ss. rewrite PTree.gempty in *. ss.

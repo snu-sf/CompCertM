@@ -3,7 +3,7 @@ Require Import String.
 Require Import CoqlibC Errors.
 Require Import AST Linking Smallstep.
 (** Languages (syntax and semantics). *)
-Require Ctypes Csyntax Csem Cstrategy Cexec.
+Require Ctypes Csyntax CsemC Cstrategy Cexec.
 Require Clight.
 Require Csharpminor.
 Require Cminor.
@@ -90,13 +90,12 @@ Parameter C2R: Csyntax.program -> res RTL.program.
 (* Parameter C2R_SM: SimMem.class. *)
 (* Parameter C2R_SU: Sound.class. *)
 (* Parameter C2R_SS: SimSymb.class C2R_SM. *)
-Let C_module: Csyntax.program -> Mod.t := IdSim.C_module.
 Parameter C2R_sim_mod: forall
     src tgt
     (TRANSF: C2R src = OK tgt)
   ,
     exists ss,
-      <<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top (ModPair.mk (C_module src) (RTLC.module tgt) ss)>>
+      <<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top (ModPair.mk (CsemC.module src) (RTLC.module tgt) ss)>>
 .
 
 Section C2R.
@@ -117,7 +116,7 @@ Section C2R.
         src tgt
         (TRANSF: C2R src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [C_module src] ++ aps.(ProgPair.src)))
+      backward_simulation (sem (cps.(ProgPair.src) ++ [CsemC.module src] ++ aps.(ProgPair.src)))
                           (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
@@ -322,8 +321,8 @@ Lemma compiler_correct_single
         (asms: list Asm.program)
         (TRANSF: transf_c_program src = OK tgt)
   :
-    Smallstep.backward_simulation (sem ((map C_module cs) ++ [C_module src] ++ (map AsmC.module asms)))
-                                  (sem ((map C_module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
+    Smallstep.backward_simulation (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map AsmC.module asms)))
+                                  (sem ((map CsemC.module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
 .
 Proof.
   eapply compose_backward_simulation; eauto.
@@ -382,8 +381,8 @@ Lemma compiler_correct_single
         (asms: list Asm.program)
         (TRANSF: transf_c_program src = OK tgt)
   :
-    improves (sem ((map C_module cs) ++ [C_module src] ++ (map AsmC.module asms)))
-             (sem ((map C_module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
+    improves (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map AsmC.module asms)))
+             (sem ((map CsemC.module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
 .
 Proof.
   unfold transf_c_program in *. unfold apply_total, apply_partial in *. des_ifs.
@@ -416,7 +415,7 @@ Proof.
         rewrite <- H0; rewrite <- H1; refl
       end
   .
-  unfold C_module in *.
+  (* unfold C_module in *. *)
 
   etrans.
   {
@@ -472,7 +471,7 @@ Theorem compiler_correct
         (tgts hands: list Asm.program)
         (TR: mmap transf_c_program srcs = OK tgts)
   :
-    improves (sem ((map C_module srcs) ++ (map AsmC.module hands)))
+    improves (sem ((map CsemC.module srcs) ++ (map AsmC.module hands)))
              (sem ((map AsmC.module tgts) ++ (map AsmC.module hands)))
 .
 Proof.

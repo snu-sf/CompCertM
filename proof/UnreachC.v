@@ -1082,3 +1082,34 @@ Proof.
   intro MV; des.
   rewrite H0 in *. exploit MV; eauto.
 Qed.
+
+Lemma val_le
+      su0 su1 v
+      (SU: val' su1 v)
+      (LE: le' su0 su1)
+      (NB: Ple (Unreach.nb su1) (Unreach.nb su0))
+  :
+    <<SU: val' su0 v>>
+.
+Proof.
+  ii. clarify. exploit SU; eauto. i; des. esplits; eauto.
+  - ii. eapply H. rr in LE. des.
+    eapply PRIV; eauto.
+  - rr in LE. des. xomega.
+Qed.
+
+Lemma memval_le
+      su0 su1 mv
+      (SU: memval' su1 mv)
+      (LE: le' su0 su1)
+      (NB: Ple (Unreach.nb su1) (Unreach.nb su0))
+  :
+    <<SU: memval' su0 mv>>
+.
+Proof.
+  ii. clarify. exploit SU; eauto. i; des. esplits; eauto.
+  - ii. eapply H. rr in LE. des.
+    eapply PRIV; eauto.
+  - rr in LE. des. xomega.
+Qed.
+

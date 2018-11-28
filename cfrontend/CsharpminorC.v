@@ -94,14 +94,16 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
   Lemma modsem_receptive
+        st
     :
-      receptive modsem
+      receptive_at modsem st
   .
   Proof. admit "this should hold". Qed.
 
   Lemma modsem_determinate
+        st
     :
-      determinate modsem
+      determinate_at modsem st
   .
   Proof. admit "this should hold". Qed.
 

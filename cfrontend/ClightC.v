@@ -17,6 +17,7 @@ Require Export Clight.
 Require Import Skeleton Mod ModSem.
 Require Import CtypesC.
 Require Import CtypingC.
+Require Import Simulation.
 
 Set Implicit Arguments.
 
@@ -135,36 +136,41 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
   Let lift_receptive: forall
-        (RECEP: receptive (semantics1_with_ge p ge))
+      st
+      (RECEP: receptive_at (semantics1_with_ge p ge) st)
     ,
-      receptive modsem1
+      receptive_at modsem1 st
   .
   Proof. i.
-    inv RECEP. econs; eauto; ii; ss. exploit sr_receptive; eauto.
+    inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
     eapply match_traces_preserved; try eassumption. ii; ss.
   Qed.
 
   Lemma modsem1_receptive
+        st
     :
-      receptive modsem1
+      receptive_at modsem1 st
   .
   Proof. admit "this should hold". Qed.
 
   Lemma modsem1_determinate
+        st
     :
-      determinate modsem1
+      determinate_at modsem1 st
   .
   Proof. admit "this should hold". Qed.
 
   Lemma modsem2_receptive
+        st
     :
-      receptive modsem2
+      receptive_at modsem2 st
   .
   Proof. admit "this should hold". Qed.
 
   Lemma modsem2_determinate
+        st
     :
-      determinate modsem2
+      determinate_at modsem2 st
   .
   Proof. admit "this should hold". Qed.
 

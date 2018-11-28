@@ -127,7 +127,7 @@ Section MODSEM.
     :
       after_external (Callstate stack fptr_arg sg_arg vs_arg m_arg)
                      retv
-                     (Returnstate stack retv.(Retv.v) retv.(Retv.m))
+                     (Returnstate stack tv retv.(Retv.m))
   .
 
   Program Definition modsem: ModSem.t :=

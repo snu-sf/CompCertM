@@ -558,6 +558,7 @@ Section PRSV.
           eapply Mem.loadbytes_unchanged_on_1; try apply PRIV; eauto.
           u. i.
           eapply BCLE1; et. ss. des_ifs. des_sumbool. ss.
+        * eapply VMTOP; et. unfold typify. des_ifs.
         * admit "ez - RO".
         *
 

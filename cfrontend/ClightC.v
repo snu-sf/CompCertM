@@ -13,7 +13,7 @@ Require Import CtypesC.
 Require Import Cop.
 (** newly added **)
 Require Import sflib.
-Require Import Clight.
+Require Export Clight.
 Require Import Skeleton Mod ModSem.
 Require Import CtypesC.
 Require Import CtypingC.
@@ -26,6 +26,14 @@ Definition signature_of_function (fd: function) :=
      sig_res  := opttyp_of_type (fn_return fd);
      sig_cc   := fn_callconv fd |}.
 
+Definition get_mem (st: state): mem :=
+  match st with
+  | State _ _ _ _ _ m0 => m0
+  | Callstate _ _ _ _ m0 => m0
+  | Returnstate _ _ m0 => m0
+  end
+.
+
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
@@ -35,15 +43,13 @@ Section MODSEM.
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
-      fptr_arg sg_arg tyf vs_arg k0 m0
+      fptr_arg vs_arg k0 m0
       targs tres cconv
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                   /\ (SkEnv.get_sig skd = sg_arg
-                      -> tyf = Tfunction targs tres cconv
-                      -> signature_of_type targs tres cconv = sg_arg))
+                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd)
     :
-      at_external (Callstate fptr_arg tyf vs_arg k0 m0)
+      at_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k0 m0)
                   (Args.mk fptr_arg vs_arg m0)
   .
 
@@ -66,15 +72,15 @@ Section MODSEM.
       final_frame (Returnstate v_ret Kstop m_ret) (Retv.mk v_ret m_ret)
   .
 
-  Inductive after_external: state -> Retv.t -> state -> Prop :=
-  | after_external_intro
+  Inductive after_external1: state -> Retv.t -> state -> Prop :=
+  | after_external1_intro
       fptr_arg vs_arg m_arg
       k retv tv
       (* tyf *)
       targs tres cconv
       (TYP: typify_c retv.(Retv.v) tres tv)
     :
-      after_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
+      after_external1 (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
                      retv
                      (Returnstate tv k retv.(Retv.m))
   .
@@ -85,7 +91,7 @@ Section MODSEM.
       ModSem.at_external := at_external;
       ModSem.initial_frame := initial_frame;
       ModSem.final_frame := final_frame;
-      ModSem.after_external := after_external;
+      ModSem.after_external := after_external1;
       ModSem.globalenv := ge;
       ModSem.skenv := skenv;
     |}
@@ -97,20 +103,33 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
+  Inductive after_external2: state -> Retv.t -> state -> Prop :=
+  | after_external2_intro
+      fptr_arg vs_arg m_arg
+      k retv tv
+      (* tyf *)
+      targs tres cconv
+      (TYP: tv = typify retv.(Retv.v) (typ_of_type tres))
+    :
+      after_external2 (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
+                     retv
+                     (Returnstate tv k retv.(Retv.m))
+  .
+
   Program Definition modsem2: ModSem.t :=
     {|
       ModSem.step := step2;
       ModSem.at_external := at_external;
       ModSem.initial_frame := initial_frame;
       ModSem.final_frame := final_frame;
-      ModSem.after_external := after_external;
+      ModSem.after_external := after_external2;
       ModSem.globalenv := ge;
       ModSem.skenv := skenv;
     |}
   .
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. f_equal. determ_tac typify_c_dtm. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.

@@ -27,14 +27,14 @@ Definition globdef_of_globdef F V (gd: globdef (Ctypes.fundef F) V) : globdef (A
   | Gvar v => Gvar v
   end.
 
-Section CSPECIFIC.
+Definition is_external F (gd: globdef (Ctypes.fundef F) type): bool :=
+  match gd with
+  | Gfun fd => is_external_fd fd
+  | Gvar _ => false
+  end
+.
 
-  Definition is_external F (gd: globdef (Ctypes.fundef F) type): bool :=
-    match gd with
-    | Gfun fd => is_external_fd fd
-    | Gvar _ => false
-    end
-  .
+Module CSkEnv.
 
   Definition revive {F} (skenv: SkEnv.t) (prog: Ctypes.program F): Genv.t (Ctypes.fundef F) type :=
     skenv.(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
@@ -57,6 +57,17 @@ Section CSPECIFIC.
     u in *. des_ifs.
   Qed.
 
+End CSkEnv.
+
+(* Definition program_of_program' F (p: program F) : AST.program (AST.fundef F) type := *)
+(*   {| AST.prog_defs := map (fun idg => update_snd (@globdef_of_globdef _ _) idg) p.(prog_defs); *)
+(*      AST.prog_public := p.(prog_public); *)
+(*      AST.prog_main := p.(prog_main) |}. *)
+
+(* Coercion program_of_program': program >-> AST.program. *)
+
+Module CSk.
+
   Definition of_program {F} (get_sg: F -> signature) (prog: Ctypes.program F): Sk.t :=
     mkprogram (skdefs_of_gdefs get_sg (map (update_snd (@globdef_of_globdef F type)) prog.(prog_defs))) prog.(prog_public) prog.(prog_main)
   .
@@ -78,5 +89,5 @@ Section CSPECIFIC.
     rewrite map_map. rewrite map_map. ss.
   Qed.
 
-End CSPECIFIC.
+End CSk.
 

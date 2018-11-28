@@ -96,7 +96,7 @@ Section MODSEM.
   (* Set Printing All. *)
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) (defs p).
   Let ce_ge: composite_env := prog_comp_env p.
-  Let ge_ge: Genv.t fundef type := revive skenv p.
+  Let ge_ge: Genv.t fundef type := CSkEnv.revive skenv p.
   Let ge: genv := Build_genv ge_ge ce_ge.
 
   Inductive at_external : state -> Args.t -> Prop :=
@@ -178,7 +178,7 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply revive_no_external; eauto.
+    eapply CSkEnv.revive_no_external; eauto.
   Qed.
 
   (* Lemma lift_receptive_at *)
@@ -231,12 +231,12 @@ Section MODULE.
   Program Definition module: Mod.t :=
     {|
       Mod.data := p;
-      Mod.get_sk := CtypesC.of_program signature_of_function ;
+      Mod.get_sk := CSk.of_program signature_of_function ;
       Mod.get_modsem := modsem;
     |}
   .
   Next Obligation.
-    rewrite CtypesC.of_program_defs. ss.
+    rewrite CSk.of_program_defs. ss.
   Qed.
 
 End MODULE.

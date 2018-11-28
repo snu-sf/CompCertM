@@ -35,7 +35,7 @@ Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link sken
 Variable prog: Clight.program.
 Variable tprog: Csharpminor.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge: Clight.genv := Build_genv (CtypesC.revive (SkEnv.project skenv_link_src (defs prog)) prog)
+Let ge: Clight.genv := Build_genv (CSkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog)
                                   prog.(prog_comp_env).
 Let tge: Csharpminor.genv := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 Definition msp: ModSemPair.t :=

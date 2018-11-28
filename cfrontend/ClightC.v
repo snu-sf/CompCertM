@@ -39,7 +39,7 @@ Section MODSEM.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
-  Let ge: genv := Build_genv (skenv.(CtypesC.revive) p) p.(prog_comp_env).
+  Let ge: genv := Build_genv (skenv.(CSkEnv.revive) p) p.(prog_comp_env).
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
@@ -181,23 +181,23 @@ Section MODULE.
   Program Definition module1: Mod.t :=
     {|
       Mod.data := p;
-      Mod.get_sk := CtypesC.of_program signature_of_function;
+      Mod.get_sk := CSk.of_program signature_of_function;
       Mod.get_modsem := modsem1;
     |}
   .
   Next Obligation.
-    rewrite CtypesC.of_program_defs. ss.
+    rewrite CSk.of_program_defs. ss.
   Qed.
 
   Program Definition module2: Mod.t :=
     {|
       Mod.data := p;
-      Mod.get_sk := CtypesC.of_program signature_of_function;
+      Mod.get_sk := CSk.of_program signature_of_function;
       Mod.get_modsem := modsem2;
     |}
   .
   Next Obligation.
-    rewrite CtypesC.of_program_defs. ss.
+    rewrite CSk.of_program_defs. ss.
   Qed.
 
 End MODULE.

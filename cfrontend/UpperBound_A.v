@@ -6,6 +6,7 @@ Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program.
 Require Import Equality.
+Require Import CtypingC.
 
 Set Implicit Arguments.
 
@@ -89,7 +90,7 @@ Section PRESERVATION.
   Variable sk_link: Sk.t.
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
   Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
-  Notation " 'geof' cp" := (Build_genv (revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env))
+  Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env))
                            (at level 50, no associativity, only parsing).
   Let ge_cp_link: genv := geof cp_link.
   Let ge_cp0: genv := geof cp0.
@@ -442,23 +443,6 @@ Section PRESERVATION.
       + admit "ez".
   Qed.
 
-  (* TODO: move to CtypingC.v *)
-  Lemma wt_initial_frame
-        (cp: Csyntax.program) fptr vs_arg m
-        targs tres cconv
-        (INT: exists fd, Genv.find_funct (geof cp) fptr = Some (Internal fd))
-        (WTARGS: list_forall2 Val.has_type vs_arg (typlist_of_typelist targs))
-    :
-      wt_state (geof cp) (Csem.Callstate fptr (Tfunction targs tres cconv) vs_arg Kstop m)
-  .
-  Proof.
-    des.
-    econs; et.
-    - econs; et.
-    - econs; et.
-    - ii. exfalso. eapply EXT; et.
-  Qed.
-
   Lemma match_xsim
         st_src0 st_tgt0
         (MATCH: match_states st_src0 st_tgt0)
@@ -613,7 +597,7 @@ Section PRESERVATION.
               - econs; et.
               - i. ss. des_ifs. exfalso. eapply EXT; ss; et. admit "ditto - ez".
               - instantiate (1:= vs_arg).
-                inv WTTGT; ss. clarify.
+                inv WTTGT; ss. clarify. unfold type_of_function in *. clarify.
             } 
           }
       }
@@ -936,7 +920,7 @@ End PRESERVATION.
 Require Import BehaviorsC.
 
 Let geof := fun skenv_link (cp: Csyntax.program) =>
-              (Build_genv (revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env)).
+              (Build_genv (SkEnv.revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env)).
 
 Theorem upperbound_a_correct
         (_cp0 _cp1 _cp_link: Csyntax.program) cp0 cp1 cp_link ctx

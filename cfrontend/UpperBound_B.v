@@ -7,6 +7,7 @@ Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib SemProps.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program.
 Require Import BehaviorsC.
+Require Import CtypingC.
 
 Set Implicit Arguments.
 
@@ -71,7 +72,7 @@ c0 + empty
       wt_val vres res.
 
   Definition local_genv (p : Csyntax.program) :=
-    (skenv_link.(SkEnv.project) p.(defs)).(revive) p.
+    (skenv_link.(SkEnv.project) p.(defs)).(SkEnv.revive) p.
 
   Inductive match_states : Csem.state -> Sem.state -> nat -> Prop :=
   | match_states_intro
@@ -80,13 +81,14 @@ c0 + empty
     :
       match_states st (Sem.State [fr]) 1
   | match_states_call
-      fptr tyf vargs k m args fr (st: Csem.state) sg_arg cconv tres targs n
+      fptr tyf vargs k m args fr (st: Csem.state) cconv tres targs n
       (STATE: st = (Csem.Callstate fptr tyf vargs k m))
       (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd
-                   /\ (SkEnv.get_sig skd = sg_arg
-                      -> tyf = Tfunction targs tres cconv
-                      -> signature_of_type targs tres cconv = sg_arg))
+                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd)
+                   (* /\ (SkEnv.get_sig skd = sg_arg *)
+                   (*    -> tyf = Tfunction targs tres cconv *)
+                   (*    -> signature_of_type targs tres cconv = sg_arg)) *)
       (FPTR: args.(Args.fptr) = fptr)
       (ARGS: args.(Args.vs) = vargs)
       (MEM: args.(Args.m) = m)
@@ -145,7 +147,7 @@ c0 + empty
   Qed.
 
   Lemma prog_sk_tgt:
-    of_program signature_of_function prog = sk_tgt.
+    CSk.of_program signature_of_function prog = sk_tgt.
   Proof.
     unfold skenv_link, link_sk, link_list in LINK_SK_TGT; inversion LINK_SK_TGT. auto.
   Qed.
@@ -319,7 +321,7 @@ c0 + empty
         blk g
         (VAR: Genv.find_var_info (Genv.globalenv prog) blk = Some g)
     :
-      Genv.find_var_info (revive (SkEnv.project skenv_link (defs prog)) prog) blk = Some g
+      Genv.find_var_info (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) blk = Some g
   .
   Proof.
     destruct match_ge_skenv_link.
@@ -367,7 +369,7 @@ c0 + empty
 
   Lemma var_info_same'
         blk g
-        (VAR: Genv.find_var_info (revive (SkEnv.project skenv_link (defs prog)) prog) blk = Some g)
+        (VAR: Genv.find_var_info (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) blk = Some g)
     :
       Genv.find_var_info (Genv.globalenv prog) blk = Some g.
   Proof.
@@ -398,7 +400,7 @@ c0 + empty
 
   Lemma volatile_block_same
         blk b
-        (VOLATILE: Genv.block_is_volatile (revive (SkEnv.project skenv_link (defs prog)) prog) blk = b)
+        (VOLATILE: Genv.block_is_volatile (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) blk = b)
     :
       Genv.block_is_volatile (Genv.globalenv prog) blk = b.
   Proof.
@@ -412,7 +414,7 @@ c0 + empty
         blk b
         (VOLATILE: Genv.block_is_volatile (Genv.globalenv prog) blk = b)
     :
-      Genv.block_is_volatile (revive (SkEnv.project skenv_link (defs prog)) prog) blk = b.
+      Genv.block_is_volatile (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) blk = b.
   Proof.
     destruct match_ge_skenv_link.
     destruct skenv_link_wf. destruct proj_wf.
@@ -426,7 +428,7 @@ c0 + empty
   Lemma symbol_same
         id
     :
-      Genv.find_symbol (revive (SkEnv.project skenv_link (defs prog)) prog) id =  Genv.find_symbol (Genv.globalenv prog) id.
+      Genv.find_symbol (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) id =  Genv.find_symbol (Genv.globalenv prog) id.
   Proof.
     destruct match_ge_skenv_link.
     destruct skenv_link_wf. destruct proj_wf.
@@ -447,7 +449,7 @@ c0 + empty
   Lemma public_same
         id
     :
-      Genv.public_symbol {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} id =
+      Genv.public_symbol {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} id =
       Genv.public_symbol (Genv.globalenv prog) id.
   Proof.
     destruct match_ge_skenv_link.
@@ -460,7 +462,7 @@ c0 + empty
   Qed.
 
   Lemma Senv_equiv1:
-    Senv.equiv (Genv.globalenv prog) {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}.
+    Senv.equiv (Genv.globalenv prog) {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}.
   Proof.
     econs; splits.
     - eapply symbol_same.
@@ -470,7 +472,7 @@ c0 + empty
   Qed.
 
   Lemma Senv_equiv2:
-    Senv.equiv {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} (Genv.globalenv prog).
+    Senv.equiv {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} (Genv.globalenv prog).
   Proof.
     econs; splits; symmetry.
     - eapply symbol_same.
@@ -482,7 +484,7 @@ c0 + empty
   Lemma volatile_load_same
         chunk m' b ofs tr v
     :
-      volatile_load {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} chunk
+      volatile_load {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} chunk
                     m' b ofs tr v <->
       volatile_load (globalenv prog) chunk m' b ofs tr v.
   Proof.
@@ -493,7 +495,7 @@ c0 + empty
   Lemma deref_loc_same
         ty m' b ofs tr v
     :
-      deref_loc {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} ty m' b ofs tr v <-> deref_loc (globalenv prog) ty m' b ofs tr v.
+      deref_loc {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} ty m' b ofs tr v <-> deref_loc (globalenv prog) ty m' b ofs tr v.
   Proof.
     destruct match_ge_skenv_link.
     split; intro DEREF;
@@ -508,7 +510,7 @@ c0 + empty
     :
         volatile_store
           {|
-            genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog;
+            genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog;
             genv_cenv := prog_comp_env prog |} chunk m b ofs v tr m'
         <-> volatile_store (globalenv prog) chunk m b ofs v tr m'.
   Proof.
@@ -521,7 +523,7 @@ c0 + empty
     :
       assign_loc
         {|
-          genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog;
+          genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog;
           genv_cenv := prog_comp_env prog |} ty m b ofs v tr m'
         <-> assign_loc (globalenv prog) ty m b ofs v tr m'.
   Proof.
@@ -536,7 +538,7 @@ c0 + empty
   Lemma lred_same
         e a m a' m'
     :
-        lred {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} e a m a' m'
+        lred {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} e a m a' m'
         <-> lred (globalenv prog) e a m a' m'.
   Proof.
     destruct match_ge_skenv_link.
@@ -549,7 +551,7 @@ c0 + empty
   Lemma rred_same
         a m tr a' m'
     :
-        rred {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} a m tr a' m'
+        rred {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} a m tr a' m'
         <-> rred (globalenv prog) a m tr a' m'.
   Proof.
     destruct match_ge_skenv_link.
@@ -567,7 +569,7 @@ c0 + empty
   Lemma estep_same
         st_src tr st0
         (ESTEP: estep
-                  {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+                  {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
                   st_src tr st0)
     :
       estep (globalenv prog) st_src tr st0.
@@ -597,7 +599,7 @@ c0 + empty
         b f
         (DEF: Genv.find_def
                 {|
-                  genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog;
+                  genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog;
                   genv_cenv := prog_comp_env prog |} b = Some f)
     :
       Genv.find_def ge b = Some f.
@@ -621,7 +623,7 @@ c0 + empty
 
   Lemma function_find_same
         fptr f
-        (FUNC: Genv.find_funct (revive (SkEnv.project skenv_link (defs prog)) prog) fptr = Some f)
+        (FUNC: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) fptr = Some f)
     :
       Genv.find_funct ge fptr = Some f.
   Proof.
@@ -644,7 +646,7 @@ c0 + empty
         (FUNC : Genv.find_funct (Genv.globalenv prog) fptr = Some f)
         (* (External ef targs tres cc) *)
     :
-      Genv.find_funct (revive (SkEnv.project skenv_link (defs prog)) prog) fptr =
+      Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) fptr =
       Some f.
   Proof.
     destruct match_ge_skenv_link.
@@ -696,7 +698,7 @@ c0 + empty
   Lemma sstep_same
         st_src tr st0
         (SSTEP: sstep
-                  {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+                  {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
                   st_src tr st0)
     :
       sstep (globalenv prog) st_src tr st0.
@@ -721,7 +723,7 @@ c0 + empty
   Lemma cstep_same
         st_src tr st0
         (STEP: Csem.step
-                 {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+                 {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
                  st_src tr st0)
     :
       Csem.step (globalenv prog) st_src tr st0.
@@ -754,7 +756,7 @@ c0 + empty
         (ESTEP: estep (globalenv prog) st_src tr st0)
     :
       estep
-        {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+        {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
         st_src tr st0.
   Proof.
     destruct match_ge_skenv_link.
@@ -779,7 +781,7 @@ c0 + empty
         (SSTEP: sstep (globalenv prog) st_src tr st0)
     :
       sstep
-        {| genv_genv := revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+        {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
         st_src tr st0.
   Proof.
     destruct match_ge_skenv_link.
@@ -1215,10 +1217,12 @@ c0 + empty
               right. inv SAFESRC; inv H0; ss; des_ifs.
               inv MTCHST; cycle 1.
               { inv INITTGT. }
+              set ef as XX.
+              (* unfold is_external_ef in *. des_ifs. *)
               exists E0. esplits. eapply step_call; ss. econs.
               { unfold Genv.find_funct. des_ifs.
                 unfold Genv.find_funct_ptr. des_ifs.
-                eapply revive_no_external in Heq0; clarify.
+                eapply SkEnv.revive_no_external in Heq0; clarify.
                 ss. des_ifs. rewrite Genv.find_funct_ptr_iff in Heq.
                 exploit def_same; eauto. i. unfold ge in H0.
                 ss. Eq. ss. }
@@ -1233,12 +1237,13 @@ c0 + empty
                   - assert (x = (Gfun (External ef targs tres cc))).
                     { unfold fundef in *. rewrite <- H0 in Heq. clarify. }
                     subst. ss. }
-                i. eauto.
+                exploit Genv.find_funct_inversion; eauto. i; des.
+                inv WTPROG. eauto.
               }
               { inv WTST; ss. exploit WTKS; eauto. { ii. clarify. } esplits; ss; eauto. rr. des. des_ifs. }
             ++ (* internal *)
               exploit progress_step; eauto.
-              Unshelve. auto. auto. auto.
+              Unshelve.
   Qed.
 
   Lemma transf_xsim_properties

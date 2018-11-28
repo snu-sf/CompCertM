@@ -186,5 +186,3 @@ Hint Unfold ModSem.is_call ModSem.is_step ModSem.is_return.
 
 Coercion ModSem.to_semantics: ModSem.t >-> semantics.
 (* I want to use definitions like "Star" or "determinate_at" *)
-
-

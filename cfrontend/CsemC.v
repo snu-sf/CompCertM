@@ -8,7 +8,7 @@ Require Export Simulation Csem Cop Ctypes Ctyping Csyntax Cexec.
 Require Import Skeleton Mod ModSem.
 Require Import AsmregsC CtypesC.
 Require Import Conventions.
-(* Require Import Locations. *)
+Require Import CtypingC.
 
 Set Implicit Arguments.
 
@@ -23,10 +23,10 @@ Definition is_call_cont_strong (k0: cont): Prop :=
 .
 
 (* copied from Cshmgen *)
-Definition signature_of_function (fd: Csyntax.function) :=
-  {| sig_args := map typ_of_type (map snd (Csyntax.fn_params fd));
-     sig_res  := opttyp_of_type (Csyntax.fn_return fd);
-     sig_cc   := Csyntax.fn_callconv fd |}.
+Definition signature_of_function (fd: function) :=
+  {| sig_args := map typ_of_type (map snd (fn_params fd));
+     sig_res  := opttyp_of_type (fn_return fd);
+     sig_cc   := fn_callconv fd |}.
 
 Section CEXTRA.
 
@@ -96,23 +96,20 @@ Section MODSEM.
   (* Set Printing All. *)
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) (defs p).
   Let ce_ge: composite_env := prog_comp_env p.
-  Let ge_ge: Genv.t fundef type := revive skenv p.
+  Let ge_ge: Genv.t fundef type := SkEnv.revive skenv p.
   Let ge: genv := Build_genv ge_ge ce_ge.
 
   Inductive at_external : state -> Args.t -> Prop :=
   | at_external_intro
-      fptr_arg tyf vs_arg sg_arg targs tres cconv k0 m0
+      fptr_arg vs_arg targs tres cconv k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                   /\ (SkEnv.get_sig skd = sg_arg
-                      -> tyf = Tfunction targs tres cconv
-                      -> signature_of_type targs tres cconv = sg_arg))
-                   (* /\ type_of_fundef skd = tyf) *)
+                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd)
       (CALL: is_call_cont_strong k0)
     (* how can i check sg_args and tyf are same type? *)
     (* typ_of_type function is a projection type to typ. it delete some info *)
     :
-      at_external (Callstate fptr_arg tyf vs_arg k0 m0)
+      at_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k0 m0)
                   (Args.mk fptr_arg vs_arg m0)
   .
 
@@ -135,49 +132,6 @@ Section MODSEM.
     :
       final_frame (Returnstate v_ret Kstop m_ret) (Retv.mk v_ret m_ret)
   .
-
-  Inductive typify_c (v: val) (ty: type): val -> Prop :=
-  | typify_c_ok
-      (WT: wt_val v ty)
-    :
-      typify_c v ty v
-  | typify_c_no
-      (NWT: ~ wt_val v ty)
-    :
-      typify_c v ty Vundef
-  .
-
-  Lemma typify_c_dtm
-        v ty tv0 tv1
-        (TY0: typify_c v ty tv0)
-        (TY1: typify_c v ty tv1)
-    :
-      tv0 = tv1
-  .
-  Proof.
-    admit "ez".
-  Qed.
-
-  Lemma typify_c_ex
-        v ty
-    :
-      exists tv, <<TYP: typify_c v ty tv>>
-  .
-  Proof.
-    destruct (classic (wt_val v ty)).
-    - esplits; econs 1; eauto.
-    - esplits; econs 2; eauto.
-  Qed.
-
-  Lemma typify_c_spec
-        v ty tv
-        (TY: typify_c v ty tv)
-    :
-      <<WT: wt_val tv ty>>
-  .
-  Proof.
-    inv TY; ss. econs.
-  Qed.
 
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
@@ -224,7 +178,7 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply revive_no_external; eauto.
+    eapply SkEnv.revive_no_external; ss; eauto.
   Qed.
 
   (* Lemma lift_receptive_at *)
@@ -277,13 +231,19 @@ Section MODULE.
   Program Definition module: Mod.t :=
     {|
       Mod.data := p;
-      Mod.get_sk := of_program signature_of_function ;
+      Mod.get_sk := CSk.of_program signature_of_function ;
       Mod.get_modsem := modsem;
     |}
   .
   Next Obligation.
-    rewrite CtypesC.of_program_defs. ss.
+    rewrite CSk.of_program_defs. ss.
   Qed.
 
 End MODULE.
+
+
+(* Definition geof (skenv_link: SkEnv.t) (cp: program): genv := *)
+(*   (Build_genv (revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env)) *)
+(* . *)
+(* Hint Unfold geof. *)
 

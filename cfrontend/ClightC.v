@@ -39,7 +39,7 @@ Section MODSEM.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
-  Let ge: genv := Build_genv (skenv.(CSkEnv.revive) p) p.(prog_comp_env).
+  Let ge: genv := Build_genv (skenv.(SkEnv.revive) p) p.(prog_comp_env).
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro

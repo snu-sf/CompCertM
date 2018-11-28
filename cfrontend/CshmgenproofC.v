@@ -35,7 +35,7 @@ Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link sken
 Variable prog: Clight.program.
 Variable tprog: Csharpminor.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge: Clight.genv := Build_genv (CSkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog)
+Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog)
                                   prog.(prog_comp_env).
 Let tge: Csharpminor.genv := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 Definition msp: ModSemPair.t :=
@@ -54,7 +54,7 @@ Inductive match_states
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
   Genv.match_genvs (match_globdef match_fundef match_varinfo prog) ge tge.
-Proof. subst_locals. ss. admit "". (* eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } *) Qed.
+Proof. subst_locals. ss. eapply SimSymbId.sim_skenv_revive; eauto. { ii. inv MATCH; ss. } Qed.
 
 Theorem sim_modsem
   :
@@ -113,11 +113,10 @@ Proof.
     + econs; eauto.
       * folder. des.
         r in TRANSL.
-        (* exploit (SimSymbId.sim_skenv_revive TRANSL); eauto. *)
-        (* { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. } *)
-        (* intro GE. *)
-        (* apply (sim_external_id GE); ss. *)
-        admit "".
+        exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
+        { ii. inv MATCH; ss. }
+        intro GE.
+        apply (sim_external_id GE); ss.
       * des. clarify. esplits; eauto.
         eapply SimSymb.simskenv_func_fsim; eauto; ss. destruct SIMSKENVLINK. ss.
     + econs; ss; eauto.

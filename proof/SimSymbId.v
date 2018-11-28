@@ -132,18 +132,21 @@ Proof.
 Qed.
 
 
+Local Opaque prog_defmap.
+
 Section REVIVE.
 
-  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker (AST.fundef F1)} {LV: Linker V1}.
-  Variable match_fundef: C -> AST.fundef F1 -> AST.fundef F2 -> Prop.
+  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker F1} {LV: Linker V1}.
+  Context `{HasExternal F1} `{HasExternal F2}.
+  Variable match_fundef: C -> F1 -> F2 -> Prop.
   Variable match_varinfo: V1 -> V2 -> Prop.
-  Variables (ctx: C) (p_src: AST.program (AST.fundef F1) V1) (p_tgt: AST.program (AST.fundef F2) V2).
+  Variables (ctx: C) (p_src: AST.program F1 V1) (p_tgt: AST.program F2 V2).
   Hypothesis (MATCHPROG: match_program_gen match_fundef match_varinfo ctx p_src p_tgt).
   Hypothesis MATCH_FUNDEF_EXTERNAL: forall
       ctx f_src f_tgt
       (MATCH: match_fundef ctx f_src f_tgt)
     ,
-      is_external_fd f_src = is_external_fd f_tgt
+      is_external f_src = is_external f_tgt
   .
 
   Lemma sim_skenv_revive
@@ -166,7 +169,7 @@ Section REVIVE.
     destruct (Genv.invert_symbol skenv_proj_tgt b) eqn:T; cbn; try (by econs; eauto).
     apply match_program_defmap with (id := i) in MATCHPROG.
     inv MATCHPROG; cbn; try (by econs; eauto).
-    inv H1; ss; cycle 1.
+    inv H3; ss; cycle 1.
     { econs; eauto. econs; eauto. }
     erewrite MATCH_FUNDEF_EXTERNAL; eauto.
     des_ifs; try (by econs; eauto).
@@ -174,4 +177,100 @@ Section REVIVE.
   Qed.
 
 End REVIVE.
+
+
+
+(* Require Import CtypesC. *)
+
+(* Section REVIVEC. *)
+
+(*   Context {C F1 F2 V2: Type} {LC: Linker C} {LF: Linker (AST.fundef F1)}. *)
+(*   Variable match_fundef: C -> Ctypes.fundef F1 -> AST.fundef F2 -> Prop. *)
+(*   Variable match_varinfo: type -> V2 -> Prop. *)
+(*   Variables (ctx: C) (p_src: Ctypes.program F1) (p_tgt: AST.program (AST.fundef F2) V2). *)
+(*   Hypothesis (MATCHPROG: match_program_gen match_fundef match_varinfo ctx p_src p_tgt). *)
+(*   Hypothesis MATCH_FUNDEF_EXTERNAL: forall *)
+(*       ctx f_src f_tgt *)
+(*       (MATCH: match_fundef ctx f_src f_tgt) *)
+(*     , *)
+(*       is_external_fd f_src = is_external_fd f_tgt *)
+(*   . *)
+
+(*   Lemma sim_skenv_revive_c *)
+(*         skenv_proj_src skenv_proj_tgt *)
+(*         ge_src ge_tgt *)
+(*         (REVIVESRC: ge_src = CSkEnv.revive skenv_proj_src p_src) *)
+(*         (REVIVETGT: ge_tgt = SkEnv.revive skenv_proj_tgt p_tgt) *)
+(*         (SIMSKENV: sim_skenv skenv_proj_src skenv_proj_tgt) *)
+(*     : *)
+(*       <<SIMGE: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge_src ge_tgt>> *)
+(*   . *)
+(*   Proof. *)
+(*     clarify. *)
+(*     inv SIMSKENV. *)
+(*     econs; eauto. *)
+
+(*     ii. ss. *)
+(*     rewrite ! MapsC.PTree_filter_map_spec. rewrite ! o_bind_ignore. *)
+(*     unfold Genv.find_def in *. des_ifs; try (by econs). *)
+(*     (* Set Printing Implicit. *) *)
+(*     (* cbn. *) *)
+(*     destruct (Genv.invert_symbol skenv_proj_tgt b) eqn:T; cbn; try (by econs; eauto). *)
+(*     apply match_program_defmap with (id := i) in MATCHPROG. *)
+(*     inv MATCHPROG; cbn; try (by econs; eauto). *)
+(*     inv H1; ss; cycle 1. *)
+(*     { econs; eauto. econs; eauto. } *)
+(*     erewrite MATCH_FUNDEF_EXTERNAL; eauto. *)
+(*     des_ifs; try (by econs; eauto). *)
+(*     econs; eauto. econs; eauto. *)
+(*   Qed. *)
+
+(* End REVIVEC. *)
+
+
+
+(* Section REVIVECC. *)
+
+(*   Context {C F1 F2: Type} {LC: Linker C} {LF: Linker (AST.fundef F1)}. *)
+(*   Variable match_fundef: C -> Ctypes.fundef F1 -> Ctypes.fundef F2 -> Prop. *)
+(*   Variable match_varinfo: type -> type -> Prop. *)
+(*   Variables (ctx: C) (p_src: Ctypes.program F1) (p_tgt: Ctypes.program F2). *)
+(*   Hypothesis (MATCHPROG: match_program_gen match_fundef match_varinfo ctx p_src p_tgt). *)
+(*   Hypothesis MATCH_FUNDEF_EXTERNAL: forall *)
+(*       ctx f_src f_tgt *)
+(*       (MATCH: match_fundef ctx f_src f_tgt) *)
+(*     , *)
+(*       is_external_fd f_src = is_external_fd f_tgt *)
+(*   . *)
+
+(*   Lemma sim_skenv_revive_cc *)
+(*         skenv_proj_src skenv_proj_tgt *)
+(*         ge_src ge_tgt *)
+(*         (REVIVESRC: ge_src = CSkEnv.revive skenv_proj_src p_src) *)
+(*         (REVIVETGT: ge_tgt = CSkEnv.revive skenv_proj_tgt p_tgt) *)
+(*         (SIMSKENV: sim_skenv skenv_proj_src skenv_proj_tgt) *)
+(*     : *)
+(*       <<SIMGE: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge_src ge_tgt>> *)
+(*   . *)
+(*   Proof. *)
+(*     clarify. *)
+(*     inv SIMSKENV. *)
+(*     econs; eauto. *)
+
+(*     ii. ss. *)
+(*     rewrite ! MapsC.PTree_filter_map_spec. rewrite ! o_bind_ignore. *)
+(*     unfold Genv.find_def in *. des_ifs; try (by econs). *)
+(*     (* Set Printing Implicit. *) *)
+(*     (* cbn. *) *)
+(*     destruct (Genv.invert_symbol skenv_proj_tgt b) eqn:T; cbn; try (by econs; eauto). *)
+(*     apply match_program_defmap with (id := i) in MATCHPROG. *)
+(*     inv MATCHPROG; cbn; try (by econs; eauto). *)
+(*     inv H1; ss; cycle 1. *)
+(*     { econs; eauto. econs; eauto. } *)
+(*     erewrite MATCH_FUNDEF_EXTERNAL; eauto. *)
+(*     des_ifs; try (by econs; eauto). *)
+(*     econs; eauto. econs; eauto. *)
+(*   Qed. *)
+
+(* End REVIVECC. *)
 

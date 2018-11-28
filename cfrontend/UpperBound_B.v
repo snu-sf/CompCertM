@@ -81,13 +81,14 @@ c0 + empty
     :
       match_states st (Sem.State [fr]) 1
   | match_states_call
-      fptr tyf vargs k m args fr (st: Csem.state) sg_arg cconv tres targs n
+      fptr tyf vargs k m args fr (st: Csem.state) cconv tres targs n
       (STATE: st = (Csem.Callstate fptr tyf vargs k m))
       (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd
-                   /\ (SkEnv.get_sig skd = sg_arg
-                      -> tyf = Tfunction targs tres cconv
-                      -> signature_of_type targs tres cconv = sg_arg))
+                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd)
+                   (* /\ (SkEnv.get_sig skd = sg_arg *)
+                   (*    -> tyf = Tfunction targs tres cconv *)
+                   (*    -> signature_of_type targs tres cconv = sg_arg)) *)
       (FPTR: args.(Args.fptr) = fptr)
       (ARGS: args.(Args.vs) = vargs)
       (MEM: args.(Args.m) = m)
@@ -1216,6 +1217,8 @@ c0 + empty
               right. inv SAFESRC; inv H0; ss; des_ifs.
               inv MTCHST; cycle 1.
               { inv INITTGT. }
+              set ef as XX.
+              (* unfold is_external_ef in *. des_ifs. *)
               exists E0. esplits. eapply step_call; ss. econs.
               { unfold Genv.find_funct. des_ifs.
                 unfold Genv.find_funct_ptr. des_ifs.
@@ -1234,12 +1237,13 @@ c0 + empty
                   - assert (x = (Gfun (External ef targs tres cc))).
                     { unfold fundef in *. rewrite <- H0 in Heq. clarify. }
                     subst. ss. }
-                i. eauto.
+                exploit Genv.find_funct_inversion; eauto. i; des.
+                inv WTPROG. eauto.
               }
               { inv WTST; ss. exploit WTKS; eauto. { ii. clarify. } esplits; ss; eauto. rr. des. des_ifs. }
             ++ (* internal *)
               exploit progress_step; eauto.
-              Unshelve. auto. auto. auto.
+              Unshelve.
   Qed.
 
   Lemma transf_xsim_properties

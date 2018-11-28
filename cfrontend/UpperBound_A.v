@@ -597,7 +597,7 @@ Section PRESERVATION.
               - econs; et.
               - i. ss. des_ifs. exfalso. eapply EXT; ss; et. admit "ditto - ez".
               - instantiate (1:= vs_arg).
-                inv WTTGT; ss. clarify.
+                inv WTTGT; ss. clarify. unfold type_of_function in *. clarify.
             } 
           }
       }

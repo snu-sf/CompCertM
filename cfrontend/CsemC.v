@@ -101,18 +101,15 @@ Section MODSEM.
 
   Inductive at_external : state -> Args.t -> Prop :=
   | at_external_intro
-      fptr_arg tyf vs_arg sg_arg targs tres cconv k0 m0
+      fptr_arg vs_arg targs tres cconv k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                   /\ (SkEnv.get_sig skd = sg_arg
-                      -> tyf = Tfunction targs tres cconv
-                      -> signature_of_type targs tres cconv = sg_arg))
-                   (* /\ type_of_fundef skd = tyf) *)
+                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd)
       (CALL: is_call_cont_strong k0)
     (* how can i check sg_args and tyf are same type? *)
     (* typ_of_type function is a projection type to typ. it delete some info *)
     :
-      at_external (Callstate fptr_arg tyf vs_arg k0 m0)
+      at_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k0 m0)
                   (Args.mk fptr_arg vs_arg m0)
   .
 

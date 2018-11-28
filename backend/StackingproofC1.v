@@ -1259,12 +1259,14 @@ Proof.
         eapply match_stacks_change_meminj; try apply STACKS.
         { eapply inject_incr_trans; try apply MLE0. apply MLE. }
       * eapply agree_regs_set_pair; cycle 1.
-        { unfold typify. des_ifs. }
+        { unfold typify_opt, typify. des_ifs. }
         (* TODO: Remove Mach.regset_after_external *)
         change regset_after_external with undef_caller_save_regs.
         eapply agree_regs_undef_caller_save_regs; eauto.
         eapply agree_regs_inject_incr; eauto.
         eapply inject_incr_trans; try apply MLE0. ss. apply MLE.
+      * unfold typify_opt. unfold proj_sig_res in *. des_ifs; ss.
+        { ii. erewrite <- AGCS; eauto. rewrite ! locmap_get_set_loc_result_callee_save; ss. }
       * bar. move HISTORY at bottom. inv HISTORY. inv MATCHARG. ss. clarify.
         rename sm0 into sm_at. rename sm1 into sm_after.
         rewrite RSP0 in *. clarify.

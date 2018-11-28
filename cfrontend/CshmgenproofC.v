@@ -11,6 +11,7 @@ Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC Matc
 Require SimMemId.
 Require SoundTop.
 Require Import CtypingC.
+Require Import ModSemProps.
 
 Set Implicit Arguments.
 
@@ -136,14 +137,14 @@ Proof.
     inv MK; ss. destruct sm0; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
   - esplits; eauto.
-    { admit"apply modsem_receptive.". }
+    { apply modsem2_receptive. }
     inv MATCH.
     ii. hexploit (@transl_step prog ge tge); eauto.
     { apply make_match_genvs; eauto. }
     i; des.
     esplits; eauto.
-    + left. admit "plus -> DPlus".
-    + instantiate (1:= SimMemId.mk _ _). econs; ss. eauto.
+    + left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.
+    + instantiate (1:= SimMemId.mk _ _). econs; ss.
 Unshelve.
   all: ss; try (by econs).
 Qed.

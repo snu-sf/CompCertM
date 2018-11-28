@@ -267,11 +267,11 @@ Definition skdef_of_gdef {F V} (get_sg: F -> signature)
   end
 .
 
-Lemma skdef_of_gdef_is_external
+Lemma skdef_of_gdef_is_external_gd
       F V get_sg
       (gdef: globdef (AST.fundef F) V)
   :
-    is_external (skdef_of_gdef get_sg gdef) = is_external gdef
+    is_external_gd (skdef_of_gdef get_sg gdef) = is_external_gd gdef
 .
 Proof.
   u. des_ifs. ss. clarify.
@@ -423,12 +423,13 @@ Module Sk.
     unfold skdefs_of_gdefs. rewrite find_map.
     unfold compose. ss.
     unfold ident.
+    (* Print Instances HasExternal. *)
     replace (fun (x: positive * globdef (fundef F) V) =>
-               ident_eq id (fst x) && is_external (skdef_of_gdef get_sg (snd x))) with
+               ident_eq id (fst x) && is_external_gd (skdef_of_gdef get_sg (snd x))) with
         (fun (x: positive * globdef (fundef F) V) => ident_eq id (fst x) && is_external (snd x)).
     - u. des_ifs.
     - apply Axioms.functional_extensionality. i; ss.
-      rewrite skdef_of_gdef_is_external. ss.
+      rewrite skdef_of_gdef_is_external_gd. ss.
   Qed.
 
   Definition empty: t := (mkprogram [] [] 1%positive).

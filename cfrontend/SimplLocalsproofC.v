@@ -1,7 +1,7 @@
 Require Import FSets.
 Require Import CoqlibC Errors Ordered Maps Integers Floats.
 Require Import AST Linking.
-Require Import ValuesC Memory Globalenvs Events Smallstep.
+Require Import ValuesC Memory GlobalenvsC Events Smallstep.
 Require Import Ctypes CopC ClightC SimplLocals.
 Require Import sflib.
 Require SimMemInj.
@@ -196,7 +196,7 @@ Proof.
     (* assert(TYEQ: (map typ_of_type (map snd (Clight.fn_params fd))) = sig_args (fn_sig tf0)). *)
     (* { monadInv H3. ss. } *)
     esplits; eauto. econs; eauto.
-    + folder. ss. admit "". (* rewrite <- FPTR. eauto. *)
+    + folder. ss. admit "ez - injected fptr is eq (make & use lemma)". (* rewrite <- FPTR. eauto. *)
     + eapply typecheck_typecheck; et. eapply typecheck_inject; et.
   - (* call wf *)
     inv MATCH; ss. inv MATCHST; ss.
@@ -204,20 +204,32 @@ Proof.
     inv MATCH; ss. destruct sm0; ss. clarify.
     inv CALLSRC. inv MATCHST; ss.
     folder.
+    inv MCOMPAT; ss. clear_tac.
     esplits; eauto.
     + econs; eauto.
       * folder. des.
-        (* r in TRANSL. *)
-        (* exploit (SimSymbId.sim_skenv_revive TRANSL); eauto. *)
-        (* { ii. inv MATCH; ss. } *)
-        (* intro GE. *)
-        (* apply (sim_external_id GE); ss. *)
-        admit "".
+        inv SIMSKENV; ss. eapply sim_external_inject; eauto.
+        admit "skenv_inject revive".
       * des. clarify. esplits; eauto.
+        (***************** TODO: Add as a lemma in GlobalenvsC. *******************)
         destruct SIMSKENVLINK.
+        assert(fptr_arg = tv).
+        { inv VAL; ss. des_ifs. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
+          inv SIMSKENV; ss. inv INJECT; ss.
+          exploit (DOMAIN b1); eauto.
+          { eapply Genv.genv_defs_range; et. }
+          i; clarify.
+        }
+        clarify.
         eapply SimSymb.simskenv_func_fsim; eauto; ss.
-        { eapply val_inject_incr; try apply VAL. admit "need to quantify sm_link..?". }
-    + inv MCOMPAT; ss.
+        { destruct tv; ss. des_ifs. econs; eauto; cycle 1.
+          { (*********************** TODO: Add psimpl in CoqlibC ******************)
+            rewrite Ptrofs.add_zero_l. instantiate (1:= 0). ss.
+          }
+          inv H. inv INJECT. eapply DOMAIN; eauto.
+          { apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *. eapply Genv.genv_defs_range; et. }
+        }
+    + ss.
     + reflexivity.
   - (* after fsim *)
     exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.

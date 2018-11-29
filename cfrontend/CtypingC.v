@@ -75,3 +75,13 @@ Proof.
   - ii. exfalso. eapply EXT; et.
 Qed.
 
+Lemma wt_val_has_type
+      v ty
+      (WT: wt_val v ty)
+      (NVOID: ty <> Tvoid)
+  :
+    <<TY: Val.has_type v ty.(typ_of_type)>>
+.
+Proof.
+  inv WT; ss.
+Qed.

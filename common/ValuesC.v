@@ -248,6 +248,31 @@ Proof.
   - eapply IHvs; eauto.
 Qed.
 
+
+Lemma has_type_typify
+      v ty
+      (TY: Val.has_type v ty)
+  :
+    <<TY: (typify v ty) = v>>
+.
+Proof.
+  rr. unfold typify. des_ifs.
+Qed.
+
+Lemma has_type_list_typify
+      vs tys
+      (TYS: Val.has_type_list vs tys)
+  :
+    <<TYS: (typify_list vs tys) = vs>>
+.
+Proof.
+  ginduction vs; ii; ss.
+  destruct tys; ss.
+  des. unfold typify_list. ss. r. f_equal.
+  - eapply has_type_typify; et.
+  - eapply IHvs; et.
+Qed.
+
 Inductive typecheck (vs: list val) (sg: signature) (tvs: list val): Prop :=
 | typecheck_intro
     (LEN: length vs = length sg.(sig_args))

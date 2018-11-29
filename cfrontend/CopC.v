@@ -38,3 +38,35 @@ Proof.
   inv WT; ss.
 Qed.
 
+Lemma val_casted_has_type_list
+      vs tys
+      (WT: Forall2 val_casted vs (typelist_to_listtype tys))
+      (NVOID: Forall (fun ty => ty <> Tvoid) (typelist_to_listtype tys))
+  :
+    Val.has_type_list vs (typlist_of_typelist tys)
+.
+Proof.
+  ginduction vs; destruct tys; ii; ss; inv WT; inv NVOID; ii; ss.
+  esplits; eauto.
+  eapply val_casted_has_type; eauto.
+Qed.
+
+Lemma typlist_of_typelist_eq
+      itys
+  :
+    typlist_of_typelist (type_of_params itys) = (map typ_of_type (map snd itys))
+.
+Proof.
+  ginduction itys; ii; ss; des_ifs; ss. f_equal. ss.
+Qed.
+
+Lemma typelist_to_listtype_length
+      itys
+  :
+      length (typelist_to_listtype (type_of_params itys)) = length (map typ_of_type (map snd itys))
+.
+Proof.
+  ginduction itys; ii; ss; des_ifs; ss. xomega.
+Qed.
+
+

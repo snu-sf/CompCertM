@@ -186,6 +186,9 @@ Section PRESERVATION.
   | call_sate_similar
       fptr tyf vargs k k0 k1 m
       (CONT: k = app_cont k1 k0)
+      (* tyargs tyres cconv *)
+      (* (TYF: classify_fun tyf = fun_case_f tyargs tyres cconv) *)
+      (* (WTVALS: Forall2 val_casted vargs tyargs.(typelist_to_listtype)) *)
     : match_focus_state (Csem.Callstate fptr tyf vargs k m) (Csem.Callstate fptr tyf vargs k1 m) k0
   | return_sate_similar
       vres k k0 k1 m
@@ -544,7 +547,8 @@ Section PRESERVATION.
                 admit "this should hold".
               - inv WTSRC. ss. clarify.
                 econs; ss; et.
-                + exploit list_forall2_length; et. i. rewrite H. admit "ez".
+                + inv WTTGT. ss. unfold type_of_function in *. clarify.
+                + inv WTTGT. ss. unfold type_of_function in *. clarify.
                 + admit "add size_arguments in typechecking".
             }
             { ss.
@@ -598,6 +602,7 @@ Section PRESERVATION.
               - i. ss. des_ifs. exfalso. eapply EXT; ss; et. admit "ditto - ez".
               - instantiate (1:= vs_arg).
                 inv WTTGT; ss. clarify. unfold type_of_function in *. clarify.
+              - inv WTTGT; ss. clarify. unfold type_of_function in *. clarify.
             } 
           }
       }
@@ -894,11 +899,8 @@ Section PRESERVATION.
         { econs; ss; et. }
         { inv TYP. eapply wt_initial_frame; ss; et.
           - esplits; et. instantiate (1:= fd). admit "ez".
-          - exploit typify_has_type_list; et. i; des. admit "ez".
         }
-        { inv TYP. eapply wt_initial_frame; ss; et.
-          - exploit typify_has_type_list; et. i; des. admit "ez (ditto)".
-        }
+        { inv TYP. eapply wt_initial_frame; ss; et. }
   Unshelve.
     all: ss.
   Qed.

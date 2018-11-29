@@ -1080,8 +1080,8 @@ c0 + empty
                         rewrite FINDF0 in FINDF1. inversion FINDF1. subst fd0.
                         rewrite TYPE0 in TYPE1.
                         rewrite TYPE1 in *. auto.
-                        repeat f_equal.
-                        inversion TYP. inversion TYP0. congruence.
+                        (* repeat f_equal. *)
+                        (* inversion TYP. inversion TYP0. congruence. *)
                       }
                       { inv FINAL. }
                       { red. i. inv H3. auto. }
@@ -1114,9 +1114,9 @@ c0 + empty
                         rewrite H3. econs; ss; des_ifs; eauto.
                         { unfold fundef in *.
                           exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero true)); eauto. }
-                        { unfold type_of_function in *. clarify. econs; ss.
-                          - destruct (fn_params f) eqn:T; ss. des_ifs.
-                          - admit "size_arguments - add in typechecking".
+                        { unfold type_of_function in *. clarify.
+                          destruct (fn_params f) eqn:T; ss; des_ifs.
+                          econs; ss.
                         }
                     +++ (* step_internal *)
                       econs; i.

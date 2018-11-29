@@ -4,7 +4,7 @@ Require Import Op Registers.
 Require Import sflib.
 Require Import SmallstepC.
 (** newly added **)
-Require Export Simulation Csem Cop Ctypes Ctyping Csyntax Cexec.
+Require Export Simulation Csem CopC Ctypes Ctyping Csyntax Cexec.
 Require Import Skeleton Mod ModSem.
 Require Import AsmregsC CtypesC.
 Require Import Conventions.
@@ -116,13 +116,13 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      tvs fd tyf
+      fd tyf
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
-      (TYP: typecheck args.(Args.vs) (signature_of_function fd) tvs)
+      (TYP: typecheck args.(Args.vs) (type_of_params (fn_params fd)))
     :
       initial_frame args
-                    (Callstate args.(Args.fptr) tyf tvs Kstop args.(Args.m))
+                    (Callstate args.(Args.fptr) tyf args.(Args.vs) Kstop args.(Args.m))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=

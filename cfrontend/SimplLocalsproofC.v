@@ -47,13 +47,12 @@ Lemma typify_inject
       v_src ty tv_src v_tgt j
       (TYP: typify_c v_src ty tv_src)
       (INJ: Val.inject j v_src v_tgt)
-      (NVOID: ty <> Tvoid)
   :
     <<INJ: Val.inject j tv_src (typify v_tgt (typ_of_type ty))>>
 .
 Proof.
   inv TYP.
-  - exploit wt_val_has_type; eauto. i; des. unfold typify. des_ifs.
+  - exploit wt_retval_has_type; eauto. i; des. unfold typify. des_ifs.
     inv INJ; ss.
   - ss.
 Qed.
@@ -267,7 +266,7 @@ Proof.
         { refl. }
       }
       { eapply MWFAFTR. }
-      { eapply typify_inject; et. admit "TODO: Add this in Ctyping? Change to undef if it is void type?". }
+      { eapply typify_inject; et. }
     + refl.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.

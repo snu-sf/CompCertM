@@ -69,7 +69,7 @@ c0 + empty
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) prog.(prog_defs) ->
       external_call ef ge vargs m t vres m' ->
-      wt_val vres res.
+      wt_retval vres res.
 
   Definition local_genv (p : Csyntax.program) :=
     (skenv_link.(SkEnv.project) p.(defs)).(SkEnv.revive) p.
@@ -1298,7 +1298,7 @@ Theorem upperbound_b_correct
         (WT_EXTERNAL: forall id ef args res cc vargs m t vres m',
             In (id, Gfun (External ef args res cc)) cprog.(prog_defs) ->
             external_call ef cprog.(globalenv) vargs m t vres m' ->
-            wt_val vres res)
+            wt_retval vres res)
   :
     (<<REFINE: improves (Csem.semantics cprog) (Sem.sem (map CsemC.module [cprog]))>>)
 .

@@ -117,7 +117,7 @@ Proof.
         exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
         { ii. inv MATCH; ss. }
         intro GE.
-        apply (sim_external_id GE); ss.
+        apply (sim_external_funct_id GE); ss.
       * des. clarify. esplits; eauto.
         eapply SimSymb.simskenv_func_fsim; eauto; ss. destruct SIMSKENVLINK. ss.
     + econs; ss; eauto.

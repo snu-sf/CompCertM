@@ -35,6 +35,13 @@ Definition get_mem (st: state): mem :=
   end
 .
 
+(* copied from Clight *)
+Definition semantics1_with_ge (p: program) (ge: genv) :=
+  Semantics_gen step1 bot1 final_state ge ge.
+
+Definition semantics2_with_ge (p: program) (ge: genv) :=
+  Semantics_gen step2 bot1 final_state ge ge.
+
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.

@@ -1,5 +1,5 @@
 Require Import CoqlibC Errors.
-Require Import Integers ASTC Linking.
+Require Import IntegersC ASTC Linking.
 Require Import ValuesC MemoryC SeparationC Events GlobalenvsC Smallstep.
 Require Import LTL Op LocationsC LinearC MachC.
 Require Import Bounds Conventions StacklayoutC LineartypingC.
@@ -367,14 +367,6 @@ Lemma transf_function_sig
     f.(Linear.fn_sig) = tf.(fn_sig)
 .
 Proof. unfold transf_function in *. des_ifs. Qed.
-
-Hint Rewrite Ptrofs.unsigned_zero Ptrofs.add_zero Ptrofs.add_zero_l
-     Ptrofs.repr_unsigned IntegersC.Ptrofs_add_repr : psimpl
-.
-
-Ltac psimpl := repeat (autorewrite with psimpl in *;
-                       try (rewrite Ptrofs.unsigned_repr in *; ss; try xomega; []))
-.
 
 Lemma init_match_frame_contents_depr
       sm_arg sg

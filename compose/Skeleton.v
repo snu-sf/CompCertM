@@ -8,6 +8,8 @@ Require Import Linking.
 
 Set Implicit Arguments.
 
+Generalizable Variables F.
+
 
 
 Definition is_gvar F V (gd: globdef F V): bool :=
@@ -163,14 +165,14 @@ I think "sim_skenv_monotone" should be sufficient.
   .
 
   (* Note: We only remove definitions. One can still get the address of external identifier. *)
-  Definition revive {F V} (skenv: SkEnv.t) (prog: AST.program (AST.fundef F) V): Genv.t (AST.fundef F) V :=
+  Definition revive `{HasExternal F} {V} (skenv: SkEnv.t) (prog: AST.program F V): Genv.t F V :=
     skenv.(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
                                             do gd <- prog.(prog_defmap) ! id;
                                             assertion (negb (is_external gd));
                                             Some gd))
   .
 
-  Inductive genv_precise {F V} (ge: Genv.t (AST.fundef F) V) (p: program (AST.fundef F) V): Prop :=
+  Inductive genv_precise `{HasExternal F} {V} (ge: Genv.t F V) (p: program F V): Prop :=
   | genv_compat_intro
       (FIND_MAP: forall id g,
           p.(prog_defmap) ! id = Some g ->
@@ -182,7 +184,7 @@ I think "sim_skenv_monotone" should be sufficient.
   .
 
   Lemma revive_no_external
-        F V (prog: AST.program (AST.fundef F) V)
+        `{HasExternal F} V (prog: AST.program F V)
         skenv blk gd
         (DEF: Genv.find_def (SkEnv.revive skenv prog) blk = Some gd)
         (EXTERNAL: is_external gd)
@@ -196,8 +198,8 @@ I think "sim_skenv_monotone" should be sufficient.
   Qed.
 
   Lemma revive_precise
-        F V
-        skenv (prog: AST.program (AST.fundef F) V)
+        `{HasExternal F} V
+        skenv (prog: AST.program F V)
         (DEFS0: forall id, In id prog.(prog_defs_names) -> is_some (skenv.(Genv.find_symbol) id))
         (WF: wf skenv)
     :
@@ -226,7 +228,7 @@ I think "sim_skenv_monotone" should be sufficient.
       clear_tac.
       inv WF.
       exploit SYMBDEF; eauto. i; des.
-      unfold Genv.find_def in *. rewrite H. cbn.
+      unfold Genv.find_def in *. rewrite H1. cbn.
       apply Genv.find_invert_symbol in Heq.
       des_ifs; ss.
   Qed.
@@ -267,11 +269,11 @@ Definition skdef_of_gdef {F V} (get_sg: F -> signature)
   end
 .
 
-Lemma skdef_of_gdef_is_external
+Lemma skdef_of_gdef_is_external_gd
       F V get_sg
       (gdef: globdef (AST.fundef F) V)
   :
-    is_external (skdef_of_gdef get_sg gdef) = is_external gdef
+    is_external_gd (skdef_of_gdef get_sg gdef) = is_external_gd gdef
 .
 Proof.
   u. des_ifs. ss. clarify.
@@ -423,12 +425,13 @@ Module Sk.
     unfold skdefs_of_gdefs. rewrite find_map.
     unfold compose. ss.
     unfold ident.
+    (* Print Instances HasExternal. *)
     replace (fun (x: positive * globdef (fundef F) V) =>
-               ident_eq id (fst x) && is_external (skdef_of_gdef get_sg (snd x))) with
+               ident_eq id (fst x) && is_external_gd (skdef_of_gdef get_sg (snd x))) with
         (fun (x: positive * globdef (fundef F) V) => ident_eq id (fst x) && is_external (snd x)).
     - u. des_ifs.
     - apply Axioms.functional_extensionality. i; ss.
-      rewrite skdef_of_gdef_is_external. ss.
+      rewrite skdef_of_gdef_is_external_gd. ss.
   Qed.
 
   Definition empty: t := (mkprogram [] [] 1%positive).

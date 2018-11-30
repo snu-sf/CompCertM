@@ -136,6 +136,13 @@ Section TYPIFY.
   (*   else None *)
   (* . *)
 
+  Definition typify_opt (v: val) (ty: option typ): val :=
+    match ty with
+    | None => v
+    | Some ty => typify v ty
+    end
+  .
+
 End TYPIFY.
 
 Hint Unfold typify typify_list.
@@ -179,6 +186,29 @@ Proof.
   - eapply IHLD; eauto.
 Qed.
 
+Lemma lessdef_typify_opt
+      x y ty
+      (LD: Val.lessdef x y)
+  :
+    <<LD: Val.lessdef (typify_opt x ty) (typify_opt y ty)>>
+.
+Proof.
+  unfold typify_opt. des_ifs. eapply lessdef_typify; ss.
+Qed.
+
+Lemma inject_typify_opt
+      `{Val.meminj_ctx}
+      j x y ty
+      (INJ: Val.inject j x y)
+  :
+    <<INJ: Val.inject j (typify_opt x ty) (typify_opt y ty)>>
+.
+Proof.
+  unfold typify_opt. des_ifs. eapply inject_typify; ss.
+Qed.
+
+
+
 Lemma lessdef_list_length
       xs ys
       (LD: Val.lessdef_list xs ys)
@@ -216,6 +246,31 @@ Proof.
   esplits; eauto.
   - eapply typify_has_type.
   - eapply IHvs; eauto.
+Qed.
+
+
+Lemma has_type_typify
+      v ty
+      (TY: Val.has_type v ty)
+  :
+    <<TY: (typify v ty) = v>>
+.
+Proof.
+  rr. unfold typify. des_ifs.
+Qed.
+
+Lemma has_type_list_typify
+      vs tys
+      (TYS: Val.has_type_list vs tys)
+  :
+    <<TYS: (typify_list vs tys) = vs>>
+.
+Proof.
+  ginduction vs; ii; ss.
+  destruct tys; ss.
+  des. unfold typify_list. ss. r. f_equal.
+  - eapply has_type_typify; et.
+  - eapply IHvs; et.
 Qed.
 
 Inductive typecheck (vs: list val) (sg: signature) (tvs: list val): Prop :=

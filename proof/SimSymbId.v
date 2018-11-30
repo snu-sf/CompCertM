@@ -132,18 +132,21 @@ Proof.
 Qed.
 
 
+Local Opaque prog_defmap.
+
 Section REVIVE.
 
-  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker (AST.fundef F1)} {LV: Linker V1}.
-  Variable match_fundef: C -> AST.fundef F1 -> AST.fundef F2 -> Prop.
+  Context {C F1 V1 F2 V2: Type} {LC: Linker C} {LF: Linker F1} {LV: Linker V1}.
+  Context `{HasExternal F1} `{HasExternal F2}.
+  Variable match_fundef: C -> F1 -> F2 -> Prop.
   Variable match_varinfo: V1 -> V2 -> Prop.
-  Variables (ctx: C) (p_src: AST.program (AST.fundef F1) V1) (p_tgt: AST.program (AST.fundef F2) V2).
+  Variables (ctx: C) (p_src: AST.program F1 V1) (p_tgt: AST.program F2 V2).
   Hypothesis (MATCHPROG: match_program_gen match_fundef match_varinfo ctx p_src p_tgt).
   Hypothesis MATCH_FUNDEF_EXTERNAL: forall
       ctx f_src f_tgt
       (MATCH: match_fundef ctx f_src f_tgt)
     ,
-      is_external_fd f_src = is_external_fd f_tgt
+      is_external f_src = is_external f_tgt
   .
 
   Lemma sim_skenv_revive
@@ -166,7 +169,7 @@ Section REVIVE.
     destruct (Genv.invert_symbol skenv_proj_tgt b) eqn:T; cbn; try (by econs; eauto).
     apply match_program_defmap with (id := i) in MATCHPROG.
     inv MATCHPROG; cbn; try (by econs; eauto).
-    inv H1; ss; cycle 1.
+    inv H3; ss; cycle 1.
     { econs; eauto. econs; eauto. }
     erewrite MATCH_FUNDEF_EXTERNAL; eauto.
     des_ifs; try (by econs; eauto).

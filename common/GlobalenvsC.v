@@ -604,3 +604,20 @@ Proof.
   ii. destruct ((Genv.genv_defs ge0) ! b) eqn:T; econs; eauto.
 Qed.
 
+Lemma genv_eq
+      F V
+      (ge1 ge2: Genv.t F V)
+      (PUB: ge1.(Genv.genv_public) = ge2.(Genv.genv_public))
+      (NEXT: ge1.(Genv.genv_next) = ge2.(Genv.genv_next))
+      (SYMB: ge1.(Genv.genv_symb) = ge2.(Genv.genv_symb))
+      (DEFS: ge1.(Genv.genv_defs) = ge2.(Genv.genv_defs))
+  :
+    ge1 = ge2
+.
+Proof.
+  destruct ge1, ge2; ss. clarify.
+  f_equal.
+  - apply proof_irr.
+  - apply proof_irr.
+  - apply proof_irr.
+Qed.

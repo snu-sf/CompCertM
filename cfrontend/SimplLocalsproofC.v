@@ -170,8 +170,6 @@ Proof.
         exploit typecheck_inject; eauto. intro TYPTGT0; des.
         exploit typecheck_typecheck; eauto. intro TYPTGT1; des.
         rpapply match_call_state; ss; eauto.
-        { clear - MWF. inv MWF. ii. apply SRCEXT in H. rr in H. des. ss. }
-        { clear - MWF. inv MWF. ii. apply TGTEXT in H. rr in H. des. ss. }
         { i. inv SIMSKENV. ss. inv INJECT. ss. 
           econs; eauto.
           - etrans; try apply MWF. ss.
@@ -248,10 +246,6 @@ Proof.
       inv MLE0; ss.
       inv MCOMPAT. clear_tac.
       rpapply match_return_state; ss; eauto; ss.
-      { ii. eapply Plt_Ple_trans; try apply SRCUNCHANGED.
-        clear - MWF0 H. inv MWF0. eapply SRCEXT in H. rr in H. des. ss. }
-      { ii. eapply Plt_Ple_trans; try apply TGTUNCHANGED.
-        clear - MWF0 H. inv MWF0. eapply TGTEXT in H. rr in H. des. ss. }
       (* { clear - MWF. inv MWF. ii. apply TGTEXT in H. rr in H. des. ss. } *)
       { ss. ii.
         eapply match_cont_incr_bounds; eauto; swap 2 4.

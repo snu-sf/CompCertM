@@ -152,19 +152,27 @@ Proof.
     + admit "A".
     + admit "A".
   - (* final fsim *)
-    inv MATCH. inv FINALSRC; inv MATCHST; ss.
-    inv STACKS; ss. destruct sm0; ss. clarify.
-    eexists (SimMemInj.mk _ _). esplits; ss; eauto.
+    (* inv MATCH. inv FINALSRC; inv MATCHST; ss. *)
+    (* inv MS. destruct sm0; ss. clarify. *)
+  (* eexists (SimMemInj.mk _ _ _ _ _ _ _). esplits; ss; eauto. *)
+    admit "A".
   - esplits; eauto.
     { apply modsem_receptive. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog ge tge); eauto.
-    { apply make_match_genvs; eauto. }
-    { ss. des. eauto. }
+    ii. hexploit (@step_simulation prog _ ge tge); eauto.
+    { ss. admit "genv_compat". }
+    { apply make_match_genvs; inv SIMSKENV; eauto. }
     i; des.
-    esplits; eauto.
-    + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.
-    + instantiate (1:= (SimMemInj.mk _ _)). ss.
+    + esplits; eauto.
+      * left. ss. unfold DPlus, DStep in *. admit "A". (* esplits; eauto. apply modsem_determinate. *)
+      * assert(MCOMPAT: get_mem st_src1 = SimMem.src sm1 /\ get_mem S2' = SimMem.tgt sm1).
+        { inv H0; inv MCOMPAT; ss. }
+        des. econs; eauto; ss.
+    + esplits; eauto; cycle 1.
+      * assert(MCOMPAT: get_mem st_src1 = SimMem.src sm1 /\ get_mem st_tgt0 = SimMem.tgt sm1).
+        { inv H1; inv MCOMPAT; ss. }
+        des. econs; eauto; ss.
+      * right. subst tr. split. econs. unfold bot2. inv STEPSRC; inv H1; inv MATCHST; ss; try omega.
 Unshelve.
   all: ss.
 Qed.

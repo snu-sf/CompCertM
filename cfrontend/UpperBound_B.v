@@ -1303,19 +1303,34 @@ Theorem upperbound_b_correct
     (<<REFINE: improves (Csem.semantics cprog) (Sem.sem (map CsemC.module [cprog]))>>)
 .
 Proof.
+  destruct (link_sk (map CsemC.module [cprog])) eqn:T; cycle 1.
+  { ii. ss. }
+  destruct (Sk.load_mem t) eqn:T2; cycle 1.
+  { ii. exists beh2. ss. inv BEH.
+    + ss. esplits; cycle 1.
+      { apply behavior_improves_refl. }
+      inv H. rewrite T in INITSK. clarify.
+    + ss. esplits; cycle 1.
+      { apply behavior_improves_refl. }
+      econs 2. ii. inv H0.
+      Local Transparent Linker_prog.
+      unfold Sk.load_mem in *.
+      assert (Genv.init_mem t = Some m0).
+      { eapply Genv.init_mem_match
+          with (ctx := tt) (match_fundef := top3) (match_varinfo := top2);
+          [| eapply H1]. econs.
+        - unfold link_sk, link_list in *; ss; unfold link_prog in *. des_ifs.
+          admit "must be true".
+        - split; unfold link_sk, link_list in *; ss; unfold link_prog in *; des_ifs. }
+      rewrite T2 in H0. clarify. }
   eapply bsim_improves.
   eapply mixed_to_backward_simulation.
   eapply transf_program_correct; eauto.
-  { ss. }
   { ii. rr. inv H. ss. des_ifs_safe.
     des.
     apply Genv.find_def_symbol in INTERNAL. des. unfold fundef in *.
     rewrite INTERNAL in *. clarify.
-    unfold Genv.find_funct_ptr. des_ifs.
-  }
+    unfold Genv.find_funct_ptr. des_ifs. }
   { eapply typecheck_program_sound; eauto. }
-  { admit "remove this". }
-Unshelve.
-  { admit "remove this". }
 Qed.
 

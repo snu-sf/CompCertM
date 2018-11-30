@@ -123,7 +123,7 @@ Section MODSEM.
   | after_external_intro
       stack fptr_arg sg_arg vs_arg m_arg
       retv tv
-      (TYP: typify retv.(Retv.v) sg_arg.(proj_sig_res) = tv)
+      (TYP: typify_opt retv.(Retv.v) sg_arg.(sig_res) = tv)
     :
       after_external (Callstate stack fptr_arg sg_arg vs_arg m_arg)
                      retv

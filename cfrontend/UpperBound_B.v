@@ -69,7 +69,7 @@ c0 + empty
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) prog.(prog_defs) ->
       external_call ef ge vargs m t vres m' ->
-      wt_val vres res.
+      wt_retval vres res.
 
   Definition local_genv (p : Csyntax.program) :=
     (skenv_link.(SkEnv.project) p.(defs)).(SkEnv.revive) p.
@@ -1080,8 +1080,8 @@ c0 + empty
                         rewrite FINDF0 in FINDF1. inversion FINDF1. subst fd0.
                         rewrite TYPE0 in TYPE1.
                         rewrite TYPE1 in *. auto.
-                        repeat f_equal.
-                        inversion TYP. inversion TYP0. congruence.
+                        (* repeat f_equal. *)
+                        (* inversion TYP. inversion TYP0. congruence. *)
                       }
                       { inv FINAL. }
                       { red. i. inv H3. auto. }
@@ -1114,9 +1114,9 @@ c0 + empty
                         rewrite H3. econs; ss; des_ifs; eauto.
                         { unfold fundef in *.
                           exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero true)); eauto. }
-                        { unfold type_of_function in *. clarify. econs; ss.
-                          - destruct (fn_params f) eqn:T; ss. des_ifs.
-                          - admit "size_arguments - add in typechecking".
+                        { unfold type_of_function in *. clarify.
+                          destruct (fn_params f) eqn:T; ss; des_ifs.
+                          econs; ss.
                         }
                     +++ (* step_internal *)
                       econs; i.
@@ -1298,7 +1298,7 @@ Theorem upperbound_b_correct
         (WT_EXTERNAL: forall id ef args res cc vargs m t vres m',
             In (id, Gfun (External ef args res cc)) cprog.(prog_defs) ->
             external_call ef cprog.(globalenv) vargs m t vres m' ->
-            wt_val vres res)
+            wt_retval vres res)
   :
     (<<REFINE: improves (Csem.semantics cprog) (Sem.sem (map CsemC.module [cprog]))>>)
 .

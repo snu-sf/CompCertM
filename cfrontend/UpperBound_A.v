@@ -105,17 +105,17 @@ Section PRESERVATION.
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) cp_link.(prog_defs) ->
       external_call ef ge_cp_link vargs m t vres m' ->
-      wt_val vres res.
+      wt_retval vres res.
   Hypothesis WT_EXTERNAL0:
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) cp0.(prog_defs) ->
       external_call ef ge_cp0 vargs m t vres m' ->
-      wt_val vres res.
+      wt_retval vres res.
   Hypothesis WT_EXTERNAL1:
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) cp1.(prog_defs) ->
       external_call ef ge_cp1 vargs m t vres m' ->
-      wt_val vres res.
+      wt_retval vres res.
 
   Lemma link_sk_match
     :
@@ -186,6 +186,9 @@ Section PRESERVATION.
   | call_sate_similar
       fptr tyf vargs k k0 k1 m
       (CONT: k = app_cont k1 k0)
+      (* tyargs tyres cconv *)
+      (* (TYF: classify_fun tyf = fun_case_f tyargs tyres cconv) *)
+      (* (WTVALS: Forall2 val_casted vargs tyargs.(typelist_to_listtype)) *)
     : match_focus_state (Csem.Callstate fptr tyf vargs k m) (Csem.Callstate fptr tyf vargs k1 m) k0
   | return_sate_similar
       vres k k0 k1 m
@@ -544,7 +547,8 @@ Section PRESERVATION.
                 admit "this should hold".
               - inv WTSRC. ss. clarify.
                 econs; ss; et.
-                + exploit list_forall2_length; et. i. rewrite H. admit "ez".
+                + inv WTTGT. ss. unfold type_of_function in *. clarify.
+                + inv WTTGT. ss. unfold type_of_function in *. clarify.
                 + admit "add size_arguments in typechecking".
             }
             { ss.
@@ -598,6 +602,7 @@ Section PRESERVATION.
               - i. ss. des_ifs. exfalso. eapply EXT; ss; et. admit "ditto - ez".
               - instantiate (1:= vs_arg).
                 inv WTTGT; ss. clarify. unfold type_of_function in *. clarify.
+              - inv WTTGT; ss. clarify. unfold type_of_function in *. clarify.
             } 
           }
       }
@@ -725,8 +730,7 @@ Section PRESERVATION.
                 econs; ss; et.
                 { econs; ss; et. }
                 { inv WTSRC0.
-                  econs; ss; et.
-                  clarify.
+                  econs; ss; et. clarify.
                   eapply typify_c_spec; et.
                 }
                 {
@@ -894,11 +898,8 @@ Section PRESERVATION.
         { econs; ss; et. }
         { inv TYP. eapply wt_initial_frame; ss; et.
           - esplits; et. instantiate (1:= fd). admit "ez".
-          - exploit typify_has_type_list; et. i; des. admit "ez".
         }
-        { inv TYP. eapply wt_initial_frame; ss; et.
-          - exploit typify_has_type_list; et. i; des. admit "ez (ditto)".
-        }
+        { inv TYP. eapply wt_initial_frame; ss; et. }
   Unshelve.
     all: ss.
   Qed.
@@ -937,7 +938,7 @@ Theorem upperbound_a_correct
           ,
             In (id, Gfun (External ef args res cc)) cp0.(prog_defs) ->
             external_call ef (geof skenv_link cp0) vargs m t vres m' ->
-            wt_val vres res)
+            wt_retval vres res)
         (WT_EXTERNAL1: forall id ef args res cc vargs m t vres m'
                               sk_link skenv_link
                               (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
@@ -945,7 +946,7 @@ Theorem upperbound_a_correct
           ,
             In (id, Gfun (External ef args res cc)) cp1.(prog_defs) ->
             external_call ef (geof skenv_link cp1) vargs m t vres m' ->
-            wt_val vres res)
+            wt_retval vres res)
         (WT_EXTERNALLINK: forall id ef args res cc vargs m t vres m'
                                  sk_link skenv_link
                                  (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
@@ -953,7 +954,7 @@ Theorem upperbound_a_correct
           ,
             In (id, Gfun (External ef args res cc)) cp_link.(prog_defs) ->
             external_call ef (geof skenv_link cp_link) vargs m t vres m' ->
-            wt_val vres res)
+            wt_retval vres res)
   :
     (<<REFINE: improves (Sem.sem (ctx ++ [cp_link.(CsemC.module)]))
                         (Sem.sem (ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)]))

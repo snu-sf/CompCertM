@@ -10,7 +10,7 @@ Require Import Events.
 Require Import Globalenvs.
 Require Import Smallstep.
 Require Import CtypesC.
-Require Import Cop.
+Require Import CopC.
 (** newly added **)
 Require Import sflib.
 Require Export Clight.
@@ -54,16 +54,16 @@ Section MODSEM.
                   (Args.mk fptr_arg vs_arg m0)
   .
 
-  Inductive initial_frame (args: Args.t)
+  Inductive initial_frame1 (args: Args.t)
     : state -> Prop :=
-  | initial_frame_intro
-      tvs fd tyf
+  | initial_frame1_intro
+      fd tyf
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
-      (TYP: typecheck args.(Args.vs) (signature_of_function fd) tvs)
+      (TYP: CopC.typecheck args.(Args.vs) (type_of_params (fn_params fd)))
     :
-      initial_frame args
-                    (Callstate args.(Args.fptr) tyf tvs Kstop args.(Args.m))
+      initial_frame1 args
+                    (Callstate args.(Args.fptr) tyf args.(Args.vs) Kstop args.(Args.m))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
@@ -90,7 +90,7 @@ Section MODSEM.
     {|
       ModSem.step := step1;
       ModSem.at_external := at_external;
-      ModSem.initial_frame := initial_frame;
+      ModSem.initial_frame := initial_frame1;
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external1;
       ModSem.globalenv := ge;
@@ -103,6 +103,18 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+
+  Inductive initial_frame2 (args: Args.t)
+    : state -> Prop :=
+  | initial_frame2_intro
+      tvs fd tyf
+      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
+      (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
+      (TYP: ValuesC.typecheck args.(Args.vs) (signature_of_function fd) tvs)
+    :
+      initial_frame2 args
+                    (Callstate args.(Args.fptr) tyf tvs Kstop args.(Args.m))
+  .
 
   Inductive after_external2: state -> Retv.t -> state -> Prop :=
   | after_external2_intro
@@ -121,7 +133,7 @@ Section MODSEM.
     {|
       ModSem.step := step2;
       ModSem.at_external := at_external;
-      ModSem.initial_frame := initial_frame;
+      ModSem.initial_frame := initial_frame2;
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external2;
       ModSem.globalenv := ge;

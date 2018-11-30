@@ -224,7 +224,7 @@ Proof.
         exploit (SimSymbId.sim_skenv_revive TRANSF); eauto.
         { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
         intro GE.
-        apply (sim_external_id GE); ss.
+        apply (sim_external_funct_id GE); ss.
       * exists skd. des_ifs. esplits; auto.
         destruct SIMSKENVLINK.
         eapply SimSymb.simskenv_func_fsim; eauto.

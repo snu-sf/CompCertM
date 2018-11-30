@@ -1,5 +1,5 @@
 Require Import FSets.
-Require Import CoqlibC Errors Ordered Maps Integers Floats.
+Require Import CoqlibC Errors Ordered Maps IntegersC Floats.
 Require Import AST Linking.
 Require Import ValuesC Memory GlobalenvsC Events Smallstep.
 Require Import Ctypes CopC ClightC SimplLocals.
@@ -83,6 +83,20 @@ Proof.
     rewrite typlist_of_typelist_eq. unfold signature_of_function. ss. refl.
 Qed.
 
+Lemma transf_function_type
+      f_src f_tgt
+      (TRANSL: transf_function f_src = OK f_tgt)
+  :
+    (* <<TY: f_src.(type_of_function) = f_tgt.(type_of_function)>> *)
+    (<<PRMS: (fn_params f_src) = (fn_params f_tgt)>>) /\
+    (<<RET: (fn_return f_src) = (fn_return f_tgt)>>) /\
+    (<<CCONV: (fn_callconv f_src) = (fn_callconv f_tgt)>>)
+.
+Proof.
+  unfold transf_function, bind in *. des_ifs.
+Qed.
+
+
 
 
 Section SIMMODSEM.
@@ -112,12 +126,16 @@ Inductive match_states
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
-  Genv.match_genvs (match_globdef (fun (ctx: AST.program fundef type) f tf => transf_fundef f = OK tf) eq prog) ge tge.
+  Genv.match_genvs (match_globdef (fun (ctx: AST.program fundef type) f tf => transf_fundef f = OK tf) eq prog) ge tge /\ prog_comp_env prog = prog_comp_env tprog.
 Proof.
   subst_locals. ss.
   rr in TRANSL. destruct TRANSL. r in H.
-  eapply SimSymbId.sim_skenv_revive; eauto.
-  { ii. u. unfold transf_fundef, bind in MATCH. des_ifs; ss; clarify. }
+  esplits.
+  - eapply SimSymbId.sim_skenv_revive; eauto.
+    { ii. u. unfold transf_fundef, bind in MATCH. des_ifs; ss; clarify. }
+  - hexploit (prog_comp_env_eq prog); eauto. i.
+    hexploit (prog_comp_env_eq tprog); eauto. i.
+    ss. congruence.
 Qed.
 
 Theorem sim_modsem
@@ -137,6 +155,7 @@ Proof.
     destruct args_src, args_tgt; ss.
     inv SIMARGS; ss. clarify.
     inv INITTGT.
+    hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
     eexists. exists sm_arg.
     esplits; eauto.
@@ -150,23 +169,17 @@ Proof.
         {
           inv SIMSKENV. ss. inv INJECT. ss. 
           econs; eauto.
-          + ii. ss. unfold Genv.find_symbol in *. eapply Plt_Ple_trans.
-            { eapply Genv.genv_symb_range; et. }
+          + ii. ss. eapply Plt_Ple_trans.
+            { genext. }
             ss. refl.
-          + ii. ss. unfold Genv.find_funct_ptr, Genv.find_funct, Genv.find_def in *. des_ifs. eapply Plt_Ple_trans.
-            { eapply Genv.genv_defs_range; et. }
+          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans.
+            { genext. }
             ss. refl.
-          + ii. ss. unfold Genv.find_var_info, Genv.find_def in *. des_ifs. eapply Plt_Ple_trans.
-            { eapply Genv.genv_defs_range; et. }
+          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans.
+            { genext. }
             ss. refl.
         }
-        assert(fptr = fptr0).
-        { inv FPTR; ss. des_ifs.
-          inv MGE. exploit FUNCTIONS; eauto. i. exploit DOMAIN; eauto. i. clarify.
-        } clarify.
-        (* assert(TYEQ: type_of_function fd = *)
-        (*              Tfunction (type_of_params (fn_params fd0)) (fn_return fd0) (fn_callconv fd0)). *)
-        (* { unfold transf_function in *. unfold bind in *. des_ifs. } *)
+        hexploit sim_external_inject_eq_fsim; try apply FINDF0; et. i; clarify.
         exploit typecheck_inject; eauto. intro TYPTGT0; des.
         exploit typecheck_typecheck; eauto. intro TYPTGT1; des.
         rpapply match_call_state; ss; eauto.
@@ -179,6 +192,8 @@ Proof.
         { apply MWF. }
         { inv TYP. eapply val_casted_list_spec; eauto. }
         f_equal.
+        (* { unfold bind in *. des_ifs. exploit transf_function_type; eauto. i; des. *)
+        (*   unfold type_of_function. f_equal; try congruence. } *)
         { unfold transf_function in *. unfold bind in *. des_ifs. }
         { inv TYPTGT1. rewrite <- TYP0 at 2. f_equal. ss.
           unfold transf_function in *. unfold bind in *. des_ifs.
@@ -186,32 +201,42 @@ Proof.
   - (* init progress *)
     des. inv SAFESRC.
     inv SIMARGS; ss.
-    exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE.
+    hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
+    exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
-    (* assert(TYEQ: (ClightC.signature_of_function fd) = fn_sig tf0). *)
-    (* { monadInv H3. ss. } *)
-    (* assert(TYEQ: (map typ_of_type (map snd (Clight.fn_params fd))) = sig_args (fn_sig tf0)). *)
-    (* { monadInv H3. ss. } *)
+    hexploit (@sim_external_inject_eq_fsim); try apply FINDF; eauto. clear FPTR. intro FPTR.
+    (* unfold transf_function, bind in *. des_ifs. *)
+    unfold bind in *. des_ifs.
     esplits; eauto. econs; eauto.
-    + folder. ss. admit "ez - injected fptr is eq (make & use lemma)". (* rewrite <- FPTR. eauto. *)
-    + eapply typecheck_typecheck; et. eapply typecheck_inject; et.
+    + folder. ss. rewrite <- FPTR. eauto.
+    + eapply typecheck_typecheck; et. exploit transf_function_type; eauto. i; des.
+      eapply typecheck_inject; et. congruence.
   - (* call wf *)
     inv MATCH; ss. inv MATCHST; ss.
   - (* call fsim *)
+    hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
+    exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
     inv MATCH; ss. destruct sm0; ss. clarify.
     inv CALLSRC. inv MATCHST; ss.
     folder.
     inv MCOMPAT; ss. clear_tac.
+    exploit (sim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
     esplits; eauto.
     + econs; eauto.
-      * folder. des.
-        inv SIMSKENV; ss. eapply sim_external_inject; eauto.
-        admit "skenv_inject revive".
       * des. clarify. esplits; eauto.
+        (* exploit (sim_internal_funct_inject SIMGE); try apply SIG; et. *)
+
+        (* Arguments sim_internal_funct_inject [_]. *)
+        (* destruct SIMSKENVLINK. inv H.  rr in SIMSKENV1. clarify. *)
+        (* exploit (sim_internal_funct_inject); try apply VAL; try apply SIG; et. *)
+        (* { erewrite match_globdef_eq. eapply Global_match_genvs_refl. } *)
+        (* { inv SIMSKENV. ss. } *)
+
         (***************** TODO: Add as a lemma in GlobalenvsC. *******************)
         destruct SIMSKENVLINK.
         assert(fptr_arg = tv).
-        { inv VAL; ss. des_ifs. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
+        { eapply sim_external_inject_eq_fsim; try apply SIG; et. Undo 1.
+          inv VAL; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
           inv SIMSKENV; ss. inv INJECT; ss.
           exploit (DOMAIN b1); eauto.
           { eapply Genv.genv_defs_range; et. }
@@ -220,22 +245,15 @@ Proof.
         clarify.
         eapply SimSymb.simskenv_func_fsim; eauto; ss.
         { destruct tv; ss. des_ifs. econs; eauto; cycle 1.
-          { (*********************** TODO: Add psimpl in CoqlibC ******************)
-            rewrite Ptrofs.add_zero_l. instantiate (1:= 0). ss.
-          }
+          { psimpl. instantiate (1:= 0). ss. }
           inv H. inv INJECT. eapply DOMAIN; eauto.
           { apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *. eapply Genv.genv_defs_range; et. }
         }
     + ss.
     + reflexivity.
   - (* after fsim *)
+    hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
-    assert(SIMGE0: prog_comp_env prog = prog_comp_env tprog).
-    { rr in TRANSL. destruct TRANSL as [TRANSL0 TRANSL1].
-      hexploit (prog_comp_env_eq prog); eauto. i.
-      hexploit (prog_comp_env_eq tprog); eauto. i.
-      ss. congruence.
-    }
     inv AFTERSRC.
     inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss.
@@ -267,12 +285,6 @@ Proof.
     inv MCONT_EXT. inv MCOMPAT; ss.
     eexists sm0. esplits; ss; eauto. refl.
   - exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
-    assert(SIMGE0: prog_comp_env prog = prog_comp_env tprog).
-    { rr in TRANSL. destruct TRANSL as [TRANSL0 TRANSL1].
-      hexploit (prog_comp_env_eq prog); eauto. i.
-      hexploit (prog_comp_env_eq tprog); eauto. i.
-      ss. congruence.
-    }
 
     esplits; eauto.
     { apply modsem1_receptive. }

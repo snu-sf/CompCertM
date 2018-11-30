@@ -1,7 +1,7 @@
 Require Recdef.
 Require Import Zwf.
 Require Import Axioms CoqlibC Errors MapsC ASTC Linking.
-Require Import Integers Floats ValuesC Memory.
+Require Import IntegersC Floats ValuesC Memory.
 Require Import sflib.
 
 Require Export Globalenvs.
@@ -15,6 +15,40 @@ Notation "s #2" := (snd s) (at level 9, format "s '#2'") : pair_scope.
 Local Open Scope pair_scope.
 
 Set Implicit Arguments.
+
+
+
+Ltac uge0 := unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_var_info in *.
+Ltac uge1 := unfold Genv.find_def, Genv.find_symbol in *.
+Ltac uge := uge0; uge1.
+Ltac genext := try (by eapply Genv.genv_defs_range; eauto);
+               try (by eapply Genv.genv_symb_range; eauto)
+.
+
+Lemma some_injective
+      X (x0 x1: X)
+      (EQ: Some x0 = Some x1)
+  :
+    x0 = x1
+.
+Proof. injection EQ. auto. Qed.
+
+(* TODO: Move to coqlibC *)
+Ltac align_opt :=
+  repeat
+    match goal with
+    (* remove trivial things *)
+    | H: Some ?x = Some ?y |- _ => rewrite some_injective in H
+    | H: Some _ = None |- _ => by (inversion H)
+    | H: None = Some _ |- _ => by (inversion H)
+    | H: None = None |- _ => clear H
+    (* align *)
+    | H: Some _ = ?x |- _ => symmetry in H
+    | H: None = ?x |- _ => symmetry in H
+    end
+.
+(* Ltac clarify0 := repeat (align_opt; progress clarify). *)
+
 
 
 Section INCLUDEDEFS.
@@ -39,14 +73,28 @@ Section EXTERNAL.
   Variable match_varinfo: V1 -> V2 -> Prop.
   Hypothesis (GEMATCH: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge1 ge2).
 
-  Lemma sim_external_id
+  Lemma sim_external_funct_id
         v
-        (FIND: Genv.find_funct ge1 v = None)
+        (FINDFSRC: Genv.find_funct ge1 v = None)
     :
-      Genv.find_funct ge2 v = None.
+      <<FINDFTGT: Genv.find_funct ge2 v = None>>
+  .
   Proof.
     unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
     hexploit (Genv.mge_defs GEMATCH); eauto. i. rewrite Heq in *. inv H. inv H2. des_ifs.
+  Qed.
+
+  Lemma sim_internal_funct_id
+        v fd_src
+        (FINDFSRC: Genv.find_funct ge1 v = Some fd_src)
+    :
+      exists fd_tgt ctx', (<<FINDFTGT: Genv.find_funct ge2 v = Some fd_tgt>>) /\
+                          (<<MATCH: match_fundef ctx' fd_src fd_tgt>>) /\
+                          (<<LO: linkorder ctx' ctx>>)
+  .
+  Proof.
+    unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
+    hexploit (Genv.mge_defs GEMATCH); eauto. i. rewrite Heq in *. inv H. inv H2. esplits; eauto.
   Qed.
 
   Local Existing Instance Val.mi_normal.
@@ -57,15 +105,85 @@ Section EXTERNAL.
       (IMAGE: forall b1 b2 delta, j b1 = Some(b2, delta) -> Plt b2 ge.(Genv.genv_next) -> b1 = b2)
   .
 
-  Lemma sim_external_inject
-        j v_src v_tgt
-        (INJ: Val.inject j v_src v_tgt)
+  Lemma sim_external_inject_eq_fsim
+        j
         (GE: skenv_inject ge1 j)
-        (FIND: Genv.find_funct ge1 v_src = None)
+        v_src v_tgt fd
+        (INJ: Val.inject j v_src v_tgt)
+        (FIND: Genv.find_funct ge1 v_src = Some fd)
     :
-      Genv.find_funct ge2 v_tgt = None.
+      v_src = v_tgt
+  .
   Proof.
-    admit "somehow this should be true. see below 'is_call_inject_progress'".
+    inv INJ; ss. uge. des_ifs.
+    inv GE. exploit DOMAIN; eauto.
+    { genext. }
+    i. clarify.
+  Qed.
+
+  Lemma sim_external_inject_eq_bsim
+        j
+        (GE: skenv_inject ge1 j)
+        v_src v_tgt fd
+        (INJ: Val.inject j v_src v_tgt)
+        (FINDFTGT: Genv.find_funct ge2 v_tgt = Some fd)
+    :
+      v_src = v_tgt \/ v_src = Vundef
+  .
+  Proof.
+    inv INJ; ss; et.
+    uge. des_ifs.
+    inv GE.
+    exploit IMAGE; eauto.
+    { erewrite <- Genv.mge_next; et. genext. }
+    i; clarify.
+    exploit DOMAIN; eauto.
+    { erewrite <- Genv.mge_next; et. genext. }
+    i; clarify.
+    psimpl. et.
+  Qed.
+
+  Lemma sim_external_funct_inject
+        j
+        (GE: skenv_inject ge1 j)
+        v_src v_tgt
+        (INJ: Val.inject j v_src v_tgt)
+        (FINDFSRC: Genv.find_funct ge1 v_src = None)
+        (NUNDEF: v_src <> Vundef)
+    :
+      <<FINDFTGT: Genv.find_funct ge2 v_tgt = None>>
+  .
+  Proof.
+    r.
+    apply NNPP. intro FINDTGT.
+    destruct (Genv.find_funct ge2 v_tgt) eqn:FINDTGT0; ss. clear_tac.
+    exploit sim_external_inject_eq_bsim; eauto. i.
+    inv GEMATCH.
+    des; clarify; ss.
+    - uge. des_ifs_safe.
+      unfold block in *. spc mge_defs. inv mge_defs; align_opt; clarify.
+      des_ifs.
+      inv H1.
+  Qed.
+
+  Lemma sim_internal_funct_inject
+        j
+        (GE: skenv_inject ge1 j)
+        v_src v_tgt fd_src
+        (INJ: Val.inject j v_src v_tgt)
+        (FINDFSRC: Genv.find_funct ge1 v_src = Some fd_src)
+    :
+      exists fd_tgt ctx', (<<FINDFTGT: Genv.find_funct ge2 v_tgt = Some fd_tgt>>) /\
+                          (<<MATCH: match_fundef ctx' fd_src fd_tgt>>) /\
+                          (<<LO: linkorder ctx' ctx>>)
+  .
+  Proof.
+    exploit sim_external_inject_eq_fsim; eauto. i.
+    inv GEMATCH. inv INJ; ss.
+    uge. des_ifs_safe.
+    unfold block in *. spc mge_defs. inv mge_defs; align_opt; clarify.
+    inv H1.
+    esplits; eauto.
   Qed.
 
 End EXTERNAL.
@@ -620,4 +738,27 @@ Proof.
   - apply proof_irr.
   - apply proof_irr.
   - apply proof_irr.
+Qed.
+
+Arguments sim_external_inject_eq_fsim [_].
+
+
+(* TODO: move to LinkingC.v *)
+Lemma match_globdef_eq
+      C F V
+      `{Linker C} ctx
+  :
+    match_globdef ((fun _ => eq): C -> F -> F -> Prop)
+                  (eq: V -> V -> Prop)
+                  ctx = eq
+.
+Proof.
+  eapply Axioms.functional_extensionality; i.
+  eapply Axioms.functional_extensionality; i.
+  eapply AxiomsC.prop_ext.
+  split; i.
+  - inv H0; ss. inv H1; ss.
+  - clarify. destruct x0; econs; et.
+    { eapply linkorder_refl. }
+    destruct v; ss.
 Qed.

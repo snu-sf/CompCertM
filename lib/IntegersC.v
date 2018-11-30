@@ -28,3 +28,11 @@ Proof.
   apply Ptrofs.zero.
 Qed.
 
+
+Hint Rewrite Ptrofs.unsigned_zero Ptrofs.add_zero Ptrofs.add_zero_l
+     Ptrofs.repr_unsigned Ptrofs_add_repr : psimpl
+.
+
+Ltac psimpl := repeat (autorewrite with psimpl in *;
+                       try (rewrite Ptrofs.unsigned_repr in *; ss; try xomega; []))
+.

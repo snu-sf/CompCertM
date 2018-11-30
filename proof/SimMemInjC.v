@@ -10,7 +10,8 @@ Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.
 Require Import SimMem.
 Require SimSymbId.
-Require Import Conventions1 MachC.
+Require Import Conventions1.
+Require MachC.
 Require Export SimMemInj.
 
 Set Implicit Arguments.
@@ -286,10 +287,11 @@ Qed.
 
 Local Opaque Z.mul.
 
+(*************** TODO: Move to MachExtra.v *********************)
 Lemma mach_store_arguments_simmem
       sm0 rs vs sg m_tgt0
       (MWF: SimMem.wf sm0)
-      (STORE: store_arguments sm0.(SimMem.tgt) rs vs sg m_tgt0)
+      (STORE: MachC.store_arguments sm0.(SimMem.tgt) rs vs sg m_tgt0)
       (*** TODO: don't use unchanged_on, it is needlessly complex for our use. just define my own. *)
   :
     exists sm1,
@@ -347,16 +349,17 @@ Hint Unfold valid_blocks src_private tgt_private range.
 
 Section SIMSYMB.
 
-Context `{CTX: Val.meminj_ctx}.
+Local Existing Instance Val.mi_normal.
+(* Context `{CTX: Val.meminj_ctx}. *)
 
-Inductive skenv_inject (skenv: SkEnv.t) (j: meminj): Prop :=
-| sken_inject_intro
-    (DOMAIN: forall b, Plt b skenv.(Genv.genv_next) -> j b = Some(b, 0))
-    (IMAGE: forall b1 b2 delta, j b1 = Some(b2, delta) -> Plt b2 skenv.(Genv.genv_next) -> b1 = b2)
-.
+(* Inductive skenv_inject (skenv: SkEnv.t) (j: meminj): Prop := *)
+(* | sken_inject_intro *)
+(*     (DOMAIN: forall b, Plt b skenv.(Genv.genv_next) -> j b = Some(b, 0)) *)
+(*     (IMAGE: forall b1 b2 delta, j b1 = Some(b2, delta) -> Plt b2 skenv.(Genv.genv_next) -> b1 = b2) *)
+(* . *)
 
 Lemma skenv_inject_meminj_preserves_globals
-      skenv j
+      F V (skenv: Genv.t F V) j
       (INJECT: skenv_inject skenv j)
   :
     <<INJECT: meminj_preserves_globals skenv j>>
@@ -376,6 +379,30 @@ Inductive sim_skenv_inj (sm: SimMem.t) (__noname__: unit) (skenv_src skenv_tgt: 
     (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(tgt_parent_nb))
     (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
 .
+
+Section REVIVE.
+
+  Context {F1 V1: Type} {LF: Linker F1} {LV: Linker V1}.
+  Context `{HasExternal F1}.
+  Variables (p_src: AST.program F1 V1).
+
+  Lemma skenv_inject_revive
+        skenv_proj_src
+        ge_src
+        j
+        (REVIVESRC: ge_src = SkEnv.revive skenv_proj_src p_src)
+        (SIMSKENV: skenv_inject skenv_proj_src j)
+    :
+      <<SIMSKENV: skenv_inject ge_src j>>
+  .
+  Proof.
+    clarify. inv SIMSKENV. econs; eauto.
+  Qed.
+
+End REVIVE.
+
+
+
 
 Global Program Instance SimSymbId: SimSymb.class SimMemInj := {
   t := unit;
@@ -490,3 +517,6 @@ Next Obligation.
 Qed.
 
 End SIMSYMB.
+
+Arguments skenv_inject_revive [_ _ _].
+

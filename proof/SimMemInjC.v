@@ -10,7 +10,8 @@ Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.
 Require Import SimMem.
 Require SimSymbId.
-Require Import Conventions1 MachC.
+Require Import Conventions1.
+Require MachC.
 Require Export SimMemInj.
 
 Set Implicit Arguments.
@@ -286,10 +287,11 @@ Qed.
 
 Local Opaque Z.mul.
 
+(*************** TODO: Move to MachExtra.v *********************)
 Lemma mach_store_arguments_simmem
       sm0 rs vs sg m_tgt0
       (MWF: SimMem.wf sm0)
-      (STORE: store_arguments sm0.(SimMem.tgt) rs vs sg m_tgt0)
+      (STORE: MachC.store_arguments sm0.(SimMem.tgt) rs vs sg m_tgt0)
       (*** TODO: don't use unchanged_on, it is needlessly complex for our use. just define my own. *)
   :
     exists sm1,

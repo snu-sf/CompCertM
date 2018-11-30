@@ -112,12 +112,16 @@ Inductive match_states
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
-  Genv.match_genvs (match_globdef (fun (ctx: AST.program fundef type) f tf => transf_fundef f = OK tf) eq prog) ge tge.
+  Genv.match_genvs (match_globdef (fun (ctx: AST.program fundef type) f tf => transf_fundef f = OK tf) eq prog) ge tge /\ prog_comp_env prog = prog_comp_env tprog.
 Proof.
   subst_locals. ss.
   rr in TRANSL. destruct TRANSL. r in H.
-  eapply SimSymbId.sim_skenv_revive; eauto.
-  { ii. u. unfold transf_fundef, bind in MATCH. des_ifs; ss; clarify. }
+  esplits.
+  - eapply SimSymbId.sim_skenv_revive; eauto.
+    { ii. u. unfold transf_fundef, bind in MATCH. des_ifs; ss; clarify. }
+  - hexploit (prog_comp_env_eq prog); eauto. i.
+    hexploit (prog_comp_env_eq tprog); eauto. i.
+    ss. congruence.
 Qed.
 
 Theorem sim_modsem
@@ -186,7 +190,7 @@ Proof.
   - (* init progress *)
     des. inv SAFESRC.
     inv SIMARGS; ss.
-    exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE.
+    exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
     (* assert(TYEQ: (ClightC.signature_of_function fd) = fn_sig tf0). *)
     (* { monadInv H3. ss. } *)
@@ -230,12 +234,6 @@ Proof.
     + reflexivity.
   - (* after fsim *)
     exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
-    assert(SIMGE0: prog_comp_env prog = prog_comp_env tprog).
-    { rr in TRANSL. destruct TRANSL as [TRANSL0 TRANSL1].
-      hexploit (prog_comp_env_eq prog); eauto. i.
-      hexploit (prog_comp_env_eq tprog); eauto. i.
-      ss. congruence.
-    }
     inv AFTERSRC.
     inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss.
@@ -267,12 +265,6 @@ Proof.
     inv MCONT_EXT. inv MCOMPAT; ss.
     eexists sm0. esplits; ss; eauto. refl.
   - exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
-    assert(SIMGE0: prog_comp_env prog = prog_comp_env tprog).
-    { rr in TRANSL. destruct TRANSL as [TRANSL0 TRANSL1].
-      hexploit (prog_comp_env_eq prog); eauto. i.
-      hexploit (prog_comp_env_eq tprog); eauto. i.
-      ss. congruence.
-    }
 
     esplits; eauto.
     { apply modsem1_receptive. }

@@ -248,7 +248,7 @@ Section PRESERVATION.
       dup FIND. unfold SkEnv.revive in FIND.
 
       eapply Genv_map_defs_def in FIND. des.
-
+      gesimpl.
 
       destruct (Genv.invert_symbol skenv_link b) eqn:EQ; cycle 1.
       { eapply DEFORPHAN in EQ. des. clarify. }

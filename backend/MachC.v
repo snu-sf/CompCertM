@@ -403,7 +403,7 @@ Section MODSEM.
     inv RECEP. econs; eauto; ii; ss.
     - inv H. ss.
       exploit sr_receptive_at; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
+      { eapply match_traces_preserved; try eassumption. ii; ss. admit "". }
       i; des. destruct s1; ss.
       exists (mkstate init_rs1 init_sg1 s2).
       econs; eauto. ss.
@@ -429,7 +429,7 @@ Section MODSEM.
     inv DTM. econs; eauto; ii; ss.
     - inv H. inv H0.
       determ_tac sd_determ_at. esplits; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
+      { eapply match_traces_preserved; try eassumption. ii; ss. admit "". }
       i. destruct s1, s2; ss. rewrite H0; ss. eauto with congruence.
     - inv H.
       exploit sd_traces_at; eauto.

@@ -1,5 +1,5 @@
 Require Import CoqlibC Maps.
-Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
+Require Import ASTC Integers Floats Values MemoryC EventsC Globalenvs Smallstep.
 Require Import Locations Stacklayout Conventions Linking.
 (** newly added **)
 Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.

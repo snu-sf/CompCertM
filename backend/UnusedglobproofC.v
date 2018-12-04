@@ -195,10 +195,6 @@ Proof.
 
     destruct TRANSL as [used0 TRANSL0]. des.
     hexploit (match_prog_def _ _ _ TRANSL1 i); et. intro DEFMAP. des_ifs.
-  - esplits; et.
-    + unfold ge. ss.
-      admit "!!!!!!!!!!!!!!!!!!!!!!!!!!!!".
-    + admit "!!!!!!!!!!!!!!!!!!!!!!!!!!!!".
 Qed.
 
 Theorem sim_modsem

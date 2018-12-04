@@ -166,10 +166,11 @@ I think "sim_skenv_monotone" should be sufficient.
 
   (* Note: We only remove definitions. One can still get the address of external identifier. *)
   Definition revive `{HasExternal F} {V} (skenv: SkEnv.t) (prog: AST.program F V): Genv.t F V :=
-    skenv.(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
-                                            do gd <- prog.(prog_defmap) ! id;
-                                            assertion (negb (is_external gd));
-                                            Some gd))
+    ((Genv_update_publics skenv prog.(prog_public)).(Genv_map_defs)
+                                                      (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
+                                                                        do gd <- prog.(prog_defmap) ! id;
+                                                                        assertion (negb (is_external gd));
+                                                                        Some gd)))
   .
 
   Inductive genv_precise `{HasExternal F} {V} (ge: Genv.t F V) (p: program F V): Prop :=
@@ -213,6 +214,7 @@ I think "sim_skenv_monotone" should be sufficient.
     - des.
       unfold revive in *.
       apply_all_once Genv_map_defs_def. des; ss.
+      ss.
       rewrite Genv_map_defs_symb in *. u in *. des_ifs_safe. simpl_bool.
       apply_all_once Genv.invert_find_symbol.
       determ_tac Genv.genv_vars_inj.

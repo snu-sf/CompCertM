@@ -1,5 +1,5 @@
 Require Import CoqlibC Maps.
-Require Import ASTC Integers ValuesC Events Memory Globalenvs.
+Require Import ASTC Integers ValuesC EventsC Memory Globalenvs.
 Require Import Op Registers.
 Require Import sflib.
 Require Import SmallstepC.
@@ -168,7 +168,10 @@ Section MODSEM.
   .
   Proof.
     inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
-    eapply match_traces_preserved; try eassumption. ii; ss.
+    eapply match_traces_le; et. u. unfold Genv.public_symbol. ss.
+    i. des_ifs_safe. des_sumbool. unfold ge. unfold SkEnv.revive. rewrite Genv_map_defs_symb.
+    uge. ss. des_ifs. des_sumbool. admit "".
+    (* eapply match_traces_preserved; try eassumption. ii; ss. *)
   Qed.
 
   Lemma modsem_receptive
@@ -188,6 +191,7 @@ Section MODSEM.
     inv DTM. econs; eauto; ii; ss.
     determ_tac sd_determ_at. esplits; eauto.
     eapply match_traces_preserved; try eassumption. ii; ss.
+    admit "".
   Qed.
 
   Lemma modsem_determinate

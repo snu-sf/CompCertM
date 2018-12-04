@@ -165,6 +165,7 @@ Section MODSEM.
   Proof. i.
     inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
     eapply match_traces_preserved; try eassumption. ii; ss.
+    admit "".
   Qed.
 
   Lemma modsem1_receptive

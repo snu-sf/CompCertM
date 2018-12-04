@@ -357,8 +357,37 @@ Section MAP.
   Next Obligation. eapply Genv.genv_defs_range; eauto. Qed.
   Next Obligation. rewrite PTree_filter_key_spec in *. des_ifs. eapply Genv.genv_vars_inj; eauto. Qed.
 
+  Program Definition Genv_update_publics (ge0: Genv.t F1 V1) (pubs: list ident): Genv.t F1 V1 :=
+  {|
+    Genv.genv_public := pubs;
+    Genv.genv_symb := ge0.(Genv.genv_symb);
+    Genv.genv_defs := ge0.(Genv.genv_defs);
+    Genv.genv_next := ge0.(Genv.genv_next);
+  |}
+  .
+  Next Obligation. eapply Genv.genv_symb_range; eauto. Qed.
+  Next Obligation. eapply Genv.genv_defs_range; eauto. Qed.
+  Next Obligation. eapply Genv.genv_vars_inj; eauto. Qed.
+
+  Lemma Genv_update_publics_def
+        ge0 pubs
+    :
+      Genv.find_def (Genv_update_publics ge0 pubs) = Genv.find_def ge0
+  .
+  Proof. apply functional_extensionality. i. ss. Qed.
+
+  Lemma Genv_update_publics_symb
+        ge0 pubs
+    :
+      Genv.find_symbol (Genv_update_publics ge0 pubs) = Genv.find_symbol ge0
+  .
+  Proof. apply functional_extensionality. i. ss. Qed.
 
 End MAP.
+
+(* Hint Unfold Genv_update_publics. *)
+Ltac gesimpl := try rewrite Genv_update_publics_def in *;
+                try rewrite Genv_update_publics_symb in *.
 
 
 

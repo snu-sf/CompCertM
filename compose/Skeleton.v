@@ -251,6 +251,31 @@ I think "sim_skenv_monotone" should be sufficient.
 
   Definition empty: t := @Genv.empty_genv _ _ [].
 
+  (* Note:
+       1) It is more natural to define this predicate in `Genv` namespace, not `AST` namespace. (because of dependency)
+       2) Natural ordering of parameters is __name__: Genv.t -> program -> Prop. (`ge.(__name__) prog`)
+
+       Note: why not just name it `incl`?
+       It is confusing as `List.incl` has an opposite direction.
+       I think `List.incl` is abbreviation of `List.is_included`.
+       le a b        === a.(le) b        === a <= b
+       List.incl a b === a.(List.incl) b === a <= b
+       includes a b  === a.(includes) b  === a >= b
+   *)
+
+  (* TODO: Can we forward-reference Sk.t ? *)
+  Inductive includes (skenv: SkEnv.t) (sk: AST.program (AST.fundef signature) unit): Prop :=
+  | includes_intro
+      (DEFS: forall
+          id gd0
+          (DEF: sk.(prog_defmap) ! id = Some gd0)
+        ,
+          exists blk gd1, (<<SYMB: skenv.(Genv.find_symbol) id = Some blk>>) /\
+                          (<<DEF: skenv.(Genv.find_def) blk = Some gd1>>) /\
+                          (<<MATCH: linkorder gd0 gd1>>))
+      (PUBS: incl sk.(prog_public) skenv.(Genv.genv_public))
+  .
+
 End SkEnv.
 
 Hint Unfold SkEnv.empty.
@@ -439,7 +464,6 @@ Module Sk.
 End Sk.
 
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
-
 
 
 

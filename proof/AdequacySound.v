@@ -39,7 +39,8 @@ Section ADQSOUND.
   Let skenv_link_src := sk_link_src.(Sk.load_skenv).
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
 
-  Hypothesis INCLUDE: forall p (IN: In p p_src), include_defs eq p.(Mod.sk) skenv_link_src.
+  Hypothesis INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk).
+  Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk).
 
   (* Let ge: Ge.t := sem_src.(Smallstep.globalenv). *)
 
@@ -157,7 +158,7 @@ Section ADQSOUND.
       exists su0 m_init0, <<MEM: Sk.load_mem sk_link_src = Some m_init0>> /\ <<SU: sound_state su0 m_init0 st0>>
   .
   Proof.
-    inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT.
+    inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT INCLTGT.
     hexploit Sound.init_spec; eauto. i; des.
     exploit Sound.greatest_ex; eauto.
     { esplits; eauto. refl. }
@@ -257,8 +258,9 @@ Section ADQSOUND.
         des.
         exploit SIMPROG; eauto. intros MPSIM. inv MPSIM.
         exploit SIMMS.
+        { eapply INCLSRC; et. }
+        { eapply INCLTGT; et. }
         { eapply SimSymb.le_refl. }
-        { eapply INCLUDE. eauto. }
         { admit "somehow. 1) fat module / skinny modsem. 2) require as premise". }
         i; des. inv H0. ss. esplits; eauto.
     - (* INTERNAL *)

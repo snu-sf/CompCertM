@@ -94,10 +94,10 @@ Definition msp: ModSemPair.t :=
 
 (* Definition used: IS.t := from_list (prog.(prog_defmap).(PTree.elements)) *)
 
-Definition used: IS.t :=
-  (* from_list (list_diff Pos.eq_dec (prog.(prog_defs_names)) (tprog.(prog_defs_names))) *)
-  from_list (tprog.(prog_defs_names))
-.
+(* Definition used: IS.t := *)
+(*   (* from_list (list_diff Pos.eq_dec (prog.(prog_defs_names)) (tprog.(prog_defs_names))) *) *)
+(*   from_list (tprog.(prog_defs_names)) *)
+(* . *)
 
 (* Lemma used_spec *)
 (*       id *)
@@ -118,20 +118,20 @@ Definition used: IS.t :=
 (*     unfold defs in *. des_sumbool. ss. *)
 (* Qed. *)
 
-Lemma used_spec
-      id
-  :
-    <<KEPT: kept used id>> <-> <<SPEC: defs tprog id>>
-.
-Proof.
-  unfold used, kept. ss.
-  unfold defs. unfold NW.
-  split; i; r; des.
-  - rewrite from_list_spec in *.
-    des_sumbool. ss.
-  - rewrite from_list_spec in *.
-    des_sumbool. ss.
-Qed.
+(* Lemma used_spec *)
+(*       id *)
+(*   : *)
+(*     <<KEPT: kept used id>> <-> <<SPEC: defs tprog id>> *)
+(* . *)
+(* Proof. *)
+(*   unfold used, kept. ss. *)
+(*   unfold defs. unfold NW. *)
+(*   split; i; r; des. *)
+(*   - rewrite from_list_spec in *. *)
+(*     des_sumbool. ss. *)
+(*   - rewrite from_list_spec in *. *)
+(*     des_sumbool. ss. *)
+(* Qed. *)
 
 (* Definition used': option IS.t := used_globals prog (prog_defmap prog). *)
 
@@ -156,7 +156,14 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Unusedglobproof.match_states prog tprog used ge tge st_src0 st_tgt0 sm0)
+    (* used *)
+    (* (MATCHPRG: valid_used_set prog used /\ match_prog_1 used prog tprog) *)
+    (* (MATCHST: Unusedglobproof.match_states prog tprog used ge tge st_src0 st_tgt0 sm0) *)
+    (MATCHST: forall
+        used
+        (MATCHPRG: valid_used_set prog used /\ match_prog_1 used prog tprog)
+      ,
+        Unusedglobproof.match_states prog tprog used ge tge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(RTLC.get_mem) = sm0.(SimMem.tgt))
 .
@@ -181,7 +188,7 @@ Inductive match_states
 (* Qed. *)
 
 Lemma find_funct_inject
-      fptr tfptr fd j
+      used fptr tfptr fd j
       (SIMGE: meminj_preserves_globals prog tprog used ge tge j)
       (FINDSRC: Genv.find_funct ge fptr = Some fd)
       (INJ: Val.inject j fptr tfptr)
@@ -197,6 +204,8 @@ Qed.
 
 Theorem sim_skenv_meminj_preserves_globals
         sm_arg
+        used
+        (MATCHPRG: valid_used_set prog used /\ match_prog_1 used prog tprog)
         (SIMSKENV: SimSymbDrop.sim_skenv
                      sm_arg ((prog.(defs) -1 tprog.(defs)): ident -> Prop)
                      (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)))
@@ -208,7 +217,15 @@ Proof.
   econs.
   - i. exploit SIMSYMB1; et. i; des. clarify.
   - i. exploit SIMSYMB2; et.
-    { hexploit (used_spec id); et. i; des. tauto. }
+    { ii; des.
+      hexploit (match_prog_def _ _ _ MATCHPRG0 id); et. i.
+      unfold kept in *.
+      exploit IS.mem_1; et. i; des_ifs.
+      unfold defs in *. eapply H2. des_sumbool.
+      apply_all_once prog_defmap_spec. des.
+      rewrite H1 in *.
+      admit "this should hold".
+    }
   - eauto.
   - i. unfold ge in H0. exploit Genv_map_defs_def; et. i; des.
     exploit SIMDEF; et. i; des. clarify. psimpl.
@@ -221,12 +238,15 @@ Proof.
     des; ss.
     { clear - Heq1 KEPT. contradict KEPT. unfold defs in *. des_sumbool. apply prog_defmap_spec; et. }
     apply NNPP in KEPT.
-    destruct TRANSL as [used0 TRANSL0]. des.
-    assert(used0 = used).
-    { admit "Identify Used !!". }
-    clarify.
+    (* destruct TRANSL as [used0 TRANSL0]. des. *)
+    (* assert(used0 = used). *)
+    (* { admit "Identify Used !!". } *)
+    (* clarify. *)
     assert(IN: IS.In i used).
-    { unfold used. apply from_list_spec. unfold defs in *. ss. des_sumbool. ss. }
+    { hexploit (match_prog_def _ _ _ MATCHPRG0 i); et. i. apply IS.mem_2. des_ifs.
+      unfold defs in KEPT. des_sumbool.
+      exploit prog_defmap_dom; et. i; des. clarify.
+    }
     esplits; et.
     + unfold tge.
       unfold SkEnv.revive.
@@ -245,10 +265,17 @@ Proof.
     esplits; et.
 
     assert(kept used i).
-    { apply used_spec. u. des_sumbool. apply prog_defmap_spec; et. }
+    { r. hexploit (match_prog_def _ _ _ MATCHPRG0 i); et. i.
+      apply IS.mem_2. des_ifs.
+    }
 
     exploit SIMSYMB2; et.
-    { apply used_spec in H1. tauto. }
+    { r. hexploit (match_prog_def _ _ _ MATCHPRG0 i); et. i.
+      des. des_ifs. unfold defs in *. contradict H4. des_sumbool.
+      apply_all_once prog_defmap_spec. des.
+      rewrite <- H2 in *.
+      admit "".
+    }
     i; des.
     clarify. clear_tac.
 
@@ -274,6 +301,7 @@ Theorem sim_modsem
 .
 Proof.
   (* rr in TRANSL. destruct TRANSL as [TRANSL0 TRANSL1]. *)
+  destruct TRANSL as [used0 TRANSL0]. des.
   eapply match_states_sim with (match_states := match_states)
                                (match_states_at := fun _ _ => eq)
                                (sound_state := SoundTop.sound_state);
@@ -287,7 +315,7 @@ Proof.
     inv INITTGT. ss.
     (* hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des. *)
     (* exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des. *)
-    assert(SIMGE: meminj_preserves_globals prog tprog used ge tge (SimMemInj.inj sm_arg)).
+    assert(SIMGE: meminj_preserves_globals prog tprog used0 ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. }
     des.
     eexists. exists sm_arg.
@@ -303,8 +331,9 @@ Proof.
         exploit find_funct_inject; et. i; des. clarify.
         rpapply match_states_call; ss; eauto.
         { econs; ss; et.
-          admit "ez - genb".
-          admit "ez - genb".
+          - eapply sim_skenv_meminj_preserves_globals; et.
+          - admit "ez - genb".
+          - admit "ez - genb".
         }
         {
           admit "ez".
@@ -314,7 +343,7 @@ Proof.
     inv SIMARGS; ss.
     (* hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des. *)
     (* exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des. *)
-    assert(SIMGE: meminj_preserves_globals prog tprog used ge tge (SimMemInj.inj sm_arg)).
+    assert(SIMGE: meminj_preserves_globals prog tprog used0 ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. }
     exploit find_funct_inject; et. i; des. clarify.
     (* exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder. *)
@@ -328,7 +357,35 @@ Proof.
       etrans; try apply LEN; et. symmetry. eapply inject_list_length; et.
     + etrans; try apply LEN; et. symmetry. eapply inject_list_length; et.
   - (* call wf *)
-    inv MATCH; ss. inv MATCHST; ss.
+    inv MATCH; ss. exploit MATCHST; et. intro MST. inv MST; ss.
+  - (* call fsim *)
+    admit "".
+  - (* after fsim *)
+    admit "".
+  - (* final fsim *)
+    admit "".
+  - (* step *)
+    assert(SIMGE: meminj_preserves_globals prog tprog used0 ge tge (SimMemInj.inj sm0)).
+    { eapply sim_skenv_meminj_preserves_globals; et. }
+
+    esplits; eauto.
+    { apply modsem_receptive. }
+    inv MATCH.
+    ii. hexploit (@step_simulation prog tprog used0); eauto.
+    i; des.
+    esplits; eauto.
+    + left. apply plus_one. econs; eauto. eapply modsem_determinate; eauto.
+    + econs; ss.
+      * i. des. hexploit (@step_simulation prog tprog used); try apply STEPSRC; eauto. i; des. folder.
+        rpapply H2.
+        admit "dtm".
+        admit "this does not hold!!".
+      * inv H0; ss; inv MCOMPAT; ss.
+      * inv H0; ss; inv MCOMPAT; ss.
+Unshelve.
+  all: ss; try (by econs).
+Qed.
+
   - (* call fsim *)
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.

@@ -94,44 +94,23 @@ Definition msp: ModSemPair.t :=
 
 (* Definition used: IS.t := from_list (prog.(prog_defmap).(PTree.elements)) *)
 
+Definition used: ident -> bool := fun id => in_dec Pos.eq_dec id (tprog.(prog_defs_names)).
 (* Definition used: IS.t := *)
 (*   (* from_list (list_diff Pos.eq_dec (prog.(prog_defs_names)) (tprog.(prog_defs_names))) *) *)
 (*   from_list (tprog.(prog_defs_names)) *)
 (* . *)
 
-(* Lemma used_spec *)
-(*       id *)
-(*   : *)
-(*     <<KEPT: kept used id>> <-> <<SPEC: ~ (defs prog id /\ ~ defs tprog id)>> *)
-(* . *)
-(* Proof. *)
-(*   unfold used, kept. ss. *)
-(*   split; i; r; des. *)
-(*   - rewrite from_list_spec in *. *)
-(*     ii. des. *)
-(*     unfold defs in *. des_sumbool. *)
-(*     apply H1. des_sumbool. ss. *)
-(*   - rewrite from_list_spec in *. *)
-(*     apply not_and_or in H. des; ss. *)
-(*     { admit "". } *)
-(*     apply NNPP in H. *)
-(*     unfold defs in *. des_sumbool. ss. *)
-(* Qed. *)
 
-(* Lemma used_spec *)
-(*       id *)
-(*   : *)
-(*     <<KEPT: kept used id>> <-> <<SPEC: defs tprog id>> *)
-(* . *)
-(* Proof. *)
-(*   unfold used, kept. ss. *)
-(*   unfold defs. unfold NW. *)
-(*   split; i; r; des. *)
-(*   - rewrite from_list_spec in *. *)
-(*     des_sumbool. ss. *)
-(*   - rewrite from_list_spec in *. *)
-(*     des_sumbool. ss. *)
-(* Qed. *)
+(* TODO: Add bsimpl/des_sumbool this functionality (not_true_is_false) --> "A <> true |= A = false" and "A <> false |= A = true" *)
+
+Lemma used_spec
+      id
+  :
+    <<KEPT: kept used id>> <-> <<SPEC: defs tprog id>>
+.
+Proof.
+  unfold used, kept. ss.
+Qed.
 
 (* Definition used': option IS.t := used_globals prog (prog_defmap prog). *)
 
@@ -156,14 +135,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (* used *)
-    (* (MATCHPRG: valid_used_set prog used /\ match_prog_1 used prog tprog) *)
-    (* (MATCHST: Unusedglobproof.match_states prog tprog used ge tge st_src0 st_tgt0 sm0) *)
-    (MATCHST: forall
-        used
-        (MATCHPRG: valid_used_set prog used /\ match_prog_1 used prog tprog)
-      ,
-        Unusedglobproof.match_states prog tprog used ge tge st_src0 st_tgt0 sm0)
+    (MATCHST: Unusedglobproof.match_states prog tprog used ge tge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(RTLC.get_mem) = sm0.(SimMem.tgt))
 .
@@ -204,8 +176,6 @@ Qed.
 
 Theorem sim_skenv_meminj_preserves_globals
         sm_arg
-        used
-        (MATCHPRG: valid_used_set prog used /\ match_prog_1 used prog tprog)
         (SIMSKENV: SimSymbDrop.sim_skenv
                      sm_arg ((prog.(defs) -1 tprog.(defs)): ident -> Prop)
                      (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)))
@@ -217,15 +187,7 @@ Proof.
   econs.
   - i. exploit SIMSYMB1; et. i; des. clarify.
   - i. exploit SIMSYMB2; et.
-    { ii; des.
-      hexploit (match_prog_def _ _ _ MATCHPRG0 id); et. i.
-      unfold kept in *.
-      exploit IS.mem_1; et. i; des_ifs.
-      unfold defs in *. eapply H2. des_sumbool.
-      apply_all_once prog_defmap_spec. des.
-      rewrite H1 in *.
-      admit "this should hold".
-    }
+    { hexploit (used_spec id); et. i; des. tauto. }
   - eauto.
   - i. unfold ge in H0. exploit Genv_map_defs_def; et. i; des.
     exploit SIMDEF; et. i; des. clarify. psimpl.
@@ -238,15 +200,17 @@ Proof.
     des; ss.
     { clear - Heq1 KEPT. contradict KEPT. unfold defs in *. des_sumbool. apply prog_defmap_spec; et. }
     apply NNPP in KEPT.
-    (* destruct TRANSL as [used0 TRANSL0]. des. *)
+    destruct TRANSL as [used0 TRANSL0]. des.
     (* assert(used0 = used). *)
     (* { admit "Identify Used !!". } *)
     (* clarify. *)
-    assert(IN: IS.In i used).
-    { hexploit (match_prog_def _ _ _ MATCHPRG0 i); et. i. apply IS.mem_2. des_ifs.
-      unfold defs in KEPT. des_sumbool.
-      exploit prog_defmap_dom; et. i; des. clarify.
-    }
+    assert(IN: used i).
+    { ss. }
+    (* assert(IN: IS.In i used). *)
+    (* { hexploit (match_prog_def _ _ _ MATCHPRG0 i); et. i. apply IS.mem_2. des_ifs. *)
+    (*   unfold defs in KEPT. des_sumbool. *)
+    (*   exploit prog_defmap_dom; et. i; des. clarify. *)
+    (* } *)
     esplits; et.
     + unfold tge.
       unfold SkEnv.revive.

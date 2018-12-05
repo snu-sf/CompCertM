@@ -24,7 +24,6 @@ Variable sm_link: SimMem.t.
 Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 Variables prog tprog: program.
 Hypothesis INCLSRC: SkEnv.includes skenv_link_src (Sk.of_program fn_sig prog).
-Hypothesis INCLTGT: SkEnv.includes skenv_link_src (Sk.of_program fn_sig prog).
 
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).

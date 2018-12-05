@@ -7,11 +7,57 @@ Require Import JMeq.
 Require Import Smallstep.
 Require Import Integers.
 Require Import Events.
+Require Import MapsC.
 
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem.
 
 Set Implicit Arguments.
+
+
+
+(* TODO: better namespace? *)
+Lemma includes_refl
+      sk
+  :
+    <<INCL: SkEnv.includes (Sk.load_skenv sk) sk>>
+.
+Proof.
+  econs; eauto.
+  - ii. eapply Genv.find_def_symbol in DEF. des. esplits; eauto. apply linkorder_refl.
+  - rewrite Genv.globalenv_public. ss.
+Qed.
+
+
+
+
+Lemma link_includes
+      p sk_link_src
+      (LINK: link_sk p = Some sk_link_src)
+      md
+      (IN: In md p)
+  :
+    SkEnv.includes (Sk.load_skenv sk_link_src) md.(Mod.sk)
+.
+Proof.
+  unfold link_sk in *.
+  (* TODO: can we remove `_ LINK` ? *)
+  (* Arguments link_list_linkorder [_]. *)
+  (* Arguments link_list_linkorder: default implicits. *)
+  hexploit (link_list_linkorder _ LINK); et. intro LOS; des.
+  rewrite Forall_forall in *.
+  exploit (LOS md); et.
+  { rewrite in_map_iff. esplits; et. }
+  intro LO.
+  Local Transparent Linker_prog.
+  ss. des.
+  Local Opaque Linker_prog.
+  econs; et.
+  - i. exploit LO1; et. i; des. eapply Genv.find_def_symbol in H. des. esplits; et.
+  - rewrite Genv.globalenv_public. ss.
+Qed.
+
+
 
 
 

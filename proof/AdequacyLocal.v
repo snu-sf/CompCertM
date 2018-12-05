@@ -18,30 +18,6 @@ Set Implicit Arguments.
 
 
 
-Lemma link_include_defs p sk_link_src
-      (LINK: link_sk p = Some sk_link_src)
-      md
-      (IN: In md p)
-  :
-    include_defs eq md.(Mod.sk) (Sk.load_skenv sk_link_src)
-.
-Proof.
-  revert sk_link_src LINK md IN.
-  induction p; ss; i; des; ss; clarify.
-  - clear IHp. u in *. unfold link_list in *. ss. des_ifs; ss.
-    + destruct p; ss; des_ifs. ii.
-      eapply Genv.find_def_symbol in DEF. des.
-      esplits; eauto.
-    + admit "should hold".
-      (* Local Transparent Linker_prog. ss. unfold link_prog in *. des_ifs. *)
-      (* unfold proj_sumbool, andb in *. des_ifs. *)
-      (* ii. unfold Genv.globalenv. ss. esplits. *)
-      (* unfold Genv.add_globals. *)
-  - u in *. unfold link_list in *. ss. des_ifs; ss.
-    + ss. exfalso. destruct p; ss; des_ifs.
-    + specialize (IHp _ eq_refl _ IN).
-      admit "should hold".
-Qed.
 
 
 
@@ -302,12 +278,17 @@ Section SIMGE.
                /\ <<MWF: SimMem.wf sm_init>>
                /\ <<LOADTGT: Sk.load_mem sk_link_tgt = Some sm_init.(SimMem.tgt)>>
                /\ <<MSRC: sm_init.(SimMem.src) = m_src>>
-               /\ <<SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_link_src skenv_link_tgt>>
+               /\ (<<SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_link_src skenv_link_tgt>>)
+               /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)>>)
+               /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)>>)
   .
   Proof.
-    assert (INCLUDE: forall md (IN: In md p_src),
-               include_defs eq md.(Mod.sk) skenv_link_src).
-    { ii. clarify. exploit link_include_defs; cycle 2; eauto. }
+    assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
+    { ii. clarify. eapply link_includes; eauto.
+      unfold ProgPair.src. rewrite in_map_iff. esplits; et. }
+    assert(INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)).
+    { ii. clarify. eapply link_includes; eauto.
+      unfold ProgPair.tgt. rewrite in_map_iff. esplits; et. }
     clarify.
     exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des. rename sm into sm_init. clarify.
     esplits; eauto.
@@ -412,9 +393,6 @@ Section SIMGE.
         * rewrite Forall_forall in *.
           i. apply in_map_iff in H. des.
           specialize (SIMPROG x0). special SIMPROG; ss. clarify. eapply SIMPROG; eauto.
-          { eapply INCLUDE. right. unfold ProgPair.src in *.
-            eapply in_map. eauto.
-          }
       + ss. econs; ss; eauto.
         * eapply to_msp_sim_skenv; eauto.
         * rewrite Forall_forall in *. i. rewrite in_map_iff in *. des. clarify.
@@ -600,13 +578,18 @@ Section ADQINIT.
   Let sem_tgt := Sem.sem p_tgt.
   Print Sem.initial_state.
 
+  Let skenv_link_src := sk_link_src.(Sk.load_skenv).
+  Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
+
   Theorem init_lxsim_lift_forward
           st_init_src
           (INITSRC: sem_src.(Smallstep.initial_state) st_init_src)
     :
       exists idx st_init_tgt sm_init,
         <<INITTGT: sem_tgt.(Dinitial_state) st_init_tgt>>
-        /\ <<SIM: lxsim_lift idx st_init_src st_init_tgt sm_init>>
+        /\ (<<SIM: lxsim_lift idx st_init_src st_init_tgt sm_init>>)
+        /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)>>)
+        /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)>>)
   .
   Proof.
     ss.
@@ -690,6 +673,10 @@ Section ADQSTEP.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
 
+  Let skenv_link_src := sk_link_src.(Sk.load_skenv).
+  Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
+  Hypothesis (INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
+  Hypothesis (INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)).
 
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
@@ -757,8 +744,6 @@ Section ADQSTEP.
       - right. eapply CIH.
         { unsguard SUST. unfold __GUARD__. des.
           eapply sound_progress; eauto.
-          { unfold p_src in *. clear - Heq1.
-            ii. exploit link_include_defs; eauto. }
           ss. folder. des_ifs. econs 2; eauto. econs; eauto.
         }
         instantiate (1:= sm_init).
@@ -798,7 +783,6 @@ Section ADQSTEP.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
           { unsguard SUST. des_safe. eapply sound_progress; eauto.
-            { ii. exploit link_include_defs; cycle 2; eauto. }
             eapply lift_step; eauto. }
           econs; eauto.
           { ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto. }
@@ -827,10 +811,8 @@ Section ADQSTEP.
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
           { unsguard SUST. des_safe. destruct H.
             - eapply sound_progress_plus; eauto.
-              { ii. exploit link_include_defs; cycle 2; eauto. }
               eapply lift_plus; eauto.
             - des_safe. eapply sound_progress_star; eauto.
-              { ii. exploit link_include_defs; cycle 2; eauto. }
               eapply lift_star; eauto.
           }
           econs; eauto.
@@ -841,7 +823,6 @@ Section ADQSTEP.
           right. eapply CIH; eauto.
           { unsguard SUST. des_safe.
             eapply sound_progress_star; eauto.
-            { ii. exploit link_include_defs; cycle 2; eauto. }
             eapply lift_star; eauto.
           }
           econs; eauto. folder. ss; des_ifs.
@@ -873,7 +854,6 @@ Section ADQSTEP.
         econs 1; eauto.
       + right. eapply CIH; eauto.
         { unsguard SUST. des_safe. eapply sound_progress; eauto.
-          { ii. exploit link_include_defs; cycle 2; eauto. }
           ss. folder. des_ifs_safe. econs; eauto. }
         {
           instantiate (1:= (SimMem.lift sm_arg)).
@@ -941,7 +921,6 @@ Section ADQSTEP.
         econs 4; ss; eauto.
       + right. eapply CIH; eauto.
         { unsguard SUST. des_safe. eapply sound_progress; eauto.
-          { ii. exploit link_include_defs; cycle 2; eauto. }
           ss. folder. des_ifs_safe. econs; eauto. }
         instantiate (1:= sm_after).
         econs; ss; cycle 3.

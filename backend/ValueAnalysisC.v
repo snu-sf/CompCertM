@@ -156,7 +156,7 @@ Section PRSV.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
 
-  Hypothesis INCL: include_defs eq (Sk.of_program fn_sig p) skenv_link.
+  Hypothesis INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p).
 
   Let modsem := RTLC.modsem skenv_link p.
 
@@ -264,10 +264,16 @@ Section PRSV.
                     (IN: p.(defs) id)
                     gv
                     (DEF: (Sk.of_program fn_sig p).(prog_defmap) ! id = Some (Gvar gv))
+                    (DEFINTIVE: ValueAnalysis.definitive_initializer (gvar_init gv) = true)
                   ,
                     exists blk, <<SYMB: skenv_link.(Genv.find_symbol) id = Some blk>> /\
                                         <<DEF: skenv_link.(Genv.find_def) blk = Some (Gvar gv)>>).
-          { i. exploit INCL; eauto. i; des. clarify. esplits; et. }
+          { i. inv INCL. exploit DEFS; eauto. i; des. esplits; eauto.
+            Print link_varinit.
+            Print Instances Linker.
+            inv MATCH. inv H2. inv H0. rewrite DEF0. destruct info1, info2; ss. repeat f_equal; ss.
+            inv H3; ss.
+          }
 
           exploit Genv.invert_find_symbol; eauto. intro SYMB. clarify.
           hexploit (Sk.of_program_prog_defmap p fn_sig id); eauto. intro REL.

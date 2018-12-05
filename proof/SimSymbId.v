@@ -100,8 +100,8 @@ Lemma sim_skenv_monotone: forall
           (SIMSK: sim_sk ss sk_src sk_tgt)
           (LE: le ss sk_src sk_tgt ss_link)
           skenv_src skenv_tgt
-          (LESRC: SkEnv.project skenv_link_src sk_src.(defs) = skenv_src)
-          (LETGT: SkEnv.project skenv_link_tgt sk_tgt.(defs) = skenv_tgt)
+          (LESRC: SkEnv.project skenv_link_src sk_src = skenv_src)
+          (LETGT: SkEnv.project skenv_link_tgt sk_tgt = skenv_tgt)
         ,
           <<SIMSKENV: sim_skenv skenv_src skenv_tgt>>
 .

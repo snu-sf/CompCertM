@@ -35,9 +35,9 @@ Variable sm_link: SimMem.t.
 Variable prog: Clight.program.
 Variable tprog: Csharpminor.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog)
+Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src prog) prog)
                                   prog.(prog_comp_env).
-Let tge: Csharpminor.genv := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
+Let tge: Csharpminor.genv := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (ClightC.modsem2 skenv_link_src prog) (CsharpminorC.modsem skenv_link_tgt tprog) tt sm_link
 .
@@ -52,7 +52,7 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog) ->
   Genv.match_genvs (match_globdef match_fundef match_varinfo prog) ge tge.
 Proof. subst_locals. ss. eapply SimSymbId.sim_skenv_revive; eauto. { ii. inv MATCH; ss. } Qed.
 

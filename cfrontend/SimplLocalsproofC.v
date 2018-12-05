@@ -106,9 +106,9 @@ Variable sm_link: SimMem.t.
 Variable prog: Clight.program.
 Variable tprog: Clight.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog)
+Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src prog) prog)
                                   prog.(prog_comp_env).
-Let tge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog)
+Let tge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog)
                                    tprog.(prog_comp_env).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (ClightC.modsem1 skenv_link_src prog) (ClightC.modsem2 skenv_link_tgt tprog) tt sm_link
@@ -124,7 +124,7 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog) ->
   Genv.match_genvs (match_globdef (fun (ctx: AST.program fundef type) f tf => transf_fundef f = OK tf) eq prog) ge tge /\ prog_comp_env prog = prog_comp_env tprog.
 Proof.
   subst_locals. ss.

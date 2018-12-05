@@ -85,7 +85,7 @@ Section PRESERVATION.
   Let tge := Genv.globalenv tprog.
 
   Definition local_genv (p : Asm.program) :=
-    (skenv_link.(SkEnv.project) p.(defs)).(SkEnv.revive) p.
+    (skenv_link.(SkEnv.project) p).(SkEnv.revive) p.
 
   Lemma match_genvs_sub A B V W R (ge1: Genv.t A V) (ge2: Genv.t B W)
         (MATCHGE: Genv.match_genvs R ge1 ge2)
@@ -212,10 +212,10 @@ Section PRESERVATION.
     eapply in_map_iff in IN. des. clarify. unfold modsem. ss. econs.
 
     cinv match_skenv_link_tge.
-    cinv (SkEnv.project_impl_spec skenv_link (defs x)).
+    cinv (SkEnv.project_impl_spec skenv_link x).
     unfold skenv_link in *.
 
-    assert (SKWF: SkEnv.wf (SkEnv.project (Genv.globalenv sk) (defs x))).
+    assert (SKWF: SkEnv.wf (SkEnv.project (Genv.globalenv sk) x)).
     { eapply SkEnv.project_spec_preserves_wf.
       - eapply Sk.load_skenv_wf.
       - eapply SkEnv.project_impl_spec.

@@ -37,8 +37,8 @@ Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link sken
 Variable prog: RTL.program.
 Variable tprog: RTL.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge: RTL.genv := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
-Let tge: RTL.genv := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
+Let ge: RTL.genv := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
+Let tge: RTL.genv := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog)
                 ((prog.(defs) -1 tprog.(defs)): ident -> Prop) sm_link
@@ -104,7 +104,7 @@ Theorem sim_skenv_meminj_preserves_globals
         sm_arg
         (SIMSKENV: SimSymbDrop.sim_skenv
                      sm_arg ((prog.(defs) -1 tprog.(defs)): ident -> Prop)
-                     (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)))
+                     (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog))
   :
     <<SIMGE: meminj_preserves_globals prog tprog used ge tge (SimMemInj.inj sm_arg)>>
 .

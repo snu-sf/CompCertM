@@ -913,7 +913,7 @@ Next Obligation.
   ii.
   unfold Genv.find_var_info in *. des_ifs.
   exploit DEFSYMB; eauto. i; des.
-  destruct (classic (defs0 id)); cycle 1.
+  destruct (classic (prog.(defs) id)); cycle 1.
   { exploit SYMBDROP; eauto. i; des. clarify. }
   exploit SYMBKEEP; eauto. i; des. rewrite H in *. symmetry in H1.
   inv WF.

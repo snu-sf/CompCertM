@@ -32,7 +32,7 @@ Module Mod.
     get_modsem_skenv_spec: forall
       skenv
       ,
-        <<PROJECTED: SkEnv.project skenv data.(get_sk).(defs) = data.(get_modsem skenv).(ModSem.skenv)>>
+        <<PROJECTED: SkEnv.project skenv data.(get_sk) = data.(get_modsem skenv).(ModSem.skenv)>>
     ;
     get_modsem_skenv_link_spec: forall
         skenv_link
@@ -51,7 +51,7 @@ Module Mod.
         (md: t)
         skenv
     :
-      <<PROJECTED: SkEnv.project_spec skenv ((md.(get_sk) md.(data)).(defs))
+      <<PROJECTED: SkEnv.project_spec skenv ((md.(get_sk) md.(data)))
                                       ((md.(get_modsem) skenv) md.(data)).(ModSem.skenv)>>
   .
   Proof.

@@ -440,7 +440,29 @@ End Sk.
 
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
 
-
+Lemma include_defs_lift
+      F V get_sg
+      (prog: AST.program (AST.fundef F) V) skenv_link
+      (INCL: include_defs eq (Sk.of_program get_sg prog) skenv_link)
+  :
+    <<INCL: include_defs
+              (fun fdef skdef => skdef_of_gdef get_sg fdef = skdef) prog skenv_link>>
+.
+Proof.
+  {
+    ii. exploit (INCL id (skdef_of_gdef get_sg def0)).
+    - clear - DEF.
+      unfold prog_defmap in *. destruct prog. ss.
+      exploit (PTree_Properties.of_list_related (fun e1 e2 => @skdef_of_gdef _ V get_sg e1 = e2)); cycle 1.
+      { i. inv H; rewrite DEF in *; clarify. rewrite <- H1. ss. }
+      {
+        eapply list_forall2_imply.
+        - eapply list_forall2_map.
+        - i. ss. clarify.
+      }
+    - i. des. esplits; eauto.
+  }
+Qed.
 
 
 

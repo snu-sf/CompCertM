@@ -23,9 +23,7 @@ Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
 Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 Variables prog tprog: program.
-Hypothesis INCLUDE: include_defs
-                      (fun fdef skdef => skdef_of_gdef fn_sig fdef = skdef)
-                      prog skenv_link_src.
+Hypothesis INCL: include_defs eq (Sk.of_program fn_sig prog) skenv_link_src.
 
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
@@ -166,26 +164,10 @@ Proof.
     admit "ez".
     (* transf_partial_fundef_external *)
     (* transf_partial_fundef_is_external_fd *)
-  - ii. eapply sim_modsem; eauto.
-
-    { unfold mp. ss. clear - INCLUDE.
-      ii. exploit (INCLUDE id (skdef_of_gdef fn_sig def0)).
-      - clear - DEF.
-        unfold prog_defmap in *. destruct prog. ss.
-        exploit PTree_Properties.of_list_related.
-        { instantiate (5:=fun e1 e2 => skdef_of_gdef fn_sig e1 = e2).
-          instantiate (2:=prog_defs).
-          instantiate (1:=skdefs_of_gdefs fn_sig prog_defs).
-          unfold skdefs_of_gdefs.
-          eapply list_forall2_imply.
-          - eapply list_forall2_map.
-          - i. ss. clarify.
-        }
-        i. inv H; rewrite DEF in *; clarify.
-      - i. des. esplits; eauto.
-    }
+  - ii.
+    eapply sim_modsem; eauto.
 Unshelve.
-  ss.
+  all: ss.
 Qed.
 
 End SIMMOD.

@@ -24,7 +24,6 @@ Local Existing Instance Val.mi_normal.
 
 
 Definition from_list (ids: list ident): IS.t :=
-  (* fold_left (fun s i => IS.add i s) ids IS.empty *)
   fold_right (fun i s => IS.add i s) IS.empty ids
 .
 
@@ -134,6 +133,25 @@ Proof.
     des_sumbool. ss.
 Qed.
 
+(* Definition used': option IS.t := used_globals prog (prog_defmap prog). *)
+
+(* Lemma used'_spec *)
+(*       id *)
+(*       used'' *)
+(*       (SOME: used' = Some used'') *)
+(*   : *)
+(*     <<KEPT: kept used'' id>> <-> <<SPEC: defs tprog id>> *)
+(* . *)
+(* Proof. *)
+(*   unfold used', kept in *. ss. *)
+(*   unfold defs. unfold NW. *)
+(*   split; i; r; des. *)
+(*   - rewrite from_list_spec in *. *)
+(*     des_sumbool. ss. *)
+(*   - rewrite from_list_spec in *. *)
+(*     des_sumbool. ss. *)
+(* Qed. *)
+
 Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
@@ -187,22 +205,11 @@ Theorem sim_skenv_meminj_preserves_globals
 .
 Proof.
   inv SIMSKENV. ss. bar.
-  econs; et.
-  - i. exploit SIMSYMB1; et. i; des. psimpl.
-    esplits; et.
-    admit "D".
+  econs.
+  - i. exploit SIMSYMB1; et. i; des. clarify.
   - i. exploit SIMSYMB2; et.
     { hexploit (used_spec id); et. i; des. tauto. }
-    i; des.
-    inv SIM. psimpl.
-    esplits; et. rewrite H4. repeat f_equal.
-    admit "D".
-  - i. exploit SIMSYMB3; et.
-    i; des.
-    inv SIM; ss. psimpl.
-    esplits; et.
-    rewrite H3. repeat f_equal.
-    admit "D".
+  - eauto.
   - i. unfold ge in H0. exploit Genv_map_defs_def; et. i; des.
     exploit SIMDEF; et. i; des. clarify. psimpl.
     Ltac uo := unfold o_bind, o_map, o_join in *.
@@ -227,45 +234,26 @@ Proof.
       uo. des_ifs_safe.
       erewrite match_prog_def; et. des_ifs.
       exploit IS.mem_1; et. i; clarify.
-    + admit "D".
     + i. eapply used_closed; et.
   - unfold tge. i.
     exploit Genv_map_defs_def; et. i; des.
     uo. des_ifs. bsimpl.
     exploit SIMDEFINV; et. i; des. clarify. psimpl. clear_tac.
     exploit Genv.invert_find_symbol; et. intro SYMBTGT; des.
-    exploit SIMSYMB3; et. i; des. inv SIM. psimpl. clarify.
+    exploit SIMSYMB3; et. i; des.
     exploit Genv.find_invert_symbol; et. intro SYMBSRC.
+    esplits; et.
 
-    rename b into bb.
-
-    assert(delta = 0).
-    { admit "D". }
-    assert(delta0 = 0).
-    { admit "D". }
-    clarify. clear_tac.
     assert(kept used i).
     { apply used_spec. u. des_sumbool. apply prog_defmap_spec; et. }
 
     exploit SIMSYMB2; et.
     { apply used_spec in H1. tauto. }
     i; des.
-    clarify. inv SIM. psimpl.
+    clarify. clear_tac.
 
-    assert(delta = 0). { admit "D". } clarify.
-
-
-    exploit SIMSYMB3; et. i; des.
-    inv SIM. psimpl.
-    assert(delta = 0). { admit "D". } clarify.
-    clear_tac.
-
-    esplits; et.
-
-
-    assert(blk_src = bb).
-    { admit "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!".
-    }
+    assert(blk_src = b).
+    { eapply DISJ; et. }
     clarify.
 
 
@@ -277,6 +265,7 @@ Proof.
 
     destruct TRANSL as [used0 TRANSL0]. des.
     hexploit (match_prog_def _ _ _ TRANSL1 i); et. intro DEFMAP. des_ifs.
+  - eauto.
 Qed.
 
 Theorem sim_modsem

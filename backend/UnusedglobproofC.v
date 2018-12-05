@@ -24,8 +24,57 @@ Local Existing Instance Val.mi_normal.
 
 
 Definition from_list (ids: list ident): IS.t :=
-  fold_left (fun s i => IS.add i s) ids IS.empty
+  (* fold_left (fun s i => IS.add i s) ids IS.empty *)
+  fold_right (fun i s => IS.add i s) IS.empty ids
 .
+
+Lemma from_list_spec
+      x xs
+  :
+    IS.In x (from_list xs) <-> In x xs
+.
+Proof.
+  unfold from_list.
+  split; i.
+  - ginduction xs; ii; ss.
+    { rewrite ISF.empty_iff in *. ss. }
+    rewrite ISF.add_iff in *. des; et.
+  - ginduction xs; ii; ss.
+    rewrite ISF.add_iff in *. des; et.
+Qed.
+
+Fixpoint list_diff X (dec: (forall x0 x1, {x0 = x1} + {x0 <> x1})) (xs0 xs1: list X): list X :=
+  match xs0 with
+  | [] => []
+  | hd :: tl =>
+    if in_dec dec hd xs1
+    then list_diff dec tl xs1
+    else hd :: list_diff dec tl xs1
+  end
+.
+
+Lemma list_diff_spec
+      X dec (xs0 xs1 xs2: list X)
+      (DIFF: list_diff dec xs0 xs1 = xs2)
+  :
+    <<SPEC: forall x0, In x0 xs2 <-> (In x0 xs0 /\ ~ In x0 xs1)>>
+.
+Proof.
+  subst.
+  split; i.
+  - ginduction xs0; ii; des; ss.
+    des_ifs.
+    { exploit IHxs0; et. i; des. esplits; et. }
+    ss. des; clarify.
+    { tauto. }
+    exploit IHxs0; et. i; des. esplits; et.
+  - ginduction xs0; ii; des; ss.
+    des; clarify; des_ifs; ss; try tauto.
+    { exploit IHxs0; et. }
+    { exploit IHxs0; et. }
+Qed.
+
+
 
 
 
@@ -46,7 +95,44 @@ Definition msp: ModSemPair.t :=
 
 (* Definition used: IS.t := from_list (prog.(prog_defmap).(PTree.elements)) *)
 
-Definition used: IS.t := admit "".
+Definition used: IS.t :=
+  (* from_list (list_diff Pos.eq_dec (prog.(prog_defs_names)) (tprog.(prog_defs_names))) *)
+  from_list (tprog.(prog_defs_names))
+.
+
+(* Lemma used_spec *)
+(*       id *)
+(*   : *)
+(*     <<KEPT: kept used id>> <-> <<SPEC: ~ (defs prog id /\ ~ defs tprog id)>> *)
+(* . *)
+(* Proof. *)
+(*   unfold used, kept. ss. *)
+(*   split; i; r; des. *)
+(*   - rewrite from_list_spec in *. *)
+(*     ii. des. *)
+(*     unfold defs in *. des_sumbool. *)
+(*     apply H1. des_sumbool. ss. *)
+(*   - rewrite from_list_spec in *. *)
+(*     apply not_and_or in H. des; ss. *)
+(*     { admit "". } *)
+(*     apply NNPP in H. *)
+(*     unfold defs in *. des_sumbool. ss. *)
+(* Qed. *)
+
+Lemma used_spec
+      id
+  :
+    <<KEPT: kept used id>> <-> <<SPEC: defs tprog id>>
+.
+Proof.
+  unfold used, kept. ss.
+  unfold defs. unfold NW.
+  split; i; r; des.
+  - rewrite from_list_spec in *.
+    des_sumbool. ss.
+  - rewrite from_list_spec in *.
+    des_sumbool. ss.
+Qed.
 
 Inductive match_states
           (sm_init: SimMem.t)
@@ -91,15 +177,6 @@ Proof.
   exploit defs_inject; et. i; des. clarify. psimpl. des_ifs.
 Qed.
 
-Lemma used_spec
-      id
-  :
-    <<KEPT: kept used id>> <-> <<SPEC: ~ (defs prog id /\ ~ defs tprog id)>>
-.
-Proof.
-  admit "".
-Qed.
-
 Theorem sim_skenv_meminj_preserves_globals
         sm_arg
         (SIMSKENV: SimSymbDrop.sim_skenv
@@ -115,7 +192,7 @@ Proof.
     esplits; et.
     admit "D".
   - i. exploit SIMSYMB2; et.
-    { eapply used_spec; et. }
+    { hexploit (used_spec id); et. i; des. tauto. }
     i; des.
     inv SIM. psimpl.
     esplits; et. rewrite H4. repeat f_equal.
@@ -133,18 +210,23 @@ Proof.
     exploit Genv.invert_find_symbol; et. intro SYMBSRC; des.
     exploit SIMSYMB1; et. i; des. psimpl. clear_tac. 
     exploit Genv.find_invert_symbol; et. intro SYMBTGT; des.
-    apply used_spec in KEPT.
+    apply not_and_or in KEPT.
+    des; ss.
+    { clear - Heq1 KEPT. contradict KEPT. unfold defs in *. des_sumbool. apply prog_defmap_spec; et. }
+    apply NNPP in KEPT.
     destruct TRANSL as [used0 TRANSL0]. des.
     assert(used0 = used).
     { admit "Identify Used !!". }
     clarify.
+    assert(IN: IS.In i used).
+    { unfold used. apply from_list_spec. unfold defs in *. ss. des_sumbool. ss. }
     esplits; et.
     + unfold tge.
       unfold SkEnv.revive.
       erewrite Genv_map_defs_def_inv; et.
       uo. des_ifs_safe.
       erewrite match_prog_def; et. des_ifs.
-      r in KEPT. exploit IS.mem_1; et. i; clarify.
+      exploit IS.mem_1; et. i; clarify.
     + admit "D".
     + i. eapply used_closed; et.
   - unfold tge. i.
@@ -163,10 +245,10 @@ Proof.
     { admit "D". }
     clarify. clear_tac.
     assert(kept used i).
-    { apply used_spec. ii. des. apply H2. u. des_sumbool. eapply prog_defmap_spec. et. }
+    { apply used_spec. u. des_sumbool. apply prog_defmap_spec; et. }
 
     exploit SIMSYMB2; et.
-    { apply used_spec. ss. }
+    { apply used_spec in H1. tauto. }
     i; des.
     clarify. inv SIM. psimpl.
 
@@ -258,7 +340,6 @@ Proof.
     + etrans; try apply LEN; et. symmetry. eapply inject_list_length; et.
   - (* call wf *)
     inv MATCH; ss. inv MATCHST; ss.
-    ttttttttttttttttttttttttttttttttttttttttttttttttttttttttt
   - (* call fsim *)
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.

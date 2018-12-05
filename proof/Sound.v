@@ -227,8 +227,8 @@ Module Sound.
         su m0 skenv_link
         (WF: SkEnv.wf skenv_link)
         (SKE: su.(skenv) m0 skenv_link)
-        F V (prog: AST.program F V) skenv0
-        (LE: SkEnv.project_spec skenv_link prog skenv0)
+        defs0 skenv0
+        (LE: SkEnv.project_spec skenv_link defs0 skenv0)
       ,
         <<SKE: su.(skenv) m0 skenv0>>
     ;

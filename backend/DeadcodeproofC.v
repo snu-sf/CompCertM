@@ -25,8 +25,8 @@ Variables prog tprog: program.
 Hypothesis INCLSRC: SkEnv.includes skenv_link_src (Sk.of_program fn_sig prog).
 
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt sm_link
 .
@@ -41,7 +41,7 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
   Genv.match_genvs (match_globdef (fun cu f tf => transf_fundef (romem_for cu) f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. u. des_ifs; ss; unfold bind in *; des_ifs. } Qed.
 

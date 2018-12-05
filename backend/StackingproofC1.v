@@ -310,8 +310,8 @@ Variable prog: Linear.program.
 Variable tprog: Mach.program.
 Hypothesis TRANSF: match_prog prog tprog.
 Variable rao: Mach.function -> Mach.code -> ptrofs -> Prop.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 
 Print Instances SimMem.class.
 Print Instances SimSymb.class.

@@ -238,7 +238,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -342,6 +342,7 @@ Section MODSEM.
     inv DTM. econs; eauto; ii; ss.
     - inv H. inv H0. determ_tac sd_determ_at. esplits; eauto.
       eapply match_traces_preserved; try eassumption. ii; ss.
+      admit "".
     - inv H. exploit sd_traces_at; eauto.
   Qed.
 
@@ -361,7 +362,7 @@ Section MODSEM.
   Proof.
     inv RECEP. econs; eauto; ii; ss.
     - inv H. exploit sr_receptive_at; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
+      { eapply match_traces_preserved; try eassumption. ii; ss. admit "". }
       i; des. esplits; eauto. econs; eauto. admit "See Mach.v for same admit".
     - inv H. exploit sr_traces_at; eauto.
   Qed.
@@ -390,8 +391,7 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    unfold SkEnv.project.
-    rewrite ! Sk.of_program_defs. ss.
+    rewrite Sk.of_program_defs. ss.
   Qed.
 
 End MODULE.

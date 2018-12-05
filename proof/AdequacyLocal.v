@@ -251,8 +251,6 @@ Section SIMGE.
         sm_init mp skenv_src skenv_tgt
         (WFSRC: SkEnv.wf skenv_src)
         (WFTGT: SkEnv.wf skenv_tgt)
-        (INCLSRC: SkEnv.includes skenv_src mp.(ModPair.src).(Mod.sk))
-        (INCLTGT: SkEnv.includes skenv_tgt mp.(ModPair.tgt).(Mod.sk))
         (SIMMP: ModPair.sim mp)
         ss_link
         (LESS: SimSymb.le (ModPair.ss mp) (Mod.get_sk (ModPair.src mp) (Mod.data (ModPair.src mp)))
@@ -269,8 +267,6 @@ Section SIMGE.
     eapply SimSymb.sim_skenv_monotone; revgoals.
     - eapply Mod.get_modsem_skenv_spec.
     - eapply Mod.get_modsem_skenv_spec.
-    - ss.
-    - ss.
     - eauto. (* eapply SimSymb.le_refl. *)
     - apply SIMMP.
     - eauto.

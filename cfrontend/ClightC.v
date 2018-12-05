@@ -46,7 +46,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
   Let ge: genv := Build_genv (skenv.(SkEnv.revive) p) p.(prog_comp_env).
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -165,6 +165,7 @@ Section MODSEM.
   Proof. i.
     inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
     eapply match_traces_preserved; try eassumption. ii; ss.
+    admit "".
   Qed.
 
   Lemma modsem1_receptive
@@ -213,8 +214,7 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    unfold SkEnv.project.
-    rewrite ! CSk.of_program_defs. ss.
+    rewrite CSk.of_program_defs. ss.
   Qed.
 
   Program Definition module2: Mod.t :=
@@ -225,8 +225,7 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    unfold SkEnv.project.
-    rewrite ! CSk.of_program_defs. ss.
+    rewrite CSk.of_program_defs. ss.
   Qed.
 
 End MODULE.

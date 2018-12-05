@@ -90,7 +90,7 @@ Section PRESERVATION.
   Variable sk_link: Sk.t.
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
   Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
-  Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp) cp) cp.(prog_comp_env))
+  Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env))
                            (at level 50, no associativity, only parsing).
   Let ge_cp_link: genv := geof cp_link.
   Let ge_cp0: genv := geof cp0.
@@ -921,7 +921,7 @@ End PRESERVATION.
 Require Import BehaviorsC.
 
 Let geof := fun skenv_link (cp: Csyntax.program) =>
-              (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp) cp) cp.(prog_comp_env)).
+              (Build_genv (SkEnv.revive (SkEnv.project skenv_link (defs cp)) cp) cp.(prog_comp_env)).
 
 Theorem upperbound_a_correct
         (_cp0 _cp1 _cp_link: Csyntax.program) cp0 cp1 cp_link ctx

@@ -175,8 +175,8 @@ Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt sm_link
 .
@@ -191,7 +191,7 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
   Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. clarify. u. des_ifs. } Qed.
 

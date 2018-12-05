@@ -455,10 +455,10 @@ Next Obligation.
   - etransitivity; try apply TGTLE; eauto.
 Qed.
 Next Obligation.
-  set (SkEnv.project skenv_link_src sk_src) as skenv_proj_src.
-  generalize (SkEnv.project_impl_spec skenv_link_src sk_src); intro LESRC.
-  set (SkEnv.project skenv_link_tgt sk_tgt) as skenv_proj_tgt.
-  generalize (SkEnv.project_impl_spec skenv_link_tgt sk_tgt); intro LETGT.
+  set (SkEnv.project skenv_link_src (defs sk_src)) as skenv_proj_src.
+  generalize (SkEnv.project_impl_spec skenv_link_src (defs sk_src)); intro LESRC.
+  set (SkEnv.project skenv_link_tgt (defs sk_tgt)) as skenv_proj_tgt.
+  generalize (SkEnv.project_impl_spec skenv_link_tgt (defs sk_tgt)); intro LETGT.
   exploit SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto.
   i; des.
   inv SIMSKENV. inv LESRC. inv LETGT.

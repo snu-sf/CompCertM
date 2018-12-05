@@ -153,11 +153,9 @@ Module SimSymb.
           ss sk_src sk_tgt
           (SIMSK: sim_sk ss sk_src sk_tgt)
           (LE: le ss sk_src sk_tgt ss_link)
-          (INCLSRC: SkEnv.includes skenv_link_src sk_src)
-          (INCLTGT: SkEnv.includes skenv_link_tgt sk_tgt)
           skenv_src skenv_tgt
-          (LESRC: SkEnv.project skenv_link_src sk_src = skenv_src)
-          (LETGT: SkEnv.project skenv_link_tgt sk_tgt = skenv_tgt)
+          (LESRC: SkEnv.project skenv_link_src sk_src.(defs) = skenv_src)
+          (LETGT: SkEnv.project skenv_link_tgt sk_tgt.(defs) = skenv_tgt)
         ,
           <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>
       ;

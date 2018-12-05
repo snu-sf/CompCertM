@@ -757,8 +757,8 @@ Let asm_ext_unreach_lxsim: forall
     asm skenv_link
     m_src0 m_tgt0
     (GENV: Genv.match_genvs (match_globdef (fun _ : AST.program fundef unit => eq) eq asm)
-                            (SkEnv.revive (SkEnv.project skenv_link asm) asm)
-                            (SkEnv.revive (SkEnv.project skenv_link asm) asm))
+                            (SkEnv.revive (SkEnv.project skenv_link (defs asm)) asm)
+                            (SkEnv.revive (SkEnv.project skenv_link (defs asm)) asm))
     m_src1 m_tgt1
     st_init_src st_init_tgt
   ,

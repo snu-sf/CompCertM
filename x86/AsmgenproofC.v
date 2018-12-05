@@ -22,8 +22,8 @@ Variable prog: Mach.program.
 Variable tprog: Asm.program.
 Hypothesis TRANSF: match_prog prog tprog.
 
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 
 Variable sm_link: SimMem.t.
 

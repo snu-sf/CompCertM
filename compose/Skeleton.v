@@ -420,6 +420,7 @@ Module Sk.
     rewrite map_map. ss.
   Qed.
 
+  Local Opaque prog_defmap.
   Lemma of_program_internals
         F V
         get_sg
@@ -431,12 +432,12 @@ Module Sk.
     unfold internals.
     destruct p; ss.
     apply Axioms.functional_extensionality. intro id; ss.
-    Local Opaque prog_defmap.
     u.
     exploit (of_program_prog_defmap). i. inv H.
     - rewrite <- H2. rewrite <- H1. ss.
     - des_ifs_safe. inv H2; ss. unfold match_fundef in *. des_ifs. des_sumbool. clarify.
   Qed.
+  Local Transparent prog_defmap.
 
   Lemma of_program_internals'
         F V
@@ -459,6 +460,20 @@ Module Sk.
     - u. des_ifs.
     - apply Axioms.functional_extensionality. i; ss.
       rewrite skdef_of_gdef_is_external_gd. ss.
+  Qed.
+
+  Lemma of_program_prog_defmap_eq
+        F V
+        get_sg
+        (p tp : AST.program (AST.fundef F) V)
+        id
+        (EQ: (prog_defmap p) ! id = (prog_defmap tp) ! id)
+    :
+      <<EQ: (prog_defmap (Sk.of_program get_sg p)) ! id = (prog_defmap (Sk.of_program get_sg tp)) ! id>>
+  .
+  Proof.
+    unfold Sk.of_program. unfold prog_defmap in *. ss. unfold skdefs_of_gdefs.
+    rewrite ! prog_defmap_update_snd. rewrite EQ. ss.
   Qed.
 
   Definition empty: t := (mkprogram [] [] 1%positive).

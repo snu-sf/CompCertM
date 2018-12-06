@@ -390,55 +390,6 @@ Definition mp: ModPair.t :=
   ModPair.mk (RTLC.module prog) (RTLC.module tprog) ((prog.(defs) -1 tprog.(defs) -1 (fun id => Pos.eq_dec id tprog.(prog_main))): ident -> Prop)
 .
 
-(* TODO: move to ASTC *)
-Lemma prog_defmap_image
-      F V
-      (p : AST.program F V)
-      id g
-      (GET: (prog_defmap p) ! id = Some g)
-  :
-    <<IN: In id (prog_defs_names p)>>
-.
-Proof.
-  eapply prog_defmap_spec; et.
-Qed.
-
-
-Lemma prog_defmap_update_snd
-      X Y (f: X -> Y) (defs: list (positive * X)) id
-  :
-    (PTree_Properties.of_list (map (update_snd f) defs)) ! id =
-    option_map f ((PTree_Properties.of_list defs) ! id)
-.
-Proof.
-  clear TRANSL. clear_tac.
-  unfold PTree_Properties.of_list.
-  rewrite <- ! fold_left_rev_right in *. rewrite <- map_rev.
-  unfold PTree.elt.
-  abstr (rev defs) xs. clear_tac.
-  generalize id.
-  induction xs; ii; try rewrite PTree.gempty in *; ss.
-  { unfold option_map. rewrite PTree.gempty in *; ss. }
-  destruct a; ss.
-  rewrite PTree.gsspec. des_ifs.
-  { unfold option_map. rewrite PTree.gsspec. des_ifs. }
-  rewrite IHxs. rewrite PTree.gsspec. des_ifs.
-Qed.
-
-Lemma prog_defmap_skelize
-      F V
-      get_sg
-      (p tp : AST.program (AST.fundef F) V)
-      id
-      (EQ: (prog_defmap p) ! id = (prog_defmap tp) ! id)
-  :
-      <<EQ: (prog_defmap (Sk.of_program get_sg p)) ! id = (prog_defmap (Sk.of_program get_sg tp)) ! id>>
-.
-Proof.
-  unfold Sk.of_program. unfold prog_defmap in *. ss. unfold skdefs_of_gdefs.
-  rewrite ! prog_defmap_update_snd. rewrite EQ. ss.
-Qed.
-
 Theorem sim_mod
   :
     ModPair.sim mp
@@ -475,17 +426,7 @@ Proof.
 
       des_ifs.
       unfold fundef in *. rewrite match_prog_def in *.
-      inv REL0; inv REL1; align_opt; ss; try congruence.
-      rewrite H0 in *. clarify.
-      f_equal.
-      clear - H0 match_prog_def H1 H4.
-      unfold Sk.of_program, prog_defmap in *. ss. unfold skdefs_of_gdefs in *. ss.
-      erewrite (prog_defmap_skelize fn_sig prog tprog) in *; cycle 1.
-      { unfold prog_defmap. unfold fundef in *. congruence. }
-      erewrite (prog_defmap_skelize fn_sig tprog prog) in *; cycle 1.
-      { unfold prog_defmap. unfold fundef in *. congruence. }
-      { unfold prog_defmap. unfold fundef in *. congruence. }
-      clarify.
+      erewrite (Sk.of_program_prog_defmap_eq fn_sig prog tprog) in *; ss.
 
     + i. ss. inv TRANSL1.
       specialize (match_prog_def id).

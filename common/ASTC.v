@@ -324,3 +324,36 @@ Proof.
     apply in_map_iff. esplits; eauto. ss.
 Qed.
 
+Lemma prog_defmap_image
+      F V
+      (p : AST.program F V)
+      id g
+      (GET: (prog_defmap p) ! id = Some g)
+  :
+    <<IN: In id (prog_defs_names p)>>
+.
+Proof.
+  eapply prog_defmap_spec; et.
+Qed.
+
+
+Lemma prog_defmap_update_snd
+      X Y (f: X -> Y) (defs: list (positive * X)) id
+  :
+    (PTree_Properties.of_list (map (update_snd f) defs)) ! id =
+    option_map f ((PTree_Properties.of_list defs) ! id)
+.
+Proof.
+  unfold PTree_Properties.of_list.
+  rewrite <- ! fold_left_rev_right in *. rewrite <- map_rev.
+  unfold PTree.elt.
+  abstr (rev defs) xs. clear_tac.
+  generalize id.
+  induction xs; ii; try rewrite PTree.gempty in *; ss.
+  { unfold option_map. rewrite PTree.gempty in *; ss. }
+  destruct a; ss.
+  rewrite PTree.gsspec. des_ifs.
+  { unfold option_map. rewrite PTree.gsspec. des_ifs. }
+  rewrite IHxs. rewrite PTree.gsspec. des_ifs.
+Qed.
+

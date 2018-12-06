@@ -1196,3 +1196,34 @@ Ltac align_opt :=
 .
 (* Ltac clarify0 := repeat (align_opt; progress clarify). *)
 
+Fixpoint list_diff X (dec: (forall x0 x1, {x0 = x1} + {x0 <> x1})) (xs0 xs1: list X): list X :=
+  match xs0 with
+  | [] => []
+  | hd :: tl =>
+    if in_dec dec hd xs1
+    then list_diff dec tl xs1
+    else hd :: list_diff dec tl xs1
+  end
+.
+
+Lemma list_diff_spec
+      X dec (xs0 xs1 xs2: list X)
+      (DIFF: list_diff dec xs0 xs1 = xs2)
+  :
+    <<SPEC: forall x0, In x0 xs2 <-> (In x0 xs0 /\ ~ In x0 xs1)>>
+.
+Proof.
+  subst.
+  split; i.
+  - ginduction xs0; ii; des; ss.
+    des_ifs.
+    { exploit IHxs0; et. i; des. esplits; et. }
+    ss. des; clarify.
+    { tauto. }
+    exploit IHxs0; et. i; des. esplits; et.
+  - ginduction xs0; ii; des; ss.
+    des; clarify; des_ifs; ss; try tauto.
+    { exploit IHxs0; et. }
+    { exploit IHxs0; et. }
+Qed.
+

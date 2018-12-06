@@ -182,8 +182,8 @@ Proof.
       rpapply match_return_states; ss; eauto; ss.
       (* { clear - MWF. inv MWF. ii. apply TGTEXT in H. rr in H. des. ss. } *)
       { eapply match_stacks_le; eauto. eapply match_stacks_bound. eapply match_stacks_extcall; try eapply MS; eauto.
-        - ii. eapply MAX; eauto.
-        - ii. admit "MAX_TGT? in le".
+        - ii. eapply MAXSRC; eauto.
+        - ii. eapply MAXTGT; eauto.
         - eapply Mem.unchanged_on_implies; try eassumption. ii. rr. esplits; eauto.
         - eapply SimMemInj.inject_separated_frozen; et.
         - refl.

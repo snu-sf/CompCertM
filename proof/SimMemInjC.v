@@ -157,6 +157,7 @@ Proof.
     + refl.
     + eapply Mem_unfree_unchanged_on; eauto.
     + eapply frozen_refl.
+    + admit "TODO: MAXTGT".
 Qed.
 
 End ORIGINALS.
@@ -328,6 +329,7 @@ Proof.
       i. ss. des_ifs. apply TGTEXT in H0. u in H0. des.
       exfalso. eapply Mem.fresh_block_alloc; eauto.
     + eapply frozen_refl.
+    + admit "TODO: MAXTGT".
   - ii. u. esplits; eauto.
     + ii.
       exploit Mem.mi_perm; try apply MWF; eauto. i.
@@ -509,6 +511,7 @@ Next Obligation.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply inject_separated_frozen; eauto.
+    + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
   - apply inject_separated_frozen in H5.
     econs; ss.

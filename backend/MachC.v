@@ -28,7 +28,7 @@ Section MACHEXTRA.
     forall f c ofs ofs',
       rao f c ofs ->
       rao f c ofs' ->
-      ofs = ofs'. 
+      ofs = ofs'.
 
   Definition is_external (ge: genv) (st: state): Prop :=
     match st with
@@ -254,7 +254,7 @@ Section MODSEM.
     forall f c ofs ofs',
       rao f c ofs ->
       rao f c ofs' ->
-      ofs = ofs'. 
+      ofs = ofs'.
 
 
   Variable skenv_link: SkEnv.t.
@@ -273,7 +273,7 @@ Section MODSEM.
       stack rs m0 m1 fptr sg vs blk ofs
       (EXTERNAL: Genv.find_funct ge fptr = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
-      (VALS: extcall_arguments rs m0 (parent_sp stack) sg vs)
+      (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
       (RSP: (parent_sp stack) = Vptr blk ofs true)
       (OFSZERO: ofs = Ptrofs.zero)
       (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
@@ -349,7 +349,7 @@ Section MODSEM.
       ModSem.initial_frame := initial_frame;
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external;
-      ModSem.globalenv := ge; 
+      ModSem.globalenv := ge;
       ModSem.skenv := skenv;
     |}
   .

@@ -53,7 +53,7 @@ Proof.
   { i; ss. clarify. }
   intro GENV; des.
   inv SIMSKENVLINK.
- 
+
   econs; ss; eauto.
   { eapply SoundTop.sound_state_local_preservation; eauto. }
   ii; ss.
@@ -129,7 +129,7 @@ Proof.
   { i; ss. clarify. }
   intro GENV; des.
   inv SIMSKENVLINK.
- 
+
   eapply match_states_sim with (index := unit)
                                (sound_state := SoundTop.sound_state)
                                (match_states := fun sm_arg idx st_src0 st_tgt0 sm =>
@@ -490,7 +490,7 @@ Section TRIAL2.
         destruct (is_real_ptr (rs pr)) eqn:ISPTR; cycle 1.
         { ii; ss. rewrite PTR in *. ss. }
 
-        inv STORE.
+        inv STORE. inv H.
         exploit Mem.alloc_result; eauto. i; clarify.
         exploit Mem.nextblock_alloc; eauto. intro SUCC.
 
@@ -511,16 +511,22 @@ Section TRIAL2.
 
         eapply (@Sound.hle_val UnreachC.Unreach); et.
         (* TODO: pull out as a lemma *)
+        inv TYP.
+
         assert(IN: In (rs pr) (Args.vs args)).
-        { clear - ARG VALS0 MR.
+        { clear - ARG VALS0 MR ISPTR.
           r in VALS0.
+          abstr (sig_args (fn_sig fd)) sargs.
           generalize (loc_arguments_one (fn_sig fd)); intro ONES.
-          abstr (loc_arguments (fn_sig fd)) locs. abstr (Args.vs args) vs.
+          abstr (loc_arguments (fn_sig fd)) locs.
+          abstr (Args.vs args) vs.
           ginduction vs; ii; ss; inv VALS0; ss.
-          rewrite in_app_iff in ARG.
+          rewrite in_app_iff in ARG. destruct sargs; inv H.
           des; eauto.
-          exploit ONES; eauto. i; des. destruct a1; ss. des; ss.
-          inv H2. inv H1. left. f_equal. clear - MR. eapply to_mreg_preg_of; eauto.
+          exploit ONES; eauto. i; des. destruct a1; ss. des; ss. clarify.
+          inv H0. inv H3. unfold to_mregset in *.
+          erewrite to_mreg_preg_of in H4; eauto. rewrite H4 in *.
+          unfold typify in *; des_ifs; eauto.
         }
         Fail spc VALS. (* TODO: fix spc *)
         rr in VALS. rewrite Forall_forall in *. eapply VALS; et.
@@ -528,7 +534,7 @@ Section TRIAL2.
       ss.
       esplits; eauto; try refl; swap 2 3.
       { (* store_arguments mle *)
-        inv STORE.
+        inv STORE. inv H.
         exploit Mem.alloc_result; eauto. i; clarify.
         exploit Mem.nextblock_alloc; eauto. intro SUCC.
 
@@ -550,7 +556,7 @@ Section TRIAL2.
       econs; eauto; ss.
       + (* mem *)
 
-        inv STORE.
+        inv STORE. inv H.
         exploit Mem.alloc_result; eauto. i; clarify.
         exploit Mem.nextblock_alloc; eauto. intro SUCC.
 

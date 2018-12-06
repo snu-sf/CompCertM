@@ -31,8 +31,8 @@ Section MACHEXTRA.
 
   Lemma extcall_arguments_dtm
         rs m rsp sg vs0 vs1
-        (ARGS0: Mach.extcall_arguments rs m rsp sg vs0)
-        (ARGS1: Mach.extcall_arguments rs m rsp sg vs1)
+        (ARGS0: extcall_arguments rs m rsp sg vs0)
+        (ARGS1: extcall_arguments rs m rsp sg vs1)
   :
     vs0 = vs1
   .
@@ -42,12 +42,12 @@ Section MACHEXTRA.
 
   Lemma extcall_arguments_length
         rs m rsp sg vs
-        (ARGS: Mach.extcall_arguments rs m rsp sg vs)
+        (ARGS: extcall_arguments rs m rsp sg vs)
     :
       length (loc_arguments sg) = length vs
   .
   Proof.
-    unfold Mach.extcall_arguments in *.
+    unfold extcall_arguments in *.
     abstr (loc_arguments sg) locs.
     ginduction vs; ii; inv ARGS; ss.
     f_equal. erewrite IHvs; eauto.
@@ -1039,7 +1039,9 @@ Proof.
       {
         etransitivity.
         - unfold typify_list. rewrite zip_length. erewrite SimMem.sim_val_list_length; try apply VALS0. ss.
-        - symmetry. rewrite SG. erewrite extcall_arguments_length; eauto with congruence.
+        - symmetry. rewrite SG.
+          (* eapply extcall_arguments_imply in VALS. *)
+          erewrite extcall_arguments_length; eauto with congruence.
           assert((length targs) = (length (sig_args (fn_sig fd)))).
           { erewrite <- extcall_arguments_length; eauto. erewrite loc_arguments_length; eauto. }
           inv TYP. xomega.
@@ -1365,7 +1367,7 @@ Proof.
       ii. exploit DISJ; eauto.
     }
     i; des_safe. rename sm1 into sm_ret.
- 
+
     eexists sm_ret, (Retv.mk _ _). esplits; eauto; cycle 1.
     + econs; ss; eauto.
       * rewrite ONE. ss. specialize (AGREGS mr_res).
@@ -1420,7 +1422,7 @@ End SIMMOD.
 (* (* Section DUMMY_FUNCTION. *) *)
 
 (* (*   Variable sg: signature. *) *)
-  
+
 (* (*   Lemma dummy_function_used_callee_save *) *)
 (* (*     : *) *)
 (* (*     (dummy_function sg).(function_bounds).(used_callee_save) = [] *) *)
@@ -2725,7 +2727,7 @@ End SIMMOD.
 (* (* Section DUMMY_FUNCTION. *) *)
 
 (* (*   Variable sg: signature. *) *)
-  
+
 (* (*   Lemma dummy_function_used_callee_save *) *)
 (* (*     : *) *)
 (* (*     (dummy_function sg).(function_bounds).(used_callee_save) = [] *) *)

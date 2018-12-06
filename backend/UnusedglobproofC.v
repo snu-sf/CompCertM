@@ -26,28 +26,6 @@ Local Existing Instance Val.mi_normal.
 
 
 
-(* TODO: move to CoqlibC *)
-Ltac simpl_bool := unfold Datatypes.is_true in *; unfold is_true in *;
-                   (repeat match goal with
-                           | [ H: true <> true |- _ ] => tauto
-                           | [ H: false <> false |- _ ] => tauto
-                           | [ H: true <> _ |- _ ] => symmetry in H
-                           | [ H: false <> _ |- _ ] => symmetry in H
-                           | [ H: _ <> true |- _ ] => apply not_true_is_false in H
-                           | [ H: _ <> false |- _ ] => apply not_false_is_true in H
-                           end);
-                   autorewrite with simpl_bool in *.
-Ltac bsimpl := simpl_bool.
-
-
-
-
-
-
-
-
-
-
 
 Definition from_list (ids: list ident): IS.t :=
   fold_right (fun i s => IS.add i s) IS.empty ids
@@ -220,14 +198,13 @@ Proof.
   - i. exploit SIMSYMB1; et. i; des. clarify.
   - i. exploit SIMSYMB2; et.
     { ii. des. unfold used_set in *. ss. des_sumbool.
-      bsimpl. des_sumbool.
+      align_bool; bsimpl. des_sumbool.
       des; clarify.
       unfold defs in *. des_sumbool. ss.
     }
   - eauto.
   - i. unfold ge in H0. exploit Genv_map_defs_def; et. i; des.
     exploit SIMDEF; et. i; des. clarify. psimpl.
-    Ltac uo := unfold o_bind, o_map, o_join in *.
     uo. des_ifs_safe.
     exploit Genv.invert_find_symbol; et. intro SYMBSRC; des.
     exploit SIMSYMB1; et. i; des. psimpl. clear_tac. 
@@ -270,7 +247,7 @@ Proof.
 
     exploit SIMSYMB2; et.
     { unfold used_set in *. clear - H1. des_sumbool.
-      ii. des. bsimpl. des_sumbool. ss. des; clarify.
+      ii. des. align_bool; bsimpl. des_sumbool. ss. des; clarify.
       unfold defs in *. des_sumbool. ss.
     }
     i; des.
@@ -312,7 +289,7 @@ Proof.
     (* hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des. *)
     (* exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des. *)
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
-    { eapply sim_skenv_meminj_preserves_globals; et. }
+    { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     des.
     eexists. exists sm_arg.
     esplits; eauto.
@@ -339,7 +316,7 @@ Proof.
     (* hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des. *)
     (* exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des. *)
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
-    { eapply sim_skenv_meminj_preserves_globals; et. }
+    { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     exploit find_funct_inject; et. i; des. clarify.
     (* exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder. *)
     (* hexploit (@sim_external_inject_eq_fsim); try apply FINDF; eauto. clear FPTR. intro FPTR. *)
@@ -361,7 +338,7 @@ Proof.
     admit "".
   - (* step *)
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).
-    { eapply sim_skenv_meminj_preserves_globals; et. }
+    { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
 
     esplits; eauto.
     { apply modsem_receptive. }
@@ -407,7 +384,7 @@ Proof.
       {
         rewrite <- (Sk.of_program_defs fn_sig) in H.
         inv REL0; align_opt; cycle 1.
-        { exploit prog_defmap_image; et. i; des. unfold defs in *. bsimpl. des_sumbool. ss. }
+        { exploit prog_defmap_image; et. i; des. unfold defs in *. align_bool; bsimpl. align_bool. des_sumbool. ss. }
         unfold fundef in *.
         rewrite H1 in *.
         inv REL1; align_opt; ss; clarify.
@@ -433,14 +410,14 @@ Proof.
       generalize (Sk.of_program_prog_defmap prog fn_sig id). intro REL0.
       generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL1.
 
-      des. bsimpl. des_sumbool.
+      des. align_bool; bsimpl. align_bool. des_sumbool.
       inv REL1; ss; align_opt.
       rewrite <- (Sk.of_program_defs fn_sig) in DROP1.
       exploit prog_defmap_image; et. i; des. unfold defs in *; ss. des_sumbool. ss.
 
     + ii. unfold privs. bsimpl. des. bsimpl. des_sumbool.
       rewrite (Sk.of_program_defs fn_sig). split; ss.
-      unfold NW. bsimpl. des_sumbool.
+      unfold NW. align_bool; bsimpl. des_sumbool.
       ii.
 
       exploit used_public; et. intro IN. unfold used_set in IN. des_sumbool. ss. des; clarify; ss.

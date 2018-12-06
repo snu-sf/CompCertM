@@ -25,29 +25,7 @@ Ltac genext := try (by eapply Genv.genv_defs_range; eauto);
                try (by eapply Genv.genv_symb_range; eauto)
 .
 
-Lemma some_injective
-      X (x0 x1: X)
-      (EQ: Some x0 = Some x1)
-  :
-    x0 = x1
-.
-Proof. injection EQ. auto. Qed.
 
-(* TODO: Move to coqlibC *)
-Ltac align_opt :=
-  repeat
-    match goal with
-    (* remove trivial things *)
-    | H: Some ?x = Some ?y |- _ => rewrite some_injective in H
-    | H: Some _ = None |- _ => by (inversion H)
-    | H: None = Some _ |- _ => by (inversion H)
-    | H: None = None |- _ => clear H
-    (* align *)
-    | H: Some _ = ?x |- _ => symmetry in H
-    | H: None = ?x |- _ => symmetry in H
-    end
-.
-(* Ltac clarify0 := repeat (align_opt; progress clarify). *)
 
 
 

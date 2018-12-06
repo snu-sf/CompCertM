@@ -33,16 +33,6 @@ Local Existing Instance Val.mi_normal.
 (* Require SimMemInjC. *)
 (* Require SoundTop. *)
 
-Lemma unit_ord_wf
-  :
-    well_founded (bot2: unit -> unit -> Prop)
-.
-Proof.
-  ii. induction a; ii; ss.
-Qed.
-
-
-
 Section SIMMODSEM.
   
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
@@ -58,11 +48,12 @@ Definition msp: ModSemPair.t :=
 
 Inductive match_states
           (sm_init: SimMem.t)
-          (idx: unit) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
+          (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Inliningproof.match_states prog ge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
+    (MCOMPATIDX: idx = Inliningproof.measure st_src0)
 .
 
 Theorem make_match_genvs :
@@ -75,11 +66,12 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := top4)
-                               (* (sound_state := fun su0 m0 st0 => sound_state prog ge su0 st0) *)
-  ;
+  (* rr in TRANSL. destruct TRANSL as [TRANSL0 TRANSL1]. *)
+  eapply match_states_sim with (match_states := match_states)
+                               (match_states_at := fun _ _ => eq)
+                               (sound_state := SoundTop.sound_state);
     eauto; ii; ss.
-  - eapply unit_ord_wf.
+  - eapply Nat.lt_wf_0.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
     destruct args_src, args_tgt; ss.
@@ -180,7 +172,7 @@ Proof.
     inv AFTERSRC.
     inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss; cycle 1.
-    { admit "Callstate-state". }
+    { inv HISTORY. inv CALLTGT. }
     inv HISTORY. ss. clear_tac.
     esplits; eauto.
     + econs; eauto.
@@ -189,16 +181,13 @@ Proof.
       inv MCOMPAT. clear_tac.
       rpapply match_return_states; ss; eauto; ss.
       (* { clear - MWF. inv MWF. ii. apply TGTEXT in H. rr in H. des. ss. } *)
-      { eapply match_stacks_le. eapply match_stacks_bound. eapply match_stacks_extcall; try eapply MS.
-        - admit "A".
-        - admit "A".
-        - admit "A".
-        - admit "A".
-        - admit "A".
-        - admit "A".
-        - admit "A".
-        - admit "A".
-        - eapply SimMemInj.le'_PreOrder_obligation_2. eapply MLE. eauto.
+      { eapply match_stacks_le; eauto. eapply match_stacks_bound. eapply match_stacks_extcall; try eapply MS; eauto.
+        - ii. eapply MAX; eauto.
+        - ii. admit "MAX_TGT? in le".
+        - eapply Mem.unchanged_on_implies; try eassumption. ii. rr. esplits; eauto.
+        - eapply SimMemInj.inject_separated_frozen; et.
+        - refl.
+        - eapply Mem.unchanged_on_nextblock; eauto.
       }
       { eapply inject_typify_opt; eauto. }
       { eapply MWFAFTR. }
@@ -210,17 +199,17 @@ Proof.
     { inv MS0; clarify. }
     inv MCOMPAT; ss.
     eexists sm0. esplits; ss; eauto. refl.
-  - exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
-
+  - (* step *)
+    exploit make_match_genvs; eauto. { inv SIMSKENV. ss. } intro SIMGE. des.
     esplits; eauto.
     { apply modsem_receptive. }
     inv MATCH.
     ii. hexploit (@step_simulation prog _ ge tge); eauto.
-    { unfold ge.
-      assert (SkEnv.genv_precise (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog) prog).
-      admit "TODO".
+    { assert (SkEnv.genv_precise (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog) prog).
+      { admit "ez: Using SkEnv.revive_precise". }
       inv H. econs; ii.
-      - exploit FIND_MAP; eauto. i. inv H0. des. exists x. split; eauto. admit "TODO".
+      - exploit FIND_MAP; eauto. i. inv H0. des. exists x. split; eauto. des_ifs. ii.
+        admit "ez".
       - eapply FIND_MAP_INV; eauto.
     }
     i; des.
@@ -230,7 +219,7 @@ Proof.
         { inv H0; ss; inv MCOMPAT; ss. }
         { inv H0; ss; inv MCOMPAT; ss. }
     + esplits; eauto.
-      * right. subst tr. split. econs. unfold bot2. admit "A".
+      * right. subst tr. split. econs. eauto.
       * assert(MCOMPAT: get_mem st_src1 = SimMem.src sm1 /\ get_mem st_tgt0 = SimMem.tgt sm1).
         { inv H1; inv MCOMPAT; ss. }
         des. econs; eauto; ss.

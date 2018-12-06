@@ -220,6 +220,22 @@ Proof.
   des. red. xomega.
 Qed.
 
+Lemma inject_list_typify_list
+      `{Val.meminj_ctx}
+      inj xs ys tys
+      (LEN: length tys = length xs)
+      (LD: Val.inject_list inj xs ys)
+  :
+    <<LD: Val.inject_list inj (typify_list xs tys) (typify_list ys tys)>>
+.
+Proof.
+  ginduction LD; ii; ss.
+  unfold typify_list. ss. des_ifs. ss.
+  econs; eauto.
+  - eapply inject_typify; eauto.
+  - eapply IHLD; eauto.
+Qed.
+
 Lemma inject_list_length
       `{Val.meminj_ctx}
       j xs ys

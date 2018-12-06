@@ -536,6 +536,7 @@ As we don't want to change 'Unusedglob.v', we might remove the notion of 'good_p
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply inject_separated_frozen; eauto.
     + ii. eapply external_call_max_perm; eauto.
+    + ii. eapply external_call_max_perm; eauto.
   - apply inject_separated_frozen in H5.
     econs; ss.
     + eapply after_private_src; ss; eauto.

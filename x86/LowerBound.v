@@ -4,20 +4,12 @@ Require Import Locations Stacklayout Conventions Linking.
 (** newly added **)
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
-Require Import Skeleton ModSem Mod sflib MachExtra AsmC Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC MemoryC2 MemoryC3 Lia LinkingC2 mktac.
+Require Import Skeleton ModSem Mod sflib StoreArguments AsmC Sem Syntax LinkingC Program SemProps.
+Require Import GlobalenvsC MemoryC2 LowerBoundExtra Lia LinkingC2 mktac MemdataC LocationsC.
 
 Set Implicit Arguments.
 
 Local Opaque Z.mul.
-
-Lemma f_hequal A (B : A -> Type) (f : forall a, B a)
-      a1 a2 (EQ : a1 = a2)
-  :
-    f a1 ~= f a2.
-Proof.
-  destruct EQ. econs.
-Qed.
 
 Record sub_match_genvs A B V W (R: globdef A V -> globdef B W -> Prop)
        (ge1: Genv.t A V) (ge2: Genv.t B W): Prop :=
@@ -31,16 +23,6 @@ Record sub_match_genvs A B V W (R: globdef A V -> globdef B W -> Prop)
 
 Definition match_prog (sk: Sk.t) (tprog: Asm.program) : Prop
   := match_program (fun cu tf f => tf = AST.transf_fundef fn_sig f) eq sk tprog.
-
-Lemma list_forall2_rev A B R (la: list A) (lb: list B)
-      (FORALL: list_forall2 R la lb)
-  :
-    list_forall2 (flip R) lb la.
-Proof.
-  generalize dependent lb. induction la; i; eauto.
-  - inv FORALL. econs.
-  - inv FORALL. econs; eauto.
-Qed.
 
 Lemma module_match_prog p
   :
@@ -124,7 +106,7 @@ Section PRESERVATION.
       Genv.match_genvs R2 ge1 ge2.
   Proof.
     inv MATCHGE. econs; i; ss; eauto.
-    minv (mge_defs b).
+    cinv (mge_defs b).
     - econs 1.
     - econs 2. eapply LE; eauto.
   Qed.
@@ -158,7 +140,7 @@ Section PRESERVATION.
     :
       prog_public sk = prog_public tprog.
   Proof.
-    minv MATCH_PROG. des. eauto.
+    cinv MATCH_PROG. des. eauto.
   Qed.
 
   Lemma genv_public_eq
@@ -174,7 +156,7 @@ Section PRESERVATION.
     :
       prog_main sk = prog_main tprog.
   Proof.
-    minv MATCH_PROG. des. eauto.
+    cinv MATCH_PROG. des. eauto.
   Qed.
 
   Lemma match_skenv_link_tge :
@@ -229,8 +211,8 @@ Section PRESERVATION.
     rewrite list_map_compose in IN. ss.
     eapply in_map_iff in IN. des. clarify. unfold modsem. ss. econs.
 
-    minv match_skenv_link_tge.
-    minv (SkEnv.project_impl_spec skenv_link (defs x)).
+    cinv match_skenv_link_tge.
+    cinv (SkEnv.project_impl_spec skenv_link (defs x)).
     unfold skenv_link in *.
 
     assert (SKWF: SkEnv.wf (SkEnv.project (Genv.globalenv sk) (defs x))).
@@ -274,11 +256,11 @@ Section PRESERVATION.
       destruct (classic (defs x i)); cycle 1.
       { eapply DEFDROP in EQ; eauto. des. clarify. }
 
-      mset DEFKEEP EQ; eauto. des.
+      cset DEFKEEP EQ; eauto. des.
 
       rewrite FIND1 in H0.
 
-      minv (mge_defs b).
+      cinv (mge_defs b).
       { unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify. }
 
       unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify.
@@ -320,7 +302,7 @@ Section PRESERVATION.
   Proof.
     rewrite <- senv_definition_FILLIT. ss.
     unfold Genv.public_symbol in *.
-    minv match_skenv_link_tge.
+    cinv match_skenv_link_tge.
     fold tge. ss. unfold fundef.
     unfold Genv.find_symbol in *. rewrite mge_symb.
     des_ifs. rewrite genv_public_eq. auto.
@@ -331,7 +313,7 @@ Section PRESERVATION.
     Genv.find_symbol tge (prog_main tprog).
   Proof.
     unfold Genv.find_symbol in *.
-    minv match_skenv_link_tge.
+    cinv match_skenv_link_tge.
     rewrite mge_symb. f_equal.
     eapply main_eq.
   Qed.
@@ -349,9 +331,9 @@ Section PRESERVATION.
   Proof.
     inv LE.
     unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs.
-    mset sub_mge_defs0 Heq0. des.
-    minv match_skenv_link_tge.
-    minv (mge_defs b).
+    cset sub_mge_defs0 Heq0. des.
+    cinv match_skenv_link_tge.
+    cinv (mge_defs b).
     - rewrite Heq in *. clarify.
     - rewrite Heq in *. clarify.
       unfold skdef_of_gdef, fundef in *. rewrite FIND in *. des_ifs.
@@ -455,11 +437,11 @@ Section PRESERVATION.
         Genv.find_funct_ptr tge b_tgt = Some (External ef).
     Proof.
       unfold System.globalenv in *.
-      minv match_skenv_link_tge.
+      cinv match_skenv_link_tge.
 
       replace b_tgt with b_src; cycle 1.
       { unfold Genv.find_funct_ptr in FIND. des_ifs.
-        minv SKINJ. exploit DOMAIN.
+        cinv SKINJ. exploit DOMAIN.
         - instantiate (1:= b_src).
           assert (SkEnv.wf skenv_link).
           { apply Sk.load_skenv_wf. }
@@ -470,7 +452,7 @@ Section PRESERVATION.
       }
 
       unfold Genv.find_funct_ptr, Genv.find_def, skdef_of_gdef, fundef in *.
-      minv (mge_defs b_src); des_ifs.
+      cinv (mge_defs b_src); des_ifs.
     Qed.
 
     Lemma system_receptive_at st frs
@@ -1357,7 +1339,7 @@ Section PRESERVATION.
           specialize (mi_freeblocks _ (Plt_strict (Mem.nextblock m_src))).
           clarify.
       + eapply typecheck_intro; eauto.
-        rewrite MachExtra.sig_args_length.
+        rewrite sig_args_length.
         unfold extcall_arguments in *.
         symmetry. eapply list_forall2_length; eauto.
       + eapply memcpy_store_arguments; ss; eauto.

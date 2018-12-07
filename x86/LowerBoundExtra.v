@@ -108,7 +108,7 @@ Proof.
   destruct (classic (arg_copy_reg sg args rs (to_preg mr) = rs (to_preg mr))); eauto.
   exploit arg_copy_reg_spec; eauto. i. des.
   rewrite to_preg_to_mreg in MR. clarify.
-  exploit AsmExtra.extcall_args_callee_save_disjoint; eauto.
+  exploit AsmExtra.loc_args_callee_save_disjoint; eauto.
   intros [].
 Qed.
 

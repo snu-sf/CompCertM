@@ -6,7 +6,7 @@ Require Import Asmgen Asmgenproof0 Asmgenproof1.
 Require Import sflib.
 (* newly added *)
 Require Export Asmgenproof AsmgenproofC0 AsmgenproofC1.
-Require Import ModSem SimModSem SimSymbId SimMemExt SimSymbId MemoryC ValuesC.
+Require Import SimModSem SimMemExt SimSymbId MemoryC ValuesC MemdataC LocationsC StoreArguments.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.
 Require SoundTop.
@@ -152,17 +152,14 @@ Proof.
     inv INITTGT. des. ss. clarify. inv RAPTR.
 
     assert (SRCSTORE: exists rs_src m_src,
-               MachExtra.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
+               StoreArguments.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
            agree_eq rs_src (Vptr (Mem.nextblock src)
                           Ptrofs.zero true) rs (fn_sig fd) /\ Mem.extends m_src m).
     {
       inv TYP.
       exploit store_arguments_parallel_extends.
-      - econs; try eassumption.
-        instantiate (1:= typify_list vs0 (sig_args (fn_sig fd))).
-        eapply typify_has_type_list.
-        eauto.
-        (* erewrite lessdef_list_length; eauto. *)
+      - eapply typify_has_type_list. eauto.
+      - eauto.
       - instantiate (1:= typify_list vs (sig_args (fn_sig fd))).
         eapply lessdef_list_typify_list; eauto.
         erewrite lessdef_list_length; eauto.
@@ -257,13 +254,12 @@ Proof.
                    (<<INPC: pr = PC>>) \/
                    (<<INRSP: pr = RSP>>)>>)).
     {
-      exploit MachExtra.store_arguments_progress.
-      - instantiate (1:=typify_list (Args.vs args_tgt) (sig_args (fn_sig fd_tgt))).
-        econs.
-        + eapply typify_has_type_list.
-          erewrite <- lessdef_list_length; eauto.
-          erewrite SIG. eauto.
-        + rewrite SIG. eauto.
+      exploit StoreArguments.store_arguments_progress.
+      - instantiate (2:=typify_list (Args.vs args_tgt) (sig_args (fn_sig fd_tgt))).
+        eapply typify_has_type_list.
+        erewrite <- lessdef_list_length; eauto.
+        erewrite SIG. eauto.
+      - erewrite SIG. eauto.
       - i. des.
         exists ((to_pregset (set_regset_undef rs0 (fn_sig fd_tgt)))
                   #PC <- (Args.fptr args_tgt)
@@ -356,7 +352,7 @@ Proof.
       * inv INITRS. inv AG. i.
         { eapply Val.lessdef_trans.
           - erewrite <- agree_mregs_eq0; auto. ii.
-            eapply extcall_args_callee_save_disjoint; eauto.
+            eapply loc_args_callee_save_disjoint; eauto.
           - eauto.
         }
       * inv INITRS. inv STACKS; [|inv H7]; rewrite H0. ss.

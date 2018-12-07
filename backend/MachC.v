@@ -13,7 +13,7 @@ Require Import Conventions.
 Require Stacklayout.
 (** newly added **)
 Require Export Mach.
-Require MachExtra. Include MachExtra.
+Require Import StoreArguments.
 Require Import Skeleton Mod ModSem.
 Require Import Simulation Integers.
 

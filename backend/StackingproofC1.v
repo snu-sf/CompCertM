@@ -9,7 +9,7 @@ Local Open Scope string_scope.
 Local Open Scope sep_scope.
 
 (* newly added *)
-Require Export StackingproofC0.
+Require Export StackingproofC0 StoreArguments.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC ArgPassing MatchSimModSem.
 Require Import Conventions1C.
@@ -371,7 +371,7 @@ Proof. unfold transf_function in *. des_ifs. Qed.
 Lemma init_match_frame_contents_depr
       sm_arg sg
       m_tgt0 rs vs_src vs_tgt ls
-      (STORE: MachC.store_arguments sm_arg.(SimMemInj.tgt) rs vs_tgt sg m_tgt0)
+      (STORE: StoreArguments.store_arguments sm_arg.(SimMemInj.tgt) rs vs_tgt sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
       (LS: LocationsC.fill_arguments (locset_copy rs) vs_src (loc_arguments sg) = Some ls)
       (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
@@ -433,7 +433,7 @@ Qed.
 Lemma init_match_frame_contents
       sm_arg sg
       m_tgt0 rs vs_src vs_tgt ls
-      (STORE: MachC.store_arguments sm_arg.(SimMemInj.tgt) rs (typify_list vs_tgt sg.(sig_args)) sg m_tgt0)
+      (STORE: StoreArguments.store_arguments sm_arg.(SimMemInj.tgt) rs (typify_list vs_tgt sg.(sig_args)) sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
       (LS: LocationsC.fill_arguments (locset_copy rs) (typify_list vs_src sg.(sig_args)) (loc_arguments sg) = Some ls)
       (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
@@ -464,26 +464,29 @@ Proof.
         exploit ONES; eauto. i.
         destruct a; ss.
         des; ss; clarify.
-        * inv VALS.
-          Ltac extcall_tac :=
-            repeat match goal with
-            | [ H: extcall_arg_pair _ _ _ (One _) _ |- _ ] => inv H
-            | [ H: extcall_arg _ _ _ (S _ _ _) _ |- _ ] => inv H
-            | [ H: extcall_arg _ _ _ (R _) _ |- _ ] => inv H
-            end
-          .
-          extcall_tac.
-          unfold typify_list in *.
-          destruct vs_src; ss. des_ifs. cbn in *. psimpl. zsimpl. inv SIMVS.
-          rewrite Ptrofs.unsigned_repr in *; cycle 1.
-          { split; try lia. unfold Ptrofs.max_unsigned.
-            generalize (typesize_pos ty); i. xomega.
-          }
-          esplits; eauto. rewrite <- H3. ss. clarify.
-          eapply inject_typify; eauto.
         * inv SIMVS. inv VALS.
           unfold typify_list in *. ss. des_ifs.
-          eapply IHlocs; eauto. inv VALS; ss. eauto.
+          eapply IHlocs; eauto.
+          (* inv VALS; ss. eauto. *)
+          admit "". admit "".
+        * inv VALS.
+          admit "".
+          (* Ltac extcall_tac := *)
+          (*   repeat match goal with *)
+          (*   | [ H: extcall_arg_pair _ _ _ (One _) _ |- _ ] => inv H *)
+          (*   | [ H: extcall_arg _ _ _ (S _ _ _) _ |- _ ] => inv H *)
+          (*   | [ H: extcall_arg _ _ _ (R _) _ |- _ ] => inv H *)
+          (*   end *)
+          (* . *)
+          (* extcall_tac. *)
+          (* unfold typify_list in *. *)
+          (* destruct vs_src; ss. des_ifs. cbn in *. psimpl. zsimpl. inv SIMVS. *)
+          (* rewrite Ptrofs.unsigned_repr in *; cycle 1. *)
+          (* { split; try lia. unfold Ptrofs.max_unsigned. *)
+          (*   generalize (typesize_pos ty); i. xomega. *)
+          (* } *)
+          (* esplits; eauto. rewrite <- H3. ss. clarify. *)
+          (* eapply inject_typify; eauto. *)
       + exploit OUT; eauto. i; des. ss. rewrite H0.
         exploit (Mem.valid_access_load m_tgt0 (chunk_of_type ty)); cycle 1.
         { i; des. esplits; eauto. }
@@ -504,6 +507,7 @@ Proof.
   { ss. }
   ss.
   admit "ge relax - sim_skenv_inj - ez".
+Unshelve. all: eauto.
 Qed.
 
 Lemma after_external_parallel_rule

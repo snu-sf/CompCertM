@@ -12,7 +12,7 @@ Require Import LocationsC.
 Require Import Conventions.
 Require Stacklayout.
 (** newly added **)
-Require Import Mach mktac.
+Require Import Mach mktac MemdataC.
 
 Ltac my_tac :=
   match goal with
@@ -20,6 +20,18 @@ Ltac my_tac :=
     let name := fresh "A" in destruct x eqn:name; ss; subst;
                              try rewrite andb_true_iff in *; des; des_sumbool; subst
   end.
+
+Definition agree `{CTX: Val.meminj_ctx}  (j: meminj) (rs0 rs1: Mach.regset) : Prop :=
+  forall mr, Val.inject j (rs0 mr) (rs1 mr).
+
+(* TODO: remove same lemma in AsmregsC *)
+Lemma typesize_chunk
+      ty
+  :
+    size_chunk (chunk_of_type ty) =
+    4 * ty.(typesize)
+.
+Proof. destruct ty; ss. Qed.
 
 Section STOREARGUMENTS.
 
@@ -48,11 +60,57 @@ Section STOREARGUMENTS.
     :
       Val_longofwords' Vundef Vundef Vundef.
 
+  Inductive extcall_arg (rs: Mach.regset) (m: mem) (sp: val) : loc -> val -> Prop :=
+  | extcall_arg_reg: forall r,
+      extcall_arg rs m sp (R r) (rs r)
+  | extcall_arg_stack: forall ofs ty v,
+      Mem.loadv
+        (chunk_of_type ty) m
+        (Val.offset_ptr sp (Ptrofs.repr (Stacklayout.fe_ofs_arg + 4 * ofs))) = Some v ->
+      forall (UNDEFS: forall blk stack_ofs (UNDEF: v = Vundef)
+                             (ADDR: sp = Vptr blk stack_ofs true),
+                 memval_undefs (chunk_of_type ty) (m.(Mem.mem_contents)!!blk)
+                               (Ptrofs.unsigned stack_ofs + (Stacklayout.fe_ofs_arg + 4 * ofs))),
+        extcall_arg rs m sp (S Outgoing ofs ty) v
+  .
+
+  Inductive extcall_arg_pair (rs: Mach.regset) (m: mem) (sp: val) : rpair loc -> val -> Prop :=
+  | extcall_arg_one: forall l v,
+      extcall_arg rs m sp l v ->
+      extcall_arg_pair rs m sp (One l) v
+  | extcall_arg_twolong: forall hi lo vhi vlo v,
+      extcall_arg rs m sp hi vhi ->
+      extcall_arg rs m sp lo vlo ->
+      forall (LONG: Val_longofwords' vhi vlo v),
+        extcall_arg_pair rs m sp (Twolong hi lo) v.
+
+  Definition extcall_arguments
+             (rs: Mach.regset) (m: mem) (sp: val) (sg: signature) (args: list val) : Prop :=
+    list_forall2 (extcall_arg_pair rs m sp) (loc_arguments sg) args.
+
+  Inductive store_arguments (m0: mem) (rs: Mach.regset) (vs: list val) (sg: signature) (m2: mem): Prop :=
+  | store_arguments_intro
+      m1 blk
+      (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
+      (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs)
+      (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk
+                                            then (* ~ (0 <= ofs < 4 * size_arguments sg) *) False
+                                            else True) m1 m2)
+      (NB: m1.(Mem.nextblock) = m2.(Mem.nextblock))
+      (PERM: Mem.range_perm m2 blk 0 (4 * size_arguments sg) Cur Freeable)
+  .
+
+End STOREARGUMENTS.
+
+
+Section STOREARGUMENTS_PROPERTY.
+
+
   Lemma store_undef_memval_undefs chunk m0 m1 blk ofs
         (STORE: Mem.store chunk m0 blk ofs Vundef = Some m1)
         (OFS: 0 <= ofs <= Ptrofs.max_unsigned)
-    :
-      memval_undefs chunk (m1.(Mem.mem_contents)!!blk) ofs.
+  :
+    memval_undefs chunk (m1.(Mem.mem_contents)!!blk) ofs.
   Proof.
     eapply Mem.store_mem_contents in STORE. ii; eauto. rewrite STORE.
     i. rewrite PMap.gss.
@@ -89,33 +147,6 @@ Section STOREARGUMENTS.
       + ii. eapply PERM. lia.
   Qed.
 
-  Inductive extcall_arg (rs: Mach.regset) (m: mem) (sp: val) : loc -> val -> Prop :=
-  | extcall_arg_reg: forall r,
-      extcall_arg rs m sp (R r) (rs r)
-  | extcall_arg_stack: forall ofs ty v,
-      Mem.loadv
-        (chunk_of_type ty) m
-        (Val.offset_ptr sp (Ptrofs.repr (Stacklayout.fe_ofs_arg + 4 * ofs))) = Some v ->
-      forall (UNDEFS: forall blk stack_ofs (UNDEF: v = Vundef)
-                             (ADDR: sp = Vptr blk stack_ofs true),
-                 memval_undefs (chunk_of_type ty) (m.(Mem.mem_contents)!!blk)
-                               (Ptrofs.unsigned stack_ofs + (Stacklayout.fe_ofs_arg + 4 * ofs))),
-        extcall_arg rs m sp (S Outgoing ofs ty) v
-  .
-
-  Inductive extcall_arg_pair (rs: Mach.regset) (m: mem) (sp: val) : rpair loc -> val -> Prop :=
-  | extcall_arg_one: forall l v,
-      extcall_arg rs m sp l v ->
-      extcall_arg_pair rs m sp (One l) v
-  | extcall_arg_twolong: forall hi lo vhi vlo v,
-      extcall_arg rs m sp hi vhi ->
-      extcall_arg rs m sp lo vlo ->
-      forall (LONG: Val_longofwords' vhi vlo v),
-        extcall_arg_pair rs m sp (Twolong hi lo) v.
-
-  Definition extcall_arguments
-             (rs: Mach.regset) (m: mem) (sp: val) (sg: signature) (args: list val) : Prop :=
-    list_forall2 (extcall_arg_pair rs m sp) (loc_arguments sg) args.
 
   Lemma longofwords_imply vh vl v
         (LONG: Val_longofwords' vh vl v)
@@ -125,350 +156,36 @@ Section STOREARGUMENTS.
     inv LONG; clarify.
   Qed.
 
-  Inductive store_arguments (m0: mem) (rs: Mach.regset) (vs: list val) (sg: signature) (m2: mem): Prop :=
-  | store_arguments_intro
-      m1 blk
-      (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
-      (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs)
-      (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk
-                                            then (* ~ (0 <= ofs < 4 * size_arguments sg) *) False
-                                            else True) m1 m2)
-      (NB: m1.(Mem.nextblock) = m2.(Mem.nextblock))
-      (PERM: Mem.range_perm m2 blk 0 (4 * size_arguments sg) Cur Freeable)
-  .
-
-End STOREARGUMENTS.
-
-Inductive typechecked_args (sg: signature) (vs: list val) : Prop :=
-| typechecked_args_intro
-    (TYP: Val.has_type_list vs sg.(sig_args))
-    (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
-.
-
-Lemma typecheck_typechecked_args vs sg tvs
-      (TYP: typecheck vs sg tvs)
-  :
-    typechecked_args sg tvs.
-Proof.
-  inv TYP. econs; eauto.
-  revert vs LEN. generalize (sig_args sg).
-  induction l; ss; i.
-  - destruct vs; clarify.
-  - destruct vs; clarify. ss. inv LEN.
-    split; eauto.
-    unfold typify_list. ss.
-    unfold Val.has_type, typify. des_ifs.
-Qed.
-
-Section FILLARG.
-
-  Local Existing Instance Val.mi_normal.
-
-  Definition agree (j: meminj) (rs0 rs1: Mach.regset) : Prop :=
-    forall mr, Val.inject j (rs0 mr) (rs1 mr).
-
-  Lemma list_map_injective A B (f: A -> B)
-        (INJECTIVE: forall a0 a1 (EQ: f a0 = f a1), a0 = a1)
-        l0 l1
-        (LEQ: map f l0 = map f l1)
+  Lemma extcall_arguments_same (rs0 rs1: Mach.regset) sp m sg args
+        (ARGS: extcall_arguments rs0 m sp sg args)
+        (SAME: forall r (IN: In (R r) (regs_of_rpairs (loc_arguments sg))),
+            rs0 r = rs1 r)
     :
-      l0 = l1.
+      extcall_arguments rs1 m sp sg args.
   Proof.
-    revert l1 LEQ. induction l0; i; ss.
-    - destruct l1; ss.
-    - destruct l1; ss. inv LEQ. f_equal; eauto.
+    clear - ARGS SAME. unfold extcall_arguments in *.
+    revert args ARGS SAME. generalize (loc_arguments sg). induction l; ss; i.
+    - inv ARGS. econs.
+    - inv ARGS. econs; eauto.
+      + inv H1.
+        * econs 1. inv H; eauto.
+          -- erewrite SAME.
+             ++ econs.
+             ++ econs. eauto.
+          -- econs; eauto.
+        * inv H; inv H0.
+          -- econs; eauto; erewrite SAME; eauto; (try by econs; eauto).
+             ss. eauto.
+          -- econs; eauto; try erewrite SAME; eauto; (try by econs; eauto).
+          -- econs; eauto; try erewrite SAME; eauto; (try by econs; eauto).
+             ss. eauto.
+          -- econs; eauto; try erewrite SAME; eauto; (try by econs; eauto).
+      + eapply IHl; eauto.
+        ii. eapply SAME. eapply in_app; eauto.
   Qed.
-
-  Definition copy_memval (v: val) (mv: memval) : memval :=
-    match v, mv with
-    | Vundef, _ => Undef
-    | _, Fragment _ q n => Fragment v q n
-    | _, _ => mv
-    end.
-
-  Lemma proj_bytes_only_bytes
-        mvs bts
-        (PROJ: proj_bytes mvs = Some bts)
-    :
-      forall mv (IN: In mv mvs), exists bt, mv = Byte bt
-  .
-  Proof.
-    ginduction mvs; ii; ss. des_ifs. des; clarify; ss; eauto.
-  Qed.
-
-  Lemma decode_fragment_all chunk vl v mv q n
-        (DECODE: decode_val chunk vl = v)
-        (IN: In (Fragment mv q n) vl)
-        (VALUE: v <> Vundef)
-    :
-      mv = v
-  .
-  Proof.
-    unfold decode_val in *.
-    destruct (proj_bytes vl) eqn:T.
-    { hexploit proj_bytes_only_bytes; eauto. i; des. clarify. }
-    clear T.
-    sguard in IN.
-    destruct chunk; ss; des_ifs; clear_tac.
-    - destruct vl; ss.
-      repeat my_tac.
-      unsguard IN. des; clarify.
-    - destruct vl; ss.
-      repeat my_tac.
-      unsguard IN. des; clarify.
-    - destruct vl; ss.
-      repeat my_tac.
-      unsguard IN. des; clarify.
-    - destruct vl; ss.
-      repeat my_tac.
-      unsguard IN. des; clarify.
-    - destruct vl; ss.
-      repeat my_tac.
-      unsguard IN. des; clarify.
-  Qed.
-
-  Lemma decode_normal_all_normal chunk vl v
-        (DECODE: decode_val chunk vl = v)
-        (VALUE: v <> Vundef /\ forall blk ofs b, v <> Vptr blk ofs b)
-        mv
-        (IN: In mv vl)
-    :
-      forall blk ofs b q n, mv <> Fragment (Vptr blk ofs b) q n.
-  Proof.
-    ii. des. rewrite H in *.
-    destruct v; ss.
-    - exploit decode_fragment_all; eauto. i. clarify.
-    - exploit decode_fragment_all; eauto. i. clarify.
-    - exploit decode_fragment_all; eauto. i. clarify.
-    - exploit decode_fragment_all; eauto. i. clarify.
-    - exfalso. eapply VALUE0. eauto.
-  Qed.
-
-  Lemma decode_pointer_all_pointer chunk vl mv blk ofs b
-        (DECODE: decode_val chunk vl = Vptr blk ofs b)
-        (IN: In mv vl)
-    :
-      exists q n, mv = Fragment (Vptr blk ofs b) q n.
-  Proof.
-  Admitted.
-  (*   unfold decode_val, Val.load_result in *. des_ifs. *)
-  (*   - unfold proj_value in *. *)
-  (*     des_ifs; repeat (repeat (apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify). *)
-  (*     all: eauto. *)
-  (*     des_ifs. *)
-  (*   - unfold proj_value in *. *)
-  (*     des_ifs; repeat (repeat (apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify). *)
-  (*     all: eauto. *)
-  (*     des_ifs. *)
-  (* Qed. *)
-
-  Definition copy_list_memval (v: val): list memval -> list memval := map (copy_memval v).
-
-  Lemma Forall_in_map A B al (R: B -> Prop) (f: A -> B)
-        (RMAP: forall a (IN: In a al), R (f a))
-    :
-      Forall R (map f al).
-  Proof.
-    induction al; econs; ss; eauto.
-  Qed.
-
-  Lemma Forall2_in_map A B al (R: B -> A -> Prop) (f: A -> B)
-        (RMAP: forall a (IN: In a al), R (f a) a)
-    :
-      list_forall2 R (map f al) al.
-  Proof.
-    induction al; econs; ss; eauto.
-  Qed.
-
-  Lemma eq_Forall2_eq A (al0 al1 : list A)
-    :
-      list_forall2 eq al0 al1 <-> al0 = al1.
-  Proof.
-    revert al1. induction al0; ss; i; split; i; eauto.
-    - inv H. eauto.
-    - inv H. econs.
-    - inv H. f_equal. eapply IHal0. eauto.
-    - inv H. econs; eauto. eapply IHal0. eauto.
-  Qed.
-
-  Lemma copy_list_memval_decode_pointer j vl vl' chunk v blk ofs b
-        (INJ: Val.inject j v (decode_val chunk vl))
-        (COPY: copy_list_memval v vl = vl')
-        (VALUE: v = Vptr blk ofs b)
-    :
-      decode_val chunk vl' = v.
-  Proof.
-  Admitted.
-  (*   clarify. inv INJ; ss. *)
-  (*   - unfold decode_val in H3. destruct vl; ss. *)
-  (*     + des_ifs. *)
-  (*     + des_ifs_safe. *)
-  (*       destruct m, chunk; ss; des_ifs_safe. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify). *)
-  (*         unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs. *)
-  (*       * destruct v; ss. *)
-  (*       * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify). *)
-  (*         unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs. *)
-  (*   - unfold decode_val in H3. destruct vl; ss. *)
-  (*     + des_ifs_safe. *)
-  (*       destruct m, chunk; ss; des_ifs_safe. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * des_ifs. *)
-  (*       * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify). *)
-  (*         unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs. *)
-  (*       * destruct v; ss. *)
-  (*       * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify). *)
-  (*         unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs. *)
-  (* Qed. *)
-
-  Lemma copy_list_memval_decode_undef vl vl'
-        (COPY: copy_list_memval Vundef vl = vl')
-    :
-      vl' = list_repeat (List.length vl) Undef.
-  Proof.
-    revert vl' COPY. induction vl; ss; i; clarify.
-    f_equal. eapply IHvl; eauto.
-  Qed.
-
-  Lemma copy_list_memval_decode j vl vl' chunk v
-        (INJ: Val.inject j v (decode_val chunk vl))
-        (COPY: copy_list_memval v vl = vl')
-        (LENGTH: Nat.lt 0 (length vl))
-    :
-      decode_val chunk vl' = v.
-  Proof.
-    inv INJ.
-    - rewrite H1. f_equal.
-      apply eq_Forall2_eq. eapply Forall2_in_map.
-      i. rewrite <- H1.
-      destruct a; ss. f_equal. symmetry.
-      eapply decode_fragment_all; eauto. ii. clarify.
-    - rewrite H1. f_equal.
-      apply eq_Forall2_eq. eapply Forall2_in_map.
-      i. rewrite <- H1.
-      destruct a; ss. f_equal. symmetry.
-      eapply decode_fragment_all; eauto. ii. clarify.
-    - rewrite H1. f_equal.
-      apply eq_Forall2_eq. eapply Forall2_in_map.
-      i. rewrite <- H1.
-      destruct a; ss. f_equal. symmetry.
-      eapply decode_fragment_all; eauto. ii. clarify.
-    - rewrite H1. f_equal.
-      apply eq_Forall2_eq. eapply Forall2_in_map.
-      i. rewrite <- H1.
-      destruct a; ss. f_equal. symmetry.
-      eapply decode_fragment_all; eauto. ii. clarify.
-    - eapply copy_list_memval_decode_pointer; eauto.
-      rewrite <- H.
-      econs; eauto.
-    - eapply copy_list_memval_decode_pointer; eauto.
-      rewrite <- H.
-      econs; eauto.
-    - eapply copy_list_memval_decode_pointer; eauto.
-      rewrite <- H.
-      econs; eauto.
-    - exploit copy_list_memval_decode_undef. eauto. i.
-      rewrite H.
-      destruct vl; ss.
-      + inv LENGTH.
-      + unfold decode_val. des_ifs.
-        Unshelve. eauto.
-  Qed.
-
-  Lemma copy_list_memval_inject j vl vl' chunk v
-        (INJ: Val.inject j v (decode_val chunk vl))
-        (COPY: copy_list_memval v vl = vl')
-    :
-      list_forall2 (memval_inject j) vl' vl.
-  Proof.
-    clarify. destruct v.
-    - exploit copy_list_memval_decode_undef; eauto. i.
-      rewrite H.
-      eapply repeat_Undef_inject_any.
-    - eapply Forall2_in_map. i.
-      destruct a; ss; try econs.
-      erewrite decode_fragment_all; eauto.
-      ii. rewrite H in *. inv INJ.
-    - eapply Forall2_in_map. i.
-      destruct a; ss; try econs.
-      erewrite decode_fragment_all; eauto.
-      ii. rewrite H in *. inv INJ.
-    - eapply Forall2_in_map. i.
-      destruct a; ss; try econs.
-      erewrite decode_fragment_all; eauto.
-      ii. rewrite H in *. inv INJ.
-    - eapply Forall2_in_map. i.
-      destruct a; ss; try econs.
-      erewrite decode_fragment_all; eauto.
-      ii. rewrite H in *. inv INJ.
-    - eapply Forall2_in_map. i.
-      destruct a; ss; try econs.
-      erewrite decode_fragment_all; eauto.
-      ii. rewrite H in *. inv INJ.
-  Qed.
-
-  Definition fill_arg_src_blk (m_tgt m: ZMap.t memval) (arg: val) (loc: rpair loc)
-    : ZMap.t memval :=
-    match loc with
-    | One (S Outgoing ofs ty) =>
-      Mem.setN (copy_list_memval arg (Mem.getN (size_chunk_nat (chunk_of_type ty)) (4 * ofs) m_tgt)) (4 * ofs) m
-    | _ => m
-    end.
-
-  Definition fill_arg_src_reg (rs: regset) (arg: val) (loc: rpair loc)
-    : regset :=
-    match loc with
-    | One (R r) =>
-      rs#r <- arg
-    | _ => rs
-    end.
-
-  Fixpoint fill_args_src_blk (m_tgt m: ZMap.t memval) (args: list val) (locs: list (rpair loc))
-    : ZMap.t memval :=
-    match args, locs with
-    | vhd::vtl, lhd::ltl =>
-      fill_arg_src_blk m_tgt (fill_args_src_blk m_tgt m vtl ltl) vhd lhd
-    | _, _ => m
-    end.
-
-  Fixpoint fill_args_src_reg (args: list val) (locs: list (rpair loc))
-    : regset :=
-    match args, locs with
-    | vhd::vtl, lhd::ltl =>
-      fill_arg_src_reg (fill_args_src_reg vtl ltl) vhd lhd
-    | _, _ => fun _ => Vundef
-    end.
 
   Definition extcall_arg_in_reg (rs: regset) (l: rpair loc) (v: val) : Prop :=
     forall r (EQ: l = One (R r)), v = rs r.
-
-  Lemma list_forall2_lift A B (R0 R1: A -> B -> Prop) al bl
-        (SAME: forall a (IN: In a al) b, R0 a b -> R1 a b)
-        (FORALL: list_forall2 R0 al bl)
-    :
-      list_forall2 R1 al bl.
-  Proof.
-    generalize dependent bl. revert SAME.
-    induction al; ss; i; inv FORALL; econs; eauto.
-  Qed.
 
   Definition extcall_arg_in_stack (m: ZMap.t memval) (l: rpair loc) (v: val) : Prop :=
     forall ofs ty (EQ: l = One (S Outgoing ofs ty)),
@@ -476,316 +193,6 @@ Section FILLARG.
          Some (decode_val (chunk_of_type ty) (Mem.getN (size_chunk_nat (chunk_of_type ty)) (4 * ofs) m)) = Some v>>) /\
       (<<UNDEFS: forall (UNDEF: v = Vundef),
           memval_undefs (chunk_of_type ty) m (4 * ofs)>>).
-
-  Inductive range_no_overlap : list (rpair loc) -> Prop :=
-  | range_no_overlap_nil:
-      range_no_overlap []
-  | range_no_overlap_cons
-      hd tl
-      (HD: forall ofs0 ofs1 ty0 ty1
-                  (EQ: hd = One (S Outgoing ofs0 ty0))
-                  (IN: In (One (S Outgoing ofs1 ty1)) tl),
-          (4 * ofs0 + size_chunk (chunk_of_type ty0) <= 4 * ofs1) \/
-          (4 * ofs1 + size_chunk (chunk_of_type ty1) <= 4 * ofs0))
-      (ONTL: range_no_overlap tl)
-    :
-      range_no_overlap (hd::tl).
-
-  Lemma fill_args_src_reg_args args locs
-        (NOREPEAT: NoDup locs)
-        (LENGTH: length args = length locs)
-    :
-      list_forall2 (extcall_arg_in_reg (fill_args_src_reg args locs)) locs args.
-  Proof.
-    revert NOREPEAT args LENGTH. induction locs; ss; i.
-    - destruct args; ss. econs.
-    - destruct args; ss. inv NOREPEAT. inv LENGTH.
-      specialize (IHlocs H2 _ H0).
-      unfold fill_arg_src_reg. des_ifs.
-      + econs; eauto.
-        * ii. inv EQ. rewrite Regmap.gss. auto.
-        * eapply list_forall2_lift; [|eauto].
-          { ii. clarify. unfold Regmap.set. des_ifs. eauto. }
-      + econs; eauto. ii. inv EQ.
-      + econs; eauto. ii. inv EQ.
-  Qed.
-
-  Lemma fill_args_src_reg_agree j args args_tgt locs rs_tgt
-        (INJECT: Val.inject_list j args args_tgt)
-        (LENGTH: length args = length locs)
-        (ARGS: list_forall2 (extcall_arg_in_reg rs_tgt) locs args_tgt)
-    :
-      agree j (fill_args_src_reg args locs) rs_tgt.
-  Proof.
-    generalize dependent args.
-    revert rs_tgt args_tgt ARGS. induction locs; ss; eauto; i.
-    - inv LENGTH. destruct args; ss.
-    - destruct args; ss. inv INJECT. inv LENGTH. inv ARGS.
-      unfold fill_arg_src_reg. des_ifs.
-      + ii. unfold Regmap.set. des_ifs.
-        * exploit H5; eauto. i. clarify.
-        * eapply IHlocs; eauto.
-      + eapply IHlocs; eauto.
-      + eapply IHlocs; eauto.
-  Qed.
-
-  Lemma fill_args_src_blk_inject m_tgt j args_tgt args locs
-        (INJECT: Val.inject_list j args args_tgt)
-        (LENGTH: length args = length locs)
-        (ARGS: list_forall2 (extcall_arg_in_stack m_tgt) locs args_tgt)
-    :
-      forall ofs, memval_inject
-                    j
-                    (ZMap.get ofs (fill_args_src_blk m_tgt (ZMap.init Undef) args locs))
-                    (ZMap.get ofs m_tgt).
-  Proof.
-    generalize dependent args.
-    revert m_tgt args_tgt ARGS. induction locs; ss; eauto; i.
-    - inv LENGTH. destruct args; ss. rewrite ZMap.gi. econs.
-    - destruct args; ss. inv INJECT. inv LENGTH. inv ARGS.
-      unfold fill_arg_src_blk. des_ifs.
-      + eapply IHlocs; eauto.
-      + eapply IHlocs; eauto.
-      + eapply IHlocs; eauto.
-      + exploit IHlocs; eauto. instantiate (1:=ofs). intros INJ.
-        { exploit Mem.setN_inj.
-          - instantiate (3:=j).
-            instantiate (2:=copy_list_memval v (Mem.getN (size_chunk_nat (chunk_of_type ty)) (4 * pos) m_tgt)).
-            instantiate (1:=Mem.getN (size_chunk_nat (chunk_of_type ty)) (4 * pos) m_tgt).
-            specialize (H5 pos ty eq_refl). des. clarify.
-            { eapply copy_list_memval_inject; eauto. }
-          - instantiate (4:=top1).
-            instantiate (3:=fill_args_src_blk m_tgt (ZMap.init Undef) args locs).
-            instantiate (1:=m_tgt).
-            instantiate (1:=0).
-            i. rewrite Z.add_0_r.
-            eapply IHlocs; eauto.
-          - econs.
-          - instantiate (2:= ofs). instantiate (1:=4*pos).
-            repeat rewrite Z.add_0_r.
-            i.
-            replace (ZMap.get ofs (Mem.setN (Mem.getN (size_chunk_nat (chunk_of_type ty)) (4 * pos) m_tgt) (4*pos) m_tgt)) with (ZMap.get ofs m_tgt) in H; eauto.
-            { generalize ofs.
-              clear - m_tgt.
-              generalize (4 * pos). revert m_tgt.
-              generalize (size_chunk_nat (chunk_of_type ty)).
-              induction n; ss; i.
-              replace (Mem.getN n (z + 1) m_tgt) with
-                  (Mem.getN n (z + 1) (ZMap.set z (ZMap.get z m_tgt) m_tgt)).
-              - rewrite <- IHn.
-                rewrite ZMap.gsspec. des_ifs.
-              - clear IHn. generalize z m_tgt (z+1).
-                induction n; ss; i. f_equal.
-                + rewrite ZMap.gsspec. des_ifs.
-                + rewrite IHn. eauto. }
-        }
-      + eapply IHlocs; eauto.
-  Qed.
-
-  Lemma Forall_map A B la (R: B -> Prop) (f: A -> B)
-        (RMAP: forall a, R (f a))
-    :
-      Forall R (map f la).
-  Proof.
-    induction la; econs; ss.
-  Qed.
-
-  Lemma fill_args_src_blk_args m_tgt m j args_tgt args locs
-        (INJECT: Val.inject_list j args args_tgt)
-        (NOOVERLAP: range_no_overlap locs)
-        (LENGTH: length args = length locs)
-        (ARGS: list_forall2 (extcall_arg_in_stack m_tgt) locs args_tgt)
-    :
-      list_forall2 (extcall_arg_in_stack (fill_args_src_blk m_tgt m args locs)) locs args.
-  Proof.
-    revert NOOVERLAP args_tgt args ARGS INJECT LENGTH. induction locs; ss; i.
-    - destruct args; ss. econs.
-    - destruct args; ss. inv NOOVERLAP. inv LENGTH.
-      inv ARGS. inv INJECT.
-      specialize (IHlocs ONTL _ _ H4 H7 H0).
-      unfold fill_arg_src_blk. des_ifs.
-      + econs; eauto. ii. inv EQ.
-      + econs; eauto. ii. inv EQ.
-      + econs; eauto. ii. inv EQ.
-      + econs; eauto.
-        { ii. inv EQ. specialize (H2 ofs ty0 eq_refl). des. clarify.
-          assert (LEQ: size_chunk_nat (chunk_of_type ty0) =
-                       Datatypes.length (copy_list_memval v (Mem.getN (size_chunk_nat (chunk_of_type ty0)) (4 * ofs) m_tgt))).
-          { unfold copy_list_memval. rewrite list_length_map.
-            rewrite Mem.getN_length. auto. }
-          split.
-          - pattern (size_chunk_nat (chunk_of_type ty0)) at 1.
-            rewrite LEQ.
-            erewrite Mem.getN_setN_same.
-            exploit copy_list_memval_decode; eauto.
-            + rewrite Mem.getN_length.
-              destruct ty0; compute; lia.
-            + i. rewrite H. auto.
-          - ii. clarify. unfold memval_undefs in *.
-            pattern (size_chunk_nat (chunk_of_type ty0)) at 1.
-            rewrite LEQ.
-            erewrite Mem.getN_setN_same.
-            unfold copy_list_memval. unfold copy_memval. ss.
-            eapply Forall_map.
-            ii. econs.
-        }
-        { eapply list_forall2_lift; [| eauto].
-          ii. clarify. specialize (H ofs ty0 eq_refl). des. clarify.
-          split; i.
-          - erewrite Mem.getN_setN_outside; eauto.
-            specialize (HD _ _ _ _ eq_refl IN).
-            unfold range, less1, copy_list_memval in *.
-            erewrite map_length. rewrite Mem.getN_length.
-            repeat rewrite <- size_chunk_conv. lia.
-          - ii. unfold memval_undefs in *.
-            erewrite Mem.getN_setN_outside; auto.
-            specialize (HD _ _ _ _ eq_refl IN).
-            unfold range, less1, copy_list_memval in *.
-            erewrite map_length. rewrite Mem.getN_length.
-            repeat rewrite <- size_chunk_conv. lia. }
-      + econs; eauto. ii. inv EQ.
-  Qed.
-
-  Lemma fill_args_src_blk_default m_tgt m args locs
-    :
-      fst (fill_args_src_blk m_tgt m args locs) = fst m.
-  Proof.
-    revert m locs. induction args; ss; i.
-    unfold fill_arg_src_blk. des_ifs; ss.
-    rewrite Mem.setN_default. ss.
-  Qed.
-
-  Program Definition fill_args_src_mem (m_tgt0 m_tgt1 : mem) (m_src0: mem)
-          (args: list val) (locs: list (rpair loc)) : mem :=
-    Mem.mkmem
-      (PMap.set
-         (m_src0.(Mem.nextblock))
-         (fill_args_src_blk
-            (m_tgt1.(Mem.mem_contents) !! (m_tgt0.(Mem.nextblock)))
-            (ZMap.init Undef) args locs)
-         (m_src0.(Mem.mem_contents)))
-      (PMap.set
-         (m_src0.(Mem.nextblock))
-         (m_tgt1.(Mem.mem_access) !! (m_tgt0.(Mem.nextblock)))
-         (m_src0.(Mem.mem_access)))
-      (Pos.succ m_src0.(Mem.nextblock))
-      _ _ _.
-  Next Obligation.
-  Proof.
-    rewrite PMap.gsspec. des_ifs.
-    - eapply Mem.access_max.
-    - eapply Mem.access_max.
-  Qed.
-  Next Obligation.
-  Proof.
-    rewrite PMap.gsspec. des_ifs.
-    - exfalso. eapply H. eapply Plt_succ.
-    - eapply Mem.nextblock_noaccess. ii.
-      eapply H. etrans; eauto. eapply Plt_succ.
-  Qed.
-  Next Obligation.
-  Proof.
-    rewrite PMap.gsspec. des_ifs.
-    - rewrite fill_args_src_blk_default. eauto.
-    - eapply Mem.contents_default.
-  Qed.
-
-  Lemma loc_norepet_app l0 l1
-        (NOREPEAT: Loc.norepet (l0 ++ l1))
-    :
-      Loc.norepet l1.
-  Proof.
-    induction l0; ss.
-    inv NOREPEAT. eauto.
-  Qed.
-
-  Lemma loc_in_not_not_in
-        r l
-        (IN: In (One r) l)
-        (NIN: Loc.notin r (regs_of_rpairs l))
-    :
-      False.
-  Proof.
-    induction l; ss. des; clarify; ss; des.
-    - destruct r; ss; des; clarify.
-      + destruct ty; ss; lia.
-      + destruct ty; ss; lia.
-    - eapply IHl; eauto.
-      destruct a; ss; des; eauto.
-  Qed.
-
-  Lemma nodup_loc_arguments sg:
-    NoDup (loc_arguments sg).
-  Proof.
-    generalize (loc_arguments_one sg).
-    generalize (loc_arguments_norepet sg). induction (loc_arguments sg); ss; i.
-    - econs.
-    - econs; eauto.
-      + ii.
-        destruct a.
-        * eapply loc_in_not_not_in; eauto.
-          ss. inv H. eauto.
-        * exploit H0; eauto.
-      + eapply IHl; eauto.
-        eapply loc_norepet_app; eauto.
-  Qed.
-
-  Lemma in_one_in_rpair l (r: loc)
-        (IN: In (One r) l)
-    :
-      In r (regs_of_rpairs l).
-  Proof.
-    induction l; ss; des; clarify.
-    - destruct r; ss; eauto.
-    - eapply in_or_app; eauto.
-  Qed.
-
-  Lemma loc_not_in_in_not l ll
-    :
-      Loc.notin l ll <-> (forall l0 (IN: In l0 ll), Loc.diff l l0).
-  Proof.
-    induction ll; ss; split; des; i; des; clarify; eauto.
-    split; eauto.
-  Qed.
-
-  Lemma no_overlap_loc_arguments sg:
-    range_no_overlap (loc_arguments sg).
-  Proof.
-    generalize (loc_arguments_one sg).
-    generalize (loc_arguments_norepet sg). induction (loc_arguments sg); ss; i.
-    - econs.
-    - econs; eauto.
-      + ii. clarify.
-        inv H.
-        eapply loc_not_in_in_not in H3; eauto.
-        * instantiate (1:=S Outgoing ofs1 ty1) in H3.
-          ss. des; clarify.
-          -- destruct ty0, ty1; ss; try lia.
-          -- destruct ty0, ty1; ss; try lia.
-        * eapply in_one_in_rpair; eauto.
-      + eapply IHl; eauto.
-        eapply loc_norepet_app; eauto.
-  Qed.
-
-  Lemma loc_arguments_ofs_bounded
-        sg
-        (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
-        ofs ty
-        (IN: In (One (S Outgoing ofs ty)) (loc_arguments sg))
-    :
-      0 <= 4 * ofs <= Ptrofs.max_unsigned.
-  Proof.
-    hexploit loc_arguments_bounded.
-    - instantiate (1:=sg). instantiate (1:=ty). instantiate (1:=ofs).
-      revert ofs ty IN.
-      induction (loc_arguments sg); ss; i.
-      des; clarify; ss; eauto.
-      eapply in_app_iff. right. eapply IHl; eauto.
-    - i. split.
-      + hexploit (loc_arguments_acceptable sg); eauto.
-        intros ACCP. inv ACCP. lia.
-      + destruct ty; ss; lia.
-  Qed.
 
   Lemma extcall_arguments_extcall_arg_in_reg
         rs m blk sg vs
@@ -902,38 +309,406 @@ Section FILLARG.
         eapply in_or_app; eauto.
   Qed.
 
+End STOREARGUMENTS_PROPERTY.
 
 
-  Lemma sig_args_length sg
+
+Module _FillArgsParallel.
+
+  Definition copy_memval (v: val) (mv: memval) : memval :=
+    match v, mv with
+    | Vundef, _ => Undef
+    | _, Fragment _ q n => Fragment v q n
+    | _, _ => mv
+    end.
+
+  Definition copy_list_memval (v: val): list memval -> list memval := map (copy_memval v).
+
+  Lemma copy_list_memval_decode_undef vl vl'
+        (COPY: copy_list_memval Vundef vl = vl')
     :
-      Datatypes.length (sig_args sg) = Datatypes.length (loc_arguments sg).
+      vl' = list_repeat (List.length vl) Undef.
   Proof.
-    unfold loc_arguments in *. des_ifs.
-    generalize 0 at 1.
-    generalize 0 at 1.
-    generalize 0 at 1.
-    induction (sig_args sg); ss; i.
-    des_ifs; ss; f_equal; eauto.
+    revert vl' COPY. induction vl; ss; i; clarify.
+    f_equal. eapply IHvl; eauto.
   Qed.
 
-  Lemma Val_has_type_list_length sg vs
-        (TYP: Val.has_type_list vs (sig_args sg))
+  Local Existing Instance Val.mi_normal.
+  (* Context `{CTX: Val.meminj_ctx}. *)
+
+  Lemma copy_list_memval_decode_pointer j vl vl' chunk v blk ofs b
+        (INJ: Val.inject j v (decode_val chunk vl))
+        (COPY: copy_list_memval v vl = vl')
+        (VALUE: v = Vptr blk ofs b)
     :
-      Datatypes.length vs = Datatypes.length (loc_arguments sg).
+      decode_val chunk vl' = v.
   Proof.
-    rewrite <- sig_args_length.
-    revert vs TYP. induction (sig_args sg); ss; i; destruct vs; ss.
-    des.
-    f_equal; eauto.
+    clarify. inv INJ; ss.
+    - unfold decode_val in H3. destruct vl; ss.
+      + des_ifs.
+      + des_ifs_safe.
+        destruct m, chunk; ss; des_ifs_safe.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify).
+          unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs.
+        * destruct v; ss.
+        * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify).
+          unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs.
+    - unfold decode_val in H3. destruct vl; ss.
+      + des_ifs_safe.
+        destruct m, chunk; ss; des_ifs_safe.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * des_ifs.
+        * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify).
+          unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs.
+        * destruct v; ss.
+        * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify).
+          unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs.
   Qed.
 
-  Lemma store_arguments_parallel_inject
-        j m_src0 m_tgt0 m_tgt1 rs_tgt vs vs' sg
-        (* (TYP: typechecked_args sg vs) *)
-        (TYP: typechecked_args sg vs')
-        (VALINJ: Val.inject_list j vs vs')
-        (INJ: Mem.inject j m_src0 m_tgt0)
-        (ARGSRC: store_arguments m_tgt0 rs_tgt vs' sg m_tgt1)
+  Lemma copy_list_memval_decode j vl vl' chunk v
+        (INJ: Val.inject j v (decode_val chunk vl))
+        (COPY: copy_list_memval v vl = vl')
+        (LENGTH: Nat.lt 0 (length vl))
+    :
+      decode_val chunk vl' = v.
+  Proof.
+    inv INJ.
+    - rewrite H1. f_equal.
+      apply eq_Forall2_eq. eapply Forall2_in_map.
+      i. rewrite <- H1.
+      destruct a; ss. f_equal. symmetry.
+      eapply decode_fragment_all; eauto. ii. clarify.
+    - rewrite H1. f_equal.
+      apply eq_Forall2_eq. eapply Forall2_in_map.
+      i. rewrite <- H1.
+      destruct a; ss. f_equal. symmetry.
+      eapply decode_fragment_all; eauto. ii. clarify.
+    - rewrite H1. f_equal.
+      apply eq_Forall2_eq. eapply Forall2_in_map.
+      i. rewrite <- H1.
+      destruct a; ss. f_equal. symmetry.
+      eapply decode_fragment_all; eauto. ii. clarify.
+    - rewrite H1. f_equal.
+      apply eq_Forall2_eq. eapply Forall2_in_map.
+      i. rewrite <- H1.
+      destruct a; ss. f_equal. symmetry.
+      eapply decode_fragment_all; eauto. ii. clarify.
+    - eapply copy_list_memval_decode_pointer; eauto.
+      rewrite <- H.
+      econs; eauto.
+    - eapply copy_list_memval_decode_pointer; eauto.
+      rewrite <- H.
+      econs; eauto.
+    - eapply copy_list_memval_decode_pointer; eauto.
+      rewrite <- H.
+      econs; eauto.
+    - exploit copy_list_memval_decode_undef. eauto. i.
+      rewrite H.
+      destruct vl; ss.
+      + inv LENGTH.
+      + unfold decode_val. des_ifs.
+        Unshelve. eauto.
+  Qed.
+
+  Lemma copy_list_memval_inject j vl vl' chunk v
+        (INJ: Val.inject j v (decode_val chunk vl))
+        (COPY: copy_list_memval v vl = vl')
+    :
+      list_forall2 (memval_inject j) vl' vl.
+  Proof.
+    clarify. destruct v.
+    - exploit copy_list_memval_decode_undef; eauto. i.
+      rewrite H.
+      eapply repeat_Undef_inject_any.
+    - eapply Forall2_in_map. i.
+      destruct a; ss; try econs.
+      erewrite decode_fragment_all; eauto.
+      ii. rewrite H in *. inv INJ.
+    - eapply Forall2_in_map. i.
+      destruct a; ss; try econs.
+      erewrite decode_fragment_all; eauto.
+      ii. rewrite H in *. inv INJ.
+    - eapply Forall2_in_map. i.
+      destruct a; ss; try econs.
+      erewrite decode_fragment_all; eauto.
+      ii. rewrite H in *. inv INJ.
+    - eapply Forall2_in_map. i.
+      destruct a; ss; try econs.
+      erewrite decode_fragment_all; eauto.
+      ii. rewrite H in *. inv INJ.
+    - eapply Forall2_in_map. i.
+      destruct a; ss; try econs.
+      erewrite decode_fragment_all; eauto.
+      ii. rewrite H in *. inv INJ.
+  Qed.
+
+  Definition fill_arg_src_reg (rs: regset) (arg: val) (loc: rpair loc)
+    : regset :=
+    match loc with
+    | One (R r) =>
+      rs#r <- arg
+    | _ => rs
+    end.
+
+  Fixpoint fill_args_src_reg (args: list val) (locs: list (rpair loc))
+    : regset :=
+    match args, locs with
+    | vhd::vtl, lhd::ltl =>
+      fill_arg_src_reg (fill_args_src_reg vtl ltl) vhd lhd
+    | _, _ => fun _ => Vundef
+    end.
+
+  Lemma fill_args_src_reg_args args locs
+        (NOREPEAT: Loc.norepet (regs_of_rpairs locs))
+        (ONES: forall l (IN: In l locs), is_one l)
+        (LENGTH: length args = length locs)
+    :
+      list_forall2 (extcall_arg_in_reg (fill_args_src_reg args locs)) locs args.
+  Proof.
+    revert NOREPEAT args LENGTH. induction locs; ss; i.
+    - destruct args; ss. econs.
+    - destruct args; ss. inv LENGTH. destruct a; inv NOREPEAT.
+      + exploit IHlocs; eauto. i.
+        unfold fill_arg_src_reg. des_ifs.
+        * econs; eauto.
+          -- ii. inv EQ. rewrite Regmap.gss. auto.
+          -- eapply list_forall2_lift; [|eauto].
+             { ii. clarify. unfold Regmap.set. des_ifs; eauto.
+               exfalso. eapply loc_in_not_not_in; eauto. }
+        * econs; eauto. ii. inv EQ.
+      + exfalso. exploit ONES; eauto.
+  Qed.
+
+  Lemma fill_args_src_reg_agree j args args_tgt locs rs_tgt
+        (INJECT: Val.inject_list j args args_tgt)
+        (LENGTH: length args = length locs)
+        (ARGS: list_forall2 (extcall_arg_in_reg rs_tgt) locs args_tgt)
+    :
+      agree j (fill_args_src_reg args locs) rs_tgt.
+  Proof.
+    generalize dependent args.
+    revert rs_tgt args_tgt ARGS. induction locs; ss; eauto; i.
+    - inv LENGTH. destruct args; ss.
+    - destruct args; ss. inv INJECT. inv LENGTH. inv ARGS.
+      unfold fill_arg_src_reg. des_ifs.
+      + ii. unfold Regmap.set. des_ifs.
+        * exploit H5; eauto. i. clarify.
+        * eapply IHlocs; eauto.
+      + eapply IHlocs; eauto.
+      + eapply IHlocs; eauto.
+  Qed.
+
+
+  Definition fill_arg_src_blk (m_tgt m: ZMap.t memval) (arg: val) (loc: rpair loc)
+    : ZMap.t memval :=
+    match loc with
+    | One (S Outgoing ofs ty) =>
+      Mem.setN (copy_list_memval arg (Mem.getN (size_chunk_nat (chunk_of_type ty)) (4 * ofs) m_tgt)) (4 * ofs) m
+    | _ => m
+    end.
+
+  Fixpoint fill_args_src_blk (m_tgt m: ZMap.t memval) (args: list val) (locs: list (rpair loc))
+    : ZMap.t memval :=
+    match args, locs with
+    | vhd::vtl, lhd::ltl =>
+      fill_arg_src_blk m_tgt (fill_args_src_blk m_tgt m vtl ltl) vhd lhd
+    | _, _ => m
+    end.
+
+  Lemma fill_args_src_blk_inject m_tgt j args_tgt args locs
+        (INJECT: Val.inject_list j args args_tgt)
+        (LENGTH: length args = length locs)
+        (ARGS: list_forall2 (extcall_arg_in_stack m_tgt) locs args_tgt)
+    :
+      forall ofs, memval_inject
+                    j
+                    (ZMap.get ofs (fill_args_src_blk m_tgt (ZMap.init Undef) args locs))
+                    (ZMap.get ofs m_tgt).
+  Proof.
+    generalize dependent args.
+    revert m_tgt args_tgt ARGS. induction locs; ss; eauto; i.
+    - inv LENGTH. destruct args; ss. rewrite ZMap.gi. econs.
+    - destruct args; ss. inv INJECT. inv LENGTH. inv ARGS.
+      unfold fill_arg_src_blk. des_ifs.
+      + eapply IHlocs; eauto.
+      + eapply IHlocs; eauto.
+      + eapply IHlocs; eauto.
+      + exploit IHlocs; eauto. instantiate (1:=ofs). intros INJ.
+        { exploit Mem.setN_inj.
+          - instantiate (3:=j).
+            instantiate (2:=copy_list_memval v (Mem.getN (size_chunk_nat (chunk_of_type ty)) (4 * pos) m_tgt)).
+            instantiate (1:=Mem.getN (size_chunk_nat (chunk_of_type ty)) (4 * pos) m_tgt).
+            specialize (H5 pos ty eq_refl). des. clarify.
+            { eapply copy_list_memval_inject; eauto. }
+          - instantiate (4:=top1).
+            instantiate (3:=fill_args_src_blk m_tgt (ZMap.init Undef) args locs).
+            instantiate (1:=m_tgt).
+            instantiate (1:=0).
+            i. rewrite Z.add_0_r.
+            eapply IHlocs; eauto.
+          - econs.
+          - instantiate (2:= ofs). instantiate (1:=4*pos).
+            repeat rewrite Z.add_0_r.
+            i.
+            replace (ZMap.get ofs (Mem.setN (Mem.getN (size_chunk_nat (chunk_of_type ty)) (4 * pos) m_tgt) (4*pos) m_tgt)) with (ZMap.get ofs m_tgt) in H; eauto.
+            { generalize ofs.
+              clear - m_tgt.
+              generalize (4 * pos). revert m_tgt.
+              generalize (size_chunk_nat (chunk_of_type ty)).
+              induction n; ss; i.
+              replace (Mem.getN n (z + 1) m_tgt) with
+                  (Mem.getN n (z + 1) (ZMap.set z (ZMap.get z m_tgt) m_tgt)).
+              - rewrite <- IHn.
+                rewrite ZMap.gsspec. des_ifs.
+              - clear IHn. generalize z m_tgt (z+1).
+                induction n; ss; i. f_equal.
+                + rewrite ZMap.gsspec. des_ifs.
+                + rewrite IHn. eauto. }
+        }
+      + eapply IHlocs; eauto.
+  Qed.
+
+  Lemma fill_args_src_blk_args m_tgt m j args_tgt args locs
+        (INJECT: Val.inject_list j args args_tgt)
+        (NOREPEAT: Loc.norepet (regs_of_rpairs locs))
+        (LENGTH: length args = length locs)
+        (ARGS: list_forall2 (extcall_arg_in_stack m_tgt) locs args_tgt)
+    :
+      list_forall2 (extcall_arg_in_stack (fill_args_src_blk m_tgt m args locs)) locs args.
+  Proof.
+    revert NOREPEAT args_tgt args ARGS INJECT LENGTH. induction locs; ss; i.
+    - destruct args; ss. econs.
+    - destruct args; ss. inv LENGTH.
+      inv ARGS. inv INJECT.
+      exploit IHlocs; eauto.
+      { ii. eapply loc_norepet_app; eauto. }
+      unfold fill_arg_src_blk. des_ifs.
+      + econs; eauto. ii. inv EQ.
+      + econs; eauto. ii. inv EQ.
+      + econs; eauto. ii. inv EQ.
+      + econs; eauto.
+        { ii. inv EQ. specialize (H2 ofs ty0 eq_refl). des. clarify.
+          assert (LEQ: size_chunk_nat (chunk_of_type ty0) =
+                       Datatypes.length (copy_list_memval v (Mem.getN (size_chunk_nat (chunk_of_type ty0)) (4 * ofs) m_tgt))).
+          { unfold copy_list_memval. rewrite list_length_map.
+            rewrite Mem.getN_length. auto. }
+          split.
+          - pattern (size_chunk_nat (chunk_of_type ty0)) at 1.
+            rewrite LEQ.
+            erewrite Mem.getN_setN_same.
+            exploit copy_list_memval_decode; eauto.
+            + rewrite Mem.getN_length.
+              destruct ty0; compute; lia.
+            + i. rewrite H1. auto.
+          - ii. clarify. unfold memval_undefs in *.
+            pattern (size_chunk_nat (chunk_of_type ty0)) at 1.
+            rewrite LEQ.
+            erewrite Mem.getN_setN_same.
+            unfold copy_list_memval. unfold copy_memval. ss.
+            eapply Forall_map.
+            ii. econs.
+        }
+        { eapply list_forall2_lift; [| eauto].
+          ii. clarify. specialize (H1 ofs ty0 eq_refl). des. clarify.
+          split; i.
+          - erewrite Mem.getN_setN_outside; eauto.
+            ss. inv NOREPEAT.
+            exploit Loc.in_notin_diff; eauto.
+            { eapply in_one_in_rpair; eauto. } intros DIFF. ss.
+            unfold copy_list_memval in *.
+            erewrite map_length. rewrite Mem.getN_length.
+            repeat rewrite <- size_chunk_conv.
+            repeat rewrite typesize_chunk. des; clarify; lia.
+          - ii. unfold memval_undefs in *.
+            erewrite Mem.getN_setN_outside; auto.
+            ss. inv NOREPEAT.
+            exploit Loc.in_notin_diff; eauto.
+            { eapply in_one_in_rpair; eauto. } intros DIFF. ss.
+            unfold copy_list_memval in *.
+            erewrite map_length. rewrite Mem.getN_length.
+            repeat rewrite <- size_chunk_conv.
+            repeat rewrite typesize_chunk. des; clarify; lia. }
+      + econs; eauto. ii. inv EQ.
+  Qed.
+
+  Lemma fill_args_src_blk_default m_tgt m args locs
+    :
+      fst (fill_args_src_blk m_tgt m args locs) = fst m.
+  Proof.
+    revert m locs. induction args; ss; i.
+    unfold fill_arg_src_blk. des_ifs; ss.
+    rewrite Mem.setN_default. ss.
+  Qed.
+
+  Program Definition fill_args_src_mem (m_tgt0 m_tgt1 : mem) (m_src0: mem)
+          (args: list val) (locs: list (rpair loc)) : mem :=
+    Mem.mkmem
+      (PMap.set
+         (m_src0.(Mem.nextblock))
+         (fill_args_src_blk
+            (m_tgt1.(Mem.mem_contents) !! (m_tgt0.(Mem.nextblock)))
+            (ZMap.init Undef) args locs)
+         (m_src0.(Mem.mem_contents)))
+      (PMap.set
+         (m_src0.(Mem.nextblock))
+         (m_tgt1.(Mem.mem_access) !! (m_tgt0.(Mem.nextblock)))
+         (m_src0.(Mem.mem_access)))
+      (Pos.succ m_src0.(Mem.nextblock))
+      _ _ _.
+  Next Obligation.
+  Proof.
+    rewrite PMap.gsspec. des_ifs.
+    - eapply Mem.access_max.
+    - eapply Mem.access_max.
+  Qed.
+  Next Obligation.
+  Proof.
+    rewrite PMap.gsspec. des_ifs.
+    - exfalso. eapply H. eapply Plt_succ.
+    - eapply Mem.nextblock_noaccess. ii.
+      eapply H. etrans; eauto. eapply Plt_succ.
+  Qed.
+  Next Obligation.
+  Proof.
+    rewrite PMap.gsspec. des_ifs.
+    - rewrite fill_args_src_blk_default. eauto.
+    - eapply Mem.contents_default.
+  Qed.
+
+End _FillArgsParallel.
+
+
+Section STOREARGPRARALLEL.
+
+  Local Existing Instance Val.mi_normal.
+
+  Theorem store_arguments_parallel_inject
+          j m_src0 m_tgt0 m_tgt1 rs_tgt vs vs' sg
+          (TYP: Val.has_type_list vs' sg.(sig_args))
+          (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+          (* (TYP: typechecked_args sg vs) *)
+          (* (TYP: typechecked_args sg vs') *)
+          (VALINJ: Val.inject_list j vs vs')
+          (INJ: Mem.inject j m_src0 m_tgt0)
+          (ARGSRC: store_arguments m_tgt0 rs_tgt vs' sg m_tgt1)
     :
       exists m_src1 rs_src,
         (<<ARGTGT: store_arguments m_src0 rs_src vs sg m_src1>>) /\
@@ -943,15 +718,15 @@ Section FILLARG.
                     rs_src
                     rs_tgt>>).
   Proof.
-    exists (fill_args_src_mem m_tgt0 m_tgt1 m_src0 vs (loc_arguments sg)).
-    exists (fill_args_src_reg vs (loc_arguments sg)).
+    exists (_FillArgsParallel.fill_args_src_mem m_tgt0 m_tgt1 m_src0 vs (loc_arguments sg)).
+    exists (_FillArgsParallel.fill_args_src_reg vs (loc_arguments sg)).
     destruct (Mem.alloc m_src0 0 (4 * size_arguments sg)) eqn:ALLOC.
     dup ALLOC. apply Mem.alloc_result in ALLOC0. clarify.
 
-    inv ARGSRC. unfold extcall_arguments in *. inv TYP.
+    inv ARGSRC. unfold extcall_arguments in *.
     dup ALC. apply Mem.alloc_result in ALC0. clarify.
 
-    assert (INCR: inject_incr j (update_meminj j (Mem.nextblock m_src0) (Mem.nextblock m_tgt0) 0)).
+    assert (INC : inject_incr j (update_meminj j (Mem.nextblock m_src0) (Mem.nextblock m_tgt0) 0)).
     { unfold update_meminj in *. ii. des_ifs; ss.
       exfalso. inv INJ. exploit mi_freeblocks.
       - instantiate (1:=(Mem.nextblock m_src0)).
@@ -964,15 +739,16 @@ Section FILLARG.
         assert (LENGTH: Datatypes.length vs = Datatypes.length (loc_arguments sg)).
         { erewrite inject_list_length; eauto.
           symmetry. eapply list_forall2_length; eauto. }
-        exploit fill_args_src_reg_args; eauto.
-        { eapply nodup_loc_arguments. }
-        exploit fill_args_src_blk_args; eauto.
-        { eapply no_overlap_loc_arguments; eauto. }
+        exploit _FillArgsParallel.fill_args_src_reg_args; eauto.
+        { eapply loc_arguments_norepet. }
+        { eapply loc_arguments_one. }
+        exploit _FillArgsParallel.fill_args_src_blk_args; eauto.
+        { eapply loc_arguments_norepet. }
         { eapply extcall_arguments_extcall_arg_in_stack; eauto. }
         instantiate (1:=ZMap.init Undef). intros STACK REGS.
         eapply extcall_arg_in_stack_in_reg_extcall_argument; eauto.
         * ss. rewrite PMap.gss. auto.
-        * unfold fill_args_src_mem, Mem.range_perm, Mem.perm. ss. ii.
+        * unfold _FillArgsParallel.fill_args_src_mem, Mem.range_perm, Mem.perm. ss. ii.
           rewrite PMap.gss.
           exploit PERM; eauto.
       + dup ALLOC. eapply Mem.alloc_unchanged_on with (P:=top2) in ALLOC0. inv ALLOC0.
@@ -993,7 +769,7 @@ Section FILLARG.
       + eapply Mem.nextblock_alloc; eauto.
       + ii. unfold Mem.perm. ss. rewrite PMap.gss.
         eapply PERM; eauto.
-    - inv INJ. inv mi_inj. unfold fill_args_src_mem, update_meminj in *.
+    - inv INJ. inv mi_inj. unfold _FillArgsParallel.fill_args_src_mem, update_meminj in *.
       econs; ss; i.
       { econs; ss; i.
         - des_ifs.
@@ -1018,7 +794,7 @@ Section FILLARG.
             eapply H0; eauto.
         - eapply memval_inject_incr; eauto.
           rewrite PMap.gsspec in *. des_ifs; ss.
-          + hexploit fill_args_src_blk_inject; eauto.
+          + hexploit _FillArgsParallel.fill_args_src_blk_inject; eauto.
             * erewrite inject_list_length; eauto.
               eapply Val_has_type_list_length; eauto.
             * eapply extcall_arguments_extcall_arg_in_stack; eauto.
@@ -1087,21 +863,23 @@ Section FILLARG.
               apply Plt_succ.
           + i. unfold Mem.perm in *. ss.
             rewrite PMap.gsspec in *. des_ifs; ss. }
-    - hexploit fill_args_src_reg_agree.
+    - hexploit _FillArgsParallel.fill_args_src_reg_agree.
       + eauto.
       + erewrite inject_list_length; eauto.
         eapply Val_has_type_list_length; eauto.
       + eapply extcall_arguments_extcall_arg_in_reg; eauto.
-      + ii. minv (H mr); econs; eauto.
+      + ii. cinv (H mr); econs; eauto.
   Qed.
 
-  Lemma store_arguments_parallel_extends
-        m_src0 m_tgt0 m_tgt1 rs_tgt vs vs' sg
-        (* (TYP: typechecked_args sg vs) *)
-        (TYP: typechecked_args sg vs')
-        (VALINJ: Val.lessdef_list vs vs')
-        (EXTENDS: Mem.extends m_src0 m_tgt0)
-        (ARGSRC: store_arguments m_tgt0 rs_tgt vs' sg m_tgt1)
+  Theorem store_arguments_parallel_extends
+          m_src0 m_tgt0 m_tgt1 rs_tgt vs vs' sg
+          (TYP: Val.has_type_list vs' sg.(sig_args))
+          (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+          (* (TYP: typechecked_args sg vs) *)
+          (* (TYP: typechecked_args sg vs') *)
+          (VALINJ: Val.lessdef_list vs vs')
+          (EXTENDS: Mem.extends m_src0 m_tgt0)
+          (ARGSRC: store_arguments m_tgt0 rs_tgt vs' sg m_tgt1)
     :
       exists m_src1 rs_src,
         (<<ARGTGT: store_arguments m_src0 rs_src vs sg m_src1>>) /\
@@ -1111,15 +889,14 @@ Section FILLARG.
                     rs_src
                     rs_tgt>>).
   Proof.
-    exists (fill_args_src_mem m_tgt0 m_tgt1 m_src0 vs (loc_arguments sg)).
-    exists (fill_args_src_reg vs (loc_arguments sg)).
+    exists (_FillArgsParallel.fill_args_src_mem m_tgt0 m_tgt1 m_src0 vs (loc_arguments sg)).
+    exists (_FillArgsParallel.fill_args_src_reg vs (loc_arguments sg)).
 
     destruct (Mem.alloc m_src0 0 (4 * size_arguments sg)) eqn:ALLOC.
     dup ALLOC. apply Mem.alloc_result in ALLOC0. clarify.
 
-    inv ARGSRC. unfold extcall_arguments in *. inv TYP.
+    inv ARGSRC. unfold extcall_arguments in *.
     dup ALC. apply Mem.alloc_result in ALC0. clarify.
-
     eapply val_inject_list_lessdef in VALINJ.
 
     splits; ss.
@@ -1129,15 +906,16 @@ Section FILLARG.
         assert (LENGTH: Datatypes.length vs = Datatypes.length (loc_arguments sg)).
         { erewrite inject_list_length; eauto.
           symmetry. eapply list_forall2_length; eauto. }
-        exploit fill_args_src_reg_args; eauto.
-        { eapply nodup_loc_arguments. }
-        exploit fill_args_src_blk_args; eauto.
-        { eapply no_overlap_loc_arguments; eauto. }
+        exploit _FillArgsParallel.fill_args_src_reg_args; eauto.
+        { eapply loc_arguments_norepet. }
+        { eapply loc_arguments_one. }
+        exploit _FillArgsParallel.fill_args_src_blk_args; eauto.
+        { eapply loc_arguments_norepet. }
         { eapply extcall_arguments_extcall_arg_in_stack; eauto. }
         instantiate (1:=ZMap.init Undef). intros STACK REGS.
         eapply extcall_arg_in_stack_in_reg_extcall_argument; eauto.
         * ss. rewrite PMap.gss. auto.
-        * unfold fill_args_src_mem, Mem.range_perm, Mem.perm. ss. ii.
+        * unfold _FillArgsParallel.fill_args_src_mem, Mem.range_perm, Mem.perm. ss. ii.
           rewrite PMap.gss.
           exploit PERM; eauto.
       + dup ALLOC. eapply Mem.alloc_unchanged_on with (P:=top2) in ALLOC0. inv ALLOC0.
@@ -1159,7 +937,7 @@ Section FILLARG.
       + ii. unfold Mem.perm. ss. rewrite PMap.gss.
         eapply PERM; eauto.
 
-    - unfold fill_args_src_mem. inv EXTENDS. inv mext_inj. econs.
+    - unfold _FillArgsParallel.fill_args_src_mem. inv EXTENDS. inv mext_inj. econs.
       + ss. rewrite mext_next. erewrite <- Mem.nextblock_alloc; eauto.
       + unfold inject_id in *.
 
@@ -1183,7 +961,7 @@ Section FILLARG.
           - eapply Z.divide_0_r.
 
           - rewrite PMap.gsspec in *. des_ifs; ss.
-            + hexploit fill_args_src_blk_inject; eauto.
+            + hexploit _FillArgsParallel.fill_args_src_blk_inject; eauto.
               * erewrite inject_list_length; eauto.
                 eapply Val_has_type_list_length; eauto.
               * eapply extcall_arguments_extcall_arg_in_stack; eauto.
@@ -1223,106 +1001,16 @@ Section FILLARG.
                 unfold Mem.valid_block in *. rewrite NB. eauto.
             + i. unfold Mem.perm in *. ss.
               rewrite PMap.gsspec in *. des_ifs; ss. }
-    - hexploit fill_args_src_reg_agree.
+    - hexploit _FillArgsParallel.fill_args_src_reg_agree.
       + eauto.
       + erewrite inject_list_length; eauto.
         eapply Val_has_type_list_length; eauto.
       + eapply extcall_arguments_extcall_arg_in_reg; eauto.
-      + ii. minv (H mr); econs; eauto.
+      + ii. cinv (H mr); econs; eauto.
   Qed.
 
-  Lemma extcall_args_callee_save_disjoint sg mr
-        (EXT: In (R mr) (regs_of_rpairs (loc_arguments sg)))
-    :
-      ~ Conventions1.is_callee_save mr.
-  Proof.
-    destruct sg. ss.
-    unfold loc_arguments in *.
-    ss. replace Archi.ptr64 with true in *; eauto.
-    assert (forall l mr p q r,
-               In (R mr) (regs_of_rpairs (loc_arguments_64 l p q r)) ->
-               ~ is_callee_save mr); eauto.
-    induction l; ss; i; destruct a; des_ifs; ss; des; eauto; inv H; ss.
-  Qed.
+End STOREARGPRARALLEL.
 
-  Lemma list_forall2_nth_option_rel A B (R: A -> B -> Prop) (la: list A) (lb: list B)
-    :
-      list_forall2 R la lb <-> forall n, option_rel R (nth_error la n) (nth_error lb n).
-  Proof.
-    split; intros.
-    - revert n.
-      induction H; ss; i.
-      + destruct n; ss; econs.
-      + destruct n; ss. econs; eauto.
-    - revert lb H. induction la; ss; i.
-      + minv (H 0%nat). des_ifs. econs.
-      + destruct lb.
-        * minv (H 0%nat).
-        * econs.
-          -- minv (H 0%nat). eauto.
-          -- eapply IHla. i.
-             mset2 H (Datatypes.S n). ss.
-  Qed.
-
-  Lemma extcall_arguments_same (rs0 rs1: Mach.regset) sp m sg args
-        (ARGS: extcall_arguments rs0 m sp sg args)
-        (SAME: forall r (IN: In (R r) (regs_of_rpairs (loc_arguments sg))),
-            rs0 r = rs1 r)
-    :
-      extcall_arguments rs1 m sp sg args.
-  Proof.
-    clear - ARGS SAME. unfold extcall_arguments in *.
-    revert args ARGS SAME. generalize (loc_arguments sg). induction l; ss; i.
-    - inv ARGS. econs.
-    - inv ARGS. econs; eauto.
-      + inv H1.
-        * econs 1. inv H; eauto.
-          -- erewrite SAME.
-             ++ econs.
-             ++ econs. eauto.
-          -- econs; eauto.
-        * inv H; inv H0.
-          -- econs; eauto; erewrite SAME; eauto; (try by econs; eauto).
-             ss. eauto.
-          -- econs; eauto; try erewrite SAME; eauto; (try by econs; eauto).
-          -- econs; eauto; try erewrite SAME; eauto; (try by econs; eauto).
-             ss. eauto.
-          -- econs; eauto; try erewrite SAME; eauto; (try by econs; eauto).
-      + eapply IHl; eauto.
-        ii. eapply SAME. eapply in_app; eauto.
-  Qed.
-
-End FILLARG.
-
-Section ARGS.
-
-  Lemma extcall_arg_imply
-    :
-      extcall_arg <5= Mach.extcall_arg.
-  Proof.
-    ii. inv PR; econs. eauto.
-  Qed.
-
-  Lemma extcall_arg_pair_imply
-    :
-      extcall_arg_pair <5= Mach.extcall_arg_pair.
-  Proof.
-    ii. inv PR.
-    - eapply extcall_arg_imply in H. econs. eauto.
-    - eapply extcall_arg_imply in H. eapply extcall_arg_imply in H0.
-      eapply longofwords_imply in LONG. clarify. econs; eauto.
-  Qed.
-
-  Lemma extcall_arguments_imply
-    :
-      extcall_arguments <5= Mach.extcall_arguments.
-  Proof.
-    ii. unfold extcall_arguments, Mach.extcall_arguments in *.
-    eapply list_forall2_imply; eauto.
-    i. eapply extcall_arg_pair_imply. eauto.
-  Qed.
-
-End ARGS.
 
 Ltac extcall_simpl :=
   repeat match goal with
@@ -1332,23 +1020,11 @@ Ltac extcall_simpl :=
          end
 .
 
-(* Inductive store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem): Prop := *)
-(* | store_arguments_intro *)
-(*     m1 blk *)
-(*     (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk)) *)
-(*     (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs) *)
-(*     (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk *)
-(*                                           then (* ~ (0 <= ofs < 4 * size_arguments sg) *) False *)
-(*                                           else True) m1 m2) *)
-(*     (NB: m1.(Mem.nextblock) = m2.(Mem.nextblock)) *)
-(*     (PERM: Mem.range_perm m2 blk 0 (4 * size_arguments sg) Cur Freeable) *)
-(* . *)
-
 Local Opaque Z.mul Z.sub Z.div.
 Local Transparent size_arguments.
 Local Transparent loc_arguments.
 
-Module FillArgs.
+Module FillArgsProgress.
 
   Fixpoint fill_arguments (sp: block) (rs0: regset) (m0: mem) (args: list val) (locs: list (rpair loc)):
     option (regset * mem) :=
@@ -1472,9 +1148,9 @@ Module FillArgs.
   Qed.
 
   Theorem fill_arguments_progress
-        sg m0 rs0 m1 sp args
-        (LEN: length args = length sg.(sig_args))
-        (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, sp))
+          sg m0 rs0 m1 sp args
+          (LEN: length args = length sg.(sig_args))
+          (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, sp))
     :
       exists rs1 m2, (<<STORE: fill_arguments (* (Vptr sp Ptrofs.zero true) *) sp rs0 m1 args (loc_arguments sg)
                                = Some (rs1, m2)>>)
@@ -1526,9 +1202,9 @@ Module FillArgs.
   (* Qed. *)
 
   Let fill_arguments_unchanged_on
-        sp rs0 m0 args x y z rs1 m1 tys
-        (LEN: length args = length tys)
-        (FILL: fill_arguments sp rs0 m0 args (loc_arguments_64 tys x y z) = Some (rs1, m1))
+      sp rs0 m0 args x y z rs1 m1 tys
+      (LEN: length args = length tys)
+      (FILL: fill_arguments sp rs0 m0 args (loc_arguments_64 tys x y z) = Some (rs1, m1))
     :
       (* <<UNCH: Mem.unchanged_on (brange sp 0 (4 * z)) m0 m1>> *)
       (<<UNCH: Mem.unchanged_on (fun b ofs => if eq_block b sp
@@ -1577,15 +1253,6 @@ Module FillArgs.
         { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
     }
   Qed.
-
-  (* TODO: remove same lemma in AsmregsC *)
-  Lemma typesize_chunk
-        ty
-    :
-      size_chunk (chunk_of_type ty) =
-      4 * ty.(typesize)
-  .
-  Proof. destruct ty; ss. Qed.
 
 
   Let fill_arguments_spec_aux: forall
@@ -2145,7 +1812,8 @@ Module FillArgs.
           (* (LEN: length args = length sg.(sig_args)) *)
           (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, sp))
           rs1 m2
-          (TYP: typechecked_args sg targs)
+          (TYP: Val.has_type_list targs sg.(sig_args))
+          (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
           (* (LEN: length args = length sg.(sig_args)) *)
           (* (TYPIFY: typify_list args sg.(sig_args) = targs) *)
           (* (MAX: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
@@ -2159,9 +1827,8 @@ Module FillArgs.
     (* destruct sg; ss. unfold size_arguments, loc_arguments in *. *)
     ss. des_ifs. clear_tac.
     unfold loc_arguments in *. des_ifs.
-    inv TYP.
     assert(LEN2: length targs = length (sig_args sg)).
-    { clear - TYP0. revert TYP0. generalize (sig_args sg).
+    { clear - TYP. revert TYP. generalize (sig_args sg).
       induction targs; ss; i; des_ifs; ss.
       f_equal. eapply IHtargs. des. auto. }
     econs; eauto.
@@ -2176,23 +1843,22 @@ Module FillArgs.
     - ii. eapply fill_arguments_perm; eauto. eauto with mem.
   Qed.
 
-End FillArgs.
+End FillArgsProgress.
 
 Theorem store_arguments_progress
         m0 tvs sg
-        (TYP: typechecked_args sg tvs)
+        (TYP: Val.has_type_list tvs sg.(sig_args))
+        (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
   :
     exists rs m2, <<STR: store_arguments m0 rs tvs sg m2>>
 .
 Proof.
-  inv TYP.
   destruct (Mem.alloc m0 0 (4 * size_arguments sg)) eqn:ALC.
   rename m into m1. rename b into blk.
   assert(LEN2: length tvs = length (sig_args sg)).
-  { clear - TYP0. revert TYP0. generalize (sig_args sg).
+  { clear - TYP. revert TYP. generalize (sig_args sg).
     induction tvs; ss; i; des_ifs; ss.
     f_equal. eapply IHtvs. des. auto. }
-  exploit (FillArgs.fill_arguments_progress sg m0 (Regmap.init Vundef)); eauto. i; des.
-  exploit (FillArgs.fill_arguments_spec sg m0 (Regmap.init Vundef) m1 blk tvs); eauto.
-  econs; eauto.
+  exploit (FillArgsProgress.fill_arguments_progress sg m0 (Regmap.init Vundef)); eauto. i; des.
+  exploit (FillArgsProgress.fill_arguments_spec sg m0 (Regmap.init Vundef) m1 blk tvs); eauto.
 Qed.

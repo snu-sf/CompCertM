@@ -5,7 +5,7 @@ Require Import Locations Stacklayout Conventions.
 Require Import Mach Simulation ValuesC.
 Require Export Asm.
 Require Import Skeleton ModSem Mod sflib.
-Require Import LocationsC AsmregsC MachExtra.
+Require Import LocationsC AsmregsC StoreArguments.
 Set Implicit Arguments.
 
 Definition get_mem (st: state): mem :=

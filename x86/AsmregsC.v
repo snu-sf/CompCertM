@@ -699,4 +699,3 @@ Proof.
   inv LOAD. inv LOAD0.
   ss.
 Qed.
-

@@ -158,6 +158,83 @@ Proof.
   ss.
 Qed.
 
+Lemma loc_norepet_app l0 l1
+      (NOREPEAT: Loc.norepet (l0 ++ l1))
+  :
+    Loc.norepet l1.
+Proof.
+  induction l0; ss.
+  inv NOREPEAT. eauto.
+Qed.
+
+Lemma loc_in_not_not_in
+      r l
+      (IN: In (One r) l)
+      (NIN: Loc.notin r (regs_of_rpairs l))
+  :
+    False.
+Proof.
+  induction l; ss. des; clarify; ss; des.
+  - destruct r; ss; des; clarify.
+    + destruct ty; ss; lia.
+    + destruct ty; ss; lia.
+  - eapply IHl; eauto.
+    destruct a; ss; des; eauto.
+Qed.
+
+Lemma in_one_in_rpair l (r: loc)
+      (IN: In (One r) l)
+  :
+    In r (regs_of_rpairs l).
+Proof.
+  induction l; ss; des; clarify.
+  - destruct r; ss; eauto.
+  - eapply in_or_app; eauto.
+Qed.
+
+Lemma loc_arguments_ofs_bounded
+      sg
+      (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+      ofs ty
+      (IN: In (One (S Outgoing ofs ty)) (loc_arguments sg))
+  :
+    0 <= 4 * ofs <= Ptrofs.max_unsigned.
+Proof.
+  hexploit loc_arguments_bounded.
+  - instantiate (1:=sg). instantiate (1:=ty). instantiate (1:=ofs).
+    revert ofs ty IN.
+    induction (loc_arguments sg); ss; i.
+    des; clarify; ss; eauto.
+    eapply in_app_iff. right. eapply IHl; eauto.
+  - i. split.
+    + hexploit (loc_arguments_acceptable sg); eauto.
+      intros ACCP. inv ACCP. lia.
+    + destruct ty; ss; lia.
+Qed.
+
+Lemma sig_args_length sg
+  :
+    Datatypes.length (sig_args sg) = Datatypes.length (loc_arguments sg).
+Proof.
+  unfold loc_arguments in *. des_ifs.
+  generalize 0 at 1.
+  generalize 0 at 1.
+  generalize 0 at 1.
+  induction (sig_args sg); ss; i.
+  des_ifs; ss; f_equal; eauto.
+Qed.
+
+Lemma Val_has_type_list_length sg vs
+      (TYP: Val.has_type_list vs (sig_args sg))
+  :
+    Datatypes.length vs = Datatypes.length (loc_arguments sg).
+Proof.
+  rewrite <- sig_args_length.
+  revert vs TYP. induction (sig_args sg); ss; i; destruct vs; ss.
+  des.
+  f_equal; eauto.
+Qed.
+
 Lemma Val_hiword_spec
       vhi vlo
       (DEFINED: (Val.longofwords vhi vlo) <> Vundef)
@@ -290,4 +367,3 @@ Proof.
     + contradict NOTIN. eauto.
     + erewrite OUT; eauto.
 Qed.
-

@@ -17,7 +17,8 @@
 Require Import CoqlibC Errors.
 Require Import IntegersC AST Linking.
 Require Import ValuesC MemoryC SeparationC Events Globalenvs Smallstep.
-Require Import LTL Op LocationsC LinearC MachC.
+Require Import LTL Op LocationsC LinearC.
+Require Import MachC.
 Require Import Bounds ConventionsC Stacklayout Lineartyping.
 Require Import Stacking.
 Require Import sflib.
@@ -743,9 +744,9 @@ Lemma agree_regs_undef_caller_save_regs:
   agree_regs j ls rs ->
   agree_regs j (LTL.undef_caller_save_regs ls) (Mach.undef_caller_save_regs rs).
 Proof.
-  intros; red; intros. 
-  unfold LTL.undef_caller_save_regs, Mach.undef_caller_save_regs. 
-  destruct (is_callee_save r); auto. 
+  intros; red; intros.
+  unfold LTL.undef_caller_save_regs, Mach.undef_caller_save_regs.
+  destruct (is_callee_save r); auto.
 Qed.
 
 (** Preservation under assignment of stack slot *)
@@ -1438,7 +1439,7 @@ Proof.
     apply CS; auto.
     rewrite NCS by auto. apply AGR.
   split. red; unfold return_regs; intros.
-    destruct l. rewrite H; auto. destruct sl; auto; contradiction. 
+    destruct l. rewrite H; auto. destruct sl; auto; contradiction.
   assumption.
 Qed.
 
@@ -1878,7 +1879,7 @@ Hypothesis SEP: m' |= stack_contents j cs cs'.
 Lemma transl_external_argument:
   forall l,
   In l (regs_of_rpairs (loc_arguments sg)) ->
-  exists v, extcall_arg rs m' (parent_sp cs') l v /\ Val.inject j (ls l) v.
+  exists v, Mach.extcall_arg rs m' (parent_sp cs') l v /\ Val.inject j (ls l) v.
 Proof.
   intros.
   assert (loc_argument_acceptable l) by (apply loc_arguments_acceptable_2 with sg; auto).
@@ -1906,13 +1907,13 @@ Local Opaque contains_locations.
   assert (slot_within_bounds (function_bounds f) Outgoing pos ty) by eauto.
   exploit frame_get_outgoing; eauto. intros (v & A & B).
   exists v; split.
-  constructor. exact A. rewrite AGARGS by auto. exact B. 
+  constructor. exact A. rewrite AGARGS by auto. exact B.
 Qed.
 
 Lemma transl_external_argument_2:
   forall p,
   In p (loc_arguments sg) ->
-  exists v, extcall_arg_pair rs m' (parent_sp cs') p v /\ Val.inject j (Locmap.getpair p ls) v.
+  exists v, Mach.extcall_arg_pair rs m' (parent_sp cs') p v /\ Val.inject j (Locmap.getpair p ls) v.
 Proof.
   intros. destruct p as [l | l1 l2].
 - destruct (transl_external_argument l) as (v & A & B). eapply in_regs_of_rpairs; eauto; simpl; auto.
@@ -1928,7 +1929,7 @@ Lemma transl_external_arguments_rec:
   forall locs,
   incl locs (loc_arguments sg) ->
   exists vl,
-      list_forall2 (extcall_arg_pair rs m' (parent_sp cs')) locs vl
+      list_forall2 (Mach.extcall_arg_pair rs m' (parent_sp cs')) locs vl
    /\ Val.inject_list j (map (fun p => Locmap.getpair p ls) locs) vl.
 Proof.
   induction locs; simpl; intros.
@@ -1940,7 +1941,7 @@ Qed.
 
 Lemma transl_external_arguments:
   exists vl,
-      extcall_arguments rs m' (parent_sp cs') sg vl
+      Mach.extcall_arguments rs m' (parent_sp cs') sg vl
    /\ Val.inject_list j (map (fun p => Locmap.getpair p ls) (loc_arguments sg)) vl.
 Proof.
   unfold extcall_arguments.
@@ -2454,7 +2455,7 @@ Proof.
   notnil_tac.
   eapply match_states_return with (j := j').
   eapply match_stacks_change_meminj; eauto.
-  apply agree_regs_set_pair. apply agree_regs_undef_caller_save_regs. 
+  apply agree_regs_set_pair. apply agree_regs_undef_caller_save_regs.
   apply agree_regs_inject_incr with j; auto.
   auto.
   apply agree_callee_save_set_result.
@@ -2471,7 +2472,7 @@ Proof.
   apply agree_locs_return with rs0; auto.
   apply frame_contents_exten with rs0 (parent_locset (s0 :: l)); auto.
   intros; apply Val.lessdef_same; apply AGCS; red; congruence.
-  intros; rewrite (OUTU ty ofs); auto. 
+  intros; rewrite (OUTU ty ofs); auto.
 Qed.
 
 (* Lemma transf_initial_states: *)
@@ -2546,4 +2547,3 @@ Qed.
 (* Qed. *)
 
 End PRESERVATION.
-

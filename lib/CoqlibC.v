@@ -877,7 +877,7 @@ Hint Rewrite
      Z.sub_0_r Z.sub_diag Z.sub_simpl_l Z.sub_simpl_r Z.sub_0_l
      Z.div_0_l Zdiv_0_r Z.div_1_r
      Z.mod_1_r Z.mod_0_l Z.mod_same Z.mod_mul Z.mod_mod
-     Z.sub_add 
+     Z.sub_add
   : zsimpl
 .
 
@@ -1085,3 +1085,78 @@ Lemma cons_app
     xhd :: xtl = [xhd] ++ xtl
 .
 Proof. ss. Qed.
+
+Lemma list_map_injective A B (f: A -> B)
+      (INJECTIVE: forall a0 a1 (EQ: f a0 = f a1), a0 = a1)
+      l0 l1
+      (LEQ: map f l0 = map f l1)
+  :
+    l0 = l1.
+Proof.
+  revert l1 LEQ. induction l0; i; ss.
+  - destruct l1; ss.
+  - destruct l1; ss. inv LEQ. f_equal; eauto.
+Qed.
+
+Lemma Forall_in_map A B al (R: B -> Prop) (f: A -> B)
+      (RMAP: forall a (IN: In a al), R (f a))
+  :
+    Forall R (map f al).
+Proof.
+  induction al; econs; ss; eauto.
+Qed.
+
+Lemma Forall2_in_map A B al (R: B -> A -> Prop) (f: A -> B)
+      (RMAP: forall a (IN: In a al), R (f a) a)
+  :
+    list_forall2 R (map f al) al.
+Proof.
+  induction al; econs; ss; eauto.
+Qed.
+
+Lemma eq_Forall2_eq A (al0 al1 : list A)
+  :
+    list_forall2 eq al0 al1 <-> al0 = al1.
+Proof.
+  revert al1. induction al0; ss; i; split; i; eauto.
+  - inv H. eauto.
+  - inv H. econs.
+  - inv H. f_equal. eapply IHal0. eauto.
+  - inv H. econs; eauto. eapply IHal0. eauto.
+Qed.
+
+Lemma list_forall2_lift A B (R0 R1: A -> B -> Prop) al bl
+      (SAME: forall a (IN: In a al) b, R0 a b -> R1 a b)
+      (FORALL: list_forall2 R0 al bl)
+  :
+    list_forall2 R1 al bl.
+Proof.
+  generalize dependent bl. revert SAME.
+  induction al; ss; i; inv FORALL; econs; eauto.
+Qed.
+
+Lemma Forall_map A B la (R: B -> Prop) (f: A -> B)
+      (RMAP: forall a, R (f a))
+  :
+    Forall R (map f la).
+Proof.
+  induction la; econs; ss.
+Qed.
+
+Lemma f_hequal A (B : A -> Type) (f : forall a, B a)
+      a1 a2 (EQ : a1 = a2)
+  :
+    f a1 ~= f a2.
+Proof.
+  destruct EQ. econs.
+Qed.
+
+Lemma list_forall2_rev A B R (la: list A) (lb: list B)
+      (FORALL: list_forall2 R la lb)
+  :
+    list_forall2 (flip R) lb la.
+Proof.
+  generalize dependent lb. induction la; i; eauto.
+  - inv FORALL. econs.
+  - inv FORALL. econs; eauto.
+Qed.

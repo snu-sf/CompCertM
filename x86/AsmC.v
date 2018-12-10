@@ -2,10 +2,10 @@ Require Import CoqlibC Maps.
 Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
 Require Import Locations Stacklayout Conventions.
 (** newly added **)
+Require Import Mach Simulation ValuesC.
 Require Export Asm.
-Require Import Simulation Asm ValuesC.
 Require Import Skeleton ModSem Mod sflib.
-
+Require Import LocationsC AsmregsC StoreArguments.
 Set Implicit Arguments.
 
 Definition get_mem (st: state): mem :=
@@ -31,20 +31,9 @@ Definition st_m (st0: state): mem :=
   end
 .
 
-Inductive store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem): Prop :=
-| store_arguments_intro
-    m1 blk
-    (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
-    (VALS: extcall_arguments rs m2 sg vs)
-    (RSRSP: rs#RSP = Vptr blk Ptrofs.zero true)
-    (UNCH: Mem.unchanged_on
-             (fun b ofs' =>
-                if eq_block b blk
-                then ~ (0 <= ofs' <  4 * size_arguments sg)
-                else True) m1 m2)
-    (NB: m1.(Mem.nextblock) = m2.(Mem.nextblock))
-    (PERM: Mem.range_perm m2 blk 0 (4 * size_arguments sg) Cur Freeable)
-.
+Definition store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem) : Prop :=
+  store_arguments m0 (to_mregset rs) vs sg m2 /\
+  rs RSP = Vptr m0.(Mem.nextblock) Ptrofs.zero true.
 
 Definition external_state F V (ge: Genv.t F V) (v : val) : bool :=
   match v with
@@ -126,7 +115,7 @@ Section MODSEM.
       (EXTERNAL: Genv.find_funct ge (Vptr blk0 Ptrofs.zero true) = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero true)
                         = Some skd /\ SkEnv.get_sig skd = sg)
-      (VALS: extcall_arguments rs m0 sg vs)
+      (VALS: Asm.extcall_arguments rs m0 sg vs)
       (RSP: rs RSP = Vptr blk1 ofs true)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (OFSZERO: ofs = Ptrofs.zero)
@@ -145,9 +134,12 @@ Section MODSEM.
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (RSPC: rs # PC = args.(Args.fptr))
-      (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+      (* (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
       (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
-      (STORE: store_arguments args.(Args.m) rs args.(Args.vs) sg m)
+      targs
+      (TYP: typecheck args.(Args.vs) sg targs)
+      (STORE: store_arguments args.(Args.m) rs targs sg m)
+      (* (STORE: store_arguments args.(Args.m) rs args.(Args.vs) sg m) *)
       (RAPTR: wf_RA (rs RA))
       (PTRFREE: forall pr (PTR: is_real_ptr (rs pr)),
           (<<INARG: exists mr,
@@ -206,7 +198,7 @@ Section MODSEM.
   .
   Next Obligation.
     ii; ss; des. inv_all_once; des; ss; clarify. rewrite RSP in *. clarify.
-    rewrite FPTR in *. clarify. f_equal. eapply extcall_arguments_determ; eauto.
+    rewrite FPTR in *. clarify. f_equal. eapply Asm.extcall_arguments_determ; eauto.
   Qed.
   Next Obligation.
     ii; ss; des. inv_all_once; des; ss; clarify.
@@ -318,4 +310,3 @@ Lemma to_mreg_preg_of
     <<PR: preg_of mr = pr>>
 .
 Proof. destruct mr, pr; ss; des_ifs. Qed.
-

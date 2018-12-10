@@ -294,7 +294,7 @@ Local Opaque Z.mul.
 Lemma mach_store_arguments_simmem
       sm0 rs vs sg m_tgt0
       (MWF: SimMem.wf sm0)
-      (STORE: MachC.store_arguments sm0.(SimMem.tgt) rs vs sg m_tgt0)
+      (STORE: StoreArguments.store_arguments sm0.(SimMem.tgt) rs vs sg m_tgt0)
       (*** TODO: don't use unchanged_on, it is needlessly complex for our use. just define my own. *)
   :
     exists sm1,
@@ -524,4 +524,3 @@ Qed.
 End SIMSYMB.
 
 Arguments skenv_inject_revive [_ _ _].
-

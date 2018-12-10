@@ -295,4 +295,3 @@ Inductive typecheck (vs: list val) (sg: signature) (tvs: list val): Prop :=
     (TYP: typify_list vs sg.(sig_args) = tvs)
     (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
 .
-

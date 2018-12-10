@@ -6,7 +6,7 @@ Require Import Asmgen Asmgenproof0 Asmgenproof1.
 Require Import sflib.
 (* newly added *)
 Require Export Asmgenproof AsmgenproofC0 AsmgenproofC1.
-Require Import ModSem SimModSem SimSymbId SimMemExt SimSymbId MemoryC ValuesC.
+Require Import SimModSem SimMemExt SimSymbId MemoryC ValuesC MemdataC LocationsC StoreArguments Conventions1C.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.
 Require SoundTop.
@@ -40,18 +40,35 @@ Definition get_rs (ms: Mach.state) : Mach.regset :=
   | Returnstate _ rs _ => rs
   end.
 
-Record agree_eq (ms: Mach.regset) (sp: val) (rs: Asm.regset) : Prop := mkagree {
-  agree_sp: rs#SP = sp;
-  agree_sp_def: sp <> Vundef;
-  agree_mregs: forall r: mreg, (ms r) = (rs#(preg_of r))
-}.
+Record agree_eq (ms: Mach.regset) (sp: val) (rs: Asm.regset) (sg: signature): Prop :=
+  mkagree
+    {
+      agree_sp: rs#SP = sp;
+      agree_sp_def: sp <> Vundef;
+      agree_mregs_less:
+        forall (r: mreg) (IN: In (R r) (regs_of_rpairs (loc_arguments sg))),
+          Val.lessdef (ms r) (rs#(preg_of r));
+      agree_mregs_eq:
+        forall (r: mreg) (NOTIN: ~ In (R r) (regs_of_rpairs (loc_arguments sg))),
+          (ms r) = (rs#(preg_of r));
+    }.
+
+Definition set_regset (rs0 rs1: Mach.regset) (sg: signature) (mr: mreg) : val :=
+  if Loc.notin_dec (R mr) (regs_of_rpairs (loc_arguments sg))
+  then rs1 mr
+  else rs0 mr.
+
+Definition set_regset_undef (rs: Mach.regset) (sg: signature) (mr: mreg) : val :=
+  if Loc.notin_dec (R mr) (regs_of_rpairs (loc_arguments sg))
+  then Vundef
+  else rs mr.
 
 Inductive match_init_data init_sp init_ra
           init_rs_src init_sg_src init_rs_tgt : Prop :=
 | match_init_data_intro
     (INITRA: init_ra = init_rs_tgt RA)
     (INITRAPTR: wf_RA (init_ra))
-    (INITRS: agree_eq init_rs_src init_sp init_rs_tgt)
+    (INITRS: agree_eq init_rs_src init_sp init_rs_tgt init_sg_src )
     (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src)
 .
 
@@ -133,13 +150,36 @@ Proof.
 
   - destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
     inv INITTGT. des. ss. clarify. inv RAPTR.
+
     assert (SRCSTORE: exists rs_src m_src,
-               MachC.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
+               StoreArguments.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
            agree_eq rs_src (Vptr (Mem.nextblock src)
-                          Ptrofs.zero true) rs /\ Mem.extends m_src m).
-    { clear - SAFESRC STORE VALS.
-      admit "this should hold...".
+                          Ptrofs.zero true) rs (fn_sig fd) /\ Mem.extends m_src m).
+    {
+      inv TYP.
+      exploit store_arguments_parallel_extends.
+      - eapply typify_has_type_list. eauto.
+      - eauto.
+      - instantiate (1:= typify_list vs (sig_args (fn_sig fd))).
+        eapply lessdef_list_typify_list; eauto.
+        erewrite lessdef_list_length; eauto.
+      - eapply MWF.
+      - inv STORE. eauto.
+      - i. des. exists (set_regset rs_src (to_mregset rs) (fn_sig fd)).
+        esplits; eauto.
+        + clear - ARGTGT. inv ARGTGT. econs; eauto.
+          eapply extcall_arguments_same; eauto.
+          i. unfold set_regset. des_ifs.
+          eapply Loc.notin_not_in in n. contradiction.
+        + inv STORE. econs; eauto.
+          * inv MWF. rewrite mext_next. eauto.
+          * intros X. inv X.
+          * i. unfold set_regset. des_ifs.
+            eapply val_inject_id. eapply AGREE.
+          * i. unfold set_regset. des_ifs.
+            eapply LocationsC.Loc_not_in_notin_R in NOTIN. contradiction.
     }
+
     destruct SRCSTORE as [rs_src [m_src [SRCSTORE [AGREE EXTENDS]]]].
     inv AGREE.
     exists (MachC.mkstate
@@ -153,7 +193,7 @@ Proof.
     { clear - SAFESRC. inv SAFESRC. ss. }
     esplits; auto.
     + inv SAFESRC. ss.
-      inv TYP. clear_tac.
+      inv TYP0. clear_tac.
       assert(SIG: fn_sig fd = Mach.fn_sig fd0).
       {
         hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
@@ -163,9 +203,9 @@ Proof.
       econs; auto.
       * eauto.
       * ss.
-      * econs; eauto. ss. eauto with congruence.
+      * econs; eauto; ss; eauto with congruence.
       * ss.
-      * ii. rewrite (agree_mregs0 mr) in *. exploit PTRFREE; eauto.
+      * ii. erewrite (agree_mregs_eq0 mr) in *; auto. exploit PTRFREE; eauto.
         i. des.
         -- rewrite Asm.to_preg_to_mreg in *. clarify.
         -- destruct mr; clarify.
@@ -180,7 +220,9 @@ Proof.
       econs; ss.
       * econs; ss; eauto. econs; eauto.
       * econs; eauto; ss; try by (econs; eauto).
-        -- econs; eauto. i. rewrite agree_mregs0. econs.
+        -- econs; eauto. i.
+           destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (fn_sig fd))))); eauto.
+           erewrite agree_mregs_eq0; auto.
         -- destruct SIMSKENVLINK. inv H. etrans; eauto.
            clear - MWF SRCSTORE.
            apply Mem.mext_next in MWF. rewrite <- MWF in *.
@@ -191,8 +233,17 @@ Proof.
   - ss. des. inv SIMARGS. destruct sm_arg. ss. clarify.
     inv SAFESRC.
     hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des. ss; unfold bind in *; des_ifs. rename f into fd_tgt.
+    inv TYP.
+    assert(SIG: fn_sig fd_tgt = Mach.fn_sig fd).
+    {
+      hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
+      folder. ss; try unfold bind in *; des_ifs.
+      symmetry. eapply transf_function_sig; eauto.
+    }
     assert (exists rs_tgt m_tgt,
-               (<<STORE: AsmC.store_arguments (Args.m args_tgt) rs_tgt (Args.vs args_tgt)
+               (<<STORE: AsmC.store_arguments (Args.m args_tgt) rs_tgt
+                                              (typify_list (Args.vs args_tgt) (sig_args (fn_sig fd_tgt)))
+                                              (* (Args.vs args_tgt) *)
                                               (fn_sig fd_tgt) m_tgt>>) /\
                (<<RSPC: rs_tgt PC = Args.fptr args_tgt>>) /\
                (<<RSRA: rs_tgt RA = Vnullptr>>) /\
@@ -202,13 +253,43 @@ Proof.
                        (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments (Mach.fn_sig fd)))>>)>>) \/
                    (<<INPC: pr = PC>>) \/
                    (<<INRSP: pr = RSP>>)>>)).
-    { admit "this should hold...". } des.
+    {
+      exploit StoreArguments.store_arguments_progress.
+      - instantiate (2:=typify_list (Args.vs args_tgt) (sig_args (fn_sig fd_tgt))).
+        eapply typify_has_type_list.
+        erewrite <- lessdef_list_length; eauto.
+        erewrite SIG. eauto.
+      - erewrite SIG. eauto.
+      - i. des.
+        exists ((to_pregset (set_regset_undef rs0 (fn_sig fd_tgt)))
+                  #PC <- (Args.fptr args_tgt)
+                  #RA <- Vnullptr
+                  #RSP <- (Vptr (Mem.nextblock (Args.m args_tgt)) Ptrofs.zero true)).
+        esplits; eauto.
+        + split; ss.
+          inv STR. econs; eauto. eapply extcall_arguments_same; eauto.
+          i.
+          { assert (NNIN: ~ Loc.notin (R r) (regs_of_rpairs (loc_arguments (fn_sig fd_tgt)))).
+            { intros X. eapply Loc.notin_not_in; eauto. }
+            unfold set_regset_undef, to_pregset, to_mregset, Pregmap.set, to_preg, preg_of, to_mreg in *.
+            destruct r; eauto; des_ifs; try contradiction.
+          }
+        + i.
+          assert (NNIN: forall mr, ~ Loc.notin (R mr) (regs_of_rpairs (loc_arguments (fn_sig fd_tgt))) -> In (R mr) (regs_of_rpairs (loc_arguments (Mach.fn_sig fd)))).
+          { intros mr NIN. rewrite <- SIG. clear - NIN.
+            eapply NNPP. intros X.
+            eapply LocationsC.Loc_not_in_notin_R in X. des. contradiction. }
+          unfold set_regset_undef, to_pregset, to_mregset, Pregmap.set, to_preg, preg_of, to_mreg in *.
+          destruct pr; eauto; des_ifs; eauto.
+    }
+    des.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
-    + inv TYP. rp; eauto. repeat f_equal. symmetry. eapply transf_function_sig; eauto.
     + ss. destruct SIMSKENVLINK. inv H0.
       apply Mem.mext_next in MWF. rewrite <- MWF in *. auto.
-    + rewrite RSRA. econs; ss.
+    + rewrite SIG. econs; eauto. rewrite <- LEN.
+      symmetry. eapply lessdef_list_length. eauto.
+   + rewrite RSRA. econs; ss.
     + erewrite <- transf_function_sig; eauto.
   - inv MATCH; ss. destruct st_src0, st_tgt0, sm0. ss. inv MATCHST; ss.
 
@@ -216,7 +297,9 @@ Proof.
     destruct st_tgt0. ss. clarify.
     des.
     inv FPTR; ss. destruct (rs0 PC) eqn:PCEQ; ss. des_ifs.
-    exploit Asmgenproof0.extcall_arguments_match; eauto. intros TGRARGS. des.
+
+    exploit Asmgenproof0.extcall_arguments_match; eauto.
+    intros TGRARGS. des.
     exploit Mem.free_parallel_extends; eauto. intros TGTFREE. des.
     esplits; ss.
     + econs; eauto.
@@ -266,9 +349,12 @@ Proof.
     exploit Mem.free_parallel_extends; eauto. intros TGTFREE. des.
     esplits; auto.
     + econs.
-      * inv INITRS. inv AG.
-        i. eapply Val.lessdef_trans. rewrite <- agree_mregs0.
-        eapply CALLEESAVE; auto. auto.
+      * inv INITRS. inv AG. i.
+        { eapply Val.lessdef_trans.
+          - erewrite <- agree_mregs_eq0; auto. ii.
+            eapply loc_args_callee_save_disjoint; eauto.
+          - eauto.
+        }
       * inv INITRS. inv STACKS; [|inv H7]; rewrite H0. ss.
       * exists fd. eauto.
       * instantiate (1 := m2'). eauto.

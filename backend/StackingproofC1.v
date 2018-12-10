@@ -464,29 +464,18 @@ Proof.
         exploit ONES; eauto. i.
         destruct a; ss.
         des; ss; clarify.
-        * inv SIMVS. inv VALS.
-          unfold typify_list in *. ss. des_ifs.
-          eapply IHlocs; eauto.
-          (* inv VALS; ss. eauto. *)
-          admit "". admit "".
-        * inv VALS.
-          admit "".
-          (* Ltac extcall_tac := *)
-          (*   repeat match goal with *)
-          (*   | [ H: extcall_arg_pair _ _ _ (One _) _ |- _ ] => inv H *)
-          (*   | [ H: extcall_arg _ _ _ (S _ _ _) _ |- _ ] => inv H *)
-          (*   | [ H: extcall_arg _ _ _ (R _) _ |- _ ] => inv H *)
-          (*   end *)
-          (* . *)
-          (* extcall_tac. *)
-          (* unfold typify_list in *. *)
-          (* destruct vs_src; ss. des_ifs. cbn in *. psimpl. zsimpl. inv SIMVS. *)
-          (* rewrite Ptrofs.unsigned_repr in *; cycle 1. *)
-          (* { split; try lia. unfold Ptrofs.max_unsigned. *)
-          (*   generalize (typesize_pos ty); i. xomega. *)
-          (* } *)
-          (* esplits; eauto. rewrite <- H3. ss. clarify. *)
-          (* eapply inject_typify; eauto. *)
+        { unfold typify_list in *.
+          inv VALS. inv SIMVS; ss; des_ifs.
+          inv H3. inv H7.
+          exists (typify v' t). esplits; eauto.
+          - unfold Mem.loadv in *. ss. psimpl.
+            unfold fe_ofs_arg, Ptrofs.max_unsigned in *.
+            set (typesize_pos ty). lia.
+          - rewrite <- H6.
+            eapply inject_typify; eauto. }
+        { unfold typify_list in *.
+          inv VALS. inv SIMVS; ss; des_ifs.
+          eapply IHlocs; eauto. }
       + exploit OUT; eauto. i; des. ss. rewrite H0.
         exploit (Mem.valid_access_load m_tgt0 (chunk_of_type ty)); cycle 1.
         { i; des. esplits; eauto. }

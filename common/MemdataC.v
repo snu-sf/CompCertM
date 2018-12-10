@@ -1,11 +1,20 @@
-Require Import CoqlibC.
-Require Import Maps.
+Require Import Coqlib.
+Require Archi.
 Require Import AST.
 Require Import Integers.
-Require Import ValuesC.
-Require Import MemoryC.
-Require Import Conventions.
+Require Import Floats.
+Require Import Values.
+Require Import Memdata.
 
+Require Import CoqlibC.
+
+
+Ltac my_tac :=
+  match goal with
+  | [ H: context[match ?x with _ => _ end] |- _ ] =>
+    let name := fresh "A" in destruct x eqn:name; ss; subst;
+                             try rewrite andb_true_iff in *; des; des_sumbool; subst
+  end.
 
 Lemma proj_bytes_only_bytes
       mvs bts
@@ -81,10 +90,3 @@ Proof.
     all: eauto.
     des_ifs.
 Qed.
-
-Lemma typesize_chunk
-      ty
-  :
-    4 * ty.(typesize) = size_chunk (chunk_of_type ty)
-.
-Proof. destruct ty; ss. Qed.

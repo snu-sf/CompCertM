@@ -85,3 +85,13 @@ Proof.
   eapply size_arguments_loc_arguments_aux; eauto.
 Qed.
 
+Lemma loc_args_callee_save_disjoint sg mr
+      (EXT: In (R mr) (regs_of_rpairs (loc_arguments sg)))
+  :
+    ~ Conventions1.is_callee_save mr.
+Proof.
+  exploit in_regs_of_rpairs_inv; eauto. i. des.
+  exploit loc_arguments_acceptable; eauto. i.
+  unfold forall_rpair, loc_argument_acceptable in *.
+  des_ifs; ss; des; clarify; eauto.
+Qed.

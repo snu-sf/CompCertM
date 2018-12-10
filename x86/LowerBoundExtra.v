@@ -5,7 +5,7 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib AsmC Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC MemoryC2 Lia LinkingC2.
+Require Import GlobalenvsC MemoryC2 Lia LinkingC2 Conventions1C.
 
 Set Implicit Arguments.
 
@@ -108,7 +108,7 @@ Proof.
   destruct (classic (arg_copy_reg sg args rs (to_preg mr) = rs (to_preg mr))); eauto.
   exploit arg_copy_reg_spec; eauto. i. des.
   rewrite to_preg_to_mreg in MR. clarify.
-  exploit AsmExtra.loc_args_callee_save_disjoint; eauto.
+  exploit loc_args_callee_save_disjoint; eauto.
   intros [].
 Qed.
 

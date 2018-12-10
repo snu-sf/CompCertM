@@ -235,20 +235,6 @@ Proof.
   f_equal; eauto.
 Qed.
 
-Lemma loc_args_callee_save_disjoint sg mr
-      (EXT: In (R mr) (regs_of_rpairs (loc_arguments sg)))
-  :
-    ~ Conventions1.is_callee_save mr.
-Proof.
-  destruct sg. ss.
-  unfold loc_arguments in *.
-  ss. replace Archi.ptr64 with true in *; eauto.
-  assert (forall l mr p q r,
-             In (R mr) (regs_of_rpairs (loc_arguments_64 l p q r)) ->
-             ~ is_callee_save mr); eauto.
-  induction l; ss; i; destruct a; des_ifs; ss; des; eauto; inv H; ss.
-Qed.
-
 Lemma Val_hiword_spec
       vhi vlo
       (DEFINED: (Val.longofwords vhi vlo) <> Vundef)

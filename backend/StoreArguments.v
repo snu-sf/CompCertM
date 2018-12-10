@@ -14,12 +14,6 @@ Require Stacklayout.
 (** newly added **)
 Require Import Mach mktac MemdataC.
 
-Ltac my_tac :=
-  match goal with
-  | [ H: context[match ?x with _ => _ end] |- _ ] =>
-    let name := fresh "A" in destruct x eqn:name; ss; subst;
-                             try rewrite andb_true_iff in *; des; des_sumbool; subst
-  end.
 
 Definition agree `{CTX: Val.meminj_ctx}  (j: meminj) (rs0 rs1: Mach.regset) : Prop :=
   forall mr, Val.inject j (rs0 mr) (rs1 mr).

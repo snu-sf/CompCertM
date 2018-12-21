@@ -173,7 +173,6 @@ Section SIMMODSEM.
 
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
-Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 Variables prog tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
@@ -209,7 +208,7 @@ Proof.
     destruct sm_arg; ss. clarify.
     inv SIMARGS; ss. clarify.
     inv INITTGT.
-    exploit make_match_genvs; eauto. intro SIMGE. des.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     eexists. eexists (SimMemId.mk _ _).
     esplits; eauto.
     + econs; eauto; ss.
@@ -222,7 +221,7 @@ Proof.
   - (* init progress *)
     des. inv SAFESRC.
     inv SIMARGS; ss.
-    exploit make_match_genvs; eauto. intro SIMGE.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
     inv TYP.
     esplits; eauto. econs; eauto.
@@ -242,9 +241,10 @@ Proof.
         r in TRANSL. r in TRANSL.
         exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
         { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
+        { apply SIMSKENV. }
         intro GE.
         apply (sim_external_funct_id GE); ss.
-      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. destruct SIMSKENVLINK. ss.
+      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. inv SIMSKENV. ss.
     + econs; ss; eauto.
       * instantiate (1:= SimMemId.mk _ _). ss.
       * ss.
@@ -264,7 +264,7 @@ Proof.
     { apply modsem_receptive. }
     inv MATCH.
     ii. hexploit (@step_simulation prog ge tge); eauto.
-    apply make_match_genvs; eauto.
+    { apply make_match_genvs; eauto. apply SIMSKENV. }
     i; des.
     esplits; eauto.
     + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.
@@ -296,7 +296,7 @@ Proof.
   - r. admit "easy - see DeadcodeproofC".
   - ii. eapply sim_modsem; eauto.
 Unshelve.
-  ss.
+  all: ss.
 Qed.
 
 End SIMMOD.

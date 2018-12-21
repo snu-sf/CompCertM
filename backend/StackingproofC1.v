@@ -306,7 +306,6 @@ Local Existing Instance Val.mi_normal.
 
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
-Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 Variable prog: Linear.program.
 Variable tprog: Mach.program.
 Hypothesis TRANSF: match_prog prog tprog.
@@ -1199,7 +1198,7 @@ Proof.
       - unfold Mem.valid_block in *. eapply Plt_Ple_trans; eauto. etransitivity; try eapply MLE. eapply MLEAFTR.
       - inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl. inv SIMARGS. ss. clarify.
         assert(sg = sg_arg).
-        { des. clarify. clear - SIG SIG0 FPTR0 SIMSKENVLINK. admit "ez". }
+        { des. clarify. clear - SIG SIG0 FPTR0 SIMSKENV. admit "ez". }
         clarify.
         assert(NP: Mem_range_noperm (SimMemInj.tgt sm_arg) blk 0 (4 * size_arguments sg_arg)).
         { eapply Mem_free_noperm; eauto. }
@@ -1224,9 +1223,7 @@ Proof.
       * rewrite MEMTGT. inv MWFAFTR. ss.
         etrans; eauto.
         inv MLE. rewrite <- TGTPARENTEQNB.
-        inv SIMSKENV. ss.
-        destruct SIMSKENVLINK. inv H. inv SIMSKENV.
-        auto.
+        inv SIMSKENV. inv SIMSKELINK. ss. rr in SIMSKENV. clarify.
       * psimpl. zsimpl. rp; eauto.
     + econs; ss; eauto with congruence; cycle 1.
       { assert(MLE2: SimMemInj.le' sm0 sm1).

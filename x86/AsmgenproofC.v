@@ -26,7 +26,6 @@ Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
 
 Variable sm_link: SimMem.t.
-Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (SM := SimMemExt)
@@ -214,16 +213,16 @@ Proof.
       assert (NOTVOL: not_volatile skenv_link_src (Vptr (Mem.nextblock src) Ptrofs.zero true)).
       { econs. destruct (Senv.block_is_volatile skenv_link_src (Mem.nextblock src)) eqn: EQ; auto.
         exfalso. eapply Senv.block_is_volatile_below in EQ. subst ge.
-        clear - SIMSKENVLINK MWF MEMWF EQ. apply Mem.mext_next in MWF. rewrite MWF in *.
+        clear - SIMSKENV MWF MEMWF EQ. apply Mem.mext_next in MWF. rewrite MWF in *.
         eapply Plt_strict. eapply Plt_Ple_trans. eapply EQ.
-        destruct SIMSKENVLINK. inv H. ss. }
+        inv SIMSKENV. inv SIMSKELINK. ss. subst. ss. }
       econs; ss.
       * econs; ss; eauto. econs; eauto.
       * econs; eauto; ss; try by (econs; eauto).
         -- econs; eauto. i.
            destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (fn_sig fd))))); eauto.
            erewrite agree_mregs_eq0; auto.
-        -- destruct SIMSKENVLINK. inv H. etrans; eauto.
+        -- inv SIMSKENV. inv SIMSKELINK. ss. subst. etrans; eauto.
            clear - MWF SRCSTORE.
            apply Mem.mext_next in MWF. rewrite <- MWF in *.
            inv SRCSTORE. rewrite <- NB.
@@ -285,7 +284,7 @@ Proof.
     des.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
-    + ss. destruct SIMSKENVLINK. inv H0.
+    + ss. inv SIMSKENV. inv SIMSKELINK. unfold msp in *. ss. subst.
       apply Mem.mext_next in MWF. rewrite <- MWF in *. auto.
     + rewrite SIG. econs; eauto. rewrite <- LEN.
       symmetry. eapply lessdef_list_length. eauto.
@@ -306,10 +305,11 @@ Proof.
       * r in TRANSF. r in TRANSF.
         exploit (SimSymbId.sim_skenv_revive TRANSF); eauto.
         { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
+        { apply SIMSKENV. }
         intro GE.
         apply (sim_external_funct_id GE); ss.
       * exists skd. des_ifs. esplits; auto.
-        destruct SIMSKENVLINK.
+        inv SIMSKENV.
         eapply SimSymb.simskenv_func_fsim; eauto.
         { econs. }
         { ss. }
@@ -318,7 +318,7 @@ Proof.
         -- inv ATLR; auto. exfalso; auto.
         -- destruct ra; ss; try inv H0. inv ATLR. ss.
       * rewrite RSP in *. inv NOTVOL0. ss. unfold Genv.block_is_volatile in *.
-        destruct SIMSKENVLINK. inv H. des_ifs.
+        inv SIMSKENV. inv SIMSKELINK. cbn in H. clarify.
     + instantiate (1:=mk m1 m2'). econs; ss; eauto.
     + ss.
 
@@ -330,7 +330,7 @@ Proof.
     + econs.
       * exists skd. esplits; eauto.
         replace (r PC) with fptr; auto.
-        { destruct SIMSKENVLINK. eapply SimSymb.simskenv_func_fsim; eauto. econs; eauto. }
+        { inv SIMSKENV. eapply SimSymb.simskenv_func_fsim; eauto. econs; eauto. }
         inv FPTR; ss.
       * ss.
       * inv AG. rewrite agree_sp0. eauto.

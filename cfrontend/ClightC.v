@@ -102,6 +102,7 @@ Section MODSEM.
       ModSem.after_external := after_external1;
       ModSem.globalenv := ge;
       ModSem.skenv := skenv;
+      ModSem.skenv_link := skenv_link; 
     |}
   .
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.

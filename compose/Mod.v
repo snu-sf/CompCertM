@@ -34,6 +34,10 @@ Module Mod.
       ,
         <<PROJECTED: SkEnv.project skenv data.(get_sk).(defs) = data.(get_modsem skenv).(ModSem.skenv)>>
     ;
+    get_modsem_skenv_link_spec: forall
+        skenv_link
+      ,
+        <<EQ: data.(get_modsem skenv_link).(ModSem.skenv_link) = skenv_link>>
     (* TODO: What is the exact spec we need here? *)
     (* get_modsem_sk_skenv_iso: forall *)
     (*     skenv *)

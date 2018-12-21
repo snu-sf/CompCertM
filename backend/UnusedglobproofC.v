@@ -36,7 +36,6 @@ Section SIMMODSEM.
 
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
-Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 Variable prog: RTL.program.
 Variable tprog: RTL.program.
 Hypothesis TRANSL: match_prog prog tprog.
@@ -211,7 +210,7 @@ Proof.
   - (* call fsim *)
     des. clear_tac.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).
-    { eapply sim_skenv_meminj_preserves_globals; et. }
+    { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     inv MATCH; ss.
     inv CALLSRC. inv MATCHST; ss. clarify.
     folder.
@@ -223,14 +222,15 @@ Proof.
       * folder.
         ss. des_ifs_safe.
         inv SIMGE. uge0. des_ifs_safe. exploit defs_rev_inject; eauto. i; des. clarify. des_ifs_safe. des_ifs.
-      * des. ss. uge0. des_ifs_safe.
+      * clear EXTERNAL. des. ss. uge0. des_ifs_safe.
         psimpl.
-        admit "we need sim_skenv on SIMSKENVLINK".
+        inv SIMSKENV. inv SIMSKELINK. ss.
+        exploit SIMDEF; et. i; des. clarify. des_ifs. esplits; et.
     + econs; ss; et.
   - (* after fsim *)
     des. clear_tac.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).
-    { eapply sim_skenv_meminj_preserves_globals; et. }
+    { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     inv AFTERSRC.
     inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret).
     inv MATCH; ss. inv MATCHST; ss.

@@ -263,7 +263,8 @@ Section MATCHSIMFORWARD.
         esplits; eauto.
         right.
         eapply CIH; eauto.
-        { eapply SimSymb.mle_preserves_sim_skenv; try apply SIMSKENV; eauto.
+        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
+          apply rtc_once. left.
           etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
         { etrans; eauto. etrans; eauto. etrans; eauto. eapply SimMem.unlift_spec; eauto. }
     }
@@ -287,7 +288,7 @@ Section MATCHSIMFORWARD.
         + left. eauto.
         + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
       - right. eapply CIH; eauto.
-        { eapply SimSymb.mle_preserves_sim_skenv; eauto. }
+        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
         { etrans; eauto. }
     }
   Qed.
@@ -300,14 +301,14 @@ Section MATCHSIMFORWARD.
     econs; eauto.
     ii; ss.
     folder.
-    exploit SimSymb.sim_skenv_func_bisim; eauto. intro FSIM; des.
+    exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.
     Print SimSymb.sim_skenv.
     inv FSIM. exploit FUNCFSIM; eauto. { apply SIMARGS. } i; des.
     split; ii.
     - exploit INITBSIM; eauto. i; des.
       esplits; eauto.
       eapply match_states_lxsim; eauto.
-      { eapply SimSymb.mle_preserves_sim_skenv; eauto. }
+      { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
     - exploit INITPROGRESS; eauto.
   Qed.
 

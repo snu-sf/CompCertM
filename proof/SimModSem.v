@@ -236,8 +236,26 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   }
   .
 
-  Definition sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
-    SimSymb.sim_skenv sm0 msp.(ss) msp.(src).(ModSem.skenv) msp.(tgt).(ModSem.skenv).
+  Inductive sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
+  | sim_skenv_intro
+    (SIMSKE: SimSymb.sim_skenv sm0 msp.(ss) msp.(src).(ModSem.skenv) msp.(tgt).(ModSem.skenv))
+    ss_link
+    (SIMSKELINK: SimSymb.sim_skenv sm0 ss_link msp.(src).(ModSem.skenv_link) msp.(tgt).(ModSem.skenv_link))
+  .
+
+  Lemma mfuture_preserves_sim_skenv
+        msp sm0 sm1
+        (MFUTURE: SimMem.future sm0 sm1)
+        (SIMSKENV: sim_skenv msp sm0)
+    :
+      <<SIMSKENV: sim_skenv msp sm1>>
+  .
+  Proof.
+    inv SIMSKENV.
+    econs.
+    - eapply SimSymb.mfuture_preserves_sim_skenv; eauto.
+    - eapply SimSymb.mfuture_preserves_sim_skenv; eauto.
+  Qed.
 
   Inductive sim (msp: t): Prop :=
   | sim_intro
@@ -278,6 +296,6 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 End MODSEMPAIR.
 End ModSemPair.
 
-Hint Unfold ModSemPair.sim_skenv.
+Hint Constructors ModSemPair.sim_skenv.
 
 

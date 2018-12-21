@@ -88,7 +88,7 @@ Section SIMGE.
     specialize (SIMMSS msp). exploit SIMMSS; eauto. clear SIMMSS. intro SIMMS.
     specialize (SIMSKENV msp). exploit SIMSKENV; eauto. clear SIMSKENV. intro SIMSKENV.
 
-    exploit SimSymb.sim_skenv_func_bisim; eauto. intro SIMFUNC; des.
+    exploit SimSymb.sim_skenv_func_bisim; try apply SIMSKENV. intro SIMFUNC; des.
     inv SIMFUNC. exploit FUNCFSIM; eauto. i; des. clear_tac. inv SIM.
     econs; eauto.
     - apply in_map_iff. esplits; eauto.
@@ -114,11 +114,11 @@ Section SIMGE.
     ss. rewrite in_map_iff in *. des.
   Abort.
 
-  Theorem mle_preserves_sim_ge
+  Theorem mfuture_preserves_sim_ge
           sm0 ge_src ge_tgt
           (SIMGE: sim_ge sm0 ge_src ge_tgt)
           sm1
-          (MLE: SimMem.le sm0 sm1)
+          (MFUTURE: SimMem.future sm0 sm1)
     :
       <<SIMGE: sim_ge sm1 ge_src ge_tgt>>
   .
@@ -127,32 +127,51 @@ Section SIMGE.
     { econs; eauto. }
     econs 2; try reflexivity; eauto.
     - rewrite Forall_forall in *. ii.
-      eapply SimSymb.mle_preserves_sim_skenv; eauto.
-      eapply SIMSKENV; eauto.
-    - des. esplits; eauto. eapply SimSymb.mle_preserves_sim_skenv; eauto.
+      eapply ModSemPair.mfuture_preserves_sim_skenv; eauto.
+    - des. esplits; eauto. eapply SimSymb.mfuture_preserves_sim_skenv; eauto.
     - rewrite Forall_forall in *. ii.
-      etrans; eauto. apply rtc_once. eauto.
+      etrans; eauto.
   Qed.
 
-  Theorem mlift_preserves_sim_ge
-          sm0 ge_src ge_tgt
-          (MWF: SimMem.wf sm0)
-          (SIMGE: sim_ge sm0 ge_src ge_tgt)
-    :
-      <<SIMGE: sim_ge (SimMem.lift sm0) ge_src ge_tgt>>
-  .
-  Proof.
-    inv SIMGE.
-    { econs; eauto. }
-    econs 2; try reflexivity; eauto.
-    - rewrite Forall_forall in *. ii.
-      u.
-      eapply SimSymb.mlift_preserves_sim_skenv; eauto.
-      eapply SIMSKENV; eauto.
-    - des. esplits; eauto. eapply SimSymb.mlift_preserves_sim_skenv; eauto.
-    - rewrite Forall_forall in *. ii.
-      etrans; eauto. apply rtc_once. eauto.
-  Qed.
+  (* Theorem mle_preserves_sim_ge *)
+  (*         sm0 ge_src ge_tgt *)
+  (*         (SIMGE: sim_ge sm0 ge_src ge_tgt) *)
+  (*         sm1 *)
+  (*         (MLE: SimMem.le sm0 sm1) *)
+  (*   : *)
+  (*     <<SIMGE: sim_ge sm1 ge_src ge_tgt>> *)
+  (* . *)
+  (* Proof. *)
+  (*   inv SIMGE. *)
+  (*   { econs; eauto. } *)
+  (*   econs 2; try reflexivity; eauto. *)
+  (*   - rewrite Forall_forall in *. ii. *)
+  (*     eapply SimSymb.mle_preserves_sim_skenv; eauto. *)
+  (*     eapply SIMSKENV; eauto. *)
+  (*   - des. esplits; eauto. eapply SimSymb.mle_preserves_sim_skenv; eauto. *)
+  (*   - rewrite Forall_forall in *. ii. *)
+  (*     etrans; eauto. apply rtc_once. eauto. *)
+  (* Qed. *)
+
+  (* Theorem mlift_preserves_sim_ge *)
+  (*         sm0 ge_src ge_tgt *)
+  (*         (MWF: SimMem.wf sm0) *)
+  (*         (SIMGE: sim_ge sm0 ge_src ge_tgt) *)
+  (*   : *)
+  (*     <<SIMGE: sim_ge (SimMem.lift sm0) ge_src ge_tgt>> *)
+  (* . *)
+  (* Proof. *)
+  (*   inv SIMGE. *)
+  (*   { econs; eauto. } *)
+  (*   econs 2; try reflexivity; eauto. *)
+  (*   - rewrite Forall_forall in *. ii. *)
+  (*     u. *)
+  (*     eapply SimSymb.mlift_preserves_sim_skenv; eauto. *)
+  (*     eapply SIMSKENV; eauto. *)
+  (*   - des. esplits; eauto. eapply SimSymb.mlift_preserves_sim_skenv; eauto. *)
+  (*   - rewrite Forall_forall in *. ii. *)
+  (*     etrans; eauto. apply rtc_once. eauto. *)
+  (* Qed. *)
 
   (* Lemma load_modsems_sim_ge_aux *)
   (*       pp *)
@@ -243,6 +262,8 @@ Section SIMGE.
   Proof.
     (* inv SIMMP. specialize (SIMMS skenv_src skenv_tgt). *)
     u.
+    econs; ss; eauto; cycle 1.
+    { rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
     eapply SimSymb.sim_skenv_monotone; revgoals.
     - eapply Mod.get_modsem_skenv_spec.
     - eapply Mod.get_modsem_skenv_spec.
@@ -308,7 +329,7 @@ Section SIMGE.
       - exploit system_local_preservation. intro SYSSU; des.
         econs; ss.
         { eauto. }
-        unfold ModSemPair.sim_skenv. ss.
+        ii. inv SIMSKENV0. ss.
         split; cycle 1.
         { ii; des. esplits; eauto. econs; eauto. }
         ii. sguard in SAFESRC. des. inv INITTGT.
@@ -323,8 +344,8 @@ Section SIMGE.
         { admit "ez". }
         ii. inv STEPSRC.
         exploit SimSymb.system_axiom; eauto.
-        { eapply external_call_symbols_preserved; eauto.
-          symmetry. apply System.skenv_globlaenv_equiv. }
+        (* { eapply external_call_symbols_preserved; eauto. *)
+        (*   symmetry. apply System.skenv_globlaenv_equiv. } *)
         i; des.
         inv SIMARGS.
         assert(SIMGE: SimSymb.sim_skenv sm_arg ss_link (System.globalenv (Sk.load_skenv sk_link_src))
@@ -336,8 +357,8 @@ Section SIMGE.
         { left. apply plus_one. econs.
           - admit "ez".
           - ss. econs; eauto.
-            eapply external_call_symbols_preserved; eauto.
-            apply System.skenv_globlaenv_equiv.
+            (* eapply external_call_symbols_preserved; eauto. *)
+            (* apply System.skenv_globlaenv_equiv. *)
         }
         { eapply SimMem.unlift_spec; eauto. }
         left. pfold.
@@ -364,7 +385,9 @@ Section SIMGE.
         econstructor 2 with (msps := (map (ModPair.to_msp skenv_src skenv_tgt sm_init) [mp])); eauto; ss; revgoals.
         - econs; eauto.
         - econs; eauto. eapply SIMMS; eauto.
-        - econs; eauto. r. ss. eapply SimSymb.sim_skenv_monotone; eauto.
+        - econs; eauto. econs; ss; eauto; cycle 1.
+          { unfold Mod.modsem. rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
+          r. ss. eapply SimSymb.sim_skenv_monotone; eauto.
           + eapply Sk.load_skenv_wf.
           + eapply Sk.load_skenv_wf.
           + eapply Mod.get_modsem_skenv_spec.
@@ -748,7 +771,7 @@ Section ADQSTEP.
         }
         instantiate (1:= sm_init).
         econs; try apply SIM0; eauto.
-        + ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto.
+        + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once. eauto.
         + eapply lxsim_stack_le; eauto.
 
     }
@@ -785,7 +808,7 @@ Section ADQSTEP.
           { unsguard SUST. des_safe. eapply sound_progress; eauto.
             eapply lift_step; eauto. }
           econs; eauto.
-          { ss. folder. des_ifs. eapply mle_preserves_sim_ge; eauto. }
+          { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dstar; eauto. }
@@ -816,7 +839,7 @@ Section ADQSTEP.
               eapply lift_star; eauto.
           }
           econs; eauto.
-          { folder. ss; des_ifs. eapply mle_preserves_sim_ge; eauto. }
+          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_star; eauto. }
@@ -845,7 +868,8 @@ Section ADQSTEP.
       exploit CALLFSIM; eauto.
       (* { clear - GE. inv GE. des. ss. eapply SimSymb.sim_skenv_func_bisim; eauto. } *)
       i; des.
-      eapply mle_preserves_sim_ge with (sm2:= sm_arg) in GE; eauto.
+      eapply mfuture_preserves_sim_ge with (sm2:= sm_arg) in GE; eauto; cycle 1.
+      { apply rtc_once; eauto. }
       esplits; eauto.
       + left. apply plus_one.
         econs; ss; eauto.
@@ -858,7 +882,7 @@ Section ADQSTEP.
         {
           instantiate (1:= (SimMem.lift sm_arg)).
           econs 2; eauto.
-          * ss. folder. des_ifs. eapply mlift_preserves_sim_ge; eauto.
+          * ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto.
           * instantiate (1:= (SimMem.lift sm_arg)).
             econs; [eassumption|..]; revgoals.
             { ii. exploit K; eauto.
@@ -927,7 +951,8 @@ Section ADQSTEP.
         { eauto. }
         { eauto. }
         { folder. des_ifs.
-          eapply mle_preserves_sim_ge; eauto.
+          eapply mfuture_preserves_sim_ge; eauto.
+          apply rtc_once; eauto. left.
           etransitivity; eauto.
           eapply SimMem.unlift_spec; eauto.
           etransitivity; eauto. }

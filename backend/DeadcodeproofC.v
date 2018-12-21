@@ -21,7 +21,6 @@ Section SIMMODSEM.
 
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
-Hypothesis (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm_link ss_link skenv_link_src skenv_link_tgt).
 Variables prog tprog: program.
 Hypothesis INCLSRC: SkEnv.includes skenv_link_src (Sk.of_program fn_sig prog).
 
@@ -62,7 +61,7 @@ Proof.
     destruct sm_arg; ss. clarify.
     inv SIMARGS; ss. clarify.
     inv INITTGT.
-    exploit make_match_genvs; eauto. intro SIMGE. des.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     eexists. eexists (SimMemExt.mk _ _).
     esplits; eauto.
     + econs; eauto; ss.
@@ -82,7 +81,7 @@ Proof.
     inv SIMARGS; ss.
     inv FPTR; cycle 1.
     { rewrite <- H0 in *. ss. }
-    exploit make_match_genvs; eauto. intro SIMGE.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. unfold bind in *. folder. des_ifs.
     inv TYP.
     unfold transf_function in *. des_ifs.
@@ -104,11 +103,12 @@ Proof.
         r in TRANSL. r in TRANSL.
         exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
         { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
+        { apply SIMSKENV. }
         intro GE.
         apply (sim_external_funct_id GE); ss.
         folder.
         inv FPTR; ss.
-      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. destruct SIMSKENVLINK. ss.
+      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. inv SIMSKENV. ss.
     + econs; ss; eauto.
       * instantiate (1:= SimMemExt.mk _ _). ss.
       * ss.
@@ -129,7 +129,7 @@ Proof.
     { apply modsem_receptive. }
     inv MATCH.
     ii. hexploit (@step_simulation prog ge tge); eauto.
-    { apply make_match_genvs; eauto. }
+    { apply make_match_genvs; eauto. apply SIMSKENV. }
     { ss. des. eauto. }
     i; des.
     esplits; eauto.

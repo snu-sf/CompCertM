@@ -6,7 +6,7 @@ Require Import Globalenvs.
 Require Import Smallstep.
 Require Import CoqlibC.
 Require Import Skeleton.
-Require Import Integers.
+Require Import IntegersC.
 Require Import ASTC.
 Require Import LinkingC.
 Require Import SimSymb.
@@ -20,11 +20,11 @@ Require Import SimMem.
 Require Import SimMemInjC.
 Require Import ModSem.
 
+Local Existing Instance Val.mi_normal.
 
+  
 
 Section MEMINJ.
-  
-Context `{CTX: Val.meminj_ctx}.
 
 (* Definition t': Type := ident -> bool. *)
 Definition t': Type := ident -> Prop.
@@ -54,11 +54,12 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
 | sim_skenv_intro
     (SIMSYMB1: forall
         id blk_src blk_tgt delta
-        (SIMVAL: SimMem.sim_val sm0 (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta true))
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
       ,
-        <<DELTA: delta = Ptrofs.zero>> /\ <<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>
-                                          /\ <<KEPT: ~ ss id>>
+        (<<DELTA: delta = 0>>) /\
+        (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
+        (<<KEPT: ~ ss id>>)
     )
     (SIMSYMB2: forall
         id
@@ -67,46 +68,53 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
         (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
       ,
         exists blk_tgt,
-          <<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>> /\
-           <<SIM: SimMem.sim_val sm0 (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)>>)
+          (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
+          (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>))
     (SIMSYMB3: forall
         id blk_tgt
         (BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt)
       ,
         exists blk_src,
-          <<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>
-           /\ <<SIM: SimMem.sim_val sm0 (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)>>
-             (* /\ <<KEPT: ss.(kept) id>> <---------- This can be obtained via SIMSYMB1. *)
+          (<<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>) /\
+          (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)
+    (* /\ <<KEPT: ss.(kept) id>> <---------- This can be obtained via SIMSYMB1. *)
     )
     (SIMDEF: forall
-        blk_src blk_tgt delta def_src isreal
-        (SIMFPTR: sm0.(SimMem.sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta isreal))
+        blk_src blk_tgt delta def_src
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src)
       ,
-        exists def_tgt, <<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>> /\
-                                  <<DELTA: delta = Ptrofs.zero>> /\
-                                           <<REAL: isreal = true>> /\
-                                                   <<SIM: def_src = def_tgt>>)
+        exists def_tgt, (<<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>>) /\
+                        (<<DELTA: delta = 0>>) /\
+                        (<<SIM: def_src = def_tgt>>))
+    (DISJ: forall
+        id blk_src0 blk_src1 blk_tgt
+        (SYMBSRC: Genv.find_symbol skenv_src id = Some blk_src0)
+        (SIMVAL0: sm0.(SimMemInj.inj) blk_src0 = Some (blk_tgt, 0))
+        (SIMVAL1: sm0.(SimMemInj.inj) blk_src1 = Some (blk_tgt, 0))
+      ,
+        blk_src0 = blk_src1)
     (SIMDEFINV: forall
-        blk_src blk_tgt delta def_tgt isreal
-        (SIMFPTR: sm0.(SimMem.sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta isreal))
+        blk_src blk_tgt delta def_tgt
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt)
       ,
-        exists def_src, <<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>> /\
-                                  <<DELTA: delta = Ptrofs.zero>> /\
-                                           <<REAL: isreal = true>> /\
-                                                   <<SIM: def_src = def_tgt>>)
-    (PUBS: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
+        exists def_src, (<<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>>) /\
+                        (<<DELTA: delta = 0>>) /\
+                        (<<SIM: def_src = def_tgt>>))
+    (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
+    (PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public))
 .
 
 Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
     (<<SIMSYMB1: forall
         id blk_src blk_tgt delta
-        (SIMVAL: SimMem.sim_val sm0 (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta true))
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
       ,
-        <<DELTA: delta = Ptrofs.zero>> /\ <<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>
-                                          /\ <<KEPT: ~ ss id>>
+        (<<DELTA: delta = 0>>) /\
+        (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
+        (<<KEPT: ~ ss id>>)
     >>)
     /\
     (<<SIMSYMB2: forall
@@ -116,40 +124,48 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
         (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
       ,
         exists blk_tgt,
-          <<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>> /\
-           <<SIM: SimMem.sim_val sm0 (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)>>>>)
+          (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
+          (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)>>)
     /\
     (<<SIMSYMB3: forall
         id blk_tgt
         (BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt)
       ,
         exists blk_src,
-          <<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>
-           /\ <<SIM: SimMem.sim_val sm0 (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)>>
-             (* /\ <<KEPT: ss.(kept) id>> <---------- This can be obtained via SIMSYMB1. *)
+          (<<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>) /\
+          (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)
+    (* /\ <<KEPT: ss.(kept) id>> <---------- This can be obtained via SIMSYMB1. *)
     >>)
     /\
     (<<SIMDEF: forall
-        blk_src blk_tgt delta def_src isreal
-        (SIMFPTR: sm0.(SimMem.sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta isreal))
+        blk_src blk_tgt delta def_src
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src)
       ,
-        exists def_tgt, <<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>> /\
-                                  <<DELTA: delta = Ptrofs.zero>> /\
-                                           <<REAL: isreal = true>> /\
-                                                   (<<SIM: def_src = def_tgt>>)>>)
+        exists def_tgt, (<<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>>) /\
+                        (<<DELTA: delta = 0>>) /\
+                        (<<SIM: def_src = def_tgt>>)>>)
+    /\
+    (<<DISJ: forall
+        id blk_src0 blk_src1 blk_tgt
+        (SYMBSRC: Genv.find_symbol skenv_src id = Some blk_src0)
+        (SIMVAL0: sm0.(SimMemInj.inj) blk_src0 = Some (blk_tgt, 0))
+        (SIMVAL1: sm0.(SimMemInj.inj) blk_src1 = Some (blk_tgt, 0))
+      ,
+        blk_src0 = blk_src1>>)
     /\
     (<<SIMDEFINV: forall
-        blk_src blk_tgt delta def_tgt isreal
-        (SIMFPTR: sm0.(SimMem.sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt delta isreal))
+        blk_src blk_tgt delta def_tgt
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt)
       ,
-        exists def_src, <<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>> /\
-                                  <<DELTA: delta = Ptrofs.zero>> /\
-                                           <<REAL: isreal = true>> /\
-                                                   <<SIM: def_src = def_tgt>>>>)
+        exists def_src, (<<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>>) /\
+                        (<<DELTA: delta = 0>>) /\
+                        (<<SIM: def_src = def_tgt>>)>>)
     /\
-    (<<PUBS: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss>>)
+    (<<PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss>>)
+    /\
+    (<<PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public)>>)
 .
 
 Theorem sim_skenv_splittable_spec
@@ -158,6 +174,7 @@ Theorem sim_skenv_splittable_spec
 .
 Proof.
   split; ii; inv PR; ss; des; econs; eauto.
+  splits; ss.
 Qed.
 
 Inductive le (ss0: t') (sk_src sk_tgt: Sk.t) (ss1: t'): Prop :=
@@ -390,11 +407,16 @@ Next Obligation.
       exploit SYMBDEF1; eauto. i; des. clarify.
     }
 
+  - inv LESRC.
+    destruct (classic (defs sk_src id)); cycle 1.
+    { exploit SYMBDROP; et. i; des. clarify. }
+    eapply DISJ; et.
+    erewrite <- SYMBKEEP; et.
   -
-    inv LETGT.
 
     assert(Genv.find_def skenv_link_tgt blk_tgt = Some def_tgt).
     {
+      inv LETGT.
       destruct (Genv.invert_symbol skenv_link_tgt blk_tgt) eqn:T.
       - erewrite <- DEFKEEP; eauto.
         apply Genv.invert_find_symbol in T.
@@ -410,49 +432,19 @@ Next Obligation.
     exploit SPLITHINT1; eauto. i; des.
     Fail clears blk_src.
     assert(blk_src = blk_src0).
-    (* { *)
-    (*   assert(KEPT: ~ ss id). *)
-    (*   { exploit SPLITHINT; eauto. i; des. ss. } *)
-    (*   exploit SPLITHINT0; try apply BLKSRC; eauto. i; des. clarify. clear_tac. *)
-    (*   exploit SPLITHINT0; eauto. i; des. clarify. clear_tac. *)
-    (* } *)
-    { assert(MEMWF: SimMem.wf sm).
-      { admit "". }
-      inv MEMWF. inv PUBLIC0.
-      apply NNPP. ii.
-      move SIMFPTR at bottom. move SIM at bottom.
-      inv SIMFPTR. inv SIM. rewrite Ptrofs.add_zero_l in *.
-      About mi_no_overlap.
-      assert(delta = 0).
-      { admit "This is not true! [ADMIT UID: c82ce12b5f6f1e33e194129e030a5e93ad8767227d8b854207cf0797c994d484]".
-        (* clear - H6. *)
-        (* unfold Ptrofs.zero in *. *)
-        (* hexploit (Ptrofs.intrange (Ptrofs.repr delta)); eauto. i. *)
-        (* Local Transparent Ptrofs.repr. ss. Local Opaque Ptrofs.repr. *)
-        (* Print Ptrofs.int. *)
-        (* unfold Ptrofs.repr in *. ss. *)
-        (* injection H6. ii. *)
-        (* erewrite Ptrofs.Z_mod_modulus_eq in H0. *)
-        (* rewrite Z.mod_small in *; ss. *)
-        (* xomega. *)
-        (* assert(Ptrofs.Z_mod_modulus_range' delta). *)
-        (* dependent destruction H6. *)
-        (* inv H6. clarify. *)
-      }
-      admit "Add disjointness in sim_skenv or relax meminj_no_overlap with Ptrofs.modulus or somehow...".
-    }
+    { symmetry. eapply SPLITHINT3; et. }
     clarify.
 
     inv LESRC.
     inv WFSRC. exploit DEFSYMB; eauto. i; des.
     assert(id = id0). { eapply Genv.genv_vars_inj. apply SYMBSMALLTGT. eauto. } clarify.
     assert(defs sk_src id0).
-    { apply NNPP. ii. erewrite SYMBDROP0 in *; eauto. ss. }
-    exploit SYMBKEEP0; eauto. i; des. rewrite BLKSRC in *. symmetry in H2.
-    erewrite DEFKEEP0; eauto.
+    { apply NNPP. ii. erewrite SYMBDROP in *; eauto. ss. }
+    exploit SYMBKEEP; eauto. i; des. rewrite BLKSRC in *. symmetry in H2.
+    erewrite DEFKEEP; eauto.
     { apply Genv.find_invert_symbol; eauto. }
   -
-    exploit PUBS; eauto.
+    exploit PUBKEPT; eauto.
     inv LE. eauto.
 Qed.
 Next Obligation.
@@ -467,14 +459,10 @@ Next Obligation.
     des_ifs.
   - inv SIMFPTR; ss; cycle 1.
     des_ifs_safe. unfold Genv.find_funct_ptr in *. des_ifs_safe.
-    exploit SIMDEFINV; eauto. i; des.
-    inv SIM.
+    exploit SIMDEFINV; eauto. i; des. clarify. psimpl. clarify.
     rewrite DEFSRC.
     esplits; eauto.
     des_ifs.
-    exfalso.
-    apply n.
-    rewrite Ptrofs.add_zero_l in *. rewrite DELTA in *. rewrite Ptrofs.add_zero in *. clarify.
 Qed.
 Next Obligation.
   inv SIMSKENV.
@@ -487,7 +475,7 @@ Next Obligation.
   - des. exploit SIMDEFINV; eauto. i; des. clarify.
     esplits; eauto.
     eapply Genv_map_defs_def_inv in DEFSRC. rewrite DEFSRC. ss.
-  - eapply PUBS; eauto.
+  - eapply PUBKEPT; eauto.
 Qed.
 Next Obligation.
   destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
@@ -495,27 +483,27 @@ Next Obligation.
   exploit external_call_mem_inject_gen; eauto.
   { instantiate (1:= skenv_sys_tgt).
     rr. esplits; ii; ss.
-    - admit "We 'Unusedglob.v' don't remove unused ids from publics, 'good_prog' property will be broken.
-As we don't want to change 'Unusedglob.v', we might remove the notion of 'good_prog'".
-    - exploit SIMSYMB1; eauto. i; des. rewrite Ptrofs.add_zero_l in *.
-      esplits; eauto.
-      admit "Same as c82ce12b5f6f1e33e194129e030a5e93ad8767227d8b854207cf0797c994d484".
+    - unfold Genv.public_symbol.
+      rewrite <- PUB.
+      destruct (Genv.find_symbol skenv_sys_tgt id) eqn:T.
+      + exploit SIMSYMB3; et. i; des. rewrite BLKSRC. ss.
+      + des_ifs. des_sumbool. ii.
+        exploit PUBKEPT; et.
+        apply NNPP. ii.
+        exploit SIMSYMB2; et. i; des. clarify.
+    - exploit SIMSYMB1; eauto. i; des. esplits; et.
     - exploit SIMSYMB2; eauto.
-      { ii. eapply PUBS; eauto. unfold Genv.public_symbol in H. des_ifs. des_sumbool. ss. }
+      { ii. eapply PUBKEPT; eauto. unfold Genv.public_symbol in H. des_ifs. des_sumbool. ss. }
       i; des.
       esplits; eauto.
-      inv SIM; ss. rewrite Ptrofs.add_zero_l in *.
-      admit "Same as c82ce12b5f6f1e33e194129e030a5e93ad8767227d8b854207cf0797c994d484".
     - unfold Genv.block_is_volatile, Genv.find_var_info.
       destruct (Genv.find_def skenv_sys_src b1) eqn:T0.
       { exploit SIMDEF; try eassumption.
-        { econs; eauto. }
         i; des.
         des_ifs.
       }
       destruct (Genv.find_def skenv_sys_tgt b2) eqn:T1.
       { exploit SIMDEFINV; try eassumption.
-        { econs; eauto. }
         i; des.
         des_ifs.
       }

@@ -212,10 +212,10 @@ Section PRESERVATION.
     eapply in_map_iff in IN. des. clarify. unfold modsem. ss. econs.
 
     cinv match_skenv_link_tge.
-    cinv (SkEnv.project_impl_spec skenv_link (defs x)).
+    cinv (SkEnv.project_impl_spec skenv_link x.(defs)).
     unfold skenv_link in *.
 
-    assert (SKWF: SkEnv.wf (SkEnv.project (Genv.globalenv sk) (defs x))).
+    assert (SKWF: SkEnv.wf (SkEnv.project (Genv.globalenv sk) x.(defs))).
     { eapply SkEnv.project_spec_preserves_wf.
       - eapply Sk.load_skenv_wf.
       - eapply SkEnv.project_impl_spec.
@@ -248,7 +248,7 @@ Section PRESERVATION.
       dup FIND. unfold SkEnv.revive in FIND.
 
       eapply Genv_map_defs_def in FIND. des.
-
+      gesimpl.
 
       destruct (Genv.invert_symbol skenv_link b) eqn:EQ; cycle 1.
       { eapply DEFORPHAN in EQ. des. clarify. }

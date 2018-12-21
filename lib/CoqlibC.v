@@ -894,6 +894,16 @@ Ltac rp := first [erewrite f_equal8|
                   fail]
 .
 
+Ltac align_bool :=
+  (repeat match goal with
+          | [ H: true <> true |- _ ] => tauto
+          | [ H: false <> false |- _ ] => tauto
+          | [ H: true <> _ |- _ ] => symmetry in H
+          | [ H: false <> _ |- _ ] => symmetry in H
+          | [ H: _ <> true |- _ ] => apply not_true_is_false in H
+          | [ H: _ <> false |- _ ] => apply not_false_is_true in H
+          end)
+.
 Ltac simpl_bool := unfold Datatypes.is_true in *; unfold is_true in *; autorewrite with simpl_bool in *.
 Ltac bsimpl := simpl_bool.
 
@@ -1160,3 +1170,60 @@ Proof.
   - inv FORALL. econs.
   - inv FORALL. econs; eauto.
 Qed.
+
+Ltac uo := unfold o_bind, o_map, o_join in *.
+
+Lemma some_injective
+      X (x0 x1: X)
+      (EQ: Some x0 = Some x1)
+  :
+    x0 = x1
+.
+Proof. injection EQ. auto. Qed.
+
+Ltac align_opt :=
+  repeat
+    match goal with
+    (* remove trivial things *)
+    | H: Some ?x = Some ?y |- _ => rewrite some_injective in H
+    | H: Some _ = None |- _ => by (inversion H)
+    | H: None = Some _ |- _ => by (inversion H)
+    | H: None = None |- _ => clear H
+    (* align *)
+    | H: Some _ = ?x |- _ => symmetry in H
+    | H: None = ?x |- _ => symmetry in H
+    end
+.
+(* Ltac clarify0 := repeat (align_opt; progress clarify). *)
+
+Fixpoint list_diff X (dec: (forall x0 x1, {x0 = x1} + {x0 <> x1})) (xs0 xs1: list X): list X :=
+  match xs0 with
+  | [] => []
+  | hd :: tl =>
+    if in_dec dec hd xs1
+    then list_diff dec tl xs1
+    else hd :: list_diff dec tl xs1
+  end
+.
+
+Lemma list_diff_spec
+      X dec (xs0 xs1 xs2: list X)
+      (DIFF: list_diff dec xs0 xs1 = xs2)
+  :
+    <<SPEC: forall x0, In x0 xs2 <-> (In x0 xs0 /\ ~ In x0 xs1)>>
+.
+Proof.
+  subst.
+  split; i.
+  - ginduction xs0; ii; des; ss.
+    des_ifs.
+    { exploit IHxs0; et. i; des. esplits; et. }
+    ss. des; clarify.
+    { tauto. }
+    exploit IHxs0; et. i; des. esplits; et.
+  - ginduction xs0; ii; des; ss.
+    des; clarify; des_ifs; ss; try tauto.
+    { exploit IHxs0; et. }
+    { exploit IHxs0; et. }
+Qed.
+

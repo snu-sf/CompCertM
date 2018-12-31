@@ -1341,11 +1341,53 @@ Proof.
       { admit "somehow". }
       inv WTST.
       eapply match_states_return with (j:= sm_ret.(SimMemInj.inj)); eauto.
-      * econs; ss; eauto. admit "this is not true!!!".
+      * econs; ss; eauto. congruence.
       * (* eapply match_stacks_after_external; eauto. *)
-        eapply match_stacks_change_meminj; try apply STACKS.
-        { eapply inject_incr_trans; try apply MLE0. refl. }
-        admit "raw admit - use match_stacks_le?".
+        eapply match_stacks_change_meminj with (j:= (SimMemInj.inj sm0)).
+        { eapply inject_incr_trans; try apply MLE0. eapply inject_incr_trans; try apply MLE. ss. }
+        assert(MLE2: SimMemInj.le' sm0 sm1).
+        { etrans; et. etrans; et. }
+        eapply match_stacks_le; try apply STACKS; et.
+        { intros ? ? ? VALID0 MAP0. rewrite MINJ in *.
+          bar.
+          inv MLE0. ss.
+          bar.
+          inv HISTORY.
+          ss. inv MATCHARG. ss. clarify.
+          rewrite INJ in *.
+          clear_until_bar.
+          destruct (SimMemInj.inj sm_arg b) eqn:MAP1; ss.
+          { destruct p; ss. apply INCR in MAP1. clarify. }
+          { exfalso.
+            inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
+            clear - VALID0 OUTSIDE_TGT MLE.
+            inv MLE.
+            unfold Mem.valid_block in *. inv TGTUNCHANGED.
+            xomega.
+          }
+        }
+        {
+          intros b_src b_tgt delta ofs VALID0 MAP0 PERM.
+          assert(VALID1: Mem.valid_block (SimMemInj.src sm0) b_src).
+          { rewrite MSRC in *. rewrite MINJ in *.
+            inv HISTORY. inv MATCHARG; ss. clarify. rewrite H0 in *. rewrite INJ in *.
+            clear - MLE0 VALID0 MAP0 PERM MWF0 MWF3 NB.
+            apply NNPP. intro OUTSRC.
+            destruct (SimMemInj.inj sm_arg b_src) eqn:T; ss.
+            {
+              destruct p; ss. clarify.
+              exploit Mem.mi_freeblocks; et.
+              { apply MWF3. }
+              i; des. clarify.
+            }
+            inv MLE0.
+            inv FROZEN.
+            exploit NEW_IMPLIES_OUTSIDE; ss; eauto. i; des.
+            unfold Mem.valid_block in *. rewrite NB in *. xomega.
+          }
+          inv MLE2.
+          eapply MAXSRC; et.
+        }
       * eapply agree_regs_set_pair; cycle 1.
         { unfold typify_opt, typify. des_ifs. }
         (* TODO: Remove Mach.regset_after_external *)

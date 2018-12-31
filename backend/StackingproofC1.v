@@ -16,6 +16,7 @@ Require Import Conventions1C.
 Require SimMemInjC.
 Require Import AxiomsC.
 Require SoundTop.
+Require Import StoreArguments.
 
 Set Implicit Arguments.
 
@@ -717,6 +718,7 @@ Definition frame_contents_1_at_external f (j: meminj) (sp: block) (ls ls0: locse
   let fe := make_env b in
     contains_locations j sp fe.(fe_ofs_local) b.(bound_local) Local ls
  ** pure True
+ (* ** range sp fe_ofs_arg (4 * (bound_outgoing b)) *)
  ** hasvalue Mptr sp fe.(fe_ofs_link) parent
  ** hasvalue Mptr sp fe.(fe_ofs_retaddr) retaddr
  ** contains_callee_saves j sp fe.(fe_ofs_callee_save) b.(used_callee_save) ls0.
@@ -783,8 +785,9 @@ Proof.
 Qed.
 
 Lemma frame_contents_1_at_external_impl
-      f j sp rs rs0 sp2 retaddr0 sg
-      (SZ: 0 <= 4 * size_arguments sg <= fe_stack_data (make_env (function_bounds f)))
+      f j sp rs rs0 sp2 retaddr0
+      (* sg *)
+      (* (SZ: 0 <= 4 * size_arguments sg <= fe_stack_data (make_env (function_bounds f))) *)
   :
     massert_imp
       (frame_contents_1 f j sp rs rs0 sp2 retaddr0)
@@ -917,8 +920,7 @@ Proof.
 
     eapply sep_imp with (P' := (frame_contents_1_at_external f (SimMemInj.inj sm0) sp rs rs0 sp2 retaddr0))
       in SEP0; eauto; cycle 1.
-    { eapply frame_contents_1_at_external_impl with (sg := sg); eauto.
-      inv STACKS. split; try lia. }
+    { eapply frame_contents_1_at_external_impl; eauto. }
     eapply m_invar; eauto.
     { eapply Mem.unchanged_on_implies; eauto. bar.
       Local Transparent sepconj.
@@ -993,6 +995,110 @@ Unshelve.
   all: econs.
 Qed.
 
+Local Transparent sepconj.
+Local Opaque frame_contents_1.
+Local Opaque frame_contents_1_at_external.
+(* Lemma frame_contents_at_external_footprint_le_rev *)
+(*       f j sp' ls ls_init sp ra sg *)
+(*   : *)
+(*     (frame_contents f j sp' ls ls_init sp ra).(m_footprint) *)
+(*     <2= *)
+(*     (frame_contents_at_external f j sp' ls ls_init sp ra sg).(m_footprint) *)
+(* . *)
+(* Proof. *)
+(*   ii. *)
+(*   ss. des; clarify; ss; et. *)
+(*   - right. *)
+(* Local Transparent frame_contents_1. *)
+(*     ss. *)
+(* Local Opaque frame_contents_1. *)
+(*     set (make_env (function_bounds f)) as fe in *. *)
+(*     des; clarify. *)
+(*     + *)
+(*   - right. left. left. rr.  *)
+(*     left. right. rightesplits; et. *)
+(*     unfold frame_contents_1 in *. *)
+(*     unfold frame_contents_1_at_external. ss. *)
+(* Qed. *)
+
+Local Opaque frame_contents.
+Local Opaque frame_contents_at_external.
+
+Lemma stack_contents_at_external_footprint_le
+      sm0 stack cs' sg
+      (STACKS: match_stacks tge (SimMemInj.inj sm0) stack cs' sg sm0)
+  :
+    <<LE: (stack_contents_at_external sm0.(SimMemInj.inj) stack cs' sg).(m_footprint)
+          <2=
+          (stack_contents sm0.(SimMemInj.inj) stack cs').(m_footprint)>>
+.
+Proof.
+  {
+    Local Transparent stack_contents sepconj.
+    ii.
+    inv STACKS; ss; psimpl.
+    { desH PR.
+      - rr in PR. desH PR. clarify. esplits; et. des; clarify. admit "ez".
+      - clarify. esplits; et. admit "ez".
+    }
+    Local Opaque frame_contents.
+    Local Opaque frame_contents_at_external.
+    inv STK; ss.
+    { desH PR.
+      - left. eapply frame_contents_at_external_impl; et.
+        split.
+        { admit "ez". }
+        hexploit (bound_outgoing_stack_data (function_bounds f)). i.
+        xomega.
+      - clarify. right. esplits; et.
+    }
+    { des; ss; et.
+      left. eapply frame_contents_at_external_impl; et.
+      split.
+      { admit "ez". }
+      hexploit (bound_outgoing_stack_data (function_bounds f)). i.
+      xomega.
+    }
+  }
+Qed.
+
+(* Lemma stack_contents_at_external_footprint_le_rev *)
+(*       sm0 stack cs' sg *)
+(*       (STACKS: match_stacks tge (SimMemInj.inj sm0) stack cs' sg sm0) *)
+(*   : *)
+(*     <<LE: (stack_contents sm0.(SimMemInj.inj) stack cs').(m_footprint) *)
+(*           <2= *)
+(*           (stack_contents_at_external sm0.(SimMemInj.inj) stack cs' sg).(m_footprint) *)
+(*           >> *)
+(* . *)
+(* Proof. *)
+(*   { *)
+(*     ii. *)
+(*     inv STACKS; ss; psimpl. *)
+(*     { desH PR. clarify. zsimpl. *)
+(*       des; clarify. *)
+(*       - left. rr. esplits; et. *)
+(*       - right. esplits; et. admit "ez". *)
+(*     } *)
+(*     inv STK; ss. *)
+(*     { desH PR. *)
+(*       - left. clear - PR. eapply frame_contents_at_external_impl; et. *)
+(*         split. *)
+(*         { admit "ez". } *)
+(*         hexploit (bound_outgoing_stack_data (function_bounds f)). i. *)
+(*         xomega. *)
+(*       - clarify. right. esplits; et. *)
+(*     } *)
+(*     { des; ss; et. *)
+(*       left. eapply frame_contents_at_external_impl; et. *)
+(*       split. *)
+(*       { admit "ez". } *)
+(*       hexploit (bound_outgoing_stack_data (function_bounds f)). i. *)
+(*       xomega. *)
+(*     } *)
+(*   } *)
+(* Qed. *)
+Local Opaque sepconj.
 
 Local Transparent stack_contents.
 
@@ -1135,6 +1241,11 @@ Lemma loc_result_one
 .
 Proof. compute. des_ifs; eauto. Qed.
 
+Theorem make_match_genvs :
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
+  Genv.match_genvs (match_globdef (fun cunit f tf => transf_fundef f = OK tf) eq prog) ge tge.
+Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. u. des_ifs; ss; unfold Errors.bind in *; des_ifs. } Qed.
+
 Theorem sim_modsem
   :
     ModSemPair.sim msp
@@ -1151,7 +1262,7 @@ Proof.
       inv INITTGT. inv STORE. folder.
       inv SIMARGS. ss.
       exploit functions_translated_inject; eauto.
-      { admit "match genvs ez". }
+      { eapply make_match_genvs; et. apply SIMSKENV. }
       { apply SIMSKENV. }
       i; des.
       { inv SAFESRC. rewrite SRCUB in *. ss. }
@@ -1231,7 +1342,14 @@ Proof.
         econs; ss; eauto.
         - econs; ss; eauto.
           + clarify.
-          + econs; ss; eauto. eapply loc_arguments_bounded.
+          + econs; ss; eauto.
+            * eapply loc_arguments_bounded.
+            * (* TODO: make lemma *) rewrite SM. s. rewrite MEMTGT.
+              clear - ALC NB MWF. ii. inv MWF; ss. eapply TGTEXT in H.
+              rr in H; ss. des. r in H0. unfold Mem.valid_block in *.
+              exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. xomega.
+            * rewrite SM. s. unfold Mem.valid_block. rewrite <- NB.
+              exploit Mem.nextblock_alloc; et. i. rewrite H. xomega.
           + psimpl. zsimpl. rewrite SG.
             rewrite MEMSRC. rewrite MEMTGT.
             eapply init_match_frame_contents with (vs_src := (Args.vs args_src))
@@ -1253,11 +1371,31 @@ Proof.
       }
     }
   - (* init progress *)
-    admit "Use MachC.store_arguments_progress".
+    des. inv SAFESRC. folder.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
+    inv SIMARGS. ss.
+    exploit (fsim_internal_funct_inject SIMGE); et.
+    { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. eapply SIMSKENV. }
+    i; des. monadInv MATCH. rename x into fd_tgt.
+    assert(exists targs_tgt, <<TYPTGT: typecheck (Args.vs args_tgt) (fn_sig fd_tgt) targs_tgt>>).
+    { admit "ez - make lemma". }
+    des.
+    exploit (store_arguments_progress (Args.m args_tgt) targs_tgt (fn_sig fd_tgt)); et.
+    { inv TYPTGT. eapply typify_has_type_list; et. }
+    { inv TYPTGT. ss. }
+    i; des.
+    esplits; et.
+    econs; et.
+    { instantiate (1:= Vlong Int64.zero). ss. }
+    { admit "strengthen store_arguments_progress - non-arg area can be anything we want".
+      (* ii. erewrite transf_function_sig in *; et. eapply PTRFREE; et. *)
+    }
+    { admit "remove this from semantics". }
   - (* callstate wf *)
     inv MATCH; ss.
 
   - (* call fsim *)
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     inv CALLSRC. inv MATCH; ss. clarify.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
     des. exploit wt_callstate_agree; eauto. intros [AGCS AGARGS].
@@ -1270,7 +1408,7 @@ Proof.
     exploit transl_external_arguments; eauto. { apply sep_pick1 in SEP. eauto. } intro ARGS; des.
 
     assert(VALID: Mem.valid_block (SimMemInj.tgt sm0) sp).
-    { admit "Strengthen match_states - this might be done while strengthening Stackingproof.v". }
+    { inv STACKS; ss; clarify. }
 
     exploit SimMemInj.free_right; eauto.
     { u. ii. esplits; eauto.
@@ -1281,8 +1419,23 @@ Proof.
     hexpl Mem.nextblock_free NB.
     esplits; eauto.
     + econs; eauto.
-      * folder. admit "ge relax - ez".
-      * admit "SIMSKENVLINK - ez".
+      * folder. eapply (fsim_external_funct_inject SIMGE); et.
+        { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. apply SIMSKENV. }
+        ii. clarify.
+      * folder. esplits; eauto.
+        (* copied from InliningproofC *)
+        (** TODO: remove redundancy **)
+        inv SIMSKENV. ss.
+        assert(fptr_arg = tfptr).
+        { eapply fsim_external_inject_eq; try apply SIG; et. Undo 1.
+          inv FPTR; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
+          inv SIMSKE. ss. inv INJECT; ss.
+          exploit (DOMAIN b1); eauto.
+          { eapply Genv.genv_defs_range; et. }
+          i; clarify.
+        }
+        clarify.
+        eapply SimSymb.simskenv_func_fsim; eauto; ss.
     + econs; ss; eauto with congruence.
     + econs; eauto with congruence.
       * rp; eauto.
@@ -1302,7 +1455,14 @@ Proof.
         destruct B as (D & E & F).
         sep_split; revgoals.
         { ss. eapply MWF1. }
-        { admit "Compared to C, left footprint: <=. right footprint: =.". }
+        { rewrite MSRC. rewrite MINJ.
+          assert(LE:
+                   (stack_contents_at_external (SimMemInj.inj sm0) stack cs' (SkEnv.get_sig skd)).(m_footprint)
+                   <2=
+                   (stack_contents (SimMemInj.inj sm0) stack cs').(m_footprint)).
+          { eapply stack_contents_at_external_footprint_le; et. }
+          admit "ez - use F".
+        }
         rewrite MINJ.
         eapply stack_contents_at_external_spec; eauto.
 
@@ -1333,7 +1493,8 @@ Proof.
       - unfold Mem.valid_block in *. eapply Plt_Ple_trans; eauto. etransitivity; try eapply MLE. eapply MLEAFTR.
       - inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl. inv SIMARGS. ss. clarify.
         assert(sg = sg_arg).
-        { des. clarify. clear - SIG SIG0 FPTR0 SIMSKENV. admit "ez". }
+        { des. clarify. inv SIMSKENV. inv SIMSKELINK. ss. r in SIMSKENV. rewrite SIMSKENV in *.
+          exploit fsim_external_inject_eq; et. i. subst tfptr. clarify. rewrite H0. ss. }
         clarify.
         assert(NP: Mem_range_noperm (SimMemInj.tgt sm_arg) blk 0 (4 * size_arguments sg_arg)).
         { eapply Mem_free_noperm; eauto. }
@@ -1349,7 +1510,12 @@ Proof.
     des.
 
     exploit (@SimMemInjC.unfree_right _ (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
-    { admit "strengthen match_stacks". }
+    { ss. bar. inv MLE. rewrite <- TGTPARENTEQ. clear_until_bar.
+      r. unfold brange.
+      inv STACKS; ss; clarify.
+      - ii. des_safe. clarify. eapply EXT_TGT_NON; et.
+      - ii. des_safe. clarify. eapply EXT_TGT_NON; et.
+    }
     i; des. ss.
 
     exists sm1; esplits; eauto.
@@ -1371,7 +1537,30 @@ Proof.
       assert(WTST: wt_state (Linear.Returnstate stack
        (Locmap.setpair (loc_result sg_arg) (typify (Retv.v retv_src) (proj_sig_res sg_arg))
           (LTL.undef_caller_save_regs ls_arg)) (Retv.m retv_src))).
-      { admit "somehow". }
+      { clear - SOUND. inv SOUND.
+
+      (** directly copied from LineartypingC.v **)
+      (** TODO: provide it in metatheory **)
+      (** I tried it (just add "(SOUND: sound_state su0 m_init st_src1)" in MatchSimModSem.v - AFTERFSIM, 
+          but it has some difficulty.. **)
+      hexploit (loc_result_caller_save sg_arg); eauto. intro RES.
+      hexploit (loc_result_one sg_arg); eauto. intro ONE.
+      des.
+
+      econs; ss; eauto.
+      + ii. unfold Locmap.setpair. des_ifs. ss.
+        apply wt_setreg; ss; cycle 1.
+        { apply wt_undef_caller_save_regs; ss. }
+        rewrite mreg_type_any. apply has_type_any.
+      + ii.
+        destruct l; ss.
+        { rewrite locmap_get_set_loc_result; ss. des_ifs. rewrite AGCS; ss. }
+        { rewrite locmap_get_set_loc_result; ss. des_ifs.
+          - rewrite AGCS; ss.
+          - rewrite AGCS; ss.
+        }
+      + ii. rewrite locmap_get_set_loc_result; ss.
+      }
       inv WTST.
       eapply match_states_return with (j:= sm_ret.(SimMemInj.inj)); eauto.
       * econs; ss; eauto. congruence.

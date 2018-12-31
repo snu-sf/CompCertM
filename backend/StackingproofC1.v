@@ -202,7 +202,29 @@ Proof.
     rewrite ! Z.add_0_l in *. xomega.
 Qed.
 
+Lemma contains_locations_range
+      j sp lo hi k rs
+  :
+    massert_imp (contains_locations j sp lo hi k rs)
+                (range sp lo (lo + (4 * hi)))
+.
+Proof.
+  rr. ss. esplits; et.
+  ii. des. esplits; et.
+  i. eapply Mem.perm_cur. eapply Mem.perm_implies with (p1 := Freeable); eauto with mem.
+Qed.
+
+Lemma contains_locations_range_2
+      m j sp pos bound slot ls
+      (SEP: m |= contains_locations j sp pos bound slot ls)
+  :
+    <<RANEG: m |= range sp pos (pos + 4 * bound)>>
+.
+Proof. ss. des. esplits; eauto. ii. eauto with mem. Qed.
+
 End STACKINGEXTRA.
+
+
 
 Lemma external_call_parallel_rule:
   forall (F V: Type) ef (ge: Genv.t F V) vargs1 m1 t vres1 m1' m2 j P vargs2,
@@ -717,8 +739,8 @@ Definition frame_contents_1_at_external f (j: meminj) (sp: block) (ls ls0: locse
   let b := function_bounds f in
   let fe := make_env b in
     contains_locations j sp fe.(fe_ofs_local) b.(bound_local) Local ls
- ** pure True
- (* ** range sp fe_ofs_arg (4 * (bound_outgoing b)) *)
+ (* ** pure True *)
+ ** range sp fe_ofs_arg (4 * (bound_outgoing b))
  ** hasvalue Mptr sp fe.(fe_ofs_link) parent
  ** hasvalue Mptr sp fe.(fe_ofs_retaddr) retaddr
  ** contains_callee_saves j sp fe.(fe_ofs_callee_save) b.(used_callee_save) ls0.
@@ -759,14 +781,6 @@ Ltac sep_simpl_tac :=
          )
 .
 
-Lemma contains_locations_range
-      m j sp pos bound slot ls
-      (SEP: m |= contains_locations j sp pos bound slot ls)
-  :
-    <<RANEG: m |= range sp pos (pos + 4 * bound)>>
-.
-Proof. ss. des. esplits; eauto. ii. eauto with mem. Qed.
-
 Lemma stack_contents_at_external_footprint_split
       j cs cs'
       f sp ls c fb sp' spofs ra c' sg
@@ -800,14 +814,14 @@ Proof.
       rewrite sep_comm. rewrite sep_assoc.
       rewrite sep_comm in H. rewrite sep_assoc in H.
       repeat rewrite sep_assoc in *.
-      eapply sep_imp; eauto. ss.
-    + unfold frame_contents_1, frame_contents_1_at_external in *.
-      Local Transparent sepconj.
-      ss.
-      Local Opaque sepconj.
-      des; ss; clarify; eauto.
-      * right. right. left. esplits; eauto.
-      * right. right. right. left. esplits; eauto.
+      eapply sep_imp; eauto. ss. eapply contains_locations_range.
+    (* + unfold frame_contents_1, frame_contents_1_at_external in *. *)
+    (*   Local Transparent sepconj. *)
+    (*   ss. *)
+    (*   Local Opaque sepconj. *)
+    (*   des; ss; clarify; eauto. *)
+    (*   * right. right. left. esplits; eauto. *)
+    (*   * right. right. right. left. esplits; eauto. *)
 Qed.
 
 Lemma frame_contents_at_external_impl
@@ -947,6 +961,7 @@ Proof.
       inv STACKS.
       des; clarify.
       - eapply DISJ0; eauto. esplits; eauto. lia.
+      -
       - eapply DISJ4; eauto. esplits; eauto. lia.
       - eapply DISJ7; eauto. esplits; eauto. lia.
       - exploit contains_callee_saves_footprint; eauto. i.

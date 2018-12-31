@@ -1222,7 +1222,7 @@ Proof.
   - (* init progress *)
     admit "Use MachC.store_arguments_progress".
   - (* callstate wf *)
-    admit "strengthen Stackingproof".
+    inv MATCH; ss.
 
   - (* call fsim *)
     inv CALLSRC. inv MATCH; ss. clarify.
@@ -1287,7 +1287,7 @@ Proof.
     (* } *)
     inv AFTERSRC. inv MATCH; ss. clarify.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
-    assert(MCOMPAT0: sm0.(SimMemInj.inj) = j). { admit "strengthen Stackingproof.v". } clarify.
+    assert(MCOMPAT0: sm0.(SimMemInj.inj) = j). { inv MCOMPAT; ss. } clarify.
 
     hexpl match_stacks_sp_ofs RSP.
     inv SIMRET.

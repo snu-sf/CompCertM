@@ -105,7 +105,7 @@ Proof.
         { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
         { apply SIMSKENV. }
         intro GE.
-        apply (sim_external_funct_id GE); ss.
+        apply (fsim_external_funct_id GE); ss.
         folder.
         inv FPTR; ss.
       * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. inv SIMSKENV. ss.

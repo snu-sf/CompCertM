@@ -86,6 +86,24 @@ Local Opaque make_env.
 
 Local Existing Instance Val.mi_normal.
 
+Lemma sim_skenv_inj_globalenv_inject
+      skenv_proj_src skenv_proj_tgt sm_arg (prog: Linear.program)
+      (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg tt skenv_proj_src skenv_proj_tgt)
+      m_tgt0
+      (NB: Ple (Genv.genv_next skenv_proj_src) (Mem.nextblock m_tgt0))
+  :
+    m_tgt0 |= globalenv_inject (SkEnv.revive skenv_proj_src prog) (SimMemInj.inj sm_arg)
+.
+Proof.
+  ss.
+  inv SIMSKE. inv INJECT.
+  esplits; et.
+  - econs; et.
+    + ii. exploit Genv.genv_symb_range; eauto.
+    + ii. uge0. des_ifs. exploit Genv.genv_defs_range; eauto.
+    + ii. uge0. des_ifs. exploit Genv.genv_defs_range; eauto.
+Qed.
+
 Section STACKINGEXTRA.
 
 Lemma match_stacks_sp_ofs:
@@ -432,19 +450,25 @@ Compute last_option [1].
 Compute last_option [1 ; 2].
 
 Lemma functions_translated_inject
-      j
+      sm0
       (SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge)
-      (SIMGE0: DUMMY_PROP) (* globalenv_inject match_globalenvs *)
+      (SIMSKE: SimSymb.sim_skenv sm0 (ModSemPair.ss msp) (ModSem.skenv (ModSemPair.src msp))
+                                 (ModSem.skenv (ModSemPair.tgt msp)))
       fptr_src fd_tgt fptr_tgt
       (FUNCSRC: Genv.find_funct tge fptr_tgt = Some fd_tgt)
-      (INJ: Val.inject j fptr_src fptr_tgt)
+      (INJ: Val.inject sm0.(SimMemInj.inj) fptr_src fptr_tgt)
   :
+    <<SRCUB: fptr_src = Vundef>> \/
     exists fd_src,
       <<FUNCTGT: Genv.find_funct ge fptr_src = Some fd_src>>
       /\ <<TRANSF: transf_fundef fd_src = OK fd_tgt>>
 .
 Proof.
-  admit "ez".
+  ss.
+  inv SIMSKE.
+  hexploit (bsim_internal_funct_inject SIMGE); et.
+  { eapply SimMemInjC.skenv_inject_revive; eauto. unfold ge. eauto. }
+  i; des; eauto.
 Qed.
 
 Hypothesis TRANSL: match_prog prog tprog.
@@ -468,6 +492,8 @@ Proof. unfold transf_function in *. des_ifs. Qed.
 
 Lemma init_match_frame_contents_depr
       sm_arg sg
+      (SIMSKE: SimSymb.sim_skenv sm_arg (ModSemPair.ss msp) (ModSem.skenv (ModSemPair.src msp))
+                                 (ModSem.skenv (ModSemPair.tgt msp)))
       m_tgt0 rs vs_src vs_tgt ls
       (STORE: StoreArguments.store_arguments sm_arg.(SimMemInj.tgt) rs vs_tgt sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
@@ -478,6 +504,7 @@ Lemma init_match_frame_contents_depr
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
+      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src (defs prog))) (Mem.nextblock m_tgt0))
   :
     m_tgt0
       |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
@@ -525,12 +552,13 @@ Proof.
   sep_split.
   { ss. subst sm_init. eapply MWF. }
   { ss. }
-  ss.
-  admit "ge relax - sim_skenv_inj - ez".
+  eapply sim_skenv_inj_globalenv_inject; et.
 Qed.
 
 Lemma init_match_frame_contents
       sm_arg sg
+      (SIMSKE: SimSymb.sim_skenv sm_arg (ModSemPair.ss msp) (ModSem.skenv (ModSemPair.src msp))
+                                 (ModSem.skenv (ModSemPair.tgt msp)))
       m_tgt0 rs vs_src vs_tgt ls
       (STORE: StoreArguments.store_arguments sm_arg.(SimMemInj.tgt) rs (typify_list vs_tgt sg.(sig_args)) sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
@@ -541,6 +569,7 @@ Lemma init_match_frame_contents
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
+      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src (defs prog))) (Mem.nextblock m_tgt0))
   :
     m_tgt0
       |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
@@ -594,8 +623,7 @@ Proof.
   sep_split.
   { ss. subst sm_init. eapply MWF. }
   { ss. }
-  ss.
-  admit "ge relax - sim_skenv_inj - ez".
+  eapply sim_skenv_inj_globalenv_inject; et.
 Unshelve. all: eauto.
 Qed.
 
@@ -1124,7 +1152,9 @@ Proof.
       inv SIMARGS. ss.
       exploit functions_translated_inject; eauto.
       { admit "match genvs ez". }
+      { apply SIMSKENV. }
       i; des.
+      { inv SAFESRC. rewrite SRCUB in *. ss. }
       destruct fd_src; ss. unfold bind in *. des_ifs.
       hexpl transf_function_sig SG.
       assert(LEN0: length (typify_list (Args.vs args_src) (sig_args (Linear.fn_sig f))) =
@@ -1206,9 +1236,12 @@ Proof.
             rewrite MEMSRC. rewrite MEMTGT.
             eapply init_match_frame_contents with (vs_src := (Args.vs args_src))
                                                   (vs_tgt := (Args.vs args_tgt)(* targs_tgt *)); eauto.
+            * apply SIMSKENV.
             * inv TYPTGT. econs; eauto. rewrite <- MEMTGT. ss.
             * inv TYPTGT. unfold Ptrofs.max_unsigned in *. xomega.
             * rewrite <- SG. eauto with congruence.
+            * inv SIMSKENV. ss. inv SIMSKE. ss.
+              etrans; et. inv MWF0. ss.
           (* + i; des. admit "ge relax, ez". *)
         - clarify.
         - clarify.

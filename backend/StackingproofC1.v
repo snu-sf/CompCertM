@@ -1288,7 +1288,6 @@ Inductive match_states
     (MWF: SimMem.wf sm0)
     (INITRS: exists dummy_stack_src,
         <<DUMMY: st_src0.(LinearC.get_stack).(last_option) = Some dummy_stack_src>> /\
-        <<AGREE: agree_regs sm0.(SimMemInj.inj) dummy_stack_src.(current_locset) st_tgt0.(init_rs)>> /\
         <<GOOD: forall
                    mr
                    (CALLEESAVE: Conventions1.is_callee_save mr)
@@ -1447,7 +1446,6 @@ Proof.
         - clarify.
         - clarify.
         - esplits; ss.
-          + ss. clarify; ss.
           + i. ss. split.
             * erewrite OUT; ss. ii. hexpl loc_arguments_acceptable_2 ACCP. ss. clarify.
             * eapply PTRFREE. ii. hexpl loc_arguments_acceptable_2 ACCP. ss. clarify.
@@ -1609,14 +1607,7 @@ Proof.
         inv MLE. rewrite <- TGTPARENTEQNB.
         inv SIMSKENV. inv SIMSKELINK. ss. rr in SIMSKENV. rewrite <- SIMSKENV. ss.
       * psimpl. zsimpl. rp; eauto.
-    + econs; ss; eauto with congruence; cycle 1.
-      { assert(MLE2: SimMemInj.le' sm0 sm1).
-        { etrans; eauto. etrans; eauto. }
-        clear - MLE2 GOOD DUMMY AGREE STACKS. destruct stack; ss; des_ifs; ss.
-        { esplits; ss; eauto; ss. eapply agree_regs_inject_incr; eauto. apply MLE2. }
-        rewrite DUMMY. esplits; eauto.
-        eapply agree_regs_inject_incr; eauto. apply MLE2.
-      }
+    + econs; ss; eauto with congruence.
       assert(WTST: wt_state (Linear.Returnstate stack
        (Locmap.setpair (loc_result sg_arg) (typify (Retv.v retv_src) (proj_sig_res sg_arg))
           (LTL.undef_caller_save_regs ls_arg)) (Retv.m retv_src))).

@@ -1607,7 +1607,13 @@ Proof.
         inv MLE. rewrite <- TGTPARENTEQNB.
         inv SIMSKENV. inv SIMSKELINK. ss. rr in SIMSKENV. rewrite <- SIMSKENV. ss.
       * psimpl. zsimpl. rp; eauto.
-    + econs; ss; eauto with congruence.
+    + econs; ss; eauto with congruence; cycle 1.
+      { assert(MLE2: SimMemInj.le' sm0 sm1).
+        { etrans; eauto. etrans; eauto. }
+        clear - MLE2 GOOD DUMMY STACKS. destruct stack; ss; des_ifs; ss.
+        { esplits; ss; eauto; ss. }
+        rewrite DUMMY. esplits; eauto.
+      }
       assert(WTST: wt_state (Linear.Returnstate stack
        (Locmap.setpair (loc_result sg_arg) (typify (Retv.v retv_src) (proj_sig_res sg_arg))
           (LTL.undef_caller_save_regs ls_arg)) (Retv.m retv_src))).
@@ -1687,8 +1693,7 @@ Proof.
         {
           bar.
           inv STACKS; econs; et.
-          TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
-          admit "match_stacks".
+          inv AGL. econs; et.
         }
       * eapply agree_regs_set_pair; cycle 1.
         { unfold typify_opt, typify. des_ifs. }

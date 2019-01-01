@@ -123,7 +123,7 @@ Section SOUNDNESS.
       + destruct stack; ss.
         des_ifs. inv WTSTK.
         econs; eauto.
-        eapply wt_undef_caller_save_regs; et.
+        unfold undef_outgoing_slots. ii. des_ifs.
       + ii. unfold Locmap.setpair. des_ifs. ss.
         apply wt_setreg; ss; cycle 1.
         { apply wt_undef_caller_save_regs; ss. }

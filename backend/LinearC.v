@@ -234,10 +234,18 @@ but then corresponding MachM's part should be transl_code another_dummy_code ...
 .
 Hint Unfold dummy_stack.
 
+Definition undef_outgoing_slots (ls: locset): locset :=
+  fun l =>
+    match l with
+    | S Outgoing  _ _ => Vundef
+    | _ => ls l
+    end
+.
+  
 Definition stackframes_after_external (stack: list stackframe): list stackframe :=
   match stack with
   | nil => nil
-  | Stackframe f sp ls bb :: tl => Stackframe f sp ls.(undef_caller_save_regs) bb :: tl
+  | Stackframe f sp ls bb :: tl => Stackframe f sp ls.(undef_outgoing_slots) bb :: tl
   end
 .
 
@@ -246,7 +254,7 @@ Lemma parent_locset_after_external
   :
     <<SPURRIOUS: parent_locset stack.(stackframes_after_external) = parent_locset stack /\ stack = []>>
     \/
-    <<AFTER: parent_locset stack.(stackframes_after_external) = (parent_locset stack).(undef_caller_save_regs)>>
+    <<AFTER: parent_locset stack.(stackframes_after_external) = (parent_locset stack).(undef_outgoing_slots)>>
 .
 Proof.
   destruct stack; ss.

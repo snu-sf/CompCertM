@@ -1037,29 +1037,38 @@ Qed.
 Local Transparent sepconj.
 Local Opaque frame_contents_1.
 Local Opaque frame_contents_1_at_external.
-(* Lemma frame_contents_at_external_footprint_le_rev *)
-(*       f j sp' ls ls_init sp ra sg *)
-(*   : *)
-(*     (frame_contents f j sp' ls ls_init sp ra).(m_footprint) *)
-(*     <2= *)
-(*     (frame_contents_at_external f j sp' ls ls_init sp ra sg).(m_footprint) *)
-(* . *)
-(* Proof. *)
-(*   ii. *)
-(*   ss. des; clarify; ss; et. *)
-(*   - right. *)
-(* Local Transparent frame_contents_1. *)
-(*     ss. *)
-(* Local Opaque frame_contents_1. *)
-(*     set (make_env (function_bounds f)) as fe in *. *)
-(*     des; clarify. *)
-(*     + *)
-(*   - right. left. left. rr.  *)
-(*     left. right. rightesplits; et. *)
-(*     unfold frame_contents_1 in *. *)
-(*     unfold frame_contents_1_at_external. ss. *)
-(* Qed. *)
-
+Lemma frame_contents_at_external_footprint_le_rev
+      f j j' sp' ls ls_init sp ra sg
+  :
+    (frame_contents f j sp' ls ls_init sp ra).(m_footprint)
+    <2=
+    (frame_contents_at_external f j' sp' ls ls_init sp ra sg).(m_footprint)
+.
+Proof.
+  -
+    eapply mconj_footprint_le; et.
+    +
+      eapply sepconj_footprint_le; et.
+      eapply sepconj_footprint_le; et.
+      eapply sepconj_footprint_le; et.
+      eapply sepconj_footprint_le; et.
+      clear - sp. clear sp.
+      abstr (fe_ofs_callee_save (make_env (function_bounds f))) ofs.
+      abstr (used_callee_save (function_bounds f)) rl.
+      clear_tac.
+      Local Opaque sepconj.
+      ginduction rl; i; ss.
+      eapply sepconj_footprint_le; ss.
+    +
+      eapply sepconj_footprint_le; ss.
+      ii. des_safe; clarify.
+      Local Transparent sepconj.
+      s.
+      Local Opaque sepconj.
+      destruct (classic (4 * size_arguments sg <= x1)).
+      { right. esplits; et. }
+      { left. rr. esplits; et. xomega. }
+Qed.
 Local Opaque frame_contents.
 Local Opaque frame_contents_at_external.
 
@@ -1101,42 +1110,77 @@ Proof.
   }
 Qed.
 
-(* Lemma stack_contents_at_external_footprint_le_rev *)
-(*       sm0 stack cs' sg *)
-(*       (STACKS: match_stacks tge (SimMemInj.inj sm0) stack cs' sg sm0) *)
-(*   : *)
-(*     <<LE: (stack_contents sm0.(SimMemInj.inj) stack cs').(m_footprint) *)
-(*           <2= *)
-(*           (stack_contents_at_external sm0.(SimMemInj.inj) stack cs' sg).(m_footprint) *)
-(*           >> *)
-(* . *)
-(* Proof. *)
-(*   { *)
-(*     ii. *)
-(*     inv STACKS; ss; psimpl. *)
-(*     { desH PR. clarify. zsimpl. *)
-(*       des; clarify. *)
-(*       - left. rr. esplits; et. *)
-(*       - right. esplits; et. admit "ez". *)
-(*     } *)
-(*     inv STK; ss. *)
-(*     { desH PR. *)
-(*       - left. clear - PR. eapply frame_contents_at_external_impl; et. *)
-(*         split. *)
-(*         { admit "ez". } *)
-(*         hexploit (bound_outgoing_stack_data (function_bounds f)). i. *)
-(*         xomega. *)
-(*       - clarify. right. esplits; et. *)
-(*     } *)
-(*     { des; ss; et. *)
-(*       left. eapply frame_contents_at_external_impl; et. *)
-(*       split. *)
-(*       { admit "ez". } *)
-(*       hexploit (bound_outgoing_stack_data (function_bounds f)). i. *)
-(*       xomega. *)
-(*     } *)
-(*   } *)
-(* Qed. *)
+Lemma frame_contents_footprint_irr
+      f j0 j1 spb ls0 ls1 sp ra
+  :
+    (frame_contents f j0 spb ls0 ls1 sp ra).(m_footprint) <2=
+    (frame_contents f j1 spb ls0 ls1 sp ra).(m_footprint)
+.
+Proof.
+  eapply sepconj_footprint_le; et.
+  eapply mconj_footprint_le; et.
+  eapply sepconj_footprint_le; et.
+  eapply sepconj_footprint_le; et.
+  eapply sepconj_footprint_le; et.
+  abstr (fe_ofs_callee_save (make_env (function_bounds f))) ofs.
+  abstr (used_callee_save (function_bounds f)) rs.
+  clear - rs.
+  ginduction rs; i; et.
+  eapply sepconj_footprint_le; et.
+Qed.
+
+Lemma stack_contents_footprint_irr
+      j0 j1 cs cs'
+  :
+    (stack_contents j0 cs cs').(m_footprint) <2=
+    (stack_contents j1 cs cs').(m_footprint)
+.
+Proof.
+  clear - cs.
+  ginduction cs; i; ss.
+  des_ifs.
+  { eapply sepconj_footprint_le; et.
+    eapply frame_contents_footprint_irr.
+  }
+  { eapply sepconj_footprint_le; et.
+    eapply frame_contents_footprint_irr.
+  }
+Qed.
+
+Local Transparent frame_contents.
+Local Transparent frame_contents_at_external.
+Lemma stack_contents_at_external_footprint_le_rev
+      sm0 stack cs' sg j j0 j1
+      (STACKS: match_stacks tge j stack cs' sg sm0)
+  :
+    <<LE: (stack_contents j0 stack cs').(m_footprint)
+          <2=
+          (stack_contents_at_external j1 stack cs' sg).(m_footprint)
+          >>
+.
+Proof.
+  {
+    ii.
+    inv STACKS; ss; psimpl.
+    { desH PR. clarify. zsimpl.
+      des; clarify.
+      - left. rr. esplits; et.
+      - right. esplits; et. clear - PR0 LE. admit "ez - use tailcall_possible".
+    }
+    {{
+        Local Opaque mconj sepconj.
+        inv STK; et.
+        -
+          eapply sepconj_footprint_le; try apply PR; ss.
+          eapply frame_contents_at_external_footprint_le_rev.
+        - eapply sepconj_footprint_le; try apply PR; et.
+          { eapply frame_contents_at_external_footprint_le_rev. }
+          eapply stack_contents_footprint_irr.
+    }}
+  }
+Qed.
+Local Opaque frame_contents.
+Local Opaque frame_contents_at_external.
 Local Opaque sepconj.
 
 Local Transparent stack_contents.
@@ -1687,7 +1731,7 @@ Proof.
           etrans; try eassumption; eauto.
 
           etrans; try eassumption; eauto.
-          admit "footprint eq".
+          eapply stack_contents_at_external_footprint_le_rev; et.
 
           (* Lemma less2_divide_r *)
           (*       X0 X1 *)

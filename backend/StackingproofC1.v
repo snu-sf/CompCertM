@@ -1684,6 +1684,12 @@ Proof.
           inv MLE2.
           eapply MAXSRC; et.
         }
+        {
+          bar.
+          inv STACKS; econs; et.
+          TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
+          admit "match_stacks".
+        }
       * eapply agree_regs_set_pair; cycle 1.
         { unfold typify_opt, typify. des_ifs. }
         (* TODO: Remove Mach.regset_after_external *)
@@ -1691,8 +1697,7 @@ Proof.
         eapply agree_regs_undef_caller_save_regs; eauto.
         eapply agree_regs_inject_incr; eauto.
         eapply inject_incr_trans; try apply MLE0. ss. apply MLE.
-      * unfold typify_opt. unfold proj_sig_res in *. des_ifs; ss.
-        { ii. erewrite <- AGCS; eauto. rewrite ! locmap_get_set_loc_result_callee_save; ss. }
+      * admit "this should hold".
       * bar. move HISTORY at bottom. inv HISTORY. inv MATCHARG. ss. clarify.
         rename sm0 into sm_at. rename sm1 into sm_after.
         rewrite RSP0 in *. clarify.
@@ -1722,7 +1727,8 @@ Proof.
           etrans; try eassumption; eauto.
 
           etrans; try eassumption; eauto.
-          eapply stack_contents_at_external_footprint_le_rev; et.
+          admit "this should hold".
+          (* eapply stack_contents_at_external_footprint_le_rev; et. *)
 
           (* Lemma less2_divide_r *)
           (*       X0 X1 *)

@@ -234,6 +234,26 @@ but then corresponding MachM's part should be transl_code another_dummy_code ...
 .
 Hint Unfold dummy_stack.
 
+Definition stackframes_after_external (stack: list stackframe): list stackframe :=
+  match stack with
+  | nil => nil
+  | Stackframe f sp ls bb :: tl => Stackframe f sp ls.(undef_caller_save_regs) bb :: tl
+  end
+.
+
+Lemma parent_locset_after_external
+      stack
+  :
+    <<SPURRIOUS: parent_locset stack.(stackframes_after_external) = parent_locset stack /\ stack = []>>
+    \/
+    <<AFTER: parent_locset stack.(stackframes_after_external) = (parent_locset stack).(undef_caller_save_regs)>>
+.
+Proof.
+  destruct stack; ss.
+  { left; ss. }
+  des_ifs; ss. right. ss.
+Qed.
+
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
@@ -296,7 +316,7 @@ Section MODSEM.
     :
       after_external (Callstate stack fptr_arg sg_arg ls_arg m_arg)
                      retv
-                     (Returnstate stack ls_after retv.(Retv.m))
+                     (Returnstate stack.(stackframes_after_external) ls_after retv.(Retv.m))
   .
 
   Program Definition modsem: ModSem.t :=

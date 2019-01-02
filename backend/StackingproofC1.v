@@ -1148,6 +1148,7 @@ Proof.
     + econs; eauto.
       * folder. admit "ge relax - ez".
       * admit "SIMSKENVLINK - ez".
+      * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
     + econs; ss; eauto with congruence.
     + econs; eauto with congruence.
       * rp; eauto.

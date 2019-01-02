@@ -656,9 +656,9 @@ Section TRIAL2.
           - ii. eapply Mem_unfree_unchanged_on; et.
             { instantiate (1:= ~2 (brange blk (Ptrofs.unsigned ofs)
                                           (Ptrofs.unsigned ofs + 4 * size_arguments (SkEnv.get_sig skd0)))).
-              ss.
+              rewrite RSRSP in *. clarify.
             }
-            ss.
+            rewrite RSRSP in *. clarify.
           - eapply Mem_unfree_unchanged_on; et.
             (* u. ii; des; ss; clarify. *)
             (* rr in H. eapply H. *)
@@ -705,8 +705,8 @@ Section TRIAL2.
               { ii. rr in LEOLD. des. eapply OLD0. esplits; et. clear - OLD GR FREE. admit "ez". }
               exploit HLE; et. intro SUGR; des.
 
-              assert(UNCH: (ZMap.get ofs0 (Mem.mem_contents m2) !! blk2)
-                           = (ZMap.get ofs0 (Mem.mem_contents m1) !! blk2)).
+              assert(UNCH: (ZMap.get ofs1 (Mem.mem_contents m2) !! blk2)
+                           = (ZMap.get ofs1 (Mem.mem_contents m1) !! blk2)).
               { inv MLE. eapply Mem.unchanged_on_contents; eauto.
                 - eapply PRIV; et.
                   admit "ez".

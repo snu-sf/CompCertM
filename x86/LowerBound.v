@@ -1243,41 +1243,43 @@ Section PRESERVATION.
     :
       match_states (Callstate args (fr0 :: frs)) st_tgt 1%nat.
   Proof.
-    inv MTCHST. ss. inv AT. Local Opaque Genv.find_funct.
-    econstructor 2 with (P := (P \2/ (fun blk ofs => blk1 = blk /\ range 0 (4*size_arguments sg) ofs))); ss; eauto.
-    - econs; ss; eauto. rewrite FPTR. eauto.
-    - ii. destruct (eq_block blk1 blk); clarify.
-      + destruct (j blk) eqn:EQ.
-        * destruct p0. destruct (WFINJ blk); clarify.
-          econs 2; eauto; ii.
-          -- eapply ALIGN. ii.
-             instantiate (1:= Nonempty). instantiate (1:=Max).
-             eapply H in PR. des; eauto.
-             ++ left. eapply Mem.perm_free_3 in PR; eauto.
-                eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-             ++ left. eapply Mem.free_range_perm in FREE.
-                exploit FREE. instantiate (1:=x0).
-                ** rewrite Ptrofs.unsigned_zero. unfold range in *. lia.
-                ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-          -- inv INJ; des; eauto.
-             ++ eapply mi_representable; eauto. left.
-                eapply Mem.free_range_perm in FREE. exploit FREE.
-                ** rewrite Ptrofs.unsigned_zero. eauto.
-                ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-             ++ eapply mi_representable; eauto. right.
-                eapply Mem.free_range_perm in FREE. exploit FREE.
-                ** rewrite Ptrofs.unsigned_zero. eauto.
-                ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-        * exfalso. specialize (AGREE (IR Asm.RSP)). rewrite RSP in AGREE. inv AGREE. clarify.
-      + destruct (j blk) eqn:EQ.
-        * destruct p0. destruct (WFINJ blk); clarify.
-          econs 2; eauto; ii.
-          -- eapply ALIGN. ii. eapply H in PR. des; eauto; clarify. left.
-             eapply Mem.perm_free_3; eauto.
-          -- des; eauto; clarify.
-        * econs 1; eauto. destruct (WFINJ blk); clarify.
-          ii. des; eauto. clarify.
-    - eapply free_freed_from; eauto.
+    admit "TODO : fix match_state to match #240".
+
+    (* inv MTCHST. ss. inv AT. Local Opaque Genv.find_funct. *)
+    (* econstructor 2 with (P := (P \2/ (fun blk ofs => blk1 = blk /\ range 0 (4*size_arguments sg) ofs))); ss; eauto. *)
+    (* - econs; ss; eauto. rewrite FPTR. eauto. *)
+    (* - ii. destruct (eq_block blk1 blk); clarify. *)
+    (*   + destruct (j blk) eqn:EQ. *)
+    (*     * destruct p0. destruct (WFINJ blk); clarify. *)
+    (*       econs 2; eauto; ii. *)
+    (*       -- eapply ALIGN. ii. *)
+    (*          instantiate (1:= Nonempty). instantiate (1:=Max). *)
+    (*          eapply H in PR. des; eauto. *)
+    (*          ++ left. eapply Mem.perm_free_3 in PR; eauto. *)
+    (*             eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. *)
+    (*          ++ left. eapply Mem.free_range_perm in FREE. *)
+    (*             exploit FREE. instantiate (1:=x0). *)
+    (*             ** rewrite Ptrofs.unsigned_zero. unfold range in *. lia. *)
+    (*             ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. *)
+    (*       -- inv INJ; des; eauto. *)
+    (*          ++ eapply mi_representable; eauto. left. *)
+    (*             eapply Mem.free_range_perm in FREE. exploit FREE. *)
+    (*             ** rewrite Ptrofs.unsigned_zero. eauto. *)
+    (*             ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. *)
+    (*          ++ eapply mi_representable; eauto. right. *)
+    (*             eapply Mem.free_range_perm in FREE. exploit FREE. *)
+    (*             ** rewrite Ptrofs.unsigned_zero. eauto. *)
+    (*             ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. *)
+    (*     * exfalso. specialize (AGREE (IR Asm.RSP)). rewrite RSP in AGREE. inv AGREE. clarify. *)
+    (*   + destruct (j blk) eqn:EQ. *)
+    (*     * destruct p0. destruct (WFINJ blk); clarify. *)
+    (*       econs 2; eauto; ii. *)
+    (*       -- eapply ALIGN. ii. eapply H in PR. des; eauto; clarify. left. *)
+    (*          eapply Mem.perm_free_3; eauto. *)
+    (*       -- des; eauto; clarify. *)
+    (*     * econs 1; eauto. destruct (WFINJ blk); clarify. *)
+    (*       ii. des; eauto. clarify. *)
+    (* - eapply free_freed_from; eauto. *)
   Qed.
 
   Lemma below_block_is_volatile F V (ge': Genv.t F V) b

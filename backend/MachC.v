@@ -275,7 +275,9 @@ Section MODSEM.
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
       (RSP: (parent_sp stack) = Vptr blk ofs true)
-      (OFSZERO: ofs = Ptrofs.zero)
+      (* (OFSZERO: ofs = Ptrofs.zero) *)
+      (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
+          (align_chunk chunk | ofs.(Ptrofs.unsigned)))
       (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
       init_rs init_sg
     :
@@ -351,7 +353,7 @@ Section MODSEM.
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
       ModSem.skenv := skenv;
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv_link := skenv_link;
     |}
   .
   Next Obligation.

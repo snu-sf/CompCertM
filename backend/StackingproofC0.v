@@ -1983,7 +1983,6 @@ Inductive match_states: Linear.state -> Mach.state -> SimMemInj.t' -> Prop :=
         (MWF: SimMemInj.wf' sm0)
         (STACKS: match_stacks j cs cs' sg sm0)
         (AGREGS: agree_regs j ls rs)
-        (AGLOCS: agree_callee_save ls (parent_locset cs))
         (FPTR: Val.inject j fptr tfptr)
         (SEP: m' |= stack_contents j cs cs'
                  ** minjection j m
@@ -1996,7 +1995,6 @@ Inductive match_states: Linear.state -> Mach.state -> SimMemInj.t' -> Prop :=
         (MWF: SimMemInj.wf' sm0)
         (STACKS: match_stacks j cs cs' sg sm0)
         (AGREGS: agree_regs j ls rs)
-        (AGLOCS: agree_callee_save ls (parent_locset cs))
         (SEP: m' |= stack_contents j cs cs'
                  ** minjection j m
                  ** globalenv_inject ge j),
@@ -2256,7 +2254,6 @@ Proof.
   intros; red.
     apply Z.le_trans with (size_arguments sig); auto.
     apply loc_arguments_bounded; auto.
-  intro; auto.
   { inv FPTR. eauto. }
   simpl. inv STACKS; sep_simpl_tac; ss.
 
@@ -2608,14 +2605,12 @@ Proof.
   apply agree_regs_set_pair. apply agree_regs_undef_caller_save_regs.
   apply agree_regs_inject_incr with j; auto.
   auto.
-  apply agree_callee_save_set_result.
-  apply agree_callee_save_after; auto.
   apply stack_contents_change_meminj with j; auto.
   rewrite sep_comm, sep_assoc; auto.
   { exploit SimMemInj.unlift_spec; eauto. }
 
 - (* return *)
-  inv STACKS. { ss. } simpl in AGLOCS. simpl in SEP. des_ifs. rewrite sep_assoc in SEP. exploit wt_returnstate_agree; eauto. intros [AGCS OUTU].
+  inv STACKS. { ss. } simpl in SEP. des_ifs. rewrite sep_assoc in SEP. exploit wt_returnstate_agree; eauto. intros [AGCS OUTU].
   econstructor; split.
   apply plus_one. step_tac. apply exec_return.
   notnil_tac.

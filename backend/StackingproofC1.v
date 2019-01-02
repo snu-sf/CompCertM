@@ -798,6 +798,21 @@ Proof.
   ii; ss. des_ifs.
 Qed.
 
+Lemma stackframes_after_external_footprint
+      j cs cs'
+  :
+    (stack_contents j cs cs').(m_footprint) =
+    (stack_contents j cs.(stackframes_after_external) cs').(m_footprint)
+.
+Proof.
+  apply func_ext1; i.
+  apply func_ext1; i.
+  apply prop_ext.
+  split; i.
+  - destruct cs; ss. des_ifs.
+  - destruct cs; ss. des_ifs.
+Qed.
+
 Lemma frame_contents_1_at_external_impl
       f j sp rs rs0 sp2 retaddr0
       (* sg *)
@@ -1702,7 +1717,6 @@ Proof.
         eapply agree_regs_undef_caller_save_regs; eauto.
         eapply agree_regs_inject_incr; eauto.
         eapply inject_incr_trans; try apply MLE0. ss. apply MLE.
-      * admit "this should hold".
       * bar. move HISTORY at bottom. inv HISTORY. inv MATCHARG. ss. clarify.
         rename sm0 into sm_at. rename sm1 into sm_after.
         rewrite RSP0 in *. clarify.
@@ -1732,8 +1746,9 @@ Proof.
           etrans; try eassumption; eauto.
 
           etrans; try eassumption; eauto.
-          admit "this should hold".
-          (* eapply stack_contents_at_external_footprint_le_rev; et. *)
+          etrans; cycle 1.
+          { eapply stack_contents_at_external_footprint_le_rev; et. }
+          erewrite <- stackframes_after_external_footprint. eauto.
 
           (* Lemma less2_divide_r *)
           (*       X0 X1 *)

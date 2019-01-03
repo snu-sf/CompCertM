@@ -222,6 +222,16 @@ Lemma contains_locations_range_2
 .
 Proof. ss. des. esplits; eauto. ii. eauto with mem. Qed.
 
+Lemma agree_callee_save_regs_undef_outgoing_slots
+      ls0 ls1
+      (AG: agree_callee_save_regs ls0 ls1)
+  :
+    <<AG: agree_callee_save_regs ls0 ls1.(undef_outgoing_slots)>>
+.
+Proof.
+  ii. unfold undef_outgoing_slots. apply AG; ss.
+Qed.
+
 End STACKINGEXTRA.
 
 
@@ -1717,6 +1727,11 @@ Proof.
         eapply agree_regs_undef_caller_save_regs; eauto.
         eapply agree_regs_inject_incr; eauto.
         eapply inject_incr_trans; try apply MLE0. ss. apply MLE.
+      * hexploit (parent_locset_after_external stack); et. i; des; clarify; ss.
+        rewrite AFTER.
+        eapply agree_callee_save_regs_undef_outgoing_slots.
+        eapply agree_callee_save_regs_set_result.
+        eapply agree_callee_save_regs_after; et.
       * bar. move HISTORY at bottom. inv HISTORY. inv MATCHARG. ss. clarify.
         rename sm0 into sm_at. rename sm1 into sm_after.
         rewrite RSP0 in *. clarify.
@@ -1831,13 +1846,13 @@ Proof.
       * rewrite ONE. ss. specialize (AGREGS mr_res).
         eapply val_inject_incr; try apply MLE; eauto.
     + econs; eauto.
-      * ii. specialize (AGLOCS (R mr)). ss. specialize (GOOD mr H). des_safe.
-        rewrite <- GOOD. rewrite <- AGLOCS; ss.
+      * ii. specialize (AGCALLEESAVE mr). ss. specialize (GOOD mr H). des_safe.
+        rewrite <- GOOD. rewrite <- AGCALLEESAVE; ss.
         destruct (Val.eq (ls0 (R mr)) Vundef).
         { rewrite e. ss. }
         specialize (AGREGS mr). inv AGREGS; ss.
         exfalso.
-        eapply GOOD0. rewrite <- GOOD. rewrite <- AGLOCS; ss. rewrite <- H0. ss.
+        eapply GOOD0. rewrite <- GOOD. rewrite <- AGCALLEESAVE; ss. rewrite <- H0. ss.
 
   - (* step lemma *)
     admit "".

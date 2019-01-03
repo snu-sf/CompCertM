@@ -38,3 +38,6 @@ Proof.
   eapply tailcall_size_aux; eauto; cbn; xomega.
 Qed.
 
+Definition agree_callee_save_regs (ls1 ls2: Locmap.t) : Prop :=
+  forall r, is_callee_save r -> ls1 (R r) = ls2 (R r).
+

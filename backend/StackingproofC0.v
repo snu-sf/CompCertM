@@ -842,6 +842,15 @@ Proof.
   generalize (loc_result_caller_save sg). destruct (loc_result sg); simpl; intuition auto.
 Qed.
 
+Lemma agree_callee_save_regs_set_result:
+  forall sg v ls1 ls2,
+  agree_callee_save_regs ls1 ls2 ->
+  agree_callee_save_regs (Locmap.setpair (loc_result sg) v ls1) ls2.
+Proof.
+  intros; red; intros. rewrite Locmap.gpo. apply H; auto.
+  generalize (loc_result_caller_save sg). destruct (loc_result sg); simpl; intuition auto; clarify.
+Qed.
+
 Lemma agree_callee_save_after:
   forall ls1 ls2,
   agree_callee_save ls1 ls2 ->
@@ -851,6 +860,15 @@ Proof.
   destruct l; simpl in *; auto.
   - rewrite H0. auto.
   - destruct sl; auto. congruence.
+Qed.
+
+Lemma agree_callee_save_regs_after:
+  forall ls1 ls2,
+  agree_callee_save_regs ls1 ls2 ->
+  agree_callee_save_regs (LTL.undef_caller_save_regs ls1) ls2.
+Proof.
+  intros; red; intros. unfold LTL.undef_caller_save_regs.
+  rewrite H0. auto.
 Qed.
 
 (** ** Properties of destroyed registers. *)
@@ -1983,6 +2001,7 @@ Inductive match_states: Linear.state -> Mach.state -> SimMemInj.t' -> Prop :=
         (MWF: SimMemInj.wf' sm0)
         (STACKS: match_stacks j cs cs' sg sm0)
         (AGREGS: agree_regs j ls rs)
+        (AGCALLEESAVE: agree_callee_save_regs ls (parent_locset cs))
         (FPTR: Val.inject j fptr tfptr)
         (SEP: m' |= stack_contents j cs cs'
                  ** minjection j m
@@ -1995,6 +2014,7 @@ Inductive match_states: Linear.state -> Mach.state -> SimMemInj.t' -> Prop :=
         (MWF: SimMemInj.wf' sm0)
         (STACKS: match_stacks j cs cs' sg sm0)
         (AGREGS: agree_regs j ls rs)
+        (AGCALLEESAVE: agree_callee_save_regs ls (parent_locset cs))
         (SEP: m' |= stack_contents j cs cs'
                  ** minjection j m
                  ** globalenv_inject ge j),
@@ -2254,6 +2274,7 @@ Proof.
   intros; red.
     apply Z.le_trans with (size_arguments sig); auto.
     apply loc_arguments_bounded; auto.
+  intro; auto.
   { inv FPTR. eauto. }
   simpl. inv STACKS; sep_simpl_tac; ss.
 
@@ -2302,6 +2323,7 @@ Proof.
     ii. eapply Mem.perm_free_3; eauto. congruence.
   }
   apply zero_size_arguments_tailcall_possible. eapply wt_state_tailcall; eauto.
+  intro; auto.
   { inv FPTR. eauto. }
 
 - (* Lbuiltin *)
@@ -2466,6 +2488,7 @@ Proof.
   { eapply match_stacks_le; eauto; try congruence. eapply match_stacks_le; eauto; try congruence.
     ii. eapply Mem.perm_free_3; eauto. congruence.
   }
+  intro; auto.
   rewrite sep_swap; exact G.
 
 - (* internal function *)
@@ -2605,6 +2628,9 @@ Proof.
   apply agree_regs_set_pair. apply agree_regs_undef_caller_save_regs.
   apply agree_regs_inject_incr with j; auto.
   auto.
+  { eapply agree_callee_save_regs_set_result; et.
+    eapply agree_callee_save_regs_after; et.
+  }
   apply stack_contents_change_meminj with j; auto.
   rewrite sep_comm, sep_assoc; auto.
   { exploit SimMemInj.unlift_spec; eauto. }

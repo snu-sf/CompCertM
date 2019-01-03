@@ -366,13 +366,13 @@ Qed.
 
 Variable ske: SkEnv.t.
 Variable initial_parent_sp : val.
-Hypothesis initial_parent_sp_not_volatile : not_volatile ske initial_parent_sp.
+Hypothesis initial_parent_sp_ptr : ValuesC.is_real_ptr initial_parent_sp.
 Variable initial_parent_ra : val.
 Hypothesis initial_parent_ra_ptr : Val.has_type initial_parent_ra Tptr.
 Hypothesis initial_parent_ra_fake : ~ ValuesC.is_real_ptr initial_parent_ra.
 
 Definition match_stack := AsmgenproofC0.match_stack
-                            ske ge
+                            ge
                             initial_parent_sp initial_parent_ra.
 
 Inductive match_states: Mach.state -> Asm.state -> Prop :=
@@ -383,8 +383,7 @@ Inductive match_states: Mach.state -> Asm.state -> Prop :=
         (MEXT: Mem.extends m m')
         (AT: transl_code_at_pc ge (rs PC) fb f c ep tf tc)
         (AG: agree ms sp rs)
-        (NOTVOL: not_volatile ske sp)
-        (MEMWF: Ple (Senv.nextblock ske) m.(Mem.nextblock))
+        (SPPTR: ValuesC.is_real_ptr sp)
         (AXP: ep = true -> rs#RAX = parent_sp s),
       match_states (Mach.State s fb sp c ms m)
                    (Asm.State rs m')
@@ -393,9 +392,7 @@ Inductive match_states: Mach.state -> Asm.state -> Prop :=
         (STACKS: match_stack s)
         (MEXT: Mem.extends m m')
         (AG: agree ms (parent_sp s) rs)
-        (NOTVOL: not_volatile ske (parent_sp s))
-        (MEMWF: Ple (Senv.nextblock ske) m.(Mem.nextblock))
-        (* (ATPC: rs PC = Vptr fb Ptrofs.zero true) *)
+        (SPPTR: ValuesC.is_real_ptr (parent_sp s))
         (FPTR: Val.lessdef fptr (rs PC))
         (ATLR: Val.lessdef (parent_ra s) (rs RA)),
       match_states (Mach.Callstate s fptr ms m)
@@ -405,8 +402,7 @@ Inductive match_states: Mach.state -> Asm.state -> Prop :=
         (STACKS: match_stack s)
         (MEXT: Mem.extends m m')
         (AG: agree ms (parent_sp s) rs)
-        (NOTVOL: not_volatile ske (parent_sp s))
-        (MEMWF: Ple (Senv.nextblock ske) m.(Mem.nextblock))
+        (SPPTR: ValuesC.is_real_ptr (parent_sp s))
         (ATPC: Val.lessdef (parent_ra s) (rs PC)),
       match_states (Mach.Returnstate s ms m)
                    (Asm.State rs m').
@@ -417,8 +413,7 @@ Lemma exec_straight_steps:
   Mem.extends m2 m2' ->
   Genv.find_funct_ptr ge fb = Some (Internal f) ->
   transl_code_at_pc ge (rs1 PC) fb f (i :: c) ep tf tc ->
-  forall (NOTVOL: not_volatile ske sp)
-         (MEMWF: Ple (Senv.nextblock ske) m2.(Mem.nextblock)),
+  forall (SPPTR: ValuesC.is_real_ptr sp),
   (forall k c (TR: transl_instr f i ep k = OK c),
    exists rs2,
        exec_straight tge tf c rs1 m1' k rs2 m2'
@@ -443,8 +438,7 @@ Lemma exec_straight_steps_goto:
   Mach.find_label lbl f.(Mach.fn_code) = Some c' ->
   transl_code_at_pc ge (rs1 PC) fb f (i :: c) ep tf tc ->
   it1_is_parent ep i = false ->
-  forall (NOTVOL: not_volatile ske sp)
-         (MEMWF: Ple (Senv.nextblock ske) m2.(Mem.nextblock)),
+  forall (SPPTR: ValuesC.is_real_ptr sp),
   (forall k c (TR: transl_instr f i ep k = OK c),
    exists jmp, exists k', exists rs2,
        exec_straight tge tf c rs1 m1' (jmp :: k') rs2 m2'
@@ -520,7 +514,6 @@ Proof.
   assert (Val.lessdef (rs src) (rs0 (preg_of src))). eapply preg_val; eauto.
   exploit Mem.storev_extends; eauto. intros [m2' [A B]].
   left; eapply exec_straight_steps; eauto.
-  { destruct sp; ss; des_ifs. erewrite Mem.nextblock_store; eauto. }
   rewrite (sp_val _ _ _ AG) in A. intros. simpl in TR.
   exploit storeind_correct; eauto. intros [rs' [P Q]].
   exists rs'; split. eauto.
@@ -534,7 +527,7 @@ Local Transparent destroyed_by_setstack.
   unfold load_stack in *.
   exploit Mem.loadv_extends. eauto. eexact H0. eauto.
   intros [parent' [A B]]. rewrite (sp_val _ _ _ AG) in A.
-  exploit lessdef_parent_sp; try apply initial_parent_sp_not_volatile; eauto.
+  exploit lessdef_parent_sp; try apply initial_parent_sp_ptr; eauto.
   clear B; intros B; subst parent'.
   exploit Mem.loadv_extends. eauto. eexact H1. eauto.
   intros [v' [C D]].
@@ -593,7 +586,6 @@ Opaque loadind.
   assert (Val.lessdef (rs src) (rs0 (preg_of src))). eapply preg_val; eauto.
   exploit Mem.storev_extends; eauto. intros [m2' [C D]].
   left; eapply exec_straight_steps; eauto.
-  { destruct a; ss; des_ifs. erewrite Mem.nextblock_store; eauto. }
   intros. simpl in TR.
   exploit transl_store_correct; eauto. intros [rs2 [P Q]].
   exists rs2; split. eauto.
@@ -645,12 +637,12 @@ Opaque loadind.
   rewrite (sp_val _ _ _ AG) in *. unfold load_stack in *.
   exploit Mem.loadv_extends. eauto. eexact H1. eauto. simpl. intros [parent' [A B]].
   exploit Mem.loadv_extends. eauto. eexact H2. eauto. simpl. intros [ra' [C D]].
-  exploit lessdef_parent_sp; try apply initial_parent_sp_not_volatile; eauto.
+  exploit lessdef_parent_sp; try apply initial_parent_sp_ptr; eauto.
   intros. subst parent'. clear B.
   (* exploit lessdef_parent_ra; eauto. intros. subst ra'. clear D. *)
   exploit Mem.free_parallel_extends; eauto. intros [m2' [E F]].
   destruct ros as [rf|fid]; simpl in H; monadInv H7.
-  
+
 + (* Indirect call *)
   clarify.
   assert(Val.lessdef (rs rf) (rs0 x0)).
@@ -667,10 +659,9 @@ Opaque loadind.
   simpl. eauto. traceEq.
   econstructor; eauto.
   apply agree_set_other; auto. apply agree_nextinstr. apply agree_set_other; auto.
-  eapply agree_change_sp; eauto. eapply parent_sp_def; try eapply initial_parent_sp_not_volatile; eauto.
-  { eapply parent_sp_not_volatile; cycle 1; eauto. }
-  { erewrite Mem.nextblock_free; eauto. }
-  cbn. rewrite <- H. Simplifs. rewrite Pregmap.gso; auto. 
+  eapply agree_change_sp; eauto. eapply parent_sp_def; try eapply initial_parent_sp_ptr; eauto.
+  { eapply parent_sp_ptr; cycle 1; eauto. }
+  cbn. rewrite <- H. Simplifs. rewrite Pregmap.gso; auto.
   generalize (preg_of_not_SP rf). rewrite (ireg_of_eq _ _ EQ1). congruence.
 + (* Direct call *)
   generalize (code_tail_next_int _ _ _ _ NOOV H8). intro CT1.
@@ -685,9 +676,8 @@ Opaque loadind.
   simpl. eauto. traceEq.
   econstructor; eauto.
   apply agree_set_other; auto. apply agree_nextinstr. apply agree_set_other; auto.
-  eapply agree_change_sp; eauto. eapply parent_sp_def; try apply initial_parent_sp_not_volatile; eauto.
-  { eapply parent_sp_not_volatile; cycle 1; eauto. }
-  { erewrite Mem.nextblock_free; eauto. }
+  eapply agree_change_sp; eauto. eapply parent_sp_def; try apply initial_parent_sp_ptr; eauto.
+  { eapply parent_sp_ptr; cycle 1; eauto. }
   rewrite Pregmap.gss. unfold Genv.symbol_address. rewrite symbols_preserved. rewrite H. auto.
 
 - (* Mbuiltin *)
@@ -715,7 +705,6 @@ Opaque loadind.
   simpl; intros. intuition congruence.
   apply agree_nextinstr_nf. eapply agree_set_res; auto.
   eapply agree_undef_regs; eauto. intros; apply undef_regs_other_2; auto.
-  { eapply external_call_nextblock in H0. etransitivity; eauto. }
   congruence.
 
 - (* Mgoto *)
@@ -833,7 +822,7 @@ Transparent destroyed_by_jumptable.
   rewrite (sp_val _ _ _ AG) in *. unfold load_stack in *.
   replace (chunk_of_type Tptr) with Mptr in * by (unfold Tptr, Mptr; destruct Archi.ptr64; auto).
   exploit Mem.loadv_extends. eauto. eexact H0. eauto. simpl. intros [parent' [A B]].
-  exploit lessdef_parent_sp; try apply initial_parent_sp_not_volatile; eauto. intros. subst parent'. clear B.
+  exploit lessdef_parent_sp; try apply initial_parent_sp_ptr; eauto. intros. subst parent'. clear B.
   exploit Mem.loadv_extends. eauto. eexact H1. eauto. simpl. intros [ra' [C D]].
   (* exploit lessdef_parent_ra; eauto. intros. subst ra'. clear D. *)
   exploit Mem.free_parallel_extends; eauto. intros [m2' [E F]].
@@ -849,10 +838,9 @@ Transparent destroyed_by_jumptable.
   simpl. eauto. traceEq.
   constructor; auto.
   apply agree_set_other; auto. apply agree_nextinstr. apply agree_set_other; auto.
-  eapply agree_change_sp; eauto. eapply parent_sp_def; try apply initial_parent_sp_not_volatile; eauto.
-  { eapply parent_sp_not_volatile; cycle 1; eauto. }
-  { erewrite Mem.nextblock_free; eauto. }
-  
+  eapply agree_change_sp; eauto. eapply parent_sp_def; try apply initial_parent_sp_ptr; eauto.
+  { eapply parent_sp_ptr; cycle 1; eauto. }
+
 - (* internal function *)
   inv FPTR0. rename H5 into ATPC. symmetry in ATPC.
   exploit functions_translated; eauto. intros [tf [A B]]. monadInv B.
@@ -865,7 +853,7 @@ Transparent destroyed_by_jumptable.
   exploit Mem.storev_extends. eexact D. eexact H1. eauto. eauto.
   intros [m2' [F G]].
   exploit Mem.storev_extends. eexact G. eexact H2. eauto. eapply ATLR.
-  intros [m3' [P Q]].  
+  intros [m3' [P Q]].
   left; econstructor; split.
   apply plus_one. econstructor; eauto.
   simpl. rewrite Ptrofs.unsigned_zero. simpl. eauto.
@@ -883,16 +871,6 @@ Transparent destroyed_at_function_entry.
   apply agree_undef_regs with rs0; eauto.
   simpl; intros. apply Pregmap.gso; auto with asmgen. tauto.
   congruence.
-  { subst sp. econs. clear - H0 MEMWF.
-    destruct (Senv.block_is_volatile ske stk) eqn: EQ; auto. exfalso.
-    eapply Senv.block_is_volatile_below in EQ.
-    erewrite (Mem.alloc_result _ _ _ _ _ H0) in EQ; eauto.
-    eapply Plt_strict. eapply Plt_Ple_trans; eauto. }
-  { destruct sp; ss; des_ifs.
-    erewrite Mem.nextblock_store; cycle 1; eauto.
-    erewrite Mem.nextblock_store; cycle 1; eauto.
-    erewrite Mem.nextblock_alloc; cycle 1; eauto.
-    etransitivity; eauto. eapply Ple_succ. }
   intros. Simplifs. eapply agree_sp; eauto.
 - (* external function *)
   exploit Genv.find_funct_inv; eauto. i; des. clarify. inv FPTR. rename H4 into ATPC. symmetry in ATPC. rewrite Genv.find_funct_find_funct_ptr in H.
@@ -908,8 +886,7 @@ Transparent destroyed_at_function_entry.
   econstructor; eauto.
   unfold loc_external_result. apply agree_set_other; auto. apply agree_set_pair; auto.
   rewrite regset_after_external_eq.
-  apply agree_undef_caller_save_regs; auto. 
-  { eapply external_call_nextblock in H1. etransitivity; eauto. }
+  apply agree_undef_caller_save_regs; auto.
 
 - (* return *)
   inv STACKS. contradiction. simpl in *.

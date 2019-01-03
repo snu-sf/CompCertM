@@ -277,6 +277,7 @@ Section MODSEM.
       (RSP: (parent_sp stack) = Vptr blk ofs true)
       (OFSZERO: ofs = Ptrofs.zero)
       (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
+      (NOTVOL: Senv.block_is_volatile skenv_link blk = false)
       init_rs init_sg
     :
       at_external (mkstate init_rs init_sg (Callstate stack fptr rs m0)) (Args.mk fptr vs m1)
@@ -298,7 +299,6 @@ Section MODSEM.
           (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
         ,
           <<PTRFREE: ~ is_real_ptr (rs mr)>>)
-      (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
     :
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack
@@ -351,7 +351,7 @@ Section MODSEM.
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
       ModSem.skenv := skenv;
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv_link := skenv_link;
     |}
   .
   Next Obligation.

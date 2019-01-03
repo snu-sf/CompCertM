@@ -1148,6 +1148,7 @@ Proof.
     + econs; eauto.
       * folder. admit "ge relax - ez".
       * admit "SIMSKENVLINK - ez".
+      * admit "not volatile".
     + econs; ss; eauto with congruence.
     + econs; eauto with congruence.
       * rp; eauto.

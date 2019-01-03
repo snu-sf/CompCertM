@@ -135,7 +135,6 @@ Section MODSEM.
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (RSPC: rs # PC = args.(Args.fptr))
       (* (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
-      (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
       targs
       (TYP: typecheck args.(Args.vs) sg targs)
       (STORE: store_arguments args.(Args.m) rs targs sg m)
@@ -194,7 +193,7 @@ Section MODSEM.
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
       ModSem.skenv := skenv;
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv_link := skenv_link;
     |}
   .
   Next Obligation.

@@ -364,7 +364,7 @@ Section PRESERVATION.
     des; ss. clarify.
     right.
     unfold flip. ss.
-    admit "this should hold".
+    admit "about GENV. this should hold".
   Qed.
 
   Lemma msfind_bsim

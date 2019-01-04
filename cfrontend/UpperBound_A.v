@@ -446,6 +446,112 @@ Section PRESERVATION.
       + admit "ez".
   Qed.
 
+  Lemma preservation_alloc
+        cp_top m1 e l m0
+        (FOCUS1 : is_focus cp_top)
+        (ALLOC : alloc_variables
+                   {|
+                     genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs cp_link))
+                                               cp_link;
+                     genv_cenv := prog_comp_env cp_link |} empty_env m0
+                   l e m1)
+        (COMP : Forall (fun t : type => complete_type (prog_comp_env cp_top) t)
+                       (map snd l))
+    :
+      alloc_variables
+        {|
+          genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs cp_top)) cp_top;
+          genv_cenv := prog_comp_env cp_top |} empty_env m0 l
+        e m1.
+  Proof.
+    induction ALLOC.
+    - econs.
+    - ss. inv COMP.
+      assert (forall id co, (prog_comp_env cp_top) ! id = Some co -> (prog_comp_env cp_link) ! id = Some co).
+      { i.  admit "ez". }
+      exploit sizeof_stable; eauto.
+      i. eapply IHALLOC in H3. des.
+      econs; eauto. simpl. rewrite <- H1. eauto.
+  Qed.
+
+  Lemma preservation_bind_param
+        cp_top m1 e l l' m2 vs_arg
+        (FOCUS1 : is_focus cp_top)
+        (PARAM : bind_parameters ge_cp_link e m1 l vs_arg m2)
+        (COMP : Forall (fun t : type => complete_type (prog_comp_env cp_top) t) (map snd (l ++ l')))
+    :
+      bind_parameters
+        {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs cp_top)) cp_top; genv_cenv := prog_comp_env cp_top |} e m1
+        l vs_arg m2.
+  Proof.
+    induction PARAM.
+    - econs.
+    - ss. inv COMP.
+      exploit IHPARAM; eauto. i. econs; eauto.
+      inv H0.
+      * econs; eauto.
+      * econs 2; eauto.
+        inv H6.
+        econs; eauto. ss.
+        unfold Genv.block_is_volatile in *. des_ifs.
+        admit "if def exists in cp_top -> same def exists in linked pg".
+        admit "if def exists in cp_top -> same def exists in linked pg".
+      * assert (forall id co, (prog_comp_env cp_top) ! id = Some co -> (prog_comp_env cp_link) ! id = Some co).
+        { i.  admit "ez". }
+        (* TODO:must simplify *)
+        des.
+        { econs 3; eauto; ss.
+          - destruct ty; ss; des_ifs.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+          - destruct ty; ss; des_ifs.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+          - exploit sizeof_stable; eauto. i. rewrite <- H10. eauto. }
+        { econs 3; eauto; ss.
+          - destruct ty; ss; des_ifs.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+          - destruct ty; ss; des_ifs.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+          - exploit sizeof_stable; eauto. i. rewrite <- H10. eauto. }
+        { econs 3; eauto; ss.
+          - destruct ty; ss; des_ifs.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+          - destruct ty; ss; des_ifs.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+          - exploit sizeof_stable; eauto. i. rewrite <- H10. eauto.
+          - exploit sizeof_stable; eauto. i. rewrite <- H10. eauto. }
+        { econs 3; eauto; ss.
+          - destruct ty; ss; des_ifs.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+          - destruct ty; ss; des_ifs.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10. eauto.
+            + exploit H0; eauto. i. rewrite Heq0 in H10. inv H10.
+          - exploit sizeof_stable; eauto. i. rewrite <- H10. eauto.
+          - exploit sizeof_stable; eauto. i. rewrite <- H10. eauto. }
+  Qed.
+
   Lemma match_xsim
         st_src0 st_tgt0
         (MATCH: match_states st_src0 st_tgt0)
@@ -566,8 +672,8 @@ Section PRESERVATION.
               (* ZmFkZDJkODhmOGM1YWI0NDI1YjEzMDFi *)
               econs; ss; et.
               - inv FINDMS. ss. admit "ez".
-              - admit "sizeof_stable".
-              - admit "sizeof_stable".
+              - eapply preservation_alloc; eauto.
+              - eapply preservation_bind_param; eauto.
             }
           }
           {
@@ -589,13 +695,19 @@ Section PRESERVATION.
               right. econs; ss; et. des_ifs. unfold Genv.find_funct_ptr. des_ifs.
             }
             {
+              assert(WTPROG: wt_program cp_top).
+              { rr in FOCUS1. des; clarify. }
+              bar.
+              (* inv WTST. ss. *)
+              inv WTPROG. specialize (H id f). specialize (H (admit "ez")).
+              inv H.
               des_ifs. inv FINDMS. ss. des_ifs.
               eapply preservation_cp_focus; et; revgoals.
               { right. eapply step_internal_function; ss; et.
                 - unfold Genv.find_funct. instantiate (1:= Vptr blk Ptrofs.zero true). ss. des_ifs.
                   admit "ditto(ZmFkZDJkODhmOGM1YWI0NDI1YjEzMDFi) - ez".
-                - admit "ditto - sizeof_stable".
-                - admit "ditto - sizeof_stable". }
+                - eapply preservation_alloc; eauto.
+                - eapply preservation_bind_param; eauto.
               econs.
               - econs; et.
               - econs; et.

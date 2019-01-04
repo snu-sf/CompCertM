@@ -1796,7 +1796,54 @@ Proof.
                                     cs cs'0 (SkEnv.get_sig skd)).
         { About stack_contents_change_meminj. admit "this should hold". }
 
-        admit "this shold hold in high level. Low level details may differ".
+        {
+          assert(UNCH: Mem.unchanged_on (~2 brange sp 0 (4 * size_arguments (SkEnv.get_sig skd)))
+                                        (SimMemInj.tgt sm_ret) (SimMemInj.tgt sm_after) ).
+          { hexploit Mem_unfree_unchanged_on; et. ii. et. } (* TODO: fix Mem_unfree_unchanged_on *)
+          clear - STEP1 DUMMY UNFR MSRC MINJ MWF2 MLE1 UNCH STACKS
+                        RSP0 SIG CALLSRC CALLTGT SOUND RSP0 MATCH DUMMY.
+          destruct cs; ss. clear DUMMY. clear_tac.
+          destruct cs'0; ss.
+          { inv STACKS. }
+          des_ifs_safe.
+          rename f into fff.
+          (* assert(SGEQ: (SkEnv.get_sig skd) = fff.(Linear.fn_sig)). *)
+          (* { inv MATCH. ss. des. destruct cs; ss; clarify. *)
+          (*   - unfold current_function in *. destruct dummy_stack_src; ss. rename f into ggg. *)
+          (*     rewrite SIG0. *)
+          (*     inv CALLTGT. inv CALLSRC. ss. clarify. des. clarify. folder. *)
+          (* } *)
+          (* assert(SGEQ: (SkEnv.get_sig skd) = fff.(Linear.fn_sig)). *)
+          (* { inv CALLSRC. inv CALLTGT. ss. psimpl. zsimpl. des. clarify. folder. des. clarify. *)
+          (*   des. clarify. inv STACKS; ss. des; ss. admit "". } *)
+          Local Opaque frame_contents dummy_frame_contents.
+          des_ifs; sep_simpl_tac.
+          - ss.
+            Local Transparent dummy_frame_contents.
+            unfold dummy_frame_contents.
+            ss. psimpl. zsimpl. esplits; et; try xomega.
+            + admit "ez ".
+            + admit "ez - use STEP1 - range".
+            + admit "". (* TTTTTTTTTTTTTTTTTTTTTTTTTTTTT sig shoud be different admit "unfree spec". ii. *)
+            + admit "???????????".
+          - ss. sep_simpl_tac.
+          - ss. des_ifs_safe.
+            eapply sepconj_isolated_mutation_revisited; et; apply sep_pick1 in STEP1.
+            + Local Transparent mconj sepconj.
+              Local Transparent frame_contents_at_external.
+              ss. et.
+            + Local Opaque sepconj.
+              Local Transparent frame_contents.
+              unfold frame_contents.
+              unfold frame_contents_at_external in *.
+              ss.
+              des. split; ss.
+              * admit "re-introducing contains locations - this might have an issue".
+                ttttttttttttttttttttttt
+              * sep_simpl_tac. unfold fe_ofs_arg in *.
+                admit "range-merge".
+            + admit "footprint".
+        }
 
   - (* final fsim *)
     inv FINALSRC. inv MATCH. inv MATCHST.
@@ -1820,6 +1867,7 @@ Proof.
     destruct st_tgt0; ss. clarify. ss. clarify. ss.
     inv STACKS.
     hexploit (loc_result_one init_sg); eauto. i; des_safe.
+    Local Transparent dummy_frame_contents.
     unfold dummy_frame_contents in *. psimpl.
     hexploit (Mem.range_perm_free sm0.(SimMemInj.tgt) sp 0 (4 * (size_arguments init_sg))); eauto.
     { clear - SEP. apply sep_pick1 in SEP. rr in SEP. des. eauto with xomega. }

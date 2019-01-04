@@ -232,6 +232,215 @@ Proof.
   ii. unfold undef_outgoing_slots. apply AG; ss.
 Qed.
 
+Program Definition freed_contains_locations (j: meminj) (sp: block) (pos bound: Z) (sl: slot) (ls: locset) : massert := {|
+  m_pred := fun m =>
+    (8 | pos) /\ 0 <= pos (* /\ pos + 4 * bound <= Ptrofs.modulus *)
+    /\ Mem.valid_block m sp
+    (* Mem.range_perm m sp pos (pos + 4 * bound) Cur Freeable /\ *)
+    (* forall ofs ty, 0 <= ofs -> ofs + typesize ty <= bound -> (Locations.typealign ty | ofs) -> *)
+    (* exists v, Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v *)
+    (*        /\ Val.inject j (ls (S sl ofs ty)) v *)
+  ;
+  m_footprint :=
+    brange sp pos (pos + 4 * bound)
+    (* fun b ofs => *)
+    (* b = sp /\ pos <= ofs < pos + 4 * bound *)
+|}.
+Next Obligation.
+  esplits; et.
+  eapply Mem.valid_block_unchanged_on; et.
+Qed.
+Next Obligation.
+  rr in H0. des. clarify.
+Qed.
+
+Program Definition contains_locations_tl (j: meminj) (sp: block) (pos from bound: Z) (sl: slot) (ls: locset) : massert := {|
+  m_pred := fun m =>
+    from <= bound /\
+    pos + 4 * bound <= Ptrofs.modulus /\
+    Mem.range_perm m sp (pos + 4 * from) (pos + 4 * bound) Cur Freeable /\
+    forall ofs ty, from <= ofs -> ofs + typesize ty <= bound -> (Locations.typealign ty | ofs) ->
+    exists v, Mem.load (chunk_of_type ty) m sp (pos + 4 * ofs) = Some v
+           /\ Val.inject j (ls (S sl ofs ty)) v;
+  m_footprint :=
+    (* fun b ofs => *)
+    (* b = sp /\ pos + 4 * from <= ofs < pos + 4 * bound *)
+    brange sp (pos + 4 * from) (pos + 4 * bound)
+|}.
+Next Obligation.
+  esplits; et.
+  { ii. eapply Mem.perm_unchanged_on; et. }
+  ii. exploit H3; et. i; des. esplits; et.
+  eapply Mem.load_unchanged_on; et.
+  ii. des. esplits; et; try xomega. rewrite typesize_chunk in *. rr. esplits; et; xomega.
+Qed.
+Next Obligation.
+  r in H0. des. clarify.
+  exploit H2; et. i. eapply Mem.perm_valid_block; et.
+Qed.
+
+Lemma contains_locations_split
+      j sp pos lo hi sl ls
+      (RANGE: pos <= lo <= hi)
+      (DIV: (2 | lo)%Z)
+  :
+    massert_imp (contains_locations j sp pos hi sl ls)
+                (contains_locations j sp pos lo sl ls ** contains_locations j sp (pos + 4 * lo) (hi - lo) sl ls)
+.
+Proof.
+  Local Transparent sepconj.
+  (* unfold contains_locations. *)
+  econs; ss.
+  - ii. des.
+    esplits; eauto with xomega; ss.
+    { ii. eapply H2; try xomega; ss. }
+    { eapply Z.divide_add_r; et. change 8 with (4 * 2).
+      apply Z.mul_divide_mono_l. ss.
+    }
+    { ii. eapply H2; try xomega; ss. }
+    { ii. replace (pos + 4 * lo + 4 * ofs) with (pos + 4 * (lo + ofs)) by xomega.
+      specialize (H3 (lo + ofs)).
+Abort.
+
+Lemma contains_locations_split
+      j sp pos lo hi sl ls
+      (RANGE: 0 <= lo <= hi)
+  :
+    massert_imp (contains_locations j sp pos hi sl ls)
+                (contains_locations j sp pos lo sl ls ** contains_locations_tl j sp pos lo hi sl ls)
+.
+Proof.
+  Local Transparent sepconj.
+  (* unfold contains_locations. *)
+  -
+    econs; ss.
+    + ii. des.
+      esplits; eauto with xomega; ss.
+      { ii. eauto with xomega mem. }
+      { ii. eauto with xomega mem. }
+      unfold disjoint_footprint.
+      ss. ii. des. clarify. rr in H5. des. clarify. xomega.
+    + ii. u in H. des; clarify; esplits; et; try xomega.
+Qed.
+
+Lemma contains_locations_merge
+      j sp pos lo hi sl ls
+      (RANGE: 0 <= lo <= hi)
+  :
+    massert_imp (contains_locations j sp pos lo sl ls ** contains_locations_tl j sp pos lo hi sl ls)
+                (contains_locations j sp pos hi sl ls)
+.
+Proof.
+  -
+    econs; ss.
+    + ii. des.
+      esplits; eauto with xomega; ss.
+      { ii.
+        destruct (classic (ofs < pos + 4 * lo)).
+        - eauto with xomega mem.
+        - eauto with xomega mem. }
+      { ii.
+        destruct (classic (ofs + typesize ty <= lo)); eauto.
+        - eapply H4; eauto. try xomega.
+Abort.
+
+Lemma free_freed_contains_locations
+      j sp pos sz sl ls m0 m1 CTX
+      (SEP: m0 |= contains_locations j sp pos sz sl ls ** CTX)
+      (FREE: Mem.free m0 sp pos (pos + 4 * sz) = Some m1)
+      (VALID: Mem.valid_block m0 sp)
+  :
+    <<SEP: m1 |= freed_contains_locations j sp pos sz sl ls ** CTX>>
+.
+Proof.
+  eapply sepconj_isolated_mutation_revisited; et.
+  - exploit Mem.free_unchanged_on; et. s.
+    ii. eapply H0; et.
+  - ss. des. esplits; et. eapply Mem.valid_block_free_1; et.
+Qed.
+
+Lemma brange_split
+      blk lo mid hi
+      (RANGE: lo <= mid < hi)
+  :
+    brange blk lo hi = brange blk lo mid \2/ brange blk mid hi
+.
+Proof.
+  apply func_ext1; i.
+  apply func_ext1; i.
+  apply prop_ext.
+  unfold brange.
+  split.
+  - ii. des; clarify.
+    destruct (classic (x1 < mid)).
+    + left. esplits; et.
+    + right. esplits; et. xomega.
+  - ii. des; clarify; esplits; et; xomega.
+Qed.
+
+Lemma unfree_freed_contains_locations
+      j sp pos sz bound ls m0 m1
+      CTX
+      (SEP: m0 |= freed_contains_locations j sp pos sz Outgoing ls
+               ** contains_locations_tl j sp pos sz bound Outgoing ls
+               ** CTX)
+      (FREE: Mem_unfree m0 sp pos (pos + 4 * sz) = Some m1)
+      (BOUND: sz <= bound)
+  :
+    <<SEP: m1 |= contains_locations j sp pos bound Outgoing ls.(undef_outgoing_slots) ** CTX>>
+.
+Proof.
+  rewrite <- sep_assoc in SEP.
+  hexploit Mem_unfree_perm; et. intro PERM; des.
+  exploit Mem_unfree_unchanged_on; et. intro UNCH; des.
+  eapply sepconj_isolated_mutation_revisited with (CTX := CTX); try apply SEP; et.
+  { clear SEP.
+    ss.
+    ii. left. ss.
+  }
+  {
+    ss. des.
+    esplits; et.
+    - ii.
+      destruct (classic (ofs < pos + 4 * sz)).
+      + eapply PERM; try xomega.
+      + eapply Mem.perm_unchanged_on; et.
+        { u. ii. des; clarify. }
+        eapply SEP5; try xomega.
+    - ii.
+      destruct (classic (sz <= ofs)).
+      + exploit SEP6; et. i; des.
+        esplits; et.
+        eapply Mem.load_unchanged_on; et.
+        u. ii. des. xomega.
+      + assert(BDD: ofs < sz) by xomega.
+        assert(LD: exists v, Mem.load (chunk_of_type ty) m1 sp (pos + 4 * ofs) = Some v).
+        { exploit Mem.valid_access_load; et. rr. esplits; et.
+          - eapply Mem.range_perm_implies with (p1 := Freeable); eauto with mem.
+            ii.
+            destruct (classic (ofs0 < pos + 4 * sz)).
+            + eapply PERM; et. xomega.
+            + eapply Mem.perm_unchanged_on; et.
+              { u. ii; des. xomega. }
+              eapply SEP5; et.
+              rewrite typesize_chunk in *. split; try xomega.
+          - rewrite align_type_chunk.
+            eapply Z.divide_add_r.
+            + etrans; et. eapply typealign_divide_8.
+            + apply Z.mul_divide_mono_l. ss.
+        }
+        des.
+        esplits; et.
+  }
+  {
+    ss. des.
+    ii. des; clarify.
+    destruct (classic (x1 < pos + 4 * sz)).
+    - left. rr. esplits; et.
+    - right. rr. esplits; et. xomega.
+  }
+Qed.
+
 End STACKINGEXTRA.
 
 
@@ -745,12 +954,14 @@ Abort.
 
 
 
-Definition frame_contents_1_at_external f (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) :=
+Definition frame_contents_1_at_external f (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) sg :=
   let b := function_bounds f in
   let fe := make_env b in
     contains_locations j sp fe.(fe_ofs_local) b.(bound_local) Local ls
  (* ** pure True *)
- ** freed_range sp fe_ofs_arg (4 * (bound_outgoing b))
+ (* ** freed_range sp fe_ofs_arg (4 * size_arguments sg) *)
+ ** freed_contains_locations j sp fe_ofs_arg (size_arguments sg) Outgoing ls
+ ** contains_locations_tl j sp fe_ofs_arg (size_arguments sg) (bound_outgoing b) Outgoing ls
  ** hasvalue Mptr sp fe.(fe_ofs_link) parent
  ** hasvalue Mptr sp fe.(fe_ofs_retaddr) retaddr
  ** contains_callee_saves j sp fe.(fe_ofs_callee_save) b.(used_callee_save) ls0.
@@ -758,7 +969,7 @@ Definition frame_contents_1_at_external f (j: meminj) (sp: block) (ls ls0: locse
 Definition frame_contents_at_external f (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) sg :=
   let b := function_bounds f in
   let fe := make_env b in
-  mconj (frame_contents_1_at_external f j sp ls ls0 parent retaddr)
+  mconj (frame_contents_1_at_external f j sp ls ls0 parent retaddr sg)
         ((* range sp fe_ofs_arg fe.(fe_stack_data) ** *)
          (freed_range sp fe_ofs_arg (4 * (size_arguments sg)) **
          range sp (4 * (size_arguments sg)) fe.(fe_stack_data)) **
@@ -823,99 +1034,55 @@ Proof.
   - destruct cs; ss. des_ifs.
 Qed.
 
-Lemma frame_contents_1_at_external_impl
-      f j sp rs rs0 sp2 retaddr0
-      (* sg *)
-      (* (SZ: 0 <= 4 * size_arguments sg <= fe_stack_data (make_env (function_bounds f))) *)
-  :
-    massert_imp
-      (frame_contents_1 f j sp rs rs0 sp2 retaddr0)
-      (frame_contents_1_at_external f j sp rs rs0 sp2 retaddr0)
-.
-Proof.
-  (* - ii. ss. des. esplits; eauto. *)
-  - econs; eauto; ii; ss; des.
-    + unfold frame_contents_1, frame_contents_1_at_external in *.
-      rewrite sep_comm. rewrite sep_assoc.
-      rewrite sep_comm in H. rewrite sep_assoc in H.
-      repeat rewrite sep_assoc in *.
-      eapply sep_imp; eauto. ss. etrans. { eapply contains_locations_range. } eapply range_freed_range.
-    (* + unfold frame_contents_1, frame_contents_1_at_external in *. *)
-    (*   Local Transparent sepconj. *)
-    (*   ss. *)
-    (*   Local Opaque sepconj. *)
-    (*   des; ss; clarify; eauto. *)
-    (*   * right. right. left. esplits; eauto. *)
-    (*   * right. right. right. left. esplits; eauto. *)
-Qed.
+(* Lemma frame_contents_1_at_external_impl *)
+(*       f j sp rs rs0 sp2 retaddr0 *)
+(*       sg *)
+(*       (SZ: 0 <= 4 * size_arguments sg <= bound_outgoing (function_bounds f)) *)
+(*   : *)
+(*     massert_imp *)
+(*       (frame_contents_1 f j sp rs rs0 sp2 retaddr0) *)
+(*       (frame_contents_1_at_external f j sp rs rs0 sp2 retaddr0 sg) *)
+(* . *)
+(* Proof. *)
+(*   (* - ii. ss. des. esplits; eauto. *) *)
+(*   unfold frame_contents_1 in *. *)
+(*   unfold frame_contents_1_at_external in *. *)
+(*   - eapply sepconj_morph_1_Proper; ss. *)
+(*     etrans; cycle 1. *)
+(*     { eapply sep_assoc. } *)
+(*     eapply sepconj_morph_1_Proper; ss. *)
+(*     etrans. *)
+(*     { eapply contains_locations_split; et. } *)
+(*     eapply sepconj_morph_1_Proper; ss. *)
+(*     admit "ez". *)
+(*   - econs; eauto; ii; ss; des. *)
+(*     + unfold frame_contents_1, frame_contents_1_at_external in *. *)
+(*       rewrite sep_comm. rewrite sep_assoc. *)
+(*       rewrite sep_comm in H. rewrite sep_assoc in H. *)
+(*       repeat rewrite sep_assoc in *. *)
+(*       eapply sep_imp; eauto. ss. etrans. { eapply contains_locations_range. } eapply range_freed_range. *)
+(* Qed. *)
 
-Lemma frame_contents_at_external_impl
-      f j sp rs rs0 sp2 retaddr0 sg
-      (SZ: 0 <= 4 * size_arguments sg <= fe_stack_data (make_env (function_bounds f)))
-  :
-    massert_imp
-      (frame_contents f j sp rs rs0 sp2 retaddr0 )
-      (frame_contents_at_external f j sp rs rs0 sp2 retaddr0 sg)
-.
-Proof.
-  unfold frame_contents, frame_contents_at_external in *.
-  unfold fe_ofs_arg.
-  eapply mconj_morph_1_Proper; eauto.
-  - eapply frame_contents_1_at_external_impl; eauto.
-  - eapply sepconj_morph_1_Proper.
-    + etrans.
-      { eapply range_split0; eauto. }
-      eapply sepconj_morph_1_Proper; eauto.
-      eapply range_freed_range; eauto.
-    + refl.
-Qed.
-
-Lemma sepconj_isolated_mutation_strongest
-      m0 m1 P P0 P1 CTX CHNG
-      (SEP: m0 |= P ** CTX)
-      (UNCH: Mem.unchanged_on (~2 CHNG) m0 m1)
-      (IMP: massert_imp P P1)
-      (PRED: m1 |= P0)
-      (ISOL: CHNG <2= P.(m_footprint))
-      (ISOL0: P0.(m_footprint) <2= CHNG)
-      (ISOL1: P1.(m_footprint) <2= ~2 CHNG)
-      (DISJ: disjoint_footprint P0 P1)
-  :
-    <<SEP: m1 |= P0 ** P1 ** CTX>>
-.
-Proof.
-  destruct SEP as (A & B & C).
-  hnf in IMP. des.
-  sep_split; eauto.
-  { apply disjoint_footprint_sepconj. split; ss. ii. eapply C; eauto. }
-  sep_split.
-  - eapply m_invar; eauto.
-    eapply Mem.unchanged_on_implies; eauto.
-    ii. eapply ISOL1; eauto.
-  - ii. eapply C; eauto.
-  - eapply m_invar; eauto.
-    eapply Mem.unchanged_on_implies; eauto.
-    ii. apply ISOL in H1. eauto.
-Qed.
-
-Lemma sepconj_isolated_mutation_revisited
-      m0 m1 P0 P1 CTX CHNG
-      (SEP: m0 |= P0 ** CTX)
-      (UNCH: Mem.unchanged_on (~2 CHNG) m0 m1)
-      (ISOL: CHNG <2= P0.(m_footprint))
-      (PRED: m1 |= P1)
-      (FOOT: P1.(m_footprint) <2= P0.(m_footprint))
-  :
-    <<SEP: m1 |= P1 ** CTX>>
-.
-Proof.
-  destruct SEP as (A & B & C).
-  sep_split; eauto.
-  { ii. et. }
-  eapply m_invar; et.
-  eapply Mem.unchanged_on_implies; eauto.
-  ii. eapply ISOL in H1. rr in C. et.
-Qed.
+(* Lemma frame_contents_at_external_impl *)
+(*       f j sp rs rs0 sp2 retaddr0 sg *)
+(*       (SZ: 0 <= 4 * size_arguments sg <= fe_stack_data (make_env (function_bounds f))) *)
+(*   : *)
+(*     massert_imp *)
+(*       (frame_contents f j sp rs rs0 sp2 retaddr0 ) *)
+(*       (frame_contents_at_external f j sp rs rs0 sp2 retaddr0 sg) *)
+(* . *)
+(* Proof. *)
+(*   unfold frame_contents, frame_contents_at_external in *. *)
+(*   unfold fe_ofs_arg. *)
+(*   eapply mconj_morph_1_Proper; eauto. *)
+(*   - eapply frame_contents_1_at_external_impl; eauto. *)
+(*   - eapply sepconj_morph_1_Proper. *)
+(*     + etrans. *)
+(*       { eapply range_split0; eauto. } *)
+(*       eapply sepconj_morph_1_Proper; eauto. *)
+(*       eapply range_freed_range; eauto. *)
+(*     + refl. *)
+(* Qed. *)
 
 Lemma mconj_footprint_le
       A0 B0 A1 B1
@@ -1023,12 +1190,32 @@ Proof.
         esplits; et.
         - clear SEP0.
           unfold frame_contents_1, frame_contents_1_at_external in *.
-          apply sep_swap. apply sep_swap in SEP.
-          eapply sepconj_isolated_mutation_revisited; et.
-          { ss. }
-          ss. unfold fe_ofs_arg. zsimpl. esplits; et; try xomega.
-          + apply sep_pick1 in SEP. ss. des. unfold fe_ofs_arg in *. xomega.
-          + i. inv STACKS. eapply Mem.valid_block_free_1; et.
+          apply sep_swap. rewrite sep_swap23. apply sep_swap in SEP.
+          rewrite <- sep_assoc.
+          eapply sepconj_isolated_mutation_revisited; et; swap 2 3.
+          {
+            eapply Mem.unchanged_on_implies; et.
+          }
+          {
+            Local Transparent sepconj.
+            s.
+            Local Opaque sepconj.
+            u. ii.
+            unfold fe_ofs_arg in *. zsimpl.
+            des; clarify; esplits; et; try xomega.
+          }
+          apply sep_pick1 in SEP.
+          eapply contains_locations_split with (lo := (size_arguments sg)) in SEP; cycle 1.
+          { xomega. }
+          eapply sepconj_isolated_mutation_revisited; et; swap 2 3.
+          { apply sep_pick1 in SEP.
+            eapply free_freed_contains_locations with (CTX := pure True); et.
+            { rewrite <- add_pure_r_eq. ss. }
+            { inv STACKS. ss. }
+          }
+          { eapply Mem.unchanged_on_implies; try apply UNCH; et. s.
+            ii. apply not_and_or in H. des; et.
+          }
         - clear SEP.
           apply range_split with (mid := (4 * size_arguments sg)) in SEP0; cycle 1.
           { esplits; et. xomega. }
@@ -1044,6 +1231,7 @@ Proof.
           }
       }
       {
+        admit " this should hold
         apply mconj_footprint_le.
         { apply sepconj_footprint_le; ss. }
         apply sepconj_footprint_le; ss.
@@ -1053,6 +1241,7 @@ Proof.
         ii. des; ss.
         - rr in PR. des. clarify. esplits; et. xomega.
         - clarify. esplits; et. xomega.
+".
       }
   }}
 Unshelve.
@@ -1071,9 +1260,10 @@ Lemma frame_contents_at_external_footprint_le_rev
 .
 Proof.
   -
-    eapply mconj_footprint_le; et.
+    eapply mconj_footprint_le.
     +
       eapply sepconj_footprint_le; et.
+      admit "
       eapply sepconj_footprint_le; et.
       eapply sepconj_footprint_le; et.
       eapply sepconj_footprint_le; et.
@@ -1084,6 +1274,7 @@ Proof.
       Local Opaque sepconj.
       ginduction rl; i; ss.
       eapply sepconj_footprint_le; ss.
+".
     +
       eapply sepconj_footprint_le; ss.
       ii. des_safe; clarify.
@@ -1118,19 +1309,20 @@ Proof.
     Local Opaque frame_contents_at_external.
     inv STK; ss.
     { desH PR.
-      - left. eapply frame_contents_at_external_impl; et.
+      - left. admit "eapply frame_contents_at_external_impl; et.
         split.
-        { admit "ez". }
+        { admit ""ez"". }
         hexploit (bound_outgoing_stack_data (function_bounds f)). i.
-        xomega.
+        xomega.".
       - clarify. right. esplits; et.
     }
     { des; ss; et.
-      left. eapply frame_contents_at_external_impl; et.
+      left. admit "eapply frame_contents_at_external_impl; et.
       split.
-      { admit "ez". }
+      { admit ""ez"". }
       hexploit (bound_outgoing_stack_data (function_bounds f)). i.
       xomega.
+".
     }
   }
 Qed.
@@ -1799,7 +1991,7 @@ Proof.
         {
           assert(UNCH: Mem.unchanged_on (~2 brange sp 0 (4 * size_arguments (SkEnv.get_sig skd)))
                                         (SimMemInj.tgt sm_ret) (SimMemInj.tgt sm_after) ).
-          { hexploit Mem_unfree_unchanged_on; et. ii. et. } (* TODO: fix Mem_unfree_unchanged_on *)
+          { hexploit Mem_unfree_unchanged_on; et. }
           clear - STEP1 DUMMY UNFR MSRC MINJ MWF2 MLE1 UNCH STACKS
                         RSP0 SIG CALLSRC CALLTGT SOUND RSP0 MATCH DUMMY.
           destruct cs; ss. clear DUMMY. clear_tac.
@@ -1837,9 +2029,8 @@ Proof.
               unfold frame_contents.
               unfold frame_contents_at_external in *.
               ss.
-              des. split; ss.
+              des. split.
               * admit "re-introducing contains locations - this might have an issue".
-                ttttttttttttttttttttttt
               * sep_simpl_tac. unfold fe_ofs_arg in *.
                 admit "range-merge".
             + admit "footprint".

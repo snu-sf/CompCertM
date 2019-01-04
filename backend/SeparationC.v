@@ -344,3 +344,50 @@ Unshelve.
   all: econs.
 Qed.
 
+Lemma sepconj_isolated_mutation_strongest
+      m0 m1 P P0 P1 CTX CHNG
+      (SEP: m0 |= P ** CTX)
+      (UNCH: Mem.unchanged_on (~2 CHNG) m0 m1)
+      (IMP: massert_imp P P1)
+      (PRED: m1 |= P0)
+      (ISOL: CHNG <2= P.(m_footprint))
+      (ISOL0: P0.(m_footprint) <2= CHNG)
+      (ISOL1: P1.(m_footprint) <2= ~2 CHNG)
+      (DISJ: disjoint_footprint P0 P1)
+  :
+    <<SEP: m1 |= P0 ** P1 ** CTX>>
+.
+Proof.
+  destruct SEP as (A & B & C).
+  hnf in IMP. des.
+  sep_split; eauto.
+  { apply disjoint_footprint_sepconj. split; ss. ii. eapply C; eauto. }
+  sep_split.
+  - eapply m_invar; eauto.
+    eapply Mem.unchanged_on_implies; eauto.
+    ii. eapply ISOL1; eauto.
+  - ii. eapply C; eauto.
+  - eapply m_invar; eauto.
+    eapply Mem.unchanged_on_implies; eauto.
+    ii. apply ISOL in H1. eauto.
+Qed.
+
+Lemma sepconj_isolated_mutation_revisited
+      m0 m1 P0 P1 CTX CHNG
+      (SEP: m0 |= P0 ** CTX)
+      (UNCH: Mem.unchanged_on (~2 CHNG) m0 m1)
+      (ISOL: CHNG <2= P0.(m_footprint))
+      (PRED: m1 |= P1)
+      (FOOT: P1.(m_footprint) <2= P0.(m_footprint))
+  :
+    <<SEP: m1 |= P1 ** CTX>>
+.
+Proof.
+  destruct SEP as (A & B & C).
+  sep_split; eauto.
+  { ii. et. }
+  eapply m_invar; et.
+  eapply Mem.unchanged_on_implies; eauto.
+  ii. eapply ISOL in H1. rr in C. et.
+Qed.
+

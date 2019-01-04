@@ -654,11 +654,6 @@ Section TRIAL2.
           des. clarify. rewrite FPTR in *. ss. des_ifs. clear_tac.
           econs; et.
           - ii. eapply Mem_unfree_unchanged_on; et.
-            { instantiate (1:= ~2 (brange blk (Ptrofs.unsigned ofs)
-                                          (Ptrofs.unsigned ofs + 4 * size_arguments (SkEnv.get_sig skd0)))).
-              ss.
-            }
-            ss.
           - eapply Mem_unfree_unchanged_on; et.
             (* u. ii; des; ss; clarify. *)
             (* rr in H. eapply H. *)

@@ -605,7 +605,7 @@ Lemma Mem_valid_block_unfree
 .
 Proof. unfold Mem_unfree in *. des_ifs; ss. Qed.
 
-Lemma Mem_unfree_unchanged_on
+Lemma Mem_unfree_unchanged_on0
       m0 m1 blk lo hi P
       (UNFR: Mem_unfree m0 blk lo hi = Some m1)
       (RANGE: brange blk lo hi <2= ~2 P)
@@ -625,6 +625,31 @@ Proof.
     destruct (classic (0 <= hi - lo)).
     + rewrite Z2Nat.id in *; ss. xomega.
     + abstr (hi - lo) x. destruct x; try xomega. rewrite Z2Nat.inj_neg in *. xomega.
+Qed.
+
+Lemma Mem_unfree_unchanged_on
+      m0 m1 blk lo hi
+      (UNFR: Mem_unfree m0 blk lo hi = Some m1)
+  :
+    <<UNCH: Mem.unchanged_on (~2 brange blk lo hi) m0 m1>>
+.
+Proof.
+  exploit Mem_unfree_unchanged_on0; et.
+  ii. tauto.
+Qed.
+
+Lemma Mem_unfree_perm
+      m0 m1 blk lo hi
+      (UNFR: Mem_unfree m0 blk lo hi = Some m1)
+  :
+    forall k p, Mem.range_perm m1 blk lo hi k p
+.
+Proof.
+  ii. unfold Mem_unfree in *. des_ifs.
+  unfold Mem.perm. ss.
+  rewrite PMap.gss. des_ifs.
+  - ss. eauto with mem.
+  - bsimpl. des; des_sumbool; try xomega.
 Qed.
 
 Context `{CTX: Val.meminj_ctx}.

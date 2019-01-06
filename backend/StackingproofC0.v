@@ -2662,12 +2662,6 @@ Hypothesis return_address_offset_exists:
   is_tail (Mcall sg ros :: c) (fn_code f) ->
   exists ofs, return_address_offset f c ofs.
 
-Hypothesis return_address_offset_deterministic:
-  forall f c ofs ofs',
-  return_address_offset f c ofs ->
-  return_address_offset f c ofs' ->
-  ofs = ofs'.
-
 Context `{CTX: Val.meminj_ctx}.
 
 Let MATCH_GENV: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.

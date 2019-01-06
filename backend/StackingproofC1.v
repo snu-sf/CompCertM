@@ -933,6 +933,11 @@ Hypothesis return_address_offset_exists:
   forall f sg ros c v (FUNCT: Genv.find_funct tge v = Some (Internal f)),
   is_tail (Mcall sg ros :: c) (fn_code f) ->
   exists ofs, rao f c ofs.
+Hypothesis return_address_offset_deterministic:
+  forall f c ofs ofs',
+  rao f c ofs ->
+  rao f c ofs' ->
+  ofs = ofs'.
 
 Print Instances SimMem.class.
 Print Instances SimSymb.class.
@@ -1924,13 +1929,9 @@ Proof.
     i; des.
     esplits; eauto.
     + left. Require Import ModSemProps.
-      eapply spread_dplus; et. eapply modsem_determinate; eauto.
-      admit "
-Hypothesis return_address_offset_deterministic:
-  forall f c ofs ofs',
-  return_address_offset f c ofs ->
-  return_address_offset f c ofs' ->
-  ofs = ofs'.".
+      eapply spread_dplus; et.
+      { eapply modsem_determinate; eauto.
+      }
       s. folder.
       instantiate (1:= mkstate st_tgt0.(init_rs) st_tgt0.(init_sg) s2').
       admit "ez - change transf_step_correct:

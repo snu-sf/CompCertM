@@ -1245,3 +1245,10 @@ Proof.
     { exploit IHxs0; et. }
 Qed.
 
+Fixpoint last_option X (xs: list X): option X :=
+  match xs with
+  | [] => None
+  | hd :: nil => Some hd
+  | hd :: tl => last_option tl
+  end
+.

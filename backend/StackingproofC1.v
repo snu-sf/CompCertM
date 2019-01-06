@@ -17,20 +17,13 @@ Require SimMemInjC.
 Require Import AxiomsC.
 Require SoundTop.
 Require Import StoreArguments.
+Require Import ModSemProps.
 
 Set Implicit Arguments.
 
 
 
 
-(* TODO: move to CoqlibC *)
-Fixpoint last_option X (xs: list X): option X :=
-  match xs with
-  | [] => None
-  | hd :: nil => Some hd
-  | hd :: tl => last_option tl
-  end
-.
 
 
 
@@ -1927,23 +1920,18 @@ Proof.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { des. et. }
     i; des.
+    destruct st_tgt0. ss. folder.
     esplits; eauto.
-    + left. Require Import ModSemProps.
+    + left.
       eapply spread_dplus; et.
-      { eapply modsem_determinate; eauto.
-      }
-      s. folder.
-      instantiate (1:= mkstate st_tgt0.(init_rs) st_tgt0.(init_sg) s2').
-      admit "ez - change transf_step_correct:
-1) add ncall/nret in premise
-2) prove src/tgt stack is preserved
-".
+      { eapply modsem_determinate; eauto. }
+      s. folder. eapply MachC.lift_plus; et.
     + econs; ss; et.
       * inv H0; inv MCOMPAT; ss.
       * inv H0; inv MCOMPAT; ss.
       * inv H0; ss.
       * esplits; et.
-        admit "ez - ditto".
+        eapply LinearC.step_preserves_last_option; et.
 
 Unshelve.
   all: ss.

@@ -117,7 +117,7 @@ Proof.
         { ii. inv MATCH; ss. }
         { apply SIMSKENV. }
         intro GE.
-        apply (sim_external_funct_id GE); ss.
+        apply (fsim_external_funct_id GE); ss.
       * des. clarify. esplits; eauto.
         eapply SimSymb.simskenv_func_fsim; eauto; ss. inv SIMSKENV. ss.
     + econs; ss; eauto.

@@ -446,6 +446,44 @@ Section MODSEM.
 End MODSEM.
 
 
+Section PROPS.
+
+Variable rao: function -> code -> ptrofs -> Prop.
+
+Lemma lift_star
+      ge st0 tr st1
+      init_sg init_rs
+      (STAR: star (step rao) ge st0 tr st1)
+  :
+    star (step' rao) ge (mkstate init_rs init_sg st0) tr
+         (mkstate init_rs init_sg st1)
+.
+Proof.
+  ginduction STAR; ii; ss.
+  { econs; et. }
+  inv H.
+  econs; et.
+  - econs; et.
+Qed.
+
+Lemma lift_plus
+      ge st0 tr st1
+      init_sg init_rs
+      (PLUS: plus (step rao) ge st0 tr st1)
+  :
+    plus (step' rao) ge (mkstate init_rs init_sg st0) tr
+         (mkstate init_rs init_sg st1)
+.
+Proof.
+  inv PLUS. inv H.
+  econs; et.
+  { instantiate (1:= mkstate init_rs init_sg s2).
+    econs; ss; et.
+  }
+  eapply lift_star; et.
+Qed.
+
+End PROPS.
 
 
 Section MODULE.

@@ -100,7 +100,7 @@ Proof.
             { genext. }
             ss. refl.
         }
-        hexploit sim_external_inject_eq_fsim; try apply FINDF0; et. i; clarify.
+        hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
         rpapply match_call_states; ss; eauto.
         { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
           econs; eauto.
@@ -117,7 +117,7 @@ Proof.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
-    hexploit (@sim_external_inject_eq_fsim); try apply FINDF; eauto. clear FPTR. intro FPTR.
+    hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR.
     unfold Errors.bind in *. unfold transf_function in *. des_ifs. inv TYP.
     esplits; eauto. econs; eauto.
     + folder. ss. rewrite <- FPTR. eauto.
@@ -134,7 +134,7 @@ Proof.
     { fold ge in EXTERNAL. clarify. }
     folder.
     inv MCOMPAT; ss. clear_tac.
-    exploit (sim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
+    exploit (fsim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
     esplits; eauto.
     + econs; eauto.
       * des. clarify. esplits; eauto.
@@ -149,7 +149,7 @@ Proof.
         (***************** TODO: Add as a lemma in GlobalenvsC. *******************)
         inv SIMSKENV. ss.
         assert(fptr_arg = tfptr).
-        { eapply sim_external_inject_eq_fsim; try apply SIG; et. Undo 1.
+        { eapply fsim_external_inject_eq; try apply SIG; et. Undo 1.
           inv FPTR; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
           inv SIMSKE. ss. inv INJECT; ss.
           exploit (DOMAIN b1); eauto.

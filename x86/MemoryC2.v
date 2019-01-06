@@ -67,7 +67,7 @@ Proof.
   - econs 1; eauto.
   - econs 2; eauto. ii.
     eapply ALIGN. ii. eapply H in PR. des; eauto.
-    eapply Mem_unfree_unchanged_on with (P := ~2 brange blk_src lo hi) in UNFREE; eauto.
+    eapply Mem_unfree_unchanged_on in UNFREE; eauto.
     inv UNFREE. specialize (unchanged_on_perm blk x0 k p).
     destruct (classic (brange blk_src lo hi blk x0)).
     + right. inv H0. eauto.

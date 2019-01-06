@@ -155,7 +155,7 @@ Proof.
     + etransitivity; try apply MWF; eauto. erewrite Mem_nextblock_unfree; eauto. refl.
   - econs; ss; eauto.
     + refl.
-    + eapply Mem_unfree_unchanged_on; eauto.
+    + eapply Mem.unchanged_on_implies. { eapply Mem_unfree_unchanged_on; eauto. } ii. eapply RANGE; et.
     + eapply frozen_refl.
     + admit "TODO: MAXTGT".
 Qed.

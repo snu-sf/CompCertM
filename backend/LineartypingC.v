@@ -115,23 +115,32 @@ Section SOUNDNESS.
       ii.
       inv AFTER.
       inv SUST.
+
       hexploit (loc_result_caller_save sg_arg); eauto. intro RES.
       hexploit (loc_result_one sg_arg); eauto. intro ONE.
-      (* clear AGARGS. *)
-      (* abstr (loc_result sg_arg) lres. *)
-      (* destruct lres; ss. *)
 
-      econs; ss; eauto.
+      econs; eauto.
+      + destruct stack; ss.
+        des_ifs. inv WTSTK.
+        econs; eauto.
+        unfold undef_outgoing_slots. ii. des_ifs.
       + ii. unfold Locmap.setpair. des_ifs. ss.
         apply wt_setreg; ss; cycle 1.
         { apply wt_undef_caller_save_regs; ss. }
         rewrite mreg_type_any. apply has_type_any.
       + ii.
         destruct l; ss.
-        { rewrite locmap_get_set_loc_result; ss. des_ifs. rewrite AGCS; ss. }
-        { rewrite locmap_get_set_loc_result; ss. des_ifs.
-          - rewrite AGCS; ss.
-          - rewrite AGCS; ss.
+        { rewrite locmap_get_set_loc_result; ss. des_ifs. rewrite AGCS; ss.
+          hexploit (parent_locset_after_external stack); et. i; des; clarify. rewrite AFTER.
+          (* TODO: we can remove spurious case by strengthening wt_callstack -> *)
+          (* we know stack >= 1, because of dummy stack *)
+          unfold undef_caller_save_regs. des_ifs.
+        }
+        { rewrite locmap_get_set_loc_result; ss. rewrite AGCS; ss.
+          hexploit (parent_locset_after_external stack); et. i.
+          des_ifs; des; clarify.
+          - rewrite AFTER; ss.
+          - rewrite AFTER; ss.
         }
       + ii. rewrite locmap_get_set_loc_result; ss.
     - esplits; eauto. ss.

@@ -1578,6 +1578,7 @@ Proof.
     { u. ii. esplits; eauto.
       do 2 spc H0. zsimpl. eauto.
     }
+    { inv STACKS; ss; clarify; et. }
     i; des. clarify.
 
     hexpl Mem.nextblock_free NB.

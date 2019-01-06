@@ -2313,6 +2313,7 @@ Proof.
           intros [X | X]. congruence. xomega.
     - rewrite MTGT. red. exploit Mem.free_range_perm; eauto.
   }
+  { ii. eapply BB. inv MLE. rewrite TGTPARENTEQ. eauto. }
   i; des.
   SimMemInj.spl_exact sm2.
   econstructor; eauto.
@@ -2481,6 +2482,7 @@ Proof.
           intros [X | X]. congruence. xomega.
     - rewrite MTGT. red. exploit Mem.free_range_perm; eauto.
   }
+  { ii. eapply BB. inv MLE. rewrite TGTPARENTEQ. eauto. }
   i; des.
   SimMemInj.spl_exact sm2.
   econstructor; eauto.

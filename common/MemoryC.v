@@ -642,7 +642,7 @@ Lemma Mem_unfree_perm
       m0 m1 blk lo hi
       (UNFR: Mem_unfree m0 blk lo hi = Some m1)
   :
-    forall k p, Mem.range_perm m1 blk lo hi k p
+    <<PERM: forall k p, Mem.range_perm m1 blk lo hi k p>>
 .
 Proof.
   ii. unfold Mem_unfree in *. des_ifs.

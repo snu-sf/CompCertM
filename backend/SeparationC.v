@@ -391,3 +391,53 @@ Proof.
   ii. eapply ISOL in H1. rr in C. et.
 Qed.
 
+Lemma mconj_footprint_le
+      A0 B0 A1 B1
+      (LEA: A0.(m_footprint) <2= A1.(m_footprint))
+      (LEB: B0.(m_footprint) <2= B1.(m_footprint))
+  :
+    (mconj A0 B0).(m_footprint) <2= 
+    (mconj A1 B1).(m_footprint)
+.
+Proof.
+  ss. ii. des; et.
+Qed.
+
+Lemma sepconj_footprint_le
+      A0 B0 A1 B1
+      (LEA: A0.(m_footprint) <2= A1.(m_footprint))
+      (LEB: B0.(m_footprint) <2= B1.(m_footprint))
+  :
+    (sepconj A0 B0).(m_footprint) <2= 
+    (sepconj A1 B1).(m_footprint)
+.
+Proof.
+Local Transparent sepconj.
+  ss. ii. des; et.
+Local Opaque sepconj.
+Qed.
+
+Local Transparent sepconj.
+Lemma m_footprint_sepconj_le
+      P0 Q0 P1 Q1
+      (LEP: P0.(m_footprint) <2= P1.(m_footprint))
+      (LEQ: Q0.(m_footprint) <2= Q1.(m_footprint))
+  :
+    <<LE: (P0 ** Q0).(m_footprint) <2= (P1 ** Q1).(m_footprint)>>
+.
+Proof. ii; ss. des; ss; eauto. Qed.
+
+Lemma sep_assoc_footprint
+      P Q R
+  :
+    ((P ** Q) ** R).(m_footprint) =
+    (P ** Q ** R).(m_footprint)
+.
+Proof.
+  ss.
+  apply func_ext2. ii; ss. apply prop_ext.
+  split; ii; ss; des; et.
+Qed.
+
+Local Opaque sepconj.
+

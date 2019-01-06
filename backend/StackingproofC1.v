@@ -23,6 +23,14 @@ Set Implicit Arguments.
 
 
 
+(* TODO: move to CoqlibC *)
+Fixpoint last_option X (xs: list X): option X :=
+  match xs with
+  | [] => None
+  | hd :: nil => Some hd
+  | hd :: tl => last_option tl
+  end
+.
 
 
 
@@ -105,15 +113,8 @@ Proof.
     + ii. uge0. des_ifs. exploit Genv.genv_defs_range; eauto.
 Qed.
 
-Section STACKINGEXTRA.
 
-Lemma match_stacks_sp_ofs:
-  forall j ge cs cs' sg sm,
-  match_stacks ge j cs cs' sg sm ->
-  exists sp, (parent_sp cs') = Vptr sp Ptrofs.zero true.
-Proof.
-  induction 1; ii; ss; esplits; eauto.
-Qed.
+
 
 Ltac sep_simpl_tac :=
   unfold NW in *;
@@ -129,6 +130,17 @@ Ltac sep_simpl_tac :=
           idtac
          )
 .
+
+Section STACKINGEXTRA.
+
+Lemma match_stacks_sp_ofs:
+  forall j ge cs cs' sg sm,
+  match_stacks ge j cs cs' sg sm ->
+  exists sp, (parent_sp cs') = Vptr sp Ptrofs.zero true.
+Proof.
+  induction 1; ii; ss; esplits; eauto.
+Qed.
+
 Local Opaque Z.add Z.mul make_env function_bounds.
 Lemma arguments_private
       sp_tgt spdelta
@@ -323,6 +335,24 @@ Proof.
     + ii. u in H. des; clarify; esplits; et; try xomega.
 Qed.
 
+Lemma contains_locations_split_m_footprint
+      j sp pos lo hi sl ls
+      (RANGE: 0 <= lo <= hi)
+  :
+    (contains_locations j sp pos hi sl ls).(m_footprint)
+    =
+    (contains_locations j sp pos lo sl ls ** contains_locations_tl j sp pos lo hi sl ls).(m_footprint)
+.
+Proof.
+  apply func_ext2.
+  i. apply prop_ext.
+  split; i.
+  - ss. des. clarify. destruct (classic (x1 < pos + 4 * lo)).
+    + left. esplits; et.
+    + right. rr. split; et. xomega.
+  - eapply contains_locations_split; et.
+Qed.
+
 Lemma contains_locations_merge
       j sp pos lo hi sl ls
       (RANGE: 0 <= lo <= hi)
@@ -376,6 +406,23 @@ Proof.
     + left. esplits; et.
     + right. esplits; et. xomega.
   - ii. des; clarify; esplits; et; xomega.
+Qed.
+
+Lemma unfree_freed_range
+      sp m0 m1 lo mid hi
+      (SEP: m0 |= freed_range sp lo mid ** range sp mid hi)
+      (UNFREE: Mem_unfree m0 sp lo mid = Some m1)
+  :
+    <<SEP: m1 |= range sp lo hi>>
+.
+Proof.
+  ss. des. esplits; et. ii.
+  hexploit Mem_unfree_unchanged_on; et. intro UNCH; des.
+  destruct (classic (i < mid)).
+  - eapply Mem_unfree_perm; et.
+  - eapply Mem.perm_unchanged_on; et.
+    + u. ii. des. xomega.
+    + eapply SEP3; et. xomega.
 Qed.
 
 Lemma unfree_freed_contains_locations
@@ -440,6 +487,392 @@ Proof.
     - right. rr. esplits; et. xomega.
   }
 Qed.
+
+Definition frame_contents_1_at_external f (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) sg :=
+  let b := function_bounds f in
+  let fe := make_env b in
+    contains_locations j sp fe.(fe_ofs_local) b.(bound_local) Local ls
+ (* ** pure True *)
+ (* ** freed_range sp fe_ofs_arg (4 * size_arguments sg) *)
+ ** freed_contains_locations j sp fe_ofs_arg (size_arguments sg) Outgoing ls
+ ** contains_locations_tl j sp fe_ofs_arg (size_arguments sg) (bound_outgoing b) Outgoing ls
+ ** hasvalue Mptr sp fe.(fe_ofs_link) parent
+ ** hasvalue Mptr sp fe.(fe_ofs_retaddr) retaddr
+ ** contains_callee_saves j sp fe.(fe_ofs_callee_save) b.(used_callee_save) ls0.
+
+Definition frame_contents_at_external f (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) sg :=
+  let b := function_bounds f in
+  let fe := make_env b in
+  mconj (frame_contents_1_at_external f j sp ls ls0 parent retaddr sg)
+        ((* range sp fe_ofs_arg fe.(fe_stack_data) ** *)
+         (freed_range sp fe_ofs_arg (4 * (size_arguments sg)) **
+         range sp (4 * (size_arguments sg)) fe.(fe_stack_data)) **
+         range sp (fe.(fe_stack_data) + b.(bound_stack_data)) fe.(fe_size)).
+
+Fixpoint stack_contents_at_external (j: meminj) (cs: list Linear.stackframe) (cs': list Mach.stackframe) sg : massert :=
+  match cs, cs' with
+  | [Linear.Stackframe f _ ls _], [Mach.Stackframe fb (Vptr sp' spofs true) ra _] =>
+    (freed_range sp' spofs.(Ptrofs.unsigned) (4 * (size_arguments sg)))
+      ** range sp' (4 * (size_arguments sg)) (4 * (size_arguments f.(Linear.fn_sig)))
+    (* pure True *)
+  | Linear.Stackframe f _ ls c :: cs, Mach.Stackframe fb (Vptr sp' spofs true) ra c' :: cs' =>
+      frame_contents_at_external f j sp' ls (parent_locset cs) (parent_sp cs') (parent_ra cs') sg
+      ** stack_contents j cs cs'
+  | _, _ => pure False
+  end.
+
+Lemma stack_contents_at_external_footprint_split
+      j cs cs'
+      f sp ls c fb sp' spofs ra c' sg
+      (NONNIL: cs <> [])
+  :
+    m_footprint (stack_contents_at_external j
+                                            ((Linear.Stackframe f sp ls c) :: cs)
+                                            ((Mach.Stackframe fb (Vptr sp' spofs true) ra c') :: cs') sg)
+    =
+    (m_footprint (frame_contents_at_external f j sp' ls (parent_locset cs) (parent_sp cs') (parent_ra cs') sg)
+                 \2/
+                 m_footprint (stack_contents j cs cs'))
+.
+Proof.
+  ii; ss. des_ifs.
+Qed.
+
+Lemma stackframes_after_external_footprint
+      j cs cs'
+  :
+    (stack_contents j cs cs').(m_footprint) =
+    (stack_contents j cs.(stackframes_after_external) cs').(m_footprint)
+.
+Proof.
+  apply func_ext1; i.
+  apply func_ext1; i.
+  apply prop_ext.
+  split; i.
+  - destruct cs; ss. des_ifs.
+  - destruct cs; ss. des_ifs.
+Qed.
+
+(* Lemma massert_imp_m_footprint *)
+(*       P0 Q0 P1 Q1 *)
+(*       (IMP0: massert_imp P0 P1) *)
+(*       (IMP1: massert_imp Q0 Q1) *)
+(*   : *)
+(*     (P1 ** Q1).(m_footprint) <2= (P0 ** Q0).(m_footprint) *)
+(* . *)
+(* Proof. *)
+(*   rr in IMP0. rr in IMP1. des. *)
+(*   ss. ii; des; et. *)
+(* Qed. *)
+
+Lemma frame_contents_1_at_external_m_footprint
+      f j sp rs rs0 sp2 retaddr0
+      sg
+      (SZ: 0 <= size_arguments sg <= bound_outgoing (function_bounds f))
+  :
+    (frame_contents_1 f j sp rs rs0 sp2 retaddr0).(m_footprint)
+    =
+    (frame_contents_1_at_external f j sp rs rs0 sp2 retaddr0 sg).(m_footprint)
+.
+Proof.
+  apply func_ext2. i. apply prop_ext.
+  (* - ii. ss. des. esplits; eauto. *)
+  unfold frame_contents_1 in *.
+  unfold frame_contents_1_at_external in *.
+  split; i.
+  - Local Opaque sepconj.
+    eapply sepconj_footprint_le; swap 2 3; et.
+    rewrite <- sep_assoc_footprint with
+        (P := freed_contains_locations j sp fe_ofs_arg (size_arguments sg) Outgoing rs).
+    eapply sepconj_footprint_le; swap 2 3; et.
+    erewrite contains_locations_split_m_footprint; et. refl.
+  - eapply sepconj_footprint_le; swap 2 3; et.
+    rewrite <- sep_assoc_footprint with
+        (P := freed_contains_locations j sp fe_ofs_arg (size_arguments sg) Outgoing rs).
+    eapply sepconj_footprint_le; swap 2 3; et.
+    erewrite contains_locations_split_m_footprint; et. refl.
+Qed.
+
+Lemma frame_contents_at_external_m_footprint
+      f j sp rs rs0 sp2 retaddr0 sg
+      (SZ: 0 <= size_arguments sg <= bound_outgoing (function_bounds f))
+      (BOUND: 4 * bound_outgoing (function_bounds f) <= fe_stack_data (make_env (function_bounds f)))
+  :
+    (frame_contents f j sp rs rs0 sp2 retaddr0).(m_footprint)
+    =
+    (frame_contents_at_external f j sp rs rs0 sp2 retaddr0 sg).(m_footprint)
+.
+Proof.
+  unfold frame_contents, frame_contents_at_external in *.
+  unfold fe_ofs_arg.
+  ss.
+  rewrite <- frame_contents_1_at_external_m_footprint; ss.
+  apply func_ext2. i. apply prop_ext.
+  split; i; des; et.
+  - right.
+    eapply sepconj_footprint_le; try apply H; et. clear H.
+    Local Transparent sepconj.
+    ss. ii. des. clarify.
+    destruct (classic (4 * size_arguments sg <= x3)).
+    + right. esplits; et.
+    + left. rr. esplits; et. xomega.
+  - right.
+    eapply sepconj_footprint_le; try apply H; et. clear H.
+    ss. ii. unfold brange in *. des; clarify; esplits; et; try xomega.
+Qed.
+
+Lemma stack_contents_at_external_m_footprint
+      tge sm0 stack cs' sg j F
+      (STACKS: match_stacks tge F stack cs' sg sm0)
+  :
+    <<LE: (stack_contents_at_external j stack cs' sg).(m_footprint)
+          =
+          (stack_contents j stack cs').(m_footprint)>>
+.
+Proof.
+  apply func_ext2. i. apply prop_ext.
+  generalize size_arguments_above; intro SZARG.
+  inv STACKS.
+  { ss. u. split; i; des; clarify; esplits; et; psimpl; zsimpl; try xomega.
+    { admit "ez - LE". }
+    { admit "ez - SZARG". }
+    { destruct (classic (4 * size_arguments sg <= x1)).
+      - right. esplits; et.
+      - left. esplits; et. xomega.
+    }
+  }
+  Local Opaque frame_contents frame_contents_at_external.
+  inv STK; ss.
+  { psimpl. zsimpl. rewrite <- frame_contents_at_external_m_footprint; ss; try xomega.
+    - split; try xomega.
+      admit "ez - SZARG".
+    - eapply bound_outgoing_stack_data; et.
+  }
+  {
+    rewrite <- frame_contents_at_external_m_footprint ;ss.
+    - split; try xomega.
+      admit "ez - SZARG".
+    - eapply bound_outgoing_stack_data; et.
+  }
+Qed.
+
+
+(* Lemma frame_contents_1_at_external_impl *)
+(*       f j sp rs rs0 sp2 retaddr0 *)
+(*       sg *)
+(*       (SZ: 0 <= 4 * size_arguments sg <= bound_outgoing (function_bounds f)) *)
+(*   : *)
+(*     massert_imp *)
+(*       (frame_contents_1 f j sp rs rs0 sp2 retaddr0) *)
+(*       (frame_contents_1_at_external f j sp rs rs0 sp2 retaddr0 sg) *)
+(* . *)
+(* Proof. *)
+(*   (* - ii. ss. des. esplits; eauto. *) *)
+(*   unfold frame_contents_1 in *. *)
+(*   unfold frame_contents_1_at_external in *. *)
+(*   - eapply sepconj_morph_1_Proper; ss. *)
+(*     etrans; cycle 1. *)
+(*     { eapply sep_assoc. } *)
+(*     eapply sepconj_morph_1_Proper; ss. *)
+(*     etrans. *)
+(*     { eapply contains_locations_split; et. } *)
+(*     eapply sepconj_morph_1_Proper; ss. *)
+(*     admit "ez". *)
+(*   - econs; eauto; ii; ss; des. *)
+(*     + unfold frame_contents_1, frame_contents_1_at_external in *. *)
+(*       rewrite sep_comm. rewrite sep_assoc. *)
+(*       rewrite sep_comm in H. rewrite sep_assoc in H. *)
+(*       repeat rewrite sep_assoc in *. *)
+(*       eapply sep_imp; eauto. ss. etrans. { eapply contains_locations_range. } eapply range_freed_range. *)
+(* Qed. *)
+
+(* Lemma frame_contents_at_external_impl *)
+(*       f j sp rs rs0 sp2 retaddr0 sg *)
+(*       (SZ: 0 <= 4 * size_arguments sg <= fe_stack_data (make_env (function_bounds f))) *)
+(*   : *)
+(*     massert_imp *)
+(*       (frame_contents f j sp rs rs0 sp2 retaddr0 ) *)
+(*       (frame_contents_at_external f j sp rs rs0 sp2 retaddr0 sg) *)
+(* . *)
+(* Proof. *)
+(*   unfold frame_contents, frame_contents_at_external in *. *)
+(*   unfold fe_ofs_arg. *)
+(*   eapply mconj_morph_1_Proper; eauto. *)
+(*   - eapply frame_contents_1_at_external_impl; eauto. *)
+(*   - eapply sepconj_morph_1_Proper. *)
+(*     + etrans. *)
+(*       { eapply range_split0; eauto. } *)
+(*       eapply sepconj_morph_1_Proper; eauto. *)
+(*       eapply range_freed_range; eauto. *)
+(*     + refl. *)
+(* Qed. *)
+
+
+
+
+
+
+
+
+
+
+(* Local Transparent sepconj. *)
+(* Local Opaque frame_contents_1. *)
+(* Local Opaque frame_contents_1_at_external. *)
+(* Lemma frame_contents_at_external_footprint_le_rev *)
+(*       f j j' sp' ls ls_init sp ra sg *)
+(*   : *)
+(*     (frame_contents f j sp' ls ls_init sp ra).(m_footprint) *)
+(*     <2= *)
+(*     (frame_contents_at_external f j' sp' ls ls_init sp ra sg).(m_footprint) *)
+(* . *)
+(* Proof. *)
+(*   - *)
+(*     eapply mconj_footprint_le. *)
+(*     + *)
+(*       eapply sepconj_footprint_le; et. *)
+(*       admit " *)
+(*       eapply sepconj_footprint_le; et. *)
+(*       eapply sepconj_footprint_le; et. *)
+(*       eapply sepconj_footprint_le; et. *)
+(*       clear - sp. clear sp. *)
+(*       abstr (fe_ofs_callee_save (make_env (function_bounds f))) ofs. *)
+(*       abstr (used_callee_save (function_bounds f)) rl. *)
+(*       clear_tac. *)
+(*       Local Opaque sepconj. *)
+(*       ginduction rl; i; ss. *)
+(*       eapply sepconj_footprint_le; ss. *)
+(* ". *)
+(*     + *)
+(*       eapply sepconj_footprint_le; ss. *)
+(*       ii. des_safe; clarify. *)
+(*       Local Transparent sepconj. *)
+(*       s. *)
+(*       Local Opaque sepconj. *)
+(*       destruct (classic (4 * size_arguments sg <= x1)). *)
+(*       { right. esplits; et. } *)
+(*       { left. rr. esplits; et. xomega. } *)
+(* Qed. *)
+(* Local Opaque frame_contents. *)
+(* Local Opaque frame_contents_at_external. *)
+
+(* Lemma stack_contents_at_external_footprint_le *)
+(*       sm0 stack cs' sg *)
+(*       (STACKS: match_stacks tge (SimMemInj.inj sm0) stack cs' sg sm0) *)
+(*   : *)
+(*     <<LE: (stack_contents_at_external sm0.(SimMemInj.inj) stack cs' sg).(m_footprint) *)
+(*           <2= *)
+(*           (stack_contents sm0.(SimMemInj.inj) stack cs').(m_footprint)>> *)
+(* . *)
+(* Proof. *)
+(*   { *)
+(*     Local Transparent stack_contents sepconj. *)
+(*     ii. *)
+(*     inv STACKS; ss; psimpl. *)
+(*     { desH PR. *)
+(*       - rr in PR. desH PR. clarify. esplits; et. des; clarify. admit "ez". *)
+(*       - clarify. esplits; et. admit "ez". *)
+(*     } *)
+(*     Local Opaque frame_contents. *)
+(*     Local Opaque frame_contents_at_external. *)
+(*     inv STK; ss. *)
+(*     { desH PR. *)
+(*       - left. admit "eapply frame_contents_at_external_impl; et. *)
+(*         split. *)
+(*         { admit ""ez"". } *)
+(*         hexploit (bound_outgoing_stack_data (function_bounds f)). i. *)
+(*         xomega.". *)
+(*       - clarify. right. esplits; et. *)
+(*     } *)
+(*     { des; ss; et. *)
+(*       left. admit "eapply frame_contents_at_external_impl; et. *)
+(*       split. *)
+(*       { admit ""ez"". } *)
+(*       hexploit (bound_outgoing_stack_data (function_bounds f)). i. *)
+(*       xomega. *)
+(* ". *)
+(*     } *)
+(*   } *)
+(* Qed. *)
+
+Lemma frame_contents_footprint_irr
+      f j0 j1 spb ls0 ls1 sp ra
+  :
+    (frame_contents f j0 spb ls0 ls1 sp ra).(m_footprint) <2=
+    (frame_contents f j1 spb ls0 ls1 sp ra).(m_footprint)
+.
+Proof.
+  eapply sepconj_footprint_le; et.
+  eapply mconj_footprint_le; et.
+  eapply sepconj_footprint_le; et.
+  eapply sepconj_footprint_le; et.
+  eapply sepconj_footprint_le; et.
+  abstr (fe_ofs_callee_save (make_env (function_bounds f))) ofs.
+  abstr (used_callee_save (function_bounds f)) rs.
+  clear - rs.
+  ginduction rs; i; et.
+  eapply sepconj_footprint_le; et.
+Qed.
+
+Lemma stack_contents_footprint_irr
+      j0 j1 cs cs'
+  :
+    (stack_contents j0 cs cs').(m_footprint) <2=
+    (stack_contents j1 cs cs').(m_footprint)
+.
+Proof.
+  clear - cs.
+  ginduction cs; i; ss.
+  des_ifs.
+  { eapply sepconj_footprint_le; et.
+    eapply frame_contents_footprint_irr.
+  }
+  { eapply sepconj_footprint_le; et.
+    eapply frame_contents_footprint_irr.
+  }
+Qed.
+
+(* Local Transparent frame_contents. *)
+(* Local Transparent frame_contents_at_external. *)
+(* Lemma stack_contents_at_external_footprint_le_rev *)
+(*       sm0 stack cs' sg j j0 j1 *)
+(*       (STACKS: match_stacks tge j stack cs' sg sm0) *)
+(*   : *)
+(*     <<LE: (stack_contents j0 stack cs').(m_footprint) *)
+(*           <2= *)
+(*           (stack_contents_at_external j1 stack cs' sg).(m_footprint) *)
+(*           >> *)
+(* . *)
+(* Proof. *)
+(*   { *)
+(*     ii. *)
+(*     inv STACKS; ss; psimpl. *)
+(*     { desH PR. clarify. zsimpl. *)
+(*       des; clarify. *)
+(*       - left. rr. esplits; et. *)
+(*       - right. esplits; et. clear - PR0 LE. admit "ez - use tailcall_possible". *)
+(*     } *)
+(*     {{ *)
+(*         Local Opaque mconj sepconj. *)
+(*         inv STK; et. *)
+(*         - *)
+(*           eapply sepconj_footprint_le; try apply PR; ss. *)
+(*           eapply frame_contents_at_external_footprint_le_rev. *)
+(*         - eapply sepconj_footprint_le; try apply PR; et. *)
+(*           { eapply frame_contents_at_external_footprint_le_rev. } *)
+(*           eapply stack_contents_footprint_irr. *)
+(*     }} *)
+(*   } *)
+(* Qed. *)
+(* Local Opaque frame_contents. *)
+(* Local Opaque frame_contents_at_external. *)
+(* Local Opaque sepconj. *)
+
+(* Local Transparent stack_contents. *)
+
+
+
+
 
 End STACKINGEXTRA.
 
@@ -677,14 +1110,6 @@ Print Instances SimSymb.class.
 
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (LinearC.modsem skenv_link_src prog) (MachC.modsem rao skenv_link_tgt tprog) tt sm_link
-.
-
-Fixpoint last_option X (xs: list X): option X :=
-  match xs with
-  | [] => None
-  | hd :: nil => Some hd
-  | hd :: tl => last_option tl
-  end
 .
 
 Compute last_option (@nil Z).
@@ -954,163 +1379,7 @@ Abort.
 
 
 
-Definition frame_contents_1_at_external f (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) sg :=
-  let b := function_bounds f in
-  let fe := make_env b in
-    contains_locations j sp fe.(fe_ofs_local) b.(bound_local) Local ls
- (* ** pure True *)
- (* ** freed_range sp fe_ofs_arg (4 * size_arguments sg) *)
- ** freed_contains_locations j sp fe_ofs_arg (size_arguments sg) Outgoing ls
- ** contains_locations_tl j sp fe_ofs_arg (size_arguments sg) (bound_outgoing b) Outgoing ls
- ** hasvalue Mptr sp fe.(fe_ofs_link) parent
- ** hasvalue Mptr sp fe.(fe_ofs_retaddr) retaddr
- ** contains_callee_saves j sp fe.(fe_ofs_callee_save) b.(used_callee_save) ls0.
-
-Definition frame_contents_at_external f (j: meminj) (sp: block) (ls ls0: locset) (parent retaddr: val) sg :=
-  let b := function_bounds f in
-  let fe := make_env b in
-  mconj (frame_contents_1_at_external f j sp ls ls0 parent retaddr sg)
-        ((* range sp fe_ofs_arg fe.(fe_stack_data) ** *)
-         (freed_range sp fe_ofs_arg (4 * (size_arguments sg)) **
-         range sp (4 * (size_arguments sg)) fe.(fe_stack_data)) **
-         range sp (fe.(fe_stack_data) + b.(bound_stack_data)) fe.(fe_size)).
-
-Fixpoint stack_contents_at_external (j: meminj) (cs: list Linear.stackframe) (cs': list Mach.stackframe) sg : massert :=
-  match cs, cs' with
-  | [Linear.Stackframe f _ ls _], [Mach.Stackframe fb (Vptr sp' spofs true) ra _] =>
-    (freed_range sp' spofs.(Ptrofs.unsigned) (4 * (size_arguments sg)))
-      ** range sp' (4 * (size_arguments sg)) (4 * (size_arguments f.(Linear.fn_sig)))
-    (* pure True *)
-  | Linear.Stackframe f _ ls c :: cs, Mach.Stackframe fb (Vptr sp' spofs true) ra c' :: cs' =>
-      frame_contents_at_external f j sp' ls (parent_locset cs) (parent_sp cs') (parent_ra cs') sg
-      ** stack_contents j cs cs'
-  | _, _ => pure False
-  end.
-
-Ltac sep_simpl_tac :=
-  unfold NW in *;
-  repeat (try rewrite sep_assoc in *;
-          try rewrite sep_pure in *;
-          try rewrite stack_contents_nil_left_false in *;
-          try rewrite stack_contents_nil_right_false in *;
-          try match goal with
-              | [H: _ |= pure False |- _] => simpl in H; inv H
-              | [H: _ |= _ ** pure False |- _] => apply sep_proj2 in H
-              | [H: _ |= _ ** pure False ** _ |- _] => apply sep_pick2 in H
-              end;
-          idtac
-         )
-.
-
-Lemma stack_contents_at_external_footprint_split
-      j cs cs'
-      f sp ls c fb sp' spofs ra c' sg
-      (NONNIL: cs <> [])
-  :
-    m_footprint (stack_contents_at_external j
-                                            ((Linear.Stackframe f sp ls c) :: cs)
-                                            ((Mach.Stackframe fb (Vptr sp' spofs true) ra c') :: cs') sg)
-    =
-    (m_footprint (frame_contents_at_external f j sp' ls (parent_locset cs) (parent_sp cs') (parent_ra cs') sg)
-                 \2/
-                 m_footprint (stack_contents j cs cs'))
-.
-Proof.
-  ii; ss. des_ifs.
-Qed.
-
-Lemma stackframes_after_external_footprint
-      j cs cs'
-  :
-    (stack_contents j cs cs').(m_footprint) =
-    (stack_contents j cs.(stackframes_after_external) cs').(m_footprint)
-.
-Proof.
-  apply func_ext1; i.
-  apply func_ext1; i.
-  apply prop_ext.
-  split; i.
-  - destruct cs; ss. des_ifs.
-  - destruct cs; ss. des_ifs.
-Qed.
-
-(* Lemma frame_contents_1_at_external_impl *)
-(*       f j sp rs rs0 sp2 retaddr0 *)
-(*       sg *)
-(*       (SZ: 0 <= 4 * size_arguments sg <= bound_outgoing (function_bounds f)) *)
-(*   : *)
-(*     massert_imp *)
-(*       (frame_contents_1 f j sp rs rs0 sp2 retaddr0) *)
-(*       (frame_contents_1_at_external f j sp rs rs0 sp2 retaddr0 sg) *)
-(* . *)
-(* Proof. *)
-(*   (* - ii. ss. des. esplits; eauto. *) *)
-(*   unfold frame_contents_1 in *. *)
-(*   unfold frame_contents_1_at_external in *. *)
-(*   - eapply sepconj_morph_1_Proper; ss. *)
-(*     etrans; cycle 1. *)
-(*     { eapply sep_assoc. } *)
-(*     eapply sepconj_morph_1_Proper; ss. *)
-(*     etrans. *)
-(*     { eapply contains_locations_split; et. } *)
-(*     eapply sepconj_morph_1_Proper; ss. *)
-(*     admit "ez". *)
-(*   - econs; eauto; ii; ss; des. *)
-(*     + unfold frame_contents_1, frame_contents_1_at_external in *. *)
-(*       rewrite sep_comm. rewrite sep_assoc. *)
-(*       rewrite sep_comm in H. rewrite sep_assoc in H. *)
-(*       repeat rewrite sep_assoc in *. *)
-(*       eapply sep_imp; eauto. ss. etrans. { eapply contains_locations_range. } eapply range_freed_range. *)
-(* Qed. *)
-
-(* Lemma frame_contents_at_external_impl *)
-(*       f j sp rs rs0 sp2 retaddr0 sg *)
-(*       (SZ: 0 <= 4 * size_arguments sg <= fe_stack_data (make_env (function_bounds f))) *)
-(*   : *)
-(*     massert_imp *)
-(*       (frame_contents f j sp rs rs0 sp2 retaddr0 ) *)
-(*       (frame_contents_at_external f j sp rs rs0 sp2 retaddr0 sg) *)
-(* . *)
-(* Proof. *)
-(*   unfold frame_contents, frame_contents_at_external in *. *)
-(*   unfold fe_ofs_arg. *)
-(*   eapply mconj_morph_1_Proper; eauto. *)
-(*   - eapply frame_contents_1_at_external_impl; eauto. *)
-(*   - eapply sepconj_morph_1_Proper. *)
-(*     + etrans. *)
-(*       { eapply range_split0; eauto. } *)
-(*       eapply sepconj_morph_1_Proper; eauto. *)
-(*       eapply range_freed_range; eauto. *)
-(*     + refl. *)
-(* Qed. *)
-
-Lemma mconj_footprint_le
-      A0 B0 A1 B1
-      (LEA: A0.(m_footprint) <2= A1.(m_footprint))
-      (LEB: B0.(m_footprint) <2= B1.(m_footprint))
-  :
-    (mconj A0 B0).(m_footprint) <2= 
-    (mconj A1 B1).(m_footprint)
-.
-Proof.
-  ss. ii. des; et.
-Qed.
-
-Lemma sepconj_footprint_le
-      A0 B0 A1 B1
-      (LEA: A0.(m_footprint) <2= A1.(m_footprint))
-      (LEB: B0.(m_footprint) <2= B1.(m_footprint))
-  :
-    (sepconj A0 B0).(m_footprint) <2= 
-    (sepconj A1 B1).(m_footprint)
-.
-Proof.
-Local Transparent sepconj.
-  ss. ii. des; et.
-Local Opaque sepconj.
-Qed.
-
-Lemma stack_contents_at_external_spec
+Lemma stack_contents_at_external_intro
       sm0 stack cs' sg sp sm1
       (STACKS: match_stacks tge (SimMemInj.inj sm0) stack cs' sg sm0)
       (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
@@ -1231,187 +1500,126 @@ Proof.
           }
       }
       {
-        admit " this should hold
-        apply mconj_footprint_le.
-        { apply sepconj_footprint_le; ss. }
-        apply sepconj_footprint_le; ss.
-        Local Transparent sepconj.
-        s.
-        Local Opaque sepconj.
-        ii. des; ss.
-        - rr in PR. des. clarify. esplits; et. xomega.
-        - clarify. esplits; et. xomega.
-".
+        rewrite <- frame_contents_at_external_m_footprint; ss.
+        apply bound_outgoing_stack_data.
       }
   }}
 Unshelve.
   all: econs.
 Qed.
 
-Local Transparent sepconj.
-Local Opaque frame_contents_1.
-Local Opaque frame_contents_1_at_external.
-Lemma frame_contents_at_external_footprint_le_rev
-      f j j' sp' ls ls_init sp ra sg
+Lemma stack_contents_at_external_spec_elim
+      sm_ret stack cs' sg sp sm_after
+      (STACKS: match_stacks tge (SimMemInj.inj sm_ret) stack.(stackframes_after_external) cs' sg sm_after)
+      (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
+      (UNFREETGT: Mem_unfree (SimMemInj.tgt sm_ret) sp 0 (4 * size_arguments sg) = Some (SimMemInj.tgt sm_after))
+      (SEP: SimMemInj.tgt sm_ret |= stack_contents_at_external (SimMemInj.inj sm_ret) stack cs' sg)
   :
-    (frame_contents f j sp' ls ls_init sp ra).(m_footprint)
-    <2=
-    (frame_contents_at_external f j' sp' ls ls_init sp ra sg).(m_footprint)
+    <<SEP: SimMemInj.tgt sm_after |= stack_contents (SimMemInj.inj sm_ret)
+                         stack.(stackframes_after_external) cs'>>
 .
 Proof.
-  -
-    eapply mconj_footprint_le.
-    +
-      eapply sepconj_footprint_le; et.
-      admit "
-      eapply sepconj_footprint_le; et.
-      eapply sepconj_footprint_le; et.
-      eapply sepconj_footprint_le; et.
-      clear - sp. clear sp.
-      abstr (fe_ofs_callee_save (make_env (function_bounds f))) ofs.
-      abstr (used_callee_save (function_bounds f)) rl.
-      clear_tac.
-      Local Opaque sepconj.
-      ginduction rl; i; ss.
-      eapply sepconj_footprint_le; ss.
-".
-    +
-      eapply sepconj_footprint_le; ss.
-      ii. des_safe; clarify.
-      Local Transparent sepconj.
-      s.
-      Local Opaque sepconj.
-      destruct (classic (4 * size_arguments sg <= x1)).
-      { right. esplits; et. }
-      { left. rr. esplits; et. xomega. }
-Qed.
-Local Opaque frame_contents.
-Local Opaque frame_contents_at_external.
-
-Lemma stack_contents_at_external_footprint_le
-      sm0 stack cs' sg
-      (STACKS: match_stacks tge (SimMemInj.inj sm0) stack cs' sg sm0)
-  :
-    <<LE: (stack_contents_at_external sm0.(SimMemInj.inj) stack cs' sg).(m_footprint)
-          <2=
-          (stack_contents sm0.(SimMemInj.inj) stack cs').(m_footprint)>>
-.
-Proof.
+  hexploit Mem_nextblock_unfree; eauto. intro NB.
+  hexploit Mem_unfree_perm; et. intro PERM.
+  hexploit Mem_unfree_unchanged_on; et. intro UNCH.
+  destruct stack; ss. destruct cs'; ss. inv STACKS.
+  des_ifs_safe.
+  destruct stack.
+  { des_ifs; sep_simpl_tac; cycle 1.
+    { ss. des_ifs. inv STACKS. ss. inv STK. }
+    inv STACKS; cycle 1.
+    { inv STK. }
+    ss.
+    assert(SZLE: size_arguments sg <= size_arguments sg_init).
+    { des; clarify.
+      - refl.
+      - rewrite tailcall_size; ss. admit "ez".
+    }
+    Local Transparent stack_contents.
+    (* Local Opaque contains_locations. *)
+    ss. unfold dummy_frame_contents.
+    Local Opaque stack_contents.
+    (* eapply unfree_freed_contains_locations with (pos := 0); cycle 1. *)
+    (* { zsimpl. et. } *)
+    (* { instantiate (1:= (size_arguments sg_init)). des; clarify. *)
+    (*   - refl. *)
+    (*   - rewrite tailcall_size; ss. admit "ez". *)
+    (* } *)
+    (* { Local Transparent sepconj. ss. esplits; et; try xomega. *)
+    (* } *)
+    (* unfree_freed_contains_locations *)
+    psimpl. zsimpl.
+    esplits; try xomega.
+    + admit "ez".
+    + admit "ez - SEP - range".
+    + des; clarify.
+      exploit tailcall_size; et. intro ZERO; des. rewrite ZERO in *. zsimpl.
+      clear - SEP UNCH.
+      apply sep_drop in SEP. ss. des. ii. eapply Mem.perm_unchanged_on; et. u. i. des. xomega.
+    + i. zsimpl.
+      assert(exists v, Mem.load (chunk_of_type ty) (SimMemInj.tgt sm_after) sp (4 * ofs) = Some v).
+      { eapply Mem.valid_access_load. rr.
+        rewrite align_type_chunk in *.
+        split; ss.
+        - rewrite typesize_chunk in *. ii.
+          destruct (classic (ofs0 < (4 * size_arguments sg))).
+          + eapply PERM; et. split; try xomega.
+          + eapply Mem.perm_unchanged_on; et.
+            * u. i. des_safe. xomega.
+            * clear - SEP SZLE H0 H2 H3. apply sep_drop in SEP. ss. des. eapply SEP1; et. split; try xomega.
+        - admit "ez".
+      }
+      des_safe. esplits; et.
+  }
   {
-    Local Transparent stack_contents sepconj.
-    ii.
-    inv STACKS; ss; psimpl.
-    { desH PR.
-      - rr in PR. desH PR. clarify. esplits; et. des; clarify. admit "ez".
-      - clarify. esplits; et. admit "ez".
-    }
-    Local Opaque frame_contents.
-    Local Opaque frame_contents_at_external.
-    inv STK; ss.
-    { desH PR.
-      - left. admit "eapply frame_contents_at_external_impl; et.
-        split.
-        { admit ""ez"". }
-        hexploit (bound_outgoing_stack_data (function_bounds f)). i.
-        xomega.".
-      - clarify. right. esplits; et.
-    }
-    { des; ss; et.
-      left. admit "eapply frame_contents_at_external_impl; et.
+    inv STACKS.
+    ss. des_ifs.
+    Local Transparent stack_contents.
+    ss.
+    Local Opaque stack_contents.
+    eapply sepconj_isolated_mutation_revisited; et.
+    - generalize (bound_outgoing_stack_data (function_bounds f)); i.
+      rewrite <- frame_contents_at_external_m_footprint; ss.
+      + bar. u. ii. des; clarify.
+        right.
+        Local Transparent sepconj.
+        s.
+        left. esplits; et. xomega.
+      + split; ss. admit "ez".
+    - apply sep_pick1 in SEP.
+
+      Local Transparent frame_contents frame_contents_at_external.
+      Local Opaque sepconj.
+      ss.
+      des.
       split.
-      { admit ""ez"". }
-      hexploit (bound_outgoing_stack_data (function_bounds f)). i.
-      xomega.
-".
-    }
+      + clear SEP0.
+        unfold frame_contents_1, frame_contents_1_at_external in *.
+        rewrite sep_swap. rewrite sep_swap in SEP. rewrite sep_swap23 in SEP. rewrite <- sep_assoc in SEP.
+        eapply sepconj_isolated_mutation_revisited; try apply SEP; et.
+        * Local Transparent sepconj.
+          u. ii.
+          des_safe. unfold fe_ofs_arg. zsimpl. et.
+        * apply sep_pick1 in SEP. eapply unfree_freed_contains_locations with (CTX := pure True); et.
+          { rewrite <- add_pure_r_eq. eauto. }
+          eauto.
+        * s. ii. des. clarify. u. unfold fe_ofs_arg in *. zsimpl.
+          destruct (classic (x1 < 4 * size_arguments sg)); et.
+          right. split; et. xomega.
+      +
+        eapply sepconj_isolated_mutation_revisited; try apply SEP; et.
+        * u. ii.
+          des_safe. unfold fe_ofs_arg. et.
+        * apply sep_pick1 in SEP0.
+          eapply unfree_freed_range; et.
+        * s. ii. des. clarify. u. unfold fe_ofs_arg in *. zsimpl.
+          destruct (classic (x1 < 4 * size_arguments sg)); et.
+          right. split; et. xomega.
+    - rewrite <- frame_contents_at_external_m_footprint; et.
+      { split; et. admit "ez". }
+      { eapply bound_outgoing_stack_data; et. }
   }
 Qed.
-
-Lemma frame_contents_footprint_irr
-      f j0 j1 spb ls0 ls1 sp ra
-  :
-    (frame_contents f j0 spb ls0 ls1 sp ra).(m_footprint) <2=
-    (frame_contents f j1 spb ls0 ls1 sp ra).(m_footprint)
-.
-Proof.
-  eapply sepconj_footprint_le; et.
-  eapply mconj_footprint_le; et.
-  eapply sepconj_footprint_le; et.
-  eapply sepconj_footprint_le; et.
-  eapply sepconj_footprint_le; et.
-  abstr (fe_ofs_callee_save (make_env (function_bounds f))) ofs.
-  abstr (used_callee_save (function_bounds f)) rs.
-  clear - rs.
-  ginduction rs; i; et.
-  eapply sepconj_footprint_le; et.
-Qed.
-
-Lemma stack_contents_footprint_irr
-      j0 j1 cs cs'
-  :
-    (stack_contents j0 cs cs').(m_footprint) <2=
-    (stack_contents j1 cs cs').(m_footprint)
-.
-Proof.
-  clear - cs.
-  ginduction cs; i; ss.
-  des_ifs.
-  { eapply sepconj_footprint_le; et.
-    eapply frame_contents_footprint_irr.
-  }
-  { eapply sepconj_footprint_le; et.
-    eapply frame_contents_footprint_irr.
-  }
-Qed.
-
-Local Transparent frame_contents.
-Local Transparent frame_contents_at_external.
-Lemma stack_contents_at_external_footprint_le_rev
-      sm0 stack cs' sg j j0 j1
-      (STACKS: match_stacks tge j stack cs' sg sm0)
-  :
-    <<LE: (stack_contents j0 stack cs').(m_footprint)
-          <2=
-          (stack_contents_at_external j1 stack cs' sg).(m_footprint)
-          >>
-.
-Proof.
-  {
-    ii.
-    inv STACKS; ss; psimpl.
-    { desH PR. clarify. zsimpl.
-      des; clarify.
-      - left. rr. esplits; et.
-      - right. esplits; et. clear - PR0 LE. admit "ez - use tailcall_possible".
-    }
-    {{
-        Local Opaque mconj sepconj.
-        inv STK; et.
-        -
-          eapply sepconj_footprint_le; try apply PR; ss.
-          eapply frame_contents_at_external_footprint_le_rev.
-        - eapply sepconj_footprint_le; try apply PR; et.
-          { eapply frame_contents_at_external_footprint_le_rev. }
-          eapply stack_contents_footprint_irr.
-    }}
-  }
-Qed.
-Local Opaque frame_contents.
-Local Opaque frame_contents_at_external.
-Local Opaque sepconj.
-
-Local Transparent stack_contents.
-
-
-Local Transparent sepconj.
-Lemma m_footprint_sepconj_le
-      P0 Q0 P1 Q1
-      (LEP: P0.(m_footprint) <2= P1.(m_footprint))
-      (LEQ: Q0.(m_footprint) <2= Q1.(m_footprint))
-  :
-    <<LE: (P0 ** Q0).(m_footprint) <2= (P1 ** Q1).(m_footprint)>>
-.
-Proof. ii; ss. des; ss; eauto. Qed.
 Local Opaque sepconj.
 
 (* Lemma stack_contents_footprint_irr *)
@@ -1655,7 +1863,7 @@ Proof.
                                                   (vs_tgt := (Args.vs args_tgt)(* targs_tgt *)); eauto.
             * apply SIMSKENV.
             * inv TYPTGT. econs; eauto. rewrite <- MEMTGT. ss.
-            * inv TYPTGT. unfold Ptrofs.max_unsigned in *. xomega.
+            * inv TYPTGT. unfold Ptrofs.max_unsigned in *. s. xomega.
             * rewrite <- SG. eauto with congruence.
             * inv SIMSKENV. ss. inv SIMSKE. ss.
               etrans; et. inv MWF0. ss.
@@ -1758,11 +1966,11 @@ Proof.
                    (stack_contents_at_external (SimMemInj.inj sm0) stack cs' (SkEnv.get_sig skd)).(m_footprint)
                    <2=
                    (stack_contents (SimMemInj.inj sm0) stack cs').(m_footprint)).
-          { eapply stack_contents_at_external_footprint_le; et. }
-          admit "ez - use F".
+          { erewrite stack_contents_at_external_m_footprint; et. }
+          { clear - STACKS F. ii. eapply F; et. erewrite <- stack_contents_at_external_m_footprint; et. }
         }
         rewrite MINJ.
-        eapply stack_contents_at_external_spec; eauto.
+        eapply stack_contents_at_external_intro; eauto.
 
   - (* after fsim *)
     des.
@@ -1859,9 +2067,8 @@ Proof.
       + ii. rewrite locmap_get_set_loc_result; ss.
       }
       inv WTST.
-      eapply match_states_return with (j:= sm_ret.(SimMemInj.inj)); eauto.
-      * econs; ss; eauto. congruence.
-      * (* eapply match_stacks_after_external; eauto. *)
+      assert(STACKS0: match_stacks tge (SimMemInj.inj sm_ret) (stackframes_after_external stack) cs' sg_arg sm1).
+      {
         eapply match_stacks_change_meminj with (j:= (SimMemInj.inj sm0)).
         { eapply inject_incr_trans; try apply MLE0. eapply inject_incr_trans; try apply MLE. ss. }
         assert(MLE2: SimMemInj.le' sm0 sm1).
@@ -1912,6 +2119,9 @@ Proof.
           inv STACKS; econs; et.
           inv AGL. econs; et.
         }
+      }
+      eapply match_states_return with (j:= sm_ret.(SimMemInj.inj)); eauto.
+      * econs; ss; eauto. congruence.
       * eapply agree_regs_set_pair; cycle 1.
         { unfold typify_opt, typify. des_ifs. }
         (* TODO: Remove Mach.regset_after_external *)
@@ -1954,8 +2164,8 @@ Proof.
 
           etrans; try eassumption; eauto.
           etrans; cycle 1.
-          { eapply stack_contents_at_external_footprint_le_rev; et. }
-          erewrite <- stackframes_after_external_footprint. eauto.
+          { erewrite stack_contents_at_external_m_footprint; et. }
+          erewrite <- stackframes_after_external_footprint. eapply stack_contents_footprint_irr; eauto.
 
           (* Lemma less2_divide_r *)
           (*       X0 X1 *)
@@ -1988,53 +2198,7 @@ Proof.
                                     cs cs'0 (SkEnv.get_sig skd)).
         { About stack_contents_change_meminj. admit "this should hold". }
 
-        {
-          assert(UNCH: Mem.unchanged_on (~2 brange sp 0 (4 * size_arguments (SkEnv.get_sig skd)))
-                                        (SimMemInj.tgt sm_ret) (SimMemInj.tgt sm_after) ).
-          { hexploit Mem_unfree_unchanged_on; et. }
-          clear - STEP1 DUMMY UNFR MSRC MINJ MWF2 MLE1 UNCH STACKS
-                        RSP0 SIG CALLSRC CALLTGT SOUND RSP0 MATCH DUMMY.
-          destruct cs; ss. clear DUMMY. clear_tac.
-          destruct cs'0; ss.
-          { inv STACKS. }
-          des_ifs_safe.
-          rename f into fff.
-          (* assert(SGEQ: (SkEnv.get_sig skd) = fff.(Linear.fn_sig)). *)
-          (* { inv MATCH. ss. des. destruct cs; ss; clarify. *)
-          (*   - unfold current_function in *. destruct dummy_stack_src; ss. rename f into ggg. *)
-          (*     rewrite SIG0. *)
-          (*     inv CALLTGT. inv CALLSRC. ss. clarify. des. clarify. folder. *)
-          (* } *)
-          (* assert(SGEQ: (SkEnv.get_sig skd) = fff.(Linear.fn_sig)). *)
-          (* { inv CALLSRC. inv CALLTGT. ss. psimpl. zsimpl. des. clarify. folder. des. clarify. *)
-          (*   des. clarify. inv STACKS; ss. des; ss. admit "". } *)
-          Local Opaque frame_contents dummy_frame_contents.
-          des_ifs; sep_simpl_tac.
-          - ss.
-            Local Transparent dummy_frame_contents.
-            unfold dummy_frame_contents.
-            ss. psimpl. zsimpl. esplits; et; try xomega.
-            + admit "ez ".
-            + admit "ez - use STEP1 - range".
-            + admit "". (* TTTTTTTTTTTTTTTTTTTTTTTTTTTTT sig shoud be different admit "unfree spec". ii. *)
-            + admit "???????????".
-          - ss. sep_simpl_tac.
-          - ss. des_ifs_safe.
-            eapply sepconj_isolated_mutation_revisited; et; apply sep_pick1 in STEP1.
-            + Local Transparent mconj sepconj.
-              Local Transparent frame_contents_at_external.
-              ss. et.
-            + Local Opaque sepconj.
-              Local Transparent frame_contents.
-              unfold frame_contents.
-              unfold frame_contents_at_external in *.
-              ss.
-              des. split.
-              * admit "re-introducing contains locations - this might have an issue".
-              * sep_simpl_tac. unfold fe_ofs_arg in *.
-                admit "range-merge".
-            + admit "footprint".
-        }
+        eapply stack_contents_at_external_spec_elim; et.
 
   - (* final fsim *)
     inv FINALSRC. inv MATCH. inv MATCHST.
@@ -2058,10 +2222,10 @@ Proof.
     destruct st_tgt0; ss. clarify. ss. clarify. ss.
     inv STACKS.
     hexploit (loc_result_one init_sg); eauto. i; des_safe.
-    Local Transparent dummy_frame_contents.
-    unfold dummy_frame_contents in *. psimpl.
+    Local Transparent stack_contents dummy_frame_contents.
+    ss. unfold dummy_frame_contents in *. psimpl. clarify.
     hexploit (Mem.range_perm_free sm0.(SimMemInj.tgt) sp 0 (4 * (size_arguments init_sg))); eauto.
-    { clear - SEP. apply sep_pick1 in SEP. rr in SEP. des. eauto with xomega. }
+    { clear - SEP. apply sep_pick1 in SEP. rr in SEP. des. zsimpl. eauto with xomega. }
     intros (sm_tgt1 & FREETGT).
 
     assert(j = sm0.(SimMemInj.inj)).

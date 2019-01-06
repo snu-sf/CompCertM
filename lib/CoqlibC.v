@@ -256,6 +256,24 @@ Lemma func_ext1
 .
 Proof. apply Axioms.functional_extensionality. ii; ss. Qed.
 
+Lemma func_ext2
+      X Y Z
+      (P Q: X -> Y -> Z)
+      (EQ: all2 (P =2= Q))
+  :
+    <<EQ: P = Q>>
+.
+Proof. apply func_ext1; ss. i. apply func_ext1; ss. Qed.
+
+Lemma func_ext3
+      X Y Z W
+      (P Q: X -> Y -> Z -> W)
+      (EQ: all3 (P =3= Q))
+  :
+    <<EQ: P = Q>>
+.
+Proof. apply func_ext2; ss. i. apply func_ext1; ss. Qed.
+
 (* Originally in sflib, (t):Prop *)
 (* Removed it for use in "privs" of ASTM *)
 (* Notation "<< x : t >>" := (NW (fun x => (t))) (at level 80, x ident, no associativity). *)

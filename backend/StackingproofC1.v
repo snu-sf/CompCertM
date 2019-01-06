@@ -1959,6 +1959,15 @@ Section SIMMOD.
 Variable prog: Linear.program.
 Variable tprog: Mach.program.
 Variable rao: function -> code -> ptrofs -> Prop.
+Hypothesis return_address_offset_exists:
+  forall f sg ros c id (FUNCT: In (id, Gfun (Internal f)) (prog_defs tprog)),
+  is_tail (Mcall sg ros :: c) (fn_code f) ->
+  exists ofs, rao f c ofs.
+Hypothesis return_address_offset_deterministic:
+  forall f c ofs ofs',
+  rao f c ofs ->
+  rao f c ofs' ->
+  ofs = ofs'.
 
 Hypothesis TRANSF: match_prog prog tprog.
 
@@ -1974,6 +1983,11 @@ Proof.
   econs; ss.
   - admit "easy".
   - ii. eapply sim_modsem; eauto.
+    i. ss. uge0. des_ifs.
+    unfold SkEnv.revive in *. apply Genv_map_defs_def in Heq. des. ss. gesimpl.
+    apply Genv_map_defs_def in FIND. des. unfold o_bind, o_join, o_map in *. des_ifs. ss. clear_tac.
+    eapply return_address_offset_exists; et.
+    eapply in_prog_defmap; et.
 Unshelve.
 Qed.
 

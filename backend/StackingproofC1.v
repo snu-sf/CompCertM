@@ -1551,7 +1551,8 @@ Proof.
     { admit "strengthen store_arguments_progress - non-arg area can be anything we want".
       (* ii. erewrite transf_function_sig in *; et. eapply PTRFREE; et. *)
     }
-    { admit "remove this from semantics". }
+    { inv SIMSKENV. ss. inv SIMSKELINK. r in SIMSKENV. clarify. etrans; try apply BOUNDTGT; et. inv MWF.
+      etrans; et. rewrite <- MEMTGT. refl. }
   - (* callstate wf *)
     inv MATCH; ss.
 
@@ -1681,7 +1682,13 @@ Proof.
 
     exists sm1; esplits; eauto.
     + econs; eauto.
-      * admit "SIMSKENVLINK - ez".
+      * instantiate (1:= sg_arg).
+        inv HISTORY. ss. inv MATCHARG. ss.
+        inv SIMSKENV. ss. inv SIMSKELINK. rr in SIMSKENV. rewrite <- SIMSKENV in *.
+        esplits; et.
+        rpapply SIG.
+        { f_equal. clarify. rewrite <- H8. symmetry. eapply fsim_external_inject_eq; et. rewrite H8. et. }
+        { clarify. }
       * rewrite MEMTGT. inv MWFAFTR. ss.
         etrans; eauto.
         inv MLE. rewrite <- TGTPARENTEQNB.
@@ -1859,18 +1866,10 @@ Proof.
     inv FINALSRC. inv MATCH. inv MATCHST.
     exploit match_stacks_sp_ofs; eauto; intro RSP; des_safe.
 
-    (* note: this lemma is not useful here *)
-    (* hexploit arguments_private; eauto. *)
-    (* { apply sep_drop_tail3 in SEP. eauto. } *)
-    (* intro PRIVTGT. *)
 
     ss; clarify.
     des_ifs; sep_simpl_tac; des; ss. Undo 1.
     des_ifs; sep_simpl_tac; des_safe; ss. Undo 1. (*** TODO: Fix des_safe with check_safe!! ***)
-    (* assert(AGLOCS0: Stackingproof.agree_callee_save_after ls0 ls_init). *)
-    (* { des; ss. ii. eapply AGLOCS. des_ifs; ss. } *)
-    (* clear AGLOCS. *)
-    (* sguard in AGLOCS. *)
     des.
     des_ifs; sep_simpl_tac; des; ss.
     (* unsguard AGLOCS. *)
@@ -1884,16 +1883,15 @@ Proof.
     intros (sm_tgt1 & FREETGT).
 
     assert(j = sm0.(SimMemInj.inj)).
-    { admit "Strengthen stackingproof". }
+    { inv MCOMPAT; ss. }
     clarify.
 
     exploit SimMemInj.free_right; eauto.
-    { clear - SEP.
+    { clear - SEP SPVALID.
       apply sep_drop_tail3 in SEP.
       destruct SEP as (A & B & DISJ). ss. des. zsimpl. clear_tac.
       ii. rr in DISJ.
-      rr. esplits; eauto; cycle 1.
-      { admit "sp is valid block". }
+      rr. esplits; eauto.
       specialize (DISJ sp ofs). ss.
       ii. exploit DISJ; eauto.
     }
@@ -1913,7 +1911,40 @@ Proof.
         eapply GOOD0. rewrite <- GOOD. rewrite <- AGCALLEESAVE; ss. rewrite <- H0. ss.
 
   - (* step lemma *)
-    admit "".
+    esplits; eauto.
+    { apply LinearC.modsem_receptive. }
+    inv MATCH.
+    ii. hexploit (@transf_step_correct prog rao ge tge); eauto.
+    { admit "
+Hypothesis return_address_offset_exists:
+  forall f sg ros c v (FUNCT: Genv.find_funct tge v = Some (Internal f)),
+  is_tail (Mcall sg ros :: c) (fn_code f) ->
+  exists ofs, return_address_offset f c ofs.".
+    }
+    { apply make_match_genvs; eauto. apply SIMSKENV. }
+    { des. et. }
+    i; des.
+    esplits; eauto.
+    + left. Require Import ModSemProps.
+      eapply spread_dplus; et. eapply modsem_determinate; eauto.
+      admit "
+Hypothesis return_address_offset_deterministic:
+  forall f c ofs ofs',
+  return_address_offset f c ofs ->
+  return_address_offset f c ofs' ->
+  ofs = ofs'.".
+      s. folder.
+      instantiate (1:= mkstate st_tgt0.(init_rs) st_tgt0.(init_sg) s2').
+      admit "ez - change transf_step_correct:
+1) add ncall/nret in premise
+2) prove src/tgt stack is preserved
+".
+    + econs; ss; et.
+      * inv H0; inv MCOMPAT; ss.
+      * inv H0; inv MCOMPAT; ss.
+      * inv H0; ss.
+      * esplits; et.
+        admit "ez - ditto".
 
 Unshelve.
   all: ss.

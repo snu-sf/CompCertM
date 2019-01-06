@@ -929,6 +929,10 @@ Hypothesis TRANSF: match_prog prog tprog.
 Variable rao: Mach.function -> Mach.code -> ptrofs -> Prop.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
+Hypothesis return_address_offset_exists:
+  forall f sg ros c v (FUNCT: Genv.find_funct tge v = Some (Internal f)),
+  is_tail (Mcall sg ros :: c) (fn_code f) ->
+  exists ofs, rao f c ofs.
 
 Print Instances SimMem.class.
 Print Instances SimSymb.class.
@@ -1858,7 +1862,7 @@ Proof.
 
         assert(STEP1: SimMemInj.tgt sm_ret |= stack_contents_at_external (SimMemInj.inj sm_ret)
                                     cs cs'0 (SkEnv.get_sig skd)).
-        { About stack_contents_change_meminj. admit "this should hold". }
+        { About stack_contents_change_meminj. admit "ez - this should hold". }
 
         eapply stack_contents_at_external_spec_elim; et.
 
@@ -1915,12 +1919,6 @@ Proof.
     { apply LinearC.modsem_receptive. }
     inv MATCH.
     ii. hexploit (@transf_step_correct prog rao ge tge); eauto.
-    { admit "
-Hypothesis return_address_offset_exists:
-  forall f sg ros c v (FUNCT: Genv.find_funct tge v = Some (Internal f)),
-  is_tail (Mcall sg ros :: c) (fn_code f) ->
-  exists ofs, return_address_offset f c ofs.".
-    }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { des. et. }
     i; des.

@@ -1330,16 +1330,6 @@ Section PRESERVATION.
       + apply (eq_refl (fn_sig fd)).
       + apply FINDF.
       + rewrite arg_copy_reg_PC. ss.
-      + clear - GEINJECT INJECT FREE.
-        erewrite freed_from_nextblock; eauto.
-        set (LE:=Registers.Regset.MSet.Raw.MX.OrderTac.TO.lt_total
-                 (Senv.nextblock skenv_link) (Mem.nextblock m_src)). des.
-        * apply Plt_Ple. auto.
-        * rewrite LE. refl.
-        * inv GEINJECT. apply DOMAIN in LE.
-          inv INJECT. unfold Mem.valid_block in *.
-          specialize (mi_freeblocks _ (Plt_strict (Mem.nextblock m_src))).
-          clarify.
       + eapply typecheck_intro; eauto.
         rewrite sig_args_length.
         unfold extcall_arguments in *.

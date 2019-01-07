@@ -1587,8 +1587,6 @@ Proof.
     esplits; et.
     econs; et.
     { instantiate (1:= Vlong Int64.zero). ss. }
-    { inv SIMSKENV. ss. inv SIMSKELINK. r in SIMSKENV. clarify. etrans; try apply BOUNDTGT; et. inv MWF.
-      etrans; et. rewrite <- MEMTGT. refl. }
   - (* callstate wf *)
     inv MATCH; ss.
 
@@ -1640,6 +1638,9 @@ Proof.
         { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. apply SIMSKENV. }
         ii. clarify.
       * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
+      * destruct (Senv.block_is_volatile skenv_link_tgt sp) eqn:T; ss. exfalso.
+        exploit Genv.block_is_volatile_below; et. intro T0.
+        admit "not volatile - strengthen match_states(we may not need to change StackingproofC0. We can just add here.)".
     + econs; ss; eauto with congruence.
     + econs; ss; et.
       econs; ss; et. u. i. des. clarify. eapply Mem.free_range_perm; et.

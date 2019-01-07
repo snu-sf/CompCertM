@@ -279,6 +279,7 @@ Section MODSEM.
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))
       (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
+      (NOTVOL: Senv.block_is_volatile skenv_link blk = false)
       init_rs init_sg
     :
       at_external (mkstate init_rs init_sg (Callstate stack fptr rs m0)) (Args.mk fptr vs m1)
@@ -300,7 +301,6 @@ Section MODSEM.
           (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
         ,
           <<PTRFREE: ~ is_real_ptr (rs mr)>>)
-      (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
     :
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack

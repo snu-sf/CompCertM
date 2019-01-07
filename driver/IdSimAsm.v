@@ -700,8 +700,8 @@ Section TRIAL2.
               { ii. rr in LEOLD. des. eapply OLD0. esplits; et. clear - OLD GR FREE. admit "ez". }
               exploit HLE; et. intro SUGR; des.
 
-              assert(UNCH: (ZMap.get ofs0 (Mem.mem_contents m2) !! blk2)
-                           = (ZMap.get ofs0 (Mem.mem_contents m1) !! blk2)).
+              assert(UNCH: (ZMap.get ofs1 (Mem.mem_contents m2) !! blk2)
+                           = (ZMap.get ofs1 (Mem.mem_contents m1) !! blk2)).
               { inv MLE. eapply Mem.unchanged_on_contents; eauto.
                 - eapply PRIV; et.
                   admit "ez".

@@ -118,7 +118,9 @@ Section MODSEM.
       (VALS: Asm.extcall_arguments rs m0 sg vs)
       (RSP: rs RSP = Vptr blk1 ofs true)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
-      (OFSZERO: ofs = Ptrofs.zero)
+      (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
+          (align_chunk chunk | ofs.(Ptrofs.unsigned)))
+      (* (OFSZERO: ofs = Ptrofs.zero) *)
       (FREE: Mem.free m0 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
       (NOTVOL: Senv.block_is_volatile skenv_link blk1 = false)
       init_rs
@@ -194,7 +196,7 @@ Section MODSEM.
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
       ModSem.skenv := skenv;
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv_link := skenv_link;
     |}
   .
   Next Obligation.

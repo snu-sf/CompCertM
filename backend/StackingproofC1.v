@@ -1639,6 +1639,7 @@ Proof.
       * folder. eapply (fsim_external_funct_inject SIMGE); et.
         { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. apply SIMSKENV. }
         ii. clarify.
+      * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
     + econs; ss; eauto with congruence.
     + econs; ss; et.
       econs; ss; et. u. i. des. clarify. eapply Mem.free_range_perm; et.

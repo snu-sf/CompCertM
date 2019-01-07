@@ -137,7 +137,6 @@ Section MODSEM.
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (RSPC: rs # PC = args.(Args.fptr))
       (* (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
-      (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
       targs
       (TYP: typecheck args.(Args.vs) sg targs)
       (STORE: store_arguments args.(Args.m) rs targs sg m)

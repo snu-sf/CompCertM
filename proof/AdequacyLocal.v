@@ -476,10 +476,11 @@ Section ADQMATCH.
       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
       ms_src lst_src0
       ms_tgt lst_tgt0
-      sm_arg
+      sm_at sm_arg
       (MWF: SimMem.wf sm_arg)
-      (GE: sim_ge sm_arg sem_src.(globalenv) sem_tgt.(globalenv))
-      (MLE: SimMem.le tail_sm sm_arg)
+      (GE: sim_ge sm_at sem_src.(globalenv) sem_tgt.(globalenv))
+      (MLE: SimMem.le tail_sm sm_at)
+      (MLE: SimMem.le sm_at sm_arg)
       sm_init
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
       sound_state_local
@@ -504,7 +505,7 @@ Section ADQMATCH.
           exists lst_tgt1 sm_after i1,
             (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 retv_tgt lst_tgt1>>)
             /\
-            (<<MLE: SimMem.le (sm_arg.(SimMem.unlift) sm_ret) sm_after>>)
+            (<<MLE: SimMem.le sm_at sm_after>>)
             /\
             (<<LXSIM: lxsim ms_src ms_tgt (fun st => exists su m_arg, sound_state_local su m_arg st)
                             tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
@@ -868,8 +869,6 @@ Section ADQSTEP.
       exploit CALLFSIM; eauto.
       (* { clear - GE. inv GE. des. ss. eapply SimSymb.sim_skenv_func_bisim; eauto. } *)
       i; des.
-      eapply mfuture_preserves_sim_ge with (sm2:= sm_arg) in GE; eauto; cycle 1.
-      { apply rtc_once; eauto. }
       esplits; eauto.
       + left. apply plus_one.
         econs; ss; eauto.
@@ -882,7 +881,10 @@ Section ADQSTEP.
         {
           instantiate (1:= (SimMem.lift sm_arg)).
           econs 2; eauto.
-          * ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto.
+          * ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto.
+            econs 2.
+            { left. et. }
+            econs 2; et.
           * instantiate (1:= (SimMem.lift sm_arg)).
             econs; [eassumption|..]; revgoals.
             { ii. exploit K; eauto.
@@ -893,10 +895,11 @@ Section ADQSTEP.
               (*   i; des. esplits. eapply K0; eauto. *)
 
               (* } *)
-              i; des_safe. pclearbot. esplits; eauto. }
+              i; des_safe. pclearbot. esplits; try apply LXSIM; eauto. }
             { ss. }
             { reflexivity. }
-            { etransitivity; eauto. }
+            { et. }
+            { et. }
             { ss. folder. des_ifs. }
             { eauto. }
           * reflexivity.
@@ -950,17 +953,9 @@ Section ADQSTEP.
         econs; ss; cycle 3.
         { eauto. }
         { eauto. }
-        { folder. des_ifs.
-          eapply mfuture_preserves_sim_ge; eauto.
-          apply rtc_once; eauto. left.
-          etransitivity; eauto.
-          eapply SimMem.unlift_spec; eauto.
-          etransitivity; eauto. }
+        { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. }
         { eauto. }
-        { etransitivity; eauto.
-          etransitivity; eauto.
-          eapply SimMem.unlift_spec; eauto.
-          etransitivity; eauto. }
+        { etrans; eauto. }
   Qed.
 
 End ADQSTEP.

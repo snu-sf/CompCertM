@@ -129,6 +129,45 @@ Qed.
 
 Section ORIGINALS.
 
+Inductive le_excl (excl_src excl_tgt: block -> Z -> Prop) (mrel0 mrel1: t'): Prop :=
+| le_excl_intro
+    (INCR: inject_incr mrel0.(inj) mrel1.(inj))
+    (SRCUNCHANGED: Mem.unchanged_on mrel0.(src_external) mrel0.(src) mrel1.(src))
+    (TGTUNCHANGED: Mem.unchanged_on mrel0.(tgt_external) mrel0.(tgt) mrel1.(tgt))
+    (SRCPARENTEQ: mrel0.(src_external) = mrel1.(src_external))
+    (SRCPARENTEQNB: mrel0.(src_parent_nb) = mrel1.(src_parent_nb))
+    (TGTPARENTEQ: mrel0.(tgt_external) = mrel1.(tgt_external))
+    (TGTPARENTEQNB: mrel0.(tgt_parent_nb) = mrel1.(tgt_parent_nb))
+    (FROZEN: frozen mrel0.(inj) mrel1.(inj) (mrel0.(src_parent_nb))
+                                            (mrel0.(tgt_parent_nb)))
+    (MAXSRC: forall
+        b ofs
+        (VALID: Mem.valid_block mrel0.(src) b)
+        (EXCL: ~ excl_src b ofs)
+      ,
+        <<MAX: Mem.perm mrel1.(src) b ofs Max <1= Mem.perm mrel0.(src) b ofs Max>>)
+    (MAXTGT: forall
+        b ofs
+        (VALID: Mem.valid_block mrel0.(tgt) b)
+        (EXCL: ~ excl_tgt b ofs)
+      ,
+        <<MAX: Mem.perm mrel1.(tgt) b ofs Max <1= Mem.perm mrel0.(tgt) b ofs Max>>)
+.
+
+Inductive has_footprint (excl_src excl_tgt: block -> Z -> Prop) (sm0: t'): Prop :=
+| has_footprint_intro
+    (FOOTSRC: forall
+        blk ofs
+        (EXCL: excl_src blk ofs)
+      ,
+        <<PERM: Mem.perm sm0.(src) blk ofs Cur Freeable>>)
+    (FOOTTGT: forall
+        blk ofs
+        (EXCL: excl_tgt blk ofs)
+      ,
+        <<PERM: Mem.perm sm0.(tgt) blk ofs Cur Freeable>>)
+.
+
 Lemma unfree_right
       sm0 lo hi blk m_tgt0
       (MWF: wf' sm0)
@@ -141,10 +180,11 @@ Lemma unfree_right
       /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
       /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
       /\ (<<MWF: wf' sm1>>)
-      /\ (<<MLE: le' sm0 sm1>>)
+      /\ (<<MLE: le_excl bot2 (brange blk lo hi) sm0 sm1>>)
 .
 Proof.
   exists (sm0.(update) sm0.(src) m_tgt0 sm0.(inj)).
+  exploit Mem_unfree_unchanged_on; et. intro UNCH.
   esplits; u; ss; eauto.
   - econs; ss; eauto.
     + inv MWF. eapply Mem_unfree_right_inject; eauto.
@@ -157,7 +197,48 @@ Proof.
     + refl.
     + eapply Mem.unchanged_on_implies. { eapply Mem_unfree_unchanged_on; eauto. } ii. eapply RANGE; et.
     + eapply frozen_refl.
-    + admit "TODO: MAXTGT".
+    + ii. eapply Mem.perm_unchanged_on_2; et.
+Qed.
+
+Lemma foot_excl
+      sm0 sm1 sm2 excl_src excl_tgt
+      (FOOT: has_footprint excl_src excl_tgt sm0)
+      (MLE: le' sm0 sm1)
+      (MLEEXCL: le_excl excl_src excl_tgt sm1 sm2)
+  :
+    <<MLE: le' sm0 sm2>>
+.
+Proof.
+  inv MLE. inv MLEEXCL.
+  econs; et.
+  - etrans; et.
+  - etrans; et. rewrite SRCPARENTEQ. ss.
+  - etrans; et. rewrite TGTPARENTEQ. ss.
+  - etrans; et.
+  - etrans; et.
+  - etrans; et.
+  - etrans; et.
+  - clear - FROZEN FROZEN0 INCR0 SRCPARENTEQNB TGTPARENTEQNB.
+    inv FROZEN. inv FROZEN0. econs.
+    i. des.
+    destruct (inj sm1 b_src) eqn:T.
+    + destruct p; ss. exploit INCR0; et. i; clarify.
+      exploit NEW_IMPLIES_OUTSIDE; et.
+    + exploit NEW_IMPLIES_OUTSIDE0; et. i; des. esplits; eauto with congruence xomega.
+  - ii.
+    destruct (classic (excl_src b ofs)).
+    + inv FOOT. eapply Mem.perm_cur_max. eapply Mem.perm_implies with (p1 := Freeable); [|eauto with mem].
+      eapply FOOTSRC; et.
+    + eapply MAXSRC; et.
+      eapply MAXSRC0; et.
+      eapply Mem.valid_block_unchanged_on; et.
+  - ii.
+    destruct (classic (excl_tgt b ofs)).
+    + inv FOOT. eapply Mem.perm_cur_max. eapply Mem.perm_implies with (p1 := Freeable); [|eauto with mem].
+      eapply FOOTTGT; et.
+    + eapply MAXTGT; et.
+      eapply MAXTGT0; et.
+      eapply Mem.valid_block_unchanged_on; et.
 Qed.
 
 End ORIGINALS.
@@ -329,7 +410,16 @@ Proof.
       i. ss. des_ifs. apply TGTEXT in H0. u in H0. des.
       exfalso. eapply Mem.fresh_block_alloc; eauto.
     + eapply frozen_refl.
-    + admit "TODO: MAXTGT".
+    + i. r.
+      etrans; cycle 1.
+      {
+        ii.
+        eapply Mem.perm_alloc_4; et.
+      }
+      { ii. eapply Mem.perm_unchanged_on_2; et.
+        - ss. des_ifs. unfold Mem.valid_block in *. xomega.
+        - unfold Mem.valid_block in *. xomega.
+      }
   - ii. u. esplits; eauto.
     + ii.
       exploit Mem.mi_perm; try apply MWF; eauto. i.

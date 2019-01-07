@@ -161,7 +161,7 @@ Section SIMMODSEM.
                 exists st_tgt1 sm_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>)
                   /\
-                  (<<MLE: SimMem.le (sm_arg.(SimMem.unlift) sm_ret) sm_after>>)
+                  (<<MLE: SimMem.le sm0 sm_after>>)
                   /\
                   (<<LXSIM: lxsim sm_init i1 st_src1 st_tgt1 sm_after>>)>>)
                   )>>)

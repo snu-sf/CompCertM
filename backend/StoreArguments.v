@@ -1837,14 +1837,43 @@ Module FillArgsProgress.
     - ii. eapply fill_arguments_perm; eauto. eauto with mem.
   Qed.
 
+  Theorem fill_arguments_unchanged
+          m1 rs0 sp targs locs
+          rs1 m2
+          (FILL: fill_arguments sp rs0 m1 targs locs = Some (rs1, m2))
+    :
+      <<PTRFREE: forall
+        mr
+        (NIN: ~ In (R mr) (regs_of_rpairs locs)),
+        rs0 mr = rs1 mr>>.
+  Proof.
+    ginduction locs; ii; s.
+    - destruct targs; ss; clarify.
+    - destruct targs; ss; clarify.
+      unfold o_bind, o_bind2, o_join, o_map, curry2, fst in *. ss.
+      des_ifs; ss.
+      + exploit IHlocs; try apply Heq0; ss; eauto.
+        i.
+        unfold Regmap.set; des_ifs.
+        exfalso; eauto.
+      + exploit IHlocs; try apply Heq0; ss; eauto.
+  Qed.
+
 End FillArgsProgress.
+
 
 Theorem store_arguments_progress
         m0 tvs sg
         (TYP: Val.has_type_list tvs sg.(sig_args))
         (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
   :
-    exists rs m2, <<STR: store_arguments m0 rs tvs sg m2>>
+    exists rs m2,
+      (<<STR: store_arguments m0 rs tvs sg m2>>) /\
+      (<<PTRFREE:
+         forall
+           mr
+           (NIN: ~ In (R mr) (regs_of_rpairs (loc_arguments sg))),
+           ~ is_real_ptr (rs mr)>>)
 .
 Proof.
   destruct (Mem.alloc m0 0 (4 * size_arguments sg)) eqn:ALC.
@@ -1854,5 +1883,9 @@ Proof.
     induction tvs; ss; i; des_ifs; ss.
     f_equal. eapply IHtvs. des. auto. }
   exploit (FillArgsProgress.fill_arguments_progress sg m0 (Regmap.init Vundef)); eauto. i; des.
+  hexploit (FillArgsProgress.fill_arguments_unchanged); eauto. i.
   exploit (FillArgsProgress.fill_arguments_spec sg m0 (Regmap.init Vundef) m1 blk tvs); eauto.
+  hexploit (FillArgsProgress.fill_arguments_unchanged); eauto. intros UNCH.
+  esplits; eauto.
+  ii. exploit UNCH; eauto. i. unfold is_real_ptr in *. des_ifs.
 Qed.

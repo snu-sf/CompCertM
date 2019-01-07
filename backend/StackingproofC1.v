@@ -1550,9 +1550,6 @@ Proof.
     esplits; et.
     econs; et.
     { instantiate (1:= Vlong Int64.zero). ss. }
-    { admit "strengthen store_arguments_progress - non-arg area can be anything we want".
-      (* ii. erewrite transf_function_sig in *; et. eapply PTRFREE; et. *)
-    }
     { inv SIMSKENV. ss. inv SIMSKELINK. r in SIMSKENV. clarify. etrans; try apply BOUNDTGT; et. inv MWF.
       etrans; et. rewrite <- MEMTGT. refl. }
   - (* callstate wf *)

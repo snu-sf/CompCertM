@@ -11,7 +11,7 @@ Local Open Scope sep_scope.
 (* newly added *)
 Require Export StackingproofC0 StoreArguments.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC ArgPassing MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC ArgPassing MatchSimModSemExcl.
 Require Import Conventions1C.
 Require SimMemInjC.
 Require Import AxiomsC.
@@ -1411,17 +1411,54 @@ Theorem make_match_genvs :
   Genv.match_genvs (match_globdef (fun cunit f tf => transf_fundef f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. u. des_ifs; ss; unfold Errors.bind in *; des_ifs. } Qed.
 
+Inductive has_footprint (st_src0: Linear.state): MachC.state -> SimMem.t -> Prop :=
+| has_footprint_intro
+    (** copied from MachC **)
+    stack rs m0 fptr sg blk ofs
+    (SIG: exists skd, skenv_link_tgt.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
+    (RSP: (parent_sp stack) = Vptr blk ofs true)
+    (OFSZERO: ofs = Ptrofs.zero)
+    init_rs init_sg
+    (** newly added **)
+    sm0
+    (FOOT: SimMemInjC.has_footprint bot2 (brange blk (ofs.(Ptrofs.unsigned))
+                                                 (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg))) sm0)
+    (* (MTGT: m0 = sm0.(SimMem.tgt)) *)
+  :
+    has_footprint st_src0 (mkstate init_rs init_sg (Callstate stack fptr rs m0)) sm0
+.
+
+Inductive mle_excl (st_src0: Linear.state): MachC.state -> SimMem.t -> SimMem.t -> Prop :=
+| mle_excl_intro
+    (** copied from MachC **)
+    init_rs init_sg stack fptr ls0 m0
+    sg blk ofs
+    (SIG: exists skd, skenv_link_tgt.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
+    (RSP: (parent_sp stack) = Vptr blk ofs true)
+    (** newly added **)
+    sm0 sm1
+    (MLEEXCL: SimMemInjC.le_excl bot2 (brange blk (ofs.(Ptrofs.unsigned))
+                                                 (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg))) sm0 sm1)
+    (* (MTGT: m0 = sm0.(SimMem.tgt)) *)
+  :
+    mle_excl st_src0 (mkstate init_rs init_sg (Callstate stack fptr ls0 m0)) sm0 sm1
+.
+
 Theorem sim_modsem
   :
     ModSemPair.sim msp
 .
 Proof.
   eapply match_states_sim with (match_states := match_states) (match_states_at := match_states_at)
-                               (sound_state := fun _ _ => wt_state);
+                               (sound_state := fun _ _ => wt_state)
+                               (has_footprint := has_footprint)
+                               (mle_excl := mle_excl)
+  ;
     eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - eapply wt_state_local_preservation; eauto.
     eapply wt_prog; eauto.
+  - inv FOOT. inv MLEEXCL. rewrite RSP in *. clarify. des. clarify. eapply SimMemInjC.foot_excl; et.
   - (* init bsim *)
     {
       inv INITTGT. inv STORE. folder.
@@ -1582,26 +1619,32 @@ Proof.
     i; des. clarify.
 
     hexpl Mem.nextblock_free NB.
+    assert(EXTTGT: exists skd_tgt,
+              Genv.find_funct skenv_link_tgt tfptr = Some skd_tgt /\ SkEnv.get_sig skd_tgt = SkEnv.get_sig skd).
+    {
+      folder. esplits; eauto.
+      (* copied from InliningproofC *)
+      (** TODO: remove redundancy **)
+      inv SIMSKENV. ss.
+      assert(fptr_arg = tfptr).
+      { eapply fsim_external_inject_eq; try apply SIG; et. Undo 1.
+        inv FPTR; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
+        inv SIMSKE. ss. inv INJECT; ss.
+        exploit (DOMAIN b1); eauto.
+        { eapply Genv.genv_defs_range; et. }
+        i; clarify.
+      }
+      clarify.
+      eapply SimSymb.simskenv_func_fsim; eauto; ss.
+    }
     esplits; eauto.
     + econs; eauto.
       * folder. eapply (fsim_external_funct_inject SIMGE); et.
         { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. apply SIMSKENV. }
         ii. clarify.
-      * folder. esplits; eauto.
-        (* copied from InliningproofC *)
-        (** TODO: remove redundancy **)
-        inv SIMSKENV. ss.
-        assert(fptr_arg = tfptr).
-        { eapply fsim_external_inject_eq; try apply SIG; et. Undo 1.
-          inv FPTR; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
-          inv SIMSKE. ss. inv INJECT; ss.
-          exploit (DOMAIN b1); eauto.
-          { eapply Genv.genv_defs_range; et. }
-          i; clarify.
-        }
-        clarify.
-        eapply SimSymb.simskenv_func_fsim; eauto; ss.
     + econs; ss; eauto with congruence.
+    + econs; ss; et.
+      econs; ss; et. u. i. des. clarify. eapply Mem.free_range_perm; et.
     + econs; eauto with congruence.
       * rp; eauto.
       * u. ii. des; clarify. specialize (H0 x1). zsimpl. esplits; eauto.
@@ -1683,23 +1726,25 @@ Proof.
     }
     i; des. ss.
 
-    exists sm1; esplits; eauto.
+    assert(EXTTGT: exists skd, Genv.find_funct skenv_link_tgt tfptr = Some skd /\ SkEnv.get_sig skd = sg_arg).
+    {
+      inv HISTORY. ss. inv MATCHARG. ss.
+      inv SIMSKENV. ss. inv SIMSKELINK. rr in SIMSKENV. rewrite <- SIMSKENV in *.
+      esplits; et.
+      rpapply SIG.
+      { f_equal. clarify. rewrite <- H8. symmetry. eapply fsim_external_inject_eq; et. rewrite H8. et. }
+      { clarify. }
+    }
+    exists sm1; esplits; eauto; [|i; split].
+    + econs; et.
     + econs; eauto.
-      * instantiate (1:= sg_arg).
-        inv HISTORY. ss. inv MATCHARG. ss.
-        inv SIMSKENV. ss. inv SIMSKELINK. rr in SIMSKENV. rewrite <- SIMSKENV in *.
-        esplits; et.
-        rpapply SIG.
-        { f_equal. clarify. rewrite <- H8. symmetry. eapply fsim_external_inject_eq; et. rewrite H8. et. }
-        { clarify. }
       * rewrite MEMTGT. inv MWFAFTR. ss.
         etrans; eauto.
         inv MLE. rewrite <- TGTPARENTEQNB.
         inv SIMSKENV. inv SIMSKELINK. ss. rr in SIMSKENV. rewrite <- SIMSKENV. ss.
       * psimpl. zsimpl. rp; eauto.
     + econs; ss; eauto with congruence; cycle 1.
-      { assert(MLE2: SimMemInj.le' sm0 sm1).
-        { etrans; eauto. etrans; eauto. }
+      {
         clear - MLE2 GOOD DUMMY STACKS. destruct stack; ss; des_ifs; ss.
         { esplits; ss; eauto; ss. }
         rewrite DUMMY. esplits; eauto.
@@ -1736,8 +1781,6 @@ Proof.
       {
         eapply match_stacks_change_meminj with (j:= (SimMemInj.inj sm0)).
         { eapply inject_incr_trans; try apply MLE0. eapply inject_incr_trans; try apply MLE. ss. }
-        assert(MLE2: SimMemInj.le' sm0 sm1).
-        { etrans; et. etrans; et. }
         eapply match_stacks_le; try apply STACKS; et.
         { intros ? ? ? VALID0 MAP0. rewrite MINJ in *.
           bar.

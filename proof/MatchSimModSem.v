@@ -219,13 +219,14 @@ Section MATCHSIMFORWARD.
         { eapply SimMem.unlift_wf; eauto. }
         { eapply SimMem.unlift_spec; eauto. }
         i; des.
+        assert(MLE3: SimMem.le sm0 sm_after).
+        { etrans; cycle 1. { et. } etrans; et. eapply SimMem.unlift_spec; et. }
         esplits; eauto.
         right.
         eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
-          apply rtc_once. left.
-          etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
-        { etransitivity; eauto. etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
+          apply rtc_once. left. et. }
+        { etransitivity; eauto. }
     }
     generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
     {

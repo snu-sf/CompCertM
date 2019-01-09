@@ -126,6 +126,19 @@ Ltac sep_simpl_tac :=
 
 Section STACKINGEXTRA.
 
+Lemma match_stacks_sp_valid
+      ge j cs cs' sg sm0 sp'
+      (STKS: match_stacks ge j cs cs' sg sm0)
+      (SP: parent_sp cs' = Vptr sp' Ptrofs.zero true)
+:
+  <<SPVALID: sm0.(SimMemInj.tgt).(Mem.valid_block) sp' /\
+             Ple sm0.(SimMemInj.tgt_parent_nb) sp' /\
+             forall i, ~ sm0.(SimMemInj.tgt_external) sp' i>>
+.
+Proof.
+  inv STKS; des_safe; ss; clarify; esplits; eauto.
+Qed.
+
 Lemma match_stacks_sp_ofs:
   forall j ge cs cs' sg sm,
   match_stacks ge j cs cs' sg sm ->
@@ -1222,7 +1235,7 @@ Proof.
           { apply sep_pick1 in SEP.
             eapply free_freed_contains_locations with (CTX := pure True); et.
             { rewrite <- add_pure_r_eq. ss. }
-            { inv STACKS. ss. }
+            { eapply match_stacks_sp_valid; eauto. }
           }
           { eapply Mem.unchanged_on_implies; try apply UNCH; et. s.
             ii. apply not_and_or in H. des; et.
@@ -1238,7 +1251,7 @@ Proof.
           {
             ss. unfold fe_ofs_arg. zsimpl. esplits; et; try xomega.
             + apply sep_pick1 in SEP0. ss. des. ss.
-            + i. inv STACKS. eapply Mem.valid_block_free_1; et.
+            + i. inv STACKS. des. eapply Mem.valid_block_free_1; et.
           }
       }
       {
@@ -1546,12 +1559,20 @@ Proof.
           + clarify.
           + econs; ss; eauto.
             * eapply loc_arguments_bounded.
-            * (* TODO: make lemma *) rewrite SM. s. rewrite MEMTGT.
-              clear - ALC NB MWF. ii. inv MWF; ss. eapply TGTEXT in H.
-              rr in H; ss. des. r in H0. unfold Mem.valid_block in *.
-              exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. xomega.
+            (* * (* TODO: make lemma *) rewrite SM. s. rewrite MEMTGT. *)
+            (*   clear - ALC NB MWF. ii. inv MWF; ss. eapply TGTEXT in H. *)
+            (*   rr in H; ss. des. r in H0. unfold Mem.valid_block in *. *)
+            (*   exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. xomega. *)
             * rewrite SM. s. unfold Mem.valid_block. rewrite <- NB.
-              exploit Mem.nextblock_alloc; et. i. rewrite H. xomega.
+              exploit Mem.nextblock_alloc; et. i. rewrite H. rewrite MEMTGT.
+              clear - ALC NB MWF.
+              esplits.
+              { xomega. }
+              { inv MWF. etrans; et. xomega. }
+              { (* TODO: make lemma *)
+                ii. inv MWF; ss. eapply TGTEXT in H.
+                rr in H; ss. des. r in H0. unfold Mem.valid_block in *.
+                exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. xomega. }
           + psimpl. zsimpl. rewrite SG.
             rewrite MEMSRC. rewrite MEMTGT.
             eapply init_match_frame_contents with (vs_src := (Args.vs args_src))
@@ -1604,13 +1625,13 @@ Proof.
     exploit transl_external_arguments; eauto. { apply sep_pick1 in SEP. eauto. } intro ARGS; des.
 
     assert(VALID: Mem.valid_block (SimMemInj.tgt sm0) sp).
-    { inv STACKS; ss; clarify. }
+    { exploit match_stacks_sp_valid; eauto. i; des. eauto. }
 
     exploit SimMemInj.free_right; eauto.
     { u. ii. esplits; eauto.
       do 2 spc H0. zsimpl. eauto.
     }
-    { inv STACKS; ss; clarify; et. }
+    { exploit match_stacks_sp_valid; eauto. i; des. eauto. }
     i; des. clarify.
 
     hexpl Mem.nextblock_free NB.
@@ -1640,7 +1661,8 @@ Proof.
       * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
       * destruct (Senv.block_is_volatile skenv_link_tgt sp) eqn:T; ss. exfalso.
         exploit Genv.block_is_volatile_below; et. intro T0.
-        admit "not volatile - strengthen match_states(we may not need to change StackingproofC0. We can just add here.)".
+        exploit match_stacks_sp_valid; eauto. intro SPVALID; des.
+        { clear - SPVALID0 T0 SIMSKENV. inv SIMSKENV. ss. inv SIMSKELINK. r in SIMSKENV. clarify. xomega. }
     + econs; ss; eauto with congruence.
     + econs; ss; et.
       econs; ss; et. u. i. des. clarify. eapply Mem.free_range_perm; et.
@@ -1719,9 +1741,8 @@ Proof.
     exploit (@SimMemInjC.unfree_right _ (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
     { ss. bar. inv MLE. rewrite <- TGTPARENTEQ. clear_until_bar.
       r. unfold brange.
-      inv STACKS; ss; clarify.
-      - ii. des_safe. clarify. eapply EXT_TGT_NON; et.
-      - ii. des_safe. clarify. eapply EXT_TGT_NON; et.
+      hexploit match_stacks_sp_valid; eauto. intro SPVALID; des.
+      ii. des_safe. clarify. eapply SPVALID1; eauto.
     }
     i; des. ss.
 

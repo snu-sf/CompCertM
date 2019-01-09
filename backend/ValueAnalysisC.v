@@ -44,6 +44,19 @@ Proof.
   Local Opaque Mem.loadbytes.
 Qed.
 
+
+Lemma sound_skenv_bmatch
+      (ge: genv) args bc b init
+      (PERM: forall (ofs : Z) (p : permission),
+          Mem.perm (Args.m args) b ofs Max p ->
+          <<OFS: 0 <= ofs < init_data_list_size init >> /\ <<ORD: perm_order Readable p>>)
+      (LABLE: Genv.load_store_init_data ge (Args.m args) b 0 init)
+  :
+    bmatch bc (Args.m args) b (store_init_data_list (ablock_init Pbot) 0 init)
+.
+Proof.
+Qed.
+
 Lemma sound_state_sound_args
       bc m0 stack su0 p skenv_link vs_arg cunit
       ge
@@ -318,16 +331,64 @@ Section PRSV.
           i; des.
           clear RO.
 
+
+          Local Opaque Z.add.
           {
-            clear - LABLE.
+            clear - LABLE PERM.
+            tttttttt
+            revert LABLE.
+            revert PERM. assert(POS: 0 <= 0) by xomega. revert POS.
+            generalize (0%Z) at 2 3 4 as ofs_init. i. move POS at bottom.
+
+            unfold bmatch. unfold smatch.
+            splits; i.
+            - specialize (PERM ofs).
+              ginduction init; ii; ss.
+              { admit "noperm". }
+              des_ifs; ss; des.
+              + destruct (classic (ofs < init_data_list_size init)).
+                * zsimpl.
+                  rpapply vmatch_vplub_l; eauto.
+                  { eapply IHinit; et.
+                    - i. exploit PERM; et. i; des. splits; try xomega; ss.
+                      admit "".
+                    - xomega.
+                  }
+                  f_equal.
+                  ss.
+
+                  eapply IHinit; et. i. exploit PERM; et. i; des. splits; try xomega; ss.
+                * assert(init_data_list_size init = ofs) by admit "". clarify.
+                  rename init into inits.
+                  destruct v; econs; et.
+            -
+          }
+
+          {
+            clear - LABLE PERM.
             abstr (store_init_data_list (ablock_init Pbot) 0 init) ab.
-            revert LABLE. generalize (0%Z) as ofs_init. i.
+            revert LABLE.
+            (* revert PERM. assert(POS: 0 <= 0) by xomega. revert POS. *)
+            (* generalize (0%Z) at 2 3 4 as ofs_init. i. move POS at bottom. *)
+            generalize (0%Z) at 1 as ofs_init. i.
             ginduction init; ii; ss.
             { r. split.
-              - r. admit "noperm".
+              - r. split.
+                + i.
+                  admit "noperm".
+                + i.
+                  admit "noperm".
               - admit "noperm".
             }
-            des_ifs; des; ss; try eapply IHinit; et.
+            des_ifs; des; ss.
+            - r.
+              split; i.
+              + r.
+                split; i.
+                * eapply IHinit; et.
+            - try eapply IHinit; et.
+              + ii. exploit PERM; et. i; des. esplits; eauto; try xomega.
+              +
           }
         * inv SKENV.
           exploit RO; eauto.

@@ -509,10 +509,64 @@ Proof.
       }
 Qed.
 
+Let J_injective: forall
+    fuel x0 x1 n
+    (J0: J fuel x0 n)
+    (J1: J fuel x1 n)
+    (BDD: forall blk, Ple fuel blk -> x0 blk = x1 blk)
+    (GENB: x0.(ge_nb) = x1.(ge_nb))
+    (NB: x0.(nb) = x1.(nb))
+  ,
+    x0 = x1
+.
+Proof.
+  i.
+  eapply eta; ss.
+  apply func_ext1.
+  revert_until fuel.
+  pattern fuel.
+  eapply Pos.peano_ind; clear fuel; i.
+  - eapply BDD; eauto. xomega.
+  - inv J0; inv J1; ss; try xomega.
+    + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
+      assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
+      clarify. clear_tac.
+      assert(n = n0) by xomega. clarify.
+      exploit H; [exact PRED|exact PRED0|..]; eauto.
+      { i. eapply ple_elim_succ in H0. des; clarify.
+        eapply BDD; eauto.
+      }
+    + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
+      assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
+      clarify. clear_tac.
+      assert(n = n0) by xomega. clarify.
+      exploit H; [exact PRED|exact PRED0|..]; eauto.
+      { i. eapply ple_elim_succ in H0. des; clarify.
+        eapply BDD; eauto.
+      }
+Qed.
+
 Let Jpos_func: forall
     fuel x
   ,
     exists n, Jpos fuel x n
+.
+Proof.
+  intro fuel. pattern fuel.
+  eapply Pos.peano_ind; clear fuel; i.
+  - esplits; eauto. econs; eauto.
+  - specialize (H x). des.
+    destruct (x p) eqn:T.
+    + esplits; eauto.
+      econs; eauto.
+    + esplits; eauto.
+      econsr; eauto.
+Qed.
+
+Let J_func: forall
+    fuel x
+  ,
+    exists n, J fuel x n
 .
 Proof.
   intro fuel. pattern fuel.
@@ -539,6 +593,63 @@ Proof.
   inv J0; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
   - ss. rewrite Pos.pow_succ_r. xomega.
   - ss. rewrite Pos.pow_succ_r. xomega.
+Unshelve.
+  all: ss.
+Qed.
+
+Let J_bound: forall
+    fuel x n
+    (J: J fuel x n)
+  ,
+    (n <= 3 ^ fuel.(Pos.to_nat))%nat
+.
+Proof.
+  intro fuel. pattern fuel.
+  eapply Pos.peano_ind; clear fuel; i.
+  { inv J0; try xomega. }
+  generalize (Pos2Nat.is_pos p); intro POS.
+  inv J0; try xomega; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
+  - ss. rewrite Pos2Nat.inj_succ. ss.
+    rewrite ! Nat.add_0_r. rewrite Nat.add_assoc.
+    destruct (classic (n0 = 0)).
+    { clarify. ss. assert(1 <= Pos.to_nat p) by xomega.
+      assert(1 < 3 ^ Pos.to_nat p).
+      { eapply Nat.pow_gt_1; eauto. xomega. }
+      xomega.
+    }
+    xomega.
+  - ss. rewrite Pos2Nat.inj_succ. ss.
+    rewrite ! Nat.add_0_r. rewrite Nat.add_assoc.
+    destruct (classic (n0 = 0)).
+    { clarify. ss. xomega. }
+    xomega.
+Unshelve.
+  all: ss.
+Qed.
+
+Let J_bound': forall
+    fuel x n
+    (J: J fuel x n)
+  ,
+    (n.(Pos.of_nat) <= 3 ^ fuel)%positive
+.
+Proof.
+  intro fuel. pattern fuel.
+  eapply Pos.peano_ind; clear fuel; i.
+  { inv J0; try xomega. ss. }
+  inv J0; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
+  - ss. rewrite Pos.pow_succ_r.
+    rewrite Nat.add_0_r.
+    destruct (classic (n0 = 0)).
+    { clarify. ss. xomega. }
+    rewrite Nat2Pos.inj_add; try xomega.
+    rewrite Nat2Pos.inj_add; try xomega.
+    ss. xomega.
+  - ss. rewrite Pos.pow_succ_r.
+    rewrite Nat.add_0_r.
+    destruct (classic (n0 = 0)).
+    { clarify. ss. xomega. }
+    rewrite Nat2Pos.inj_add; try xomega.
 Unshelve.
   all: ss.
 Qed.
@@ -835,18 +946,18 @@ Next Obligation.
   - ii. eapply lubsucc; eauto.
   - ii. eapply lubspec; eauto.
   - rr. destruct args0.
-    eapply finite_pos_prop with (j:= Jpos) (fuel := m.(Mem.nextblock)); eauto.
+    eapply finite_nat_prop with (j:= J) (fuel := m.(Mem.nextblock)); eauto.
     + ii. des. inv H0. inv H3. des; ss.
       inv MEM0. inv MEM1.
-      eapply Jpos_injective; eauto; cycle 1.
+      eapply J_injective; eauto; cycle 1.
       { unfold le' in *. des. congruence. }
       { congruence. }
       ii. u in BOUND. u in BOUND0. destruct (x0 blk) eqn:T0, (x1 blk) eqn:T1; ss.
       { hexploit BOUND0; eauto. i. r in H4. xomega. }
       { hexploit BOUND; eauto. i. r in H4. xomega. }
-    + ii. eapply Jpos_func.
-    + i. exists (3 ^ (m.(Mem.nextblock)))%positive. i.
-      eapply Jpos_bound; eauto.
+    + ii. eapply J_func.
+    + i. exists (3 ^ (m.(Mem.nextblock)).(Pos.to_nat))%nat. i.
+      eapply J_bound; eauto.
   - ii. eapply lubclosed; try apply LUB; eauto.
 Qed.
 Next Obligation.

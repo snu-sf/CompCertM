@@ -40,6 +40,60 @@ Local Open Scope nat.
 
 
 
+(* TODO: Move to CoqlibC.v *)
+Lemma app_eq_inv
+      A
+      (x0 x1 y0 y1: list A)
+      (EQ: x0 ++ x1 = y0 ++ y1)
+      (LEN: x0.(length) = y0.(length))
+  :
+    x0 = y0 /\ x1 = y1
+.
+Proof.
+  ginduction x0; ii; ss.
+  { destruct y0; ss. }
+  destruct y0; ss. clarify.
+  exploit IHx0; eauto. i; des. clarify.
+Qed.
+
+(* TODO: move to ??? *)
+Lemma pos_elim_succ
+      p
+  :
+    <<ONE: p = 1%positive>> \/
+    <<SUCC: exists q, q.(Pos.succ) = p>>
+.
+Proof.
+  hexploit (Pos.succ_pred_or p); eauto. i; des; ss; eauto.
+Qed.
+
+Lemma ple_elim_succ
+      p q
+      (PLE: Ple p q)
+  :
+    <<EQ: p = q>> \/
+    <<SUCC: Ple p.(Pos.succ) q>>
+.
+Proof.
+  revert_until p.
+  pattern p. apply Pos.peano_ind; clear p; i.
+  { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto.
+    right. r. xomega. }
+  hexploit (pos_elim_succ q); eauto. i.
+  des; clarify.
+  { left. xomega. }
+  exploit H; eauto.
+  { it q0. xomega. }
+  i; des; clarify.
+  - left. r. xomega.
+  - right. r. xomega.
+Qed.
+
+
+
+
+
+
 
 
 Definition val' (su: Unreach.t) (v: val): Prop :=
@@ -240,33 +294,6 @@ Proof.
   eapply range_spec; eauto.
 Qed.
 
-Lemma finite_pos_prop
-      X (P: X -> Prop)
-      (j: positive -> X -> positive -> Prop)
-      (fuel: positive)
-      (INJ: forall x0 x1 n, P x0 -> P x1 -> j fuel x0 n -> j fuel x1 n -> x0 = x1)
-      (FUNC: forall x, P x -> exists y, j fuel x y)
-      (* (FIN: exists bound, forall x, P x -> exists n, j fuel x n /\ (n <= bound)) *)
-      (FIN: exists bound, forall x n, P x -> j fuel x n -> (n <= bound)%positive)
-  :
-    <<FIN: exists lx, forall x, P x -> In x lx>>
-.
-Proof.
-Admitted.
-(* Function J (fuel: positive) (su: t): option nat := *)
-(*   match fuel with *)
-(*   | 0%positive => None *)
-(*   | Pos.succ n *)
-(*   end *)
-(* . *)
-(*   match fuel.(Pos.to_nat) with *)
-(*   | 0 => None *)
-(*   | S n => J n su *)
-(*   end *)
-(* . *)
-(*   match fuel with *)
-(*   | *)
-
 Inductive J: positive -> Unreach.t -> nat -> Prop :=
 | J_runout
     su 
@@ -286,86 +313,6 @@ Inductive J: positive -> Unreach.t -> nat -> Prop :=
     J fuel.(Pos.succ) su (2 * n)
 .
 
-Compute (Pos.to_nat ((1%positive) ~ 0 ~ 0 ~ 1)).
-Inductive Jpos: positive -> Unreach.t -> positive -> Prop :=
-| Jpos_runout
-    su 
-  :
-    Jpos (1%positive) su (1%positive)
-| Jpos_true
-    fuel su n
-    (PRED: Jpos fuel su n)
-    (TRUE: su fuel = true)
-  :
-    Jpos fuel.(Pos.succ) su (n ~ 1)
-| Jpos_false
-    fuel su n
-    (PRED: Jpos fuel su n)
-    (FALSE: su fuel = false)
-  :
-    Jpos fuel.(Pos.succ) su (n ~ 0) 
-.
-
-(* Let Jpos_injective: forall *)
-(*     fuel x0 x1 n *)
-(*     (J0: Jpos fuel x0 n) *)
-(*     (J1: Jpos fuel x1 n) *)
-(*     (BDD0: forall blk, x0 blk = true -> Plt blk fuel) *)
-(*     (BDD1: forall blk, x1 blk = true -> Plt blk fuel) *)
-(*   , *)
-(*     x0 = x1 *)
-(* . *)
-(* Proof. *)
-(*   i. *)
-(*   apply func_ext1. *)
-(*   revert_until fuel. *)
-(*   pattern fuel. *)
-(*   eapply Pos.peano_ind; clear fuel; i. *)
-(*   - destruct (x0 x2) eqn:T0; ss. *)
-(*     { exfalso. exploit BDD0; eauto. i. xomega. } *)
-(*     destruct (x1 x2) eqn:T1; ss. *)
-(*     { exfalso. exploit BDD1; eauto. i. xomega. } *)
-(*   - inv J0; inv J1; ss. *)
-(*     { xomega. } *)
-(*     + assert(p = fuel) by (eapply Pos.succ_inj; eauto). *)
-(*       assert(p = fuel0) by (eapply Pos.succ_inj; eauto). *)
-(*       clarify. clear_tac. *)
-(*       exploit H; [exact PRED|exact PRED0|..]; eauto. *)
-(*       { i. exploit BDD0; eauto. i. xomega. *)
-(* Qed. *)
-
-Lemma pos_elim_succ
-      p
-  :
-    <<ONE: p = 1%positive>> \/
-    <<SUCC: exists q, q.(Pos.succ) = p>>
-.
-Proof.
-  hexploit (Pos.succ_pred_or p); eauto. i; des; ss; eauto.
-Qed.
-
-Lemma ple_elim_succ
-      p q
-      (PLE: Ple p q)
-  :
-    <<EQ: p = q>> \/
-    <<SUCC: Ple p.(Pos.succ) q>>
-.
-Proof.
-  revert_until p.
-  pattern p. apply Pos.peano_ind; clear p; i.
-  { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto.
-    right. r. xomega. }
-  hexploit (pos_elim_succ q); eauto. i.
-  des; clarify.
-  { left. xomega. }
-  exploit H; eauto.
-  { it q0. xomega. }
-  i; des; clarify.
-  - left. r. xomega.
-  - right. r. xomega.
-Qed.
-
 Let eta
       x0 x1
       (FIELD0: x0.(unreach) = x1.(unreach))
@@ -375,42 +322,6 @@ Let eta
     <<EQ: x0 = x1>>
 .
 Proof. destruct x0, x1; ss. clarify. Qed.
-
-Let Jpos_injective: forall
-    fuel x0 x1 n
-    (J0: Jpos fuel x0 n)
-    (J1: Jpos fuel x1 n)
-    (BDD: forall blk, Ple fuel blk -> x0 blk = x1 blk)
-    (GENB: x0.(ge_nb) = x1.(ge_nb))
-    (NB: x0.(nb) = x1.(nb))
-  ,
-    x0 = x1
-.
-Proof.
-  i.
-  eapply eta; ss.
-  apply func_ext1.
-  revert_until fuel.
-  pattern fuel.
-  eapply Pos.peano_ind; clear fuel; i.
-  - eapply BDD; eauto. xomega.
-  - inv J0; inv J1; ss.
-    { xomega. }
-    + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
-      assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
-      clarify. clear_tac.
-      exploit H; [exact PRED|exact PRED0|..]; eauto.
-      { i. eapply ple_elim_succ in H0. des; clarify.
-        eapply BDD; eauto.
-      }
-    + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
-      assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
-      clarify. clear_tac.
-      exploit H; [exact PRED|exact PRED0|..]; eauto.
-      { i. eapply ple_elim_succ in H0. des; clarify.
-        eapply BDD; eauto.
-      }
-Qed.
 
 Let J_injective: forall
     fuel x0 x1 n
@@ -449,23 +360,6 @@ Proof.
       }
 Qed.
 
-Let Jpos_func: forall
-    fuel x
-  ,
-    exists n, Jpos fuel x n
-.
-Proof.
-  intro fuel. pattern fuel.
-  eapply Pos.peano_ind; clear fuel; i.
-  - esplits; eauto. econs; eauto.
-  - specialize (H x). des.
-    destruct (x p) eqn:T.
-    + esplits; eauto.
-      econs; eauto.
-    + esplits; eauto.
-      econsr; eauto.
-Qed.
-
 Let J_func: forall
     fuel x
   ,
@@ -481,23 +375,6 @@ Proof.
       econs; eauto.
     + esplits; eauto.
       econsr; eauto.
-Qed.
-
-Let Jpos_bound: forall
-    fuel x n
-    (J: Jpos fuel x n)
-  ,
-    (n <= 3 ^ fuel)%positive
-.
-Proof.
-  intro fuel. pattern fuel.
-  eapply Pos.peano_ind; clear fuel; i.
-  { inv J0; try xomega. }
-  inv J0; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
-  - ss. rewrite Pos.pow_succ_r. xomega.
-  - ss. rewrite Pos.pow_succ_r. xomega.
-Unshelve.
-  all: ss.
 Qed.
 
 Let J_bound: forall
@@ -530,33 +407,6 @@ Unshelve.
   all: ss.
 Qed.
 
-Let J_bound': forall
-    fuel x n
-    (J: J fuel x n)
-  ,
-    (n.(Pos.of_nat) <= 3 ^ fuel)%positive
-.
-Proof.
-  intro fuel. pattern fuel.
-  eapply Pos.peano_ind; clear fuel; i.
-  { inv J0; try xomega. ss. }
-  inv J0; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
-  - ss. rewrite Pos.pow_succ_r.
-    rewrite Nat.add_0_r.
-    destruct (classic (n0 = 0)).
-    { clarify. ss. xomega. }
-    rewrite Nat2Pos.inj_add; try xomega.
-    rewrite Nat2Pos.inj_add; try xomega.
-    ss. xomega.
-  - ss. rewrite Pos.pow_succ_r.
-    rewrite Nat.add_0_r.
-    destruct (classic (n0 = 0)).
-    { clarify. ss. xomega. }
-    rewrite Nat2Pos.inj_add; try xomega.
-Unshelve.
-  all: ss.
-Qed.
-
 Let to_inj (su: t) (bound: positive): meminj :=
   fun blk =>
     if (su blk)
@@ -567,17 +417,6 @@ Let to_inj (su: t) (bound: positive): meminj :=
        else None)
 .
 
-(* Let to_su (j: meminj) (bound: positive): t := *)
-(*   fun blk => *)
-(*     if plt blk bound *)
-(*     then *)
-(*       match j blk with *)
-(*       | Some _ => false *)
-(*       | None => true *)
-(*       end *)
-(*     else *)
-(*       false *)
-(* . *)
 Let to_su (j: meminj) (ge_nb: block) (bound: positive): t :=
   mk
     (fun blk =>
@@ -714,22 +553,6 @@ Fixpoint loadable_init_data_list (m: mem) (ske: SkEnv.t) (b: block) (p: Z) (idl:
   | nil => True
   | id :: idl' => <<HD: loadable_init_data m ske b p id>> /\ <<TL: loadable_init_data_list m ske b (p + init_data_size id) idl'>>
   end.
-
-(* TODO: Move to CoqlibC.v *)
-Lemma app_eq_inv
-      A
-      (x0 x1 y0 y1: list A)
-      (EQ: x0 ++ x1 = y0 ++ y1)
-      (LEN: x0.(length) = y0.(length))
-  :
-    x0 = y0 /\ x1 = y1
-.
-Proof.
-  ginduction x0; ii; ss.
-  { destruct y0; ss. }
-  destruct y0; ss. clarify.
-  exploit IHx0; eauto. i; des. clarify.
-Qed.
 
 (* copied from ValueAnalysis.v *)
 Definition definitive_initializer (init: list init_data) : bool :=

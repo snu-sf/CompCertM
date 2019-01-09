@@ -706,7 +706,7 @@ Next Obligation.
       eapply Genv.genv_symb_range; eauto.
   - econs; eauto.
     + ii; ss. clarify. esplits; eauto.
-      admit "this should hold. see Genv.initmem_inject".
+      admit "this should hold - use Genv.initmem_inject".
     + ii; ss.
     + ss. u in *. erewrite <- Genv.init_mem_genv_next; eauto. folder. refl.
   - econs; eauto; ss.
@@ -733,12 +733,12 @@ Next Obligation.
   esplits; eauto.
   - ii. eapply PERM0; eauto. eapply PERM; eauto.
     { r. eapply Plt_Ple_trans; eauto.
-      admit "ez".
+      admit "ez - GVAR/genv_defs_range".
     }
   - eapply Genv.load_store_init_data_invariant; try apply LABLE; eauto.
     unfold Genv.find_var_info in *. des_ifs.
     i. eapply Mem.load_unchanged_on_1; try apply RO; eauto.
-    { admit "ez". }
+    { admit "ez - Heq/genv_defs_range/NB". }
     ii. exploit PERM0; eauto. i; des. inv ORD.
 Qed.
 Next Obligation.
@@ -761,7 +761,14 @@ Next Obligation.
   exploit RO; eauto.
   { rewrite DEF. ss. }
   i; des.
-  admit "raw admit: we need good_prog".
+  esplits; eauto.
+
+  clear - LABLE SYMBKEEP.
+  destruct gv; ss. clear_tac. revert LABLE. generalize (0%Z) as ofs. i.
+  ginduction gvar_init; ii; ss.
+  des_ifs; des; esplits; eauto.
+  rewrite SYMBKEEP; eauto.
+  admit "hard - we need good_prog".
 Qed.
 Next Obligation.
   split; i; inv H; ss.
@@ -782,8 +789,8 @@ Next Obligation.
   exploit (@external_call_mem_inject_gen CTX ef skenv0 skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret
                                          (to_inj su0 (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
   { unfold to_inj. r. esplits; ii; ss; des_ifs; eauto.
-    - exfalso. eapply WF; eauto. inv SKE. rewrite PUB. admit "ez".
-    - exfalso. apply n; clear n. admit "ez".
+    - exfalso. eapply WF; eauto. inv SKE. rewrite PUB. admit "ez - H0".
+    - exfalso. apply n; clear n. admit "ez - SKE/WF".
   }
   { eapply to_inj_mem; eauto. }
   { inv MEM. clear - NB VALS. abstr (Args.vs args0) vs_arg.

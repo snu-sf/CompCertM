@@ -42,68 +42,6 @@ Local Open Scope nat.
 
 
 
-(* Remark: if econs/econsr gives different goal, at least 2 econs is possible *)
-Ltac econsr :=
-  first
-    [
-    econstructor 16
-    |econstructor 15
-    |econstructor 14
-    |econstructor 13
-    |econstructor 12
-    |econstructor 11
-    |econstructor 10
-    |econstructor  9
-    |econstructor  8
-    |econstructor  7
-    |econstructor  6
-    |econstructor  5
-    |econstructor  4
-    |econstructor  3
-    |econstructor  2
-    |econstructor  1
-    ]
-.
-
-(* Let cons_sig *)
-(*     X (P: X -> Prop) (Q: X -> Prop) (R: X -> Prop) *)
-(*     (PR: P <1= R) *)
-(*     (QR: Q <1= R) *)
-(*     (x: { x: X | P x }) *)
-(*     (xs: list { x: X | Q x}) *)
-(*   : *)
-(*     exists (xxs: list { x: X | R x}), *)
-(*       exists hd tl, xxs = hd :: tl /\ <<HD: hd$ = x$>> /\ <<TL: List.map (@proj1_sig _ _) tl = List.map (@proj1_sig _ _) xs>> *)
-(* . *)
-(* Proof. *)
-(*   admit "". *)
-(*   (* ginduction xs; ii; ss. *) *)
-(* Qed. *)
-
-(* Lemma Finite_sig *)
-(*       X (P: X -> Prop) *)
-(*       (FIN: exists l, forall x (PROP: P x), In x l) *)
-(*   : *)
-(*     <<FIN: FinFun.Finite { x: X | P x }>> *)
-(* . *)
-(* Proof. *)
-(*   des. rr. ginduction l; ii; ss. *)
-(*   - exists []. rr. i. destruct a. eauto. *)
-(*   - destruct (classic (P a)); cycle 1. *)
-(*     { exploit IHl; eauto. i. exploit FIN; eauto. i; des; clarify; eauto. } *)
-(*     specialize (IHl (fun x => P x /\ a <> x)). *)
-(*     exploit IHl; eauto. *)
-(*     { ii. des. exploit FIN; eauto. i; des; clarify. } *)
-(*     i; des. *)
-(*     unfold FinFun.Full. *)
-(*     assert(exists (hd: {x: X | , hd $ = a). *)
-(*     exploit (cons_sig _ _ a l0); eauto. *)
-(*     exists (a :: l0). *)
-(*               exploit IHl; eauto. i. *)
-(*   exists l. *)
-(*   econs; eauto. *)
-(* Qed. *)
-
 Definition val' (su: Unreach.t) (v: val): Prop :=
   forall blk ofs (PTR: v = Vptr blk ofs true), ~su blk /\ (blk < su.(nb))%positive
 .
@@ -182,24 +120,6 @@ Definition retv' (su: Unreach.t) (retv0: Retv.t) :=
   /\ (<<MEM: mem' su (Retv.m retv0)>>)
   /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>)
 .
-
-(* Inductive flatten_list: block -> list t -> Prop := *)
-(* | flatten_list_nil *)
-(*   : *)
-(*     flatten_list 1%positive [] *)
-(* | flatten_list_cons *)
-(*     nb xs *)
-(*     (LIST: flatten_list nb xs) *)
-(*   : *)
-(*     flatten_list (nb + 1)%positive (xs ++ xs) *)
-(* . *)
-Lemma not_ex_all_not
-      U (P: U -> Prop)
-      (NEX: ~ (exists n : U, P n))
-  :
-    <<NALL: forall n : U, ~ P n>>
-.
-Proof. eauto. Qed.
 
 Lemma finite_map
       X (P: X -> Prop) Y
@@ -423,23 +343,6 @@ Lemma pos_elim_succ
 Proof.
   hexploit (Pos.succ_pred_or p); eauto. i; des; ss; eauto.
 Qed.
-
-Ltac it TERM := instantiate (1:=TERM).
-Ltac itl TERM :=
-  first[
-      instantiate (10:=TERM)|
-      instantiate (9:=TERM)|
-      instantiate (8:=TERM)|
-      instantiate (7:=TERM)|
-      instantiate (6:=TERM)|
-      instantiate (5:=TERM)|
-      instantiate (4:=TERM)|
-      instantiate (3:=TERM)|
-      instantiate (2:=TERM)|
-      instantiate (1:=TERM)|
-      fail
-    ]
-.
 
 Lemma ple_elim_succ
       p q

@@ -564,23 +564,57 @@ Definition definitive_initializer (init: list init_data) : bool :=
 
 Require Import ValueAnalysis ValueDomain.
 
+Variable romem_for_ske: SkEnv.t -> romem.
+Lemma romem_for_ske_spec
+      sk
+  :
+    romem_for_ske sk.(Genv.globalenv) = romem_for sk
+.
+Proof.
+  admit "".
+Qed.
+
+Program Definition ske2bc (ske: SkEnv.t): block_classification :=
+  BC
+    (fun b =>
+       if plt b (Genv.genv_next ske) then
+         match Genv.invert_symbol ske b with None => BCother | Some id => BCglob id end
+       else
+         BCinvalid)
+    _ _
+.
+Next Obligation.
+  des_ifs.
+Qed.
+Next Obligation.
+  des_ifs.
+  apply_all_once Genv.invert_find_symbol. clarify.
+Qed.
+
 Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
 | skenv_intro
     (PUB: su.(ge_nb) = ske.(Genv.genv_next))
-    (BMATCH: forall
-        id blk gv
-        (SYMB: ske.(Genv.find_symbol) id = Some blk)
-        (GVAR: ske.(Genv.find_var_info) blk = Some gv)
-        (GRO: gv.(gvar_readonly))
-        (GVOL: ~ gv.(gvar_volatile))
-        (GDEF: definitive_initializer gv.(gvar_init))
+    (* (BMATCH: forall *)
+    (*     id blk gv *)
+    (*     (SYMB: ske.(Genv.find_symbol) id = Some blk) *)
+    (*     (GVAR: ske.(Genv.find_var_info) blk = Some gv) *)
+    (*     (GRO: gv.(gvar_readonly)) *)
+    (*     (GVOL: ~ gv.(gvar_volatile)) *)
+    (*     (GDEF: definitive_initializer gv.(gvar_init)) *)
 
-        ske_proj keep
-        (PROJ: SkEnv.project_spec ske keep ske_proj)
-        bc
-        (GMATCH: genv_match bc ske_proj)
-      ,
-        <<BMATCH: bmatch bc m0 blk (store_init_data_list (ablock_init Pbot) 0 gv.(gvar_init))>>)
+    (*     ske_proj (sk_proj: Sk.t) *)
+    (*     (PROJ: SkEnv.project_spec ske sk_proj.(defs) ske_proj) *)
+    (*     bc *)
+    (*     (GMATCH: genv_match bc ske_proj) *)
+    (*   , *)
+    (*     <<BMATCH: bmatch bc m0 blk (store_init_data_list (ablock_init Pbot) 0 gv.(gvar_init))>>) *)
+    (* (BMATCH: *)
+    (*     <<GMATCH: genv_match ske.(ske2bc) ske>> *)
+    (*     /\ *)
+    (*     <<ROMATCH: romatch ske.(ske2bc) m0 (romem_for_ske ske)>> *)
+    (*     (* <<BMATCH: bmatch bc m0 blk (store_init_data_list (ablock_init Pbot) 0 gv.(gvar_init))>> *) *)
+    (* ) *)
+    (ROMATCH: romatch ske.(ske2bc) m0 (romem_for_ske ske))
     (RO: forall
         blk gv
         (GVAR: ske.(Genv.find_var_info) blk = Some gv)
@@ -636,6 +670,73 @@ Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
 (* Proof. *)
 (*   rr. rr in HLE. des. esplits; eauto. *)
 (* Qed. *)
+
+
+Definition bc_proj (bc1 bc2: block_classification) : Prop :=
+  forall b, bc1 b = bc2 b \/ exists id, bc1 b = BCglob id /\ bc2 b = BCother
+.
+
+Section MATCH_PROJ.
+
+Variables bc1 bc2: block_classification.
+Hypothesis PROJ: bc_proj bc1 bc2.
+
+Lemma pmatch_proj: forall b ofs isreal p (GOOD: exists id, bc2 b = BCglob id), pmatch bc1 b ofs isreal p -> pmatch bc2 b ofs isreal p.
+Proof.
+  i. hexploit (PROJ b); eauto. i. des; try congruence.
+  inv H; try (by econs; eauto; congruence).
+Qed.
+
+Lemma vmatch_proj: forall v x (GOOD: forall blk ofs (PTR: v = Vptr blk ofs true), exists id, bc2 blk = BCglob id), vmatch bc1 v x -> vmatch bc2 v x.
+Proof.
+  i. inv H; econs; eauto.
+  - destruct isreal; ss.
+    + exploit GOOD; eauto. i. des. eapply pmatch_proj; eauto.
+    + inv H0; econs; eauto.
+  - destruct isreal; ss.
+    + exploit GOOD; eauto. i. des. eapply pmatch_proj; eauto.
+    + inv H0; econs; eauto.
+Qed.
+
+Lemma smatch_proj: forall m b p (GOOD: exists id, bc2 b = BCglob id)
+                          (GOODMEM: forall chunk ofs_ v
+                                           (LOAD: Mem.load chunk m b ofs_ = Some v)
+                                           blk ofs
+                                           (PTR: v = Vptr blk ofs true)
+                            , exists id, bc2 blk = BCglob id)
+                          (GOODMEMVAL: forall lo_ hi_ mv
+                                           (LOAD: Mem.loadbytes m b lo_ hi_ = Some mv)
+                                           blk ofs q n
+                                           (PTR: mv = [Fragment (Vptr blk ofs true) q n])
+                            , exists id, bc2 blk = BCglob id)
+  , smatch bc1 m b p -> smatch bc2 m b p.
+Proof.
+  intros. destruct H as [A B]. split; intros.
+  apply vmatch_proj; eauto.
+  destruct isreal'; cycle 1.
+  { exploit B; eauto. i. inv H0; econs; eauto. }
+  apply pmatch_proj; eauto.
+Qed.
+
+Lemma bmatch_proj: forall m b ab (GOOD: exists id, bc2 b = BCglob id)
+                          (GOODMEM: forall chunk ofs_ v
+                                           (LOAD: Mem.load chunk m b ofs_ = Some v)
+                                           blk ofs
+                                           (PTR: v = Vptr blk ofs true)
+                            , exists id, bc2 blk = BCglob id)
+                          (GOODMEMVAL: forall lo_ hi_ mv
+                                           (LOAD: Mem.loadbytes m b lo_ hi_ = Some mv)
+                                           blk ofs q n
+                                           (PTR: mv = [Fragment (Vptr blk ofs true) q n])
+                            , exists id, bc2 blk = BCglob id)
+  , bmatch bc1 m b ab -> bmatch bc2 m b ab.
+Proof.
+  intros. destruct H as [B1 B2]. split.
+  apply smatch_proj; auto.
+  intros. apply vmatch_proj; eauto.
+Qed.
+
+End MATCH_PROJ.
 
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
@@ -730,11 +831,12 @@ Next Obligation.
     { subst skenv. u in *. erewrite Genv.init_mem_genv_next; eauto. refl. }
     + u in MEM. u in skenv.
 
-      ii. unfold Genv.init_mem in *. subst skenv.
-      exploit alloc_globals_match; eauto.
-      { ss. }
-      { ii. uge. des_ifs. ss. rewrite PTree.gempty in *. clarify. }
-      { destruct (gvar_volatile gv) eqn:T; ss. }
+      unfold Genv.init_mem in *. subst skenv.
+      hexploit (initial_mem_matches _ _ _ MEM); eauto. intro IM; des.
+      erewrite romem_for_ske_spec; et.
+      hexploit IM2; eauto.
+      { apply Linking.linkorder_refl. }
+      admit "ez".
     + ii. u in *. subst skenv.
       hexploit Genv.init_mem_characterization; eauto. intro CHAR. des.
       hexploit Genv.init_mem_characterization_gen; eauto. intro X. r in X.
@@ -752,13 +854,9 @@ Next Obligation.
   inv MLE.
   inv SKE. econs; eauto; cycle 2.
   { etrans; eauto. eauto with mem. }
-  - ii. r.
-    eapply bmatch_inv.
-    { eapply BMATCH; et. }
-    i. eapply Mem.loadbytes_unchanged_on_1; try apply RO; eauto.
-    { clear - SYMB NB. admit "ez". }
-    ii. exploit RO0; eauto. i; des. exploit PERM0; eauto. i; des.
-    inv ORD.
+  - eapply romatch_ext; et.
+    + admit "UNCH".
+    + admit "UNCH".
   - ii. exploit RO0; eauto. i; des.
     esplits; eauto.
     + ii. eapply PERM0; eauto. eapply PERM; eauto.
@@ -799,6 +897,17 @@ Next Obligation.
     des_ifs; des; esplits; eauto.
     rewrite SYMBKEEP; eauto.
     admit "hard - we need good_prog".
+  - bar. move ROMATCH at bottom.
+    ii.
+    exploit (ROMATCH b id ab); eauto.
+    { admit "ez". }
+    { admit "ez". }
+    i; des.
+    esplits; et.
+    eapply bmatch_proj; et.
+    { admit "ez". }
+    { i. clarify. admit "". }
+    { i. clarify. admit "". }
   - (** copied from above **)
     ii.
     unfold Genv.find_var_info in *. des_ifs.

@@ -923,11 +923,11 @@ Next Obligation.
     esplits; et.
     eapply bmatch_proj; et.
     { admit "ez". }
-    { i. clarify. admit "we need good-prog". }
-    { i. clarify. admit "we need good-prog". }
+    { i. clarify. admit "hard - we need good-prog". }
+    { i. clarify. admit "hard - we need good-prog". }
 Qed.
 Next Obligation.
-  admit "system - this axiom should be removed in project-only-internals".
+  admit "hard - system - this axiom should be removed in project-only-internals".
   (* split; i; inv H; ss. *)
   (* - econs; eauto. *)
   (*   i. eapply RO; eauto. *)

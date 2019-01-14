@@ -266,9 +266,9 @@ Section PRSV.
         esplits; et.
         eapply bmatch_incr; et.
         ii. ss. rewrite IMG. des_ifs.
-        * admit "ez- Heq Heq0".
-        * admit "ez- Heq Heq0".
-        * admit "we need project-only-internals (and therefore revive does not touch symbol)".
+        * admit "ez - Heq Heq0".
+        * admit "ez - Heq Heq0".
+        * admit "hard - we need project-only-internals (and therefore revive does not touch symbol)".
       + assert(BCSU: forall b, bc b <> BCinvalid -> ~ su_init b).
         { intros ? BC. rewrite IMG in BC.
           destruct (plt b (Genv.genv_next skenv_link)).

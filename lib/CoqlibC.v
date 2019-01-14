@@ -1252,3 +1252,50 @@ Fixpoint last_option X (xs: list X): option X :=
   | hd :: tl => last_option tl
   end
 .
+Lemma not_ex_all_not
+      U (P: U -> Prop)
+      (NEX: ~ (exists n : U, P n))
+  :
+    <<NALL: forall n : U, ~ P n>>
+.
+Proof. eauto. Qed.
+
+(* Remark: if econs/econsr gives different goal, at least 2 econs is possible *)
+Ltac econsr :=
+  first
+    [
+    econstructor 16
+    |econstructor 15
+    |econstructor 14
+    |econstructor 13
+    |econstructor 12
+    |econstructor 11
+    |econstructor 10
+    |econstructor  9
+    |econstructor  8
+    |econstructor  7
+    |econstructor  6
+    |econstructor  5
+    |econstructor  4
+    |econstructor  3
+    |econstructor  2
+    |econstructor  1
+    ]
+.
+
+Ltac it TERM := instantiate (1:=TERM).
+Ltac itl TERM :=
+  first[
+      instantiate (10:=TERM)|
+      instantiate (9:=TERM)|
+      instantiate (8:=TERM)|
+      instantiate (7:=TERM)|
+      instantiate (6:=TERM)|
+      instantiate (5:=TERM)|
+      instantiate (4:=TERM)|
+      instantiate (3:=TERM)|
+      instantiate (2:=TERM)|
+      instantiate (1:=TERM)|
+      fail
+    ]
+.

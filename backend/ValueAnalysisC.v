@@ -44,19 +44,6 @@ Proof.
   Local Opaque Mem.loadbytes.
 Qed.
 
-
-(* Lemma sound_skenv_bmatch *)
-(*       (ge: genv) args bc b init *)
-(*       (PERM: forall (ofs : Z) (p : permission), *)
-(*           Mem.perm (Args.m args) b ofs Max p -> *)
-(*           <<OFS: 0 <= ofs < init_data_list_size init >> /\ <<ORD: perm_order Readable p>>) *)
-(*       (LABLE: Genv.load_store_init_data ge (Args.m args) b 0 init) *)
-(*   : *)
-(*     bmatch bc (Args.m args) b (store_init_data_list (ablock_init Pbot) 0 init) *)
-(* . *)
-(* Proof. *)
-(* Qed. *)
-
 Lemma sound_state_sound_args
       bc m0 stack su0 p skenv_link vs_arg cunit
       ge

@@ -564,31 +564,135 @@ Definition definitive_initializer (init: list init_data) : bool :=
 
 Require Import ValueAnalysis ValueDomain.
 
-Variable romem_for_ske: SkEnv.t -> romem.
-Lemma romem_for_ske_spec
-      sk
+
+Definition romatch_ske (bc: block_classification) (m: mem) (rm: ident -> option ablock): Prop :=
+  forall
+    b id ab
+    (BC: bc b = BCglob id)
+    (RO: rm id = Some ab)
+  ,
+    pge Glob (ab_summary ab) /\ bmatch bc m b ab /\ (forall ofs : Z, ~ Mem.perm m b ofs Max Writable)
+.
+
+Lemma romatch_ske_unchanged_on
+      (ske: SkEnv.t) m0 m1 rm
+      (RO: Mem.unchanged_on (loc_not_writable m0) m0 m1)
+      (NB: Ple (Genv.genv_next ske) (Mem.nextblock m0))
+      (ROMATCH: romatch_ske (ske2bc ske) m0 rm)
   :
-    romem_for_ske sk.(Genv.globalenv) = romem_for sk
+    <<ROMATCH: romatch_ske (ske2bc ske) m1 rm>>
 .
 Proof.
-  admit "".
+  ii. exploit ROMATCH; et. i; des.
+  assert(VAL: Mem.valid_block m0 b).
+  { ss. des_ifs. clear - NB Heq. admit "NB". }
+  esplits; et.
+  - eapply bmatch_ext; et. i.
+    erewrite <- Mem.loadbytes_unchanged_on_1; et.
+    ii. eapply H1; et.
+  - ii. eapply H1; et. eapply Mem.perm_unchanged_on_2; et.
+    { ii. eapply H1; et. }
 Qed.
 
-Program Definition ske2bc (ske: SkEnv.t): block_classification :=
-  BC
-    (fun b =>
-       if plt b (Genv.genv_next ske) then
-         match Genv.invert_symbol ske b with None => BCother | Some id => BCglob id end
-       else
-         BCinvalid)
-    _ _
+Definition romem_for_ske (ske: SkEnv.t): ident -> option ablock :=
+  fun id =>
+    match ske.(Genv.find_symbol) id with
+    | Some blk =>
+      match ske.(Genv.find_var_info) blk with
+      | Some gv =>
+        (* if <<RO: gv.(gvar_readonly)>> && <<NONVOL: negb gv.(gvar_volatile)>> *)
+        (*        && <<DEFI: definitive_initializer gv.(gvar_init)>> *)
+        if gv.(gvar_readonly) && negb gv.(gvar_volatile)
+               && definitive_initializer gv.(gvar_init)
+        then Some (store_init_data_list (ablock_init Pbot) 0 (gvar_init gv))
+        else None
+      | None => None
+      end
+    | None => None
+    end
 .
-Next Obligation.
-  des_ifs.
+
+Lemma romem_for_ske_complete
+      blk ske id gv
+      (SYMB: ske.(Genv.find_symbol) id = Some blk)
+      (VAR: ske.(Genv.find_var_info) blk = Some gv)
+      (RO: gv.(gvar_readonly) = true)
+      (VOL: gv.(gvar_volatile) = false)
+      (DEFI: definitive_initializer gv.(gvar_init) = true)
+  :
+    (romem_for_ske ske) id = Some (store_init_data_list (ablock_init Pbot) 0 (gvar_init gv))
+.
+Proof.
+  unfold romem_for_ske. des_ifs.
 Qed.
-Next Obligation.
-  des_ifs.
-  apply_all_once Genv.invert_find_symbol. clarify.
+
+(* Lemma romem_for_ske_romem_for *)
+(*       sk *)
+(*   : *)
+(*     romem_for_ske sk.(Genv.globalenv) = romem_for sk *)
+(* . *)
+(* Proof. *)
+(*   admit "". *)
+(* Qed. *)
+
+Section ROMEM_COMPLETE.
+
+Variable F: Type.
+
+Definition romem_complete (defmap: PTree.t (globdef F unit)) (rm: romem): Prop :=
+  forall
+    id gv
+    (DEFMAP: defmap!id = Some (Gvar gv))
+    (RO: gv.(gvar_readonly) = true)
+    (VOL: gv.(gvar_volatile) = false)
+    (DEFI: definitive_initializer gv.(gvar_init) = true)
+  ,
+    rm!id = Some (store_init_data_list (ablock_init Pbot) 0 gv.(gvar_init))
+.
+
+Lemma alloc_global_complete:
+  forall dm rm idg,
+  romem_complete dm rm ->
+  romem_complete (PTree.set (fst idg) (snd idg) dm) (alloc_global rm idg).
+Proof.
+  intros; red; intros. destruct idg as [id1 [f1 | v1]]; simpl in *.
+- rewrite PTree.grspec. destruct (PTree.elt_eq id id1); try discriminate.
+  { clarify. rewrite PTree.gsspec in *. des_ifs. }
+  rewrite PTree.gso in DEFMAP by auto. apply H; auto.
+- destruct (gvar_readonly v1 && negb (gvar_volatile v1) && definitive_initializer (gvar_init v1)) eqn:T.
++ InvBooleans. rewrite negb_true_iff in H3.
+  rewrite PTree.gsspec in *. des_ifs.
+* apply H; auto.
++ rewrite PTree.grspec. rewrite PTree.gsspec in *. des_ifs. apply H; auto.
+Qed.
+
+Lemma romem_for_complete:
+  forall cunit, romem_complete (prog_defmap cunit) (romem_for cunit).
+Proof.
+  assert (REC: forall l dm rm,
+            romem_complete dm rm ->
+            romem_complete (fold_left (fun m idg => PTree.set (fst idg) (snd idg) m) l dm)
+                           (fold_left alloc_global l rm)).
+  { induction l; intros; simpl; auto. apply IHl. apply alloc_global_complete; auto. }
+  intros. apply REC.
+  red; intros. rewrite PTree.gempty in *; discriminate.
+Qed.
+
+End ROMEM_COMPLETE.
+
+Lemma romatch_romatch_ske
+      m_init sk_link
+      (RO : romatch (ske2bc (Genv.globalenv sk_link)) m_init (romem_for sk_link))
+  :
+    <<RO: romatch_ske (ske2bc (Genv.globalenv sk_link)) m_init (romem_for_ske (Genv.globalenv sk_link))>>
+.
+Proof.
+  ii. eapply RO; et. clear RO.
+  ss. des_ifs. unfold romem_for_ske in *. des_ifs. bsimpl. des.
+  exploit Genv.invert_find_symbol; et. i; des. clarify.
+  hexploit (romem_for_complete sk_link); eauto. intro CO.
+  eapply CO; ss.
+  eapply Genv.find_def_symbol; et. esplits; et. uge. des_ifs.
 Qed.
 
 Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
@@ -614,7 +718,7 @@ Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
     (*     <<ROMATCH: romatch ske.(ske2bc) m0 (romem_for_ske ske)>> *)
     (*     (* <<BMATCH: bmatch bc m0 blk (store_init_data_list (ablock_init Pbot) 0 gv.(gvar_init))>> *) *)
     (* ) *)
-    (ROMATCH: romatch ske.(ske2bc) m0 (romem_for_ske ske))
+    (ROMATCH: romatch_ske ske.(ske2bc) m0 (romem_for_ske ske))
     (* (RO: forall *)
     (*     blk gv *)
     (*     (GVAR: ske.(Genv.find_var_info) blk = Some gv) *)
@@ -832,11 +936,10 @@ Next Obligation.
     + u in MEM. u in skenv.
 
       unfold Genv.init_mem in *. subst skenv.
-      hexploit (initial_mem_matches _ _ _ MEM); eauto. intro IM; des.
-      erewrite romem_for_ske_spec; et.
+      hexploit (initial_mem_matches _ _ MEM); eauto. intro IM; des. clarify.
       hexploit IM2; eauto.
       { apply Linking.linkorder_refl. }
-      admit "ez".
+      intro RO. eapply romatch_romatch_ske; et.
     (* + ii. u in *. subst skenv. *)
     (*   hexploit Genv.init_mem_characterization; eauto. intro CHAR. des. *)
     (*   hexploit Genv.init_mem_characterization_gen; eauto. intro X. r in X. *)
@@ -854,9 +957,7 @@ Next Obligation.
   inv MLE.
   inv SKE. econs; eauto; cycle 1.
   { etrans; eauto. eauto with mem. }
-  - eapply romatch_ext; et.
-    + admit "UNCH".
-    + admit "UNCH".
+  eapply romatch_ske_unchanged_on; et.
   (* - ii. exploit RO0; eauto. i; des. *)
   (*   esplits; eauto. *)
   (*   + ii. eapply PERM0; eauto. eapply PERM; eauto. *)
@@ -906,8 +1007,8 @@ Next Obligation.
     esplits; et.
     eapply bmatch_proj; et.
     { admit "ez". }
-    { i. clarify. admit "". }
-    { i. clarify. admit "". }
+    { i. clarify. admit "we need good-prog". }
+    { i. clarify. admit "we need good-prog". }
   (* - (** copied from above **) *)
   (*   ii. *)
   (*   unfold Genv.find_var_info in *. des_ifs. *)
@@ -973,7 +1074,7 @@ Next Obligation.
   (*   + *)
 Qed.
 Next Obligation.
-  admit "system".
+  admit "system - this axiom should be removed in project-only-internals".
   (* split; i; inv H; ss. *)
   (* - econs; eauto. *)
   (*   i. eapply RO; eauto. *)

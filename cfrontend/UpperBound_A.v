@@ -345,6 +345,33 @@ Section PRESERVATION.
     }
   Qed.
 
+  Lemma genv_find_funct
+        fptr if_sig
+        (FIND: Genv.find_funct (SkEnv.project skenv_link (defs cp_link)) fptr = Some (AST.Internal if_sig))
+    :
+      exists pgm, is_focus pgm /\
+             Genv.find_funct  (SkEnv.project skenv_link (defs pgm)) fptr = Some (AST.Internal if_sig).
+  Proof.
+    unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
+    rewrite MapsC.PTree_filter_map_spec in FIND. unfold o_bind in *.
+    destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss.
+    destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs.
+    exploit Genv.invert_find_symbol; eauto. i. unfold skenv_link in *. ss. unfold link_sk in *. subst prog_src prog_tgt. ss.
+    unfold link_list in *. des_ifs. 
+    
+    admit "i think it must be true".
+  Qed.
+
+  Lemma genv_find_funct_rev
+        pgm fptr if_sig
+        (FOCUS1: is_focus pgm)
+        (FIND: Genv.find_funct (SkEnv.project skenv_link (defs pgm)) fptr = Some (AST.Internal if_sig))
+    :
+      Genv.find_funct (SkEnv.project skenv_link (defs cp_link)) fptr = Some (AST.Internal if_sig).
+  Proof.
+    admit "i think it must be true".
+  Qed.
+
   Lemma msfind_fsim
         fptr ms
         (MSFIND: Ge.find_fptr_owner (load_genv prog_src skenv_link) fptr ms)
@@ -363,8 +390,9 @@ Section PRESERVATION.
     { left. econs; et. ss. right. rewrite in_map_iff. esplits; et. unfold prog_tgt. rewrite in_app_iff. left; ss. }
     des; ss. clarify.
     right.
-    unfold flip. ss.
-    admit "about GENV. this should hold".
+    exploit genv_find_funct; eauto. i. des. exists pgm. esplits; eauto.
+    econs; eauto. ss. right. subst prog_tgt. ss. unfold flip. ss.
+    rewrite map_app. eapply in_or_app. right. ss. inv H; eauto.
   Qed.
 
   Lemma msfind_bsim
@@ -391,7 +419,7 @@ Section PRESERVATION.
       econs; ss; et.
       + right. rewrite in_map_iff. exists (CsemC.module cp_link). ss. esplits; et.
         unfold prog_src. rewrite in_app_iff. right; ss. left; ss.
-      + instantiate (1:= if_sig). admit" this should hold".
+      + instantiate (1:= if_sig). exploit genv_find_funct_rev; eauto. unfold is_focus. auto.
     - clarify.
       right.
       unfold flip. ss.
@@ -399,7 +427,7 @@ Section PRESERVATION.
       econs; ss; et.
       + right. rewrite in_map_iff. exists (CsemC.module cp_link). ss. esplits; et.
         unfold prog_src. rewrite in_app_iff. right; ss. left; ss.
-      + instantiate (1:= if_sig). admit" this should hold".
+      + instantiate (1:= if_sig). exploit genv_find_funct_rev; eauto. unfold is_focus. auto.
   Qed.
 
   Lemma app_cont_call_cont_strong

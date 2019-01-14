@@ -45,17 +45,17 @@ Proof.
 Qed.
 
 
-Lemma sound_skenv_bmatch
-      (ge: genv) args bc b init
-      (PERM: forall (ofs : Z) (p : permission),
-          Mem.perm (Args.m args) b ofs Max p ->
-          <<OFS: 0 <= ofs < init_data_list_size init >> /\ <<ORD: perm_order Readable p>>)
-      (LABLE: Genv.load_store_init_data ge (Args.m args) b 0 init)
-  :
-    bmatch bc (Args.m args) b (store_init_data_list (ablock_init Pbot) 0 init)
-.
-Proof.
-Qed.
+(* Lemma sound_skenv_bmatch *)
+(*       (ge: genv) args bc b init *)
+(*       (PERM: forall (ofs : Z) (p : permission), *)
+(*           Mem.perm (Args.m args) b ofs Max p -> *)
+(*           <<OFS: 0 <= ofs < init_data_list_size init >> /\ <<ORD: perm_order Readable p>>) *)
+(*       (LABLE: Genv.load_store_init_data ge (Args.m args) b 0 init) *)
+(*   : *)
+(*     bmatch bc (Args.m args) b (store_init_data_list (ablock_init Pbot) 0 init) *)
+(* . *)
+(* Proof. *)
+(* Qed. *)
 
 Lemma sound_state_sound_args
       bc m0 stack su0 p skenv_link vs_arg cunit
@@ -260,142 +260,39 @@ Section PRSV.
         { eapply nth_error_In; eauto. }
         repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
         des_ifs; ss. bsimpl. des; ss. des_sumbool. inv MEM. congruence.
-      + ii. rewrite IMG in *. des_ifs.
-        hexploit romem_for_consistent_2; eauto. intro ROM; des.
-        exploit ROM; eauto. intro ROMEM; des.
-        clarify.
-        esplits; eauto.
-        * eapply store_init_data_list_summary. ss. econs; eauto.
-        *
-          (* hexploit (@SkEnv.revive_precise _ _ (SkEnv.project skenv_link (defs p)) p); eauto. *)
-          (* { intros jd IN. dup IN. rewrite prog_defmap_spec in IN. des. *)
-          (*   hexploit (SkEnv.project_impl_spec skenv_link (defs p)). intro SPEC. *)
-          (*   inv SPEC. *)
-          (*   rewrite SYMBKEEP; ss. *)
-          (*   { erewrite Genv.invert_find_symbol; ss. eauto. *)
-          (*     apply Genv.find_def_symbol in IN. des. ss. *)
-          (*     exploit Genv.invert_find_symbol; eauto. intro SYMB. *)
-          (*     unfold ge in SYMB. unfold SkEnv.revive in SYMB. rewrite Genv_map_defs_symb in SYMB. *)
-          (*     admit "idk". *)
-          (*   } *)
-          (*   { u. destruct (in_dec ident_eq jd (prog_defs_names p)) eqn:T; ss. } *)
-          (* } *)
-          (* { admit "ez". } *)
-          (* intro PRC; des. *)
-
-          (* inv PRC. *)
-          (* exploit FIND_MAP; eauto. i; des. des_ifs. clear_tac. *)
-          (* folder. *)
-
-          assert(CONTAINS: forall
-                    id
-                    (IN: p.(defs) id)
-                    gv
-                    (DEF: (Sk.of_program fn_sig p).(prog_defmap) ! id = Some (Gvar gv))
-                    (DEFINTIVE: ValueAnalysis.definitive_initializer (gvar_init gv) = true)
-                  ,
-                    exists blk, <<SYMB: skenv_link.(Genv.find_symbol) id = Some blk>> /\
-                                        <<DEF: skenv_link.(Genv.find_def) blk = Some (Gvar gv)>>).
-          { i. inv INCL. exploit DEFS; eauto. i; des. esplits; eauto.
-            Print link_varinit.
-            Print Instances Linker.
-            inv MATCH. inv H2. inv H0. rewrite DEF0. destruct info1, info2; ss. repeat f_equal; ss.
-            inv H3; ss.
-          }
-
-          exploit Genv.invert_find_symbol; eauto. intro SYMB. clarify.
-          hexploit (Sk.of_program_prog_defmap p fn_sig id); eauto. intro REL.
-          unfold fundef in *. inv REL.
-          {  rewrite ROMEM in *. clarify. }
-          symmetry in H0. clarify. symmetry in H2. inv H3. inv H5. ss. clear_tac.
-          exploit (CONTAINS id); eauto.
-          { u.
-            des_sumbool.
-            eapply prog_defmap_spec; eauto.
-          }
-          i; des.
-
-          inv SKENV.
-          set (gv := {| gvar_info := i2; gvar_init := init; gvar_readonly := true; gvar_volatile := false |}) in *.
-          exploit (RO b gv); eauto; ss.
-          { unfold Genv.find_var_info.
-            rename b into blk0.
-            assert(DEFS: defs p id).
-            { u. des_sumbool. eapply prog_defmap_image; et. }
-            assert(blk = blk0).
-            { clear - SYMB SYMB0 DEFS. admit "ez". }
-            clarify.
-            clear - DEF Heq DEFS.
-            admit "ez".
-          }
-          i; des.
-          clear RO.
-
-
-          Local Opaque Z.add.
-          {
-            clear - LABLE PERM.
-            tttttttt
-            revert LABLE.
-            revert PERM. assert(POS: 0 <= 0) by xomega. revert POS.
-            generalize (0%Z) at 2 3 4 as ofs_init. i. move POS at bottom.
-
-            unfold bmatch. unfold smatch.
-            splits; i.
-            - specialize (PERM ofs).
-              ginduction init; ii; ss.
-              { admit "noperm". }
-              des_ifs; ss; des.
-              + destruct (classic (ofs < init_data_list_size init)).
-                * zsimpl.
-                  rpapply vmatch_vplub_l; eauto.
-                  { eapply IHinit; et.
-                    - i. exploit PERM; et. i; des. splits; try xomega; ss.
-                      admit "".
-                    - xomega.
-                  }
-                  f_equal.
-                  ss.
-
-                  eapply IHinit; et. i. exploit PERM; et. i; des. splits; try xomega; ss.
-                * assert(init_data_list_size init = ofs) by admit "". clarify.
-                  rename init into inits.
-                  destruct v; econs; et.
-            -
-          }
-
-          {
-            clear - LABLE PERM.
-            abstr (store_init_data_list (ablock_init Pbot) 0 init) ab.
-            revert LABLE.
-            (* revert PERM. assert(POS: 0 <= 0) by xomega. revert POS. *)
-            (* generalize (0%Z) at 2 3 4 as ofs_init. i. move POS at bottom. *)
-            generalize (0%Z) at 1 as ofs_init. i.
-            ginduction init; ii; ss.
-            { r. split.
-              - r. split.
-                + i.
-                  admit "noperm".
-                + i.
-                  admit "noperm".
-              - admit "noperm".
-            }
-            des_ifs; des; ss.
-            - r.
-              split; i.
-              + r.
-                split; i.
-                * eapply IHinit; et.
-            - try eapply IHinit; et.
-              + ii. exploit PERM; et. i; des. esplits; eauto; try xomega.
-              +
-          }
-        * inv SKENV.
-          exploit RO; eauto.
-          { admit "copy from above". }
-          { rewrite ROMEM1. ss. }
-          i; des.
-          ii. exploit PERM; eauto. i; des. inv ORD.
+      + inv SKENV. ss.
+        Lemma bc_eta
+              bc0 bc1
+              (IMG: forall blk, bc0.(bc_img) blk = bc1.(bc_img) blk)
+          :
+            bc0 = bc1
+        .
+        Proof.
+          destruct bc0, bc1; ss.
+          assert(bc_img = bc_img0).
+          { apply func_ext1. eauto. }
+          clarify. f_equal.
+          - apply Axioms.proof_irr.
+          - apply Axioms.proof_irr.
+        Qed.
+        clear - IMG ROMATCH H.
+        ii. exploit (ROMATCH b id ab); eauto.
+        { rewrite IMG in *. des_ifs. ss. des_ifs.
+          - admit "ez".
+          - admit "ez".
+        }
+        { hexploit (romem_for_consistent_2 _ _ H); eauto. intro LO.
+          exploit LO; eauto. intro LOA; des.
+          clarify.
+          admit "this should hold".
+        }
+        intro RO; des.
+        esplits; et.
+        eapply bmatch_incr; et.
+        ii. ss. rewrite IMG. des_ifs.
+        * admit "ez".
+        * admit "ez".
+        * admit "we need project-only-internals".
       + assert(BCSU: forall b, bc b <> BCinvalid -> ~ su_init b).
         { intros ? BC. rewrite IMG in BC.
           destruct (plt b (Genv.genv_next skenv_link)).

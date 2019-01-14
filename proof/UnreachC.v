@@ -615,21 +615,21 @@ Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
     (*     (* <<BMATCH: bmatch bc m0 blk (store_init_data_list (ablock_init Pbot) 0 gv.(gvar_init))>> *) *)
     (* ) *)
     (ROMATCH: romatch ske.(ske2bc) m0 (romem_for_ske ske))
-    (RO: forall
-        blk gv
-        (GVAR: ske.(Genv.find_var_info) blk = Some gv)
-        (* copied from ValueAnalysis - alloc_global *)
-        (GRO: gv.(gvar_readonly))
-        (GVOL: ~ gv.(gvar_volatile))
-        (GDEF: definitive_initializer gv.(gvar_init))
-      ,
-        (* <<LABLE: loadable_init_data_list m0 ske blk 0 gv.(gvar_init)>> *)
-        (<<PERM: forall
-            ofs p
-            (PERM: Mem.perm m0 blk ofs Max p)
-          ,
-            <<OFS: (0 <= ofs < init_data_list_size gv.(gvar_init))%Z>> /\ <<ORD: perm_order Readable p>>>>) /\
-        (<<LABLE: Genv.load_store_init_data ske m0 blk 0 gv.(gvar_init)>>))
+    (* (RO: forall *)
+    (*     blk gv *)
+    (*     (GVAR: ske.(Genv.find_var_info) blk = Some gv) *)
+    (*     (* copied from ValueAnalysis - alloc_global *) *)
+    (*     (GRO: gv.(gvar_readonly)) *)
+    (*     (GVOL: ~ gv.(gvar_volatile)) *)
+    (*     (GDEF: definitive_initializer gv.(gvar_init)) *)
+    (*   , *)
+    (*     (* <<LABLE: loadable_init_data_list m0 ske blk 0 gv.(gvar_init)>> *) *)
+    (*     (<<PERM: forall *)
+    (*         ofs p *)
+    (*         (PERM: Mem.perm m0 blk ofs Max p) *)
+    (*       , *)
+    (*         <<OFS: (0 <= ofs < init_data_list_size gv.(gvar_init))%Z>> /\ <<ORD: perm_order Readable p>>>>) /\ *)
+    (*     (<<LABLE: Genv.load_store_init_data ske m0 blk 0 gv.(gvar_init)>>)) *)
     (NB: Ple ske.(Genv.genv_next) m0.(Mem.nextblock))
 .
 
@@ -827,7 +827,7 @@ Next Obligation.
     + ii; ss.
     + ss. u in *. erewrite <- Genv.init_mem_genv_next; eauto. folder. refl.
   - econs; eauto; ss.
-  - econs; eauto; cycle 2.
+  - econs; eauto; cycle 1.
     { subst skenv. u in *. erewrite Genv.init_mem_genv_next; eauto. refl. }
     + u in MEM. u in skenv.
 
@@ -837,13 +837,13 @@ Next Obligation.
       hexploit IM2; eauto.
       { apply Linking.linkorder_refl. }
       admit "ez".
-    + ii. u in *. subst skenv.
-      hexploit Genv.init_mem_characterization; eauto. intro CHAR. des.
-      hexploit Genv.init_mem_characterization_gen; eauto. intro X. r in X.
-      unfold Genv.find_var_info in *. des_ifs.
-      exploit (X blk (Gvar gv)); eauto. intro GEN; des.
-      unfold Genv.perm_globvar in *. des_ifs.
-      esplits; eauto.
+    (* + ii. u in *. subst skenv. *)
+    (*   hexploit Genv.init_mem_characterization; eauto. intro CHAR. des. *)
+    (*   hexploit Genv.init_mem_characterization_gen; eauto. intro X. r in X. *)
+    (*   unfold Genv.find_var_info in *. des_ifs. *)
+    (*   exploit (X blk (Gvar gv)); eauto. intro GEN; des. *)
+    (*   unfold Genv.perm_globvar in *. des_ifs. *)
+    (*   esplits; eauto. *)
 Qed.
 Next Obligation.
   inv LE.
@@ -852,51 +852,51 @@ Next Obligation.
 Qed.
 Next Obligation.
   inv MLE.
-  inv SKE. econs; eauto; cycle 2.
+  inv SKE. econs; eauto; cycle 1.
   { etrans; eauto. eauto with mem. }
   - eapply romatch_ext; et.
     + admit "UNCH".
     + admit "UNCH".
-  - ii. exploit RO0; eauto. i; des.
-    esplits; eauto.
-    + ii. eapply PERM0; eauto. eapply PERM; eauto.
-      { r. eapply Plt_Ple_trans; eauto.
-        admit "ez - GVAR/genv_defs_range".
-      }
-    + eapply Genv.load_store_init_data_invariant; try apply LABLE; eauto.
-      unfold Genv.find_var_info in *. des_ifs.
-      i. eapply Mem.load_unchanged_on_1; try apply RO; eauto.
-      { admit "ez - Heq/genv_defs_range/NB". }
-      ii. exploit PERM0; eauto. i; des. inv ORD.
+  (* - ii. exploit RO0; eauto. i; des. *)
+  (*   esplits; eauto. *)
+  (*   + ii. eapply PERM0; eauto. eapply PERM; eauto. *)
+  (*     { r. eapply Plt_Ple_trans; eauto. *)
+  (*       admit "ez - GVAR/genv_defs_range". *)
+  (*     } *)
+  (*   + eapply Genv.load_store_init_data_invariant; try apply LABLE; eauto. *)
+  (*     unfold Genv.find_var_info in *. des_ifs. *)
+  (*     i. eapply Mem.load_unchanged_on_1; try apply RO; eauto. *)
+  (*     { admit "ez - Heq/genv_defs_range/NB". } *)
+  (*     ii. exploit PERM0; eauto. i; des. inv ORD. *)
 Qed.
 Next Obligation.
   exploit SkEnv.project_spec_preserves_wf; eauto. intro WFSMALL.
   inv SKE. inv LE. inv WFSMALL.
-  econs; eauto; swap 2 4.
+  econs; eauto; swap 2 3.
   { congruence. }
   { etrans; eauto. rewrite NEXT. refl. }
-  - ii.
-    unfold Genv.find_var_info in *. des_ifs.
-    exploit DEFSYMB; eauto. i; des.
-    destruct (classic (defs0 id)); cycle 1.
-    { exploit SYMBDROP; eauto. i; des. clarify. }
-    exploit SYMBKEEP; eauto. i; des. rewrite H in *. symmetry in H1.
-    inv WF.
-    exploit SYMBDEF0; eauto. intro DEF; des.
-    exploit DEFKEEP; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    intro DEF2; des. rewrite DEF in *. clarify.
-    exploit RO; eauto.
-    { rewrite DEF. ss. }
-    i; des.
-    esplits; eauto.
+  (* - ii. *)
+  (*   unfold Genv.find_var_info in *. des_ifs. *)
+  (*   exploit DEFSYMB; eauto. i; des. *)
+  (*   destruct (classic (defs0 id)); cycle 1. *)
+  (*   { exploit SYMBDROP; eauto. i; des. clarify. } *)
+  (*   exploit SYMBKEEP; eauto. i; des. rewrite H in *. symmetry in H1. *)
+  (*   inv WF. *)
+  (*   exploit SYMBDEF0; eauto. intro DEF; des. *)
+  (*   exploit DEFKEEP; eauto. *)
+  (*   { eapply Genv.find_invert_symbol; eauto. } *)
+  (*   intro DEF2; des. rewrite DEF in *. clarify. *)
+  (*   exploit RO; eauto. *)
+  (*   { rewrite DEF. ss. } *)
+  (*   i; des. *)
+  (*   esplits; eauto. *)
 
-    clear - LABLE SYMBKEEP.
-    destruct gv; ss. clear_tac. revert LABLE. generalize (0%Z) as ofs. i.
-    ginduction gvar_init; ii; ss.
-    des_ifs; des; esplits; eauto.
-    rewrite SYMBKEEP; eauto.
-    admit "hard - we need good_prog".
+  (*   clear - LABLE SYMBKEEP. *)
+  (*   destruct gv; ss. clear_tac. revert LABLE. generalize (0%Z) as ofs. i. *)
+  (*   ginduction gvar_init; ii; ss. *)
+  (*   des_ifs; des; esplits; eauto. *)
+  (*   rewrite SYMBKEEP; eauto. *)
+  (*   admit "hard - we need good_prog". *)
   - bar. move ROMATCH at bottom.
     ii.
     exploit (ROMATCH b id ab); eauto.
@@ -908,82 +908,83 @@ Next Obligation.
     { admit "ez". }
     { i. clarify. admit "". }
     { i. clarify. admit "". }
-  - (** copied from above **)
-    ii.
-    unfold Genv.find_var_info in *. des_ifs.
-    (* exploit DEFSYMB; eauto. i; des. *)
-    destruct (classic (defs0 id)); cycle 1.
-    { exploit SYMBDROP; eauto. i; des. clarify. }
-    exploit SYMBKEEP; eauto. i; des. rewrite SYMB in *. symmetry in H0.
-    inv WF.
-    exploit SYMBDEF0; eauto. intro DEF; des.
-    exploit DEFKEEP; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    intro DEF2; des. rewrite DEF in *. clarify.
+  (* - (** copied from above **) *)
+  (*   ii. *)
+  (*   unfold Genv.find_var_info in *. des_ifs. *)
+  (*   (* exploit DEFSYMB; eauto. i; des. *) *)
+  (*   destruct (classic (defs0 id)); cycle 1. *)
+  (*   { exploit SYMBDROP; eauto. i; des. clarify. } *)
+  (*   exploit SYMBKEEP; eauto. i; des. rewrite SYMB in *. symmetry in H0. *)
+  (*   inv WF. *)
+  (*   exploit SYMBDEF0; eauto. intro DEF; des. *)
+  (*   exploit DEFKEEP; eauto. *)
+  (*   { eapply Genv.find_invert_symbol; eauto. } *)
+  (*   intro DEF2; des. rewrite DEF in *. clarify. *)
 
-    assert(BCLINK: exists bc_link, genv_match bc_link skenv_link /\
-                                   <<IMG: bc_link.(bc_img) = (fun blk =>
-                                                                match (Genv.invert_symbol skenv_link blk) with
-                                                                | Some id => BCglob id
-                                                                | _ => BCother
-                                                                end)>>).
-    { unshelve eexists (BC (fun blk => match (Genv.invert_symbol skenv_link blk) with
-                                       | Some id => BCglob id
-                                       | _ => BCother
-                                       end) _ _); cycle 2.
-      { unfold genv_match. s. split; cycle 1.
-        { refl. }
-        split.
-        - split; intro T.
-          + apply Genv.find_invert_symbol in T. des_ifs.
-          + des_ifs. apply Genv.invert_find_symbol in Heq. des_ifs.
-        - i.
-          split; des_ifs.
-      }
-      { ss. ii. des_ifs. }
-      { ss. ii. des_ifs. apply_all_once Genv.invert_find_symbol. congruence. }
-    }
-    des.
-    eapply bmatch_incr with (bc2 := bc_link).
-    eapply BMATCH; try apply BCLINK; eauto.
-    { rewrite IMG. apply Genv.find_invert_symbol in H0. des_ifs. }
-    { rewrite DEF. ss. }
-    { rr. rr in GMATCH. des. esplits; ss; eauto.
-      - i. etrans; cycle 1.
-        { eapply GMATCH. }
+  (*   assert(BCLINK: exists bc_link, genv_match bc_link skenv_link /\ *)
+  (*                                  <<IMG: bc_link.(bc_img) = (fun blk => *)
+  (*                                                               match (Genv.invert_symbol skenv_link blk) with *)
+  (*                                                               | Some id => BCglob id *)
+  (*                                                               | _ => BCother *)
+  (*                                                               end)>>). *)
+  (*   { unshelve eexists (BC (fun blk => match (Genv.invert_symbol skenv_link blk) with *)
+  (*                                      | Some id => BCglob id *)
+  (*                                      | _ => BCother *)
+  (*                                      end) _ _); cycle 2. *)
+  (*     { unfold genv_match. s. split; cycle 1. *)
+  (*       { refl. } *)
+  (*       split. *)
+  (*       - split; intro T. *)
+  (*         + apply Genv.find_invert_symbol in T. des_ifs. *)
+  (*         + des_ifs. apply Genv.invert_find_symbol in Heq. des_ifs. *)
+  (*       - i. *)
+  (*         split; des_ifs. *)
+  (*     } *)
+  (*     { ss. ii. des_ifs. } *)
+  (*     { ss. ii. des_ifs. apply_all_once Genv.invert_find_symbol. congruence. } *)
+  (*   } *)
+  (*   des. *)
+  (*   eapply bmatch_incr with (bc2 := bc_link). *)
+  (*   eapply BMATCH; try apply BCLINK; eauto. *)
+  (*   { rewrite IMG. apply Genv.find_invert_symbol in H0. des_ifs. } *)
+  (*   { rewrite DEF. ss. } *)
+  (*   { rr. rr in GMATCH. des. esplits; ss; eauto. *)
+  (*     - i. etrans; cycle 1. *)
+  (*       { eapply GMATCH. } *)
         
-    }
+  (*   } *)
 
-    exploit RO; eauto.
-    { rewrite DEF. ss. }
-    i; des.
-    esplits; eauto.
+  (*   exploit RO; eauto. *)
+  (*   { rewrite DEF. ss. } *)
+  (*   i; des. *)
+  (*   esplits; eauto. *)
 
-    exploit BMATCH; eauto.
-    { rewrite DEF. ss. }
-    i; des.
-    esplits; eauto.
-    clear - LABLE SYMBKEEP.
-    destruct gv; ss. clear_tac. revert LABLE. generalize (0%Z) as ofs. i.
-    ginduction gvar_init; ii; ss.
-    des_ifs; des; esplits; eauto.
-    rewrite SYMBKEEP; eauto.
-    admit "hard - we need good_prog".
-  - ii. eapply BMATCH; eauto.
-    +
+  (*   exploit BMATCH; eauto. *)
+  (*   { rewrite DEF. ss. } *)
+  (*   i; des. *)
+  (*   esplits; eauto. *)
+  (*   clear - LABLE SYMBKEEP. *)
+  (*   destruct gv; ss. clear_tac. revert LABLE. generalize (0%Z) as ofs. i. *)
+  (*   ginduction gvar_init; ii; ss. *)
+  (*   des_ifs; des; esplits; eauto. *)
+  (*   rewrite SYMBKEEP; eauto. *)
+  (*   admit "hard - we need good_prog". *)
+  (* - ii. eapply BMATCH; eauto. *)
+  (*   + *)
 Qed.
 Next Obligation.
-  split; i; inv H; ss.
-  - econs; eauto.
-    i. eapply RO; eauto.
-    unfold Genv.find_var_info in *. des_ifs_safe.
-    unfold System.skenv in *.
-    apply_all_once Genv_map_defs_def. des. des_ifs.
-  - econs; eauto.
-    i. eapply RO; eauto.
-    unfold Genv.find_var_info in *. des_ifs_safe.
-    unfold System.skenv.
-    eapply_all_once Genv_map_defs_def_inv. rewrite Heq. ss.
+  admit "system".
+  (* split; i; inv H; ss. *)
+  (* - econs; eauto. *)
+  (*   i. eapply RO; eauto. *)
+  (*   unfold Genv.find_var_info in *. des_ifs_safe. *)
+  (*   unfold System.skenv in *. *)
+  (*   apply_all_once Genv_map_defs_def. des. des_ifs. *)
+  (* - econs; eauto. *)
+  (*   i. eapply RO; eauto. *)
+  (*   unfold Genv.find_var_info in *. des_ifs_safe. *)
+  (*   unfold System.skenv. *)
+  (*   eapply_all_once Genv_map_defs_def_inv. rewrite Heq. ss. *)
 Qed.
 Next Obligation.
   set (CTX := Val.mi_normal).

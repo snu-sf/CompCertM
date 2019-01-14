@@ -585,7 +585,7 @@ Lemma romatch_ske_unchanged_on
 Proof.
   ii. exploit ROMATCH; et. i; des.
   assert(VAL: Mem.valid_block m0 b).
-  { ss. des_ifs. clear - NB Heq. admit "NB". }
+  { ss. des_ifs. clear - NB Heq. admit "ez - NB". }
   esplits; et.
   - eapply bmatch_ext; et. i.
     erewrite <- Mem.loadbytes_unchanged_on_1; et.

@@ -261,38 +261,27 @@ Section PRSV.
         repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
         des_ifs; ss. bsimpl. des; ss. des_sumbool. inv MEM. congruence.
       + inv SKENV. ss.
-        Lemma bc_eta
-              bc0 bc1
-              (IMG: forall blk, bc0.(bc_img) blk = bc1.(bc_img) blk)
-          :
-            bc0 = bc1
-        .
-        Proof.
-          destruct bc0, bc1; ss.
-          assert(bc_img = bc_img0).
-          { apply func_ext1. eauto. }
-          clarify. f_equal.
-          - apply Axioms.proof_irr.
-          - apply Axioms.proof_irr.
-        Qed.
-        clear - IMG ROMATCH H.
+        clear - IMG ROMATCH H INCL.
         ii. exploit (ROMATCH b id ab); eauto.
         { rewrite IMG in *. des_ifs. ss. des_ifs.
-          - admit "ez".
-          - admit "ez".
+          - admit "ez - Heq Heq0".
+          - admit "ez - Heq Heq0".
         }
         { hexploit (romem_for_consistent_2 _ _ H); eauto. intro LO.
           exploit LO; eauto. intro LOA; des.
           clarify.
-          admit "this should hold".
+          rewrite IMG in *. des_ifs. apply Genv.invert_find_symbol in Heq.
+          eapply romem_for_ske_complete; et.
+          clear - LOA Heq INCL.
+          admit "this should hold -- make some good lemma!".
         }
         intro RO; des.
         esplits; et.
         eapply bmatch_incr; et.
         ii. ss. rewrite IMG. des_ifs.
-        * admit "ez".
-        * admit "ez".
-        * admit "we need project-only-internals".
+        * admit "ez- Heq Heq0".
+        * admit "ez- Heq Heq0".
+        * admit "we need project-only-internals (and therefore revive does not touch symbol)".
       + assert(BCSU: forall b, bc b <> BCinvalid -> ~ su_init b).
         { intros ? BC. rewrite IMG in BC.
           destruct (plt b (Genv.genv_next skenv_link)).

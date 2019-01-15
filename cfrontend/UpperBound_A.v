@@ -357,6 +357,10 @@ Section PRESERVATION.
     destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss.
     destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs.
     exploit Genv.invert_find_symbol; eauto. i. unfold skenv_link in *. ss. unfold link_sk in *. subst prog_src prog_tgt. ss.
+    
+    destruct ctx; ss.
+    unfold link_list in *. des_ifs. ss. des_ifs.
+
     unfold link_list in *. des_ifs. 
     
     admit "i think it must be true".

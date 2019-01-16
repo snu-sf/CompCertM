@@ -94,7 +94,7 @@ Section MODSEM.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   (* Set Printing All. *)
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) (defs p).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.
   Let ce_ge: composite_env := prog_comp_env p.
   Let ge_ge: Genv.t fundef type := SkEnv.revive skenv p.
   Let ge: genv := Build_genv ge_ge ce_ge.
@@ -237,7 +237,8 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    rewrite CSk.of_program_defs. ss.
+    unfold SkEnv.project.
+    rewrite ! CSk.of_program_defs. ss.
   Qed.
 
 End MODULE.

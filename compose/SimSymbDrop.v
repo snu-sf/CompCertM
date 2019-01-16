@@ -287,10 +287,10 @@ Next Obligation.
   econs; eauto.
 Qed.
 Next Obligation.
-  set (SkEnv.project skenv_link_src (defs sk_src)) as skenv_src.
-  generalize (SkEnv.project_impl_spec skenv_link_src (defs sk_src)); intro LESRC.
-  set (SkEnv.project skenv_link_tgt (defs sk_tgt)) as skenv_tgt.
-  generalize (SkEnv.project_impl_spec skenv_link_tgt (defs sk_tgt)); intro LETGT.
+  set (SkEnv.project skenv_link_src sk_src) as skenv_src.
+  generalize (SkEnv.project_impl_spec skenv_link_src sk_src); intro LESRC.
+  set (SkEnv.project skenv_link_tgt sk_tgt) as skenv_tgt.
+  generalize (SkEnv.project_impl_spec skenv_link_tgt sk_tgt); intro LETGT.
   exploit SkEnv.project_spec_preserves_wf; try apply LESRC; eauto. intro WFSMALLSRC.
   exploit SkEnv.project_spec_preserves_wf; try apply LETGT; eauto. intro WFSMALLTGT.
 (* THIS IS TOP *)
@@ -445,7 +445,9 @@ Next Obligation.
     { apply Genv.find_invert_symbol; eauto. }
   -
     exploit PUBKEPT; eauto.
+    { eapply INCLSRC; et. }
     inv LE. eauto.
+  - inv SIMSK. ss.
 Qed.
 Next Obligation.
   inv SIMSKENV.

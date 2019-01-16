@@ -933,8 +933,8 @@ Variable prog: Linear.program.
 Variable tprog: Mach.program.
 Hypothesis TRANSF: match_prog prog tprog.
 Variable rao: Mach.function -> Mach.code -> ptrofs -> Prop.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
 Hypothesis return_address_offset_exists:
   forall f sg ros c v (FUNCT: Genv.find_funct tge v = Some (Internal f)),
   is_tail (Mcall sg ros :: c) (fn_code f) ->
@@ -1011,7 +1011,7 @@ Lemma init_match_frame_contents_depr
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
-      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src (defs prog))) (Mem.nextblock m_tgt0))
+      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src prog)) (Mem.nextblock m_tgt0))
   :
     m_tgt0
       |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
@@ -1076,7 +1076,7 @@ Lemma init_match_frame_contents
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
-      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src (defs prog))) (Mem.nextblock m_tgt0))
+      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src prog)) (Mem.nextblock m_tgt0))
   :
     m_tgt0
       |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
@@ -1420,7 +1420,7 @@ Lemma loc_result_one
 Proof. compute. des_ifs; eauto. Qed.
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog) ->
   Genv.match_genvs (match_globdef (fun cunit f tf => transf_fundef f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. u. des_ifs; ss; unfold Errors.bind in *; des_ifs. } Qed.
 

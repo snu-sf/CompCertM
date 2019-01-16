@@ -39,8 +39,8 @@ Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt sm_link
 .
@@ -56,7 +56,7 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog) ->
   Genv.match_genvs (match_globdef (fun cunit f tf => transf_fundef (funenv_program cunit) f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. u. des_ifs; ss; unfold Errors.bind in *; des_ifs. } Qed.
 
@@ -204,7 +204,7 @@ Proof.
     { apply modsem_receptive. }
     inv MATCH.
     ii. hexploit (@step_simulation prog _ ge tge); eauto.
-    { assert (SkEnv.genv_precise (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog) prog).
+    { assert (SkEnv.genv_precise (SkEnv.revive (SkEnv.project skenv_link_src prog) prog) prog).
       { admit "ez: Using SkEnv.revive_precise". }
       inv H. econs; ii.
       - exploit FIND_MAP; eauto. i. inv H0. des. exists x. split; eauto. des_ifs. ii.

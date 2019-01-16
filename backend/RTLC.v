@@ -87,7 +87,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -160,6 +160,8 @@ Section MODSEM.
     eapply SkEnv.revive_no_external; eauto.
   Qed.
 
+  Hypothesis INCL: SkEnv.includes skenv (Sk.of_program fn_sig p).
+
   Lemma lift_receptive_at
         st
         (RECEP: receptive_at (semantics_with_ge ge) st)
@@ -168,10 +170,7 @@ Section MODSEM.
   .
   Proof.
     inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
-    eapply match_traces_le; et. u. unfold Genv.public_symbol. ss.
-    i. des_ifs_safe. des_sumbool. unfold ge. unfold SkEnv.revive. rewrite Genv_map_defs_symb.
-    uge. ss. des_ifs. des_sumbool. admit "".
-    (* eapply match_traces_preserved; try eassumption. ii; ss. *)
+    { eapply match_traces_preserved; try eassumption. ii; ss. }
   Qed.
 
   Lemma modsem_receptive
@@ -191,7 +190,6 @@ Section MODSEM.
     inv DTM. econs; eauto; ii; ss.
     determ_tac sd_determ_at. esplits; eauto.
     eapply match_traces_preserved; try eassumption. ii; ss.
-    admit "".
   Qed.
 
   Lemma modsem_determinate
@@ -220,7 +218,8 @@ Section MODULE.
     |}
   .
   Next Obligation.
-    rewrite Sk.of_program_defs. ss.
+    unfold SkEnv.project.
+    rewrite ! Sk.of_program_defs. ss.
   Qed.
 
 End MODULE.

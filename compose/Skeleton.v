@@ -43,12 +43,11 @@ Module SkEnv.
        <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>>)
   .
 
-  Inductive project_spec (skenv: t) (keep: ident -> Prop)
+  Inductive project_spec {F V} (skenv: t) (prog: AST.program F V)
             (skenv_proj: t): Prop :=
   | project_spec_intro
       (* (PUBLIC: skenv_proj.(Genv.genv_public) = []) *)
       (* TODO: is this OK? Check if this info affects semantics except for linking *)
-      (PUBLIC: skenv_proj.(Genv.genv_public) = skenv.(Genv.genv_public))
       (NEXT: skenv.(Genv.genv_next) = skenv_proj.(Genv.genv_next))
       (* (SYMBKEEP: forall *)
       (*     id *)
@@ -59,12 +58,12 @@ Module SkEnv.
       (*     (<<SMALL: skenv_proj.(Genv.find_symbol) id = Some blk>>)) *)
       (SYMBKEEP: forall
           id
-          (KEEP: keep id)
+          (KEEP: prog.(defs) id)
         ,
           (<<KEEP: skenv_proj.(Genv.find_symbol) id = skenv.(Genv.find_symbol) id>>))
       (SYMBDROP: forall
           id
-          (DROP: ~ keep id)
+          (DROP: ~ prog.(defs) id)
         ,
           <<NONE: skenv_proj.(Genv.find_symbol) id = None>>)
       (* (DEFKEEP: forall *)
@@ -78,13 +77,13 @@ Module SkEnv.
       (DEFKEEP: forall
           id blk
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
-          (KEEP: keep id)
+          (KEEP: prog.(defs) id)
         ,
           <<SMALL: skenv_proj.(Genv.find_def) blk = skenv.(Genv.find_def) blk>>)
       (DEFDROP: forall
           id blk
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
-          (DROP: ~ keep id)
+          (DROP: ~ prog.(defs) id)
         ,
           <<SMALL: skenv_proj.(Genv.find_def) blk = None>>)
       (DEFORPHAN: forall (* TODO: is it needed? *)
@@ -92,21 +91,22 @@ Module SkEnv.
           (INV: skenv.(Genv.invert_symbol) blk = None)
         ,
           <<SMALL: skenv_proj.(Genv.find_def) blk = None>>)
+      (PUBLIC: prog.(prog_public) = skenv_proj.(Genv.genv_public))
   .
 
   (* NOTE: it is total function! This is helpful because we don't need to state bsim of this, like
 "(PROGRESS: project src succed -> project tgt succeed) /\ (BSIM: project tgt ~ projet src)".
 I think "sim_skenv_monotone" should be sufficient.
    *)
-  Definition project (skenv: t) (keep: ident -> bool): t :=
-    (skenv.(Genv_filter_symb) (fun id => keep id))
-    .(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk; assertion(keep id); Some gd))
+  Definition project {F V} (skenv: t) (prog: AST.program F V): t :=
+    ((Genv_update_publics skenv prog.(prog_public)).(Genv_filter_symb) (fun id => prog.(defs) id))
+    .(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk; assertion(prog.(defs) id); Some gd))
   .
 
   Lemma project_impl_spec
-        skenv (keep: ident -> bool)
+        F V skenv (prog: AST.program F V)
     :
-      <<PROJ: project_spec skenv keep (project skenv keep)>>
+      <<PROJ: project_spec skenv prog (project skenv prog)>>
   .
   Proof.
     u.
@@ -125,8 +125,8 @@ I think "sim_skenv_monotone" should be sufficient.
   Lemma project_spec_preserves_wf
         skenv
         (WF: wf skenv)
-        keep skenv_proj
-        (PROJ: project_spec skenv keep skenv_proj)
+        F V (prog: AST.program F V) skenv_proj
+        (PROJ: project_spec skenv prog skenv_proj)
     :
       <<WF: wf skenv_proj>>
   .
@@ -134,7 +134,7 @@ I think "sim_skenv_monotone" should be sufficient.
     inv WF. inv PROJ.
     econs; eauto.
     - ii.
-      destruct (classic (keep id)).
+      destruct (classic (prog.(defs) id)).
       + erewrite SYMBKEEP in *; eauto.
         erewrite DEFKEEP; eauto.
         apply Genv.find_invert_symbol; ss.
@@ -145,7 +145,7 @@ I think "sim_skenv_monotone" should be sufficient.
       rename i into id.
 
       exploit Genv.invert_find_symbol; eauto. intro TT.
-      destruct (classic (keep id)).
+      destruct (classic (prog.(defs) id)).
       + esplits; eauto. erewrite SYMBKEEP; eauto.
       + exploit DEFDROP; eauto. i; des.
         exploit SYMBDEF; eauto. i; des. clarify.
@@ -166,11 +166,11 @@ I think "sim_skenv_monotone" should be sufficient.
 
   (* Note: We only remove definitions. One can still get the address of external identifier. *)
   Definition revive `{HasExternal F} {V} (skenv: SkEnv.t) (prog: AST.program F V): Genv.t F V :=
-    ((Genv_update_publics skenv prog.(prog_public)).(Genv_map_defs)
-                                                      (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
-                                                                        do gd <- prog.(prog_defmap) ! id;
-                                                                        assertion (negb (is_external gd));
-                                                                        Some gd)))
+    (skenv.(Genv_map_defs)
+             (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
+                               do gd <- prog.(prog_defmap) ! id;
+                               assertion (negb (is_external gd));
+                               Some gd)))
   .
 
   Inductive genv_precise `{HasExternal F} {V} (ge: Genv.t F V) (p: program F V): Prop :=

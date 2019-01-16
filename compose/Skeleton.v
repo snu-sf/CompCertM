@@ -337,12 +337,13 @@ Module Sk.
     mkprogram (skdefs_of_gdefs get_sg prog.(prog_defs)) prog.(prog_public) prog.(prog_main)
   .
 
-  Definition wf_match_fundef CTX F1 F2 (match_fundef: CTX -> fundef F1 -> fundef F2 -> Prop): Prop := forall
+  Definition wf_match_fundef CTX F1 F2 (match_fundef: CTX -> fundef F1 -> fundef F2 -> Prop)
+             (fn_sig1: F1 -> signature) (fn_sig2: F2 -> signature): Prop := forall
       ctx f1 f2
       (MATCH: match_fundef ctx f1 f2)
     ,
       (<<EXT: exists ef, f1 = External ef /\ f2 = External ef>>)
-      \/ (<<INT: exists fd1 fd2, f1 = Internal fd1 /\ f2 = Internal fd2>>)
+      \/ (<<INT: exists fd1 fd2, f1 = Internal fd1 /\ f2 = Internal fd2 /\ <<SIG: fn_sig1 fd1 = fn_sig2 fd2>> >>)
   .
 
   Definition is_external_weak F (f: AST.fundef F): bool :=
@@ -360,7 +361,7 @@ Module Sk.
         (p2: AST.program (fundef F2) V2)
         (MATCH: match_program match_fundef match_varinfo p1 p2)
         fn_sig1 fn_sig2
-        (WF: wf_match_fundef match_fundef)
+        (WF: wf_match_fundef match_fundef fn_sig1 fn_sig2)
     :
       <<EQ: Sk.of_program fn_sig1 p1 = Sk.of_program fn_sig2 p2>>
   .
@@ -375,7 +376,7 @@ Module Sk.
     inv H3. destruct a, b1; ss. clarify.
     inv H2; ss.
     - unfold update_snd. exploit WF; eauto. i; des; clarify; ss.
-      + repeat f_equal. admit "ez".
+      + repeat f_equal. exploit WF; et.
     - inv H1. ss.
   Qed.
 
@@ -400,7 +401,21 @@ Module Sk.
                                    (p.(prog_defmap) ! id) ((of_program get_sg p).(prog_defmap) ! id)>>
   .
   Proof.
-    admit "ez".
+    ii.
+    unfold prog_defmap, of_program, skdefs_of_gdefs. ss.
+    rewrite prog_defmap_update_snd.
+    destruct ((PTree_Properties.of_list (prog_defs p)) ! id) eqn:T; ss.
+    - econs; et. unfold skdef_of_gdef. des_ifs.
+      + econs; et.
+        { refl. }
+        econs; et.
+      + econs; et.
+        { refl. }
+        r. des_sumbool. refl.
+      + econs; et. destruct v; ss.
+    - econs; et.
+  Unshelve.
+    all: ss.
   Qed.
 
   Lemma of_program_defs

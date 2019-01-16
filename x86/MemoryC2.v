@@ -230,8 +230,8 @@ Proof.
   destruct (j0 b0) eqn:EQ.
   - destruct p. specialize (INCR _ _ _ EQ). clarify.
     eapply OUTOFREACH; eauto. eapply MAXPERM; eauto.
-    destruct (Registers.Regset.MSet.Raw.MX.lt_dec b0 m_src0.(Mem.nextblock)); eauto.
-    eapply Mem.mi_freeblocks in n; eauto. clarify.
+    apply NNPP. intro N.
+    eapply Mem.mi_freeblocks in N; eauto. clarify.
   - specialize (SEPARATED _ _ _ EQ H). des.
     apply SEPARATED0. eauto.
 Qed.

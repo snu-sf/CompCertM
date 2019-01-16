@@ -337,12 +337,13 @@ Module Sk.
     mkprogram (skdefs_of_gdefs get_sg prog.(prog_defs)) prog.(prog_public) prog.(prog_main)
   .
 
-  Definition wf_match_fundef CTX F1 F2 (match_fundef: CTX -> fundef F1 -> fundef F2 -> Prop): Prop := forall
+  Definition wf_match_fundef CTX F1 F2 (match_fundef: CTX -> fundef F1 -> fundef F2 -> Prop)
+             (fn_sig1: F1 -> signature) (fn_sig2: F2 -> signature): Prop := forall
       ctx f1 f2
       (MATCH: match_fundef ctx f1 f2)
     ,
       (<<EXT: exists ef, f1 = External ef /\ f2 = External ef>>)
-      \/ (<<INT: exists fd1 fd2, f1 = Internal fd1 /\ f2 = Internal fd2>>)
+      \/ (<<INT: exists fd1 fd2, f1 = Internal fd1 /\ f2 = Internal fd2 /\ <<SIG: fn_sig1 fd1 = fn_sig2 fd2>> >>)
   .
 
   Definition is_external_weak F (f: AST.fundef F): bool :=
@@ -360,7 +361,7 @@ Module Sk.
         (p2: AST.program (fundef F2) V2)
         (MATCH: match_program match_fundef match_varinfo p1 p2)
         fn_sig1 fn_sig2
-        (WF: wf_match_fundef match_fundef)
+        (WF: wf_match_fundef match_fundef fn_sig1 fn_sig2)
     :
       <<EQ: Sk.of_program fn_sig1 p1 = Sk.of_program fn_sig2 p2>>
   .
@@ -375,7 +376,7 @@ Module Sk.
     inv H3. destruct a, b1; ss. clarify.
     inv H2; ss.
     - unfold update_snd. exploit WF; eauto. i; des; clarify; ss.
-      + repeat f_equal. admit "ez".
+      + repeat f_equal. exploit WF; et.
     - inv H1. ss.
   Qed.
 
@@ -400,7 +401,21 @@ Module Sk.
                                    (p.(prog_defmap) ! id) ((of_program get_sg p).(prog_defmap) ! id)>>
   .
   Proof.
-    admit "ez".
+    ii.
+    unfold prog_defmap, of_program, skdefs_of_gdefs. ss.
+    rewrite prog_defmap_update_snd.
+    destruct ((PTree_Properties.of_list (prog_defs p)) ! id) eqn:T; ss.
+    - econs; et. unfold skdef_of_gdef. des_ifs.
+      + econs; et.
+        { refl. }
+        econs; et.
+      + econs; et.
+        { refl. }
+        r. des_sumbool. refl.
+      + econs; et. destruct v; ss.
+    - econs; et.
+  Unshelve.
+    all: ss.
   Qed.
 
   Lemma of_program_defs
@@ -481,77 +496,5 @@ Module Sk.
 End Sk.
 
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
-
-
-
-
-
-
-(* Question: How does genv affect semantics? *)
-Module PLAYGROUND.
-
-Require Import RTL.
-
-Theorem eval_addressing_irr
-        F V
-        (ge0 ge1: Genv.t F V)
-        (SYMB: all1 (Genv.find_symbol ge0 =1= Genv.find_symbol ge1))
-  :
-    <<OP: all3 (Op.eval_addressing ge0 =3= Op.eval_addressing ge1)>>
-.
-Proof.
-  u.
-  ii. unfold Op.eval_addressing. des_ifs.
-  destruct x1; ss.
-  { des_ifs. unfold Genv.symbol_address. rewrite SYMB. ss. }
-Qed.
-
-Theorem eval_operation_irr
-        F V
-        (ge0 ge1: Genv.t F V)
-        (SYMB: all1 (Genv.find_symbol ge0 =1= Genv.find_symbol ge1))
-  :
-    <<OP: all4 (Op.eval_operation ge0 =4= Op.eval_operation ge1)>>
-.
-Proof.
-  u.
-  ii.
-  destruct x1; ss.
-  { des_ifs. unfold Genv.symbol_address. rewrite SYMB. ss. }
-  { erewrite eval_addressing_irr; eauto. }
-Qed.
-
-Goal forall ge0 ge1 st0 tr st1
-            (STEP: step ge0 st0 tr st1)
-            (SYMB: all1 (Genv.find_symbol ge0 =1= Genv.find_symbol ge1))
-  ,
-    <<STEP: step ge1 st0 tr st1>>
-.
-Proof.
-  i. inv STEP; try (by econs; eauto).
-  - erewrite eval_operation_irr in *; eauto. econs; eauto.
-  - erewrite eval_addressing_irr in *; eauto. econsby eauto.
-  - erewrite eval_addressing_irr in *; eauto. econsby eauto.
-  - econs; eauto.
-    unfold find_function_ptr in *. des_ifs_safe. rewrite SYMB in *. ss.
-  - econs; eauto.
-    unfold find_function_ptr in *. des_ifs_safe. rewrite SYMB in *. ss.
-  - eapply Events.eval_builtin_args_preserved with (ge2 := ge1) in H0; eauto.
-    econs; eauto. eapply Events.external_call_symbols_preserved; eauto.
-    econs; eauto.
-    split.
-    admit "Publics".
-    Print Genv.block_is_volatile.
-    admit "Genv.find_def with Gvar. (volatile)".
-  - econs; eauto.
-    unfold Genv.find_funct in *. des_ifs.
-    unfold Genv.find_funct_ptr in *.
-    admit "Genv.find_def with Gfun. internals".
-  - unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    admit "Genv.find_def with Gfun. externals".
-Abort.
-
-End PLAYGROUND.
-
 
 

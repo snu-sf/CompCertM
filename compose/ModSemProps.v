@@ -41,3 +41,42 @@ Proof.
   inv PLUS. econs; eauto. eapply spread_dstar; eauto.
 Qed.
 
+Lemma at_external_receptive_at
+      ms_src lst_src
+      (CALL: ModSem.is_call ms_src lst_src)
+  :
+    <<RCP: receptive_at ms_src lst_src>>
+.
+Proof.
+  econs; ii; ModSem.tac.
+Qed.
+
+Lemma at_external_determinate_at
+      ms_src lst_src
+      (CALL: ModSem.is_call ms_src lst_src)
+  :
+    <<RCP: determinate_at ms_src lst_src>>
+.
+Proof.
+  econs; ii; ModSem.tac.
+Qed.
+
+Lemma final_frame_receptive_at
+      ms_src lst_src
+      (CALL: ModSem.is_return ms_src lst_src)
+  :
+    <<RCP: receptive_at ms_src lst_src>>
+.
+Proof.
+  econs; ii; ModSem.tac.
+Qed.
+
+Lemma final_frame_determinate_at
+      ms_src lst_src
+      (CALL: ModSem.is_return ms_src lst_src)
+  :
+    <<RCP: determinate_at ms_src lst_src>>
+.
+Proof.
+  econs; ii; ModSem.tac.
+Qed.

@@ -434,6 +434,33 @@ Proof.
     exploit sr_traces_at; eauto.
 Qed.
 
+Lemma lift_determinate_at
+      (ms: ModSem.t) st0
+      (DTM: determinate_at ms st0)
+  :
+    forall prog tail,
+    <<DTM: determinate_at (Sem.sem prog)
+                            (State ((Frame.mk ms st0) :: tail))>>
+.
+Proof.
+  ii. inv DTM. ss.
+  econs; eauto; ii.
+  - inv H; inv H0; ModSem.tac.
+    + esplits; et.
+      { econs; et. }
+      i. f_equal. eapply ModSem.at_external_dtm; et.
+    + ss. determ_tac sd_determ_at. esplits; et.
+      { eapply match_traces_le; eauto. admit "this should hold". }
+      i. clarify. repeat f_equal. eauto.
+    + ss. esplits; et.
+      { econs; et. }
+      i. repeat f_equal.
+      determ_tac ModSem.final_frame_dtm. eapply ModSem.after_external_dtm; et.
+  - ss. inv FINAL. ss. inv STEP; ss; ModSem.tac.
+  - inv H; s; try omega.
+    exploit sd_traces_at; eauto.
+Qed.
+
 (* Lemma callstate_receptive_at *)
 (*       prog *)
 (*       args frs *)

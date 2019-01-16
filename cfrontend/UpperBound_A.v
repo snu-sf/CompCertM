@@ -14,6 +14,20 @@ Set Implicit Arguments.
 
 
 
+Ltac cinv H :=
+  let X := fresh in
+  set (X := H);
+  inv X.
+
+Ltac cset H1 H2 :=
+  let X := fresh in
+  set (X := H2);
+  eapply H1 in X.
+
+Ltac cset2 H1 H2 :=
+  let X := fresh in
+  set (X := H1);
+  specialize (X H2).
 
 
 
@@ -76,8 +90,6 @@ Proof.
   destruct k0; ss.
 Qed.
 
-
-
 Section PRESERVATION.
 
   Variable cp_link cp0 cp1: Csyntax.program.
@@ -135,8 +147,20 @@ Section PRESERVATION.
     rewrite link_sk_match in *. ss.
   Qed.
 
+  (* Definition match_prog (p: Csyntax.program) (tp: Sk.t) := *)
+  (*   match_program (fun ctx f tf => fundef_of_fundef f = tf) eq p tp. *)
 
-
+  (* Lemma match_genvs_le A B V W R1 R2 (ge1: Genv.t A V) (ge2: Genv.t B W) *)
+  (*       (MATCHGE: Genv.match_genvs R1 ge1 ge2) *)
+  (*       (LE: R1 <2= R2) *)
+  (*   : *)
+  (*     Genv.match_genvs R2 ge1 ge2. *)
+  (* Proof. *)
+  (*   inv MATCHGE. econs; i; ss; eauto. *)
+  (*   cinv (mge_defs b). *)
+  (*   - econs 1. *)
+  (*   - econs 2. eapply LE; eauto. *)
+  (* Qed. *)
 
   Definition is_focus (cp: Csyntax.program): Prop := cp = cp0 \/ cp = cp1.
 
@@ -352,17 +376,15 @@ Section PRESERVATION.
       exists pgm, is_focus pgm /\
              Genv.find_funct  (SkEnv.project skenv_link (defs pgm)) fptr = Some (AST.Internal if_sig).
   Proof.
-    unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
-    rewrite MapsC.PTree_filter_map_spec in FIND. unfold o_bind in *.
-    destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss.
-    destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs.
-    exploit Genv.invert_find_symbol; eauto. i. unfold skenv_link in *. ss. unfold link_sk in *. subst prog_src prog_tgt. ss.
-    
-    destruct ctx; ss.
-    unfold link_list in *. des_ifs. ss. des_ifs.
+    (* unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss. *)
+    (* rewrite MapsC.PTree_filter_map_spec in FIND. unfold o_bind in *. *)
+    (* destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss. *)
+    (* destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs. *)
+    (* exploit Genv.invert_find_symbol; eauto. i. unfold skenv_link in *. ss. unfold link_sk in *. subst prog_src prog_tgt. ss. *)
+    (* destruct ctx; ss. *)
+    (* unfold link_list in *. des_ifs. ss. des_ifs. *)
 
-    unfold link_list in *. des_ifs. 
-    
+    (* unfold link_list in *. des_ifs.  *)    
     admit "i think it must be true".
   Qed.
 
@@ -373,7 +395,16 @@ Section PRESERVATION.
     :
       Genv.find_funct (SkEnv.project skenv_link (defs cp_link)) fptr = Some (AST.Internal if_sig).
   Proof.
-    admit "i think it must be true".
+    exploit link_linkorder; eauto. i. des.
+    unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
+    rewrite MapsC.PTree_filter_map_spec in *. unfold o_bind in *.
+    destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss.
+    destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs.
+    unfold defs, in_dec, ident_eq in *.
+
+    destruct (prog_defs_names cp_link) eqn:Hlk; destruct (prog_defs_names pgm) eqn:Hlk'; ss; des_ifs; eauto.
+    inv Hlk.
+    admit "Heq, Heq0 contradiction".
   Qed.
 
   Lemma msfind_fsim
@@ -663,7 +694,10 @@ Section PRESERVATION.
           
           unfold Genv.find_funct, Genv.find_funct_ptr in SIG, FPTR. des_ifs. rename b into blk.
           assert(SYMB: exists id blk, Genv.find_symbol cp_top.(globalenv) id = Some blk).
-          { admit "1) use SkEnv.wf or 2) change definition of wt_program". }
+          { assert (SkEnv.wf (Sk.load_skenv sk_link)) by eapply Sk.load_skenv_wf.
+            cinv H. unfold skenv_link in *.
+            exploit DEFSYMB; eauto. i. des. exists id. exists blk. inv FOCUS1.
+            admit "1) use SkEnv.wf or 2) change definition of wt_program". }
           des.
 
           esplits; eauto.

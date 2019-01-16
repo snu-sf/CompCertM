@@ -299,6 +299,7 @@ Proof.
       eauto with mem.
     - econs; eauto.
       ii; ss. des; ss. des_ifs.
+    - ii. eauto with mem.
 Qed.
 
 Lemma store_undef_simmem
@@ -402,7 +403,8 @@ Proof.
       unfold Mem.valid_block in *. rewrite <- NB in *. eauto with xomega.
     + etransitivity; try apply MWF; eauto with mem congruence.
       rewrite <- NB. lia.
-  - econs; ss; eauto with mem xomega.
+  - econs; ss.
+    + eauto with mem xomega.
     + inv MWF.
       etrans.
       { eapply Mem.alloc_unchanged_on; eauto. }
@@ -410,11 +412,13 @@ Proof.
       i. ss. des_ifs. apply TGTEXT in H0. u in H0. des.
       exfalso. eapply Mem.fresh_block_alloc; eauto.
     + eapply frozen_refl.
+    + ii. eauto with mem xomega.
     + i. r.
       etrans; cycle 1.
       {
         ii.
         eapply Mem.perm_alloc_4; et.
+        { eauto with mem. }
       }
       { ii. eapply Mem.perm_unchanged_on_2; et.
         - ss. des_ifs. unfold Mem.valid_block in *. xomega.

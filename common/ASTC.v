@@ -357,3 +357,14 @@ Proof.
   rewrite IHxs. rewrite PTree.gsspec. des_ifs.
 Qed.
 
+Lemma defs_prog_defmap
+      F V (prog: AST.program F V)
+  :
+    forall id, (exists gd, (prog_defmap prog) ! id = Some gd) <-> defs prog id
+.
+Proof.
+  ii. etrans.
+  { symmetry. eapply prog_defmap_spec. }
+  unfold defs, prog_defs_names. split; i; des; des_sumbool; ss.
+Qed.
+

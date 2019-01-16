@@ -105,7 +105,7 @@ Section INITDTM.
   Proof.
     hexploit (@Mod.get_modsem_projected_sk md skenv_link); eauto. intro SPEC; des.
     remember (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) as skenv_proj eqn:T in *.
-    assert(WFSMALL: skenv_proj.(SkEnv.wf)).
+    assert(WFSMALL: skenv_proj.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; eauto. }
     clarify. des. inv SPEC.
     exploit Genv.find_funct_inv; eauto. i; des. clarify. ss. des_ifs.
@@ -116,11 +116,13 @@ Section INITDTM.
       exploit SYMBDROP; eauto. i; des. clarify.
     }
     exploit SYMBKEEP; eauto. intro SYMBBIG; des.
-    rewrite SYMBSMALL in *. symmetry in SYMBBIG.
+    rewrite SYMB in *. symmetry in SYMBBIG.
+    exploit DEFKEPT; eauto.
+    { apply Genv.find_invert_symbol; eauto. }
+    i; des.
     exploit DEFKEEP; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
     intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL.
-    clear - Heq0 DEFSMALL.
     unfold System.skenv in *. ss.
     exploit Genv_map_defs_def; eauto. i; des. des_ifs.
   Qed.
@@ -218,26 +220,26 @@ Local Transparent Linker_prog.
     remember (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
     remember (ModSem.skenv (Mod.get_modsem md1 skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *.
 
-    assert(WFSMALL0: skenv_proj0.(SkEnv.wf)).
+    assert(WFSMALL0: skenv_proj0.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; try apply SPEC0; eauto. }
-    assert(WFSMALL1: skenv_proj1.(SkEnv.wf)).
+    assert(WFSMALL1: skenv_proj1.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; try apply SPEC1; eauto. }
 
     bar.
     inv WFSMALL0. exploit DEFSYMB; eauto. i; des.
     inv WFSMALL1. exploit DEFSYMB0; eauto. i; des.
-    rename H into SYMB0. rename H1 into SYMB1. rename id0 into id1. rename id into id0.
+    rename SYMB0 into SYMB1. rename SYMB into SYMB0. rename id0 into id1. rename id into id0.
     move SYMB0 at top. move SYMB1 at top. clear_until_bar.
 
     inv SPEC0.
     assert(DEFS0: defs (Mod.get_sk md0 (Mod.data md0)) id0).
     { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro SYMBBIG0; des. rewrite SYMB0 in *. symmetry in SYMBBIG0.
-    exploit DEFKEEP; eauto.
+    exploit DEFKEPT; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    intro DEFBIG0; des. rewrite DEF0 in *. symmetry in DEFBIG0.
+    i; des.
     move SYMBBIG0 at top.
-    move DEFBIG0 at top.
+    rename BIG into DEFBIG0. move DEFBIG0 at top.
     move DEFS0 at top.
     clear_until_bar.
 
@@ -245,11 +247,11 @@ Local Transparent Linker_prog.
     assert(DEFS1: defs (Mod.get_sk md1 (Mod.data md1)) id1).
     { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro SYMBBIG1; des. rewrite SYMB1 in *. symmetry in SYMBBIG1.
-    exploit DEFKEEP; eauto.
+    exploit DEFKEPT; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    intro DEFBIG1; des. rewrite DEF1 in *. symmetry in DEFBIG1.
+    i; des.
     move SYMBBIG1 at top.
-    move DEFBIG1 at top.
+    rename BIG into DEFBIG1. move DEFBIG1 at top.
     move DEFS1 at top.
     clear_until_bar.
 

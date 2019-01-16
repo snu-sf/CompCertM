@@ -358,13 +358,14 @@ c0 + empty
         rewrite H1. ss. rewrite VAR in H. inv H. ss.
     - unfold o_bind in Heq; ss.
       exploit Genv.find_invert_symbol; eauto. i. rewrite H1 in Heq. ss.
+      rewrite VAR in *. clarify.
       des_ifs.
       unfold Genv.find_symbol in *. rewrite mge_symb in H0.
       assert ((prog_defmap prog) ! id = Some (Gvar g)).
       { rewrite Genv.find_def_symbol. exists blk. splits; eauto. }
       assert (In id (prog_defs_names prog)).
       { rewrite prog_defmap_spec. exists (Gvar g). auto. }
-      rewrite <- id_in_prog in H3. inv H3. clarify.
+      rewrite <- id_in_prog in H2. inv H2. clarify.
   Qed.
 
   Lemma var_info_same'
@@ -393,7 +394,7 @@ c0 + empty
     assert (defs prog i) by ss.
     rewrite id_in_prog in H2. rewrite prog_defmap_spec in H2. des.
     rewrite H2 in VAR. ss. des_ifs. ss.
-    exploit DEFKEEP; eauto. i. rewrite Genv.find_def_symbol in H2. des.
+    exploit DEFKEEP; eauto. { bsimpl. congruence. } i. rewrite Genv.find_def_symbol in H2. des.
     rewrite H in H0. unfold Genv.find_symbol in *. rewrite mge_symb in H0. rewrite <- H0 in H2. inv H2.
     clarify.
   Qed.
@@ -664,7 +665,7 @@ c0 + empty
       unfold o_bind in Heq; ss.
       destruct (Genv.invert_symbol skenv_link b) eqn:SYMB; ss.
       - assert (~ defs prog i).
-        { des_ifs; ss. }
+        { des_ifs; ss. bsimpl. destruct f; ss. clarify. }
         exploit Genv.invert_find_symbol; eauto. i.
         unfold Genv.find_symbol in *. rewrite mge_symb in H1.
         assert ((prog_defmap prog) ! i = Some (Gfun f)).
@@ -692,7 +693,7 @@ c0 + empty
       splits. unfold Genv.find_symbol in *. rewrite <- mge_symb. auto.
       auto. }
     Eq. ss. des_ifs; subst. ss. rewrite negb_false_iff in Heq0.
-    unfold is_external_fd in *. des_ifs. inv Heq. Eq.
+    unfold is_external_fd in *. des_ifs.
   Qed.
 
   Lemma sstep_same
@@ -878,7 +879,7 @@ c0 + empty
             eexists. erewrite Genv.find_def_symbol. esplits; eauto. }
           exploit DEFKEEP; eauto. exploit Genv.find_invert_symbol. unfold Genv.find_symbol. eapply Heq1.
           rewrite <- prog_sk_tgt in *. ss. eauto.
-          i. unfold Genv.find_funct_ptr. rewrite H5. rewrite SIG. ss. }
+          i. unfold Genv.find_funct_ptr. rewrite H5. ss. }
         econs; i.
         * econs; i; ss; eauto. des_ifs.
           unfold Genv.symbol_address in *.

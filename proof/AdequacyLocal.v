@@ -10,7 +10,7 @@ Require Import Events.
 
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
-Require Import SemProps Ord.
+Require Import ModSemProps SemProps Ord.
 Require Import Sound Preservation AdequacySound.
 Require Import Program.
 
@@ -341,7 +341,7 @@ Section SIMGE.
         i. split.
         { u. esplits; ii; des; ss; eauto. inv H0. }
         econs; ss; cycle 1.
-        { admit "ez". }
+        { eapply System.modsem_receptive; et. }
         ii. inv STEPSRC.
         exploit SimSymb.system_axiom; eauto.
         (* { eapply external_call_symbols_preserved; eauto. *)
@@ -355,7 +355,7 @@ Section SIMGE.
         inv SIMGE0. exploit FUNCFSIM; eauto. i; des. clarify.
         esplits; eauto.
         { left. apply plus_one. econs.
-          - admit "ez".
+          - eapply System.modsem_determinate; et.
           - ss. econs; eauto.
             (* eapply external_call_symbols_preserved; eauto. *)
             (* apply System.skenv_globlaenv_equiv. *)
@@ -630,7 +630,7 @@ Section ADQINIT.
                 [] sm_init.(SimMem.tgt)) as args_tgt in *.
     assert(SIMARGS: SimMem.sim_args args_src args_tgt sm_init).
     { econs; ss; eauto.
-      - admit "strengthen sim_skenv specs".
+      - admit "ez - strengthen sim_skenv specs".
       - rewrite <- SimMem.sim_val_list_spec. econs; eauto. }
 
     esplits; eauto.
@@ -857,7 +857,7 @@ Section ADQSTEP.
       econs; eauto.
       { ii. inv FINALSRC. ss. ModSem.tac. }
       econs; eauto; cycle 1.
-      { eapply lift_receptive_at. admit "Add in ModSem.v". }
+      { eapply lift_receptive_at. eapply at_external_receptive_at; et. }
       i.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
@@ -872,7 +872,7 @@ Section ADQSTEP.
       esplits; eauto.
       + left. apply plus_one.
         econs; ss; eauto.
-        { admit "eapply lift_determinate_at // Add in ModSem.v". }
+        { eapply lift_determinate_at; et. eapply at_external_determinate_at; et. }
         des_ifs.
         econs 1; eauto.
       + right. eapply CIH; eauto.
@@ -906,7 +906,7 @@ Section ADQSTEP.
           * eapply SimMem.lift_wf; eauto.
           * inv SIMARGS. econs; ss; eauto.
             { eapply SimMem.lift_sim_val; eauto. }
-            { admit "eapply SimMem.lift_sim_val_list; eauto.". }
+            { admit "ez - eapply SimMem.lift_sim_val_list; eauto.". }
             { erewrite SimMem.lift_src. ss. }
             { erewrite SimMem.lift_tgt. ss. }
         }
@@ -919,7 +919,7 @@ Section ADQSTEP.
         inv STACK.
         econs; ss; eauto.
         - econs; ss; eauto.
-          admit "obligate to SimMem.val".
+          admit "ez - obligate to SimMem.val".
         - i. inv FINAL0; inv FINAL1; ss.
           exploit ModSem.final_frame_dtm; [apply FINAL|apply FINAL0|..]. i; clarify.
           congruence.
@@ -927,8 +927,7 @@ Section ADQSTEP.
           inv H; ss; ModSem.tac.
       }
       econs; eauto; cycle 1.
-      { eapply lift_receptive_at.
-        admit "Add to ModSem.v". }
+      { eapply lift_receptive_at. eapply final_frame_receptive_at; et. }
       i. ss. des_ifs.
       inv STEPSRC; ModSem.tac. ss.
       inv STACK; ss. folder. des_ifs.
@@ -944,7 +943,7 @@ Section ADQSTEP.
       esplits; eauto.
       + left. apply plus_one.
         econs; eauto.
-        { admit "Add to semprops. / Modsem". }
+        { eapply lift_determinate_at. eapply final_frame_determinate_at; et. }
         econs 4; ss; eauto.
       + right. eapply CIH; eauto.
         { unsguard SUST. des_safe. eapply sound_progress; eauto.

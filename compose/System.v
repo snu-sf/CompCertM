@@ -1,9 +1,9 @@
-Require Import Events.
+Require Import EventsC.
 Require Import Values.
 Require Import AST.
 Require Import Memory.
 Require Import Globalenvs.
-Require Import Smallstep.
+Require Import Smallstep Simulation.
 Require Import CoqlibC.
 
 Require Import Mod ModSem Skeleton.
@@ -91,6 +91,35 @@ Section SYSMODSEM.
   Next Obligation. ii; des; ss; all_prop_inv; ss. Qed.
   Next Obligation. ii; des; ss; all_prop_inv; ss. Qed.
   Next Obligation. ii; des; ss; all_prop_inv; ss. Qed.
+
+  Lemma modsem_receptive
+        st
+    :
+      receptive_at modsem st
+  .
+  Proof.
+    econs; ii; ss.
+    - inv H. exploit external_call_receptive; eauto.
+      { eapply match_traces_le; et. }
+      i; des. esplits; et. econs; et. instantiate (1:= Retv.mk _ _). s. et.
+    - inv H. eapply external_call_trace_length; et.
+  Qed.
+
+  Lemma modsem_determinate
+        st
+    :
+      determinate_at modsem st
+  .
+  Proof.
+    econs; ii; ss.
+    - inv H; inv H0. clarify.
+      determ_tac external_call_match_traces.
+      esplits; et.
+      { eapply match_traces_le; et. }
+      i; clarify.
+      determ_tac external_call_deterministic. destruct retv, retv0; ss. clarify.
+    - inv H. eapply external_call_trace_length; et.
+  Qed.
 
 End SYSMODSEM.
 

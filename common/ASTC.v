@@ -14,6 +14,75 @@ Generalizable Variables F.
 
 
 
+
+
+
+
+
+
+
+Lemma prog_defmap_spec
+      F V
+      (p: program F V)
+      id
+  :
+    In id p.(prog_defs_names) <-> exists g, p.(prog_defmap) ! id = Some g
+.
+Proof.
+  split; ii.
+  - exploit prog_defmap_dom; eauto.
+  - des. exploit in_prog_defmap; eauto. i.
+    clear - H0.
+    destruct p; ss.
+    u.
+    apply in_map_iff. esplits; eauto. ss.
+Qed.
+
+Lemma prog_defmap_image
+      F V
+      (p : AST.program F V)
+      id g
+      (GET: (prog_defmap p) ! id = Some g)
+  :
+    <<IN: In id (prog_defs_names p)>>
+.
+Proof.
+  eapply prog_defmap_spec; et.
+Qed.
+
+
+Lemma prog_defmap_update_snd
+      X Y (f: X -> Y) (defs: list (positive * X)) id
+  :
+    (PTree_Properties.of_list (map (update_snd f) defs)) ! id =
+    option_map f ((PTree_Properties.of_list defs) ! id)
+.
+Proof.
+  unfold PTree_Properties.of_list.
+  rewrite <- ! fold_left_rev_right in *. rewrite <- map_rev.
+  unfold PTree.elt.
+  abstr (rev defs) xs. clear_tac.
+  generalize id.
+  induction xs; ii; try rewrite PTree.gempty in *; ss.
+  { unfold option_map. rewrite PTree.gempty in *; ss. }
+  destruct a; ss.
+  rewrite PTree.gsspec. des_ifs.
+  { unfold option_map. rewrite PTree.gsspec. des_ifs. }
+  rewrite IHxs. rewrite PTree.gsspec. des_ifs.
+Qed.
+
+
+
+
+
+
+
+
+
+
+
+
+
 Class HasExternal (X: Type): Type := {
   is_external: X -> bool;
 }
@@ -274,6 +343,20 @@ I think the same is true for prog_public thing too.
 
 End PROGRAMS.
 
+Lemma defs_prog_defmap
+      F V (prog: AST.program F V)
+  :
+    forall id, (exists gd, (prog_defmap prog) ! id = Some gd) <-> defs prog id
+.
+Proof.
+  ii. etrans.
+  { symmetry. eapply prog_defmap_spec. }
+  unfold defs, prog_defs_names. split; i; des; des_sumbool; ss.
+Qed.
+
+
+
+
 Section PROGRAMS2.
 
   Context `{HasExternal F} {V: Type}.
@@ -295,6 +378,16 @@ End PROGRAMS2.
 Hint Unfold defs privs internals.
 Hint Unfold defs_old privs_old internals'.
 
+Lemma internals_defs
+      `{HasExternal F} V
+      (p: AST.program F V)
+  :
+    p.(internals) <1= p.(defs)
+.
+Proof.
+  u. ii. des_sumbool. eapply prog_defmap_spec. des_ifs; et.
+Qed.
+
 (* Only "is_internal" defs will remain in ModSem-SkEnv/Genv. *)
 (* Note: Other module's gvar will flow in. Is it OK? *)
 (* Proof: More def: less UB. C physical -> C logical: OK. // Asm logical -> Asm physical: OK. *)
@@ -306,65 +399,4 @@ Hint Unfold defs_old privs_old internals'.
 (*   | Gvar _ => true *)
 (*   end *)
 (* . *)
-
-Lemma prog_defmap_spec
-      F V
-      (p: program F V)
-      id
-  :
-    In id p.(prog_defs_names) <-> exists g, p.(prog_defmap) ! id = Some g
-.
-Proof.
-  split; ii.
-  - exploit prog_defmap_dom; eauto.
-  - des. exploit in_prog_defmap; eauto. i.
-    clear - H0.
-    destruct p; ss.
-    u.
-    apply in_map_iff. esplits; eauto. ss.
-Qed.
-
-Lemma prog_defmap_image
-      F V
-      (p : AST.program F V)
-      id g
-      (GET: (prog_defmap p) ! id = Some g)
-  :
-    <<IN: In id (prog_defs_names p)>>
-.
-Proof.
-  eapply prog_defmap_spec; et.
-Qed.
-
-
-Lemma prog_defmap_update_snd
-      X Y (f: X -> Y) (defs: list (positive * X)) id
-  :
-    (PTree_Properties.of_list (map (update_snd f) defs)) ! id =
-    option_map f ((PTree_Properties.of_list defs) ! id)
-.
-Proof.
-  unfold PTree_Properties.of_list.
-  rewrite <- ! fold_left_rev_right in *. rewrite <- map_rev.
-  unfold PTree.elt.
-  abstr (rev defs) xs. clear_tac.
-  generalize id.
-  induction xs; ii; try rewrite PTree.gempty in *; ss.
-  { unfold option_map. rewrite PTree.gempty in *; ss. }
-  destruct a; ss.
-  rewrite PTree.gsspec. des_ifs.
-  { unfold option_map. rewrite PTree.gsspec. des_ifs. }
-  rewrite IHxs. rewrite PTree.gsspec. des_ifs.
-Qed.
-
-Lemma defs_prog_defmap
-      F V (prog: AST.program F V)
-  :
-    forall id, (exists gd, (prog_defmap prog) ! id = Some gd) <-> defs prog id
-.
-Proof.
-  ii. etrans.
-  { symmetry. eapply prog_defmap_spec. }
-  unfold defs, prog_defs_names. split; i; des; des_sumbool; ss.
-Qed.
 

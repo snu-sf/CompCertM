@@ -72,7 +72,7 @@ c0 + empty
       wt_retval vres res.
 
   Definition local_genv (p : Csyntax.program) :=
-    (skenv_link.(SkEnv.project) p).(SkEnv.revive) p.
+    (skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function)).(SkEnv.revive) p.
 
   Inductive match_states : Csem.state -> Sem.state -> nat -> Prop :=
   | match_states_intro
@@ -138,12 +138,16 @@ c0 + empty
 
   Lemma skenv_link_wf:
     SkEnv.wf skenv_link.
-  Proof. (unfold skenv_link; eapply Sk.load_skenv_wf). Qed.
+  Proof. (unfold skenv_link; eapply SkEnv.load_skenv_wf). Qed.
 
   Lemma proj_wf:
-    SkEnv.project_spec skenv_link prog (SkEnv.project skenv_link prog).
+    SkEnv.project_spec skenv_link prog.(CSk.of_program signature_of_function) (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)).
   Proof.
     eapply SkEnv.project_impl_spec.
+    unfold skenv_link.
+    rpapply link_includes; et.
+    { unfold tprog. rewrite in_map_iff. esplits; et. ss. left; et. }
+    ss.
   Qed.
 
   Lemma prog_sk_tgt:
@@ -321,7 +325,7 @@ c0 + empty
         blk g
         (VAR: Genv.find_var_info (Genv.globalenv prog) blk = Some g)
     :
-      Genv.find_var_info (SkEnv.revive (SkEnv.project skenv_link prog) prog) blk = Some g
+      Genv.find_var_info (SkEnv.revive (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)) prog) blk = Some g
   .
   Proof.
     destruct match_ge_skenv_link.

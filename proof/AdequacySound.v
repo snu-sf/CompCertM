@@ -165,7 +165,7 @@ Section ADQSOUND.
     i; des.
     esplits; eauto.
     assert(WF: SkEnv.wf (Sk.load_skenv sk_link_src)).
-    { eapply Sk.load_skenv_wf. }
+    { eapply SkEnv.load_skenv_wf. }
     assert(GE: sound_ge su_init m_init).
     {
       econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
@@ -174,6 +174,8 @@ Section ADQSOUND.
       + s. rewrite <- Sound.system_skenv; eauto.
       + eapply Sound.skenv_project; eauto.
         eapply Mod.get_modsem_projected_sk; eauto.
+        unfold p_src in IN0. unfold ProgPair.src in *. rewrite in_map_iff in IN0. des. clarify.
+        eapply INCLSRC; et.
     }
     econs; eauto.
     - eapply Sound.greatest_adq; eauto.
@@ -260,6 +262,8 @@ Section ADQSOUND.
         exploit SIMMS.
         { eapply INCLSRC; et. }
         { eapply INCLTGT; et. }
+        { eapply SkEnv.load_skenv_wf; et. }
+        { eapply SkEnv.load_skenv_wf; et. }
         { eapply SimSymb.le_refl. }
         { admit "somehow. 1) fat module / skinny modsem. 2) require as premise". }
         i; des. inv H0. ss. esplits; eauto.

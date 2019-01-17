@@ -96,3 +96,143 @@ Module CSk.
 
 End CSk.
 
+
+Module CSkEnv.
+
+  Local Opaque prog_defs_names.
+  Lemma project_revive_precise
+        F
+        skenv (prog: Ctypes.program F)
+        (* (DEFS0: forall id, In id prog.(prog_defs_names) -> is_some (skenv.(Genv.find_symbol) id)) *)
+        (* (WF: wf skenv) *)
+        skenv_link
+        (* (PROJ: skenv = SkEnv.project skenv_link prog) *)
+        get_sg
+        (PROJ: SkEnv.project_spec skenv_link prog.(CSk.of_program get_sg) skenv)
+        (* (WF: SkEnv.wf skenv_link) *)
+        (INCL: SkEnv.includes skenv_link prog.(CSk.of_program get_sg))
+    (* (PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog *)
+    :
+      <<PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog>>
+  .
+  Proof.
+    (* assert(H: DUMMY_PROP) by ss. *)
+    (* assert(DEFS: prog.(defs) <1= fun id => is_some (skenv.(Genv.find_symbol) id)). *)
+    (* { ii; ss. u. des_ifs. exfalso. *)
+    (*   bar. *)
+    (*   inv PROJ. *)
+    (*   bar. *)
+    (*   inv INCL. *)
+    (*   bar. *)
+    (*   exploit SYMBKEEP; et. *)
+    (*   { rewrite CSk.of_program_defs. eauto. } *)
+    (*   intro EQ. des. rewrite Heq in *. symmetry in EQ. *)
+    (*   u in PR. des_sumbool. apply prog_defmap_spec in PR. des. *)
+    (*   hexploit (CSk.of_program_prog_defmap prog get_sg x0). intro REL. rewrite PR in *. inv REL. symmetry in H1. *)
+    (*   exploit DEFS; et. i; des. clarify. *)
+    (* } *)
+    (* econs; eauto; i; ss; cycle 1. *)
+    (* - des. *)
+    (*   unfold SkEnv.revive in *. *)
+    (*   apply_all_once Genv_map_defs_def. des; ss. *)
+    (*   ss. *)
+    (*   rewrite Genv_map_defs_symb in *. u in *. des_ifs_safe. simpl_bool. *)
+    (*   apply_all_once Genv.invert_find_symbol. *)
+    (*   determ_tac Genv.genv_vars_inj. *)
+    (* - rename H0 into DEFMAP. des. *)
+    (*   dup H. u in DEFS. unfold ident in *. spc DEFS. *)
+    (*   exploit DEFS; clear DEFS. *)
+    (*   { unfold proj_sumbool. des_ifs; ss. exfalso. apply n. eapply prog_defmap_spec; eauto. } *)
+    (*   i; des. *)
+    (*   des_ifs_safe. *)
+    (*   esplits; eauto. *)
+    (*   unfold SkEnv.revive. u. *)
+    (*   unfold Genv.find_def, Genv_map_defs. cbn. rewrite PTree_filter_map_spec. *)
+    (*   clear_tac. *)
+    (*   rewrite o_bind_ignore. *)
+    (*   exploit Genv.find_invert_symbol; et. intro INV. *)
+    (*   bar. *)
+    (*   inv PROJ. *)
+    (*   inv INCL. *)
+    (*   bar. *)
+    (*   assert(defs (Sk.of_program get_sg prog) id). *)
+    (*   { apply NNPP. ii. exploit SYMBDROP; et. i; des. clarify. } *)
+    (*   exploit SYMBKEEP; et. intro SYMBLINK; des. rewrite Heq in *. symmetry in SYMBLINK. *)
+    (*   exploit Genv.find_invert_symbol; et. intro INVLINK. *)
+    (*   hexploit (Sk.of_program_prog_defmap prog get_sg id); et. intro REL. *)
+    (*   rewrite DEFMAP in *. inv REL. *)
+    (*   rename H2 into MATCHGD. rename H1 into DEFMAP1. *)
+    (*   exploit DEFS; et. i; des. clarify. *)
+    (*   des_ifs_safe. *)
+    (*   inv MATCHGD; cycle 1. *)
+    (*   { *)
+    (*     des_ifs. *)
+    (*     inv MATCH. *)
+    (*     exploit DEFKEEP; et. *)
+    (*     { rewrite Sk.of_program_internals. u. des_ifs. } *)
+    (*     i; des. uge. clarify. *)
+    (*   } *)
+    (*   { *)
+    (*     inv MATCH. *)
+    (*     destruct (is_external_fd f1) eqn:T. *)
+    (*     - etrans; cycle 1. *)
+    (*       { instantiate (1:= None). des_ifs. ss. des_ifs. } *)
+    (*       assert(is_external f2). *)
+    (*       { rr in H1. des_ifs; ss. des_sumbool. clarify. } *)
+    (*       rename fd2 into fd_big. *)
+    (*       rename f2 into fd_small. rename f1 into fd_small2. *)
+    (*       (* if (Genv.genv_defs skenv) is some, then it should be fd_big *) *)
+    (*       (* fd_big *) *)
+    (*       bar. *)
+    (*       des_ifs. uge. *)
+    (*       exploit DEFKEPT; et. i; des. clarify. *)
+    (*       rewrite Sk.of_program_internals in *. *)
+    (*       u in H4. des_ifs. bsimpl. ss. clarify. *)
+    (*     - etrans; cycle 1. *)
+    (*       { instantiate (1:= Some (Gfun f1)). des_ifs. ss. des_ifs. } *)
+    (*       des_ifs. exfalso. *)
+
+    (*       exploit DEFKEEP; et. *)
+    (*       { rewrite Sk.of_program_internals in *. u. des_ifs. ss. bsimpl. ss. } *)
+    (*       intro GD; des. uge. clarify. *)
+    (*   } *)
+    admit "".
+  Qed.
+
+  Lemma project_revive_no_external
+        F (prog: Ctypes.program F)
+        skenv_link get_sg blk gd
+        (DEF: Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program get_sg prog)) prog) blk = Some gd)
+        (EXTERNAL: is_external gd)
+        (INCL: SkEnv.includes skenv_link (CSk.of_program get_sg prog))
+        (WF: SkEnv.wf skenv_link)
+    :
+      False
+  .
+  Proof.
+    assert(H: DUMMY_PROP) by ss.
+    hexploit (@SkEnv.project_impl_spec skenv_link (CSk.of_program get_sg prog)); et. intro PROJ. des.
+    exploit project_revive_precise; et. intro GEP; des.
+    exploit SkEnv.project_spec_preserves_wf; et. intro WF0; des.
+    inv WF0.
+    dup DEF.
+    unfold SkEnv.revive in DEF. apply Genv_map_defs_def in DEF. des.
+    exploit DEFSYMB; et. i; des.
+    inv GEP.
+    exploit FIND_MAP_INV.
+    { esplits; et. }
+    i; des.
+    uo. des_ifs.
+    inv PROJ.
+    exploit (SYMBKEEP id); et.
+    { rewrite CSk.of_program_defs. u. des_sumbool. eapply prog_defmap_image; et. }
+    i; des.
+    exploit DEFKEPT; et.
+    { apply Genv.find_invert_symbol. rewrite <- H1. et. }
+    i; des.
+    (* rewrite CSk.of_program_internals in *. *)
+    (* u in H2. des_ifs. *)
+    admit "".
+  Qed.
+
+End CSkEnv.

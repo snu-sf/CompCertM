@@ -83,9 +83,13 @@ Section PRESERVATION.
   Let skenv_link := Sk.load_skenv sk.
   Let ge := load_genv prog skenv_link.
   Let tge := Genv.globalenv tprog.
+  Let WFSKELINK: SkEnv.wf skenv_link.
+  Proof.
+    eapply SkEnv.load_skenv_wf.
+  Qed.
 
   Definition local_genv (p : Asm.program) :=
-    (skenv_link.(SkEnv.project) p).(SkEnv.revive) p.
+    (skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig)).(SkEnv.revive) p.
 
   Lemma match_genvs_sub A B V W R (ge1: Genv.t A V) (ge2: Genv.t B W)
         (MATCHGE: Genv.match_genvs R ge1 ge2)
@@ -211,37 +215,38 @@ Section PRESERVATION.
     rewrite list_map_compose in IN. ss.
     eapply in_map_iff in IN. des. clarify. unfold modsem. ss. econs.
 
+    assert(INCL: SkEnv.includes (Genv.globalenv sk) (Sk.of_program fn_sig x)).
+    { exploit link_includes; et.
+      { rewrite in_map_iff. esplits; et. }
+      i. ss.
+    }
+
     cinv match_skenv_link_tge.
-    cinv (SkEnv.project_impl_spec skenv_link x).
+    cinv (@SkEnv.project_impl_spec skenv_link x.(Sk.of_program fn_sig) INCL).
     unfold skenv_link in *.
 
-    assert (SKWF: SkEnv.wf_proj (SkEnv.project (Genv.globalenv sk) x)).
+    assert (SKWF: SkEnv.wf_proj (SkEnv.project (Genv.globalenv sk) x.(Sk.of_program fn_sig))).
     { eapply SkEnv.project_spec_preserves_wf.
-      - eapply Sk.load_skenv_wf.
-      - eapply SkEnv.project_impl_spec.
+      - eapply SkEnv.load_skenv_wf.
+      - eapply SkEnv.project_impl_spec; et.
     }
 
-    exploit SkEnv.revive_precise; eauto.
-    { instantiate (1:= x). i.
-      apply prog_defmap_spec in H.
-      eapply prog_defmap_spec in H.
-      rewrite SYMBKEEP.
-
-      - admit "".
-
-      - unfold defs. unfold proj_sumbool. des_ifs.
-    }
-
+    exploit SkEnv.project_revive_precise; eauto.
+    { eapply SkEnv.project_impl_spec; et. }
     i. inv H. econs; ss; i.
 
     - unfold fundef in *. rewrite mge_next. refl.
 
     - unfold Genv.find_symbol in *. rewrite mge_symb.
       destruct (classic (defs x id)).
-      + eapply SYMBKEEP in H. des.
-        rewrite <- H. ss.
-      + eapply SYMBDROP in H. des.
-        ss. unfold fundef in *. unfold skenv_link in *. clarify.
+      + exploit SYMBKEEP; et.
+        { erewrite Sk.of_program_defs; et. }
+        i; des.
+        ss. congruence.
+      + exploit SYMBDROP; et.
+        { erewrite Sk.of_program_defs; et. }
+        i; des.
+        ss. congruence.
 
     - exists d0. splits; eauto.
 
@@ -253,36 +258,38 @@ Section PRESERVATION.
       destruct (Genv.invert_symbol skenv_link b) eqn:EQ; cycle 1.
       { eapply DEFORPHAN in EQ. des. clarify. }
 
-      destruct (classic (defs x i)); cycle 1.
-      { eapply DEFDROP in EQ; eauto. des. clarify. }
+      admit "raw admit".
 
-      cset DEFKEEP EQ; eauto. des.
+      (* destruct (classic (defs x i)); cycle 1. *)
+      (* { eapply DEFDROP in EQ; eauto. des. clarify. } *)
 
-      rewrite FIND1 in H0.
+      (* cset DEFKEEP EQ; eauto. des. *)
 
-      cinv (mge_defs b).
-      { unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify. }
+      (* rewrite FIND1 in H0. *)
 
-      unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify.
+      (* cinv (mge_defs b). *)
+      (* { unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify. } *)
 
-      unfold o_bind, o_join, o_map in *. des_ifs.
+      (* unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify. *)
 
-      dup Heq0. eapply Genv.invert_find_symbol in Heq2. dup Heq2.
+      (* unfold o_bind, o_join, o_map in *. des_ifs. *)
 
-      unfold SkEnv.project in Heq2. dup Heq2.
-      rewrite Genv_map_defs_symb in Heq4.
+      (* dup Heq0. eapply Genv.invert_find_symbol in Heq2. dup Heq2. *)
 
-      unfold Genv_filter_symb in Heq4. unfold Genv.find_symbol in Heq4. ss.
+      (* unfold SkEnv.project in Heq2. dup Heq2. *)
+      (* rewrite Genv_map_defs_symb in Heq4. *)
 
-      rewrite MapsC.PTree_filter_key_spec in Heq4. des_ifs.
+      (* unfold Genv_filter_symb in Heq4. unfold Genv.find_symbol in Heq4. ss. *)
 
-      dup Heq4.
+      (* rewrite MapsC.PTree_filter_key_spec in Heq4. des_ifs. *)
 
-      rewrite <- mge_symb in Heq4.
-      clarify. unfold tge in *. clear - LINK Heq1 Heq4 IN0.
-      assert ((prog_defmap tprog) ! i0 = Some d0).
-      { admit "". }
-      admit "".
+      (* dup Heq4. *)
+
+      (* rewrite <- mge_symb in Heq4. *)
+      (* clarify. unfold tge in *. clear - LINK Heq1 Heq4 IN0. *)
+      (* assert ((prog_defmap tprog) ! i0 = Some d0). *)
+      (* { admit "". } *)
+      (* admit "". *)
   Qed.
 
   Lemma valid_owner_genv_le fptr p
@@ -422,7 +429,7 @@ Section PRESERVATION.
         unfold System.globalenv in *.
         unfold Genv.find_funct_ptr in *. des_ifs.
         assert (SkEnv.wf skenv_link).
-        { apply Sk.load_skenv_wf. }
+        { apply SkEnv.load_skenv_wf. }
         inv H. unfold Genv.find_symbol in *.
         exploit DEFSYMB; eauto. i. des.
         eapply Genv.genv_symb_range; eauto.
@@ -444,7 +451,7 @@ Section PRESERVATION.
         cinv SKINJ. exploit DOMAIN.
         - instantiate (1:= b_src).
           assert (SkEnv.wf skenv_link).
-          { apply Sk.load_skenv_wf. }
+          { apply SkEnv.load_skenv_wf. }
           inv H. unfold Genv.find_symbol in *.
           exploit DEFSYMB; eauto.
           i. des. eapply Genv.genv_symb_range; eauto.
@@ -535,8 +542,9 @@ Section PRESERVATION.
   Proof.
     unfold no_extern_fun. ii. unfold local_genv in *. des.
     unfold Genv.find_funct_ptr in *. des_ifs.
-    exploit SkEnv.revive_no_external; eauto. ss.
-    destruct ef; ss.
+    exploit SkEnv.project_revive_no_external; eauto.
+    { ss. destruct ef; ss. }
+    admit "INCL".
   Qed.
 
   Lemma ALLOC_NEXT_INCR F V (gen: Genv.t F V) x m0 m1
@@ -1739,7 +1747,8 @@ Section PRESERVATION.
     - eapply SemProps.lift_receptive_at. ss.
       eapply AsmC.lift_receptive_at.
       eapply semantics_receptive.
-      intros EXTERN. eapply not_external in EXTERN. auto.
+      intros EXTERN. eapply not_external in EXTERN; auto.
+      admit "INCL".
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
       + ii. inv H. ss. omega.

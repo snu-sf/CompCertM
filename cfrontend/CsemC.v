@@ -94,7 +94,7 @@ Section MODSEM.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   (* Set Printing All. *)
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function).
   Let ce_ge: composite_env := prog_comp_env p.
   Let ge_ge: Genv.t fundef type := SkEnv.revive skenv p.
   Let ge: genv := Build_genv ge_ge ce_ge.
@@ -171,6 +171,9 @@ Section MODSEM.
                    (* specialize (CONT f e C ty k0). clarify. Qed. *)
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
+  Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p)).
+  Hypothesis (WF: SkEnv.wf skenv_link).
+
   Lemma not_external
     :
       is_external ge <1= bot1
@@ -179,7 +182,7 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.revive_no_external; ss; eauto.
+    eapply CSkEnv.project_revive_no_external; ss; eauto.
   Qed.
 
   (* Lemma lift_receptive_at *)
@@ -236,10 +239,6 @@ Section MODULE.
       Mod.get_modsem := modsem;
     |}
   .
-  Next Obligation.
-    unfold SkEnv.project.
-    rewrite ! CSk.of_program_defs. ss.
-  Qed.
 
 End MODULE.
 

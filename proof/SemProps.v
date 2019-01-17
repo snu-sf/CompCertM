@@ -99,6 +99,7 @@ Section INITDTM.
         (MOD: In md p)
         (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
                  Some (Internal md_def))
+        (INCL: SkEnv.includes skenv_link md.(Mod.sk))
     :
       False
   .
@@ -197,10 +198,11 @@ Local Transparent Linker_prog.
     ss. des_ifs; cycle 1.
     { econs; eauto. ii; ss. inv FIND0. ss. }
     assert(WFBIG: t.(Sk.load_skenv).(SkEnv.wf)).
-    { eapply Sk.load_skenv_wf. }
+    { eapply SkEnv.load_skenv_wf. }
     econs; eauto.
     ii; ss.
     inv FIND0; inv FIND1.
+    generalize (link_includes p Heq). intro INCLS.
     unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss.
     abstr (Genv.globalenv t) skenv_link. rename t into sk_link.  rename Heq into SKLINK.
     rewrite in_map_iff in *.

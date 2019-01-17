@@ -205,9 +205,9 @@ Global Instance fundef_HasExternal {F}: HasExternal (AST.fundef F) :=
 Global Instance globdef_HasExternal `{HasExternal F} {V}: HasExternal (globdef F V) :=
   Build_HasExternal is_external_gd.
 
-Variable F V: Type.
-Variable TT: globdef (fundef F) V.
-Check (is_external TT).
+(* Variable F V: Type. *)
+(* Variable TT: globdef (fundef F) V. *)
+(* Check (is_external TT). *)
 
 
 
@@ -276,8 +276,8 @@ End PROGRAMS.
 
 Section PROGRAMS2.
 
-  Variable F V: Type.
-  Variable p: program (AST.fundef F) V.
+  Context `{HasExternal F} {V: Type}.
+  Variable p: program F V.
 
   Definition internals: ident -> bool :=
     fun id => match p.(prog_defmap)!id with

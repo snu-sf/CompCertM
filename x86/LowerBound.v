@@ -215,7 +215,7 @@ Section PRESERVATION.
     cinv (SkEnv.project_impl_spec skenv_link x).
     unfold skenv_link in *.
 
-    assert (SKWF: SkEnv.wf (SkEnv.project (Genv.globalenv sk) x)).
+    assert (SKWF: SkEnv.wf_proj (SkEnv.project (Genv.globalenv sk) x)).
     { eapply SkEnv.project_spec_preserves_wf.
       - eapply Sk.load_skenv_wf.
       - eapply SkEnv.project_impl_spec.

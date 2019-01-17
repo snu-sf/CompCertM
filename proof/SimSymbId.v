@@ -169,11 +169,11 @@ Section REVIVE.
     destruct (Genv.invert_symbol skenv_proj_tgt b) eqn:T; cbn; try (by econs; eauto).
     apply match_program_defmap with (id := i) in MATCHPROG.
     inv MATCHPROG; cbn; try (by econs; eauto).
-    inv H3; ss; cycle 1.
-    { econs; eauto. econs; eauto. }
-    erewrite MATCH_FUNDEF_EXTERNAL; eauto.
-    des_ifs; try (by econs; eauto).
-    econs; eauto. econs; eauto.
+    (* inv H3; ss; cycle 1. *)
+    (* { econs; eauto. econs; eauto. } *)
+    (* erewrite MATCH_FUNDEF_EXTERNAL; eauto. *)
+    (* des_ifs; try (by econs; eauto). *)
+    (* econs; eauto. econs; eauto. *)
   Qed.
 
 End REVIVE.

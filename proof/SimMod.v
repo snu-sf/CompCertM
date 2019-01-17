@@ -71,6 +71,8 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           skenv_link_src skenv_link_tgt
           (INCLSRC: SkEnv.includes skenv_link_src mp.(src).(Mod.sk))
           (INCLTGT: SkEnv.includes skenv_link_tgt mp.(tgt).(Mod.sk))
+          (WFSRC: SkEnv.wf skenv_link_src)
+          (WFTGT: SkEnv.wf skenv_link_tgt)
           ss_link
           (SSLE: SimSymb.le mp.(ss) mp.(src) mp.(tgt) ss_link)
           sm_init_link

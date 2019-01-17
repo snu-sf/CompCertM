@@ -266,8 +266,7 @@ Module SkEnv.
       (PUBS: incl sk.(prog_public) skenv.(Genv.genv_public))
   .
 
-  Inductive project_spec `{HasExternal F} {V} (skenv: t) (prog: AST.program F V)
-            (skenv_proj: t): Prop :=
+  Inductive project_spec (skenv: t) (prog: Sk.t) (skenv_proj: t): Prop :=
   | project_spec_intro
       (* (PUBLIC: skenv_proj.(Genv.genv_public) = []) *)
       (* TODO: is this OK? Check if this info affects semantics except for linking *)
@@ -338,7 +337,7 @@ Module SkEnv.
 "(PROGRESS: project src succed -> project tgt succeed) /\ (BSIM: project tgt ~ projet src)".
 I think "sim_skenv_monotone" should be sufficient.
    *)
-  Definition project `{HasExternal F} {V} (skenv: t) (prog: AST.program F V): t :=
+  Definition project (skenv: t) (prog: Sk.t): t :=
     ((Genv_update_publics skenv prog.(prog_public)).(Genv_filter_symb) (fun id => prog.(defs) id))
     .(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
                                        assertion(prog.(internals) id);
@@ -347,9 +346,20 @@ I think "sim_skenv_monotone" should be sufficient.
                                        Some gd))
   .
 
+  Lemma match_globdef_is_external_gd
+        (gd1 gd2: globdef (AST.fundef signature) unit)
+        (MATCH: match_globdef (@Sk.match_fundef _ _) top2 tt gd1 gd2)
+    :
+      is_external_gd gd1 = is_external_gd gd2
+  .
+  Proof.
+    inv MATCH; ss.
+    rr in H0. des_ifs. ss. des_sumbool. clarify.
+  Qed.
+
   Lemma project_impl_spec
-        `{HasExternal F} V skenv (prog: AST.program F V) get_sg
-        (INCL: SkEnv.includes skenv (Sk.of_program get_sg prog))
+        skenv (prog: Sk.t)
+        (INCL: SkEnv.includes skenv prog)
     :
       <<PROJ: project_spec skenv prog (project skenv prog)>>
   .
@@ -362,8 +372,22 @@ I think "sim_skenv_monotone" should be sufficient.
     - rewrite PTree_filter_map_spec. des_ifs.
       u. des_ifs.
     - rewrite PTree_filter_map_spec in *. u in *. des_ifs_safe. esplits; et. bsimpl.
-      admit "we need SkEnv.includes".
-      (* assert(g0 = Gfun des_ifs. (* esplits; eauto. ii. bsimpl. des_ifs. congruence. *) *)
+      rename e into e0.
+      assert(EXT: is_external_gd g0 = false).
+      { des_ifs; ss. } clear Heq2.
+      (* g0 is not external, e0 is external *)
+      (* linkorder g0 e0 *)
+      inv INCL.
+      bar.
+      (* hexploit (Sk.of_program_prog_defmap prog get_sg id); et. intro REL. rewrite Heq in *. inv REL. ss. *)
+      (* rename y into yy. *)
+      exploit DEFS; et. intro T; des.
+      dup EXT.
+      (* erewrite match_globdef_is_external_gd in EXT; et. *)
+      (* intro EXT1. *)
+      (* gd1 ~= e0? *)
+      apply_all_once Genv.invert_find_symbol. clarify. uge. clarify.
+      inv MATCH. inv H1. ss. clarify.
     - rewrite PTree_filter_map_spec. des_ifs.
       u. des_ifs.
   Qed.
@@ -380,7 +404,7 @@ I think "sim_skenv_monotone" should be sufficient.
   Lemma project_spec_preserves_wf
         skenv
         (WF: wf skenv)
-        `{HasExternal F} V (prog: AST.program F V) skenv_proj
+        (prog: Sk.t) skenv_proj
         (PROJ: project_spec skenv prog skenv_proj)
     :
       <<WF: wf_proj skenv_proj>>
@@ -394,7 +418,7 @@ I think "sim_skenv_monotone" should be sufficient.
     rename i into id.
     exploit Genv.invert_find_symbol; eauto. intro TT.
     exploit DEFKEPT; eauto. i; des.
-    u in H0. des_ifs_safe.
+    u in H. des_ifs_safe.
     esplits; eauto.
     { erewrite SYMBKEEP; eauto. u. des_sumbool. eapply prog_defmap_image; et. }
   Qed.
@@ -432,19 +456,138 @@ I think "sim_skenv_monotone" should be sufficient.
           p.(prog_defmap) ! id = Some g)
   .
 
-  (* Lemma revive_no_external *)
-  (*       `{HasExternal F} V (prog: AST.program F V) *)
-  (*       skenv blk gd *)
-  (*       (DEF: Genv.find_def (SkEnv.revive skenv prog) blk = Some gd) *)
-  (*       (EXTERNAL: is_external gd) *)
-  (*   : *)
-  (*     False *)
-  (* . *)
-  (* Proof. *)
-  (*   unfold revive in *. *)
-  (*   apply_all_once Genv_map_defs_def. des. *)
-  (*   u in *. des_ifs. *)
-  (* Qed. *)
+  Lemma project_revive_precise
+        F V
+        skenv (prog: AST.program (fundef F) V)
+        (* (DEFS0: forall id, In id prog.(prog_defs_names) -> is_some (skenv.(Genv.find_symbol) id)) *)
+        (* (WF: wf skenv) *)
+        skenv_link
+        (* (PROJ: skenv = SkEnv.project skenv_link prog) *)
+        get_sg
+        (PROJ: SkEnv.project_spec skenv_link prog.(Sk.of_program get_sg) skenv)
+        (* (WF: SkEnv.wf skenv_link) *)
+        (INCL: SkEnv.includes skenv_link prog.(Sk.of_program get_sg))
+    (* (PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog *)
+    :
+      <<PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog>>
+  .
+  Proof.
+    assert(H: DUMMY_PROP) by ss.
+    assert(DEFS: prog.(defs) <1= fun id => is_some (skenv.(Genv.find_symbol) id)).
+    { ii; ss. u. des_ifs. exfalso.
+      bar.
+      inv PROJ.
+      bar.
+      inv INCL.
+      bar.
+      exploit SYMBKEEP; et.
+      { rewrite Sk.of_program_defs. eauto. }
+      intro EQ. des. rewrite Heq in *. symmetry in EQ.
+      u in PR. des_sumbool. apply prog_defmap_spec in PR. des.
+      hexploit (Sk.of_program_prog_defmap prog get_sg x0). intro REL. rewrite PR in *. inv REL. symmetry in H1.
+      exploit DEFS; et. i; des. clarify.
+    }
+    econs; eauto; i; ss; cycle 1.
+    - des.
+      unfold SkEnv.revive in *.
+      apply_all_once Genv_map_defs_def. des; ss.
+      ss.
+      rewrite Genv_map_defs_symb in *. u in *. des_ifs_safe. simpl_bool.
+      apply_all_once Genv.invert_find_symbol.
+      determ_tac Genv.genv_vars_inj.
+    - rename H0 into DEFMAP. des.
+      dup H. u in DEFS. unfold ident in *. spc DEFS.
+      exploit DEFS; clear DEFS.
+      { unfold proj_sumbool. des_ifs; ss. exfalso. apply n. eapply prog_defmap_spec; eauto. }
+      i; des.
+      des_ifs_safe.
+      esplits; eauto.
+      unfold SkEnv.revive. u.
+      unfold Genv.find_def, Genv_map_defs. cbn. rewrite PTree_filter_map_spec.
+      clear_tac.
+      rewrite o_bind_ignore.
+      exploit Genv.find_invert_symbol; et. intro INV.
+      bar.
+      inv PROJ.
+      inv INCL.
+      bar.
+      assert(defs (Sk.of_program get_sg prog) id).
+      { apply NNPP. ii. exploit SYMBDROP; et. i; des. clarify. }
+      exploit SYMBKEEP; et. intro SYMBLINK; des. rewrite Heq in *. symmetry in SYMBLINK.
+      exploit Genv.find_invert_symbol; et. intro INVLINK.
+      hexploit (Sk.of_program_prog_defmap prog get_sg id); et. intro REL.
+      rewrite DEFMAP in *. inv REL.
+      rename H2 into MATCHGD. rename H1 into DEFMAP1.
+      exploit DEFS; et. i; des. clarify.
+      des_ifs_safe.
+      inv MATCHGD; cycle 1.
+      {
+        des_ifs.
+        inv MATCH.
+        exploit DEFKEEP; et.
+        { rewrite Sk.of_program_internals. u. des_ifs. }
+        i; des. uge. clarify.
+      }
+      {
+        inv MATCH.
+        destruct (is_external_fd f1) eqn:T.
+        - etrans; cycle 1.
+          { instantiate (1:= None). des_ifs. ss. des_ifs. }
+          assert(is_external f2).
+          { rr in H1. des_ifs; ss. des_sumbool. clarify. }
+          rename fd2 into fd_big.
+          rename f2 into fd_small. rename f1 into fd_small2.
+          (* if (Genv.genv_defs skenv) is some, then it should be fd_big *)
+          (* fd_big *)
+          bar.
+          des_ifs. uge.
+          exploit DEFKEPT; et. i; des. clarify.
+          rewrite Sk.of_program_internals in *.
+          u in H4. des_ifs. bsimpl. ss. clarify.
+        - etrans; cycle 1.
+          { instantiate (1:= Some (Gfun f1)). des_ifs. ss. des_ifs. }
+          des_ifs. exfalso.
+
+          exploit DEFKEEP; et.
+          { rewrite Sk.of_program_internals in *. u. des_ifs. ss. bsimpl. ss. }
+          intro GD; des. uge. clarify.
+      }
+  Qed.
+
+  Lemma project_revive_no_external
+        F V (prog: AST.program (AST.fundef F) V)
+        skenv_link get_sg blk gd
+        (DEF: Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program get_sg prog)) prog) blk = Some gd)
+        (EXTERNAL: is_external gd)
+        (INCL: SkEnv.includes skenv_link (Sk.of_program get_sg prog))
+        (WF: SkEnv.wf skenv_link)
+    :
+      False
+  .
+  Proof.
+    assert(H: DUMMY_PROP) by ss.
+    hexploit (@project_impl_spec skenv_link (Sk.of_program get_sg prog)); et. intro PROJ. des.
+    exploit project_revive_precise; et. intro GEP; des.
+    exploit project_spec_preserves_wf; et. intro WF0; des.
+    inv WF0.
+    dup DEF.
+    unfold revive in DEF. apply Genv_map_defs_def in DEF. des.
+    exploit DEFSYMB; et. i; des.
+    inv GEP.
+    exploit FIND_MAP_INV.
+    { esplits; et. }
+    i; des.
+    uo. des_ifs.
+    inv PROJ.
+    exploit (SYMBKEEP id); et.
+    { rewrite Sk.of_program_defs. u. des_sumbool. eapply prog_defmap_image; et. }
+    i; des.
+    exploit DEFKEPT; et.
+    { apply Genv.find_invert_symbol. rewrite <- H1. et. }
+    i; des.
+    rewrite Sk.of_program_internals in *.
+    u in H2. des_ifs.
+  Qed.
 
   Print Genv.public_symbol.
   Definition privs (skenv: SkEnv.t): ident -> bool :=
@@ -476,94 +619,3 @@ Hint Unfold SkEnv.empty.
 
 
 
-(* Inductive sim_gvar V1 V2 (v1: globvar V1) (v2: globvar V2): Prop := *)
-(* | sim_gvar_intro *)
-(*     (INIT: v1.(gvar_init) = v2.(gvar_init)) *)
-(*     (RO: v1.(gvar_readonly) = v2.(gvar_readonly)) *)
-(*     (VOL: v1.(gvar_volatile) = v2.(gvar_volatile)) *)
-(* . *)
-
-Lemma revive_precise
-      `{HasExternal F} V
-      skenv (prog: AST.program (fundef F) V)
-      (DEFS0: forall id, In id prog.(prog_defs_names) -> is_some (skenv.(Genv.find_symbol) id))
-      (* (WF: wf skenv) *)
-      skenv_link
-      (* (PROJ: skenv = SkEnv.project skenv_link prog) *)
-      (PROJ: SkEnv.project_spec skenv_link prog skenv)
-      (WF: SkEnv.wf skenv_link)
-      get_sg
-      (INCL: SkEnv.includes skenv_link prog.(Sk.of_program get_sg))
-      (* (PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog *)
-  :
-    <<PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog>>
-.
-Proof.
-  assert(DEFS: prog.(defs) <1= fun id => is_some (skenv.(Genv.find_symbol) id)).
-  { ii; ss. eapply DEFS0; eauto. u in *. des_sumbool. ss. }
-  clear DEFS0.
-  econs; eauto; i; ss; cycle 1.
-  - des.
-    unfold SkEnv.revive in *.
-    apply_all_once Genv_map_defs_def. des; ss.
-    ss.
-    rewrite Genv_map_defs_symb in *. u in *. des_ifs_safe. simpl_bool.
-    apply_all_once Genv.invert_find_symbol.
-    determ_tac Genv.genv_vars_inj.
-  - rename H0 into DEFMAP. des.
-    dup H. u in DEFS. unfold ident in *. spc DEFS.
-    exploit DEFS; clear DEFS.
-    { unfold proj_sumbool. des_ifs; ss. exfalso. apply n. eapply prog_defmap_spec; eauto. }
-    i; des.
-    des_ifs_safe.
-    esplits; eauto.
-    unfold SkEnv.revive. u.
-    unfold Genv.find_def, Genv_map_defs. cbn. rewrite PTree_filter_map_spec.
-    clear_tac.
-    rewrite o_bind_ignore.
-    exploit Genv.find_invert_symbol; et. intro INV.
-    bar.
-    inv PROJ.
-    inv INCL.
-    bar.
-    assert(defs prog id).
-    { apply NNPP. ii. exploit SYMBDROP; et. i; des. clarify. }
-    exploit SYMBKEEP; et. intro SYMBLINK; des. rewrite Heq in *. symmetry in SYMBLINK.
-    exploit Genv.find_invert_symbol; et. intro INVLINK.
-    hexploit (Sk.of_program_prog_defmap prog get_sg id); et. intro REL.
-    rewrite DEFMAP in *. inv REL.
-    rename H2 into MATCHGD. rename H1 into DEFMAP1.
-    exploit DEFS; et. i; des. clarify.
-    des_ifs_safe.
-    inv MATCHGD; cycle 1.
-    {
-      des_ifs.
-      inv MATCH.
-      exploit DEFKEEP; et.
-      { u. des_ifs. }
-      i; des. uge. clarify.
-    }
-    {
-      inv MATCH.
-      destruct (is_external_fd f1) eqn:T.
-      - etrans; cycle 1.
-        { instantiate (1:= None). des_ifs. ss. des_ifs. }
-        assert(is_external f2).
-        { rr in H1. des_ifs; ss. des_sumbool. clarify. }
-        rename fd2 into fd_big.
-        rename f2 into fd_small. rename f1 into fd_small2.
-        (* if (Genv.genv_defs skenv) is some, then it should be fd_big *)
-        (* fd_big *)
-        bar.
-        des_ifs. uge.
-        exploit DEFKEPT; et. i; des. clarify.
-        u in H4. des_ifs. bsimpl. ss. clarify.
-      - etrans; cycle 1.
-        { instantiate (1:= Some (Gfun f1)). des_ifs. ss. des_ifs. }
-        des_ifs. exfalso.
-
-        exploit DEFKEEP; et.
-        { u. des_ifs. ss. bsimpl. ss. }
-        intro GD; des. uge. clarify.
-    }
-Qed.

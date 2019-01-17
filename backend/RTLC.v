@@ -87,7 +87,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -149,6 +149,9 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
+  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
+  Hypothesis (WF: SkEnv.wf skenv_link).
+
   Lemma not_external
     :
       is_external ge <1= bot1
@@ -157,10 +160,8 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.revive_no_external; eauto.
+    eapply SkEnv.project_revive_no_external; eauto.
   Qed.
-
-  Hypothesis INCL: SkEnv.includes skenv (Sk.of_program fn_sig p).
 
   Lemma lift_receptive_at
         st
@@ -217,10 +218,6 @@ Section MODULE.
       Mod.get_modsem := modsem;
     |}
   .
-  Next Obligation.
-    unfold SkEnv.project.
-    rewrite ! Sk.of_program_defs. ss.
-  Qed.
 
 End MODULE.
 

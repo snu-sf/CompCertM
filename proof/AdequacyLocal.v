@@ -341,6 +341,9 @@ Section SIMGE.
         { refl. }
         { econs. }
         pfold.
+
+        eapply lxsim_step_backward; et.
+        + rr. ss. esplits; et. econs; et. unfold System.globalenv.
         econs 2; eauto.
         i. split.
         { u. esplits; ii; des; ss; eauto. inv H0. }

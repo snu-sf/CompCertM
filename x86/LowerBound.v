@@ -1749,8 +1749,8 @@ Section PRESERVATION.
       receptive_at (sem prog) st_src.
   Proof.
     inv MTCHST; ss.
-    - eapply SemProps.lift_receptive_at. ss.
-      admit "use strict forward simulation instead? old code:
+    - admit "use strict forward simulation instead? old code:
+      eapply SemProps.lift_receptive_at. ss.
       eapply AsmC.lift_receptive_at.
       eapply semantics_receptive.
       intros EXTERN. eapply not_external in EXTERN; auto.

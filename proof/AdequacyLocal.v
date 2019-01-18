@@ -341,7 +341,7 @@ Section SIMGE.
         { refl. }
         { econs. }
         pfold.
-        econs; eauto.
+        econs 2; eauto.
         i. split.
         { u. esplits; ii; des; ss; eauto. inv H0. }
         econs; ss; cycle 1.
@@ -366,7 +366,7 @@ Section SIMGE.
         }
         { eapply SimMem.unlift_spec; eauto. }
         left. pfold.
-        econs 4.
+        econs 5.
         { eapply SimMem.unlift_spec; eauto. }
         { eapply SimMem.unlift_wf; eauto. }
         { econs; eauto. }
@@ -788,8 +788,41 @@ Section ADQSTEP.
     punfold TOP. inv TOP.
 
 
+    - (* sfstep *)
+      left. left.
+      exploit SU0.
+      { unsguard SUST. des. inv SUST.
+        simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
+      i; des. clear SU0.
+      econs; ss; eauto.
+      + ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto.
+      + inv FSTEP.
+        * econs 1; cycle 1.
+          { admit "ez". }
+          ii. ss. rewrite LINKSRC in *.
+          des.
+          inv STEPSRC; ss; ModSem.tac; swap 2 3.
+          { exfalso. eapply SAFESRC; eauto. }
+          { exfalso. eapply SAFESRC0. u. eauto. }
+          exploit STEP; eauto. i; des_safe.
+          exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt)).
+          esplits; eauto.
+          { des.
+            - left. admit "ez".
+            - right. esplits; eauto. admit "ez".
+          }
+          pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
+          { unsguard SUST. des_safe. eapply sound_progress; eauto.
+            eapply lift_step; eauto. }
+          econs; eauto.
+          { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
+          etransitivity; eauto.
+        * des. pclearbot. econs 2.
+          { esplits; eauto. admit "ez". }
+          right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
+
     - (* fstep *)
-      left.
+      left. right.
       exploit SU0.
       { unsguard SUST. des. inv SUST.
         simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
@@ -859,7 +892,7 @@ Section ADQSTEP.
 
 
     - (* call *)
-      left.
+      left. right.
       econs; eauto.
       { ii. inv FINALSRC. ss. ModSem.tac. }
       econs; eauto; cycle 1.
@@ -919,7 +952,7 @@ Section ADQSTEP.
 
 
     - (* return *)
-      left.
+      left. right.
       econs; eauto.
       { ii. ss. inv FINALSRC0. ss. determ_tac ModSem.final_frame_dtm. clear_tac.
         inv STACK.

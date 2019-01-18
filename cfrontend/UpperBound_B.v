@@ -937,7 +937,7 @@ c0 + empty
     - (* call state *)
       inversion MTCHST; subst.
       + (* syscall *)
-        left. econs; i.
+        left. right. econs; i.
         * inv FINALSRC.
         * econs; i; cycle 1.
           -- (* receptive *)
@@ -1054,7 +1054,7 @@ c0 + empty
                { ss. eapply preservation_prog; eauto. }
       + (* initial state *)
         inversion INITSRC; subst; ss.
-        left. econs; i.
+        left. right. econs; i.
         * (* FINAL *)
           inv FINALSRC.
         * econs; i; cycle 1.

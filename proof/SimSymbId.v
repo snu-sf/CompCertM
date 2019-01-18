@@ -100,8 +100,8 @@ Lemma sim_skenv_monotone: forall
           (SIMSK: sim_sk ss sk_src sk_tgt)
           (LE: le ss sk_src sk_tgt ss_link)
           skenv_src skenv_tgt
-          (LESRC: SkEnv.project skenv_link_src sk_src.(defs) = skenv_src)
-          (LETGT: SkEnv.project skenv_link_tgt sk_tgt.(defs) = skenv_tgt)
+          (LESRC: SkEnv.project skenv_link_src sk_src = skenv_src)
+          (LETGT: SkEnv.project skenv_link_tgt sk_tgt = skenv_tgt)
         ,
           <<SIMSKENV: sim_skenv skenv_src skenv_tgt>>
 .
@@ -169,11 +169,11 @@ Section REVIVE.
     destruct (Genv.invert_symbol skenv_proj_tgt b) eqn:T; cbn; try (by econs; eauto).
     apply match_program_defmap with (id := i) in MATCHPROG.
     inv MATCHPROG; cbn; try (by econs; eauto).
-    inv H3; ss; cycle 1.
-    { econs; eauto. econs; eauto. }
-    erewrite MATCH_FUNDEF_EXTERNAL; eauto.
-    des_ifs; try (by econs; eauto).
-    econs; eauto. econs; eauto.
+    (* inv H3; ss; cycle 1. *)
+    (* { econs; eauto. econs; eauto. } *)
+    (* erewrite MATCH_FUNDEF_EXTERNAL; eauto. *)
+    (* des_ifs; try (by econs; eauto). *)
+    (* econs; eauto. econs; eauto. *)
   Qed.
 
 End REVIVE.

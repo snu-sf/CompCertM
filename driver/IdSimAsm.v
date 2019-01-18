@@ -50,7 +50,6 @@ Proof.
   ii. inv SSLE. clear_tac.
 
   exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.
-  { i; ss. clarify. }
   intro GENV; des.
   inv SIMSKENVLINK.
 
@@ -126,7 +125,6 @@ Proof.
   ii. inv SSLE. clear_tac.
 
   exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.
-  { i; ss. clarify. }
   intro GENV; des.
   inv SIMSKENVLINK.
 
@@ -752,8 +750,8 @@ Let asm_ext_unreach_lxsim: forall
     asm skenv_link
     m_src0 m_tgt0
     (GENV: Genv.match_genvs (match_globdef (fun _ : AST.program fundef unit => eq) eq asm)
-                            (SkEnv.revive (SkEnv.project skenv_link (defs asm)) asm)
-                            (SkEnv.revive (SkEnv.project skenv_link (defs asm)) asm))
+                            (SkEnv.revive (SkEnv.project skenv_link asm.(Sk.of_program fn_sig)) asm)
+                            (SkEnv.revive (SkEnv.project skenv_link asm.(Sk.of_program fn_sig)) asm))
     m_src1 m_tgt1
     st_init_src st_init_tgt
   ,

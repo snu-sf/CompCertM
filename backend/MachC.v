@@ -259,7 +259,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Record state := mkstate {
@@ -384,6 +384,9 @@ Section MODSEM.
     inv_all_once; ss; clarify.
   Qed.
 
+  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
+  Hypothesis (WF: SkEnv.wf skenv_link).
+
   Lemma not_external
     :
       is_external ge <1= bot1
@@ -392,7 +395,7 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.revive_no_external; eauto.
+    eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
   Lemma lift_receptive_at
@@ -405,7 +408,7 @@ Section MODSEM.
     inv RECEP. econs; eauto; ii; ss.
     - inv H. ss.
       exploit sr_receptive_at; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. admit "". }
+      { eapply match_traces_preserved; try eassumption. ii; ss. }
       i; des. destruct s1; ss.
       exists (mkstate init_rs1 init_sg1 s2).
       econs; eauto. ss.
@@ -431,7 +434,7 @@ Section MODSEM.
     inv DTM. econs; eauto; ii; ss.
     - inv H. inv H0.
       determ_tac sd_determ_at. esplits; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. admit "". }
+      { eapply match_traces_preserved; try eassumption. ii; ss. }
       i. destruct s1, s2; ss. rewrite H0; ss. eauto with congruence.
     - inv H.
       exploit sd_traces_at; eauto.
@@ -501,8 +504,5 @@ Section MODULE.
       Mod.get_modsem := modsem rao;
     |}
   .
-  Next Obligation.
-    rewrite Sk.of_program_defs. ss.
-  Qed.
 
 End MODULE.

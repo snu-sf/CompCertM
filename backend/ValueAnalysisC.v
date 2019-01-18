@@ -47,7 +47,7 @@ Qed.
 Lemma sound_state_sound_args
       bc m0 stack su0 p skenv_link vs_arg cunit
       ge
-      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link (defs p)) p))
+      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p))
       (STK: sound_stack cunit ge su0 bc stack m0 (Mem.nextblock m0))
       (ARGS: forall v : val, In v vs_arg -> vmatch bc v Vtop)
       (RO: romatch bc m0 (romem_for cunit))
@@ -109,7 +109,7 @@ Qed.
 Lemma sound_state_sound_retv
       bc m_ret su0 p skenv_link v_ret cunit
       ge
-      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link (defs p)) p))
+      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p))
       (STK: sound_stack cunit ge su0 bc [] m_ret (Mem.nextblock m_ret))
       (RES: vmatch bc v_ret Vtop)
       (RO: romatch bc m_ret (romem_for cunit))
@@ -187,7 +187,7 @@ Section PRSV.
       esplits; eauto; cycle 1.
       { refl. }
       econs; eauto. i.
-      set (ge := (SkEnv.revive (SkEnv.project skenv_link (defs p)) p)) in *.
+      set (ge := (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p)) in *.
       set (f := fun b =>
                   if plt b (Genv.genv_next ge) then
                     match Genv.invert_symbol ge b with None => BCother | Some id => BCglob id end

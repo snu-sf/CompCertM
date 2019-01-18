@@ -251,6 +251,8 @@ Section SIMGE.
         sm_init mp skenv_src skenv_tgt
         (WFSRC: SkEnv.wf skenv_src)
         (WFTGT: SkEnv.wf skenv_tgt)
+        (INCLSRC: SkEnv.includes skenv_src mp.(ModPair.src).(Mod.sk))
+        (INCLTGT: SkEnv.includes skenv_tgt mp.(ModPair.tgt).(Mod.sk))
         (SIMMP: ModPair.sim mp)
         ss_link
         (LESS: SimSymb.le (ModPair.ss mp) (Mod.get_sk (ModPair.src mp) (Mod.data (ModPair.src mp)))
@@ -267,6 +269,8 @@ Section SIMGE.
     eapply SimSymb.sim_skenv_monotone; revgoals.
     - eapply Mod.get_modsem_skenv_spec.
     - eapply Mod.get_modsem_skenv_spec.
+    - ss.
+    - ss.
     - eauto. (* eapply SimSymb.le_refl. *)
     - apply SIMMP.
     - eauto.
@@ -385,11 +389,13 @@ Section SIMGE.
         econstructor 2 with (msps := (map (ModPair.to_msp skenv_src skenv_tgt sm_init) [mp])); eauto; ss; revgoals.
         - econs; eauto.
         - econs; eauto. eapply SIMMS; eauto.
+          + eapply SkEnv.load_skenv_wf; et.
+          + eapply SkEnv.load_skenv_wf; et.
         - econs; eauto. econs; ss; eauto; cycle 1.
           { unfold Mod.modsem. rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
           r. ss. eapply SimSymb.sim_skenv_monotone; eauto.
-          + eapply Sk.load_skenv_wf.
-          + eapply Sk.load_skenv_wf.
+          + eapply SkEnv.load_skenv_wf.
+          + eapply SkEnv.load_skenv_wf.
           + eapply Mod.get_modsem_skenv_spec.
           + eapply Mod.get_modsem_skenv_spec.
       }
@@ -403,9 +409,9 @@ Section SIMGE.
       set (skenv_src := (Sk.load_skenv sk_link_src)) in *.
       set (skenv_tgt := (Sk.load_skenv sk_link_tgt)) in *.
       assert(WFSRC: SkEnv.wf skenv_src).
-      { eapply Sk.load_skenv_wf. }
+      { eapply SkEnv.load_skenv_wf. }
       assert(WFTGT: SkEnv.wf skenv_tgt).
-      { eapply Sk.load_skenv_wf. }
+      { eapply SkEnv.load_skenv_wf. }
       econstructor 2 with
           (msps := (map (ModPair.to_msp skenv_src skenv_tgt sm_init) (mp :: pp))); eauto; revgoals.
       + ss. econs; eauto. rewrite Forall_forall in *. ii. rewrite in_map_iff in H. des. clarify. ss. refl.

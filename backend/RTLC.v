@@ -87,7 +87,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -149,6 +149,9 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
+  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
+  Hypothesis (WF: SkEnv.wf skenv_link).
+
   Lemma not_external
     :
       is_external ge <1= bot1
@@ -157,7 +160,7 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.revive_no_external; eauto.
+    eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
   Lemma lift_receptive_at
@@ -168,10 +171,7 @@ Section MODSEM.
   .
   Proof.
     inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
-    eapply match_traces_le; et. u. unfold Genv.public_symbol. ss.
-    i. des_ifs_safe. des_sumbool. unfold ge. unfold SkEnv.revive. rewrite Genv_map_defs_symb.
-    uge. ss. des_ifs. des_sumbool. admit "".
-    (* eapply match_traces_preserved; try eassumption. ii; ss. *)
+    { eapply match_traces_preserved; try eassumption. ii; ss. }
   Qed.
 
   Lemma modsem_receptive
@@ -191,7 +191,6 @@ Section MODSEM.
     inv DTM. econs; eauto; ii; ss.
     determ_tac sd_determ_at. esplits; eauto.
     eapply match_traces_preserved; try eassumption. ii; ss.
-    admit "".
   Qed.
 
   Lemma modsem_determinate
@@ -219,9 +218,6 @@ Section MODULE.
       Mod.get_modsem := modsem;
     |}
   .
-  Next Obligation.
-    rewrite Sk.of_program_defs. ss.
-  Qed.
 
 End MODULE.
 

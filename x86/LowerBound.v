@@ -258,38 +258,43 @@ Section PRESERVATION.
       destruct (Genv.invert_symbol skenv_link b) eqn:EQ; cycle 1.
       { eapply DEFORPHAN in EQ. des. clarify. }
 
-      admit "raw admit".
-
-      (* destruct (classic (defs x i)); cycle 1. *)
-      (* { eapply DEFDROP in EQ; eauto. des. clarify. } *)
-
-      (* cset DEFKEEP EQ; eauto. des. *)
-
-      (* rewrite FIND1 in H0. *)
-
-      (* cinv (mge_defs b). *)
-      (* { unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify. } *)
-
-      (* unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify. *)
-
-      (* unfold o_bind, o_join, o_map in *. des_ifs. *)
-
-      (* dup Heq0. eapply Genv.invert_find_symbol in Heq2. dup Heq2. *)
-
-      (* unfold SkEnv.project in Heq2. dup Heq2. *)
-      (* rewrite Genv_map_defs_symb in Heq4. *)
-
-      (* unfold Genv_filter_symb in Heq4. unfold Genv.find_symbol in Heq4. ss. *)
-
-      (* rewrite MapsC.PTree_filter_key_spec in Heq4. des_ifs. *)
-
-      (* dup Heq4. *)
-
-      (* rewrite <- mge_symb in Heq4. *)
-      (* clarify. unfold tge in *. clear - LINK Heq1 Heq4 IN0. *)
-      (* assert ((prog_defmap tprog) ! i0 = Some d0). *)
-      (* { admit "". } *)
-      (* admit "". *)
+      exploit GE2P; et. i; des. uo. des_ifs.
+      assert(TMP: Genv.find_symbol (SkEnv.project (Genv.globalenv sk) (Sk.of_program fn_sig x)) id = Some b).
+      { uge. unfold SkEnv.revive in SYMB. ss. (* TODO: make lemma!!!!!! *) }
+      assert(TMP0: Genv.find_symbol (Genv.globalenv sk) id = Some b).
+      { unfold SkEnv.project in TMP. rewrite Genv_map_defs_symb in TMP. ss.
+        unfold Genv.find_symbol in TMP. ss. (* TODO: make lemma!!!!!!!!!!!!!!!!!!!!!!! *)
+        rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
+      }
+      assert(id = i0).
+      { apply Genv.find_invert_symbol in TMP. clarify. }
+      clarify.
+      assert(i = i0).
+      { apply Genv.find_invert_symbol in TMP0. unfold skenv_link in EQ. clarify. }
+      clarify.
+      assert(TP: (prog_defmap tprog) ! i0 = Some d0).
+      { rename x into xx.
+        hexploit (link_list_linkorder _ LINK); et. intro LO; des. rewrite Forall_forall in *.
+        specialize (LO xx IN0).
+        Local Transparent Linker_prog.
+        ss.
+        Local Opaque Linker_prog.
+        des.
+        exploit LO1; et. i; des.
+        rewrite H.
+        assert(INT: ~ASTC.is_external d0).
+        { ss. }
+        clear - INT H0.
+        inv H0; ss.
+        - inv H; ss.
+        - inv H; ss. destruct info1, info2; ss. inv H1; ss.
+          + admit "this does not hold!".
+          + admit "this does not hold!".
+      }
+      apply Genv.find_def_symbol in TP. des.
+      assert(b0 = b).
+      { apply Genv.invert_find_symbol in EQ. uge. rewrite mge_symb in TP. unfold skenv_link in EQ. clarify. }
+      clarify.
   Qed.
 
   Lemma valid_owner_genv_le fptr p

@@ -447,13 +447,18 @@ I think "sim_skenv_monotone" should be sufficient.
 
   Inductive genv_precise `{HasExternal F} {V} (ge: Genv.t F V) (p: program F V): Prop :=
   | genv_compat_intro
-      (FIND_MAP: forall id g,
-          p.(prog_defmap) ! id = Some g ->
-          (exists b, Genv.find_symbol ge id = Some b /\
-                     Genv.find_def ge b = if negb (is_external g) then Some g else None))
-      (FIND_MAP_INV: forall id b g,
-          (Genv.find_symbol ge id = Some b /\ Genv.find_def ge b = Some g) ->
-          p.(prog_defmap) ! id = Some g)
+      (P2GE: forall
+          id g
+          (PROG: p.(prog_defmap) ! id = Some g)
+        ,
+          (exists b, <<SYMB: Genv.find_symbol ge id = Some b>> /\
+                     <<DEF: Genv.find_def ge b = if negb (is_external g) then Some g else None>>))
+      (GE2P: forall
+          b g
+          (DEF: Genv.find_def ge b = Some g)
+        ,
+          exists id, <<SYMB: Genv.find_symbol ge id = Some b>> /\ <<PROG: p.(prog_defmap) ! id = Some g>>
+                                                                          /\ <<INTERNAL: ~ (is_external g)>>)
   .
 
   Lemma project_revive_precise
@@ -491,11 +496,21 @@ I think "sim_skenv_monotone" should be sufficient.
     - des.
       unfold SkEnv.revive in *.
       apply_all_once Genv_map_defs_def. des; ss.
-      ss.
-      rewrite Genv_map_defs_symb in *. u in *. des_ifs_safe. simpl_bool.
-      apply_all_once Genv.invert_find_symbol.
-      determ_tac Genv.genv_vars_inj.
-    - rename H0 into DEFMAP. des.
+      uo. des_ifs. esplits; et.
+      + rewrite Genv_map_defs_symb. eapply Genv.invert_find_symbol; et.
+      + inv PROJ.
+        rewrite Sk.of_program_defs in *. rewrite Sk.of_program_internals in *.
+        assert(DEF: defs prog i).
+        { u. des_sumbool. eapply prog_defmap_spec; et. }
+        exploit DEFKEPT; et.
+        { eapply Genv.find_invert_symbol; et.
+          rewrite <- SYMBKEEP; et.
+          eapply Genv.invert_find_symbol; et.
+        }
+        intro T; des.
+        ss. rename g into gg. rename gd1 into gg1. bsimpl.
+        unfold ASTC.internals in T. des_ifs. ss. unfold NW in *. bsimpl. congruence.
+    -
       dup H. u in DEFS. unfold ident in *. spc DEFS.
       exploit DEFS; clear DEFS.
       { unfold proj_sumbool. des_ifs; ss. exfalso. apply n. eapply prog_defmap_spec; eauto. }
@@ -516,8 +531,8 @@ I think "sim_skenv_monotone" should be sufficient.
       exploit SYMBKEEP; et. intro SYMBLINK; des. rewrite Heq in *. symmetry in SYMBLINK.
       exploit Genv.find_invert_symbol; et. intro INVLINK.
       hexploit (Sk.of_program_prog_defmap prog get_sg id); et. intro REL.
-      rewrite DEFMAP in *. inv REL.
-      rename H2 into MATCHGD. rename H1 into DEFMAP1.
+      rewrite PROG in *. inv REL.
+      rename H2 into MATCHGD. rename H1 into PROG1.
       exploit DEFS; et. i; des. clarify.
       des_ifs_safe.
       inv MATCHGD; cycle 1.
@@ -574,19 +589,12 @@ I think "sim_skenv_monotone" should be sufficient.
     unfold revive in DEF. apply Genv_map_defs_def in DEF. des.
     exploit DEFSYMB; et. i; des.
     inv GEP.
-    exploit FIND_MAP_INV.
+    exploit GE2P.
     { esplits; et. }
     i; des.
-    uo. des_ifs.
-    inv PROJ.
-    exploit (SYMBKEEP id); et.
-    { rewrite Sk.of_program_defs. u. des_sumbool. eapply prog_defmap_image; et. }
-    i; des.
-    exploit DEFKEPT; et.
-    { apply Genv.find_invert_symbol. rewrite <- H1. et. }
-    i; des.
-    rewrite Sk.of_program_internals in *.
-    u in H2. des_ifs.
+    assert(id0 = id).
+    { unfold revive in SYMB0. rewrite Genv_map_defs_symb in *. apply_all_once Genv.find_invert_symbol. ss. }
+    clarify.
   Qed.
 
   Print Genv.public_symbol.

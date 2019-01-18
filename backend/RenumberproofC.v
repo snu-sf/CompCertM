@@ -174,15 +174,17 @@ Section SIMMODSEM.
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
-Hypothesis (INCLSRC: SkEnv.includes skenv_link_src (RTLC.module prog).(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt (RTLC.module tprog).(Mod.sk)).
+Let md_src: Mod.t := (RTLC.module prog).
+Let md_tgt: Mod.t := (RTLC.module tprog).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
 Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
 Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (RTLC.module prog).(Mod.sk)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (RTLC.module tprog).(Mod.sk)) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt sm_link
+  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
 .
 
 Inductive match_states
@@ -195,8 +197,8 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (RTLC.module prog).(Mod.sk))
-                      (SkEnv.project skenv_link_tgt (RTLC.module tprog).(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk))
+                      (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun _ f tf => tf = transf_fundef f) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 

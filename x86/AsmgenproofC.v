@@ -20,17 +20,25 @@ Section PRESERVATION.
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable prog: Mach.program.
 Variable tprog: Asm.program.
+Let md_src: Mod.t := (MachC.module prog return_address_offset).
+Let md_tgt: Mod.t := (AsmC.module tprog).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
+Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
+Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
+
 Hypothesis TRANSF: match_prog prog tprog.
 
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 
 Variable sm_link: SimMem.t.
 
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (SM := SimMemExt)
-                (MachC.modsem return_address_offset skenv_link_src prog)
-                (AsmC.modsem skenv_link_tgt tprog) tt sm_link.
+                (md_src.(Mod.modsem) skenv_link_src)
+                (md_tgt.(Mod.modsem) skenv_link_tgt)
+                tt sm_link.
 
 Definition get_rs (ms: Mach.state) : Mach.regset :=
   match ms with
@@ -95,7 +103,7 @@ Lemma asm_step_dstep init_rs st0 st1 tr
                      (mkstate init_rs st1).
 Proof.
   econs.
-  - eapply modsem_determinate.
+  - eapply modsem_determinate; et.
   - econs; auto.
 Qed.
 
@@ -291,7 +299,6 @@ Proof.
     + econs; eauto.
       * r in TRANSF. r in TRANSF.
         exploit (SimSymbId.sim_skenv_revive TRANSF); eauto.
-        { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
         { apply SIMSKENV. }
         intro GE.
         apply (fsim_external_funct_id GE); ss.
@@ -362,7 +369,7 @@ Proof.
     + ss.
 
   - ss. esplits.
-    + eapply MachC.modsem_receptive.
+    + eapply MachC.modsem_receptive; et.
       intros f c ofs of' RAO0 RAO1. inv RAO0. inv RAO1.
       rewrite TC in *. rewrite TF in *. clarify.
       exploit code_tail_unique. apply TL. apply TL0.

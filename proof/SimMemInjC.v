@@ -550,9 +550,9 @@ Next Obligation.
 Qed.
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_proj_src.
-  generalize (SkEnv.project_impl_spec skenv_link_src sk_src); intro LESRC.
+  generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
   set (SkEnv.project skenv_link_tgt sk_tgt) as skenv_proj_tgt.
-  generalize (SkEnv.project_impl_spec skenv_link_tgt sk_tgt); intro LETGT.
+  generalize (SkEnv.project_impl_spec INCLTGT); intro LETGT.
   exploit SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto.
   i; des.
   inv SIMSKENV. inv LESRC. inv LETGT.

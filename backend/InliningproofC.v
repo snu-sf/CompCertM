@@ -38,11 +38,17 @@ Section SIMMODSEM.
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
+Let md_src: Mod.t := (RTLC.module prog).
+Let md_tgt: Mod.t := (RTLC.module tprog).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
+Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
+Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt sm_link
+  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
 .
 
 Inductive match_states
@@ -56,9 +62,9 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun cunit f tf => transf_fundef (funenv_program cunit) f = OK tf) eq prog) ge tge.
-Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. u. des_ifs; ss; unfold Errors.bind in *; des_ifs. } Qed.
+Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
 Theorem sim_modsem
   :
@@ -201,11 +207,11 @@ Proof.
   - (* step *)
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     esplits; eauto.
-    { apply modsem_receptive. }
+    { apply modsem_receptive; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog _ ge tge); eauto.
-    { assert (SkEnv.genv_precise (SkEnv.revive (SkEnv.project skenv_link_src prog) prog) prog).
-      { admit "ez: Using SkEnv.revive_precise". }
+    { assert (SkEnv.genv_precise ge prog).
+      { eapply SkEnv.project_revive_precise; et. eapply SkEnv.project_impl_spec; et. }
       inv H. econs; ii.
       - exploit FIND_MAP; eauto. i. inv H0. des. exists x. split; eauto. des_ifs. ii.
         admit "ez".

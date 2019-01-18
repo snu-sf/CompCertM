@@ -933,8 +933,14 @@ Variable prog: Linear.program.
 Variable tprog: Mach.program.
 Hypothesis TRANSF: match_prog prog tprog.
 Variable rao: Mach.function -> Mach.code -> ptrofs -> Prop.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
+Let md_src: Mod.t := (LinearC.module prog).
+Let md_tgt: Mod.t := (MachC.module tprog rao).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
+Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
+Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 Hypothesis return_address_offset_exists:
   forall f sg ros c v (FUNCT: Genv.find_funct tge v = Some (Internal f)),
   is_tail (Mcall sg ros :: c) (fn_code f) ->
@@ -949,7 +955,7 @@ Print Instances SimMem.class.
 Print Instances SimSymb.class.
 
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (LinearC.modsem skenv_link_src prog) (MachC.modsem rao skenv_link_tgt tprog) tt sm_link
+  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
 .
 
 Compute last_option (@nil Z).
@@ -1011,7 +1017,7 @@ Lemma init_match_frame_contents_depr
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
-      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src prog)) (Mem.nextblock m_tgt0))
+      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src md_src.(Mod.sk))) (Mem.nextblock m_tgt0))
   :
     m_tgt0
       |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
@@ -1076,7 +1082,7 @@ Lemma init_match_frame_contents
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
-      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src prog)) (Mem.nextblock m_tgt0))
+      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src md_src.(Mod.sk))) (Mem.nextblock m_tgt0))
   :
     m_tgt0
       |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
@@ -1420,9 +1426,9 @@ Lemma loc_result_one
 Proof. compute. des_ifs; eauto. Qed.
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun cunit f tf => transf_fundef f = OK tf) eq prog) ge tge.
-Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. u. des_ifs; ss; unfold Errors.bind in *; des_ifs. } Qed.
+Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
 Inductive has_footprint (st_src0: Linear.state): MachC.state -> SimMem.t -> Prop :=
 | has_footprint_intro
@@ -1978,7 +1984,7 @@ Proof.
 
   - (* step lemma *)
     esplits; eauto.
-    { apply LinearC.modsem_receptive. }
+    { apply LinearC.modsem_receptive; et. }
     inv MATCH.
     ii. hexploit (@transf_step_correct prog rao ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }

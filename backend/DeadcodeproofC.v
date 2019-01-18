@@ -22,13 +22,18 @@ Section SIMMODSEM.
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
-Hypothesis INCLSRC: SkEnv.includes skenv_link_src (Sk.of_program fn_sig prog).
+Let md_src: Mod.t := (RTLC.module prog).
+Let md_tgt: Mod.t := (RTLC.module tprog).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
+Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
+Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
 
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src prog) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt tprog) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt sm_link
+  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
 .
 
 Inductive match_states
@@ -41,9 +46,10 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src prog) (SkEnv.project skenv_link_tgt tprog) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk))
+                      (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun cu f tf => transf_fundef (romem_for cu) f = OK tf) eq prog) ge tge.
-Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. u. des_ifs; ss; unfold bind in *; des_ifs. } Qed.
+Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
 Theorem sim_modsem
   :
@@ -102,7 +108,6 @@ Proof.
       * folder. des.
         r in TRANSL. r in TRANSL.
         exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
-        { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
         { apply SIMSKENV. }
         intro GE.
         apply (fsim_external_funct_id GE); ss.
@@ -126,14 +131,14 @@ Proof.
     inv STACKS; ss. destruct sm0; ss. clarify.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto.
   - esplits; eauto.
-    { apply modsem_receptive. }
+    { apply modsem_receptive; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { ss. des. eauto. }
     i; des.
     esplits; eauto.
-    + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate.
+    + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
     + instantiate (1:= (SimMemExt.mk _ _)). ss.
 Unshelve.
   all: ss.

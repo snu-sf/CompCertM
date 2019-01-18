@@ -288,9 +288,9 @@ Next Obligation.
 Qed.
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_src.
-  generalize (SkEnv.project_impl_spec skenv_link_src sk_src); intro LESRC.
+  generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
   set (SkEnv.project skenv_link_tgt sk_tgt) as skenv_tgt.
-  generalize (SkEnv.project_impl_spec skenv_link_tgt sk_tgt); intro LETGT.
+  generalize (SkEnv.project_impl_spec INCLTGT); intro LETGT.
   exploit SkEnv.project_spec_preserves_wf; try apply LESRC; eauto. intro WFSMALLSRC.
   exploit SkEnv.project_spec_preserves_wf; try apply LETGT; eauto. intro WFSMALLTGT.
 (* THIS IS TOP *)
@@ -415,8 +415,7 @@ Next Obligation.
     exploit DEFKEEP0; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
     { inv SIMSK. exploit KEPT1; eauto. i.
-      apply defs_prog_defmap in KEEP. des. rewrite KEEP in *.
-      apply defs_prog_defmap. esplits; eauto.
+      unfold internals in *. des_ifs.
     }
     i; des. clarify.
 
@@ -448,9 +447,34 @@ Next Obligation.
     inv LESRC.
     inv WFSRC. exploit DEFSYMB; eauto. i; des.
     assert(id = id0). { eapply Genv.genv_vars_inj. apply SYMBSMALLTGT. eauto. } clarify.
-    assert(defs sk_src id0).
+    assert(DSRC: defs sk_src id0).
     { apply NNPP. ii. erewrite SYMBDROP in *; eauto. ss. }
-    exploit SYMBKEEP; eauto. i; des. rewrite BLKSRC in *. symmetry in H1.
+    exploit SYMBKEEP; eauto. i; des. rewrite BLKSRC in *. symmetry in H0.
+    assert(DTGT: defs sk_tgt id0).
+    { apply NNPP. ii. inv LETGT. erewrite SYMBDROP0 in *; eauto. ss. }
+    assert(ITGT: internals sk_tgt id0).
+    {
+      dup DTGT. unfold defs in DTGT. des_sumbool. apply prog_defmap_spec in DTGT. des.
+
+      inv INCLTGT. exploit DEFS; et. i; des.
+      assert(blk = blk_tgt).
+      { inv LETGT. exploit SYMBKEEP0; et. i; des. congruence. }
+      clarify.
+
+      inv LETGT.
+      exploit DEFKEPT0; et.
+      { apply Genv.find_invert_symbol; eauto. }
+      i; des.
+      ss.
+    }
+    assert(ISRC: internals sk_src id0).
+    {
+      inv SIMSK.
+      unfold internals in *. des_ifs_safe.
+      exploit SPLITHINT; et. i; des. clear_tac.
+      hexploit (KEPT id0); et. intro T. rewrite Heq in *.
+      des_ifs. 
+    }
     erewrite DEFKEEP; eauto.
     { apply Genv.find_invert_symbol; eauto. }
 

@@ -266,12 +266,12 @@ Proof.
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
 
     esplits; eauto.
-    { apply modsem_receptive; et. }
+    { apply modsem_strict_determinate; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog tprog (used_set tprog)); eauto.
     i; des.
     esplits; eauto.
-    + left. apply plus_one. econs; eauto. eapply modsem_determinate; eauto.
+    + left. apply plus_one. econs; eauto. eapply modsem_strict_determinate; eauto.
     + econs; ss.
       * inv H0; ss; inv MCOMPAT; ss.
       * inv H0; ss; inv MCOMPAT; ss.

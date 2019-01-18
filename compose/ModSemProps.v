@@ -51,6 +51,32 @@ Proof.
   econs; ii; ModSem.tac.
 Qed.
 
+Lemma spread_sdstar
+      ms
+      st0 tr st1
+      (DTM: forall st0, strict_determinate_at ms st0)
+      (STAR: Star ms st0 tr st1)
+  :
+    <<DSTAR: SDStar ms st0 tr st1>>
+.
+Proof.
+  ginduction STAR; ii; ss.
+  { econs; eauto. }
+  econs; eauto. eapply IHSTAR; eauto.
+Qed.
+
+Lemma spread_sdplus
+      ms
+      st0 tr st1
+      (DTM: forall st0, strict_determinate_at ms st0)
+      (PLUS: Plus ms st0 tr st1)
+  :
+    <<DPLUS: SDPlus ms st0 tr st1>>
+.
+Proof.
+  inv PLUS. econs; eauto. eapply spread_sdstar; eauto.
+Qed.
+
 Lemma at_external_determinate_at
       ms_src lst_src
       (CALL: ModSem.is_call ms_src lst_src)

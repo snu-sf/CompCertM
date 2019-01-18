@@ -45,22 +45,11 @@ Section MACHEXTRA.
   Definition semantics_with_ge := Semantics (step rao) bot1 final_state ge.
   (* *************** ge is parameterized *******************)
 
-  Lemma semantics_receptive
+  Lemma semantics_strict_determinate
         st
         (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      receptive_at semantics_with_ge st
-  .
-  Proof.
-    revert rao_dtm. (* dummy *)
-    admit "this should hold".
-  Qed.
-
-  Lemma semantics_determinate
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      determinate_at semantics_with_ge st
+      strict_determinate_at semantics_with_ge st
   .
   Proof.
     revert rao_dtm. (* dummy *)
@@ -398,54 +387,26 @@ Section MODSEM.
     eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
-  Lemma lift_receptive_at
-        st
-        (RECEP: receptive_at (semantics_with_ge rao ge) st)
-    :
-      forall init_rs init_sg, receptive_at modsem (mkstate init_rs init_sg st)
-  .
-  Proof.
-    inv RECEP. econs; eauto; ii; ss.
-    - inv H. ss.
-      exploit sr_receptive_at; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
-      i; des. destruct s1; ss.
-      exists (mkstate init_rs1 init_sg1 s2).
-      econs; eauto. ss.
-      { admit "1) prove get_stack dtm 2) at first place, prove full determinacy instead of determinate". }
-    - inv H.
-      exploit sr_traces_at; eauto.
-  Qed.
-
-  Lemma modsem_receptive
-        st
-    :
-      receptive_at modsem st
-  .
-  Proof. destruct st. eapply lift_receptive_at. eapply semantics_receptive; eauto. ii. eapply not_external; eauto. Qed.
-
-  Lemma lift_determinate_at
+  Lemma lift_strict_determinate_at
         st0
-        (DTM: determinate_at (semantics_with_ge rao ge) st0)
+        (DTM: strict_determinate_at (semantics_with_ge rao ge) st0)
     :
-      forall init_rs init_sg, determinate_at modsem (mkstate init_rs init_sg st0)
+      forall init_rs init_sg, strict_determinate_at modsem (mkstate init_rs init_sg st0)
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.
-    - inv H. inv H0.
-      determ_tac sd_determ_at. esplits; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
-      i. destruct s1, s2; ss. rewrite H0; ss. eauto with congruence.
+    - inv STEP0. inv STEP1.
+      determ_tac ssd_determ_at. ss. clarify. destruct s1, s2; ss. clarify.
     - inv H.
-      exploit sd_traces_at; eauto.
+      exploit ssd_traces_at; eauto.
   Qed.
 
-  Lemma modsem_determinate
+  Lemma modsem_strict_determinate
         st
     :
-      determinate_at modsem st
+      strict_determinate_at modsem st
   .
-  Proof. destruct st. eapply lift_determinate_at. eapply semantics_determinate; eauto. ii. eapply not_external; eauto. Qed.
+  Proof. destruct st. eapply lift_strict_determinate_at. eapply semantics_strict_determinate; eauto. ii. eapply not_external; eauto. Qed.
 
 
 End MODSEM.

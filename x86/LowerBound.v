@@ -1750,10 +1750,12 @@ Section PRESERVATION.
   Proof.
     inv MTCHST; ss.
     - eapply SemProps.lift_receptive_at. ss.
+      admit "use strict forward simulation instead? old code:
       eapply AsmC.lift_receptive_at.
       eapply semantics_receptive.
       intros EXTERN. eapply not_external in EXTERN; auto.
-      admit "INCL".
+      admit ""INCL"".
+".
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
       + ii. inv H. ss. omega.

@@ -156,42 +156,17 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
-  Let lift_receptive: forall
-      st
-      (RECEP: receptive_at (semantics1_with_ge p ge) st)
-    ,
-      receptive_at modsem1 st
-  .
-  Proof. i.
-    inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
-    eapply match_traces_preserved; try eassumption. ii; ss.
-  Qed.
-
-  Lemma modsem1_receptive
+  Lemma modsem1_strict_determinate
         st
     :
-      receptive_at modsem1 st
+      strict_determinate_at modsem1 st
   .
   Proof. admit "this should hold". Qed.
 
-  Lemma modsem1_determinate
+  Lemma modsem2_strict_determinate
         st
     :
-      determinate_at modsem1 st
-  .
-  Proof. admit "this should hold". Qed.
-
-  Lemma modsem2_receptive
-        st
-    :
-      receptive_at modsem2 st
-  .
-  Proof. admit "this should hold". Qed.
-
-  Lemma modsem2_determinate
-        st
-    :
-      determinate_at modsem2 st
+      strict_determinate_at modsem2 st
   .
   Proof. admit "this should hold". Qed.
 

@@ -196,11 +196,21 @@ Module CSkEnv.
     - des.
       unfold SkEnv.revive in *.
       apply_all_once Genv_map_defs_def. des; ss.
-      ss.
-      rewrite Genv_map_defs_symb in *. u in *. des_ifs_safe. simpl_bool.
-      apply_all_once Genv.invert_find_symbol.
-      determ_tac Genv.genv_vars_inj.
-    - rename H0 into DEFMAP. des.
+      uo. des_ifs. esplits; et.
+      + rewrite Genv_map_defs_symb. eapply Genv.invert_find_symbol; et.
+      + inv PROJ.
+        rewrite CSk.of_program_defs in *. rewrite CSk.of_program_internals in *.
+        assert(DEF: defs prog i).
+        { u. des_sumbool. eapply prog_defmap_spec; et. }
+        exploit DEFKEPT; et.
+        { eapply Genv.find_invert_symbol; et.
+          rewrite <- SYMBKEEP; et.
+          eapply Genv.invert_find_symbol; et.
+        }
+        intro T; des.
+        ss. rename g into gg. rename gd1 into gg1. bsimpl.
+        unfold ASTC.internals in T. des_ifs. ss. unfold NW in *. bsimpl. congruence.
+    -
       dup H. u in DEFS. unfold ident in *. spc DEFS.
       exploit DEFS; clear DEFS.
       { unfold proj_sumbool. des_ifs; ss. exfalso. apply n. eapply prog_defmap_spec; eauto. }
@@ -221,7 +231,7 @@ Module CSkEnv.
       exploit SYMBKEEP; et. intro SYMBLINK; des. rewrite Heq in *. symmetry in SYMBLINK.
       exploit Genv.find_invert_symbol; et. intro INVLINK.
       hexploit (CSk.of_program_prog_defmap prog get_sg id); et. intro REL.
-      rewrite DEFMAP in *. inv REL.
+      rewrite PROG in *. inv REL.
       rename H2 into MATCHGD. rename H1 into DEFMAP1.
       exploit DEFS; et. i; des. clarify.
       des_ifs_safe.
@@ -279,19 +289,10 @@ Module CSkEnv.
     unfold SkEnv.revive in DEF. apply Genv_map_defs_def in DEF. des.
     exploit DEFSYMB; et. i; des.
     inv GEP.
-    exploit FIND_MAP_INV.
+    exploit GE2P.
     { esplits; et. }
     i; des.
     uo. des_ifs.
-    inv PROJ.
-    exploit (SYMBKEEP id); et.
-    { rewrite CSk.of_program_defs. u. des_sumbool. eapply prog_defmap_image; et. }
-    i; des.
-    exploit DEFKEPT; et.
-    { apply Genv.find_invert_symbol. rewrite <- H1. et. }
-    i; des.
-    rewrite CSk.of_program_internals in *.
-    u in H2. des_ifs.
   Qed.
 
 End CSkEnv.

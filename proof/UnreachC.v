@@ -927,18 +927,23 @@ Next Obligation.
     { i. clarify. admit "hard - we need good-prog". }
 Qed.
 Next Obligation.
-  admit "hard - system - this axiom should be removed in project-only-internals".
-  (* split; i; inv H; ss. *)
-  (* - econs; eauto. *)
-  (*   i. eapply RO; eauto. *)
-  (*   unfold Genv.find_var_info in *. des_ifs_safe. *)
-  (*   unfold System.skenv in *. *)
-  (*   apply_all_once Genv_map_defs_def. des. des_ifs. *)
-  (* - econs; eauto. *)
-  (*   i. eapply RO; eauto. *)
-  (*   unfold Genv.find_var_info in *. des_ifs_safe. *)
-  (*   unfold System.skenv. *)
-  (*   eapply_all_once Genv_map_defs_def_inv. rewrite Heq. ss. *)
+  assert(BC: (ske2bc (System.skenv skenv_link)) = (ske2bc skenv_link)).
+  { apply bc_eta. i. ss. }
+  assert(RM: (romem_for_ske (System.skenv skenv_link)) = (romem_for_ske skenv_link)).
+  { apply func_ext1. intro id.
+    unfold romem_for_ske. unfold System.skenv. rewrite Genv_map_defs_symb.
+    destruct (Genv.find_symbol skenv_link id) eqn:SYMB; ss.
+    destruct (Genv.find_var_info skenv_link b ) eqn:VAR; ss.
+    - unfold Genv.find_var_info in *. des_ifs_safe.
+      erewrite Genv_map_defs_def_inv; et. ss.
+    - unfold Genv.find_var_info in *. des_ifs_safe.
+      exploit Genv_map_defs_def; et. i; des. des_ifs.
+  }
+  split; i; inv H; ss.
+  - econs; eauto.
+    rpapply ROMATCH; ss.
+  - econs; eauto.
+    rpapply ROMATCH; ss.
 Qed.
 Next Obligation.
   set (CTX := Val.mi_normal).

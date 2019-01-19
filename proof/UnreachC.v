@@ -931,9 +931,23 @@ Maybe you can remove this condition from bmatch_proj upfront. (I think it is eas
       apply Genv.invert_find_symbol in Heq.
       assert(TT: defs sk id).
       { apply NNPP. intro. exploit SYMBDROP; et. i; des. clarify. }
+      dup TT. unfold defs in TT. des_sumbool. eapply prog_defmap_spec in TT; et. des.
+      assert(exists gv, g = Gvar gv).
+      {
+        unfold romem_for_ske in RO. des_ifs. bsimpl. des. unfold Genv.find_var_info in *. des_ifs.
+        rename g into gg.
+        inv INCL.
+        exploit DEFS; et. i; des.
+        assert(b = blk0).
+        { rewrite SYMBKEEP in *; et. clarify. }
+        clarify.
+        exploit DEFKEPT; et.
+        { apply Genv.find_invert_symbol; et. }
+        i; des. ss. clarify. inv MATCH. esplits; et.
+      }
+      des. clarify.
       exploit WFPTR; et.
       { rewrite <- SYMBKEEP; et. }
-      { unfold defs in TT. des_sumbool. ss. }
       i; des.
       exists id_to.
       ss.

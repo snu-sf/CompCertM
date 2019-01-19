@@ -229,6 +229,7 @@ Module Sound.
         (WFM: SkEnv.wf_mem skenv_link sk m0)
         (SKE: su.(skenv) m0 skenv_link)
         (LE: SkEnv.project_spec skenv_link sk skenv0)
+        (INCL: SkEnv.includes skenv_link sk)
       ,
         <<SKE: su.(skenv) m0 skenv0>>
     ;

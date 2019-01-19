@@ -398,8 +398,6 @@ Section PRESERVATION.
     - eapply H. rewrite prog_defmap_spec in H0. des. eauto.
   Qed.
 
-  Lemma genv_
-
   Lemma genv_find_funct
         fptr if_sig
         (FIND: Genv.find_funct (SkEnv.project skenv_link (defs cp_link)) fptr = Some (AST.Internal if_sig))

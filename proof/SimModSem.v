@@ -91,8 +91,11 @@ Section SIMMODSEM.
   | lxsim_step_backward
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
-      (SAFESRC: ms_src.(ModSem.is_step) st_src0)
+      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
       (BSTEP:
+         forall
+           (SAFESRC: ms_src.(ModSem.is_step) st_src0)
+         ,
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
         (* , *)
@@ -101,6 +104,9 @@ Section SIMMODSEM.
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
         (* , *)
+         forall
+           (SAFESRC: ms_src.(ModSem.is_step) st_src0)
+         ,
           <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)
 
   (* | lxsim_at_external *)
@@ -203,7 +209,8 @@ Section SIMMODSEM.
       + econs 2; eauto.
     - econs 2; ss.
       i. (* specialize (BSTEP SAFESRC0). *)
-      inv BSTEP.
+      exploit BSTEP; et. intro BSTEP0.
+      inv BSTEP0.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 3; eauto.

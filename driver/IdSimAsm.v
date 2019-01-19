@@ -74,7 +74,7 @@ Proof.
   destruct (classic ((modsem skenv_link asm).(ModSem.is_call) st0)).
   { (* call *)
     ss. rr in H. des.
-    econs 4; eauto.
+    econs 3; eauto.
     { econs; eauto. }
     ii. des. clear_tac.
     exists args_src. exists (SimMemId.mk args_src.(Args.m) args_src.(Args.m)). ss.
@@ -88,7 +88,7 @@ Proof.
   { (* final *)
     ss. rr in H0. des.
     dup H0. set (R:= retv). inv H0.
-    econs 5; eauto.
+    econs 4; eauto.
     { instantiate (1:= SimMemId.mk m2 m2). ss. }
     { econs; eauto. }
     { ss. }

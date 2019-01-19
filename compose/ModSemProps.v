@@ -41,11 +41,11 @@ Proof.
   inv PLUS. econs; eauto. eapply spread_dstar; eauto.
 Qed.
 
-Lemma at_external_receptive_at
+Lemma at_external_single_events_at
       ms_src lst_src
       (CALL: ModSem.is_call ms_src lst_src)
   :
-    <<RCP: receptive_at ms_src lst_src>>
+    <<SINGLE: single_events_at ms_src lst_src>>
 .
 Proof.
   econs; ii; ModSem.tac.
@@ -77,31 +77,21 @@ Proof.
   inv PLUS. econs; eauto. eapply spread_sdstar; eauto.
 Qed.
 
-Lemma at_external_determinate_at
+Lemma at_external_strict_determinate_at
       ms_src lst_src
       (CALL: ModSem.is_call ms_src lst_src)
   :
-    <<RCP: determinate_at ms_src lst_src>>
+    <<RCP: strict_determinate_at ms_src lst_src>>
 .
 Proof.
   econs; ii; ModSem.tac.
 Qed.
 
-Lemma final_frame_receptive_at
+Lemma final_frame_strict_determinate_at
       ms_src lst_src
       (CALL: ModSem.is_return ms_src lst_src)
   :
-    <<RCP: receptive_at ms_src lst_src>>
-.
-Proof.
-  econs; ii; ModSem.tac.
-Qed.
-
-Lemma final_frame_determinate_at
-      ms_src lst_src
-      (CALL: ModSem.is_return ms_src lst_src)
-  :
-    <<RCP: determinate_at ms_src lst_src>>
+    <<DTM: strict_determinate_at ms_src lst_src>>
 .
 Proof.
   econs; ii; ModSem.tac.

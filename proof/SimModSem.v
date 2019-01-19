@@ -32,23 +32,23 @@ Section SIMMODSEM.
   (* } *)
   (* . *)
 
-  Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
+  Inductive sfsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
-  | fsim_step_step
+  | sfsim_step_step
       (STEP: forall
           st_src1 tr
           (STEPSRC: Step ms_src st_src0 tr st_src1)
         ,
           exists i1 st_tgt1 sm1,
-            (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ ord i1 i0>>)
+            (<<PLUS: SDPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: SDStar ms_tgt st_tgt0 tr st_tgt1 /\ ord i1 i0>>)
             (* /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>> *)
             /\ <<MLE: SimMem.le sm0 sm1>>
 (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm1>>)
-      (RECEP: receptive_at ms_src st_src0)
-  | fsim_step_stutter
+      (RECEP: single_events_at ms_src st_src0)
+  | sfsim_step_stutter
       i1 st_tgt1
-      (STAR: DStar ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
+      (STAR: SDStar ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
       (BSIM: fsim i1 st_src0 st_tgt1 sm0)
   .
 
@@ -76,14 +76,14 @@ Section SIMMODSEM.
                            idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (sm_init: SimMem.t)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
-  | lxsim_step_forward
+  | lxsim_step_strict_forward
       (SU: forall (SU: sound_state st_src0),
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
       <<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>
       /\
-      <<FSTEP: fsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>
+      <<FSTEP: sfsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
       (* sd_determ_at_final becomes nothing, but it is OK. *)
       (* In composed semantics, when it stepped, it must not be final *))
@@ -91,8 +91,11 @@ Section SIMMODSEM.
   | lxsim_step_backward
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
-      (SAFESRC: ms_src.(ModSem.is_step) st_src0)
+      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
       (BSTEP:
+         forall
+           (SAFESRC: ms_src.(ModSem.is_step) st_src0)
+         ,
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
         (* , *)
@@ -101,6 +104,9 @@ Section SIMMODSEM.
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
         (* , *)
+         forall
+           (SAFESRC: ms_src.(ModSem.is_step) st_src0)
+         ,
           <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)
 
   (* | lxsim_at_external *)
@@ -203,7 +209,8 @@ Section SIMMODSEM.
       + econs 2; eauto.
     - econs 2; ss.
       i. (* specialize (BSTEP SAFESRC0). *)
-      inv BSTEP.
+      exploit BSTEP; et. intro BSTEP0.
+      inv BSTEP0.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 3; eauto.

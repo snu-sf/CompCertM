@@ -267,13 +267,13 @@ Proof.
     inv STACKS; ss. destruct sm0; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
   - esplits; eauto.
-    { apply modsem_receptive; et. }
+    { apply modsem_strict_determinate; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     i; des.
     esplits; eauto.
-    + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
+    + left. apply plus_one. ss. unfold SDStep in *. des; ss. esplits; eauto. apply modsem_strict_determinate; et.
     + instantiate (1:= SimMemId.mk _ _). econs; ss.
 Unshelve.
   all: ss; try (by econs).

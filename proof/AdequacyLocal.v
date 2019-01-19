@@ -341,37 +341,35 @@ Section SIMGE.
         { refl. }
         { econs. }
         pfold.
-        econs; eauto.
-        i. split.
-        { u. esplits; ii; des; ss; eauto. inv H0. }
-        econs; ss; cycle 1.
-        { eapply System.modsem_receptive; et. }
-        ii. inv STEPSRC.
-        exploit SimSymb.system_axiom; eauto.
-        (* { eapply external_call_symbols_preserved; eauto. *)
-        (*   symmetry. apply System.skenv_globlaenv_equiv. } *)
-        i; des.
-        inv SIMARGS.
+
         assert(SIMGE: SimSymb.sim_skenv sm_arg ss_link (System.globalenv (Sk.load_skenv sk_link_src))
                                         (System.globalenv (Sk.load_skenv sk_link_tgt))).
         { eapply SimSymb.mfuture_preserves_sim_skenv; eauto. }
         hexpl SimSymb.sim_skenv_func_bisim SIMGE0.
-        inv SIMGE0. exploit FUNCFSIM; eauto. i; des. clarify.
-        esplits; eauto.
-        { left. apply plus_one. econs.
-          - eapply System.modsem_determinate; et.
-          - ss. econs; eauto.
-            (* eapply external_call_symbols_preserved; eauto. *)
-            (* apply System.skenv_globlaenv_equiv. *)
-        }
-        { eapply SimMem.unlift_spec; eauto. }
-        left. pfold.
-        econs 4.
-        { eapply SimMem.unlift_spec; eauto. }
-        { eapply SimMem.unlift_wf; eauto. }
-        { econs; eauto. }
-        { econs; eauto. }
-        { clear - RETV. admit "ez - add as lemma in SimMem". }
+        eapply lxsim_step_backward; et.
+        + esplits; et.
+          * intro T. r in T. des. ss.
+          * intro T. r in T. des. ss. inv T.
+        + i. econs; et. i. ss. inv STEPTGT.
+          r in SAFESRC0. des. ss. inv SAFESRC0.
+          inv SIMGE0. exploit FUNCBSIM; try apply SIMARGS; eauto.
+          {  uge. des_ifs. } clear FUNCFSIM FUNCBSIM.
+          i; des. clarify.
+          exploit SimSymb.system_axiom_bsim; eauto. i; des.
+          esplits; et.
+          * left. apply plus_one. econs; et.
+          * eapply SimMem.unlift_spec; et.
+          * left. pfold.
+            econs 4.
+            { eapply SimMem.unlift_spec; eauto. }
+            { eapply SimMem.unlift_wf; eauto. }
+            { econs; eauto. }
+            { econs; eauto. }
+            { clear - RETV. admit "ez - add as lemma in SimMem". }
+        + i. r in SAFESRC0. des. ss. inv SAFESRC0.
+          inv SIMGE0. exploit FUNCFSIM; try apply SIMARGS; eauto. i; des. clarify.
+          exploit SimSymb.system_axiom_progress; eauto. i; des.
+          esplits; et. econs; et.
     }
     des.
     rewrite <- SYSSRC. rewrite <- SYSTGT.
@@ -788,8 +786,8 @@ Section ADQSTEP.
     punfold TOP. inv TOP.
 
 
-    - (* fstep *)
-      left.
+    - (* sfstep *)
+      left. left.
       exploit SU0.
       { unsguard SUST. des. inv SUST.
         simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
@@ -798,7 +796,7 @@ Section ADQSTEP.
       + ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto.
       + inv FSTEP.
         * econs 1; cycle 1.
-          { eapply lift_receptive_at; eauto. }
+          { eapply lift_single_events_at; et. }
           ii. ss. rewrite LINKSRC in *.
           des.
           inv STEPSRC; ss; ModSem.tac; swap 2 3.
@@ -808,8 +806,8 @@ Section ADQSTEP.
           exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt)).
           esplits; eauto.
           { des.
-            - left. eapply lift_dplus; eauto.
-            - right. esplits; eauto. eapply lift_dstar; eauto.
+            - left. eapply lift_sdplus; et.
+            - right. esplits; eauto. eapply lift_sdstar; et.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
           { unsguard SUST. des_safe. eapply sound_progress; eauto.
@@ -818,20 +816,35 @@ Section ADQSTEP.
           { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
-          { esplits; eauto. eapply lift_dstar; eauto. }
+          { esplits; eauto. eapply lift_sdstar; et. }
           right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
 
 
     - (* bstep *)
       right. ss.
       econs; ss; eauto.
-      + ii. inv FINALTGT. ss. ModSem.tac.
-      + ii.
+      + ii. specialize (SAFESRC0 _ (star_refl _ _ _)). des; ss.
+        { inv SAFESRC0. ss. contradict SAFESRC1. rr. esplits; et. }
+        inv SAFESRC0; ss; swap 2 3.
+        { contradict SAFESRC. rr. esplits; et. }
+        { contradict SAFESRC1. rr. esplits; et. }
+        assert(SRCSTEP: ModSem.is_step ms_src lst_src).
+        { r. esplits; et. }
+        exploit PROGRESS; et. i; des. inv FINALTGT. ss. ModSem.tac.
+      + ii. specialize (SAFESRC0 _ (star_refl _ _ _)). des; ss.
+        { inv SAFESRC0. ss. contradict SAFESRC1. rr. esplits; et. }
+        inv SAFESRC0; ss; swap 2 3.
+        { contradict SAFESRC. rr. esplits; et. }
+        { contradict SAFESRC1. rr. esplits; et. }
+        assert(SRCSTEP: ModSem.is_step ms_src lst_src).
+        { r. esplits; et. }
+        hexploit1 PROGRESS; et.
+        hexploit1 BSTEP; et.
         inv BSTEP.
         * econs 1; eauto; cycle 1.
           { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
           ii. inv STEPTGT; ModSem.tac.
-          ss. exploit STEP; eauto. i; des_safe.
+          ss. exploit STEP0; eauto. i; des_safe.
           exists i1, (State ((Frame.mk ms_src st_src1) :: tail_src)).
           esplits; eauto.
           { des.
@@ -859,11 +872,11 @@ Section ADQSTEP.
 
 
     - (* call *)
-      left.
+      left. left.
       econs; eauto.
       { ii. inv FINALSRC. ss. ModSem.tac. }
       econs; eauto; cycle 1.
-      { eapply lift_receptive_at. eapply at_external_receptive_at; et. }
+      { eapply lift_single_events_at. eapply at_external_single_events_at; et. }
       i.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
@@ -878,7 +891,7 @@ Section ADQSTEP.
       esplits; eauto.
       + left. apply plus_one.
         econs; ss; eauto.
-        { eapply lift_determinate_at; et. eapply at_external_determinate_at; et. }
+        { eapply lift_strict_determinate_at; et. eapply at_external_strict_determinate_at; et. }
         des_ifs.
         econs 1; eauto.
       + right. eapply CIH; eauto.
@@ -919,7 +932,7 @@ Section ADQSTEP.
 
 
     - (* return *)
-      left.
+      left. left.
       econs; eauto.
       { ii. ss. inv FINALSRC0. ss. determ_tac ModSem.final_frame_dtm. clear_tac.
         inv STACK.
@@ -933,7 +946,7 @@ Section ADQSTEP.
           inv H; ss; ModSem.tac.
       }
       econs; eauto; cycle 1.
-      { eapply lift_receptive_at. eapply final_frame_receptive_at; et. }
+      { eapply lift_single_events_at. eapply final_frame_strict_determinate_at; et. }
       i. ss. des_ifs.
       inv STEPSRC; ModSem.tac. ss.
       inv STACK; ss. folder. des_ifs.
@@ -949,7 +962,7 @@ Section ADQSTEP.
       esplits; eauto.
       + left. apply plus_one.
         econs; eauto.
-        { eapply lift_determinate_at. eapply final_frame_determinate_at; et. }
+        { eapply lift_strict_determinate_at. eapply final_frame_strict_determinate_at; et. }
         econs 4; ss; eauto.
       + right. eapply CIH; eauto.
         { unsguard SUST. des_safe. eapply sound_progress; eauto.

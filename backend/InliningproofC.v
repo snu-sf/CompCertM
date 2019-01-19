@@ -207,7 +207,7 @@ Proof.
   - (* step *)
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     esplits; eauto.
-    { apply modsem_receptive; et. }
+    { apply modsem_strict_determinate; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog _ ge tge); eauto.
     { assert (SkEnv.genv_precise ge prog).
@@ -219,7 +219,7 @@ Proof.
     }
     i; des.
     + esplits; eauto.
-      * left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.
+      * left. eapply spread_sdplus; eauto. eapply modsem_strict_determinate; eauto.
       * econs; ss.
         { inv H0; ss; inv MCOMPAT; ss. }
         { inv H0; ss; inv MCOMPAT; ss. }

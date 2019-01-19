@@ -186,26 +186,48 @@ Module SimSymb.
       (*   , *)
       (*     <<SIMGE: sim_skenv sm ss_sys skenv_src.(System.globalenv) skenv_tgt.(System.globalenv)>> *)
       (* ; *)
-      system_axiom: forall
+      system_axiom_bsim: forall
           sm0 ss_sys
           skenv_sys_src skenv_sys_tgt
           args_src args_tgt
-          tr retv_src
+          tr retv_tgt
           ef
           (SIMSKENV: sim_skenv sm0 ss_sys skenv_sys_src skenv_sys_tgt)
           (MWF: SimMem.wf sm0)
           (ARGS: SimMem.sim_args args_src args_tgt sm0)
-          (SYSSRC: external_call ef skenv_sys_src (args_src.(Args.vs)) (args_src.(Args.m))
+          (SYSTGT: external_call ef skenv_sys_tgt (args_tgt.(Args.vs)) (args_tgt.(Args.m))
                                  tr
-                                 (retv_src.(Retv.v)) (retv_src.(Retv.m)))
+                                 (retv_tgt.(Retv.v)) (retv_tgt.(Retv.m)))
+          (SAFESRC: exists _tr _retv_src,
+              external_call ef skenv_sys_src (args_src.(Args.vs)) (args_src.(Args.m))
+                            _tr
+                            (_retv_src.(Retv.v)) (_retv_src.(Retv.m)))
         ,
-          exists sm1 retv_tgt,
-            (<<SYSTGT: external_call ef skenv_sys_tgt (args_tgt.(Args.vs)) (args_tgt.(Args.m))
+          exists sm1 retv_src,
+            (<<SYSSRC: external_call ef skenv_sys_src (args_src.(Args.vs)) (args_src.(Args.m))
                                      tr
-                                     (retv_tgt.(Retv.v)) (retv_tgt.(Retv.m))>>)
+                                     (retv_src.(Retv.v)) (retv_src.(Retv.m))>>)
             /\ (<<RETV: SimMem.sim_retv retv_src retv_tgt sm1>>)
             /\ (<<MLE: SimMem.le sm0.(SimMem.lift) sm1>>)
             /\ (<<MWF: SimMem.wf sm1>>)
+      ;
+      system_axiom_progress: forall
+          sm0 ss_sys
+          skenv_sys_src skenv_sys_tgt
+          args_src args_tgt
+          ef
+          (SIMSKENV: sim_skenv sm0 ss_sys skenv_sys_src skenv_sys_tgt)
+          (MWF: SimMem.wf sm0)
+          (ARGS: SimMem.sim_args args_src args_tgt sm0)
+          (SAFESRC: exists _tr _retv_src,
+              external_call ef skenv_sys_src (args_src.(Args.vs)) (args_src.(Args.m))
+                            _tr
+                            (_retv_src.(Retv.v)) (_retv_src.(Retv.m)))
+        ,
+          exists retv_tgt tr,
+            (<<SYSTGT: external_call ef skenv_sys_tgt (args_tgt.(Args.vs)) (args_tgt.(Args.m))
+                                     tr
+                                     (retv_tgt.(Retv.v)) (retv_tgt.(Retv.m))>>)
       ;
 
     }

@@ -4,7 +4,7 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib.
-Require Import CtypesC CsemC Sem Syntax LinkingC Program.
+Require Import CtypesC CsemC Sem Syntax LinkingC Program SemProps.
 Require Import Equality.
 Require Import CtypingC.
 
@@ -398,47 +398,57 @@ Section PRESERVATION.
     - eapply H. rewrite prog_defmap_spec in H0. des. eauto.
   Qed.
 
-  Lemma genv_find_funct
-        fptr if_sig
-        (FIND: Genv.find_funct (SkEnv.project skenv_link (defs cp_link)) fptr = Some (AST.Internal if_sig))
+  Lemma cp_link_precise
     :
-      exists pgm, is_focus pgm /\
-             Genv.find_funct  (SkEnv.project skenv_link (defs pgm)) fptr = Some (AST.Internal if_sig).
+      SkEnv.genv_precise (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) cp_link) cp_link.
   Proof.
-    unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
-    rewrite MapsC.PTree_filter_map_spec in FIND. unfold o_bind in *.
-    destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss.
-    destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs.
-    exploit Genv.invert_find_symbol; eauto. i. unfold skenv_link in *. ss. unfold link_sk in *. subst prog_src prog_tgt. ss.
-    (* destruct ctx; ss. *)
-    (* unfold link_list in *. des_ifs. ss. des_ifs. *)
+    eapply CSkEnv.project_revive_precise.
+    - instantiate (2:=skenv_link).
+      instantiate (1:=signature_of_function).
+      eapply SkEnv.project_impl_spec. econs; eauto. i.
+      { admit "". }
+    -
+  (* Lemma genv_find_funct *)
+  (*       fptr if_sig *)
+  (*       (FIND: Genv.find_funct (SkEnv.project skenv_link (defs cp_link)) fptr = Some (AST.Internal if_sig)) *)
+  (*   : *)
+  (*     exists pgm, is_focus pgm /\ *)
+  (*            Genv.find_funct  (SkEnv.project skenv_link (defs pgm)) fptr = Some (AST.Internal if_sig). *)
+  (* Proof. *)
+  (*   unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss. *)
+  (*   rewrite MapsC.PTree_filter_map_spec in FIND. unfold o_bind in *. *)
+  (*   destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss. *)
+  (*   destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs. *)
+  (*   exploit Genv.invert_find_symbol; eauto. i. unfold skenv_link in *. ss. unfold link_sk in *. subst prog_src prog_tgt. ss. *)
+  (*   (* destruct ctx; ss. *) *)
+  (*   (* unfold link_list in *. des_ifs. ss. des_ifs. *) *)
 
-    (* unfold link_list in *. des_ifs.  *)    
-    admit "i think it must be true".
-  Qed.
+  (*   (* unfold link_list in *. des_ifs.  *)     *)
+  (*   admit "i think it must be true". *)
+  (* Qed. *)
 
-  Lemma genv_find_funct_rev
-        pgm fptr if_sig
-        (FOCUS1: is_focus pgm)
-        (FIND: Genv.find_funct (SkEnv.project skenv_link (defs pgm)) fptr = Some (AST.Internal if_sig))
-    :
-      Genv.find_funct (SkEnv.project skenv_link (defs cp_link)) fptr = Some (AST.Internal if_sig).
-  Proof.
-    exploit link_linkorder; eauto. i. des.
-    unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
-    rewrite MapsC.PTree_filter_map_spec in *. unfold o_bind in *.
-    destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss.
-    destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs.
-    assert (defs pgm i) by auto.
-    assert (~ defs cp_link i).
-    { unfold not. i. inv H2. clarify. }
-    rewrite id_in_prog in H1. rewrite id_not_in_prog in H2. eapply prog_defmap_dom in H1. des. rewrite not_prog_defmap_spec in H2.
-    exfalso. eapply H2.
-    assert (linkorder pgm cp_link).
-    { inv FOCUS1; auto. }
-    (* exploit prog_defmap_linkorder. *)
-    admit "Heq, Heq0 contradiction".
-  Qed.
+  (* Lemma genv_find_funct_rev *)
+  (*       pgm fptr if_sig *)
+  (*       (FOCUS1: is_focus pgm) *)
+  (*       (FIND: Genv.find_funct (SkEnv.project skenv_link (defs pgm)) fptr = Some (AST.Internal if_sig)) *)
+  (*   : *)
+  (*     Genv.find_funct (SkEnv.project skenv_link (defs cp_link)) fptr = Some (AST.Internal if_sig). *)
+  (* Proof. *)
+  (*   exploit link_linkorder; eauto. i. des. *)
+  (*   unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss. *)
+  (*   rewrite MapsC.PTree_filter_map_spec in *. unfold o_bind in *. *)
+  (*   destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss. *)
+  (*   destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs. *)
+  (*   assert (defs pgm i) by auto. *)
+  (*   assert (~ defs cp_link i). *)
+  (*   { unfold not. i. inv H2. clarify. } *)
+  (*   rewrite id_in_prog in H1. rewrite id_not_in_prog in H2. eapply prog_defmap_dom in H1. des. rewrite not_prog_defmap_spec in H2. *)
+  (*   exfalso. eapply H2. *)
+  (*   assert (linkorder pgm cp_link). *)
+  (*   { inv FOCUS1; auto. } *)
+  (*   (* exploit prog_defmap_linkorder. *) *)
+  (*   admit "Heq, Heq0 contradiction". *)
+  (* Qed. *)
 
   Lemma msfind_fsim
         fptr ms
@@ -458,9 +468,11 @@ Section PRESERVATION.
     { left. econs; et. ss. right. rewrite in_map_iff. esplits; et. unfold prog_tgt. rewrite in_app_iff. left; ss. }
     des; ss. clarify.
     right.
-    exploit genv_find_funct; eauto. i. des. exists pgm. esplits; eauto.
-    econs; eauto. ss. right. subst prog_tgt. ss. unfold flip. ss.
-    rewrite map_app. eapply in_or_app. right. ss. inv H; eauto.
+    (* esplits; eauto. admit "". econs; eauto. admit "". ss. *)
+    (* exploit genv_find_funct; eauto. i. des. exists pgm. esplits; eauto. *)
+    (* econs; eauto. ss. right. subst prog_tgt. ss. unfold flip. ss. *)
+    (* rewrite map_app. eapply in_or_app. right. ss. inv H; eauto. *)
+    admit "".
   Qed.
 
   Lemma msfind_bsim

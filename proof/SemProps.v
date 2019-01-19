@@ -484,3 +484,196 @@ Qed.
 (*   - ii. inv H. ss. omega. *)
 (* Qed. *)
 
+Require Import MemoryC.
+
+Let link_load_skenv_wf_sem_aux: forall
+    md sk_link
+    (WF: Sk.wf md)
+    (LO: linkorder md sk_link)
+    m0 m1
+  ,
+    let skenv_link := (Sk.load_skenv sk_link) in
+    forall
+      idg
+      (IN: In idg sk_link.(prog_defs))
+      (LOADM: Genv.alloc_global skenv_link m0 idg = Some m1)
+      (WFM: SkEnv.wf_mem skenv_link md m0)
+      (* (WFMA: Genv.globals_initialized skenv_link skenv_link m0) *)
+    ,
+      <<WFM: SkEnv.wf_mem skenv_link md m1>>
+             (* /\ <<WFMA: Genv.globals_initialized skenv_link skenv_link m0>> *)
+.
+Proof.
+  i. unfold Genv.alloc_global in *. des_ifs.
+  { (* func *)
+    econs; et. i. inv WFM. exploit WFPTR; et.
+    assert(VALID: Mem.valid_block m0 blk_fr).
+    { assert(NEQ: blk_fr <> b).
+      { ii. clarify. clear - LOAD LOADM Heq. admit "ez". }
+      assert(VAL: Mem.valid_block m1 blk_fr).
+      { clear - LOAD. admit "ez". }
+      clear - Heq LOADM NEQ VAL. admit "ez".
+    }
+    erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
+    { etrans.
+      - eapply Mem.alloc_unchanged_on; et.
+      - eapply Mem.drop_perm_unchanged_on; et. ii. admit "ez".
+    }
+  }
+  { (* gvar *)
+    bar.
+    econs; et. i. inv WFM.
+    rename b into blk.
+    destruct (eq_block blk_fr blk).
+    - clarify. clear WFPTR.
+Abort.
+
+Let link_load_skenv_wf_sem_one: forall
+    md sk_link
+    (WF: Sk.wf md)
+    (LO: linkorder md sk_link)
+    m0 m1
+    id gd
+    (IN: PTree.get id sk_link.(prog_defmap) = Some gd)
+    (LOADM: Genv.alloc_global (Sk.load_skenv sk_link) m0 (id, gd) = Some m1)
+    ge0
+    (WFM: SkEnv.wf_mem ge0 md m0)
+    (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
+    (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
+  ,
+    <<WFM: SkEnv.wf_mem (Genv.add_global ge0 (id, gd)) md m1>>
+           /\ <<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) m1>>
+                                               /\ <<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>
+.
+Proof.
+  i.
+  exploit Genv.alloc_global_initialized; et. intro FREETHM; des.
+  esplits; et.
+  econs; et. i. ss.
+  des_ifs.
+  - (* func *)
+    assert(VALID: Mem.valid_block m0 blk_fr).
+    { assert(NEQ: blk_fr <> b).
+      { ii. clarify. clear - LOAD LOADM Heq. admit "ez". }
+      assert(VAL: Mem.valid_block m1 blk_fr).
+      { clear - LOAD. admit "ez". }
+      clear - Heq LOADM NEQ VAL. admit "ez".
+    }
+    uge. unfold Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs.
+    + Local Transparent Linker_prog.
+      ss.
+      Local Opaque Linker_prog.
+      des.
+      exploit LO1; et. i; des. clarify. inv H0.
+    + inv WFM.
+      assert(VAL: Mem.valid_block m0 blk_fr).
+      { assert(NEQ: blk_fr <> b).
+        { ii. clarify. clear - LOAD LOADM Heq. admit "ez". }
+        assert(VAL: Mem.valid_block m1 blk_fr).
+        { clear - LOAD. admit "ez". }
+        clear - Heq LOADM NEQ VAL. admit "ez".
+      }
+      exploit WFPTR; et.
+      erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
+      { etrans.
+        - eapply Mem.alloc_unchanged_on; et.
+        - eapply Mem.drop_perm_unchanged_on; et. intros ? ? TTT. clear - Heq TTT. admit "ez".
+      }
+      i; des.
+      esplits; et.
+      apply Genv.find_invert_symbol.
+      apply Genv.invert_find_symbol in SYMB0.
+      uge. ss. rewrite PTree.gsspec. des_ifs.
+Qed.
+
+
+Let link_load_skenv_wf_sem_mult: forall
+    md sk_link
+    (WF: Sk.wf md)
+    (LO: linkorder md sk_link)
+    idgs
+    (INCL: incl idgs sk_link.(prog_defs))
+    m0 m1
+    (LOADM: Genv.alloc_globals (Sk.load_skenv sk_link) m0 idgs = Some m1)
+    ge0
+    (WFM: SkEnv.wf_mem ge0 md m0)
+    (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
+  ,
+    <<WFM: SkEnv.wf_mem (Genv.add_globals ge0 idgs) md m1>>
+           /\ <<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link)
+                                               (Genv.add_globals ge0 idgs) m1>>
+.
+Proof.
+  i.
+  generalize dependent ge0.
+  generalize dependent m0.
+  generalize dependent m1.
+  induction idgs; ii; ss.
+  { clarify. }
+  des_ifs.
+  exploit link_load_skenv_wf_sem_one; et.
+  { eapply INCL; et. s. et. }
+  i; des.
+  exploit IHidgs; et.
+  { ii. eapply INCL; et. s. et. }
+Qed.
+
+Lemma link_load_skenv_wf_mem
+      p sk_link m_init
+      (LINK: link_sk p = Some sk_link)
+      (WF: forall md (IN: In md p), Sk.wf md)
+      (LOADM: Sk.load_mem sk_link = Some m_init)
+  :
+    let skenv_link := Sk.load_skenv sk_link in
+    <<WFM: forall md (IN: In md p), SkEnv.wf_mem skenv_link md m_init>>
+.
+Proof.
+  econs. i.
+  unfold link_sk in *.
+  hexploit (link_list_linkorder _ LINK); et. intro LO. des.
+  rewrite Forall_forall in *.
+  exploit LO; et.
+  { rewrite in_map_iff. esplits; et. }
+  clear LO.
+  intro LO.
+  exploit WF; et. clear WF. intro WF; des.
+  clear LINK IN.
+
+
+  {
+    eapply link_load_skenv_wf_sem_mult; et.
+    { refl. }
+    { econs; et. i. exfalso. clear - LOAD0. admit "ez". }
+    { rr. ii. exfalso. clear - H. admit "ez". }
+  }
+
+  {
+    move WF at top. move LO at top.
+    revert_until skenv_link.
+    unfold Sk.load_mem in *.
+    unfold Genv.init_mem in *.
+  }
+
+  inv WF.
+  specialize (WFPTR id_fr).
+  assert(INFR: exists gv, In (id_fr, (Gvar gv)) (prog_defs md.(Mod.sk))).
+  { admit "". }
+  des.
+  specialize (WFPTR gv INFR).
+  assert(SYMBI: exists id_to, Genv.invert_symbol skenv_link blk_to = Some id_to).
+  { admit "". }
+  des.
+  exists id_to.
+  esplits; et.
+  eapply WFPTR.
+  specialize (WFPTR id_to).
+
+  esplits; et.
+  Genv.init_mem_characterization_gen
+Genv.init_mem_characterization_2:
+Genv.init_mem_inversion:
+Genv.init_mem_characterization:
+  ss.
+  admit "".
+Qed.
+

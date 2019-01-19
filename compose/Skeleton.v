@@ -208,6 +208,18 @@ Module Sk.
 
   Definition empty: t := (mkprogram [] [] 1%positive).
 
+  Inductive wf (sk: t): Prop :=
+  | wf_intro
+      (WFPTR: forall
+          id_fr gv
+          (* (IN: In (id_fr, (Gvar gv)) sk.(prog_defs)) *)
+          (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv))
+          id_to _ofs
+          (INDAT: In (Init_addrof id_to _ofs) gv.(gvar_init))
+        ,
+          <<IN: In id_to sk.(prog_defs_names)>>)
+  .
+
 End Sk.
 
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
@@ -230,6 +242,25 @@ Module SkEnv.
         (DEF: skenv.(Genv.find_def) blk = Some skd)
      ,
        <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>>)
+  .
+
+  Inductive wf_mem (skenv: t) (sk: Sk.t) (m0: mem): Prop :=
+  | wf_mem_intro
+      (WFPTR: forall
+          blk_fr _ofs_fr
+          blk_to _ofs_to
+          id_fr
+          _q _n
+          (SYMB: skenv.(Genv.find_symbol) id_fr = Some blk_fr)
+          (* (IN: In id_fr sk.(prog_defs_names)) *)
+          gv
+          (* (IN: In (id_fr, (Gvar gv)) sk.(prog_defs)) *)
+          (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv))
+          (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to true) _q _n])
+        ,
+          exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)
+                        /\ (<<IN: In id_to sk.(prog_defs_names)>>)
+      )
   .
 
   Lemma load_skenv_wf

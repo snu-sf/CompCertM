@@ -224,10 +224,10 @@ Module Sound.
     ;
 
     skenv_project: forall
-        su m0 skenv_link
+        su m0 skenv_link sk skenv0
         (WF: SkEnv.wf skenv_link)
+        (WFM: SkEnv.wf_mem skenv_link sk m0)
         (SKE: su.(skenv) m0 skenv_link)
-        sk skenv0
         (LE: SkEnv.project_spec skenv_link sk skenv0)
       ,
         <<SKE: su.(skenv) m0 skenv0>>

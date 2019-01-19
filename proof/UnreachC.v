@@ -764,8 +764,8 @@ Lemma smatch_proj: forall m b p (GOOD: exists id, bc2 b = BCglob id)
                                            blk ofs
                                            (PTR: v = Vptr blk ofs true)
                             , exists id, bc2 blk = BCglob id)
-                          (GOODMEMVAL: forall lo_ hi_ mv
-                                           (LOAD: Mem.loadbytes m b lo_ hi_ = Some mv)
+                          (GOODMEMVAL: forall lo_ mv
+                                           (LOAD: Mem.loadbytes m b lo_ 1 = Some mv)
                                            blk ofs q n
                                            (PTR: mv = [Fragment (Vptr blk ofs true) q n])
                             , exists id, bc2 blk = BCglob id)
@@ -784,8 +784,8 @@ Lemma bmatch_proj: forall m b ab (GOOD: exists id, bc2 b = BCglob id)
                                            blk ofs
                                            (PTR: v = Vptr blk ofs true)
                             , exists id, bc2 blk = BCglob id)
-                          (GOODMEMVAL: forall lo_ hi_ mv
-                                           (LOAD: Mem.loadbytes m b lo_ hi_ = Some mv)
+                          (GOODMEMVAL: forall lo_ mv
+                                           (LOAD: Mem.loadbytes m b lo_ 1 = Some mv)
                                            blk ofs q n
                                            (PTR: mv = [Fragment (Vptr blk ofs true) q n])
                             , exists id, bc2 blk = BCglob id)
@@ -923,8 +923,29 @@ Next Obligation.
     esplits; et.
     eapply bmatch_proj; et.
     { admit "ez". }
-    { i. clarify. admit "hard - we need good-prog". }
-    { i. clarify. admit "hard - we need good-prog". }
+    { i. clarify. admit "ez - this is weaker version of below.
+Maybe you can remove this condition from bmatch_proj upfront. (I think it is easier to do so)
+". }
+    { i. clarify.
+      inv WFM. s in BC. des_ifs_safe.
+      apply Genv.invert_find_symbol in Heq.
+      assert(TT: defs sk id).
+      { apply NNPP. intro. exploit SYMBDROP; et. i; des. clarify. }
+      exploit WFPTR; et.
+      { rewrite <- SYMBKEEP; et. }
+      { unfold defs in TT. des_sumbool. ss. }
+      i; des.
+      exists id_to.
+      ss.
+      assert(LT: plt blk (Genv.genv_next skenv0)).
+      { rewrite <- NEXT. admit "ez". }
+      des_ifs_safe.
+      apply Genv.invert_find_symbol in SYMB.
+      assert(TTT: defs sk id_to).
+      { unfold defs. des_sumbool. ss. }
+      exploit (SYMBKEEP id_to); et. intro EQ. rewrite SYMB in *. apply Genv.find_invert_symbol in EQ.
+      rewrite EQ. ss.
+    }
 Qed.
 Next Obligation.
   assert(BC: (ske2bc (System.skenv skenv_link)) = (ske2bc skenv_link)).

@@ -173,6 +173,7 @@ Section ADQSOUND.
       des; ss; clarify.
       + s. rewrite <- Sound.system_skenv; eauto.
       + eapply Sound.skenv_project; eauto.
+        { instantiate (1:= x0). eapply link_load_skenv_wf_mem; et. }
         eapply Mod.get_modsem_projected_sk; eauto.
         unfold p_src in IN0. unfold ProgPair.src in *. rewrite in_map_iff in IN0. des. clarify.
         eapply INCLSRC; et.

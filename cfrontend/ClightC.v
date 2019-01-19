@@ -46,7 +46,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function).
   Let ge: genv := Build_genv (skenv.(SkEnv.revive) p) p.(prog_comp_env).
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -156,43 +156,17 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
-  Let lift_receptive: forall
-      st
-      (RECEP: receptive_at (semantics1_with_ge p ge) st)
-    ,
-      receptive_at modsem1 st
-  .
-  Proof. i.
-    inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
-    eapply match_traces_preserved; try eassumption. ii; ss.
-    admit "".
-  Qed.
-
-  Lemma modsem1_receptive
+  Lemma modsem1_strict_determinate
         st
     :
-      receptive_at modsem1 st
+      strict_determinate_at modsem1 st
   .
   Proof. admit "this should hold". Qed.
 
-  Lemma modsem1_determinate
+  Lemma modsem2_strict_determinate
         st
     :
-      determinate_at modsem1 st
-  .
-  Proof. admit "this should hold". Qed.
-
-  Lemma modsem2_receptive
-        st
-    :
-      receptive_at modsem2 st
-  .
-  Proof. admit "this should hold". Qed.
-
-  Lemma modsem2_determinate
-        st
-    :
-      determinate_at modsem2 st
+      strict_determinate_at modsem2 st
   .
   Proof. admit "this should hold". Qed.
 
@@ -213,9 +187,6 @@ Section MODULE.
       Mod.get_modsem := modsem1;
     |}
   .
-  Next Obligation.
-    rewrite CSk.of_program_defs. ss.
-  Qed.
 
   Program Definition module2: Mod.t :=
     {|
@@ -224,9 +195,6 @@ Section MODULE.
       Mod.get_modsem := modsem2;
     |}
   .
-  Next Obligation.
-    rewrite CSk.of_program_defs. ss.
-  Qed.
 
 End MODULE.
 

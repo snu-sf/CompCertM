@@ -256,6 +256,24 @@ Lemma func_ext1
 .
 Proof. apply Axioms.functional_extensionality. ii; ss. Qed.
 
+Lemma func_ext2
+      X Y Z
+      (P Q: X -> Y -> Z)
+      (EQ: all2 (P =2= Q))
+  :
+    <<EQ: P = Q>>
+.
+Proof. apply func_ext1; ss. i. apply func_ext1; ss. Qed.
+
+Lemma func_ext3
+      X Y Z W
+      (P Q: X -> Y -> Z -> W)
+      (EQ: all3 (P =3= Q))
+  :
+    <<EQ: P = Q>>
+.
+Proof. apply func_ext2; ss. i. apply func_ext1; ss. Qed.
+
 (* Originally in sflib, (t):Prop *)
 (* Removed it for use in "privs" of ASTM *)
 (* Notation "<< x : t >>" := (NW (fun x => (t))) (at level 80, x ident, no associativity). *)
@@ -1227,3 +1245,57 @@ Proof.
     { exploit IHxs0; et. }
 Qed.
 
+Fixpoint last_option X (xs: list X): option X :=
+  match xs with
+  | [] => None
+  | hd :: nil => Some hd
+  | hd :: tl => last_option tl
+  end
+.
+Lemma not_ex_all_not
+      U (P: U -> Prop)
+      (NEX: ~ (exists n : U, P n))
+  :
+    <<NALL: forall n : U, ~ P n>>
+.
+Proof. eauto. Qed.
+
+(* Remark: if econs/econsr gives different goal, at least 2 econs is possible *)
+Ltac econsr :=
+  first
+    [
+    econstructor 16
+    |econstructor 15
+    |econstructor 14
+    |econstructor 13
+    |econstructor 12
+    |econstructor 11
+    |econstructor 10
+    |econstructor  9
+    |econstructor  8
+    |econstructor  7
+    |econstructor  6
+    |econstructor  5
+    |econstructor  4
+    |econstructor  3
+    |econstructor  2
+    |econstructor  1
+    ]
+.
+
+Ltac it TERM := instantiate (1:=TERM).
+Ltac itl TERM :=
+  first[
+      instantiate (10:=TERM)|
+      instantiate (9:=TERM)|
+      instantiate (8:=TERM)|
+      instantiate (7:=TERM)|
+      instantiate (6:=TERM)|
+      instantiate (5:=TERM)|
+      instantiate (4:=TERM)|
+      instantiate (3:=TERM)|
+      instantiate (2:=TERM)|
+      instantiate (1:=TERM)|
+      fail
+    ]
+.

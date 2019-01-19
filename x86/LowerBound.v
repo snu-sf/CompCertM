@@ -83,9 +83,13 @@ Section PRESERVATION.
   Let skenv_link := Sk.load_skenv sk.
   Let ge := load_genv prog skenv_link.
   Let tge := Genv.globalenv tprog.
+  Let WFSKELINK: SkEnv.wf skenv_link.
+  Proof.
+    eapply SkEnv.load_skenv_wf.
+  Qed.
 
   Definition local_genv (p : Asm.program) :=
-    (skenv_link.(SkEnv.project) p.(defs)).(SkEnv.revive) p.
+    (skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig)).(SkEnv.revive) p.
 
   Lemma match_genvs_sub A B V W R (ge1: Genv.t A V) (ge2: Genv.t B W)
         (MATCHGE: Genv.match_genvs R ge1 ge2)
@@ -211,37 +215,38 @@ Section PRESERVATION.
     rewrite list_map_compose in IN. ss.
     eapply in_map_iff in IN. des. clarify. unfold modsem. ss. econs.
 
+    assert(INCL: SkEnv.includes (Genv.globalenv sk) (Sk.of_program fn_sig x)).
+    { exploit link_includes; et.
+      { rewrite in_map_iff. esplits; et. }
+      i. ss.
+    }
+
     cinv match_skenv_link_tge.
-    cinv (SkEnv.project_impl_spec skenv_link x.(defs)).
+    cinv (@SkEnv.project_impl_spec skenv_link x.(Sk.of_program fn_sig) INCL).
     unfold skenv_link in *.
 
-    assert (SKWF: SkEnv.wf (SkEnv.project (Genv.globalenv sk) x.(defs))).
+    assert (SKWF: SkEnv.wf_proj (SkEnv.project (Genv.globalenv sk) x.(Sk.of_program fn_sig))).
     { eapply SkEnv.project_spec_preserves_wf.
-      - eapply Sk.load_skenv_wf.
-      - eapply SkEnv.project_impl_spec.
+      - eapply SkEnv.load_skenv_wf.
+      - eapply SkEnv.project_impl_spec; et.
     }
 
-    exploit SkEnv.revive_precise; eauto.
-    { instantiate (1:= x). i.
-      apply prog_defmap_spec in H.
-      eapply prog_defmap_spec in H.
-      rewrite SYMBKEEP.
-
-      - admit "".
-
-      - unfold defs. unfold proj_sumbool. des_ifs.
-    }
-
+    exploit SkEnv.project_revive_precise; eauto.
+    { eapply SkEnv.project_impl_spec; et. }
     i. inv H. econs; ss; i.
 
     - unfold fundef in *. rewrite mge_next. refl.
 
     - unfold Genv.find_symbol in *. rewrite mge_symb.
       destruct (classic (defs x id)).
-      + eapply SYMBKEEP in H. des.
-        rewrite <- H. ss.
-      + eapply SYMBDROP in H. des.
-        ss. unfold fundef in *. unfold skenv_link in *. clarify.
+      + exploit SYMBKEEP; et.
+        { erewrite Sk.of_program_defs; et. }
+        i; des.
+        ss. congruence.
+      + exploit SYMBDROP; et.
+        { erewrite Sk.of_program_defs; et. }
+        i; des.
+        ss. congruence.
 
     - exists d0. splits; eauto.
 
@@ -253,36 +258,43 @@ Section PRESERVATION.
       destruct (Genv.invert_symbol skenv_link b) eqn:EQ; cycle 1.
       { eapply DEFORPHAN in EQ. des. clarify. }
 
-      destruct (classic (defs x i)); cycle 1.
-      { eapply DEFDROP in EQ; eauto. des. clarify. }
-
-      cset DEFKEEP EQ; eauto. des.
-
-      rewrite FIND1 in H0.
-
-      cinv (mge_defs b).
-      { unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify. }
-
-      unfold Genv.find_def in *. unfold fundef in *. rewrite <- H0 in *. clarify.
-
-      unfold o_bind, o_join, o_map in *. des_ifs.
-
-      dup Heq0. eapply Genv.invert_find_symbol in Heq2. dup Heq2.
-
-      unfold SkEnv.project in Heq2. dup Heq2.
-      rewrite Genv_map_defs_symb in Heq4.
-
-      unfold Genv_filter_symb in Heq4. unfold Genv.find_symbol in Heq4. ss.
-
-      rewrite MapsC.PTree_filter_key_spec in Heq4. des_ifs.
-
-      dup Heq4.
-
-      rewrite <- mge_symb in Heq4.
-      clarify. unfold tge in *. clear - LINK Heq1 Heq4 IN0.
-      assert ((prog_defmap tprog) ! i0 = Some d0).
-      { admit "". }
-      admit "".
+      exploit GE2P; et. i; des. uo. des_ifs.
+      assert(TMP: Genv.find_symbol (SkEnv.project (Genv.globalenv sk) (Sk.of_program fn_sig x)) id = Some b).
+      { uge. unfold SkEnv.revive in SYMB. ss. (* TODO: make lemma!!!!!! *) }
+      assert(TMP0: Genv.find_symbol (Genv.globalenv sk) id = Some b).
+      { unfold SkEnv.project in TMP. rewrite Genv_map_defs_symb in TMP. ss.
+        unfold Genv.find_symbol in TMP. ss. (* TODO: make lemma!!!!!!!!!!!!!!!!!!!!!!! *)
+        rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
+      }
+      assert(id = i0).
+      { apply Genv.find_invert_symbol in TMP. clarify. }
+      clarify.
+      assert(i = i0).
+      { apply Genv.find_invert_symbol in TMP0. unfold skenv_link in EQ. clarify. }
+      clarify.
+      assert(TP: (prog_defmap tprog) ! i0 = Some d0).
+      { rename x into xx.
+        hexploit (link_list_linkorder _ LINK); et. intro LO; des. rewrite Forall_forall in *.
+        specialize (LO xx IN0).
+        Local Transparent Linker_prog.
+        ss.
+        Local Opaque Linker_prog.
+        des.
+        exploit LO1; et. i; des.
+        rewrite H.
+        assert(INT: ~ASTC.is_external d0).
+        { ss. }
+        clear - INT H0.
+        inv H0; ss.
+        - inv H; ss.
+        - inv H; ss. destruct info1, info2; ss. inv H1; ss.
+          + admit "this does not hold!".
+          + admit "this does not hold!".
+      }
+      apply Genv.find_def_symbol in TP. des.
+      assert(b0 = b).
+      { apply Genv.invert_find_symbol in EQ. uge. rewrite mge_symb in TP. unfold skenv_link in EQ. clarify. }
+      clarify.
   Qed.
 
   Lemma valid_owner_genv_le fptr p
@@ -422,7 +434,7 @@ Section PRESERVATION.
         unfold System.globalenv in *.
         unfold Genv.find_funct_ptr in *. des_ifs.
         assert (SkEnv.wf skenv_link).
-        { apply Sk.load_skenv_wf. }
+        { apply SkEnv.load_skenv_wf. }
         inv H. unfold Genv.find_symbol in *.
         exploit DEFSYMB; eauto. i. des.
         eapply Genv.genv_symb_range; eauto.
@@ -444,7 +456,7 @@ Section PRESERVATION.
         cinv SKINJ. exploit DOMAIN.
         - instantiate (1:= b_src).
           assert (SkEnv.wf skenv_link).
-          { apply Sk.load_skenv_wf. }
+          { apply SkEnv.load_skenv_wf. }
           inv H. unfold Genv.find_symbol in *.
           exploit DEFSYMB; eauto.
           i. des. eapply Genv.genv_symb_range; eauto.
@@ -535,8 +547,9 @@ Section PRESERVATION.
   Proof.
     unfold no_extern_fun. ii. unfold local_genv in *. des.
     unfold Genv.find_funct_ptr in *. des_ifs.
-    exploit SkEnv.revive_no_external; eauto. ss.
-    destruct ef; ss.
+    exploit SkEnv.project_revive_no_external; eauto.
+    { ss. destruct ef; ss. }
+    admit "INCL".
   Qed.
 
   Lemma ALLOC_NEXT_INCR F V (gen: Genv.t F V) x m0 m1
@@ -1243,41 +1256,43 @@ Section PRESERVATION.
     :
       match_states (Callstate args (fr0 :: frs)) st_tgt 1%nat.
   Proof.
-    inv MTCHST. ss. inv AT. Local Opaque Genv.find_funct.
-    econstructor 2 with (P := (P \2/ (fun blk ofs => blk1 = blk /\ range 0 (4*size_arguments sg) ofs))); ss; eauto.
-    - econs; ss; eauto. rewrite FPTR. eauto.
-    - ii. destruct (eq_block blk1 blk); clarify.
-      + destruct (j blk) eqn:EQ.
-        * destruct p0. destruct (WFINJ blk); clarify.
-          econs 2; eauto; ii.
-          -- eapply ALIGN. ii.
-             instantiate (1:= Nonempty). instantiate (1:=Max).
-             eapply H in PR. des; eauto.
-             ++ left. eapply Mem.perm_free_3 in PR; eauto.
-                eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-             ++ left. eapply Mem.free_range_perm in FREE.
-                exploit FREE. instantiate (1:=x0).
-                ** rewrite Ptrofs.unsigned_zero. unfold range in *. lia.
-                ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-          -- inv INJ; des; eauto.
-             ++ eapply mi_representable; eauto. left.
-                eapply Mem.free_range_perm in FREE. exploit FREE.
-                ** rewrite Ptrofs.unsigned_zero. eauto.
-                ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-             ++ eapply mi_representable; eauto. right.
-                eapply Mem.free_range_perm in FREE. exploit FREE.
-                ** rewrite Ptrofs.unsigned_zero. eauto.
-                ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-        * exfalso. specialize (AGREE (IR Asm.RSP)). rewrite RSP in AGREE. inv AGREE. clarify.
-      + destruct (j blk) eqn:EQ.
-        * destruct p0. destruct (WFINJ blk); clarify.
-          econs 2; eauto; ii.
-          -- eapply ALIGN. ii. eapply H in PR. des; eauto; clarify. left.
-             eapply Mem.perm_free_3; eauto.
-          -- des; eauto; clarify.
-        * econs 1; eauto. destruct (WFINJ blk); clarify.
-          ii. des; eauto. clarify.
-    - eapply free_freed_from; eauto.
+    admit "TODO : fix match_state to match #240".
+
+    (* inv MTCHST. ss. inv AT. Local Opaque Genv.find_funct. *)
+    (* econstructor 2 with (P := (P \2/ (fun blk ofs => blk1 = blk /\ range 0 (4*size_arguments sg) ofs))); ss; eauto. *)
+    (* - econs; ss; eauto. rewrite FPTR. eauto. *)
+    (* - ii. destruct (eq_block blk1 blk); clarify. *)
+    (*   + destruct (j blk) eqn:EQ. *)
+    (*     * destruct p0. destruct (WFINJ blk); clarify. *)
+    (*       econs 2; eauto; ii. *)
+    (*       -- eapply ALIGN. ii. *)
+    (*          instantiate (1:= Nonempty). instantiate (1:=Max). *)
+    (*          eapply H in PR. des; eauto. *)
+    (*          ++ left. eapply Mem.perm_free_3 in PR; eauto. *)
+    (*             eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. *)
+    (*          ++ left. eapply Mem.free_range_perm in FREE. *)
+    (*             exploit FREE. instantiate (1:=x0). *)
+    (*             ** rewrite Ptrofs.unsigned_zero. unfold range in *. lia. *)
+    (*             ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. *)
+    (*       -- inv INJ; des; eauto. *)
+    (*          ++ eapply mi_representable; eauto. left. *)
+    (*             eapply Mem.free_range_perm in FREE. exploit FREE. *)
+    (*             ** rewrite Ptrofs.unsigned_zero. eauto. *)
+    (*             ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. *)
+    (*          ++ eapply mi_representable; eauto. right. *)
+    (*             eapply Mem.free_range_perm in FREE. exploit FREE. *)
+    (*             ** rewrite Ptrofs.unsigned_zero. eauto. *)
+    (*             ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. *)
+    (*     * exfalso. specialize (AGREE (IR Asm.RSP)). rewrite RSP in AGREE. inv AGREE. clarify. *)
+    (*   + destruct (j blk) eqn:EQ. *)
+    (*     * destruct p0. destruct (WFINJ blk); clarify. *)
+    (*       econs 2; eauto; ii. *)
+    (*       -- eapply ALIGN. ii. eapply H in PR. des; eauto; clarify. left. *)
+    (*          eapply Mem.perm_free_3; eauto. *)
+    (*       -- des; eauto; clarify. *)
+    (*     * econs 1; eauto. destruct (WFINJ blk); clarify. *)
+    (*       ii. des; eauto. clarify. *)
+    (* - eapply free_freed_from; eauto. *)
   Qed.
 
   Lemma below_block_is_volatile F V (ge': Genv.t F V) b
@@ -1328,16 +1343,6 @@ Section PRESERVATION.
       + apply (eq_refl (fn_sig fd)).
       + apply FINDF.
       + rewrite arg_copy_reg_PC. ss.
-      + clear - GEINJECT INJECT FREE.
-        erewrite freed_from_nextblock; eauto.
-        set (LE:=Registers.Regset.MSet.Raw.MX.OrderTac.TO.lt_total
-                 (Senv.nextblock skenv_link) (Mem.nextblock m_src)). des.
-        * apply Plt_Ple. auto.
-        * rewrite LE. refl.
-        * inv GEINJECT. apply DOMAIN in LE.
-          inv INJECT. unfold Mem.valid_block in *.
-          specialize (mi_freeblocks _ (Plt_strict (Mem.nextblock m_src))).
-          clarify.
       + eapply typecheck_intro; eauto.
         rewrite sig_args_length.
         unfold extcall_arguments in *.
@@ -1744,10 +1749,13 @@ Section PRESERVATION.
       receptive_at (sem prog) st_src.
   Proof.
     inv MTCHST; ss.
-    - eapply SemProps.lift_receptive_at. ss.
+    - admit "use strict forward simulation instead? old code:
+      eapply SemProps.lift_receptive_at. ss.
       eapply AsmC.lift_receptive_at.
       eapply semantics_receptive.
-      intros EXTERN. eapply not_external in EXTERN. auto.
+      intros EXTERN. eapply not_external in EXTERN; auto.
+      admit ""INCL"".
+".
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
       + ii. inv H. ss. omega.
@@ -1770,7 +1778,7 @@ Section PRESERVATION.
         * exploit step_init_simulation; try eassumption.
           i. des. econs 2; ss; eauto. rewrite LINK_SK.
           split; auto. apply star_one. eauto.
-      + left. econs.
+      + left. right. econs.
         { i. exfalso. inv FINALSRC. }
         econs; [|eapply src_receptive_at; eauto].
         i.
@@ -1778,7 +1786,7 @@ Section PRESERVATION.
         destruct (match_states_call_ord_1 MTCHST).
         exists 0%nat. exists st_tgt. split.
         { right. split; [apply star_refl|omega]. }
-        left. pfold. left.
+        left. pfold. left. right.
         econs.
         { i. exfalso. inv STEPSRC. ss. rewrite LINK_SK in *.
           destruct (find_fptr_owner_determ SYSMOD MSFIND).
@@ -1793,7 +1801,7 @@ Section PRESERVATION.
         exploit syscall_simulation; eauto.
         i. des. exists st_tgt1. split.
         { left. apply plus_one. econs; [apply asm_determinate_at|]. auto. }
-        left. pfold. left.
+        left. pfold. left. right.
         econs.
         {
           i. exfalso. inv STEPSRC. ss.
@@ -1813,7 +1821,7 @@ Section PRESERVATION.
         { right. split; auto. apply star_refl. }
         right. eauto.
       + right. econs; i; try (exfalso; eauto).
-    - left. econs.
+    - left. right. econs.
       + i. econs.
         * exploit transf_final_states; eauto.
         * i. inv FINAL0. inv FINAL1. eq_closure_tac.

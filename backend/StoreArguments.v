@@ -88,7 +88,7 @@ Section STOREARGUMENTS.
       (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
       (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs)
       (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk
-                                            then (* ~ (0 <= ofs < 4 * size_arguments sg) *) False
+                                            then ~ (0 <= ofs < 4 * size_arguments sg)
                                             else True) m1 m2)
       (NB: m1.(Mem.nextblock) = m2.(Mem.nextblock))
       (PERM: Mem.range_perm m2 blk 0 (4 * size_arguments sg) Cur Freeable)
@@ -749,17 +749,27 @@ Section STOREARGPRARALLEL.
         econs; ss; eauto.
         { erewrite Mem.nextblock_alloc; eauto. refl. }
         { i. des_ifs.
-          transitivity (Mem.perm m_src0 b ofs k p).
-          - symmetry. apply unchanged_on_perm; eauto.
-            unfold Mem.valid_block in *.
-            erewrite Mem.nextblock_alloc in H0; eauto.
-            eapply Plt_succ_inv in H0. des; clarify.
-          - unfold Mem.perm; ss; eauto.
-            rewrite PMap.gso; eauto. }
+          - split; i; exfalso.
+            + eapply Mem.perm_alloc_3 in H1; eauto.
+            + unfold _FillArgsParallel.fill_args_src_mem, Mem.perm in *. ss.
+              rewrite PMap.gss in H1; eauto.
+              eapply Mem.perm_unchanged_on_2 in H1; eauto.
+              * eapply Mem.perm_alloc_3 in H1; eauto.
+              * ss. des_ifs.
+              * eapply Mem.valid_new_block; eauto.
+          - transitivity (Mem.perm m_src0 b ofs k p).
+            + symmetry. apply unchanged_on_perm; eauto.
+              unfold Mem.valid_block in *.
+              erewrite Mem.nextblock_alloc in H0; eauto.
+              eapply Plt_succ_inv in H0. des; clarify.
+            + unfold Mem.perm; ss; eauto.
+              rewrite PMap.gso; eauto. }
         { i. des_ifs.
-          rewrite PMap.gso; eauto.
-          symmetry. apply unchanged_on_contents; eauto.
-          eapply Mem.perm_alloc_4; eauto. }
+          - rewrite PMap.gss.
+            exfalso. exploit Mem.perm_alloc_3; try apply ALLOC; eauto.
+          - rewrite PMap.gso; eauto.
+            symmetry. apply unchanged_on_contents; eauto.
+            eapply Mem.perm_alloc_4; eauto. }
       + eapply Mem.nextblock_alloc; eauto.
       + ii. unfold Mem.perm. ss. rewrite PMap.gss.
         eapply PERM; eauto.
@@ -773,7 +783,7 @@ Section STOREARGPRARALLEL.
           + inv UNCH. eapply unchanged_on_perm.
             * des_ifs.
               exploit mi_mappedblocks; eauto.
-              i. unfold Mem.valid_block in *. ss.
+              ii. unfold Mem.valid_block in *. ss.
               eapply Plt_strict; eauto.
             * exploit mi_mappedblocks; eauto.
               i. eapply Mem.valid_block_alloc; eauto.
@@ -807,7 +817,7 @@ Section STOREARGPRARALLEL.
                   unfold Mem.perm in *; ss.
                   rewrite PMap.gsspec in *. des_ifs; ss.
                   eapply mi_mappedblocks in H.
-                  unfold Mem.valid_block in *. eapply Plt_strict; eauto.
+                  ii. unfold Mem.valid_block in *. eapply Plt_strict; eauto.
                 - exploit mi_perm; eauto.
                   + unfold Mem.perm in *; ss.
                     rewrite PMap.gsspec in *. des_ifs; ss. eauto.
@@ -850,7 +860,7 @@ Section STOREARGPRARALLEL.
               i. unfold Mem.valid_block in *. eapply Plt_strict; eauto.
             * des_ifs.
               exploit mi_mappedblocks; eauto.
-              i. unfold Mem.valid_block in *. eapply Plt_strict; eauto.
+              ii. unfold Mem.valid_block in *. eapply Plt_strict; eauto.
             * exploit mi_mappedblocks; eauto.
               i. unfold Mem.valid_block in *.
               erewrite Mem.nextblock_alloc; eauto. etrans; eauto.
@@ -916,17 +926,27 @@ Section STOREARGPRARALLEL.
         econs; ss; eauto.
         { erewrite Mem.nextblock_alloc; eauto. refl. }
         { i. des_ifs.
-          transitivity (Mem.perm m_src0 b ofs k p).
-          - symmetry. apply unchanged_on_perm; eauto.
-            unfold Mem.valid_block in *.
-            erewrite Mem.nextblock_alloc in H0; eauto.
-            eapply Plt_succ_inv in H0. des; clarify.
-          - unfold Mem.perm; ss; eauto.
-            rewrite PMap.gso; eauto. }
+          - split; i; exfalso.
+            + eapply Mem.perm_alloc_3 in H1; eauto.
+            + unfold _FillArgsParallel.fill_args_src_mem, Mem.perm in *. ss.
+              rewrite PMap.gss in H1; eauto.
+              eapply Mem.perm_unchanged_on_2 in H1; eauto.
+              * eapply Mem.perm_alloc_3 in H1; eauto.
+              * ss. des_ifs.
+              * eapply Mem.valid_new_block; eauto.
+          - transitivity (Mem.perm m_src0 b ofs k p).
+            + symmetry. apply unchanged_on_perm; eauto.
+              unfold Mem.valid_block in *.
+              erewrite Mem.nextblock_alloc in H0; eauto.
+              eapply Plt_succ_inv in H0. des; clarify.
+            + unfold Mem.perm; ss; eauto.
+              rewrite PMap.gso; eauto. }
         { i. des_ifs.
-          rewrite PMap.gso; eauto.
-          symmetry. apply unchanged_on_contents; eauto.
-          eapply Mem.perm_alloc_4; eauto. }
+          - rewrite PMap.gss.
+            exfalso. exploit Mem.perm_alloc_3; try apply ALLOC; eauto.
+          - rewrite PMap.gso; eauto.
+            symmetry. apply unchanged_on_contents; eauto.
+            eapply Mem.perm_alloc_4; eauto. }
       + eapply Mem.nextblock_alloc; eauto.
       + ii. unfold Mem.perm. ss. rewrite PMap.gss.
         eapply PERM; eauto.
@@ -1195,6 +1215,17 @@ Module FillArgsProgress.
   (* Proof. *)
   (* Qed. *)
 
+  (* move to Conventions1C *)
+  Lemma size_arguments_64_larger x y z tys
+    :
+      z <= size_arguments_64 tys x y z
+  .
+  Proof.
+    ginduction tys; ss; i.
+    - refl.
+    - des_ifs; specialize (IHtys x y (z +2)); nia.
+  Qed.
+
   Let fill_arguments_unchanged_on
       sp rs0 m0 args x y z rs1 m1 tys
       (LEN: length args = length tys)
@@ -1202,50 +1233,25 @@ Module FillArgsProgress.
     :
       (* <<UNCH: Mem.unchanged_on (brange sp 0 (4 * z)) m0 m1>> *)
       (<<UNCH: Mem.unchanged_on (fun b ofs => if eq_block b sp
-                                              then (0 <= ofs < 4 * z)
+                                              then ~ (4 * z <= ofs < 4 * size_arguments_64 tys x y z)
                                               else True) m0 m1>>)
   .
   Proof.
-    ginduction args; ii; ss; des_ifs_safe; destruct tys; ss.
-    { r. refl. }
-    u in FILL.
-    des_ifs_safe. destruct r0; ss.
-    { unfold Regmap.set in *. clarify. destruct p; ss.
-      des_ifs; eapply IHargs; eauto.
-    }
-    { des_ifs_safe. destruct p; ss.
-      des_ifs.
-      - r. etrans; cycle 1.
-        { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
-        exploit IHargs; eauto. i.
-        eapply Mem.unchanged_on_implies; eauto.
-        u. ii; ss. des. des_ifs. esplits; eauto; try xomega.
-      - exploit IHargs; eauto. i; des.
-        r. etrans; eauto.
-        { eapply Mem.unchanged_on_implies; eauto.
-          u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
-        { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
-      - exploit IHargs; eauto. i; des.
-        r. etrans; eauto.
-        { eapply Mem.unchanged_on_implies; eauto.
-          u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
-        { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
-      - exploit IHargs; eauto. i; des.
-        r. etrans; eauto.
-        { eapply Mem.unchanged_on_implies; eauto.
-          u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
-        { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
-      - exploit IHargs; eauto. i; des.
-        r. etrans; eauto.
-        { eapply Mem.unchanged_on_implies; eauto.
-          u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
-        { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
-      - exploit IHargs; eauto. i; des.
-        r. etrans; eauto.
-        { eapply Mem.unchanged_on_implies; eauto.
-          u. ii; ss. des. des_ifs. esplits; eauto; xomega. }
-        { eapply Mem.store_unchanged_on; eauto. u. ii; ss. des. des_ifs. xomega. }
-    }
+    ginduction tys; ss; i.
+    { destruct args; ss; clarify. r. refl. }
+    u in *. destruct args; ss; clarify.
+    u in *. des_ifs_safe. destruct p. destruct r0; ss.
+    - des_ifs; clarify; eauto.
+    - des_ifs_safe.
+      set (size_arguments_64_larger x y (z + 2) tys).
+      exploit Mem.store_unchanged_on; eauto.
+      { instantiate (1:= (fun b ofs =>
+                            if eq_block b sp
+                            then ~ 4 * pos <= ofs < 4 * pos + size_chunk (chunk_of_type ty)
+                            else True)). i. ss. des_ifs.
+      } i.
+      des_ifs; exploit IHtys; eauto; i; ss;
+        transitivity m; eapply Mem.unchanged_on_implies; eauto; i; ss; des_ifs; nia.
   Qed.
 
 
@@ -1833,18 +1839,52 @@ Module FillArgsProgress.
     - eapply Mem.unchanged_on_implies.
       { eapply fill_arguments_unchanged_on; try apply FILL; eauto. }
       i. des_ifs.
-    - admit "ez - nextblock".
+    - generalize (loc_arguments_64 (sig_args sg) 0 0 0) m1 m2 rs0 rs1 FILL. clear.
+      induction targs; i; ss; unfold o_bind2, o_bind, o_join, o_map, curry2 in *; des_ifs.
+      + destruct p. exploit IHtargs; eauto.
+      + destruct p. ss.
+        exploit IHtargs; eauto. i. etrans; eauto.
+        symmetry. eapply Mem.nextblock_store; eauto.
     - ii. eapply fill_arguments_perm; eauto. eauto with mem.
   Qed.
 
+  Theorem fill_arguments_unchanged
+          m1 rs0 sp targs locs
+          rs1 m2
+          (FILL: fill_arguments sp rs0 m1 targs locs = Some (rs1, m2))
+    :
+      <<PTRFREE: forall
+        mr
+        (NIN: ~ In (R mr) (regs_of_rpairs locs)),
+        rs0 mr = rs1 mr>>.
+  Proof.
+    ginduction locs; ii; s.
+    - destruct targs; ss; clarify.
+    - destruct targs; ss; clarify.
+      unfold o_bind, o_bind2, o_join, o_map, curry2, fst in *. ss.
+      des_ifs; ss.
+      + exploit IHlocs; try apply Heq0; ss; eauto.
+        i.
+        unfold Regmap.set; des_ifs.
+        exfalso; eauto.
+      + exploit IHlocs; try apply Heq0; ss; eauto.
+  Qed.
+
 End FillArgsProgress.
+
 
 Theorem store_arguments_progress
         m0 tvs sg
         (TYP: Val.has_type_list tvs sg.(sig_args))
         (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
   :
-    exists rs m2, <<STR: store_arguments m0 rs tvs sg m2>>
+    exists rs m2,
+      (<<STR: store_arguments m0 rs tvs sg m2>>) /\
+      (<<PTRFREE:
+         forall
+           mr
+           (NIN: ~ In (R mr) (regs_of_rpairs (loc_arguments sg))),
+           ~ is_real_ptr (rs mr)>>)
 .
 Proof.
   destruct (Mem.alloc m0 0 (4 * size_arguments sg)) eqn:ALC.
@@ -1854,5 +1894,9 @@ Proof.
     induction tvs; ss; i; des_ifs; ss.
     f_equal. eapply IHtvs. des. auto. }
   exploit (FillArgsProgress.fill_arguments_progress sg m0 (Regmap.init Vundef)); eauto. i; des.
+  hexploit (FillArgsProgress.fill_arguments_unchanged); eauto. i.
   exploit (FillArgsProgress.fill_arguments_spec sg m0 (Regmap.init Vundef) m1 blk tvs); eauto.
+  hexploit (FillArgsProgress.fill_arguments_unchanged); eauto. intros UNCH.
+  esplits; eauto.
+  ii. exploit UNCH; eauto. i. unfold is_real_ptr in *. des_ifs.
 Qed.

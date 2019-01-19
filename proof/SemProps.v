@@ -99,13 +99,14 @@ Section INITDTM.
         (MOD: In md p)
         (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
                  Some (Internal md_def))
+        (INCL: SkEnv.includes skenv_link md.(Mod.sk))
     :
       False
   .
   Proof.
     hexploit (@Mod.get_modsem_projected_sk md skenv_link); eauto. intro SPEC; des.
     remember (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) as skenv_proj eqn:T in *.
-    assert(WFSMALL: skenv_proj.(SkEnv.wf)).
+    assert(WFSMALL: skenv_proj.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; eauto. }
     clarify. des. inv SPEC.
     exploit Genv.find_funct_inv; eauto. i; des. clarify. ss. des_ifs.
@@ -116,11 +117,13 @@ Section INITDTM.
       exploit SYMBDROP; eauto. i; des. clarify.
     }
     exploit SYMBKEEP; eauto. intro SYMBBIG; des.
-    rewrite SYMBSMALL in *. symmetry in SYMBBIG.
+    rewrite SYMB in *. symmetry in SYMBBIG.
+    exploit DEFKEPT; eauto.
+    { apply Genv.find_invert_symbol; eauto. }
+    i; des.
     exploit DEFKEEP; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
     intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL.
-    clear - Heq0 DEFSMALL.
     unfold System.skenv in *. ss.
     exploit Genv_map_defs_def; eauto. i; des. des_ifs.
   Qed.
@@ -195,10 +198,11 @@ Local Transparent Linker_prog.
     ss. des_ifs; cycle 1.
     { econs; eauto. ii; ss. inv FIND0. ss. }
     assert(WFBIG: t.(Sk.load_skenv).(SkEnv.wf)).
-    { eapply Sk.load_skenv_wf. }
+    { eapply SkEnv.load_skenv_wf. }
     econs; eauto.
     ii; ss.
     inv FIND0; inv FIND1.
+    generalize (link_includes p Heq). intro INCLS.
     unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss.
     abstr (Genv.globalenv t) skenv_link. rename t into sk_link.  rename Heq into SKLINK.
     rewrite in_map_iff in *.
@@ -218,26 +222,26 @@ Local Transparent Linker_prog.
     remember (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
     remember (ModSem.skenv (Mod.get_modsem md1 skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *.
 
-    assert(WFSMALL0: skenv_proj0.(SkEnv.wf)).
+    assert(WFSMALL0: skenv_proj0.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; try apply SPEC0; eauto. }
-    assert(WFSMALL1: skenv_proj1.(SkEnv.wf)).
+    assert(WFSMALL1: skenv_proj1.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; try apply SPEC1; eauto. }
 
     bar.
     inv WFSMALL0. exploit DEFSYMB; eauto. i; des.
     inv WFSMALL1. exploit DEFSYMB0; eauto. i; des.
-    rename H into SYMB0. rename H1 into SYMB1. rename id0 into id1. rename id into id0.
+    rename SYMB0 into SYMB1. rename SYMB into SYMB0. rename id0 into id1. rename id into id0.
     move SYMB0 at top. move SYMB1 at top. clear_until_bar.
 
     inv SPEC0.
     assert(DEFS0: defs (Mod.get_sk md0 (Mod.data md0)) id0).
     { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro SYMBBIG0; des. rewrite SYMB0 in *. symmetry in SYMBBIG0.
-    exploit DEFKEEP; eauto.
+    exploit DEFKEPT; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    intro DEFBIG0; des. rewrite DEF0 in *. symmetry in DEFBIG0.
+    i; des.
     move SYMBBIG0 at top.
-    move DEFBIG0 at top.
+    rename BIG into DEFBIG0. move DEFBIG0 at top.
     move DEFS0 at top.
     clear_until_bar.
 
@@ -245,11 +249,11 @@ Local Transparent Linker_prog.
     assert(DEFS1: defs (Mod.get_sk md1 (Mod.data md1)) id1).
     { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro SYMBBIG1; des. rewrite SYMB1 in *. symmetry in SYMBBIG1.
-    exploit DEFKEEP; eauto.
+    exploit DEFKEPT; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    intro DEFBIG1; des. rewrite DEF1 in *. symmetry in DEFBIG1.
+    i; des.
     move SYMBBIG1 at top.
-    move DEFBIG1 at top.
+    rename BIG into DEFBIG1. move DEFBIG1 at top.
     move DEFS1 at top.
     clear_until_bar.
 
@@ -346,92 +350,100 @@ Proof.
   - eapply lift_star; eauto.
 Qed.
 
-Lemma lift_dstep
+Lemma lift_sdstep
       (ms: ModSem.t) st0 tr st1
-      (DSTEP: DStep ms st0 tr st1)
+      (SDSTEP: SDStep ms st0 tr st1)
   :
     forall prog tail,
-    <<DSTEP: DStep (Sem.sem prog)
+    <<SDSTEP: SDStep (Sem.sem prog)
                    (State ((Frame.mk ms st0) :: tail)) tr
                    (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
-  ii. destruct DSTEP as [DTM STEP].
+  ii. destruct SDSTEP as [DTM STEP].
   econs; eauto; cycle 1.
   - econs; ss; eauto.
   - inv DTM.
     econs; eauto.
     + ii. ss.
-      inv H; ss; ModSem.tac.
-      inv H0; ss; ModSem.tac.
+      inv STEP0; ss; ModSem.tac.
+      inv STEP1; ss; ModSem.tac.
       clear STEP.
-      determ_tac sd_determ_at.
-      esplits; auto.
-      * eapply match_traces_le; eauto.
-        admit "this should hold".
-      * ii. clarify. special H0; ss. clarify.
+      determ_tac ssd_determ_at.
     + ii. ss.
       inv STEP0; ss; ModSem.tac.
       inv FINAL; ss; ModSem.tac.
     + ii. inv H; ss; ModSem.tac.
-      exploit sd_traces_at; eauto.
+      exploit ssd_traces_at; eauto.
 Qed.
 
-Lemma lift_dstar
+Lemma lift_sdstar
       (ms: ModSem.t) st0 tr st1
-      (DSTAR: DStar ms st0 tr st1)
+      (SDSTAR: SDStar ms st0 tr st1)
   :
     forall prog tail,
-    <<DSTAR: DStar (Sem.sem prog)
+    <<SDSTAR: SDStar (Sem.sem prog)
                    (State ((Frame.mk ms st0) :: tail)) tr
                    (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
-  i. ginduction DSTAR; ii; ss.
+  i. ginduction SDSTAR; ii; ss.
   - econs 1; eauto.
   - clarify. econs 2; eauto.
-    + eapply lift_dstep; eauto.
-    + eapply IHDSTAR; eauto.
+    + eapply lift_sdstep; eauto.
+    + eapply IHSDSTAR; eauto.
 Qed.
 
-Lemma lift_dplus
+Lemma lift_sdplus
       (ms: ModSem.t) st0 tr st1
-      (DPLUS: DPlus ms st0 tr st1)
+      (SDPLUS: SDPlus ms st0 tr st1)
   :
     forall prog tail,
-    <<DPLUS: DPlus (Sem.sem prog)
+    <<SDPLUS: SDPlus (Sem.sem prog)
                    (State ((Frame.mk ms st0) :: tail)) tr
                    (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
-  i. inv DPLUS; ii; ss.
+  i. inv SDPLUS; ii; ss.
   econs; eauto.
-  - eapply lift_dstep; eauto.
-  - eapply lift_dstar; eauto.
+  - eapply lift_sdstep; eauto.
+  - eapply lift_sdstar; eauto.
 Qed.
 
-Lemma lift_receptive_at
+Lemma lift_single_events_at
       (ms: ModSem.t) st0
-      (RECEP: receptive_at ms st0)
+      (SINGLE: single_events_at ms st0)
   :
     forall prog tail,
-    <<RECEP: receptive_at (Sem.sem prog)
-                          (State ((Frame.mk ms st0) :: tail))>>
+    <<SINGLE: single_events_at (Sem.sem prog)
+                              (State ((Frame.mk ms st0) :: tail))>>
 .
 Proof.
-  ii. inv RECEP. ss.
-  econs; eauto; ii.
-  - inv H.
-    + inv H0. esplits; eauto. econs 1; eauto.
-    + ss.
-      exploit sr_receptive_at; eauto.
-      { eapply match_traces_le; eauto. admit "this should hold". }
-      i; des.
-      esplits; eauto.
-      econs; eauto.
-    + inv H0. esplits; eauto. econs 4; eauto.
+  ii. ss.
   - inv H; s; try omega.
-    exploit sr_traces_at; eauto.
+    exploit SINGLE; eauto.
+Qed.
+
+Lemma lift_strict_determinate_at
+      (ms: ModSem.t) st0
+      (DTM: strict_determinate_at ms st0)
+  :
+    forall prog tail,
+    <<DTM: strict_determinate_at (Sem.sem prog)
+                                 (State ((Frame.mk ms st0) :: tail))>>
+.
+Proof.
+  ii. inv DTM. ss.
+  econs; eauto; ii.
+  - inv STEP0; inv STEP1; ModSem.tac.
+    + esplits; et. f_equal. eapply ModSem.at_external_dtm; et.
+    + ss. determ_tac ssd_determ_at.
+    + ss. esplits; et.
+      i. repeat f_equal.
+      determ_tac ModSem.final_frame_dtm. eapply ModSem.after_external_dtm; et.
+  - ss. inv FINAL. ss. inv STEP; ss; ModSem.tac.
+  - inv H; s; try omega.
+    exploit ssd_traces_at; eauto.
 Qed.
 
 (* Lemma callstate_receptive_at *)

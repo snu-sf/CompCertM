@@ -38,11 +38,17 @@ Section SIMMODSEM.
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
+Let md_src: Mod.t := (RTLC.module prog).
+Let md_tgt: Mod.t := (RTLC.module tprog).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
+Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
+Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (RTLC.modsem skenv_link_src prog) (RTLC.modsem skenv_link_tgt tprog) tt sm_link
+  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
 .
 
 Inductive match_states
@@ -56,9 +62,9 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun cunit f tf => transf_fundef (funenv_program cunit) f = OK tf) eq prog) ge tge.
-Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. { ii. u. des_ifs; ss; unfold Errors.bind in *; des_ifs. } Qed.
+Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
 Theorem sim_modsem
   :
@@ -100,7 +106,7 @@ Proof.
             { genext. }
             ss. refl.
         }
-        hexploit sim_external_inject_eq_fsim; try apply FINDF0; et. i; clarify.
+        hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
         rpapply match_call_states; ss; eauto.
         { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
           econs; eauto.
@@ -117,7 +123,7 @@ Proof.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
-    hexploit (@sim_external_inject_eq_fsim); try apply FINDF; eauto. clear FPTR. intro FPTR.
+    hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR.
     unfold Errors.bind in *. unfold transf_function in *. des_ifs. inv TYP.
     esplits; eauto. econs; eauto.
     + folder. ss. rewrite <- FPTR. eauto.
@@ -134,7 +140,7 @@ Proof.
     { fold ge in EXTERNAL. clarify. }
     folder.
     inv MCOMPAT; ss. clear_tac.
-    exploit (sim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
+    exploit (fsim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
     esplits; eauto.
     + econs; eauto.
       * des. clarify. esplits; eauto.
@@ -149,7 +155,7 @@ Proof.
         (***************** TODO: Add as a lemma in GlobalenvsC. *******************)
         inv SIMSKENV. ss.
         assert(fptr_arg = tfptr).
-        { eapply sim_external_inject_eq_fsim; try apply SIG; et. Undo 1.
+        { eapply fsim_external_inject_eq; try apply SIG; et. Undo 1.
           inv FPTR; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
           inv SIMSKE. ss. inv INJECT; ss.
           exploit (DOMAIN b1); eauto.
@@ -201,19 +207,19 @@ Proof.
   - (* step *)
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     esplits; eauto.
-    { apply modsem_receptive. }
+    { apply modsem_strict_determinate; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog _ ge tge); eauto.
-    { assert (SkEnv.genv_precise (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog) prog).
-      { admit "ez: Using SkEnv.revive_precise". }
+    { assert (SkEnv.genv_precise ge prog).
+      { eapply SkEnv.project_revive_precise; et. eapply SkEnv.project_impl_spec; et. }
       inv H. econs; ii.
-      - exploit FIND_MAP; eauto. i. inv H0. des. exists x. split; eauto. des_ifs. ii.
-        admit "ez".
-      - eapply FIND_MAP_INV; eauto.
+      - exploit P2GE; eauto. i. inv H0. des. exists x. split; eauto. des_ifs. ii.
+        ss. bsimpl. admit "ez - remove redundancy: AST.is_external_ef, ASTC.is_external_ef".
+      - des. exploit GE2P; eauto. i; des. determ_tac Genv.genv_vars_inj.
     }
     i; des.
     + esplits; eauto.
-      * left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.
+      * left. eapply spread_sdplus; eauto. eapply modsem_strict_determinate; eauto.
       * econs; ss.
         { inv H0; ss; inv MCOMPAT; ss. }
         { inv H0; ss; inv MCOMPAT; ss. }

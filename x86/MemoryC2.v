@@ -67,7 +67,7 @@ Proof.
   - econs 1; eauto.
   - econs 2; eauto. ii.
     eapply ALIGN. ii. eapply H in PR. des; eauto.
-    eapply Mem_unfree_unchanged_on with (P := ~2 brange blk_src lo hi) in UNFREE; eauto.
+    eapply Mem_unfree_unchanged_on in UNFREE; eauto.
     inv UNFREE. specialize (unchanged_on_perm blk x0 k p).
     destruct (classic (brange blk_src lo hi blk x0)).
     + right. inv H0. eauto.
@@ -230,8 +230,8 @@ Proof.
   destruct (j0 b0) eqn:EQ.
   - destruct p. specialize (INCR _ _ _ EQ). clarify.
     eapply OUTOFREACH; eauto. eapply MAXPERM; eauto.
-    destruct (Registers.Regset.MSet.Raw.MX.lt_dec b0 m_src0.(Mem.nextblock)); eauto.
-    eapply Mem.mi_freeblocks in n; eauto. clarify.
+    apply NNPP. intro N.
+    eapply Mem.mi_freeblocks in N; eauto. clarify.
   - specialize (SEPARATED _ _ _ EQ H). des.
     apply SEPARATED0. eauto.
 Qed.

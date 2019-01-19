@@ -45,22 +45,11 @@ Section MACHEXTRA.
   Definition semantics_with_ge := Semantics (step rao) bot1 final_state ge.
   (* *************** ge is parameterized *******************)
 
-  Lemma semantics_receptive
+  Lemma semantics_strict_determinate
         st
         (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      receptive_at semantics_with_ge st
-  .
-  Proof.
-    revert rao_dtm. (* dummy *)
-    admit "this should hold".
-  Qed.
-
-  Lemma semantics_determinate
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      determinate_at semantics_with_ge st
+      strict_determinate_at semantics_with_ge st
   .
   Proof.
     revert rao_dtm. (* dummy *)
@@ -259,7 +248,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Record state := mkstate {
@@ -275,8 +264,11 @@ Section MODSEM.
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
       (RSP: (parent_sp stack) = Vptr blk ofs true)
-      (OFSZERO: ofs = Ptrofs.zero)
+      (* (OFSZERO: ofs = Ptrofs.zero) *)
+      (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
+          (align_chunk chunk | ofs.(Ptrofs.unsigned)))
       (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
+      (NOTVOL: Senv.block_is_volatile skenv_link blk = false)
       init_rs init_sg
     :
       at_external (mkstate init_rs init_sg (Callstate stack fptr rs m0)) (Args.mk fptr vs m1)
@@ -298,7 +290,6 @@ Section MODSEM.
           (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
         ,
           <<PTRFREE: ~ is_real_ptr (rs mr)>>)
-      (MEMWF: Ple (Senv.nextblock skenv_link) args.(Args.m).(Mem.nextblock))
     :
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack
@@ -351,7 +342,7 @@ Section MODSEM.
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
       ModSem.skenv := skenv;
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv_link := skenv_link;
     |}
   .
   Next Obligation.
@@ -382,6 +373,9 @@ Section MODSEM.
     inv_all_once; ss; clarify.
   Qed.
 
+  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
+  Hypothesis (WF: SkEnv.wf skenv_link).
+
   Lemma not_external
     :
       is_external ge <1= bot1
@@ -390,62 +384,72 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.revive_no_external; eauto.
+    eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
-  Lemma lift_receptive_at
-        st
-        (RECEP: receptive_at (semantics_with_ge rao ge) st)
-    :
-      forall init_rs init_sg, receptive_at modsem (mkstate init_rs init_sg st)
-  .
-  Proof.
-    inv RECEP. econs; eauto; ii; ss.
-    - inv H. ss.
-      exploit sr_receptive_at; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. admit "". }
-      i; des. destruct s1; ss.
-      exists (mkstate init_rs1 init_sg1 s2).
-      econs; eauto. ss.
-      { admit "1) prove get_stack dtm 2) at first place, prove full determinacy instead of determinate". }
-    - inv H.
-      exploit sr_traces_at; eauto.
-  Qed.
-
-  Lemma modsem_receptive
-        st
-    :
-      receptive_at modsem st
-  .
-  Proof. destruct st. eapply lift_receptive_at. eapply semantics_receptive; eauto. ii. eapply not_external; eauto. Qed.
-
-  Lemma lift_determinate_at
+  Lemma lift_strict_determinate_at
         st0
-        (DTM: determinate_at (semantics_with_ge rao ge) st0)
+        (DTM: strict_determinate_at (semantics_with_ge rao ge) st0)
     :
-      forall init_rs init_sg, determinate_at modsem (mkstate init_rs init_sg st0)
+      forall init_rs init_sg, strict_determinate_at modsem (mkstate init_rs init_sg st0)
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.
-    - inv H. inv H0.
-      determ_tac sd_determ_at. esplits; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. admit "". }
-      i. destruct s1, s2; ss. rewrite H0; ss. eauto with congruence.
+    - inv STEP0. inv STEP1.
+      determ_tac ssd_determ_at. ss. clarify. destruct s1, s2; ss. clarify.
     - inv H.
-      exploit sd_traces_at; eauto.
+      exploit ssd_traces_at; eauto.
   Qed.
 
-  Lemma modsem_determinate
+  Lemma modsem_strict_determinate
         st
     :
-      determinate_at modsem st
+      strict_determinate_at modsem st
   .
-  Proof. destruct st. eapply lift_determinate_at. eapply semantics_determinate; eauto. ii. eapply not_external; eauto. Qed.
+  Proof. destruct st. eapply lift_strict_determinate_at. eapply semantics_strict_determinate; eauto. ii. eapply not_external; eauto. Qed.
 
 
 End MODSEM.
 
 
+Section PROPS.
+
+Variable rao: function -> code -> ptrofs -> Prop.
+
+Lemma lift_star
+      ge st0 tr st1
+      init_sg init_rs
+      (STAR: star (step rao) ge st0 tr st1)
+  :
+    star (step' rao) ge (mkstate init_rs init_sg st0) tr
+         (mkstate init_rs init_sg st1)
+.
+Proof.
+  ginduction STAR; ii; ss.
+  { econs; et. }
+  inv H.
+  econs; et.
+  - econs; et.
+Qed.
+
+Lemma lift_plus
+      ge st0 tr st1
+      init_sg init_rs
+      (PLUS: plus (step rao) ge st0 tr st1)
+  :
+    plus (step' rao) ge (mkstate init_rs init_sg st0) tr
+         (mkstate init_rs init_sg st1)
+.
+Proof.
+  inv PLUS. inv H.
+  econs; et.
+  { instantiate (1:= mkstate init_rs init_sg s2).
+    econs; ss; et.
+  }
+  eapply lift_star; et.
+Qed.
+
+End PROPS.
 
 
 Section MODULE.
@@ -461,8 +465,5 @@ Section MODULE.
       Mod.get_modsem := modsem rao;
     |}
   .
-  Next Obligation.
-    rewrite Sk.of_program_defs. ss.
-  Qed.
 
 End MODULE.

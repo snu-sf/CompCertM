@@ -40,69 +40,61 @@ Local Open Scope nat.
 
 
 
-
-
-(* Remark: if econs/econsr gives different goal, at least 2 econs is possible *)
-Ltac econsr :=
-  first
-    [
-    econstructor 16
-    |econstructor 15
-    |econstructor 14
-    |econstructor 13
-    |econstructor 12
-    |econstructor 11
-    |econstructor 10
-    |econstructor  9
-    |econstructor  8
-    |econstructor  7
-    |econstructor  6
-    |econstructor  5
-    |econstructor  4
-    |econstructor  3
-    |econstructor  2
-    |econstructor  1
-    ]
+(* TODO: Move to CoqlibC.v *)
+Lemma app_eq_inv
+      A
+      (x0 x1 y0 y1: list A)
+      (EQ: x0 ++ x1 = y0 ++ y1)
+      (LEN: x0.(length) = y0.(length))
+  :
+    x0 = y0 /\ x1 = y1
 .
+Proof.
+  ginduction x0; ii; ss.
+  { destruct y0; ss. }
+  destruct y0; ss. clarify.
+  exploit IHx0; eauto. i; des. clarify.
+Qed.
 
-(* Let cons_sig *)
-(*     X (P: X -> Prop) (Q: X -> Prop) (R: X -> Prop) *)
-(*     (PR: P <1= R) *)
-(*     (QR: Q <1= R) *)
-(*     (x: { x: X | P x }) *)
-(*     (xs: list { x: X | Q x}) *)
-(*   : *)
-(*     exists (xxs: list { x: X | R x}), *)
-(*       exists hd tl, xxs = hd :: tl /\ <<HD: hd$ = x$>> /\ <<TL: List.map (@proj1_sig _ _) tl = List.map (@proj1_sig _ _) xs>> *)
-(* . *)
-(* Proof. *)
-(*   admit "". *)
-(*   (* ginduction xs; ii; ss. *) *)
-(* Qed. *)
+(* TODO: move to ??? *)
+Lemma pos_elim_succ
+      p
+  :
+    <<ONE: p = 1%positive>> \/
+    <<SUCC: exists q, q.(Pos.succ) = p>>
+.
+Proof.
+  hexploit (Pos.succ_pred_or p); eauto. i; des; ss; eauto.
+Qed.
 
-(* Lemma Finite_sig *)
-(*       X (P: X -> Prop) *)
-(*       (FIN: exists l, forall x (PROP: P x), In x l) *)
-(*   : *)
-(*     <<FIN: FinFun.Finite { x: X | P x }>> *)
-(* . *)
-(* Proof. *)
-(*   des. rr. ginduction l; ii; ss. *)
-(*   - exists []. rr. i. destruct a. eauto. *)
-(*   - destruct (classic (P a)); cycle 1. *)
-(*     { exploit IHl; eauto. i. exploit FIN; eauto. i; des; clarify; eauto. } *)
-(*     specialize (IHl (fun x => P x /\ a <> x)). *)
-(*     exploit IHl; eauto. *)
-(*     { ii. des. exploit FIN; eauto. i; des; clarify. } *)
-(*     i; des. *)
-(*     unfold FinFun.Full. *)
-(*     assert(exists (hd: {x: X | , hd $ = a). *)
-(*     exploit (cons_sig _ _ a l0); eauto. *)
-(*     exists (a :: l0). *)
-(*               exploit IHl; eauto. i. *)
-(*   exists l. *)
-(*   econs; eauto. *)
-(* Qed. *)
+Lemma ple_elim_succ
+      p q
+      (PLE: Ple p q)
+  :
+    <<EQ: p = q>> \/
+    <<SUCC: Ple p.(Pos.succ) q>>
+.
+Proof.
+  revert_until p.
+  pattern p. apply Pos.peano_ind; clear p; i.
+  { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto.
+    right. r. xomega. }
+  hexploit (pos_elim_succ q); eauto. i.
+  des; clarify.
+  { left. xomega. }
+  exploit H; eauto.
+  { it q0. xomega. }
+  i; des; clarify.
+  - left. r. xomega.
+  - right. r. xomega.
+Qed.
+
+
+
+
+
+
+
 
 Definition val' (su: Unreach.t) (v: val): Prop :=
   forall blk ofs (PTR: v = Vptr blk ofs true), ~su blk /\ (blk < su.(nb))%positive
@@ -182,24 +174,6 @@ Definition retv' (su: Unreach.t) (retv0: Retv.t) :=
   /\ (<<MEM: mem' su (Retv.m retv0)>>)
   /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>)
 .
-
-(* Inductive flatten_list: block -> list t -> Prop := *)
-(* | flatten_list_nil *)
-(*   : *)
-(*     flatten_list 1%positive [] *)
-(* | flatten_list_cons *)
-(*     nb xs *)
-(*     (LIST: flatten_list nb xs) *)
-(*   : *)
-(*     flatten_list (nb + 1)%positive (xs ++ xs) *)
-(* . *)
-Lemma not_ex_all_not
-      U (P: U -> Prop)
-      (NEX: ~ (exists n : U, P n))
-  :
-    <<NALL: forall n : U, ~ P n>>
-.
-Proof. eauto. Qed.
 
 Lemma finite_map
       X (P: X -> Prop) Y
@@ -320,33 +294,6 @@ Proof.
   eapply range_spec; eauto.
 Qed.
 
-Lemma finite_pos_prop
-      X (P: X -> Prop)
-      (j: positive -> X -> positive -> Prop)
-      (fuel: positive)
-      (INJ: forall x0 x1 n, P x0 -> P x1 -> j fuel x0 n -> j fuel x1 n -> x0 = x1)
-      (FUNC: forall x, P x -> exists y, j fuel x y)
-      (* (FIN: exists bound, forall x, P x -> exists n, j fuel x n /\ (n <= bound)) *)
-      (FIN: exists bound, forall x n, P x -> j fuel x n -> (n <= bound)%positive)
-  :
-    <<FIN: exists lx, forall x, P x -> In x lx>>
-.
-Proof.
-Admitted.
-(* Function J (fuel: positive) (su: t): option nat := *)
-(*   match fuel with *)
-(*   | 0%positive => None *)
-(*   | Pos.succ n *)
-(*   end *)
-(* . *)
-(*   match fuel.(Pos.to_nat) with *)
-(*   | 0 => None *)
-(*   | S n => J n su *)
-(*   end *)
-(* . *)
-(*   match fuel with *)
-(*   | *)
-
 Inductive J: positive -> Unreach.t -> nat -> Prop :=
 | J_runout
     su 
@@ -366,103 +313,6 @@ Inductive J: positive -> Unreach.t -> nat -> Prop :=
     J fuel.(Pos.succ) su (2 * n)
 .
 
-Compute (Pos.to_nat ((1%positive) ~ 0 ~ 0 ~ 1)).
-Inductive Jpos: positive -> Unreach.t -> positive -> Prop :=
-| Jpos_runout
-    su 
-  :
-    Jpos (1%positive) su (1%positive)
-| Jpos_true
-    fuel su n
-    (PRED: Jpos fuel su n)
-    (TRUE: su fuel = true)
-  :
-    Jpos fuel.(Pos.succ) su (n ~ 1)
-| Jpos_false
-    fuel su n
-    (PRED: Jpos fuel su n)
-    (FALSE: su fuel = false)
-  :
-    Jpos fuel.(Pos.succ) su (n ~ 0) 
-.
-
-(* Let Jpos_injective: forall *)
-(*     fuel x0 x1 n *)
-(*     (J0: Jpos fuel x0 n) *)
-(*     (J1: Jpos fuel x1 n) *)
-(*     (BDD0: forall blk, x0 blk = true -> Plt blk fuel) *)
-(*     (BDD1: forall blk, x1 blk = true -> Plt blk fuel) *)
-(*   , *)
-(*     x0 = x1 *)
-(* . *)
-(* Proof. *)
-(*   i. *)
-(*   apply func_ext1. *)
-(*   revert_until fuel. *)
-(*   pattern fuel. *)
-(*   eapply Pos.peano_ind; clear fuel; i. *)
-(*   - destruct (x0 x2) eqn:T0; ss. *)
-(*     { exfalso. exploit BDD0; eauto. i. xomega. } *)
-(*     destruct (x1 x2) eqn:T1; ss. *)
-(*     { exfalso. exploit BDD1; eauto. i. xomega. } *)
-(*   - inv J0; inv J1; ss. *)
-(*     { xomega. } *)
-(*     + assert(p = fuel) by (eapply Pos.succ_inj; eauto). *)
-(*       assert(p = fuel0) by (eapply Pos.succ_inj; eauto). *)
-(*       clarify. clear_tac. *)
-(*       exploit H; [exact PRED|exact PRED0|..]; eauto. *)
-(*       { i. exploit BDD0; eauto. i. xomega. *)
-(* Qed. *)
-
-Lemma pos_elim_succ
-      p
-  :
-    <<ONE: p = 1%positive>> \/
-    <<SUCC: exists q, q.(Pos.succ) = p>>
-.
-Proof.
-  hexploit (Pos.succ_pred_or p); eauto. i; des; ss; eauto.
-Qed.
-
-Ltac it TERM := instantiate (1:=TERM).
-Ltac itl TERM :=
-  first[
-      instantiate (10:=TERM)|
-      instantiate (9:=TERM)|
-      instantiate (8:=TERM)|
-      instantiate (7:=TERM)|
-      instantiate (6:=TERM)|
-      instantiate (5:=TERM)|
-      instantiate (4:=TERM)|
-      instantiate (3:=TERM)|
-      instantiate (2:=TERM)|
-      instantiate (1:=TERM)|
-      fail
-    ]
-.
-
-Lemma ple_elim_succ
-      p q
-      (PLE: Ple p q)
-  :
-    <<EQ: p = q>> \/
-    <<SUCC: Ple p.(Pos.succ) q>>
-.
-Proof.
-  revert_until p.
-  pattern p. apply Pos.peano_ind; clear p; i.
-  { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto.
-    right. r. xomega. }
-  hexploit (pos_elim_succ q); eauto. i.
-  des; clarify.
-  { left. xomega. }
-  exploit H; eauto.
-  { it q0. xomega. }
-  i; des; clarify.
-  - left. r. xomega.
-  - right. r. xomega.
-Qed.
-
 Let eta
       x0 x1
       (FIELD0: x0.(unreach) = x1.(unreach))
@@ -473,10 +323,10 @@ Let eta
 .
 Proof. destruct x0, x1; ss. clarify. Qed.
 
-Let Jpos_injective: forall
+Let J_injective: forall
     fuel x0 x1 n
-    (J0: Jpos fuel x0 n)
-    (J1: Jpos fuel x1 n)
+    (J0: J fuel x0 n)
+    (J1: J fuel x1 n)
     (BDD: forall blk, Ple fuel blk -> x0 blk = x1 blk)
     (GENB: x0.(ge_nb) = x1.(ge_nb))
     (NB: x0.(nb) = x1.(nb))
@@ -491,11 +341,11 @@ Proof.
   pattern fuel.
   eapply Pos.peano_ind; clear fuel; i.
   - eapply BDD; eauto. xomega.
-  - inv J0; inv J1; ss.
-    { xomega. }
+  - inv J0; inv J1; ss; try xomega.
     + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
       assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
       clarify. clear_tac.
+      assert(n = n0) by xomega. clarify.
       exploit H; [exact PRED|exact PRED0|..]; eauto.
       { i. eapply ple_elim_succ in H0. des; clarify.
         eapply BDD; eauto.
@@ -503,16 +353,17 @@ Proof.
     + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
       assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
       clarify. clear_tac.
+      assert(n = n0) by xomega. clarify.
       exploit H; [exact PRED|exact PRED0|..]; eauto.
       { i. eapply ple_elim_succ in H0. des; clarify.
         eapply BDD; eauto.
       }
 Qed.
 
-Let Jpos_func: forall
+Let J_func: forall
     fuel x
   ,
-    exists n, Jpos fuel x n
+    exists n, J fuel x n
 .
 Proof.
   intro fuel. pattern fuel.
@@ -526,19 +377,32 @@ Proof.
       econsr; eauto.
 Qed.
 
-Let Jpos_bound: forall
+Let J_bound: forall
     fuel x n
-    (J: Jpos fuel x n)
+    (J: J fuel x n)
   ,
-    (n <= 3 ^ fuel)%positive
+    (n <= 3 ^ fuel.(Pos.to_nat))%nat
 .
 Proof.
   intro fuel. pattern fuel.
   eapply Pos.peano_ind; clear fuel; i.
   { inv J0; try xomega. }
-  inv J0; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
-  - ss. rewrite Pos.pow_succ_r. xomega.
-  - ss. rewrite Pos.pow_succ_r. xomega.
+  generalize (Pos2Nat.is_pos p); intro POS.
+  inv J0; try xomega; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
+  - ss. rewrite Pos2Nat.inj_succ. ss.
+    rewrite ! Nat.add_0_r. rewrite Nat.add_assoc.
+    destruct (classic (n0 = 0)).
+    { clarify. ss. assert(1 <= Pos.to_nat p) by xomega.
+      assert(1 < 3 ^ Pos.to_nat p).
+      { eapply Nat.pow_gt_1; eauto. xomega. }
+      xomega.
+    }
+    xomega.
+  - ss. rewrite Pos2Nat.inj_succ. ss.
+    rewrite ! Nat.add_0_r. rewrite Nat.add_assoc.
+    destruct (classic (n0 = 0)).
+    { clarify. ss. xomega. }
+    xomega.
 Unshelve.
   all: ss.
 Qed.
@@ -553,17 +417,6 @@ Let to_inj (su: t) (bound: positive): meminj :=
        else None)
 .
 
-(* Let to_su (j: meminj) (bound: positive): t := *)
-(*   fun blk => *)
-(*     if plt blk bound *)
-(*     then *)
-(*       match j blk with *)
-(*       | Some _ => false *)
-(*       | None => true *)
-(*       end *)
-(*     else *)
-(*       false *)
-(* . *)
 Let to_su (j: meminj) (ge_nb: block) (bound: positive): t :=
   mk
     (fun blk =>
@@ -701,22 +554,6 @@ Fixpoint loadable_init_data_list (m: mem) (ske: SkEnv.t) (b: block) (p: Z) (idl:
   | id :: idl' => <<HD: loadable_init_data m ske b p id>> /\ <<TL: loadable_init_data_list m ske b (p + init_data_size id) idl'>>
   end.
 
-(* TODO: Move to CoqlibC.v *)
-Lemma app_eq_inv
-      A
-      (x0 x1 y0 y1: list A)
-      (EQ: x0 ++ x1 = y0 ++ y1)
-      (LEN: x0.(length) = y0.(length))
-  :
-    x0 = y0 /\ x1 = y1
-.
-Proof.
-  ginduction x0; ii; ss.
-  { destruct y0; ss. }
-  destruct y0; ss. clarify.
-  exploit IHx0; eauto. i; des. clarify.
-Qed.
-
 (* copied from ValueAnalysis.v *)
 Definition definitive_initializer (init: list init_data) : bool :=
   match init with
@@ -725,24 +562,134 @@ Definition definitive_initializer (init: list init_data) : bool :=
   | _ => true
   end.
 
+Require Import ValueAnalysis ValueDomain.
+
+
+Definition romatch_ske (bc: block_classification) (m: mem) (rm: ident -> option ablock): Prop :=
+  forall
+    b id ab
+    (BC: bc b = BCglob id)
+    (RO: rm id = Some ab)
+  ,
+    pge Glob (ab_summary ab) /\ bmatch bc m b ab /\ (forall ofs : Z, ~ Mem.perm m b ofs Max Writable)
+.
+
+Lemma romatch_ske_unchanged_on
+      (ske: SkEnv.t) m0 m1 rm
+      (RO: Mem.unchanged_on (loc_not_writable m0) m0 m1)
+      (NB: Ple (Genv.genv_next ske) (Mem.nextblock m0))
+      (ROMATCH: romatch_ske (ske2bc ske) m0 rm)
+  :
+    <<ROMATCH: romatch_ske (ske2bc ske) m1 rm>>
+.
+Proof.
+  ii. exploit ROMATCH; et. i; des.
+  assert(VAL: Mem.valid_block m0 b).
+  { ss. des_ifs. clear - NB Heq. admit "ez - NB". }
+  esplits; et.
+  - eapply bmatch_ext; et. i.
+    erewrite <- Mem.loadbytes_unchanged_on_1; et.
+    ii. eapply H1; et.
+  - ii. eapply H1; et. eapply Mem.perm_unchanged_on_2; et.
+    { ii. eapply H1; et. }
+Qed.
+
+Definition romem_for_ske (ske: SkEnv.t): ident -> option ablock :=
+  fun id =>
+    match ske.(Genv.find_symbol) id with
+    | Some blk =>
+      match ske.(Genv.find_var_info) blk with
+      | Some gv =>
+        (* if <<RO: gv.(gvar_readonly)>> && <<NONVOL: negb gv.(gvar_volatile)>> *)
+        (*        && <<DEFI: definitive_initializer gv.(gvar_init)>> *)
+        if gv.(gvar_readonly) && negb gv.(gvar_volatile)
+               && definitive_initializer gv.(gvar_init)
+        then Some (store_init_data_list (ablock_init Pbot) 0 (gvar_init gv))
+        else None
+      | None => None
+      end
+    | None => None
+    end
+.
+
+Lemma romem_for_ske_complete
+      blk ske id gv
+      (SYMB: ske.(Genv.find_symbol) id = Some blk)
+      (VAR: ske.(Genv.find_var_info) blk = Some gv)
+      (RO: gv.(gvar_readonly) = true)
+      (VOL: gv.(gvar_volatile) = false)
+      (DEFI: definitive_initializer gv.(gvar_init) = true)
+  :
+    (romem_for_ske ske) id = Some (store_init_data_list (ablock_init Pbot) 0 (gvar_init gv))
+.
+Proof.
+  unfold romem_for_ske. des_ifs.
+Qed.
+
+Section ROMEM_COMPLETE.
+
+Variable F: Type.
+
+Definition romem_complete (defmap: PTree.t (globdef F unit)) (rm: romem): Prop :=
+  forall
+    id gv
+    (DEFMAP: defmap!id = Some (Gvar gv))
+    (RO: gv.(gvar_readonly) = true)
+    (VOL: gv.(gvar_volatile) = false)
+    (DEFI: definitive_initializer gv.(gvar_init) = true)
+  ,
+    rm!id = Some (store_init_data_list (ablock_init Pbot) 0 gv.(gvar_init))
+.
+
+Lemma alloc_global_complete:
+  forall dm rm idg,
+  romem_complete dm rm ->
+  romem_complete (PTree.set (fst idg) (snd idg) dm) (alloc_global rm idg).
+Proof.
+  intros; red; intros. destruct idg as [id1 [f1 | v1]]; simpl in *.
+- rewrite PTree.grspec. destruct (PTree.elt_eq id id1); try discriminate.
+  { clarify. rewrite PTree.gsspec in *. des_ifs. }
+  rewrite PTree.gso in DEFMAP by auto. apply H; auto.
+- destruct (gvar_readonly v1 && negb (gvar_volatile v1) && definitive_initializer (gvar_init v1)) eqn:T.
++ InvBooleans. rewrite negb_true_iff in H3.
+  rewrite PTree.gsspec in *. des_ifs.
+* apply H; auto.
++ rewrite PTree.grspec. rewrite PTree.gsspec in *. des_ifs. apply H; auto.
+Qed.
+
+Lemma romem_for_complete:
+  forall cunit, romem_complete (prog_defmap cunit) (romem_for cunit).
+Proof.
+  assert (REC: forall l dm rm,
+            romem_complete dm rm ->
+            romem_complete (fold_left (fun m idg => PTree.set (fst idg) (snd idg) m) l dm)
+                           (fold_left alloc_global l rm)).
+  { induction l; intros; simpl; auto. apply IHl. apply alloc_global_complete; auto. }
+  intros. apply REC.
+  red; intros. rewrite PTree.gempty in *; discriminate.
+Qed.
+
+End ROMEM_COMPLETE.
+
+Lemma romatch_romatch_ske
+      m_init sk_link
+      (RO : romatch (ske2bc (Genv.globalenv sk_link)) m_init (romem_for sk_link))
+  :
+    <<RO: romatch_ske (ske2bc (Genv.globalenv sk_link)) m_init (romem_for_ske (Genv.globalenv sk_link))>>
+.
+Proof.
+  ii. eapply RO; et. clear RO.
+  ss. des_ifs. unfold romem_for_ske in *. des_ifs. bsimpl. des.
+  exploit Genv.invert_find_symbol; et. i; des. clarify.
+  hexploit (romem_for_complete sk_link); eauto. intro CO.
+  eapply CO; ss.
+  eapply Genv.find_def_symbol; et. esplits; et. uge. des_ifs.
+Qed.
+
 Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
 | skenv_intro
     (PUB: su.(ge_nb) = ske.(Genv.genv_next))
-    (RO: forall
-        blk gv
-        (GVAR: ske.(Genv.find_var_info) blk = Some gv)
-        (* copied from ValueAnalysis - alloc_global *)
-        (GRO: gv.(gvar_readonly))
-        (GVOL: ~ gv.(gvar_volatile))
-        (GDEF: definitive_initializer gv.(gvar_init))
-      ,
-        (* <<LABLE: loadable_init_data_list m0 ske blk 0 gv.(gvar_init)>> *)
-        (<<PERM: forall
-            ofs p
-            (PERM: Mem.perm m0 blk ofs Max p)
-          ,
-            <<OFS: (0 <= ofs < init_data_list_size gv.(gvar_init))%Z>> /\ <<ORD: perm_order Readable p>>>>) /\
-        (<<LABLE: Genv.load_store_init_data ske m0 blk 0 gv.(gvar_init)>>))
+    (ROMATCH: romatch_ske ske.(ske2bc) m0 (romem_for_ske ske))
     (NB: Ple ske.(Genv.genv_next) m0.(Mem.nextblock))
 .
 
@@ -783,6 +730,73 @@ Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
 (* Proof. *)
 (*   rr. rr in HLE. des. esplits; eauto. *)
 (* Qed. *)
+
+
+Definition bc_proj (bc1 bc2: block_classification) : Prop :=
+  forall b, bc1 b = bc2 b \/ exists id, bc1 b = BCglob id /\ bc2 b = BCother
+.
+
+Section MATCH_PROJ.
+
+Variables bc1 bc2: block_classification.
+Hypothesis PROJ: bc_proj bc1 bc2.
+
+Lemma pmatch_proj: forall b ofs isreal p (GOOD: exists id, bc2 b = BCglob id), pmatch bc1 b ofs isreal p -> pmatch bc2 b ofs isreal p.
+Proof.
+  i. hexploit (PROJ b); eauto. i. des; try congruence.
+  inv H; try (by econs; eauto; congruence).
+Qed.
+
+Lemma vmatch_proj: forall v x (GOOD: forall blk ofs (PTR: v = Vptr blk ofs true), exists id, bc2 blk = BCglob id), vmatch bc1 v x -> vmatch bc2 v x.
+Proof.
+  i. inv H; econs; eauto.
+  - destruct isreal; ss.
+    + exploit GOOD; eauto. i. des. eapply pmatch_proj; eauto.
+    + inv H0; econs; eauto.
+  - destruct isreal; ss.
+    + exploit GOOD; eauto. i. des. eapply pmatch_proj; eauto.
+    + inv H0; econs; eauto.
+Qed.
+
+Lemma smatch_proj: forall m b p (GOOD: exists id, bc2 b = BCglob id)
+                          (GOODMEM: forall chunk ofs_ v
+                                           (LOAD: Mem.load chunk m b ofs_ = Some v)
+                                           blk ofs
+                                           (PTR: v = Vptr blk ofs true)
+                            , exists id, bc2 blk = BCglob id)
+                          (GOODMEMVAL: forall lo_ hi_ mv
+                                           (LOAD: Mem.loadbytes m b lo_ hi_ = Some mv)
+                                           blk ofs q n
+                                           (PTR: mv = [Fragment (Vptr blk ofs true) q n])
+                            , exists id, bc2 blk = BCglob id)
+  , smatch bc1 m b p -> smatch bc2 m b p.
+Proof.
+  intros. destruct H as [A B]. split; intros.
+  apply vmatch_proj; eauto.
+  destruct isreal'; cycle 1.
+  { exploit B; eauto. i. inv H0; econs; eauto. }
+  apply pmatch_proj; eauto.
+Qed.
+
+Lemma bmatch_proj: forall m b ab (GOOD: exists id, bc2 b = BCglob id)
+                          (GOODMEM: forall chunk ofs_ v
+                                           (LOAD: Mem.load chunk m b ofs_ = Some v)
+                                           blk ofs
+                                           (PTR: v = Vptr blk ofs true)
+                            , exists id, bc2 blk = BCglob id)
+                          (GOODMEMVAL: forall lo_ hi_ mv
+                                           (LOAD: Mem.loadbytes m b lo_ hi_ = Some mv)
+                                           blk ofs q n
+                                           (PTR: mv = [Fragment (Vptr blk ofs true) q n])
+                            , exists id, bc2 blk = BCglob id)
+  , bmatch bc1 m b ab -> bmatch bc2 m b ab.
+Proof.
+  intros. destruct H as [B1 B2]. split.
+  apply smatch_proj; auto.
+  intros. apply vmatch_proj; eauto.
+Qed.
+
+End MATCH_PROJ.
 
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
@@ -835,18 +849,18 @@ Next Obligation.
   - ii. eapply lubsucc; eauto.
   - ii. eapply lubspec; eauto.
   - rr. destruct args0.
-    eapply finite_pos_prop with (j:= Jpos) (fuel := m.(Mem.nextblock)); eauto.
+    eapply finite_nat_prop with (j:= J) (fuel := m.(Mem.nextblock)); eauto.
     + ii. des. inv H0. inv H3. des; ss.
       inv MEM0. inv MEM1.
-      eapply Jpos_injective; eauto; cycle 1.
+      eapply J_injective; eauto; cycle 1.
       { unfold le' in *. des. congruence. }
       { congruence. }
       ii. u in BOUND. u in BOUND0. destruct (x0 blk) eqn:T0, (x1 blk) eqn:T1; ss.
       { hexploit BOUND0; eauto. i. r in H4. xomega. }
       { hexploit BOUND; eauto. i. r in H4. xomega. }
-    + ii. eapply Jpos_func.
-    + i. exists (3 ^ (m.(Mem.nextblock)))%positive. i.
-      eapply Jpos_bound; eauto.
+    + ii. eapply J_func.
+    + i. exists (3 ^ (m.(Mem.nextblock)).(Pos.to_nat))%nat. i.
+      eapply J_bound; eauto.
   - ii. eapply lubclosed; try apply LUB; eauto.
 Qed.
 Next Obligation.
@@ -869,19 +883,19 @@ Next Obligation.
       eapply Genv.genv_symb_range; eauto.
   - econs; eauto.
     + ii; ss. clarify. esplits; eauto.
-      admit "this should hold. see Genv.initmem_inject".
+      admit "this should hold - use Genv.initmem_inject".
     + ii; ss.
     + ss. u in *. erewrite <- Genv.init_mem_genv_next; eauto. folder. refl.
   - econs; eauto; ss.
   - econs; eauto; cycle 1.
     { subst skenv. u in *. erewrite Genv.init_mem_genv_next; eauto. refl. }
-    ii. u in *. subst skenv.
-    hexploit Genv.init_mem_characterization; eauto. intro CHAR. des.
-    hexploit Genv.init_mem_characterization_gen; eauto. intro X. r in X.
-    unfold Genv.find_var_info in *. des_ifs.
-    exploit (X blk (Gvar gv)); eauto. intro GEN; des.
-    unfold Genv.perm_globvar in *. des_ifs.
-    esplits; eauto.
+    + u in MEM. u in skenv.
+
+      unfold Genv.init_mem in *. subst skenv.
+      hexploit (initial_mem_matches _ _ MEM); eauto. intro IM; des. clarify.
+      hexploit IM2; eauto.
+      { apply Linking.linkorder_refl. }
+      intro RO. eapply romatch_romatch_ske; et.
 Qed.
 Next Obligation.
   inv LE.
@@ -892,17 +906,7 @@ Next Obligation.
   inv MLE.
   inv SKE. econs; eauto; cycle 1.
   { etrans; eauto. eauto with mem. }
-  ii. exploit RO0; eauto. i; des.
-  esplits; eauto.
-  - ii. eapply PERM0; eauto. eapply PERM; eauto.
-    { r. eapply Plt_Ple_trans; eauto.
-      admit "ez".
-    }
-  - eapply Genv.load_store_init_data_invariant; try apply LABLE; eauto.
-    unfold Genv.find_var_info in *. des_ifs.
-    i. eapply Mem.load_unchanged_on_1; try apply RO; eauto.
-    { admit "ez". }
-    ii. exploit PERM0; eauto. i; des. inv ORD.
+  eapply romatch_ske_unchanged_on; et.
 Qed.
 Next Obligation.
   exploit SkEnv.project_spec_preserves_wf; eauto. intro WFSMALL.
@@ -910,34 +914,31 @@ Next Obligation.
   econs; eauto; swap 2 3.
   { congruence. }
   { etrans; eauto. rewrite NEXT. refl. }
-  ii.
-  unfold Genv.find_var_info in *. des_ifs.
-  exploit DEFSYMB; eauto. i; des.
-  destruct (classic (defs0 id)); cycle 1.
-  { exploit SYMBDROP; eauto. i; des. clarify. }
-  exploit SYMBKEEP; eauto. i; des. rewrite H in *. symmetry in H1.
-  inv WF.
-  exploit SYMBDEF0; eauto. intro DEF; des.
-  exploit DEFKEEP; eauto.
-  { eapply Genv.find_invert_symbol; eauto. }
-  intro DEF2; des. rewrite DEF in *. clarify.
-  exploit RO; eauto.
-  { rewrite DEF. ss. }
-  i; des.
-  admit "raw admit: we need good_prog".
+  - bar. move ROMATCH at bottom.
+    ii.
+    exploit (ROMATCH b id ab); eauto.
+    { admit "ez". }
+    { admit "ez". }
+    i; des.
+    esplits; et.
+    eapply bmatch_proj; et.
+    { admit "ez". }
+    { i. clarify. admit "hard - we need good-prog". }
+    { i. clarify. admit "hard - we need good-prog". }
 Qed.
 Next Obligation.
-  split; i; inv H; ss.
-  - econs; eauto.
-    i. eapply RO; eauto.
-    unfold Genv.find_var_info in *. des_ifs_safe.
-    unfold System.skenv in *.
-    apply_all_once Genv_map_defs_def. des. des_ifs.
-  - econs; eauto.
-    i. eapply RO; eauto.
-    unfold Genv.find_var_info in *. des_ifs_safe.
-    unfold System.skenv.
-    eapply_all_once Genv_map_defs_def_inv. rewrite Heq. ss.
+  admit "hard - system - this axiom should be removed in project-only-internals".
+  (* split; i; inv H; ss. *)
+  (* - econs; eauto. *)
+  (*   i. eapply RO; eauto. *)
+  (*   unfold Genv.find_var_info in *. des_ifs_safe. *)
+  (*   unfold System.skenv in *. *)
+  (*   apply_all_once Genv_map_defs_def. des. des_ifs. *)
+  (* - econs; eauto. *)
+  (*   i. eapply RO; eauto. *)
+  (*   unfold Genv.find_var_info in *. des_ifs_safe. *)
+  (*   unfold System.skenv. *)
+  (*   eapply_all_once Genv_map_defs_def_inv. rewrite Heq. ss. *)
 Qed.
 Next Obligation.
   set (CTX := Val.mi_normal).
@@ -945,8 +946,8 @@ Next Obligation.
   exploit (@external_call_mem_inject_gen CTX ef skenv0 skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret
                                          (to_inj su0 (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
   { unfold to_inj. r. esplits; ii; ss; des_ifs; eauto.
-    - exfalso. eapply WF; eauto. inv SKE. rewrite PUB. admit "ez".
-    - exfalso. apply n; clear n. admit "ez".
+    - exfalso. eapply WF; eauto. inv SKE. rewrite PUB. admit "ez - H0".
+    - exfalso. apply n; clear n. admit "ez - SKE/WF".
   }
   { eapply to_inj_mem; eauto. }
   { inv MEM. clear - NB VALS. abstr (Args.vs args0) vs_arg.

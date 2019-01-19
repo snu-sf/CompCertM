@@ -34,12 +34,18 @@ Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variable prog: Clight.program.
 Variable tprog: Csharpminor.program.
+Let md_src: Mod.t := (ClightC.module2 prog).
+Let md_tgt: Mod.t := (CsharpminorC.module tprog).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
+Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
+Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog)
+Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog)
                                   prog.(prog_comp_env).
-Let tge: Csharpminor.genv := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
+Let tge: Csharpminor.genv := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (ClightC.modsem2 skenv_link_src prog) (CsharpminorC.modsem skenv_link_tgt tprog) tt sm_link
+  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
 .
 
 Inductive match_states
@@ -52,9 +58,9 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef match_fundef match_varinfo prog) ge tge.
-Proof. subst_locals. ss. eapply SimSymbId.sim_skenv_revive; eauto. { ii. inv MATCH; ss. } Qed.
+Proof. subst_locals. ss. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
 Theorem sim_modsem
   :
@@ -114,10 +120,9 @@ Proof.
       * folder. des.
         r in TRANSL.
         exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
-        { ii. inv MATCH; ss. }
         { apply SIMSKENV. }
         intro GE.
-        apply (sim_external_funct_id GE); ss.
+        apply (fsim_external_funct_id GE); ss.
       * des. clarify. esplits; eauto.
         eapply SimSymb.simskenv_func_fsim; eauto; ss. inv SIMSKENV. ss.
     + econs; ss; eauto.
@@ -137,13 +142,13 @@ Proof.
     inv MK; ss. destruct sm0; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
   - esplits; eauto.
-    { apply modsem2_receptive. }
+    { apply modsem2_strict_determinate. }
     inv MATCH.
     ii. hexploit (@transl_step prog ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     i; des.
     esplits; eauto.
-    + left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.
+    + left. eapply spread_sdplus; eauto. eapply modsem_strict_determinate; eauto.
     + instantiate (1:= SimMemId.mk _ _). econs; ss.
 Unshelve.
   all: ss; try (by econs).

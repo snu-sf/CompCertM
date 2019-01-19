@@ -32,7 +32,7 @@ Module Mod.
     get_modsem_skenv_spec: forall
       skenv
       ,
-        <<PROJECTED: SkEnv.project skenv data.(get_sk).(defs) = data.(get_modsem skenv).(ModSem.skenv)>>
+        <<PROJECTED: SkEnv.project skenv data.(get_sk) = data.(get_modsem skenv).(ModSem.skenv)>>
     ;
     get_modsem_skenv_link_spec: forall
         skenv_link
@@ -50,13 +50,14 @@ Module Mod.
   Lemma get_modsem_projected_sk
         (md: t)
         skenv
+        (INCL: SkEnv.includes skenv (get_sk md (data md)))
     :
-      <<PROJECTED: SkEnv.project_spec skenv ((md.(get_sk) md.(data)).(defs))
+      <<PROJECTED: SkEnv.project_spec skenv ((md.(get_sk) md.(data)))
                                       ((md.(get_modsem) skenv) md.(data)).(ModSem.skenv)>>
   .
   Proof.
     erewrite <- get_modsem_skenv_spec.
-    eapply SkEnv.project_impl_spec.
+    eapply SkEnv.project_impl_spec; et.
   Qed.
 
   Definition sk (md: t): Sk.t := md.(get_sk) md.(data).

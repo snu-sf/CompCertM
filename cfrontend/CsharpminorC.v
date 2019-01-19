@@ -32,7 +32,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -94,17 +94,10 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
-  Lemma modsem_receptive
+  Lemma modsem_strict_determinate
         st
     :
-      receptive_at modsem st
-  .
-  Proof. admit "this should hold". Qed.
-
-  Lemma modsem_determinate
-        st
-    :
-      determinate_at modsem st
+      strict_determinate_at modsem st
   .
   Proof. admit "this should hold". Qed.
 
@@ -126,9 +119,6 @@ Section MODULE.
       Mod.get_modsem := modsem;
     |}
   .
-  Next Obligation.
-    rewrite Sk.of_program_defs. ss.
-  Qed.
 
 End MODULE.
 

@@ -20,17 +20,25 @@ Section PRESERVATION.
 Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable prog: Mach.program.
 Variable tprog: Asm.program.
+Let md_src: Mod.t := (MachC.module prog return_address_offset).
+Let md_tgt: Mod.t := (AsmC.module tprog).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
+Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
+Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
+
 Hypothesis TRANSF: match_prog prog tprog.
 
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 
 Variable sm_link: SimMem.t.
 
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (SM := SimMemExt)
-                (MachC.modsem return_address_offset skenv_link_src prog)
-                (AsmC.modsem skenv_link_tgt tprog) tt sm_link.
+                (md_src.(Mod.modsem) skenv_link_src)
+                (md_tgt.(Mod.modsem) skenv_link_tgt)
+                tt sm_link.
 
 Definition get_rs (ms: Mach.state) : Mach.regset :=
   match ms with
@@ -80,46 +88,46 @@ Inductive match_states
     (INITDATA: match_init_data
                  init_sp init_ra
                  st_src0.(MachC.init_rs) st_src0.(init_sg) st_tgt0.(init_rs))
-    (MATCHST: AsmgenproofC1.match_states ge skenv_link_src init_sp init_ra st_src0.(MachC.st) st_tgt0)
-    (NOTVOL: not_volatile skenv_link_src (st_tgt0.(init_rs) RSP))
+    (MATCHST: AsmgenproofC1.match_states ge init_sp init_ra st_src0.(MachC.st) st_tgt0)
+    (SPPTR: ValuesC.is_real_ptr (st_tgt0.(init_rs) RSP))
     (MCOMPATSRC: st_src0.(MachC.st).(MachC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
     (IDX: measure st_src0.(MachC.st) = idx)
 .
 
-Lemma asm_step_dstep init_rs st0 st1 tr
+Lemma asm_step_sdstep init_rs st0 st1 tr
       (STEP: Asm.step tge st0 tr st1)
   :
-    Simulation.DStep (modsem skenv_link_tgt tprog)
+    Simulation.SDStep (modsem skenv_link_tgt tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
   econs.
-  - eapply modsem_determinate.
+  - eapply modsem_strict_determinate; et.
   - econs; auto.
 Qed.
 
-Lemma asm_star_dstar init_rs st0 st1 tr
+Lemma asm_star_sdstar init_rs st0 st1 tr
       (STEP: star Asm.step tge st0 tr st1)
   :
-    Simulation.DStar (modsem skenv_link_tgt tprog)
+    Simulation.SDStar (modsem skenv_link_tgt tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
   induction STEP; econs; eauto.
-  eapply asm_step_dstep; auto.
+  eapply asm_step_sdstep; auto.
 Qed.
 
-Lemma asm_plus_dplus init_rs st0 st1 tr
+Lemma asm_plus_sdplus init_rs st0 st1 tr
       (STEP: plus Asm.step tge st0 tr st1)
   :
-    Simulation.DPlus (modsem skenv_link_tgt tprog)
+    Simulation.SDPlus (modsem skenv_link_tgt tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
   inv STEP. econs; eauto.
-  - eapply asm_step_dstep; eauto.
-  - eapply asm_star_dstar; eauto.
+  - eapply asm_step_sdstep; eauto.
+  - eapply asm_star_sdstar; eauto.
 Qed.
 
 Let SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
@@ -210,23 +218,12 @@ Proof.
         -- destruct mr; clarify.
         -- destruct mr; clarify.
     + instantiate (1:= mk m_src m).
-      assert (NOTVOL: not_volatile skenv_link_src (Vptr (Mem.nextblock src) Ptrofs.zero true)).
-      { econs. destruct (Senv.block_is_volatile skenv_link_src (Mem.nextblock src)) eqn: EQ; auto.
-        exfalso. eapply Senv.block_is_volatile_below in EQ. subst ge.
-        clear - SIMSKENV MWF MEMWF EQ. apply Mem.mext_next in MWF. rewrite MWF in *.
-        eapply Plt_strict. eapply Plt_Ple_trans. eapply EQ.
-        inv SIMSKENV. inv SIMSKELINK. ss. subst. ss. }
       econs; ss.
       * econs; ss; eauto. econs; eauto.
       * econs; eauto; ss; try by (econs; eauto).
-        -- econs; eauto. i.
-           destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (fn_sig fd))))); eauto.
-           erewrite agree_mregs_eq0; auto.
-        -- inv SIMSKENV. inv SIMSKELINK. ss. subst. etrans; eauto.
-           clear - MWF SRCSTORE.
-           apply Mem.mext_next in MWF. rewrite <- MWF in *.
-           inv SRCSTORE. rewrite <- NB.
-           eapply Mem.nextblock_alloc in ALC. rewrite ALC. eapply Ple_succ.
+        econs; eauto. i.
+        destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (fn_sig fd))))); eauto.
+        erewrite agree_mregs_eq0; auto.
       * rewrite agree_sp0. auto.
 
   - ss. des. inv SIMARGS. destruct sm_arg. ss. clarify.
@@ -284,8 +281,6 @@ Proof.
     des.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
-    + ss. inv SIMSKENV. inv SIMSKELINK. unfold msp in *. ss. subst.
-      apply Mem.mext_next in MWF. rewrite <- MWF in *. auto.
     + rewrite SIG. econs; eauto. rewrite <- LEN.
       symmetry. eapply lessdef_list_length. eauto.
    + rewrite RSRA. econs; ss.
@@ -304,10 +299,9 @@ Proof.
     + econs; eauto.
       * r in TRANSF. r in TRANSF.
         exploit (SimSymbId.sim_skenv_revive TRANSF); eauto.
-        { ii. destruct f_src, f_tgt; ss; try unfold bind in *; des_ifs. }
         { apply SIMSKENV. }
         intro GE.
-        apply (sim_external_funct_id GE); ss.
+        apply (fsim_external_funct_id GE); ss.
       * exists skd. des_ifs. esplits; auto.
         inv SIMSKENV.
         eapply SimSymb.simskenv_func_fsim; eauto.
@@ -317,8 +311,7 @@ Proof.
       * inv INITRAPTR. inv STACKS; ss.
         -- inv ATLR; auto. exfalso; auto.
         -- destruct ra; ss; try inv H0. inv ATLR. ss.
-      * rewrite RSP in *. inv NOTVOL0. ss. unfold Genv.block_is_volatile in *.
-        inv SIMSKENV. inv SIMSKELINK. cbn in H. clarify.
+      * ss. inv SIMSKENV. inv SIMSKELINK. ss. clarify.
     + instantiate (1:=mk m1 m2'). econs; ss; eauto.
     + ss.
 
@@ -343,7 +336,6 @@ Proof.
         econstructor; ss; eauto.
         intros. rewrite to_preg_to_mreg.
         destruct (Conventions1.is_callee_save r0) eqn:T; eauto.
-      * eapply Mem_nextblock_unfree in UNFREE. rewrite <- UNFREE. auto.
   - ss. inv FINALSRC. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
     inv INITDATA. destruct sm0. ss. clarify.
     exploit Mem.free_parallel_extends; eauto. intros TGTFREE. des.
@@ -377,7 +369,7 @@ Proof.
     + ss.
 
   - ss. esplits.
-    + eapply MachC.modsem_receptive.
+    + eapply MachC.modsem_strict_determinate; et.
       intros f c ofs of' RAO0 RAO1. inv RAO0. inv RAO1.
       rewrite TC in *. rewrite TF in *. clarify.
       exploit code_tail_unique. apply TL. apply TL0.
@@ -389,7 +381,7 @@ Proof.
       exploit step_simulation; ss; try apply agree_sp_def0; eauto.
       i. des; ss; esplits; auto; clarify.
       * left. instantiate (1 := mkstate st_tgt0.(init_rs) S2'). ss.
-        destruct st_tgt0. eapply asm_plus_dplus; eauto.
+        destruct st_tgt0. eapply asm_plus_sdplus; eauto.
       * instantiate (1 := mk (MachC.get_mem (MachC.st st_src1)) (get_mem S2')).
         econs; ss; eauto.
         rewrite <- INITRS. rewrite <- INITFPTR. auto.

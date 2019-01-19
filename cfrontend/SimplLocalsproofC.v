@@ -105,13 +105,19 @@ Variable skenv_link_src skenv_link_tgt: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variable prog: Clight.program.
 Variable tprog: Clight.program.
+Let md_src: Mod.t := (ClightC.module1 prog).
+Let md_tgt: Mod.t := (ClightC.module2 tprog).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
+Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
+Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src (defs prog)) prog)
+Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog)
                                   prog.(prog_comp_env).
-Let tge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_tgt (defs tprog)) tprog)
+Let tge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog)
                                    tprog.(prog_comp_env).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (ClightC.modsem1 skenv_link_src prog) (ClightC.modsem2 skenv_link_tgt tprog) tt sm_link
+  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
 .
 
 Inductive match_states
@@ -124,14 +130,13 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src (defs prog)) (SkEnv.project skenv_link_tgt (defs tprog)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun (ctx: AST.program fundef type) f tf => transf_fundef f = OK tf) eq prog) ge tge /\ prog_comp_env prog = prog_comp_env tprog.
 Proof.
   subst_locals. ss.
   rr in TRANSL. destruct TRANSL. r in H.
   esplits.
   - eapply SimSymbId.sim_skenv_revive; eauto.
-    { ii. u. unfold transf_fundef, bind in MATCH. des_ifs; ss; clarify. }
   - hexploit (prog_comp_env_eq prog); eauto. i.
     hexploit (prog_comp_env_eq tprog); eauto. i.
     ss. congruence.
@@ -178,7 +183,7 @@ Proof.
             { genext. }
             ss. refl.
         }
-        hexploit sim_external_inject_eq_fsim; try apply FINDF0; et. i; clarify.
+        hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
         exploit typecheck_inject; eauto. intro TYPTGT0; des.
         exploit typecheck_typecheck; eauto. intro TYPTGT1; des.
         rpapply match_call_state; ss; eauto.
@@ -203,7 +208,7 @@ Proof.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
-    hexploit (@sim_external_inject_eq_fsim); try apply FINDF; eauto. clear FPTR. intro FPTR.
+    hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR.
     (* unfold transf_function, bind in *. des_ifs. *)
     unfold bind in *. des_ifs.
     esplits; eauto. econs; eauto.
@@ -219,7 +224,7 @@ Proof.
     inv CALLSRC. inv MATCHST; ss.
     folder.
     inv MCOMPAT; ss. clear_tac.
-    exploit (sim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
+    exploit (fsim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
     esplits; eauto.
     + econs; eauto.
       * des. clarify. esplits; eauto.
@@ -234,7 +239,7 @@ Proof.
         (***************** TODO: Add as a lemma in GlobalenvsC. *******************)
         inv SIMSKENV.
         assert(fptr_arg = tv).
-        { eapply sim_external_inject_eq_fsim; try apply SIG; et. Undo 1.
+        { eapply fsim_external_inject_eq; try apply SIG; et. Undo 1.
           inv VAL; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
           inv SIMSKE. ss. inv INJECT; ss.
           exploit (DOMAIN b1); eauto.
@@ -286,12 +291,12 @@ Proof.
   - exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
 
     esplits; eauto.
-    { apply modsem1_receptive. }
+    { apply modsem1_strict_determinate. }
     inv MATCH.
     ii. hexploit (@step_simulation prog ge tge); eauto.
     i; des.
     esplits; eauto.
-    + left. eapply spread_dplus; eauto. eapply modsem2_determinate; eauto.
+    + left. eapply spread_sdplus; eauto. eapply modsem2_strict_determinate; eauto.
     + econs; ss.
       * inv H0; ss; inv MCOMPAT; ss.
       * inv H0; ss; inv MCOMPAT; ss.

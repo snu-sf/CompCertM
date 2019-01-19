@@ -56,6 +56,10 @@ c0 + empty
   Hypothesis LINK_SK_TGT: link_sk tprog = Some sk_tgt.
   (* TODO: consider linking fail case *)
   Let skenv_link := Sk.load_skenv sk_tgt.
+  Let SKEWF: SkEnv.wf skenv_link.
+  Proof.
+    eapply SkEnv.load_skenv_wf; et.
+  Qed.
 
   Let ge := globalenv prog.
   Let tge_ce : composite_env := prog_comp_env prog.
@@ -72,7 +76,7 @@ c0 + empty
       wt_retval vres res.
 
   Definition local_genv (p : Csyntax.program) :=
-    (skenv_link.(SkEnv.project) p.(defs)).(SkEnv.revive) p.
+    (skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function)).(SkEnv.revive) p.
 
   Inductive match_states : Csem.state -> Sem.state -> nat -> Prop :=
   | match_states_intro
@@ -138,12 +142,16 @@ c0 + empty
 
   Lemma skenv_link_wf:
     SkEnv.wf skenv_link.
-  Proof. (unfold skenv_link; eapply Sk.load_skenv_wf). Qed.
+  Proof. (unfold skenv_link; eapply SkEnv.load_skenv_wf). Qed.
 
   Lemma proj_wf:
-    SkEnv.project_spec skenv_link (fun x : ident => (defs prog) x) (SkEnv.project skenv_link (defs prog)).
+    SkEnv.project_spec skenv_link prog.(CSk.of_program signature_of_function) (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)).
   Proof.
-    exploit SkEnv.project_impl_spec. instantiate (1 := (defs prog)). instantiate (1 := skenv_link). auto.
+    eapply SkEnv.project_impl_spec.
+    unfold skenv_link.
+    rpapply link_includes; et.
+    { unfold tprog. rewrite in_map_iff. esplits; et. ss. left; et. }
+    ss.
   Qed.
 
   Lemma prog_sk_tgt:
@@ -321,7 +329,7 @@ c0 + empty
         blk g
         (VAR: Genv.find_var_info (Genv.globalenv prog) blk = Some g)
     :
-      Genv.find_var_info (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) blk = Some g
+      Genv.find_var_info (local_genv prog) blk = Some g
   .
   Proof.
     destruct match_ge_skenv_link.
@@ -335,13 +343,13 @@ c0 + empty
     symmetry in H0.
     eapply DEFSYMB in H0. des.
     des_ifs.
-    - destruct (Genv.invert_symbol (SkEnv.project skenv_link (defs prog)) blk) eqn:SYMINV; ss; cycle 1.
+    - destruct (Genv.invert_symbol (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)) blk) eqn:SYMINV; ss; cycle 1.
       + assert ((prog_defmap prog) ! id = Some x).
         { rewrite Genv.find_def_symbol. exists blk. splits.
           unfold Genv.find_symbol in *. rewrite <- mge_symb. ss.
           unfold Genv.find_def. ss. }
         exploit SYMBKEEP; eauto.
-        { instantiate (1 := id).
+        { instantiate (1 := id). rewrite CSk.of_program_defs.
           rewrite id_in_prog. rewrite prog_defmap_spec. eauto. }
         i. rewrite <- H2 in H0.
         eapply Genv.find_invert_symbol in H0. clarify.
@@ -352,24 +360,26 @@ c0 + empty
           unfold Genv.find_def. ss. }
         exploit SYMBKEEP; eauto.
         { instantiate (1 := id).
+          rewrite CSk.of_program_defs.
           rewrite id_in_prog. rewrite prog_defmap_spec. eauto. } i. des.
         rewrite <- H2 in H0.
         exploit Genv.find_invert_symbol; eauto. i. rewrite H3 in SYMINV. inv SYMINV.
         rewrite H1. ss. rewrite VAR in H. inv H. ss.
     - unfold o_bind in Heq; ss.
       exploit Genv.find_invert_symbol; eauto. i. rewrite H1 in Heq. ss.
+      rewrite VAR in *. clarify.
       des_ifs.
       unfold Genv.find_symbol in *. rewrite mge_symb in H0.
       assert ((prog_defmap prog) ! id = Some (Gvar g)).
       { rewrite Genv.find_def_symbol. exists blk. splits; eauto. }
       assert (In id (prog_defs_names prog)).
       { rewrite prog_defmap_spec. exists (Gvar g). auto. }
-      rewrite <- id_in_prog in H3. inv H3. clarify.
+      rewrite <- id_in_prog in H2. rewrite CSk.of_program_internals in *. unfold internals in Heq0. des_ifs.
   Qed.
 
   Lemma var_info_same'
         blk g
-        (VAR: Genv.find_var_info (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) blk = Some g)
+        (VAR: Genv.find_var_info (local_genv prog) blk = Some g)
     :
       Genv.find_var_info (Genv.globalenv prog) blk = Some g.
   Proof.
@@ -387,10 +397,11 @@ c0 + empty
     destruct (Genv.invert_symbol skenv_link blk) eqn:LINKINV; cycle 1; ss.
     des_ifs.
     exploit Genv.invert_find_symbol; eauto. i.
-    exploit SYMBKEEP; eauto. i. rewrite <- H0 in H.
+    exploit SYMBKEEP; eauto. { eapply internals_defs; et. } i. rewrite <- H0 in H.
     exploit Genv.find_invert_symbol; eauto. i.
     rewrite H1 in VAR. unfold o_bind in VAR; ss.
-    assert (defs prog i) by ss.
+    assert (defs prog i).
+    { eapply internals_defs; et. erewrite <- CSk.of_program_internals; et. }
     rewrite id_in_prog in H2. rewrite prog_defmap_spec in H2. des.
     rewrite H2 in VAR. ss. des_ifs. ss.
     exploit DEFKEEP; eauto. i. rewrite Genv.find_def_symbol in H2. des.
@@ -400,7 +411,7 @@ c0 + empty
 
   Lemma volatile_block_same
         blk b
-        (VOLATILE: Genv.block_is_volatile (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) blk = b)
+        (VOLATILE: Genv.block_is_volatile (local_genv prog) blk = b)
     :
       Genv.block_is_volatile (Genv.globalenv prog) blk = b.
   Proof.
@@ -414,7 +425,7 @@ c0 + empty
         blk b
         (VOLATILE: Genv.block_is_volatile (Genv.globalenv prog) blk = b)
     :
-      Genv.block_is_volatile (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) blk = b.
+      Genv.block_is_volatile (local_genv prog) blk = b.
   Proof.
     destruct match_ge_skenv_link.
     destruct skenv_link_wf. destruct proj_wf.
@@ -428,7 +439,7 @@ c0 + empty
   Lemma symbol_same
         id
     :
-      Genv.find_symbol (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) id =  Genv.find_symbol (Genv.globalenv prog) id.
+      Genv.find_symbol (local_genv prog) id =  Genv.find_symbol (Genv.globalenv prog) id.
   Proof.
     destruct match_ge_skenv_link.
     destruct skenv_link_wf. destruct proj_wf.
@@ -440,7 +451,7 @@ c0 + empty
     specialize (mge_defs b). inv mge_defs.
     { unfold Genv.find_def in H0. rewrite H0 in H3. clarify. }
     assert (~ defs prog id).
-    { unfold not. i. inv H. clarify. }
+    { rewrite CSk.of_program_defs in *. unfold not. i. inv H. clarify. }
     exfalso. apply H3.
     rewrite id_in_prog. rewrite prog_defmap_spec. exists x.
     rewrite Genv.find_def_symbol. exists b. split; eauto.
@@ -449,20 +460,19 @@ c0 + empty
   Lemma public_same
         id
     :
-      Genv.public_symbol {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} id =
+      Genv.public_symbol {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} id =
       Genv.public_symbol (Genv.globalenv prog) id.
   Proof.
     destruct match_ge_skenv_link.
     destruct skenv_link_wf. destruct proj_wf.
     unfold Genv.public_symbol in *. des_ifs; ss.
-    - unfold tprog, skenv_link, link_sk, link_list in LINK_SK_TGT. des_ifs; ss. inv Heq1.
-      unfold skenv_link, Sk.load_skenv in *. repeat rewrite Genv.globalenv_public in *. ss.
+    - rewrite Genv.globalenv_public. ss.
     - rewrite symbol_same in Heq. rewrite Heq in Heq0. clarify.
     - rewrite symbol_same in Heq. rewrite Heq in Heq0. clarify.
   Qed.
 
   Lemma Senv_equiv1:
-    Senv.equiv (Genv.globalenv prog) {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}.
+    Senv.equiv (Genv.globalenv prog) {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}.
   Proof.
     econs; splits.
     - eapply symbol_same.
@@ -472,7 +482,7 @@ c0 + empty
   Qed.
 
   Lemma Senv_equiv2:
-    Senv.equiv {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} (Genv.globalenv prog).
+    Senv.equiv {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} (Genv.globalenv prog).
   Proof.
     econs; splits; symmetry.
     - eapply symbol_same.
@@ -484,7 +494,7 @@ c0 + empty
   Lemma volatile_load_same
         chunk m' b ofs tr v
     :
-      volatile_load {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} chunk
+      volatile_load {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} chunk
                     m' b ofs tr v <->
       volatile_load (globalenv prog) chunk m' b ofs tr v.
   Proof.
@@ -495,7 +505,7 @@ c0 + empty
   Lemma deref_loc_same
         ty m' b ofs tr v
     :
-      deref_loc {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} ty m' b ofs tr v <-> deref_loc (globalenv prog) ty m' b ofs tr v.
+      deref_loc {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} ty m' b ofs tr v <-> deref_loc (globalenv prog) ty m' b ofs tr v.
   Proof.
     destruct match_ge_skenv_link.
     split; intro DEREF;
@@ -510,7 +520,7 @@ c0 + empty
     :
         volatile_store
           {|
-            genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog;
+            genv_genv := (local_genv prog);
             genv_cenv := prog_comp_env prog |} chunk m b ofs v tr m'
         <-> volatile_store (globalenv prog) chunk m b ofs v tr m'.
   Proof.
@@ -523,7 +533,7 @@ c0 + empty
     :
       assign_loc
         {|
-          genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog;
+          genv_genv := (local_genv prog);
           genv_cenv := prog_comp_env prog |} ty m b ofs v tr m'
         <-> assign_loc (globalenv prog) ty m b ofs v tr m'.
   Proof.
@@ -538,7 +548,7 @@ c0 + empty
   Lemma lred_same
         e a m a' m'
     :
-        lred {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} e a m a' m'
+        lred {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} e a m a' m'
         <-> lred (globalenv prog) e a m a' m'.
   Proof.
     destruct match_ge_skenv_link.
@@ -551,7 +561,7 @@ c0 + empty
   Lemma rred_same
         a m tr a' m'
     :
-        rred {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |} a m tr a' m'
+        rred {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} a m tr a' m'
         <-> rred (globalenv prog) a m tr a' m'.
   Proof.
     destruct match_ge_skenv_link.
@@ -569,7 +579,7 @@ c0 + empty
   Lemma estep_same
         st_src tr st0
         (ESTEP: estep
-                  {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+                  {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
                   st_src tr st0)
     :
       estep (globalenv prog) st_src tr st0.
@@ -599,7 +609,7 @@ c0 + empty
         b f
         (DEF: Genv.find_def
                 {|
-                  genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog;
+                  genv_genv := (local_genv prog);
                   genv_cenv := prog_comp_env prog |} b = Some f)
     :
       Genv.find_def ge b = Some f.
@@ -612,6 +622,7 @@ c0 + empty
     des_ifs. o_bind_b.
     destruct ((prog_defmap prog)! i) eqn:PROGDEF; ss. des_ifs. ss.
     exploit (SYMBKEEP i).
+    rewrite CSk.of_program_defs.
     rewrite id_in_prog. rewrite prog_defmap_spec.
     eauto. i.
     exploit Genv.invert_find_symbol; eauto; i. Eq.
@@ -623,7 +634,7 @@ c0 + empty
 
   Lemma function_find_same
         fptr f
-        (FUNC: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) fptr = Some f)
+        (FUNC: Genv.find_funct (local_genv prog) fptr = Some f)
     :
       Genv.find_funct ge fptr = Some f.
   Proof.
@@ -646,7 +657,7 @@ c0 + empty
         (FUNC : Genv.find_funct (Genv.globalenv prog) fptr = Some f)
         (* (External ef targs tres cc) *)
     :
-      Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog) fptr =
+      Genv.find_funct (local_genv prog) fptr =
       Some f.
   Proof.
     destruct match_ge_skenv_link.
@@ -664,7 +675,15 @@ c0 + empty
       unfold o_bind in Heq; ss.
       destruct (Genv.invert_symbol skenv_link b) eqn:SYMB; ss.
       - assert (~ defs prog i).
-        { des_ifs; ss. }
+        { des_ifs_safe; ss. ii. rewrite CSk.of_program_internals in *. unfold internals, defs in *. des_sumbool.
+          apply prog_defmap_spec in H. des. des_ifs_safe. ss.
+          apply Genv.find_def_symbol in Heq1. des. uge. clarify.
+          apply Genv.invert_find_symbol in SYMB. uge.
+          assert(b0 = b).
+          { rewrite mge_symb in *. clarify. }
+          clarify.
+          clear - INTERN Heq0. bsimpl. ss. destruct f; ss. clarify.
+        }
         exploit Genv.invert_find_symbol; eauto. i.
         unfold Genv.find_symbol in *. rewrite mge_symb in H1.
         assert ((prog_defmap prog) ! i = Some (Gfun f)).
@@ -681,8 +700,8 @@ c0 + empty
     exploit DEFSYMB; eauto. i. des.
     exploit Genv.find_invert_symbol; eauto. i. rewrite H2 in Heq. ss.
     assert (defs prog id).
-    { destruct (defs prog id) eqn:DEFS; ss. }
-    exploit (SYMBKEEP id); ss. i.
+    { rewrite CSk.of_program_internals in *. des_ifs_safe. eapply internals_defs; et. }
+    exploit (SYMBKEEP id); ss. { rewrite CSk.of_program_defs; ss. } i.
     dup H. rewrite <- H4 in H.
     exploit Genv.find_invert_symbol. eapply H. i. rewrite H6.
     unfold o_bind. ss. rewrite id_in_prog in H3. rewrite prog_defmap_spec in H3. des.
@@ -691,14 +710,13 @@ c0 + empty
     { rewrite Genv.find_def_symbol. exists b.
       splits. unfold Genv.find_symbol in *. rewrite <- mge_symb. auto.
       auto. }
-    Eq. ss. des_ifs; subst. ss. rewrite negb_false_iff in Heq0.
-    unfold is_external_fd in *. des_ifs. inv Heq. Eq.
+    Eq. ss.
   Qed.
 
   Lemma sstep_same
         st_src tr st0
         (SSTEP: sstep
-                  {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+                  {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
                   st_src tr st0)
     :
       sstep (globalenv prog) st_src tr st0.
@@ -723,7 +741,7 @@ c0 + empty
   Lemma cstep_same
         st_src tr st0
         (STEP: Csem.step
-                 {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+                 {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
                  st_src tr st0)
     :
       Csem.step (globalenv prog) st_src tr st0.
@@ -756,7 +774,7 @@ c0 + empty
         (ESTEP: estep (globalenv prog) st_src tr st0)
     :
       estep
-        {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+        {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
         st_src tr st0.
   Proof.
     destruct match_ge_skenv_link.
@@ -781,7 +799,7 @@ c0 + empty
         (SSTEP: sstep (globalenv prog) st_src tr st0)
     :
       sstep
-        {| genv_genv := SkEnv.revive (SkEnv.project skenv_link (defs prog)) prog; genv_cenv := prog_comp_env prog |}
+        {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
         st_src tr st0.
   Proof.
     destruct match_ge_skenv_link.
@@ -833,7 +851,7 @@ c0 + empty
     - (* syscall *)
       inv SAFESRC; inv H0.
       + ss. exploit not_external_function_find_same; eauto. ss.
-        i. unfold local_genv in NOTPROG. Eq.
+        i. unfold local_genv in *. Eq.
       + econs.
         * unfold tge. ss. left. eauto.
         * destruct match_ge_skenv_link.
@@ -864,7 +882,7 @@ c0 + empty
            rewrite <- mge_symb in H1. rewrite <- prog_sk_tgt in *. ss.
            rewrite Heq0 in H1. inversion H1. auto. } subst b0.
         assert (Genv.find_funct_ptr (Genv.globalenv prog) b = Some (Internal f)
-                <-> Genv.find_funct (SkEnv.project skenv_link (defs prog)) (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero) = Some (AST.Internal signature_main)).
+                <-> Genv.find_funct (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)) (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero) = Some (AST.Internal signature_main)).
         { exploit not_external_function_find_same; eauto; ss.
           { instantiate (1:=(Internal f)); ss. }
           { instantiate (1:=Vptr b Ptrofs.zero true). ss. }
@@ -876,9 +894,14 @@ c0 + empty
           assert (PROGDEF: defs prog (prog_main prog)).
           { rewrite id_in_prog. rewrite prog_defmap_spec. ss.
             eexists. erewrite Genv.find_def_symbol. esplits; eauto. }
-          exploit DEFKEEP; eauto. exploit Genv.find_invert_symbol. unfold Genv.find_symbol. eapply Heq1.
-          rewrite <- prog_sk_tgt in *. ss. eauto.
-          i. unfold Genv.find_funct_ptr. rewrite H5. rewrite SIG. ss. }
+          exploit DEFKEEP; eauto.
+          { exploit Genv.find_invert_symbol. unfold Genv.find_symbol. eapply Heq1.
+            rewrite <- prog_sk_tgt in *. ss. eauto. }
+          { rewrite CSk.of_program_internals. unfold internals. rename b into bb.
+            hexploit (Genv.find_def_symbol prog (prog_main prog) (Gfun (Internal f))); et. intro T; des.
+            exploit T0; et. i. des_ifs.
+          }
+          i. unfold Genv.find_funct_ptr. rewrite H5. ss. }
         econs; i.
         * econs; i; ss; eauto. des_ifs.
           unfold Genv.symbol_address in *.
@@ -914,7 +937,7 @@ c0 + empty
     - (* call state *)
       inversion MTCHST; subst.
       + (* syscall *)
-        left. econs; i.
+        left. right. econs; i.
         * inv FINALSRC.
         * econs; i; cycle 1.
           -- (* receptive *)
@@ -963,7 +986,7 @@ c0 + empty
                      { ss. }
                ** inv STEPSRC; inv H.
                   { ss. exploit not_external_function_find_same; eauto; ss.
-                    i. unfold local_genv in NOTPROG. Eq. }
+                    i. unfold local_genv in *. Eq. }
                   eapply plus_left'.
                   --- (* step internal *)
                     econs; i.
@@ -1031,7 +1054,7 @@ c0 + empty
                { ss. eapply preservation_prog; eauto. }
       + (* initial state *)
         inversion INITSRC; subst; ss.
-        left. econs; i.
+        left. right. econs; i.
         * (* FINAL *)
           inv FINALSRC.
         * econs; i; cycle 1.
@@ -1134,7 +1157,7 @@ c0 + empty
                               split; [ apply match_traces_E0 | i; auto].
                             + unfold fundef in *.
                               exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero true)); eauto.
-                              i. ss. des_ifs.
+                              i. ss. des_ifs. unfold local_genv in *. des_ifs.
                         }
                         { inv STEP; inv FINAL; inv FINAL0. }
                         { red. i. inv H3; auto.
@@ -1222,7 +1245,12 @@ c0 + empty
               exists E0. esplits. eapply step_call; ss. econs.
               { unfold Genv.find_funct. des_ifs.
                 unfold Genv.find_funct_ptr. des_ifs.
-                eapply SkEnv.revive_no_external in Heq0; clarify.
+                eapply CSkEnv.project_revive_no_external in Heq0; clarify; cycle 1.
+                {
+                  rpapply link_includes; et.
+                  { ss. left. et. }
+                  ss.
+                }
                 ss. des_ifs. rewrite Genv.find_funct_ptr_iff in Heq.
                 exploit def_same; eauto. i. unfold ge in H0.
                 ss. Eq. ss. }

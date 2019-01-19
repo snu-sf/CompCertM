@@ -35,19 +35,10 @@ Require Import sflib Asmgenproof0 Skeleton.
 Section MATCH_STACK.
 
 Variable ske: SkEnv.t.
-
-Inductive not_volatile: val -> Prop :=
-| not_volatile_intro
-    blk ofs
-    (NOTVOL: Senv.block_is_volatile ske blk = false)
-  :
-    not_volatile (Vptr blk ofs true)
-.
-
 Variable ge: Mach.genv.
 
 Variable initial_parent_sp : val.
-Hypothesis initial_parent_sp_not_volatile : not_volatile (initial_parent_sp).
+Hypothesis initial_parent_ptr : ValuesC.is_real_ptr (initial_parent_sp).
 Variable initial_parent_ra : val.
 Hypothesis initial_parent_ra_ptr : Val.has_type initial_parent_ra Tptr.
 Hypothesis initial_parent_ra_fake : ~ ValuesC.is_real_ptr initial_parent_ra.
@@ -59,20 +50,21 @@ Inductive match_stack: list Mach.stackframe -> Prop :=
 | match_stack_cons: forall fb sp ra c s f tf tc,
     Genv.find_funct_ptr ge fb = Some (Internal f) ->
     transl_code_at_pc ge ra fb f c false tf tc ->
-    not_volatile sp ->
+    ValuesC.is_real_ptr sp ->
     (* sp <> Vundef -> *)
     match_stack s ->
     (* forall (NOTVOL: not_volatile sp), *)
       match_stack (Stackframe fb sp ra c :: s).
 
-Lemma parent_sp_not_volatile: forall s, match_stack s -> not_volatile (parent_sp s).
+Lemma parent_sp_ptr: forall s, match_stack s -> ValuesC.is_real_ptr (parent_sp s).
 Proof.
   induction 1; auto.
 Qed.
 
 Lemma parent_sp_def: forall s, match_stack s -> parent_sp s <> Vundef.
 Proof.
-  intros s MATCH. destruct (parent_sp_not_volatile _ MATCH). ss.
+  intros s MATCH. apply parent_sp_ptr in MATCH.
+  unfold ValuesC.is_real_ptr in MATCH. des_ifs; ss.
 Qed.
 
 Lemma lessdef_parent_sp:
@@ -83,4 +75,3 @@ Proof.
 Qed.
 
 End MATCH_STACK.
-

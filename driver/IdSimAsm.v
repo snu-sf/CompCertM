@@ -50,7 +50,6 @@ Proof.
   ii. inv SSLE. clear_tac.
 
   exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.
-  { i; ss. clarify. }
   intro GENV; des.
   inv SIMSKENVLINK.
 
@@ -126,7 +125,6 @@ Proof.
   ii. inv SSLE. clear_tac.
 
   exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.
-  { i; ss. clarify. }
   intro GENV; des.
   inv SIMSKENVLINK.
 
@@ -654,11 +652,6 @@ Section TRIAL2.
           des. clarify. rewrite FPTR in *. ss. des_ifs. clear_tac.
           econs; et.
           - ii. eapply Mem_unfree_unchanged_on; et.
-            { instantiate (1:= ~2 (brange blk (Ptrofs.unsigned ofs)
-                                          (Ptrofs.unsigned ofs + 4 * size_arguments (SkEnv.get_sig skd0)))).
-              ss.
-            }
-            ss.
           - eapply Mem_unfree_unchanged_on; et.
             (* u. ii; des; ss; clarify. *)
             (* rr in H. eapply H. *)
@@ -705,8 +698,8 @@ Section TRIAL2.
               { ii. rr in LEOLD. des. eapply OLD0. esplits; et. clear - OLD GR FREE. admit "ez". }
               exploit HLE; et. intro SUGR; des.
 
-              assert(UNCH: (ZMap.get ofs0 (Mem.mem_contents m2) !! blk2)
-                           = (ZMap.get ofs0 (Mem.mem_contents m1) !! blk2)).
+              assert(UNCH: (ZMap.get ofs1 (Mem.mem_contents m2) !! blk2)
+                           = (ZMap.get ofs1 (Mem.mem_contents m1) !! blk2)).
               { inv MLE. eapply Mem.unchanged_on_contents; eauto.
                 - eapply PRIV; et.
                   admit "ez".
@@ -757,8 +750,8 @@ Let asm_ext_unreach_lxsim: forall
     asm skenv_link
     m_src0 m_tgt0
     (GENV: Genv.match_genvs (match_globdef (fun _ : AST.program fundef unit => eq) eq asm)
-                            (SkEnv.revive (SkEnv.project skenv_link (defs asm)) asm)
-                            (SkEnv.revive (SkEnv.project skenv_link (defs asm)) asm))
+                            (SkEnv.revive (SkEnv.project skenv_link asm.(Sk.of_program fn_sig)) asm)
+                            (SkEnv.revive (SkEnv.project skenv_link asm.(Sk.of_program fn_sig)) asm))
     m_src1 m_tgt1
     st_init_src st_init_tgt
   ,

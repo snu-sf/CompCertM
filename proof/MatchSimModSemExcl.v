@@ -52,22 +52,13 @@ Section MATCHSIMFORWARD.
       Prop
   .
 
-  Hypothesis has_footprint_mle: forall
-      st_at_src st_at_tgt
-      sm0 sm1
-      (FOOT: has_footprint st_at_src st_at_tgt sm0)
-      (LE: SimMem.le sm0 sm1)
-    ,
-      <<LE0: has_footprint st_at_src st_at_tgt sm1>>
-  .
-
-  Hypothesis has_footprint_mle_excl: forall
-      st_at_src st_at_tgt
-      sm0 sm1
-      (FOOT: has_footprint st_at_src st_at_tgt sm0)
-      (LE: mle_excl st_at_src st_at_tgt sm0 sm1)
-    ,
-      <<LE: SimMem.le sm0 sm1>>
+  Hypothesis FOOTEXCL: forall
+        st_at_src st_at_tgt sm0 sm1 sm2
+        (FOOT: has_footprint st_at_src st_at_tgt sm0)
+        (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
+        (MLE: SimMem.le sm0 sm1)
+      ,
+        <<MLE: SimMem.le sm0 sm2>>
   .
 
   Inductive match_states_at_helper
@@ -82,6 +73,7 @@ Section MATCHSIMFORWARD.
       (MLE: SimMem.le sm_at sm_arg)
       (MWF: SimMem.wf sm_arg)
       (MATCHARG: match_states_at st_src0 st_tgt0 sm_at sm_arg)
+      (* (FOOT: has_footprint st_src0 st_tgt0 sm_at) *)
   .
 
   Hypothesis INITBSIM: forall
@@ -172,11 +164,12 @@ Section MATCHSIMFORWARD.
       (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret))
     ,
       exists sm_after idx1 st_tgt1,
-        (<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>)
-        /\
-        (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm_after>>)
-        /\
         (<<MLE: mle_excl st_src0 st_tgt0 (SimMem.unlift sm_arg sm_ret) sm_after>>)
+        /\
+        forall (MLE: SimMem.le sm0 sm_after) (* helper *),
+          ((<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>)
+           /\
+           (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm_after>>))
   .
 
   Hypothesis FINALFSIM: forall
@@ -205,15 +198,15 @@ Section MATCHSIMFORWARD.
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
     ,
-      (<<RECEP: receptive_at ms_src st_src0>>)
+      (<<SINGLE: single_events_at ms_src st_src0>>)
       /\
       (<<STEPFSIM: forall
              tr st_src1
              (STEPSRC: Step ms_src st_src0 tr st_src1)
            ,
              exists idx1 st_tgt1 sm1,
-               (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/
-                           <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
+               (<<PLUS: SDPlus ms_tgt st_tgt0 tr st_tgt1>> \/
+                           <<STAR: SDStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
                /\ (<<MLE: SimMem.le sm0 sm1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
                /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
@@ -254,19 +247,16 @@ Section MATCHSIMFORWARD.
         { eapply SimMem.unlift_wf; eauto. }
         { eapply SimMem.unlift_spec; eauto. }
         i; des.
-        assert(MLE3: SimMem.le (SimMem.unlift sm_arg sm_ret) sm_after).
-        { eapply has_footprint_mle_excl; eauto.
-          eapply has_footprint_mle; eauto.
-          etrans; eauto.
-          eapply SimMem.unlift_spec; eauto.
-        }
+        assert(MLE3: SimMem.le sm0 sm_after).
+        { eapply FOOTEXCL; et. etrans; et. eapply SimMem.unlift_spec; et. }
+        spc H1. des.
         esplits; eauto.
         right.
         eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
-          apply rtc_once. left.
-          etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
-        { etrans; eauto. etrans; eauto. etrans; eauto. eapply SimMem.unlift_spec; eauto. }
+          apply rtc_once. left. et.
+        }
+        { etrans; eauto. }
     }
     generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
     {
@@ -277,7 +267,7 @@ Section MATCHSIMFORWARD.
       etrans; eauto.
     }
     {
-      eapply lxsim_step_forward; eauto.
+      eapply lxsim_step_strict_forward; eauto.
       i.
       exploit STEPFSIM; eauto. i; des.
       esplits; eauto.

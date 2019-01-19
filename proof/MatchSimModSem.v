@@ -170,15 +170,15 @@ Section MATCHSIMFORWARD.
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
     ,
-      (<<RECEP: receptive_at ms_src st_src0>>)
+      (<<SINGLE: single_events_at ms_src st_src0>>)
       /\
       (<<STEPFSIM: forall
              tr st_src1
              (STEPSRC: Step ms_src st_src0 tr st_src1)
            ,
              exists idx1 st_tgt1 sm1,
-               (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/
-                           <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
+               (<<PLUS: SDPlus ms_tgt st_tgt0 tr st_tgt1>> \/
+                           <<STAR: SDStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
                /\ (<<MLE: SimMem.le sm0 sm1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
                /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
@@ -219,13 +219,14 @@ Section MATCHSIMFORWARD.
         { eapply SimMem.unlift_wf; eauto. }
         { eapply SimMem.unlift_spec; eauto. }
         i; des.
+        assert(MLE3: SimMem.le sm0 sm_after).
+        { etrans; cycle 1. { et. } etrans; et. eapply SimMem.unlift_spec; et. }
         esplits; eauto.
         right.
         eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
-          apply rtc_once. left.
-          etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
-        { etransitivity; eauto. etransitivity; eauto. etransitivity; eauto. eapply SimMem.unlift_spec; eauto. }
+          apply rtc_once. left. et. }
+        { etransitivity; eauto. }
     }
     generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
     {
@@ -236,7 +237,7 @@ Section MATCHSIMFORWARD.
       etrans; eauto.
     }
     {
-      eapply lxsim_step_forward; eauto.
+      eapply lxsim_step_strict_forward; eauto.
       i.
       exploit STEPFSIM; eauto. i; des.
       esplits; eauto.

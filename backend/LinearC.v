@@ -27,21 +27,11 @@ Section LINEAREXTRA.
   Definition semantics_with_ge := Semantics step bot1 final_state ge.
   (* *************** ge is parameterized *******************)
 
-  Lemma semantics_receptive
+  Lemma semantics_strict_determinate
         st
         (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      receptive_at semantics_with_ge st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-  Lemma semantics_determinate
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      determinate_at semantics_with_ge st
+      strict_determinate_at semantics_with_ge st
   .
   Proof.
     admit "this should hold".
@@ -234,11 +224,39 @@ but then corresponding MachM's part should be transl_code another_dummy_code ...
 .
 Hint Unfold dummy_stack.
 
+Definition undef_outgoing_slots (ls: locset): locset :=
+  fun l =>
+    match l with
+    | S Outgoing  _ _ => Vundef
+    | _ => ls l
+    end
+.
+  
+Definition stackframes_after_external (stack: list stackframe): list stackframe :=
+  match stack with
+  | nil => nil
+  | Stackframe f sp ls bb :: tl => Stackframe f sp ls.(undef_outgoing_slots) bb :: tl
+  end
+.
+
+Lemma parent_locset_after_external
+      stack
+  :
+    <<SPURRIOUS: parent_locset stack.(stackframes_after_external) = parent_locset stack /\ stack = []>>
+    \/
+    <<AFTER: parent_locset stack.(stackframes_after_external) = (parent_locset stack).(undef_outgoing_slots)>>
+.
+Proof.
+  destruct stack; ss.
+  { left; ss. }
+  des_ifs; ss. right. ss.
+Qed.
+
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -296,7 +314,7 @@ Section MODSEM.
     :
       after_external (Callstate stack fptr_arg sg_arg ls_arg m_arg)
                      retv
-                     (Returnstate stack ls_after retv.(Retv.m))
+                     (Returnstate stack.(stackframes_after_external) ls_after retv.(Retv.m))
   .
 
   Program Definition modsem: ModSem.t :=
@@ -318,6 +336,8 @@ Section MODSEM.
   Next Obligation. ii; ss; des. do 2 inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. do 2 inv_all_once; ss; clarify. Qed.
 
+  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
+  Hypothesis (WF: SkEnv.wf skenv_link).
 
   Lemma not_external
     :
@@ -327,57 +347,44 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.revive_no_external; eauto.
+    eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
-
-
-  Lemma lift_determinate_at
+  Lemma lift_strict_determinate_at
         st0
-        (DTM: determinate_at (semantics_with_ge ge) st0)
+        (DTM: strict_determinate_at (semantics_with_ge ge) st0)
     :
-      determinate_at modsem st0
+      strict_determinate_at modsem st0
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.
-    - inv H. inv H0. determ_tac sd_determ_at. esplits; eauto.
-      eapply match_traces_preserved; try eassumption. ii; ss.
-      admit "".
-    - inv H. exploit sd_traces_at; eauto.
+    - inv STEP0. inv STEP1. determ_tac ssd_determ_at.
+    - inv H. exploit ssd_traces_at; eauto.
   Qed.
 
-  Lemma modsem_determinate
+  Lemma modsem_strict_determinate
         st
     :
-      determinate_at modsem st
+      strict_determinate_at modsem st
   .
-  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
-
-  Lemma lift_receptive_at
-        st
-        (RECEP: receptive_at (semantics_with_ge ge) st)
-    :
-      receptive_at modsem st
-  .
-  Proof.
-    inv RECEP. econs; eauto; ii; ss.
-    - inv H. exploit sr_receptive_at; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. admit "". }
-      i; des. esplits; eauto. econs; eauto. admit "See Mach.v for same admit".
-    - inv H. exploit sr_traces_at; eauto.
-  Qed.
-
-  Lemma modsem_receptive
-        st
-    :
-      receptive_at modsem st
-  .
-  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
-
+  Proof. eapply lift_strict_determinate_at. eapply semantics_strict_determinate. ii. eapply not_external; eauto. Qed.
 
 End MODSEM.
 
+Section PROPS.
 
+  Lemma step_preserves_last_option
+        ge st0 tr st1 dummy_stack
+        (STEP: step ge st0 tr st1)
+        (LAST: last_option (get_stack st0) = Some dummy_stack)
+  :
+    <<LAST: last_option (get_stack st1) = Some dummy_stack>>
+  .
+  Proof.
+    inv STEP; ss. inv STEP0; ss; des_ifs.
+  Qed.
+
+End PROPS.
 
 Section MODULE.
 
@@ -390,9 +397,6 @@ Section MODULE.
       Mod.get_modsem := modsem;
     |}
   .
-  Next Obligation.
-    rewrite Sk.of_program_defs. ss.
-  Qed.
 
 End MODULE.
 

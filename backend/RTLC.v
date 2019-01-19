@@ -33,21 +33,11 @@ Section RTLEXTRA.
   Definition semantics_with_ge := Semantics step bot1 final_state ge.
   (* *************** ge is parameterized *******************)
 
-  Lemma semantics_receptive
+  Lemma semantics_strict_determinate
         st
         (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      receptive_at semantics_with_ge st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-  Lemma semantics_determinate
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      determinate_at semantics_with_ge st
+      strict_determinate_at semantics_with_ge st
   .
   Proof.
     admit "this should hold".
@@ -87,7 +77,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(defs).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -149,6 +139,9 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
+  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
+  Hypothesis (WF: SkEnv.wf skenv_link).
+
   Lemma not_external
     :
       is_external ge <1= bot1
@@ -157,49 +150,25 @@ Section MODSEM.
     ii. hnf in PR. des_ifs.
     subst_locals.
     unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.revive_no_external; eauto.
+    eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
-  Lemma lift_receptive_at
-        st
-        (RECEP: receptive_at (semantics_with_ge ge) st)
-    :
-      receptive_at modsem st
-  .
-  Proof.
-    inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
-    eapply match_traces_le; et. u. unfold Genv.public_symbol. ss.
-    i. des_ifs_safe. des_sumbool. unfold ge. unfold SkEnv.revive. rewrite Genv_map_defs_symb.
-    uge. ss. des_ifs. des_sumbool. admit "".
-    (* eapply match_traces_preserved; try eassumption. ii; ss. *)
-  Qed.
-
-  Lemma modsem_receptive
-        st
-    :
-      receptive_at modsem st
-  .
-  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
-
-  Lemma lift_determinate_at
+  Lemma lift_strict_determinate_at
         st0
-        (DTM: determinate_at (semantics_with_ge ge) st0)
+        (DTM: strict_determinate_at (semantics_with_ge ge) st0)
     :
-      determinate_at modsem st0
+      strict_determinate_at modsem st0
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.
-    determ_tac sd_determ_at. esplits; eauto.
-    eapply match_traces_preserved; try eassumption. ii; ss.
-    admit "".
   Qed.
 
-  Lemma modsem_determinate
+  Lemma modsem_strict_determinate
         st
     :
-      determinate_at modsem st
+      strict_determinate_at modsem st
   .
-  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
+  Proof. eapply lift_strict_determinate_at. eapply semantics_strict_determinate. ii. eapply not_external; eauto. Qed.
 
 
 End MODSEM.
@@ -219,9 +188,6 @@ Section MODULE.
       Mod.get_modsem := modsem;
     |}
   .
-  Next Obligation.
-    rewrite Sk.of_program_defs. ss.
-  Qed.
 
 End MODULE.
 

@@ -796,7 +796,7 @@ Section ADQSTEP.
       + ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto.
       + inv FSTEP.
         * econs 1; cycle 1.
-          { admit "ez". }
+          { eapply lift_single_events_at; et. }
           ii. ss. rewrite LINKSRC in *.
           des.
           inv STEPSRC; ss; ModSem.tac; swap 2 3.
@@ -806,8 +806,8 @@ Section ADQSTEP.
           exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt)).
           esplits; eauto.
           { des.
-            - left. admit "ez".
-            - right. esplits; eauto. admit "ez".
+            - left. eapply lift_sdplus; et.
+            - right. esplits; eauto. eapply lift_sdstar; et.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
           { unsguard SUST. des_safe. eapply sound_progress; eauto.
@@ -816,7 +816,7 @@ Section ADQSTEP.
           { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
-          { esplits; eauto. admit "ez". }
+          { esplits; eauto. eapply lift_sdstar; et. }
           right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
 
 

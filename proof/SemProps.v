@@ -486,47 +486,7 @@ Qed.
 
 Require Import MemoryC.
 
-Let link_load_skenv_wf_sem_aux: forall
-    md sk_link
-    (WF: Sk.wf md)
-    (LO: linkorder md sk_link)
-    m0 m1
-  ,
-    let skenv_link := (Sk.load_skenv sk_link) in
-    forall
-      idg
-      (IN: In idg sk_link.(prog_defs))
-      (LOADM: Genv.alloc_global skenv_link m0 idg = Some m1)
-      (WFM: SkEnv.wf_mem skenv_link md m0)
-      (* (WFMA: Genv.globals_initialized skenv_link skenv_link m0) *)
-    ,
-      <<WFM: SkEnv.wf_mem skenv_link md m1>>
-             (* /\ <<WFMA: Genv.globals_initialized skenv_link skenv_link m0>> *)
-.
-Proof.
-  i. unfold Genv.alloc_global in *. des_ifs.
-  { (* func *)
-    econs; et. i. inv WFM. exploit WFPTR; et.
-    assert(VALID: Mem.valid_block m0 blk_fr).
-    { assert(NEQ: blk_fr <> b).
-      { ii. clarify. clear - LOAD LOADM Heq. admit "ez". }
-      assert(VAL: Mem.valid_block m1 blk_fr).
-      { clear - LOAD. admit "ez". }
-      clear - Heq LOADM NEQ VAL. admit "ez".
-    }
-    erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
-    { etrans.
-      - eapply Mem.alloc_unchanged_on; et.
-      - eapply Mem.drop_perm_unchanged_on; et. ii. admit "ez".
-    }
-  }
-  { (* gvar *)
-    bar.
-    econs; et. i. inv WFM.
-    rename b into blk.
-    destruct (eq_block blk_fr blk).
-    - clarify. clear WFPTR.
-Abort.
+Section WFMEM.
 
 Lemma NoDup_norepet
       X (xs: list X)
@@ -572,21 +532,6 @@ Inductive wf_mem_weak (skenv ge0: SkEnv.t) (sk: Sk.t) (m0: mem): Prop :=
     )
 .
 
-(* Inductive wf_mem_aux (skenv_link ge0: SkEnv.t): Prop := *)
-(* | wf_mem_aux_intro *)
-(*     (* (INCL: forall *) *)
-(*     (*     id blk *) *)
-(*     (*     (SMALL: ge0.(Genv.find_symbol) id = Some blk) *) *)
-(*     (*   , *) *)
-(*     (*     <<BIG: skenv_link.(Genv.find_symbol) id = Some blk>>) *) *)
-(*     (INCL: forall *)
-(*         id blk *)
-(*         (BIG: skenv_link.(Genv.find_symbol) id = Some blk) *)
-(*         (BOUND: Plt blk ge0.(Genv.genv_next)) *)
-(*       , *)
-(*         <<SMALL: ge0.(Genv.find_symbol) id = Some blk>>) *)
-(* . *)
-
 Let link_load_skenv_wf_sem_one: forall
     md sk_link
     (WF: Sk.wf md)
@@ -603,12 +548,10 @@ Let link_load_skenv_wf_sem_one: forall
     (WFM: wf_mem_weak (Sk.load_skenv sk_link) ge0 md m0)
     (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
     (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
-    (* (WFMC: wf_mem_aux (Sk.load_skenv sk_link) ge0) *)
   ,
     (<<WFM: wf_mem_weak (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) md m1>>)
     /\ (<<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) m1>>)
     /\ (<<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>)
-    (* /\ (<<WFMC: wf_mem_aux (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd))>>) *)
 .
 Proof.
   i.
@@ -701,20 +644,6 @@ Proof.
         clear - LOAD LOADA FREETHM1.
         abstr (Genv.genv_next ge0) blk. clear_tac.
         abstr ((Sk.load_skenv sk_link)) skenv_link. clear_tac.
-        (* destruct (classic (0 < init_data_list_size dts)); cycle 1. *)
-        (* { hexploit Mem.loadbytes_range_perm; try apply LOAD; et. intro PERM. *)
-        (*   exploit FREETHM1; et. *)
-        (*   { r in PERM. eapply PERM; et. instantiate (1:= _ofs_fr). xomega. } *)
-        (*   i; des. xomega. *)
-        (* } *)
-        (* destruct (classic (dts = [])). *)
-        (* { clarify. ss. *)
-        (*   exfalso. clear - LOAD FREETHM1. hexploit Mem.loadbytes_range_perm; et. intro PERM. *)
-        (*   specialize (FREETHM1 _ofs_fr Cur Readable). *)
-        (*   exploit FREETHM1; et. *)
-        (*   { r in PERM. eapply PERM; et. xomega. } *)
-        (*   i; des. xomega. *)
-        (* } *)
         destruct (classic (0 <= _ofs_fr < init_data_list_size dts)); cycle 1.
         {
           hexploit Mem.loadbytes_range_perm; try apply LOAD; et. intro PERM.
@@ -785,9 +714,6 @@ Let link_load_skenv_wf_sem_mult: forall
     m0 m1
     (LOADM: Genv.alloc_globals (Sk.load_skenv sk_link) m0 idgs = Some m1)
     ge0
-    (* (FRESH: ident -> Prop) *)
-    (* (NOTIN: forall id (IN: In id (map fst idgs)), FRESH id) *)
-    (* (NOTIN: forall id (IN: FRESH id), Genv.find_symbol ge0 id = None) *)
     (NOTIN: forall id (IN: In id (map fst idgs)), Genv.find_symbol ge0 id = None)
     (WFM: wf_mem_weak (Sk.load_skenv sk_link) ge0 md m0)
     (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
@@ -813,12 +739,6 @@ Proof.
   i; des.
   exploit IHidgs; try apply WFM0; et.
   { ii. eapply INCL; et. s. et. }
-  (* { instantiate (1:= fun id => FRESH id \/ i = id). s. et. } *)
-  (* { s. i. uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs. *)
-  (*   - *)
-  (*   - eapply NOTIN0. *)
-  (*   s in IN.  des. r in IN. *)
-  (*   - des; ss. *)
   { ss. inv NODUP1. ss. }
   { i. uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs.
     - inv NODUP1. ss.
@@ -876,4 +796,6 @@ Proof.
     { ss. }
   }
 Qed.
+
+End WFMEM.
 

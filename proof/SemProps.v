@@ -537,6 +537,20 @@ Proof.
   admit "ez - TODO: move to CoqlibC".
 Qed.
 
+(* TODO: move to proper place *)
+Lemma Genv_bytes_of_init_data_length
+      F V (ge: Genv.t F V) a
+  :
+    Datatypes.length (Genv.bytes_of_init_data ge a) = nat_of_Z (init_data_size a)
+.
+Proof.
+  { clear - a .
+    destruct a; ss.
+    - rewrite length_list_repeat. rewrite Z2Nat.inj_max. ss. xomega.
+    - des_ifs.
+  }
+Qed.
+
 Let link_load_skenv_wf_sem_one: forall
     md sk_link
     (WF: Sk.wf md)
@@ -649,7 +663,79 @@ Proof.
       assert(DAT: exists id_to _ofs, <<IN: In (Init_addrof id_to _ofs) (gvar_init gv)>>
                                     /\ <<SYMB: Genv.find_symbol (Sk.load_skenv sk_link) id_to = Some blk_to>>
             ).
-      { admit "". }
+      { assert(EQ: gv.(gvar_init) = v.(gvar_init)).
+        { inv LOA. ss. inv H0; ss. }
+        rewrite EQ in *.
+        abstr (gvar_init v) dts.
+        clear - LOAD LOADA FREETHM1.
+        abstr (Genv.genv_next ge0) blk. clear_tac.
+        abstr ((Sk.load_skenv sk_link)) skenv_link. clear_tac.
+        (* destruct (classic (0 < init_data_list_size dts)); cycle 1. *)
+        (* { hexploit Mem.loadbytes_range_perm; try apply LOAD; et. intro PERM. *)
+        (*   exploit FREETHM1; et. *)
+        (*   { r in PERM. eapply PERM; et. instantiate (1:= _ofs_fr). xomega. } *)
+        (*   i; des. xomega. *)
+        (* } *)
+        (* destruct (classic (dts = [])). *)
+        (* { clarify. ss. *)
+        (*   exfalso. clear - LOAD FREETHM1. hexploit Mem.loadbytes_range_perm; et. intro PERM. *)
+        (*   specialize (FREETHM1 _ofs_fr Cur Readable). *)
+        (*   exploit FREETHM1; et. *)
+        (*   { r in PERM. eapply PERM; et. xomega. } *)
+        (*   i; des. xomega. *)
+        (* } *)
+        destruct (classic (0 <= _ofs_fr < init_data_list_size dts)); cycle 1.
+        {
+          hexploit Mem.loadbytes_range_perm; try apply LOAD; et. intro PERM.
+          exploit FREETHM1; et.
+          { r in PERM. eapply PERM; et. instantiate (1:= _ofs_fr). xomega. }
+          i; des. xomega.
+        }
+        rename H into RANGE.
+        clear FREETHM1.
+        assert(POS: 0 <= 0) by xomega.
+        change (init_data_list_size dts) with (0 + init_data_list_size dts) in RANGE.
+        revert_until skenv_link.
+        generalize 0 at 1 2 3 5 as ofs. i.
+        (* generalize 0 at 1 2 4 as ofs. i. *)
+        ginduction dts; ii; ss.
+        { xomega. }
+        try rewrite Z.add_assoc in *.
+        assert(LOADB: Mem.loadbytes m1 blk (ofs + init_data_size a) (init_data_list_size dts) =
+                      Some (Genv.bytes_of_init_data_list skenv_link dts) /\
+                      <<LOADC: Mem.loadbytes m1 blk ofs (init_data_size a) =
+                               Some (Genv.bytes_of_init_data skenv_link a)>>).
+        { exploit Mem.loadbytes_split; et; try xomega.
+          { admit "ez - init_data_size_pos". }
+          { admit "ez - init_data_list_size_pos". }
+          i; des.
+          exploit Mem.loadbytes_length; try apply H; et. intro LEN0.
+          exploit Mem.loadbytes_length; try apply H0; et. intro LEN1.
+          rewrite H. rewrite H0. clear - LEN0 LEN1 H1.
+          generalize (Genv_bytes_of_init_data_length skenv_link a); intro LEN2.
+          admit "ez".
+        }
+        des.
+        destruct (classic ((ofs + init_data_size a) <= _ofs_fr)).
+        - exploit IHdts; et; try xomega.
+          { admit "ez - init_data_size_pos". }
+          i; des. esplits; et.
+        - clear IHdts LOADB LOADA.
+          rename a into aa.
+          Local Opaque Z.add.
+          destruct aa; ss.
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - byte vs fragment of ptr".
+          + des_ifs_safe. des_ifs; cycle 1.
+            { admit "ez - Undef vs fragment of ptr". }
+            esplits; et.
+            admit "ez - Vptr blk_to vs Vptr b".
+      }
       des.
       bar. inv WF. exploit WFPTR; et. i ;des. esplits; et.
       apply Genv.find_invert_symbol.

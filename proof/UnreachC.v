@@ -943,14 +943,13 @@ Maybe you can remove this condition from bmatch_proj upfront. (I think it is eas
         clarify.
         exploit DEFKEPT; et.
         { apply Genv.find_invert_symbol; et. }
-        i; des. ss. clarify. inv MATCH. inv H5. ss. esplits; et.
-        ss.
-        clarify.
+        i; des. ss. clarify. inv MATCH. esplits; et.
       }
       des. clarify.
       exploit WFPTR; et.
       { rewrite <- SYMBKEEP; et. }
       { apply in_prog_defmap; et. }
+      { clear - H4. unfold definitive_initializer in *. des_ifs. }
       i; des.
       exists id_to.
       ss.

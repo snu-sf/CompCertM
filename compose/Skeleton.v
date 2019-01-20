@@ -210,10 +210,11 @@ Module Sk.
 
   Inductive wf (sk: t): Prop :=
   | wf_intro
+      (NODUP: NoDup sk.(prog_defs_names)) (* list_norepet *)
       (WFPTR: forall
           id_fr gv
-          (* (IN: In (id_fr, (Gvar gv)) sk.(prog_defs)) *)
-          (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv))
+          (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
+          (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
           id_to _ofs
           (INDAT: In (Init_addrof id_to _ofs) gv.(gvar_init))
         ,
@@ -254,8 +255,10 @@ Module SkEnv.
           (SYMB: skenv.(Genv.find_symbol) id_fr = Some blk_fr)
           (* (IN: In id_fr sk.(prog_defs_names)) *)
           gv
-          (* (IN: In (id_fr, (Gvar gv)) sk.(prog_defs)) *)
-          (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv))
+          (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
+          (NONVOL: gv.(gvar_volatile) = false)
+          (DEFINITIVE: classify_init gv.(gvar_init) = Init_definitive gv.(gvar_init))
+          (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
           (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to true) _q _n])
         ,
           exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)

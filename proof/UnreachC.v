@@ -932,7 +932,7 @@ Maybe you can remove this condition from bmatch_proj upfront. (I think it is eas
       assert(TT: defs sk id).
       { apply NNPP. intro. exploit SYMBDROP; et. i; des. clarify. }
       dup TT. unfold defs in TT. des_sumbool. eapply prog_defmap_spec in TT; et. des.
-      assert(exists gv, g = Gvar gv).
+      assert(exists gv, g = Gvar gv /\ gv.(gvar_volatile) = false /\ definitive_initializer gv.(gvar_init)).
       {
         unfold romem_for_ske in RO. des_ifs. bsimpl. des. unfold Genv.find_var_info in *. des_ifs.
         rename g into gg.
@@ -943,11 +943,14 @@ Maybe you can remove this condition from bmatch_proj upfront. (I think it is eas
         clarify.
         exploit DEFKEPT; et.
         { apply Genv.find_invert_symbol; et. }
-        i; des. ss. clarify. inv MATCH. esplits; et.
+        i; des. ss. clarify. inv MATCH. inv H5. ss. esplits; et.
+        ss.
+        clarify.
       }
       des. clarify.
       exploit WFPTR; et.
       { rewrite <- SYMBKEEP; et. }
+      { apply in_prog_defmap; et. }
       i; des.
       exists id_to.
       ss.

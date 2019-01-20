@@ -528,15 +528,28 @@ Proof.
     - clarify. clear WFPTR.
 Abort.
 
+Lemma NoDup_norepet
+      X (xs: list X)
+  :
+    NoDup xs <-> list_norepet xs
+.
+Proof.
+  admit "ez - TODO: move to CoqlibC".
+Qed.
+
 Let link_load_skenv_wf_sem_one: forall
     md sk_link
     (WF: Sk.wf md)
     (LO: linkorder md sk_link)
     m0 m1
     id gd
-    (IN: PTree.get id sk_link.(prog_defmap) = Some gd)
+    (* (IN: sk_link.(prog_defmap) ! id = Some gd) *)
+    (IN: In (id, gd) sk_link.(prog_defs))
+    (NODUP: NoDup (prog_defs_names md))
+    (NODUP: NoDup (prog_defs_names sk_link))
     (LOADM: Genv.alloc_global (Sk.load_skenv sk_link) m0 (id, gd) = Some m1)
     ge0
+    (NOTIN: Genv.find_symbol ge0 id = None)
     (WFM: SkEnv.wf_mem ge0 md m0)
     (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
     (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
@@ -564,6 +577,12 @@ Proof.
       ss.
       Local Opaque Linker_prog.
       des.
+      exploit prog_defmap_norepet; try apply IN; et.
+      { apply NoDup_norepet. ss. }
+      intro MAP; des.
+      exploit prog_defmap_norepet; try apply IN0; et.
+      { apply NoDup_norepet. ss. }
+      intro MAP0; des.
       exploit LO1; et. i; des. clarify. inv H0.
     + inv WFM.
       assert(VAL: Mem.valid_block m0 blk_fr).
@@ -584,6 +603,62 @@ Proof.
       apply Genv.find_invert_symbol.
       apply Genv.invert_find_symbol in SYMB0.
       uge. ss. rewrite PTree.gsspec. des_ifs.
+  - (* gvar *)
+    rename b into blk.
+    unfold Genv.find_symbol, Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs; cycle 1.
+    + assert(blk <> blk_fr).
+      { ii; clarify. clear - WFMB Heq SYMB. admit "ez". }
+      inv WFM. exploit WFPTR; et.
+      assert(VAL: Mem.valid_block m0 blk_fr).
+      { admit "ez - similar with above". }
+      assert(NVAL: ~ Mem.valid_block m0 blk).
+      { clear - Heq. eauto with mem. }
+      erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
+      { etrans.
+        { eapply Mem.alloc_unchanged_on; et. }
+        etrans.
+        { eapply Genv.store_zeros_unchanged; et. }
+        etrans.
+        { eapply Genv.store_init_data_list_unchanged; et. }
+        { eapply Mem.drop_perm_unchanged_on; et. }
+      }
+      i; des. esplits; et.
+      apply Genv.find_invert_symbol.
+      apply Genv.invert_find_symbol in SYMB0; et.
+      uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs.
+    + r in FREETHM.
+      exploit (FREETHM (Genv.genv_next ge0)); et.
+      { unfold Genv.find_def, Genv.add_global. s. rewrite PTree.gsspec. des_ifs. }
+      clear FREETHM. intro FREETHM; des. ss. des.
+      (* assert(gv.(gvar_init) = v.(gvar_init)). *)
+      assert(LOA: linkorder gv v /\ gvar_volatile v = false).
+      {
+        Local Transparent Linker_prog.
+        ss.
+        Local Opaque Linker_prog.
+        des.
+        exploit LO1; et.
+        { apply prog_defmap_norepet; et. apply NoDup_norepet; et. }
+        i; des.
+        apply prog_defmap_norepet in IN; cycle 1. { apply NoDup_norepet; et. }
+        clarify.
+        inv H0. inv H4. ss.
+      }
+      des.
+      exploit FREETHM3; et. intro LOADA; des.
+      assert(DAT: exists id_to _ofs, <<IN: In (Init_addrof id_to _ofs) (gvar_init gv)>>
+                                    /\ <<SYMB: Genv.find_symbol (Sk.load_skenv sk_link) id_to = Some blk_to>>
+            ).
+      { admit "". }
+      des.
+      bar. inv WF. exploit WFPTR; et. i ;des. esplits; et.
+      apply Genv.find_invert_symbol.
+      assert(Genv.find_symbol ge0 id_to = Some blk_to).
+      { inv WFM. admit "". (* exploit WFPTR0; et. *) }
+      uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs.
+      admit "Add gvar_volatile condition.
+Get gvar_init has Init_addrof
+use Sk.wf".
 Qed.
 
 
@@ -593,29 +668,53 @@ Let link_load_skenv_wf_sem_mult: forall
     (LO: linkorder md sk_link)
     idgs
     (INCL: incl idgs sk_link.(prog_defs))
+    (NODUP: NoDup (prog_defs_names md))
+    (NODUP: NoDup (prog_defs_names sk_link))
+    (NODUP: NoDup (map fst idgs))
     m0 m1
     (LOADM: Genv.alloc_globals (Sk.load_skenv sk_link) m0 idgs = Some m1)
     ge0
+    (* (FRESH: ident -> Prop) *)
+    (* (NOTIN: forall id (IN: In id (map fst idgs)), FRESH id) *)
+    (* (NOTIN: forall id (IN: FRESH id), Genv.find_symbol ge0 id = None) *)
+    (NOTIN: forall id (IN: In id (map fst idgs)), Genv.find_symbol ge0 id = None)
     (WFM: SkEnv.wf_mem ge0 md m0)
     (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
+    (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
   ,
     <<WFM: SkEnv.wf_mem (Genv.add_globals ge0 idgs) md m1>>
            /\ <<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link)
                                                (Genv.add_globals ge0 idgs) m1>>
+                                               /\ <<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>
 .
 Proof.
   i.
   generalize dependent ge0.
   generalize dependent m0.
   generalize dependent m1.
+  (* generalize dependent FRESH. *)
   induction idgs; ii; ss.
   { clarify. }
   des_ifs.
+  destruct a.
   exploit link_load_skenv_wf_sem_one; et.
   { eapply INCL; et. s. et. }
   i; des.
-  exploit IHidgs; et.
+  exploit IHidgs; try apply WFM0; et.
   { ii. eapply INCL; et. s. et. }
+  (* { instantiate (1:= fun id => FRESH id \/ i = id). s. et. } *)
+  (* { s. i. uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs. *)
+  (*   - *)
+  (*   - eapply NOTIN0. *)
+  (*   s in IN.  des. r in IN. *)
+  (*   - des; ss. *)
+  { ss. inv NODUP1. ss. }
+  { i. uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs.
+    - inv NODUP1. ss.
+    - apply NOTIN. right. ss. }
+  { s. clear - WFMB0 Heq. admit "ez". }
+  i; des.
+  esplits; et.
 Qed.
 
 Lemma link_load_skenv_wf_mem
@@ -637,43 +736,32 @@ Proof.
   clear LO.
   intro LO.
   exploit WF; et. clear WF. intro WF; des.
+  assert(NODUP: NoDup (prog_defs_names sk_link)).
+  { clear - LINK IN WF. destruct p; ss. destruct p; ss.
+    - des; ss. clarify. unfold link_list in *. des_ifs. ss. clarify. apply WF.
+    - clear IN WF.
+      exploit (link_list_cons_inv _ LINK); et.
+      { ss. }
+      i; des.
+      clear - HD.
+      Local Transparent Linker_prog.
+      ss.
+      Local Opaque Linker_prog.
+      unfold link_prog in *. des_ifs.
+      apply NoDup_norepet.
+      unfold prog_defs_names.
+      apply PTree.elements_keys_norepet.
+  }
   clear LINK IN.
 
 
   {
     eapply link_load_skenv_wf_sem_mult; et.
     { refl. }
+    { apply WF. }
+    { i. uge. ss. rewrite PTree.gempty. ss. }
     { econs; et. i. exfalso. clear - LOAD0. admit "ez". }
     { rr. ii. exfalso. clear - H. admit "ez". }
   }
-
-  {
-    move WF at top. move LO at top.
-    revert_until skenv_link.
-    unfold Sk.load_mem in *.
-    unfold Genv.init_mem in *.
-  }
-
-  inv WF.
-  specialize (WFPTR id_fr).
-  assert(INFR: exists gv, In (id_fr, (Gvar gv)) (prog_defs md.(Mod.sk))).
-  { admit "". }
-  des.
-  specialize (WFPTR gv INFR).
-  assert(SYMBI: exists id_to, Genv.invert_symbol skenv_link blk_to = Some id_to).
-  { admit "". }
-  des.
-  exists id_to.
-  esplits; et.
-  eapply WFPTR.
-  specialize (WFPTR id_to).
-
-  esplits; et.
-  Genv.init_mem_characterization_gen
-Genv.init_mem_characterization_2:
-Genv.init_mem_inversion:
-Genv.init_mem_characterization:
-  ss.
-  admit "".
 Qed.
 

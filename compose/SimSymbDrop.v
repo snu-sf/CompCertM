@@ -449,6 +449,11 @@ Next Obligation.
       { eapply Genv.find_invert_symbol; eauto. }
       i; des.
       clarify.
+      inv SIMSK.
+      specialize (KEPT1 id).
+      destruct (classic (ss id)).
+      { exploit DROP; et. i; clarify. }
+      exploit KEPT1; et. i; clarify. congruence.
     }
     exploit DEFKEEP0; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
@@ -465,13 +470,15 @@ Next Obligation.
 
   - (* SIMDEFINV *)
 
-    assert(Genv.find_def skenv_link_tgt blk_tgt = Some def_tgt).
+    assert(exists gd_big, <<DEFBIG: Genv.find_def skenv_link_tgt blk_tgt = Some gd_big>>
+                                    /\ <<LO: linkorder def_tgt gd_big>>).
     {
       inv LETGT.
       destruct (Genv.invert_symbol skenv_link_tgt blk_tgt) eqn:T.
-      - exploit DEFKEPT; eauto. i; des. ss.
+      - exploit DEFKEPT; eauto. i; des. ss. esplits; et.
       - exploit DEFORPHAN; eauto. i; des. clarify.
     }
+    des.
     exploit SIMDEFINV; eauto. i; des. clarify.
     esplits; eauto.
 
@@ -487,7 +494,7 @@ Next Obligation.
     assert(id = id0). { eapply Genv.genv_vars_inj. apply SYMBSMALLTGT. eauto. } clarify.
     assert(DSRC: defs sk_src id0).
     { apply NNPP. ii. erewrite SYMBDROP in *; eauto. ss. }
-    exploit SYMBKEEP; eauto. i; des. rewrite BLKSRC in *. symmetry in H0.
+    exploit SYMBKEEP; eauto. i; des. rewrite BLKSRC in *. symmetry in H.
     assert(DTGT: defs sk_tgt id0).
     { apply NNPP. ii. inv LETGT. erewrite SYMBDROP0 in *; eauto. ss. }
     assert(ITGT: internals sk_tgt id0).
@@ -513,8 +520,21 @@ Next Obligation.
       hexploit (KEPT id0); et. intro T. rewrite Heq in *.
       des_ifs. 
     }
-    erewrite DEFKEEP; eauto.
+    exploit DEFKEEP; et.
     { apply Genv.find_invert_symbol; eauto. }
+    i; des. rewrite DEFSMALL.
+    {
+      inv LETGT.
+      exploit DEFKEPT0; eauto.
+      { eapply Genv.find_invert_symbol; eauto. rewrite <- SYMBKEEP0; et. }
+      i; des.
+      clarify.
+      inv SIMSK.
+      specialize (KEPT id0).
+      destruct (classic (ss id0)).
+      { exploit DROP; et. i; clarify. }
+      exploit KEPT; et. i; clarify. congruence.
+    }
 
   - (* PUBS *)
     exploit PUBKEPT; eauto.

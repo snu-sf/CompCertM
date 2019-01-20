@@ -313,18 +313,22 @@ Module SkEnv.
           id blk
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
           (KEEP: prog.(internals) id)
-          gd
-          (BIG: skenv.(Genv.find_def) blk = Some gd)
+          gd_big
+          (BIG: skenv.(Genv.find_def) blk = Some gd_big)
         ,
-          <<SMALL: skenv_proj.(Genv.find_def) blk = Some gd>>)
+          exists gd_small, <<DEFSMALL: skenv_proj.(Genv.find_def) blk = Some gd_small>>
+                                    /\ <<INTERNAL: ~is_external gd_small>>
+                                    /\ <<LO: linkorder gd_small gd_big>>
+                                    /\ <<PROG: prog.(prog_defmap) ! id = Some gd_small>>)
       (DEFKEPT: forall
           id blk
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
-          gd
-          (SMALL: skenv_proj.(Genv.find_def) blk = Some gd)
+          gd_small
+          (SMALL: skenv_proj.(Genv.find_def) blk = Some gd_small)
         ,
-          <<KEEP: prog.(internals) id>> /\ <<INTERNAL: ~is_external gd>> /\
-                                                       <<BIG: skenv.(Genv.find_def) blk = Some gd>>)
+          <<KEEP: prog.(internals) id>> /\ <<INTERNAL: ~is_external gd_small>>
+                                        /\ <<PROG: prog.(prog_defmap) ! id = Some gd_small>> /\
+          exists gd_big, <<DEFBIG: skenv.(Genv.find_def) blk = Some gd_big>> /\ <<LO: linkorder gd_small gd_big>>)
       (DEFORPHAN: forall (* TODO: is it needed? *)
           blk
           (INV: skenv.(Genv.invert_symbol) blk = None)
@@ -343,6 +347,7 @@ I think "sim_skenv_monotone" should be sufficient.
                                        assertion(prog.(internals) id);
                                        (* assertion(prog.(defs) id); *)
                                        (* assertion(negb (is_external gd)); *) (* <--------- this is wrong *)
+                                       do gd <- prog.(prog_defmap) ! id;
                                        Some gd))
   .
 
@@ -370,24 +375,25 @@ I think "sim_skenv_monotone" should be sufficient.
     - rewrite PTree_filter_key_spec. des_ifs.
     - rewrite PTree_filter_key_spec. des_ifs.
     - rewrite PTree_filter_map_spec. des_ifs.
-      u. des_ifs.
-    - rewrite PTree_filter_map_spec in *. u in *. des_ifs_safe. esplits; et. bsimpl.
-      rename e into e0.
-      assert(EXT: is_external_gd g0 = false).
-      { des_ifs; ss. } clear Heq2.
-      (* g0 is not external, e0 is external *)
-      (* linkorder g0 e0 *)
       inv INCL.
-      bar.
-      (* hexploit (Sk.of_program_prog_defmap prog get_sg id); et. intro REL. rewrite Heq in *. inv REL. ss. *)
-      (* rename y into yy. *)
-      exploit DEFS; et. intro T; des.
-      dup EXT.
-      (* erewrite match_globdef_is_external_gd in EXT; et. *)
-      (* intro EXT1. *)
-      (* gd1 ~= e0? *)
-      apply_all_once Genv.invert_find_symbol. clarify. uge. clarify.
-      inv MATCH. inv H1. ss. clarify.
+      assert(exists gd_big, (prog_defmap prog) ! id = Some gd_big).
+      { u in KEEP. des_ifs; et. }
+      des.
+      exploit DEFS; et. i; des.
+      u. des_ifs_safe.
+      assert(blk = blk0).
+      { apply Genv.invert_find_symbol in Heq0. clarify. }
+      clarify. uge. clarify.
+      esplits; et. i. des_ifs. unfold internals in *. des_ifs. ss. bsimpl. clarify.
+    - rewrite PTree_filter_map_spec in *. u in *. des_ifs_safe.
+      assert(LO: linkorder gd_small g).
+      { inv INCL.
+        exploit DEFS; et. intro T; des.
+        apply_all_once Genv.invert_find_symbol. clarify. uge. clarify.
+      }
+      esplits; et.
+      des_ifs_safe.
+      bsimpl. i; clarify.
     - rewrite PTree_filter_map_spec. des_ifs.
       u. des_ifs.
   Qed.

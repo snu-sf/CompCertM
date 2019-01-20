@@ -123,9 +123,9 @@ Section INITDTM.
     i; des.
     exploit DEFKEEP; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL.
+    intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL0.
     unfold System.skenv in *. ss.
-    exploit Genv_map_defs_def; eauto. i; des. des_ifs.
+    exploit Genv_map_defs_def; eauto. i; des. des_ifs. inv LO. inv H3.
   Qed.
 
   (* Lemma link_sk_disjoint_aux *)
@@ -241,7 +241,7 @@ Local Transparent Linker_prog.
     { eapply Genv.find_invert_symbol; eauto. }
     i; des.
     move SYMBBIG0 at top.
-    rename BIG into DEFBIG0. move DEFBIG0 at top.
+    move DEFBIG at top.
     move DEFS0 at top.
     clear_until_bar.
 
@@ -253,7 +253,7 @@ Local Transparent Linker_prog.
     { eapply Genv.find_invert_symbol; eauto. }
     i; des.
     move SYMBBIG1 at top.
-    rename BIG into DEFBIG1. move DEFBIG1 at top.
+    move DEFBIG0 at top.
     move DEFS1 at top.
     clear_until_bar.
 
@@ -264,7 +264,7 @@ Local Transparent Linker_prog.
     } clarify.
     rename id1 into id.
 
-    clear - DEF0 DEF1 DEFBIG0 DEFS0 DEFS1 SKLINK H0 MODSEM1.
+    clear - DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK H0 MODSEM1.
     destruct (classic (md0 = md1)); ss.
     { clarify. }
     admit "this should hold. state some lemma like: link_sk_disjoint".

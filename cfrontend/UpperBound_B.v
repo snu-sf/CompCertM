@@ -369,6 +369,7 @@ c0 + empty
       exploit Genv.find_invert_symbol; eauto. i. rewrite H1 in Heq. ss.
       rewrite VAR in *. clarify.
       des_ifs.
+      { uo. unfold internals in *. des_ifs. }
       unfold Genv.find_symbol in *. rewrite mge_symb in H0.
       assert ((prog_defmap prog) ! id = Some (Gvar g)).
       { rewrite Genv.find_def_symbol. exists blk. splits; eauto. }
@@ -677,12 +678,16 @@ c0 + empty
       - assert (~ defs prog i).
         { des_ifs_safe; ss. ii. rewrite CSk.of_program_internals in *. unfold internals, defs in *. des_sumbool.
           apply prog_defmap_spec in H. des. des_ifs_safe. ss.
-          apply Genv.find_def_symbol in Heq1. des. uge. clarify.
+          destruct (is_external_gd g) eqn:ISEXT; ss; cycle 1.
+          { uo. generalize (CSk.of_program_prog_defmap prog signature_of_function i). intro REL.
+            inv REL; ss; try congruence. des_ifs.
+          }
+          apply Genv.find_def_symbol in Heq0. des. uge. clarify.
           apply Genv.invert_find_symbol in SYMB. uge.
           assert(b0 = b).
           { rewrite mge_symb in *. clarify. }
           clarify.
-          clear - INTERN Heq0. bsimpl. ss. destruct f; ss. clarify.
+          clear - INTERN ISEXT. bsimpl. ss. destruct f; ss. clarify.
         }
         exploit Genv.invert_find_symbol; eauto. i.
         unfold Genv.find_symbol in *. rewrite mge_symb in H1.
@@ -901,7 +906,8 @@ c0 + empty
             hexploit (Genv.find_def_symbol prog (prog_main prog) (Gfun (Internal f))); et. intro T; des.
             exploit T0; et. i. des_ifs.
           }
-          i. unfold Genv.find_funct_ptr. rewrite H5. ss. }
+          i. unfold Genv.find_funct_ptr. des. rewrite DEFSMALL. inv LO; ss. inv H7; ss.
+        }
         econs; i.
         * econs; i; ss; eauto. des_ifs.
           unfold Genv.symbol_address in *.

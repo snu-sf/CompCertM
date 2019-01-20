@@ -551,20 +551,41 @@ Proof.
   }
 Qed.
 
-Inductive wf_mem_aux (skenv_link ge0: SkEnv.t): Prop :=
-| wf_mem_aux_intro
-    (* (INCL: forall *)
-    (*     id blk *)
-    (*     (SMALL: ge0.(Genv.find_symbol) id = Some blk) *)
-    (*   , *)
-    (*     <<BIG: skenv_link.(Genv.find_symbol) id = Some blk>>) *)
-    (INCL: forall
-        id blk
-        (BIG: skenv_link.(Genv.find_symbol) id = Some blk)
-        (BOUND: Plt blk ge0.(Genv.genv_next))
+Inductive wf_mem_weak (skenv ge0: SkEnv.t) (sk: Sk.t) (m0: mem): Prop :=
+| wf_mem_weak_intro
+    (WFPTR: forall
+        blk_fr _ofs_fr
+        blk_to _ofs_to
+        id_fr
+        _q _n
+        (SYMB: ge0.(Genv.find_symbol) id_fr = Some blk_fr)
+        (* (IN: In id_fr sk.(prog_defs_names)) *)
+        gv
+        (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
+        (NONVOL: gv.(gvar_volatile) = false)
+        (DEFINITIVE: classify_init gv.(gvar_init) = Init_definitive gv.(gvar_init))
+        (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
+        (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to true) _q _n])
       ,
-        <<SMALL: ge0.(Genv.find_symbol) id = Some blk>>)
+        exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)
+                      /\ (<<IN: In id_to sk.(prog_defs_names)>>)
+    )
 .
+
+(* Inductive wf_mem_aux (skenv_link ge0: SkEnv.t): Prop := *)
+(* | wf_mem_aux_intro *)
+(*     (* (INCL: forall *) *)
+(*     (*     id blk *) *)
+(*     (*     (SMALL: ge0.(Genv.find_symbol) id = Some blk) *) *)
+(*     (*   , *) *)
+(*     (*     <<BIG: skenv_link.(Genv.find_symbol) id = Some blk>>) *) *)
+(*     (INCL: forall *)
+(*         id blk *)
+(*         (BIG: skenv_link.(Genv.find_symbol) id = Some blk) *)
+(*         (BOUND: Plt blk ge0.(Genv.genv_next)) *)
+(*       , *)
+(*         <<SMALL: ge0.(Genv.find_symbol) id = Some blk>>) *)
+(* . *)
 
 Let link_load_skenv_wf_sem_one: forall
     md sk_link
@@ -579,15 +600,15 @@ Let link_load_skenv_wf_sem_one: forall
     (LOADM: Genv.alloc_global (Sk.load_skenv sk_link) m0 (id, gd) = Some m1)
     ge0
     (NOTIN: Genv.find_symbol ge0 id = None)
-    (WFM: SkEnv.wf_mem ge0 md m0)
+    (WFM: wf_mem_weak (Sk.load_skenv sk_link) ge0 md m0)
     (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
     (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
-    (WFMC: wf_mem_aux (Sk.load_skenv sk_link) ge0)
+    (* (WFMC: wf_mem_aux (Sk.load_skenv sk_link) ge0) *)
   ,
-    (<<WFM: SkEnv.wf_mem (Genv.add_global ge0 (id, gd)) md m1>>)
+    (<<WFM: wf_mem_weak (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) md m1>>)
     /\ (<<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) m1>>)
     /\ (<<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>)
-    /\ (<<WFMC: wf_mem_aux (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd))>>)
+    (* /\ (<<WFMC: wf_mem_aux (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd))>>) *)
 .
 Proof.
   i.
@@ -629,11 +650,6 @@ Proof.
         - eapply Mem.alloc_unchanged_on; et.
         - eapply Mem.drop_perm_unchanged_on; et. intros ? ? TTT. clear - Heq TTT. admit "ez".
       }
-      i; des.
-      esplits; et.
-      apply Genv.find_invert_symbol.
-      apply Genv.invert_find_symbol in SYMB0.
-      uge. ss. rewrite PTree.gsspec. des_ifs.
   - (* gvar *)
     rename b into blk.
     unfold Genv.find_symbol, Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs; cycle 1.
@@ -653,10 +669,6 @@ Proof.
         { eapply Genv.store_init_data_list_unchanged; et. }
         { eapply Mem.drop_perm_unchanged_on; et. }
       }
-      i; des. esplits; et.
-      apply Genv.find_invert_symbol.
-      apply Genv.invert_find_symbol in SYMB0; et.
-      uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs.
     + r in FREETHM.
       exploit (FREETHM (Genv.genv_next ge0)); et.
       { unfold Genv.find_def, Genv.add_global. s. rewrite PTree.gsspec. des_ifs. }
@@ -680,7 +692,7 @@ Proof.
       assert(DAT: exists id_to _ofs,
                 (<<IN: In (Init_addrof id_to _ofs) (gvar_init gv)>>)
                 /\ (<<SYMB: Genv.find_symbol (Sk.load_skenv sk_link) id_to = Some blk_to>>)
-                /\ (<<PLT :Plt blk_to (Genv.genv_next ge0)>>)
+                (* /\ (<<PLT :Plt blk_to (Genv.genv_next ge0)>>) *)
             ).
       { assert(EQ: gv.(gvar_init) = v.(gvar_init)).
         { inv LOA. ss. inv H0; ss. }
@@ -754,17 +766,10 @@ Proof.
             { admit "ez - Undef vs fragment of ptr". }
             esplits; et.
             * admit "ez - Vptr blk_to vs Vptr b".
-            * tttttttttttttt
       }
       des.
       bar. inv WF. exploit WFPTR; et. i ;des. esplits; et.
-      apply Genv.find_invert_symbol.
-      assert(Genv.find_symbol ge0 id_to = Some blk_to).
-      { inv WFM. inv WFMC. exploit INCL; et. admit "". (* exploit WFPTR0; et. *) }
-      uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs.
-      admit "Add gvar_volatile condition.
-Get gvar_init has Init_addrof
-use Sk.wf".
+      apply Genv.find_invert_symbol. ss.
 Qed.
 
 
@@ -784,11 +789,11 @@ Let link_load_skenv_wf_sem_mult: forall
     (* (NOTIN: forall id (IN: In id (map fst idgs)), FRESH id) *)
     (* (NOTIN: forall id (IN: FRESH id), Genv.find_symbol ge0 id = None) *)
     (NOTIN: forall id (IN: In id (map fst idgs)), Genv.find_symbol ge0 id = None)
-    (WFM: SkEnv.wf_mem ge0 md m0)
+    (WFM: wf_mem_weak (Sk.load_skenv sk_link) ge0 md m0)
     (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
     (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
   ,
-    <<WFM: SkEnv.wf_mem (Genv.add_globals ge0 idgs) md m1>>
+    <<WFM: wf_mem_weak (Sk.load_skenv sk_link) (Genv.add_globals ge0 idgs) md m1>>
            /\ <<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link)
                                                (Genv.add_globals ge0 idgs) m1>>
                                                /\ <<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>
@@ -868,6 +873,7 @@ Proof.
     { i. uge. ss. rewrite PTree.gempty. ss. }
     { econs; et. i. exfalso. clear - LOAD0. admit "ez". }
     { rr. ii. exfalso. clear - H. admit "ez". }
+    { ss. }
   }
 Qed.
 

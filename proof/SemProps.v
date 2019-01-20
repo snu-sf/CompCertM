@@ -551,6 +551,21 @@ Proof.
   }
 Qed.
 
+Inductive wf_mem_aux (skenv_link ge0: SkEnv.t): Prop :=
+| wf_mem_aux_intro
+    (* (INCL: forall *)
+    (*     id blk *)
+    (*     (SMALL: ge0.(Genv.find_symbol) id = Some blk) *)
+    (*   , *)
+    (*     <<BIG: skenv_link.(Genv.find_symbol) id = Some blk>>) *)
+    (INCL: forall
+        id blk
+        (BIG: skenv_link.(Genv.find_symbol) id = Some blk)
+        (BOUND: Plt blk ge0.(Genv.genv_next))
+      ,
+        <<SMALL: ge0.(Genv.find_symbol) id = Some blk>>)
+.
+
 Let link_load_skenv_wf_sem_one: forall
     md sk_link
     (WF: Sk.wf md)
@@ -567,10 +582,12 @@ Let link_load_skenv_wf_sem_one: forall
     (WFM: SkEnv.wf_mem ge0 md m0)
     (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
     (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
+    (WFMC: wf_mem_aux (Sk.load_skenv sk_link) ge0)
   ,
-    <<WFM: SkEnv.wf_mem (Genv.add_global ge0 (id, gd)) md m1>>
-           /\ <<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) m1>>
-                                               /\ <<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>
+    (<<WFM: SkEnv.wf_mem (Genv.add_global ge0 (id, gd)) md m1>>)
+    /\ (<<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) m1>>)
+    /\ (<<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>)
+    /\ (<<WFMC: wf_mem_aux (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd))>>)
 .
 Proof.
   i.
@@ -660,8 +677,10 @@ Proof.
       }
       des.
       exploit FREETHM3; et. intro LOADA; des.
-      assert(DAT: exists id_to _ofs, <<IN: In (Init_addrof id_to _ofs) (gvar_init gv)>>
-                                    /\ <<SYMB: Genv.find_symbol (Sk.load_skenv sk_link) id_to = Some blk_to>>
+      assert(DAT: exists id_to _ofs,
+                (<<IN: In (Init_addrof id_to _ofs) (gvar_init gv)>>)
+                /\ (<<SYMB: Genv.find_symbol (Sk.load_skenv sk_link) id_to = Some blk_to>>)
+                /\ (<<PLT :Plt blk_to (Genv.genv_next ge0)>>)
             ).
       { assert(EQ: gv.(gvar_init) = v.(gvar_init)).
         { inv LOA. ss. inv H0; ss. }
@@ -734,13 +753,14 @@ Proof.
           + des_ifs_safe. des_ifs; cycle 1.
             { admit "ez - Undef vs fragment of ptr". }
             esplits; et.
-            admit "ez - Vptr blk_to vs Vptr b".
+            * admit "ez - Vptr blk_to vs Vptr b".
+            * tttttttttttttt
       }
       des.
       bar. inv WF. exploit WFPTR; et. i ;des. esplits; et.
       apply Genv.find_invert_symbol.
       assert(Genv.find_symbol ge0 id_to = Some blk_to).
-      { inv WFM. admit "". (* exploit WFPTR0; et. *) }
+      { inv WFM. inv WFMC. exploit INCL; et. admit "". (* exploit WFPTR0; et. *) }
       uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs.
       admit "Add gvar_volatile condition.
 Get gvar_init has Init_addrof

@@ -291,8 +291,17 @@ Section PRSV.
           assert(SMALL: Genv.find_def (SkEnv.project skenv_link (Sk.of_program fn_sig p)) b = Some (Gvar v)).
           {
             inv PROJ.
-            erewrite DEFKEEP; et.
+            exploit DEFKEEP; et.
             { apply Genv.find_invert_symbol; et. rewrite <- SYMBKEEP; et. }
+            i; des.
+            assert(gd_small = (Gvar v)).
+            { (* TODO: make lemma!!!!!!!!!!!!!!!!! *)
+              clear - PROG LOA. generalize (Sk.of_program_prog_defmap p fn_sig id). intro REL.
+              inv REL; try congruence.
+              rewrite LOA in *. rewrite PROG in *. clarify.
+              inv H1. inv H0. repeat f_equal. destruct i1, i2; ss.
+            }
+            clarify.
           }
           unfold Genv.find_var_info. des_ifs.
         }

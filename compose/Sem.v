@@ -157,6 +157,7 @@ Section SEMANTICS.
       fptr_init
       (FPTR: fptr_init = (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero))
       (SIG: skenv_link.(Genv.find_funct) fptr_init = Some (Internal signature_main))
+      (WF: forall md (IN: In md p), <<WF: Sk.wf md>>)
     :
       initial_state (Callstate (Args.mk fptr_init [] m_init) [])
   .

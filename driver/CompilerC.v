@@ -290,6 +290,7 @@ Let transf_c_program: Csyntax.program -> res Asm.program :=
   fun src => src.(C2R) @@ Renumber.transf_program @@@ Deadcode.transf_program @@@ R2A
 .
 
+(* TODO: this is not used, remove it *)
 Lemma backward_simulation_refl
       SEM
   :
@@ -298,7 +299,7 @@ Lemma backward_simulation_refl
 Proof.
   eapply (@Backward_simulation _ _ unit bot2).
   econs; eauto.
-  { admit "ez". }
+  { apply unit_ord_wf. }
   ii. ss.
   exists tt.
   esplits; eauto.

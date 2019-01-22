@@ -488,15 +488,6 @@ Require Import MemoryC.
 
 Section WFMEM.
 
-Lemma NoDup_norepet
-      X (xs: list X)
-  :
-    NoDup xs <-> list_norepet xs
-.
-Proof.
-  admit "ez - TODO: move to CoqlibC".
-Qed.
-
 (* TODO: move to proper place *)
 Lemma Genv_bytes_of_init_data_length
       F V (ge: Genv.t F V) a

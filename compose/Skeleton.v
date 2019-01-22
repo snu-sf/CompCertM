@@ -133,6 +133,21 @@ Module Sk.
     all: ss.
   Qed.
 
+  Lemma of_program_defs_names
+        F V
+        get_sg
+        (p: AST.program (AST.fundef F) V)
+    :
+      (of_program get_sg p).(prog_defs_names) = p.(prog_defs_names)
+  .
+  Proof.
+    destruct p; ss.
+    Local Opaque in_dec.
+    u; ss.
+    Local Transparent in_dec.
+    rewrite map_map. ss.
+  Qed.
+
   Lemma of_program_defs
         F V
         get_sg
@@ -141,13 +156,7 @@ Module Sk.
       (of_program get_sg p).(defs) = p.(defs)
   .
   Proof.
-    destruct p; ss.
-    Local Opaque in_dec.
-    u; ss.
-    Local Transparent in_dec.
-    apply Axioms.functional_extensionality. intro id; ss.
-    Check (in_dec ident_eq id (map fst prog_defs)).
-    rewrite map_map. ss.
+    unfold defs. rewrite of_program_defs_names; ss.
   Qed.
 
   Local Opaque prog_defmap.

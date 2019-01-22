@@ -68,6 +68,7 @@ c0 + empty
   Hypothesis MAIN_INTERNAL: forall st_src, Csem.initial_state prog st_src -> internal_function_state ge st_src.
 
   Hypothesis WTPROG: wt_program prog.
+  Hypothesis WTSK: Sk.wf (CsemC.module prog).
 
   Hypothesis WT_EXTERNAL:
     forall id ef args res cc vargs m t vres m',
@@ -198,7 +199,9 @@ c0 + empty
       Eq. rewrite Heq in H6. inv H6. ss.
       destruct f0; ss. unfold type_of_function in H. ss. inv H. destruct fn_params; ss.
       destruct p. inv H8. }
-    esplits; repeat (econs; eauto).
+    esplits; eauto.
+    { econs; et. i. ss. des; ss. clarify. }
+    { econs; et. econs; et. i. ss. des; ss. clarify. }
   Qed.
 
 (** ********************* transf step  *********************************)
@@ -1333,6 +1336,7 @@ Theorem upperbound_b_correct
             In (id, Gfun (External ef args res cc)) cprog.(prog_defs) ->
             external_call ef cprog.(globalenv) vargs m t vres m' ->
             wt_retval vres res)
+        (WTSK: Sk.wf (CsemC.module cprog))
   :
     (<<REFINE: improves (Csem.semantics cprog) (Sem.sem (map CsemC.module [cprog]))>>)
 .

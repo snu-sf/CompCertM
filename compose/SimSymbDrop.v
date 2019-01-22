@@ -22,7 +22,11 @@ Require Import ModSem.
 
 Local Existing Instance Val.mi_normal.
 
-  
+
+(* Copied from Unusedglob.v *)
+Definition ref_init (il : list init_data) (id : ident): Prop := 
+  exists ofs, In (Init_addrof id ofs) il
+.
 
 Section MEMINJ.
 
@@ -48,6 +52,12 @@ Inductive sim_sk (ss: t') (sk_src sk_tgt: Sk.t): Prop :=
     (CLOSED: ss <1= sk_src.(privs))
     (PUB: sk_src.(prog_public) = sk_tgt.(prog_public))
     (MAIN: sk_src.(prog_main) = sk_tgt.(prog_main))
+    (NOREF: forall
+        id gv
+        (PROG: sk_tgt.(prog_defmap) ! id  = Some (Gvar gv))
+      ,
+        <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)
+    (NODUP: NoDup (prog_defs_names sk_tgt))
 .
 
 Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
@@ -309,6 +319,25 @@ Next Obligation.
     hexploit (linkorder_defs LINKORD0); eauto. i; des.
     hexploit (linkorder_defs LINKORD1); eauto. i; des.
     esplits; eauto.
+Qed.
+Next Obligation.
+  inv SIMSK. inv WFSRC.
+  econs; et.
+  i. apply prog_defmap_norepet in IN; cycle 1.
+  { apply NoDup_norepet; ss. }
+  destruct (classic (ss0 id_to)).
+  - exploit NOREF; et; ss.
+    rr. esplits; et.
+  - assert(KEPT0: ~ ss0 id_fr).
+    { ii. exploit DROP; et. i; clarify. }
+    dup IN.
+    rewrite KEPT in IN; ss.
+    exploit WFPTR; et.
+    { eapply in_prog_defmap; et. }
+    i; des.
+    eapply prog_defmap_spec in H0. des.
+    eapply prog_defmap_image; et.
+    erewrite KEPT; et.
 Qed.
 Next Obligation.
   admit "See 'link_match_program' in Unusedglobproof.v.

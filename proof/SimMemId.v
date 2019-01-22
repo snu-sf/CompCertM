@@ -43,11 +43,11 @@ Next Obligation.
 Qed.
 Next Obligation.
   do 2 (apply Axioms.functional_extensionality; i).
-  apply prop_ext.
+  apply prop_ext1.
   split; i; ss; clarify.
   - ginduction x; ii; inv H; ss.
     erewrite IHx; eauto.
-  - ginduction x0; ii; ss.
+  - ginduction x1; ii; ss.
     econs; eauto.
 Qed.
 (* Next Obligation. *)

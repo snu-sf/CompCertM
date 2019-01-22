@@ -41,7 +41,7 @@ Lemma update_src_private
     sm0.(src_private) = (sm1).(src_private)
 .
 Proof.
-  repeat (apply Axioms.functional_extensionality; i). apply prop_ext.
+  repeat (apply Axioms.functional_extensionality; i). apply prop_ext1.
   u. split; ii; des; esplits; eauto with congruence.
 Qed.
 
@@ -54,7 +54,7 @@ Lemma update_tgt_private
     sm0.(tgt_private) = sm1.(tgt_private)
 .
 Proof.
-  repeat (apply Axioms.functional_extensionality; i). apply prop_ext.
+  repeat (apply Axioms.functional_extensionality; i). apply prop_ext1.
   u. split; ii; des; esplits; eauto with congruence.
   - rewrite <- INJ. rewrite <- SRC. ss.
   - rewrite INJ. rewrite SRC. ss.
@@ -119,11 +119,11 @@ Next Obligation.
 Qed.
 Next Obligation.
   do 2 (apply Axioms.functional_extensionality; i).
-  apply prop_ext.
+  apply prop_ext1.
   split; i; ss; clarify.
   - ginduction x; ii; inv H; ss.
     econs; eauto.
-  - ginduction x0; ii; inv H; ss.
+  - ginduction x1; ii; inv H; ss.
     econs; eauto.
 Qed.
 

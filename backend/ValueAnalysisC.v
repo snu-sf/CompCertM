@@ -259,8 +259,51 @@ Section PRSV.
           clarify.
           rewrite IMG in *. des_ifs. apply Genv.invert_find_symbol in Heq.
           eapply romem_for_ske_complete; et.
-          clear - LOA Heq INCL.
-          admit "this should hold -- make some good lemma!".
+          clear - LOA LOA0 LOA1 LOA2 Heq INCL.
+          exploit SkEnv.project_impl_spec; et. intro PROJ.
+          exploit SkEnv.project_revive_precise; et. intro PRECISE. inv PRECISE.
+          exploit P2GE; et. i; des. ss. unfold fundef in *. folder. clarify.
+          assert(INTSID: internals (Sk.of_program fn_sig p) id).
+          { rewrite Sk.of_program_internals. unfold internals. des_ifs. }
+          assert(DEFSID: defs (Sk.of_program fn_sig p) id).
+          { eapply internals_defs; et. }
+          assert(BIG: Genv.find_def skenv_link b = Some (Gvar v)).
+          {
+            generalize (Sk.of_program_prog_defmap p fn_sig id). intro REL.
+            inv REL; try congruence. rewrite LOA in *. clarify.
+            assert(y = Gvar v).
+            { inv H1. inv H2. ss. destruct i1, i2; ss. }
+            clarify.
+            inv INCL. exploit DEFS; et. i; des.
+            assert(blk = b).
+            { inv PROJ.
+              exploit (SYMBKEEP id); et.
+              i; des. rewrite SYMB0 in *. clear - H SYMB. subst ge. unfold SkEnv.revive in *.
+              rewrite Genv_map_defs_symb in *. clarify.
+            }
+            clarify.
+            rewrite DEF0.
+            clear - MATCH LOA2.
+            (*** TODO: make lemma!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ***)
+            inv MATCH. inv H0. destruct info1, info2; ss.
+            inv H1; ss.
+          }
+          assert(SMALL: Genv.find_def (SkEnv.project skenv_link (Sk.of_program fn_sig p)) b = Some (Gvar v)).
+          {
+            inv PROJ.
+            exploit DEFKEEP; et.
+            { apply Genv.find_invert_symbol; et. rewrite <- SYMBKEEP; et. }
+            i; des.
+            assert(gd_small = (Gvar v)).
+            { (* TODO: make lemma!!!!!!!!!!!!!!!!! *)
+              clear - PROG LOA. generalize (Sk.of_program_prog_defmap p fn_sig id). intro REL.
+              inv REL; try congruence.
+              rewrite LOA in *. rewrite PROG in *. clarify.
+              inv H1. inv H0. repeat f_equal. destruct i1, i2; ss.
+            }
+            clarify.
+          }
+          unfold Genv.find_var_info. des_ifs.
         }
         intro RO; des.
         esplits; et.
@@ -268,7 +311,12 @@ Section PRSV.
         ii. ss. rewrite IMG. des_ifs.
         * admit "ez - Heq Heq0".
         * admit "ez - Heq Heq0".
-        * admit "hard - we need project-only-internals (and therefore revive does not touch symbol)".
+        *
+          clear - Heq0 Heq H0.
+          apply_all_once Genv.invert_find_symbol.
+          assert(Genv.find_symbol ge i = Some b0).
+          { subst ge. unfold SkEnv.revive. rewrite Genv_map_defs_symb. ss. }
+          apply Genv.find_invert_symbol in H. clarify.
       + assert(BCSU: forall b, bc b <> BCinvalid -> ~ su_init b).
         { intros ? BC. rewrite IMG in BC.
           destruct (plt b (Genv.genv_next skenv_link)).

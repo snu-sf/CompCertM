@@ -640,7 +640,12 @@ Section ADQINIT.
     esplits; eauto.
     - econs; ss; cycle 1.
       { ii. eapply initial_state_determ; ss; eauto. }
-      econs; eauto.
+      econs; eauto; cycle 1.
+      { clear - SIMPROG WF. i. subst_locals. u in *. rewrite in_map_iff in *. des. clarify.
+        rewrite Forall_forall in *. exploit SIMPROG; et. intro SIM.
+        inv SIM.
+        eapply SimSymb.sim_sk_preserves_wf; et. eapply WF; et. rewrite in_map_iff. esplits; et.
+      }
       apply_all_once SimSymb.sim_skenv_func_bisim. des. inv SIMSKENV.
       exploit FUNCFSIM; eauto.
       { apply SIMARGS. }

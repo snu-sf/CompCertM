@@ -351,6 +351,25 @@ Proof.
     + inv TRANSL1; ss.
 
     + inv TRANSL1; ss.
+    + ii. des.
+      inv TRANSL0.
+      assert(PROG0: (prog_defmap tprog) ! id = Some (Gvar gv)).
+      {
+        (* TODO: make lemma!!!!!!!!!!!!!!!!!!! *)
+        generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL.
+        inv REL; try congruence.
+        rewrite PROG in *. clarify.
+        inv H2. inv H4. ss. destruct i1, i2; ss.
+      }
+      inv TRANSL1.
+      rewrite match_prog_def in *. des_ifs.
+      exploit (used_closed id); et. ii.
+      exploit used_defined; et. i; des.
+      { exploit prog_defmap_dom; et. i; des. specialize (match_prog_def id_drop). des_ifs. rewrite H2 in *.
+        unfold defs in DROP1. apply DROP1. des_sumbool. eapply prog_defmap_image; et.
+      }
+      { clarify. apply DROP0. des_sumbool. ss. }
+    + inv TRANSL1. eapply NoDup_norepet; et. rewrite Sk.of_program_defs_names; ss.
   - ii. eapply sim_modsem; eauto.
 Unshelve.
   all: ss.

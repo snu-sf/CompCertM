@@ -97,9 +97,11 @@ Section PRESERVATION.
   Let ge_cp1: genv := geof cp1.
 
   Hypothesis WTPROGLINK: wt_program cp_link.
+  Hypothesis WTSKLINK: Sk.wf cp_link.(CsemC.module).
   Hypothesis WTPROG0: wt_program cp0.
+  Hypothesis WTSK0: Sk.wf cp0.(CsemC.module).
   Hypothesis WTPROG1: wt_program cp1.
-
+  Hypothesis WTSK1: Sk.wf cp1.(CsemC.module).
 
   Hypothesis WT_EXTERNALLINK:
     forall id ef args res cc vargs m t vres m',
@@ -280,6 +282,9 @@ Section PRESERVATION.
     { inv INIT. econs; ss; eauto.
       - (* init *)
         econs; ss; eauto. rewrite <- link_sk_match; eauto.
+        unfold prog_src in WF. unfold prog_tgt. i. rewrite in_app_iff in IN. des.
+        { eapply WF; et. rewrite in_app_iff. et. }
+        { ss. des; ss; clarify. }
       - (* dtm *)
         ii. inv INIT0; inv INIT1; ss. f_equal.
         generalize link_sk_match; i. des. rewrite H in *. clarify.
@@ -927,9 +932,9 @@ Theorem upperbound_a_correct
         (_cp0 _cp1 _cp_link: Csyntax.program) cp0 cp1 cp_link ctx
         (LINK: link cp0 cp1 = Some _cp_link)
 
-        (TYPED0: typecheck_program _cp0 = Errors.OK cp0)
-        (TYPED1: typecheck_program _cp1 = Errors.OK cp1)
-        (TYPEDLINK: typecheck_program _cp_link = Errors.OK cp_link)
+        (TYPED0: typecheck_program _cp0 = Errors.OK cp0 /\ Sk.wf (module cp0))
+        (TYPED1: typecheck_program _cp1 = Errors.OK cp1 /\ Sk.wf (module cp1))
+        (TYPEDLINK: typecheck_program _cp_link = Errors.OK cp_link /\ Sk.wf (module cp_link))
 
         (WT_EXTERNAL0: forall id ef args res cc vargs m t vres m'
                               sk_link skenv_link
@@ -970,6 +975,7 @@ Proof.
     econs; et. i. ss. inv INITSRC. clarify.
   }
   rename t into link_sk.
+  des.
   eapply upperbound_a_xsim; eauto.
   { eapply typecheck_program_sound; et. }
   { eapply typecheck_program_sound; et. }

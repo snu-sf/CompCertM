@@ -61,6 +61,13 @@ Module SimSymb.
       ;
 
       sim_sk: t -> Sk.t -> Sk.t -> Prop;
+      sim_sk_preserves_wf: forall
+          ss0 (sk_src0 sk_tgt0: Sk.t)
+          (SIMSK: sim_sk ss0 sk_src0 sk_tgt0)
+          (WFSRC: Sk.wf sk_src0)
+        ,
+          <<WFTGT: Sk.wf sk_tgt0>>
+      ;
 
       sim_sk_link: forall
           ss0 (sk_src0 sk_tgt0: Sk.t)

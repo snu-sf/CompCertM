@@ -484,3 +484,309 @@ Qed.
 (*   - ii. inv H. ss. omega. *)
 (* Qed. *)
 
+Require Import MemoryC.
+
+Section WFMEM.
+
+(* TODO: move to proper place *)
+Lemma Genv_bytes_of_init_data_length
+      F V (ge: Genv.t F V) a
+  :
+    Datatypes.length (Genv.bytes_of_init_data ge a) = nat_of_Z (init_data_size a)
+.
+Proof.
+  { clear - a .
+    destruct a; ss.
+    - rewrite length_list_repeat. rewrite Z2Nat.inj_max. ss. xomega.
+    - des_ifs.
+  }
+Qed.
+
+Inductive wf_mem_weak (skenv ge0: SkEnv.t) (sk: Sk.t) (m0: mem): Prop :=
+| wf_mem_weak_intro
+    (WFPTR: forall
+        blk_fr _ofs_fr
+        blk_to _ofs_to
+        id_fr
+        _q _n
+        (SYMB: ge0.(Genv.find_symbol) id_fr = Some blk_fr)
+        (* (IN: In id_fr sk.(prog_defs_names)) *)
+        gv
+        (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
+        (NONVOL: gv.(gvar_volatile) = false)
+        (DEFINITIVE: classify_init gv.(gvar_init) = Init_definitive gv.(gvar_init))
+        (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
+        (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to true) _q _n])
+      ,
+        exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)
+                      /\ (<<IN: In id_to sk.(prog_defs_names)>>)
+    )
+.
+
+Let link_load_skenv_wf_sem_one: forall
+    md sk_link
+    (WF: Sk.wf md)
+    (LO: linkorder md sk_link)
+    m0 m1
+    id gd
+    (* (IN: sk_link.(prog_defmap) ! id = Some gd) *)
+    (IN: In (id, gd) sk_link.(prog_defs))
+    (NODUP: NoDup (prog_defs_names md))
+    (NODUP: NoDup (prog_defs_names sk_link))
+    (LOADM: Genv.alloc_global (Sk.load_skenv sk_link) m0 (id, gd) = Some m1)
+    ge0
+    (NOTIN: Genv.find_symbol ge0 id = None)
+    (WFM: wf_mem_weak (Sk.load_skenv sk_link) ge0 md m0)
+    (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
+    (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
+  ,
+    (<<WFM: wf_mem_weak (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) md m1>>)
+    /\ (<<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) m1>>)
+    /\ (<<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>)
+.
+Proof.
+  i.
+  exploit Genv.alloc_global_initialized; et. intro FREETHM; des.
+  esplits; et.
+  econs; et. i. ss.
+  des_ifs.
+  - (* func *)
+    assert(VALID: Mem.valid_block m0 blk_fr).
+    { assert(NEQ: blk_fr <> b).
+      { ii. clarify. clear - LOAD LOADM Heq. admit "ez". }
+      assert(VAL: Mem.valid_block m1 blk_fr).
+      { clear - LOAD. admit "ez". }
+      clear - Heq LOADM NEQ VAL. admit "ez".
+    }
+    uge. unfold Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs.
+    + Local Transparent Linker_prog.
+      ss.
+      Local Opaque Linker_prog.
+      des.
+      exploit prog_defmap_norepet; try apply IN; et.
+      { apply NoDup_norepet. ss. }
+      intro MAP; des.
+      exploit prog_defmap_norepet; try apply IN0; et.
+      { apply NoDup_norepet. ss. }
+      intro MAP0; des.
+      exploit LO1; et. i; des. clarify. inv H0.
+    + inv WFM.
+      assert(VAL: Mem.valid_block m0 blk_fr).
+      { assert(NEQ: blk_fr <> b).
+        { ii. clarify. clear - LOAD LOADM Heq. admit "ez". }
+        assert(VAL: Mem.valid_block m1 blk_fr).
+        { clear - LOAD. admit "ez". }
+        clear - Heq LOADM NEQ VAL. admit "ez".
+      }
+      exploit WFPTR; et.
+      erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
+      { etrans.
+        - eapply Mem.alloc_unchanged_on; et.
+        - eapply Mem.drop_perm_unchanged_on; et. intros ? ? TTT. clear - Heq TTT. admit "ez".
+      }
+  - (* gvar *)
+    rename b into blk.
+    unfold Genv.find_symbol, Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs; cycle 1.
+    + assert(blk <> blk_fr).
+      { ii; clarify. clear - WFMB Heq SYMB. admit "ez". }
+      inv WFM. exploit WFPTR; et.
+      assert(VAL: Mem.valid_block m0 blk_fr).
+      { admit "ez - similar with above". }
+      assert(NVAL: ~ Mem.valid_block m0 blk).
+      { clear - Heq. eauto with mem. }
+      erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
+      { etrans.
+        { eapply Mem.alloc_unchanged_on; et. }
+        etrans.
+        { eapply Genv.store_zeros_unchanged; et. }
+        etrans.
+        { eapply Genv.store_init_data_list_unchanged; et. }
+        { eapply Mem.drop_perm_unchanged_on; et. }
+      }
+    + r in FREETHM.
+      exploit (FREETHM (Genv.genv_next ge0)); et.
+      { unfold Genv.find_def, Genv.add_global. s. rewrite PTree.gsspec. des_ifs. }
+      clear FREETHM. intro FREETHM; des. ss. des.
+      (* assert(gv.(gvar_init) = v.(gvar_init)). *)
+      assert(LOA: linkorder gv v /\ gvar_volatile v = false).
+      {
+        Local Transparent Linker_prog.
+        ss.
+        Local Opaque Linker_prog.
+        des.
+        exploit LO1; et.
+        { apply prog_defmap_norepet; et. apply NoDup_norepet; et. }
+        i; des.
+        apply prog_defmap_norepet in IN; cycle 1. { apply NoDup_norepet; et. }
+        clarify.
+        inv H0. inv H4. ss.
+      }
+      des.
+      exploit FREETHM3; et. intro LOADA; des.
+      assert(DAT: exists id_to _ofs,
+                (<<IN: In (Init_addrof id_to _ofs) (gvar_init gv)>>)
+                /\ (<<SYMB: Genv.find_symbol (Sk.load_skenv sk_link) id_to = Some blk_to>>)
+                (* /\ (<<PLT :Plt blk_to (Genv.genv_next ge0)>>) *)
+            ).
+      { assert(EQ: gv.(gvar_init) = v.(gvar_init)).
+        { inv LOA. ss. inv H0; ss. }
+        rewrite EQ in *.
+        abstr (gvar_init v) dts.
+        clear - LOAD LOADA FREETHM1.
+        abstr (Genv.genv_next ge0) blk. clear_tac.
+        abstr ((Sk.load_skenv sk_link)) skenv_link. clear_tac.
+        destruct (classic (0 <= _ofs_fr < init_data_list_size dts)); cycle 1.
+        {
+          hexploit Mem.loadbytes_range_perm; try apply LOAD; et. intro PERM.
+          exploit FREETHM1; et.
+          { r in PERM. eapply PERM; et. instantiate (1:= _ofs_fr). xomega. }
+          i; des. xomega.
+        }
+        rename H into RANGE.
+        clear FREETHM1.
+        assert(POS: 0 <= 0) by xomega.
+        change (init_data_list_size dts) with (0 + init_data_list_size dts) in RANGE.
+        revert_until skenv_link.
+        generalize 0 at 1 2 3 5 as ofs. i.
+        (* generalize 0 at 1 2 4 as ofs. i. *)
+        ginduction dts; ii; ss.
+        { xomega. }
+        try rewrite Z.add_assoc in *.
+        assert(LOADB: Mem.loadbytes m1 blk (ofs + init_data_size a) (init_data_list_size dts) =
+                      Some (Genv.bytes_of_init_data_list skenv_link dts) /\
+                      <<LOADC: Mem.loadbytes m1 blk ofs (init_data_size a) =
+                               Some (Genv.bytes_of_init_data skenv_link a)>>).
+        { exploit Mem.loadbytes_split; et; try xomega.
+          { admit "ez - init_data_size_pos". }
+          { admit "ez - init_data_list_size_pos". }
+          i; des.
+          exploit Mem.loadbytes_length; try apply H; et. intro LEN0.
+          exploit Mem.loadbytes_length; try apply H0; et. intro LEN1.
+          rewrite H. rewrite H0. clear - LEN0 LEN1 H1.
+          generalize (Genv_bytes_of_init_data_length skenv_link a); intro LEN2.
+          admit "ez".
+        }
+        des.
+        destruct (classic ((ofs + init_data_size a) <= _ofs_fr)).
+        - exploit IHdts; et; try xomega.
+          { admit "ez - init_data_size_pos". }
+          i; des. esplits; et.
+        - clear IHdts LOADB LOADA.
+          rename a into aa.
+          Local Opaque Z.add.
+          destruct aa; ss.
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - encode_int vs fragment of ptr".
+          + admit "ez - byte vs fragment of ptr".
+          + des_ifs_safe. des_ifs; cycle 1.
+            { admit "ez - Undef vs fragment of ptr". }
+            esplits; et.
+            * admit "ez - Vptr blk_to vs Vptr b".
+      }
+      des.
+      bar. inv WF. exploit WFPTR; et. i ;des. esplits; et.
+      apply Genv.find_invert_symbol. ss.
+Qed.
+
+
+Let link_load_skenv_wf_sem_mult: forall
+    md sk_link
+    (WF: Sk.wf md)
+    (LO: linkorder md sk_link)
+    idgs
+    (INCL: incl idgs sk_link.(prog_defs))
+    (NODUP: NoDup (prog_defs_names md))
+    (NODUP: NoDup (prog_defs_names sk_link))
+    (NODUP: NoDup (map fst idgs))
+    m0 m1
+    (LOADM: Genv.alloc_globals (Sk.load_skenv sk_link) m0 idgs = Some m1)
+    ge0
+    (NOTIN: forall id (IN: In id (map fst idgs)), Genv.find_symbol ge0 id = None)
+    (WFM: wf_mem_weak (Sk.load_skenv sk_link) ge0 md m0)
+    (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
+    (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
+  ,
+    <<WFM: wf_mem_weak (Sk.load_skenv sk_link) (Genv.add_globals ge0 idgs) md m1>>
+           /\ <<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link)
+                                               (Genv.add_globals ge0 idgs) m1>>
+                                               /\ <<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>
+.
+Proof.
+  i.
+  generalize dependent ge0.
+  generalize dependent m0.
+  generalize dependent m1.
+  (* generalize dependent FRESH. *)
+  induction idgs; ii; ss.
+  { clarify. }
+  des_ifs.
+  destruct a.
+  exploit link_load_skenv_wf_sem_one; et.
+  { eapply INCL; et. s. et. }
+  i; des.
+  exploit IHidgs; try apply WFM0; et.
+  { ii. eapply INCL; et. s. et. }
+  { ss. inv NODUP1. ss. }
+  { i. uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs.
+    - inv NODUP1. ss.
+    - apply NOTIN. right. ss. }
+  { s. clear - WFMB0 Heq. admit "ez". }
+  i; des.
+  esplits; et.
+Qed.
+
+Lemma link_load_skenv_wf_mem
+      p sk_link m_init
+      (LINK: link_sk p = Some sk_link)
+      (WF: forall md (IN: In md p), Sk.wf md)
+      (LOADM: Sk.load_mem sk_link = Some m_init)
+  :
+    let skenv_link := Sk.load_skenv sk_link in
+    <<WFM: forall md (IN: In md p), SkEnv.wf_mem skenv_link md m_init>>
+.
+Proof.
+  econs. i.
+  unfold link_sk in *.
+  hexploit (link_list_linkorder _ LINK); et. intro LO. des.
+  rewrite Forall_forall in *.
+  exploit LO; et.
+  { rewrite in_map_iff. esplits; et. }
+  clear LO.
+  intro LO.
+  exploit WF; et. clear WF. intro WF; des.
+  assert(NODUP: NoDup (prog_defs_names sk_link)).
+  { clear - LINK IN WF. destruct p; ss. destruct p; ss.
+    - des; ss. clarify. unfold link_list in *. des_ifs. ss. clarify. apply WF.
+    - clear IN WF.
+      exploit (link_list_cons_inv _ LINK); et.
+      { ss. }
+      i; des.
+      clear - HD.
+      Local Transparent Linker_prog.
+      ss.
+      Local Opaque Linker_prog.
+      unfold link_prog in *. des_ifs.
+      apply NoDup_norepet.
+      unfold prog_defs_names.
+      apply PTree.elements_keys_norepet.
+  }
+  clear LINK IN.
+
+
+  {
+    eapply link_load_skenv_wf_sem_mult; et.
+    { refl. }
+    { apply WF. }
+    { i. uge. ss. rewrite PTree.gempty. ss. }
+    { econs; et. i. exfalso. clear - LOAD0. admit "ez". }
+    { rr. ii. exfalso. clear - H. admit "ez". }
+    { ss. }
+  }
+Qed.
+
+End WFMEM.
+

@@ -133,6 +133,21 @@ Module Sk.
     all: ss.
   Qed.
 
+  Lemma of_program_defs_names
+        F V
+        get_sg
+        (p: AST.program (AST.fundef F) V)
+    :
+      (of_program get_sg p).(prog_defs_names) = p.(prog_defs_names)
+  .
+  Proof.
+    destruct p; ss.
+    Local Opaque in_dec.
+    u; ss.
+    Local Transparent in_dec.
+    rewrite map_map. ss.
+  Qed.
+
   Lemma of_program_defs
         F V
         get_sg
@@ -141,13 +156,7 @@ Module Sk.
       (of_program get_sg p).(defs) = p.(defs)
   .
   Proof.
-    destruct p; ss.
-    Local Opaque in_dec.
-    u; ss.
-    Local Transparent in_dec.
-    apply Axioms.functional_extensionality. intro id; ss.
-    Check (in_dec ident_eq id (map fst prog_defs)).
-    rewrite map_map. ss.
+    unfold defs. rewrite of_program_defs_names; ss.
   Qed.
 
   Local Opaque prog_defmap.
@@ -208,6 +217,19 @@ Module Sk.
 
   Definition empty: t := (mkprogram [] [] 1%positive).
 
+  Inductive wf (sk: t): Prop :=
+  | wf_intro
+      (NODUP: NoDup sk.(prog_defs_names)) (* list_norepet *)
+      (WFPTR: forall
+          id_fr gv
+          (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
+          (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
+          id_to _ofs
+          (INDAT: In (Init_addrof id_to _ofs) gv.(gvar_init))
+        ,
+          <<IN: In id_to sk.(prog_defs_names)>>)
+  .
+
 End Sk.
 
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
@@ -230,6 +252,27 @@ Module SkEnv.
         (DEF: skenv.(Genv.find_def) blk = Some skd)
      ,
        <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>>)
+  .
+
+  Inductive wf_mem (skenv: t) (sk: Sk.t) (m0: mem): Prop :=
+  | wf_mem_intro
+      (WFPTR: forall
+          blk_fr _ofs_fr
+          blk_to _ofs_to
+          id_fr
+          _q _n
+          (SYMB: skenv.(Genv.find_symbol) id_fr = Some blk_fr)
+          (* (IN: In id_fr sk.(prog_defs_names)) *)
+          gv
+          (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
+          (NONVOL: gv.(gvar_volatile) = false)
+          (DEFINITIVE: classify_init gv.(gvar_init) = Init_definitive gv.(gvar_init))
+          (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
+          (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to true) _q _n])
+        ,
+          exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)
+                        /\ (<<IN: In id_to sk.(prog_defs_names)>>)
+      )
   .
 
   Lemma load_skenv_wf

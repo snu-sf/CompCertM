@@ -513,6 +513,9 @@ Next Obligation.
   ss.
 Qed.
 Next Obligation.
+  rr in SIMSK. clarify.
+Qed.
+Next Obligation.
   eapply SimSymbId.sim_sk_link; eauto.
 Qed.
 Next Obligation.

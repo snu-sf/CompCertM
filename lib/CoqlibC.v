@@ -1299,3 +1299,12 @@ Ltac itl TERM :=
       fail
     ]
 .
+
+Lemma NoDup_norepet
+      X (xs: list X)
+  :
+    NoDup xs <-> list_norepet xs
+.
+Proof.
+  admit "ez - TODO: move to CoqlibC".
+Qed.

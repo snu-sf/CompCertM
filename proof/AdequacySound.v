@@ -164,7 +164,7 @@ Section ADQSOUND.
     { esplits; eauto. refl. }
     i; des.
     esplits; eauto.
-    assert(WF: SkEnv.wf (Sk.load_skenv sk_link_src)).
+    assert(WFSKE: SkEnv.wf (Sk.load_skenv sk_link_src)).
     { eapply SkEnv.load_skenv_wf. }
     assert(GE: sound_ge su_init m_init).
     {
@@ -172,10 +172,13 @@ Section ADQSOUND.
       rewrite in_map_iff in IN.
       des; ss; clarify.
       + s. rewrite <- Sound.system_skenv; eauto.
-      + eapply Sound.skenv_project; eauto.
-        eapply Mod.get_modsem_projected_sk; eauto.
-        unfold p_src in IN0. unfold ProgPair.src in *. rewrite in_map_iff in IN0. des. clarify.
-        eapply INCLSRC; et.
+      + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) x0.(Mod.sk)).
+        { unfold p_src in IN0. unfold ProgPair.src in *. rewrite in_map_iff in IN0. des. clarify.
+          eapply INCLSRC; et.
+        }
+        eapply Sound.skenv_project; eauto.
+        { eapply link_load_skenv_wf_mem; et. }
+        rewrite <- Mod.get_modsem_skenv_spec; ss. eapply SkEnv.project_impl_spec; et.
     }
     econs; eauto.
     - eapply Sound.greatest_adq; eauto.

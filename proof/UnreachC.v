@@ -764,8 +764,8 @@ Lemma smatch_proj: forall m b p (GOOD: exists id, bc2 b = BCglob id)
                                            blk ofs
                                            (PTR: v = Vptr blk ofs true)
                             , exists id, bc2 blk = BCglob id)
-                          (GOODMEMVAL: forall lo_ hi_ mv
-                                           (LOAD: Mem.loadbytes m b lo_ hi_ = Some mv)
+                          (GOODMEMVAL: forall lo_ mv
+                                           (LOAD: Mem.loadbytes m b lo_ 1 = Some mv)
                                            blk ofs q n
                                            (PTR: mv = [Fragment (Vptr blk ofs true) q n])
                             , exists id, bc2 blk = BCglob id)
@@ -784,8 +784,8 @@ Lemma bmatch_proj: forall m b ab (GOOD: exists id, bc2 b = BCglob id)
                                            blk ofs
                                            (PTR: v = Vptr blk ofs true)
                             , exists id, bc2 blk = BCglob id)
-                          (GOODMEMVAL: forall lo_ hi_ mv
-                                           (LOAD: Mem.loadbytes m b lo_ hi_ = Some mv)
+                          (GOODMEMVAL: forall lo_ mv
+                                           (LOAD: Mem.loadbytes m b lo_ 1 = Some mv)
                                            blk ofs q n
                                            (PTR: mv = [Fragment (Vptr blk ofs true) q n])
                             , exists id, bc2 blk = BCglob id)
@@ -923,22 +923,64 @@ Next Obligation.
     esplits; et.
     eapply bmatch_proj; et.
     { admit "ez". }
-    { i. clarify. admit "hard - we need good-prog". }
-    { i. clarify. admit "hard - we need good-prog". }
+    { i. clarify. admit "ez - this is weaker version of below.
+Maybe you can remove this condition from bmatch_proj upfront. (I think it is easier to do so)
+". }
+    { i. clarify.
+      inv WFM. s in BC. des_ifs_safe.
+      apply Genv.invert_find_symbol in Heq.
+      assert(TT: defs sk id).
+      { apply NNPP. intro. exploit SYMBDROP; et. i; des. clarify. }
+      dup TT. unfold defs in TT. des_sumbool. eapply prog_defmap_spec in TT; et. des.
+      assert(exists gv, g = Gvar gv /\ gv.(gvar_volatile) = false /\ definitive_initializer gv.(gvar_init)).
+      {
+        unfold romem_for_ske in RO. des_ifs. bsimpl. des. unfold Genv.find_var_info in *. des_ifs.
+        rename g into gg.
+        inv INCL.
+        exploit DEFS; et. i; des.
+        assert(b = blk0).
+        { rewrite SYMBKEEP in *; et. clarify. }
+        clarify.
+        exploit DEFKEPT; et.
+        { apply Genv.find_invert_symbol; et. }
+        i; des. ss. clarify. inv MATCH. esplits; et.
+      }
+      des. clarify.
+      exploit WFPTR; et.
+      { rewrite <- SYMBKEEP; et. }
+      { apply in_prog_defmap; et. }
+      { clear - H4. unfold definitive_initializer in *. des_ifs. }
+      i; des.
+      exists id_to.
+      ss.
+      assert(LT: plt blk (Genv.genv_next skenv0)).
+      { rewrite <- NEXT. admit "ez". }
+      des_ifs_safe.
+      apply Genv.invert_find_symbol in SYMB.
+      assert(TTT: defs sk id_to).
+      { unfold defs. des_sumbool. ss. }
+      exploit (SYMBKEEP id_to); et. intro EQ. rewrite SYMB in *. apply Genv.find_invert_symbol in EQ.
+      rewrite EQ. ss.
+    }
 Qed.
 Next Obligation.
-  admit "hard - system - this axiom should be removed in project-only-internals".
-  (* split; i; inv H; ss. *)
-  (* - econs; eauto. *)
-  (*   i. eapply RO; eauto. *)
-  (*   unfold Genv.find_var_info in *. des_ifs_safe. *)
-  (*   unfold System.skenv in *. *)
-  (*   apply_all_once Genv_map_defs_def. des. des_ifs. *)
-  (* - econs; eauto. *)
-  (*   i. eapply RO; eauto. *)
-  (*   unfold Genv.find_var_info in *. des_ifs_safe. *)
-  (*   unfold System.skenv. *)
-  (*   eapply_all_once Genv_map_defs_def_inv. rewrite Heq. ss. *)
+  assert(BC: (ske2bc (System.skenv skenv_link)) = (ske2bc skenv_link)).
+  { apply bc_eta. i. ss. }
+  assert(RM: (romem_for_ske (System.skenv skenv_link)) = (romem_for_ske skenv_link)).
+  { apply func_ext1. intro id.
+    unfold romem_for_ske. unfold System.skenv. rewrite Genv_map_defs_symb.
+    destruct (Genv.find_symbol skenv_link id) eqn:SYMB; ss.
+    destruct (Genv.find_var_info skenv_link b ) eqn:VAR; ss.
+    - unfold Genv.find_var_info in *. des_ifs_safe.
+      erewrite Genv_map_defs_def_inv; et. ss.
+    - unfold Genv.find_var_info in *. des_ifs_safe.
+      exploit Genv_map_defs_def; et. i; des. des_ifs.
+  }
+  split; i; inv H; ss.
+  - econs; eauto.
+    rpapply ROMATCH; ss.
+  - econs; eauto.
+    rpapply ROMATCH; ss.
 Qed.
 Next Obligation.
   set (CTX := Val.mi_normal).

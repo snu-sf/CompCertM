@@ -202,14 +202,12 @@ Module CSkEnv.
         rewrite CSk.of_program_defs in *. rewrite CSk.of_program_internals in *.
         assert(DEF: defs prog i).
         { u. des_sumbool. eapply prog_defmap_spec; et. }
-        exploit DEFKEPT; et.
-        { eapply Genv.find_invert_symbol; et.
-          rewrite <- SYMBKEEP; et.
-          eapply Genv.invert_find_symbol; et.
-        }
-        intro T; des.
+        exploit DEFKEPT; et. intro T; des.
+        assert(id = i).
+        { eapply Genv.genv_vars_inj; try apply SYMBSMALL. apply Genv.invert_find_symbol in Heq0. ss. }
+        clarify.
         ss. rename g into gg. rename gd1 into gg1. bsimpl.
-        unfold ASTC.internals in T. des_ifs. ss. unfold NW in *. bsimpl. congruence.
+        unfold ASTC.internals in T1. des_ifs. ss. unfold NW in *. bsimpl. congruence.
     -
       dup H. u in DEFS. unfold ident in *. spc DEFS.
       exploit DEFS; clear DEFS.
@@ -227,7 +225,7 @@ Module CSkEnv.
       inv INCL.
       bar.
       assert(defs (CSk.of_program get_sg prog) id).
-      { apply NNPP. ii. exploit SYMBDROP; et. i; des. clarify. }
+      { rewrite CSk.of_program_defs. u. des_sumbool. eapply prog_defmap_image; et. }
       exploit SYMBKEEP; et. intro SYMBLINK; des. rewrite Heq in *. symmetry in SYMBLINK.
       exploit Genv.find_invert_symbol; et. intro INVLINK.
       hexploit (CSk.of_program_prog_defmap prog get_sg id); et. intro REL.
@@ -257,6 +255,8 @@ Module CSkEnv.
           bar.
           des_ifs. uge.
           exploit DEFKEPT; et. i; des. clarify.
+          assert(id = id0).
+          { eapply Genv.genv_vars_inj; try apply SYMBSMALL. apply Genv.invert_find_symbol in Heq0. ss. }
           rewrite CSk.of_program_internals in *.
           u in H4. des_ifs. bsimpl. ss. clarify.
         - etrans; cycle 1.

@@ -401,7 +401,7 @@ c0 + empty
     destruct (Genv.invert_symbol skenv_link blk) eqn:LINKINV; cycle 1; ss.
     des_ifs.
     exploit Genv.invert_find_symbol; eauto. i.
-    exploit SYMBKEEP; eauto. { eapply internals_defs; et. } i. rewrite <- H0 in H.
+    exploit SYMBKEEP; eauto. { rewrite internals_defs; et. } i. rewrite <- H0 in H.
     exploit Genv.find_invert_symbol; eauto. i.
     rewrite H1 in VAR. unfold o_bind in VAR; ss.
     assert (defs prog i).
@@ -471,6 +471,7 @@ c0 + empty
     destruct skenv_link_wf. destruct proj_wf.
     unfold Genv.public_symbol in *. des_ifs; ss.
     - rewrite Genv.globalenv_public. ss.
+      unfold skenv_link. rewrite Genv.globalenv_public. unfold link_sk, link_list, tprog in LINK_SK_TGT. ss. clarify. rewrite <- H0. ss.
     - rewrite symbol_same in Heq. rewrite Heq in Heq0. clarify.
     - rewrite symbol_same in Heq. rewrite Heq in Heq0. clarify.
   Qed.
@@ -708,8 +709,8 @@ c0 + empty
     exploit DEFSYMB; eauto. i. des.
     exploit Genv.find_invert_symbol; eauto. i. rewrite H2 in Heq. ss.
     assert (defs prog id).
-    { rewrite CSk.of_program_internals in *. des_ifs_safe. eapply internals_defs; et. }
-    exploit (SYMBKEEP id); ss. { rewrite CSk.of_program_defs; ss. } i.
+    { rewrite CSk.of_program_internals in *. des_ifs_safe. rewrite internals_defs; et. }
+    exploit (SYMBKEEP id); ss. { left. rewrite CSk.of_program_defs; ss. } i.
     dup H. rewrite <- H4 in H.
     exploit Genv.find_invert_symbol. eapply H. i. rewrite H6.
     unfold o_bind. ss. rewrite id_in_prog in H3. rewrite prog_defmap_spec in H3. des.

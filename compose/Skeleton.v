@@ -323,12 +323,12 @@ Module SkEnv.
       (*     (<<SMALL: skenv_proj.(Genv.find_symbol) id = Some blk>>)) *)
       (SYMBKEEP: forall
           id
-          (KEEP: prog.(defs) id)
+          (KEEP: prog.(defs) id \/ In id skenv.(Genv.genv_public))
         ,
           (<<KEEP: skenv_proj.(Genv.find_symbol) id = skenv.(Genv.find_symbol) id>>))
       (SYMBDROP: forall
           id
-          (DROP: ~ prog.(defs) id)
+          (DROP: ~ prog.(defs) id /\ ~ In id skenv_proj.(Genv.genv_public))
         ,
           <<NONE: skenv_proj.(Genv.find_symbol) id = None>>)
       (* (DEFKEEP: forall *)
@@ -364,11 +364,11 @@ Module SkEnv.
                                     /\ <<LO: linkorder gd_small gd_big>>
                                     /\ <<PROG: prog.(prog_defmap) ! id = Some gd_small>>)
       (DEFKEPT: forall
-          id blk
-          (INV: skenv.(Genv.invert_symbol) blk = Some id)
+          blk
           gd_small
           (SMALL: skenv_proj.(Genv.find_def) blk = Some gd_small)
         ,
+          exists id, <<SYMBSMALL: skenv_proj.(Genv.find_symbol) id = Some blk>> /\ <<SYMBBIG: skenv.(Genv.find_symbol) id = Some blk>> /\
           <<KEEP: prog.(internals) id>> /\ <<INTERNAL: ~is_external gd_small>>
                                         /\ <<PROG: prog.(prog_defmap) ! id = Some gd_small>> /\
           exists gd_big, <<DEFBIG: skenv.(Genv.find_def) blk = Some gd_big>> /\ <<LO: linkorder gd_small gd_big>>)
@@ -377,7 +377,16 @@ Module SkEnv.
           (INV: skenv.(Genv.invert_symbol) blk = None)
         ,
           <<SMALL: skenv_proj.(Genv.find_def) blk = None>>)
-      (PUBLIC: prog.(prog_public) = skenv_proj.(Genv.genv_public))
+      (PUBLIC: skenv.(Genv.genv_public) = skenv_proj.(Genv.genv_public))
+
+      (* Note: Below predicates are actually derivable from "SYMBKEEP" and "PUBLIC" *)
+      (SYMBKEPT: forall
+          id blk
+          (SYMB: skenv_proj.(Genv.find_symbol) id = Some blk)
+        ,
+          <<SYMB: skenv.(Genv.find_symbol) id = Some blk>>
+          /\ <<KEEP: prog.(defs) id \/ In id skenv.(Genv.genv_public)>>)
+      (PUBSYMB: skenv.(Genv.public_symbol) = skenv_proj.(Genv.public_symbol))
   .
 
   (* NOTE: it is total function! This is helpful because we don't need to state bsim of this, like
@@ -385,7 +394,7 @@ Module SkEnv.
 I think "sim_skenv_monotone" should be sufficient.
    *)
   Definition project (skenv: t) (prog: Sk.t): t :=
-    ((Genv_update_publics skenv prog.(prog_public)).(Genv_filter_symb) (fun id => prog.(defs) id))
+    (skenv.(Genv_filter_symb) (fun id => orb (prog.(defs) id) (in_dec ident_eq id skenv.(Genv.genv_public))))
     .(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
                                        assertion(prog.(internals) id);
                                        (* assertion(prog.(defs) id); *)
@@ -415,8 +424,8 @@ I think "sim_skenv_monotone" should be sufficient.
     u.
     unfold project in *. ss.
     econs; eauto; unfold Genv.find_symbol, Genv.find_def, Genv_map_defs in *; ss; ii.
-    - rewrite PTree_filter_key_spec. des_ifs.
-    - rewrite PTree_filter_key_spec. des_ifs.
+    - rewrite PTree_filter_key_spec. des_ifs. bsimpl. des; des_sumbool; clarify.
+    - rewrite PTree_filter_key_spec. des_ifs. bsimpl. des; des_sumbool; clarify.
     - rewrite PTree_filter_map_spec. des_ifs.
       inv INCL.
       assert(exists gd_big, (prog_defmap prog) ! id = Some gd_big).
@@ -435,10 +444,19 @@ I think "sim_skenv_monotone" should be sufficient.
         apply_all_once Genv.invert_find_symbol. clarify. uge. clarify.
       }
       esplits; et.
-      des_ifs_safe.
-      bsimpl. i; clarify.
+      + rewrite PTree_filter_key_spec.
+        assert((in_dec ident_eq i (prog_defs_names prog) || in_dec ident_eq i (Genv.genv_public skenv)) = true).
+        { apply orb_true_iff. left. des_sumbool. eapply prog_defmap_image; et. }
+        unfold not in *. rewrite H. apply Genv.invert_find_symbol in Heq1. ss.
+      + apply Genv.invert_find_symbol in Heq1. ss.
+      + rewrite Heq3. ss.
+      + des_ifs_safe. bsimpl. i; clarify.
     - rewrite PTree_filter_map_spec. des_ifs.
       u. des_ifs.
+    - rewrite PTree_filter_key_spec in *. des_ifs.
+      esplits; et. bsimpl. des; des_sumbool; et.
+    - unfold Genv.public_symbol. ss. uge. ss. apply func_ext1. i. rewrite PTree_filter_key_spec in *. des_ifs.
+      bsimpl. des. ss.
   Qed.
 
   Inductive wf_proj (skenv: t): Prop :=
@@ -467,9 +485,8 @@ I think "sim_skenv_monotone" should be sufficient.
     rename i into id.
     exploit Genv.invert_find_symbol; eauto. intro TT.
     exploit DEFKEPT; eauto. i; des.
-    u in H. des_ifs_safe.
+    u in H1. des_ifs_safe.
     esplits; eauto.
-    { erewrite SYMBKEEP; eauto. u. des_sumbool. eapply prog_defmap_image; et. }
   Qed.
 
   (* Definition project (skenv: t) (ids: list ident): option SkEnv.t. *)
@@ -551,14 +568,12 @@ I think "sim_skenv_monotone" should be sufficient.
         rewrite Sk.of_program_defs in *. rewrite Sk.of_program_internals in *.
         assert(DEF: defs prog i).
         { u. des_sumbool. eapply prog_defmap_spec; et. }
-        exploit DEFKEPT; et.
-        { eapply Genv.find_invert_symbol; et.
-          rewrite <- SYMBKEEP; et.
-          eapply Genv.invert_find_symbol; et.
-        }
-        intro T; des.
+        exploit DEFKEPT; et. intro T; des.
+        assert(id = i).
+        { eapply Genv.genv_vars_inj; try apply SYMBSMALL. apply Genv.invert_find_symbol in Heq0. ss. }
+        clarify.
         ss. rename g into gg. rename gd1 into gg1. bsimpl.
-        unfold ASTC.internals in T. des_ifs. ss. unfold NW in *. bsimpl. congruence.
+        unfold ASTC.internals in T1. des_ifs. ss. unfold NW in *. bsimpl. congruence.
     -
       dup H. u in DEFS. unfold ident in *. spc DEFS.
       exploit DEFS; clear DEFS.
@@ -576,7 +591,7 @@ I think "sim_skenv_monotone" should be sufficient.
       inv INCL.
       bar.
       assert(defs (Sk.of_program get_sg prog) id).
-      { apply NNPP. ii. exploit SYMBDROP; et. i; des. clarify. }
+      { rewrite Sk.of_program_defs. u. des_sumbool. eapply prog_defmap_image; et. }
       exploit SYMBKEEP; et. intro SYMBLINK; des. rewrite Heq in *. symmetry in SYMBLINK.
       exploit Genv.find_invert_symbol; et. intro INVLINK.
       hexploit (Sk.of_program_prog_defmap prog get_sg id); et. intro REL.
@@ -606,6 +621,8 @@ I think "sim_skenv_monotone" should be sufficient.
           bar.
           des_ifs. uge.
           exploit DEFKEPT; et. i; des. clarify.
+          assert(id = id0).
+          { eapply Genv.genv_vars_inj; try apply SYMBSMALL. apply Genv.invert_find_symbol in Heq0. ss. }
           rewrite Sk.of_program_internals in *.
           u in H4. des_ifs. bsimpl. ss. clarify.
         - etrans; cycle 1.

@@ -90,38 +90,111 @@ Proof.
   exploit SimSymbDrop.sim_skenv_symbols_inject; eauto. intro SYMBOLSINJ. des.
   assert(SYMBOLSINJ0: symbols_inject (SimMemInj.inj sm_arg) ge tge).
   {
-    admit "ez".
-    (* exploit SkEnv.project_revive_precise; try apply INCLSRC; eauto. *)
-    (* { eapply SkEnv.project_impl_spec; eauto. } *)
-    (* intro PRESRC. *)
-    (* exploit SkEnv.project_revive_precise; try apply INCLTGT; eauto. *)
-    (* { eapply SkEnv.project_impl_spec; eauto. } *)
-    (* intro PRETGT. *)
-    (* clear - SYMBOLSINJ. *)
-    (* (* TODO: make lemma !!!!!!!!!!!!! *) *)
-    (* subst ge tge. *)
-    (* abstr (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) proj_src. *)
-    (* abstr (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig tprog)) proj_tgt. *)
-    (* unfold symbols_inject in *. des. ss. *)
-    (* esplits; eauto. *)
-    (* ii. *)
-    (* exploit SYMBOLSINJ2; eauto. intro T. *)
-    (* unfold Genv.block_is_volatile, Genv.find_var_info in T. *)
-    (* unfold Genv.block_is_volatile, Genv.find_var_info. *)
-    (* destruct (Genv.find_def (SkEnv.revive proj_src prog) b1) eqn:DSRC; *)
-    (*   destruct (Genv.find_def (SkEnv.revive proj_tgt tprog) b2) eqn:DTGT; *)
-    (*   unfold SkEnv.revive in *; *)
-    (*   apply_all_once Genv_map_defs_def; des. *)
-    (* { uo. des_ifs_safe. ss. *)
-    (* destruct (Genv.find_def proj_src b1) eqn:DSRC; cycle 1. *)
-    (* { *)
-    (*   destruct (Genv.find_def proj_tgt b2) eqn:DTGT; cycle 1. *)
-    (*   cycle 1. *)
-    (*   des_ifs_safe. ss. *)
-    (* unfold SkEnv.revive. *)
-    (* erewrite Genv_map_defs_def. eauto. *)
-    (* erewrite Genv_map_defs_def_inv. eauto. *)
-    (* des_ifs_safe. *)
+    clear SIMSKENV.
+    exploit SkEnv.project_revive_precise; try apply INCLSRC; eauto.
+    { eapply SkEnv.project_impl_spec; eauto. }
+    intro PRESRC.
+    exploit SkEnv.project_revive_precise; try apply INCLTGT; eauto.
+    { eapply SkEnv.project_impl_spec; eauto. }
+    intro PRETGT.
+    des. unfold fundef in *. unfold Mod.sk in *. ss. folder.
+
+    unfold symbols_inject in *. des. ss.
+    esplits; eauto.
+    i.
+    exploit SYMBOLSINJ2; et. intro EQ.
+    rpapply EQ.
+    - clear - PRETGT INCLTGT.
+      exploit SkEnv.project_impl_spec; et. intro PROJTGT.
+      unfold Genv.block_is_volatile, Genv.find_var_info.
+      destruct (Genv.find_def tge b2) eqn:T.
+      + inv PRETGT. exploit GE2P; et. i; des.
+        inv INCLTGT.
+        generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL.
+        rewrite PROG in *. inv REL. symmetry in H0.
+        exploit DEFS; et. i; des.
+        inv PROJTGT.
+        assert(b2 = blk).
+        { exploit (SYMBKEPT id); et. i; des_safe. (* TODO: fix it !!!!!!!!!!!!!! *) destruct H.
+          des_safe. (* TODO: multimatch !!!!!!!!!!!!!!!!!!! *)
+          rewrite H in *.
+          clarify.
+        }
+        clarify.
+        exploit DEFKEEP; et.
+        { eapply Genv.find_invert_symbol; et. }
+        { rewrite Sk.of_program_internals. u. des_ifs. ss. destruct (is_external_ef e); ss. }
+        i; des.
+        rewrite DEFSMALL.
+        rename g into gg.
+        destruct gd1; ss.
+        * inv LO. inv MATCH. inv H1. ss.
+        * inv LO. inv MATCH. inv H1. ss.
+          inv H5; ss. inv H4; ss. inv H3; ss.
+      + destruct (Genv.find_def (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig tprog))) eqn:T0; ss.
+        exfalso.
+        inv PROJTGT.
+        exploit DEFKEPT; et. i; des.
+        inv PRETGT.
+        generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL.
+        rewrite PROG in *. inv REL. symmetry in H.
+        exploit P2GE; et. i; des.
+        assert(b2 = b).
+        { clear - SYMB SYMBBIG.
+          subst tge. unfold SkEnv.revive in *. (* TODO: make lemma!!!!!!!!!!!!!! *) uge. ss.
+          rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
+        }
+        clarify.
+        rewrite T in *.
+        des_ifs. bsimpl.
+        inv H2; ss.
+        rr in H3. des_ifs. des_sumbool. clarify.
+    - (*TODO: copy of above. make lemma *)
+      clear - PRESRC INCLSRC.
+      exploit SkEnv.project_impl_spec; et. intro PROJSRC.
+      unfold Genv.block_is_volatile, Genv.find_var_info.
+      destruct (Genv.find_def ge b1) eqn:T.
+      + inv PRESRC. exploit GE2P; et. i; des.
+        inv INCLSRC.
+        generalize (Sk.of_program_prog_defmap prog fn_sig id). intro REL.
+        rewrite PROG in *. inv REL. symmetry in H0.
+        exploit DEFS; et. i; des.
+        inv PROJSRC.
+        assert(b1 = blk).
+        { exploit (SYMBKEPT id); et. i; des_safe. (* TODO: fix it !!!!!!!!!!!!!! *) destruct H.
+          des_safe. (* TODO: multimatch !!!!!!!!!!!!!!!!!!! *)
+          rewrite H in *.
+          clarify.
+        }
+        clarify.
+        exploit DEFKEEP; et.
+        { eapply Genv.find_invert_symbol; et. }
+        { rewrite Sk.of_program_internals. u. des_ifs. ss. destruct (is_external_ef e); ss. }
+        i; des.
+        rewrite DEFSMALL.
+        rename g into gg.
+        destruct gd1; ss.
+        * inv LO. inv MATCH. inv H1. ss.
+        * inv LO. inv MATCH. inv H1. ss.
+          inv H5; ss. inv H4; ss. inv H3; ss.
+      + destruct (Genv.find_def (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog))) eqn:T0; ss.
+        exfalso.
+        inv PROJSRC.
+        exploit DEFKEPT; et. i; des.
+        inv PRESRC.
+        generalize (Sk.of_program_prog_defmap prog fn_sig id). intro REL.
+        rewrite PROG in *. inv REL. symmetry in H.
+        exploit P2GE; et. i; des.
+        assert(b1 = b).
+        { clear - SYMB SYMBBIG.
+          subst ge. unfold SkEnv.revive in *. (* TODO: make lemma!!!!!!!!!!!!!! *) uge. ss.
+          rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
+        }
+        clarify.
+        rewrite T in *.
+        des_ifs. bsimpl.
+        inv H2; ss.
+        rr in H3. des_ifs. des_sumbool. clarify.
   }
   inv SIMSKENV. ss. bar.
   destruct TRANSL as [used0 TRANSL0]. desH TRANSL0. clarify.

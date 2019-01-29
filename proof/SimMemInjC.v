@@ -591,52 +591,31 @@ Next Obligation.
   - eapply SimSymbId.system_sim_skenv; eauto.
 Qed.
 Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify. inv MWF; ss. clarify.
-  exploit external_call_mem_inject; try apply SAFESRC; eauto.
-  { eapply skenv_inject_meminj_preserves_globals; eauto. eapply SIMSKENV. }
-  intro SYSTGT2ND; des.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt) in SYSTGT2ND; cycle 1.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV. }
-  exploit external_call_receptive; try eapply SAFESRC; et.
-  { instantiate (1:= tr).
-    eapply match_traces_preserved with (ge1 := skenv_sys_tgt).
-    { i. symmetry. eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV. }
-    eapply external_call_determ; et.
-  }
-  intro SYSSRC2ND; des.
-  exploit external_call_mem_inject; try apply SYSSRC2ND; eauto.
-  { eapply skenv_inject_meminj_preserves_globals; eauto. eapply SIMSKENV. }
-  intro SYSTGT3RD; des.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt) in SYSTGT3RD; cycle 1.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV. }
-  exploit external_call_determ; [apply SYSTGT|apply SYSTGT3RD|..]. i; des.
-  specialize (H0 eq_refl). des. clarify.
-  eexists (mk _ _ _ _ _ _ _), (Retv.mk _ _). ss.
-  dsplits; try apply SYSSRC2ND; et.
-  - econs; ss; et.
-  - econs; ss; et.
+  destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
+  (* Note: It may be easier && more natural to use
+"external_call_mem_inject" with "external_call_symbols_preserved", instead of "external_call_mem_inject_gen" *)
+  (* exploit external_call_mem_inject_gen; eauto. *)
+  exploit external_call_mem_inject; eauto.
+  { eapply skenv_inject_meminj_preserves_globals; eauto. inv SIMSKENV; ss. }
+  i; des.
+  do 2 eexists.
+  dsplits; eauto.
+  - instantiate (1:= Retv.mk _ _); ss.
+    eapply external_call_symbols_preserved; eauto.
+    eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV.
+  - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
+  - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply inject_separated_frozen; eauto.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
-  - apply inject_separated_frozen in SYSTGT3RD5.
+  - apply inject_separated_frozen in H5.
     econs; ss.
     + eapply after_private_src; ss; eauto.
     + eapply after_private_tgt; ss; eauto.
-    + inv SYSTGT3RD2. xomega.
-    + inv SYSTGT3RD3. xomega.
-Qed.
-Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify.
-  exploit external_call_mem_inject; et.
-  { eapply skenv_inject_meminj_preserves_globals; eauto. eapply SIMSKENV. }
-  { apply MWF. }
-  i; des. eexists (Retv.mk _ _), _. s. esplits; et.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt); et.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. apply SIMSKENV. }
+    + inv H2. xomega.
+    + inv H3. xomega.
 Qed.
 
 End SIMSYMB.

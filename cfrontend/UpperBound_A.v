@@ -473,7 +473,7 @@ Section PRESERVATION.
       { (* tgt call *)
 
         (* fsim *)
-        left. right. econs; et.
+        left. econs; et.
         { i. eapply final_fsim; et. econs; et. }
 
         destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
@@ -625,7 +625,7 @@ Section PRESERVATION.
 
       destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_return) fr_tgt.(Frame.st))).
       { (* tgt return *)
-        left. right. econs; et.
+        left. econs; et.
         { i. eapply final_fsim; et. econs; et. }
         econs; et; cycle 1.
         { admit "receptive". }

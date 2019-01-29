@@ -198,15 +198,15 @@ Section MATCHSIMFORWARD.
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
     ,
-      (<<SINGLE: single_events_at ms_src st_src0>>)
+      (<<RECEP: receptive_at ms_src st_src0>>)
       /\
       (<<STEPFSIM: forall
              tr st_src1
              (STEPSRC: Step ms_src st_src0 tr st_src1)
            ,
              exists idx1 st_tgt1 sm1,
-               (<<PLUS: SDPlus ms_tgt st_tgt0 tr st_tgt1>> \/
-                           <<STAR: SDStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
+               (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/
+                           <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
                /\ (<<MLE: SimMem.le sm0 sm1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
                /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
@@ -267,7 +267,7 @@ Section MATCHSIMFORWARD.
       etrans; eauto.
     }
     {
-      eapply lxsim_step_strict_forward; eauto.
+      eapply lxsim_step_forward; eauto.
       i.
       exploit STEPFSIM; eauto. i; des.
       esplits; eauto.

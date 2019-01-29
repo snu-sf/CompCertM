@@ -142,13 +142,13 @@ Proof.
     inv MK; ss. destruct sm0; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
   - esplits; eauto.
-    { apply modsem2_strict_determinate. }
+    { apply modsem2_receptive. }
     inv MATCH.
     ii. hexploit (@transl_step prog ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     i; des.
     esplits; eauto.
-    + left. eapply spread_sdplus; eauto. eapply modsem_strict_determinate; eauto.
+    + left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.
     + instantiate (1:= SimMemId.mk _ _). econs; ss.
 Unshelve.
   all: ss; try (by econs).

@@ -1749,13 +1749,11 @@ Section PRESERVATION.
       receptive_at (sem prog) st_src.
   Proof.
     inv MTCHST; ss.
-    - admit "use strict forward simulation instead? old code:
-      eapply SemProps.lift_receptive_at. ss.
+    - eapply SemProps.lift_receptive_at. ss.
       eapply AsmC.lift_receptive_at.
       eapply semantics_receptive.
       intros EXTERN. eapply not_external in EXTERN; auto.
-      admit ""INCL"".
-".
+      admit "INCL".
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
       + ii. inv H. ss. omega.
@@ -1778,7 +1776,7 @@ Section PRESERVATION.
         * exploit step_init_simulation; try eassumption.
           i. des. econs 2; ss; eauto. rewrite LINK_SK.
           split; auto. apply star_one. eauto.
-      + left. right. econs.
+      + left. econs.
         { i. exfalso. inv FINALSRC. }
         econs; [|eapply src_receptive_at; eauto].
         i.
@@ -1786,7 +1784,7 @@ Section PRESERVATION.
         destruct (match_states_call_ord_1 MTCHST).
         exists 0%nat. exists st_tgt. split.
         { right. split; [apply star_refl|omega]. }
-        left. pfold. left. right.
+        left. pfold. left.
         econs.
         { i. exfalso. inv STEPSRC. ss. rewrite LINK_SK in *.
           destruct (find_fptr_owner_determ SYSMOD MSFIND).
@@ -1801,7 +1799,7 @@ Section PRESERVATION.
         exploit syscall_simulation; eauto.
         i. des. exists st_tgt1. split.
         { left. apply plus_one. econs; [apply asm_determinate_at|]. auto. }
-        left. pfold. left. right.
+        left. pfold. left.
         econs.
         {
           i. exfalso. inv STEPSRC. ss.
@@ -1821,7 +1819,7 @@ Section PRESERVATION.
         { right. split; auto. apply star_refl. }
         right. eauto.
       + right. econs; i; try (exfalso; eauto).
-    - left. right. econs.
+    - left. econs.
       + i. econs.
         * exploit transf_final_states; eauto.
         * i. inv FINAL0. inv FINAL1. eq_closure_tac.

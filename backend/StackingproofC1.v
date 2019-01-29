@@ -1984,7 +1984,7 @@ Proof.
 
   - (* step lemma *)
     esplits; eauto.
-    { apply LinearC.modsem_strict_determinate; et. }
+    { apply LinearC.modsem_receptive; et. }
     inv MATCH.
     ii. hexploit (@transf_step_correct prog rao ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
@@ -1993,8 +1993,8 @@ Proof.
     destruct st_tgt0. ss. folder.
     esplits; eauto.
     + left.
-      eapply spread_sdplus; et.
-      { eapply modsem_strict_determinate; eauto. }
+      eapply spread_dplus; et.
+      { eapply modsem_determinate; eauto. }
       s. folder. eapply MachC.lift_plus; et.
     + econs; ss; et.
       * inv H0; inv MCOMPAT; ss.

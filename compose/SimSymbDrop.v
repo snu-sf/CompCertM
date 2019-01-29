@@ -344,6 +344,12 @@ Next Obligation.
 Note that we have one more goal (exists ss) but it is OK, as the 'link_match_program' proof already proves it.".
 Qed.
 Next Obligation.
+  inv SIMSKE. unfold Genv.public_symbol. apply func_ext1. intro i0.
+  destruct (Genv.find_symbol skenv_tgt i0) eqn:T.
+  - exploit SIMSYMB3; et. i; des. des_ifs. rewrite PUB. ss.
+  -  des_ifs. des_sumbool. ii. eapply PUBKEPT in H. exploit SIMSYMB2; et. i; des. clarify.
+Qed.
+Next Obligation.
   admit "See 'init_meminj_preserves_globals' in Unusedglobproof.v".
 Qed.
 Next Obligation.
@@ -636,43 +642,59 @@ Next Obligation.
   - eapply PUBKEPT; eauto.
 Qed.
 Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify. inv MWF; ss. clarify.
-  exploit sim_skenv_symbols_inject; et. intro SINJ; ss. des.
-  exploit external_call_mem_inject_gen; try apply SAFESRC; eauto. intro SYSTGT2ND; des.
-  exploit external_call_receptive; try eapply SAFESRC; et.
-  { instantiate (1:= tr).
-    eapply match_traces_preserved with (ge1 := skenv_sys_tgt).
-    { clear - SINJ. ii. rr in SINJ. des. eauto. }
-    eapply external_call_determ; et.
+  destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
+  inv SIMSKENV; ss.
+  exploit external_call_mem_inject_gen; eauto.
+  { instantiate (1:= skenv_sys_tgt).
+    rr. esplits; ii; ss.
+    - unfold Genv.public_symbol.
+      rewrite <- PUB.
+      destruct (Genv.find_symbol skenv_sys_tgt id) eqn:T.
+      + exploit SIMSYMB3; et. i; des. rewrite BLKSRC. ss.
+      + des_ifs. des_sumbool. ii.
+        exploit PUBKEPT; et.
+        apply NNPP. ii.
+        exploit SIMSYMB2; et. i; des. clarify.
+    - exploit SIMSYMB1; eauto. i; des. esplits; et.
+    - exploit SIMSYMB2; eauto.
+      { ii. eapply PUBKEPT; eauto. unfold Genv.public_symbol in H. des_ifs. des_sumbool. ss. }
+      i; des.
+      esplits; eauto.
+    - unfold Genv.block_is_volatile, Genv.find_var_info.
+      destruct (Genv.find_def skenv_sys_src b1) eqn:T0.
+      { exploit SIMDEF; try eassumption.
+        i; des.
+        des_ifs.
+      }
+      destruct (Genv.find_def skenv_sys_tgt b2) eqn:T1.
+      { exploit SIMDEFINV; try eassumption.
+        i; des.
+        des_ifs.
+      }
+      ss.
   }
-  intro SYSSRC2ND; des.
-  exploit external_call_mem_inject_gen; try apply SYSSRC2ND; eauto. intro SYSTGT3RD; des.
-  exploit external_call_determ; [apply SYSTGT|apply SYSTGT3RD|..]. i; des.
-  specialize (H0 eq_refl). des. clarify.
-  eexists (mk _ _ _ _ _ _ _), (Retv.mk _ _). ss.
-  dsplits; try apply SYSSRC2ND; et.
-  - econs; ss; et.
-  - econs; ss; et.
+  i; des.
+
+
+
+
+  (* TODO: almost exactly copied from SimMemInj. we may remove duplicate code some way *)
+  do 2 eexists.
+  dsplits; eauto.
+  - instantiate (1:= Retv.mk _ _); ss. eauto.
+  - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
+  - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply inject_separated_frozen; eauto.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
-  - apply inject_separated_frozen in SYSTGT3RD5.
+  - apply inject_separated_frozen in H5.
     econs; ss.
     + eapply after_private_src; ss; eauto.
     + eapply after_private_tgt; ss; eauto.
-    + inv SYSTGT3RD2. xomega.
-    + inv SYSTGT3RD3. xomega.
-Qed.
-Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify.
-  exploit sim_skenv_symbols_inject; et. intro SINJ; ss. des.
-  exploit external_call_mem_inject_gen; et.
-  { apply MWF. }
-  i; des. eexists (Retv.mk _ _), _. s. esplits; et.
+    + inv H2. xomega.
+    + inv H3. xomega.
 Qed.
 
 End MEMINJ.

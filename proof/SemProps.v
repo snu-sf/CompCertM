@@ -340,100 +340,123 @@ Proof.
   - eapply lift_star; eauto.
 Qed.
 
-Lemma lift_sdstep
-      (ms: ModSem.t) st0 tr st1
-      (SDSTEP: SDStep ms st0 tr st1)
+Lemma lift_dstep
+      (ms: ModSem.t) st0 tr st1 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
+      (DSTEP: DStep ms st0 tr st1)
   :
-    forall prog tail,
-    <<SDSTEP: SDStep (Sem.sem prog)
+    forall tail,
+    <<DSTEP: DStep (Sem.sem prog)
                    (State ((Frame.mk ms st0) :: tail)) tr
                    (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
-  ii. destruct SDSTEP as [DTM STEP].
+  ii. destruct DSTEP as [DTM STEP].
   econs; eauto; cycle 1.
   - econs; ss; eauto.
   - inv DTM.
     econs; eauto.
     + ii. ss.
-      inv STEP0; ss; ModSem.tac.
-      inv STEP1; ss; ModSem.tac.
+      inv H; ss; ModSem.tac.
+      inv H0; ss; ModSem.tac.
       clear STEP.
-      determ_tac ssd_determ_at.
+      determ_tac sd_determ_at.
+      esplits; auto.
+      * eapply match_traces_preserved; try apply H. i. s. congruence.
+      * ii. clarify. special H0; ss. clarify.
     + ii. ss.
       inv STEP0; ss; ModSem.tac.
       inv FINAL; ss; ModSem.tac.
     + ii. inv H; ss; ModSem.tac.
-      exploit ssd_traces_at; eauto.
+      exploit sd_traces_at; eauto.
 Qed.
 
-Lemma lift_sdstar
-      (ms: ModSem.t) st0 tr st1
-      (SDSTAR: SDStar ms st0 tr st1)
+Lemma lift_dstar
+      (ms: ModSem.t) st0 tr st1 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
+      (DSTAR: DStar ms st0 tr st1)
   :
-    forall prog tail,
-    <<SDSTAR: SDStar (Sem.sem prog)
+    forall tail,
+    <<DSTAR: DStar (Sem.sem prog)
                    (State ((Frame.mk ms st0) :: tail)) tr
                    (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
-  i. ginduction SDSTAR; ii; ss.
+  i. ginduction DSTAR; ii; ss.
   - econs 1; eauto.
   - clarify. econs 2; eauto.
-    + eapply lift_sdstep; eauto.
-    + eapply IHSDSTAR; eauto.
+    + eapply lift_dstep; eauto.
+    + eapply IHDSTAR; eauto.
 Qed.
 
-Lemma lift_sdplus
-      (ms: ModSem.t) st0 tr st1
-      (SDPLUS: SDPlus ms st0 tr st1)
+Lemma lift_dplus
+      (ms: ModSem.t) st0 tr st1 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
+      (DPLUS: DPlus ms st0 tr st1)
   :
-    forall prog tail,
-    <<SDPLUS: SDPlus (Sem.sem prog)
+    forall tail,
+    <<DPLUS: DPlus (Sem.sem prog)
                    (State ((Frame.mk ms st0) :: tail)) tr
                    (State ((Frame.mk ms st1) :: tail))>>
 .
 Proof.
-  i. inv SDPLUS; ii; ss.
+  i. inv DPLUS; ii; ss.
   econs; eauto.
-  - eapply lift_sdstep; eauto.
-  - eapply lift_sdstar; eauto.
+  - eapply lift_dstep; eauto.
+  - eapply lift_dstar; eauto.
 Qed.
 
-Lemma lift_single_events_at
-      (ms: ModSem.t) st0
-      (SINGLE: single_events_at ms st0)
+Lemma lift_receptive_at
+      (ms: ModSem.t) st0 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
+      (RECEP: receptive_at ms st0)
   :
-    forall prog tail,
-    <<SINGLE: single_events_at (Sem.sem prog)
-                              (State ((Frame.mk ms st0) :: tail))>>
+    forall tail,
+    <<RECEP: receptive_at (Sem.sem prog)
+                          (State ((Frame.mk ms st0) :: tail))>>
 .
 Proof.
-  ii. ss.
+  ii. inv RECEP. ss.
+  econs; eauto; ii.
+  - inv H.
+    + inv H0. esplits; eauto. econs 1; eauto.
+    + ss.
+      exploit sr_receptive_at; eauto.
+      { eapply match_traces_preserved; try apply H0. i. s. congruence. }
+      i; des.
+      esplits; eauto.
+      econs; eauto.
+    + inv H0. esplits; eauto. econs 4; eauto.
   - inv H; s; try omega.
-    exploit SINGLE; eauto.
+    exploit sr_traces_at; eauto.
 Qed.
 
-Lemma lift_strict_determinate_at
-      (ms: ModSem.t) st0
-      (DTM: strict_determinate_at ms st0)
+Lemma lift_determinate_at
+      (ms: ModSem.t) st0 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
+      (DTM: determinate_at ms st0)
   :
-    forall prog tail,
-    <<DTM: strict_determinate_at (Sem.sem prog)
-                                 (State ((Frame.mk ms st0) :: tail))>>
+    forall tail,
+    <<DTM: determinate_at (Sem.sem prog)
+                            (State ((Frame.mk ms st0) :: tail))>>
 .
 Proof.
   ii. inv DTM. ss.
   econs; eauto; ii.
-  - inv STEP0; inv STEP1; ModSem.tac.
-    + esplits; et. f_equal. eapply ModSem.at_external_dtm; et.
-    + ss. determ_tac ssd_determ_at.
+  - inv H; inv H0; ModSem.tac.
+    + esplits; et.
+      { econs; et. }
+      i. f_equal. eapply ModSem.at_external_dtm; et.
+    + ss. determ_tac sd_determ_at. esplits; et.
+      { eapply match_traces_preserved; try apply H. i. s. congruence. }
+      i. clarify. repeat f_equal. eauto.
     + ss. esplits; et.
+      { econs; et. }
       i. repeat f_equal.
       determ_tac ModSem.final_frame_dtm. eapply ModSem.after_external_dtm; et.
   - ss. inv FINAL. ss. inv STEP; ss; ModSem.tac.
   - inv H; s; try omega.
-    exploit ssd_traces_at; eauto.
+    exploit sd_traces_at; eauto.
 Qed.
 
 (* Lemma callstate_receptive_at *)

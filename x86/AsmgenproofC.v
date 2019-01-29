@@ -95,39 +95,39 @@ Inductive match_states
     (IDX: measure st_src0.(MachC.st) = idx)
 .
 
-Lemma asm_step_sdstep init_rs st0 st1 tr
+Lemma asm_step_dstep init_rs st0 st1 tr
       (STEP: Asm.step tge st0 tr st1)
   :
-    Simulation.SDStep (modsem skenv_link_tgt tprog)
+    Simulation.DStep (modsem skenv_link_tgt tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
   econs.
-  - eapply modsem_strict_determinate; et.
+  - eapply modsem_determinate; et.
   - econs; auto.
 Qed.
 
-Lemma asm_star_sdstar init_rs st0 st1 tr
+Lemma asm_star_dstar init_rs st0 st1 tr
       (STEP: star Asm.step tge st0 tr st1)
   :
-    Simulation.SDStar (modsem skenv_link_tgt tprog)
+    Simulation.DStar (modsem skenv_link_tgt tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
   induction STEP; econs; eauto.
-  eapply asm_step_sdstep; auto.
+  eapply asm_step_dstep; auto.
 Qed.
 
-Lemma asm_plus_sdplus init_rs st0 st1 tr
+Lemma asm_plus_dplus init_rs st0 st1 tr
       (STEP: plus Asm.step tge st0 tr st1)
   :
-    Simulation.SDPlus (modsem skenv_link_tgt tprog)
+    Simulation.DPlus (modsem skenv_link_tgt tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
   inv STEP. econs; eauto.
-  - eapply asm_step_sdstep; eauto.
-  - eapply asm_star_sdstar; eauto.
+  - eapply asm_step_dstep; eauto.
+  - eapply asm_star_dstar; eauto.
 Qed.
 
 Let SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
@@ -369,7 +369,7 @@ Proof.
     + ss.
 
   - ss. esplits.
-    + eapply MachC.modsem_strict_determinate; et.
+    + eapply MachC.modsem_receptive; et.
       intros f c ofs of' RAO0 RAO1. inv RAO0. inv RAO1.
       rewrite TC in *. rewrite TF in *. clarify.
       exploit code_tail_unique. apply TL. apply TL0.
@@ -381,7 +381,7 @@ Proof.
       exploit step_simulation; ss; try apply agree_sp_def0; eauto.
       i. des; ss; esplits; auto; clarify.
       * left. instantiate (1 := mkstate st_tgt0.(init_rs) S2'). ss.
-        destruct st_tgt0. eapply asm_plus_sdplus; eauto.
+        destruct st_tgt0. eapply asm_plus_dplus; eauto.
       * instantiate (1 := mk (MachC.get_mem (MachC.st st_src1)) (get_mem S2')).
         econs; ss; eauto.
         rewrite <- INITRS. rewrite <- INITFPTR. auto.

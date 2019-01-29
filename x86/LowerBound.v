@@ -129,8 +129,7 @@ Section PRESERVATION.
     :
       Genv.public_symbol skenv_link id = Senv.public_symbol (symbolenv (sem prog)) id.
   Proof.
-    ss.
-    admit "this should hold. fill in `symbolenv` of `Sem.v`".
+    ss. des_ifs.
   Qed.
 
   Lemma MATCH_PROG
@@ -1749,13 +1748,13 @@ Section PRESERVATION.
       receptive_at (sem prog) st_src.
   Proof.
     inv MTCHST; ss.
-    - admit "use strict forward simulation instead? old code:
-      eapply SemProps.lift_receptive_at. ss.
+    - eapply SemProps.lift_receptive_at.
+      { ss. des_ifs. symmetry. apply SkEnv.project_impl_spec; ss. admit "INCL". }
+      ss.
       eapply AsmC.lift_receptive_at.
       eapply semantics_receptive.
       intros EXTERN. eapply not_external in EXTERN; auto.
-      admit ""INCL"".
-".
+      admit "INCL".
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
       + ii. inv H. ss. omega.
@@ -1780,27 +1779,28 @@ Section PRESERVATION.
           split; auto. apply star_one. eauto.
       + left. right. econs.
         { i. exfalso. inv FINALSRC. }
-        econs; [|eapply src_receptive_at; eauto].
+        econs.
         i.
         destruct (call_step_noevent STEPSRC).
         destruct (match_states_call_ord_1 MTCHST).
         exists 0%nat. exists st_tgt. split.
-        { right. split; [apply star_refl|omega]. }
+        { right. split; auto. }
         left. pfold. left. right.
         econs.
         { i. exfalso. inv STEPSRC. ss. rewrite LINK_SK in *.
           destruct (find_fptr_owner_determ SYSMOD MSFIND).
           inv INIT. inv FINALSRC. inv FINAL.
         }
-        econs; cycle 1.
-        { inv STEPSRC. ss. rewrite LINK_SK in *.
-          destruct (find_fptr_owner_determ SYSMOD MSFIND). ss.
-          eapply system_receptive_at.
-        }
+        econs.
         i. exists (length frs + 3)%nat. ss. rewrite LINK_SK in *.
         exploit syscall_simulation; eauto.
         i. des. exists st_tgt1. split.
-        { left. apply plus_one. econs; [apply asm_determinate_at|]. auto. }
+        { left. split; cycle 1.
+          { inv STEPSRC. ss.
+            destruct (find_fptr_owner_determ SYSMOD MSFIND). ss.
+            eapply system_receptive_at.
+          }
+          apply plus_one. econs; [apply asm_determinate_at|]. auto. }
         left. pfold. left. right.
         econs.
         {
@@ -1818,7 +1818,7 @@ Section PRESERVATION.
         i.
         ss. rewrite LINK_SK in *. apply MTCHST0 in STEPSRC1. des. clarify.
         exists n1, st_tgt1. split.
-        { right. split; auto. apply star_refl. }
+        { right. split; auto. }
         right. eauto.
       + right. econs; i; try (exfalso; eauto).
     - left. right. econs.
@@ -1830,20 +1830,20 @@ Section PRESERVATION.
         * i. ss. rewrite LINK_SK in *.
           exploit normal_state_fsim_step; eauto.
           i. des; esplits; eauto.
-          -- left. econs; ss.
+          -- left. split; cycle 1.
+             { eapply src_receptive_at; eauto. }
+             econs; ss.
              ++ econs; eauto.
                 apply asm_determinate_at.
              ++ econs 1.
              ++ rewrite E0_right. auto.
-          -- right. econs; ss. clarify. econs.
-        * eapply src_receptive_at; eauto.
   Qed.
 
   Lemma transf_xsim_properties
     :
         xsim_properties (sem prog) (semantics tprog) nat lt.
   Proof.
-    econs; [apply lt_wf| |apply symb_preserved].
+    econs; [apply lt_wf| |i; apply symb_preserved].
     econs. i.
     exploit (transf_initial_states); eauto.
     i. des. esplits. econs; eauto.

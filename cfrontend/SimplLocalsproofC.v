@@ -291,12 +291,12 @@ Proof.
   - exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
 
     esplits; eauto.
-    { apply modsem1_strict_determinate. }
+    { apply modsem1_receptive. }
     inv MATCH.
     ii. hexploit (@step_simulation prog ge tge); eauto.
     i; des.
     esplits; eauto.
-    + left. eapply spread_sdplus; eauto. eapply modsem2_strict_determinate; eauto.
+    + left. eapply spread_dplus; eauto. eapply modsem2_determinate; eauto.
     + econs; ss.
       * inv H0; ss; inv MCOMPAT; ss.
       * inv H0; ss; inv MCOMPAT; ss.

@@ -97,6 +97,9 @@ Next Obligation.
   eapply SimSymbId.sim_sk_link; eauto.
 Qed.
 Next Obligation.
+  rr in SIMSKE. clarify.
+Qed.
+Next Obligation.
   exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
   eexists. eexists (mk _ _).
   esplits; ss; eauto.
@@ -112,19 +115,12 @@ Next Obligation.
   eapply SimSymbId.system_sim_skenv; eauto.
 Qed.
 Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify.
-  eexists (mk _ _), (Retv.mk _ _). ss.
-  esplits; cbn; eauto.
-  { eapply external_call_symbols_preserved; et. symmetry. eapply SimSymbId.sim_skenv_equiv; eauto. }
-  econs; ss; et.
+  inv ARGS; ss. destruct args_src, args_tgt; ss. clarify. destruct sm0; ss. clarify.
+  esplits; eauto.
+  - eapply external_call_symbols_preserved; eauto.
+    eapply SimSymbId.sim_skenv_equiv; eauto.
+  - instantiate (1:= mk _ _). econs; ss; eauto.
+  - ss.
 Unshelve.
-Qed.
-Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify.
-  eexists (Retv.mk _ _), _. s. esplits; et.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt); et.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. }
 Qed.
 

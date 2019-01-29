@@ -129,8 +129,7 @@ Section PRESERVATION.
     :
       Genv.public_symbol skenv_link id = Senv.public_symbol (symbolenv (sem prog)) id.
   Proof.
-    ss.
-    admit "this should hold. fill in `symbolenv` of `Sem.v`".
+    ss. des_ifs.
   Qed.
 
   Lemma MATCH_PROG

@@ -67,6 +67,9 @@ Next Obligation.
   eapply SimSymbId.sim_sk_link; eauto.
 Qed.
 Next Obligation.
+  rr in SIMSKE. clarify.
+Qed.
+Next Obligation.
   exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
   eexists. eexists (mk _ _).
   esplits; ss; eauto.

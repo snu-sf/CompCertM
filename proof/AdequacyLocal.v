@@ -1066,7 +1066,7 @@ Section ADQ.
     - ss. i; des. inv SAFESRC.
       exploit sim_link_sk; eauto. i; des. des_ifs.
       exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des. clarify.
-      admit "ez - sim_skenv should imply this".
+      symmetry. exploit SimSymb.sim_skenv_public_symbols; et. intro T. s. rewrite T. ss.
   Unshelve.
     all: ss.
   Qed.

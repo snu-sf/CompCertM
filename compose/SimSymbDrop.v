@@ -344,6 +344,12 @@ Next Obligation.
 Note that we have one more goal (exists ss) but it is OK, as the 'link_match_program' proof already proves it.".
 Qed.
 Next Obligation.
+  inv SIMSKE. unfold Genv.public_symbol. apply func_ext1. intro i0.
+  destruct (Genv.find_symbol skenv_tgt i0) eqn:T.
+  - exploit SIMSYMB3; et. i; des. des_ifs. rewrite PUB. ss.
+  -  des_ifs. des_sumbool. ii. eapply PUBKEPT in H. exploit SIMSYMB2; et. i; des. clarify.
+Qed.
+Next Obligation.
   admit "See 'init_meminj_preserves_globals' in Unusedglobproof.v".
 Qed.
 Next Obligation.

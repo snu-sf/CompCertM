@@ -519,6 +519,9 @@ Next Obligation.
   eapply SimSymbId.sim_sk_link; eauto.
 Qed.
 Next Obligation.
+  inv SIMSKE. inv SIMSKENV. ss.
+Qed.
+Next Obligation.
   exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
   eexists. eexists (mk m_src m_src (Mem.flat_inj m_src.(Mem.nextblock))
                        bot2 bot2 m_src.(Mem.nextblock) m_src.(Mem.nextblock)). ss.

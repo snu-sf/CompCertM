@@ -86,6 +86,13 @@ Module SimSymb.
 
       sim_skenv: SimMem.t -> t -> SkEnv.t -> SkEnv.t -> Prop;
 
+      sim_skenv_public_symbols: forall
+          sm0 ss0 skenv_src skenv_tgt
+          (SIMSKE: sim_skenv sm0 ss0 skenv_src skenv_tgt)
+        ,
+          skenv_src.(Genv.public_symbol) = skenv_tgt.(Genv.public_symbol)
+      ;
+
       sim_sk_load_sim_skenv: forall
           ss sk_src sk_tgt
           (SIMSK: sim_sk ss sk_src sk_tgt)

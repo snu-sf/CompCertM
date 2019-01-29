@@ -112,20 +112,20 @@ Section INITDTM.
     exploit Genv.find_funct_inv; eauto. i; des. clarify. ss. des_ifs.
     unfold Genv.find_funct_ptr in *. des_ifs.
     inv WFSMALL. exploit DEFSYMB; eauto. intro SYMBSMALL; des.
-    assert((defs (Mod.get_sk md (Mod.data md))) id).
+    assert((defs (Mod.get_sk md (Mod.data md))) id \/ (In id skenv_link.(Genv.genv_public))).
     { apply NNPP. ii.
-      exploit SYMBDROP; eauto. i; des. clarify.
+      apply not_or_and in H. des.
+      exploit (SYMBDROP id); eauto. { rewrite <- PUBLIC; ss. } i; des. clarify.
     }
-    exploit SYMBKEEP; eauto. intro SYMBBIG; des.
+    exploit SYMBKEEP; eauto. intro SYMBBIG; des_safe.
     rewrite SYMB in *. symmetry in SYMBBIG.
-    exploit DEFKEPT; eauto.
-    { apply Genv.find_invert_symbol; eauto. }
-    i; des.
+    exploit DEFKEPT; eauto. i; des_safe.
+    assert(id = id0) by (eapply Genv.genv_vars_inj; et). clarify.
     exploit DEFKEEP; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL0.
+    intro DEFSMALL; des_safe.
     unfold System.skenv in *. ss.
-    exploit Genv_map_defs_def; eauto. i; des. des_ifs. inv LO. inv H3.
+    exploit Genv_map_defs_def; eauto. i; des_safe. des_ifs. inv LO. inv H3.
   Qed.
 
   (* Lemma link_sk_disjoint_aux *)
@@ -234,37 +234,27 @@ Local Transparent Linker_prog.
     move SYMB0 at top. move SYMB1 at top. clear_until_bar.
 
     inv SPEC0.
-    assert(DEFS0: defs (Mod.get_sk md0 (Mod.data md0)) id0).
-    { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
-    exploit SYMBKEEP; eauto. intro SYMBBIG0; des. rewrite SYMB0 in *. symmetry in SYMBBIG0.
-    exploit DEFKEPT; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    i; des.
+    assert(DEFS0: defs (Mod.get_sk md0 (Mod.data md0)) id0 \/ (In id0 skenv_link.(Genv.genv_public))).
+    { apply NNPP. ii. apply not_or_and in H. des. exploit SYMBDROP; eauto. { rewrite <- PUBLIC. ss. et. } i; des. clarify. }
+    exploit SYMBKEEP; eauto. intro SYMBBIG0; des_safe. rewrite SYMB0 in *. symmetry in SYMBBIG0.
+    exploit DEFKEPT; eauto. i; des_safe.
+    assert(id = id0) by (eapply Genv.genv_vars_inj; et). clarify.
     move SYMBBIG0 at top.
     move DEFBIG at top.
     move DEFS0 at top.
     clear_until_bar.
 
     inv SPEC1.
-    assert(DEFS1: defs (Mod.get_sk md1 (Mod.data md1)) id1).
-    { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
-    exploit SYMBKEEP; eauto. intro SYMBBIG1; des. rewrite SYMB1 in *. symmetry in SYMBBIG1.
-    exploit DEFKEPT; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    i; des.
+    assert(DEFS1: defs (Mod.get_sk md1 (Mod.data md1)) id1 \/ (In id1 skenv_link.(Genv.genv_public))).
+    { apply NNPP. ii. apply not_or_and in H. des_safe. exploit SYMBDROP; eauto. { rewrite <- PUBLIC. ss. et. } i; des; clarify. }
+    exploit SYMBKEEP; eauto. intro SYMBBIG1; des_safe. rewrite SYMB1 in *. symmetry in SYMBBIG1.
+    exploit DEFKEPT; eauto. i; des_safe.
+    assert(id1 = id) by (eapply Genv.genv_vars_inj; et). clarify.
     move SYMBBIG1 at top.
     move DEFBIG0 at top.
     move DEFS1 at top.
-    clear_until_bar.
 
-    assert(id0 = id1).
-    { eapply Genv.genv_vars_inj.
-      { apply SYMBBIG0. }
-      { apply SYMBBIG1. }
-    } clarify.
-    rename id1 into id.
-
-    clear - DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK H0 MODSEM1.
+    clear - DEF0 DEF1 DEFBIG0 DEFS0 DEFS1 SKLINK H0 MODSEM1.
     destruct (classic (md0 = md1)); ss.
     { clarify. }
     admit "this should hold. state some lemma like: link_sk_disjoint".

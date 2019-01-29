@@ -916,6 +916,16 @@ Next Obligation.
   { etrans; eauto. rewrite NEXT. refl. }
   - bar. move ROMATCH at bottom.
     ii.
+    destruct (classic (In id (Genv.genv_public skenv0) /\ ~ defs sk id)).
+    { des.
+      exfalso. unfold romem_for_ske in RO. des_ifs.
+      unfold Genv.find_var_info in *. des_ifs.
+      exploit DEFKEPT; eauto. i; des.
+      assert (id = id0).
+      { eapply Genv.genv_vars_inj; et. }
+      clarify.
+      apply H0. unfold defs. des_sumbool. eapply prog_defmap_image; et.
+    }
     exploit (ROMATCH b id ab); eauto.
     { admit "ez". }
     { admit "ez". }
@@ -941,15 +951,15 @@ Maybe you can remove this condition from bmatch_proj upfront. (I think it is eas
         assert(b = blk0).
         { rewrite SYMBKEEP in *; et. clarify. }
         clarify.
-        exploit DEFKEPT; et.
-        { apply Genv.find_invert_symbol; et. }
-        i; des. ss. clarify. inv MATCH. esplits; et.
+        exploit DEFKEPT; et. i; des.
+        assert(id = id0). { eapply Genv.genv_vars_inj; eauto. } clarify.
+        ss. clarify. inv MATCH. esplits; et.
       }
       des. clarify.
       exploit WFPTR; et.
       { rewrite <- SYMBKEEP; et. }
       { apply in_prog_defmap; et. }
-      { clear - H4. unfold definitive_initializer in *. des_ifs. }
+      { clear - H5. unfold definitive_initializer in *. des_ifs. }
       i; des.
       exists id_to.
       ss.

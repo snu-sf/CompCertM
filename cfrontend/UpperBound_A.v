@@ -924,9 +924,11 @@ Section PRESERVATION.
   Proof.
     econs; ss; eauto. econs; ss; eauto.
     { eapply unit_ord_wf. }
-    econs 1.
-    ii. exploit init_fsim; eauto. i; des. esplits; eauto.
-    eapply match_xsim; et.
+    { econs 1.
+      ii. exploit init_fsim; eauto. i; des. esplits; eauto.
+      eapply match_xsim; et.
+    }
+    i; des. des_ifs.
   Qed.
 
 End PRESERVATION.
@@ -980,7 +982,9 @@ Proof.
   { econs; et.
     econs; et.
     { eapply unit_ord_wf. }
-    econs; et. i. ss. inv INITSRC. clarify.
+    { econs; et. i. ss. inv INITSRC. clarify. }
+    i; des. ss. des_ifs.
+    hexploit (link_sk_match cp_link cp0 cp1 ctx); eauto. i; des. congruence.
   }
   rename t into link_sk.
   des.

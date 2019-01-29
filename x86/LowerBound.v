@@ -1749,7 +1749,9 @@ Section PRESERVATION.
       receptive_at (sem prog) st_src.
   Proof.
     inv MTCHST; ss.
-    - eapply SemProps.lift_receptive_at. ss.
+    - eapply SemProps.lift_receptive_at.
+      { ss. des_ifs. symmetry. apply SkEnv.project_impl_spec; ss. admit "INCL". }
+      ss.
       eapply AsmC.lift_receptive_at.
       eapply semantics_receptive.
       intros EXTERN. eapply not_external in EXTERN; auto.
@@ -1842,7 +1844,7 @@ Section PRESERVATION.
     :
         xsim_properties (sem prog) (semantics tprog) nat lt.
   Proof.
-    econs; [apply lt_wf| |apply symb_preserved].
+    econs; [apply lt_wf| |i; apply symb_preserved].
     econs. i.
     exploit (transf_initial_states); eauto.
     i. des. esplits. econs; eauto.

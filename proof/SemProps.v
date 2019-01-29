@@ -341,10 +341,11 @@ Proof.
 Qed.
 
 Lemma lift_dstep
-      (ms: ModSem.t) st0 tr st1
+      (ms: ModSem.t) st0 tr st1 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DSTEP: DStep ms st0 tr st1)
   :
-    forall prog tail,
+    forall tail,
     <<DSTEP: DStep (Sem.sem prog)
                    (State ((Frame.mk ms st0) :: tail)) tr
                    (State ((Frame.mk ms st1) :: tail))>>
@@ -361,8 +362,7 @@ Proof.
       clear STEP.
       determ_tac sd_determ_at.
       esplits; auto.
-      * eapply match_traces_le; eauto.
-        admit "this should hold".
+      * eapply match_traces_preserved; try apply H. i. s. congruence.
       * ii. clarify. special H0; ss. clarify.
     + ii. ss.
       inv STEP0; ss; ModSem.tac.
@@ -372,10 +372,11 @@ Proof.
 Qed.
 
 Lemma lift_dstar
-      (ms: ModSem.t) st0 tr st1
+      (ms: ModSem.t) st0 tr st1 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DSTAR: DStar ms st0 tr st1)
   :
-    forall prog tail,
+    forall tail,
     <<DSTAR: DStar (Sem.sem prog)
                    (State ((Frame.mk ms st0) :: tail)) tr
                    (State ((Frame.mk ms st1) :: tail))>>
@@ -389,10 +390,11 @@ Proof.
 Qed.
 
 Lemma lift_dplus
-      (ms: ModSem.t) st0 tr st1
+      (ms: ModSem.t) st0 tr st1 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DPLUS: DPlus ms st0 tr st1)
   :
-    forall prog tail,
+    forall tail,
     <<DPLUS: DPlus (Sem.sem prog)
                    (State ((Frame.mk ms st0) :: tail)) tr
                    (State ((Frame.mk ms st1) :: tail))>>
@@ -405,10 +407,11 @@ Proof.
 Qed.
 
 Lemma lift_receptive_at
-      (ms: ModSem.t) st0
+      (ms: ModSem.t) st0 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (RECEP: receptive_at ms st0)
   :
-    forall prog tail,
+    forall tail,
     <<RECEP: receptive_at (Sem.sem prog)
                           (State ((Frame.mk ms st0) :: tail))>>
 .
@@ -419,7 +422,7 @@ Proof.
     + inv H0. esplits; eauto. econs 1; eauto.
     + ss.
       exploit sr_receptive_at; eauto.
-      { eapply match_traces_le; eauto. admit "this should hold". }
+      { eapply match_traces_preserved; try apply H0. i. s. congruence. }
       i; des.
       esplits; eauto.
       econs; eauto.
@@ -429,10 +432,11 @@ Proof.
 Qed.
 
 Lemma lift_determinate_at
-      (ms: ModSem.t) st0
+      (ms: ModSem.t) st0 prog
+      (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DTM: determinate_at ms st0)
   :
-    forall prog tail,
+    forall tail,
     <<DTM: determinate_at (Sem.sem prog)
                             (State ((Frame.mk ms st0) :: tail))>>
 .
@@ -444,7 +448,7 @@ Proof.
       { econs; et. }
       i. f_equal. eapply ModSem.at_external_dtm; et.
     + ss. determ_tac sd_determ_at. esplits; et.
-      { eapply match_traces_le; eauto. admit "this should hold". }
+      { eapply match_traces_preserved; try apply H. i. s. congruence. }
       i. clarify. repeat f_equal. eauto.
     + ss. esplits; et.
       { econs; et. }

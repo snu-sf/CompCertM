@@ -1291,7 +1291,7 @@ c0 + empty
     :
       xsim_properties (Csem.semantics prog) (Sem.sem tprog) nat lt.
   Proof.
-    econs; [apply lt_wf| |apply symb_preserved].
+    econs; [apply lt_wf| |i; apply symb_preserved].
     econs. i.
     exploit (transf_initial_states); eauto.
     i. des. esplits. econs; eauto.

@@ -1,5 +1,4 @@
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
-Require Import AdequacyLocal.
 Require Import AsmC.
 Require SimMemId SimMemExt SimMemInj.
 Require SoundTop UnreachC.

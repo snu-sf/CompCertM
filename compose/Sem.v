@@ -178,7 +178,11 @@ Section SEMANTICS.
                     | Some sk_link => load_genv sk_link.(Sk.load_skenv)
                     | None => (nil, SkEnv.empty)
                     end)
-                   (admit "dummy for now. it is not used"))
+                   (* NOTE: The symbolenv here is never actually evoked in our semantics. Putting this value is merely for our convenience. (lifting receptive/determinate) Whole proof should be sound even if we put dummy data here. *)
+                   (match link_sk with
+                    | Some sk_link => sk_link.(Sk.load_skenv)
+                    | None => SkEnv.empty
+                    end))
   .
   (* Note: I don't want to make it option type. If it is option type, there is a problem. *)
   (* I have to state this way:

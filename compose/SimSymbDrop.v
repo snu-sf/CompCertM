@@ -116,6 +116,44 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
     (PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public))
 .
 
+Theorem sim_skenv_symbols_inject
+        sm0 ss0 skenv_src skenv_tgt
+        (SIMSKENV: sim_skenv sm0 ss0 skenv_src skenv_tgt)
+  :
+    <<SINJ: symbols_inject sm0.(SimMemInj.inj) skenv_src skenv_tgt>>
+.
+Proof.
+  { clear - SIMSKENV.
+    inv SIMSKENV; ss.
+    rr. esplits; ii; ss.
+    - unfold Genv.public_symbol.
+      rewrite <- PUB.
+      destruct (Genv.find_symbol skenv_tgt id) eqn:T.
+      + exploit SIMSYMB3; et. i; des. rewrite BLKSRC. ss.
+      + des_ifs. des_sumbool. ii.
+        exploit PUBKEPT; et.
+        apply NNPP. ii.
+        exploit SIMSYMB2; et. i; des. clarify.
+    - exploit SIMSYMB1; eauto. i; des. esplits; et.
+    - exploit SIMSYMB2; eauto.
+      { ii. eapply PUBKEPT; eauto. unfold Genv.public_symbol in H. des_ifs. des_sumbool. ss. }
+      i; des.
+      esplits; eauto.
+    - unfold Genv.block_is_volatile, Genv.find_var_info.
+      destruct (Genv.find_def skenv_src b1) eqn:T0.
+      { exploit SIMDEF; try eassumption.
+        i; des.
+        des_ifs.
+      }
+      destruct (Genv.find_def skenv_tgt b2) eqn:T1.
+      { exploit SIMDEFINV; try eassumption.
+        i; des.
+        des_ifs.
+      }
+      ss.
+  }
+Qed.
+
 Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
     (<<SIMSYMB1: forall
         id blk_src blk_tgt delta

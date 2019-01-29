@@ -1776,30 +1776,31 @@ Section PRESERVATION.
         * exploit step_init_simulation; try eassumption.
           i. des. econs 2; ss; eauto. rewrite LINK_SK.
           split; auto. apply star_one. eauto.
-      + left. econs.
+      + left. right. econs.
         { i. exfalso. inv FINALSRC. }
-        econs; [|eapply src_receptive_at; eauto].
+        econs.
         i.
         destruct (call_step_noevent STEPSRC).
         destruct (match_states_call_ord_1 MTCHST).
         exists 0%nat. exists st_tgt. split.
-        { right. split; [apply star_refl|omega]. }
-        left. pfold. left.
+        { right. split; auto. }
+        left. pfold. left. right.
         econs.
         { i. exfalso. inv STEPSRC. ss. rewrite LINK_SK in *.
           destruct (find_fptr_owner_determ SYSMOD MSFIND).
           inv INIT. inv FINALSRC. inv FINAL.
         }
-        econs; cycle 1.
-        { inv STEPSRC. ss. rewrite LINK_SK in *.
-          destruct (find_fptr_owner_determ SYSMOD MSFIND). ss.
-          eapply system_receptive_at.
-        }
+        econs.
         i. exists (length frs + 3)%nat. ss. rewrite LINK_SK in *.
         exploit syscall_simulation; eauto.
         i. des. exists st_tgt1. split.
-        { left. apply plus_one. econs; [apply asm_determinate_at|]. auto. }
-        left. pfold. left.
+        { left. split; cycle 1.
+          { inv STEPSRC. ss.
+            destruct (find_fptr_owner_determ SYSMOD MSFIND). ss.
+            eapply system_receptive_at.
+          }
+          apply plus_one. econs; [apply asm_determinate_at|]. auto. }
+        left. pfold. left. right.
         econs.
         {
           i. exfalso. inv STEPSRC. ss.
@@ -1816,10 +1817,10 @@ Section PRESERVATION.
         i.
         ss. rewrite LINK_SK in *. apply MTCHST0 in STEPSRC1. des. clarify.
         exists n1, st_tgt1. split.
-        { right. split; auto. apply star_refl. }
+        { right. split; auto. }
         right. eauto.
       + right. econs; i; try (exfalso; eauto).
-    - left. econs.
+    - left. right. econs.
       + i. econs.
         * exploit transf_final_states; eauto.
         * i. inv FINAL0. inv FINAL1. eq_closure_tac.
@@ -1828,13 +1829,13 @@ Section PRESERVATION.
         * i. ss. rewrite LINK_SK in *.
           exploit normal_state_fsim_step; eauto.
           i. des; esplits; eauto.
-          -- left. econs; ss.
+          -- left. split; cycle 1.
+             { eapply src_receptive_at; eauto. }
+             econs; ss.
              ++ econs; eauto.
                 apply asm_determinate_at.
              ++ econs 1.
              ++ rewrite E0_right. auto.
-          -- right. econs; ss. clarify. econs.
-        * eapply src_receptive_at; eauto.
   Qed.
 
   Lemma transf_xsim_properties

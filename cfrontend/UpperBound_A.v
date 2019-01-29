@@ -473,17 +473,18 @@ Section PRESERVATION.
       { (* tgt call *)
 
         (* fsim *)
-        left. econs; et.
+        left. right. econs; et.
         { i. eapply final_fsim; et. econs; et. }
 
         destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
         - (* src call *)
           econs; ss; cycle 1.
-          { admit "receptive - SemProps.v". }
           i; des_ifs.
           inv STEPSRC; ss; ModSem.tac.
           esplits; eauto.
-          { left. eapply plus_one. econs; et.
+          { left. split; cycle 1.
+            { admit "receptive - SemProps.v". }
+            eapply plus_one. econs; et.
             { admit "determinate - SemProps.v". }
             econs; eauto.
             instantiate (1:= args).
@@ -501,7 +502,6 @@ Section PRESERVATION.
         - (* src step *)
           inv STK; ss.
           econs; ss; cycle 1.
-          { admit "receptive - SemProps.v". }
           i; des_ifs.
 
           inv STEPSRC; ss; ModSem.tac; swap 2 3.
@@ -534,7 +534,8 @@ Section PRESERVATION.
           des.
 
           esplits; eauto.
-          { left.
+          { left. split; cycle 1.
+            { admit "receptive - SemProps.v". }
             eapply plus_left with (t1 := E0) (t2 := E0); ss.
             { econs; et.
               { admit "determinate - SemProps.v". }
@@ -625,10 +626,9 @@ Section PRESERVATION.
 
       destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_return) fr_tgt.(Frame.st))).
       { (* tgt return *)
-        left. econs; et.
+        left. right. econs; et.
         { i. eapply final_fsim; et. econs; et. }
         econs; et; cycle 1.
-        { admit "receptive". }
         i. ss. des_ifs.
 
 
@@ -645,6 +645,9 @@ Section PRESERVATION.
 
 
 
+        assert(RECEP: receptive_at (sem prog_src) (State (fr_src :: frs_src))).
+        { admit "receptive". }
+
         inv STEPSRC; ss.
         { contradict NCALLSRC. rr. et. }
         - (* src step *)
@@ -658,7 +661,8 @@ Section PRESERVATION.
           rr in CALL. des_ifs. ss. clarify.
           hexploit (typify_c_ex v_ret _tres). i; des.
           esplits; eauto.
-          + left. eapply plus_two with (t1 := E0) (t2 := E0); ss.
+          + left. split; ss.
+            eapply plus_two with (t1 := E0) (t2 := E0); ss.
             * econs; et.
               { admit "determinate". }
               ss. des_ifs.
@@ -713,7 +717,8 @@ Section PRESERVATION.
             inv TAIL.
             - (* snd is ctx *)
               esplits; et.
-              + left. apply plus_one.
+              + left. split; ss.
+                apply plus_one.
                 econs; et.
                 { admit "determinate". }
                 econs 4; ss; et.
@@ -723,7 +728,8 @@ Section PRESERVATION.
               inv HD; ss.
               inv AFTER; ss. inv ST; ss.
               esplits; et.
-              + left. apply plus_one.
+              + left. split; ss.
+                apply plus_one.
                 econs; et.
                 { admit "determinate". }
                 ss. des_ifs.
@@ -756,7 +762,8 @@ Section PRESERVATION.
             inv TAIL.
             - (* snd is ctx *)
               esplits; et.
-              + left. apply plus_one.
+              + left. split; ss.
+                apply plus_one.
                 econs; et.
                 { admit "determinate". }
                 econs 4; ss; et.
@@ -766,7 +773,8 @@ Section PRESERVATION.
               inv HD; ss.
               inv AFTER; ss. inv ST; ss.
               esplits; et.
-              + left. apply plus_one.
+              + left. split; ss.
+                apply plus_one.
                 econs; et.
                 { admit "determinate". }
                 ss. des_ifs.

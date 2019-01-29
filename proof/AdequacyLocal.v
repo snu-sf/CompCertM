@@ -799,11 +799,11 @@ Section ADQSTEP.
       { unsguard SUST. des. inv SUST.
         simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
       i; des. clear SU0.
+      right.
       econs; ss; eauto.
       + ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto.
       + inv FSTEP.
         * econs 1; cycle 1.
-          { eapply lift_receptive_at; eauto. }
           ii. ss. rewrite LINKSRC in *.
           des.
           inv STEPSRC; ss; ModSem.tac; swap 2 3.
@@ -812,9 +812,14 @@ Section ADQSTEP.
           exploit STEP; eauto. i; des_safe.
           exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt)).
           esplits; eauto.
-          { des.
-            - left. eapply lift_dplus; eauto.
-            - right. esplits; eauto. eapply lift_dstar; eauto.
+          { assert(T: DPlus ms_tgt lst_tgt tr st_tgt1 \/ (lst_tgt = st_tgt1 /\ tr = E0 /\ ord i1 i0)).
+            { des; et. inv STAR; et. left. econs; et. }
+            clear H.
+            des.
+            - left. split; cycle 1.
+              { eapply lift_receptive_at; eauto. }
+              eapply lift_dplus; eauto.
+            - right. esplits; eauto. clarify.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
           { unsguard SUST. des_safe. eapply sound_progress; eauto.
@@ -864,11 +869,10 @@ Section ADQSTEP.
 
 
     - (* call *)
-      left.
+      left. right.
       econs; eauto.
       { ii. inv FINALSRC. ss. ModSem.tac. }
       econs; eauto; cycle 1.
-      { eapply lift_receptive_at. eapply at_external_receptive_at; et. }
       i.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
@@ -881,7 +885,9 @@ Section ADQSTEP.
       (* { clear - GE. inv GE. des. ss. eapply SimSymb.sim_skenv_func_bisim; eauto. } *)
       i; des.
       esplits; eauto.
-      + left. apply plus_one.
+      + left. split; cycle 1.
+        { eapply lift_receptive_at. eapply at_external_receptive_at; et. }
+        apply plus_one.
         econs; ss; eauto.
         { eapply lift_determinate_at; et. eapply at_external_determinate_at; et. }
         des_ifs.
@@ -924,7 +930,7 @@ Section ADQSTEP.
 
 
     - (* return *)
-      left.
+      left. right.
       econs; eauto.
       { ii. ss. inv FINALSRC0. ss. determ_tac ModSem.final_frame_dtm. clear_tac.
         inv STACK.
@@ -938,7 +944,6 @@ Section ADQSTEP.
           inv H; ss; ModSem.tac.
       }
       econs; eauto; cycle 1.
-      { eapply lift_receptive_at. eapply final_frame_receptive_at; et. }
       i. ss. des_ifs.
       inv STEPSRC; ModSem.tac. ss.
       inv STACK; ss. folder. des_ifs.
@@ -952,7 +957,9 @@ Section ADQSTEP.
       }
       i; des.
       esplits; eauto.
-      + left. apply plus_one.
+      + left. split; cycle 1.
+        { eapply lift_receptive_at. eapply final_frame_receptive_at; et. }
+        apply plus_one.
         econs; eauto.
         { eapply lift_determinate_at. eapply final_frame_determinate_at; et. }
         econs 4; ss; eauto.

@@ -947,9 +947,15 @@ c0 + empty
     - (* call state *)
       inversion MTCHST; subst.
       + (* syscall *)
-        left. econs; i.
+        left. right. econs; i.
         * inv FINALSRC.
-        * econs; i; cycle 1.
+        * econs; i.
+          -- (* step *)
+            econs; i.
+            exploit init_case; eauto. i. des.
+            { inv CMOD. clarify. }
+            esplits.
+            ++ left. split; cycle 1. {
           -- (* receptive *)
             econs.
             ++ i. inv H; inv H1; ss; clarify.
@@ -961,12 +967,7 @@ c0 + empty
             ++ red. i.
                inv H; inv H0; ss; clarify; auto.
                exploit external_call_trace_length; eauto.
-          -- (* step *)
-            econs; i.
-            exploit init_case; eauto. i. des.
-            { inv CMOD. clarify. }
-            esplits.
-            ++ left.
+               }
                eapply plus_left'.
                ** (* step init *)
                  econs; i.
@@ -1064,10 +1065,22 @@ c0 + empty
                { ss. eapply preservation_prog; eauto. }
       + (* initial state *)
         inversion INITSRC; subst; ss.
-        left. econs; i.
+        left. right. econs; i.
         * (* FINAL *)
           inv FINALSRC.
         * econs; i; cycle 1.
+          -- (* step *)
+            econs; i.
+            exploit init_case; eauto. i. des.
+            ++ (* main is C internal function *)
+              inv CMOD; ss.
+              inversion STEPSRC; inv H3; cycle 1.
+              ** (* external *)
+                exploit MAIN_INTERNAL; eauto. intro INTERN.
+                inv MSFIND; ss. des_ifs.
+              ** (* internal *)
+                esplits.
+                --- left. split; cycle 1. {
           -- (* receptive at *)
             econs; i.
             ++ inv H3; inv H5.
@@ -1080,18 +1093,8 @@ c0 + empty
             ++ red. i.
                inv H3; inv H4; auto.
                exploit external_call_trace_length; eauto.
-          -- (* step *)
-            econs; i.
-            exploit init_case; eauto. i. des.
-            ++ (* main is C internal function *)
-              inv CMOD; ss.
-              inversion STEPSRC; inv H3; cycle 1.
-              ** (* external *)
-                exploit MAIN_INTERNAL; eauto. intro INTERN.
-                inv MSFIND; ss. des_ifs.
-              ** (* internal *)
-                esplits.
-                --- left. eapply plus_two.
+                    }
+                    eapply plus_two.
                     econs; i.
                     +++ (* determ *)
                       econs; i.

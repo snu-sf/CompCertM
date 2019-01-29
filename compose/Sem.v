@@ -42,6 +42,7 @@ End Frame.
 
 Module Ge.
 
+  (* NOTE: Ge.(snd) is not used in semantics. It seems it is just for convenience in meta theory *)
   Definition t: Type := (list ModSem.t * SkEnv.t).
 
   Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=

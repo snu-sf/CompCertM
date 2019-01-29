@@ -359,7 +359,7 @@ Section MODSEM.
   Next Obligation.
     ii; ss; des. inv_all_once; des; ss; clarify. rewrite RSP in *. clarify.
     assert(vs = vs0).
-    { admit "this should be prove in mixed sim. merge with it". }
+    { admit "ez - this should be prove in mixed sim. merge with it". }
     clarify.
   Qed.
   Next Obligation.
@@ -412,7 +412,7 @@ Section MODSEM.
       i; des. destruct s1; ss.
       exists (mkstate init_rs1 init_sg1 s2).
       econs; eauto. ss.
-      { admit "1) prove get_stack dtm 2) at first place, prove full determinacy instead of determinate". }
+      { admit "ez - prove get_stack dtm as a lemma". }
     - inv H.
       exploit sr_traces_at; eauto.
   Qed.

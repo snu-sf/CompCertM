@@ -222,14 +222,14 @@ Definition current_locset (stk: stackframe): locset :=
 
 (* Definition dummy_stacksize: Z := (admit "dummy_stacksize"). *)
 (* Definition dummy_code (sig: signature): code := [Lcall sig (admit "dummy_reg")]. *)
-Definition dummy_function (sig: signature) := (mkfunction sig 0 []).
+Definition dummy_function (sig: signature) := (mkfunction sig 0 [Lgoto 1%positive]).
 
 Definition dummy_stack (sig: signature) (ls: locset) :=
   Stackframe (dummy_function sig)
               (* (Vptr (admit "dummy_fptr") Ptrofs.zero true) *)
              Vundef
              ls
-             [] (* one may replace it with another another_dummy_code,
+             [Lgoto 1%positive] (* one may replace it with another another_dummy_code,
 but then corresponding MachM's part should be transl_code another_dummy_code ... *)
 .
 Hint Unfold dummy_stack.
@@ -406,20 +406,20 @@ Section MODSEM.
 
 End MODSEM.
 
-(* Section PROPS. *)
+Section PROPS.
 
-(*   Lemma step_preserves_last_option *)
-(*         ge st0 tr st1 dummy_stack *)
-(*         (STEP: step ge st0 tr st1) *)
-(*         (LAST: last_option (get_stack st0) = Some dummy_stack) *)
-(*   : *)
-(*     <<LAST: last_option (get_stack st1) = Some dummy_stack>> *)
-(*   . *)
-(*   Proof. *)
-(*     inv STEP; ss. inv STEP0; ss; des_ifs. *)
-(*   Qed. *)
+  Lemma step_preserves_last_option
+        ge st0 tr st1 dummy_stack
+        (STEP: step ge st0 tr st1)
+        (LAST: last_option (get_stack st0) = Some dummy_stack)
+  :
+    <<LAST: last_option (get_stack st1) = Some dummy_stack>>
+  .
+  Proof.
+    inv STEP; ss. inv STEP0; ss; des_ifs.
+  Qed.
 
-(* End PROPS. *)
+End PROPS.
 
 Section MODULE.
 

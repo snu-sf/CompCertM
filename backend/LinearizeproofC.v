@@ -57,16 +57,22 @@ Definition get_code_tgt (stk: Linear.stackframe): Linear.code :=
 
 Require Import Program.
 
+Definition wf_tgt (st_tgt0: Linear.state): Prop :=
+  exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\
+                    dummy_tgt.(get_code_tgt) = [Lgoto 1%positive] /\
+                    dummy_tgt.(get_function_tgt).(fn_code) = [Lgoto 1%positive]
+.
+
 Lemma lift_starN
       cnt tge st_tgt0 tr st_tgt1
       (STAR: starN Linear.step tge cnt st_tgt0 tr st_tgt1)
-      (DUMMYTGT: exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\
-                                   dummy_tgt.(get_code_tgt) = [])
+      (DUMMYTGT: wf_tgt st_tgt0)
       (STKAFTER: get_stack st_tgt1 <> [])
   :
     <<STAR: starN step tge cnt st_tgt0 tr st_tgt1>>
 .
 Proof.
+  unfold wf_tgt in *.
   induction STAR; ii; ss.
   { econs; et. }
   pose s as S1. pose s' as S2. pose s'' as S3.
@@ -74,30 +80,27 @@ Proof.
   econs; et.
   - econs; et.
     des. inv H; ss; destruct s0; ss. exfalso. clarify. ss. clarify.
-    clear - STAR STKAFTER.
-    dependent induction STAR; ii; ss. inv H; ss.
+    clear - STAR STKAFTER DUMMYTGT1.
+    dependent induction STAR; ii; ss. inv H; ss. rewrite DUMMYTGT1 in *. ss.
   - des. exploit IHSTAR; et. inv H; ss; try (by esplits; et).
     + des_ifs. rewrite DUMMYTGT. esplits; et.
     + des_ifs.
       * ss. clarify.
-        clear - STAR STKAFTER.
-        dependent induction STAR; ii; ss. inv H; ss.
+        clear - STAR STKAFTER DUMMYTGT1.
+        dependent induction STAR; ii; ss. inv H; ss. rewrite DUMMYTGT1 in *. ss.
       * rewrite DUMMYTGT. esplits; et.
 Qed.
 
 Lemma lift_starN_stronger
       cnt tge st_tgt0 tr st_tgt1
       (STAR: starN Linear.step tge cnt st_tgt0 tr st_tgt1)
-      (DUMMYTGT: exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\
-                                   dummy_tgt.(get_code_tgt) = [])
+      (DUMMYTGT: wf_tgt st_tgt0)
       (STKAFTER: get_stack st_tgt1 <> [])
   :
-    <<STAR: starN step tge cnt st_tgt0 tr st_tgt1>>
-   /\
-      <<DUMMYTGT: exists dummy_tgt, last_option st_tgt1.(LinearC.get_stack) = Some dummy_tgt /\
-                                   dummy_tgt.(get_code_tgt) = []>>
+    <<STAR: starN step tge cnt st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
 .
 Proof.
+  unfold wf_tgt in *.
   revert_until STAR.
   induction STAR; ii; ss.
   { split.
@@ -105,28 +108,27 @@ Proof.
     - des. esplits; et. }
   pose s as S1. pose s' as S2. pose s'' as S3.
   (* pose s1 as S1. pose s2 as S2. pose s3 as S3. *)
-  assert(DUMMYTGT0:
-           exists dummy_tgt, last_option (get_stack s'') = Some dummy_tgt /\ get_code_tgt dummy_tgt = []).
+  assert(DUMMYTGT0: wf_tgt s'').
   { clarify.
     eapply IHSTAR; et. clear IHSTAR.
     des. inv H; ss; try (by esplits; et).
     - des_ifs. esplits; et.
     - des_ifs.
-      + ss. clarify. inv STAR; ss. inv H; ss.
+      + ss. clarify. inv STAR; ss. inv H; ss. rewrite DUMMYTGT1 in *. ss.
       + esplits; et.
   }
   split; ss.
   econs; et.
   - econs; et.
     des. inv H; ss; destruct s0; ss. exfalso. clarify. ss. clarify.
-    clear - STAR STKAFTER.
-    dependent induction STAR; ii; ss. inv H; ss.
+    clear - STAR STKAFTER DUMMYTGT2.
+    dependent induction STAR; ii; ss. inv H; ss. rewrite DUMMYTGT2 in *. ss.
   - des.
     exploit IHSTAR; et.
     { inv H; ss; try (by esplits; et).
       - des_ifs. esplits; et.
       - des_ifs.
-        + ss. clarify. inv STAR; ss. inv H; ss.
+        + ss. clarify. inv STAR; ss. inv H; ss. rewrite DUMMYTGT2 in *. ss.
         + esplits; et.
     }
     i; des.
@@ -161,24 +163,21 @@ Qed.
 Lemma lift_plus
       tge st_tgt0 tr st_tgt1
       (PLUS: plus Linear.step tge st_tgt0 tr st_tgt1)
-      (DUMMYTGT: exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\
-                                   dummy_tgt.(get_code_tgt) = [])
+      (DUMMYTGT: wf_tgt st_tgt0)
       (STKAFTER: get_stack st_tgt1 <> [])
   :
-    <<PLUS: plus step tge st_tgt0 tr st_tgt1>>
-            /\ <<DUMMYTGT: exists dummy_tgt, last_option st_tgt1.(LinearC.get_stack) = Some dummy_tgt /\
-                                   dummy_tgt.(get_code_tgt) = []>>
+    <<PLUS: plus step tge st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
 .
 Proof.
   apply starN_plus_iff in PLUS. des. apply lift_starN_stronger in PLUS; et. des. esplits; et.
   apply starN_plus_iff; et.
 Qed.
 
-Definition enumerate_aux_trivial (sg: signature): bool :=
+Definition enumerate_aux_trivial: bool :=
   let reach := DS.fixpoint (PTree.empty bblock) successors_block (fun _ => id) 1 true in
   match reach with
   | Some reach =>
-    match enumerate_aux (LTLC.dummy_function sg) reach with
+    match enumerate_aux (PTree.empty bblock) (1%positive) reach with
     | [] => true
     | _ => false
     end
@@ -186,7 +185,7 @@ Definition enumerate_aux_trivial (sg: signature): bool :=
   end
 .
 
-Axiom enumerate_aux_trivial_is_true: forall sg, enumerate_aux_trivial sg = true.
+Axiom enumerate_aux_trivial_is_true: enumerate_aux_trivial = true.
 
 Lemma transf_dummy
       sg
@@ -196,12 +195,10 @@ Lemma transf_dummy
 Proof.
   unfold transf_function. unfold bind. unfold LinearC.dummy_function. ss.
   unfold enumerate. ss.
-  generalize (enumerate_aux_trivial_is_true sg); intro TRUE.
+  generalize (enumerate_aux_trivial_is_true); intro TRUE.
   unfold enumerate_aux_trivial in *. des_ifs_safe.
   unfold reachable, reachable_aux. ss. unfold id in *. des_ifs_safe.
-  rewrite Heq0. ss. repeat f_equal.
-  cbn.
-  admit "this is not true!!!".
+  rewrite Heq0. ss.
 Qed.
 
 
@@ -241,8 +238,7 @@ Inductive match_states
     (*                              dummy_tgt.(get_function_tgt).(Linear.fn_code) = []) *)
     (* (DUMMYSRC: exists dummy_src, last_option st_src0.(LTLC.get_stack) = Some dummy_src /\ *)
     (*                              dummy_src.(get_code) = []) *)
-    (DUMMYTGT: exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\
-                                 dummy_tgt.(get_code_tgt) = [])
+    (DUMMYTGT: wf_tgt st_tgt0)
     (MEASURE: measure st_src0 = idx)
 .
 
@@ -281,7 +277,7 @@ Proof.
             + econs; et.
           - econs; et.
         }
-      * ss. esplits; et.
+      * rr. ss. esplits; et.
       (* * ss. esplits; et. *)
     + rewrite SGEQ.
       rpapply LTLC.initial_frame_intro; revgoals; [ f_equal; et | .. ]; eauto with congruence.
@@ -335,13 +331,13 @@ Proof.
           ss. des_ifs. econs; et.
           inv H. econs; et.
         }
-      * clear - DUMMYTGT. des. destruct ts; ss. des_ifs; ss; clarify; esplits; et.
+      * clear - DUMMYTGT. unfold wf_tgt in *. des. destruct ts; ss. des_ifs; ss; clarify; esplits; et.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv H3; ss. inv H4; ss. inv H1; ss. destruct sm0; ss. clarify.
+    exploit transf_dummy; et. intro T. rewrite T in *. clarify. ss.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
-    rpapply final_frame_intro. unfold dummy_stack.
-    exploit transf_dummy; eauto. intro T. rewrite T in *. clarify. repeat f_equal; et. ss. inv H7. ss.
+    rpapply final_frame_intro. unfold dummy_stack. repeat f_equal; et. rr in DUMMYTGT. des. ss. clarify.
     (* repeat f_equal; et. *)
   - esplits; eauto.
     { apply LTLC.modsem_receptive; et. }
@@ -355,12 +351,12 @@ Proof.
       esplits; eauto.
       * left. eapply spread_dplus; eauto.
         { eapply modsem_determinate; eauto. }
-      * instantiate (1:= SimMemId.mk _ _). econs; ss. et.
+      * instantiate (1:= SimMemId.mk _ _). econs; ss.
     + clarify.
       esplits; et.
       * right. esplits; et.
         { eapply star_refl. }
-      * instantiate (1:= SimMemId.mk _ _). econs; ss. et.
+      * instantiate (1:= SimMemId.mk _ _). econs; ss.
         
 Unshelve.
   all: ss; try (by econs).
@@ -373,11 +369,12 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Variables prog tprog: program.
+Variable prog: LTL.program.
+Variable tprog: Linear.program.
 Hypothesis TRANSL: match_prog prog tprog.
 
 Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt
+  ModPair.mk (LTLC.module prog) (LinearC.module tprog) tt
 .
 
 Theorem sim_mod

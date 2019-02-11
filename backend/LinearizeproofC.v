@@ -58,9 +58,10 @@ Definition get_code_tgt (stk: Linear.stackframe): Linear.code :=
 Require Import Program.
 
 Definition wf_tgt (st_tgt0: Linear.state): Prop :=
-  exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\
-                    dummy_tgt.(get_code_tgt) = [] /\
-                    dummy_tgt.(get_function_tgt).(fn_code) = [Lgoto 1%positive]
+  (* exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\ *)
+  (*                   dummy_tgt.(get_code_tgt) = [] /\ *)
+  (*                   dummy_tgt.(get_function_tgt).(fn_code) = [Lgoto 1%positive] *)
+  exists sg_init ls_init, last_option st_tgt0.(LinearC.get_stack) = Some (LinearC.dummy_stack sg_init ls_init)
 .
 
 Lemma lift_starN
@@ -79,14 +80,14 @@ Proof.
   (* pose s1 as S1. pose s2 as S2. pose s3 as S3. *)
   econs; et.
   - econs; et.
-    des. inv H; ss; destruct s0; ss. exfalso. clarify. ss. clarify.
-    clear - STAR STKAFTER DUMMYTGT1.
+    des. inv H; ss; destruct s0; ss. exfalso. clarify.
+    clear - STAR STKAFTER.
     dependent induction STAR; ii; ss. inv H; ss.
   - des. exploit IHSTAR; et. inv H; ss; try (by esplits; et).
     + des_ifs. rewrite DUMMYTGT. esplits; et.
     + des_ifs.
       * ss. clarify.
-        clear - STAR STKAFTER DUMMYTGT1.
+        clear - STAR STKAFTER.
         dependent induction STAR; ii; ss. inv H; ss.
       * rewrite DUMMYTGT. esplits; et.
 Qed.
@@ -121,7 +122,7 @@ Proof.
   econs; et.
   - econs; et.
     des. inv H; ss; destruct s0; ss. exfalso. clarify. ss. clarify.
-    clear - STAR STKAFTER DUMMYTGT2.
+    clear - STAR STKAFTER.
     dependent induction STAR; ii; ss. inv H; ss.
   - des.
     exploit IHSTAR; et.
@@ -173,33 +174,6 @@ Proof.
   apply starN_plus_iff; et.
 Qed.
 
-Definition enumerate_aux_trivial: bool :=
-  let reach := DS.fixpoint (PTree.empty bblock) successors_block (fun _ => id) 1 true in
-  match reach with
-  | Some reach =>
-    match enumerate_aux (PTree.empty bblock) (1%positive) reach with
-    | [] => true
-    | _ => false
-    end
-  | None => false
-  end
-.
-
-Axiom enumerate_aux_trivial_is_true: enumerate_aux_trivial = true.
-
-Lemma transf_dummy
-      sg
-  :
-    transf_function (LTLC.dummy_function sg) = OK (dummy_function sg)
-.
-Proof.
-  unfold transf_function. unfold bind. unfold LinearC.dummy_function. ss.
-  unfold enumerate. ss.
-  generalize (enumerate_aux_trivial_is_true); intro TRUE.
-  unfold enumerate_aux_trivial in *. des_ifs_safe.
-  unfold reachable, reachable_aux. ss. unfold id in *. des_ifs_safe.
-  rewrite Heq0. ss.
-Qed.
 
 
 
@@ -271,10 +245,7 @@ Proof.
     + econs; eauto; ss.
       * inv TYP. rpapply match_states_call; eauto.
         { instantiate (1:= [LTLC.dummy_stack (fn_sig fd) ls_init]). econs; eauto.
-          - rpapply match_stackframe_intro.
-            + eapply transf_dummy; et.
-            + i; ss.
-            + econs; et. econs; et.
+          - econs; et.
           - econs; et.
         }
       * rr. ss. esplits; et.
@@ -329,15 +300,17 @@ Proof.
           inv H5.
           { econs; et. }
           ss. des_ifs. econs; et.
-          inv H. econs; et.
+          inv H; econs; et.
         }
-      * clear - DUMMYTGT. unfold wf_tgt in *. des. destruct ts; ss. des_ifs; ss; clarify; esplits; et.
+      * clear - DUMMYTGT. unfold wf_tgt in *. des. destruct ts; ss. unfold dummy_stack, dummy_function in *. des_ifs; ss; clarify; esplits; et.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
-    inv H3; ss. inv H4; ss. inv H1; ss. destruct sm0; ss. clarify.
-    exploit transf_dummy; et. intro T. rewrite T in *. clarify. ss.
+    inv H3; ss. inv H4; ss. destruct sm0; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
-    rpapply final_frame_intro. unfold dummy_stack. repeat f_equal; et. rr in DUMMYTGT. des. ss. clarify.
+    rr in DUMMYTGT. des. ss. clarify.
+    assert(sg_init = sg_init0).
+    { inv H1; ss. unfold transf_function, bind in *. des_ifs. }
+    clarify.
     (* repeat f_equal; et. *)
   - esplits; eauto.
     { apply LTLC.modsem_receptive; et. }

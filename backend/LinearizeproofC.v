@@ -11,56 +11,13 @@ Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem ModSemProps.
 Require SimMemId.
 Require SoundTop.
+Require Import Program.
 
 Set Implicit Arguments.
 
 
 
-Definition get_function (stk: LTL.stackframe): LTL.function :=
-  match stk with
-  | LTL.Stackframe func _ _ _ => func
-  end
-.
-
-Definition get_function_tgt (stk: Linear.stackframe): Linear.function :=
-  match stk with
-  | Linear.Stackframe func _ _ _ => func
-  end
-.
-
-Definition get_code (stk: LTL.stackframe): LTL.bblock :=
-  match stk with
-  | LTL.Stackframe _ _ _ code => code
-  end
-.
-
-Definition get_code_tgt (stk: Linear.stackframe): Linear.code :=
-  match stk with
-  | Linear.Stackframe _ _ _ code => code
-  end
-.
-
-(* Lemma wf_preserves *)
-(*       st_tgt0 tr st_tgt1 *)
-(*       (STEP: Linear.step tge st_tgt0 tr st_tgt1) *)
-(*       (DUMMYTGT: exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\ *)
-(*                                    dummy_tgt.(get_function_tgt).(Linear.fn_code) = []) *)
-(*   : *)
-(*       <<DUMMYTGT: exists dummy_tgt, last_option st_tgt1.(LinearC.get_stack) = Some dummy_tgt /\ *)
-(*                                    dummy_tgt.(get_function_tgt).(Linear.fn_code) = []>> *)
-(* . *)
-(* Proof. *)
-(*   des. inv STEP; esplits; et. *)
-(*   - ss. des_ifs. *)
-(*   - ss. des_ifs. ss. *)
-(* Qed. *)
-
-Require Import Program.
-
 Definition wf_tgt (st_tgt0: Linear.state): Prop :=
-  (* exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\ *)
-  (*                   dummy_tgt.(get_code_tgt) = [] /\ *)
-  (*                   dummy_tgt.(get_function_tgt).(fn_code) = [Lgoto 1%positive] *)
   exists sg_init ls_init, last_option st_tgt0.(LinearC.get_stack) = Some (LinearC.dummy_stack sg_init ls_init)
 .
 
@@ -104,11 +61,7 @@ Proof.
   unfold wf_tgt in *.
   revert_until STAR.
   induction STAR; ii; ss.
-  { split.
-    - econs; et.
-    - des. esplits; et. }
-  pose s as S1. pose s' as S2. pose s'' as S3.
-  (* pose s1 as S1. pose s2 as S2. pose s3 as S3. *)
+  { split. - econs; et. - des. esplits; et. }
   assert(DUMMYTGT0: wf_tgt s'').
   { clarify.
     eapply IHSTAR; et. clear IHSTAR.
@@ -143,8 +96,7 @@ Lemma starN_plus_iff
 .
 Proof.
   split; i; des.
-  -
-    destruct n; ss.
+  - destruct n; ss.
     { xomega. }
     ginduction H; ii; ss.
     { xomega. }
@@ -155,8 +107,7 @@ Proof.
     + eapply plus_trans; et.
       { apply plus_one; et. }
       eapply IHstarN; et. xomega.
-  -
-    inv H. apply star_starN in H1. des. exists (Datatypes.S n). esplits; et.
+  - inv H. apply star_starN in H1. des. exists (Datatypes.S n). esplits; et.
     { econs; et. }
     { xomega. }
 Qed.
@@ -203,15 +154,6 @@ Inductive match_states
     (MATCHST: Linearizeproof.match_states st_src0 st_tgt0)
     (MCOMPATSRC: st_src0.(LTLC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(LinearC.get_mem) = sm0.(SimMem.tgt))
-    (* sg_init ls_init *)
-    (* (DUMMYSRC: last_option st_src0.(LTLC.get_stack) = Some (LTLC.dummy_stack sg_init ls_init)) *)
-    (* (DUMMYTGT: last_option st_tgt0.(LinearC.get_stack) = Some (LinearC.dummy_stack sg_init ls_init)) *)
-    (* (DUMMYSRC: exists dummy_src, last_option st_src0.(LTLC.get_stack) = Some dummy_src /\ *)
-    (*                              dummy_src.(get_function).(LTL.fn_code) = (PTree.empty _)) *)
-    (* (DUMMYTGT: exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\ *)
-    (*                              dummy_tgt.(get_function_tgt).(Linear.fn_code) = []) *)
-    (* (DUMMYSRC: exists dummy_src, last_option st_src0.(LTLC.get_stack) = Some dummy_src /\ *)
-    (*                              dummy_src.(get_code) = []) *)
     (DUMMYTGT: wf_tgt st_tgt0)
     (MEASURE: measure st_src0 = idx)
 .

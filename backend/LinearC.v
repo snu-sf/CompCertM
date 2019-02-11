@@ -229,7 +229,7 @@ Definition dummy_stack (sig: signature) (ls: locset) :=
               (* (Vptr (admit "dummy_fptr") Ptrofs.zero true) *)
              Vundef
              ls
-             [Lgoto 1%positive] (* one may replace it with another another_dummy_code,
+             [] (* one may replace it with another another_dummy_code,
 but then corresponding MachM's part should be transl_code another_dummy_code ... *)
 .
 Hint Unfold dummy_stack.

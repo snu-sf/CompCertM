@@ -59,7 +59,7 @@ Require Import Program.
 
 Definition wf_tgt (st_tgt0: Linear.state): Prop :=
   exists dummy_tgt, last_option st_tgt0.(LinearC.get_stack) = Some dummy_tgt /\
-                    dummy_tgt.(get_code_tgt) = [Lgoto 1%positive] /\
+                    dummy_tgt.(get_code_tgt) = [] /\
                     dummy_tgt.(get_function_tgt).(fn_code) = [Lgoto 1%positive]
 .
 
@@ -81,13 +81,13 @@ Proof.
   - econs; et.
     des. inv H; ss; destruct s0; ss. exfalso. clarify. ss. clarify.
     clear - STAR STKAFTER DUMMYTGT1.
-    dependent induction STAR; ii; ss. inv H; ss. rewrite DUMMYTGT1 in *. ss.
+    dependent induction STAR; ii; ss. inv H; ss.
   - des. exploit IHSTAR; et. inv H; ss; try (by esplits; et).
     + des_ifs. rewrite DUMMYTGT. esplits; et.
     + des_ifs.
       * ss. clarify.
         clear - STAR STKAFTER DUMMYTGT1.
-        dependent induction STAR; ii; ss. inv H; ss. rewrite DUMMYTGT1 in *. ss.
+        dependent induction STAR; ii; ss. inv H; ss.
       * rewrite DUMMYTGT. esplits; et.
 Qed.
 
@@ -114,7 +114,7 @@ Proof.
     des. inv H; ss; try (by esplits; et).
     - des_ifs. esplits; et.
     - des_ifs.
-      + ss. clarify. inv STAR; ss. inv H; ss. rewrite DUMMYTGT1 in *. ss.
+      + ss. clarify. inv STAR; ss. inv H; ss.
       + esplits; et.
   }
   split; ss.
@@ -122,13 +122,13 @@ Proof.
   - econs; et.
     des. inv H; ss; destruct s0; ss. exfalso. clarify. ss. clarify.
     clear - STAR STKAFTER DUMMYTGT2.
-    dependent induction STAR; ii; ss. inv H; ss. rewrite DUMMYTGT2 in *. ss.
+    dependent induction STAR; ii; ss. inv H; ss.
   - des.
     exploit IHSTAR; et.
     { inv H; ss; try (by esplits; et).
       - des_ifs. esplits; et.
       - des_ifs.
-        + ss. clarify. inv STAR; ss. inv H; ss. rewrite DUMMYTGT2 in *. ss.
+        + ss. clarify. inv STAR; ss. inv H; ss.
         + esplits; et.
     }
     i; des.
@@ -274,7 +274,7 @@ Proof.
           - rpapply match_stackframe_intro.
             + eapply transf_dummy; et.
             + i; ss.
-            + econs; et.
+            + econs; et. econs; et.
           - econs; et.
         }
       * rr. ss. esplits; et.

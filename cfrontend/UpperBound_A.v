@@ -404,9 +404,8 @@ Section PRESERVATION.
   Proof.
     assert(INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function cp_link)).
     { exploit link_includes. eapply LINKSRC.
-      { subst prog_src. instantiate (1 := (module cp_link)). admit "". }
-      ss. }
-    
+      subst prog_src. instantiate (1 := (module cp_link)).
+      apply in_or_app. ss. auto. ss. }
     eapply CSkEnv.project_revive_precise; eauto.
     eapply SkEnv.project_impl_spec; eauto.
   Qed.
@@ -419,11 +418,9 @@ Section PRESERVATION.
   Proof.
     assert(INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function pgm)).
     { exploit link_includes. eapply LINKTGT.
-      { subst prog_tgt. instantiate (1 := (module pgm)).
-        rewrite in_app_iff in *. des; ss.
-        inv FOCUS1; eauto. }
-      ss. }
-    
+      subst prog_tgt. instantiate (1 := (module pgm)).
+      rewrite in_app_iff in *. des; ss.
+      inv FOCUS1; eauto. ss. }    
     eapply CSkEnv.project_revive_precise; eauto.
     eapply SkEnv.project_impl_spec; eauto.
   Qed.
@@ -472,7 +469,61 @@ Section PRESERVATION.
     - clarify. exists cp1. esplits; eauto.
       unfold is_focus. auto.
   Qed.
-   
+
+  Lemma prog_def_exists
+        if_sig fptr
+        (INTERNAL : Genv.find_funct (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) fptr =
+                    Some (AST.Internal if_sig))
+    :
+      exists pgm, is_focus pgm /\ exists sig, Genv.find_funct (ModSem.skenv (modsem skenv_link pgm)) fptr = Some (AST.Internal sig).
+  Proof.
+    unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
+    rewrite MapsC.PTree_filter_map_spec in INTERNAL. unfold o_bind in *.
+    destruct ((Genv.genv_defs skenv_link) ! b) eqn:Hdefs; ss.
+    destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. des_ifs.
+    rewrite CSk.of_program_internals in Heq. unfold internals in Heq. des_ifs.
+    destruct ((prog_defmap (CSk.of_program signature_of_function cp_link)) ! i) eqn:Hdefmap; ss; clarify.
+    exploit CSk.of_program_prog_defmap. instantiate (1:=cp_link). instantiate (1:=signature_of_function). instantiate (1:= i).
+    intros MAPREL. 
+    destruct g0; ss; cycle 1.
+    { inv MAPREL.
+      - rewrite Heq0 in H0. clarify.
+      - rewrite Heq0 in H. rewrite Hdefmap in H0. clarify. inv H1. }
+    destruct f; ss; cycle 1.
+    { inv MAPREL.
+      - rewrite Heq0 in H0. clarify.
+      - rewrite Heq0 in H. rewrite Hdefmap in H0. clarify. inv H1. inv H3. }
+    exploit prog_defmap_exists; eauto. i. des.
+    exists pgm. splits; eauto.
+    exploit is_focus_precise; eauto. i. inv H1.
+    
+    exploit P2GE; eauto. i. des; ss.
+    assert (b0 = b).
+    { exploit Genv.invert_find_symbol. eauto. i.
+      admit "ez". }
+    subst.
+
+    subst. unfold Genv.find_def in DEF. ss. rewrite MapsC.PTree_filter_map_spec in DEF.
+    rewrite o_bind_ignore in DEF. des_ifs. rewrite MapsC.PTree_filter_map_spec in Heq1.
+    rewrite o_bind_ignore in Heq1. rewrite Hdefs in Heq1. rewrite Hsymb in Heq1. ss.
+    
+    unfold o_bind in Heq1. ss. des_ifs. ss.
+    unfold internals in Heq2. des_ifs.
+    exploit CSk.of_program_prog_defmap. instantiate (1:=pgm). instantiate (1:=signature_of_function). instantiate (1:= i).
+    intros MAPREL1.
+    destruct g1; ss; cycle 1.
+    { inv MAPREL1.
+      - rewrite Heq3 in H3. clarify.
+      - rewrite H0 in H1. rewrite Heq3 in H2. clarify. inv H3. }
+    destruct f0; ss; cycle 1.
+    { inv MAPREL1.
+      - rewrite Heq3 in H3. clarify.
+      - rewrite H0 in H1. rewrite Heq3 in H2. clarify. inv H3. inv H5. }
+    exists s. rewrite Genv.find_funct_ptr_iff.
+    unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. rewrite o_bind_ignore. rewrite Hdefs. rewrite Hsymb.
+    unfold o_bind. ss. unfold internals. rewrite Heq3. simpl. ss.
+  Qed.
+
   Lemma msfind_fsim
         fptr ms
         (MSFIND: Ge.find_fptr_owner (load_genv prog_src skenv_link) fptr ms)
@@ -491,7 +542,9 @@ Section PRESERVATION.
     { left. econs; et. ss. right. rewrite in_map_iff. esplits; et. unfold prog_tgt. rewrite in_app_iff. left; ss. }
     des; ss. clarify.
     right. ss.
+    (*   Heq3 : (prog_defmap (CSk.of_program signature_of_function pgm)) ! i = Some (Gfun (AST.Internal s)) *)
 
+    
     {
       unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
       rewrite MapsC.PTree_filter_map_spec in INTERNAL. unfold o_bind in *.
@@ -515,7 +568,8 @@ Section PRESERVATION.
       
       exploit P2GE; eauto. i. des; ss.
       assert (b0 = b).
-      { admit "ez". }
+      { exploit Genv.invert_find_symbol. eauto. i.
+        admit "ez". }
       subst.
       
       subst. unfold Genv.find_def in DEF. ss. rewrite MapsC.PTree_filter_map_spec in DEF.
@@ -534,17 +588,17 @@ Section PRESERVATION.
       { inv MAPREL1.
         - rewrite Heq3 in H3. clarify.
         - rewrite H0 in H1. rewrite Heq3 in H2. clarify. inv H3. inv H5. }
-      econs; eauto; ss.
-      - right. subst prog_tgt.
+      econs; eauto.
+      - ss. right. subst prog_tgt.
         rewrite in_map_iff. exists (module pgm); ss.
         split; unfold flip; ss.
         rewrite in_app_iff; right. inv H.
         { econs; eauto. }
         { econs 2; eauto. econs; eauto. }
-      - des_ifs.
+      - ss. des_ifs.
         rewrite Genv.find_funct_ptr_iff.
         unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. rewrite o_bind_ignore. rewrite Hdefs. rewrite Hsymb.
-        unfold o_bind. ss. unfold internals. rewrite Heq3. ss. }
+        unfold o_bind. ss. unfold internals. rewrite Heq3. simpl. ss. }
   Qed.
 
   Lemma msfind_bsim

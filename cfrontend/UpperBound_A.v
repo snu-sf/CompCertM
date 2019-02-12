@@ -418,9 +418,10 @@ Section PRESERVATION.
   Proof.
     assert(INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function pgm)).
     { exploit link_includes. eapply LINKTGT.
-      subst prog_tgt. instantiate (1 := (module pgm)).
-      rewrite in_app_iff in *. des; ss.
-      inv FOCUS1; eauto. ss. }    
+      { subst prog_tgt. instantiate (1 := (module pgm)).
+        rewrite in_app_iff in *. des; ss.
+        inv FOCUS1; eauto. }
+      ss. }
     eapply CSkEnv.project_revive_precise; eauto.
     eapply SkEnv.project_impl_spec; eauto.
   Qed.
@@ -542,9 +543,6 @@ Section PRESERVATION.
     { left. econs; et. ss. right. rewrite in_map_iff. esplits; et. unfold prog_tgt. rewrite in_app_iff. left; ss. }
     des; ss. clarify.
     right. ss.
-    (*   Heq3 : (prog_defmap (CSk.of_program signature_of_function pgm)) ! i = Some (Gfun (AST.Internal s)) *)
-
-    
     {
       unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
       rewrite MapsC.PTree_filter_map_spec in INTERNAL. unfold o_bind in *.
@@ -568,8 +566,7 @@ Section PRESERVATION.
       
       exploit P2GE; eauto. i. des; ss.
       assert (b0 = b).
-      { exploit Genv.invert_find_symbol. eauto. i.
-        admit "ez". }
+      { admit "ez". }
       subst.
       
       subst. unfold Genv.find_def in DEF. ss. rewrite MapsC.PTree_filter_map_spec in DEF.
@@ -588,17 +585,17 @@ Section PRESERVATION.
       { inv MAPREL1.
         - rewrite Heq3 in H3. clarify.
         - rewrite H0 in H1. rewrite Heq3 in H2. clarify. inv H3. inv H5. }
-      econs; eauto.
-      - ss. right. subst prog_tgt.
+      econs; eauto; ss.
+      - right. subst prog_tgt.
         rewrite in_map_iff. exists (module pgm); ss.
         split; unfold flip; ss.
         rewrite in_app_iff; right. inv H.
         { econs; eauto. }
         { econs 2; eauto. econs; eauto. }
-      - ss. des_ifs.
+      - des_ifs.
         rewrite Genv.find_funct_ptr_iff.
         unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. rewrite o_bind_ignore. rewrite Hdefs. rewrite Hsymb.
-        unfold o_bind. ss. unfold internals. rewrite Heq3. simpl. ss. }
+        unfold o_bind. ss. unfold internals. rewrite Heq3. ss. }
   Qed.
 
   Lemma msfind_bsim

@@ -1749,7 +1749,7 @@ Section PRESERVATION.
   Proof.
     inv MTCHST; ss.
     - eapply SemProps.lift_receptive_at.
-      { ss. des_ifs. symmetry. apply SkEnv.project_impl_spec; ss. admit "INCL". }
+      { ss. des_ifs. }
       ss.
       eapply AsmC.lift_receptive_at.
       eapply semantics_receptive.

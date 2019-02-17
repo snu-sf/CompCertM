@@ -36,11 +36,11 @@ Definition get_mem (st: state): mem :=
 .
 
 (* copied from Clight *)
-Definition semantics1_with_ge (p: program) (ge: genv) :=
-  Semantics_gen step1 bot1 final_state ge ge.
+Definition semantics1_with_ge (p: program) (se: Senv.t) (ge: genv) :=
+  Semantics_gen step1 bot1 final_state ge se.
 
-Definition semantics2_with_ge (p: program) (ge: genv) :=
-  Semantics_gen step2 bot1 final_state ge ge.
+Definition semantics2_with_ge (p: program) (se: Senv.t) (ge: genv) :=
+  Semantics_gen step2 bot1 final_state ge se.
 
 Section MODSEM.
 
@@ -158,13 +158,12 @@ Section MODSEM.
 
   Let lift_receptive: forall
       st
-      (RECEP: receptive_at (semantics1_with_ge p ge) st)
+      (RECEP: receptive_at (semantics1_with_ge p skenv_link ge) st)
     ,
       receptive_at modsem1 st
   .
   Proof. i.
-    inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto.
-    eapply match_traces_preserved; try eassumption. ii; ss.
+    inv RECEP. econs; eauto; ii; ss.
   Qed.
 
   Lemma modsem1_receptive

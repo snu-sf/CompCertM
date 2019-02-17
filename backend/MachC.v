@@ -41,8 +41,9 @@ Section MACHEXTRA.
     end
   .
 
+  Variable se: Senv.t.
   Variable ge: genv.
-  Definition semantics_with_ge := Semantics (step rao) bot1 final_state ge.
+  Definition semantics_with_ge := Semantics_gen (step rao) bot1 final_state ge se.
   (* *************** ge is parameterized *******************)
 
   Lemma semantics_receptive
@@ -400,16 +401,14 @@ Section MODSEM.
 
   Lemma lift_receptive_at
         st
-        (RECEP: receptive_at (semantics_with_ge rao ge) st)
+        (RECEP: receptive_at (semantics_with_ge rao skenv_link ge) st)
     :
       forall init_rs init_sg, receptive_at modsem (mkstate init_rs init_sg st)
   .
   Proof.
     inv RECEP. econs; eauto; ii; ss.
     - inv H. ss.
-      exploit sr_receptive_at; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
-      i; des. destruct s1; ss.
+      exploit sr_receptive_at; eauto. i; des. destruct s1; ss.
       exists (mkstate init_rs1 init_sg1 s2).
       econs; eauto. ss.
       { admit "ez - prove get_stack dtm as a lemma". }
@@ -426,16 +425,15 @@ Section MODSEM.
 
   Lemma lift_determinate_at
         st0
-        (DTM: determinate_at (semantics_with_ge rao ge) st0)
+        (DTM: determinate_at (semantics_with_ge rao skenv_link ge) st0)
     :
       forall init_rs init_sg, determinate_at modsem (mkstate init_rs init_sg st0)
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.
     - inv H. inv H0.
-      determ_tac sd_determ_at. esplits; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
-      i. destruct s1, s2; ss. rewrite H0; ss. eauto with congruence.
+      determ_tac sd_determ_at. esplits; eauto. i. clarify.
+      destruct s1, s2; ss. rewrite H0; ss. eauto with congruence.
     - inv H.
       exploit sd_traces_at; eauto.
   Qed.

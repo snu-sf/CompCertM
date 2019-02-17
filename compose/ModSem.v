@@ -178,7 +178,7 @@ Module ModSem.
   (* . *)
 
   Definition to_semantics (ms: t) :=
-    (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) ms.(skenv))
+    (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) ms.(skenv_link))
   .
 
 End ModSem.

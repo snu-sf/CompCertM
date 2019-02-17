@@ -23,8 +23,9 @@ Section LINEAREXTRA.
     end
   .
 
+  Variable se: Senv.t.
   Variable ge: genv.
-  Definition semantics_with_ge := Semantics step bot1 final_state ge.
+  Definition semantics_with_ge := Semantics_gen step bot1 final_state ge se.
   (* *************** ge is parameterized *******************)
 
   Lemma semantics_receptive
@@ -364,14 +365,13 @@ Section MODSEM.
 
   Lemma lift_determinate_at
         st0
-        (DTM: determinate_at (semantics_with_ge ge) st0)
+        (DTM: determinate_at (semantics_with_ge skenv_link ge) st0)
     :
       determinate_at modsem st0
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.
-    - inv H. inv H0. determ_tac sd_determ_at. esplits; eauto.
-      eapply match_traces_preserved; try eassumption. ii; ss.
+    - inv H. inv H0. determ_tac sd_determ_at.
     - inv H. exploit sd_traces_at; eauto.
   Qed.
 
@@ -384,15 +384,14 @@ Section MODSEM.
 
   Lemma lift_receptive_at
         st
-        (RECEP: receptive_at (semantics_with_ge ge) st)
+        (RECEP: receptive_at (semantics_with_ge skenv_link ge) st)
     :
       receptive_at modsem st
   .
   Proof.
     inv RECEP. econs; eauto; ii; ss.
-    - inv H. exploit sr_receptive_at; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
-      i; des. esplits; eauto. econs; eauto. admit "ez - See Mach.v for same admit".
+    - inv H. exploit sr_receptive_at; eauto. i; des.
+      esplits; eauto. econs; eauto. admit "ez - See Mach.v for same admit".
     - inv H. exploit sr_traces_at; eauto.
   Qed.
 

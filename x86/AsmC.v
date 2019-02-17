@@ -54,8 +54,9 @@ Section ASMEXTRA.
     end
   .
 
+  Variable se: Senv.t.
   Variable ge: genv.
-  Definition semantics_with_ge := Semantics step bot1 final_state ge.
+  Definition semantics_with_ge := Semantics_gen step bot1 final_state ge se.
   (* *************** ge is parameterized *******************)
 
   Lemma semantics_receptive
@@ -242,15 +243,13 @@ Section MODSEM.
   Lemma lift_receptive_at
         st
         (* b *)
-        (RECEP: receptive_at (semantics_with_ge ge) st)
+        (RECEP: receptive_at (semantics_with_ge skenv_link ge) st)
     :
       forall init_rs, receptive_at modsem (mkstate init_rs st)
   .
   Proof.
     inv RECEP. i. econs; eauto; ii; ss.
-    - inv H. ss. exploit sr_receptive_at; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
-      i; des.
+    - inv H. ss. exploit sr_receptive_at; eauto. i; des.
       eexists (mkstate _ s2). econs; ss.
     - inv H. ss. exploit sr_traces_at; eauto.
   Unshelve.
@@ -266,16 +265,14 @@ Section MODSEM.
 
   Lemma lift_determinate_at
         st0
-        (DTM: determinate_at (semantics_with_ge ge) st0)
+        (DTM: determinate_at (semantics_with_ge skenv_link ge) st0)
     :
       forall init_rs, determinate_at modsem (mkstate init_rs st0)
   .
   Proof.
     inv DTM. i. econs; eauto; ii; ss.
     - inv H. inv H0. ss.
-      determ_tac sd_determ_at. esplits; eauto.
-      { eapply match_traces_preserved; try eassumption. ii; ss. }
-      i. clarify. destruct s1, s2; ss. f_equal; ss; eauto.
+      determ_tac sd_determ_at. esplits; eauto. i. clarify. destruct s1, s2; ss. f_equal; ss; eauto.
     - inv H. ss. exploit sd_traces_at; eauto.
   Unshelve.
     all: ss.

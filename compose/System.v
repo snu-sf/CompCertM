@@ -99,9 +99,8 @@ Section SYSMODSEM.
   .
   Proof.
     econs; ii; ss.
-    - inv H. exploit external_call_receptive; eauto.
-      { eapply match_traces_le; et. }
-      i; des. esplits; et. econs; et. instantiate (1:= Retv.mk _ _). s. et.
+    - inv H. exploit external_call_receptive; eauto. i; des.
+      esplits; et. econs; et. instantiate (1:= Retv.mk _ _). s. et.
     - inv H. eapply external_call_trace_length; et.
   Qed.
 
@@ -115,7 +114,6 @@ Section SYSMODSEM.
     - inv H; inv H0. clarify.
       determ_tac external_call_match_traces.
       esplits; et.
-      { eapply match_traces_le; et. }
       i; clarify.
       determ_tac external_call_deterministic. destruct retv, retv0; ss. clarify.
     - inv H. eapply external_call_trace_length; et.

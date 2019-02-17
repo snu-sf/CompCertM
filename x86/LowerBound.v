@@ -237,14 +237,14 @@ Section PRESERVATION.
     - unfold fundef in *. rewrite mge_next. refl.
 
     - unfold Genv.find_symbol in *. rewrite mge_symb.
-      destruct (classic (defs x id \/ In id (Genv.genv_public (Genv.globalenv sk)))).
+      destruct (classic (defs x id)).
       + exploit SYMBKEEP; et.
         { erewrite Sk.of_program_defs; et. }
-        i; des_safe.
+        i; des.
         ss. congruence.
-      + apply not_or_and in H. exploit SYMBDROP; et.
+      + exploit SYMBDROP; et.
         { erewrite Sk.of_program_defs; et. }
-        i; des_safe.
+        i; des.
         ss. congruence.
 
     - exists d0. splits; eauto.

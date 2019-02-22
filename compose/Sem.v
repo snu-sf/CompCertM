@@ -93,7 +93,7 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     fr0 frs
     (* (INTERNAL: fr0.(Frame.is_internal)) *)
     tr st0
-    (STEP: fr0.(Frame.ms).(ModSem.step) fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
+    (STEP: fr0.(Frame.ms).(ModSem.step) fr0.(Frame.ms).(symbolenv) fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
   :
     step ge (State (fr0 :: frs))
          tr (State ((fr0.(Frame.update_st) st0) :: frs))
@@ -174,7 +174,7 @@ Section SEMANTICS.
   .
 
   Definition sem: semantics :=
-    (Semantics_gen step initial_state final_state
+    (Semantics_gen (fun _ => step) initial_state final_state
                    (match link_sk with
                     | Some sk_link => load_genv sk_link.(Sk.load_skenv)
                     | None => (nil, SkEnv.empty)

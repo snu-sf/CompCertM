@@ -504,23 +504,6 @@ Qed.
 
 End MATCH_PROGRAMS_BACKWARD.
 
-Program Instance Senv_eq_equiv: RelationClasses.Equivalence Senv.equiv.
-Next Obligation.
-  ii.
-  econs; eauto.
-Qed.
-Next Obligation.
-  ii.
-  inv H. des.
-  econs; eauto.
-Qed.
-Next Obligation.
-  ii.
-  inv H. inv H0. des.
-  econs; eauto.
-  i. erewrite <- H1; eauto.
-Qed.
-
 
 
 (* Inductive good_genv {F V} (ge: Genv.t F V): Prop := *)

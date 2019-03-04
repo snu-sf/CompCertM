@@ -621,6 +621,28 @@ Next Obligation.
     + inv H3. xomega.
 Qed.
 
+Local Existing Instance SimMemInj.
+Local Existing Instance SimSymbId.
+
+Lemma sim_skenv_symbols_inject
+      sm0 ss0 skenv_src skenv_tgt
+      (SIMSKE: SimSymb.sim_skenv sm0 ss0 skenv_src skenv_tgt)
+  :
+    symbols_inject sm0.(SimMemInj.inj) skenv_src skenv_tgt
+.
+Proof.
+  inv SIMSKE. inv SIMSKENV. inv INJECT. rr. esplits; ss.
+  + i. exploit Genv.genv_symb_range; eauto. intro NB. exploit DOMAIN; eauto. i ;des. clarify.
+  + i. exploit Genv.genv_symb_range; eauto.
+  + i. unfold Genv.block_is_volatile, Genv.find_var_info.
+    destruct (Genv.find_def skenv_tgt b1) eqn:T.
+    * exploit Genv.genv_defs_range; eauto. intro NB. exploit DOMAIN; eauto. i; des. clarify. des_ifs.
+    * des_ifs. exploit Genv.genv_defs_range; eauto. intro NB. exploit DOMAIN; eauto. i; des.
+      exploit (IMAGE b1 b2); eauto. i; clarify.
+Qed.
+
 End SIMSYMB.
 
 Arguments skenv_inject_revive [_ _ _].
+
+

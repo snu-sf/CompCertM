@@ -310,7 +310,7 @@ Proof.
   { ii. esplits; eauto. econs; eauto. }
   ii. econs; eauto.
   { ii. esplits; eauto. left. apply plus_one. ss. }
-  i. r in SAFESRC. specialize (SAFESRC st (star_refl _ _ _)). ss.
+  i. r in SAFESRC. specialize (SAFESRC st (star_refl _ _ _ _)). ss.
 Qed.
 
 (* From stdpp Require list. *)

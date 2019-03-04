@@ -776,3 +776,25 @@ Proof.
     { eapply linkorder_refl. }
     destruct v; ss.
 Qed.
+
+Lemma senv_eta
+      se tse
+      (EQ0: se.(Senv.find_symbol) = tse.(Senv.find_symbol))
+      (EQ1: se.(Senv.public_symbol) = tse.(Senv.public_symbol))
+      (EQ2: se.(Senv.invert_symbol) = tse.(Senv.invert_symbol))
+      (EQ3: se.(Senv.block_is_volatile) = tse.(Senv.block_is_volatile))
+      (EQ4: se.(Senv.nextblock) = tse.(Senv.nextblock))
+  :
+    se = tse
+.
+Proof.
+  destruct se, tse; ss. clarify.
+  f_equal.
+  - apply Axioms.proof_irr.
+  - apply Axioms.proof_irr.
+  - apply Axioms.proof_irr.
+  - apply Axioms.proof_irr.
+  - apply Axioms.proof_irr.
+  - apply Axioms.proof_irr.
+Qed.
+

@@ -93,7 +93,7 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     fr0 frs
     (* (INTERNAL: fr0.(Frame.is_internal)) *)
     tr st0
-    (STEP: fr0.(Frame.ms).(ModSem.step) fr0.(Frame.ms).(symbolenv) fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
+    (STEP: Step (fr0.(Frame.ms)) fr0.(Frame.st) tr st0)
   :
     step ge (State (fr0 :: frs))
          tr (State ((fr0.(Frame.update_st) st0) :: frs))

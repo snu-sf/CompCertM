@@ -664,6 +664,21 @@ I think "sim_skenv_monotone" should be sufficient.
 
   Definition empty: t := @Genv.empty_genv _ _ [].
 
+  Lemma senv_genv_compat
+        F V (skenv_link: t) fn_sig (prog: program (AST.fundef F) V)
+        (INCL: includes skenv_link (Sk.of_program fn_sig prog))
+    :
+      senv_genv_compat skenv_link (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog)
+  .
+  Proof.
+    exploit SkEnv.project_revive_precise; eauto.
+    { eapply SkEnv.project_impl_spec; eauto. }
+    intro PREC.
+    econs; eauto. i. ss.
+    (* inv INCL. inv PREC. *)
+    ss. uge. unfold SkEnv.revive in *. ss. rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
+  Qed.
+
 End SkEnv.
 
 Hint Unfold SkEnv.empty.

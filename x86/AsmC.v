@@ -95,9 +95,9 @@ Section MODSEM.
     (* extret: bool; *)
   }.
 
-  Inductive step (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
+  Inductive step (se: Senv.t) (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
   | step_intro
-      (STEP: Asm.step ge st0.(st) tr st1.(st))
+      (STEP: Asm.step se ge st0.(st) tr st1.(st))
       (INITRS: st0.(init_rs) = st1.(init_rs))
       (* (ISRETURN: step_ret st0.(st) = st1.(extret)) *)
   .

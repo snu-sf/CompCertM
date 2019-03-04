@@ -55,7 +55,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Inliningproof.match_states prog ge st_src0 st_tgt0 sm0)
+    (MATCHST: Inliningproof.match_states prog skenv_link_src skenv_link_tgt ge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
     (MCOMPATIDX: idx = Inliningproof.measure st_src0)
@@ -110,6 +110,7 @@ Proof.
         rpapply match_call_states; ss; eauto.
         { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
           econs; eauto.
+          - eapply SimMemInjC.sim_skenv_symbols_inject; eauto.
           - etrans; try apply MWF. ss.
         }
         { inv TYP. eapply inject_list_typify_list; try apply VALS; eauto. } 
@@ -186,13 +187,16 @@ Proof.
       inv MCOMPAT. clear_tac.
       rpapply match_return_states; ss; eauto; ss.
       (* { clear - MWF. inv MWF. ii. apply TGTEXT in H. rr in H. des. ss. } *)
-      { eapply match_stacks_le; eauto. eapply match_stacks_bound. eapply match_stacks_extcall; try eapply MS; eauto.
+      { eapply match_stacks_le; eauto. eapply match_stacks_bound; cycle 1.
+        { eapply Mem.unchanged_on_nextblock; eauto. }
+        eapply match_stacks_extcall; try eapply MS; eauto.
+        - eapply SkEnv.senv_genv_compat; eauto.
+        - eapply SkEnv.senv_genv_compat; eauto.
         - ii. eapply MAXSRC; eauto.
         - ii. eapply MAXTGT; eauto.
         - eapply Mem.unchanged_on_implies; try eassumption. ii. rr. esplits; eauto.
         - eapply SimMemInj.inject_separated_frozen; et.
         - refl.
-        - eapply Mem.unchanged_on_nextblock; eauto.
       }
       { eapply inject_typify_opt; eauto. }
       { eapply MWFAFTR. }
@@ -209,7 +213,9 @@ Proof.
     esplits; eauto.
     { apply modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog _ ge tge); eauto.
+    ii. hexploit (@step_simulation prog _ skenv_link_src skenv_link_tgt ge tge); eauto.
+    { eapply SkEnv.senv_genv_compat; eauto. }
+    { eapply SkEnv.senv_genv_compat; eauto. }
     { assert (SkEnv.genv_precise ge prog).
       { eapply SkEnv.project_revive_precise; et. eapply SkEnv.project_impl_spec; et. }
       inv H. econs; ii.

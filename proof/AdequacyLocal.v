@@ -760,7 +760,7 @@ Section ADQSTEP.
       i.
       econs; eauto; cycle 1.
       { ii.
-        specialize (SAFESRC _ (star_refl _ _ _)). des; ss.
+        specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
         - inv SAFESRC.
         - des_ifs. right. inv SAFESRC.
           exploit find_fptr_owner_fsim; eauto. { apply SIMARGS. } i; des. clarify.
@@ -773,7 +773,7 @@ Section ADQSTEP.
           econs; eauto.
       }
       i. inv STEPTGT.
-      specialize (SAFESRC _ (star_refl _ _ _)). des.
+      specialize (SAFESRC _ (star_refl _ _ _ _)). des.
       { inv SAFESRC. }
       bar.
       inv SAFESRC.

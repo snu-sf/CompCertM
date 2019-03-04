@@ -57,7 +57,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Unusedglobproof.match_states prog tprog (used_set tprog) ge tge st_src0 st_tgt0 sm0)
+    (MATCHST: Unusedglobproof.match_states prog tprog (used_set tprog) skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(RTLC.get_mem) = sm0.(SimMem.tgt))
 .
@@ -158,6 +158,8 @@ Proof.
 Qed.
 
 
+Let SEGESRC: senv_genv_compat skenv_link_src ge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
+Let SEGETGT: senv_genv_compat skenv_link_tgt tge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
 
 Theorem sim_modsem
   :
@@ -193,6 +195,7 @@ Proof.
         exploit find_funct_inject; et. i; des. clarify.
         rpapply match_states_call; ss; eauto.
         { econs; ss; et.
+          - inv SIMSKENV. ss. eapply SimSymbDrop.sim_skenv_symbols_inject; et.
           - admit "ez - genb".
           - admit "ez - genb".
         }
@@ -268,7 +271,7 @@ Proof.
     esplits; eauto.
     { apply modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog tprog (used_set tprog)); eauto.
+    ii. hexploit (@step_simulation prog tprog (used_set tprog) _ skenv_link_src skenv_link_tgt); eauto.
     i; des.
     esplits; eauto.
     + left. apply plus_one. econs; eauto. eapply modsem_determinate; eauto.

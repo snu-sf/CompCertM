@@ -76,6 +76,7 @@ End MACHEXTRA.
 Section NEWSTEP.
 
 Variable return_address_offset: function -> code -> ptrofs -> Prop.
+Variable se: Senv.t.
 Variable ge: genv.
 
 Definition get_stack (st: state): list stackframe :=
@@ -88,7 +89,7 @@ Definition get_stack (st: state): list stackframe :=
 Inductive step: state -> trace -> state -> Prop :=
 | step_intro
     st0 tr st1
-    (STEP: Mach.step return_address_offset ge st0 tr st1)
+    (STEP: Mach.step return_address_offset se ge st0 tr st1)
     (NOTDUMMY: st1.(get_stack) <> [])
   :
     step st0 tr st1
@@ -337,9 +338,9 @@ Section MODSEM.
                      (mkstate init_rs init_sg (Returnstate stack ls1 m1))
   .
 
-  Inductive step' (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
+  Inductive step' (se: Senv.t) (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
   | step'_intro
-      (STEP: Mach.step rao ge st0.(st) tr st1.(st))
+      (STEP: Mach.step rao se ge st0.(st) tr st1.(st))
       (INITRS: st0.(init_rs) = st1.(init_rs))
       (INITFPTR: st0.(init_sg) = st1.(init_sg))
       (NOTDUMMY: st1.(st).(get_stack) <> [])
@@ -454,11 +455,11 @@ Section PROPS.
 Variable rao: function -> code -> ptrofs -> Prop.
 
 Lemma lift_star
-      ge st0 tr st1
+      se ge st0 tr st1
       init_sg init_rs
-      (STAR: star (step rao) ge st0 tr st1)
+      (STAR: star (step rao) se ge st0 tr st1)
   :
-    star (step' rao) ge (mkstate init_rs init_sg st0) tr
+    star (step' rao) se ge (mkstate init_rs init_sg st0) tr
          (mkstate init_rs init_sg st1)
 .
 Proof.
@@ -470,11 +471,11 @@ Proof.
 Qed.
 
 Lemma lift_plus
-      ge st0 tr st1
+      se ge st0 tr st1
       init_sg init_rs
-      (PLUS: plus (step rao) ge st0 tr st1)
+      (PLUS: plus (step rao) se ge st0 tr st1)
   :
-    plus (step' rao) ge (mkstate init_rs init_sg st0) tr
+    plus (step' rao) se ge (mkstate init_rs init_sg st0) tr
          (mkstate init_rs init_sg st1)
 .
 Proof.

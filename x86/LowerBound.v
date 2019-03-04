@@ -408,6 +408,46 @@ Section PRESERVATION.
         des_ifs; ss; clarify. des_ifs.
   Qed.
 
+  (* TODO: remove redundancy with from UpperBound_B.v. *)
+  Lemma senv_same
+    :
+      (tge: Senv.t) = (skenv_link: Senv.t)
+  .
+  Proof.
+    generalize match_skenv_link_tge; intro MGE.
+    clear - MGE.
+    subst skenv_link. ss. unfold Sk.load_skenv in *. subst tge. unfold link_sk in *. ss.
+    inv MGE.
+    unfold fundef in *.
+    apply senv_eta; ss.
+    - uge. apply func_ext1. i. ss.
+    - unfold Genv.public_symbol. uge. apply func_ext1. i. specialize (mge_symb x0).
+      rewrite mge_symb. des_ifs. rewrite mge_pubs. ss.
+    - apply func_ext1. i.
+      destruct ((Genv.invert_symbol (@Genv.globalenv (AST.fundef function) unit tprog) x0)) eqn:T.
+      + apply Genv.invert_find_symbol in T. symmetry. apply Genv.find_invert_symbol. uge. rewrite <- mge_symb. ss.
+      + destruct (Genv.invert_symbol (Genv.globalenv sk) x0) eqn:U; ss.
+        apply Genv.invert_find_symbol in U. specialize (mge_symb i). uge. rewrite <- mge_symb in *.
+        apply Genv.find_invert_symbol in U. congruence.
+    - unfold Genv.block_is_volatile, Genv.find_var_info. apply func_ext1. i.
+      specialize (mge_defs x0). uge. inv mge_defs; ss.
+      destruct y; ss. des_ifs.
+  Qed.
+
+  Lemma system_symbols_inject2 j
+        (SKINJ: skenv_inject skenv_link j)
+    :
+      symbols_inject j (System.globalenv skenv_link) skenv_link.
+  Proof.
+
+    destruct match_skenv_link_tge. inv SKINJ.
+    unfold System.globalenv.
+    rr. esplits; ss.
+    - i. exploit Genv.genv_symb_range; eauto. intro NB.
+      exploit DOMAIN; et. i; clarify.
+    - i. exploit Genv.genv_symb_range; eauto.
+  Qed.
+
   Lemma external_function_sig
         v skd ef
         (FIND0: Genv.find_funct (System.globalenv skenv_link) v = Some (External ef))
@@ -517,10 +557,10 @@ Section PRESERVATION.
           (NOEXTFUN: no_extern_fun ge_src)
           (AGREE: agree j0 rs_src0 rs_tgt0)
           (INJ: Mem.inject j0 m_src0 m_tgt0)
-          (STEP: Asm.step ge_src (Asm.State rs_src0 m_src0) tr (Asm.State rs_src1 m_src1))
+          (STEP: Asm.step skenv_link ge_src (Asm.State rs_src0 m_src0) tr (Asm.State rs_src1 m_src1))
       :
         exists rs_tgt1 m_tgt1 j1,
-          (Asm.step ge_tgt (Asm.State rs_tgt0 m_tgt0) tr (Asm.State rs_tgt1 m_tgt1)) /\
+          (Asm.step skenv_link ge_tgt (Asm.State rs_tgt0 m_tgt0) tr (Asm.State rs_tgt1 m_tgt1)) /\
           (agree j1 rs_src1 rs_tgt1) /\
           (Mem.inject j1 m_src1 m_tgt1) /\
           (inject_incr j0 j1) /\
@@ -530,7 +570,7 @@ Section PRESERVATION.
     Admitted.
 
     Lemma asm_step_max_perm ge_src rs0 rs1 m0 m1 tr
-          (STEP: Asm.step ge_src (Asm.State rs0 m0) tr (Asm.State rs1 m1))
+          (STEP: Asm.step skenv_link ge_src (Asm.State rs0 m0) tr (Asm.State rs1 m1))
           b ofs p
           (VALID: Mem.valid_block m0 b)
           (PERM: Mem.perm m1 b ofs Max p)
@@ -1153,13 +1193,13 @@ Section PRESERVATION.
 
   Lemma asm_step_internal_simulation
         st_src0 st_src1 st_tgt0 tr frs p init_rs n0
-        (STEP: Asm.step (local_genv p) st_src0 tr st_src1)
+        (STEP: Asm.step skenv_link (local_genv p) st_src0 tr st_src1)
         (MTCHST: match_states (State ((Frame.mk (AsmC.modsem skenv_link p)
                                                 (AsmC.mkstate init_rs st_src0))::frs))
                               st_tgt0 n0)
     :
       exists st_tgt1 n1,
-        Asm.step tge st_tgt0 tr st_tgt1 /\
+        Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
         match_states (State ((Frame.mk (AsmC.modsem skenv_link p)
                                        (AsmC.mkstate init_rs st_src1))::frs))
                      st_tgt1 n1.
@@ -1202,11 +1242,11 @@ Section PRESERVATION.
 
   Lemma step_internal_simulation
         fr0 frs tr st0 st_tgt0 n0
-        (STEP: fr0.(Frame.ms).(ModSem.step) fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
+        (STEP: fr0.(Frame.ms).(ModSem.step) skenv_link fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
         (MTCHST: match_states (State (fr0 :: frs)) st_tgt0 n0)
     :
       exists st_tgt1 n1,
-        Asm.step tge st_tgt0 tr st_tgt1 /\
+        Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
         match_states (State ((fr0.(Frame.update_st) st0) :: frs)) st_tgt1 n1.
   Proof.
     inv MTCHST. inv STEP.
@@ -1462,7 +1502,7 @@ Section PRESERVATION.
         (STEP: step ge (State frs) t st_src1)
     :
       (exists st_tgt1 n1,
-          Asm.step tge st_tgt0 t st_tgt1 /\ match_states st_src1 st_tgt1 n1) \/
+          Asm.step skenv_link tge st_tgt0 t st_tgt1 /\ match_states st_src1 st_tgt1 n1) \/
       (exists n1,
           match_states st_src1 st_tgt0 n1 /\ n1 < n0)%nat /\ (t = E0).
   Proof.
@@ -1473,6 +1513,7 @@ Section PRESERVATION.
       exploit at_external_external; eauto.
       econs; try eassumption; ss.
     - left. exploit step_internal_simulation; eauto.
+      inv MTCHST. ss.
     - right. exploit step_return_simulation; eauto.
   Qed.
 
@@ -1608,7 +1649,7 @@ Section PRESERVATION.
     :
       receptive_at (sem prog) st_src2 /\
       exists st_tgt1 n1,
-        (<< STEPTGT: Asm.step tge st_tgt0 tr1 st_tgt1 >>) /\
+        (<< STEPTGT: Asm.step skenv_link tge st_tgt0 tr1 st_tgt1 >>) /\
         (<< MTCHST: forall st_src3 tr2
                            (STEP2: Sem.step ge st_src2 tr2 st_src3),
             match_states st_src3 st_tgt1 n1 /\ tr2 = E0>>) /\
@@ -1657,7 +1698,7 @@ Section PRESERVATION.
           eapply system_sig; eauto.
         * instantiate (1 := args_tgt).
           rewrite <- SIGEQ. auto.
-        * eapply H1.
+        * rewrite <- senv_same. eapply H1.
         * auto.
       + i. inv STEP2; [inv AT|inv STEP|]. inv FINAL. split; auto.
         ss. unfold Frame.update_st. ss. inv AFTER. ss. clarify.
@@ -1800,7 +1841,7 @@ Section PRESERVATION.
             destruct (find_fptr_owner_determ SYSMOD MSFIND). ss.
             eapply system_receptive_at.
           }
-          apply plus_one. econs; [apply asm_determinate_at|]. auto. }
+          apply plus_one. econs; [apply asm_determinate_at|]. s. folder. rewrite senv_same. auto. }
         left. pfold. left. right.
         econs.
         {
@@ -1834,7 +1875,8 @@ Section PRESERVATION.
              { eapply src_receptive_at; eauto. }
              econs; ss.
              ++ econs; eauto.
-                apply asm_determinate_at.
+                { apply asm_determinate_at. }
+                s. folder. rewrite senv_same. et.
              ++ econs 1.
              ++ rewrite E0_right. auto.
   Qed.

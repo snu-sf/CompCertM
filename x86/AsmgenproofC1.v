@@ -27,6 +27,8 @@ Hypothesis TRANSF: match_prog prog tprog.
 
 Section CORELEMMA.
 
+Variable se tse: Senv.t.
+Hypothesis (MATCH_SENV: Senv.equiv se tse).
 Variable ge : Mach.genv.
 Variable tge : Asm.genv.
 
@@ -71,7 +73,7 @@ Lemma exec_straight_exec:
   forall fb f c ep tf tc c' rs m rs' m',
   transl_code_at_pc ge (rs PC) fb f c ep tf tc ->
   exec_straight tge tf tc rs m c' rs' m' ->
-  plus step tge (State rs m) E0 (State rs' m').
+  plus step tse tge (State rs m) E0 (State rs' m').
 Proof.
   intros. inv H.
   eapply exec_straight_steps_1; eauto.
@@ -420,7 +422,7 @@ Lemma exec_straight_steps:
     /\ agree ms2 sp rs2
     /\ (it1_is_parent ep i = true -> rs2#RAX = parent_sp s)) ->
   exists st',
-  plus step tge (State rs1 m1') E0 st' /\
+  plus step tse tge (State rs1 m1') E0 st' /\
   match_states (Mach.State s fb sp c ms2 m2) st'.
 Proof.
   intros. inversion H2. subst. monadInv H7.
@@ -445,7 +447,7 @@ Lemma exec_straight_steps_goto:
     /\ agree ms2 sp rs2
     /\ exec_instr tge tf jmp rs2 m2' = goto_label tf lbl rs2 m2') ->
   exists st',
-  plus step tge (State rs1 m1') E0 st' /\
+  plus step tse tge (State rs1 m1') E0 st' /\
   match_states (Mach.State s fb sp c' ms2 m2) st'.
 Proof.
   intros. inversion H3. subst. monadInv H9.
@@ -486,10 +488,10 @@ Definition measure (s: Mach.state) : nat :=
 (** This is the simulation diagram.  We prove it by case analysis on the Mach transition. *)
 
 Theorem step_simulation:
-  forall S1 t S2, Mach.step return_address_offset ge S1 t S2 ->
+  forall S1 t S2, Mach.step return_address_offset se ge S1 t S2 ->
                   forall (NOTDUMMY: S2.(get_stack) <> []),
   forall S1' (MS: match_states S1 S1'),
-  (exists S2', plus step tge S1' t S2' /\ match_states S2 S2')
+  (exists S2', plus step tse tge S1' t S2' /\ match_states S2 S2')
   \/ (measure S2 < measure S1 /\ t = E0 /\ match_states S2 S1')%nat.
 Proof.
   induction 1; intros; inv MS.
@@ -692,7 +694,7 @@ Opaque loadind.
   eapply find_instr_tail; eauto.
   erewrite <- sp_val by eauto.
   eapply eval_builtin_args_preserved with (ge1 := ge); eauto. exact symbols_preserved.
-  eapply external_call_symbols_preserved; eauto. apply senv_preserved.
+  eapply external_call_symbols_preserved; eauto.
   eauto.
   econstructor; eauto.
   instantiate (2 := tf); instantiate (1 := x).
@@ -882,7 +884,7 @@ Transparent destroyed_at_function_entry.
   intros [res' [m2' [P [Q [R S]]]]].
   left; econstructor; split.
   apply plus_one. eapply exec_step_external; eauto.
-  eapply external_call_symbols_preserved; eauto. apply senv_preserved.
+  eapply external_call_symbols_preserved; eauto.
   econstructor; eauto.
   unfold loc_external_result. apply agree_set_other; auto. apply agree_set_pair; auto.
   rewrite regset_after_external_eq.

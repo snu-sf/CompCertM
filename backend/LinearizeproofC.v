@@ -22,12 +22,12 @@ Definition wf_tgt (st_tgt0: Linear.state): Prop :=
 .
 
 Lemma lift_starN
-      cnt tge st_tgt0 tr st_tgt1
-      (STAR: starN Linear.step tge cnt st_tgt0 tr st_tgt1)
+      cnt tse tge st_tgt0 tr st_tgt1
+      (STAR: starN Linear.step tse tge cnt st_tgt0 tr st_tgt1)
       (DUMMYTGT: wf_tgt st_tgt0)
       (STKAFTER: get_stack st_tgt1 <> [])
   :
-    <<STAR: starN step tge cnt st_tgt0 tr st_tgt1>>
+    <<STAR: starN step tse tge cnt st_tgt0 tr st_tgt1>>
 .
 Proof.
   unfold wf_tgt in *.
@@ -50,12 +50,12 @@ Proof.
 Qed.
 
 Lemma lift_starN_stronger
-      cnt tge st_tgt0 tr st_tgt1
-      (STAR: starN Linear.step tge cnt st_tgt0 tr st_tgt1)
+      cnt tse tge st_tgt0 tr st_tgt1
+      (STAR: starN Linear.step tse tge cnt st_tgt0 tr st_tgt1)
       (DUMMYTGT: wf_tgt st_tgt0)
       (STKAFTER: get_stack st_tgt1 <> [])
   :
-    <<STAR: starN step tge cnt st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
+    <<STAR: starN step tse tge cnt st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
 .
 Proof.
   unfold wf_tgt in *.
@@ -90,9 +90,9 @@ Proof.
 Qed.
 
 Lemma starN_plus_iff
-      G ST (step: G -> ST -> trace -> ST -> Prop) ge st0 tr st1
+      G ST (step: Senv.t -> G -> ST -> trace -> ST -> Prop) se ge st0 tr st1
   :
-    (exists n, starN step ge n st0 tr st1 /\ (n > 0)%nat) <-> plus step ge st0 tr st1
+    (exists n, starN step se ge n st0 tr st1 /\ (n > 0)%nat) <-> plus step se ge st0 tr st1
 .
 Proof.
   split; i; des.
@@ -113,12 +113,12 @@ Proof.
 Qed.
 
 Lemma lift_plus
-      tge st_tgt0 tr st_tgt1
-      (PLUS: plus Linear.step tge st_tgt0 tr st_tgt1)
+      tse tge st_tgt0 tr st_tgt1
+      (PLUS: plus Linear.step tse tge st_tgt0 tr st_tgt1)
       (DUMMYTGT: wf_tgt st_tgt0)
       (STKAFTER: get_stack st_tgt1 <> [])
   :
-    <<PLUS: plus step tge st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
+    <<PLUS: plus step tse tge st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
 .
 Proof.
   apply starN_plus_iff in PLUS. des. apply lift_starN_stronger in PLUS; et. des. esplits; et.
@@ -257,7 +257,8 @@ Proof.
   - esplits; eauto.
     { apply LTLC.modsem_receptive; et. }
     inv MATCH.
-    ii. inv STEPSRC. hexploit (@transf_step_correct prog ge tge); eauto.
+    ii. inv STEPSRC. hexploit (@transf_step_correct prog skenv_link_src skenv_link_tgt); eauto.
+    { inv SIMSKENV. inv SIMSKELINK. ss. clarify. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     i; des.
     + exploit lift_plus; et.

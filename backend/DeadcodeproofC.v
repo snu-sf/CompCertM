@@ -51,6 +51,9 @@ Theorem make_match_genvs :
   Genv.match_genvs (match_globdef (fun cu f tf => transf_fundef (romem_for cu) f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
+Let SEGESRC: senv_genv_compat skenv_link_src ge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
+Let SEGETGT: senv_genv_compat skenv_link_tgt tge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
+
 Theorem sim_modsem
   :
     ModSemPair.sim msp
@@ -133,7 +136,8 @@ Proof.
   - esplits; eauto.
     { apply modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog ge tge); eauto.
+    ii. hexploit (@step_simulation prog skenv_link_src skenv_link_tgt); eauto.
+    { inv SIMSKENV. ss. inv SIMSKELINK. refl. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { ss. des. eauto. }
     i; des.

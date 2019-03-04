@@ -32,8 +32,8 @@ Definition st_m (st0: state): mem :=
 .
 
 Definition store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem) : Prop :=
-  store_arguments m0 (to_mregset rs) vs sg m2 /\
-  rs RSP = Vptr m0.(Mem.nextblock) Ptrofs.zero true.
+  (<<STORE: store_arguments m0 (to_mregset rs) vs sg m2>>) /\
+  (<<RSRSP: rs RSP = Vptr m0.(Mem.nextblock) Ptrofs.zero true>>).
 
 Definition external_state F V (ge: Genv.t F V) (v : val) : bool :=
   match v with

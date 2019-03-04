@@ -12,6 +12,7 @@ Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem
 Require SoundTop.
 
 Local Opaque Z.mul.
+Local Existing Instance Val.mi_normal.
 
 Set Implicit Arguments.
 
@@ -318,7 +319,8 @@ Proof.
   - inv AFTERSRC. ss. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
     inv INITDATA. inv SIMRET. destruct sm_ret. ss. clarify.
     exploit Mem_unfree_parallel_extends; try eapply UNFREE; eauto.
-    intros TRTUNFREE. des.
+    { admit "change parallel extends statements?". }
+    intros TGTUNFREE. des.
     esplits; auto.
     + econs.
       * exists skd. esplits; eauto.

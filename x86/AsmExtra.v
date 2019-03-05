@@ -696,7 +696,7 @@ Section ASMSTEP.
     unfold eval_testcond in *. destruct c; revert EVAL; agree_invs AGREE.
   Qed.
 
-  Lemma asm_step_preserve_injection
+  Theorem asm_step_preserve_injection
         rs_src0 rs_src1 m_src0 m_src1 tr j0
         rs_tgt0 m_tgt0
         se_src se_tgt ge_src ge_tgt
@@ -740,9 +740,7 @@ Section ASMSTEP.
   Proof.
     inv STEP.
 
-    -
-
-      cinv (AGREE PC); eq_closure_tac.
+    - cinv (AGREE PC); eq_closure_tac.
 
       assert (delta = 0).
       { unfold Genv.find_funct_ptr in *. des_ifs.

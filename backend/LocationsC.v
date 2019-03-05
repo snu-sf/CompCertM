@@ -167,19 +167,16 @@ Proof.
   inv NOREPEAT. eauto.
 Qed.
 
-Lemma loc_in_not_not_in
-      r l
-      (IN: In (One r) l)
-      (NIN: Loc.notin r (regs_of_rpairs l))
+Lemma loc_notin_not_in mr locs
   :
-    False.
+      Loc.notin (R mr) locs <-> ~ In (R mr) locs.
 Proof.
-  induction l; ss. des; clarify; ss; des.
-  - destruct r; ss; des; clarify.
-    + destruct ty; ss; lia.
-    + destruct ty; ss; lia.
-  - eapply IHl; eauto.
-    destruct a; ss; des; eauto.
+  induction locs; ss.
+  split; ii; des; des_ifs.
+  - eapply IHlocs; eauto.
+  - eapply IHlocs; eauto.
+  - apply not_or_and in H. des. split; auto. ii. clarify.
+  - apply not_or_and in H. des. split; auto.
 Qed.
 
 Lemma in_one_in_rpair l (r: loc)

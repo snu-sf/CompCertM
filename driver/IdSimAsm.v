@@ -906,7 +906,6 @@ Inductive match_states
 | match_states_intro
     j init_rs_src init_rs_tgt rs_src rs_tgt m_src m_tgt
     (sm0 : @SimMem.t (@SimMemInjC.SimMemInj Val.mi_normal))
-    (* (GEINJECT: skenv_inject skenv_link_src j) *)
     (AGREE: agree j rs_src rs_tgt)
     (AGREEINIT: agree j init_rs_src init_rs_tgt)
     (INJ: Mem.inject j m_src m_tgt)
@@ -1073,147 +1072,127 @@ Inductive mle_excl
 Require Import MatchSimModSemExcl.
 Require Import Conventions1C.
 
-Lemma Mem_unfree_perm m0 m1 b lo hi
-      (UNFREE: Mem_unfree m0 b lo hi = Some m1)
-      blk ofs k p
-      (PERM: Mem.perm m0 blk ofs k p)
+(* move it to MemoryC after stablizing *)
+Section TOMEMORYC.
+
+  Lemma Mem_unfree_perm m0 m1 b lo hi
+        (UNFREE: Mem_unfree m0 b lo hi = Some m1)
+        blk ofs k p
+        (PERM: Mem.perm m0 blk ofs k p)
   :
     Mem.perm m1 blk ofs k p.
-Proof.
-  unfold Mem_unfree in *. des_ifs. unfold Mem.perm in *. ss.
-  rewrite PMap.gsspec. unfold zle, zlt, proj_sumbool. des_ifs.
-  exfalso. eapply m; eauto.
-  eapply Mem.perm_max.
-  eapply Mem.perm_implies; eauto. econs.
-Qed.
+  Proof.
+    unfold Mem_unfree in *. des_ifs. unfold Mem.perm in *. ss.
+    rewrite PMap.gsspec. unfold zle, zlt, proj_sumbool. des_ifs.
+    exfalso. eapply m; eauto.
+    eapply Mem.perm_max.
+    eapply Mem.perm_implies; eauto. econs.
+  Qed.
 
-Lemma Z2Nat_range n:
-  Z.of_nat (Z.to_nat n) = if (zle 0 n) then n else 0.
-Proof. Admitted.
+  Lemma Z2Nat_range n:
+    Z.of_nat (Z.to_nat n) = if (zle 0 n) then n else 0.
+  Proof. Admitted.
   (* des_ifs. *)
   (* - rewrite Z2Nat.id; eauto. *)
   (* - unfold Z.of_nat. des_ifs. *)
 
-Theorem Mem_unfree_parallel_inject
-        j m1 m2 b lo hi m1' b' delta
-        (INJECT: Mem.inject j m1 m2)
-        (UNFREE: Mem_unfree m1 b lo hi = Some m1')
-        (DELTA: j b = Some (b', delta))
-        (* TODO add condition about align *)
-        (NOPERM: Mem_range_noperm m2 b' (lo + delta) (hi + delta))
+  Theorem Mem_unfree_parallel_inject
+          j m1 m2 b lo hi m1' b' delta
+          (INJECT: Mem.inject j m1 m2)
+          (UNFREE: Mem_unfree m1 b lo hi = Some m1')
+          (DELTA: j b = Some (b', delta))
+          (* TODO add condition about align *)
+          (NOPERM: Mem_range_noperm m2 b' (lo + delta) (hi + delta))
 
 
-  :
-    exists m2',
-      (<<UNFREE: Mem_unfree m2 b' (lo + delta) (hi + delta) = Some m2'>>)
-      /\ (<<INJECT: Mem.inject j m1' m2'>>).
-Proof.
-  unfold Mem_unfree in UNFREE. des_ifs.
+    :
+      exists m2',
+        (<<UNFREE: Mem_unfree m2 b' (lo + delta) (hi + delta) = Some m2'>>)
+        /\ (<<INJECT: Mem.inject j m1' m2'>>).
+  Proof.
+    unfold Mem_unfree in UNFREE. des_ifs.
 
-  assert (VALID: Plt b' (Mem.nextblock m2)).
-  {
-    exploit Mem.valid_block_inject_2; eauto.
-  }
-  unfold Mem_unfree in *. des_ifs. esplits; eauto. ss.
+    assert (VALID: Plt b' (Mem.nextblock m2)).
+    {
+      exploit Mem.valid_block_inject_2; eauto.
+    }
+    unfold Mem_unfree in *. des_ifs. esplits; eauto. ss.
 
-  assert (NOOVERLAP: forall b_src delta' ofs k p (DELTA: j b_src = Some (b', delta'))
-                            (OFS: lo + delta <= ofs + delta' < hi + delta)
-                            (PERM: Mem.perm m1 b_src ofs k p),
-             False).
-  {
-    i. exploit Mem.perm_inject; eauto. i. exploit NOPERM; eauto.
-    eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-  }
+    assert (NOOVERLAP: forall b_src delta' ofs k p (DELTA: j b_src = Some (b', delta'))
+                              (OFS: lo + delta <= ofs + delta' < hi + delta)
+                              (PERM: Mem.perm m1 b_src ofs k p),
+               False).
+    {
+      i. exploit Mem.perm_inject; eauto. i. exploit NOPERM; eauto.
+      eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
+    }
 
-  econs; ss; eauto; i.
-
-  - cinv (Mem.mi_inj _ _ _ INJECT).
     econs; ss; eauto; i.
-    + destruct (peq b b1); clarify.
-      * unfold Mem.perm, proj_sumbool in *. ss. rewrite PMap.gsspec in *.
-        des_ifs; clarify; try nia; exploit Mem.perm_inject; eauto.
-      * assert (Mem.perm m2 b2 (ofs + delta0) k p1).
-        {
-          exploit Mem.perm_inject; eauto. unfold Mem.perm in *. ss.
-          rewrite PMap.gso in H0; eauto.
-        }
-        unfold Mem.perm, proj_sumbool in *. ss. rewrite PMap.gsspec in *.
-        des_ifs. exfalso. exploit NOPERM; eauto.
-        eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-    + admit "add condition".
-    + unfold Mem.perm, proj_sumbool in *. ss.
-      repeat rewrite PMap.gsspec in *. des_ifs; eauto.
-      * rewrite Mem_setN_in_repeat; eauto; [econs|].
-        rewrite Z2Nat.id; nia.
-      * repeat rewrite Mem.setN_outside; cycle 1.
-        { right. rewrite length_list_repeat.
-          rewrite Z2Nat_range. des_ifs; try nia. }
-        { right. rewrite length_list_repeat.
-          rewrite Z2Nat_range. des_ifs; try nia. }
-        eauto.
-      * repeat rewrite Mem.setN_outside; cycle 1.
-        { left. nia. }
-        repeat rewrite Mem.setN_outside; cycle 1.
-        { left. nia. }
-        eauto.
-      * repeat rewrite Mem.setN_outside; cycle 1.
-        { rewrite length_list_repeat.
-          rewrite Z2Nat_range. des_ifs; try nia. }
-        repeat rewrite Mem.setN_outside; cycle 1.
-        { rewrite length_list_repeat.
-          rewrite Z2Nat_range. des_ifs; try nia. }
-        eauto.
-      * repeat rewrite Mem.setN_outside; cycle 1.
-        { rewrite length_list_repeat.
-          rewrite Z2Nat_range. des_ifs; try nia.
-          apply NNPP. ii.
-          exploit NOOVERLAP; eauto. nia. }
-        eauto.
-  - exploit Mem.mi_freeblocks; eauto.
-  - exploit Mem.mi_mappedblocks; eauto.
-  - ii. unfold Mem.perm in *. ss. apply imply_to_or. i. clarify.
-    rewrite PMap.gsspec in *. unfold proj_sumbool in *. des_ifs; ss.
-    + ii. exploit NOOVERLAP; eauto. nia.
-    + exploit Mem.mi_no_overlap; eauto. i. des; clarify.
-    + exploit Mem.mi_no_overlap; eauto. i. des; clarify.
-    + exploit Mem.mi_no_overlap; eauto. i. des; clarify.
-    + ii. exploit NOOVERLAP; eauto. nia.
-    + exploit Mem.mi_no_overlap; eauto. i. des; clarify. eauto.
-    + exploit Mem.mi_no_overlap; eauto. i. des; clarify. eauto.
-    + exploit Mem.mi_no_overlap; eauto. i. des; clarify. eauto.
-    + exploit Mem.mi_no_overlap; try apply H; eauto. i. des; clarify.
 
-  - admit "add condition".
+    - cinv (Mem.mi_inj _ _ _ INJECT).
+      econs; ss; eauto; i.
+      + destruct (peq b b1); clarify.
+        * unfold Mem.perm, proj_sumbool in *. ss. rewrite PMap.gsspec in *.
+          des_ifs; clarify; try nia; exploit Mem.perm_inject; eauto.
+        * assert (Mem.perm m2 b2 (ofs + delta0) k p1).
+          {
+            exploit Mem.perm_inject; eauto. unfold Mem.perm in *. ss.
+            rewrite PMap.gso in H0; eauto.
+          }
+          unfold Mem.perm, proj_sumbool in *. ss. rewrite PMap.gsspec in *.
+          des_ifs. exfalso. exploit NOPERM; eauto.
+          eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
+      + admit "add condition".
+      + unfold Mem.perm, proj_sumbool in *. ss.
+        repeat rewrite PMap.gsspec in *. des_ifs; eauto.
+        * rewrite Mem_setN_in_repeat; eauto; [econs|].
+          rewrite Z2Nat.id; nia.
+        * repeat rewrite Mem.setN_outside; cycle 1.
+          { right. rewrite length_list_repeat.
+            rewrite Z2Nat_range. des_ifs; try nia. }
+          { right. rewrite length_list_repeat.
+            rewrite Z2Nat_range. des_ifs; try nia. }
+          eauto.
+        * repeat rewrite Mem.setN_outside; cycle 1.
+          { left. nia. }
+          repeat rewrite Mem.setN_outside; cycle 1.
+          { left. nia. }
+          eauto.
+        * repeat rewrite Mem.setN_outside; cycle 1.
+          { rewrite length_list_repeat.
+            rewrite Z2Nat_range. des_ifs; try nia. }
+          repeat rewrite Mem.setN_outside; cycle 1.
+          { rewrite length_list_repeat.
+            rewrite Z2Nat_range. des_ifs; try nia. }
+          eauto.
+        * repeat rewrite Mem.setN_outside; cycle 1.
+          { rewrite length_list_repeat.
+            rewrite Z2Nat_range. des_ifs; try nia.
+            apply NNPP. ii.
+            exploit NOOVERLAP; eauto. nia. }
+          eauto.
+    - exploit Mem.mi_freeblocks; eauto.
+    - exploit Mem.mi_mappedblocks; eauto.
+    - ii. unfold Mem.perm in *. ss. apply imply_to_or. i. clarify.
+      rewrite PMap.gsspec in *. unfold proj_sumbool in *. des_ifs; ss.
+      + ii. exploit NOOVERLAP; eauto. nia.
+      + exploit Mem.mi_no_overlap; eauto. i. des; clarify.
+      + exploit Mem.mi_no_overlap; eauto. i. des; clarify.
+      + exploit Mem.mi_no_overlap; eauto. i. des; clarify.
+      + ii. exploit NOOVERLAP; eauto. nia.
+      + exploit Mem.mi_no_overlap; eauto. i. des; clarify. eauto.
+      + exploit Mem.mi_no_overlap; eauto. i. des; clarify. eauto.
+      + exploit Mem.mi_no_overlap; eauto. i. des; clarify. eauto.
+      + exploit Mem.mi_no_overlap; try apply H; eauto. i. des; clarify.
 
-  - unfold Mem.perm, proj_sumbool in *. ss.
-    rewrite PMap.gsspec in *.
-    des_ifs; ss; eauto; (try by exploit Mem.mi_perm_inv; eauto); left; econs.
-Qed.
+    - admit "add condition".
 
+    - unfold Mem.perm, proj_sumbool in *. ss.
+      rewrite PMap.gsspec in *.
+      des_ifs; ss; eauto; (try by exploit Mem.mi_perm_inv; eauto); left; econs.
+  Qed.
 
-Lemma store_arguments_unchanged_on m0 m1 rs args sg
-      (STORE: store_arguments m0 rs args sg m1)
-  :
-    Mem.unchanged_on (SimMemInj.valid_blocks m0) m0 m1.
-Proof.
-  inv STORE. dup ALC. eapply Mem.alloc_unchanged_on in ALC0.
-  eapply Mem.unchanged_on_trans; eauto.
-  eapply Mem.unchanged_on_implies; eauto.
-  i. ss. des_ifs. red in H.
-  exfalso. eapply Mem.fresh_block_alloc; eauto.
-Qed.
-
-Lemma loc_notin_not_in mr locs
-  :
-      Loc.notin (R mr) locs <-> ~ In (R mr) locs.
-Proof.
-  induction locs; ss.
-  split; ii; des; des_ifs.
-  - eapply IHlocs; eauto.
-  - eapply IHlocs; eauto.
-  - apply not_or_and in H. des. split; auto. ii. clarify.
-  - apply not_or_and in H. des. split; auto.
-Qed.
+End TOMEMORYC.
 
 Lemma lessdef_commute j src0 src1 tgt0 tgt1
       (INJ0: Val.inject j src0 tgt0)
@@ -2044,14 +2023,31 @@ Proof.
 
 Qed.
 
-(* Lemma asm_inj_drop *)
-(*       (asm: Asm.program) *)
-(*   : *)
-(*     exists mp, *)
-(*       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>) *)
-(*       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>) *)
-(*       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>) *)
-(* . *)
-(* Proof. *)
-(*   admit "this should hold". *)
-(* Qed. *)
+Lemma asm_inj_id2
+      (asm: Asm.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
+.
+Proof.
+  set (asm_inj_drop asm). des.
+  destruct mp eqn: EQ. ss. clarify. inv SIM. ss.
+  unfold ModPair.to_msp in *. ss.
+
+  eexists (ModPair.mk _ _ _). esplits; ss. instantiate (1:=tt).
+  econs; ss. unfold ModPair.to_msp. ss.
+
+  i.
+
+  exploit SIMMS; eauto.
+  { inv SSLE. instantiate (1:=ss). econs; ss. i. des. clarify. }
+
+  { instantiate (1:=sm_init_link). ss.
+    inv SIMSKENVLINK. inv INJECT. inv SIMSKENV. admit "". }
+
+  i. inv H. ss.
+  (* econs; ss. *)
+  admit "this should hold".
+Qed.

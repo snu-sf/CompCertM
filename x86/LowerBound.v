@@ -1670,51 +1670,6 @@ Section PRESERVATION.
       E0 = tr.
   Proof. inv STEP. auto. Qed.
 
-  Lemma extcall_arg_inject j rs_src rs_tgt m_src m_tgt l v_src
-        (AGREE: agree j rs_src rs_tgt)
-        (INJECT: Mem.inject j m_src m_tgt)
-        (ARG: Asm.extcall_arg rs_src m_src l v_src)
-    :
-      exists v_tgt,
-        Asm.extcall_arg rs_tgt m_tgt l v_tgt /\
-        Val.inject j v_src v_tgt.
-  Proof.
-    inv ARG.
-    - exists (rs_tgt (preg_of r)). split; eauto. econs.
-    - eapply Mem.loadv_inject in H0; des; eauto.
-      + esplits; eauto. econs; eauto.
-      + ss. specialize (AGREE RSP).
-        destruct (rs_src RSP); clarify.
-        inv AGREE; ss. econs; eauto.
-        rewrite Ptrofs.add_assoc.
-        rewrite Ptrofs.add_assoc. f_equal.
-        apply Ptrofs.add_commut.
-  Qed.
-
-  Lemma extcall_arguments_inject sg j rs_src rs_tgt m_src m_tgt args_src
-        (AGREE: agree j rs_src rs_tgt)
-        (INJECT: Mem.inject j m_src m_tgt)
-        (ARGS: Asm.extcall_arguments rs_src m_src sg args_src)
-    :
-      exists args_tgt,
-        Asm.extcall_arguments rs_tgt m_tgt sg args_tgt /\
-        Val.inject_list j args_src args_tgt.
-  Proof.
-    unfold Asm.extcall_arguments in *.
-    revert args_src ARGS. induction (loc_arguments sg); i; ss.
-    - inv ARGS. exists []. split; econs.
-    - inv ARGS. inv H1.
-      + eapply extcall_arg_inject in H; eauto. apply IHl in H3. des.
-        exists (v_tgt :: args_tgt). split.
-        * econs; eauto. econs; eauto.
-        * econs; eauto.
-      + eapply extcall_arg_inject in H; eauto.
-        eapply extcall_arg_inject in H0; eauto. apply IHl in H3. des.
-        exists (Val.longofwords v_tgt0 v_tgt :: args_tgt). split.
-        * econs; eauto. econs; eauto.
-        * econs; eauto. eapply Val.longofwords_inject; eauto.
-  Qed.
-
   Lemma syscall_receptive
         st_src0 st_src1 st_tgt0 args frs fptr tr0 n0
         (STATE: st_src0 = Callstate args frs)
@@ -1790,9 +1745,9 @@ Section PRESERVATION.
           eapply system_function_ofs; eauto.
         * instantiate (1 := ef).
           eapply system_sig; eauto.
-        * instantiate (1 := args_tgt).
+        * instantiate (1 := args2).
           rewrite <- SIGEQ. auto.
-        * rewrite <- senv_same. eapply H1.
+        * rewrite <- senv_same. eapply H.
         * auto.
       + i. inv STEP2; [inv AT|inv STEP|]. inv FINAL. split; auto.
         ss. unfold Frame.update_st. ss. inv AFTER. ss. clarify.
@@ -1839,18 +1794,18 @@ Section PRESERVATION.
         * instantiate (1 := f').
           { inv GEINJECT. econs.
             - i. unfold inject_incr in *.
-              eapply H6. eapply DOMAIN. eauto.
+              eapply H4. eapply DOMAIN. eauto.
             - i. unfold inject_incr,inject_separated in *.
               destruct (j b1) eqn : EQ.
               + destruct p0. dup EQ.
-                apply H6 in EQ. clarify.
+                apply H4 in EQ. clarify.
                 eapply IMAGE in EQ0. auto.
 
-              + ss. specialize (H7 _ _ _ EQ INJ). des.
+              + ss. specialize (H5 _ _ _ EQ INJ). des.
                 unfold Mem.valid_block in *.
                 erewrite below_block_is_volatile; cycle 1.
                 { intros LE. specialize (DOMAIN _ LE).
-                  clear - INJECT H8 DOMAIN.
+                  clear - INJECT H6 DOMAIN.
                   inv INJECT.
                   eapply mi_mappedblocks in DOMAIN. auto. }
                 erewrite below_block_is_volatile. auto.

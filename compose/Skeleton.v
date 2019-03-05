@@ -277,6 +277,7 @@ Module SkEnv.
 
   Lemma load_skenv_wf
         sk
+        (WF: Sk.wf sk)
     :
       <<WF: SkEnv.wf sk.(Sk.load_skenv)>>
   .

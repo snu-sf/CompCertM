@@ -29,6 +29,8 @@ Section ADQSOUND.
   Hypothesis SIMPROG: ProgPair.sim pp.
   Let p_src := pp.(ProgPair.src).
   Let p_tgt := pp.(ProgPair.tgt).
+  Hypothesis (WFSKSRC: forall md (IN: In md p_src), <<WF: Sk.wf md>>).
+  Hypothesis (WFSKTGT: forall md (IN: In md p_tgt), <<WF: Sk.wf md>>).
 
   Variable sk_link_src sk_link_tgt: Sk.t.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
@@ -41,6 +43,9 @@ Section ADQSOUND.
 
   Hypothesis INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk).
   Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk).
+
+  Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_list_preserves_wf_sk; et. Qed.
+  Let WFSKLINKTGT: Sk.wf sk_link_tgt. eapply link_list_preserves_wf_sk; et. Qed.
 
   (* Let ge: Ge.t := sem_src.(Smallstep.globalenv). *)
 
@@ -158,14 +163,14 @@ Section ADQSOUND.
       exists su0 m_init0, <<MEM: Sk.load_mem sk_link_src = Some m_init0>> /\ <<SU: sound_state su0 m_init0 st0>>
   .
   Proof.
-    inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT INCLTGT.
+    inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT INCLTGT WFSKTGT.
     hexploit Sound.init_spec; eauto. i; des.
     exploit Sound.greatest_ex; eauto.
     { esplits; eauto. refl. }
     i; des.
     esplits; eauto.
     assert(WFSKE: SkEnv.wf (Sk.load_skenv sk_link_src)).
-    { eapply SkEnv.load_skenv_wf. }
+    { eapply SkEnv.load_skenv_wf; et. }
     assert(GE: sound_ge su_init m_init).
     {
       econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.

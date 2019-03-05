@@ -72,6 +72,7 @@ Section PRESERVATION.
 
   Variable progs : list Asm.program.
   Let prog : Syntax.program := List.map AsmC.module progs.
+  Hypothesis (WFSK: forall md (IN: In md prog), <<WF: Sk.wf md>>).
 
   Variable tprog : Asm.program.
   Hypothesis LINK : link_list progs = Some tprog.
@@ -83,9 +84,11 @@ Section PRESERVATION.
   Let skenv_link := Sk.load_skenv sk.
   Let ge := load_genv prog skenv_link.
   Let tge := Genv.globalenv tprog.
+  Let WFSKLINK: Sk.wf sk. eapply link_list_preserves_wf_sk; et. Qed.
   Let WFSKELINK: SkEnv.wf skenv_link.
   Proof.
     eapply SkEnv.load_skenv_wf.
+    ss.
   Qed.
 
   Definition local_genv (p : Asm.program) :=
@@ -227,6 +230,7 @@ Section PRESERVATION.
     assert (SKWF: SkEnv.wf_proj (SkEnv.project (Genv.globalenv sk) x.(Sk.of_program fn_sig))).
     { eapply SkEnv.project_spec_preserves_wf.
       - eapply SkEnv.load_skenv_wf.
+        et.
       - eapply SkEnv.project_impl_spec; et.
     }
 
@@ -469,11 +473,11 @@ Section PRESERVATION.
       delta = 0.
     Proof.
       inv SKINJ. exploit DOMAIN.
-      - instantiate (1:=b_src). clear - FIND.
+      - instantiate (1:=b_src). clear - FIND WFSKLINK.
         unfold System.globalenv in *.
         unfold Genv.find_funct_ptr in *. des_ifs.
         assert (SkEnv.wf skenv_link).
-        { apply SkEnv.load_skenv_wf. }
+        { apply SkEnv.load_skenv_wf; et. }
         inv H. unfold Genv.find_symbol in *.
         exploit DEFSYMB; eauto. i. des.
         eapply Genv.genv_symb_range; eauto.
@@ -495,7 +499,7 @@ Section PRESERVATION.
         cinv SKINJ. exploit DOMAIN.
         - instantiate (1:= b_src).
           assert (SkEnv.wf skenv_link).
-          { apply SkEnv.load_skenv_wf. }
+          { apply SkEnv.load_skenv_wf; et. }
           inv H. unfold Genv.find_symbol in *.
           exploit DEFSYMB; eauto.
           i. des. eapply Genv.genv_symb_range; eauto.
@@ -1538,7 +1542,7 @@ Section PRESERVATION.
       ms0 = ms1
   .
   Proof.
-    eapply SemProps.find_fptr_owner_determ; ss;
+    eapply SemProps.find_fptr_owner_determ; et; ss;
       rewrite LINK_SK; eauto.
   Qed.
 
@@ -1917,6 +1921,8 @@ Proof.
   { left. econs 2. ii. ss. inv H. clarify. }
   destruct (Sk.load_mem t) eqn:T2; cycle 1.
   { left. econs 2. ii. ss. inv H. clarify. }
+  destruct (classic (forall md, In md (map module asms) -> <<WF: Sk.wf md >>)); cycle 1.
+  { left. econs 2. ii. ss. inv H0. clarify. }
   right.
   exploit link_success; eauto. i. des.
   esplits; eauto.

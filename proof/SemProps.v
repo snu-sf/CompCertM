@@ -57,8 +57,166 @@ Proof.
   - rewrite Genv.globalenv_public. ss.
 Qed.
 
+(* Remove redundancy with CompCert/ValueAnalysis.v && UnreachC.v *)
+Definition definitive_initializer (init: list init_data) : bool :=
+  match init with
+  | nil => false
+  | Init_space _ :: nil => false
+  | _ => true
+  end.
 
+Local Transparent Linker_def Linker_vardef Linker_varinit Linker_unit.
+Lemma definitive_initializer_is_definitive_left
+      gv1 gv0
+      (sk0 sk1: Sk.t) id_fr
+      (LINK: link_prog_merge (prog_defmap sk0) ! id_fr (prog_defmap sk1) ! id_fr = Some (Gvar gv1))
+      (IN: (prog_defmap sk0) ! id_fr = Some (Gvar gv0))
+      (DEF: definitive_initializer (gvar_init gv0))
+  :
+    gv0 = gv1
+.
+Proof.
+  {
+    unfold link_prog_merge in *. des_ifs_safe.
+    ss.
+    des_ifs_safe.
+    unfold link_vardef in *. des_ifs_safe. ss. destruct gv0; ss. unfold link_varinit in *. des_ifs_safe.
+    bsimpl. des. rewrite eqb_true_iff in *.
+    f_equal.
+    { destruct gvar_info; ss. }
+    des_ifs.
+  }
+Qed.
 
+Lemma definitive_initializer_is_definitive_right
+      gv1 gv0
+      (sk0 sk1: Sk.t) id_fr
+      (LINK: link_prog_merge (prog_defmap sk0) ! id_fr (prog_defmap sk1) ! id_fr = Some (Gvar gv1))
+      (IN: (prog_defmap sk1) ! id_fr = Some (Gvar gv0))
+      (DEF: definitive_initializer (gvar_init gv0))
+  :
+    gv0 = gv1
+.
+Proof.
+  {
+    unfold link_prog_merge in *. des_ifs_safe. ss.
+    unfold link_def in *. des_ifs. ss.
+    unfold link_vardef in *. des_ifs_safe. ss.
+    clarify. destruct gv0; ss. unfold link_varinit in *. des_ifs_safe.
+    bsimpl. des. rewrite eqb_true_iff in *.
+    f_equal; ss.
+    { destruct gvar_info; ss. }
+    des_ifs.
+  }
+Qed.
+
+Lemma definitive_initializer_split
+      (g0 g1 g: globvar unit)
+      (DEF: definitive_initializer g.(gvar_init))
+      (LINK: link g0 g1 = Some g)
+  :
+    <<DEF: definitive_initializer g0.(gvar_init) \/ definitive_initializer g1.(gvar_init)>>
+.
+Proof.
+  ss. unfold link_vardef in *. des_ifs. ss. clarify. unfold link_varinit in *.
+  des_ifs; ss; et.
+Qed.
+Local Opaque Linker_def Linker_vardef Linker_varinit Linker_unit.
+
+Theorem link_preserves_wf_sk
+        sk0 sk1 sk_link
+        (WFSK0: Sk.wf sk0)
+        (WFSK1: Sk.wf sk1)
+        (LINK: link sk0 sk1 = Some sk_link)
+  :
+    <<WF: Sk.wf sk_link>>
+.
+Proof.
+  Local Transparent Linker_prog.
+  ss.
+  Local Opaque Linker_prog.
+  hexploit (link_prog_inv _ _ _ LINK); et. intro INV; des. clarify. clear LINK.
+  econs; et; ss.
+  - unfold prog_defs_names. ss. eapply NoDup_norepet. eapply PTree.elements_keys_norepet; et.
+  - i. unfold prog_defs_names. ss.
+    apply PTree.elements_complete in IN.
+    rewrite PTree.gcombine in *; ss.
+    apply in_map_iff.
+    assert((exists x, (prog_defmap sk0) ! id_to = Some x)
+           \/ (exists x, (prog_defmap sk1) ! id_to = Some x)); cycle 1.
+    { des.
+      - destruct ((prog_defmap sk1) ! id_to) eqn:T.
+        + exploit (INV0 id_to); eauto. intro X; des.
+          eexists (_, _). ss. esplits; eauto. apply PTree.elements_correct. rewrite PTree.gcombine; ss.
+          unfold link_prog_merge. rewrite H. rewrite T. et.
+        + eexists (_, _). ss. esplits; eauto. apply PTree.elements_correct. rewrite PTree.gcombine; ss.
+          unfold link_prog_merge. rewrite H. rewrite T. et.
+      - destruct ((prog_defmap sk0) ! id_to) eqn:T.
+        + exploit (INV0 id_to); eauto. intro X; des.
+          eexists (_, _). ss. esplits; eauto. apply PTree.elements_correct. rewrite PTree.gcombine; ss.
+          unfold link_prog_merge. rewrite H. rewrite T. et.
+        + eexists (_, _). ss. esplits; eauto. apply PTree.elements_correct. rewrite PTree.gcombine; ss.
+          unfold link_prog_merge. rewrite H. rewrite T. et.
+    }
+    assert((exists gv, (prog_defmap sk0) ! id_fr = Some (Gvar gv) /\ definitive_initializer gv.(gvar_init))
+           \/
+           (exists gv, (prog_defmap sk1) ! id_fr = Some (Gvar gv) /\ definitive_initializer gv.(gvar_init))).
+    { unfold link_prog_merge in *. des_ifs.
+      - exploit (INV0 id_fr); et. intro X; des.
+        Local Transparent Linker_def.
+        ss.
+        Local Opaque Linker_def.
+        destruct g, g0; ss; des_ifs.
+        exploit (@definitive_initializer_split v v0 gv); et.
+        { unfold definitive_initializer. des_ifs; ss; des; clarify. }
+        i; des; et.
+      - left. esplits; et.
+        unfold definitive_initializer. des_ifs; ss; des; clarify.
+      - right. esplits; et.
+        unfold definitive_initializer. des_ifs; ss; des; clarify.
+    }
+    des.
+    + assert(gv0 = gv).
+      { eapply (definitive_initializer_is_definitive_left); eauto. }
+      clarify.
+      left.
+      inv WFSK0. exploit (WFPTR id_fr); et.
+      { apply in_prog_defmap; et. }
+      intro X; des.
+      eapply prog_defmap_dom; et.
+    + assert(gv0 = gv).
+      { eapply (definitive_initializer_is_definitive_right); eauto. }
+      clarify.
+      right.
+      inv WFSK1. exploit (WFPTR id_fr); et.
+      { apply in_prog_defmap; et. }
+      intro X; des.
+      eapply prog_defmap_dom; et.
+Qed.
+
+Theorem link_list_preserves_wf_sk
+        p sk_link
+        (LINK: link_sk p = Some sk_link)
+        (WFSK: forall md, In md p -> <<WF: Sk.wf md >>)
+  :
+    <<WF: Sk.wf sk_link>>
+.
+Proof.
+  unfold link_sk in *.
+  (* unfold Mod.sk in *. *)
+  ginduction p; ii; ss.
+  unfold link_list in LINK. des_ifs_safe. ss.
+  destruct (link_list_aux (map Mod.sk p)) eqn:T; ss.
+  { clarify. destruct p; ss; des_ifs. eapply WFSK. eauto. }
+  des_ifs.
+  rename t into tl. rename a into hd.
+  specialize (IHp tl).
+  exploit IHp; eauto.
+  { unfold link_list. des_ifs. }
+  i; des.
+  eapply (@link_preserves_wf_sk hd tl); et.
+  eapply WFSK; et.
+Qed.
 
 
 
@@ -70,6 +228,7 @@ Section INITDTM.
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
   Variable p: program.
+  Hypothesis (WFSK: forall md (IN: In md p), <<WF: Sk.wf md>>).
   Let sem := Sem.sem p.
 
   Lemma skenv_fill_internals_preserves_wf
@@ -198,7 +357,7 @@ Local Transparent Linker_prog.
     ss. des_ifs; cycle 1.
     { econs; eauto. ii; ss. inv FIND0. ss. }
     assert(WFBIG: t.(Sk.load_skenv).(SkEnv.wf)).
-    { eapply SkEnv.load_skenv_wf. }
+    { eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; et. }
     econs; eauto.
     ii; ss.
     inv FIND0; inv FIND1.

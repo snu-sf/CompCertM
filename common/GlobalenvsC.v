@@ -798,3 +798,19 @@ Proof.
   - apply Axioms.proof_irr.
 Qed.
 
+Program Instance Senv_eq_equiv: RelationClasses.Equivalence Senv.equiv.
+Next Obligation.
+  ii.
+  econs; eauto.
+Qed.
+Next Obligation.
+  ii.
+  inv H. des.
+  econs; eauto.
+Qed.
+Next Obligation.
+  ii.
+  inv H. inv H0. des.
+  econs; eauto.
+  i. erewrite <- H1; eauto.
+Qed.

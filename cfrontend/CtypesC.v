@@ -295,4 +295,19 @@ Module CSkEnv.
     uo. des_ifs.
   Qed.
 
+  Lemma senv_genv_compat
+        F (skenv_link: SkEnv.t) fn_sig (prog: Ctypes.program F)
+        (INCL: SkEnv.includes skenv_link (CSk.of_program fn_sig prog))
+    :
+      senv_genv_compat skenv_link (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program fn_sig prog)) prog)
+  .
+  Proof.
+    exploit CSkEnv.project_revive_precise; eauto.
+    { eapply SkEnv.project_impl_spec; eauto. }
+    intro PREC.
+    econs; eauto. i. ss.
+    (* inv INCL. inv PREC. *)
+    ss. uge. unfold SkEnv.revive in *. ss. rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
+  Qed.
+
 End CSkEnv.

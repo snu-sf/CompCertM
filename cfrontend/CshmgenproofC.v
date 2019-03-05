@@ -144,7 +144,8 @@ Proof.
   - esplits; eauto.
     { apply modsem2_receptive. }
     inv MATCH.
-    ii. hexploit (@transl_step prog ge tge); eauto.
+    ii. hexploit (@transl_step prog skenv_link_src skenv_link_tgt); eauto; ss.
+    { inv SIMSKENV. ss. inv SIMSKELINK. ss. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     i; des.
     esplits; eauto.

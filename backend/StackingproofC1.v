@@ -127,8 +127,8 @@ Ltac sep_simpl_tac :=
 Section STACKINGEXTRA.
 
 Lemma match_stacks_sp_valid
-      ge j cs cs' sg sm0 sp'
-      (STKS: match_stacks ge j cs cs' sg sm0)
+      se tse ge j cs cs' sg sm0 sp'
+      (STKS: match_stacks se tse ge j cs cs' sg sm0)
       (SP: parent_sp cs' = Vptr sp' Ptrofs.zero true)
 :
   <<SPVALID: sm0.(SimMemInj.tgt).(Mem.valid_block) sp' /\
@@ -140,8 +140,8 @@ Proof.
 Qed.
 
 Lemma match_stacks_sp_ofs:
-  forall j ge cs cs' sg sm,
-  match_stacks ge j cs cs' sg sm ->
+  forall j se tse ge cs cs' sg sm,
+  match_stacks se tse ge j cs cs' sg sm ->
   exists sp, (parent_sp cs') = Vptr sp Ptrofs.zero true.
 Proof.
   induction 1; ii; ss; esplits; eauto.
@@ -154,9 +154,9 @@ Lemma arguments_private
       stk_src stk_tgt
       F
       sg
-      ge sm
+      se tse ge sm
       (MATCH: m_tgt |= stack_contents F stk_src stk_tgt ** minjection F m_src)
-      (STACKS: match_stacks ge F stk_src stk_tgt sg sm)
+      (STACKS: match_stacks se tse ge F stk_src stk_tgt sg sm)
       (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
   :
     <<_ : forall ofs (OFS: 0 <= ofs < 4 * size_arguments sg),
@@ -187,14 +187,14 @@ Proof.
 Qed.
 
 Lemma arguments_perm
-      ge sm
+      se tse ge sm
       sp_tgt spdelta
       m_src m_tgt
       stk_src stk_tgt
       F
       sg
       (MATCH: m_tgt |= stack_contents F stk_src stk_tgt ** minjection F m_src)
-      (STACKS: match_stacks ge F stk_src stk_tgt sg sm)
+      (STACKS: match_stacks se tse ge F stk_src stk_tgt sg sm)
       (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
   :
     <<_ : forall ofs (OFS: 0 <= ofs < 4 *size_arguments sg),
@@ -628,8 +628,8 @@ Proof.
 Qed.
 
 Lemma stack_contents_at_external_m_footprint
-      tge sm0 stack cs' sg j F
-      (STACKS: match_stacks tge F stack cs' sg sm0)
+      se tse tge sm0 stack cs' sg j F
+      (STACKS: match_stacks se tse tge F stack cs' sg sm0)
   :
     <<LE: (stack_contents_at_external j stack cs' sg).(m_footprint)
           =
@@ -950,6 +950,8 @@ Hypothesis return_address_offset_deterministic:
   rao f c ofs ->
   rao f c ofs' ->
   ofs = ofs'.
+
+Let match_stacks := match_stacks skenv_link_src skenv_link_tgt.
 
 Print Instances SimMem.class.
 Print Instances SimSymb.class.
@@ -1384,7 +1386,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: Linear.state) (st_tgt0: MachC.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: StackingproofC0.match_states ge tge st_src0 st_tgt0.(st) sm0)
+    (MATCHST: StackingproofC0.match_states skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0.(st) sm0)
     (MCOMPATSRC: st_src0.(LinearC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(st).(get_mem) = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
@@ -1462,6 +1464,9 @@ Inductive mle_excl (st_src0: Linear.state): MachC.state -> SimMem.t -> SimMem.t 
   :
     mle_excl st_src0 (mkstate init_rs init_sg (Callstate stack fptr ls0 m0)) sm0 sm1
 .
+
+Let SEGESRC: senv_genv_compat skenv_link_src ge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
+Let SEGETGT: senv_genv_compat skenv_link_tgt tge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
 
 Theorem sim_modsem
   :
@@ -1564,6 +1569,7 @@ Proof.
         - econs; ss; eauto.
           + clarify.
           + econs; ss; eauto.
+            * inv SIMSKENV. eapply SimMemInjC.sim_skenv_symbols_inject; et.
             * eapply loc_arguments_bounded.
             (* * (* TODO: make lemma *) rewrite SM. s. rewrite MEMTGT. *)
             (*   clear - ALC NB MWF. ii. inv MWF; ss. eapply TGTEXT in H. *)
@@ -1807,6 +1813,24 @@ Proof.
       {
         eapply match_stacks_change_meminj with (j:= (SimMemInj.inj sm0)).
         { eapply inject_incr_trans; try apply MLE0. eapply inject_incr_trans; try apply MLE. ss. }
+        { rewrite <- MINJ.
+          clear - SIMSKENV MLE2.
+          i. inv SIMSKENV. ss. inv MLE2. clear MAXSRC MAXTGT.
+          destruct (SimMemInj.inj sm0 b1) eqn:T; ss.
+          - destruct p. exploit INCR; et. i; des. clarify.
+          - inv FROZEN.
+            exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. inv SIMSKELINK. inv INJECT.
+            exploit DOMAIN; et. i. clarify.
+        }
+        { rewrite <- MINJ.
+          clear - SIMSKENV MLE2.
+          i. inv SIMSKENV. ss. inv MLE2. clear MAXSRC MAXTGT.
+          destruct (SimMemInj.inj sm0 b1) eqn:T; ss.
+          - destruct p. exploit INCR; et. i; des. clarify.
+          - inv FROZEN.
+            exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. inv SIMSKELINK. inv INJECT.
+            inv SIMSKENV. xomega.
+        }
         eapply match_stacks_le; try apply STACKS; et.
         { intros ? ? ? VALID0 MAP0. rewrite MINJ in *.
           bar.
@@ -1986,7 +2010,7 @@ Proof.
     esplits; eauto.
     { apply LinearC.modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@transf_step_correct prog rao ge tge); eauto.
+    ii. hexploit (@transf_step_correct prog rao skenv_link_src skenv_link_tgt ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { des. et. }
     i; des.

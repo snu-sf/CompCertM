@@ -68,8 +68,8 @@ Proof.
       (* exploit sound_stack_unreach_compat; eauto. intro CPT. des. *)
       (* inv SU. ss. *)
       esplits; eauto.
-      + ii. des_ifs. des_sumbool. ss.
-      + inv MM. eapply mmatch_below; eauto.
+      + ii. des_ifs. des_sumbool. congruence.
+      + inv MM. eapply mmatch_below; eauto. rewrite H; ss.
     - rewrite Forall_forall. i. spcN 1 ARGS. spc ARGS. ii; clarify.
       assert(BCV: bc blk <> BCinvalid).
       { inv ARGS; ss. inv H1; ss. }
@@ -98,10 +98,10 @@ Proof.
       + ss. r in GE. ss. des. r in mmatch_below.
         apply NNPP. ii. apply Pos.lt_nle in H.
         exploit GE0; eauto. i; des.
-        exploit mmatch_below; eauto. i; des.
+        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des.
         xomega.
-    - econs; ss; i; des_ifs. inv GE. ss. des_sumbool. apply NNPP. ii.
-      exploit (H0 x0); eauto. { xomega. } i; des. clarify.
+    - econs; ss; i; des_ifs. r in GE. des. ss. des_sumbool. apply NNPP. ii.
+      exploit (GE0 x0); eauto. { xomega. } i; des. congruence.
   }
 Qed.
 
@@ -149,14 +149,14 @@ Proof.
       + ss. r in GE. ss. des. r in mmatch_below.
         apply NNPP. ii. apply Pos.lt_nle in H.
         exploit GE0; eauto. i; des.
-        exploit mmatch_below; eauto. i; des.
+        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des.
         xomega.
     - econs; eauto; ss; i; des_ifs. des_sumbool.
       rr in GE. des.
       apply NNPP. ii.
       exploit (GE0 x0); eauto.
       { unfold fundef in *. xomega. }
-      i; des. ss.
+      i; des. congruence.
   }
 Qed.
 
@@ -190,7 +190,7 @@ Section PRSV.
       set (ge := (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p)) in *.
       set (f := fun b =>
                   if plt b (Genv.genv_next ge) then
-                    match Genv.invert_symbol ge b with None => BCother | Some id => BCglob id end
+                    match Genv.invert_symbol ge b with None => BCglob None | Some id => BCglob (Some id) end
                   else
                     if (plt b args.(Args.m).(Mem.nextblock)) && (negb (su_init b))
                     then BCother
@@ -228,7 +228,8 @@ Section PRSV.
         * rewrite IMG. ii.
           assert(Plt b (Mem.nextblock (Args.m args))).
           { eapply Plt_Ple_trans; eauto. }
-          des_ifs.
+          des_ifs; eauto.
+        * rewrite IMG. ii. des_ifs.
       }
       eapply sound_call_state with (bc:= bc); eauto.
       + econs; eauto; cycle 1.
@@ -357,7 +358,8 @@ Section PRSV.
           { hexploit WFLO; eauto. i. des_ifs; try xomega. bsimpl. ss. }
           des_ifs. bsimpl. exfalso. des_sumbool. xomega.
         * refl.
-    - ii; ss. eapply sound_step; eauto.
+    - ii; ss. eapply sound_step with (se := skenv_link); eauto.
+      eapply SkEnv.senv_genv_compat; eauto.
     - i; ss. inv SUST.
       assert(GR: exists su_gr, SemiLattice.greatest le'
                                                     (* (fun su => su0.(UnreachC.ge_nb) = su.(UnreachC.ge_nb) /\ args' su args) *)

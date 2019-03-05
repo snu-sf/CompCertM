@@ -65,6 +65,7 @@ End LTLEXTRA.
 
 Section NEWSTEP.
 
+Variable se: Senv.t.
 Variable ge: genv.
 Let find_function_ptr := find_function_ptr ge.
 
@@ -79,7 +80,7 @@ Definition get_stack (st: state): list stackframe :=
 Inductive step: state -> trace -> state -> Prop :=
 | step_intro
     st0 tr st1
-    (STEP: LTL.step ge st0 tr st1)
+    (STEP: LTL.step se ge st0 tr st1)
     (NOTDUMMY: st1.(get_stack) <> [])
   :
     step st0 tr st1

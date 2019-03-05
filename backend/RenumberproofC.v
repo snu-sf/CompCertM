@@ -269,7 +269,8 @@ Proof.
   - esplits; eauto.
     { apply modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog ge tge); eauto.
+    ii. hexploit (@step_simulation prog skenv_link_src skenv_link_tgt); eauto.
+    { inv SIMSKENV. ss. rr in SIMSKELINK. clarify. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     i; des.
     esplits; eauto.

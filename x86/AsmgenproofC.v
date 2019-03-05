@@ -96,7 +96,7 @@ Inductive match_states
 .
 
 Lemma asm_step_dstep init_rs st0 st1 tr
-      (STEP: Asm.step tge st0 tr st1)
+      (STEP: Asm.step skenv_link_tgt tge st0 tr st1)
   :
     Simulation.DStep (modsem skenv_link_tgt tprog)
                      (mkstate init_rs st0) tr
@@ -108,7 +108,7 @@ Proof.
 Qed.
 
 Lemma asm_star_dstar init_rs st0 st1 tr
-      (STEP: star Asm.step tge st0 tr st1)
+      (STEP: star Asm.step skenv_link_tgt tge st0 tr st1)
   :
     Simulation.DStar (modsem skenv_link_tgt tprog)
                      (mkstate init_rs st0) tr
@@ -119,7 +119,7 @@ Proof.
 Qed.
 
 Lemma asm_plus_dplus init_rs st0 st1 tr
-      (STEP: plus Asm.step tge st0 tr st1)
+      (STEP: plus Asm.step skenv_link_tgt tge st0 tr st1)
   :
     Simulation.DPlus (modsem skenv_link_tgt tprog)
                      (mkstate init_rs st0) tr
@@ -382,6 +382,7 @@ Proof.
       i. des; ss; esplits; auto; clarify.
       * left. instantiate (1 := mkstate st_tgt0.(init_rs) S2'). ss.
         destruct st_tgt0. eapply asm_plus_dplus; eauto.
+        inv SIMSKENV. inv SIMSKELINK. ss. clarify.
       * instantiate (1 := mk (MachC.get_mem (MachC.st st_src1)) (get_mem S2')).
         econs; ss; eauto.
         rewrite <- INITRS. rewrite <- INITFPTR. auto.

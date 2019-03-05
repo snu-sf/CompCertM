@@ -44,7 +44,7 @@ Module ModSem.
   Record t: Type := mk {
     state: Type;
     genvtype: Type;
-    step (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop;
+    step (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop;
     (* TOOD: is ge needed? I follow compcert for now. *)
 
     (* set_mem (m0: mem) (st0: state): state; *) (* This is not used, after_external is enough *)
@@ -109,7 +109,7 @@ Module ModSem.
 
 
     is_call (st0: state): Prop := exists args, at_external st0 args;
-    is_step (st0: state): Prop := exists tr st1, step globalenv st0 tr st1;
+    is_step (st0: state): Prop := exists tr st1, step skenv_link globalenv st0 tr st1;
     is_return (st0: state): Prop := exists retv, final_frame st0 retv;
       (* exists rs_init rs_ret m_ret, final_frame rs_init st0 rs_ret m_ret; *)
     (* Note: "forall" or "exists" for rs_init? *)

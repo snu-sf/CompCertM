@@ -2,7 +2,7 @@ Require Import FSets.
 Require Import CoqlibC Errors Ordered Maps IntegersC Floats.
 Require Import AST Linking.
 Require Import ValuesC Memory GlobalenvsC Events Smallstep.
-Require Import Ctypes CopC ClightC SimplLocals.
+Require Import CtypesC CopC ClightC SimplLocals.
 Require Import sflib.
 Require SimMemInj.
 (** newly added **)
@@ -124,7 +124,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: Clight.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: SimplLocalsproof.match_states ge st_src0 st_tgt0 sm0)
+    (MATCHST: SimplLocalsproof.match_states skenv_link_src skenv_link_tgt ge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(ClightC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt))
 .
@@ -141,6 +141,9 @@ Proof.
     hexploit (prog_comp_env_eq tprog); eauto. i.
     ss. congruence.
 Qed.
+
+Let SEGESRC: senv_genv_compat skenv_link_src ge. Proof. eapply CSkEnv.senv_genv_compat; et. Qed.
+Let SEGETGT: senv_genv_compat skenv_link_tgt tge. Proof. eapply CSkEnv.senv_genv_compat; et. Qed.
 
 Theorem sim_modsem
   :
@@ -189,6 +192,7 @@ Proof.
         rpapply match_call_state; ss; eauto.
         { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
           econs; eauto.
+          - eapply SimMemInjC.sim_skenv_symbols_inject; et.
           - etrans; try apply MWF. ss.
           - etrans; try apply MWF. ss.
         }
@@ -274,8 +278,7 @@ Proof.
         { instantiate (1:= tge). ss. esplits; eauto. }
         { eauto with mem. }
         { eauto with mem. }
-        eapply match_cont_extcall; eauto.
-        { instantiate (1:= tge). ss. esplits; eauto. }
+        eapply match_cont_extcall with (ge := ge) (tge := tge); eauto.
         { eapply Mem.unchanged_on_implies; try eassumption. ii. rr. esplits; eauto. }
         { eapply SimMemInj.inject_separated_frozen; et. }
         { refl. }
@@ -293,7 +296,7 @@ Proof.
     esplits; eauto.
     { apply modsem1_receptive. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog ge tge); eauto.
+    ii. hexploit (@step_simulation prog skenv_link_src skenv_link_tgt); eauto; ss.
     i; des.
     esplits; eauto.
     + left. eapply spread_dplus; eauto. eapply modsem2_determinate; eauto.

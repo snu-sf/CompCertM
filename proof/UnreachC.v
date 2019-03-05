@@ -568,7 +568,7 @@ Require Import ValueAnalysis ValueDomain.
 Definition romatch_ske (bc: block_classification) (m: mem) (rm: ident -> option ablock): Prop :=
   forall
     b id ab
-    (BC: bc b = BCglob id)
+    (BC: bc b = BCglob (Some id))
     (RO: rm id = Some ab)
   ,
     pge Glob (ab_summary ab) /\ bmatch bc m b ab /\ (forall ofs : Z, ~ Mem.perm m b ofs Max Writable)
@@ -951,7 +951,7 @@ Maybe you can remove this condition from bmatch_proj upfront. (I think it is eas
       { apply in_prog_defmap; et. }
       { clear - H4. unfold definitive_initializer in *. des_ifs. }
       i; des.
-      exists id_to.
+      exists (Some id_to).
       ss.
       assert(LT: plt blk (Genv.genv_next skenv0)).
       { rewrite <- NEXT. admit "ez". }

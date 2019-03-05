@@ -50,14 +50,14 @@ Section SYSMODSEM.
       (retv: Retv.t)
   .
 
-  Inductive step (ge: genvtype): state -> trace -> state -> Prop :=
+  Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
   | step_intro
       args ef
       (FPTR: ge.(Genv.find_funct) args.(Args.fptr) = Some (External ef))
       tr retv
       (EXTCALL: external_call ef ge args.(Args.vs) args.(Args.m) tr retv.(Retv.v) retv.(Retv.m))
     :
-      step ge (Callstate args) tr (Returnstate retv)
+      step se ge (Callstate args) tr (Returnstate retv)
   .
 
   Inductive initial_frame (args: Args.t): state -> Prop :=

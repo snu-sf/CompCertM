@@ -56,6 +56,7 @@ c0 + empty
   Hypothesis LINK_SK_TGT: link_sk tprog = Some sk_tgt.
   (* TODO: consider linking fail case *)
   Let skenv_link := Sk.load_skenv sk_tgt.
+  Hypothesis WTSK: Sk.wf sk_tgt.
   Let SKEWF: SkEnv.wf skenv_link.
   Proof.
     eapply SkEnv.load_skenv_wf; et.
@@ -68,7 +69,6 @@ c0 + empty
   Hypothesis MAIN_INTERNAL: forall st_src, Csem.initial_state prog st_src -> internal_function_state ge st_src.
 
   Hypothesis WTPROG: wt_program prog.
-  Hypothesis WTSK: Sk.wf (CsemC.module prog).
 
   Hypothesis WT_EXTERNAL:
     forall id ef args res cc vargs m t vres m',
@@ -143,7 +143,11 @@ c0 + empty
 
   Lemma skenv_link_wf:
     SkEnv.wf skenv_link.
-  Proof. (unfold skenv_link; eapply SkEnv.load_skenv_wf). Qed.
+  Proof.
+    clear INIT_MEM.
+    (unfold skenv_link; eapply SkEnv.load_skenv_wf).
+    ss.
+  Qed.
 
   Lemma proj_wf:
     SkEnv.project_spec skenv_link prog.(CSk.of_program signature_of_function) (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)).
@@ -222,7 +226,8 @@ c0 + empty
   .
   Proof.
     eapply SemProps.find_fptr_owner_determ; ss;
-      rewrite LINK_SK_TGT; eauto.
+      try rewrite LINK_SK_TGT; eauto.
+    { ii. ss. des; ss. clarify. ss. unfold link_sk, link_list in *. ss. clarify. }
   Qed.
 
   Lemma alloc_variables_determ
@@ -1398,6 +1403,7 @@ Proof.
   eapply bsim_improves.
   eapply mixed_to_backward_simulation.
   eapply transf_program_correct; eauto.
+  { ss. unfold link_sk, link_list in *. ss. clarify. }
   { ii. rr. inv H. ss. des_ifs_safe.
     des.
     apply Genv.find_def_symbol in INTERNAL. des. unfold fundef in *.

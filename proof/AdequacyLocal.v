@@ -298,6 +298,8 @@ Section SIMGE.
           skenv_link_src skenv_link_tgt
           (SKENVSRC: Sk.load_skenv sk_link_src = skenv_link_src)
           (SKENVTGT: Sk.load_skenv sk_link_tgt = skenv_link_tgt)
+          (WFSKSRC: forall mp (IN: In mp pp), Sk.wf (ModPair.src mp))
+          (WFSKTGT: forall mp (IN: In mp pp), Sk.wf (ModPair.tgt mp))
           m_src
           (LOADSRC: Sk.load_mem sk_link_src = Some m_src)
     :
@@ -402,8 +404,8 @@ Section SIMGE.
         - econs; eauto. econs; ss; eauto; cycle 1.
           { unfold Mod.modsem. rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
           r. ss. eapply SimSymb.sim_skenv_monotone; eauto.
-          + eapply SkEnv.load_skenv_wf.
-          + eapply SkEnv.load_skenv_wf.
+          + eapply SkEnv.load_skenv_wf; et.
+          + eapply SkEnv.load_skenv_wf; et.
           + eapply Mod.get_modsem_skenv_spec.
           + eapply Mod.get_modsem_skenv_spec.
       }
@@ -417,9 +419,17 @@ Section SIMGE.
       set (skenv_src := (Sk.load_skenv sk_link_src)) in *.
       set (skenv_tgt := (Sk.load_skenv sk_link_tgt)) in *.
       assert(WFSRC: SkEnv.wf skenv_src).
-      { eapply SkEnv.load_skenv_wf. }
+      { eapply SkEnv.load_skenv_wf; et.
+        eapply (link_list_preserves_wf_sk ((ModPair.src mp) :: (ProgPair.src pp))); et.
+        - unfold link_sk. ss. eapply link_list_cons; et.
+        - ii; ss. des; clarify; et. unfold ProgPair.src in *. rewrite in_map_iff in *. des. clarify. et.
+      }
       assert(WFTGT: SkEnv.wf skenv_tgt).
-      { eapply SkEnv.load_skenv_wf. }
+      { eapply SkEnv.load_skenv_wf; et.
+        eapply (link_list_preserves_wf_sk ((ModPair.tgt mp) :: (ProgPair.tgt pp))); et.
+        - unfold link_sk. ss. eapply link_list_cons; et.
+        - ii; ss. des; clarify; et. unfold ProgPair.tgt in *. rewrite in_map_iff in *. des. clarify. et.
+      }
       econstructor 2 with
           (msps := (map (ModPair.to_msp skenv_src skenv_tgt sm_init) (mp :: pp))); eauto; revgoals.
       + rewrite Forall_forall in *. i. ss. des; clarify.
@@ -652,7 +662,16 @@ Section ADQINIT.
     rename INITSK into INITSKSRC. rename INITMEM into INITMEMSRC.
 
     exploit sim_link_sk; eauto. i; des. fold p_tgt in LOADTGT.
-    exploit init_sim_ge_strong; eauto. i; des. clarify.
+    assert(WFTGT: forall md, In md p_tgt -> <<WF: Sk.wf md >>).
+    { clear - SIMPROG WF. i. subst_locals. u in *. rewrite in_map_iff in *. des. clarify.
+      rewrite Forall_forall in *. exploit SIMPROG; et. intro SIM.
+      inv SIM.
+      eapply SimSymb.sim_sk_preserves_wf; et. eapply WF; et. rewrite in_map_iff. esplits; et.
+    }
+    exploit init_sim_ge_strong; eauto.
+    { ii. eapply WF; et. unfold p_src. unfold ProgPair.src. rewrite in_map_iff. et. }
+    { ii. eapply WFTGT; et. unfold p_tgt. unfold ProgPair.tgt. rewrite in_map_iff. et. }
+    i; des. clarify.
     ss. des_ifs.
 
     set(Args.mk (Genv.symbol_address (Sk.load_skenv sk_link_src) (prog_main sk_link_src) Ptrofs.zero)
@@ -668,11 +687,6 @@ Section ADQINIT.
     - econs; ss; cycle 1.
       { ii. eapply initial_state_determ; ss; eauto. }
       econs; eauto; cycle 1.
-      { clear - SIMPROG WF. i. subst_locals. u in *. rewrite in_map_iff in *. des. clarify.
-        rewrite Forall_forall in *. exploit SIMPROG; et. intro SIM.
-        inv SIM.
-        eapply SimSymb.sim_sk_preserves_wf; et. eapply WF; et. rewrite in_map_iff. esplits; et.
-      }
       apply_all_once SimSymb.sim_skenv_func_bisim. des. inv SIMSKENV.
       exploit FUNCFSIM; eauto.
       { apply SIMARGS. }
@@ -737,6 +751,9 @@ Section ADQSTEP.
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
   Hypothesis (INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
   Hypothesis (INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)).
+
+  Hypothesis (WFKSSRC: forall md (IN: In md (ProgPair.src pp)), <<WF: Sk.wf md >>).
+  Hypothesis (WFKSTGT: forall md (IN: In md (ProgPair.tgt pp)), <<WF: Sk.wf md >>).
 
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
@@ -1046,6 +1063,8 @@ Section ADQ.
       inv INITSRC.
       exploit sim_link_sk; eauto. i; des.
       exploit init_lxsim_lift_forward; eauto. { econs; eauto. } i; des.
+      assert(WFTGT: forall md, In md (ProgPair.tgt pp) -> <<WF: Sk.wf md >>).
+      { inv INITTGT. inv INIT. ss. }
       hexploit lxsim_lift_xsim; eauto.
       exploit sound_init; eauto.
       { ss. econs; eauto. }

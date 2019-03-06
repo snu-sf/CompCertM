@@ -8,7 +8,7 @@ Require Import Op Registers RTLC LocationsC Conventions RTLtypingC LTLC.
 Require Import Allocation.
 Require Import sflib.
 (** newly added **)
-Require Export AllocproofC0.
+Require Export Allocproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require Import ModSemProps.
@@ -155,9 +155,9 @@ Qed.
 
 Lemma match_stackframes_after
       tse tge stks tstks sg
-      (STACKS: match_stackframes tse tge stks tstks sg)
+      (STACKS: match_stackframes true tse tge stks tstks sg)
   :
-    <<STACKS: match_stackframes tse tge stks tstks.(stackframes_after_external) sg>>
+    <<STACKS: match_stackframes true tse tge stks tstks.(stackframes_after_external) sg>>
 .
 Proof.
   inv STACKS; econs; et.
@@ -191,7 +191,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: LTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: AllocproofC0.match_states skenv_link_tgt tge st_src0 st_tgt0)
+    (MATCHST: Allocproof.match_states true skenv_link_tgt tge st_src0 st_tgt0)
     (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(LTLC.get_mem) = sm0.(SimMem.tgt))
     (DUMMYTGT: wf_tgt st_tgt0)
@@ -208,10 +208,10 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := fun _ _ => wt_state);
+  eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := fun _ _ => wt_state true);
     eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
-  - eapply wt_state_local_preservation; eauto.
+  - eapply wt_state_local_preservation; et.
     ii. exploit wt_prog; eauto.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
@@ -225,7 +225,7 @@ Proof.
     esplits; cycle 2.
     + econs; eauto; ss.
       * inv TYP. eapply match_states_call; eauto.
-        { econs; et. }
+        { econs; et. econs. }
         { rewrite <- TYP0. eapply lessdef_list_typify_list; try apply VALS; et. xomega. }
         { ii. ss. }
         { eapply typify_has_type_list; et. xomega. }
@@ -291,7 +291,7 @@ Proof.
       * hexploit (loc_result_one sg_arg); et. intro ONE. destruct (loc_result sg_arg) eqn:T; ss.
         rewrite Locmap.gss. eapply lessdef_typify_opt; et.
       * eapply agree_callee_save_after; et.
-        admit "we can just use 'inv STACKS; ss.' but make lemma".
+        admit "ez - we can just use 'inv STACKS; ss.' but make lemma".
       * unfold typify_opt, proj_sig_res. des_ifs.
         { eapply typify_has_type; et. }
         { rename v into vv. admit "replace typify_opt with typify, and use proj_sig_res". }
@@ -299,11 +299,11 @@ Proof.
         unfold undef_outgoing_slots. unfold dummy_stack in *. clarify. esplits; et.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
-    inv STACKS; ss. destruct sm0; ss. clarify.
+    inv STACKS; ss. { inv COMPCOMP. } destruct sm0; ss. clarify.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto.
     econs; et; ss.
     rpapply RES.
-    admit "make lemma: below proof works
+    admit "ez - make lemma: below proof works
     do 2 f_equal.
     clear - SAMERES.
     unfold loc_result. des_ifs. unfold loc_result_64. des_ifs.
@@ -311,13 +311,13 @@ Proof.
   - esplits; eauto.
     { apply RTLC.modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog skenv_link_src skenv_link_tgt); eauto.
+    ii. hexploit (@step_simulation prog true skenv_link_src skenv_link_tgt); eauto.
     { inv SIMSKENV. ss. inv SIMSKELINK. refl. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { ss. des. ss. }
     i; des.
     exploit lift_plus; et.
-    { ii. inv H0; try inv STACKS; ss; clarify; et; inv H2; ss. (* TODO: notnil lemma *) }
+    { ii. inv H0; try inv STACKS; ss; clarify; et; try inv COMPCOMP; inv H2; ss. (* TODO: notnil lemma *) }
     i; des.
     esplits; eauto.
     + left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.

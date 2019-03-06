@@ -19,7 +19,7 @@ Require Import CoqlibC Ordered Maps Errors IntegersC Floats.
 Require Import AST Linking Lattice Kildall.
 Require Import ValuesC MemoryC Globalenvs Events Smallstep.
 Require Archi.
-Require Import Op Registers RTLC Locations Conventions RTLtypingC0 LTLC.
+Require Import Op Registers RTLC Locations Conventions RTLtypingC LTLC.
 Require Import Allocation.
 Require Import sflib.
 (** newly added **)

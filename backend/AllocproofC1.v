@@ -4,7 +4,7 @@ Require Import CoqlibC Ordered Maps Errors IntegersC Floats.
 Require Import AST Linking Lattice Kildall.
 Require Import ValuesC MemoryC Globalenvs Events Smallstep.
 Require Archi.
-Require Import Op Registers RTLC LocationsC Conventions RTLtypingC0 RTLtypingC1 LTLC.
+Require Import Op Registers RTLC LocationsC Conventions RTLtypingC LTLC.
 Require Import Allocation.
 Require Import sflib.
 (** newly added **)
@@ -212,7 +212,7 @@ Proof.
     eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - eapply wt_state_local_preservation; eauto.
-    ii. exploit wt_prog; eauto. i. inv H0; try inv H1; econs; et; econs; et. i. exploit wt_instrs; et. intro T. inv T; econs; et. (* TODO: do it better ! *)
+    ii. exploit wt_prog; eauto.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
     inv SIMARGS; ss. clarify.
@@ -243,16 +243,21 @@ Proof.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des.
     exploit (sig_function_translated); eauto. intro SGEQ. ss.
     ss. unfold bind in *. folder. des_ifs. ss.
-    (* inv TYP. *)
-    (* unfold transf_function, bind in *. des_ifs. *)
+
+    exploit (fill_arguments_progress (Locmap.init Vundef)
+                                     (typify_list (Args.vs args_tgt) (sig_args (fn_sig f)))
+                                     (loc_arguments f.(fn_sig))); eauto.
+    { rewrite <- sig_args_length. rewrite SGEQ. rewrite <- LEN. admit "ez". }
+    i; des.
+    rename ls1 into ls_init.
+    exploit fill_arguments_spec; et. i; des.
+
     esplits; eauto. econs; eauto.
     + folder. rewrite <- H1. eauto.
     + econs; eauto.
       * erewrite <- lessdef_list_length; eauto. congruence.
-      * admit "init locset".
       * inv TYP; ss. congruence.
-    + admit "init locset".
-    + admit "init locset".
+    + ii. rewrite OUT in H0; ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     u in CALLSRC. des. inv CALLSRC. inv MATCHST; ss.
@@ -309,7 +314,7 @@ Proof.
     ii. hexploit (@step_simulation prog skenv_link_src skenv_link_tgt); eauto.
     { inv SIMSKENV. ss. inv SIMSKELINK. refl. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
-    { ss. des. admit "RTLtyping". }
+    { ss. des. ss. }
     i; des.
     exploit lift_plus; et.
     { ii. inv H0; try inv STACKS; ss; clarify; et; inv H2; ss. (* TODO: notnil lemma *) }

@@ -875,18 +875,6 @@ Admitted.
 (*   all: ss. *)
 (* Qed. *)
 
-Lemma asm_inj_id
-      (asm: Asm.program)
-  :
-    exists mp,
-      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
-.
-Proof.
-  admit "this should hold".
-Qed.
-
 Inductive wf_init_rs (sg: signature) (rs: regset) : Prop :=
 | wf_init_rs_intro
     (RSPDEF: rs RSP <> Vundef)
@@ -1216,12 +1204,13 @@ Lemma asm_inj_drop
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
+      /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto.
   econs; ss; i.
-  { instantiate (1:=bot1). admit "add condition". }
+  { admit "add condition". }
   eapply match_states_sim with
       (match_states :=
          match_states
@@ -2023,7 +2012,41 @@ Proof.
 
 Qed.
 
-Lemma asm_inj_id2
+Lemma SymSymbId_SymSymbDrop_bot sm_arg ss_link ge_src ge_tgt
+      (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg ss_link ge_src ge_tgt)
+  :
+    SimSymbDrop.sim_skenv sm_arg bot1 ge_src ge_tgt.
+Proof.
+  inv SIMSKE. ss. unfold SimSymbId.sim_skenv in *. clarify.
+  inv INJECT. ss.
+  econs; ss; i.
+  + exploit DOMAIN; eauto.
+    { instantiate (1:=blk_src).
+      exploit Genv.genv_symb_range; eauto. }
+    i. clarify. esplits; eauto.
+  + esplits; eauto. exploit DOMAIN; eauto.
+    exploit Genv.genv_symb_range; eauto.
+  + esplits; eauto. exploit DOMAIN; eauto.
+    exploit Genv.genv_symb_range; eauto.
+  + exploit DOMAIN; eauto.
+    { exploit Genv.genv_defs_range; eauto. }
+    i. rewrite SIMVAL in *. inv H. esplits; eauto.
+  + exploit DOMAIN.
+    { instantiate (1:=blk_src0).
+      exploit Genv.genv_symb_range; eauto. } i.
+    rewrite SIMVAL0 in *. inv H.
+    exploit IMAGE; try apply SIMVAL1.
+    { exploit Genv.genv_symb_range; eauto. }
+    i. etrans; eauto.
+  + exploit IMAGE; eauto.
+    { exploit Genv.genv_defs_range; eauto. }
+    i. clarify.
+    exploit DOMAIN; eauto.
+    { exploit Genv.genv_defs_range; eauto. }
+    i. rewrite SIMVAL in *. inv H. esplits; eauto.
+Qed.
+
+Lemma asm_inj_id
       (asm: Asm.program)
   :
     exists mp,
@@ -2035,19 +2058,16 @@ Proof.
   set (asm_inj_drop asm). des.
   destruct mp eqn: EQ. ss. clarify. inv SIM. ss.
   unfold ModPair.to_msp in *. ss.
-
   eexists (ModPair.mk _ _ _). esplits; ss. instantiate (1:=tt).
   econs; ss. unfold ModPair.to_msp. ss.
-
-  i.
-
-  exploit SIMMS; eauto.
-  { inv SSLE. instantiate (1:=ss). econs; ss. i. des. clarify. }
-
-  { instantiate (1:=sm_init_link). ss.
-    inv SIMSKENVLINK. inv INJECT. inv SIMSKENV. admit "". }
-
+  i. destruct ss_link.
+  exploit SIMMS; [apply INCLSRC|apply INCLTGT|..]; eauto.
+  { inv SSLE. instantiate (1:=bot1). econs; ss. i. des. clarify. }
+  { instantiate (1:=sm_init_link).
+    exploit SymSymbId_SymSymbDrop_bot; eauto. }
   i. inv H. ss.
-  (* econs; ss. *)
-  admit "this should hold".
+  econs; ss; eauto. i. exploit SIM; eauto.
+  inv SIMSKENV. ss. econs; ss.
+  - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKE; eauto.
+  - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKELINK; eauto.
 Qed.

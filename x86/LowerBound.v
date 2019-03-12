@@ -435,56 +435,6 @@ Section PRESERVATION.
     - i. exploit Genv.genv_symb_range; eauto.
   Qed.
 
-  (* Lemma local_genv_symbols_inject p j *)
-  (*       (SKINJ: skenv_inject skenv_link j) *)
-  (*       (IN: In (AsmC.module p) prog) *)
-  (*   : *)
-  (*     symbols_inject j (local_genv p) tge. *)
-  (* Proof. *)
-  (* Admitted. *)
-  (*   inv SKINJ. *)
-  (*   exploit owner_genv_le; eauto. intros GELE. *)
-  (*   generalize match_skenv_link_tge. intros MATCH. *)
-  (*   inv MATCH. *)
-  (*   exploit SkEnv.project_impl_spec; eauto. *)
-  (*   { eapply ININCL; eauto. } *)
-  (*   intros PROJECT. inv PROJECT. *)
-
-  (*   econs; esplits; ss; i. *)
-  (*   - unfold local_genv in *. unfold SkEnv.revive, Genv.public_symbol. ss. *)
-  (*     rewrite Genv_map_defs_symb. ss. *)
-  (*     rewrite genv_public_eq in *. *)
-  (*     unfold Genv.find_symbol, proj_sumbool in *. *)
-  (*     erewrite mge_symb. *)
-  (*     des_ifs; exfalso. *)
-  (*     + erewrite SYMBKEEP in Heq0; eauto. clarify. *)
-  (*     + erewrite SYMBKEEP in Heq0; eauto. clarify. *)
-
-  (*   - unfold local_genv in *. *)
-  (*     unfold SkEnv.revive, Genv.public_symbol in H0. *)
-  (*     rewrite Genv_map_defs_symb in H0. *)
-  (*     erewrite SYMBKEEP in H0. *)
-  (*     + unfold Genv.find_symbol in *. rewrite mge_symb in *. *)
-  (*       exploit DOMAIN. *)
-  (*       { instantiate (1:=b1). *)
-  (*         exploit Genv.genv_symb_range; eauto. } *)
-  (*       i. clarify. *)
-  (*     + apply NNPP. ii. exploit SYMBDROP. *)
-  (*       { instantiate (1:=id). tauto. } *)
-  (*       i. congruence. *)
-
-  (*   - unfold local_genv in *. *)
-  (*     unfold SkEnv.revive, Genv.public_symbol, proj_sumbool in *. *)
-  (*     rewrite Genv_map_defs_symb in *. ss. des_ifs. *)
-  (*     erewrite SYMBKEEP in Heq; eauto. *)
-  (*     unfold Genv.find_symbol in *. *)
-  (*     rewrite mge_symb. esplits; eauto. *)
-  (*     exploit DOMAIN; eauto. *)
-  (*     exploit Genv.genv_symb_range; eauto. *)
-
-  (*   - admit "doesn't hold". *)
-  (* Qed. *)
-
   Lemma external_function_sig
         v skd ef
         (FIND0: Genv.find_funct (System.globalenv skenv_link) v = Some (External ef))
@@ -583,42 +533,6 @@ Section PRESERVATION.
       determinate_at (semantics p) st.
     Proof.
     Admitted.
-
-(* <<<<<<< HEAD *)
-(*     Lemma asm_step_preserve_injection *)
-(*           rs_src0 rs_src1 m_src0 m_src1 tr j0 *)
-(*           rs_tgt0 m_tgt0 *)
-(*           ge_src ge_tgt *)
-(*           (GENVLE: genv_le ge_src ge_tgt) *)
-(*           (DOMAIN: forall b (LT: Plt b ge_src.(Genv.genv_next)), *)
-(*               j0 b = Some(b, 0)) *)
-(*           (NOEXTFUN: no_extern_fun ge_src) *)
-(*           (AGREE: agree j0 rs_src0 rs_tgt0) *)
-(*           (INJ: Mem.inject j0 m_src0 m_tgt0) *)
-(*           (STEP: Asm.step skenv_link ge_src (Asm.State rs_src0 m_src0) tr (Asm.State rs_src1 m_src1)) *)
-(*       : *)
-(*         exists rs_tgt1 m_tgt1 j1, *)
-(*           (Asm.step skenv_link ge_tgt (Asm.State rs_tgt0 m_tgt0) tr (Asm.State rs_tgt1 m_tgt1)) /\ *)
-(*           (agree j1 rs_src1 rs_tgt1) /\ *)
-(*           (Mem.inject j1 m_src1 m_tgt1) /\ *)
-(*           (inject_incr j0 j1) /\ *)
-(*           (inject_separated j0 j1 m_src0 m_tgt0) *)
-(*     . *)
-(*     Proof. *)
-(*     Admitted. *)
-
-(*     Lemma asm_step_max_perm ge_src rs0 rs1 m0 m1 tr *)
-(*           (STEP: Asm.step skenv_link ge_src (Asm.State rs0 m0) tr (Asm.State rs1 m1)) *)
-(*           b ofs p *)
-(*           (VALID: Mem.valid_block m0 b) *)
-(*           (PERM: Mem.perm m1 b ofs Max p) *)
-(*       : *)
-(*         Mem.perm m0 b ofs Max p. *)
-(*     Proof. *)
-(*     Admitted. *)
-
-(* ======= *)
-(* >>>>>>> prove asm_inj_drop & remove admits in LowerBound *)
 
   End ASMLEMMAS.
 

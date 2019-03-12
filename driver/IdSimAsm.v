@@ -1902,51 +1902,22 @@ Proof.
           exploit SIMSYMB2; try apply FINDSRC; eauto.
         }
 
-        { unfold SkEnv.revive. econs; esplits; ss; i.
-          - unfold Genv.public_symbol. ss.
-            repeat rewrite Genv_map_defs_symb.
-            des_ifs.
-            + exfalso. revert Heq0.
-              exploit SIMSYMB3; try apply Heq; eauto. i. des.
-              congruence.
-            + exfalso. revert Heq.
-              exploit SIMSYMB2; try apply Heq; eauto. i. des.
-              congruence.
-          - (* genv *)
-            rewrite Genv_map_defs_symb in *.
-            exploit SIMSYMB2; eauto. i. des. clarify.
-          - des_ifs_safe.
-            exploit SIMSYMB2; try apply Heq; eauto. i. des.
-            esplits; eauto.
+        { instantiate (1:=skenv_link_tgt). clear - SIMSKELINK.
+          inv SIMSKELINK. econs; esplits; ss; i.
+          - unfold Genv.public_symbol, proj_sumbool.
+            rewrite PUB in *. des_ifs; ss.
+            + exploit SIMSYMB3; eauto. i. des. clarify.
+            + exploit SIMSYMB2; eauto. i. des. clarify.
+          - exploit SIMSYMB1; eauto. i. des. eauto.
+          - exploit SIMSYMB2; eauto.
+            { unfold Genv.public_symbol, proj_sumbool in *. des_ifs. eauto. }
+            i. des. eauto.
           - unfold Genv.block_is_volatile, Genv.find_var_info.
-
-            destruct (Genv.find_def _ _) eqn:EQTGT.
-            + (* genv *)
-              apply Genv_map_defs_def in EQTGT. des.
-              unfold o_bind, o_bind2, o_join, o_map, curry2, fst in MAP.
-              des_ifs_safe.
-              apply Genv.invert_find_symbol in Heq0.
-              exploit SIMDEFINV; eauto. i. des. clarify.
-              exploit Genv_map_defs_def_inv; try apply DEFSRC.
-              i. rewrite H0.
-              unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
-              erewrite Genv.find_invert_symbol. rewrite Heq1; eauto.
-              exploit SIMSYMB3; eauto. i. des.
-              rewrite BLKSRC. f_equal.
-              exploit DISJ; eauto.
-            + destruct (Genv.find_def (Genv_map_defs (SkEnv.project skenv_link_src (Sk.of_program fn_sig asm)) _)) eqn:EQSRC; auto.
-              exfalso.
-              apply Genv_map_defs_def in EQSRC. des.
-              unfold o_bind, o_bind2, o_join, o_map, curry2, fst in MAP.
-              des_ifs_safe.
-              apply Genv.invert_find_symbol in Heq0.
-              exploit SIMDEF; eauto. i. des. clarify.
-              exploit Genv_map_defs_def_inv; try apply DEFTGT.
-              i. revert EQTGT. rewrite H0.
-              unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
-              erewrite Genv.find_invert_symbol.
-              * rewrite Heq1; eauto. clarify.
-              * exploit SIMSYMB2; eauto. i. des. clarify.
+            destruct (Genv.find_def skenv_link_src b1) eqn:DEQ.
+            + exploit SIMDEF; eauto. i. des. clarify.
+              rewrite DEFTGT. eauto.
+            + des_ifs_safe. exfalso. exploit SIMDEFINV; eauto.
+              i. des. clarify.
         }
 
         i. des.

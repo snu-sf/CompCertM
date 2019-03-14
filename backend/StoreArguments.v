@@ -10,6 +10,7 @@ Require Import Smallstep.
 Require Import Op.
 Require Import LocationsC.
 Require Import Conventions.
+Require Import SimMemInj.
 Require Stacklayout.
 (** newly added **)
 Require Import Mach mktac MemdataC.
@@ -303,6 +304,18 @@ Section STOREARGUMENTS_PROPERTY.
         eapply in_or_app; eauto.
   Qed.
 
+  Lemma store_arguments_unchanged_on m0 m1 rs args sg
+        (STORE: store_arguments m0 rs args sg m1)
+    :
+      Mem.unchanged_on (SimMemInj.valid_blocks m0) m0 m1.
+  Proof.
+    inv STORE. dup ALC. eapply Mem.alloc_unchanged_on in ALC0.
+    eapply Mem.unchanged_on_trans; eauto.
+    eapply Mem.unchanged_on_implies; eauto.
+    i. ss. des_ifs. red in H.
+    exfalso. eapply Mem.fresh_block_alloc; eauto.
+  Qed.
+
 End STOREARGUMENTS_PROPERTY.
 
 
@@ -486,7 +499,8 @@ Module _FillArgsParallel.
           -- ii. inv EQ. rewrite Regmap.gss. auto.
           -- eapply list_forall2_lift; [|eauto].
              { ii. clarify. unfold Regmap.set. des_ifs; eauto.
-               exfalso. eapply loc_in_not_not_in; eauto. }
+               exfalso. eapply loc_notin_not_in; eauto.
+               eapply in_one_in_rpair; eauto. }
         * econs; eauto. ii. inv EQ.
       + exfalso. exploit ONES; eauto.
   Qed.

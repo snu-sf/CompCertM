@@ -39,6 +39,7 @@ Makefile.coq: Makefile $(COQTHEORIES)
 			\
    echo "-R compose $(COQMODULE)"; \
    echo "-R proof $(COQMODULE)"; \
+   echo "-R demo $(COQMODULE)"; \
    echo $(COQTHEORIES)) > _CoqProject
 	coq_makefile -f _CoqProject -o Makefile.coq
 

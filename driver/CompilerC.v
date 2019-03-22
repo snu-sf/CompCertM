@@ -211,6 +211,45 @@ End Deadcode.
 
 
 
+Section Unusedglob.
+
+  Require Import UnusedglobproofC.
+
+  Local Existing Instance SimMemInjC.SimMemInj | 0.
+  Local Existing Instance SimSymbDrop.SimSymbDrop | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+
+  Lemma Unusedglob_correct
+        src tgt
+        (TRANSF: Unusedglob.transform_program src = OK tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    eapply mixed_to_backward_simulation.
+    rpapply adequacy_local; cycle 1.
+    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
+      u. rewrite map_app. ss.
+    }
+    { u. rewrite map_app. ss. }
+    r. rewrite Forall_forall in *. ii.
+    rewrite in_app_iff in *. des; eauto.
+    rewrite in_app_iff in *. des; eauto.
+    ss. des; ss. clarify.
+    eapply UnusedglobproofC.sim_mod; eauto.
+    eapply Unusedglobproof.transf_program_match; eauto.
+  Qed.
+
+End Unusedglob.
+
+
+
 Parameter R2A: RTL.program -> res Asm.program.
 Parameter R2A_sim_mod: forall
     src tgt
@@ -287,7 +326,8 @@ End R2A.
 
 
 Let transf_c_program: Csyntax.program -> res Asm.program :=
-  fun src => src.(C2R) @@ Renumber.transf_program @@@ Deadcode.transf_program @@@ R2A
+  fun src => src.(C2R) @@ Renumber.transf_program @@@
+                       Deadcode.transf_program @@@ Unusedglob.transform_program @@@ R2A
 .
 
 (* TODO: this is not used, remove it *)
@@ -440,6 +480,15 @@ Proof.
   {
     eapply bsim_improves.
     rp; [eapply Deadcode_correct|..]; try refl; revgoals.
+    { find_replacer. }
+    all: eauto.
+  }
+  repeat all ltac:(fun H => rewrite H).
+
+  etrans.
+  {
+    eapply bsim_improves.
+    rp; [eapply Unusedglob_correct|..]; try refl; revgoals.
     { find_replacer. }
     all: eauto.
   }

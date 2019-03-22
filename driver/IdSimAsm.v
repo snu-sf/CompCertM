@@ -1197,7 +1197,7 @@ Proof.
   - rewrite UNDEF; auto.
 Qed.
 
-Lemma asm_inj_drop
+Lemma asm_inj_drop_bot
       (asm: Asm.program)
   :
     exists mp,
@@ -1983,6 +1983,18 @@ Proof.
 
 Qed.
 
+Lemma asm_inj_drop
+      (asm: Asm.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
+.
+Proof.
+  exploit asm_inj_drop_bot. i. des. eauto.
+Qed.
+  
 Lemma SymSymbId_SymSymbDrop_bot sm_arg ss_link ge_src ge_tgt
       (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg ss_link ge_src ge_tgt)
   :
@@ -2026,7 +2038,7 @@ Lemma asm_inj_id
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
 .
 Proof.
-  set (asm_inj_drop asm). des.
+  set (asm_inj_drop_bot asm). des.
   destruct mp eqn: EQ. ss. clarify. inv SIM. ss.
   unfold ModPair.to_msp in *. ss.
   eexists (ModPair.mk _ _ _). esplits; ss. instantiate (1:=tt).

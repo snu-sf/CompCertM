@@ -15,7 +15,7 @@ Require Import Smallstep.
 Require Import Csem.
 Require Import sflib.
 Require Import CsemC Mod.
-Require Import Header.
+Require Import DemoHeader.
 
 Definition x : ident := 53%positive.
 

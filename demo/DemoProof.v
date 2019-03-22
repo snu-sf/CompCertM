@@ -11,12 +11,12 @@ Require SimMemId.
 Require SoundTop.
 Require Import MatchSimModSem.
 
-Require Source2.
-Require Target2.
-Require Import Header.
+Require DemoSource.
+Require DemoTarget.
+Require Import DemoHeader.
 
 
-Definition mp: ModPair.t := ModPair.mk Source2.md Target2.md tt.
+Definition mp: ModPair.t := ModPair.mk DemoSource.md DemoTarget.md tt.
 
 Theorem correct
   :
@@ -32,21 +32,9 @@ Qed.
 
 Require Import Floats Integers.
 Require Import Fappli_rnd_odd.
-(* double_round_mult_beta_odd_FLX *)
 Definition round_to_odd (v: val): val := Val.orl (Val.shrlu v (Vint Int.one)) (Val.andl v (Vlong Int64.one)).
 
-Axiom double_round_mult: forall
-      X Y
-  ,
-    (Float32.mul (Float32.of_double X) (Float32.of_double Y))
-    =
-    (Float32.of_double (Float.mul X Y))
-.
-
-Definition X := Int64.repr (- 2048).
-Definition Y := Int64.repr (2047).
-
-Lemma lem
+Lemma arithmetic_fact
       l
   :
     Val.floatoflongu (Vlong l) =

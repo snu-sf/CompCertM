@@ -2,7 +2,7 @@ Require Import AST Coqlib.
 Require Import Asm.
 Require Import sflib.
 Require Import AsmC Mod.
-Require Import Header.
+Require Import DemoHeader.
 
 Definition lb0: label := 1%positive.
 Definition code: list instruction :=

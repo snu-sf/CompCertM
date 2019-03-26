@@ -12,24 +12,23 @@ Require Import Ctypes.
 Require Import Cop.
 Require Import Csyntax.
 Require Import Smallstep.
-Require Import Csem.
+Require Import Cminor.
 Require Import sflib.
-Require Import CsemC Mod.
+Require Import CminorC Mod.
 Require Import DemoHeader.
 
 Definition x : ident := 53%positive.
-
-Definition code: statement := (Sreturn (Some (Evar x (Tlong Unsigned noattr)))).
+Definition code: stmt := (Sreturn (Some (Eunop Ofloatoflongu (Evar x)))).
 Program Definition func: function := {|
-  fn_return := Tfloat F64 noattr;
-  fn_callconv := cc_default;
-  fn_params := ((x, Tlong Unsigned noattr) :: nil);
+  fn_sig := {| sig_args := [AST.Tlong]; sig_res := Some AST.Tfloat; sig_cc := cc_default |};
+  fn_params := (x :: nil);
   fn_vars := nil;
+  fn_stackspace := 0;
   fn_body := code;
 |}.
 
 Program Definition prog: program :=
-  @Build_program function [(func_id, (Gfun (Internal func)))] [func_id ; main_id] main_id [] (@PTree.empty _) _.
+  @mkprogram _ _ [(func_id, (Gfun (AST.Internal func)))] [func_id ; main_id] main_id.
 
 Definition md: Mod.t := module prog.
 

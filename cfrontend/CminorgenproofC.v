@@ -189,18 +189,6 @@ Proof.
         - ii. eapply MAXSRC; ss.
       }
       { unfold proj_sig_res, typify_opt, sig_res, typify. des_ifs. inv RETV; ss. }
-      (* { ss. ii. *)
-      (*   eapply match_cont_incr_bounds; eauto; swap 2 4. *)
-      (*   { instantiate (1:= tge). ss. esplits; eauto. } *)
-      (*   { eauto with mem. } *)
-      (*   { eauto with mem. } *)
-      (*   eapply match_cont_extcall with (ge := ge) (tge := tge); eauto. *)
-      (*   { eapply Mem.unchanged_on_implies; try eassumption. ii. rr. esplits; eauto. } *)
-      (*   { eapply SimMemInj.inject_separated_frozen; et. } *)
-      (*   { refl. } *)
-      (*   { refl. } *)
-      (* } *)
-      (* { eapply typify_inject; et. } *)
     + refl.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.

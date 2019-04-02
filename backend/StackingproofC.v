@@ -9,7 +9,7 @@ Local Open Scope string_scope.
 Local Open Scope sep_scope.
 
 (* newly added *)
-Require Export StackingproofC0 StoreArguments.
+Require Export Stackingproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC ArgPassing MatchSimModSemExcl.
 Require Import Conventions1C.
@@ -113,8 +113,8 @@ Ltac sep_simpl_tac :=
   unfold NW in *;
   repeat (try rewrite sep_assoc in *;
           try rewrite sep_pure in *;
-          try rewrite stack_contents_nil_left_false in *;
-          try rewrite stack_contents_nil_right_false in *;
+          try rewrite stack_contents_nil_left_false in *; try assumption;
+          try rewrite stack_contents_nil_right_false in *; try assumption;
           try match goal with
               | [H: _ |= pure False |- _] => simpl in H; inv H
               | [H: _ |= _ ** pure False |- _] => apply sep_proj2 in H
@@ -123,6 +123,8 @@ Ltac sep_simpl_tac :=
           idtac
          )
 .
+
+Notation "'stack_contents'" := (stack_contents_args) (only parsing).
 
 Section STACKINGEXTRA.
 
@@ -136,7 +138,7 @@ Lemma match_stacks_sp_valid
              forall i, ~ sm0.(SimMemInj.tgt_external) sp' i>>
 .
 Proof.
-  inv STKS; des_safe; ss; clarify; esplits; eauto.
+  inv STKS; des_safe; ss; clarify; inv MAINARGS; esplits; eauto.
 Qed.
 
 Lemma match_stacks_sp_ofs:
@@ -165,13 +167,13 @@ Lemma arguments_private
 Proof.
   ii.
   eapply separation_private; eauto.
-  destruct stk_tgt; ss. inv STACKS. des_ifs. destruct stk_src; ss.
+  destruct stk_tgt; ss. { inv STACKS. inv MAINARGS. } des_ifs. destruct stk_src; ss.
   { sep_simpl_tac. des; ss. }
   des_ifs_safe.
   des_ifs; sep_simpl_tac.
   - unfold dummy_frame_contents in *. inv MATCH. ss.
     inv STACKS; ss; cycle 1.
-    { inv STK; ss. }
+    { inv STK; ss. inv MAINARGS. }
     des; cycle 1.
     { apply tailcall_size in LE. xomega. }
     clarify.
@@ -202,13 +204,13 @@ Lemma arguments_perm
 .
 Proof.
   ii.
-  destruct stk_tgt; ss. inv STACKS. des_ifs. destruct stk_src; ss.
+  destruct stk_tgt; ss. { inv STACKS. inv MAINARGS. } des_ifs. destruct stk_src; ss.
   { sep_simpl_tac. des; ss. }
   des_ifs_safe.
   des_ifs; ss; sep_simpl_tac.
   - unfold dummy_frame_contents in *. inv MATCH. ss.
     inv STACKS; ss; cycle 1.
-    { inv STK; ss. }
+    { inv STK; ss. inv MAINARGS. }
     des; cycle 1.
     { apply tailcall_size in LE. xomega. }
     clarify. eapply H4; eauto.
@@ -639,6 +641,7 @@ Proof.
   apply func_ext2. i. apply prop_ext.
   generalize size_arguments_above; intro SZARG.
   inv STACKS.
+  { ss. }
   { ss. u. split; i; des; clarify; esplits; et; psimpl; zsimpl; try xomega.
     { admit "ez - LE". }
     { admit "ez - SZARG". }
@@ -649,6 +652,7 @@ Proof.
   }
   Local Opaque frame_contents frame_contents_at_external.
   inv STK; ss.
+  { inv MAINARGS. }
   { psimpl. zsimpl. rewrite <- frame_contents_at_external_m_footprint; ss; try xomega.
     - split; try xomega.
       admit "ez - SZARG".
@@ -706,6 +710,126 @@ Qed.
 
 
 End STACKINGEXTRA.
+
+
+
+
+Section LIFT.
+
+Require Import Program.Equality.
+
+Definition wf_tgt (st_tgt0: Mach.state): Prop :=
+  exists parent_sp parent_ra, last_option st_tgt0.(MachC.get_stack) = Some (MachC.dummy_stack parent_sp parent_ra)
+.
+
+Lemma lift_starN
+      rao
+      cnt tse tge st_tgt0 tr st_tgt1
+      (STAR: starN (Mach.step rao) tse tge cnt st_tgt0 tr st_tgt1)
+      (DUMMYTGT: wf_tgt st_tgt0)
+      (STKAFTER: get_stack st_tgt1 <> [])
+  :
+    <<STAR: starN (step rao) tse tge cnt st_tgt0 tr st_tgt1>>
+.
+Proof.
+  unfold wf_tgt in *.
+  induction STAR; ii; ss.
+  { econs; et. }
+  pose s as S1. pose s' as S2. pose s'' as S3.
+  (* pose s1 as S1. pose s2 as S2. pose s3 as S3. *)
+  econs; et.
+  - econs; et.
+    des. inv H; ss; destruct s0; ss. exfalso. clarify.
+    clear - STAR STKAFTER.
+    dependent induction STAR; ii; ss. inv H; ss.
+  - des. exploit IHSTAR; et. inv H; ss; try (by esplits; et).
+    + des_ifs. rewrite DUMMYTGT. esplits; et.
+    + des_ifs.
+      * ss. clarify.
+        clear - STAR STKAFTER.
+        dependent induction STAR; ii; ss. inv H; ss.
+      * rewrite DUMMYTGT. esplits; et.
+Qed.
+
+Lemma lift_starN_stronger
+      rao
+      cnt tse tge st_tgt0 tr st_tgt1
+      (STAR: starN (Mach.step rao) tse tge cnt st_tgt0 tr st_tgt1)
+      (DUMMYTGT: wf_tgt st_tgt0)
+      (STKAFTER: get_stack st_tgt1 <> [])
+  :
+    <<STAR: starN (step rao) tse tge cnt st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
+.
+Proof.
+  unfold wf_tgt in *.
+  revert_until STAR.
+  induction STAR; ii; ss.
+  { split. - econs; et. - des. esplits; et. }
+  assert(DUMMYTGT0: wf_tgt s'').
+  { clarify.
+    eapply IHSTAR; et. clear IHSTAR.
+    des. inv H; ss; try (by esplits; et).
+    - des_ifs. esplits; et.
+    - des_ifs.
+      + ss. clarify. inv STAR; ss. inv H; ss.
+      + esplits; et.
+  }
+  split; ss.
+  econs; et.
+  - econs; et.
+    des. inv H; ss; destruct s0; ss. exfalso. clarify. ss. clarify.
+    clear - STAR STKAFTER.
+    dependent induction STAR; ii; ss. inv H; ss.
+  - des.
+    exploit IHSTAR; et.
+    { inv H; ss; try (by esplits; et).
+      - des_ifs. esplits; et.
+      - des_ifs.
+        + ss. clarify. inv STAR; ss. inv H; ss.
+        + esplits; et.
+    }
+    i; des.
+    inv H; ss; try (by esplits; et).
+Qed.
+
+Lemma starN_plus_iff
+      G ST (step: Senv.t -> G -> ST -> trace -> ST -> Prop) se ge st0 tr st1
+  :
+    (exists n, starN step se ge n st0 tr st1 /\ (n > 0)%nat) <-> plus step se ge st0 tr st1
+.
+Proof.
+  split; i; des.
+  - destruct n; ss.
+    { xomega. }
+    ginduction H; ii; ss.
+    { xomega. }
+    clarify. inv H0.
+    + eapply plus_star_trans; et.
+      { apply plus_one; et. }
+      { apply star_refl; et. }
+    + eapply plus_trans; et.
+      { apply plus_one; et. }
+      eapply IHstarN; et. xomega.
+  - inv H. apply star_starN in H1. des. exists (Datatypes.S n). esplits; et.
+    { econs; et. }
+    { xomega. }
+Qed.
+
+Lemma lift_plus
+      rao
+      tse tge st_tgt0 tr st_tgt1
+      (PLUS: plus (Mach.step rao) tse tge st_tgt0 tr st_tgt1)
+      (DUMMYTGT: wf_tgt st_tgt0)
+      (STKAFTER: get_stack st_tgt1 <> [])
+  :
+    <<PLUS: plus (step rao) tse tge st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
+.
+Proof.
+  apply starN_plus_iff in PLUS. des. apply lift_starN_stronger in PLUS; et. des. esplits; et.
+  apply starN_plus_iff; et.
+Qed.
+
+End LIFT.
 
 
 
@@ -1144,7 +1268,7 @@ Qed.
 
 Lemma stack_contents_at_external_intro
       sm0 stack cs' sg sp sm1
-      (STACKS: match_stacks tge (SimMemInj.inj sm0) stack cs' sg sm0)
+      (STACKS: match_stacks tge _ (SimMemInj.inj sm0) stack cs' sg sm0)
       (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
       (FREETGT: Mem.free (SimMemInj.tgt sm0) sp 0 (4 * size_arguments sg) = Some (SimMemInj.tgt sm1))
       (SEP: SimMemInj.tgt sm0 |= stack_contents (SimMemInj.inj sm0) stack cs')
@@ -1160,8 +1284,8 @@ Proof.
     apply contains_locations_range in SEP. zsimpl.
     eapply range_split0 with (mid := (4 * size_arguments sg)) in SEP; cycle 1.
     { generalize (size_arguments_above sg); i. inv STACKS; des; clarify; ss; split; try lia.
-      - erewrite ConventionsC.tailcall_size; eauto. generalize (size_arguments_above sg_init); i. lia.
-      - inv STK.
+      - erewrite Conventions.tailcall_size; eauto. generalize (size_arguments_above sg_init); i. lia.
+      - inv STK. inv MAINARGS.
     }
     destruct SEP as (A & B & C).
     sep_split; eauto.
@@ -1171,7 +1295,7 @@ Proof.
     - eapply m_invar; eauto. hexpl Mem.free_unchanged_on UNCH. ii. ss. des; clarify. lia.
       (* TODO: Fix hexpl tactic *)
   }
-  Local Opaque stack_contents.
+  Local Opaque stack_contents_args.
   destruct cs'; ss.
   { inv STACKS. inv STK. }
   des_ifs_safe.
@@ -1273,7 +1397,7 @@ Qed.
 
 Lemma stack_contents_at_external_spec_elim
       sm_ret stack cs' sg sp sm_after
-      (STACKS: match_stacks tge (SimMemInj.inj sm_ret) stack.(stackframes_after_external) cs' sg sm_after)
+      (STACKS: match_stacks tge _ (SimMemInj.inj sm_ret) stack.(stackframes_after_external) cs' sg sm_after)
       (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
       (UNFREETGT: Mem_unfree (SimMemInj.tgt sm_ret) sp 0 (4 * size_arguments sg) = Some (SimMemInj.tgt sm_after))
       (SEP: SimMemInj.tgt sm_ret |= stack_contents_at_external (SimMemInj.inj sm_ret) stack cs' sg)
@@ -1285,23 +1409,24 @@ Proof.
   hexploit Mem_nextblock_unfree; eauto. intro NB.
   hexploit Mem_unfree_perm; et. intro PERM.
   hexploit Mem_unfree_unchanged_on; et. intro UNCH.
-  destruct stack; ss. destruct cs'; ss. inv STACKS.
+  destruct stack; ss. destruct cs'; ss.
+  { inv STACKS. inv MAINARGS. }
   des_ifs_safe.
   destruct stack.
   { des_ifs; sep_simpl_tac; cycle 1.
     { ss. des_ifs. inv STACKS. ss. inv STK. }
     inv STACKS; cycle 1.
-    { inv STK. }
+    { inv STK. inv MAINARGS. }
     ss.
     assert(SZLE: size_arguments sg <= size_arguments sg_init).
     { des; clarify.
       - refl.
       - rewrite tailcall_size; ss. admit "ez".
     }
-    Local Transparent stack_contents.
+    Local Transparent stack_contents_args.
     (* Local Opaque contains_locations. *)
     ss. unfold dummy_frame_contents.
-    Local Opaque stack_contents.
+    Local Opaque stack_contents_args.
     psimpl. zsimpl.
     esplits; try xomega.
     + admit "ez".
@@ -1328,9 +1453,9 @@ Proof.
   {
     inv STACKS.
     ss. des_ifs.
-    Local Transparent stack_contents.
+    Local Transparent stack_contents_args.
     ss.
-    Local Opaque stack_contents.
+    Local Opaque stack_contents_args.
     eapply sepconj_isolated_mutation_revisited; et.
     - generalize (bound_outgoing_stack_data (function_bounds f)); i.
       rewrite <- frame_contents_at_external_m_footprint; ss.
@@ -1386,7 +1511,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: Linear.state) (st_tgt0: MachC.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: StackingproofC0.match_states skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0.(st) sm0)
+    (MATCHST: Stackingproof.match_states skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0.(st) sm0)
     (MCOMPATSRC: st_src0.(LinearC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(st).(get_mem) = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
@@ -1399,6 +1524,7 @@ Inductive match_states
                    <<EQ: dummy_stack_src.(current_locset) (R mr) = st_tgt0.(init_rs) mr>>
                    /\ <<PTRFREE: ~ is_real_ptr (st_tgt0.(init_rs) mr)>>>> /\
         <<SIG: dummy_stack_src.(current_function).(Linear.fn_sig) = st_tgt0.(init_sg)>>)
+    (WFTGT: wf_tgt st_tgt0.(MachC.st))
 .
 
 Inductive match_states_at
@@ -1601,6 +1727,7 @@ Proof.
           + i. ss. split.
             * erewrite OUT; ss. ii. hexpl loc_arguments_acceptable_2 ACCP. ss. clarify.
             * eapply PTRFREE. ii. hexpl loc_arguments_acceptable_2 ACCP. ss. clarify.
+        - rr. ss. esplits; eauto.
       }
     }
   - (* init progress *)
@@ -1809,7 +1936,7 @@ Proof.
       + ii. rewrite locmap_get_set_loc_result; ss.
       }
       inv WTST.
-      assert(STACKS0: match_stacks tge (SimMemInj.inj sm_ret) (stackframes_after_external stack) cs' sg_arg sm1).
+      assert(STACKS0: match_stacks tge _ (SimMemInj.inj sm_ret) (stackframes_after_external stack) cs' sg_arg sm1).
       {
         eapply match_stacks_change_meminj with (j:= (SimMemInj.inj sm0)).
         { eapply inject_incr_trans; try apply MLE0. eapply inject_incr_trans; try apply MLE. ss. }
@@ -1972,7 +2099,7 @@ Proof.
     destruct st_tgt0; ss. clarify. ss. clarify. ss.
     inv STACKS.
     hexploit (loc_result_one init_sg); eauto. i; des_safe.
-    Local Transparent stack_contents dummy_frame_contents.
+    Local Transparent stack_contents_args dummy_frame_contents.
     ss. unfold dummy_frame_contents in *. psimpl. clarify.
     hexploit (Mem.range_perm_free sm0.(SimMemInj.tgt) sp 0 (4 * (size_arguments init_sg))); eauto.
     { clear - SEP. apply sep_pick1 in SEP. rr in SEP. des. zsimpl. eauto with xomega. }
@@ -1998,13 +2125,13 @@ Proof.
       * rewrite ONE. ss. specialize (AGREGS mr_res).
         eapply val_inject_incr; try apply MLE; eauto.
     + econs; eauto.
-      * ii. specialize (AGCALLEESAVE mr). ss. specialize (GOOD mr H). des_safe.
-        rewrite <- GOOD. rewrite <- AGCALLEESAVE; ss.
+      * ii. specialize (AGCSREGS mr). ss. specialize (GOOD mr H). des_safe.
+        rewrite <- GOOD. rewrite <- AGCSREGS; ss.
         destruct (Val.eq (ls0 (R mr)) Vundef).
         { rewrite e. ss. }
         specialize (AGREGS mr). inv AGREGS; ss.
         exfalso.
-        eapply GOOD0. rewrite <- GOOD. rewrite <- AGCALLEESAVE; ss. rewrite <- H0. ss.
+        eapply GOOD0. rewrite <- GOOD. rewrite <- AGCSREGS; ss. rewrite <- H0. ss.
 
   - (* step lemma *)
     esplits; eauto.
@@ -2012,9 +2139,13 @@ Proof.
     inv MATCH.
     ii. hexploit (@transf_step_correct prog rao skenv_link_src skenv_link_tgt ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
+    { inv STEPSRC. eauto. }
     { des. et. }
     i; des.
     destruct st_tgt0. ss. folder.
+    exploit lift_plus; eauto.
+    { ii. inv STEPSRC. inv H0; ss; try inv STACKS; ss; clarify; et. }
+    i; des.
     esplits; eauto.
     + left.
       eapply spread_dplus; et.

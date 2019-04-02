@@ -155,9 +155,9 @@ Qed.
 
 Lemma match_stackframes_after
       tse tge stks tstks sg
-      (STACKS: match_stackframes true tse tge stks tstks sg)
+      (STACKS: match_stackframes tse tge stks tstks sg)
   :
-    <<STACKS: match_stackframes true tse tge stks tstks.(stackframes_after_external) sg>>
+    <<STACKS: match_stackframes tse tge stks tstks.(stackframes_after_external) sg>>
 .
 Proof.
   inv STACKS; econs; et.
@@ -191,7 +191,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: LTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Allocproof.match_states true skenv_link_tgt tge st_src0 st_tgt0)
+    (MATCHST: Allocproof.match_states skenv_link_tgt tge st_src0 st_tgt0)
     (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(LTLC.get_mem) = sm0.(SimMem.tgt))
     (DUMMYTGT: wf_tgt st_tgt0)
@@ -208,7 +208,7 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := fun _ _ => wt_state true);
+  eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := fun _ _ => wt_state);
     eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - eapply wt_state_local_preservation; et.
@@ -299,7 +299,7 @@ Proof.
         unfold undef_outgoing_slots. unfold dummy_stack in *. clarify. esplits; et.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
-    inv STACKS; ss. { inv COMPCOMP. } destruct sm0; ss. clarify.
+    inv STACKS; ss. { inv MAINARGS. } destruct sm0; ss. clarify.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto.
     econs; et; ss.
     rpapply RES.
@@ -311,13 +311,13 @@ Proof.
   - esplits; eauto.
     { apply RTLC.modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog true skenv_link_src skenv_link_tgt); eauto.
+    ii. hexploit (@step_simulation prog _ skenv_link_src skenv_link_tgt); eauto.
     { inv SIMSKENV. ss. inv SIMSKELINK. refl. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { ss. des. ss. }
     i; des.
     exploit lift_plus; et.
-    { ii. inv H0; try inv STACKS; ss; clarify; et; try inv COMPCOMP; inv H2; ss. (* TODO: notnil lemma *) }
+    { ii. inv H0; try inv STACKS; ss; clarify; et; try inv MAINARGS; inv H2; ss. (* TODO: notnil lemma *) }
     i; des.
     esplits; eauto.
     + left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.

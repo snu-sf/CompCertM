@@ -1160,7 +1160,7 @@ Proof.
     apply contains_locations_range in SEP. zsimpl.
     eapply range_split0 with (mid := (4 * size_arguments sg)) in SEP; cycle 1.
     { generalize (size_arguments_above sg); i. inv STACKS; des; clarify; ss; split; try lia.
-      - erewrite ConventionsC.tailcall_size; eauto. generalize (size_arguments_above sg_init); i. lia.
+      - erewrite Conventions.tailcall_size; eauto. generalize (size_arguments_above sg_init); i. lia.
       - inv STK.
     }
     destruct SEP as (A & B & C).

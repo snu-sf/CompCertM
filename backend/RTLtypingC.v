@@ -25,7 +25,7 @@ Require Import IntegersC.
 Require Import MemoryC.
 Require Import Events.
 Require Import RTLC.
-Require Import Conventions.
+Require Import ConventionsC.
 Require Import sflib.
 (** newly added **)
 Require Export RTLtyping.
@@ -44,7 +44,7 @@ Section LPRSV.
   Theorem wt_state_local_preservation
           skenv_link
     :
-      local_preservation (modsem skenv_link prog) (fun _ _ st => wt_state true st)
+      local_preservation (modsem skenv_link prog) (fun _ _ st => wt_state st)
   .
   Proof.
     econs; ii; ss; eauto.

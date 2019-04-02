@@ -65,7 +65,7 @@ Section LPRSV.
       inv SUST.
 
       econs; et.
-      admit "proj_sig_res change".
+      apply typify_has_type.
     - esplits; eauto. ss.
   Unshelve.
     all: ss.

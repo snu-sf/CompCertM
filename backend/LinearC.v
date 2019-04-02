@@ -321,7 +321,7 @@ Section MODSEM.
       stack fptr_arg sg_arg ls_arg m_arg retv
       ls_after
       (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg)
-                                          (typify_opt retv.(Retv.v) sg_arg.(sig_res))
+                                          (typify retv.(Retv.v) sg_arg.(proj_sig_res))
                                           (undef_caller_save_regs ls_arg))
     :
       after_external (Callstate stack fptr_arg sg_arg ls_arg m_arg)

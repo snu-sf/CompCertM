@@ -188,7 +188,7 @@ Proof.
         - eapply SimMemInj.inject_separated_frozen; et.
         - ii. eapply MAXSRC; ss.
       }
-      { unfold proj_sig_res, typify_opt, sig_res, typify. des_ifs. inv RETV; ss. }
+      { eapply inject_typify; eauto. }
     + refl.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.

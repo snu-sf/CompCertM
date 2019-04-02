@@ -289,12 +289,10 @@ Proof.
     + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
       * eapply match_stackframes_after; et.
       * hexploit (loc_result_one sg_arg); et. intro ONE. destruct (loc_result sg_arg) eqn:T; ss.
-        rewrite Locmap.gss. eapply lessdef_typify_opt; et.
+        rewrite Locmap.gss. eapply lessdef_typify; et.
       * eapply agree_callee_save_after; et.
         admit "ez - we can just use 'inv STACKS; ss.' but make lemma".
-      * unfold typify_opt, proj_sig_res. des_ifs.
-        { eapply typify_has_type; et. }
-        { rename v into vv. admit "replace typify_opt with typify, and use proj_sig_res". }
+      * eapply typify_has_type; et.
       * rr. rr in DUMMYTGT. des. ss. destruct ts; ss. des_ifs_safe; ss. destruct ts; ss; et.
         unfold undef_outgoing_slots. unfold dummy_stack in *. clarify. esplits; et.
   - (* final fsim *)

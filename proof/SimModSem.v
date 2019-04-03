@@ -99,10 +99,10 @@ Section SIMMODSEM.
         (* , *)
          (<<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
       (<<PROGRESS:
-        (*  forall *)
-        (*   (SAFESRC: safe ms_src st_src0) *)
-        (* , *)
-          (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
+         forall
+           (STEPSRC: ms_src.(ModSem.is_step) st_src0)
+         ,
+           (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
 
   (* | lxsim_at_external *)
   (*     rs_arg_src rs_arg_tgt *)

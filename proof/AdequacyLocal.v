@@ -884,13 +884,23 @@ Section ADQSTEP.
       { unsguard SUST. des. inv SUST.
         simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
       i; des. clear SU0.
+      assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
+                       -> ModSem.is_step ms_src lst_src).
+      { intro SAFESRC1. specialize (SAFESRC1 _ (star_refl _ _ _ _)). des; ss.
+        { exfalso. inv SAFESRC1. ss. eapply SAFESRC0. rr. esplits; eauto. }
+        des_ifs. inv SAFESRC1; swap 2 3; ss.
+        { exfalso. eapply SAFESRC. rr. esplits; eauto. }
+        { exfalso. eapply SAFESRC0. rr. esplits; eauto. }
+        exploit PROGRESS; eauto.
+      }
       econs; ss; eauto.
-      + ii. inv FINALTGT. ss. ModSem.tac.
-      + ii.
+      + ii. exploit PROGRESS; eauto. intro STEPTGT; des.
+        clear - FINALTGT STEPTGT. inv FINALTGT. ss. ModSem.tac.
+      + ii. exploit PROGRESS; eauto. intro STEPTGT; des.
         inv BSTEP.
         * econs 1; eauto; cycle 1.
           { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
-          ii. inv STEPTGT; ModSem.tac.
+          ii. inv STEPTGT0; ModSem.tac.
           ss. exploit STEP; eauto. i; des_safe.
           exists i1, (State ((Frame.mk ms_src st_src1) :: tail_src)).
           esplits; eauto.

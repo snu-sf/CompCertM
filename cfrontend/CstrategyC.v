@@ -319,7 +319,14 @@ Proof.
   - (* final fsim *)
     inv MATCH. inv FINALSRC. ss. des; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
-  - esplits; eauto.
+  - right; i.
+    splits.
+    { ii. rr in H. rr. des. ss. inv H.
+      - esplits; eauto. left. inv H0. econs; eauto.
+        exploit progress; eauto.
+      { apply safe
+        esplits; eauto. ss.
+    esplits; eauto.
     { apply modsem_receptive; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog skenv_link_src skenv_link_tgt); eauto.

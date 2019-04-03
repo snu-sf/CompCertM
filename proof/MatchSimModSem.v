@@ -193,7 +193,7 @@ Section MATCHSIMFORWARD.
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
     ,
-      (<<PROGRESS: ModSem.is_step ms_tgt st_tgt0>>)
+      (<<PROGRESS: ModSem.is_step ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>)
       /\
       (<<STEPBSIM: forall
              tr st_tgt1

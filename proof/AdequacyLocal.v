@@ -880,6 +880,10 @@ Section ADQSTEP.
 
     - (* bstep *)
       right. ss.
+      exploit SU0.
+      { unsguard SUST. des. inv SUST.
+        simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
+      i; des. clear SU0.
       econs; ss; eauto.
       + ii. inv FINALTGT. ss. ModSem.tac.
       + ii.

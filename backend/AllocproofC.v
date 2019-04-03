@@ -306,7 +306,8 @@ Proof.
     clear - SAMERES.
     unfold loc_result. des_ifs. unfold loc_result_64. des_ifs.
 ".
-  - esplits; eauto.
+  - left; i.
+    esplits; eauto.
     { apply RTLC.modsem_receptive; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog _ skenv_link_src skenv_link_tgt); eauto.

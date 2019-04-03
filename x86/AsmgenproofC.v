@@ -370,7 +370,8 @@ Proof.
       * ss.
     + ss.
 
-  - ss. esplits.
+  - left; i.
+    ss. esplits.
     + eapply MachC.modsem_receptive; et.
       intros f c ofs of' RAO0 RAO1. inv RAO0. inv RAO1.
       rewrite TC in *. rewrite TF in *. clarify.

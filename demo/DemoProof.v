@@ -284,10 +284,12 @@ Proof.
     rename H3 into RDIV.
 
     unfold lxsim. pcofix CIH. pfold. ss.
-    econs 2; cycle 2.
+    econs 2. i; des.
+    splits; swap 3 4.
+    { ii. rr in H. des. inv H. des. clarify. }
+    { ii. rr in H. des. inv H. }
     { esplits. instantiate (1:= mkstate _ (State _ _)). econs; ss.
       econs; eauto; [des_ifs|ss]. }
-    { econs. esplits. ss. econs; ss; eauto. eapply surjective_pairing. }
 
     rewrite Z.mul_0_r in *.
     destruct (Mem.alloc (SimMemExt.src sm_arg) 0 0) eqn:MEQ0.

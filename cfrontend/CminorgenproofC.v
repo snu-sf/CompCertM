@@ -194,7 +194,8 @@ Proof.
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv MK. inv MCOMPAT; ss.
     eexists sm0. esplits; ss; eauto. refl.
-  - exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
+  - left; i.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
 
     esplits; eauto.
     { apply CsharpminorC.modsem_receptive. }

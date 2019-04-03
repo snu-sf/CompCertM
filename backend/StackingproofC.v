@@ -2134,6 +2134,7 @@ Proof.
         eapply GOOD0. rewrite <- GOOD. rewrite <- AGCSREGS; ss. rewrite <- H0. ss.
 
   - (* step lemma *)
+    left; i.
     esplits; eauto.
     { apply LinearC.modsem_receptive; et. }
     inv MATCH.

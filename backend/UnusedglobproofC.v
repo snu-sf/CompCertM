@@ -265,6 +265,7 @@ Proof.
     inv STACKS. inv MCOMPAT; ss.
     eexists sm0. esplits; ss; eauto. refl.
   - (* step *)
+    left; i.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
 

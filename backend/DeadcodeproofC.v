@@ -133,7 +133,8 @@ Proof.
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv STACKS; ss. destruct sm0; ss. clarify.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto.
-  - esplits; eauto.
+  - left; i.
+    esplits; eauto.
     { apply modsem_receptive; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog skenv_link_src skenv_link_tgt); eauto.

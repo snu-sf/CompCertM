@@ -190,7 +190,7 @@ Section MATCHSIMFORWARD.
         (<<MWF: SimMem.wf sm_ret>>)
   .
 
-  Hypothesis STEPFSIM: forall
+  Let STEPFSIM := forall
       sm_init idx0 st_src0 st_tgt0 sm0
       (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
@@ -212,6 +212,31 @@ Section MATCHSIMFORWARD.
                /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
                     >>)
   .
+
+  Let STEPBSIM := forall
+      sm_init idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
+      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
+      (NOTRET: ~ ModSem.is_return ms_src st_src0)
+      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
+      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+    ,
+      (<<PROGRESS: ModSem.is_step ms_tgt st_tgt0>>)
+      /\
+      (<<STEPBSIM: forall
+             tr st_tgt1
+             (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1)
+           ,
+             exists idx1 st_src1 sm1,
+               (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/
+                           <<STAR: Star ms_src st_src0 tr st_src1 /\ order idx1 idx0>>)
+               /\ (<<MLE: SimMem.le sm0 sm1>>)
+               (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
+               /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
+                    >>)
+  .
+
+  Hypothesis STEPSIM: STEPFSIM \/ STEPBSIM.
 
   Hypothesis BAR: bar_True.
 
@@ -266,20 +291,37 @@ Section MATCHSIMFORWARD.
       eapply lxsim_final; try apply SIMRET; eauto.
       etrans; eauto.
     }
+    destruct STEPSIM as [STEPFSIM0|STEPBSIM0].
     {
       eapply lxsim_step_forward; eauto.
       i.
-      exploit STEPFSIM; eauto. i; des.
+      exploit STEPFSIM0; eauto. i; des.
       esplits; eauto.
       econs 1; eauto.
-      ii. exploit STEPFSIM0; eauto. i; des_safe.
+      ii. exploit STEPFSIM1; eauto. i; des_safe.
       esplits; eauto.
       - des.
         + left. eauto.
         + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
       - right. eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
-        { etrans; eauto. }
+        { etransitivity; eauto. }
+    }
+    {
+      rr in STEPBSIM0.
+      eapply lxsim_step_backward; eauto.
+      i.
+      exploit STEPBSIM0; eauto. i; des. rr in PROGRESS. des.
+      esplits; eauto; cycle 1.
+      econs 1; eauto.
+      ii. exploit STEPBSIM1; eauto. i; des_safe.
+      esplits; eauto.
+      - des.
+        + left. eauto.
+        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
+      - right. eapply CIH; eauto.
+        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
+        { etransitivity; eauto. }
     }
   Qed.
 

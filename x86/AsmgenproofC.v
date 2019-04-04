@@ -392,3 +392,24 @@ Proof.
 Qed.
 
 End PRESERVATION.
+
+
+
+Section SIMMOD.
+
+Variable prog: Mach.program.
+Variable tprog: program.
+Hypothesis TRANSL: match_prog prog tprog.
+Definition mp: ModPair.t := ModPair.mk (MachC.module prog return_address_offset) (AsmC.module tprog) tt.
+
+Theorem sim_mod
+  :
+    ModPair.sim mp
+.
+Proof.
+  econs; ss.
+  - r. admit "easy - see DeadcodeproofC".
+  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+Qed.
+
+End SIMMOD.

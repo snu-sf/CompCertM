@@ -18,6 +18,13 @@ Import ModSem.
 Set Implicit Arguments.
 
 
+Definition safe_modsem (ms: ModSem.t) (st0: ms.(ModSem.state)): Prop :=
+  forall st1 (STAR: Star ms st0 Events.E0 st1),
+    (<<EVCALL: ms.(ModSem.is_call) st1>>) \/
+    (<<EVRET: ms.(ModSem.is_return) st1>>) \/
+    (<<EVSTEP: exists tr st2, Step ms st1 tr st2>>)
+.
+Hint Unfold safe_modsem.
 
 Section SIMMODSEM.
 
@@ -100,7 +107,8 @@ Section SIMMODSEM.
          (<<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
       (<<PROGRESS:
          forall
-           (STEPSRC: ms_src.(ModSem.is_step) st_src0)
+           (* (STEPSRC: ms_src.(ModSem.is_step) st_src0) *)
+           (STEPSRC: safe_modsem ms_src st_src0)
          ,
            (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
 

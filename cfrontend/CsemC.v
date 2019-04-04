@@ -4,7 +4,7 @@ Require Import Op Registers.
 Require Import sflib.
 Require Import SmallstepC.
 (** newly added **)
-Require Export Simulation Csem CopC Ctypes Ctyping Csyntax Cexec.
+Require Export Simulation Csem CopC Ctypes Ctyping Csyntax.
 Require Import Skeleton Mod ModSem.
 Require Import AsmregsC CtypesC.
 Require Import Conventions.

@@ -885,13 +885,14 @@ Section ADQSTEP.
         simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
       i; des. clear SU0.
       assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
-                       -> ModSem.is_step ms_src lst_src).
-      { intro SAFESRC1. specialize (SAFESRC1 _ (star_refl _ _ _ _)). des; ss.
-        { exfalso. inv SAFESRC1. ss. eapply SAFESRC0. rr. esplits; eauto. }
-        des_ifs. inv SAFESRC1; swap 2 3; ss.
-        { exfalso. eapply SAFESRC. rr. esplits; eauto. }
-        { exfalso. eapply SAFESRC0. rr. esplits; eauto. }
-        exploit PROGRESS; eauto.
+                       -> safe_modsem ms_src lst_src).
+      { admit "".
+        (* intro SAFESRC1. specialize (SAFESRC1 _ (star_refl _ _ _ _)). des; ss. *)
+        (* { exfalso. inv SAFESRC1. ss. eapply SAFESRC0. rr. esplits; eauto. } *)
+        (* des_ifs. inv SAFESRC1; swap 2 3; ss. *)
+        (* { exfalso. eapply SAFESRC. rr. esplits; eauto. } *)
+        (* { exfalso. eapply SAFESRC0. rr. esplits; eauto. } *)
+        (* exploit PROGRESS; eauto. *)
       }
       econs; ss; eauto.
       + ii. exploit PROGRESS; eauto. intro STEPTGT; des.

@@ -28,12 +28,6 @@ Set Implicit Arguments.
 
 
 
-(* copied from Cshmgen *)
-Definition signature_of_function (fd: function) :=
-  {| sig_args := map typ_of_type (map snd (fn_params fd));
-     sig_res  := opttyp_of_type (fn_return fd);
-     sig_cc   := fn_callconv fd |}.
-
 Section CSTREXTRA.
 
   Definition is_external (ge: genv) (s:state) : Prop :=
@@ -255,13 +249,13 @@ Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog: program.
 Let md_src: Mod.t := (CsemC.module prog).
-Let md_tgt: Mod.t := (Top.module prog).
+Let md_tgt: Mod.t := (module prog).
 Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
 Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
 Hypothesis (WFSRC: SkEnv.wf skenv_link).
 Hypothesis (WFTGT: SkEnv.wf skenv_link).
-Let ge := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) prog).
+Let ge: genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
+Let tge: genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) prog) prog.(prog_comp_env).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src.(Mod.modsem) skenv_link) (md_tgt.(Mod.modsem) skenv_link) tt sm_link
 .
@@ -271,7 +265,7 @@ Inductive match_states
           (idx: nat) (st_src0: Csem.state) (st_tgt0: Csem.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: st_src0 = st_tgt0)
-    (MCOMPAT: st_src0.(get_mem) = Some sm0.(SimMem.src) \/ st_src0.(get_mem) = None)
+    (* (MCOMPAT: st_src0.(get_mem) = Some sm0.(SimMem.src) \/ st_src0.(get_mem) = None) *)
     (MWF: SimMem.wf sm0)
 .
 
@@ -292,7 +286,7 @@ Proof.
     inv INITTGT.
     eexists. eexists (SimMemId.mk _ _).
     esplits; eauto; cycle 1.
-    + econs; ss; eauto. ss. eauto.
+    + econs; ss; eauto.
     + econs; eauto; ss.
   - (* init progress *)
     des. inv SAFESRC.
@@ -319,23 +313,25 @@ Proof.
   - (* final fsim *)
     inv MATCH. inv FINALSRC. ss. des; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
-  - right; i.
+  - (* step *)
+    right; i.
+    inv MATCH; ss.
     splits.
-    { ii. rr in H. rr. des. ss. inv H.
-      - esplits; eauto. left. inv H0. econs; eauto.
-        exploit progress; eauto.
-      { apply safe
-        esplits; eauto. ss.
-    esplits; eauto.
-    { apply modsem_receptive; et. }
-    inv MATCH.
-    ii. hexploit (@step_simulation prog skenv_link_src skenv_link_tgt); eauto.
-    { inv SIMSKENV. ss. rr in SIMSKELINK. clarify. }
-    { apply make_match_genvs; eauto. apply SIMSKENV. }
-    i; des.
-    esplits; eauto.
-    + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
-    + instantiate (1:= SimMemId.mk _ _). econs; ss.
+    { ii.
+      exploit progress; eauto.
+      { instantiate (1:= ModSem.is_call (CsemC.modsem skenv_link prog) \1/
+                                        ModSem.is_return (CsemC.modsem skenv_link prog)).
+        ss. intro T. des; inv T; inv H0; ss.
+      }
+      { ii. exploit H; eauto. i; des; eauto. }
+      i; des; eauto.
+      - inv H0. contradict NOTRET. rr. esplits. econs; eauto.
+      - inv H0. contradict NOTCALL. rr. esplits. eauto.
+      - inv H0. contradict NOTRET. rr. esplits. eauto.
+    }
+    i. folder.
+    exploit step_simulation; eauto. i. esplits; eauto.
+    { econs; eauto. instantiate (1:= sm0). ss. }
 Unshelve.
   all: ss; try (by econs).
 Qed.
@@ -347,11 +343,10 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Variables prog tprog: program.
-Hypothesis TRANSL: match_prog prog tprog.
+Variables prog: program.
 
 Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt
+  ModPair.mk (CsemC.module prog) (module prog) tt
 .
 
 Theorem sim_mod
@@ -360,8 +355,7 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - r. admit "easy - see DeadcodeproofC".
-  - ii. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Unshelve.
   all: ss.
 Qed.

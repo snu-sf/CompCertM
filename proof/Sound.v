@@ -22,48 +22,6 @@ Set Implicit Arguments.
 
 
 
-
-
-
-
-
-
-(* TODO: move to CoqlibC *)
-Section FLIPS.
-
-Definition flip2 A B C D: (A -> B -> C -> D) -> A -> C -> B -> D. intros; eauto. Defined.
-Definition flip3 A B C D E: (A -> B -> C -> D -> E) -> A -> B -> D -> C -> E. intros; eauto. Defined.
-Definition flip4 A B C D E F: (A -> B -> C -> D -> E -> F) -> A -> B -> C -> E -> D -> F. intros; eauto. Defined.
-
-Variable A B C D: Type.
-Variable f: A -> B -> C -> D.
-Check f.
-(* ABCD *)
-Check f.(flip).
-(* BACD *)
-Check f.(flip2).
-(* ACBD *)
-Check f.(flip2).(flip).
-(* CABD *)
-Check f.(flip).(flip2).
-(* BCAD *)
-Check f.(flip2).(flip).(flip2).
-(* CBAD *)
-
-Let put_dummy_arg_without_filp A DUMMY B: (A -> B) -> (A -> DUMMY -> B) := fun f => (fun a _ => f a).
-Let put_dummy_arg1 A DUMMY B: (A -> B) -> (A -> DUMMY -> B) := fun f => (fun _ => f).(flip).
-Let put_dummy_arg21 A DUMMY B C: (A -> B -> C) -> (A -> DUMMY -> B -> C) := fun f => (fun _ => f).(flip).
-Let put_dummy_arg22 A B DUMMY C: (A -> B -> C) -> (A -> B -> DUMMY -> C) :=
-  fun f => (fun _ => f).(flip).(flip2).
-
-End FLIPS.
-Hint Unfold flip2 flip3 flip4.
-
-
-
-
-
-
 Module Sound.
 
   Class class :=

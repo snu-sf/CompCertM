@@ -40,54 +40,7 @@ Local Open Scope nat.
 
 
 
-(* TODO: Move to CoqlibC.v *)
-Lemma app_eq_inv
-      A
-      (x0 x1 y0 y1: list A)
-      (EQ: x0 ++ x1 = y0 ++ y1)
-      (LEN: x0.(length) = y0.(length))
-  :
-    x0 = y0 /\ x1 = y1
-.
-Proof.
-  ginduction x0; ii; ss.
-  { destruct y0; ss. }
-  destruct y0; ss. clarify.
-  exploit IHx0; eauto. i; des. clarify.
-Qed.
 
-(* TODO: move to ??? *)
-Lemma pos_elim_succ
-      p
-  :
-    <<ONE: p = 1%positive>> \/
-    <<SUCC: exists q, q.(Pos.succ) = p>>
-.
-Proof.
-  hexploit (Pos.succ_pred_or p); eauto. i; des; ss; eauto.
-Qed.
-
-Lemma ple_elim_succ
-      p q
-      (PLE: Ple p q)
-  :
-    <<EQ: p = q>> \/
-    <<SUCC: Ple p.(Pos.succ) q>>
-.
-Proof.
-  revert_until p.
-  pattern p. apply Pos.peano_ind; clear p; i.
-  { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto.
-    right. r. xomega. }
-  hexploit (pos_elim_succ q); eauto. i.
-  des; clarify.
-  { left. xomega. }
-  exploit H; eauto.
-  { it q0. xomega. }
-  i; des; clarify.
-  - left. r. xomega.
-  - right. r. xomega.
-Qed.
 
 
 

@@ -57,16 +57,6 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Inductive sim (mp: t): Prop :=
   | sim_intro
       (SIMSK: SimSymb.sim_sk mp.(ss) mp.(src).(Mod.sk) mp.(tgt).(Mod.sk))
-      (* (SIMMS: forall *)
-      (*     skenv_src skenv_tgt *)
-      (*   , *)
-      (*     exists msp, *)
-      (*       (* TODO: get_modsem always suceeds??? I think not. *) *)
-      (*       <<SRC: msp.(ModSemPair.src) = (mp.(src).(Mod.get_modsem) skenv_src mp.(src).(Mod.data))>> *)
-      (*       /\ <<TGT: msp.(ModSemPair.tgt) = (mp.(tgt).(Mod.get_modsem) skenv_tgt mp.(tgt).(Mod.data))>> *)
-      (*       /\ <<SS: msp.(ModSemPair.ss) = mp.(ss)>> *)
-      (*       /\ <<SIM: ModSemPair.sim msp>> *)
-      (* ) *)
       (SIMMS: forall
           skenv_link_src skenv_link_tgt
           (INCLSRC: SkEnv.includes skenv_link_src mp.(src).(Mod.sk))
@@ -88,25 +78,6 @@ End ModPair.
 
 Hint Unfold ModPair.to_msp.
 
-(* Module ModPair. *)
-
-(*   Record t: Type := { *)
-(*     src: Mod.t; *)
-(*     tgt: Mod.t; *)
-(*     si: symbinj; *)
-(*     (* TODO: unify closed & private *) *)
-(*     closed: symbinj_closed si src tgt; *)
-(*     private: symbinj_private si src tgt; *)
-(*     (* TODO: which unary/binary property it expects *) *)
-(*     (* TODO: analysis *) *)
-(*   } *)
-(*   . *)
-
-(*   (* Change sim_modsem to be sensitive to si. *) *)
-(*   (* Only when initial memory is respecting si, it can guarantee something. *) *)
-(*   (* Q: Can we encode it inside SM? *) *)
-
-(* End ModPair. *)
 
 
 

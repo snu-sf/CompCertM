@@ -27,7 +27,6 @@ Set Implicit Arguments.
 
 
 
-
 (*** put this into MachC. ***)
 Section MACHEXTRA.
 
@@ -2364,16 +2363,6 @@ End SIMMOD.
 
 
 
-(* (* TODO: Move to CoqlibC *) *)
-(* Ltac psimpl := *)
-(*   repeat (try rewrite ! Ptrofs.unsigned_zero in *; *)
-(*           try rewrite ! Ptrofs.add_zero in *; *)
-(*           try rewrite ! Ptrofs.add_zero_l in *; *)
-(*           try rewrite ! Ptrofs.repr_unsigned in *; *)
-(*           try rewrite ! IntegersC.Ptrofs_add_repr in *; *)
-(*           try (rewrite Ptrofs.unsigned_repr in *; ss; try xomega; []) *)
-(*          ) *)
-(* . *)
 
 
 
@@ -3669,16 +3658,6 @@ End SIMMOD.
 
 
 
-(* (* TODO: Move to CoqlibC *) *)
-(* Ltac psimpl := *)
-(*   repeat (try rewrite ! Ptrofs.unsigned_zero in *; *)
-(*           try rewrite ! Ptrofs.add_zero in *; *)
-(*           try rewrite ! Ptrofs.add_zero_l in *; *)
-(*           try rewrite ! Ptrofs.repr_unsigned in *; *)
-(*           try rewrite ! IntegersC.Ptrofs_add_repr in *; *)
-(*           try (rewrite Ptrofs.unsigned_repr in *; ss; try xomega; []) *)
-(*          ) *)
-(* . *)
 
 
 

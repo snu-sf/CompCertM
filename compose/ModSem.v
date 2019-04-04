@@ -13,12 +13,6 @@ Set Implicit Arguments.
 
 
 
-Module Wenv.
-
-  Definition t: Type := block -> option signature.
-
-End Wenv.
-
 Module Args.
 
   Record t := mk {
@@ -121,34 +115,6 @@ Module ModSem.
     call_step_disjoint: is_call /1\ is_step <1= bot1;
     step_return_disjoint: is_step /1\ is_return <1= bot1;
     call_return_disjoint: is_call /1\ is_return <1= bot1;
-
-    (* step_at_external_disjoint: forall *)
-    (*     st0 *)
-    (*     tr st1 *)
-    (*     (STEP: step globalenv st0 tr st1) *)
-    (*     rs_arg m_arg *)
-    (*     (ATEXT: at_external st0 rs_arg m_arg) *)
-    (*   , *)
-    (*     False *)
-    (* ; *)
-    (* at_external_final_machine_disjoint: forall *)
-    (*     st0 *)
-    (*     rs_arg m_arg *)
-    (*     (ATEXT: at_external st0 rs_arg m_arg) *)
-    (*     rs_init rs_ret m_ret *)
-    (*     (FINAL: final_frame rs_init st0 rs_ret m_ret) *)
-    (*   , *)
-    (*     False *)
-    (* ; *)
-    (* step_final_machine_disjoint: forall *)
-    (*     st0 *)
-    (*     tr st1 *)
-    (*     (STEP: step globalenv st0 tr st1) *)
-    (*     rs_init rs_ret m_ret *)
-    (*     (FINAL: final_frame rs_init st0 rs_ret m_ret) *)
-    (*   , *)
-    (*     False *)
-    (* ; *)
   }.
 
   (* Note: I didn't want to define this tactic. I wanted to use eauto + Hint Resolve, but it didn't work. *)
@@ -165,17 +131,6 @@ Module ModSem.
           ]
       )
   .
-
-  (* Definition is_internal (ms0: t) (st0: ms0.(state)) (sg_arg: option signature) (rs_arg: regset): Prop := *)
-  (*   <<NOTCALL: forall fptr_arg sg_arg rs_arg m_arg, ~ ms0.(at_external) st0 fptr_arg sg_arg rs_arg m_arg>> /\ *)
-  (*   <<NOTRETURN: forall rs_ret m_ret, ~ ms0.(final_machine) sg_arg rs_arg st0 rs_ret m_ret>> *)
-  (* . *)
-
-  (* TODO: which one is right? above or below? *)
-  (* Definition is_internal (ms0: t) (st0: ms0.(state)): Prop := *)
-  (*   <<NOTCALL: forall fptr_arg sg_arg rs_arg m_arg, ~ ms0.(at_external) st0 fptr_arg sg_arg rs_arg m_arg>> /\ *)
-  (*   <<NOTRETURN: forall sg_arg rs_arg rs_ret m_ret, ~ ms0.(final_machine) sg_arg rs_arg st0 rs_ret m_ret>> *)
-  (* . *)
 
   Definition to_semantics (ms: t) :=
     (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) ms.(skenv_link))

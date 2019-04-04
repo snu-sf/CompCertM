@@ -254,7 +254,8 @@ Proof.
     { inv H1; ss. unfold transf_function, bind in *. des_ifs. }
     clarify.
     (* repeat f_equal; et. *)
-  - esplits; eauto.
+  - left; i.
+    esplits; eauto.
     { apply LTLC.modsem_receptive; et. }
     inv MATCH.
     ii. inv STEPSRC. hexploit (@transf_step_correct prog skenv_link_src skenv_link_tgt); eauto.

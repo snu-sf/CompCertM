@@ -972,3 +972,25 @@ Qed.
 
 End WFMEM.
 
+
+Require Import Sem SimModSem.
+Theorem safe_implies_safe_modsem
+        p sk ms lst tail
+        (LINK: link_sk p = Some sk)
+        (SAFE: safe (sem p) (State ({| Frame.ms := ms; Frame.st := lst |} :: tail)))
+  :
+    <<SAFE: safe_modsem ms lst>>
+.
+Proof.
+
+  {
+    ii. ss. exploit SAFE.
+    { instantiate (1:= (State ({| Frame.ms := ms; Frame.st := st1 |} :: tail))). eapply lift_star; eauto. }
+    i; des.
+    - ss. inv H. ss. right. left. eauto.
+    - ss. des_ifs. inv H; ss.
+      + left. eauto.
+      + right. right. eauto.
+      + right. left. eauto.
+  }
+Qed.

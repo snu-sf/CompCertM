@@ -18,6 +18,13 @@ Import ModSem.
 Set Implicit Arguments.
 
 
+Definition safe_modsem (ms: ModSem.t) (st0: ms.(ModSem.state)): Prop :=
+  forall st1 (STAR: Star ms st0 Events.E0 st1),
+    (<<EVCALL: ms.(ModSem.is_call) st1>>) \/
+    (<<EVRET: ms.(ModSem.is_return) st1>>) \/
+    (<<EVSTEP: exists tr st2, Step ms st1 tr st2>>)
+.
+Hint Unfold safe_modsem.
 
 Section SIMMODSEM.
 
@@ -89,19 +96,21 @@ Section SIMMODSEM.
       (* In composed semantics, when it stepped, it must not be final *))
 
   | lxsim_step_backward
+      (SU: forall (SU: sound_state st_src0),
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
-      (SAFESRC: ms_src.(ModSem.is_step) st_src0)
-      (BSTEP:
+      (<<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>) /\
+      (<<BSTEP:
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
         (* , *)
-          <<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)
-      (PROGRESS:
-        (*  forall *)
-        (*   (SAFESRC: safe ms_src st_src0) *)
-        (* , *)
-          <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)
+         (<<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
+      (<<PROGRESS:
+         forall
+           (* (STEPSRC: ms_src.(ModSem.is_step) st_src0) *)
+           (STEPSRC: safe_modsem ms_src st_src0)
+         ,
+           (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
 
   (* | lxsim_at_external *)
   (*     rs_arg_src rs_arg_tgt *)
@@ -203,6 +212,8 @@ Section SIMMODSEM.
       + econs 2; eauto.
     - econs 2; ss.
       i. (* specialize (BSTEP SAFESRC0). *)
+      exploit SU; eauto. i; des.
+      esplits; eauto.
       inv BSTEP.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.

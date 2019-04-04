@@ -209,6 +209,7 @@ Proof.
     inv MCOMPAT; ss.
     eexists sm0. esplits; ss; eauto. refl.
   - (* step *)
+    left; i.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     esplits; eauto.
     { apply modsem_receptive; et. }

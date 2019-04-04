@@ -169,6 +169,7 @@ Proof.
     exists (SimMemId.mk m m).
     esplits; ss; eauto.
   - (* step fsim *)
+    left; i.
     ii; ss. des. clarify. clear_tac.
     esplits; eauto.
     { admit "ez - receptive". }
@@ -1868,7 +1869,8 @@ Proof.
       * etrans; eauto. erewrite <- Mem.nextblock_free; eauto. refl.
       * etrans; eauto. erewrite <- Mem.nextblock_free; eauto. refl.
 
-  - esplits; ss; i.
+  - left; i.
+    esplits; ss; i.
     + admit "receptive".
     + exists O.
       { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.

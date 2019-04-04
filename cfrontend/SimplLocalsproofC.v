@@ -291,7 +291,8 @@ Proof.
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv MCONT_EXT. inv MCOMPAT; ss.
     eexists sm0. esplits; ss; eauto. refl.
-  - exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
+  - left; i.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
 
     esplits; eauto.
     { apply modsem1_receptive. }

@@ -141,7 +141,8 @@ Proof.
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv MK; ss. destruct sm0; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
-  - esplits; eauto.
+  - left; i.
+    esplits; eauto.
     { apply modsem2_receptive. }
     inv MATCH.
     ii. hexploit (@transl_step prog skenv_link_src skenv_link_tgt); eauto; ss.

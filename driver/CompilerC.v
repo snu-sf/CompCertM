@@ -540,6 +540,7 @@ Proof.
   (*   ii. des; eauto. *)
   (* } *)
   (* des. *)
+  set (Renumber.transf_program p5) as p42.
 
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_drop cs). intro SRCINJDROP; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_id cs). intro SRCINJID; des.
@@ -553,75 +554,146 @@ Proof.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_unreach asms). intro TGTEXTUNREACH; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms). intro TGTID; des.
 
-  Ltac find_replacer := 
+
+  Ltac contains_term TERM :=
+    match goal with
+    | [ |- context[TERM] ] => idtac
+    | _ => fail
+    end
+  .
+
+  Ltac contains_term_in TERM H :=
+    multimatch goal with
+    | [ H': context[TERM] |- _ ] =>
+      (* idtac H'; *)
+      check_equal H H'
+    | _ => fail
+    end
+  .
+
+  Ltac find_sim LANG :=
     repeat
-      match goal with
-      | [H0: ?L0 = ?R0, H1: ?L1 = ?R1 |- _ ] =>
-        rewrite <- H0; rewrite <- H1; refl
+      multimatch goal with
+      (* | [H0: ?L0 = ?R0, H1: ?L1 = ?R1 |- _ ] => *)
+      (*   rewrite <- H0; rewrite <- H1; refl *)
+      | [ T: @__GUARD__ _ (?SIM /\ ?SRC /\ ?TGT)  |- _ ] =>
+        match SIM with
+        | (@ProgPair.sim ?SIMMEM ?SIMSYMB ?SOUND _) =>
+          contains_term SIMMEM;
+          contains_term SIMSYMB;
+          contains_term SOUND;
+          contains_term_in LANG T;
+          unfold __GUARD__ in T;
+          let X := fresh "T" in
+          let Y := fresh "T" in
+          let Z := fresh "T" in
+          destruct T as [X [Y Z]];
+          (* let tx := type of X in *)
+          (* let ty := type of Y in *)
+          (* let tz := type of Z in *)
+          (* idtac "-------------------------------------------"; *)
+          (* idtac X; idtac Y; idtac Z; *)
+          (* idtac tx; idtac ty; idtac tz; *)
+          apply X
+        | _ => idtac (* SIM *)
+        end
       end
   .
-  (* unfold C_module in *. *)
 
   etrans.
   {
     eapply bsim_improves.
-    rp; [eapply C2R_correct|..]; try refl; revgoals.
-    { find_replacer. }
-    all: eauto.
+    rp; [eapply C2R_correct|..]; try refl.
+    { find_sim Csyntax.program. }
+    { find_sim Asm.program. }
+    eauto.
+    unfold __GUARD__ in *. des.
+    all ltac:(fun H => rewrite H). eauto.
   }
   repeat all ltac:(fun H => rewrite H).
 
   etrans.
   {
     eapply bsim_improves.
-    rp; [eapply Renumber_correct|..]; try refl; revgoals.
-    { find_replacer. }
-    all: eauto.
+    rp; [eapply Renumber_correct|..]; try refl.
+    { find_sim Csyntax.program. }
+    { find_sim Asm.program. }
+    eauto.
+    unfold __GUARD__ in *. des.
+    all ltac:(fun H => rewrite H). eauto.
   }
   repeat all ltac:(fun H => rewrite H).
   
   etrans.
   {
     eapply bsim_improves.
-    rp; [eapply Deadcode_correct|..]; try refl; revgoals.
-    { find_replacer. }
-    all: eauto.
+    rp; [eapply Deadcode_correct|..]; try refl.
+    { find_sim Csyntax.program. }
+    { find_sim Asm.program. }
+    eauto.
+    unfold __GUARD__ in *. des.
+    all ltac:(fun H => rewrite H). eauto.
   }
   repeat all ltac:(fun H => rewrite H).
 
   etrans.
   {
     eapply bsim_improves.
-    rp; [eapply Unusedglob_correct|..]; try refl; revgoals.
-    { find_replacer. }
-    all: eauto.
+    rp; [eapply Unusedglob_correct|..]; try refl.
+    { find_sim Csyntax.program. }
+    { find_sim Asm.program. }
+    eauto.
+    unfold __GUARD__ in *. des.
+    all ltac:(fun H => rewrite H). eauto.
   }
   repeat all ltac:(fun H => rewrite H).
 
   etrans.
   {
     eapply bsim_improves.
-    rp; [eapply Allocation_correct|..]; try refl; revgoals.
-    {
-      (* find_replacer. *)
-      Set Printing Implicit.
-      rewrite <- SRCEXTUNREACH0.
-      rewrite <- TGTEXTUNREACH0.
-      ss.
-      (* rewrite <- SRCEXTID0. *)
-      (* rewrite <- TGTEXTID0. *)
-      (* ss. *)
-    }
-    all: eauto.
+    rp; [eapply Allocation_correct|..]; try refl.
+    { find_sim Csyntax.program. }
+    { find_sim Asm.program. }
+    eauto.
+    unfold __GUARD__ in *. des.
+    all ltac:(fun H => rewrite H). eauto.
   }
 
   etrans.
   {
     eapply bsim_improves.
-    rp; [eapply R2A_correct|..]; try refl; revgoals.
-    { find_replacer. }
-    all: eauto.
+    rp; [eapply Linearize_correct|..]; try refl.
+    { find_sim Csyntax.program. }
+    { find_sim Asm.program. }
+    eauto.
+    unfold __GUARD__ in *. des.
+    all ltac:(fun H => rewrite H). eauto.
   }
+
+  etrans.
+  {
+    eapply bsim_improves.
+    rp; [eapply Stacking_correct|..]; try refl.
+    { find_sim Csyntax.program. }
+    { find_sim Asm.program. }
+    eauto.
+    { eexists. eapply transf_program_match; eauto. }
+    unfold __GUARD__ in *. des.
+    all ltac:(fun H => rewrite H). eauto.
+  }
+
+  etrans.
+  {
+    eapply bsim_improves.
+    rp; [eapply Asmgen_correct|..]; try refl.
+    { find_sim Csyntax.program. }
+    { find_sim Asm.program. }
+    eauto.
+    unfold __GUARD__ in *. des.
+    all ltac:(fun H => rewrite H). eauto.
+  }
+
+  unfold __GUARD__ in *. des.
   repeat all ltac:(fun H => rewrite H).
   refl.
 Qed.

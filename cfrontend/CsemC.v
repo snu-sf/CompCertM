@@ -248,3 +248,22 @@ End MODULE.
 (* . *)
 (* Hint Unfold geof. *)
 
+
+
+Inductive typechecked (p: program): Prop :=
+| typechecked_intro
+    (TYPCHECK: typecheck_program p = Errors.OK p)
+    (* this can be executed and checked. *)
+    (WT_EXTERNAL: forall se id ef args res cc vargs m t vres m'
+      ,
+        In (id, Gfun (External ef args res cc)) p.(prog_defs) ->
+        external_call ef se vargs m t vres m' ->
+        wt_retval vres res)
+    (* Introduced as "WT_EXTERNAL" in Ctyping.v (of original CompCert).
+       This is a consequence of using "external_call", which takes IR type and not C type, in C language.
+       This can be removed if we use better semantics/axiom for high-level (including C) languages.
+       (current Axiom "external_call_well_typed" says about IR type only)
+     *)
+    (WF: Sk.wf (module p))
+    (* this property is already checked by the compiler, though they are not in Coq side *)
+.

@@ -185,12 +185,7 @@ Proof.
   apply JMeq_eq in EQORD. clarify.
   clear_tac.
   unfold eq_rect in *.
-  Ltac swapname NAME1 NAME2 :=
-    let tmp := fresh "TMP" in
-    rename NAME1 into tmp; rename NAME2 into NAME1; idtac NAME1; rename tmp into NAME1
-  .
-  Fail swapname elem1 elem0. (* TODO: somehow fix this and put this into CoqlibC.v *)
-  rename elem1 into tmp; rename elem0 into elem1; rename tmp into elem0.
+  swapname elem1 elem0.
 
   clear ORD. clear_tac.
 

@@ -242,8 +242,6 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     tgt: ModSem.t;
     ss: SimSymb.t;
     sm: SimMem.t;
-    (* TODO: which unary/binary property it expects *)
-    (* TODO: analysis *)
   }
   .
 

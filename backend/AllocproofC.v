@@ -25,7 +25,7 @@ Set Implicit Arguments.
 Section WFTGT.
 
 Definition wf_tgt (st_tgt0: LTL.state): Prop :=
-  exists sg_init ls_init, last_option st_tgt0.(LTLC.get_stack) = Some (LTLC.dummy_stack sg_init ls_init)
+  exists sg_init ls_init, last_option st_tgt0.(LTLC.get_stack) = Some (LTL.dummy_stack sg_init ls_init)
 .
 
 Lemma lift_starN
@@ -170,36 +170,33 @@ Qed.
 
 Section SIMMODSEM.
 
-Variable skenv_link_src skenv_link_tgt: SkEnv.t.
+Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variable prog: RTL.program.
 Variable tprog: LTL.program.
 Let md_src: Mod.t := (RTLC.module prog).
 Let md_tgt: Mod.t := (LTLC.module tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
-Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
-Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
-Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
-.
+Let ge := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
 
 Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: LTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Allocproof.match_states skenv_link_tgt tge st_src0 st_tgt0)
+    (MATCHST: Allocproof.match_states skenv_link tge st_src0 st_tgt0)
     (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(LTLC.get_mem) = sm0.(SimMem.tgt))
     (DUMMYTGT: wf_tgt st_tgt0)
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk))
-                      (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk))
+                      (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
@@ -275,7 +272,7 @@ Proof.
         apply (fsim_external_funct_id GE); ss.
         folder.
         inv FPTR; ss.
-      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. inv SIMSKENV. ss.
+      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss.
     + econs; ss; eauto.
       * instantiate (1:= SimMemExt.mk _ _). ss.
       * ss.
@@ -310,8 +307,8 @@ Proof.
     esplits; eauto.
     { apply RTLC.modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog _ skenv_link_src skenv_link_tgt); eauto.
-    { inv SIMSKENV. ss. inv SIMSKELINK. refl. }
+    ii. hexploit (@step_simulation prog _ skenv_link skenv_link); eauto.
+    { inv SIMSKENV. ss. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { ss. des. ss. }
     i; des.
@@ -329,17 +326,12 @@ Qed.
 End SIMMODSEM.
 
 
-
-
 Section SIMMOD.
 
 Variable prog: RTL.program.
 Variable tprog: LTL.program.
 Hypothesis TRANSL: match_prog prog tprog.
-
-Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (LTLC.module tprog) tt
-.
+Definition mp: ModPair.t := ModPair.mk (RTLC.module prog) (LTLC.module tprog) tt.
 
 Theorem sim_mod
   :
@@ -348,9 +340,7 @@ Theorem sim_mod
 Proof.
   econs; ss.
   - r. admit "easy - see DeadcodeproofC".
-  - ii. eapply sim_modsem; eauto.
-Unshelve.
-  all: ss.
+  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

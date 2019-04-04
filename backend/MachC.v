@@ -226,21 +226,6 @@ Inductive step: state -> trace -> state -> Prop :=
 
 End NEWSTEP.
 
-(* Definition dummy_stack (parent_sp parent_ra: val): stackframe := *)
-(*   match parent_sp with *)
-(*   | Vptr sp _ true => Stackframe 1%positive (Vptr sp Ptrofs.zero true) parent_ra [] *)
-(*   | _ => Stackframe 1%positive Vundef parent_ra [] (* This should not occur. *) *)
-(*   end *)
-(* . *)
-(* See "stack_contents" of the stackingproof. It ignores sp's offset. *)
-(* "stack_contents" is used in match_states, and we want to use it... *)
-Definition dummy_stack (parent_sp parent_ra: val): stackframe :=
-  Stackframe 1%positive parent_sp parent_ra []
-.
-
-Hint Unfold dummy_stack.
-(* Global Opaque dummy_stack. *)
-
 Definition get_mem (st: state): mem :=
   match st with
   | State _ _ _ _ _ m0 => m0

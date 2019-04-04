@@ -25,9 +25,6 @@ Require Import FinFun.
 Set Implicit Arguments.
 
 
-(* TODO: move to CoqlibC *)
-Global Program Instance top2_PreOrder X: PreOrder (top2: X -> X -> Prop).
-
 Global Program Instance Top: Sound.class := {
   t := unit;
   le := top2;

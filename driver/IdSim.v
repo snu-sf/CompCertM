@@ -35,11 +35,12 @@ Lemma lift
             ModPair.sim mp /\ mp.(ModPair.src) = x.(to_mod) /\ mp.(ModPair.tgt) = x.(to_mod))
   :
     <<PROG: forall xs, exists pp,
-        ProgPair.sim pp /\ ProgPair.src pp = map to_mod xs /\ ProgPair.tgt pp = map to_mod xs
-                                                                                    >>
+        __GUARD__ (ProgPair.sim pp /\ ProgPair.src pp = map to_mod xs /\ ProgPair.tgt pp = map to_mod xs)
+                  >>
 .
 Proof.
   ii.
+  unfold __GUARD__ in *.
   induction xs; ii; ss.
   { esplits; eauto. }
   des.

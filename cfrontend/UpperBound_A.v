@@ -939,37 +939,11 @@ Let geof := fun skenv_link (cp: Csyntax.program) =>
               (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env)).
 
 Theorem upperbound_a_correct
-        (_cp0 _cp1 _cp_link: Csyntax.program) cp0 cp1 cp_link ctx
-        (LINK: link cp0 cp1 = Some _cp_link)
-
-        (TYPED0: typecheck_program _cp0 = Errors.OK cp0 /\ Sk.wf (module cp0))
-        (TYPED1: typecheck_program _cp1 = Errors.OK cp1 /\ Sk.wf (module cp1))
-        (TYPEDLINK: typecheck_program _cp_link = Errors.OK cp_link /\ Sk.wf (module cp_link))
-
-        (WT_EXTERNAL0: forall id ef args res cc vargs m t vres m'
-                              sk_link skenv_link
-                              (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
-                              (SKE: skenv_link = sk_link.(Sk.load_skenv))
-          ,
-            In (id, Gfun (External ef args res cc)) cp0.(prog_defs) ->
-            external_call ef skenv_link vargs m t vres m' ->
-            wt_retval vres res)
-        (WT_EXTERNAL1: forall id ef args res cc vargs m t vres m'
-                              sk_link skenv_link
-                              (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
-                              (SKE: skenv_link = sk_link.(Sk.load_skenv))
-          ,
-            In (id, Gfun (External ef args res cc)) cp1.(prog_defs) ->
-            external_call ef skenv_link vargs m t vres m' ->
-            wt_retval vres res)
-        (WT_EXTERNALLINK: forall id ef args res cc vargs m t vres m'
-                                 sk_link skenv_link
-                                 (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
-                                 (SKE: skenv_link = sk_link.(Sk.load_skenv))
-          ,
-            In (id, Gfun (External ef args res cc)) cp_link.(prog_defs) ->
-            external_call ef skenv_link vargs m t vres m' ->
-            wt_retval vres res)
+        (cp0 cp1 cp_link: Csyntax.program) ctx
+        (TYPED0: typechecked cp0)
+        (TYPED1: typechecked cp1)
+        (TYPEDLINK: typechecked cp_link)
+        (LINK: link cp0 cp1 = Some cp_link)
   :
     (<<REFINE: improves (Sem.sem (ctx ++ [cp_link.(CsemC.module)]))
                         (Sem.sem (ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)]))
@@ -988,6 +962,7 @@ Proof.
   }
   rename t into link_sk.
   des.
+  inv TYPED0. inv TYPED1. inv TYPEDLINK.
   eapply upperbound_a_xsim; eauto.
   { eapply typecheck_program_sound; et. }
   { eapply typecheck_program_sound; et. }

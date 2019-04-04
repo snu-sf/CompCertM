@@ -18,27 +18,26 @@ Set Implicit Arguments.
 
 Section PRESERVATION.
 
-Variable skenv_link_src skenv_link_tgt: SkEnv.t.
+Variable skenv_link: SkEnv.t.
 Variable prog: Mach.program.
 Variable tprog: Asm.program.
 Let md_src: Mod.t := (MachC.module prog return_address_offset).
 Let md_tgt: Mod.t := (AsmC.module tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
-Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
-Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (WF: SkEnv.wf skenv_link).
 
 Hypothesis TRANSF: match_prog prog tprog.
 
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
 
 Variable sm_link: SimMem.t.
 
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (SM := SimMemExt)
-                (md_src.(Mod.modsem) skenv_link_src)
-                (md_tgt.(Mod.modsem) skenv_link_tgt)
+                (md_src.(Mod.modsem) skenv_link)
+                (md_tgt.(Mod.modsem) skenv_link)
                 tt sm_link.
 
 Definition get_rs (ms: Mach.state) : Mach.regset :=
@@ -97,9 +96,9 @@ Inductive match_states
 .
 
 Lemma asm_step_dstep init_rs st0 st1 tr
-      (STEP: Asm.step skenv_link_tgt tge st0 tr st1)
+      (STEP: Asm.step skenv_link tge st0 tr st1)
   :
-    Simulation.DStep (modsem skenv_link_tgt tprog)
+    Simulation.DStep (modsem skenv_link tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
@@ -109,9 +108,9 @@ Proof.
 Qed.
 
 Lemma asm_star_dstar init_rs st0 st1 tr
-      (STEP: star Asm.step skenv_link_tgt tge st0 tr st1)
+      (STEP: star Asm.step skenv_link tge st0 tr st1)
   :
-    Simulation.DStar (modsem skenv_link_tgt tprog)
+    Simulation.DStar (modsem skenv_link tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
@@ -120,9 +119,9 @@ Proof.
 Qed.
 
 Lemma asm_plus_dplus init_rs st0 st1 tr
-      (STEP: plus Asm.step skenv_link_tgt tge st0 tr st1)
+      (STEP: plus Asm.step skenv_link tge st0 tr st1)
   :
-    Simulation.DPlus (modsem skenv_link_tgt tprog)
+    Simulation.DPlus (modsem skenv_link tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
@@ -303,16 +302,10 @@ Proof.
         { apply SIMSKENV. }
         intro GE.
         apply (fsim_external_funct_id GE); ss.
-      * exists skd. des_ifs. esplits; auto.
-        inv SIMSKENV.
-        eapply SimSymb.simskenv_func_fsim; eauto.
-        { econs. }
-        { ss. }
       * inv AG. rewrite agree_sp0. clarify.
       * inv INITRAPTR. inv STACKS; ss.
         -- inv ATLR; auto. exfalso; auto.
         -- destruct ra; ss; try inv H0. inv ATLR. ss.
-      * ss. inv SIMSKENV. inv SIMSKELINK. ss. clarify.
     + instantiate (1:=mk m1 m2'). econs; ss; eauto.
     + ss.
 
@@ -325,7 +318,6 @@ Proof.
     + econs.
       * exists skd. esplits; eauto.
         replace (r PC) with fptr; auto.
-        { inv SIMSKENV. eapply SimSymb.simskenv_func_fsim; eauto. econs; eauto. }
         inv FPTR; ss.
       * ss.
       * inv AG. rewrite agree_sp0. eauto.
@@ -385,7 +377,6 @@ Proof.
       i. des; ss; esplits; auto; clarify.
       * left. instantiate (1 := mkstate st_tgt0.(init_rs) S2'). ss.
         destruct st_tgt0. eapply asm_plus_dplus; eauto.
-        inv SIMSKENV. inv SIMSKELINK. ss. clarify.
       * instantiate (1 := mk (MachC.get_mem (MachC.st st_src1)) (get_mem S2')).
         econs; ss; eauto.
         rewrite <- INITRS. rewrite <- INITFPTR. auto.
@@ -401,3 +392,24 @@ Proof.
 Qed.
 
 End PRESERVATION.
+
+
+
+Section SIMMOD.
+
+Variable prog: Mach.program.
+Variable tprog: program.
+Hypothesis TRANSL: match_prog prog tprog.
+Definition mp: ModPair.t := ModPair.mk (MachC.module prog return_address_offset) (AsmC.module tprog) tt.
+
+Theorem sim_mod
+  :
+    ModPair.sim mp
+.
+Proof.
+  econs; ss.
+  - r. admit "easy - see DeadcodeproofC".
+  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+Qed.
+
+End SIMMOD.

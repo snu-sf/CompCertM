@@ -222,20 +222,6 @@ Definition current_locset (stk: stackframe): locset :=
   end
 .
 
-(* Definition dummy_stacksize: Z := (admit "dummy_stacksize"). *)
-(* Definition dummy_code (sig: signature): code := [Lcall sig (admit "dummy_reg")]. *)
-Definition dummy_function (sig: signature) := (mkfunction sig 0 [Lgoto 1%positive]).
-
-Definition dummy_stack (sig: signature) (ls: locset) :=
-  Stackframe (dummy_function sig)
-              (* (Vptr (admit "dummy_fptr") Ptrofs.zero true) *)
-             Vundef
-             ls
-             [] (* one may replace it with another another_dummy_code,
-but then corresponding MachM's part should be transl_code another_dummy_code ... *)
-.
-Hint Unfold dummy_stack.
-
 Definition undef_outgoing_slots (ls: locset): locset :=
   fun l =>
     match l with

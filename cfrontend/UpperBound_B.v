@@ -1365,17 +1365,12 @@ End PRESERVATION.
 
 
 Theorem upperbound_b_correct
-        (_cprog: Csyntax.program) cprog
+        (cprog: Csyntax.program)
         (MAIN: exists main_f,
             (<<INTERNAL: cprog.(prog_defmap) ! (cprog.(prog_main)) = Some (Gfun (Internal main_f))>>)
             /\
             (<<SIG: type_of_function main_f = Tfunction Tnil type_int32s cc_default>>))
-        (TYPED: typecheck_program _cprog = Errors.OK cprog)
-        (WT_EXTERNAL: forall id ef args res cc vargs m t vres m',
-            In (id, Gfun (External ef args res cc)) cprog.(prog_defs) ->
-            external_call ef cprog.(globalenv) vargs m t vres m' ->
-            wt_retval vres res)
-        (WTSK: Sk.wf (CsemC.module cprog))
+        (TYPED: typechecked cprog)
   :
     (<<REFINE: improves (Csem.semantics cprog) (Sem.sem (map CsemC.module [cprog]))>>)
 .
@@ -1402,6 +1397,7 @@ Proof.
       rewrite T2 in H0. clarify. }
   eapply bsim_improves.
   eapply mixed_to_backward_simulation.
+  inv TYPED.
   eapply transf_program_correct; eauto.
   { ss. unfold link_sk, link_list in *. ss. clarify. }
   { ii. rr. inv H. ss. des_ifs_safe.
@@ -1410,6 +1406,5 @@ Proof.
     rewrite INTERNAL in *. clarify.
     unfold Genv.find_funct_ptr. des_ifs. }
   { eapply typecheck_program_sound; eauto. }
-  { i. eapply WT_EXTERNAL; et. erewrite <- senv_same in H0; et. ss. et. }
 Qed.
 

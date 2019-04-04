@@ -102,17 +102,6 @@ Definition get_mem (st: state): mem :=
 
 
 
-(* Copied from LinearC *)
-Definition dummy_function (sig: signature) := (mkfunction sig 0 (PTree.empty _) 1%positive).
-
-Definition dummy_stack (sig: signature) (ls: locset) :=
-  Stackframe (dummy_function sig)
-             Vundef
-             ls
-             []
-.
-Hint Unfold dummy_stack.
-
 Definition undef_outgoing_slots (ls: locset): locset :=
   fun l =>
     match l with

@@ -250,22 +250,17 @@ End Unusedglob.
 
 
 
-Parameter R2A: RTL.program -> res Asm.program.
-Parameter R2A_sim_mod: forall
-    src tgt
-    (TRANSF: R2A src = OK tgt)
-  ,
-    exists ss,
-      <<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top (ModPair.mk (RTLC.module src) (AsmC.module tgt) ss)>>
-.
 
-Section R2A.
 
-  (* Local Existing Instance R2A_SM. *)
-  (* Local Existing Instance R2A_SU. *)
-  (* Local Existing Instance R2A_SS. *)
-  Local Existing Instance SimMemInjC.SimMemInj | 0.
-  Local Existing Instance SimSymbDrop.SimSymbDrop | 0.
+
+
+
+Section Allocation.
+
+  Require Import AllocproofC.
+
+  Local Existing Instance SimMemExt.SimMemExt | 0.
+  Local Existing Instance SimMemExt.SimSymbExtends | 0.
   Local Existing Instance SoundTop.Top | 0.
 
   Variable cps: list ModPair.t.
@@ -273,16 +268,15 @@ Section R2A.
   Hypothesis CSIM: Forall ModPair.sim cps.
   Hypothesis ASIM: Forall ModPair.sim aps.
 
-  Lemma R2A_correct
+  Lemma Allocation_correct
         src tgt
-        (TRANSF: R2A src = OK tgt)
+        (TRANSF: Allocation.transf_program src = OK tgt)
     :
       backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [AsmC.module tgt] ++ aps.(ProgPair.tgt)))
+                          (sem (cps.(ProgPair.tgt) ++ [LTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
     eapply mixed_to_backward_simulation.
-    exploit (R2A_sim_mod); eauto. i; des.
     rpapply adequacy_local; cycle 1.
     { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
       u. rewrite map_app. ss.
@@ -292,10 +286,11 @@ Section R2A.
     rewrite in_app_iff in *. des; eauto.
     rewrite in_app_iff in *. des; eauto.
     ss. des; ss. clarify.
-    eauto.
+    eapply AllocproofC.sim_mod; eauto.
+    eapply Allocproof.transf_program_match; eauto.
   Qed.
 
-End R2A.
+End Allocation.
 
 
 
@@ -304,6 +299,42 @@ End R2A.
 
 
 
+Section Linearize.
+
+  Require Import LinearizeproofC.
+
+  Local Existing Instance SimMemId.SimMemId | 0.
+  Local Existing Instance SimMemId.SimSymbId | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+
+  Lemma Linearize_correct
+        src tgt
+        (TRANSF: Linearize.transf_program src = OK tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [LTLC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [LinearC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    eapply mixed_to_backward_simulation.
+    rpapply adequacy_local; cycle 1.
+    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
+      u. rewrite map_app. ss.
+    }
+    { u. rewrite map_app. ss. }
+    r. rewrite Forall_forall in *. ii.
+    rewrite in_app_iff in *. des; eauto.
+    rewrite in_app_iff in *. des; eauto.
+    ss. des; ss. clarify.
+    eapply LinearizeproofC.sim_mod; eauto.
+    eapply Linearizeproof.transf_program_match; eauto.
+  Qed.
+
+End Linearize.
 
 
 
@@ -311,23 +342,96 @@ End R2A.
 
 
 
+Section Stacking.
+
+  Require Import StackingproofC.
+
+  Local Existing Instance SimMemInjC.SimMemInj | 0.
+  Local Existing Instance SimMemInjC.SimSymbId | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+
+  Lemma Stacking_correct
+        src tgt
+        (TRANSF: Stacking.transf_program src = OK tgt)
+        (COMPILESUCCED: exists final_tgt, Asmgenproof.match_prog tgt final_tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [LinearC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [MachC.module tgt Asmgenproof0.return_address_offset] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    eapply mixed_to_backward_simulation.
+    rpapply adequacy_local; cycle 1.
+    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
+      u. rewrite map_app. ss.
+    }
+    { u. rewrite map_app. ss. }
+    r. rewrite Forall_forall in *. ii.
+    rewrite in_app_iff in *. des; eauto.
+    rewrite in_app_iff in *. des; eauto.
+    ss. des; ss. clarify.
+    eapply StackingproofC.sim_mod; eauto.
+    { eapply Asmgenproof.return_address_exists; eauto. }
+    { admit "ez - ask @yonghyunkim. int2ptr repository has the proof (10 LOC?)". }
+    eapply Stackingproof.transf_program_match; eauto.
+  Qed.
+
+End Stacking.
 
 
 
 
 
 
+Section Asmgen.
 
+  Require Import AsmgenproofC.
 
+  Local Existing Instance SimMemExt.SimMemExt | 0.
+  Local Existing Instance SimMemExt.SimSymbExtends | 0.
+  Local Existing Instance SoundTop.Top | 0.
 
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
 
+  Lemma Asmgen_correct
+        src tgt
+        (TRANSF: Asmgen.transf_program src = OK tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [MachC.module src Asmgenproof0.return_address_offset] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [AsmC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    eapply mixed_to_backward_simulation.
+    rpapply adequacy_local; cycle 1.
+    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
+      u. rewrite map_app. ss.
+    }
+    { u. rewrite map_app. ss. }
+    r. rewrite Forall_forall in *. ii.
+    rewrite in_app_iff in *. des; eauto.
+    rewrite in_app_iff in *. des; eauto.
+    ss. des; ss. clarify.
+    eapply AsmgenproofC.sim_mod; eauto.
+    eapply Asmgenproof.transf_program_match; eauto.
+  Qed.
+
+End Asmgen.
 
 
 
 
 Let transf_c_program: Csyntax.program -> res Asm.program :=
   fun src => src.(C2R) @@ Renumber.transf_program @@@
-                       Deadcode.transf_program @@@ Unusedglob.transform_program @@@ R2A
+                       Deadcode.transf_program @@@ Unusedglob.transform_program @@@
+                       Allocation.transf_program @@@ Linearize.transf_program @@@ Stacking.transf_program @@@
+                       Asmgen.transf_program
 .
 
 (* TODO: this is not used, remove it *)
@@ -493,6 +597,23 @@ Proof.
     all: eauto.
   }
   repeat all ltac:(fun H => rewrite H).
+
+  etrans.
+  {
+    eapply bsim_improves.
+    rp; [eapply Allocation_correct|..]; try refl; revgoals.
+    {
+      (* find_replacer. *)
+      Set Printing Implicit.
+      rewrite <- SRCEXTUNREACH0.
+      rewrite <- TGTEXTUNREACH0.
+      ss.
+      (* rewrite <- SRCEXTID0. *)
+      (* rewrite <- TGTEXTID0. *)
+      (* ss. *)
+    }
+    all: eauto.
+  }
 
   etrans.
   {

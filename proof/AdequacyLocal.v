@@ -886,14 +886,7 @@ Section ADQSTEP.
       i; des. clear SU0.
       assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
                        -> safe_modsem ms_src lst_src).
-      { admit "".
-        (* intro SAFESRC1. specialize (SAFESRC1 _ (star_refl _ _ _ _)). des; ss. *)
-        (* { exfalso. inv SAFESRC1. ss. eapply SAFESRC0. rr. esplits; eauto. } *)
-        (* des_ifs. inv SAFESRC1; swap 2 3; ss. *)
-        (* { exfalso. eapply SAFESRC. rr. esplits; eauto. } *)
-        (* { exfalso. eapply SAFESRC0. rr. esplits; eauto. } *)
-        (* exploit PROGRESS; eauto. *)
-      }
+      { eapply safe_implies_safe_modsem; eauto. }
       econs; ss; eauto.
       + ii. exploit PROGRESS; eauto. intro STEPTGT; des.
         clear - FINALTGT STEPTGT. inv FINALTGT. ss. ModSem.tac.

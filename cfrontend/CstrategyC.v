@@ -237,12 +237,6 @@ Require SoundTop.
 Set Implicit Arguments.
 
 
-
-
-
-
-
-
 Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
@@ -265,7 +259,6 @@ Inductive match_states
           (idx: nat) (st_src0: Csem.state) (st_tgt0: Csem.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: st_src0 = st_tgt0)
-    (* (MCOMPAT: st_src0.(get_mem) = Some sm0.(SimMem.src) \/ st_src0.(get_mem) = None) *)
     (MWF: SimMem.wf sm0)
 .
 
@@ -344,10 +337,7 @@ End SIMMODSEM.
 Section SIMMOD.
 
 Variables prog: program.
-
-Definition mp: ModPair.t :=
-  ModPair.mk (CsemC.module prog) (module prog) tt
-.
+Definition mp: ModPair.t := ModPair.mk (CsemC.module prog) (module prog) tt.
 
 Theorem sim_mod
   :
@@ -356,8 +346,6 @@ Theorem sim_mod
 Proof.
   econs; ss.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
-Unshelve.
-  all: ss.
 Qed.
 
 End SIMMOD.

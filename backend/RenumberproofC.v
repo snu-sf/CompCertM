@@ -29,8 +29,7 @@ Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src.(Mod.modsem) skenv_link) (md_tgt.(Mod.modsem) skenv_link) tt sm_link
 .
 
-Inductive match_states
-          (sm_init: SimMem.t)
+Inductive match_states (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Renumberproof.match_states st_src0 st_tgt0)
@@ -131,10 +130,7 @@ Section SIMMOD.
 
 Variables prog tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
-
-Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt
-.
+Definition mp: ModPair.t := ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt.
 
 Theorem sim_mod
   :
@@ -144,8 +140,6 @@ Proof.
   econs; ss.
   - r. admit "easy - see DeadcodeproofC".
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
-Unshelve.
-  all: ss.
 Qed.
 
 End SIMMOD.

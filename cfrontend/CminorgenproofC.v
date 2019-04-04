@@ -21,45 +21,40 @@ Local Existing Instance Val.mi_normal.
 
 Section SIMMODSEM.
 
-Variable skenv_link_src skenv_link_tgt: SkEnv.t.
+Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variable prog: Csharpminor.program.
 Variable tprog: Cminor.program.
 Let md_src: Mod.t := (CsharpminorC.module prog).
 Let md_tgt: Mod.t := (CminorC.module tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
-Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
-Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge: Csharpminor.genv := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
-Let tge: Cminor.genv := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
-Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
-.
+Let ge: Csharpminor.genv := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
+Let tge: Cminor.genv := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
 
 Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: Csharpminor.state) (st_tgt0: Cminor.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Cminorgenproof.match_states skenv_link_src skenv_link_tgt ge st_src0 st_tgt0 sm0)
+    (MATCHST: Cminorgenproof.match_states skenv_link skenv_link ge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(CsharpminorC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(CminorC.get_mem) = sm0.(SimMem.tgt))
     (MCOMPATIDX: idx = Cminorgenproof.measure st_src0)
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun cu f tf => transl_fundef f = OK tf) eq prog) ge tge.
-Proof.
-  subst_locals. ss. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
+Proof. subst_locals. ss. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
 Theorem sim_modsem
   :
     ModSemPair.sim msp
 .
 Proof.
-  (* rr in TRANSL. destruct TRANSL as [TRANSL0 TRANSL1]. *)
   eapply match_states_sim with (match_states := match_states)
                                (match_states_at := fun _ _ => eq)
                                (sound_state := SoundTop.sound_state);
@@ -81,19 +76,13 @@ Proof.
       * inv TYP.
         inv SAFESRC. folder. ss.
         exploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. intro FINDFTGT; des. ss.
-        assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link_src)).
+        assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link)).
         {
           inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
           econs; eauto.
-          + ii. ss. eapply Plt_Ple_trans.
-            { genext. }
-            ss. refl.
-          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans.
-            { genext. }
-            ss. refl.
-          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans.
-            { genext. }
-            ss. refl.
+          + ii. ss. eapply Plt_Ple_trans. { genext. } ss. refl.
+          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
+          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
         }
         hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
         rpapply match_callstate; ss; eauto.
@@ -157,12 +146,6 @@ Proof.
           i; clarify.
         }
         clarify.
-        eapply SimSymb.simskenv_func_fsim; eauto; ss.
-        (* { destruct tv; ss. des_ifs. econs; eauto; cycle 1. *)
-        (*   { psimpl. instantiate (1:= 0). ss. } *)
-        (*   inv H. inv INJECT. eapply DOMAIN; eauto. *)
-        (*   { apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *. eapply Genv.genv_defs_range; et. } *)
-        (* } *)
     + ss.
     + reflexivity.
   - (* after fsim *)
@@ -200,8 +183,7 @@ Proof.
     esplits; eauto.
     { apply CsharpminorC.modsem_receptive. }
     inv MATCH.
-    ii. hexploit (@transl_step_correct prog tprog TRANSL _ skenv_link_src skenv_link_tgt); eauto; ss.
-    { inv SIMSKENV. ss. inv SIMSKELINK. inv SIMSKENV. refl. }
+    ii. hexploit (@transl_step_correct prog tprog TRANSL _ skenv_link skenv_link); eauto; ss.
     { eapply SkEnv.senv_genv_compat; ss. }
     { eapply SkEnv.senv_genv_compat; ss. }
     i; des.
@@ -227,10 +209,7 @@ Section SIMMOD.
 Variable prog: Csharpminor.program.
 Variable tprog: Cminor.program.
 Hypothesis TRANSL: match_prog prog tprog.
-
-Definition mp: ModPair.t :=
-  ModPair.mk (CsharpminorC.module prog) (CminorC.module tprog) tt
-.
+Definition mp: ModPair.t := ModPair.mk (CsharpminorC.module prog) (CminorC.module tprog) tt.
 
 Theorem sim_mod
   :
@@ -239,9 +218,7 @@ Theorem sim_mod
 Proof.
   econs; ss.
   - r. admit "easy - see DeadcodeproofC".
-  - ii. eapply sim_modsem; eauto.
-Unshelve.
-  all: ss.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

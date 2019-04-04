@@ -1051,7 +1051,7 @@ Section SIMMODSEM.
 
 Local Existing Instance Val.mi_normal.
 
-Variable skenv_link_src skenv_link_tgt: SkEnv.t.
+Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variable prog: Linear.program.
 Variable tprog: Mach.program.
@@ -1059,12 +1059,11 @@ Hypothesis TRANSF: match_prog prog tprog.
 Variable rao: Mach.function -> Mach.code -> ptrofs -> Prop.
 Let md_src: Mod.t := (LinearC.module prog).
 Let md_tgt: Mod.t := (MachC.module tprog rao).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
-Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
-Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (WF: SkEnv.wf skenv_link).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
 Hypothesis return_address_offset_exists:
   forall f sg ros c v (FUNCT: Genv.find_funct tge v = Some (Internal f)),
   is_tail (Mcall sg ros :: c) (fn_code f) ->
@@ -1075,14 +1074,12 @@ Hypothesis return_address_offset_deterministic:
   rao f c ofs' ->
   ofs = ofs'.
 
-Let match_stacks := match_stacks skenv_link_src skenv_link_tgt.
+Let match_stacks := match_stacks skenv_link skenv_link.
 
 Print Instances SimMem.class.
 Print Instances SimSymb.class.
 
-Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
-.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
 
 Compute last_option (@nil Z).
 Compute last_option [1].
@@ -1143,7 +1140,7 @@ Lemma init_match_frame_contents_depr
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
-      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src md_src.(Mod.sk))) (Mem.nextblock m_tgt0))
+      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link md_src.(Mod.sk))) (Mem.nextblock m_tgt0))
   :
     m_tgt0
       |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
@@ -1208,7 +1205,7 @@ Lemma init_match_frame_contents
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
       (MWF: SimMem.wf sm_init)
-      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link_src md_src.(Mod.sk))) (Mem.nextblock m_tgt0))
+      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link md_src.(Mod.sk))) (Mem.nextblock m_tgt0))
   :
     m_tgt0
       |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
@@ -1511,7 +1508,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: Linear.state) (st_tgt0: MachC.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Stackingproof.match_states skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0.(st) sm0)
+    (MATCHST: Stackingproof.match_states skenv_link skenv_link ge tge st_src0 st_tgt0.(st) sm0)
     (MCOMPATSRC: st_src0.(LinearC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(st).(get_mem) = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
@@ -1537,7 +1534,7 @@ Inductive match_states_at
     (TGTST: st_tgt0 = mkstate init_rs init_sg (Callstate cs' tfptr rs (SimMemInj.tgt sm_at)))
     (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
     (PRIV: brange sp 0 (4 * size_arguments (SkEnv.get_sig skd)) <2= sm_arg.(SimMemInj.tgt_private))
-    (SIG: Genv.find_funct skenv_link_src fptr = Some skd)
+    (SIG: Genv.find_funct skenv_link fptr = Some skd)
     (VALID: Mem.valid_block (SimMemInj.tgt sm_arg) sp)
     (NB: sm_at.(SimMem.tgt).(Mem.nextblock) = sm_arg.(SimMem.tgt).(Mem.nextblock))
     (SEP: SimMemInj.tgt sm_arg |= stack_contents_at_external (SimMemInj.inj sm_arg) cs cs' (SkEnv.get_sig skd)
@@ -1554,7 +1551,7 @@ Lemma loc_result_one
 Proof. compute. des_ifs; eauto. Qed.
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun cunit f tf => transf_fundef f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
@@ -1562,7 +1559,7 @@ Inductive has_footprint (st_src0: Linear.state): MachC.state -> SimMem.t -> Prop
 | has_footprint_intro
     (** copied from MachC **)
     stack rs m0 fptr sg blk ofs
-    (SIG: exists skd, skenv_link_tgt.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
+    (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
     (RSP: (parent_sp stack) = Vptr blk ofs true)
     (OFSZERO: ofs = Ptrofs.zero)
     init_rs init_sg
@@ -1580,7 +1577,7 @@ Inductive mle_excl (st_src0: Linear.state): MachC.state -> SimMem.t -> SimMem.t 
     (** copied from MachC **)
     init_rs init_sg stack fptr ls0 m0
     sg blk ofs
-    (SIG: exists skd, skenv_link_tgt.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
+    (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
     (RSP: (parent_sp stack) = Vptr blk ofs true)
     (** newly added **)
     sm0 sm1
@@ -1591,8 +1588,8 @@ Inductive mle_excl (st_src0: Linear.state): MachC.state -> SimMem.t -> SimMem.t 
     mle_excl st_src0 (mkstate init_rs init_sg (Callstate stack fptr ls0 m0)) sm0 sm1
 .
 
-Let SEGESRC: senv_genv_compat skenv_link_src ge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
-Let SEGETGT: senv_genv_compat skenv_link_tgt tge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
+Let SEGESRC: senv_genv_compat skenv_link ge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
+Let SEGETGT: senv_genv_compat skenv_link tge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
 
 Theorem sim_modsem
   :
@@ -1775,7 +1772,7 @@ Proof.
 
     hexpl Mem.nextblock_free NB.
     assert(EXTTGT: exists skd_tgt,
-              Genv.find_funct skenv_link_tgt tfptr = Some skd_tgt /\ SkEnv.get_sig skd_tgt = SkEnv.get_sig skd).
+              Genv.find_funct skenv_link tfptr = Some skd_tgt /\ SkEnv.get_sig skd_tgt = SkEnv.get_sig skd).
     {
       folder. esplits; eauto.
       (* copied from InliningproofC *)
@@ -1790,7 +1787,6 @@ Proof.
         i; clarify.
       }
       clarify.
-      eapply SimSymb.simskenv_func_fsim; eauto; ss.
     }
     esplits; eauto.
     + econs; eauto.
@@ -1798,7 +1794,7 @@ Proof.
         { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. apply SIMSKENV. }
         ii. clarify.
       * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
-      * destruct (Senv.block_is_volatile skenv_link_tgt sp) eqn:T; ss. exfalso.
+      * destruct (Senv.block_is_volatile skenv_link sp) eqn:T; ss. exfalso.
         exploit Genv.block_is_volatile_below; et. intro T0.
         exploit match_stacks_sp_valid; eauto. intro SPVALID; des.
         { clear - SPVALID0 T0 SIMSKENV. inv SIMSKENV. ss. inv SIMSKELINK. r in SIMSKENV. clarify. xomega. }
@@ -1861,8 +1857,8 @@ Proof.
       - unfold Mem.valid_block in *. eapply Plt_Ple_trans; eauto. etransitivity; try eapply MLE. eapply MLEAFTR.
       - inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl. inv SIMARGS. ss. clarify.
         assert(sg = sg_arg).
-        { des. clarify. inv SIMSKENV. inv SIMSKELINK. ss. r in SIMSKENV. rewrite SIMSKENV in *.
-          exploit fsim_external_inject_eq; et. i. subst tfptr. clarify. rewrite H0. ss. }
+        { des. clarify. inv SIMSKENV. inv SIMSKELINK. ss. r in SIMSKENV.
+          exploit fsim_external_inject_eq; et. i. subst tfptr. clarify. }
         clarify.
         assert(NP: Mem_range_noperm (SimMemInj.tgt sm_arg) blk 0 (4 * size_arguments sg_arg)).
         { eapply Mem_free_noperm; eauto. }
@@ -1885,13 +1881,13 @@ Proof.
     }
     i; des. ss.
 
-    assert(EXTTGT: exists skd, Genv.find_funct skenv_link_tgt tfptr = Some skd /\ SkEnv.get_sig skd = sg_arg).
+    assert(EXTTGT: exists skd, Genv.find_funct skenv_link tfptr = Some skd /\ SkEnv.get_sig skd = sg_arg).
     {
       inv HISTORY. ss. inv MATCHARG. ss.
-      inv SIMSKENV. ss. inv SIMSKELINK. rr in SIMSKENV. rewrite <- SIMSKENV in *.
+      inv SIMSKENV. ss. inv SIMSKELINK. rr in SIMSKENV.
       esplits; et.
       rpapply SIG.
-      { f_equal. clarify. rewrite <- H8. symmetry. eapply fsim_external_inject_eq; et. rewrite H8. et. }
+      { f_equal. clarify. symmetry. eapply fsim_external_inject_eq; et. }
       { clarify. }
     }
     exists sm1; esplits; eauto; [|i; split].
@@ -1900,7 +1896,7 @@ Proof.
       * rewrite MEMTGT. inv MWFAFTR. ss.
         etrans; eauto.
         inv MLE. rewrite <- TGTPARENTEQNB.
-        inv SIMSKENV. inv SIMSKELINK. ss. rr in SIMSKENV. rewrite <- SIMSKENV. ss.
+        inv SIMSKENV. inv SIMSKELINK. ss.
       * psimpl. zsimpl. rp; eauto.
     + econs; ss; eauto with congruence; cycle 1.
       {
@@ -2138,7 +2134,7 @@ Proof.
     esplits; eauto.
     { apply LinearC.modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@transf_step_correct prog rao skenv_link_src skenv_link_tgt ge tge); eauto.
+    ii. hexploit (@transf_step_correct prog rao skenv_link skenv_link ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { inv STEPSRC. eauto. }
     { des. et. }
@@ -2182,12 +2178,9 @@ Hypothesis return_address_offset_deterministic:
   rao f c ofs ->
   rao f c ofs' ->
   ofs = ofs'.
-
 Hypothesis TRANSF: match_prog prog tprog.
 
-Definition mp: ModPair.t :=
-  ModPair.mk (LinearC.module prog) (MachC.module tprog rao) tt
-.
+Definition mp: ModPair.t := ModPair.mk (LinearC.module prog) (MachC.module tprog rao) tt.
 
 Theorem sim_mod
   :
@@ -2196,13 +2189,12 @@ Theorem sim_mod
 Proof.
   econs; ss.
   - admit "easy".
-  - ii. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
     i. ss. uge0. des_ifs.
     unfold SkEnv.revive in *. apply Genv_map_defs_def in Heq. des. ss. gesimpl.
     apply Genv_map_defs_def in FIND. des. unfold o_bind, o_join, o_map in *. des_ifs. ss. clear_tac.
     eapply return_address_offset_exists; et.
     eapply in_prog_defmap; et.
-Unshelve.
 Qed.
 
 End SIMMOD.

@@ -67,6 +67,7 @@ Module Mod.
 End Mod.
 
 Coercion Mod.sk: Mod.t >-> Sk.t.
+Coercion Mod.modsem: Mod.t >-> Funclass.
 
 Hint Unfold Mod.sk Mod.modsem.
 

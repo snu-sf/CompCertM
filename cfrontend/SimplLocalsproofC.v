@@ -101,36 +101,31 @@ Qed.
 
 Section SIMMODSEM.
 
-Variable skenv_link_src skenv_link_tgt: SkEnv.t.
+Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variable prog: Clight.program.
 Variable tprog: Clight.program.
 Let md_src: Mod.t := (ClightC.module1 prog).
 Let md_tgt: Mod.t := (ClightC.module2 tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
-Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
-Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog)
-                                  prog.(prog_comp_env).
-Let tge: Clight.genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog)
-                                   tprog.(prog_comp_env).
-Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
-.
+Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
+Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog) tprog.(prog_comp_env).
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
 
 Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: Clight.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: SimplLocalsproof.match_states skenv_link_src skenv_link_tgt ge st_src0 st_tgt0 sm0)
+    (MATCHST: SimplLocalsproof.match_states skenv_link skenv_link ge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(ClightC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt))
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun (ctx: AST.program fundef type) f tf => transf_fundef f = OK tf) eq prog) ge tge /\ prog_comp_env prog = prog_comp_env tprog.
 Proof.
   subst_locals. ss.
@@ -142,8 +137,8 @@ Proof.
     ss. congruence.
 Qed.
 
-Let SEGESRC: senv_genv_compat skenv_link_src ge. Proof. eapply CSkEnv.senv_genv_compat; et. Qed.
-Let SEGETGT: senv_genv_compat skenv_link_tgt tge. Proof. eapply CSkEnv.senv_genv_compat; et. Qed.
+Let SEGESRC: senv_genv_compat skenv_link ge. Proof. eapply CSkEnv.senv_genv_compat; et. Qed.
+Let SEGETGT: senv_genv_compat skenv_link tge. Proof. eapply CSkEnv.senv_genv_compat; et. Qed.
 
 Theorem sim_modsem
   :
@@ -172,19 +167,13 @@ Proof.
       * inv TYP.
         inv SAFESRC. folder. ss.
         exploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. intro FINDFTGT; des. ss.
-        assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link_src)).
+        assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link)).
         {
           inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
           econs; eauto.
-          + ii. ss. eapply Plt_Ple_trans.
-            { genext. }
-            ss. refl.
-          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans.
-            { genext. }
-            ss. refl.
-          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans.
-            { genext. }
-            ss. refl.
+          + ii. ss. eapply Plt_Ple_trans. { genext. } ss. refl.
+          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
+          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
         }
         hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
         exploit typecheck_inject; eauto. intro TYPTGT0; des.
@@ -200,8 +189,6 @@ Proof.
         { apply MWF. }
         { inv TYP. eapply val_casted_list_spec; eauto. }
         f_equal.
-        (* { unfold bind in *. des_ifs. exploit transf_function_type; eauto. i; des. *)
-        (*   unfold type_of_function. f_equal; try congruence. } *)
         { unfold transf_function in *. unfold bind in *. des_ifs. }
         { inv TYPTGT1. rewrite <- TYP0 at 2. f_equal. ss.
           unfold transf_function in *. unfold bind in *. des_ifs.
@@ -251,12 +238,6 @@ Proof.
           i; clarify.
         }
         clarify.
-        eapply SimSymb.simskenv_func_fsim; eauto; ss.
-        (* { destruct tv; ss. des_ifs. econs; eauto; cycle 1. *)
-        (*   { psimpl. instantiate (1:= 0). ss. } *)
-        (*   inv H. inv INJECT. eapply DOMAIN; eauto. *)
-        (*   { apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *. eapply Genv.genv_defs_range; et. } *)
-        (* } *)
     + ss.
     + reflexivity.
   - (* after fsim *)
@@ -272,7 +253,6 @@ Proof.
       inv MLE0; ss.
       inv MCOMPAT. clear_tac.
       rpapply match_return_state; ss; eauto; ss.
-      (* { clear - MWF. inv MWF. ii. apply TGTEXT in H. rr in H. des. ss. } *)
       { ss. ii.
         eapply match_cont_incr_bounds; eauto; swap 2 4.
         { instantiate (1:= tge). ss. esplits; eauto. }
@@ -297,7 +277,7 @@ Proof.
     esplits; eauto.
     { apply modsem1_receptive. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog skenv_link_src skenv_link_tgt); eauto; ss.
+    ii. hexploit (@step_simulation prog skenv_link skenv_link); eauto; ss.
     i; des.
     esplits; eauto.
     + left. eapply spread_dplus; eauto. eapply modsem2_determinate; eauto.
@@ -316,10 +296,7 @@ Section SIMMOD.
 Variable prog: Clight.program.
 Variable tprog: Clight.program.
 Hypothesis TRANSL: match_prog prog tprog.
-
-Definition mp: ModPair.t :=
-  ModPair.mk (ClightC.module1 prog) (ClightC.module2 tprog) tt
-.
+Definition mp: ModPair.t := ModPair.mk (ClightC.module1 prog) (ClightC.module2 tprog) tt.
 
 Theorem sim_mod
   :
@@ -328,9 +305,7 @@ Theorem sim_mod
 Proof.
   econs; ss.
   - r. admit "easy - see DeadcodeproofC".
-  - ii. eapply sim_modsem; eauto.
-Unshelve.
-  all: ss.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

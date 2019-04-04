@@ -25,7 +25,7 @@ Set Implicit Arguments.
 Section WFTGT.
 
 Definition wf_tgt (st_tgt0: LTL.state): Prop :=
-  exists sg_init ls_init, last_option st_tgt0.(LTLC.get_stack) = Some (LTLC.dummy_stack sg_init ls_init)
+  exists sg_init ls_init, last_option st_tgt0.(LTLC.get_stack) = Some (LTL.dummy_stack sg_init ls_init)
 .
 
 Lemma lift_starN

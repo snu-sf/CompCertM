@@ -718,7 +718,7 @@ Section LIFT.
 Require Import Program.Equality.
 
 Definition wf_tgt (st_tgt0: Mach.state): Prop :=
-  exists parent_sp parent_ra, last_option st_tgt0.(MachC.get_stack) = Some (MachC.dummy_stack parent_sp parent_ra)
+  exists parent_sp parent_ra, last_option st_tgt0.(MachC.get_stack) = Some (Mach.dummy_stack parent_sp parent_ra)
 .
 
 Lemma lift_starN

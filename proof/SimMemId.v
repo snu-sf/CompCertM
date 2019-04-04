@@ -39,9 +39,6 @@ Program Instance SimMemId : SimMem.class :=
   sim_val_list := fun (_: t') => eq;
 }.
 Next Obligation.
-  ss.
-Qed.
-Next Obligation.
   do 2 (apply Axioms.functional_extensionality; i).
   apply prop_ext1.
   split; i; ss; clarify.

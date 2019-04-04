@@ -18,7 +18,7 @@ Set Implicit Arguments.
 
 
 Definition wf_tgt (st_tgt0: Linear.state): Prop :=
-  exists sg_init ls_init, last_option st_tgt0.(LinearC.get_stack) = Some (LinearC.dummy_stack sg_init ls_init)
+  exists sg_init ls_init, last_option st_tgt0.(LinearC.get_stack) = Some (Linear.dummy_stack sg_init ls_init)
 .
 
 Lemma lift_starN
@@ -183,7 +183,7 @@ Proof.
     esplits; cycle 2.
     + econs; eauto; ss.
       * inv TYP. rpapply match_states_call; eauto.
-        { instantiate (1:= [LTLC.dummy_stack (fn_sig fd) ls_init]). econs; eauto.
+        { instantiate (1:= [LTL.dummy_stack (fn_sig fd) ls_init]). econs; eauto.
           - econs; et.
           - econs; et.
         }

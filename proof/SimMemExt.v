@@ -39,9 +39,6 @@ Program Instance SimMemExt : SimMem.class :=
   sim_val_list := fun (_: t') => Val.lessdef_list;
 }.
 Next Obligation.
-  ss.
-Qed.
-Next Obligation.
   do 2 (apply Axioms.functional_extensionality; i).
   apply prop_ext1.
   split; i; ss; clarify.

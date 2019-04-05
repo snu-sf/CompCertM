@@ -59,6 +59,22 @@ Section SIMMODSEM.
       (BSIM: fsim i1 st_src0 st_tgt1 sm0)
   .
 
+  Inductive sfsim_step xsim (i0: index) (st_src0: L1.(state)) (st_tgt0: L2.(state)) (sm0: SimMem.t): Prop :=
+  | sfsim_step_step
+      (STEP: forall
+          st_src1 tr
+          (STEPSRC: Step L1 st_src0 tr st_src1)
+        ,
+          exists i1 st_tgt1,
+            (<<PLUS: SDPlus L2 st_tgt0 tr st_tgt1>> \/ <<STAR: SDStar L2 st_tgt0 tr st_tgt1 /\ order i1 i0>>)
+            /\ <<XSIM: xsim i1 st_src1 st_tgt1>>)
+      (SINGLE: single_events_at L1 st_src0)
+  | sfsim_step_stutter
+      i1 st_tgt1
+      (STAR: SDStar L2 st_tgt0 nil st_tgt1 /\ order i1 i0)
+      (XSIM: xsim i1 st_src0 st_tgt1)
+  .
+
   Inductive bsim_step (bsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | bsim_step_step
@@ -91,6 +107,18 @@ Section SIMMODSEM.
       <<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>
       /\
       <<FSTEP: fsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>
+      (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
+      (* sd_determ_at_final becomes nothing, but it is OK. *)
+      (* In composed semantics, when it stepped, it must not be final *))
+
+  | lxsim_step_strict_forward
+      (SU: forall (SU: sound_state st_src0),
+      (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
+      (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
+      (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
+      <<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>
+      /\
+      <<FSTEP: sfsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
       (* sd_determ_at_final becomes nothing, but it is OK. *)
       (* In composed semantics, when it stepped, it must not be final *))

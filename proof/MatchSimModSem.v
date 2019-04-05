@@ -162,38 +162,23 @@ Section MATCHSIMFORWARD.
         (<<MWF: SimMem.wf sm_ret>>)
   .
 
-  Let STEPFSIM := forall
-      sm_init idx0 st_src0 st_tgt0 sm0
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
-      (NOTRET: ~ ModSem.is_return ms_src st_src0)
-      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
-    ,
-      (<<RECEP: receptive_at ms_src st_src0>>)
-      /\
-      (<<STEPFSIM: forall
-             tr st_src1
-             (STEPSRC: Step ms_src st_src0 tr st_src1)
-           ,
-             exists idx1 st_tgt1 sm1,
-               (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/
-                           <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
-               /\ (<<MLE: SimMem.le sm0 sm1>>)
-               (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
-               /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
-                    >>)
+  Definition FORWARD sm_init idx0 st_src0 st_tgt0 sm0 :=
+    (<<RECEP: receptive_at ms_src st_src0>>)
+    /\
+    (<<STEPFSIM: forall
+        tr st_src1
+        (STEPSRC: Step ms_src st_src0 tr st_src1)
+      ,
+        exists idx1 st_tgt1 sm1,
+          (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/
+                   <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
+          /\ (<<MLE: SimMem.le sm0 sm1>>)
+          (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
+          /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
+               >>)
   .
 
-  Let STEPBSIM := forall
-      sm_init idx0 st_src0 st_tgt0 sm0
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
-      (NOTRET: ~ ModSem.is_return ms_src st_src0)
-      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
-    ,
-      (* (<<PROGRESS: ModSem.is_step ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) *)
+  Definition BACKWARD sm_init idx0 st_src0 st_tgt0 sm0 :=
       (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>)
       /\
       (<<STEPBSIM: forall
@@ -209,6 +194,31 @@ Section MATCHSIMFORWARD.
                     >>)
   .
 
+  Definition STRICTFORWARD sm_init idx0 st_src0 st_tgt0 sm0 :=
+    (<<STEPFSIM: forall
+        tr st_src1
+        (STEPSRC: Step ms_src st_src0 tr st_src1)
+      ,
+        exists idx1 st_tgt1 sm1,
+          (<<PLUS: SDPlus ms_tgt st_tgt0 tr st_tgt1>> \/
+                   <<STAR: SDStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
+          /\ (<<MLE: SimMem.le sm0 sm1>>)
+          (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
+          /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
+               >>)
+  .
+
+  Hypothesis STEPSIM: forall
+      sm_init idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
+      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
+      (NOTRET: ~ ModSem.is_return ms_src st_src0)
+      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
+      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+    ,
+      (FORWARD \5/ STRICTFORWARD \5/ BACKWARD) sm_init idx0 st_src0 st_tgt0 sm0 
+  .
+
   Remark safe_modsem_is_smaller
          st_src0
          (NOTCALL: ~ ModSem.is_call ms_src st_src0)
@@ -218,8 +228,6 @@ Section MATCHSIMFORWARD.
       ModSem.is_step ms_src st_src0
   .
   Proof. rr. specialize (SAFE _ (star_refl _ _ _ _)). des; ss. eauto. Qed.
-
-  Hypothesis STEPSIM: STEPFSIM \/ STEPBSIM.
 
   Hypothesis BAR: bar_True.
 

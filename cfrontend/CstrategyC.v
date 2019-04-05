@@ -28,54 +28,54 @@ Set Implicit Arguments.
 
 
 
-Section CSTREXTRA.
+(* Section CSTREXTRA. *)
 
-  Definition is_external (ge: genv) (s:state) : Prop :=
-    match s with
-    | Callstate fptr ty args k m  =>
-      match Genv.find_funct ge fptr with
-      | Some f =>
-        match f with
-        | External ef targs tres cconv => is_external_ef ef
-        | _ => False
-        end
-      | None => False
-      end
-    | _ => False
-    end
-  .
+(*   Definition is_external (ge: genv) (s:state) : Prop := *)
+(*     match s with *)
+(*     | Callstate fptr ty args k m  => *)
+(*       match Genv.find_funct ge fptr with *)
+(*       | Some f => *)
+(*         match f with *)
+(*         | External ef targs tres cconv => is_external_ef ef *)
+(*         | _ => False *)
+(*         end *)
+(*       | None => False *)
+(*       end *)
+(*     | _ => False *)
+(*     end *)
+(*   . *)
 
-  Definition internal_function_state (ge: genv) (s:state) : Prop :=
-    match s with
-    | Callstate fptr ty args k m  =>
-      match Genv.find_funct ge fptr with
-      | Some f =>
-        match f with
-        | Internal func => type_of_fundef f = Tfunction Tnil type_int32s cc_default
-        | _ => False
-        end
-      | None => False
-      end
-    | _ => False
-    end
-  .
+(*   Definition internal_function_state (ge: genv) (s:state) : Prop := *)
+(*     match s with *)
+(*     | Callstate fptr ty args k m  => *)
+(*       match Genv.find_funct ge fptr with *)
+(*       | Some f => *)
+(*         match f with *)
+(*         | Internal func => type_of_fundef f = Tfunction Tnil type_int32s cc_default *)
+(*         | _ => False *)
+(*         end *)
+(*       | None => False *)
+(*       end *)
+(*     | _ => False *)
+(*     end *)
+(*   . *)
 
-  Definition external_state (ge: genv) (s:state) : bool :=
-    match s with
-    | Callstate fptr ty args k m  =>
-      match Genv.find_funct ge fptr with
-      | Some f =>
-        match f with
-        | External ef targs tres cconv => is_external_ef ef
-        | _ => false
-        end
-      | None => false
-      end
-    | _ => false
-    end
-  .
+(*   Definition external_state (ge: genv) (s:state) : bool := *)
+(*     match s with *)
+(*     | Callstate fptr ty args k m  => *)
+(*       match Genv.find_funct ge fptr with *)
+(*       | Some f => *)
+(*         match f with *)
+(*         | External ef targs tres cconv => is_external_ef ef *)
+(*         | _ => false *)
+(*         end *)
+(*       | None => false *)
+(*       end *)
+(*     | _ => false *)
+(*     end *)
+(*   . *)
 
-End CSTREXTRA.
+(* End CSTREXTRA. *)
 (*** !!!!!!!!!!!!!!! REMOVE ABOVE AFTER MERGING WITH MIXED SIM BRANCH !!!!!!!!!!!!!!!!!! ***)
 
 
@@ -166,19 +166,19 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once. inv H. inv H. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
-  Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p)).
-  Hypothesis (WF: SkEnv.wf skenv_link).
+  (* Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p)). *)
+  (* Hypothesis (WF: SkEnv.wf skenv_link). *)
 
-  Lemma not_external
-    :
-      is_external ge <1= bot1
-  .
-  Proof.
-    ii. hnf in PR. des_ifs.
-    subst_locals.
-    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply CSkEnv.project_revive_no_external; ss; eauto.
-  Qed.
+  (* Lemma not_external *)
+  (*   : *)
+  (*     is_external ge <1= bot1 *)
+  (* . *)
+  (* Proof. *)
+  (*   ii. hnf in PR. des_ifs. *)
+  (*   subst_locals. *)
+  (*   unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs. *)
+  (*   eapply CSkEnv.project_revive_no_external; ss; eauto. *)
+  (* Qed. *)
 
   (* TODO: change it into strongly receptive *)
   (* Lemma modsem_receptive *)

@@ -239,13 +239,10 @@ Let md_src: Mod.t := (CsemC.module prog).
 Let md_tgt: Mod.t := (module prog).
 Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
 Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
-Hypothesis (WFSRC: SkEnv.wf skenv_link).
-Hypothesis (WFTGT: SkEnv.wf skenv_link).
+Hypothesis (WF: SkEnv.wf skenv_link).
 Let ge: genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
 Let tge: genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) prog) prog.(prog_comp_env).
-Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src.(Mod.modsem) skenv_link) (md_tgt.(Mod.modsem) skenv_link) tt sm_link
-.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
 
 Inductive match_states
           (sm_init: SimMem.t)

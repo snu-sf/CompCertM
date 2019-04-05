@@ -180,19 +180,13 @@ Section MODSEM.
     eapply CSkEnv.project_revive_no_external; ss; eauto.
   Qed.
 
-  Lemma modsem_receptive
-        st
-    :
-      receptive_at modsem st
-  .
-  Proof. admit "this should hold". Qed.
-
-  Lemma modsem_determinate
-        st
-    :
-      determinate_at modsem st
-  .
-  Proof. admit "this should hold". Qed.
+  (* TODO: change it into strongly receptive *)
+  (* Lemma modsem_receptive *)
+  (*       st *)
+  (*   : *)
+  (*     receptive_at modsem st *)
+  (* . *)
+  (* Proof. admit "this should hold". Qed. *)
 
 End MODSEM.
 

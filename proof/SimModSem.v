@@ -14,6 +14,7 @@ Require Import Skeleton SimSymb Ord.
 Require Import ModSem.
 Require Import Sound Preservation.
 Import ModSem.
+Require Import ModSemProps.
 
 Set Implicit Arguments.
 
@@ -308,3 +309,49 @@ End ModSemPair.
 Hint Constructors ModSemPair.sim_skenv.
 
 
+
+
+
+
+Section FACTORTARGET.
+
+  Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+  Variable ms_src ms_tgt: ModSem.t.
+  Variable ss: SimSymb.t.
+  Variable sm: SimMem.t.
+  Hypothesis SINGLE: single_events ms_tgt.
+
+  Let factor_lxsim_target: forall
+      sound_state sm_arg idx0 st_src0 st_tgt0 sm0
+      (SIM: lxsim ms_src ms_tgt sound_state sm_arg idx0 st_src0 st_tgt0 sm0)
+    ,
+      <<SIM: lxsim ms_src (Atomic.trans ms_tgt) sound_state sm_arg idx0 st_src0 ([], st_tgt0) sm0>>
+  .
+  Proof.
+    clear_tac. unfold NW. intro SS.
+    pcofix CIH.
+    i. pfold. punfold SIM. inv SIM.
+    - econs 1.
+      i. exploit SU; eauto. i; des. esplits; eauto. inv FSTEP.
+      + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; eauto. admit "". admit "".
+      + econs 2; eauto. admit "". admit "".
+  Qed.
+
+  Theorem factor_simmodsem_target
+          (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm))
+    :
+      ModSemPair.sim (ModSemPair.mk ms_src ms_tgt.(ModSem.Atomic.trans) ss sm)
+  .
+  Proof.
+    inv SIM. ss.
+    econs; eauto. ss.
+    i. exploit SIM0; eauto.
+    { inv SIMSKENV. ss. econs; eauto. }
+    i; des.
+    split; ss.
+    - ii. rr in INITTGT. des. destruct st_init_tgt; ss. clarify. exploit INITBSIM; eauto. i; des.
+      esplits; eauto. admit "".
+    - ii. des. exploit INITPROGRESS; eauto. i ;des. eexists (_, _). esplits; eauto. rr. ss. econs; eauto.
+  Qed.
+
+End FACTORTARGET.

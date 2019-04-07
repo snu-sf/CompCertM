@@ -1,4 +1,4 @@
-Require Import Events.
+Require Import EventsC.
 Require Import Values.
 Require Import AST.
 Require Import Memory.
@@ -124,6 +124,7 @@ Qed.
 
 Lemma determ_atomic_determ
       (ms: ModSem.t) st0
+      (* (WBT: well_behaved_traces ms) *)
       (DTM: determinate_at ms st0)
   :
     <<DTM: forall tr, determinate_at (ModSem.Atomic.trans ms) (tr, st0)>>
@@ -136,8 +137,15 @@ Proof.
     + determ_tac sd_determ_at. inv H.
     + determ_tac sd_determ_at. esplits; eauto.
       { inv H; econs; eauto. }
-      i; des. clarify. TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT this does not hodl]!!!!!!!!!!!!!
-    + determ_tac sd_determ_at. inv H.
+      i; des. clarify.
+      (* exploit WBT; eauto. i; des. ss. *)
+      assert(tr = tr0).
+      { inv H; ss. }
+      clarify.
+      exploit H0; eauto. i; des. clarify.
+    + esplits; eauto. destruct ev; econs; eauto.
+      THIS DOES NOT HODLR!!!!!!!!!!!!!!!!
+      econs; eauto. determ_tac sd_determ_at. inv H.
     + determ_tac sd_determ_at. inv H.
     + determ_tac sd_determ_at. inv H.
 Qed.

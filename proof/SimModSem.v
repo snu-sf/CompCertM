@@ -15,12 +15,13 @@ Require Import ModSem.
 Require Import Sound Preservation.
 Import ModSem.
 Require Import ModSemProps.
+Require Import Events.
 
 Set Implicit Arguments.
 
 
 Definition safe_modsem (ms: ModSem.t) (st0: ms.(ModSem.state)): Prop :=
-  forall st1 (STAR: Star ms st0 Events.E0 st1),
+  forall st1 (STAR: Star ms st0 E0 st1),
     (<<EVCALL: ms.(ModSem.is_call) st1>>) \/
     (<<EVRET: ms.(ModSem.is_return) st1>>) \/
     (<<EVSTEP: exists tr st2, Step ms st1 tr st2>>)
@@ -319,7 +320,122 @@ Section FACTORTARGET.
   Variable ms_src ms_tgt: ModSem.t.
   Variable ss: SimSymb.t.
   Variable sm: SimMem.t.
-  Hypothesis SINGLE: single_events ms_tgt.
+  Hypothesis SINGLE: single_events ms_src.
+  Hypothesis WBT: well_behaved_traces ms_tgt.
+
+  Section LXSIM.
+
+    Variable sound_state: Sound.t -> mem -> state ms_src -> Prop.
+    Variable PRSV: local_preservation ms_src sound_state.
+    Variable sm_arg: SimMem.t.
+
+    Inductive fbs_match: idx -> state ms_src -> (trace * state ms_tgt) -> SimMem.t -> Prop :=
+    | fbs_match_intro
+        idx0 st_src0 tr st_src1 st_tgt0 sm0
+        (STAR: Star ms_src st_src0 tr st_src1)
+        (MATCH: lxsim ms_src ms_tgt (fun st_src => exists su m_init, sound_state su m_init st_src)
+                      sm_arg idx0 st_src1 st_tgt0 sm0)
+        (WBT: tr = E0 \/ output_trace tr)
+      :
+        fbs_match idx0 st_src0 (tr, st_tgt0) sm0
+    .
+
+    Lemma factor_lxsim_target: forall
+        idx0 st_src0 tr st_tgt0 sm0
+        (SIM: fbs_match idx0 st_src0 (tr, st_tgt0) sm0)
+      ,
+        <<SIM: lxsim ms_src (Atomic.trans ms_tgt) (fun st_src => exists su m_init, sound_state su m_init st_src)
+                     sm_arg idx0 st_src0 (tr, st_tgt0) sm0>>
+    .
+    Proof.
+      clear_tac. unfold NW.
+      pcofix CIH.
+      i. pfold. inv SIM. punfold MATCH.
+      des; clarify; cycle 1.
+      {
+        admit "".
+      }
+      inv MATCH.
+      - econs 1.
+        i. exploit SU0; eauto.
+        { des. inv PRSV. clear - STEP SU1 STAR.
+          ginduction STAR; ii; ss.
+          { esplits; eauto. }
+          exploit STEP; eauto. esplits; eauto.
+          { ii. ModSem.tac. }
+          { ii. ModSem.tac. }
+        }
+        i; des_safe. esplits; eauto.
+        { inv STAR; ss. ii. ModSem.tac. }
+        { inv STAR; ss. ii. ModSem.tac. }
+        clear - SINGLE WBT CIH FSTEP. inv FSTEP.
+        + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; eauto.
+          { des.
+            - left. exploit dplus_atomic_dplus; eauto.
+            - right. esplits; eauto. exploit dstar_atomic_dstar; eauto.
+          }
+          pclearbot. right. eapply CIH; eauto.
+          econs; eauto. apply star_refl.
+        + econs 2; eauto.
+          { des.
+            - esplits; eauto. exploit dstar_atomic_dstar; eauto.
+          }
+          pclearbot. right. eapply CIH; eauto.
+          econs; eauto. apply star_refl.
+      - econs 2.
+        i. exploit SU; eauto. i; des. esplits; eauto.
+        + clear - SINGLE WBT CIH BSTEP. inv BSTEP.
+          * econs 1; eauto. i.
+            destruct tr; ss.
+            {
+              inv STEPTGT.
+              exploit STEP; eauto. i; des_safe. esplits; eauto.
+              pclearbot. right. eapply CIH; eauto.
+              econs; eauto. apply star_refl.
+            }
+            inv STEPTGT.
+            destruct tr0; ss.
+            {
+              exploit STEP; eauto. i; des_safe. esplits; eauto.
+              pclearbot. right. eapply CIH; eauto.
+              econs; eauto. apply star_refl.
+            }
+            exploit WBT; eauto. intro WBT0. ss.
+            exploit STEP; eauto. i; des_safe.
+            des.
+            -- exploit star_non_E0_split'; eauto.
+               { apply plus_star; eauto. }
+               intro P. ss. des. esplits; eauto.
+               pclearbot. right. eapply CIH; eauto.
+               econs. eauto.
+               apply star_refl.
+                exploit plus_inv; eauto. i; des.
+                { exploit SINGLE; eauto. intro LEN; ss. xomega. }
+                (* exploit SINGLE; eauto. intro LEN; ss. *)
+                (* assert(t1 = [e]). *)
+                (* { destruct t1; ss; clarify. *)
+                clarify.
+                left. eauto. apply plus_one. econs; eauto.
+            }
+          * econs 2; eauto.
+            { des.
+              - esplits; eauto. exploit dstar_atomic_dstar; eauto.
+            }
+            pclearbot. right. eapply CIH; eauto.
+          * econs 1; eauto. i.
+            admit "".
+      - econs 3; eauto.
+        ii. exploit SU; eauto. i; des.
+        esplits; eauto.
+        { rr. ss. }
+        i. exploit K; eauto. i; des. eexists (_, _). esplits; eauto.
+        { rr. ss. esplits; eauto. }
+        pclearbot. right. eapply CIH; eauto.
+      - econs 4; eauto.
+        rr. esplits; eauto.
+    Qed.
+
+  End LXSIM.
 
   Let factor_lxsim_target: forall
       sound_state sm_arg idx0 st_src0 st_tgt0 sm0
@@ -332,9 +448,48 @@ Section FACTORTARGET.
     pcofix CIH.
     i. pfold. punfold SIM. inv SIM.
     - econs 1.
-      i. exploit SU; eauto. i; des. esplits; eauto. inv FSTEP.
-      + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; eauto. admit "". admit "".
-      + econs 2; eauto. admit "". admit "".
+      i. exploit SU; eauto. i; des. esplits; eauto.
+      clear - SINGLE WBT CIH FSTEP. inv FSTEP.
+      + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; eauto.
+        { des.
+          - left. exploit dplus_atomic_dplus; eauto.
+          - right. esplits; eauto. exploit dstar_atomic_dstar; eauto.
+        }
+        pclearbot. right. eapply CIH; eauto.
+      + econs 2; eauto.
+        { des.
+          - esplits; eauto. exploit dstar_atomic_dstar; eauto.
+        }
+        pclearbot. right. eapply CIH; eauto.
+    - econs 2.
+      i. exploit SU; eauto. i; des. esplits; eauto.
+      + clear - SINGLE WBT CIH BSTEP. inv BSTEP.
+        * econs 1; eauto. i.
+          destruct tr; ss.
+          {
+            inv STEPTGT.
+            exploit STEP; eauto. i; des_safe. esplits; eauto.
+            pclearbot. right. eapply CIH; eauto.
+          }
+          inv STEPTGT.
+          exploit WBT; eauto. intro WBT0. ss.
+          esplits; eauto.
+        * econs 2; eauto.
+          { des.
+            - esplits; eauto. exploit dstar_atomic_dstar; eauto.
+          }
+          pclearbot. right. eapply CIH; eauto.
+        * econs 1; eauto. i.
+      admit "".
+    - econs 3; eauto.
+      ii. exploit SU; eauto. i; des.
+      esplits; eauto.
+      { rr. ss. }
+      i. exploit K; eauto. i; des. eexists (_, _). esplits; eauto.
+      { rr. ss. esplits; eauto. }
+      pclearbot. right. eapply CIH; eauto.
+    - econs 4; eauto.
+      rr. esplits; eauto.
   Qed.
 
   Theorem factor_simmodsem_target

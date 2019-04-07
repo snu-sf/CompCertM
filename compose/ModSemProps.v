@@ -81,53 +81,72 @@ Proof.
   econs; ii; ModSem.tac.
 Qed.
 
-Lemma step_atomic_step
-      (ms: ModSem.t) st0 tr st1
-      (SINGLE: single_events ms)
-      (STEP: Step ms st0 tr st1)
+Lemma atomic_step_continue_star
+    (ms: ModSem.t) st0 tr
   :
-    <<STEP: Step (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
+    <<STEP: Star (ModSem.Atomic.trans ms) (tr, st0) tr ([], st0)>>
 .
 Proof.
-  exploit SINGLE; eauto. i.
-  destruct tr; ss.
-  - econs; eauto.
-  - destruct tr; ss; try xomega. econs; eauto.
+  i. ginduction tr; ii; ss.
+  { econs; eauto. }
+  econs; eauto.
+  { econs; eauto. }
+  { eapply IHtr; eauto. }
+  ss.
+Qed.
+
+Lemma step_atomic_step
+      (ms: ModSem.t) st0 tr st1
+      (STEP: Step ms st0 tr st1)
+  :
+    <<STEP: Plus (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
+.
+Proof.
+  destruct tr.
+  { apply plus_one. econs; eauto. }
+  s. econs; eauto; swap 2 3.
+  { econs 2; eauto. }
+  { ss. }
+  hexploit atomic_step_continue_star; eauto. ss. eauto.
 Qed.
 
 Lemma star_atomic_star
       (ms: ModSem.t) st0 tr st1
-      (SINGLE: single_events ms)
       (STAR: Star ms st0 tr st1)
   :
     <<STAR: Star (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
 .
 Proof.
-  ginduction STAR; ii; ss.
+  ginduction STAR; ii.
   - econs; eauto.
-  - exploit IHSTAR; eauto. i. econs; eauto. eapply step_atomic_step; eauto.
+  - clarify. eapply star_trans.
+    { exploit step_atomic_step; eauto. i. eapply plus_star; eauto. }
+    { eauto. }
+    ss.
 Qed.
 
 Lemma plus_atomic_plus
       (ms: ModSem.t) st0 tr st1
-      (SINGLE: single_events ms)
       (PLUS: Plus ms st0 tr st1)
   :
     <<PLUS: Plus (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
 .
 Proof.
   inv PLUS.
-  econs; eauto.
+  eapply plus_star_trans.
   { exploit step_atomic_step; eauto. }
   { eapply star_atomic_star; eauto. }
+  ss.
 Qed.
 
 Lemma determ_atomic_determ
       (ms: ModSem.t) st0
       (* (WBT: well_behaved_traces ms) *)
       (DTM: determinate_at ms st0)
+      tr
+      (WBT: output_trace tr)
   :
-    <<DTM: forall tr, determinate_at (ModSem.Atomic.trans ms) (tr, st0)>>
+    <<DTM: determinate_at (ModSem.Atomic.trans ms) (tr, st0)>>
 .
 Proof.
   ii. inv DTM. econs; eauto.
@@ -143,53 +162,100 @@ Proof.
       { inv H; ss. }
       clarify.
       exploit H0; eauto. i; des. clarify.
-    + esplits; eauto. destruct ev; econs; eauto.
-      THIS DOES NOT HODLR!!!!!!!!!!!!!!!!
-      econs; eauto. determ_tac sd_determ_at. inv H.
-    + determ_tac sd_determ_at. inv H.
-    + determ_tac sd_determ_at. inv H.
+    + esplits; eauto. ss. des. destruct ev; ss; econs; eauto.
+  - ii. ss. inv H; ss. xomega.
+Qed.
+
+
+
+
+
+Lemma output_trace_determinate_at
+      (ms: ModSem.t)
+      ev tr st0
+      (WBT: output_event ev)
+  :
+    determinate_at (ModSem.Atomic.trans ms) (ev :: tr, st0)
+.
+Proof.
+  econs; eauto.
+  - ii. ss. inv H; inv H0. split; ss.
+    destruct ev; ss; econs; eauto.
+  - ii. ss. inv H; ss; try xomega.
+Qed.
+
+Lemma atomic_dstep_continue_dstar
+    (ms: ModSem.t) st0 tr
+    (WBT: output_trace tr)
+  :
+    <<STEP: DStar (ModSem.Atomic.trans ms) (tr, st0) tr ([], st0)>>
+.
+Proof.
+  i. ginduction tr; ii; ss.
+  { econs; eauto. }
+  (* exploit determ_atomic_determ; eauto. *)
+  (* { instantiate (1:= []). ss. } *)
+  (* intro DTM0; des. *)
+  econs; eauto.
+  { rr. des. esplits; eauto.
+    - eapply output_trace_determinate_at; eauto.
+    - econs; eauto.
+  }
+  { eapply IHtr; eauto. des; ss. }
+  ss.
 Qed.
 
 Lemma dstep_atomic_dstep
       (ms: ModSem.t) st0 tr st1
-      (SINGLE: single_events ms)
+      (* (SINGLE: single_events ms) *)
+      (WBT: well_behaved_traces ms)
       (STEP: DStep ms st0 tr st1)
   :
-    <<STEP: DStep (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
+    <<STEP: DPlus (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
 .
 Proof.
   rr in STEP. des.
-  exploit step_atomic_step; eauto. i.
-  rr. esplits; eauto.
-  exploit SINGLE; eauto. i.
-  destruct tr; ss.
-  - econs; eauto.
-  - destruct tr; ss; try xomega. econs; eauto.
+  exploit determ_atomic_determ; eauto.
+  { instantiate (1:= []). ss. }
+  intro DTM; des.
+  destruct tr.
+  { apply plus_one. econs; eauto. econs; eauto. }
+  s. econs; eauto; swap 2 3.
+  { rr. split; ss. instantiate (1:= (_, _)). econs 2; eauto. }
+  { ss. }
+  eapply atomic_dstep_continue_dstar; eauto.
+  { exploit WBT; eauto. }
 Qed.
 
-Lemma star_atomic_star
+Lemma dstar_atomic_dstar
       (ms: ModSem.t) st0 tr st1
-      (SINGLE: single_events ms)
-      (STAR: Star ms st0 tr st1)
+      (* (SINGLE: single_events ms) *)
+      (WBT: well_behaved_traces ms)
+      (STAR: DStar ms st0 tr st1)
   :
-    <<STAR: Star (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
+    <<STAR: DStar (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
 .
 Proof.
   ginduction STAR; ii; ss.
   - econs; eauto.
-  - exploit IHSTAR; eauto. i. econs; eauto. eapply step_atomic_step; eauto.
+  - exploit IHSTAR; eauto. i. eapply star_trans.
+    { apply plus_star. exploit dstep_atomic_dstep; eauto. }
+    { eauto. }
+    { ss. }
 Qed.
 
-Lemma plus_atomic_plus
+Lemma dplus_atomic_dplus
       (ms: ModSem.t) st0 tr st1
-      (SINGLE: single_events ms)
-      (PLUS: Plus ms st0 tr st1)
+      (* (SINGLE: single_events ms) *)
+      (WBT: well_behaved_traces ms)
+      (PLUS: DPlus ms st0 tr st1)
   :
-    <<PLUS: Plus (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
+    <<PLUS: DPlus (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
 .
 Proof.
   inv PLUS.
-  econs; eauto.
-  { exploit step_atomic_step; eauto. }
-  { eapply star_atomic_star; eauto. }
+  eapply plus_star_trans.
+  { exploit dstep_atomic_dstep; eauto. }
+  { eapply dstar_atomic_dstar; eauto. }
+  ss.
 Qed.

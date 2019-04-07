@@ -466,3 +466,214 @@ Section FACTORTARGET.
   Qed.
 
 End FACTORTARGET.
+
+
+Lemma atomic_single_evnents
+      (ms: ModSem.t)
+  :
+    <<SINGLE: single_events ms.(ModSem.Atomic.trans)>>
+.
+Proof.
+  ii. inv H; ss. xomega.
+Qed.
+
+Lemma atomic_receptive
+      (ms: ModSem.t)
+      (SSR: strongly_receptive ms)
+      (WBT: well_behaved_traces ms)
+  :
+    <<RCP: receptive ms.(ModSem.Atomic.trans)>>
+.
+Proof.
+  generalize (@atomic_single_evnents ms); eauto. intro SINGLE.
+  inv SSR.
+  econs; ss.
+  { ii. ss.
+    destruct t1; ss.
+    { inv H. inv H0. esplits; eauto. econs; eauto. }
+    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try xomega.
+    destruct t2; ss.
+    { inv H0. }
+    destruct t2; ss; cycle 1.
+    { inv H0. }
+    inv H; ss.
+    - exploit ssr_receptive; eauto. i; des.
+      esplits; eauto.
+      econs; eauto.
+    - esplits; eauto. instantiate (1:= (_, _)).
+      assert(e0 = e).
+      {
+      econs 3; eauto.
+      { instantiate (1:= t2).
+      esplits; eauto. econs; eauto.
+    exploit ssr_receptive; eauto.
+    destruct t1; ss.
+    { inv H0; ss.
+    inv H.
+Qed.
+
+Section FACTORSOURCE.
+
+  Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+  Variable ms_src ms_tgt: ModSem.t.
+  Variable ss: SimSymb.t.
+  Variable sm: SimMem.t.
+  Hypothesis SINGLE: single_events ms_tgt.
+  Hypothesis SSR: strongly_receptive ms_src.
+
+  Section LXSIM.
+
+    Variable sound_state: state ms_src -> Prop.
+    Variable sm_arg: SimMem.t.
+
+    Inductive ffs_match: idx -> (trace * state ms_src) -> state ms_tgt -> SimMem.t -> Prop :=
+    | ffs_match_at
+        idx0 st_src0 st_tgt0 sm0
+        (MATCH: lxsim ms_src ms_tgt sound_state sm_arg idx0 st_src0 st_tgt0 sm0)
+      :
+        ffs_match idx0 ([], st_src0) st_tgt0 sm0
+    | ffs_match_buffer
+        idx0 st_src0 ev tr st_tgt0 st_tgt1 sm0
+        (PLUS: Plus ms_tgt st_tgt0 (ev :: tr) st_tgt1)
+        (MATCH: lxsim ms_src ms_tgt sound_state sm_arg idx0 st_src0 st_tgt0 sm0)
+      :
+        ffs_match idx0 (ev :: tr, st_src0) st_tgt0 sm0
+    .
+
+    Lemma factor_lxsim_source: forall
+        idx0 st_src0 tr st_tgt0 sm0
+        (SIM: ffs_match idx0 (tr, st_src0) st_tgt0 sm0)
+      ,
+        <<SIM: lxsim (Atomic.trans ms_src) ms_tgt (sound_state <*> snd) sm_arg idx0 (tr, st_src0) st_tgt0 sm0>>
+    .
+    Proof.
+      clear_tac. unfold NW.
+      pcofix CIH.
+      i. pfold. inv SIM; cycle 1.
+      {
+        econs; eauto. ss.
+        i. esplits; eauto.
+        { intro T. rr in T. des. inv T. ss. }
+        { intro T. rr in T. des. inv T. ss. }
+        econs; eauto.
+        
+      }
+      punfold MATCH.
+      des; clarify; cycle 1.
+      {
+        rename st_src2 into st_src1.
+        econs 2; eauto.
+        i. split; ss.
+        { inv STAR. split; rr; ii; ModSem.tac. }
+        split; i.
+        - (* bsim *)
+          econs; eauto.
+          exploit star_non_E0_split'_strong; eauto.
+          { apply plus_star; eauto. }
+          intro P; des. des_ifs. des_safe.
+          i. inv STEPTGT.
+          esplits; eauto.
+          { refl. }
+          pclearbot. right. eapply CIH; eauto.
+          econs; eauto.
+          ss. des; ss.
+          { right. esplits; eauto. }
+          { left. clarify. }
+        - (* progress *)
+          destruct tr; ss.
+          ii. esplits; eauto. econs; eauto.
+      }
+      inv MATCH.
+      - econs 1.
+        i. exploit SU; eauto. i; des_safe. esplits; eauto.
+        clear - SINGLE WBT CIH FSTEP. inv FSTEP.
+        + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; eauto.
+          { des.
+            - left. exploit dplus_atomic_dplus; eauto.
+            - right. esplits; eauto. exploit dstar_atomic_dstar; eauto.
+          }
+          pclearbot. right. eapply CIH; eauto.
+          econs; eauto.
+        + econs 2; eauto.
+          { des.
+            - esplits; eauto. exploit dstar_atomic_dstar; eauto.
+          }
+          pclearbot. right. eapply CIH; eauto.
+          econs; eauto.
+      - econs 2.
+        i. exploit SU; eauto. i; des. esplits; eauto.
+        + (* bsim *)
+          clear - SINGLE WBT CIH BSTEP. inv BSTEP.
+          * econs 1; eauto. i.
+            destruct tr; ss.
+            {
+              inv STEPTGT.
+              exploit STEP; eauto. i; des_safe. esplits; eauto.
+              pclearbot. right. eapply CIH; eauto.
+              econs; eauto.
+            }
+            inv STEPTGT.
+            destruct tr0; ss.
+            {
+              exploit STEP; eauto. i; des_safe. esplits; eauto.
+              pclearbot. right. eapply CIH; eauto.
+              econs; eauto.
+            }
+            exploit WBT; eauto. intro WBT0. ss.
+            exploit STEP; eauto. i; des_safe.
+            des.
+            -- exploit star_non_E0_split'; eauto.
+               { apply plus_star; eauto. }
+               intro P. ss. des. esplits; eauto.
+               pclearbot. right. eapply CIH; eauto.
+               econs.
+               { right. esplits; eauto; ss. eapply star_inv in P0. des; clarify; ss. eauto. }
+               eauto.
+            -- exploit star_non_E0_split'; eauto.
+               intro P. ss. des. esplits; eauto.
+               pclearbot. right. eapply CIH; eauto.
+               econs.
+               { right. esplits; eauto; ss. eapply star_inv in P0. des; clarify; ss. eauto. }
+               eauto.
+          * econs 2; eauto.
+            pclearbot. right. eapply CIH; eauto.
+            econs; eauto.
+        + (* progress *)
+          i. exploit PROGRESS; eauto.
+          i; des. destruct tr.
+          * esplits; eauto. instantiate (1:= (_, _)). econs 1; eauto.
+          * esplits; eauto. instantiate (1:= (_, _)). econs 2; eauto.
+      - econs 3; eauto.
+        ii. exploit SU; eauto. i; des.
+        esplits; eauto.
+        { rr. ss. }
+        i. exploit K; eauto. i; des. eexists (_, _). esplits; eauto.
+        { rr. ss. esplits; eauto. }
+        pclearbot. right. eapply CIH; eauto.
+        econs; eauto.
+      - econs 4; eauto.
+        rr. esplits; eauto.
+    Qed.
+
+  End LXSIM.
+
+  Theorem factor_simmodsem_target
+          (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm))
+    :
+      ModSemPair.sim (ModSemPair.mk ms_src ms_tgt.(ModSem.Atomic.trans) ss sm)
+  .
+  Proof.
+    inv SIM. ss.
+    econs; eauto. ss.
+    i. exploit SIM0; eauto.
+    { inv SIMSKENV. ss. econs; eauto. }
+    i; des.
+    split; ss.
+    - ii. rr in INITTGT. des. destruct st_init_tgt; ss. clarify. exploit INITBSIM; eauto. i; des.
+      esplits; eauto.
+      eapply factor_lxsim_target; eauto.
+      econs; eauto.
+    - ii. des. exploit INITPROGRESS; eauto. i ;des. eexists (_, _). esplits; eauto. rr. ss. econs; eauto.
+  Qed.
+
+End FACTORTARGET.

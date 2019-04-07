@@ -64,6 +64,20 @@ Module Mod.
 
   Definition modsem (md: t) (skenv: SkEnv.t): ModSem.t := md.(get_modsem) skenv md.(data).
 
+  Module Atomic.
+  Section Atomic.
+
+    Variable m: t.
+
+    Program Definition trans: t :=
+      mk m.(get_sk) (fun ske dat => ModSem.Atomic.trans (m.(get_modsem) ske dat)) m.(data) _ _
+    .
+    Next Obligation. exploit get_modsem_skenv_spec; eauto. Qed.
+    Next Obligation. exploit get_modsem_skenv_link_spec; eauto. Qed.
+
+  End Atomic.
+  End Atomic.
+
 End Mod.
 
 Coercion Mod.sk: Mod.t >-> Sk.t.

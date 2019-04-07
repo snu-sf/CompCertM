@@ -136,6 +136,81 @@ Module ModSem.
     (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) ms.(skenv_link))
   .
 
+  Module Atomic.
+  Section Atomic.
+
+    Local Coercion ModSem.to_semantics: ModSem.t >-> semantics.
+
+    Variable ms: t.
+
+    Let state := (trace * ms.(state))%type.
+
+    Inductive step (se: Senv.t) (ge: ms.(genvtype)): state -> trace -> state -> Prop :=
+    | step_silent
+        st0 st1
+        (STEPSIL: Step ms st0 E0 st1)
+      :
+        step se ge (E0, st0) E0 (E0, st1)
+    | step_start
+        st0 st1 ev tr
+        (STEPEV: Step ms st0 (ev :: tr) st1)
+      :
+        step se ge (E0, st0) [ev] (tr, st1)
+    | step_continue
+        ev tr st0
+        (* output_trace (ev :: t) -> *)
+      :
+        step se ge (ev :: tr, st0) [ev] (tr, st0)
+    .
+
+    Definition at_external (st0: state) (args: Args.t): Prop :=
+      st0.(fst) = [] /\ ms.(at_external) st0.(snd) args
+    .
+
+    Definition initial_frame (args: Args.t) (st0: state): Prop :=
+      st0.(fst) = [] /\ ms.(initial_frame) args st0.(snd)
+    .
+
+    Definition final_frame (st0: state) (retv: Retv.t): Prop :=
+      st0.(fst) = [] /\ ms.(final_frame) st0.(snd) retv
+    .
+
+    Definition after_external (st0: state) (retv: Retv.t) (st1: state): Prop :=
+      st0.(fst) = [] /\ ms.(after_external) st0.(snd) retv st1.(snd) /\ st1.(fst) = []
+    .
+
+    Program Definition trans: t :=
+      mk step at_external initial_frame final_frame after_external
+         ms.(globalenv) ms.(skenv) ms.(skenv_link) _ _ _ _ _ _
+    .
+    Next Obligation. rr in AT0. rr in AT1. des. eapply at_external_dtm; eauto. Qed.
+    Next Obligation. rr in FINAL0. rr in FINAL1. des. eapply final_frame_dtm; eauto. Qed.
+    Next Obligation.
+      rr in AFTER0. rr in AFTER1. des. destruct st0, st1; ss. clarify. f_equal.
+      eapply after_external_dtm; eauto.
+    Qed.
+    Next Obligation.
+      ii. des. destruct x0, st1; ss. rr in PR. ss. des. clarify.
+      eapply call_step_disjoint; eauto. esplits; eauto.
+      { rr. esplits; eauto. }
+      { rr. inv PR0; esplits; eauto. }
+    Qed.
+    Next Obligation.
+      ii. des. destruct x0, st1; ss. rr in PR0. ss. des. clarify.
+      eapply step_return_disjoint; eauto. esplits; eauto; cycle 1.
+      { rr. esplits; eauto. }
+      { rr. inv PR; esplits; eauto. }
+    Qed.
+    Next Obligation.
+      ii. des. destruct x0; ss. rr in PR. rr in PR0. ss. des. clarify.
+      eapply call_return_disjoint; eauto. esplits; eauto.
+      { rr. esplits; eauto. }
+      { rr. esplits; eauto. }
+    Qed.
+
+  End Atomic.
+  End Atomic.
+
 End ModSem.
 
 Hint Unfold ModSem.is_call ModSem.is_step ModSem.is_return.

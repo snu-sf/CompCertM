@@ -64,3 +64,44 @@ Lemma plus_or_star_inv
 Proof.
   des; eauto. eapply star_inv; eauto.
 Qed.
+
+Lemma star_non_E0_split'_strong
+      L
+      (SINGLE: single_events L)
+      st0 tr st1
+      (STAR: Star L st0 tr st1)
+  :
+    match tr with
+    | [] => True
+    | ev :: tr' => exists st0x, Plus L st0 [ev] st0x /\
+                                ((tr' <> E0 /\ Plus L st0x tr' st1) \/ (tr' = E0 /\ st0x = st1))
+    end
+.
+Proof.
+  ginduction STAR; ii; ss.
+  des_ifs.
+  { destruct t1; ss. clarify. exploit SINGLE; eauto. i; des. ss. destruct t1; ss; try xomega.
+    esplits.
+    { eapply plus_star_trans; eauto.
+      - apply plus_one. eauto.
+      - ss.
+    }
+    right; ss.
+  }
+  exploit IHSTAR; eauto. i; des_safe.
+  destruct t1; ss; clarify.
+  - esplits; eauto.
+    + eapply star_plus_trans; eauto.
+      * apply star_one; eauto.
+      * ss.
+  - exploit SINGLE; eauto. i. ss. destruct t1; ss; try xomega.
+    esplits; eauto.
+    + eapply plus_one; eauto.
+    + des.
+      * left. split; ss.
+        eapply plus_star_trans; eauto.
+        { eapply plus_star; eauto. }
+        ss.
+      * clarify.
+        left. split; ss.
+Qed.

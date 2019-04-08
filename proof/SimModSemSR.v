@@ -285,12 +285,8 @@ Section FACTORSOURCE.
   Variable ss: SimSymb.t.
   Variable sm: SimMem.t.
   Hypothesis SSR: strongly_receptive ms_src. (* Note: We can quantify it for fsim_step only, but for convenience. *)
-  Hypothesis DTM: forall st, determinate_at ms_tgt st. (* Note: we can remove it *)
 
-  Let SINGLE: single_events ms_tgt.
-  Proof.
-    ii. eapply DTM; eauto.
-  Qed.
+  Hypothesis SINGLE: single_events ms_tgt.
 
   Section LXSIM.
 
@@ -306,7 +302,7 @@ Section FACTORSOURCE.
     | ffs_match_buffer
         idx0 st_src0 ev tr st_tgt0 st_tgt1 sm0
         (* (SSR: strongly_receptive_at ms_src st_src0) *)
-        (PLUS: Plus ms_tgt st_tgt0 (ev :: tr) st_tgt1)
+        (PLUS: DPlus ms_tgt st_tgt0 (ev :: tr) st_tgt1)
         (MATCH: lxsimSR ms_src ms_tgt sound_state sm_arg idx0 st_src0 st_tgt1 sm0)
       :
         ffs_match idx0 (ev :: tr, st_src0) st_tgt0 sm0
@@ -332,18 +328,16 @@ Section FACTORSOURCE.
         econs; eauto; cycle 1.
         { eapply atomic_receptive_at_nonnil; eauto. }
         i. inv STEPSRC. ss. des.
-        exploit star_non_E0_split'_strong; swap 1 2; eauto.
+        exploit Pstar_non_E0_split'_strong; swap 1 2; eauto.
         { eapply plus_star; eauto. }
         intro P; ss. des_safe.
         des.
         - esplits; eauto.
-          + left. eapply spread_dplus; eauto.
           + refl.
           + pclearbot. right. eapply CIH; eauto.
             destruct tr0; ss.
             econs; eauto.
         - clarify. esplits; eauto.
-          + left. eapply spread_dplus; eauto.
           + refl.
           + pclearbot. right. eapply CIH; eauto.
             econs; eauto.
@@ -354,7 +348,7 @@ Section FACTORSOURCE.
         exploit SU; eauto. i; des_safe. esplits; eauto.
         { intro T. rr in T. des. ss. apply SAFESRC. rr. inv T. esplits; eauto. }
         { intro T. rr in T. des. ss. apply SAFESRC0. rr. inv T. esplits; eauto. }
-        clear - SSR SINGLE DTM CIH FSTEP. inv FSTEP.
+        clear - SSR SINGLE CIH FSTEP. inv FSTEP.
         + econs 1; eauto; cycle 1.
           { eapply atomic_receptive_at; eauto.
             econs; eauto.
@@ -367,26 +361,23 @@ Section FACTORSOURCE.
             econs; eauto.
           * exploit STEP; eauto. i; des_safe.
             des.
-            { exploit star_non_E0_split'_strong; swap 1 2; eauto.
-              { eapply plus_star. eapply DPlus_Plus; eauto. }
+            { exploit Pstar_non_E0_split'_strong; swap 1 2; eauto.
+              { eapply plus_star; eauto. }
               intro P; ss. des_safe.
               des; clarify.
               - destruct tr0; ss.
                 esplits; eauto.
-                { left. eapply spread_dplus; eauto. }
                 pclearbot. right. eapply CIH; eauto.
                 econs; eauto.
               - esplits; eauto.
                 pclearbot. right. eapply CIH; eauto.
                 econs; eauto.
             }
-            { exploit star_non_E0_split'_strong; swap 1 2; eauto.
-              { eapply DStar_Star; eauto. }
+            { exploit Pstar_non_E0_split'_strong; swap 1 2; eauto.
               intro P; ss. des_safe.
               des; clarify.
               - destruct tr0; ss.
                 esplits; eauto.
-                { left. eapply spread_dplus; eauto. }
                 pclearbot. right. eapply CIH; eauto.
                 econs; eauto.
               - esplits; eauto.

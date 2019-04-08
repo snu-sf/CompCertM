@@ -158,7 +158,7 @@ Module ModSem.
         step se ge (E0, st0) [ev] (tr, st1)
     | step_continue
         ev tr st0
-        (* output_trace (ev :: t) -> *)
+        (WBT: output_trace (ev :: tr))
       :
         step se ge (ev :: tr, st0) [ev] (tr, st0)
     .

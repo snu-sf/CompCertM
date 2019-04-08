@@ -83,6 +83,7 @@ Qed.
 
 Lemma atomic_step_continue_star
     (ms: ModSem.t) st0 tr
+    (WBT: output_trace tr)
   :
     <<STEP: Star (ModSem.Atomic.trans ms) (tr, st0) tr ([], st0)>>
 .
@@ -91,12 +92,13 @@ Proof.
   { econs; eauto. }
   econs; eauto.
   { econs; eauto. }
-  { eapply IHtr; eauto. }
+  { eapply IHtr; eauto. des; ss. }
   ss.
 Qed.
 
 Lemma step_atomic_step
       (ms: ModSem.t) st0 tr st1
+      (WBT: well_behaved_traces ms)
       (STEP: Step ms st0 tr st1)
   :
     <<STEP: Plus (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
@@ -107,11 +109,13 @@ Proof.
   s. econs; eauto; swap 2 3.
   { econs 2; eauto. }
   { ss. }
+  exploit WBT; eauto. i; ss.
   hexploit atomic_step_continue_star; eauto. ss. eauto.
 Qed.
 
 Lemma star_atomic_star
       (ms: ModSem.t) st0 tr st1
+      (WBT: well_behaved_traces ms)
       (STAR: Star ms st0 tr st1)
   :
     <<STAR: Star (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
@@ -121,12 +125,13 @@ Proof.
   - econs; eauto.
   - clarify. eapply star_trans.
     { exploit step_atomic_step; eauto. i. eapply plus_star; eauto. }
-    { eauto. }
+    { exploit IHSTAR; eauto. }
     ss.
 Qed.
 
 Lemma plus_atomic_plus
       (ms: ModSem.t) st0 tr st1
+      (WBT: well_behaved_traces ms)
       (PLUS: Plus ms st0 tr st1)
   :
     <<PLUS: Plus (ModSem.Atomic.trans ms) ([], st0) tr ([], st1)>>
@@ -199,7 +204,7 @@ Proof.
   econs; eauto.
   { rr. des. esplits; eauto.
     - eapply output_trace_determinate_at; eauto.
-    - econs; eauto.
+    - econs; eauto. ss.
   }
   { eapply IHtr; eauto. des; ss. }
   ss.
@@ -258,4 +263,145 @@ Proof.
   { exploit dstep_atomic_dstep; eauto. }
   { eapply dstar_atomic_dstar; eauto. }
   ss.
+Qed.
+
+Lemma atomic_single_events_at
+      (ms: ModSem.t)
+  :
+    <<SINGLE: forall st, single_events_at ms.(ModSem.Atomic.trans) st>>
+.
+Proof.
+  ii. inv H; ss. xomega.
+Qed.
+
+Lemma atomic_single_evnents
+      (ms: ModSem.t)
+  :
+    <<SINGLE: single_events ms.(ModSem.Atomic.trans)>>
+.
+Proof.
+  ii. inv H; ss. xomega.
+Qed.
+
+Lemma atomic_receptive_at
+      (ms: ModSem.t)
+      st0
+      (SSR: strongly_receptive_at ms st0)
+  :
+    <<RCP: forall tr, receptive_at ms.(ModSem.Atomic.trans) (tr, st0)>>
+.
+Proof.
+  generalize (@atomic_single_evnents ms); eauto. intro SINGLE.
+  inv SSR.
+  econs; ss.
+  { ii. ss.
+    destruct t1; ss.
+    { inv H. inv H0. esplits; eauto. econs; eauto. }
+    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try xomega.
+    destruct t2; ss.
+    { inv H0. }
+    destruct t2; ss; cycle 1.
+    { inv H0. }
+    inv H; ss.
+    - exploit ssr_receptive_at; eauto. i; des.
+      esplits; eauto.
+      econs; eauto.
+    - esplits; eauto. instantiate (1:= (_, _)).
+      assert(e0 = e).
+      { des. inv H0; ss. }
+      clarify.
+      econs 3; eauto.
+  }
+  eapply atomic_single_events_at; eauto.
+Qed.
+
+Lemma atomic_receptive_at_nonnil
+      (ms: ModSem.t)
+  :
+    <<RCP: forall st0 ev tr, receptive_at ms.(ModSem.Atomic.trans) (ev :: tr, st0)>>
+.
+Proof.
+  generalize (@atomic_single_evnents ms); eauto. intro SINGLE.
+  ii.
+  econs; ss.
+  { ii. ss.
+    destruct t1; ss.
+    { inv H. }
+    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try xomega.
+    destruct t2; ss.
+    { inv H0. }
+    destruct t2; ss; cycle 1.
+    { inv H0. }
+    inv H; ss.
+    des. assert(e = e0). { inv H0; ss. } clarify.
+    esplits; eauto.
+    econs; eauto.
+    ss.
+  }
+  eapply atomic_single_events_at; eauto.
+Qed.
+
+Lemma atomic_receptive
+      (ms: ModSem.t)
+      (SSR: strongly_receptive ms)
+  :
+    <<RCP: receptive ms.(ModSem.Atomic.trans)>>
+.
+Proof.
+  generalize (@atomic_single_evnents ms); eauto. intro SINGLE.
+  inv SSR.
+  econs; ss.
+  { ii. ss.
+    destruct t1; ss.
+    { inv H. inv H0. esplits; eauto. econs; eauto. }
+    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try xomega.
+    destruct t2; ss.
+    { inv H0. }
+    destruct t2; ss; cycle 1.
+    { inv H0. }
+    inv H; ss.
+    - exploit ssr_receptive; eauto. i; des.
+      esplits; eauto.
+      econs; eauto.
+    - esplits; eauto. instantiate (1:= (_, _)).
+      assert(e0 = e).
+      { des. inv H0; ss. }
+      clarify.
+      econs 3; eauto.
+  }
+Qed.
+
+Lemma DStep_Step
+      L st0 tr st1
+      (STEP: DStep L st0 tr st1)
+  :
+    <<STEP: Step L st0 tr st1>>
+.
+Proof.
+  rr in STEP. des. ss.
+Qed.
+
+Lemma DStar_Star
+      L st0 tr st1
+      (STAR: DStar L st0 tr st1)
+  :
+    <<STAR: Star L st0 tr st1>>
+.
+Proof.
+  ginduction STAR; ii; ss.
+  { eapply star_refl. }
+  clarify. eapply star_trans; eauto. eapply star_one. eapply DStep_Step; eauto.
+Qed.
+
+Lemma DPlus_Plus
+      L st0 tr st1
+      (PLUS: DPlus L st0 tr st1)
+  :
+    <<PLUS: Plus L st0 tr st1>>
+.
+Proof.
+  inv PLUS.
+  econs; eauto.
+  { eapply DStep_Step; eauto. }
+  { eapply DStar_Star; eauto. }
 Qed.

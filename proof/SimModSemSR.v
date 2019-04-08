@@ -17,7 +17,7 @@ Import ModSem.
 Require Import ModSemProps.
 Require Import Events.
 Require Import SmallstepC.
-Require Import SimModSem.
+Require Export SimModSem.
 
 Set Implicit Arguments.
 
@@ -48,7 +48,7 @@ Section SIMMODSEM.
             /\ <<MLE: SimMem.le sm0 sm1>>
 (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm1>>)
-      (* (RECEP: strongly_receptive_at ms_src st_src0) *)
+      (RECEP: strongly_receptive_at ms_src st_src0)
   | fsim_step_stutter
       i1 st_tgt1
       (STAR: DStar ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
@@ -284,8 +284,7 @@ Section FACTORSOURCE.
   Variable ms_src ms_tgt: ModSem.t.
   Variable ss: SimSymb.t.
   Variable sm: SimMem.t.
-  Hypothesis SSR: strongly_receptive ms_src. (* Note: We can quantify it for fsim_step only, but for convenience. *)
-
+  Hypothesis WBT: well_behaved_traces ms_src.
   Hypothesis SINGLE: single_events ms_tgt.
 
   Section LXSIM.
@@ -348,13 +347,9 @@ Section FACTORSOURCE.
         exploit SU; eauto. i; des_safe. esplits; eauto.
         { intro T. rr in T. des. ss. apply SAFESRC. rr. inv T. esplits; eauto. }
         { intro T. rr in T. des. ss. apply SAFESRC0. rr. inv T. esplits; eauto. }
-        clear - SSR SINGLE CIH FSTEP. inv FSTEP.
+        clear - SINGLE CIH FSTEP. inv FSTEP.
         + econs 1; eauto; cycle 1.
-          { eapply atomic_receptive_at; eauto.
-            econs; eauto.
-            - ii. eapply ssr_receptive; eauto.
-            - ii. eapply ssr_well_behaved; eauto.
-          }
+          { eapply atomic_receptive_at; eauto. }
           i. inv STEPSRC; ss.
           * exploit STEP; eauto. i; des_safe. esplits; eauto.
             pclearbot. right. eapply CIH; eauto.
@@ -392,23 +387,23 @@ Section FACTORSOURCE.
         { intro T. rr in T. des. ss. apply SAFESRC. rr. inv T. esplits; eauto. }
         { intro T. rr in T. des. ss. apply SAFESRC0. rr. inv T. esplits; eauto. }
         + (* bsim *)
-          clear - SSR SINGLE CIH BSTEP. inv BSTEP.
+          clear - WBT SINGLE CIH BSTEP. inv BSTEP.
           * econs 1; eauto. i.
             exploit STEP; eauto. i; des_safe. esplits; eauto.
             { des.
-              - left. instantiate (1:= (_, _)). eapply plus_atomic_plus; eauto. eapply ssr_well_behaved; eauto.
-              - right. split; eauto. eapply star_atomic_star; eauto. eapply ssr_well_behaved; eauto.
+              - left. instantiate (1:= (_, _)). eapply plus_atomic_plus; eauto.
+              - right. split; eauto. eapply star_atomic_star; eauto.
             }
             pclearbot. right. eapply CIH; eauto.
             econs; eauto.
           * des. econs 2; eauto.
-            { split; eauto. instantiate (1:= (_, _)). eapply star_atomic_star; et. eapply ssr_well_behaved; et. }
+            { split; eauto. instantiate (1:= (_, _)). eapply star_atomic_star; et. }
             pclearbot. right. eapply CIH; eauto.
             econs; eauto.
         + (* progress *)
-          i. exploit PROGRESS; eauto. clear - STEPSRC SSR.
+          i. exploit PROGRESS; eauto. clear - STEPSRC WBT.
           ii. exploit STEPSRC; eauto.
-          { instantiate (1:= (_ ,_)). eapply star_atomic_star; eauto. eapply ssr_well_behaved; eauto. }
+          { instantiate (1:= (_ ,_)). eapply star_atomic_star; eauto. }
           i; des; eauto.
           * left. rr. rr in EVCALL. des. inv EVCALL. ss; clarify. eauto.
           * right. left. rr. rr in EVRET. des. inv EVRET. ss; clarify. eauto.
@@ -429,7 +424,7 @@ Section FACTORSOURCE.
 
   End LXSIM.
 
-  Theorem factor_simmodsem_target
+  Theorem factor_simmodsem_source
           (SIM: ModSemPair.simSR (ModSemPair.mk ms_src ms_tgt ss sm))
     :
       ModSemPair.sim (ModSemPair.mk ms_src.(ModSem.Atomic.trans) ms_tgt ss sm)

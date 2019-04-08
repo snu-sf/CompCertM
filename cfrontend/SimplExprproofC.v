@@ -7,7 +7,8 @@ Require Import SimplExpr SimplExprspec.
 (** newly added **)
 Require Export SimplExprproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSemSR SimSymb SimMem MatchSimModSemSR.
+Require Import ModSemProps.
 Require Import CtypesC.
 Require Import CtypingC.
 Require SimMemId.
@@ -37,6 +38,7 @@ Inductive match_states (sm_init: SimMem.t)
 | match_states_intro
     (MATCHST: SimplExprproof.match_states tge st_src0 st_tgt0)
     (MWF: SimMem.wf sm0)
+    (MEASURE: measure st_src0 = idx)
     (* (MCOMPATSRC: st_src0.(CsemC.get_mem) = sm0.(SimMem.src)) *)
     (* (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt)) *)
 .
@@ -57,7 +59,7 @@ Qed.
 
 Theorem sim_modsem
   :
-    ModSemPair.sim msp
+    ModSemPair.simSR msp
 .
 Proof.
   eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := SoundTop.sound_state);
@@ -87,53 +89,54 @@ Proof.
     inv TYP. inv H0.
     esplits; eauto. econs; eauto.
     + folder. rewrite <- FPTR. eauto.
-    + rewrite <- VALS. ss. admit "".
-    (* + ss. eauto with congruence. *)
+    + rewrite <- VALS. inv H3. econs; eauto with congruence.
   - (* call wf *)
     inv MATCH; ss.
   - (* call fsim *)
-    (* inv MATCH; ss. destruct sm0; ss. clarify. *)
-    (* inv CALLSRC. inv MATCHST; ss. *)
-    (* folder. *)
-    (* esplits; eauto. *)
-    (* + econs; eauto. *)
-    (*   * folder. des. *)
-    (*     r in TRANSL. r in TRANSL. *)
-    (*     exploit (SimSymbId.sim_skenv_revive TRANSL); eauto. *)
-    (*     { apply SIMSKENV. } *)
-    (*     intro GE. *)
-    (*     apply (fsim_external_funct_id GE); ss. *)
-    (* + econs; ss; eauto. *)
-    (*   * instantiate (1:= SimMemId.mk _ _). ss. *)
-    (*   * ss. *)
-    (* + ss. *)
-    admit "".
+    inv MATCH; ss. destruct sm0; ss. clarify.
+    inv CALLSRC. inv MATCHST; ss.
+    folder.
+    esplits; eauto.
+    + econs; eauto.
+      * ss. folder. des.
+        destruct TRANSL as [TRANSL0 _].
+        exploit (SimSymbId.sim_skenv_revive TRANSL0); eauto.
+        { apply SIMSKENV. }
+        intro GE; des.
+        apply (fsim_external_funct_id GE); ss.
+    + econs; ss; eauto.
+      * instantiate (1:= SimMemId.mk _ _). ss.
+      * ss.
+    + ss.
   - (* after fsim *)
-    admit "".
-    (* inv AFTERSRC. *)
-    (* inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify. *)
-    (* inv MATCH; ss. inv MATCHST; ss. *)
-    (* esplits; eauto. *)
-    (* + econs; eauto. *)
-    (* + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto. *)
+    inv AFTERSRC.
+    inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv MATCH; ss. inv MATCHST; ss.
+    esplits; eauto.
+    + econs; eauto. rewrite RETV in *. eauto.
+    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
   - (* final fsim *)
-    (* inv MATCH. inv FINALSRC; inv MATCHST; ss. *)
-    (* inv STACKS; ss. destruct sm0; ss. clarify. *)
-    (* eexists (SimMemId.mk _ _). esplits; ss; eauto. *)
-    admit "".
+    inv MATCH. inv FINALSRC; inv MATCHST; ss.
+    inv H3. destruct sm0; ss. clarify.
+    eexists (SimMemId.mk _ _). esplits; ss; eauto.
   - left; i.
     esplits; eauto.
-    { apply modsem_receptive; et. }
+    { apply modsem_strongly_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog skenv_link); eauto.
+    ii. hexploit (@simulation prog skenv_link skenv_link); eauto.
     { inv SIMSKENV. ss. }
-    { apply make_match_genvs; eauto. apply SIMSKENV. }
-    i; des.
+    { exploit make_match_genvs; eauto. { eapply SIMSKENV. } intro T; des. esplits; eauto. }
+    i. des_safe.
     esplits; eauto.
-    + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
-    + instantiate (1:= SimMemId.mk _ _). econs; ss.
+    + des.
+      * left. eapply spread_dplus; eauto.
+        { eapply modsem1_determinate; eauto. }
+      * right. esplits; eauto. eapply spread_dstar; eauto.
+        { eapply modsem1_determinate; eauto. }
+    + econs; eauto.
 Unshelve.
   all: ss; try (by econs).
+  all: try apply Mem.empty.
 Qed.
 
 End SIMMODSEM.
@@ -143,9 +146,10 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Variables prog tprog: program.
+Variable prog: Csyntax.program.
+Variable tprog: Clight.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Definition mp: ModPair.t := ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt.
+Definition mp: ModPair.t := ModPair.mk (CstrategyC.module prog).(Mod.Atomic.trans) (ClightC.module1 tprog) tt.
 
 Theorem sim_mod
   :
@@ -154,7 +158,12 @@ Theorem sim_mod
 Proof.
   econs; ss.
   - r. admit "easy - see DeadcodeproofC".
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. eapply factor_simmodsem_source; eauto.
+    { ii. ss. hexploit (@modsem_strongly_receptive skenv_link_tgt prog s); eauto. intro SR.
+      inv SR. exploit ssr_traces_at; eauto.
+    }
+    { ii. ss. eapply modsem1_receptive; ss; eauto. }
+    ss. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

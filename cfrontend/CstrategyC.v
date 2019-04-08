@@ -180,13 +180,12 @@ Section MODSEM.
   (*   eapply CSkEnv.project_revive_no_external; ss; eauto. *)
   (* Qed. *)
 
-  (* TODO: change it into strongly receptive *)
-  (* Lemma modsem_receptive *)
-  (*       st *)
-  (*   : *)
-  (*     receptive_at modsem st *)
-  (* . *)
-  (* Proof. admit "this should hold". Qed. *)
+  Lemma modsem_strongly_receptive
+        st
+    :
+      strongly_receptive_at modsem st
+  .
+  Proof. admit "this should hold". Qed.
 
 End MODSEM.
 
@@ -331,7 +330,7 @@ End SIMMODSEM.
 Section SIMMOD.
 
 Variables prog: program.
-Definition mp: ModPair.t := ModPair.mk (CsemC.module prog) (module prog) tt.
+Definition mp: ModPair.t := ModPair.mk (CsemC.module prog) (module prog).(Mod.Atomic.trans) tt.
 
 Theorem sim_mod
   :
@@ -339,7 +338,13 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK.
+    eapply factor_simmodsem_target; eauto.
+    { ii. eapply CsemC.single_events_at; eauto. ss. eauto. }
+    { ii. ss. hexploit (@modsem_strongly_receptive skenv_link_tgt prog s); eauto. intro SR.
+      inv SR. exploit ssr_traces_at; eauto.
+    }
+    eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

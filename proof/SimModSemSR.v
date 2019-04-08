@@ -17,17 +17,10 @@ Import ModSem.
 Require Import ModSemProps.
 Require Import Events.
 Require Import SmallstepC.
+Require Export SimModSem.
 
 Set Implicit Arguments.
 
-
-Definition safe_modsem (ms: ModSem.t) (st0: ms.(ModSem.state)): Prop :=
-  forall st1 (STAR: Star ms st0 E0 st1),
-    (<<EVCALL: ms.(ModSem.is_call) st1>>) \/
-    (<<EVRET: ms.(ModSem.is_return) st1>>) \/
-    (<<EVSTEP: exists tr st2, Step ms st1 tr st2>>)
-.
-Hint Unfold safe_modsem.
 
 Section SIMMODSEM.
 
@@ -55,7 +48,7 @@ Section SIMMODSEM.
             /\ <<MLE: SimMem.le sm0 sm1>>
 (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm1>>)
-      (RECEP: receptive_at ms_src st_src0)
+      (RECEP: strongly_receptive_at ms_src st_src0)
   | fsim_step_stutter
       i1 st_tgt1
       (STAR: DStar ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
@@ -82,23 +75,23 @@ Section SIMMODSEM.
 
   Print xsim.
 
-  Inductive _lxsim (lxsim: SimMem.t ->
+  Inductive _lxsimSR (lxsimSR: SimMem.t ->
                            idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (sm_init: SimMem.t)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
-  | lxsim_step_forward
+  | lxsimSR_step_forward
       (SU: forall (SU: sound_state st_src0),
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
       <<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>
       /\
-      <<FSTEP: fsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>
+      <<FSTEP: fsim_step (lxsimSR sm_init) i0 st_src0 st_tgt0 sm0>>
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
       (* sd_determ_at_final becomes nothing, but it is OK. *)
       (* In composed semantics, when it stepped, it must not be final *))
 
-  | lxsim_step_backward
+  | lxsimSR_step_backward
       (SU: forall (SU: sound_state st_src0),
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
@@ -107,15 +100,15 @@ Section SIMMODSEM.
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
         (* , *)
-         (<<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
+         (<<BSTEP: bsim_step (lxsimSR sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
       (<<PROGRESS:
          forall
            (* (STEPSRC: ms_src.(ModSem.is_step) st_src0) *)
-           (STEPSRC: safe_modsem ms_src st_src0)
+           (STEPSRC: SimModSem.safe_modsem ms_src st_src0)
          ,
            (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
 
-  (* | lxsim_at_external *)
+  (* | lxsimSR_at_external *)
   (*     rs_arg_src rs_arg_tgt *)
   (*     (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
   (*     m_arg_src m_arg_tgt *)
@@ -136,9 +129,9 @@ Section SIMMODSEM.
   (*         (<<AFTERSRC: ms_src.(after_external) st_src0 rs_arg_src rs_ret_src sm1.(SimMem.src) *)
   (*                                                                                  st_src1>>) *)
   (*         /\ *)
-  (*         (<<LXSIM: lxsim i1 st_src1 st_tgt1 (SimMem.unlift sm0 sm1)>>)) *)
+  (*         (<<LXSIMSR: lxsimSR i1 st_src1 st_tgt1 (SimMem.unlift sm0 sm1)>>)) *)
 
-  | lxsim_at_external
+  | lxsimSR_at_external
       (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
       (MWF: SimMem.wf sm0)
       (* (CALLPROGRESS: forall *)
@@ -175,10 +168,10 @@ Section SIMMODSEM.
                   /\
                   (<<MLE: SimMem.le sm0 sm_after>>)
                   /\
-                  (<<LXSIM: lxsim sm_init i1 st_src1 st_tgt1 sm_after>>)>>)
+                  (<<LXSIMSR: lxsimSR sm_init i1 st_src1 st_tgt1 sm_after>>)>>)
                   )>>)
 
-  | lxsim_final
+  | lxsimSR_final
       sm_ret
       (MLE: SimMem.le sm_init sm_ret)
       (MWF: SimMem.wf sm_ret)
@@ -202,10 +195,10 @@ Section SIMMODSEM.
 
   .
 
-  Definition lxsim: _ -> _ -> _ -> _ -> _ -> Prop := paco5 _lxsim bot5.
+  Definition lxsimSR: _ -> _ -> _ -> _ -> _ -> Prop := paco5 _lxsimSR bot5.
 
-  Lemma lxsim_mon:
-    monotone5 _lxsim.
+  Lemma lxsimSR_mon:
+    monotone5 _lxsimSR.
   Proof.
     repeat intro. inv IN; eauto.
     - econs 1; ss.
@@ -229,48 +222,20 @@ Section SIMMODSEM.
 
 End SIMMODSEM.
 
-Hint Unfold lxsim.
-Hint Resolve lxsim_mon: paco.
+Hint Unfold lxsimSR.
+Hint Resolve lxsimSR_mon: paco.
 
 Print HintDb typeclass_instances.
 
 
-
 Module ModSemPair.
+Include SimModSem.ModSemPair.
 Section MODSEMPAIR.
 Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
-  Record t: Type := mk {
-    src: ModSem.t;
-    tgt: ModSem.t;
-    ss: SimSymb.t;
-    sm: SimMem.t;
-  }
-  .
 
-  Inductive sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
-  | sim_skenv_intro
-    (SIMSKE: SimSymb.sim_skenv sm0 msp.(ss) msp.(src).(ModSem.skenv) msp.(tgt).(ModSem.skenv))
-    ss_link
-    (SIMSKELINK: SimSymb.sim_skenv sm0 ss_link msp.(src).(ModSem.skenv_link) msp.(tgt).(ModSem.skenv_link))
-  .
-
-  Lemma mfuture_preserves_sim_skenv
-        msp sm0 sm1
-        (MFUTURE: SimMem.future sm0 sm1)
-        (SIMSKENV: sim_skenv msp sm0)
-    :
-      <<SIMSKENV: sim_skenv msp sm1>>
-  .
-  Proof.
-    inv SIMSKENV.
-    econs.
-    - eapply SimSymb.mfuture_preserves_sim_skenv; eauto.
-    - eapply SimSymb.mfuture_preserves_sim_skenv; eauto.
-  Qed.
-
-  Inductive sim (msp: t): Prop :=
-  | sim_intro
+  Inductive simSR (msp: t): Prop :=
+  | simSR_intro
       (* (SIMSKENV: sim_skenv msp msp.(sm)) *)
       sound_state
       (PRSV: local_preservation msp.(src) sound_state)
@@ -295,7 +260,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
               exists st_init_src sm_init idx_init,
                 (<<MLE: SimMem.le sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(src).(initial_frame) args_src st_init_src>>) /\
-                (<<SIM: lxsim msp.(src) msp.(tgt) (fun st => exists su m_init, sound_state su m_init st)
+                (<<SIM: lxsimSR msp.(src) msp.(tgt) (fun st => exists su m_init, sound_state su m_init st)
                                                   sm_arg idx_init st_init_src st_init_tgt sm_init>>)>>)
           /\
           (<<INITPROGRESS: forall
@@ -313,131 +278,144 @@ Hint Constructors ModSemPair.sim_skenv.
 
 
 
-
-
-Section FACTORTARGET.
+Section FACTORSOURCE.
 
   Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Variable ms_src ms_tgt: ModSem.t.
   Variable ss: SimSymb.t.
   Variable sm: SimMem.t.
-  Hypothesis SINGLE: single_events ms_src.
-  Hypothesis WBT: well_behaved_traces ms_tgt.
+  Hypothesis WBT: well_behaved_traces ms_src.
+  Hypothesis SINGLE: single_events ms_tgt.
 
   Section LXSIM.
 
     Variable sound_state: state ms_src -> Prop.
     Variable sm_arg: SimMem.t.
 
-    Inductive fbs_match: idx -> state ms_src -> (trace * state ms_tgt) -> SimMem.t -> Prop :=
-    | fbs_match_intro
-        idx0 st_src0 tr st_src1 st_tgt0 sm0
-        (STAR: (st_src0 = st_src1 /\ tr = E0) \/ ((Plus ms_src st_src0 tr st_src1) /\ output_trace tr /\ tr <> []))
-        (MATCH: lxsim ms_src ms_tgt sound_state sm_arg idx0 st_src1 st_tgt0 sm0)
+    Inductive ffs_match: idx -> (trace * state ms_src) -> state ms_tgt -> SimMem.t -> Prop :=
+    | ffs_match_at
+        idx0 st_src0 st_tgt0 sm0
+        (MATCH: lxsimSR ms_src ms_tgt sound_state sm_arg idx0 st_src0 st_tgt0 sm0)
       :
-        fbs_match idx0 st_src0 (tr, st_tgt0) sm0
+        ffs_match idx0 ([], st_src0) st_tgt0 sm0
+    | ffs_match_buffer
+        idx0 st_src0 ev tr st_tgt0 st_tgt1 sm0
+        (* (SSR: strongly_receptive_at ms_src st_src0) *)
+        (PLUS: DPlus ms_tgt st_tgt0 (ev :: tr) st_tgt1)
+        (MATCH: lxsimSR ms_src ms_tgt sound_state sm_arg idx0 st_src0 st_tgt1 sm0)
+      :
+        ffs_match idx0 (ev :: tr, st_src0) st_tgt0 sm0
     .
 
-    Lemma factor_lxsim_target: forall
+    Lemma factor_lxsim_source: forall
         idx0 st_src0 tr st_tgt0 sm0
-        (SIM: fbs_match idx0 st_src0 (tr, st_tgt0) sm0)
+        (SIM: ffs_match idx0 (tr, st_src0) st_tgt0 sm0)
       ,
-        <<SIM: lxsim ms_src (Atomic.trans ms_tgt) sound_state sm_arg idx0 st_src0 (tr, st_tgt0) sm0>>
+        <<SIM: SimModSem.lxsim (Atomic.trans ms_src) ms_tgt (sound_state <*> snd) sm_arg idx0 (tr, st_src0) st_tgt0 sm0>>
     .
     Proof.
       clear_tac. unfold NW.
       pcofix CIH.
-      i. pfold. inv SIM. punfold MATCH.
-      des; clarify; cycle 1.
+      i. pfold.
+      (* exploit atomic_receptive; eauto. intro RECEP. *)
+      inv SIM; cycle 1.
       {
-        rename st_src2 into st_src1.
-        econs 2; eauto.
-        i. split; ss.
-        { inv STAR. split; rr; ii; ModSem.tac. }
-        split; i.
-        - (* bsim *)
-          econs; eauto.
-          exploit star_non_E0_split'_strong; eauto.
-          { apply plus_star; eauto. }
-          intro P; des. des_ifs. des_safe.
-          i. inv STEPTGT.
-          esplits; eauto.
-          { refl. }
-          pclearbot. right. eapply CIH; eauto.
-          econs; eauto.
-          ss. des; ss.
-          { right. esplits; eauto. }
-          { left. clarify. }
-        - (* progress *)
-          destruct tr; ss.
-          ii. esplits; eauto. econs; eauto.
+        econs; eauto. ss.
+        i. esplits; eauto.
+        { intro T. rr in T. des. inv T. ss. }
+        { intro T. rr in T. des. inv T. ss. }
+        econs; eauto; cycle 1.
+        { eapply atomic_receptive_at_nonnil; eauto. }
+        i. inv STEPSRC. ss. des.
+        exploit Pstar_non_E0_split'_strong; swap 1 2; eauto.
+        { eapply plus_star; eauto. }
+        intro P; ss. des_safe.
+        des.
+        - esplits; eauto.
+          + refl.
+          + pclearbot. right. eapply CIH; eauto.
+            destruct tr0; ss.
+            econs; eauto.
+        - clarify. esplits; eauto.
+          + refl.
+          + pclearbot. right. eapply CIH; eauto.
+            econs; eauto.
       }
-      inv MATCH.
+      punfold MATCH. inv MATCH.
       - econs 1.
-        i. exploit SU; eauto. i; des_safe. esplits; eauto.
-        clear - SINGLE WBT CIH FSTEP. inv FSTEP.
-        + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; eauto.
-          { des.
-            - left. exploit dplus_atomic_dplus; eauto.
-            - right. esplits; eauto. exploit dstar_atomic_dstar; eauto.
-          }
-          pclearbot. right. eapply CIH; eauto.
-          econs; eauto.
-        + econs 2; eauto.
-          { des.
-            - esplits; eauto. exploit dstar_atomic_dstar; eauto.
-          }
+        i.
+        exploit SU; eauto. i; des_safe. esplits; eauto.
+        { intro T. rr in T. des. ss. apply SAFESRC. rr. inv T. esplits; eauto. }
+        { intro T. rr in T. des. ss. apply SAFESRC0. rr. inv T. esplits; eauto. }
+        clear - SINGLE CIH FSTEP. inv FSTEP.
+        + econs 1; eauto; cycle 1.
+          { eapply atomic_receptive_at; eauto. }
+          i. inv STEPSRC; ss.
+          * exploit STEP; eauto. i; des_safe. esplits; eauto.
+            pclearbot. right. eapply CIH; eauto.
+            econs; eauto.
+          * exploit STEP; eauto. i; des_safe.
+            des.
+            { exploit Pstar_non_E0_split'_strong; swap 1 2; eauto.
+              { eapply plus_star; eauto. }
+              intro P; ss. des_safe.
+              des; clarify.
+              - destruct tr0; ss.
+                esplits; eauto.
+                pclearbot. right. eapply CIH; eauto.
+                econs; eauto.
+              - esplits; eauto.
+                pclearbot. right. eapply CIH; eauto.
+                econs; eauto.
+            }
+            { exploit Pstar_non_E0_split'_strong; swap 1 2; eauto.
+              intro P; ss. des_safe.
+              des; clarify.
+              - destruct tr0; ss.
+                esplits; eauto.
+                pclearbot. right. eapply CIH; eauto.
+                econs; eauto.
+              - esplits; eauto.
+                pclearbot. right. eapply CIH; eauto.
+                econs; eauto.
+            }
+        + econs 2; eauto; cycle 1.
           pclearbot. right. eapply CIH; eauto.
           econs; eauto.
       - econs 2.
         i. exploit SU; eauto. i; des. esplits; eauto.
+        { intro T. rr in T. des. ss. apply SAFESRC. rr. inv T. esplits; eauto. }
+        { intro T. rr in T. des. ss. apply SAFESRC0. rr. inv T. esplits; eauto. }
         + (* bsim *)
-          clear - SINGLE WBT CIH BSTEP. inv BSTEP.
+          clear - WBT SINGLE CIH BSTEP. inv BSTEP.
           * econs 1; eauto. i.
-            destruct tr; ss.
-            {
-              inv STEPTGT.
-              exploit STEP; eauto. i; des_safe. esplits; eauto.
-              pclearbot. right. eapply CIH; eauto.
-              econs; eauto.
+            exploit STEP; eauto. i; des_safe. esplits; eauto.
+            { des.
+              - left. instantiate (1:= (_, _)). eapply plus_atomic_plus; eauto.
+              - right. split; eauto. eapply star_atomic_star; eauto.
             }
-            inv STEPTGT.
-            destruct tr0; ss.
-            {
-              exploit STEP; eauto. i; des_safe. esplits; eauto.
-              pclearbot. right. eapply CIH; eauto.
-              econs; eauto.
-            }
-            exploit WBT; eauto. intro WBT0. ss.
-            exploit STEP; eauto. i; des_safe.
-            des.
-            -- exploit star_non_E0_split'; eauto.
-               { apply plus_star; eauto. }
-               intro P. ss. des. esplits; eauto.
-               pclearbot. right. eapply CIH; eauto.
-               econs.
-               { right. esplits; eauto; ss. eapply star_inv in P0. des; clarify; ss. eauto. }
-               eauto.
-            -- exploit star_non_E0_split'; eauto.
-               intro P. ss. des. esplits; eauto.
-               pclearbot. right. eapply CIH; eauto.
-               econs.
-               { right. esplits; eauto; ss. eapply star_inv in P0. des; clarify; ss. eauto. }
-               eauto.
-          * econs 2; eauto.
+            pclearbot. right. eapply CIH; eauto.
+            econs; eauto.
+          * des. econs 2; eauto.
+            { split; eauto. instantiate (1:= (_, _)). eapply star_atomic_star; et. }
             pclearbot. right. eapply CIH; eauto.
             econs; eauto.
         + (* progress *)
-          i. exploit PROGRESS; eauto.
-          i; des. destruct tr.
-          * esplits; eauto. instantiate (1:= (_, _)). econs 1; eauto.
-          * esplits; eauto. instantiate (1:= (_, _)). econs 2; eauto.
-      - econs 3; eauto.
+          i. exploit PROGRESS; eauto. clear - STEPSRC WBT.
+          ii. exploit STEPSRC; eauto.
+          { instantiate (1:= (_ ,_)). eapply star_atomic_star; eauto. }
+          i; des; eauto.
+          * left. rr. rr in EVCALL. des. inv EVCALL. ss; clarify. eauto.
+          * right. left. rr. rr in EVRET. des. inv EVRET. ss; clarify. eauto.
+          * right. right. rr. rr in EVSTEP. inv EVSTEP; ss; clarify; eauto.
+      - rr in SAFESRC. des.
+        econs 3; eauto.
+        { rr. esplits; eauto. econs; eauto. }
         ii. exploit SU; eauto. i; des.
-        esplits; eauto.
-        { rr. ss. }
-        i. exploit K; eauto. i; des. eexists (_, _). esplits; eauto.
-        { rr. ss. esplits; eauto. }
+        inv ATSRC. ss. determ_tac at_external_dtm.
+        esplits; eauto. i.
+        inv AFTERSRC. des; ss. destruct st_src1; ss. clarify. clear_tac.
+        exploit K; eauto. i; des. esplits; eauto.
         pclearbot. right. eapply CIH; eauto.
         econs; eauto.
       - econs 4; eauto.
@@ -446,26 +424,51 @@ Section FACTORTARGET.
 
   End LXSIM.
 
-  Theorem factor_simmodsem_target
-          (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm))
+  Theorem factor_simmodsem_source
+          (SIM: ModSemPair.simSR (ModSemPair.mk ms_src ms_tgt ss sm))
     :
-      ModSemPair.sim (ModSemPair.mk ms_src ms_tgt.(ModSem.Atomic.trans) ss sm)
+      ModSemPair.sim (ModSemPair.mk ms_src.(ModSem.Atomic.trans) ms_tgt ss sm)
   .
   Proof.
     inv SIM. ss.
-    econs; eauto. ss.
+    econs; eauto; ss.
+    { instantiate (1:= fun su m st_src => sound_state su m st_src.(snd)). ss.
+      inv PRSV. econs; ss; eauto.
+      - ii. exploit INIT; eauto. rr in INIT0. des. ss.
+      - ii. inv STEP0; ss.
+        { exploit STEP; eauto.
+          { des. split; intro T; rr in T; des.
+            - contradict SAFE. rr. esplits; eauto. econs; eauto.
+            - contradict SAFE0. rr. esplits; eauto. econs; eauto.
+          }
+        }
+        { exploit STEP; eauto.
+          { des. split; intro T; rr in T; des.
+            - contradict SAFE. rr. esplits; eauto. econs; eauto.
+            - contradict SAFE0. rr. esplits; eauto. econs; eauto.
+          }
+        }
+      - i. rr in AT. des. destruct st0; ss. clarify.
+        exploit CALL; eauto. i; des. esplits; eauto.
+        i. exploit K; eauto. rr in AFTER. des. ss.
+      - i. exploit RET; eauto. rr in FINAL. des. ss.
+    }
     i. exploit SIM0; eauto.
     { inv SIMSKENV. ss. econs; eauto. }
     i; des.
     split; ss.
-    - ii. rr in INITTGT. des. destruct st_init_tgt; ss. clarify. exploit INITBSIM; eauto. i; des.
+    - ii. des. exploit INITBSIM; eauto.
+      { rr in SAFESRC. des. esplits; eauto. }
+      i; des.
+      clears _st_init_src. clear_tac.
       esplits; eauto.
-      eapply factor_lxsim_target; eauto.
+      { instantiate (1:= (_, _)). econs; ss; eauto. }
+      replace (fun st => exists su m_init, sound_state su m_init (snd st)) with
+          ((fun st => exists su m_init, sound_state su m_init st) <*> (@snd trace _)); cycle 1.
+      { unfold compose. ss. }
+      eapply factor_lxsim_source; eauto; cycle 1.
       econs; eauto.
-    - ii. des. exploit INITPROGRESS; eauto. i ;des. eexists (_, _). esplits; eauto. rr. ss. econs; eauto.
+    - ii. des. exploit INITPROGRESS; eauto. rr in SAFESRC. des. esplits; eauto.
   Qed.
 
-End FACTORTARGET.
-
-
-
+End FACTORSOURCE.

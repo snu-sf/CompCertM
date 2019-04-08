@@ -225,6 +225,14 @@ Section MODSEM.
   (* . *)
   (* Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed. *)
 
+  Lemma single_events_at
+        st
+    :
+      single_events_at modsem st
+  .
+  Proof.
+    admit "".
+  Qed.
 
 End MODSEM.
 

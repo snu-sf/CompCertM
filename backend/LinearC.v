@@ -384,7 +384,7 @@ Section MODSEM.
   Proof.
     inv RECEP. econs; eauto; ii; ss.
     - inv H. exploit sr_receptive_at; eauto. i; des.
-      esplits; eauto. econs; eauto. inv STEP; inv H; ss.
+      esplits; eauto. econs; eauto. inv H; inv H1; ss.
     - inv H. exploit sr_traces_at; eauto.
   Qed.
 

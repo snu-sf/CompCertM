@@ -86,14 +86,18 @@ Definition get_stack (st: state): list stackframe :=
   | Returnstate stk _ _ => stk
   end.
 
-Inductive step: state -> trace -> state -> Prop :=
-| step_intro
-    st0 tr st1
-    (STEP: Mach.step return_address_offset se ge st0 tr st1)
-    (NOTDUMMY: st1.(get_stack) <> [])
-  :
-    step st0 tr st1
+Definition step: state -> trace -> state -> Prop := fun st0 tr st1 =>
+  <<STEP: Mach.step return_address_offset se ge st0 tr st1>> /\ <<NOTDUMMY: st1.(get_stack) <> []>>
 .
+
+(* Inductive step: state -> trace -> state -> Prop := *)
+(* | step_intro *)
+(*     st0 tr st1 *)
+(*     (STEP: Mach.step return_address_offset se ge st0 tr st1) *)
+(*     (NOTDUMMY: st1.(get_stack) <> []) *)
+(*   : *)
+(*     step st0 tr st1 *)
+(* . *)
 
 (* Inductive step: state -> trace -> state -> Prop := *)
 (*   | exec_Mlabel: *)
@@ -225,6 +229,8 @@ Inductive step: state -> trace -> state -> Prop :=
 (*         E0 (State s f sp c rs m). *)
 
 End NEWSTEP.
+
+Hint Unfold step.
 
 Definition get_mem (st: state): mem :=
   match st with

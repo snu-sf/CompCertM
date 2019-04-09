@@ -148,7 +148,7 @@ Proof.
     esplits; eauto.
     { apply LTLC.modsem_receptive; et. }
     inv MATCH.
-    ii. inv STEPSRC. hexploit (@transf_step_correct prog skenv_link skenv_link); eauto.
+    ii. r in STEPSRC; des. hexploit (@transf_step_correct prog skenv_link skenv_link); eauto.
     { inv SIMSKENV. inv SIMSKELINK. ss. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     i; des.

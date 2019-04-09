@@ -938,9 +938,18 @@ Proof.
             { omega. }
             des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
 
-          + exfalso. unfold Z.max in *.
-            (* clear - LOAD RANGE LOADC T. *)
-            admit "ez - byte vs fragment of ptr".
+          + exfalso.
+            unfold Mem.loadbytes in *. des_ifs.
+            rename H0 into P. rename H1 into Q.
+            clear - P Q T RANGE POS.
+            abstr ((Mem.mem_contents m1) !! blk) MC. clear_tac.
+            assert(POS0: 0 <= Z.max z 0) by xomega.
+            exploit (@Mem.getN_in MC ofs_mid (Z.max z 0).(Z.to_nat) ofs_bound); eauto.
+            { split; try xomega. rewrite Z2Nat.id; ss. }
+            intro R.
+            rewrite Q in *. unfold nat_of_Z in *. rewrite P in *.
+            clear - R.
+            apply in_list_repeat in R. ss.
 
           + des_ifs; cycle 1.
             { exfalso. unfold Mem.loadbytes in *. des_ifs.

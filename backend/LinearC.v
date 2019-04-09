@@ -66,14 +66,18 @@ Definition get_stack (st: state): list stackframe :=
   | Returnstate stk _ _ => stk
   end.
 
-Inductive step: state -> trace -> state -> Prop :=
-| step_intro
-    st0 tr st1
-    (STEP: Linear.step se ge st0 tr st1)
-    (NOTDUMMY: st1.(get_stack) <> [])
-  :
-    step st0 tr st1
+Definition step: state -> trace -> state -> Prop := fun st0 tr st1 =>
+  <<STEP: Linear.step se ge st0 tr st1>> /\ <<NOTDUMMY: st1.(get_stack) <> []>>
 .
+
+(* Inductive step: state -> trace -> state -> Prop := *)
+(* | step_intro *)
+(*     st0 tr st1 *)
+(*     (STEP: Linear.step se ge st0 tr st1) *)
+(*     (NOTDUMMY: st1.(get_stack) <> []) *)
+(*   : *)
+(*     step st0 tr st1 *)
+(* . *)
 
 (* Inductive step: state -> trace -> state -> Prop := *)
 (*   | exec_Lgetstack: *)
@@ -191,6 +195,8 @@ Inductive step: state -> trace -> state -> Prop :=
 (*         E0 (State s f sp c rs m). *)
 
 End NEWSTEP.
+
+Hint Unfold step.
 
 
 Definition get_mem (st: state): mem :=
@@ -402,7 +408,7 @@ Section PROPS.
     <<LAST: last_option (get_stack st1) = Some dummy_stack>>
   .
   Proof.
-    inv STEP; ss. inv STEP0; ss; des_ifs.
+    r in STEP. des. inv STEP0; ss; des_ifs.
   Qed.
 
 End PROPS.

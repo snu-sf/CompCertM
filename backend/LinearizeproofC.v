@@ -163,7 +163,6 @@ Proof.
       esplits; eauto.
       * left. eapply spread_dplus; eauto.
         { eapply modsem_determinate; eauto. }
-        ss. rpapply PLUS. admit "".
       * instantiate (1:= SimMemId.mk _ _). econs; ss.
     + clarify.
       esplits; et.

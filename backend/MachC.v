@@ -403,7 +403,7 @@ Section MODSEM.
       exploit sr_receptive_at; eauto. i; des. destruct s1; ss.
       exists (mkstate init_rs1 init_sg1 s2).
       econs; eauto. ss.
-      { admit "ez - prove get_stack dtm as a lemma". }
+      { inv STEP; inv H; ss. }
     - inv H.
       exploit sr_traces_at; eauto.
   Qed.

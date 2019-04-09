@@ -308,7 +308,7 @@ Lemma Forall2_impl
     <<FORALL: Forall2 Q xs ys>>
 .
 Proof.
-  admit "easy".
+  induction FORALL; econs; eauto.
 Qed.
 
 Inductive Forall3 X Y Z (R: X -> Y -> Z -> Prop): list X -> list Y -> list Z -> Prop :=
@@ -332,7 +332,7 @@ Lemma Forall3_impl
     <<FORALL: Forall3 Q xs ys zs>>
 .
 Proof.
-  admit "easy".
+  induction FORALL; econs; eauto.
 Qed.
 
 
@@ -1306,7 +1306,7 @@ Lemma NoDup_norepet
     NoDup xs <-> list_norepet xs
 .
 Proof.
-  admit "ez - TODO: move to CoqlibC".
+  split; induction 1; econs; ss.
 Qed.
 
 Ltac swapname NAME1 NAME2 :=

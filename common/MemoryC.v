@@ -417,7 +417,7 @@ Local Transparent Mem.alloc.
       rewrite PMap.gsspec. des_ifs.
 Local Opaque Mem.alloc.
   - ii. des_ifs; try eapply INJ; eauto with mem.
-    { admit "ez". }
+    { exfalso. eapply H. eapply valid_new_block. eauto. }
   - ii. des_ifs; try eapply INJ; eauto with mem.
   - ii. des_ifs; try (by exploit NOPERM; eauto).
     eapply INJ; [apply H|..]; eauto.
@@ -478,10 +478,14 @@ Proof.
       Local Transparent encode_val.
       destruct chunk; ss; repeat (unfold ZMap.set in *; rewrite PMap.gsspec; des_ifs; [econs; eauto|]);
         eapply INJ; eauto.
- - admit "ez".
- - admit "ez".
- - admit "ez".
- - admit "ez".
+ - ii. eapply mi_freeblocks; eauto. ii. eapply H. eapply store_valid_block_1; eauto.
+ - eapply no_overlap_equiv. ii. erewrite Mem_store_perm_eq; try eapply STORESRC. eauto. eapply mi_no_overlap; eauto.
+ - ii. exploit mi_representable; eauto. des.
+   { left. eapply perm_store_2; eauto. }
+   { right. eapply perm_store_2; eauto. }
+ - ii. exploit mi_perm_inv; eauto. ii. des.
+   { left. eapply perm_store_1; eauto. }
+   { right. ii. eapply H1. eapply perm_store_2; eauto. }
 Qed.
 
 End ARGPASSING.

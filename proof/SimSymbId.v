@@ -30,7 +30,7 @@ Lemma sim_skenv_equiv
 Proof.
   About Genv.senv_match_genv.
   About Unnamed_thm.
-  admit "this should hold".
+  rewrite SIMSKENV. eapply GlobalenvsC.Senv_eq_equiv_obligation_1.
 Qed.
 
 Lemma system_sim_skenv

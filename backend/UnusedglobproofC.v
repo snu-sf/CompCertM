@@ -199,9 +199,7 @@ Proof.
           - admit "ez - genb".
           - admit "ez - genb".
         }
-        {
-          admit "ez - typify_list_inject_list".
-        }
+        { eapply inject_list_typify_list; eauto. }
         { eapply MWF. }
   - des. inv SAFESRC.
     inv SIMARGS; ss.

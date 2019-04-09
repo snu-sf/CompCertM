@@ -95,6 +95,46 @@ Proof.
   eapply Loc.in_notin_diff; eauto.
 Qed.
 
+Lemma aux1: forall (A:Type) (l: list A) n m,
+    list_nth_z l n = Some m ->
+    list_nth_z (firstn (Z.to_nat (n + 1)) l) n = Some m.
+Proof.
+  induction l; ss; i.
+  exploit list_nth_z_range; eauto. i.
+  destruct n; ss; try nia. clear H0.
+  replace (Z.to_nat (Z.pos p + 1)) with (Datatypes.S (Z.to_nat (Z.pos p))); cycle 1. { admit "A". }
+  rewrite firstn_cons.
+  Transparent list_nth_z. unfold list_nth_z. fold list_nth_z. Opaque list_nth_z. simpl.
+  admit "TODO".
+Qed.
+
+Lemma aux2: forall (A: Type) (l: list A) n,
+    (le (Datatypes.length l) n /\ firstn (n + 1) l = firstn n l) \/ (lt n (Datatypes.length l) /\ exists x, firstn (n + 1) l = (firstn n l) ++ [x]).
+Proof.
+  induction l; i; try by (left; do 2 rewrite firstn_nil; split; ss; omega).
+  destruct n.
+  { right. ss. split; try omega. eauto. }
+  specialize (IHl n). ss. des.
+  - left. split; try omega. rewrite IHl0. ss.
+  - right. split; try omega. rewrite IHl0. eauto.
+Qed.
+
+Lemma aux3: forall l1 l2 x,
+    Loc.disjoint (l1++[x]) l2 -> Loc.disjoint l1 l2.
+Proof.
+  unfold Loc.disjoint. i. eapply H; eauto. eapply in_or_app. left. eauto.
+Qed.
+
+Lemma aux4: forall l n m,
+          Loc.norepet l ->
+          list_nth_z l n = Some m ->
+          Loc.notin m (firstn (Z.to_nat n) l).
+Proof.
+  induction l; i; ss.
+  inv H.
+  admit "TODO".
+Qed.
+
 Lemma loc_arguments_norepet_aux
       tys (ir fr ofs: Z)
       locs
@@ -121,12 +161,15 @@ Proof.
     esplits; eauto.
     + econs; eauto.
       eapply Loc.disjoint_notin; try apply NOTINIR.
-      admit "easy".
+      eapply in_map. eapply list_nth_z_in. eapply aux1. eauto.
     + eapply Loc_cons_right_disjoint; eauto.
-      { admit "easy". }
-      { admit "easy". }
+      { exploit (aux2 int_param_regs). i; des.
+        - rewrite <- H0. replace (Z.to_nat ir + 1)%nat with (Z.to_nat (ir + 1)); eauto. admit "A".
+        - rewrite H0 in NOTINIR. rewrite list_append_map in NOTINIR. eapply aux3. eauto.
+      }
+      { clear - Heq.  }
     + eapply Loc_cons_right_disjoint; eauto.
-      { admit "easy". }
+      { clear - Heq. admit "easy". }
   - specialize (IHtys ir fr (ofs + 2) _ eq_refl); des; ss.
     esplits; eauto.
     + econs; eauto.
@@ -353,12 +396,15 @@ Proof.
   ginduction locs; ii; destruct vs; ss.
   { clarify. }
   des_ifs_safe.
-  exploit IHlocs; eauto. { admit "norept app - ez". } i; des.
+  exploit IHlocs; eauto. { eapply loc_norepet_app; eauto. } i; des.
   spc ONES. exploit ONES; eauto. i; des; ss. des_ifs; ss. clear_tac.
   split; ss.
   - red. f_equal; ss.
     + u. des_ifs.
-    + admit "this should hold".
+    + clear - NOREPT. inv NOREPT. induction locs; ss.
+      f_equal.
+      * unfold locmap_put. destruct a; ss; des; apply_all_once Loc.diff_not_eq; des_ifs.
+      * eapply loc_norepet_app in H2. eapply IHlocs; eauto. destruct a; inv H1; try inv H0; eauto.
   - ii; des.
     u. des_ifs.
     + contradict NOTIN. eauto.

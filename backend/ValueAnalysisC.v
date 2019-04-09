@@ -252,8 +252,10 @@ Section PRSV.
         clear - IMG ROMATCH H INCL.
         ii. exploit (ROMATCH b id ab); eauto.
         { rewrite IMG in *. des_ifs. ss. des_ifs.
-          - admit "ez - Heq Heq0".
-          - admit "ez - Heq Heq0".
+          - clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
+            rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
+          - clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
+            rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
         }
         { hexploit (romem_for_consistent_2 _ _ H); eauto. intro LO.
           exploit LO; eauto. intro LOA; des.
@@ -310,8 +312,10 @@ Section PRSV.
         esplits; et.
         eapply bmatch_incr; et.
         ii. ss. rewrite IMG. des_ifs.
-        * admit "ez - Heq Heq0".
-        * admit "ez - Heq Heq0".
+        * clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
+          rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
+        * clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
+          rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
         *
           clear - Heq0 Heq H0.
           apply_all_once Genv.invert_find_symbol.
@@ -560,7 +564,7 @@ Section PRSV.
         eapply sound_return_state with (bc := bc'); eauto.
         *
           apply sound_stack_new_bound with (Mem.nextblock m_arg); cycle 1.
-          { admit "ez". }
+          { inv HLEAFTER. des. ss. }
           apply sound_stack_exten with bc; auto; cycle 1.
           { i. rewrite IMG. unfold f. des_ifs. }
           apply sound_stack_inv with m_arg; auto.
@@ -570,9 +574,20 @@ Section PRSV.
           u. i.
           eapply BCLE1; et. ss. des_ifs. des_sumbool. ss.
         * eapply VMTOP; et. unfold typify. des_ifs.
-        * admit "ez - RO".
+        * eapply romatch_exten; cycle 1.
+          { instantiate (1 := bc). rewrite IMG. subst f. split; i; try by des_ifs.
+            des_ifs_safe. exfalso. eapply n. eapply mmatch_below. eauto. congruence.
+          }
+          (* inv AT. inv MLE. inv GR. *)
+          econs.
+          { eapply RO; eauto. }
+          { exploit RO; eauto. i; des.
+            admit "A".
+            (* split. *)
+            (* - eapply bmatch_inv; eauto. i. unfold Mem.loadbytes. admit "A". *)
+            (* - ii. eapply H3. admit "TODO". *)
+          }
         *
-
           {
             constructor; simpl; intros.
             + apply ablock_init_sound. apply SMTOP. simpl; congruence.
@@ -583,7 +598,13 @@ Section PRSV.
               * eapply Pos.lt_le_trans. eauto. { inv AT. apply MLE. }
               * rewrite IMG in *. subst f. ss. des_ifs.
           }
-        * admit "ez".
+        * eapply genv_match_exten; eauto.
+          { rewrite IMG. subst f. split; i; try by des_ifs.
+            des_ifs_safe. exfalso. eapply n. eapply mmatch_below. eauto. congruence.
+          }
+          { i. rewrite IMG. unfold f. des_ifs_safe.
+            exfalso. eapply n. eapply mmatch_below. eauto. congruence.
+          }
         * red; simpl; intros. rewrite IMG. unfold f. des_ifs.
           eapply NOSTK; auto.
         * ss. etrans; eauto.

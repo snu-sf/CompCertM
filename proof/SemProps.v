@@ -362,8 +362,9 @@ Local Transparent Linker_prog.
     ii; ss.
     inv FIND0; inv FIND1.
     generalize (link_includes p Heq). intro INCLS.
+    remember (Sk.load_skenv t) as skenv_link.
     unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss.
-    abstr (Genv.globalenv t) skenv_link. rename t into sk_link.  rename Heq into SKLINK.
+    rename t into sk_link.  rename Heq into SKLINK.
     rewrite in_map_iff in *.
     u in *.
     destruct MODSEM.
@@ -375,7 +376,8 @@ Local Transparent Linker_prog.
     clarify.
     destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs.
     rename Heq0 into DEF0. rename Heq into DEF1.
-
+    remember (Genv.globalenv sk_link) as skenv_link.
+    
     hexploit (@Mod.get_modsem_projected_sk md0 skenv_link); eauto. intro SPEC0; des.
     hexploit (@Mod.get_modsem_projected_sk md1 skenv_link); eauto. intro SPEC1; des.
     remember (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
@@ -422,10 +424,120 @@ Local Transparent Linker_prog.
       { apply SYMBBIG1. }
     } clarify.
     rename id1 into id.
-
-    clear - DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK H0 MODSEM1.
+    remember (Genv.globalenv sk_link) as skenv_link.
+    
+    clear - SYMBBIG0 WFBIG Heqskenv_link DEF0 DEF1 (* DEFBIG *) DEFS0 DEFS1 SKLINK H0 MODSEM1.
     destruct (classic (md0 = md1)); ss.
     { clarify. }
+
+    exfalso.
+
+    clear_tac.
+    generalize dependent sk_link.
+    ginduction p; i; ss.
+    dup SKLINK.
+    eapply link_list_cons_inv in SKLINK; cycle 1.
+    { destruct p0; ss.
+      inv H0; inv MODSEM1; clarify.
+    }
+    des_safe.
+    hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe.
+    hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
+
+    des; clarify.
+    - rewrite <- Mod.get_modsem_skenv_spec in *.
+      rewrite Forall_forall in TLORD.
+      assert (In (Mod.get_sk md0 (Mod.data md0)) (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0)).
+      { rewrite in_map_iff. exists md0. auto. }
+      assert (linkorder (Mod.get_sk md0 (Mod.data md0)) restl).
+      { exploit TLORD; eauto. }
+      Local Transparent Linker_prog.
+
+      assert (SkEnv.includes (Genv.globalenv sk_link) (Mod.get_sk md0 (Mod.data md0))).
+      { 
+        eapply link_includes.
+        instantiate (1 := (md1 :: p0)).
+        unfold link_sk. unfold Mod.sk. simpl. eauto. ss. eauto. }
+
+      inv WFBIG.
+      exploit DEFSYMB; eauto. i. des.
+      exploit SkEnv.project_impl_spec; eauto. i. inv H4.
+      exploit SYMBKEEP; eauto. i. 
+      
+      assert (INTERN0: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md0 (Mod.data md0))) = Some (Gfun (Internal int_sig))).
+      { rewrite SYMBBIG0 in H4.
+        exploit DEFKEPT. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des.
+        eauto. } des.
+
+
+      exploit (@prog_defmap_linkorder (fundef signature) unit). eapply H2.
+      instantiate (2:=id).
+      eauto. i. des.
+
+      
+      assert (SkEnv.includes (Genv.globalenv sk_link) (Mod.get_sk md1 (Mod.data md1))).
+      { 
+        eapply link_includes.
+        instantiate (1 := (md1 :: p0)).
+        unfold link_sk. unfold Mod.sk. simpl. eauto. ss. eauto. }
+
+      exploit SkEnv.project_impl_spec; eauto. i. inv H8.
+      exploit SYMBKEEP; eauto. i.
+
+      exploit (@prog_defmap_linkorder (fundef signature) unit). eapply HDORD.
+      instantiate (2:=id).
+      eauto. i. des.
+      
+      assert (INTERN1: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md1 (Mod.data md1))) = Some (Gfun (Internal int_sig))).
+      { rewrite SYMBBIG0 in H8.
+        exploit DEFKEPT0. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des.
+        eauto. } des.
+
+      Local Transparent Linker_def.
+      simpl in H2, H4.
+      inv H2; inv H4.
+      Local Transparent Linker_fundef.
+      simpl in H5, H6.
+      inversion H5. inversion H6.
+
+      inv HD. unfold link_prog in H10.
+      des_ifs.
+      symmetry in Heq.
+      eapply andb_true_eq in Heq. des.
+      symmetry in Heq0.
+      rewrite Maps.PTree_Properties.for_all_correct in Heq0.
+      unfold defs in *.
+      exploit Heq0. eauto. i.
+      unfold link_prog_check in H2.
+
+      rewrite H1 in H2. ss.
+      rewrite andb_false_r in H2. inv H2.
+  Qed.
+      
+        eauto. i. des.
+        exists if_sig. rewrite Genv.find_def_symbol. esplits; eauto.
+        rewrite <- Mod.get_modsem_skenv_spec.
+
+        exploit SYMBKEEP; eauto. i. des.
+      admit "".
+    - admit "".
+    - eapply IHp0.
+      eapply DEFS1. eapply DEFS0.
+      eapply DEFBIG. eauto. eauto. eauto. eauto. eauto. eauto.
+  Qed.
+      eauto. 
+      eauto.
+      rewrite <- Mod.get_modsem_skenv_spec.
+      (* rewrite <- defs_prog_defmap in *. des. *)
+      rewrite <- Mod.get_modsem_skenv_spec in *.
+      exploit SkEnv.project_impl_spec.
+      instantiate (1 := (Mod.get_sk md0 (Mod.data md0))).
+      instantiate (1 := skenv_link).
+      
+      eapply link_includes.
+      econs. i.
+      skenv_link (Mod.get_sk md0 (Mod.data md0))); eauto.
+   -
     admit "this should hold. state some lemma like: link_sk_disjoint".
   Qed.
 

@@ -1,11 +1,11 @@
 Require Import CoqlibC Errors.
 Require Import Integers Floats AST Linking.
 Require Import ValuesC Memory Events Globalenvs Smallstep.
-Require Import Op Locations MachC Conventions AsmC.
-Require Import Asmgen Asmgenproof0 Asmgenproof1.
+Require Import Op Locations MachC Conventions ConventionsC AsmC.
+Require Import Asmgen Asmgenproof0.
 Require Import sflib.
 (* newly added *)
-Require Export Asmgenproof AsmgenproofC0 AsmgenproofC1.
+Require Export Asmgenproof.
 Require Import SimModSem SimMemExt SimSymbId MemoryC ValuesC MemdataC LocationsC StoreArguments Conventions1C.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.
@@ -13,6 +13,7 @@ Require SoundTop.
 
 Local Opaque Z.mul.
 Local Existing Instance Val.mi_normal.
+Local Existing Instance main_args_some.
 
 Set Implicit Arguments.
 
@@ -79,16 +80,35 @@ Inductive match_init_data init_sp init_ra
     (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src)
 .
 
+Inductive stack_base (initial_parent_sp initial_parent_ra: val)
+  : list Mach.stackframe -> Prop :=
+| stack_base_dummy
+  :
+    stack_base
+      initial_parent_sp initial_parent_ra
+      ((dummy_stack initial_parent_sp initial_parent_ra)::[])
+| stack_base_cons
+    fr ls
+    (TL: stack_base initial_parent_sp initial_parent_ra ls)
+  :
+    stack_base
+      initial_parent_sp initial_parent_ra
+      (fr::ls).
+
 Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: MachC.state) (st_tgt0: AsmC.state)
           (sm0: SimMem.t): Prop :=
 | match_states_intro
     init_sp init_ra
+    (initial_parent_sp_ptr : ValuesC.is_real_ptr (init_sp))
+    (initial_parent_ra_ptr: Val.has_type init_ra Tptr)
+    (initial_parent_ra_fake : ~ ValuesC.is_real_ptr init_ra)
+    (STACKWF: stack_base init_sp init_ra (get_stack st_src0.(MachC.st)))
     (INITDATA: match_init_data
                  init_sp init_ra
                  st_src0.(MachC.init_rs) st_src0.(init_sg) st_tgt0.(init_rs))
-    (MATCHST: AsmgenproofC1.match_states ge init_sp init_ra st_src0.(MachC.st) st_tgt0)
+    (MATCHST: Asmgenproof.match_states ge st_src0.(MachC.st) st_tgt0)
     (SPPTR: ValuesC.is_real_ptr (st_tgt0.(init_rs) RSP))
     (MCOMPATSRC: st_src0.(MachC.st).(MachC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
@@ -218,13 +238,15 @@ Proof.
         -- destruct mr; clarify.
         -- destruct mr; clarify.
     + instantiate (1:= mk m_src m).
-      econs; ss.
-      * econs; ss; eauto. econs; eauto.
+      econs; ss; cycle 1; eauto.
+      * econs; eauto.
+      * econs; ss; eauto.
       * econs; eauto; ss; try by (econs; eauto).
         econs; eauto. i.
         destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (fn_sig fd))))); eauto.
         erewrite agree_mregs_eq0; auto.
       * rewrite agree_sp0. auto.
+      * auto.
 
   - ss. des. inv SIMARGS. destruct sm_arg. ss. clarify.
     inv SAFESRC.
@@ -304,8 +326,8 @@ Proof.
         apply (fsim_external_funct_id GE); ss.
       * inv AG. rewrite agree_sp0. clarify.
       * inv INITRAPTR. inv STACKS; ss.
-        -- inv ATLR; auto. exfalso; auto.
-        -- destruct ra; ss; try inv H0. inv ATLR. ss.
+       -- inv STACKWF; [|inv TL]. inv ATLR; auto; exfalso; auto.
+       -- destruct ra; ss; try inv H0. inv ATLR. ss.
     + instantiate (1:=mk m1 m2'). econs; ss; eauto.
     + ss.
 
@@ -332,30 +354,27 @@ Proof.
         destruct (Conventions1.is_callee_save r0) eqn:T; eauto.
   - ss. inv FINALSRC. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
     inv INITDATA. destruct sm0. ss. clarify.
+    inv STACKWF; [|inv TL]. inv STACKS; [|inv H7; ss]. inv INITRS.
     exploit Mem.free_parallel_extends; eauto. intros TGTFREE. des.
     esplits; auto.
     + econs.
-      * inv INITRS. inv AG. i.
+      * inv AG. i.
         { eapply Val.lessdef_trans.
           - erewrite <- agree_mregs_eq0; auto. ii.
             eapply loc_args_callee_save_disjoint; eauto.
           - eauto.
         }
-      * inv INITRS. inv STACKS; [|inv H7]; rewrite H0. ss.
+      * eauto.
       * exists fd. eauto.
       * instantiate (1 := m2'). eauto.
       * eapply RETV.
-      * inv STACKS; [|inv H7].
-        replace (r PC) with (init_rs0 RA).
+      * replace (r PC) with (init_rs0 RA).
         { inv INITRAPTR. destruct (init_rs0 RA); ss. des_ifs. }
         inv ATPC; auto.
         inv INITRAPTR. exfalso. auto.
-      * inv STACKS; [|inv H7].
-        inv ATPC; auto. inv INITRAPTR. exfalso. auto.
+      * inv ATPC; auto. inv INITRAPTR. exfalso. auto.
       * eauto.
-      * inv INITRS. inv AG.
-        rewrite agree_sp0.
-        inv STACKS; [|inv H7]; rewrite H0. ss.
+      * inv AG. rewrite agree_sp0. ss.
     + econs; simpl.
       * ss. inv AG. auto.
       * instantiate (1:= mk _ _). ss.
@@ -379,11 +398,21 @@ Proof.
         destruct st_tgt0. eapply asm_plus_dplus; eauto.
       * instantiate (1 := mk (MachC.get_mem (MachC.st st_src1)) (get_mem S2')).
         econs; ss; eauto.
+        { destruct st_src0, st_src1. clear - STEP STACKWF NOTDUMMY.
+          inv STEP; ss; clarify.
+          - econs. ss.
+          - inv STACKWF; ss.
+        }
         rewrite <- INITRS. rewrite <- INITFPTR. auto.
       * right. split; eauto. apply star_refl.
       * instantiate (1 := mk (MachC.get_mem (MachC.st st_src1))
                              st_tgt0.(st).(get_mem)).
         econs; ss; eauto.
+        { destruct st_src0, st_src1. clear - STEP STACKWF NOTDUMMY.
+          inv STEP; ss; clarify.
+          - econs. ss.
+          - inv STACKWF; ss.
+        }
         rewrite <- INITRS. rewrite <- INITFPTR. auto.
 
   Unshelve.

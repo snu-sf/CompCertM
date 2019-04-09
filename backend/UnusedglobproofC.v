@@ -49,7 +49,7 @@ Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt)
-                ((prog.(defs) -1 tprog.(defs) -1 (fun id => Pos.eq_dec id tprog.(prog_main))): ident -> Prop)
+                ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
                 sm_link
 .
 
@@ -81,7 +81,7 @@ Theorem sim_skenv_meminj_preserves_globals
         sm_arg
         (SIMSKENV:
            SimSymbDrop.sim_skenv
-             sm_arg ((prog.(defs) -1 tprog.(defs) -1 (fun id => Pos.eq_dec id tprog.(prog_main))): ident -> Prop)
+             sm_arg ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
              (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)))
   :
     <<SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)>>
@@ -107,7 +107,7 @@ Proof.
 
     destruct (classic (defs prog i)); cycle 1.
     { clear - Heq1 H1. contradict H1. unfold defs in *. des_sumbool. apply prog_defmap_spec; et. }
-    assert(KEPT0: (defs tprog i \/ Pos.eq_dec i (prog_main tprog))).
+    assert(KEPT0: (defs tprog i \/ Pos.eq_dec (prog_main tprog) i)).
     { tauto. }
     clear KEPT.
     assert(IN: (used_set tprog) i).
@@ -293,7 +293,7 @@ Variable tprog: RTL.program.
 Hypothesis TRANSL: match_prog prog tprog.
 
 Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module tprog) ((prog.(defs) -1 tprog.(defs) -1 (fun id => Pos.eq_dec id tprog.(prog_main))): ident -> Prop)
+  ModPair.mk (RTLC.module prog) (RTLC.module tprog) ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
 .
 
 Theorem sim_mod
@@ -320,7 +320,7 @@ Proof.
         des_ifs.
       }
 
-      assert(KEPT0: defs tprog id \/ Pos.eq_dec id (prog_main tprog)).
+      assert(KEPT0: defs tprog id \/ Pos.eq_dec (prog_main tprog) id).
       { tauto. }
       clear KEPT.
 

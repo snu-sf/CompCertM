@@ -77,16 +77,13 @@ Definition get_stack (st: state): list stackframe :=
   | Returnstate stk _ _ => stk
   end.
 
-Inductive step: state -> trace -> state -> Prop :=
-| step_intro
-    st0 tr st1
-    (STEP: LTL.step se ge st0 tr st1)
-    (NOTDUMMY: st1.(get_stack) <> [])
-  :
-    step st0 tr st1
+Definition step: state -> trace -> state -> Prop := fun st0 tr st1 =>
+  <<STEP: LTL.step se ge st0 tr st1>> /\ <<NOTDUMMY: st1.(get_stack) <> []>>
 .
 
 End NEWSTEP.
+
+Hint Unfold step.
 
 
 

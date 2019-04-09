@@ -14,127 +14,16 @@ Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC Matc
 Require Import ModSemProps.
 Require SimMemExt.
 Require SoundTop.
-Require Import Program.
+Require Import LiftDummy.
 
 Set Implicit Arguments.
 
 
 
 
-(** exactly copied from Linearizeproof *)
-Section WFTGT.
-
-Definition wf_tgt (st_tgt0: LTL.state): Prop :=
+Definition strong_wf_tgt (st_tgt0: LTL.state): Prop :=
   exists sg_init ls_init, last_option st_tgt0.(LTLC.get_stack) = Some (LTL.dummy_stack sg_init ls_init)
 .
-
-Lemma lift_starN
-      cnt tse tge st_tgt0 tr st_tgt1
-      (STAR: starN LTL.step tse tge cnt st_tgt0 tr st_tgt1)
-      (DUMMYTGT: wf_tgt st_tgt0)
-      (STKAFTER: get_stack st_tgt1 <> [])
-  :
-    <<STAR: starN step tse tge cnt st_tgt0 tr st_tgt1>>
-.
-Proof.
-  unfold wf_tgt in *.
-  induction STAR; ii; ss.
-  { econs; et. }
-  pose s as S1. pose s' as S2. pose s'' as S3.
-  (* pose s1 as S1. pose s2 as S2. pose s3 as S3. *)
-  econs; et.
-  - econs; et.
-    des. inv H; ss; destruct s0; ss. exfalso. clarify.
-    clear - STAR STKAFTER.
-    dependent induction STAR; ii; ss. inv H; ss.
-  - des. exploit IHSTAR; et. inv H; ss; try (by esplits; et).
-    + des_ifs. rewrite DUMMYTGT. esplits; et.
-    + des_ifs.
-      * ss. clarify.
-        clear - STAR STKAFTER.
-        dependent induction STAR; ii; ss. inv H; ss.
-      * rewrite DUMMYTGT. esplits; et.
-Qed.
-
-Lemma lift_starN_stronger
-      cnt tse tge st_tgt0 tr st_tgt1
-      (STAR: starN LTL.step tse tge cnt st_tgt0 tr st_tgt1)
-      (DUMMYTGT: wf_tgt st_tgt0)
-      (STKAFTER: get_stack st_tgt1 <> [])
-  :
-    <<STAR: starN step tse tge cnt st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
-.
-Proof.
-  unfold wf_tgt in *.
-  revert_until STAR.
-  induction STAR; ii; ss.
-  { split. - econs; et. - des. esplits; et. }
-  assert(DUMMYTGT0: wf_tgt s'').
-  { clarify.
-    eapply IHSTAR; et. clear IHSTAR.
-    des. inv H; ss; try (by esplits; et).
-    - des_ifs. esplits; et.
-    - des_ifs.
-      + ss. clarify. inv STAR; ss. inv H; ss.
-      + esplits; et.
-  }
-  split; ss.
-  econs; et.
-  - econs; et.
-    des. inv H; ss; destruct s0; ss. exfalso. clarify. ss. clarify.
-    clear - STAR STKAFTER.
-    dependent induction STAR; ii; ss. inv H; ss.
-  - des.
-    exploit IHSTAR; et.
-    { inv H; ss; try (by esplits; et).
-      - des_ifs. esplits; et.
-      - des_ifs.
-        + ss. clarify. inv STAR; ss. inv H; ss.
-        + esplits; et.
-    }
-    i; des.
-    inv H; ss; try (by esplits; et).
-Qed.
-
-Lemma starN_plus_iff
-      G ST (step: Senv.t -> G -> ST -> trace -> ST -> Prop) se ge st0 tr st1
-  :
-    (exists n, starN step se ge n st0 tr st1 /\ (n > 0)%nat) <-> plus step se ge st0 tr st1
-.
-Proof.
-  split; i; des.
-  - destruct n; ss.
-    { xomega. }
-    ginduction H; ii; ss.
-    { xomega. }
-    clarify. inv H0.
-    + eapply plus_star_trans; et.
-      { apply plus_one; et. }
-      { apply star_refl; et. }
-    + eapply plus_trans; et.
-      { apply plus_one; et. }
-      eapply IHstarN; et. xomega.
-  - inv H. apply star_starN in H1. des. exists (Datatypes.S n). esplits; et.
-    { econs; et. }
-    { xomega. }
-Qed.
-
-Lemma lift_plus
-      tse tge st_tgt0 tr st_tgt1
-      (PLUS: plus LTL.step tse tge st_tgt0 tr st_tgt1)
-      (DUMMYTGT: wf_tgt st_tgt0)
-      (STKAFTER: get_stack st_tgt1 <> [])
-  :
-    <<PLUS: plus step tse tge st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
-.
-Proof.
-  apply starN_plus_iff in PLUS. des. apply lift_starN_stronger in PLUS; et. des. esplits; et.
-  apply starN_plus_iff; et.
-Qed.
-
-End WFTGT.
-
-
 
 Lemma agree_callee_save_after
       tstks ls sg tv
@@ -191,7 +80,7 @@ Inductive match_states
     (MATCHST: Allocproof.match_states skenv_link tge st_src0 st_tgt0)
     (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(LTLC.get_mem) = sm0.(SimMem.tgt))
-    (DUMMYTGT: wf_tgt st_tgt0)
+    (DUMMYTGT: strong_wf_tgt st_tgt0)
 .
 
 Theorem make_match_genvs :
@@ -312,8 +201,13 @@ Proof.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { ss. des. ss. }
     i; des.
-    exploit lift_plus; et.
-    { ii. inv H0; try inv STACKS; ss; clarify; et; try inv MAINARGS; inv H2; ss. (* TODO: notnil lemma *) }
+    exploit (lift_plus LTL.step (fun st => get_stack st <> []) strong_wf_tgt); et.
+    { intros st X Y. rr in X. des. rewrite Y in *. ss. }
+    { i. folder. unfold strong_wf_tgt in *. des. inv HSTEP; ss; eauto.
+      - des_ifs; ss; eauto.
+      - des_ifs; ss; eauto. right. ii. inv HSTEP0; ss. }
+    { ii. unfold strong_wf_tgt in *; des. inv HSTEP; try inv STACKS; ss; clarify; et; des_ifs; et. }
+    { intro T. inv H0; ss; clarify; try inv STACKS; ss; try inv MAINARGS; ss. }
     i; des.
     esplits; eauto.
     + left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.

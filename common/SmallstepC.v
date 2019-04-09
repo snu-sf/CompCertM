@@ -168,3 +168,27 @@ Proof.
   erewrite <- PPlus_top_Plus in *; eauto.
 Qed.
 
+
+Lemma starN_plus_iff
+      G ST (step: Senv.t -> G -> ST -> trace -> ST -> Prop) se ge st0 tr st1
+  :
+    (exists n, starN step se ge n st0 tr st1 /\ (n > 0)%nat) <-> plus step se ge st0 tr st1
+.
+Proof.
+  split; i; des.
+  - destruct n; ss.
+    { xomega. }
+    ginduction H; ii; ss.
+    { xomega. }
+    clarify. inv H0.
+    + eapply plus_star_trans; et.
+      { apply plus_one; et. }
+      { apply star_refl; et. }
+    + eapply plus_trans; et.
+      { apply plus_one; et. }
+      eapply IHstarN; et. xomega.
+  - inv H. apply star_starN in H1. des. exists (Datatypes.S n). esplits; et.
+    { econs; et. }
+    { xomega. }
+Qed.
+

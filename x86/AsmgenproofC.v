@@ -170,7 +170,7 @@ Theorem sim_modsem
 .
 Proof.
   eapply match_states_sim with (match_states := match_states)
-                               (match_states_at := top4); eauto; ii.
+                               (match_states_at := top4); eauto; ii; ss.
 
   - apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.

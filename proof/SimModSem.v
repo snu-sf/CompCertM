@@ -167,7 +167,6 @@ Section SIMMODSEM.
                 (MWF: SimMem.wf sm_ret)
                 (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
                 st_src1
-                (SU: sound_state st_src0)
                 (AFTERSRC: ms_src.(after_external) st_src0 retv_src st_src1)
               ,
                 exists st_tgt1 sm_after i1,

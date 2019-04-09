@@ -18,6 +18,7 @@ Require Import AxiomsC.
 Require SoundTop.
 Require Import StoreArguments.
 Require Import ModSemProps.
+Require Import LiftDummy.
 
 Set Implicit Arguments.
 
@@ -713,122 +714,9 @@ End STACKINGEXTRA.
 
 
 
-Section LIFT.
-
-Require Import Program.Equality.
-
-Definition wf_tgt (st_tgt0: Mach.state): Prop :=
+Definition strong_wf_tgt (st_tgt0: Mach.state): Prop :=
   exists parent_sp parent_ra, last_option st_tgt0.(MachC.get_stack) = Some (Mach.dummy_stack parent_sp parent_ra)
 .
-
-Lemma lift_starN
-      rao
-      cnt tse tge st_tgt0 tr st_tgt1
-      (STAR: starN (Mach.step rao) tse tge cnt st_tgt0 tr st_tgt1)
-      (DUMMYTGT: wf_tgt st_tgt0)
-      (STKAFTER: get_stack st_tgt1 <> [])
-  :
-    <<STAR: starN (step rao) tse tge cnt st_tgt0 tr st_tgt1>>
-.
-Proof.
-  unfold wf_tgt in *.
-  induction STAR; ii; ss.
-  { econs; et. }
-  pose s as S1. pose s' as S2. pose s'' as S3.
-  (* pose s1 as S1. pose s2 as S2. pose s3 as S3. *)
-  econs; et.
-  - econs; et.
-    des. inv H; ss; destruct s0; ss. exfalso. clarify.
-    clear - STAR STKAFTER.
-    dependent induction STAR; ii; ss. inv H; ss.
-  - des. exploit IHSTAR; et. inv H; ss; try (by esplits; et).
-    + des_ifs. rewrite DUMMYTGT. esplits; et.
-    + des_ifs.
-      * ss. clarify.
-        clear - STAR STKAFTER.
-        dependent induction STAR; ii; ss. inv H; ss.
-      * rewrite DUMMYTGT. esplits; et.
-Qed.
-
-Lemma lift_starN_stronger
-      rao
-      cnt tse tge st_tgt0 tr st_tgt1
-      (STAR: starN (Mach.step rao) tse tge cnt st_tgt0 tr st_tgt1)
-      (DUMMYTGT: wf_tgt st_tgt0)
-      (STKAFTER: get_stack st_tgt1 <> [])
-  :
-    <<STAR: starN (step rao) tse tge cnt st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
-.
-Proof.
-  unfold wf_tgt in *.
-  revert_until STAR.
-  induction STAR; ii; ss.
-  { split. - econs; et. - des. esplits; et. }
-  assert(DUMMYTGT0: wf_tgt s'').
-  { clarify.
-    eapply IHSTAR; et. clear IHSTAR.
-    des. inv H; ss; try (by esplits; et).
-    - des_ifs. esplits; et.
-    - des_ifs.
-      + ss. clarify. inv STAR; ss. inv H; ss.
-      + esplits; et.
-  }
-  split; ss.
-  econs; et.
-  - econs; et.
-    des. inv H; ss; destruct s0; ss. exfalso. clarify. ss. clarify.
-    clear - STAR STKAFTER.
-    dependent induction STAR; ii; ss. inv H; ss.
-  - des.
-    exploit IHSTAR; et.
-    { inv H; ss; try (by esplits; et).
-      - des_ifs. esplits; et.
-      - des_ifs.
-        + ss. clarify. inv STAR; ss. inv H; ss.
-        + esplits; et.
-    }
-    i; des.
-    inv H; ss; try (by esplits; et).
-Qed.
-
-Lemma starN_plus_iff
-      G ST (step: Senv.t -> G -> ST -> trace -> ST -> Prop) se ge st0 tr st1
-  :
-    (exists n, starN step se ge n st0 tr st1 /\ (n > 0)%nat) <-> plus step se ge st0 tr st1
-.
-Proof.
-  split; i; des.
-  - destruct n; ss.
-    { xomega. }
-    ginduction H; ii; ss.
-    { xomega. }
-    clarify. inv H0.
-    + eapply plus_star_trans; et.
-      { apply plus_one; et. }
-      { apply star_refl; et. }
-    + eapply plus_trans; et.
-      { apply plus_one; et. }
-      eapply IHstarN; et. xomega.
-  - inv H. apply star_starN in H1. des. exists (Datatypes.S n). esplits; et.
-    { econs; et. }
-    { xomega. }
-Qed.
-
-Lemma lift_plus
-      rao
-      tse tge st_tgt0 tr st_tgt1
-      (PLUS: plus (Mach.step rao) tse tge st_tgt0 tr st_tgt1)
-      (DUMMYTGT: wf_tgt st_tgt0)
-      (STKAFTER: get_stack st_tgt1 <> [])
-  :
-    <<PLUS: plus (step rao) tse tge st_tgt0 tr st_tgt1>> /\ <<DUMMYTGT: wf_tgt st_tgt1>>
-.
-Proof.
-  apply starN_plus_iff in PLUS. des. apply lift_starN_stronger in PLUS; et. des. esplits; et.
-  apply starN_plus_iff; et.
-Qed.
-
-End LIFT.
 
 
 
@@ -1520,7 +1408,7 @@ Inductive match_states
                    <<EQ: dummy_stack_src.(current_locset) (R mr) = st_tgt0.(init_rs) mr>>
                    /\ <<PTRFREE: ~ is_real_ptr (st_tgt0.(init_rs) mr)>>>> /\
         <<SIG: dummy_stack_src.(current_function).(Linear.fn_sig) = st_tgt0.(init_sg)>>)
-    (WFTGT: wf_tgt st_tgt0.(MachC.st))
+    (WFTGT: strong_wf_tgt st_tgt0.(MachC.st))
 .
 
 Inductive match_states_at
@@ -2139,8 +2027,14 @@ Proof.
     { des. et. }
     i; des.
     destruct st_tgt0. ss. folder.
-    exploit lift_plus; eauto.
-    { ii. inv STEPSRC. inv H0; ss; try inv STACKS; ss; clarify; et. }
+    r in STEPSRC; des.
+    exploit (lift_plus (Mach.step rao) (fun st => get_stack st <> []) strong_wf_tgt); ss; et.
+    { intros ? X Y. rr in X. des. rewrite Y in *. ss. }
+    { i. folder. unfold strong_wf_tgt in *. des. inv HSTEP; ss; eauto.
+      - des_ifs; ss; eauto.
+      - des_ifs; ss; eauto. right. ii. inv HSTEP0; ss. }
+    { ii. unfold strong_wf_tgt in *; des. inv HSTEP; try inv STACKS; ss; clarify; et; des_ifs; et. }
+    { intro T. inv H0; ss; clarify; try inv STACKS; ss. }
     i; des.
     esplits; eauto.
     + left.

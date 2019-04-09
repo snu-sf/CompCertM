@@ -11,7 +11,6 @@ Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem ModSemProps.
 Require SimMemId.
 Require SoundTop.
-Require Import Program.
 Require Import LiftDummy.
 
 Set Implicit Arguments.

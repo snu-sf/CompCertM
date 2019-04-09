@@ -165,9 +165,9 @@ Proof.
     + eapply Loc_cons_right_disjoint; eauto.
       { exploit (aux2 int_param_regs). i; des.
         - rewrite <- H0. replace (Z.to_nat ir + 1)%nat with (Z.to_nat (ir + 1)); eauto. admit "A".
-        - rewrite H0 in NOTINIR. rewrite list_append_map in NOTINIR. eapply aux3. eauto.
+        - admit "A". (* rewrite H0 in NOTINIR. rewrite list_append_map in NOTINIR. eapply aux3. eauto. *)
       }
-      { clear - Heq.  }
+      { admit "easy". }
     + eapply Loc_cons_right_disjoint; eauto.
       { clear - Heq. admit "easy". }
   - specialize (IHtys ir fr (ofs + 2) _ eq_refl); des; ss.

@@ -38,12 +38,6 @@ Module Mod.
         skenv_link
       ,
         <<EQ: data.(get_modsem skenv_link).(ModSem.skenv_link) = skenv_link>>
-    (* TODO: What is the exact spec we need here? *)
-    (* get_modsem_sk_skenv_iso: forall *)
-    (*     skenv *)
-    (*   , *)
-    (*     <<ISO: sk_skenv_iso data.(get_sk) data.(get_modsem skenv).(ModSem.skenv)>> *)
-    (* ; *)
   }
   .
 

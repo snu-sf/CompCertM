@@ -675,47 +675,6 @@ Abort.
 
 
 
-Module PLAYGROUND.
-
-  Variable A B: Type.
-  Variable EQ: A = B.
-  Variable a0: A.
-  Definition tmp: B.
-    rewrite <- EQ. apply a0.
-  Defined.
-  Check a0.
-  Check (eq_rect A (fun T : Type => T) a0 B EQ).
-  Check (eq_rect A id a0 B EQ).
-  Check (eq_rect _ id a0 B EQ).
-  Check (eq_rect _ id a0 _ EQ).
-
-  Variable a1: A.
-  Variable M: A -> Type.
-  Check M a0.
-  Check M a1.
-
-End PLAYGROUND.
-
-(* Inductive world_cases (SM: SimMem.class): SimSymb.class SM -> Sound.class -> Prop := *)
-(* | world_cases_id *)
-(*     (EQ: SM = SimMemId.SimMemId) *)
-(*   : *)
-(*     world_cases (eq_rect _ id SimMemId.SimSymbId) SoundTop.Top *)
-(* . *)
-
-(* Inductive sm_cases: SimMem.class -> Prop := *)
-(* | sm_cases_id: sm_cases SimMemId.SimMemId *)
-(* | sm_cases_ext: sm_cases SimMemExt.SimMemExtends *)
-(* . *)
-
-(* Inductive ss_cases: SimSymb.class -> Prop := *)
-(* | ss_cases_id: ss_cases SimMemId.SimSymbId *)
-(* . *)
-
-
-
-
-
 Lemma compiler_correct_single
         (src: Csyntax.program)
         (tgt: Asm.program)
@@ -729,14 +688,6 @@ Lemma compiler_correct_single
 Proof.
   unfold transf_c_program in *. unfold apply_total, apply_partial in *. des_ifs.
 
-  (* assert(exists cps, <<SIM: ProgPair.sim cps>> /\ <<SRC: ProgPair.src cps = map C_module cs>>). *)
-  (* { eapply IdSim.lift. *)
-  (*   i. *)
-  (*   eapply Morphisms_Prop.ex_impl_morphism_obligation_1; cycle 1. *)
-  (*   { apply IdSim.src_inj_id. } *)
-  (*   ii. des; eauto. *)
-  (* } *)
-  (* des. *)
   set (Renumber.transf_program p5) as p42.
 
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_drop cs). intro SRCINJDROP; des.

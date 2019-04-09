@@ -4,6 +4,7 @@ Require Import Simulation.
 Require Import ModSem AsmregsC GlobalenvsC MemoryC ASTC.
 Require Import Skeleton SimModSem SimMem SimSymb.
 Require Import Sound Preservation.
+Require MatchSimModSemExcl.
 
 Set Implicit Arguments.
 
@@ -223,106 +224,19 @@ Section MATCHSIMFORWARD.
 
   Hypothesis BAR: bar_True.
 
-  Lemma match_states_lxsim
-        sm_init i0 st_src0 st_tgt0 sm0
-        (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-        (MLE: SimMem.le sm_init sm0)
-        (* (MWF: SimMem.wf sm0) *)
-        (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
-        (MATCH: match_states sm_init i0 st_src0 st_tgt0 sm0)
-        (* su0 *)
-    :
-      (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsim ms_src ms_tgt (fun st => exists su0 m_init, sound_state su0 m_init st)
-                     sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
-  .
-  Proof.
-    (* move su0 at top. *)
-    revert_until BAR.
-    pcofix CIH. i. pfold.
-    generalize (classic (ModSem.is_call ms_src st_src0)). intro CALLSRC; des.
-    {
-      (* CALL *)
-      - (* u in CALLSRC. des. *)
-        exploit ATMWF; eauto. i; des.
-        eapply lxsim_at_external; eauto.
-        ii. clear CALLSRC.
-        exploit ATFSIM; eauto. i; des.
-        (* determ_tac ModSem.at_external_dtm. clear_tac. *)
-        esplits; eauto. i.
-        exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
-        { econs; eauto. }
-        { eapply SimMem.unlift_wf; eauto. }
-        { eapply SimMem.unlift_spec; eauto. }
-        i; des.
-        assert(MLE3: SimMem.le sm0 sm_after).
-        { etrans; cycle 1. { et. } etrans; et. eapply SimMem.unlift_spec; et. }
-        esplits; eauto.
-        right.
-        eapply CIH; eauto.
-        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
-          apply rtc_once. left. et. }
-        { etransitivity; eauto. }
-    }
-    generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
-    {
-      (* RETURN *)
-      u in RETSRC. des.
-      exploit FINALFSIM; eauto. i; des.
-      eapply lxsim_final; try apply SIMRET; eauto.
-      etrans; eauto.
-    }
-    destruct STEPSIM as [STEPFSIM0|STEPBSIM0].
-    {
-      eapply lxsim_step_forward; eauto.
-      i.
-      exploit STEPFSIM0; eauto. i; des.
-      esplits; eauto.
-      econs 1; eauto.
-      ii. exploit STEPFSIM1; eauto. i; des_safe.
-      esplits; eauto.
-      - des.
-        + left. eauto.
-        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
-      - right. eapply CIH; eauto.
-        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
-        { etransitivity; eauto. }
-    }
-    {
-      rr in STEPBSIM0.
-      eapply lxsim_step_backward; eauto.
-      i.
-      exploit STEPBSIM0; eauto. i; des. rr in PROGRESS. des.
-      esplits; eauto; cycle 1.
-      econs 1; eauto.
-      ii. exploit STEPBSIM1; eauto. i; des_safe.
-      esplits; eauto.
-      - des.
-        + left. eauto.
-        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
-      - right. eapply CIH; eauto.
-        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
-        { etransitivity; eauto. }
-    }
-  Qed.
-
   Theorem match_states_sim
     :
       <<SIM: msp.(ModSemPair.sim)>>
   .
   Proof.
-    econs; eauto.
-    ii; ss.
-    folder.
-    exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.
-    Print SimSymb.sim_skenv.
-    inv FSIM. exploit FUNCFSIM; eauto. { apply SIMARGS. } i; des.
-    split; ii.
-    - exploit INITBSIM; eauto. i; des.
-      esplits; eauto.
-      eapply match_states_lxsim; eauto.
-      { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
-    - exploit INITPROGRESS; eauto.
+    eapply MatchSimModSemExcl.match_states_sim with
+        (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le); eauto.
+    { ii. r. etrans; eauto. }
+    { ii. exploit ATFSIM; eauto. i; des. esplits; eauto. }
+    { i. exploit AFTERFSIM; et.
+      { inv HISTORY; econs; eauto. }
+      i; des. esplits; eauto.
+    }
   Qed.
 
 End MATCHSIMFORWARD.

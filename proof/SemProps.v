@@ -735,10 +735,16 @@ Proof.
   - (* func *)
     assert(VALID: Mem.valid_block m0 blk_fr).
     { assert(NEQ: blk_fr <> b).
-      { ii. clarify. clear - LOAD LOADM Heq. admit "ez". }
+      { ii. clarify. clear - LOAD LOADM Heq. eapply Mem_alloc_fresh_perm in Heq. des.
+        eapply Mem.loadbytes_range_perm in LOAD. unfold Mem.range_perm in LOAD. exploit (LOAD _ofs_fr). omega. i.
+        destruct (zeq _ofs_fr 0).
+        - subst. exploit Mem.perm_drop_2. eauto. instantiate (1 := 0). omega. eauto. i. inv H0.
+        - eapply NOPERM0. instantiate (1 := _ofs_fr). omega. eapply Mem.perm_drop_4; eauto.
+      }
       assert(VAL: Mem.valid_block m1 blk_fr).
-      { clear - LOAD. admit "ez". }
-      clear - Heq LOADM NEQ VAL. admit "ez".
+      { clear - LOAD. exploit (Mem.loadbytes_range_perm); eauto. split. eapply Z.le_refl. omega. eapply Mem.perm_valid_block. }
+      clear - Heq LOADM NEQ VAL. exploit Mem.drop_perm_valid_block_2; eauto. i.
+      exploit Mem.valid_block_alloc_inv; eauto. i; des; des_ifs.
     }
     uge. unfold Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs.
     + Local Transparent Linker_prog.
@@ -755,25 +761,33 @@ Proof.
     + inv WFM.
       assert(VAL: Mem.valid_block m0 blk_fr).
       { assert(NEQ: blk_fr <> b).
-        { ii. clarify. clear - LOAD LOADM Heq. admit "ez". }
+        { ii. clarify. clear - LOAD LOADM Heq. eapply Mem_alloc_fresh_perm in Heq. des.
+        eapply Mem.loadbytes_range_perm in LOAD. unfold Mem.range_perm in LOAD. exploit (LOAD _ofs_fr). omega. i.
+        destruct (zeq _ofs_fr 0).
+        - subst. exploit Mem.perm_drop_2. eauto. instantiate (1 := 0). omega. eauto. i. inv H0.
+        - eapply NOPERM0. instantiate (1 := _ofs_fr). omega. eapply Mem.perm_drop_4; eauto. }
         assert(VAL: Mem.valid_block m1 blk_fr).
-        { clear - LOAD. admit "ez". }
-        clear - Heq LOADM NEQ VAL. admit "ez".
+        { clear - LOAD. exploit (Mem.loadbytes_range_perm); eauto. split. eapply Z.le_refl. omega. eapply Mem.perm_valid_block. }
+        clear - Heq LOADM NEQ VAL. exploit Mem.drop_perm_valid_block_2; eauto. i.
+        exploit Mem.valid_block_alloc_inv; eauto. i; des; des_ifs.
       }
       exploit WFPTR; et.
       erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
       { etrans.
         - eapply Mem.alloc_unchanged_on; et.
-        - eapply Mem.drop_perm_unchanged_on; et. intros ? ? TTT. clear - Heq TTT. admit "ez".
+        - eapply Mem.drop_perm_unchanged_on; et. intros ? ? TTT. clear - Heq TTT. eapply Mem.fresh_block_alloc; eauto.
       }
   - (* gvar *)
     rename b into blk.
     unfold Genv.find_symbol, Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs; cycle 1.
     + assert(blk <> blk_fr).
-      { ii; clarify. clear - WFMB Heq SYMB. admit "ez". }
+      { ii; clarify. clear - WFMB Heq SYMB. exploit GlobalenvsC.Genv_update_publics_obligation_1; eauto. i.
+        eapply Mem.alloc_result in Heq. subst. rewrite WFMB in H. xomega. }
       inv WFM. exploit WFPTR; et.
       assert(VAL: Mem.valid_block m0 blk_fr).
-      { admit "ez - similar with above". }
+      { clear - Heq WFMB FREETHM0 H LOAD. rewrite WFMB in FREETHM0. exploit Mem.alloc_result; eauto. i. subst blk.
+        eapply Mem.loadbytes_range_perm in LOAD. exploit Mem.perm_valid_block. eapply LOAD. instantiate (1 := _ofs_fr). omega. i.
+        unfold Mem.valid_block in *. rewrite <- FREETHM0 in H0. exploit Plt_succ_inv; eauto. i. des; des_ifs. }
       assert(NVAL: ~ Mem.valid_block m0 blk).
       { clear - Heq. eauto with mem. }
       erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
@@ -839,35 +853,113 @@ Proof.
                       <<LOADC: Mem.loadbytes m1 blk ofs (init_data_size a) =
                                Some (Genv.bytes_of_init_data skenv_link a)>>).
         { exploit Mem.loadbytes_split; et; try xomega.
-          { admit "ez - init_data_size_pos". }
-          { admit "ez - init_data_list_size_pos". }
+          { eapply init_data_size_pos. }
+          { eapply init_data_list_size_pos. }
           i; des.
           exploit Mem.loadbytes_length; try apply H; et. intro LEN0.
           exploit Mem.loadbytes_length; try apply H0; et. intro LEN1.
           rewrite H. rewrite H0. clear - LEN0 LEN1 H1.
           generalize (Genv_bytes_of_init_data_length skenv_link a); intro LEN2.
-          admit "ez".
+          assert(Genv.bytes_of_init_data skenv_link a = bytes1).
+          { do 2 (rewrite <- app_nil_r; erewrite <- firstn_O; sym; rewrite <- firstn_app_2).
+            rewrite H1. rewrite LEN0. rewrite LEN2. eauto.
+          }
+          split; des_ifs. eapply app_inv_head in H1. des_ifs.
         }
         des.
+
+        Ltac break_Z :=
+          try replace 2 with (1 + 1) in * by omega;
+          try replace 3 with (1 + 1 + 1) in * by omega;
+          try replace 4 with (1 + 1 + 1 + 1) in * by omega;
+          try replace 5 with (1 + 1 + 1 + 1 + 1) in * by omega;
+          try replace 6 with (1 + 1 + 1 + 1 + 1 + 1) in * by omega;
+          try replace 7 with (1 + 1 + 1 + 1 + 1 + 1 + 1) in * by omega.
+
         destruct (classic ((ofs + init_data_size a) <= _ofs_fr)).
         - exploit IHdts; et; try xomega.
-          { admit "ez - init_data_size_pos". }
+          { eapply OMEGA2; eauto. eapply Z.ge_le. eapply init_data_size_pos. }
           i; des. esplits; et.
         - clear IHdts LOADB LOADA.
           rename a into aa.
+          clear RANGE0.
           Local Opaque Z.add.
+          Local Transparent Mem.loadbytes.
+          rename ofs into ofs_bound.
+          rename _ofs_fr into ofs_mid.
+          assert(T: ofs_mid < ofs_bound + init_data_size aa) by omega. clear H.
+
           destruct aa; ss.
-          + admit "ez - encode_int vs fragment of ptr".
-          + admit "ez - encode_int vs fragment of ptr".
-          + admit "ez - encode_int vs fragment of ptr".
-          + admit "ez - encode_int vs fragment of ptr".
-          + admit "ez - encode_int vs fragment of ptr".
-          + admit "ez - encode_int vs fragment of ptr".
-          + admit "ez - byte vs fragment of ptr".
-          + des_ifs_safe. des_ifs; cycle 1.
-            { admit "ez - Undef vs fragment of ptr". }
+          + exfalso. unfold Mem.loadbytes in *. des_ifs.
+            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
+                  ).
+            { omega. }
+            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
+
+          + exfalso. unfold Mem.loadbytes in *. des_ifs.
+            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
+                  ).
+            { omega. }
+            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
+
+          + exfalso. unfold Mem.loadbytes in *. des_ifs.
+            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
+                  ).
+            { omega. }
+            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
+
+          + exfalso. unfold Mem.loadbytes in *. des_ifs.
+            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
+                  ).
+            { omega. }
+            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
+
+          + exfalso. unfold Mem.loadbytes in *. des_ifs.
+            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
+                  ).
+            { omega. }
+            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
+
+          + exfalso. unfold Mem.loadbytes in *. des_ifs.
+            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
+                  ).
+            { omega. }
+            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
+
+          + exfalso. unfold Z.max in *.
+            (* clear - LOAD RANGE LOADC T. *)
+            admit "ez - byte vs fragment of ptr".
+
+          + des_ifs; cycle 1.
+            { exfalso. unfold Mem.loadbytes in *. des_ifs.
+              assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                     \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                     \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
+                    ).
+              { omega. }
+              des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H8 in *; ss.
+            }
             esplits; et.
-            * admit "ez - Vptr blk_to vs Vptr b".
+            unfold inj_value in *. ss. unfold Mem.loadbytes in *. des_ifs.
+              assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                     \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                     \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
+                    ).
+              { omega. }
+              des; subst; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H8 in *; congruence.
+          Local Opaque Mem.loadbytes.
       }
       des.
       bar. inv WF. exploit WFPTR; et. i ;des. esplits; et.
@@ -916,7 +1008,7 @@ Proof.
   { i. uge. unfold Genv.add_global. s. rewrite PTree.gsspec. des_ifs.
     - inv NODUP1. ss.
     - apply NOTIN. right. ss. }
-  { s. clear - WFMB0 Heq. admit "ez". }
+  { s. clear - WFMB0 Heq. exploit Genv.alloc_global_nextblock; eauto. congruence. }
   i; des.
   esplits; et.
 Qed.
@@ -964,8 +1056,10 @@ Proof.
     { refl. }
     { apply WF. }
     { i. uge. ss. rewrite PTree.gempty. ss. }
-    { econs; et. i. exfalso. clear - LOAD0. admit "ez". }
-    { rr. ii. exfalso. clear - H. admit "ez". }
+    { econs; et. i. exfalso. clear - LOAD0. eapply Mem.loadbytes_range_perm in LOAD0.
+      exploit (LOAD0 _ofs_fr0). omega. eapply Mem.perm_empty.
+    }
+    { rr. ii. exfalso. clear - H. unfold Genv.find_def in H. rewrite PTree.gempty in H. des_ifs. }
     { ss. }
   }
 Qed.

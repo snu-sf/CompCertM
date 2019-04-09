@@ -282,8 +282,35 @@ Module SkEnv.
       <<WF: SkEnv.wf sk.(Sk.load_skenv)>>
   .
   Proof.
-    unfold Sk.load_skenv. u.
-    admit "easy. follow induction proofs on Globalenvs.v".
+    unfold Sk.load_skenv. u. econs; r.
+    - unfold Genv.globalenv, Genv.find_symbol, Genv.find_def. eapply Genv.add_globals_preserves; i; ss.
+      + destruct (peq id0 id).
+        { subst id0. rewrite PTree.gss in SYMB. inv SYMB. exists g. eapply PTree.gss. }
+        { rewrite PTree.gso in SYMB; eauto. exploit H; eauto. i. inv H1.
+          exists x. rewrite PTree.gso; eauto. exploit Genv.genv_symb_range; eauto. i. xomega. }
+      + rewrite PTree.gempty in SYMB. inv SYMB.
+    - intros blk skd.
+      set (P := fun ge => Genv.find_def ge blk = Some skd -> exists id, Genv.find_symbol ge id = Some blk).
+      assert(REC: forall l ge, P ge -> NoDup (map fst l) ->
+                          (forall id, In id (map fst l) -> Genv.find_symbol ge id = None) ->
+                          P (Genv.add_globals ge l)).
+      { induction l as [| [id1 g1] l]; auto. i.
+        eapply IHl.
+        - unfold P, Genv.add_global, Genv.find_def, Genv.find_symbol in *. ss. i.
+          destruct (peq (Genv.genv_next ge) blk).
+          + subst blk. exists id1. eapply PTree.gss.
+          + rewrite PTree.gso in H2; eauto. exploit H; eauto. i. des.
+            exists id. rewrite PTree.gso; eauto.
+            ii. subst. exploit H1; eauto. i. congruence.
+        - inv H0. eauto.
+        - i. unfold Genv.add_global, Genv.find_symbol. ss. rewrite PTree.gso.
+          + eapply H1. right. eauto.
+          + ii. subst. inv H0; eauto.
+      }
+      eapply REC.
+      { unfold P, Genv.find_def. i. ss. rewrite PTree.gempty in H. inv H. }
+      { inv WF. eauto. }
+      { i. unfold Genv.find_symbol. ss. eapply PTree.gempty. }
   Qed.
 
   (* Note:

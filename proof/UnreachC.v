@@ -210,7 +210,7 @@ Lemma range_spec
     In x (range bound)
 .
 Proof.
-  admit "ez".
+  induction BDD; induction x; ss; eauto.
 Qed.
 
 Lemma finite_nat
@@ -538,7 +538,7 @@ Lemma romatch_ske_unchanged_on
 Proof.
   ii. exploit ROMATCH; et. i; des.
   assert(VAL: Mem.valid_block m0 b).
-  { ss. des_ifs. clear - NB Heq. admit "ez - NB". }
+  { ss. des_ifs. unfold Mem.valid_block. xomega. }
   esplits; et.
   - eapply bmatch_ext; et. i.
     erewrite <- Mem.loadbytes_unchanged_on_1; et.
@@ -686,7 +686,7 @@ Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
 
 
 Definition bc_proj (bc1 bc2: block_classification) : Prop :=
-  forall b, bc1 b = bc2 b \/ exists id, bc1 b = BCglob id /\ bc2 b = BCother
+  forall b, bc1 b = bc2 b \/ exists id, bc1 b = BCglob id /\ bc2 b = BCglob None
 .
 
 Section MATCH_PROJ.
@@ -694,13 +694,13 @@ Section MATCH_PROJ.
 Variables bc1 bc2: block_classification.
 Hypothesis PROJ: bc_proj bc1 bc2.
 
-Lemma pmatch_proj: forall b ofs isreal p (GOOD: exists id, bc2 b = BCglob id), pmatch bc1 b ofs isreal p -> pmatch bc2 b ofs isreal p.
+Lemma pmatch_proj: forall b ofs isreal p (GOOD: exists id, bc2 b = BCglob (Some id)), pmatch bc1 b ofs isreal p -> pmatch bc2 b ofs isreal p.
 Proof.
   i. hexploit (PROJ b); eauto. i. des; try congruence.
   inv H; try (by econs; eauto; congruence).
 Qed.
 
-Lemma vmatch_proj: forall v x (GOOD: forall blk ofs (PTR: v = Vptr blk ofs true), exists id, bc2 blk = BCglob id), vmatch bc1 v x -> vmatch bc2 v x.
+Lemma vmatch_proj: forall v x (GOOD: forall blk ofs (PTR: v = Vptr blk ofs true), exists id, bc2 blk = BCglob (Some id)), vmatch bc1 v x -> vmatch bc2 v x.
 Proof.
   i. inv H; econs; eauto.
   - destruct isreal; ss.
@@ -711,17 +711,17 @@ Proof.
     + inv H0; econs; eauto.
 Qed.
 
-Lemma smatch_proj: forall m b p (GOOD: exists id, bc2 b = BCglob id)
+Lemma smatch_proj: forall m b p (GOOD: exists id, bc2 b = BCglob (Some id))
                           (GOODMEM: forall chunk ofs_ v
                                            (LOAD: Mem.load chunk m b ofs_ = Some v)
                                            blk ofs
                                            (PTR: v = Vptr blk ofs true)
-                            , exists id, bc2 blk = BCglob id)
+                            , exists id, bc2 blk = BCglob (Some id))
                           (GOODMEMVAL: forall lo_ mv
                                            (LOAD: Mem.loadbytes m b lo_ 1 = Some mv)
                                            blk ofs q n
                                            (PTR: mv = [Fragment (Vptr blk ofs true) q n])
-                            , exists id, bc2 blk = BCglob id)
+                            , exists id, bc2 blk = BCglob (Some id))
   , smatch bc1 m b p -> smatch bc2 m b p.
 Proof.
   intros. destruct H as [A B]. split; intros.
@@ -731,20 +731,28 @@ Proof.
   apply pmatch_proj; eauto.
 Qed.
 
-Lemma bmatch_proj: forall m b ab (GOOD: exists id, bc2 b = BCglob id)
-                          (GOODMEM: forall chunk ofs_ v
-                                           (LOAD: Mem.load chunk m b ofs_ = Some v)
-                                           blk ofs
-                                           (PTR: v = Vptr blk ofs true)
-                            , exists id, bc2 blk = BCglob id)
+Lemma bmatch_proj: forall m b ab (GOOD: exists id, bc2 b = BCglob (Some id))
                           (GOODMEMVAL: forall lo_ mv
                                            (LOAD: Mem.loadbytes m b lo_ 1 = Some mv)
                                            blk ofs q n
                                            (PTR: mv = [Fragment (Vptr blk ofs true) q n])
-                            , exists id, bc2 blk = BCglob id)
+                            , exists id, bc2 blk = BCglob (Some id))
   , bmatch bc1 m b ab -> bmatch bc2 m b ab.
 Proof.
-  intros. destruct H as [B1 B2]. split.
+  intros. destruct H as [B1 B2].
+  assert(GOODMEM: forall (chunk : memory_chunk) (ofs_ : Z) (v : val),
+            Mem.load chunk m b ofs_ = Some v ->
+            forall (blk : block) (ofs : ptrofs), v = Vptr blk ofs true -> exists id : ident, bc2 blk = BCglob (Some id)).
+  { i. subst. eapply Mem.load_loadbytes in H. des.
+    assert(exists x, size_chunk chunk = (1 + x)%Z /\ (x >= 0)%Z).
+    { destruct chunk; ss; try (exists 0%Z; xomega); try (exists 1%Z; xomega); try (exists 3%Z; xomega); try (exists 7%Z; xomega). }
+    des. rewrite H1 in H. eapply Mem.loadbytes_split in H; try xomega. des. subst.
+    exploit (Mem.loadbytes_length m b ofs_); et. i.
+    assert(AUX1: exists l i q n, bytes1 ++ bytes2 = [Fragment (Vptr blk i true) q n] ++ l).
+    { unfold decode_val, Val.load_result, proj_value in *. des_ifs; do 4 eexists; ss. }
+    des. exploit app_eq_inv; et. i; des. eapply GOODMEMVAL; et.
+  }
+  split.
   apply smatch_proj; auto.
   intros. apply vmatch_proj; eauto.
 Qed.
@@ -836,7 +844,11 @@ Next Obligation.
       eapply Genv.genv_symb_range; eauto.
   - econs; eauto.
     + ii; ss. clarify. esplits; eauto.
-      admit "this should hold - use Genv.initmem_inject".
+      u in MEM. exploit Genv.initmem_inject; eauto. i. inv H.
+      Local Existing Instance Val.mi_normal.
+      exploit Mem.mi_memval; et.
+      { exploit Mem.perm_valid_block; et. unfold Mem.valid_block, Mem.flat_inj. des_ifs. }
+      i. replace (ofs + 0)%Z with ofs in H by omega. rewrite PTR in H. inv H. inv H1. eapply mi_mappedblocks; et.
     + ii; ss.
     + ss. u in *. erewrite <- Genv.init_mem_genv_next; eauto. folder. refl.
   - econs; eauto; ss.
@@ -870,15 +882,36 @@ Next Obligation.
   - bar. move ROMATCH at bottom.
     ii.
     exploit (ROMATCH b id ab); eauto.
-    { admit "ez". }
-    { admit "ez". }
+    { unfold ske2bc in BC. simpl in BC. des_ifs. rewrite <- NEXT in p. apply Genv.invert_find_symbol in Heq.
+      destruct (defs sk id) eqn:EQN.
+      - rewrite SYMBKEEP in Heq; et. apply Genv.find_invert_symbol in Heq. ss. des_ifs.
+      - rewrite SYMBDROP in Heq; try congruence.
+    }
+    { unfold romem_for_ske in RO. des_ifs. unfold romem_for_ske.
+      destruct (defs sk id) eqn:EQN.
+      - rewrite SYMBKEEP in Heq; et. rewrite Heq. apply Genv.find_invert_symbol in Heq. apply Genv.find_var_info_iff in Heq0.
+        exploit DEFKEPT; et. i; des. inv LO. inv H1. apply Genv.find_var_info_iff in DEFBIG. rewrite DEFBIG. ss.
+        inv H2; ss.
+        + rewrite Heq1. ss.
+        + apply andb_prop in Heq1. des. ss.
+        + apply andb_prop in Heq1. des. ss.
+      - rewrite SYMBDROP in Heq; try congruence.
+    }
     i; des.
     esplits; et.
     eapply bmatch_proj; et.
-    { admit "ez". }
-    { i. clarify. admit "ez - this is weaker version of below.
-Maybe you can remove this condition from bmatch_proj upfront. (I think it is easier to do so)
-". }
+    { clear - NEXT SYMBKEEP SYMBDROP. ii. ss. rewrite NEXT.
+      destruct (plt b (Genv.genv_next skenv0)); try by (left; ss).
+      destruct (Genv.invert_symbol skenv_link b) eqn:EQN1; destruct (Genv.invert_symbol skenv0 b) eqn:EQN2.
+      - apply Genv.invert_find_symbol in EQN2. destruct (defs sk i0) eqn:EQN3.
+        + exploit SYMBKEEP; et. i. rewrite H in EQN2. apply Genv.find_invert_symbol in EQN2. left; congruence.
+        + exfalso. exploit SYMBDROP; des_ifs. i. congruence.
+      - right. eexists. ss.
+      - exfalso. apply Genv.invert_find_symbol in EQN2. destruct (defs sk i) eqn:EQN3.
+        + exploit SYMBKEEP; et. i. rewrite H in EQN2. apply Genv.find_invert_symbol in EQN2. congruence.
+        + exploit SYMBDROP; des_ifs. i. congruence.
+      - left. ss.
+    }
     { i. clarify.
       inv WFM. s in BC. des_ifs_safe.
       apply Genv.invert_find_symbol in Heq.
@@ -904,10 +937,10 @@ Maybe you can remove this condition from bmatch_proj upfront. (I think it is eas
       { apply in_prog_defmap; et. }
       { clear - H4. unfold definitive_initializer in *. des_ifs. }
       i; des.
-      exists (Some id_to).
+      exists id_to.
       ss.
       assert(LT: plt blk (Genv.genv_next skenv0)).
-      { rewrite <- NEXT. admit "ez". }
+      { rewrite <- NEXT. eapply Genv.invert_find_symbol in SYMB. eapply Genv.genv_symb_range in SYMB. r. des_sumbool. ss. }
       des_ifs_safe.
       apply Genv.invert_find_symbol in SYMB.
       assert(TTT: defs sk id_to).
@@ -941,8 +974,8 @@ Next Obligation.
   exploit (@external_call_mem_inject_gen CTX ef skenv0 skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret
                                          (to_inj su0 (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
   { unfold to_inj. r. esplits; ii; ss; des_ifs; eauto.
-    - exfalso. eapply WF; eauto. inv SKE. rewrite PUB. admit "ez - H0".
-    - exfalso. apply n; clear n. admit "ez - SKE/WF".
+    - exfalso. inv SKE. exploit Genv.genv_symb_range; eauto. i. rewrite <- PUB in H1. inv WF. eapply WFLO in Heq. xomega.
+    - exfalso. apply n; clear n. eapply Genv.genv_symb_range in H0. inv SKE. xomega.
   }
   { eapply to_inj_mem; eauto. }
   { inv MEM. clear - NB VALS. abstr (Args.vs args0) vs_arg.

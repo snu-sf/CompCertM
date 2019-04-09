@@ -642,8 +642,8 @@ Proof.
   inv STACKS.
   { ss. }
   { ss. u. split; i; des; clarify; esplits; et; psimpl; zsimpl; try xomega.
-    { admit "ez - LE". }
-    { admit "ez - SZARG". }
+    { exploit tailcall_size; eauto. i. omega. }
+    { specialize (SZARG sg). omega. }
     { destruct (classic (4 * size_arguments sg <= x1)).
       - right. esplits; et.
       - left. esplits; et. xomega.
@@ -653,14 +653,12 @@ Proof.
   inv STK; ss.
   { inv MAINARGS. }
   { psimpl. zsimpl. rewrite <- frame_contents_at_external_m_footprint; ss; try xomega.
-    - split; try xomega.
-      admit "ez - SZARG".
+    - split; try xomega. specialize (SZARG sg). omega.
     - eapply bound_outgoing_stack_data; et.
   }
   {
     rewrite <- frame_contents_at_external_m_footprint ;ss.
-    - split; try xomega.
-      admit "ez - SZARG".
+    - split; try xomega. specialize (SZARG sg). omega.
     - eapply bound_outgoing_stack_data; et.
   }
 Qed.
@@ -703,10 +701,70 @@ Proof.
   }
 Qed.
 
+Lemma freed_contains_locations_incr:
+  forall j j' sp pos bound sl ls,
+  inject_incr j j' ->
+  massert_imp (freed_contains_locations j sp pos bound sl ls)
+              (freed_contains_locations j' sp pos bound sl ls).
+Proof.
+  intros; split; simpl; intros; auto.
+Qed.
 
+Lemma contains_locations_tl_incr:
+  forall j j' sp pos from bound sl ls,
+  inject_incr j j' ->
+  massert_imp (contains_locations_tl j sp pos from bound sl ls)
+              (contains_locations_tl j' sp pos from bound sl ls).
+Proof.
+  intros; split; simpl; intros; auto.
+  intuition auto. exploit H4; eauto. intros (v & A & B). exists v; eauto.
+Qed.
 
+Local Transparent frame_contents_at_external.
+Lemma frame_contents_at_external_incr:
+  forall f j sp ls ls0 parent retaddr sg m P j',
+    m |= frame_contents_at_external f j sp ls ls0 parent retaddr sg ** P ->
+    inject_incr j j' ->
+    m |= frame_contents_at_external f j' sp ls ls0 parent retaddr sg ** P.
+Proof.
+  unfold frame_contents_at_external, frame_contents_1_at_external; intros.
+  rewrite <- (contains_locations_incr j j') by auto.
+  erewrite <- contains_callee_saves_incr by eauto.
+  erewrite <- freed_contains_locations_incr by eauto.
+  erewrite <- contains_locations_tl_incr by eauto.
+  assumption.
+Qed.
+Local Opaque frame_contents_at_external.
 
+Lemma stack_contents_change_meminj:
+  forall m j j', inject_incr j j' ->
+  forall cs cs' P,
+  m |= stack_contents j cs cs' ** P ->
+  m |= stack_contents j' cs cs' ** P.
+Proof.
+Local Opaque sepconj.
+  induction cs as [ | [] cs]; destruct cs' as [ | [] cs']; simpl; intros; auto.
+  destruct sp0; auto.
+  destruct b0; try congruence.
+  destruct cs, cs'; sep_simpl_tac; des; try congruence.
+  { eapply dummy_frame_contents_incr; eauto. }
+  apply frame_contents_incr with (j0 := j); auto.
+  rewrite sep_swap. apply IHcs. rewrite sep_swap. assumption.
+Qed.
 
+Lemma stack_contents_at_external_change_meminj:
+  forall m j j', inject_incr j j' ->
+            forall cs cs' sg,
+              m |= stack_contents_at_external j cs cs' sg ->
+              m |= stack_contents_at_external j' cs cs' sg.
+Proof.
+  Local Opaque sepconj.
+  induction cs as [ | [] cs]; destruct cs' as [ | [] cs']; simpl; intros; auto.
+  des_ifs.
+  - eapply frame_contents_at_external_incr; eauto.
+  - eapply frame_contents_at_external_incr; eauto. rewrite sep_comm.
+    eapply stack_contents_change_meminj; eauto. rewrite sep_comm. assumption.
+Qed.
 
 End STACKINGEXTRA.
 
@@ -992,7 +1050,7 @@ Proof.
   unfold size_callee_save_area. ss.
   clear_tac.
   assert(4 | 8).
-  { admit "so ez". }
+  { econs. instantiate (1:=2). omega. }
   assert(0 < align (4 * bound_outgoing) 8 + 8 /\ (4 | align (4 * bound_outgoing) 8 + 8)).
   { hexploit (align_le (4 * bound_outgoing) 8); try lia. i. split; try lia.
     eapply Z.divide_add_r; try lia; ss.
@@ -1027,15 +1085,13 @@ Proof.
     { eauto. }
     { ss. }
     { esplits; eauto.
-      - admit "so ez".
-      - admit "so ez".
+      - des. eapply Z.add_pos_pos; eauto. eapply Z.lt_le_trans. eapply H0. eapply align_le. omega.
+      - des. eapply Z.divide_add_r; eauto. eapply Z.divide_trans. eapply H1. eapply align_divides. omega.
     }
     { ii. eapply used_callee_save_prop; eauto. }
     { inv used_callee_save_norepet. ss. }
-    { ss.
-      split.
-      - admit "so ze".
-      - admit "so ez".
+    { ss. i; des. split; eauto.
+      des. assert(initofs <= align initofs (AST.typesize (mreg_type a))). eapply align_le; omega. omega.
     }
 Qed.
 Local Opaque make_env sepconj.
@@ -1417,7 +1473,7 @@ Proof.
     assert(SZLE: size_arguments sg <= size_arguments sg_init).
     { des; clarify.
       - refl.
-      - rewrite tailcall_size; ss. admit "ez".
+      - rewrite tailcall_size; ss. eapply Z.ge_le. eapply size_arguments_above.
     }
     Local Transparent stack_contents_args.
     (* Local Opaque contains_locations. *)
@@ -1425,8 +1481,8 @@ Proof.
     Local Opaque stack_contents_args.
     psimpl. zsimpl.
     esplits; try xomega.
-    + admit "ez".
-    + admit "ez - SEP - range".
+    + eapply Z.divide_0_r.
+    + clear - SEP. inv SEP. des. inv H0. des. eauto.
     + des; clarify.
       exploit tailcall_size; et. intro ZERO; des. rewrite ZERO in *. zsimpl.
       clear - SEP UNCH.
@@ -1442,7 +1498,7 @@ Proof.
           + eapply Mem.perm_unchanged_on; et.
             * u. i. des_safe. xomega.
             * clear - SEP SZLE H0 H2 H3. apply sep_drop in SEP. ss. des. eapply SEP1; et. split; try xomega.
-        - admit "ez".
+        - eapply Z.mul_divide_mono_l. eauto.
       }
       des_safe. esplits; et.
   }
@@ -1460,7 +1516,7 @@ Proof.
         Local Transparent sepconj.
         s.
         left. esplits; et. xomega.
-      + split; ss. admit "ez".
+      + split; ss. eapply Z.ge_le. eapply size_arguments_above.
     - apply sep_pick1 in SEP.
 
       Local Transparent frame_contents frame_contents_at_external.
@@ -1491,7 +1547,7 @@ Proof.
           destruct (classic (x1 < 4 * size_arguments sg)); et.
           right. split; et. xomega.
     - rewrite <- frame_contents_at_external_m_footprint; et.
-      { split; et. admit "ez". }
+      { split; et. eapply Z.ge_le. eapply size_arguments_above. }
       { eapply bound_outgoing_stack_data; et. }
   }
 Qed.
@@ -1734,7 +1790,10 @@ Proof.
     { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. eapply SIMSKENV. }
     i; des. monadInv MATCH. rename x into fd_tgt.
     assert(exists targs_tgt, <<TYPTGT: typecheck (Args.vs args_tgt) (fn_sig fd_tgt) targs_tgt>>).
-    { admit "ez - make lemma". }
+    { inv TYP. eexists. econs; eauto.
+      - erewrite <- inject_list_length; eauto. erewrite <- transf_function_sig; eauto.
+      - erewrite <- transf_function_sig; eauto.
+    }
     des.
     exploit (store_arguments_progress (Args.m args_tgt) targs_tgt (fn_sig fd_tgt)); et.
     { inv TYPTGT. eapply typify_has_type_list; et. }
@@ -2076,7 +2135,7 @@ Proof.
 
         assert(STEP1: SimMemInj.tgt sm_ret |= stack_contents_at_external (SimMemInj.inj sm_ret)
                                     cs cs'0 (SkEnv.get_sig skd)).
-        { About stack_contents_change_meminj. admit "ez - this should hold". }
+        { inv MLE0. eapply stack_contents_at_external_change_meminj; eauto. }
 
         eapply stack_contents_at_external_spec_elim; et.
 
@@ -2187,7 +2246,10 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - admit "easy".
+  - r. eapply Sk.match_program_eq; eauto.
+    ii. destruct f1; ss.
+    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. eapply transf_function_sig; eauto.
+    + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
     i. ss. uge0. des_ifs.
     unfold SkEnv.revive in *. apply Genv_map_defs_def in Heq. des. ss. gesimpl.

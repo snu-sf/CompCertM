@@ -631,6 +631,17 @@ Let transf_c_program: Csyntax.program -> res Asm.program :=
                  Asmgen.transf_program
 .
 
+Goal transf_c_program = Compiler.transf_c_program.
+Proof.
+  apply func_ext1. intro pp.
+  unfold transf_c_program. unfold Compiler.transf_c_program. unfold transf_clight_program. ss.
+  unfold transf_cminor_program. cbn.
+  unfold transf_rtl_program. cbn.
+  unfold time. unfold total_if.
+  unfold print. cbn.
+  admit "A guard admit (not to forget) - you should use Compiler.transf_c_program at the end!".
+Qed.
+
 (* TODO: this is not used, remove it *)
 Lemma backward_simulation_refl
       SEM

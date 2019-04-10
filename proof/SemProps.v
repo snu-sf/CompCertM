@@ -225,7 +225,7 @@ Section INITDTM.
   Print fsim_properties.
   Print determinate.
 
-  Lemma link_sk_disjoing
+  Lemma link_sk_disjoint
         md0 md1 p0 id skenv_link b if_sig if_sig0 restl sk_link gd_big0
         (IN : In md0 p0)
         (NOTSAME : md0 <> md1)
@@ -254,11 +254,6 @@ Section INITDTM.
     { exploit TLORD; eauto. }
     Local Transparent Linker_prog.
 
-    (* assert (SkEnv.includes (Genv.globalenv sk_link) (Mod.get_sk md0 (Mod.data md0))). *)
-    (* { *)
-    (*   eapply link_includes. *)
-    (*   instantiate (1 := (md1 :: p0)). *)
-    (*   unfold link_sk. unfold Mod.sk. simpl. eauto. ss. eauto. } *)
     exploit INCLS; eauto. intros INCL0.
     inversion WFBIG.
     exploit DEFSYMB; eauto. i. des.
@@ -369,68 +364,6 @@ Section INITDTM.
     exploit Genv_map_defs_def; eauto. i; des. des_ifs. inv LO. inv H3.
   Qed.
 
-  (* Lemma link_sk_disjoint_aux *)
-  (*       (sks: list Sk.t) *)
-  (*       sk0 sk1 *)
-  (*       (IN0: In sk0 sks) *)
-  (*       (IN1: In sk1 sks) *)
-  (*       sk_link *)
-  (*       (LINKSK: link_list sks = Some sk_link) *)
-  (*       (NEQ: sk0 <> sk1) *)
-  (*   : *)
-  (*     sk0.(defs) /1\ sk1.(defs) <1= bot1 *)
-  (* . *)
-  (* Proof. *)
-  (*   admit "". *)
-  (* Qed. *)
-
-  (* Lemma link_sk_disjoint *)
-  (*       md0 md1 *)
-  (*       (IN0: In md0 p) *)
-  (*       (IN1: In md1 p) *)
-  (*       sk_link *)
-  (*       (LINKSK: link_sk p = Some sk_link) *)
-  (*       (NEQ: md0.(Mod.sk) <> md1.(Mod.sk)) *)
-  (*   : *)
-  (*     md0.(Mod.sk).(defs) /1\ md1.(Mod.sk).(defs) <1= bot1 *)
-  (* . *)
-  (* Proof. *)
-  (*   unfold link_sk in *. *)
-  (*   hexploit link_sk_disjoint_aux; eauto. *)
-  (*   { rewrite in_map_iff. esplits; eauto. } *)
-  (*   { rewrite in_map_iff. esplits; eauto. } *)
-  (* Qed. *)
-
-  Lemma link_sk_disjoint
-        md0 md1
-        (IN0: In md0 p)
-        (IN1: In md1 p)
-        sk_link
-        (LINKSK: link_sk p = Some sk_link)
-        (NEQ: md0 <> md1)
-    :
-      md0.(Mod.sk).(defs) /1\ md1.(Mod.sk).(defs) <1= bot1
-  .
-  Proof.
-    clear_tac. clear sem.
-    unfold link_sk in *.
-    unfold Mod.sk in *.
-    ginduction p; i; ss.
-    eapply link_list_cons_inv in LINKSK. des_safe.
-    hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe.
-    hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
-
-    destruct IN0; ss.
-    { clarify. des; ss.
-Local Transparent Linker_prog.
-      simpl in HD. simpl in TL.
-      ss.
-(* Local Opaque Linker_prog. *)
-(*       exploit link_prog_inv; eauto. *)
-(*       unfold Linker_prog in *. *)
-(*     } *)
-  Abort.
-
   Theorem genv_disjoint
     :
       <<DISJ: sem.(globalenv).(Ge.disjoint)>>
@@ -444,7 +377,6 @@ Local Transparent Linker_prog.
     ii; ss.
     inv FIND0; inv FIND1.
     generalize (link_includes p Heq). intro INCLS.
-    (* remember (Sk.load_skenv t) as skenv_link. *)
     unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss.
     abstr (Genv.globalenv t) skenv_link. rename t into sk_link.  rename Heq into SKLINK.
     rewrite in_map_iff in *.
@@ -458,8 +390,7 @@ Local Transparent Linker_prog.
     clarify.
     destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs.
     rename Heq0 into DEF0. rename Heq into DEF1.
-    (* remember (Genv.globalenv sk_link) as skenv_link. *)
-    
+
     hexploit (@Mod.get_modsem_projected_sk md0 skenv_link); eauto. intro SPEC0; des.
     hexploit (@Mod.get_modsem_projected_sk md1 skenv_link); eauto. intro SPEC1; des.
     remember (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
@@ -506,9 +437,8 @@ Local Transparent Linker_prog.
       { apply SYMBBIG1. }
     } clarify.
     rename id1 into id.
-    (* remember (Genv.globalenv sk_link) as skenv_link. *)
-    
-    clear - SYMBBIG0 WFBIG INCLS(* Heqskenv_link *) DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK H0 MODSEM1.
+
+    clear - SYMBBIG0 WFBIG INCLS DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK H0 MODSEM1.
     destruct (classic (md0 = md1)); ss.
     { clarify. }
 
@@ -527,8 +457,8 @@ Local Transparent Linker_prog.
     hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
 
     des; clarify.
-    - eapply link_sk_disjoing; try eapply DEFBIG; eauto.
-    - eapply link_sk_disjoing; try eapply DEFBIG; eauto.
+    - eapply link_sk_disjoint; try eapply DEFBIG; eauto.
+    - eapply link_sk_disjoint; try eapply DEFBIG; eauto.
     - eapply IHp0; try eapply DEFS1; try eapply DEFS0; try eapply DEFBIG; eauto.
   Qed.
 

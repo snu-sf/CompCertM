@@ -225,6 +225,83 @@ Section INITDTM.
   Print fsim_properties.
   Print determinate.
 
+  Lemma link_sk_disjoint
+        md0 md1 p0 id skenv_link b if_sig if_sig0 restl sk_link gd_big0
+        (IN : In md0 p0)
+        (NOTSAME : md0 <> md1)
+        (DEFS1 : defs (Mod.get_sk md1 (Mod.data md1)) id)
+        (DEFS0 : defs (Mod.get_sk md0 (Mod.data md0)) id)
+        (DEFBIG0 : Genv.find_def skenv_link b = Some gd_big0)
+        (SYMBBIG0 : Genv.find_symbol skenv_link id = Some b)
+        (WFBIG : SkEnv.wf skenv_link)
+        (DEF0 : Genv.find_def (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) b = Some (Gfun (Internal if_sig)))
+        (DEF1 : Genv.find_def (ModSem.skenv (Mod.get_modsem md1 skenv_link (Mod.data md1))) b = Some (Gfun (Internal if_sig0)))
+        (INCLS : forall md : Mod.t, md1 = md \/ In md p0 -> SkEnv.includes skenv_link (Mod.get_sk md (Mod.data md)))
+        (TL : link_list (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0) = Some restl)
+        (HD : link (Mod.get_sk md1 (Mod.data md1)) restl = Some sk_link)
+        (SKLINK : link_list (Mod.get_sk md1 (Mod.data md1) :: map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0) = Some sk_link)
+        (TLORD : Forall (fun x : Sk.t => linkorder x restl) (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0))
+        (HDORD : linkorder (Mod.get_sk md1 (Mod.data md1)) sk_link)
+        (HDORD0 : linkorder restl sk_link)
+    :
+      False.
+  Proof.
+    rewrite <- Mod.get_modsem_skenv_spec in *.
+    rewrite Forall_forall in TLORD.
+    assert (In (Mod.get_sk md0 (Mod.data md0)) (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0)).
+    { rewrite in_map_iff. exists md0. auto. }
+    assert (linkorder (Mod.get_sk md0 (Mod.data md0)) restl).
+    { exploit TLORD; eauto. }
+    Local Transparent Linker_prog.
+
+    exploit INCLS; eauto. intros INCL0.
+    inversion WFBIG.
+    exploit DEFSYMB; eauto. i. des.
+    exploit SkEnv.project_impl_spec; eauto. i. inv H2.
+    exploit SYMBKEEP; eauto. i.
+    
+    assert (INTERN0: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md0 (Mod.data md0))) = Some (Gfun (Internal int_sig))).
+    { rewrite SYMBBIG0 in H2.
+      exploit DEFKEPT. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des.
+      eauto. } des.
+
+    exploit (@prog_defmap_linkorder (fundef signature) unit). eapply H0.
+    instantiate (2:=id).
+    eauto. i. des.
+
+    exploit INCLS. instantiate (1:=md1). auto. intros INCL1.
+    exploit SkEnv.project_impl_spec; eauto. i. inv H5.
+    exploit SYMBKEEP; eauto. i.
+    
+    assert (INTERN1: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md1 (Mod.data md1))) = Some (Gfun (Internal int_sig))).
+    { rewrite SYMBBIG0 in H5.
+      exploit DEFKEPT0. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des.
+      eauto. } des.
+
+    exploit (@prog_defmap_linkorder (fundef signature) unit). eapply HDORD.
+    instantiate (2:=id).
+    eauto. i. des.
+
+    Local Transparent Linker_def.
+    simpl in *.
+    inv H4. inv H9.
+    Local Transparent Linker_fundef.
+    simpl in *.
+    inv H7. inv H8.
+
+    inv HD. unfold link_prog in H7.
+    des_ifs.
+    symmetry in Heq.
+    eapply andb_true_eq in Heq. des.
+    symmetry in Heq0.
+    rewrite Maps.PTree_Properties.for_all_correct in Heq0.
+    unfold defs in *.
+    exploit Heq0. eauto. i.
+    unfold link_prog_check in H8.
+    des_ifs. ss.
+    rewrite andb_false_r in H8. clarify.
+  Qed.
+
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
   Variable p: program.
@@ -286,68 +363,6 @@ Section INITDTM.
     unfold System.skenv in *. ss.
     exploit Genv_map_defs_def; eauto. i; des. des_ifs. inv LO. inv H3.
   Qed.
-
-  (* Lemma link_sk_disjoint_aux *)
-  (*       (sks: list Sk.t) *)
-  (*       sk0 sk1 *)
-  (*       (IN0: In sk0 sks) *)
-  (*       (IN1: In sk1 sks) *)
-  (*       sk_link *)
-  (*       (LINKSK: link_list sks = Some sk_link) *)
-  (*       (NEQ: sk0 <> sk1) *)
-  (*   : *)
-  (*     sk0.(defs) /1\ sk1.(defs) <1= bot1 *)
-  (* . *)
-  (* Proof. *)
-  (*   admit "". *)
-  (* Qed. *)
-
-  (* Lemma link_sk_disjoint *)
-  (*       md0 md1 *)
-  (*       (IN0: In md0 p) *)
-  (*       (IN1: In md1 p) *)
-  (*       sk_link *)
-  (*       (LINKSK: link_sk p = Some sk_link) *)
-  (*       (NEQ: md0.(Mod.sk) <> md1.(Mod.sk)) *)
-  (*   : *)
-  (*     md0.(Mod.sk).(defs) /1\ md1.(Mod.sk).(defs) <1= bot1 *)
-  (* . *)
-  (* Proof. *)
-  (*   unfold link_sk in *. *)
-  (*   hexploit link_sk_disjoint_aux; eauto. *)
-  (*   { rewrite in_map_iff. esplits; eauto. } *)
-  (*   { rewrite in_map_iff. esplits; eauto. } *)
-  (* Qed. *)
-
-  Lemma link_sk_disjoint
-        md0 md1
-        (IN0: In md0 p)
-        (IN1: In md1 p)
-        sk_link
-        (LINKSK: link_sk p = Some sk_link)
-        (NEQ: md0 <> md1)
-    :
-      md0.(Mod.sk).(defs) /1\ md1.(Mod.sk).(defs) <1= bot1
-  .
-  Proof.
-    clear_tac. clear sem.
-    unfold link_sk in *.
-    unfold Mod.sk in *.
-    ginduction p; i; ss.
-    eapply link_list_cons_inv in LINKSK. des_safe.
-    hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe.
-    hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
-
-    destruct IN0; ss.
-    { clarify. des; ss.
-Local Transparent Linker_prog.
-      simpl in HD. simpl in TL.
-      ss.
-(* Local Opaque Linker_prog. *)
-(*       exploit link_prog_inv; eauto. *)
-(*       unfold Linker_prog in *. *)
-(*     } *)
-  Abort.
 
   Theorem genv_disjoint
     :
@@ -423,10 +438,28 @@ Local Transparent Linker_prog.
     } clarify.
     rename id1 into id.
 
-    clear - DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK H0 MODSEM1.
+    clear - SYMBBIG0 WFBIG INCLS DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK H0 MODSEM1.
     destruct (classic (md0 = md1)); ss.
     { clarify. }
-    admit "this should hold. state some lemma like: link_sk_disjoint".
+
+    exfalso.
+
+    clear_tac.
+    generalize dependent sk_link.
+    ginduction p; i; ss.
+    dup SKLINK.
+    eapply link_list_cons_inv in SKLINK; cycle 1.
+    { destruct p0; ss.
+      inv H0; inv MODSEM1; clarify.
+    }
+    des_safe.
+    hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe.
+    hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
+
+    des; clarify.
+    - eapply link_sk_disjoint; try eapply DEFBIG; eauto.
+    - eapply link_sk_disjoint; try eapply DEFBIG; eauto.
+    - eapply IHp0; try eapply DEFS1; try eapply DEFS0; try eapply DEFBIG; eauto.
   Qed.
 
   Lemma find_fptr_owner_determ

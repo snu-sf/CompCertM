@@ -346,6 +346,10 @@ Next Obligation.
     eapply prog_defmap_spec in H0. des.
     eapply prog_defmap_image; et.
     erewrite KEPT; et.
+  - rewrite <- PUB. ii. exploit prog_defmap_dom; eauto. i; des.
+    destruct (classic (ss0 a)).
+    + exploit CLOSED; et. intro T. unfold privs in T. bsimpl. des. unfold NW in *. bsimpl. des_sumbool. ss.
+    + exploit KEPT; eauto. intro T. rewrite H0 in *. exploit prog_defmap_image; eauto.
 Qed.
 Next Obligation.
   inv SIMSK. inv SIMSK0.

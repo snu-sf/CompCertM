@@ -15,7 +15,7 @@ Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.
 Require Import SimMem SimModSem SimMod.
-Require Import Sound.
+Require Import Sound SemProps.
 
 Set Implicit Arguments.
 
@@ -64,6 +64,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Theorem sim_link_sk
           sk_link_src
           (LOADSRC: p_src.(link_sk) = Some sk_link_src)
+          (WF: forall md, In md p_src -> <<WF: Sk.wf md>>)
     :
       exists ss_link sk_link_tgt,
         <<LOADTGT: p_tgt.(link_sk) = Some sk_link_tgt>>
@@ -96,6 +97,10 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
       { apply SIMSK. }
       { apply IH0. }
       { eauto. }
+      { eapply WF; et. }
+      { eapply link_list_preserves_wf_sk; eauto. }
+      { eapply SimSymb.sim_sk_preserves_wf; et. eapply WF; et. }
+      { eapply SimSymb.sim_sk_preserves_wf; et. eapply link_list_preserves_wf_sk; eauto. }
       i; des.
       esplits; eauto.
       - eapply link_list_cons; eauto.

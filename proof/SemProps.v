@@ -192,6 +192,17 @@ Proof.
       { apply in_prog_defmap; et. }
       intro X; des.
       eapply prog_defmap_dom; et.
+  - ii.
+    assert(exists gd, link_prog_merge (prog_defmap sk0) ! a (prog_defmap sk1) ! a = Some gd).
+    { unfold link_prog_merge. des_ifs; eauto.
+      - exploit INV0; eauto. i; des. esplits; et.
+      - rewrite in_app_iff in *. des.
+        + inv WFSK0. exploit PUBINCL; eauto. intro T. exploit prog_defmap_dom; et. i; des. clarify.
+        + inv WFSK1. exploit PUBINCL; eauto. intro T. exploit prog_defmap_dom; et.
+    }
+    unfold prog_defs_names. ss. rewrite in_map_iff. des. eexists (_, _). s. esplits; eauto.
+    eapply PTree.elements_correct. rewrite PTree.gcombine; ss.
+    unfold link_prog_merge. des_ifs; eauto.
 Qed.
 
 Theorem link_list_preserves_wf_sk

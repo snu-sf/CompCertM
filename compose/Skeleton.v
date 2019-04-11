@@ -228,6 +228,7 @@ Module Sk.
           (INDAT: In (Init_addrof id_to _ofs) gv.(gvar_init))
         ,
           <<IN: In id_to sk.(prog_defs_names)>>)
+      (PUBINCL: incl sk.(prog_public) sk.(prog_defs_names))
   .
 
 End Sk.

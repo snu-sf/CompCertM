@@ -71,11 +71,15 @@ Module SimSymb.
 
       sim_sk_link: forall
           ss0 (sk_src0 sk_tgt0: Sk.t)
-          (SIMSK: sim_sk ss0 sk_src0 sk_tgt0)
           ss1 sk_src1 sk_tgt1
+          (SIMSK: sim_sk ss0 sk_src0 sk_tgt0)
           (SIMSK: sim_sk ss1 sk_src1 sk_tgt1)
           sk_src
           (LINKSRC: link sk_src0 sk_src1 = Some sk_src)
+          (WFSRC0: Sk.wf sk_src0)
+          (WFSRC1: Sk.wf sk_src1)
+          (WFTGT0: Sk.wf sk_tgt0)
+          (WFTGT1: Sk.wf sk_tgt1)
         ,
           exists ss sk_tgt,
             <<LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt>> /\

@@ -557,8 +557,76 @@ Next Obligation.
       * rewrite DROP; ss. rewrite DROP0; ss.
       * rewrite DROP; ss. rewrite KEPT0; ss. apply AUX2; ss.
       * rewrite DROP0; ss. rewrite KEPT; ss. rewrite AUX1; ss.
-    + admit "ez".
-    + admit "ez".
+    + rr. unfold privs. ss. bsimpl.
+      split.
+      {
+        assert(T: exists x1, link_prog_merge (prog_defmap sk_src0) ! x0 (prog_defmap sk_src1) ! x0 = Some x1).
+        {
+          admit "ez - CLOSED/CLOSED0/H0".
+        }
+        clear PR. des_safe.
+        rr. unfold defs. unfold NW. des_sumbool. unfold prog_defs_names. ss.
+        rewrite in_map_iff.
+        eexists (_, _). s.
+        esplits; eauto.
+        eapply PTree.elements_correct; eauto.
+        rewrite PTree.gcombine; ss.
+        eauto.
+      }
+      unfold NW.
+      bsimpl. des_sumbool.
+      intro T. rewrite in_app_iff in T.
+      destruct PR.
+      * exploit CLOSED; eauto. intro TT. unfold privs in TT. unfold NW in *. bsimpl. des_safe. des_sumbool.
+        des; ss.
+        clear - TT TT0.
+        admit "WE NEED WF SRC".
+      * admit "ditto".
+    + assert(WFTGT0: Sk.wf sk_tgt0).
+      { admit "WE NEED WF TGT". }
+      assert(WFTGT1: Sk.wf sk_tgt1).
+      { admit "WE NEED WF TGT". }
+      assert(T: (In (id, Gvar gv) (prog_defs sk_tgt0))
+                \/ (In (id, Gvar gv) (prog_defs sk_tgt1))).
+      { unfold prog_defmap in PROG. ss.
+        rewrite PTree_Properties.of_list_elements in *.
+        rewrite PTree.gcombine in *; ss.
+        unfold link_prog_merge in PROG. clear - PROG. des_ifs.
+        Local Transparent Linker_def.
+        Local Transparent Linker_vardef.
+        Local Transparent Linker_varinit.
+        - apply PTree_Properties.in_of_list in Heq.
+          apply PTree_Properties.in_of_list in Heq0.
+          ss.
+          assert(g = Gvar gv \/ g0 = Gvar gv).
+          { (* TODO: make lemma. put in LinkingC *)
+            clear - PROG.
+            unfold link_def in *. des_ifs.
+            ss. unfold link_vardef in *. destruct v; ss.
+            des_ifs; bsimpl; des; des_sumbool; rewrite eqb_true_iff in *.
+            destruct gvar_info; ss. destruct v0; ss. destruct gvar_info; ss. destruct u; ss.
+            unfold link_varinit in *. des_ifs; eauto.
+          }
+          des; clarify; et.
+        - apply PTree_Properties.in_of_list in Heq. eauto.
+        - apply PTree_Properties.in_of_list in PROG. eauto.
+        Local Opaque Linker_def.
+        Local Opaque Linker_vardef.
+        Local Opaque Linker_varinit.
+      }
+      assert(U: ~ In id_drop (prog_defs_names sk_tgt0) /\ ~ In id_drop (prog_defs_names sk_tgt1)).
+      {
+        split.
+        - destruct (classic (ss0 id_drop)).
+          + exploit DROP; eauto. intro V. intro W. exploit prog_defmap_dom; et. i; des; clarify.
+          + desH DROP1; et. exploit KEPT; et. intro V.
+            exploit AUX1; eauto. i. ii. exploit prog_defmap_dom; et. i; des_safe; clarify.
+            congruence.
+        - admit "ditto".
+      }
+      desH T.
+      * inv WFTGT0. rr in H1. des_safe. exploit WFPTR; eauto.
+      * inv WFTGT1. rr in H1. des_safe. exploit WFPTR; eauto.
     + apply NoDup_norepet. apply PTree.elements_keys_norepet.
 (*   admit "See 'link_match_program' in Unusedglobproof.v. *)
 (* Note that we have one more goal (exists ss) but it is OK, as the 'link_match_program' proof already proves it.". *)

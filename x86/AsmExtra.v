@@ -54,6 +54,72 @@ Proof.
   eapply Mem.perm_store_2; eauto.
 Qed.
 
+Lemma mem_store_readonly
+      chunk m0 m1 b ofs v
+      (STORE: Mem.store chunk m0 b ofs v = Some m1)
+  :
+    Mem.unchanged_on (loc_not_writable m0) m0 m1.
+Proof.
+  eapply Mem.unchanged_on_implies; try eapply Mem.store_unchanged_on; eauto.
+  ii. apply Mem.store_valid_access_3 in STORE. apply H0.
+  apply Mem.perm_cur_max. eapply STORE; eauto.
+Qed.
+
+Lemma mem_free_readonly
+      m0 m1 b lo hi
+      (STORE: Mem.free m0 b lo hi = Some m1)
+  :
+    Mem.unchanged_on (loc_not_writable m0) m0 m1.
+Proof.
+  eapply Mem.unchanged_on_implies; try eapply Mem.free_unchanged_on; eauto.
+  ii. apply H0.
+  apply Mem.perm_cur_max. eapply Mem.perm_implies.
+  - eapply Mem.free_range_perm; eauto.
+  - econs.
+Qed.
+
+Lemma exec_store_readonly
+      ge chunk m0 m1 a rd l
+      rs0 rs1
+      (EXEC: exec_store ge chunk m0 a rs0 rd l = Next rs1 m1)
+  :
+    Mem.unchanged_on (loc_not_writable m0) m0 m1.
+Proof.
+  unfold exec_store, Mem.storev in *. des_ifs.
+  eapply mem_store_readonly; eauto.
+Qed.
+
+Lemma mem_alloc_readonly
+      m0 m1 b lo hi
+      (STORE: Mem.alloc m0 lo hi = (m1, b))
+  :
+    Mem.unchanged_on (loc_not_writable m0) m0 m1.
+Proof.
+  eapply Mem.unchanged_on_implies; try eapply Mem.alloc_unchanged_on; eauto.
+Qed.
+
+Lemma mem_readonly_trans
+      m0 m1 m2
+      (UNCH0: Mem.unchanged_on (loc_not_writable m0) m0 m1)
+      (UNCH1: Mem.unchanged_on (loc_not_writable m1) m1 m2)
+  :
+    Mem.unchanged_on (loc_not_writable m0) m0 m2.
+Proof.
+  inv UNCH0. inv UNCH1.
+  econs.
+  - etrans; eauto.
+  - ii. exploit unchanged_on_perm; eauto. i. etrans; eauto.
+    eapply unchanged_on_perm0; eauto.
+    + ii. eapply unchanged_on_perm in H2; eauto.
+    + unfold Mem.valid_block in *. eapply Plt_Ple_trans; eauto.
+  - ii. exploit unchanged_on_contents; eauto. i. etrans; try apply H1.
+    eapply unchanged_on_contents0; eauto.
+    + ii. eapply unchanged_on_perm in H2; eauto.
+      eapply Mem.perm_valid_block; eauto.
+    + eapply unchanged_on_perm; eauto.
+      eapply Mem.perm_valid_block; eauto.
+Qed.
+
 Lemma asm_step_max_perm se ge_src rs0 rs1 m0 m1 tr
       (STEP: Asm.step ge_src se (Asm.State rs0 m0) tr (Asm.State rs1 m1))
       b ofs p
@@ -83,6 +149,25 @@ Proof.
     + eapply Mem.perm_free_3; eauto.
   - exploit external_call_max_perm; eauto.
   - exploit external_call_max_perm; eauto.
+Qed.
+
+Lemma asm_step_readonaly se ge_src rs0 rs1 m0 m1 tr
+      (STEP: Asm.step ge_src se (Asm.State rs0 m0) tr (Asm.State rs1 m1))
+  :
+    Mem.unchanged_on (loc_not_writable m0) m0 m1.
+Proof.
+  replace m1 with (st_m (Asm.State rs1 m1)); eauto.
+  replace m0 with (st_m (Asm.State rs0 m0)); eauto.
+  generalize dependent (Asm.State rs0 m0).
+  generalize dependent (Asm.State rs1 m1).
+  i. ginduction STEP; i; ss.
+  - unfold exec_instr, goto_label in *; des_ifs; ss; clarify; try refl;
+      (all_once_fast ltac:(fun H=> try (eapply exec_load_mem_equal in H; clarify; try refl; fail))); try (exploit exec_store_readonly; eauto; fail).
+    + eapply mem_readonly_trans; [eapply mem_alloc_readonly; eauto|].
+      eapply mem_readonly_trans; eapply mem_store_readonly; eauto.
+    + eapply mem_free_readonly; eauto.
+  - eapply external_call_readonly; eauto.
+  - eapply external_call_readonly; eauto.
 Qed.
 
 Ltac tac_p := ss; try (symmetry; eapply Ptrofs.add_zero; fail);

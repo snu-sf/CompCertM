@@ -19,7 +19,6 @@ Require Import Mach mktac MemdataC.
 Definition agree `{CTX: Val.meminj_ctx}  (j: meminj) (rs0 rs1: Mach.regset) : Prop :=
   forall mr, Val.inject j (rs0 mr) (rs1 mr).
 
-(* TODO: remove same lemma in AsmregsC *)
 Lemma typesize_chunk
       ty
   :
@@ -1192,42 +1191,7 @@ Module FillArgsProgress.
     i; des. eauto.
   Qed.
 
-  (* Local Transparent loc_arguments size_arguments. *)
-  (* Let fill_arguments_spec_aux: forall *)
-  (*     sig_args sig_res sig_cc *)
-  (*     m0 rs0 m1 sp args *)
-  (*     (LEN: Datatypes.length args = Datatypes.length sig_args) *)
-  (*     x y z *)
-  (*     (ALC: Mem.alloc m0 0 (4 * size_arguments_64 sig_args x y z) = (m1, sp)) *)
-  (*     rs1 m2 *)
-  (*     (FILL: fill_arguments sp rs0 m1 args (loc_arguments_64 sig_args x y z) = Some (rs1, m2)) *)
-  (*   , *)
-  (*     <<STORE: store_arguments m0 rs1 args {| sig_args := sig_args; sig_res := sig_res; sig_cc := sig_cc |} m1>> *)
-  (* . *)
-  (* Proof. *)
-  (*   ii. *)
-  (*   ginduction args; ii; ss; des_ifs_safe. *)
-  (*   { econs; eauto. *)
-  (*     - unfold size_arguments. des_ifs. ss. *)
-  (*     - rr. unfold loc_arguments. ss. des_ifs. rewrite Heq0. econs; eauto. *)
-  (*     - refl. *)
-  (*     - eapply Mem_alloc_range_perm; eauto. *)
-  (*   } *)
-  (* Qed. *)
-
   Hint Unfold o_bind2.
-
-  (* Lemma list_forall2_sep *)
-  (*       X Y *)
-  (*       (P Q: X -> Y -> Prop) *)
-  (*       xs ys *)
-  (*       (ALL: list_forall2 P xs ys) *)
-  (*       (SEP: forall x y, P x y -> Q x y) *)
-  (*   : *)
-  (*     <<ALL: list_forall2 Q xs ys>> *)
-  (* . *)
-  (* Proof. *)
-  (* Qed. *)
 
   (* move to Conventions1C *)
   Lemma size_arguments_64_larger x y z tys

@@ -32,8 +32,8 @@ Definition st_m (st0: state): mem :=
 .
 
 Definition store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem) : Prop :=
-  store_arguments m0 (to_mregset rs) vs sg m2 /\
-  rs RSP = Vptr m0.(Mem.nextblock) Ptrofs.zero true.
+  (<<STORE: store_arguments m0 (to_mregset rs) vs sg m2>>) /\
+  (<<RSRSP: rs RSP = Vptr m0.(Mem.nextblock) Ptrofs.zero true>>).
 
 Definition external_state F V (ge: Genv.t F V) (v : val) : bool :=
   match v with
@@ -54,15 +54,26 @@ Section ASMEXTRA.
     end
   .
 
+  Variable se: Senv.t.
   Variable ge: genv.
-  Definition semantics_with_ge := Semantics step bot1 final_state ge.
+  Definition semantics_with_ge := Semantics_gen step bot1 final_state ge se.
   (* *************** ge is parameterized *******************)
 
-  Lemma semantics_strict_determinate
+  Lemma semantics_receptive
         st
         (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      strict_determinate_at semantics_with_ge st
+      receptive_at semantics_with_ge st
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+  Lemma semantics_determinate
+        st
+        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
+    :
+      determinate_at semantics_with_ge st
   .
   Proof.
     admit "this should hold".
@@ -84,9 +95,9 @@ Section MODSEM.
     (* extret: bool; *)
   }.
 
-  Inductive step (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
+  Inductive step (se: Senv.t) (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
   | step_intro
-      (STEP: Asm.step ge st0.(st) tr st1.(st))
+      (STEP: Asm.step se ge st0.(st) tr st1.(st))
       (INITRS: st0.(init_rs) = st1.(init_rs))
       (* (ISRETURN: step_ret st0.(st) = st1.(extret)) *)
   .
@@ -229,27 +240,50 @@ Section MODSEM.
     eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
-  Lemma lift_strict_determinate_at
-        st0
-        (DTM: strict_determinate_at (semantics_with_ge ge) st0)
+  Lemma lift_receptive_at
+        st
+        (* b *)
+        (RECEP: receptive_at (semantics_with_ge skenv_link ge) st)
     :
-      forall init_rs, strict_determinate_at modsem (mkstate init_rs st0)
+      forall init_rs, receptive_at modsem (mkstate init_rs st)
   .
   Proof.
-    inv DTM. i. econs; eauto; ii; ss.
-    - inv STEP0. inv STEP1. ss. destruct s1, s2; ss. clarify.
-      determ_tac ssd_determ_at.
-    - inv H. ss. exploit ssd_traces_at; eauto.
+    inv RECEP. i. econs; eauto; ii; ss.
+    - inv H. ss. exploit sr_receptive_at; eauto. i; des.
+      eexists (mkstate _ s2). econs; ss.
+    - inv H. ss. exploit sr_traces_at; eauto.
   Unshelve.
     all: ss.
   Qed.
 
-  Lemma modsem_strict_determinate
+  Lemma modsem_receptive
         st
     :
-      strict_determinate_at modsem st
+      receptive_at modsem st
   .
-  Proof. destruct st. eapply lift_strict_determinate_at. eapply semantics_strict_determinate. ii. eapply not_external; eauto. Qed.
+  Proof. destruct st. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
+
+  Lemma lift_determinate_at
+        st0
+        (DTM: determinate_at (semantics_with_ge skenv_link ge) st0)
+    :
+      forall init_rs, determinate_at modsem (mkstate init_rs st0)
+  .
+  Proof.
+    inv DTM. i. econs; eauto; ii; ss.
+    - inv H. inv H0. ss.
+      determ_tac sd_determ_at. esplits; eauto. i. clarify. destruct s1, s2; ss. f_equal; ss; eauto.
+    - inv H. ss. exploit sd_traces_at; eauto.
+  Unshelve.
+    all: ss.
+  Qed.
+
+  Lemma modsem_determinate
+        st
+    :
+      determinate_at modsem st
+  .
+  Proof. destruct st. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
 
 
 End MODSEM.

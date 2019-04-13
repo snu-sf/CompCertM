@@ -5,7 +5,7 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib StoreArguments AsmC Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC MemoryC2 LowerBoundExtra Lia LinkingC2 mktac MemdataC LocationsC.
+Require Import GlobalenvsC MemoryC2 LowerBoundExtra Lia LinkingC2 mktac MemdataC LocationsC AsmExtra.
 
 Set Implicit Arguments.
 
@@ -72,6 +72,7 @@ Section PRESERVATION.
 
   Variable progs : list Asm.program.
   Let prog : Syntax.program := List.map AsmC.module progs.
+  Hypothesis (WFSK: forall md (IN: In md prog), <<WF: Sk.wf md>>).
 
   Variable tprog : Asm.program.
   Hypothesis LINK : link_list progs = Some tprog.
@@ -83,9 +84,16 @@ Section PRESERVATION.
   Let skenv_link := Sk.load_skenv sk.
   Let ge := load_genv prog skenv_link.
   Let tge := Genv.globalenv tprog.
+  Let WFSKLINK: Sk.wf sk. eapply link_list_preserves_wf_sk; et. Qed.
   Let WFSKELINK: SkEnv.wf skenv_link.
   Proof.
     eapply SkEnv.load_skenv_wf.
+    ss.
+  Qed.
+
+  Let ININCL: forall p (IN: In p prog), <<INCL: SkEnv.includes skenv_link p.(Mod.sk)>>.
+  Proof.
+    eapply link_includes; et.
   Qed.
 
   Definition local_genv (p : Asm.program) :=
@@ -116,7 +124,8 @@ Section PRESERVATION.
   Qed.
 
   Definition genv_le (ge_src ge_tgt: Genv.t fundef unit): Prop :=
-    sub_match_genvs eq ge_src ge_tgt.
+    (* sub_match_genvs eq ge_src ge_tgt. *)
+    sub_match_genvs (@def_match _ _) ge_src ge_tgt.
 
   Inductive skenv_inject {F V} (ge: Genv.t F V) (j: meminj): Prop :=
   | sken_inject_intro
@@ -129,8 +138,7 @@ Section PRESERVATION.
     :
       Genv.public_symbol skenv_link id = Senv.public_symbol (symbolenv (sem prog)) id.
   Proof.
-    ss.
-    admit "this should hold. fill in `symbolenv` of `Sem.v`".
+    ss. des_ifs.
   Qed.
 
   Lemma MATCH_PROG
@@ -176,7 +184,7 @@ Section PRESERVATION.
   Lemma sub_match_local_genv ge_local
         (MATCHGE: genv_le ge_local tge)
     :
-      sub_match_genvs (fun fdef skdef => skdef_of_gdef fn_sig fdef = skdef) ge_local skenv_link.
+      sub_match_genvs (fun fdef skdef => def_match (skdef_of_gdef fn_sig fdef) (skdef)) ge_local skenv_link.
   Proof.
     destruct match_skenv_link_tge. inv MATCHGE.
     unfold Genv.find_symbol, Genv.find_def in *. econs.
@@ -187,6 +195,7 @@ Section PRESERVATION.
       specialize (mge_defs b). inv mge_defs.
       + eq_closure_tac.
       + eq_closure_tac. esplits; eauto.
+        inv MATCHDEF; ss; des_ifs; econs.
   Qed.
 
   Inductive valid_owner fptr (p: Asm.program) : Prop :=
@@ -194,27 +203,18 @@ Section PRESERVATION.
       fd
       (MSFIND: ge.(Ge.find_fptr_owner) fptr (AsmC.modsem skenv_link p))
       (FINDF: Genv.find_funct (local_genv p) fptr = Some (Internal fd))
-      (SIZEWF: 4 * size_arguments (fn_sig fd) <= Ptrofs.max_unsigned).
+      (SIZEWF: 4 * size_arguments (fn_sig fd) <= Ptrofs.max_unsigned)
+      (PROGIN: In (AsmC.module p) prog)
+  .
 
-  Inductive _genv_le : forall A:Type, A -> Genv.t fundef unit -> Prop :=
-  | _genv_le_intro
-      ge1 ge2
-      (LE: genv_le ge1 ge2)
+  Lemma owner_genv_le p
+      (IN: In (AsmC.module p) prog)
     :
-      _genv_le ge1 ge2.
-
-  Lemma owner_genv_le ms
-        (IN: In ms (fst ge))
-    :
-      _genv_le ms.(ModSem.globalenv) tge.
+      genv_le (local_genv p) tge.
   Proof.
-    unfold ge in *. ss. des.
-    { admit "".
-    }
+    unfold ge in *.
     unfold load_modsems, flip, Mod.modsem, skenv_link, Sk.load_skenv, prog in *. ss.
-    rewrite list_map_compose in IN. ss.
-    eapply in_map_iff in IN. des. clarify. unfold modsem. ss. econs.
-
+    eapply in_map_iff in IN. des. clarify. apply inj_pair2 in H0. destruct H0. unfold local_genv.
     assert(INCL: SkEnv.includes (Genv.globalenv sk) (Sk.of_program fn_sig x)).
     { exploit link_includes; et.
       { rewrite in_map_iff. esplits; et. }
@@ -228,6 +228,7 @@ Section PRESERVATION.
     assert (SKWF: SkEnv.wf_proj (SkEnv.project (Genv.globalenv sk) x.(Sk.of_program fn_sig))).
     { eapply SkEnv.project_spec_preserves_wf.
       - eapply SkEnv.load_skenv_wf.
+        et.
       - eapply SkEnv.project_impl_spec; et.
     }
 
@@ -248,10 +249,7 @@ Section PRESERVATION.
         i; des.
         ss. congruence.
 
-    - exists d0. splits; eauto.
-
-      dup FIND. unfold SkEnv.revive in FIND.
-
+    - dup FIND. unfold SkEnv.revive in FIND.
       eapply Genv_map_defs_def in FIND. des.
       gesimpl.
 
@@ -272,39 +270,31 @@ Section PRESERVATION.
       assert(i = i0).
       { apply Genv.find_invert_symbol in TMP0. unfold skenv_link in EQ. clarify. }
       clarify.
-      assert(TP: (prog_defmap tprog) ! i0 = Some d0).
-      { rename x into xx.
-        hexploit (link_list_linkorder _ LINK); et. intro LO; des. rewrite Forall_forall in *.
-        specialize (LO xx IN0).
-        Local Transparent Linker_prog.
-        ss.
-        Local Opaque Linker_prog.
-        des.
-        exploit LO1; et. i; des.
-        rewrite H.
-        assert(INT: ~ASTC.is_external d0).
-        { ss. }
-        clear - INT H0.
-        inv H0; ss.
-        - inv H; ss.
-        - inv H; ss. destruct info1, info2; ss. inv H1; ss.
-          + admit "this does not hold!".
-          + admit "this does not hold!".
-      }
-      apply Genv.find_def_symbol in TP. des.
-      assert(b0 = b).
-      { apply Genv.invert_find_symbol in EQ. uge. rewrite mge_symb in TP. unfold skenv_link in EQ. clarify. }
-      clarify.
-  Qed.
 
-  Lemma valid_owner_genv_le fptr p
-        (OWNER: valid_owner fptr p)
-    :
-      genv_le (local_genv p) tge.
-  Proof.
-    inv OWNER. inv MSFIND.
-    eapply owner_genv_le in MODSEM. inv MODSEM.
-    unfold genv in H. eapply inj_pair2 in H. clarify.
+      hexploit (link_list_linkorder _ LINK); et. intro LO; des. rewrite Forall_forall in *.
+      specialize (LO x IN0).
+      Local Transparent Linker_prog.
+      ss.
+      Local Opaque Linker_prog.
+      des.
+      exploit LO1; et. i; des.
+      assert(INT: ~ASTC.is_external d0).
+      { ss. }
+      assert(INT0: ~ASTC.is_external gd2).
+      { Local Transparent Linker_def. inv H0.
+        - inv H2.
+          + ss.
+          + ss.
+        - inv H2; ss.
+      }
+      exists gd2. splits; eauto.
+      + apply Genv.find_def_symbol in H. des.
+        assert(b0 = b).
+        { apply Genv.invert_find_symbol in EQ. uge. rewrite mge_symb in H. unfold skenv_link in EQ. clarify. }
+        clarify.
+      + inv H0; ss.
+        * inv H2; ss.
+        * inv H2; ss. destruct info1, info2. econs.
   Qed.
 
   Lemma symb_preserved id
@@ -348,7 +338,7 @@ Section PRESERVATION.
     cinv (mge_defs b).
     - rewrite Heq in *. clarify.
     - rewrite Heq in *. clarify.
-      unfold skdef_of_gdef, fundef in *. rewrite FIND in *. des_ifs.
+      unfold skdef_of_gdef, fundef in *. rewrite FIND in *. inv MATCHDEF. des_ifs.
   Qed.
 
 (** ********************* initial memory *********************************)
@@ -382,9 +372,6 @@ Section PRESERVATION.
     - des_ifs.
   Qed.
 
-  Definition agree (j: meminj) (rs_src rs_tgt: regset) : Prop :=
-    forall pr, Val.inject j (rs_src pr) (rs_tgt pr).
-
   Lemma system_symbols_inject j
         (SKINJ: skenv_inject skenv_link j)
     :
@@ -409,6 +396,45 @@ Section PRESERVATION.
         des_ifs; ss; clarify. des_ifs.
   Qed.
 
+  (* TODO: remove redundancy with from UpperBound_B.v. *)
+  Lemma senv_same
+    :
+      (tge: Senv.t) = (skenv_link: Senv.t)
+  .
+  Proof.
+    generalize match_skenv_link_tge; intro MGE.
+    clear - MGE.
+    subst skenv_link. ss. unfold Sk.load_skenv in *. subst tge. unfold link_sk in *. ss.
+    inv MGE.
+    unfold fundef in *.
+    apply senv_eta; ss.
+    - uge. apply func_ext1. i. ss.
+    - unfold Genv.public_symbol. uge. apply func_ext1. i. specialize (mge_symb x0).
+      rewrite mge_symb. des_ifs. rewrite mge_pubs. ss.
+    - apply func_ext1. i.
+      destruct ((Genv.invert_symbol (@Genv.globalenv (AST.fundef function) unit tprog) x0)) eqn:T.
+      + apply Genv.invert_find_symbol in T. symmetry. apply Genv.find_invert_symbol. uge. rewrite <- mge_symb. ss.
+      + destruct (Genv.invert_symbol (Genv.globalenv sk) x0) eqn:U; ss.
+        apply Genv.invert_find_symbol in U. specialize (mge_symb i). uge. rewrite <- mge_symb in *.
+        apply Genv.find_invert_symbol in U. congruence.
+    - unfold Genv.block_is_volatile, Genv.find_var_info. apply func_ext1. i.
+      specialize (mge_defs x0). uge. inv mge_defs; ss.
+      destruct y; ss. des_ifs.
+  Qed.
+
+  Lemma system_symbols_inject2 j
+        (SKINJ: skenv_inject skenv_link j)
+    :
+      symbols_inject j (System.globalenv skenv_link) skenv_link.
+  Proof.
+    destruct match_skenv_link_tge. inv SKINJ.
+    unfold System.globalenv.
+    rr. esplits; ss.
+    - i. exploit Genv.genv_symb_range; eauto. intro NB.
+      exploit DOMAIN; et. i; clarify.
+    - i. exploit Genv.genv_symb_range; eauto.
+  Qed.
+
   Lemma external_function_sig
         v skd ef
         (FIND0: Genv.find_funct (System.globalenv skenv_link) v = Some (External ef))
@@ -430,11 +456,11 @@ Section PRESERVATION.
       delta = 0.
     Proof.
       inv SKINJ. exploit DOMAIN.
-      - instantiate (1:=b_src). clear - FIND.
+      - instantiate (1:=b_src). clear - FIND WFSKLINK.
         unfold System.globalenv in *.
         unfold Genv.find_funct_ptr in *. des_ifs.
         assert (SkEnv.wf skenv_link).
-        { apply SkEnv.load_skenv_wf. }
+        { apply SkEnv.load_skenv_wf; et. }
         inv H. unfold Genv.find_symbol in *.
         exploit DEFSYMB; eauto. i. des.
         eapply Genv.genv_symb_range; eauto.
@@ -456,7 +482,7 @@ Section PRESERVATION.
         cinv SKINJ. exploit DOMAIN.
         - instantiate (1:= b_src).
           assert (SkEnv.wf skenv_link).
-          { apply SkEnv.load_skenv_wf. }
+          { apply SkEnv.load_skenv_wf; et. }
           inv H. unfold Genv.find_symbol in *.
           exploit DEFSYMB; eauto.
           i. des. eapply Genv.genv_symb_range; eauto.
@@ -508,48 +534,17 @@ Section PRESERVATION.
     Proof.
     Admitted.
 
-    Lemma asm_step_preserve_injection
-          rs_src0 rs_src1 m_src0 m_src1 tr j0
-          rs_tgt0 m_tgt0
-          ge_src ge_tgt
-          (GENVLE: genv_le ge_src ge_tgt)
-          (DOMAIN: forall b (LT: Plt b ge_src.(Genv.genv_next)),
-              j0 b = Some(b, 0))
-          (NOEXTFUN: no_extern_fun ge_src)
-          (AGREE: agree j0 rs_src0 rs_tgt0)
-          (INJ: Mem.inject j0 m_src0 m_tgt0)
-          (STEP: Asm.step ge_src (Asm.State rs_src0 m_src0) tr (Asm.State rs_src1 m_src1))
-      :
-        exists rs_tgt1 m_tgt1 j1,
-          (Asm.step ge_tgt (Asm.State rs_tgt0 m_tgt0) tr (Asm.State rs_tgt1 m_tgt1)) /\
-          (agree j1 rs_src1 rs_tgt1) /\
-          (Mem.inject j1 m_src1 m_tgt1) /\
-          (inject_incr j0 j1) /\
-          (inject_separated j0 j1 m_src0 m_tgt0)
-    .
-    Proof.
-    Admitted.
-
-    Lemma asm_step_max_perm ge_src rs0 rs1 m0 m1 tr
-          (STEP: Asm.step ge_src (Asm.State rs0 m0) tr (Asm.State rs1 m1))
-          b ofs p
-          (VALID: Mem.valid_block m0 b)
-          (PERM: Mem.perm m1 b ofs Max p)
-      :
-        Mem.perm m0 b ofs Max p.
-    Proof.
-    Admitted.
-
   End ASMLEMMAS.
 
   Lemma local_genv_no_extern_fun p :
-    no_extern_fun (local_genv p).
+    forall (IN: In (AsmC.module p) prog),
+      no_extern_fun (local_genv p).
   Proof.
     unfold no_extern_fun. ii. unfold local_genv in *. des.
     unfold Genv.find_funct_ptr in *. des_ifs.
     exploit SkEnv.project_revive_no_external; eauto.
     { ss. destruct ef; ss. }
-    admit "INCL".
+    exploit ININCL; eauto.
   Qed.
 
   Lemma ALLOC_NEXT_INCR F V (gen: Genv.t F V) x m0 m1
@@ -765,7 +760,8 @@ Section PRESERVATION.
       (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate init_rs1 st))
       (STACK: match_stack j P0 init_rs1 frs)
       (WF: wf_init_rs j st.(st_rs) init_rs0)
-      (IN: genv_le (local_genv p) tge)
+      (GELE: genv_le (local_genv p) tge)
+      (PROGIN: In (AsmC.module p) prog)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
                         = Some skd /\ SkEnv.get_sig skd = sg)
       (RSPPTR: st.(st_rs) # RSP = Vptr blk ofs true)
@@ -790,7 +786,8 @@ Section PRESERVATION.
       (INITRS: init_rs0 = st.(st_rs))
       (STACK: match_stack j P0 init_rs1 frs)
       (MEM: m = st.(st_m))
-      (IN: genv_le (local_genv p) tge)
+      (GELE: genv_le (local_genv p) tge)
+      (PROGIN: In (AsmC.module p) prog)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
                         = Some skd /\ SkEnv.get_sig skd = sg)
       (RSPPTR: init_rs0 # RSP = Vptr blk ofs true)
@@ -1033,6 +1030,7 @@ Section PRESERVATION.
       (AGREE: agree j rs_src rs_tgt)
       (INJ: Mem.inject j m_src m_tgt)
       (GELE: genv_le (local_genv p) tge)
+      (PROGIN: In (AsmC.module p) prog)
       (GEINJECT: skenv_inject skenv_link j)
       (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p)
                             (AsmC.mkstate init_rs (Asm.State rs_src m_src)))
@@ -1121,7 +1119,8 @@ Section PRESERVATION.
     inv FINAL0. clarify. inv STACK. econs.
     - specialize (AGREE PC). rewrite RSRA in *. rewrite RSRA0 in *.
       inv AGREE; ss.
-    - des. rewrite RSPC in *. exploit local_global_consistent; eauto. intro SGEQ. rewrite <- SGEQ in *. clarify.
+    - des. rewrite RSPC in *. exploit local_global_consistent; eauto.
+      intro SGEQ. rewrite <- SGEQ in *. clarify.
       ss. unfold signature_main, loc_arguments, loc_result in *.
       Transparent Archi.ptr64. ss. unfold loc_result_64 in *. ss. clarify.
       ss. specialize (AGREE RAX). rewrite INT in *. inv AGREE; auto.
@@ -1154,32 +1153,51 @@ Section PRESERVATION.
 
   Lemma asm_step_internal_simulation
         st_src0 st_src1 st_tgt0 tr frs p init_rs n0
-        (STEP: Asm.step (local_genv p) st_src0 tr st_src1)
+        (STEP: Asm.step skenv_link (local_genv p) st_src0 tr st_src1)
+        (PROGIN: In (AsmC.module p) prog)
         (MTCHST: match_states (State ((Frame.mk (AsmC.modsem skenv_link p)
                                                 (AsmC.mkstate init_rs st_src0))::frs))
                               st_tgt0 n0)
     :
       exists st_tgt1 n1,
-        Asm.step tge st_tgt0 tr st_tgt1 /\
+        Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
         match_states (State ((Frame.mk (AsmC.modsem skenv_link p)
                                        (AsmC.mkstate init_rs st_src1))::frs))
                      st_tgt1 n1.
   Proof.
-    inv MTCHST. dup FRAME. apply asm_frame_inj in FRAME0.
+    inv MTCHST. dup FRAME. dup FRAME.
+    apply asm_frame_inj in FRAME0.
     apply asm_frame_inj2 in FRAME. inv FRAME0. destruct st_src1.
-    rewrite <- FRAME in GELE.
-    exploit asm_step_preserve_injection; eauto.
-    - inv GEINJECT. i. eapply DOMAIN.
-      eapply sub_mge_next in GELE. destruct match_skenv_link_tge.
-      rewrite <- mge_next. eapply Plt_Ple_trans; eauto.
-    - eapply local_genv_no_extern_fun.
-    - ii. des. esplits; eauto; econs; eauto.
+    eapply owner_genv_le in PROGIN.
+    rewrite FRAME in *.
+
+    exploit AsmExtra.asm_step_preserve_injection; eauto.
+
+    { clear FRAME1 FRAME. i. inv GELE. inv GEINJECT.
+      exploit sub_mge_defs0; eauto. i. des.
+      inv WFSKELINK.
+      exploit DOMAIN.
+      - erewrite <- Genv.mge_next; try apply match_skenv_link_tge.
+        instantiate (1:= b_src).
+        exploit Genv.genv_defs_range; eauto.
+      - i. clarify. esplits; eauto.
+    }
+
+    { i. inv GELE. inv GEINJECT.
+      exploit sub_mge_symb0; eauto. i. esplits; eauto.
+      exploit DOMAIN; eauto.
+      erewrite <- Genv.mge_next; try apply match_skenv_link_tge.
+      exploit Genv.genv_symb_range; eauto.
+    }
+
+    { eapply system_symbols_inject; eauto. }
+
+    - ii. des. rewrite <- senv_same in *. esplits; eauto. econs; eauto.
       +
         {
-          clear - INJ H2 H3 GEINJECT.
           inv GEINJECT. econs.
           - i. unfold inject_incr in *.
-            eapply H2. eapply DOMAIN. eauto.
+            eapply INCR. eapply DOMAIN. eauto.
           - i. ss.
             destruct (Genv.block_is_volatile skenv_link b2) eqn:EQ1;
             destruct (Genv.block_is_volatile skenv_link b1) eqn:EQ2;
@@ -1187,13 +1205,26 @@ Section PRESERVATION.
 
             + set (Genv.block_is_volatile_below _ _ EQ1).
               destruct (j b1) eqn : EQ.
-              * destruct p0. apply H2 in EQ. clarify.
-              * exfalso. eapply H3 in EQ. specialize (EQ INJ0). des.
+              * destruct p2. apply INCR in EQ. clarify.
+              * exfalso. eapply SEP in EQ. specialize (EQ INJ1). des.
                 inv INJ. unfold Mem.valid_block in *. eauto.
             + eapply Genv.block_is_volatile_below in EQ2.
               set (DOMAIN _ EQ2).
-              set (H2 _ _ _ e). clarify. auto.
+              set (INCR _ _ _ e). clarify. auto.
         }
+      + instantiate (1:=init_rs0).
+        assert (JEQ: @JMeq
+                       (ModSem.state (modsem skenv_link p))
+                       {| init_rs := init_rs0; st := Asm.State r m |}
+                       (ModSem.state (modsem skenv_link p0))
+                       {| init_rs := init_rs0; st := Asm.State r m |}).
+        { econs. }
+        revert JEQ.
+        generalize ({| init_rs := init_rs0; st := Asm.State r m |} : ModSem.state (modsem skenv_link p0)) at 2 4.
+        generalize ({| init_rs := init_rs0; st := Asm.State r m |} : ModSem.state (modsem skenv_link p)).
+        apply f_equal with (f:=Frame.ms) in FRAME1. simpl in FRAME1.
+        clear - FRAME1. destruct FRAME1.
+        ii. f_equal. apply JMeq_eq. eauto.
       + eapply match_stack_incr; eauto.
       + eapply inj_range_wf_step; cycle 2; eauto.
         i. destruct (j blk) eqn: EQ; eauto. destruct p2. left.
@@ -1203,11 +1234,11 @@ Section PRESERVATION.
 
   Lemma step_internal_simulation
         fr0 frs tr st0 st_tgt0 n0
-        (STEP: fr0.(Frame.ms).(ModSem.step) fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
+        (STEP: fr0.(Frame.ms).(ModSem.step) skenv_link fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
         (MTCHST: match_states (State (fr0 :: frs)) st_tgt0 n0)
     :
       exists st_tgt1 n1,
-        Asm.step tge st_tgt0 tr st_tgt1 /\
+        Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
         match_states (State ((fr0.(Frame.update_st) st0) :: frs)) st_tgt1 n1.
   Proof.
     inv MTCHST. inv STEP.
@@ -1240,9 +1271,11 @@ Section PRESERVATION.
     - eapply callee_save_agree; eauto.
       etrans; eauto.
     - eauto.
-    - eapply IN.
+    - eapply GELE0.
     - ss.
-    - unfold Frame.update_st. s. repeat f_equal. eapply local_global_consistent; try apply GELE; eauto.
+    - ss.
+    - unfold Frame.update_st. s. repeat f_equal.
+      eapply local_global_consistent; try eapply GELE; eauto.
     - eapply match_stack_incr; [eauto| | eauto]. instantiate (1:=P). eauto.
     - auto.
     - des_ifs.
@@ -1309,13 +1342,15 @@ Section PRESERVATION.
         args frs st_tgt p n
         (MTCHST: match_states (Callstate args frs) st_tgt n)
         (OWNER: valid_owner args.(Args.fptr) p)
+        (PROGIN: In (AsmC.module p) prog)
     :
       exists rs m,
         (AsmC.initial_frame skenv_link p args (AsmC.mkstate rs (Asm.State rs m))) /\
         (match_states (State ((Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate rs (Asm.State rs m))) :: frs)) st_tgt 0).
   Proof.
-    inv MTCHST. dup OWNER. apply valid_owner_genv_le in OWNER0.
-    inv OWNER. des. ss.
+    inv MTCHST. dup OWNER. inv OWNER.
+    exploit owner_genv_le; eauto. intros GELE.
+    des. ss.
     set (nextblock_unvalid := nextblock_unvalid INJECT).
     destruct (Mem.alloc args.(Args.m) 0 (4 * size_arguments (fn_sig fd))) eqn:MEQ.
     assert (Genv.find_funct skenv_link (Args.fptr args) =
@@ -1324,7 +1359,9 @@ Section PRESERVATION.
       unfold Genv.find_funct, Genv.find_funct_ptr in *.
       exploit sub_match_local_genv; eauto. intros MATCHGE.
       set (sub_mge_defs MATCHGE).
-      des_ifs. specialize (e _ _ Heq1). des; clarify. }
+      des_ifs. specialize (e _ _ Heq1). des; clarify.
+      inv MATCHDEF. ss.
+    }
     clarify. ss.
 
     exists (arg_copy_reg (fn_sig fd) (Args.vs args)
@@ -1376,7 +1413,8 @@ Section PRESERVATION.
         eapply Mem.extends_inject_compose.
         * eapply arg_copy_mem_extends.
         * eapply memcpy_inject; eauto.
-      + eapply valid_owner_genv_le. econs; eauto.
+      + eauto.
+      + ss.
       + unfold callee_injection. inv GEINJECT. econs; i.
         { des_ifs; eauto. exploit (DOMAIN b); auto. i. clarify. }
         des_ifs; [| eauto].
@@ -1431,6 +1469,7 @@ Section PRESERVATION.
         args frs st_tgt p n
         (MTCHST: match_states (Callstate args frs) st_tgt n)
         (OWNER: valid_owner args.(Args.fptr) p)
+        (PROGIN: In (AsmC.module p) prog)
     :
       exists st_src,
         step ge (Callstate args frs) E0 st_src /\ match_states st_src st_tgt 0.
@@ -1463,7 +1502,7 @@ Section PRESERVATION.
         (STEP: step ge (State frs) t st_src1)
     :
       (exists st_tgt1 n1,
-          Asm.step tge st_tgt0 t st_tgt1 /\ match_states st_src1 st_tgt1 n1) \/
+          Asm.step skenv_link tge st_tgt0 t st_tgt1 /\ match_states st_src1 st_tgt1 n1) \/
       (exists n1,
           match_states st_src1 st_tgt0 n1 /\ n1 < n0)%nat /\ (t = E0).
   Proof.
@@ -1474,13 +1513,14 @@ Section PRESERVATION.
       exploit at_external_external; eauto.
       econs; try eassumption; ss.
     - left. exploit step_internal_simulation; eauto.
+      inv MTCHST. ss.
     - right. exploit step_return_simulation; eauto.
   Qed.
 
   Lemma owner_asm_or_system fptr ms
         (OWNER: Ge.find_fptr_owner ge fptr ms)
     :
-      (<<ASMMOD: exists p, ms= AsmC.modsem skenv_link p >>)\/
+      (<<ASMMOD: exists p, ms = AsmC.modsem skenv_link p /\ In (AsmC.module p) prog>>)\/
       (<<SYSMOD: ms = System.modsem skenv_link>>).
   Proof.
     inv OWNER. clear - MODSEM. unfold ge in *.
@@ -1488,6 +1528,10 @@ Section PRESERVATION.
     ss. des; auto.
     left. generalize progs ms MODSEM.
     intros l. induction l; ss; i. des; eauto.
+    rewrite in_map_iff in *. des. clarify.
+    rewrite in_map_iff in *. des. clarify.
+    exists x1.
+    esplits; eauto. right. apply in_map_iff. esplits; et.
   Qed.
 
   Lemma find_fptr_owner_determ
@@ -1498,7 +1542,7 @@ Section PRESERVATION.
       ms0 = ms1
   .
   Proof.
-    eapply SemProps.find_fptr_owner_determ; ss;
+    eapply SemProps.find_fptr_owner_determ; et; ss;
       rewrite LINK_SK; eauto.
   Qed.
 
@@ -1511,23 +1555,27 @@ Section PRESERVATION.
                       fptr (System.modsem skenv_link)>>) \/
       (<<UNSAFE: ~ safe (sem prog) st>>).
   Proof.
-    destruct (classic (exists ms, Ge.find_fptr_owner ge args.(Args.fptr) ms)) as [[ms OWNER] | NOOWNER].
-    - destruct (owner_asm_or_system OWNER); des; clarify.
-      + destruct (classic (valid_owner args.(Args.fptr) p)); eauto.
-        right. right. intros SAFE. exploit SAFE; [econs|].
-        i. des.
-        * inv H0.
-        * inv H0. apply H.
-          revert MSFIND st_init INIT. intros MSFIND.
-          ss. rewrite LINK_SK in *.
-          rewrite <- (find_fptr_owner_determ OWNER MSFIND) in *. i.
-          inv INIT. econs; eauto.
-          inv TYP. eauto.
-      + right. left. clarify.
-    - right. right. intros SAFE. clarify. exploit SAFE; [econs|].
+    destruct (classic (exists p, Ge.find_fptr_owner ge args.(Args.fptr) (modsem skenv_link p)
+                                 /\ In (AsmC.module p) prog)) as [[p OWNER] | NOOWNER].
+    - des. simpl_depind.
+      destruct (classic (valid_owner args.(Args.fptr) p)); eauto.
+      right. right. intros SAFE. exploit SAFE; [econs|].
       i. des.
-      + inv H.
-      + inv H. ss. rewrite LINK_SK in *. eauto.
+      + inv H0.
+      + inv H0. apply H.
+        revert MSFIND st_init INIT. intros MSFIND.
+        ss. rewrite LINK_SK in *.
+        rewrite <- (find_fptr_owner_determ OWNER MSFIND) in *. i.
+        inv INIT. econs; eauto.
+        inv TYP. eauto.
+    - destruct (classic (Ge.find_fptr_owner ge fptr (System.modsem skenv_link))).
+      { right. left. esplits; eauto. }
+      right. right. intros SAFE. clarify. exploit SAFE; [econs|].
+      i. des.
+      { inv H0. }
+      inv H0. ss. rewrite LINK_SK in *.
+      destruct (owner_asm_or_system MSFIND); des; clarify.
+      eapply NOOWNER. esplits; et.
   Qed.
 
   Lemma call_step_noevent ge' args frs st1 tr
@@ -1535,51 +1583,6 @@ Section PRESERVATION.
     :
       E0 = tr.
   Proof. inv STEP. auto. Qed.
-
-  Lemma extcall_arg_inject j rs_src rs_tgt m_src m_tgt l v_src
-        (AGREE: agree j rs_src rs_tgt)
-        (INJECT: Mem.inject j m_src m_tgt)
-        (ARG: Asm.extcall_arg rs_src m_src l v_src)
-    :
-      exists v_tgt,
-        Asm.extcall_arg rs_tgt m_tgt l v_tgt /\
-        Val.inject j v_src v_tgt.
-  Proof.
-    inv ARG.
-    - exists (rs_tgt (preg_of r)). split; eauto. econs.
-    - eapply Mem.loadv_inject in H0; des; eauto.
-      + esplits; eauto. econs; eauto.
-      + ss. specialize (AGREE RSP).
-        destruct (rs_src RSP); clarify.
-        inv AGREE; ss. econs; eauto.
-        rewrite Ptrofs.add_assoc.
-        rewrite Ptrofs.add_assoc. f_equal.
-        apply Ptrofs.add_commut.
-  Qed.
-
-  Lemma extcall_arguments_inject sg j rs_src rs_tgt m_src m_tgt args_src
-        (AGREE: agree j rs_src rs_tgt)
-        (INJECT: Mem.inject j m_src m_tgt)
-        (ARGS: Asm.extcall_arguments rs_src m_src sg args_src)
-    :
-      exists args_tgt,
-        Asm.extcall_arguments rs_tgt m_tgt sg args_tgt /\
-        Val.inject_list j args_src args_tgt.
-  Proof.
-    unfold Asm.extcall_arguments in *.
-    revert args_src ARGS. induction (loc_arguments sg); i; ss.
-    - inv ARGS. exists []. split; econs.
-    - inv ARGS. inv H1.
-      + eapply extcall_arg_inject in H; eauto. apply IHl in H3. des.
-        exists (v_tgt :: args_tgt). split.
-        * econs; eauto. econs; eauto.
-        * econs; eauto.
-      + eapply extcall_arg_inject in H; eauto.
-        eapply extcall_arg_inject in H0; eauto. apply IHl in H3. des.
-        exists (Val.longofwords v_tgt0 v_tgt :: args_tgt). split.
-        * econs; eauto. econs; eauto.
-        * econs; eauto. eapply Val.longofwords_inject; eauto.
-  Qed.
 
   Lemma syscall_receptive
         st_src0 st_src1 st_tgt0 args frs fptr tr0 n0
@@ -1609,7 +1612,7 @@ Section PRESERVATION.
     :
       receptive_at (sem prog) st_src2 /\
       exists st_tgt1 n1,
-        (<< STEPTGT: Asm.step tge st_tgt0 tr1 st_tgt1 >>) /\
+        (<< STEPTGT: Asm.step skenv_link tge st_tgt0 tr1 st_tgt1 >>) /\
         (<< MTCHST: forall st_src3 tr2
                            (STEP2: Sem.step ge st_src2 tr2 st_src3),
             match_states st_src3 st_tgt1 n1 /\ tr2 = E0>>) /\
@@ -1656,9 +1659,9 @@ Section PRESERVATION.
           eapply system_function_ofs; eauto.
         * instantiate (1 := ef).
           eapply system_sig; eauto.
-        * instantiate (1 := args_tgt).
+        * instantiate (1 := args2).
           rewrite <- SIGEQ. auto.
-        * eapply H1.
+        * rewrite <- senv_same. eapply H.
         * auto.
       + i. inv STEP2; [inv AT|inv STEP|]. inv FINAL. split; auto.
         ss. unfold Frame.update_st. ss. inv AFTER. ss. clarify.
@@ -1701,21 +1704,22 @@ Section PRESERVATION.
           - i. des. eauto.
         } des.
         econs; cycle 3.
+        * eauto.
         * instantiate (1 := f').
           { inv GEINJECT. econs.
             - i. unfold inject_incr in *.
-              eapply H6. eapply DOMAIN. eauto.
+              eapply H4. eapply DOMAIN. eauto.
             - i. unfold inject_incr,inject_separated in *.
               destruct (j b1) eqn : EQ.
               + destruct p0. dup EQ.
-                apply H6 in EQ. clarify.
+                apply H4 in EQ. clarify.
                 eapply IMAGE in EQ0. auto.
 
-              + ss. specialize (H7 _ _ _ EQ INJ). des.
+              + ss. specialize (H5 _ _ _ EQ INJ). des.
                 unfold Mem.valid_block in *.
                 erewrite below_block_is_volatile; cycle 1.
                 { intros LE. specialize (DOMAIN _ LE).
-                  clear - INJECT H8 DOMAIN.
+                  clear - INJECT H6 DOMAIN.
                   inv INJECT.
                   eapply mi_mappedblocks in DOMAIN. auto. }
                 erewrite below_block_is_volatile. auto.
@@ -1749,13 +1753,13 @@ Section PRESERVATION.
       receptive_at (sem prog) st_src.
   Proof.
     inv MTCHST; ss.
-    - admit "use strict forward simulation instead? old code:
-      eapply SemProps.lift_receptive_at. ss.
+    - eapply SemProps.lift_receptive_at.
+      { ss. des_ifs. }
+      ss.
       eapply AsmC.lift_receptive_at.
       eapply semantics_receptive.
       intros EXTERN. eapply not_external in EXTERN; auto.
-      admit ""INCL"".
-".
+      { eapply ININCL in PROGIN. ss. }
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
       + ii. inv H. ss. omega.
@@ -1776,31 +1780,33 @@ Section PRESERVATION.
           specialize (AGREE PC). rewrite <- FPTR in *.
           inv AGREE. unfold Vnullptr in *. des_ifs. congruence.
         * exploit step_init_simulation; try eassumption.
+          { inv ASMMOD. eauto. }
           i. des. econs 2; ss; eauto. rewrite LINK_SK.
           split; auto. apply star_one. eauto.
       + left. right. econs.
         { i. exfalso. inv FINALSRC. }
-        econs; [|eapply src_receptive_at; eauto].
+        econs.
         i.
         destruct (call_step_noevent STEPSRC).
         destruct (match_states_call_ord_1 MTCHST).
         exists 0%nat. exists st_tgt. split.
-        { right. split; [apply star_refl|omega]. }
+        { right. split; auto. }
         left. pfold. left. right.
         econs.
         { i. exfalso. inv STEPSRC. ss. rewrite LINK_SK in *.
           destruct (find_fptr_owner_determ SYSMOD MSFIND).
           inv INIT. inv FINALSRC. inv FINAL.
         }
-        econs; cycle 1.
-        { inv STEPSRC. ss. rewrite LINK_SK in *.
-          destruct (find_fptr_owner_determ SYSMOD MSFIND). ss.
-          eapply system_receptive_at.
-        }
+        econs.
         i. exists (length frs + 3)%nat. ss. rewrite LINK_SK in *.
         exploit syscall_simulation; eauto.
         i. des. exists st_tgt1. split.
-        { left. apply plus_one. econs; [apply asm_determinate_at|]. auto. }
+        { left. split; cycle 1.
+          { inv STEPSRC. ss.
+            destruct (find_fptr_owner_determ SYSMOD MSFIND). ss.
+            eapply system_receptive_at.
+          }
+          apply plus_one. econs; [apply asm_determinate_at|]. s. folder. rewrite senv_same. auto. }
         left. pfold. left. right.
         econs.
         {
@@ -1818,7 +1824,7 @@ Section PRESERVATION.
         i.
         ss. rewrite LINK_SK in *. apply MTCHST0 in STEPSRC1. des. clarify.
         exists n1, st_tgt1. split.
-        { right. split; auto. apply star_refl. }
+        { right. split; auto. }
         right. eauto.
       + right. econs; i; try (exfalso; eauto).
     - left. right. econs.
@@ -1830,20 +1836,21 @@ Section PRESERVATION.
         * i. ss. rewrite LINK_SK in *.
           exploit normal_state_fsim_step; eauto.
           i. des; esplits; eauto.
-          -- left. econs; ss.
+          -- left. split; cycle 1.
+             { eapply src_receptive_at; eauto. }
+             econs; ss.
              ++ econs; eauto.
-                apply asm_determinate_at.
+                { apply asm_determinate_at. }
+                s. folder. rewrite senv_same. et.
              ++ econs 1.
              ++ rewrite E0_right. auto.
-          -- right. econs; ss. clarify. econs.
-        * eapply src_receptive_at; eauto.
   Qed.
 
   Lemma transf_xsim_properties
     :
         xsim_properties (sem prog) (semantics tprog) nat lt.
   Proof.
-    econs; [apply lt_wf| |apply symb_preserved].
+    econs; [apply lt_wf| |i; apply symb_preserved].
     econs. i.
     exploit (transf_initial_states); eauto.
     i. des. esplits. econs; eauto.
@@ -1875,6 +1882,8 @@ Proof.
   { left. econs 2. ii. ss. inv H. clarify. }
   destruct (Sk.load_mem t) eqn:T2; cycle 1.
   { left. econs 2. ii. ss. inv H. clarify. }
+  destruct (classic (forall md, In md (map module asms) -> <<WF: Sk.wf md >>)); cycle 1.
+  { left. econs 2. ii. ss. inv H0. clarify. }
   right.
   exploit link_success; eauto. i. des.
   esplits; eauto.

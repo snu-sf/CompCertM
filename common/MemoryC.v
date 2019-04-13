@@ -417,7 +417,7 @@ Local Transparent Mem.alloc.
       rewrite PMap.gsspec. des_ifs.
 Local Opaque Mem.alloc.
   - ii. des_ifs; try eapply INJ; eauto with mem.
-    { admit "ez". }
+    { exfalso. eapply H. eapply valid_new_block. eauto. }
   - ii. des_ifs; try eapply INJ; eauto with mem.
   - ii. des_ifs; try (by exploit NOPERM; eauto).
     eapply INJ; [apply H|..]; eauto.
@@ -478,10 +478,14 @@ Proof.
       Local Transparent encode_val.
       destruct chunk; ss; repeat (unfold ZMap.set in *; rewrite PMap.gsspec; des_ifs; [econs; eauto|]);
         eapply INJ; eauto.
- - admit "ez".
- - admit "ez".
- - admit "ez".
- - admit "ez".
+ - ii. eapply mi_freeblocks; eauto. ii. eapply H. eapply store_valid_block_1; eauto.
+ - eapply no_overlap_equiv. ii. erewrite Mem_store_perm_eq; try eapply STORESRC. eauto. eapply mi_no_overlap; eauto.
+ - ii. exploit mi_representable; eauto. des.
+   { left. eapply perm_store_2; eauto. }
+   { right. eapply perm_store_2; eauto. }
+ - ii. exploit mi_perm_inv; eauto. ii. des.
+   { left. eapply perm_store_1; eauto. }
+   { right. ii. eapply H1. eapply perm_store_2; eauto. }
 Qed.
 
 End ARGPASSING.
@@ -753,15 +757,52 @@ Proof.
   apply in_list_repeat in H. ss.
 Qed.
 
-Theorem Mem_unfree_parallel_extends:
-  forall m1 m2 b lo hi m1',
-  Mem.extends m1 m2 ->
-  Mem_unfree m1 b lo hi = Some m1' ->
-  exists m2',
-     Mem_unfree m2 b lo hi = Some m2'
-  /\ Mem.extends m1' m2'.
+(* TODO move it *)
+Lemma Z2Nat_range n:
+  Z.of_nat (Z.to_nat n) = if (zle 0 n) then n else 0.
+Proof. Admitted.
+
+Theorem Mem_unfree_parallel_extends m1 m2 b lo hi m1'
+        (EXTEND: Mem.extends m1 m2)
+        (UNFREE: Mem_unfree m1 b lo hi = Some m1')
+        (NOPERM: Mem_range_noperm m2 b lo hi)
+  :
+    exists m2',
+      (<<UNFREE: Mem_unfree m2 b lo hi = Some m2'>>)
+      /\ (<<EXTEND: Mem.extends m1' m2'>>).
 Proof.
-  admit "this should hold...".
+  unfold Mem_unfree in UNFREE. des_ifs. dup p.
+  erewrite Mem.mext_next in *; eauto.
+  unfold Mem_unfree. des_ifs. esplits; eauto.
+  econs; ss; eauto; i.
+  - eapply Mem.mext_next; eauto.
+  - set (INJ:= Mem.mext_inj _ _ EXTEND). inv INJ.
+    econs; ss; i.
+    + unfold Mem.perm, proj_sumbool, inject_id in *. ss. clarify. zsimpl.
+      rewrite PMap.gsspec in *. des_ifs; exploit Mem.perm_extends; eauto.
+    + unfold inject_id in *. clarify. apply Z.divide_0_r.
+    + unfold Mem.perm, proj_sumbool, inject_id in *. ss. clarify. zsimpl.
+      repeat rewrite PMap.gsspec in *. des_ifs.
+      * rewrite Mem_setN_in_repeat; eauto; [econs|].
+        rewrite Z2Nat.id; nia.
+      * repeat rewrite Mem.setN_outside; cycle 1.
+        { right. rewrite length_list_repeat.
+          rewrite Z2Nat_range. des_ifs; try nia. }
+        { right. rewrite length_list_repeat.
+          rewrite Z2Nat_range. des_ifs; try nia. }
+        exploit mi_memval; eauto; i; zsimpl; ss.
+      * repeat rewrite Mem.setN_outside; cycle 1.
+        { left. nia. }
+        { left. nia. }
+        exploit mi_memval; eauto; i; zsimpl; ss.
+      * repeat rewrite Mem.setN_outside; cycle 1.
+        { left. nia. }
+        { left. nia. }
+        exploit mi_memval; eauto; i; zsimpl; ss.
+      * exploit mi_memval; eauto; i; zsimpl; ss.
+  - unfold Mem.perm, proj_sumbool, inject_id in *. ss.
+    rewrite PMap.gsspec in *.
+    des_ifs; eauto; exploit Mem.mext_perm_inv; eauto.
 Qed.
 
 End UNFREE.

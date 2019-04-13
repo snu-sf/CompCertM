@@ -109,24 +109,26 @@ Section PRESERVATION.
   Let ge_cp1: genv := geof cp1.
 
   Hypothesis WTPROGLINK: wt_program cp_link.
+  Hypothesis WTSKLINK: Sk.wf cp_link.(CsemC.module).
   Hypothesis WTPROG0: wt_program cp0.
+  Hypothesis WTSK0: Sk.wf cp0.(CsemC.module).
   Hypothesis WTPROG1: wt_program cp1.
-
+  Hypothesis WTSK1: Sk.wf cp1.(CsemC.module).
 
   Hypothesis WT_EXTERNALLINK:
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) cp_link.(prog_defs) ->
-      external_call ef ge_cp_link vargs m t vres m' ->
+      external_call ef skenv_link vargs m t vres m' ->
       wt_retval vres res.
   Hypothesis WT_EXTERNAL0:
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) cp0.(prog_defs) ->
-      external_call ef ge_cp0 vargs m t vres m' ->
+      external_call ef skenv_link vargs m t vres m' ->
       wt_retval vres res.
   Hypothesis WT_EXTERNAL1:
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) cp1.(prog_defs) ->
-      external_call ef ge_cp1 vargs m t vres m' ->
+      external_call ef skenv_link vargs m t vres m' ->
       wt_retval vres res.
 
   Lemma link_sk_match
@@ -304,6 +306,9 @@ Section PRESERVATION.
     { inv INIT. econs; ss; eauto.
       - (* init *)
         econs; ss; eauto. rewrite <- link_sk_match; eauto.
+        unfold prog_src in WF. unfold prog_tgt. i. rewrite in_app_iff in IN. des.
+        { eapply WF; et. rewrite in_app_iff. et. }
+        { ss. des; ss; clarify. }
       - (* dtm *)
         ii. inv INIT0; inv INIT1; ss. f_equal.
         generalize link_sk_match; i. des. rewrite H in *. clarify.
@@ -647,13 +652,13 @@ Section PRESERVATION.
         st0 tr st1
         (WT: wt_state ge_cp_link st0)
         (* (INTERNAL: ~ Ctyping.is_external ge_cp_link st0) *)
-        (STEP: Csem.step ge_cp_link st0 tr st1)
+        (STEP: Csem.step skenv_link ge_cp_link st0 tr st1)
     :
       <<WT: wt_state ge_cp_link st1>>
   .
   Proof.
     (* eapply preservation_internal; try refl; et. *)
-    eapply preservation; try refl; et.
+    eapply preservation; try apply STEP; try refl; et.
     - admit "ez".
     - admit "ez".
   Qed.
@@ -663,13 +668,13 @@ Section PRESERVATION.
         (FOC: is_focus cp)
         (WT: wt_state (geof cp) st0)
         (* (INTERNAL: ~ Ctyping.is_external (geof cp) st0) *)
-        (STEP: Csem.step (geof cp) st0 tr st1)
+        (STEP: Csem.step skenv_link (geof cp) st0 tr st1)
     :
       <<WT: wt_state (geof cp) st1>>
   .
   Proof.
     rr in FOC. des; clarify.
-    - eapply preservation; try refl; et.
+    - eapply preservation; try apply STEP; try refl; et.
       + admit "ez".
       + admit "ez".
     - eapply preservation; try refl; et.
@@ -811,11 +816,12 @@ Section PRESERVATION.
         destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
         - (* src call *)
           econs; ss; cycle 1.
-          { admit "receptive - SemProps.v". }
           i; des_ifs.
           inv STEPSRC; ss; ModSem.tac.
           esplits; eauto.
-          { left. eapply plus_one. econs; et.
+          { left. split; cycle 1.
+            { admit "receptive - SemProps.v". }
+            eapply plus_one. econs; et.
             { admit "determinate - SemProps.v". }
             econs; eauto.
             instantiate (1:= args).
@@ -833,7 +839,6 @@ Section PRESERVATION.
         - (* src step *)
           inv STK; ss.
           econs; ss; cycle 1.
-          { admit "receptive - SemProps.v". }
           i; des_ifs.
 
           inv STEPSRC; ss; ModSem.tac; swap 2 3.
@@ -869,7 +874,8 @@ Section PRESERVATION.
           des.
 
           esplits; eauto.
-          { left.
+          { left. split; cycle 1.
+            { admit "receptive - SemProps.v". }
             eapply plus_left with (t1 := E0) (t2 := E0); ss.
             { econs; et.
               { admit "determinate - SemProps.v". }
@@ -901,7 +907,7 @@ Section PRESERVATION.
               econs; ss; et.
               { admit "determinate - SemProps.v". }
               des_ifs.
-              econs 3; ss; et.
+              rpapply step_internal; ss; et.
               rr. right.
               (* ZmFkZDJkODhmOGM1YWI0NDI1YjEzMDFi *)
               econs; ss; et.
@@ -969,7 +975,6 @@ Section PRESERVATION.
         left. right. econs; et.
         { i. eapply final_fsim; et. econs; et. }
         econs; et; cycle 1.
-        { admit "receptive". }
         i. ss. des_ifs.
 
 
@@ -986,6 +991,9 @@ Section PRESERVATION.
 
 
 
+        assert(RECEP: receptive_at (sem prog_src) (State (fr_src :: frs_src))).
+        { admit "receptive". }
+
         inv STEPSRC; ss.
         { contradict NCALLSRC. rr. et. }
         - (* src step *)
@@ -999,7 +1007,8 @@ Section PRESERVATION.
           rr in CALL. des_ifs. ss. clarify.
           hexploit (typify_c_ex v_ret _tres). i; des.
           esplits; eauto.
-          + left. eapply plus_two with (t1 := E0) (t2 := E0); ss.
+          + left. split; ss.
+            eapply plus_two with (t1 := E0) (t2 := E0); ss.
             * econs; et.
               { admit "determinate". }
               ss. des_ifs.
@@ -1009,7 +1018,7 @@ Section PRESERVATION.
               { admit "determinate". }
               ss. des_ifs.
               unfold Frame.update_st. s.
-              econs 3; ss; et.
+              rpapply step_internal; ss; et.
               right.
               econs; ss; et.
           + right. ss. eapply CIH.
@@ -1054,7 +1063,8 @@ Section PRESERVATION.
             inv TAIL.
             - (* snd is ctx *)
               esplits; et.
-              + left. apply plus_one.
+              + left. split; ss.
+                apply plus_one.
                 econs; et.
                 { admit "determinate". }
                 econs 4; ss; et.
@@ -1064,7 +1074,8 @@ Section PRESERVATION.
               inv HD; ss.
               inv AFTER; ss. inv ST; ss.
               esplits; et.
-              + left. apply plus_one.
+              + left. split; ss.
+                apply plus_one.
                 econs; et.
                 { admit "determinate". }
                 ss. des_ifs.
@@ -1097,7 +1108,8 @@ Section PRESERVATION.
             inv TAIL.
             - (* snd is ctx *)
               esplits; et.
-              + left. apply plus_one.
+              + left. split; ss.
+                apply plus_one.
                 econs; et.
                 { admit "determinate". }
                 econs 4; ss; et.
@@ -1107,7 +1119,8 @@ Section PRESERVATION.
               inv HD; ss.
               inv AFTER; ss. inv ST; ss.
               esplits; et.
-              + left. apply plus_one.
+              + left. split; ss.
+                apply plus_one.
                 econs; et.
                 { admit "determinate". }
                 ss. des_ifs.
@@ -1164,7 +1177,7 @@ Section PRESERVATION.
         clear_tac.
         econs; cycle 1.
         - (* progress *)
-          i. right. ss. des_ifs. clear_tac. specialize (SAFESRC _ (star_refl _ _ _)). des; ss.
+          i. right. ss. des_ifs. clear_tac. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
           { inv SAFESRC. contradict NRETTGT. rr. et. }
           des_ifs.
           inv SAFESRC; swap 2 3.
@@ -1189,7 +1202,7 @@ Section PRESERVATION.
         inv HD; ss. clarify; ss.
         econs; cycle 1.
         - (* progress *)
-          i. right. ss. des_ifs. clear_tac. specialize (SAFESRC _ (star_refl _ _ _)). des; ss.
+          i. right. ss. des_ifs. clear_tac. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
           { inv SAFESRC. contradict NRETSRC. rr. et. }
           des_ifs.
           inv SAFESRC; swap 2 3.
@@ -1219,7 +1232,7 @@ Section PRESERVATION.
       econs; ss; et.
       { i. inv FINALTGT. }
       econs; cycle 1.
-      { i. specialize (SAFESRC _ (star_refl _ _ _)). des; ss.
+      { i. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
         { inv SAFESRC. }
         des_ifs. inv SAFESRC.
         right. exploit msfind_fsim; eauto. i; des.
@@ -1257,9 +1270,11 @@ Section PRESERVATION.
   Proof.
     econs; ss; eauto. econs; ss; eauto.
     { eapply unit_ord_wf. }
-    econs 1.
-    ii. exploit init_fsim; eauto. i; des. esplits; eauto.
-    eapply match_xsim; et.
+    { econs 1.
+      ii. exploit init_fsim; eauto. i; des. esplits; eauto.
+      eapply match_xsim; et.
+    }
+    i; des. des_ifs.
   Qed.
 
 End PRESERVATION.
@@ -1270,37 +1285,11 @@ Let geof := fun skenv_link (cp: Csyntax.program) =>
               (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env)).
 
 Theorem upperbound_a_correct
-        (_cp0 _cp1 _cp_link: Csyntax.program) cp0 cp1 cp_link ctx
-        (LINK: link cp0 cp1 = Some _cp_link)
-
-        (TYPED0: typecheck_program _cp0 = Errors.OK cp0)
-        (TYPED1: typecheck_program _cp1 = Errors.OK cp1)
-        (TYPEDLINK: typecheck_program _cp_link = Errors.OK cp_link)
-
-        (WT_EXTERNAL0: forall id ef args res cc vargs m t vres m'
-                              sk_link skenv_link
-                              (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
-                              (SKE: skenv_link = sk_link.(Sk.load_skenv))
-          ,
-            In (id, Gfun (External ef args res cc)) cp0.(prog_defs) ->
-            external_call ef (geof skenv_link cp0) vargs m t vres m' ->
-            wt_retval vres res)
-        (WT_EXTERNAL1: forall id ef args res cc vargs m t vres m'
-                              sk_link skenv_link
-                              (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
-                              (SKE: skenv_link = sk_link.(Sk.load_skenv))
-          ,
-            In (id, Gfun (External ef args res cc)) cp1.(prog_defs) ->
-            external_call ef (geof skenv_link cp1) vargs m t vres m' ->
-            wt_retval vres res)
-        (WT_EXTERNALLINK: forall id ef args res cc vargs m t vres m'
-                                 sk_link skenv_link
-                                 (SK: link_sk (ctx ++ [cp_link.(CsemC.module)]) = Some sk_link)
-                                 (SKE: skenv_link = sk_link.(Sk.load_skenv))
-          ,
-            In (id, Gfun (External ef args res cc)) cp_link.(prog_defs) ->
-            external_call ef (geof skenv_link cp_link) vargs m t vres m' ->
-            wt_retval vres res)
+        (cp0 cp1 cp_link: Csyntax.program) ctx
+        (TYPED0: typechecked cp0)
+        (TYPED1: typechecked cp1)
+        (TYPEDLINK: typechecked cp_link)
+        (LINK: link cp0 cp1 = Some cp_link)
   :
     (<<REFINE: improves (Sem.sem (ctx ++ [cp_link.(CsemC.module)]))
                         (Sem.sem (ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)]))
@@ -1313,9 +1302,13 @@ Proof.
   { econs; et.
     econs; et.
     { eapply unit_ord_wf. }
-    econs; et. i. ss. inv INITSRC. clarify.
+    { econs; et. i. ss. inv INITSRC. clarify. }
+    i; des. ss. des_ifs.
+    hexploit (link_sk_match cp_link cp0 cp1 ctx); eauto. i; des. congruence.
   }
   rename t into link_sk.
+  des.
+  inv TYPED0. inv TYPED1. inv TYPEDLINK.
   eapply upperbound_a_xsim; eauto.
   { eapply typecheck_program_sound; et. }
   { eapply typecheck_program_sound; et. }

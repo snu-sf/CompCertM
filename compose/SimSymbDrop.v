@@ -22,7 +22,11 @@ Require Import ModSem.
 
 Local Existing Instance Val.mi_normal.
 
-  
+
+(* Copied from Unusedglob.v *)
+Definition ref_init (il : list init_data) (id : ident): Prop := 
+  exists ofs, In (Init_addrof id ofs) il
+.
 
 Section MEMINJ.
 
@@ -48,6 +52,12 @@ Inductive sim_sk (ss: t') (sk_src sk_tgt: Sk.t): Prop :=
     (CLOSED: ss <1= sk_src.(privs))
     (PUB: sk_src.(prog_public) = sk_tgt.(prog_public))
     (MAIN: sk_src.(prog_main) = sk_tgt.(prog_main))
+    (NOREF: forall
+        id gv
+        (PROG: sk_tgt.(prog_defmap) ! id  = Some (Gvar gv))
+      ,
+        <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)
+    (NODUP: NoDup (prog_defs_names sk_tgt))
 .
 
 Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
@@ -104,6 +114,8 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
                         (<<SIM: def_src = def_tgt>>))
     (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
     (PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public))
+    (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb))
+    (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb))
 .
 
 Theorem sim_skenv_symbols_inject
@@ -204,6 +216,8 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
     (<<PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss>>)
     /\
     (<<PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public)>>)
+    /\ (<<BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb)>>)
+    /\ (<<BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb)>>)
 .
 
 Theorem sim_skenv_splittable_spec
@@ -277,6 +291,10 @@ Proof.
 Qed.
 
 
+Lemma or_des A B (OR: A \/ B):
+  (A /\ B) \/ (A /\ ~ B) \/ (~ A /\ B).
+Proof. tauto. Qed.
+
 Global Program Instance SimSymbDrop: SimSymb.class SimMemInj := {
   t := t';
   le := le;
@@ -311,18 +329,130 @@ Next Obligation.
     esplits; eauto.
 Qed.
 Next Obligation.
-  admit "See 'link_match_program' in Unusedglobproof.v.
-Note that we have one more goal (exists ss) but it is OK, as the 'link_match_program' proof already proves it.".
+  inv SIMSK. inv WFSRC.
+  econs; et.
+  i. apply prog_defmap_norepet in IN; cycle 1.
+  { apply NoDup_norepet; ss. }
+  destruct (classic (ss0 id_to)).
+  - exploit NOREF; et; ss.
+    rr. esplits; et.
+  - assert(KEPT0: ~ ss0 id_fr).
+    { ii. exploit DROP; et. i; clarify. }
+    dup IN.
+    rewrite KEPT in IN; ss.
+    exploit WFPTR; et.
+    { eapply in_prog_defmap; et. }
+    i; des.
+    eapply prog_defmap_spec in H0. des.
+    eapply prog_defmap_image; et.
+    erewrite KEPT; et.
+  - rewrite <- PUB. ii. exploit prog_defmap_dom; eauto. i; des.
+    destruct (classic (ss0 a)).
+    + exploit CLOSED; et. intro T. unfold privs in T. bsimpl. des. unfold NW in *. bsimpl. des_sumbool. ss.
+    + exploit KEPT; eauto. intro T. rewrite H0 in *. exploit prog_defmap_image; eauto.
 Qed.
 Next Obligation.
+  inv SIMSK. inv SIMSK0.
+  exploit (link_prog_inv sk_src0 sk_src1); eauto. i; des.
+  assert(AUX1: forall id, ss1 id -> ~ ss0 id -> (prog_defmap sk_src0) ! id = None).
+  { i. destruct ((prog_defmap sk_src0) ! id) eqn:T; ss.
+    apply CLOSED0 in H2. unfold privs, defs, NW in *. bsimpl. des. des_sumbool.
+    exploit prog_defmap_dom; eauto. i; des. exploit H0; eauto. i; des. clarify.
+  }
+  assert(AUX2: forall id, ss0 id -> ~ ss1 id -> (prog_defmap sk_src1) ! id = None).
+  { i. destruct ((prog_defmap sk_src1) ! id) eqn:T; ss.
+    apply CLOSED in H2. unfold privs, defs, NW in *. bsimpl. des. des_sumbool.
+    exploit prog_defmap_dom; eauto. i; des. exploit H0; eauto. i; des. clarify.
+  }
+  i. exists (ss0 \1/ ss1). eexists. esplits; eauto.
+  - eapply (link_prog_succeeds sk_tgt0 sk_tgt1); eauto; try congruence.
+    i. exploit H0.
+    { erewrite <- KEPT; et. ii. eapply DROP in H4. congruence. }
+    { erewrite <- KEPT0; et. ii. eapply DROP0 in H4. congruence. }
+    i; des. esplits; congruence.
+  - econs; ii; et. des; des_ifs. esplits; et.
+    + ii. eapply defs_prog_defmap in H1. des. exploit AUX1; eauto. congruence.
+    + ii. eapply defs_prog_defmap in H1. des. exploit AUX1; eauto. i. exploit KEPT; eauto. congruence.
+  - econs; ii; et. des; des_ifs. esplits; et.
+    + ii. eapply defs_prog_defmap in H1. des. exploit AUX2; eauto. congruence.
+    + ii. eapply defs_prog_defmap in H1. des. exploit AUX2; eauto. i. exploit KEPT0; eauto. congruence.
+  - subst. econs; ss; ii; try congruence.
+    + eapply not_or_and in KEPT1. des.
+      rewrite ! prog_defmap_elements, !PTree.gcombine by auto.
+      rewrite KEPT; ss. rewrite KEPT0; ss.
+    + rewrite prog_defmap_elements. rewrite PTree.gcombine; ss. apply or_des in DROP1. des.
+      * rewrite DROP; ss. rewrite DROP0; ss.
+      * rewrite DROP; ss. rewrite KEPT0; ss. apply AUX2; ss.
+      * rewrite DROP0; ss. rewrite KEPT; ss. rewrite AUX1; ss.
+    + admit "ez".
+    + admit "ez".
+      (* rewrite !prog_defmap_elements, !PTree.gcombine in PROG; ss. *)
+      (* destruct ((prog_defmap sk_tgt0) ! id) eqn:EQN0; destruct ((prog_defmap sk_tgt1) ! id) eqn:EQN1; inv PROG. *)
+      (* * admit "ez". *)
+      (* * apply or_des in DROP1. des; try by (exploit NOREF; et). exploit AUX1; et. i. exploit KEPT; et. congruence. *)
+      (* * *)
+      (* * *)
+    + apply NoDup_norepet. apply PTree.elements_keys_norepet.
+(*   admit "See 'link_match_program' in Unusedglobproof.v. *)
+(* Note that we have one more goal (exists ss) but it is OK, as the 'link_match_program' proof already proves it.". *)
+Qed.
+Next Obligation.
+  inv SIMSKE. unfold Genv.public_symbol. apply func_ext1. intro i0.
+  destruct (Genv.find_symbol skenv_tgt i0) eqn:T.
+  - exploit SIMSYMB3; et. i; des. des_ifs. rewrite PUB. ss.
+  -  des_ifs. des_sumbool. ii. eapply PUBKEPT in H. exploit SIMSYMB2; et. i; des. clarify.
+Qed.
+Next Obligation.
+  assert(LOADMEMTGT: exists m_tgt, Sk.load_mem sk_tgt = Some m_tgt).
+  { inv SIMSK. unfold Sk.load_mem, Genv.init_mem, Genv.globalenv in *.
+    rewrite <- PUB. clear - KEPT DROP LOADMEMSRC. admit "TODO-use induction - Using init_mem_exists".
+  }
+
+  Definition init_meminj sk_src sk_tgt : meminj :=
+  fun b =>
+    match Genv.invert_symbol (Sk.load_skenv sk_src) b with
+    | Some id =>
+        match Genv.find_symbol (Sk.load_skenv sk_tgt) id with
+        | Some b' => Some (b', 0)
+        | None => None
+        end
+    | None => None
+    end.
+
+  des. eexists m_tgt. exists (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt)).
+  esplits; et.
+  - admit "A".
+  - econs; ss; try xomega.
   admit "See 'init_meminj_preserves_globals' in Unusedglobproof.v".
 Qed.
 Next Obligation.
-  admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr".
+  inv MLE. inv SIMSKENV.
+  assert (SAME: forall b b' delta, Plt b (Genv.genv_next skenv_src) ->
+                                   inj sm1 b = Some(b', delta) -> inj sm0 b = Some(b', delta)).
+  { i. erewrite frozen_preserves_src; eauto. i. xomega. }
+  apply sim_skenv_splittable_spec.
+  rr.
+  dsplits; eauto; try congruence; ii.
+  - i. eapply SIMSYMB1; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto.
+  - i. exploit SIMSYMB2; eauto. i; des. eexists. splits; eauto.
+  - i. exploit SIMSYMB3; eauto. i; des. eexists. splits; eauto.
+  - i. exploit SIMDEF; eauto. eapply SAME; try eapply Genv.genv_defs_range; eauto.
+  - i. eapply DISJ; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto.
+    destruct (inj sm0 blk_src1) eqn:T; ss.
+    { destruct p; ss. exploit INCR; et. i; clarify. }
+    exfalso.
+    inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
+    exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac.
+    exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT BOUNDTGT. xomega.
+  - i. eapply SIMDEFINV; eauto.
+    destruct (inj sm0 blk_src) as [[b1 delta1] | ] eqn: J.
+    + exploit INCR; eauto. congruence.
+    + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
+      exploit Genv.genv_defs_range; eauto. xomega.
 Qed.
 Next Obligation.
-  inv SIMSKENV.
-  econs; eauto.
+  inv SIMSKENV. inv MWF.
+  econs; eauto; ss; xomega.
 Qed.
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_src.
@@ -573,43 +703,59 @@ Next Obligation.
   - eapply PUBKEPT; eauto.
 Qed.
 Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify. inv MWF; ss. clarify.
-  exploit sim_skenv_symbols_inject; et. intro SINJ; ss. des.
-  exploit external_call_mem_inject_gen; try apply SAFESRC; eauto. intro SYSTGT2ND; des.
-  exploit external_call_receptive; try eapply SAFESRC; et.
-  { instantiate (1:= tr).
-    eapply match_traces_preserved with (ge1 := skenv_sys_tgt).
-    { clear - SINJ. ii. rr in SINJ. des. eauto. }
-    eapply external_call_determ; et.
+  destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
+  inv SIMSKENV; ss.
+  exploit external_call_mem_inject_gen; eauto.
+  { instantiate (1:= skenv_sys_tgt).
+    rr. esplits; ii; ss.
+    - unfold Genv.public_symbol.
+      rewrite <- PUB.
+      destruct (Genv.find_symbol skenv_sys_tgt id) eqn:T.
+      + exploit SIMSYMB3; et. i; des. rewrite BLKSRC. ss.
+      + des_ifs. des_sumbool. ii.
+        exploit PUBKEPT; et.
+        apply NNPP. ii.
+        exploit SIMSYMB2; et. i; des. clarify.
+    - exploit SIMSYMB1; eauto. i; des. esplits; et.
+    - exploit SIMSYMB2; eauto.
+      { ii. eapply PUBKEPT; eauto. unfold Genv.public_symbol in H. des_ifs. des_sumbool. ss. }
+      i; des.
+      esplits; eauto.
+    - unfold Genv.block_is_volatile, Genv.find_var_info.
+      destruct (Genv.find_def skenv_sys_src b1) eqn:T0.
+      { exploit SIMDEF; try eassumption.
+        i; des.
+        des_ifs.
+      }
+      destruct (Genv.find_def skenv_sys_tgt b2) eqn:T1.
+      { exploit SIMDEFINV; try eassumption.
+        i; des.
+        des_ifs.
+      }
+      ss.
   }
-  intro SYSSRC2ND; des.
-  exploit external_call_mem_inject_gen; try apply SYSSRC2ND; eauto. intro SYSTGT3RD; des.
-  exploit external_call_determ; [apply SYSTGT|apply SYSTGT3RD|..]. i; des.
-  specialize (H0 eq_refl). des. clarify.
-  eexists (mk _ _ _ _ _ _ _), (Retv.mk _ _). ss.
-  dsplits; try apply SYSSRC2ND; et.
-  - econs; ss; et.
-  - econs; ss; et.
+  i; des.
+
+
+
+
+  (* TODO: almost exactly copied from SimMemInj. we may remove duplicate code some way *)
+  do 2 eexists.
+  dsplits; eauto.
+  - instantiate (1:= Retv.mk _ _); ss. eauto.
+  - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
+  - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply inject_separated_frozen; eauto.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
-  - apply inject_separated_frozen in SYSTGT3RD5.
+  - apply inject_separated_frozen in H5.
     econs; ss.
     + eapply after_private_src; ss; eauto.
     + eapply after_private_tgt; ss; eauto.
-    + inv SYSTGT3RD2. xomega.
-    + inv SYSTGT3RD3. xomega.
-Qed.
-Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify.
-  exploit sim_skenv_symbols_inject; et. intro SINJ; ss. des.
-  exploit external_call_mem_inject_gen; et.
-  { apply MWF. }
-  i; des. eexists (Retv.mk _ _), _. s. esplits; et.
+    + inv H2. xomega.
+    + inv H3. xomega.
 Qed.
 
 End MEMINJ.

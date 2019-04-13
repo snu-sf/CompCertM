@@ -15,26 +15,21 @@ Require UnreachC.
 Set Implicit Arguments.
 
 
-
-
 Section SIMMODSEM.
 
-Variable skenv_link_src skenv_link_tgt: SkEnv.t.
+Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
 Let md_src: Mod.t := (RTLC.module prog).
 Let md_tgt: Mod.t := (RTLC.module tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
-Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
-Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (WF: SkEnv.wf skenv_link).
 
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
-Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
-.
+Let ge := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
 
 Inductive match_states
           (sm_init: SimMem.t)
@@ -46,10 +41,13 @@ Inductive match_states
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk))
-                      (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk))
+                      (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun cu f tf => transf_fundef (romem_for cu) f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
+
+Let SEGESRC: senv_genv_compat skenv_link ge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
+Let SEGETGT: senv_genv_compat skenv_link tge. Proof. eapply SkEnv.senv_genv_compat; et. Qed.
 
 Theorem sim_modsem
   :
@@ -113,7 +111,7 @@ Proof.
         apply (fsim_external_funct_id GE); ss.
         folder.
         inv FPTR; ss.
-      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. inv SIMSKENV. ss.
+      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss.
     + econs; ss; eauto.
       * instantiate (1:= SimMemExt.mk _ _). ss.
       * ss.
@@ -125,20 +123,22 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
-      eapply lessdef_typify_opt; ss.
+      eapply lessdef_typify; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv STACKS; ss. destruct sm0; ss. clarify.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto.
-  - esplits; eauto.
-    { apply modsem_strict_determinate; et. }
+  - left; i.
+    esplits; eauto.
+    { apply modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog ge tge); eauto.
+    ii. hexploit (@step_simulation prog skenv_link); eauto.
+    { inv SIMSKENV. ss. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { ss. des. eauto. }
     i; des.
     esplits; eauto.
-    + left. apply plus_one. ss. unfold SDStep in *. des; ss. esplits; eauto. apply modsem_strict_determinate; et.
+    + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
     + instantiate (1:= (SimMemExt.mk _ _)). ss.
 Unshelve.
   all: ss.
@@ -154,9 +154,7 @@ Section SIMMOD.
 Variables prog tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
 
-Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt
-.
+Definition mp: ModPair.t := ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt.
 
 Theorem sim_mod
   :
@@ -167,12 +165,7 @@ Proof.
   - r. eapply Sk.match_program_eq; eauto.
     ii.
     admit "ez".
-    (* transf_partial_fundef_external *)
-    (* transf_partial_fundef_is_external_fd *)
-  - ii.
-    eapply sim_modsem; eauto.
-Unshelve.
-  all: ss.
+  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

@@ -15,7 +15,7 @@ Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.
 Require Import SimMem SimModSem SimMod.
-Require Import Sound.
+Require Import Sound SemProps.
 
 Set Implicit Arguments.
 
@@ -28,12 +28,6 @@ Section PROGPAIR.
 Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Definition t := list ModPair.t.
-  (* Record t := mk { *)
-  (*   src: list Mod.t; *)
-  (*   tgt: list Mod.t; *)
-  (*   sss: list SimSymb.t; *)
-  (* } *)
-  (* . *)
 
   Definition sim (pp: t) := List.Forall ModPair.sim pp.
 
@@ -54,15 +48,6 @@ Hint Unfold ProgPair.sim ProgPair.src ProgPair.tgt.
 
 
 
-(* Section SIMSK. *)
-
-(*   Context `{SS: SimSymb.class} `{SM: @SimMem.class SS}. *)
-
-(*   Inductive sim_sk (ss_link: SimSymb.t) (sk_src sk_tgt: Sk.t): Prop := *)
-(*   | sim_sk_intro *)
-(*   . *)
-
-(* End SIMSK. *)
 
 
 
@@ -79,6 +64,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Theorem sim_link_sk
           sk_link_src
           (LOADSRC: p_src.(link_sk) = Some sk_link_src)
+          (WF: forall md, In md p_src -> <<WF: Sk.wf md>>)
     :
       exists ss_link sk_link_tgt,
         <<LOADTGT: p_tgt.(link_sk) = Some sk_link_tgt>>
@@ -111,6 +97,10 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
       { apply SIMSK. }
       { apply IH0. }
       { eauto. }
+      { eapply WF; et. }
+      { eapply link_list_preserves_wf_sk; eauto. }
+      { eapply SimSymb.sim_sk_preserves_wf; et. eapply WF; et. }
+      { eapply SimSymb.sim_sk_preserves_wf; et. eapply link_list_preserves_wf_sk; eauto. }
       i; des.
       esplits; eauto.
       - eapply link_list_cons; eauto.
@@ -130,20 +120,6 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           apply in_map_iff. esplits; ss; eauto. ss.
     }
   Qed.
-
-  (* Corollary sim_load *)
-  (*       sem_src *)
-  (*       (LOADSRC: load p_src = Some sem_src) *)
-  (*   : *)
-  (*     exists sem_tgt, <<LOADTGT: load p_tgt = Some sem_tgt>> *)
-  (* . *)
-  (* Proof. *)
-  (*   unfold load in *. *)
-  (*   des_ifs_safe. *)
-  (*   exploit sim_link_sk; eauto. i; des. *)
-  (*   esplits; eauto. des_ifs. *)
-  (* Qed. *)
-
 
 End SIM.
 

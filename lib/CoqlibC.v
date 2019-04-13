@@ -308,7 +308,7 @@ Lemma Forall2_impl
     <<FORALL: Forall2 Q xs ys>>
 .
 Proof.
-  admit "easy".
+  induction FORALL; econs; eauto.
 Qed.
 
 Inductive Forall3 X Y Z (R: X -> Y -> Z -> Prop): list X -> list Y -> list Z -> Prop :=
@@ -332,7 +332,7 @@ Lemma Forall3_impl
     <<FORALL: Forall3 Q xs ys zs>>
 .
 Proof.
-  admit "easy".
+  induction FORALL; econs; eauto.
 Qed.
 
 
@@ -1299,3 +1299,96 @@ Ltac itl TERM :=
       fail
     ]
 .
+
+Lemma NoDup_norepet
+      X (xs: list X)
+  :
+    NoDup xs <-> list_norepet xs
+.
+Proof.
+  split; induction 1; econs; ss.
+Qed.
+
+Ltac swapname NAME1 NAME2 :=
+  let tmp := fresh "TMP" in
+  rename NAME1 into tmp; rename NAME2 into NAME1; idtac NAME1; rename tmp into NAME2
+.
+
+Global Program Instance top2_PreOrder X: PreOrder (top2: X -> X -> Prop).
+
+Lemma app_eq_inv
+      A
+      (x0 x1 y0 y1: list A)
+      (EQ: x0 ++ x1 = y0 ++ y1)
+      (LEN: x0.(length) = y0.(length))
+  :
+    x0 = y0 /\ x1 = y1
+.
+Proof.
+  ginduction x0; ii; ss.
+  { destruct y0; ss. }
+  destruct y0; ss. clarify.
+  exploit IHx0; eauto. i; des. clarify.
+Qed.
+
+Lemma pos_elim_succ
+      p
+  :
+    <<ONE: p = 1%positive>> \/
+    <<SUCC: exists q, q.(Pos.succ) = p>>
+.
+Proof.
+  hexploit (Pos.succ_pred_or p); eauto. i; des; ss; eauto.
+Qed.
+
+Lemma ple_elim_succ
+      p q
+      (PLE: Ple p q)
+  :
+    <<EQ: p = q>> \/
+    <<SUCC: Ple p.(Pos.succ) q>>
+.
+Proof.
+  revert_until p.
+  pattern p. apply Pos.peano_ind; clear p; i.
+  { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto.
+    right. r. xomega. }
+  hexploit (pos_elim_succ q); eauto. i.
+  des; clarify.
+  { left. xomega. }
+  exploit H; eauto.
+  { it q0. xomega. }
+  i; des; clarify.
+  - left. r. xomega.
+  - right. r. xomega.
+Qed.
+
+Section FLIPS.
+
+Definition flip2 A B C D: (A -> B -> C -> D) -> A -> C -> B -> D. intros; eauto. Defined.
+Definition flip3 A B C D E: (A -> B -> C -> D -> E) -> A -> B -> D -> C -> E. intros; eauto. Defined.
+Definition flip4 A B C D E F: (A -> B -> C -> D -> E -> F) -> A -> B -> C -> E -> D -> F. intros; eauto. Defined.
+
+Variable A B C D: Type.
+Variable f: A -> B -> C -> D.
+Check f.
+(* ABCD *)
+Check f.(flip).
+(* BACD *)
+Check f.(flip2).
+(* ACBD *)
+Check f.(flip2).(flip).
+(* CABD *)
+Check f.(flip).(flip2).
+(* BCAD *)
+Check f.(flip2).(flip).(flip2).
+(* CBAD *)
+
+Let put_dummy_arg_without_filp A DUMMY B: (A -> B) -> (A -> DUMMY -> B) := fun f => (fun a _ => f a).
+Let put_dummy_arg1 A DUMMY B: (A -> B) -> (A -> DUMMY -> B) := fun f => (fun _ => f).(flip).
+Let put_dummy_arg21 A DUMMY B C: (A -> B -> C) -> (A -> DUMMY -> B -> C) := fun f => (fun _ => f).(flip).
+Let put_dummy_arg22 A B DUMMY C: (A -> B -> C) -> (A -> B -> DUMMY -> C) :=
+  fun f => (fun _ => f).(flip).(flip2).
+
+End FLIPS.
+Hint Unfold flip2 flip3 flip4.

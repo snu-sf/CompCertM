@@ -23,15 +23,26 @@ Section LINEAREXTRA.
     end
   .
 
+  Variable se: Senv.t.
   Variable ge: genv.
-  Definition semantics_with_ge := Semantics step bot1 final_state ge.
+  Definition semantics_with_ge := Semantics_gen step bot1 final_state ge se.
   (* *************** ge is parameterized *******************)
 
-  Lemma semantics_strict_determinate
+  Lemma semantics_receptive
         st
         (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      strict_determinate_at semantics_with_ge st
+      receptive_at semantics_with_ge st
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+  Lemma semantics_determinate
+        st
+        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
+    :
+      determinate_at semantics_with_ge st
   .
   Proof.
     admit "this should hold".
@@ -44,6 +55,7 @@ End LINEAREXTRA.
 
 Section NEWSTEP.
 
+Variable se: Senv.t.
 Variable ge: genv.
 Let find_function_ptr := find_function_ptr ge.
 
@@ -54,14 +66,18 @@ Definition get_stack (st: state): list stackframe :=
   | Returnstate stk _ _ => stk
   end.
 
-Inductive step: state -> trace -> state -> Prop :=
-| step_intro
-    st0 tr st1
-    (STEP: Linear.step ge st0 tr st1)
-    (NOTDUMMY: st1.(get_stack) <> [])
-  :
-    step st0 tr st1
+Definition step: state -> trace -> state -> Prop := fun st0 tr st1 =>
+  <<STEP: Linear.step se ge st0 tr st1>> /\ <<NOTDUMMY: st1.(get_stack) <> []>>
 .
+
+(* Inductive step: state -> trace -> state -> Prop := *)
+(* | step_intro *)
+(*     st0 tr st1 *)
+(*     (STEP: Linear.step se ge st0 tr st1) *)
+(*     (NOTDUMMY: st1.(get_stack) <> []) *)
+(*   : *)
+(*     step st0 tr st1 *)
+(* . *)
 
 (* Inductive step: state -> trace -> state -> Prop := *)
 (*   | exec_Lgetstack: *)
@@ -180,6 +196,8 @@ Inductive step: state -> trace -> state -> Prop :=
 
 End NEWSTEP.
 
+Hint Unfold step.
+
 
 Definition get_mem (st: state): mem :=
   match st with
@@ -209,20 +227,6 @@ Definition current_locset (stk: stackframe): locset :=
   | Stackframe _ _ ls _ => ls
   end
 .
-
-(* Definition dummy_stacksize: Z := (admit "dummy_stacksize"). *)
-(* Definition dummy_code (sig: signature): code := [Lcall sig (admit "dummy_reg")]. *)
-Definition dummy_function (sig: signature) := (mkfunction sig 0 []).
-
-Definition dummy_stack (sig: signature) (ls: locset) :=
-  Stackframe (dummy_function sig)
-              (* (Vptr (admit "dummy_fptr") Ptrofs.zero true) *)
-             Vundef
-             ls
-             [] (* one may replace it with another another_dummy_code,
-but then corresponding MachM's part should be transl_code another_dummy_code ... *)
-.
-Hint Unfold dummy_stack.
 
 Definition undef_outgoing_slots (ls: locset): locset :=
   fun l =>
@@ -309,7 +313,7 @@ Section MODSEM.
       stack fptr_arg sg_arg ls_arg m_arg retv
       ls_after
       (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg)
-                                          (typify_opt retv.(Retv.v) sg_arg.(sig_res))
+                                          (typify retv.(Retv.v) sg_arg.(proj_sig_res))
                                           (undef_caller_save_regs ls_arg))
     :
       after_external (Callstate stack fptr_arg sg_arg ls_arg m_arg)
@@ -350,38 +354,61 @@ Section MODSEM.
     eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
-  Lemma lift_strict_determinate_at
+
+
+  Lemma lift_determinate_at
         st0
-        (DTM: strict_determinate_at (semantics_with_ge ge) st0)
+        (DTM: determinate_at (semantics_with_ge skenv_link ge) st0)
     :
-      strict_determinate_at modsem st0
+      determinate_at modsem st0
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.
-    - inv STEP0. inv STEP1. determ_tac ssd_determ_at.
-    - inv H. exploit ssd_traces_at; eauto.
+    - inv H. inv H0. determ_tac sd_determ_at.
+    - inv H. exploit sd_traces_at; eauto.
   Qed.
 
-  Lemma modsem_strict_determinate
+  Lemma modsem_determinate
         st
     :
-      strict_determinate_at modsem st
+      determinate_at modsem st
   .
-  Proof. eapply lift_strict_determinate_at. eapply semantics_strict_determinate. ii. eapply not_external; eauto. Qed.
+  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
+
+  Lemma lift_receptive_at
+        st
+        (RECEP: receptive_at (semantics_with_ge skenv_link ge) st)
+    :
+      receptive_at modsem st
+  .
+  Proof.
+    inv RECEP. econs; eauto; ii; ss.
+    - inv H. exploit sr_receptive_at; eauto. i; des.
+      esplits; eauto. econs; eauto. inv H; inv H1; ss.
+    - inv H. exploit sr_traces_at; eauto.
+  Qed.
+
+  Lemma modsem_receptive
+        st
+    :
+      receptive_at modsem st
+  .
+  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
+
 
 End MODSEM.
 
 Section PROPS.
 
   Lemma step_preserves_last_option
-        ge st0 tr st1 dummy_stack
-        (STEP: step ge st0 tr st1)
+        se ge st0 tr st1 dummy_stack
+        (STEP: step se ge st0 tr st1)
         (LAST: last_option (get_stack st0) = Some dummy_stack)
   :
     <<LAST: last_option (get_stack st1) = Some dummy_stack>>
   .
   Proof.
-    inv STEP; ss. inv STEP0; ss; des_ifs.
+    r in STEP. des. inv STEP0; ss; des_ifs.
   Qed.
 
 End PROPS.

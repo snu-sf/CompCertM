@@ -68,8 +68,8 @@ Proof.
       (* exploit sound_stack_unreach_compat; eauto. intro CPT. des. *)
       (* inv SU. ss. *)
       esplits; eauto.
-      + ii. des_ifs. des_sumbool. ss.
-      + inv MM. eapply mmatch_below; eauto.
+      + ii. des_ifs. des_sumbool. congruence.
+      + inv MM. eapply mmatch_below; eauto. rewrite H; ss.
     - rewrite Forall_forall. i. spcN 1 ARGS. spc ARGS. ii; clarify.
       assert(BCV: bc blk <> BCinvalid).
       { inv ARGS; ss. inv H1; ss. }
@@ -98,10 +98,10 @@ Proof.
       + ss. r in GE. ss. des. r in mmatch_below.
         apply NNPP. ii. apply Pos.lt_nle in H.
         exploit GE0; eauto. i; des.
-        exploit mmatch_below; eauto. i; des.
+        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des.
         xomega.
-    - econs; ss; i; des_ifs. inv GE. ss. des_sumbool. apply NNPP. ii.
-      exploit (H0 x0); eauto. { xomega. } i; des. clarify.
+    - econs; ss; i; des_ifs. r in GE. des. ss. des_sumbool. apply NNPP. ii.
+      exploit (GE0 x0); eauto. { xomega. } i; des. congruence.
   }
 Qed.
 
@@ -149,14 +149,14 @@ Proof.
       + ss. r in GE. ss. des. r in mmatch_below.
         apply NNPP. ii. apply Pos.lt_nle in H.
         exploit GE0; eauto. i; des.
-        exploit mmatch_below; eauto. i; des.
+        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des.
         xomega.
     - econs; eauto; ss; i; des_ifs. des_sumbool.
       rr in GE. des.
       apply NNPP. ii.
       exploit (GE0 x0); eauto.
       { unfold fundef in *. xomega. }
-      i; des. ss.
+      i; des. congruence.
   }
 Qed.
 
@@ -190,7 +190,7 @@ Section PRSV.
       set (ge := (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p)) in *.
       set (f := fun b =>
                   if plt b (Genv.genv_next ge) then
-                    match Genv.invert_symbol ge b with None => BCother | Some id => BCglob id end
+                    match Genv.invert_symbol ge b with None => BCglob None | Some id => BCglob (Some id) end
                   else
                     if (plt b args.(Args.m).(Mem.nextblock)) && (negb (su_init b))
                     then BCother
@@ -228,7 +228,8 @@ Section PRSV.
         * rewrite IMG. ii.
           assert(Plt b (Mem.nextblock (Args.m args))).
           { eapply Plt_Ple_trans; eauto. }
-          des_ifs.
+          des_ifs; eauto.
+        * rewrite IMG. ii. des_ifs.
       }
       eapply sound_call_state with (bc:= bc); eauto.
       + econs; eauto; cycle 1.
@@ -251,24 +252,76 @@ Section PRSV.
         clear - IMG ROMATCH H INCL.
         ii. exploit (ROMATCH b id ab); eauto.
         { rewrite IMG in *. des_ifs. ss. des_ifs.
-          - admit "ez - Heq Heq0".
-          - admit "ez - Heq Heq0".
+          - clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
+            rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
+          - clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
+            rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
         }
         { hexploit (romem_for_consistent_2 _ _ H); eauto. intro LO.
           exploit LO; eauto. intro LOA; des.
           clarify.
           rewrite IMG in *. des_ifs. apply Genv.invert_find_symbol in Heq.
           eapply romem_for_ske_complete; et.
-          clear - LOA Heq INCL.
-          admit "this should hold -- make some good lemma!".
+          clear - LOA LOA0 LOA1 LOA2 Heq INCL.
+          exploit SkEnv.project_impl_spec; et. intro PROJ.
+          exploit SkEnv.project_revive_precise; et. intro PRECISE. inv PRECISE.
+          exploit P2GE; et. i; des. ss. unfold fundef in *. folder. clarify.
+          assert(INTSID: internals (Sk.of_program fn_sig p) id).
+          { rewrite Sk.of_program_internals. unfold internals. des_ifs. }
+          assert(DEFSID: defs (Sk.of_program fn_sig p) id).
+          { eapply internals_defs; et. }
+          assert(BIG: Genv.find_def skenv_link b = Some (Gvar v)).
+          {
+            generalize (Sk.of_program_prog_defmap p fn_sig id). intro REL.
+            inv REL; try congruence. rewrite LOA in *. clarify.
+            assert(y = Gvar v).
+            { inv H1. inv H2. ss. destruct i1, i2; ss. }
+            clarify.
+            inv INCL. exploit DEFS; et. i; des.
+            assert(blk = b).
+            { inv PROJ.
+              exploit (SYMBKEEP id); et.
+              i; des. rewrite SYMB0 in *. clear - H SYMB. subst ge. unfold SkEnv.revive in *.
+              rewrite Genv_map_defs_symb in *. clarify.
+            }
+            clarify.
+            rewrite DEF0.
+            clear - MATCH LOA2.
+            (*** TODO: make lemma!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ***)
+            inv MATCH. inv H0. destruct info1, info2; ss.
+            inv H1; ss.
+          }
+          assert(SMALL: Genv.find_def (SkEnv.project skenv_link (Sk.of_program fn_sig p)) b = Some (Gvar v)).
+          {
+            inv PROJ.
+            exploit DEFKEEP; et.
+            { apply Genv.find_invert_symbol; et. rewrite <- SYMBKEEP; et. }
+            i; des.
+            assert(gd_small = (Gvar v)).
+            { (* TODO: make lemma!!!!!!!!!!!!!!!!! *)
+              clear - PROG LOA. generalize (Sk.of_program_prog_defmap p fn_sig id). intro REL.
+              inv REL; try congruence.
+              rewrite LOA in *. rewrite PROG in *. clarify.
+              inv H1. inv H0. repeat f_equal. destruct i1, i2; ss.
+            }
+            clarify.
+          }
+          unfold Genv.find_var_info. des_ifs.
         }
         intro RO; des.
         esplits; et.
         eapply bmatch_incr; et.
         ii. ss. rewrite IMG. des_ifs.
-        * admit "ez - Heq Heq0".
-        * admit "ez - Heq Heq0".
-        * admit "hard - we need project-only-internals (and therefore revive does not touch symbol)".
+        * clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
+          rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
+        * clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
+          rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
+        *
+          clear - Heq0 Heq H0.
+          apply_all_once Genv.invert_find_symbol.
+          assert(Genv.find_symbol ge i = Some b0).
+          { subst ge. unfold SkEnv.revive. rewrite Genv_map_defs_symb. ss. }
+          apply Genv.find_invert_symbol in H. clarify.
       + assert(BCSU: forall b, bc b <> BCinvalid -> ~ su_init b).
         { intros ? BC. rewrite IMG in BC.
           destruct (plt b (Genv.genv_next skenv_link)).
@@ -309,7 +362,8 @@ Section PRSV.
           { hexploit WFLO; eauto. i. des_ifs; try xomega. bsimpl. ss. }
           des_ifs. bsimpl. exfalso. des_sumbool. xomega.
         * refl.
-    - ii; ss. eapply sound_step; eauto.
+    - ii; ss. eapply sound_step with (se := skenv_link); eauto.
+      eapply SkEnv.senv_genv_compat; eauto.
     - i; ss. inv SUST.
       assert(GR: exists su_gr, SemiLattice.greatest le'
                                                     (* (fun su => su0.(UnreachC.ge_nb) = su.(UnreachC.ge_nb) /\ args' su args) *)
@@ -510,7 +564,7 @@ Section PRSV.
         eapply sound_return_state with (bc := bc'); eauto.
         *
           apply sound_stack_new_bound with (Mem.nextblock m_arg); cycle 1.
-          { admit "ez". }
+          { inv HLEAFTER. des. ss. }
           apply sound_stack_exten with bc; auto; cycle 1.
           { i. rewrite IMG. unfold f. des_ifs. }
           apply sound_stack_inv with m_arg; auto.
@@ -519,10 +573,21 @@ Section PRSV.
           eapply Mem.loadbytes_unchanged_on_1; try apply PRIV; eauto.
           u. i.
           eapply BCLE1; et. ss. des_ifs. des_sumbool. ss.
-        * eapply VMTOP; et. unfold typify_opt, typify. des_ifs.
-        * admit "ez - RO".
+        * eapply VMTOP; et. unfold typify. des_ifs.
+        * eapply romatch_exten; cycle 1.
+          { instantiate (1 := bc). rewrite IMG. subst f. split; i; try by des_ifs.
+            des_ifs_safe. exfalso. eapply n. eapply mmatch_below. eauto. congruence.
+          }
+          (* inv AT. inv MLE. inv GR. *)
+          econs.
+          { eapply RO; eauto. }
+          { exploit RO; eauto. i; des.
+            admit "A".
+            (* split. *)
+            (* - eapply bmatch_inv; eauto. i. unfold Mem.loadbytes. admit "A". *)
+            (* - ii. eapply H3. admit "TODO". *)
+          }
         *
-
           {
             constructor; simpl; intros.
             + apply ablock_init_sound. apply SMTOP. simpl; congruence.
@@ -533,7 +598,13 @@ Section PRSV.
               * eapply Pos.lt_le_trans. eauto. { inv AT. apply MLE. }
               * rewrite IMG in *. subst f. ss. des_ifs.
           }
-        * admit "ez".
+        * eapply genv_match_exten; eauto.
+          { rewrite IMG. subst f. split; i; try by des_ifs.
+            des_ifs_safe. exfalso. eapply n. eapply mmatch_below. eauto. congruence.
+          }
+          { i. rewrite IMG. unfold f. des_ifs_safe.
+            exfalso. eapply n. eapply mmatch_below. eauto. congruence.
+          }
         * red; simpl; intros. rewrite IMG. unfold f. des_ifs.
           eapply NOSTK; auto.
         * ss. etrans; eauto.

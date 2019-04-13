@@ -4,6 +4,7 @@ Require Import Simulation.
 Require Import ModSem AsmregsC GlobalenvsC MemoryC ASTC.
 Require Import Skeleton SimModSem SimMem SimSymb.
 Require Import Sound Preservation.
+Require MatchSimModSemExcl.
 
 Set Implicit Arguments.
 
@@ -162,7 +163,7 @@ Section MATCHSIMFORWARD.
         (<<MWF: SimMem.wf sm_ret>>)
   .
 
-  Hypothesis STEPFSIM: forall
+  Let STEPFSIM := forall
       sm_init idx0 st_src0 st_tgt0 sm0
       (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
@@ -170,106 +171,72 @@ Section MATCHSIMFORWARD.
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
     ,
-      (<<SINGLE: single_events_at ms_src st_src0>>)
+      (<<RECEP: receptive_at ms_src st_src0>>)
       /\
       (<<STEPFSIM: forall
              tr st_src1
              (STEPSRC: Step ms_src st_src0 tr st_src1)
            ,
              exists idx1 st_tgt1 sm1,
-               (<<PLUS: SDPlus ms_tgt st_tgt0 tr st_tgt1>> \/
-                           <<STAR: SDStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
+               (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/
+                           <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
                /\ (<<MLE: SimMem.le sm0 sm1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
                /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
                     >>)
   .
 
-  Hypothesis BAR: bar_True.
-
-  Lemma match_states_lxsim
-        sm_init i0 st_src0 st_tgt0 sm0
-        (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-        (MLE: SimMem.le sm_init sm0)
-        (* (MWF: SimMem.wf sm0) *)
-        (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
-        (MATCH: match_states sm_init i0 st_src0 st_tgt0 sm0)
-        (* su0 *)
-    :
-      (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsim ms_src ms_tgt (fun st => exists su0 m_init, sound_state su0 m_init st)
-                     sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
+  Let STEPBSIM := forall
+      sm_init idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
+      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
+      (NOTRET: ~ ModSem.is_return ms_src st_src0)
+      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
+      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+    ,
+      (* (<<PROGRESS: ModSem.is_step ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) *)
+      (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>)
+      /\
+      (<<STEPBSIM: forall
+             tr st_tgt1
+             (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1)
+           ,
+             exists idx1 st_src1 sm1,
+               (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/
+                           <<STAR: Star ms_src st_src0 tr st_src1 /\ order idx1 idx0>>)
+               /\ (<<MLE: SimMem.le sm0 sm1>>)
+               (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
+               /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)
+                    >>)
   .
-  Proof.
-    (* move su0 at top. *)
-    revert_until BAR.
-    pcofix CIH. i. pfold.
-    generalize (classic (ModSem.is_call ms_src st_src0)). intro CALLSRC; des.
-    {
-      (* CALL *)
-      - (* u in CALLSRC. des. *)
-        exploit ATMWF; eauto. i; des.
-        eapply lxsim_at_external; eauto.
-        ii. clear CALLSRC.
-        exploit ATFSIM; eauto. i; des.
-        (* determ_tac ModSem.at_external_dtm. clear_tac. *)
-        esplits; eauto. i.
-        exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
-        { econs; eauto. }
-        { eapply SimMem.unlift_wf; eauto. }
-        { eapply SimMem.unlift_spec; eauto. }
-        i; des.
-        assert(MLE3: SimMem.le sm0 sm_after).
-        { etrans; cycle 1. { et. } etrans; et. eapply SimMem.unlift_spec; et. }
-        esplits; eauto.
-        right.
-        eapply CIH; eauto.
-        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
-          apply rtc_once. left. et. }
-        { etransitivity; eauto. }
-    }
-    generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
-    {
-      (* RETURN *)
-      u in RETSRC. des.
-      exploit FINALFSIM; eauto. i; des.
-      eapply lxsim_final; try apply SIMRET; eauto.
-      etrans; eauto.
-    }
-    {
-      eapply lxsim_step_strict_forward; eauto.
-      i.
-      exploit STEPFSIM; eauto. i; des.
-      esplits; eauto.
-      econs 1; eauto.
-      ii. exploit STEPFSIM0; eauto. i; des_safe.
-      esplits; eauto.
-      - des.
-        + left. eauto.
-        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
-      - right. eapply CIH; eauto.
-        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
-        { etransitivity; eauto. }
-    }
-  Qed.
+
+  Remark safe_modsem_is_smaller
+         st_src0
+         (NOTCALL: ~ ModSem.is_call ms_src st_src0)
+         (NOTRET: ~ ModSem.is_return ms_src st_src0)
+         (SAFE: safe_modsem ms_src st_src0)
+    :
+      ModSem.is_step ms_src st_src0
+  .
+  Proof. rr. specialize (SAFE _ (star_refl _ _ _ _)). des; ss. eauto. Qed.
+
+  Hypothesis STEPSIM: STEPFSIM \/ STEPBSIM.
+
+  Hypothesis BAR: bar_True.
 
   Theorem match_states_sim
     :
       <<SIM: msp.(ModSemPair.sim)>>
   .
   Proof.
-    econs; eauto.
-    ii; ss.
-    folder.
-    exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.
-    Print SimSymb.sim_skenv.
-    inv FSIM. exploit FUNCFSIM; eauto. { apply SIMARGS. } i; des.
-    split; ii.
-    - exploit INITBSIM; eauto. i; des.
-      esplits; eauto.
-      eapply match_states_lxsim; eauto.
-      { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
-    - exploit INITPROGRESS; eauto.
+    eapply MatchSimModSemExcl.match_states_sim with
+        (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le); eauto.
+    { ii. r. etrans; eauto. }
+    { ii. exploit ATFSIM; eauto. i; des. esplits; eauto. }
+    { i. exploit AFTERFSIM; et.
+      { inv HISTORY; econs; eauto. }
+      i; des. esplits; eauto.
+    }
   Qed.
 
 End MATCHSIMFORWARD.

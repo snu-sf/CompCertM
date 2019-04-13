@@ -39,9 +39,6 @@ Program Instance SimMemExt : SimMem.class :=
   sim_val_list := fun (_: t') => Val.lessdef_list;
 }.
 Next Obligation.
-  ss.
-Qed.
-Next Obligation.
   do 2 (apply Axioms.functional_extensionality; i).
   apply prop_ext1.
   split; i; ss; clarify.
@@ -61,7 +58,13 @@ Next Obligation.
   ss.
 Qed.
 Next Obligation.
+  rr in SIMSK. clarify.
+Qed.
+Next Obligation.
   eapply SimSymbId.sim_sk_link; eauto.
+Qed.
+Next Obligation.
+  rr in SIMSKE. clarify.
 Qed.
 Next Obligation.
   exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
@@ -91,32 +94,11 @@ Next Obligation.
   eapply SimSymbId.system_sim_skenv; eauto.
 Qed.
 Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
   inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify.
-  exploit external_call_mem_extends; try apply SAFESRC; eauto. intro SYSTGT2ND; des.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt) in SYSTGT2ND; cycle 1.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. }
-  exploit external_call_receptive; try eapply SAFESRC; et.
-  { instantiate (1:= tr).
-    eapply match_traces_preserved with (ge1 := skenv_sys_tgt).
-    { i. symmetry. eapply SimSymbId.sim_skenv_equiv; eauto. }
-    eapply external_call_determ; et.
-  }
-  intro SYSSRC2ND; des.
-  exploit external_call_mem_extends; try apply SYSSRC2ND; eauto. intro SYSTGT3RD; des.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt) in SYSTGT3RD; cycle 1.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. }
-  exploit external_call_determ; [apply SYSTGT|apply SYSTGT3RD|..]. i; des.
-  specialize (H0 eq_refl). des. clarify.
-  eexists (mk _ _), (Retv.mk _ _). ss.
-  esplits; try apply SYSSRC2ND; et.
-  econs; ss; et.
-Qed.
-Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify.
-  exploit external_call_mem_extends; et. i; des. eexists (Retv.mk _ _), _. s. esplits; et.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt); et.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. }
+  exploit external_call_mem_extends; eauto. i. des. 
+  exists (mk retv_src.(Retv.m) m2'). exists (Retv.mk vres' m2').
+  esplits; ss; eauto.
+  eapply external_call_symbols_preserved; eauto.
+  eapply SimSymbId.sim_skenv_equiv; eauto.
 Qed.
 

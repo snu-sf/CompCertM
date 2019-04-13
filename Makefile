@@ -1,6 +1,6 @@
 COQMODULE    := compcomp
 COQTHEORIES  := $(wildcard */*.v) #*/*.v
-COQTHEORIES  := $(filter-out compose/SymbInj.v proof/SimMemInjNew.v proof/SimMemInj_old.v common/MemoryExplore.v, $(COQTHEORIES))
+COQTHEORIES  := $(filter-out proof/SimMemInjNew.v proof/SimMemInj_old.v common/MemoryExplore.v, $(COQTHEORIES))
 
 .PHONY: all proof proof-quick
 
@@ -39,6 +39,7 @@ Makefile.coq: Makefile $(COQTHEORIES)
 			\
    echo "-R compose $(COQMODULE)"; \
    echo "-R proof $(COQMODULE)"; \
+   echo "-R demo $(COQMODULE)"; \
    echo $(COQTHEORIES)) > _CoqProject
 	coq_makefile -f _CoqProject -o Makefile.coq
 

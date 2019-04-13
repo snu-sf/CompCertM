@@ -42,6 +42,7 @@ End Frame.
 
 Module Ge.
 
+  (* NOTE: Ge.(snd) is not used in semantics. It seems it is just for convenience in meta theory *)
   Definition t: Type := (list ModSem.t * SkEnv.t).
 
   Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=
@@ -92,7 +93,7 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     fr0 frs
     (* (INTERNAL: fr0.(Frame.is_internal)) *)
     tr st0
-    (STEP: fr0.(Frame.ms).(ModSem.step) fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
+    (STEP: Step (fr0.(Frame.ms)) fr0.(Frame.st) tr st0)
   :
     step ge (State (fr0 :: frs))
          tr (State ((fr0.(Frame.update_st) st0) :: frs))
@@ -157,6 +158,7 @@ Section SEMANTICS.
       fptr_init
       (FPTR: fptr_init = (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero))
       (SIG: skenv_link.(Genv.find_funct) fptr_init = Some (Internal signature_main))
+      (WF: forall md (IN: In md p), <<WF: Sk.wf md>>)
     :
       initial_state (Callstate (Args.mk fptr_init [] m_init) [])
   .
@@ -172,12 +174,16 @@ Section SEMANTICS.
   .
 
   Definition sem: semantics :=
-    (Semantics_gen step initial_state final_state
+    (Semantics_gen (fun _ => step) initial_state final_state
                    (match link_sk with
                     | Some sk_link => load_genv sk_link.(Sk.load_skenv)
                     | None => (nil, SkEnv.empty)
                     end)
-                   (admit "dummy for now. it is not used"))
+                   (* NOTE: The symbolenv here is never actually evoked in our semantics. Putting this value is merely for our convenience. (lifting receptive/determinate) Whole proof should be sound even if we put dummy data here. *)
+                   (match link_sk with
+                    | Some sk_link => sk_link.(Sk.load_skenv)
+                    | None => SkEnv.empty
+                    end))
   .
   (* Note: I don't want to make it option type. If it is option type, there is a problem. *)
   (* I have to state this way:

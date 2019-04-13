@@ -38,12 +38,6 @@ Module Mod.
         skenv_link
       ,
         <<EQ: data.(get_modsem skenv_link).(ModSem.skenv_link) = skenv_link>>
-    (* TODO: What is the exact spec we need here? *)
-    (* get_modsem_sk_skenv_iso: forall *)
-    (*     skenv *)
-    (*   , *)
-    (*     <<ISO: sk_skenv_iso data.(get_sk) data.(get_modsem skenv).(ModSem.skenv)>> *)
-    (* ; *)
   }
   .
 
@@ -64,9 +58,24 @@ Module Mod.
 
   Definition modsem (md: t) (skenv: SkEnv.t): ModSem.t := md.(get_modsem) skenv md.(data).
 
+  Module Atomic.
+  Section Atomic.
+
+    Variable m: t.
+
+    Program Definition trans: t :=
+      mk m.(get_sk) (fun ske dat => ModSem.Atomic.trans (m.(get_modsem) ske dat)) m.(data) _ _
+    .
+    Next Obligation. exploit get_modsem_skenv_spec; eauto. Qed.
+    Next Obligation. exploit get_modsem_skenv_link_spec; eauto. Qed.
+
+  End Atomic.
+  End Atomic.
+
 End Mod.
 
 Coercion Mod.sk: Mod.t >-> Sk.t.
+Coercion Mod.modsem: Mod.t >-> Funclass.
 
 Hint Unfold Mod.sk Mod.modsem.
 

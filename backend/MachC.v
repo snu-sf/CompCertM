@@ -41,15 +41,27 @@ Section MACHEXTRA.
     end
   .
 
+  Variable se: Senv.t.
   Variable ge: genv.
-  Definition semantics_with_ge := Semantics (step rao) bot1 final_state ge.
+  Definition semantics_with_ge := Semantics_gen (step rao) bot1 final_state ge se.
   (* *************** ge is parameterized *******************)
 
-  Lemma semantics_strict_determinate
+  Lemma semantics_receptive
         st
         (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      strict_determinate_at semantics_with_ge st
+      receptive_at semantics_with_ge st
+  .
+  Proof.
+    revert rao_dtm. (* dummy *)
+    admit "this should hold".
+  Qed.
+
+  Lemma semantics_determinate
+        st
+        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
+    :
+      determinate_at semantics_with_ge st
   .
   Proof.
     revert rao_dtm. (* dummy *)
@@ -64,6 +76,7 @@ End MACHEXTRA.
 Section NEWSTEP.
 
 Variable return_address_offset: function -> code -> ptrofs -> Prop.
+Variable se: Senv.t.
 Variable ge: genv.
 
 Definition get_stack (st: state): list stackframe :=
@@ -73,14 +86,18 @@ Definition get_stack (st: state): list stackframe :=
   | Returnstate stk _ _ => stk
   end.
 
-Inductive step: state -> trace -> state -> Prop :=
-| step_intro
-    st0 tr st1
-    (STEP: Mach.step return_address_offset ge st0 tr st1)
-    (NOTDUMMY: st1.(get_stack) <> [])
-  :
-    step st0 tr st1
+Definition step: state -> trace -> state -> Prop := fun st0 tr st1 =>
+  <<STEP: Mach.step return_address_offset se ge st0 tr st1>> /\ <<NOTDUMMY: st1.(get_stack) <> []>>
 .
+
+(* Inductive step: state -> trace -> state -> Prop := *)
+(* | step_intro *)
+(*     st0 tr st1 *)
+(*     (STEP: Mach.step return_address_offset se ge st0 tr st1) *)
+(*     (NOTDUMMY: st1.(get_stack) <> []) *)
+(*   : *)
+(*     step st0 tr st1 *)
+(* . *)
 
 (* Inductive step: state -> trace -> state -> Prop := *)
 (*   | exec_Mlabel: *)
@@ -213,20 +230,7 @@ Inductive step: state -> trace -> state -> Prop :=
 
 End NEWSTEP.
 
-(* Definition dummy_stack (parent_sp parent_ra: val): stackframe := *)
-(*   match parent_sp with *)
-(*   | Vptr sp _ true => Stackframe 1%positive (Vptr sp Ptrofs.zero true) parent_ra [] *)
-(*   | _ => Stackframe 1%positive Vundef parent_ra [] (* This should not occur. *) *)
-(*   end *)
-(* . *)
-(* See "stack_contents" of the stackingproof. It ignores sp's offset. *)
-(* "stack_contents" is used in match_states, and we want to use it... *)
-Definition dummy_stack (parent_sp parent_ra: val): stackframe :=
-  Stackframe 1%positive parent_sp parent_ra []
-.
-
-Hint Unfold dummy_stack.
-(* Global Opaque dummy_stack. *)
+Hint Unfold step.
 
 Definition get_mem (st: state): mem :=
   match st with
@@ -325,9 +329,9 @@ Section MODSEM.
                      (mkstate init_rs init_sg (Returnstate stack ls1 m1))
   .
 
-  Inductive step' (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
+  Inductive step' (se: Senv.t) (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
   | step'_intro
-      (STEP: Mach.step rao ge st0.(st) tr st1.(st))
+      (STEP: Mach.step rao se ge st0.(st) tr st1.(st))
       (INITRS: st0.(init_rs) = st1.(init_rs))
       (INITFPTR: st0.(init_sg) = st1.(init_sg))
       (NOTDUMMY: st1.(st).(get_stack) <> [])
@@ -348,7 +352,7 @@ Section MODSEM.
   Next Obligation.
     ii; ss; des. inv_all_once; des; ss; clarify. rewrite RSP in *. clarify.
     assert(vs = vs0).
-    { admit "this should be prove in mixed sim. merge with it". }
+    { admit "ez - this should be prove in mixed sim. merge with it". }
     clarify.
   Qed.
   Next Obligation.
@@ -387,26 +391,51 @@ Section MODSEM.
     eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
-  Lemma lift_strict_determinate_at
-        st0
-        (DTM: strict_determinate_at (semantics_with_ge rao ge) st0)
+  Lemma lift_receptive_at
+        st
+        (RECEP: receptive_at (semantics_with_ge rao skenv_link ge) st)
     :
-      forall init_rs init_sg, strict_determinate_at modsem (mkstate init_rs init_sg st0)
+      forall init_rs init_sg, receptive_at modsem (mkstate init_rs init_sg st)
+  .
+  Proof.
+    inv RECEP. econs; eauto; ii; ss.
+    - inv H. ss.
+      exploit sr_receptive_at; eauto. i; des. destruct s1; ss.
+      exists (mkstate init_rs1 init_sg1 s2).
+      econs; eauto. ss.
+      { inv STEP; inv H; ss. }
+    - inv H.
+      exploit sr_traces_at; eauto.
+  Qed.
+
+  Lemma modsem_receptive
+        st
+    :
+      receptive_at modsem st
+  .
+  Proof. destruct st. eapply lift_receptive_at. eapply semantics_receptive; eauto. ii. eapply not_external; eauto. Qed.
+
+  Lemma lift_determinate_at
+        st0
+        (DTM: determinate_at (semantics_with_ge rao skenv_link ge) st0)
+    :
+      forall init_rs init_sg, determinate_at modsem (mkstate init_rs init_sg st0)
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.
-    - inv STEP0. inv STEP1.
-      determ_tac ssd_determ_at. ss. clarify. destruct s1, s2; ss. clarify.
+    - inv H. inv H0.
+      determ_tac sd_determ_at. esplits; eauto. i. clarify.
+      destruct s1, s2; ss. rewrite H0; ss. eauto with congruence.
     - inv H.
-      exploit ssd_traces_at; eauto.
+      exploit sd_traces_at; eauto.
   Qed.
 
-  Lemma modsem_strict_determinate
+  Lemma modsem_determinate
         st
     :
-      strict_determinate_at modsem st
+      determinate_at modsem st
   .
-  Proof. destruct st. eapply lift_strict_determinate_at. eapply semantics_strict_determinate; eauto. ii. eapply not_external; eauto. Qed.
+  Proof. destruct st. eapply lift_determinate_at. eapply semantics_determinate; eauto. ii. eapply not_external; eauto. Qed.
 
 
 End MODSEM.
@@ -417,11 +446,11 @@ Section PROPS.
 Variable rao: function -> code -> ptrofs -> Prop.
 
 Lemma lift_star
-      ge st0 tr st1
+      se ge st0 tr st1
       init_sg init_rs
-      (STAR: star (step rao) ge st0 tr st1)
+      (STAR: star (step rao) se ge st0 tr st1)
   :
-    star (step' rao) ge (mkstate init_rs init_sg st0) tr
+    star (step' rao) se ge (mkstate init_rs init_sg st0) tr
          (mkstate init_rs init_sg st1)
 .
 Proof.
@@ -433,11 +462,11 @@ Proof.
 Qed.
 
 Lemma lift_plus
-      ge st0 tr st1
+      se ge st0 tr st1
       init_sg init_rs
-      (PLUS: plus (step rao) ge st0 tr st1)
+      (PLUS: plus (step rao) se ge st0 tr st1)
   :
-    plus (step' rao) ge (mkstate init_rs init_sg st0) tr
+    plus (step' rao) se ge (mkstate init_rs init_sg st0) tr
          (mkstate init_rs init_sg st1)
 .
 Proof.

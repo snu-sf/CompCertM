@@ -133,6 +133,21 @@ Module Sk.
     all: ss.
   Qed.
 
+  Lemma of_program_defs_names
+        F V
+        get_sg
+        (p: AST.program (AST.fundef F) V)
+    :
+      (of_program get_sg p).(prog_defs_names) = p.(prog_defs_names)
+  .
+  Proof.
+    destruct p; ss.
+    Local Opaque in_dec.
+    u; ss.
+    Local Transparent in_dec.
+    rewrite map_map. ss.
+  Qed.
+
   Lemma of_program_defs
         F V
         get_sg
@@ -141,13 +156,7 @@ Module Sk.
       (of_program get_sg p).(defs) = p.(defs)
   .
   Proof.
-    destruct p; ss.
-    Local Opaque in_dec.
-    u; ss.
-    Local Transparent in_dec.
-    apply Axioms.functional_extensionality. intro id; ss.
-    Check (in_dec ident_eq id (map fst prog_defs)).
-    rewrite map_map. ss.
+    unfold defs. rewrite of_program_defs_names; ss.
   Qed.
 
   Local Opaque prog_defmap.
@@ -208,6 +217,20 @@ Module Sk.
 
   Definition empty: t := (mkprogram [] [] 1%positive).
 
+  Inductive wf (sk: t): Prop :=
+  | wf_intro
+      (NODUP: NoDup sk.(prog_defs_names)) (* list_norepet *)
+      (WFPTR: forall
+          id_fr gv
+          (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
+          (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
+          id_to _ofs
+          (INDAT: In (Init_addrof id_to _ofs) gv.(gvar_init))
+        ,
+          <<IN: In id_to sk.(prog_defs_names)>>)
+      (PUBINCL: incl sk.(prog_public) sk.(prog_defs_names))
+  .
+
 End Sk.
 
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
@@ -232,14 +255,63 @@ Module SkEnv.
        <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>>)
   .
 
+  Inductive wf_mem (skenv: t) (sk: Sk.t) (m0: mem): Prop :=
+  | wf_mem_intro
+      (WFPTR: forall
+          blk_fr _ofs_fr
+          blk_to _ofs_to
+          id_fr
+          _q _n
+          (SYMB: skenv.(Genv.find_symbol) id_fr = Some blk_fr)
+          (* (IN: In id_fr sk.(prog_defs_names)) *)
+          gv
+          (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
+          (NONVOL: gv.(gvar_volatile) = false)
+          (DEFINITIVE: classify_init gv.(gvar_init) = Init_definitive gv.(gvar_init))
+          (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
+          (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to true) _q _n])
+        ,
+          exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)
+                        /\ (<<IN: In id_to sk.(prog_defs_names)>>)
+      )
+  .
+
   Lemma load_skenv_wf
         sk
+        (WF: Sk.wf sk)
     :
       <<WF: SkEnv.wf sk.(Sk.load_skenv)>>
   .
   Proof.
-    unfold Sk.load_skenv. u.
-    admit "easy. follow induction proofs on Globalenvs.v".
+    unfold Sk.load_skenv. u. econs; r.
+    - unfold Genv.globalenv, Genv.find_symbol, Genv.find_def. eapply Genv.add_globals_preserves; i; ss.
+      + destruct (peq id0 id).
+        { subst id0. rewrite PTree.gss in SYMB. inv SYMB. exists g. eapply PTree.gss. }
+        { rewrite PTree.gso in SYMB; eauto. exploit H; eauto. i. inv H1.
+          exists x. rewrite PTree.gso; eauto. exploit Genv.genv_symb_range; eauto. i. xomega. }
+      + rewrite PTree.gempty in SYMB. inv SYMB.
+    - intros blk skd.
+      set (P := fun ge => Genv.find_def ge blk = Some skd -> exists id, Genv.find_symbol ge id = Some blk).
+      assert(REC: forall l ge, P ge -> NoDup (map fst l) ->
+                          (forall id, In id (map fst l) -> Genv.find_symbol ge id = None) ->
+                          P (Genv.add_globals ge l)).
+      { induction l as [| [id1 g1] l]; auto. i.
+        eapply IHl.
+        - unfold P, Genv.add_global, Genv.find_def, Genv.find_symbol in *. ss. i.
+          destruct (peq (Genv.genv_next ge) blk).
+          + subst blk. exists id1. eapply PTree.gss.
+          + rewrite PTree.gso in H2; eauto. exploit H; eauto. i. des.
+            exists id. rewrite PTree.gso; eauto.
+            ii. subst. exploit H1; eauto. i. congruence.
+        - inv H0. eauto.
+        - i. unfold Genv.add_global, Genv.find_symbol. ss. rewrite PTree.gso.
+          + eapply H1. right. eauto.
+          + ii. subst. inv H0; eauto.
+      }
+      eapply REC.
+      { unfold P, Genv.find_def. i. ss. rewrite PTree.gempty in H. inv H. }
+      { inv WF. eauto. }
+      { i. unfold Genv.find_symbol. ss. eapply PTree.gempty. }
   Qed.
 
   (* Note:
@@ -620,6 +692,21 @@ I think "sim_skenv_monotone" should be sufficient.
   .
 
   Definition empty: t := @Genv.empty_genv _ _ [].
+
+  Lemma senv_genv_compat
+        F V (skenv_link: t) fn_sig (prog: program (AST.fundef F) V)
+        (INCL: includes skenv_link (Sk.of_program fn_sig prog))
+    :
+      senv_genv_compat skenv_link (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog)
+  .
+  Proof.
+    exploit SkEnv.project_revive_precise; eauto.
+    { eapply SkEnv.project_impl_spec; eauto. }
+    intro PREC.
+    econs; eauto. i. ss.
+    (* inv INCL. inv PREC. *)
+    ss. uge. unfold SkEnv.revive in *. ss. rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
+  Qed.
 
 End SkEnv.
 

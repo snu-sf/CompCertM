@@ -29,15 +29,26 @@ Section RTLEXTRA.
     end
   .
 
+  Variable se: Senv.t.
   Variable ge: genv.
-  Definition semantics_with_ge := Semantics step bot1 final_state ge.
+  Definition semantics_with_ge := Semantics_gen step bot1 final_state ge se.
   (* *************** ge is parameterized *******************)
 
-  Lemma semantics_strict_determinate
+  Lemma semantics_receptive
         st
         (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
     :
-      strict_determinate_at semantics_with_ge st
+      receptive_at semantics_with_ge st
+  .
+  Proof.
+    admit "this should hold".
+  Qed.
+
+  Lemma semantics_determinate
+        st
+        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
+    :
+      determinate_at semantics_with_ge st
   .
   Proof.
     admit "this should hold".
@@ -113,7 +124,7 @@ Section MODSEM.
   | after_external_intro
       stack fptr_arg sg_arg vs_arg m_arg
       retv tv
-      (TYP: typify_opt retv.(Retv.v) sg_arg.(sig_res) = tv)
+      (TYP: typify retv.(Retv.v) sg_arg.(proj_sig_res) = tv)
     :
       after_external (Callstate stack fptr_arg sg_arg vs_arg m_arg)
                      retv
@@ -153,22 +164,39 @@ Section MODSEM.
     eapply SkEnv.project_revive_no_external; eauto.
   Qed.
 
-  Lemma lift_strict_determinate_at
-        st0
-        (DTM: strict_determinate_at (semantics_with_ge ge) st0)
+  Lemma lift_receptive_at
+        st
+        (RECEP: receptive_at (semantics_with_ge skenv_link ge) st)
     :
-      strict_determinate_at modsem st0
+      receptive_at modsem st
+  .
+  Proof.
+    inv RECEP. econs; eauto; ii; ss.
+  Qed.
+
+  Lemma modsem_receptive
+        st
+    :
+      receptive_at modsem st
+  .
+  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
+
+  Lemma lift_determinate_at
+        st0
+        (DTM: determinate_at (semantics_with_ge skenv_link ge) st0)
+    :
+      determinate_at modsem st0
   .
   Proof.
     inv DTM. econs; eauto; ii; ss.
   Qed.
 
-  Lemma modsem_strict_determinate
+  Lemma modsem_determinate
         st
     :
-      strict_determinate_at modsem st
+      determinate_at modsem st
   .
-  Proof. eapply lift_strict_determinate_at. eapply semantics_strict_determinate. ii. eapply not_external; eauto. Qed.
+  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
 
 
 End MODSEM.

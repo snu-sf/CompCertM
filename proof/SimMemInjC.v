@@ -397,7 +397,25 @@ Proof.
   esplits; eauto.
   - econs; ss; try apply MWF; eauto.
     + eapply Mem.inject_extends_compose; eauto.
-      admit "ez".
+      econs; eauto.
+      { econs.
+        - ii. inv H0. replace (ofs + 0) with ofs by omega.
+          destruct (eq_block b2 (Mem.nextblock (tgt sm0))); destruct (zle 0 ofs); destruct (zlt ofs (4 * size_arguments sg));
+            try (eapply Mem.perm_unchanged_on; eauto; ss; des_ifs; omega).
+          subst b2. exploit (PERM ofs). omega. i. eapply Mem.perm_cur. eapply Mem.perm_implies; eauto. econs.
+        - ii. inv H0. eapply Z.divide_0_r.
+        - ii. inv H0. replace (ofs + 0) with ofs by omega.
+          destruct (eq_block b2 (Mem.nextblock (tgt sm0))); destruct (zle 0 ofs); destruct (zlt ofs (4 * size_arguments sg));
+            try (exploit Mem.unchanged_on_contents; eauto; ss; des_ifs; try omega; i; rewrite H0; eapply memval_inject_Reflexive).
+          Transparent Mem.alloc. unfold Mem.alloc in ALC. inv ALC. ss.
+          rewrite PMap.gss. rewrite ZMap.gi. eapply memval_inject_undef.
+      }
+      { i. left. assert(Mem.valid_block m1 b).
+        { r. rewrite NB. eapply Mem.perm_valid_block; eauto. }
+        destruct (eq_block b (Mem.nextblock (tgt sm0))) eqn:BEQ; destruct (zle 0 ofs); destruct (zlt ofs (4 * size_arguments sg));
+          try by (eapply Mem.perm_unchanged_on_2; eauto; ss; rewrite BEQ; eauto; try omega).
+        subst b. eapply Mem.perm_cur. eapply Mem.perm_implies. eapply Mem.perm_alloc_2; eauto. econs.
+      }
     + etransitivity; try apply MWF; eauto.
       unfold tgt_private. ss. u. ii; des. esplits; eauto with congruence.
       unfold Mem.valid_block in *. rewrite <- NB in *. eauto with xomega.
@@ -513,7 +531,13 @@ Next Obligation.
   ss.
 Qed.
 Next Obligation.
+  rr in SIMSK. clarify.
+Qed.
+Next Obligation.
   eapply SimSymbId.sim_sk_link; eauto.
+Qed.
+Next Obligation.
+  inv SIMSKE. inv SIMSKENV. ss.
 Qed.
 Next Obligation.
   exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
@@ -588,54 +612,55 @@ Next Obligation.
   - eapply SimSymbId.system_sim_skenv; eauto.
 Qed.
 Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify. inv MWF; ss. clarify.
-  exploit external_call_mem_inject; try apply SAFESRC; eauto.
-  { eapply skenv_inject_meminj_preserves_globals; eauto. eapply SIMSKENV. }
-  intro SYSTGT2ND; des.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt) in SYSTGT2ND; cycle 1.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV. }
-  exploit external_call_receptive; try eapply SAFESRC; et.
-  { instantiate (1:= tr).
-    eapply match_traces_preserved with (ge1 := skenv_sys_tgt).
-    { i. symmetry. eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV. }
-    eapply external_call_determ; et.
-  }
-  intro SYSSRC2ND; des.
-  exploit external_call_mem_inject; try apply SYSSRC2ND; eauto.
-  { eapply skenv_inject_meminj_preserves_globals; eauto. eapply SIMSKENV. }
-  intro SYSTGT3RD; des.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt) in SYSTGT3RD; cycle 1.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV. }
-  exploit external_call_determ; [apply SYSTGT|apply SYSTGT3RD|..]. i; des.
-  specialize (H0 eq_refl). des. clarify.
-  eexists (mk _ _ _ _ _ _ _), (Retv.mk _ _). ss.
-  dsplits; try apply SYSSRC2ND; et.
-  - econs; ss; et.
-  - econs; ss; et.
+  destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
+  (* Note: It may be easier && more natural to use
+"external_call_mem_inject" with "external_call_symbols_preserved", instead of "external_call_mem_inject_gen" *)
+  (* exploit external_call_mem_inject_gen; eauto. *)
+  exploit external_call_mem_inject; eauto.
+  { eapply skenv_inject_meminj_preserves_globals; eauto. inv SIMSKENV; ss. }
+  i; des.
+  do 2 eexists.
+  dsplits; eauto.
+  - instantiate (1:= Retv.mk _ _); ss.
+    eapply external_call_symbols_preserved; eauto.
+    eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV.
+  - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
+  - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
     + eapply inject_separated_frozen; eauto.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
-  - apply inject_separated_frozen in SYSTGT3RD5.
+  - apply inject_separated_frozen in H5.
     econs; ss.
     + eapply after_private_src; ss; eauto.
     + eapply after_private_tgt; ss; eauto.
-    + inv SYSTGT3RD2. xomega.
-    + inv SYSTGT3RD3. xomega.
+    + inv H2. xomega.
+    + inv H3. xomega.
 Qed.
-Next Obligation.
-  rename SAFESRC into _tr. rename H into _retv. rename H0 into SAFESRC.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify.
-  exploit external_call_mem_inject; et.
-  { eapply skenv_inject_meminj_preserves_globals; eauto. eapply SIMSKENV. }
-  { apply MWF. }
-  i; des. eexists (Retv.mk _ _), _. s. esplits; et.
-  eapply external_call_symbols_preserved with (ge2 := skenv_sys_tgt); et.
-  { eapply SimSymbId.sim_skenv_equiv; eauto. apply SIMSKENV. }
+
+Local Existing Instance SimMemInj.
+Local Existing Instance SimSymbId.
+
+Lemma sim_skenv_symbols_inject
+      sm0 ss0 skenv_src skenv_tgt
+      (SIMSKE: SimSymb.sim_skenv sm0 ss0 skenv_src skenv_tgt)
+  :
+    symbols_inject sm0.(SimMemInj.inj) skenv_src skenv_tgt
+.
+Proof.
+  inv SIMSKE. inv SIMSKENV. inv INJECT. rr. esplits; ss.
+  + i. exploit Genv.genv_symb_range; eauto. intro NB. exploit DOMAIN; eauto. i ;des. clarify.
+  + i. exploit Genv.genv_symb_range; eauto.
+  + i. unfold Genv.block_is_volatile, Genv.find_var_info.
+    destruct (Genv.find_def skenv_tgt b1) eqn:T.
+    * exploit Genv.genv_defs_range; eauto. intro NB. exploit DOMAIN; eauto. i; des. clarify. des_ifs.
+    * des_ifs. exploit Genv.genv_defs_range; eauto. intro NB. exploit DOMAIN; eauto. i; des.
+      exploit (IMAGE b1 b2); eauto. i; clarify.
 Qed.
 
 End SIMSYMB.
 
 Arguments skenv_inject_revive [_ _ _].
+
+

@@ -19,50 +19,33 @@ Set Implicit Arguments.
 Local Existing Instance Val.mi_normal.
 
 
-(* Require Import FSets. *)
-(* Require Import CoqlibC Maps Errors Integers Floats Lattice Kildall. *)
-(* Require Import AST Linking. *)
-(* Require Import ValuesC Memory Globalenvs Events Smallstep. *)
-(* Require Import Registers Op RTLC. *)
-(* Require Import ValueDomain ValueAnalysisC NeedDomain NeedOp Inlining. *)
-(* Require Import sflib. *)
-(* (** newly added **) *)
-(* Require Export Inliningproof. *)
-(* Require Import Simulation. *)
-(* Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem. *)
-(* Require SimMemInjC. *)
-(* Require SoundTop. *)
-
 Section SIMMODSEM.
   
-Variable skenv_link_src skenv_link_tgt: SkEnv.t.
+Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
 Let md_src: Mod.t := (RTLC.module prog).
 Let md_tgt: Mod.t := (RTLC.module tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
-Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
-Hypothesis (WFTGT: SkEnv.wf skenv_link_tgt).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
-Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt) tt sm_link
-.
+Let ge := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
 
 Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Inliningproof.match_states prog ge st_src0 st_tgt0 sm0)
+    (MATCHST: Inliningproof.match_states prog skenv_link skenv_link ge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
     (MCOMPATIDX: idx = Inliningproof.measure st_src0)
 .
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun cunit f tf => transf_fundef (funenv_program cunit) f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
@@ -92,24 +75,19 @@ Proof.
       * inv TYP.
         inv SAFESRC. folder. ss.
         exploit (Genv.find_funct_match_genv SIMGE); eauto. intro FINDFTGT; des. ss.
-        assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link_src)).
+        assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link)).
         {
           inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
           econs; eauto.
-          + ii. ss. eapply Plt_Ple_trans.
-            { genext. }
-            ss. refl.
-          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans.
-            { genext. }
-            ss. refl.
-          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans.
-            { genext. }
-            ss. refl.
+          + ii. ss. eapply Plt_Ple_trans. { genext. } ss. refl.
+          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
+          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
         }
         hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
         rpapply match_call_states; ss; eauto.
         { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
           econs; eauto.
+          - eapply SimMemInjC.sim_skenv_symbols_inject; eauto.
           - etrans; try apply MWF. ss.
         }
         { inv TYP. eapply inject_list_typify_list; try apply VALS; eauto. } 
@@ -163,12 +141,6 @@ Proof.
           i; clarify.
         }
         clarify.
-        eapply SimSymb.simskenv_func_fsim; eauto; ss.
-        (* { destruct tfptr; ss. des_ifs. econs; eauto; cycle 1. *)
-        (*   { psimpl. instantiate (1:= 0). ss. } *)
-        (*   inv H. inv INJECT. eapply DOMAIN; eauto. *)
-        (*   { apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *. eapply Genv.genv_defs_range; et. } *)
-        (* } *)
     + ss.
     + reflexivity.
   - (* after fsim *)
@@ -186,15 +158,18 @@ Proof.
       inv MCOMPAT. clear_tac.
       rpapply match_return_states; ss; eauto; ss.
       (* { clear - MWF. inv MWF. ii. apply TGTEXT in H. rr in H. des. ss. } *)
-      { eapply match_stacks_le; eauto. eapply match_stacks_bound. eapply match_stacks_extcall; try eapply MS; eauto.
+      { eapply match_stacks_le; eauto. eapply match_stacks_bound; cycle 1.
+        { eapply Mem.unchanged_on_nextblock; eauto. }
+        eapply match_stacks_extcall; try eapply MS; eauto.
+        - eapply SkEnv.senv_genv_compat; eauto.
+        - eapply SkEnv.senv_genv_compat; eauto.
         - ii. eapply MAXSRC; eauto.
         - ii. eapply MAXTGT; eauto.
         - eapply Mem.unchanged_on_implies; try eassumption. ii. rr. esplits; eauto.
         - eapply SimMemInj.inject_separated_frozen; et.
         - refl.
-        - eapply Mem.unchanged_on_nextblock; eauto.
       }
-      { eapply inject_typify_opt; eauto. }
+      { eapply inject_typify; eauto. }
       { eapply MWFAFTR. }
     + refl.
   - (* final fsim *)
@@ -205,11 +180,14 @@ Proof.
     inv MCOMPAT; ss.
     eexists sm0. esplits; ss; eauto. refl.
   - (* step *)
+    left; i.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     esplits; eauto.
-    { apply modsem_strict_determinate; et. }
+    { apply modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog _ ge tge); eauto.
+    ii. hexploit (@step_simulation prog _ skenv_link skenv_link ge tge); eauto.
+    { eapply SkEnv.senv_genv_compat; eauto. }
+    { eapply SkEnv.senv_genv_compat; eauto. }
     { assert (SkEnv.genv_precise ge prog).
       { eapply SkEnv.project_revive_precise; et. eapply SkEnv.project_impl_spec; et. }
       inv H. econs; ii.
@@ -219,7 +197,7 @@ Proof.
     }
     i; des.
     + esplits; eauto.
-      * left. eapply spread_sdplus; eauto. eapply modsem_strict_determinate; eauto.
+      * left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.
       * econs; ss.
         { inv H0; ss; inv MCOMPAT; ss. }
         { inv H0; ss; inv MCOMPAT; ss. }
@@ -241,10 +219,7 @@ Section SIMMOD.
 
 Variables prog tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
-
-Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt
-.
+Definition mp: ModPair.t := ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt.
 
 Theorem sim_mod
   :
@@ -253,7 +228,7 @@ Theorem sim_mod
 Proof.
   econs; ss.
   - r. admit "easy".
-  - ii. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

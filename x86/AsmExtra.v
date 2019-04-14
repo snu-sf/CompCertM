@@ -151,7 +151,7 @@ Proof.
   - exploit external_call_max_perm; eauto.
 Qed.
 
-Lemma asm_step_readonaly se ge_src rs0 rs1 m0 m1 tr
+Lemma asm_step_readonly se ge_src rs0 rs1 m0 m1 tr
       (STEP: Asm.step ge_src se (Asm.State rs0 m0) tr (Asm.State rs1 m1))
   :
     Mem.unchanged_on (loc_not_writable m0) m0 m1.
@@ -256,6 +256,109 @@ Section ASMSTEP.
         econs; eauto. tac_p.
   Qed.
 
+  Lemma mem_storev_inject j chunk m_src0 m_tgt0 m_src1
+        a_src a_tgt v_src v_tgt
+        (INJ: Mem.inject j m_src0 m_tgt0)
+        (VALINJ0: Val.inject j a_src a_tgt)
+        (VALINJ1: Val.inject j v_src v_tgt)
+        (STORE: Mem.storev chunk m_src0 a_src v_src = Some m_src1)
+    :
+      exists m_tgt1,
+        (<<INJ: Mem.inject j m_src1 m_tgt1>>) /\
+        (<<STORE: Mem.storev chunk m_tgt0 a_tgt v_tgt = Some m_tgt1>>) /\
+        (<<UNCHSRC: Mem.unchanged_on
+                      (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
+                      m_src0 m_src1>>) /\
+        (<<UNCHTGT: Mem.unchanged_on
+                      (loc_out_of_reach j m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+                      m_tgt0 m_tgt1>>).
+  Proof.
+    exploit Mem.storev_mapped_inject; eauto. i. des.
+    ss. unfold Mem.storev in *. des_ifs. esplits; eauto.
+    - eapply Mem.unchanged_on_implies.
+      + instantiate (1:= ~2 brange b0 (Ptrofs.unsigned i0) (Ptrofs.unsigned i0 + size_chunk chunk)).
+        eapply Mem.store_unchanged_on; eauto.
+      + ii. unfold loc_unmapped, brange in *. des. clarify.
+        inv VALINJ0; clarify.
+    - eapply Mem.unchanged_on_implies.
+      + instantiate (1:= ~2 brange b (Ptrofs.unsigned i) (Ptrofs.unsigned i + size_chunk chunk)).
+        eapply Mem.store_unchanged_on; eauto.
+      + ii. unfold loc_out_of_reach, brange in *. des. clarify.
+        inv VALINJ0; clarify.
+        eapply H1; eauto.
+        eapply Mem.store_valid_access_3 in STORE; eauto.
+        eapply Mem.perm_cur. unfold Mem.valid_access in *. des.
+        eapply Mem.perm_implies; try eapply STORE; eauto.
+        * replace (Ptrofs.unsigned (Ptrofs.add i0 (Ptrofs.repr delta))) with
+              (Ptrofs.unsigned i0 + delta) in *; [nia|].
+          admit "arithmetic".
+        * econs.
+  Qed.
+
+  Lemma mem_alloc_inject j m_src0 m_tgt0 m_src1
+        lo1 lo2 hi1 hi2 b_src
+        (INJ: Mem.inject j m_src0 m_tgt0)
+        (LO: lo2 <= lo1)
+        (HI: hi1 <= hi2)
+        (ALLOC: Mem.alloc m_src0 lo1 hi1 = (m_src1, b_src))
+    :
+      exists m_tgt1,
+        (<<INJ: Mem.inject (update_meminj j (Mem.nextblock m_src0) (Mem.nextblock m_tgt0) 0) m_src1 m_tgt1>>) /\
+        (<<ALLOC: Mem.alloc m_tgt0 lo2 hi2 = (m_tgt1, Mem.nextblock m_tgt0)>>) /\
+        (<<UNCHSRC: Mem.unchanged_on
+                      (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
+                      m_src0 m_src1>>) /\
+        (<<UNCHTGT: Mem.unchanged_on
+                      (loc_out_of_reach j m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+                      m_tgt0 m_tgt1>>).
+  Proof.
+    exploit Mem.alloc_parallel_inject; eauto. i. des.
+    exploit Mem.alloc_result; try apply ALLOC; eauto. i. clarify.
+    exploit Mem.alloc_result; try apply H; eauto. i. clarify.
+    replace f' with (update_meminj j (Mem.nextblock m_src0) (Mem.nextblock m_tgt0) 0) in *; cycle 1.
+    { extensionality b.
+      unfold update_meminj in *. des_ifs. symmetry. eauto. }
+    esplits; eauto.
+    - eapply Mem.unchanged_on_implies.
+      + eapply Mem.alloc_unchanged_on; eauto.
+      + ii. instantiate (1:=top2). ss.
+    - eapply Mem.unchanged_on_implies.
+      + eapply Mem.alloc_unchanged_on; eauto.
+      + ii. instantiate (1:=top2). ss.
+  Qed.
+
+  Lemma mem_free_inject j m_src0 m_tgt0 m_src1
+        lo hi b_src b_tgt delta
+        (INJ: Mem.inject j m_src0 m_tgt0)
+        (DELTA: j b_src = Some (b_tgt, delta))
+        (FREE: Mem.free m_src0 b_src lo hi = Some m_src1)
+    :
+      exists m_tgt1,
+        (<<INJ: Mem.inject j m_src1 m_tgt1>>) /\
+        (<<FREE: Mem.free m_tgt0 b_tgt (lo+delta) (hi+delta) = Some m_tgt1>>) /\
+        (<<UNCHSRC: Mem.unchanged_on
+                      (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
+                      m_src0 m_src1>>) /\
+        (<<UNCHTGT: Mem.unchanged_on
+                      (loc_out_of_reach j m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+                      m_tgt0 m_tgt1>>).
+  Proof.
+    exploit Mem.free_parallel_inject; eauto. i. des.
+    esplits; eauto.
+    - eapply Mem.unchanged_on_implies.
+      + eapply Mem.free_unchanged_on; eauto.
+        instantiate (1:=~2 brange b_src lo hi). eauto.
+      + ii. des. unfold brange, loc_unmapped in *. des. clarify.
+    - eapply Mem.unchanged_on_implies.
+      + eapply Mem.free_unchanged_on; eauto.
+        instantiate (1:=~2 brange b_tgt (lo+delta) (hi+delta)). eauto.
+      + ii. des. unfold brange, loc_out_of_reach in *. des. clarify.
+        eapply H1; eauto.
+        eapply Mem.perm_cur. eapply Mem.perm_implies.
+        * eapply Mem.free_range_perm; eauto. nia.
+        * econs.
+  Qed.
+
   Lemma exec_load_inject
         j ge_src ge_tgt chunk m_src0 m_tgt0 m_src1 a rd
         rs_src0 rs_tgt0 rs_src1
@@ -340,35 +443,13 @@ Section ASMSTEP.
     hexploit undef_regs_agree; eauto. intros UAGREE.
     instantiate (1:=a) in ADDR.
     unfold exec_store in *. des_ifs.
-    - dup Heq0.
-      eapply Mem.storev_mapped_inject in Heq0; cycle 1; eauto; des; clarify.
-      esplits; eauto.
-      + unfold nextinstr_nf, nextinstr. ss.
-        repeat (eapply agree_step; eauto).
-        unfold Pregmap.set in *.
-        specialize (UAGREE PC). des_ifs; try by inv Heq1.
-        inv UAGREE; ss; econs; eauto; tac_p.
-      + eapply Mem.unchanged_on_implies with
-            (P:=loc_unmapped j /2\ valid_blocks m_src0); eauto.
-        unfold Mem.storev in *. des_ifs.
-        eapply Mem.store_unchanged_on; eauto.
-        ii. des. inv ADDR. unfold loc_unmapped in *. clarify.
-      + eapply Mem.unchanged_on_implies with
-            (P:=loc_out_of_reach j m_src0 /2\ valid_blocks m_tgt0); eauto.
-        unfold Mem.storev in *. des_ifs.
-        eapply Mem.store_unchanged_on; eauto.
-        ii. des. inv ADDR. unfold loc_out_of_reach in *.
-        eapply H0; eauto.
-        eapply Mem.store_valid_access_3 in Heq1.
-        unfold Mem.valid_access in *.
-        eapply Mem.perm_cur. eapply Mem.perm_implies.
-        * eapply Heq1.
-          replace (Ptrofs.unsigned (Ptrofs.add i0 (Ptrofs.repr delta))) with
-              (Ptrofs.unsigned i0 + delta) in *.
-          -- lia.
-          -- clear - INJ H6 Heq1.
-             admit "ez make lemma".
-        * econs.
+    - exploit mem_storev_inject; try apply Heq0; eauto.
+      i. des. clarify. esplits; eauto.
+      unfold nextinstr_nf, nextinstr. ss.
+      repeat (eapply agree_step; eauto).
+      unfold Pregmap.set in *.
+      specialize (UAGREE PC). des_ifs.
+      eapply Val.offset_ptr_inject. eauto.
     - eapply Mem.storev_mapped_inject in Heq0; cycle 1; eauto; des; clarify.
   Qed.
 
@@ -781,6 +862,13 @@ Section ASMSTEP.
     unfold eval_testcond in *. destruct c; revert EVAL; agree_invs AGREE.
   Qed.
 
+  Lemma update_meminj_incr j b_src b_tgt ofs
+        (NONE: j b_src = None)
+    :
+      inject_incr j (update_meminj j b_src b_tgt ofs).
+  Proof. unfold update_meminj. ii. des_ifs. Qed.
+
+  Local Opaque Mem.storev.
   Theorem asm_step_preserve_injection
         rs_src0 rs_src1 m_src0 m_src1 tr j0
         rs_tgt0 m_tgt0
@@ -1270,10 +1358,61 @@ Section ASMSTEP.
       + tac_st.
       + tac_ld.
       + tac_st.
-      + tac_cal AGREE.
-      + admit "allocframe".
-      + admit "freeframe".
+      +
+tac_cal AGREE.
+      + exploit Mem.alloc_result; eauto. i. clarify.
+        exploit mem_alloc_inject; eauto; try refl. i. des.
+        assert (INCR: inject_incr j0 (update_meminj j0 (Mem.nextblock m_src0) (Mem.nextblock m_tgt0) 0)).
+        { unfold update_meminj. ii. des_ifs.
+          exploit nextblock_unvalid; try apply INJ. i. clarify. }
+        exploit mem_storev_inject; try apply Heq0; eauto.
+        { psimpl. econs; eauto. unfold update_meminj. des_ifs. }
+        i. des.
+        exploit mem_storev_inject; try apply Heq1; eauto.
+        { psimpl. econs; eauto. unfold update_meminj. des_ifs. }
+        i. des.
+        esplits; try apply INJ2; eauto.
+        * econs; eauto. ss. rewrite ALLOC.
+          psimpl. rewrite STORE. rewrite STORE0. ss.
+        * eapply nextinstr_agree; eauto.
+          repeat eapply agree_step; eauto.
+          { eapply agree_incr; eauto. }
+          { econs. unfold update_meminj. des_ifs. ss. }
+        * ii. unfold update_meminj in *. des_ifs.
+          esplits; apply Plt_strict.
+        * eapply Mem.unchanged_on_trans; eauto.
+          eapply Mem.unchanged_on_trans; eapply Mem.unchanged_on_implies; eauto;
+            ii; des; esplits; eauto; unfold loc_unmapped, update_meminj in *;
+              des_ifs; exfalso; eapply Plt_strict; eauto.
+        * eapply Mem.unchanged_on_trans; eauto.
+          eapply Mem.unchanged_on_trans; eapply Mem.unchanged_on_implies; eauto;
+            ii; des; esplits; eauto; unfold loc_out_of_reach, update_meminj in *;
+              ii; des_ifs; try by (eapply Plt_strict; eauto).
+          { eapply H; eauto. eapply Mem.perm_alloc_4; eauto. }
+          { eapply H; eauto. eapply Mem.perm_alloc_4; eauto.
+            Local Transparent Mem.storev. ss. eapply Mem.perm_store_2; eauto. }
 
+      + cinv (AGREE RSP); rewrite Heq1 in *; clarify.
+        exploit mem_free_inject; try apply Heq2; eauto. i. des. zsimpl.
+        exploit Mem.load_inject; try apply Heq; eauto. i. des.
+        exploit Mem.load_inject; try apply Heq0; eauto. i. des.
+
+        esplits; eauto.
+        * econs; eauto; ss. rewrite <- H4. ss.
+          replace (Ptrofs.unsigned (Ptrofs.add (Ptrofs.add i (Ptrofs.repr delta)) ofs_ra)) with
+              (Ptrofs.unsigned (Ptrofs.add i ofs_ra) + delta); cycle 1.
+          { admit "arithmetic". }
+          replace (Ptrofs.unsigned (Ptrofs.add (Ptrofs.add i (Ptrofs.repr delta)) ofs_link)) with
+              (Ptrofs.unsigned (Ptrofs.add i ofs_link) + delta); cycle 1.
+          { admit "arithmetic". }
+          rewrite H. rewrite H8.
+          replace (Ptrofs.unsigned (Ptrofs.add i (Ptrofs.repr delta))) with
+              (Ptrofs.unsigned i + delta); cycle 1.
+          { admit "arithmetic". }
+          replace (Ptrofs.unsigned i + delta + sz) with (Ptrofs.unsigned i + sz + delta); try lia.
+          rewrite FREE. ss.
+        * eapply nextinstr_agree. repeat eapply agree_step; eauto.
+        * eapply inject_separated_refl.
     - exploit eval_builtin_args_inject; eauto. i. des.
       exploit ec_mem_inject; eauto.
       { apply external_call_spec. }

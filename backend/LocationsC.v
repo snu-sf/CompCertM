@@ -95,23 +95,37 @@ Proof.
   eapply Loc.in_notin_diff; eauto.
 Qed.
 
-Lemma aux1: forall (A:Type) (l: list A) n m,
-    list_nth_z l n = Some m ->
-    list_nth_z (firstn (Z.to_nat (n + 1)) l) n = Some m.
+Lemma list_nth_z_firstn
+      (A:Type) (l: list A) n x
+      (T:list_nth_z l n = Some x)
+    :
+      list_nth_z (firstn (Z.to_nat (n + 1)) l) n = Some x.
 Proof.
-  induction l; ss; i.
-  exploit list_nth_z_range; eauto. i.
-  destruct n; ss; try nia. clear H0.
-  replace (Z.to_nat (Z.pos p + 1)) with (Datatypes.S (Z.to_nat (Z.pos p))); cycle 1. { admit "A". }
+  ginduction l; ss; i.
+  exploit list_nth_z_range; et. intro RANGE.
+  destruct n; ss; try nia.
+  assert(exists n, p = Pos.of_nat (Datatypes.S n)).
+  { hexploit (Pos2Nat.is_succ p). i; des. hexploit (Pos2Nat.id p). i. rewrite H in H0. exists n. ss. }
+  desH H. subst p.
+  replace (Z.pos (Pos.of_nat (Datatypes.S n))) with (Z.of_nat (Datatypes.S n)) in *; cycle 1.
+  { clear. ss. f_equal. induction n; ss. rewrite IHn. ss. }
+  replace (Z.to_nat (Z.of_nat (Datatypes.S n) + 1)) with (Datatypes.S (Datatypes.S n)); cycle 1.
+  { clear. rewrite Z2Nat.inj_add; try nia. rewrite Nat2Z.id. ss. nia. }
   rewrite firstn_cons.
-  Transparent list_nth_z. unfold list_nth_z. fold list_nth_z. Opaque list_nth_z. simpl.
-  admit "TODO".
+  replace (Z.of_nat (Datatypes.S n)) with (Z.succ (Z.of_nat n)) in *; try nia.
+  Local Transparent list_nth_z. unfold list_nth_z in *. fold list_nth_z in *. des_ifs. Local Opaque list_nth_z.
+  rewrite Z.pred_succ in *. exploit IHl; et.
+  replace (Z.to_nat (Z.of_nat n + 1)) with (Datatypes.S n); ss.
+  { clear. rewrite Z2Nat.inj_add; try nia. rewrite Nat2Z.id. ss. nia. }
 Qed.
 
-Lemma aux2: forall (A: Type) (l: list A) n,
-    (le (Datatypes.length l) n /\ firstn (n + 1) l = firstn n l) \/ (lt n (Datatypes.length l) /\ exists x, firstn (n + 1) l = (firstn n l) ++ [x]).
+Lemma firstn_S
+      (A: Type) (l: list A) n
+  :
+      (le (Datatypes.length l) n /\ firstn (n + 1) l = firstn n l)
+    \/ (lt n (Datatypes.length l) /\ exists x, firstn (n + 1) l = (firstn n l) ++ [x]).
 Proof.
-  induction l; i; try by (left; do 2 rewrite firstn_nil; split; ss; omega).
+  ginduction l; i; try by (left; do 2 rewrite firstn_nil; split; ss; omega).
   destruct n.
   { right. ss. split; try omega. eauto. }
   specialize (IHl n). ss. des.
@@ -119,20 +133,77 @@ Proof.
   - right. split; try omega. rewrite IHl0. eauto.
 Qed.
 
-Lemma aux3: forall l1 l2 x,
+Lemma disjoint_concat l1 l2 x
+  :
     Loc.disjoint (l1++[x]) l2 -> Loc.disjoint l1 l2.
 Proof.
   unfold Loc.disjoint. i. eapply H; eauto. eapply in_or_app. left. eauto.
 Qed.
 
-Lemma aux4: forall l n m,
-          Loc.norepet l ->
-          list_nth_z l n = Some m ->
-          Loc.notin m (firstn (Z.to_nat n) l).
+Lemma norepet_nth_notin l n m
+      (NOREPET: Loc.norepet l)
+      (NTH: list_nth_z l (Z.of_nat n) = Some m)
+  :
+    Loc.notin m (firstn n l).
 Proof.
-  induction l; i; ss.
-  inv H.
-  admit "TODO".
+  ginduction l; i; ss. inv NOREPET.
+  destruct n.
+  { inv NTH. ss. }
+  Local Transparent list_nth_z. unfold list_nth_z in NTH. fold list_nth_z in NTH. Local Opaque list_nth_z. des_ifs.
+  replace (Z.pred (Z.of_nat (Datatypes.S n))) with (Z.of_nat n) in *; try nia.
+  rewrite firstn_cons. ss. esplits; et. eapply Loc.diff_sym. eapply Loc.in_notin_diff; et. eapply list_nth_z_in; et.
+Qed.
+
+Lemma map_firstn
+      (A B: Type) (l: list A) (f: A -> B) n
+  :
+    map f (firstn n l) = firstn n (map f l).
+Proof.
+  ginduction l; ss; i.
+  { ss. do 2 rewrite firstn_nil. ss. }
+  destruct n; ss.
+  rewrite IHl. ss.
+Qed.
+
+Lemma list_nth_z_map
+      (A B: Type) (l: list A) n x (f: A -> B)
+      (NTH: list_nth_z l n = Some x)
+  :
+    list_nth_z (map f l) n = Some (f x).
+Proof.
+  ginduction l; ss; i.
+  exploit list_nth_z_range; et. intro RANGE.
+  destruct n; ss; try nia.
+  { inv NTH. ss. }
+  assert(exists n, p = Pos.of_nat (Datatypes.S n)).
+  { hexploit (Pos2Nat.is_succ p). i; des. hexploit (Pos2Nat.id p). i. rewrite H in H0. exists n. ss. }
+  des. subst p.
+  replace (Z.pos (Pos.of_nat (Datatypes.S n))) with (Z.succ (Z.of_nat n)) in *; cycle 1.
+  { clear. ss. f_equal. induction n; ss. rewrite Pos2Z.inj_add. rewrite Zpos_P_of_succ_nat. rewrite IHn. nia. }
+  Local Transparent list_nth_z. unfold list_nth_z in *. fold list_nth_z in *. des_ifs. Local Opaque list_nth_z.
+  rewrite Z.pred_succ in *. exploit IHl; et.
+Qed.
+
+Lemma disjoint_app_inv
+      l1 l2 l3
+  :
+    Loc.disjoint l1 (l2 ++ l3) -> Loc.disjoint l1 l2 /\ Loc.disjoint l1 l3.
+Proof.
+  ginduction l2; ii; ss.
+  { esplits; et. ss. }
+  split.
+  - ii. ss. eapply H; et. ss. des; clarify; et. right. rewrite in_app_iff. et.
+  - apply Loc.disjoint_cons_right in H. eapply IHl2; et.
+Qed.
+
+Lemma notin_regs_of_rpairs
+      ofs tys ir fr ofs2 T
+      (LT:ofs + 2 <= ofs2)
+  :
+    Loc.notin (S Outgoing ofs T) (regs_of_rpairs (loc_arguments_64 tys ir fr ofs2)).
+Proof.
+  ginduction tys; ss; i.
+  des_ifs; destruct T; econs; ss; et; try nia; eapply IHtys; try nia.
 Qed.
 
 Lemma loc_arguments_norepet_aux
@@ -147,47 +218,86 @@ Lemma loc_arguments_norepet_aux
     (<<NOTINFR: Loc.disjoint (map R (List.firstn fr.(Z.to_nat) float_param_regs)) locs>>)
 .
 Proof.
-  ginduction tys; ii; ss; clarify.
+  ginduction tys; ii; clarify.
   { esplits; eauto.
     - econs; eauto.
     - ii; ss.
     - ii; ss.
   }
-  des_ifs; ss.
-  -
-    (* rewrite Z.add_comm in *; ss. *)
-    (* specialize (IHtys (1 + ir)%nat fr ofs _ eq_refl); des; ss. *)
-    specialize (IHtys (ir + 1) fr ofs _ eq_refl); des; ss.
-    esplits; eauto.
-    + econs; eauto.
-      eapply Loc.disjoint_notin; try apply NOTINIR.
-      eapply in_map. eapply list_nth_z_in. eapply aux1. eauto.
-    + eapply Loc_cons_right_disjoint; eauto.
-      { exploit (aux2 int_param_regs). i; des.
-        - rewrite <- H0. replace (Z.to_nat ir + 1)%nat with (Z.to_nat (ir + 1)); eauto. admit "A".
-        - admit "A". (* rewrite H0 in NOTINIR. rewrite list_append_map in NOTINIR. eapply aux3. eauto. *)
-      }
-      { admit "easy". }
-    + eapply Loc_cons_right_disjoint; eauto.
-      { clear - Heq. admit "easy". }
-  - specialize (IHtys ir fr (ofs + 2) _ eq_refl); des; ss.
-    esplits; eauto.
-    + econs; eauto.
-      admit "easy".
-    + eapply Loc_cons_right_disjoint; eauto.
-      admit "easy".
-    + eapply Loc_cons_right_disjoint; eauto.
-      admit "easy".
-  - admit "ditto".
-  - admit "ditto".
-  - admit "ditto".
-  - admit "ditto".
-  - admit "ditto".
-  - admit "ditto".
-  - admit "ditto".
-  - admit "ditto".
-  - admit "ditto".
-  - admit "ditto".
+  assert(TTT: Loc.disjoint (map R int_param_regs) (map R float_param_regs)).
+  { ii; ss. des; subst; ss. }
+  destruct (classic (a = Tfloat \/ a = Tsingle)).
+  { assert(loc_arguments_64 (a :: tys) ir fr ofs =
+           match list_nth_z float_param_regs fr with
+           | Some freg => One (R freg) :: loc_arguments_64 tys ir (fr + 1) ofs
+           | None => One (S Outgoing ofs a) :: loc_arguments_64 tys ir fr (ofs + 2)
+           end).
+    { desH H; subst; ss. }
+    rewrite H0. clear H H0. des_ifs.
+    - specialize (IHtys ir (fr + 1) ofs _ eq_refl); des; ss.
+      esplits; eauto.
+      + econs; eauto. eapply Loc.disjoint_notin; try apply NOTINFR. eapply in_map.
+        eapply list_nth_z_in. eapply list_nth_z_firstn; et.
+      + eapply Loc_cons_right_disjoint; eauto.
+        { clear - Heq TTT. eapply Loc.disjoint_notin; cycle 1.
+          - eapply list_nth_z_in. eapply list_nth_z_map; et.
+          - eapply Loc.disjoint_sym in TTT. rewrite map_firstn.
+            erewrite <- firstn_skipn in TTT. eapply disjoint_app_inv in TTT. des; et.
+        }
+      + eapply Loc_cons_right_disjoint; eauto.
+        { exploit list_nth_z_range; et. intro RANGE.
+          destruct fr; try xomega; ss.
+          exploit (firstn_S float_param_regs). i; desH H.
+          - rewrite <- H0. replace (Pos.to_nat p + 1)%nat with (Pos.to_nat (p + 1)); try nia. eauto.
+          - replace (Z.to_nat (Z.pos p + 1)) with (Pos.to_nat p + 1)%nat in *; cycle 1.
+            { clear. rewrite Z2Nat.inj_add; try nia. ss. }
+            rewrite H0 in NOTINFR. rewrite list_append_map in NOTINFR; ss. eapply disjoint_concat; et.
+        }
+        { clear - Heq. rewrite map_firstn. eapply norepet_nth_notin; try do 9 (econs; ss).
+          eapply list_nth_z_map; et. rewrite Z2Nat.id; et. eapply list_nth_z_range; et.
+        }
+    - specialize (IHtys ir fr (ofs + 2) _ eq_refl); des; ss.
+      esplits; eauto;
+        try (eapply Loc_cons_right_disjoint; eauto;
+             eapply Loc.disjoint_notin with (l1 := [_]); ss; et; ii; rewrite in_map_iff in *; ss; des; clarify).
+      econs; eauto. eapply notin_regs_of_rpairs. nia.
+  }
+  { assert(a = Tint \/ a = Tlong \/ a = Tany32 \/ a = Tany64).
+    { eapply not_or_and in H. des. destruct a; des_ifs; et. }
+    assert(loc_arguments_64 (a :: tys) ir fr ofs =
+           match list_nth_z int_param_regs ir with
+           | Some ireg => One (R ireg) :: loc_arguments_64 tys (ir + 1) fr ofs
+           | None => One (S Outgoing ofs a) :: loc_arguments_64 tys ir fr (ofs + 2)
+           end).
+    { desH H0; subst; ss. }
+    rewrite H1. clear H H0 H1. des_ifs.
+    - specialize (IHtys (ir + 1) fr ofs _ eq_refl); des; ss.
+      esplits; eauto.
+      + econs; eauto. eapply Loc.disjoint_notin; try apply NOTINIR. eapply in_map.
+        eapply list_nth_z_in. eapply list_nth_z_firstn; et.
+      + eapply Loc_cons_right_disjoint; eauto.
+        { exploit list_nth_z_range; et. intro RANGE.
+          destruct ir; try xomega; ss.
+          exploit (firstn_S int_param_regs). i; desH H.
+          - rewrite <- H0. replace (Pos.to_nat p + 1)%nat with (Pos.to_nat (p + 1)); try nia. eauto.
+          - replace (Z.to_nat (Z.pos p + 1)) with (Pos.to_nat p + 1)%nat in *; cycle 1.
+            { clear. rewrite Z2Nat.inj_add; try nia. ss. }
+            rewrite H0 in NOTINIR. rewrite list_append_map in NOTINIR; ss. eapply disjoint_concat; et.
+        }
+        { clear - Heq. rewrite map_firstn. eapply norepet_nth_notin; try do 7 (econs; ss).
+          eapply list_nth_z_map; et. rewrite Z2Nat.id; et. eapply list_nth_z_range; et.
+        }
+      + eapply Loc_cons_right_disjoint; eauto.
+        { clear - Heq TTT. eapply Loc.disjoint_notin; cycle 1.
+          - eapply list_nth_z_in. eapply list_nth_z_map; et.
+          - rewrite map_firstn. erewrite <- firstn_skipn in TTT. eapply disjoint_app_inv in TTT. des; et.
+        }
+    - specialize (IHtys ir fr (ofs + 2) _ eq_refl); des; ss.
+      esplits; eauto;
+        try (eapply Loc_cons_right_disjoint; eauto;
+             eapply Loc.disjoint_notin with (l1 := [_]); ss; et; ii; rewrite in_map_iff in *; ss; des; clarify).
+      econs; eauto. eapply notin_regs_of_rpairs. nia.
+  }
 Qed.
 
 Lemma loc_arguments_norepet

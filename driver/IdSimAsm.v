@@ -576,6 +576,141 @@ Section TRIAL2.
       + (* ske *)
         inv SKENV. rewrite PUB in *. ss.
     - (* step *)
+
+      inv STEP. des. destruct st0, st1. ss. clarify. destruct st, st0. ss.
+
+      hexploit asm_step_preserve_injection; try apply STEP0.
+      { instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm).
+        instantiate (1:=fun blk => if Unreach.unreach su0 blk then None
+                                   else Mem.flat_inj m.(Mem.nextblock) blk).
+        admit "should hold. maybe we need to add premises".
+      }
+      {
+        admit "should hold. maybe we need to add premises".
+      }
+      {
+        admit "should hold. maybe we need to add premises".
+      }
+
+      {
+        instantiate (1:= r). ii.
+        inv SUST. ss. specialize (RS pr). ss. unfold UnreachC.val' in *.
+        destruct (r pr); try by econs. destruct b0; try by econs.
+        exploit RS; eauto. i. des. econs.
+        - unfold Mem.flat_inj. des_ifs. exfalso. apply n.
+          inv MEM. rewrite NB in *. eauto.
+        - psimpl. auto.
+      }
+
+      {
+        unfold Mem.flat_inj. econs; ss; ii; des_ifs; eauto.
+        - econs; ss; eauto; i; des_ifs; zsimpl; eauto.
+          + apply Z.divide_0_r.
+          + admit "".
+        - split; [lia|]. zsimpl. eapply Ptrofs.unsigned_range_2.
+        - zsimpl. eauto.
+      }
+
+      i. des. inv SUST. inv MEM. esplits; eauto.
+      + eapply Unreach.hle_update; [..|refl].
+        *
+
+          instantiate (1:=Unreach.mk
+Unreach
+                            (fun blk => if (plt blk (Mem.nextblock m)) then Unreach.unreach su0 blk else true)
+
+                            (fun blk => if (plt blk (Mem.nextblock m)) then Unreach.unreach su0 blk else true)
+                            (* (Unreach.unreach su0) *)
+                            (Unreach.ge_nb su0)
+                            (Mem.nextblock m0)).
+          ii. ss. des_ifs. exfalso. apply n. rewrite <- NB. auto.
+
+        * ss. rewrite NB. eapply Mem.unchanged_on_nextblock; eauto.
+        * ss.
+      + econs; ss; eauto.
+        * ii. ss. cinv (AGREE pr); rewrite PTR in *; clarify.
+          destruct ((fun blk : block => if Unreach.unreach su0 blk then None else Mem.flat_inj (Mem.nextblock m) blk) blk) eqn:EQ.
+          { destruct p. dup EQ. apply INCR in EQ. clarify. unfold Mem.flat_inj in *.
+            des_ifs. split; eauto.
+            eapply Plt_Ple_trans; eauto. eapply Mem.unchanged_on_nextblock; eauto.
+          }
+          { exploit SEP; eauto. i. des. unfold Mem.flat_inj in *. inv WF. des_ifs; eauto.
+            - exfalso. exploit WFHI; eauto.
+            - exfalso.
+
+              unfold Mem.valid_block in *.
+
+              Unreach.wf
+
+              exploit Mem.mi_freeblocks; try apply H2. eauto.
+
+
+              eapply Mem.mi_mappedblocks; eauto.
+
+              Mem.inject
+              eapply Plt_Ple_trans; eauto.
+              + unfold Mem.valid_block in *. instantiate (1:=Mem.nextblock m). xomega.
+
+
+
+            des_ifs. split; eauto.
+
+
+            app
+
+
+
+          exploit SEP; eauto.
+          -- des_ifs.
+
+
+          des.
+
+
+
+
+        refl.
+      + econs; eauto.
+        * ii. esplits; eauto.
+
+
+      { eauto.
+
+
+
+          apply Z.divide_0_r.
+        -
+
+          zsimpl. eauto.
+        -
+
+
+inv RS.
+
+
+
+
+
+
+      hexploit asm_step_preserve_injection.
+      { instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm).
+        instantiate (1:= Mem.flat_inj m.(Mem.nextblock)).
+        instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm).
+        admit "should hold. maybe we need to add premises".
+      }
+
+
+
+meminj Mem.inject
+
+
+        asm_step_max_perm.
+
+      asm_step_preserve_injection
+
+
+
+
       admit "ez".
     - (* call *)
       inv AT. ss.
@@ -1996,7 +2131,7 @@ Lemma asm_inj_drop
 Proof.
   exploit asm_inj_drop_bot. i. des. eauto.
 Qed.
-  
+
 Lemma SymSymbId_SymSymbDrop_bot sm_arg ss_link ge_src ge_tgt
       (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg ss_link ge_src ge_tgt)
   :

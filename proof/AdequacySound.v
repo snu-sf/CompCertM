@@ -41,8 +41,12 @@ Section ADQSOUND.
   Let skenv_link_src := sk_link_src.(Sk.load_skenv).
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
 
+  Variable ss_link: SimSymb.t.
+  Hypothesis (SIMSKENV: exists sm, SimSymb.sim_skenv sm ss_link skenv_link_src skenv_link_tgt).
+
   Hypothesis INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk).
   Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk).
+  Hypothesis SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link.
 
   Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_list_preserves_wf_sk; et. Qed.
   Let WFSKLINKTGT: Sk.wf sk_link_tgt. eapply link_list_preserves_wf_sk; et. Qed.
@@ -163,7 +167,7 @@ Section ADQSOUND.
       exists su0 m_init0, <<MEM: Sk.load_mem sk_link_src = Some m_init0>> /\ <<SU: sound_state su0 m_init0 st0>>
   .
   Proof.
-    inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT INCLTGT WFSKTGT.
+    inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT INCLTGT WFSKTGT SIMSKENV.
     hexploit Sound.init_spec; eauto. i; des.
     exploit Sound.greatest_ex; eauto.
     { esplits; eauto. refl. }
@@ -267,14 +271,15 @@ Section ADQSOUND.
         { clear - MODSEM0. rr in pp. rr in p_src. subst p_src. rewrite in_map_iff in *. des. eauto. }
         des.
         exploit SIMPROG; eauto. intros MPSIM. inv MPSIM.
+        destruct SIMSKENV.
         exploit SIMMS.
         { eapply INCLSRC; et. }
         { eapply INCLTGT; et. }
         { eapply SkEnv.load_skenv_wf; et. }
         { eapply SkEnv.load_skenv_wf; et. }
-        { eapply SimSymb.le_refl. }
-        { admit "somehow. 1) fat module / skinny modsem. 2) require as premise". }
-        i; des. inv H0. ss. esplits; eauto.
+        { eapply SSLE; eauto. }
+        { eauto. }
+        intro SIM; des. inv SIM. ss. esplits; eauto.
     - (* INTERNAL *)
       inv SUST. ss.
       esplits; eauto. econs; eauto.
@@ -304,7 +309,6 @@ Section ADQSOUND.
         eapply Sound.greatest_adq; eauto.
   Unshelve.
     all: ss.
-    admit "related to above admit".
   Qed.
 
   Lemma sound_progress_star

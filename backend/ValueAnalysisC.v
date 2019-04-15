@@ -587,8 +587,6 @@ Section PRSV.
             - i. inv SKENV. ss.
               rr in ROMATCH. des.
               exploit (romem_for_consistent cunit); eauto. intro X; des.
-              (* exploit (romem_for_complete cunit); eauto. intro X; des. *)
-
 
               inv GE. hexploit (H3 id b); eauto. intro Y. des.
               hexploit1 Y0; eauto.

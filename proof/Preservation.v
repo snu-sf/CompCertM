@@ -166,7 +166,6 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
               su_ret retv st1
-              (* (SKENV: Sound.skenv su_ret st1.(get_mem) ms.(ModSem.skenv)) *)
               (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
               (* retv st1 *)
@@ -178,10 +177,8 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
               (* (<<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) st1.(get_mem)>>)>>)) *)
               (<<SUST: forall
                  (MLE: su0.(Sound.mle) retv.(Retv.m) st1.(get_mem))
-                 (* (SKENV: Sound.skenv su_ret st1.(get_mem) ms.(ModSem.skenv)), *)
                  (SKENV: Sound.skenv su0 st1.(get_mem) ms.(ModSem.skenv)),
                  sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) retv.(Retv.m) st1.(get_mem)>>)>>))
-              (* (<<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) retv.(Retv.m) st1.(get_mem)>>)>>)) *)
     (RET: forall
         su0 st0 retv
         (SKENV: Sound.skenv su0 st0.(get_mem) ms.(ModSem.skenv))
@@ -211,15 +208,6 @@ Proof.
     { etrans; eauto. }
     ii. exploit K; try apply RETV; eauto.
     i; des.
-    (* assert(SKENV: Sound.skenv su_ret (get_mem st1) (ModSem.skenv ms)). *)
-    (* { eapply Sound.skenv_le; et. *)
-    (*   { eapply Sound.skenv_mle; et. etrans; et. etrans; et. *)
-    (*     eapply Sound.le_spec; et. eapply Sound.greatest_adq; et. } *)
-    (*   etrans; et. *)
-    (*   { eapply Sound.greatest_adq; et. } *)
-    (*   eapply Sound.hle_le; et. *)
-    (*   admit "". *)
-    (* } *)
     assert(SKENV: Sound.skenv su0 (get_mem st1) (ModSem.skenv ms)).
     { eapply Sound.skenv_mle; et. etrans; et. etrans; et.
       eapply Sound.le_spec; et. eapply Sound.greatest_adq; et.

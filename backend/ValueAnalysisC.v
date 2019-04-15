@@ -578,15 +578,16 @@ Section PRSV.
           { instantiate (1 := bc). rewrite IMG. subst f. split; i; try by des_ifs.
             des_ifs_safe. exfalso. eapply n. eapply mmatch_below. eauto. congruence.
           }
-          (* inv AT. inv MLE. inv GR. *)
-          econs.
-          { eapply RO; eauto. }
-          { exploit RO; eauto. i; des.
-            admit "A".
-            (* split. *)
-            (* - eapply bmatch_inv; eauto. i. unfold Mem.loadbytes. admit "A". *)
-            (* - ii. eapply H3. admit "TODO". *)
+          inv AT. ss. inv MLE.
+          eapply romatch_ext; et; i.
+          { assert(RANGE_PERM: Mem.range_perm (Retv.m retv) b ofs (ofs + n) Cur Readable).
+            { eapply Mem.loadbytes_range_perm; et. }
+            erewrite <- Mem.loadbytes_unchanged_on_1; try eapply PRIV; et.
+            - eapply mmatch_below; et. congruence.
+            - i. ss. unfold flip. inv GR.
+              admit "TODO".
           }
+          { apply PERM; et. eapply mmatch_below; et. congruence. }
         *
           {
             constructor; simpl; intros.

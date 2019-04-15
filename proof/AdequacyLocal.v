@@ -26,8 +26,6 @@ Section SIMGE.
   Context `{SM: SimMem.class}.
   Context `{SU: Sound.class}.
   Context {SS: SimSymb.class SM}.
-
-  Variable pp: ProgPair.t.
   (* Inductive sim_gepair (sm0: SimMem.t) (ge_src ge_tgt: list ModSem.t): Prop := *)
   Inductive sim_ge (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
   | sim_ge_src_stuck
@@ -43,10 +41,7 @@ Section SIMGE.
       (GESRC: ge_src = (map (ModSemPair.src) msps))
       (GETGT: ge_tgt = (map (ModSemPair.tgt) msps))
       skenv_link_src skenv_link_tgt
-      (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm0 ss_link skenv_link_src skenv_link_tgt
-             /\ <<SSLE: forall mp (IN: In mp pp),
-            SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link>>
-      )
+      (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm0 ss_link skenv_link_src skenv_link_tgt)
       (MFUTURE: List.Forall (fun msp => SimMem.future msp.(ModSemPair.sm) sm0) msps)
       (SESRC: List.Forall (fun ms => ms.(ModSem.to_semantics).(symbolenv) = skenv_link_src) ge_src)
       (SETGT: List.Forall (fun ms => ms.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt) ge_tgt)
@@ -235,25 +230,25 @@ Section SIMGE.
   (* Qed. *)
 
   Lemma to_msp_tgt
-        skenv_tgt skenv_src sm_init
+        skenv_tgt skenv_src pp sm_init
     :
           map ModSemPair.tgt (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) =
           map (fun md => Mod.modsem md skenv_tgt) (ProgPair.tgt pp)
   .
   Proof.
     ginduction pp; ii; ss.
-    f_equal. erewrite IHt; eauto.
+    f_equal. erewrite IHpp; eauto.
   Qed.
 
   Lemma to_msp_src
-        skenv_tgt skenv_src sm_init
+        skenv_tgt skenv_src pp sm_init
     :
           map ModSemPair.src (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) =
           map (fun md => Mod.modsem md skenv_src) (ProgPair.src pp)
   .
   Proof.
     ginduction pp; ii; ss.
-    f_equal. erewrite IHt; eauto.
+    f_equal. erewrite IHpp; eauto.
   Qed.
 
   Lemma to_msp_sim_skenv
@@ -288,6 +283,7 @@ Section SIMGE.
   Qed.
 
   Theorem init_sim_ge_strong
+          pp
           (NOTNIL: pp <> [])
           (SIMPROG: ProgPair.sim pp)
           p_src p_tgt
@@ -316,7 +312,6 @@ Section SIMGE.
                /\ (<<SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_link_src skenv_link_tgt>>)
                /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)>>)
                /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)>>)
-               /\ (<<SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link>>)
   .
   Proof.
     assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
@@ -327,8 +322,7 @@ Section SIMGE.
       unfold ProgPair.tgt. rewrite in_map_iff. esplits; et. }
     clarify.
     exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des. rename sm into sm_init. clarify.
-    esplits; eauto; cycle 1.
-    { rewrite Forall_forall in *. eauto. }
+    esplits; eauto.
     unfold load_genv in *. ss.
     bar.
     assert(exists msp_sys,
@@ -393,11 +387,8 @@ Section SIMGE.
       ginduction pp; ii; ss.
       unfold link_sk in *. ss.
       rename a into mp.
-      rename pp into ppp.
-      rename t into pp.
       destruct (classic (pp = [])).
-      { rewrite H in *. clear_tac. sguard in H.
-        clarify. ss. cbn in *. clarify.
+      { clarify. ss. clear IHpp. inv SSLE. inv H2. cbn in *. clarify.
         set (skenv_src := (Sk.load_skenv (ModPair.src mp))) in *.
         set (skenv_tgt := (Sk.load_skenv (ModPair.tgt mp))) in *.
         inv SIMPROG. inv H3. rename H2 into SIMMP. inv SIMMP.
@@ -407,17 +398,14 @@ Section SIMGE.
         - econs; eauto.
           { u. erewrite Mod.get_modsem_skenv_link_spec; ss. }
         - econs; eauto.
-        - esplits; eauto. unsguard H. rewrite H. ss.
         - econs; eauto. eapply SIMMS; eauto.
           + eapply SkEnv.load_skenv_wf; et.
           + eapply SkEnv.load_skenv_wf; et.
-          + inv SSLE. ss.
         - econs; eauto. econs; ss; eauto; cycle 1.
           { unfold Mod.modsem. rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
           r. ss. eapply SimSymb.sim_skenv_monotone; eauto.
           + eapply SkEnv.load_skenv_wf; et.
           + eapply SkEnv.load_skenv_wf; et.
-          + inv SSLE; ss.
           + eapply Mod.get_modsem_skenv_spec.
           + eapply Mod.get_modsem_skenv_spec.
       }
@@ -456,7 +444,6 @@ Section SIMGE.
         { u. erewrite Mod.get_modsem_skenv_link_spec; ss. }
       (* + rewrite Forall_forall in *. i. ss. des; clarify. *)
       + ss. econs; eauto. rewrite Forall_forall in *. ii. rewrite in_map_iff in H. des. clarify. ss. refl.
-      + esplits; eauto. i. rewrite Forall_forall in *. eauto.
       + ss. f_equal. rewrite to_msp_tgt; ss.
       + ss. f_equal. rewrite to_msp_src; ss.
       + ss. econs; ss; eauto.
@@ -470,7 +457,6 @@ Section SIMGE.
           eapply to_msp_sim_skenv; eauto.
     - rewrite SYSSRC. ss.
     - rewrite SYSTGT. ss.
-      
   Unshelve.
     all: try apply idx_bot.
   Qed.
@@ -763,13 +749,8 @@ Section ADQSTEP.
 
   Let skenv_link_src := sk_link_src.(Sk.load_skenv).
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
-  
-  Variable ss_link: SimSymb.t.
-  Hypothesis (SIMSKENV: exists sm, SimSymb.sim_skenv sm ss_link skenv_link_src skenv_link_tgt).
-
   Hypothesis (INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
   Hypothesis (INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)).
-  Hypothesis (SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link).
 
   Hypothesis (WFKSSRC: forall md (IN: In md (ProgPair.src pp)), <<WF: Sk.wf md >>).
   Hypothesis (WFKSTGT: forall md (IN: In md (ProgPair.tgt pp)), <<WF: Sk.wf md >>).

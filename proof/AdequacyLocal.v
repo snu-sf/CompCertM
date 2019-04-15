@@ -312,6 +312,7 @@ Section SIMGE.
                /\ (<<SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_link_src skenv_link_tgt>>)
                /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)>>)
                /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)>>)
+               /\ (<<SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link>>)
   .
   Proof.
     assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
@@ -322,7 +323,8 @@ Section SIMGE.
       unfold ProgPair.tgt. rewrite in_map_iff. esplits; et. }
     clarify.
     exploit SimSymb.sim_sk_load_sim_skenv; eauto. i; des. rename sm into sm_init. clarify.
-    esplits; eauto.
+    esplits; eauto; cycle 1.
+    { rewrite Forall_forall in *. eauto. }
     unfold load_genv in *. ss.
     bar.
     assert(exists msp_sys,
@@ -749,8 +751,12 @@ Section ADQSTEP.
 
   Let skenv_link_src := sk_link_src.(Sk.load_skenv).
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
+  Variable ss_link: SimSymb.t.
+  Hypothesis (SIMSKENV: exists sm, SimSymb.sim_skenv sm ss_link skenv_link_src skenv_link_tgt).
+
   Hypothesis (INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
   Hypothesis (INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)).
+  Hypothesis (SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link).
 
   Hypothesis (WFKSSRC: forall md (IN: In md (ProgPair.src pp)), <<WF: Sk.wf md >>).
   Hypothesis (WFKSTGT: forall md (IN: In md (ProgPair.tgt pp)), <<WF: Sk.wf md >>).
@@ -1074,6 +1080,8 @@ Section ADQ.
       assert(WFTGT: forall md, In md (ProgPair.tgt pp) -> <<WF: Sk.wf md >>).
       { inv INITTGT. inv INIT. ss. }
       hexploit lxsim_lift_xsim; eauto.
+      { exploit SimSymb.sim_sk_load_sim_skenv; et. i; des. esplits; eauto. }
+      { rewrite Forall_forall in *. eauto. }
       exploit sound_init; eauto.
       { ss. econs; eauto. }
       i; des. rr. esplits; eauto.

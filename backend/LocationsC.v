@@ -95,28 +95,37 @@ Proof.
   eapply Loc.in_notin_diff; eauto.
 Qed.
 
+Local Transparent list_nth_z.
+Lemma list_nth_z_eq
+      A (l: list A) z
+      (POS: 0 <= z)
+  :
+    list_nth_z l z = List.nth_error l z.(Z.to_nat)
+.
+Proof.
+  ginduction l; ii; ss.
+  - destruct ((Z.to_nat z)); ss.
+  - des_ifs. destruct (Z.to_nat) eqn:T; ss.
+    + destruct z; ss. destruct p; ss. xomega.
+    + rewrite IHl; ss; eauto; try xomega.
+      rewrite Z2Nat.inj_pred. rewrite T. ss.
+Qed.
+Local Opaque list_nth_z.
+
 Lemma list_nth_z_firstn
       (A:Type) (l: list A) n x
       (T:list_nth_z l n = Some x)
     :
       list_nth_z (firstn (Z.to_nat (n + 1)) l) n = Some x.
 Proof.
-  ginduction l; ss; i.
-  exploit list_nth_z_range; et. intro RANGE.
-  destruct n; ss; try nia.
-  assert(exists n, p = Pos.of_nat (Datatypes.S n)).
-  { hexploit (Pos2Nat.is_succ p). i; des. hexploit (Pos2Nat.id p). i. rewrite H in H0. exists n. ss. }
-  desH H. subst p.
-  replace (Z.pos (Pos.of_nat (Datatypes.S n))) with (Z.of_nat (Datatypes.S n)) in *; cycle 1.
-  { clear. ss. f_equal. induction n; ss. rewrite IHn. ss. }
-  replace (Z.to_nat (Z.of_nat (Datatypes.S n) + 1)) with (Datatypes.S (Datatypes.S n)); cycle 1.
-  { clear. rewrite Z2Nat.inj_add; try nia. rewrite Nat2Z.id. ss. nia. }
-  rewrite firstn_cons.
-  replace (Z.of_nat (Datatypes.S n)) with (Z.succ (Z.of_nat n)) in *; try nia.
-  Local Transparent list_nth_z. unfold list_nth_z in *. fold list_nth_z in *. des_ifs. Local Opaque list_nth_z.
-  rewrite Z.pred_succ in *. exploit IHl; et.
-  replace (Z.to_nat (Z.of_nat n + 1)) with (Datatypes.S n); ss.
-  { clear. rewrite Z2Nat.inj_add; try nia. rewrite Nat2Z.id. ss. nia. }
+  exploit list_nth_z_range; eauto. intro RANGE; des.
+  rewrite list_nth_z_eq in *; try xomega.
+  rewrite Z2Nat.inj_add; ss. rewrite Pos2Nat.inj_1. rewrite Nat.add_comm.
+  exploit nth_error_Some; et. intro X. rewrite T in X. des.
+  exploit X; eauto. { ss. } intro Y.
+  erewrite <- (firstn_skipn (1 + (Z.to_nat n)) l) in T.
+  rewrite nth_error_app1 in T; eauto. rewrite firstn_length.
+  xomega.
 Qed.
 
 Lemma firstn_S
@@ -171,17 +180,9 @@ Lemma list_nth_z_map
   :
     list_nth_z (map f l) n = Some (f x).
 Proof.
-  ginduction l; ss; i.
-  exploit list_nth_z_range; et. intro RANGE.
-  destruct n; ss; try nia.
-  { inv NTH. ss. }
-  assert(exists n, p = Pos.of_nat (Datatypes.S n)).
-  { hexploit (Pos2Nat.is_succ p). i; des. hexploit (Pos2Nat.id p). i. rewrite H in H0. exists n. ss. }
-  des. subst p.
-  replace (Z.pos (Pos.of_nat (Datatypes.S n))) with (Z.succ (Z.of_nat n)) in *; cycle 1.
-  { clear. ss. f_equal. induction n; ss. rewrite Pos2Z.inj_add. rewrite Zpos_P_of_succ_nat. rewrite IHn. nia. }
-  Local Transparent list_nth_z. unfold list_nth_z in *. fold list_nth_z in *. des_ifs. Local Opaque list_nth_z.
-  rewrite Z.pred_succ in *. exploit IHl; et.
+  exploit list_nth_z_range; eauto. intro RANGE; des.
+  rewrite list_nth_z_eq in *; try xomega.
+  rewrite list_map_nth in *. rewrite NTH. ss.
 Qed.
 
 Lemma disjoint_app_inv

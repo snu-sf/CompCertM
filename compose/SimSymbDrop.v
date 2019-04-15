@@ -397,8 +397,7 @@ Proof.
     rewrite Genv.find_def_symbol in H. destruct H as (b & P & Q).
     unfold Sk.load_skenv in *. replace b with blk_src in * by congruence. exists def_tgt. split; auto.
   - ii. inv SIMSK. apply CLOSED in H. unfold privs in *. apply andb_true_iff in H. des.
-    apply negb_true_iff in H0. unfold Sk.load_skenv in *. rewrite Genv.globalenv_public in PR.
-    clear - PR H0. admit "ez".
+    apply negb_true_iff in H0. unfold Sk.load_skenv in *. rewrite Genv.globalenv_public in PR. des_sumbool. ss.
   - inv SIMSK. unfold Sk.load_skenv. do 2 rewrite Genv.globalenv_public. ss.
   - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
   - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
@@ -562,57 +561,39 @@ Next Obligation.
       {
         assert(T: exists x1, link_prog_merge (prog_defmap sk_src0) ! x0 (prog_defmap sk_src1) ! x0 = Some x1).
         {
-          admit "ez - CLOSED/CLOSED0/H0".
+          des.
+          - exploit CLOSED; et. intro T. unfold privs in T. unfold NW in *. bsimpl. des_safe. des_sumbool.
+            apply defs_prog_defmap in T. des. rewrite T. destruct ((prog_defmap sk_src1) ! x0) eqn:EQN.
+            + exploit H0; et. i; des. ss.
+            + eexists. ss.
+          - exploit CLOSED0; et. intro T. unfold privs in T. unfold NW in *. bsimpl. des_safe. des_sumbool.
+            apply defs_prog_defmap in T. des. rewrite T. destruct ((prog_defmap sk_src0) ! x0) eqn:EQN.
+            + exploit H0; et. i; des. ss.
+            + eexists. ss.
         }
         clear PR. des_safe.
         rr. unfold defs. unfold NW. des_sumbool. unfold prog_defs_names. ss.
-        rewrite in_map_iff.
-        eexists (_, _). s.
-        esplits; eauto.
-        eapply PTree.elements_correct; eauto.
-        rewrite PTree.gcombine; ss.
-        eauto.
+        rewrite in_map_iff. eexists (_, _). s. esplits; eauto.
+        eapply PTree.elements_correct; eauto. rewrite PTree.gcombine; ss. eauto.
       }
-      unfold NW.
-      bsimpl. des_sumbool.
-      intro T. rewrite in_app_iff in T.
-      destruct PR.
-      * exploit CLOSED; eauto. intro TT. unfold privs in TT. unfold NW in *. bsimpl. des_safe. des_sumbool.
-        des; ss.
-        clear - TT TT0.
-        admit "WE NEED WF SRC".
-      * admit "ditto".
-    + assert(WFTGT0: Sk.wf sk_tgt0).
-      { admit "WE NEED WF TGT". }
-      assert(WFTGT1: Sk.wf sk_tgt1).
-      { admit "WE NEED WF TGT". }
-      assert(T: (In (id, Gvar gv) (prog_defs sk_tgt0))
+      unfold NW. bsimpl. des_sumbool. intro T. rewrite in_app_iff in T. destruct PR.
+      * exploit CLOSED; eauto. intro TT. unfold privs, NW in TT. bsimpl. des_safe. des_sumbool.
+        des; ss. apply defs_prog_defmap in TT. inv WFSRC1. apply PUBINCL in T. apply prog_defmap_dom in T. des.
+        exploit H0; et. i; des. ss.
+      * exploit CLOSED0; eauto. intro TT. unfold privs, NW in TT. bsimpl. des_safe. des_sumbool.
+        des; ss. apply defs_prog_defmap in TT. inv WFSRC0. apply PUBINCL in T. apply prog_defmap_dom in T. des.
+        exploit H0; et. i; des. ss.
+    + assert(T: (In (id, Gvar gv) (prog_defs sk_tgt0))
                 \/ (In (id, Gvar gv) (prog_defs sk_tgt1))).
       { unfold prog_defmap in PROG. ss.
         rewrite PTree_Properties.of_list_elements in *.
         rewrite PTree.gcombine in *; ss.
         unfold link_prog_merge in PROG. clear - PROG. des_ifs.
-        Local Transparent Linker_def.
-        Local Transparent Linker_vardef.
-        Local Transparent Linker_varinit.
         - apply PTree_Properties.in_of_list in Heq.
           apply PTree_Properties.in_of_list in Heq0.
-          ss.
-          assert(g = Gvar gv \/ g0 = Gvar gv).
-          { (* TODO: make lemma. put in LinkingC *)
-            clear - PROG.
-            unfold link_def in *. des_ifs.
-            ss. unfold link_vardef in *. destruct v; ss.
-            des_ifs; bsimpl; des; des_sumbool; rewrite eqb_true_iff in *.
-            destruct gvar_info; ss. destruct v0; ss. destruct gvar_info; ss. destruct u; ss.
-            unfold link_varinit in *. des_ifs; eauto.
-          }
-          des; clarify; et.
+          exploit (link_unit_same g g0); et. i; des; clarify; et.
         - apply PTree_Properties.in_of_list in Heq. eauto.
         - apply PTree_Properties.in_of_list in PROG. eauto.
-        Local Opaque Linker_def.
-        Local Opaque Linker_vardef.
-        Local Opaque Linker_varinit.
       }
       assert(U: ~ In id_drop (prog_defs_names sk_tgt0) /\ ~ In id_drop (prog_defs_names sk_tgt1)).
       {
@@ -622,7 +603,11 @@ Next Obligation.
           + desH DROP1; et. exploit KEPT; et. intro V.
             exploit AUX1; eauto. i. ii. exploit prog_defmap_dom; et. i; des_safe; clarify.
             congruence.
-        - admit "ditto".
+        - destruct (classic (ss1 id_drop)).
+          + exploit DROP0; eauto. intro V. intro W. exploit prog_defmap_dom; et. i; des; clarify.
+          + desH DROP1; et. exploit KEPT0; et. intro V.
+            exploit AUX2; eauto. i. ii. exploit prog_defmap_dom; et. i; des_safe; clarify.
+            congruence.
       }
       desH T.
       * inv WFTGT0. rr in H1. des_safe. exploit WFPTR; eauto.
@@ -700,6 +685,7 @@ Next Obligation.
         left. apply Mem.perm_cur. eapply Mem.perm_implies; eauto.
         apply P1. omega.
   }
+  (* admit "See 'init_meminj_preserves_globals' in Unusedglobproof.v". *)
 Qed.
 Next Obligation.
   inv MLE. inv SIMSKENV.
@@ -725,6 +711,7 @@ Next Obligation.
     + exploit INCR; eauto. congruence.
     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
       exploit Genv.genv_defs_range; eauto. xomega.
+  (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *)
 Qed.
 Next Obligation.
   inv SIMSKENV. inv MWF.

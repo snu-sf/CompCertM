@@ -49,7 +49,7 @@ Section ASMEXTRA.
 
   Definition is_external (ge: genv) (st: state): Prop :=
     match Genv.find_funct ge (st.(st_rs) PC) with
-    | Some (AST.External ef) => is_external_ef ef
+    | Some (AST.External ef) => is_external_ef ef = true
     | _ => False
     end
   .

@@ -17,7 +17,7 @@ Section LTLEXTRA.
     match st with
     | Callstate stack fptr sg args m =>
       match Genv.find_funct ge fptr with
-      | Some (AST.External ef) => is_external_ef ef
+      | Some (AST.External ef) => is_external_ef ef = true
       | _ => False
       end
     | _ => False

@@ -191,8 +191,7 @@ Proof.
     { assert (SkEnv.genv_precise ge prog).
       { eapply SkEnv.project_revive_precise; et. eapply SkEnv.project_impl_spec; et. }
       inv H. econs; ii.
-      - exploit P2GE; eauto. i. inv H0. des. exists x. split; eauto. des_ifs. ii.
-        ss. bsimpl. admit "ez - remove redundancy: AST.is_external_ef, ASTC.is_external_ef".
+      - exploit P2GE; eauto. i. inv H0. des. exists x. split; eauto. des_ifs. ii. ss. bsimpl. congruence.
       - des. exploit GE2P; eauto. i; des. determ_tac Genv.genv_vars_inj.
     }
     i; des.

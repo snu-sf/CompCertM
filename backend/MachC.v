@@ -34,7 +34,7 @@ Section MACHEXTRA.
     match st with
     | Callstate stack fptr rs m =>
       match Genv.find_funct ge fptr with
-      | Some (AST.External ef) => is_external_ef ef
+      | Some (AST.External ef) => is_external_ef ef = true
       | _ => False
       end
     | _ => False

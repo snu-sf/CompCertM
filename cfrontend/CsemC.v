@@ -36,7 +36,7 @@ Section CEXTRA.
       match Genv.find_funct ge fptr with
       | Some f =>
         match f with
-        | External ef targs tres cconv => is_external_ef ef
+        | External ef targs tres cconv => is_external_ef ef = true
         | _ => False
         end
       | None => False

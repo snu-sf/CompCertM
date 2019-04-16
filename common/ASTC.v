@@ -166,12 +166,6 @@ End PLAYGROUND.
 
 Section FUNCTIONS.
   
-  Definition is_external_ef (ef: external_function): bool :=
-    match ef with
-    | EF_external _ _ => true
-    | _ => false
-    end.
-
   Definition is_external_fd F (f: fundef F): bool :=
     match f with
     | External ef => is_external_ef ef

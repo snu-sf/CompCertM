@@ -103,6 +103,43 @@ Module CSk.
       end
   .
 
+  (* copied from Skeleton *)
+  Definition wf_match_fundef CTX F1 F2 (match_fundef: CTX -> fundef F1 -> fundef F2 -> Prop)
+             (fn_sig1: F1 -> signature) (fn_sig2: F2 -> signature): Prop := forall
+      ctx f1 f2
+      (MATCH: match_fundef ctx f1 f2)
+    ,
+      (<<EXT: exists ef targs tres cc, f1 = External ef targs tres cc /\ f2 = External ef targs tres cc>>)
+      \/ (<<INT: exists fd1 fd2, f1 = Internal fd1 /\ f2 = Internal fd2 /\ <<SIG: fn_sig1 fd1 = fn_sig2 fd2>> >>)
+  .
+
+  Lemma match_program_eq
+        F1 F2
+        `{Linker (fundef F1)}
+        match_fundef match_varinfo
+        (p1: program F1)
+        (p2: program F2)
+        (MATCH: match_program match_fundef match_varinfo p1 p2)
+        fn_sig1 fn_sig2
+        (WF: wf_match_fundef match_fundef fn_sig1 fn_sig2)
+    :
+      <<EQ: CSk.of_program fn_sig1 p1 = CSk.of_program fn_sig2 p2>>
+  .
+  Proof.
+    rr in MATCH. des.
+    unfold of_program. r. f_equal; ss.
+    revert MATCH. generalize p1 at 1 as CTX. i.
+    destruct p1, p2; ss.
+    clear - MATCH WF.
+    ginduction prog_defs; ii; ss; inv MATCH; ss.
+    erewrite IHprog_defs; eauto. f_equal; eauto.
+    inv H2. destruct a, b1; ss. clarify.
+    inv H1; ss.
+    - unfold update_snd. exploit WF; eauto. i; des; clarify; ss.
+      + repeat f_equal. exploit WF; et.
+    - inv H0. ss.
+  Qed.
+
   Lemma of_program_prog_defmap
         F
         (p: Ctypes.program F)

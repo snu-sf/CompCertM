@@ -136,7 +136,10 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - r. admit "easy - see DeadcodeproofC".
+  - r. eapply Sk.match_program_eq; eauto.
+    ii. destruct f1; ss.
+    + clarify. right. esplits; eauto.
+    + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.
 

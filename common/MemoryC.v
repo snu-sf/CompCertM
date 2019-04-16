@@ -760,7 +760,7 @@ Qed.
 (* TODO move it *)
 Lemma Z2Nat_range n:
   Z.of_nat (Z.to_nat n) = if (zle 0 n) then n else 0.
-Proof. Admitted.
+Proof. destruct n; ss; try nia. Qed.
 
 Theorem Mem_unfree_parallel_extends m1 m2 b lo hi m1'
         (EXTEND: Mem.extends m1 m2)

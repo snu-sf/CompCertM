@@ -196,8 +196,8 @@ Proof.
         rpapply match_states_call; ss; eauto.
         { econs; ss; et.
           - inv SIMSKENV. ss. eapply SimSymbDrop.sim_skenv_symbols_inject; et.
-          - admit "ez - genb".
-          - admit "ez - genb".
+          - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. xomega.
+          - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. xomega.
         }
         { eapply inject_list_typify_list; eauto. }
         { eapply MWF. }

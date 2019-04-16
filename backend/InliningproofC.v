@@ -227,7 +227,10 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - r. admit "easy".
+  - r. eapply Sk.match_program_eq; eauto.
+    ii. destruct f1; ss.
+    + clarify. right. unfold Errors.bind in MATCH. des_ifs. esplits; eauto. unfold transf_function in *. des_ifs.
+    + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
 Qed.
 

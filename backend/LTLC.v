@@ -242,7 +242,8 @@ Section MODSEM.
   Proof.
     inv RECEP. econs; eauto; ii; ss.
     - inv H. exploit sr_receptive_at; eauto. i; des.
-      esplits; eauto. econs; eauto. admit "ez - See Mach.v for same admit".
+      esplits; eauto. econs; eauto.
+      { inv H1; inv H; ss. }
     - inv H. exploit sr_traces_at; eauto.
   Qed.
 

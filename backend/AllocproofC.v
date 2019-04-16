@@ -55,7 +55,25 @@ Proof.
   ii. exploit H1; et. intro T. unfold undef_outgoing_slots in *. des_ifs.
 Qed.
 
+Lemma match_stackframes_not_nil
+      skenv_link tge stack ts sg_arg
+      (MATCH: match_stackframes skenv_link tge stack ts sg_arg)
+  :
+    ts <> []
+.
+Proof.
+  inv MATCH; ss. inv MAINARGS.
+Qed.
 
+Lemma getpair_equal
+      sg_init sg ls
+      (SAMERES : sig_res sg_init = sig_res sg)
+  :
+    Locmap.getpair (map_rpair R (loc_result sg_init)) ls = Locmap.getpair (map_rpair R (loc_result sg)) ls
+.
+Proof.
+  do 2 f_equal. unfold loc_result. des_ifs. unfold loc_result_64. des_ifs.
+Qed.
 
 Section SIMMODSEM.
 
@@ -133,7 +151,10 @@ Proof.
     exploit (fill_arguments_progress (Locmap.init Vundef)
                                      (typify_list (Args.vs args_tgt) (sig_args (fn_sig f)))
                                      (loc_arguments f.(fn_sig))); eauto.
-    { rewrite <- sig_args_length. rewrite SGEQ. rewrite <- LEN. admit "ez". }
+    { rewrite <- sig_args_length. rewrite SGEQ.
+      unfold typify_list. rewrite zip_length. rewrite <- LEN.
+      erewrite <- lessdef_list_length; et. eapply Min.min_idempotent.
+    }
     i; des.
     rename ls1 into ls_init.
     exploit fill_arguments_spec; et. i; des.
@@ -176,8 +197,7 @@ Proof.
       * eapply match_stackframes_after; et.
       * hexploit (loc_result_one sg_arg); et. intro ONE. destruct (loc_result sg_arg) eqn:T; ss.
         rewrite Locmap.gss. eapply lessdef_typify; et.
-      * eapply agree_callee_save_after; et.
-        admit "ez - we can just use 'inv STACKS; ss.' but make lemma".
+      * eapply agree_callee_save_after; et. eapply match_stackframes_not_nil; et.
       * eapply typify_has_type; et.
       * rr. rr in DUMMYTGT. des. ss. destruct ts; ss. des_ifs_safe; ss. destruct ts; ss; et.
         unfold undef_outgoing_slots. unfold dummy_stack in *. clarify. esplits; et.
@@ -187,11 +207,7 @@ Proof.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto.
     econs; et; ss.
     rpapply RES.
-    admit "ez - make lemma: below proof works
-    do 2 f_equal.
-    clear - SAMERES.
-    unfold loc_result. des_ifs. unfold loc_result_64. des_ifs.
-".
+    eapply getpair_equal; et.
   - left; i.
     esplits; eauto.
     { apply RTLC.modsem_receptive; et. }
@@ -233,7 +249,10 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - r. admit "easy - see DeadcodeproofC".
+  - r. eapply Sk.match_program_eq; eauto.
+    ii. exploit sig_function_translated; et. i. destruct f1; ss.
+    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto.
+    + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.
 

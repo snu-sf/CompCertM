@@ -163,8 +163,9 @@ Theorem sim_mod
 Proof.
   econs; ss.
   - r. eapply Sk.match_program_eq; eauto.
-    ii.
-    admit "ez".
+    ii. destruct f1; ss.
+    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. unfold transf_function in *. des_ifs.
+    + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.
 

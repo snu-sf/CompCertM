@@ -383,7 +383,7 @@ Section TRIAL2.
       (* (WF: forall blk (PRIV: su.(Unreach.unreach) blk) (PUB: Ple su.(Unreach.nb) blk), False) *)
       (* (SKE: UnreachC.skenv su m0 skenv) *)
       (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
-      (STACKPUB: su.(UnreachC.val') (rs0 RSP))
+      (* (STACKPUB: su.(UnreachC.val') (rs0 RSP)) *)
     :
       sound_state su (mkstate init_rs (State rs0 m0))
   .
@@ -613,18 +613,11 @@ Section TRIAL2.
 
       i. des. inv SUST. inv MEM. esplits; eauto.
       + eapply Unreach.hle_update; [..|refl].
-        *
-
-          instantiate (1:=Unreach.mk
-Unreach
-                            (fun blk => if (plt blk (Mem.nextblock m)) then Unreach.unreach su0 blk else true)
-
-                            (fun blk => if (plt blk (Mem.nextblock m)) then Unreach.unreach su0 blk else true)
-                            (* (Unreach.unreach su0) *)
+        * instantiate (1:=Unreach.mk
+                            (Unreach.unreach su0)
                             (Unreach.ge_nb su0)
                             (Mem.nextblock m0)).
-          ii. ss. des_ifs. exfalso. apply n. rewrite <- NB. auto.
-
+          ii. ss.
         * ss. rewrite NB. eapply Mem.unchanged_on_nextblock; eauto.
         * ss.
       + econs; ss; eauto.
@@ -636,82 +629,25 @@ Unreach
           }
           { exploit SEP; eauto. i. des. unfold Mem.flat_inj in *. inv WF. des_ifs; eauto.
             - exfalso. exploit WFHI; eauto.
-            - exfalso.
+            - split; auto.
+              eapply Mem.valid_block_inject_1; eauto. }
+        * econs; ss; eauto; i.
+          { admit "memval". }
+          { etrans; eauto. ii. eapply Plt_Ple_trans; eauto.
+            eapply Mem.unchanged_on_nextblock; eauto. }
+          { etrans; eauto. eapply Mem.unchanged_on_nextblock; eauto. }
+        * ii. ss. exploit INIT; eauto. i. des. esplits; eauto. rewrite NB in *.
+          eapply Plt_Ple_trans; eauto. eapply Mem.unchanged_on_nextblock; eauto.          
+        * inv WF. econs; eauto; ss.
+          ii. eapply Plt_Ple_trans; eauto. rewrite NB.
+          eapply Mem.unchanged_on_nextblock; eauto.
+      + econs; ss; eauto; i.
+        * exploit asm_step_max_perm; try apply STEP0; eauto.
+        * exploit asm_step_readonly; try apply STEP0; eauto.
+        * eapply Mem.unchanged_on_implies; eauto.
+          ii. unfold flip in *. ss. esplits; eauto.
+          unfold loc_unmapped. des_ifs.
 
-              unfold Mem.valid_block in *.
-
-              Unreach.wf
-
-              exploit Mem.mi_freeblocks; try apply H2. eauto.
-
-
-              eapply Mem.mi_mappedblocks; eauto.
-
-              Mem.inject
-              eapply Plt_Ple_trans; eauto.
-              + unfold Mem.valid_block in *. instantiate (1:=Mem.nextblock m). xomega.
-
-
-
-            des_ifs. split; eauto.
-
-
-            app
-
-
-
-          exploit SEP; eauto.
-          -- des_ifs.
-
-
-          des.
-
-
-
-
-        refl.
-      + econs; eauto.
-        * ii. esplits; eauto.
-
-
-      { eauto.
-
-
-
-          apply Z.divide_0_r.
-        -
-
-          zsimpl. eauto.
-        -
-
-
-inv RS.
-
-
-
-
-
-
-      hexploit asm_step_preserve_injection.
-      { instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm).
-        instantiate (1:= Mem.flat_inj m.(Mem.nextblock)).
-        instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm).
-        admit "should hold. maybe we need to add premises".
-      }
-
-
-
-meminj Mem.inject
-
-
-        asm_step_max_perm.
-
-      asm_step_preserve_injection
-
-
-
-
-      admit "ez".
     - (* call *)
       inv AT. ss.
       assert(SUARGS: UnreachC.args' su0 (Args.mk (Vptr blk0 Ptrofs.zero true) vs m1)).
@@ -735,7 +671,7 @@ meminj Mem.inject
         des_ifs. des. clarify. econs; eauto.
         * eapply Mem.free_range_perm; et.
         * admit "ez - valid block".
-        * inv SUST. eapply STACKPUB; et.
+        * inv SUST. specialize (RS Asm.RSP). eapply RS; et.
       + (* K *)
         ii. inv AFTER. ss.
         destruct retv; ss. rename m into m2.
@@ -865,12 +801,6 @@ meminj Mem.inject
             { admit "ez". }
             rr in RETV. des. ss. inv WF. inv MEM0. Unreach.nb_tac. eapply WFHI0; et.
         }
-        { unfold regset_after_external. ss.
-          des_ifs_safe.
-          des_ifs.
-          { unfold loc_external_result in *. unfold loc_result in *. unfold loc_result_64 in *. des_ifs; ss. }
-          eapply (@Sound.hle_val UnreachC.Unreach); ss; et.
-        }
     - (* return *)
       inv SUST. inv FINAL. ss. clarify.
       exists su0. esplits; eauto.
@@ -881,7 +811,7 @@ meminj Mem.inject
       eapply Unreach.free_mle; eauto.
       exploit INIT; eauto. i; des. ss.
   Unshelve.
-      all: ss.
+  eapply (symbolenv (Asm.semantics asm)).
   Qed.
 
 End TRIAL2.

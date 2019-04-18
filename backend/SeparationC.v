@@ -4,6 +4,7 @@ Require Import AST Integers Values MemoryC Events Globalenvs.
 (** newly added **)
 Require Import AxiomsC.
 Require Export Separation.
+Require Import JunkBlock.
 
 Local Open Scope sep_scope.
 
@@ -440,4 +441,19 @@ Proof.
 Qed.
 
 Local Opaque sepconj.
+
+Local Existing Instance Val.mi_normal.
+
+Lemma assign_junk_blocks_rule
+      P m_src0
+      (PRED: m_src0 |= P)
+      n
+  :
+    (assign_junk_blocks m_src0 n) |= P
+.
+Proof.
+  destruct P; ss.
+  eapply m_invar; eauto.
+  admit "ez - make lemma and prove it with Mem.alloc_unchanged_on".
+Qed.
 

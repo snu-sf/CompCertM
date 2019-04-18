@@ -299,7 +299,6 @@ Proof.
       eauto with mem.
     - econs; eauto.
       ii; ss. des; ss. des_ifs.
-    - ii. eauto with mem.
 Qed.
 
 Lemma store_undef_simmem
@@ -436,7 +435,6 @@ Proof.
       {
         ii.
         eapply Mem.perm_alloc_4; et.
-        { eauto with mem. }
       }
       { ii. eapply Mem.perm_unchanged_on_2; et.
         - ss. des_ifs. unfold Mem.valid_block in *. xomega.
@@ -664,3 +662,74 @@ End SIMSYMB.
 Arguments skenv_inject_revive [_ _ _].
 
 
+
+
+
+Require Import JunkBlock.
+
+Section JUNK.
+
+Local Existing Instance Val.mi_normal.
+
+Definition inject_junk_blocks (m_src0 m_tgt0: mem) (n: nat) (j: meminj): meminj :=
+  fun blk =>
+    if negb (plt blk m_src0.(Mem.nextblock)) && (plt blk (m_src0.(Mem.nextblock) + n.(Pos.of_nat)))
+    then Some ((blk + m_tgt0.(Mem.nextblock) - m_src0.(Mem.nextblock))%positive , 0%Z)
+    else j blk
+.
+
+(* TODO: this tactic is redundant, remove redundancy with StackingproofC *)
+Ltac Pos_compare_tac := try rewrite Pos.compare_lt_iff in *;
+                        try rewrite Pos.compare_gt_iff in *;
+                        apply_all_once Pos.compare_eq; clarify; try lia.
+
+Lemma inject_junk_blocks_spec
+      sm0 n m_tgt0
+      (MWF: SimMem.wf sm0)
+      (JUNKTGT: assign_junk_blocks sm0.(SimMem.tgt) n = m_tgt0)
+  :
+    exists sm1,
+      (<<DEF: sm1 = update sm0 (assign_junk_blocks sm0.(SimMem.src) n) m_tgt0
+                           (inject_junk_blocks sm0.(SimMem.src) sm0.(SimMem.tgt) n sm0.(SimMemInj.inj))>>)
+      /\
+      (<<MWF: SimMem.wf sm1>>)
+      /\
+      (<<MLE: SimMem.le sm0 sm1>>)
+      /\
+      (<<PRIVSRC: sm0.(SimMemInj.src_private) = sm1.(SimMemInj.src_private)>>)
+      /\
+      (<<PRIVTGT: sm0.(SimMemInj.tgt_private) <2= sm1.(SimMemInj.tgt_private)>>)
+.
+Proof.
+  unfold inject_junk_blocks.
+  esplits; eauto.
+  - admit "".
+  - econs; ss; eauto.
+    + ii. des_ifs. bsimpl. des. des_sumbool.
+      inv MWF. inv PUBLIC.
+      exploit mi_freeblocks; eauto. i; clarify.
+    + admit "ez - make lemma and prove it with Mem.alloc_unchanged_on".
+    + admit "ez - make lemma and prove it with Mem.alloc_unchanged_on".
+    + econs; eauto. ii. des. des_ifs. bsimpl. des. des_sumbool.
+      inv MWF.
+      esplits; eauto with xomega.
+    + i. rewrite assign_junk_blocks_perm. ss.
+    + i. clarify. rewrite assign_junk_blocks_perm. ss.
+  - ss. repeat (apply func_ext1; i). apply AxiomsC.prop_ext.
+    unfold src_private, loc_unmapped, valid_blocks in *. ss.
+    inv MWF.
+    split; i; des.
+    + unfold Mem.valid_block in *. des_ifs; bsimpl; des; des_sumbool; try xomega.
+      esplits; eauto. rewrite assign_junk_blocks_nextblock; ss. xomega.
+    + unfold Mem.valid_block in *. des_ifs; bsimpl; des; des_sumbool; try xomega; split; ss.
+      rewrite assign_junk_blocks_nextblock in *; ss.
+  - ii.
+    unfold tgt_private, loc_out_of_reach, valid_blocks in *. ss.
+    inv MWF.
+    + unfold Mem.valid_block in *. split; ss; cycle 1.
+      * rewrite assign_junk_blocks_nextblock in *; ss. xomega.
+      * i. rewrite assign_junk_blocks_perm. (* TODO: change lemma into symmetric version *)
+        des_ifs; bsimpl; des; des_sumbool; et; try xomega.
+Qed.
+
+End JUNK.

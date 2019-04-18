@@ -1851,10 +1851,13 @@ Module FillArgsProgress.
 End FillArgsProgress.
 
 
+Require Import JunkBlock.
+
 Theorem store_arguments_progress
         m0 tvs sg
         (TYP: Val.has_type_list tvs sg.(sig_args))
         (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+        n
   :
     exists rs m2,
       (<<STR: store_arguments m0 rs tvs sg m2>>) /\
@@ -1862,7 +1865,7 @@ Theorem store_arguments_progress
          forall
            mr
            (NIN: ~ In (R mr) (regs_of_rpairs (loc_arguments sg))),
-           ~ is_real_ptr (rs mr)>>)
+           is_junk_value m2 (assign_junk_blocks m2 n) (rs mr)>>)
 .
 Proof.
   destruct (Mem.alloc m0 0 (4 * size_arguments sg)) eqn:ALC.
@@ -1876,5 +1879,5 @@ Proof.
   exploit (FillArgsProgress.fill_arguments_spec sg m0 (Regmap.init Vundef) m1 blk tvs); eauto.
   hexploit (FillArgsProgress.fill_arguments_unchanged); eauto. intros UNCH.
   esplits; eauto.
-  ii. exploit UNCH; eauto. i. unfold is_real_ptr in *. des_ifs.
+  ii. exploit UNCH; eauto. i. rewrite <- H1. ss.
 Qed.

@@ -6,6 +6,8 @@ Require Import Mach Simulation ValuesC.
 Require Export Asm.
 Require Import Skeleton ModSem Mod sflib.
 Require Import LocationsC AsmregsC StoreArguments.
+Require Import JunkBlock.
+
 Set Implicit Arguments.
 
 Definition get_mem (st: state): mem :=
@@ -133,24 +135,27 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fd m rs sg
+      fd m0 rs sg
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (RSPC: rs # PC = args.(Args.fptr))
       (* (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
       targs
       (TYP: typecheck args.(Args.vs) sg targs)
-      (STORE: store_arguments args.(Args.m) rs targs sg m)
+      (STORE: store_arguments args.(Args.m) rs targs sg m0)
       (* (STORE: store_arguments args.(Args.m) rs args.(Args.vs) sg m) *)
+      n m1
+      (JUNK: assign_junk_blocks m0 n = m1)
       (RAPTR: wf_RA (rs RA))
-      (PTRFREE: forall pr (PTR: is_real_ptr (rs pr)),
+      (PTRFREE: forall pr (PTR: ~ is_junk_value m0 m1 (rs pr)),
           (<<INARG: exists mr,
               (<<MR: to_mreg pr = Some mr>>) /\
               (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments sg))>>)>>) \/
           (<<INPC: pr = PC>>) \/
+          (<<INRA: pr = RA>>) \/
           (<<INRSP: pr = RSP>>))
     :
-      initial_frame args (mkstate rs (State rs m))
+      initial_frame args (mkstate rs (State rs m1))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=

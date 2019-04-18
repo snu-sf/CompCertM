@@ -16,6 +16,7 @@ Require Export Mach.
 Require Import StoreArguments.
 Require Import Skeleton Mod ModSem.
 Require Import Simulation Integers.
+Require Import JunkBlock.
 
 Set Implicit Arguments.
 
@@ -288,17 +289,19 @@ Section MODSEM.
       targs
       (TYP: typecheck args.(Args.vs) sg targs)
       (STORE: store_arguments args.(Args.m) rs targs sg m0)
+      n m1
+      (JUNK: assign_junk_blocks m0 n = m1)
       (PTRFREE: forall
           mr
           (* (NOTIN: Loc.notin (R mr) (regs_of_rpairs (loc_arguments sg))) *)
           (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
         ,
-          <<PTRFREE: ~ is_real_ptr (rs mr)>>)
+          <<PTRFREE: is_junk_value m0 m1 (rs mr)>>)
     :
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack
                                                 (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) ra]
-                                             args.(Args.fptr) rs m0))
+                                             args.(Args.fptr) rs m1))
   (* TODO: change (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) into sp *)
   .
 

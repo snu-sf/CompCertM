@@ -102,21 +102,6 @@ Section ASMSTEP.
     - cinv (AGREE i); econs.
   Qed.
 
-  Lemma mem_storev_extends chunk m_src0 m_tgt0 m_src1
-        a_src a_tgt v_src v_tgt
-        (EXT: Mem.extends m_src0 m_tgt0)
-        (VALINJ0: Val.lessdef a_src a_tgt)
-        (VALINJ1: Val.lessdef v_src v_tgt)
-        (STORE: Mem.storev chunk m_src0 a_src v_src = Some m_src1)
-    :
-      exists m_tgt1,
-        (<<EXT: Mem.extends m_src1 m_tgt1>>) /\
-        (<<STORE: Mem.storev chunk m_tgt0 a_tgt v_tgt = Some m_tgt1>>).
-  Proof.
-    exploit Mem.storev_extends; eauto. i. des.
-    ss. unfold Mem.storev in *. des_ifs. esplits; eauto.
-  Qed.
-
   Lemma exec_load_extends
         ge chunk m_src0 m_tgt0 m_src1 a rd
         rs_src0 rs_tgt0 rs_src1
@@ -179,7 +164,7 @@ Section ASMSTEP.
     hexploit undef_regs_agree; eauto. intros UAGREE.
     instantiate (1:=a) in ADDR.
     unfold exec_store in *. des_ifs.
-    - exploit mem_storev_extends; try apply Heq0; eauto.
+    - exploit Mem.storev_extends; try apply Heq0; eauto.
       i. des. clarify. esplits; eauto.
       unfold nextinstr_nf, nextinstr. ss.
       repeat (eapply agree_step; eauto).
@@ -343,8 +328,6 @@ Section ASMSTEP.
 
   Ltac agree_invs AGREE := repeat (agree_inv_strong AGREE).
 
-  (* Ltac agree_invs AGREE := repeat (agree_inv AGREE). *)
-
   Ltac propagate_eq_typ TYP :=
     repeat (multimatch goal with
             | [H1: @eq TYP ?A ?B, H2: @eq TYP ?B ?C |- _ ] =>
@@ -370,76 +353,7 @@ Section ASMSTEP.
 
   Ltac eq_closure_tac_typ TYP :=
     repeat (propagate_eq_typ TYP; clarify).
-
-  Lemma zero_ext_extends n v1 v2
-        (EXT: Val.lessdef v1 v2)
-    :
-      Val.lessdef (Val.zero_ext n v1) (Val.zero_ext n v2).
-  Proof.
-    unfold Val.zero_ext in *. des_ifs; inv EXT; ss.
-  Qed.
-
-  Lemma sign_ext_extends n v1 v2
-        (EXT: Val.lessdef v1 v2)
-    :
-      Val.lessdef (Val.sign_ext n v1) (Val.sign_ext n v2).
-  Proof.
-    inv EXT; ss.
-  Qed.
-
-  Lemma agree_ir (i: ireg)
-    :
-      forall rs_src rs_tgt
-             (AGREE: agree rs_src rs_tgt),
-        Val.lessdef (rs_src i) (rs_tgt i).
-  Proof.
-    eauto.
-  Qed.
-
-  Lemma val_long_same_ext v1 v2
-        (EQ: v1 = v2)
-    :
-      Val.lessdef (Vlong v1) (Vlong v2).
-  Proof.
-    clarify.
-  Qed.
-
-  Lemma val_float_same_ext v1 v2
-        (EQ: v1 = v2)
-    :
-      Val.lessdef (Vfloat v1) (Vfloat v2).
-  Proof.
-    clarify.
-  Qed.
-
-  Lemma val_int_same_ext v1 v2
-        (EQ: v1 = v2)
-    :
-      Val.lessdef (Vint v1) (Vint v2).
-  Proof.
-    clarify.
-  Qed.
-
-  Lemma val_single_same_ext v1 v2
-        (EQ: v1 = v2)
-    :
-      Val.lessdef (Vsingle v1) (Vsingle v2).
-  Proof.
-    clarify.
-  Qed.
-
-  (* Ltac val_ext_tac := *)
-  (*   (econs; eauto) || *)
-  (*   (apply Val.lessdef_same; f_equal) *)
-  (* . *)
-
-  Ltac val_ext_tac :=
-    ((econs; eauto) ||
-     (eapply val_long_same_ext) ||
-     (eapply val_float_same_ext) ||
-     (eapply val_int_same_ext) ||
-     (eapply val_single_same_ext)).
-
+  
   Ltac tac_cal AGREE :=
     try (progress (unfold goto_label in *); des_ifs_safe);
          (esplits; eauto; [econs; eauto; ss; try (unfold goto_label in *; des_ifs; fail)
@@ -447,8 +361,8 @@ Section ASMSTEP.
                             (fail|| idtac; [.. |unfold Val.offset_ptr;
                                                 repeat (try (rewrite Pregmap.gss);
                                                         (try (rewrite Pregmap.gso; [| ii; clarify; fail]))); des_ifs;
-                                                try (val_ext_tac; ss; tac_p)]);
-                            (try ((agree_invs AGREE); ss; unfold option_map, Val.maketotal; des_ifs; ss; val_ext_tac; tac_p; check_safe))]).
+                                                try (econs; ss; tac_p)]);
+                            (try ((agree_invs AGREE); ss; unfold option_map, Val.maketotal; des_ifs; ss; econs; ss; tac_p; check_safe))]).
 
   Lemma eval_testcond_ext rs_src rs_tgt c v
         (AGREE: agree rs_src rs_tgt)
@@ -542,7 +456,7 @@ Section ASMSTEP.
       + tac_cal AGREE.
         unfold eval_addrmode64. des_ifs.
         des_ifs; agree_invs AGREE; ss; (replace Archi.ptr64 with true; [|eauto]);
-          (repeat (eapply Val.addl_inject); eauto); try val_ext_tac; tac_p.
+          (repeat (eapply Val.addl_inject); eauto); try econs; ss; tac_p.
         * apply Val.lessdef_same. f_equal. psimpl. auto.
         * apply Val.lessdef_same. f_equal. psimpl. auto.
         * repeat (eapply Val.addl_lessdef); eauto.
@@ -793,15 +707,14 @@ Section ASMSTEP.
       + tac_st.
       + tac_ld.
       + tac_st.
-      +
-tac_cal AGREE.
+      + tac_cal AGREE.
       + exploit Mem.alloc_result; eauto. i. clarify.
         exploit Mem.alloc_extends; eauto; try refl. i. des.
-        exploit mem_storev_extends; try apply Heq0; eauto. i. des.
-        exploit mem_storev_extends; try apply Heq1; eauto. i. des.
+        exploit Mem.storev_extends; try apply Heq0; eauto. i. des.
+        exploit Mem.storev_extends; try apply Heq1; eauto. i. des.
         esplits; try apply EXT2; eauto.
         * econs; eauto. ss. rewrite H.
-          psimpl. rewrite STORE. rewrite STORE0. ss.
+          psimpl. rewrite H1. rewrite H7. ss.
         * eapply nextinstr_agree; eauto.
           repeat eapply agree_step; eauto.
 

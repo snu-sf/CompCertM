@@ -171,6 +171,7 @@ Inductive has_footprint (excl_src excl_tgt: block -> Z -> Prop) (sm0: t'): Prop 
 Lemma unfree_right
       sm0 lo hi blk m_tgt0
       (MWF: wf' sm0)
+      (NOPERM: Mem_range_noperm sm0.(tgt) blk lo hi)
       (UNFR: Mem_unfree sm0.(tgt) blk lo hi = Some m_tgt0)
       (RANGE: brange blk lo hi <2= ~2 sm0.(tgt_external))
   :

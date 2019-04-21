@@ -334,7 +334,6 @@ Proof.
   - inv AFTERSRC. ss. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
     inv INITDATA. inv SIMRET. destruct sm_ret. ss. clarify.
     exploit Mem_unfree_parallel_extends; try eapply UNFREE; eauto.
-    { admit "change parallel extends statements?". }
     intros TGTUNFREE. des.
     esplits; auto.
     + econs.

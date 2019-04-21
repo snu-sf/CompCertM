@@ -1064,26 +1064,13 @@ Require Import Conventions1C.
 (* move it to MemoryC after stablizing *)
 Section TOMEMORYC.
 
-  Lemma Mem_unfree_perm m0 m1 b lo hi
-        (UNFREE: Mem_unfree m0 b lo hi = Some m1)
-        blk ofs k p
-        (PERM: Mem.perm m0 blk ofs k p)
-  :
-    Mem.perm m1 blk ofs k p.
-  Proof.
-    unfold Mem_unfree in *. des_ifs. unfold Mem.perm in *. ss.
-    rewrite PMap.gsspec. unfold zle, zlt, proj_sumbool. des_ifs.
-    exfalso. eapply m; eauto.
-    eapply Mem.perm_max.
-    eapply Mem.perm_implies; eauto. econs.
-  Qed.
-
   Lemma Z2Nat_range n:
     Z.of_nat (Z.to_nat n) = if (zle 0 n) then n else 0.
-  Proof. Admitted.
-  (* des_ifs. *)
-  (* - rewrite Z2Nat.id; eauto. *)
-  (* - unfold Z.of_nat. des_ifs. *)
+  Proof.
+    des_ifs.
+    - rewrite Z2Nat.id; eauto.
+    - unfold Z.to_nat. des_ifs.
+  Qed.
 
   Theorem Mem_unfree_parallel_inject
           j m1 m2 b lo hi m1' b' delta
@@ -1649,7 +1636,13 @@ Proof.
       inv MLE0. ss. eapply INCR.
       inv MLE. ss. apply INCR0; eauto.
     }
-    { admit "TODO". }
+    { inv MLE0. cinv (AGREE RSP); rewrite RSRSP in *; clarify.
+      inv HISTORY. inv CALLTGT. ss. des. unfold Genv.find_funct in *. des_ifs.
+      rewrite RSP in *. inv SIMARGS. ss. clarify.
+      ii. apply MAXTGT in H; cycle 1.
+      { inv MLE. eapply Mem.valid_block_unchanged_on; eauto.
+        eapply Mem.valid_block_inject_2; eauto. }
+      exploit Mem_free_noperm; eauto. admit "arithmetic". }
     i. des. rewrite <- MEMSRC in *.
 
     esplits; ss.

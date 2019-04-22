@@ -1728,7 +1728,16 @@ Section PRESERVATION.
 
         assert(RECEP: receptive_at (sem prog_src) (State (fr_src :: frs_src))).
         { (* is it receptive? *)
-            admit "receptive". }
+          econs.
+          - ii. inv H0.
+            + admit "".
+            + ss. rewrite LINKSRC in *.
+              rr in H. des. ss.
+              inv STK.
+              admit "".
+              ss. inv HD. ss. clarify. ss. inv H. inv ST. ss. inv STEP; inv H. inv H1.
+              eexists. ss. econs 3. ss. econs 2. econs; eauto.
+            + admit "". }
 
         inv STEPSRC; ss.
         { contradict NCALLSRC. rr. et. }

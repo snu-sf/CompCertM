@@ -215,3 +215,25 @@ Proof.
 Unshelve.
   all: ss.
 Qed.
+
+Local Transparent Linker_def.
+Local Transparent Linker_vardef.
+Local Transparent Linker_varinit.
+
+Lemma link_unit_same
+      F (g g0: globdef F unit) (gv: globvar unit)
+      `{Linker F}
+      (LINK: link g g0 = Some (Gvar gv))
+  :
+    g = Gvar gv \/ g0 = Gvar gv.
+Proof.
+  ss. unfold link_def in *. des_ifs.
+  ss. unfold link_vardef in *. destruct v; ss.
+  des_ifs; bsimpl; des; des_sumbool; rewrite eqb_true_iff in *.
+  destruct gvar_info; ss. destruct v0; ss. destruct gvar_info; ss. destruct u; ss.
+  unfold link_varinit in *. des_ifs; eauto.
+Qed.
+
+Local Opaque Linker_def.
+Local Opaque Linker_vardef.
+Local Opaque Linker_varinit.

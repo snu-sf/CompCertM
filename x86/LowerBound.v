@@ -524,7 +524,7 @@ Section PRESERVATION.
   End SYSTEM.
 
   Definition no_extern_fun (ge: Genv.t fundef unit): Prop :=
-    forall b ef, ~ (AST.is_external_ef ef /\ Genv.find_funct_ptr ge b = Some (External ef)).
+    forall b ef, ~ (is_external_ef ef = true /\ Genv.find_funct_ptr ge b = Some (External ef)).
 
   Section ASMLEMMAS.
 
@@ -543,7 +543,6 @@ Section PRESERVATION.
     unfold no_extern_fun. ii. unfold local_genv in *. des.
     unfold Genv.find_funct_ptr in *. des_ifs.
     exploit SkEnv.project_revive_no_external; eauto.
-    { ss. destruct ef; ss. }
     exploit ININCL; eauto.
   Qed.
 

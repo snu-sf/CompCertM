@@ -263,7 +263,7 @@ Proof.
   pcofix CIH. i.
   pfold.
   econs; eauto.
-  - i. inv BSIM. inv SIM. eapply FINAL; eauto.
+  - i. punfold BSIM. inv BSIM. eapply FINAL; eauto.
   - generalize dependent st_src0.
     generalize dependent st_tgt0.
     pattern i0.
@@ -1647,4 +1647,3 @@ Proof.
   eapply GENMT.mixed_to_backward_simulation; eauto.
   eapply mixed_to_generalized_mixed_simulation; eauto.
 Qed.
-

@@ -17,7 +17,7 @@ Section LTLEXTRA.
     match st with
     | Callstate stack fptr sg args m =>
       match Genv.find_funct ge fptr with
-      | Some (AST.External ef) => is_external_ef ef
+      | Some (AST.External ef) => is_external_ef ef = true
       | _ => False
       end
     | _ => False
@@ -242,7 +242,8 @@ Section MODSEM.
   Proof.
     inv RECEP. econs; eauto; ii; ss.
     - inv H. exploit sr_receptive_at; eauto. i; des.
-      esplits; eauto. econs; eauto. admit "ez - See Mach.v for same admit".
+      esplits; eauto. econs; eauto.
+      { inv H1; inv H; ss. }
     - inv H. exploit sr_traces_at; eauto.
   Qed.
 

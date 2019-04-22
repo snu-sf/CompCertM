@@ -147,6 +147,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
         <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) args.(Args.m) st_init.(get_mem)>>)
     (STEP: forall
         su0 st0 tr st1
+        (SKENV: Sound.skenv su0 st0.(get_mem) ms.(ModSem.skenv))
         (SUST: sound_state su0 st0)
         (SAFE: ~ ms.(ModSem.is_call) st0 /\ ~ ms.(ModSem.is_return) st0)
         (STEP: Step ms st0 tr st1)
@@ -154,6 +155,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
         <<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) st1.(get_mem)>>)
     (CALL: forall
         su0 st0 args
+        (SKENV: Sound.skenv su0 st0.(get_mem) ms.(ModSem.skenv))
         (SUST: sound_state su0 st0)
         (AT: ms.(ModSem.at_external) st0 args)
       ,
@@ -173,9 +175,13 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
             ,
               (* (<<SUST: sound_state su0 args.(Args.m) st1>>)>>)) *)
               (* (<<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) st1.(get_mem)>>)>>)) *)
-              (<<SUST: sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) retv.(Retv.m) st1.(get_mem)>>)>>))
+              (<<SUST: forall
+                 (MLE: su0.(Sound.mle) retv.(Retv.m) st1.(get_mem))
+                 (SKENV: Sound.skenv su0 st1.(get_mem) ms.(ModSem.skenv)),
+                 sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) retv.(Retv.m) st1.(get_mem)>>)>>))
     (RET: forall
         su0 st0 retv
+        (SKENV: Sound.skenv su0 st0.(get_mem) ms.(ModSem.skenv))
         (SUST: sound_state su0 st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv)
       ,
@@ -187,15 +193,27 @@ Theorem local_preservation_strong_spec
         sound_state
         (PRSV: local_preservation_strong sound_state)
   :
-    <<PRSV: local_preservation (fun su m_init st => sound_state su st /\ su.(Sound.mle) m_init st.(get_mem))>>
+    <<PRSV: local_preservation (fun su m_init st => sound_state su st
+                                                    /\ su.(Sound.skenv) st.(get_mem) ms.(ModSem.skenv)
+                                                    /\ su.(Sound.mle) m_init st.(get_mem))>>
 .
 Proof.
   inv PRSV.
   econs; eauto.
-  - ii. des. exploit STEP; eauto. i; des. esplits; eauto. etrans; eauto.
+  - i. exploit INIT; et. i; des. esplits; et. eapply Sound.skenv_mle; et.
+  - ii. des. exploit STEP; eauto. i; des. esplits; eauto.
+    { eapply Sound.skenv_mle; et. }
+    etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des. esplits; eauto.
     { etrans; eauto. }
-    ii. exploit K; eauto. i; des. esplits; eauto. etrans; eauto.
+    ii. exploit K; try apply RETV; eauto.
+    i; des.
+    assert(SKENV: Sound.skenv su0 (get_mem st1) (ModSem.skenv ms)).
+    { eapply Sound.skenv_mle; et. etrans; et. etrans; et.
+      eapply Sound.le_spec; et. eapply Sound.greatest_adq; et.
+    }
+    esplits; eauto.
+    etrans; eauto.
     etrans; eauto. etrans; eauto. eapply Sound.le_spec; eauto. eapply Sound.greatest_adq; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; eauto.
     etrans; eauto.

@@ -157,7 +157,12 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - r. admit "easy - see DeadcodeproofC".
+  - r. inv TRANSL.
+    eapply CSk.match_program_eq; et.
+    ii. destruct f1; ss.
+    + clarify. right. inv MATCH. esplits; eauto. inv H2.
+      unfold CsemC.signature_of_function, signature_of_function. f_equal; congruence.
+    + clarify. left. inv MATCH. esplits; eauto.
   - ii. inv SIMSKENVLINK. eapply factor_simmodsem_source; eauto.
     { ii. ss. hexploit (@modsem_strongly_receptive skenv_link_tgt prog s); eauto. intro SR.
       inv SR. exploit ssr_traces_at; eauto.

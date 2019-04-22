@@ -521,21 +521,6 @@ Proof.
   ii. eapply NOPERM; eauto. inv UNCH. eapply unchanged_on_perm; eauto.
 Qed.
 
-Lemma Mem_range_noperm_dec:
-  forall m b lo hi, {Mem_range_noperm m b lo hi} + {~ Mem_range_noperm m b lo hi}.
-Proof.
-  intros.
-  induction lo using (well_founded_induction_type (Zwf_up_well_founded hi)).
-  destruct (zlt lo hi); cycle 1.
-  { left; red; intros. omegaContradiction. }
-  destruct (Mem.perm_dec m b lo Max Nonempty).
-  { right. ii. eapply H0; eauto. xomega. }
-  destruct (H (lo + 1)).
-  { red. omega. }
-  - left; red; intros. destruct (zeq lo ofs). congruence. apply m0. omega.
-  - right; red; intros. elim n0. red; intros; apply H0; omega.
-Defined.
-
 Lemma Mem_free_noperm
       m0 blk lo hi m1
       (FREE: Mem.free m0 blk lo hi = Some m1)
@@ -554,19 +539,16 @@ Qed.
 Program Definition Mem_unfree (m: mem) (b: block) (lo hi: Z): option mem :=
   if plt b m.(Mem.nextblock)
   then
-    if Mem_range_noperm_dec m b lo hi
-    then
-      Some (Mem.mkmem
-              (PMap.set b (Mem.setN (list_repeat (hi-lo).(Z.to_nat) Undef) lo ((Mem.mem_contents m) # b))
-                        (Mem.mem_contents m))
-              (PMap.set b
-                        (fun ofs k =>
-                           if zle lo ofs && zlt ofs hi
-                           then Some Freeable
-                           else m.(Mem.mem_access)#b ofs k)
-                        m.(Mem.mem_access))
-              m.(Mem.nextblock) _ _ _)
-    else None
+    Some (Mem.mkmem
+            (PMap.set b (Mem.setN (list_repeat (hi-lo).(Z.to_nat) Undef) lo ((Mem.mem_contents m) # b))
+                      (Mem.mem_contents m))
+            (PMap.set b
+                      (fun ofs k =>
+                         if zle lo ofs && zlt ofs hi
+                         then Some Freeable
+                         else m.(Mem.mem_access)#b ofs k)
+                      m.(Mem.mem_access))
+            m.(Mem.nextblock) _ _ _)
   else None
 .
 Next Obligation.
@@ -661,7 +643,6 @@ Context `{CTX: Val.meminj_ctx}.
 Lemma Mem_unfree_suceeds
       m0 blk lo hi
       (VALID: Mem.valid_block m0 blk)
-      (NOPERM: Mem_range_noperm m0 blk lo hi)
   :
     exists m1, <<UNFR: Mem_unfree m0 blk lo hi = Some m1>>
 .
@@ -671,6 +652,7 @@ Qed.
 
 Lemma Mem_unfree_extends
       m0 m1 blk lo hi
+      (NOPERM: Mem_range_noperm m0 blk lo hi)
       (UNFR: Mem_unfree m0 blk lo hi = Some m1)
   :
     <<EXT: Mem.extends m0 m1>>
@@ -685,7 +667,7 @@ Proof.
     + zsimpl. rewrite PMap.gsspec. des_ifs; cycle 1.
       { refl. }
       destruct (classic (lo <= ofs < hi)).
-      * exfalso. red in H0. des_ifs. eapply m; eauto. eapply Mem.perm_cur_max; eauto.
+      * exfalso. red in H0. des_ifs. eapply NOPERM; eauto. eapply Mem.perm_cur_max; eauto.
         unfold Mem.perm. rewrite Heq. econs; eauto.
       * rewrite Mem.setN_other; cycle 1.
         { ii. rewrite length_list_repeat in *. clarify.
@@ -700,6 +682,7 @@ Qed.
 Lemma Mem_unfree_right_inject
       F m_src0 m_tgt0 blk lo hi m_tgt1
       (INJ: Mem.inject F m_src0 m_tgt0)
+      (NOPERM: Mem_range_noperm m_tgt0 blk lo hi)
       (UNFR: Mem_unfree m_tgt0 blk lo hi = Some m_tgt1)
   :
     <<INJ: Mem.inject F m_src0 m_tgt1>>
@@ -760,12 +743,11 @@ Qed.
 (* TODO move it *)
 Lemma Z2Nat_range n:
   Z.of_nat (Z.to_nat n) = if (zle 0 n) then n else 0.
-Proof. Admitted.
+Proof. destruct n; ss; try nia. Qed.
 
 Theorem Mem_unfree_parallel_extends m1 m2 b lo hi m1'
         (EXTEND: Mem.extends m1 m2)
         (UNFREE: Mem_unfree m1 b lo hi = Some m1')
-        (NOPERM: Mem_range_noperm m2 b lo hi)
   :
     exists m2',
       (<<UNFREE: Mem_unfree m2 b lo hi = Some m2'>>)

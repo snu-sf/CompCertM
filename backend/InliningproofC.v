@@ -191,8 +191,7 @@ Proof.
     { assert (SkEnv.genv_precise ge prog).
       { eapply SkEnv.project_revive_precise; et. eapply SkEnv.project_impl_spec; et. }
       inv H. econs; ii.
-      - exploit P2GE; eauto. i. inv H0. des. exists x. split; eauto. des_ifs. ii.
-        ss. bsimpl. admit "ez - remove redundancy: AST.is_external_ef, ASTC.is_external_ef".
+      - exploit P2GE; eauto. i. inv H0. des. exists x. split; eauto. des_ifs. ii. ss. bsimpl. congruence.
       - des. exploit GE2P; eauto. i; des. determ_tac Genv.genv_vars_inj.
     }
     i; des.
@@ -227,7 +226,10 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - r. admit "easy".
+  - r. eapply Sk.match_program_eq; eauto.
+    ii. destruct f1; ss.
+    + clarify. right. unfold Errors.bind in MATCH. des_ifs. esplits; eauto. unfold transf_function in *. des_ifs.
+    + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
 Qed.
 

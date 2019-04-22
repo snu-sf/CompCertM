@@ -162,7 +162,18 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - r. admit "easy - see DeadcodeproofC".
+  - r. inv TRANSL. des. unfold CSk.of_program, Sk.of_program. f_equal; ss.
+    revert H. generalize prog at 1 as CTX. i.
+    destruct prog, tprog; ss. clear - H.
+    ginduction prog_defs; ii; ss; inv H; ss.
+    erewrite IHprog_defs; et. f_equal; ss.
+    inv H2. destruct a, b1; ss. clarify.
+    inv H0; ss.
+    + unfold update_snd. ss. f_equal.
+      destruct f1.
+      * inv H1. unfold transl_function in H2. unfold bind in *. ss. des_ifs.
+      * inv H1. ss.
+    + inv H. ss.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.
 

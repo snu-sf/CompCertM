@@ -1416,10 +1416,17 @@ Section TOMEMORYC.
           (INJECT: Mem.inject j m1 m2)
           (UNFREE: Mem_unfree m1 b lo hi = Some m1')
           (DELTA: j b = Some (b', delta))
-          (* TODO add condition about align *)
+          (ALIGN: forall ofs chunk p (PERM: forall ofs0 (BOUND: ofs <= ofs0 < ofs + size_chunk chunk),
+                                         lo <= ofs0 < hi \/ Mem.perm m1 b ofs0 Max p),
+              (align_chunk chunk | delta))
+          (REPRESENTABLE: forall ofs (PERM: Mem.perm m1 b (Ptrofs.unsigned ofs) Max Nonempty \/
+                                            Mem.perm m1 b (Ptrofs.unsigned ofs - 1) Max Nonempty \/
+                                            lo <= Ptrofs.unsigned ofs < hi \/
+                                            lo <= Ptrofs.unsigned ofs - 1< hi),
+              delta >= 0 /\ 0 <= Ptrofs.unsigned ofs + delta <= Ptrofs.max_unsigned)
+
+      (* TODO add condition about align *)
           (NOPERM: Mem_range_noperm m2 b' (lo + delta) (hi + delta))
-
-
     :
       exists m2',
         (<<UNFREE: Mem_unfree m2 b' (lo + delta) (hi + delta) = Some m2'>>)
@@ -1457,7 +1464,15 @@ Section TOMEMORYC.
           unfold Mem.perm, proj_sumbool in *. ss. rewrite PMap.gsspec in *.
           des_ifs. exfalso. exploit NOPERM; eauto.
           eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-      + admit "add condition".
+      + ss. destruct (peq b1 b); clarify.
+        { exploit ALIGN; eauto. i.
+          exploit H0; eauto. unfold Mem.perm in *. ss. rewrite PMap.gss.
+          unfold proj_sumbool. des_ifs; eauto. }
+        { exploit Mem.mi_align.
+          - eapply Mem.mi_inj. eauto.
+          - eauto.
+          - ii. exploit H0; eauto. unfold Mem.perm. ss. rewrite PMap.gso; eauto.
+          - auto. }
       + unfold Mem.perm, proj_sumbool in *. ss.
         repeat rewrite PMap.gsspec in *. des_ifs; eauto.
         * rewrite Mem_setN_in_repeat; eauto; [econs|].
@@ -1499,9 +1514,11 @@ Section TOMEMORYC.
       + exploit Mem.mi_no_overlap; eauto. i. des; clarify. eauto.
       + exploit Mem.mi_no_overlap; eauto. i. des; clarify. eauto.
       + exploit Mem.mi_no_overlap; try apply H; eauto. i. des; clarify.
-
-    - admit "add condition".
-
+    - destruct (peq b0 b); clarify.
+      + exploit REPRESENTABLE; eauto. unfold Mem.perm in *. ss. rewrite PMap.gss in *.
+        unfold proj_sumbool in *. des_ifs; des; eauto; lia.
+      + exploit Mem.mi_representable; eauto.
+        unfold Mem.perm in *. ss. rewrite PMap.gso in *; eauto.
     - unfold Mem.perm, proj_sumbool in *. ss.
       rewrite PMap.gsspec in *.
       des_ifs; ss; eauto; (try by exploit Mem.mi_perm_inv; eauto); left; econs.
@@ -1955,11 +1972,31 @@ Proof.
     unfold Genv.find_funct in *. des_ifs. ss.
 
     inv MWF. rewrite MEMSRC in *.
+    assert (PERMRET: forall ofs, Mem.perm (SimMemInj.src sm_ret) blk ofs Max <1= Mem.perm (SimMemInj.src sm0) blk ofs Max).
+    { inv MLE. inv MLE0. ii. eapply MAXSRC; eauto.
+      - eapply Mem.valid_block_inject_1; eauto.
+      - eapply MAXSRC0; eauto.
+        + eapply Mem.valid_block_unchanged_on; eauto.
+          eapply Mem.valid_block_inject_1; eauto. }
     exploit Mem_unfree_parallel_inject; eauto.
-    {
-      inv MLE0. ss. eapply INCR.
-      inv MLE. ss. apply INCR0; eauto.
-    }
+    { inv MLE0. inv MLE. ss. eauto. }
+    { inv HISTORY. ss. ii. eapply Mem.mi_align; eauto.
+      - eapply Mem.mi_inj. eapply INJ.
+      - ii. exploit PERM; eauto. i. des.
+        + instantiate (1:=p). eapply Mem.perm_implies; cycle 1.
+          { instantiate (1:=Freeable). econs. }
+          inv CALLSRC. rewrite RSRSP in *. clarify.
+          eapply Mem.perm_cur. exploit Mem.free_range_perm; eauto.
+          des. unfold Genv.find_funct in *. des_ifs. rewrite Heq in *. clarify.
+        + exploit PERMRET; eauto. }
+    { inv HISTORY. ss. inv MLE. inv MLE0. inv CALLSRC.
+      rewrite RSRSP in *. unfold Genv.find_funct in *. des_ifs. rewrite Heq in *.
+      des; clarify; ss. hexploit Mem.free_range_perm; try eassumption. i.
+      eapply Mem.mi_representable; try apply INJ; eauto. des.
+      - exploit PERMRET; eauto.
+      - exploit PERMRET; eauto.
+      - left. eapply Mem.perm_cur. eapply Mem.perm_implies; eauto. econs.
+      - right. eapply Mem.perm_cur. eapply Mem.perm_implies; eauto. econs. }
     { inv MLE0. cinv (AGREE RSP); rewrite RSRSP in *; clarify.
       inv HISTORY. inv CALLTGT. ss. des. unfold Genv.find_funct in *. des_ifs.
       rewrite RSP in *. inv SIMARGS. ss. clarify.

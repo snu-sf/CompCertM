@@ -714,8 +714,8 @@ Proof.
     exploit Mem.perm_alloc_2; eauto. lia.
 Qed.
 
-Lemma nextblock_unvalid j m1 m2
-      (INJ: Mem.inject j m1 m2)
+Lemma nextblock_unvalid CTX j m1 m2
+      (INJ: @Mem.inject CTX j m1 m2)
   :
     j (Mem.nextblock m1) = None.
 Proof.

@@ -5,7 +5,7 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib AsmC Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC MemoryC2 Lia IntegersC SimMemInj AsmExtra.
+Require Import GlobalenvsC Lia IntegersC SimMemInj AsmStepInj.
 Require Import mktac.
 Set Implicit Arguments.
 

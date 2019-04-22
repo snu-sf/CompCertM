@@ -5,7 +5,7 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib AsmC Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC MemoryC2 Lia IntegersC SimMemInj.
+Require Import GlobalenvsC Lia IntegersC SimMemInj.
 Require Import mktac.
 Set Implicit Arguments.
 
@@ -1363,8 +1363,8 @@ tac_cal AGREE.
       + exploit Mem.alloc_result; eauto. i. clarify.
         exploit mem_alloc_inject; eauto; try refl. i. des.
         assert (INCR: inject_incr j0 (update_meminj j0 (Mem.nextblock m_src0) (Mem.nextblock m_tgt0) 0)).
-        { unfold update_meminj. ii. des_ifs.
-          exploit nextblock_unvalid; try apply INJ. i. clarify. }
+        { unfold update_meminj. ii. des_ifs. exfalso.
+          exploit Mem.valid_block_inject_1; eauto. i. eapply Plt_strict; eauto. }
         exploit mem_storev_inject; try apply Heq0; eauto.
         { psimpl. econs; eauto. unfold update_meminj. des_ifs. }
         i. des.

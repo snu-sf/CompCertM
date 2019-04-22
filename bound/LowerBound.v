@@ -5,7 +5,7 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib StoreArguments AsmC Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC MemoryC2 LowerBoundExtra Lia LinkingC2 mktac MemdataC LocationsC AsmExtra.
+Require Import GlobalenvsC LowerBoundExtra Lia LinkingC2 mktac MemdataC LocationsC AsmStepInj.
 
 Set Implicit Arguments.
 
@@ -1170,7 +1170,7 @@ Section PRESERVATION.
     eapply owner_genv_le in PROGIN.
     rewrite FRAME in *.
 
-    exploit AsmExtra.asm_step_preserve_injection; eauto.
+    exploit asm_step_preserve_injection; eauto.
 
     { clear FRAME1 FRAME. i. inv GELE. inv GEINJECT.
       exploit sub_mge_defs0; eauto. i. des.

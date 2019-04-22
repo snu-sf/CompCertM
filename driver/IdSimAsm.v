@@ -21,7 +21,7 @@ Require Import LocationsC Conventions.
 Require Import AsmregsC.
 Require Import MatchSimModSem.
 Require Import StoreArguments.
-Require Import AsmExtra AsmExtra2 IntegersC.
+Require Import AsmStepInj AsmStepExt IntegersC.
 Require Import Coq.Logic.PropExtensionality.
 
 
@@ -958,8 +958,8 @@ Inductive match_states_ext
 | match_states_ext_intro
     init_rs_src init_rs_tgt rs_src rs_tgt m_src m_tgt
     (sm0 : @SimMem.t SimMemExt.SimMemExt)
-    (AGREE: AsmExtra2.agree rs_src rs_tgt)
-    (AGREEINIT: AsmExtra2.agree init_rs_src init_rs_tgt)
+    (AGREE: AsmStepExt.agree rs_src rs_tgt)
+    (AGREEINIT: AsmStepExt.agree init_rs_src init_rs_tgt)
     (INJ: Mem.extends m_src m_tgt)
     (MCOMPATSRC: m_src = sm0.(SimMem.src))
     (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
@@ -1080,7 +1080,7 @@ Proof.
 
       {
         assert (AGREE0 :
-                  AsmExtra2.agree
+                  AsmStepExt.agree
                         (asm_init_rs
                            rs_src (to_mregset rs)
                            (fn_sig fd) fptr (rs RA) (Mem.nextblock src)) rs).
@@ -1284,8 +1284,8 @@ Inductive match_states
 | match_states_intro
     j init_rs_src init_rs_tgt rs_src rs_tgt m_src m_tgt
     (sm0 : @SimMem.t (@SimMemInjC.SimMemInj Val.mi_normal))
-    (AGREE: AsmExtra.agree j rs_src rs_tgt)
-    (AGREEINIT: AsmExtra.agree j init_rs_src init_rs_tgt)
+    (AGREE: AsmStepInj.agree j rs_src rs_tgt)
+    (AGREEINIT: AsmStepInj.agree j init_rs_src init_rs_tgt)
     (INJ: Mem.inject j m_src m_tgt)
     (MCOMPATSRC: m_src = sm0.(SimMem.src))
     (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
@@ -1725,7 +1725,7 @@ Proof.
       }
       {
         assert (AGREE0 :
-                  AsmExtra.agree (update_meminj inj (Mem.nextblock src) (Mem.nextblock tgt) 0)
+                  AsmStepInj.agree (update_meminj inj (Mem.nextblock src) (Mem.nextblock tgt) 0)
                         (((to_pregset (set_regset rs_src (to_mregset rs) (fn_sig fd))) # PC <- fptr) # RA <- (rs RA)) # RSP <-
                         (Vptr (Mem.nextblock src) Ptrofs.zero true) rs).
         {

@@ -1737,7 +1737,9 @@ Section PRESERVATION.
               admit "".
               ss. inv HD. ss. clarify. ss. inv H. inv ST. ss. inv STEP; inv H. inv H1.
               eexists. ss. econs 3. ss. econs 2. econs; eauto.
-            + admit "". }
+            + admit "".
+          - admit "".
+        }
 
         inv STEPSRC; ss.
         { contradict NCALLSRC. rr. et. }

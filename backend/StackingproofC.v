@@ -1800,26 +1800,27 @@ Proof.
     assert(exists m_tgt0, <<UNFR: Mem_unfree sm_ret.(SimMemInj.tgt) sp 0 (4 * size_arguments sg_arg)
                                   = Some m_tgt0>>).
     { eapply Mem_unfree_suceeds; eauto.
-      - unfold Mem.valid_block in *. eapply Plt_Ple_trans; eauto. etransitivity; try eapply MLE. eapply MLEAFTR.
-      - inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl. inv SIMARGS. ss. clarify.
-        assert(sg = sg_arg).
-        { des. clarify. inv SIMSKENV. inv SIMSKELINK. ss. r in SIMSKENV.
-          exploit fsim_external_inject_eq; et. i. subst tfptr. clarify. }
-        clarify.
-        assert(NP: Mem_range_noperm (SimMemInj.tgt sm_arg) blk 0 (4 * size_arguments sg_arg)).
-        { eapply Mem_free_noperm; eauto. }
-        eapply Mem_unchanged_noperm; try apply NP; eauto.
-        + eapply Mem.unchanged_on_implies; try apply MLE0. ii. ss.
-          u. esplits; eauto.
-          hexploit arguments_private; eauto.
-          { eapply sep_drop_tail3 in SEP. eauto. }
-          i; des. psimpl. spc H1. zsimpl. inv MATCHARG. rewrite <- MEMSRC0. rewrite <- INJ. u in H. des; clarify.
-          eapply H1. eauto.
-        + eapply Mem.valid_block_free_1; eauto.
+      unfold Mem.valid_block in *. eapply Plt_Ple_trans; eauto. etransitivity; try eapply MLE. eapply MLEAFTR.
     }
     des.
 
     exploit (@SimMemInjC.unfree_right _ (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
+    { inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl. inv SIMARGS. ss. clarify.
+      assert(sg = sg_arg).
+      { des. clarify. inv SIMSKENV. inv SIMSKELINK. ss. r in SIMSKENV.
+        exploit fsim_external_inject_eq; et. i. subst tfptr. clarify. }
+      clarify.
+      assert(NP: Mem_range_noperm (SimMemInj.tgt sm_arg) blk 0 (4 * size_arguments sg_arg)).
+      { eapply Mem_free_noperm; eauto. }
+      eapply Mem_unchanged_noperm; try apply NP; eauto.
+      - eapply Mem.unchanged_on_implies; try apply MLE0. ii. ss.
+        u. esplits; eauto.
+        hexploit arguments_private; eauto.
+        { eapply sep_drop_tail3 in SEP. eauto. }
+        i; des. psimpl. spc H1. zsimpl. inv MATCHARG. rewrite <- MEMSRC0. rewrite <- INJ. u in H. des; clarify.
+        eapply H1. eauto.
+      - eapply Mem.valid_block_free_1; eauto.
+    }
     { ss. bar. inv MLE. rewrite <- TGTPARENTEQ. clear_until_bar.
       r. unfold brange.
       hexploit match_stacks_sp_valid; eauto. intro SPVALID; des.

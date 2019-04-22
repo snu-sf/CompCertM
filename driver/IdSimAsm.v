@@ -1191,7 +1191,6 @@ Proof.
 
     rewrite MEMSRC in *.
     exploit Mem_unfree_parallel_extends; try apply MWF; eauto.
-    { admit "TODO : remove this condition". }
     i. des. rewrite <- MEMSRC in *.
 
     unfold inject_id in *. clarify.

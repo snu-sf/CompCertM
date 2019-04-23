@@ -36,6 +36,7 @@ Makefile.coq: Makefile $(COQTHEORIES)
    echo "-R backend $(COQMODULE)"; \
    echo "-R cfrontend $(COQMODULE)"; \
    echo "-R driver $(COQMODULE)"; \
+   echo "-R bound $(COQMODULE)"; \
 			\
    echo "-R compose $(COQMODULE)"; \
    echo "-R proof $(COQMODULE)"; \

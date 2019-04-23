@@ -11,7 +11,7 @@ Local Open Scope sep_scope.
 (* newly added *)
 Require Export Stackingproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC ArgPassing MatchSimModSemExcl.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSemExcl.
 Require Import Conventions1C.
 Require SimMemInjC.
 Require Import AxiomsC.

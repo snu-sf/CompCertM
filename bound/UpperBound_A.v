@@ -79,20 +79,6 @@ Proof.
   destruct k0; ss.
 Qed.
 
-(* Theorem PTree_elements_extensional_strong *)
-(*         A (m n: PTree.t A) *)
-(*         (EQ: (forall i (IN: In i (map fst (PTree.elements m))), m ! i = n ! i)) *)
-(*   : *)
-(*     PTree.elements m = PTree.elements n *)
-(* . *)
-(* Proof. *)
-(*   intros. *)
-(*   exploit (@PTree.elements_canonical_order' _ _ (fun (x y: A) => x = y) m n). *)
-(*   { intros. rewrite EQ. destruct (n ! i); constructor; auto. *)
-(*   induction 1. auto. destruct a1 as [a2 a3]; destruct b1 as [b2 b3]; simpl in *. *)
-(*   destruct H0. congruence. *)
-(* Qed. *)
-
 Section PRESERVATION.
 
   Variable cp_link: Csyntax.program.

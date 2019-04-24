@@ -1,4 +1,4 @@
-Require Import CoqlibC Maps.
+Require Import CoqlibC MapsC.
 Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
 Require Import Locations Stacklayout Conventions Linking.
 Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
@@ -79,6 +79,20 @@ Proof.
   destruct k0; ss.
 Qed.
 
+(* Theorem PTree_elements_extensional_strong *)
+(*         A (m n: PTree.t A) *)
+(*         (EQ: (forall i (IN: In i (map fst (PTree.elements m))), m ! i = n ! i)) *)
+(*   : *)
+(*     PTree.elements m = PTree.elements n *)
+(* . *)
+(* Proof. *)
+(*   intros. *)
+(*   exploit (@PTree.elements_canonical_order' _ _ (fun (x y: A) => x = y) m n). *)
+(*   { intros. rewrite EQ. destruct (n ! i); constructor; auto. *)
+(*   induction 1. auto. destruct a1 as [a2 a3]; destruct b1 as [b2 b3]; simpl in *. *)
+(*   destruct H0. congruence. *)
+(* Qed. *)
+
 Section PRESERVATION.
 
   Variable cp_link: Csyntax.program.
@@ -123,7 +137,74 @@ Section PRESERVATION.
     rewrite ! map_app. ss.
     symmetry.
     eapply link_list_app_commut; eauto.
-    admit "this should hold - it should be proven somewhere else too. ask @minki".
+
+
+    clear - FOCUS.
+    ginduction cps; ii; ss.
+    destruct l; ss.
+    { unfold link_list, link_list_aux in *. des_ifs. }
+    exploit link_list_cons_inv; eauto.
+    { ss. }
+    intro P; des.
+    exploit IHl; eauto. intro P; des.
+    exploit (@link_list_cons Sk.t); try apply P.
+    { instantiate (1:= CSk.of_program signature_of_function cp_link).
+      instantiate (1:= CSk.of_program signature_of_function a).
+      clear - HD.
+      Local Transparent Linker_prog Linker_program Linker_fundef Linker_types Linker_varinit
+            Linker_vardef Linker_def Linking.Linker_fundef.
+      ss.
+      rename a into p0. rename restl into p1. fold Csyntax.program in *.
+      (* Set Printing Implicit. *)
+      unfold link_program in *. des_ifs. ss.
+      clear - Heq.
+      unfold link_prog in *. ss. des_ifs_safe. bsimpl. des. des_sumbool.
+      des_ifs; cycle 1.
+      { exfalso. bsimpl. des; des_sumbool; ss.
+        rewrite PTree_Properties.for_all_false in *. rewrite PTree_Properties.for_all_correct in *.
+        des.
+        generalize (CSk.of_program_prog_defmap p0 signature_of_function x1). intro REL0.
+        generalize (CSk.of_program_prog_defmap p1 signature_of_function x1). intro REL1.
+        inv REL0; try by congruence.
+        rewrite <- H0 in *. clarify. exploit Heq1; eauto. intro CHK; des.
+        unfold link_prog_check in *. des_ifs_safe.
+        inv REL1. ss. rewrite <- H2 in *.
+        bsimpl. des; des_sumbool; ss; clarify.
+        clear - Heq2 CHK0 H1 H4.
+        des_ifs. inv H1; inv H4; ss.
+        - unfold CtypesC.CSk.match_fundef in *. des_ifs; ss; des_ifs. bsimpl; des; des_sumbool; clarify.
+        - des_ifs. inv H; inv H0; ss. unfold link_vardef in *. ss. des_ifs.
+      }
+      bsimpl. des. des_sumbool.
+      f_equal. unfold CSk.of_program. ss. f_equal.
+      unfold skdefs_of_gdefs. (* unfold prog_defmap. ss. *)
+      rewrite PTree_elements_map.
+      rewrite PTree_elements_map.
+      eapply PTree.elements_extensional. intro id. rewrite PTree.gcombine; ss.
+      rewrite ! PTree.gmap. rewrite PTree.gcombine; ss.
+      rename Heq2 into P. rename Heq1 into Q. clear - P Q.
+      unfold prog_defmap in *. ss.
+      rewrite ! prog_defmap_update_snd.
+      rewrite PTree_Properties.for_all_correct in *.
+      set ((PTree_Properties.of_list (prog_defs p0)) ! id) as x.
+      set ((PTree_Properties.of_list (prog_defs p1)) ! id) as y.
+      clear_tac.
+      destruct x eqn:Tx; ss. destruct y eqn:Ty; ss. unfold x in Tx. unfold y in Ty.
+      exploit Q; eauto. intro CHK. (* unfold link_prog_check, prog_defmap in CHK. *)
+      unfold option_map. des_ifs; ss; cycle 1.
+      - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef in *; des_ifs; ss; des_ifs.
+        + unfold link_prog_check in CHK. unfold prog_defmap in *. unfold program_of_program in CHK. ss.
+          des_ifs_safe. bsimpl. des_safe. des_sumbool. des_ifs. bsimpl. des; ss; des_sumbool; clarify.
+        + unfold link_prog_check in CHK. unfold prog_defmap in *. unfold program_of_program in CHK. ss.
+          des_ifs_safe. bsimpl. des_safe.
+      - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef in *; des_ifs; ss;
+          unfold fundef_of_fundef in *; des_ifs.
+        + destruct g; ss. unfold link_vardef in *. des_ifs. ss. bsimpl. des. rewrite eqb_true_iff in *.
+          f_equal. destruct gvar_info; ss. f_equal; ss. f_equal; ss. clarify.
+        + exfalso.
+          destruct v, v0; ss. unfold link_vardef in *. ss. des_ifs.
+    }
+    intro Q; des. ss.
   Qed.
 
   Let LINKTGT: link_sk prog_tgt = Some sk_link.

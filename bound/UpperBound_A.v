@@ -81,42 +81,35 @@ Qed.
 
 Section PRESERVATION.
 
-  Variable cp_link cp0 cp1: Csyntax.program.
+  Variable cp_link: Csyntax.program.
+  Variable cps: list Csyntax.program.
   Variable ctx: Syntax.program.
-  Hypothesis FOCUS: link cp0 cp1 = Some cp_link.
+  Hypothesis FOCUS: link_list cps = Some cp_link.
   (* Let prog_src := cp_link.(CsemC.module) :: ctx. *)
   (* Let prog_tgt := cp1.(CsemC.module) :: cp2.(CsemC.module) :: ctx. *)
   Let prog_src := ctx ++ [cp_link.(CsemC.module)].
-  Let prog_tgt := ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)].
+  Let prog_tgt := ctx ++ map CsemC.module cps.
   Variable sk_link: Sk.t.
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
   Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
   Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env))
                            (at level 50, no associativity, only parsing).
   Let ge_cp_link: genv := geof cp_link.
-  Let ge_cp0: genv := geof cp0.
-  Let ge_cp1: genv := geof cp1.
 
   Hypothesis WTPROGLINK: wt_program cp_link.
   Hypothesis WTSKLINK: Sk.wf cp_link.(CsemC.module).
-  Hypothesis WTPROG0: wt_program cp0.
-  Hypothesis WTSK0: Sk.wf cp0.(CsemC.module).
-  Hypothesis WTPROG1: wt_program cp1.
-  Hypothesis WTSK1: Sk.wf cp1.(CsemC.module).
+  Hypothesis WTPROGS: forall cp (IN: In cp cps), wt_program cp.
+  Hypothesis WTSKS: forall cp (IN: In cp cps), Sk.wf cp.(CsemC.module).
 
   Hypothesis WT_EXTERNALLINK:
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) cp_link.(prog_defs) ->
       external_call ef skenv_link vargs m t vres m' ->
       wt_retval vres res.
-  Hypothesis WT_EXTERNAL0:
+  Hypothesis WT_EXTERNALS:
+    forall cp (IN: In cp cps),
     forall id ef args res cc vargs m t vres m',
-      In (id, Gfun (External ef args res cc)) cp0.(prog_defs) ->
-      external_call ef skenv_link vargs m t vres m' ->
-      wt_retval vres res.
-  Hypothesis WT_EXTERNAL1:
-    forall id ef args res cc vargs m t vres m',
-      In (id, Gfun (External ef args res cc)) cp1.(prog_defs) ->
+      In (id, Gfun (External ef args res cc)) cp.(prog_defs) ->
       external_call ef skenv_link vargs m t vres m' ->
       wt_retval vres res.
 
@@ -129,7 +122,7 @@ Section PRESERVATION.
     unfold link_sk.
     rewrite ! map_app. ss.
     symmetry.
-    eapply link_list_snoc_commut; eauto.
+    eapply link_list_app_commut; eauto.
     admit "this should hold - it should be proven somewhere else too. ask @minki".
   Qed.
 
@@ -153,7 +146,7 @@ Section PRESERVATION.
   (*   - econs 2. eapply LE; eauto. *)
   (* Qed. *)
 
-  Definition is_focus (cp: Csyntax.program): Prop := cp = cp0 \/ cp = cp1.
+  Definition is_focus (cp: Csyntax.program): Prop := In cp cps.
 
   Let INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function cp_link).
   Proof.
@@ -163,10 +156,12 @@ Section PRESERVATION.
 
   Let INCL_FOCUS: forall pgm, is_focus pgm -> SkEnv.includes skenv_link (CSk.of_program signature_of_function pgm).
   Proof.
-    i. exploit link_includes. eapply LINKTGT.
+    i. exploit link_includes.
+    { eapply LINKTGT. }
     { subst prog_tgt. instantiate (1 := (module pgm)).
-      rewrite in_app_iff in *. des; ss. unfold is_focus in H. inv H; subst; auto. }
-    inv H; eauto. Qed.
+      rewrite in_app_iff in *. r in H. right. rewrite in_map_iff. esplits; et. }
+    i. ss.
+  Qed.
 
   Inductive sum_cont: list Frame.t -> cont -> Prop :=
   | sum_cont_nil
@@ -310,7 +305,7 @@ Section PRESERVATION.
         econs; ss; eauto. rewrite <- link_sk_match; eauto.
         unfold prog_src in WF. unfold prog_tgt. i. rewrite in_app_iff in IN. des.
         { eapply WF; et. rewrite in_app_iff. et. }
-        { ss. des; ss; clarify. }
+        { rewrite in_map_iff in *. des. clarify. ss. et. }
       - (* dtm *)
         ii. inv INIT0; inv INIT1; ss. f_equal.
         generalize link_sk_match; i. des. rewrite H in *. clarify.
@@ -460,37 +455,39 @@ Section PRESERVATION.
     unfold link_program in *. des_ifs.
     Local Transparent Linker_prog. ss.
 
-    hexploit (link_prog_inv _ _ _ Heq). intro LINKSPEC; des.
+    (* hexploit (link_prog_inv _ _ _ Heq). intro LINKSPEC; des. *)
 
-    assert(MAIN: AST.prog_main p = AST.prog_main cp0 /\ AST.prog_main p = AST.prog_main cp1).
-    { clarify; ss. }
-    assert(PUBLIC: AST.prog_public p = AST.prog_public cp0 ++ AST.prog_public cp1).
-    { clarify; ss. }
-    assert(DEFS: AST.prog_defs p = PTree.elements (PTree.combine link_prog_merge (prog_defmap cp0) (prog_defmap cp1))).
-    { clarify; ss. }
+    (* assert(MAIN: AST.prog_main p = AST.prog_main cp0 /\ AST.prog_main p = AST.prog_main cp1). *)
+    (* { clarify; ss. } *)
+    (* assert(PUBLIC: AST.prog_public p = AST.prog_public cp0 ++ AST.prog_public cp1). *)
+    (* { clarify; ss. } *)
+    (* assert(DEFS: AST.prog_defs p = PTree.elements (PTree.combine link_prog_merge (prog_defmap cp0) (prog_defmap cp1))). *)
+    (* { clarify; ss. } *)
 
-    assert(DEFREL: forall id : positive, (prog_defmap p) ! id = link_prog_merge (prog_defmap cp0) ! id (prog_defmap cp1) ! id).
-    {
-      ii.
-      clarify.
-      unfold prog_defmap; ss.
-      rewrite PTree_Properties.of_list_elements.
-      rewrite PTree.gcombine; ss.
-    }
-    unfold prog_defmap in *. ss.
-    rewrite DEFREL in *.
-    unfold link_prog_merge in DEFMAP. des_ifs; ss.
-    - exploit LINKSPEC0; eauto. i. des.
-      clarify.
-      Local Transparent Linker_def. ss.
-      unfold link_def in H1. des_ifs.
-      Local Transparent Linker_fundef. ss.
-      unfold link_fundef in Heq4. des_ifs.
-      { exists cp0. esplits; eauto. econs; eauto. }
-    - clarify. exists cp0. esplits; eauto.
-      unfold is_focus. auto.
-    - clarify. exists cp1. esplits; eauto.
-      unfold is_focus. auto.
+    (* assert(DEFREL: forall id : positive, (prog_defmap p) ! id = link_prog_merge (prog_defmap cp0) ! id (prog_defmap cp1) ! id). *)
+    (* { *)
+    (*   ii. *)
+    (*   clarify. *)
+    (*   unfold prog_defmap; ss. *)
+    (*   rewrite PTree_Properties.of_list_elements. *)
+    (*   rewrite PTree.gcombine; ss. *)
+    (* } *)
+    (* unfold prog_defmap in *. ss. *)
+    (* rewrite DEFREL in *. *)
+    (* unfold link_prog_merge in DEFMAP. des_ifs; ss. *)
+    (* - exploit LINKSPEC0; eauto. i. des. *)
+    (*   clarify. *)
+    (*   Local Transparent Linker_def. ss. *)
+    (*   unfold link_def in H1. des_ifs. *)
+    (*   Local Transparent Linker_fundef. ss. *)
+    (*   unfold link_fundef in Heq4. des_ifs. *)
+    (*   { exists cp0. esplits; eauto. econs; eauto. } *)
+    (* - clarify. exists cp0. esplits; eauto. *)
+    (*   unfold is_focus. auto. *)
+    (* - clarify. exists cp1. esplits; eauto. *)
+    (*   unfold is_focus. auto. *)
+
+    admit "".
   Qed.
 
   Lemma prog_defmap_same_rev
@@ -504,38 +501,15 @@ Section PRESERVATION.
     unfold link_program in *. des_ifs.
     Local Transparent Linker_prog. ss.
 
-    hexploit (link_prog_inv _ _ _ Heq). intro LINKSPEC; des.
-
-    assert(MAIN: AST.prog_main p = AST.prog_main cp0 /\ AST.prog_main p = AST.prog_main cp1).
-    { clarify; ss. }
-    assert(PUBLIC: AST.prog_public p = AST.prog_public cp0 ++ AST.prog_public cp1).
-    { clarify; ss. }
-    assert(DEFS: AST.prog_defs p = PTree.elements (PTree.combine link_prog_merge (prog_defmap cp0) (prog_defmap cp1))).
-    { clarify; ss. }
-
-    assert(DEFREL: forall id : positive, (prog_defmap p) ! id = link_prog_merge (prog_defmap cp0) ! id (prog_defmap cp1) ! id).
-    {
-      ii.
-      clarify.
-      unfold prog_defmap; ss.
-      rewrite PTree_Properties.of_list_elements.
-      rewrite PTree.gcombine; ss.
-    }
-    unfold prog_defmap in *. ss.
-    rewrite DEFREL in *.
-    unfold link_prog_merge. des_ifs; ss.
-
-    - unfold is_focus in FOC. inv FOC.
-      + exploit LINKSPEC0. eapply Heq2. eapply Heq3. i. des_safe. destruct g0. ss; des_ifs; eauto.
-        unfold link_def in H1. inv H1.
-      + exploit LINKSPEC0. eapply Heq2. eapply Heq3. i. des_safe. destruct g. ss; des_ifs; eauto.
-        ss. unfold link_fundef in Heq4. des_ifs. ss.
-    - unfold is_focus in FOC. inv FOC.
-      + rewrite DMAP in *. clarify.
-      + rewrite DMAP in *. clarify.
-    - unfold is_focus in FOC. inv FOC.
-      + rewrite DMAP in *. clarify.
-      + rewrite DMAP in *. clarify.
+    r in FOC.
+    exploit link_list_linkorder; et. intro ORD. r in ORD. rewrite Forall_forall in ORD.
+    exploit ORD; eauto. intro ORD0.
+    Local Transparent Linker_program.
+    ss.
+    rr in ORD0. des.
+    hexploit (@prog_defmap_linkorder (Ctypes.fundef function) type); eauto. intro P; des. inv P0.
+    inv H0.
+    esplits; eauto.
   Qed.
 
 
@@ -550,38 +524,14 @@ Section PRESERVATION.
     unfold link_program in *. des_ifs.
     Local Transparent Linker_prog. ss.
 
-    hexploit (link_prog_inv _ _ _ Heq). intro LINKSPEC; des.
-
-    assert(MAIN: AST.prog_main p = AST.prog_main cp0 /\ AST.prog_main p = AST.prog_main cp1).
-    { clarify; ss. }
-    assert(PUBLIC: AST.prog_public p = AST.prog_public cp0 ++ AST.prog_public cp1).
-    { clarify; ss. }
-    assert(DEFS: AST.prog_defs p = PTree.elements (PTree.combine link_prog_merge (prog_defmap cp0) (prog_defmap cp1))).
-    { clarify; ss. }
-
-    assert(DEFREL: forall id : positive, (prog_defmap p) ! id = link_prog_merge (prog_defmap cp0) ! id (prog_defmap cp1) ! id).
-    {
-      ii.
-      clarify.
-      unfold prog_defmap; ss.
-      rewrite PTree_Properties.of_list_elements.
-      rewrite PTree.gcombine; ss.
-    }
-    unfold prog_defmap in *. ss.
-    rewrite DEFREL in *.
-    unfold link_prog_merge. des_ifs; ss.
-
-    - unfold is_focus in FOC. inv FOC.
-      + exploit LINKSPEC0. eapply Heq2. eapply Heq3. i. des_safe. destruct g0. ss; des_ifs; eauto.
-        unfold link_def in H1. inv H1.
-      + exploit LINKSPEC0. eapply Heq2. eapply Heq3. i. des_safe. destruct g. ss; des_ifs; eauto.
-        ss.
-    - unfold is_focus in FOC. inv FOC.
-      + rewrite DMAP in *. clarify. eauto.
-      + rewrite DMAP in *. clarify.
-    - unfold is_focus in FOC. inv FOC.
-      + rewrite DMAP in *. clarify.
-      + rewrite DMAP in *. clarify. eauto.
+    r in FOC.
+    exploit link_list_linkorder; et. intro ORD. r in ORD. rewrite Forall_forall in ORD.
+    exploit ORD; eauto. intro ORD0.
+    Local Transparent Linker_program.
+    ss.
+    rr in ORD0. des.
+    hexploit (@prog_defmap_linkorder (Ctypes.fundef function) type); eauto. intro P; des. inv P0.
+    esplits; eauto.
   Qed.
 
   Lemma defmap_with_signature_rev
@@ -638,30 +588,32 @@ Section PRESERVATION.
     unfold link_program in *. des_ifs.
     Local Transparent Linker_prog. ss.
 
-    hexploit (link_prog_inv _ _ _ Heq). intro LINKSPEC; des.
+    admit "".
 
-    assert(DEFREL: forall id : positive, (prog_defmap p) ! id = link_prog_merge (prog_defmap cp0) ! id (prog_defmap cp1) ! id).
-    {
-      ii.
-      clarify.
-      unfold prog_defmap; ss.
-      rewrite PTree_Properties.of_list_elements.
-      rewrite PTree.gcombine; ss.
-    }
-    Local Transparent Linker_def. ss.
-    unfold internals. ss.
-    des_ifs; cycle 1.
-    { unfold prog_defmap in *. ss.
-      rewrite DEFREL in *. unfold link_prog_merge in Heq2. des_ifs.
-      exploit LINKSPEC0. eapply Heq3. eapply Heq4. i. des_safe; ss.
-      rewrite Heq2 in *; clarify.
-      unfold is_focus in *. des; subst; rewrite DMAP in *; clarify. }
-    unfold prog_defmap in *. ss.
-    rewrite DEFREL in *. unfold link_prog_merge in Heq2.
-    des_ifs; ss; unfold is_focus in *; des; subst; rewrite DMAP in *; clarify;
-      ss; unfold link_def in *; des_ifs; ss; destruct f; ss; des_ifs; ss.
-    do 2 rewrite <- andb_assoc in *. exploit andb_prop; eauto. i. des.
-    destruct e1; destruct e2; clarify.
+    (* hexploit (link_prog_inv _ _ _ Heq). intro LINKSPEC; des. *)
+
+    (* assert(DEFREL: forall id : positive, (prog_defmap p) ! id = link_prog_merge (prog_defmap cp0) ! id (prog_defmap cp1) ! id). *)
+    (* { *)
+    (*   ii. *)
+    (*   clarify. *)
+    (*   unfold prog_defmap; ss. *)
+    (*   rewrite PTree_Properties.of_list_elements. *)
+    (*   rewrite PTree.gcombine; ss. *)
+    (* } *)
+    (* Local Transparent Linker_def. ss. *)
+    (* unfold internals. ss. *)
+    (* des_ifs; cycle 1. *)
+    (* { unfold prog_defmap in *. ss. *)
+    (*   rewrite DEFREL in *. unfold link_prog_merge in Heq2. des_ifs. *)
+    (*   exploit LINKSPEC0. eapply Heq3. eapply Heq4. i. des_safe; ss. *)
+    (*   rewrite Heq2 in *; clarify. *)
+    (*   unfold is_focus in *. des; subst; rewrite DMAP in *; clarify. } *)
+    (* unfold prog_defmap in *. ss. *)
+    (* rewrite DEFREL in *. unfold link_prog_merge in Heq2. *)
+    (* des_ifs; ss; unfold is_focus in *; des; subst; rewrite DMAP in *; clarify; *)
+    (*   ss; unfold link_def in *; des_ifs; ss; destruct f; ss; des_ifs; ss. *)
+    (* do 2 rewrite <- andb_assoc in *. exploit andb_prop; eauto. i. des. *)
+    (* destruct e1; destruct e2; clarify. *)
   Qed.
 
   Lemma prog_def_exists_rev
@@ -688,34 +640,16 @@ Section PRESERVATION.
       unfold link_program in *. des_ifs.
       Local Transparent Linker_prog. ss.
 
-      hexploit (link_prog_inv _ _ _ Heq0). intro LINKSPEC; des.
-
-      assert(DEFREL: forall id : positive, (prog_defmap p) ! id = link_prog_merge (prog_defmap cp0) ! id (prog_defmap cp1) ! id).
-      {
-        ii.
-        clarify.
-        unfold prog_defmap; ss.
-        rewrite PTree_Properties.of_list_elements.
-        rewrite PTree.gcombine; ss.
-      }
-      unfold prog_defmap in *. ss.
-      rewrite DEFREL in *.
-      unfold link_prog_merge in H0.
-      unfold is_focus in *. inv FOC; subst.
-
-      rewrite H in H0. des_ifs.
-      Local Transparent link. ss. des_ifs.
-
-      unfold link_prog_merge.
-      rewrite H. ss. eauto.
-      unfold link_prog_merge.
-      rewrite H. ss. eauto.
-
-      rewrite H in H0. des_ifs.
-      Local Transparent link. ss. des_ifs.
-
-      rewrite H0. destruct g0; ss. des_ifs. destruct f; ss. des_ifs. eauto.
-      ss. eauto. }
+      r in FOC.
+      exploit link_list_linkorder; et. intro ORD. r in ORD. rewrite Forall_forall in ORD.
+      exploit ORD; eauto. intro ORD0.
+      Local Transparent Linker_program.
+      ss.
+      rr in ORD0. des.
+      hexploit (@prog_defmap_linkorder (Ctypes.fundef function) type); eauto. intro P; des. inv P0.
+      inv H2.
+      esplits; eauto.
+    }
 
     des. exploit defmap_with_signature_internal; eauto. i. des.
     exists if_sig2.
@@ -786,38 +720,39 @@ Section PRESERVATION.
     unfold link_program in *. des_ifs.
     Local Transparent Linker_prog. ss.
 
-    hexploit (link_prog_inv _ _ _ Heq). intro LINKSPEC; des.
+    (* hexploit (link_prog_inv _ _ _ Heq). intro LINKSPEC; des. *)
 
-    assert(MAIN: AST.prog_main p = AST.prog_main cp0 /\ AST.prog_main p = AST.prog_main cp1).
-    { clarify; ss. }
-    assert(PUBLIC: AST.prog_public p = AST.prog_public cp0 ++ AST.prog_public cp1).
-    { clarify; ss. }
-    assert(DEFS: AST.prog_defs p = PTree.elements (PTree.combine link_prog_merge (prog_defmap cp0) (prog_defmap cp1))).
-    { clarify; ss. }
+    (* assert(MAIN: AST.prog_main p = AST.prog_main cp0 /\ AST.prog_main p = AST.prog_main cp1). *)
+    (* { clarify; ss. } *)
+    (* assert(PUBLIC: AST.prog_public p = AST.prog_public cp0 ++ AST.prog_public cp1). *)
+    (* { clarify; ss. } *)
+    (* assert(DEFS: AST.prog_defs p = PTree.elements (PTree.combine link_prog_merge (prog_defmap cp0) (prog_defmap cp1))). *)
+    (* { clarify; ss. } *)
 
-    assert(DEFREL: forall id : positive, (prog_defmap p) ! id = link_prog_merge (prog_defmap cp0) ! id (prog_defmap cp1) ! id).
-    {
-      ii.
-      clarify.
-      unfold prog_defmap; ss.
-      rewrite PTree_Properties.of_list_elements.
-      rewrite PTree.gcombine; ss.
-    }
-    unfold prog_defmap in *. ss.
-    rewrite DEFREL in *.
-    unfold link_prog_merge in DEFMAP. des_ifs; ss.
-    - exploit LINKSPEC0; eauto. i. des.
-      clarify.
-      Local Transparent Linker_def. ss.
-      unfold link_def in H1. des_ifs.
-      Local Transparent Linker_fundef. ss.
-      unfold link_fundef in Heq4. des_ifs.
-      { exists cp0. esplits; eauto. econs; eauto. }
-      { exists cp1. esplits; eauto. econs 2; eauto. }
-    - clarify. exists cp0. esplits; eauto.
-      unfold is_focus. auto.
-    - clarify. exists cp1. esplits; eauto.
-      unfold is_focus. auto.
+    (* assert(DEFREL: forall id : positive, (prog_defmap p) ! id = link_prog_merge (prog_defmap cp0) ! id (prog_defmap cp1) ! id). *)
+    (* { *)
+    (*   ii. *)
+    (*   clarify. *)
+    (*   unfold prog_defmap; ss. *)
+    (*   rewrite PTree_Properties.of_list_elements. *)
+    (*   rewrite PTree.gcombine; ss. *)
+    (* } *)
+    (* unfold prog_defmap in *. ss. *)
+    (* rewrite DEFREL in *. *)
+    (* unfold link_prog_merge in DEFMAP. des_ifs; ss. *)
+    (* - exploit LINKSPEC0; eauto. i. des. *)
+    (*   clarify. *)
+    (*   Local Transparent Linker_def. ss. *)
+    (*   unfold link_def in H1. des_ifs. *)
+    (*   Local Transparent Linker_fundef. ss. *)
+    (*   unfold link_fundef in Heq4. des_ifs. *)
+    (*   { exists cp0. esplits; eauto. econs; eauto. } *)
+    (*   { exists cp1. esplits; eauto. econs 2; eauto. } *)
+    (* - clarify. exists cp0. esplits; eauto. *)
+    (*   unfold is_focus. auto. *)
+    (* - clarify. exists cp1. esplits; eauto. *)
+    (*   unfold is_focus. auto. *)
+    admit "".
   Qed.
 
   Lemma prog_def_same
@@ -943,56 +878,57 @@ Section PRESERVATION.
     :
       cp2 = cp_top.
   Proof.
-    unfold is_focus in *. inv FOC1; inv FOC2; subst; auto.
-    (* H0 && INTERNAL contradiction *)
-    - unfold Genv.find_def in *. ss. rewrite MapsC.PTree_filter_map_spec in *.
-      rewrite o_bind_ignore in *. des_ifs.
-      destruct (Genv.invert_symbol skenv_link blk) eqn:SYMBSKENV; ss.
-      destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp0)) blk) eqn:SYMB; ss.
-      unfold o_bind in INTERNAL1, INTERNAL2. ss.
-      destruct ((prog_defmap cp0) ! i0) eqn:DMAP; ss.
-      exploit invert_symbol_lemma1; eauto. unfold is_focus. auto.
-      rewrite CSk.of_program_defs. rewrite <- defs_prog_defmap. eauto. i. subst.
-      destruct (internals (CSk.of_program signature_of_function cp1) i) eqn:INTERNALS; ss.
-      destruct ((prog_defmap (CSk.of_program signature_of_function cp1)) ! i) eqn:DMAP0; ss. clarify.
-      exploit (CSk.of_program_prog_defmap cp1 signature_of_function).
-      instantiate (1 := i). i. inv H; rewrite DMAP0 in *; clarify.
-      inv H2. unfold CtypesC.CSk.match_fundef in H4. destruct f1; clarify.
+    admit "".
+    (* unfold is_focus in *. inv FOC1; inv FOC2; subst; auto. *)
+    (* (* H0 && INTERNAL contradiction *) *)
+    (* - unfold Genv.find_def in *. ss. rewrite MapsC.PTree_filter_map_spec in *. *)
+    (*   rewrite o_bind_ignore in *. des_ifs. *)
+    (*   destruct (Genv.invert_symbol skenv_link blk) eqn:SYMBSKENV; ss. *)
+    (*   destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp0)) blk) eqn:SYMB; ss. *)
+    (*   unfold o_bind in INTERNAL1, INTERNAL2. ss. *)
+    (*   destruct ((prog_defmap cp0) ! i0) eqn:DMAP; ss. *)
+    (*   exploit invert_symbol_lemma1; eauto. unfold is_focus. auto. *)
+    (*   rewrite CSk.of_program_defs. rewrite <- defs_prog_defmap. eauto. i. subst. *)
+    (*   destruct (internals (CSk.of_program signature_of_function cp1) i) eqn:INTERNALS; ss. *)
+    (*   destruct ((prog_defmap (CSk.of_program signature_of_function cp1)) ! i) eqn:DMAP0; ss. clarify. *)
+    (*   exploit (CSk.of_program_prog_defmap cp1 signature_of_function). *)
+    (*   instantiate (1 := i). i. inv H; rewrite DMAP0 in *; clarify. *)
+    (*   inv H2. unfold CtypesC.CSk.match_fundef in H4. destruct f1; clarify. *)
 
-      Local Transparent Linker_program. ss.
-      unfold link_program in *. des_ifs.
-      Local Transparent Linker_prog. ss.
+    (*   Local Transparent Linker_program. ss. *)
+    (*   unfold link_program in *. des_ifs. *)
+    (*   Local Transparent Linker_prog. ss. *)
 
-      hexploit (link_prog_inv _ _ _ Heq1). intro LINKSPEC; des_safe.
+    (*   hexploit (link_prog_inv _ _ _ Heq1). intro LINKSPEC; des_safe. *)
 
-      symmetry in H0.
-      exploit LINKSPEC0. eauto. eapply H0. i. des_safe. destruct H3.
+    (*   symmetry in H0. *)
+    (*   exploit LINKSPEC0. eauto. eapply H0. i. des_safe. destruct H3. *)
 
-      Local Transparent link. ss.
-    - unfold Genv.find_def in *. ss. rewrite MapsC.PTree_filter_map_spec in *.
-      rewrite o_bind_ignore in *. des_ifs.
-      destruct (Genv.invert_symbol skenv_link blk) eqn:SYMBSKENV; ss.
-      destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp1)) blk) eqn:SYMB; ss.
-      unfold o_bind in INTERNAL1, INTERNAL2; ss.
-      destruct ((prog_defmap cp1) ! i0) eqn:DMAP; ss.
-      exploit invert_symbol_lemma1; eauto. unfold is_focus. auto.
-      rewrite CSk.of_program_defs. rewrite <- defs_prog_defmap. eauto. i. subst.
-      destruct (internals (CSk.of_program signature_of_function cp0) i) eqn:INTERNALS; ss.
-      destruct ((prog_defmap (CSk.of_program signature_of_function cp0)) ! i) eqn:DMAP0; ss. clarify.
-      exploit (CSk.of_program_prog_defmap cp0 signature_of_function).
-      instantiate (1 := i). i. inv H; rewrite DMAP0 in *; clarify.
-      inv H2. unfold CtypesC.CSk.match_fundef in H4. destruct f1; clarify.
+    (*   Local Transparent link. ss. *)
+    (* - unfold Genv.find_def in *. ss. rewrite MapsC.PTree_filter_map_spec in *. *)
+    (*   rewrite o_bind_ignore in *. des_ifs. *)
+    (*   destruct (Genv.invert_symbol skenv_link blk) eqn:SYMBSKENV; ss. *)
+    (*   destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp1)) blk) eqn:SYMB; ss. *)
+    (*   unfold o_bind in INTERNAL1, INTERNAL2; ss. *)
+    (*   destruct ((prog_defmap cp1) ! i0) eqn:DMAP; ss. *)
+    (*   exploit invert_symbol_lemma1; eauto. unfold is_focus. auto. *)
+    (*   rewrite CSk.of_program_defs. rewrite <- defs_prog_defmap. eauto. i. subst. *)
+    (*   destruct (internals (CSk.of_program signature_of_function cp0) i) eqn:INTERNALS; ss. *)
+    (*   destruct ((prog_defmap (CSk.of_program signature_of_function cp0)) ! i) eqn:DMAP0; ss. clarify. *)
+    (*   exploit (CSk.of_program_prog_defmap cp0 signature_of_function). *)
+    (*   instantiate (1 := i). i. inv H; rewrite DMAP0 in *; clarify. *)
+    (*   inv H2. unfold CtypesC.CSk.match_fundef in H4. destruct f1; clarify. *)
 
-      Local Transparent Linker_program. ss.
-      unfold link_program in *. des_ifs.
-      Local Transparent Linker_prog. ss.
+    (*   Local Transparent Linker_program. ss. *)
+    (*   unfold link_program in *. des_ifs. *)
+    (*   Local Transparent Linker_prog. ss. *)
 
-      hexploit (link_prog_inv _ _ _ Heq1). intro LINKSPEC; des_safe.
+    (*   hexploit (link_prog_inv _ _ _ Heq1). intro LINKSPEC; des_safe. *)
 
-      symmetry in H0.
-      exploit LINKSPEC0. eapply H0. eauto. i. des_safe. destruct H3.
+    (*   symmetry in H0. *)
+    (*   exploit LINKSPEC0. eapply H0. eauto. i. des_safe. destruct H3. *)
 
-      Local Transparent link. ss.
+    (*   Local Transparent link. ss. *)
   Qed.
 
   Lemma msfind_fsim
@@ -1061,9 +997,7 @@ Section PRESERVATION.
       - right. subst prog_tgt.
         rewrite in_map_iff. exists (module pgm); ss.
         split; unfold flip; ss.
-        rewrite in_app_iff; right. inv H.
-        { econs; eauto. }
-        { econs 2; eauto. econs; eauto. }
+        rewrite in_app_iff; right. rewrite in_map_iff. esplits; eauto.
       - des_ifs.
         rewrite Genv.find_funct_ptr_iff.
         unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. rewrite o_bind_ignore. rewrite Hdefs. rewrite Hsymb.
@@ -1086,23 +1020,14 @@ Section PRESERVATION.
     rewrite in_map_iff in *. des; ss. clarify. unfold prog_tgt in MODSEM0.
     rewrite in_app_iff in *. des; ss.
     { left. econs; et. ss. right. rewrite in_map_iff. esplits; et. unfold prog_src. rewrite in_app_iff. left; ss. }
-    des; ss.
-    - clarify.
-      right.
-      unfold flip. ss.
-      esplits; et; rr; et.
-      exploit prog_def_exists_rev; eauto. unfold is_focus. auto. i. des.
-      econs; ss; et.
-      + right. rewrite in_map_iff. exists (CsemC.module cp_link). ss. esplits; et.
-        unfold prog_src. rewrite in_app_iff. right; ss. left; ss.
-    - clarify.
-      right.
-      unfold flip. ss.
-      esplits; et; rr; et.
-      exploit prog_def_exists_rev; eauto. unfold is_focus. auto. i. des.
-      econs; ss; et.
-      + right. rewrite in_map_iff. exists (CsemC.module cp_link). ss. esplits; et.
-        unfold prog_src. rewrite in_app_iff. right; ss. left; ss.
+    right.
+    unfold flip. ss.
+    rewrite in_map_iff in *. des. clarify.
+    esplits; et; rr; et.
+    exploit prog_def_exists_rev; eauto. unfold is_focus. auto. i. des.
+    econs; ss; et.
+    + right. rewrite in_map_iff. exists (CsemC.module cp_link). ss. esplits; et.
+      unfold prog_src. rewrite in_app_iff. right; ss. left; ss.
   Qed.
 
   Lemma app_cont_call_cont_strong
@@ -1144,17 +1069,12 @@ Section PRESERVATION.
   .
   Proof.
     exploit is_focus_precise; eauto. i. inv H.
-    rr in FOC. des; clarify.
-    - eapply preservation; try apply STEP; try refl; et.
-      + ii. ss. exploit GE2P; eauto. i. des.
-        eapply Genv.find_invert_symbol in SYMB. eapply Genv.find_invert_symbol in SYMB0.
-        unfold Genv.invert_symbol in *. ss. rewrite SYMB in *. clarify.
-      + i. exploit GE2P; eauto. i. des. eauto.
-    - eapply preservation; try refl; et.
-      + ii. ss. exploit GE2P; eauto. i. des.
-        eapply Genv.find_invert_symbol in SYMB. eapply Genv.find_invert_symbol in SYMB0.
-        unfold Genv.invert_symbol in *. ss. rewrite SYMB in *. clarify.
-      + i. exploit GE2P; eauto. i. des. eauto.
+    r in FOC.
+    eapply preservation; try apply STEP; try refl; et.
+    + ii. ss. exploit GE2P; eauto. i. des.
+      eapply Genv.find_invert_symbol in SYMB. eapply Genv.find_invert_symbol in SYMB0.
+      unfold Genv.invert_symbol in *. ss. rewrite SYMB in *. clarify.
+    + i. exploit GE2P; eauto. i. des. eauto.
   Qed.
 
   Lemma preservation_alloc
@@ -1174,9 +1094,9 @@ Section PRESERVATION.
     - econs.
     - ss. inv COMP.
       assert (forall id co, (prog_comp_env cp_top) ! id = Some co -> (prog_comp_env cp_link) ! id = Some co).
-      { i. unfold link_program in *. des_ifs. ss. des_safe.
-        rr in FOCUS1. des; subst.
-        exploit a0; eauto. exploit a1; eauto. }
+      { i. exploit link_list_linkorder; eauto. intro ORD. r in ORD. rewrite Forall_forall in ORD.
+        exploit ORD; et. intro ORD0. ss. rr in ORD0. des. et.
+      }
       exploit sizeof_stable; eauto.
       i. eapply IHALLOC in H3. des.
       econs; eauto. simpl. rewrite <- H1. eauto.
@@ -1201,9 +1121,9 @@ Section PRESERVATION.
       * econs; eauto.
       * econs 2; eauto.
       * assert (forall id co, (prog_comp_env cp_top) ! id = Some co -> (prog_comp_env cp_link) ! id = Some co).
-        { i. unfold link_program in *. des_ifs. ss. des_safe.
-          rr in FOCUS1. clear H7. des; subst.
-          exploit a0; eauto. exploit a1; eauto. }
+        { i. exploit link_list_linkorder; eauto. intro ORD. r in ORD. rewrite Forall_forall in ORD.
+          exploit ORD; et. intro ORD0. ss. rr in ORD0. des_safe. et.
+        }
         des; econs 3; eauto; ss;
           destruct ty; ss; des_ifs; exploit H0; eauto; i; rewrite Heq0 in H10; inv H10; eauto.
   Qed.
@@ -1395,9 +1315,9 @@ Section PRESERVATION.
             { rewrite H1 in *. clarify. inv H5. unfold CtypesC.CSk.match_fundef in H6. destruct f2; clarify.
               exists s. rewrite H4. auto. } des.
 
-            red. econs. ss. right. unfold prog_tgt.
+            red. econs. { ss. right. unfold prog_tgt.
             unfold load_modsems in *. rewrite list_append_map. rewrite in_app_iff. right.
-            unfold is_focus in H. inv H; subst; ss; auto.
+            unfold is_focus in H. rewrite map_map. rewrite in_map_iff. unfold flip. esplits; eauto. ss. }
             rewrite <- CsemC.module_obligation_1.
             ss. des_ifs. rewrite Genv.find_funct_ptr_iff.
             assert (Genv.find_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) id = Some b).
@@ -1486,7 +1406,7 @@ Section PRESERVATION.
             }
             { ss.
               assert(WTPROG: wt_program cp_top).
-              { rr in FOCUS1. des; clarify. }
+              { r in FOCUS1. des; clarify; eauto. }
               bar.
               (* inv WTST. ss. *)
               inv WTPROG. specialize (H id f).
@@ -1553,7 +1473,7 @@ Section PRESERVATION.
               econs; ss; et.
               - inv FINDMS. ss. destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
                 rewrite Genv.find_funct_ptr_iff in *. exploit prog_def_same. eauto. i. des_safe.
-                assert (cp2 = cp_top).
+                assert (cp0 = cp_top).
                 { exploit same_prog. eauto. eapply FOCUS1. eapply INTERNAL. eauto. i. auto. } subst. eauto.
               - unguardH LINKSRC. eapply preservation_alloc; eauto.
               - unguardH LINKSRC. eapply preservation_bind_param; eauto.
@@ -1580,7 +1500,7 @@ Section PRESERVATION.
             }
             {
               assert(WTPROG: wt_program cp_top).
-              { rr in FOCUS1. des; clarify. }
+              { r in FOCUS1. des; clarify; et. }
               bar.
               (* inv WTST. ss. *)
               inv WTPROG. specialize (H id f).
@@ -1633,7 +1553,7 @@ Section PRESERVATION.
               { right. eapply step_internal_function; ss; et.
                 - unfold Genv.find_funct. instantiate (1:= Vptr blk Ptrofs.zero). ss. destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
                   rewrite Genv.find_funct_ptr_iff in *. exploit prog_def_same. eauto. i. des_safe.
-                  assert (cp2 = cp_top).
+                  assert (cp0 = cp_top).
                   { exploit same_prog. eauto. eapply FOCUS1. eapply INTERNAL. eauto. i. auto. } subst. eauto.
                   (* ditto(ZmFkZDJkODhmOGM1YWI0NDI1YjEzMDFi) *)
                 - eapply preservation_alloc; eauto.
@@ -1658,7 +1578,7 @@ Section PRESERVATION.
                     i. inv H. rewrite DMAP in *. clarify.
                     assert (exists if_sig, (prog_defmap cp_top) ! id = Some (Gfun (Internal if_sig))).
                     { rewrite DMAP in *. inv H5. unfold CtypesC.CSk.match_fundef in H6. destruct f1; destruct f2; eauto; clarify. inv H4. } des_safe.
-                    destruct (is_focus_precise FOCUS1). exploit P2GE; eauto. i. des_safe. des_ifs.
+                    destruct (is_focus_precise _ FOCUS1). exploit P2GE; eauto. i. des_safe. des_ifs.
                     assert (b = blk).
                     {
                       assert (Genv.find_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_top)) id = Some b).
@@ -1778,7 +1698,7 @@ Section PRESERVATION.
             {
               (* MmEyZjBiNDFkYzlkNGY3YWVkNTlhMWE2 *)
               des_ifs.
-              assert(WTTGT1: wt_state (geof cp2)
+              assert(WTTGT1: wt_state (geof cp0)
                                       (Returnstate tv (Kcall _f _e _C _tres _k) (m_ret))).
               { econs; ss; et; revgoals.
                 { eapply typify_c_spec; et. }
@@ -1841,7 +1761,7 @@ Section PRESERVATION.
                 }
                 {
                   (* copied from: MmEyZjBiNDFkYzlkNGY3YWVkNTlhMWE2 *)
-                  assert(WTTGT1: wt_state (geof cp2)
+                  assert(WTTGT1: wt_state (geof cp0)
                                           (Returnstate tv k2 m_ret)).
                   { econs; ss; et; revgoals.
                     { eapply typify_c_spec; et. }
@@ -2008,7 +1928,7 @@ Section PRESERVATION.
         - rewrite LINKTGT. clarify. ss. inv INIT. ss.  esplits; eauto. econs; eauto. ss. econs; et. ss.
           unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
           exploit prog_def_same; eauto. i. des.
-          assert (cp = cp2).
+          assert (cp = cp0).
           { inv MSFIND0. ss. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
             exploit same_prog. eapply H. eapply ISFOCTGT. eauto. eauto. eauto. } subst. eauto.
       }
@@ -2067,14 +1987,13 @@ Let geof := fun skenv_link (cp: Csyntax.program) =>
               (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env)).
 
 Theorem upperbound_a_correct
-        (cp0 cp1 cp_link: Csyntax.program) ctx
-        (TYPED0: typechecked cp0)
-        (TYPED1: typechecked cp1)
+        (cp_link: Csyntax.program) cps ctx
+        (TYPEDS: Forall typechecked cps)
         (TYPEDLINK: typechecked cp_link)
-        (LINK: link cp0 cp1 = Some cp_link)
+        (LINK: link_list cps = Some cp_link)
   :
     (<<REFINE: improves (Sem.sem (ctx ++ [cp_link.(CsemC.module)]))
-                        (Sem.sem (ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)]))
+                        (Sem.sem (ctx ++ map CsemC.module cps))
                         >>)
 .
 Proof.
@@ -2086,13 +2005,15 @@ Proof.
     { eapply unit_ord_wf. }
     { econs; et. i. ss. inv INITSRC. clarify. }
     i; des. ss. des_ifs.
-    hexploit (link_sk_match cp_link cp0 cp1 ctx); eauto. i; des. congruence.
+    hexploit (link_sk_match cp_link cps ctx); eauto. i; des. congruence.
   }
   rename t into link_sk.
   des.
-  inv TYPED0. inv TYPED1. inv TYPEDLINK.
+  rewrite Forall_forall in *.
+  inv TYPEDLINK.
   eapply upperbound_a_xsim; eauto.
   { eapply typecheck_program_sound; et. }
-  { eapply typecheck_program_sound; et. }
-  { eapply typecheck_program_sound; et. }
+  { i. exploit TYPEDS; eauto. intro T. inv T. eapply typecheck_program_sound; et. }
+  { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
+  { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
 Qed.

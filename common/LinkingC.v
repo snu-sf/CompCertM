@@ -155,6 +155,25 @@ Proof.
   - destruct xs; ss.
 Qed.
 
+Lemma link_list_app_commut
+      X `{Linker X}
+      x_link xs0 xs1
+      (LINK: link_list xs1 = Some x_link)
+  :
+    <<CMT: link_list (xs0 ++ xs1) = link_list (xs0 ++ [x_link])>>
+.
+Proof.
+  ginduction xs1; ii; ss.
+  { unfold link_list in LINK. des_ifs. ss. des_ifs.
+    { destruct xs1; ss. des_ifs. }
+    replace (xs0 ++ a :: xs1) with ((xs0 ++ [a]) ++ xs1); cycle 1.
+    { rewrite <- app_assoc. ss. }
+    erewrite IHxs1; et; cycle 1.
+    { unfold link_list. rewrite Heq0. ss. }
+    rewrite <- app_assoc. ss.
+    erewrite link_list_snoc_commut; eauto.
+  }
+Qed.
 
 (* Lemma link_list_cons_commut *)
 (*       X `{Linker X} *)

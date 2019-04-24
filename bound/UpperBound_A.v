@@ -11,30 +11,6 @@ Require Import CtypingC LinkingC2.
 Set Implicit Arguments.
 
 
-
-
-
-Ltac cinv H :=
-  let X := fresh in
-  set (X := H);
-  inv X.
-
-Ltac cset H1 H2 :=
-  let X := fresh in
-  set (X := H2);
-  eapply H1 in X.
-
-Ltac cset2 H1 H2 :=
-  let X := fresh in
-  set (X := H1);
-  specialize (X H2).
-
-(* To prevent "subst" *)
-Inductive my_eq {A: Type} (x: A): A -> Prop :=
-| my_eq_refl: my_eq x x.
-
-Notation "a m= b" := (my_eq a b) (at level 10).
-
 Ltac Eq :=
   match goal with
   | [ H1: ?a = ?b, H2: ?a = ?c |- _ ] =>

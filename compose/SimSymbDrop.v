@@ -20,8 +20,6 @@ Require Import SimMem.
 Require Import SimMemInjC.
 Require Import ModSem.
 
-Local Existing Instance Val.mi_normal.
-
 
 (* Copied from Unusedglob.v *)
 Definition ref_init (il : list init_data) (id : ident): Prop := 

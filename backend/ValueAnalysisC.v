@@ -85,7 +85,7 @@ Proof.
           exploit mmatch_top; eauto.
           (* spcN 0%nat mmatch_top. spc mmatch_top. inv mmatch_top. *)
           intro SM. inv SM.
-          specialize (H0 ofs%Z blk0 ofs0 true q n).
+          specialize (H0 ofs%Z blk0 ofs0 q n).
           exploit H0.
           { eapply Mem_loadbytes_succeeds; et. }
           intro PM.
@@ -136,7 +136,7 @@ Proof.
           exploit mmatch_top; eauto.
           (* spcN 0%nat mmatch_top. spc mmatch_top. inv mmatch_top. *)
           intro SM. inv SM.
-          specialize (H0 ofs blk0 ofs0 true q n).
+          specialize (H0 ofs blk0 ofs0 q n).
           exploit H0.
           { eapply Mem_loadbytes_succeeds; et. }
           intro PM.
@@ -241,7 +241,7 @@ Section PRSV.
         (* * ii. inv MEM. eapply BOUND; eauto. *)
         (* * rewrite IMG. ii. des_ifs; ss. inv SKENV. rewrite PUB0 in *; ss. *)
         (* * inv SKENV. rewrite PUB in *. ss. *)
-      + ii. repeat spc VALS. destruct v; econs; eauto. destruct b0; econs; eauto. rewrite IMG.
+      + ii. repeat spc VALS. destruct v; econs; eauto. econs; eauto. rewrite IMG.
         inv TYP. ss.
         apply in_zip_iff in H0. des. unfold typify in *. des_ifs.
         hexploit1 VALS.
@@ -337,14 +337,14 @@ Section PRSV.
           hexploit BCSU; eauto. intro SU0.
           split; i.
           - hexploit mem'_load_val'; eauto. intro SUV.
-            { destruct v; econs; et. destruct b1; econs; et. exploit SUV; et. i; des. ii.
+            { destruct v; econs; et. econs; et. exploit SUV; et. i; des. ii.
               exploit BCSU; et.
               exploit SUBC; try apply H1; et.
               { inv MEM. Unreach.nb_tac. ss. }
               ss.
             }
           - hexploit mem'_loadbytes_val'; eauto. intro SUV.
-            { destruct isreal'; econs; et. exploit SUV; et. i; des. ii.
+            { econs; et. exploit SUV; et. i; des. ii.
               exploit BCSU; et.
               exploit SUBC; try apply H1; et.
               { inv MEM. Unreach.nb_tac. ss. }
@@ -458,7 +458,7 @@ Section PRSV.
         { i.
           (* assert(Sound.val su_ret v). *)
           (* { eapply Sound.hle_val; et. } *)
-          ss. r in H. destruct v; econs; eauto. destruct b0; econs; eauto.
+          ss. r in H. destruct v; econs; eauto. econs; eauto.
           exploit H; eauto. i; des. rewrite IMG. subst f. s. des_ifs_safe.
           assert(NBC: ~ (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) b).
           { ii. ss. r in BCLE1. des. exploit PRIV; eauto. des_ifs. }
@@ -468,7 +468,7 @@ Section PRSV.
           intro BC. unfold bc2su in *. ss. rewrite BC in *. ss.
         }
         assert (VMTOP: forall v, val' su_ret v -> vmatch bc' v Vtop).
-        { i. r in H. destruct v; econs; eauto. destruct b0; econs; eauto.
+        { i. r in H. destruct v; econs; eauto. econs; eauto.
           exploit H; eauto. i; des. rewrite IMG. subst f. s. des_ifs_safe.
           assert(NSU: ~su_gr b).
           { ii. r in LEOLD. des. exploit PRIV; eauto. i; ss. congruence. }
@@ -485,8 +485,8 @@ Section PRSV.
           rewrite IMG. unfold f.
           des_ifs.
         }
-        assert (PMTOP: forall blk ofs isreal, ~ su_ret blk -> Plt blk (Mem.nextblock (Retv.m retv)) -> pmatch bc' blk ofs isreal Ptop).
-        { i. r in H. destruct isreal; econs; eauto.
+        assert (PMTOP: forall blk ofs, ~ su_ret blk -> Plt blk (Mem.nextblock (Retv.m retv)) -> pmatch bc' blk ofs Ptop).
+        { i. r in H. econs; eauto.
           assert(NSU: ~su_gr blk).
           { ii. r in LEOLD. des. exploit PRIV; eauto. }
           assert(NBC: ~ (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) blk).
@@ -494,10 +494,10 @@ Section PRSV.
           ss. rewrite IMG. unfold f. des_ifs.
           ii. rewrite H1 in *. ss.
         }
-        assert (PMTOP1: forall blk ofs isreal
+        assert (PMTOP1: forall blk ofs
                                (BELOW: bc_below bc (Mem.nextblock m_arg))
                  ,
-                   pmatch bc blk ofs isreal Ptop -> pmatch bc' blk ofs isreal Ptop).
+                   pmatch bc blk ofs Ptop -> pmatch bc' blk ofs Ptop).
         { i. inv H; econs; eauto.
           exploit BELOW; eauto. i.
           ss. rewrite IMG. unfold f. des_ifs.
@@ -538,10 +538,10 @@ Section PRSV.
               rewrite IMG in *. subst f. ss. des_ifs.
 
               inv MM. exploit mmatch_top; eauto. intro SM. rr in SM. des.
-              assert(LD: Mem.loadbytes m_arg b ofs 1 = Some [Fragment (Vptr b' ofs' isreal') q i]).
+              assert(LD: Mem.loadbytes m_arg b ofs 1 = Some [Fragment (Vptr b' ofs') q i]).
               { inv MLE. inv AT. ss. erewrite <- Mem.loadbytes_unchanged_on_1; try apply PRIV; eauto. }
               exploit SM0; eauto.
-            + destruct isreal'; try (by econs; eauto).
+            + try (by econs; eauto).
               assert(~ su_ret b).
               {
                 rewrite IMG in *. subst f. ss. des_ifs.

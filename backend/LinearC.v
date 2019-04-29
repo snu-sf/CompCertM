@@ -5,6 +5,7 @@ Require Import Op LocationsC LTL Conventions.
 Require Export Linear.
 Require Import Skeleton Mod ModSem.
 Require Import Simulation AsmregsC.
+Require Import JunkBlock.
 
 Set Implicit Arguments.
 
@@ -283,12 +284,14 @@ Section MODSEM.
       tvs
       (TYP: typecheck args.(Args.vs) sg tvs)
       (LOCSET: tvs = map (fun p => Locmap.getpair p ls_init) (loc_arguments sg))
+      n m0
+      (JUNK: assign_junk_blocks args.(Args.m) n = m0)
       (PTRFREE: forall
           loc
           (* (NOTIN: Loc.notin loc (regs_of_rpairs (loc_arguments sg))) *)
           (NOTIN: ~In loc (regs_of_rpairs (loc_arguments sg)))
         ,
-          <<PTRFREE: ~ is_real_ptr (ls_init loc)>>)
+          <<PTRFREE: is_junk_value args.(Args.m) m0 (ls_init loc)>>)
       (SLOT: forall
           sl ty ofs
           (NOTIN: ~In (S sl ty ofs) (regs_of_rpairs (loc_arguments sg)))
@@ -296,7 +299,7 @@ Section MODSEM.
           <<UNDEF: ls_init (S sl ty ofs) = Vundef>>)
     :
       initial_frame args
-                    (Callstate [dummy_stack sg ls_init] args.(Args.fptr) sg ls_init args.(Args.m))
+                    (Callstate [dummy_stack sg ls_init] args.(Args.fptr) sg ls_init m0)
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=

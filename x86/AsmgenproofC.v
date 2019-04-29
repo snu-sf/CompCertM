@@ -9,6 +9,7 @@ Require Export Asmgenproof.
 Require Import SimModSem SimMemExt SimSymbId MemoryC ValuesC MemdataC LocationsC StoreArguments Conventions1C.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.
+Require Import JunkBlock.
 Require SoundTop.
 
 Local Opaque Z.mul.
@@ -181,7 +182,7 @@ Proof.
     assert (SRCSTORE: exists rs_src m_src,
                StoreArguments.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
            agree_eq rs_src (Vptr (Mem.nextblock src)
-                          Ptrofs.zero true) rs (fn_sig fd) /\ Mem.extends m_src m).
+                          Ptrofs.zero true) rs (fn_sig fd) /\ Mem.extends m_src m0).
     {
       inv TYP.
       exploit store_arguments_parallel_extends.
@@ -215,7 +216,7 @@ Proof.
                  [dummy_stack
                     (Vptr (Mem.nextblock src)
                           Ptrofs.zero true) (rs RA)]
-                 fptr rs_src m_src)).
+                 fptr rs_src (assign_junk_blocks m_src n))).
     inv FPTR; cycle 1.
     { clear - SAFESRC. inv SAFESRC. ss. }
     esplits; auto.
@@ -232,16 +233,25 @@ Proof.
       * ss.
       * econs; eauto; ss; eauto with congruence.
       * ss.
-      * ii. erewrite (agree_mregs_eq0 mr) in *; auto. exploit PTRFREE; eauto.
+      * ii. erewrite (agree_mregs_eq0 mr) in *; auto. unfold NW. apply NNPP. intro T.
+        exploit PTRFREE; eauto.
+        { instantiate (1:= preg_of mr). intro U. contradict T.
+          unfold is_junk_value in U. unfold is_junk_value. des_ifs. des. split; ss.
+          - erewrite Mem.valid_block_extends; eauto.
+          - erewrite Mem.valid_block_extends; eauto.
+            eapply assign_junk_block_extends; et.
+        }
         i. des.
         -- rewrite Asm.to_preg_to_mreg in *. clarify.
         -- destruct mr; clarify.
         -- destruct mr; clarify.
-    + instantiate (1:= mk m_src m).
+        -- destruct mr; clarify.
+    + instantiate (1:= mk (assign_junk_blocks m_src n) (assign_junk_blocks m0 n)).
       econs; ss; cycle 1; eauto.
       * econs; eauto.
       * econs; ss; eauto.
       * econs; eauto; ss; try by (econs; eauto).
+        { eapply assign_junk_block_extends; et. }
         econs; eauto. i.
         destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (fn_sig fd))))); eauto.
         erewrite agree_mregs_eq0; auto.
@@ -265,11 +275,12 @@ Proof.
                                               (fn_sig fd_tgt) m_tgt>>) /\
                (<<RSPC: rs_tgt PC = Args.fptr args_tgt>>) /\
                (<<RSRA: rs_tgt RA = Vnullptr>>) /\
-               (<<PTRFREE: forall pr (PTR: is_real_ptr (rs_tgt pr)),
+               (<<PTRFREE: forall pr (PTR: ~ is_junk_value m0 (assign_junk_blocks m0 n) (rs_tgt pr)),
                    (<<INARG: exists mr,
                        (<<MR: to_mreg pr = Some mr>>) /\
                        (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments (Mach.fn_sig fd)))>>)>>) \/
                    (<<INPC: pr = PC>>) \/
+                   (<<INRA: pr = RA>>) \/
                    (<<INRSP: pr = RSP>>)>>)).
     {
       exploit StoreArguments.store_arguments_progress.
@@ -278,7 +289,7 @@ Proof.
         erewrite <- lessdef_list_length; eauto.
         erewrite SIG. eauto.
       - erewrite SIG. eauto.
-      - i. des.
+      - instantiate (1:= n). i. des.
         exists ((to_pregset (set_regset_undef rs0 (fn_sig fd_tgt)))
                   #PC <- (Args.fptr args_tgt)
                   #RA <- Vnullptr
@@ -297,16 +308,25 @@ Proof.
           { intros mr NIN. rewrite <- SIG. clear - NIN.
             eapply NNPP. intros X.
             eapply LocationsC.Loc_not_in_notin_R in X. des. contradiction. }
+          clear - NNIN PTR.
           unfold set_regset_undef, to_pregset, to_mregset, Pregmap.set, to_preg, preg_of, to_mreg in *.
-          destruct pr; eauto; des_ifs; eauto.
+          destruct pr; des_ifs; ss; eauto.
     }
     des.
     eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
     + rewrite SIG. econs; eauto. rewrite <- LEN.
       symmetry. eapply lessdef_list_length. eauto.
-   + rewrite RSRA. econs; ss.
-    + erewrite <- transf_function_sig; eauto.
+    + rewrite RSRA. econs; ss.
+    + erewrite <- transf_function_sig; eauto. ii. hexploit PTRFREE0; et.
+      ii. apply PTR. unfold is_junk_value in *. des_ifs.
+      unfold Mem.valid_block. unfold Mem.valid_block in H0.
+      rewrite assign_junk_blocks_nextblock in *.
+      inv STORE. inv STORE0. inv H1. rewrite <- NB0. rewrite <- NB in *.
+      erewrite Mem.nextblock_alloc; eauto.
+      erewrite (Mem.nextblock_alloc (Args.m args_src)) in H0; eauto.
+      inv MWF. rewrite <- mext_next.
+      des; esplits; eauto; try xomega.
   - inv MATCH; ss. destruct st_src0, st_tgt0, sm0. ss. inv MATCHST; ss.
 
   - ss. inv CALLSRC. inv MATCH. inv INITDATA. inv MATCHST. ss.
@@ -416,7 +436,7 @@ Proof.
 
   Unshelve.
     all: ss.
-    apply 0%nat.
+    all: try apply 0%nat.
 Qed.
 
 End PRESERVATION.

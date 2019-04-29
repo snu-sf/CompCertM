@@ -76,14 +76,6 @@ End RTLEXTRA.
 
 
 
-Definition get_mem (st: state): mem :=
-  match st with
-  | State _ _ _ _ _ m0 => m0
-  | Callstate _ _ _ _ m0 => m0
-  | Returnstate _ _ m0 => m0
-  end
-.
-
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.

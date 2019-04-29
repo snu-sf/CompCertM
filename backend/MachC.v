@@ -16,6 +16,7 @@ Require Export Mach.
 Require Import StoreArguments.
 Require Import Skeleton Mod ModSem.
 Require Import Simulation Integers.
+Require Import JunkBlock.
 
 Set Implicit Arguments.
 
@@ -206,10 +207,10 @@ Definition step: state -> trace -> state -> Prop := fun st0 tr st1 =>
 (*         E0 (Returnstate s rs m') *)
 (*   | exec_function_internal: *)
 (*       forall s fptr fb rs m f m1 m2 m3 stk rs' *)
-(*       (FPTR: fptr = Vptr fb Ptrofs.zero true), *)
+(*       (FPTR: fptr = Vptr fb Ptrofs.zero), *)
 (*       Genv.find_funct_ptr ge fb = Some (Internal f) -> *)
 (*       Mem.alloc m 0 f.(fn_stacksize) = (m1, stk) -> *)
-(*       let sp := Vptr stk Ptrofs.zero true in *)
+(*       let sp := Vptr stk Ptrofs.zero in *)
 (*       store_stack m1 sp Tptr f.(fn_link_ofs) (parent_sp s) = Some m2 -> *)
 (*       store_stack m2 sp Tptr f.(fn_retaddr_ofs) (parent_ra s) = Some m3 -> *)
 (*       rs' = undef_regs destroyed_at_function_entry rs -> *)
@@ -267,7 +268,7 @@ Section MODSEM.
       (EXTERNAL: Genv.find_funct ge fptr = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
-      (RSP: (parent_sp stack) = Vptr blk ofs true)
+      (RSP: (parent_sp stack) = Vptr blk ofs)
       (* (OFSZERO: ofs = Ptrofs.zero) *)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))
@@ -288,25 +289,27 @@ Section MODSEM.
       targs
       (TYP: typecheck args.(Args.vs) sg targs)
       (STORE: store_arguments args.(Args.m) rs targs sg m0)
+      n m1
+      (JUNK: assign_junk_blocks m0 n = m1)
       (PTRFREE: forall
           mr
           (* (NOTIN: Loc.notin (R mr) (regs_of_rpairs (loc_arguments sg))) *)
           (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
         ,
-          <<PTRFREE: ~ is_real_ptr (rs mr)>>)
+          <<PTRFREE: is_junk_value m0 m1 (rs mr)>>)
     :
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack
-                                                (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) ra]
-                                             args.(Args.fptr) rs m0))
-  (* TODO: change (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero true) into sp *)
+                                                (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero) ra]
+                                             args.(Args.fptr) rs m1))
+  (* TODO: change (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero) into sp *)
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_intro
       (init_rs rs: regset) init_sp m0 m1 blk init_sg mr ra
       (CALLEESAVE: forall mr, Conventions1.is_callee_save mr -> Val.lessdef (init_rs mr) (rs mr))
-      (INITRSP: init_sp = Vptr blk Ptrofs.zero true)
+      (INITRSP: init_sp = Vptr blk Ptrofs.zero)
       (FREE: Mem.free m0 blk 0 (4 * size_arguments init_sg) = Some m1)
       (RETV: loc_result init_sg = One mr)
     :
@@ -320,7 +323,7 @@ Section MODSEM.
       sg blk ofs
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
-      (RSP: (parent_sp stack) = Vptr blk ofs true)
+      (RSP: (parent_sp stack) = Vptr blk ofs)
       (MEMWF: Ple (Senv.nextblock skenv_link) retv.(Retv.m).(Mem.nextblock))
       (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
     :

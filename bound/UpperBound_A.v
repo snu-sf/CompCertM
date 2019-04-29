@@ -1344,7 +1344,7 @@ Section PRESERVATION.
             inv ST; ss.
             econs; ss; et.
             - destruct cp_link_precise.
-              unfold Genv.find_funct in EXTERNAL. destruct fptr_arg; ss. destruct b0; ss. destruct (Ptrofs.eq_dec i Ptrofs.zero); ss.
+              unfold Genv.find_funct in EXTERNAL. destruct fptr_arg; ss. destruct (Ptrofs.eq_dec i Ptrofs.zero); ss.
               unfold Genv.find_funct_ptr in EXTERNAL. des_ifs.
               + (* None or Gvar *)
                 unfold Genv.find_funct. des_ifs. unfold Genv.find_funct_ptr. des_ifs.

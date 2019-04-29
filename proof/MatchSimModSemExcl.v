@@ -176,6 +176,7 @@ Section MATCHSIMFORWARD.
       sm_init
       idx0 st_src0 st_tgt0 sm0
       (SIMSKENV: ModSemPair.sim_skenv msp sm0)
+      (MFUTURE: SimMem.le sm_init sm0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       retv_src
       (FINALSRC: ms_src.(ModSem.final_frame) st_src0 retv_src)

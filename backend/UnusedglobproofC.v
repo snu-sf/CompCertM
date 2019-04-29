@@ -16,20 +16,6 @@ Require Import CtypingC.
 Require Import ModSemProps.
 
 Set Implicit Arguments.
-Local Existing Instance Val.mi_normal.
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 Section SIMMODSEM.
@@ -58,8 +44,8 @@ Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Unusedglobproof.match_states prog tprog (used_set tprog) skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0 sm0)
-    (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(RTLC.get_mem) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: st_src0.(RTL.get_mem) = sm0.(SimMem.src))
+    (MCOMPATTGT: st_tgt0.(RTL.get_mem) = sm0.(SimMem.tgt))
 .
 
 Lemma find_funct_inject
@@ -270,7 +256,7 @@ Proof.
     esplits; eauto.
     { apply modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog tprog (used_set tprog) _ skenv_link_src skenv_link_tgt); eauto.
+    ii. hexploit (@step_simulation prog tprog (used_set tprog) skenv_link_src skenv_link_tgt); eauto.
     i; des.
     esplits; eauto.
     + left. apply plus_one. econs; eauto. eapply modsem_determinate; eauto.

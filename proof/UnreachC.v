@@ -50,7 +50,7 @@ Local Open Scope nat.
 
 
 Definition val' (su: Unreach.t) (v: val): Prop :=
-  forall blk ofs (PTR: v = Vptr blk ofs true), ~su blk /\ (blk < su.(nb))%positive
+  forall blk ofs (PTR: v = Vptr blk ofs), ~su blk /\ (blk < su.(nb))%positive
 .
 
 Definition memval' (su: Unreach.t) (mv: memval): Prop :=
@@ -389,7 +389,7 @@ Let to_inj_mem: forall
     su m
     (SUM: mem' su m)
   ,
-    @Mem.inject Val.mi_normal (to_inj su m.(Mem.nextblock)) m m
+    Mem.inject (to_inj su m.(Mem.nextblock)) m m
 .
 Proof.
   i. unfold to_inj. inv SUM. u in BOUND.
@@ -404,7 +404,6 @@ Proof.
       abstr (ZMap.get ofs (Mem.mem_contents m) !! b2) mv.
       destruct mv; ss; try (by econs; eauto).
       destruct v; ss; try (by econs; eauto).
-      destruct b0; ss; try (by econs; eauto).
       destruct (su b) eqn:T.
       { exploit MV; ss; eauto. i; des. ss. }
       econs; eauto. econs; eauto.
@@ -495,7 +494,7 @@ Definition loadable_init_data (m: mem) (ske: SkEnv.t) (b: block) (p: Z) (id: ini
   | Init_addrof symb ofs =>
       match ske.(Genv.find_symbol) symb with
       | None => False
-      | Some b' => Mem.load Mptr m b p = Some (Vptr b' ofs true)
+      | Some b' => Mem.load Mptr m b p = Some (Vptr b' ofs)
       end
   | Init_space n => True
   end
@@ -694,40 +693,34 @@ Section MATCH_PROJ.
 Variables bc1 bc2: block_classification.
 Hypothesis PROJ: bc_proj bc1 bc2.
 
-Lemma pmatch_proj: forall b ofs isreal p (GOOD: exists id, bc2 b = BCglob (Some id)), pmatch bc1 b ofs isreal p -> pmatch bc2 b ofs isreal p.
+Lemma pmatch_proj: forall b ofs p (GOOD: exists id, bc2 b = BCglob (Some id)), pmatch bc1 b ofs p -> pmatch bc2 b ofs p.
 Proof.
   i. hexploit (PROJ b); eauto. i. des; try congruence.
   inv H; try (by econs; eauto; congruence).
 Qed.
 
-Lemma vmatch_proj: forall v x (GOOD: forall blk ofs (PTR: v = Vptr blk ofs true), exists id, bc2 blk = BCglob (Some id)), vmatch bc1 v x -> vmatch bc2 v x.
+Lemma vmatch_proj: forall v x (GOOD: forall blk ofs (PTR: v = Vptr blk ofs), exists id, bc2 blk = BCglob (Some id)), vmatch bc1 v x -> vmatch bc2 v x.
 Proof.
   i. inv H; econs; eauto.
-  - destruct isreal; ss.
-    + exploit GOOD; eauto. i. des. eapply pmatch_proj; eauto.
-    + inv H0; econs; eauto.
-  - destruct isreal; ss.
-    + exploit GOOD; eauto. i. des. eapply pmatch_proj; eauto.
-    + inv H0; econs; eauto.
+  - + exploit GOOD; eauto. i. des. eapply pmatch_proj; eauto.
+  - + exploit GOOD; eauto. i. des. eapply pmatch_proj; eauto.
 Qed.
 
 Lemma smatch_proj: forall m b p (GOOD: exists id, bc2 b = BCglob (Some id))
                           (GOODMEM: forall chunk ofs_ v
                                            (LOAD: Mem.load chunk m b ofs_ = Some v)
                                            blk ofs
-                                           (PTR: v = Vptr blk ofs true)
+                                           (PTR: v = Vptr blk ofs)
                             , exists id, bc2 blk = BCglob (Some id))
                           (GOODMEMVAL: forall lo_ mv
                                            (LOAD: Mem.loadbytes m b lo_ 1 = Some mv)
                                            blk ofs q n
-                                           (PTR: mv = [Fragment (Vptr blk ofs true) q n])
+                                           (PTR: mv = [Fragment (Vptr blk ofs) q n])
                             , exists id, bc2 blk = BCglob (Some id))
   , smatch bc1 m b p -> smatch bc2 m b p.
 Proof.
   intros. destruct H as [A B]. split; intros.
   apply vmatch_proj; eauto.
-  destruct isreal'; cycle 1.
-  { exploit B; eauto. i. inv H0; econs; eauto. }
   apply pmatch_proj; eauto.
 Qed.
 
@@ -735,20 +728,20 @@ Lemma bmatch_proj: forall m b ab (GOOD: exists id, bc2 b = BCglob (Some id))
                           (GOODMEMVAL: forall lo_ mv
                                            (LOAD: Mem.loadbytes m b lo_ 1 = Some mv)
                                            blk ofs q n
-                                           (PTR: mv = [Fragment (Vptr blk ofs true) q n])
+                                           (PTR: mv = [Fragment (Vptr blk ofs) q n])
                             , exists id, bc2 blk = BCglob (Some id))
   , bmatch bc1 m b ab -> bmatch bc2 m b ab.
 Proof.
   intros. destruct H as [B1 B2].
   assert(GOODMEM: forall (chunk : memory_chunk) (ofs_ : Z) (v : val),
             Mem.load chunk m b ofs_ = Some v ->
-            forall (blk : block) (ofs : ptrofs), v = Vptr blk ofs true -> exists id : ident, bc2 blk = BCglob (Some id)).
+            forall (blk : block) (ofs : ptrofs), v = Vptr blk ofs -> exists id : ident, bc2 blk = BCglob (Some id)).
   { i. subst. eapply Mem.load_loadbytes in H. des.
     assert(exists x, size_chunk chunk = (1 + x)%Z /\ (x >= 0)%Z).
     { destruct chunk; ss; try (exists 0%Z; xomega); try (exists 1%Z; xomega); try (exists 3%Z; xomega); try (exists 7%Z; xomega). }
     des. rewrite H1 in H. eapply Mem.loadbytes_split in H; try xomega. des. subst.
     exploit (Mem.loadbytes_length m b ofs_); et. i.
-    assert(AUX1: exists l i q n, bytes1 ++ bytes2 = [Fragment (Vptr blk i true) q n] ++ l).
+    assert(AUX1: exists l i q n, bytes1 ++ bytes2 = [Fragment (Vptr blk i) q n] ++ l).
     { unfold decode_val, Val.load_result, proj_value in *. des_ifs; do 4 eexists; ss. }
     des. exploit app_eq_inv; et. i; des. eapply GOODMEMVAL; et.
   }
@@ -845,7 +838,6 @@ Next Obligation.
   - econs; eauto.
     + ii; ss. clarify. esplits; eauto.
       u in MEM. exploit Genv.initmem_inject; eauto. i. inv H.
-      Local Existing Instance Val.mi_normal.
       exploit Mem.mi_memval; et.
       { exploit Mem.perm_valid_block; et. unfold Mem.valid_block, Mem.flat_inj. des_ifs. }
       i. replace (ofs + 0)%Z with ofs in H by omega. rewrite PTR in H. inv H. inv H1. eapply mi_mappedblocks; et.
@@ -969,9 +961,8 @@ Next Obligation.
     rpapply ROMATCH; ss.
 Qed.
 Next Obligation.
-  set (CTX := Val.mi_normal).
   des. rename H into VAL. rename H0 into VALS. rename H1 into MEM. rename H2 into WF.
-  exploit (@external_call_mem_inject_gen CTX ef skenv0 skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret
+  exploit (@external_call_mem_inject_gen ef skenv0 skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret
                                          (to_inj su0 (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
   { unfold to_inj. r. esplits; ii; ss; des_ifs; eauto.
     - exfalso. inv SKE. exploit Genv.genv_symb_range; eauto. i. rewrite <- PUB in H1. inv WF. eapply WFLO in Heq. xomega.
@@ -980,8 +971,7 @@ Next Obligation.
   { eapply to_inj_mem; eauto. }
   { inv MEM. clear - NB VALS. abstr (Args.vs args0) vs_arg.
     ginduction vs_arg; ii; ss. inv VALS. econs; eauto. destruct a; ss.
-    unfold to_inj. r in H1. destruct b0; ss; cycle 1.
-    { econs; eauto. }
+    unfold to_inj. r in H1.
     hexploit H1; ss; eauto.  i.
     econs; eauto.
     - des. des_ifs. rewrite NB in *. ss.

@@ -742,7 +742,7 @@ Inductive wf_mem_weak (skenv ge0: SkEnv.t) (sk: Sk.t) (m0: mem): Prop :=
         (NONVOL: gv.(gvar_volatile) = false)
         (DEFINITIVE: classify_init gv.(gvar_init) = Init_definitive gv.(gvar_init))
         (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
-        (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to true) _q _n])
+        (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to) _q _n])
       ,
         exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)
                       /\ (<<IN: In id_to sk.(prog_defs_names)>>)

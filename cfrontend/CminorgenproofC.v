@@ -17,7 +17,6 @@ Require Import CtypingC.
 Require Import ModSemProps.
 
 Set Implicit Arguments.
-Local Existing Instance Val.mi_normal.
 
 Section SIMMODSEM.
 
@@ -183,7 +182,7 @@ Proof.
     esplits; eauto.
     { apply CsharpminorC.modsem_receptive. }
     inv MATCH.
-    ii. hexploit (@transl_step_correct prog tprog TRANSL _ skenv_link skenv_link); eauto; ss.
+    ii. hexploit (@transl_step_correct prog tprog TRANSL skenv_link skenv_link); eauto; ss.
     { eapply SkEnv.senv_genv_compat; ss. }
     { eapply SkEnv.senv_genv_compat; ss. }
     i; des.

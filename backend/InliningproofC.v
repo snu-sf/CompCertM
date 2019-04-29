@@ -16,7 +16,6 @@ Require Import CtypingC.
 Require Import ModSemProps.
 
 Set Implicit Arguments.
-Local Existing Instance Val.mi_normal.
 
 
 Section SIMMODSEM.
@@ -185,7 +184,7 @@ Proof.
     esplits; eauto.
     { apply modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog _ skenv_link skenv_link ge tge); eauto.
+    ii. hexploit (@step_simulation prog skenv_link skenv_link ge tge); eauto.
     { eapply SkEnv.senv_genv_compat; eauto. }
     { eapply SkEnv.senv_genv_compat; eauto. }
     { assert (SkEnv.genv_precise ge prog).

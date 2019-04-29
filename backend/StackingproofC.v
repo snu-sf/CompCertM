@@ -19,6 +19,7 @@ Require SoundTop.
 Require Import StoreArguments.
 Require Import ModSemProps.
 Require Import LiftDummy.
+Require Import JunkBlock.
 
 Set Implicit Arguments.
 
@@ -86,8 +87,6 @@ Local Opaque make_env.
 
 
 
-Local Existing Instance Val.mi_normal.
-
 Lemma sim_skenv_inj_globalenv_inject
       skenv_proj_src skenv_proj_tgt sm_arg (prog: Linear.program)
       (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg tt skenv_proj_src skenv_proj_tgt)
@@ -131,7 +130,7 @@ Section STACKINGEXTRA.
 Lemma match_stacks_sp_valid
       se tse ge j cs cs' sg sm0 sp'
       (STKS: match_stacks se tse ge j cs cs' sg sm0)
-      (SP: parent_sp cs' = Vptr sp' Ptrofs.zero true)
+      (SP: parent_sp cs' = Vptr sp' Ptrofs.zero)
 :
   <<SPVALID: sm0.(SimMemInj.tgt).(Mem.valid_block) sp' /\
              Ple sm0.(SimMemInj.tgt_parent_nb) sp' /\
@@ -144,7 +143,7 @@ Qed.
 Lemma match_stacks_sp_ofs:
   forall j se tse ge cs cs' sg sm,
   match_stacks se tse ge j cs cs' sg sm ->
-  exists sp, (parent_sp cs') = Vptr sp Ptrofs.zero true.
+  exists sp, (parent_sp cs') = Vptr sp Ptrofs.zero.
 Proof.
   induction 1; ii; ss; esplits; eauto.
 Qed.
@@ -159,7 +158,7 @@ Lemma arguments_private
       se tse ge sm
       (MATCH: m_tgt |= stack_contents F stk_src stk_tgt ** minjection F m_src)
       (STACKS: match_stacks se tse ge F stk_src stk_tgt sg sm)
-      (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
+      (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta)
   :
     <<_ : forall ofs (OFS: 0 <= ofs < 4 * size_arguments sg),
     (<<PRIV: loc_out_of_reach F m_src sp_tgt (spdelta.(Ptrofs.unsigned) + ofs)>>)>>
@@ -173,7 +172,7 @@ Proof.
   des_ifs; sep_simpl_tac.
   - unfold dummy_frame_contents in *. inv MATCH. ss.
     inv STACKS; ss; cycle 1.
-    { inv STK; ss. inv MAINARGS. }
+    { inv STK; ss. }
     des; cycle 1.
     { apply tailcall_size in LE. xomega. }
     clarify.
@@ -197,7 +196,7 @@ Lemma arguments_perm
       sg
       (MATCH: m_tgt |= stack_contents F stk_src stk_tgt ** minjection F m_src)
       (STACKS: match_stacks se tse ge F stk_src stk_tgt sg sm)
-      (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta true)
+      (SP: parent_sp stk_tgt = Vptr sp_tgt spdelta)
   :
     <<_ : forall ofs (OFS: 0 <= ofs < 4 *size_arguments sg),
     (<<PERM: Mem.perm m_tgt sp_tgt (spdelta.(Ptrofs.unsigned) + ofs) Cur Freeable>>)>>
@@ -210,7 +209,7 @@ Proof.
   des_ifs; ss; sep_simpl_tac.
   - unfold dummy_frame_contents in *. inv MATCH. ss.
     inv STACKS; ss; cycle 1.
-    { inv STK; ss. inv MAINARGS. }
+    { inv STK; ss. }
     des; cycle 1.
     { apply tailcall_size in LE. xomega. }
     clarify. eapply H4; eauto.
@@ -519,11 +518,11 @@ Definition frame_contents_at_external f (j: meminj) (sp: block) (ls ls0: locset)
 
 Fixpoint stack_contents_at_external (j: meminj) (cs: list Linear.stackframe) (cs': list Mach.stackframe) sg : massert :=
   match cs, cs' with
-  | [Linear.Stackframe f _ ls _], [Mach.Stackframe fb (Vptr sp' spofs true) ra _] =>
+  | [Linear.Stackframe f _ ls _], [Mach.Stackframe fb (Vptr sp' spofs) ra _] =>
     (freed_range sp' spofs.(Ptrofs.unsigned) (4 * (size_arguments sg)))
       ** range sp' (4 * (size_arguments sg)) (4 * (size_arguments f.(Linear.fn_sig)))
     (* pure True *)
-  | Linear.Stackframe f _ ls c :: cs, Mach.Stackframe fb (Vptr sp' spofs true) ra c' :: cs' =>
+  | Linear.Stackframe f _ ls c :: cs, Mach.Stackframe fb (Vptr sp' spofs) ra c' :: cs' =>
       frame_contents_at_external f j sp' ls (parent_locset cs) (parent_sp cs') (parent_ra cs') sg
       ** stack_contents j cs cs'
   | _, _ => pure False
@@ -536,7 +535,7 @@ Lemma stack_contents_at_external_footprint_split
   :
     m_footprint (stack_contents_at_external j
                                             ((Linear.Stackframe f sp ls c) :: cs)
-                                            ((Mach.Stackframe fb (Vptr sp' spofs true) ra c') :: cs') sg)
+                                            ((Mach.Stackframe fb (Vptr sp' spofs) ra c') :: cs') sg)
     =
     (m_footprint (frame_contents_at_external f j sp' ls (parent_locset cs) (parent_sp cs') (parent_ra cs') sg)
                  \2/
@@ -652,7 +651,6 @@ Proof.
   }
   Local Opaque frame_contents frame_contents_at_external.
   inv STK; ss.
-  { inv MAINARGS. }
   { psimpl. zsimpl. rewrite <- frame_contents_at_external_m_footprint; ss; try xomega.
     - split; try xomega. specialize (SZARG sg). omega.
     - eapply bound_outgoing_stack_data; et.
@@ -746,10 +744,9 @@ Proof.
 Local Opaque sepconj.
   induction cs as [ | [] cs]; destruct cs' as [ | [] cs']; simpl; intros; auto.
   destruct sp0; auto.
-  destruct b0; try congruence.
   destruct cs, cs'; sep_simpl_tac; des; try congruence.
   { eapply dummy_frame_contents_incr; eauto. }
-  apply frame_contents_incr with (j0 := j); auto.
+  apply frame_contents_incr with (j := j); auto.
   rewrite sep_swap. apply IHcs. rewrite sep_swap. assumption.
 Qed.
 
@@ -992,8 +989,6 @@ Local Opaque make_env sepconj.
 
 Section SIMMODSEM.
 
-Local Existing Instance Val.mi_normal.
-
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variable prog: Linear.program.
@@ -1052,11 +1047,15 @@ Qed.
 
 Hypothesis TRANSL: match_prog prog tprog.
 
-Definition locset_copy (rs: Mach.regset): locset :=
+Definition locset_copy (diff: Z) (rs: Mach.regset): locset :=
   fun loc =>
     match loc with
     | S _ _ _ => Vundef
-    | R r => rs r
+    | R r =>
+      match rs r with
+      | Vptr blk ofs => Vptr (blk.(Zpos) + diff).(Z.to_pos) ofs
+      | _ => rs r
+      end
     end
 .
 Hint Unfold locset_copy.
@@ -1069,71 +1068,6 @@ Lemma transf_function_sig
 .
 Proof. unfold transf_function in *. des_ifs. Qed.
 
-Lemma init_match_frame_contents_depr
-      sm_arg sg
-      (SIMSKE: SimSymb.sim_skenv sm_arg (ModSemPair.ss msp) (ModSem.skenv (ModSemPair.src msp))
-                                 (ModSem.skenv (ModSemPair.tgt msp)))
-      m_tgt0 rs vs_src vs_tgt ls
-      (STORE: StoreArguments.store_arguments sm_arg.(SimMemInj.tgt) rs vs_tgt sg m_tgt0)
-      (SG: 4 * size_arguments sg <= Ptrofs.modulus)
-      (LS: LocationsC.fill_arguments (locset_copy rs) vs_src (loc_arguments sg) = Some ls)
-      (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
-      sm_init
-      (SM: sm_init = sm_arg.(SimMemInjC.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
-      (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
-          SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
-      (MWF: SimMem.wf sm_init)
-      (NB: Ple (Genv.genv_next (SkEnv.project skenv_link md_src.(Mod.sk))) (Mem.nextblock m_tgt0))
-  :
-    m_tgt0
-      |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
-      ** minjection sm_arg.(SimMemInj.inj) sm_arg.(SimMemInj.src)
-      ** globalenv_inject ge sm_arg.(SimMemInj.inj)
-.
-Proof.
-  sep_split.
-  { ss. zsimpl. esplits; eauto with lia.
-    - zsimpl. apply Z.divide_0_r.
-    - inv STORE. hexpl Mem.alloc_result NB. clarify.
-    - clear - SG SIMVS STORE LS. inv STORE.
-      hexpl LocationsC.fill_arguments_spec. clear LS. clarify.
-      hexpl Mem.alloc_result. clarify.
-      intros ? ? OFS0 OFS1 ALIGN. zsimpl.
-      destruct (classic (In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))).
-      + hnf in VALS. generalize (loc_arguments_one sg); intro ONES. abstr (loc_arguments sg) locs.
-        clear - OFS0 OFS1 SG H SIMVS VALS locs ONES.
-        ginduction locs; ii; ss.
-        exploit ONES; eauto. i.
-        destruct a; ss.
-        des; ss; clarify.
-        * inv VALS. inv H2. inv H1. cbn in H5. psimpl. zsimpl. inv SIMVS.
-          rewrite Ptrofs.unsigned_repr in *; cycle 1.
-          { split; try lia. unfold Ptrofs.max_unsigned.
-            generalize (typesize_pos ty); i. xomega.
-          }
-          esplits; eauto.
-        * inv SIMVS. inv VALS. eapply IHlocs; eauto.
-      + exploit OUT; eauto. i; des. ss. rewrite H0.
-        exploit (Mem.valid_access_load m_tgt0 (chunk_of_type ty)); cycle 1.
-        { i; des. esplits; eauto. }
-        red. esplits; eauto.
-        * erewrite Stackingproof.size_type_chunk in *. rewrite Stackingproof.typesize_typesize in *.
-          ii. eapply Mem.perm_implies.
-          { eapply PERM. xomega. }
-          eauto with mem.
-        * rewrite Stackingproof.align_type_chunk. eapply Z.mul_divide_mono_l; eauto.
-  }
-  { apply disjoint_footprint_sepconj. split.
-    - ii; ss. des. clarify. zsimpl. specialize (PRIV ofs). exploit PRIV; eauto with lia.
-      intro TPRIV. hnf in TPRIV. ss. des. eapply TPRIV; eauto.
-    - ii; ss.
-  }
-  sep_split.
-  { ss. subst sm_init. eapply MWF. }
-  { ss. }
-  eapply sim_skenv_inj_globalenv_inject; et.
-Qed.
-
 Lemma init_match_frame_contents
       sm_arg sg
       (SIMSKE: SimSymb.sim_skenv sm_arg (ModSemPair.ss msp) (ModSem.skenv (ModSemPair.src msp))
@@ -1141,32 +1075,43 @@ Lemma init_match_frame_contents
       m_tgt0 rs vs_src vs_tgt ls
       (STORE: StoreArguments.store_arguments sm_arg.(SimMemInj.tgt) rs (typify_list vs_tgt sg.(sig_args)) sg m_tgt0)
       (SG: 4 * size_arguments sg <= Ptrofs.modulus)
-      (LS: LocationsC.fill_arguments (locset_copy rs) (typify_list vs_src sg.(sig_args)) (loc_arguments sg) = Some ls)
+      (LS: LocationsC.fill_arguments
+             (locset_copy (sm_arg.(SimMemInj.src).(Mem.nextblock).(Zpos) - m_tgt0.(Mem.nextblock).(Zpos)) rs)
+             (typify_list vs_src sg.(sig_args)) (loc_arguments sg) = Some ls)
       (SIMVS: Val.inject_list (SimMemInj.inj sm_arg) vs_src vs_tgt)
       sm_init
-      (SM: sm_init = sm_arg.(SimMemInjC.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
+      (SM0: sm_init = sm_arg.(SimMemInjC.update) sm_arg.(SimMemInj.src) m_tgt0 sm_arg.(SimMemInj.inj))
       (PRIV: forall ofs (BDD: 0 <= ofs < 4 * size_arguments sg),
           SimMemInj.tgt_private sm_init (Mem.nextblock sm_arg.(SimMemInj.tgt)) ofs)
-      (MWF: SimMem.wf sm_init)
+      (MLE0: SimMem.le sm_arg sm_init)
+      (MWF0: SimMem.wf sm_init)
+      sm_junkinj n
+      (SM1: sm_junkinj = sm_init.(SimMemInjC.update) (assign_junk_blocks sm_init.(SimMemInj.src) n)
+                                                     (assign_junk_blocks m_tgt0 n)
+                                                     (SimMemInjC.inject_junk_blocks
+                                                        sm_init.(SimMemInj.src) m_tgt0 n
+                                                        sm_arg.(SimMemInj.inj)))
+      (MLE1: SimMem.le sm_init sm_junkinj)
+      (MWF1: SimMem.wf sm_junkinj)
       (NB: Ple (Genv.genv_next (SkEnv.project skenv_link md_src.(Mod.sk))) (Mem.nextblock m_tgt0))
   :
-    m_tgt0
+    assign_junk_blocks m_tgt0 n
       |= dummy_frame_contents sm_arg.(SimMemInj.inj) ls sg (Mem.nextblock sm_arg.(SimMemInj.tgt)) 0
-      ** minjection sm_arg.(SimMemInj.inj) sm_arg.(SimMemInj.src)
-      ** globalenv_inject ge sm_arg.(SimMemInj.inj)
+      ** minjection sm_junkinj.(SimMemInj.inj) sm_junkinj.(SimMemInj.src)
+      ** globalenv_inject ge sm_junkinj.(SimMemInj.inj)
 .
 Proof.
   sep_split.
   { ss. zsimpl. esplits; eauto with lia.
     - apply Z.divide_0_r.
-    - inv STORE. hexpl Mem.alloc_result NB. clarify.
+    - inv STORE. hexpl Mem.alloc_result NB. clarify. ii. rewrite assign_junk_blocks_perm. eapply PERM; et.
     - clear - SG SIMVS STORE LS. inv STORE.
       hexpl LocationsC.fill_arguments_spec. clear LS. clarify.
       hexpl Mem.alloc_result. clarify.
       intros ? ? OFS0 OFS1 ALIGN. zsimpl.
       destruct (classic (In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg)))).
       + hnf in VALS. generalize (loc_arguments_one sg); intro ONES. abstr (loc_arguments sg) locs.
-        clear - OFS0 OFS1 SG H SIMVS VALS locs ONES FILL.
+        clear - OFS0 OFS1 SG H SIMVS VALS locs ONES FILL ALC.
         abstr (sig_args sg) tys.
         ginduction locs; ii; ss.
         exploit ONES; eauto. i.
@@ -1176,9 +1121,10 @@ Proof.
           inv VALS. inv SIMVS; ss; des_ifs.
           inv H3. inv H7.
           exists (typify v' t). esplits; eauto.
-          - unfold Mem.loadv in *. ss. psimpl.
-            unfold fe_ofs_arg, Ptrofs.max_unsigned in *.
-            set (typesize_pos ty). lia.
+          - unfold Mem.loadv in *. ss. zsimpl. psimpl.
+            rewrite assign_junk_blocks_load; ss; cycle 1.
+            { eauto with mem. }
+            psimpl. unfold Ptrofs.max_unsigned in *. set (typesize_pos ty). lia.
           - rewrite <- H6.
             eapply inject_typify; eauto. }
         { unfold typify_list in *.
@@ -1186,7 +1132,7 @@ Proof.
           eapply IHlocs; eauto. }
       + exploit OUT; eauto. i; des. ss. rewrite H0.
         exploit (Mem.valid_access_load m_tgt0 (chunk_of_type ty)); cycle 1.
-        { i; des. esplits; eauto. }
+        { i; des. esplits; eauto. erewrite assign_junk_blocks_load; eauto. eauto with mem. }
         red. esplits; eauto.
         * erewrite Stackingproof.size_type_chunk in *. rewrite Stackingproof.typesize_typesize in *.
           ii. eapply Mem.perm_implies.
@@ -1195,21 +1141,28 @@ Proof.
         * rewrite Stackingproof.align_type_chunk. eapply Z.mul_divide_mono_l; eauto.
   }
   { apply disjoint_footprint_sepconj. split.
-    - ii; ss. des. clarify. zsimpl. specialize (PRIV ofs). exploit PRIV; eauto with lia.
-      intro TPRIV. hnf in TPRIV. ss. des. eapply TPRIV; eauto.
+    - ii; ss. rename H into X. rename H0 into Y. des.
+      clarify. zsimpl. specialize (PRIV ofs). exploit PRIV; eauto with lia.
+      intro TPRIV. hnf in TPRIV. ss. des. unfold SimMemInjC.inject_junk_blocks in *.
+      des_ifs; cycle 1.
+      { eapply TPRIV; eauto. rewrite assign_junk_blocks_perm in *; ss. }
+      bsimpl; des; des_sumbool; ss.
+      rewrite assign_junk_blocks_perm in *. zsimpl. exploit Mem.perm_valid_block; eauto.
     - ii; ss.
   }
   sep_split.
-  { ss. subst sm_init. eapply MWF. }
+  { ss. inv MWF1; ss. }
   { ss. }
   eapply sim_skenv_inj_globalenv_inject; et.
+  { eapply SimSymb.mle_preserves_sim_skenv in SIMSKE; et. etrans; et. }
+  { rewrite assign_junk_blocks_nextblock. ss. xomega. }
 Unshelve. all: eauto.
 Qed.
 
 Lemma stack_contents_at_external_intro
       sm0 stack cs' sg sp sm1
       (STACKS: match_stacks tge _ (SimMemInj.inj sm0) stack cs' sg sm0)
-      (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
+      (RSP: parent_sp cs' = Vptr sp Ptrofs.zero)
       (FREETGT: Mem.free (SimMemInj.tgt sm0) sp 0 (4 * size_arguments sg) = Some (SimMemInj.tgt sm1))
       (SEP: SimMemInj.tgt sm0 |= stack_contents (SimMemInj.inj sm0) stack cs')
   :
@@ -1338,7 +1291,7 @@ Qed.
 Lemma stack_contents_at_external_spec_elim
       sm_ret stack cs' sg sp sm_after
       (STACKS: match_stacks tge _ (SimMemInj.inj sm_ret) stack.(stackframes_after_external) cs' sg sm_after)
-      (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
+      (RSP: parent_sp cs' = Vptr sp Ptrofs.zero)
       (UNFREETGT: Mem_unfree (SimMemInj.tgt sm_ret) sp 0 (4 * size_arguments sg) = Some (SimMemInj.tgt sm_after))
       (SEP: SimMemInj.tgt sm_ret |= stack_contents_at_external (SimMemInj.inj sm_ret) stack cs' sg)
   :
@@ -1354,7 +1307,6 @@ Proof.
   des_ifs_safe.
   destruct stack.
   { des_ifs; sep_simpl_tac; cycle 1.
-    { ss. des_ifs. inv STACKS. ss. inv STK. }
     inv STACKS; cycle 1.
     { inv STK. inv MAINARGS. }
     ss.
@@ -1461,8 +1413,13 @@ Inductive match_states
                    mr
                    (CALLEESAVE: Conventions1.is_callee_save mr)
                  ,
-                   <<EQ: dummy_stack_src.(current_locset) (R mr) = st_tgt0.(init_rs) mr>>
-                   /\ <<PTRFREE: ~ is_real_ptr (st_tgt0.(init_rs) mr)>>>> /\
+                   (<<UIU: dummy_stack_src.(current_locset) (R mr) = Vundef -> st_tgt0.(init_rs) mr = Vundef>>)
+                   /\
+                   (<<INJ: Val.inject sm0.(SimMemInj.inj) (dummy_stack_src.(current_locset) (R mr))
+                                                              (st_tgt0.(init_rs) mr)>>)
+                   (* <<EQ: dummy_stack_src.(current_locset) (R mr) = st_tgt0.(init_rs) mr>> *)
+                   (* /\ <<PTRFREE: ~ is_real_ptr (st_tgt0.(init_rs) mr)>> *)
+        >> /\
         <<SIG: dummy_stack_src.(current_function).(Linear.fn_sig) = st_tgt0.(init_sg)>>)
     (WFTGT: strong_wf_tgt st_tgt0.(MachC.st))
 .
@@ -1475,7 +1432,7 @@ Inductive match_states_at
     init_rs init_sg cs' tfptr rs sp skd fptr cs ls
     (SRCST: st_src0 = Linear.Callstate cs fptr (SkEnv.get_sig skd) ls (SimMemInj.src sm_arg))
     (TGTST: st_tgt0 = mkstate init_rs init_sg (Callstate cs' tfptr rs (SimMemInj.tgt sm_at)))
-    (RSP: parent_sp cs' = Vptr sp Ptrofs.zero true)
+    (RSP: parent_sp cs' = Vptr sp Ptrofs.zero)
     (PRIV: brange sp 0 (4 * size_arguments (SkEnv.get_sig skd)) <2= sm_arg.(SimMemInj.tgt_private))
     (SIG: Genv.find_funct skenv_link fptr = Some skd)
     (VALID: Mem.valid_block (SimMemInj.tgt sm_arg) sp)
@@ -1503,7 +1460,7 @@ Inductive has_footprint (st_src0: Linear.state): MachC.state -> SimMem.t -> Prop
     (** copied from MachC **)
     stack rs m0 fptr sg blk ofs
     (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
-    (RSP: (parent_sp stack) = Vptr blk ofs true)
+    (RSP: (parent_sp stack) = Vptr blk ofs)
     (OFSZERO: ofs = Ptrofs.zero)
     init_rs init_sg
     (** newly added **)
@@ -1521,7 +1478,7 @@ Inductive mle_excl (st_src0: Linear.state): MachC.state -> SimMem.t -> SimMem.t 
     init_rs init_sg stack fptr ls0 m0
     sg blk ofs
     (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
-    (RSP: (parent_sp stack) = Vptr blk ofs true)
+    (RSP: (parent_sp stack) = Vptr blk ofs)
     (** newly added **)
     sm0 sm1
     (MLEEXCL: SimMemInjC.le_excl bot2 (brange blk (ofs.(Ptrofs.unsigned))
@@ -1572,10 +1529,11 @@ Proof.
           { erewrite <- extcall_arguments_length; eauto. erewrite loc_arguments_length; eauto. }
           inv TYP. xomega.
       }
-      exploit (LocationsC.fill_arguments_progress (locset_copy rs)
-                                       (typify_list (Args.vs args_src) (sig_args (Linear.fn_sig f)))
-                                       (* args_src.(Args.vs) *)
-                                       (loc_arguments f.(Linear.fn_sig))); eauto. i; des.
+      exploit (LocationsC.fill_arguments_progress
+                 (locset_copy ((Args.m args_src).(Mem.nextblock).(Zpos) - m0.(Mem.nextblock).(Zpos)) rs)
+                 (typify_list (Args.vs args_src) (sig_args (Linear.fn_sig f)))
+                 (* args_src.(Args.vs) *)
+                 (loc_arguments f.(Linear.fn_sig))); eauto. i; des.
       exploit (LocationsC.fill_arguments_spec
                  (typify_list (Args.vs args_src) (sig_args (Linear.fn_sig f)))
                  (* args_src.(Args.vs) *)
@@ -1583,6 +1541,8 @@ Proof.
       exploit SimMemInjC.mach_store_arguments_simmem; eauto.
       { econs; eauto with congruence. rp; eauto. }
       i; des.
+
+      exploit (@SimMemInjC.inject_junk_blocks_spec sm1 n); et. intro SM0; des. rename sm0 into sm2.
 
       esplits.
       { (* initial frame *)
@@ -1592,19 +1552,47 @@ Proof.
           econs; eauto with congruence.
           erewrite SimMem.sim_val_list_length; try apply VALS0. ss.
           etrans; eauto with congruence.
-        - ii. hexpl OUT.
+        - instantiate (1:= n).
+          ii. hexpl OUT.
           destruct loc; ss.
           + hexploit PTRFREE; eauto.
             { rewrite <- SG. eauto. }
             ii; eauto with congruence.
+            rewrite MEMSRC. rewrite OUT0.
+            rewrite <- MEMSRC in *.
+            clear - SM (* NB *) H.
+            des_ifs. ss. unfold Mem.valid_block in *. des.
+            rewrite assign_junk_blocks_nextblock in *. unfold Plt in *.
+            abstr (Mem.nextblock m0) y.
+            abstr (Mem.nextblock (Args.m args_src)) m_src.
+
+            Ltac Pos_compare_tac := try rewrite Pos.compare_lt_iff in *;
+                                    try rewrite Pos.compare_gt_iff in *;
+                                    apply_all_once Pos.compare_eq; clarify; try lia.
+            replace (Z.pos b + Z.pos_sub m_src y) with (Z.pos_sub b y + Z.pos m_src); try nia; cycle 1.
+            { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
+            split; ss; try xomega.
+            * ii.
+              rewrite Z2Pos.inj_add in *; ss; try lia.
+              rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
+              rewrite Z.pos_sub_diag in *. zsimpl. rewrite Pos2Z.id in *. lia.
+            * destruct (peq b y); ss.
+              { clarify. rewrite Z.pos_sub_diag. zsimpl. rewrite Pos2Z.id in *. lia. }
+              rewrite Z2Pos.inj_add in *; ss; try lia; cycle 1.
+              {
+                rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
+              }
+              replace (Z.pos_sub b y) with (b.(Zpos) - y.(Zpos))%Z; cycle 1.
+              { ss. }
+              rewrite Z2Pos.inj_sub; ss; try lia.
           + rewrite OUT0 in *. ss.
       }
-      { eauto. }
+      { instantiate (1:= sm2). etrans; eauto. }
       { (* match states *)
-        assert(INITRS: agree_regs (SimMemInj.inj sm_arg) ls1 rs).
+        assert(INITRS: agree_regs (SimMemInj.inj sm2) ls1 rs).
         {
           ii. destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (Linear.fn_sig f))))).
-          * red in VALS. inv TYP. rewrite <- SG in *. clear - FILL VALS VALS0 H.
+          * red in VALS. inv TYP. ss. rewrite <- SG in *. clear - FILL VALS VALS0 H MLE0.
             generalize (loc_arguments_one (Linear.fn_sig f)). i.
             abstr (loc_arguments (Linear.fn_sig f)) locs. clear_tac.
             abstr (Args.vs args_src) vals_src. abstr (Args.vs args_tgt) vals_tgt. clear_tac.
@@ -1617,6 +1605,7 @@ Proof.
               rename H4 into EARGP. inv EARGP. rename H2 into EARG. inv EARG; ss.
               clarify. rewrite <- H4. rewrite H.
               eapply inject_typify; eauto.
+              inv MLE0. ss. eapply val_inject_incr; et.
             }
             inv VALS. destruct vals_tgt; ss. des_ifs. inv VALS0.
             unfold typify_list in *. ss. des_ifs.
@@ -1624,8 +1613,39 @@ Proof.
           * (* eapply Loc_not_in_notin_R in H; eauto. *)
             hexploit PTRFREE; eauto.
             { rewrite <- SG. eauto. }
-            i. rewrite OUT; ss.
-            eapply fakeptr_inject_id; eauto.
+            i. rewrite OUT; ss. rewrite DEF. s.
+            rewrite <- MEMSRC in *. rewrite <- MEMTGT in *.
+            clear - H0 MWF0 SM DEF MLE0. des_ifs. ss.
+            econs; cycle 1.
+            { instantiate (1:= 0%Z). psimpl. ss. }
+            unfold SimMemInjC.inject_junk_blocks. ss. unfold Mem.valid_block in *.
+            rewrite assign_junk_blocks_nextblock in *.
+            abstr (Mem.nextblock m0) y.
+            abstr (Mem.nextblock (Args.m args_src)) m_src.
+            des.
+            replace (Z.pos b + Z.pos_sub m_src y) with (Z.pos_sub b y + Z.pos m_src); try nia; cycle 1.
+            { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
+            destruct (peq b y) eqn: EQ.
+            { clarify. rewrite Z.pos_sub_diag. zsimpl. rewrite Pos2Z.id.
+              des_ifs; bsimpl; des; des_sumbool; try xomega; cycle 1.
+              replace (m_src + y - m_src)%positive with y; ss.
+              rewrite Pos.add_comm. rewrite Pos.add_sub. ss.
+            }
+            rewrite Z2Pos.inj_add; ss; cycle 1.
+            { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
+            assert(COND0: negb (plt (Z.to_pos (Z.pos_sub b y) + m_src) m_src)).
+            { bsimpl. des_sumbool. ii. unfold Plt in *. xomega. }
+            rewrite COND0.
+            assert(COND1: plt (Z.to_pos (Z.pos_sub b y) + m_src) (m_src + Pos.of_nat n)).
+            { bsimpl. des_sumbool. ii. unfold Plt in *. rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
+              destruct n; ss; try lia.
+            }
+            rewrite COND1.
+            ss.
+            bsimpl; des; des_sumbool. unfold Plt in *.
+            rewrite Pos.add_comm. rewrite Pos.add_assoc. rewrite Pos.add_sub.
+            rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
+            rewrite Pos2Z.id. rewrite Pos.add_sub_assoc; ss. rewrite Pos.add_comm. rewrite Pos.add_sub. ss.
         }
         rename targs into targs_tgt. rename TYP into TYPTGT.
         (* assert(TYPSRC: exists targs_src, typecheck (Args.vs args_src) (fn_sig fd) targs_src). *)
@@ -1633,15 +1653,18 @@ Proof.
         (* des. *)
         econs; ss; eauto.
         - econs; ss; eauto.
-          + clarify.
+          + rewrite DEF. ss. rewrite SM. ss. econs; ss; eauto with congruence.
           + econs; ss; eauto.
-            * inv SIMSKENV. eapply SimMemInjC.sim_skenv_symbols_inject; et.
+            * inversion SIMSKENV; clear SIMSKENV.
+              eapply SimMemInjC.sim_skenv_symbols_inject with (sm0 := sm2); et.
+              eapply SimSymb.mle_preserves_sim_skenv; eauto.
+              eapply SimSymb.mle_preserves_sim_skenv; eauto.
             * eapply loc_arguments_bounded.
             (* * (* TODO: make lemma *) rewrite SM. s. rewrite MEMTGT. *)
             (*   clear - ALC NB MWF. ii. inv MWF; ss. eapply TGTEXT in H. *)
             (*   rr in H; ss. des. r in H0. unfold Mem.valid_block in *. *)
             (*   exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. xomega. *)
-            * rewrite SM. s. unfold Mem.valid_block. rewrite <- NB.
+            * rewrite DEF. rewrite SM. s. unfold Mem.valid_block. rewrite assign_junk_blocks_nextblock. rewrite <- NB.
               exploit Mem.nextblock_alloc; et. i. rewrite H. rewrite MEMTGT.
               clear - ALC NB MWF.
               esplits.
@@ -1651,22 +1674,30 @@ Proof.
                 ii. inv MWF; ss. eapply TGTEXT in H.
                 rr in H; ss. des. r in H0. unfold Mem.valid_block in *.
                 exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. xomega. }
+          + eapply val_inject_incr; try apply MLE0; eauto.
+            eapply val_inject_incr; try apply MLE; eauto.
           + psimpl. zsimpl. rewrite SG.
             rewrite MEMSRC. rewrite MEMTGT.
-            eapply init_match_frame_contents with (vs_src := (Args.vs args_src))
-                                                  (vs_tgt := (Args.vs args_tgt)(* targs_tgt *)); eauto.
-            * apply SIMSKENV.
-            * inv TYPTGT. econs; eauto. rewrite <- MEMTGT. ss.
-            * inv TYPTGT. unfold Ptrofs.max_unsigned in *. s. xomega.
-            * rewrite <- SG. eauto with congruence.
-            * inv SIMSKENV. ss. inv SIMSKE. ss.
-              etrans; et. inv MWF0. ss.
-        - clarify.
+            exploit (@init_match_frame_contents sm_arg); try apply MLE; try apply MLE0; eauto.
+            { apply SIMSKENV. }
+            { inv TYPTGT. econs; eauto. rewrite <- MEMTGT. ss. }
+            { inv TYPTGT. unfold Ptrofs.max_unsigned in *. s. xomega. }
+            { rewrite <- SG. ss. rewrite <- MEMSRC in *. eauto. }
+            { rewrite DEF, SM. s. f_equal; eauto. }
+            { inv SIMSKENV. ss. inv SIMSKE. ss.
+              etrans; et. inv MWF0. ss. }
+            intro SEP.
+            eapply dummy_frame_contents_incr; try apply MLE0; eauto.
+            eapply dummy_frame_contents_incr; try apply MLE; eauto.
+            subst; ss.
+        - clarify; ss; congruence.
         - clarify.
         - esplits; ss.
-          + i. ss. split.
-            * erewrite OUT; ss. ii. hexpl loc_arguments_acceptable_2 ACCP. ss. clarify.
-            * eapply PTRFREE. ii. hexpl loc_arguments_acceptable_2 ACCP. ss. clarify.
+          + i. ss. split; i.
+            * rewrite OUT in H; ss.
+              { des_ifs. }
+              ii. hexpl loc_arguments_acceptable_2 ACCP. ss. clarify.
+            * esplits; eauto.
         - rr. ss. esplits; eauto.
       }
     }
@@ -1804,7 +1835,7 @@ Proof.
     }
     des.
 
-    exploit (@SimMemInjC.unfree_right _ (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
+    exploit (@SimMemInjC.unfree_right (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
     { inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl. inv SIMARGS. ss. clarify.
       assert(sg = sg_arg).
       { des. clarify. inv SIMSKENV. inv SIMSKELINK. ss. r in SIMSKENV.
@@ -1848,8 +1879,9 @@ Proof.
     + econs; ss; eauto with congruence; cycle 1.
       {
         clear - MLE2 GOOD DUMMY STACKS. destruct stack; ss; des_ifs; ss.
-        { esplits; ss; eauto; ss. }
+        { esplits; ss; eauto; ss. ii. exploit GOOD; eauto. i; des. esplits; et. eapply val_inject_incr; try apply MLE2; ss. }
         rewrite DUMMY. esplits; eauto.
+        i. exploit GOOD; et. i; des. esplits; et. eapply val_inject_incr; try apply MLE2; ss.
       }
       assert(WTST: wt_state (Linear.Returnstate stack
        (Locmap.setpair (loc_result sg_arg) (typify (Retv.v retv_src) (proj_sig_res sg_arg))
@@ -2069,12 +2101,12 @@ Proof.
         eapply val_inject_incr; try apply MLE; eauto.
     + econs; eauto.
       * ii. specialize (AGCSREGS mr). ss. specialize (GOOD mr H). des_safe.
-        rewrite <- GOOD. rewrite <- AGCSREGS; ss.
+        rewrite <- AGCSREGS in *; ss.
         destruct (Val.eq (ls0 (R mr)) Vundef).
-        { rewrite e. ss. }
-        specialize (AGREGS mr). inv AGREGS; ss.
-        exfalso.
-        eapply GOOD0. rewrite <- GOOD. rewrite <- AGCSREGS; ss. rewrite <- H0. ss.
+        { rewrite GOOD; ss. }
+        specialize (AGREGS mr).
+        clear - GOOD0 AGREGS n.
+        inv GOOD0; inv AGREGS; try rewrite <- H in *; try rewrite <- H0 in *; ss; clarify.
 
   - (* step lemma *)
     left; i.
@@ -2106,7 +2138,8 @@ Proof.
       * inv H0; inv MCOMPAT; ss.
       * inv H0; ss.
       * esplits; et.
-        eapply LinearC.step_preserves_last_option; et.
+        { eapply LinearC.step_preserves_last_option; et. }
+        { ii. exploit GOOD; et. i; des. esplits; et. eapply val_inject_incr; try apply MLE; et. }
 
 Unshelve.
   all: ss.

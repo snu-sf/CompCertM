@@ -62,7 +62,7 @@ Lemma match_stackframes_not_nil
     ts <> []
 .
 Proof.
-  inv MATCH; ss. inv MAINARGS.
+  inv MATCH; ss.
 Qed.
 
 Lemma getpair_equal
@@ -96,7 +96,7 @@ Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: LTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Allocproof.match_states skenv_link tge st_src0 st_tgt0)
-    (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
+    (MCOMPATSRC: st_src0.(RTL.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(LTLC.get_mem) = sm0.(SimMem.tgt))
     (DUMMYTGT: strong_wf_tgt st_tgt0)
 .

@@ -238,7 +238,7 @@ Proof.
     inv SIMARGS. ss. clarify. inv VALS. inv H3.
     destruct (Mem.alloc (SimMemExt.tgt sm_arg) 0 0) eqn:MEQ.
     eexists (mkstate _ (State (((fun _ => Vundef) # PC <- fptr0 # RA <- Vnullptr # RDI <- (typify v2 AST.Tlong))
-                                 # RSP <- (Vptr (Mem.nextblock (SimMemExt.tgt sm_arg)) Ptrofs.zero true)) m)).
+                                 # RSP <- (Vptr (Mem.nextblock (SimMemExt.tgt sm_arg)) Ptrofs.zero)) m)).
     econs; ss; eauto.
     - instantiate (1:=[typify v2 AST.Tlong]). econs; ss.
     - econs.

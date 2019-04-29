@@ -12,6 +12,7 @@ Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC Matc
 Require SimMemId.
 Require SoundTop.
 Require Import LiftDummy.
+Require Import JunkBlock.
 
 Set Implicit Arguments.
 
@@ -84,7 +85,9 @@ Proof.
       (* * ss. esplits; et. *)
     + rewrite SGEQ.
       rpapply LTLC.initial_frame_intro; revgoals; [ f_equal; et | .. ]; eauto with congruence.
-      folder. rewrite FPTR. ss.
+      * rewrite MEMTGT. eauto.
+      * ii. rewrite <- MEMTGT. eauto with congruence.
+      * folder. rewrite FPTR. ss.
     + ss.
   - (* init progress *)
     des. inv SAFESRC.
@@ -93,12 +96,13 @@ Proof.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. unfold bind in *. folder. des_ifs.
     inv TYP.
     unfold transf_function in *. unfold bind in *. des_ifs.
+    destruct sm_arg; ss. clarify.
     esplits; eauto. econs; eauto.
     + folder. rewrite <- FPTR. rewrite H. eauto.
     + econs; eauto.
       * ss. congruence.
       * ss. rewrite <- VALS. et.
-    + ss.
+    + ss. rewrite MEMTGT in *. eauto.
     + ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.

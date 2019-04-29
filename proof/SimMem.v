@@ -68,7 +68,7 @@ Module SimMem.
   Qed.
 
   Definition sim_block `{SM: class} (sm0: t) (blk_src blk_tgt: block): Prop :=
-    sm0.(sim_val) (Vptr blk_src Ptrofs.zero true) (Vptr blk_tgt Ptrofs.zero true)
+    sm0.(sim_val) (Vptr blk_src Ptrofs.zero) (Vptr blk_tgt Ptrofs.zero)
   .
 
   Definition lifted `{SM: class} (sm0 sm1: t): Prop := SimMem.lift sm0 = sm1 /\ SimMem.wf sm0.

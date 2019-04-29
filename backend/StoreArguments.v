@@ -16,7 +16,7 @@ Require Stacklayout.
 Require Import Mach mktac MemdataC.
 
 
-Definition agree `{CTX: Val.meminj_ctx}  (j: meminj) (rs0 rs1: Mach.regset) : Prop :=
+Definition agree (j: meminj) (rs0 rs1: Mach.regset) : Prop :=
   forall mr, Val.inject j (rs0 mr) (rs1 mr).
 
 Lemma typesize_chunk
@@ -62,7 +62,7 @@ Section STOREARGUMENTS.
         (chunk_of_type ty) m
         (Val.offset_ptr sp (Ptrofs.repr (Stacklayout.fe_ofs_arg + 4 * ofs))) = Some v ->
       forall (UNDEFS: forall blk stack_ofs (UNDEF: v = Vundef)
-                             (ADDR: sp = Vptr blk stack_ofs true),
+                             (ADDR: sp = Vptr blk stack_ofs),
                  memval_undefs (chunk_of_type ty) (m.(Mem.mem_contents)!!blk)
                                (Ptrofs.unsigned stack_ofs + (Stacklayout.fe_ofs_arg + 4 * ofs))),
         extcall_arg rs m sp (S Outgoing ofs ty) v
@@ -86,7 +86,7 @@ Section STOREARGUMENTS.
   | store_arguments_intro
       m1 blk
       (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, blk))
-      (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero true) sg vs)
+      (VALS: extcall_arguments rs m2 (Vptr blk Ptrofs.zero) sg vs)
       (UNCH: Mem.unchanged_on (fun b ofs => if eq_block b blk
                                             then ~ (0 <= ofs < 4 * size_arguments sg)
                                             else True) m1 m2)
@@ -192,7 +192,7 @@ Section STOREARGUMENTS_PROPERTY.
         rs m blk sg vs
         (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
         (ARGS: list_forall2
-                 (extcall_arg_pair rs m (Vptr blk Ptrofs.zero true))
+                 (extcall_arg_pair rs m (Vptr blk Ptrofs.zero))
                  (loc_arguments sg) vs)
     :
       list_forall2
@@ -213,7 +213,7 @@ Section STOREARGUMENTS_PROPERTY.
         rs m blk sg vs
         (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
         (ARGS: list_forall2
-                 (extcall_arg_pair rs m (Vptr blk Ptrofs.zero true))
+                 (extcall_arg_pair rs m (Vptr blk Ptrofs.zero))
                  (loc_arguments sg) vs)
     :
       list_forall2
@@ -247,7 +247,7 @@ Section STOREARGUMENTS_PROPERTY.
         (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
     :
       list_forall2
-        (extcall_arg_pair rs m (Vptr blk Ptrofs.zero true)) (loc_arguments sg) vs.
+        (extcall_arg_pair rs m (Vptr blk Ptrofs.zero)) (loc_arguments sg) vs.
   Proof.
     generalize (loc_arguments_acceptable sg).
     generalize (loc_arguments_ofs_bounded sg SZ).
@@ -339,37 +339,17 @@ Module _FillArgsParallel.
     f_equal. eapply IHvl; eauto.
   Qed.
 
-  Local Existing Instance Val.mi_normal.
-  (* Context `{CTX: Val.meminj_ctx}. *)
-
-  Lemma copy_list_memval_decode_pointer j vl vl' chunk v blk ofs b
+  Lemma copy_list_memval_decode_pointer j vl vl' chunk v blk ofs
         (INJ: Val.inject j v (decode_val chunk vl))
         (COPY: copy_list_memval v vl = vl')
-        (VALUE: v = Vptr blk ofs b)
+        (VALUE: v = Vptr blk ofs)
     :
       decode_val chunk vl' = v.
   Proof.
+    assert(H: DUMMY_PROP) by ss.
     clarify. inv INJ; ss.
-    - unfold decode_val in H3. destruct vl; ss.
+    - unfold decode_val in H2. destruct vl; ss.
       + des_ifs.
-      + des_ifs_safe.
-        destruct m, chunk; ss; des_ifs_safe.
-        * des_ifs.
-        * des_ifs.
-        * des_ifs.
-        * des_ifs.
-        * des_ifs.
-        * des_ifs.
-        * des_ifs.
-        * des_ifs.
-        * des_ifs.
-        * des_ifs.
-        * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify).
-          unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs.
-        * destruct v; ss.
-        * repeat ((repeat apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify).
-          unfold decode_val; des_ifs. ss. unfold proj_sumbool, andb. des_ifs.
-    - unfold decode_val in H3. destruct vl; ss.
       + des_ifs_safe.
         destruct m, chunk; ss; des_ifs_safe.
         * des_ifs.
@@ -420,18 +400,11 @@ Module _FillArgsParallel.
     - eapply copy_list_memval_decode_pointer; eauto.
       rewrite <- H.
       econs; eauto.
-    - eapply copy_list_memval_decode_pointer; eauto.
-      rewrite <- H.
-      econs; eauto.
-    - eapply copy_list_memval_decode_pointer; eauto.
-      rewrite <- H.
-      econs; eauto.
     - exploit copy_list_memval_decode_undef. eauto. i.
       rewrite H.
       destruct vl; ss.
       + inv LENGTH.
       + unfold decode_val. des_ifs.
-        Unshelve. eauto.
   Qed.
 
   Lemma copy_list_memval_inject j vl vl' chunk v
@@ -704,8 +677,6 @@ End _FillArgsParallel.
 
 
 Section STOREARGPRARALLEL.
-
-  Local Existing Instance Val.mi_normal.
 
   Theorem store_arguments_parallel_inject
           j m_src0 m_tgt0 m_tgt1 rs_tgt vs vs' sg
@@ -1250,7 +1221,7 @@ Module FillArgsProgress.
         ,
           <<BDD: ofs + typesize ty <= size_arguments_64 (sig_args sg) x y z>>)
     ,
-      <<ALL: list_forall2 (extcall_arg_pair rs1 m2 (Vptr sp Ptrofs.zero true)) (loc_arguments_64 (sig_args sg) x y z) args>>
+      <<ALL: list_forall2 (extcall_arg_pair rs1 m2 (Vptr sp Ptrofs.zero)) (loc_arguments_64 (sig_args sg) x y z) args>>
   .
   Proof.
     i.

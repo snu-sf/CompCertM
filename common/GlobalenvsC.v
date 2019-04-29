@@ -78,7 +78,6 @@ Section EXTERNAL.
     unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
     hexploit (Genv.mge_defs GEMATCH); eauto. i. rewrite Heq in *. inv H. inv H2. esplits; eauto.
   Qed.
-  Local Existing Instance Val.mi_normal.
 
   Inductive skenv_inject {F V} (ge: Genv.t F V) (j: meminj): Prop :=
   | sken_inject_intro
@@ -193,7 +192,7 @@ End EXTERNAL.
 Module DEPRECATED.
 Definition is_call {F V} (ge: Genv.t F V) (fptr: val): Prop :=
   match fptr with
-  | Vptr blk ofs true => Genv.find_funct_ptr ge blk = None
+  | Vptr blk ofs => Genv.find_funct_ptr ge blk = None
   | _ => False
   end
 .
@@ -241,8 +240,6 @@ Section ISCALL.
     specialize (mge_defs b). inv mge_defs; ss.
     inv H1; ss. des_ifs.
   Qed.
-
-  Local Existing Instance Val.mi_normal.
 
   Inductive skenv_inject {F V} (ge: Genv.t F V) (j: meminj): Prop :=
   | sken_inject_intro

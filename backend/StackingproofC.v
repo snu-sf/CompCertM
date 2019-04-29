@@ -1068,6 +1068,7 @@ Lemma transf_function_sig
 .
 Proof. unfold transf_function in *. des_ifs. Qed.
 
+Local Opaque Pos.of_nat.
 Lemma init_match_frame_contents
       sm_arg sg
       (SIMSKE: SimSymb.sim_skenv sm_arg (ModSemPair.ss msp) (ModSem.skenv (ModSemPair.src msp))
@@ -1141,13 +1142,14 @@ Proof.
         * rewrite Stackingproof.align_type_chunk. eapply Z.mul_divide_mono_l; eauto.
   }
   { apply disjoint_footprint_sepconj. split.
-    - ii; ss. rename H into X. rename H0 into Y. des.
+    - bar.
+      ii; ss. rename H into X. rename H0 into Y. des.
       clarify. zsimpl. specialize (PRIV ofs). exploit PRIV; eauto with lia.
       intro TPRIV. hnf in TPRIV. ss. des. unfold SimMemInjC.inject_junk_blocks in *.
-      des_ifs; cycle 1.
+      des_ifs.
       { eapply TPRIV; eauto. rewrite assign_junk_blocks_perm in *; ss. }
-      bsimpl; des; des_sumbool; ss.
-      rewrite assign_junk_blocks_perm in *. zsimpl. exploit Mem.perm_valid_block; eauto.
+      { bsimpl; des; des_sumbool; ss. rewrite assign_junk_blocks_perm in *. zsimpl. exploit Mem.perm_valid_block; eauto. }
+      { eapply TPRIV; eauto. rewrite assign_junk_blocks_perm in *; ss. }
     - ii; ss.
   }
   sep_split.
@@ -1155,7 +1157,7 @@ Proof.
   { ss. }
   eapply sim_skenv_inj_globalenv_inject; et.
   { eapply SimSymb.mle_preserves_sim_skenv in SIMSKE; et. etrans; et. }
-  { rewrite assign_junk_blocks_nextblock. ss. xomega. }
+  { rewrite assign_junk_blocks_nextblock. ss. des_ifs; xomega. }
 Unshelve. all: eauto.
 Qed.
 
@@ -1542,7 +1544,7 @@ Proof.
       { econs; eauto with congruence. rp; eauto. }
       i; des.
 
-      exploit (@SimMemInjC.inject_junk_blocks_spec sm1 n); et. intro SM0; des. rename sm0 into sm2.
+      exploit (@SimMemInjC.inject_junk_blocks_parallel sm1 n); et. intro SM0; des. rename sm0 into sm2.
 
       esplits.
       { (* initial frame *)
@@ -1577,7 +1579,7 @@ Proof.
               rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
               rewrite Z.pos_sub_diag in *. zsimpl. rewrite Pos2Z.id in *. lia.
             * destruct (peq b y); ss.
-              { clarify. rewrite Z.pos_sub_diag. zsimpl. rewrite Pos2Z.id in *. lia. }
+              { clarify. rewrite Z.pos_sub_diag. zsimpl. rewrite Pos2Z.id in *. des_ifs; lia. }
               rewrite Z2Pos.inj_add in *; ss; try lia; cycle 1.
               {
                 rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
@@ -1585,6 +1587,7 @@ Proof.
               replace (Z.pos_sub b y) with (b.(Zpos) - y.(Zpos))%Z; cycle 1.
               { ss. }
               rewrite Z2Pos.inj_sub; ss; try lia.
+              des_ifs; lia.
           + rewrite OUT0 in *. ss.
       }
       { instantiate (1:= sm2). etrans; eauto. }
@@ -1633,19 +1636,24 @@ Proof.
             }
             rewrite Z2Pos.inj_add; ss; cycle 1.
             { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
+            des_ifs.
+            {
+              bsimpl; des; des_sumbool. unfold Plt in *.
+              rewrite Pos.add_comm. rewrite Pos.add_assoc. rewrite Pos.add_sub.
+              rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
+              rewrite Pos2Z.id. rewrite Pos.add_sub_assoc; ss. rewrite Pos.add_comm. rewrite Pos.add_sub. ss.
+            }
             assert(COND0: negb (plt (Z.to_pos (Z.pos_sub b y) + m_src) m_src)).
             { bsimpl. des_sumbool. ii. unfold Plt in *. xomega. }
-            rewrite COND0.
+            (* des_ifs. *)
+            (* { unfold block. do 2 f_equal. bsimpl; des; des_sumbool; try lia. *)
+            rewrite COND0 in *.
             assert(COND1: plt (Z.to_pos (Z.pos_sub b y) + m_src) (m_src + Pos.of_nat n)).
             { bsimpl. des_sumbool. ii. unfold Plt in *. rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
               destruct n; ss; try lia.
             }
-            rewrite COND1.
+            rewrite COND1 in *.
             ss.
-            bsimpl; des; des_sumbool. unfold Plt in *.
-            rewrite Pos.add_comm. rewrite Pos.add_assoc. rewrite Pos.add_sub.
-            rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
-            rewrite Pos2Z.id. rewrite Pos.add_sub_assoc; ss. rewrite Pos.add_comm. rewrite Pos.add_sub. ss.
         }
         rename targs into targs_tgt. rename TYP into TYPTGT.
         (* assert(TYPSRC: exists targs_src, typecheck (Args.vs args_src) (fn_sig fd) targs_src). *)
@@ -1668,7 +1676,7 @@ Proof.
               exploit Mem.nextblock_alloc; et. i. rewrite H. rewrite MEMTGT.
               clear - ALC NB MWF.
               esplits.
-              { xomega. }
+              { des_ifs; xomega. }
               { inv MWF. etrans; et. xomega. }
               { (* TODO: make lemma *)
                 ii. inv MWF; ss. eapply TGTEXT in H.

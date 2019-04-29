@@ -667,19 +667,54 @@ Require Import JunkBlock.
 
 Section JUNK.
 
+Lemma inject_junk_blocks_tgt
+      sm0 n m_tgt0
+      (MWF: SimMem.wf sm0)
+      (JUNKTGT: assign_junk_blocks sm0.(SimMem.tgt) n = m_tgt0)
+  :
+    exists sm1,
+      (<<DEF: sm1 = update sm0 sm0.(SimMem.src) m_tgt0 sm0.(SimMemInj.inj)>>)
+      /\
+      (<<MWF: SimMem.wf sm1>>)
+      /\
+      (<<MLE: SimMem.le sm0 sm1>>)
+      /\
+      (<<PRIVSRC: sm0.(SimMemInj.src_private) = sm1.(SimMemInj.src_private)>>)
+      /\
+      (<<PRIVTGT: sm0.(SimMemInj.tgt_private) <2= sm1.(SimMemInj.tgt_private)>>)
+.
+Proof.
+  esplits; eauto.
+  - ss. inv MWF. econs; ss; eauto.
+    + clear - PUBLIC. destruct sm0; ss. clear_tac. ginduction n; ii; ss. des_ifs.
+      eapply IHn; eauto. eapply Mem.alloc_right_inject; eauto.
+    + etrans; eauto.
+      clear - n. unfold tgt_private. ss. ii. des. esplits; et.
+      unfold valid_blocks, Mem.valid_block in *.
+      rewrite assign_junk_blocks_nextblock. des_ifs. xomega.
+    + etrans; eauto.
+      rewrite assign_junk_blocks_nextblock. des_ifs; xomega.
+  - clarify. econs; ss; eauto.
+    + refl.
+    + eapply Mem.unchanged_on_implies.
+      { eapply assign_junk_blocks_unchanged_on; et. }
+      ii. ss.
+    + econs; eauto. ii. des. des_ifs.
+    + i. rewrite assign_junk_blocks_perm. ss.
+  - clarify. clear - n. unfold tgt_private. ss. ii. des. esplits; et.
+    unfold valid_blocks, Mem.valid_block in *.
+    rewrite assign_junk_blocks_nextblock. des_ifs. xomega.
+Qed.
+
 Definition inject_junk_blocks (m_src0 m_tgt0: mem) (n: nat) (j: meminj): meminj :=
+  if (Zerob.zerob n) then j else
   fun blk =>
-    if negb (plt blk m_src0.(Mem.nextblock)) && (plt blk (m_src0.(Mem.nextblock) + n.(Pos.of_nat)))
+    if negb (plt blk m_src0.(Mem.nextblock)) && (plt blk (Mem.nextblock m_src0 + Pos.of_nat n))
     then Some ((blk + m_tgt0.(Mem.nextblock) - m_src0.(Mem.nextblock))%positive , 0%Z)
     else j blk
 .
 
-(* TODO: this tactic is redundant, remove redundancy with StackingproofC *)
-Ltac Pos_compare_tac := try rewrite Pos.compare_lt_iff in *;
-                        try rewrite Pos.compare_gt_iff in *;
-                        apply_all_once Pos.compare_eq; clarify; try lia.
-
-Lemma inject_junk_blocks_spec
+Lemma inject_junk_blocks_parallel
       sm0 n m_tgt0
       (MWF: SimMem.wf sm0)
       (JUNKTGT: assign_junk_blocks sm0.(SimMem.tgt) n = m_tgt0)
@@ -699,13 +734,68 @@ Lemma inject_junk_blocks_spec
 Proof.
   unfold inject_junk_blocks.
   esplits; eauto.
-  - admit "".
+  - ss. inv MWF. econs; ss; eauto.
+    + clear - PUBLIC. destruct sm0; ss. clear_tac.
+      Local Opaque Pos.of_nat.
+      ginduction n; ii; ss.
+      * des_ifs_safe.
+        exploit Mem.alloc_parallel_inject; try apply Heq; try refl; eauto. intro Q; des. rewrite Q in *. clarify.
+        exploit IHn; try apply Q0; eauto. intro P. clear IHn.
+        rpapply P. clear P.
+        apply func_ext1. i.
+        exploit Mem.alloc_result; try apply Heq; intro X. clarify.
+        exploit Mem.nextblock_alloc; try apply Heq; intro X.
+        exploit Mem.alloc_result; try apply Q; intro Y. clarify.
+        exploit Mem.nextblock_alloc; try apply Q; intro Y.
+        rewrite ! X. rewrite ! Y.
+        unfold block in *. 
+        destruct n; ss.
+        { des_ifs.
+          - bsimpl. des. des_sumbool.
+            exploit (Plt_succ_inv x0 (Mem.nextblock src)); eauto.
+            { Local Transparent Pos.of_nat. unfold Pos.of_nat in *. xomega. Local Opaque Pos.of_nat. }
+            intro R. des; clarify; try xomega.
+            rewrite Q2. repeat f_equal; ss. xomega.
+          - rewrite Q3; ss. ii; clarify. bsimpl; des; des_sumbool; xomega.
+        }
+        destruct (classic (x0 = (Mem.nextblock src))).
+        { clarify. des_ifs; bsimpl; des; des_sumbool; ss; try xomega.
+          rewrite Q2. repeat f_equal. xomega.
+        }
+        destruct (classic (x0 = Pos.succ (Mem.nextblock src))).
+        { clarify. des_ifs; bsimpl; des; des_sumbool; ss; try xomega.
+          - do 2 f_equal. xomega.
+          - exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try xomega. Local Opaque Pos.of_nat.
+        }
+        des_ifs; bsimpl; des; des_sumbool; ss; try xomega.
+        { do 2 f_equal. xomega. }
+        { exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try xomega. Local Opaque Pos.of_nat. }
+        { exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try xomega. Local Opaque Pos.of_nat. }
+        { rewrite Q3; ss. }
+        { rewrite Q3; ss. }
+    + etrans; eauto.
+      clear - n. unfold src_private. ss. unfold valid_blocks, Mem.valid_block in *. ii. des. esplits; et.
+      * des_ifs. rr. rr in PR. des_ifs. destruct n; ss. bsimpl; des; des_sumbool; try xomega.
+      * rewrite assign_junk_blocks_nextblock. des_ifs. xomega.
+    + etrans; eauto.
+      clear - n. unfold tgt_private. ss. unfold valid_blocks, Mem.valid_block in *. ii. des. esplits; et.
+      * ii. rewrite assign_junk_blocks_perm in *. rr in PR. des_ifs; eauto.
+        destruct n; ss. bsimpl; des; des_sumbool; clarify. xomega.
+      * rewrite assign_junk_blocks_nextblock. des_ifs. xomega.
+    + etrans; eauto.
+      rewrite assign_junk_blocks_nextblock. des_ifs; xomega.
+    + etrans; eauto.
+      rewrite assign_junk_blocks_nextblock. des_ifs; xomega.
   - econs; ss; eauto.
     + ii. des_ifs. bsimpl. des. des_sumbool.
       inv MWF. inv PUBLIC.
       exploit mi_freeblocks; eauto. i; clarify.
-    + admit "ez - make lemma and prove it with Mem.alloc_unchanged_on".
-    + admit "ez - make lemma and prove it with Mem.alloc_unchanged_on".
+    + eapply Mem.unchanged_on_implies.
+      { eapply assign_junk_blocks_unchanged_on; et. }
+      ii. ss.
+    + clarify. eapply Mem.unchanged_on_implies.
+      { eapply assign_junk_blocks_unchanged_on; et. }
+      ii. ss.
     + econs; eauto. ii. des. des_ifs. bsimpl. des. des_sumbool.
       inv MWF.
       esplits; eauto with xomega.
@@ -715,15 +805,21 @@ Proof.
     unfold src_private, loc_unmapped, valid_blocks in *. ss.
     inv MWF.
     split; i; des.
-    + unfold Mem.valid_block in *. des_ifs; bsimpl; des; des_sumbool; try xomega.
-      esplits; eauto. rewrite assign_junk_blocks_nextblock; ss. xomega.
-    + unfold Mem.valid_block in *. des_ifs; bsimpl; des; des_sumbool; try xomega; split; ss.
+    + unfold Mem.valid_block in *.
+      destruct n; ss.
+      des_ifs; bsimpl; des; des_sumbool; try xomega.
+      esplits; eauto. rewrite assign_junk_blocks_nextblock; ss.
+      erewrite Mem.nextblock_alloc; eauto. destruct n; ss; try xomega.
+    + destruct n; ss.
+      unfold Mem.valid_block in *. des_ifs; bsimpl; des; des_sumbool; try xomega; split; ss.
       rewrite assign_junk_blocks_nextblock in *; ss.
+      erewrite Mem.nextblock_alloc in H0; eauto. des_ifs; try xomega.
+      contradict Heq0. Local Transparent Pos.of_nat. ss. des_ifs; try xomega. Local Opaque Pos.of_nat.
   - ii.
     unfold tgt_private, loc_out_of_reach, valid_blocks in *. ss.
     inv MWF.
     + unfold Mem.valid_block in *. split; ss; cycle 1.
-      * rewrite assign_junk_blocks_nextblock in *; ss. xomega.
+      * rewrite assign_junk_blocks_nextblock in *; ss. des_ifs; xomega.
       * i. rewrite assign_junk_blocks_perm. (* TODO: change lemma into symmetric version *)
         des_ifs; bsimpl; des; des_sumbool; et; try xomega.
 Qed.

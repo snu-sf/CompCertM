@@ -446,6 +446,8 @@ Lemma assign_junk_blocks_rule
 Proof.
   destruct P; ss.
   eapply m_invar; eauto.
-  admit "ez - make lemma and prove it with Mem.alloc_unchanged_on".
+  eapply Mem.unchanged_on_implies.
+  { eapply assign_junk_blocks_unchanged_on; eauto. }
+  ss.
 Qed.
 

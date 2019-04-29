@@ -45,10 +45,41 @@ Section PROPS.
   Lemma assign_junk_blocks_nextblock
         m0 n
   :
+    <<NB: (Mem.nextblock (assign_junk_blocks m0 n) = if Zerob.zerob n then Mem.nextblock m0 else Mem.nextblock m0 + Pos.of_nat n)%positive>>
+  .
+  Proof.
+    unfold NW.
+    ginduction n; ii; ss. des_ifs_safe.
+    erewrite IHn; eauto.
+    erewrite Mem.nextblock_alloc; eauto.
+    rewrite ! Pplus_one_succ_r; ss.
+    des_ifs; try xomega.
+    rewrite <- Pos.add_assoc.
+    rewrite Pos.add_comm with (p := 1%positive). ss.
+  Qed.
+
+  Lemma assign_junk_blocks_nextblock'
+        m0 n
+        (NZR: n <> O)
+  :
     <<NB: (Mem.nextblock (assign_junk_blocks m0 n) = Mem.nextblock m0 + Pos.of_nat n)%positive>>
   .
   Proof.
-    admit "ez".
+    rewrite assign_junk_blocks_nextblock. destruct n; ss.
+  Qed.
+
+  Lemma assign_junk_blocks_unchanged_on
+        m0 n
+    :
+      <<UNCH: Mem.unchanged_on top2 m0 (assign_junk_blocks m0 n)>>
+  .
+  Proof.
+    ginduction n; ii; ss.
+    { eapply Mem.unchanged_on_refl; eauto. }
+    des_ifs.
+    r. etrans; cycle 1.
+    { eapply IHn; eauto. }
+    eapply Mem.alloc_unchanged_on; eauto.
   Qed.
 
   Lemma assign_junk_blocks_load

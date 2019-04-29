@@ -6,9 +6,7 @@ Require Import SmallstepC.
 (** newly added **)
 Require Export Simulation RTL.
 Require Import Skeleton Mod ModSem.
-(* Require Import AsmregsC. *)
-(* Require Import Conventions. *)
-(* Require Import Locations. *)
+Require Import JunkBlock.
 
 Set Implicit Arguments.
 
@@ -105,6 +103,20 @@ Section MODSEM.
                     (Callstate [] args.(Args.fptr) fd.(fn_sig) tvs args.(Args.m))
   .
 
+  Inductive initial_frame2 (args: Args.t)
+    : state -> Prop :=
+  | initial_frame2_intro
+      fd tvs
+      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
+      (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
+      (LEN: args.(Args.vs).(length) = fd.(fn_sig).(sig_args).(length))
+      n m0
+      (JUNK: assign_junk_blocks args.(Args.m) n = m0)
+    :
+      initial_frame2 args
+                    (Callstate [] args.(Args.fptr) fd.(fn_sig) tvs m0)
+  .
+
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_intro
       v_ret m_ret
@@ -128,6 +140,25 @@ Section MODSEM.
       ModSem.step := step;
       ModSem.at_external := at_external;
       ModSem.initial_frame := initial_frame;
+      ModSem.final_frame := final_frame;
+      ModSem.after_external := after_external;
+      ModSem.globalenv := ge;
+      ModSem.skenv := skenv; 
+      ModSem.skenv_link := skenv_link; 
+    |}
+  .
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+
+  Program Definition modsem2: ModSem.t :=
+    {|
+      ModSem.step := step;
+      ModSem.at_external := at_external;
+      ModSem.initial_frame := initial_frame2;
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
@@ -173,6 +204,13 @@ Section MODSEM.
   .
   Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
 
+  Lemma modsem2_receptive
+        st
+    :
+      receptive_at modsem2 st
+  .
+  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
+
   Lemma lift_determinate_at
         st0
         (DTM: determinate_at (semantics_with_ge skenv_link ge) st0)
@@ -190,6 +228,12 @@ Section MODSEM.
   .
   Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
 
+  Lemma modsem2_determinate
+        st
+    :
+      determinate_at modsem2 st
+  .
+  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
 
 End MODSEM.
 
@@ -206,6 +250,14 @@ Section MODULE.
       Mod.data := p;
       Mod.get_sk := Sk.of_program fn_sig;
       Mod.get_modsem := modsem;
+    |}
+  .
+
+  Program Definition module2: Mod.t :=
+    {|
+      Mod.data := p;
+      Mod.get_sk := Sk.of_program fn_sig;
+      Mod.get_modsem := modsem2;
     |}
   .
 

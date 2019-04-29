@@ -1654,7 +1654,7 @@ Section PRESERVATION.
               des_ifs. inv FINDMS. ss. (* des_ifs. *) destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
               eapply preservation_cp_focus; et; revgoals.
               { right. eapply step_internal_function; ss; et.
-                - unfold Genv.find_funct. instantiate (1:= Vptr blk Ptrofs.zero true). ss. destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
+                - unfold Genv.find_funct. instantiate (1:= Vptr blk Ptrofs.zero). ss. destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
                   rewrite Genv.find_funct_ptr_iff in *. exploit prog_def_same. eauto. i. des_safe.
                   assert (cp2 = cp_top).
                   { exploit same_prog. eauto. eapply FOCUS1. eapply INTERNAL. eauto. i. auto. } subst. eauto.

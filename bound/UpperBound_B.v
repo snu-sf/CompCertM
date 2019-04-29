@@ -1330,11 +1330,11 @@ c0 + empty
     i. des. esplits. econs; eauto.
     - i. inv INIT0. inv INIT1. clarify.
     - ss. inv INITSRC.
-      destruct (classic (exists fd, Genv.find_funct (globalenv prog) (Vptr b Ptrofs.zero true) = Some (Internal fd))).
+      destruct (classic (exists fd, Genv.find_funct (globalenv prog) (Vptr b Ptrofs.zero) = Some (Internal fd))).
       + apply match_state_xsim; eauto.
         eapply wt_initial_state; eauto.
         econs; eauto.
-      + assert(NOSTEP: Nostep (semantics prog) (Csem.Callstate (Vptr b Ptrofs.zero true)
+      + assert(NOSTEP: Nostep (semantics prog) (Csem.Callstate (Vptr b Ptrofs.zero)
                                                                (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
         { ii. rr in H6. des; inv H6; ss; des_ifs.
            - contradict H5; eauto.
@@ -1342,7 +1342,7 @@ c0 + empty
              { econs; eauto. }
              i; des. ss. des_ifs.
         }
-        assert(UB: ~safe (semantics prog) (Csem.Callstate (Vptr b Ptrofs.zero true)
+        assert(UB: ~safe (semantics prog) (Csem.Callstate (Vptr b Ptrofs.zero)
                                                           (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
         { ii; ss. specialize (H6 _ (star_refl _ _ _ _)). des; ss.
           - inv H6; ss.

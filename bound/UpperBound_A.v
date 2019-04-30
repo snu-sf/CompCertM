@@ -437,6 +437,10 @@ Section PRESERVATION.
       vres k k0 k1 m
       (CONT: k = app_cont k1 k0)
     : match_focus_state (Csem.Returnstate vres k m) (Csem.Returnstate vres k1 m) k0
+  | stuck_state_similar
+      k0
+    :
+      match_focus_state Csem.Stuckstate Csem.Stuckstate k0
   .
 
   Inductive match_focus: Frame.t -> list Frame.t -> Prop :=
@@ -2143,7 +2147,11 @@ Proof.
     { eapply unit_ord_wf. }
     { econs; et. i. ss. inv INITSRC. clarify. }
     i; des. ss. des_ifs.
-    hexploit (link_sk_match cp_link cps ctx); eauto. i; des. congruence.
+    hexploit link_sk_match.
+    instantiate (1 := cp_link).
+    instantiate (1 := cps). eauto.
+    instantiate (1 := ctx). i. des. congruence.
+    (* hexploit (link_sk_match cps ctx); eauto. i; des. congruence. *)
   }
   rename t into link_sk.
   des.

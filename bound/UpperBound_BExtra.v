@@ -16,21 +16,36 @@ Set Implicit Arguments.
 
 Section SIM.
 
-  Variable cp_link cp0 cp1: Csyntax.program.
+  Variable cp_link: Csyntax.program.
+  Variable cps: list Csyntax.program.
   Variable ctx: Syntax.program.
-  Hypothesis FOCUS: link cp0 cp1 = Some cp_link.
-  (* Let prog_src := cp_link.(CsemC.module) :: ctx. *)
-  (* Let prog_tgt := cp1.(CsemC.module) :: cp2.(CsemC.module) :: ctx. *)
+  Hypothesis FOCUS: link_list cps = Some cp_link.
   Let prog_src := ctx ++ [cp_link.(CsemC.module)].
-  Let prog_tgt := ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)].
+  Let prog_tgt := ctx ++ map CsemC.module cps.
   Variable sk_link: Sk.t.
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
   Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
-
   Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env))
                            (at level 50, no associativity, only parsing).
+  Let ge_cp_link: genv := geof cp_link.
 
-  Let sum_cont := sum_cont cp0 cp1 sk_link.
+  Let sum_cont := sum_cont cps sk_link.
+  (* Variable cp_link cp0 cp1: Csyntax.program. *)
+  (* Variable ctx: Syntax.program. *)
+  (* Hypothesis FOCUS: link cp0 cp1 = Some cp_link. *)
+  (* (* Let prog_src := cp_link.(CsemC.module) :: ctx. *) *)
+  (* (* Let prog_tgt := cp1.(CsemC.module) :: cp2.(CsemC.module) :: ctx. *) *)
+  (* Let prog_src := ctx ++ [cp_link.(CsemC.module)]. *)
+  (* Let prog_tgt := ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)]. *)
+  (* Variable sk_link: Sk.t. *)
+  (* Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link). *)
+  (* Hypothesis (LINKSRC: link_sk prog_src = Some sk_link). *)
+
+  (* Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env)) *)
+  (*                          (at level 50, no associativity, only parsing). *)
+
+  (* Let sum_cont := sum_cont *)
+  (*                   cp0 cp1 sk_link. *)
 
   Lemma call_cont_app_cont
         k k0
@@ -71,7 +86,7 @@ Section SIM.
     split; i.
     - inv H; ss.
     - des. clarify. r. destruct st_tgt0; ss; try (by econs; eauto).
-      admit "".
+      (* admit "". *)
   Qed.
 
   Lemma match_focus_state_bsim
@@ -155,4 +170,4 @@ Section SIM.
         admit "quantify NCALLSRC".
   Admitted.
 
-End SIM. 
+End SIM.

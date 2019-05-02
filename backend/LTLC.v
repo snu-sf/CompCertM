@@ -56,10 +56,21 @@ End LTLEXTRA.
 
 
 
+(* TODO: MOVE THIS !!!!!!!!!!!!!!!!!!!!!!! *)
+Ltac clarify_meq :=
+  repeat
+    match goal with
+    | [ H0: ?A m= ?B |- _ ] => inv H0
+    | [ H0: ?A = ?A -> _ |- _ ] => exploit H0; eauto; check_safe; intro; des; clear H0
+    end;
+    clarify
+.
 
-
-
-
+Ltac inv_match_traces :=
+  match goal with
+  | [ H: match_traces _ _ _ |- _ ] => inv H
+  end
+.       
 
 
 
@@ -234,7 +245,11 @@ Section MODSEM.
     :
       determinate_at modsem st
   .
-  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0. inv H1; inv H; clarify_meq; try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+    - admit "ez".
+  Qed.
 
   Lemma lift_receptive_at
         st
@@ -255,9 +270,11 @@ Section MODSEM.
     :
       receptive_at modsem st
   .
-  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
-
-
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H. inv H1; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; [econs; eauto|]; eauto).
+    - ii. inv H. inv H0; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
 End MODSEM.
 

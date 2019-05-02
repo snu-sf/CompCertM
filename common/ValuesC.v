@@ -86,6 +86,15 @@ Section TYPIFY.
   (*   end *)
   (* . *)
 
+  Lemma typify_list_length
+        vs tys
+    :
+      length (typify_list vs tys) = Nat.min (length vs) (length tys)
+  .
+  Proof.
+    ginduction vs; ii; ss. destruct tys; ss. rewrite IHvs; ss.
+  Qed.
+
 End TYPIFY.
 
 Hint Unfold typify typify_list.

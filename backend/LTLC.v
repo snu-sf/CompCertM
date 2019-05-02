@@ -261,6 +261,20 @@ Section MODSEM.
 
 End MODSEM.
 
+Section PROPS.
+
+  Lemma step_preserves_last_option
+        se ge st0 tr st1 dummy_stack
+        (STEP: step se ge st0 tr st1)
+        (LAST: last_option (get_stack st0) = Some dummy_stack)
+  :
+    <<LAST: last_option (get_stack st1) = Some dummy_stack>>
+  .
+  Proof.
+    r in STEP. des. inv STEP0; ss; des_ifs.
+  Qed.
+
+End PROPS.
 
 
 

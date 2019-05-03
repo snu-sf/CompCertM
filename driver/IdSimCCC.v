@@ -21,7 +21,6 @@ Require Import MatchSimModSem.
 
 Set Implicit Arguments.
 
-Local Existing Instance Val.mi_normal.
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
 
@@ -85,4 +84,3 @@ Lemma ccc_inj_drop
 Proof.
   admit "this should hold".
 Qed.
-

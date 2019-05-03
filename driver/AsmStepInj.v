@@ -4,7 +4,7 @@ Require Import Locations Stacklayout Conventions Linking.
 (** newly added **)
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
-Require Import Skeleton ModSem Mod sflib AsmC Sem Syntax LinkingC Program SemProps.
+Require Import Skeleton ModSem Mod sflib Sem Syntax LinkingC Program SemProps.
 Require Import GlobalenvsC Lia IntegersC SimMemInj.
 Require Import mktac.
 Set Implicit Arguments.
@@ -120,6 +120,13 @@ Proof.
       eapply Mem.perm_valid_block; eauto.
 Qed.
 
+(* TODO: duplicate definition in AsmC *)
+Definition st_m (st0: Asm.state): mem :=
+  match st0 with
+  | Asm.State _ m => m
+  end
+.
+
 Lemma asm_step_max_perm se ge_src rs0 rs1 m0 m1 tr
       (STEP: Asm.step ge_src se (Asm.State rs0 m0) tr (Asm.State rs1 m1))
       b ofs p
@@ -136,8 +143,8 @@ Proof.
   i. ginduction STEP; i; ss.
   - unfold exec_instr in *;
       des_ifs; ss; clarify;
-      (all_once_fast ltac:(fun H=> try (eapply exec_load_mem_equal in H; clarify; fail)));
-      (try (eapply exec_store_max_perm; eauto; fail)).
+        (all_once_fast ltac:(fun H=> try (eapply exec_load_mem_equal in H; clarify; fail)));
+        (try (eapply exec_store_max_perm; eauto; fail)).
     + unfold goto_label in *. des_ifs.
     + unfold goto_label in *. des_ifs.
     + unfold goto_label in *. des_ifs.
@@ -175,8 +182,6 @@ Ltac tac_p := ss; try (symmetry; eapply Ptrofs.add_zero; fail);
               try (ss; f_equal; apply Ptrofs.add_commut).
 
 Section ASMSTEP.
-
-  Context `{CTX: Val.meminj_ctx}.
 
   Definition agree (j: meminj) (rs_src rs_tgt: regset) : Prop :=
     forall pr, Val.inject j (rs_src pr) (rs_tgt pr).
@@ -235,12 +240,9 @@ Section ASMSTEP.
       + exploit SYMBLE; eauto. i. des. clarify.
         econs; eauto. tac_p.
     - cinv (AGREE i); ss; des_ifs; econs; eauto.
-      + repeat (rewrite Ptrofs.add_assoc). f_equal.
-        rewrite Ptrofs.add_commut.
-        repeat (rewrite Ptrofs.add_assoc). auto.
-      + repeat (rewrite Ptrofs.add_assoc). f_equal.
-        rewrite Ptrofs.add_commut.
-        repeat (rewrite Ptrofs.add_assoc). auto.
+      repeat (rewrite Ptrofs.add_assoc). f_equal.
+      rewrite Ptrofs.add_commut.
+      repeat (rewrite Ptrofs.add_assoc). auto.
     - cinv (AGREE i); ss; unfold Genv.symbol_address in *; des_ifs.
       + exploit SYMBLE; eauto. i. des. clarify.
       + exploit SYMBLE; eauto. i. des. clarify.
@@ -890,7 +892,7 @@ Section ASMSTEP.
               (<<FINDTGT: Genv.find_symbol ge_tgt i = Some b_tgt>>) /\
               (<<INJ: j0 b_src = Some (b_tgt, 0)>>))
 
-        (SYMBINJ: symbols_inject j0 se_src se_tgt)
+        (SYMBINJ: symbols_inject_weak j0 se_src se_tgt m_src0)
         (* (NOEXTFUN: no_extern_fun ge_src) *)
         (AGREE: agree j0 rs_src0 rs_tgt0)
         (INJ: Mem.inject j0 m_src0 m_tgt0)
@@ -999,7 +1001,6 @@ Section ASMSTEP.
         des_ifs; agree_invs AGREE; ss; (replace Archi.ptr64 with true; [|eauto]);
           (repeat (eapply Val.addl_inject); eauto); try val_inj_tac; tac_p.
         * f_equal. rewrite Ptrofs.add_permut. f_equal. apply Ptrofs.add_commut.
-        * f_equal. rewrite Ptrofs.add_permut. f_equal. apply Ptrofs.add_commut.
         * repeat (eapply Val.addl_inject); eauto.
         * repeat (eapply Val.addl_inject); eauto.
           eapply mull_inject; eauto.
@@ -1022,16 +1023,10 @@ Section ASMSTEP.
       + tac_cal AGREE.
       + tac_cal AGREE.
         agree_invs AGREE; des_ifs; unfold andb, proj_sumbool in *; des_ifs; clarify.
-        * try val_inj_tac; tac_p; try f_equal.
-        * try val_inj_tac; tac_p; try f_equal.
-          rewrite <- Ptrofs.sub_add_l.
-          rewrite Ptrofs.sub_shifted. eauto.
-        * try val_inj_tac; tac_p; try f_equal.
-        * try val_inj_tac; tac_p; try f_equal.
-        * try val_inj_tac; tac_p; try f_equal.
-          rewrite <- Ptrofs.sub_add_l.
-          rewrite Ptrofs.sub_shifted. eauto.
-      + tac_cal AGREE.
+        try val_inj_tac; tac_p; try f_equal.
+        rewrite <- Ptrofs.sub_add_l.
+        rewrite Ptrofs.sub_shifted. eauto.
+     + tac_cal AGREE.
       + tac_cal AGREE.
       + tac_cal AGREE.
       + tac_cal AGREE.
@@ -1414,7 +1409,7 @@ tac_cal AGREE.
         * eapply nextinstr_agree. repeat eapply agree_step; eauto.
         * eapply inject_separated_refl.
     - exploit eval_builtin_args_inject; eauto. i. des.
-      exploit ec_mem_inject; eauto.
+      exploit ec_mem_inject_weak; eauto.
       { apply external_call_spec. }
       i. des.
       esplits; eauto.
@@ -1438,7 +1433,7 @@ tac_cal AGREE.
       + eapply Mem.unchanged_on_implies; eauto. i. des. eauto.
 
     - exploit extcall_arguments_inject; eauto. i. des.
-      exploit ec_mem_inject; eauto.
+      exploit ec_mem_inject_weak; eauto.
       { apply external_call_spec. }
       i. des.
       esplits; eauto.

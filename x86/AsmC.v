@@ -104,16 +104,10 @@ Section MODSEM.
       (* (ISRETURN: step_ret st0.(st) = st1.(extret)) *)
   .
 
-  Record wf_RA (ra : val) : Prop :=
-    mk_wf_RA {
-        TPTR: Val.has_type ra Tptr;
-        RADEF: ra <> Vundef;
-      }.
-
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       rs m0 m1 sg vs blk0 blk1 ofs
-      (FPTR: rs # PC = Vptr blk0 Ptrofs.zero) (* TODO simplify it *)
+      (FPTR: rs # PC = Vptr blk0 Ptrofs.zero)
       (EXTERNAL: Genv.find_funct ge (Vptr blk0 Ptrofs.zero) = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero)
                         = Some skd /\ SkEnv.get_sig skd = sg)
@@ -122,9 +116,7 @@ Section MODSEM.
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))
-      (* (OFSZERO: ofs = Ptrofs.zero) *)
       (FREE: Mem.free m0 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
-      (NOTVOL: Senv.block_is_volatile skenv_link blk1 = false)
       init_rs
     :
       at_external (mkstate init_rs (State rs m0))
@@ -138,14 +130,12 @@ Section MODSEM.
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (RSPC: rs # PC = args.(Args.fptr))
-      (* (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
       targs
       (TYP: typecheck args.(Args.vs) sg targs)
       (STORE: store_arguments args.(Args.m) rs targs sg m0)
-      (* (STORE: store_arguments args.(Args.m) rs args.(Args.vs) sg m) *)
       n m1
       (JUNK: assign_junk_blocks m0 n = m1)
-      (RAPTR: wf_RA (rs RA))
+      (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (* (RAJUNK: is_junk_value m0 m1 (rs RA)) *)
       (RANOTFPTR: forall blk ofs (RAVAL: rs RA = Vptr blk ofs),
           ~ Plt blk (Genv.genv_next skenv))

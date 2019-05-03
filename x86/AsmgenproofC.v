@@ -75,7 +75,7 @@ Inductive match_init_data init_sp init_ra
           init_rs_src init_sg_src init_rs_tgt : Prop :=
 | match_init_data_intro
     (INITRA: init_ra = init_rs_tgt RA)
-    (INITRAPTR: wf_RA (init_ra))
+    (INITRAPTR: <<TPTR: Val.has_type (init_ra) Tptr>> /\ <<RADEF: init_ra <> Vundef>>)
     (INITRS: agree_eq init_rs_src init_sp init_rs_tgt init_sg_src )
     (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src)
 .
@@ -179,7 +179,7 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
 
   - destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
-    inv INITTGT. des. ss. clarify. inv RAPTR.
+    inv INITTGT. des. ss. clarify.
 
     assert (SRCSTORE: exists rs_src m_src,
                StoreArguments.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
@@ -349,9 +349,9 @@ Proof.
         intro GE.
         apply (fsim_external_funct_id GE); ss.
       * inv AG. rewrite agree_sp0. clarify.
-      * inv INITRAPTR. inv STACKS; ss.
-       -- inv STACKWF; [|inv TL]. inv ATLR; auto; exfalso; auto.
-       -- destruct ra; ss; try inv H0. inv ATLR. ss.
+      * inv STACKS; ss.
+        -- inv STACKWF; [|inv TL]. inv ATLR; auto; exfalso; auto.
+        -- destruct ra; ss; try inv H0. inv ATLR. ss.
     + instantiate (1:=mk m1 m2'). econs; ss; eauto.
     + ss.
 
@@ -398,8 +398,8 @@ Proof.
           eapply Genv.genv_defs_range in Heq1. ss.
         }
         inv ATPC; auto.
-        inv INITRAPTR. exfalso. auto.
-      * inv ATPC; auto. inv INITRAPTR. exfalso. auto.
+        exfalso. auto.
+      * inv ATPC; auto. exfalso. auto.
       * unfold Genv.find_funct, Genv.find_funct_ptr. des_ifs.
         exfalso. exploit Genv.genv_defs_range; eauto. eapply initial_parent_ra_junk; ss.
      * inv AG. rewrite agree_sp0. ss.

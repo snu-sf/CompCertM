@@ -1779,10 +1779,6 @@ Proof.
         { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. apply SIMSKENV. }
         ii. clarify.
       * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
-      * destruct (Senv.block_is_volatile skenv_link sp) eqn:T; ss. exfalso.
-        exploit Genv.block_is_volatile_below; et. intro T0.
-        exploit match_stacks_sp_valid; eauto. intro SPVALID; des.
-        { clear - SPVALID0 T0 SIMSKENV. inv SIMSKENV. ss. inv SIMSKELINK. r in SIMSKENV. clarify. xomega. }
     + econs; ss; eauto with congruence.
     + econs; ss; et.
       econs; ss; et. u. i. des. clarify. eapply Mem.free_range_perm; et.

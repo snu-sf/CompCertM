@@ -107,7 +107,6 @@ Section MODSEM.
   Record wf_RA (ra : val) : Prop :=
     mk_wf_RA {
         TPTR: Val.has_type ra Tptr;
-        (* RAFAKE: ~ is_real_ptr ra; *)
         RADEF: ra <> Vundef;
       }.
 
@@ -147,6 +146,11 @@ Section MODSEM.
       n m1
       (JUNK: assign_junk_blocks m0 n = m1)
       (RAPTR: wf_RA (rs RA))
+      (* (RAJUNK: is_junk_value m0 m1 (rs RA)) *)
+      (RANOTFPTR: forall blk ofs (RAVAL: rs RA = Vptr blk ofs),
+          ~ Plt blk (Genv.genv_next skenv))
+      (* (<<NOTFPTR0: ge.(Genv.find_funct) (rs RA) = None>>) *)
+      (* (RAJUNK1: skenv_link.(Genv.find_funct) (rs RA) = None) *)
       (PTRFREE: forall pr (PTR: ~ is_junk_value m0 m1 (rs pr)),
           (<<INARG: exists mr,
               (<<MR: to_mreg pr = Some mr>>) /\
@@ -165,12 +169,13 @@ Section MODSEM.
                               Val.lessdef (init_rs mr.(to_preg)) (rs mr.(to_preg)))
       (INITRSP: init_rs # RSP = Vptr blk Ptrofs.zero)
       (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC)
-                            = Some (Internal fd) /\ fd.(fn_sig) = sg)
+                           = Some (Internal fd) /\ fd.(fn_sig) = sg)
       (FREE: Mem.free m0 blk 0 (4 * size_arguments sg) = Some m1)
       (RETV: loc_result sg = One mr)
       (EXTERNAL: external_state ge (rs # PC))
       (RSRA: rs # PC = init_rs # RA)
-      (RAPTR: wf_RA (init_rs RA))
+      (RANOTFPTR: Genv.find_funct skenv_link (init_rs RA) = None)
+      (* (JUNK1: ge.(Genv.find_funct) (rs PC) = None) *)
       (* (RSRSP: Val.lessdef (rs # RSP) (init_rs # RSP)) *)
       (RSRSP: rs # RSP = init_rs # RSP)
     :
@@ -228,8 +233,8 @@ Section MODSEM.
   Qed.
   Next Obligation.
     ii; ss; des. inv_all_once; ss; clarify.
-    inv RAPTR0. rewrite FPTR in *. rewrite <- RSRA in *. ss.
-    admit "@minki proved it".
+    des. rewrite FPTR in *. ss. des_ifs. rewrite <- RSRA in *.
+    ss. des_ifs.
   Qed.
 
   Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
@@ -308,6 +313,7 @@ Section MODULE.
 
 End MODULE.
 
+(* move to AsmregsC *)
 Lemma to_mreg_preg_of
       pr mr
       (MR: Asm.to_mreg pr = Some mr)

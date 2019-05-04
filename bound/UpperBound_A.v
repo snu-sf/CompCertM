@@ -7,6 +7,7 @@ Require Import Skeleton ModSem Mod sflib.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program SemProps.
 Require Import Equality.
 Require Import CtypingC LinkingC2.
+Require Import UpperBound_AExtra.
 
 Set Implicit Arguments.
 
@@ -2052,6 +2053,8 @@ Section PRESERVATION.
           ss.
           esplits; et.
           { left. apply plus_one. econs 3; et. ss.
+            exploit match_focus_state_bsim. eapply FOCUS. eauto. admit "". admit "". eauto. eauto. eauto. admit "".
+            i.
             admit "match_focus_state - bsim".
           }
           right. eapply CIH; eauto. econs; et. unfold Frame.update_st. ss. admit "match_focus_state - bsim".

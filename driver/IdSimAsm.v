@@ -1514,6 +1514,39 @@ Definition src_junk_val (m_src0 m_tgt0: mem) (n: nat) (v: val): val :=
   | _ => v
   end.
 
+Lemma Plt_lemma a b c
+      (LE: ~ Plt a b)
+  :
+    ~ Plt (a + c - b) c.
+Proof.
+  ii. unfold Plt in *.
+  erewrite <- Pos.compare_lt_iff in H.
+  erewrite <- Pos.add_compare_mono_r in H. instantiate (1:=b) in H.
+  erewrite Pos.sub_add in H; [|xomega].
+  rewrite Pos.add_comm in H. apply LE.
+  erewrite -> Pos.compare_lt_iff in H.
+  xomega.
+Qed.
+
+Lemma Plt_lemma2 a b c d
+      (LE: ~ Plt a b)
+      (LT: Plt a (b + d))
+  :
+    Plt (a + c - b) (c + d).
+Proof.
+  unfold Plt in *.
+  erewrite <- Pos.compare_lt_iff in LT.
+  erewrite <- Pos.add_compare_mono_r in LT. instantiate (1:=c) in LT.
+  erewrite <- Pos.sub_compare_mono_r in LT.
+  - instantiate (1:=b) in LT.
+    erewrite -> Pos.compare_lt_iff in LT.
+    rpapply LT. replace (b + d + c)%positive with (c + d + b)%positive.
+    + rewrite Pos.add_sub. auto.
+    + clear. xomega.
+  - clear LT. xomega.
+  - clear. xomega.
+Qed.
+
 Lemma src_junk_val_inj m_src0 m_tgt0 j n
       (INJ: Mem.inject j m_src0 m_tgt0)
       v
@@ -1523,12 +1556,14 @@ Proof.
   unfold src_junk_val. des_ifs; eauto.
   econs.
   - unfold junk_inj. des_ifs.
-    + exfalso. apply n0.
-      admit "xomega".
+    + apply Plt_lemma in p0; eauto. clarify.
     + instantiate (1:=0).
-      admit "xomega".
-    + exfalso. apply n1.
-      admit "xomega".
+      replace (b + Mem.nextblock m_src0 - Mem.nextblock m_tgt0 + Mem.nextblock m_tgt0 - Mem.nextblock m_src0)%positive with b; auto.
+      clear - n0. rewrite Pos.sub_add.
+      * rewrite Pos.add_sub. auto.
+      * xomega.
+    + exfalso. rewrite JunkBlock.assign_junk_blocks_nextblock in *. des_ifs.
+      apply n2. eapply Plt_lemma2 in p; eauto.
   - symmetry. eapply Ptrofs.add_zero.
 Qed.
 
@@ -1541,8 +1576,10 @@ Lemma src_junk_val_junk m_src0 m_tgt0 n v
 Proof.
   unfold JunkBlock.is_junk_value, src_junk_val in *. des_ifs. des.
   split.
-  - ii. apply JUNK. admit "xomega".
-  - admit "xomega".
+  - ii. unfold Mem.valid_block in *. eapply Plt_lemma; eauto.
+  - unfold Mem.valid_block.
+    rewrite JunkBlock.assign_junk_blocks_nextblock in *. des_ifs.
+    eapply Plt_lemma2; eauto.
 Qed.
 
 Definition set_regset_junk
@@ -1594,7 +1631,7 @@ Proof.
         try apply JunkBlock.assign_junk_blocks_unchanged_on; eauto.
     + unfold Mem.valid_block.
       rewrite JunkBlock.assign_junk_blocks_nextblock in *. des_ifs.
-      admit "xomega".
+      eapply Plt_lemma2; eauto.
     + exfalso. eapply Mem.valid_block_inject_1 in H; eauto.
   - ii. repeat rewrite JunkBlock.assign_junk_blocks_perm in *. des_ifs; eauto.
     + exfalso. eapply Mem.perm_valid_block in H2. eauto.
@@ -1605,11 +1642,8 @@ Proof.
   - set (Ptrofs.unsigned_range_2 ofs). des_ifs; des; eauto; lia.
   - des_ifs; eauto. zsimpl. exfalso.
     eapply Mem.perm_valid_block in H0.
-    unfold Mem.valid_block in *. apply n0. admit "xomega".
+    unfold Mem.valid_block in *. eapply Plt_lemma; eauto.
 Qed.
-
-
-
 
 Lemma asm_inj_drop_bot
       (asm: Asm.program)
@@ -1787,12 +1821,14 @@ Proof.
           + unfold Pregmap.set, src_junk_val. des_ifs.
           + unfold Pregmap.set, src_junk_val. des_ifs; ss; des; eauto.
 
-        - unfold Pregmap.set. des_ifs. unfold src_junk_val. des_ifs. ii. clarify.
-          apply n1.
-          assert (PLE: Ple (Genv.genv_next skenv_link_src) (Mem.nextblock m_src1)).
-          { admit "". }
-          admit "xomega".
-
+        - unfold Pregmap.set. des_ifs. unfold src_junk_val, JunkBlock.is_junk_value in *.
+          des_ifs. ii. clarify. apply n1.
+          assert (PLT: Plt (b + Mem.nextblock m_src1 - Mem.nextblock m0) (Mem.nextblock m_src1)).
+          { eapply Plt_Ple_trans; eauto.
+            inv SIMSKELINK. ss.
+            eapply store_arguments_unchanged_on in ARGTGT. inv ARGTGT.
+            clear - SRCLE BOUNDSRC unchanged_on_nextblock. xomega. }
+          exfalso. eapply Plt_lemma; eauto.
         - i. unfold Pregmap.set in *. des_ifs; eauto.
           { exploit PTRFREE.
             - ii. eapply src_junk_val_junk in H1; eauto.
@@ -1827,9 +1863,13 @@ Proof.
               try apply JunkBlock.assign_junk_blocks_unchanged_on; ss.
         - econs; ss; eauto. i. des.
           unfold junk_inj, update_meminj in *. des_ifs; ss. split.
-          + red. etrans; eauto.
-            admit "ez".
-          + admit "xomega".
+          + red. etrans; eauto. eapply store_arguments_unchanged_on in ARGTGT.
+            eapply Mem.unchanged_on_nextblock in ARGTGT. clear - ARGTGT n0. xomega.
+          + red. etrans; eauto. eapply store_arguments_unchanged_on in H.
+            eapply Mem.unchanged_on_nextblock in H. clear - H n0. etrans; eauto.
+            clear - n0. hexploit Plt_lemma; eauto. instantiate (1:=Mem.nextblock m0).
+            remember (b_src + Mem.nextblock m0 - Mem.nextblock m_src1)%positive.
+            clear Heqp. xomega.
         - ii. erewrite JunkBlock.assign_junk_blocks_perm in *.
           eapply store_arguments_unchanged_on in ARGTGT. inv ARGTGT.
           eapply unchanged_on_perm in PR; eauto.
@@ -1952,7 +1992,8 @@ Proof.
 
         - econs; ss. ii. congruence.
 
-        - admit "junk none".
+        - unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def. des_ifs.
+          eapply Genv.genv_defs_range in Heq0. exfalso. eapply RANOTFPTR; eauto.
         - unfold Pregmap.set. des_ifs. ii. clarify. unfold junk_inj, update_meminj.
           des_ifs; eauto.
       }

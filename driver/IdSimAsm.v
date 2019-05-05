@@ -285,7 +285,21 @@ Section TRIAL2.
       inv MEM. esplits; ss.
       + econs; ss. split; ss. rewrite NB.
         eapply Mem.unchanged_on_nextblock; eauto.
-      + admit "TODO".
+      + assert (SURS: forall pr,
+                   UnreachC.val'
+                     (Unreach.mk
+                        (Unreach.unreach su_arg)
+                        (Unreach.ge_nb su_arg)
+                        (Mem.nextblock (JunkBlock.assign_junk_blocks m0 n)))
+                     (rs pr)).
+        {
+          admit "".
+        }
+        econs; ss.
+        * admit "sound mem".
+        * econs; ss. ii. eapply WFHI in PR. rewrite NB in *.
+          eapply Plt_Ple_trans; eauto. eapply Mem.unchanged_on_nextblock; eauto.
+        * inv SKENV. ss.
 
       + econs; ss.
         * i. eapply Mem.unchanged_on_perm; eauto.

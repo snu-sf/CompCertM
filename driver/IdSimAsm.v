@@ -429,6 +429,55 @@ Section TRIAL2.
     destruct (loc_result sg) eqn:T; ss.
   Qed.
 
+  Lemma unreach_free su m0 m1 blk lo hi
+        (MEM: UnreachC.mem' su m0)
+        (FREE: Mem.free m0 blk lo hi = Some m1)
+    :
+      UnreachC.mem' su m1.
+  Proof.
+    inv MEM. exploit Mem.free_unchanged_on; eauto.
+    { instantiate (1:=~2 brange blk lo hi). ii. eauto. } intros UNCH.
+    econs.
+    - ii. eapply SOUND; eauto.
+      + eapply Mem.perm_free_3; eauto.
+      + erewrite <- Mem.unchanged_on_contents; eauto.
+        * unfold brange. ii. des. clarify.
+          eapply Mem_free_noperm; eauto.
+          apply Mem.perm_cur. eapply Mem.perm_implies; eauto. econs.
+        * eapply Mem.perm_free_3; eauto.
+    - ii. eapply BOUND in PR. eapply Mem.valid_block_unchanged_on; eauto.
+    - etrans; eauto. eapply Mem.unchanged_on_nextblock; eauto.
+    - etrans; eauto. symmetry. eapply Mem.nextblock_free; eauto.
+  Qed.
+
+  Lemma unreach_unfree su m0 m1 blk lo hi
+        (MEM: UnreachC.mem' su m0)
+        (UNFREE: Mem_unfree m0 blk lo hi = Some m1)
+    :
+      UnreachC.mem' su m1.
+  Proof.
+    inv MEM. exploit Mem_unfree_unchanged_on; eauto. intros UNCH.
+    econs.
+    - ii. assert (NIN: ~ brange blk lo hi blk0 ofs).
+      { unfold brange. ii. des. clarify.
+        unfold Mem_unfree in *. des_ifs. ss.
+        rewrite PMap.gss in PTR. rewrite Mem_setN_in_repeat in PTR; clarify.
+        rewrite Z2Nat_range. des_ifs; lia. }
+      eapply SOUND; eauto.
+      + eapply Mem.perm_unchanged_on_2; eauto; ss.
+        eapply Mem.perm_valid_block in PERM.
+        eapply Mem_nextblock_unfree in UNFREE. unfold Mem.valid_block in *.
+        rewrite UNFREE. auto.
+      + erewrite <- Mem.unchanged_on_contents; eauto.
+        * eapply Mem.perm_unchanged_on_2; eauto; ss.
+          eapply Mem.perm_valid_block in PERM.
+          eapply Mem_nextblock_unfree in UNFREE. unfold Mem.valid_block in *.
+          rewrite UNFREE. auto.
+    - ii. eapply BOUND in PR. eapply Mem.valid_block_unchanged_on; eauto.
+    - etrans; eauto. eapply Mem.unchanged_on_nextblock; eauto.
+    - etrans; eauto. eapply Mem_nextblock_unfree; eauto.
+  Qed.
+
   Lemma asm_unreach_local_preservation
         asm
     :
@@ -437,414 +486,327 @@ Section TRIAL2.
   Proof.
     esplits.
     eapply local_preservation_strong_horizontal_excl_spec with (sound_state := (sound_state)); eauto.
- Admitted.
-    (* instantiate (1:= AsmC.get_mem). *)
-    (* ss. *)
-    (* eapply local_preservation_strong_horizontal_excl_intro with *)
-    (*     (has_footprint := has_footprint) *)
-    (*     (mle_excl := mle_excl); ii; ss; eauto. *)
-    (* (* - (* FOOTMLE *) *) *)
-    (* (*   inv FOOT. inv MLE. econs; eauto; cycle 1. *) *)
-    (* (*   { eapply Mem.valid_block_unchanged_on; eauto. } *) *)
-    (* (*   (* r. i. r in FREED. hexploit FREED; eauto. i. *) *) *)
-    (* (*   ii. exploit FREED; eauto. *) *)
-    (* - (* FOOTEXCL *) *)
-    (*   inv MLE. inv FOOT. inv MLEEXCL. ss. des. rewrite FPTR in *. rewrite RSP in *. clarify. econs; et. *)
-    (*   + i. *)
-    (*     destruct (classic (brange blk3 *)
-    (*                               (Ptrofs.unsigned ofs1) *)
-    (*                               (Ptrofs.unsigned ofs1 + 4 * size_arguments (SkEnv.get_sig skd0)) blk ofs)). *)
-    (*     * rr in H. des; clarify. eapply Mem.perm_cur. eapply Mem.perm_implies with Freeable; eauto with mem. *)
-    (*     * eapply PERM; et. *)
-    (*       eapply PERM0; et. *)
-    (*       eapply Mem.valid_block_unchanged_on; et. *)
-    (*   + des_ifs. clear_tac. *)
-    (*     eapply Mem_unchanged_on_trans_strong; et. *)
-    (*     eapply Mem.unchanged_on_implies; try apply RO0; et. *)
-    (*     i. des. *)
-    (*     esplits; et. *)
-    (*     { u. i; des; clarify. r in H. eapply H. eapply Mem.perm_implies with Freeable; eauto with mem. } *)
-    (*   + eapply Mem_unchanged_on_trans_strong; et. *)
-    (*     eapply Mem.unchanged_on_implies; try apply PRIV0; et. *)
-    (*     u. i; des; clarify; ss. *)
-    (* - (* init *) *)
+    instantiate (1:= AsmC.get_mem).
+    eapply local_preservation_strong_horizontal_excl_intro with
+        (has_footprint := has_footprint)
+        (mle_excl := mle_excl); ii; ss; eauto.
+    - (* FOOTEXCL *)
+      inv MLE. inv FOOT. inv MLEEXCL. ss. des. rewrite FPTR in *. rewrite RSP in *. clarify. econs; et.
+      + i.
+        destruct (classic (brange blk3
+                                  (Ptrofs.unsigned ofs1)
+                                  (Ptrofs.unsigned ofs1 + 4 * size_arguments (SkEnv.get_sig skd0)) blk ofs)).
+        * rr in H. des; clarify. eapply Mem.perm_cur. eapply Mem.perm_implies with Freeable; eauto with mem.
+        * eapply PERM; et.
+          eapply PERM0; et.
+          eapply Mem.valid_block_unchanged_on; et.
+      + des_ifs. clear_tac.
+        eapply Mem_unchanged_on_trans_strong; et.
+        eapply Mem.unchanged_on_implies; try apply RO0; et.
+        i. des.
+        esplits; et.
+        { u. i; des; clarify. r in H. eapply H. eapply Mem.perm_implies with Freeable; eauto with mem. }
+      + eapply Mem_unchanged_on_trans_strong; et.
+        eapply Mem.unchanged_on_implies; try apply PRIV0; et.
+        u. i; des; clarify; ss.
 
-    (*   admit "init". *)
-    (* - *)
+    - (* init *)
+      inv SUARG. des. ss. inv WF.
+      inv INIT. inv STORE.
+      eexists (Unreach.mk
+                 (Unreach.unreach su_arg)
+                 (Unreach.ge_nb su_arg)
+                 (Mem.nextblock (JunkBlock.assign_junk_blocks m0 n))).
+      assert (UNCH: Mem.unchanged_on
+                        (SimMemInj.valid_blocks (Args.m args))
+                        (Args.m args)
+                        (JunkBlock.assign_junk_blocks m0 n)).
+      { etrans.
+        - eapply store_arguments_unchanged_on; eauto.
+        - eapply Mem.unchanged_on_implies.
+          + eapply JunkBlock.assign_junk_blocks_unchanged_on.
+          + ss. }
 
-      (* inv INIT. *)
-      (* r in SUARG. des. *)
-      (* rename m into m2. *)
-      (* set (Unreach.mk su_arg.(Unreach.unreach) su_arg.(Unreach.ge_nb) (Pos.succ su_arg.(Unreach.nb))) as su_init. *)
-      (* exists su_init. *)
-      (* assert(HLE: Unreach.hle su_arg su_init). *)
-      (* { rr. ss. esplits; et. *)
-      (*   xomega. *)
-      (* } *)
-      (* assert(SURS: forall pr, UnreachC.val' su_init (rs pr)). *)
-      (* { *)
-      (*   i. *)
-      (*   destruct (is_real_ptr (rs pr)) eqn:ISPTR; cycle 1. *)
-      (*   { ii; ss. rewrite PTR in *. ss. } *)
+      inv MEM. esplits; ss.
+      + econs; ss. split; ss. rewrite NB.
+        eapply Mem.unchanged_on_nextblock; eauto.
+      + admit "TODO".
 
-      (*   inv STORE. inv H. *)
-      (*   exploit Mem.alloc_result; eauto. i; clarify. *)
-      (*   exploit Mem.nextblock_alloc; eauto. intro SUCC. *)
+      + econs; ss.
+        * i. eapply Mem.unchanged_on_perm; eauto.
+        * eapply Mem.unchanged_on_implies; eauto.
+        * eapply Mem.unchanged_on_implies; eauto.
 
-      (*   inv MEM. *)
+    - (* step *)
 
-      (*   exploit PTRFREE; et. i; des; ss; clarify; cycle 1. *)
-      (*   { unfold su_init. ii. ss. *)
-      (*     rewrite PTR in *. rewrite NB0 in *. erewrite <- Mem.nextblock_alloc; eauto. *)
-      (*     rr in VAL. symmetry in RSPC. repeat spc VAL. des. split; ss. rewrite NB0 in *. rewrite SUCC. eauto with xomega. *)
-      (*   } *)
-      (*   { unfold su_init. ii. ss. *)
-      (*     rewrite PTR in *. clarify. *)
-      (*     rewrite ! NB0 in *. *)
-      (*     esplits; et. *)
-      (*     - ii. inv WF. exploit WFHI; et. i. Unreach.nb_tac. xomega. *)
-      (*     - xomega. *)
-      (*   } *)
+      inv STEP. des. destruct st0, st1. ss. clarify. destruct st, st0. ss.
 
-      (*   eapply (@Sound.hle_val UnreachC.Unreach); et. *)
-      (*   (* TODO: pull out as a lemma *) *)
-      (*   inv TYP. *)
+      hexploit asm_step_preserve_injection; try apply STEP0.
+      { instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm).
+        instantiate (1:=UnreachC.to_inj su0 (Mem.nextblock m)).
+        ii. ss. des_ifs. unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
+        esplits; eauto.
+      }
+      { ii. ss. esplits; eauto.
+        unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
+        - admit "".
+        - admit "".
+      }
+      {
+        eapply symbols_inject_weak_imply.
+        instantiate (1:=skenv_link). unfold symbols_inject. esplits; ss.
+        - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs; ss.
+        - unfold UnreachC.to_inj, Mem.flat_inj. ii. esplits; eauto. des_ifs.
+          + admit "".
+          + admit "".
+        - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs.
+      }
 
-      (*   assert(IN: In (rs pr) (Args.vs args)). *)
-      (*   { clear - ARG VALS0 MR ISPTR. *)
-      (*     r in VALS0. *)
-      (*     abstr (sig_args (fn_sig fd)) sargs. *)
-      (*     generalize (loc_arguments_one (fn_sig fd)); intro ONES. *)
-      (*     abstr (loc_arguments (fn_sig fd)) locs. *)
-      (*     abstr (Args.vs args) vs. *)
-      (*     ginduction vs; ii; ss; inv VALS0; ss. *)
-      (*     rewrite in_app_iff in ARG. destruct sargs; inv H. *)
-      (*     des; eauto. *)
-      (*     exploit ONES; eauto. i; des. destruct a1; ss. des; ss. clarify. *)
-      (*     inv H0. inv H3. unfold to_mregset in *. *)
-      (*     erewrite to_mreg_preg_of in H4; eauto. rewrite H4 in *. *)
-      (*     unfold typify in *; des_ifs; eauto. *)
-      (*   } *)
-      (*   Fail spc VALS. (* TODO: fix spc *) *)
-      (*   rr in VALS. rewrite Forall_forall in *. eapply VALS; et. *)
-      (* } *)
-      (* ss. *)
-      (* esplits; eauto; try refl; swap 2 3. *)
-      (* { (* store_arguments mle *) *)
-      (*   inv STORE. inv H. *)
-      (*   exploit Mem.alloc_result; eauto. i; clarify. *)
-      (*   exploit Mem.nextblock_alloc; eauto. intro SUCC. *)
+      {
+        instantiate (1:= r). ii.
+        inv SUST. ss. specialize (RS pr). ss. unfold UnreachC.val' in *.
+        destruct (r pr); try by econs.
+        exploit RS; eauto. i. des. econs.
+        - unfold UnreachC.to_inj, Mem.flat_inj. des_ifs. exfalso. apply n.
+          inv MEM. rewrite NB in *. eauto.
+        - psimpl. auto.
+      }
 
-      (*   econs; eauto. *)
-      (*   * ii. *)
-      (*     eapply Mem.perm_alloc_4; eauto. *)
-      (*     eapply UNCH; eauto. *)
-      (*     { unfold Mem.valid_block in *. des_ifs. xomega. } *)
-      (*     { unfold Mem.valid_block in *. rewrite SUCC. xomega. } *)
-      (*   * eapply Mem_unchanged_on_trans_strong; eauto; cycle 1. *)
-      (*     { eapply Mem.unchanged_on_implies; eauto. *)
-      (*       ii. ss. des. des_ifs. unfold Mem.valid_block in *. xomega. } *)
-      (*     { eapply Mem.alloc_unchanged_on; eauto. } *)
-      (*   * eapply Mem_unchanged_on_trans_strong; eauto; cycle 1. *)
-      (*     { eapply Mem.unchanged_on_implies; eauto. *)
-      (*       ii. ss. des. des_ifs. unfold Mem.valid_block in *. xomega. } *)
-      (*     { eapply Mem.alloc_unchanged_on; eauto. } *)
-      (* } *)
-      (* econs; eauto; ss. *)
-      (* + (* mem *) *)
+      { eapply UnreachC.to_inj_mem. inv SUST. eauto. }
 
-      (*   inv STORE. inv H. *)
-      (*   exploit Mem.alloc_result; eauto. i; clarify. *)
-      (*   exploit Mem.nextblock_alloc; eauto. intro SUCC. *)
+      i. des. inv SUST. inv MEM.
+      assert (MNB: Ple (Mem.nextblock m) (Mem.nextblock m0)).
+      { eapply Mem.unchanged_on_nextblock; eauto. }
 
-      (*   inv MEM. *)
-      (*   econs; ss; eauto; cycle 1. *)
-      (*   { ii. exploit BOUND; eauto. i. unfold Mem.valid_block in *. rewrite <- NB. rewrite SUCC. xomega. } *)
-      (*   { rewrite <- NB. rewrite SUCC. xomega. } *)
-      (*   { rewrite NB0. congruence. } *)
-      (*   i. *)
-      (*   admit "this should hold". *)
-      (* + unfold su_init. inv WF. econs; ss; et. ii. exploit WFHI; et. i. xomega. *)
-      (* + (* ske *) *)
-      (*   inv SKENV. rewrite PUB in *. ss. *)
+      exists (Unreach.mk (fun blk => if j1 blk then false
+                                     else plt blk (Mem.nextblock m0))
+                         (Unreach.ge_nb su0)
+                         (Mem.nextblock m0)).
+      assert (HLE: Unreach.hle
+                     su0 (Unreach.mk
+                            (fun blk => if j1 blk then false
+                                        else plt blk (Mem.nextblock m0))
+                            (Unreach.ge_nb su0)
+                            (Mem.nextblock m0))).
+      { eapply Unreach.hle_update; [..|refl]; ss; rewrite NB in *; eauto; i.
+        destruct (if Unreach.unreach su0 blk then None else Mem.flat_inj (Mem.nextblock m) blk) eqn: BEQ.
+        - destruct p. dup BEQ. eapply INCR in BEQ0. des_ifs.
+        - destruct (j1 blk) as [[]|] eqn: BEQ0.
+          + specialize (SEP _ _ _ BEQ BEQ0). des. des_ifs.
+          + unfold Mem.flat_inj, proj_sumbool in *. des_ifs. xomega. }
+      assert (SOUNDV: forall v_src v_tgt (INJ: Val.inject j1 v_src v_tgt),
+                 UnreachC.val' (Unreach.mk
+                                  (fun blk => if j1 blk then false
+                                              else plt blk (Mem.nextblock m0))
+                                  (Unreach.ge_nb su0)
+                                  (Mem.nextblock m0)) v_src).
+      { ii. ss. clarify. inv INJ0. inv WF. rewrite NB in *.
+        destruct (if Unreach.unreach su0 blk then None else Mem.flat_inj (Mem.nextblock m) blk) eqn: BEQ.
+        - destruct p. dup BEQ. eapply INCR in BEQ0.
+          unfold Mem.flat_inj in *; des_ifs; esplits; eauto.
+          eapply Plt_Ple_trans; eauto.
+        - specialize (SEP _ _ _ BEQ H1). des.
+          unfold Mem.flat_inj in *; des_ifs; esplits; eauto.
+          + eapply Plt_Ple_trans; eauto.
+          + eapply Mem.valid_block_inject_1; eauto.
+      }
+      esplits; eauto.
+      + econs; ss; eauto.
+        * inv WF. rewrite NB in *. econs; ss; i.
+          { ii. ss. clarify. unfold proj_sumbool in *. des_ifs.
+            - destruct p. esplits; eauto. eapply Mem.valid_block_inject_1; eauto.
+            - destruct p. esplits; eauto. eapply Mem.valid_block_inject_1; eauto.
+            - exfalso. destruct p0.
+              exploit Mem.mi_memval; eauto. eapply Mem.mi_inj; eauto. i.
+              rewrite PTR in *. inv H. inv H1. clarify.
+            - exfalso. eapply n0. eapply Mem.perm_valid_block; eauto.
+            - exfalso. destruct p.
+              exploit Mem.mi_memval; eauto. eapply Mem.mi_inj; eauto. i.
+              rewrite PTR in *. inv H. inv H1. clarify.
+            - exfalso. eapply n1. eapply Mem.perm_valid_block; eauto. }
+          { ii. des_ifs; eauto. unfold proj_sumbool in *. des_ifs. }
+          { etrans; eauto. }
+        * i. eapply UnreachC.Unreach_obligation_3; eauto.
+        * inv WF. rewrite NB in *. econs; ss.
+          { i. des_ifs; eauto.
+            destruct (if Unreach.unreach su0 x0
+                      then None
+                      else Mem.flat_inj (Mem.nextblock m) x0) as [[]|]eqn:EQ.
+            - apply INCR in EQ. clarify.
+            - unfold Mem.flat_inj in *. des_ifs; eauto. etrans; eauto. xomega. }
+          { i. unfold proj_sumbool in *. des_ifs; eauto. }
+      + econs; ss; eauto; i.
+        * exploit asm_step_max_perm; try apply STEP0; eauto.
+        * exploit asm_step_readonly; try apply STEP0; eauto.
+        * eapply Mem.unchanged_on_implies; eauto.
+          ii. unfold flip in *. ss. esplits; eauto.
+          unfold loc_unmapped. unfold UnreachC.to_inj. des_ifs.
 
-  (*   - (* step *) *)
+    - (* call *)
+      inv AT. ss.
+      assert(SUARGS: UnreachC.args' su0 (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)).
+      {
+        inv SUST. r. splits; ss.
+        + rewrite <- FPTR. eapply RS; et.
+        + rewrite Forall_forall. i.
+          exploit extcall_arguments_inject; eauto.
+          { instantiate (1:= rs).
+            instantiate (1:=UnreachC.to_inj su0 (Mem.nextblock m0)). ii.
+            ss. specialize (RS pr). ss. unfold UnreachC.val' in *.
+            destruct (rs pr); try by econs.
+            exploit RS; eauto. i. des. econs.
+            - unfold UnreachC.to_inj, Mem.flat_inj. des_ifs. exfalso. apply n.
+              inv MEM. rewrite NB in *. eauto.
+            - psimpl. auto. }
+          { eapply UnreachC.to_inj_mem. eauto. }
+          i. des. clear - ARGINJ H MEM.
+          revert H args2 ARGINJ. induction vs; ss. i. inv ARGINJ. des; eauto.
+          clarify. ii. clarify. inv H2. unfold UnreachC.to_inj, Mem.flat_inj in *.
+          des_ifs. esplits; eauto. inv MEM. rewrite NB. auto.
+        + eapply unreach_free; eauto. }
+      exploit (@Sound.greatest_ex _ su0 (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)); ss; eauto.
+      { exists su0. esplits; eauto. refl. }
+      i; des.
+      des_ifs. clear_tac.
+      esplits; eauto.
+      + (* mle *)
+        inv SUST.
+        exploit RS; eauto. intro SU; des.
+        eapply Unreach.free_mle; eauto.
+      + (* footprint *)
+        des_ifs. des. clarify. econs; eauto.
+        * eapply Mem.free_range_perm; et.
+        * inv SUST. exploit RS; try apply RSP; eauto. i. des.
+          unfold Mem.valid_block. inv MEM. rewrite <- NB. auto.
+        * inv SUST. specialize (RS Asm.RSP). eapply RS; et.
+      + (* K *)
+        ii. inv AFTER. ss.
+        destruct retv; ss. rename m into m2.
+        assert(GRARGS: Sound.args su_gr (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)).
+        { rr in GR. des. ss. }
+        assert(LEOLD: Unreach.hle_old su_gr su_ret).
+        { eapply Unreach.hle_hle_old; et. rr in GRARGS. des. ss. }
+        set (su1 := Unreach.mk (fun blk =>
+                                  if plt blk (Mem.nextblock m0)
+                                  then su0.(Unreach.unreach) blk
+                                  else su_ret.(Unreach.unreach) blk
+                               )
+                               su0.(Unreach.ge_nb) m2.(Mem.nextblock)).
+        exists su1.
+        assert(HLEA: Sound.hle su0 su1).
+        { unfold su1. rr. ss.
+          inv SUST. inv MEM. rewrite NB in *.
+          esplits; et.
+          - ii. des_ifs.
+          - inv MLE. etrans.
+            + eapply Mem.unchanged_on_nextblock. eapply Mem.free_unchanged_on; eauto.
+              instantiate (1:=bot2). ss.
+            + eapply Mem.unchanged_on_nextblock. eauto.
+        }
+        assert(LEA: UnreachC.le' su0 su1).
+        { rr in GR. des. unfold su1.
+          rr. ss. esplits; eauto.
+          ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto.
+        }
+        assert(LEB: UnreachC.le' su1 su_ret).
+        { rr in GR. des. unfold su1.
+          rr. ss. esplits; eauto.
+          - ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto.
+          - rr in LE. des. rr in LE0. des. congruence.
+        }
+        esplits; eauto; cycle 1.
+        { (* unfree mle_excl *)
+          des. clarify. rewrite FPTR in *. ss. des_ifs. clear_tac.
+          econs; et.
+          - ii. eapply Mem_unfree_unchanged_on; et.
+          - eapply Mem_unfree_unchanged_on; et.
+            (* u. ii; des; ss; clarify. *)
+            (* rr in H. eapply H. *)
+        }
+        (* { inv SUST. inv MEM. rr. split; ss. ii. des_ifs. apply BOUND in PR. unfold Mem.valid_block in *. ss. } *)
+        inv SUST.
+        generalize (loc_external_result_one sg); intro ONE.
+        destruct (loc_external_result sg) eqn:T; ss. clear_tac.
+        unfold Pregmap.set.
+        (* sound_state *)
+        Local Opaque PregEq.eq.
+        econs; ss; eauto.
+        { i.
+          set pr as PR.
+          des_ifs.
+          - (* PC *)
+            eapply (@Sound.hle_val UnreachC.Unreach); ss; et.
+          - (* retv *)
+            move RETV at bottom. rr in RETV. des. ss.
+            eapply UnreachC.val_le; eauto.
+            unfold su1. ss. inv MEM0. rewrite NB. refl.
+          - (* others *)
+            eapply (@Sound.hle_val UnreachC.Unreach); ss; et.
+            unfold regset_after_external. des_ifs.
+        }
+        { bar. move RETV at bottom. rr in RETV. des. ss.
+          assert(UnreachC.mem' su1 m2).
+          { inv MEM0. econs; ss; eauto; cycle 1.
+            - ii. eapply BOUND. des_ifs. eapply LEB. eapply LEA. ss.
+            - inv LEA. inv LEB. rewrite H0. rewrite H2. eauto.
+            - i.
+              destruct (classic (Unreach.unreach su_ret blk2)); cycle 1.
+              { hexploit SOUND; eauto. i.
+                eapply UnreachC.memval_le; et. unfold su1. ss. Unreach.nb_tac. xomega.
+              }
+              rename H into SURET.
+              des_ifs.
+              assert(HLE: forall
+                        blk
+                        (OLD: Plt blk (Mem.nextblock m0))
+                        (NEW: Unreach.unreach su_ret blk)
+                      ,
+                        <<OLD: Unreach.unreach su_gr blk>>).
+              { ii. rr in LEOLD. des. eapply OLD0. esplits; et.
+                clear - OLD GR FREE. inv GR. des. inv H1. ss. des.
+                inv MEM. rewrite NB. eapply Plt_Ple_trans; eauto.
+                erewrite <- Mem.nextblock_free; eauto. refl. }
+              exploit HLE; et. intro SUGR; des.
+              assert(UNCH: (ZMap.get ofs1 (Mem.mem_contents m2) !! blk2)
+                           = (ZMap.get ofs1 (Mem.mem_contents m1) !! blk2)).
+              { inv MLE. eapply Mem.unchanged_on_contents; eauto.
+                - eapply PRIV; et.
+                  unfold Mem.valid_block. erewrite Mem.nextblock_free; eauto. }
 
-  (*     inv STEP. des. destruct st0, st1. ss. clarify. destruct st, st0. ss. *)
+              move SUARGS at bottom. rr in SUARGS. des. ss. inv MEM0.
+              erewrite UNCH.
+              hexploit SOUND0; et.
+              { inv MLE. eapply PRIV; et.
+                unfold Mem.valid_block. erewrite Mem.nextblock_free; eauto. }
+              i; des.
+              remember su1 as su1new. clear - p HLEA H.
+              ii. exploit H; eauto. i. des. inv HLEA. des. split.
+              + rewrite <- H2; eauto.
+              + eapply Plt_Ple_trans; eauto. }
+          eapply unreach_unfree; eauto.
+        }
+        { i. eapply (@Sound.hle_val UnreachC.Unreach); ss; et. }
+        { (* WF *)
+          inv WF. unfold su1. econs; ss; et.
+          - i. des_ifs; et.
+            inv MEM. xomega.
+          - i. des_ifs; et.
+            { clear - p FREE MLE. inv MLE. eapply Plt_Ple_trans; eauto.
+              etrans; eapply Mem.unchanged_on_nextblock; eauto.
+              eapply Mem.free_unchanged_on; eauto. instantiate (1:=bot2). ss. }
+            rr in RETV. des. ss. inv WF. inv MEM0. Unreach.nb_tac. eapply WFHI0; et.
+        }
 
-  (*     hexploit asm_step_preserve_injection; try apply STEP0. *)
-  (*     { instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm). *)
-  (*       instantiate (1:=fun blk => if Unreach.unreach su0 blk then None *)
-  (*                                  else Mem.flat_inj m.(Mem.nextblock) blk). *)
-  (*       admit "should hold. maybe we need to add premises". *)
-  (*     } *)
-  (*     { *)
-  (*       admit "should hold. maybe we need to add premises". *)
-  (*     } *)
-  (*     { *)
-  (*       admit "should hold. maybe we need to add premises". *)
-  (*     } *)
-
-  (*     { *)
-  (*       instantiate (1:= r). ii. *)
-  (*       inv SUST. ss. specialize (RS pr). ss. unfold UnreachC.val' in *. *)
-  (*       destruct (r pr); try by econs. *)
-  (*       exploit RS; eauto. i. des. econs. *)
-  (*       - unfold Mem.flat_inj. des_ifs. exfalso. apply n. *)
-  (*         inv MEM. rewrite NB in *. eauto. *)
-  (*       - psimpl. auto. *)
-  (*     } *)
-
-  (*     { *)
-  (*       unfold Mem.flat_inj. econs; ss; ii; des_ifs; eauto. *)
-  (*       - econs; ss; eauto; i; des_ifs; zsimpl; eauto. *)
-  (*         + apply Z.divide_0_r. *)
-  (*         + inv SUST. inv MEM. hexploit SOUND; eauto; clarify. *)
-  (*           i. unfold UnreachC.memval' in *. *)
-  (*           destruct (ZMap.get ofs (Mem.mem_contents m) !! b2) eqn:EQ; try by econs. *)
-  (*           hexploit H; eauto. i. econs; eauto. *)
-  (*           destruct v; try by econs. *)
-  (*           exploit H1; eauto. i. des. *)
-  (*           econs; des_ifs; clarify. *)
-  (*           * exfalso. apply n0. rewrite <- NB. auto. *)
-  (*           * psimpl. auto. *)
-  (*       - split; [lia|]. zsimpl. eapply Ptrofs.unsigned_range_2. *)
-  (*       - zsimpl. eauto. *)
-  (*     } *)
-
-  (*     i. des. inv SUST. inv MEM. *)
-  (*     assert (MNB: Ple (Mem.nextblock m) (Mem.nextblock m0)). *)
-  (*     { eapply Mem.unchanged_on_nextblock; eauto. } *)
-
-  (*     exists (Unreach.mk (fun blk => if j1 blk then false *)
-  (*                                    else plt blk (Mem.nextblock m0)) *)
-  (*                        (Unreach.ge_nb su0) *)
-  (*                        (Mem.nextblock m0)). *)
-  (*     assert (HLE: Unreach.hle *)
-  (*                    su0 (Unreach.mk *)
-  (*                           (fun blk => if j1 blk then false *)
-  (*                                       else plt blk (Mem.nextblock m0)) *)
-  (*                           (Unreach.ge_nb su0) *)
-  (*                           (Mem.nextblock m0))). *)
-  (*     { eapply Unreach.hle_update; [..|refl]; ss; rewrite NB in *; eauto; i. *)
-  (*       destruct (if Unreach.unreach su0 blk then None else Mem.flat_inj (Mem.nextblock m) blk) eqn: BEQ. *)
-  (*       - destruct p. dup BEQ. eapply INCR in BEQ0. des_ifs. *)
-  (*       - destruct (j1 blk) as [[]|] eqn: BEQ0. *)
-  (*         + specialize (SEP _ _ _ BEQ BEQ0). des. des_ifs. *)
-  (*         + unfold Mem.flat_inj, proj_sumbool in *. des_ifs. xomega. } *)
-  (*     assert (SOUNDV: forall v_src v_tgt (INJ: Val.inject j1 v_src v_tgt), *)
-  (*                UnreachC.val' (Unreach.mk *)
-  (*                                 (fun blk => if j1 blk then false *)
-  (*                                             else plt blk (Mem.nextblock m0)) *)
-  (*                                 (Unreach.ge_nb su0) *)
-  (*                                 (Mem.nextblock m0)) v_src). *)
-  (*     { ii. ss. clarify. inv INJ0. inv WF. rewrite NB in *. *)
-  (*       destruct (if Unreach.unreach su0 blk then None else Mem.flat_inj (Mem.nextblock m) blk) eqn: BEQ. *)
-  (*       - destruct p. dup BEQ. eapply INCR in BEQ0. *)
-  (*         unfold Mem.flat_inj in *; des_ifs; esplits; eauto. *)
-  (*         eapply Plt_Ple_trans; eauto. *)
-  (*       - specialize (SEP _ _ _ BEQ H1). des. *)
-  (*         unfold Mem.flat_inj in *; des_ifs; esplits; eauto. *)
-  (*         + eapply Plt_Ple_trans; eauto. *)
-  (*         + eapply Mem.valid_block_inject_1; eauto. *)
-  (*     } *)
-  (*     esplits; eauto. *)
-  (*     + econs; ss; eauto. *)
-  (*       * inv WF. rewrite NB in *. econs; ss; i. *)
-  (*         { ii. ss. clarify. unfold proj_sumbool in *. des_ifs. *)
-  (*           - destruct p. esplits; eauto. eapply Mem.valid_block_inject_1; eauto. *)
-  (*           - destruct p. esplits; eauto. eapply Mem.valid_block_inject_1; eauto. *)
-  (*           - exfalso. destruct p0. *)
-  (*             exploit Mem.mi_memval; eauto. eapply Mem.mi_inj; eauto. i. *)
-  (*             rewrite PTR in *. inv H. inv H1. clarify. *)
-  (*           - exfalso. eapply n0. eapply Mem.perm_valid_block; eauto. *)
-  (*           - exfalso. destruct p. *)
-  (*             exploit Mem.mi_memval; eauto. eapply Mem.mi_inj; eauto. i. *)
-  (*             rewrite PTR in *. inv H. inv H1. clarify. *)
-  (*           - exfalso. eapply n1. eapply Mem.perm_valid_block; eauto. } *)
-  (*         { ii. des_ifs; eauto. unfold proj_sumbool in *. des_ifs. } *)
-  (*         { etrans; eauto. } *)
-  (*       * i. eapply UnreachC.Unreach_obligation_3; eauto. *)
-  (*       * inv WF. rewrite NB in *. econs; ss. *)
-  (*         { i. des_ifs; eauto. *)
-  (*           destruct (if Unreach.unreach su0 x0 *)
-  (*                     then None *)
-  (*                     else Mem.flat_inj (Mem.nextblock m) x0) as [[]|]eqn:EQ. *)
-  (*           - apply INCR in EQ. clarify. *)
-  (*           - unfold Mem.flat_inj in *. des_ifs; eauto. etrans; eauto. xomega. } *)
-  (*         { i. unfold proj_sumbool in *. des_ifs; eauto. } *)
-  (*     + econs; ss; eauto; i. *)
-  (*       * exploit asm_step_max_perm; try apply STEP0; eauto. *)
-  (*       * exploit asm_step_readonly; try apply STEP0; eauto. *)
-  (*       * eapply Mem.unchanged_on_implies; eauto. *)
-  (*         ii. unfold flip in *. ss. esplits; eauto. *)
-  (*         unfold loc_unmapped. des_ifs. *)
-
-  (*   - (* call *) *)
-  (*     inv AT. ss. *)
-  (*     assert(SUARGS: UnreachC.args' su0 (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)). *)
-  (*     { *)
-  (*       inv SUST. r. splits; ss. *)
-  (*       + rewrite <- FPTR. eapply RS; et. *)
-  (*       + rewrite Forall_forall. i. *)
-  (*         admit "extcall-arguments - (MEM && UnreachC.mem'_load_val') \/ (RS)". *)
-  (*       + clear - FREE MEM. admit "ez - Unreach.mem - free - Unreach.mem". *)
-  (*     } *)
-  (*     exploit (@Sound.greatest_ex _ su0 (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)); ss; eauto. *)
-  (*     { exists su0. esplits; eauto. refl. } *)
-  (*     i; des. *)
-  (*     des_ifs. clear_tac. *)
-  (*     esplits; eauto. *)
-  (*     + (* mle *) *)
-  (*       inv SUST. *)
-  (*       exploit RS; eauto. intro SU; des. *)
-  (*       eapply Unreach.free_mle; eauto. *)
-  (*     + (* footprint *) *)
-  (*       des_ifs. des. clarify. econs; eauto. *)
-  (*       * eapply Mem.free_range_perm; et. *)
-  (*       * admit "ez - valid block". *)
-  (*       * inv SUST. specialize (RS Asm.RSP). eapply RS; et. *)
-  (*     + (* K *) *)
-  (*       ii. inv AFTER. ss. *)
-  (*       destruct retv; ss. rename m into m2. *)
-  (*       assert(GRARGS: Sound.args su_gr (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)). *)
-  (*       { rr in GR. des. ss. } *)
-  (*       assert(LEOLD: Unreach.hle_old su_gr su_ret). *)
-  (*       { eapply Unreach.hle_hle_old; et. rr in GRARGS. des. ss. } *)
-  (*       (* set (f := fun b => if su_ret b *) *)
-  (*       (*                    then BCinvalid *) *)
-  (*       (*                    else *) *)
-  (*       (*                      if plt b (Mem.nextblock m_arg) *) *)
-  (*       (*                      then bc b *) *)
-  (*       (*                      else *) *)
-  (*       (*                        if plt b (Mem.nextblock retv.(Retv.m)) *) *)
-  (*       (*                        then BCother *) *)
-  (*       (*                        else BCinvalid). *) *)
-  (*       set (su1 := Unreach.mk (fun blk => *)
-  (*                                 (* if su_ret.(Unreach.unreach) blk *) *)
-  (*                                 (* then true *) *)
-  (*                                 (* else  *) *)
-  (*                                 (*   if plt blk (Mem.nextblock m0) *) *)
-  (*                                 (*   then su0.(Unreach.unreach) blk *) *)
-  (*                                 (*   else false *) *)
-  (*                                 if plt blk (Mem.nextblock m0) *)
-  (*                                 then su0.(Unreach.unreach) blk *)
-  (*                                 else su_ret.(Unreach.unreach) blk *)
-  (*                              ) *)
-  (*                              su0.(Unreach.ge_nb) m2.(Mem.nextblock)). *)
-  (*       exists su1. *)
-  (*       assert(HLEA: Sound.hle su0 su1). *)
-  (*       (* { rr in GR. des. unfold su1. *) *)
-  (*       (*   rr. ss. esplits; eauto. *) *)
-  (*       (*   - ii. des_ifs. eapply LE; eauto. eapply LE0; eauto. *) *)
-  (*       (*   - ii. des. des_ifs. inv SUST. inv MEM. congruence. *) *)
-  (*       (*   - admit "ez". *) *)
-  (*       (* } *) *)
-  (*       { unfold su1. rr. ss. *)
-  (*         inv SUST. inv MEM. rewrite NB in *. *)
-  (*         esplits; et. *)
-  (*         - ii. des_ifs. *)
-  (*         - admit "ez". *)
-  (*       } *)
-  (*       assert(LEA: UnreachC.le' su0 su1). *)
-  (*       { rr in GR. des. unfold su1. *)
-  (*         rr. ss. esplits; eauto. *)
-  (*         ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto. *)
-  (*       } *)
-  (*       assert(LEB: UnreachC.le' su1 su_ret). *)
-  (*       { rr in GR. des. unfold su1. *)
-  (*         rr. ss. esplits; eauto. *)
-  (*         - ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto. *)
-  (*         - rr in LE. des. rr in LE0. des. congruence. *)
-  (*       } *)
-  (*       esplits; eauto; cycle 1. *)
-  (*       { (* unfree mle_excl *) *)
-  (*         des. clarify. rewrite FPTR in *. ss. des_ifs. clear_tac. *)
-  (*         econs; et. *)
-  (*         - ii. eapply Mem_unfree_unchanged_on; et. *)
-  (*         - eapply Mem_unfree_unchanged_on; et. *)
-  (*           (* u. ii; des; ss; clarify. *) *)
-  (*           (* rr in H. eapply H. *) *)
-  (*       } *)
-  (*       (* { inv SUST. inv MEM. rr. split; ss. ii. des_ifs. apply BOUND in PR. unfold Mem.valid_block in *. ss. } *) *)
-  (*       inv SUST. *)
-  (*       generalize (loc_external_result_one sg); intro ONE. *)
-  (*       destruct (loc_external_result sg) eqn:T; ss. clear_tac. *)
-  (*       unfold Pregmap.set. *)
-  (*       (* sound_state *) *)
-  (*       Local Opaque PregEq.eq. *)
-  (*       econs; ss; eauto. *)
-  (*       { i. *)
-  (*         set pr as PR. *)
-  (*         des_ifs. *)
-  (*         - (* PC *) *)
-  (*           eapply (@Sound.hle_val UnreachC.Unreach); ss; et. *)
-  (*         - (* retv *) *)
-  (*           move RETV at bottom. rr in RETV. des. ss. *)
-  (*           eapply UnreachC.val_le; eauto. *)
-  (*           unfold su1. ss. inv MEM0. rewrite NB. refl. *)
-  (*         - (* others *) *)
-  (*           eapply (@Sound.hle_val UnreachC.Unreach); ss; et. *)
-  (*           unfold regset_after_external. des_ifs. *)
-  (*       } *)
-  (*       { bar. move RETV at bottom. rr in RETV. des. ss. *)
-  (*         assert(UnreachC.mem' su1 m2). *)
-  (*         { inv MEM0. econs; ss; eauto; cycle 1. *)
-  (*           - ii. eapply BOUND. des_ifs. eapply LEB. eapply LEA. ss. *)
-  (*           - admit "ez". *)
-  (*           - i. *)
-  (*             destruct (classic (Unreach.unreach su_ret blk2)); cycle 1. *)
-  (*             { hexploit SOUND; eauto. i. *)
-  (*               eapply UnreachC.memval_le; et. unfold su1. ss. Unreach.nb_tac. xomega. *)
-  (*             } *)
-  (*             rename H into SURET. *)
-  (*             des_ifs. *)
-  (*             assert(HLE: forall *)
-  (*                       blk *)
-  (*                       (OLD: Plt blk (Mem.nextblock m0)) *)
-  (*                       (NEW: Unreach.unreach su_ret blk) *)
-  (*                     , *)
-  (*                       <<OLD: Unreach.unreach su_gr blk>>). *)
-  (*             { ii. rr in LEOLD. des. eapply OLD0. esplits; et. clear - OLD GR FREE. admit "ez". } *)
-  (*             exploit HLE; et. intro SUGR; des. *)
-  (*             assert(UNCH: (ZMap.get ofs1 (Mem.mem_contents m2) !! blk2) *)
-  (*                          = (ZMap.get ofs1 (Mem.mem_contents m1) !! blk2)). *)
-  (*             { inv MLE. eapply Mem.unchanged_on_contents; eauto. *)
-  (*               - eapply PRIV; et. *)
-  (*                 admit "ez". *)
-  (*             } *)
-
-
-  (*             move SUARGS at bottom. rr in SUARGS. des. ss. inv MEM0. *)
-  (*             erewrite UNCH. *)
-  (*             hexploit SOUND0; et. *)
-  (*             { inv MLE. eapply PRIV; et. admit "ez". } *)
-  (*             i; des. *)
-  (*             admit "this should hold". *)
-  (*         } *)
-  (*         admit "ez". *)
-  (*       } *)
-  (*       { i. eapply (@Sound.hle_val UnreachC.Unreach); ss; et. } *)
-  (*       { (* WF *) *)
-  (*         inv WF. unfold su1. econs; ss; et. *)
-  (*         - i. des_ifs; et. *)
-  (*           inv MEM. xomega. *)
-  (*         - i. des_ifs; et. *)
-  (*           { admit "ez". } *)
-  (*           rr in RETV. des. ss. inv WF. inv MEM0. Unreach.nb_tac. eapply WFHI0; et. *)
-  (*       } *)
-  (*   - (* return *) *)
-  (*     inv SUST. inv FINAL. ss. clarify. *)
-  (*     exists su0. esplits; eauto. *)
-  (*     { refl. } *)
-  (*     { rr. ss. esplits; ss; et. *)
-  (*       admit "this should hold". *)
-  (*     } *)
-  (*     eapply Unreach.free_mle; eauto. *)
-  (*     exploit INIT; eauto. i; des. ss. *)
-  (* Unshelve. *)
-  (* eapply (symbolenv (Asm.semantics asm)). *)
-  (* Qed. *)
+    - (* return *)
+      inv SUST. inv FINAL. ss. clarify.
+      exists su0. esplits; eauto.
+      { refl. }
+      { rr. ss. esplits; ss; et.
+        eapply unreach_free; eauto.
+      }
+      eapply Unreach.free_mle; eauto.
+      exploit INIT; eauto. i; des. ss.
+  Qed.
 
 End TRIAL2.
 End TRIAL2.

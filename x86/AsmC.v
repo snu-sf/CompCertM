@@ -146,7 +146,6 @@ Section MODSEM.
               (<<MR: to_mreg pr = Some mr>>) /\
               (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments sg))>>)>>) \/
           (<<INPC: pr = PC>>) \/
-          (<<INRA: pr = RA>>) \/
           (<<INRSP: pr = RSP>>))
     :
       initial_frame args (mkstate rs (State rs m1))

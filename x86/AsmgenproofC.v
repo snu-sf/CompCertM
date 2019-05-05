@@ -247,7 +247,6 @@ Proof.
         -- rewrite Asm.to_preg_to_mreg in *. clarify.
         -- destruct mr; clarify.
         -- destruct mr; clarify.
-        -- destruct mr; clarify.
     + instantiate (1:= mk (assign_junk_blocks m_src n) (assign_junk_blocks m0 n)).
       econs; ss.
       * instantiate (1:=rs RA). eauto.
@@ -283,7 +282,6 @@ Proof.
                        (<<MR: to_mreg pr = Some mr>>) /\
                        (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments (Mach.fn_sig fd)))>>)>>) \/
                    (<<INPC: pr = PC>>) \/
-                   (<<INRA: pr = RA>>) \/
                    (<<INRSP: pr = RSP>>)>>)).
     {
       exploit StoreArguments.store_arguments_progress.
@@ -314,6 +312,7 @@ Proof.
           clear - NNIN PTR.
           unfold set_regset_undef, to_pregset, to_mregset, Pregmap.set, to_preg, preg_of, to_mreg in *.
           destruct pr; des_ifs; ss; eauto.
+          exfalso. apply PTR. ss.
     }
     des.
     eexists. econs; eauto.

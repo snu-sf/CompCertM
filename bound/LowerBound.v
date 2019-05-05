@@ -1583,7 +1583,7 @@ Section PRESERVATION.
             eapply AsmregsC.to_mreg_some_to_preg; eauto.
           * unfold callee_initial_reg' in PTR. des_ifs; ss.
             left. esplits; eauto.
-        + right. clear - PTR. des_ifs; ss; eauto.
+        + right. des_ifs; ss; eauto. exfalso. eauto.
     }
 
     { econs.

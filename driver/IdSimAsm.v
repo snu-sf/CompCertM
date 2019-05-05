@@ -233,6 +233,17 @@ Section TRIAL2.
     - etrans; eauto. eapply Mem_nextblock_unfree; eauto.
   Qed.
 
+  Lemma inject_list_Forall_inject j vs0 vs1
+    :
+      Val.inject_list j vs0 vs1 <-> Forall2 (Val.inject j) vs0 vs1.
+  Proof.
+    revert vs1. induction vs0; ss; i; split.
+    - intros H; inv H. econs.
+    - intros H; inv H. econs.
+    - intros H; inv H. econs; eauto. eapply IHvs0; eauto.
+    - intros H; inv H. econs; eauto. eapply IHvs0; eauto.
+  Qed.
+
   Lemma asm_unreach_local_preservation
         asm
     :
@@ -282,10 +293,25 @@ Section TRIAL2.
           + eapply JunkBlock.assign_junk_blocks_unchanged_on.
           + ss. }
 
-      inv MEM. esplits; ss.
-      + econs; ss. split; ss. rewrite NB.
-        eapply Mem.unchanged_on_nextblock; eauto.
-      + assert (SURS: forall pr,
+      inv MEM.
+      assert (NBLE: Plt (Unreach.nb su_arg) (Mem.nextblock (JunkBlock.assign_junk_blocks m0 n))).
+      { rewrite NB. eapply Plt_Ple_trans.
+        - instantiate (1:=Mem.nextblock m0).
+          inv H0. eapply Mem.nextblock_alloc in ALC.
+          rewrite <- NB0. rewrite ALC. xomega.
+        - rewrite JunkBlock.assign_junk_blocks_nextblock. des_ifs; xomega. }
+
+      esplits; ss.
+      + econs; ss. split; ss. apply Plt_Ple; auto.
+      + inv TYP.
+
+        assert (SOUNDIMPLY: forall blk (SOUNDV: ~ Unreach.unreach su_arg blk /\
+                                        (blk < Unreach.nb su_arg)%positive),
+                   ~ Unreach.unreach su_arg blk /\
+                   (blk < Mem.nextblock (JunkBlock.assign_junk_blocks m0 n))%positive).
+        { ii. des. split; auto. etrans; eauto. }
+
+        assert (SURS: forall pr,
                    UnreachC.val'
                      (Unreach.mk
                         (Unreach.unreach su_arg)
@@ -293,14 +319,52 @@ Section TRIAL2.
                         (Mem.nextblock (JunkBlock.assign_junk_blocks m0 n)))
                      (rs pr)).
         {
-          admit "".
-        }
-        econs; ss.
-        * admit "sound mem".
-        * econs; ss. ii. eapply WFHI in PR. rewrite NB in *.
-          eapply Plt_Ple_trans; eauto. eapply Mem.unchanged_on_nextblock; eauto.
-        * inv SKENV. ss.
+          ii. ss. apply NNPP. intros NSOUND. exploit PTRFREE.
+          - instantiate (1:=pr). unfold JunkBlock.is_junk_value. des_ifs. ii.
+            des. apply not_and_or in NSOUND. des; eauto.
+            apply NNPP in NSOUND. apply WFHI in NSOUND.
+            rewrite NB in *. apply H2. clear H3.
+            eapply Mem.valid_block_unchanged_on; eauto.
+            eapply store_arguments_unchanged_on; eauto.
+          - i. des.
+            + dup H0. eapply store_arguments_unchanged_on in H2.
+              eapply Mem.unchanged_on_nextblock in H2. apply NSOUND. apply SOUNDIMPLY.
+              inv H0.
+              clear - VALS0 ARG MR PTR VALS NB H2 SOUNDIMPLY.
+              unfold typify_list, Sound.vals, extcall_arguments in *.
+              revert VALS pr PTR mr MR ARG VALS0.
+              generalize (loc_arguments_one (fn_sig fd)).
+              generalize (loc_arguments (fn_sig fd)).
+              generalize (sig_args (fn_sig fd)).
 
+              induction (Args.vs args); ss.
+              * ii. inv VALS. inv VALS0. inv ARG.
+              * ii. des_ifs; inv VALS0; ss. inv VALS.
+                exploit H; eauto. i. destruct a1; ss. des.
+                { clarify. inv H4. inv H7. unfold to_mregset in *.
+                  erewrite to_mreg_some_to_preg in *; eauto.
+                  unfold typify in *. des_ifs; rewrite PTR in *; clarify.
+                  exploit H3; eauto. }
+                { eapply IHl; eauto. }
+            + clarify. rewrite PTR in *. rewrite <- RSPC in *. exploit H; eauto.
+            + clarify. rewrite PTR in *. clarify. eapply NSOUND. split.
+              * ii. apply WFHI in H1. rewrite NB in *. eapply Plt_strict; eauto.
+              * rewrite NB in *. auto.
+        }
+
+        econs; ss.
+        * econs; ss.
+          {
+
+            admit "hard".
+
+          }
+          { ii. apply WFHI in PR. rewrite NB in *.
+            unfold Mem.valid_block. etrans; eauto. }
+          { etrans; eauto. apply Plt_Ple. rewrite NB in *. auto. }
+        * econs; ss. ii. apply WFHI in PR. eapply Plt_Ple_trans; eauto.
+          apply Plt_Ple. auto.
+        * inv SKENV. ss.
       + econs; ss.
         * i. eapply Mem.unchanged_on_perm; eauto.
         * eapply Mem.unchanged_on_implies; eauto.

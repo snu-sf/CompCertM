@@ -1711,8 +1711,8 @@ Proof.
       (match_states :=
          match_states
            skenv_link_tgt
-           (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program _ asm)) asm)
-           (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program _ asm)) asm))
+           (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program fn_sig asm)) asm)
+           (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm))
       (match_states_at := top4)
       (has_footprint := has_footprint skenv_link_src skenv_link_tgt)
       (mle_excl := mle_excl skenv_link_src skenv_link_tgt); ss; eauto; ii.
@@ -2014,7 +2014,7 @@ Proof.
               unfold Mem.valid_block in *. exfalso. des. des_ifs.
             * erewrite loc_notin_not_in in n3. apply NNPP in n3.
               apply loc_args_callee_save_disjoint in n3. exfalso. eauto.
-        - instantiate (1:= fd). instantiate (1:= fn_sig).
+        - instantiate (1:= fd).
           inv SAFESRC. ss.
           unfold to_pregset, set_regset, Pregmap.set. des_ifs.
 
@@ -2546,7 +2546,7 @@ Proof.
           + i. exploit RSPDELTA; eauto. i. des. esplits; eauto.
       }
 
-      Unshelve. all: admit "".
+      Unshelve. apply fn_sig. all: admit "".
 
 Qed.
 

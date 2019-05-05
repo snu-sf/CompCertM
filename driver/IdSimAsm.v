@@ -1382,50 +1382,58 @@ Section TOMEMORYC.
   Qed.
 
   Theorem Mem_unfree_parallel_inject
-          j m1 m2 b lo hi m1' b' delta
+          j m1 m2 b ofs_src ofs_tgt sz m1' b' delta
           (INJECT: Mem.inject j m1 m2)
-          (UNFREE: Mem_unfree m1 b lo hi = Some m1')
+          (UNFREE: Mem_unfree m1 b (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned ofs_src + sz) = Some m1')
+          (VAL: ofs_tgt = Ptrofs.add ofs_src (Ptrofs.repr delta))
           (DELTA: j b = Some (b', delta))
           (ALIGN: forall ofs chunk p (PERM: forall ofs0 (BOUND: ofs <= ofs0 < ofs + size_chunk chunk),
-                                         lo <= ofs0 < hi \/ Mem.perm m1 b ofs0 Max p),
+                                         (Ptrofs.unsigned ofs_src) <= ofs0 < (Ptrofs.unsigned ofs_src + sz) \/ Mem.perm m1 b ofs0 Max p),
               (align_chunk chunk | delta))
           (REPRESENTABLE: forall ofs (PERM: Mem.perm m1 b (Ptrofs.unsigned ofs) Max Nonempty \/
                                             Mem.perm m1 b (Ptrofs.unsigned ofs - 1) Max Nonempty \/
-                                            lo <= Ptrofs.unsigned ofs < hi \/
-                                            lo <= Ptrofs.unsigned ofs - 1< hi),
+                                            (Ptrofs.unsigned ofs_src) <= Ptrofs.unsigned ofs < (Ptrofs.unsigned ofs_src + sz) \/
+                                            (Ptrofs.unsigned ofs_src) <= Ptrofs.unsigned ofs - 1 < (Ptrofs.unsigned ofs_src + sz)),
               delta >= 0 /\ 0 <= Ptrofs.unsigned ofs + delta <= Ptrofs.max_unsigned)
-
-      (* TODO add condition about align *)
-          (NOPERM: Mem_range_noperm m2 b' (lo + delta) (hi + delta))
+          (NOPERM: Mem_range_noperm m2 b' (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned ofs_tgt + sz))
     :
       exists m2',
-        (<<UNFREE: Mem_unfree m2 b' (lo + delta) (hi + delta) = Some m2'>>)
+        (<<UNFREE: Mem_unfree m2 b' (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned ofs_tgt + sz) = Some m2'>>)
         /\ (<<INJECT: Mem.inject j m1' m2'>>).
   Proof.
     unfold Mem_unfree in UNFREE. des_ifs.
-
     assert (VALID: Plt b' (Mem.nextblock m2)).
-    {
-      exploit Mem.valid_block_inject_2; eauto.
-    }
+    { exploit Mem.valid_block_inject_2; eauto. }
     unfold Mem_unfree in *. des_ifs. esplits; eauto. ss.
-
     assert (NOOVERLAP: forall b_src delta' ofs k p (DELTA: j b_src = Some (b', delta'))
-                              (OFS: lo + delta <= ofs + delta' < hi + delta)
+                              (OFS: (Ptrofs.unsigned ofs_src) + delta <= ofs + delta' < Ptrofs.unsigned ofs_src + delta + sz)
                               (PERM: Mem.perm m1 b_src ofs k p),
                False).
-    {
-      i. exploit Mem.perm_inject; eauto. i. exploit NOPERM; eauto.
-      eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-    }
+    { i. exploit Mem.perm_inject; eauto. i. exploit NOPERM; eauto.
+      - erewrite unsigned_add; eauto. eapply REPRESENTABLE; eauto. lia.
+      - eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. }
 
     econs; ss; eauto; i.
 
     - cinv (Mem.mi_inj _ _ _ INJECT).
       econs; ss; eauto; i.
       + destruct (peq b b1); clarify.
-        * unfold Mem.perm, proj_sumbool in *. ss. rewrite PMap.gsspec in *.
-          des_ifs; clarify; try nia; exploit Mem.perm_inject; eauto.
+        * unfold Mem.perm, proj_sumbool in *. ss. rewrite PMap.gsspec in *. des_ifs_safe.
+          des_ifs; clarify; eauto; try lia.
+          { exploit Mem.perm_inject; eauto. i. exfalso. eapply NOPERM; eauto.
+            eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. }
+          { exploit Mem.perm_inject; eauto. i. exfalso. eapply NOPERM; eauto.
+            eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs. }
+          { erewrite unsigned_add in *; eauto.
+            - lia.
+            - eapply REPRESENTABLE; eauto. lia.
+            - eapply REPRESENTABLE; eauto. lia.
+            - eapply REPRESENTABLE; eauto. lia. }
+          { erewrite unsigned_add in *; eauto.
+            - lia.
+            - eapply REPRESENTABLE; eauto. lia.
+            - eapply REPRESENTABLE; eauto. lia.
+            - eapply REPRESENTABLE; eauto. lia. }
         * assert (Mem.perm m2 b2 (ofs + delta0) k p1).
           {
             exploit Mem.perm_inject; eauto. unfold Mem.perm in *. ss.
@@ -1443,21 +1451,41 @@ Section TOMEMORYC.
           - eauto.
           - ii. exploit H0; eauto. unfold Mem.perm. ss. rewrite PMap.gso; eauto.
           - auto. }
-      + unfold Mem.perm, proj_sumbool in *. ss.
+      +
+        unfold Mem.perm, proj_sumbool in *. ss.
         repeat rewrite PMap.gsspec in *. des_ifs; eauto.
         * rewrite Mem_setN_in_repeat; eauto; [econs|].
           rewrite Z2Nat.id; nia.
-        * repeat rewrite Mem.setN_outside; cycle 1.
-          { right. rewrite length_list_repeat.
-            rewrite Z2Nat_range. des_ifs; try nia. }
-          { right. rewrite length_list_repeat.
-            rewrite Z2Nat_range. des_ifs; try nia. }
-          eauto.
-        * repeat rewrite Mem.setN_outside; cycle 1.
-          { left. nia. }
-          repeat rewrite Mem.setN_outside; cycle 1.
-          { left. nia. }
-          eauto.
+        * zsimpl. destruct (zlt 0 sz).
+          { repeat rewrite Mem.setN_outside; cycle 1.
+            { right. rewrite length_list_repeat.
+              rewrite Z2Nat_range. des_ifs; try nia.
+              erewrite unsigned_add in *; eauto.
+              - lia.
+              - eapply REPRESENTABLE; eauto. lia.
+              - eapply REPRESENTABLE; eauto. lia. }
+            { rewrite length_list_repeat. rewrite Z2Nat_range. des_ifs; try lia. }
+            eauto. }
+          { repeat rewrite Mem.setN_outside; cycle 1.
+            { rewrite length_list_repeat.
+              rewrite Z2Nat_range. des_ifs; try nia. }
+            { rewrite length_list_repeat.
+              rewrite Z2Nat_range. des_ifs; try nia. }
+            eauto. }
+        * zsimpl. destruct (zlt 0 sz).
+          { repeat rewrite Mem.setN_outside; cycle 1.
+            { left. erewrite unsigned_add in *; eauto.
+              - lia.
+              - eapply REPRESENTABLE; eauto. lia.
+              - eapply REPRESENTABLE; eauto. lia. }
+            { rewrite length_list_repeat. rewrite Z2Nat_range. des_ifs; try lia. }
+            eauto. }
+          { repeat rewrite Mem.setN_outside; cycle 1.
+            { rewrite length_list_repeat.
+              rewrite Z2Nat_range. des_ifs; try nia. }
+            { rewrite length_list_repeat.
+              rewrite Z2Nat_range. des_ifs; try nia. }
+            eauto. }
         * repeat rewrite Mem.setN_outside; cycle 1.
           { rewrite length_list_repeat.
             rewrite Z2Nat_range. des_ifs; try nia. }
@@ -1469,8 +1497,14 @@ Section TOMEMORYC.
           { rewrite length_list_repeat.
             rewrite Z2Nat_range. des_ifs; try nia.
             apply NNPP. ii.
-            exploit NOOVERLAP; eauto. nia. }
+            exploit NOOVERLAP; eauto.
+            erewrite unsigned_add in *; eauto.
+            - lia.
+            - eapply REPRESENTABLE; eauto. lia.
+            - eapply REPRESENTABLE; eauto. lia.
+            - eapply REPRESENTABLE; eauto. lia. }
           eauto.
+
     - exploit Mem.mi_freeblocks; eauto.
     - exploit Mem.mi_mappedblocks; eauto.
     - ii. unfold Mem.perm in *. ss. apply imply_to_or. i. clarify.
@@ -1491,7 +1525,21 @@ Section TOMEMORYC.
         unfold Mem.perm in *. ss. rewrite PMap.gso in *; eauto.
     - unfold Mem.perm, proj_sumbool in *. ss.
       rewrite PMap.gsspec in *.
-      des_ifs; ss; eauto; (try by exploit Mem.mi_perm_inv; eauto); left; econs.
+      des_ifs; ss; eauto; (try by exploit Mem.mi_perm_inv; eauto); try by (left; try econs; try lia).
+      { left. erewrite unsigned_add in *; eauto.
+        - lia.
+        - eapply REPRESENTABLE; eauto. lia.
+        - eapply REPRESENTABLE; eauto. lia.
+        - eapply REPRESENTABLE; eauto. lia. }
+      { destruct (zlt 0 sz).
+        - left. erewrite unsigned_add in *; eauto.
+          + lia.
+          + eapply REPRESENTABLE; eauto. lia.
+          + eapply REPRESENTABLE; eauto. lia.
+          + eapply REPRESENTABLE; eauto. lia.
+        - lia. }
+      { right. ii. exploit Mem.perm_inject; eauto. i.
+        eapply NOPERM; eauto. }
   Qed.
 
 End TOMEMORYC.
@@ -2038,11 +2086,8 @@ Proof.
     { inv MWF. eauto. }
     i. des.
     cinv (AGREE Asm.RSP); rewrite RSP in *; clarify.
-    exploit SimMemInj.free_parallel; eauto. i. des.
-    assert (PEQ: Ptrofs.unsigned (Ptrofs.add ofs (Ptrofs.repr delta)) =
-                 Ptrofs.unsigned ofs + delta).
-    { admit "arithmetic". }
 
+    exploit Mem_free_parallel'; eauto. i. des.
     eexists (Args.mk (Vptr b2 _) _ _). exists sm1.
     esplits; eauto; ss; i.
     + econs; eauto.
@@ -2077,9 +2122,11 @@ Proof.
           des_ifs; cinv (AGREE RA); ss; rewrite <- H1 in *; ss. }
         { rename TPTR into TPTR0. unfold Tptr in *.
           des_ifs; cinv (AGREE RA); ss; rewrite <- H1 in *; ss. }
-      * i.
-        rewrite PEQ.
-        eapply Z.divide_add_r; eauto. inv MWF. inv PUBLIC.
+      * inv MWF. i. erewrite Mem.address_inject; eauto; cycle 1.
+        { eapply Mem.free_range_perm; eauto.
+          set (size_chunk_pos chunk). lia. }
+        eapply Z.divide_add_r; eauto.
+        inv PUBLIC.
         inv mi_inj. exploit mi_align; eauto.
         eapply Mem.free_range_perm in FREE.
         intros ofs0 RANGE.
@@ -2090,29 +2137,27 @@ Proof.
         -- i.
            eapply Mem.perm_cur_max.
            eapply Mem.perm_implies; eauto. econs.
-      * rewrite PEQ.
-        replace (Ptrofs.unsigned ofs + delta + 4 * size_arguments (SkEnv.get_sig skd)) with (Ptrofs.unsigned ofs + 4 * size_arguments (SkEnv.get_sig skd) + delta); eauto.
-        nia.
     + econs; s; eauto.
       * eapply val_inject_incr; cycle 1; eauto.
         inv MLE. eauto.
       * eapply val_inject_list_incr; cycle 1; eauto.
         inv MLE. eauto.
-    + econs; ss; eauto.
+    + inv MWF. econs; ss; eauto.
       * eapply Mem.free_range_perm in FREE. eauto.
-      * eapply Mem.free_range_perm in FREETGT.
-        rewrite PEQ.
-        replace (Ptrofs.unsigned ofs + delta + 4 * size_arguments (SkEnv.get_sig skd)) with (Ptrofs.unsigned ofs + 4 * size_arguments (SkEnv.get_sig skd) + delta); eauto.
-        nia.
-      * eapply Mem.valid_block_inject_1; eauto. inv MWF. eauto.
-      * eapply Mem.valid_block_inject_2; eauto. inv MWF. eauto.
-      * inv MWF.
-        ii. unfold brange in *. ss. des. clarify.
+      * eapply Mem.free_range_perm in FREETGT. auto.
+      * eapply Mem.valid_block_inject_1; eauto.
+      * eapply Mem.valid_block_inject_2; eauto.
+      * ii. unfold brange in *. ss. des. clarify.
         eapply TGTEXT in PR.
         unfold SimMemInj.tgt_private, loc_out_of_reach in *. ss. des.
         eapply PR; eauto.
         exploit Mem.free_range_perm; try apply FREE; eauto.
-        -- instantiate (1:=x1 - delta). nia.
+        -- instantiate (1:=x1 - delta).
+           dup H0. erewrite Mem.address_inject in H0; eauto; cycle 1.
+           { eapply Mem.free_range_perm; eauto. lia. }
+           erewrite Mem.address_inject in H5; eauto; cycle 1.
+           { eapply Mem.free_range_perm; eauto. lia. }
+           lia.
         -- i. eapply Mem.perm_cur_max; eauto.
            eapply Mem.perm_implies; eauto. econs.
 
@@ -2159,7 +2204,13 @@ Proof.
       ii. apply MAXTGT in H; cycle 1.
       { inv MLE. eapply Mem.valid_block_unchanged_on; eauto.
         eapply Mem.valid_block_inject_2; eauto. }
-      exploit Mem_free_noperm; eauto. admit "arithmetic". }
+      exploit Mem_free_noperm; eauto. inv MATCH. ss.
+      assert (skd = skd0); [|clarify; lia].
+      inv SIMSKENV. ss. inv SIMSKELINK. clear - Heq FPTR AGREE0 SIMDEF SIG SIG0.
+      unfold Genv.find_funct_ptr in *. des_ifs_safe.
+      cinv (AGREE0 PC); rewrite Heq in *; clarify.
+      rewrite FPTR in *. clarify.
+      exploit SIMDEF; eauto. i. des. clarify. }
     i. des. rewrite <- MEMSRC in *.
 
     esplits; ss.
@@ -2179,7 +2230,6 @@ Proof.
         { rewrite <- MEMTGT in *. eapply Mem_unfree_unchanged_on; eauto. }
         ii. unfold brange in *. des. clarify.
         eapply H6. split; auto.
-        admit "arithmetic".
       * econs; ss; eauto. i. des. clarify.
       * ii. exploit Mem_unfree_unchanged_on; try apply UNFREE; eauto. i.
         inv H. rewrite MEMSRC in *.
@@ -2187,9 +2237,6 @@ Proof.
       * ii. exploit Mem_unfree_unchanged_on; try apply H; eauto. i.
         inv H.
         eapply unchanged_on_perm; eauto.
-        clear - UNFREE1.
-        ii. eapply UNFREE1. unfold brange in *. des. split; auto.
-        admit "arithmetic".
     + i. ss. splits.
       {
         instantiate (1:=AsmC.mkstate _ (State _ _)). econs; ss.
@@ -2201,8 +2248,6 @@ Proof.
         - eauto.
         - rewrite MEMTGT in *. instantiate (1:=m2').
           rewrite <- UNFREE0. f_equal.
-          + admit "arithmetic".
-          + admit "arithmetic".
       }
 
       {
@@ -2250,7 +2295,16 @@ Proof.
                  ii. eapply H4.
                  unfold brange in *. des. clarify. split.
                  ++ inv MLE1. ss. exploit INCR0; eauto. i. clarify.
-                 ++ admit "arithmetic".
+                 ++ inv MLE1. ss. dup H2. apply INCR0 in H2. rewrite H2 in *. clarify.
+                    inv CALLSRC. inv MATCH. rewrite RSP in *. clarify.
+                    erewrite Mem.address_inject; try eapply PUBLIC; eauto.
+                    { clear - H6 H7. lia. }
+                    { eapply Mem.free_range_perm; eauto.
+                      des. clarify.
+                      assert (skd = skd0); [|clarify; lia].
+                      inv SIMSKENV. ss. inv SIMSKELINK. clear - Heq FPTR AGREE0 SIMDEF SIG SIG0.
+                      unfold Genv.find_funct_ptr in *. des_ifs_safe.
+                      cinv (AGREE0 PC); rewrite Heq in *; clarify. }
               -- eapply Mem.valid_block_inject_1; eauto.
               -- i. des. eauto.
             * unfold SimMemInj.valid_blocks, Mem.valid_block.
@@ -2276,7 +2330,9 @@ Proof.
     inv MATCH. inv FINALSRC. inv MWF.
 
     cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl.
-    exploit Mem.free_parallel_inject; eauto. i. des.
+    exploit Mem_free_parallel_inject'; eauto.
+    { instantiate (3:=Ptrofs.zero). zsimpl. psimpl. eauto. }
+    i. des.
 
     assert (delta = 0).
     { exploit RSPDELTA; eauto. i. des. clarify. }
@@ -2285,10 +2341,10 @@ Proof.
     eexists (SimMemInj.mk _ _ _ _ _ _ _). esplits; ss; eauto.
     + cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl.
       econs; ss; ii; eauto.
-      * specialize (CALLEESAVE _ H2).
+      * specialize (CALLEESAVE _ H).
         specialize (AGREEINIT (to_preg mr0)).
         specialize (AGREE (to_preg mr0)).
-        clear - CALLEESAVE AGREEINIT AGREE WFINITSRC WFINITTGT H2 UNDEF.
+        clear - CALLEESAVE AGREEINIT AGREE WFINITSRC WFINITTGT H UNDEF.
         inv WFINITSRC.
         eapply lessdef_commute; eauto.
       * des. esplits; eauto.
@@ -2307,7 +2363,7 @@ Proof.
           exploit SIMDEF; try apply FIND; eauto. i. des. clarify.
 
           exploit Genv_map_defs_def_inv; try apply DEFTGT.
-          i. rewrite H2.
+          i. rewrite H.
           unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
           erewrite Genv.find_invert_symbol.
           - rewrite Heq2; eauto.
@@ -2331,7 +2387,7 @@ Proof.
           inv SIMSKENV. inv SIMSKE. ss.
           exploit SIMDEFINV; try apply FIND; eauto. i. des. clarify.
           exploit Genv_map_defs_def_inv; try apply DEFSRC.
-          i. revert Heq2. rewrite H2.
+          i. revert Heq2. rewrite H.
           unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
           erewrite Genv.find_invert_symbol.
           - rewrite Heq6; eauto. clarify.
@@ -2339,7 +2395,7 @@ Proof.
             rewrite BLKSRC. f_equal.
             exploit DISJ; eauto.
         }
-        { rewrite <- H4 in *. inv WFINITSRC. eauto. }
+        { rewrite <- H2 in *. inv WFINITSRC. eauto. }
       * inv WFINITSRC. inv WFINITTGT.
         unfold Val.has_type in TPTR. des_ifs.
         -- cinv (AGREEINIT RA); rewrite Heq in *; clarify.
@@ -2352,13 +2408,15 @@ Proof.
     + econs; ss.
     + econs; ss.
       * eapply Mem.free_unchanged_on; eauto.
-        ii. eapply SRCEXT in H4. unfold SimMemInj.src_private in *. des.
+        ii. eapply SRCEXT in H0. unfold SimMemInj.src_private in *. des.
         unfold loc_unmapped in *. congruence.
       * eapply Mem.free_unchanged_on; eauto.
-        ii. eapply TGTEXT in H4. unfold SimMemInj.tgt_private in *. des.
-        unfold loc_out_of_reach in *. red in H5.
-        exploit H4; eauto. eapply Mem.perm_cur_max. eapply Mem.perm_implies.
-        -- eapply Mem.free_range_perm; eauto. nia.
+        ii. eapply TGTEXT in H0. unfold SimMemInj.tgt_private in *. des.
+        unfold loc_out_of_reach in *.
+        exploit H0; eauto. eapply Mem.perm_cur_max. eapply Mem.perm_implies.
+        -- eapply Mem.free_range_perm; eauto.
+           rewrite Ptrofs.add_zero_l in *.
+           erewrite Ptrofs.unsigned_repr in *; split; try lia; eapply max_unsigned_zero.
         -- econs.
       * econs; ss; eauto. ii. des. clarify.
       * ii. eapply Mem.perm_free_3; eauto.

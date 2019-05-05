@@ -293,8 +293,10 @@ Section ASMSTEP.
         eapply Mem.perm_implies; try eapply STORE; eauto.
         * replace (Ptrofs.unsigned (Ptrofs.add i0 (Ptrofs.repr delta))) with
               (Ptrofs.unsigned i0 + delta) in *; [nia|].
-          admit "arithmetic".
-        * econs.
+          symmetry.
+          erewrite Mem.address_inject; try apply INJ; eauto.
+          eapply STORE. set (size_chunk_pos chunk). lia.
+       * econs.
   Qed.
 
   Lemma mem_alloc_inject j m_src0 m_tgt0 m_src1
@@ -329,37 +331,124 @@ Section ASMSTEP.
       + ii. instantiate (1:=top2). ss.
   Qed.
 
-  Lemma mem_free_inject j m_src0 m_tgt0 m_src1
-        lo hi b_src b_tgt delta
-        (INJ: Mem.inject j m_src0 m_tgt0)
-        (DELTA: j b_src = Some (b_tgt, delta))
-        (FREE: Mem.free m_src0 b_src lo hi = Some m_src1)
+  Section MOVETOMEMORYC.
+    (* TODO: move these *)
+
+    Lemma Mem_equal_iff m0 m1
+          (CONTENTS: Mem.mem_contents m0 = Mem.mem_contents m1)
+          (PERM: Mem.mem_access m0 = Mem.mem_access m1)
+          (NEXT: Mem.nextblock m0 = Mem.nextblock m1)
     :
-      exists m_tgt1,
-        (<<INJ: Mem.inject j m_src1 m_tgt1>>) /\
-        (<<FREE: Mem.free m_tgt0 b_tgt (lo+delta) (hi+delta) = Some m_tgt1>>) /\
-        (<<UNCHSRC: Mem.unchanged_on
-                      (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
-                      m_src0 m_src1>>) /\
-        (<<UNCHTGT: Mem.unchanged_on
-                      (loc_out_of_reach j m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
-                      m_tgt0 m_tgt1>>).
-  Proof.
-    exploit Mem.free_parallel_inject; eauto. i. des.
-    esplits; eauto.
-    - eapply Mem.unchanged_on_implies.
-      + eapply Mem.free_unchanged_on; eauto.
-        instantiate (1:=~2 brange b_src lo hi). eauto.
-      + ii. des. unfold brange, loc_unmapped in *. des. clarify.
-    - eapply Mem.unchanged_on_implies.
-      + eapply Mem.free_unchanged_on; eauto.
-        instantiate (1:=~2 brange b_tgt (lo+delta) (hi+delta)). eauto.
-      + ii. des. unfold brange, loc_out_of_reach in *. des. clarify.
-        eapply H1; eauto.
-        eapply Mem.perm_cur. eapply Mem.perm_implies.
-        * eapply Mem.free_range_perm; eauto. nia.
-        * econs.
-  Qed.
+      m0 = m1.
+    Proof.
+      destruct m0, m1. ss. subst. f_equal.
+      - apply proof_irrelevance.
+      - apply proof_irrelevance.
+      - apply proof_irrelevance.
+    Qed.
+
+    Lemma Mem_free_zero_same m b lo0 hi0 lo1 hi1
+          (SZ0: hi0 <= lo0)
+          (SZ1: hi1 <= lo1)
+      :
+        Mem.free m b lo0 hi0 = Mem.free m b lo1 hi1.
+    Proof.
+      Local Transparent Mem.free. unfold Mem.free. des_ifs.
+      - f_equal. apply Mem_equal_iff; ss. f_equal.
+        extensionality ofs. extensionality k. unfold proj_sumbool.
+        des_ifs; exfalso; lia.
+      - exfalso. eapply n. ii. lia.
+      - exfalso. eapply n. ii. lia.
+    Qed.
+
+    Theorem Mem_free_parallel_inject'
+            f m1 m2 blk_src blk_tgt ofs_src ofs_tgt sz m1'
+            (INJ: Mem.inject f m1 m2)
+            (VAL: Val.inject f (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
+            (FREE: Mem.free m1 blk_src ofs_src.(Ptrofs.unsigned) (ofs_src.(Ptrofs.unsigned) + sz) = Some m1')
+      :
+        exists m2',
+          (<<FREE: Mem.free m2 blk_tgt ofs_tgt.(Ptrofs.unsigned) (ofs_tgt.(Ptrofs.unsigned) + sz) = Some m2'>>)
+          /\ (<<INJ: Mem.inject f m1' m2'>>).
+    Proof.
+      inv VAL. destruct (zlt 0 sz).
+      - exploit Mem.free_parallel_inject; eauto. i. des.
+        esplits; eauto.
+        erewrite Mem.address_inject; try apply INJ; eauto.
+        + replace (Ptrofs.unsigned ofs_src + delta + sz) with
+              (Ptrofs.unsigned ofs_src + sz + delta); [eauto|lia].
+        + eapply Mem.free_range_perm; eauto. lia.
+      - exploit Mem.free_parallel_inject; eauto. i. des.
+        esplits; eauto.
+        erewrite Mem_free_zero_same; eauto; lia.
+    Qed.
+
+    Lemma Mem_free_parallel'
+          sm0 blk_src blk_tgt ofs_src ofs_tgt sz m_src0
+          (MWF: wf' sm0)
+          (VAL: Val.inject sm0.(inj) (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
+          (FREESRC: Mem.free sm0.(src) blk_src ofs_src.(Ptrofs.unsigned) (ofs_src.(Ptrofs.unsigned) + sz)
+ = Some m_src0)
+      :
+        exists sm1,
+          (<<MSRC: sm1.(src) = m_src0>>)
+          /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+          /\ (<<FREETGT: Mem.free sm0.(tgt) blk_tgt ofs_tgt.(Ptrofs.unsigned) (ofs_tgt.(Ptrofs.unsigned) + sz) = Some sm1.(tgt)>>)
+          /\ (<<MWF: wf' sm1>>)
+          /\ (<<MLE: le' sm0 sm1>>)
+    .
+    Proof.
+      inv VAL. destruct (zlt 0 sz).
+      - exploit SimMemInj.free_parallel; eauto. i. des. esplits; eauto.
+        inv MWF.
+        erewrite Mem.address_inject; eauto.
+        + replace (Ptrofs.unsigned ofs_src + delta + sz) with
+              (Ptrofs.unsigned ofs_src + sz + delta); [eauto|lia].
+        + eapply Mem.free_range_perm; eauto. lia.
+      - exploit SimMemInj.free_parallel; eauto. i. des. esplits; eauto.
+        erewrite Mem_free_zero_same; eauto; lia.
+    Qed.
+
+    Lemma mem_free_inject j m_src0 m_tgt0 m_src1
+          ofs_src ofs_tgt blk_src blk_tgt sz
+          (INJ: Mem.inject j m_src0 m_tgt0)
+          (VAL: Val.inject j (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
+          (FREE: Mem.free m_src0 blk_src ofs_src.(Ptrofs.unsigned) (ofs_src.(Ptrofs.unsigned) + sz) = Some m_src1)
+      :
+        exists m_tgt1,
+          (<<INJ: Mem.inject j m_src1 m_tgt1>>) /\
+          (<<FREE: Mem.free m_tgt0 blk_tgt ofs_tgt.(Ptrofs.unsigned) (ofs_tgt.(Ptrofs.unsigned) + sz) = Some m_tgt1>>) /\
+          (<<UNCHSRC: Mem.unchanged_on
+                        (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
+                        m_src0 m_src1>>) /\
+          (<<UNCHTGT: Mem.unchanged_on
+                        (loc_out_of_reach j m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+                        m_tgt0 m_tgt1>>).
+    Proof.
+      exploit Mem_free_parallel_inject'; eauto. i. des.
+      esplits; eauto.
+      - eapply Mem.unchanged_on_implies.
+        + eapply Mem.free_unchanged_on; eauto.
+          instantiate (1:=~2 brange blk_src (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned ofs_src + sz)). eauto.
+        + ii. des. unfold brange, loc_unmapped in *. des. inv VAL. clarify.
+      - eapply Mem.unchanged_on_implies.
+        + eapply Mem.free_unchanged_on; eauto.
+          instantiate (1:=~2 brange blk_tgt (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned ofs_tgt + sz)). eauto.
+        + ii. des. unfold brange, loc_out_of_reach in *. des. inv VAL. clarify.
+          assert (SZ: 0 < sz).
+          { lia. }
+          eapply H; eauto.
+          eapply Mem.perm_cur. eapply Mem.perm_implies.
+          * eapply Mem.free_range_perm; eauto.
+            erewrite Mem.address_inject in H4; try apply INJ; eauto; cycle 1.
+            { eapply Mem.free_range_perm; eauto. lia. }
+            erewrite Mem.address_inject in H3; try apply INJ; eauto; cycle 1.
+            { eapply Mem.free_range_perm; eauto. lia. }
+            lia.
+          * econs.
+    Qed.
+
+  End MOVETOMEMORYC.
 
   Lemma exec_load_inject
         j ge_src ge_tgt chunk m_src0 m_tgt0 m_src1 a rd
@@ -1396,15 +1485,25 @@ tac_cal AGREE.
         * econs; eauto; ss. rewrite <- H4. ss.
           replace (Ptrofs.unsigned (Ptrofs.add (Ptrofs.add i (Ptrofs.repr delta)) ofs_ra)) with
               (Ptrofs.unsigned (Ptrofs.add i ofs_ra) + delta); cycle 1.
-          { admit "arithmetic". }
+          { symmetry.
+            rewrite Ptrofs.add_commut.
+            rewrite <- Ptrofs.add_assoc.
+            rewrite (Ptrofs.add_commut i ofs_ra).
+            eapply Mem.address_inject; try apply INJ; eauto.
+            eapply Mem.load_valid_access; try apply Heq; eauto.
+            rewrite (Ptrofs.add_commut ofs_ra i).
+            set (size_chunk_pos Mptr). lia. }
           replace (Ptrofs.unsigned (Ptrofs.add (Ptrofs.add i (Ptrofs.repr delta)) ofs_link)) with
               (Ptrofs.unsigned (Ptrofs.add i ofs_link) + delta); cycle 1.
-          { admit "arithmetic". }
+          { symmetry.
+            rewrite Ptrofs.add_commut.
+            rewrite <- Ptrofs.add_assoc.
+            rewrite (Ptrofs.add_commut i ofs_link).
+            eapply Mem.address_inject; try apply INJ; eauto.
+            eapply Mem.load_valid_access; try apply Heq0; eauto.
+            rewrite (Ptrofs.add_commut ofs_link i).
+            set (size_chunk_pos Mptr). lia. }
           rewrite H. rewrite H8.
-          replace (Ptrofs.unsigned (Ptrofs.add i (Ptrofs.repr delta))) with
-              (Ptrofs.unsigned i + delta); cycle 1.
-          { admit "arithmetic". }
-          replace (Ptrofs.unsigned i + delta + sz) with (Ptrofs.unsigned i + sz + delta); try lia.
           rewrite FREE. ss.
         * eapply nextinstr_agree. repeat eapply agree_step; eauto.
         * eapply inject_separated_refl.

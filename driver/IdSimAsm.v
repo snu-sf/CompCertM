@@ -36,7 +36,7 @@ Require Import mktac.
 (* Local Existing Instance SimMemId.SimSymbId | 0. *)
 (* Local Existing Instance SoundTop.Top | 0. *)
 
-Lemma asm_id_trial
+Lemma asm_id
       (asm: Asm.program)
   :
     exists mp,
@@ -302,23 +302,24 @@ Section TRIAL2.
         ii. ss. des_ifs. unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
         esplits; eauto.
       }
-      { ii. ss. esplits; eauto.
+      { inv SUST. ii. ss. esplits; eauto.
         unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
-        - admit "".
-        - admit "".
-      }
-      {
-        eapply symbols_inject_weak_imply.
+        - eapply Genv.genv_symb_range in FINDSRC. ss.
+          exfalso. ss. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
+        - eapply Genv.genv_symb_range in FINDSRC. ss. exfalso. apply n.
+          inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto. }
+      { inv SUST. eapply symbols_inject_weak_imply.
         instantiate (1:=skenv_link). unfold symbols_inject. esplits; ss.
         - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs; ss.
         - unfold UnreachC.to_inj, Mem.flat_inj. ii. esplits; eauto. des_ifs.
-          + admit "".
-          + admit "".
+          + eapply Genv.genv_symb_range in H0. ss.
+            exfalso. ss. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
+          + eapply Genv.genv_symb_range in H0. ss. exfalso. apply n.
+            inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto.
         - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs.
       }
 
-      {
-        instantiate (1:= r). ii.
+      { instantiate (1:= r). ii.
         inv SUST. ss. specialize (RS pr). ss. unfold UnreachC.val' in *.
         destruct (r pr); try by econs.
         exploit RS; eauto. i. des. econs.
@@ -2415,7 +2416,7 @@ Proof.
           + apply star_refl.
           + symmetry. apply E0_right.
           + econs.
-            * admit "determ".
+            * admit "determinate".
             * econs; ss; eauto.
         - instantiate (5 := j1).
           econs; ss.

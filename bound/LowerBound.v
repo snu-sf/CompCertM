@@ -361,7 +361,7 @@ Section PRESERVATION.
     - unfold Sk.load_mem in *.
       erewrite <- Genv.init_mem_genv_next; eauto.
       unfold skenv_link, Sk.load_skenv in *. des_ifs.
-    - des_ifs.
+    - des_ifs; eauto.
   Qed.
 
   (* TODO: remove redundancy with from UpperBound_B.v. *)
@@ -401,6 +401,14 @@ Section PRESERVATION.
     - i. exploit Genv.genv_symb_range; eauto. intro NB.
       exploit DOMAIN; et. i; clarify.
     - i. exploit Genv.genv_symb_range; eauto.
+    - ii. destruct (Genv.block_is_volatile skenv_link b1) eqn:VEQ0.
+      + eauto.
+      + destruct (Genv.block_is_volatile skenv_link b2) eqn:VEQ1; auto.
+        right. split; auto. ii.
+        exploit IMAGE; eauto.
+        * right. exists ofs. eapply Mem.perm_max.
+          eapply Mem.perm_implies; eauto. econs.
+        * i. clarify.
   Qed.
 
   Lemma external_function_sig

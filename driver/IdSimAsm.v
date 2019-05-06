@@ -233,16 +233,29 @@ Section TRIAL2.
     - etrans; eauto. eapply Mem_nextblock_unfree; eauto.
   Qed.
 
-  Lemma inject_list_Forall_inject j vs0 vs1
-    :
-      Val.inject_list j vs0 vs1 <-> Forall2 (Val.inject j) vs0 vs1.
-  Proof.
-    revert vs1. induction vs0; ss; i; split.
-    - intros H; inv H. econs.
-    - intros H; inv H. econs.
-    - intros H; inv H. econs; eauto. eapply IHvs0; eauto.
-    - intros H; inv H. econs; eauto. eapply IHvs0; eauto.
-  Qed.
+  (* Lemma inject_list_Forall_inject j vs0 vs1 *)
+  (*   : *)
+  (*     Val.inject_list j vs0 vs1 <-> Forall2 (Val.inject j) vs0 vs1. *)
+  (* Proof. *)
+  (*   revert vs1. induction vs0; ss; i; split. *)
+  (*   - intros H; inv H. econs. *)
+  (*   - intros H; inv H. econs. *)
+  (*   - intros H; inv H. econs; eauto. eapply IHvs0; eauto. *)
+  (*   - intros H; inv H. econs; eauto. eapply IHvs0; eauto. *)
+  (* Qed. *)
+
+  (* Lemma forall2_in_exists A B (P: A -> B -> Prop) la lb *)
+  (*       (ALL: list_forall2 P la lb) *)
+  (*       a *)
+  (*       (IN: In a la) *)
+  (*   : *)
+  (*     exists b, (<<IN: In b lb>>) /\ (<<SAT: P a b>>). *)
+  (* Proof. *)
+  (*   revert la lb ALL a IN. induction la; ss. *)
+  (*   i. inv ALL. des. *)
+  (*   - clarify. esplits; eauto. econs. auto. *)
+  (*   - eapply IHla in H3; eauto. des. esplits; eauto. econs 2. auto. *)
+  (* Qed. *)
 
   Lemma asm_unreach_local_preservation
         asm
@@ -352,12 +365,40 @@ Section TRIAL2.
               * rewrite NB in *. auto.
         }
 
+
         econs; ss.
         * econs; ss.
-          {
+          { i. rewrite JunkBlock.assign_junk_blocks_perm in PERM.
+            erewrite Mem.unchanged_on_contents; cycle 1.
+            - apply JunkBlock.assign_junk_blocks_unchanged_on.
+            - ss.
+            - ss.
+            - destruct (peq blk (Mem.nextblock (Args.m args))).
+              + clarify. inv H0.
+                exploit Mem.alloc_result; eauto. i. clarify.
+                assert (RANGE: 0 <= ofs < 4 * size_arguments (fn_sig fd)).
+                { apply NNPP. ii.
+                  rewrite <- Mem.unchanged_on_perm in PERM; eauto.
+                  - eapply Mem.perm_alloc_3 in PERM; eauto.
+                  - ss. des_ifs.
+                  - apply Mem.perm_valid_block in PERM. unfold Mem.valid_block.
+                    rewrite NB0. eauto. }
+                assert (UnreachC.memval'
+                          su_arg
+                          (ZMap.get ofs (Mem.mem_contents m0) !! (Mem.nextblock (Args.m args)))).
+                * admit "it doesn't hold!!!!".
 
-            admit "hard".
+                * ii. ss. eapply SOUNDIMPLY. exploit H0; eauto.
 
+              + assert (VALID: Mem.valid_block (Args.m args) blk).
+                { apply Mem.perm_valid_block in PERM. unfold Mem.valid_block in *.
+                  inv H0. rewrite <- NB0 in *. eapply Mem.nextblock_alloc in ALC.
+                  rewrite ALC in *. clear - PERM n0. xomega. }
+                exploit store_arguments_unchanged_on; eauto. intros UNCH0.
+                erewrite Mem.unchanged_on_contents; eauto.
+                * ii. ss. eapply SOUNDIMPLY. eapply SOUND; eauto.
+                  eapply Mem.unchanged_on_perm; eauto.
+                * eapply Mem.unchanged_on_perm; eauto.
           }
           { ii. apply WFHI in PR. rewrite NB in *.
             unfold Mem.valid_block. etrans; eauto. }

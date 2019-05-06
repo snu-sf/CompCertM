@@ -1981,7 +1981,6 @@ Section PRESERVATION.
       eapply Mem.perm_implies.
       + eapply Mem.free_range_perm; eauto.
       + econs.
-    - admit "add arguments not overflow condition".
     - ii. destruct (eq_block blk1 blk); clarify.
       + destruct (j blk) eqn:EQ.
         * destruct p0. destruct (WFINJ blk); clarify.

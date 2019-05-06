@@ -111,6 +111,7 @@ Section MODSEM.
       (EXTERNAL: Genv.find_funct ge (Vptr blk0 Ptrofs.zero) = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero)
                         = Some skd /\ SkEnv.get_sig skd = sg)
+      (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (VALS: Asm.extcall_arguments rs m0 sg vs)
       (RSP: rs RSP = Vptr blk1 ofs)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)

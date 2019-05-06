@@ -1778,6 +1778,7 @@ Proof.
       * folder. eapply (fsim_external_funct_inject SIMGE); et.
         { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. apply SIMSKENV. }
         ii. clarify.
+      * psimpl. zsimpl. auto.
       * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
     + econs; ss; eauto with congruence.
     + econs; ss; et.
@@ -1894,7 +1895,7 @@ Proof.
 
       (** directly copied from LineartypingC.v **)
       (** TODO: provide it in metatheory **)
-      (** I tried it (just add "(SOUND: sound_state su0 m_init st_src1)" in MatchSimModSem.v - AFTERFSIM, 
+      (** I tried it (just add "(SOUND: sound_state su0 m_init st_src1)" in MatchSimModSem.v - AFTERFSIM,
           but it has some difficulty.. **)
       hexploit (loc_result_caller_save sg_arg); eauto. intro RES.
       hexploit (loc_result_one sg_arg); eauto. intro ONE.
@@ -2191,5 +2192,3 @@ Proof.
 Qed.
 
 End SIMMOD.
-
-

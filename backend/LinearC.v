@@ -236,7 +236,7 @@ Definition undef_outgoing_slots (ls: locset): locset :=
     | _ => ls l
     end
 .
-  
+
 Definition stackframes_after_external (stack: list stackframe): list stackframe :=
   match stack with
   | nil => nil
@@ -268,6 +268,7 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg ls vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
+      (SZARGS: 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg))
     :
@@ -332,8 +333,8 @@ Section MODSEM.
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
-      ModSem.skenv := skenv; 
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv := skenv;
+      ModSem.skenv_link := skenv_link;
     |}
   .
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
@@ -429,4 +430,3 @@ Section MODULE.
   .
 
 End MODULE.
-

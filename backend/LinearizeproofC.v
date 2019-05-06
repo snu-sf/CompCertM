@@ -119,6 +119,7 @@ Proof.
         { apply SIMSKENV. }
         intro GE.
         apply (fsim_external_funct_id GE); ss.
+      * admit "TODO: add 4 * size_arguments sg condition in every language's at external see #288".
     + econs; ss; eauto.
       * instantiate (1:= SimMemId.mk _ _). ss.
       * ss.
@@ -172,7 +173,7 @@ Proof.
       * right. esplits; et.
         { eapply star_refl. }
       * instantiate (1:= SimMemId.mk _ _). econs; ss.
-        
+
 Unshelve.
   all: ss; try (by econs).
 Qed.

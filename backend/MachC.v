@@ -268,6 +268,7 @@ Section MODSEM.
       (EXTERNAL: Genv.find_funct ge fptr = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
+      (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (RSP: (parent_sp stack) = Vptr blk ofs)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))

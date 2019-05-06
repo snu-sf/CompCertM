@@ -2130,7 +2130,7 @@ Proof.
     exploit Mem_free_parallel'; eauto. i. des.
     eexists (Args.mk (Vptr b2 _) _ _). exists sm1.
     esplits; eauto; ss; i.
-    + econs; eauto.
+    + econs; auto.
       * {
           (* genv *)
           unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe. exfalso.
@@ -2157,6 +2157,30 @@ Proof.
         inv SIMSKELINK.
         exploit SIMDEF; try apply Heq1; eauto. i. des. clarify.
         rewrite DEFTGT. eauto.
+      * instantiate (1:=Ptrofs.add ofs (Ptrofs.repr delta)).
+        destruct (zlt 0 (size_arguments (SkEnv.get_sig skd))).
+        { inv MWF. exploit Mem.mi_representable; eauto.
+          - right.
+            instantiate (1:=Ptrofs.add ofs (Ptrofs.repr (4 * size_arguments (SkEnv.get_sig skd)))).
+            eapply Mem.perm_cur.
+            eapply Mem.perm_implies; try eapply Mem.free_range_perm; eauto; [|econs].
+            rewrite unsigned_add.
+            + clear - ARGSRANGE l. lia.
+            + clear- ARGSRANGE.
+              set (size_arguments_above (SkEnv.get_sig skd)).
+              set (Ptrofs.unsigned_range_2 ofs). lia.
+          - repeat rewrite unsigned_add.
+            + lia.
+            + exploit Mem.mi_representable; eauto. left.
+              eapply Mem.perm_cur.
+              eapply Mem.perm_implies; try eapply Mem.free_range_perm; eauto; [|econs].
+              clear - ARGSRANGE l. lia.
+            + clear- ARGSRANGE.
+              set (size_arguments_above (SkEnv.get_sig skd)).
+              set (Ptrofs.unsigned_range_2 ofs). lia. }
+        { set (Ptrofs.unsigned_range_2 (Ptrofs.add ofs (Ptrofs.repr delta))). lia. }
+      * eauto.
+      * eauto.
       * clear - AGREE TPTR RADEF. splits.
         { rename TPTR into TPTR0. unfold Tptr in *.
           des_ifs; cinv (AGREE RA); ss; rewrite <- H1 in *; ss. }
@@ -2177,6 +2201,7 @@ Proof.
         -- i.
            eapply Mem.perm_cur_max.
            eapply Mem.perm_implies; eauto. econs.
+      * eauto.
     + econs; s; eauto.
       * eapply val_inject_incr; cycle 1; eauto.
         inv MLE. eauto.

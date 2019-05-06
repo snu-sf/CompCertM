@@ -235,7 +235,7 @@ Lemma skenv_inject_max_perm {F V} (genv: Genv.t F V) (j: meminj) (m0 m1 m_tgt: m
   :
     skenv_inject genv j m1.
 Proof.
-  inv SYMB. econs; eauto. i. eapply IMAGE; eauto.    
+  inv SYMB. econs; eauto. i. eapply IMAGE; eauto.
   unfold symbols_inject_weak in *. des. splits; auto.
   right. exists ofs. eapply MAXPERM; eauto.
   eapply Mem.valid_block_inject_1; eauto.
@@ -245,7 +245,7 @@ Section INJRANGEWF.
 
 Variable F V: Type.
 Variable ge: Genv.t F V.
-  
+
 Inductive inj_range_block_wf (j: meminj) (m: mem) blk_src
           (P: Z -> Prop) : Prop :=
 | inj_range_wf_empty

@@ -1122,7 +1122,7 @@ Proof.
           inv VALS. inv SIMVS; ss; des_ifs.
           inv H3. inv H7.
           exists (typify v' t). esplits; eauto.
-          - unfold Mem.loadv in *. ss. zsimpl. psimpl.
+          - unfold load_stack, Mem.loadv in *. ss. zsimpl. psimpl.
             rewrite assign_junk_blocks_load; ss; cycle 1.
             { eauto with mem. }
             psimpl. unfold Ptrofs.max_unsigned in *. set (typesize_pos ty). lia.

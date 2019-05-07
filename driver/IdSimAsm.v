@@ -244,18 +244,18 @@ Section TRIAL2.
   (*   - intros H; inv H. econs; eauto. eapply IHvs0; eauto. *)
   (* Qed. *)
 
-  (* Lemma forall2_in_exists A B (P: A -> B -> Prop) la lb *)
-  (*       (ALL: list_forall2 P la lb) *)
-  (*       a *)
-  (*       (IN: In a la) *)
-  (*   : *)
-  (*     exists b, (<<IN: In b lb>>) /\ (<<SAT: P a b>>). *)
-  (* Proof. *)
-  (*   revert la lb ALL a IN. induction la; ss. *)
-  (*   i. inv ALL. des. *)
-  (*   - clarify. esplits; eauto. econs. auto. *)
-  (*   - eapply IHla in H3; eauto. des. esplits; eauto. econs 2. auto. *)
-  (* Qed. *)
+  Lemma forall2_in_exists A B (P: A -> B -> Prop) la lb
+        (ALL: list_forall2 P la lb)
+        a
+        (IN: In a la)
+    :
+      exists b, (<<IN: In b lb>>) /\ (<<SAT: P a b>>).
+  Proof.
+    revert la lb ALL a IN. induction la; ss.
+    i. inv ALL. des.
+    - clarify. esplits; eauto. econs. auto.
+    - eapply IHla in H3; eauto. des. esplits; eauto. econs 2. auto.
+  Qed.
 
   Lemma asm_unreach_local_preservation
         asm
@@ -344,14 +344,14 @@ Section TRIAL2.
               eapply Mem.unchanged_on_nextblock in H2. apply NSOUND. apply SOUNDIMPLY.
               inv H0.
               clear - VALS0 ARG MR PTR VALS NB H2 SOUNDIMPLY.
-              unfold typify_list, Sound.vals, extcall_arguments in *.
+              unfold typify_list, Sound.vals, Mach.extcall_arguments in *.
               revert VALS pr PTR mr MR ARG VALS0.
               generalize (loc_arguments_one (fn_sig fd)).
               generalize (loc_arguments (fn_sig fd)).
               generalize (sig_args (fn_sig fd)).
 
               induction (Args.vs args); ss.
-              * ii. inv VALS. inv VALS0. inv ARG.
+              * ii. inv VALS. inv VALS0. ss.
               * ii. des_ifs; inv VALS0; ss. inv VALS.
                 exploit H; eauto. i. destruct a1; ss. des.
                 { clarify. inv H4. inv H7. unfold to_mregset in *.
@@ -364,7 +364,6 @@ Section TRIAL2.
               * ii. apply WFHI in H1. rewrite NB in *. eapply Plt_strict; eauto.
               * rewrite NB in *. auto.
         }
-
 
         econs; ss.
         * econs; ss.
@@ -386,9 +385,37 @@ Section TRIAL2.
                 assert (UnreachC.memval'
                           su_arg
                           (ZMap.get ofs (Mem.mem_contents m0) !! (Mem.nextblock (Args.m args)))).
-                * admit "it doesn't hold!!!!".
-
-                * ii. ss. eapply SOUNDIMPLY. exploit H0; eauto.
+                { ii. exploit ONLYARGS; eauto. rewrite PTR.
+                  clarify. ss. i. des.
+                  - inv UNDEF.
+                  - exploit forall2_in_exists; eauto.
+                    + instantiate (1:= One (S Outgoing ofs1 ty)).
+                      eapply in_regs_of_rpairs_inv in IN.
+                      des. dup IN. eapply LocationsC.loc_arguments_one in IN.
+                      unfold is_one in *. des_ifs. inv IN0; auto. inv H0.
+                    + i. des. inv SAT. inv H2.
+                      unfold Mach.load_stack, Stacklayout.fe_ofs_arg in *.
+                      ss. psimpl. zsimpl. clarify.
+                      rewrite Ptrofs.unsigned_repr in *; cycle 1.
+                      { eapply loc_arguments_acceptable_2 in IN.
+                        inv IN. lia. }
+                      Local Transparent Mem.load.
+                      unfold Mem.load in H5. des_ifs.
+                      exploit MemdataC.decode_fragment_all; eauto.
+                      * rewrite <- PTR.
+                        eapply Mem.getN_in.
+                        erewrite <- size_chunk_conv. eauto.
+                      * i. rewrite <- H0 in *.
+                        unfold typify_list in IN0.
+                        revert VALS IN0.
+                        generalize (sig_args (fn_sig fd)). clear.
+                        induction (Args.vs args); ss.
+                        i. des_ifs. ss. des.
+                        { unfold typify in *. des_ifs. clear h. ss.
+                          inv VALS. ss. exploit H1; eauto. }
+                        { inv VALS. eauto. }
+                }
+                ii. ss. eapply SOUNDIMPLY. exploit H0; eauto.
 
               + assert (VALID: Mem.valid_block (Args.m args) blk).
                 { apply Mem.perm_valid_block in PERM. unfold Mem.valid_block in *.
@@ -403,6 +430,7 @@ Section TRIAL2.
           { ii. apply WFHI in PR. rewrite NB in *.
             unfold Mem.valid_block. etrans; eauto. }
           { etrans; eauto. apply Plt_Ple. rewrite NB in *. auto. }
+
         * econs; ss. ii. apply WFHI in PR. eapply Plt_Ple_trans; eauto.
           apply Plt_Ple. auto.
         * inv SKENV. ss.

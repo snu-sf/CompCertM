@@ -5,7 +5,7 @@ Require Import Integers.
 Require Import ValuesC.
 Require Import MemoryC.
 Require Import Globalenvs.
-Require Import Events.
+Require Import EventsC.
 Require Import Smallstep.
 Require Import Op.
 Require Import LocationsC.
@@ -19,60 +19,6 @@ Require Import Simulation Integers.
 Require Import JunkBlock.
 
 Set Implicit Arguments.
-
-
-Section MACHEXTRA.
-
-  Variable rao: function -> code -> ptrofs -> Prop.
-
-  Hypothesis rao_dtm:
-    forall f c ofs ofs',
-      rao f c ofs ->
-      rao f c ofs' ->
-      ofs = ofs'.
-
-  Definition is_external (ge: genv) (st: state): Prop :=
-    match st with
-    | Callstate stack fptr rs m =>
-      match Genv.find_funct ge fptr with
-      | Some (AST.External ef) => is_external_ef ef = true
-      | _ => False
-      end
-    | _ => False
-    end
-  .
-
-  Variable se: Senv.t.
-  Variable ge: genv.
-  Definition semantics_with_ge := Semantics_gen (step rao) bot1 final_state ge se.
-  (* *************** ge is parameterized *******************)
-
-  Lemma semantics_receptive
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      receptive_at semantics_with_ge st
-  .
-  Proof.
-    revert rao_dtm. (* dummy *)
-    admit "this should hold".
-  Qed.
-
-  Lemma semantics_determinate
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      determinate_at semantics_with_ge st
-  .
-  Proof.
-    revert rao_dtm. (* dummy *)
-    admit "this should hold".
-  Qed.
-
-End MACHEXTRA.
-(*** !!!!!!!!!!!!!!! REMOVE ABOVE AFTER MERGING WITH MIXED SIM BRANCH !!!!!!!!!!!!!!!!!! ***)
-
-
 
 Section NEWSTEP.
 
@@ -339,6 +285,45 @@ Section MODSEM.
       (NOTDUMMY: st1.(st).(get_stack) <> [])
   .
 
+  Lemma extcall_arguments_dtm
+        rs m rsp sg vs0 vs1
+        (ARGS0: Mach.extcall_arguments rs m rsp sg vs0)
+        (ARGS1: Mach.extcall_arguments rs m rsp sg vs1)
+    :
+      vs0 = vs1
+  .
+  Proof.
+    generalize dependent vs1. generalize dependent vs0. generalize dependent sg.
+    assert (A: forall l v1 v2,
+               Mach.extcall_arg rs m rsp l v1 -> Mach.extcall_arg rs m rsp l v2 -> v1 = v2).
+    { intros. inv H; inv H0; congruence. }
+    assert (B: forall p v1 v2,
+               Mach.extcall_arg_pair rs m rsp p v1 -> Mach.extcall_arg_pair rs m rsp p v2 -> v1 = v2).
+    { intros. inv H; inv H0.
+      eapply A; eauto.
+      f_equal; eapply A; eauto. }
+    assert (C: forall ll vl1, list_forall2 (Mach.extcall_arg_pair rs m rsp) ll vl1 ->
+                         forall vl2, list_forall2 (Mach.extcall_arg_pair rs m rsp) ll vl2 -> vl1 = vl2).
+    {
+      induction 1; intros vl2 EA; inv EA.
+      auto.
+      f_equal; eauto. }
+    intros. eapply C; eauto.
+  Qed.
+
+  Lemma extcall_arguments_length
+        rs m rsp sg vs
+        (ARGS: extcall_arguments rs m rsp sg vs)
+    :
+      length (loc_arguments sg) = length vs
+  .
+  Proof.
+    unfold extcall_arguments in *.
+    abstr (loc_arguments sg) locs.
+    ginduction vs; ii; inv ARGS; ss.
+    f_equal. erewrite IHvs; eauto.
+  Qed.
+  
   Program Definition modsem: ModSem.t :=
     {|
       ModSem.step := step';
@@ -352,10 +337,7 @@ Section MODSEM.
     |}
   .
   Next Obligation.
-    ii; ss; des. inv_all_once; des; ss; clarify. rewrite RSP in *. clarify.
-    assert(vs = vs0).
-    { admit "ez - this should be prove in mixed sim. merge with it". }
-    clarify.
+    ii; ss; des. inv_all_once; des; ss; clarify. rewrite RSP in *. clarify. determ_tac extcall_arguments_dtm.
   Qed.
   Next Obligation.
     ii; ss; des. inv_all_once; des; ss; clarify.
@@ -378,58 +360,17 @@ Section MODSEM.
     ii; ss; des.
     inv_all_once; ss; clarify.
   Qed.
-
-  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
-  Hypothesis (WF: SkEnv.wf skenv_link).
-
-  Lemma not_external
-    :
-      is_external ge <1= bot1
-  .
-  Proof.
-    ii. hnf in PR. des_ifs.
-    subst_locals.
-    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.project_revive_no_external; eauto.
-  Qed.
-
-  Lemma lift_receptive_at
-        st
-        (RECEP: receptive_at (semantics_with_ge rao skenv_link ge) st)
-    :
-      forall init_rs init_sg, receptive_at modsem (mkstate init_rs init_sg st)
-  .
-  Proof.
-    inv RECEP. econs; eauto; ii; ss.
-    - inv H. ss.
-      exploit sr_receptive_at; eauto. i; des. destruct s1; ss.
-      exists (mkstate init_rs1 init_sg1 s2).
-      econs; eauto. ss.
-      { inv STEP; inv H; ss. }
-    - inv H.
-      exploit sr_traces_at; eauto.
-  Qed.
-
+    
   Lemma modsem_receptive
         st
     :
       receptive_at modsem st
   .
-  Proof. destruct st. eapply lift_receptive_at. eapply semantics_receptive; eauto. ii. eapply not_external; eauto. Qed.
-
-  Lemma lift_determinate_at
-        st0
-        (DTM: determinate_at (semantics_with_ge rao skenv_link ge) st0)
-    :
-      forall init_rs init_sg, determinate_at modsem (mkstate init_rs init_sg st0)
-  .
   Proof.
-    inv DTM. econs; eauto; ii; ss.
-    - inv H. inv H0.
-      determ_tac sd_determ_at. esplits; eauto. i. clarify.
-      destruct s1, s2; ss. rewrite H0; ss. eauto with congruence.
-    - inv H.
-      exploit sd_traces_at; eauto.
+    econs; eauto.
+    - ii; ss. inv H. destruct st; ss. destruct s1; ss. clarify.
+      inv STEP; try (exploit external_call_receptive; eauto; check_safe; intro T; des); try by (inv_match_traces; (eexists (mkstate _ _ _); econs; [econs| | |]; eauto)).
+    - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
 
   Lemma modsem_determinate
@@ -437,8 +378,12 @@ Section MODSEM.
     :
       determinate_at modsem st
   .
-  Proof. destruct st. eapply lift_determinate_at. eapply semantics_determinate; eauto. ii. eapply not_external; eauto. Qed.
-
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0. destruct st; ss. destruct s1; ss. destruct s2; ss. clarify.
+      inv STEP; inv STEP0; clarify_meq; try (determ_tac rao_dtm; check_safe); try (determ_tac extcall_arguments_dtm; check_safe); try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); try (by rewrite Genv.find_funct_find_funct_ptr in *; congruence); ii; eq_closure_tac; clarify_meq.
+    - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
 End MODSEM.
 

@@ -1,5 +1,5 @@
 Require Import CoqlibC Maps.
-Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
+Require Import ASTC Integers Floats Values MemoryC EventsC Globalenvs Smallstep.
 Require Import Locations Stacklayout Conventions.
 (** newly added **)
 Require Import Mach Simulation ValuesC.
@@ -46,43 +46,6 @@ Definition external_state F V (ge: Genv.t F V) (v : val) : bool :=
     end
   | _ => true
   end.
-
-Section ASMEXTRA.
-
-  Definition is_external (ge: genv) (st: state): Prop :=
-    match Genv.find_funct ge (st.(st_rs) PC) with
-    | Some (AST.External ef) => is_external_ef ef = true
-    | _ => False
-    end
-  .
-
-  Variable se: Senv.t.
-  Variable ge: genv.
-  Definition semantics_with_ge := Semantics_gen step bot1 final_state ge se.
-  (* *************** ge is parameterized *******************)
-
-  Lemma semantics_receptive
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      receptive_at semantics_with_ge st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-  Lemma semantics_determinate
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      determinate_at semantics_with_ge st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-End ASMEXTRA.
-(*** !!!!!!!!!!!!!!! REMOVE ABOVE AFTER MERGING WITH MIXED SIM BRANCH !!!!!!!!!!!!!!!!!! ***)
 
 Section MODSEM.
 
@@ -227,64 +190,29 @@ Section MODSEM.
     ss. des_ifs.
   Qed.
 
-  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
-  Hypothesis (WF: SkEnv.wf skenv_link).
-
-  Lemma not_external
-    :
-      is_external ge <1= bot1
-  .
-  Proof.
-    ii. hnf in PR. des_ifs.
-    subst_locals.
-    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.project_revive_no_external; eauto.
-  Qed.
-
-  Lemma lift_receptive_at
-        st
-        (* b *)
-        (RECEP: receptive_at (semantics_with_ge skenv_link ge) st)
-    :
-      forall init_rs, receptive_at modsem (mkstate init_rs st)
-  .
-  Proof.
-    inv RECEP. i. econs; eauto; ii; ss.
-    - inv H. ss. exploit sr_receptive_at; eauto. i; des.
-      eexists (mkstate _ s2). econs; ss.
-    - inv H. ss. exploit sr_traces_at; eauto.
-  Unshelve.
-    all: ss.
-  Qed.
-
   Lemma modsem_receptive
         st
     :
       receptive_at modsem st
   .
-  Proof. destruct st. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
-
-  Lemma lift_determinate_at
-        st0
-        (DTM: determinate_at (semantics_with_ge skenv_link ge) st0)
-    :
-      forall init_rs, determinate_at modsem (mkstate init_rs st0)
-  .
   Proof.
-    inv DTM. i. econs; eauto; ii; ss.
-    - inv H. inv H0. ss.
-      determ_tac sd_determ_at. esplits; eauto. i. clarify. destruct s1, s2; ss. f_equal; ss; eauto.
-    - inv H. ss. exploit sd_traces_at; eauto.
-  Unshelve.
-    all: ss.
+    econs; eauto.
+    - ii; ss. inv H. destruct st; ss. destruct s1; ss. clarify.
+      inv STEP; try (exploit external_call_receptive; eauto; check_safe; intro T; des); try by (inv_match_traces; (eexists (mkstate _ _); econs; [econs|]; eauto; ss)).
+    - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
-
+  
   Lemma modsem_determinate
         st
     :
       determinate_at modsem st
   .
-  Proof. destruct st. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0. destruct st; ss. destruct s1; ss. destruct s2; ss. clarify.
+      inv STEP; inv STEP0; eq_closure_tac; clarify_meq; try (determ_tac extcall_arguments_determ; check_safe); try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+    - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
 
 End MODSEM.

@@ -28,57 +28,6 @@ Definition signature_of_function (fd: function) :=
      sig_res  := opttyp_of_type (fn_return fd);
      sig_cc   := fn_callconv fd |}.
 
-Section CEXTRA.
-
-  Definition is_external (ge: genv) (s:state) : Prop :=
-    match s with
-    | Callstate fptr ty args k m  =>
-      match Genv.find_funct ge fptr with
-      | Some f =>
-        match f with
-        | External ef targs tres cconv => is_external_ef ef = true
-        | _ => False
-        end
-      | None => False
-      end
-    | _ => False
-    end
-  .
-
-  Definition internal_function_state (ge: genv) (s:state) : Prop :=
-    match s with
-    | Callstate fptr ty args k m  =>
-      match Genv.find_funct ge fptr with
-      | Some f =>
-        match f with
-        | Internal func => type_of_fundef f = Tfunction Tnil type_int32s cc_default
-        | _ => False
-        end
-      | None => False
-      end
-    | _ => False
-    end
-  .
-
-  Definition external_state (ge: genv) (s:state) : bool :=
-    match s with
-    | Callstate fptr ty args k m  =>
-      match Genv.find_funct ge fptr with
-      | Some f =>
-        match f with
-        | External ef targs tres cconv => is_external_ef ef
-        | _ => false
-        end
-      | None => false
-      end
-    | _ => false
-    end
-  .
-
-End CEXTRA.
-(*** !!!!!!!!!!!!!!! REMOVE ABOVE AFTER MERGING WITH MIXED SIM BRANCH !!!!!!!!!!!!!!!!!! ***)
-
-
 Definition get_mem (st: state): option mem :=
   match st with
   | State _ _ _ _ m0 => Some m0
@@ -171,67 +120,21 @@ Section MODSEM.
                    (* specialize (CONT f e C ty k0). clarify. Qed. *)
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
-  Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p)).
-  Hypothesis (WF: SkEnv.wf skenv_link).
-
-  Lemma not_external
-    :
-      is_external ge <1= bot1
-  .
-  Proof.
-    ii. hnf in PR. des_ifs.
-    subst_locals.
-    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply CSkEnv.project_revive_no_external; ss; eauto.
-  Qed.
-
-  (* Lemma lift_receptive_at *)
-  (*       st *)
-  (*       (RECEP: receptive_at (semantics_with_ge ge) st) *)
-  (*   : *)
-  (*     receptive_at modsem st *)
-  (* . *)
-  (* Proof. *)
-  (*   inv RECEP. econs; eauto; ii; ss. exploit sr_receptive_at; eauto. *)
-  (*   eapply match_traces_preserved; try eassumption. ii; ss. *)
-  (* Qed. *)
-
-  (* Lemma modsem_receptive *)
-  (*       st *)
-  (*   : *)
-  (*     receptive_at modsem st *)
-  (* . *)
-  (* Proof. *)
-  (*   econs. i. *)
-  (*   eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed. *)
-
-  (* not determ *)
-  (* Lemma lift_determinate_at *)
-  (*       st0 *)
-  (*       (DTM: determinate_at (semantics_with_ge ge) st0) *)
-  (*   : *)
-  (*     determinate_at modsem st0 *)
-  (* . *)
-  (* Proof. *)
-  (*   inv DTM. econs; eauto; ii; ss. *)
-  (*   determ_tac sd_determ_at. esplits; eauto. *)
-  (*   eapply match_traces_preserved; try eassumption. ii; ss. *)
-  (* Qed. *)
-
-  (* Lemma modsem_determinate *)
-  (*       st *)
-  (*   : *)
-  (*     determinate_at modsem st *)
-  (* . *)
-  (* Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed. *)
-
+  Ltac inv_single_events :=
+    repeat
+      match goal with
+      | [H: _ |- _ ] => try (exploit external_call_trace_length; eauto; check_safe; intro T; des); inv H; ss; try xomega
+      end.
+  
   Lemma single_events_at
         st
     :
       single_events_at modsem st
   .
   Proof.
-    admit "".
+    ii. inv H.
+    - inv H0; ss; try xomega. clear - H. inv_single_events.
+    - inv_single_events.
   Qed.
 
 End MODSEM.

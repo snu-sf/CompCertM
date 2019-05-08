@@ -38,3 +38,8 @@ Proof.
   inv MATCH; econs; eauto; eapply eventval_valid_le; eauto.
 Qed.
 
+Ltac inv_match_traces :=
+  match goal with
+  | [ H: match_traces _ _ _ |- _ ] => inv H
+  end
+.       

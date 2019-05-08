@@ -10,41 +10,6 @@ Require Import JunkBlock.
 
 Set Implicit Arguments.
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Ltac clarify_meq :=
-  repeat
-    match goal with
-    | [ H0: ?A m= ?B |- _ ] => inv H0
-    | [ H0: ?A = ?A -> _ |- _ ] => exploit H0; eauto; check_safe; intro; des; clear H0
-    end;
-    clarify
-.
-
-Ltac inv_match_traces :=
-  match goal with
-  | [ H: match_traces _ _ _ |- _ ] => inv H
-  end
-.       
-
-
-
-
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
@@ -143,9 +108,6 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-
-  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
-  Hypothesis (WF: SkEnv.wf skenv_link).
 
   Lemma modsem_receptive
         st

@@ -5,7 +5,7 @@ Require Import Integers.
 Require Import Floats.
 Require Import ValuesC.
 Require Import Memory.
-Require Import Events.
+Require Import EventsC.
 Require Import Globalenvs.
 Require Import Switch.
 Require Cminor.
@@ -99,15 +99,49 @@ Section MODSEM.
     :
       receptive_at modsem st
   .
-  Proof. admit "this should hold". Qed.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
+
+  Let eval_expr_determ:
+    forall e le m a v, eval_expr ge e le m a v -> forall v', eval_expr ge e le m a v' -> v = v'.
+  Proof.
+    induction 1; intros v' EV; inv EV; try congruence.
+    - inv H; inv H1; congruence.
+    - exploit IHeval_expr; et. i; clarify.
+    - exploit IHeval_expr1; et. exploit IHeval_expr2; et. i; clarify.
+    - exploit IHeval_expr; et. i; clarify.
+  Qed.
+
+  Let eval_exprlist_determ:
+    forall e le m al vl, eval_exprlist ge e le m al vl -> forall vl', eval_exprlist ge e le m al vl' -> vl = vl'.
+  Proof.
+    induction 1; intros vl' EV; inv EV; try congruence; try determ_tac eval_expr_determ.
+    - exploit IHeval_exprlist; et. determ_tac eval_expr_determ.
+  Qed.
+
+  Let alloc_variables_determ:
+    forall env m vars e m1, alloc_variables env m vars e m1 -> forall e' m1', alloc_variables env m vars e' m1' -> e = e' /\ m1 = m1'.
+  Proof.
+    induction 1; intros e' m1' EV; inv EV; f_equal; eauto. rewrite H in H8. des_ifs. eapply IHalloc_variables; et.
+  Qed.
 
   Lemma modsem_determinate
         st
     :
       determinate_at modsem st
   .
-  Proof. admit "this should hold". Qed.
-
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_expr_determ; check_safe); try (determ_tac eval_exprlist_determ; check_safe); try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+      + determ_tac eval_expr_determ. clear H1. determ_tac eval_expr_determ.
+      + determ_tac eval_expr_determ. inv H2. inv H13. ss.
+      + inv H2; inv H13; ss.
+      + hexploit (alloc_variables_determ H4 H15); et. i; des. clarify.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
 End MODSEM.
 

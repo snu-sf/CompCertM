@@ -8,7 +8,7 @@ Require Import Floats.
 Require Import ValuesC.
 Require Import ASTC.
 Require Import MemoryC.
-Require Import Events.
+Require Import EventsC.
 Require Import Globalenvs.
 Require Import Smallstep.
 Require Import Ctypes.
@@ -24,60 +24,6 @@ Require Import Conventions.
 Require Import CtypingC.
 
 Set Implicit Arguments.
-
-
-
-
-(* Section CSTREXTRA. *)
-
-(*   Definition is_external (ge: genv) (s:state) : Prop := *)
-(*     match s with *)
-(*     | Callstate fptr ty args k m  => *)
-(*       match Genv.find_funct ge fptr with *)
-(*       | Some f => *)
-(*         match f with *)
-(*         | External ef targs tres cconv => is_external_ef ef *)
-(*         | _ => False *)
-(*         end *)
-(*       | None => False *)
-(*       end *)
-(*     | _ => False *)
-(*     end *)
-(*   . *)
-
-(*   Definition internal_function_state (ge: genv) (s:state) : Prop := *)
-(*     match s with *)
-(*     | Callstate fptr ty args k m  => *)
-(*       match Genv.find_funct ge fptr with *)
-(*       | Some f => *)
-(*         match f with *)
-(*         | Internal func => type_of_fundef f = Tfunction Tnil type_int32s cc_default *)
-(*         | _ => False *)
-(*         end *)
-(*       | None => False *)
-(*       end *)
-(*     | _ => False *)
-(*     end *)
-(*   . *)
-
-(*   Definition external_state (ge: genv) (s:state) : bool := *)
-(*     match s with *)
-(*     | Callstate fptr ty args k m  => *)
-(*       match Genv.find_funct ge fptr with *)
-(*       | Some f => *)
-(*         match f with *)
-(*         | External ef targs tres cconv => is_external_ef ef *)
-(*         | _ => false *)
-(*         end *)
-(*       | None => false *)
-(*       end *)
-(*     | _ => false *)
-(*     end *)
-(*   . *)
-
-(* End CSTREXTRA. *)
-(*** !!!!!!!!!!!!!!! REMOVE ABOVE AFTER MERGING WITH MIXED SIM BRANCH !!!!!!!!!!!!!!!!!! ***)
-
 
 Definition get_mem (st: state): option mem :=
   match st with
@@ -166,26 +112,116 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once. inv H. inv H. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
-  (* Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p)). *)
-  (* Hypothesis (WF: SkEnv.wf skenv_link). *)
-
-  (* Lemma not_external *)
-  (*   : *)
-  (*     is_external ge <1= bot1 *)
-  (* . *)
-  (* Proof. *)
-  (*   ii. hnf in PR. des_ifs. *)
-  (*   subst_locals. *)
-  (*   unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs. *)
-  (*   eapply CSkEnv.project_revive_no_external; ss; eauto. *)
-  (* Qed. *)
-
   Lemma modsem_strongly_receptive
         st
     :
       strongly_receptive_at modsem st
   .
-  Proof. admit "this should hold". Qed.
+  Proof.
+    econs; ss; i.
+    - inversion H; subst.
+      inv H1.
+      + (* valof volatile *)
+        exploit deref_loc_receptive; eauto. intros [A [v' B]].
+        econstructor; econstructor. left; eapply step_rvalof_volatile; eauto.
+      + (* assign *)
+        exploit assign_loc_receptive; eauto. intro EQ; rewrite EQ in H.
+        econstructor; econstructor; eauto.
+      + (* assignop *)
+        destruct t0 as [ | ev0 t0]; simpl in H10.
+        subst t2. exploit assign_loc_receptive; eauto. intros EQ; rewrite EQ in H.
+        econstructor; econstructor; eauto.
+        inv H10. exploit deref_loc_receptive; eauto. intros [EQ [v1' A]]. subst t0.
+        destruct (sem_binary_operation ge op v1' (typeof l) v2 (typeof r) m) as [v3'|] eqn:?.
+        destruct (sem_cast v3' tyres (typeof l) m) as [v4'|] eqn:?.
+        destruct (classic (exists t2', exists m'', assign_loc skenv_link ge (typeof l) m b ofs v4' t2' m'')).
+        destruct H1 as [t2' [m'' P]].
+        econstructor; econstructor. left; eapply step_assignop with (v1 := v1'); eauto. simpl; reflexivity.
+        econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t0; exists m'0; auto.
+        econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; rewrite Heqo0; auto.
+        econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; auto.
+      + (* assignop stuck *)
+        exploit deref_loc_receptive; eauto. intros [EQ [v1' A]]. subst t1.
+        destruct (sem_binary_operation ge op v1' (typeof l) v2 (typeof r) m) as [v3'|] eqn:?.
+        destruct (sem_cast v3' tyres (typeof l) m) as [v4'|] eqn:?.
+        destruct (classic (exists t2', exists m'', assign_loc skenv_link ge (typeof l) m b ofs v4' t2' m'')).
+        destruct H1 as [t2' [m'' P]].
+        econstructor; econstructor. left; eapply step_assignop with (v1 := v1'); eauto. simpl; reflexivity.
+        econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t2; exists m'; auto.
+        econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; rewrite Heqo0; auto.
+        econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; auto.
+      + (* postincr *)
+        destruct t0 as [ | ev0 t0]; simpl in H9.
+        subst t2. exploit assign_loc_receptive; eauto. intros EQ; rewrite EQ in H.
+        econstructor; econstructor; eauto.
+        inv H9. exploit deref_loc_receptive; eauto. intros [EQ [v1' A]]. subst t0.
+        destruct (sem_incrdecr ge id v1' (typeof l) m) as [v2'|] eqn:?.
+        destruct (sem_cast v2' (incrdecr_type (typeof l)) (typeof l) m) as [v3'|] eqn:?.
+        destruct (classic (exists t2', exists m'', assign_loc skenv_link ge (typeof l) m b ofs v3' t2' m'')).
+        destruct H1 as [t2' [m'' P]].
+        econstructor; econstructor. left; eapply step_postincr with (v1 := v1'); eauto. simpl; reflexivity.
+        econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t0; exists m'0; auto.
+        econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; rewrite Heqo0; auto.
+        econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; auto.
+      + (* postincr stuck *)
+        exploit deref_loc_receptive; eauto. intros [EQ [v1' A]]. subst t1.
+        destruct (sem_incrdecr ge id v1' (typeof l) m) as [v2'|] eqn:?.
+        destruct (sem_cast v2' (incrdecr_type (typeof l)) (typeof l) m) as [v3'|] eqn:?.
+        destruct (classic (exists t2', exists m'', assign_loc skenv_link ge (typeof l) m b ofs v3' t2' m'')).
+        destruct H1 as [t2' [m'' P]].
+        econstructor; econstructor. left; eapply step_postincr with (v1 := v1'); eauto. simpl; reflexivity.
+        econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t2; exists m'; auto.
+        econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; rewrite Heqo0; auto.
+        econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
+        rewrite Heqo; auto.
+      + (* builtin *)
+        exploit external_call_trace_length; eauto. destruct t1; simpl; intros.
+        exploit external_call_receptive; eauto. intros [vres2 [m2 EC2]].
+        econstructor; econstructor. left; eapply step_builtin; eauto.
+        omegaContradiction.
+      + (* external calls *)
+        inv H1.
+        exploit external_call_trace_length; eauto. destruct t1; simpl; intros.
+        exploit external_call_receptive; eauto. intros [vres2 [m2 EC2]].
+        exists (Returnstate vres2 k m2); exists E0; right; econstructor; eauto.
+        omegaContradiction.
+    - red; intros. inv H; inv H0; ss.
+      + (* valof volatile *)
+        exploit deref_loc_trace; eauto. destruct t; auto. destruct t; tauto.
+      + (* assign *)
+        exploit assign_loc_trace; eauto. destruct t; auto. destruct t; simpl; tauto.
+      + (* assignop *)
+        exploit deref_loc_trace; eauto. exploit assign_loc_trace; eauto.
+        destruct t1. destruct t2. simpl; auto. destruct t2; simpl; tauto.
+        destruct t1. destruct t2. simpl; auto. destruct t2; simpl; tauto.
+        tauto.
+      + (* assignop stuck *)
+        exploit deref_loc_trace; eauto. destruct t; auto. destruct t; tauto.
+      + (* postincr *)
+        exploit deref_loc_trace; eauto. exploit assign_loc_trace; eauto.
+        destruct t1. destruct t2. simpl; auto. destruct t2; simpl; tauto.
+        destruct t1. destruct t2. simpl; auto. destruct t2; simpl; tauto.
+        tauto.
+      + (* postincr stuck *)
+        exploit deref_loc_trace; eauto. destruct t; auto. destruct t; tauto.
+      + (* builtins *)
+        exploit external_call_trace_length; eauto.
+        destruct t; simpl; auto. destruct t; simpl; auto. intros; omegaContradiction.
+      + (* external calls *)
+        exploit external_call_trace_length; eauto.
+        destruct t; simpl; auto. destruct t; simpl; auto. intros; omegaContradiction.
+  Qed.
 
 End MODSEM.
 

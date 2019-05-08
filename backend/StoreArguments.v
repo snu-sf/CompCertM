@@ -39,49 +39,6 @@ Section STOREARGUMENTS.
       val_undef Undef
   .
 
-  (* Definition memval_undefs (chunk: memory_chunk) (m: ZMap.t memval) ofs : Prop := *)
-  (*   Forall val_undef (Mem.getN (size_chunk_nat chunk) ofs m). *)
-
-  (* Inductive Val_longofwords' : val -> val -> val -> Prop := *)
-  (* | longofwords_value *)
-  (*     n1 n2 v1 v2 v *)
-  (*     (INT1: v1 = Vint n1) *)
-  (*     (INT2: v2 = Vint n2) *)
-  (*     (LONG: v = Vlong (Int64.ofwords n1 n2)) *)
-  (*   : *)
-  (*     Val_longofwords' v1 v2 v *)
-  (* | longofwords_undef *)
-  (*   : *)
-  (*     Val_longofwords' Vundef Vundef Vundef. *)
-
-  (* Inductive extcall_arg (rs: Mach.regset) (m: mem) (sp: val) : loc -> val -> Prop := *)
-  (* | extcall_arg_reg: forall r, *)
-  (*     extcall_arg rs m sp (R r) (rs r) *)
-  (* | extcall_arg_stack: forall ofs ty v, *)
-  (*     Mem.loadv *)
-  (*       (chunk_of_type ty) m *)
-  (*       (Val.offset_ptr sp (Ptrofs.repr (Stacklayout.fe_ofs_arg + 4 * ofs))) = Some v -> *)
-  (*     forall (UNDEFS: forall blk stack_ofs (UNDEF: v = Vundef) *)
-  (*                            (ADDR: sp = Vptr blk stack_ofs), *)
-  (*                memval_undefs (chunk_of_type ty) (m.(Mem.mem_contents)!!blk) *)
-  (*                              (Ptrofs.unsigned stack_ofs + (Stacklayout.fe_ofs_arg + 4 * ofs))), *)
-  (*       extcall_arg rs m sp (S Outgoing ofs ty) v *)
-  (* . *)
-
-  (* Inductive extcall_arg_pair (rs: Mach.regset) (m: mem) (sp: val) : rpair loc -> val -> Prop := *)
-  (* | extcall_arg_one: forall l v, *)
-  (*     extcall_arg rs m sp l v -> *)
-  (*     extcall_arg_pair rs m sp (One l) v *)
-  (* | extcall_arg_twolong: forall hi lo vhi vlo v, *)
-  (*     extcall_arg rs m sp hi vhi -> *)
-  (*     extcall_arg rs m sp lo vlo -> *)
-  (*     forall (LONG: Val_longofwords' vhi vlo v), *)
-  (*       extcall_arg_pair rs m sp (Twolong hi lo) v. *)
-
-  (* Definition extcall_arguments *)
-  (*            (rs: Mach.regset) (m: mem) (sp: val) (sg: signature) (args: list val) : Prop := *)
-  (*   list_forall2 (extcall_arg_pair rs m sp) (loc_arguments sg) args. *)
-
   Definition only_args (m: mem) (blk: block) (lo: ptrofs) (locs: list loc) :=
     forall ofs,
       (<<UNDEF: val_undef (ZMap.get ofs (Mem.mem_contents m) !! blk) >>) \/
@@ -112,55 +69,6 @@ End STOREARGUMENTS.
 
 
 Section STOREARGUMENTS_PROPERTY.
-
-  (* Lemma store_undef_memval_undefs chunk m0 m1 blk ofs *)
-  (*       (STORE: Mem.store chunk m0 blk ofs Vundef = Some m1) *)
-  (*       (OFS: 0 <= ofs <= Ptrofs.max_unsigned) *)
-  (* : *)
-  (*   memval_undefs chunk (m1.(Mem.mem_contents)!!blk) ofs. *)
-  (* Proof. *)
-  (*   eapply Mem.store_mem_contents in STORE. ii; eauto. rewrite STORE. *)
-  (*   i. rewrite PMap.gss. *)
-  (*   unfold memval_undefs. *)
-  (*   replace (size_chunk_nat chunk) with *)
-  (*       (Datatypes.length (encode_val chunk Vundef)); cycle 1. *)
-  (*   { apply encode_val_length. } *)
-  (*   rewrite Mem.getN_setN_same. *)
-  (*   unfold encode_val, list_repeat. *)
-  (*   des_ifs; ss; repeat constructor. *)
-  (* Qed. *)
-
-  (* Lemma memval_undefs_unchanged_on P m m' chunk b ofs *)
-  (*       (UNCHANGED: Mem.unchanged_on P m m') *)
-  (*       (RANGE: forall i, ofs <= i < ofs + size_chunk chunk -> P b i) *)
-  (*       (UNDEFS: memval_undefs chunk (m.(Mem.mem_contents)!!b) ofs) *)
-  (*       (PERM: Mem.range_perm m b ofs (ofs + size_chunk chunk) Cur Readable) *)
-  (*   : *)
-  (*     memval_undefs chunk (m'.(Mem.mem_contents)!!b) ofs. *)
-  (* Proof. *)
-  (*   unfold memval_undefs in *. *)
-  (*   replace (Mem.getN (size_chunk_nat chunk) ofs (Mem.mem_contents m') !! b) *)
-  (*     with (Mem.getN (size_chunk_nat chunk) ofs (Mem.mem_contents m) !! b); auto. *)
-  (*   rewrite size_chunk_conv in *. *)
-  (*   generalize dependent ofs. *)
-  (*   induction (size_chunk_nat chunk); ss; i. *)
-  (*   f_equal. *)
-  (*   - erewrite <- Mem.unchanged_on_contents; eauto. *)
-  (*     + eapply RANGE. lia. *)
-  (*     + eapply PERM. lia. *)
-  (*   - eapply IHn. *)
-  (*     + i. eapply RANGE. lia. *)
-  (*     + inv UNDEFS. eauto. *)
-  (*     + ii. eapply PERM. lia. *)
-  (* Qed. *)
-
-  (* Lemma longofwords_imply vh vl v *)
-  (*       (LONG: Val_longofwords' vh vl v) *)
-  (*   : *)
-  (*     Val.longofwords vh vl = v. *)
-  (* Proof. *)
-  (*   inv LONG; clarify. *)
-  (* Qed. *)
 
   Lemma extcall_arguments_same (rs0 rs1: Mach.regset) sp m sg args
         (ARGS: extcall_arguments rs0 m sp sg args)
@@ -196,12 +104,6 @@ Section STOREARGUMENTS_PROPERTY.
   Definition extcall_arg_in_stack (m: ZMap.t memval) (lo: Z) (l: rpair loc) (v: val) : Prop :=
     forall ofs ty (EQ: l = One (S Outgoing ofs ty)),
       decode_val (chunk_of_type ty) (Mem.getN (size_chunk_nat (chunk_of_type ty)) (lo + 4 * ofs) m) = v.
-  (* Definition extcall_arg_in_stack (m: ZMap.t memval) (lo: Z) (l: rpair loc) (v: val) : Prop := *)
-  (*   forall ofs ty (EQ: l = One (S Outgoing ofs ty)), *)
-  (*     (<<LOAD: *)
-  (*        Some (decode_val (chunk_of_type ty) (Mem.getN (size_chunk_nat (chunk_of_type ty)) (lo + 4 * ofs) m)) = Some v>>) /\ *)
-  (*     (<<UNDEFS: forall (UNDEF: v = Vundef), *)
-  (*         memval_undefs (chunk_of_type ty) m (lo + 4 * ofs)>>). *)
 
   (* todo: move to LocationC *)
   Lemma loc_arguments_ofs_bounded
@@ -793,6 +695,174 @@ Module _FillArgsParallel.
     - eapply Mem.contents_default.
   Qed.
 
+  Definition encode_val' (chunk: memory_chunk) (v: val) : list memval :=
+    if Val.eq v Vundef then list_repeat (size_chunk_nat chunk) Undef
+    else encode_val chunk v.
+
+  Lemma encode_val_length' chunk v
+    :
+      Datatypes.length (encode_val' chunk v) = size_chunk_nat chunk.
+  Proof.
+    unfold encode_val'. des_ifs.
+    - eapply length_list_repeat.
+    - eapply encode_val_length.
+  Qed.
+
+  Lemma decode_encode_val' ty v
+        (TYP: Val.has_type v ty)
+    :
+      decode_val (chunk_of_type ty) (encode_val' (chunk_of_type ty) v) = v.
+  Proof.
+    unfold encode_val'. des_ifs.
+    { set (size_chunk_nat_pos (chunk_of_type ty)). des. rewrite e. ss.
+      eapply decode_val_undef. }
+    hexploit (decode_encode_val_general v (chunk_of_type ty) (chunk_of_type ty)). i.
+    hexploit decode_encode_val_similar; eauto. i.
+    rewrite H0 in *.
+    hexploit Val.load_result_same; eauto.
+  Qed.
+
+  Definition fill_arg_blk (m: ZMap.t memval) (lo: Z)
+             (arg: val) (loc: rpair loc)
+    : ZMap.t memval :=
+    match loc with
+    | One (S Outgoing ofs ty) => Mem.setN (encode_val' (chunk_of_type ty) arg) (lo + 4 * ofs) m
+    | _ => m
+    end.
+
+  Fixpoint fill_args_blk (m: ZMap.t memval) (lo: Z)
+           (args: list val) (locs: list (rpair loc))
+    : ZMap.t memval :=
+    match args, locs with
+    | vhd::vtl, lhd::ltl =>
+      fill_arg_blk (fill_args_blk m lo vtl ltl) lo vhd lhd
+    | _, _ => m
+    end.
+
+  Definition has_typed_loc (l: rpair loc) (v: val) :Prop :=
+    match l with
+    | One (S _ _ ty) => Val.has_type v ty
+    | _ => True
+    end.
+
+  Lemma fill_args_blk_args m args locs lo
+        (NOREPEAT: Loc.norepet (regs_of_rpairs locs))
+        (ONES: forall l (IN: In l locs), is_one l)
+        (LENGTH: length args = length locs)
+        (TYP: list_forall2 has_typed_loc locs args)
+    :
+      list_forall2 (extcall_arg_in_stack (fill_args_blk m lo args locs) lo) locs args.
+  Proof.
+    revert NOREPEAT args ONES LENGTH TYP. induction locs; ss; i.
+    - destruct args; ss. econs.
+    - destruct args; ss. inv LENGTH. inv TYP.
+      exploit IHlocs; eauto.
+      { ii. eapply loc_norepet_app; eauto. }
+      unfold fill_arg_blk. des_ifs.
+      + econs; eauto. ii. inv EQ.
+      + econs; eauto. ii. inv EQ.
+      + econs; eauto. ii. inv EQ.
+      + i. econs; eauto.
+        { ii. clarify.
+          assert (LEQ: size_chunk_nat (chunk_of_type ty0) =
+                       Datatypes.length (encode_val' (chunk_of_type ty0) v)).
+          { rewrite encode_val_length'. auto. }
+          rewrite LEQ at 1.
+          erewrite Mem.getN_setN_same.
+          eapply decode_encode_val'; eauto. }
+        { eapply list_forall2_lift; [| eauto].
+          ii. clarify. specialize (H1 ofs ty0 eq_refl). des. clarify.
+          erewrite Mem.getN_setN_outside; eauto.
+          ss. inv NOREPEAT.
+          exploit Loc.in_notin_diff; eauto.
+          { eapply in_one_in_rpair; eauto. } intros DIFF. ss.
+          rewrite encode_val_length'.
+          repeat rewrite <- size_chunk_conv.
+          repeat rewrite typesize_chunk. des; clarify; lia.
+        }
+      + econs; eauto. ii. inv EQ.
+  Qed.
+
+  Lemma fill_args_blk_only_args args locs
+        (NOREPEAT: Loc.norepet (regs_of_rpairs locs))
+        (LENGTH: length args = length locs)
+        (ONES: forall l (IN: In l locs), is_one l)
+        (TYP: list_forall2 has_typed_loc locs args)
+    :
+      only_args_blk
+        (fill_args_blk (ZMap.init Undef) 0 args locs) (regs_of_rpairs locs).
+  Proof.
+    generalize dependent args.
+    revert NOREPEAT ONES. induction locs; ss; eauto; i.
+    - inv LENGTH. destruct args; ss. ii. rewrite ZMap.gi. left. econs.
+    - destruct args; ss. inv TYP. inv LENGTH.
+      hexploit IHlocs; eauto.
+      { ii. eapply loc_norepet_app; eauto. } intros ONLY.
+      unfold fill_arg_blk. des_ifs.
+      + eapply only_args_blk_incr; auto.
+      + eapply only_args_blk_incr; auto.
+      + eapply only_args_blk_incr; auto.
+      + ss. ii.
+        destruct (classic (4 * pos <= ofs < 4 * pos + Z.of_nat (size_chunk_nat (chunk_of_type ty)))).
+        * assert (LEQ: size_chunk_nat (chunk_of_type ty) =
+                       Datatypes.length (encode_val' (chunk_of_type ty) v)).
+          { symmetry. eapply encode_val_length'. } exploit Mem.getN_in; eauto.
+          rewrite LEQ at 1. rewrite Mem.getN_setN_same.
+          instantiate (1:=fill_args_blk (ZMap.init Undef) 0 args locs). i.
+          destruct (classic (v = Vundef)).
+          { clarify. unfold encode_val' in *. des_ifs.
+            eapply in_list_repeat in H1. rewrite H1. left. econs. }
+          { right. des. esplits; eauto.
+            - ss. eauto.
+            - rewrite size_chunk_conv in *. auto.
+            - rewrite LEQ at 1. erewrite Mem.getN_setN_same.
+              rewrite decode_encode_val'; eauto. }
+        * specialize (ONLY ofs). des.
+          { left. erewrite Mem.setN_other; eauto.
+            rewrite encode_val_length'. ii. clarify. }
+          { right. esplits; ss; eauto.
+            erewrite Mem.getN_setN_outside; eauto.
+            - ii. clarify.
+            - rewrite encode_val_length'.
+              repeat rewrite <- size_chunk_conv in *.
+              repeat rewrite typesize_chunk in *.
+              set (typesize_pos ty0).
+              set (typesize_pos ty).
+              inv NOREPEAT. exploit Loc.in_notin_diff; eauto. i. ss.
+              des; clarify; lia. }
+      + ss. exploit ONES; eauto. i. clarify.
+  Qed.
+
+  Lemma fill_args_blk_default m args locs lo
+    :
+      fst (fill_args_blk m lo args locs) = fst m.
+  Proof.
+    revert m locs. induction args; ss; i.
+    unfold fill_arg_blk. des_ifs; ss.
+    rewrite Mem.setN_default. ss.
+  Qed.
+
+  Program Definition fill_args_mem (m_src0: mem) (blk: block)
+          (args: list val) (locs: list (rpair loc)) : mem :=
+    Mem.mkmem
+      (PMap.set
+         blk
+         (fill_args_blk (ZMap.init Undef) 0 args locs)
+         (m_src0.(Mem.mem_contents)))
+      (m_src0.(Mem.mem_access))
+      (m_src0.(Mem.nextblock))
+      _ _ _.
+  Next Obligation.
+  Proof. eapply Mem.access_max. Qed.
+  Next Obligation.
+  Proof. eapply Mem.nextblock_noaccess; auto. Qed.
+  Next Obligation.
+  Proof.
+    rewrite PMap.gsspec. des_ifs.
+    - rewrite fill_args_blk_default. eauto.
+    - eapply Mem.contents_default.
+  Qed.
+
 End _FillArgsParallel.
 
 
@@ -1181,6 +1251,33 @@ End STOREARGPRARALLEL.
 
 Require Import JunkBlock.
 
+(* TODO it's from LowerBoundExtra *)
+Definition extcall_args_reg (mr: mreg) (sg: signature):
+  {In (R mr) (regs_of_rpairs (loc_arguments sg))} +
+  {~ In (R mr) (regs_of_rpairs (loc_arguments sg))}.
+Proof.
+  generalize (regs_of_rpairs (loc_arguments sg)). induction l.
+  - ss. tauto.
+  - ss. inv IHl; [tauto|].
+    destruct a.
+    + destruct (mreg_eq r mr); [clarify; eauto|].
+      right. intros []; clarify.
+    + right. intros []; clarify.
+Qed.
+
+Lemma typify_has_typed_loc vs sg
+      (TYP : Val.has_type_list vs (sig_args sg))
+  :
+    list_forall2 _FillArgsParallel.has_typed_loc (loc_arguments sg) vs.
+Proof.
+  unfold sig_args, loc_arguments in *. des_ifs. ss.
+  generalize 0 at 1. generalize 0 at 1. generalize 0 at 1.
+  revert TYP. clear.
+  ginduction sig_args; ss.
+  - i. destruct vs; clarify. econs.
+  - i. destruct vs; clarify. ss. des.
+    des_ifs; econs; eauto; try by econs.
+Qed.
 
 Theorem store_arguments_progress
         m0 tvs sg
@@ -1197,861 +1294,57 @@ Theorem store_arguments_progress
            is_junk_value m2 (assign_junk_blocks m2 n) (rs mr)>>)
 .
 Proof.
-Admitted.
-(*   destruct (Mem.alloc m0 0 (4 * size_arguments sg)) eqn:ALC. *)
-(*   rename m into m1. rename b into blk. *)
-(*   assert(LEN2: length tvs = length (sig_args sg)). *)
-(*   { clear - TYP. revert TYP. generalize (sig_args sg). *)
-(*     induction tvs; ss; i; des_ifs; ss. *)
-(*     f_equal. eapply IHtvs. des. auto. } *)
-(*   exploit (FillArgsProgress.fill_arguments_progress sg m0 (Regmap.init Vundef)); eauto. i; des. *)
-(*   hexploit (FillArgsProgress.fill_arguments_unchanged); eauto. i. *)
-(*   exploit (FillArgsProgress.fill_arguments_spec sg m0 (Regmap.init Vundef) m1 blk tvs); eauto. *)
-(*   hexploit (FillArgsProgress.fill_arguments_unchanged); eauto. intros UNCH. *)
-(*   esplits; eauto. *)
-(*   ii. exploit UNCH; eauto. i. rewrite <- H1. ss. *)
-(* Qed. *)
-
-
-(* Ltac extcall_simpl := *)
-(*   repeat match goal with *)
-(*          | [ H: extcall_arg_pair _ _ _ (One _) _ |- _ ] => inv H *)
-(*          | [ H: extcall_arg _ _ _ (S _ _ _) _ |- _ ] => inv H *)
-(*          | [ H: extcall_arg _ _ _ (R _) _ |- _ ] => inv H *)
-(*          end *)
-(* . *)
-
-(* Local Opaque Z.mul Z.sub Z.div. *)
-(* Local Transparent size_arguments. *)
-(* Local Transparent loc_arguments. *)
-
-(* Module FillArgsProgress. *)
-
-(*   Fixpoint fill_arguments (sp: block) (rs0: regset) (m0: mem) (args: list val) (locs: list (rpair loc)): *)
-(*     option (regset * mem) := *)
-(*     match args, locs with *)
-(*     | [], [] => Some (rs0, m0) *)
-(*     | arg :: args, loc :: locs => *)
-(*       do (rs1, m1) <- fill_arguments sp rs0 m0 args locs ; *)
-(*         match loc with *)
-(*         | One (R r) => Some (rs1 # r <- arg, m1) *)
-(*         (* | One (S Outgonitgttttttt ofs ty) => *) *)
-(*         | One (S Outgoing ofs ty) => *)
-(*           (* do m2 <- Mach.store_stack m0 sp ty (4 * ofs).(Ptrofs.repr) arg ; *) *)
-(*           do m2 <- Mem.store (chunk_of_type ty) m1 sp (4 * ofs) arg ; *)
-(*             Some (rs1, m2) *)
-(*         | _ => None *)
-(*         end *)
-(*     | _, _ => None *)
-(*     end *)
-(*   . *)
-
-(*   Hint Unfold curry2. *)
-(*   Local Opaque list_nth_z. *)
-(*   Ltac divtac_ := *)
-(*     try apply Z.divide_0_r; *)
-(*     try apply Z.divide_refl; *)
-(*     try (apply Z.mul_divide_cancel_l; ss; try xomega; check_safe); *)
-(*     try eapply Z.divide_add_r; eauto; *)
-(*     try (by (eapply Z.divide_factor_l; eauto)); *)
-(*     try (by (eapply Z.divide_refl; eauto)); *)
-(*     try xomega. *)
-(*   Ltac divtac := repeat divtac_. *)
-
-(*   Let fill_arguments_progress_aux *)
-(*       sig_args m0 rs0 m1 sp args *)
-(*       x y z *)
-(*       (LEN: Datatypes.length args = Datatypes.length sig_args) *)
-(*       (ALC: Mem.alloc m0 0 (4 * size_arguments_64 sig_args x y z) = (m1, sp)) *)
-(*       (* (ZWF: 0 <= 4 * z <= Ptrofs.max_unsigned) *) *)
-(*       (ZWF: 0 <= z /\ (2 | z)) *)
-(*     : *)
-(*       exists rs1 m2, *)
-(*         (<<FILL: *)
-(*            fill_arguments (* (Vptr sp Ptrofs.zero true) *) sp rs0 m1 args *)
-(*                           (loc_arguments_64 sig_args x y z) = Some (rs1, m2)>>) *)
-(*         /\ *)
-(*         (* <<VALID: forall chunk ofs (LO: lo <= ofs) (HI: ofs + size_chunk chunk <= hi) (ALIGN: align_chunkMem.valid_access m2 *) *)
-(*         (<<PERM: Mem.range_perm m2 sp 0 (4 * size_arguments_64 sig_args x y z) Cur Freeable>>) *)
-(*   . *)
-(*   Proof. *)
-(*     ginduction sig_args; ii; ss; destruct args; ss. *)
-(*     { esplits; eauto. eapply Mem_alloc_range_perm; eauto. } *)
-(*     des. *)
-(*     des_ifs; try (exploit IHsig_args; eauto; try (by esplits; divtac); i; des; check_safe); *)
-(*       try (rewrite FILL; u); try by (esplits; eauto). *)
-(*     - match goal with *)
-(*       | [ |- context[?chnk: memory_chunk] ] => destruct (Mem.valid_access_store m2 chnk sp (4 * pos) v) *)
-(*       end. *)
-(*       { eapply Mem.valid_access_implies with Freeable; eauto with mem. *)
-(*         split. *)
-(*         + ii. eapply PERM; eauto. split; try xomega. ss. *)
-(*           generalize (size_arguments_64_above sig_args x y (pos + 2)). i. xomega. *)
-(*         + ss. divtac. *)
-(*       } *)
-(*       des_ifs. esplits; eauto. *)
-(*       ii. eapply Mem.perm_store_1; eauto. *)
-(*     - match goal with *)
-(*       | [ |- context[?chnk: memory_chunk] ] => destruct (Mem.valid_access_store m2 chnk sp (4 * pos) v) *)
-(*       end. *)
-(*       { eapply Mem.valid_access_implies with Freeable; eauto with mem. *)
-(*         split. *)
-(*         + ii. eapply PERM; eauto. split; try xomega. ss. *)
-(*           generalize (size_arguments_64_above sig_args x y (pos + 2)). i. xomega. *)
-(*         + ss. divtac. *)
-(*       } *)
-(*       des_ifs. esplits; eauto. *)
-(*       ii. eapply Mem.perm_store_1; eauto. *)
-(*     - match goal with *)
-(*       | [ |- context[?chnk: memory_chunk] ] => destruct (Mem.valid_access_store m2 chnk sp (4 * pos) v) *)
-(*       end. *)
-(*       { eapply Mem.valid_access_implies with Freeable; eauto with mem. *)
-(*         split. *)
-(*         + ii. eapply PERM; eauto. split; try xomega. ss. *)
-(*           generalize (size_arguments_64_above sig_args x y (pos + 2)). i. xomega. *)
-(*         + ss. change 8 with (4 * 2). divtac. *)
-(*       } *)
-(*       des_ifs. esplits; eauto. *)
-(*       ii. eapply Mem.perm_store_1; eauto. *)
-(*     - match goal with *)
-(*       | [ |- context[?chnk: memory_chunk] ] => destruct (Mem.valid_access_store m2 chnk sp (4 * pos) v) *)
-(*       end. *)
-(*       { eapply Mem.valid_access_implies with Freeable; eauto with mem. *)
-(*         split. *)
-(*         + ii. eapply PERM; eauto. split; try xomega. ss. *)
-(*           generalize (size_arguments_64_above sig_args x y (pos + 2)). i. xomega. *)
-(*         + ss. divtac. *)
-(*       } *)
-(*       des_ifs. esplits; eauto. *)
-(*       ii. eapply Mem.perm_store_1; eauto. *)
-(*     - match goal with *)
-(*       | [ |- context[?chnk: memory_chunk] ] => destruct (Mem.valid_access_store m2 chnk sp (4 * pos) v) *)
-(*       end. *)
-(*       { eapply Mem.valid_access_implies with Freeable; eauto with mem. *)
-(*         split. *)
-(*         + ii. eapply PERM; eauto. split; try xomega. ss. *)
-(*           generalize (size_arguments_64_above sig_args x y (pos + 2)). i. xomega. *)
-(*         + ss. divtac. *)
-(*       } *)
-(*       des_ifs. esplits; eauto. *)
-(*       ii. eapply Mem.perm_store_1; eauto. *)
-(*     - match goal with *)
-(*       | [ |- context[?chnk: memory_chunk] ] => destruct (Mem.valid_access_store m2 chnk sp (4 * pos) v) *)
-(*       end. *)
-(*       { eapply Mem.valid_access_implies with Freeable; eauto with mem. *)
-(*         split. *)
-(*         + ii. eapply PERM; eauto. split; try xomega. ss. *)
-(*           generalize (size_arguments_64_above sig_args x y (pos + 2)). i. xomega. *)
-(*         + ss. divtac. *)
-(*       } *)
-(*       des_ifs. esplits; eauto. *)
-(*       ii. eapply Mem.perm_store_1; eauto. *)
-(*   Qed. *)
-
-(*   Theorem fill_arguments_progress *)
-(*           sg m0 rs0 m1 sp args *)
-(*           (LEN: length args = length sg.(sig_args)) *)
-(*           (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, sp)) *)
-(*     : *)
-(*       exists rs1 m2, (<<STORE: fill_arguments (* (Vptr sp Ptrofs.zero true) *) sp rs0 m1 args (loc_arguments sg) *)
-(*                                = Some (rs1, m2)>>) *)
-(*   . *)
-(*   Proof. *)
-(*     (* set (SG:= sg). *) *)
-(*     destruct sg; ss. *)
-(*     unfold loc_arguments, size_arguments in *. ss. des_ifs. clear_tac. *)
-(*     exploit fill_arguments_progress_aux; eauto. *)
-(*     { split; try xomega. divtac. } *)
-(*     i; des. eauto. *)
-(*   Qed. *)
-
-(*   Hint Unfold o_bind2. *)
-
-(*   (* move to Conventions1C *) *)
-(*   Lemma size_arguments_64_larger x y z tys *)
-(*     : *)
-(*       z <= size_arguments_64 tys x y z *)
-(*   . *)
-(*   Proof. *)
-(*     ginduction tys; ss; i. *)
-(*     - refl. *)
-(*     - des_ifs; specialize (IHtys x y (z +2)); nia. *)
-(*   Qed. *)
-
-(*   Let fill_arguments_unchanged_on *)
-(*       sp rs0 m0 args x y z rs1 m1 tys *)
-(*       (LEN: length args = length tys) *)
-(*       (FILL: fill_arguments sp rs0 m0 args (loc_arguments_64 tys x y z) = Some (rs1, m1)) *)
-(*     : *)
-(*       (* <<UNCH: Mem.unchanged_on (brange sp 0 (4 * z)) m0 m1>> *) *)
-(*       (<<UNCH: Mem.unchanged_on (fun b ofs => if eq_block b sp *)
-(*                                               then ~ (4 * z <= ofs < 4 * size_arguments_64 tys x y z) *)
-(*                                               else True) m0 m1>>) *)
-(*   . *)
-(*   Proof. *)
-(*     ginduction tys; ss; i. *)
-(*     { destruct args; ss; clarify. r. refl. } *)
-(*     u in *. destruct args; ss; clarify. *)
-(*     u in *. des_ifs_safe. destruct p. destruct r0; ss. *)
-(*     - des_ifs; clarify; eauto. *)
-(*     - des_ifs_safe. *)
-(*       set (size_arguments_64_larger x y (z + 2) tys). *)
-(*       exploit Mem.store_unchanged_on; eauto. *)
-(*       { instantiate (1:= (fun b ofs => *)
-(*                             if eq_block b sp *)
-(*                             then ~ 4 * pos <= ofs < 4 * pos + size_chunk (chunk_of_type ty) *)
-(*                             else True)). i. ss. des_ifs. *)
-(*       } i. *)
-(*       des_ifs; exploit IHtys; eauto; i; ss; *)
-(*         transitivity m; eapply Mem.unchanged_on_implies; eauto; i; ss; des_ifs; nia. *)
-(*   Qed. *)
-
-
-(*   Let fill_arguments_spec_aux: forall *)
-(*       sg m0 rs0 m1 sp args *)
-(*       x y z *)
-(*       (ALC: Mem.alloc m0 0 (4 * size_arguments_64 (sig_args sg) x y z) = (m1, sp)) *)
-(*       rs1 m2 *)
-(*       (FILL: fill_arguments sp rs0 m1 args (loc_arguments_64 (sig_args sg) x y z) = Some (rs1, m2)) *)
-(*       (LEN: length args = length sg.(sig_args)) *)
-(*       (DISJ: Loc.norepet (regs_of_rpairs (loc_arguments_64 (sig_args sg) x y z))) *)
-(*       (ONE: forall lp, In lp (loc_arguments_64 (sig_args sg) x y z) -> <<ONE: is_one lp >>) *)
-(*       (MAX: 4 * (size_arguments_64 (sig_args sg) x y z) <= Ptrofs.max_unsigned) *)
-(*       (TYPED: Val.has_type_list args sg.(sig_args)) *)
-(*       (ACC: forall lp, In lp (loc_arguments_64 (sig_args sg) x y z) -> *)
-(*                        <<ACC: forall_rpair loc_argument_acceptable lp>>) *)
-(*       (BDD: forall ofs ty (IN: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments_64 (sig_args sg) x y z))) *)
-(*         , *)
-(*           <<BDD: ofs + typesize ty <= size_arguments_64 (sig_args sg) x y z>>) *)
-(*     , *)
-(*       <<ALL: list_forall2 (extcall_arg_pair rs1 m2 (Vptr sp Ptrofs.zero)) (loc_arguments_64 (sig_args sg) x y z) args>> *)
-(*   . *)
-(*   Proof. *)
-(*     i. *)
-(*     exploit fill_arguments_unchanged_on; eauto. *)
-(*     intro UNCH; des. *)
-(*     (* abstr (4 * (size_arguments_64 (sig_args sg) x y z)) sz. *) *)
-(*     (* abstr (loc_arguments_64 (sig_args sg) x y z) locs. *) *)
-(*     abstr (sig_args sg) tys. *)
-(*     (* generalize (loc_arguments_64_charact tys x y z). intro CHAR. *) *)
-(*     set (TYS:= tys) in *. *)
-(*     ginduction args; ii; destruct tys; ss; des_ifs_safe. *)
-(*     { econs; eauto. } *)
-(*     u in FILL. des_ifs_safe; ss. destruct p; ss. *)
-(*     unfold Regmap.set in *. *)
-(*     destruct t; ss. *)
-(*     - des_safe. des_ifs. *)
-(*       + exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. rp; [econs|..]; try refl; eauto. ss. des_ifs. *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. ss. des_ifs. admit "ez - rpairs". } *)
-(*           econs; eauto. *)
-(*       + rename m2 into m3. rename m into m2. *)
-(*         exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         { eapply fill_arguments_unchanged_on; eauto. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. econs; eauto; cycle 1. *)
-(*           { i. clarify. eapply store_undef_memval_undefs; eauto. *)
-(*             rewrite Ptrofs.unsigned_zero. *)
-(*             { hexploit BDD; eauto. i; des. ss. *)
-(*               exploit ACC; eauto. i; ss; des. *)
-(*               split; try xomega. } *)
-(*           } *)
-(*           cbn. ss. *)
-(*           rewrite Ptrofs.add_zero_l. *)
-(*           rewrite Ptrofs.unsigned_repr; ss. *)
-(*           { erewrite Mem.load_store_same; eauto. rp; try rewrite Val.load_result_same; eauto. *)
-(*             change Mint32 with (chunk_of_type Tint). *)
-(*             rewrite Val.load_result_same; ss. *)
-(*           } *)
-(*           { *)
-(*             hexploit BDD; eauto. i; des. ss. *)
-(*             exploit ACC; eauto. i; ss; des. *)
-(*             split; try xomega. *)
-(*           } *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. } *)
-
-(*           assert (RANGE: 0 <= 4 * ofs <= Ptrofs.max_unsigned). *)
-(*           { *)
-(*             hexploit BDD; try right; eauto. *)
-(*             { eapply in_regs_of_rpairs; ss; eauto; ss; eauto. } *)
-(*             i; des. *)
-(*             exploit ACC; try right; eauto. i; ss; des. *)
-(*             generalize (typesize_pos ty); i. *)
-(*             split; try xomega. *)
-(*           } *)
-
-(*           econs; eauto; cycle 1. *)
-(*           { i. eapply memval_undefs_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Mint32)); cycle 1; eauto; clarify. *)
-(*             - rewrite Ptrofs.unsigned_zero in *. ss. *)
-(*               { locmap_tac. *)
-(*                 exploit Loc.in_notin_diff; eauto. *)
-(*                 { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*                 intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*                 u; ii. des; try xomega. *)
-(*               } *)
-(*             - rewrite Ptrofs.unsigned_zero. ss. *)
-(*               eapply Mem.load_valid_access in H3. *)
-(*               inv H3. ss. *)
-(*               rewrite Ptrofs.add_zero_l in *. *)
-(*               erewrite Ptrofs.unsigned_repr in *; ss. *)
-(*             - eapply Mem.store_unchanged_on; eauto. *)
-(*           } *)
-
-(*           ss. cbn in *. *)
-(*           rewrite Ptrofs.add_zero_l in *. *)
-(*           rewrite ! Ptrofs.unsigned_repr in *; ss; cycle 1. *)
-(*           (* { *) *)
-(*           (*   hexploit BDD; try right; eauto. *) *)
-(*           (*   { eapply in_regs_of_rpairs; ss; eauto; ss; eauto. } *) *)
-(*           (*   i; des. *) *)
-(*           (*   exploit ACC; try right; eauto. i; ss; des. *) *)
-(*           (*   generalize (typesize_pos ty); i. *) *)
-(*           (*   split; try xomega. *) *)
-(*           (* } *) *)
-
-(*           eapply Mem.load_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Mint32)); eauto. *)
-(*           { eapply Mem.store_unchanged_on; eauto. } *)
-
-(*           { locmap_tac. *)
-(*             exploit Loc.in_notin_diff; eauto. *)
-(*             { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*             intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*             u; ii. des; try xomega. *)
-(*           } *)
-
-(*     - des_safe. des_ifs. *)
-(*       + exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. rp; [econs|..]; try refl; eauto. ss. des_ifs. *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. ss. des_ifs. admit "ez - rpairs". } *)
-(*           econs; eauto. *)
-(*       + rename m2 into m3. rename m into m2. *)
-(*         exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         { eapply fill_arguments_unchanged_on; eauto. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. econs; eauto; cycle 1. *)
-(*           { i. clarify. eapply store_undef_memval_undefs; eauto. *)
-(*             rewrite Ptrofs.unsigned_zero. *)
-(*             { hexploit BDD; eauto. i; des. ss. *)
-(*               exploit ACC; eauto. i; ss; des. *)
-(*               split; try xomega. } *)
-(*           } *)
-(*           cbn. ss. *)
-(*           rewrite Ptrofs.add_zero_l. *)
-(*           rewrite Ptrofs.unsigned_repr; ss. *)
-(*           { erewrite Mem.load_store_same; eauto. rp; try rewrite Val.load_result_same; eauto. *)
-(*             change Mfloat64 with (chunk_of_type Tfloat). *)
-(*             rewrite Val.load_result_same; ss. *)
-(*           } *)
-(*           { *)
-(*             hexploit BDD; eauto. i; des. ss. *)
-(*             exploit ACC; eauto. i; ss; des. *)
-(*             split; try xomega. *)
-(*           } *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. } *)
-
-(*           assert (RANGE: 0 <= 4 * ofs <= Ptrofs.max_unsigned). *)
-(*           { *)
-(*             hexploit BDD; try right; eauto. *)
-(*             { eapply in_regs_of_rpairs; ss; eauto; ss; eauto. } *)
-(*             i; des. *)
-(*             exploit ACC; try right; eauto. i; ss; des. *)
-(*             generalize (typesize_pos ty); i. *)
-(*             split; try xomega. *)
-(*           } *)
-
-(*           econs; eauto; cycle 1. *)
-
-(*           { i. eapply memval_undefs_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Mfloat64)); cycle 1; eauto; clarify. *)
-(*             - rewrite Ptrofs.unsigned_zero in *. ss. *)
-(*               { locmap_tac. *)
-(*                 exploit Loc.in_notin_diff; eauto. *)
-(*                 { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*                 intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*                 u; ii. des; try xomega. *)
-(*               } *)
-(*             - rewrite Ptrofs.unsigned_zero. ss. *)
-(*               eapply Mem.load_valid_access in H3. *)
-(*               inv H3. ss. *)
-(*               rewrite Ptrofs.add_zero_l in *. *)
-(*               erewrite Ptrofs.unsigned_repr in *; ss. *)
-(*             - eapply Mem.store_unchanged_on; eauto. *)
-(*           } *)
-(*           ss. cbn in *. *)
-(*           rewrite Ptrofs.add_zero_l in *. *)
-(*           rewrite ! Ptrofs.unsigned_repr in *; ss; cycle 1. *)
-(*           eapply Mem.load_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Mfloat64)); *)
-(*             try apply H3; eauto. *)
-(*           { eapply Mem.store_unchanged_on; eauto. } *)
-(*           { locmap_tac. *)
-(*             exploit Loc.in_notin_diff; eauto. *)
-(*             { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*             intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*             u; ii. des; try xomega. *)
-(*           } *)
-(*     - des_safe. des_ifs. *)
-(*       + exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. rp; [econs|..]; try refl; eauto. ss. des_ifs. *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. ss. des_ifs. admit "ez - rpairs". } *)
-(*           econs; eauto. *)
-(*       + rename m2 into m3. rename m into m2. *)
-(*         exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         { eapply fill_arguments_unchanged_on; eauto. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. econs; eauto; cycle 1. *)
-(*           { i. clarify. eapply store_undef_memval_undefs; eauto. *)
-(*             rewrite Ptrofs.unsigned_zero. *)
-(*             { hexploit BDD; eauto. i; des. ss. *)
-(*               exploit ACC; eauto. i; ss; des. *)
-(*               split; try xomega. } *)
-(*           } *)
-(*           cbn. ss. *)
-(*           rewrite Ptrofs.add_zero_l. *)
-(*           rewrite Ptrofs.unsigned_repr; ss. *)
-(*           { erewrite Mem.load_store_same; eauto. rp; try rewrite Val.load_result_same; eauto. *)
-(*             change Mint64 with (chunk_of_type Tlong). *)
-(*             rewrite Val.load_result_same; ss. *)
-(*           } *)
-(*           { *)
-(*             hexploit BDD; eauto. i; des. ss. *)
-(*             exploit ACC; eauto. i; ss; des. *)
-(*             split; try xomega. *)
-(*           } *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. } *)
-(*           assert (RANGE: 0 <= 4 * ofs <= Ptrofs.max_unsigned). *)
-(*           { *)
-(*             hexploit BDD; try right; eauto. *)
-(*             { eapply in_regs_of_rpairs; ss; eauto; ss; eauto. } *)
-(*             i; des. *)
-(*             exploit ACC; try right; eauto. i; ss; des. *)
-(*             generalize (typesize_pos ty); i. *)
-(*             split; try xomega. *)
-(*           } *)
-(*           econs; eauto; cycle 1. *)
-(*           { i. eapply memval_undefs_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Mint64)); cycle 1; eauto; clarify. *)
-(*             - rewrite Ptrofs.unsigned_zero in *. ss. *)
-(*               { locmap_tac. *)
-(*                 exploit Loc.in_notin_diff; eauto. *)
-(*                 { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*                 intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*                 u; ii. des; try xomega. *)
-(*               } *)
-(*             - rewrite Ptrofs.unsigned_zero. ss. *)
-(*               eapply Mem.load_valid_access in H3. *)
-(*               inv H3. ss. *)
-(*               rewrite Ptrofs.add_zero_l in *. *)
-(*               erewrite Ptrofs.unsigned_repr in *; ss. *)
-(*             - eapply Mem.store_unchanged_on; eauto. *)
-(*           } *)
-(*           ss. cbn in *. *)
-(*           rewrite Ptrofs.add_zero_l in *. *)
-(*           rewrite ! Ptrofs.unsigned_repr in *; ss; cycle 1. *)
-(*           eapply Mem.load_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Mfloat64)); *)
-(*             try apply H3; eauto. *)
-(*           { eapply Mem.store_unchanged_on; eauto. } *)
-(*           { locmap_tac. *)
-(*             exploit Loc.in_notin_diff; eauto. *)
-(*             { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*             intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*             u; ii. des; try xomega. *)
-(*           } *)
-(*     - des_safe. des_ifs. *)
-(*       + exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. rp; [econs|..]; try refl; eauto. ss. des_ifs. *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. ss. des_ifs. admit "ez - rpairs". } *)
-(*           econs; eauto. *)
-(*       + rename m2 into m3. rename m into m2. *)
-(*         exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         { eapply fill_arguments_unchanged_on; eauto. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. econs; eauto; cycle 1. *)
-(*           { i. clarify. eapply store_undef_memval_undefs; eauto. *)
-(*             rewrite Ptrofs.unsigned_zero. *)
-(*             { hexploit BDD; eauto. i; des. ss. *)
-(*               exploit ACC; eauto. i; ss; des. *)
-(*               split; try xomega. } *)
-(*           } *)
-(*           cbn. ss. *)
-(*           rewrite Ptrofs.add_zero_l. *)
-(*           rewrite Ptrofs.unsigned_repr; ss. *)
-(*           { erewrite Mem.load_store_same; eauto. rp; try rewrite Val.load_result_same; eauto. *)
-(*             change Mfloat32 with (chunk_of_type Tsingle). *)
-(*             rewrite Val.load_result_same; ss. *)
-(*           } *)
-(*           { *)
-(*             hexploit BDD; eauto. i; des. ss. *)
-(*             exploit ACC; eauto. i; ss; des. *)
-(*             split; try xomega. *)
-(*           } *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. } *)
-(*           assert (RANGE: 0 <= 4 * ofs <= Ptrofs.max_unsigned). *)
-(*           { *)
-(*             hexploit BDD; try right; eauto. *)
-(*             { eapply in_regs_of_rpairs; ss; eauto; ss; eauto. } *)
-(*             i; des. *)
-(*             exploit ACC; try right; eauto. i; ss; des. *)
-(*             generalize (typesize_pos ty); i. *)
-(*             split; try xomega. *)
-(*           } *)
-
-(*           econs; eauto; cycle 1. *)
-(*           { i. eapply memval_undefs_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Mfloat32)); cycle 1; eauto; clarify. *)
-(*             - rewrite Ptrofs.unsigned_zero in *. ss. *)
-(*               { locmap_tac. *)
-(*                 exploit Loc.in_notin_diff; eauto. *)
-(*                 { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*                 intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*                 u; ii. des; try xomega. *)
-(*               } *)
-(*             - rewrite Ptrofs.unsigned_zero. ss. *)
-(*               eapply Mem.load_valid_access in H3. *)
-(*               inv H3. ss. *)
-(*               rewrite Ptrofs.add_zero_l in *. *)
-(*               erewrite Ptrofs.unsigned_repr in *; ss. *)
-(*             - eapply Mem.store_unchanged_on; eauto. *)
-(*           } *)
-(*           ss. cbn in *. *)
-(*           rewrite Ptrofs.add_zero_l in *. *)
-(*           rewrite ! Ptrofs.unsigned_repr in *; ss; cycle 1. *)
-(*           eapply Mem.load_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Mfloat32)); *)
-(*             try apply H3; eauto. *)
-(*           { eapply Mem.store_unchanged_on; eauto. } *)
-(*           { locmap_tac. *)
-(*             exploit Loc.in_notin_diff; eauto. *)
-(*             { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*             intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*             u; ii. des; try xomega. *)
-(*           } *)
-(*     - des_safe. des_ifs. *)
-(*       + exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. rp; [econs|..]; try refl; eauto. ss. des_ifs. *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. ss. des_ifs. admit "ez - rpairs". } *)
-(*           econs; eauto. *)
-(*       + rename m2 into m3. rename m into m2. *)
-(*         exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         { eapply fill_arguments_unchanged_on; eauto. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. econs; eauto; cycle 1. *)
-(*           { i. clarify. eapply store_undef_memval_undefs; eauto. *)
-(*             rewrite Ptrofs.unsigned_zero. *)
-(*             { hexploit BDD; eauto. i; des. ss. *)
-(*               exploit ACC; eauto. i; ss; des. *)
-(*               split; try xomega. } *)
-(*           } *)
-(*           cbn. ss. *)
-(*           rewrite Ptrofs.add_zero_l. *)
-(*           rewrite Ptrofs.unsigned_repr; ss. *)
-(*           { erewrite Mem.load_store_same; eauto. rp; try rewrite Val.load_result_same; eauto. *)
-(*             change Many32 with (chunk_of_type Tany32). *)
-(*             rewrite Val.load_result_same; ss. *)
-(*           } *)
-(*           { *)
-(*             hexploit BDD; eauto. i; des. ss. *)
-(*             exploit ACC; eauto. i; ss; des. *)
-(*             split; try xomega. *)
-(*           } *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. } *)
-(*           assert (RANGE: 0 <= 4 * ofs <= Ptrofs.max_unsigned). *)
-(*           { *)
-(*             hexploit BDD; try right; eauto. *)
-(*             { eapply in_regs_of_rpairs; ss; eauto; ss; eauto. } *)
-(*             i; des. *)
-(*             exploit ACC; try right; eauto. i; ss; des. *)
-(*             generalize (typesize_pos ty); i. *)
-(*             split; try xomega. *)
-(*           } *)
-(*           econs; eauto; cycle 1. *)
-(*           { i. eapply memval_undefs_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Many32)); cycle 1; eauto; clarify. *)
-(*             - rewrite Ptrofs.unsigned_zero in *. ss. *)
-(*               { locmap_tac. *)
-(*                 exploit Loc.in_notin_diff; eauto. *)
-(*                 { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*                 intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*                 u; ii. des; try xomega. *)
-(*               } *)
-(*             - rewrite Ptrofs.unsigned_zero. ss. *)
-(*               eapply Mem.load_valid_access in H3. *)
-(*               inv H3. ss. *)
-(*               rewrite Ptrofs.add_zero_l in *. *)
-(*               erewrite Ptrofs.unsigned_repr in *; ss. *)
-(*             - eapply Mem.store_unchanged_on; eauto. *)
-(*           } *)
-(*           ss. cbn in *. *)
-(*           rewrite Ptrofs.add_zero_l in *. *)
-(*           rewrite ! Ptrofs.unsigned_repr in *; ss; cycle 1. *)
-(*           eapply Mem.load_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Many32)); *)
-(*             try apply H3; eauto. *)
-(*           { eapply Mem.store_unchanged_on; eauto. } *)
-(*           { locmap_tac. *)
-(*             exploit Loc.in_notin_diff; eauto. *)
-(*             { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*             intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*             u; ii. des; try xomega. *)
-(*           } *)
-(*     - des_safe. des_ifs. *)
-(*       + exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. rp; [econs|..]; try refl; eauto. ss. des_ifs. *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. ss. des_ifs. admit "ez - rpairs". } *)
-(*           econs; eauto. *)
-(*       + rename m2 into m3. rename m into m2. *)
-(*         exploit IHargs; eauto. *)
-(*         { locmap_tac. } *)
-(*         { eapply fill_arguments_unchanged_on; eauto. } *)
-(*         i; des. *)
-(*         econs; eauto. *)
-(*         * econs; eauto. *)
-(*           econs; eauto; cycle 1. *)
-(*           { i. clarify. eapply store_undef_memval_undefs; eauto. *)
-(*             rewrite Ptrofs.unsigned_zero. *)
-(*             { hexploit BDD; eauto. i; des. ss. *)
-(*               exploit ACC; eauto. i; ss; des. *)
-(*               split; try xomega. } *)
-(*           } *)
-(*           cbn. ss. *)
-(*           rewrite Ptrofs.add_zero_l. *)
-(*           rewrite Ptrofs.unsigned_repr; ss. *)
-(*           { erewrite Mem.load_store_same; eauto. rp; try rewrite Val.load_result_same; eauto. *)
-(*           } *)
-(*           { *)
-(*             hexploit BDD; eauto. i; des. ss. *)
-(*             exploit ACC; eauto. i; ss; des. *)
-(*             split; try xomega. *)
-(*           } *)
-(*         * eapply list_forall2_imply; eauto. *)
-(*           ii. specialize (ONE v1). hexploit1 ONE; eauto. destruct v1; ss. clear_tac. *)
-(*           extcall_simpl. *)
-(*           econs; eauto. *)
-(*           match goal with | [ H: extcall_arg _ _ _ _ _ |- _ ] => inv H end; ss. *)
-(*           { rp; [econs|..]; try refl; eauto. } *)
-(*           assert (RANGE: 0 <= 4 * ofs <= Ptrofs.max_unsigned). *)
-(*           { *)
-(*             hexploit BDD; try right; eauto. *)
-(*             { eapply in_regs_of_rpairs; ss; eauto; ss; eauto. } *)
-(*             i; des. *)
-(*             exploit ACC; try right; eauto. i; ss; des. *)
-(*             generalize (typesize_pos ty); i. *)
-(*             split; try xomega. *)
-(*           } *)
-(*           econs; eauto; cycle 1. *)
-(*           { i. eapply memval_undefs_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Many64)); cycle 1; eauto; clarify. *)
-(*             - rewrite Ptrofs.unsigned_zero in *. ss. *)
-(*               { locmap_tac. *)
-(*                 exploit Loc.in_notin_diff; eauto. *)
-(*                 { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*                 intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*                 u; ii. des; try xomega. *)
-(*               } *)
-(*             - rewrite Ptrofs.unsigned_zero. ss. *)
-(*               eapply Mem.load_valid_access in H3. *)
-(*               inv H3. ss. *)
-(*               rewrite Ptrofs.add_zero_l in *. *)
-(*               erewrite Ptrofs.unsigned_repr in *; ss. *)
-(*             - eapply Mem.store_unchanged_on; eauto. *)
-(*           } *)
-(*           ss. cbn in *. *)
-(*           rewrite Ptrofs.add_zero_l in *. *)
-(*           rewrite ! Ptrofs.unsigned_repr in *; ss; cycle 1. *)
-(*           eapply Mem.load_unchanged_on with (P:= ~2 brange sp (4 * pos) (4 * pos + size_chunk Many64)); *)
-(*             try apply H3; eauto. *)
-(*           { eapply Mem.store_unchanged_on; eauto. } *)
-(*           { locmap_tac. *)
-(*             exploit Loc.in_notin_diff; eauto. *)
-(*             { eapply in_regs_of_rpairs; eauto. ss. eauto. } *)
-(*             intro DIFF. ss. des_safe; ss. rewrite typesize_chunk. *)
-(*             u; ii. des; try xomega. *)
-(*           } *)
-(*   Qed. *)
-
-(*   Let fill_arguments_perm: forall *)
-(*       sp rs0 m0 args locs rs1 m1 *)
-(*       (FILL: fill_arguments sp rs0 m0 args locs = Some (rs1, m1)) *)
-(*     , *)
-(*       <<PERM: forall ofs k p, Mem.perm m0 sp ofs k p -> Mem.perm m1 sp ofs k p>> *)
-(*   . *)
-(*   Proof. *)
-(*     i. *)
-(*     ginduction args; ii; ss; des_ifs_safe. *)
-(*     { des_ifs. } *)
-(*     u in FILL. des_ifs_safe. des_ifs. *)
-(*     - destruct p0; ss. eapply IHargs; eauto. *)
-(*     - destruct p0; ss. eapply Mem.perm_store_1; eauto. eapply IHargs; eauto. *)
-(*   Qed. *)
-
-(*   Theorem fill_arguments_spec *)
-(*           sg m0 rs0 m1 sp targs *)
-(*           (* (LEN: length args = length sg.(sig_args)) *) *)
-(*           (ALC: Mem.alloc m0 0 (4 * size_arguments sg) = (m1, sp)) *)
-(*           rs1 m2 *)
-(*           (TYP: Val.has_type_list targs sg.(sig_args)) *)
-(*           (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
-(*           (* (LEN: length args = length sg.(sig_args)) *) *)
-(*           (* (TYPIFY: typify_list args sg.(sig_args) = targs) *) *)
-(*           (* (MAX: 4 * size_arguments sg <= Ptrofs.max_unsigned) *) *)
-(*           (FILL: fill_arguments sp rs0 m1 targs (loc_arguments sg) = Some (rs1, m2)) *)
-(*     : *)
-(*       store_arguments m0 rs1 targs sg m2 *)
-(*   . *)
-(*   Proof. *)
-(*     generalize (loc_arguments_norepet sg). intro DISJ. *)
-(*     generalize (loc_arguments_one sg). intro ONE. *)
-(*     (* destruct sg; ss. unfold size_arguments, loc_arguments in *. *) *)
-(*     ss. des_ifs. clear_tac. *)
-(*     unfold loc_arguments in *. des_ifs. *)
-(*     assert(LEN2: length targs = length (sig_args sg)). *)
-(*     { clear - TYP. revert TYP. generalize (sig_args sg). *)
-(*       induction targs; ss; i; des_ifs; ss. *)
-(*       f_equal. eapply IHtargs. des. auto. } *)
-(*     econs; eauto. *)
-(*     - rr. *)
-(*       eapply fill_arguments_spec_aux; ss; eauto. *)
-(*       + ii. eapply loc_arguments_acceptable; eauto. unfold loc_arguments. des_ifs. eauto. *)
-(*       + i. eapply loc_arguments_bounded; eauto. *)
-(*     - eapply Mem.unchanged_on_implies. *)
-(*       { eapply fill_arguments_unchanged_on; try apply FILL; eauto. } *)
-(*       i. des_ifs. *)
-(*     - generalize (loc_arguments_64 (sig_args sg) 0 0 0) m1 m2 rs0 rs1 FILL. clear. *)
-(*       induction targs; i; ss; unfold o_bind2, o_bind, o_join, o_map, curry2 in *; des_ifs. *)
-(*       + destruct p. exploit IHtargs; eauto. *)
-(*       + destruct p. ss. *)
-(*         exploit IHtargs; eauto. i. etrans; eauto. *)
-(*         symmetry. eapply Mem.nextblock_store; eauto. *)
-(*     - ii. eapply fill_arguments_perm; eauto. eauto with mem. *)
-(*   Qed. *)
-
-(*   Theorem fill_arguments_unchanged *)
-(*           m1 rs0 sp targs locs *)
-(*           rs1 m2 *)
-(*           (FILL: fill_arguments sp rs0 m1 targs locs = Some (rs1, m2)) *)
-(*     : *)
-(*       <<PTRFREE: forall *)
-(*         mr *)
-(*         (NIN: ~ In (R mr) (regs_of_rpairs locs)), *)
-(*         rs0 mr = rs1 mr>>. *)
-(*   Proof. *)
-(*     ginduction locs; ii; s. *)
-(*     - destruct targs; ss; clarify. *)
-(*     - destruct targs; ss; clarify. *)
-(*       unfold o_bind, o_bind2, o_join, o_map, curry2, fst in *. ss. *)
-(*       des_ifs; ss. *)
-(*       + exploit IHlocs; try apply Heq0; ss; eauto. *)
-(*         i. *)
-(*         unfold Regmap.set; des_ifs. *)
-(*         exfalso; eauto. *)
-(*       + exploit IHlocs; try apply Heq0; ss; eauto. *)
-(*   Qed. *)
-
-(* End FillArgsProgress. *)
-
-
-(* Require Import JunkBlock. *)
-
-(* Theorem store_arguments_progress *)
-(*         m0 tvs sg *)
-(*         (TYP: Val.has_type_list tvs sg.(sig_args)) *)
-(*         (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
-(*         n *)
-(*   : *)
-(*     exists rs m2, *)
-(*       (<<STR: store_arguments m0 rs tvs sg m2>>) /\ *)
-(*       (<<PTRFREE: *)
-(*          forall *)
-(*            mr *)
-(*            (NIN: ~ In (R mr) (regs_of_rpairs (loc_arguments sg))), *)
-(*            is_junk_value m2 (assign_junk_blocks m2 n) (rs mr)>>) *)
-(* . *)
-(* Proof. *)
-(*   destruct (Mem.alloc m0 0 (4 * size_arguments sg)) eqn:ALC. *)
-(*   rename m into m1. rename b into blk. *)
-(*   assert(LEN2: length tvs = length (sig_args sg)). *)
-(*   { clear - TYP. revert TYP. generalize (sig_args sg). *)
-(*     induction tvs; ss; i; des_ifs; ss. *)
-(*     f_equal. eapply IHtvs. des. auto. } *)
-(*   exploit (FillArgsProgress.fill_arguments_progress sg m0 (Regmap.init Vundef)); eauto. i; des. *)
-(*   hexploit (FillArgsProgress.fill_arguments_unchanged); eauto. i. *)
-(*   exploit (FillArgsProgress.fill_arguments_spec sg m0 (Regmap.init Vundef) m1 blk tvs); eauto. *)
-(*   hexploit (FillArgsProgress.fill_arguments_unchanged); eauto. intros UNCH. *)
-(*   esplits; eauto. *)
-(*   ii. exploit UNCH; eauto. i. rewrite <- H1. ss. *)
-(* Qed. *)
+  destruct (Mem.alloc m0 0 (4 * size_arguments sg)) eqn:ALC.
+  exists (fun mr =>
+            if extcall_args_reg mr sg
+            then (_FillArgsParallel.fill_args_src_reg tvs (loc_arguments sg)) mr
+            else Vundef).
+  exists (_FillArgsParallel.fill_args_mem m b tvs (loc_arguments sg)).
+  splits.
+  - econs; eauto.
+    + eapply extcall_arguments_same.
+      * eapply extcall_arg_in_stack_in_reg_extcall_argument.
+        { eapply _FillArgsParallel.fill_args_blk_args.
+          - eapply loc_arguments_norepet.
+          - eapply loc_arguments_one.
+          - eapply Val_has_type_list_length; auto.
+          - eapply typify_has_typed_loc; eauto. }
+        { eapply _FillArgsParallel.fill_args_src_reg_args.
+          - eapply loc_arguments_norepet.
+          - eapply loc_arguments_one.
+          - eapply Val_has_type_list_length; auto. }
+        { ss. rewrite PMap.gss. ss. }
+        { eapply Mem_alloc_range_perm in ALC.
+          unfold Mem.range_perm, Mem.perm in *. ss. }
+        { auto. }
+      * i. des_ifs.
+    + ii. exploit _FillArgsParallel.fill_args_blk_only_args.
+      * eapply loc_arguments_norepet.
+      * eapply Val_has_type_list_length; eauto.
+      * eapply loc_arguments_one.
+      * eapply typify_has_typed_loc; eauto.
+      * i. instantiate (1:=ofs) in H. ss.
+        Local Transparent Mem.load. unfold Mem.load. s.
+        repeat rewrite PMap.gss. des; eauto. right.
+        exploit loc_arguments_acceptable_2; eauto. i. inv H.
+        hexploit loc_arguments_bounded; eauto. i.
+        esplits; eauto. rewrite Ptrofs.add_zero_l.
+        rewrite Ptrofs.unsigned_repr; cycle 1.
+        { hexploit loc_arguments_bounded; eauto.
+          i. set (typesize_pos ty). lia. }
+        des_ifs. exfalso. apply n0. unfold Mem.valid_access. split.
+        { ii. unfold Mem.perm. ss. eapply Mem.perm_cur.
+          eapply Mem.perm_implies; try eapply Mem.perm_alloc_2; eauto.
+          - erewrite typesize_chunk in *.
+            set (typesize_pos ty). lia.
+          - econs. }
+        { clear - H1. destruct ty; ss; try apply Z.divide_factor_l.
+          eapply Z.mul_divide_mono_l in H1. instantiate (1:=4) in H1. ss. }
+    + econs; ss.
+      * refl.
+      * i. rewrite PMap.gsspec. des_ifs; ss. exfalso. eapply H.
+        eapply Mem.perm_alloc_3; eauto.
+    + eapply Mem_alloc_range_perm in ALC.
+      unfold Mem.range_perm, Mem.perm in *. ss.
+  - i. des_ifs.
+Qed.

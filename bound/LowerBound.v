@@ -870,13 +870,25 @@ Section PRESERVATION.
     unfold typify_list, zip, typify. ss. f_equal. eauto.
   Qed.
 
+  Lemma asm_extcall_arguments_mach rs m
+    :
+      Asm.extcall_arguments rs m <2=
+      Mach.extcall_arguments (AsmregsC.to_mregset rs) m (rs RSP).
+  Proof.
+    ii. eapply list_forall2_imply; eauto.
+    i. inv H1; econs.
+    - inv H2; econs. ss.
+    - inv H2; inv H3; econs; ss.
+    - inv H2; inv H3; econs; ss.
+  Qed.
+
   Lemma callee_initial_arguments (rs: regset) m0 m1 blk ofs sg args targs
         (ARGS: Asm.extcall_arguments rs m0 sg args)
         (RSRSP: rs RSP = Vptr blk ofs)
         (ARGRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
         (TYP: typecheck args sg targs)
     :
-      extcall_arguments
+      Mach.extcall_arguments
         (callee_initial_reg' sg targs)
         (callee_initial_mem' blk ofs m0 m1 sg targs)
         (Vptr (Mem.nextblock m1) Ptrofs.zero)
@@ -893,7 +905,10 @@ Section PRESERVATION.
       + apply val_inject_list_lessdef. apply typify_list_lessdef. eauto.
       + eapply loc_arguments_norepet.
       + rewrite typify_list_length; eauto. eapply sig_args_length.
-      + eapply _FillArgsParallel.extcall_arguments_extcall_arg_in_stack'; eauto.
+      + eapply extcall_arguments_extcall_arg_in_stack; eauto.
+        * set (Ptrofs.unsigned_range_2 ofs). lia.
+        * erewrite Ptrofs.repr_unsigned. rewrite <- RSRSP.
+          eapply asm_extcall_arguments_mach; eauto.
     - exploit _FillArgsParallel.fill_args_src_reg_args; [..|eauto].
       + eapply loc_arguments_norepet.
       + eapply loc_arguments_one.
@@ -1005,7 +1020,10 @@ Section PRESERVATION.
         { rewrite typify_list_length; eauto. eapply sig_args_length. }
         { instantiate (1:=Ptrofs.unsigned ofs).
           instantiate (1:=(Mem.mem_contents m_src0) !! blk).
-          eapply _FillArgsParallel.extcall_arguments_extcall_arg_in_stack'; eauto.
+          eapply extcall_arguments_extcall_arg_in_stack; eauto.
+          - lia.
+          - rewrite Ptrofs.repr_unsigned. rewrite <- RSRSP.
+            eapply asm_extcall_arguments_mach; eauto.
         }
         { i.
           exploit Mem.mi_memval; try apply INJECT; eauto.
@@ -1506,11 +1524,14 @@ Section PRESERVATION.
             apply typify_list_lessdef; eauto.
             inv TYPCHK. auto.
           * inv TYPCHK. rewrite typify_list_length; auto. apply sig_args_length.
-          * eapply _FillArgsParallel.extcall_arguments_extcall_arg_in_reg'; eauto.
-        + unfold AsmregsC.to_mregset.
-          erewrite AsmregsC.to_mreg_some_to_preg; eauto.
-
-      - eapply inj_same_inj.
+          * eapply extcall_arguments_extcall_arg_in_reg; eauto.
+            { instantiate (1:=Ptrofs.unsigned ofs).
+              set (Ptrofs.unsigned_range_2 ofs). lia. }
+            { rewrite Ptrofs.repr_unsigned. rewrite <- RSPPTR.
+              eapply asm_extcall_arguments_mach; eauto. }
+        + eapply val_inject_incr; eauto.
+          unfold AsmregsC.to_mregset. erewrite to_mreg_preg_of; eauto.
+    - eapply inj_same_inj.
         + symmetry. dup SAME.
           inv FREE. rewrite <- freed_from_nextblock. eassumption.
         + rewrite <- RSPPTR. eauto. }
@@ -1560,7 +1581,50 @@ Section PRESERVATION.
                 repeat rewrite to_preg_to_mreg in *. clarify.
               - apply f_equal with (f:=to_mreg) in H1.
                 repeat rewrite to_preg_to_mreg in *. ss. }
-          * ss. rewrite MEQ. ss.
+
+          * clear JUNKED.
+            assert (LEN: Datatypes.length (Args.vs args) = Datatypes.length (sig_args (fn_sig fd))).
+            { rewrite sig_args_length. symmetry.
+              eapply list_forall2_length; eauto. }
+
+            hexploit _FillArgsParallel.fill_args_src_blk_only_args.
+            { eapply val_inject_list_lessdef.
+              eapply typify_list_lessdef; eauto. }
+            { eapply loc_arguments_norepet. }
+            { erewrite typify_list_length; eauto.
+              eapply sig_args_length. }
+            { eapply loc_arguments_one. }
+            { eapply extcall_arguments_extcall_arg_in_stack.
+              - instantiate (1:=Ptrofs.unsigned ofs).
+                set (Ptrofs.unsigned_range ofs). lia.
+              - erewrite Ptrofs.repr_unsigned. erewrite <- RSPPTR.
+                eapply asm_extcall_arguments_mach; eauto. }
+
+            intros ONLY ofs0. specialize (ONLY ofs0).
+            Local Transparent Mem.alloc Mem.load.
+            unfold callee_initial_mem', Mem.alloc. ss. des.
+            { left. repeat rewrite PMap.gss. eauto. }
+            { right. esplits; eauto. unfold Mem.load. ss.
+              hexploit loc_arguments_bounded; eauto. i.
+              hexploit loc_arguments_acceptable; eauto.
+              { instantiate (1:=fn_sig fd).
+                instantiate (1:=One (S Outgoing ofs1 ty)).
+                exploit in_regs_of_rpairs_inv; eauto. i. des.
+                rpapply H1.
+                eapply loc_arguments_one in H1. unfold is_one in *. des_ifs.
+                ss. des; clarify. } i. inv H1.
+              rewrite Ptrofs.add_zero_l. rewrite Ptrofs.unsigned_repr; cycle 1.
+              { rewrite typesize_chunk in *. lia. } des_ifs.
+              - repeat erewrite PMap.gss. auto.
+              - exfalso. eapply n0.
+                unfold Mem.valid_access, Mem.range_perm, Mem.perm. ss. split.
+                + ii. rewrite PMap.gss. rewrite typesize_chunk in *.
+                  unfold proj_sumbool; des_ifs; (try by econs); try lia.
+                + clear - H3.
+                  destruct ty; ss; try by eapply Z.divide_factor_l.
+                  eapply Z.mul_divide_mono_l with (p:=4) in H3. eauto. }
+
+          * ss. eapply Mem.nextblock_alloc; eauto.
           * unfold Mem.range_perm. i. erewrite callee_initial_mem_perm. des_ifs.
             unfold proj_sumbool. clear - H0. des_ifs; lia.
         + erewrite <- EQ.
@@ -1679,10 +1743,9 @@ Section PRESERVATION.
             { ii. exploit JUNK.
               - instantiate (1:=RA). ss. eauto.
               - unfold is_junk_value. rewrite RAVAL. i. apply H1.
-                unfold Mem.valid_block. ss. rewrite MEQ. ss.
-                erewrite Mem.nextblock_alloc; eauto.
+                unfold Mem.valid_block. ss.
                 hexploit skenv_inject_memory; eauto. i.
-                inv FREE. rewrite freed_from_nextblock.
+                inv FREE. rewrite freed_from_nextblock in *.
                 eapply Plt_Ple_trans; eauto. clear - H2. xomega. }
             { etrans; try eapply SAME0.
               unfold callee_initial_reg. ss. refl. }

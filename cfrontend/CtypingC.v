@@ -74,7 +74,6 @@ Proof.
   des.
   econs; et; ss.
   - econs; et.
-  - econs; et.
   - ii. exfalso. eapply EXT; et.
 Qed.
 

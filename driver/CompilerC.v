@@ -109,6 +109,18 @@ Qed.
 
 
 
+Ltac lift :=
+  eapply mixed_to_backward_simulation;
+  rpapply adequacy_local;
+  [|
+   instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _); ss; f_equal; u; rewrite map_app; ss
+   |
+   u; rewrite map_app; ss
+  ];
+  r; rewrite Forall_forall in *; ii;
+  rewrite in_app_iff in *; des; eauto;
+  rewrite in_app_iff in *; des; eauto; ss; des; ss; clarify
+.
 
 Section Cstrategy.
 
@@ -131,16 +143,7 @@ Section Cstrategy.
                           (sem (cps.(ProgPair.tgt) ++ [(CstrategyC.module tgt).(Mod.Atomic.trans)] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply CstrategyC.sim_mod; eauto.
   Qed.
 
@@ -169,16 +172,7 @@ Section SimplExpr.
                           (sem (cps.(ProgPair.tgt) ++ [ClightC.module1 tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply SimplExprproofC.sim_mod; eauto.
     eapply SimplExprproof.transf_program_match; eauto.
   Qed.
@@ -208,16 +202,7 @@ Section SimplLocals.
                           (sem (cps.(ProgPair.tgt) ++ [ClightC.module2 tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply SimplLocalsproofC.sim_mod; eauto.
     eapply SimplLocalsproof.match_transf_program; eauto.
   Qed.
@@ -247,16 +232,7 @@ Section Cshmgen.
                           (sem (cps.(ProgPair.tgt) ++ [CsharpminorC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply CshmgenproofC.sim_mod; eauto.
     eapply Cshmgenproof.transf_program_match; eauto.
   Qed.
@@ -286,16 +262,7 @@ Section Cminorgen.
                           (sem (cps.(ProgPair.tgt) ++ [CminorC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply CminorgenproofC.sim_mod; eauto.
     eapply Cminorgenproof.transf_program_match; eauto.
   Qed.
@@ -325,16 +292,7 @@ Section Selection.
                           (sem (cps.(ProgPair.tgt) ++ [CminorSelC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply SelectionproofC.sim_mod; eauto.
     eapply Selectionproof.transf_program_match; eauto.
   Qed.
@@ -364,16 +322,7 @@ Section RTLgen.
                           (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply RTLgenproofC.sim_mod; eauto.
     eapply RTLgenproof.transf_program_match; eauto.
   Qed.
@@ -403,16 +352,7 @@ Section Renumber0.
                           (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply RenumberproofC.sim_mod; eauto.
     eapply Renumberproof.transf_program_match; eauto.
   Qed.
@@ -446,16 +386,7 @@ Section Tailcall.
   Proof.
     unfold total_if in *. des_ifs; cycle 1.
     { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply TailcallproofC.sim_mod; eauto.
     eapply Tailcallproof.transf_program_match; eauto.
   Qed.
@@ -485,16 +416,7 @@ Section Inlining.
                           (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply InliningproofC.sim_mod; eauto.
     eapply Inliningproof.transf_program_match; eauto.
   Qed.
@@ -528,16 +450,7 @@ Section Constprop.
   Proof.
     unfold total_if in *. des_ifs; cycle 1.
     { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply ConstpropproofC.sim_mod; eauto.
     eapply Constpropproof.transf_program_match; eauto.
   Qed.
@@ -571,16 +484,7 @@ Section Renumber1.
   Proof.
     unfold total_if in *. des_ifs; cycle 1.
     { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply RenumberproofC.sim_mod; eauto.
     eapply Renumberproof.transf_program_match; eauto.
   Qed.
@@ -614,16 +518,7 @@ Section CSE.
   Proof.
     unfold partial_if in *. des_ifs; cycle 1.
     { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply CSEproofC.sim_mod; eauto.
     eapply CSEproof.transf_program_match; eauto.
   Qed.
@@ -653,16 +548,7 @@ Section Deadcode.
   Proof.
     unfold partial_if in *. des_ifs; cycle 1.
     { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply DeadcodeproofC.sim_mod; eauto.
     eapply Deadcodeproof.transf_program_match; eauto.
   Qed.
@@ -692,16 +578,7 @@ Section Unusedglob.
                           (sem (cps.(ProgPair.tgt) ++ [RTLC.module2 tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply UnusedglobproofC.sim_mod; eauto.
     eapply Unusedglobproof.transf_program_match; eauto.
   Qed.
@@ -736,16 +613,7 @@ Section Allocation.
                           (sem (cps.(ProgPair.tgt) ++ [LTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply AllocproofC.sim_mod; eauto.
     eapply Allocproof.transf_program_match; eauto.
   Qed.
@@ -775,16 +643,7 @@ Section Tunneling.
                           (sem (cps.(ProgPair.tgt) ++ [LTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply TunnelingproofC.sim_mod; eauto.
     eapply Tunnelingproof.transf_program_match; eauto.
   Qed.
@@ -814,16 +673,7 @@ Section Linearize.
                           (sem (cps.(ProgPair.tgt) ++ [LinearC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply LinearizeproofC.sim_mod; eauto.
     eapply Linearizeproof.transf_program_match; eauto.
   Qed.
@@ -853,16 +703,7 @@ Section CleanupLabels.
                           (sem (cps.(ProgPair.tgt) ++ [LinearC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply CleanupLabelsproofC.sim_mod; eauto.
     eapply CleanupLabelsproof.transf_program_match; eauto.
   Qed.
@@ -896,16 +737,7 @@ Section Debugvar.
   Proof.
     unfold partial_if in *. des_ifs; cycle 1.
     { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply DebugvarproofC.sim_mod; eauto.
     eapply Debugvarproof.transf_program_match; eauto.
   Qed.
@@ -936,16 +768,7 @@ Section Stacking.
                           (sem (cps.(ProgPair.tgt) ++ [MachC.module tgt Asmgenproof0.return_address_offset] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply StackingproofC.sim_mod; eauto.
     { eapply Asmgenproof.return_address_exists; eauto. }
     { admit "ez - ask @yonghyunkim. int2ptr repository has the proof (10 LOC?)". }
@@ -980,16 +803,7 @@ Section Asmgen.
                           (sem (cps.(ProgPair.tgt) ++ [AsmC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply AsmgenproofC.sim_mod; eauto.
     eapply Asmgenproof.transf_program_match; eauto.
   Qed.

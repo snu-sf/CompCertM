@@ -1103,272 +1103,42 @@ Proof.
       end
   .
 
+  Ltac next PASS_CORRECT :=
+    etrans; [
+      eapply bsim_improves; rp; [eapply PASS_CORRECT|..]; try refl; [find_sim Csyntax.program|find_sim Asm.program|..];
+      try (by unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto)
+     |];
+    folder
+  .
 
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Cstrategy_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). reflexivity.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply SimplExpr_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply SimplLocals_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Cshmgen_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Cminorgen_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Selection_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply RTLgen_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Tailcall_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  folder.
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Inlining_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Renumber0_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  folder.
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Constprop_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  folder.
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Renumber1_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  folder.
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply CSE_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Deadcode_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Unusedglob_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Allocation_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Tunneling_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  folder.
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Linearize_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply CleanupLabels_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  folder.
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Debugvar_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    { unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Stacking_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    { eexists. eapply transf_program_match; eauto. }
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Asmgen_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
+  next Cstrategy_correct.
+  next SimplExpr_correct.
+  next SimplLocals_correct.
+  next Cshmgen_correct.
+  next Cminorgen_correct.
+  next Selection_correct.
+  next RTLgen_correct.
+  next Tailcall_correct.
+  next Inlining_correct.
+  next Renumber0_correct.
+  next Constprop_correct.
+  next Renumber1_correct.
+  next CSE_correct.
+  next Deadcode_correct.
+  next Unusedglob_correct.
+  next Allocation_correct.
+  next Tunneling_correct.
+  next Linearize_correct.
+  next CleanupLabels_correct.
+  next Debugvar_correct.
+  next Stacking_correct.
+  { eexists. eapply transf_program_match; eauto. }
+  next Asmgen_correct.
 
   unfold __GUARD__ in *. des.
   repeat all ltac:(fun H => rewrite H).
   refl.
+
 Qed.
 
 

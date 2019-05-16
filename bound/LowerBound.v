@@ -508,7 +508,8 @@ Section PRESERVATION.
     :
       determinate_at (semantics p) st.
     Proof.
-    Admitted.
+      generalize (semantics_determinate p); intro P. inv P. econs; ii; ss; eauto. eapply sd_final_nostep; eauto.
+    Qed.
 
   End ASMLEMMAS.
 
@@ -2397,10 +2398,7 @@ Section PRESERVATION.
     - eapply SemProps.lift_receptive_at.
       { ss. des_ifs. }
       ss.
-      eapply AsmC.lift_receptive_at.
-      eapply semantics_receptive.
-      intros EXTERN. eapply not_external in EXTERN; auto.
-      { eapply ININCL in PROGIN. ss. }
+      eapply modsem_receptive.
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
       + ii. inv H. ss. omega.

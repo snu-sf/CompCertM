@@ -18,70 +18,6 @@ Require Import Skeleton Mod ModSem.
 
 Set Implicit Arguments.
 
-
-
-
-
-Section CminorEXTRA.
-
-  Definition is_external (ge: genv) (st: state): Prop :=
-    match st with
-    | Callstate fptr sg args k m =>
-      match Genv.find_funct ge fptr with
-      | Some (AST.External ef) => is_external_ef ef = true
-      | _ => False
-      end
-    | _ => False
-    end
-  .
-
-  Variable se: Senv.t.
-  Variable ge: genv.
-  Definition semantics_with_ge := Semantics_gen step bot1 final_state ge se.
-  (* *************** ge is parameterized *******************)
-
-  Lemma semantics_receptive
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      receptive_at semantics_with_ge st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-  Lemma semantics_determinate
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      determinate_at semantics_with_ge st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-End CminorEXTRA.
-(*** !!!!!!!!!!!!!!! REMOVE ABOVE AFTER MERGING WITH MIXED SIM BRANCH !!!!!!!!!!!!!!!!!! ***)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Definition get_mem (st: state): mem :=
   match st with
   | State _ _ _ _ _ m0 => m0
@@ -156,45 +92,30 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
-  Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
-  Hypothesis (WF: SkEnv.wf skenv_link).
-
-  Lemma not_external
-    :
-      is_external ge <1= bot1
-  .
-  Proof.
-    ii. hnf in PR. des_ifs.
-    subst_locals.
-    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.project_revive_no_external; eauto.
-  Qed.
-
-  Lemma lift_receptive_at
-        st
-        (RECEP: receptive_at (semantics_with_ge skenv_link ge) st)
-    :
-      receptive_at modsem st
-  .
-  Proof.
-    inv RECEP. econs; eauto; ii; ss.
-  Qed.
-
   Lemma modsem_receptive
         st
     :
       receptive_at modsem st
   .
-  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
-
-  Lemma lift_determinate_at
-        st0
-        (DTM: determinate_at (semantics_with_ge skenv_link ge) st0)
-    :
-      determinate_at modsem st0
-  .
   Proof.
-    inv DTM. econs; eauto; ii; ss.
+    econs; eauto.
+    - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
+
+  Let eval_expr_determ :
+    forall sp e m a v, eval_expr ge sp e m a v -> forall v', eval_expr ge sp e m a v' -> v' = v.
+  Proof.
+    induction 1; intros v' EV; inv EV; try congruence.
+    - apply IHeval_expr in H3. unfold eval_unop in *; des_ifs.
+    - apply IHeval_expr1 in H5. apply IHeval_expr2 in H7. subst. unfold eval_binop in *; des_ifs.
+    - apply IHeval_expr in H3. subst. unfold Mem.loadv in *; des_ifs.
+  Qed.
+  
+  Let eval_exprlist_determ:
+    forall sp e m al vl, eval_exprlist ge sp e m al vl  -> forall vl', eval_exprlist ge sp e m al vl' -> vl' = vl.
+  Proof.
+    induction 1; intros v' EV; inv EV; f_equal; eauto using eval_expr_determ.
   Qed.
 
   Lemma modsem_determinate
@@ -202,8 +123,14 @@ Section MODSEM.
     :
       determinate_at modsem st
   .
-  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
-
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_expr_determ; check_safe); try (determ_tac eval_exprlist_determ; check_safe); try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+      + clear H1. determ_tac eval_expr_determ.
+      + inv H2; inv H13; ss.
+      + inv H2; inv H14; ss.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
 End MODSEM.
 

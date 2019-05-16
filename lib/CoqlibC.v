@@ -1395,3 +1395,13 @@ Hint Unfold flip2 flip3 flip4.
 
 Definition DUMMY_PROP := True.
 Hint Unfold DUMMY_PROP.
+
+Ltac clarify_meq :=
+  repeat
+    match goal with
+    | [ H0: ?A m= ?B |- _ ] => inv H0
+    | [ H0: ?A = ?A -> _ |- _ ] => exploit H0; eauto; check_safe; intro; des; clear H0
+    end;
+    clarify
+.
+

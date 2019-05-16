@@ -13,6 +13,36 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul.
 
+Definition is_external (ge: genv) (s:Csem.state) : Prop :=
+  match s with
+  | Csem.Callstate fptr ty args k m  =>
+    match Genv.find_funct ge fptr with
+    | Some f =>
+      match f with
+      | External ef targs tres cconv => is_external_ef ef = true
+      | _ => False
+      end
+    | None => False
+    end
+  | _ => False
+  end
+.
+
+Definition internal_function_state (ge: genv) (s: Csem.state) : Prop :=
+  match s with
+  | Csem.Callstate fptr ty args k m  =>
+    match Genv.find_funct ge fptr with
+    | Some f =>
+      match f with
+      | Internal func => type_of_fundef f = Tfunction Tnil type_int32s cc_default
+      | _ => False
+      end
+    | None => False
+    end
+  | _ => False
+  end
+.
+
 Section PRESERVATION.
 
 (** PLAN B-0*)
@@ -787,7 +817,6 @@ c0 + empty
 
   Lemma estep_progress
         st_src tr st0
-        (INTERN: ~ is_external ge st_src)
         (ESTEP: estep (globalenv prog) st_src tr st0)
     :
       estep

@@ -411,11 +411,6 @@ Proof.
   - left; i.
     ss. esplits.
     + eapply MachC.modsem_receptive; et.
-      intros f c ofs of' RAO0 RAO1. inv RAO0. inv RAO1.
-      rewrite TC in *. rewrite TF in *. clarify.
-      exploit code_tail_unique. apply TL. apply TL0.
-      intros EQ. destruct ofs, of'. ss. clarify.
-      f_equal. apply proof_irrelevance.
 
     + i. inv STEPSRC. inv MATCH. set (INITDATA0 := INITDATA). inv INITDATA0.
       inv INITRAPTR. inv INITRS0. clarify.

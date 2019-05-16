@@ -6,7 +6,7 @@ Require Import Floats.
 Require Import ValuesC.
 Require Import AST.
 Require Import Memory.
-Require Import Events.
+Require Import EventsC.
 Require Import Globalenvs.
 Require Import Smallstep.
 Require Import CtypesC.
@@ -34,13 +34,6 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end
 .
-
-(* copied from Clight *)
-Definition semantics1_with_ge (p: program) (se: Senv.t) (ge: genv) :=
-  Semantics_gen step1 bot1 final_state ge se.
-
-Definition semantics2_with_ge (p: program) (se: Senv.t) (ge: genv) :=
-  Semantics_gen step2 bot1 final_state ge se.
 
 Section MODSEM.
 
@@ -156,44 +149,93 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
-  Let lift_receptive: forall
-      st
-      (RECEP: receptive_at (semantics1_with_ge p skenv_link ge) st)
-    ,
-      receptive_at modsem1 st
-  .
-  Proof. i.
-    inv RECEP. econs; eauto; ii; ss.
+  Lemma eval_expr_determ:
+    forall e le m a v, eval_expr ge e le m a v -> forall v', eval_expr ge e le m a v' -> v = v'
+  with eval_lvalue_determ:
+    forall e le m a loc ofs, eval_lvalue ge e le m a loc ofs -> forall loc' ofs', eval_lvalue ge e le m a loc' ofs' -> loc = loc' /\ ofs = ofs'.
+  Proof.
+    - induction 1; intros v' EV; inv EV; try (by determ_tac eval_expr_determ); try (by determ_tac eval_lvalue_determ); try congruence; try by inv H; try by inv H0; try by inv H1; try by inv H2.
+      + determ_tac eval_expr_determ. clear H. determ_tac eval_expr_determ.
+      + determ_tac eval_lvalue_determ. inv H0; inv H2; try congruence.
+    - induction 1; intros loc' ofs' EV; inv EV; des_ifs; try (by determ_tac eval_expr_determ); try congruence.
+      + determ_tac eval_expr_determ. rewrite H0 in H7. des_ifs. rewrite H2 in H11. des_ifs.
   Qed.
 
+  Let eval_exprlist_determ:
+    forall e le m bl tyl vl, eval_exprlist ge e le m bl tyl vl  -> forall vl', eval_exprlist ge e le m bl tyl vl' -> vl' = vl.
+  Proof.
+    induction 1; intros v' EV; inv EV; f_equal; eauto.
+    exploit eval_expr_determ. apply H. apply H6. i. subst.
+    rewrite H0 in H8. inv H8; auto.
+  Qed.
+  
+  Let alloc_variables_determ:
+    forall env m vars e m1, alloc_variables ge env m vars e m1 -> forall e' m1', alloc_variables ge env m vars e' m1' -> e = e' /\ m1 = m1'.
+  Proof.
+    induction 1; intros e' m1' EV; inv EV; f_equal; eauto. rewrite H in H8. des_ifs. eapply IHalloc_variables; et.
+  Qed.
+
+  Let bind_parameters_determ:
+    forall e m params vargs m1, bind_parameters ge e m params vargs m1 -> forall m1', bind_parameters ge e m params vargs m1' -> m1 = m1'.
+  Proof.
+    induction 1; intros m1' EV; inv EV; f_equal; eauto. replace m1 with m3 in *. des_ifs. eapply IHbind_parameters; et.
+    inv H0; inv H10; congruence.
+  Qed.
+  
   Lemma modsem1_receptive
         st
     :
       receptive_at modsem1 st
   .
-  Proof. admit "this should hold". Qed.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
   Lemma modsem1_determinate
         st
     :
       determinate_at modsem1 st
   .
-  Proof. admit "this should hold". Qed.
-
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_expr_determ; check_safe); try (determ_tac eval_lvalue_determ; check_safe); try (determ_tac eval_exprlist_determ; check_safe); try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+      + inv H4; inv H16; congruence.
+      + determ_tac eval_exprlist_determ.
+      + inv H1. inv H8. hexploit (alloc_variables_determ H0 H3). i; des; clarify. determ_tac bind_parameters_determ.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Unshelve.
+    all: des; ss; try (by exfalso; des; ss).
+  Qed.
+  
   Lemma modsem2_receptive
         st
     :
       receptive_at modsem2 st
   .
-  Proof. admit "this should hold". Qed.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
   Lemma modsem2_determinate
         st
     :
       determinate_at modsem2 st
   .
-  Proof. admit "this should hold". Qed.
-
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_expr_determ; check_safe); try (determ_tac eval_lvalue_determ; check_safe); try (determ_tac eval_exprlist_determ; check_safe); try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+      + inv H4; inv H16; congruence.
+      + determ_tac eval_exprlist_determ.
+      + inv H1. inv H8. hexploit (alloc_variables_determ H3 H7). i; des; clarify.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Unshelve.
+    all: des; ss; try (by exfalso; des; ss).
+  Qed.
+  
 End MODSEM.
 
 

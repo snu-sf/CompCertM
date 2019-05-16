@@ -72,9 +72,7 @@ Lemma wt_initial_frame
 .
 Proof.
   des.
-  econs; et.
-  - econs; et.
-  - econs; et.
+  econs; et; ss.
   - econs; et.
   - ii. exfalso. eapply EXT; et.
 Qed.

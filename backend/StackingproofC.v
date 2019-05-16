@@ -23,57 +23,6 @@ Require Import JunkBlock.
 
 Set Implicit Arguments.
 
-
-
-
-
-
-
-(*** put this into MachC. ***)
-Section MACHEXTRA.
-
-  Lemma extcall_arguments_dtm
-        rs m rsp sg vs0 vs1
-        (ARGS0: extcall_arguments rs m rsp sg vs0)
-        (ARGS1: extcall_arguments rs m rsp sg vs1)
-  :
-    vs0 = vs1
-  .
-  Proof.
-    admit "merge with mixed sim".
-  Qed.
-
-  Lemma extcall_arguments_length
-        rs m rsp sg vs
-        (ARGS: extcall_arguments rs m rsp sg vs)
-    :
-      length (loc_arguments sg) = length vs
-  .
-  Proof.
-    unfold extcall_arguments in *.
-    abstr (loc_arguments sg) locs.
-    ginduction vs; ii; inv ARGS; ss.
-    f_equal. erewrite IHvs; eauto.
-  Qed.
-
-End MACHEXTRA.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 Local Opaque Z.add Z.mul Z.div.
 Local Opaque sepconj.
 Local Opaque function_bounds.

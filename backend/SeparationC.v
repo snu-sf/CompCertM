@@ -4,6 +4,7 @@ Require Import AST Integers Values MemoryC Events Globalenvs.
 (** newly added **)
 Require Import AxiomsC.
 Require Export Separation.
+Require Import JunkBlock.
 
 Local Open Scope sep_scope.
 
@@ -14,10 +15,6 @@ Global Program Instance disjoint_footprint_sym: Symmetric disjoint_footprint.
 Next Obligation. ii. eapply H; eauto. Qed.
 
 
-Section INJ.
-
-Context `{Val.meminj_ctx}.
-
 Lemma separation_private
       m_src m_tgt F P
       (MATCH: m_tgt |= P ** minjection F m_src)
@@ -27,10 +24,8 @@ Lemma separation_private
 Proof.
   inv MATCH. des; ss.
   ii. unfold disjoint_footprint in *. ss.
-  eapply H2; eauto.
+  eapply H1; eauto.
 Qed.
-
-End INJ.
 
 Lemma disjoint_footprint_drop_empty
       P Q0 Q1
@@ -440,4 +435,19 @@ Proof.
 Qed.
 
 Local Opaque sepconj.
+
+Lemma assign_junk_blocks_rule
+      P m_src0
+      (PRED: m_src0 |= P)
+      n
+  :
+    (assign_junk_blocks m_src0 n) |= P
+.
+Proof.
+  destruct P; ss.
+  eapply m_invar; eauto.
+  eapply Mem.unchanged_on_implies.
+  { eapply assign_junk_blocks_unchanged_on; eauto. }
+  ss.
+Qed.
 

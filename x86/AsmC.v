@@ -6,6 +6,8 @@ Require Import Mach Simulation ValuesC.
 Require Export Asm.
 Require Import Skeleton ModSem Mod sflib.
 Require Import LocationsC AsmregsC StoreArguments.
+Require Import JunkBlock.
+
 Set Implicit Arguments.
 
 Definition get_mem (st: state): mem :=
@@ -33,12 +35,12 @@ Definition st_m (st0: state): mem :=
 
 Definition store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem) : Prop :=
   (<<STORE: store_arguments m0 (to_mregset rs) vs sg m2>>) /\
-  (<<RSRSP: rs RSP = Vptr m0.(Mem.nextblock) Ptrofs.zero true>>).
+  (<<RSRSP: rs RSP = Vptr m0.(Mem.nextblock) Ptrofs.zero>>).
 
 Definition external_state F V (ge: Genv.t F V) (v : val) : bool :=
   match v with
-  | Vptr blk ofs true =>
-    match (Genv.find_funct ge (Vptr blk Ptrofs.zero true)) with
+  | Vptr blk ofs =>
+    match (Genv.find_funct ge (Vptr blk Ptrofs.zero)) with
     | None => true
     | _ => false
     end
@@ -102,55 +104,52 @@ Section MODSEM.
       (* (ISRETURN: step_ret st0.(st) = st1.(extret)) *)
   .
 
-  Record wf_RA (ra : val) : Prop :=
-    mk_wf_RA {
-        TPTR: Val.has_type ra Tptr;
-        RAFAKE: ~ is_real_ptr ra;
-        RADEF: ra <> Vundef;
-      }.
-
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       rs m0 m1 sg vs blk0 blk1 ofs
-      (FPTR: rs # PC = Vptr blk0 Ptrofs.zero true) (* TODO simplify it *)
-      (EXTERNAL: Genv.find_funct ge (Vptr blk0 Ptrofs.zero true) = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero true)
+      (FPTR: rs # PC = Vptr blk0 Ptrofs.zero)
+      (EXTERNAL: Genv.find_funct ge (Vptr blk0 Ptrofs.zero) = None)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero)
                         = Some skd /\ SkEnv.get_sig skd = sg)
+      (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (VALS: Asm.extcall_arguments rs m0 sg vs)
-      (RSP: rs RSP = Vptr blk1 ofs true)
+      (RSP: rs RSP = Vptr blk1 ofs)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))
-      (* (OFSZERO: ofs = Ptrofs.zero) *)
       (FREE: Mem.free m0 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
-      (NOTVOL: Senv.block_is_volatile skenv_link blk1 = false)
       init_rs
     :
       at_external (mkstate init_rs (State rs m0))
-                  (Args.mk (Vptr blk0 Ptrofs.zero true) vs m1)
+                  (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)
   .
 
   Inductive initial_frame (args: Args.t)
     : state -> Prop :=
   | initial_frame_intro
-      fd m rs sg
+      fd m0 rs sg
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (RSPC: rs # PC = args.(Args.fptr))
-      (* (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
       targs
       (TYP: typecheck args.(Args.vs) sg targs)
-      (STORE: store_arguments args.(Args.m) rs targs sg m)
-      (* (STORE: store_arguments args.(Args.m) rs args.(Args.vs) sg m) *)
-      (RAPTR: wf_RA (rs RA))
-      (PTRFREE: forall pr (PTR: is_real_ptr (rs pr)),
+      (STORE: store_arguments args.(Args.m) rs targs sg m0)
+      n m1
+      (JUNK: assign_junk_blocks m0 n = m1)
+      (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
+      (* (RAJUNK: is_junk_value m0 m1 (rs RA)) *)
+      (RANOTFPTR: forall blk ofs (RAVAL: rs RA = Vptr blk ofs),
+          ~ Plt blk (Genv.genv_next skenv))
+      (* (<<NOTFPTR0: ge.(Genv.find_funct) (rs RA) = None>>) *)
+      (* (RAJUNK1: skenv_link.(Genv.find_funct) (rs RA) = None) *)
+      (PTRFREE: forall pr (PTR: ~ is_junk_value m0 m1 (rs pr)),
           (<<INARG: exists mr,
               (<<MR: to_mreg pr = Some mr>>) /\
               (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments sg))>>)>>) \/
           (<<INPC: pr = PC>>) \/
           (<<INRSP: pr = RSP>>))
     :
-      initial_frame args (mkstate rs (State rs m))
+      initial_frame args (mkstate rs (State rs m1))
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
@@ -158,14 +157,15 @@ Section MODSEM.
       (init_rs rs: regset) m0 m1 blk sg mr
       (CALLEESAVE: forall mr, Conventions1.is_callee_save mr ->
                               Val.lessdef (init_rs mr.(to_preg)) (rs mr.(to_preg)))
-      (INITRSP: init_rs # RSP = Vptr blk Ptrofs.zero true)
+      (INITRSP: init_rs # RSP = Vptr blk Ptrofs.zero)
       (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC)
-                            = Some (Internal fd) /\ fd.(fn_sig) = sg)
+                           = Some (Internal fd) /\ fd.(fn_sig) = sg)
       (FREE: Mem.free m0 blk 0 (4 * size_arguments sg) = Some m1)
       (RETV: loc_result sg = One mr)
       (EXTERNAL: external_state ge (rs # PC))
       (RSRA: rs # PC = init_rs # RA)
-      (RAPTR: wf_RA (init_rs RA))
+      (RANOTFPTR: Genv.find_funct skenv_link (init_rs RA) = None)
+      (* (JUNK1: ge.(Genv.find_funct) (rs PC) = None) *)
       (* (RSRSP: Val.lessdef (rs # RSP) (init_rs # RSP)) *)
       (RSRSP: rs # RSP = init_rs # RSP)
     :
@@ -179,7 +179,7 @@ Section MODSEM.
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
                         = Some skd /\ SkEnv.get_sig skd = sg)
       (RS: rs1 = (set_pair (loc_external_result sg) retv.(Retv.v) (regset_after_external rs0)) #PC <- (rs0 RA))
-      (RSRSP: rs0 RSP = Vptr blk ofs true)
+      (RSRSP: rs0 RSP = Vptr blk ofs)
       (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
     :
       after_external (mkstate init_rs (State rs0 m0))
@@ -223,7 +223,8 @@ Section MODSEM.
   Qed.
   Next Obligation.
     ii; ss; des. inv_all_once; ss; clarify.
-    inv RAPTR0. rewrite FPTR in *. rewrite <- RSRA in *. ss.
+    des. rewrite FPTR in *. ss. des_ifs. rewrite <- RSRA in *.
+    ss. des_ifs.
   Qed.
 
   Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
@@ -302,6 +303,7 @@ Section MODULE.
 
 End MODULE.
 
+(* move to AsmregsC *)
 Lemma to_mreg_preg_of
       pr mr
       (MR: Asm.to_mreg pr = Some mr)

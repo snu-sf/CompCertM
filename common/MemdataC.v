@@ -59,11 +59,11 @@ Qed.
 
 Lemma decode_normal_all_normal chunk vl v
       (DECODE: decode_val chunk vl = v)
-      (VALUE: v <> Vundef /\ forall blk ofs b, v <> Vptr blk ofs b)
+      (VALUE: v <> Vundef /\ forall blk ofs, v <> Vptr blk ofs)
       mv
       (IN: In mv vl)
   :
-    forall blk ofs b q n, mv <> Fragment (Vptr blk ofs b) q n.
+    forall blk ofs q n, mv <> Fragment (Vptr blk ofs) q n.
 Proof.
   ii. des. rewrite H in *.
   destruct v; ss.
@@ -74,11 +74,11 @@ Proof.
   - exfalso. eapply VALUE0. eauto.
 Qed.
 
-Lemma decode_pointer_all_pointer chunk vl mv blk ofs b
-      (DECODE: decode_val chunk vl = Vptr blk ofs b)
+Lemma decode_pointer_all_pointer chunk vl mv blk ofs
+      (DECODE: decode_val chunk vl = Vptr blk ofs)
       (IN: In mv vl)
   :
-    exists q n, mv = Fragment (Vptr blk ofs b) q n.
+    exists q n, mv = Fragment (Vptr blk ofs) q n.
 Proof.
   unfold decode_val, Val.load_result in *. des_ifs.
   - unfold proj_value in *.

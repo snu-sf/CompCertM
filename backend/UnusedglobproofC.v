@@ -14,22 +14,9 @@ Require SimSymbDrop.
 Require SoundTop.
 Require Import CtypingC.
 Require Import ModSemProps.
+Require Import JunkBlock.
 
 Set Implicit Arguments.
-Local Existing Instance Val.mi_normal.
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 Section SIMMODSEM.
@@ -39,7 +26,7 @@ Variable sm_link: SimMem.t.
 Variable prog: RTL.program.
 Variable tprog: RTL.program.
 Let md_src: Mod.t := (RTLC.module prog).
-Let md_tgt: Mod.t := (RTLC.module tprog).
+Let md_tgt: Mod.t := (RTLC.module2 tprog).
 Hypothesis (INCLSRC: SkEnv.includes skenv_link_src md_src.(Mod.sk)).
 Hypothesis (INCLTGT: SkEnv.includes skenv_link_tgt md_tgt.(Mod.sk)).
 Hypothesis (WFSRC: SkEnv.wf skenv_link_src).
@@ -58,8 +45,8 @@ Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Unusedglobproof.match_states prog tprog (used_set tprog) skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0 sm0)
-    (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(RTLC.get_mem) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: st_src0.(RTL.get_mem) = sm0.(SimMem.src))
+    (MCOMPATTGT: st_tgt0.(RTL.get_mem) = sm0.(SimMem.tgt))
 .
 
 Lemma find_funct_inject
@@ -182,11 +169,14 @@ Proof.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     des.
-    eexists. exists sm_arg.
+    eexists.
+    
+    exploit SimMemInjC.inject_junk_blocks_tgt; et. intro P; des.
+    exists sm1.
     esplits; eauto.
-    { refl. }
     + econs; eauto; ss; cycle 1.
       { inv SAFESRC. ss. }
+      { rewrite DEF. ss. }
       * inv TYP.
         inv SAFESRC. folder. ss.
 
@@ -197,10 +187,10 @@ Proof.
         { econs; ss; et.
           - inv SIMSKENV. ss. eapply SimSymbDrop.sim_skenv_symbols_inject; et.
           - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. xomega.
-          - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. xomega.
+          - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite assign_junk_blocks_nextblock. des_ifs; xomega.
         }
         { eapply inject_list_typify_list; eauto. }
-        { eapply MWF. }
+        { eapply MWF0. }
   - des. inv SAFESRC.
     inv SIMARGS; ss.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
@@ -270,10 +260,10 @@ Proof.
     esplits; eauto.
     { apply modsem_receptive; et. }
     inv MATCH.
-    ii. hexploit (@step_simulation prog tprog (used_set tprog) _ skenv_link_src skenv_link_tgt); eauto.
+    ii. hexploit (@step_simulation prog tprog (used_set tprog) skenv_link_src skenv_link_tgt); eauto.
     i; des.
     esplits; eauto.
-    + left. apply plus_one. econs; eauto. eapply modsem_determinate; eauto.
+    + left. apply plus_one. econs; eauto. eapply modsem2_determinate; eauto.
     + econs; ss.
       * inv H0; ss; inv MCOMPAT; ss.
       * inv H0; ss; inv MCOMPAT; ss.
@@ -291,7 +281,7 @@ Variable tprog: RTL.program.
 Hypothesis TRANSL: match_prog prog tprog.
 
 Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module tprog) ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
+  ModPair.mk (RTLC.module prog) (RTLC.module2 tprog) ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
 .
 
 Theorem sim_mod

@@ -7,7 +7,7 @@ Require Import Events.
 Require Import AST.
 From Paco Require Import paco.
 Require Import sflib.
-Require Import Coqlib.
+Require Import CoqlibC.
 Require Import Axioms.
 Require Import Relations.
 Require Import Wellfounded.
@@ -40,7 +40,7 @@ Lemma clos_t_rt:
   clos_trans A R x y -> clos_refl_trans A R y z -> clos_trans A R x z.
 Proof.
   i. induction H0; ss.
-  - eapply t_trans; eauto. eapply t_step; eauto.
+  - eapply t_trans; eauto.
   - eapply IHclos_refl_trans2; eauto.
 Qed.
 
@@ -279,7 +279,6 @@ Proof.
       * left; ss.
       * right; ss.
         esplits; eauto.
-        eapply t_step; eauto.
     + pclearbot.
       des.
       specialize (IH _ STAR0).
@@ -804,9 +803,9 @@ Proof.
   inv BSIM.
   econs; eauto. i. exploit STEP; eauto. i; des. inv H.
   - econs 1; eauto. i. exploit STEP0; eauto. i; des; pclearbot; esplits; eauto.
-    econs; eauto. right. esplits; eauto. econs 3; eauto. eapply t_step; eauto.
+    econs; eauto. right. esplits; eauto. econs 3; eauto.
     econs; eauto.
-  - pclearbot. des. econs 2; eauto. esplits; eauto. econs 3; eauto. eapply t_step; eauto.
+  - pclearbot. des. econs 2; eauto. esplits; eauto. econs 3; eauto.
     econs; eauto.
 Qed.
 
@@ -884,13 +883,11 @@ Proof.
       { esplits; eauto. left. eapply star_plus_trans; eauto. }
       { esplits; eauto. right. split. eapply star_trans; eauto.
         inv STAR0; econs; eauto.
-        - eapply t_step; eauto.
-        - eapply t_trans; eauto. eapply t_step; eauto. }
+        - eapply t_trans; eauto. }
       { i. eapply PROGRESS. eapply star_safe; eauto. }
     + econs 2; try apply BSIM; eauto. des. esplits; eauto. eapply star_trans; eauto.
       inv STAR0; econs; eauto.
-      { eapply t_step ;eauto. }
-      { eapply t_trans; eauto. eapply t_step; eauto. }
+      { eapply t_trans; eauto. }
   (* - i. exploit PROGRESS; eauto. ii. eapply SAFESRC. eapply star_trans; eauto. *)
 Qed.
 
@@ -1125,13 +1122,13 @@ Proof.
         + inv STEPS2. ss.
           exists (X2BI_after 0 i'').
           esplits; eauto.
-          * right. esplits; eauto. econs; eauto. eapply clos_t_rt; eauto. eapply t_step; eauto.
+          * right. esplits; eauto. econs; eauto. eapply clos_t_rt; eauto.
           * right. eapply CIH. econs; eauto.
         + exists (X2BI_after (S n) i'').
           esplits; eauto.
           * right. esplits; eauto.
             econs; eauto.
-            eapply clos_t_rt; eauto. eapply t_step; eauto.
+            eapply clos_t_rt; eauto.
           * right. eapply CIH. econs 3; eauto.
     }
     { (* backward *)

@@ -1,12 +1,12 @@
 Require Import FSets.
-Require Import CoqlibC Maps Ordered Errors Lattice Kildall Integers.
+Require Import CoqlibC Ordered Integers.
 Require Import AST Linking.
-Require Import Values Memory Events Globalenvs Smallstep.
-Require Import Op Locations LTLC LinearC.
-Require Import Linearize.
+Require Import ValuesC Memory Events Globalenvs Smallstep.
+Require Import Op Locations LinearC.
+Require Import CleanupLabels.
 Require Import sflib.
 (** newly added **)
-Require Export Linearizeproof.
+Require Export CleanupLabelsproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem ModSemProps.
 Require SimMemId.
@@ -26,9 +26,9 @@ Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
-Variable prog: LTL.program.
+Variable prog: Linear.program.
 Variable tprog: Linear.program.
-Let md_src: Mod.t := (LTLC.module prog).
+Let md_src: Mod.t := (LinearC.module prog).
 Let md_tgt: Mod.t := (LinearC.module tprog).
 Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
 Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
@@ -40,10 +40,10 @@ Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_
 
 Inductive match_states
           (sm_init: SimMem.t)
-          (idx: nat) (st_src0: LTL.state) (st_tgt0: Linear.state) (sm0: SimMem.t): Prop :=
+          (idx: nat) (st_src0 st_tgt0: Linear.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Linearizeproof.match_states st_src0 st_tgt0)
-    (MCOMPATSRC: st_src0.(LTLC.get_mem) = sm0.(SimMem.src))
+    (MATCHST: CleanupLabelsproof.match_states st_src0 st_tgt0)
+    (MCOMPATSRC: st_src0.(LinearC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(LinearC.get_mem) = sm0.(SimMem.tgt))
     (DUMMYTGT: strong_wf_tgt st_tgt0)
     (MEASURE: measure st_src0 = idx)
@@ -52,7 +52,7 @@ Inductive match_states
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk))
                       (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
-  Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
+  Genv.match_genvs (match_globdef (fun ctx f tf => tf = transf_fundef f) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
 Theorem sim_modsem
@@ -71,20 +71,19 @@ Proof.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     folder.
     exploit (bsim_internal_funct_id SIMGE); et. i; des.
-    generalize (sig_preserved fd_src (Internal fd) MATCH); intro SGEQ. ss.
     destruct fd_src; ss.
     eexists. eexists (SimMemId.mk _ _).
     esplits; cycle 2.
     + econs; eauto; ss.
-      * inv TYP. rpapply match_states_call; eauto.
-        { instantiate (1:= [LTL.dummy_stack (fn_sig fd) ls_init]). econs; eauto.
-          - econs; et.
+      * inv TYP. rpapply match_states_call; try eapply Val.lessdef_refl.
+        { instantiate (1:= [Linear.dummy_stack (fn_sig fd) ls_init]). econs; eauto.
+          - econs; et. econs. inv H.
           - econs; et.
         }
       * rr. ss. esplits; et.
       (* * ss. esplits; et. *)
-    + rewrite SGEQ.
-      rpapply LTLC.initial_frame_intro; revgoals; [ f_equal; et | .. ]; eauto with congruence.
+    + assert(SGEQ: fn_sig fd = fn_sig f). { inv MATCH; et. } rewrite SGEQ.
+      rpapply LinearC.initial_frame_intro; revgoals; [ f_equal; et | .. ]; eauto with congruence.
       * rewrite MEMTGT. eauto.
       * ii. rewrite <- MEMTGT. eauto with congruence.
       * folder. rewrite FPTR. ss.
@@ -93,17 +92,17 @@ Proof.
     des. inv SAFESRC.
     inv SIMARGS; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
-    exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. unfold bind in *. folder. des_ifs.
+    exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. folder. des_ifs.
     inv TYP.
-    unfold transf_function in *. unfold bind in *. des_ifs.
+    unfold transf_function in *. des_ifs.
     destruct sm_arg; ss. clarify.
+    assert(SGEQ: fn_sig fd = fn_sig (transf_function fd)). { et. }
     esplits; eauto. econs; eauto.
     + folder. rewrite <- FPTR. rewrite H. eauto.
     + econs; eauto.
       * ss. congruence.
       * ss. rewrite <- VALS. et.
     + ss. rewrite MEMTGT in *. eauto.
-    + ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     u in CALLSRC. des. inv CALLSRC. inv MATCHST; ss.
@@ -119,8 +118,11 @@ Proof.
         { apply SIMSKENV. }
         intro GE.
         apply (fsim_external_funct_id GE); ss.
-      * admit "TODO: add 4 * size_arguments sg condition in every language's at external see #288".
+        folder.
+        inv H6; ss.
+      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. inv H6; et. inv SIG.
     + econs; ss; eauto.
+      * inv H6; et. des. inv SIG.
       * instantiate (1:= SimMemId.mk _ _). ss.
       * ss.
     + ss.
@@ -145,18 +147,20 @@ Proof.
     eexists (SimMemId.mk _ _). esplits; ss; eauto.
     rr in DUMMYTGT. des. ss. clarify.
     assert(sg_init = sg_init0).
-    { inv H1; ss. unfold transf_function, bind in *. des_ifs. }
+    { inv H1; ss. }
     clarify.
     (* repeat f_equal; et. *)
   - left; i.
     esplits; eauto.
-    { apply LTLC.modsem_receptive; et. }
+    { apply LinearC.modsem_receptive; et. }
     inv MATCH.
     ii. r in STEPSRC; des. hexploit (@transf_step_correct prog skenv_link skenv_link); eauto.
     { inv SIMSKENV. inv SIMSKELINK. ss. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     i; des.
-    + exploit (lift_plus Linear.step (fun st => get_stack st <> []) strong_wf_tgt); ss; et.
+    + assert(PLUS:plus Linear.step skenv_link tge st_tgt0 tr s2').
+      { econs. eapply H. econs. rewrite E0_right. et. }
+      exploit (lift_plus Linear.step (fun st => get_stack st <> []) strong_wf_tgt); ss; et.
       { intros st X Y. rr in X. des. rewrite Y in *. ss. }
       { i. folder. unfold strong_wf_tgt in *. des. inv HSTEP; ss; eauto.
         - des_ifs; ss; eauto.
@@ -173,7 +177,7 @@ Proof.
       * right. esplits; et.
         { eapply star_refl. }
       * instantiate (1:= SimMemId.mk _ _). econs; ss.
-
+        
 Unshelve.
   all: ss; try (by econs).
 Qed.
@@ -185,10 +189,10 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Variable prog: LTL.program.
+Variable prog: Linear.program.
 Variable tprog: Linear.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Definition mp: ModPair.t := ModPair.mk (LTLC.module prog) (LinearC.module tprog) tt.
+Definition mp: ModPair.t := ModPair.mk (LinearC.module prog) (LinearC.module tprog) tt.
 
 Theorem sim_mod
   :
@@ -198,7 +202,7 @@ Proof.
   econs; ss.
   - r. eapply Sk.match_program_eq; eauto.
     ii. destruct f1; ss.
-    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. unfold transf_function in *. monadInv Heq. ss.
+    + clarify. right. esplits; eauto.
     + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Unshelve.

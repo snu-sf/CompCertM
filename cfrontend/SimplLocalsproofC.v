@@ -15,7 +15,6 @@ Require Import CtypingC.
 Require Import ModSemProps.
 
 Set Implicit Arguments.
-Local Existing Instance Val.mi_normal.
 
 
 

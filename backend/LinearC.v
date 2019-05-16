@@ -5,6 +5,7 @@ Require Import Op LocationsC LTL Conventions.
 Require Export Linear.
 Require Import Skeleton Mod ModSem.
 Require Import Simulation AsmregsC.
+Require Import JunkBlock.
 
 Set Implicit Arguments.
 
@@ -235,7 +236,7 @@ Definition undef_outgoing_slots (ls: locset): locset :=
     | _ => ls l
     end
 .
-  
+
 Definition stackframes_after_external (stack: list stackframe): list stackframe :=
   match stack with
   | nil => nil
@@ -267,6 +268,7 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg ls vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
+      (SZARGS: 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg))
     :
@@ -283,12 +285,14 @@ Section MODSEM.
       tvs
       (TYP: typecheck args.(Args.vs) sg tvs)
       (LOCSET: tvs = map (fun p => Locmap.getpair p ls_init) (loc_arguments sg))
+      n m0
+      (JUNK: assign_junk_blocks args.(Args.m) n = m0)
       (PTRFREE: forall
           loc
           (* (NOTIN: Loc.notin loc (regs_of_rpairs (loc_arguments sg))) *)
           (NOTIN: ~In loc (regs_of_rpairs (loc_arguments sg)))
         ,
-          <<PTRFREE: ~ is_real_ptr (ls_init loc)>>)
+          <<PTRFREE: is_junk_value args.(Args.m) m0 (ls_init loc)>>)
       (SLOT: forall
           sl ty ofs
           (NOTIN: ~In (S sl ty ofs) (regs_of_rpairs (loc_arguments sg)))
@@ -296,7 +300,7 @@ Section MODSEM.
           <<UNDEF: ls_init (S sl ty ofs) = Vundef>>)
     :
       initial_frame args
-                    (Callstate [dummy_stack sg ls_init] args.(Args.fptr) sg ls_init args.(Args.m))
+                    (Callstate [dummy_stack sg ls_init] args.(Args.fptr) sg ls_init m0)
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
@@ -329,8 +333,8 @@ Section MODSEM.
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
-      ModSem.skenv := skenv; 
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv := skenv;
+      ModSem.skenv_link := skenv_link;
     |}
   .
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
@@ -426,4 +430,3 @@ Section MODULE.
   .
 
 End MODULE.
-

@@ -28,7 +28,7 @@ Require Export Memory.
 
 
 (* TODO: Move to MemdataC *)
-Program Instance memval_inject_Reflexive: RelationClasses.Reflexive (@memval_inject Val.mi_normal inject_id).
+Program Instance memval_inject_Reflexive: RelationClasses.Reflexive (@memval_inject inject_id).
 Next Obligation.
   destruct x; ss; econs; eauto.
   apply val_inject_id. ss.
@@ -161,8 +161,6 @@ Qed.
 
 Section INJECT.
 
-Context `{CTX: Val.meminj_ctx}.
-
 Lemma private_unchanged_inject
       F m_src m_tgt0 m_tgt1
       P
@@ -238,9 +236,6 @@ End INJECT.
 
 
 Section ARGPASSING.
-
-Context `{CTX: Val.meminj_ctx}.
-(* Local Existing Instance Val.mi_normal. *)
 
 Import Mem.
 
@@ -638,8 +633,6 @@ Proof.
   - bsimpl. des; des_sumbool; try xomega.
 Qed.
 
-Context `{CTX: Val.meminj_ctx}.
-
 Lemma Mem_unfree_suceeds
       m0 blk lo hi
       (VALID: Mem.valid_block m0 blk)
@@ -793,7 +786,6 @@ End UNFREE.
 Ltac perm_impl_tac := eapply Mem.perm_implies with Freeable; [|eauto with mem].
 
 Lemma delta_range
-      `{Val.meminj_ctx}
       F m_src m_tgt
       (INJECT: Mem.inject F m_src m_tgt)
       blk_src blk_tgt delta

@@ -28,63 +28,6 @@ Require Import Conventions1.
 Set Implicit Arguments.
 
 
-Definition is_ptr (v: val): bool :=
-  match v with
-  | Vptr _ _ _ => true
-  | _ => false
-  end
-.
-
-Hint Unfold is_ptr.
-
-Definition is_real_ptr (v: val): bool :=
-  match v with
-  | Vptr _ _ true => true
-  | _ => false
-  end
-.
-Hint Unfold is_real_ptr.
-
-Definition is_fake_ptr (v: val): bool :=
-  match v with
-  | Vptr _ _ false => true
-  | _ => false
-  end
-.
-Hint Unfold is_fake_ptr.
-
-Definition to_fake (v: val): val :=
-  match v with
-  | Vptr blk ofs true => Vptr blk ofs false
-  | _ => v
-  end
-.
-
-
-(* Definition is_real_fptr (v: val): bool := *)
-(*   match v with *)
-(*   | Vptr _ ofs true => if (Ptrofs.eq ofs Ptrofs.zero) then true else false *)
-(*   | _ => false *)
-(*   end *)
-(* . *)
-(* Hint Unfold is_real_fptr. *)
-
-Definition fake_ptr_one: val := Vptr 1%positive Ptrofs.zero false.
-
-Section INJECTNORMAL.
-
-Local Existing Instance Val.mi_normal.
-
-Lemma fakeptr_inject_id
-      F fptr
-      (FAKE: ~ is_real_ptr fptr)
-  :
-    <<INJECT: Val.inject F fptr fptr>>
-.
-Proof. destruct fptr; ss. des_ifs. econs; eauto. Qed.
-
-End INJECTNORMAL.
-
 Global Program Instance inject_incr_PreOrder: PreOrder inject_incr.
 Next Obligation.
   ii. eapply inject_incr_trans; eauto.
@@ -143,6 +86,15 @@ Section TYPIFY.
   (*   end *)
   (* . *)
 
+  Lemma typify_list_length
+        vs tys
+    :
+      length (typify_list vs tys) = Nat.min (length vs) (length tys)
+  .
+  Proof.
+    ginduction vs; ii; ss. destruct tys; ss. rewrite IHvs; ss.
+  Qed.
+
 End TYPIFY.
 
 Hint Unfold typify typify_list.
@@ -160,7 +112,6 @@ Proof.
 Qed.
 
 Lemma inject_typify
-      `{Val.meminj_ctx}
       j x y ty
       (INJ: Val.inject j x y)
   :
@@ -221,7 +172,6 @@ Proof.
 Qed.
 
 Lemma inject_list_typify_list
-      `{Val.meminj_ctx}
       inj xs ys tys
       (LEN: length tys = length xs)
       (LD: Val.inject_list inj xs ys)
@@ -237,7 +187,6 @@ Proof.
 Qed.
 
 Lemma inject_list_length
-      `{Val.meminj_ctx}
       j xs ys
       (INJ: Val.inject_list j xs ys)
   :

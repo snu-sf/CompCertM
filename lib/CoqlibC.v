@@ -1392,3 +1392,6 @@ Let put_dummy_arg22 A B DUMMY C: (A -> B -> C) -> (A -> B -> DUMMY -> C) :=
 
 End FLIPS.
 Hint Unfold flip2 flip3 flip4.
+
+Definition DUMMY_PROP := True.
+Hint Unfold DUMMY_PROP.

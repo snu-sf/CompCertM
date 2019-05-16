@@ -62,7 +62,7 @@ Lemma match_stackframes_not_nil
     ts <> []
 .
 Proof.
-  inv MATCH; ss. inv MAINARGS.
+  inv MATCH; ss.
 Qed.
 
 Lemma getpair_equal
@@ -81,7 +81,7 @@ Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variable prog: RTL.program.
 Variable tprog: LTL.program.
-Let md_src: Mod.t := (RTLC.module prog).
+Let md_src: Mod.t := (RTLC.module2 prog).
 Let md_tgt: Mod.t := (LTLC.module tprog).
 Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
 Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
@@ -96,7 +96,7 @@ Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: LTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Allocproof.match_states skenv_link tge st_src0 st_tgt0)
-    (MCOMPATSRC: st_src0.(RTLC.get_mem) = sm0.(SimMem.src))
+    (MCOMPATSRC: st_src0.(RTL.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(LTLC.get_mem) = sm0.(SimMem.tgt))
     (DUMMYTGT: strong_wf_tgt st_tgt0)
 .
@@ -129,13 +129,14 @@ Proof.
     esplits; cycle 2.
     + econs; eauto; ss.
       * inv TYP. eapply match_states_call; eauto.
-        { econs; et. econs. }
+        { econs; et. }
         { rewrite <- TYP0. eapply lessdef_list_typify_list; try apply VALS; et. xomega. }
         { ii. ss. }
+        { eapply JunkBlock.assign_junk_block_extends; eauto. }
         { eapply typify_has_type_list; et. xomega. }
       * rr. ss. esplits; et.
     + inv SAFESRC. folder. hexploit (find_funct_lessdef ge FINDF0 FPTR); et. intro FEQ. rewrite <- FEQ in *. clarify.
-      rpapply RTLC.initial_frame_intro; et. f_equal; ss.
+      rpapply RTLC.initial_frame2_intro; et. f_equal; ss.
       inv TYP0; ss. congruence.
     + ss.
   - (* init progress *)
@@ -164,7 +165,7 @@ Proof.
     + econs; eauto.
       * erewrite <- lessdef_list_length; eauto. congruence.
       * inv TYP; ss. congruence.
-    + ii. rewrite OUT in H0; ss.
+    + ii. rewrite OUT; ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     u in CALLSRC. des. inv CALLSRC. inv MATCHST; ss.
@@ -203,14 +204,14 @@ Proof.
         unfold undef_outgoing_slots. unfold dummy_stack in *. clarify. esplits; et.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
-    inv STACKS; ss. { inv MAINARGS. } destruct sm0; ss. clarify.
+    inv STACKS; ss. destruct sm0; ss. clarify.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto.
     econs; et; ss.
     rpapply RES.
     eapply getpair_equal; et.
   - left; i.
     esplits; eauto.
-    { apply RTLC.modsem_receptive; et. }
+    { apply RTLC.modsem2_receptive; et. }
     inv MATCH.
     ii. hexploit (@step_simulation prog _ skenv_link skenv_link); eauto.
     { inv SIMSKENV. ss. }
@@ -241,7 +242,7 @@ Section SIMMOD.
 Variable prog: RTL.program.
 Variable tprog: LTL.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Definition mp: ModPair.t := ModPair.mk (RTLC.module prog) (LTLC.module tprog) tt.
+Definition mp: ModPair.t := ModPair.mk (RTLC.module2 prog) (LTLC.module tprog) tt.
 
 Theorem sim_mod
   :

@@ -6,9 +6,7 @@ Require Import SmallstepC.
 (** newly added **)
 Require Export Simulation RTL.
 Require Import Skeleton Mod ModSem.
-(* Require Import AsmregsC. *)
-(* Require Import Conventions. *)
-(* Require Import Locations. *)
+Require Import JunkBlock.
 
 Set Implicit Arguments.
 
@@ -16,46 +14,6 @@ Set Implicit Arguments.
 
 
 
-Section RTLEXTRA.
-
-  Definition is_external (ge: genv) (st: state): Prop :=
-    match st with
-    | Callstate stack fptr sg args m =>
-      match Genv.find_funct ge fptr with
-      | Some (AST.External ef) => is_external_ef ef = true
-      | _ => False
-      end
-    | _ => False
-    end
-  .
-
-  Variable se: Senv.t.
-  Variable ge: genv.
-  Definition semantics_with_ge := Semantics_gen step bot1 final_state ge se.
-  (* *************** ge is parameterized *******************)
-
-  Lemma semantics_receptive
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      receptive_at semantics_with_ge st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-  Lemma semantics_determinate
-        st
-        (INTERNAL: ~is_external semantics_with_ge.(globalenv) st)
-    :
-      determinate_at semantics_with_ge st
-  .
-  Proof.
-    admit "this should hold".
-  Qed.
-
-End RTLEXTRA.
-(*** !!!!!!!!!!!!!!! REMOVE ABOVE AFTER MERGING WITH MIXED SIM BRANCH !!!!!!!!!!!!!!!!!! ***)
 
 
 
@@ -69,20 +27,23 @@ End RTLEXTRA.
 
 
 
-
-
-
-
-
-
-
-Definition get_mem (st: state): mem :=
-  match st with
-  | State _ _ _ _ _ m0 => m0
-  | Callstate _ _ _ _ m0 => m0
-  | Returnstate _ _ m0 => m0
-  end
+Ltac clarify_meq :=
+  repeat
+    match goal with
+    | [ H0: ?A m= ?B |- _ ] => inv H0
+    | [ H0: ?A = ?A -> _ |- _ ] => exploit H0; eauto; check_safe; intro; des; clear H0
+    end;
+    clarify
 .
+
+Ltac inv_match_traces :=
+  match goal with
+  | [ H: match_traces _ _ _ |- _ ] => inv H
+  end
+.       
+
+
+
 
 Section MODSEM.
 
@@ -111,6 +72,20 @@ Section MODSEM.
     :
       initial_frame args
                     (Callstate [] args.(Args.fptr) fd.(fn_sig) tvs args.(Args.m))
+  .
+
+  Inductive initial_frame2 (args: Args.t)
+    : state -> Prop :=
+  | initial_frame2_intro
+      fd tvs
+      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
+      (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
+      (LEN: args.(Args.vs).(length) = fd.(fn_sig).(sig_args).(length))
+      n m0
+      (JUNK: assign_junk_blocks args.(Args.m) n = m0)
+    :
+      initial_frame2 args
+                    (Callstate [] args.(Args.fptr) fd.(fn_sig) tvs m0)
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
@@ -150,45 +125,48 @@ Section MODSEM.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
+  Program Definition modsem2: ModSem.t :=
+    {|
+      ModSem.step := step;
+      ModSem.at_external := at_external;
+      ModSem.initial_frame := initial_frame2;
+      ModSem.final_frame := final_frame;
+      ModSem.after_external := after_external;
+      ModSem.globalenv := ge;
+      ModSem.skenv := skenv; 
+      ModSem.skenv_link := skenv_link; 
+    |}
+  .
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
+
   Hypothesis (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p)).
   Hypothesis (WF: SkEnv.wf skenv_link).
-
-  Lemma not_external
-    :
-      is_external ge <1= bot1
-  .
-  Proof.
-    ii. hnf in PR. des_ifs.
-    subst_locals.
-    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-    eapply SkEnv.project_revive_no_external; eauto.
-  Qed.
-
-  Lemma lift_receptive_at
-        st
-        (RECEP: receptive_at (semantics_with_ge skenv_link ge) st)
-    :
-      receptive_at modsem st
-  .
-  Proof.
-    inv RECEP. econs; eauto; ii; ss.
-  Qed.
 
   Lemma modsem_receptive
         st
     :
       receptive_at modsem st
   .
-  Proof. eapply lift_receptive_at. eapply semantics_receptive. ii. eapply not_external; eauto. Qed.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
-  Lemma lift_determinate_at
-        st0
-        (DTM: determinate_at (semantics_with_ge skenv_link ge) st0)
+  Lemma modsem2_receptive
+        st
     :
-      determinate_at modsem st0
+      receptive_at modsem2 st
   .
   Proof.
-    inv DTM. econs; eauto; ii; ss.
+    econs; eauto.
+    - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
 
   Lemma modsem_determinate
@@ -196,8 +174,22 @@ Section MODSEM.
     :
       determinate_at modsem st
   .
-  Proof. eapply lift_determinate_at. eapply semantics_determinate. ii. eapply not_external; eauto. Qed.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
+  Lemma modsem2_determinate
+        st
+    :
+      determinate_at modsem2 st
+  .
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Qed.
 
 End MODSEM.
 
@@ -214,6 +206,14 @@ Section MODULE.
       Mod.data := p;
       Mod.get_sk := Sk.of_program fn_sig;
       Mod.get_modsem := modsem;
+    |}
+  .
+
+  Program Definition module2: Mod.t :=
+    {|
+      Mod.data := p;
+      Mod.get_sk := Sk.of_program fn_sig;
+      Mod.get_modsem := modsem2;
     |}
   .
 

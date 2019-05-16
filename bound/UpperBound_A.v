@@ -182,7 +182,7 @@ Section PRESERVATION.
       (K: k2 = app_cont k0 k1)
       cp
       (FOCUS: is_focus cp)
-      (K0: exists _f _e _C _k, k0 = (Kcall _f _e _C _tres _k))
+      (K0: exists _f _e _C _k, k0 = (Kcall _f _e _C _tres _k) /\ <<WTYK: wtype_cont (prog_comp_env cp) _k>>)
       (* (WTTGT: exists ge_cp, wt_state ge_cp (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m)) *)
       (WTTGT: wt_state (geof cp) (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m))
     :
@@ -1320,7 +1320,7 @@ Section PRESERVATION.
             inv ST; ss.
             econs; ss; et.
             - destruct cp_link_precise.
-              unfold Genv.find_funct in EXTERNAL. destruct fptr_arg; ss. destruct b0; ss. destruct (Ptrofs.eq_dec i Ptrofs.zero); ss.
+              unfold Genv.find_funct in EXTERNAL. destruct fptr_arg; ss. destruct (Ptrofs.eq_dec i Ptrofs.zero); ss.
               unfold Genv.find_funct_ptr in EXTERNAL. des_ifs.
               + (* None or Gvar *)
                 unfold Genv.find_funct. des_ifs. unfold Genv.find_funct_ptr. des_ifs.
@@ -1572,6 +1572,7 @@ Section PRESERVATION.
               exploit WTKS; et.
               { ii. ss. des_ifs. }
               i; des_safe. clarify. inv CLASSIFY. esplits; et.
+              { ss. clear - WTYK. des. ss. }
             }
             { econs; et. }
             { des_ifs. eapply preservation_cp_link; et.
@@ -1630,7 +1631,7 @@ Section PRESERVATION.
               des_ifs. inv FINDMS. ss. (* des_ifs. *) destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
               eapply preservation_cp_focus; et; revgoals.
               { right. eapply step_internal_function; ss; et.
-                - unfold Genv.find_funct. instantiate (1:= Vptr blk Ptrofs.zero true). ss. destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
+                - unfold Genv.find_funct. instantiate (1:= Vptr blk Ptrofs.zero). ss. destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
                   rewrite Genv.find_funct_ptr_iff in *. exploit prog_def_same. eauto. i. des_safe.
                   assert (cp2 = cp_top).
                   { exploit same_prog. eauto. eapply FOCUS1. eapply INTERNAL. eauto. i. auto. } subst. eauto.
@@ -1638,6 +1639,8 @@ Section PRESERVATION.
                 - eapply preservation_alloc; eauto.
                 - eapply preservation_bind_param; eauto. }
               econs.
+              - ss.
+              - ss.
               - econs; et.
               - econs; et.
               - i. ss. des_ifs. exfalso. eapply EXT; ss; et.
@@ -1777,9 +1780,10 @@ Section PRESERVATION.
               des_ifs.
               assert(WTTGT1: wt_state (geof cp2)
                                       (Returnstate tv (Kcall _f _e _C _tres _k) (m_ret))).
-              { econs; ss; et; cycle 1.
+              { econs; ss; et; revgoals.
                 { eapply typify_c_spec; et. }
-                inv WTTGT0. ss. clarify.
+                { inv WTTGT0. ss. clarify. }
+                { inv WTTGT0. des_safe. }
               }
               eapply preservation_cp_focus; et; cycle 1.
               right. econs; ss; et.
@@ -1839,9 +1843,10 @@ Section PRESERVATION.
                   (* copied from: MmEyZjBiNDFkYzlkNGY3YWVkNTlhMWE2 *)
                   assert(WTTGT1: wt_state (geof cp2)
                                           (Returnstate tv k2 m_ret)).
-                  { econs; ss; et; cycle 1.
+                  { econs; ss; et; revgoals.
                     { eapply typify_c_spec; et. }
-                    inv WTTGT0. ss. clarify.
+                    { inv WTTGT0. ss. clarify. }
+                    inv WTTGT0. ss.
                   }
                   ss.
                 }
@@ -1895,9 +1900,10 @@ Section PRESERVATION.
                   (* copied from: MmEyZjBiNDFkYzlkNGY3YWVkNTlhMWE2 *)
                   assert(WTSRC0: wt_state ge_cp_link
                                           (Returnstate tv (app_cont k2 k_tl_tgt) (Retv.m retv))).
-                  { econs; ss; et; cycle 1.
+                  { econs; ss; et; revgoals.
                     { eapply typify_c_spec; et. }
-                    inv WTSRC. ss. clarify.
+                    { inv WTSRC. ss. clarify. }
+                    inv WTSRC; ss.
                   }
                   ss.
                 }
@@ -1905,9 +1911,10 @@ Section PRESERVATION.
                   (* copied from: MmEyZjBiNDFkYzlkNGY3YWVkNTlhMWE2 *)
                   assert(WTTGT0: wt_state (geof cp)
                                           (Returnstate tv k2 (Retv.m retv))).
-                  { econs; ss; et; cycle 1.
+                  { econs; ss; et; revgoals.
                     { eapply typify_c_spec; et. }
-                    inv WTTGT. ss. clarify.
+                    { inv WTTGT. ss. clarify. }
+                    inv WTTGT; ss.
                   }
                   ss.
                 }

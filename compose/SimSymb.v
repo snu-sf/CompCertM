@@ -31,7 +31,7 @@ Module SimSymb.
                           <<SIM: def_src = def_tgt>>)
       (FUNCBSIM: forall
           fptr_src fptr_tgt def_tgt
-          (SAFESRC: is_real_ptr fptr_src)
+          (SAFESRC: fptr_src <> Vundef)
           (SIMFPTR: sim_val fptr_src fptr_tgt)
           (FUNCTGT: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt)
         ,

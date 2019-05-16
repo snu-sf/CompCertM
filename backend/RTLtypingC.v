@@ -44,7 +44,7 @@ Section LPRSV.
   Theorem wt_state_local_preservation
           skenv_link
     :
-      local_preservation (modsem skenv_link prog) (fun _ _ st => wt_state st)
+      local_preservation (modsem2 skenv_link prog) (fun _ _ st => wt_state st)
   .
   Proof.
     econs; ii; ss; eauto.

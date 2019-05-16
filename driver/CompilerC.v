@@ -84,8 +84,6 @@ Local Open Scope list_scope.
 
 
 
-Local Existing Instance Values.Val.mi_normal.
-
 Parameter CM2R: Cminor.program -> res RTL.program.
 (* Parameter C2R_SM: SimMem.class. *)
 (* Parameter C2R_SU: Sound.class. *)
@@ -425,7 +423,7 @@ Section Unusedglob.
         (TRANSF: Unusedglob.transform_program src = OK tgt)
     :
       backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module2 tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
     eapply mixed_to_backward_simulation.
@@ -468,7 +466,7 @@ Section Allocation.
         src tgt
         (TRANSF: Allocation.transf_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
+      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module2 src] ++ aps.(ProgPair.src)))
                           (sem (cps.(ProgPair.tgt) ++ [LTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.

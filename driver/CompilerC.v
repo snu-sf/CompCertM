@@ -83,20 +83,44 @@ Local Open Scope string_scope.
 Local Open Scope list_scope.
 
 
-
-Parameter CM2R: Cminor.program -> res RTL.program.
-(* Parameter C2R_SM: SimMem.class. *)
-(* Parameter C2R_SU: Sound.class. *)
-(* Parameter C2R_SS: SimSymb.class C2R_SM. *)
-Parameter CM2R_sim_mod: forall
-    src tgt
-    (TRANSF: CM2R src = OK tgt)
-  ,
-    exists ss,
-      <<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top (ModPair.mk (CminorC.module src) (RTLC.module tgt) ss)>>
+(* TODO: Move to more proper place *)
+Lemma backward_simulation_refl
+      SEM
+  :
+    backward_simulation SEM SEM
 .
+Proof.
+  eapply (@Backward_simulation _ _ unit bot2).
+  econs; eauto.
+  { apply unit_ord_wf. }
+  ii. ss.
+  exists tt.
+  esplits; eauto.
+  clear st_init_src_ INITSRC INITTGT.
+  rename st_init_tgt into st. revert st.
+  pcofix CIH. i. pfold.
+  econs; eauto.
+  { ii. esplits; eauto. econs; eauto. }
+  ii. econs; eauto.
+  { ii. esplits; eauto. left. apply plus_one. ss. }
+  i. r in SAFESRC. specialize (SAFESRC st (star_refl _ _ _ _)). ss.
+Qed.
 
 
+
+
+Ltac lift :=
+  eapply mixed_to_backward_simulation;
+  rpapply adequacy_local;
+  [|
+   instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _); ss; f_equal; u; rewrite map_app; ss
+   |
+   u; rewrite map_app; ss
+  ];
+  r; rewrite Forall_forall in *; ii;
+  rewrite in_app_iff in *; des; eauto;
+  rewrite in_app_iff in *; des; eauto; ss; des; ss; clarify
+.
 
 Section Cstrategy.
 
@@ -119,16 +143,7 @@ Section Cstrategy.
                           (sem (cps.(ProgPair.tgt) ++ [(CstrategyC.module tgt).(Mod.Atomic.trans)] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply CstrategyC.sim_mod; eauto.
   Qed.
 
@@ -157,16 +172,7 @@ Section SimplExpr.
                           (sem (cps.(ProgPair.tgt) ++ [ClightC.module1 tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply SimplExprproofC.sim_mod; eauto.
     eapply SimplExprproof.transf_program_match; eauto.
   Qed.
@@ -196,16 +202,7 @@ Section SimplLocals.
                           (sem (cps.(ProgPair.tgt) ++ [ClightC.module2 tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply SimplLocalsproofC.sim_mod; eauto.
     eapply SimplLocalsproof.match_transf_program; eauto.
   Qed.
@@ -235,16 +232,7 @@ Section Cshmgen.
                           (sem (cps.(ProgPair.tgt) ++ [CsharpminorC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply CshmgenproofC.sim_mod; eauto.
     eapply Cshmgenproof.transf_program_match; eauto.
   Qed.
@@ -274,16 +262,7 @@ Section Cminorgen.
                           (sem (cps.(ProgPair.tgt) ++ [CminorC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply CminorgenproofC.sim_mod; eauto.
     eapply Cminorgenproof.transf_program_match; eauto.
   Qed.
@@ -292,13 +271,12 @@ End Cminorgen.
 
 
 
-Section CM2R.
+Section Selection.
 
-  (* Local Existing Instance C2R_SM. *)
-  (* Local Existing Instance C2R_SU. *)
-  (* Local Existing Instance C2R_SS. *)
-  Local Existing Instance SimMemInjC.SimMemInj | 0.
-  Local Existing Instance SimMemInjC.SimSymbId | 0.
+  Require SelectionproofC.
+
+  Local Existing Instance SimMemExt.SimMemExt | 0.
+  Local Existing Instance SimMemExt.SimSymbExtends | 0.
   Local Existing Instance SoundTop.Top | 0.
 
   Variable cps: list ModPair.t.
@@ -306,32 +284,54 @@ Section CM2R.
   Hypothesis CSIM: Forall ModPair.sim cps.
   Hypothesis ASIM: Forall ModPair.sim aps.
 
-  Lemma CM2R_correct
+  Lemma Selection_correct
         src tgt
-        (TRANSF: CM2R src = OK tgt)
+        (TRANSF: Selection.sel_program src = OK tgt)
     :
       backward_simulation (sem (cps.(ProgPair.src) ++ [CminorC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [CminorSelC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    lift.
+    eapply SelectionproofC.sim_mod; eauto.
+    eapply Selectionproof.transf_program_match; eauto.
+  Qed.
+
+End Selection.
+
+
+
+Section RTLgen.
+
+  Require RTLgenproofC.
+
+  Local Existing Instance SimMemExt.SimMemExt | 0.
+  Local Existing Instance SimMemExt.SimSymbExtends | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+
+  Lemma RTLgen_correct
+        src tgt
+        (TRANSF: RTLgen.transl_program src = OK tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [CminorSelC.module src] ++ aps.(ProgPair.src)))
                           (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    exploit (CM2R_sim_mod); eauto. i; des.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
-    eauto.
+    lift.
+    eapply RTLgenproofC.sim_mod; eauto.
+    eapply RTLgenproof.transf_program_match; eauto.
   Qed.
 
-End CM2R.
+End RTLgen.
 
 
-Section Renumber.
+
+Section Renumber0.
 
   Require RenumberproofC.
 
@@ -344,7 +344,7 @@ Section Renumber.
   Hypothesis CSIM: Forall ModPair.sim cps.
   Hypothesis ASIM: Forall ModPair.sim aps.
 
-  Lemma Renumber_correct
+  Lemma Renumber0_correct
         src tgt
         (TRANSF: Renumber.transf_program src = tgt)
     :
@@ -352,21 +352,178 @@ Section Renumber.
                           (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply RenumberproofC.sim_mod; eauto.
     eapply Renumberproof.transf_program_match; eauto.
   Qed.
 
-End Renumber.
+End Renumber0.
+
+
+
+Section Tailcall.
+
+  Require Import TailcallproofC.
+
+  Local Existing Instance SimMemExt.SimMemExt | 0.
+  Local Existing Instance SimMemExt.SimSymbExtends | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
+  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
+
+  Lemma Tailcall_correct
+        src tgt
+        (TRANSF: total_if optim_tailcalls Tailcall.transf_program src = tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    unfold total_if in *. des_ifs; cycle 1.
+    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
+    lift.
+    eapply TailcallproofC.sim_mod; eauto.
+    eapply Tailcallproof.transf_program_match; eauto.
+  Qed.
+
+End Tailcall.
+
+
+
+Section Inlining.
+
+  Require Import InliningproofC.
+
+  Local Existing Instance SimMemInjC.SimMemInj | 0.
+  Local Existing Instance SimMemInjC.SimSymbId | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+
+  Lemma Inlining_correct
+        src tgt
+        (TRANSF: Inlining.transf_program src = OK tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    lift.
+    eapply InliningproofC.sim_mod; eauto.
+    eapply Inliningproof.transf_program_match; eauto.
+  Qed.
+
+End Inlining.
+
+
+
+Section Constprop.
+
+  Require Import ConstpropproofC.
+
+  Local Existing Instance SimMemExt.SimMemExt | 0.
+  Local Existing Instance SimMemExt.SimSymbExtends | 0.
+  Local Existing Instance UnreachC.Unreach | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
+  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
+
+  Lemma Constprop_correct
+        src tgt
+        (TRANSF: total_if optim_constprop Constprop.transf_program src = tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    unfold total_if in *. des_ifs; cycle 1.
+    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
+    lift.
+    eapply ConstpropproofC.sim_mod; eauto.
+    eapply Constpropproof.transf_program_match; eauto.
+  Qed.
+
+End Constprop.
+
+
+
+Section Renumber1.
+
+  Require RenumberproofC.
+
+  Local Existing Instance SimMemId.SimMemId | 0.
+  Local Existing Instance SimMemId.SimSymbId | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
+  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
+
+  Lemma Renumber1_correct
+        src tgt
+        (TRANSF: total_if optim_constprop Renumber.transf_program src = tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    unfold total_if in *. des_ifs; cycle 1.
+    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
+    lift.
+    eapply RenumberproofC.sim_mod; eauto.
+    eapply Renumberproof.transf_program_match; eauto.
+  Qed.
+
+End Renumber1.
+
+
+
+Section CSE.
+
+  Require CSEproofC.
+
+  Local Existing Instance SimMemExt.SimMemExt | 0.
+  Local Existing Instance SimMemExt.SimSymbExtends | 0.
+  Local Existing Instance UnreachC.Unreach | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
+  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
+
+  Lemma CSE_correct
+        src tgt
+        (TRANSF: partial_if optim_CSE CSE.transf_program src = OK tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    unfold partial_if in *. des_ifs; cycle 1.
+    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
+    lift.
+    eapply CSEproofC.sim_mod; eauto.
+    eapply CSEproof.transf_program_match; eauto.
+  Qed.
+
+End CSE.
 
 
 
@@ -378,25 +535,20 @@ Section Deadcode.
   Variable aps: list ModPair.t.
   Hypothesis CSIM: Forall ModPair.sim cps.
   Hypothesis ASIM: Forall ModPair.sim aps.
+  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
+  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
 
   Lemma Deadcode_correct
         src tgt
-        (TRANSF: Deadcode.transf_program src = OK tgt)
+        (TRANSF: partial_if optim_redundancy Deadcode.transf_program src = OK tgt)
     :
       backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
                           (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    unfold partial_if in *. des_ifs; cycle 1.
+    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
+    lift.
     eapply DeadcodeproofC.sim_mod; eauto.
     eapply Deadcodeproof.transf_program_match; eauto.
   Qed.
@@ -426,16 +578,7 @@ Section Unusedglob.
                           (sem (cps.(ProgPair.tgt) ++ [RTLC.module2 tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply UnusedglobproofC.sim_mod; eauto.
     eapply Unusedglobproof.transf_program_match; eauto.
   Qed.
@@ -470,16 +613,7 @@ Section Allocation.
                           (sem (cps.(ProgPair.tgt) ++ [LTLC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply AllocproofC.sim_mod; eauto.
     eapply Allocproof.transf_program_match; eauto.
   Qed.
@@ -488,8 +622,33 @@ End Allocation.
 
 
 
+Section Tunneling.
 
+  Require Import TunnelingproofC.
 
+  Local Existing Instance SimMemExt.SimMemExt | 0.
+  Local Existing Instance SimMemExt.SimSymbExtends | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+
+  Lemma Tunneling_correct
+        src tgt
+        (TRANSF: Tunneling.tunnel_program src = tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [LTLC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [LTLC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    lift.
+    eapply TunnelingproofC.sim_mod; eauto.
+    eapply Tunnelingproof.transf_program_match; eauto.
+  Qed.
+
+End Tunneling.
 
 
 
@@ -514,16 +673,7 @@ Section Linearize.
                           (sem (cps.(ProgPair.tgt) ++ [LinearC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply LinearizeproofC.sim_mod; eauto.
     eapply Linearizeproof.transf_program_match; eauto.
   Qed.
@@ -532,7 +682,67 @@ End Linearize.
 
 
 
+Section CleanupLabels.
 
+  Require Import CleanupLabelsproofC.
+
+  Local Existing Instance SimMemId.SimMemId | 0.
+  Local Existing Instance SimMemId.SimSymbId | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+
+  Lemma CleanupLabels_correct
+        src tgt
+        (TRANSF: CleanupLabels.transf_program src = tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [LinearC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [LinearC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    lift.
+    eapply CleanupLabelsproofC.sim_mod; eauto.
+    eapply CleanupLabelsproof.transf_program_match; eauto.
+  Qed.
+
+End CleanupLabels.
+
+
+
+Section Debugvar.
+
+  Require Import DebugvarproofC.
+
+  Local Existing Instance SimMemId.SimMemId | 0.
+  Local Existing Instance SimMemId.SimSymbId | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
+  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
+
+  Lemma Debugvar_correct
+        src tgt
+        (TRANSF: partial_if debug Debugvar.transf_program src = OK tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [LinearC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [LinearC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    unfold partial_if in *. des_ifs; cycle 1.
+    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
+    lift.
+    eapply DebugvarproofC.sim_mod; eauto.
+    eapply Debugvarproof.transf_program_match; eauto.
+  Qed.
+
+End Debugvar.
 
 
 
@@ -558,16 +768,7 @@ Section Stacking.
                           (sem (cps.(ProgPair.tgt) ++ [MachC.module tgt Asmgenproof0.return_address_offset] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply StackingproofC.sim_mod; eauto.
     { eapply Asmgenproof.return_address_exists; eauto. }
     { admit "ez - ask @yonghyunkim. int2ptr repository has the proof (10 LOC?)". }
@@ -602,16 +803,7 @@ Section Asmgen.
                           (sem (cps.(ProgPair.tgt) ++ [AsmC.module tgt] ++ aps.(ProgPair.tgt)))
   .
   Proof.
-    eapply mixed_to_backward_simulation.
-    rpapply adequacy_local; cycle 1.
-    { instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _). ss. f_equal.
-      u. rewrite map_app. ss.
-    }
-    { u. rewrite map_app. ss. }
-    r. rewrite Forall_forall in *. ii.
-    rewrite in_app_iff in *. des; eauto.
-    rewrite in_app_iff in *. des; eauto.
-    ss. des; ss. clarify.
+    lift.
     eapply AsmgenproofC.sim_mod; eauto.
     eapply Asmgenproof.transf_program_match; eauto.
   Qed.
@@ -621,47 +813,6 @@ End Asmgen.
 
 
 
-Let transf_c_program: Csyntax.program -> res Asm.program :=
-  fun src => (SimplExpr.transl_program src) @@@ SimplLocals.transf_program @@@ Cshmgen.transl_program @@@
-                 Cminorgen.transl_program @@@ CM2R @@ Renumber.transf_program @@@
-                 Deadcode.transf_program @@@ Unusedglob.transform_program @@@
-                 Allocation.transf_program @@@ Linearize.transf_program @@@ Stacking.transf_program @@@
-                 Asmgen.transf_program
-.
-
-Goal transf_c_program = Compiler.transf_c_program.
-Proof.
-  apply func_ext1. intro pp.
-  unfold transf_c_program. unfold Compiler.transf_c_program. unfold transf_clight_program. ss.
-  unfold transf_cminor_program. cbn.
-  unfold transf_rtl_program. cbn.
-  unfold time. unfold total_if.
-  unfold print. cbn.
-  admit "A guard admit (not to forget) - you should use Compiler.transf_c_program at the end!".
-Qed.
-
-(* TODO: this is not used, remove it *)
-Lemma backward_simulation_refl
-      SEM
-  :
-    backward_simulation SEM SEM
-.
-Proof.
-  eapply (@Backward_simulation _ _ unit bot2).
-  econs; eauto.
-  { apply unit_ord_wf. }
-  ii. ss.
-  exists tt.
-  esplits; eauto.
-  clear st_init_src_ INITSRC INITTGT.
-  rename st_init_tgt into st. revert st.
-  pcofix CIH. i. pfold.
-  econs; eauto.
-  { ii. esplits; eauto. econs; eauto. }
-  ii. econs; eauto.
-  { ii. esplits; eauto. left. apply plus_one. ss. }
-  i. r in SAFESRC. specialize (SAFESRC st (star_refl _ _ _ _)). ss.
-Qed.
 
 (* From stdpp Require list. *)
 
@@ -695,9 +846,18 @@ Lemma compiler_correct_single
              (sem ((map CsemC.module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
 .
 Proof.
-  unfold transf_c_program in *. unfold apply_total, apply_partial in *. des_ifs.
+  unfold transf_c_program in *. unfold transf_clight_program in *.
+  unfold transf_cminor_program in *. unfold transf_rtl_program in *. unfold time in *.
+  (* unfold total_if, partial_if in *. *)
+  unfold print in *. cbn in *.
+  unfold apply_total, apply_partial in *. des_ifs_safe.
 
-  set (Renumber.transf_program p5) as p42.
+  set (total_if optim_tailcalls Tailcall.transf_program p1) as ptail in *.
+  set (Renumber.transf_program p10) as prenum0 in *.
+  set (total_if optim_constprop Constprop.transf_program prenum0) as pconst in *.
+  set (total_if optim_constprop Renumber.transf_program pconst) as prenum1 in *.
+  set (Tunneling.tunnel_program p6) as ptunnel in *.
+  set (CleanupLabels.transf_program p5) as pclean in *.
 
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_drop cs). intro SRCINJDROP; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_id cs). intro SRCINJID; des.
@@ -757,164 +917,42 @@ Proof.
       end
   .
 
+  Ltac next PASS_CORRECT :=
+    etrans; [
+      eapply bsim_improves; rp; [eapply PASS_CORRECT|..]; try refl; [find_sim Csyntax.program|find_sim Asm.program|..];
+      try (by unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto)
+     |];
+    folder
+  .
 
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Cstrategy_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  repeat all ltac:(fun H => rewrite H).
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply SimplExpr_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  repeat all ltac:(fun H => rewrite H).
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply SimplLocals_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  repeat all ltac:(fun H => rewrite H).
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Cshmgen_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  repeat all ltac:(fun H => rewrite H).
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Cminorgen_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  repeat all ltac:(fun H => rewrite H).
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply CM2R_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  repeat all ltac:(fun H => rewrite H).
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Renumber_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  repeat all ltac:(fun H => rewrite H).
-  
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Deadcode_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  repeat all ltac:(fun H => rewrite H).
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Unusedglob_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-  repeat all ltac:(fun H => rewrite H).
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Allocation_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Linearize_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Stacking_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    { eexists. eapply transf_program_match; eauto. }
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
-
-  etrans.
-  {
-    eapply bsim_improves.
-    rp; [eapply Asmgen_correct|..]; try refl.
-    { find_sim Csyntax.program. }
-    { find_sim Asm.program. }
-    eauto.
-    unfold __GUARD__ in *. des.
-    all ltac:(fun H => rewrite H). eauto.
-  }
+  next Cstrategy_correct.
+  next SimplExpr_correct.
+  next SimplLocals_correct.
+  next Cshmgen_correct.
+  next Cminorgen_correct.
+  next Selection_correct.
+  next RTLgen_correct.
+  next Tailcall_correct.
+  next Inlining_correct.
+  next Renumber0_correct.
+  next Constprop_correct.
+  next Renumber1_correct.
+  next CSE_correct.
+  next Deadcode_correct.
+  next Unusedglob_correct.
+  next Allocation_correct.
+  next Tunneling_correct.
+  next Linearize_correct.
+  next CleanupLabels_correct.
+  next Debugvar_correct.
+  next Stacking_correct.
+  { eexists. eapply transf_program_match; eauto. }
+  next Asmgen_correct.
 
   unfold __GUARD__ in *. des.
   repeat all ltac:(fun H => rewrite H).
   refl.
+
 Qed.
 
 

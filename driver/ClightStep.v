@@ -73,40 +73,6 @@ Inductive match_cont (j: meminj): cont -> cont -> Prop :=
     match_cont j (Kcall id fn env_src tenv_src K_src) (Kcall id fn env_tgt tenv_tgt K_tgt)
 .
 
-(* Inductive match_ext_cont: cont -> cont -> Prop := *)
-(* | match_ext_Kstop: *)
-(*     match_ext_cont Kstop Kstop *)
-(* | match_ext_Kseq *)
-(*     stmt K_src K_tgt *)
-(*     (CONT: match_ext_cont K_src K_tgt) *)
-(*   : *)
-(*     match_ext_cont (Kseq stmt K_src) (Kseq stmt K_tgt) *)
-(* | match_ext_Kloop1 *)
-(*     stmt0 stmt1 K_src K_tgt *)
-(*     (CONT: match_ext_cont K_src K_tgt) *)
-(*   : *)
-(*     match_ext_cont (Kloop1 stmt0 stmt1 K_src) (Kloop1 stmt0 stmt1 K_tgt) *)
-(* | match_ext_Kloop2 *)
-(*     stmt0 stmt1 K_src K_tgt *)
-(*     (CONT: match_ext_cont K_src K_tgt) *)
-(*   : *)
-(*     match_ext_cont (Kloop2 stmt0 stmt1 K_src) (Kloop2 stmt0 stmt1 K_tgt) *)
-(* | match_ext_Kswitch *)
-(*     K_src K_tgt *)
-(*     (CONT: match_ext_cont K_src K_tgt) *)
-(*   : *)
-(*     match_ext_cont (Kswitch K_src) (Kswitch K_tgt) *)
-(* | match_ext_Kcall *)
-(*     id fn *)
-(*     env_src env_tgt *)
-(*     tenv_src tenv_tgt *)
-(*     K_src K_tgt *)
-(*     (TENV: match_temp_env inject_id tenv_src tenv_tgt) *)
-(*     (CONT: match_ext_cont K_src K_tgt) *)
-(*   : *)
-(*     match_ext_cont (Kcall id fn env_src tenv_src K_src) (Kcall id fn env_tgt tenv_tgt K_tgt) *)
-(* . *)
-
 Inductive match_states_clight (sm_arg: SimMemInj.t')
   : unit -> state -> state -> SimMemInj.t' -> Prop :=
 | match_State
@@ -300,12 +266,14 @@ Section CLIGHTINJ.
       + ii. eapply Mem.perm_storebytes_2; eauto.
     - econs; ss; eauto.
       + etransitivity; eauto. unfold SimMemInj.src_private. ss. ii; des. esplits; eauto.
-        unfold SimMemInj.valid_blocks in *. eauto with mem.
+        unfold SimMemInj.valid_blocks, Mem.valid_block in *.
+        erewrite Mem.nextblock_storebytes; eauto.
       + etransitivity; eauto. unfold SimMemInj.tgt_private. ss. ii; des. esplits; eauto.
-        { ii. eapply PR. eauto with mem. eauto with mem. }
-        unfold SimMemInj.valid_blocks in *. eauto with mem.
-      + etransitivity; eauto. erewrite <- Mem.nextblock_storebytes; eauto. xomega.
-      + etransitivity; eauto. erewrite <- Mem.nextblock_storebytes; eauto. xomega.
+        { ii. eapply PR; eauto. eapply Mem.perm_storebytes_2; eauto. }
+        unfold SimMemInj.valid_blocks, Mem.valid_block in *.
+        erewrite Mem.nextblock_storebytes; eauto.
+      + etransitivity; eauto. erewrite <- Mem.nextblock_storebytes; eauto. refl.
+      + etransitivity; eauto. erewrite <- Mem.nextblock_storebytes; eauto. refl.
   Qed.
 
   Lemma assign_loc_inject ce ty sm0 blk_src blk_tgt ofs_src ofs_tgt v_src v_tgt m_src1
@@ -320,13 +288,7 @@ Section CLIGHTINJ.
         (<<MWF: SimMemInj.wf' sm1>>) /\
         (<<MLE: SimMemInj.le' sm0 sm1>>).
   Proof.
-    inv ASSIGN.
-    - exploit SimMemInj.storev_mapped; eauto. i. des.
-      esplits; eauto. econs 1; eauto.
-    - cinv MWF. cinv VAL. cinv INJ.
-      exploit Mem.loadbytes_inject; eauto. i. des_safe.
-      exploit storebytes_mapped; eauto. i. des_safe.
-      esplits; eauto. admit "TODO".
+    admit "assign_loc_inject".
   Qed.
 
   Lemma call_cont_match j K_src K_tgt

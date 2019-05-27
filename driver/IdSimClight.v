@@ -203,13 +203,13 @@ Proof.
     + refl.
 
   - left. i. split.
-    + admit "receptive".
+    + eapply modsem1_receptive.
     + ii. exploit clight_step_preserve_injection; try eassumption.
       { instantiate (1:=cgenv skenv_link_tgt clight). ss. }
       { eapply function_entry1_inject. ss. }
       i. des. esplits; eauto.
       left. apply plus_one. econs; ss; eauto.
-      admit "determinate".
+      eapply modsem1_determinate.
 Qed.
 
 Lemma clight2_id
@@ -322,12 +322,12 @@ Proof.
     + econs; eauto.
 
   - left. i. split.
-    { admit "receptive_at". }
+    { eapply modsem2_receptive. }
     ii. exploit clight_step_preserve_extension; eauto.
     { eapply function_entry2_extends. }
     i. des. esplits; eauto.
     left. apply plus_one. econs; ss; eauto.
-    admit "determinate".
+    eapply modsem2_determinate.
 Qed.
 
 
@@ -393,12 +393,12 @@ Proof.
     + econs; eauto.
 
   - left. i. split.
-    { admit "receptive_at". }
+    { eapply modsem2_receptive. }
     ii. exploit clight_step_preserve_extension; eauto.
     { eapply function_entry2_extends. }
     i. des. esplits; eauto.
     left. apply plus_one. econs; ss; eauto.
-    admit "determinate".
+    eapply modsem2_determinate.
 Qed.
 
 Lemma clight2_inj_drop_bot
@@ -468,13 +468,13 @@ Proof.
     + refl.
 
   - left. i. split.
-    + admit "receptive".
+    + eapply modsem2_receptive.
     + ii. exploit clight_step_preserve_injection; try eassumption.
       { instantiate (1:=cgenv skenv_link_tgt clight). ss. }
       { eapply function_entry2_inject. ss. }
       i. des. esplits; eauto.
       left. apply plus_one. econs; ss; eauto.
-      admit "determinate".
+      eapply modsem2_determinate.
 Qed.
 
 Lemma clight2_inj_drop

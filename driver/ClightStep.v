@@ -1352,3 +1352,321 @@ Section CLIGHTEXT.
   Qed.
 
 End CLIGHTEXT.
+
+Section CLIGHTSOUNDSTATE.
+
+  Variable skenv_link: SkEnv.t.
+  Variable su: Sound.t.
+
+  Definition sound_env (en: env) :=
+    forall id blk ty (ENV: en ! id = Some (blk, ty)),
+      su.(Unreach.unreach) blk = false.
+
+  Definition sound_temp_env (tenv: temp_env) :=
+    forall id v (ENV: tenv ! id = Some v),
+      UnreachC.val' su v.
+
+  Inductive sound_cont: cont -> Prop :=
+  | sound_Kstop:
+      sound_cont Kstop
+  | sound_Kseq
+      stmt K
+      (CONT: sound_cont K)
+    :
+      sound_cont (Kseq stmt K)
+  | sound_Kloop1
+      stmt0 stmt1 K
+      (CONT: sound_cont K)
+    :
+      sound_cont (Kloop1 stmt0 stmt1 K)
+  | sound_Kloop2
+      stmt0 stmt1 K
+      (CONT: sound_cont K)
+    :
+      sound_cont (Kloop2 stmt0 stmt1 K)
+  | sound_Kswitch
+      K
+      (CONT: sound_cont K)
+    :
+      sound_cont (Kswitch K)
+  | sound_Kcall
+      id fn en tenv K
+      (ENV: sound_env en)
+      (TENV: sound_temp_env tenv)
+      (CONT: sound_cont K)
+    :
+      sound_cont (Kcall id fn en tenv K)
+  .
+
+  Inductive sound_state_clight
+    : state -> Prop :=
+  | sound_State
+      fn stmt K en tenv m
+      (WF: Sound.wf su)
+      (* (MLE: Unreach.mle su m_init m) *)
+      (MEM: UnreachC.mem' su m)
+      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
+      (ENV: sound_env en)
+      (TENV: sound_temp_env tenv)
+      (CONT: sound_cont K)
+    :
+      sound_state_clight (State fn stmt K en tenv m)
+  | sound_Callstate
+      fptr ty args K m
+      (WF: Sound.wf su)
+      (* (MLE: Unreach.mle su m_init m) *)
+      (MEM: UnreachC.mem' su m)
+      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
+      (FPTR: UnreachC.val' su fptr)
+      (VALS: Sound.vals su args)
+      (CONT: sound_cont K)
+    :
+      sound_state_clight
+        (* m_init *)
+        (Callstate fptr ty args K m)
+  | sound_Returnstate
+      retv K m
+      (WF: Sound.wf su)
+      (* (MLE: Unreach.mle su m_init m) *)
+      (MEM: UnreachC.mem' su m)
+      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
+      (RETV: UnreachC.val' su retv)
+      (CONT: sound_cont K)
+    :
+      sound_state_clight
+        (* m_init *)
+        (Returnstate retv K m)
+  .
+
+End CLIGHTSOUNDSTATE.
+
+
+Section CLIGHTSOUND.
+
+  Variable skenv_link: SkEnv.t.
+
+  Lemma clight_unreach_local_preservation
+        clight
+    :
+      exists sound_state, <<PRSV: local_preservation (modsem2 skenv_link clight) sound_state>>
+  .
+  Proof.
+    esplits.
+    eapply local_preservation_strong_horizontal_spec with (sound_state := sound_state_clight skenv_link); eauto.
+    econs; ss; i.
+    - inv INIT. ss. inv SUARG. des. esplits.
+      + refl.
+      + econs; eauto.
+        * inv SKENV. eauto.
+        * inv TYP. revert VALS. clear.
+          generalize (sig_args (signature_of_function fd)). generalize (Args.vs args).
+          induction l; ss; eauto. i. inv VALS.
+          unfold typify_list. ss. des_ifs. econs.
+          { unfold typify. des_ifs. }
+          { eapply IHl; eauto. }
+        * econs.
+      + instantiate (1:=get_mem). ss. refl.
+
+    -
+
+      des.
+      hexploit clight_step_preserve_injection; eauto.
+      { eapply function_entry2_inject. eauto. }
+      {
+
+        instantiate (2:=st0). instantiate (2:=tt).
+        instantiate (1:=SimMemInj.mk
+                          (get_mem st0)
+                          (get_mem st0)
+                          (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0)))
+                          (loc_unmapped (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) /2\ SimMemInj.valid_blocks (get_mem st0))
+                          (loc_out_of_reach (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) (get_mem st0) /2\ SimMemInj.valid_blocks (get_mem st0))
+                          _ _).
+        inv SUST; econs; ss; eauto.
+        - econs; ss; eauto.
+          + eapply UnreachC.to_inj_mem. eauto.
+      + unfold SimMemInj.tgt_private. ss.
+
+
+
+        econs; eauto.
+
+                .
+
+
+        instantiate (1:=UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))).
+        ii. ss. des_ifs. unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
+        esplits; eauto.
+      }
+
+
+      { instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm).
+        instantiate (1:=UnreachC.to_inj su0 (Mem.nextblock m)).
+        ii. ss. des_ifs. unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
+        esplits; eauto.
+      }
+      { inv SUST. ii. ss. esplits; eauto.
+        unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
+        - eapply Genv.genv_symb_range in FINDSRC. ss.
+          exfalso. ss. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
+        - eapply Genv.genv_symb_range in FINDSRC. ss. exfalso. apply n.
+          inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto. }
+      { inv SUST. eapply symbols_inject_weak_imply.
+        instantiate (1:=skenv_link). unfold symbols_inject. esplits; ss.
+        - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs; ss.
+        - unfold UnreachC.to_inj, Mem.flat_inj. ii. esplits; eauto. des_ifs.
+          + eapply Genv.genv_symb_range in H0. ss.
+            exfalso. ss. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
+          + eapply Genv.genv_symb_range in H0. ss. exfalso. apply n.
+            inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto.
+        - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs.
+      }
+
+      admit "sound step".
+
+    - inv AT. inv SUST. ss. split; [red; refl|].
+      exploit Sound.greatest_ex.
+      + exists su0. instantiate (1:=Args.mk fptr_arg vs_arg m0).
+        instantiate (1:=su0). split.
+        * red. refl.
+        * econs; ss; eauto.
+      + i. des. splits; auto.
+        { econs; eauto. }
+
+        SimMemInj.le'
+        exists su_gr. esplits; eauto.
+        i. inv AFTER. inv RETV. inv GR. des. ss.
+        assert(GRARGS: Sound.args su_gr (Args.mk fptr_arg vs_arg m0)).
+        { rr in GR. des. ss. }
+        set (su1 := Unreach.mk (fun blk =>
+                                  if plt blk (Mem.nextblock m0)
+                                  then su0.(Unreach.unreach) blk
+                                  else su_ret.(Unreach.unreach) blk)
+                               su0.(Unreach.ge_nb) (Retv.m retv).(Mem.nextblock)).
+        assert(LEOLD: Unreach.hle_old su_gr su_ret).
+        { eapply Unreach.hle_hle_old; et. rr in GRARGS. des. ss. }
+
+
+        assert(HLEA: Sound.hle su0 su1).
+        { unfold su1. rr. ss.
+          inv MEM. rewrite NB in *.
+          esplits; et.
+          - ii. des_ifs.
+          - inv MLE. eapply Mem.unchanged_on_nextblock; eauto.
+        }
+        assert(LEA: UnreachC.le' su0 su1).
+        { unfold su1.
+          rr. ss. esplits; eauto.
+          ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto.
+        }
+        assert(LEB: UnreachC.le' su1 su_ret).
+        { rr in GR. des. unfold su1.
+          rr. ss. esplits; eauto.
+          - ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto.
+          - rr in LE. des. rr in LE0. des. congruence.
+        }
+
+
+        exists su1. splits; eauto.
+        * econs; eauto.
+          { admit "sound wf". }
+          {
+
+          econs; ss; eauto; splits; ss.
+          { admit "??". }
+          { inv MLE. inv MEM. rewrite NB.
+            eapply Mem.unchanged_on_nextblock; eauto. }
+        * econs; eauto.
+
+            rewrite NB.
+            etrans; eauto.
+
+            ii. exploit Sound.hle_spec
+Sound.mle
+
+
+
+    -
+
+
+      admit "".
+
+    - inv FINAL. inv SUST. esplits; eauto.
+      + refl.
+      + econs; eauto.
+
+        exists su_ret. splits; eauto.
+        * inv LE0. inv LE0. econs.
+
+
+          Sound.hle etrans; eauto. inv LE0. econs; eauto.
+          { ii.
+
+          ii.
+
+
+          admit "".
+        * econs; eauto.
+          {
+
+
+            eapply (@Sound.hle_le UnreachC.Unreach) in LE; eauto.
+
+            inv LE0. des.
+            rewrite <- GENB.
+
+            erewrite <- H0; eauto.
+
+
+            etrans; eauto.
+
+          etrans; eauto. Sound.hle eapply Sound.le_hle; eauto. Sound.hle
+
+
+        set (su1 := Unreach.mk (fun blk =>
+                                  if plt blk (Mem.nextblock m0)
+                                  then su0.(Unreach.unreach) blk
+                                  else su_ret.(Unreach.unreach) blk)
+                               su0.(Unreach.ge_nb) m2.(Mem.nextblock)).
+        exists su1.
+
+
+
+        econs; eauto.
+        * etrans; eauto. des.
+          eapply (@Sound.le_spec UnreachC.Unreach); eauto.
+        * admit "?".
+        * admit "??".
+    - inv FINAL. inv SUST. esplits; eauto.
+      + refl.
+      + econs; eauto.
+  Qed.
+
+    eapply local_preservation_strong_horizontal_excl_spec with (sound_state := (sound_state)); eauto.
+    instantiate (1:= AsmC.get_mem).
+    eapply local_preservation_strong_horizontal_excl_intro with
+        (has_footprint := has_footprint)
+
+
+set (su1 := Unreach.mk (fun blk =>
+                                  if plt blk (Mem.nextblock m0)
+                                  then su0.(Unreach.unreach) blk
+                                  else su_ret.(Unreach.unreach) blk
+                               )
+                               su0.(Unreach.ge_nb) m2.(Mem.nextblock)).
+        exists su1.
+
+
+
+  Definition sound_state_ccc (su: Sound.t): state -> Prop :=
+    admit "fill it".
+
+
+Lemma clight_unreach_local_preservation
+      clight
+  :
+    exists sound_state, <<PRSV: local_preservation (modsem skenv_link clig) sound_state>>
+.
+Proof.
+  admit "TODO".
+Qed.

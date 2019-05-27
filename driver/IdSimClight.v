@@ -271,6 +271,83 @@ Proof.
   admit "this should hold".
 Qed.
 
+Section CLIGHTSOUND.
+
+  Variable skenv_link: SkEnv.t.
+
+  Inductive sound_state (su: Sound.t) (m_init: mem): AsmC.state -> Prop :=
+  | sound_state_intro
+      init_rs rs0 m0
+      (MLE: Unreach.mle su m_init m0)
+      (RS: forall pr, UnreachC.val' su (rs0#pr))
+      (MEM: UnreachC.mem' su m0)
+      (INIT: forall pr, UnreachC.val' su (init_rs#pr))
+      (WF: forall blk (PRIV: su.(Unreach.unreach) blk) (PUB: Plt blk su.(Unreach.ge_nb)), False)
+      (SKE: su.(Unreach.ge_nb) = skenv.(Genv.genv_next))
+    :
+      sound_state skenv su m_init (mkstate init_rs (State rs0 m0))
+  .
+
+
+
+  Inductive sound_state_clight (su: Sound.t) (m_init: mem)
+    : state -> Prop :=
+  | match_ext_State
+      fn stmt K en tenv_tgt m
+      (MLE: Unreach.mle su m_init m)
+      (MEM: UnreachC.mem' su m)
+      (ENV: match_env inject_id env_src env_tgt)
+      (TENV: match_temp_env inject_id tenv_src tenv_tgt)
+      (CONT: match_cont inject_id K_src K_tgt)
+    :
+      match_states_ext_clight
+        sm_arg tt
+        (State fn stmt K_src env_src tenv_src m_src)
+        (State fn stmt K_tgt env_tgt tenv_tgt m_tgt)
+        sm0
+  | match_ext_Callstate
+      fptr_src fptr_tgt ty args_src args_tgt K_src K_tgt m_src m_tgt sm0
+      (MWFSRC: m_src = sm0.(SimMemExt.src))
+      (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+      (MWF: Mem.extends m_src m_tgt)
+      (INJ: Val.lessdef fptr_src fptr_tgt)
+      (VALS: Val.lessdef_list args_src args_tgt)
+      (CONT: match_cont inject_id K_src K_tgt)
+    :
+      match_states_ext_clight
+        sm_arg tt
+        (Callstate fptr_src ty args_src K_src m_src)
+        (Callstate fptr_tgt ty args_tgt K_tgt m_tgt)
+        sm0
+  | match_ext_Returnstate
+      retv_src retv_tgt K_src K_tgt m_src m_tgt sm0
+      (MWFSRC: m_src = sm0.(SimMemExt.src))
+      (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+      (MWF: Mem.extends m_src m_tgt)
+      (INJ: Val.lessdef retv_src retv_tgt)
+      (CONT: match_cont inject_id K_src K_tgt)
+    :
+      match_states_ext_clight
+        sm_arg tt
+        (Returnstate retv_src K_src m_src)
+        (Returnstate retv_tgt K_tgt m_tgt)
+        sm0
+  .
+
+
+  Definition sound_state_ccc (su: Sound.t): state -> Prop :=
+    admit "fill it".
+
+
+Lemma clight_unreach_local_preservation
+      clight
+  :
+    exists sound_state, <<PRSV: local_preservation (modsem skenv_link clig) sound_state>>
+.
+Proof.
+  admit "TODO".
+Qed.
+
 Lemma clight2_ext_unreach
       (clight: Clight.program)
   :
@@ -280,18 +357,134 @@ Lemma clight2_ext_unreach
       /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
 .
 Proof.
-  admit "this should hold".
+  eexists (ModPair.mk _ _ _); s.
+  esplits; eauto. instantiate (1:=tt).
+  econs; ss; i.
+  destruct SIMSKENVLINK.
+  exploit ccc_unreach_local_preservation. i. des.
+  eapply match_states_sim with (match_states := match_states_ext_ccc); ss.
+  - apply unit_ord_wf.
+  - eauto.
+  - i. ss.
+    inv INITTGT. inv SAFESRC. inv H.
+    inv SIMARGS. ss.
+    assert (FD: fd = fd0).
+    { ss. inv FPTR.
+      - rewrite H1 in *. clarify.
+      - rewrite <- H0 in *. clarify. } clarify.
+    esplits; eauto.
+    + econs; eauto.
+    + econs; eauto.
+      * rewrite MEMSRC. rewrite MEMTGT. eauto.
+      * econs.
+
+  - i. ss. des. inv SAFESRC. esplits. econs; ss.
+    + inv SIMARGS. ss. inv FPTR.
+      * rewrite H1 in *. eauto.
+      * rewrite <- H0 in *. clarify.
+    + inv SIMARGS. ss.
+      eapply val_inject_list_lessdef in VALS.
+      eapply typecheck_injection; eauto.
+
+  - i. ss. inv MATCH; eauto.
+
+  - i. ss. clear SOUND. inv CALLSRC. inv MATCH. ss.
+    esplits; eauto.
+    + des. inv INJ; ss; clarify.
+      econs; ss; eauto.
+      unfold is_call_cont_strong in *. des_ifs_safe.
+      inv CONT. ss.
+    + econs; ss.
+    + instantiate (1:=top4). ss.
+
+  - i. ss. clear SOUND HISTORY.
+    exists sm_ret.
+    inv AFTERSRC. inv MATCH.
+    exploit typify_c_injection; eauto.
+    { eapply val_inject_lessdef.
+      inv SIMRET. eassumption. } i. des.
+    esplits; eauto.
+    + econs; eauto.
+    + inv SIMRET. rewrite MEMSRC. rewrite MEMTGT.
+      econs; eauto. eapply val_inject_lessdef; eauto.
+
+  - i. ss. inv FINALSRC. inv MATCH. inv CONT.
+    esplits; eauto.
+    + econs.
+    + econs; eauto.
+
+  - right. i. ss.
+    admit "this should hold".
 Qed.
 
-Lemma clight2_inj_id
-      (clight: Clight.program)
+Lemma ccc_ext_top
+      (ccc: Csyntax.program)
+      (WFPROG: wf_program ccc)
   :
     exists mp,
-      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
+      (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = ccc.(module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = ccc.(module)>>)
 .
 Proof.
+  eexists (ModPair.mk _ _ _); s.
+  esplits; eauto. instantiate (1:=tt).
+  econs; ss; i.
+  destruct SIMSKENVLINK.
+  eapply match_states_sim with (match_states := match_states_ext_ccc); ss.
+  - apply unit_ord_wf.
+  - eapply SoundTop.sound_state_local_preservation.
+  - i. ss.
+    inv INITTGT. inv SAFESRC. inv H.
+    inv SIMARGS. ss.
+    assert (FD: fd = fd0).
+    { ss. inv FPTR.
+      - rewrite H1 in *. clarify.
+      - rewrite <- H0 in *. clarify. } clarify.
+    esplits; eauto.
+    + econs; eauto.
+    + econs; eauto.
+      * rewrite MEMSRC. rewrite MEMTGT. eauto.
+      * econs.
+
+  - i. ss. des. inv SAFESRC. esplits. econs; ss.
+    + inv SIMARGS. ss. inv FPTR.
+      * rewrite H1 in *. eauto.
+      * rewrite <- H0 in *. clarify.
+    + inv SIMARGS. ss.
+      eapply val_inject_list_lessdef in VALS.
+      eapply typecheck_injection; eauto.
+
+  - i. ss. inv MATCH; eauto.
+
+  - i. ss. clear SOUND. inv CALLSRC. inv MATCH. ss.
+    esplits; eauto.
+    + des. inv INJ; ss; clarify.
+      econs; ss; eauto.
+      unfold is_call_cont_strong in *. des_ifs_safe.
+      inv CONT. ss.
+    + econs; ss.
+    + instantiate (1:=top4). ss.
+
+  - i. ss. clear SOUND HISTORY.
+    exists sm_ret.
+    inv AFTERSRC. inv MATCH.
+    exploit typify_c_injection; eauto.
+    { eapply val_inject_lessdef.
+      inv SIMRET. eassumption. } i. des.
+    esplits; eauto.
+    + econs; eauto.
+    + inv SIMRET. rewrite MEMSRC. rewrite MEMTGT.
+      econs; eauto. eapply val_inject_lessdef; eauto.
+
+  - i. ss. inv FINALSRC. inv MATCH. inv CONT.
+    esplits; eauto.
+    + econs.
+    + econs; eauto.
+
+  - right. i. ss.
+    admit "this should hold".
+Qed.
   admit "this should hold".
 Qed.
 
@@ -300,6 +493,19 @@ Lemma clight2_inj_drop
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
+.
+Proof.
+  admit "this should hold".
+Qed.
+
+
+Lemma clight2_inj_id
+      (clight: Clight.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
 .

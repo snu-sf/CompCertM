@@ -222,6 +222,7 @@ Section CLIGHTINJ.
         rewrite <- CENV. auto.
   Qed.
 
+  (* TODO: move it to MemoryC *)
   Lemma storebytes_mapped
         sm0 b tb ofs bytes1 bytes2 m_src delta
         (MWF : SimMemInj.wf' sm0)
@@ -288,7 +289,74 @@ Section CLIGHTINJ.
         (<<MWF: SimMemInj.wf' sm1>>) /\
         (<<MLE: SimMemInj.le' sm0 sm1>>).
   Proof.
-    admit "assign_loc_inject".
+    cinv MWF. inv ASSIGN.
+    - exploit SimMemInj.storev_mapped; eauto. i. des. clarify.
+      esplits; eauto. econs 1; eauto.
+    - destruct (zeq (sizeof ce ty) 0).
+      + cinv VAL. cinv INJ.
+        assert (bytes = nil).
+        { exploit (Mem.loadbytes_empty (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') (sizeof ce ty)).
+          omega. congruence. } subst.
+        destruct (Mem.range_perm_storebytes (SimMemInj.tgt sm0) blk_tgt (Ptrofs.unsigned (Ptrofs.add ofs_src (Ptrofs.repr delta0))) nil)
+          as [tm' SB].
+        { simpl. red; intros; omegaContradiction. }
+        eexists (SimMemInj.mk _ tm' _ _ _ _ _); ss. esplits; cycle 3; eauto.
+        * econs; ss; eauto.
+          { eapply Mem.storebytes_unchanged_on; eauto.
+            i. ss. omega. }
+          { eapply Mem.storebytes_unchanged_on; eauto.
+            i. ss. omega. }
+          { econs. i. clear - NEW. des. clarify. }
+          { ii. eapply Mem.perm_storebytes_2; eauto. }
+          { ii. eapply Mem.perm_storebytes_2; eauto. }
+       * econs 2; eauto.
+          { intros; omegaContradiction. }
+          { intros; omegaContradiction. }
+          { rewrite e; right; omega. }
+          { apply Mem.loadbytes_empty. omega. }
+        * inv MWF. econs; ss; eauto.
+          { eapply Mem.storebytes_empty_inject; eauto. }
+          { unfold SimMemInj.src_private, SimMemInj.valid_blocks, Mem.valid_block. ss.
+            erewrite Mem.nextblock_storebytes; eauto. }
+          { ii. exploit TGTEXT0; eauto.
+            unfold SimMemInj.tgt_private, SimMemInj.valid_blocks, Mem.valid_block, loc_out_of_reach. ss.
+            erewrite (@Mem.nextblock_storebytes _ _ _ _ _ SB). i.
+            des_safe. split; eauto. ii.
+            eapply H5; eauto. eapply Mem.perm_storebytes_2; eauto. }
+          { erewrite Mem.nextblock_storebytes; eauto. }
+          { erewrite Mem.nextblock_storebytes; eauto. }
+      + assert (SZPOS: sizeof ce ty > 0).
+        { generalize (sizeof_pos ce ty); omega. }
+        cinv VAL. cinv INJ.
+        assert (RPSRC: Mem.range_perm (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') (Ptrofs.unsigned ofs' + sizeof ce ty) Cur Nonempty).
+        { eapply Mem.range_perm_implies.
+          - eapply Mem.loadbytes_range_perm; eauto.
+          - econs. }
+        assert (RPDST: Mem.range_perm (SimMemInj.src sm0) blk_src (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned ofs_src + sizeof ce ty) Cur Nonempty).
+        { replace (sizeof ce ty) with (Z.of_nat (List.length bytes)).
+          - eapply Mem.range_perm_implies.
+            + eapply Mem.storebytes_range_perm; eauto.
+            + econs.
+          - exploit Mem.loadbytes_length; try apply H3; eauto. intros LEN.
+            rewrite LEN. apply nat_of_Z_eq. omega. }
+        assert (PSRC: Mem.perm (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') Cur Nonempty).
+        { apply RPSRC. omega. }
+        assert (PDST: Mem.perm (SimMemInj.src sm0) blk_src (Ptrofs.unsigned ofs_src) Cur Nonempty).
+        { apply RPDST. omega. }
+        exploit Mem.address_inject; try apply PSRC; eauto. intros EQ1.
+        exploit Mem.address_inject; try apply PDST; eauto. intros EQ2.
+        exploit Mem.loadbytes_inject; eauto. intros [bytes2 [A B]].
+        exploit storebytes_mapped; eauto. i. des_safe.
+        exists sm1. splits; auto. econs 2; try rewrite EQ1; try rewrite EQ2; eauto.
+        * intros; eapply Mem.aligned_area_inject with (m := SimMemInj.src sm0); eauto.
+          { apply alignof_blockcopy_1248. }
+          { apply sizeof_alignof_blockcopy_compat. }
+        * intros; eapply Mem.aligned_area_inject with (m := SimMemInj.src sm0); eauto.
+          { apply alignof_blockcopy_1248. }
+          { apply sizeof_alignof_blockcopy_compat. }
+        *  eapply Mem.disjoint_or_equal_inject with (m := SimMemInj.src sm0); eauto.
+           { apply Mem.range_perm_max with Cur; auto. }
+           { apply Mem.range_perm_max with Cur; auto. }
   Qed.
 
   Lemma call_cont_match j K_src K_tgt
@@ -1468,12 +1536,10 @@ Section CLIGHTSOUND.
       + instantiate (1:=get_mem). ss. refl.
 
     -
-
       des.
       hexploit clight_step_preserve_injection; eauto.
       { eapply function_entry2_inject. eauto. }
       {
-
         instantiate (2:=st0). instantiate (2:=tt).
         instantiate (1:=SimMemInj.mk
                           (get_mem st0)
@@ -1482,191 +1548,76 @@ Section CLIGHTSOUND.
                           (loc_unmapped (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) /2\ SimMemInj.valid_blocks (get_mem st0))
                           (loc_out_of_reach (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) (get_mem st0) /2\ SimMemInj.valid_blocks (get_mem st0))
                           _ _).
-        inv SUST; econs; ss; eauto.
-        - econs; ss; eauto.
-          + eapply UnreachC.to_inj_mem. eauto.
-      + unfold SimMemInj.tgt_private. ss.
-
-
-
-        econs; eauto.
-
-                .
-
-
-        instantiate (1:=UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))).
-        ii. ss. des_ifs. unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
-        esplits; eauto.
-      }
-
-
-      { instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm).
-        instantiate (1:=UnreachC.to_inj su0 (Mem.nextblock m)).
-        ii. ss. des_ifs. unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
-        esplits; eauto.
-      }
-      { inv SUST. ii. ss. esplits; eauto.
-        unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
-        - eapply Genv.genv_symb_range in FINDSRC. ss.
-          exfalso. ss. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
-        - eapply Genv.genv_symb_range in FINDSRC. ss. exfalso. apply n.
-          inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto. }
-      { inv SUST. eapply symbols_inject_weak_imply.
-        instantiate (1:=skenv_link). unfold symbols_inject. esplits; ss.
-        - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs; ss.
-        - unfold UnreachC.to_inj, Mem.flat_inj. ii. esplits; eauto. des_ifs.
-          + eapply Genv.genv_symb_range in H0. ss.
-            exfalso. ss. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
-          + eapply Genv.genv_symb_range in H0. ss. exfalso. apply n.
-            inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto.
-        - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs.
+        (* inv SUST; econs; ss; eauto. *)
+        (* - econs; ss; eauto. *)
+        (*   + eapply UnreachC.to_inj_mem. eauto. *)
+        (*   + unfold SimMemInj.tgt_private. ss. *)
+        admit "".
       }
 
       admit "sound step".
 
-    - inv AT. inv SUST. ss. split; [red; refl|].
-      exploit Sound.greatest_ex.
-      + exists su0. instantiate (1:=Args.mk fptr_arg vs_arg m0).
-        instantiate (1:=su0). split.
-        * red. refl.
-        * econs; ss; eauto.
-      + i. des. splits; auto.
-        { econs; eauto. }
+    - admit "at external".
 
-        SimMemInj.le'
-        exists su_gr. esplits; eauto.
-        i. inv AFTER. inv RETV. inv GR. des. ss.
-        assert(GRARGS: Sound.args su_gr (Args.mk fptr_arg vs_arg m0)).
-        { rr in GR. des. ss. }
-        set (su1 := Unreach.mk (fun blk =>
-                                  if plt blk (Mem.nextblock m0)
-                                  then su0.(Unreach.unreach) blk
-                                  else su_ret.(Unreach.unreach) blk)
-                               su0.(Unreach.ge_nb) (Retv.m retv).(Mem.nextblock)).
-        assert(LEOLD: Unreach.hle_old su_gr su_ret).
-        { eapply Unreach.hle_hle_old; et. rr in GRARGS. des. ss. }
+    (* - inv AT. inv SUST. ss. split; [red; refl|]. *)
+    (*   exploit Sound.greatest_ex. *)
+    (*   + exists su0. instantiate (1:=Args.mk fptr_arg vs_arg m0). *)
+    (*     instantiate (1:=su0). split. *)
+    (*     * red. refl. *)
+    (*     * econs; ss; eauto. *)
+    (*   + i. des. splits; auto. *)
+    (*     { econs; eauto. } *)
 
-
-        assert(HLEA: Sound.hle su0 su1).
-        { unfold su1. rr. ss.
-          inv MEM. rewrite NB in *.
-          esplits; et.
-          - ii. des_ifs.
-          - inv MLE. eapply Mem.unchanged_on_nextblock; eauto.
-        }
-        assert(LEA: UnreachC.le' su0 su1).
-        { unfold su1.
-          rr. ss. esplits; eauto.
-          ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto.
-        }
-        assert(LEB: UnreachC.le' su1 su_ret).
-        { rr in GR. des. unfold su1.
-          rr. ss. esplits; eauto.
-          - ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto.
-          - rr in LE. des. rr in LE0. des. congruence.
-        }
+    (*     exists su_gr. esplits; eauto. *)
+    (*     i. inv AFTER. inv RETV. inv GR. des. ss. *)
+    (*     assert(GRARGS: Sound.args su_gr (Args.mk fptr_arg vs_arg m0)). *)
+    (*     { rr in GR. des. ss. } *)
+    (*     set (su1 := Unreach.mk (fun blk => *)
+    (*                               if plt blk (Mem.nextblock m0) *)
+    (*                               then su0.(Unreach.unreach) blk *)
+    (*                               else su_ret.(Unreach.unreach) blk) *)
+    (*                            su0.(Unreach.ge_nb) (Retv.m retv).(Mem.nextblock)). *)
+    (*     assert(LEOLD: Unreach.hle_old su_gr su_ret). *)
+    (*     { eapply Unreach.hle_hle_old; et. rr in GRARGS. des. ss. } *)
 
 
-        exists su1. splits; eauto.
-        * econs; eauto.
-          { admit "sound wf". }
-          {
-
-          econs; ss; eauto; splits; ss.
-          { admit "??". }
-          { inv MLE. inv MEM. rewrite NB.
-            eapply Mem.unchanged_on_nextblock; eauto. }
-        * econs; eauto.
-
-            rewrite NB.
-            etrans; eauto.
-
-            ii. exploit Sound.hle_spec
-Sound.mle
-
-
-
-    -
+    (*     assert(HLEA: Sound.hle su0 su1). *)
+    (*     { unfold su1. rr. ss. *)
+    (*       inv MEM. rewrite NB in *. *)
+    (*       esplits; et. *)
+    (*       - ii. des_ifs. *)
+    (*       - inv MLE. eapply Mem.unchanged_on_nextblock; eauto. *)
+    (*     } *)
+    (*     assert(LEA: UnreachC.le' su0 su1). *)
+    (*     { unfold su1. *)
+    (*       rr. ss. esplits; eauto. *)
+    (*       ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto. *)
+    (*     } *)
+    (*     assert(LEB: UnreachC.le' su1 su_ret). *)
+    (*     { rr in GR. des. unfold su1. *)
+    (*       rr. ss. esplits; eauto. *)
+    (*       - ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto. *)
+    (*       - rr in LE. des. rr in LE0. des. congruence. *)
+    (*     } *)
 
 
-      admit "".
+    (*     exists su1. splits; eauto. *)
+    (*     * econs; eauto. *)
+    (*       { admit "sound wf". } *)
+    (*       { *)
+
+    (*       econs; ss; eauto; splits; ss. *)
+    (*       { admit "??". } *)
+    (*       { inv MLE. inv MEM. rewrite NB. *)
+    (*         eapply Mem.unchanged_on_nextblock; eauto. } *)
+    (*     * econs; eauto. *)
 
     - inv FINAL. inv SUST. esplits; eauto.
       + refl.
       + econs; eauto.
+      + econs; ss; eauto; refl.
 
-        exists su_ret. splits; eauto.
-        * inv LE0. inv LE0. econs.
-
-
-          Sound.hle etrans; eauto. inv LE0. econs; eauto.
-          { ii.
-
-          ii.
-
-
-          admit "".
-        * econs; eauto.
-          {
-
-
-            eapply (@Sound.hle_le UnreachC.Unreach) in LE; eauto.
-
-            inv LE0. des.
-            rewrite <- GENB.
-
-            erewrite <- H0; eauto.
-
-
-            etrans; eauto.
-
-          etrans; eauto. Sound.hle eapply Sound.le_hle; eauto. Sound.hle
-
-
-        set (su1 := Unreach.mk (fun blk =>
-                                  if plt blk (Mem.nextblock m0)
-                                  then su0.(Unreach.unreach) blk
-                                  else su_ret.(Unreach.unreach) blk)
-                               su0.(Unreach.ge_nb) m2.(Mem.nextblock)).
-        exists su1.
-
-
-
-        econs; eauto.
-        * etrans; eauto. des.
-          eapply (@Sound.le_spec UnreachC.Unreach); eauto.
-        * admit "?".
-        * admit "??".
-    - inv FINAL. inv SUST. esplits; eauto.
-      + refl.
-      + econs; eauto.
+        Unshelve. all: admit "".
   Qed.
 
-    eapply local_preservation_strong_horizontal_excl_spec with (sound_state := (sound_state)); eauto.
-    instantiate (1:= AsmC.get_mem).
-    eapply local_preservation_strong_horizontal_excl_intro with
-        (has_footprint := has_footprint)
-
-
-set (su1 := Unreach.mk (fun blk =>
-                                  if plt blk (Mem.nextblock m0)
-                                  then su0.(Unreach.unreach) blk
-                                  else su_ret.(Unreach.unreach) blk
-                               )
-                               su0.(Unreach.ge_nb) m2.(Mem.nextblock)).
-        exists su1.
-
-
-
-  Definition sound_state_ccc (su: Sound.t): state -> Prop :=
-    admit "fill it".
-
-
-Lemma clight_unreach_local_preservation
-      clight
-  :
-    exists sound_state, <<PRSV: local_preservation (modsem skenv_link clig) sound_state>>
-.
-Proof.
-  admit "TODO".
-Qed.
+End CLIGHTSOUND.

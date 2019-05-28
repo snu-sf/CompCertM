@@ -34,4 +34,4 @@ system("tokei -f #{RTLS.join(" ")} #{BACKENDS.join(" ")} #{WHOLE.join(" ")}")
 puts
 puts "<<<LANGS>>>"
 puts
-system("tokei -f #{RTLS.join(" ")} #{BACKENDS.join(" ")} #{WHOLE.join(" ")}")
+system("tokei -f #{LANGS.join(" ")}")

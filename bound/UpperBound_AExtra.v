@@ -723,6 +723,75 @@ Section SIM.
     - exploit H0; eauto.
   Qed.
 
+  Lemma find_label_same_None'
+        tl_tgt k0 lbl s k k'
+        (SUM : sum_cont tl_tgt k0)
+        (LABEL : find_label lbl s k = None)
+    :
+      find_label lbl s k' = None.
+  Proof.
+    revert_until s. revert s lbl k0 tl_tgt.
+    eapply (statement_mut (fun s => forall lbl k0 tl_tgt k k',
+                               sum_cont tl_tgt k0 ->
+                               find_label lbl s k = None -> find_label lbl s k' = None)
+                          (fun sl => forall K lbl k0 tl_tgt k k',
+                               sum_cont tl_tgt k0 ->
+                               find_label_ls lbl sl k = None -> find_label_ls lbl sl k' = None)
+           ); ss; i; ss; des_ifs; (try exploit H; eauto; ss; i; try Eq).
+    - rewrite H3 in Heq. clarify.
+    - rewrite H3 in Heq. clarify.
+    - rewrite H4 in Heq. clarify.
+    - exploit H1; eauto. i. rewrite H5 in Heq0. clarify.
+    - rewrite H3 in Heq. clarify.
+      Unshelve. all:auto.
+  Qed.
+
+  Lemma find_label_exists
+        tl_tgt k0 lbl s k s' k' k1
+        (SUM : sum_cont tl_tgt k0)
+        (LABEL : find_label lbl s k = Some (s', k'))
+    :
+      exists k1', find_label lbl s k1 = Some (s', k1').
+  Proof.
+    revert SUM. revert_until s.
+    revert lbl k0 tl_tgt. clear INCL_FOCUS.
+    eapply (statement_mut (fun s =>  forall lbl k0 tl_tgt k s' k' k1,
+                               find_label lbl s k = Some (s', k') ->
+                               sum_cont tl_tgt k0 -> exists k1', find_label lbl s k1 = Some (s', k1'))
+                          (fun sl => forall lbl k0 tl_tgt k s' k' k1,
+                               sum_cont tl_tgt k0 ->
+                               find_label_ls lbl sl k = Some (s', k') -> exists k1', find_label_ls lbl sl k1 = Some (s', k1'))
+           ); ss.
+    - i. des_ifs.
+      + exploit H; eauto. i. des. rewrite H1 in Heq. clarify. eauto.
+      + exploit find_label_same_None'; eauto. i. rewrite H3 in Heq. clarify.
+      + exploit find_label_same_None'; eauto. i. rewrite H1 in Heq0. clarify.
+      + exploit H0; eauto.
+    - i. des_ifs.
+      + exploit H; eauto. i. des. rewrite H1 in *. clarify. eauto.
+      + exploit find_label_same_None'; eauto. i. rewrite H3 in Heq. clarify.
+      + exploit find_label_same_None'; eauto. i. rewrite H1 in Heq0. clarify.
+      + exploit H0; eauto.
+    - i. exploit H; eauto.
+    - i. exploit H; eauto.
+    - i. des_ifs.
+      + i. exploit H; eauto. ss. i. des. rewrite H2 in *. eauto.
+      + exploit find_label_same_None'; eauto; ss. i. rewrite H2 in *. clarify.
+      + exploit find_label_same_None'; try eapply Heq0; eauto; ss. i. rewrite H4 in *. clarify.
+      + i. exploit H; eauto. ss. i. des. rewrite H2 in *. clarify.
+      + i. exploit H1; eauto. ss. i. des. rewrite H2 in *. clarify. eauto.
+      + exploit find_label_same_None'; try eapply Heq2; eauto; ss. i. rewrite H4 in *. clarify.
+      + i. exploit H; eauto. ss. i. des. rewrite H2 in *. clarify.
+      + i. exploit H1; eauto. ss. i. des. rewrite H2 in *. clarify.
+      + i. exploit H0; eauto.
+    - i. exploit H; eauto.
+    - i. des_ifs; eauto.
+    - i. des_ifs; eauto.
+      + exploit H; eauto. i. des. rewrite H2 in *. clarify. eauto.
+      + exploit find_label_same_None'; eauto. i. rewrite H3 in *. clarify.
+      + exploit H; eauto. i. des. rewrite H2 in *. clarify.
+  Qed.
+
   Lemma find_label_same
         tl_tgt k0 lbl s k s' k'
         (SUM : sum_cont tl_tgt k0)
@@ -1118,12 +1187,10 @@ Section SIM.
         inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
       + destruct k3; destruct k0; ss; clarify; try (by eexists; right; econs; eauto).
         inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + eexists. right. ss. eapply step_goto; et.
-        clear -H SUM.
+      + clear -H SUM.
         erewrite <- call_cont_app_cont in H; et.
-        remember (fn_body f) as s. clear Heqs.
-        remember (call_cont k3) as k1. clear Heqk1.
-        admit "??".
+        exploit find_label_exists; eauto. i. des.
+        eexists. right. ss. eapply step_goto; et.
       + eexists. right.
         destruct (lift_option (Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) fptr)) as [[gd TG] | TG].
         { assert (gd = Internal f).

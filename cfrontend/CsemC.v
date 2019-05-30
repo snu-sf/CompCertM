@@ -104,7 +104,7 @@ Section MODSEM.
       ModSem.after_external := after_external;
       ModSem.globalenv := ge;
       ModSem.skenv := skenv;
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv_link := skenv_link;
     |}
   .
   Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
@@ -160,8 +160,7 @@ End MODULE.
 (* Hint Unfold geof. *)
 
 
-
-Inductive typechecked (p: program): Prop :=
+Inductive typechecked (builtins: list (ident * globdef (Ctypes.fundef function) type)) (p: program): Prop :=
 | typechecked_intro
     (TYPCHECK: typecheck_program p = Errors.OK p)
     (* this can be executed and checked. *)
@@ -177,4 +176,11 @@ Inductive typechecked (p: program): Prop :=
      *)
     (WF: Sk.wf (module p))
     (* this property is already checked by the compiler, though they are not in Coq side *)
+    (BINCL: incl builtins p.(prog_defs))
+    (BCOMPLETE: forall
+        id fd
+        (IN: In (id, (Gfun fd)) p.(prog_defs))
+        (BUILTIN: ~ is_external_fd fd)
+      ,
+        In (id, Gfun fd) builtins)
 .

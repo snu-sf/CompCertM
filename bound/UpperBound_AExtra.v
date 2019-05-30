@@ -345,6 +345,184 @@ Section SIM.
 
   (** Same Lemmas *)
 
+  Lemma defmap_with_signature
+        (cp:Csyntax.program) i g
+        (DMAP: (prog_defmap cp) ! i = Some g)
+    :
+      exists gd, (prog_defmap (CSk.of_program signature_of_function cp)) ! i = Some gd.
+  Proof.
+    exploit (CSk.of_program_prog_defmap cp signature_of_function).
+    i. inv H. rewrite DMAP in *. clarify. eauto.
+  Qed.
+
+  Lemma defmap_with_signature_internal
+        (cp:Csyntax.program) i if_sig
+        (DMAP: (prog_defmap cp) ! i = Some (Gfun (Internal if_sig)))
+    :
+      exists if_sig0, (prog_defmap (CSk.of_program signature_of_function cp)) ! i = Some (Gfun (AST.Internal if_sig0)).
+  Proof.
+    exploit (CSk.of_program_prog_defmap cp signature_of_function).
+    i. inv H; rewrite DMAP in *; clarify.
+    inv H2. unfold CtypesC.CSk.match_fundef in H3. destruct f2; ss.
+    rewrite <- H1. eauto.
+  Qed.
+
+  Lemma invert_symbol_lemma1
+        b i0 i cp
+        (FOC: is_focus cp)
+        (SYMBSKENV : Genv.invert_symbol skenv_link b = Some i0)
+        (DEFS: defs (CSk.of_program signature_of_function cp) i)
+        (SYMB : Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b = Some i)
+    :
+      i = i0.
+  Proof.
+    exploit Genv.invert_find_symbol. eauto. i. exploit Genv.invert_find_symbol. eapply SYMBSKENV. i.
+    exploit SkEnv.project_impl_spec. eapply INCL_FOCUS. eauto. i. inv H1.
+    exploit SYMBKEEP; eauto. i.
+    (* rewrite <- defs_prog_defmap. eapply defmap_with_signature; eauto. i. *)
+    rewrite H1 in H.
+    exploit Genv.find_invert_symbol. eapply H. i. exploit Genv.find_invert_symbol. eapply H0. i.
+    rewrite H2 in H3. clarify.
+  Qed.
+
+  Lemma prog_defmap_same_rev
+        pgm id func
+        (FOC: is_focus pgm)
+        (DMAP: (prog_defmap pgm) ! id = Some (Gfun (Internal func))) (* (Internal func))) *)
+    :
+      (prog_defmap cp_link) ! id = Some (Gfun (Internal func)). (* (Internal func')). *)
+  Proof.
+    Local Transparent Linker_program. ss.
+    unfold link_program in *. des_ifs.
+    Local Transparent Linker_prog. ss.
+
+    r in FOC.
+    exploit link_list_linkorder; et. intro ORD. r in ORD. rewrite Forall_forall in ORD.
+    exploit ORD; eauto. intro ORD0.
+    Local Transparent Linker_program.
+    ss.
+    rr in ORD0. des.
+    hexploit (@prog_defmap_linkorder (Ctypes.fundef function) type); eauto. intro P; des. inv P0.
+    inv H0.
+    esplits; eauto.
+  Qed.
+
+  Lemma prog_defmap_gvar_exists_rev
+        pgm id var
+        (FOC: is_focus pgm)
+        (DMAP: (prog_defmap pgm) ! id = Some (Gvar var)) (* (Internal func))) *)
+    :
+      exists var', (prog_defmap cp_link) ! id = Some (Gvar var'). (* (Internal func')). *)
+  Proof.
+    Local Transparent Linker_program. ss.
+    unfold link_program in *. des_ifs.
+    Local Transparent Linker_prog. ss.
+
+    r in FOC.
+    exploit link_list_linkorder; et. intro ORD. r in ORD. rewrite Forall_forall in ORD.
+    exploit ORD; eauto. intro ORD0.
+    Local Transparent Linker_program.
+    ss.
+    rr in ORD0. des.
+    hexploit (@prog_defmap_linkorder (Ctypes.fundef function) type); eauto. intro P; des. inv P0.
+    inv H0; ss. inv H; inv H1; eauto.
+  Qed.
+
+  Lemma prog_defmap_exists_rev
+        pgm id func
+        (FOC: is_focus pgm)
+        (DMAP: (prog_defmap pgm) ! id = Some (Gfun func)) (* (Internal func))) *)
+    :
+      exists func', (prog_defmap cp_link) ! id = Some (Gfun func'). (* (Internal func')). *)
+  Proof.
+    Local Transparent Linker_program. ss.
+    unfold link_program in *. des_ifs.
+    Local Transparent Linker_prog. ss.
+
+    r in FOC.
+    exploit link_list_linkorder; et. intro ORD. r in ORD. rewrite Forall_forall in ORD.
+    exploit ORD; eauto. intro ORD0.
+    Local Transparent Linker_program.
+    ss.
+    rr in ORD0. des.
+    hexploit (@prog_defmap_linkorder (Ctypes.fundef function) type); eauto. intro P; des. inv P0.
+    esplits; eauto.
+  Qed.
+
+  Lemma invert_symbol_lemma2
+        b i0 i
+        (SYMBSKENV : Genv.invert_symbol skenv_link b = Some i0)
+        (DEFS: defs (CSk.of_program signature_of_function cp_link) i)
+        (SYMB : Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b = Some i)
+    :
+      i = i0.
+  Proof.
+    exploit Genv.invert_find_symbol. eauto. i. exploit Genv.invert_find_symbol. eapply SYMBSKENV. i.
+    exploit SkEnv.project_impl_spec. eapply INCL_LINKED. i. inv H1.
+    exploit SYMBKEEP; eauto. i.
+    (* rewrite <- defs_prog_defmap. eapply defmap_with_signature; eauto. i. *)
+    rewrite H1 in H.
+    exploit Genv.find_invert_symbol. eapply H. i. exploit Genv.find_invert_symbol. eapply H0. i.
+    rewrite H2 in H3. clarify.
+  Qed.
+
+  Lemma internals_linking
+        cp i
+        (FOC: is_focus cp)
+        (INTERNALS : internals (CSk.of_program signature_of_function cp) i = true)
+    :
+      internals (CSk.of_program signature_of_function cp_link) i = true.
+  Proof.
+    rewrite CSk.of_program_internals in *.
+    unfold internals in INTERNALS.
+    destruct ((prog_defmap cp) ! i) eqn:DMAP; ss.
+    Local Transparent Linker_program. ss.
+    unfold link_program in *. des_ifs.
+    Local Transparent Linker_prog. ss.
+
+    destruct g.
+    - ss. exploit prog_defmap_func_same_rev; eauto. i.
+      unfold internals. rewrite H. ss.
+    - ss. exploit prog_defmap_gvar_exists_rev; eauto. i. des_safe.
+      unfold internals. rewrite H. ss.
+  Qed.
+
+  Lemma prog_find_defs_same_rev2
+        cp b func
+        (FOC: is_focus cp)
+        (INTERNAL: negb (is_external_fd (fundef_of_fundef func)) = true)
+        (FIND: Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) b = Some (Gfun func))
+    :
+      Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) cp_link) b = Some (Gfun func).
+  Proof.
+    unfold Genv.find_def in FIND. ss. rewrite MapsC.PTree_filter_map_spec in FIND. rewrite o_bind_ignore in FIND. des_ifs.
+    destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b) eqn:SYMB; ss.
+    unfold o_bind in FIND. ss. destruct ((prog_defmap cp) ! i) eqn:DMAP; ss. clarify.
+    rewrite MapsC.PTree_filter_map_spec in Heq. rewrite o_bind_ignore in Heq. destruct ((Genv.genv_defs skenv_link) ! b) eqn:GENVDEF; ss.
+    destruct (Genv.invert_symbol skenv_link b) eqn:SYMBSKENV; ss. unfold o_bind in Heq. ss. des_ifs.
+    exploit invert_symbol_lemma1; eauto. rewrite <- defs_prog_defmap. eapply defmap_with_signature; eauto. i. subst.
+    unfold Genv.find_def. ss. do 2 rewrite MapsC.PTree_filter_map_spec.
+    do 2 rewrite o_bind_ignore. rewrite GENVDEF. rewrite SYMBSKENV. unfold o_bind. ss.
+    exploit prog_defmap_func_same_rev; eauto. i. des_safe.
+    des_ifs; cycle 1.
+    - exploit defmap_with_signature; eauto. i. des_safe. rewrite H0 in Heq1. ss.
+    - exploit internals_linking; eauto. i. rewrite H0 in *; clarify.
+    - exploit SkEnv.project_impl_spec. eapply INCL_LINKED. i. inv H0.
+      exploit SYMBKEEP. rewrite <- defs_prog_defmap. exploit defmap_with_signature. eapply H. i. eauto. i.
+      exploit Genv.invert_find_symbol. eapply SYMBSKENV. i. rewrite <- H0 in H1.
+      exploit Genv.find_invert_symbol. eauto. i. rewrite H2. ss. rewrite H. eauto.
+  Qed.
+
+  Lemma prog_find_defs_same_rev
+        cp b if_sig
+        (FOC: is_focus cp)
+        (FIND: Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) b = Some (Gfun (Internal if_sig)))
+    :
+      Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) cp_link) b = Some (Gfun (Internal if_sig)).
+  Proof.
+    exploit prog_find_defs_same_rev2; eauto. ss.
+  Qed.
+
   Lemma field_offset_same
         cp f0 co delta
         (FOC : linkorder_program cp cp_link)
@@ -496,13 +674,12 @@ Section SIM.
   Proof.
     exploit types_of_context1; eauto. intros [tys [A B]].
     unfold sem_sub.
-    (* des_ifs; erewrite sizeof_wt_stable in *; eauto; inv WTTGT; inv WTSRC; ss; *)
-    (*   unfold classify_sub in Heq; destruct ty1; destruct ty2; des_ifs; ss; clarify; des_ifs; *)
-    (*     try (by (exploit (WTYE (Tpointer ty0 a)); try eapply B; ss; auto; i; ss)); *)
-    (*     try (by (exploit (WTYE (Tarray ty0 z a)); try eapply B; ss; auto; i; ss)); *)
-    (*     try (by (exploit (WTYE0 (Tpointer ty0 a)); try eapply B; ss; auto; i; ss)); *)
-    (*     try (by (exploit (WTYE0 (Tarray ty0 z a)); try eapply B; ss; auto; i; ss)). *)
-    admit "".
+    des_ifs; erewrite sizeof_wt_stable in *; eauto; inv WTTGT; inv WTSRC; ss;
+      unfold classify_sub in Heq; destruct ty1; destruct ty2; des_ifs; ss; clarify; des_ifs;
+        try (by (exploit (WTYE (Tpointer ty0 a)); try eapply B; ss; auto; i; ss));
+        try (by (exploit (WTYE (Tarray ty0 z a)); try eapply B; ss; auto; i; ss));
+        try (by (exploit (WTYE0 (Tpointer ty0 a)); try eapply B; ss; auto; i; ss));
+        try (by (exploit (WTYE0 (Tarray ty0 z a)); try eapply B; ss; auto; i; ss)).
   Qed.
 
   Lemma sem_add_same
@@ -652,7 +829,7 @@ Section SIM.
       + exploit IHl; eauto.
         { instantiate (1:=f). ss. inv WT. eauto. }
   Qed.
-  
+
   Lemma preservation_alloc
         cp_top m1 e l m0
         (FOCUS1 : is_focus cp_top)
@@ -922,11 +1099,12 @@ Section SIM.
         * inv H2.
           { econs 3; eauto.
             instantiate (1:= m'). instantiate (1:=(Eloc b Ptrofs.zero ty)). econs; eauto. }
-          { ss. econs 3; eauto. econs 2; eauto. ss.
+          { ss.
             inv WTTGT; ss.
             exploit context_compose. eapply H. eauto. i.
             exploit wt_rvalue_wt_expr; eauto. ss. eauto. i.
-            inv H5. ss. rewrite WTTENV in *. inv H7. Eq. eauto. }
+            inv H5. ss. eapply WTTENV in H7. des; Eq.
+            econs 3; eauto. econs 2; eauto. }
           { econs 3; eauto. ss. econs 3; eauto. }
           { exploit context_compose. eapply H. eauto. i.
             exploit types_of_context1; eauto. intros [tys [A B]].
@@ -990,7 +1168,7 @@ Section SIM.
         exploit WTLOCAL; eauto. intros WT.
         eapply step_internal_function; et.
         * ss. unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
-          admit "ez".
+          exploit prog_find_defs_same_rev; eauto.
         * exploit alloc_variables_same; eauto.
         * exploit bind_parameters_same; eauto.
       + destruct (classic (is_external_ef ef)) eqn:EXT.
@@ -1001,7 +1179,10 @@ Section SIM.
           clarify.
         * eapply step_external_function; eauto.
           { instantiate (1:=cc). instantiate (1 := tres). instantiate (1 := targs).
-            admit "ez". }
+            unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
+            exploit prog_find_defs_same_rev2; eauto. ss.
+            destruct ef; ss.
+          }
           { ss. }
         Unshelve. all: auto.
   Qed.
@@ -1039,10 +1220,10 @@ Section SIM.
       + (* lred *)
         inv H.
         * eexists. do 2 econs; eauto. econs; eauto.
-        * eexists. do 2 econs; eauto. econs 2; eauto.
-          ss. inv WTTGT; ss.
+        * ss. inv WTTGT; ss.
           exploit wt_rvalue_wt_expr; eauto. ss. eauto. i.
-          inv H. ss. rewrite WTTENV in *. inv H4. Eq. eauto.
+          inv H. ss. eapply WTTENV in H4. des; Eq.
+          eexists. do 2 econs; eauto. econs 2; eauto.
         * eexists. do 2 econs; eauto. econs 3; eauto.
         * inversion WTTGT; subst; ss. exploit types_of_context1; eauto. intros [tys [A B]].
           inv WTTGT; ss. exploit (WTYE (Tstruct id a0)).
@@ -1084,7 +1265,19 @@ Section SIM.
           { econs 3; eauto.
             instantiate (1:= m'). instantiate (1:=(Eloc b Ptrofs.zero ty)). econs; eauto. }
           { ss. econs 3; eauto. econs 2; eauto. ss.
-            admit "ez". }
+            instantiate (1 := b).
+            unfold Genv.find_symbol in *. ss.
+            rewrite PTree_filter_key_spec in *. des_ifs.
+            rewrite CSk.of_program_defs in *.
+            assert (defs cp x) by ss.
+            assert (~ defs cp_link x) by (ii; clarify).
+            rewrite <- defs_prog_defmap in *. des.
+            exfalso. eapply H5.
+            destruct gd.
+            - exploit prog_defmap_exists_rev; eauto. i. des.
+              exists (Gfun func'). eauto.
+            - exploit prog_defmap_gvar_exists_rev; eauto. i. des.
+              exists (Gvar var'). eauto. }
           { econs 3; eauto. ss. econs 3; eauto. }
           { exploit context_compose. eapply H. eauto. i.
             exploit types_of_context1; eauto. intros [tys [A B]].
@@ -1201,8 +1394,14 @@ Section SIM.
             destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b) eqn:LINKSYMB; ss.
             destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b) eqn:PROGSYMB; ss.
             unfold o_bind in FPTR, TG. ss.
-            assert (i0 = i1) by admit "true".
-            assert (i = i1) by admit "true".
+            assert (i = i0).
+            { destruct ((prog_defmap cp_link) ! i0) eqn:DMAP; ss; clarify.
+              assert (defs cp_link i0) by (rewrite <- defs_prog_defmap; eauto).
+              exploit invert_symbol_lemma2. eauto. erewrite CSk.of_program_defs. eauto. eauto. eauto. }
+            assert (i = i1).
+            { destruct ((prog_defmap cp) ! i1) eqn:DMAP; ss; clarify.
+              assert (defs cp i1) by (rewrite <- defs_prog_defmap; eauto).
+              exploit invert_symbol_lemma1. eauto. eauto. erewrite CSk.of_program_defs. eauto. eauto. eauto. }
             subst.
             destruct ((prog_defmap cp_link) ! i1) eqn:DMAP; ss.
             destruct ((prog_defmap cp) ! i1) eqn:DMAP0; ss. clarify.
@@ -1243,7 +1442,10 @@ Section SIM.
                 destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b) eqn:CPLINKSYMB; ss.
                 unfold o_bind in FPTR. ss.
                 destruct ((prog_defmap cp_link) ! i0) eqn:DMAP0; ss. clarify.
-                assert (i = i0) by admit "true". subst.
+                assert (i = i0).
+                { assert (defs cp_link i0) by (rewrite <- defs_prog_defmap; eauto).
+                  exploit invert_symbol_lemma2. eauto. erewrite CSk.of_program_defs. eauto. eauto. eauto. }
+                subst.
                 (* unfold CSk.of_program in DMAP. ss. unfold prog_defmap in DMAP, DMAP0. ss. *)
                 clear - DMAP DMAP0.
                 unfold prog_defmap in DMAP. ss.
@@ -1275,8 +1477,14 @@ Section SIM.
             destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b) eqn:LINKSYMB; ss.
             destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b) eqn:PROGSYMB; ss.
             unfold o_bind in FPTR, TG. ss.
-            assert (i0 = i1) by admit "true".
-            assert (i = i1) by admit "true".
+            assert (i = i0).
+            { destruct ((prog_defmap cp_link) ! i0) eqn:DMAP; ss; clarify.
+              assert (defs cp_link i0) by (rewrite <- defs_prog_defmap; eauto).
+              exploit invert_symbol_lemma2. eauto. erewrite CSk.of_program_defs. eauto. eauto. eauto. }
+            assert (i = i1).
+            { destruct ((prog_defmap cp) ! i1) eqn:DMAP; ss; clarify.
+              assert (defs cp i1) by (rewrite <- defs_prog_defmap; eauto).
+              exploit invert_symbol_lemma1. eauto. eauto. erewrite CSk.of_program_defs. eauto. eauto. eauto. }
             subst.
             destruct ((prog_defmap cp_link) ! i1) eqn:DMAP; ss.
             destruct ((prog_defmap cp) ! i1) eqn:DMAP0; ss. clarify.
@@ -1302,7 +1510,10 @@ Section SIM.
           destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b) eqn:CPLINKSYMB; ss.
           unfold o_bind in FPTR. ss.
           destruct ((prog_defmap cp_link) ! i0) eqn:DMAP0; ss. clarify.
-          assert (i = i0) by admit "true". subst.
+          assert (i = i0).
+          { assert (defs cp_link i0) by (rewrite <- defs_prog_defmap; eauto).
+            exploit invert_symbol_lemma2. eauto. erewrite CSk.of_program_defs. eauto. eauto. eauto. }
+          subst.
           econs; eauto.
           - assert (Genv.find_funct skenv_link (Vptr b Ptrofs.zero) = Some (AST.External ef)).
             { assert (SkEnv.wf skenv_link).

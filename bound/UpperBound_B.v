@@ -986,20 +986,21 @@ c0 + empty
 
   Lemma preservation_prog
         st0 tr st1
-        (WT: wt_state ge st0)
+        (WT: wt_state prog ge st0)
         (STEP: Csem.step skenv_link ge st0 tr st1)
     :
-      <<WT: wt_state ge st1>>
+      <<WT: wt_state prog ge st1>>
   .
   Proof.
     eapply preservation; try apply STEP; try refl; eauto.
     - ii. eapply Genv.find_def_symbol. esplits; eauto.
+    - admit "".
     - i. admit "ez".
   Qed.
 
   Lemma match_state_xsim
     :
-      forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n) (WTST: wt_state ge st_src),
+      forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n) (WTST: wt_state prog ge st_src),
         xsim (Csem.semantics prog) (Sem.sem tprog) lt n%nat st_src st_tgt.
   Proof.
     pcofix CIH. i. pfold.
@@ -1362,6 +1363,8 @@ c0 + empty
       destruct (classic (exists fd, Genv.find_funct (globalenv prog) (Vptr b Ptrofs.zero) = Some (Internal fd))).
       + apply match_state_xsim; eauto.
         eapply wt_initial_state; eauto.
+        { admit "". }
+        { admit "". }
         econs; eauto.
       + assert(NOSTEP: Nostep (semantics prog) (Csem.Callstate (Vptr b Ptrofs.zero)
                                                                (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
@@ -1392,12 +1395,13 @@ End PRESERVATION.
 
 
 Theorem upperbound_b_correct
+        builtins
         (cprog: Csyntax.program)
         (MAIN: exists main_f,
             (<<INTERNAL: cprog.(prog_defmap) ! (cprog.(prog_main)) = Some (Gfun (Internal main_f))>>)
             /\
             (<<SIG: type_of_function main_f = Tfunction Tnil type_int32s cc_default>>))
-        (TYPED: typechecked cprog)
+        (TYPED: typechecked builtins cprog)
   :
     (<<REFINE: improves (Csem.semantics cprog) (Sem.sem (map CsemC.module [cprog]))>>)
 .
@@ -1434,4 +1438,3 @@ Proof.
     unfold Genv.find_funct_ptr. des_ifs. }
   { eapply typecheck_program_sound; eauto. }
 Qed.
-

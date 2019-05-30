@@ -549,3 +549,44 @@ Proof.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKE; eauto.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKELINK; eauto.
 Qed.
+
+
+Lemma clight_inj_id
+      (clight: Clight.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+.
+Admitted.
+
+Lemma clight_inj_drop
+      (clight: Clight.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+.
+Admitted.
+
+Lemma clight_ext_top
+      (clight: Clight.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+.
+Admitted.
+
+Lemma clight_ext_unreach
+      (clight: Clight.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+.
+Admitted.

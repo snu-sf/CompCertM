@@ -21,8 +21,10 @@ Require Import AsmregsC.
 Require Import MatchSimModSem.
 Require IdSimAsm.
 Include IdSimAsm.
-Require IdSimCCC.
-Include IdSimCCC.
+(* Require IdSimCCC. *)
+(* Include IdSimCCC. *)
+Require IdSimClight.
+Include IdSimClight.
 
 Set Implicit Arguments.
 
@@ -47,4 +49,3 @@ Proof.
   specialize (MOD a). des.
   exists (mp :: pp). esplits; ss; eauto with congruence.
 Qed.
-

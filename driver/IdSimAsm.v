@@ -23,7 +23,7 @@ Require Import MatchSimModSem.
 Require Import StoreArguments.
 Require Import AsmStepInj AsmStepExt IntegersC.
 Require Import Coq.Logic.PropExtensionality.
-
+Require Import IdSimExtra.
 
 Set Implicit Arguments.
 
@@ -2653,40 +2653,6 @@ Proof.
   exploit asm_inj_drop_bot. i. des. eauto.
 Qed.
 
-Lemma SymSymbId_SymSymbDrop_bot sm_arg ss_link ge_src ge_tgt
-      (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg ss_link ge_src ge_tgt)
-  :
-    SimSymbDrop.sim_skenv sm_arg bot1 ge_src ge_tgt.
-Proof.
-  inv SIMSKE. ss. unfold SimSymbId.sim_skenv in *. clarify.
-  inv INJECT. ss.
-  econs; ss; i.
-  + exploit DOMAIN; eauto.
-    { instantiate (1:=blk_src).
-      exploit Genv.genv_symb_range; eauto. }
-    i. clarify. esplits; eauto.
-  + esplits; eauto. exploit DOMAIN; eauto.
-    exploit Genv.genv_symb_range; eauto.
-  + esplits; eauto. exploit DOMAIN; eauto.
-    exploit Genv.genv_symb_range; eauto.
-  + exploit DOMAIN; eauto.
-    { exploit Genv.genv_defs_range; eauto. }
-    i. rewrite SIMVAL in *. inv H. esplits; eauto.
-  + exploit DOMAIN.
-    { instantiate (1:=blk_src0).
-      exploit Genv.genv_symb_range; eauto. } i.
-    rewrite SIMVAL0 in *. inv H.
-    exploit IMAGE; try apply SIMVAL1.
-    { exploit Genv.genv_symb_range; eauto. }
-    i. etrans; eauto.
-  + exploit IMAGE; eauto.
-    { exploit Genv.genv_defs_range; eauto. }
-    i. clarify.
-    exploit DOMAIN; eauto.
-    { exploit Genv.genv_defs_range; eauto. }
-    i. rewrite SIMVAL in *. inv H. esplits; eauto.
-Qed.
-
 Lemma asm_inj_id
       (asm: Asm.program)
   :
@@ -2696,19 +2662,5 @@ Lemma asm_inj_id
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
 .
 Proof.
-  set (asm_inj_drop_bot asm). des.
-  destruct mp eqn: EQ. ss. clarify. inv SIM. ss.
-  unfold ModPair.to_msp in *. ss.
-  eexists (ModPair.mk _ _ _). esplits; ss. instantiate (1:=tt).
-  econs; ss. unfold ModPair.to_msp. ss.
-  i. destruct ss_link.
-  exploit SIMMS; [apply INCLSRC|apply INCLTGT|..]; eauto.
-  { inv SSLE. instantiate (1:=bot1). econs; ss. i. des. clarify. }
-  { instantiate (1:=sm_init_link).
-    exploit SymSymbId_SymSymbDrop_bot; eauto. }
-  i. inv H. ss.
-  econs; ss; eauto. i. exploit SIM; eauto.
-  inv SIMSKENV. ss. econs; ss.
-  - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKE; eauto.
-  - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKELINK; eauto.
+  apply sim_inj_drop_bot_id. apply asm_inj_drop_bot.
 Qed.

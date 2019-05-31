@@ -13,7 +13,6 @@ Require Import Preservation.
 
 Set Implicit Arguments.
 
-(* TODO: same as IdSimAsm. make IdSimExtra and move it to there *)
 Lemma SymSymbId_SymSymbDrop_bot sm_arg ss_link ge_src ge_tgt
       (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg ss_link ge_src ge_tgt)
   :
@@ -116,7 +115,7 @@ Inductive meminj_match_globals F V (ge_src ge_tgt: Genv.t F V) (j: meminj) : Pro
           (<<FINDTGT: Genv.find_symbol ge_tgt i = Some b_tgt>>) /\
           (<<INJ: j b_src = Some (b_tgt, 0)>>)).
 
-Lemma SimSymbDrop_match_globals F V sm0 skenv_src skenv_tgt (p: program (fundef F) V)
+Lemma SimSymbDrop_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: program F V)
       (SIMSKE: SimSymbDrop.sim_skenv sm0 bot1 skenv_src skenv_tgt)
   :
     meminj_match_globals
@@ -133,7 +132,7 @@ Proof.
     exploit SIMDEF; try apply FIND; eauto. i. des. clarify.
     esplits; eauto.
     exploit Genv_map_defs_def_inv; try apply DEFTGT.
-    i. rewrite H.
+    i. rewrite H0.
     unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
     erewrite Genv.find_invert_symbol.
     + rewrite Heq1; eauto.
@@ -163,4 +162,45 @@ Proof.
       rewrite DEFTGT. eauto.
     + des_ifs_safe. exfalso. exploit SIMDEFINV; eauto.
       i. des. clarify.
+Qed.
+
+Lemma match_globals_find_funct F V (ge_src ge_tgt: Genv.t F V) j fptr_src fptr_tgt d
+      (FINDSRC: Genv.find_funct ge_src fptr_src = Some d)
+      (GENV: meminj_match_globals ge_src ge_tgt j)
+      (FPTR: Val.inject j fptr_src fptr_tgt)
+  :
+    Genv.find_funct ge_tgt fptr_tgt = Some d.
+Proof.
+  inv GENV. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+  inv FPTR. exploit DEFLE; eauto. i. des. clarify.
+  inv DEFMATCH. des_ifs.
+Qed.
+
+Lemma SimSymbDrop_find_None F `{HasExternal F} V (p: program F V)
+      sm0 skenv_src skenv_tgt fptr_src fptr_tgt
+      (FINDSRC: Genv.find_funct (SkEnv.revive skenv_src p) fptr_src = None)
+      (SIMSKE: SimSymbDrop.sim_skenv sm0 bot1 skenv_src skenv_tgt)
+      (FPTR: Val.inject (SimMemInj.inj sm0) fptr_src fptr_tgt)
+      (FPTRDEF: fptr_src <> Vundef)
+  :
+    Genv.find_funct (SkEnv.revive skenv_tgt p) fptr_tgt = None.
+Proof.
+  unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe. exfalso.
+  unfold SkEnv.revive in *. ss.
+  apply Genv_map_defs_def in Heq. des.
+  unfold o_bind, o_bind2, o_join, o_map, curry2, fst in MAP.
+  des_ifs_safe.
+  apply Genv.invert_find_symbol in Heq0.
+  inv SIMSKE. ss. inv FPTR; clarify.
+  exploit SIMDEFINV; try apply FIND; eauto. i. des. clarify.
+  erewrite Integers.Ptrofs.add_zero in H4. clarify.
+    exploit Genv_map_defs_def_inv; try apply DEFSRC.
+  i. revert FINDSRC. rewrite H0.
+  unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
+  erewrite Genv.find_invert_symbol.
+  - rewrite Heq1; eauto. i. des_ifs.
+  - exploit SIMSYMB3; eauto. i. des.
+    assert (blk_src = b1).
+    { exploit DISJ; eauto. }
+    clarify.
 Qed.

@@ -20,6 +20,7 @@ Require Import AsmregsC.
 Require Import MatchSimModSem.
 Require Import mktac.
 Require Import IntegersC.
+Require Import IdSimExtra.
 
 Set Implicit Arguments.
 
@@ -531,6 +532,7 @@ Section CLIGHTINJ.
   Qed.
 
   Lemma eval_expr_lvalue_inject j env_src env_tgt tenv_src tenv_tgt m_src m_tgt
+        (GENV: meminj_match_globals ge_src ge_tgt j)
     :
       (forall
           exp v_src
@@ -581,7 +583,8 @@ Section CLIGHTINJ.
     - cinv (ENV id); des; rewrite H in *; clarify.
       esplits; eauto. econs 1; eauto.
     - cinv (ENV id); des; rewrite H in *; clarify.
-      admit "genv".
+      inv GENV. exploit SYMBLE; eauto. i. des.
+      esplits; eauto. econs 2; eauto.
     - exploit H0; eauto. i. des. cinv INJ.
       esplits; eauto. econs 3; eauto.
     - exploit H0; eauto. i. des. cinv INJ. rewrite CENV in *.
@@ -597,6 +600,7 @@ Section CLIGHTINJ.
   Lemma eval_expr_inject j env_src env_tgt tenv_src tenv_tgt m_src m_tgt
         exp v_src
         (EVAL: eval_expr ge_src env_src tenv_src m_src exp v_src)
+        (GENV: meminj_match_globals ge_src ge_tgt j)
         (ENV: match_env j env_src env_tgt)
         (TENV: match_temp_env j tenv_src tenv_tgt)
         (INJECT: Mem.inject j m_src m_tgt)
@@ -611,6 +615,7 @@ Section CLIGHTINJ.
   Lemma eval_exprlist_inject j env_src env_tgt tenv_src tenv_tgt m_src m_tgt tys
         exps vs_src
         (EVALS: eval_exprlist ge_src env_src tenv_src m_src exps tys vs_src)
+        (GENV: meminj_match_globals ge_src ge_tgt j)
         (ENV: match_env j env_src env_tgt)
         (TENV: match_temp_env j tenv_src tenv_tgt)
         (INJECT: Mem.inject j m_src m_tgt)
@@ -631,6 +636,7 @@ Section CLIGHTINJ.
   Lemma eval_lvalue_inject j env_src env_tgt tenv_src tenv_tgt m_src m_tgt
         exp blk_src ofs_src
         (EVAL: eval_lvalue ge_src env_src tenv_src m_src exp blk_src ofs_src)
+        (GENV: meminj_match_globals ge_src ge_tgt j)
         (ENV: match_env j env_src env_tgt)
         (TENV: match_temp_env j tenv_src tenv_tgt)
         (INJECT: Mem.inject j m_src m_tgt)
@@ -825,6 +831,8 @@ Section CLIGHTINJ.
 
   Lemma clight_step_preserve_injection
         sm_arg u st_src0 st_tgt0 st_src1 sm0 tr
+        (SYMBOLS: symbols_inject (SimMemInj.inj sm0) se_src se_tgt)
+        (GENV: meminj_match_globals ge_src ge_tgt (SimMemInj.inj sm0))
         (MATCH: match_states_clight sm_arg u st_src0 st_tgt0 sm0)
         (STEP: step se_src ge_src (function_entry ge_src) st_src0 tr st_src1)
     :
@@ -861,7 +869,6 @@ Section CLIGHTINJ.
 
     - cinv MWF. exploit eval_exprlist_inject; eauto. i. des.
       exploit external_call_parallel; eauto.
-      { instantiate (1:=se_tgt). admit "symbols_inject". }
       i. des. esplits; eauto.
       + econs 4; eauto.
       + cinv MLE. econs; eauto.
@@ -982,8 +989,7 @@ Section CLIGHTINJ.
       + econs; eauto.
       + refl.
 
-    - assert (FPTRTGT: Genv.find_funct ge_tgt fptr_tgt = Some (Internal f)).
-      { admit "genv". }
+    - exploit match_globals_find_funct; eauto. intros FPTRTGT.
       exploit FUNCTIONENTRY; eauto. i. des.
       esplits.
       + econs 23; eauto.
@@ -991,11 +997,8 @@ Section CLIGHTINJ.
         cinv MLE. eapply match_cont_incr; eauto.
       + eauto.
 
-    - assert (FPTRTGT: Genv.find_funct ge_tgt fptr_tgt = Some (External ef targs tres cconv)).
-      { admit "genv". }
-
+    - exploit match_globals_find_funct; eauto. intros FPTRTGT.
       exploit external_call_parallel; eauto.
-      { instantiate (1:=se_tgt). admit "symbols_inject". }
       i. des. esplits; eauto.
       + econs 24; eauto.
       + cinv MLE. econs; eauto.
@@ -1583,7 +1586,7 @@ Section CLIGHTSOUND.
   Lemma clight_unreach_local_preservation
         clight
     :
-      exists sound_state, <<PRSV: local_preservation (modsem2 skenv_link clight) sound_state>>
+      exists sound_state, <<PRSV: local_preservation (modsem1 skenv_link clight) sound_state>>
   .
   Proof.
     esplits.
@@ -1593,34 +1596,29 @@ Section CLIGHTSOUND.
       + refl.
       + econs; eauto.
         * inv SKENV. eauto.
-        * inv TYP. revert VALS. clear.
-          generalize (sig_args (signature_of_function fd)). generalize (Args.vs args).
-          induction l; ss; eauto. i. inv VALS.
-          unfold typify_list. ss. des_ifs. econs.
-          { unfold typify. des_ifs. }
-          { eapply IHl; eauto. }
         * econs.
       + instantiate (1:=get_mem). ss. refl.
 
     -
-      des.
-      hexploit clight_step_preserve_injection; eauto.
-      { eapply function_entry2_inject. eauto. }
-      {
-        instantiate (2:=st0). instantiate (2:=tt).
-        instantiate (1:=SimMemInj.mk
-                          (get_mem st0)
-                          (get_mem st0)
-                          (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0)))
-                          (loc_unmapped (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) /2\ SimMemInj.valid_blocks (get_mem st0))
-                          (loc_out_of_reach (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) (get_mem st0) /2\ SimMemInj.valid_blocks (get_mem st0))
-                          _ _).
-        (* inv SUST; econs; ss; eauto. *)
-        (* - econs; ss; eauto. *)
-        (*   + eapply UnreachC.to_inj_mem. eauto. *)
-        (*   + unfold SimMemInj.tgt_private. ss. *)
-        admit "".
-      }
+
+      (* des. *)
+      (* hexploit clight_step_preserve_injection; eauto. *)
+      (* { eapply function_entry2_inject. eauto. } *)
+      (* { *)
+      (*   instantiate (2:=st0). instantiate (2:=tt). *)
+      (*   instantiate (1:=SimMemInj.mk *)
+      (*                     (get_mem st0) *)
+      (*                     (get_mem st0) *)
+      (*                     (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) *)
+      (*                     (loc_unmapped (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) /2\ SimMemInj.valid_blocks (get_mem st0)) *)
+      (*                     (loc_out_of_reach (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) (get_mem st0) /2\ SimMemInj.valid_blocks (get_mem st0)) *)
+      (*                     _ _). *)
+      (*   (* inv SUST; econs; ss; eauto. *) *)
+      (*   (* - econs; ss; eauto. *) *)
+      (*   (*   + eapply UnreachC.to_inj_mem. eauto. *) *)
+      (*   (*   + unfold SimMemInj.tgt_private. ss. *) *)
+      (*   admit "". *)
+      (* } *)
 
       admit "sound step".
 

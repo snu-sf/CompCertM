@@ -18,10 +18,29 @@ Require Import LocationsC Conventions.
 
 Require Import AsmregsC.
 Require Import MatchSimModSem.
+Require Import mktac.
+Require Import IntegersC.
 
 Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
+
+Lemma external_call_parallel ef se_src se_tgt vargs_src vargs_tgt
+      sm0 tr vres_src m_src1
+      (CALL: external_call ef se_src vargs_src (SimMemInj.src sm0) tr vres_src m_src1)
+      (ARGS: Val.inject_list (SimMemInj.inj sm0) vargs_src vargs_tgt)
+      (MWF: SimMemInj.wf' sm0)
+  :
+    exists sm1 vres_tgt,
+      (<<MEMSRC: SimMemInj.src sm1 = m_src1>>) /\
+      (<<MWF: SimMemInj.wf' sm1>>) /\
+      (<<MLE: SimMemInj.le' sm0 sm1>>) /\
+      (<<VRES: Val.inject (SimMemInj.inj sm1) vres_src vres_tgt>>) /\
+      (<<CALL: external_call ef se_tgt vargs_tgt (SimMemInj.tgt sm0) tr vres_tgt (SimMemInj.tgt sm1)>>).
+Proof.
+  cinv MWF. exploit external_call_mem_inject; eauto.
+  -
+
 
 Definition match_env (j: meminj) (env_src env_tgt: env) :=
   forall id,
@@ -162,10 +181,6 @@ Inductive match_states_ext_clight (sm_arg: SimMemExt.t')
       (Returnstate retv_tgt K_tgt m_tgt)
       sm0
 .
-
-Require Import mktac.
-Require Import IntegersC.
-(* Require Import SimplLocalsproof. *)
 
 Section CLIGHTINJ.
 
@@ -845,7 +860,10 @@ Section CLIGHTINJ.
       + refl.
 
     - cinv MWF. exploit eval_exprlist_inject; eauto. i. des.
+
       admit "external call".
+
+SimMemInj.alloc_parallel
 
     - esplits.
       + econs 5; eauto.
@@ -1023,27 +1041,6 @@ Section CLIGHTEXT.
       econs; eauto.
   Qed.
 
-  Lemma match_env_inject_id en
-    :
-      match_env inject_id en en.
-  Proof.
-    ii. destruct (en ! id) eqn:ENV; eauto.
-    destruct p. left. esplits; ss.
-  Qed.
-
-  Lemma function_entry2_extends
-    :
-      function_entry_extends function_entry2.
-  Proof.
-    ii. inv ENTRY.
-    exploit alloc_variables_extends; eauto.
-    { eapply match_env_inject_id. } i. des.
-    exploit bind_parameter_temps_inject; eauto.
-    { eapply create_undef_temps_match. }
-    { eapply val_inject_list_lessdef. eauto. } i. des.
-    esplits; eauto. econs; eauto.
-  Qed.
-
   Lemma assign_loc_extends ce ty m_src0 m_tgt0 v_src v_tgt m_src1 blk ofs
         (ASSIGN: assign_loc ce ty m_src0 blk ofs v_src m_src1)
         (VAL: Val.lessdef v_src v_tgt)
@@ -1060,6 +1057,63 @@ Section CLIGHTEXT.
       exploit Mem.loadbytes_extends; eauto. i. des_safe.
       exploit Mem.storebytes_within_extends; eauto. i. des_safe.
       esplits; eauto. econs 2; eauto.
+  Qed.
+
+  Lemma match_env_inject_id en
+    :
+      match_env inject_id en en.
+  Proof.
+    ii. destruct (en ! id) eqn:ENV; eauto.
+    destruct p. left. esplits; ss.
+  Qed.
+
+  Lemma bind_parameters_extends e_src e_tgt m_src0 m_tgt0 idl
+        vargs_src vargs_tgt m_src1
+        (BIND: bind_parameters ge e_src m_src0 idl vargs_src m_src1)
+        (ENV: match_env inject_id e_src e_tgt)
+        (MWF: Mem.extends m_src0 m_tgt0)
+        (VALS: Val.lessdef_list vargs_src vargs_tgt)
+    :
+      exists m_tgt1,
+        (<<MWF: Mem.extends m_src1 m_tgt1>>) /\
+        (<<BIND: bind_parameters ge e_tgt m_tgt0 idl vargs_tgt m_tgt1>>).
+  Proof.
+    revert m_src0 m_tgt0 ENV vargs_src vargs_tgt m_src1 MWF VALS BIND. induction idl.
+    - i. inv BIND. inv VALS. esplits; eauto. econs.
+    - i. inv BIND. inv VALS.
+      destruct (ENV id); des; clarify.
+      unfold inject_id in *. clarify.
+      exploit assign_loc_extends; eauto. i. des. clarify.
+      exploit IHidl; try apply H6; eauto. i. des.
+      esplits; eauto. econs; eauto.
+  Qed.
+
+  Lemma function_entry2_extends
+    :
+      function_entry_extends function_entry2.
+  Proof.
+    ii. inv ENTRY.
+    exploit alloc_variables_extends; eauto.
+    { eapply match_env_inject_id. } i. des.
+    exploit bind_parameter_temps_inject; eauto.
+    { eapply create_undef_temps_match. }
+    { eapply val_inject_list_lessdef. eauto. } i. des.
+    esplits; eauto. econs; eauto.
+  Qed.
+
+  Lemma function_entry1_extends
+    :
+      function_entry_extends function_entry1.
+  Proof.
+    ii. inv ENTRY.
+    exploit alloc_variables_extends; eauto.
+    { eapply match_env_inject_id. } i. des.
+    clear ENV.
+    exploit bind_parameters_extends; eauto.
+    { eapply match_env_inject_id. } i. des.
+    esplits; eauto.
+    - eapply create_undef_temps_match.
+    - econs; eauto.
   Qed.
 
   Lemma bool_val_extends m_src m_tgt ty v_src v_tgt b

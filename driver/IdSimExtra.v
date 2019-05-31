@@ -11,6 +11,7 @@ Require Import SmallstepC.
 Require Import Events.
 Require Import Preservation.
 
+Set Implicit Arguments.
 
 (* TODO: same as IdSimAsm. make IdSimExtra and move it to there *)
 Lemma SymSymbId_SymSymbDrop_bot sm_arg ss_link ge_src ge_tgt
@@ -74,4 +75,92 @@ Proof.
   inv SIMSKENV. ss. econs; ss.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKE; eauto.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKELINK; eauto.
+Qed.
+
+Inductive def_match A V: globdef A V -> globdef A V -> Prop :=
+| def_match_gfun f: def_match (Gfun f) (Gfun f)
+| def_match_gvar inf init0 init1 ro vol
+  :
+    def_match
+      (Gvar (mkglobvar inf init0 ro vol))
+      (Gvar (mkglobvar inf init1 ro vol))
+.
+
+Program Instance def_match_reflexive A V : Reflexive (@def_match A V).
+Next Obligation.
+Proof.
+  i. destruct x; try econs. destruct v; try econs.
+Qed.
+
+Lemma def_match_refl A V (g: globdef A V)
+  :
+    def_match g g
+.
+Proof. refl. Qed.
+Hint Resolve def_match_refl.
+
+Inductive meminj_match_globals F V (ge_src ge_tgt: Genv.t F V) (j: meminj) : Prop :=
+| meminj_match_globals_intro
+    (DEFLE: forall
+        b_src b_tgt delta d_src
+        (FINDSRC: Genv.find_def ge_src b_src = Some d_src)
+        (INJ: j b_src = Some (b_tgt, delta)),
+        exists d_tgt,
+          (<<FINDTGT: Genv.find_def ge_tgt b_tgt = Some d_tgt>>) /\
+          (<<DELTA: delta = 0>>) /\
+          (<<DEFMATCH: def_match d_src d_tgt>>))
+    (SYMBLE: forall
+        i b_src
+        (FINDSRC: Genv.find_symbol ge_src i = Some b_src),
+        exists b_tgt,
+          (<<FINDTGT: Genv.find_symbol ge_tgt i = Some b_tgt>>) /\
+          (<<INJ: j b_src = Some (b_tgt, 0)>>)).
+
+Lemma SimSymbDrop_match_globals F V sm0 skenv_src skenv_tgt (p: program (fundef F) V)
+      (SIMSKE: SimSymbDrop.sim_skenv sm0 bot1 skenv_src skenv_tgt)
+  :
+    meminj_match_globals
+      (SkEnv.revive skenv_src p)
+      (SkEnv.revive skenv_tgt p)
+      (SimMemInj.inj sm0).
+Proof.
+  inv SIMSKE. econs.
+  - i. unfold SkEnv.revive in *. exists d_src.
+    apply Genv_map_defs_def in FINDSRC. des.
+    unfold o_bind, o_bind2, o_join, o_map, curry2, fst in MAP.
+    des_ifs_safe.
+    apply Genv.invert_find_symbol in Heq0.
+    exploit SIMDEF; try apply FIND; eauto. i. des. clarify.
+    esplits; eauto.
+    exploit Genv_map_defs_def_inv; try apply DEFTGT.
+    i. rewrite H.
+    unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
+    erewrite Genv.find_invert_symbol.
+    + rewrite Heq1; eauto.
+    + exploit SIMSYMB1; eauto. i. des. eauto.
+  - i. unfold SkEnv.revive in *.
+    rewrite Genv_map_defs_symb in FINDSRC.
+    exploit SIMSYMB2; try apply FINDSRC; eauto.
+Qed.
+
+Lemma SimSymbDrop_symbols_inject sm0 ss_link skenv_src skenv_tgt
+      (SIMSKELINK: SimSymbDrop.sim_skenv sm0 ss_link skenv_src skenv_tgt)
+  :
+    symbols_inject (SimMemInj.inj sm0) skenv_src skenv_tgt.
+Proof.
+  inv SIMSKELINK. econs; esplits; ss; i.
+  - unfold Genv.public_symbol, proj_sumbool.
+    rewrite PUB in *. des_ifs; ss.
+    + exploit SIMSYMB3; eauto. i. des. clarify.
+    + exploit SIMSYMB2; eauto. i. des. clarify.
+  - exploit SIMSYMB1; eauto. i. des. eauto.
+  - exploit SIMSYMB2; eauto.
+    { unfold Genv.public_symbol, proj_sumbool in *. des_ifs. eauto. }
+    i. des. eauto.
+  - unfold Genv.block_is_volatile, Genv.find_var_info.
+    destruct (Genv.find_def skenv_src b1) eqn:DEQ.
+    + exploit SIMDEF; eauto. i. des. clarify.
+      rewrite DEFTGT. eauto.
+    + des_ifs_safe. exfalso. exploit SIMDEFINV; eauto.
+      i. des. clarify.
 Qed.

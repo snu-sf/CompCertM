@@ -28,6 +28,7 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 Lemma external_call_parallel ef se_src se_tgt vargs_src vargs_tgt
       sm0 tr vres_src m_src1
       (CALL: external_call ef se_src vargs_src (SimMemInj.src sm0) tr vres_src m_src1)
+      (SENV: symbols_inject (SimMemInj.inj sm0) se_src se_tgt)
       (ARGS: Val.inject_list (SimMemInj.inj sm0) vargs_src vargs_tgt)
       (MWF: SimMemInj.wf' sm0)
   :
@@ -38,9 +39,8 @@ Lemma external_call_parallel ef se_src se_tgt vargs_src vargs_tgt
       (<<VRES: Val.inject (SimMemInj.inj sm1) vres_src vres_tgt>>) /\
       (<<CALL: external_call ef se_tgt vargs_tgt (SimMemInj.tgt sm0) tr vres_tgt (SimMemInj.tgt sm1)>>).
 Proof.
-  cinv MWF. exploit external_call_mem_inject; eauto.
-  -
-
+  admit "compcomp #295".
+Qed.
 
 Definition match_env (j: meminj) (env_src env_tgt: env) :=
   forall id,
@@ -860,10 +860,17 @@ Section CLIGHTINJ.
       + refl.
 
     - cinv MWF. exploit eval_exprlist_inject; eauto. i. des.
-
-      admit "external call".
-
-SimMemInj.alloc_parallel
+      exploit external_call_parallel; eauto.
+      { instantiate (1:=se_tgt). admit "symbols_inject". }
+      i. des. esplits; eauto.
+      + econs 4; eauto.
+      + cinv MLE. econs; eauto.
+        * eapply match_env_incr; eauto.
+        * unfold set_opttemp. des_ifs.
+          { eapply set_match_temp_env; eauto.
+            eapply match_temp_env_incr; eauto. }
+          { eapply match_temp_env_incr; eauto. }
+        * eapply match_cont_incr; eauto.
 
     - esplits.
       + econs 5; eauto.
@@ -986,7 +993,13 @@ SimMemInj.alloc_parallel
 
     - assert (FPTRTGT: Genv.find_funct ge_tgt fptr_tgt = Some (External ef targs tres cconv)).
       { admit "genv". }
-      admit "external_call".
+
+      exploit external_call_parallel; eauto.
+      { instantiate (1:=se_tgt). admit "symbols_inject". }
+      i. des. esplits; eauto.
+      + econs 24; eauto.
+      + cinv MLE. econs; eauto.
+        eapply match_cont_incr; eauto.
 
     - inv CONT. esplits.
       + econs 25; eauto.

@@ -502,6 +502,16 @@ Proof.
   apply sim_inj_drop_bot_id. apply clight2_inj_drop_bot.
 Qed.
 
+Lemma clight_id
+      (clight: Clight.program)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+.
+Proof.
+Admitted.
 
 Lemma clight_inj_id
       (clight: Clight.program)

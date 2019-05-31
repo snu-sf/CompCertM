@@ -1,6 +1,6 @@
 (** Libraries. *)
 Require Import String.
-Require Import CoqlibC Errors.
+Require Import CoqlibC Errors ErrorsC.
 Require Import AST Linking Smallstep.
 (** Languages (syntax and semantics). *)
 Require Ctypes Csyntax CsemC Cstrategy Cexec.
@@ -816,13 +816,50 @@ End Asmgen.
 
 (* From stdpp Require list. *)
 
-(* TODO: remove it *)
-(* Definition transf_clight2_program (p: Clight.program) : res Asm.program := *)
-(*   OK p *)
-(*    @@ print print_Clight *)
-(*   @@@ time "C#minor generation" Cshmgen.transl_program *)
-(*   @@@ time "Cminor generation" Cminorgen.transl_program *)
-(*   @@@ transf_cminor_program. *)
+Ltac contains_term TERM :=
+  match goal with
+  | [ |- context[TERM] ] => idtac
+  | _ => fail
+  end
+.
+
+Ltac contains_term_in TERM H :=
+  multimatch goal with
+  | [ H': context[TERM] |- _ ] =>
+    (* idtac H'; *)
+    check_equal H H'
+  | _ => fail
+  end
+.
+
+Ltac find_sim LANG :=
+  repeat
+    multimatch goal with
+    (* | [H0: ?L0 = ?R0, H1: ?L1 = ?R1 |- _ ] => *)
+    (*   rewrite <- H0; rewrite <- H1; refl *)
+    | [ T: @__GUARD__ _ (?SIM /\ ?SRC /\ ?TGT)  |- _ ] =>
+      match SIM with
+      | (@ProgPair.sim ?SIMMEM ?SIMSYMB ?SOUND _) =>
+        contains_term SIMMEM;
+        contains_term SIMSYMB;
+        contains_term SOUND;
+        contains_term_in LANG T;
+        unfold __GUARD__ in T;
+        let X := fresh "T" in
+        let Y := fresh "T" in
+        let Z := fresh "T" in
+        destruct T as [X [Y Z]];
+        (* let tx := type of X in *)
+        (* let ty := type of Y in *)
+        (* let tz := type of Z in *)
+        (* idtac "-------------------------------------------"; *)
+        (* idtac X; idtac Y; idtac Z; *)
+        (* idtac tx; idtac ty; idtac tz; *)
+        apply X
+      | _ => idtac (* SIM *)
+      end
+    end
+.
 
 Lemma compiler_clightgen_single
         (src: Csyntax.program)
@@ -833,80 +870,90 @@ Lemma compiler_clightgen_single
         (TRANSF: SimplExpr.transl_program src = OK tgt)
   :
     improves (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms)))
-             (sem ((map CsemC.module cs) ++ [ClightC.module2 tgt] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms)))
+             (sem ((map CsemC.module cs) ++ [ClightC.module1 tgt] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms)))
 .
 Proof.
-Admitted.
+  cbn in *.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_id cs). intro CSID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cls). intro CLSID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms). intro ASMSID; des.
 
-Theorem compiler_clight_gen_correct
+  etrans; eapply bsim_improves.
+  - rp; [eapply Cstrategy_correct|..]; try refl.
+    + find_sim Csyntax.program.
+    + eapply Forall_app.
+      * find_sim Clight.program.
+      * find_sim Asm.program.
+    + unfold __GUARD__ in *. des. ss.
+      unfold ProgPair.src in *. rewrite map_app.
+      repeat f_equal; eauto.
+  - rp; [eapply SimplExpr_correct|..].
+    + find_sim Csyntax.program.
+    + eapply Forall_app.
+      * find_sim Clight.program.
+      * find_sim Asm.program.
+    + eauto.
+    + unfold __GUARD__ in *. des.
+      unfold ProgPair.src, ProgPair.tgt in *.
+      repeat rewrite map_app. all ltac:(fun H => rewrite H); eauto.
+    + unfold __GUARD__ in *. des.
+      unfold ProgPair.src, ProgPair.tgt in *.
+      repeat rewrite map_app. all ltac:(fun H => rewrite H); eauto.
+Qed.
+
+Theorem compiler_clightgen_correct
         (srcs0: list Csyntax.program)
         (tgts srcs1: list Clight.program)
         (hands: list Asm.program)
-        (TR0: mmap SimplExpr.transl_program srcs0 = OK tgts)
+        (TR: mmap SimplExpr.transl_program srcs0 = OK tgts)
   :
     improves (sem ((map CsemC.module srcs0) ++ (map ClightC.module1 srcs1) ++ (map AsmC.module hands)))
              (sem ((map ClightC.module1 tgts) ++ (map ClightC.module1 srcs1) ++ (map AsmC.module hands)))
 .
 Proof.
-Admitted.
+  apply mmap_inversion in TR.
+  apply forall2_eq in TR.
+  generalize dependent hands.
+  remember (length srcs0) as len. rename Heqlen into T.
+  generalize dependent srcs0.
+  generalize dependent srcs1.
+  generalize dependent tgts.
+  induction len; i; ss.
+  { destruct srcs0; ss. inv TR. refl. }
 
-Lemma compiler_clightgen_correct
+  destruct (last_opt srcs0) eqn:T2; cycle 1.
+  {
+    eapply last_none in T2. clarify.
+  }
+  apply last_some in T2. des. clarify.
+  apply Forall2_app_inv_l in TR. des. clarify. inv TR0. inv H3.
+  rename hds into srcs. rename l1' into tgts.
+  rename p into c_src. rename y into cl_tgt.
+  rewrite ! map_app. ss.
+  etrans.
+  { rp; [eapply compiler_clightgen_single with (cs:= srcs) (asms:= hands)|..]; eauto.
+    rewrite app_assoc_reverse. ss.
+  }
+  { rewrite <- ! app_assoc. ss.
+    rewrite app_length in *. ss. rewrite Nat.add_1_r in *. clarify.
+    eapply (IHlen tgts (cl_tgt :: srcs1) srcs); eauto.
+  }
+Qed.
+
+Lemma compiler_correct_single
         (src: Csyntax.program)
-        (tgt: Clight.program)
+        (tgt: Asm.program)
         (cs: list Csyntax.program)
-        (cls: list Clight.program)
         (asms: list Asm.program)
-        (TRANSF: SimplExpr.transl_program src = OK tgt)
+        (TRANSF: transf_c_program src = OK tgt)
   :
-    improves (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms)))
-             (sem ((map CsemC.module cs) ++ [ClightC.module2 tgt] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms)))
+    Smallstep.backward_simulation (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map AsmC.module asms)))
+                                  (sem ((map CsemC.module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
 .
 Proof.
-Admitted.
-
-Theorem compiler_correct
-        (srcs0: list Csyntax.program)
-        (srcs1: list Clight.program)
-        (tgts0 tgts1 hands: list Asm.program)
-        (TR0: mmap transf_c_program srcs0 = OK tgts0)
-        (TR1: mmap transf_clight_program srcs1 = OK tgts1)
-  :
-    improves (sem ((map CsemC.module srcs0) ++ (map ClightC.module1 srcs1) ++ (map AsmC.module hands)))
-             (sem ((map AsmC.module tgts0) ++ (map AsmC.module tgts1) ++ (map AsmC.module hands)))
-.
-Proof.
-Admitted.
-
-
-Lemma compiler_clightgen_correct
-        (src: Clight.program)
-        (tgt: Asm.program)
-        (cs: list Clight.program)
-        (asms: list Asm.program)
-        (TRANSF: transf_clight_program src = OK tgt)
-  :
-    improves (sem ((map ClightC.module1 cs) ++ [ClightC.module1 src] ++ (map AsmC.module asms)))
-             (sem ((map ClightC.module1 cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
-.
-Proof.
-
-
-          (TR: mmap transf_c_program srcs = OK tgts)
-
-
-Lemma clightgen_single
-        (src: Clight.program)
-        (tgt: Asm.program)
-        (cs: list Clight.program)
-        (asms: list Asm.program)
-        (TRANSF: transf_clight_program src = OK tgt)
-  :
-    improves (sem ((map ClightC.module1 cs) ++ [ClightC.module1 src] ++ (map AsmC.module asms)))
-             (sem ((map ClightC.module1 cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
-.
-Proof.
-
-
+  eapply compose_backward_simulation; eauto.
+  idtac "SINGLE EVENTS!!!!".
+Abort.
 
 Lemma compiler_correct_single
         (src: Clight.program)
@@ -932,11 +979,11 @@ Proof.
   set (Tunneling.tunnel_program p5) as ptunnel in *.
   set (CleanupLabels.transf_program p4) as pclean in *.
 
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_drop cs). intro SRCINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_id cs). intro SRCINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_ext_top cs). intro SRCEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_ext_unreach cs). intro SRCEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_id cs). intro SRCID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_drop cs). intro SRCINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_id cs). intro SRCINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_top cs). intro SRCEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_unreach cs). intro SRCEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cs). intro SRCID; des.
 
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop asms). intro TGTINJDROP; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id asms). intro TGTINJID; des.
@@ -945,230 +992,14 @@ Proof.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms). intro TGTID; des.
 
 
-  Ltac contains_term TERM :=
-    match goal with
-    | [ |- context[TERM] ] => idtac
-    | _ => fail
-    end
-  .
-
-  Ltac contains_term_in TERM H :=
-    multimatch goal with
-    | [ H': context[TERM] |- _ ] =>
-      (* idtac H'; *)
-      check_equal H H'
-    | _ => fail
-    end
-  .
-
-  Ltac find_sim LANG :=
-    repeat
-      multimatch goal with
-      (* | [H0: ?L0 = ?R0, H1: ?L1 = ?R1 |- _ ] => *)
-      (*   rewrite <- H0; rewrite <- H1; refl *)
-      | [ T: @__GUARD__ _ (?SIM /\ ?SRC /\ ?TGT)  |- _ ] =>
-        match SIM with
-        | (@ProgPair.sim ?SIMMEM ?SIMSYMB ?SOUND _) =>
-          contains_term SIMMEM;
-          contains_term SIMSYMB;
-          contains_term SOUND;
-          contains_term_in LANG T;
-          unfold __GUARD__ in T;
-          let X := fresh "T" in
-          let Y := fresh "T" in
-          let Z := fresh "T" in
-          destruct T as [X [Y Z]];
-          (* let tx := type of X in *)
-          (* let ty := type of Y in *)
-          (* let tz := type of Z in *)
-          (* idtac "-------------------------------------------"; *)
-          (* idtac X; idtac Y; idtac Z; *)
-          (* idtac tx; idtac ty; idtac tz; *)
-          apply X
-        | _ => idtac (* SIM *)
-        end
-      end
-  .
-
   Ltac next PASS_CORRECT :=
     etrans; [
-      eapply bsim_improves; rp; [eapply PASS_CORRECT|..]; try refl; [find_sim Csyntax.program|find_sim Asm.program|..];
+      eapply bsim_improves; rp; [eapply PASS_CORRECT|..]; try refl; [find_sim Clight.program|find_sim Asm.program|..];
       try (by unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto)
      |];
     folder
   .
 
-  next Cstrategy_correct.
-  next SimplExpr_correct.
-  next SimplLocals_correct.
-  next Cshmgen_correct.
-  next Cminorgen_correct.
-  next Selection_correct.
-  next RTLgen_correct.
-  next Tailcall_correct.
-  next Inlining_correct.
-  next Renumber0_correct.
-  next Constprop_correct.
-  next Renumber1_correct.
-  next CSE_correct.
-  next Deadcode_correct.
-  next Unusedglob_correct.
-  next Allocation_correct.
-  next Tunneling_correct.
-  next Linearize_correct.
-  next CleanupLabels_correct.
-  next Debugvar_correct.
-  next Stacking_correct.
-  { eexists. eapply transf_program_match; eauto. }
-  next Asmgen_correct.
-
-  unfold __GUARD__ in *. des.
-  repeat all ltac:(fun H => rewrite H).
-  refl.
-
-Qed.
-
-Theorem compiler_correct
-        (srcs0: list Csyntax.program)
-        (srcs1: list Clight.program)
-        (tgts0 tgts1 hands: list Asm.program)
-        (TR0: mmap transf_c_program srcs0 = OK tgts0)
-        (TR1: mmap transf_clight2_program srcs1 = OK tgts1)
-  :
-    improves (sem ((map CsemC.module srcs0) ++ (map ClightC.module2 srcs1) ++ (map AsmC.module hands)))
-             (sem ((map AsmC.module tgts0) ++ (map AsmC.module tgts1) ++ (map AsmC.module hands)))
-.
-Proof.
-Admitted.
-
-Lemma compiler_correct_single
-        (src: Csyntax.program)
-        (tgt: Asm.program)
-        (cs: list Csyntax.program)
-        (asms: list Asm.program)
-        (TRANSF: transf_c_program src = OK tgt)
-  :
-    Smallstep.backward_simulation (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map AsmC.module asms)))
-                                  (sem ((map CsemC.module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
-.
-Proof.
-  eapply compose_backward_simulation; eauto.
-  idtac "SINGLE EVENTS!!!!".
-Abort.
-
-
-
-
-Lemma compiler_correct_single
-        (src: Csyntax.program)
-        (tgt: Asm.program)
-        (cs: list Csyntax.program)
-        (cls: list Clight.program)
-        (asms: list Asm.program)
-        (TRANSF: transf_c_program src = OK tgt)
-  :
-    improves (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map AsmC.module asms)))
-             (sem ((map CsemC.module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
-.
-Proof.
-  unfold transf_c_program in *. unfold transf_clight_program in *.
-  unfold transf_cminor_program in *. unfold transf_rtl_program in *. unfold time in *.
-  (* unfold total_if, partial_if in *. *)
-  unfold print in *. cbn in *.
-  unfold apply_total, apply_partial in *. des_ifs_safe.
-
-Lemma compiler_correct_single
-        (src: Csyntax.program)
-        (tgt: Asm.program)
-        (cs: list Csyntax.program)
-        (asms: list Asm.program)
-        (TRANSF: transf_c_program src = OK tgt)
-  :
-    improves (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map AsmC.module asms)))
-             (sem ((map CsemC.module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
-.
-Proof.
-  unfold transf_c_program in *. unfold transf_clight_program in *.
-  unfold transf_cminor_program in *. unfold transf_rtl_program in *. unfold time in *.
-  (* unfold total_if, partial_if in *. *)
-  unfold print in *. cbn in *.
-  unfold apply_total, apply_partial in *. des_ifs_safe.
-
-  set (total_if optim_tailcalls Tailcall.transf_program p1) as ptail in *.
-  set (Renumber.transf_program p10) as prenum0 in *.
-  set (total_if optim_constprop Constprop.transf_program prenum0) as pconst in *.
-  set (total_if optim_constprop Renumber.transf_program pconst) as prenum1 in *.
-  set (Tunneling.tunnel_program p6) as ptunnel in *.
-  set (CleanupLabels.transf_program p5) as pclean in *.
-
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_drop cs). intro SRCINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_inj_id cs). intro SRCINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_ext_top cs). intro SRCEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_ext_unreach cs). intro SRCEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_id cs). intro SRCID; des.
-
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop asms). intro TGTINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id asms). intro TGTINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_top asms). intro TGTEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_unreach asms). intro TGTEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms). intro TGTID; des.
-
-
-  Ltac contains_term TERM :=
-    match goal with
-    | [ |- context[TERM] ] => idtac
-    | _ => fail
-    end
-  .
-
-  Ltac contains_term_in TERM H :=
-    multimatch goal with
-    | [ H': context[TERM] |- _ ] =>
-      (* idtac H'; *)
-      check_equal H H'
-    | _ => fail
-    end
-  .
-
-  Ltac find_sim LANG :=
-    repeat
-      multimatch goal with
-      (* | [H0: ?L0 = ?R0, H1: ?L1 = ?R1 |- _ ] => *)
-      (*   rewrite <- H0; rewrite <- H1; refl *)
-      | [ T: @__GUARD__ _ (?SIM /\ ?SRC /\ ?TGT)  |- _ ] =>
-        match SIM with
-        | (@ProgPair.sim ?SIMMEM ?SIMSYMB ?SOUND _) =>
-          contains_term SIMMEM;
-          contains_term SIMSYMB;
-          contains_term SOUND;
-          contains_term_in LANG T;
-          unfold __GUARD__ in T;
-          let X := fresh "T" in
-          let Y := fresh "T" in
-          let Z := fresh "T" in
-          destruct T as [X [Y Z]];
-          (* let tx := type of X in *)
-          (* let ty := type of Y in *)
-          (* let tz := type of Z in *)
-          (* idtac "-------------------------------------------"; *)
-          (* idtac X; idtac Y; idtac Z; *)
-          (* idtac tx; idtac ty; idtac tz; *)
-          apply X
-        | _ => idtac (* SIM *)
-        end
-      end
-  .
-
-  Ltac next PASS_CORRECT :=
-    etrans; [
-      eapply bsim_improves; rp; [eapply PASS_CORRECT|..]; try refl; [find_sim Csyntax.program|find_sim Asm.program|..];
-      try (by unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto)
-     |];
-    folder
-  .
-
-  next Cstrategy_correct.
-  next SimplExpr_correct.
   next SimplLocals_correct.
   next Cshmgen_correct.
   next Cminorgen_correct.
@@ -1208,12 +1039,12 @@ Note: we can't vertically compose in simulation level, because
 induction: src/tgt length is fixed (we don't do horizontal composition in behavior level)
 **)
 
-Theorem compiler_correct
-        (srcs: list Csyntax.program)
+Theorem clight_compiler_correct
+        (srcs: list Clight.program)
         (tgts hands: list Asm.program)
-        (TR: mmap transf_c_program srcs = OK tgts)
+        (TR: mmap transf_clight_program srcs = OK tgts)
   :
-    improves (sem ((map CsemC.module srcs) ++ (map AsmC.module hands)))
+    improves (sem ((map ClightC.module1 srcs) ++ (map AsmC.module hands)))
              (sem ((map AsmC.module tgts) ++ (map AsmC.module hands)))
 .
 Proof.
@@ -1244,4 +1075,26 @@ Proof.
     specialize (IHlen tgts srcs). spc IHlen. specialize (IHlen (eq_refl _)).
     eapply (IHlen (hand_tgt :: hands)).
   }
+Qed.
+
+Theorem compiler_correct
+        (srcs0: list Csyntax.program)
+        (srcs1: list Clight.program)
+        (tgts0 tgts1 hands: list Asm.program)
+        (TR0: mmap transf_c_program srcs0 = OK tgts0)
+        (TR1: mmap transf_clight_program srcs1 = OK tgts1)
+  :
+    improves (sem ((map CsemC.module srcs0) ++ (map ClightC.module1 srcs1) ++ (map AsmC.module hands)))
+             (sem ((map AsmC.module tgts0) ++ (map AsmC.module tgts1) ++ (map AsmC.module hands)))
+.
+Proof.
+  unfold transf_c_program, time, print in *.
+  apply mmap_partial in TR0. des.
+  etrans.
+  - eapply compiler_clightgen_correct; eauto.
+  - rp.
+    + eapply clight_compiler_correct.
+      erewrite mmap_app. unfold bind. rewrite MMAP1. rewrite TR1. ss.
+    + rewrite app_assoc. rewrite <- list_append_map. ss.
+    + rewrite app_assoc. rewrite <- list_append_map. ss.
 Qed.

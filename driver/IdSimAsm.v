@@ -96,9 +96,9 @@ Proof.
     left; i.
     ii; ss. des. clarify. clear_tac.
     esplits; eauto.
-    { admit "ez - receptive". }
+    { apply AsmC.modsem_receptive. }
     ii; des. esplits; eauto. left. apply plus_one. econs; eauto.
-    { admit "ez - determinate". }
+    { apply AsmC.modsem_determinate. }
 Unshelve.
   all: ss.
 Qed.
@@ -1080,7 +1080,7 @@ Proof.
     + econs; ss.
 
   - left. ii. esplits; ss; i.
-    + admit "receptive".
+    + apply AsmC.modsem_receptive.
     + exists tt.
       { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
         destruct st0. ss. clarify.
@@ -1088,7 +1088,7 @@ Proof.
         rewrite SIMSKENVLINK in *.
         esplits; auto.
         - left. econs; [|econs 1|symmetry; eapply E0_right]. econs.
-          { admit "determinate". }
+          { apply AsmC.modsem_determinate. }
           instantiate (1:=AsmC.mkstate _ _).
           econs; ss; eauto.
         - instantiate (1:=SimMemExt.mk _ _). econs; ss; eauto.
@@ -1296,7 +1296,7 @@ Proof.
     + econs; ss.
 
   - left. ii. esplits; ss; i.
-    + admit "receptive".
+    + apply AsmC.modsem_receptive.
     + exists tt.
       { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
         destruct st0. ss. clarify.
@@ -1304,7 +1304,7 @@ Proof.
         rewrite SIMSKENVLINK in *.
         esplits; auto.
         - left. econs; [|econs 1|symmetry; eapply E0_right]. econs.
-          { admit "determinate". }
+          { apply AsmC.modsem_determinate. }
           instantiate (1:=AsmC.mkstate _ _).
           econs; ss; eauto.
         - instantiate (1:=SimMemExt.mk _ _). econs; ss; eauto.
@@ -2076,7 +2076,7 @@ Proof.
     + apply inject_list_length in VALS.
       transitivity (Datatypes.length (Args.vs args_src)); eauto.
     + exploit match_globals_find_funct; eauto.
-      
+
   - inv MATCH. ss.
 
   - (** ******************* at external **********************************)
@@ -2427,7 +2427,7 @@ Proof.
 
   - left; i.
     esplits; ss; i.
-    + admit "receptive".
+    + apply AsmC.modsem_receptive.
     + exists O.
       { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
         inv MWF. inv SIMSKENV. destruct st0. ss. clarify.
@@ -2445,7 +2445,7 @@ Proof.
           + apply star_refl.
           + symmetry. apply E0_right.
           + econs.
-            * admit "determinate".
+            * apply AsmC.modsem_determinate.
             * econs; ss; eauto.
         - instantiate (5 := j1).
           econs; ss.

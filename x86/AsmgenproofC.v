@@ -153,11 +153,11 @@ Proof.
   - eapply asm_star_dstar; eauto.
 Qed.
 
-Let SIMGE: Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
-Proof.
-  admit "this does not hold -- TODO: unify with RenumberproofC
--- TODO: by exploiting MFUTURE in SimModSem.v, we may able to simplify this.".
-Qed.
+Theorem make_match_genvs :
+  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk))
+                      (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
+  Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
+Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
 Lemma transf_function_sig
       fd_src fd_tgt
@@ -180,6 +180,7 @@ Proof.
 
   - destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
     inv INITTGT. des. ss. clarify.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
 
     assert (SRCSTORE: exists rs_src m_src,
                StoreArguments.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
@@ -262,6 +263,7 @@ Proof.
 
   - ss. des. inv SIMARGS. destruct sm_arg. ss. clarify.
     inv SAFESRC.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des. ss; unfold bind in *; des_ifs. rename f into fd_tgt.
     inv TYP.
     assert(SIG: fn_sig fd_tgt = Mach.fn_sig fd).
@@ -415,6 +417,7 @@ Proof.
     + i. inv STEPSRC. inv MATCH. set (INITDATA0 := INITDATA). inv INITDATA0.
       inv INITRAPTR. inv INITRS0. clarify.
       exploit step_simulation; ss; try apply agree_sp_def0; eauto.
+      { eapply make_match_genvs; eauto. apply SIMSKENV. }
       i. des; ss; esplits; auto; clarify.
       * left. instantiate (1 := mkstate st_tgt0.(init_rs) S2'). ss.
         destruct st_tgt0. eapply asm_plus_dplus; eauto.
@@ -461,7 +464,11 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - r. admit "easy - see DeadcodeproofC".
+  - r. eapply Sk.match_program_eq; eauto.
+    ii. destruct f1; ss.
+    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto.
+      unfold transf_function, transl_function, bind in *. des_ifs.
+    + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.
 

@@ -21,10 +21,8 @@ Require Import AsmregsC.
 Require Import MatchSimModSem.
 Require IdSimAsm.
 Include IdSimAsm.
-(* Require IdSimCCC. *)
-(* Include IdSimCCC. *)
-Require IdSimClight.
-Include IdSimClight.
+Require IdSimCCC.
+Include IdSimCCC.
 
 Set Implicit Arguments.
 

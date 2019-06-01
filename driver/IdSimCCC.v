@@ -29,6 +29,7 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Lemma ccc_id
       (ccc: Csyntax.program)
+      (WF: Sk.wf ccc.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
@@ -157,6 +158,7 @@ Definition cgenv skenv_link clight :=
 
 Lemma clight_id
       (clight: Clight.program)
+      (WF: Sk.wf clight.(module1))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
@@ -204,6 +206,7 @@ Qed.
 
 Lemma clight_ext_unreach
       (clight: Clight.program)
+      (WF: Sk.wf clight.(module1))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
@@ -276,6 +279,7 @@ Qed.
 
 Lemma clight_ext_top
       (clight: Clight.program)
+      (WF: Sk.wf clight.(module1))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
@@ -346,6 +350,7 @@ Qed.
 
 Lemma clight_inj_drop_bot
       (clight: Clight.program)
+      (WF: Sk.wf clight.(module1))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
@@ -357,8 +362,8 @@ Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto.
   econs; ss; i.
-  { admit "add condition". }
-
+  { econs; ss; i; clarify.
+    inv WF. auto. }
   eapply match_states_sim with (match_states := match_states_clight); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -427,6 +432,7 @@ Qed.
 
 Lemma clight_inj_drop
       (clight: Clight.program)
+      (WF: Sk.wf clight.(module1))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
@@ -439,6 +445,7 @@ Qed.
 
 Lemma clight_inj_id
       (clight: Clight.program)
+      (WF: Sk.wf clight.(module1))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
@@ -446,5 +453,5 @@ Lemma clight_inj_id
       /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
 .
 Proof.
-  apply sim_inj_drop_bot_id. apply clight_inj_drop_bot.
+  apply sim_inj_drop_bot_id. apply clight_inj_drop_bot; auto.
 Qed.

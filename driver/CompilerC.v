@@ -861,6 +861,17 @@ Ltac find_sim LANG :=
     end
 .
 
+Lemma sk_nwf_improves (mds_src mds_tgt: program)
+      (NWF: ~ (forall x (IN: In x mds_src), Sk.wf x))
+  :
+      improves (sem mds_src) (sem mds_tgt).
+Proof.
+  eapply bsim_improves. econs. econs.
+  - eapply unit_ord_wf.
+  - i. inv INITSRC. clarify.
+  - i. inv INITSRC. clarify.
+Qed.
+
 Lemma compiler_clightgen_single
         (src: Csyntax.program)
         (tgt: Clight.program)
@@ -873,10 +884,17 @@ Lemma compiler_clightgen_single
              (sem ((map CsemC.module cs) ++ [ClightC.module1 tgt] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms)))
 .
 Proof.
+  destruct (classic (forall x (IN: In x ((map CsemC.module cs) ++ [CsemC.module src] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms))), Sk.wf x)) as [WF|NWF]; cycle 1.
+  { eapply sk_nwf_improves; auto. }
   cbn in *.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_id cs). intro CSID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cls). intro CLSID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms). intro ASMSID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_id cs).
+  { ii. eapply WF. eapply in_or_app. left. eapply in_map. auto. } intro CSID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cls).
+  { ii. eapply WF. eapply in_or_app. right. right.
+    eapply in_or_app. left. eapply in_map. auto. } intro CLSID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms).
+  { ii. eapply WF. eapply in_or_app. right. right.
+    eapply in_or_app. right. eapply in_map. auto. } intro ASMSID; des.
 
   etrans; eapply bsim_improves.
   - rp; [eapply Cstrategy_correct|..]; try refl.
@@ -901,7 +919,7 @@ Proof.
       repeat rewrite map_app. all ltac:(fun H => rewrite H); eauto.
 Qed.
 
-Theorem compiler_clightgen_correct
+Lemma compiler_clightgen_correct
         (srcs0: list Csyntax.program)
         (tgts srcs1: list Clight.program)
         (hands: list Asm.program)
@@ -956,16 +974,19 @@ Proof.
 Abort.
 
 Lemma compiler_correct_single
-        (src: Clight.program)
-        (tgt: Asm.program)
-        (cs: list Clight.program)
-        (asms: list Asm.program)
-        (TRANSF: transf_clight_program src = OK tgt)
+      (src: Clight.program)
+      (tgt: Asm.program)
+      (cs: list Clight.program)
+      (asms: list Asm.program)
+      (TRANSF: transf_clight_program src = OK tgt)
   :
     improves (sem ((map ClightC.module1 cs) ++ [ClightC.module1 src] ++ (map AsmC.module asms)))
              (sem ((map ClightC.module1 cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
 .
 Proof.
+  destruct (classic (forall x (IN: In x ((map ClightC.module1 cs) ++ [ClightC.module1 src] ++ (map AsmC.module asms))), Sk.wf x)) as [WF|NWF]; cycle 1.
+  { eapply sk_nwf_improves; auto. }
+
   unfold transf_clight_program in *.
   unfold transf_cminor_program in *. unfold transf_rtl_program in *. unfold time in *.
   (* unfold total_if, partial_if in *. *)
@@ -979,17 +1000,22 @@ Proof.
   set (Tunneling.tunnel_program p5) as ptunnel in *.
   set (CleanupLabels.transf_program p4) as pclean in *.
 
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_drop cs). intro SRCINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_id cs). intro SRCINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_top cs). intro SRCEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_unreach cs). intro SRCEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cs). intro SRCID; des.
+  assert (SRCSWF: forall x, In x cs -> Sk.wf (ClightC.module1 x)).
+  { ii. eapply WF. eapply in_or_app. left. eapply in_map. auto. }
+  assert (ASMSWF: forall x, In x asms -> Sk.wf (AsmC.module x)).
+  { ii. eapply WF. eapply in_or_app. right. right. eapply in_map. auto. }
 
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop asms). intro TGTINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id asms). intro TGTINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_top asms). intro TGTEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_unreach asms). intro TGTEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms). intro TGTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_drop cs); auto. intro SRCINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_id cs); auto. intro SRCINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_top cs); auto. intro SRCEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_unreach cs); auto. intro SRCEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cs); auto. intro SRCID; des.
+
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop asms); auto. intro TGTINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id asms); auto. intro TGTINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_top asms); auto. intro TGTEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_unreach asms); auto. intro TGTEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms); auto. intro TGTID; des.
 
 
   Ltac next PASS_CORRECT :=
@@ -1039,7 +1065,7 @@ Note: we can't vertically compose in simulation level, because
 induction: src/tgt length is fixed (we don't do horizontal composition in behavior level)
 **)
 
-Theorem clight_compiler_correct
+Lemma clight_compiler_correct
         (srcs: list Clight.program)
         (tgts hands: list Asm.program)
         (TR: mmap transf_clight_program srcs = OK tgts)

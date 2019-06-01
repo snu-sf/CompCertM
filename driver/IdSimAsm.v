@@ -38,6 +38,7 @@ Require Import mktac.
 
 Lemma asm_id
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
@@ -881,6 +882,7 @@ Qed.
 
 Lemma asm_ext_unreach
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
@@ -1098,6 +1100,7 @@ Qed.
 (* It's ***exactly*** same as asm_ext_sound *)
 Lemma asm_ext_top
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
@@ -1761,6 +1764,7 @@ Qed.
 
 Lemma asm_inj_drop_bot
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
@@ -1772,7 +1776,8 @@ Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto.
   econs; ss; i.
-  { admit "add condition". }
+  { econs; ss; i; clarify.
+    inv WF. auto. }
   eapply match_states_sim with
       (match_states :=
          match_states
@@ -2500,6 +2505,7 @@ Qed.
 
 Lemma asm_inj_drop
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
@@ -2507,11 +2513,12 @@ Lemma asm_inj_drop
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
 .
 Proof.
-  exploit asm_inj_drop_bot. i. des. eauto.
+  exploit asm_inj_drop_bot; eauto. i. des. eauto.
 Qed.
 
 Lemma asm_inj_id
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
@@ -2519,5 +2526,5 @@ Lemma asm_inj_id
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
 .
 Proof.
-  apply sim_inj_drop_bot_id. apply asm_inj_drop_bot.
+  apply sim_inj_drop_bot_id. apply asm_inj_drop_bot; auto.
 Qed.

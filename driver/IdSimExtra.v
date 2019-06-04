@@ -98,7 +98,8 @@ Lemma def_match_refl A V (g: globdef A V)
 Proof. refl. Qed.
 Hint Resolve def_match_refl.
 
-Inductive meminj_match_globals F V (ge_src ge_tgt: Genv.t F V) (j: meminj) : Prop :=
+Inductive meminj_match_globals F V (R: globdef F V -> globdef F V -> Prop)
+          (ge_src ge_tgt: Genv.t F V) (j: meminj) : Prop :=
 | meminj_match_globals_intro
     (DEFLE: forall
         b_src b_tgt delta d_src
@@ -107,7 +108,7 @@ Inductive meminj_match_globals F V (ge_src ge_tgt: Genv.t F V) (j: meminj) : Pro
         exists d_tgt,
           (<<FINDTGT: Genv.find_def ge_tgt b_tgt = Some d_tgt>>) /\
           (<<DELTA: delta = 0>>) /\
-          (<<DEFMATCH: def_match d_src d_tgt>>))
+          (<<DEFMATCH: R d_src d_tgt>>))
     (SYMBLE: forall
         i b_src
         (FINDSRC: Genv.find_symbol ge_src i = Some b_src),
@@ -119,6 +120,7 @@ Lemma SimSymbDrop_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p:
       (SIMSKE: SimSymbDrop.sim_skenv sm0 bot1 skenv_src skenv_tgt)
   :
     meminj_match_globals
+      eq
       (SkEnv.revive skenv_src p)
       (SkEnv.revive skenv_tgt p)
       (SimMemInj.inj sm0).
@@ -166,14 +168,13 @@ Qed.
 
 Lemma match_globals_find_funct F V (ge_src ge_tgt: Genv.t F V) j fptr_src fptr_tgt d
       (FINDSRC: Genv.find_funct ge_src fptr_src = Some d)
-      (GENV: meminj_match_globals ge_src ge_tgt j)
+      (GENV: meminj_match_globals eq ge_src ge_tgt j)
       (FPTR: Val.inject j fptr_src fptr_tgt)
   :
     Genv.find_funct ge_tgt fptr_tgt = Some d.
 Proof.
   inv GENV. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-  inv FPTR. exploit DEFLE; eauto. i. des. clarify.
-  inv DEFMATCH. des_ifs.
+  inv FPTR. exploit DEFLE; eauto. i. des. clarify. des_ifs.
 Qed.
 
 Lemma SimSymbDrop_find_None F `{HasExternal F} V (p: program F V)

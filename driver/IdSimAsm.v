@@ -2438,7 +2438,9 @@ Proof.
         inv MWF. inv SIMSKENV. destruct st0. ss. clarify.
 
         exploit asm_step_preserve_injection; eauto.
-        { eapply SimSymbDrop_match_globals; eauto. }
+        { exploit SimSymbDrop_match_globals; eauto.
+          intros MATCH. inv MATCH. econs; ss; i; eauto.
+          exploit DEFLE; eauto. i. des. clarify. esplits; eauto. }
         { eapply symbols_inject_weak_imply.
           eapply SimSymbDrop_symbols_inject; eauto. }
 

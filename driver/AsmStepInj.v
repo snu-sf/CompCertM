@@ -943,7 +943,7 @@ Section ASMSTEP.
         rs_tgt0 m_tgt0
         se_src se_tgt ge_src ge_tgt
 
-        (GENV: meminj_match_globals ge_src ge_tgt j0)
+        (GENV: meminj_match_globals (@def_match _ _) ge_src ge_tgt j0)
         (SYMBINJ: symbols_inject_weak j0 se_src se_tgt m_src0)
         (* (NOEXTFUN: no_extern_fun ge_src) *)
         (AGREE: agree j0 rs_src0 rs_tgt0)

@@ -71,7 +71,7 @@ Require Import BehaviorsC.
 Require Export Compiler.
 Require Import Simulation.
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
-Require Import AdequacyLocal.
+Require Import SemProps AdequacyLocal.
 
 Require SimMemInj SoundTop SimSymbDrop.
 Require IdSim.
@@ -81,31 +81,6 @@ Set Implicit Arguments.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
-
-
-(* TODO: Move to more proper place *)
-Lemma backward_simulation_refl
-      SEM
-  :
-    backward_simulation SEM SEM
-.
-Proof.
-  eapply (@Backward_simulation _ _ unit bot2).
-  econs; eauto.
-  { apply unit_ord_wf. }
-  ii. ss.
-  exists tt.
-  esplits; eauto.
-  clear st_init_src_ INITSRC INITTGT.
-  rename st_init_tgt into st. revert st.
-  pcofix CIH. i. pfold.
-  econs; eauto.
-  { ii. esplits; eauto. econs; eauto. }
-  ii. econs; eauto.
-  { ii. esplits; eauto. left. apply plus_one. ss. }
-  i. r in SAFESRC. specialize (SAFESRC st (star_refl _ _ _ _)). ss.
-Qed.
-
 
 
 
@@ -861,18 +836,7 @@ Ltac find_sim LANG :=
     end
 .
 
-Lemma sk_nwf_improves (mds_src mds_tgt: program)
-      (NWF: ~ (forall x (IN: In x mds_src), Sk.wf x))
-  :
-      improves (sem mds_src) (sem mds_tgt).
-Proof.
-  eapply bsim_improves. econs. econs.
-  - eapply unit_ord_wf.
-  - i. inv INITSRC. clarify.
-  - i. inv INITSRC. clarify.
-Qed.
-
-Lemma compiler_clightgen_single
+Lemma clightgen_single
         (src: Csyntax.program)
         (tgt: Clight.program)
         (cs: list Csyntax.program)
@@ -919,27 +883,27 @@ Proof.
       repeat rewrite map_app. all ltac:(fun H => rewrite H); eauto.
 Qed.
 
-Lemma compiler_clightgen_correct
-        (srcs0: list Csyntax.program)
-        (tgts srcs1: list Clight.program)
+Lemma clightgen_correct
+        (srcs: list Csyntax.program)
+        (cls tgts: list Clight.program)
         (hands: list Asm.program)
-        (TR: mmap SimplExpr.transl_program srcs0 = OK tgts)
+        (TR: mmap SimplExpr.transl_program srcs = OK tgts)
   :
-    improves (sem ((map CsemC.module srcs0) ++ (map ClightC.module1 srcs1) ++ (map AsmC.module hands)))
-             (sem ((map ClightC.module1 tgts) ++ (map ClightC.module1 srcs1) ++ (map AsmC.module hands)))
+    improves (sem ((map CsemC.module srcs) ++ (map ClightC.module1 cls) ++ (map AsmC.module hands)))
+             (sem ((map ClightC.module1 tgts) ++ (map ClightC.module1 cls) ++ (map AsmC.module hands)))
 .
 Proof.
   apply mmap_inversion in TR.
   apply forall2_eq in TR.
   generalize dependent hands.
-  remember (length srcs0) as len. rename Heqlen into T.
-  generalize dependent srcs0.
-  generalize dependent srcs1.
+  remember (length srcs) as len. rename Heqlen into T.
+  generalize dependent srcs.
+  generalize dependent cls.
   generalize dependent tgts.
   induction len; i; ss.
-  { destruct srcs0; ss. inv TR. refl. }
+  { destruct srcs; ss. inv TR. refl. }
 
-  destruct (last_opt srcs0) eqn:T2; cycle 1.
+  destruct (last_opt srcs) eqn:T2; cycle 1.
   {
     eapply last_none in T2. clarify.
   }
@@ -949,12 +913,12 @@ Proof.
   rename p into c_src. rename y into cl_tgt.
   rewrite ! map_app. ss.
   etrans.
-  { rp; [eapply compiler_clightgen_single with (cs:= srcs) (asms:= hands)|..]; eauto.
+  { rp; [eapply clightgen_single with (cs:= srcs) (asms:= hands)|..]; eauto.
     rewrite app_assoc_reverse. ss.
   }
   { rewrite <- ! app_assoc. ss.
     rewrite app_length in *. ss. rewrite Nat.add_1_r in *. clarify.
-    eapply (IHlen tgts (cl_tgt :: srcs1) srcs); eauto.
+    eapply (IHlen tgts (cl_tgt :: cls) srcs); eauto.
   }
 Qed.
 
@@ -976,15 +940,15 @@ Abort.
 Lemma compiler_correct_single
       (src: Clight.program)
       (tgt: Asm.program)
-      (cs: list Clight.program)
+      (cls: list Clight.program)
       (asms: list Asm.program)
       (TRANSF: transf_clight_program src = OK tgt)
   :
-    improves (sem ((map ClightC.module1 cs) ++ [ClightC.module1 src] ++ (map AsmC.module asms)))
-             (sem ((map ClightC.module1 cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
+    improves (sem ((map ClightC.module1 cls) ++ [ClightC.module1 src] ++ (map AsmC.module asms)))
+             (sem ((map ClightC.module1 cls) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
 .
 Proof.
-  destruct (classic (forall x (IN: In x ((map ClightC.module1 cs) ++ [ClightC.module1 src] ++ (map AsmC.module asms))), Sk.wf x)) as [WF|NWF]; cycle 1.
+  destruct (classic (forall x (IN: In x ((map ClightC.module1 cls) ++ [ClightC.module1 src] ++ (map AsmC.module asms))), Sk.wf x)) as [WF|NWF]; cycle 1.
   { eapply sk_nwf_improves; auto. }
 
   unfold transf_clight_program in *.
@@ -1000,16 +964,16 @@ Proof.
   set (Tunneling.tunnel_program p5) as ptunnel in *.
   set (CleanupLabels.transf_program p4) as pclean in *.
 
-  assert (SRCSWF: forall x, In x cs -> Sk.wf (ClightC.module1 x)).
+  assert (SRCSWF: forall x, In x cls -> Sk.wf (ClightC.module1 x)).
   { ii. eapply WF. eapply in_or_app. left. eapply in_map. auto. }
   assert (ASMSWF: forall x, In x asms -> Sk.wf (AsmC.module x)).
   { ii. eapply WF. eapply in_or_app. right. right. eapply in_map. auto. }
 
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_drop cs); auto. intro SRCINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_id cs); auto. intro SRCINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_top cs); auto. intro SRCEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_unreach cs); auto. intro SRCEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cs); auto. intro SRCID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_drop cls); auto. intro SRCINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_id cls); auto. intro SRCINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_top cls); auto. intro SRCEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_unreach cls); auto. intro SRCEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cls); auto. intro SRCID; des.
 
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop asms); auto. intro TGTINJDROP; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id asms); auto. intro TGTINJID; des.
@@ -1093,7 +1057,7 @@ Proof.
   rename p into hand_src. rename y into hand_tgt.
   rewrite ! map_app. ss.
   etrans.
-  { rp; [eapply compiler_correct_single with (cs:= srcs) (asms:= hands)|..]; eauto.
+  { rp; [eapply compiler_correct_single with (cls:= srcs) (asms:= hands)|..]; eauto.
     rewrite app_assoc. ss.
   }
   { rewrite <- ! app_assoc. ss.
@@ -1117,7 +1081,7 @@ Proof.
   unfold transf_c_program, time, print in *.
   apply mmap_partial in TR0. des.
   etrans.
-  - eapply compiler_clightgen_correct; eauto.
+  - eapply clightgen_correct; eauto.
   - rp.
     + eapply clight_compiler_correct.
       erewrite mmap_app. unfold bind. rewrite MMAP1. rewrite TR1. ss.

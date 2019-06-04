@@ -23,6 +23,8 @@ Require IdSimAsm.
 Include IdSimAsm.
 Require IdSimCCC.
 Include IdSimCCC.
+Require IdSimClight.
+Include IdSimClight.
 
 Set Implicit Arguments.
 

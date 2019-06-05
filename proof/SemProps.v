@@ -1,19 +1,19 @@
 Require Import CoqlibC.
-Require Import Simulation.
 Require Import LinkingC.
 Require Import Skeleton.
 Require Import Values.
 Require Import JMeq.
 Require Import Smallstep.
+Require Import Simulation.
 Require Import Integers.
 Require Import EventsC.
 Require Import MapsC.
+Require Import BehaviorsC.
 
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem.
 
 Set Implicit Arguments.
-
 
 
 (* TODO: better namespace? *)
@@ -270,7 +270,7 @@ Section INITDTM.
     exploit DEFSYMB; eauto. i. des.
     exploit SkEnv.project_impl_spec; eauto. i. inv H2.
     exploit SYMBKEEP; eauto. i.
-    
+
     assert (INTERN0: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md0 (Mod.data md0))) = Some (Gfun (Internal int_sig))).
     { rewrite SYMBBIG0 in H2.
       exploit DEFKEPT. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des.
@@ -283,7 +283,7 @@ Section INITDTM.
     exploit INCLS. instantiate (1:=md1). auto. intros INCL1.
     exploit SkEnv.project_impl_spec; eauto. i. inv H5.
     exploit SYMBKEEP; eauto. i.
-    
+
     assert (INTERN1: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md1 (Mod.data md1))) = Some (Gfun (Internal int_sig))).
     { rewrite SYMBBIG0 in H5.
       exploit DEFKEPT0. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des.
@@ -1140,4 +1140,38 @@ Proof.
       + right. right. eauto.
       + right. left. eauto.
   }
+Qed.
+
+
+Lemma backward_simulation_refl
+      SEM
+  :
+    backward_simulation SEM SEM
+.
+Proof.
+  eapply (@Backward_simulation _ _ unit bot2).
+  econs; eauto.
+  { apply unit_ord_wf. }
+  ii. ss.
+  exists tt.
+  esplits; eauto.
+  clear st_init_src_ INITSRC INITTGT.
+  rename st_init_tgt into st. revert st.
+  pcofix CIH. i. pfold.
+  econs; eauto.
+  { ii. esplits; eauto. econs; eauto. }
+  ii. econs; eauto.
+  { ii. esplits; eauto. left. apply plus_one. ss. }
+  i. r in SAFESRC. specialize (SAFESRC st (star_refl _ _ _ _)). ss.
+Qed.
+
+Lemma sk_nwf_improves (mds_src mds_tgt: program)
+      (NWF: ~ (forall x (IN: In x mds_src), Sk.wf x))
+  :
+      improves (sem mds_src) (sem mds_tgt).
+Proof.
+  eapply bsim_improves. econs. econs.
+  - eapply unit_ord_wf.
+  - i. inv INITSRC. clarify.
+  - i. inv INITSRC. clarify.
 Qed.

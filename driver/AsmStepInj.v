@@ -5,31 +5,9 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC Lia IntegersC SimMemInj.
+Require Import GlobalenvsC Lia IntegersC SimMemInj IdSimExtra.
 Require Import mktac.
 Set Implicit Arguments.
-
-Inductive def_match A V: globdef A V -> globdef A V -> Prop :=
-| def_match_gfun f: def_match (Gfun f) (Gfun f)
-| def_match_gvar inf init0 init1 ro vol
-  :
-    def_match
-      (Gvar (mkglobvar inf init0 ro vol))
-      (Gvar (mkglobvar inf init1 ro vol))
-.
-
-Program Instance def_match_reflexive A V : Reflexive (@def_match A V).
-Next Obligation.
-Proof.
-  i. destruct x; try econs. destruct v; try econs.
-Qed.
-
-Lemma def_match_refl A V (g: globdef A V)
-  :
-    def_match g g
-.
-Proof. refl. Qed.
-Hint Resolve def_match_refl.
 
 Lemma exec_load_mem_equal
       ge chunk m0 m1 a rd
@@ -965,22 +943,7 @@ Section ASMSTEP.
         rs_tgt0 m_tgt0
         se_src se_tgt ge_src ge_tgt
 
-        (DEFLE: forall
-            b_src b_tgt delta d_src
-            (FINDSRC: Genv.find_def ge_src b_src = Some d_src)
-            (INJ: j0 b_src = Some (b_tgt, delta)),
-            exists d_tgt,
-              (<<FINDTGT: Genv.find_def ge_tgt b_tgt = Some d_tgt>>) /\
-              (<<DELTA: delta = 0>>) /\
-              (<<DEFMATCH: def_match d_src d_tgt>>))
-
-        (SYMBLE: forall
-            i b_src
-            (FINDSRC: Genv.find_symbol ge_src i = Some b_src),
-            exists b_tgt,
-              (<<FINDTGT: Genv.find_symbol ge_tgt i = Some b_tgt>>) /\
-              (<<INJ: j0 b_src = Some (b_tgt, 0)>>))
-
+        (GENV: meminj_match_globals (@def_match _ _) ge_src ge_tgt j0)
         (SYMBINJ: symbols_inject_weak j0 se_src se_tgt m_src0)
         (* (NOEXTFUN: no_extern_fun ge_src) *)
         (AGREE: agree j0 rs_src0 rs_tgt0)
@@ -1002,7 +965,7 @@ Section ASMSTEP.
                       m_tgt0 m_tgt1>>)
   .
   Proof.
-    inv STEP.
+    inv GENV. inv STEP.
 
     - cinv (AGREE PC); eq_closure_tac.
 

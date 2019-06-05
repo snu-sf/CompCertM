@@ -90,6 +90,15 @@ Proof.
   - econs; eauto.
 Qed.
 
+Lemma Forall_app A P (l0 l1: list A)
+      (FORALL0: Forall P l0)
+      (FORALL1: Forall P l1)
+  :
+    Forall P (l0 ++ l1).
+Proof.
+  ginduction l0; i; ss. inv FORALL0. econs; eauto.
+Qed.
+
 (* Lemma list_forall2_flip *)
 (*       X Y (P: X -> Y -> Prop) xs ys *)
 (*       (FORALL2: list_forall2 P xs ys) *)
@@ -1404,4 +1413,3 @@ Ltac clarify_meq :=
     end;
     clarify
 .
-

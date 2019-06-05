@@ -5,7 +5,7 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Export Asm.
 Require Import Simulation Memory ValuesC.
 Require Import Skeleton ModSem Mod sflib StoreArguments AsmC Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC Lia LinkingC2 mktac MemdataC LocationsC AsmStepInj LowerBoundExtra.
+Require Import GlobalenvsC Lia LinkingC2 mktac MemdataC LocationsC AsmStepInj LowerBoundExtra IdSimExtra.
 
 
 Set Implicit Arguments.
@@ -1899,22 +1899,18 @@ Section PRESERVATION.
 
     exploit asm_step_preserve_injection; eauto.
 
-    { clear FRAME1 FRAME. i. inv GELE. inv GEINJECT.
-      exploit sub_mge_defs0; eauto. i. des.
-      inv WFSKELINK.
-      exploit DOMAIN.
-      - erewrite <- Genv.mge_next; try apply match_skenv_link_tge.
-        instantiate (1:= b_src).
-        exploit Genv.genv_defs_range; eauto.
-      - i. clarify. esplits; eauto.
-    }
-
-    { i. inv GELE. inv GEINJECT.
-      exploit sub_mge_symb0; eauto. i. esplits; eauto.
-      exploit DOMAIN; eauto.
-      erewrite <- Genv.mge_next; try apply match_skenv_link_tge.
-      exploit Genv.genv_symb_range; eauto.
-    }
+    { clear FRAME1 FRAME. inv GELE. inv GEINJECT. econs.
+      - i. exploit sub_mge_defs0; eauto. i. des.
+        inv WFSKELINK.
+        exploit DOMAIN.
+        + erewrite <- Genv.mge_next; try apply match_skenv_link_tge.
+          instantiate (1:= b_src).
+          exploit Genv.genv_defs_range; eauto.
+        + i. clarify. esplits; eauto.
+      - i. exploit sub_mge_symb0; eauto. i. esplits; eauto.
+        exploit DOMAIN; eauto.
+        erewrite <- Genv.mge_next; try apply match_skenv_link_tge.
+        exploit Genv.genv_symb_range; eauto. }
 
     { eapply system_symbols_inject; eauto. }
 

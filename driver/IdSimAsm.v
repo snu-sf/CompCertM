@@ -23,7 +23,7 @@ Require Import MatchSimModSem.
 Require Import StoreArguments.
 Require Import AsmStepInj AsmStepExt IntegersC.
 Require Import Coq.Logic.PropExtensionality.
-
+Require Import IdSimExtra.
 
 Set Implicit Arguments.
 
@@ -38,6 +38,7 @@ Require Import mktac.
 
 Lemma asm_id
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
@@ -96,9 +97,9 @@ Proof.
     left; i.
     ii; ss. des. clarify. clear_tac.
     esplits; eauto.
-    { admit "ez - receptive". }
+    { apply AsmC.modsem_receptive. }
     ii; des. esplits; eauto. left. apply plus_one. econs; eauto.
-    { admit "ez - determinate". }
+    { apply AsmC.modsem_determinate. }
 Unshelve.
   all: ss.
 Qed.
@@ -444,17 +445,15 @@ Section TRIAL2.
       inv STEP. des. destruct st0, st1. ss. clarify. destruct st, st0. ss.
 
       hexploit asm_step_preserve_injection; try apply STEP0.
-      { instantiate (1:= SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm).
-        instantiate (1:=UnreachC.to_inj su0 (Mem.nextblock m)).
-        ii. ss. des_ifs. unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
-        esplits; eauto.
-      }
-      { inv SUST. ii. ss. esplits; eauto.
-        unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
-        - eapply Genv.genv_symb_range in FINDSRC. ss.
-          exfalso. ss. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
-        - eapply Genv.genv_symb_range in FINDSRC. ss. exfalso. apply n.
-          inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto. }
+      { instantiate (1:=UnreachC.to_inj su0 (Mem.nextblock m)).
+        unfold UnreachC.to_inj, Mem.flat_inj in *. econs; ss; i.
+        - unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
+          esplits; eauto.
+        - inv SUST. esplits; eauto. des_ifs.
+          + eapply Genv.genv_symb_range in FINDSRC. ss.
+            exfalso. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
+          + eapply Genv.genv_symb_range in FINDSRC. ss. exfalso. apply n.
+            inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto. }
       { inv SUST. eapply symbols_inject_weak_imply.
         instantiate (1:=skenv_link). unfold symbols_inject. esplits; ss.
         - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs; ss.
@@ -883,6 +882,7 @@ Qed.
 
 Lemma asm_ext_unreach
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
@@ -1082,7 +1082,7 @@ Proof.
     + econs; ss.
 
   - left. ii. esplits; ss; i.
-    + admit "receptive".
+    + apply AsmC.modsem_receptive.
     + exists tt.
       { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
         destruct st0. ss. clarify.
@@ -1090,7 +1090,7 @@ Proof.
         rewrite SIMSKENVLINK in *.
         esplits; auto.
         - left. econs; [|econs 1|symmetry; eapply E0_right]. econs.
-          { admit "determinate". }
+          { apply AsmC.modsem_determinate. }
           instantiate (1:=AsmC.mkstate _ _).
           econs; ss; eauto.
         - instantiate (1:=SimMemExt.mk _ _). econs; ss; eauto.
@@ -1100,6 +1100,7 @@ Qed.
 (* It's ***exactly*** same as asm_ext_sound *)
 Lemma asm_ext_top
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
@@ -1298,7 +1299,7 @@ Proof.
     + econs; ss.
 
   - left. ii. esplits; ss; i.
-    + admit "receptive".
+    + apply AsmC.modsem_receptive.
     + exists tt.
       { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
         destruct st0. ss. clarify.
@@ -1306,7 +1307,7 @@ Proof.
         rewrite SIMSKENVLINK in *.
         esplits; auto.
         - left. econs; [|econs 1|symmetry; eapply E0_right]. econs.
-          { admit "determinate". }
+          { apply AsmC.modsem_determinate. }
           instantiate (1:=AsmC.mkstate _ _).
           econs; ss; eauto.
         - instantiate (1:=SimMemExt.mk _ _). econs; ss; eauto.
@@ -1763,6 +1764,7 @@ Qed.
 
 Lemma asm_inj_drop_bot
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
@@ -1774,7 +1776,8 @@ Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto.
   econs; ss; i.
-  { admit "add condition". }
+  { econs; ss; i; clarify.
+    inv WF. auto. }
   eapply match_states_sim with
       (match_states :=
          match_states
@@ -1854,7 +1857,8 @@ Proof.
       unfold Mem.valid_block.
       eapply Plt_Ple_trans; eauto.
 
-  - inv SIMSKENV. ss.
+  - exploit SimSymbDrop_match_globals.
+    { inv SIMSKENV. ss. eauto. } intros GEMATCH.
     inv SIMARGS. destruct args_src, args_tgt, sm_arg. ss. clarify.
     inv INITTGT. ss. inv TYP. inv MWF. ss.
     inv STORE. des.
@@ -1880,41 +1884,9 @@ Proof.
       esplits; eauto.
       {
         econs; ss; eauto.
-        - instantiate (1:=fd).
-          unfold Genv.find_funct in *. des_ifs_safe.
-          cinv FPTR; ss; clarify; cycle 1.
-          {
-            exfalso. inv SAFESRC. ss.
-          }
-
-          assert (delta = 0).
-          {
-            unfold Genv.find_funct_ptr, SkEnv.revive in *. des_ifs.
-            eapply Genv_map_defs_def in Heq0. des.
-            inv SIMSKE. exploit SIMDEFINV; eauto. i. des. eauto.
-          }
-          clarify. psimpl. des_ifs.
-          unfold Genv.find_funct_ptr in *. des_ifs_safe.
-          clear - INCLSRC INCLTGT SIMSKENVLINK SIMSKE SIMSKELINK Heq0 H5.
-
-          {
-            (* genv *)
-            unfold SkEnv.revive in *. ss.
-            apply Genv_map_defs_def in Heq0. des.
-            unfold o_bind, o_bind2, o_join, o_map, curry2, fst in MAP.
-            des_ifs_safe.
-            apply Genv.invert_find_symbol in Heq0.
-            inv SIMSKE. ss.
-            exploit SIMDEFINV; eauto. i. des. clarify.
-            exploit Genv_map_defs_def_inv; try apply DEFSRC.
-            i. rewrite H. ss.
-            unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
-            erewrite Genv.find_invert_symbol. rewrite Heq1; eauto.
-            exploit SIMSYMB3; eauto. i. des.
-            assert (blk_src = b1).
-            { exploit DISJ; eauto. }
-            clarify.
-          }
+        - instantiate (1:=fd). inv SAFESRC. ss. des.
+          exploit match_globals_find_funct; eauto. i.
+          setoid_rewrite FINDF in H1. clarify.
 
         - econs; eauto.
           erewrite inject_list_length; eauto.
@@ -1941,7 +1913,7 @@ Proof.
           des_ifs. ii. clarify. apply n1.
           assert (PLT: Plt (b + Mem.nextblock m_src1 - Mem.nextblock m0) (Mem.nextblock m_src1)).
           { eapply Plt_Ple_trans; eauto.
-            inv SIMSKELINK. ss.
+            inv SIMSKENV. inv SIMSKELINK. ss.
             eapply store_arguments_unchanged_on in ARGTGT. inv ARGTGT.
             clear - SRCLE BOUNDSRC unchanged_on_nextblock. xomega. }
           exfalso. eapply Plt_lemma; eauto.
@@ -2082,21 +2054,9 @@ Proof.
               unfold Mem.valid_block in *. exfalso. des. des_ifs.
             * erewrite loc_notin_not_in in n3. apply NNPP in n3.
               apply loc_args_callee_save_disjoint in n3. exfalso. eauto.
-        - instantiate (1:= fd).
-          inv SAFESRC. ss.
-          unfold to_pregset, set_regset, Pregmap.set. des_ifs.
-
-          clear - FINDF FINDF0 FPTR SIMSKE.
-          unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs. inv FPTR.
-          unfold SkEnv.revive in *.
-          apply Genv_map_defs_def in Heq2. des.
-          apply Genv_map_defs_def in Heq0. des.
-          unfold o_bind, o_bind2, o_join, o_map, curry2, fst in *.
-          des_ifs_safe. apply Genv.invert_find_symbol in Heq2.
-          inv SIMSKE. ss.
-          exploit SIMDEFINV; try apply FIND; eauto. i. des. clarify.
-          exploit SIMSYMB1; eauto. i. des.
-          apply Genv.find_invert_symbol in BLKTGT. clarify.
+        - instantiate (1:=fd). inv SAFESRC. ss. des.
+          exploit match_globals_find_funct; eauto. i.
+          setoid_rewrite FINDF in H1. clarify.
 
         - econs; ss.
           + unfold Pregmap.set. des_ifs. unfold src_junk_val. des_ifs.
@@ -2114,41 +2074,25 @@ Proof.
           des_ifs; eauto.
       }
 
-  - ii. des. inv SAFESRC. inv TYP.
+  - exploit SimSymbDrop_match_globals.
+    { inv SIMSKENV. ss. eauto. } intros GEMATCH.
+    des. inv SAFESRC. inv TYP. inv SIMARGS. ss.
     eapply asm_initial_frame_succeed; eauto.
-    + inv SIMARGS. ss. apply inject_list_length in VALS.
+    + apply inject_list_length in VALS.
       transitivity (Datatypes.length (Args.vs args_src)); eauto.
-    + (* genv *)
-      inv SIMSKENV. ss. inv SIMSKE. ss.
-      unfold Genv.find_funct in *. des_ifs_safe. inv SIMARGS.
-      inv FPTR; try rewrite Heq in *; clarify.
-      unfold Genv.find_funct_ptr in *. des_ifs_safe.
-      unfold SkEnv.revive in *. ss.
-      apply Genv_map_defs_def in Heq0. des.
-      unfold o_bind, o_bind2, o_join, o_map, curry2, fst in MAP.
-      des_ifs_safe.
-      apply Genv.invert_find_symbol in Heq1.
-      exploit SIMDEF; eauto. i. des. clarify.
-      des_ifs_safe.
-      exploit Genv_map_defs_def_inv; try apply DEFTGT.
-      i. rewrite H. ss.
-      unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
-      erewrite Genv.find_invert_symbol. rewrite Heq2; eauto.
-      exploit SIMSYMB1; eauto. i. des. eauto.
+    + exploit match_globals_find_funct; eauto.
 
   - inv MATCH. ss.
 
   - (** ******************* at external **********************************)
     inv SIMSKENV. inv CALLSRC. inv MATCH.
     des; ss; clarify. des_ifs.
-    set (INJPC:= AGREE PC). rewrite FPTR in *. inv INJPC.
+    set (INJPC:= AGREE PC). rewrite FPTR in *. cinv INJPC.
     assert (delta = 0).
-    {
-      clear EXTERNAL. unfold Genv.find_funct_ptr in *. des_ifs.
+    { clear EXTERNAL. unfold Genv.find_funct_ptr in *. des_ifs.
       inv SIMSKELINK.
       exploit SIMDEF; eauto.
-      i. des. eauto.
-    }
+      i. des. eauto. }
     clarify. psimpl. ss.
     exploit extcall_arguments_inject; eauto.
     { inv MWF. eauto. }
@@ -2159,27 +2103,10 @@ Proof.
     eexists (Args.mk (Vptr b2 _) _ _). exists sm1.
     esplits; eauto; ss; i.
     + econs; auto.
-      * {
-          (* genv *)
-          unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe. exfalso.
-          unfold SkEnv.revive in *. ss.
-          apply Genv_map_defs_def in Heq. des.
-          unfold o_bind, o_bind2, o_join, o_map, curry2, fst in MAP.
-          des_ifs_safe.
-          apply Genv.invert_find_symbol in Heq3.
-          inv SIMSKE. ss.
-          exploit SIMDEFINV; try apply FIND; eauto. i. des. clarify.
-
-          exploit Genv_map_defs_def_inv; try apply DEFSRC.
-          i. revert EXTERNAL. rewrite H.
-          unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
-          erewrite Genv.find_invert_symbol.
-          - rewrite Heq4; eauto. i. clarify.
-          - exploit SIMSYMB3; eauto. i. des.
-            assert (blk_src = blk0).
-            { exploit DISJ; eauto. }
-            clarify.
-        }
+      * exploit SimSymbDrop_find_None; try eassumption.
+        { unfold Genv.find_funct. des_ifs. eauto. }
+        { clarify. }
+        { rewrite <- H2. ss. }
       * esplits; eauto.
         unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
         inv SIMSKELINK.
@@ -2420,6 +2347,8 @@ Proof.
 
   - (** ******************* final **********************************)
 
+    exploit SimSymbDrop_match_globals.
+    { inv SIMSKENV. ss. eauto. } intros GEMATCH.
     inv MATCH. inv FINALSRC. inv MWF.
 
     cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl.
@@ -2441,35 +2370,11 @@ Proof.
         inv WFINITSRC.
         eapply lessdef_commute; eauto.
       * des. esplits; eauto.
-
-        {
-          (* genv *)
-          unfold Genv.find_funct, Genv.find_funct_ptr in *.
-          des_ifs_safe.
-          cinv (AGREEINIT PC); rewrite Heq in *; clarify.
-          unfold SkEnv.revive in *. ss.
-          apply Genv_map_defs_def in Heq0. des.
-          unfold o_bind, o_bind2, o_join, o_map, curry2, fst in MAP.
-          des_ifs_safe.
-          apply Genv.invert_find_symbol in Heq1.
-          inv SIMSKENV. inv SIMSKE. ss.
-          exploit SIMDEF; try apply FIND; eauto. i. des. clarify.
-
-          exploit Genv_map_defs_def_inv; try apply DEFTGT.
-          i. rewrite H.
-          unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
-          erewrite Genv.find_invert_symbol.
-          - rewrite Heq2; eauto.
-          - exploit SIMSYMB2; eauto. i. des. clarify.
-        }
-
+        eapply match_globals_find_funct; eauto.
       * unfold external_state in *.
-
         des_ifs_safe. exfalso.
         cinv (AGREE PC); try rewrite Heq in *; clarify; eauto.
-        {
-          (* genv *)
-          des_ifs. clear RANOTFPTR.
+        { des_ifs. clear RANOTFPTR.
           unfold Genv.find_funct, Genv.find_funct_ptr in INITSIG, Heq2, Heq0.
           des_ifs_safe.
           unfold SkEnv.revive in *. ss.
@@ -2486,9 +2391,8 @@ Proof.
           - rewrite Heq6; eauto. clarify.
           - exploit SIMSYMB3; eauto. i. des.
             rewrite BLKSRC. f_equal.
-            exploit DISJ; eauto.
-        }
-        { rewrite <- H2 in *. inv WFINITSRC. eauto. }
+            exploit DISJ; eauto. }
+         { rewrite <- H2 in *. inv WFINITSRC. eauto. }
       * inv WFINITSRC. inv WFINITTGT.
         unfold Val.has_type in TPTR. des_ifs.
         -- cinv (AGREEINIT RA); rewrite Heq in *; clarify.
@@ -2528,57 +2432,17 @@ Proof.
 
   - left; i.
     esplits; ss; i.
-    + admit "receptive".
+    + apply AsmC.modsem_receptive.
     + exists O.
       { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
-        inv MWF. destruct st0. ss. clarify.
-
-        inv SIMSKENV. inv SIMSKE. ss.
+        inv MWF. inv SIMSKENV. destruct st0. ss. clarify.
 
         exploit asm_step_preserve_injection; eauto.
-
-        {
-          instantiate (1:=SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm).
-          (* genv *)
-          i. unfold SkEnv.revive in *. exists d_src.
-          apply Genv_map_defs_def in FINDSRC. des.
-          unfold o_bind, o_bind2, o_join, o_map, curry2, fst in MAP.
-          des_ifs_safe.
-          apply Genv.invert_find_symbol in Heq0.
-          exploit SIMDEF; try apply FIND; eauto. i. des. clarify.
-          esplits; eauto.
-          exploit Genv_map_defs_def_inv; try apply DEFTGT.
-          i. rewrite H.
-          unfold o_bind, o_bind2, o_join, o_map, curry2, fst.
-          erewrite Genv.find_invert_symbol.
-          - rewrite Heq1; eauto.
-          - exploit SIMSYMB1; eauto. i. des. eauto.
-        }
-
-        {
-          i. unfold SkEnv.revive in *.
-          rewrite Genv_map_defs_symb in FINDSRC.
-          exploit SIMSYMB2; try apply FINDSRC; eauto.
-        }
-
+        { exploit SimSymbDrop_match_globals; eauto.
+          intros MATCH. inv MATCH. econs; ss; i; eauto.
+          exploit DEFLE; eauto. i. des. clarify. esplits; eauto. }
         { eapply symbols_inject_weak_imply.
-          instantiate (1:=skenv_link_tgt). clear - SIMSKELINK.
-          inv SIMSKELINK. econs; esplits; ss; i.
-          - unfold Genv.public_symbol, proj_sumbool.
-            rewrite PUB in *. des_ifs; ss.
-            + exploit SIMSYMB3; eauto. i. des. clarify.
-            + exploit SIMSYMB2; eauto. i. des. clarify.
-          - exploit SIMSYMB1; eauto. i. des. eauto.
-          - exploit SIMSYMB2; eauto.
-            { unfold Genv.public_symbol, proj_sumbool in *. des_ifs. eauto. }
-            i. des. eauto.
-          - unfold Genv.block_is_volatile, Genv.find_var_info.
-            destruct (Genv.find_def skenv_link_src b1) eqn:DEQ.
-            + exploit SIMDEF; eauto. i. des. clarify.
-              rewrite DEFTGT. eauto.
-            + des_ifs_safe. exfalso. exploit SIMDEFINV; eauto.
-              i. des. clarify.
-        }
+          eapply SimSymbDrop_symbols_inject; eauto. }
 
         i. des.
         eexists (AsmC.mkstate init_rs_tgt (Asm.State _ _)).
@@ -2588,7 +2452,7 @@ Proof.
           + apply star_refl.
           + symmetry. apply E0_right.
           + econs.
-            * admit "determinate".
+            * apply AsmC.modsem_determinate.
             * econs; ss; eauto.
         - instantiate (5 := j1).
           econs; ss.
@@ -2643,6 +2507,7 @@ Qed.
 
 Lemma asm_inj_drop
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
@@ -2650,45 +2515,12 @@ Lemma asm_inj_drop
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
 .
 Proof.
-  exploit asm_inj_drop_bot. i. des. eauto.
-Qed.
-
-Lemma SymSymbId_SymSymbDrop_bot sm_arg ss_link ge_src ge_tgt
-      (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg ss_link ge_src ge_tgt)
-  :
-    SimSymbDrop.sim_skenv sm_arg bot1 ge_src ge_tgt.
-Proof.
-  inv SIMSKE. ss. unfold SimSymbId.sim_skenv in *. clarify.
-  inv INJECT. ss.
-  econs; ss; i.
-  + exploit DOMAIN; eauto.
-    { instantiate (1:=blk_src).
-      exploit Genv.genv_symb_range; eauto. }
-    i. clarify. esplits; eauto.
-  + esplits; eauto. exploit DOMAIN; eauto.
-    exploit Genv.genv_symb_range; eauto.
-  + esplits; eauto. exploit DOMAIN; eauto.
-    exploit Genv.genv_symb_range; eauto.
-  + exploit DOMAIN; eauto.
-    { exploit Genv.genv_defs_range; eauto. }
-    i. rewrite SIMVAL in *. inv H. esplits; eauto.
-  + exploit DOMAIN.
-    { instantiate (1:=blk_src0).
-      exploit Genv.genv_symb_range; eauto. } i.
-    rewrite SIMVAL0 in *. inv H.
-    exploit IMAGE; try apply SIMVAL1.
-    { exploit Genv.genv_symb_range; eauto. }
-    i. etrans; eauto.
-  + exploit IMAGE; eauto.
-    { exploit Genv.genv_defs_range; eauto. }
-    i. clarify.
-    exploit DOMAIN; eauto.
-    { exploit Genv.genv_defs_range; eauto. }
-    i. rewrite SIMVAL in *. inv H. esplits; eauto.
+  exploit asm_inj_drop_bot; eauto. i. des. eauto.
 Qed.
 
 Lemma asm_inj_id
       (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
@@ -2696,19 +2528,5 @@ Lemma asm_inj_id
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
 .
 Proof.
-  set (asm_inj_drop_bot asm). des.
-  destruct mp eqn: EQ. ss. clarify. inv SIM. ss.
-  unfold ModPair.to_msp in *. ss.
-  eexists (ModPair.mk _ _ _). esplits; ss. instantiate (1:=tt).
-  econs; ss. unfold ModPair.to_msp. ss.
-  i. destruct ss_link.
-  exploit SIMMS; [apply INCLSRC|apply INCLTGT|..]; eauto.
-  { inv SSLE. instantiate (1:=bot1). econs; ss. i. des. clarify. }
-  { instantiate (1:=sm_init_link).
-    exploit SymSymbId_SymSymbDrop_bot; eauto. }
-  i. inv H. ss.
-  econs; ss; eauto. i. exploit SIM; eauto.
-  inv SIMSKENV. ss. econs; ss.
-  - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKE; eauto.
-  - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKELINK; eauto.
+  apply sim_inj_drop_bot_id. apply asm_inj_drop_bot; auto.
 Qed.

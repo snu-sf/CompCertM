@@ -11,15 +11,6 @@ Require Import UpperBound_AExtra.
 
 Set Implicit Arguments.
 
-(* Definition get_cont (st0: Csem.state): option cont := *)
-(*   match st0 with *)
-(*   | Csem.State _ _ k0 _ _ => Some k0 *)
-(*   | Csem.ExprState _ _ k0 _ _ => Some k0 *)
-(*   | Csem.Callstate _ _ _ k0 _ => Some k0 *)
-(*   | Csem.Returnstate _ k0 _ => Some k0 *)
-(*   | _ => None *)
-(*   end *)
-(* . *)
 
 Section LINKLEMMAS.
 
@@ -233,6 +224,17 @@ Section PRESERVATION.
   Hypothesis BINTERNAL: forall cp (IN: is_focus cp) id fd,
       In (id, Gfun fd) (prog_defs cp) ->
       ~ is_external_fd fd -> In (id, Gfun fd) builtins.
+
+  Hypothesis WF_PARAMLINK:
+    forall id fd,
+      In (id, (Gfun (Internal fd))) cp_link.(prog_defs) ->
+      4 * size_arguments_64 (typlist_of_typelist (type_of_params (fn_params fd))) 0 0 0 <= Ptrofs.max_unsigned.
+
+  Hypothesis WF_PARAM:
+    forall id fd cp (IN: is_focus cp),
+      In (id, (Gfun (Internal fd))) cp.(prog_defs) ->
+      4 * size_arguments_64 (typlist_of_typelist (type_of_params (fn_params fd))) 0 0 0 <= Ptrofs.max_unsigned.
+
 
   Let INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function cp_link).
   Proof.
@@ -1187,7 +1189,18 @@ Section PRESERVATION.
                 econs; ss; et.
                 + inv WTTGT. ss. unfold type_of_function in *. clarify.
                 + inv WTTGT. ss. unfold type_of_function in *. clarify.
-                + admit "add size_arguments in typechecking".
+                + des_ifs.
+                  unfold Genv.find_def in Heq. ss.
+                  do 2 rewrite PTree_filter_map_spec, o_bind_ignore in *.
+                  des_ifs.
+                  destruct (Genv.invert_symbol
+                              (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) blk); ss.
+                  unfold o_bind in Heq. ss.
+                  destruct ((prog_defmap cp_link) ! i0) eqn:DMAP; ss. clarify.
+                  eapply WF_PARAMLINK.
+                  instantiate (1:=i0).
+                  unfold prog_defmap in DMAP. ss.
+                  eapply PTree_Properties.in_of_list; eauto.
             }
             { ss.
               assert(WTPROG: wt_program cp_top).
@@ -1833,7 +1846,6 @@ Proof.
     instantiate (1 := cp_link).
     instantiate (1 := cps). eauto.
     instantiate (1 := ctx). i. des. congruence.
-    (* hexploit (link_sk_match cps ctx); eauto. i; des. congruence. *)
   }
   rename t into link_sk.
   des.
@@ -1844,5 +1856,5 @@ Proof.
   { i. exploit TYPEDS; eauto. intro T. inv T. eapply typecheck_program_sound; et. }
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
-  { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }  
+  { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
 Qed.

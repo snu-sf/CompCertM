@@ -509,18 +509,6 @@ Proof.
   - destruct cs; ss. des_ifs.
 Qed.
 
-(* Lemma massert_imp_m_footprint *)
-(*       P0 Q0 P1 Q1 *)
-(*       (IMP0: massert_imp P0 P1) *)
-(*       (IMP1: massert_imp Q0 Q1) *)
-(*   : *)
-(*     (P1 ** Q1).(m_footprint) <2= (P0 ** Q0).(m_footprint) *)
-(* . *)
-(* Proof. *)
-(*   rr in IMP0. rr in IMP1. des. *)
-(*   ss. ii; des; et. *)
-(* Qed. *)
-
 Lemma frame_contents_1_at_external_m_footprint
       f j sp rs rs0 sp2 retaddr0
       sg
@@ -846,29 +834,6 @@ Unshelve.
   all: try apply Mem.empty.
 Qed.
 
-(* Lemma after_external_parallel_rule *)
-(*       (F V: Type) *)
-(*       P sm_at sm_arg sm_ret sm_after *)
-(*       (SEP: sm_at.(SimMem.tgt) |= (minjection sm_at.(SimMemInj.inj) sm_at.(SimMem.src)) ** P) *)
-(*       (MWF0: SimMem.wf sm_at) *)
-(*       (MWF1: SimMem.wf sm_arg) *)
-(*       (MWF2: SimMem.wf sm_ret) *)
-(*       (MWF3: SimMem.wf sm_after) *)
-(*       (MWFAFTR : SimMem.wf (SimMemInj.unlift' sm_arg sm_ret)) *)
-(*       (MLE0: SimMem.le sm_at sm_arg) *)
-(*       (MLE1: SimMem.le (SimMem.lift sm_arg) sm_ret) *)
-(*       (MLE2: SimMem.le (SimMem.unlift sm_at sm_ret) sm_after) *)
-(*       (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret)) *)
-(*       (PRIV0: sm_at.(SimMemInj.tgt_private) = sm_arg.(SimMemInj.tgt_private)) *)
-(*       (PRIV1: sm_ret.(SimMemInj.tgt_private) = sm_after.(SimMemInj.tgt_private)) *)
-(*       (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg)) *)
-(*       (UNCH1: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_ret) (SimMemInj.tgt sm_after)) *)
-(*   : *)
-(*     <<SEP: sm_after.(SimMem.tgt) |= (minjection sm_after.(SimMemInj.inj) sm_after.(SimMem.src)) ** P>> *)
-(* . *)
-(* Proof. *)
-(* Qed. *)
-
 Local Transparent make_env sepconj.
 Lemma contains_callee_saves_footprint
       j sp b rs0 ofs
@@ -891,17 +856,9 @@ Proof.
     - etrans; cycle 1. eapply align_divides; try lia. eauto.
   (* TODO: strengthen zsimpl. *)
   }
-  (* assert(0 < align (4 * bound_outgoing) 8 + 8 /\ (8 | align (4 * bound_outgoing) 8 + 8)). *)
-  (* { hexploit (align_le (4 * bound_outgoing) 8); try lia. i. split; try lia. *)
-  (*   eapply Z.divide_add_r; try lia. *)
-  (*   - eapply align_divides; try lia. *)
-  (*   - refl. *)
-  (* (* TODO: strengthen zsimpl. *) *)
-  (* } *)
   abstr (align (4 * bound_outgoing) 8 + 8) initofs.
   clear bound_outgoing_pos bound_stack_data_pos bound_local_pos. clear_tac.
   ginduction used_callee_save; ii; ss.
-  (* assert((AST.typesize (mreg_type a)) = 4 \/ (AST.typesize (mreg_type a)) = 8). *)
   assert((4 | (AST.typesize (mreg_type a))) /\
          ((AST.typesize (mreg_type a)) | 8) /\ 0 < (AST.typesize (mreg_type a))).
   { destruct a; ss; des_ifs; cbn; splits; try refl; try lia; ss. }
@@ -1617,10 +1574,6 @@ Proof.
               eapply SimSymb.mle_preserves_sim_skenv; eauto.
               eapply SimSymb.mle_preserves_sim_skenv; eauto.
             * eapply loc_arguments_bounded.
-            (* * (* TODO: make lemma *) rewrite SM. s. rewrite MEMTGT. *)
-            (*   clear - ALC NB MWF. ii. inv MWF; ss. eapply TGTEXT in H. *)
-            (*   rr in H; ss. des. r in H0. unfold Mem.valid_block in *. *)
-            (*   exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. xomega. *)
             * rewrite DEF. rewrite SM. s. unfold Mem.valid_block. rewrite assign_junk_blocks_nextblock. rewrite <- NB.
               exploit Mem.nextblock_alloc; et. i. rewrite H. rewrite MEMTGT.
               clear - ALC NB MWF.
@@ -1763,16 +1716,6 @@ Proof.
 
   - (* after fsim *)
     des.
-    (* assert(WTST1: wt_state st_src1). *)
-    (* { hexploit (@wt_state_local_preservation prog (wt_prog _ _ TRANSL) skenv_link_src); eauto. *)
-    (*   intro PRSV. inv PRSV. *)
-    (*   inv HISTORY. ss. *)
-    (*   hexploit CALL; eauto. *)
-    (*   { eapply sm_init.(SimMemInj.src). } *)
-    (*   { apply tt. } *)
-    (*   i; des. *)
-    (*   eapply K; eauto. *)
-    (* } *)
     inv AFTERSRC. inv MATCH; ss. clarify.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
     assert(MCOMPAT0: sm0.(SimMemInj.inj) = j). { inv MCOMPAT; ss. } clarify.
@@ -1981,28 +1924,7 @@ Proof.
           { erewrite stack_contents_at_external_m_footprint; et. }
           erewrite <- stackframes_after_external_footprint. eapply stack_contents_footprint_irr; eauto.
 
-          (* Lemma less2_divide_r *)
-          (*       X0 X1 *)
-          (*       (A B0 B1 B: X0 -> X1 -> Prop) *)
-          (*       (LESS0: B0 <2= B) *)
-          (*       (LESS1: B1 <2= B) *)
-          (*       (LESS: A <2= (B0 \2/ B1)) *)
-          (*   : *)
-          (*     A <2= B *)
-          (* . *)
-          (* Proof. ii. apply LESS in PR. des; eauto. Qed. *)
-          (* eapply less2_divide_r. *)
-          (* { eapply PRIV. } *)
-          (* { eapply PRIV0. } *)
-          (* etrans; try eassumption; eauto. *)
         }
-        (*   ss. *)
-        (*   - clear - MLE0. ss. u. ii. des. hexpl Mem.perm_valid_block VL. inv MLE0. ss. *)
-        (*     destruct (SimMemInj.inj sm_arg b0) eqn:T. *)
-        (*     exploit H; eauto. *)
-        (*     esplits; eauto. *)
-        (*     + ii. exploit INCR; eauto. i; clarify. *)
-        (* } *)
         assert(STEP0: SimMemInj.tgt sm_ret |= stack_contents_at_external (SimMemInj.inj sm_arg)
                                     cs cs'0 (SkEnv.get_sig skd)).
         { eapply m_invar; eauto. inv MLE0. ss. eapply Mem.unchanged_on_implies; eauto.

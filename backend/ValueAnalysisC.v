@@ -14,20 +14,6 @@ Require Import Sound.
 Require Import ModSem.
 
 
-(* Definition bc2su (bc: block_classification) (ge_nb: block) (bound: block): Unreach.t := *)
-(*   Unreach.mk (fun blk => if plt blk bound *)
-(*                          then block_class_eq (bc blk) BCinvalid *)
-(*                          else false) *)
-(*              ge_nb *)
-(*              bound *)
-(* . *)
-(* Hint Unfold bc2su. *)
-
-
-(* Tactic Notation "spc" hyp(H) := spc H. *)
-(* Tactic Notation "spc" hyp(H) constr(n) := spcN H n. *)
-
-
 (* TODO: move to MemoryC *)
 Lemma Mem_loadbytes_succeeds
       m0 blk ofs mv
@@ -195,15 +181,6 @@ Section PRSV.
                     if (plt b args.(Args.m).(Mem.nextblock)) && (negb (su_init b))
                     then BCother
                     else BCinvalid).
-      (* set (f := fun b => *)
-      (*             if (plt b args.(Args.m).(Mem.nextblock)) *)
-      (*             then *)
-      (*               match Genv.invert_symbol ge b with *)
-      (*               | None => if su_init b then BCinvalid else BCother *)
-      (*               | Some id => BCglob id *)
-      (*               end *)
-      (*             else *)
-      (*               BCinvalid). *)
       assert(IMG: exists bc, bc.(bc_img) = f).
       { unshelve eexists (BC _ _ _); s; eauto.
         - ii. subst f. ss. des_ifs.
@@ -234,13 +211,6 @@ Section PRSV.
       eapply sound_call_state with (bc:= bc); eauto.
       + econs; eauto; cycle 1.
         { inv MEM; ss. rewrite NB0. xomega. }
-        (* { inv SKENV. ss. } *)
-        (* econs; eauto. *)
-        (* * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss. *)
-        (* * rewrite IMG. ii. des_ifs; ss; hexpl FP; try xomega. bsimpl. ss. *)
-        (* * ii. inv MEM. eapply BOUND; eauto. *)
-        (* * rewrite IMG. ii. des_ifs; ss. inv SKENV. rewrite PUB0 in *; ss. *)
-        (* * inv SKENV. rewrite PUB in *. ss. *)
       + ii. repeat spc VALS. destruct v; econs; eauto. econs; eauto. rewrite IMG.
         inv TYP. ss.
         apply in_zip_iff in H0. des. unfold typify in *. des_ifs.
@@ -377,14 +347,6 @@ Section PRSV.
         { esplits; eauto. ss. refl. }
         i; des. ss.
         esplits; eauto.
-
-        (* eapply SemiLattice.greatest_le_irr with (lub := UnreachC.lub); eauto. *)
-        (* - typeclasses eauto. *)
-        (* - ii. eapply lubsucc; eauto. *)
-        (* - ii. eapply lubspec; eauto. *)
-        (* - ii. eapply lubclosed; try apply LUB; eauto. *)
-        (* - exploit sound_stack_unreach_compat; eauto. i; des. ss. *)
-        (*   r; u; ss. esplits; eauto. i. inv SU. exploit BOUND; eauto. i; des. des_ifs. rewrite PRIV; ss. *)
         exploit Sound.get_greatest_le; ss; eauto.
         - change le' with Sound.le. eapply Sound.hle_le; et.
       }
@@ -402,29 +364,6 @@ Section PRSV.
         { change le' with Sound.le. eapply Sound.hle_le; et. }
         assert(BCLE1: Sound.le (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) su_gr).
         { eapply GR; eauto. }
-        (* set (f := fun b => if plt b retv.(Retv.m).(Mem.nextblock) *)
-        (*                    then *)
-        (*                      if su_ret b *)
-        (*                      then BCinvalid *)
-        (*                      else BCother *)
-        (*                    else *)
-        (*                      BCinvalid *)
-        (*     ). *)
-        (* set (f := fun b => if plt b (Mem.nextblock m_arg) *)
-        (*                    then bc b *)
-        (*                    else *)
-        (*                      if su_ret b *)
-        (*                      then BCinvalid *)
-        (*                      else BCother). *)
-        (* set (f := fun b => if plt b (Mem.nextblock m_arg) *)
-        (*                    then bc b *)
-        (*                    else *)
-        (*                      if plt b (Mem.nextblock retv.(Retv.m)) *)
-        (*                      then *)
-        (*                        if su_ret b *)
-        (*                        then BCinvalid *)
-        (*                        else BCother *)
-        (*                      else BCinvalid). *)
         set (f := fun b => if plt b (Mem.nextblock m_arg)
                            then bc b
                            else
@@ -456,8 +395,6 @@ Section PRSV.
         intro LEOLD.
         assert (VMTOP0: forall v, Sound.val su_gr v -> vmatch bc' v Vtop).
         { i.
-          (* assert(Sound.val su_ret v). *)
-          (* { eapply Sound.hle_val; et. } *)
           ss. r in H. destruct v; econs; eauto. econs; eauto.
           exploit H; eauto. i; des. rewrite IMG. subst f. s. des_ifs_safe.
           assert(NBC: ~ (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) b).

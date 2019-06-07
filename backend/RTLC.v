@@ -10,6 +10,8 @@ Require Import JunkBlock.
 
 Set Implicit Arguments.
 
+Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
+
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
@@ -23,8 +25,7 @@ Section MODSEM.
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg)
     :
-      at_external (Callstate stack fptr_arg sg_arg vs_arg m0)
-                  (Args.mk fptr_arg vs_arg m0)
+      at_external (Callstate stack fptr_arg sg_arg vs_arg m0) (Args.mk fptr_arg vs_arg m0)
   .
 
   Inductive initial_frame (args: Args.t)
@@ -35,8 +36,7 @@ Section MODSEM.
       (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
       (LEN: args.(Args.vs).(length) = fd.(fn_sig).(sig_args).(length))
     :
-      initial_frame args
-                    (Callstate [] args.(Args.fptr) fd.(fn_sig) tvs args.(Args.m))
+      initial_frame args (Callstate [] args.(Args.fptr) fd.(fn_sig) tvs args.(Args.m))
   .
 
   Inductive initial_frame2 (args: Args.t)
@@ -49,8 +49,7 @@ Section MODSEM.
       n m0
       (JUNK: assign_junk_blocks args.(Args.m) n = m0)
     :
-      initial_frame2 args
-                    (Callstate [] args.(Args.fptr) fd.(fn_sig) tvs m0)
+      initial_frame2 args (Callstate [] args.(Args.fptr) fd.(fn_sig) tvs m0)
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
@@ -83,12 +82,6 @@ Section MODSEM.
       ModSem.skenv_link := skenv_link; 
     |}
   .
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
   Program Definition modsem2: ModSem.t :=
     {|
@@ -102,52 +95,26 @@ Section MODSEM.
       ModSem.skenv_link := skenv_link; 
     |}
   .
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
-  Next Obligation. ii; ss; des. inv_all_once; ss; clarify. Qed.
 
-  Lemma modsem_receptive
-        st
-    :
-      receptive_at modsem st
-  .
-  Proof.
+  Lemma modsem_receptive: forall st, receptive_at modsem st.
     econs; eauto.
     - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
     - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
 
-  Lemma modsem2_receptive
-        st
-    :
-      receptive_at modsem2 st
-  .
-  Proof.
+  Lemma modsem2_receptive: forall st, receptive_at modsem2 st.
     econs; eauto.
     - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
     - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
 
-  Lemma modsem_determinate
-        st
-    :
-      determinate_at modsem st
-  .
-  Proof.
+  Lemma modsem_determinate: forall st, determinate_at modsem st.
     econs; eauto.
     - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
     - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
 
-  Lemma modsem2_determinate
-        st
-    :
-      determinate_at modsem2 st
-  .
-  Proof.
+  Lemma modsem2_determinate: forall st, determinate_at modsem2 st.
     econs; eauto.
     - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
     - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
@@ -155,29 +122,8 @@ Section MODSEM.
 
 End MODSEM.
 
+Program Definition module (p: program): Mod.t :=
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
 
-
-
-
-Section MODULE.
-
-  Variable p: program.
-
-  Program Definition module: Mod.t :=
-    {|
-      Mod.data := p;
-      Mod.get_sk := Sk.of_program fn_sig;
-      Mod.get_modsem := modsem;
-    |}
-  .
-
-  Program Definition module2: Mod.t :=
-    {|
-      Mod.data := p;
-      Mod.get_sk := Sk.of_program fn_sig;
-      Mod.get_modsem := modsem2;
-    |}
-  .
-
-End MODULE.
-
+Program Definition module2 (p: program): Mod.t :=
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem2; |}.

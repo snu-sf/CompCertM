@@ -2,7 +2,7 @@ Require Import CoqlibC MapsC.
 Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
 Require Import Locations Stacklayout Conventions Linking.
 Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
-Require Import Simulation Memory ValuesC.
+Require Import Simulation Memory ValuesC LinkingC2.
 Require Import Skeleton ModSem Mod sflib.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program SemProps.
 Require Import Equality.
@@ -84,10 +84,8 @@ Section SIM.
   Let ge_cp_link: genv := geof cp_link.
   Hypothesis WTPROGLINK: wt_program cp_link.
   Hypothesis WTPROGS: forall cp (IN: In cp cps), wt_program cp.
-  (* Hypothesis WTSKS: forall cp (IN: In cp cps), Sk.wf cp.(CsemC.module). *)
 
   Definition is_focus (cp: Csyntax.program): Prop := In cp cps.
-  (* put k1 inside k0 (k1 is executed later) *)
 
   Lemma link_sk_match
     :
@@ -326,22 +324,7 @@ Section SIM.
     split; i.
     - inv H; ss.
     - des. clarify. r. destruct st_tgt0; ss; try (by econs; eauto).
-      (* admit "". *)
   Qed.
-
-  (* Lemma size_of_same *)
-  (*       cp t *)
-  (*       (FOC : linkorder_program cp cp_link) *)
-  (*       (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp) *)
-  (*       (COMPLETE : complete_type (prog_comp_env cp) t = true) *)
-  (*   : *)
-  (*     sizeof (prog_comp_env cp) t = sizeof (prog_comp_env cp_link) t. *)
-  (* Proof. *)
-  (*   clear -COMPLETE EXTENDS. *)
-  (*   revert t cp cp_link COMPLETE EXTENDS. *)
-  (*   induction t; ss; i; des_ifs; try (by (exploit EXTENDS; eauto; i; Eq; auto)). *)
-  (*   erewrite IHt; eauto. *)
-  (* Qed. *)
 
   (** Same Lemmas *)
 
@@ -557,10 +540,7 @@ Section SIM.
 
   Lemma sem_add_ptr_int_same1
         cp f v1 ty1 v2 ty2 ty CC k e m' k1 k2 ty0 si v
-        (WTTGT : wt_state cp
-                   {|
-                     genv_genv := SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp;
-                     genv_cenv := prog_comp_env cp |} (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
+        (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
         (CLASSADD : classify_add ty1 ty2 = add_case_pi ty0 si)
@@ -570,11 +550,11 @@ Section SIM.
   Proof.
     exploit types_of_context1; eauto. intros [tys [A B]].
     unfold classify_add in CLASSADD; des_ifs; try (des; clarify); unfold sem_add_ptr_int in *; des_ifs.
-    - erewrite sizeof_wt_stable; eauto; inv WTTGT; ss.
+    - erewrite wt_type_sizeof_stable; eauto; inv WTTGT; ss.
       unfold typeconv in Heq; des_ifs; ss; clarify.
       { exploit (WTYE (Tpointer ty0 a1)). eapply B. ss. auto. i. ss. }
       { exploit (WTYE (Tarray ty0 z a1)). eapply B. ss. auto. i. ss. }
-    - erewrite sizeof_wt_stable; eauto; inv WTTGT; ss.
+    - erewrite wt_type_sizeof_stable; eauto; inv WTTGT; ss.
       unfold typeconv in Heq; des_ifs; ss; clarify.
       { exploit (WTYE (Tpointer ty0 a1)). eapply B. ss. auto. i. ss. }
       { exploit (WTYE (Tarray ty0 z a1)). eapply B. ss. auto. i. ss. }
@@ -582,10 +562,7 @@ Section SIM.
 
   Lemma sem_add_ptr_int_same2
         cp f v1 ty1 v2 ty2 ty CC k e m' k1 k2 ty0 si v
-        (WTTGT : wt_state cp
-                   {|
-                     genv_genv := SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp;
-                     genv_cenv := prog_comp_env cp |} (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
+        (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
         (CLASSADD : classify_add ty1 ty2 = add_case_ip si ty0)
@@ -595,11 +572,11 @@ Section SIM.
   Proof.
     exploit types_of_context1; eauto. intros [tys [A B]].
     unfold classify_add in CLASSADD; des_ifs; try (des; clarify); unfold sem_add_ptr_int in *; des_ifs.
-    - erewrite sizeof_wt_stable; eauto; inv WTTGT; ss.
+    - erewrite wt_type_sizeof_stable; eauto; inv WTTGT; ss.
       unfold typeconv in Heq0; des_ifs; ss; clarify.
       { exploit (WTYE (Tpointer ty0 a1)). eapply B. ss. auto. i. ss. }
       { exploit (WTYE (Tarray ty0 z a1)). eapply B. ss. auto. i. ss. }
-    - erewrite sizeof_wt_stable; eauto; inv WTTGT; ss.
+    - erewrite wt_type_sizeof_stable; eauto; inv WTTGT; ss.
       unfold typeconv in Heq0; des_ifs; ss; clarify.
       { exploit (WTYE (Tpointer ty0 a1)). eapply B. ss. auto. i. ss. }
       { exploit (WTYE (Tarray ty0 z a1)). eapply B. ss. auto. i. ss. }
@@ -607,10 +584,7 @@ Section SIM.
 
   Lemma sem_add_ptr_long_same1
         cp f v1 ty1 v2 ty2 ty CC k e m' k1 k2 ty0 v
-        (WTTGT : wt_state cp
-                   {|
-                     genv_genv := SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp;
-                     genv_cenv := prog_comp_env cp |} (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
+        (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
         (CLASSADD : classify_add ty1 ty2 = add_case_pl ty0)
@@ -620,11 +594,11 @@ Section SIM.
   Proof.
     exploit types_of_context1; eauto. intros [tys [A B]].
     unfold classify_add in CLASSADD; des_ifs; try (des; clarify); unfold sem_add_ptr_long in *; des_ifs.
-    - erewrite sizeof_wt_stable; eauto; inv WTTGT; ss.
+    - erewrite wt_type_sizeof_stable; eauto; inv WTTGT; ss.
       unfold typeconv in Heq; des_ifs; ss; clarify.
       { exploit (WTYE (Tpointer ty0 a1)). eapply B. ss. auto. i. ss. }
       { exploit (WTYE (Tarray ty0 z a1)). eapply B. ss. auto. i. ss. }
-    - erewrite sizeof_wt_stable; eauto; inv WTTGT; ss.
+    - erewrite wt_type_sizeof_stable; eauto; inv WTTGT; ss.
       unfold typeconv in Heq; des_ifs; ss; clarify.
       { exploit (WTYE (Tpointer ty0 a1)). eapply B. ss. auto. i. ss. }
       { exploit (WTYE (Tarray ty0 z a1)). eapply B. ss. auto. i. ss. }
@@ -632,10 +606,7 @@ Section SIM.
 
   Lemma sem_add_ptr_long_same2
         cp f v1 ty1 v2 ty2 ty CC k e m' k1 k2 ty0 v
-        (WTTGT : wt_state cp
-                   {|
-                     genv_genv := SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp;
-                     genv_cenv := prog_comp_env cp |} (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
+        (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
         (CLASSADD : classify_add ty1 ty2 = add_case_lp ty0)
@@ -645,11 +616,11 @@ Section SIM.
   Proof.
     exploit types_of_context1; eauto. intros [tys [A B]].
     unfold classify_add in CLASSADD; des_ifs; try (des; clarify); unfold sem_add_ptr_long in *; des_ifs.
-    - des_ifs; erewrite sizeof_wt_stable; eauto; inv WTTGT; ss.
+    - des_ifs; erewrite wt_type_sizeof_stable; eauto; inv WTTGT; ss.
       unfold typeconv in Heq0; des_ifs; ss; clarify.
       { exploit (WTYE (Tpointer ty0 a1)). eapply B. ss. auto. i. ss. }
       { exploit (WTYE (Tarray ty0 z a1)). eapply B. ss. auto. i. ss. }
-    - des_ifs; erewrite sizeof_wt_stable; eauto; inv WTTGT; ss.
+    - des_ifs; erewrite wt_type_sizeof_stable; eauto; inv WTTGT; ss.
       unfold typeconv in Heq0; des_ifs; ss; clarify.
       { exploit (WTYE (Tpointer ty0 a1)). eapply B. ss. auto. i. ss. }
       { exploit (WTYE (Tarray ty0 z a1)). eapply B. ss. auto. i. ss. }
@@ -657,15 +628,8 @@ Section SIM.
 
   Lemma sem_sub_same
         cp f v1 ty1 v2 ty2 ty CC k e m' k1 k2 k0 v
-        (WTSRC : wt_state cp_link
-                   {|
-                     genv_genv := SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) cp_link;
-                     genv_cenv := prog_comp_env cp_link |}
-                   (ExprState f (CC (Ebinop Osub (Eval v1 ty1) (Eval v2 ty2) ty)) (app_cont k k0) e m'))
-        (WTTGT : wt_state cp
-                   {|
-                     genv_genv := SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp;
-                     genv_cenv := prog_comp_env cp |} (ExprState f (CC (Ebinop Osub (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
+        (WTSRC : wt_state cp_link ge_cp_link (ExprState f (CC (Ebinop Osub (Eval v1 ty1) (Eval v2 ty2) ty)) (app_cont k k0) e m'))
+        (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Osub (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
     :
@@ -674,21 +638,18 @@ Section SIM.
   Proof.
     exploit types_of_context1; eauto. intros [tys [A B]].
     unfold sem_sub.
-    (* des_ifs; erewrite sizeof_wt_stable in *; eauto; inv WTTGT; inv WTSRC; ss; *)
-    (*   unfold classify_sub in Heq; destruct ty1; destruct ty2; des_ifs; ss; clarify; des_ifs; *)
-    (*     try (by (exploit (WTYE (Tpointer ty0 a)); try eapply B; ss; auto; i; ss)); *)
-    (*     try (by (exploit (WTYE (Tarray ty0 z a)); try eapply B; ss; auto; i; ss)); *)
-    (*     try (by (exploit (WTYE0 (Tpointer ty0 a)); try eapply B; ss; auto; i; ss)); *)
-    (*     try (by (exploit (WTYE0 (Tarray ty0 z a)); try eapply B; ss; auto; i; ss)). *)
-    admit "".
+    inv WTTGT; inv WTSRC; ss.
+    des_ifs; erewrite wt_type_sizeof_stable in *; eauto;
+      unfold classify_sub in Heq; destruct ty1; destruct ty2; des_ifs; ss; clarify; des_ifs;
+        try (by (exploit (WTYE (Tpointer ty0 a)); try eapply B; ss; auto; i; ss));
+        try (by (exploit (WTYE (Tarray ty0 z a)); try eapply B; ss; auto; i; ss));
+        try (by (exploit (WTYE0 (Tpointer ty0 a)); try eapply B; ss; auto; i; ss));
+        try (by (exploit (WTYE0 (Tarray ty0 z a)); try eapply B; ss; auto; i; ss)).
   Qed.
 
   Lemma sem_add_same
         cp f v1 ty1 v2 ty2 ty CC k e m' k1 k2 v
-        (WTTGT : wt_state cp
-                   {|
-                     genv_genv := SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp;
-                     genv_cenv := prog_comp_env cp |} (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
+        (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
     :
@@ -703,69 +664,46 @@ Section SIM.
   Qed.
 
   Lemma free_list_exists
-        cp m e m' (* k1 k2 *) (* CC *)
+        cp m e m'
         (WTENV: forall id blk ty, e ! id = Some (blk, ty) -> wt_type (prog_comp_env cp) ty)
-        (* (WTTGT : wt_state *)
-        (*            {| *)
-        (*              genv_genv := SkEnv.revive *)
-        (*                             (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp; *)
-        (*              genv_cenv := prog_comp_env cp |} (Csem.State f Sskip k e m)) *)
         (EXTENDS : forall (id : positive) (cmp : composite),
             (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (FREE : Mem.free_list m (blocks_of_env (geof cp_link) e) = Some m')
     :
       Mem.free_list m (blocks_of_env (geof cp) e) = Some m'.
-      (* exists m'', Mem.free_list m (blocks_of_env (geof cp) e) = Some m''. *)
   Proof.
     unfold blocks_of_env, block_of_binding in *. ss.
     assert (WTENV0: forall p blk ty, In (p, (blk, ty)) (PTree.elements e) -> wt_type (prog_comp_env cp) ty).
     { i. exploit PTree.elements_complete; eauto. }
-    revert (* CTX *) FREE EXTENDS WTENV WTENV0. revert (* CC k1 k2 *) m' cp m.
+    revert FREE EXTENDS WTENV WTENV0. revert m' cp m.
     induction (PTree.elements e); ss. ii; eauto.
     i. des_ifs.
-    - erewrite sizeof_wt_stable in Heq0; eauto. Eq.
+    - erewrite wt_type_sizeof_stable in Heq0; eauto. Eq.
       exploit IHl; eauto.
       { specialize (WTENV0 p b t). exploit WTENV0; eauto. }
-    - erewrite sizeof_wt_stable in Heq0; eauto. Eq.
+    - erewrite wt_type_sizeof_stable in Heq0; eauto. Eq.
       { specialize (WTENV0 p b t). exploit WTENV0; eauto. }
   Qed.
 
   Lemma free_list_same
-        cp m e m' (* k1 k2 *) (* CC *)
+        cp m e m'
         (WTENV: forall id blk ty, e ! id = Some (blk, ty) -> wt_type (prog_comp_env cp) ty)
-        (* (WTTGT : wt_state *)
-        (*            {| *)
-        (*              genv_genv := SkEnv.revive *)
-        (*                             (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp; *)
-        (*              genv_cenv := prog_comp_env cp |} (Csem.State f Sskip k e m)) *)
         (EXTENDS : forall (id : positive) (cmp : composite),
             (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
-        (FREE : Mem.free_list m
-                              (blocks_of_env
-                                 {|
-                                   genv_genv := SkEnv.revive
-                                                  (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp;
-                                   genv_cenv := prog_comp_env cp |} e) = Some m')
-        (* (CTX : context k1 k2 CC) *)
+        (FREE : Mem.free_list m (blocks_of_env (geof cp) e) = Some m')
     :
-      Mem.free_list m
-                    (blocks_of_env
-                       {|
-                         genv_genv := SkEnv.revive
-                                        (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link))
-                                        cp_link;
-                         genv_cenv := prog_comp_env cp_link |} e) = Some m'.
+      Mem.free_list m (blocks_of_env ge_cp_link e) = Some m'.
   Proof.
     unfold blocks_of_env, block_of_binding in *. ss.
     assert (WTENV0: forall p blk ty, In (p, (blk, ty)) (PTree.elements e) -> wt_type (prog_comp_env cp) ty).
     { i. exploit PTree.elements_complete; eauto. }
-    revert (* CTX *) FREE EXTENDS WTENV WTENV0. revert (* CC k1 k2 *) m' cp m.
+    revert FREE EXTENDS WTENV WTENV0. revert m' cp m.
     induction (PTree.elements e); ss. ii.
     des_ifs.
-    - erewrite <- sizeof_wt_stable in Heq0; eauto. Eq.
+    - erewrite <- wt_type_sizeof_stable in Heq0; eauto. Eq.
       exploit IHl; eauto.
       { specialize (WTENV0 p b t). exploit WTENV0; eauto. }
-    - erewrite <- sizeof_wt_stable in Heq0; eauto. Eq.
+    - erewrite <- wt_type_sizeof_stable in Heq0; eauto. Eq.
       { specialize (WTENV0 p b t). exploit WTENV0; eauto. }
   Qed.
 
@@ -787,18 +725,17 @@ Section SIM.
         (EXTENDS: forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (ALLOC : alloc_variables (geof cp) empty_env m (fn_params f ++ fn_vars f) e m1)
     :
-      alloc_variables (geof cp_link) empty_env m (fn_params f ++ fn_vars f) e m1.
+      alloc_variables ge_cp_link empty_env m (fn_params f ++ fn_vars f) e m1.
   Proof.
     assert (EMPTY:forall i blk ty, empty_env ! i = Some (blk, ty) -> wt_type (prog_comp_env cp) ty).
     { ii. erewrite PTree.gempty in H. clarify. }
     remember (fn_params f ++ fn_vars f) as l.
     remember empty_env as ev.
-    clear Heqev.
-    clear Heql.
+    clear Heqev Heql.
     ginduction l; i; ss; inv ALLOC.
     - econs.
     - econs; eauto.
-      + ss. erewrite <- sizeof_wt_stable; eauto.
+      + ss. erewrite <- wt_type_sizeof_stable; eauto.
         inv WT. eauto.
       + eapply IHl; eauto.
         { inv WT; eauto. }
@@ -813,7 +750,7 @@ Section SIM.
         (EXTENDS: forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (BIND : bind_parameters skenv_link (geof cp) e m1 (fn_params f) vargs m2)
     :
-      bind_parameters skenv_link (geof cp_link) e m1 (fn_params f) vargs m2.
+      bind_parameters skenv_link ge_cp_link e m1 (fn_params f) vargs m2.
   Proof.
     assert (EMPTY:forall i blk ty, empty_env ! i = Some (blk, ty) -> wt_type (prog_comp_env cp) ty).
     { ii. erewrite PTree.gempty in H. clarify. }
@@ -826,7 +763,7 @@ Section SIM.
         inv WT.
         econs 3; ss; eauto;
           try (by (erewrite <- alignof_blockcopy_wt_stable; eauto));
-          try (by (erewrite <- sizeof_wt_stable; eauto)).
+          try (by (erewrite <- wt_type_sizeof_stable; eauto)).
       + exploit IHl; eauto.
         { instantiate (1:=f). ss. inv WT. eauto. }
   Qed.
@@ -848,7 +785,7 @@ Section SIM.
       { i. exploit link_list_linkorder; eauto. intro ORD. r in ORD. rewrite Forall_forall in ORD.
         exploit ORD; et. intro ORD0. ss. rr in ORD0. des. et.
       }
-      exploit sizeof_wt_stable; eauto.
+      exploit wt_type_sizeof_stable; eauto.
       i. eapply IHALLOC in H3.
       econs; eauto. ss. rewrite H1. eauto.
   Qed.
@@ -876,11 +813,8 @@ Section SIM.
           destruct ty; ss; des_ifs; exploit H0; eauto; i; rewrite Heq0 in H10; inv H10; eauto.
   Qed.
 
-  (* Scheme find_label_mut := Minimality for find_label Sort Prop *)
-  (*   with find_label_ls_mut := Minimality for find_label_ls Sort Prop. *)
-
-  Scheme statement_mut := Induction for statement Sort Prop
-    with labeled_statements_mut := Induction for labeled_statements Sort Prop.
+  Scheme statement_ind2 := Induction for statement Sort Prop
+    with labeled_statements_ind2 := Induction for labeled_statements Sort Prop.
 
   Lemma find_label_same_None
         tl_tgt k0 lbl s k
@@ -890,7 +824,7 @@ Section SIM.
       find_label lbl s (app_cont k k0) = None.
   Proof.
     revert_until s. revert s lbl k0 tl_tgt.
-    eapply (statement_mut (fun s => forall lbl k0 tl_tgt k,
+    eapply (statement_ind2 (fun s => forall lbl k0 tl_tgt k,
                                sum_cont tl_tgt k0 ->
                                find_label lbl s k = None -> find_label lbl s (app_cont k k0) = None)
                           (fun sl => forall K lbl k0 tl_tgt k,
@@ -909,7 +843,7 @@ Section SIM.
       find_label lbl s k' = None.
   Proof.
     revert_until s. revert s lbl k0 tl_tgt.
-    eapply (statement_mut (fun s => forall lbl k0 tl_tgt k k',
+    eapply (statement_ind2 (fun s => forall lbl k0 tl_tgt k k',
                                sum_cont tl_tgt k0 ->
                                find_label lbl s k = None -> find_label lbl s k' = None)
                           (fun sl => forall K lbl k0 tl_tgt k k',
@@ -933,7 +867,7 @@ Section SIM.
   Proof.
     revert SUM. revert_until s.
     revert lbl k0 tl_tgt. clear INCL_FOCUS.
-    eapply (statement_mut (fun s =>  forall lbl k0 tl_tgt k s' k' k1,
+    eapply (statement_ind2 (fun s =>  forall lbl k0 tl_tgt k s' k' k1,
                                find_label lbl s k = Some (s', k') ->
                                sum_cont tl_tgt k0 -> exists k1', find_label lbl s k1 = Some (s', k1'))
                           (fun sl => forall lbl k0 tl_tgt k s' k' k1,
@@ -979,7 +913,7 @@ Section SIM.
   Proof.
     revert SUM. revert_until s.
     revert lbl k0 tl_tgt. clear INCL_FOCUS.
-    eapply (statement_mut (fun s =>  forall lbl k0 tl_tgt k s' k',
+    eapply (statement_ind2 (fun s =>  forall lbl k0 tl_tgt k s' k',
                                find_label lbl s k = Some (s', k') ->
                                sum_cont tl_tgt k0 -> find_label lbl s (app_cont k k0) = Some (s', app_cont k' k0))
                           (fun sl => forall lbl k0 tl_tgt k s' k',
@@ -1020,6 +954,44 @@ Section SIM.
   Hypothesis WFSRC: forall md : Mod.t, In md prog_src -> Sk.wf md.
   Hypothesis WFTGT: forall md : Mod.t, In md prog_tgt -> Sk.wf md.
 
+  Lemma lred_progress
+        cp f C a k3 k0 e m a' m'
+        (FOC: is_focus cp)
+        (CTX: context LV RV C)
+        (WTSRC: wt_state cp_link ge_cp_link (ExprState f (C a) (app_cont k3 k0) e m))
+        (WTTGT: wt_state cp (geof cp) (ExprState f (C a) k3 e m))
+        (EXTENDS: forall (id : positive) (cmp : composite),
+            (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
+        (LRED: lred ge_cp_link e a m a' m')
+    :
+      exists a1 m1, lred (geof cp) e a m a1 m1.
+  Proof.
+    inv LRED.
+    - do 2 eexists. econs; eauto.
+    - ss.
+      inv WTTGT; ss.
+      exploit wt_rvalue_wt_expr; eauto. ss. eauto. i.
+      inv H1. ss. eapply WTTENV in H3. des; Eq.
+      do 2 eexists. econs 2; eauto.
+    - do 2 eexists. econs 3; eauto.
+    - exploit types_of_context1; eauto. intros [tys [A B]].
+      inv WTTGT. ss. exploit (WTYE (Tstruct id a0)).
+      eapply B. ss. auto. i. inv H1. des_ifs.
+      do 2 eexists. econs 4; eauto; ss.
+      erewrite field_offset_same; eauto. exploit EXTENDS; eauto. i. Eq. eauto.
+      unfold linkorder_program. split; eauto.
+      exploit link_list_linkorder; eauto. i. rr in H1. rewrite Forall_forall in H1.
+      exploit H1; eauto. i. clear - H2. unfold linkorder_program in *. ss.
+      unfold linkorder_program in H2. ss. des; eauto.
+      hexploit (prog_comp_env_eq cp); et. intro X.
+      exploit build_composite_env_consistent; et. intro Y.
+      exploit co_consistent_complete; et.
+    - exploit types_of_context1; eauto. intros [tys [A B]].
+      inv WTTGT. ss. exploit (WTYE (Tunion id a0)).
+      eapply B. ss. auto. i. inv H0. des_ifs.
+      do 2 eexists. econs 5; eauto.
+  Qed.
+
   Lemma match_focus_state_bsim
         cst_src0 cst_tgt0 cst_tgt1 k0 cp tr
         (ST: match_focus_state cst_src0 cst_tgt0 k0)
@@ -1030,7 +1002,6 @@ Section SIM.
         tl_tgt
         (SUM: sum_cont tl_tgt k0)
     :
-      (* exists cst_src1, <<STEP: Csem.step skenv_link (geof cp_link) cst_src0 tr cst_src1>> *)
       <<STEP: Csem.step skenv_link (geof cp_link) cst_src0 tr (matched_state_source cst_tgt1 k0)>>
   .
   Proof.
@@ -1045,9 +1016,9 @@ Section SIM.
       unfold link_program in *. des_ifs.
       Local Transparent Linker_prog. ss.
       unfold linkorder_program in FOC. inv FOC. eauto. }
-    unfold NW in *. (* TODO: Hint Unfold NW does not work !!! *)
+    unfold NW in *.
     rr in STEP. des.
-    - inv STEP; inv ST. (* left; econs; eauto. *)
+    - inv STEP; inv ST.
       + (* lred *)
         left; econs; eauto.
         inv H; try (by econs; ss; eauto).
@@ -1073,12 +1044,12 @@ Section SIM.
           { erewrite <- sem_add_same; eauto. }
           { erewrite <- sem_sub_same; eauto. }
         * rpapply red_sizeof; eauto. ss.
-          erewrite sizeof_wt_stable; eauto.
+          erewrite wt_type_sizeof_stable; eauto.
           clear - H0 WTTGT WTYE B.
           exploit (WTYE ty1); eauto.
           eapply B. ss. auto.
         * rpapply red_alignof; eauto. ss.
-          erewrite alignof_wt_stable; eauto.
+          erewrite wt_type_alignof_stable; eauto.
           clear - H0 WTTGT WTYE B.
           exploit (WTYE ty1); eauto.
           eapply B. ss. auto.
@@ -1088,40 +1059,19 @@ Section SIM.
             exploit (WTYE); try eapply B; ss; auto; i; ss. }
           { erewrite <- alignof_blockcopy_wt_stable; eauto.
             exploit (WTYE); try eapply B; ss; auto; i; ss. }
-          { erewrite <- sizeof_wt_stable; eauto.
+          { erewrite <- wt_type_sizeof_stable; eauto.
             inv WTTGT; ss. exploit (WTYE ty1); eauto. eapply B. ss. auto. }
-          { erewrite <- sizeof_wt_stable; eauto.
+          { erewrite <- wt_type_sizeof_stable; eauto.
             inv WTTGT; ss. exploit (WTYE ty1); eauto. eapply B. ss. auto. }
       + left. econs; eauto.
       + left. econs; eauto. ii. eapply H0.
         inv H1.
         * econs 1; eauto.
         * econs 2; eauto.
-        * inv H2.
-          { econs 3; eauto.
-            instantiate (1:= m'). instantiate (1:=(Eloc b Ptrofs.zero ty)). econs; eauto. }
-          { ss.
-            inv WTTGT; ss.
-            exploit context_compose. eapply H. eauto. i.
-            exploit wt_rvalue_wt_expr; eauto. ss. eauto. i.
-            inv H5. ss. eapply WTTENV in H7. des; Eq.
-            econs 3; eauto. econs 2; eauto. }
-          { econs 3; eauto. ss. econs 3; eauto. }
-          { exploit context_compose. eapply H. eauto. i.
-            exploit types_of_context1; eauto. intros [tys [A B]].
-            inv WTTGT. ss. exploit (WTYE (Tstruct id a)).
-            eapply B. ss. auto. i. inv H5. des_ifs.
-            econs 3; eauto. ss. econs 4; eauto; ss.
-            erewrite field_offset_same; eauto. exploit EXTENDS; eauto. i. Eq. eauto.
-            hexploit (prog_comp_env_eq cp); et. intro X.
-            exploit build_composite_env_consistent; et. intro Y.
-            exploit co_consistent_complete; et. }
-          { exploit context_compose. eapply H. eauto. i.
-            exploit types_of_context1; eauto. intros [tys [A B]].
-            inv WTTGT. ss. exploit (WTYE (Tunion id a)).
-            eapply B. ss. auto. i. inv H4. des_ifs.
-            econs 3; eauto. ss. econs 5; eauto. }
-          (* admit "lred progress (make a lemma)". *)
+        * (* lred progress *)
+          exploit context_compose. eapply H. eauto. i.
+          exploit lred_progress; eauto; ss; eauto. i. des.
+          econs 3; eauto.
         * inv H2; try (by (econs 4; eauto; econs; eauto)).
           { econs 4; eauto. econs 4; eauto. ss. unfold sem_binary_operation in *. des_ifs; eauto.
             - exploit context_compose. eapply H. eapply H3. i.
@@ -1138,9 +1088,9 @@ Section SIM.
                 exploit (WTYE); try eapply B; ss; auto; i; ss.
               + erewrite alignof_blockcopy_wt_stable; eauto.
                 exploit (WTYE); try eapply B; ss; auto; i; ss.
-              + erewrite sizeof_wt_stable; eauto.
+              + erewrite wt_type_sizeof_stable; eauto.
                 exploit (WTYE ty1); eauto. eapply B. ss. auto.
-              + erewrite sizeof_wt_stable; eauto.
+              + erewrite wt_type_sizeof_stable; eauto.
                 exploit (WTYE ty1); eauto. eapply B. ss. auto. }
         * econs 5; eauto.
     - right.
@@ -1155,7 +1105,6 @@ Section SIM.
         * erewrite call_cont_app_cont; et.
       + ss. eapply step_skip_call; eauto.
         * exploit Cstrategy.is_call_cont_call_cont; et. intro T.
-          (* TODO: make lemma *)
           clear - H T SUM. unfold is_call_cont in H. des_ifs. ss. inv SUM; ss. des; clarify.
         * inv WTTGT; ss.
           exploit free_list_same; eauto.
@@ -1215,29 +1164,12 @@ Section SIM.
       unfold link_program in *. des_ifs.
       Local Transparent Linker_prog. ss.
       unfold linkorder_program in FOC. inv FOC. eauto. }
-    unfold NW in *. (* TODO: Hint Unfold NW does not work !!! *)
+    unfold NW in *.
     rr in STEP. des.
-    - inv STEP; inv ST. (* left; econs; eauto. *)
+    - inv STEP; inv ST.
       + (* lred *)
-        inv H.
-        * eexists. do 2 econs; eauto. econs; eauto.
-        * ss. inv WTTGT; ss.
-          exploit wt_rvalue_wt_expr; eauto. ss. eauto. i.
-          inv H. ss. eapply WTTENV in H4. des; Eq.
-          eexists. do 2 econs; eauto. econs 2; eauto.
-        * eexists. do 2 econs; eauto. econs 3; eauto.
-        * inversion WTTGT; subst; ss. exploit types_of_context1; eauto. intros [tys [A B]].
-          inv WTTGT; ss. exploit (WTYE (Tstruct id a0)).
-          eapply B. ss. auto. i. inv H. des_ifs.
-          eexists. do 2 econs; eauto. econs 4; eauto; ss.
-          erewrite field_offset_same; eauto. exploit EXTENDS; eauto. i. Eq. eauto.
-          hexploit (prog_comp_env_eq cp); et. intro X.
-          exploit build_composite_env_consistent; et. intro Y.
-          exploit co_consistent_complete; et.
-        * exploit types_of_context1; eauto. intros [tys [A B]].
-          inv WTTGT. ss. exploit (WTYE (Tunion id a0)).
-          eapply B. ss. auto. i. inv H. des_ifs.
-          eexists. do 2 econs; eauto. econs 5; eauto.
+        exploit lred_progress; eauto. i. des.
+        eexists. left. econs; eauto.
       + (* rred *)
         rename C into CC.
         inversion WTTGT; subst; ss. exploit types_of_context1; eauto. intros [tys [A B]].
@@ -1253,9 +1185,9 @@ Section SIM.
             exploit (WTYE); try eapply B; ss; auto; i; ss. }
           { erewrite alignof_blockcopy_wt_stable; eauto.
             exploit (WTYE); try eapply B; ss; auto; i; ss. }
-          { erewrite sizeof_wt_stable; eauto.
+          { erewrite wt_type_sizeof_stable; eauto.
             inv WTTGT; ss. exploit (WTYE ty1); eauto. eapply B. ss. auto. }
-          { erewrite sizeof_wt_stable; eauto.
+          { erewrite  wt_type_sizeof_stable; eauto.
             inv WTTGT; ss. exploit (WTYE ty1); eauto. eapply B. ss. auto. }
       + eexists. econs. econs 3; eauto.
       + eexists. econs. econs 4; eauto. ii. eapply H0.
@@ -1294,7 +1226,6 @@ Section SIM.
             inv WTTGT. ss. exploit (WTYE (Tunion id a)).
             eapply B. ss. auto. i. inv H4. des_ifs.
             econs 3; eauto. ss. econs 5; eauto. }
-          (* admit "lred progress (make a lemma)". *)
         * inv H2; try (by (econs 4; eauto; econs; eauto)).
           { econs 4; eauto. econs 4; eauto. ss. unfold sem_binary_operation in *. des_ifs; eauto.
             - exploit context_compose. eapply H. eapply H3. i.
@@ -1311,49 +1242,15 @@ Section SIM.
                 exploit (WTYE); try eapply B; ss; auto; i; ss.
               + erewrite <- alignof_blockcopy_wt_stable; eauto.
                 exploit (WTYE); try eapply B; ss; auto; i; ss.
-              + erewrite <- sizeof_wt_stable; eauto.
+              + erewrite <- wt_type_sizeof_stable; eauto.
                 exploit (WTYE ty1); eauto. eapply B. ss. auto.
-              + erewrite <- sizeof_wt_stable; eauto.
+              + erewrite <- wt_type_sizeof_stable; eauto.
                 exploit (WTYE ty1); eauto. eapply B. ss. auto. }
         * econs 5; eauto.
     - ss.
-      inversion STEP; subst; inv ST; ss; try (by eexists; right; econs; eauto).
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
+      inversion STEP; subst; inv ST; ss; try (by eexists; right; econs; eauto);
+        (try by (destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto);
+                 inv SUM; unfold is_call_cont_strong in CALL; des_ifs)).
       + eexists. right.
         ss. rpapply step_return_0; eauto.
         inv WTTGT. exploit free_list_exists; eauto.
@@ -1375,12 +1272,6 @@ Section SIM.
           destruct k3; ss.
         * inv WTTGT; ss.
           exploit free_list_exists; eauto.
-      + destruct k3; destruct k0; ss; clarify; try (by eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
-      + destruct k3; destruct k0; ss; clarify; try (by eexists; right; econs; eauto).
-        inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
       + clear -H SUM.
         erewrite <- call_cont_app_cont in H; et.
         exploit find_label_exists; eauto. i. des.
@@ -1417,7 +1308,6 @@ Section SIM.
         { (* not call *)
           exfalso.
           eapply NCALLTGT.
-          (* destruct k3 eqn:Hk3; ss. *)
           eexists.
           econs; eauto.
           - assert (Genv.find_funct skenv_link fptr = Some (AST.Internal (signature_of_function f))).
@@ -1447,7 +1337,6 @@ Section SIM.
                 { assert (defs cp_link i0) by (rewrite <- defs_prog_defmap; eauto).
                   exploit invert_symbol_lemma2. eauto. erewrite CSk.of_program_defs. eauto. eauto. eauto. }
                 subst.
-                (* unfold CSk.of_program in DMAP. ss. unfold prog_defmap in DMAP, DMAP0. ss. *)
                 clear - DMAP DMAP0.
                 unfold prog_defmap in DMAP. ss.
                 unfold prog_defmap in DMAP0. ss.
@@ -1526,7 +1415,6 @@ Section SIM.
               assert (Genv.find_def (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b = Some (Gfun (AST.External ef))).
               { unfold Genv.find_def. ss. rewrite PTree_filter_map_spec, o_bind_ignore. des_ifs.
                 rewrite SKENV. unfold o_bind. ss. des_ifs.
-                (* unfold CSk.of_program in DMAP. ss. unfold prog_defmap in DMAP, DMAP0. ss. *)
                 clear - DMAP DMAP0. rewrite DMAP. ss.
                 unfold prog_defmap in DMAP. ss.
                 unfold prog_defmap in DMAP0. ss.

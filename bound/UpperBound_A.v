@@ -233,8 +233,7 @@ Section PRESERVATION.
   Hypothesis WF_PARAM:
     forall id fd cp (IN: is_focus cp),
       In (id, (Gfun (Internal fd))) cp.(prog_defs) ->
-      4 * size_arguments_64 (typlist_of_typelist (type_of_params (fn_params fd))) 0 0 0 <= Ptrofs.max_unsigned.
-
+      4 * size_arguments (signature_of_function fd) <= Ptrofs.max_unsigned.
 
   Let INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function cp_link).
   Proof.
@@ -1100,7 +1099,7 @@ Section PRESERVATION.
             i. inv H2. rewrite H1 in *. clarify.
             assert (exists func, (prog_defmap (CSk.of_program signature_of_function pgm)) ! id = Some (Gfun (AST.Internal func))).
             { rewrite H1 in *. clarify. inv H5. unfold CtypesC.CSk.match_fundef in H6. destruct f2; clarify.
-              exists s. rewrite H4. auto. } des.
+              rewrite <- H4. eauto. } des.
 
             red. econs. { ss. right. unfold prog_tgt.
             unfold load_modsems in *. rewrite list_append_map. rewrite in_app_iff. right.
@@ -1857,4 +1856,6 @@ Proof.
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
+  { unfold signature_of_function, size_arguments in *. i.
+    rewrite typlist_of_typelist_eq. des_ifs. eapply WFPARAM; eauto. }
 Qed.

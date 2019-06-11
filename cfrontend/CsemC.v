@@ -125,7 +125,7 @@ Section MODSEM.
       match goal with
       | [H: _ |- _ ] => try (exploit external_call_trace_length; eauto; check_safe; intro T; des); inv H; ss; try xomega
       end.
-  
+
   Lemma single_events_at
         st
     :
@@ -188,7 +188,6 @@ Inductive typechecked (builtins: list (ident * globdef (Ctypes.fundef function) 
         id fd
         (IN: In (id, (Gfun (Internal fd))) p.(prog_defs))
       ,
-          4 * size_arguments_64 (typlist_of_typelist (type_of_params (fn_params fd))) 0 0 0 <= Ptrofs.max_unsigned
+          4 * size_arguments (signature_of_function fd) <= Ptrofs.max_unsigned
 )
-
 .

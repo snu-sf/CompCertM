@@ -2,7 +2,7 @@ Require Import Axioms CoqlibC MapsC Errors.
 Require Import AST Linking.
 Require Archi.
 (** newly added **)
-Require Export Ctypes.
+Require Export Ctypes Csyntax.
 (* Csem Csyntax ASTC. *)
 Require Import Errors.
 Require Import Values.
@@ -94,17 +94,17 @@ Module CSk.
     rewrite map_map. rewrite map_map. ss.
   Qed.
 
-  Let match_fundef F0 F1 (_: unit): Ctypes.fundef F0 -> AST.fundef F1 -> Prop :=
+  Let match_fundef F0 F1 (get_sig: F0 -> F1) (_: unit): Ctypes.fundef F0 -> AST.fundef F1 -> Prop :=
     fun f0 f1 =>
       match f0, f1 with
-      | Internal _, AST.Internal _ => true
+      | Internal func0, AST.Internal func1 => get_sig func0 = func1
       | External ef0 _ _ _, AST.External ef1 => external_function_eq ef0 ef1
       | _, _ => false
       end
   .
 
   (* copied from Skeleton *)
-  Definition wf_match_fundef CTX F1 F2 (match_fundef: CTX -> fundef F1 -> fundef F2 -> Prop)
+  Definition wf_match_fundef CTX F1 F2 (match_fundef: CTX -> Ctypes.fundef F1 -> Ctypes.fundef F2 -> Prop)
              (fn_sig1: F1 -> signature) (fn_sig2: F2 -> signature): Prop := forall
       ctx f1 f2
       (MATCH: match_fundef ctx f1 f2)
@@ -115,10 +115,10 @@ Module CSk.
 
   Lemma match_program_eq
         F1 F2
-        `{Linker (fundef F1)}
+        `{Linker (Ctypes.fundef F1)}
         match_fundef match_varinfo
-        (p1: program F1)
-        (p2: program F2)
+        (p1: Ctypes.program F1)
+        (p2: Ctypes.program F2)
         (MATCH: match_program match_fundef match_varinfo p1 p2)
         fn_sig1 fn_sig2
         (WF: wf_match_fundef match_fundef fn_sig1 fn_sig2)
@@ -143,10 +143,10 @@ Module CSk.
   Lemma of_program_prog_defmap
         F
         (p: Ctypes.program F)
-        get_sg
+        (get_sg: F -> signature)
     :
       <<SIM: forall id, option_rel (@Linking.match_globdef unit _ _ _ _ _
-                                                           (@match_fundef _ _)
+                                                           (@match_fundef _ _ get_sg)
                                                            top2
                                                            tt)
                                    (p.(prog_defmap) ! id) ((of_program get_sg p).(prog_defmap) ! id)>>

@@ -50,7 +50,7 @@ Section PRESERVATION.
 (*
 B-0
 * : Physical
-+ : Logical 
++ : Logical
 c0 * empty
 >=
 c0 + empty
@@ -139,143 +139,7 @@ c0 + empty
 
   Let INCL: SkEnv.includes (Sk.load_skenv (CSk.of_program signature_of_function prog)) (CSk.of_program signature_of_function prog).
   Proof. eapply includes_refl. Qed.
-(* SkEnv.load_skenv_wf: forall sk : Sk.t, Sk.wf sk -> << SkEnv.wf (Sk.load_skenv sk) >> *)
-  Lemma symb_preserved id
-    :
-      Senv.public_symbol (symbolenv (sem tprog)) id =
-      Senv.public_symbol (symbolenv (semantics prog)) id.
-  Proof.
-    unfold symbolenv. ss.
-    unfold Genv.public_symbol, proj_sumbool. des_ifs.
-    - unfold Sk.load_skenv in *. ss.
-      unfold Genv.globalenv in *. ss. erewrite Genv.genv_public_add_globals in *. ss.
-    - unfold Genv.find_symbol in *. ss.
-      unfold Sk.load_skenv in *. ss. ss.
-      unfold Genv.globalenv in *. ss.
-      clear -Heq Heq0.
-      remember (Genv.empty_genv (AST.fundef signature) () (prog_public prog)) as empty1.
-      remember ((Genv.empty_genv (Ctypes.fundef function) type (prog_public prog))) as empty2.
-      remember (prog_defs prog) as l.
-      assert ((Genv.genv_symb empty1) ! id = None).
-      { rewrite Heqempty1. ss. eapply PTree.gempty. }
-      assert ((Genv.genv_symb empty2) ! id = None).
-      { rewrite Heqempty2. ss. eapply PTree.gempty. }
-      clear Heql Heqempty1 Heqempty2.
-      exfalso.
-      ginduction l. ss.
-      + i. Eq.
-      + i. ss.
-        exploit IHl. eauto. eapply Heq. eauto.
-        destruct a.
-        destruct (classic (i=id)).
-        { subst. ss.
-          clear - H0 Heq0. exfalso.
-          assert (exists a, (Genv.genv_symb (Genv.add_global empty2 (id, g))) ! id = Some a).
-          { unfold Genv.add_global. ss. erewrite PTree.gss; eauto. } des.
-          remember (Genv.add_global empty2 (id, g)) as ge'.
-          clear Heqge'.
-          ginduction l; ss.
-          - i. unfold fundef in *. Eq.
-          - i.
-            destruct a. ss.
-            destruct (classic (i=id)).
-            { subst.
-              exploit IHl; eauto. ss.
-              erewrite PTree.gss; eauto. }
-            exploit IHl; eauto. ss.
-            erewrite PTree.gso; eauto. }
-        ss. erewrite PTree.gso; eauto.
-        destruct a.
-        destruct (classic (i=id)).
-        { subst. ss.
-          clear - H0 Heq0. exfalso.
-          assert (exists a, (Genv.genv_symb (Genv.add_global empty2 (id, g))) ! id = Some a).
-          { unfold Genv.add_global. ss. erewrite PTree.gss; eauto. } des.
-          remember (Genv.add_global empty2 (id, g)) as ge'.
-          clear Heqge'.
-          ginduction l; ss.
-          - i. unfold fundef in *. Eq.
-          - i.
-            destruct a. ss.
-            destruct (classic (i=id)).
-            { subst.
-              exploit IHl; eauto. ss.
-              erewrite PTree.gss; eauto. }
-            exploit IHl; eauto. ss.
-            erewrite PTree.gso; eauto. }
-          ss. erewrite PTree.gso; eauto.
-        eauto.
-    - unfold Sk.load_skenv in *. ss.
-      unfold Genv.globalenv in *. ss. erewrite Genv.genv_public_add_globals in *. ss.
-    - unfold Genv.find_symbol in *. ss.
-      unfold Sk.load_skenv in *. ss. ss.
-      unfold Genv.globalenv in *. ss.
-      clear -Heq Heq0.
-      remember (Genv.empty_genv (AST.fundef signature) () (prog_public prog)) as empty1.
-      remember ((Genv.empty_genv (Ctypes.fundef function) type (prog_public prog))) as empty2.
-      remember (prog_defs prog) as l.
-      assert ((Genv.genv_symb empty2) ! id = None).
-      { rewrite Heqempty2. ss. eapply PTree.gempty. }
-      assert ((Genv.genv_symb empty1) ! id = None).
-      { rewrite Heqempty1. ss. eapply PTree.gempty. }
-      clear Heql Heqempty1 Heqempty2.
-      exfalso.
-      ginduction l. ss.
-      + i. unfold fundef in *. Eq.
-      + i. unfold fundef in *. ss.
-        exploit IHl. eauto. eauto. eauto.
-        destruct a.
-        destruct (classic (i=id)).
-        { subst. ss.
-          assert (exists a, (Genv.genv_symb (Genv.add_global empty1
-                 (update_snd (skdef_of_gdef signature_of_function)
-                    (update_snd (globdef_of_globdef (V:=type)) (id, g))))) ! id = Some a).
-          { unfold Genv.add_global. ss. erewrite PTree.gss; eauto. } des.
-          remember (Genv.add_global empty1
-                 (update_snd (skdef_of_gdef signature_of_function)
-                    (update_snd (globdef_of_globdef (V:=type)) (id, g)))) as ge'.
-          clear Heqge'.
-          clear - H H0 Heq H1.
-          ginduction l; ss.
-          - i. ss. unfold fundef in *. Eq.
-          - i. destruct a; ss.
-            destruct (classic (i=id)).
-            { subst.
-              exploit IHl.
-              instantiate (1:=(Genv.add_global ge'
-                                               (update_snd (skdef_of_gdef signature_of_function)
-                                                           (update_snd (globdef_of_globdef (V:=type)) (id, g))))). eauto. eapply H. eapply H0. ss. erewrite PTree.gss; eauto. eauto. }
-            ss.
-            exploit IHl; eauto. ss.
-            erewrite PTree.gso; eauto. }
-        ss. erewrite PTree.gso; eauto.
-        destruct a. ss.
-        destruct (classic (i=id)).
-        { subst. ss.
-          assert (exists a, (Genv.genv_symb (Genv.add_global empty1
-                 (update_snd (skdef_of_gdef signature_of_function)
-                    (update_snd (globdef_of_globdef (V:=type)) (id, g))))) ! id = Some a).
-          { unfold Genv.add_global. ss. erewrite PTree.gss; eauto. } des.
-          remember (Genv.add_global empty1
-                 (update_snd (skdef_of_gdef signature_of_function)
-                    (update_snd (globdef_of_globdef (V:=type)) (id, g)))) as ge'.
-          clear Heqge'.
-          clear - H H0 Heq H1.
-          ginduction l; ss.
-          - i. ss. unfold fundef in *. Eq.
-          - i. destruct a; ss.
-            destruct (classic (i=id)).
-            { subst.
-              exploit IHl.
-              instantiate (1:=(Genv.add_global ge'
-                                               (update_snd (skdef_of_gdef signature_of_function)
-                                                           (update_snd (globdef_of_globdef (V:=type)) (id, g))))). eauto. eapply H. eapply H0. ss. erewrite PTree.gss; eauto. eauto. }
-            ss.
-            exploit IHl; eauto. ss.
-            erewrite PTree.gso; eauto. }
-        ss. erewrite PTree.gso; eauto. eauto.
-  Qed.
-  
+
   (** ********************* init_memory *********************************)
 
   Variable m_init : mem.
@@ -330,269 +194,37 @@ c0 + empty
     ss.
   Qed.
 
-  Lemma match_ge_symb_aux
-        e1 e2 id blk l
-        (HE1: (Genv.genv_symb e1) ! id = Some blk)
-        (HE2: (Genv.genv_symb e2) ! id = Some blk)
-        (SAME: (Genv.genv_next e1) = (Genv.genv_next e2))
-    :
-      (Genv.genv_symb
-         (Genv.add_globals e1 (skdefs_of_gdefs signature_of_function (map (update_snd (globdef_of_globdef (V:=type))) l)))) ! id =
-      (Genv.genv_symb (Genv.add_globals e2 l)) ! id.
-  Proof.
-    clear -HE1 HE2 SAME.
-    ginduction l; ss.
-    { ii. rewrite HE1. rewrite HE2. auto. }
-    ii. destruct a as [id' gd].
-    remember (Genv.add_global e1
-                              (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (id', gd)))) as e1'.
-    remember (Genv.add_global e2 (id', gd)) as e2'.
-    destruct (classic (id = id')).
-    - subst id'.
-      assert (HE1': (Genv.genv_symb e1') ! id = Some (Genv.genv_next e1)).
-      { rewrite Heqe1'. ss. erewrite PTree.gss. eauto. }
-      assert (HE2': (Genv.genv_symb e2') ! id = Some (Genv.genv_next e2)).
-      { rewrite Heqe2'. ss. erewrite PTree.gss. eauto. }
-      exploit IHl. eapply HE1'. rewrite SAME. eauto.
-      rewrite Heqe1'. rewrite Heqe2'. ss. rewrite SAME; eauto.
-      i.
-      rewrite Heqe1', Heqe2' in *.
-      eauto.
-    - assert (HE1': (Genv.genv_symb e1') ! id = Some blk).
-      { rewrite Heqe1'. ss. erewrite PTree.gso; eauto. }
-      assert (HE2': (Genv.genv_symb e2') ! id = Some blk).
-      { rewrite Heqe2'. ss. erewrite PTree.gso; eauto. }
-      exploit IHl; eauto.
-      rewrite Heqe1', Heqe2' in *. ss. rewrite SAME; eauto.
-  Qed.
-
-  Lemma match_ge_defs_has_blk
-        e1 e2 blk g l g1 g2
-        (HE1: (Genv.genv_defs e1) ! blk = Some g)
-        (HE2: (Genv.genv_defs e2) ! blk = Some (skdef_of_gdef signature_of_function (globdef_of_globdef g)))
-        (SAME: (Genv.genv_next e1) = (Genv.genv_next e2))
-        (DMAP1: (Genv.genv_defs (Genv.add_globals e1 l)) ! blk = Some g2)
-        (DMAP2: (Genv.genv_defs (Genv.add_globals e2 (skdefs_of_gdefs signature_of_function (map (update_snd (globdef_of_globdef (V:=type))) l)))) ! blk = Some g1)
-    :
-      skdef_of_gdef signature_of_function (globdef_of_globdef g2) = g1.
-  Proof.
-    clear -HE1 HE2 SAME DMAP1 DMAP2.
-    ginduction l; ss; ii.
-    - Eq. auto.
-    - destruct a. ss.
-      exploit Genv.genv_defs_range. eapply HE1. i.
-      exploit Genv.genv_defs_range. eapply HE2. i.
-      assert (DMAP1': (Genv.genv_defs (Genv.add_global e1 (i, g0))) ! blk = Some g).
-      { ss. erewrite PTree.gso; eauto. }
-      assert (DMAP2': (Genv.genv_defs
-                         (Genv.add_global e2
-                                          (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i, g0))))) ! blk = 
-                      Some (skdef_of_gdef signature_of_function (globdef_of_globdef g))).
-      { ss. erewrite PTree.gso; eauto. }
-      exploit IHl; eauto. ss. rewrite SAME; eauto.
-  Qed.
-
-  (* Lemma ge_defs_some *)
-  (*       i g l e b *)
-  (*       (BLK : Genv.genv_next e = b) *)
-  (*   : *)
-  (*     exists gd, (Genv.genv_defs (Genv.add_globals (Genv.add_global e (i, g)) l)) ! b = Some gd. *)
-  
-  Lemma match_ge_defs_aux1
-        b g g0
-        (DMAP1 : (Genv.genv_defs (Genv.globalenv prog)) ! b = Some g)
-        (DMAP2 : (Genv.genv_defs (Genv.globalenv (CSk.of_program signature_of_function prog))) ! b = Some g0)
-    :
-      skdef_of_gdef signature_of_function (globdef_of_globdef g) = g0.
-  Proof.
-    unfold Genv.globalenv in *. ss.
-    clear -DMAP1 DMAP2.
-    remember (Genv.empty_genv (AST.fundef signature) () (prog_public prog)) as empty2.
-    remember ((Genv.empty_genv (Ctypes.fundef function) type (prog_public prog))) as empty1.
-    assert ((Genv.genv_next empty1) = (Genv.genv_next empty2)).
-    { rewrite Heqempty1, Heqempty2. ss. }
-    assert ((Genv.genv_defs empty1) ! b = None).
-    { rewrite Heqempty1. ss. eapply PTree.gempty. }
-    assert ((Genv.genv_defs empty2) ! b = None).
-    { rewrite Heqempty2. ss. eapply PTree.gempty. }
-    remember (prog_defs prog) as l.
-    clear Heql Heqempty1 Heqempty2.
-    ginduction l; ss.
-    - i. Eq.
-    - i. ss.
-      destruct a.
-      assert ((Genv.genv_defs (Genv.add_global empty1 (i, g1))) ! (Genv.genv_next empty1) = Some g1).
-      { ss. erewrite PTree.gss; eauto. }
-      assert ((Genv.genv_defs (Genv.add_global empty2
-                   (update_snd (skdef_of_gdef signature_of_function)
-                               (update_snd (globdef_of_globdef (V:=type)) (i, g1))))) ! (Genv.genv_next empty2) = Some (skdef_of_gdef signature_of_function (globdef_of_globdef g1))).
-      { ss. erewrite PTree.gss; eauto. }
-      
-      destruct (classic (Genv.genv_next empty1 = b)).
-      { rewrite H in *.
-        exploit match_ge_defs_has_blk; eauto.
-        ss. rewrite H. eauto.
-        rewrite H4. eauto. rewrite H4. eauto. }
-      exploit IHl; eauto.
-      ss. rewrite H. eauto.
-      ss. erewrite PTree.gso; eauto.
-      ss. erewrite PTree.gso; eauto. rewrite <- H. eauto.
-  Qed.
-
-  Lemma match_ge_defs_aux2
-        b
-    :
-      (Genv.genv_defs (Genv.globalenv prog)) ! b = None <->
-      (Genv.genv_defs (Genv.globalenv (CSk.of_program signature_of_function prog))) ! b = None.
-  Proof.
-    clear.
-    unfold Genv.globalenv in *. ss.
-    remember (Genv.empty_genv (AST.fundef signature) () (prog_public prog)) as empty2.
-    remember ((Genv.empty_genv (Ctypes.fundef function) type (prog_public prog))) as empty1.
-    assert ((Genv.genv_next empty1) = (Genv.genv_next empty2)).
-    { rewrite Heqempty1, Heqempty2. ss. }
-    assert ((Genv.genv_defs empty1) ! b = None).
-    { rewrite Heqempty1. ss. eapply PTree.gempty. }
-    assert ((Genv.genv_defs empty2) ! b = None).
-    { rewrite Heqempty2. ss. eapply PTree.gempty. }
-    remember (prog_defs prog) as l.
-    clear Heql Heqempty1 Heqempty2.
-    ginduction l; ss.
-    destruct a.
-    ii.
-    destruct (classic (Genv.genv_next empty1 = b)).
-    { split.
-      - i.
-        assert (exists g', (Genv.genv_defs (Genv.add_global empty1 (i, g))) ! b = Some g').
-        { ss. subst. erewrite PTree.gss; eauto. }
-        assert (exists gd, (Genv.genv_defs (Genv.add_globals (Genv.add_global empty1 (i, g)) l)) ! b = Some gd).
-        { clear -H4.
-          ginduction l; ss.
-          ii.
-          destruct a.
-          assert (exists gd', (Genv.genv_defs (Genv.add_global (Genv.add_global empty1 (i, g)) (i0, g0))) ! b = Some gd').
-          { ss.
-            destruct (classic (Pos.succ (Genv.genv_next empty1) = b)).
-            - subst. erewrite PTree.gss; eauto.
-            - erewrite PTree.gso; eauto. }
-          des.
-          ss.
-          assert ((Pos.succ (Genv.genv_next empty1)) = (Genv.genv_next (Genv.add_global empty1 (i, g)))).
-          { ss. }
-          assert ((PTree.set (Genv.genv_next empty1) g (Genv.genv_defs empty1)) = Genv.genv_defs (Genv.add_global empty1 (i, g))).
-          { ss. }
-          rewrite H0, H1 in H.
-          exploit IHl. exists gd'. eauto. i. eauto. } des. Eq.
-      - i.
-        assert (exists g', (Genv.genv_defs (Genv.add_global empty2
-                                                       (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i, g))))) ! b = Some g').
-        { ss. subst. rewrite H. erewrite PTree.gss; eauto. }
-        assert (exists gd, (Genv.genv_defs (Genv.add_globals (Genv.add_global empty2
-                                                                         (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i, g))))
-                      (skdefs_of_gdefs signature_of_function (map (update_snd (globdef_of_globdef (V:=type))) l)))) ! b = Some gd).
-        { clear -H4.
-          ginduction l; ss.
-          ii.
-          destruct a.
-          assert (exists gd', (Genv.genv_defs (Genv.add_global
-             (Genv.add_global empty2
-                (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i, g))))
-             (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i0, g0))))) ! b = Some gd').
-          { ss.
-            destruct (classic (Pos.succ (Genv.genv_next empty2) = b)).
-            - subst. erewrite PTree.gss; eauto.
-            - erewrite PTree.gso; eauto. }
-          des.
-          ss.
-          assert ((Pos.succ (Genv.genv_next empty2)) = (Genv.genv_next (Genv.add_global empty2
-                                                       (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i, g)))))).
-          { ss. }
-          assert ((PTree.set (Genv.genv_next empty2) (skdef_of_gdef signature_of_function (globdef_of_globdef g)) (Genv.genv_defs empty2)) = Genv.genv_defs (Genv.add_global empty2
-                                                       (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i, g))))).
-          { ss. }
-          rewrite H0, H1 in H.
-          exploit IHl. exists gd'. eauto. i. eauto. } des. Eq.
-    }
-    assert ((Genv.genv_defs (Genv.add_global empty1 (i, g))) ! b = None).
-    { ss. erewrite PTree.gso; eauto. }
-    assert ((Genv.genv_defs (Genv.add_global empty2
-                                             (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i, g))))) ! b = None).
-    { ss. erewrite PTree.gso; eauto. rewrite <- H. eauto. }
-    exploit IHl; cycle 2. eapply H3. eapply H4.
-    eauto. eauto. ss. rewrite H. eauto.
-  Qed.
-
   Lemma match_ge_skenv_link :
     Genv.match_genvs (fun fdef skdef => skdef_of_gdef signature_of_function ((globdef_of_globdef (V:=type)) fdef) = skdef) ge skenv_link.
   Proof.
-    econs.
-    - (* genv_next *)
-      exploit Genv.init_mem_genv_next. eapply SRC_INIT_MEM. i. ss. rewrite H.
-      unfold Sk.load_mem in *.
-      ss. unfold skenv_link. rewrite <- prog_sk_tgt in *.
-      exploit Genv.init_mem_genv_next; eauto.
-    - (* genv_symb *)
-      i. unfold skenv_link.
-      rewrite <- prog_sk_tgt. ss. unfold Sk.load_skenv. ss.
-      unfold Genv.globalenv. ss.
-      clear.
-      remember (Genv.empty_genv (AST.fundef signature) () (prog_public prog)) as empty1.
-      remember ((Genv.empty_genv (Ctypes.fundef function) type (prog_public prog))) as empty2.
-      assert ((Genv.genv_next empty1) = (Genv.genv_next empty2)).
-      { rewrite Heqempty1, Heqempty2. ss. }
-      assert ((Genv.genv_symb empty1) ! id = None).
-      { rewrite Heqempty1. ss. eapply PTree.gempty. }
-      assert ((Genv.genv_symb empty2) ! id = None).
-      { rewrite Heqempty2. ss. eapply PTree.gempty. }
-      remember (prog_defs prog) as l.
-      clear Heql Heqempty1 Heqempty2.
-      ginduction l; ss.
-      { i. rewrite H0. rewrite H1. eauto. }
-      i. ss. destruct a. ss.
-      destruct (classic (i = id)).
-      + subst.
-        clear - H H1 H0.
-        assert ((Genv.genv_symb (Genv.add_global empty1
-                                                 (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (id, g))))) ! id = Some (Genv.genv_next empty1)).
-        { ss. erewrite PTree.gss; eauto. }
-        assert ((Genv.genv_symb (Genv.add_global empty2 (id, g))) ! id = Some (Genv.genv_next empty2)).
-        { ss. erewrite PTree.gss; eauto. }
-        exploit match_ge_symb_aux. eapply H2. rewrite H. eapply H3.
-        ss. rewrite H. eauto. i. unfold fundef in *. eauto.
-      + assert ((Genv.genv_symb (Genv.add_global empty1
-                                                 (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i, g))))) ! id = None).
-        { ss. erewrite PTree.gso; eauto. }
-        assert ((Genv.genv_symb (Genv.add_global empty2 (i, g))) ! id = None).
-        { ss. erewrite PTree.gso; eauto. }
-        assert (Genv.genv_next (Genv.add_global empty1
-                                                (update_snd (skdef_of_gdef signature_of_function) (update_snd (globdef_of_globdef (V:=type)) (i, g)))) = Genv.genv_next (Genv.add_global empty2 (i, g))).
-        { ss. rewrite H. eauto. }
-        exploit IHl; eauto.
-    - (* genv_defs *)
-      ii.
-      destruct ((Genv.genv_defs ge) ! b) eqn:DMAP1; destruct ((Genv.genv_defs skenv_link) ! b) eqn:DMAP2; ss.
-      + unfold skenv_link in DMAP2. rewrite <- prog_sk_tgt in *. ss.
-        unfold Sk.load_skenv in *. ss.
-        unfold fundef in *.
-        rewrite DMAP1. econs.
-        eapply match_ge_defs_aux1; eauto.
-      + unfold skenv_link in DMAP2. rewrite <- prog_sk_tgt in *. ss.
-        unfold Sk.load_skenv in *. ss.
-        rewrite <- match_ge_defs_aux2 in DMAP2.
-        unfold fundef in *. Eq.
-      + unfold skenv_link in DMAP2. rewrite <- prog_sk_tgt in *. ss.
-        unfold Sk.load_skenv in *. ss.
-        rewrite match_ge_defs_aux2 in DMAP1.
-        unfold fundef in *. Eq.
-      + unfold fundef in *.
-        rewrite DMAP1. econs.
-    - (* genv_public *)
-      ss.
-      unfold skenv_link.
-      rewrite <- prog_sk_tgt. ss.
-      unfold Sk.load_skenv. ss.
-      unfold Genv.globalenv. ss.
-      do 2 rewrite Genv.genv_public_add_globals. ss.
+    unfold ge, skenv_link. rewrite <- prog_sk_tgt. unfold Sk.load_skenv, Genv.globalenv. ss.
+    eapply Genv.add_globals_match; cycle 1.
+    { econs; ss.
+      i. do 2 rewrite PTree.gempty. econs. }
+    ss. clear.
+    remember (prog_defs prog) as l.
+    clear Heql.
+    ginduction l; ss.
+    - econs.
+    - ii. destruct a. ss. econs; ss.
+      eapply IHl; eauto.
+  Qed.
+
+  Lemma symb_preserved id
+    :
+      Senv.public_symbol (symbolenv (sem tprog)) id =
+      Senv.public_symbol (symbolenv (semantics prog)) id.
+  Proof.
+    destruct match_ge_skenv_link. ss.
+    unfold symbolenv. ss.
+    unfold Genv.public_symbol, proj_sumbool.
+    unfold Sk.load_skenv in *. ss.
+    unfold Genv.find_symbol in *. ss.
+    rewrite <- mge_symb. unfold skenv_link.
+    rewrite <- prog_sk_tgt. ss.
+    des_ifs.
+    unfold Genv.globalenv in *. ss. erewrite Genv.genv_public_add_globals in *. ss.
+    unfold Genv.globalenv in *. ss. erewrite Genv.genv_public_add_globals in *. ss.
   Qed.
 
   Lemma transf_initial_states:
@@ -987,7 +619,7 @@ c0 + empty
 
   Lemma bind_parameters_same
         e m1 params vl m2
-    :      
+    :
       bind_parameters {| genv_genv := local_genv prog;
                          genv_cenv := prog_comp_env prog |} e m1 params vl m2
       <-> bind_parameters (globalenv prog) e m1 params vl m2.
@@ -1300,7 +932,7 @@ c0 + empty
     - unfold Genv.block_is_volatile, Genv.find_var_info. apply func_ext1. i.
       specialize (mge_defs x0). uge. inv mge_defs; ss.
       destruct x; ss. des_ifs.
-  Qed. 
+  Qed.
 
   Lemma progress_step
         st_src frs n t st_src'
@@ -1715,7 +1347,7 @@ c0 + empty
                 unfold Genv.find_symbol in *.
                 des_ifs; ss; unfold fundef in *; rewrite mge_symb in Heq0; Eq; auto. }
               destruct (Genv.find_funct ge (Vptr b Ptrofs.zero)) eqn:HFUNC; ss.
-              destruct f. ss. 
+              destruct f. ss.
               exploit system_internal; eauto; clarify. des_ifs.
               rewrite SAME in *. rewrite H4 in *. unfold fundef in *. eauto. i.
               clarify.

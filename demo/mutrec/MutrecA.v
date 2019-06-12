@@ -7,7 +7,7 @@ Local Open Scope Z_scope.
 Definition _x : ident := 54%positive.
 Definition _t'1 : ident := 57%positive.
 
-Definition func := {|
+Definition func_f := {|
   fn_return := tint;
   fn_callconv := cc_default;
   fn_params := ((_x, tint) :: nil);
@@ -24,17 +24,18 @@ Definition func := {|
       (Evar g_id (Tfunction (Tcons tint Tnil) tint cc_default))
       ((Ebinop Osub (Etempvar _x tint) (Econst_int (Int.repr 1) tint) tint) ::
        nil))
-    (Sreturn (Some (Ebinop Oadd (Etempvar _t'1 tint) (Etempvar _x tint) tint)))))
+    (Sreturn (Some (Ebinop Osub
+                     (Ebinop Oadd (Etempvar _t'1 tint) (Etempvar _x tint)
+                       tint) (Econst_int (Int.repr 1) tint) tint)))))
 |}.
 
-Definition composites : list composite_definition :=
-nil.
+Definition composites : list composite_definition := nil.
 
 Definition global_definitions : list (ident * globdef fundef type) :=
 ((g_id,
    Gfun(External (EF_external "g"
                    (mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default))
-     (Tcons tint Tnil) tint cc_default)) :: (f_id, Gfun(Internal func)) :: nil).
+     (Tcons tint Tnil) tint cc_default)) :: (f_id, Gfun(Internal func_f)) :: nil).
 
 Definition public_idents : list ident :=
 (f_id :: g_id :: nil).

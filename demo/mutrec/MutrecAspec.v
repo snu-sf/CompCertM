@@ -40,6 +40,9 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame1_intro
       i m
+      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal func_f))
+      (* (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *) *)
+      (* (TYP: CopC.typecheck args.(Args.vs) (type_of_params (fn_params fd))) *)
       (VS: args.(Args.vs) = [Vint i])
       (M: args.(Args.m) = m)
     :
@@ -55,6 +58,7 @@ Section MODSEM.
       (* targs tres cconv *)
       (* (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr g_fptr Ptrofs.zero) = Some skd *)
       (*                   /\ signature_of_type targs tres cconv = SkEnv.get_sig skd) *)
+      (NZERO: i.(Int.intval) <> 0%Z)
     :
       at_external (Callstate i m) (Args.mk (Vptr g_fptr Ptrofs.zero) [Vint i] m)
   .
@@ -64,12 +68,26 @@ Section MODSEM.
       i m retv
       i_after
       (INT: retv.(Retv.v) = Vint i_after)
+      (SUM: i_after = sum (Int.sub i Int.one))
     :
-      after_external (Callstate i m) retv (Returnstate i_after retv.(Retv.m))
+      after_external (Callstate i m) retv (Returnstate (sum i) retv.(Retv.m))
+  .
+
+  Inductive step (se: Senv.t) (ge: genv): state -> trace -> state -> Prop :=
+  | step_zero
+      i m
+      (ZERO: i.(Int.intval) = 0%Z)
+    :
+      step se ge (Callstate i m) E0 (Returnstate i m)
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
-  | final_frame_intro
+  (* | final_frame_call *)
+  (*     i m *)
+  (*     (ZERO: i.(Int.intval) = 0%Z) *)
+  (*   : *)
+  (*     final_frame (Callstate i m) (Retv.mk (Vint i) m) *)
+  | final_frame_return
       i m
     :
       final_frame (Returnstate i m) (Retv.mk (Vint i) m)
@@ -77,7 +95,7 @@ Section MODSEM.
 
   Program Definition modsem: ModSem.t :=
     {|
-      ModSem.step := bot5;
+      ModSem.step := step;
       ModSem.at_external := at_external;
       ModSem.initial_frame := initial_frame;
       ModSem.final_frame := final_frame;
@@ -87,7 +105,7 @@ Section MODSEM.
       ModSem.skenv_link := skenv_link; 
     |}
   .
-  Next Obligation. rewrite INT in *. clarify. Qed.
+  (* Next Obligation. rewrite INT in *. clarify. Qed. *)
 
 End MODSEM.
 

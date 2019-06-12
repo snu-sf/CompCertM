@@ -94,7 +94,7 @@ Section SIMMODSEM.
       (SU: forall (SU: sound_state st_src0),
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
-      (<<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>) /\
+      (* (<<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>) /\ *)
       (<<BSTEP:
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
@@ -382,8 +382,6 @@ Section FACTORSOURCE.
           econs; eauto.
       - econs 2.
         i. exploit SU; eauto. i; des. esplits; eauto.
-        { intro T. rr in T. des. ss. apply SAFESRC. rr. inv T. esplits; eauto. }
-        { intro T. rr in T. des. ss. apply SAFESRC0. rr. inv T. esplits; eauto. }
         + (* bsim *)
           clear - WBT SINGLE CIH BSTEP. inv BSTEP.
           * econs 1; eauto. i.

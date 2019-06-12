@@ -236,7 +236,7 @@ Section MATCHSIMFORWARD.
     { ii. exploit ATFSIM; eauto. i; des. esplits; eauto. }
     { i. exploit AFTERFSIM; et.
       { inv HISTORY; econs; eauto. }
-      i; des. esplits; eauto.
+      i; des. esplits; eauto. i. esplits; eauto. econs; eauto.
     }
   Qed.
 

@@ -45,6 +45,7 @@ Section SIMMODSEM.
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | fsim_step_step
+      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
       (STEP: forall
           st_src1 tr
           (STEPSRC: Step ms_src st_src0 tr st_src1)
@@ -58,7 +59,7 @@ Section SIMMODSEM.
       (RECEP: receptive_at ms_src st_src0)
   | fsim_step_stutter
       i1 st_tgt1
-      (STAR: DStar ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
+      (PLUS: DPlus ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
       (BSIM: fsim i1 st_src0 st_tgt1 sm0)
   .
 
@@ -91,8 +92,6 @@ Section SIMMODSEM.
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
-      <<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>
-      /\
       <<FSTEP: fsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
       (* sd_determ_at_final becomes nothing, but it is OK. *)
@@ -209,7 +208,7 @@ Section SIMMODSEM.
     repeat intro. inv IN; eauto.
     - econs 1; ss.
       ii. spc SU. des. esplits; eauto.
-      inv FSTEP. 
+      inv SU. 
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 2; ss.
@@ -374,7 +373,7 @@ Section FACTORTARGET.
       inv MATCH.
       - econs 1.
         i. exploit SU; eauto. i; des_safe. esplits; eauto.
-        clear - SINGLE WBT CIH FSTEP. inv FSTEP.
+        clear - SINGLE WBT CIH H. inv H.
         + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; eauto.
           { des.
             - left. exploit dplus_atomic_dplus; eauto.
@@ -384,7 +383,7 @@ Section FACTORTARGET.
           econs; eauto.
         + econs 2; eauto.
           { des.
-            - esplits; eauto. exploit dstar_atomic_dstar; eauto.
+            - esplits; eauto. exploit dplus_atomic_dplus; eauto.
           }
           pclearbot. right. eapply CIH; eauto.
           econs; eauto.

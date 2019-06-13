@@ -1271,9 +1271,10 @@ Section PRESERVATION.
       destruct frs_src; ss.
       { inv STK. left. right.
         econs 1; eauto.
+        econs 1; eauto.
+        - econs 1; eauto. i. inv STEPSRC. 
         - i. ss. econs. eauto. i. ss. inv FINAL0; inv FINAL1.
-          i. inv FINAL.
-        - econs 1; eauto. i. inv STEPSRC. }
+          i. inv FINAL. }
       rename t into fr_src.
       destruct frs_tgt; ss.
       { exploit match_stacks_right_nil; et. i; des. clarify. }
@@ -1282,7 +1283,7 @@ Section PRESERVATION.
       { (* tgt call *)
 
         (* fsim *)
-        left. right. econs; et.
+        left. right. econs; et. econs; et; cycle 1.
         { i. eapply final_fsim; et. econs; et. }
 
         destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
@@ -1689,7 +1690,7 @@ Section PRESERVATION.
 
       destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_return) fr_tgt.(Frame.st))).
       { (* tgt return *)
-        left. right. econs; et.
+        left. right. econs; et. econs; et; cycle 1.
         { i. eapply final_fsim; et. econs; et. }
         econs; et; cycle 1.
         i. ss. rewrite LINKSRC in *.

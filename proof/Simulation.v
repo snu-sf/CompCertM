@@ -595,19 +595,19 @@ Section MIXED_SIM.
             ((<<PLUS: DPlus mt L2 st_tgt0 tr st_tgt1 /\ (<<RECEPTIVE: receptive_at mt L1 st_src0>>)>>) \/
              <<STUTTER: st_tgt0 = st_tgt1 /\ tr = E0 /\ order i1 i0>>)
             /\ <<XSIM: xsim i1 st_src1 st_tgt1>>)
-  | fsim_step_stutter
-      i1 st_tgt1
-      (STAR: SDStar L2 st_tgt0 nil st_tgt1 /\ order i1 i0)
-      (XSIM: xsim i1 st_src0 st_tgt1)
-  .
-
-  Inductive _xsim_forward xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop :=
-  | _xsim_forward_intro
       (FINAL: forall
           retv
           (FINALSRC: final_state L1 st_src0 retv)
         ,
           <<FINALTGT: Dfinal_state L2 st_tgt0 retv>>)
+  | fsim_step_stutter
+      i1 st_tgt1
+      (PLUS: SDPlus L2 st_tgt0 nil st_tgt1 /\ order i1 i0)
+      (XSIM: xsim i1 st_src0 st_tgt1)
+  .
+
+  Inductive _xsim_forward xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop :=
+  | _xsim_forward_intro
       (STEP: fsim_step xsim i0 st_src0 st_tgt0)
   .
 
@@ -904,8 +904,16 @@ Proof.
     inversion MATCH0; subst. unfold NW in *.
     destruct (SAFE s1) as [[r FINAL1] | [t [s1' STEP1]]]. apply star_refl.
     - (* final state reached *)
-      eapply x2b_trans_forward_final; eauto.
-      apply star_refl.
+      inv STEP.
+      + eapply x2b_trans_forward_final; eauto.
+        { apply star_refl. }
+        eapply FINAL; eauto.
+      + des. pclearbot. inv PLUS.
+        eapply x2b_trans_forward_stutter; try apply STAR0; eauto.
+        { apply star_refl. }
+        { econs; eauto. }
+        econs 2; eauto.
+
     - inv STEP.
       + (* L1 can make one step *)
         hexploit STEP0; eauto. intros [i' [s2' [A MATCH']]]. pclearbot.
@@ -923,12 +931,10 @@ Proof.
         i. eapply x2b_transitions_src_tau_rev; eauto. apply star_one; ss.
       + des. pclearbot.
         clears t. clear t. (* TODO: update tactic properly *)
-        inv STAR.
-        * exploit REC; eauto. i.
-          eapply x2b_transitions_src_tau_rev; eauto. apply star_refl.
-        * destruct t1, t2; ss. clear_tac.
-          eapply x2b_trans_forward_stutter; eauto.
-          apply star_refl. econs; eauto. apply rt_refl.
+        inv PLUS.
+        destruct t1, t2; ss. clear_tac.
+        eapply x2b_trans_forward_stutter; eauto.
+        apply star_refl. econs; eauto. apply rt_refl.
   }
   { (* backward *)
     econs 4. eapply _xsim_backward_mon_x2b; eauto. eapply _xsim_backward_mon; eauto. i. pclearbot. ss.
@@ -1353,19 +1359,19 @@ Section MIXED_SIM.
             (<<PLUS: SDPlus L2 st_tgt0 tr st_tgt1>> \/ <<STAR: SDStar L2 st_tgt0 tr st_tgt1 /\ order i1 i0>>)
             /\ <<XSIM: xsim i1 st_src1 st_tgt1>>)
       (SINGLE: single_events_at L1 st_src0)
-  | sfsim_step_stutter
-      i1 st_tgt1
-      (STAR: SDStar L2 st_tgt0 nil st_tgt1 /\ order i1 i0)
-      (XSIM: xsim i1 st_src0 st_tgt1)
-  .
-
-  Inductive _xsim_strict_forward xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop :=
-  | _xsim_strict_forward_intro
       (FINAL: forall
           retv
           (FINALSRC: final_state L1 st_src0 retv)
         ,
           <<FINALTGT: Dfinal_state L2 st_tgt0 retv>>)
+  | sfsim_step_stutter
+      i1 st_tgt1
+      (PLUS: SDPlus L2 st_tgt0 nil st_tgt1 /\ order i1 i0)
+      (XSIM: xsim i1 st_src0 st_tgt1)
+  .
+
+  Inductive _xsim_strict_forward xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop :=
+  | _xsim_strict_forward_intro
       (STEP: sfsim_step xsim i0 st_src0 st_tgt0)
   .
 
@@ -1379,19 +1385,19 @@ Section MIXED_SIM.
             ((<<PLUS: DPlus L2 st_tgt0 tr st_tgt1 /\ (<<RECEPTIVE: receptive_at L1 st_src0>>)>>) \/
              <<STUTTER: st_tgt0 = st_tgt1 /\ tr = E0 /\ order i1 i0>>)
             /\ <<XSIM: xsim i1 st_src1 st_tgt1>>)
-  | fsim_step_stutter
-      i1 st_tgt1
-      (STAR: DStar L2 st_tgt0 nil st_tgt1 /\ order i1 i0)
-      (XSIM: xsim i1 st_src0 st_tgt1)
-  .
-
-  Inductive _xsim_forward xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop :=
-  | _xsim_forward_intro
       (FINAL: forall
           retv
           (FINALSRC: final_state L1 st_src0 retv)
         ,
           <<FINALTGT: Dfinal_state L2 st_tgt0 retv>>)
+  | fsim_step_stutter
+      i1 st_tgt1
+      (PLUS: DPlus L2 st_tgt0 nil st_tgt1 /\ order i1 i0)
+      (XSIM: xsim i1 st_src0 st_tgt1)
+  .
+
+  Inductive _xsim_forward xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop :=
+  | _xsim_forward_intro
       (STEP: fsim_step xsim i0 st_src0 st_tgt0)
   .
 
@@ -1581,6 +1587,20 @@ Proof.
     exploit (sd_determ_at0 t2 s4 E0 s2); eauto. i; des. inv H. exploit H3; eauto. }
 Qed.
 
+Lemma DPlus_E0_SDPlus
+      L st0 st1
+      (STEP: DPlus L st0 E0 st1)
+  :
+    SDPlus L st0 E0 st1
+.
+Proof.
+  inv STEP. rr in H. des. destruct t1, t2; ss. econs; eauto.
+  { econs; eauto. inv H. econs; eauto. i. determ_tac sd_determ_at0. inv H. clear STEP1.
+    determ_tac sd_determ_at0. inv H. esplits; eauto. rewrite <- H3; ss. rewrite <- H4; ss. }
+  { eapply DStar_E0_SDStar; eauto. }
+  ss.
+Qed.
+
 Lemma xsim_to_generalized_xsim
       L1 L2 index (order: index -> index -> Prop) i0 st_src0 st_tgt0
       (PUBEQ: forall id, Senv.public_symbol L1.(symbolenv) id = Senv.public_symbol L2.(symbolenv) id)
@@ -1613,7 +1633,7 @@ Proof.
         eapply GENMT_receptive_at_iff; eauto.
       * esplits; eauto.
     + pclearbot. econs 2; eauto. des. esplits; eauto.
-      eapply DStar_E0_SDStar; eauto.
+      eapply DPlus_E0_SDPlus; eauto.
   - right. inv XSIM. econs; eauto. i. exploit STEP; eauto. i; des.
     inv H.
     + econs 1; eauto. i. exploit STEP0; eauto. i; des_safe. pclearbot. esplits; eauto.

@@ -350,10 +350,10 @@ Section SIMGE.
         { econs. }
         pfold.
         econs; eauto.
-        i. split.
-        { u. esplits; ii; des; ss; eauto. inv H0. }
-        econs; ss; cycle 1.
+        i.
+        econs; ss; cycle 2.
         { eapply System.modsem_receptive; et. }
+        { u. esplits; ii; des; ss; eauto. inv H0. }
         ii. inv STEPSRC.
         exploit SimSymb.system_axiom; eauto.
         (* { eapply external_call_symbols_preserved; eauto. *)
@@ -852,9 +852,9 @@ Section ADQSTEP.
       i; des. clear SU0.
       right.
       econs; ss; eauto.
-      + ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto.
-      + inv FSTEP.
+      + rename H into FSTEP. inv FSTEP.
         * econs 1; cycle 1.
+          { ii. des. inv FINALSRC; ss. exfalso. eapply SAFESRC0. u. eauto. }
           ii. ss. rewrite LINKSRC in *.
           des.
           inv STEPSRC; ss; ModSem.tac; swap 2 3.
@@ -880,7 +880,7 @@ Section ADQSTEP.
           { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
           { etransitivity; eauto. }
         * des. pclearbot. econs 2.
-          { esplits; eauto. eapply lift_dstar; eauto. { unsguard SETGT. ss. des_ifs. } }
+          { esplits; eauto. eapply lift_dplus; eauto. { unsguard SETGT. ss. des_ifs. } }
           right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
 
 
@@ -931,8 +931,8 @@ Section ADQSTEP.
     - (* call *)
       left. right.
       econs; eauto.
-      { ii. inv FINALSRC. ss. ModSem.tac. }
       econs; eauto; cycle 1.
+      { ii. inv FINALSRC. ss. ModSem.tac. }
       i.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
@@ -994,6 +994,7 @@ Section ADQSTEP.
     - (* return *)
       left. right.
       econs; eauto.
+      econs; eauto; cycle 1.
       { ii. ss. inv FINALSRC0. ss. determ_tac ModSem.final_frame_dtm. clear_tac.
         inv STACK.
         econs; ss; eauto.
@@ -1005,7 +1006,6 @@ Section ADQSTEP.
         - ii. des_ifs.
           inv H; ss; ModSem.tac.
       }
-      econs; eauto; cycle 1.
       i. ss. des_ifs.
       inv STEPSRC; ModSem.tac. ss.
       inv STACK; ss. folder. sguard in SESRC0. sguard in SETGT0. des_ifs.

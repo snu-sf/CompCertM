@@ -2418,21 +2418,19 @@ Section PRESERVATION.
           { inv ASMMOD. eauto. }
           i. des. econs 2; ss; eauto. rewrite LINK_SK.
           split; auto. apply star_one. eauto.
-      + left. right. econs.
+      + left. right. econs. econs 1; et; cycle 1.
         { i. exfalso. inv FINALSRC. }
-        econs.
         i.
         destruct (call_step_noevent STEPSRC).
         destruct (match_states_call_ord_1 MTCHST).
         exists 0%nat. exists st_tgt. split.
         { right. split; auto. }
         left. pfold. left. right.
-        econs.
+        econs. econs; et; cycle 1.
         { i. exfalso. inv STEPSRC. ss. rewrite LINK_SK in *.
           destruct (find_fptr_owner_determ SYSMOD MSFIND).
           inv INIT. inv FINALSRC. inv FINAL.
         }
-        econs.
         i. exists (length frs + 3)%nat. ss. rewrite LINK_SK in *.
         exploit syscall_simulation; eauto.
         i. des. exists st_tgt1. split.
@@ -2443,7 +2441,7 @@ Section PRESERVATION.
           }
           apply plus_one. econs; [apply asm_determinate_at|]. s. folder. rewrite senv_same. auto. }
         left. pfold. left. right.
-        econs.
+        econs. econs; et; cycle 1.
         {
           i. exfalso. inv STEPSRC. ss.
           destruct (find_fptr_owner_determ SYSMOD MSFIND).
@@ -2455,20 +2453,18 @@ Section PRESERVATION.
           unfold initial_regset, Pregmap.set in *. des_ifs.
           rewrite FPTR0 in *. clarify.
         }
-        econs; auto.
         i.
         ss. rewrite LINK_SK in *. apply MTCHST0 in STEPSRC1. des. clarify.
         exists n1, st_tgt1. split.
         { right. split; auto. }
         right. eauto.
       + right. econs; i; try (exfalso; eauto).
-    - left. right. econs.
+    - left. right. econs. econs; cycle 1.
       + i. econs.
         * exploit transf_final_states; eauto.
         * i. inv FINAL0. inv FINAL1. eq_closure_tac.
         * ii. inv FINAL. inv H; eq_closure_tac.
-      + econs.
-        * i. ss. rewrite LINK_SK in *.
+      + * i. ss. rewrite LINK_SK in *.
           exploit normal_state_fsim_step; eauto.
           i. des; esplits; eauto.
           -- left. split; cycle 1.

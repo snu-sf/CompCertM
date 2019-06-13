@@ -1008,7 +1008,7 @@ c0 + empty
     - (* call state *)
       inversion MTCHST; subst.
       + (* syscall *)
-        left. right. econs; i.
+        left. right. econs; i. econs; i; cycle 1.
         * inv FINALSRC.
         * econs; i.
           -- (* step *)
@@ -1126,12 +1126,11 @@ c0 + empty
                { ss. eapply preservation_prog; eauto. rewrite <- senv_same. et. }
       + (* initial state *)
         inversion INITSRC; subst; ss.
-        left. right. econs; i.
+        left. right. econs; i. econs; i; cycle 1.
         * (* FINAL *)
           inv FINALSRC.
         * econs; i; cycle 1.
           -- (* step *)
-            econs; i.
             exploit init_case; eauto. i. des.
             ++ (* main is C internal function *)
               inv CMOD; ss.

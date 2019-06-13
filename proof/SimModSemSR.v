@@ -38,6 +38,7 @@ Section SIMMODSEM.
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | fsim_step_step
+      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
       (STEP: forall
           st_src1 tr
           (STEPSRC: Step ms_src st_src0 tr st_src1)
@@ -51,7 +52,7 @@ Section SIMMODSEM.
       (RECEP: strongly_receptive_at ms_src st_src0)
   | fsim_step_stutter
       i1 st_tgt1
-      (STAR: DStar ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
+      (STAR: DPlus ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
       (BSIM: fsim i1 st_src0 st_tgt1 sm0)
   .
 
@@ -84,8 +85,6 @@ Section SIMMODSEM.
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
-      <<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>
-      /\
       <<FSTEP: fsim_step (lxsimSR sm_init) i0 st_src0 st_tgt0 sm0>>
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
       (* sd_determ_at_final becomes nothing, but it is OK. *)
@@ -201,8 +200,7 @@ Section SIMMODSEM.
   Proof.
     repeat intro. inv IN; eauto.
     - econs 1; ss.
-      ii. spc SU. des. esplits; eauto.
-      inv FSTEP. 
+      ii. spc SU. des. inv SU.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 2; ss.
@@ -320,11 +318,10 @@ Section FACTORSOURCE.
       inv SIM; cycle 1.
       {
         econs; eauto. ss.
-        i. esplits; eauto.
-        { intro T. rr in T. des. inv T. ss. }
-        { intro T. rr in T. des. inv T. ss. }
-        econs; eauto; cycle 1.
+        i.
+        econs; eauto; cycle 2.
         { eapply atomic_receptive_at_nonnil; eauto. }
+        { split; intro T; rr in T; des; inv T; ss. }
         i. inv STEPSRC. ss. des.
         exploit Pstar_non_E0_split'_strong; swap 1 2; eauto.
         { eapply plus_star; eauto. }
@@ -343,12 +340,14 @@ Section FACTORSOURCE.
       punfold MATCH. inv MATCH.
       - econs 1.
         i.
-        exploit SU; eauto. i; des_safe. esplits; eauto.
-        { intro T. rr in T. des. ss. apply SAFESRC. rr. inv T. esplits; eauto. }
-        { intro T. rr in T. des. ss. apply SAFESRC0. rr. inv T. esplits; eauto. }
+        exploit SU; eauto. i; des_safe.
+        rename H into FSTEP.
         clear - SINGLE CIH FSTEP. inv FSTEP.
-        + econs 1; eauto; cycle 1.
+        + econs 1; eauto; cycle 2.
           { eapply atomic_receptive_at; eauto. }
+          { split; intro T; rr in T; des; ss.
+            - apply SAFESRC. rr. inv T. esplits; eauto.
+            - apply SAFESRC0. rr. inv T. esplits; eauto. }
           i. inv STEPSRC; ss.
           * exploit STEP; eauto. i; des_safe. esplits; eauto.
             pclearbot. right. eapply CIH; eauto.
@@ -378,7 +377,7 @@ Section FACTORSOURCE.
                 pclearbot. right. eapply CIH; eauto.
                 econs; eauto.
             }
-        + econs 2; eauto; cycle 1.
+        + des. econs 2; eauto.
           pclearbot. right. eapply CIH; eauto.
           econs; eauto.
       - econs 2.

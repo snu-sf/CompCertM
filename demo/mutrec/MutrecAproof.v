@@ -34,6 +34,7 @@ Inductive match_states_internal: MutrecAspec.state -> Clight.state -> Prop :=
     i m_src m_tgt
     fptr
     (* targs tres cconv *)
+    (FINDF: Genv.find_funct (Smallstep.globalenv (modsem2 skenv_link prog)) fptr = Some (Internal func_f))
   :
     match_states_internal (Callstate i m_src) (Clight.Callstate fptr (Tfunction (* targs tres cconv) *)
                                                                         (Tcons tint Tnil) tint cc_default)
@@ -60,6 +61,140 @@ Proof.
   subst_locals. ss. ii.
   eapply SimSymbId.sim_skenv_revive; eauto.
   admit "ez - reflexivity".
+Qed.
+
+Lemma match_states_lxsim
+      sm_init idx st_src0 st_tgt0 sm0
+      (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
+  :
+    <<XSIM: lxsim (md_src skenv_link) (md_tgt skenv_link)
+                  (fun st => exists su m_init, SoundTop.sound_state su m_init st)
+                  sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
+.
+Proof.
+  revert_until tge.
+  pcofix CIH.
+  i.
+  pfold.
+  inv MATCH. ss. inv MATCHST; ss; clarify.
+  - (* call *)
+    destruct (classic (i = Int.zero)).
+    + (* zero *)
+      clarify.
+      econs 1. i; des.
+      econs 1; cycle 2.
+      { admit "ez - spec is receptive". }
+      { split; ii; rr in H; inv H; inv H0; ss. }
+      i. ss. inv STEPSRC.
+      esplits; eauto.
+      * left.
+        eapply plus_left with (t1 := E0) (t2 := E0); ss.
+        { econs; eauto.
+          { eapply modsem2_determinate; eauto. }
+          econs; eauto.
+          econs; ss; eauto; try (by repeat (econs; ss; eauto)).
+          unfold _x. unfold _t'1. rr. ii; ss. des; ss. clarify.
+        }
+
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { econs; eauto.
+          { eapply modsem2_determinate; eauto. }
+          econs; eauto.
+        }
+
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { econs; eauto.
+          { eapply modsem2_determinate; eauto. }
+          econs; eauto.
+          - repeat econs; et.
+          - ss.
+        }
+
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { econs; eauto.
+          { eapply modsem2_determinate; eauto. }
+          econs; eauto.
+          - repeat econs; et.
+          - ss.
+          - ss.
+        }
+
+        apply star_refl.
+      * refl.
+      * right. eapply CIH. econs; eauto. econs; eauto.
+    + (* nonzero *)
+      econs.
+      admit "".
+  - (* return *)
+    admit "".
+Unshelve.
+  all: ss.
+Qed.
+
+Theorem sim_modsem
+  :
+    ModSemPair.sim msp
+.
+Proof.
+  econs; eauto.
+  { eapply SoundTop.sound_state_local_preservation. }
+  i. ss. esplits; eauto; cycle 1.
+  { (* init progress *)
+    i.
+    des. inv SAFESRC.
+    inv SIMARGS; ss.
+    hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
+    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
+
+    (* exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder. *)
+    hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR.
+
+    (* exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder. *)
+    (* inv TYP. *)
+    esplits; eauto. econs; eauto.
+    + rewrite <- FPTR. eauto.
+    + instantiate (1:= [Vint i]). rewrite VS in *. inv VALS. inv H3. inv H2. econs; ss.
+      cbn. unfold typify. des_ifs; ss.
+  }
+  (* init bsim *)
+  ii.
+  destruct sm_arg; ss. clarify.
+  clear MFUTURE.
+  inv SIMARGS; ss. clarify.
+  inv INITTGT.
+  hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
+  exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
+  eexists. eexists (SimMemInj.mk _ _ _ _ _ _ _).
+  esplits; eauto.
+  + econs; eauto with mem; ss.
+    eapply SimMemInj.frozen_refl.
+  + eapply match_states_lxsim.
+    econs; ss; eauto; cycle 1.
+    { inv SAFESRC. ss. }
+
+    inv SAFESRC. destruct args_src, args_tgt; ss. clarify.
+    inv VALS. inv H1. inv H3.
+    assert(fd = func_f).
+    {
+      clear - FINDF.
+      uge. des_ifs.
+      unfold SkEnv.revive, SkEnv.project in Heq. ss.
+      rewrite MapsC.PTree_filter_map_spec in *.
+      unfold o_bind, o_join, o_map in Heq. des_ifs.
+      clear - Heq2.
+      unfold prog in *. unfold Clightdefs.mkprogram in *. ss.
+      unfold prog_defmap in *. ss. unfold global_definitions in *.
+      apply PTree_Properties.in_of_list in Heq2.
+      ss. des; clarify.
+    } clarify.
+    assert(tvs = [Vint i]).
+    {
+      unfold signature_of_function in TYP. ss.
+      inv TYP. ss. cbn. unfold typify. des_ifs; ss.
+    } clarify.
+    econs; eauto.
+Unshelve.
+  all: try (ss; econs).
 Qed.
 
 Theorem sim_modsem

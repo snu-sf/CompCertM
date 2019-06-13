@@ -101,7 +101,7 @@ Section SIMMODSEM.
       (SU: forall (SU: sound_state st_src0),
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
-      (* (<<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>) /\ *)
+      (<<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>) /\
       (<<BSTEP:
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
@@ -350,9 +350,8 @@ Section FACTORTARGET.
       {
         rename st_src2 into st_src1.
         econs 2; eauto.
-        i.
-        (* split; ss. *)
-        (* { inv STAR. split; rr; ii; ModSem.tac. } *)
+        i. split; ss.
+        { inv STAR. split; rr; ii; ModSem.tac. }
         split; i.
         - (* bsim *)
           econs; eauto.

@@ -4,7 +4,6 @@ Require Import Simulation.
 Require Import ModSem AsmregsC GlobalenvsC MemoryC ASTC.
 Require Import Skeleton SimModSem SimMem SimSymb.
 Require Import Sound Preservation.
-Require Import Relation_Operators.
 
 Set Implicit Arguments.
 
@@ -170,8 +169,7 @@ Section MATCHSIMFORWARD.
         forall (MLE: SimMem.le sm0 sm_after) (* helper *),
           ((<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>)
            /\
-           exists st_tgt2, DStar ms_tgt st_tgt1 [] st_tgt2 /\
-           (<<MATCH: match_states sm_init idx1 st_src1 st_tgt2 sm_after>>))
+           (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm_after>>))
   .
 
   Hypothesis FINALFSIM: forall
@@ -243,9 +241,6 @@ Section MATCHSIMFORWARD.
 
   Hypothesis BAR: bar_True.
 
-  Let WFORDPROD: well_founded (symprod _ _ order lt).
-  Proof. eapply Lexicographic_Product.wf_symprod; eauto. eapply Nat.lt_wf_0; eauto. Qed.
-
   Lemma match_states_lxsim
         sm_init i0 st_src0 st_tgt0 sm0
         (SIMSKENV: ModSemPair.sim_skenv msp sm0)
@@ -257,7 +252,7 @@ Section MATCHSIMFORWARD.
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
       <<LXSIM: lxsim ms_src ms_tgt (fun st => exists su0 m_init, sound_state su0 m_init st)
-                     sm_init (Ord.lift_idx WFORDPROD (i0, O)) st_src0 st_tgt0 sm0>>
+                     sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.
     (* move su0 at top. *)
@@ -281,33 +276,13 @@ Section MATCHSIMFORWARD.
         assert(MLE3: SimMem.le sm0 sm_after).
         { eapply FOOTEXCL; et. etrans; et. eapply SimMem.unlift_spec; et. }
         spc H1. des.
-        apply star_starN in H0. des.
-        esplits; eauto. instantiate (1:= (Ord.lift_idx WFORDPROD (idx1, n))).
-        clear - H0 MATCH0 CIH SIMSKENV MLE MLE3.
-        generalize dependent st_tgt1.
-        (* generalize dependent st_tgt2. *)
-        (* generalize dependent sm0. *)
-        (* generalize dependent sm_after. *)
-        rename n into nnn.
-        induction nnn; i.
-        + inv H0. esplits; eauto.
-          right.
-          eapply CIH; eauto.
-          { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
-            apply rtc_once. left. et.
-          }
-          { etrans; eauto. }
-        + inv H0. destruct t1, t2; ss. clear_tac.
-          left. pfold. econs 2; eauto. i; des. esplits; eauto; cycle 1.
-          { i. rr in H1. des. esplits; eauto. }
-          econs; eauto. i.
-          rr in H1. des. determ_tac sd_determ_at. inv H. hexpl H3. clarify. clear_tac.
-          esplits; eauto.
-          * right. esplits; eauto.
-            { apply star_refl. }
-            eapply Ord.lift_idx_spec; eauto.
-            econs; eauto.
-          * refl.
+        esplits; eauto.
+        right.
+        eapply CIH; eauto.
+        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
+          apply rtc_once. left. et.
+        }
+        { etrans; eauto. }
     }
     generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
     {
@@ -328,7 +303,7 @@ Section MATCHSIMFORWARD.
       esplits; eauto.
       - des.
         + left. eauto.
-        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto. econs; eauto.
+        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
       - right. eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
         { etransitivity; eauto. }
@@ -344,7 +319,7 @@ Section MATCHSIMFORWARD.
       esplits; eauto.
       - des.
         + left. eauto.
-        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto. econs; eauto.
+        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
       - right. eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
         { etransitivity; eauto. }

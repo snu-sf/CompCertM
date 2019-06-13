@@ -1773,9 +1773,7 @@ Proof.
         inv MLE. rewrite <- TGTPARENTEQNB.
         inv SIMSKENV. inv SIMSKELINK. ss.
       * psimpl. zsimpl. rp; eauto.
-    + esplits; eauto.
-      { apply star_refl. }
-      econs; ss; eauto with congruence; cycle 1.
+    + econs; ss; eauto with congruence; cycle 1.
       {
         clear - MLE2 GOOD DUMMY STACKS. destruct stack; ss; des_ifs; ss.
         { esplits; ss; eauto; ss. ii. exploit GOOD; eauto. i; des. esplits; et. eapply val_inject_incr; try apply MLE2; ss. }

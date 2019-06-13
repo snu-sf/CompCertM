@@ -2271,7 +2271,6 @@ Proof.
       }
 
       {
-        esplits; eauto. { apply star_refl. }
         econs; try assumption.
         - instantiate (1:=SimMemInj.inj sm_ret).
           ii. inv MLE. inv MLE0.

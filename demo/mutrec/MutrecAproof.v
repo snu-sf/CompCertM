@@ -9,11 +9,10 @@ Require Import IntegersC.
 Require Import MutrecHeader.
 Require Import MutrecA MutrecAspec.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSemExcl.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemInjC.
 Require SoundTop.
 Require Import Clightdefs.
-Require Import ModSemProps.
 
 Set Implicit Arguments.
 
@@ -68,13 +67,10 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := top4)
-                               (sound_state := SoundTop.sound_state) (has_footprint := top3)
-                               (mle_excl := fun _ _ => SimMem.le);
+  eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := SoundTop.sound_state);
     eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
-  - r. etrans; eauto.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
     inv SIMARGS; ss. clarify.
@@ -166,17 +162,13 @@ Proof.
     inv MATCH; ss. inv MATCHST; ss.
     inv HISTORY. ss. clear_tac.
     esplits; eauto.
-    { refl. }
-    i.
-    esplits; eauto.
     + econs; eauto.
-    + eapply spread_dstar.
-      { eapply modsem2_determinate; et. }
-      econs 2; ss; eauto. destruct retv_src, retv_tgt; ss. clarify.
+    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify.
       inv MLE0; ss.
       (* inv MCOMPAT. clear_tac. *)
       inv RETV. unfold typify. des_ifs; ss.
       econs; eauto.
+    + refl.
 
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.

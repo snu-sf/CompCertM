@@ -639,12 +639,25 @@ Section SIM.
     exploit types_of_context1; eauto. intros [tys [A B]].
     unfold sem_sub.
     inv WTTGT; inv WTSRC; ss.
-    des_ifs; erewrite wt_type_sizeof_stable in *; eauto;
-      unfold classify_sub in Heq; destruct ty1; destruct ty2; des_ifs; ss; clarify; des_ifs;
-        try (by (exploit (WTYE (Tpointer ty0 a)); try eapply B; ss; auto; i; ss));
-        try (by (exploit (WTYE (Tarray ty0 z a)); try eapply B; ss; auto; i; ss));
-        try (by (exploit (WTYE0 (Tpointer ty0 a)); try eapply B; ss; auto; i; ss));
-        try (by (exploit (WTYE0 (Tarray ty0 z a)); try eapply B; ss; auto; i; ss)).
+    destruct (classify_sub ty1 ty2) eqn:ClASSIFY; unfold classify_sub in *.
+    all: try erewrite wt_type_sizeof_stable in *; eauto.
+    - unfold typeconv in *.
+      des_ifs; ss; clarify;
+        try (by exploit (WTYE (Tpointer ty0 a0)); try eapply B; ss; auto; i; ss);
+        try (by exploit (WTYE (Tarray ty0 z a0)); try eapply B; ss; auto; i; ss).
+      exploit (WTYE (Tpointer ty0 a2)); try eapply B; ss; auto; i; ss.
+      exploit (WTYE (Tarray ty0 z a2)); try eapply B; ss; auto; i; ss.
+    - des_ifs; ss; clarify.
+      unfold typeconv in *. des_ifs; ss; clarify;
+        try (by exploit (WTYE (Tpointer ty0 a0)); try eapply B; ss; auto; i; ss);
+        try (by exploit (WTYE (Tarray ty0 z0 a0)); try eapply B; ss; auto; i; ss).
+      exploit (WTYE (Tpointer ty0 a2)); try eapply B; ss; auto; i; ss.
+      exploit (WTYE (Tarray ty0 z a2)); try eapply B; ss; auto; i; ss.
+      exploit (WTYE (Tarray ty0 z a0)); try eapply B; ss; auto; i; ss.
+    - des_ifs; ss; clarify.
+      unfold typeconv in *. des_ifs; ss; clarify.
+      exploit (WTYE (Tpointer ty0 a2)); try eapply B; ss; auto; i; ss.
+      exploit (WTYE (Tarray ty0 z a2)); try eapply B; ss; auto; i; ss.
   Qed.
 
   Lemma sem_add_same
@@ -873,7 +886,9 @@ Section SIM.
                           (fun sl => forall lbl k0 tl_tgt k s' k' k1,
                                sum_cont tl_tgt k0 ->
                                find_label_ls lbl sl k = Some (s', k') -> exists k1', find_label_ls lbl sl k1 = Some (s', k1'))
-           ); ss.
+           ); ss; ii;
+      try (by (i; des_ifs; eauto));
+      try (by (des_ifs; exploit H; eauto)).
     - i. des_ifs.
       + exploit H; eauto. i. des. rewrite H1 in Heq. clarify. eauto.
       + exploit find_label_same_None'; eauto. i. rewrite H3 in Heq. clarify.
@@ -884,8 +899,6 @@ Section SIM.
       + exploit find_label_same_None'; eauto. i. rewrite H3 in Heq. clarify.
       + exploit find_label_same_None'; eauto. i. rewrite H1 in Heq0. clarify.
       + exploit H0; eauto.
-    - i. exploit H; eauto.
-    - i. exploit H; eauto.
     - i. des_ifs.
       + i. exploit H; eauto. ss. i. des. rewrite H2 in *. eauto.
       + exploit find_label_same_None'; eauto; ss. i. rewrite H2 in *. clarify.
@@ -896,8 +909,6 @@ Section SIM.
       + i. exploit H; eauto. ss. i. des. rewrite H2 in *. clarify.
       + i. exploit H1; eauto. ss. i. des. rewrite H2 in *. clarify.
       + i. exploit H0; eauto.
-    - i. exploit H; eauto.
-    - i. des_ifs; eauto.
     - i. des_ifs; eauto.
       + exploit H; eauto. i. des. rewrite H2 in *. clarify. eauto.
       + exploit find_label_same_None'; eauto. i. rewrite H3 in *. clarify.
@@ -919,7 +930,9 @@ Section SIM.
                           (fun sl => forall lbl k0 tl_tgt k s' k',
                                sum_cont tl_tgt k0 ->
                                find_label_ls lbl sl k = Some (s', k') -> find_label_ls lbl sl (app_cont k k0) = Some (s', app_cont k' k0))
-           ); ss.
+           ); ss; ii;
+      try (by (i; des_ifs; eauto));
+      try (by (des_ifs; exploit H; eauto)).
     - i. des_ifs.
       + exploit H; eauto; ss; i; Eq; auto.
       + exploit find_label_same_None; eauto; ss. i. Eq.
@@ -930,8 +943,6 @@ Section SIM.
       + exploit find_label_same_None; eauto; ss. i. Eq.
       + exploit H; eauto; ss; i; Eq; auto.
       + exploit H0; eauto; ss; i; Eq; auto.
-    - i. exploit H; eauto.
-    - i. exploit H; eauto.
     - i. des_ifs.
       + i. exploit H; eauto. ss. i. Eq. auto.
       + exploit find_label_same_None; eauto; ss. i. Eq.
@@ -942,8 +953,6 @@ Section SIM.
       + i. exploit H; eauto. ss. i. Eq.
       + i. exploit H1; eauto. ss. i. Eq.
       + i. exploit H0; eauto.
-    - i. exploit H; eauto.
-    - i. des_ifs. exploit H; eauto.
     - i. des_ifs.
       + exploit H; eauto; ss; i; Eq; auto.
       + exploit find_label_same_None; eauto; ss. i. Eq.

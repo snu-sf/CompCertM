@@ -60,7 +60,7 @@ Section MODSEM.
       (*                   /\ signature_of_type targs tres cconv = SkEnv.get_sig skd) *)
       (NZERO: i.(Int.intval) <> 0%Z)
     :
-      at_external (Callstate i m) (Args.mk (Vptr g_fptr Ptrofs.zero) [Vint i] m)
+      at_external (Callstate i m) (Args.mk (Vptr g_fptr Ptrofs.zero) [Vint (Int.sub i (Int.repr 1))] m)
   .
 
   Inductive after_external: state -> Retv.t -> state -> Prop :=

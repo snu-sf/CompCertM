@@ -68,12 +68,58 @@ Qed.
 Lemma g_blk_exists
   :
     exists g_blk,
-      <<FINDG: Genv.find_symbol
-                 (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)) prog)
-                 g_id = Some g_blk>>
+      (<<FINDG: Genv.find_symbol
+                  (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)) prog)
+                  g_id = Some g_blk>>)
+      /\
+      (<<FINDG: Genv.find_funct_ptr
+                  (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)) prog)
+                  g_blk = None>>)
+      /\
+      (<<FINDG: exists skd, Genv.find_funct_ptr skenv_link g_blk = Some skd /\
+                            signature_of_type (Tcons tint Tnil) tint cc_default = SkEnv.get_sig skd>>)
 .
 Proof.
-  admit "ez".
+  exploit (prog_defmap_norepet prog g_id); eauto.
+  { unfold prog_defs_names. ss. repeat (econs; eauto). ii; ss; des; ss. }
+  { ss. eauto. }
+  intro T; des.
+  (* assert(PREC: SkEnv.genv_precise (SkEnv.revive skenv_link (CSk.of_program signature_of_function prog)) *)
+  (*                                 (CSk.of_program signature_of_function prog)). *)
+  (* { admit "". } *)
+  (* inv PREC. *)
+  (* exploit (P2GE g_id); eauto. i; des. des_ifs. *)
+  exploit SkEnv.project_impl_spec; eauto. intro PROJ.
+  assert(PREC: SkEnv.genv_precise
+                 (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)) prog)
+                 prog).
+  { admit "". }
+  inv PREC.
+  exploit (P2GE g_id); eauto. i; des. des_ifs.
+  rename b into g_blk.
+  eexists. splits; et.
+  { unfold Genv.find_funct_ptr. des_ifs. }
+  (* exploit (@SkEnv.project_revive_precise _ _ skenv_link); eauto. *)
+  { inv INCLSRC.
+    exploit (CSk.of_program_prog_defmap prog signature_of_function); et. rewrite T. intro S.
+
+    remember ((prog_defmap (CSk.of_program signature_of_function prog)) ! g_id) as U in *.
+    destruct U eqn:V; try (by ss). inv S. inv H1.
+
+    exploit DEFS; eauto. i; des.
+    assert(blk = g_blk).
+    { inv PROJ. exploit SYMBKEEP; et.
+      - instantiate (1:= g_id). unfold defs. des_sumbool. ss. et.
+      - i. rewrite SYMB0 in *. clear - SYMB H. unfold SkEnv.revive in *. rewrite Genv_map_defs_symb in *. ss.
+        rewrite SYMB in *. des. clarify.
+    }
+    clarify. inv MATCH.
+    esplits; eauto.
+    - unfold Genv.find_funct_ptr. rewrite DEF0. et.
+    - ss. des_ifs. clear - H1. inv H1. ss. ss. rename f into g_skd.
+      clear_tac.
+      admit "this does not hold".
+  }
 Qed.
 
 Lemma match_states_lxsim
@@ -199,9 +245,54 @@ Proof.
         ii; des.
         inv ATSRC. ss; clarify.
         destruct sm0; ss. clarify.
-        eexists (Args.mk _ _ _), (SimMemId.mk _ _).
+        unfold Clight.fundef in *.
+        rewrite FINDG in *. clarify.
+        eexists (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _), (SimMemId.mk _ _).
         esplits; ss; eauto.
-        { econs; ss; eauto.
+        { econs; ss; eauto. }
+        i. inv AFTERSRC. destruct retv_src, retv_tgt; ss. clarify. destruct sm_ret; ss. inv SIMRETV; ss; clarify.
+        esplits; eauto.
+        { econs; eauto. }
+        instantiate (2:= (Ord.lift_idx lt_wf 15%nat)).
+        left. pfold. econs; eauto. i; des. econs 2; eauto.
+        {
+          esplits; eauto; cycle 1.
+          { instantiate (1:= (Ord.lift_idx lt_wf 14%nat)). eapply Ord.lift_idx_spec; et. }
+
+          eapply plus_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+          
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; ss; eauto.
+            - repeat (econs; ss; eauto).
+              + unfold typify. des_ifs.
+              + ss.
+            - ss.
+          }
+
+          eapply star_refl.
+        }
+        
+        right. eapply CIH. instantiate (1:= SimMemId.mk _ _).
+        econs; ss; eauto; try lia.
+        rewrite sum_recurse. des_ifs.
+        { rewrite Z.eqb_eq in *. lia. }
+        replace (Int.sub (Int.add (sum (Int.sub i Int.one)) i) (Int.repr 1)) with
+            (Int.add (sum (Int.sub i Int.one)) (Int.sub i Int.one)); cycle 1.
+        { abstr (sum (Int.sub i Int.one)) z. rewrite ! Int.sub_add_opp.
+          rewrite Int.add_assoc. ss. }
+        econs; eauto.
   - (* return *)
     econs 4; ss; eauto.
 Unshelve.
@@ -255,161 +346,14 @@ Unshelve.
   all: try (ss; econs).
 Qed.
 
-Theorem sim_modsem
-  :
-    ModSemPair.sim msp
-.
-Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := SoundTop.sound_state);
-    eauto; ii; ss.
-  - instantiate (1:= Nat.lt). apply lt_wf.
-  - eapply SoundTop.sound_state_local_preservation.
-  - (* init bsim *)
-    destruct sm_arg; ss. clarify.
-    inv SIMARGS; ss. clarify.
-    inv INITTGT.
-    hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
-    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    eexists. eexists (SimMemInj.mk _ _ _ _ _ _ _).
-    esplits; eauto.
-    + econs; eauto with mem; ss.
-      eapply SimMemInj.frozen_refl.
-    + inv SAFESRC. destruct args_src, args_tgt; ss. clarify.
-      econs; ss; eauto.
-      inv VALS. inv H1. inv H3.
-      assert(fd = func_f).
-      {
-        clear - FINDF.
-        uge. des_ifs.
-        unfold SkEnv.revive, SkEnv.project in Heq. ss.
-        rewrite MapsC.PTree_filter_map_spec in *.
-        unfold o_bind, o_join, o_map in Heq. des_ifs.
-        clear - Heq2.
-        unfold prog in *. unfold Clightdefs.mkprogram in *. ss.
-        unfold prog_defmap in *. ss. unfold global_definitions in *.
-        apply PTree_Properties.in_of_list in Heq2.
-        ss. des; clarify.
-      } clarify.
-      assert(tvs = [Vint i]).
-      {
-        unfold signature_of_function in TYP. ss.
-        inv TYP. ss. cbn. unfold typify. des_ifs; ss.
-      } clarify.
-      econs; eauto.
-  - (* init progress *)
-    des. inv SAFESRC.
-    inv SIMARGS; ss.
-    hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
-    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
-
-    (* exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder. *)
-    hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR.
-
-    (* exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder. *)
-    (* inv TYP. *)
-    esplits; eauto. econs; eauto.
-    + rewrite <- FPTR. eauto.
-    + instantiate (1:= [Vint i]). rewrite VS in *. inv VALS. inv H3. inv H2. econs; ss.
-      cbn. unfold typify. des_ifs; ss.
-  - (* call wf *)
-    inv MATCH; ss.
-  - (* call fsim *)
-    (* hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des. *)
-    (* exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des. *)
-    (* inv MATCH; ss. destruct sm0; ss. clarify. *)
-    (* inv CALLSRC. inv MATCHST; ss. *)
-    (* folder. *)
-    (* (* inv MCOMPAT; ss. clear_tac. *) *)
-    (* (* exploit (fsim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT. *) *)
-    (* esplits; eauto. *)
-    (* + econs; eauto. *)
-    (*   * des. clarify. esplits; eauto. *)
-    (*     (* exploit (sim_internal_funct_inject SIMGE); try apply SIG; et. *) *)
-
-    (*     (* Arguments sim_internal_funct_inject [_]. *) *)
-    (*     (* destruct SIMSKENVLINK. inv H.  rr in SIMSKENV1. clarify. *) *)
-    (*     (* exploit (sim_internal_funct_inject); try apply VAL; try apply SIG; et. *) *)
-    (*     (* { erewrite match_globdef_eq. eapply Global_match_genvs_refl. } *) *)
-    (*     (* { inv SIMSKENV. ss. } *) *)
-
-    (*     (***************** TODO: Add as a lemma in GlobalenvsC. *******************) *)
-    (*     inv SIMSKENV. *)
-    (*     assert(fptr_arg = tv). *)
-    (*     { eapply fsim_external_inject_eq; try apply SIG; et. Undo 1. *)
-    (*       inv VAL; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *. *)
-    (*       inv SIMSKE. ss. inv INJECT; ss. *)
-    (*       exploit (DOMAIN b1); eauto. *)
-    (*       { eapply Genv.genv_defs_range; et. } *)
-    (*       i; clarify. *)
-    (*     } *)
-    (*     clarify. *)
-    (* + ss. *)
-    (* + reflexivity. *)
-    admit "".
-
-  - (* after fsim *)
-    hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
-    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    inv AFTERSRC.
-    inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
-    inv MATCH; ss. inv MATCHST; ss.
-    inv HISTORY. ss. clear_tac.
-    esplits; eauto.
-    + econs; eauto.
-    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify.
-      inv MLE0; ss.
-      (* inv MCOMPAT. clear_tac. *)
-      inv RETV. unfold typify. des_ifs; ss.
-      econs; eauto.
-    + refl.
-
-  - (* final fsim *)
-    inv MATCH. inv FINALSRC; inv MATCHST; ss.
-    (* inv MCONT_EXT. inv MCOMPAT; ss. *)
-    clarify.
-    eexists sm0. esplits; ss; eauto.
-    + econs; eauto. ss.
-    + refl.
-  - left; i.
-    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-
-    esplits; eauto.
-    { apply modsem1_receptive. }
-    inv MATCH.
-    ii. hexploit (@step_simulation prog skenv_link skenv_link); eauto; ss.
-    i; des.
-    esplits; eauto.
-    + left. eapply spread_dplus; eauto. eapply modsem2_determinate; eauto.
-    + econs; ss.
-      * inv H0; ss; inv MCOMPAT; ss.
-      * inv H0; ss; inv MCOMPAT; ss.
-
-Unshelve.
-  all: ss; try (by econs).
-Qed.
-
 End SIMMODSEM.
-
-
-
-
-Section SIMMOD.
-
-Variables prog tprog: program.
-Hypothesis TRANSL: match_prog prog tprog.
-Definition mp: ModPair.t := ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt.
 
 Theorem sim_mod
   :
-    ModPair.sim mp
+    ModPair.sim (ModPair.mk (MutrecAspec.module prog) (ClightC.module2 prog) tt)
 .
 Proof.
   econs; ss.
-  - r. eapply Sk.match_program_eq; eauto.
-    ii. destruct f1; ss.
-    + clarify. right. esplits; eauto.
-    + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.
 
-End SIMMOD.

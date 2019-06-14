@@ -14,6 +14,7 @@ Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC Matc
 Require SimMemId.
 Require SoundTop.
 Require Import Clightdefs.
+Require Import CtypesC.
 
 Set Implicit Arguments.
 
@@ -84,16 +85,11 @@ Proof.
   { unfold prog_defs_names. ss. repeat (econs; eauto). ii; ss; des; ss. }
   { ss. eauto. }
   intro T; des.
-  (* assert(PREC: SkEnv.genv_precise (SkEnv.revive skenv_link (CSk.of_program signature_of_function prog)) *)
-  (*                                 (CSk.of_program signature_of_function prog)). *)
-  (* { admit "". } *)
-  (* inv PREC. *)
-  (* exploit (P2GE g_id); eauto. i; des. des_ifs. *)
   exploit SkEnv.project_impl_spec; eauto. intro PROJ.
   assert(PREC: SkEnv.genv_precise
                  (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)) prog)
                  prog).
-  { admit "". }
+  { eapply CSkEnv.project_revive_precise; ss; et. }
   inv PREC.
   exploit (P2GE g_id); eauto. i; des. des_ifs.
   rename b into g_blk.
@@ -116,9 +112,7 @@ Proof.
     clarify. inv MATCH.
     esplits; eauto.
     - unfold Genv.find_funct_ptr. rewrite DEF0. et.
-    - ss. des_ifs. clear - H1. inv H1. ss. ss. rename f into g_skd.
-      clear_tac.
-      admit "this does not hold".
+    - ss. des_ifs. clear - H1. inv H1; ss.
   }
 Qed.
 

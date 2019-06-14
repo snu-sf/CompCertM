@@ -17,9 +17,9 @@ Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
-  Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function).
-  Let ge: genv := Build_genv (skenv.(SkEnv.revive) p) p.(prog_comp_env).
+  Variable p: unit.
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) prog.(CSk.of_program signature_of_function).
+  Let ge: genv := Build_genv (skenv.(SkEnv.revive) prog) prog.(prog_comp_env).
 
   Inductive state: Type :=
   | Callstate
@@ -96,5 +96,5 @@ Section MODSEM.
 
 End MODSEM.
 
-Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function; Mod.get_modsem := modsem; |}.
+Program Definition module: Mod.t :=
+  {| Mod.data := tt; Mod.get_sk := fun _ => CSk.of_program signature_of_function prog; Mod.get_modsem := modsem; |}.

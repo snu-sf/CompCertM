@@ -7,7 +7,7 @@ Require Import sflib.
 Require Import IntegersC.
 
 Require Import MutrecHeader.
-Require Import MutrecA MutrecAspec.
+Require Import MutrecAspec MutrecBspec MutrecABspec.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 (* Require SimMemInjC. *)
@@ -22,7 +22,7 @@ Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
-Let md_src: Mod.t := (MutrecAspec.module).
+Let md_src: Mod.t := (MutrecAspec.module prog).
 Let md_tgt: Mod.t := (ClightC.module2 prog).
 Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
 Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
@@ -344,7 +344,7 @@ End SIMMODSEM.
 
 Theorem sim_mod
   :
-    ModPair.sim (ModPair.mk (MutrecAspec.module) (ClightC.module2 prog) tt)
+    ModPair.sim (ModPair.mk (MutrecAspec.module prog) (ClightC.module2 prog) tt)
 .
 Proof.
   econs; ss.

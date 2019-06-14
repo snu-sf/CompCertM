@@ -41,8 +41,6 @@ Section MODSEM.
   | initial_frame1_intro
       i m
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal func_f))
-      (* (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *) *)
-      (* (TYP: CopC.typecheck args.(Args.vs) (type_of_params (fn_params fd))) *)
       (VS: args.(Args.vs) = [Vint i])
       (M: args.(Args.m) = m)
     :
@@ -53,11 +51,6 @@ Section MODSEM.
   | at_external_intro
       g_fptr i m
       (FINDG: Genv.find_symbol ge g_id = Some g_fptr)
-      (* (EXTERNAL: ge.(Genv.find_funct) (Vptr g_fptr Ptrofs.zero) = None) *)
-      (* vs_arg k0 m0 *)
-      (* targs tres cconv *)
-      (* (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr g_fptr Ptrofs.zero) = Some skd *)
-      (*                   /\ signature_of_type targs tres cconv = SkEnv.get_sig skd) *)
       (NZERO: i.(Int.intval) <> 0%Z)
     :
       at_external (Callstate i m) (Args.mk (Vptr g_fptr Ptrofs.zero) [Vint (Int.sub i (Int.repr 1))] m)
@@ -82,11 +75,6 @@ Section MODSEM.
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
-  (* | final_frame_call *)
-  (*     i m *)
-  (*     (ZERO: i.(Int.intval) = 0%Z) *)
-  (*   : *)
-  (*     final_frame (Callstate i m) (Retv.mk (Vint i) m) *)
   | final_frame_return
       i m
     :
@@ -105,7 +93,6 @@ Section MODSEM.
       ModSem.skenv_link := skenv_link; 
     |}
   .
-  (* Next Obligation. rewrite INT in *. clarify. Qed. *)
 
 End MODSEM.
 

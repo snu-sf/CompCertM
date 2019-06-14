@@ -6,20 +6,29 @@ Require Import SmallstepC.
 Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require Import CtypesC CtypingC.
-Require Import ClightC.
+Require Import ClightC AsmC.
+Require Import LinkingC.
 Require Import MutrecHeader.
-Require Import MutrecA.
+Require Import MutrecA MutrecB.
 
 Set Implicit Arguments.
 
 Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
 
+Definition sk_link: Sk.t :=
+  match link (CSk.of_program signature_of_function MutrecA.prog) (Sk.of_program fn_sig MutrecB.prog) with
+  | Some sk => sk
+  | None => Sk.empty
+  end
+.
+
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
-  Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function).
-  Let ge: genv := Build_genv (skenv.(SkEnv.revive) p) p.(prog_comp_env).
+  Variable p: unit.
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) sk_link.
+  (* Let ge: genv := Build_genv (skenv.(SkEnv.revive) p) p.(prog_comp_env). *)
+  Let ge: SkEnv.t := skenv.
 
   Inductive state: Type :=
   | Callstate
@@ -40,14 +49,14 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame1_intro
       i m func_fg
-      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal func_fg))
+      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (AST.Internal func_fg))
       (VS: args.(Args.vs) = [Vint i])
       (M: args.(Args.m) = m)
     :
       initial_frame args (Callstate i m)
   .
 
-  Inductive step (se: Senv.t) (ge: genv): state -> trace -> state -> Prop :=
+  Inductive step (se: Senv.t) (ge: SkEnv.t): state -> trace -> state -> Prop :=
   | step_zero
       i m
     :
@@ -76,5 +85,5 @@ Section MODSEM.
 
 End MODSEM.
 
-Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function; Mod.get_modsem := modsem; |}.
+Program Definition module: Mod.t :=
+  {| Mod.data := tt; Mod.get_sk := fun _ => sk_link; Mod.get_modsem := modsem; |}.

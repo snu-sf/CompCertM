@@ -15,47 +15,361 @@ Require SimMemId.
 Require SoundTop.
 Require Import Clightdefs.
 Require Import CtypesC.
+Require Import BehaviorsC.
+Require Import Simulation Sem SemProps LinkingC.
 
 Set Implicit Arguments.
 
-Section SIMMODSEM.
+(* Section SIMMODSEM. *)
 
-Variable skenv_link: SkEnv.t.
-Variable sm_link: SimMem.t.
-Let md_src: Mod.t := (MutrecAspec.module prog).
-Let md_tgt: Mod.t := (ClightC.module2 prog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
-Hypothesis (WF: SkEnv.wf skenv_link).
-Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
-Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) prog) prog.(prog_comp_env).
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
+(* Variable skenv_link: SkEnv.t. *)
+(* Variable sm_link: SimMem.t. *)
+(* Let md_src: Mod.t := (MutrecAspec.module). *)
+(* Let md_tgt: Mod.t := (MutrecBspec.module). *)
+(* Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)). *)
+(* Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)). *)
+(* Hypothesis (WF: SkEnv.wf skenv_link). *)
+(* Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) MutrecA.prog) MutrecA.prog.(prog_comp_env). *)
+(* Let tge := skenv_link.(SkEnv.revive) MutrecB.prog. *)
+(* Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link. *)
 
-Inductive match_states_internal: MutrecAspec.state -> Clight.state -> Prop :=
-| match_callstate_nonzero
-    i m_src m_tgt
-    fptr
-    (* targs tres cconv *)
-    (FINDF: Genv.find_funct (Smallstep.globalenv (modsem2 skenv_link prog)) fptr = Some (Internal func_f))
+(* End SIMMODSEM. *)
+
+Lemma link_sk_same
+      ctx
   :
-    match_states_internal (Callstate i m_src) (Clight.Callstate fptr (Tfunction (* targs tres cconv) *)
-                                                                        (Tcons tint Tnil) tint cc_default)
-                                                                [Vint i] Kstop m_tgt)
-| match_returnstate
-    i m_src m_tgt
-  :
-    match_states_internal (Returnstate i m_src) (Clight.Returnstate (Vint i) Kstop m_tgt)
+    link_sk (ctx ++ [(MutrecAspec.module) ; (MutrecBspec.module)])
+    = link_sk (ctx ++ [module])
 .
+Proof.
+  admit "see UpperBound_A extra".
+Qed.
 
-Inductive match_states (sm_init: SimMem.t)
-          (idx: nat) (st_src0: MutrecAspec.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
-| match_states_intro
-    (MATCHST: match_states_internal st_src0 st_tgt0)
-    (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt))
-    (MWF: SimMem.wf sm0)
-    (IDX: (idx > 3)%nat)
+Lemma wf_module_Aspec: Sk.wf MutrecAspec.module.
+Proof.
+  admit "ez".
+Qed.
+
+Lemma wf_module_Bspec: Sk.wf MutrecBspec.module.
+Proof.
+  admit "ez".
+Qed.
+
+Definition is_focus (x: Mod.t) := x = MutrecAspec.module \/ x = MutrecBspec.module.
+
+Section LXSIM.
+
+  Variable ctx: Syntax.program.
+  Variable sk_link: Sk.t.
+  Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
+  Hypothesis (LINKSRC: link_sk (ctx ++ [module]) = Some sk_link).
+  Let LINKTGT: link_sk (ctx ++ [(MutrecAspec.module) ; (MutrecBspec.module)]) = Some sk_link.
+  Proof. rewrite link_sk_same. ss. Qed.
+
+  Lemma genv_sim
+        fptr if_sig
+    :
+      (<<FINDF: Genv.find_funct (SkEnv.project skenv_link MutrecABspec.sk_link) fptr =
+                Some (AST.Internal if_sig)>>)
+      <->
+      (<<FINDF: exists md, (<<FOCUS: is_focus md>>) /\
+                           (<<FINDF: Genv.find_funct (ModSem.skenv (flip Mod.modsem skenv_link md)) fptr =
+                                     Some (AST.Internal if_sig)>>)>>)
+  .
+  Proof.
+    admit "ez".
+  Qed.
+
+  (* Axiom match_focus: Z -> Frame.t -> list Frame.t -> Prop. *)
+  Inductive match_focus: mem -> Z -> Z -> list Frame.t -> Prop :=
+  | match_focus_cons_A
+      cur max m i tl_tgt
+      (LE: (cur <= max)%Z)
+      (VAL: i.(Int.intval) = cur)
+      (REC: match_focus m (cur + 1)%Z max tl_tgt \/ cur = max)
+    :
+      match_focus m cur max ((Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate i m)) :: tl_tgt)
+  | match_focus_cons_B
+      cur max m i tl_tgt
+      (LE: (cur <= max)%Z)
+      (VAL: i.(Int.intval) = cur)
+      (REC: match_focus m (cur + 1)%Z max tl_tgt \/ cur = max)
+    :
+      match_focus m cur max ((Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate i m)) :: tl_tgt)
+  .
+
+  Inductive match_stacks: Z -> list Frame.t -> list Frame.t -> Prop :=
+  | match_stacks_nil
+    :
+      match_stacks 0%Z [] []
+  (* | match_stacks_cons_ctx *)
+  (*     i tail_src tail_tgt *)
+  (*     (TAIL: match_stacks i tail_src tail_tgt) *)
+  (*     hd *)
+  (*   : *)
+  (*     match_stacks 0%Z (hd :: tail_src) (hd :: tail_tgt) *)
+  | match_stacks_ctx
+      ctx_stk
+    :
+      match_stacks 0%Z ctx_stk ctx_stk
+  | match_stacks_focus
+      j tail_src tail_tgt
+      (TAIL: match_stacks j tail_src tail_tgt)
+      i cur z m hd_src hds_tgt
+      (SRC: hd_src = Frame.mk (MutrecABspec.modsem skenv_link tt) (MutrecABspec.Callstate i m))
+      (VAL: i.(Int.intval) = z)
+      (TGT: match_focus m cur z hds_tgt)
+    :
+      match_stacks z (hd_src :: tail_src) (hds_tgt ++ tail_tgt)
+  .
+
+  Inductive match_states (i: Z): Sem.state -> Sem.state -> Prop :=
+  | match_states_call_from_ctx
+      args ctx_stk
+    :
+      match_states i (Callstate args ctx_stk) (Callstate args ctx_stk)
+  | match_states_call_from_focus
+      frs_src frs_tgt
+      args blk
+      (FOCUS: Genv.find_symbol skenv_link f_id = Some blk \/ Genv.find_symbol skenv_link g_id = Some blk)
+      (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero)
+      (STK: match_stacks i frs_src frs_tgt)
+    :
+      match_states i (Callstate args frs_src) (Callstate args frs_tgt)
+  | match_states_normal
+      frs_src frs_tgt
+      (STK: match_stacks i frs_src frs_tgt)
+    :
+      match_states i (State frs_src) (State frs_tgt)
+  .
+
+  Lemma match_states_xsim
+        i st_src0 st_tgt0
+        (MATCH: match_states i st_src0 st_tgt0)
+    :
+      xsim (sem (ctx ++ [module])) (sem (ctx ++ [MutrecAspec.module; MutrecBspec.module]))
+           Z.lt i st_src0 st_tgt0
+  .
+  Proof.
+    revert_until LINKTGT. pcofix CIH. i.
+    inv MATCH.
+    - (* call from ctx *)
+      pfold. right. econs; et.
+      { i; ss. des_ifs. admit "". }
+      admit "".
+    - (* call from focus *)
+      pfold. right.
+      econs; et.
+      { ss. i. inv FINALTGT; ss. }
+      econs; et; cycle 1.
+      { i; ss. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
+        - left. inv SAFESRC.
+        - right. des_ifs. inv SAFESRC.
+          inv MSFIND. ss. desH MODSEM.
+          { esplits; et. econs; et. econs; et. ss; et. }
+          unfold load_modsems in *. rewrite in_map_iff in *. des_safe. clarify.
+          rewrite in_app_iff in *. desH MODSEM0; clarify.
+          { esplits; et. econs; et. econs; et. ss; et. right.
+            unfold load_modsems in *. rewrite in_map_iff in *. esplits; et. rewrite in_app_iff. des; et.
+          }
+          ss. des_safe; clarify.
+          exploit genv_sim; et. i; des_safe. exploit FINDF; et. i; des_safe. rr in FOCUS0.
+          desH FOCUS0; clarify; inv INIT; esplits; et.
+          + econs.
+            * instantiate (1:= MutrecAspec.modsem skenv_link tt). econs; et. ss. right.
+              unfold load_modsems, flip in *; rewrite in_map_iff in *; folder; esplits; et; cycle 1.
+              { rewrite in_app_iff; ss. right. left. et. }
+              ss.
+            * econs; ss; et.
+              admit "ez - revive// TODO: make lemma".
+          + econs.
+            * instantiate (1:= MutrecBspec.modsem skenv_link tt). econs; et. ss. right.
+              unfold load_modsems, flip in *; rewrite in_map_iff in *; folder; esplits; et; cycle 1.
+              { rewrite in_app_iff; ss. right. right. et. }
+              ss.
+            * econs; ss; et.
+              admit "ez - revive// TODO: make lemma".
+      }
+      i. ss. des_ifs. inv STEPTGT.
+      inv MSFIND. ss. desH MODSEM; clarify.
+      { (* system *)
+        exfalso. ss. admit "exploit system_disjoint; et".
+        (* unfold System.skenv in *. *)
+        (* inv INIT. esplits; eauto. *)
+        (* + left. apply plus_one. esplits; eauto; cycle 1. *)
+        (*   econs; et. *)
+        (*   { econs; ss; et. } *)
+        (*   econs; et. *)
+        (* + right. eapply CIH; et. econs; et. econs 3; et. *)
+      }
+      unfold load_modsems in *. rewrite in_map_iff in *. des.
+      clarify.
+      rewrite in_app_iff in *. des; clarify.
+      { (* ctx *)
+        esplits; eauto.
+        + left. apply plus_one. econs; et. econs; et. ss. right.
+          unfold load_modsems in *. rewrite in_map_iff. esplits; et.
+          rewrite in_app_iff. ss. et.
+        + right. eapply CIH; et. econs; et.
+          rewrite cons_app with (xtl := frs_tgt).
+          econs 3; et.
+      }
+      (* real *)
+      folder.
+      assert(exists i, <<ARGS: Args.vs args = [Vint i]>>).
+      { ss. des; clarify; inv INIT; et. }
+      des.
+      esplits; et.
+      + left. apply plus_one. econs.
+        { instantiate (1:= modsem skenv_link tt). econs; ss; et.
+          - right.
+            unfold load_modsems in *. rewrite in_map_iff. unfold flip. esplits; et; cycle 1.
+            { rewrite in_app_iff. ss. et. }
+            ss.
+          - instantiate (1:= if_sig).
+            eapply genv_sim; et. esplits; et. rr; des; ss; et.
+        }
+        econs; et.
+        eapply genv_sim; et. esplits; et. rr; des; ss; et. des; clarify; et.
+      + right. eapply CIH. instantiate (1:= i0.(Int.intval)). econs; et.
+        rewrite cons_app with (xhd := {| Frame.ms := flip Mod.modsem skenv_link x; Frame.st := st_init |}).
+        econs 3; et.
+        { econs; et. }
+        destruct args; ss. clarify.
+        des; ss; clarify.
+        * inv INIT; ss; clarify. econs; et. refl.
+        * inv INIT; ss; clarify. econs; et. refl.
+    - (* Sem.State *)
+      inv STK.
+      + pfold. left. right. econs; et.
+        econs; et; cycle 1.
+        { ss. i. inv FINALSRC; ss. }
+        i. ss. des_ifs. inv STEPSRC.
+      + pfold. right. econs; et.
+        { ss. i. inv FINALTGT; ss. inv TAIL; ss; cycle 1.
+          { destruct hds_tgt, tail_tgt; ss. inv TGT; ss. }
+          esplits; et.
+          { apply star_refl. }
+          econs; ss; et.
+        }
+        i.
+        econs; et; cycle 1.
+        { ss. i. specialize (SAFESRC _ (star_refl _ _ _ _)). des.
+          - left. inv SAFESRC. inv TAIL. esplits; et. econs; et.
+          - right. des_ifs. inv SAFESRC; inv TAIL; try (by esplits; et; econs; et).
+        }
+        i. ss. des_ifs. inv STEPTGT; ss.
+        * esplits; et.
+          { left. apply plus_one. econs; et. }
+          right. eapply CIH; et. econs; et. econs; et.
+        * esplits; et.
+          { left. apply plus_one. econs; et. }
+          right. eapply CIH; et. econs; et. econs; et.
+        * inv TAIL.
+          -- esplits; et.
+             { left. apply plus_one. econs 4; et. }
+             right. eapply CIH; et. econs; et. econs; et.
+          -- esplits; et.
+             { left. apply plus_one. econs 4; et. }
+             right. eapply CIH; et. econs; et. econs; et.
+          econs; et.
+      inv MSFIND. ss. des; clarify.
+      { (* system *)
+        inv INIT. esplits; eauto.
+        + left. esplits; eauto; cycle 1.
+          { admit "ez - semprops receptive". }
+          apply plus_one.
+          econs; et.
+          { admit "ez - semprops determinate". }
+          ss. des_ifs. econs; et.
+          { econs; ss; et. }
+          econs; et.
+        + right. eapply CIH; et. econs; et. econs; et.
+      }
+      unfold load_modsems in *.
+      rewrite in_map_iff in *. des. clarify. rewrite in_app_iff in *. des; clarify.
+      { (* ctx *)
+        esplits; eauto.
+        + left. esplits; eauto; cycle 1.
+          { admit "ez - semprops receptive". }
+          apply plus_one.
+          econs; et.
+          { admit "ez - semprops determinate". }
+          ss. des_ifs. econs; et.
+          { econs; ss; et. }
+          econs; et.
+        + right. eapply CIH; et. econs; et. econs; et.
+        +
+      }
+    -
+    admit "".
+  Qed.
+
+End LXSIM.
+  
+
+Theorem mutrecABcorrect
+        ctx
+  :
+    (* (<<REFINE: improves (Sem.sem ([(MutrecABspec.module)] ++ ctx)) *)
+    (*                     (Sem.sem ([(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx)) *)
+    (*                     >>) *)
+    (<<REFINE: improves (Sem.sem (ctx ++ [(MutrecABspec.module)]))
+                        (Sem.sem (ctx ++ [(MutrecAspec.module) ; (MutrecBspec.module)]))
+                        >>)
 .
+Proof.
+  eapply bsim_improves.
+  eapply mixed_to_backward_simulation.
+  econs; eauto.
+  econs; swap 2 3.
+  { apply lt_wf. }
+  { i; des. ss. inv SAFESRC. rewrite INITSK.
+    ss. rewrite link_sk_same. des_ifs.
+  }
+  econs; eauto.
+  i. ss. inv INITSRC.
+  esplits; eauto.
+  { econs; ss; eauto.
+    - econs; eauto.
+      + rewrite link_sk_same. ss.
+      + ii; ss. rewrite in_app_iff in *. des; ss.
+        { eapply WF; et. rewrite in_app_iff. et. }
+        des; ss; clarify.
+        * eapply wf_module_Aspec; et.
+        * eapply wf_module_Bspec; et.
+    - i; ss. inv INIT0. inv INIT1. clarify.
+  }
+  eapply match_states_xsim; et.
+  econs; et. econs; et.
+Qed.
+
+
+(* Inductive match_states_internal: MutrecABspec.state -> Clight.state -> Prop := *)
+(* | match_callstate_nonzero *)
+(*     i m_src m_tgt *)
+(*     fptr *)
+(*     (* targs tres cconv *) *)
+(*     (FINDF: Genv.find_funct (Smallstep.globalenv (modsem2 skenv_link prog)) fptr = Some (Internal func_f)) *)
+(*   : *)
+(*     match_states_internal (Callstate i m_src) (Clight.Callstate fptr (Tfunction (* targs tres cconv) *) *)
+(*                                                                         (Tcons tint Tnil) tint cc_default) *)
+(*                                                                 [Vint i] Kstop m_tgt) *)
+(* | match_returnstate *)
+(*     i m_src m_tgt *)
+(*   : *)
+(*     match_states_internal (Returnstate i m_src) (Clight.Returnstate (Vint i) Kstop m_tgt) *)
+(* . *)
+
+(* Inductive match_states (sm_init: SimMem.t) *)
+(*           (idx: nat) (st_src0: MutrecAspec.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop := *)
+(* | match_states_intro *)
+(*     (MATCHST: match_states_internal st_src0 st_tgt0) *)
+(*     (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src)) *)
+(*     (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt)) *)
+(*     (MWF: SimMem.wf sm0) *)
+(*     (IDX: (idx > 3)%nat) *)
+(* . *)
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->

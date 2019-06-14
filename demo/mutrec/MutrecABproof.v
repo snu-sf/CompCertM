@@ -102,12 +102,16 @@ Section LXSIM.
   | match_stacks_nil
     :
       match_stacks 0%Z [] []
-  | match_stacks_cons_ctx
-      i tail_src tail_tgt
-      (TAIL: match_stacks i tail_src tail_tgt)
-      hd
+  (* | match_stacks_cons_ctx *)
+  (*     i tail_src tail_tgt *)
+  (*     (TAIL: match_stacks i tail_src tail_tgt) *)
+  (*     hd *)
+  (*   : *)
+  (*     match_stacks 0%Z (hd :: tail_src) (hd :: tail_tgt) *)
+  | match_stacks_ctx
+      ctx_stk
     :
-      match_stacks 0%Z (hd :: tail_src) (hd :: tail_tgt)
+      match_stacks 0%Z ctx_stk ctx_stk
   | match_stacks_focus
       j tail_src tail_tgt
       (TAIL: match_stacks j tail_src tail_tgt)
@@ -120,17 +124,23 @@ Section LXSIM.
   .
 
   Inductive match_states (i: Z): Sem.state -> Sem.state -> Prop :=
+  | match_states_call_from_ctx
+      args ctx_stk
+    :
+      match_states i (Callstate args ctx_stk) (Callstate args ctx_stk)
+  | match_states_call_from_focus
+      frs_src frs_tgt
+      args blk
+      (FOCUS: Genv.find_symbol skenv_link f_id = Some blk \/ Genv.find_symbol skenv_link g_id = Some blk)
+      (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero)
+      (STK: match_stacks i frs_src frs_tgt)
+    :
+      match_states i (Callstate args frs_src) (Callstate args frs_tgt)
   | match_states_normal
       frs_src frs_tgt
       (STK: match_stacks i frs_src frs_tgt)
     :
       match_states i (State frs_src) (State frs_tgt)
-  | match_states_call
-      frs_src frs_tgt
-      args
-      (STK: match_stacks i frs_src frs_tgt)
-    :
-      match_states i (Callstate args frs_src) (Callstate args frs_tgt)
   .
 
   Lemma match_states_xsim
@@ -142,24 +152,29 @@ Section LXSIM.
   .
   Proof.
     revert_until LINKTGT. pcofix CIH. i.
-    inv MATCH; cycle 1.
-    - (* Sem.Callstate *)
+    inv MATCH.
+    - (* call from ctx *)
+      pfold. right. econs; et.
+      { i; ss. des_ifs. admit "". }
+      admit "".
+    - (* call from focus *)
       pfold. right.
       econs; et.
       { ss. i. inv FINALTGT; ss. }
       econs; et; cycle 1.
-      { i; ss. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
+      { i; ss. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
         - left. inv SAFESRC.
-        - right. des_ifs. inv SAFESRC. inv MSFIND. ss. des.
+        - right. des_ifs. inv SAFESRC.
+          inv MSFIND. ss. desH MODSEM.
           { esplits; et. econs; et. econs; et. ss; et. }
-          unfold load_modsems in *. rewrite in_map_iff in *. des. clarify.
-          rewrite in_app_iff in *. des; clarify.
+          unfold load_modsems in *. rewrite in_map_iff in *. des_safe. clarify.
+          rewrite in_app_iff in *. desH MODSEM0; clarify.
           { esplits; et. econs; et. econs; et. ss; et. right.
-            unfold load_modsems in *. rewrite in_map_iff in *. esplits; et. rewrite in_app_iff. et.
+            unfold load_modsems in *. rewrite in_map_iff in *. esplits; et. rewrite in_app_iff. des; et.
           }
-          ss. des; clarify.
-          exploit genv_sim; et. i; des. exploit FINDF; et. i; des. rr in FOCUS.
-          des; clarify; inv INIT; esplits; et.
+          ss. des_safe; clarify.
+          exploit genv_sim; et. i; des_safe. exploit FINDF; et. i; des_safe. rr in FOCUS0.
+          desH FOCUS0; clarify; inv INIT; esplits; et.
           + econs.
             * instantiate (1:= MutrecAspec.modsem skenv_link tt). econs; et. ss. right.
               unfold load_modsems, flip in *; rewrite in_map_iff in *; folder; esplits; et; cycle 1.
@@ -176,14 +191,16 @@ Section LXSIM.
               admit "ez - revive// TODO: make lemma".
       }
       i. ss. des_ifs. inv STEPTGT.
-      inv MSFIND. ss. des; clarify.
+      inv MSFIND. ss. desH MODSEM; clarify.
       { (* system *)
-        inv INIT. esplits; eauto.
-        + left. apply plus_one. esplits; eauto; cycle 1.
-          econs; et.
-          { econs; ss; et. }
-          econs; et.
-        + right. eapply CIH; et. econs; et. econs; et.
+        exfalso. ss. admit "exploit system_disjoint; et".
+        (* unfold System.skenv in *. *)
+        (* inv INIT. esplits; eauto. *)
+        (* + left. apply plus_one. esplits; eauto; cycle 1. *)
+        (*   econs; et. *)
+        (*   { econs; ss; et. } *)
+        (*   econs; et. *)
+        (* + right. eapply CIH; et. econs; et. econs 3; et. *)
       }
       unfold load_modsems in *. rewrite in_map_iff in *. des.
       clarify.
@@ -193,7 +210,9 @@ Section LXSIM.
         + left. apply plus_one. econs; et. econs; et. ss. right.
           unfold load_modsems in *. rewrite in_map_iff. esplits; et.
           rewrite in_app_iff. ss. et.
-        + right. eapply CIH; et. econs; et. econs; et.
+        + right. eapply CIH; et. econs; et.
+          rewrite cons_app with (xtl := frs_tgt).
+          econs 3; et.
       }
       (* real *)
       folder.
@@ -212,8 +231,10 @@ Section LXSIM.
         }
         econs; et.
         eapply genv_sim; et. esplits; et. rr; des; ss; et. des; clarify; et.
-      + right. eapply CIH. instantiate (1:= i0.(Int.intval)). econs; et. rewrite cons_app with (xtl := frs_tgt).
+      + right. eapply CIH. instantiate (1:= i0.(Int.intval)). econs; et.
+        rewrite cons_app with (xhd := {| Frame.ms := flip Mod.modsem skenv_link x; Frame.st := st_init |}).
         econs 3; et.
+        { econs; et. }
         destruct args; ss. clarify.
         des; ss; clarify.
         * inv INIT; ss; clarify. econs; et. refl.
@@ -249,7 +270,7 @@ Section LXSIM.
              { left. apply plus_one. econs 4; et. }
              right. eapply CIH; et. econs; et. econs; et.
           -- esplits; et.
-             { left. apply plus_one. econs 4; et. ss. TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT }
+             { left. apply plus_one. econs 4; et. }
              right. eapply CIH; et. econs; et. econs; et.
           econs; et.
       inv MSFIND. ss. des; clarify.

@@ -17,7 +17,7 @@ Section MODSEM.
   Variable skenv_link: SkEnv.t.
   Variable p: unit.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) prog.(Sk.of_program fn_sig).
-  Let ge: genv := skenv.(SkEnv.revive) prog.
+  (* Let ge: genv := skenv.(SkEnv.revive) prog. *)
 
   Inductive state: Type :=
   | Callstate
@@ -37,8 +37,10 @@ Section MODSEM.
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame1_intro
-      i m
-      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal func_g))
+      i m blk
+      (SYMB: Genv.find_symbol skenv f_id = Some blk)
+      (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero)
+      (* (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal func_g)) *)
       (VS: args.(Args.vs) = [Vint i])
       (M: args.(Args.m) = m)
     :
@@ -48,7 +50,7 @@ Section MODSEM.
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       f_fptr i m
-      (FINDG: Genv.find_symbol ge f_id = Some f_fptr)
+      (FINDG: Genv.find_symbol skenv f_id = Some f_fptr)
       (NZERO: i.(Int.intval) <> 0%Z)
     :
       at_external (Callstate i m) (Args.mk (Vptr f_fptr Ptrofs.zero) [Vint (Int.sub i (Int.repr 1))] m)
@@ -64,7 +66,7 @@ Section MODSEM.
       after_external (Callstate i m) retv (Returnstate (sum i) retv.(Retv.m))
   .
 
-  Inductive step (se: Senv.t) (ge: genv): state -> trace -> state -> Prop :=
+  Inductive step (se: Senv.t) (ge: SkEnv.t): state -> trace -> state -> Prop :=
   | step_zero
       i m
       (ZERO: i.(Int.intval) = 0%Z)
@@ -86,7 +88,7 @@ Section MODSEM.
       ModSem.initial_frame := initial_frame;
       ModSem.final_frame := final_frame;
       ModSem.after_external := after_external;
-      ModSem.globalenv := ge;
+      ModSem.globalenv := skenv;
       ModSem.skenv := skenv;
       ModSem.skenv_link := skenv_link; 
     |}

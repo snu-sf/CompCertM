@@ -80,18 +80,37 @@ Section LXSIM.
     admit "ez".
   Qed.
 
-  (* Axiom match_focus: Z -> Frame.t -> list Frame.t -> Prop. *)
+  Lemma find_symbol_find_funct_ptr_A
+        blk
+        (SYMB: Genv.find_symbol skenv_link f_id = Some blk)
+    :
+      Genv.find_funct_ptr (SkEnv.project skenv_link (CSk.of_program signature_of_function MutrecA.prog)) blk =
+      Some (AST.Internal (mksignature [AST.Tint] (Some AST.Tint) cc_default))
+  .
+  Proof.
+    admit "ez".
+  Qed.
+
+  Lemma find_symbol_find_funct_ptr_B
+        blk
+        (SYMB: Genv.find_symbol skenv_link g_id = Some blk)
+    :
+      Genv.find_funct_ptr (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig MutrecB.prog)) blk =
+      Some (AST.Internal (mksignature [AST.Tint] (Some AST.Tint) cc_default))
+  .
+  Proof.
+    admit "ez".
+  Qed.
+
   Inductive match_focus: mem -> Z -> Z -> list Frame.t -> Prop :=
   | match_focus_cons_A
       cur max m i tl_tgt
-      (LE: (cur <= max)%Z)
       (VAL: i.(Int.intval) = cur)
       (REC: match_focus m (cur + 1)%Z max tl_tgt \/ cur = max)
     :
       match_focus m cur max ((Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate i m)) :: tl_tgt)
   | match_focus_cons_B
       cur max m i tl_tgt
-      (LE: (cur <= max)%Z)
       (VAL: i.(Int.intval) = cur)
       (REC: match_focus m (cur + 1)%Z max tl_tgt \/ cur = max)
     :
@@ -113,14 +132,16 @@ Section LXSIM.
     :
       match_stacks 0%Z ctx_stk ctx_stk
   | match_stacks_focus
-      j tail_src tail_tgt
-      (TAIL: match_stacks j tail_src tail_tgt)
-      i cur z m hd_src hds_tgt
-      (SRC: hd_src = Frame.mk (MutrecABspec.modsem skenv_link tt) (MutrecABspec.Callstate i m))
-      (VAL: i.(Int.intval) = z)
-      (TGT: match_focus m cur z hds_tgt)
+      (* j tail_src tail_tgt *)
+      (* (TAIL: match_stacks j tail_src tail_tgt) *)
+      ctx_stk
+      cur max m hd_src hds_tgt
+      (SRC: hd_src = Frame.mk (MutrecABspec.modsem skenv_link tt) (MutrecABspec.Callstate max m))
+      (* (VAL: i.(Int.intval) = max) *)
+      (LE: (cur <= max.(Int.intval))%Z)
+      (TGT: match_focus m cur max.(Int.intval) hds_tgt)
     :
-      match_stacks z (hd_src :: tail_src) (hds_tgt ++ tail_tgt)
+      match_stacks cur (hd_src :: ctx_stk) (hds_tgt ++ ctx_stk)
   .
 
   Inductive match_states (i: Z): Sem.state -> Sem.state -> Prop :=
@@ -155,12 +176,89 @@ Section LXSIM.
     inv MATCH.
     - (* call from ctx *)
       pfold. right. econs; et.
-      { i; ss. des_ifs. admit "". }
-      admit "".
+      { i; ss. des_ifs. inv FINALTGT. }
+      i.
+      econs; et; cycle 1.
+      + i. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
+        * left. inv SAFESRC.
+        * right. des_ifs. inv SAFESRC. inv MSFIND. ss. des; clarify.
+          { esplits; et. econs; et. econs; et. ss. et. }
+          folder.
+          unfold load_modsems in *. rewrite in_map_iff in *. des_safe. rewrite in_app_iff in *. ss; des; clarify.
+          { esplits; et. econs; et. econs; et. ss. right. unfold load_modsems in *. rewrite in_map_iff.
+            esplits; et. rewrite in_app_iff. et. }
+          { apply genv_sim in INTERNAL. des. ss. rr in FOCUS. inv INIT.
+            unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
+            des; clarify.
+            - esplits; et. econs; et.
+              + econs; et.
+                * ss. right. unfold load_modsems in *. rewrite in_map_iff. esplits; et. 
+                  rewrite in_app_iff. right. left. ss; et.
+                * unfold Genv.find_funct, Genv.find_funct_ptr in *. rewrite Heq1. ss. des_ifs. 
+              + econs; ss; et.
+                admit "ez - genv".
+            - esplits; et. econs; et.
+              + econs; et.
+                * ss. right. unfold load_modsems in *. rewrite in_map_iff. esplits; et. 
+                  rewrite in_app_iff. right. right. ss; et.
+                * unfold Genv.find_funct, Genv.find_funct_ptr in *. rewrite Heq1. ss. des_ifs. 
+              + econs; ss; et.
+                admit "ez - genv".
+          }
+      + i. ss. des_ifs. inv STEPTGT. inv MSFIND. ss.
+        unfold load_modsems in *.
+        des; clarify.
+        { esplits; et.
+          - left. apply plus_one. econs; et. econs; et. ss. et.
+          - right. eapply CIH. econs; et. econs; et.
+        }
+        rewrite in_map_iff in *. des. clarify. rewrite in_app_iff in *. des; clarify.
+        { esplits; et.
+          - left. apply plus_one. econs; et. econs; et. ss. right.
+            unfold load_modsems. rewrite in_map_iff. esplits; et. rewrite in_app_iff. et.
+          - right. eapply CIH. econs; et. econs; et.
+        }
+        { ss. des; clarify; ss; inv INIT.
+          - esplits; et.
+            + left. apply plus_one. econs.
+              * instantiate (1:= modsem skenv_link tt).
+                econs; et.
+                -- ss. right. unfold load_modsems. rewrite in_map_iff. esplits; cycle 1.
+                   { rewrite in_app_iff. right; ss; et. }
+                   ss.
+                -- instantiate (1:= if_sig). apply genv_sim. exists (MutrecAspec.module). esplits; et; rr; et.
+              * econs; et.
+                -- instantiate (1:= if_sig). apply genv_sim. exists (MutrecAspec.module). esplits; et; rr; et.
+            + right. eapply CIH. econs; et.
+              rewrite cons_app with (xhd := {|
+                Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecAspec.module;
+                Frame.st := MutrecAspec.Callstate i0 (Args.m args) |}).
+              econs; et.
+              * refl.
+              * econs; et.
+          - esplits; et.
+            + left. apply plus_one. econs.
+              * instantiate (1:= modsem skenv_link tt).
+                econs; et.
+                -- ss. right. unfold load_modsems. rewrite in_map_iff. esplits; cycle 1.
+                   { rewrite in_app_iff. right; ss; et. }
+                   ss.
+                -- instantiate (1:= if_sig). apply genv_sim. exists (MutrecBspec.module). esplits; et; rr; et.
+              * econs; et.
+                -- instantiate (1:= if_sig). apply genv_sim. exists (MutrecBspec.module). esplits; et; rr; et.
+            + right. eapply CIH. econs; et.
+              rewrite cons_app with (xhd := {|
+                Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecBspec.module;
+                Frame.st := MutrecBspec.Callstate i0 (Args.m args) |}).
+              econs; et.
+              * refl.
+              * econs; et.
+        }
     - (* call from focus *)
       pfold. right.
       econs; et.
       { ss. i. inv FINALTGT; ss. }
+      i.
       econs; et; cycle 1.
       { i; ss. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
         - left. inv SAFESRC.
@@ -190,7 +288,28 @@ Section LXSIM.
             * econs; ss; et.
               admit "ez - revive// TODO: make lemma".
       }
-      i. ss. des_ifs. inv STEPTGT.
+      i. ss. des_ifs. inv STEPTGT. folder.
+      assert(MSFIND0:
+               Ge.find_fptr_owner
+               (load_genv (ctx ++ [MutrecAspec.module; MutrecBspec.module]) skenv_link)
+               (Args.fptr args) (MutrecAspec.modsem skenv_link tt)
+             \/
+             Ge.find_fptr_owner
+               (load_genv (ctx ++ [MutrecAspec.module; MutrecBspec.module]) skenv_link)
+               (Args.fptr args) (MutrecBspec.modsem skenv_link tt)
+            ).
+      { des.
+        - left. econs; ss; et.
+          + right. unfold load_modsems. rewrite in_map_iff. esplits; ss; et; cycle 1.
+            { rewrite in_app_iff. right; left; ss; et. }
+            ss.
+          + rewrite FPTR. ss. des_ifs. eapply find_symbol_find_funct_ptr_A; et.
+        - right. econs; ss; et.
+          + right. unfold load_modsems. rewrite in_map_iff. esplits; ss; et; cycle 1.
+            { rewrite in_app_iff. right; right; ss; et. }
+            ss.
+          + rewrite FPTR. ss. des_ifs. eapply find_symbol_find_funct_ptr_B; et.
+      }
       inv MSFIND. ss. desH MODSEM; clarify.
       { (* system *)
         exfalso. ss. admit "exploit system_disjoint; et".
@@ -202,19 +321,20 @@ Section LXSIM.
         (*   econs; et. *)
         (* + right. eapply CIH; et. econs; et. econs 3; et. *)
       }
-      unfold load_modsems in *. rewrite in_map_iff in *. des.
+      unfold load_modsems in *. rewrite in_map_iff in *. desH MODSEM. clarify.
       clarify.
-      rewrite in_app_iff in *. des; clarify.
+      rewrite in_app_iff in *. desH MODSEM0; clarify.
       { (* ctx *)
-        esplits; eauto.
-        + left. apply plus_one. econs; et. econs; et. ss. right.
-          unfold load_modsems in *. rewrite in_map_iff. esplits; et.
-          rewrite in_app_iff. ss. et.
-        + right. eapply CIH; et. econs; et.
-          rewrite cons_app with (xtl := frs_tgt).
-          econs 3; et.
+        exfalso. ss. admit "somehow".
+        (* esplits; eauto. *)
+        (* + left. apply plus_one. econs; et. econs; et. ss. right. *)
+        (*   unfold load_modsems in *. rewrite in_map_iff. esplits; et. *)
+        (*   rewrite in_app_iff. ss. et. *)
+        (* + right. eapply CIH; et. econs; et. *)
+        (*   rewrite cons_app with (xtl := frs_tgt). *)
+        (*   econs 3; et. *)
       }
-      (* real *)
+      (* focus *)
       folder.
       assert(exists i, <<ARGS: Args.vs args = [Vint i]>>).
       { ss. des; clarify; inv INIT; et. }
@@ -231,9 +351,11 @@ Section LXSIM.
         }
         econs; et.
         eapply genv_sim; et. esplits; et. rr; des; ss; et. des; clarify; et.
-      + right. eapply CIH. instantiate (1:= i0.(Int.intval)). econs; et.
+      + right. eapply CIH. instantiate (1:= i). econs; et.
         rewrite cons_app with (xhd := {| Frame.ms := flip Mod.modsem skenv_link x; Frame.st := st_init |}).
-        econs 3; et.
+        econs 3.
+        { et. }
+        { et. }
         { econs; et. }
         destruct args; ss. clarify.
         des; ss; clarify.

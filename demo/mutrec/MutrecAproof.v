@@ -24,10 +24,9 @@ Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Let md_src: Mod.t := (MutrecAspec.module).
 Let md_tgt: Mod.t := (ClightC.module2 prog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (INCL: SkEnv.includes skenv_link md_src.(Mod.sk)).
 Hypothesis (WF: SkEnv.wf skenv_link).
-Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
+Let ge := (SkEnv.project skenv_link md_src.(Mod.sk)).
 Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) prog) prog.(prog_comp_env).
 Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
 
@@ -56,15 +55,6 @@ Inductive match_states (sm_init: SimMem.t)
     (MWF: SimMem.wf sm0)
     (IDX: (idx > 3)%nat)
 .
-
-Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
-  Genv.match_genvs (match_globdef (fun _ => eq) eq tt) ge tge.
-Proof.
-  subst_locals. ss. ii.
-  eapply SimSymbId.sim_skenv_revive; eauto.
-  admit "ez - reflexivity".
-Qed.
 
 Lemma g_blk_exists
   :
@@ -96,7 +86,7 @@ Proof.
   eexists. splits; et.
   { unfold Genv.find_funct_ptr. des_ifs. }
   (* exploit (@SkEnv.project_revive_precise _ _ skenv_link); eauto. *)
-  { inv INCLSRC.
+  { inv INCL.
     exploit (CSk.of_program_prog_defmap prog signature_of_function); et. rewrite T. intro S.
 
     remember ((prog_defmap (CSk.of_program signature_of_function prog)) ! g_id) as U in *.
@@ -240,7 +230,9 @@ Proof.
         inv ATSRC. ss; clarify.
         destruct sm0; ss. clarify.
         unfold Clight.fundef in *.
-        rewrite FINDG in *. clarify.
+        assert(g_fptr = g_blk).
+        { unfold SkEnv.revive in FINDG. rewrite Genv_map_defs_symb in *. clarify. }
+        clarify.
         eexists (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _), (SimMemId.mk _ _).
         esplits; ss; eauto.
         { econs; ss; eauto. }
@@ -306,12 +298,16 @@ Proof.
     des. inv SAFESRC.
     inv SIMARGS; ss.
     (* hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des. *)
-    exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
+
+    (* exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. *)
 
     (* hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR. *)
 
     esplits; eauto. econs; eauto.
-    + rewrite <- FPTR. eauto.
+    + instantiate (1:= func_f). rewrite <- FPTR0. unfold SkEnv.revive. ss.
+      unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+      erewrite Genv_map_defs_def_inv; eauto.
+      dup SYMB. apply Genv.find_invert_symbol in SYMB. rewrite SYMB. ss.
     + instantiate (1:= [Vint i]). rewrite VS in *. inv VALS. econs; ss.
       cbn. unfold typify. des_ifs; ss.
   }
@@ -322,20 +318,26 @@ Proof.
   inv SIMARGS; ss. clarify.
   inv INITTGT.
   (* hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des. *)
-  exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
+  des. inv SAFESRC. ss.
+  destruct args_src, args_tgt; ss. clarify.
+  unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs. ss. clear_tac.
+  assert(fd = func_f).
+  { unfold SkEnv.revive in Heq. apply Genv_map_defs_def in Heq. des.
+    dup SYMB. apply Genv.find_invert_symbol in SYMB. rewrite SYMB in *. cbn in MAP. clarify.
+  }
   eexists. eexists (SimMemId.mk _ _).
   esplits; eauto.
+  + econs; ss; eauto.
   + eapply match_states_lxsim.
     econs; ss; eauto; cycle 1.
-    { inv SAFESRC. ss. }
 
-    inv SAFESRC. destruct args_src, args_tgt; ss. clarify.
     assert(tvs = [Vint i]).
     {
       unfold signature_of_function in TYP. ss.
       inv TYP. ss. cbn. unfold typify. des_ifs; ss.
     } clarify.
     econs; eauto.
+    ss. des_ifs. unfold Genv.find_funct_ptr. des_ifs.
 Unshelve.
   all: try (ss; econs).
 Qed.

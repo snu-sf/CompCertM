@@ -334,33 +334,34 @@ Section LXSIM.
         (*   rewrite cons_app with (xtl := frs_tgt). *)
         (*   econs 3; et. *)
       }
-      (* focus *)
-      folder.
-      assert(exists i, <<ARGS: Args.vs args = [Vint i]>>).
-      { ss. des; clarify; inv INIT; et. }
-      des.
-      esplits; et.
-      + left. apply plus_one. econs.
-        { instantiate (1:= modsem skenv_link tt). econs; ss; et.
-          - right.
-            unfold load_modsems in *. rewrite in_map_iff. unfold flip. esplits; et; cycle 1.
-            { rewrite in_app_iff. ss. et. }
-            ss.
-          - instantiate (1:= if_sig).
-            eapply genv_sim; et. esplits; et. rr; des; ss; et.
-        }
-        econs; et.
-        eapply genv_sim; et. esplits; et. rr; des; ss; et. des; clarify; et.
-      + right. eapply CIH. instantiate (1:= i). econs; et.
-        rewrite cons_app with (xhd := {| Frame.ms := flip Mod.modsem skenv_link x; Frame.st := st_init |}).
-        econs 3.
-        { et. }
-        { et. }
-        { econs; et. }
-        destruct args; ss. clarify.
-        des; ss; clarify.
-        * inv INIT; ss; clarify. econs; et. refl.
-        * inv INIT; ss; clarify. econs; et. refl.
+      { (* focus *)
+        folder.
+        inv STK.
+        assert(exists i, <<ARGS: Args.vs args = [Vint i]>>).
+        { ss. des; clarify; inv INIT; et. }
+        des.
+        esplits; et.
+        + left. apply plus_one. econs.
+          { instantiate (1:= modsem skenv_link tt). econs; ss; et.
+            - right.
+              unfold load_modsems in *. rewrite in_map_iff. unfold flip. esplits; et; cycle 1.
+              { rewrite in_app_iff. ss. et. }
+              ss.
+            - instantiate (1:= if_sig).
+              eapply genv_sim; et. esplits; et. rr; des; ss; et.
+          }
+          econs; et.
+          eapply genv_sim; et. esplits; et. rr; des; ss; et. des; clarify; et.
+        + right. eapply CIH. instantiate (1:= i.(Int.intval)). econs; et.
+          rewrite cons_app with (xhd := {| Frame.ms := flip Mod.modsem skenv_link x; Frame.st := st_init |}).
+          econs 3.
+          { et. }
+          { refl. }
+          { ss. des; clarify; ss; inv INIT. econs. et. }
+          destruct args; ss. clarify.
+          des; ss; clarify.
+          * inv INIT; ss; clarify. econs; et. refl.
+          * inv INIT; ss; clarify. econs; et. refl.
     - (* Sem.State *)
       inv STK.
       + pfold. left. right. econs; et.

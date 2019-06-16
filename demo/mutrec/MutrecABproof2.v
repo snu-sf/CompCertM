@@ -270,26 +270,70 @@ Section LXSIM.
                   admit "ez - genv g_id some".
               + instantiate (1:= Int.intval max + Int.intval cur). lia.
             - right. eapply CIH. econs; eauto.
+              assert(ARITH: Int.intval (Int.sub cur (Int.repr 1)) = Int.intval cur - 1).
+              { admit "ez - arithmetic. it does not underflow". }
               replace
                 ({| Frame.ms := MutrecBspec.modsem skenv_link tt; Frame.st := MutrecBspec.Callstate (Int.sub cur (Int.repr 1)) m |}
                    :: {| Frame.ms := MutrecAspec.modsem skenv_link tt; Frame.st := MutrecAspec.Callstate cur m |} :: hds_tgt ++ ctx_stk) with
                  ({| Frame.ms := MutrecBspec.modsem skenv_link tt; Frame.st := MutrecBspec.Callstate (Int.sub cur (Int.repr 1)) m |}
                    :: ({| Frame.ms := MutrecAspec.modsem skenv_link tt; Frame.st := MutrecAspec.Callstate cur m |} :: hds_tgt) ++ ctx_stk) by ss.
-              econs 2; eauto.
+              econs 2.
+              + refl.
               + unfold __GUARD__. ss. eauto.
+              + rewrite ARITH. lia.
+              + econs; eauto. left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc.
+                rewrite Int.add_commut with (y := Int.one).
+                rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
+              + rewrite ARITH. lia.
           }
-          -- right. eapply CIH. econs 2; eauto. econs 3; eauto.
-             ++ unfold Frame.update_st. ss. rewrite sum_recurse. des_ifs.
-             ++ rewrite int_zero_intval. lia.
-             ++ rewrite int_zero_intval. lia.
-          -- left. esplits; cycle 1.
-             { admit "ez - receptive". }
-             apply plus_one. econs; eauto.
-             { admit "ez - determinate". }
-             econs 3; eauto. ss.
-          -- right. eapply CIH. econs 2; eauto.
-        
-      
+          {
+            econs 2; et.
+            - esplits; et.
+              + eapply plus_two with (t1 := E0) (t2 := E0); ss.
+                * econs; eauto.
+                  { admit "ez - determinate". }
+                  ss. des_ifs. econs; eauto. ss. econs; eauto.
+                  { admit "ez - genv f_id some". }
+                  ii. destruct cur; ss. clarify. apply H.
+                  Local Transparent Int.repr.
+                  eapply eta.
+                  Local Opaque Int.repr.
+                  ss.
+                * econs; eauto.
+                  { admit "ez - determinate". }
+                  ss. des_ifs. econs; eauto.
+                  { ss. instantiate (1:= MutrecAspec.modsem skenv_link tt). econs; ss; eauto.
+                    - right. unfold load_modsems. rewrite in_map_iff. esplits; et; cycle 1.
+                      + rewrite in_app_iff. right. ss. left; et.
+                      + ss.
+                    - des_ifs. instantiate (2 := f_id). admit "ez - genv f_id some".
+                  }
+                  ss. econs; ss; eauto.
+                  admit "ez - genv f_id some".
+              + instantiate (1:= Int.intval max + Int.intval cur). lia.
+            - right. eapply CIH. econs; eauto.
+              assert(ARITH: Int.intval (Int.sub cur (Int.repr 1)) = Int.intval cur - 1).
+              { admit "ez - arithmetic. it does not underflow". }
+              replace
+                ({| Frame.ms := MutrecAspec.modsem skenv_link tt; Frame.st := MutrecAspec.Callstate (Int.sub cur (Int.repr 1)) m |}
+                   :: {| Frame.ms := MutrecBspec.modsem skenv_link tt; Frame.st := MutrecBspec.Callstate cur m |} :: hds_tgt ++ ctx_stk) with
+                  ({| Frame.ms := MutrecAspec.modsem skenv_link tt; Frame.st := MutrecAspec.Callstate (Int.sub cur (Int.repr 1)) m |}
+                     :: ({| Frame.ms := MutrecBspec.modsem skenv_link tt; Frame.st := MutrecBspec.Callstate cur m |} :: hds_tgt) ++ ctx_stk) by ss.
+              econs 2.
+              + refl.
+              + unfold __GUARD__. ss. eauto.
+              + rewrite ARITH. lia.
+              + econs; eauto. left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc.
+                rewrite Int.add_commut with (y := Int.one).
+                rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
+              + rewrite ARITH. lia.
+          }
+      + (* focus - return *)
+        admit "".
+  Unshelve.
+    all: admit "abc".
+  Qed.
+
     - (* call *)
       pfold. right. econs; et.
       { i; ss. des_ifs. inv FINALTGT. }

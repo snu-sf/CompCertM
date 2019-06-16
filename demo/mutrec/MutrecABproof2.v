@@ -153,13 +153,14 @@ Section LXSIM.
                        (hd_tgt = Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate cur m))))
       (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
-      (IDX: idx = (max.(Int.intval) + cur.(Int.intval)) + 1)
+      (* (IDX: idx = (max.(Int.intval) + cur.(Int.intval)) + 1) *)
+      (IDX: idx = cur.(Int.intval))
     :
       match_stacks fromcall idx (hd_src :: ctx_stk) (hd_tgt :: hds_tgt ++ ctx_stk)
   | match_stacks_focus_top_return
       ctx_stk
       cur max m hd_src hds_tgt
-      (SRC: hd_src = Frame.mk (MutrecABspec.modsem skenv_link tt) (MutrecABspec.Callstate max m))
+      (SRC: hd_src = Frame.mk (MutrecABspec.modsem skenv_link tt) (MutrecABspec.Returnstate (sum max) m))
       hd_tgt
       (TGT: __GUARD__ ((hd_tgt = Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Returnstate (sum cur) m)) \/
                        (hd_tgt = Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Returnstate (sum cur) m))))
@@ -192,7 +193,7 @@ Section LXSIM.
   Lemma int_zero_intval: Int.intval Int.zero = 0%Z.
   Proof. unfold Int.intval. ss. Qed.
 
-  Lemma int_add_sub: forall cur x, (Int.add (Int.sub cur x) x) = cur.
+  Lemma int_sub_add: forall cur x, (Int.add (Int.sub cur x) x) = cur.
   Proof.
     i.
     rewrite Int.sub_add_opp. rewrite Int.add_assoc.
@@ -242,28 +243,38 @@ Section LXSIM.
           unsguard TGT. des; clarify.
           { ss.
             rewrite int_zero_intval in *.
-            econs 2; et.
-            - esplits; et.
+            econs 1; et; cycle 1.
+            { i; ss. inv FINALSRC. ss. inv FINAL. }
+            i. inv STEPSRC; ss; cycle 1.
+            { inv FINAL. }
+            inv STEP.
+            esplits; et.
+            - left. esplits; eauto.
               + apply plus_one. econs; eauto.
                 { admit "ez - determinate". }
                 ss. des_ifs. rpapply step_internal. ss.
-              + instantiate (1:= Int.intval max%Z). lia.
+              + { admit "ez - receptive". }
             - right. eapply CIH. econs 2; eauto. econs 3; eauto.
+              + ss.
               + unfold Frame.update_st. ss. unfold __GUARD__. rewrite sum_recurse. des_ifs; et.
-              + rewrite int_zero_intval. lia.
               + rewrite int_zero_intval. lia.
           }
           { ss.
             rewrite int_zero_intval in *.
-            econs 2; et.
-            - esplits; et.
+            econs 1; et; cycle 1.
+            { i; ss. inv FINALSRC. ss. inv FINAL. }
+            i. inv STEPSRC; ss; cycle 1.
+            { inv FINAL. }
+            inv STEP.
+            esplits; et.
+            - left. esplits; eauto.
               + apply plus_one. econs; eauto.
                 { admit "ez - determinate". }
                 ss. des_ifs. rpapply step_internal. ss.
-              + instantiate (1:= Int.intval max%Z). lia.
+              + { admit "ez - receptive". }
             - right. eapply CIH. econs 2; eauto. econs 3; eauto.
+              + ss.
               + unfold Frame.update_st. ss. unfold __GUARD__. rewrite sum_recurse. des_ifs; et.
-              + rewrite int_zero_intval. lia.
               + rewrite int_zero_intval. lia.
           }
         * unsguard TGT. des; clarify.
@@ -291,7 +302,7 @@ Section LXSIM.
                   }
                   ss. econs; ss; eauto.
                   admit "ez - genv g_id some".
-              + instantiate (1:= Int.intval max + Int.intval cur). lia.
+              + instantiate (1:= Int.intval cur - 1). lia.
             - right. eapply CIH. econs; eauto.
               assert(ARITH: Int.intval (Int.sub cur (Int.repr 1)) = Int.intval cur - 1).
               { admit "ez - arithmetic. it does not underflow". }
@@ -304,7 +315,7 @@ Section LXSIM.
               + refl.
               + unfold __GUARD__. ss. eauto.
               + rewrite ARITH. lia.
-              + rewrite int_add_sub.
+              + rewrite int_sub_add.
                 econs; eauto.
                 (* left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc. *)
                 (* rewrite Int.add_commut with (y := Int.one). *)
@@ -337,7 +348,7 @@ Section LXSIM.
                   }
                   ss. econs; ss; eauto.
                   admit "ez - genv f_id some".
-              + instantiate (1:= Int.intval max + Int.intval cur). lia.
+              + instantiate (1:= Int.intval cur - 1). lia.
             - right. eapply CIH. econs; eauto.
               assert(ARITH: Int.intval (Int.sub cur (Int.repr 1)) = Int.intval cur - 1).
               { admit "ez - arithmetic. it does not underflow". }
@@ -350,7 +361,7 @@ Section LXSIM.
               + refl.
               + unfold __GUARD__. ss. eauto.
               + rewrite ARITH. lia.
-              + rewrite int_add_sub.
+              + rewrite int_sub_add.
                 econs; eauto.
                 (* left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc. *)
                 (* rewrite Int.add_commut with (y := Int.one). *)
@@ -365,284 +376,105 @@ Section LXSIM.
           pfold. right. econs; eauto.
           { i. ss. inv FINALTGT.
             unsguard TGT. des; clarify; ss.
-            - inv FINAL. ss. clarify. esplits; eauto. { apply star_one. des_ifs. rpapply step_internal. econs; eauto. } econs; ss; eauto.
-            - inv FINAL. ss. clarify. esplits; eauto. { apply star_one. des_ifs. rpapply step_internal. econs; eauto. } econs; ss; eauto.
+            - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto.
+            - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto.
           }
           i. econs; eauto; cycle 1.
           { i. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
-            - inv SAFESRC; ss. inv FINAL.
+            - inv SAFESRC; ss. inv FINAL. ss. clarify. left.
+              unsguard TGT. des; clarify.
+              { esplits; eauto. econs; ss; eauto. }
+              { esplits; eauto. econs; ss; eauto. }
             - des_ifs. right. inv SAFESRC; ss.
-              + inv STEP. unsguard TGT. des; clarify.
-                * esplits; eauto. econs 4; ss; eauto. econs; eauto.
+              { inv STEP. }
+              inv FINAL. esplits; eauto. econs 4; eauto.
+              unsguard TGT. des; clarify.
           }
-          
-        admit "".
+          i. ss. des_ifs. inv STEPTGT; ss.
+          { unsguard TGT. des; clarify; inv AT. }
+          { unsguard TGT. des; clarify; inv STEP. }
+          esplits; eauto.
+          -- left. apply plus_one. econs 4; eauto. ss. unsguard TGT. des; clarify; ss; inv FINAL; econs; eauto.
+          -- right. eapply CIH. econs; eauto. econs; eauto.
+        * pfold. left. right. econs; eauto.
+          (* TODO: ---------> we can remove redundancy. current match_states include A-A-B-A-B-A... or B-B-A-B-A-B ... *)
+          unsguard TGT. des; clarify.
+          { inv FOCUS; ss.
+            { exfalso. admit "ez - arithmetic". }
+            {
+              econs 2; eauto.
+              - esplits; eauto.
+                + apply plus_one. econs; eauto.
+                  { admit "ez - determinate". }
+                  ss. des_ifs.
+                  econs 4; ss; eauto.
+                  econs; ss; eauto.
+                  rewrite Int.add_commut.
+                  rewrite Int.sub_add_l. rewrite Int.sub_idem. rewrite Int.add_zero_l. ss.
+                + instantiate (1:= Int.intval max - Int.intval cur - 1). lia.
+              - right. eapply CIH; eauto. unfold Frame.update_st. ss. econs; eauto. econs 3; ss.
+                + unfold __GUARD__. eauto.
+                + admit "ez - arithmetic".
+                + ss.
+                + admit "ez - arithmetic. no overflow".
+            }
+            {
+              econs 2; eauto.
+              - esplits; eauto.
+                + apply plus_one. econs; eauto.
+                  { admit "ez - determinate". }
+                  ss. des_ifs.
+                  econs 4; ss; eauto.
+                  econs; ss; eauto.
+                  rewrite Int.add_commut.
+                  rewrite Int.sub_add_l. rewrite Int.sub_idem. rewrite Int.add_zero_l. ss.
+                + instantiate (1:= Int.intval max - Int.intval cur - 1). lia.
+              - right. eapply CIH; eauto. unfold Frame.update_st. ss. econs; eauto. econs 3; ss.
+                + unfold __GUARD__. eauto.
+                + admit "ez - arithmetic".
+                + ss.
+                + admit "ez - arithmetic. no overflow".
+            }
+          }
+          { inv FOCUS; ss.
+            { exfalso. admit "ez - arithmetic". }
+            {
+              econs 2; eauto.
+              - esplits; eauto.
+                + apply plus_one. econs; eauto.
+                  { admit "ez - determinate". }
+                  ss. des_ifs.
+                  econs 4; ss; eauto.
+                  econs; ss; eauto.
+                  rewrite Int.add_commut.
+                  rewrite Int.sub_add_l. rewrite Int.sub_idem. rewrite Int.add_zero_l. ss.
+                + instantiate (1:= Int.intval max - Int.intval cur - 1). lia.
+              - right. eapply CIH; eauto. unfold Frame.update_st. ss. econs; eauto. econs 3; ss.
+                + unfold __GUARD__. eauto.
+                + admit "ez - arithmetic".
+                + ss.
+                + admit "ez - arithmetic. no overflow".
+            }
+            {
+              econs 2; eauto.
+              - esplits; eauto.
+                + apply plus_one. econs; eauto.
+                  { admit "ez - determinate". }
+                  ss. des_ifs.
+                  econs 4; ss; eauto.
+                  econs; ss; eauto.
+                  rewrite Int.add_commut.
+                  rewrite Int.sub_add_l. rewrite Int.sub_idem. rewrite Int.add_zero_l. ss.
+                + instantiate (1:= Int.intval max - Int.intval cur - 1). lia.
+              - right. eapply CIH; eauto. unfold Frame.update_st. ss. econs; eauto. econs 3; ss.
+                + unfold __GUARD__. eauto.
+                + admit "ez - arithmetic".
+                + ss.
+                + admit "ez - arithmetic. no overflow".
+            }
+          }
   Unshelve.
     all: admit "abc".
-  Qed.
-
-    - (* call *)
-      pfold. right. econs; et.
-      { i; ss. des_ifs. inv FINALTGT. }
-      i.
-      econs; et; cycle 1.
-      + i. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
-        * left. inv SAFESRC.
-        * right. des_ifs. inv SAFESRC. inv MSFIND. ss. des; clarify.
-          { esplits; et. econs; et. econs; et. ss. et. }
-          folder.
-          unfold load_modsems in *. rewrite in_map_iff in *. des_safe. rewrite in_app_iff in *. ss; des; clarify.
-          { esplits; et. econs; et. econs; et. ss. right. unfold load_modsems in *. rewrite in_map_iff.
-            esplits; et. rewrite in_app_iff. et. }
-          { apply genv_sim in INTERNAL. des. ss. rr in FOCUS0. inv INIT.
-            unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs.
-            des; clarify.
-            - esplits; et. econs; et.
-              + econs; et.
-                * ss. right. unfold load_modsems in *. rewrite in_map_iff. esplits; et. 
-                  rewrite in_app_iff. right. left. ss; et.
-                * unfold Genv.find_funct, Genv.find_funct_ptr in *. rewrite Heq1. ss. des_ifs.
-              + econs; ss; et.
-                admit "ez - genv".
-            - esplits; et. econs; et.
-              + econs; et.
-                * ss. right. unfold load_modsems in *. rewrite in_map_iff. esplits; et. 
-                  rewrite in_app_iff. right. right. ss; et.
-                * unfold Genv.find_funct, Genv.find_funct_ptr in *. rewrite Heq1. ss. des_ifs.
-              + econs; ss; et.
-                admit "ez - genv".
-          }
-      + i. ss. des_ifs. inv STEPTGT. inv MSFIND. ss.
-        unfold load_modsems in *.
-        des; clarify.
-        { exploit NFOCUS; et.
-          { admit "this should hold". }
-          i. clarify.
-          esplits; et.
-          - left. apply plus_one. econs; et. econs; et. ss. et.
-          - right. eapply CIH. econs; et. econs; et.
-        }
-        rewrite in_map_iff in *. des. clarify. rewrite in_app_iff in *. des; clarify.
-        { exploit NFOCUS; et.
-          { admit "this should hold". }
-          i. clarify.
-          esplits; et.
-          - left. apply plus_one. econs; et. econs; et. ss. right.
-            unfold load_modsems. rewrite in_map_iff. esplits; et. rewrite in_app_iff. et.
-          - right. eapply CIH. econs; et. econs; et.
-        }
-        { ss.
-          exploit FOCUS; et.
-          { admit "this should hold". }
-          intro STK. inv STK; ss.
-          des; clarify; ss; inv INIT.
-          - esplits; et.
-            + left. apply plus_one. econs.
-              * instantiate (1:= modsem skenv_link tt).
-                econs; et.
-                -- ss. right. unfold load_modsems. rewrite in_map_iff. esplits; cycle 1.
-                   { rewrite in_app_iff. right; ss; et. }
-                   ss.
-                -- instantiate (1:= if_sig). apply genv_sim. exists (MutrecAspec.module). esplits; et; rr; et.
-              * econs; et.
-                -- instantiate (1:= if_sig). apply genv_sim. exists (MutrecAspec.module). esplits; et; rr; et.
-            + right. eapply CIH. econs; et.
-              rewrite cons_app with (xhd := {|
-                Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecAspec.module;
-                Frame.st := MutrecAspec.Callstate i0 (Args.m args) |}).
-              econs 2; et.
-              * refl.
-              * econs; et.
-          - esplits; et.
-            + left. apply plus_one. econs.
-              * instantiate (1:= modsem skenv_link tt).
-                econs; et.
-                -- ss. right. unfold load_modsems. rewrite in_map_iff. esplits; cycle 1.
-                   { rewrite in_app_iff. right; ss; et. }
-                   ss.
-                -- instantiate (1:= if_sig). apply genv_sim. exists (MutrecBspec.module). esplits; et; rr; et.
-              * econs; et.
-                -- instantiate (1:= if_sig). apply genv_sim. exists (MutrecBspec.module). esplits; et; rr; et.
-            + right. eapply CIH. econs; et.
-              rewrite cons_app with (xhd := {|
-                Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecBspec.module;
-                Frame.st := MutrecBspec.Callstate i0 (Args.m args) |}).
-              econs; et.
-              * refl.
-              * econs; et.
-        }
-    - (* call from focus *)
-      pfold. right.
-      econs; et.
-      { ss. i. inv FINALTGT; ss. }
-      i.
-      econs; et; cycle 1.
-      { i; ss. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
-        - left. inv SAFESRC.
-        - right. des_ifs. inv SAFESRC.
-          inv MSFIND. ss. desH MODSEM.
-          { esplits; et. econs; et. econs; et. ss; et. }
-          unfold load_modsems in *. rewrite in_map_iff in *. des_safe. clarify.
-          rewrite in_app_iff in *. desH MODSEM0; clarify.
-          { esplits; et. econs; et. econs; et. ss; et. right.
-            unfold load_modsems in *. rewrite in_map_iff in *. esplits; et. rewrite in_app_iff. des; et.
-          }
-          ss. des_safe; clarify.
-          exploit genv_sim; et. i; des_safe. exploit FINDF; et. i; des_safe. rr in FOCUS0.
-          desH FOCUS0; clarify; inv INIT; esplits; et.
-          + econs.
-            * instantiate (1:= MutrecAspec.modsem skenv_link tt). econs; et. ss. right.
-              unfold load_modsems, flip in *; rewrite in_map_iff in *; folder; esplits; et; cycle 1.
-              { rewrite in_app_iff; ss. right. left. et. }
-              ss.
-            * econs; ss; et.
-              admit "ez - revive// TODO: make lemma".
-          + econs.
-            * instantiate (1:= MutrecBspec.modsem skenv_link tt). econs; et. ss. right.
-              unfold load_modsems, flip in *; rewrite in_map_iff in *; folder; esplits; et; cycle 1.
-              { rewrite in_app_iff; ss. right. right. et. }
-              ss.
-            * econs; ss; et.
-              admit "ez - revive// TODO: make lemma".
-      }
-      i. ss. des_ifs. inv STEPTGT. folder.
-      assert(MSFIND0:
-               Ge.find_fptr_owner
-               (load_genv (ctx ++ [MutrecAspec.module; MutrecBspec.module]) skenv_link)
-               (Args.fptr args) (MutrecAspec.modsem skenv_link tt)
-             \/
-             Ge.find_fptr_owner
-               (load_genv (ctx ++ [MutrecAspec.module; MutrecBspec.module]) skenv_link)
-               (Args.fptr args) (MutrecBspec.modsem skenv_link tt)
-            ).
-      { des.
-        - left. econs; ss; et.
-          + right. unfold load_modsems. rewrite in_map_iff. esplits; ss; et; cycle 1.
-            { rewrite in_app_iff. right; left; ss; et. }
-            ss.
-          + rewrite FPTR. ss. des_ifs. eapply find_symbol_find_funct_ptr_A; et.
-        - right. econs; ss; et.
-          + right. unfold load_modsems. rewrite in_map_iff. esplits; ss; et; cycle 1.
-            { rewrite in_app_iff. right; right; ss; et. }
-            ss.
-          + rewrite FPTR. ss. des_ifs. eapply find_symbol_find_funct_ptr_B; et.
-      }
-      inv MSFIND. ss. desH MODSEM; clarify.
-      { (* system *)
-        exfalso. ss. admit "exploit system_disjoint; et".
-        (* unfold System.skenv in *. *)
-        (* inv INIT. esplits; eauto. *)
-        (* + left. apply plus_one. esplits; eauto; cycle 1. *)
-        (*   econs; et. *)
-        (*   { econs; ss; et. } *)
-        (*   econs; et. *)
-        (* + right. eapply CIH; et. econs; et. econs 3; et. *)
-      }
-      unfold load_modsems in *. rewrite in_map_iff in *. desH MODSEM. clarify.
-      clarify.
-      rewrite in_app_iff in *. desH MODSEM0; clarify.
-      { (* ctx *)
-        exfalso. ss. admit "somehow".
-        (* esplits; eauto. *)
-        (* + left. apply plus_one. econs; et. econs; et. ss. right. *)
-        (*   unfold load_modsems in *. rewrite in_map_iff. esplits; et. *)
-        (*   rewrite in_app_iff. ss. et. *)
-        (* + right. eapply CIH; et. econs; et. *)
-        (*   rewrite cons_app with (xtl := frs_tgt). *)
-        (*   econs 3; et. *)
-      }
-      { (* focus *)
-        folder.
-        inv STK.
-        assert(exists i, <<ARGS: Args.vs args = [Vint i]>>).
-        { ss. des; clarify; inv INIT; et. }
-        des.
-        esplits; et.
-        + left. apply plus_one. econs.
-          { instantiate (1:= modsem skenv_link tt). econs; ss; et.
-            - right.
-              unfold load_modsems in *. rewrite in_map_iff. unfold flip. esplits; et; cycle 1.
-              { rewrite in_app_iff. ss. et. }
-              ss.
-            - instantiate (1:= if_sig).
-              eapply genv_sim; et. esplits; et. rr; des; ss; et.
-          }
-          econs; et.
-          eapply genv_sim; et. esplits; et. rr; des; ss; et. des; clarify; et.
-        + right. eapply CIH. instantiate (1:= i.(Int.intval)). econs; et.
-          rewrite cons_app with (xhd := {| Frame.ms := flip Mod.modsem skenv_link x; Frame.st := st_init |}).
-          econs 3.
-          { et. }
-          { refl. }
-          { ss. des; clarify; ss; inv INIT. econs. et. }
-          destruct args; ss. clarify.
-          des; ss; clarify.
-          * inv INIT; ss; clarify. econs; et. refl.
-          * inv INIT; ss; clarify. econs; et. refl.
-    - (* Sem.State *)
-      inv STK.
-      + pfold. left. right. econs; et.
-        econs; et; cycle 1.
-        { ss. i. inv FINALSRC; ss. }
-        i. ss. des_ifs. inv STEPSRC.
-      + pfold. right. econs; et.
-        { ss. i. inv FINALTGT; ss. inv TAIL; ss; cycle 1.
-          { destruct hds_tgt, tail_tgt; ss. inv TGT; ss. }
-          esplits; et.
-          { apply star_refl. }
-          econs; ss; et.
-        }
-        i.
-        econs; et; cycle 1.
-        { ss. i. specialize (SAFESRC _ (star_refl _ _ _ _)). des.
-          - left. inv SAFESRC. inv TAIL. esplits; et. econs; et.
-          - right. des_ifs. inv SAFESRC; inv TAIL; try (by esplits; et; econs; et).
-        }
-        i. ss. des_ifs. inv STEPTGT; ss.
-        * esplits; et.
-          { left. apply plus_one. econs; et. }
-          right. eapply CIH; et. econs; et. econs; et.
-        * esplits; et.
-          { left. apply plus_one. econs; et. }
-          right. eapply CIH; et. econs; et. econs; et.
-        * inv TAIL.
-          -- esplits; et.
-             { left. apply plus_one. econs 4; et. }
-             right. eapply CIH; et. econs; et. econs; et.
-          -- esplits; et.
-             { left. apply plus_one. econs 4; et. }
-             right. eapply CIH; et. econs; et. econs; et.
-          econs; et.
-      inv MSFIND. ss. des; clarify.
-      { (* system *)
-        inv INIT. esplits; eauto.
-        + left. esplits; eauto; cycle 1.
-          { admit "ez - semprops receptive". }
-          apply plus_one.
-          econs; et.
-          { admit "ez - semprops determinate". }
-          ss. des_ifs. econs; et.
-          { econs; ss; et. }
-          econs; et.
-        + right. eapply CIH; et. econs; et. econs; et.
-      }
-      unfold load_modsems in *.
-      rewrite in_map_iff in *. des. clarify. rewrite in_app_iff in *. des; clarify.
-      { (* ctx *)
-        esplits; eauto.
-        + left. esplits; eauto; cycle 1.
-          { admit "ez - semprops receptive". }
-          apply plus_one.
-          econs; et.
-          { admit "ez - semprops determinate". }
-          ss. des_ifs. econs; et.
-          { econs; ss; et. }
-          econs; et.
-        + right. eapply CIH; et. econs; et. econs; et.
-        +
-      }
-    -
-    admit "".
   Qed.
 
 End LXSIM.
@@ -663,7 +495,7 @@ Proof.
   eapply mixed_to_backward_simulation.
   econs; eauto.
   econs; swap 2 3.
-  { apply lt_wf. }
+  { instantiate (1:= Zwf.Zwf 0%Z). eapply Zwf.Zwf_well_founded. }
   { i; des. ss. inv SAFESRC. rewrite INITSK.
     ss. rewrite link_sk_same. des_ifs.
   }
@@ -680,8 +512,7 @@ Proof.
         * eapply wf_module_Bspec; et.
     - i; ss. inv INIT0. inv INIT1. clarify.
   }
-  eapply match_states_xsim; et.
-  econs; et. econs; et.
+  eapply match_states_xsim.
 Qed.
 
 

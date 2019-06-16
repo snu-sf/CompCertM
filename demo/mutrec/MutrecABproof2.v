@@ -103,25 +103,16 @@ Section LXSIM.
   Qed.
 
   Inductive match_focus: mem -> int -> int -> list Frame.t -> Prop :=
-  (* | match_focus_nil *)
-  (*     cur max m *)
-  (*     (OVER: cur = Int.add max Int.one) *)
-  (*   : *)
-  (*     match_focus m cur max [] *)
   | match_focus_cons_A
-      cur max m tl_tgt
-      (REC: max <> cur -> match_focus m (Int.add cur Int.one) max tl_tgt)
-      (END: max = cur -> tl_tgt = [])
-      (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
+      cur max m i tl_tgt
+      (REC: match_focus m (Int.add cur Int.one) max tl_tgt \/ cur = max)
     :
-      match_focus m cur max ((Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate cur m)) :: tl_tgt)
+      match_focus m cur max ((Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate i m)) :: tl_tgt)
   | match_focus_cons_B
-      cur max m tl_tgt
-      (REC: max <> cur -> match_focus m (Int.add cur Int.one) max tl_tgt)
-      (END: max = cur -> tl_tgt = [])
-      (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
+      cur max m i tl_tgt
+      (REC: match_focus m (Int.add cur Int.one) max tl_tgt \/ cur = max)
     :
-      match_focus m cur max ((Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate cur m)) :: tl_tgt)
+      match_focus m cur max ((Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate i m)) :: tl_tgt)
   .
 
   Inductive match_stacks (fromcall: bool) (idx: Z): list Frame.t -> list Frame.t -> Prop :=
@@ -145,7 +136,7 @@ Section LXSIM.
       hd_tgt
       (TGT: __GUARD__ ((hd_tgt = Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate cur m)) \/
                        (hd_tgt = Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate cur m))))
-      (* (LE: (cur.(Int.intval) <= max.(Int.intval))%Z) *)
+      (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (IDX: idx = (max.(Int.intval) + cur.(Int.intval)) + 1)
     :
@@ -157,7 +148,7 @@ Section LXSIM.
       hd_tgt
       (TGT: __GUARD__ ((hd_tgt = Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Returnstate (sum cur) m)) \/
                        (hd_tgt = Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Returnstate (sum cur) m))))
-      (* (LE: (cur.(Int.intval) <= max.(Int.intval))%Z) *)
+      (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (FROMCALL: fromcall = false)
       (IDX: idx = max.(Int.intval) - cur.(Int.intval))
@@ -185,20 +176,6 @@ Section LXSIM.
 
   Lemma int_zero_intval: Int.intval Int.zero = 0%Z.
   Proof. unfold Int.intval. ss. Qed.
-
-  (* Lemma match_focus_over_implies_nil *)
-  (*       m max hds_tgt *)
-  (*       (MATCH :match_focus m (Int.add max Int.one) max hds_tgt) *)
-  (*   : *)
-  (*     hds_tgt = nil *)
-  (* . *)
-  (* Proof. *)
-  (*   inv MATCH; ss. *)
-  (*   -  *)
-  (*   clear - MATCH. *)
-  (*   ginduction MATCH; ii; ss; clarify. *)
-  (*   - inv MATCH. *)
-  (* Qed. *)
 
   Lemma match_states_xsim
         i st_src0 st_tgt0
@@ -304,9 +281,7 @@ Section LXSIM.
               + refl.
               + unfold __GUARD__. ss. eauto.
               + rewrite ARITH. lia.
-              + econs; eauto.
-                rpapply FOCUS.
-                rewrite Int.sub_add_opp. f_equal. rewrite Int.add_assoc.
+              + econs; eauto. left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc.
                 rewrite Int.add_commut with (y := Int.one).
                 rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
               + rewrite ARITH. lia.
@@ -348,21 +323,12 @@ Section LXSIM.
               + refl.
               + unfold __GUARD__. ss. eauto.
               + rewrite ARITH. lia.
-              + econs; eauto.
-                rpapply FOCUS.
-                rewrite Int.sub_add_opp. f_equal. rewrite Int.add_assoc.
+              + econs; eauto. left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc.
                 rewrite Int.add_commut with (y := Int.one).
                 rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
               + rewrite ARITH. lia.
           }
       + (* focus - return *)
-        destruct (classic (cur = max)).
-        {
-          clarify.
-          inv FOCUS.
-        }
-        inv FOCUS.
-        * pfold.
         admit "".
   Unshelve.
     all: admit "abc".

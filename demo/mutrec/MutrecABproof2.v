@@ -103,17 +103,32 @@ Section LXSIM.
   Qed.
 
   Inductive match_focus: mem -> int -> int -> list Frame.t -> Prop :=
+  | match_focus_nil
+      cur max m
+      (OVER: cur.(Int.intval) > max.(Int.intval))
+    :
+      match_focus m cur max []
   | match_focus_cons_A
-      cur max m i tl_tgt
-      (REC: match_focus m (Int.add cur Int.one) max tl_tgt \/ cur = max)
+      cur max m tl_tgt
+      (REC: match_focus m (Int.add cur Int.one) max tl_tgt)
     :
-      match_focus m cur max ((Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate i m)) :: tl_tgt)
+      match_focus m cur max ((Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate cur m)) :: tl_tgt)
   | match_focus_cons_B
-      cur max m i tl_tgt
-      (REC: match_focus m (Int.add cur Int.one) max tl_tgt \/ cur = max)
+      cur max m tl_tgt
+      (REC: match_focus m (Int.add cur Int.one) max tl_tgt)
     :
-      match_focus m cur max ((Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate i m)) :: tl_tgt)
+      match_focus m cur max ((Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate cur m)) :: tl_tgt)
   .
+
+  Lemma match_focus_over_nil
+        m max hds_tgt
+        (FOCUS: match_focus m (Int.add max Int.one) max hds_tgt)
+    :
+      hds_tgt = nil
+  .
+  Proof.
+    admit "not true now. -- we should know it does not overflow, then it is trivial".
+  Qed.
 
   Inductive match_stacks (fromcall: bool) (idx: Z): list Frame.t -> list Frame.t -> Prop :=
   | match_stacks_ctx
@@ -176,6 +191,14 @@ Section LXSIM.
 
   Lemma int_zero_intval: Int.intval Int.zero = 0%Z.
   Proof. unfold Int.intval. ss. Qed.
+
+  Lemma int_add_sub: forall cur x, (Int.add (Int.sub cur x) x) = cur.
+  Proof.
+    i.
+    rewrite Int.sub_add_opp. rewrite Int.add_assoc.
+    rewrite Int.add_commut with (y := x).
+    rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
+  Qed.
 
   Lemma match_states_xsim
         i st_src0 st_tgt0
@@ -281,9 +304,13 @@ Section LXSIM.
               + refl.
               + unfold __GUARD__. ss. eauto.
               + rewrite ARITH. lia.
-              + econs; eauto. left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc.
-                rewrite Int.add_commut with (y := Int.one).
-                rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
+              + rewrite int_add_sub.
+                econs; eauto.
+                (* left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc. *)
+                (* rewrite Int.add_commut with (y := Int.one). *)
+                (* rewrite Int.add_neg_zero. rewrite Int.add_zero. ss. *)
+                (* admit "". *)
+                (* admit "". *)
               + rewrite ARITH. lia.
           }
           {
@@ -323,12 +350,32 @@ Section LXSIM.
               + refl.
               + unfold __GUARD__. ss. eauto.
               + rewrite ARITH. lia.
-              + econs; eauto. left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc.
-                rewrite Int.add_commut with (y := Int.one).
-                rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
+              + rewrite int_add_sub.
+                econs; eauto.
+                (* left. rpapply FOCUS. f_equal. rewrite Int.sub_add_opp. rewrite Int.add_assoc. *)
+                (* rewrite Int.add_commut with (y := Int.one). *)
+                (* rewrite Int.add_neg_zero. rewrite Int.add_zero. ss. *)
+                (* admit "". *)
+                (* admit "". *)
               + rewrite ARITH. lia.
           }
       + (* focus - return *)
+        destruct (classic (cur = max)).
+        * clarify. exploit match_focus_over_nil; eauto. i; clarify.
+          pfold. right. econs; eauto.
+          { i. ss. inv FINALTGT.
+            unsguard TGT. des; clarify; ss.
+            - inv FINAL. ss. clarify. esplits; eauto. { apply star_one. des_ifs. rpapply step_internal. econs; eauto. } econs; ss; eauto.
+            - inv FINAL. ss. clarify. esplits; eauto. { apply star_one. des_ifs. rpapply step_internal. econs; eauto. } econs; ss; eauto.
+          }
+          i. econs; eauto; cycle 1.
+          { i. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
+            - inv SAFESRC; ss. inv FINAL.
+            - des_ifs. right. inv SAFESRC; ss.
+              + inv STEP. unsguard TGT. des; clarify.
+                * esplits; eauto. econs 4; ss; eauto. econs; eauto.
+          }
+          
         admit "".
   Unshelve.
     all: admit "abc".

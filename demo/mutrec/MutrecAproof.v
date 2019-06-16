@@ -263,7 +263,6 @@ Proof.
             econs; ss; eauto.
             - repeat (econs; ss; eauto).
               + unfold typify. des_ifs.
-              + ss.
             - ss.
           }
 

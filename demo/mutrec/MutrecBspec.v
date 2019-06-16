@@ -38,7 +38,7 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame1_intro
       i m blk
-      (SYMB: Genv.find_symbol skenv f_id = Some blk)
+      (SYMB: Genv.find_symbol skenv g_id = Some blk)
       (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero)
       (* (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal func_g)) *)
       (VS: args.(Args.vs) = [Vint i])

@@ -24,9 +24,8 @@ Definition func_f := {|
       (Evar g_id (Tfunction (Tcons tint Tnil) tint cc_default))
       ((Ebinop Osub (Etempvar _x tint) (Econst_int (Int.repr 1) tint) tint) ::
        nil))
-    (Sreturn (Some (Ebinop Osub
-                     (Ebinop Oadd (Etempvar _t'1 tint) (Etempvar _x tint)
-                       tint) (Econst_int (Int.repr 1) tint) tint)))))
+    (Sreturn (Some (Ebinop Oadd (Etempvar _t'1 tint) (Etempvar _x tint)
+                           tint)))))
 |}.
 
 Definition composites : list composite_definition := nil.

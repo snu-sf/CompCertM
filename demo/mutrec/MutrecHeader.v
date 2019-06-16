@@ -12,7 +12,7 @@ Definition g_id := (176%positive).
 (* Definition MAX: Z := 100%Z. *)
 
 Definition sum (i: int): int :=
-  let sumz: Z := fold_rec Z Z.add 0%Z 0%Z i.(Int.intval) in
+  let sumz: Z := fold_rec Z Z.add 0%Z 0%Z (i.(Int.intval) + 1)%Z in
   Int.repr sumz
 .
 
@@ -29,15 +29,16 @@ Proof.
   clarify.
 Qed.
 
+(* Local Transparent Int.repr. *)
 Lemma sum_recurse
       i
   :
-    (sum i) = if Z.eqb i.(Int.intval) 0%Z then Int.zero else Int.add (sum (Int.sub i Int.one)) (Int.sub i Int.one)
+    (sum i) = if Z.eqb i.(Int.intval) 0%Z then Int.zero else Int.add (sum (Int.sub i Int.one)) i 
 .
 Proof.
   des_ifs.
   - apply Z.eqb_eq in Heq. destruct i; ss. clarify. unfold sum. ss.
-    rewrite fold_rec_equation. des_ifs.
+    rewrite fold_rec_equation. des_ifs. zsimpl. rewrite fold_rec_equation. des_ifs.
   - destruct i; ss. apply Z.eqb_neq in Heq.
     assert(intval >= 1) by xomega.
     unfold Int.sub. ss.
@@ -67,7 +68,8 @@ Proof.
     }
     rewrite Int.Ptrofs_add_repr.
     f_equal.
-    rewrite Z.add_sub_assoc.
+    zsimpl.
+    rewrite Z.add_comm. f_equal. f_equal.
     Local Transparent Int.repr.
     ss.
     Local Opaque Int.repr.

@@ -111,42 +111,18 @@ Section LXSIM.
   | match_focus_cons_A
       cur max m tl_tgt
       (REC: max <> cur -> match_focus m (Int.add cur Int.one) max tl_tgt)
-      (END: max = cur -> tl_tgt = [(Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate cur m))])
+      (END: max = cur -> tl_tgt = [])
       (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
     :
       match_focus m cur max ((Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate cur m)) :: tl_tgt)
   | match_focus_cons_B
       cur max m tl_tgt
       (REC: max <> cur -> match_focus m (Int.add cur Int.one) max tl_tgt)
-      (END: max = cur -> tl_tgt = [(Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate cur m))])
+      (END: max = cur -> tl_tgt = [])
       (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
     :
       match_focus m cur max ((Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate cur m)) :: tl_tgt)
   .
-
-  (* Lemma match_focus_over_implies_nil *)
-  (*       m max hds_tgt *)
-  (*       (MATCH :match_focus m (Int.add max Int.one) max hds_tgt) *)
-  (*   : *)
-  (*     hds_tgt = nil *)
-  (* . *)
-  (* Proof. *)
-  (*   inv MATCH; ss. *)
-  (*   -  *)
-  (*   clear - MATCH. *)
-  (*   ginduction MATCH; ii; ss; clarify. *)
-  (*   - inv MATCH. *)
-  (* Qed. *)
-
-  Lemma match_focus_le
-        m cur max tls
-        (MATCH: match_focus m cur max tls)
-    :
-      cur.(Int.intval) <= max.(Int.intval)
-  .
-  Proof.
-    inv MATCH; ss.
-  Qed.
 
   Inductive match_stacks (fromcall: bool) (idx: Z): list Frame.t -> list Frame.t -> Prop :=
   | match_stacks_ctx
@@ -210,13 +186,19 @@ Section LXSIM.
   Lemma int_zero_intval: Int.intval Int.zero = 0%Z.
   Proof. unfold Int.intval. ss. Qed.
 
-  Lemma int_add_sub: forall cur x, (Int.add (Int.sub cur x) x) = cur.
-  Proof.
-    i.
-    rewrite Int.sub_add_opp. rewrite Int.add_assoc.
-    rewrite Int.add_commut with (y := x).
-    rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
-  Qed.
+  (* Lemma match_focus_over_implies_nil *)
+  (*       m max hds_tgt *)
+  (*       (MATCH :match_focus m (Int.add max Int.one) max hds_tgt) *)
+  (*   : *)
+  (*     hds_tgt = nil *)
+  (* . *)
+  (* Proof. *)
+  (*   inv MATCH; ss. *)
+  (*   -  *)
+  (*   clear - MATCH. *)
+  (*   ginduction MATCH; ii; ss; clarify. *)
+  (*   - inv MATCH. *)
+  (* Qed. *)
 
   Lemma match_states_xsim
         i st_src0 st_tgt0
@@ -247,7 +229,7 @@ Section LXSIM.
       inv STK.
       + (* ctx *)
         admit "ctx".
-      + (* foccs-call *)
+      + (* focus-call *)
         pfold. left; right. econs; et.
         (* econs; et; cycle 1. *)
         (* { i; ss. inv FINALSRC. ss. inv FINAL. } *)
@@ -269,6 +251,7 @@ Section LXSIM.
             - right. eapply CIH. econs 2; eauto. econs 3; eauto.
               + unfold Frame.update_st. ss. unfold __GUARD__. rewrite sum_recurse. des_ifs; et.
               + rewrite int_zero_intval. lia.
+              + rewrite int_zero_intval. lia.
           }
           { ss.
             rewrite int_zero_intval in *.
@@ -280,6 +263,7 @@ Section LXSIM.
               + instantiate (1:= Int.intval max%Z). lia.
             - right. eapply CIH. econs 2; eauto. econs 3; eauto.
               + unfold Frame.update_st. ss. unfold __GUARD__. rewrite sum_recurse. des_ifs; et.
+              + rewrite int_zero_intval. lia.
               + rewrite int_zero_intval. lia.
           }
         * unsguard TGT. des; clarify.
@@ -319,10 +303,12 @@ Section LXSIM.
               econs 2.
               + refl.
               + unfold __GUARD__. ss. eauto.
-              + rewrite int_add_sub. dup FOCUS. apply match_focus_le in FOCUS. econs; eauto; ss.
-                * ii. clarify.
-                  admit "ez - arithmetic. it does not overflow".
-                * admit "ez - arithmetic. it does not overflow".
+              + rewrite ARITH. lia.
+              + econs; eauto.
+                rpapply FOCUS.
+                rewrite Int.sub_add_opp. f_equal. rewrite Int.add_assoc.
+                rewrite Int.add_commut with (y := Int.one).
+                rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
               + rewrite ARITH. lia.
           }
           {
@@ -361,19 +347,19 @@ Section LXSIM.
               econs 2.
               + refl.
               + unfold __GUARD__. ss. eauto.
-              + rewrite int_add_sub. dup FOCUS. apply match_focus_le in FOCUS. econs; eauto; ss.
-                * ii. clarify.
-                  admit "ez - arithmetic. it does not overflow".
-                * admit "ez - arithmetic. it does not overflow".
+              + rewrite ARITH. lia.
+              + econs; eauto.
+                rpapply FOCUS.
+                rewrite Int.sub_add_opp. f_equal. rewrite Int.add_assoc.
+                rewrite Int.add_commut with (y := Int.one).
+                rewrite Int.add_neg_zero. rewrite Int.add_zero. ss.
               + rewrite ARITH. lia.
           }
       + (* focus - return *)
         destruct (classic (cur = max)).
         {
           clarify.
-          dup FOCUS. apply match_focus_le in FOCUS.
-          exfalso.
-          admit "ez - arithmetic. it does not overflow".
+          inv FOCUS.
         }
         inv FOCUS.
         * pfold.

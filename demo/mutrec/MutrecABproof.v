@@ -136,14 +136,6 @@ Section LXSIM.
       (IDX: idx = 0%Z)
     :
       match_stacks fromcall idx ctx_stk ctx_stk
-  (* | match_stacks_focus_top_call *)
-  (*     ctx_stk *)
-  (*     cur max m hd_src hds_tgt *)
-  (*     (SRC: hd_src = Frame.mk (MutrecABspec.modsem skenv_link tt) (MutrecABspec.Callstate max m)) *)
-  (*     (LE: (cur <= max.(Int.intval))%Z) *)
-  (*     (TGT: match_focus m cur max.(Int.intval) hds_tgt) *)
-  (*   : *)
-  (*     match_stacks cur (hd_src :: ctx_stk) (hds_tgt ++ ctx_stk) *)
   | match_stacks_focus_top_call
       ctx_stk
       cur max m hd_src hds_tgt
@@ -177,10 +169,6 @@ Section LXSIM.
       frs_src frs_tgt
       args
       (STK: match_stacks true i frs_src frs_tgt)
-      (* blk *)
-      (* (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero) *)
-      (* (NFOCUS: ~(Genv.find_symbol skenv_link f_id = Some blk \/ Genv.find_symbol skenv_link g_id = Some blk) -> frs_src = frs_tgt) *)
-      (* (FOCUS: (Genv.find_symbol skenv_link f_id = Some blk \/ Genv.find_symbol skenv_link g_id = Some blk) -> match_stacks i frs_src frs_tgt) *)
     :
       match_states i (Callstate args frs_src) (Callstate args frs_tgt)
   | match_states_normal
@@ -217,19 +205,116 @@ Section LXSIM.
         pfold. right. econs; et.
         { i; ss. des_ifs. inv FINALTGT. }
         i.
-        admit "ctx".
+        econs; eauto; cycle 1.
+        { i. specialize (SAFESRC _ (star_refl _ _ _ _)). ss. des_ifs. des.
+          - inv SAFESRC.
+          - inv SAFESRC. right. inv MSFIND. ss. des; clarify.
+            { esplits; eauto. econs; eauto. econs; eauto. ss. eauto. }
+            unfold load_modsems in *. rewrite in_map_iff in *. des.clarify. rewrite in_app_iff in *.
+            ss. des; clarify.
+            { esplits; eauto. econs; eauto. econs; eauto. ss. right. unfold load_modsems.
+              rewrite in_map_iff. esplits; eauto. rewrite in_app_iff; eauto. }
+            apply genv_sim in INTERNAL. des. rr in FOCUS. inv INIT.
+            unfold Genv.find_funct in *. des_ifs.
+            des; clarify.
+            { esplits; eauto. econs.
+              { econs; eauto; cycle 1.
+                { unfold Genv.find_funct. des_ifs. eauto. }
+                ss. right. unfold load_modsems. rewrite in_map_iff.
+                esplits; eauto. rewrite in_app_iff. ss. eauto. }
+              econs; ss; eauto.
+              admit "ez - genv. this should hold".
+            }
+            { esplits; eauto. econs.
+              { econs; eauto; cycle 1.
+                { unfold Genv.find_funct. des_ifs. eauto. }
+                ss. right. unfold load_modsems. rewrite in_map_iff.
+                esplits; eauto. rewrite in_app_iff. ss. eauto. }
+              econs; ss; eauto.
+              admit "ez - genv. this should hold".
+            }
+        }
+        i. ss. des_ifs. inv STEPTGT. inv MSFIND. ss.
+        unfold load_modsems in *. des; clarify.
+        { esplits; eauto.
+          - left. apply plus_one. econs; eauto. econs; eauto. ss. eauto.
+          - right. eapply CIH; eauto. econs; eauto. econs; eauto. }
+        rewrite in_map_iff in *. des; clarify. rewrite in_app_iff in *. des; clarify.
+        { esplits; eauto.
+          - left. apply plus_one. econs; eauto. econs; eauto. ss. right.
+            unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff; eauto.
+          - right. eapply CIH; eauto. econs; eauto. econs; eauto. }
+        ss. des; clarify.
+        { inv INIT. ss. esplits; eauto.
+          - left. apply plus_one. econs.
+            { econs.
+              { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff.
+                ss. eauto. }
+              eapply genv_sim. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
+            }
+            econs; ss; eauto.
+            + eapply genv_sim. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
+          - right. eapply CIH; eauto. econs; eauto.
+            rewrite cons_app with (xhd := {|
+              Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecAspec.module;
+              Frame.st := MutrecAspec.Callstate i (Args.m args) |}).
+            econs; ss; try refl; eauto.
+            { unfold __GUARD__. eauto. }
+            econs; eauto. admit "ez - no overflow".
+        }
+        { inv INIT. ss. esplits; eauto.
+          - left. apply plus_one. econs.
+            { econs.
+              { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff.
+                ss. eauto. }
+              eapply genv_sim. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
+            }
+            econs; ss; eauto.
+            + eapply genv_sim. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
+          - right. eapply CIH; eauto. econs; eauto.
+            rewrite cons_app with (xhd := {|
+              Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecBspec.module;
+              Frame.st := MutrecBspec.Callstate i (Args.m args) |}).
+            econs; ss; try refl; eauto.
+            { unfold __GUARD__. eauto. }
+            econs; eauto. admit "ez - no overflow".
+        }
       + (* focus-call *)
         pfold. left; right. econs; et.
-        econs; et; cycle 1.
-        { i; ss. inv FINALSRC. }
-        i.
+        econs 2; et.
+        (* { i; ss. inv FINALSRC. } *)
+        * esplits; eauto.
+          { apply plus_one. econs; et.
+            { admit "ez - determinate". }
+            ss. des_ifs. econs; et.
+            TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTttt
         admit "todo".
       + (* focus-return *)
         ss.
     - (* normal *)
       inv STK.
       + (* ctx *)
-        admit "ctx".
+        pfold. right. econs; eauto.
+        { ii; ss. inv FINALTGT. des_ifs. esplits; eauto. { apply star_refl. } econs; eauto. }
+        i. ss. econs; eauto; cycle 1.
+        { i. specialize (SAFESRC _ (star_refl _ _ _ _)). ss; des_ifs. des; ss.
+          - left. esplits; eauto.
+          - right. inv SAFESRC; ss.
+            { esplits; eauto. econs 1; eauto. }
+            { esplits; eauto. econs 3; eauto. }
+            { esplits; eauto. econs 4; eauto. }
+        }
+        i. ss. des_ifs.
+        inv STEPTGT; ss.
+        * esplits; eauto.
+          { left. apply plus_one. econs 1; eauto. }
+          right. eapply CIH; eauto. econs; eauto. econs; eauto.
+        * esplits; eauto.
+          { left. apply plus_one. econs 3; eauto. }
+          right. eapply CIH; eauto. econs; eauto. econs; eauto.
+        * esplits; eauto.
+          { left. apply plus_one. econs 4; eauto. }
+          right. eapply CIH; eauto. econs; eauto. econs; eauto.
       + (* focus-call *)
         pfold. left; right. econs; et.
         (* econs; et; cycle 1. *)

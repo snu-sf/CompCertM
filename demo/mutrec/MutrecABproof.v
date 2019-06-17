@@ -294,22 +294,30 @@ Section LXSIM.
         hexploit1 HASFOCUS; ss. des. apply genv_sim in HASFOCUS0. des. rr in FOCUS0.
         unfold Genv.find_funct in *. des_ifs. des; clarify.
         {
-          econs 2; et.
-          * esplits; eauto.
-            { apply plus_one. econs; et.
-              { admit "ez - determinate". }
-              ss. des_ifs. econs; et.
-              { econs; eauto.
-                { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto.
-                  rewrite in_app_iff. right. left. eauto. }
-                unfold Genv.find_funct. des_ifs. eauto.
-              }
-              econs; ss; eauto.
-              { admit "ez - genv". }
+          econs; et; cycle 1.
+          { ii; ss. inv FINALSRC. }
+          ii; ss. des_ifs. inv STEPSRC.
+          assert(MS: ms = modsem skenv_link tt).
+          { admit "this should hold -- use FINDF and disjointness". }
+          clarify. ss. inv INIT.
+          esplits; eauto.
+          * left. esplits; eauto; cycle 1.
+            { admit "ez - receptive". }
+            apply plus_one. econs; et.
+            { admit "ez - determinate". }
+            ss. des_ifs. econs 2; et.
+            { econs; eauto.
+              { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto.
+                rewrite in_app_iff. right. left. eauto. }
+              unfold Genv.find_funct. des_ifs. eauto.
             }
-            instantiate (1:= (Int.intval cur)).
-            admit "this does not hold!!".
-          * right. eapply CIH. admit "TODO".
+            econs; ss; eauto.
+            { admit "ez - genv". }
+          * right. eapply CIH. econs; eauto.
+            rpapply match_stacks_focus_top_call; eauto; cycle 2.
+            { f_equal.
+            { unfold __GUARD__. eauto. }
+            econs 2; eauto.
         }
         { admit "copy-paste". }
       + (* focus-return *)
@@ -410,7 +418,7 @@ Section LXSIM.
                   }
                   ss. econs; ss; eauto.
                   admit "ez - genv g_id some".
-              + instantiate (1:= Int.intval cur - 1). rr. esplits; try lia. admit "by definition".
+              + instantiate (1:= Int.intval cur - 1). rr. esplits; try lia. admit "ez - by definition".
             - right. eapply CIH. econs; eauto.
               assert(ARITH: Int.intval (Int.sub cur (Int.repr 1)) = Int.intval cur - 1).
               { admit "ez - arithmetic. it does not underflow". }
@@ -457,7 +465,7 @@ Section LXSIM.
                   }
                   ss. econs; ss; eauto.
                   admit "ez - genv f_id some".
-              + instantiate (1:= Int.intval cur - 1). split; try lia. admit "by definition".
+              + instantiate (1:= Int.intval cur - 1). split; try lia. admit "ez - by definition".
             - right. eapply CIH. econs; eauto.
               assert(ARITH: Int.intval (Int.sub cur (Int.repr 1)) = Int.intval cur - 1).
               { admit "ez - arithmetic. it does not underflow". }

@@ -130,12 +130,13 @@ Section LXSIM.
     admit "not true now. -- we should know it does not overflow, then it is trivial".
   Qed.
 
-  Inductive match_stacks (fromcall: bool) (idx: Z): list Frame.t -> list Frame.t -> Prop :=
+  Inductive match_stacks (fromcall: bool) (hasfocus: bool) (idx: Z): list Frame.t -> list Frame.t -> Prop :=
   | match_stacks_ctx
       ctx_stk
       (IDX: idx = 0%Z)
+      (FOCUS: hasfocus = false)
     :
-      match_stacks fromcall idx ctx_stk ctx_stk
+      match_stacks fromcall hasfocus idx ctx_stk ctx_stk
   | match_stacks_focus_top_call
       ctx_stk
       cur max m hd_src hds_tgt
@@ -147,8 +148,9 @@ Section LXSIM.
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (* (IDX: idx = (max.(Int.intval) + cur.(Int.intval)) + 1) *)
       (IDX: idx = cur.(Int.intval))
+      (FOCUS: hasfocus = true)
     :
-      match_stacks fromcall idx (hd_src :: ctx_stk) (hd_tgt :: hds_tgt ++ ctx_stk)
+      match_stacks fromcall hasfocus idx (hd_src :: ctx_stk) (hd_tgt :: hds_tgt ++ ctx_stk)
   | match_stacks_focus_top_return
       ctx_stk
       cur max m hd_src hds_tgt
@@ -160,20 +162,28 @@ Section LXSIM.
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (FROMCALL: fromcall = false)
       (IDX: idx = max.(Int.intval) - cur.(Int.intval))
+      (FOCUS: hasfocus = true)
     :
-      match_stacks fromcall idx (hd_src :: ctx_stk) (hd_tgt :: hds_tgt ++ ctx_stk)
+      match_stacks fromcall hasfocus idx (hd_src :: ctx_stk) (hd_tgt :: hds_tgt ++ ctx_stk)
   .
 
   Inductive match_states (i: Z): Sem.state -> Sem.state -> Prop :=
   | match_states_call
       frs_src frs_tgt
-      args
-      (STK: match_stacks true i frs_src frs_tgt)
+      args hasfocus
+      (STK: match_stacks true hasfocus i frs_src frs_tgt)
+      (HASFOCUS: hasfocus = true ->
+                 (exists j, args.(Args.vs) = [Vint j]) /\
+                 (exists if_sig,
+                     Genv.find_funct (SkEnv.project skenv_link MutrecABspec.sk_link) args.(Args.fptr) =
+                     Some (AST.Internal if_sig))
+      )
     :
       match_states i (Callstate args frs_src) (Callstate args frs_tgt)
   | match_states_normal
       frs_src frs_tgt
-      (STK: match_stacks false i frs_src frs_tgt)
+      hasfocus
+      (STK: match_stacks false hasfocus i frs_src frs_tgt)
     :
       match_states i (State frs_src) (State frs_tgt)
   .
@@ -210,7 +220,7 @@ Section LXSIM.
           - inv SAFESRC.
           - inv SAFESRC. right. inv MSFIND. ss. des; clarify.
             { esplits; eauto. econs; eauto. econs; eauto. ss. eauto. }
-            unfold load_modsems in *. rewrite in_map_iff in *. des.clarify. rewrite in_app_iff in *.
+            unfold load_modsems in *. rewrite in_map_iff in *. des. clarify. rewrite in_app_iff in *.
             ss. des; clarify.
             { esplits; eauto. econs; eauto. econs; eauto. ss. right. unfold load_modsems.
               rewrite in_map_iff. esplits; eauto. rewrite in_app_iff; eauto. }
@@ -281,14 +291,27 @@ Section LXSIM.
         }
       + (* focus-call *)
         pfold. left; right. econs; et.
-        econs 2; et.
-        (* { i; ss. inv FINALSRC. } *)
-        * esplits; eauto.
-          { apply plus_one. econs; et.
-            { admit "ez - determinate". }
-            ss. des_ifs. econs; et.
-            TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTttt
-        admit "todo".
+        hexploit1 HASFOCUS; ss. des. apply genv_sim in HASFOCUS0. des. rr in FOCUS0.
+        unfold Genv.find_funct in *. des_ifs. des; clarify.
+        {
+          econs 2; et.
+          * esplits; eauto.
+            { apply plus_one. econs; et.
+              { admit "ez - determinate". }
+              ss. des_ifs. econs; et.
+              { econs; eauto.
+                { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto.
+                  rewrite in_app_iff. right. left. eauto. }
+                unfold Genv.find_funct. des_ifs. eauto.
+              }
+              econs; ss; eauto.
+              { admit "ez - genv". }
+            }
+            instantiate (1:= (Int.intval cur)).
+            admit "this does not hold!!".
+          * right. eapply CIH. admit "TODO".
+        }
+        { admit "copy-paste". }
       + (* focus-return *)
         ss.
     - (* normal *)
@@ -308,7 +331,7 @@ Section LXSIM.
         inv STEPTGT; ss.
         * esplits; eauto.
           { left. apply plus_one. econs 1; eauto. }
-          right. eapply CIH; eauto. econs; eauto. econs; eauto.
+          right. eapply CIH; eauto. econs; eauto. { econs; eauto. } ii; ss.
         * esplits; eauto.
           { left. apply plus_one. econs 3; eauto. }
           right. eapply CIH; eauto. econs; eauto. econs; eauto.
@@ -408,6 +431,7 @@ Section LXSIM.
                 (* admit "". *)
                 (* admit "". *)
               + rewrite ARITH. lia.
+              + eauto.
           }
           {
             econs 2; et.
@@ -454,6 +478,7 @@ Section LXSIM.
                 (* admit "". *)
                 (* admit "". *)
               + rewrite ARITH. lia.
+              + eauto.
           }
       + (* focus - return *)
         destruct (classic (cur = max)).
@@ -595,5 +620,5 @@ Proof.
     - i; ss. inv INIT0. inv INIT1. clarify.
   }
   eapply match_states_xsim; eauto.
-  econs; eauto. econs; eauto.
+  econs; eauto. { econs; eauto. } ii; ss.
 Qed.

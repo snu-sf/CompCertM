@@ -39,7 +39,7 @@ Definition func_f := {|
                    (Econst_int (Int.repr 0) tint) tint)
       (Ssequence
         (Scall (Some _t'1)
-          (Evar _g (Tfunction (Tcons tint Tnil) tint cc_default))
+          (Evar g_id (Tfunction (Tcons tint Tnil) tint cc_default))
           ((Ebinop Osub (Etempvar _x tint) (Econst_int (Int.repr 1) tint)
              tint) :: nil))
         (Sassign
@@ -67,7 +67,5 @@ Definition global_definitions : list (ident * globdef fundef type) :=
 Definition public_idents : list ident :=
 (f_id :: g_id :: nil).
 
-Definition prog : Clight.program := 
+Definition prog : Clight.program :=
   mkprogram composites global_definitions public_idents main_id Logic.I.
-
-

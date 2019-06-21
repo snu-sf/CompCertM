@@ -48,8 +48,12 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   }
   .
 
-  Definition to_msp (skenv_link_src skenv_link_tgt: SkEnv.t) (sm: SimMem.t) (mp: t): ModSemPair.t :=
-    ModSemPair.mk (Mod.modsem (mp.(src)) skenv_link_src) (Mod.modsem (mp.(tgt)) skenv_link_tgt) mp.(ss) sm
+  Definition to_msp (mp: t) (skenv_link_src skenv_link_tgt: SkEnv.t) (sm: SimMem.t)
+             (sidx: Type)
+             (sound_states: sidx -> Sound.t -> mem -> (Mod.modsem (mp.(src)) skenv_link_src).(ModSem.state) -> Prop)
+    : ModSemPair.t :=
+    ModSemPair.mk (Mod.modsem (mp.(src)) skenv_link_src) (Mod.modsem (mp.(tgt)) skenv_link_tgt) mp.(ss)
+                                            sm sound_states
   .
 
   (* TODO: Actually, ModPair can have idx/ord and transfer it to ModSemPair. *)
@@ -68,7 +72,8 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           sm_init_link
           (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt)
         ,
-          <<SIMMSP: ModSemPair.sim mp.(to_msp skenv_link_src skenv_link_tgt sm_init_link)>>)
+          exists sidx (sound_states: sidx -> Sound.t -> mem -> (Mod.modsem (mp.(src)) skenv_link_src).(ModSem.state) -> Prop),
+            <<SIMMSP: ModSemPair.sim (to_msp mp skenv_link_src skenv_link_tgt sm_init_link sound_states)>>)
   .
 
   (* Design: ModPair only has data, properties are stated in sim *)

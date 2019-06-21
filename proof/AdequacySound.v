@@ -279,7 +279,7 @@ Section ADQSOUND.
         { eapply SkEnv.load_skenv_wf; et. }
         { eapply SSLE; eauto. }
         { eauto. }
-        intro SIM; des. inv SIM. ss. esplits; eauto.
+        intro SIM; des. inv SIM. ss. inv INHAB. esplits; eauto.
     - (* INTERNAL *)
       inv SUST. ss.
       esplits; eauto. econs; eauto.

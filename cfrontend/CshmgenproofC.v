@@ -63,7 +63,8 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := SoundTop.sound_state);
+  eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sidx := unit)
+                               (sound_state := fun _ => SoundTop.sound_state);
     eauto; ii; ss.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.

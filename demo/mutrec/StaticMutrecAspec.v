@@ -79,8 +79,12 @@ Section MODSEM.
       i m
     :
       step se ge (Callstate i m) E0 (Returnstate (sum i) m)
+  | step_call
+      i m
+    :
+      step se ge (Callstate i m) E0 (Interstate i m)
   .
-  
+
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_return
       i m
@@ -97,7 +101,7 @@ Section MODSEM.
       ModSem.after_external := after_external;
       ModSem.globalenv := skenv;
       ModSem.skenv := skenv;
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv_link := skenv_link;
     |}
   .
 

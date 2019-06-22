@@ -89,12 +89,7 @@ Section ADQSOUND.
   (* stack can go preservation when su0 is given *)
   Inductive sound_stack (args: Args.t): list Frame.t -> Prop :=
   | sound_stack_nil
-      (FORALLSU: forall
-          su0
-          (SUARGS: Sound.args su0 args)
-        ,
-          <<GE: sound_ge su0 args.(Args.m)>>)
-      (EXSU: exists su_ex, Sound.args su_ex args)
+      (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex args.(Args.m))
     :
       sound_stack args []
   | sound_stack_cons
@@ -131,10 +126,8 @@ Section ADQSOUND.
                        (* sound_state_all su0 args.(Args.m) lst1>>) *)
                        sound_state_all su0 args_tail.(Args.m) lst1>>)
              >>)
-            /\
-            (<<GE: sound_ge su0 args.(Args.m)>>)
       )
-      (EXSU: exists su_ex, Sound.args su_ex args_tail)
+      (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex args_tail.(Args.m))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
       (* sound_state_ex *)
       (* (PRSV: local_preservation ms sound_state_ex) *)
@@ -149,7 +142,7 @@ Section ADQSOUND.
       (TL: sound_stack args_tail tail)
       ms lst0
       m_arg
-      (EXSU: exists su_ex, Sound.args su_ex args_tail)
+      (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex m_arg)
       (FORALLSU: forall
           su0
           (SUARGS: Sound.args su0 args_tail)
@@ -158,9 +151,7 @@ Section ADQSOUND.
               sound_state_all
               (PRSV: local_preservation ms sound_state_all)
             ,
-              <<SUST: sound_state_all su0 m_arg lst0>>>>)
-          /\
-          (<<GE: sound_ge su0 m_arg>>))
+              <<SUST: sound_state_all su0 m_arg lst0>>>>))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
       (ABCD: args_tail.(Args.m) = m_arg)
     :
@@ -172,12 +163,12 @@ Section ADQSOUND.
       (STK: sound_stack args frs)
       (* (MLE: Sound.mle su0 m_tail args.(Args.m)) *)
       (EQ: args.(Args.m) = m_tail)
-      (EXSU: exists su_ex, Sound.args su_ex args)
-      (FORALLSU: forall
-          su0
-          (SUARGS: Sound.args su0 args)
-        ,
-          (<<GE: sound_ge su0 m_tail>>))
+      (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex m_tail)
+      (* (FORALLSU: forall *)
+      (*     su0 *)
+      (*     (SUARGS: Sound.args su0 args) *)
+      (*   , *)
+      (*     (<<GE: sound_ge su0 m_tail>>)) *)
     :
       sound_state m_tail (Callstate args frs)
   .
@@ -212,8 +203,7 @@ Section ADQSOUND.
         rewrite <- Mod.get_modsem_skenv_spec; ss. eapply SkEnv.project_impl_spec; et.
     }
     econs; eauto.
-    - econs; eauto. ss. ii. admit "sound-ge".
-    - admit "sound-ge".
+    - econs; eauto.
     (* - eapply Sound.greatest_adq; eauto. *)
     (* - econs; eauto. *)
     (* - eapply vle_preserves_sound_ge; eauto. *)
@@ -233,18 +223,16 @@ Section ADQSOUND.
     inv STEP.
     - (* CALL *)
       inv SUST. ss. des. exploit FORALLSU; eauto. intro T; des.
-      exploit HD; eauto. i; des. inv EX. exploit CALL; eauto. i; des.
+      inv EX. exploit CALL; eauto. i; des.
       esplits; eauto. econs; eauto; cycle 1.
-      + admit "sound-ge".
+      + esplits; eauto. eapply vle_preserves_sound_ge; eauto. eapply mle_preserves_sound_ge; eauto.
       + econs; eauto; cycle 1.
         { esplits; eauto. econs; eauto. }
         ii. esplits; eauto.
-        * ii. exploit FORALLSU; try apply SUARGS; eauto. intro U; des. eapply HD0; eauto.
+        * ii. exploit FORALLSU; try apply SUARGS; eauto.
         * ii. exploit FORALLSU; try apply SUARGS; eauto. intro U; des.
-          exploit HD0; eauto. intro U; des.
           inv PRSV. exploit CALL0; eauto. i; des. esplits; eauto.
           ii. eapply K0; eauto.
-        * admit "sound-ge".
     - (* INIT *)
       inv SUST. ss. des_ifs.
       esplits; eauto.

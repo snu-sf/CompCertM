@@ -566,7 +566,7 @@ Section TRIAL2.
           clarify. ii. clarify. inv H2. unfold UnreachC.to_inj, Mem.flat_inj in *.
           des_ifs. esplits; eauto. inv MEM. rewrite NB. auto.
         + eapply unreach_free; eauto. }
-      exploit (@Sound.greatest_ex _ su0 (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)); ss; eauto.
+      exploit (@UnreachC.greatest_ex su0 (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)); ss; eauto.
       { exists su0. esplits; eauto. refl. }
       i; des.
       des_ifs. clear_tac.

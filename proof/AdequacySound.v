@@ -186,9 +186,6 @@ Section ADQSOUND.
   Proof.
     inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT INCLTGT WFSKTGT SIMSKENV.
     hexploit Sound.init_spec; eauto. i; des.
-    exploit Sound.greatest_ex; eauto.
-    { esplits; eauto. refl. }
-    i; des.
     esplits; eauto.
     assert(WFSKE: SkEnv.wf (Sk.load_skenv sk_link_src)).
     { eapply SkEnv.load_skenv_wf; et. }

@@ -343,11 +343,11 @@ Section PRSV.
         set (args0 := args).
         inv AT. inv H; ss.
         exploit sound_state_sound_args; eauto. i.
-        hexploit (@Sound.greatest_ex _ (bc2su bc (Genv.genv_next skenv_link) (Mem.nextblock m0)) args0); eauto.
+        hexploit (@UnreachC.greatest_ex (bc2su bc (Genv.genv_next skenv_link) (Mem.nextblock m0)) args0); eauto.
         { esplits; eauto. ss. refl. }
         i; des. ss.
         esplits; eauto.
-        - exploit Sound.get_greatest_le; ss; eauto.
+        - exploit (@UnreachC.get_greatest_le); ss; eauto.
           + change le' with Sound.le. eapply Sound.hle_le; et.
         - rr in GR. des. etrans; eauto. change le' with Sound.le. eapply Sound.hle_le; eauto.
       }

@@ -759,7 +759,6 @@ Global Program Instance Unreach: Sound.class := {
   hle := hle;
   val := val';
   mem := mem';
-  get_greatest (su0: t) (args: Args.t) := greatest le' (fun su => <<LE: le' su0 su>> /\ su.(args') args);
   (* mle := Unreach.mle; *) (* TODO: How did `Program` guess the implementation of `mle` ???? *)
   skenv := skenv;
 }
@@ -779,55 +778,9 @@ Next Obligation.
   - rewrite <- OLD; ss.
   - xomega.
 Qed.
-Next Obligation.
-  rr in GR0. rr in GR1. des.
-  assert(le' su_gr0 su_gr1).
-  { eauto. }
-  assert(le' su_gr1 su_gr0).
-  { eauto. }
-  rr in H. rr in H0. des.
-  eapply eta; ss.
-  apply func_ext1; i.
-  destruct (su_gr0 x0) eqn:T0, (su_gr1 x0) eqn:T1; ss.
-  { rewrite PRIV0 in *; eauto. }
-  { rewrite PRIV in *; eauto. }
-  { inv PROP0. inv PROP1. des. inv MEM0. inv MEM. congruence. }
-Qed.
 (* Next Obligation. *)
 (*   rr in GR. des. eapply MAX; eauto. (* econs; eauto. *) *)
 (* Qed. *)
-Next Obligation.
-  rename INHAB into inhab. rename H into INHAB. rename H0 into INHAB0.
-  eapply find_greatest with (lub:= lub); eauto.
-  - typeclasses eauto.
-  - ii. eapply lubsucc; eauto.
-  - ii. eapply lubspec; eauto.
-  - rr. destruct args0.
-    eapply finite_nat_prop with (j:= J) (fuel := m.(Mem.nextblock)); eauto.
-    + ii. des. inv H0. inv H3. des; ss.
-      inv MEM0. inv MEM1.
-      eapply J_injective; eauto; cycle 1.
-      { unfold le' in *. des. congruence. }
-      { congruence. }
-      ii. u in BOUND. u in BOUND0. destruct (x0 blk) eqn:T0, (x1 blk) eqn:T1; ss.
-      { hexploit BOUND0; eauto. i. r in H4. xomega. }
-      { hexploit BOUND; eauto. i. r in H4. xomega. }
-    + ii. eapply J_func.
-    + i. exists (3 ^ (m.(Mem.nextblock)).(Pos.to_nat))%nat. i.
-      eapply J_bound; eauto.
-  - ii. eapply lubclosed; try apply LUB; eauto.
-Qed.
-Next Obligation.
-  rr in GR. des. eauto.
-Qed.
-Next Obligation.
-  hexploit (@greatest_le_irr _ le' lub (fun su => args' su args0)); eauto.
-  { typeclasses eauto. }
-  { i. eapply lubsucc; eauto. }
-  { i. eapply lubspec; eauto. }
-  { i. eapply lubclosed; revgoals; eauto. }
-  { rr. ss. }
-Qed.
 Next Obligation.
   set (Sk.load_skenv sk_link) as skenv.
   exists (mk (fun _ => false) skenv.(Genv.genv_next) m_init.(Mem.nextblock)).
@@ -1027,6 +980,89 @@ Next Obligation.
       rr. unfold to_inj. des_ifs.
 Qed.
 
+Definition get_greatest (su0: t) (args: Args.t) := greatest le' (fun su => <<LE: le' su0 su>> /\ su.(args') args).
+
+Lemma greatest_dtm: forall
+    args0
+    su0 su_gr0 su_gr1
+    (GR0: get_greatest su0 args0 su_gr0)
+    (GR1: get_greatest su0 args0 su_gr1)
+  ,
+    su_gr0 = su_gr1
+.
+Proof.
+  ii.
+  rr in GR0. rr in GR1. des.
+  assert(le' su_gr0 su_gr1).
+  { eauto. }
+  assert(le' su_gr1 su_gr0).
+  { eauto. }
+  rr in H. rr in H0. des.
+  eapply eta; ss.
+  apply func_ext1; i.
+  destruct (su_gr0 x0) eqn:T0, (su_gr1 x0) eqn:T1; ss.
+  { rewrite PRIV0 in *; eauto. }
+  { rewrite PRIV in *; eauto. }
+  { inv PROP0. inv PROP1. des. inv MEM0. inv MEM. congruence. }
+Qed.
+
+Lemma greatest_ex: forall
+    su0 args0
+    (INHAB: exists (inhab: Sound.t), <<LE: Sound.le su0 inhab>> /\ <<ARGS: inhab.(Sound.args) args0>>)
+  ,
+    exists su_gr, <<GR: get_greatest su0 args0 su_gr>>
+.
+Proof.
+  ii. des.
+  rename LE into INHAB. rename ARGS into INHAB0.
+  (* rename INHAB into inhab. rename H into INHAB. rename H0 into INHAB0.                                                                 *)
+  eapply find_greatest with (lub:= lub); eauto.
+  - typeclasses eauto.
+  - ii. eapply lubsucc; eauto.
+  - ii. eapply lubspec; eauto.
+  - rr. destruct args0.
+    eapply finite_nat_prop with (j:= J) (fuel := m.(Mem.nextblock)); eauto.
+    + ii. des. inv H0. inv H3. des; ss.
+      inv MEM. inv MEM0.
+      eapply J_injective; eauto; cycle 1.
+      { unfold le' in *. des. congruence. }
+      { congruence. }
+      ii. u in BOUND. u in BOUND0. destruct (x0 blk) eqn:T0, (x1 blk) eqn:T1; ss.
+      { hexploit BOUND0; eauto. i. r in H4. xomega. }
+      { hexploit BOUND; eauto. i. r in H4. xomega. }
+    + ii. eapply J_func.
+    + i. exists (3 ^ (m.(Mem.nextblock)).(Pos.to_nat))%nat. i.
+      eapply J_bound; eauto.
+  - ii. eapply lubclosed; try apply LUB; eauto.
+Qed.
+
+Lemma greatest_adq: forall
+    su0 args0 su_gr
+    (GR: get_greatest su0 args0 su_gr)
+  ,
+    <<SUARGS: Sound.args su_gr args0>> /\ <<LE: Sound.le su0 su_gr>>
+.
+Proof.
+  ii.
+  rr in GR. des. eauto.
+Qed.
+
+Lemma get_greatest_le: forall
+    su0 su1 args0 su_gr
+    (GR: get_greatest su1 args0 su_gr)
+    (SUARG: Sound.args su1 args0)
+    (LE: Sound.le su0 su1)
+  ,
+    <<GR: get_greatest su0 args0 su_gr>>
+.
+Proof.
+  ii.
+  hexploit (@greatest_le_irr _ le' lub (fun su => args' su args0)); eauto.
+  { typeclasses eauto. }
+  { i. eapply lubsucc; eauto. }
+  { i. eapply lubspec; eauto. }
+  { i. eapply lubclosed; revgoals; eauto. }
+Qed.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 Local Transparent Mem.load.

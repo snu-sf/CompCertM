@@ -155,7 +155,6 @@ Proof.
   - destruct xs; ss.
 Qed.
 
-
 (* Lemma link_list_cons_commut *)
 (*       X `{Linker X} *)
 (*       x0 x1 x_link xs *)
@@ -164,14 +163,14 @@ Qed.
 (*     <<CMT: link_list (x0 :: x1 :: xs) = link_list (x_link :: xs)>> *)
 (* . *)
 (* Proof. *)
-  
+
 (*   { *)
 (*     remember (rev xs) as rem. *)
 (*     move rem at top. *)
 (*     revert_until H. *)
 (*     ginduction rem; ii; ss. *)
 (*     { hexpl rev_nil. clarify. ss. unfold link_list; ss. des_ifs. } *)
-    
+
 (*   } *)
 (*   ginduction xs; ii; ss. *)
 (*   { unfold link_list. ss. des_ifs. } *)
@@ -181,7 +180,7 @@ Qed.
 (*   { ss. *)
 (*   ss. des_ifs. *)
 (*   exploit IHxs; eauto. i; des. *)
-  
+
 (*   ss. *)
 (* Qed. *)
 

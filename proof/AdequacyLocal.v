@@ -339,8 +339,9 @@ Section SIMGE.
       (* eapply SimSymb.sim_skenv_func_bisim in SIMSKENV. des. *)
       (* clears sm_init; clear sm_init. *)
       - exploit system_local_preservation. intro SYSSU; des.
-        econs; ss.
-        { eauto. }
+        econs.
+        { instantiate (1:= unit). ss. }
+        { ii; ss. instantiate (1:= fun _ => system_sound_state). ss. }
         ii. inv SIMSKENV0. ss.
         split; cycle 1.
         { ii; des. esplits; eauto. econs; eauto. }
@@ -522,8 +523,9 @@ Section ADQMATCH.
       (MLE: SimMem.le sm_at sm_arg)
       sm_init
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
-      sound_state_local
-      (PRSV: local_preservation ms_src sound_state_local)
+      sidx
+      (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
+      (PRSV: forall si, local_preservation ms_src (sound_states_local si))
       (K: forall
           sm_ret retv_src retv_tgt
           (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
@@ -536,9 +538,9 @@ Section ADQMATCH.
           (*     (RETV: Sound.retv su_ret retv_src) *)
           (*     (MLE: Sound.mle su_gr (Args.m args) (Retv.m retv_src)) *)
           (*   , *)
-          (*     exists su m_arg, sound_state_local su m_arg lst_src1) *)
-          (* (SU: exists su m_arg, sound_state_local su m_arg lst_src1) *)
-          (SU: exists su m_arg, sound_state_local su m_arg lst_src0)
+          (*     exists su m_arg, sound_states_local su m_arg lst_src1) *)
+          (* (SU: exists su m_arg, sound_states_local su m_arg lst_src1) *)
+          (SU: forall si, exists su m_arg, (sound_states_local si) su m_arg lst_src0)
           (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 retv_src lst_src1)
         ,
           exists lst_tgt1 sm_after i1,
@@ -546,7 +548,7 @@ Section ADQMATCH.
             /\
             (<<MLE: SimMem.le sm_at sm_after>>)
             /\
-            (<<LXSIM: lxsim ms_src ms_tgt (fun st => exists su m_arg, sound_state_local su m_arg st)
+            (<<LXSIM: lxsim ms_src ms_tgt (fun si st => exists su m_arg, (sound_states_local si) su m_arg st)
                             tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
       (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
       (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt)
@@ -582,9 +584,10 @@ Section ADQMATCH.
       i0
       ms_src lst_src
       ms_tgt lst_tgt
-      sound_state_local
-      (PRSV: local_preservation ms_src sound_state_local)
-      (TOP: lxsim ms_src ms_tgt (fun st => exists su m_arg, sound_state_local su m_arg st) tail_sm
+      sidx
+      (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
+      (PRSV: forall si, local_preservation ms_src (sound_states_local si))
+      (TOP: lxsim ms_src ms_tgt (fun si st => exists su m_arg, (sound_states_local si) su m_arg st) tail_sm
                   i0 lst_src lst_tgt sm0)
       (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
       (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt)
@@ -848,7 +851,7 @@ Section ADQSTEP.
       left.
       exploit SU0.
       { unsguard SUST. des. inv SUST.
-        simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
+        simpl_depind. clarify. i. specialize (HD (sound_states_local si)). esplits; eauto. eapply HD; eauto. }
       i; des. clear SU0.
       right.
       econs; ss; eauto.
@@ -888,7 +891,7 @@ Section ADQSTEP.
       right. ss.
       exploit SU0.
       { unsguard SUST. des. inv SUST.
-        simpl_depind. clarify. specialize (HD sound_state_local). esplits; eauto. eapply HD; eauto. }
+        simpl_depind. clarify. i. specialize (HD (sound_states_local si)). esplits; eauto. eapply HD; eauto. }
       i; des. clear SU0.
       assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
                        -> safe_modsem ms_src lst_src).
@@ -1031,7 +1034,7 @@ Section ADQSTEP.
         instantiate (1:= sm_after).
         econs; ss; cycle 3.
         { eauto. }
-        { eauto. }
+        (* { eauto. } *)
         { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. }
         { eauto. }
         { etrans; eauto. }

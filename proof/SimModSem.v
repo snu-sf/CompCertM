@@ -150,7 +150,7 @@ Section SIMMODSEM.
       (* (SAFESRC: ms_tgt.(is_call) st_tgt0) *)
       (SAFESRC: ms_src.(is_call) st_src0)
       (* (PROGSRC: ms_src.(is_call) st_src0) *)
-      (SU: forall (SU: forall sidx, sound_states sidx st_src0),
+      (SU: forall (SU: forall si, sound_states si st_src0),
       <<CALLFSIM: forall
           args_src
           (ATSRC: ms_src.(at_external) st_src0 args_src)

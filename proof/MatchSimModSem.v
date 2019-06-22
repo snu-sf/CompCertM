@@ -99,7 +99,7 @@ Section MATCHSIMFORWARD.
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       args_src
       (CALLSRC: ms_src.(ModSem.at_external) st_src0 args_src)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+      (SOUND: exists su0 m_init, (sound_state) su0 m_init st_src0)
     ,
       exists args_tgt sm_arg,
         (<<CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 args_tgt>>)
@@ -128,7 +128,7 @@ Section MATCHSIMFORWARD.
       (SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret)
       st_src1
       (AFTERSRC: ms_src.(ModSem.after_external) st_src0 retv_src st_src1)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+      (SOUND: exists su0 m_init, (sound_state) su0 m_init st_src0)
 
       (* history *)
       (HISTORY: match_states_at_helper sm_init idx0 st_src0 st_tgt0 sm0 sm_arg)
@@ -170,7 +170,7 @@ Section MATCHSIMFORWARD.
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+      (SOUND: exists su0 m_init, (sound_state) su0 m_init st_src0)
     ,
       (<<RECEP: receptive_at ms_src st_src0>>)
       /\
@@ -193,7 +193,7 @@ Section MATCHSIMFORWARD.
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+      (SOUND: exists su0 m_init, (sound_state) su0 m_init st_src0)
     ,
       (* (<<PROGRESS: ModSem.is_step ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) *)
       (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>)
@@ -231,12 +231,19 @@ Section MATCHSIMFORWARD.
   .
   Proof.
     eapply MatchSimModSemExcl.match_states_sim with
-        (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le); eauto.
+        (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le) (sidx := unit); eauto.
+    { ss. }
+    { ii. eapply PRSV. }
     { ii. r. etrans; eauto. }
-    { ii. exploit ATFSIM; eauto. i; des. esplits; eauto. }
+    { ii. exploit ATFSIM; eauto. { eapply SOUND. ss. } i; des. esplits; eauto. }
     { i. exploit AFTERFSIM; et.
+      { eapply SOUND. ss. }
       { inv HISTORY; econs; eauto. }
       i; des. esplits; eauto.
+    }
+    { destruct STEPSIM.
+      - left. subst STEPFSIM. ii. exploit H; eauto. { eapply SOUND; ss. }
+      - right. subst STEPBSIM. ii. exploit H; eauto. { eapply SOUND; ss. }
     }
   Qed.
 

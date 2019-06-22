@@ -233,7 +233,7 @@ Section MATCHSIMFORWARD.
         (* su0 *)
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsimSR ms_src ms_tgt (fun st => exists su0 m_init, sound_state su0 m_init st)
+      <<LXSIM: lxsimSR ms_src ms_tgt (fun (si: unit) st => exists su0 m_init, sound_state su0 m_init st)
                        sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.
@@ -247,6 +247,7 @@ Section MATCHSIMFORWARD.
         exploit ATMWF; eauto. i; des.
         eapply lxsimSR_at_external; eauto.
         ii. clear CALLSRC.
+        hexploit1 SU0; ss.
         exploit ATFSIM; eauto. i; des.
         (* determ_tac ModSem.at_external_dtm. clear_tac. *)
         esplits; eauto. i.
@@ -276,6 +277,7 @@ Section MATCHSIMFORWARD.
     {
       eapply lxsimSR_step_forward; eauto.
       i.
+      hexploit1 SU0; ss.
       exploit STEPFSIM0; eauto. i; des.
       esplits; eauto.
       econs 1; eauto.
@@ -292,6 +294,7 @@ Section MATCHSIMFORWARD.
       rr in STEPBSIM0.
       eapply lxsimSR_step_backward; eauto.
       i.
+      hexploit1 SU0; ss.
       exploit STEPBSIM0; eauto. i; des. rr in PROGRESS. des.
       esplits; eauto; cycle 1.
       econs 1; eauto.
@@ -311,7 +314,9 @@ Section MATCHSIMFORWARD.
       <<SIM: msp.(ModSemPair.simSR)>>
   .
   Proof.
-    econs; eauto.
+    econs.
+    { instantiate (1 := unit). ss. }
+    { ii. eapply PRSV; eauto. }
     ii; ss.
     folder.
     exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.

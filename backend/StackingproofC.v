@@ -1405,7 +1405,8 @@ Theorem sim_modsem
 .
 Proof.
   eapply match_states_sim with (match_states := match_states) (match_states_at := match_states_at)
-                               (sound_state := fun _ _ => wt_state)
+                               (sidx := unit)
+                               (sound_states := fun _ _ _ => wt_state)
                                (has_footprint := has_footprint)
                                (mle_excl := mle_excl)
   ;
@@ -1638,7 +1639,7 @@ Proof.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     inv CALLSRC. inv MATCH; ss. clarify.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
-    des. exploit wt_callstate_agree; eauto. intros [AGCS AGARGS].
+    des. exploit SOUND; ss; eauto. intro Q; des. exploit wt_callstate_agree; eauto. intros [AGCS AGARGS].
     assert(MCOMPAT0: sm0.(SimMemInj.inj) = j). { inv MCOMPAT. ss. } clarify.
 
     hexpl match_stacks_sp_ofs RSP.
@@ -1783,7 +1784,7 @@ Proof.
       assert(WTST: wt_state (Linear.Returnstate stack
        (Locmap.setpair (loc_result sg_arg) (typify (Retv.v retv_src) (proj_sig_res sg_arg))
           (LTL.undef_caller_save_regs ls_arg)) (Retv.m retv_src))).
-      { clear - SOUND. inv SOUND.
+      { clear - SOUND. exploit SOUND; ss; eauto. intro Q; des. inv Q.
 
       (** directly copied from LineartypingC.v **)
       (** TODO: provide it in metatheory **)
@@ -1992,7 +1993,7 @@ Proof.
     ii. hexploit (@transf_step_correct prog rao skenv_link skenv_link ge tge); eauto.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { inv STEPSRC. eauto. }
-    { des. et. }
+    { hexploit1 SOUND; ss. des. et. }
     i; des.
     destruct st_tgt0. ss. folder.
     r in STEPSRC; des.

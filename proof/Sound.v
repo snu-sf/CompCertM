@@ -90,51 +90,6 @@ Module Sound.
     (*   , *)
     (*     su1.(retv) <1= su0.(retv) *)
     (* ; *)
-    get_greatest: t -> Args.t -> t -> Prop;
-    greatest_dtm: forall
-        args0
-        su0 su_gr0 su_gr1
-        (GR0: get_greatest su0 args0 su_gr0)
-        (GR1: get_greatest su0 args0 su_gr1)
-      ,
-        su_gr0 = su_gr1
-    ;
-    (* greatest_le: forall *)
-    (*     args0 su0 su_gr *)
-    (*     (ARGS: su0.(args) args0) *)
-    (*     (GR: get_greatest args0 su_gr) *)
-    (*   , *)
-    (*     le su0 su_gr *)
-    (* ; *)
-    greatest_ex: forall
-        su0 args0
-        (INHAB: exists inhab, <<LE: le su0 inhab>> /\ <<ARGS: inhab.(args) args0>>)
-      ,
-        exists su_gr, <<GR: get_greatest su0 args0 su_gr>>
-    ;
-    greatest_adq: forall
-        su0 args0 su_gr
-        (GR: get_greatest su0 args0 su_gr)
-      ,
-        <<SUARGS: args su_gr args0>> /\ <<LE: le su0 su_gr>>
-    ;
-    (* get_greatest_irr: forall *)
-    (*     su0 su1 args0 su_gr0 su_gr1 *)
-    (*     (GR0: get_greatest su0 args0 su_gr0) *)
-    (*     (GR1: get_greatest su1 args0 su_gr1) *)
-    (*     (SUARG: args su1 args0) *)
-    (*     (LE: le su0 su1) *)
-    (*   , *)
-    (*     <<EQ: su_gr0 = su_gr1>> *)
-    (* ; *)
-    get_greatest_le: forall
-        su0 su1 args0 su_gr
-        (GR: get_greatest su1 args0 su_gr)
-        (SUARG: args su1 args0)
-        (LE: le su0 su1)
-      ,
-        <<GR: get_greatest su0 args0 su_gr>>
-    ;
 
     (* lub: t -> t -> t; *)
     (* lub_le: forall x y, <<LE: le x (lub x y)>> /\ <<LE: le y (lub x y)>>; *)
@@ -233,18 +188,6 @@ Module Sound.
     i. eapply Sound.le_spec; et. eapply Sound.hle_le; et.
   Qed.
 
-  Lemma get_greatest_hle: forall
-      su0 su1 args0 su_gr
-      (GR: get_greatest su1 args0 su_gr)
-      (SUARG: args su1 args0)
-      (HLE: hle su0 su1)
-      (WF: wf su0)
-    ,
-      <<GR: get_greatest su0 args0 su_gr>>
-  .
-  Proof.
-    i. eapply Sound.get_greatest_le; eauto. eapply Sound.hle_le; eauto.
-  Qed.
 
   (* Lemma get_greatest_le *)
   (*       su0 su1 args0 su_gr *)
@@ -272,16 +215,4 @@ Module Sound.
   End SOUND.
 
 End Sound.
-
-
-
-
-
-
-
-
-
-
-
-
 

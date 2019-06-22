@@ -21,8 +21,10 @@ Section MATCHSIMFORWARD.
   Hypothesis WFORD: well_founded order.
   Let ms_src: ModSem.t := msp.(ModSemPair.src).
   Let ms_tgt: ModSem.t := msp.(ModSemPair.tgt).
-  Variable sound_state: Sound.t -> mem -> ms_src.(state) -> Prop.
-  Hypothesis PRSV: local_preservation ms_src sound_state.
+  Variable sidx: Type.
+  Hypothesis INHAB: inhabited sidx.
+  Variable sound_states: sidx -> Sound.t -> mem -> ms_src.(state) -> Prop.
+  Hypothesis PRSV: forall si, local_preservation ms_src (sound_states si).
 
   Variable match_states: forall
       (sm_arg: SimMem.t)
@@ -123,7 +125,7 @@ Section MATCHSIMFORWARD.
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
       args_src
       (CALLSRC: ms_src.(ModSem.at_external) st_src0 args_src)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+      (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0)
     ,
       exists args_tgt sm_arg,
         (<<CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 args_tgt>>)
@@ -154,7 +156,7 @@ Section MATCHSIMFORWARD.
       (SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret)
       st_src1
       (AFTERSRC: ms_src.(ModSem.after_external) st_src0 retv_src st_src1)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+      (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0)
 
       (* history *)
       (HISTORY: match_states_at_helper sm_init idx0 st_src0 st_tgt0 sm0 sm_arg)
@@ -197,7 +199,7 @@ Section MATCHSIMFORWARD.
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+      (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0)
     ,
       (<<RECEP: receptive_at ms_src st_src0>>)
       /\
@@ -220,7 +222,7 @@ Section MATCHSIMFORWARD.
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
       (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
-      (SOUND: exists su0 m_init, sound_state su0 m_init st_src0)
+      (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0)
     ,
       (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>)
       /\
@@ -251,7 +253,7 @@ Section MATCHSIMFORWARD.
         (* su0 *)
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsim ms_src ms_tgt (fun st => exists su0 m_init, sound_state su0 m_init st)
+      <<LXSIM: lxsim ms_src ms_tgt (fun si st => exists su0 m_init, sound_states si su0 m_init st)
                      sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.

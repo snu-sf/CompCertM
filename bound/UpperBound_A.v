@@ -1258,7 +1258,7 @@ Section PRESERVATION.
         st_src0 st_tgt0
         (MATCH: match_states st_src0 st_tgt0)
     :
-      <<XSIM: xsim (sem prog_src) (sem prog_tgt) bot2 tt st_src0 st_tgt0>>
+      <<XSIM: xsim (sem prog_src) (sem prog_tgt) (fun _ _ => False) tt st_src0 st_tgt0>>
   .
   Proof.
     revert_until LINKTGT.

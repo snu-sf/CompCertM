@@ -338,7 +338,7 @@ Section PRSV.
       assert(GR: exists su_gr, SemiLattice.greatest le'
                                                     (* (fun su => su0.(UnreachC.ge_nb) = su.(UnreachC.ge_nb) /\ args' su args) *)
                                                     (fun su =>  le' su0 su /\ args' su args)
-                                                    su_gr).
+                                                    su_gr /\ le' su0 su_gr).
       { specialize (H p (linkorder_refl _)).
         set (args0 := args).
         inv AT. inv H; ss.
@@ -347,12 +347,14 @@ Section PRSV.
         { esplits; eauto. ss. refl. }
         i; des. ss.
         esplits; eauto.
-        exploit Sound.get_greatest_le; ss; eauto.
-        - change le' with Sound.le. eapply Sound.hle_le; et.
+        - exploit Sound.get_greatest_le; ss; eauto.
+          + change le' with Sound.le. eapply Sound.hle_le; et.
+        - rr in GR. des. etrans; eauto. change le' with Sound.le. eapply Sound.hle_le; eauto.
       }
       des.
       esplits; eauto.
       { inv AT; ss. refl. }
+      { eapply GR; eauto. }
       ii.
       r in RETV. des.
       esplits; eauto; cycle 1.

@@ -99,6 +99,7 @@ Section ADQSOUND.
       (FORALLSU: forall
           su0
           (SUARGS: Sound.args su0 args_tail)
+          (SUGE: sound_ge su0 args_tail.(Args.m))
         ,
           (<<HD: forall
                  sound_state_all
@@ -126,6 +127,8 @@ Section ADQSOUND.
                        (* sound_state_all su0 args.(Args.m) lst1>>) *)
                        sound_state_all su0 args_tail.(Args.m) lst1>>)
              >>)
+          /\
+          (<<MLE: Sound.mle su0 args_tail.(Args.m) args.(Args.m)>>)
       )
       (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex args_tail.(Args.m))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
@@ -146,6 +149,7 @@ Section ADQSOUND.
       (FORALLSU: forall
           su0
           (SUARGS: Sound.args su0 args_tail)
+          (SUGE: sound_ge su0 args_tail.(Args.m))
         ,
           (<<HD: forall
               sound_state_all
@@ -233,16 +237,17 @@ Section ADQSOUND.
         * ii. exploit FORALLSU; try apply SUARGS; eauto. intro U; des.
           inv PRSV. exploit CALL0; eauto. i; des. esplits; eauto.
           ii. eapply K0; eauto.
+        * exploit FORALLSU; eauto.
+          { econs; eauto. }
+          i; des. exploit CALL; eauto. i; des. ss.
     - (* INIT *)
       inv SUST. ss. des_ifs.
       esplits; eauto.
       econs; eauto.
       + ii. esplits; eauto.
         * ii. inv PRSV. eapply INIT0; eauto.
-          exploit FORALLSU; eauto. intro U.
-          inv U. rewrite Forall_forall in *. eapply GE; eauto.
-          inv MSFIND. ss. des_ifs.
-        * admit "sound-ge".
+          inv SUGE.
+          rewrite Forall_forall in *. eapply GE. inv MSFIND. ss. des_ifs.
       + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *.
         des; clarify.
         { eapply system_local_preservation. }
@@ -264,9 +269,10 @@ Section ADQSOUND.
     - (* INTERNAL *)
       inv SUST. ss.
       esplits; eauto. econs; eauto.
-      i. exploit FORALLSU; eauto. intro U; des. esplits; eauto. i. ss. inv PRSV.
+      i. des.
+      exploit FORALLSU; eauto. intro U; des. esplits; eauto. i. ss. inv PRSV.
       eapply STEP; eauto.
-      + eapply HD; et. econs; et.
+      + eapply FORALLSU; eauto. econs; eauto.
       + split; ii; ModSem.tac.
     - (* RETURN *)
       inv SUST. ss. rename ms into ms_top.
@@ -283,10 +289,9 @@ Section ADQSOUND.
         bar.
         inv EX.
         exploit RET; eauto.
-        { eapply FORALLSU; eauto. econs; et. }
+        { eapply FORALLSU; eauto. { eapply vle_preserves_sound_ge; try apply LE. eapply mle_preserves_sound_ge; eauto. } econs; et. }
         i; des.
         eapply K0; eauto.
-      + admit "sound-ge".
   Unshelve.
     ss.
   Qed.

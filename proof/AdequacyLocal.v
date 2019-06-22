@@ -767,7 +767,7 @@ Section ADQSTEP.
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
           (LXSIM: lxsim_lift sk_link_src sk_link_tgt i0 st_src0 st_tgt0 sm0)
-          (SUST: __GUARD__ (exists su0 m_arg, sound_state pp su0 m_arg st_src0))
+          (SUST: __GUARD__ (exists m_arg, sound_state pp m_arg st_src0))
     :
       <<XSIM: xsim sem_src sem_tgt ord i0 st_src0 st_tgt0>>
   .
@@ -850,8 +850,9 @@ Section ADQSTEP.
     - (* fstep *)
       left.
       exploit SU0.
-      { unsguard SUST. des. inv SUST.
-        simpl_depind. clarify. i. specialize (HD (sound_states_local si)). esplits; eauto. eapply HD; eauto. }
+      { unsguard SUST. des. inv SUST. des.
+        simpl_depind. clarify. i. exploit FORALLSU; eauto. i; des.
+        specialize (HD (sound_states_local si)). esplits; eauto. eapply HD; eauto. }
       i; des. clear SU0.
       right.
       econs; ss; eauto.
@@ -890,8 +891,9 @@ Section ADQSTEP.
     - (* bstep *)
       right. ss.
       exploit SU0.
-      { unsguard SUST. des. inv SUST.
-        simpl_depind. clarify. i. specialize (HD (sound_states_local si)). esplits; eauto. eapply HD; eauto. }
+      { unsguard SUST. des. inv SUST. des.
+        simpl_depind. clarify. i. exploit FORALLSU; eauto. i; des.
+        specialize (HD (sound_states_local si)). esplits; eauto. eapply HD; eauto. }
       i; des. clear SU0.
       assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
                        -> safe_modsem ms_src lst_src).
@@ -940,7 +942,8 @@ Section ADQSTEP.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
       hexploit1 SU0.
-      { unsguard SUST. des_safe. inv SUST. simpl_depind. clarify.
+      { unsguard SUST. des_safe. inv SUST. des.
+        simpl_depind. clarify. i. exploit FORALLSU; eauto. i; des.
         esplits. eapply HD; eauto. }
       rename SU0 into CALLFSIM.
 
@@ -1016,9 +1019,11 @@ Section ADQSTEP.
       exploit K; try apply SIMRETV; eauto.
       { etransitivity; eauto. }
       {
-        unsguard SUST. des_safe. inv SUST. simpl_depind. clarify.
-        inv TL. simpl_depind. clarify.
-        esplits; eauto. eapply HD0; eauto.
+        unsguard SUST. des_safe. inv SUST. des.
+        simpl_depind. clarify. i.
+        inv TL. simpl_depind. clarify. des.
+        exploit FORALLSU0; eauto. i; des.
+        esplits; eauto. eapply HD; eauto.
       }
       i; des.
       esplits; eauto.

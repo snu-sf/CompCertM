@@ -339,9 +339,8 @@ Section SIMGE.
       (* eapply SimSymb.sim_skenv_func_bisim in SIMSKENV. des. *)
       (* clears sm_init; clear sm_init. *)
       - exploit system_local_preservation. intro SYSSU; des.
-        econs.
-        { instantiate (1:= unit). ss. }
-        { ii; ss. instantiate (1:= fun _ => system_sound_state). ss. }
+        econs; ss.
+        { eauto. }
         ii. inv SIMSKENV0. ss.
         split; cycle 1.
         { ii; des. esplits; eauto. econs; eauto. }
@@ -523,9 +522,8 @@ Section ADQMATCH.
       (MLE: SimMem.le sm_at sm_arg)
       sm_init
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
-      sidx
-      (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
-      (PRSV: forall si, local_preservation ms_src (sound_states_local si))
+      sound_state_local
+      (PRSV: local_preservation ms_src sound_state_local)
       (K: forall
           sm_ret retv_src retv_tgt
           (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
@@ -540,7 +538,7 @@ Section ADQMATCH.
           (*   , *)
           (*     exists su m_arg, sound_state_local su m_arg lst_src1) *)
           (* (SU: exists su m_arg, sound_state_local su m_arg lst_src1) *)
-          (SU: forall si, exists su m_arg, sound_states_local si su m_arg lst_src0)
+          (SU: exists su m_arg, sound_state_local su m_arg lst_src0)
           (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 retv_src lst_src1)
         ,
           exists lst_tgt1 sm_after i1,
@@ -548,7 +546,7 @@ Section ADQMATCH.
             /\
             (<<MLE: SimMem.le sm_at sm_after>>)
             /\
-            (<<LXSIM: lxsim ms_src ms_tgt (fun si st => exists su m_arg, sound_states_local si su m_arg st)
+            (<<LXSIM: lxsim ms_src ms_tgt (fun st => exists su m_arg, sound_state_local su m_arg st)
                             tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
       (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
       (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt)
@@ -584,10 +582,9 @@ Section ADQMATCH.
       i0
       ms_src lst_src
       ms_tgt lst_tgt
-      sidx
-      (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
-      (PRSV: forall si, local_preservation ms_src (sound_states_local si))
-      (TOP: lxsim ms_src ms_tgt (fun si st => exists su m_arg, sound_states_local si su m_arg st) tail_sm
+      sound_state_local
+      (PRSV: local_preservation ms_src sound_state_local)
+      (TOP: lxsim ms_src ms_tgt (fun st => exists su m_arg, sound_state_local su m_arg st) tail_sm
                   i0 lst_src lst_tgt sm0)
       (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
       (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt)

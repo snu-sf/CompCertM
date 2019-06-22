@@ -86,7 +86,6 @@ Section ADQSOUND.
     ii. eapply Sound.skenv_mle; eauto.
   Qed.
 
-  Inductive sound_stack (su0: Sound.t) (args: Args.t): list Frame.t -> Prop :=
   (* stack can go preservation when su0 is given *)
   Inductive sound_stack (su0: Sound.t) (args: Args.t): list Frame.t -> Prop :=
   | sound_stack_nil
@@ -97,9 +96,11 @@ Section ADQSOUND.
       su_tail args_tail tail
       ms lst0
       (TL: sound_stack su_tail args_tail tail)
-      (HD: forall si
+      (HD: forall
+          sound_state_all
+          (PRSV: local_preservation ms sound_state_all)
         ,
-          <<SUST: sound_states si su0 args_tail.(Args.m) lst0>>)
+          <<SUST: sound_state_all su0 args_tail.(Args.m) lst0>>)
       (K: forall
           sound_state_all
           (PRSV: local_preservation ms sound_state_all)

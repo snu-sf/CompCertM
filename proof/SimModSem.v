@@ -244,8 +244,6 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     tgt: ModSem.t;
     ss: SimSymb.t;
     sm: SimMem.t;
-    sidx: Type;
-    sound_states: sidx -> Sound.t -> mem -> src.(ModSem.state) -> Prop;
   }
   .
 
@@ -273,8 +271,10 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Inductive sim (msp: t): Prop :=
   | sim_intro
       (* (SIMSKENV: sim_skenv msp msp.(sm)) *)
-      (INHAB: inhabited msp.(sidx))
-      (PRSV: forall (si: msp.(sidx)), local_preservation msp.(src) (msp.(sound_states) si))
+      sidx
+      sound_state
+      (PRSV: forall (si: sidx), local_preservation msp.(src) (sound_state si))
+      (INHAB: inhabited sidx)
       (SIM: forall
           sm_arg
           args_src args_tgt
@@ -296,7 +296,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
               exists st_init_src sm_init idx_init,
                 (<<MLE: SimMem.le sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(src).(initial_frame) args_src st_init_src>>) /\
-                (<<SIM: lxsim msp.(src) msp.(tgt) (fun si st => exists su m_init, msp.(sound_states) si su m_init st)
+                (<<SIM: lxsim msp.(src) msp.(tgt) (fun si st => exists su m_init, sound_state si su m_init st)
                                                   sm_arg idx_init st_init_src st_init_tgt sm_init>>)>>)
           /\
           (<<INITPROGRESS: forall
@@ -322,20 +322,20 @@ Section FACTORTARGET.
   Variable ms_src ms_tgt: ModSem.t.
   Variable ss: SimSymb.t.
   Variable sm: SimMem.t.
-  Variable sidx: Type.
-  Variable sound_states: sidx -> Sound.t -> mem -> state ms_src -> Prop.
   Hypothesis SINGLE: single_events ms_src.
   Hypothesis WBT: well_behaved_traces ms_tgt.
 
   Section LXSIM.
 
+    Variable sidx: Type.
+    Variable sound_state: sidx -> state ms_src -> Prop.
     Variable sm_arg: SimMem.t.
 
     Inductive fbs_match: idx -> state ms_src -> (trace * state ms_tgt) -> SimMem.t -> Prop :=
     | fbs_match_intro
         idx0 st_src0 tr st_src1 st_tgt0 sm0
         (STAR: (st_src0 = st_src1 /\ tr = E0) \/ ((Plus ms_src st_src0 tr st_src1) /\ output_trace tr /\ tr <> []))
-        (MATCH: lxsim ms_src ms_tgt (fun si st => exists su m, sound_states si su m st) sm_arg idx0 st_src1 st_tgt0 sm0)
+        (MATCH: lxsim ms_src ms_tgt sound_state sm_arg idx0 st_src1 st_tgt0 sm0)
       :
         fbs_match idx0 st_src0 (tr, st_tgt0) sm0
     .
@@ -344,7 +344,7 @@ Section FACTORTARGET.
         idx0 st_src0 tr st_tgt0 sm0
         (SIM: fbs_match idx0 st_src0 (tr, st_tgt0) sm0)
       ,
-        <<SIM: lxsim ms_src (Atomic.trans ms_tgt) (fun si st => exists su m, sound_states si su m st) sm_arg idx0 st_src0 (tr, st_tgt0) sm0>>
+        <<SIM: lxsim ms_src (Atomic.trans ms_tgt) sound_state sm_arg idx0 st_src0 (tr, st_tgt0) sm0>>
     .
     Proof.
       clear_tac. unfold NW.
@@ -376,7 +376,7 @@ Section FACTORTARGET.
       }
       inv MATCH.
       - econs 1.
-        i. exploit SU0; eauto. i; des_safe. esplits; eauto.
+        i. exploit SU; eauto. i; des_safe. esplits; eauto.
         clear - SINGLE WBT CIH H. inv H.
         + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; eauto.
           { des.
@@ -392,7 +392,7 @@ Section FACTORTARGET.
           pclearbot. right. eapply CIH; eauto.
           econs; eauto.
       - econs 2.
-        i. exploit SU0; eauto. i; des. esplits; eauto.
+        i. exploit SU; eauto. i; des. esplits; eauto.
         + (* bsim *)
           clear - SINGLE WBT CIH BSTEP. inv BSTEP.
           * econs 1; eauto. i.
@@ -435,7 +435,7 @@ Section FACTORTARGET.
           * esplits; eauto. instantiate (1:= (_, _)). econs 1; eauto.
           * esplits; eauto. instantiate (1:= (_, _)). econs 2; eauto.
       - econs 3; eauto.
-        ii. exploit SU0; eauto. i; des.
+        ii. exploit SU; eauto. i; des.
         esplits; eauto.
         { rr. ss. }
         i. exploit K; eauto. i; des. eexists (_, _). esplits; eauto.
@@ -449,9 +449,9 @@ Section FACTORTARGET.
   End LXSIM.
 
   Theorem factor_simmodsem_target
-          (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm sound_states))
+          (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm))
     :
-      ModSemPair.sim (ModSemPair.mk ms_src ms_tgt.(ModSem.Atomic.trans) ss sm sound_states)
+      ModSemPair.sim (ModSemPair.mk ms_src ms_tgt.(ModSem.Atomic.trans) ss sm)
   .
   Proof.
     inv SIM. ss.

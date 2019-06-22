@@ -135,7 +135,7 @@ Proof.
     ii. hexploit (@step_simulation prog skenv_link); eauto.
     { inv SIMSKENV. ss. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
-    { ss. exploit SOUND; eauto. i; des. eauto. }
+    { ss. des. eauto. }
     i; des.
     esplits; eauto.
     + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.

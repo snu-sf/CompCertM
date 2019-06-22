@@ -851,8 +851,8 @@ Section ADQSTEP.
       left.
       exploit SU0.
       { unsguard SUST. des. inv SUST. des.
-        simpl_depind. clarify. i. exploit FORALLSU; eauto. i; des.
-        specialize (HD (sound_states_local si)). esplits; eauto. eapply HD; eauto. }
+        simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
+        specialize (H (sound_states_local si)). esplits; eauto. eapply H; eauto. }
       i; des. clear SU0.
       right.
       econs; ss; eauto.
@@ -892,8 +892,8 @@ Section ADQSTEP.
       right. ss.
       exploit SU0.
       { unsguard SUST. des. inv SUST. des.
-        simpl_depind. clarify. i. exploit FORALLSU; eauto. i; des.
-        specialize (HD (sound_states_local si)). esplits; eauto. eapply HD; eauto. }
+        simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
+        specialize (H (sound_states_local si)). esplits; eauto. eapply H; eauto. }
       i; des. clear SU0.
       assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
                        -> safe_modsem ms_src lst_src).
@@ -943,8 +943,8 @@ Section ADQSTEP.
       des_ifs.
       hexploit1 SU0.
       { unsguard SUST. des_safe. inv SUST. des.
-        simpl_depind. clarify. i. exploit FORALLSU; eauto. i; des.
-        esplits. eapply HD; eauto. }
+        simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
+        esplits. eapply H; eauto. }
       rename SU0 into CALLFSIM.
 
       exploit CALLFSIM; eauto.

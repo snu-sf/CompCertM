@@ -46,6 +46,7 @@ Section MODSEM.
       i m blk
       (SYMB: Genv.find_symbol skenv f_id = Some blk)
       (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero)
+      (RANGE: 0 <= i.(Int.intval) < 10)
       (* (DEF: Genv.find_funct skenv args.(Args.fptr) = *)
       (*         Some (AST.Internal (mksignature [AST.Tint] (Some AST.Tint) cc_default))) *)
       (VS: args.(Args.vs) = [Vint i])
@@ -67,7 +68,6 @@ Section MODSEM.
   | after_external_intro
       i m retv
       i_after
-      (RANGE: 0 <= i.(Int.intval) < 10)
       (INT: retv.(Retv.v) = Vint i_after)
       (SUM: i_after = sum (Int.sub i Int.one))
     :

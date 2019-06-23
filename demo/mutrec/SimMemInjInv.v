@@ -21,7 +21,7 @@ Set Implicit Arguments.
 
 Section MEMINJINV.
 
-  Variable P : memory_chunk -> Z -> val -> Prop.
+  Variable P : memory_chunk -> Z -> option val -> Prop.
 
   (* Record t' := mk *)
   (*   { minj:> SimMemInj.t'; *)
@@ -39,7 +39,7 @@ Section MEMINJINV.
       (WF: SimMemInj.wf' sm0)
       (SAT: forall blk chunk ofs v
                    (INV: sm0.(mem_inv) blk)
-                   (LOAD: Mem.load chunk sm0.(SimMemInj.tgt) blk ofs = Some v),
+                   (LOAD: Mem.load chunk sm0.(SimMemInj.tgt) blk ofs = v),
           P chunk ofs v)
       (INVRANGE: forall blk ofs (INV: sm0.(mem_inv) blk),
           tgt_private sm0 blk ofs)
@@ -91,7 +91,7 @@ End MEMINJINV.
 
 Section SIMSYMBINV.
 
-Variable P : memory_chunk -> Z -> val -> Prop.
+Variable P : memory_chunk -> Z -> option val -> Prop.
 
 Inductive le (ss0: ident -> Prop) (sk_src sk_tgt: Sk.t) (ss1: ident -> Prop): Prop :=
 | le_intro
@@ -167,7 +167,7 @@ Qed.
 Next Obligation.
   inv SIMSK. eexists.
   assert (SS: forall id, {ss id} + {~ ss id}).
-  { admit "". }
+  { admit "choice + classic". }
   set (j := fun blk => if (plt blk (Mem.nextblock m_src))
                        then match Genv.invert_symbol (Sk.load_skenv sk_tgt) blk with
                             | Some id =>
@@ -206,7 +206,25 @@ Next Obligation.
         eapply Genv.find_symbol_not_fresh; eauto.
 Qed.
 Next Obligation.
-Admitted.
+  destruct sm0, sm1. ss.
+  red in H0. inv H.
+  inv SIMSKENV. econs; ss; eauto.
+  - inv INJECT. econs; eauto.
+    + i. destruct (inj minj1 b) eqn:BLK; auto. destruct p. exfalso.
+      inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto.
+      i. des. eapply Plt_strict. eapply Plt_Ple_trans.
+      * apply H.
+      * transitivity (src_parent_nb minj0); eauto.
+    + i. destruct (inj minj0 b1) eqn:BLK.
+      * destruct p. dup BLK. apply INCR in BLK. clarify.
+        eapply IMAGE; eauto.
+      * inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto.
+        i. des. exfalso. eapply Plt_strict. eapply Plt_Ple_trans.
+        { apply H0. }
+        { etrans; eauto. }
+  - rewrite <- SRCPARENTEQNB. auto.
+  - rewrite <- TGTPARENTEQNB. auto.
+Qed.
 Next Obligation.
 Admitted.
 Next Obligation.
@@ -216,6 +234,22 @@ Admitted.
 Next Obligation.
 Admitted.
 Next Obligation.
-Admitted.
+  inv SIMSKENV. inv SIMSKENV0.
+  inv ARGS. ss.
+  exploit ec_mem_inject; eauto.
+  - eapply external_call_spec.
+  - instantiate (1:=skenv_sys_tgt).
+    admit "ez".
+  - instantiate (1:=tgt sm0). rewrite MEMSRC.
+    inv MWF. inv WF. eauto.
+  - i. des.
+    eexists (mk (SimMemInj.mk (Retv.m retv_src) m2' f' _ _ _ _) _). ss.
+    exists (Retv.mk vres' m2'). ss.
+    esplits; ss; eauto.
+    + rewrite MEMTGT. eauto.
+    + admit "".
+    + admit "".
+      Unshelve. all:admit"".
+Qed.
 
 End SIMSYMBINV.

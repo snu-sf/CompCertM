@@ -46,9 +46,7 @@ Definition func_f := {|
           (Ederef
             (Ebinop Oadd (Evar _memoized (tarray tint 10)) (Etempvar _x tint)
               (tptr tint)) tint)
-          (Ebinop Osub
-            (Ebinop Oadd (Etempvar _t'1 tint) (Etempvar _x tint) tint)
-            (Econst_int (Int.repr 1) tint) tint)))
+          (Ebinop Oadd (Etempvar _t'1 tint) (Etempvar _x tint) tint)))
       Sskip)
     (Sreturn (Some (Ederef
                      (Ebinop Oadd (Evar _memoized (tarray tint 10))

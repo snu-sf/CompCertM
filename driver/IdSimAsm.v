@@ -566,11 +566,11 @@ Section TRIAL2.
           clarify. ii. clarify. inv H2. unfold UnreachC.to_inj, Mem.flat_inj in *.
           des_ifs. esplits; eauto. inv MEM. rewrite NB. auto.
         + eapply unreach_free; eauto. }
-      exploit (@Sound.greatest_ex _ su0 (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)); ss; eauto.
+      exploit (@UnreachC.greatest_ex su0 (Args.mk (Vptr blk0 Ptrofs.zero) vs m1)); ss; eauto.
       { exists su0. esplits; eauto. refl. }
       i; des.
       des_ifs. clear_tac.
-      esplits; eauto.
+      splits; [..|exists su_gr; esplits]; eauto.
       + (* mle *)
         inv SUST.
         exploit RS; eauto. intro SU; des.
@@ -581,6 +581,8 @@ Section TRIAL2.
         * inv SUST. exploit RS; try apply RSP; eauto. i. des.
           unfold Mem.valid_block. inv MEM. rewrite <- NB. auto.
         * inv SUST. specialize (RS Asm.RSP). eapply RS; et.
+      + eapply GR.
+      + eapply GR. esplits; eauto. refl.
       + (* K *)
         ii. inv AFTER. ss.
         destruct retv; ss. rename m into m2.
@@ -724,7 +726,8 @@ Let asm_ext_unreach_lxsim: forall
   ,
     <<LXSIM: @lxsim (modsem skenv_link asm) (modsem skenv_link asm)
                     (SimMemExt.SimMemExt)
-                    (fun st => exists su m_init, sound_state skenv_link su m_init st)
+                    unit
+                    (fun _ st => exists su m_init, sound_state skenv_link su m_init st)
                     (SimMemExt.mk m_src0 m_tgt0) (lift_idx unit_ord_wf tt) st_init_src st_init_tgt
                     (SimMemExt.mk m_src1 m_tgt1)>>
 .
@@ -1128,7 +1131,9 @@ Proof.
   - (* WF *)
     eapply unit_ord_wf.
   - (* lprsv *)
-    instantiate (1:=top3). econs; ss.  ii. exists tt. esplits; ss.
+    instantiate (1:=top3). econs; ss.
+    { ii. esplits; eauto. rr. esplits; eauto. rr. rewrite Forall_forall. ii; ss. }
+    ii. esplits; eauto. rr. esplits; eauto.
 
   - (* init bsim *)
     ii. inv SIMSKENV. ss.
@@ -1312,6 +1317,8 @@ Proof.
           econs; ss; eauto.
         - instantiate (1:=SimMemExt.mk _ _). econs; ss; eauto.
       }
+Unshelve.
+  all: ss.
 Qed.
 
 
@@ -1786,6 +1793,7 @@ Proof.
            (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm))
       (match_states_at := top4)
       (has_footprint := has_footprint skenv_link_src skenv_link_tgt)
+      (sidx := unit)
       (mle_excl := mle_excl skenv_link_src skenv_link_tgt); ss; eauto; ii.
   - apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -2502,7 +2510,7 @@ Proof.
             }
           + i. exploit RSPDELTA; eauto. i. des. esplits; eauto.
       }
-
+Unshelve.
 Qed.
 
 Lemma asm_inj_drop

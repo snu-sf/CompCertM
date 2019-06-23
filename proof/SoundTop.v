@@ -29,25 +29,15 @@ Global Program Instance Top: Sound.class := {
   t := unit;
   le := top2;
   wf := top1;
-  get_greatest := top3;
   val := top2;
   mem := top2;
   mle := top3;
   skenv := top3;
 }
 .
-Next Obligation.
-  destruct su_gr0, su_gr1; ss.
-Qed.
-Next Obligation.
-  esplits; eauto.
-Qed.
 (* Next Obligation. *)
   (* destruct su_gr0, su_gr1; ss. *)
 (* Qed. *)
-Next Obligation.
-  esplits; eauto. rewrite Forall_forall. i. ss.
-Qed.
 Next Obligation.
   esplits; eauto.
   econs; eauto.
@@ -68,7 +58,8 @@ Lemma sound_state_local_preservation
 .
 Proof.
   econs; ii; ss; eauto.
-  esplits; eauto. ss.
+  { esplits; eauto. rr. esplits; eauto. rr. rewrite Forall_forall. ii; ss. }
+  { esplits; eauto. rr. esplits; eauto. }
 Unshelve.
   all: ss.
 Qed.

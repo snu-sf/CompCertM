@@ -112,6 +112,7 @@ Section SOUNDNESS.
       eapply Genv_map_defs_def in Heq. des. u in MAP. des_ifs_safe. bsimpl.
       esplits. eapply in_prog_defmap; eauto.
     - esplits; eauto.
+      { rr. esplits; ss; eauto. rr. rewrite Forall_forall. ii; ss. }
       ii.
       inv AFTER.
       inv SUST.

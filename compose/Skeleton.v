@@ -95,10 +95,10 @@ Module Sk.
     - inv H1. ss.
   Qed.
 
-  Let match_fundef F0 F1 (_: unit): AST.fundef F0 -> AST.fundef F1 -> Prop :=
+  Let match_fundef F0 F1 (get_sig: F0 -> F1) (_: unit): AST.fundef F0 -> AST.fundef F1 -> Prop :=
     fun f0 f1 =>
       match f0, f1 with
-      | Internal _, Internal _ => true
+      | Internal func1, Internal func2 => get_sig func1 = func2
       | External ef0, External ef1 => external_function_eq ef0 ef1
       | _, _ => false
       end
@@ -110,7 +110,7 @@ Module Sk.
         get_sg
     :
       <<SIM: forall id, option_rel (@Linking.match_globdef unit _ _ _ _ _
-                                                           (@match_fundef _ _)
+                                                           (@match_fundef _ _ get_sg)
                                                            top2
                                                            tt)
                                    (p.(prog_defmap) ! id) ((of_program get_sg p).(prog_defmap) ! id)>>
@@ -425,7 +425,7 @@ I think "sim_skenv_monotone" should be sufficient.
 
   Lemma match_globdef_is_external_gd
         (gd1 gd2: globdef (AST.fundef signature) unit)
-        (MATCH: match_globdef (@Sk.match_fundef _ _) top2 tt gd1 gd2)
+        (MATCH: match_globdef (@Sk.match_fundef _ _ id) top2 tt gd1 gd2)
     :
       is_external_gd gd1 = is_external_gd gd2
   .
@@ -714,9 +714,3 @@ Hint Unfold SkEnv.empty.
 
 
 (* Hint Unfold SkEnv.revive. *)
-
-
-
-
-
-

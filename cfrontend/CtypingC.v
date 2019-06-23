@@ -64,15 +64,19 @@ Lemma wt_initial_frame
       targs tres cconv
       (ge: genv)
       (INT: exists fd, Genv.find_funct ge fptr = Some (Internal fd))
+      (WTLOCALS:
+         forall fd, Genv.find_funct ge fptr = Some (Internal fd) ->
+         Forall (fun t : type => wt_type ge t) (map snd (fn_params fd ++ fn_vars fd)))
       (* (WTARGS: list_forall2 Val.has_type vs_arg (typlist_of_typelist targs)) *)
       (WTARGS: Forall2 val_casted vs_arg (typelist_to_listtype targs))
       (NVOID: Forall (fun ty : type => ty <> Tvoid) (typelist_to_listtype targs))
   :
-    wt_state ge (Csem.Callstate fptr (Tfunction targs tres cconv) vs_arg Kstop m)
+    wt_state cp ge (Csem.Callstate fptr (Tfunction targs tres cconv) vs_arg Kstop m)
 .
 Proof.
   des.
   econs; et; ss.
+  - econs; et.
   - econs; et.
   - ii. exfalso. eapply EXT; et.
 Qed.

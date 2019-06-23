@@ -6,7 +6,7 @@ int f(int x) {
   int t;
   if(x == 0) return 0;
   t = memoized[x];
-  if(t < 0) {
+  if(t == 0) {
     t = g(x-1) + x;
     memoized[x] = t;
   }

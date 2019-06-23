@@ -10,8 +10,8 @@ Definition _x : ident := 55%positive.
 Definition _t'1 : ident := 59%positive.
 
 Definition v_memoized := {|
-  gvar_info := (tarray tint 1000);
-  gvar_init := (Init_space 4000 :: nil);
+  gvar_info := (tarray tint MAX);
+  gvar_init := (Init_space (4 * MAX) :: nil);
   gvar_readonly := false;
   gvar_volatile := false
 |}.
@@ -34,7 +34,7 @@ Definition func_f := {|
         (Ebinop Oadd (Evar _memoized (tarray tint 1000)) (Etempvar _x tint)
           (tptr tint)) tint))
     (Ssequence
-      (Sifthenelse (Ebinop Olt (Etempvar _t tint)
+      (Sifthenelse (Ebinop Oeq (Etempvar _t tint)
                      (Econst_int (Int.repr 0) tint) tint)
         (Ssequence
           (Ssequence

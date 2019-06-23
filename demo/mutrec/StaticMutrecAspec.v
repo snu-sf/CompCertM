@@ -7,7 +7,7 @@ Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require Import CtypesC CtypingC.
 Require Import ClightC.
-Require Import StaticMutrecHeader.
+Require Import MutrecHeader.
 Require Import StaticMutrecA.
 
 Set Implicit Arguments.
@@ -46,7 +46,7 @@ Section MODSEM.
       i m blk
       (SYMB: Genv.find_symbol skenv f_id = Some blk)
       (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero)
-      (RANGE: 0 <= i.(Int.intval) < 10)
+      (RANGE: 0 <= i.(Int.intval) < MAX)
       (* (DEF: Genv.find_funct skenv args.(Args.fptr) = *)
       (*         Some (AST.Internal (mksignature [AST.Tint] (Some AST.Tint) cc_default))) *)
       (VS: args.(Args.vs) = [Vint i])
@@ -59,7 +59,6 @@ Section MODSEM.
   | at_external_intro
       g_fptr i m
       (FINDG: Genv.find_symbol skenv g_id = Some g_fptr)
-      (NZERO: i.(Int.intval) <> 0%Z)
     :
       at_external (Interstate i m) (Args.mk (Vptr g_fptr Ptrofs.zero) [Vint (Int.sub i (Int.repr 1))] m)
   .
@@ -81,6 +80,7 @@ Section MODSEM.
       step se ge (Callstate i m) E0 (Returnstate (sum i) m)
   | step_call
       i m
+      (NZERO: i.(Int.intval) <> 0%Z)
     :
       step se ge (Callstate i m) E0 (Interstate i m)
   .

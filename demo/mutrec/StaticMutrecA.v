@@ -1,20 +1,17 @@
 From Coq Require Import String List ZArith.
 From compcert Require Import Coqlib Integers Floats AST Ctypes Cop Clight Clightdefs.
-Require Import StaticMutrecHeader.
+Require Import MutrecHeader.
 
 Local Open Scope Z_scope.
 
+Definition _memoized : ident := 54%positive.
+Definition _t : ident := 56%positive.
 Definition _x : ident := 55%positive.
-Definition _t'1 : ident := 58%positive.
+Definition _t'1 : ident := 59%positive.
 
 Definition v_memoized := {|
-  gvar_info := (tarray tint 10);
-  gvar_init := (Init_int32 (Int.repr (-1)) :: Init_int32 (Int.repr (-1)) ::
-                Init_int32 (Int.repr (-1)) :: Init_int32 (Int.repr (-1)) ::
-                Init_int32 (Int.repr (-1)) :: Init_int32 (Int.repr (-1)) ::
-                Init_int32 (Int.repr (-1)) :: Init_int32 (Int.repr (-1)) ::
-                Init_int32 (Int.repr (-1)) :: Init_int32 (Int.repr (-1)) ::
-                nil);
+  gvar_info := (tarray tint 1000);
+  gvar_init := (Init_space 4000 :: nil);
   gvar_readonly := false;
   gvar_volatile := false
 |}.
@@ -24,7 +21,7 @@ Definition func_f := {|
   fn_callconv := cc_default;
   fn_params := ((_x, tint) :: nil);
   fn_vars := nil;
-  fn_temps := ((_t'1, tint) :: nil);
+  fn_temps := ((_t, tint) :: (_t'1, tint) :: nil);
   fn_body :=
 (Ssequence
   (Sifthenelse (Ebinop Oeq (Etempvar _x tint) (Econst_int (Int.repr 0) tint)
@@ -32,25 +29,27 @@ Definition func_f := {|
     (Sreturn (Some (Econst_int (Int.repr 0) tint)))
     Sskip)
   (Ssequence
-    (Sifthenelse (Ebinop Olt
-                   (Ederef
-                     (Ebinop Oadd (Evar _memoized (tarray tint 10))
-                       (Etempvar _x tint) (tptr tint)) tint)
-                   (Econst_int (Int.repr 0) tint) tint)
-      (Ssequence
-        (Scall (Some _t'1)
-          (Evar g_id (Tfunction (Tcons tint Tnil) tint cc_default))
-          ((Ebinop Osub (Etempvar _x tint) (Econst_int (Int.repr 1) tint)
-             tint) :: nil))
-        (Sassign
-          (Ederef
-            (Ebinop Oadd (Evar _memoized (tarray tint 10)) (Etempvar _x tint)
-              (tptr tint)) tint)
-          (Ebinop Oadd (Etempvar _t'1 tint) (Etempvar _x tint) tint)))
-      Sskip)
-    (Sreturn (Some (Ederef
-                     (Ebinop Oadd (Evar _memoized (tarray tint 10))
-                       (Etempvar _x tint) (tptr tint)) tint)))))
+    (Sset _t
+      (Ederef
+        (Ebinop Oadd (Evar _memoized (tarray tint 1000)) (Etempvar _x tint)
+          (tptr tint)) tint))
+    (Ssequence
+      (Sifthenelse (Ebinop Olt (Etempvar _t tint)
+                     (Econst_int (Int.repr 0) tint) tint)
+        (Ssequence
+          (Ssequence
+            (Scall (Some _t'1)
+              (Evar g_id (Tfunction (Tcons tint Tnil) tint cc_default))
+              ((Ebinop Osub (Etempvar _x tint) (Econst_int (Int.repr 1) tint)
+                 tint) :: nil))
+            (Sset _t
+              (Ebinop Oadd (Etempvar _t'1 tint) (Etempvar _x tint) tint)))
+          (Sassign
+            (Ederef
+              (Ebinop Oadd (Evar _memoized (tarray tint 1000))
+                (Etempvar _x tint) (tptr tint)) tint) (Etempvar _t tint)))
+        Sskip)
+      (Sreturn (Some (Etempvar _t tint))))))
 |}.
 
 Definition composites : list composite_definition := nil.

@@ -9,7 +9,7 @@ Require Import AxiomsC.
 Definition main_id := (77%positive).
 Definition f_id := (154%positive).
 Definition g_id := (176%positive).
-(* Definition MAX: Z := 100%Z. *)
+Definition MAX: Z := 1000%Z.
 
 Definition sum (i: int): int :=
   let sumz: Z := fold_rec Z Z.add 0%Z 0%Z (i.(Int.intval) + 1)%Z in

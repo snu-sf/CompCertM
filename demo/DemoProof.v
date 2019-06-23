@@ -7,7 +7,7 @@ Require Import sflib.
 Require Export Renumberproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
-Require SimMemExt.
+Require SimMemInjC.
 Require SoundTop.
 Require Import MatchSimModSem.
 
@@ -192,220 +192,290 @@ Lemma E0_double:
 Proof. auto. Qed.
 Hint Resolve E0_double.
 
+Require Import StoreArguments.
+
+Lemma asm_init_succeed skenv_link p args fd
+      (FPTR: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig p)) p) args.(Args.fptr)
+             = Some (AST.Internal fd))
+      (LEN: Datatypes.length args.(Args.vs) = Datatypes.length (sig_args (fn_sig fd)))
+      (SZ: 4 * Conventions1.size_arguments (fn_sig fd) <= Ptrofs.max_unsigned)
+  :
+    exists st_init : state, initial_frame skenv_link p args st_init.
+Proof.
+  destruct args. ss.
+  exploit store_arguments_progress.
+  { eapply typify_has_type_list; eauto. }
+  { eauto. }
+  i. des. instantiate (1:=m) in STR.
+  eexists (mkstate _ (Asm.State _ _)).
+  econs; ss; eauto.
+  - instantiate (1:= ((to_pregset rs) #PC <- fptr
+                                      #RSP <- (Vptr (Mem.nextblock m) Ptrofs.zero)
+                                      #RA <- Vnullptr)).
+    ss.
+  - econs; eauto.
+  - econs.
+    + inv STR. econs; eauto.
+      eapply extcall_arguments_same; eauto.
+      i. unfold to_mregset, to_pregset, Pregmap.set, to_preg, preg_of. des_ifs; ss; clarify.
+    + des_ifs.
+  - split.
+    + des_ifs.
+    + des_ifs.
+  - i. des_ifs.
+  - i. unfold Pregmap.set, to_pregset in PTR. des_ifs; eauto.
+    + exfalso. apply PTR. ss.
+    + left. esplits; eauto.
+      apply NNPP. ii. exploit PTRFREE; eauto.
+    + exfalso. apply PTR. ss.
+      Unshelve. apply 0%nat.
+Qed.
+
 Theorem correct
   :
     ModPair.sim mp
 .
 Proof.
-  admit "".
-  (* econs; eauto; ss. i. inv SSLE. *)
-  (* econs; ss; i. *)
-  (* { econs; ss; eauto; [esplits; eauto|econs; ss]. } *)
+  econs; eauto; ss. i. inv SSLE.
+  econs; ss; i.
+  { econs; ss; eauto; [esplits; eauto|econs; ss]. }
 
-  (* assert (FPTRSRC: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program Cminor.fn_sig DemoSource.prog)) DemoSource.prog) (Args.fptr args_src) = *)
-  (*                  Some (AST.Internal DemoSource.func)). *)
-  (* { clear - INCLSRC FINDFSRC WFSRC. *)
-  (*   unfold Genv.find_funct in *. des_ifs. *)
-  (*   apply Genv.find_funct_ptr_iff in FINDFSRC. apply Genv.find_funct_ptr_iff. *)
-  (*   unfold SkEnv.revive. exploit SkEnv.project_impl_spec; eauto. i. inv H. *)
-  (*   erewrite Genv_map_defs_def_inv; eauto. unfold o_bind, o_join, o_map. *)
-  (*   destruct (Genv.invert_symbol skenv_link_src b) eqn:SEQ; cycle 1. *)
-  (*   { exploit DEFORPHAN; eauto. i. des. clarify. } *)
-  (*   exploit DEFKEPT; eauto. i. des. apply prog_defmap_image in PROG. ss. des; clarify. *)
-  (*   apply Genv.invert_find_symbol in SEQ. *)
-  (*   exploit Genv.find_invert_symbol. *)
-  (*   - erewrite SYMBKEEP; eauto. *)
-  (*   - intros INVSYMB. rewrite INVSYMB. ss. } *)
-  (* assert (FPTRTGT: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig DemoTarget.prog)) DemoTarget.prog) *)
-  (*                                  (Args.fptr args_tgt) = Some (AST.Internal (DemoTarget.func))). *)
-  (* { clear - INCLTGT FINDFTGT WFTGT. *)
-  (*   unfold Genv.find_funct in *. des_ifs. *)
-  (*   apply Genv.find_funct_ptr_iff in FINDFTGT. apply Genv.find_funct_ptr_iff. *)
-  (*   unfold SkEnv.revive. exploit SkEnv.project_impl_spec; eauto. i. inv H. *)
-  (*   erewrite Genv_map_defs_def_inv; eauto. unfold o_bind, o_join, o_map. *)
-  (*   destruct (Genv.invert_symbol skenv_link_tgt b) eqn:SEQ; cycle 1. *)
-  (*   { exploit DEFORPHAN; eauto. i. des. clarify. } *)
-  (*   exploit DEFKEPT; eauto. i. des. apply prog_defmap_image in PROG. ss. des; clarify. *)
-  (*   apply Genv.invert_find_symbol in SEQ. *)
-  (*   exploit Genv.find_invert_symbol. *)
-  (*   - erewrite SYMBKEEP; eauto. *)
-  (*   - intros INVSYMB. rewrite INVSYMB. ss. } *)
+  assert (FPTRSRC: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program Cminor.fn_sig DemoSource.prog)) DemoSource.prog) (Args.fptr args_src) =
+                   Some (AST.Internal DemoSource.func)).
+  { clear - INCLSRC FINDFSRC WFSRC.
+    unfold Genv.find_funct in *. des_ifs.
+    apply Genv.find_funct_ptr_iff in FINDFSRC. apply Genv.find_funct_ptr_iff.
+    unfold SkEnv.revive. exploit SkEnv.project_impl_spec; eauto. i. inv H.
+    erewrite Genv_map_defs_def_inv; eauto. unfold o_bind, o_join, o_map.
+    destruct (Genv.invert_symbol skenv_link_src b) eqn:SEQ; cycle 1.
+    { exploit DEFORPHAN; eauto. i. des. clarify. }
+    exploit DEFKEPT; eauto. i. des. apply prog_defmap_image in PROG. ss. des; clarify.
+    apply Genv.invert_find_symbol in SEQ.
+    exploit Genv.find_invert_symbol.
+    - erewrite SYMBKEEP; eauto.
+    - intros INVSYMB. rewrite INVSYMB. ss. }
+  assert (FPTRTGT: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig DemoTarget.prog)) DemoTarget.prog)
+                                   (Args.fptr args_tgt) = Some (AST.Internal (DemoTarget.func))).
+  { clear - INCLTGT FINDFTGT WFTGT.
+    unfold Genv.find_funct in *. des_ifs.
+    apply Genv.find_funct_ptr_iff in FINDFTGT. apply Genv.find_funct_ptr_iff.
+    unfold SkEnv.revive. exploit SkEnv.project_impl_spec; eauto. i. inv H.
+    erewrite Genv_map_defs_def_inv; eauto. unfold o_bind, o_join, o_map.
+    destruct (Genv.invert_symbol skenv_link_tgt b) eqn:SEQ; cycle 1.
+    { exploit DEFORPHAN; eauto. i. des. clarify. }
+    exploit DEFKEPT; eauto. i. des. apply prog_defmap_image in PROG. ss. des; clarify.
+    apply Genv.invert_find_symbol in SEQ.
+    exploit Genv.find_invert_symbol.
+    - erewrite SYMBKEEP; eauto.
+    - intros INVSYMB. rewrite INVSYMB. ss. }
 
-  (* esplits; ss; i; cycle 1. *)
-  (* { *)
-  (*   (* TODO make lemma : asm always succeed to init  *) *)
-  (*   des. inv SAFESRC. clarify. *)
-  (*   ss. destruct args_src, args_tgt. ss. destruct vs; clarify. destruct vs; clarify. *)
-  (*   inv SIMARGS. ss. clarify. inv VALS. inv H3. *)
-  (*   destruct (Mem.alloc (SimMemExt.tgt sm_arg) 0 0) eqn:MEQ. *)
-  (*   eexists (mkstate _ (State (((fun _ => Vundef) # PC <- fptr0 # RA <- Vnullptr # RDI <- (typify v2 AST.Tlong)) *)
-  (*                                # RSP <- (Vptr (Mem.nextblock (SimMemExt.tgt sm_arg)) Ptrofs.zero)) m)). *)
-  (*   econs; ss; eauto. *)
-  (*   - instantiate (1:=[typify v2 AST.Tlong]). econs; ss. *)
-  (*   - econs. *)
-  (*     + econs; ss. *)
-  (*       * ss. unfold Conventions1.size_arguments. des_ifs. rewrite Z.mul_0_r in *. eauto. *)
-  (*       * econs; [|econs]. econs. econs. *)
-  (*       * refl. *)
-  (*       * ii. unfold Conventions1.size_arguments in *. des_ifs. ss. nia. *)
-  (*     + ss. *)
-  (*   - ii. unfold is_real_ptr in *. unfold Pregmap.set in *; des_ifs; eauto. *)
-  (*     left. esplits; ss; eauto. unfold Conventions1.loc_arguments. des_ifs. ss. eauto. } *)
+  esplits; ss; i; cycle 1.
+  { des. inv SAFESRC. clarify. inv SIMARGS. ss.
+    eapply asm_init_succeed; eauto; ss.
+    eapply inject_list_length in VALS.
+    rewrite <- LEN. eauto. }
 
-  (* inv INITTGT. clarify. inv TYP. ss. destruct args_tgt. ss. *)
-  (* destruct vs; clarify. destruct vs; clarify; ss. *)
-  (* inv SIMARGS. ss. clarify. inv VALS. inv H3. destruct args_src. *)
-  (* ss. clarify.  clear SZ. inv STORE. inv H. *)
-  (* unfold typify_list, zip in *. inv VALS. des_ifs_safe. clear H6. *)
-  (* unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs. *)
-  (* inv H4. inv H1. *)
+  clear SAFESRC.
+  inv INITTGT. clarify. inv TYP. ss. destruct args_tgt. ss.
+  destruct vs; clarify. destruct vs; clarify; ss.
+  inv SIMARGS. ss. clarify. inv VALS. inv H3. destruct args_src.
+  ss. clarify. clear SZ. unfold AsmC.store_arguments in *. des.
+  dup STORE0. inv STORE0.
+  unfold typify_list, zip in *. inv VALS. des_ifs_safe.
+  unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs.
+  inv H3. inv H0.
 
-  (* eexists. eexists (SimMemExt.mk _ m). esplits; eauto. *)
-  (* - econs; ss; eauto. econs; ss. *)
-  (* - unfold Genv.find_funct in FINDF. des_ifs. *)
-  (*   instantiate (1:=sm_arg.(SimMemExt.src)). instantiate (1:=nat_idx 10). *)
+  eexists. eexists (SimMemInj.mk _ _ _ _ _ _ _). esplits; eauto.
+  - econs; ss; eauto; try refl.
+    econs. i. des. clarify.
+  - econs; eauto. ss.
+  - unfold Genv.find_funct in FINDF. des_ifs.
+    instantiate (1:=nat_idx 10).
+    destruct (Val.floatoflongu (typify v0 AST.Tlong)) eqn:VEQ; cycle 1.
+    { unfold lxsim. pcofix CIH. pfold. ss.
+      econs 1. ii.
+      econs 1; cycle 2.
+      { eapply CminorC.modsem_receptive; eauto. }
+      { split; ii.
+        - inv H0. inv H1. clarify.
+        - inv H0. inv H1. }
+      ii. ss. inv STEPSRC; ss; clarify.
+      esplits; auto.
+      - right. splits; eauto. econs 1.
+      - refl.
+      - left. pfold. econs 1. ii.
+        econs 1; cycle 2.
+        { eapply CminorC.modsem_receptive; eauto. }
+        { split; ii.
+          - inv H0. inv H1.
+          - inv H0. inv H1. }
+        ii. ss. inv STEPSRC. inv H11. ss. inv H3. ss. clarify. }
 
-  (*   destruct (Val.floatoflongu (typify v1 AST.Tlong)) eqn:VEQ; cycle 1. *)
-  (*   { unfold lxsim. pcofix CIH. pfold. ss. *)
-  (*     econs 1. ii. splits. *)
-  (*     { ii. inv H1. inv H3. clarify. } *)
-  (*     { ii. inv H1. inv H3. } *)
-  (*     econs 1; cycle 1; [eapply CminorC.modsem_receptive; eauto|]. *)
-  (*     ii. ss. inv STEPSRC; ss; clarify. *)
-  (*     esplits; auto. *)
-  (*     - right. splits; eauto. econs 1. *)
-  (*     - left. pfold. econs 1. ii. splits. *)
-  (*       { ii. inv H1. inv H3. } *)
-  (*       { ii. inv H1. inv H3. } *)
-  (*       econs 1; cycle 1; [eapply CminorC.modsem_receptive; eauto|]. *)
-  (*       ii. ss. inv STEPSRC. inv H11. ss. inv H4. ss. clarify. } *)
+    dup VEQ. unfold typify, to_mregset in *. ss.
+    unfold Val.floatoflongu in VEQ0. des_ifs; inv H2; ss.
+    rename H into RDIV.
 
-  (*   dup VEQ. unfold typify, to_mregset in *. ss. *)
-  (*   unfold Val.floatoflongu in VEQ0. des_ifs; inv H2; ss. *)
-  (*   rename H3 into RDIV. *)
+    unfold lxsim. pcofix CIH. pfold. ss.
+    econs 2. i; des.
+    splits; swap 3 4.
+    { ii. rr in H. des. inv H. des. clarify. }
+    { ii. rr in H. des. inv H. }
+    { esplits. instantiate (1:= mkstate _ (State _ _)). econs; ss.
+      econs; eauto; [des_ifs|ss]. }
 
-  (*   unfold lxsim. pcofix CIH. pfold. ss. *)
-  (*   econs 2. i; des. *)
-  (*   splits; swap 3 4. *)
-  (*   { ii. rr in H. des. inv H. des. clarify. } *)
-  (*   { ii. rr in H. des. inv H. } *)
-  (*   { esplits. instantiate (1:= mkstate _ (State _ _)). econs; ss. *)
-  (*     econs; eauto; [des_ifs|ss]. } *)
+    rewrite Z.mul_0_r in *.
+    destruct (Mem.alloc (SimMemInj.src sm_arg) 0 0) eqn:MEQ0.
+    destruct (Mem.free m b0 0 0) eqn:MEQ1; cycle 1.
+    { exfalso. hexploit Mem.range_perm_free.
+      - ii. exfalso. instantiate (1:=0) in H. instantiate (1:=0) in H. nia.
+      - intros [m2 FREE]. rewrite MEQ1 in *. clarify. }
+    destruct (Mem.free (JunkBlock.assign_junk_blocks m0 n) (Mem.nextblock (SimMemInj.tgt sm_arg)) 0 0) eqn:MEQ2; cycle 1.
+    { exfalso. hexploit Mem.range_perm_free.
+      - ii. exfalso. instantiate (1:=0) in H. instantiate (1:=0) in H. nia.
+      - intros [m3 FREE]. rewrite MEQ2 in *. clarify. }
 
-  (*   rewrite Z.mul_0_r in *. *)
-  (*   destruct (Mem.alloc (SimMemExt.src sm_arg) 0 0) eqn:MEQ0. *)
-  (*   destruct (Mem.free m0 b0 0 0) eqn:MEQ1; cycle 1. *)
-  (*   { exfalso. hexploit Mem.range_perm_free. *)
-  (*     - ii. exfalso. instantiate (1:=0) in H. instantiate (1:=0) in H. nia. *)
-  (*     - intros [m2 FREE]. rewrite MEQ1 in *. clarify. } *)
-  (*   destruct (Mem.free m (Mem.nextblock (SimMemExt.tgt sm_arg)) 0 0) eqn:MEQ2; cycle 1. *)
-  (*   { exfalso. hexploit Mem.range_perm_free. *)
-  (*     - ii. exfalso. instantiate (1:=0) in H. instantiate (1:=0) in H. nia. *)
-  (*     - intros [m3 FREE]. rewrite MEQ2 in *. clarify. } *)
-  (*   assert (MEMEXT: Mem.extends m2 m3). *)
-  (*   { hexploit Mem.alloc_extends; eauto; try refl. *)
-  (*     i. des. rewrite ALC in *. clarify. *)
-  (*     assert (MEMEXT: Mem.extends m0 m). *)
-  (*     { inv H1. inv mext_inj. econs. *)
-  (*       - etrans; eauto. *)
-  (*       - econs; ss; i. *)
-  (*         + exploit mi_perm; eauto. i. *)
-  (*           eapply Mem.perm_unchanged_on; eauto. ss. des_ifs. nia. *)
-  (*         + exploit mi_memval; eauto. i. *)
-  (*           erewrite (@Mem.unchanged_on_contents _ _ _ UNCH); eauto. des_ifs. nia. *)
-  (*       - ii. exploit mext_perm_inv; eauto. *)
-  (*         eapply Mem.perm_unchanged_on_2; eauto. ss. des_ifs. nia. *)
-  (*         apply Mem.perm_valid_block in H. unfold Mem.valid_block. rewrite NB. auto. } *)
-  (*     hexploit Mem.free_parallel_extends; eauto. *)
-  (*     i. des. eapply Mem.alloc_result in ALC. clarify. } *)
+    assert (exists sm1, ((<<MWF: SimMemInj.wf' sm1>>) /\
+                         (<<MLE: SimMemInj.le' sm_arg sm1>>) /\
+                         (<<MEMSRC: SimMemInj.src sm1 = m2>>) /\
+                         (<<MEMTGT: SimMemInj.tgt sm1 = m3>>))).
+    { hexploit SimMemInj.alloc_parallel; try refl; eauto.
+      i. des. rewrite ALC in *. clarify.
 
-  (*   econs 2. *)
-  (*   { ss. split; cycle 1; eauto. econs 2; eauto; econs; ss; eauto. } *)
+      set (sm2 := SimMemInjC.update
+                    sm1
+                    (SimMemInj.src sm1) m0 (SimMemInj.inj sm1)).
+      assert (MWF1: SimMemInj.wf' sm2).
+      { unfold sm2. inv MWF0. econs; eauto; ss.
+        - eapply MemoryC.private_unchanged_inject; eauto.
+          ii. des_ifs. omega.
+        - ii. eapply TGTEXT in PR. inv PR. econs; ss.
+          unfold SimMemInj.valid_blocks, Mem.valid_block.
+          rewrite <- NB. auto.
+        - etrans; eauto. rewrite NB. refl. }
+      assert (MLE1: SimMemInj.le' sm1 sm2).
+      { unfold sm2. econs; eauto.
+        - refl.
+        - eapply Mem.unchanged_on_implies; eauto.
+          i. ss. des_ifs. omega.
+        - eapply SimMemInj.frozen_refl.
+        - i. ss. ii.
+          eapply Mem.unchanged_on_perm; eauto. ss. des_ifs. omega. }
+      exploit SimMemInjC.inject_junk_blocks_tgt; eauto.
+      i. des. clarify.
+      exploit SimMemInj.free_parallel; eauto.
+      i. des. exists sm0. esplits; eauto.
+      - etrans; eauto. etrans; eauto. etrans; eauto.
+      - ss. instantiate (1:=n) in FREETGT.
+        eapply Mem.alloc_result in ALC. rewrite ALC in *. clarify. }
+    des.
 
-  (*   assert (NEXT0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs m) PC *)
-  (*                  = Vptr b Ptrofs.zero true). *)
-  (*   { unfold compare_longs, Pregmap.set in *. des_ifs. } *)
-  (*   assert (RDI0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs m) RDI *)
-  (*                 = Vlong i). *)
-  (*   { unfold compare_longs, Pregmap.set in *. des_ifs. } *)
-  (*   assert (SF0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs m) SF *)
-  (*                = if (Int64.lt i Int64.zero) *)
-  (*                  then (Vint Int.one) *)
-  (*                  else (Vint Int.zero)). *)
-  (*   { unfold compare_longs, Pregmap.set. ss. rewrite <- RDIV. ss. *)
-  (*     unfold Int64.negative. rewrite Int64.and_idem. rewrite Int64.sub_zero_l.  des_ifs. } *)
-  (*   assert (RA0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs m) RA *)
-  (*                = rs RA). *)
-  (*   { unfold compare_longs, Pregmap.set in *. des_ifs. } *)
-  (*   Local Opaque compare_longs. *)
+    econs 2.
+    { ss. split; cycle 1; eauto.
+      econs 2; eauto.
+      { econs; ss; eauto. }
+      econs 2; eauto.
+      { econs; ss; eauto. econs; eauto.
+        - econs; ss.
+        - unfold typify. des_ifs. }
+      econs 1; eauto. }
 
-  (*   left. pfold. econs 1. intros _. splits. *)
-  (*   { ii. inv H. inv H1. } *)
-  (*   { ii. inv H. inv H1. } *)
+    assert (NEXT0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) PC
+                   = Vptr b Ptrofs.zero).
+    { unfold compare_longs, Pregmap.set in *. des_ifs. }
+    assert (RDI0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) RDI
+                  = Vlong i).
+    { unfold compare_longs, Pregmap.set in *. des_ifs. }
+    assert (SF0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) SF
+                 = if (Int64.lt i Int64.zero)
+                   then (Vint Int.one)
+                   else (Vint Int.zero)).
+    { unfold compare_longs, Pregmap.set. ss. rewrite <- RDIV. ss.
+      unfold Int64.negative. rewrite Int64.and_idem. rewrite Int64.sub_zero_l.  des_ifs. }
+    assert (RA0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) RA
+                 = rs RA).
+    { unfold compare_longs, Pregmap.set in *. des_ifs. }
+    Local Opaque compare_longs.
 
-  (*   econs 1; cycle 1; [eapply CminorC.modsem_receptive; eauto|]. *)
-  (*   ii. inv STEPSRC. ss. inv H8. ss. inv H2. ss. unfold typify, Val.floatoflongu in *. *)
-  (*   des_ifs_safe; ss; clarify. *)
+    left. pfold. econs 1. intros _.
+    destruct (Int64.lt i Int64.zero) eqn:CASE.
 
-  (*   destruct (Int64.lt i0 Int64.zero) eqn:CASE. *)
+    + econs 2.
+      * split; eauto.
+        econs; eauto; [econs;[eapply modsem_determinate; eauto|]; instantiate (1:= mkstate _ _); econs; ss; econs; ss; eauto; [des_ifs| ..];ss|];
+          unfold nextinstr_nf, nextinstr, undef_regs;
+          repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0); des_ifs.
 
-  (*   + esplits; auto. econs 2. *)
-  (*     * split; eauto. *)
-  (*       do 10 (econs 2; eauto; [econs;[eapply modsem_determinate; eauto|]; instantiate (1:= mkstate _ _); econs; ss; econs; ss; eauto; [des_ifs| ..];ss|]; *)
-  (*              unfold nextinstr_nf, nextinstr, undef_regs; *)
-  (*              repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0); des_ifs). *)
-  (*       econs 1. *)
+        do 9 (econs 2; eauto; [econs;[eapply modsem_determinate; eauto|]; instantiate (1:= mkstate _ _); econs; ss; econs; ss; eauto; [des_ifs| ..];ss|];
+          unfold nextinstr_nf, nextinstr, undef_regs;
+          repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0); des_ifs).
+        econs 1; eauto.
+      * left. pfold. econs 4; cycle 2; ss.
+        -- econs; ss; eauto.
+           ++ ii. unfold Conventions1.is_callee_save in *.
+              des_ifs; unfold nextinstr_nf, nextinstr, undef_regs;
+                repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
+           ++ esplits; eauto. rewrite Heq. ss. des_ifs. eauto.
+           ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
+           ++ unfold Conventions1.loc_result. des_ifs.
+           ++ unfold nextinstr_nf, nextinstr, undef_regs;
+                repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
+              unfold external_state. des_ifs. exfalso.
+              unfold Genv.find_funct, Genv.find_funct_ptr in Heq2. des_ifs.
+              eapply Genv.genv_defs_range in Heq3.
+              exploit RANOTFPTR; eauto.
+           ++ destruct (Genv.find_funct skenv_link_tgt (rs RA)) eqn:FINDRA; auto.
+              unfold Genv.find_funct, Genv.find_funct_ptr in FINDRA. des_ifs.
+              exfalso. eapply Genv.genv_defs_range in Heq2.
+              exploit RANOTFPTR; eauto.
+        -- instantiate (1:= sm1).
+           unfold nextinstr_nf, nextinstr, undef_regs;
+             repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
+           econs; ss; eauto.
+           rpapply Val.inject_float. clear - CASE.
+           unfold Int64.lt, Int64.signed in *. des_ifs.
+           { rewrite Int64.unsigned_zero in *. set (Int64.unsigned_range_2 i). nia. }
+           ss. rewrite Float.mul2_add. rewrite Float.of_longu_of_long_2; auto.
+           unfold Int64.ltu. des_ifs.
+        -- ss.
+        -- eauto.
 
-  (*     * left. pfold. econs 4; cycle 2; ss. *)
-  (*       -- econs; ss; eauto. *)
-  (*          ++ ii. unfold Conventions1.is_callee_save in *. *)
-  (*             des_ifs; unfold nextinstr_nf, nextinstr, undef_regs; *)
-  (*               repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0). *)
-  (*          ++ esplits; eauto. rewrite Heq. ss. des_ifs. eauto. *)
-  (*          ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto. *)
-  (*          ++ unfold Conventions1.loc_result. des_ifs. *)
-  (*          ++ unfold nextinstr_nf, nextinstr, undef_regs; *)
-  (*               repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0). *)
-  (*             unfold external_state. inv RAPTR. des_ifs. *)
-  (*       -- instantiate (1:= SimMemExt.mk _ _). *)
-  (*          unfold nextinstr_nf, nextinstr, undef_regs; *)
-  (*            repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0). *)
-  (*          econs; ss; eauto. *)
-  (*          apply Val.lessdef_same. clear - CASE. *)
-  (*          unfold Int64.lt, Int64.signed in *. des_ifs. *)
-  (*          { rewrite Int64.unsigned_zero in *. set (Int64.unsigned_range_2 i0). nia. } *)
-  (*          ss. rewrite Float.mul2_add. rewrite Float.of_longu_of_long_2; auto. *)
-  (*          unfold Int64.ltu. des_ifs. *)
-  (*       -- ss. *)
-
-  (*   + esplits; auto. econs 2. *)
-  (*     * split; eauto. *)
-  (*       do 5 (econs 2; eauto; [econs;[eapply modsem_determinate; eauto|]; instantiate (1:= mkstate _ _); econs; ss; econs; ss; eauto; [des_ifs| ..];ss|]; *)
-  (*             unfold nextinstr_nf, nextinstr, undef_regs; *)
-  (*             repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (try rewrite RDI0);(try rewrite SF0);(try rewrite RA0);(try rewrite NEXT0); des_ifs). *)
-  (*       econs 1. *)
-
-  (*     * left. pfold. econs 4; cycle 2; ss. *)
-  (*       -- econs; ss; eauto. *)
-  (*          ++ ii. unfold Conventions1.is_callee_save in *. *)
-  (*             des_ifs; unfold nextinstr_nf, nextinstr, undef_regs; *)
-  (*               repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0). *)
-  (*          ++ esplits; eauto. rewrite Heq. ss. des_ifs. eauto. *)
-  (*          ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto. *)
-  (*          ++ unfold Conventions1.loc_result. des_ifs. *)
-  (*          ++ unfold nextinstr_nf, nextinstr, undef_regs; *)
-  (*               repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0). *)
-  (*             unfold external_state. inv RAPTR. des_ifs. *)
-  (*       -- instantiate (1:= SimMemExt.mk _ _). *)
-  (*          unfold nextinstr_nf, nextinstr, undef_regs; *)
-  (*            repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0). *)
-  (*          econs; ss; eauto. *)
-  (*          apply Val.lessdef_same. *)
-  (*          clear - CASE. f_equal. rewrite Float.of_longu_of_long_1; auto. *)
-  (*          set (Int64.unsigned_range i0). *)
-  (*          unfold Int64.ltu, Int64.lt, Int64.signed in *. zsimpl. des_ifs. *)
-  (*          rewrite Int64.unsigned_zero in *. rewrite Int64.unsigned_repr in *; nia. *)
-  (*       -- ss. *)
-
-  (*          Unshelve. all: eauto. apply 1%nat. *)
+    + econs 2.
+      * split; eauto.
+        econs; eauto; [econs;[eapply modsem_determinate; eauto|]; instantiate (1:= mkstate _ _); econs; ss; econs; ss; eauto; [des_ifs| ..];ss|];
+          unfold nextinstr_nf, nextinstr, undef_regs;
+          repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0); des_ifs.
+        do 4 (econs 2; eauto; [econs;[eapply modsem_determinate; eauto|]; instantiate (1:= mkstate _ _); econs; ss; econs; ss; eauto; [des_ifs| ..];ss|];
+              unfold nextinstr_nf, nextinstr, undef_regs;
+              repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0); des_ifs).
+        econs 1; eauto.
+      * left. pfold. econs 4; cycle 2; ss.
+        -- econs; ss; eauto.
+           ++ ii. unfold Conventions1.is_callee_save in *.
+              des_ifs; unfold nextinstr_nf, nextinstr, undef_regs;
+                repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
+           ++ esplits; eauto. rewrite Heq. ss. des_ifs. eauto.
+           ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
+           ++ unfold Conventions1.loc_result. des_ifs.
+           ++ unfold nextinstr_nf, nextinstr, undef_regs;
+                repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
+              unfold external_state. des_ifs. exfalso.
+              unfold Genv.find_funct, Genv.find_funct_ptr in Heq2. des_ifs.
+              eapply Genv.genv_defs_range in Heq3.
+              exploit RANOTFPTR; eauto.
+           ++ destruct (Genv.find_funct skenv_link_tgt (rs RA)) eqn:FINDRA; auto.
+              unfold Genv.find_funct, Genv.find_funct_ptr in FINDRA. des_ifs.
+              exfalso. eapply Genv.genv_defs_range in Heq2.
+              exploit RANOTFPTR; eauto.
+        -- instantiate (1:= sm1).
+           unfold nextinstr_nf, nextinstr, undef_regs;
+             repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
+           econs; ss; eauto.
+           rpapply Val.inject_float. clear - CASE.
+           f_equal. rewrite Float.of_longu_of_long_1; auto.
+           set (Int64.unsigned_range i).
+           unfold Int64.ltu, Int64.lt, Int64.signed in *. zsimpl. des_ifs.
+           rewrite Int64.unsigned_zero in *. rewrite Int64.unsigned_repr in *; nia.
+        -- ss.
+        -- eauto.
+           Unshelve. all: eauto. apply 1%nat.
 Qed.

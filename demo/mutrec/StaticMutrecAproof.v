@@ -6,7 +6,7 @@ Require Import CtypesC CtypingC.
 Require Import sflib.
 Require Import IntegersC.
 
-Require Import StaticMutrecHeader.
+Require Import MutrecHeader.
 Require Import StaticMutrecA StaticMutrecAspec.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
@@ -24,13 +24,13 @@ Print Instances SimMem.class.
 Definition memoized_inv (chunk: memory_chunk) (ofs: Z) (v: option val): Prop :=
   forall
     ind
-    (BOUND: 0 <= ind < 10)
-    (INT: chunk = Mint64)
-    (INDEX: size_chunk Mint64 * ind = ofs),
+    (BOUND: 0 <= ind < 1000)
+    (INT: chunk = Mint32)
+    (INDEX: size_chunk Mint32 * ind = ofs),
   exists i,
-    (<<VAL: v = Some (Vint i)>>) /\
-    forall (VPOS: 0 <= i.(Int.intval)),
-      i = sum (Int.repr ind).
+    (<<VINT: v = Some (Vint i)>>) /\
+    (<<VAL: forall (NZERO: i.(Int.intval) <> 0),
+        (<<MEMO: i = sum (Int.repr ind)>>)>>).
 
 Local Instance SimMemMemoized: SimMem.class := SimMemInjInv.SimMemInjInv memoized_inv.
 
@@ -55,6 +55,7 @@ Inductive match_states_internal: StaticMutrecAspec.state -> Clight.state -> Prop
     i m_src m_tgt
     fptr
     (* targs tres cconv *)
+    (RANGE: 0 <= i.(Int.intval) < MAX)
     (FINDF: Genv.find_funct (Smallstep.globalenv (modsem2 skenv_link prog)) fptr = Some (Internal func_f))
   :
     match_states_internal (Callstate i m_src) (Clight.Callstate fptr (Tfunction (* targs tres cconv) *)
@@ -109,6 +110,7 @@ Inductive match_states (sm_init: SimMem.t)
     (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
+    (MLE: SimMem.le sm_init sm0)
     (IDX: (idx > 3)%nat)
 .
 
@@ -166,10 +168,14 @@ Qed.
 
 Lemma match_states_lxsim
       sm_init idx st_src0 st_tgt0 sm0
+      (SIMSK: SimSymb.sim_skenv
+                sm0 symbol_memoized
+                (SkEnv.project skenv_link (CSk.of_program signature_of_function prog))
+                (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)))
       (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
   :
     <<XSIM: lxsim (md_src skenv_link) (md_tgt skenv_link)
-                  (fun st => exists su m_init, SoundTop.sound_state su m_init st)
+                  (fun (_: genv) st => exists su m_init, SoundTop.sound_state su m_init st)
                   sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
 .
 Proof.
@@ -217,7 +223,7 @@ Proof.
           { eapply modsem2_determinate; eauto. }
           econs; eauto.
           econs; ss; eauto; try (by repeat (econs; ss; eauto)).
-          unfold _x. unfold _t'1. rr. ii; ss. des; ss. clarify.
+          unfold _x. unfold _t'1. rr. ii; ss. des; ss; clarify.
         }
 
         eapply star_left with (t1 := E0) (t2 := E0); ss.
@@ -245,7 +251,7 @@ Proof.
 
         apply star_refl.
       (* * refl. *)
-      * right. eapply CIH. econs; ss; eauto.
+      * right. eapply CIH; eauto. econs; ss; eauto.
         replace (Int.repr 0) with (sum Int.zero).
         { econs; eauto. }
         { admit "". }
@@ -253,152 +259,452 @@ Proof.
     + (* nonzero *)
 
       destruct sm0.
-      destruct (Genv.find_symbol skenv_link _memoized) eqn:BLK; cycle 1.
+      destruct (Genv.find_symbol
+                  (SkEnv.project skenv_link (CSk.of_program signature_of_function prog))
+                  _memoized) eqn:BLK; cycle 1.
       { exfalso. clear - INCL BLK. inv INCL.
         exploit DEFS; eauto.
         - instantiate (2:=_memoized). ss.
-        - i. des. clarify. }
+        - i. des. admit "genv". }
 
-      inv MWF. ss. admit "".
-      (* exploit SAT. *)
+      inv MWF. ss.
 
-  - admit "".
-    Unshelve. all : admit "".
+      hexploit SAT.
+      { inv SIMSK. ss. inv INJECT.
+        eapply INVCOMPAT; eauto. ss. }
+      { instantiate (2:=size_chunk Mint32 * i.(Int.intval)).
+        instantiate (2:=Mint32). ss. }
+      intros MEMOV. exploit MEMOV; eauto. i. des.
+      destruct (zeq (Int.intval i0) 0).
+      {
 
-(*       destruct (Mem.loadv *)
-(*                   Mint64 (minj.(SimMemInj.tgt)) *)
-(*                   (Vptr b (Ptrofs.repr (size_chunk Mint64 * i.(Int.intval))))). *)
+        econs 2. i. splits; cycle 3.
+        { i. esplits. econs; ss; eauto.
+          econs; ss; eauto.
+          - econs.
+          - econs; eauto. econs.
+          - ii. ss. des; clarify.
+          - econs. }
+        { ii. inv H0. inv H1. }
+        { ii. inv H0. inv H1. }
+        econs 2.
+        { split.
+          - econs 2; ss.
+            + econs 2; eauto.
+              clear - H. admit "arithmetic".
+            + econs; eauto.
+            + ss.
+          - admit "index". }
 
-(*       Mem.loadv *)
-(*                    Mint64 m_tgt *)
-(*                    (Vptr blk (Ptrofs.repr (size_chunk Mint64 * i.(Int.intval)))) *)
+        left. pfold.
+        econs.
+        i; des.
+        econs 2; eauto.
+        * esplits; cycle 1.
+          { eapply Ord.lift_idx_spec. instantiate (1:= 2%nat). admit "index". }
+
+          eapply plus_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+            econs; ss; eauto; try (by repeat (econs; ss; eauto)).
+            unfold _x. unfold _t'1. rr. ii; ss. des; ss; clarify.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+            - repeat econs; et.
+            - ss. rewrite Int.eq_false; ss.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto; swap 1 2.
+            - econs.
+              + ss. econs. econs; ss.
+                * econs.
+                  { eapply eval_Evar_global; ss.
+                    instantiate (1:=b). admit "genv". }
+                  { econs 2; ss. }
+                * econs; ss.
+                * ss.
+              + econs 1; ss. psimpl.
+                replace (Ptrofs.unsigned (Ptrofs.mul (Ptrofs.repr 4) (Ptrofs.of_ints i)))
+                  with (4 * Int.intval i); cycle 1.
+                { admit "arithmetic". } eauto. }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            ss. econs; eauto.
+            - econs; ss.
+              + econs; ss.
+              + econs; ss.
+              + ss.
+            - ss. instantiate (1:=true). admit "arithmetic". }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto; swap 1 2.
+            - econs.
+              + eapply eval_Evar_global; ss. et.
+              + econs 2; et.
+            - unfold Cop.classify_fun. ss.
+            - repeat econs; ss; et.
+          }
+
+          eapply star_refl.
+
+        * left. pfold. econs 3; et.
+          { econs; eauto. }
+          { econs. econs; eauto. }
+          ii; des.
+          inv ATSRC. ss; clarify.
+
+          unfold Clight.fundef in *.
+          assert(g_fptr = g_blk).
+          { unfold SkEnv.revive in FINDG. rewrite Genv_map_defs_symb in *. clarify. }
+          clarify.
+          eexists (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _).
+          eexists (SimMemInjInv.mk minj (SimMemInjInv.mem_inv sm_init)).
+          esplits; ss; eauto.
+          { econs; ss; eauto.
+            instantiate (1:=Vptr g_blk Ptrofs.zero). admit "genv". }
+          { refl. }
+          { econs; eauto. }
+
+          i. inv AFTERSRC. destruct retv_src, retv_tgt; ss. clarify. destruct sm_ret; ss. inv SIMRETV; ss; clarify.
+
+          hexploit Mem.valid_access_store.
+          { instantiate (1:=Ptrofs.unsigned (Ptrofs.mul (Ptrofs.repr 4) (Ptrofs.of_ints i))).
+            instantiate (1:=b).
+            instantiate (1:=Mint32).
+            instantiate (1:=SimMemInj.tgt minj0).
+            econs.
+            - admit "strengthen SimMemInjInv".
+            - admit "arithmetic". }
+          instantiate (1:=Vint (Int.add (sum (Int.sub i Int.one)) i)).
+          intros [m_tgt STR].
+
+          des. eexists.
+          (* eexists (SimMemInjInv.mk (SimMemInj.unlift' minj minj0) _). *)
+          eexists (SimMemInjInv.mk
+                     (SimMemInjC.update
+                        (SimMemInj.unlift' minj minj0)
+                        (SimMemInj.src minj0)
+                        m_tgt
+                        (SimMemInj.inj minj0)) _).
+          esplits; eauto.
+          { econs; eauto. }
+
+          { ss.
+            (* eapply SimMemInj.unlift_spec; eauto. *)
+            admit "mle". }
+
+          instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
+          left. pfold. econs; eauto. i; des. econs 2; eauto.
+          {
+            esplits; eauto; cycle 1.
+            { instantiate (1:= (Ord.lift_idx lt_wf 14%nat)). eapply Ord.lift_idx_spec; et. }
+
+            eapply plus_left with (t1 := E0) (t2 := E0); ss.
+            { econs; eauto.
+              { eapply modsem2_determinate; eauto. }
+              econs; eauto.
+            }
+
+            eapply star_left with (t1 := E0) (t2 := E0); ss.
+            { econs; eauto.
+              { eapply modsem2_determinate; eauto. }
+              econs; eauto.
+            }
+
+            eapply star_left with (t1 := E0) (t2 := E0); ss.
+            { econs; eauto.
+              { eapply modsem2_determinate; eauto. }
+              econs; eauto. econs; eauto.
+              - econs; eauto. ss.
+              - econs; eauto. ss.
+              - inv RETV. ss. unfold typify. des_ifs. ss. }
+
+            eapply star_left with (t1 := E0) (t2 := E0); ss.
+            { econs; eauto.
+              { eapply modsem2_determinate; eauto. }
+              econs; eauto.
+            }
+
+            eapply star_left with (t1 := E0) (t2 := E0); ss.
+            { econs; eauto.
+              { eapply modsem2_determinate; eauto. }
+              econs; eauto.
+              - econs; eauto. econs; eauto.
+                + econs; eauto.
+                  * eapply eval_Evar_global; ss.
+                    instantiate (1:=b). admit "genv".
+                  * ss. econs 2; eauto.
+                + econs; eauto. ss.
+                + econs; eauto.
+              - econs; eauto. ss.
+              - ss.
+              - ss. psimpl. econs; ss; eauto. }
+
+            eapply star_left with (t1 := E0) (t2 := E0); ss.
+            { econs; eauto.
+              { eapply modsem2_determinate; eauto. }
+              econs; eauto.
+            }
+
+            eapply star_left with (t1 := E0) (t2 := E0); ss.
+            { econs; eauto.
+              { eapply modsem2_determinate; eauto. }
+              econs; eauto.
+              - econs; eauto. ss.
+              - econs; eauto.
+              - econs; eauto. }
+
+            eapply star_refl.
+          }
+
+          right. eapply CIH.
+          { admit "sim_skenv_inj". }
+          { econs; ss.
+            - replace (Int.add (sum (Int.sub i Int.one)) i) with (sum i); cycle 1.
+              { admit "arithmetic". }
+              econs 2.
+            - econs; ss.
+              + admit "inject".
+              + admit "invariant".
+              + i. admit "".
+            - admit "".
+            - omega. }
+      }
+
+      { hexploit VAL; eauto. i. des. clarify.
+
+        econs 2. i. splits; cycle 3.
+        { i. esplits. econs; ss; eauto.
+          econs; ss; eauto.
+          - econs.
+          - econs; eauto. econs.
+          - ii. ss. des; clarify.
+          - econs. }
+        { ii. inv H0. inv H1. }
+        { ii. inv H0. inv H1. }
+        econs 2.
+        { split.
+          - econs 2; ss.
+            + econs; eauto.
+            + econs; eauto.
+            + ss.
+          - admit "index". }
+
+        left. pfold.
+        econs.
+        i; des.
+        econs 2; eauto.
+        * esplits; cycle 1.
+          { eapply Ord.lift_idx_spec. instantiate (1:= 2%nat). admit "index". }
+
+          eapply plus_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+            econs; ss; eauto; try (by repeat (econs; ss; eauto)).
+            unfold _x. unfold _t'1. rr. ii; ss. des; ss; clarify.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+            - repeat econs; et.
+            - ss. rewrite Int.eq_false; ss.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto; swap 1 2.
+            - econs.
+              + ss. econs. econs; ss.
+                * econs.
+                  { eapply eval_Evar_global; ss.
+                    instantiate (1:=b). admit "genv". }
+                  { econs 2; ss. }
+                * econs; ss.
+                * ss.
+              + econs 1; ss. psimpl.
+                replace (Ptrofs.unsigned (Ptrofs.mul (Ptrofs.repr 4) (Ptrofs.of_ints i)))
+                  with (4 * Int.intval i); cycle 1.
+                { admit "arithmetic". } eauto. }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            ss. econs; eauto.
+            - econs; ss.
+              + econs; ss.
+              + econs; ss.
+              + ss.
+            - ss. instantiate (1:=false). admit "arithmetic". }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+          }
+
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { econs; eauto.
+            { eapply modsem2_determinate; eauto. }
+            econs; eauto.
+            - econs; ss.
+            - econs.
+            - ss. }
+
+          apply star_refl.
+
+        * left. pfold. econs 4; et.
+          { instantiate (1:=SimMemInjInv.mk minj _).
+            econs; ss; eauto. }
+          { econs; eauto. }
+          { econs. }
+          { econs. }
+          { econs; ss; eauto. rpapply Val.inject_int.
+            f_equal. f_equal. admit "arithmetic". }
+      }
 
 
-(*       (MEMOLD: Mem.loadv *)
-(*                    Mint64 m_tgt *)
-(*                    (Vptr blk (Ptrofs.repr (size_chunk Mint64 * i.(Int.intval)))) = Some (Vint memov)) *)
-(*         (MEMOIZED: memov = sum i) *)
-
-
-
-
-
-(*       econs. *)
-(*       i; des. *)
-(*       econs 2; eauto. *)
-(*       * esplits; cycle 1. *)
-(*         { eapply Ord.lift_idx_spec. instantiate (1:= 2%nat). lia. } *)
-
-(*         eapply plus_left with (t1 := E0) (t2 := E0); ss. *)
-(*         { econs; eauto. *)
-(*           { eapply modsem2_determinate; eauto. } *)
-(*           econs; eauto. *)
-(*           econs; ss; eauto; try (by repeat (econs; ss; eauto)). *)
-(*           unfold _x. unfold _t'1. rr. ii; ss. des; ss. clarify. *)
-(*         } *)
-
-(*         eapply star_left with (t1 := E0) (t2 := E0); ss. *)
-(*         { econs; eauto. *)
-(*           { eapply modsem2_determinate; eauto. } *)
-(*           econs; eauto. *)
-(*         } *)
-
-(*         eapply star_left with (t1 := E0) (t2 := E0); ss. *)
-(*         { econs; eauto. *)
-(*           { eapply modsem2_determinate; eauto. } *)
-(*           econs; eauto. *)
-(*           - repeat econs; et. *)
-(*           - ss. rewrite Int.eq_false; ss. *)
-(*         } *)
-
-(*         eapply star_left with (t1 := E0) (t2 := E0); ss. *)
-(*         { econs; eauto. *)
-(*           { eapply modsem2_determinate; eauto. } *)
-(*           econs; eauto. *)
-(*         } *)
-
-(*         eapply star_left with (t1 := E0) (t2 := E0); ss. *)
-(*         { econs; eauto. *)
-(*           { eapply modsem2_determinate; eauto. } *)
-(*           econs; eauto. *)
-(*         } *)
-
-(*         eapply star_left with (t1 := E0) (t2 := E0); ss. *)
-(*         { econs; eauto. *)
-(*           { eapply modsem2_determinate; eauto. } *)
-(*           econs; eauto; swap 1 2. *)
-(*           - econs. *)
-(*             + eapply eval_Evar_global; ss. et. *)
-(*             + econs 2; et. *)
-(*           - unfold Cop.classify_fun. ss. *)
-(*           - repeat econs; ss; et. *)
-(*         } *)
-
-(*         apply star_refl. *)
-(*       * left. pfold. econs 3; et. *)
-(*         { rr. esplits; eauto. ss. econs; et. ii. destruct i; ss. clarify. apply H. unfold Int.zero. *)
-(*           Local Transparent Int.repr. *)
-(*           unfold Int.repr. *)
-(*           Local Opaque Int.repr. *)
-(*           ss. apply eta; ss. *)
-(*         } *)
-(*         ii; des. *)
-(*         inv ATSRC. ss; clarify. *)
-(*         destruct sm0; ss. clarify. *)
-(*         unfold Clight.fundef in *. *)
-(*         assert(g_fptr = g_blk). *)
-(*         { unfold SkEnv.revive in FINDG. rewrite Genv_map_defs_symb in *. clarify. } *)
-(*         clarify. *)
-(*         eexists (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _), (SimMemId.mk _ _). *)
-(*         esplits; ss; eauto. *)
-(*         { econs; ss; eauto. } *)
-(*         i. inv AFTERSRC. destruct retv_src, retv_tgt; ss. clarify. destruct sm_ret; ss. inv SIMRETV; ss; clarify. *)
-(*         esplits; eauto. *)
-(*         { econs; eauto. } *)
-(*         instantiate (2:= (Ord.lift_idx lt_wf 15%nat)). *)
-(*         left. pfold. econs; eauto. i; des. econs 2; eauto. *)
-(*         { *)
-(*           esplits; eauto; cycle 1. *)
-(*           { instantiate (1:= (Ord.lift_idx lt_wf 14%nat)). eapply Ord.lift_idx_spec; et. } *)
-
-(*           eapply plus_left with (t1 := E0) (t2 := E0); ss. *)
-(*           { econs; eauto. *)
-(*             { eapply modsem2_determinate; eauto. } *)
-(*             econs; eauto. *)
-(*           } *)
-
-(*           eapply star_left with (t1 := E0) (t2 := E0); ss. *)
-(*           { econs; eauto. *)
-(*             { eapply modsem2_determinate; eauto. } *)
-(*             econs; eauto. *)
-(*           } *)
-
-(*           eapply star_left with (t1 := E0) (t2 := E0); ss. *)
-(*           { econs; eauto. *)
-(*             { eapply modsem2_determinate; eauto. } *)
-(*             econs; ss; eauto. *)
-(*             - repeat (econs; ss; eauto). *)
-(*               + unfold typify. des_ifs. *)
-(*             - ss. *)
-(*           } *)
-
-(*           eapply star_refl. *)
-(*         } *)
-
-(*         right. eapply CIH. instantiate (1:= SimMemId.mk _ _). *)
-(*         econs; ss; eauto; try lia. *)
-(*         rewrite sum_recurse. des_ifs. *)
-(*         { rewrite Z.eqb_eq in *. lia. } *)
-(*         replace (Int.sub (Int.add (sum (Int.sub i Int.one)) i) (Int.repr 1)) with *)
-(*             (Int.add (sum (Int.sub i Int.one)) (Int.sub i Int.one)); cycle 1. *)
-(*         { abstr (sum (Int.sub i Int.one)) z. rewrite ! Int.sub_add_opp. *)
-(*           rewrite Int.add_assoc. ss. } *)
-(*         econs; eauto. *)
-(*   - (* return *) *)
-(*     econs 4; ss; eauto. *)
-(* Unshelve. *)
-(*   all: ss. *)
+  - (* return *)
+    econs 4; ss; eauto.
+    econs; ss; eauto.
+    Unshelve. all: admit "".
 Qed.
+
+Theorem sim_modsem
+  :
+    ModSemPair.sim msp
+.
+Proof.
+  econs; eauto.
+  { i. eapply SoundTop.sound_state_local_preservation. }
+  i. ss. esplits; eauto.
+
+  - i. des. inv SAFESRC.
+    esplits; eauto.
+    + refl.
+    + econs; eauto.
+    +
+      instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
+      inv INITTGT. inv TYP. ss.
+      assert (FD: fd = func_f).
+      { admit "genv". } clarify.
+
+      inv SIMARGS. ss. rewrite VS in *. inv VALS.
+      inv H2. inv H3. rewrite <- H1 in *.
+      unfold typify_list, zip, typify. ss. des_ifs; ss.
+
+      rewrite MEMSRC in *. rewrite MEMTGT in *.
+      eapply match_states_lxsim; ss.
+      * inv SIMSKENV; eauto.
+      * econs; eauto.
+        { econs; eauto. }
+        { refl. }
+        { omega. }
+
+  - (* init progress *)
+    i.
+    des. inv SAFESRC.
+    inv SIMARGS; ss.
+    (* hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des. *)
+
+    (* exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. *)
+
+    (* hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR. *)
+
+    esplits; eauto. econs; eauto.
+    + instantiate (1:= func_f).
+      ss. admit "genv".
+    + econs; ss. erewrite <- inject_list_length; eauto.
+      rewrite VS. auto.
+Qed.
+
 
 End SIMMODSEM.
 
@@ -408,7 +714,11 @@ Theorem sim_mod
     ModPair.sim (ModPair.mk (StaticMutrecAspec.module) (ClightC.module2 prog) symbol_memoized)
 .
 Proof.
-Admitted.
-(*   econs; ss. *)
-(*   - ii. inv SIMSKENVLINK. *)
-(* Qed. *)
+  econs; ss.
+  - econs; ss. i. inv SS. esplits; ss; eauto.
+    + econs. admit "fill definition".
+    + ii. des; clarify.
+  - ii. ss.
+    inv SIMSKENVLINK. inv SIMSKENV.
+    eapply sim_modsem; eauto.
+Qed.

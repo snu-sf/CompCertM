@@ -309,3 +309,12 @@ Module CSkEnv.
   Qed.
 
 End CSkEnv.
+
+Lemma typ_of_type_list
+      t
+  :
+    map typ_of_type (Ctypes.typelist_to_listtype t) = typlist_of_typelist t
+.
+Proof.
+  ginduction t; ii; ss. rewrite IHt. ss.
+Qed.

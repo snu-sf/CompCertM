@@ -83,9 +83,12 @@ Section LXSIM.
     :
       exists blk,
         (<<SYMBBIG: Genv.find_symbol skenv_link f_id = Some blk>>)
-        /\ (<<SYMBSMALL: Genv.find_symbol
-                           (SkEnv.project skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog))
-                           f_id = Some blk>>)
+        /\ (<<SYMBA: Genv.find_symbol
+                       (SkEnv.project skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog))
+                       f_id = Some blk>>)
+        /\ (<<SYMBB: Genv.find_symbol
+                       (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog))
+                       f_id = Some blk>>)
   .
   Proof.
     admit "ez".
@@ -94,9 +97,12 @@ Section LXSIM.
     :
       exists blk,
         (<<SYMBBIG: Genv.find_symbol skenv_link g_id = Some blk>>)
-        /\ (<<SYMBSMALL: Genv.find_symbol
-                           (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog))
-                           g_id = Some blk>>)
+        /\ (<<SYMBA: Genv.find_symbol
+                       (SkEnv.project skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog))
+                       g_id = Some blk>>)
+        /\ (<<SYMBB: Genv.find_symbol
+                       (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog))
+                       g_id = Some blk>>)
   .
   Proof.
     admit "ez".

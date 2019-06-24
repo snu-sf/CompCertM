@@ -23,26 +23,90 @@ Section MEMINJINV.
 
   Variable P : memory_chunk -> Z -> option val -> Prop.
 
-  (* Record t' := mk *)
-  (*   { minj:> SimMemInj.t'; *)
-  (*     mem_inv: block -> option (memory_chunk -> Z -> val -> Prop); }. *)
-
   Record t' := mk
     { minj:> SimMemInj.t';
-      mem_inv: block -> Prop; }.
+      src_genv_nb : block;
+      tgt_genv_nb : block;
+      mem_inv: block -> Prop;
+      (* mem_inv: block -> (memory_chunk -> Z -> option val -> Prop); *)
+    }.
 
-  Definition update (sm0: t') (j: SimMemInj.t') :=
-    mk j sm0.(mem_inv).
+  (* Record t' := *)
+  (*   mk *)
+  (*     { src : mem; *)
+  (*       tgt : mem; *)
+  (*       inj : meminj; *)
+  (*       mem_inv: block -> option (memory_chunk -> Z -> val -> Prop); *)
+  (*     }. *)
+
+  Definition tgt_private_nge (sm: t') :=
+    (loc_out_of_reach sm.(inj) sm.(src))
+      /2\ (valid_blocks sm.(tgt)) /2\ (fun blk _ => Ple blk sm.(tgt_genv_nb)).
+
+  Definition src_private_nge (sm: t') :=
+    (loc_unmapped sm.(inj))
+      /2\ (valid_blocks sm.(src)) /2\ (fun blk _ => Ple blk sm.(src_genv_nb)).
+
+  Inductive invariant_satisfied (invar : block -> Prop) (m: mem): Prop :=
+  | invariant_satisfied_intro
+      (SAT: forall
+          blk chunk ofs v
+          (INV: invar blk)
+          (LOAD: Mem.load chunk m blk ofs = v),
+          P chunk ofs v)
+      (WRITABLE: forall
+          blk chunk ofs
+          (INV: invar blk),
+          Mem.valid_access m chunk blk ofs Writable).
 
   Inductive wf' (sm0: t'): Prop :=
   | wf_intro
       (WF: SimMemInj.wf' sm0)
-      (SAT: forall blk chunk ofs v
-                   (INV: sm0.(mem_inv) blk)
-                   (LOAD: Mem.load chunk sm0.(SimMemInj.tgt) blk ofs = v),
-          P chunk ofs v)
+      (SAT: invariant_satisfied sm0.(mem_inv) sm0.(SimMemInj.tgt))
       (INVRANGE: forall blk ofs (INV: sm0.(mem_inv) blk),
-          tgt_private sm0 blk ofs)
+          tgt_private sm0 blk ofs /\ Plt blk sm0.(tgt_genv_nb))
+      (SRCGENB: Ple sm0.(src_genv_nb) sm0.(src_parent_nb))
+      (TGTGENB: Ple sm0.(tgt_genv_nb) sm0.(tgt_parent_nb))
+      (SRCEXTGE: forall blk ofs (EXTERN: src_external sm0 blk ofs),
+          Ple sm0.(src_genv_nb) blk)
+      (TGTEXTGE: forall blk ofs (EXTERN: tgt_external sm0 blk ofs),
+          Ple sm0.(tgt_genv_nb) blk)
+  .
+
+  Lemma unchanged_on_invariant invar m0 m1
+        (INVAR: invariant_satisfied invar m0)
+        (INVRANGE: invar <1= Mem.valid_block m0)
+        (UNCH: Mem.unchanged_on (fun blk _ => invar blk) m0 m1)
+    :
+      invariant_satisfied invar m1.
+  Proof.
+    inv INVAR. econs.
+    - i. eapply SAT; eauto.
+      erewrite <- Mem.load_unchanged_on_1; eauto.
+    - i. unfold Mem.valid_access in *.
+      exploit WRITABLE; eauto. i. des.
+      split; eauto. ii.
+      eapply Mem.perm_unchanged_on; eauto.
+  Qed.
+
+  Definition lift' (mrel0: t'): t' :=
+    mk (SimMemInj.mk mrel0.(src) mrel0.(tgt) mrel0.(inj) mrel0.(src_private_nge) mrel0.(tgt_private_nge) mrel0.(src_parent_nb) mrel0.(tgt_parent_nb))
+       (mrel0.(src_parent_nb))
+       (mrel0.(tgt_parent_nb))
+       (mrel0.(mem_inv)).
+
+  Definition unlift' (mrel0 mrel1: t'): t' :=
+    mk (SimMemInj.mk mrel1.(src) mrel1.(tgt) mrel1.(inj) mrel0.(src_external) mrel0.(tgt_external) mrel0.(src_parent_nb) mrel0.(tgt_parent_nb))
+       (mrel0.(src_parent_nb))
+       (mrel0.(tgt_parent_nb))
+       (mrel0.(mem_inv)).
+
+  Inductive le' (mrel0 mrel1: t'): Prop :=
+  | le_intro
+      (MLE: SimMemInj.le' mrel0 mrel1)
+      (SRCGENBEQ: mrel0.(src_genv_nb) = mrel1.(src_genv_nb))
+      (TGTGENBEQ: mrel0.(tgt_genv_nb) = mrel1.(tgt_genv_nb))
+      (MINVEQ: mrel0.(mem_inv) = mrel1.(mem_inv))
   .
 
   (* "Global" is needed as it is inside section *)
@@ -52,39 +116,43 @@ Section MEMINJINV.
       src := src;
       tgt := tgt;
       wf := wf';
-      le := fun sm0 sm1 => (<<MLE: le' sm0 sm1>>) /\  (<<INVSAME: mem_inv sm0 = mem_inv sm1>>);
-      lift := fun sm0 => update sm0 (lift' sm0);
-      unlift := fun sm0 sm1 => update sm1 (unlift' sm0 sm1);
+      le := le';
+      lift := lift';
+      unlift := unlift';
       sim_val := fun (mrel: t') => Val.inject mrel.(inj);
       sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
     }.
   Next Obligation.
     econs.
-    - econs; ss. red. refl.
-    - econs; ss.
-      + des. red. etrans; eauto.
-      + des. red. etrans; eauto.
+    - econs; ss. refl.
+    - ii. inv H. inv H0. econs; etrans; eauto.
   Qed.
   Next Obligation.
-    inv H. econs; eauto. ss.
-    admit "ez - find this lemma".
-  Qed.
-  Next Obligation.
-    split; auto. inv H0. destruct mrel0, mrel1. ss.
-    admit "ez - find this lemma".
-  Qed.
-  Next Obligation.
-    inv H. inv H0. inv H1. econs; eauto.
-    destruct mrel0, mrel1. ss.
-    admit "ez - find this lemma".
-  Qed.
-  Next Obligation.
-    inv H.
     admit "ez - find this lemma".
   Qed.
   Next Obligation.
     admit "ez - find this lemma".
   Qed.
+  Next Obligation.
+    admit "ez - find this lemma".
+  Qed.
+  Next Obligation.
+    admit "ez - find this lemma".
+  Qed.
+  Next Obligation.
+    admit "ez - find this lemma".
+  Qed.
+
+  Lemma mem_inv_le sm0 sm1
+        (MLE: le' sm0 sm1)
+    :
+      sm0.(mem_inv) <1= sm1.(mem_inv).
+  Proof.
+    inv MLE. rewrite MINVEQ. auto.
+  Qed.
+
+  Definition update (sm0: t') (src tgt: mem) (inj: meminj) :=
+    mk (SimMemInjC.update sm0 src tgt inj) (sm0.(src_genv_nb)) (sm0.(tgt_genv_nb)) (sm0.(mem_inv)).
 
 End MEMINJINV.
 
@@ -94,7 +162,7 @@ Section SIMSYMBINV.
 Variable P : memory_chunk -> Z -> option val -> Prop.
 
 Inductive le (ss0: ident -> Prop) (sk_src sk_tgt: Sk.t) (ss1: ident -> Prop): Prop :=
-| le_intro
+| symb_le_intro
     (LE: ss0 <1= ss1)
     (OUTSIDE: forall
         id
@@ -130,6 +198,8 @@ Inductive sim_skenv_inj (sm: t') (ss: ident -> Prop) (skenv_src skenv_tgt: SkEnv
     (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm.(src_parent_nb))
     (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(tgt_parent_nb))
     (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
+    (SRCGENB: Genv.genv_next skenv_src = sm.(src_genv_nb))
+    (TGTGENB: Genv.genv_next skenv_tgt = sm.(tgt_genv_nb))
 .
 
 Inductive sim_sk (ss: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
@@ -175,7 +245,7 @@ Next Obligation.
                             | None => None
                             end
                        else None).
-  eexists (mk (SimMemInj.mk _ _ j bot2 bot2 _ _) _). ss.
+  eexists (mk (SimMemInj.mk _ _ j bot2 bot2 _ _) _ _ _). ss.
   instantiate (1:=fun blk => exists id,
                       (<<FIND: (Sk.load_skenv sk_tgt).(Genv.find_symbol) id = Some blk>>) /\
                       (<<SINV: ss id>>)).
@@ -204,10 +274,12 @@ Next Obligation.
         apply Genv.find_invert_symbol in INV. clarify.
       * unfold Sk.load_mem, Sk.load_skenv in *.
         eapply Genv.find_symbol_not_fresh; eauto.
+      * eapply Genv.genv_symb_range; eauto.
+    + refl.
+    + refl.
 Qed.
 Next Obligation.
-  destruct sm0, sm1. ss.
-  red in H0. inv H.
+  destruct sm0, sm1. inv MLE. inv MLE0. ss. clarify.
   inv SIMSKENV. econs; ss; eauto.
   - inv INJECT. econs; eauto.
     + i. destruct (inj minj1 b) eqn:BLK; auto. destruct p. exfalso.
@@ -243,7 +315,7 @@ Next Obligation.
   - instantiate (1:=tgt sm0). rewrite MEMSRC.
     inv MWF. inv WF. eauto.
   - i. des.
-    eexists (mk (SimMemInj.mk (Retv.m retv_src) m2' f' _ _ _ _) _). ss.
+    eexists (mk (SimMemInj.mk (Retv.m retv_src) m2' f' _ _ _ _) _ _ _). ss.
     exists (Retv.mk vres' m2'). ss.
     esplits; ss; eauto.
     + rewrite MEMTGT. eauto.

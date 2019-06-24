@@ -258,7 +258,6 @@ Proof.
 
     + (* nonzero *)
 
-      destruct sm0.
       destruct (Genv.find_symbol
                   (SkEnv.project skenv_link (CSk.of_program signature_of_function prog))
                   _memoized) eqn:BLK; cycle 1.
@@ -269,12 +268,12 @@ Proof.
 
       inv MWF. ss.
 
-      hexploit SAT.
+      assert (INVAR: SimMemInjInv.mem_inv sm0 b).
       { inv SIMSK. ss. inv INJECT.
         eapply INVCOMPAT; eauto. ss. }
-      { instantiate (2:=size_chunk Mint32 * i.(Int.intval)).
-        instantiate (2:=Mint32). ss. }
-      intros MEMOV. exploit MEMOV; eauto. i. des.
+
+      hexploit SAT; eauto. intros [].
+      exploit SAT0; eauto. i. des.
       destruct (zeq (Int.intval i0) 0).
       {
 
@@ -345,7 +344,7 @@ Proof.
               + ss. econs. econs; ss.
                 * econs.
                   { eapply eval_Evar_global; ss.
-                    instantiate (1:=b). admit "genv". }
+                    instantiate (1:=b). eauto. }
                   { econs 2; ss. }
                 * econs; ss.
                 * ss.
@@ -412,42 +411,48 @@ Proof.
           { unfold SkEnv.revive in FINDG. rewrite Genv_map_defs_symb in *. clarify. }
           clarify.
           eexists (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _).
-          eexists (SimMemInjInv.mk minj (SimMemInjInv.mem_inv sm_init)).
+          exists sm0.
+          (* eexists (SimMemInjInv.mk minj _ _ (SimMemInjInv.mem_inv sm_init)). *)
           esplits; ss; eauto.
           { econs; ss; eauto.
             instantiate (1:=Vptr g_blk Ptrofs.zero). admit "genv". }
-          { refl. }
+          { eapply SimMemInjInv.SimMemInjInv_obligation_1. }
           { econs; eauto. }
 
-          i. inv AFTERSRC. destruct retv_src, retv_tgt; ss. clarify. destruct sm_ret; ss. inv SIMRETV; ss; clarify.
+          i. inv AFTERSRC. destruct retv_src, retv_tgt; ss. clarify. inv SIMRETV; ss; clarify.
+
 
           hexploit Mem.valid_access_store.
           { instantiate (1:=Ptrofs.unsigned (Ptrofs.mul (Ptrofs.repr 4) (Ptrofs.of_ints i))).
             instantiate (1:=b).
-            instantiate (1:=Mint32).
-            instantiate (1:=SimMemInj.tgt minj0).
-            econs.
-            - admit "strengthen SimMemInjInv".
-            - admit "arithmetic". }
+            inv MWF. inv SAT1. eapply WRITABLE0.
+            inv MLE0. ss. rewrite <- MINVEQ. auto. }
           instantiate (1:=Vint (Int.add (sum (Int.sub i Int.one)) i)).
           intros [m_tgt STR].
 
-          des. eexists.
-          (* eexists (SimMemInjInv.mk (SimMemInj.unlift' minj minj0) _). *)
-          eexists (SimMemInjInv.mk
-                     (SimMemInjC.update
-                        (SimMemInj.unlift' minj minj0)
-                        (SimMemInj.src minj0)
-                        m_tgt
-                        (SimMemInj.inj minj0)) _).
+          exploit SimMemInjInv.SimMemInjInv_obligation_7.
+          instantiate (1:=sm_ret). instantiate (1:=sm0). intros MLE1.
+
+          eexists.
+          exists (SimMemInjInv.update
+                    (SimMemInjInv.unlift' sm0 sm_ret)
+                    ((SimMemInjInv.unlift' sm0 sm_ret).(SimMemInjInv.minj).(SimMemInj.src))
+                    m_tgt
+                    ((SimMemInjInv.unlift' sm0 sm_ret).(SimMemInjInv.minj).(SimMemInj.inj))).
+
           esplits; eauto.
           { econs; eauto. }
+          { eapply SimMemInjInv.SimMemInjInv_obligation_1; eauto.
+            econs; ss; eauto. econs; ss; eauto.
+            - refl.
+            - eapply Mem.store_unchanged_on; eauto.
+              ii. eapply TGTEXTGE in H1.
+              inv SIMSK. ss. rewrite <- TGTGENB0 in *.
+              eapply Genv.genv_symb_range in BLK. ss.
+              clear - BLK H1. eapply Plt_strict. eapply Plt_Ple_trans; eauto.
+            - eapply SimMemInj.frozen_refl.
+            - ii. eapply Mem.perm_store_2; eauto. }
 
-          { ss.
-            (* eapply SimMemInj.unlift_spec; eauto. *)
-            admit "mle". }
-
-          instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
           left. pfold. econs; eauto. i; des. econs 2; eauto.
           {
             esplits; eauto; cycle 1.
@@ -521,6 +526,10 @@ Proof.
               + admit "inject".
               + admit "invariant".
               + i. admit "".
+              + admit "".
+              + admit "".
+              + admit "".
+              + admit "".
             - admit "".
             - omega. }
       }
@@ -640,16 +649,13 @@ Proof.
 
           apply star_refl.
 
-        * left. pfold. econs 4; et.
-          { instantiate (1:=SimMemInjInv.mk minj _).
-            econs; ss; eauto. }
-          { econs; eauto. }
-          { econs. }
-          { econs. }
-          { econs; ss; eauto. rpapply Val.inject_int.
-            f_equal. f_equal. admit "arithmetic". }
+        * right. eapply CIH; eauto.
+          { econs; eauto.
+            - ss. replace (Int.repr (Int.intval i)) with i.
+              + econs; eauto.
+              + admit "arithmetic".
+            - econs; eauto. }
       }
-
 
   - (* return *)
     econs 4; ss; eauto.
@@ -668,7 +674,7 @@ Proof.
 
   - i. des. inv SAFESRC.
     esplits; eauto.
-    + refl.
+    + eapply SimMemInjInv.SimMemInjInv_obligation_1.
     + econs; eauto.
     +
       instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).

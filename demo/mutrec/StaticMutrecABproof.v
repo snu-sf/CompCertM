@@ -133,6 +133,7 @@ Section LXSIM.
       (* (IDX: idx = (max.(Int.intval) + cur.(Int.intval)) + 1) *)
       (FROMCALL: fromcall = false)
       (IDX: idx = cur.(Int.intval))
+      (RANGE: max.(Int.intval) < MAX)
     :
       match_stacks fromcall idx (hd_src :: ctx_stk) tmpvar
   | match_stacks_focus_top_return
@@ -148,6 +149,7 @@ Section LXSIM.
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (FROMCALL: fromcall = false)
       (IDX: idx = max.(Int.intval) - cur.(Int.intval))
+      (RANGE: max.(Int.intval) < MAX)
     :
       match_stacks fromcall idx (hd_src :: ctx_stk) tmpvar 
   .
@@ -251,7 +253,8 @@ Section LXSIM.
             econs; ss; try refl; eauto.
             { f_equal. instantiate (1:= []). ss. }
             { unfold __GUARD__. eauto. }
-            econs; eauto. admit "ez - no overflow".
+            { econs; eauto. admit "ez - no overflow". }
+            { des; ss. }
         }
         { inv INIT. ss. esplits; eauto.
           - left. apply plus_one. econs.
@@ -269,7 +272,8 @@ Section LXSIM.
             econs; ss; try refl; eauto.
             { f_equal. instantiate (1:= []). ss. }
             { unfold __GUARD__. eauto. }
-            econs; eauto. admit "ez - no overflow".
+            { econs; eauto. admit "ez - no overflow". }
+            { des; ss. }
         }
       + (* focus-call *)
         ss.
@@ -341,11 +345,11 @@ Section LXSIM.
                       econs; ss; eauto.
                       ** des_ifs. econs; ss.
                          { right. unfold load_modsems. rewrite in_map_iff. esplits; et. rewrite in_app_iff. right. right. ss. eauto. }
-                         des_ifs.
+                         des_ifs. ss.
                          admit "ez - genv find symbol - def".
                       ** econs; ss; eauto.
                          { admit "ez - genv find symbol - def". }
-                         admit "ez - quantify MAX".
+                         { admit "ez - arithmetic". }
                 -- admit "TODO: give proper index".
                    (* rr. esplits; try lia. *)
                    (* ++ admit "ez - arithmetic". *)
@@ -355,8 +359,9 @@ Section LXSIM.
                    { f_equal. }
                    { f_equal. rewrite cons_app. rewrite app_assoc. f_equal. }
                    { unfold __GUARD__. eauto. }
-                   { admit "ez". }
+                   { admit "ez - arithmetic". }
                    { ss. rewrite int_sub_add. econs 2; eauto. }
+                   { ss. }
                    { ss. }
                    { ss. }
         }
@@ -366,7 +371,6 @@ Section LXSIM.
       + (* focus - return *)
         destruct (classic (cur = max)).
         * clarify. exploit match_focus_over_nil; eauto.
-          { admit "ez - quantify max". }
           i; clarify.
           pfold. right. econs; eauto.
           { i. ss. inv FINALTGT.

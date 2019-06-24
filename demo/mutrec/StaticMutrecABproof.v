@@ -132,7 +132,7 @@ Section LXSIM.
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (* (IDX: idx = (max.(Int.intval) + cur.(Int.intval)) + 1) *)
       (FROMCALL: fromcall = false)
-      (IDX: idx = cur.(Int.intval))
+      (IDX: idx = 2 * cur.(Int.intval))
       (RANGE: max.(Int.intval) < MAX)
     :
       match_stacks fromcall idx (hd_src :: ctx_stk) tmpvar
@@ -328,7 +328,7 @@ Section LXSIM.
             + esplits; eauto.
               * right. esplits; eauto.
                 { apply star_refl. }
-                { instantiate (1:= (Int.intval cur) - 1). rr. esplits; eauto; try lia. admit "ez - nonneg". }
+                { instantiate (1:= 2 * (Int.intval cur) - 1). rr. esplits; eauto; try lia. admit "ez - nonneg". }
               * left. pfold. left. right. econs; eauto. econs 2; eauto; esplits.
                 -- eapply plus_two with (t1 := []) (t2 := []); ss.
                    ++ econs; eauto.
@@ -350,7 +350,8 @@ Section LXSIM.
                       ** econs; ss; eauto.
                          { admit "ez - genv find symbol - def". }
                          { admit "ez - arithmetic". }
-                -- admit "TODO: give proper index".
+                -- instantiate (1:= 2 * Int.intval cur - 2). rr. esplits; try lia.
+                   admit "ez - arithmetic".
                    (* rr. esplits; try lia. *)
                    (* ++ admit "ez - arithmetic". *)
                    (* ++ admit "ez - arithmetic". *)
@@ -362,7 +363,7 @@ Section LXSIM.
                    { admit "ez - arithmetic". }
                    { ss. rewrite int_sub_add. econs 2; eauto. }
                    { ss. }
-                   { ss. }
+                   { admit "ez -arithmetic". }
                    { ss. }
         }
         {

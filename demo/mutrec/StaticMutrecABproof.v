@@ -79,6 +79,29 @@ Section LXSIM.
     admit "ez".
   Qed.
 
+  Lemma find_f_id
+    :
+      exists blk,
+        (<<SYMBBIG: Genv.find_symbol skenv_link f_id = Some blk>>)
+        /\ (<<SYMBSMALL: Genv.find_symbol
+                           (SkEnv.project skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog))
+                           f_id = Some blk>>)
+  .
+  Proof.
+    admit "ez".
+  Qed.
+  Lemma find_g_id
+    :
+      exists blk,
+        (<<SYMBBIG: Genv.find_symbol skenv_link g_id = Some blk>>)
+        /\ (<<SYMBSMALL: Genv.find_symbol
+                           (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog))
+                           g_id = Some blk>>)
+  .
+  Proof.
+    admit "ez".
+  Qed.
+
   Inductive match_focus: mem -> int -> int -> list Frame.t -> Prop :=
   | match_focus_nil
       cur max m
@@ -329,7 +352,11 @@ Section LXSIM.
               * right. esplits; eauto.
                 { apply star_refl. }
                 { instantiate (1:= 2 * (Int.intval cur) - 1). rr. esplits; eauto; try lia. admit "ez - nonneg". }
-              * left. pfold. left. right. econs; eauto. econs 2; eauto; esplits.
+              * left. pfold. left. right. econs; eauto.
+                hexploit find_g_id; eauto. i; des.
+                hexploit (StaticMutrecBspec.find_symbol_find_funct_ptr); eauto. instantiate (1:= blk). i; des.
+                exploit SYMB; eauto. intro T; des. clear SYMB FINDF.
+                econs 2; eauto; esplits.
                 -- eapply plus_two with (t1 := []) (t2 := []); ss.
                    ++ econs; eauto.
                       { (* ez - determinate_at *)
@@ -339,22 +366,16 @@ Section LXSIM.
                         - econs; eauto. inv H.
                       }
                       econs; ss; eauto. econs; eauto.
-                      admit "ez - genv find symbol - def".
                    ++ unfold Frame.update_st. ss. econs; eauto.
                       { admit "ez - determinate". }
                       econs; ss; eauto.
                       ** des_ifs. econs; ss.
                          { right. unfold load_modsems. rewrite in_map_iff. esplits; et. rewrite in_app_iff. right. right. ss. eauto. }
-                         des_ifs. ss.
-                         admit "ez - genv find symbol - def".
+                         des_ifs; eauto.
                       ** econs; ss; eauto.
-                         { admit "ez - genv find symbol - def". }
                          { admit "ez - arithmetic". }
                 -- instantiate (1:= 2 * Int.intval cur - 2). rr. esplits; try lia.
                    admit "ez - arithmetic".
-                   (* rr. esplits; try lia. *)
-                   (* ++ admit "ez - arithmetic". *)
-                   (* ++ admit "ez - arithmetic". *)
                 -- right. eapply CIH. u. econs; eauto.
                    econs.
                    { f_equal. }

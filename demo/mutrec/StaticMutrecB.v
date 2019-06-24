@@ -6,7 +6,7 @@ Set Implicit Arguments.
 
 Local Open Scope Z_scope.
 
-Definition func_g: function := (admit "").
+Definition func_g: function := mkfunction fg_sig (admit "").
 Definition _memoized : ident := 52554%positive.
 
 Definition global_definitions : list (ident * globdef fundef unit) :=

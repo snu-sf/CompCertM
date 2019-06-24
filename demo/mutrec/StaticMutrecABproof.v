@@ -20,21 +20,6 @@ Require Import Simulation Sem SemProps LinkingC.
 
 Set Implicit Arguments.
 
-(* Section SIMMODSEM. *)
-
-(* Variable skenv_link: SkEnv.t. *)
-(* Variable sm_link: SimMem.t. *)
-(* Let md_src: Mod.t := (MutrecAspec.module). *)
-(* Let md_tgt: Mod.t := (MutrecBspec.module). *)
-(* Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)). *)
-(* Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)). *)
-(* Hypothesis (WF: SkEnv.wf skenv_link). *)
-(* Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) MutrecA.prog) MutrecA.prog.(prog_comp_env). *)
-(* Let tge := skenv_link.(SkEnv.revive) MutrecB.prog. *)
-(* Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link. *)
-
-(* End SIMMODSEM. *)
-
 Lemma link_sk_same
       ctx
   :
@@ -66,6 +51,20 @@ Section LXSIM.
   Let LINKTGT: link_sk (ctx ++ [(StaticMutrecAspec.module) ; (StaticMutrecBspec.module)]) = Some sk_link.
   Proof. rewrite link_sk_same. ss. Qed.
 
+  Let INCLA: SkEnv.includes skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog).
+  Proof.
+    admit "ez".
+  Qed.
+
+  Let INCLB: SkEnv.includes skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog).
+  Proof.
+    admit "ez".
+  Qed.
+
+  Hypothesis SKWF: Sk.wf sk_link.
+  Let SKEWF: SkEnv.wf skenv_link.
+  Proof. eapply SkEnv.load_skenv_wf; et. Qed.
+
   Lemma genv_sim
         fptr if_sig
     :
@@ -75,28 +74,6 @@ Section LXSIM.
       (<<FINDF: exists md, (<<FOCUS: is_focus md>>) /\
                            (<<FINDF: Genv.find_funct (ModSem.skenv (flip Mod.modsem skenv_link md)) fptr =
                                      Some (AST.Internal if_sig)>>)>>)
-  .
-  Proof.
-    admit "ez".
-  Qed.
-
-  Lemma find_symbol_find_funct_ptr_A
-        blk
-        (SYMB: Genv.find_symbol skenv_link f_id = Some blk)
-    :
-      Genv.find_funct_ptr (SkEnv.project skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog)) blk =
-      Some (AST.Internal (mksignature [AST.Tint] (Some AST.Tint) cc_default))
-  .
-  Proof.
-    admit "ez".
-  Qed.
-
-  Lemma find_symbol_find_funct_ptr_B
-        blk
-        (SYMB: Genv.find_symbol skenv_link g_id = Some blk)
-    :
-      Genv.find_funct_ptr (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog)) blk =
-      Some (AST.Internal (mksignature [AST.Tint] (Some AST.Tint) cc_default))
   .
   Proof.
     admit "ez".
@@ -210,7 +187,7 @@ Section LXSIM.
            (Zwf.Zwf 0) i st_src0 st_tgt0
   .
   Proof.
-    revert_until LINKTGT. pcofix CIH. i.
+    revert_until SKEWF. pcofix CIH. i.
     inv MATCH.
     - (* call *)
       inv STK.
@@ -236,7 +213,7 @@ Section LXSIM.
                 ss. right. unfold load_modsems. rewrite in_map_iff.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
               econs; ss; eauto.
-              - admit "ez - genv. this should hold".
+              - eapply StaticMutrecAspec.find_symbol_find_funct_ptr; et.
             }
             { esplits; eauto. econs.
               { econs; eauto; cycle 1.
@@ -244,7 +221,7 @@ Section LXSIM.
                 ss. right. unfold load_modsems. rewrite in_map_iff.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
               econs; ss; eauto.
-              admit "ez - genv. this should hold".
+              - eapply StaticMutrecBspec.find_symbol_find_funct_ptr; et.
             }
         }
         i. ss. des_ifs. inv STEPTGT. inv MSFIND. ss.
@@ -528,5 +505,6 @@ Proof.
     - i; ss. inv INIT0. inv INIT1. clarify.
   }
   eapply match_states_xsim; eauto.
+  { eapply link_list_preserves_wf_sk; eauto. }
   econs; eauto. econs; eauto.
 Qed.

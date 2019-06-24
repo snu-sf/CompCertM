@@ -109,3 +109,40 @@ End MODSEM.
 
 Program Definition module: Mod.t :=
   {| Mod.data := tt; Mod.get_sk := fun _ => CSk.of_program signature_of_function prog; Mod.get_modsem := modsem; |}.
+
+Lemma find_symbol_find_funct_ptr
+      skenv_link blk
+      ske
+      (WF: SkEnv.wf skenv_link)
+      (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog))
+      (SKE: ske = (SkEnv.project skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog)))
+  :
+    (<<SYMB: Genv.find_symbol ske f_id = Some blk>>) <->
+    (<<FINDF: exists if_sig, Genv.find_funct_ptr ske blk = Some (AST.Internal if_sig)>>)
+.
+Proof.
+  clarify.
+  hexploit (SkEnv.project_impl_spec INCL); eauto. intro PROJ.
+  exploit SkEnv.project_spec_preserves_wf; eauto. intro WFSMALL.
+  inv INCL. specialize (DEFS f_id (Gfun(AST.Internal fg_sig))). exploit DEFS; eauto. i; des.
+  inv MATCH. inv H0.
+  inv PROJ. exploit (SYMBKEEP f_id); eauto. intro T; des. rewrite T in *.
+  exploit DEFKEEP; eauto.
+  { eapply Genv.find_invert_symbol; et. }
+  { ss. }
+  i; des.
+  inv LO. inv H1; ss. clarify.
+  split; ii; ss; des; clarify.
+  - unfold Genv.find_funct_ptr. rewrite DEFSMALL. ss. esplits; eauto.
+  - unfold Genv.find_funct_ptr in *. des_ifs.
+    clear_tac.
+    assert(blk = blk0).
+    {
+      clear - DEFSMALL Heq.
+      uge. ss. rewrite MapsC.PTree_filter_map_spec in *. uo. des_ifs.
+      apply_all_once in_prog_defmap. ss. unfold update_snd in *. ss. des; clarify.
+      apply_all_once Genv.invert_find_symbol. clarify.
+    }
+    clarify.
+Qed.
+

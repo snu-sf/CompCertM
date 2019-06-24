@@ -9,14 +9,14 @@ Require Import CtypesC CtypingC.
 Require Import ClightC AsmC.
 Require Import LinkingC.
 Require Import MutrecHeader.
-Require Import MutrecA MutrecB.
+Require Import StaticMutrecA StaticMutrecB.
 
 Set Implicit Arguments.
 
 Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
 
 Definition sk_link: Sk.t :=
-  match link (CSk.of_program signature_of_function MutrecA.prog) (Sk.of_program fn_sig MutrecB.prog) with
+  match link (CSk.of_program signature_of_function StaticMutrecA.prog) (Sk.of_program fn_sig StaticMutrecB.prog) with
   | Some sk => sk
   | None => Sk.empty
   end

@@ -261,14 +261,43 @@ Section SIMSYMBINV.
   Qed.
   Next Obligation.
     inv SIMSK. inv SIMSK0. exists (ss0 \1/ ss1).
+    hexploit (link_prog_inv sk_tgt0 sk_tgt1); eauto. i. des. clarify.
     esplits; eauto.
     - econs; eauto. i. des; clarify.
       exploit CLOSED0; eauto. i. des.
-      admit "?".
+      assert (~ defs sk_tgt0 id); eauto.
+      unfold defs, proj_sumbool. des_ifs.
+      eapply prog_defmap_dom in i. des.
+      exploit H0; eauto. i. des. clarify.
     - econs; eauto. i. des; clarify.
       exploit CLOSED; eauto. i. des.
-      admit "?".
-    - admit "?".
+      assert (~ defs sk_tgt1 id); eauto.
+      unfold defs, proj_sumbool. des_ifs.
+      eapply prog_defmap_dom in i. des.
+      exploit H0; eauto. i. des. clarify.
+    - econs; ss; eauto.
+      + i. des.
+        * exploit CLOSED; eauto. i. des.
+          destruct ((prog_defmap sk_tgt1) ! id) eqn:NONE.
+          { exploit H0; eauto. i. des. clarify. }
+          esplits; ss; eauto.
+          { erewrite prog_defmap_elements.
+            erewrite PTree.gcombine; ss.
+            rewrite DEF. rewrite NONE. auto. }
+          { ii. eapply in_app in H1. des; clarify.
+            inv WFSRC1. eapply PUBINCL in H1.
+            eapply prog_defmap_spec in H1. des. clarify. }
+        * exploit CLOSED0; eauto. i. des.
+          destruct ((prog_defmap sk_tgt0) ! id) eqn:NONE.
+          { exploit H0; eauto. i. des. clarify. }
+          esplits; ss; eauto.
+          { erewrite prog_defmap_elements.
+            erewrite PTree.gcombine; ss.
+            rewrite DEF. rewrite NONE. auto. }
+          { ii. eapply in_app in H1. des; clarify.
+            inv WFSRC0. eapply PUBINCL in H1.
+            eapply prog_defmap_spec in H1. des. clarify. }
+      + ii. rewrite H in *. des; clarify.
   Qed.
   Next Obligation.
     inv SIMSKE. inv SIMSKENV. eauto.
@@ -343,7 +372,10 @@ Section SIMSYMBINV.
   Next Obligation.
     inv LE. inv SIMSKENV. econs; ss; eauto.
     - i. assert (Genv.find_symbol skenv_link_tgt id = Some blk).
-      { admit "ez". }
+      { exploit SkEnv.project_impl_spec.
+        { eapply INCLTGT. } i. inv H. ss.
+        erewrite <- SYMBKEEP; eauto.
+        apply NNPP. ii. exploit SYMBDROP; eauto. i. red in H0. clarify. }
       exploit INVCOMPAT; eauto. i. des.
       split; eauto; i.
       apply NNPP. intros n. exploit OUTSIDE; eauto.

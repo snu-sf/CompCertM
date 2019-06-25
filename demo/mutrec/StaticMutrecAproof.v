@@ -52,6 +52,7 @@ Proof.
     + refl.
     + erewrite <- Mem.nextblock_store; eauto. refl.
     + ii. clarify.
+    + ii. eapply Mem.perm_store_2; eauto.
   - econs; ss; eauto.
     + eapply MemoryC.private_unchanged_inject; eauto.
       * eapply Mem.store_unchanged_on; eauto.
@@ -474,7 +475,7 @@ Proof.
           { econs; eauto. }
           { instantiate (1:=SimMemInjInv.mk _ _ _ _).
             eapply SimMemInjInv.SimMemInjInv_obligation_1; eauto. }
-          
+
           left. pfold. econs; eauto. i; des. econs 2; eauto.
           {
             esplits; eauto; cycle 1.

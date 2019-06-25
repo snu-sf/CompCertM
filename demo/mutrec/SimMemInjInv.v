@@ -98,9 +98,19 @@ Section MEMINJINV.
       (TGTNBLE: Ple mrel0.(tgt).(Mem.nextblock) mrel1.(tgt).(Mem.nextblock))
       (INCR: inject_incr mrel0.(inj) mrel1.(inj))
       (FROZEN: inject_separated
-               (mrel0.(inj)) (mrel1.(inj))
-               (mrel0.(src)) (mrel0.(tgt)))
+                 (mrel0.(inj)) (mrel1.(inj))
+                 (mrel0.(src)) (mrel0.(tgt)))
       (MINVEQ: mrel0.(mem_inv) = mrel1.(mem_inv))
+      (MAXSRC: forall
+          b ofs
+          (VALID: Mem.valid_block mrel0.(src) b)
+        ,
+          <<MAX: Mem.perm mrel1.(src) b ofs Max <1= Mem.perm mrel0.(src) b ofs Max>>)
+      (MAXTGT: forall
+          b ofs
+          (VALID: Mem.valid_block mrel0.(tgt) b)
+        ,
+          <<MAX: Mem.perm mrel1.(tgt) b ofs Max <1= Mem.perm mrel0.(tgt) b ofs Max>>)
   .
 
   (* "Global" is needed as it is inside section *)
@@ -118,7 +128,8 @@ Section MEMINJINV.
     }.
   Next Obligation.
     econs.
-    - econs; ss.
+    - econs; ss; eauto
+      + refl.
       + refl.
       + refl.
       + ii. clarify.
@@ -134,6 +145,10 @@ Section MEMINJINV.
           { eapply H1. eapply Plt_Ple_trans; eauto. }
           { eapply H2. eapply Plt_Ple_trans; eauto. }
       + etrans; eauto.
+      + ii. eapply MAXSRC; eauto. eapply MAXSRC0; eauto.
+        eapply Plt_Ple_trans; eauto.
+      + ii. eapply MAXTGT; eauto. eapply MAXTGT0; eauto.
+        eapply Plt_Ple_trans; eauto.
   Qed.
   Next Obligation.
     inv MLE. ii. eapply val_inject_incr; eauto.
@@ -324,7 +339,7 @@ Section SIMSYMBINV.
   Admitted.
   Next Obligation.
     inv SIMSKENV. inv SIMSKENV0.
-    inv ARGS. inv MWF. ss.
+    inv ARGS. inv MWF. ss. rewrite MEMSRC in *. rewrite MEMTGT in *.
     exploit ec_mem_inject; eauto.
     - eapply external_call_spec.
     - instantiate (1:=skenv_sys_tgt).
@@ -349,27 +364,28 @@ Section SIMSYMBINV.
         * destruct (Genv.block_is_volatile skenv_sys_tgt b2) eqn:VOL2; auto.
           dup VOL2. eapply Genv.block_is_volatile_below in VOL2.
           exfalso. exploit IMAGE; eauto. i. clarify.
-    - rewrite MEMSRC. eauto.
     - i. des. eexists (mk _ _ _ _). exists (Retv.mk vres' m2'). ss.
       esplits; ss; eauto.
-      + rewrite MEMTGT. eauto.
       + econs; ss; eauto.
       + econs; ss; eauto.
-        * rewrite MEMSRC in *. eapply Mem.unchanged_on_nextblock; eauto.
         * eapply Mem.unchanged_on_nextblock; eauto.
-        * rewrite MEMSRC in *. eauto.
+        * eapply Mem.unchanged_on_nextblock; eauto.
+        * ii. eapply ec_max_perm; eauto.
+          eapply external_call_spec.
+        * ii. eapply ec_max_perm; eauto.
+          eapply external_call_spec.
       + econs; ss; eauto.
         * eapply unchanged_on_invariant; eauto.
           { ii. eapply INVRANGE; eauto. apply 0. }
           { eapply Mem.unchanged_on_implies; eauto.
-            i. rewrite MEMSRC. eapply INVRANGE; eauto. }
+            i. eapply INVRANGE; eauto. }
         * ii. exploit INVRANGE; eauto. i. des. split.
           { ii. eapply H6; eauto.
             - instantiate (1:=delta). instantiate (1:=b0).
               destruct (inj sm0 b0) as [[blk0 delta0]|] eqn:DELTA.
               + eapply H4 in DELTA. clarify.
               + exfalso. exploit H5; eauto. i. des. clarify.
-            - rewrite MEMSRC in *. eapply external_call_max_perm; eauto.
+            - eapply external_call_max_perm; eauto.
               destruct (inj sm0 b0) as [[blk0 delta0]|] eqn:DELTA.
               + dup DELTA. eapply H4 in DELTA. clarify.
                 eapply Mem.valid_block_inject_1; eauto.

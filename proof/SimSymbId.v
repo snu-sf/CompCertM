@@ -81,7 +81,10 @@ Lemma sim_sk_load_sim_skenv: forall
           (LOADMEMSRC: sk_src.(Sk.load_mem) = Some m_src)
         ,
             (<<LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_src>>) /\
-            (<<SIMSKENV: sim_skenv skenv_src skenv_tgt>>)
+            (<<SIMSKENV: sim_skenv skenv_src skenv_tgt>>) /\
+            (<<MAINSIM: (Genv.symbol_address skenv_src (prog_main sk_src) Ptrofs.zero)
+                        =
+                        (Genv.symbol_address skenv_tgt (prog_main sk_tgt) Ptrofs.zero)>>)
 .
 Proof.
   i. u in *. inv SIMSK.

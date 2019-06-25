@@ -50,7 +50,9 @@ Module SimMem.
     sim_val_list: t -> list val -> list val -> Prop;
     le_sim_val: forall mrel0 mrel1 (MLE: le mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
     lift_sim_val: forall mrel, sim_val mrel <2= sim_val (lift mrel);
+    unlift_sim_val: forall sm0 sm1, sim_val sm1 <2= sim_val (unlift sm0 sm1);
     sim_val_list_spec: forall sm0, (List.Forall2 sm0.(sim_val) = sm0.(sim_val_list));
+    sim_val_int: forall sm0 v_src v_tgt, sim_val sm0 v_src v_tgt -> forall i, v_src = Vint i -> v_tgt = Vint i;
   }
   .
 
@@ -93,6 +95,34 @@ Module SimMem.
       (MEMSRC: retv_src.(Retv.m) = sm0.(SimMem.src))
       (MEMTGT: retv_tgt.(Retv.m) = sm0.(SimMem.tgt))
   .
+
+  Lemma sim_val_list_lift
+        `{SM: class}
+        sm0 vs_src vs_tgt
+        (SIMVS: SimMem.sim_val_list sm0 vs_src vs_tgt)
+    :
+      <<SIMVS: SimMem.sim_val_list (SimMem.lift sm0) vs_src vs_tgt>>
+  .
+  Proof.
+    rewrite <- sim_val_list_spec in *.
+    induction SIMVS; ii; ss.
+    econs; eauto.
+    eapply lift_sim_val; et.
+  Qed.
+
+  Lemma sim_retv_unlift
+        `{SM: class}
+        retv_src retv_tgt sm0 sm1
+        (SIM: sim_retv retv_src retv_tgt sm1)
+    :
+      <<SIM: sim_retv retv_src retv_tgt (unlift sm0 sm1)>>
+  .
+  Proof.
+    inv SIM. econs; eauto.
+    - eapply unlift_sim_val; et.
+    - rewrite unlift_src. ss.
+    - rewrite unlift_tgt. ss.
+  Qed.
 
 End SimMem.
 

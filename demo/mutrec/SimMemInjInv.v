@@ -144,6 +144,9 @@ Section MEMINJINV.
     - eapply IHx0; eauto.
     - eapply IHx0; eauto.
   Qed.
+  Next Obligation.
+    inv H. ss.
+  Qed.
 
   Lemma mem_inv_le sm0 sm1
         (MLE: le' sm0 sm1)
@@ -206,7 +209,9 @@ Section SIMSYMBINV.
           exists g,
             (<<DEF: sk_tgt.(prog_defmap) ! id = Some g>>) /\
             (<<INV: invariant_globvar g>>) /\
-            (<<PRVT: ~ In id (prog_public sk_tgt)>>)).
+            (<<PRVT: ~ In id (prog_public sk_tgt)>>))
+      (NOMAIN: ~ ss sk_src.(prog_main))
+  .
 
   Global Program Instance SimSymbIdInv: SimSymb.class (SimMemInjInv P) :=
     {
@@ -283,6 +288,13 @@ Section SIMSYMBINV.
           unfold Sk.load_skenv, Sk.load_mem in *. ss.
           apply Genv.init_mem_genv_next in LOADMEMSRC.
           rewrite LOADMEMSRC in *. auto.
+    - unfold Genv.symbol_address. des_ifs.
+      subst j.
+      econs; eauto; cycle 1.
+      { psimpl. ss. }
+      exploit Genv.genv_symb_range; eauto. intro T.
+      erewrite Genv.init_mem_genv_next in T; eauto. des_ifs_safe.
+      eapply Genv.find_invert_symbol in Heq. des_ifs_safe. des_ifs.
   Qed.
   Next Obligation.
   Admitted.

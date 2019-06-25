@@ -46,6 +46,9 @@ Next Obligation.
     econs; eauto.
   - induction H; econs; eauto.
 Qed.
+Next Obligation.
+  inv H. ss.
+Qed.
 
 Global Program Instance SimSymbExtends: SimSymb.class SimMemExt := {
   t := unit;
@@ -70,7 +73,8 @@ Next Obligation.
   exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
   eexists. eexists (mk _ _).
   esplits; ss; eauto.
-  apply Mem.extends_refl.
+  - apply Mem.extends_refl.
+  - rewrite MAINSIM. ss.
 Qed.
 Next Obligation.
   eapply SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto.

@@ -124,6 +124,9 @@ Next Obligation.
   - ginduction x1; ii; inv H; ss.
     econs; eauto.
 Qed.
+Next Obligation.
+  inv H. ss.
+Qed.
 
 Section ORIGINALS.
 
@@ -549,6 +552,12 @@ Next Obligation.
   - econs; ss; try xomega; ii; des; ss; eauto.
     eapply Genv.initmem_inject; eauto.
     u in *. eauto.
+  - rewrite MAINSIM.
+    unfold Genv.symbol_address. des_ifs. unfold Mem.flat_inj. econs; eauto.
+    + des_ifs. exfalso. apply n. eapply Plt_Ple_trans.
+      { eapply Genv.genv_symb_range; et. }
+      erewrite Genv.init_mem_genv_next; eauto. refl.
+    + psimpl. ss.
 Qed.
 Next Obligation.
   inv SIMSKENV. inv INJECT.

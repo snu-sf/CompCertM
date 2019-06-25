@@ -101,12 +101,12 @@ Definition cgenv skenv_link clight :=
 
 Lemma clight_id
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module1))
+      (WF: Sk.wf clight.(module2))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -149,12 +149,12 @@ Qed.
 
 Lemma clight_ext_unreach
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module1))
+      (WF: Sk.wf clight.(module2))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -176,15 +176,15 @@ Proof.
     + econs; eauto.
     + econs; eauto.
       * rewrite MEMSRC. rewrite MEMTGT. eauto.
-      * econs.
+      * inv TYP. inv TYP0. eapply lessdef_list_typify_list; et.
+      * econs; et.
 
   - i. ss. des. inv SAFESRC. esplits. econs; ss.
     + inv SIMARGS. ss. inv FPTR.
       * rewrite H1 in *. eauto.
       * rewrite <- H0 in *. clarify.
     + inv SIMARGS. ss. inv TYP. econs; eauto.
-      eapply vals_casted_inject; eauto.
-      eapply val_inject_list_lessdef; eauto.
+      erewrite <- lessdef_list_length; eauto.
 
   - i. ss. inv MATCH; eauto.
 
@@ -198,12 +198,11 @@ Proof.
   - i. ss. clear SOUND HISTORY.
     exists sm_ret.
     inv AFTERSRC. inv MATCH.
-    exploit typify_c_inject; eauto.
-    { inv SIMRET. ss. eapply val_inject_lessdef; eauto. } i. des.
     esplits; eauto.
     + econs; eauto.
     + inv SIMRET. rewrite MEMSRC. rewrite MEMTGT.
-      econs; eauto. eapply val_inject_lessdef; eauto.
+      econs; eauto.
+      eapply lessdef_typify; eauto.
 
   - i. ss. inv FINALSRC. inv MATCH. inv CONT.
     esplits; eauto.
@@ -211,23 +210,23 @@ Proof.
     + econs; eauto.
 
   - left. i. split.
-    { eapply modsem1_receptive. }
+    { eapply modsem2_receptive. }
     ii. exploit clight_step_preserve_extension; eauto.
-    { eapply function_entry1_extends. }
+    { eapply function_entry2_extends. }
     i. des. esplits; eauto.
     left. apply plus_one. econs; ss; eauto.
-    eapply modsem1_determinate.
+    eapply modsem2_determinate.
 Qed.
 
 
 Lemma clight_ext_top
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module1))
+      (WF: Sk.wf clight.(module2))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -248,15 +247,15 @@ Proof.
     + econs; eauto.
     + econs; eauto.
       * rewrite MEMSRC. rewrite MEMTGT. eauto.
-      * econs.
+      * inv TYP. inv TYP0. eapply lessdef_list_typify_list; eauto.
+      * econs; eauto.
 
   - i. ss. des. inv SAFESRC. esplits. econs; ss.
     + inv SIMARGS. ss. inv FPTR.
       * rewrite H1 in *. eauto.
       * rewrite <- H0 in *. clarify.
     + inv SIMARGS. ss. inv TYP. econs; eauto.
-      eapply vals_casted_inject; eauto.
-      eapply val_inject_list_lessdef; eauto.
+      erewrite <- lessdef_list_length; eauto.
 
   - i. ss. inv MATCH; eauto.
 
@@ -270,12 +269,10 @@ Proof.
   - i. ss. clear SOUND HISTORY.
     exists sm_ret.
     inv AFTERSRC. inv MATCH.
-    exploit typify_c_inject; eauto.
-    { inv SIMRET. ss. eapply val_inject_lessdef; eauto. } i. des.
     esplits; eauto.
     + econs; eauto.
     + inv SIMRET. rewrite MEMSRC. rewrite MEMTGT.
-      econs; eauto. eapply val_inject_lessdef; eauto.
+      econs; eauto. eapply lessdef_typify; eauto.
 
   - i. ss. inv FINALSRC. inv MATCH. inv CONT.
     esplits; eauto.
@@ -283,22 +280,22 @@ Proof.
     + econs; eauto.
 
   - left. i. split.
-    { eapply modsem1_receptive. }
+    { eapply modsem2_receptive. }
     ii. exploit clight_step_preserve_extension; eauto.
-    { eapply function_entry1_extends. }
+    { eapply function_entry2_extends. }
     i. des. esplits; eauto.
     left. apply plus_one. econs; ss; eauto.
-    eapply modsem1_determinate.
+    eapply modsem2_determinate.
 Qed.
 
 Lemma clight_inj_drop_bot
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module1))
+      (WF: Sk.wf clight.(module2))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
       /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>)
 .
 Proof.
@@ -319,14 +316,16 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + refl.
-    + econs; eauto. econs.
+    + econs; eauto.
+      { inv TYP. inv TYP0. eapply inject_list_typify_list; eauto. }
+      econs.
 
   - i. ss. exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
     des. inv SAFESRC. inv SIMARGS. esplits. econs; ss.
     + eapply match_globals_find_funct; eauto.
     + inv TYP. econs; eauto.
-      eapply vals_casted_inject; eauto.
+      erewrite <- inject_list_length; eauto.
 
   - i. ss. inv MATCH; eauto.
 
@@ -346,11 +345,10 @@ Proof.
   - i. ss. clear SOUND HISTORY.
     exists (SimMemInj.unlift' sm_arg sm_ret).
     inv AFTERSRC. inv MATCH.
-    exploit typify_c_inject; eauto.
-    { inv SIMRET. ss. eauto. } i. des.
     esplits; eauto.
     + econs; eauto.
     + inv SIMRET. econs; eauto.
+      { eapply inject_typify; et. }
       ss. eapply match_cont_incr; try eassumption.
       inv MLE. inv MLE0. etrans; eauto.
     +  refl.
@@ -362,25 +360,25 @@ Proof.
     + refl.
 
   - left. i. split.
-    + eapply modsem1_receptive.
+    + eapply modsem2_receptive.
     + ii. exploit clight_step_preserve_injection; try eassumption.
       { instantiate (1:=cgenv skenv_link_tgt clight). ss. }
-      { eapply function_entry1_inject. ss. }
+      { eapply function_entry2_inject. ss. }
       { inv SIMSKENV. ss. eapply SimSymbDrop_symbols_inject; eauto. }
       { inv SIMSKENV. ss. eapply SimSymbDrop_match_globals; eauto. }
       i. des. esplits; eauto.
       left. apply plus_one. econs; ss; eauto.
-      eapply modsem1_determinate.
+      eapply modsem2_determinate.
 Qed.
 
 Lemma clight_inj_drop
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module1))
+      (WF: Sk.wf clight.(module2))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
 .
 Proof.
   exploit clight_inj_drop_bot; eauto. i. des. eauto.
@@ -388,12 +386,12 @@ Qed.
 
 Lemma clight_inj_id
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module1))
+      (WF: Sk.wf clight.(module2))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module1)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module1)>>)
+      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
 .
 Proof.
   apply sim_inj_drop_bot_id. apply clight_inj_drop_bot; auto.

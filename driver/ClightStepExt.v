@@ -598,7 +598,7 @@ Section CLIGHTSOUND.
   Lemma clight_unreach_local_preservation
         clight
     :
-      exists sound_state, <<PRSV: local_preservation (modsem1 skenv_link clight) sound_state>>
+      exists sound_state, <<PRSV: local_preservation (modsem2 skenv_link clight) sound_state>>
   .
   Proof.
     esplits.
@@ -608,6 +608,7 @@ Section CLIGHTSOUND.
       + refl.
       + econs; eauto.
         * inv SKENV. eauto.
+        * admit "ez".
         * econs.
       + instantiate (1:=get_mem). ss. refl.
 

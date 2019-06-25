@@ -543,8 +543,7 @@ Proof.
           }
 
           right. eapply CIH.
-          { eapply SimMemInjInv.SimSymbIdInv_obligation_7; cycle 1; eauto.
-            etrans; eauto. }
+          { eapply SimMemInjInv.SimSymbIdInv_obligation_7; cycle 1; eauto. }
           { econs; ss.
             - replace (Int.add (sum (Int.sub i Int.one)) i) with (sum i); cycle 1.
               { admit "arithmetic". }

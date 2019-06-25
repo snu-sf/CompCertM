@@ -25,6 +25,51 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
+Inductive match_states_ext_clight (sm_arg: SimMemExt.t')
+  : unit -> state -> state -> SimMemExt.t' -> Prop :=
+| match_ext_State
+    fn stmt K_src K_tgt env_src env_tgt tenv_src tenv_tgt m_src m_tgt sm0
+    (MWFSRC: m_src = sm0.(SimMemExt.src))
+    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWF: Mem.extends m_src m_tgt)
+    (ENV: match_env inject_id env_src env_tgt)
+    (TENV: match_temp_env inject_id tenv_src tenv_tgt)
+    (CONT: match_cont inject_id K_src K_tgt)
+  :
+    match_states_ext_clight
+      sm_arg tt
+      (State fn stmt K_src env_src tenv_src m_src)
+      (State fn stmt K_tgt env_tgt tenv_tgt m_tgt)
+      sm0
+| match_ext_Callstate
+    fptr_src fptr_tgt ty args_src args_tgt K_src K_tgt m_src m_tgt sm0
+    (MWFSRC: m_src = sm0.(SimMemExt.src))
+    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWF: Mem.extends m_src m_tgt)
+    (INJ: Val.lessdef fptr_src fptr_tgt)
+    (VALS: Val.lessdef_list args_src args_tgt)
+    (CONT: match_cont inject_id K_src K_tgt)
+  :
+    match_states_ext_clight
+      sm_arg tt
+      (Callstate fptr_src ty args_src K_src m_src)
+      (Callstate fptr_tgt ty args_tgt K_tgt m_tgt)
+      sm0
+| match_ext_Returnstate
+    retv_src retv_tgt K_src K_tgt m_src m_tgt sm0
+    (MWFSRC: m_src = sm0.(SimMemExt.src))
+    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWF: Mem.extends m_src m_tgt)
+    (INJ: Val.lessdef retv_src retv_tgt)
+    (CONT: match_cont inject_id K_src K_tgt)
+  :
+    match_states_ext_clight
+      sm_arg tt
+      (Returnstate retv_src K_src m_src)
+      (Returnstate retv_tgt K_tgt m_tgt)
+      sm0
+.
+
 Section CLIGHTEXT.
 
   Variable se: Senv.t.

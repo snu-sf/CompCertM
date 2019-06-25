@@ -194,6 +194,7 @@ Hint Resolve E0_double.
 
 Require Import StoreArguments.
 
+(* TODO : unify with IdSimAsm *)
 Lemma asm_init_succeed skenv_link p args fd
       (FPTR: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig p)) p) args.(Args.fptr)
              = Some (AST.Internal fd))

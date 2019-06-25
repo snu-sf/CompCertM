@@ -316,7 +316,7 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + refl.
-    + econs; eauto.
+    + econs; eauto. econs; eauto.
       { inv TYP. inv TYP0. eapply inject_list_typify_list; eauto. }
       econs.
 
@@ -329,7 +329,7 @@ Proof.
 
   - i. ss. inv MATCH; eauto.
 
-  - i. ss. clear SOUND. inv CALLSRC. inv MATCH. inv SIMSKENV. ss.
+  - i. ss. clear SOUND. inv CALLSRC. inv MATCH. inv MATCHST. inv SIMSKENV. ss.
     esplits; eauto.
     + econs; ss; eauto.
       * eapply SimSymbDrop_find_None; eauto.
@@ -344,16 +344,16 @@ Proof.
 
   - i. ss. clear SOUND HISTORY.
     exists (SimMemInj.unlift' sm_arg sm_ret).
-    inv AFTERSRC. inv MATCH.
+    inv AFTERSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
     + econs; eauto.
-    + inv SIMRET. econs; eauto.
+    + inv SIMRET. econs; eauto. econs; eauto.
       { eapply inject_typify; et. }
       ss. eapply match_cont_incr; try eassumption.
       inv MLE. inv MLE0. etrans; eauto.
     +  refl.
 
-  - i. ss. inv FINALSRC. inv MATCH. inv CONT.
+  - i. ss. inv FINALSRC. inv MATCH. inv MATCHST. inv CONT.
     esplits; eauto.
     + econs.
     + econs; eauto.

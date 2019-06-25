@@ -16,6 +16,7 @@ Require SoundTop.
 Require Import Clightdefs.
 Require Import CtypesC.
 Require Import BehaviorsC.
+Require Import LinkingC2.
 Require Import Simulation Sem SemProps LinkingC.
 
 Set Implicit Arguments.
@@ -27,17 +28,31 @@ Lemma link_sk_same
     = link_sk (ctx ++ [module])
 .
 Proof.
-  admit "see UpperBound_A extra".
+  subst_locals.
+  unfold link_sk.
+  rewrite ! map_app. ss.
+  eapply link_list_app_commut; eauto.
 Qed.
 
 Lemma wf_module_Aspec: Sk.wf StaticMutrecAspec.module.
 Proof.
-  admit "ez".
+  ss. unfold StaticMutrecA.prog. econs.
+  - unfold prog_defs_names; ss.
+    repeat (econs; ss; ii; des; clarify).
+  - ss. i. des; clarify.
+    unfold update_snd in *. ss. clarify. ss. des; clarify.
+  - ii. ss. des; clarify; eauto.
 Qed.
 
 Lemma wf_module_Bspec: Sk.wf StaticMutrecBspec.module.
 Proof.
-  admit "ez".
+  ss. unfold StaticMutrecB.prog. econs.
+  - unfold prog_defs_names; ss.
+    repeat (econs; ss; ii; des; clarify).
+  - ss. i. des; clarify.
+    unfold update_snd in *. ss. clarify. ss.
+    admit "definition has admits".
+  - ii. ss. des; clarify; eauto.
 Qed.
 
 Definition is_focus (x: Mod.t) := x = StaticMutrecAspec.module \/ x = StaticMutrecBspec.module.
@@ -53,12 +68,20 @@ Section LXSIM.
 
   Let INCLA: SkEnv.includes skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog).
   Proof.
-    admit "ez".
+    unfold skenv_link.
+    exploit link_includes.
+    eapply LINKTGT.
+    instantiate (1:=StaticMutrecAspec.module).
+    eapply in_or_app; ss. auto. i. ss.
   Qed.
 
   Let INCLB: SkEnv.includes skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog).
   Proof.
-    admit "ez".
+    unfold skenv_link.
+    exploit link_includes.
+    eapply LINKTGT.
+    instantiate (1:=StaticMutrecBspec.module).
+    eapply in_or_app; ss. auto. i. ss.
   Qed.
 
   Hypothesis SKWF: Sk.wf sk_link.
@@ -76,7 +99,53 @@ Section LXSIM.
                                      Some (AST.Internal if_sig)>>)>>)
   .
   Proof.
-    admit "ez".
+    split. i.
+    - rr in H.
+      unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
+      rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in H.
+      des_ifs.
+      destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss.
+      unfold o_bind in H. ss. des_ifs.
+      destruct ((prog_defmap StaticMutrecABspec.sk_link) ! i) eqn:Hdefmap; ss; clarify.
+      unfold StaticMutrecABspec.sk_link in *. ss. des_ifs.
+
+      Local Transparent Linker_program. ss.
+      unfold link_program in *. des_ifs.
+      Local Transparent Linker_prog. ss.
+
+      exploit Genv.invert_find_symbol; eauto. i.
+      unfold Genv.find_symbol, skenv_link, Sk.load_skenv in H.
+
+      hexploit (link_prog_inv _ _ _ Heq1). i. des.
+      subst t.
+      dup Heq0.
+
+      unfold prog_defmap in Hdefmap. simpl in Hdefmap.
+      rewrite PTree_Properties.of_list_elements in *. des_ifs.
+      simpl in Hdefmap. exploit PTree.elements_correct. eapply Hdefmap. i.
+      unfold PTree.elements, PTree.xelements in H2. simpl in H2. des_ifs.
+      destruct (classic (i = f_id)).
+      { subst. ss.
+        clarify. des; clarify.
+        red. exists (StaticMutrecBspec.module). split.
+        - unfold is_focus. ss. auto.
+        - ss. red. rewrite Genv.find_funct_ptr_iff.
+          des_ifs. des; clarify.
+          admit "".
+      }
+      destruct (classic (i = g_id)).
+      { subst. ss.
+        clarify. des; clarify.
+        red. exists (StaticMutrecAspec.module). split.
+        - unfold is_focus. ss. auto.
+        - ss. red. rewrite Genv.find_funct_ptr_iff.
+          des_ifs. des; clarify.
+          admit "".
+      }
+      clarify. ss. des; clarify.
+      inv H2; clarify. inv H5; clarify.
+      inv H2; clarify. inv H5; clarify.
+    - admit "".
   Qed.
 
   Lemma find_f_id
@@ -91,8 +160,34 @@ Section LXSIM.
                        f_id = Some blk>>)
   .
   Proof.
-    admit "ez".
-  Qed.
+   inv INCLA. ss.
+    inv SKEWF. ss.
+    unfold prog_defmap in DEFS. ss.
+    specialize (DEFS f_id). ss.
+    exploit DEFS; eauto. i. des.
+    esplits; eauto.
+    - unfold Genv.find_symbol in *. ss. des_ifs.
+      exploit MapsC.PTree_filter_key_spec.
+      instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function StaticMutrecA.prog) id)).
+      instantiate (2:=(PTree.Node
+             (PTree.Node t12 o8
+                (PTree.Node
+                   (PTree.Node t13 o10
+                      (PTree.Node t7 o11 (PTree.Node (PTree.Node (PTree.Node t15 (Some blk) t19) o13 t18) o12 t17))) o9 t14)) o7
+             t11)).
+      instantiate (1:=f_id). rewrite Heq. ss.
+    - unfold Genv.find_symbol in *. ss. des_ifs.
+      exploit MapsC.PTree_filter_key_spec.
+      instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig StaticMutrecB.prog) id)).
+      instantiate (2:=(PTree.Node
+             (PTree.Node t12 o8
+                (PTree.Node
+                   (PTree.Node t13 o10
+                      (PTree.Node t7 o11 (PTree.Node (PTree.Node (PTree.Node t15 (Some blk) t19) o13 t18) o12 t17))) o9 t14)) o7
+             t11)).
+      instantiate (1:=f_id). rewrite Heq. ss.
+  Qed.              
+
   Lemma find_g_id
     :
       exists blk,
@@ -105,7 +200,30 @@ Section LXSIM.
                        g_id = Some blk>>)
   .
   Proof.
-    admit "ez".
+    inv INCLB. ss.
+    inv SKEWF. ss.
+    unfold prog_defmap in DEFS. ss.
+    specialize (DEFS g_id). ss.
+    exploit DEFS; eauto. i. des.
+    esplits; eauto.
+    - unfold Genv.find_symbol in *. ss. des_ifs.
+      exploit MapsC.PTree_filter_key_spec.
+      instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function StaticMutrecA.prog) id)).
+      instantiate (2:=(PTree.Node
+             (PTree.Node
+                (PTree.Node
+                   (PTree.Node (PTree.Node t7 o11 (PTree.Node t12 o12 (PTree.Node (PTree.Node t17 (Some blk) t19) o13 t18))) o10
+                      t15) o9 t14) o8 t13) o7 t11)).
+      instantiate (1:=g_id). rewrite Heq. ss.
+    - unfold Genv.find_symbol in *. ss. des_ifs.
+      exploit MapsC.PTree_filter_key_spec.
+      instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig StaticMutrecB.prog) id)).
+      instantiate (2:=(PTree.Node
+             (PTree.Node
+                (PTree.Node
+                   (PTree.Node (PTree.Node t7 o11 (PTree.Node t12 o12 (PTree.Node (PTree.Node t17 (Some blk) t19) o13 t18))) o10
+                      t15) o9 t14) o8 t13) o7 t11)).
+      instantiate (1:=g_id). rewrite Heq. ss.
   Qed.
 
   Inductive match_focus: mem -> int -> int -> list Frame.t -> Prop :=
@@ -138,7 +256,19 @@ Section LXSIM.
   Proof.
     clear - RANGE FOCUS.
     inv FOCUS; ss.
-    - exfalso. admit "ez - arithmetic".
+    - exfalso.
+      assert (Int.intval (Int.add max Int.one) = (Int.intval max) + 1).
+      { unfold Int.add. unfold Int.unsigned.
+        unfold Int.one.
+        Local Transparent Int.repr.
+        unfold Int.repr. ss.
+        rewrite Int.Z_mod_modulus_eq.
+        Locate "mod".
+        unfold Int.Z_mod_modulus. des_ifs.
+      destruct max. ss. unfold Int.add in LE. ss.
+      unfold Int.unsigned, Int.one in LE.
+      unfold max in LE.
+      admit "ez - arithmetic".
     - exfalso. admit "ez - arithmetic".
   Qed.
 

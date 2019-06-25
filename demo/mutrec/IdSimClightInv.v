@@ -165,3 +165,5 @@ Proof.
             * eapply Mem.valid_block_unchanged_on; eauto.
               eapply INVRANGE; eauto. }
 Qed.
+
+End INJINV.

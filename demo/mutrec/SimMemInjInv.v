@@ -268,8 +268,7 @@ Section SIMSYMBINV.
     - econs; eauto. i. des; clarify.
       exploit CLOSED; eauto. i. des.
       admit "?".
-    - econs; eauto. i.
-      admit "?".
+    - admit "?".
   Qed.
   Next Obligation.
     inv SIMSKE. inv SIMSKENV. eauto.
@@ -323,7 +322,7 @@ Section SIMSYMBINV.
       { psimpl. ss. }
       exploit Genv.genv_symb_range; eauto. intro T.
       erewrite Genv.init_mem_genv_next in T; eauto. des_ifs_safe.
-      eapply Genv.find_invert_symbol in Heq. des_ifs_safe. des_ifs.
+      eapply Genv.find_invert_symbol in Heq. des_ifs.
   Qed.
   Next Obligation.
     inv MLE. inv SIMSKENV. inv SIMSKENV0.

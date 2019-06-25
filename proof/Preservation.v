@@ -246,7 +246,6 @@ Inductive local_preservation_strong_horizontal (sound_state: Sound.t -> ms.(stat
         (AT: ms.(ModSem.at_external) st0 args)
       ,
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
-        (<<ARGS: su0.(Sound.args) args>>) /\
         (* (exists su_lifted, <<LE: Sound.le su0 su_lifted>> /\ <<ARGS: su_lifted.(Sound.args) args>>) /\ *)
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
@@ -419,7 +418,6 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
         (AT: ms.(ModSem.at_external) st0 args)
       ,
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
-        (<<ARGS: su0.(Sound.args) args>>) /\
         <<FOOT: has_footprint st0 su0 st0.(get_mem)>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\

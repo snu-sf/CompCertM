@@ -455,7 +455,7 @@ Proof.
           esplits; ss; eauto.
           { econs; ss; eauto.
             instantiate (1:=Vptr g_blk Ptrofs.zero). admit "genv". }
-          { eapply SimMemInjInv.SimMemInjInv_obligation_1. }
+          { refl. }
           { econs; eauto. }
           i. inv AFTERSRC. destruct retv_src, retv_tgt; ss. clarify. inv SIMRETV; ss; clarify.
 
@@ -473,8 +473,7 @@ Proof.
 
           esplits.
           { econs; eauto. }
-          { instantiate (1:=SimMemInjInv.mk _ _ _ _).
-            eapply SimMemInjInv.SimMemInjInv_obligation_1; eauto. }
+          { etrans; eauto. }
 
           left. pfold. econs; eauto. i; des. econs 2; eauto.
           {
@@ -548,8 +547,7 @@ Proof.
             - replace (Int.add (sum (Int.sub i Int.one)) i) with (sum i); cycle 1.
               { admit "arithmetic". }
               econs 2.
-            - eapply SimMemInjInv.SimMemInjInv_obligation_1; eauto.
-              eapply SimMemInjInv.SimMemInjInv_obligation_1; eauto.
+            - etrans; eauto. etrans; eauto.
             - omega. }
       }
 
@@ -693,7 +691,7 @@ Proof.
 
   - i. des. inv SAFESRC.
     esplits; eauto.
-    + eapply SimMemInjInv.SimMemInjInv_obligation_1.
+    + refl.
     + econs; eauto.
     +
       instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
@@ -741,8 +739,13 @@ Theorem sim_mod
 Proof.
   econs; ss.
   - econs; ss. i. inv SS. esplits; ss; eauto.
-    + econs. admit "fill definition".
+    + econs; ss.
+      admit "fill definition".
     + ii. des; clarify.
+    + ii. destruct H. eapply in_prog_defmap in PROG.
+      ss. unfold update_snd in PROG. ss.
+      des; clarify; inv DROP; ss.
+      des; clarify.
   - ii. ss.
     inv SIMSKENVLINK. inv SIMSKENV.
     eapply sim_modsem; eauto.

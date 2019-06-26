@@ -72,7 +72,7 @@ Proof.
     { admit "genv". } clarify.
     esplits; eauto.
     + econs; eauto.
-    + eapply SimMemInjInv.SimMemInjInv_obligation_1.
+    + refl.
     + econs; eauto. econs; eauto. econs.
 
   - i. des. inv SAFESRC. inv SIMARGS. esplits. econs; ss.
@@ -88,7 +88,7 @@ Proof.
       * admit "genv".
       * admit "genv".
     + econs; ss.
-    + eapply SimMemInjInv.SimMemInjInv_obligation_1.
+    + refl.
     + instantiate (1:=top4). ss.
 
   - i. exists sm_ret.
@@ -100,38 +100,30 @@ Proof.
     + inv SIMRET. econs; eauto. econs; eauto.
       ss. eapply match_cont_incr; try eassumption.
       inv MLE. inv MLE0. etrans; eauto.
-    + eapply SimMemInjInv.SimMemInjInv_obligation_1.
-
+    + refl.
+      
   - i. inv FINALSRC. inv MATCH. inv MATCHST. inv CONT.
     esplits; eauto.
     + econs.
     + econs; eauto.
-    + eapply SimMemInjInv.SimMemInjInv_obligation_1.
-
+    + refl.
+      
   - left. i. split.
     + eapply modsem1_receptive.
     + ii. inv MATCH. exploit clight_step_preserve_injection2; try eassumption.
       { instantiate (1:=cgenv skenv_link_tgt clight). ss. }
       { eapply function_entry1_inject. ss. }
-      { instantiate (1:=skenv_link_tgt).
-        inv SIMSKENVLINK. ss. inv SIMSKENV0.
-        (* TODO: make lemma *)
-        econs; ss; i. splits; ss; i.
-        - admit "".
-        - admit "".
-        - admit "".
-      }
-      { inv SIMSKENV. inv SIMSKE. inv INJECT. ss. rewrite SIMSKENV.
+      { eapply SimMemInjInv.skenv_inject_symbols_inject; eauto.
+        eapply SimMemInjInv.SimSymbIdInv_obligation_7; eauto. }
+
+      {
+        (* TODO: make lemma - match_genv *)
+        inv SIMSKENV. inv SIMSKE. inv INJECT. ss. rewrite SIMSKENV.
         inv SIMSKELINK. inv SIMSKENV0.
         split; ss; i.
-        - exists d_src.
-          destruct (classic (SimMemInjInv.mem_inv sm0 b_src)).
-          + exploit NDOMAIN; eauto.
-            { eapply Genv.genv_defs_range in FINDSRC. ss. }
-            { ii. clarify. }
-          + exploit DOMAIN; eauto.
-            { eapply Genv.genv_defs_range in FINDSRC. ss. }
-            { ii. clarify. }
+        - exists d_src. exploit IMAGE; eauto.
+          + left. eapply Genv.genv_defs_range in FINDSRC. eauto.
+          + i. des. clarify.
         - esplits; eauto. eapply DOMAIN; eauto.
           + eapply Genv.genv_symb_range in FINDSRC. eauto.
           + ii. eapply INVCOMPAT in H; eauto. }
@@ -146,24 +138,10 @@ Proof.
           econs; ss; eauto.
           + eapply Mem.unchanged_on_nextblock; eauto.
           + eapply Mem.unchanged_on_nextblock; eauto.
-        - econs; eauto. inv MWF.
-          (* TODO: make lemma *)
-          econs; ss; eauto.
-          + eapply SimMemInjInv.unchanged_on_invariant; eauto.
-            * ii. eapply INVRANGE; eauto. apply 0.
-            * eapply Mem.unchanged_on_implies; eauto.
-              i. eapply INVRANGE; eauto.
-          + i. split.
-            * ii. destruct ((SimMemInjInv.inj sm0) b0) as [[blk0 delta0]|]eqn:BLK.
-              { dup BLK. eapply INCR in BLK. clarify.
-                exploit INVRANGE; eauto. i. des.
-                eapply H; eauto. eapply MAXSRC; eauto.
-                eapply Mem.valid_block_inject_1; eauto. }
-              { exploit SEP; eauto.
-                i. des. eapply H2.
-                eapply INVRANGE; eauto. }
-            * eapply Mem.valid_block_unchanged_on; eauto.
-              eapply INVRANGE; eauto. }
+        - exploit SimMemInjInv.unchanged_on_mle; try apply SEP; ss; eauto.
+          i. des. econs; eauto. }
+
+      Unshelve. all: admit "".
 Qed.
 
 End INJINV.

@@ -73,6 +73,7 @@ Section LINKLEMMAS.
       exploit LINKSPEC0; eauto. i. des_safe.
       Local Transparent Linker_def. unfold link_def in H1. ss. des_ifs.
       Local Transparent Linker_fundef. unfold link_fundef in Heq4. des_ifs. ss. eauto.
+      des_ifs. eauto.
   Qed.
 
   Lemma prog_defmap_exists_aux
@@ -87,7 +88,7 @@ Section LINKLEMMAS.
     assert (link cp cp_part = Some cp_link).
     { destruct cps; ss.
       exploit link_list_cons_inv. eapply LINK. ss. i. des_safe.
-      unfold Csyntax.program in *. Eq. auto. }
+      unfold Csyntax.program in *. des. Eq. auto. }
 
     Local Transparent Linker_program. ss.
     unfold link_program in *. des_ifs.

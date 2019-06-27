@@ -715,27 +715,6 @@ Section TRIAL2.
 End TRIAL2.
 End TRIAL2.
 
-Let asm_ext_unreach_lxsim: forall
-    asm skenv_link
-    m_src0 m_tgt0
-    (GENV: Genv.match_genvs (match_globdef (fun _ : AST.program fundef unit => eq) eq asm)
-                            (SkEnv.revive (SkEnv.project skenv_link asm.(Sk.of_program fn_sig)) asm)
-                            (SkEnv.revive (SkEnv.project skenv_link asm.(Sk.of_program fn_sig)) asm))
-    m_src1 m_tgt1
-    st_init_src st_init_tgt
-  ,
-    <<LXSIM: @lxsim (modsem skenv_link asm) (modsem skenv_link asm)
-                    (SimMemExt.SimMemExt)
-                    unit
-                    (fun _ st => exists su m_init, sound_state skenv_link su m_init st)
-                    (SimMemExt.mk m_src0 m_tgt0) (lift_idx unit_ord_wf tt) st_init_src st_init_tgt
-                    (SimMemExt.mk m_src1 m_tgt1)>>
-.
-Proof.
-  i. revert_until m_tgt1.
-  pcofix CIH. ii. pfold.
-Abort.
-
 (* TODO it's from AsmgenproofC *)
 Section FROMASMGEN.
 

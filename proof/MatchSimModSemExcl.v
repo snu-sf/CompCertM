@@ -253,24 +253,27 @@ Section MATCHSIMFORWARD.
         (* su0 *)
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsim ms_src ms_tgt (fun si st => exists su0 m_init, sound_states si su0 m_init st)
+      <<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su0 m_init, sound_states si su0 m_init st)
                      sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.
     (* move su0 at top. *)
     revert_until BAR.
     pcofix CIH. i. pfold.
+    ii.
     generalize (classic (ModSem.is_call ms_src st_src0)). intro CALLSRC; des.
     {
       (* CALL *)
       - (* u in CALLSRC. des. *)
         exploit ATMWF; eauto. i; des.
+        ii.
         eapply lxsim_at_external; eauto.
         ii. clear CALLSRC.
-        exploit ATFSIM; eauto. i; des.
+        exploit ATFSIM; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. } i; des.
         (* determ_tac ModSem.at_external_dtm. clear_tac. *)
         esplits; eauto. i.
         exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
+        { ii. eapply SUSTAR. eapply star_refl. }
         { econs; eauto. }
         { eapply SimMem.unlift_wf; eauto. }
         { eapply SimMem.unlift_spec; eauto. }
@@ -291,6 +294,7 @@ Section MATCHSIMFORWARD.
       (* RETURN *)
       u in RETSRC. des.
       exploit FINALFSIM; eauto. i; des.
+      ii.
       eapply lxsim_final; try apply SIMRET; eauto.
       etrans; eauto.
     }
@@ -298,7 +302,7 @@ Section MATCHSIMFORWARD.
     {
       eapply lxsim_step_forward; eauto.
       i.
-      exploit STEPFSIM0; eauto. i; des.
+      exploit STEPFSIM0; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. } i; des.
       esplits; eauto.
       econs 1; eauto.
       ii. exploit STEPFSIM1; eauto. i; des_safe.
@@ -314,7 +318,7 @@ Section MATCHSIMFORWARD.
       rr in STEPBSIM0.
       eapply lxsim_step_backward; eauto.
       i.
-      exploit STEPBSIM0; eauto. i; des. rr in PROGRESS. des.
+      exploit STEPBSIM0; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. } i; des. rr in PROGRESS. des.
       esplits; eauto; cycle 1.
       econs 1; eauto.
       ii. exploit STEPBSIM1; eauto. i; des_safe.

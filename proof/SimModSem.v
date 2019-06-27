@@ -34,8 +34,7 @@ Section SIMMODSEM.
   Variables ms_src ms_tgt: ModSem.t.
   Context {SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
-  Variable sidx: Type.
-  Variable sound_states: sidx -> ms_src.(state) -> Prop.
+  Variable sound_states: ms_src.(state) -> Prop.
 
   (* Record mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop := { *)
   (*   mcompat_src: <<MCOMPATSRC: ms_src.(get_mem) st_src0 = sm0.(SimMem.src)>>; *)
@@ -84,12 +83,12 @@ Section SIMMODSEM.
 
   Print xsim.
 
-  Inductive _lxsim (lxsim: SimMem.t ->
-                           idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
+  Inductive _lxsim_pre (lxsim: SimMem.t ->
+                               idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (sm_init: SimMem.t)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | lxsim_step_forward
-      (SU: forall (SU: forall si, sound_states si st_src0),
+      (SU: forall (SU: DUMMY_PROP),
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
@@ -99,10 +98,9 @@ Section SIMMODSEM.
       (* In composed semantics, when it stepped, it must not be final *))
 
   | lxsim_step_backward
-      (SU: forall (SU: forall si, sound_states si st_src0),
+      (SU: forall (SU: DUMMY_PROP),
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
-      (<<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>) /\
       (<<BSTEP:
         (*  forall *)
         (*   (SAFESRC: safe ms_src st_src0) *)
@@ -150,7 +148,7 @@ Section SIMMODSEM.
       (* (SAFESRC: ms_tgt.(is_call) st_tgt0) *)
       (SAFESRC: ms_src.(is_call) st_src0)
       (* (PROGSRC: ms_src.(is_call) st_src0) *)
-      (SU: forall (SU: forall si, sound_states si st_src0),
+      (SU: forall (SU: DUMMY_PROP),
       <<CALLFSIM: forall
           args_src
           (ATSRC: ms_src.(at_external) st_src0 args_src)
@@ -201,12 +199,18 @@ Section SIMMODSEM.
 
   .
 
+  Definition _lxsim (lxsim: SimMem.t -> idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop) (sm_init: SimMem.t)
+             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
+    (forall (SUSTAR: forall st_src1 tr (STAR: Star ms_src st_src0 tr st_src1), sound_states st_src1),
+        <<LXSIM: _lxsim_pre lxsim sm_init i0 st_src0 st_tgt0 sm0>>)
+  .
+
   Definition lxsim: _ -> _ -> _ -> _ -> _ -> Prop := paco5 _lxsim bot5.
 
   Lemma lxsim_mon:
     monotone5 _lxsim.
   Proof.
-    repeat intro. inv IN; eauto.
+    repeat intro. rr in IN. hexploit1 IN; eauto. inv IN; eauto.
     - econs 1; ss.
       ii. spc SU. des. esplits; eauto.
       inv SU. 
@@ -296,7 +300,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
               exists st_init_src sm_init idx_init,
                 (<<MLE: SimMem.le sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(src).(initial_frame) args_src st_init_src>>) /\
-                (<<SIM: lxsim msp.(src) msp.(tgt) (fun si st => exists su m_init, sound_states si su m_init st)
+                (<<SIM: lxsim msp.(src) msp.(tgt) (fun st => forall si, exists su m_init, sound_states si su m_init st)
                                                   sm_arg idx_init st_init_src st_init_tgt sm_init>>)>>)
           /\
           (<<INITPROGRESS: forall
@@ -327,8 +331,7 @@ Section FACTORTARGET.
 
   Section LXSIM.
 
-    Variable sidx: Type.
-    Variable sound_states: sidx -> state ms_src -> Prop.
+    Variable sound_states: state ms_src -> Prop.
     Variable sm_arg: SimMem.t.
 
     Inductive fbs_match: idx -> state ms_src -> (trace * state ms_tgt) -> SimMem.t -> Prop :=
@@ -354,8 +357,7 @@ Section FACTORTARGET.
       {
         rename st_src2 into st_src1.
         econs 2; eauto.
-        i. split; ss.
-        { inv STAR. split; rr; ii; ModSem.tac. }
+        i.
         split; i.
         - (* bsim *)
           econs; eauto.
@@ -374,6 +376,8 @@ Section FACTORTARGET.
           destruct tr; ss.
           ii. esplits; eauto. econs; eauto.
       }
+      ii. rr in MATCH. hexploit1 MATCH.
+      { ii. eapply SUSTAR; et. }
       inv MATCH.
       - econs 1.
         i. exploit SU; eauto. i; des_safe. esplits; eauto.

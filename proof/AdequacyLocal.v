@@ -844,15 +844,18 @@ Section ADQSTEP.
     sguard in SESRC. sguard in SETGT.
     folder.
     rewrite LINKSRC in *. rewrite LINKTGT in *.
-    punfold TOP. inv TOP.
-
+    punfold TOP. rr in TOP. hexploit1 TOP; eauto.
+    { unsguard SUST. des.
+      ii. exploit sound_progress_star; eauto. { eapply lift_star; eauto. } intro SUST0; des.
+      inv SUST0. des.
+      simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
+      specialize (H (sound_states_local si)). esplits; eauto. eapply H; eauto. }
+    inv TOP.
 
     - (* fstep *)
       left.
       exploit SU0.
-      { unsguard SUST. des. inv SUST. des.
-        simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
-        specialize (H (sound_states_local si)). esplits; eauto. eapply H; eauto. }
+      { ss. }
       i; des. clear SU0.
       right.
       econs; ss; eauto.
@@ -891,9 +894,7 @@ Section ADQSTEP.
     - (* bstep *)
       right. ss.
       exploit SU0.
-      { unsguard SUST. des. inv SUST. des.
-        simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
-        specialize (H (sound_states_local si)). esplits; eauto. eapply H; eauto. }
+      { ss. }
       i; des. clear SU0.
       assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
                        -> safe_modsem ms_src lst_src).
@@ -942,9 +943,7 @@ Section ADQSTEP.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
       hexploit1 SU0.
-      { unsguard SUST. des_safe. inv SUST. des.
-        simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
-        esplits. eapply H; eauto. }
+      { ss. }
       rename SU0 into CALLFSIM.
 
       exploit CALLFSIM; eauto.

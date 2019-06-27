@@ -312,7 +312,7 @@ Section FACTORSOURCE.
         idx0 st_src0 tr st_tgt0 sm0
         (SIM: ffs_match idx0 (tr, st_src0) st_tgt0 sm0)
       ,
-        <<SIM: SimModSem.lxsim (Atomic.trans ms_src) ms_tgt (fun si st => sound_states si st.(snd)) sm_arg idx0 (tr, st_src0) st_tgt0 sm0>>
+        <<SIM: SimModSem.lxsim (Atomic.trans ms_src) ms_tgt (fun st => forall si, sound_states si st.(snd)) sm_arg idx0 (tr, st_src0) st_tgt0 sm0>>
     .
     Proof.
       clear_tac. unfold NW.

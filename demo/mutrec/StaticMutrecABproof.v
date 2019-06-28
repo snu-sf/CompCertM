@@ -715,7 +715,95 @@ Section LXSIM.
                    { ss. }
         }
         {
-           admit "TODOLAST: copy-paste from above".
+          - inv STEP; ss.
+            + esplits; eauto.
+              * left. apply plus_one. econs 3; ss; et.
+              * right. eapply CIH. unfold Frame.update_st. ss. econs; et. econs 3; et; ss. unfold __GUARD__. eauto.
+            + esplits; eauto.
+              * right. esplits; eauto.
+                { apply star_refl. }
+                { instantiate (1:= 2 * (Int.intval cur) - 1). rr. esplits; eauto; try lia.
+                  destruct cur. ss. omega. }
+              * left. pfold. left. right. econs; eauto.
+                hexploit find_f_id; eauto. i; des.
+                hexploit (StaticMutrecAspec.find_symbol_find_funct_ptr); eauto. instantiate (1:= blk). i; des.
+                exploit SYMB; eauto. intro T; des. clear SYMB FINDF.
+                econs 2; eauto; esplits.
+                -- eapply plus_two with (t1 := []) (t2 := []); ss.
+                   ++ econs; eauto.
+                      { (* ez - determinate_at *)
+                        eapply lift_determinate_at; ss; des_ifs; eauto.
+                        econs; eauto.
+                        - ii; ss. inv H; inv H0; ss.
+                        - econs; eauto. inv H.
+                      }
+                      econs; ss; eauto. econs; eauto.
+                   ++ unfold Frame.update_st. ss. econs; eauto.
+                      { econs; ss; des_ifs.
+                        - i. inv H; inv H0; ss.
+                          esplits; eauto.
+                          { econs. }
+                          { i.
+                            assert (Ge.find_fptr_owner (load_genv (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module]) (Sk.load_skenv sk_link))
+                                                       (Vptr blk Ptrofs.zero) (Mod.get_modsem StaticMutrecAspec.module skenv_link tt)).
+                            { ss. econs.
+                              - ss. right. unfold load_modsems. rewrite list_append_map. ss.
+                                unfold StaticMutrecBspec.module, flip, Mod.modsem. ss.
+                                eapply in_or_app. ss. auto.
+                              - ss. des_ifs. eauto. }
+                            exploit find_fptr_owner_determ.
+                            instantiate (1 := (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module])).
+                            i. eapply in_app_or in IN. ss. des; clarify.
+                            { eapply WFCTX; eauto. }
+                            { eapply wf_module_Aspec. }
+                            { eapply wf_module_Bspec. }
+                            ss. des_ifs. eapply MSFIND.
+                            ss. des_ifs. eapply MSFIND0.
+                            i. subst ms.
+                            exploit find_fptr_owner_determ.
+                            instantiate (1 := (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module])).
+                            i. eapply in_app_or in IN. ss. des; clarify.
+                            { eapply WFCTX; eauto. }
+                            { eapply wf_module_Aspec. }
+                            { eapply wf_module_Bspec. }
+                            ss. des_ifs. eapply MSFIND.
+                            ss. des_ifs. eapply H0.
+                            i. subst ms0. ss.
+                            inv INIT; inv INIT0. ss. clarify. }
+                        - i. inv FINAL; inv STEP.
+                        - econs. inv H; ss. }
+                      econs; ss; eauto.
+                      ** des_ifs. econs; ss.
+                         { right. unfold load_modsems. rewrite in_map_iff. esplits; et. rewrite in_app_iff. right. left. ss. }
+                         des_ifs; eauto.
+                      ** econs; ss; eauto.
+                         { destruct cur,  max. ss. esplits; try omega.
+                           exploit Int.Z_mod_modulus_range. instantiate (1:=intval - 1). i. des; auto.
+                           assert (intval - 1 < MAX) by nia.
+                           rewrite Int.Z_mod_modulus_eq.
+                           rewrite <- Int.unsigned_repr_eq.
+                           rewrite Int.unsigned_repr. auto. unfold Int.max_unsigned. split; nia. }
+                -- instantiate (1:= 2 * Int.intval cur - 2). rr. esplits; try lia.
+                   destruct cur. ss. nia.
+                -- right. eapply CIH. u. econs; eauto.
+                   econs.
+                   { f_equal. }
+                   { f_equal. rewrite cons_app. rewrite app_assoc. f_equal. }
+                   { unfold __GUARD__. eauto. }
+                   { destruct cur,  max. ss. esplits; try omega.
+                     assert (intval - 1 < MAX) by nia.
+                     rewrite Int.Z_mod_modulus_eq.
+                     rewrite <- Int.unsigned_repr_eq.
+                     rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia. }
+                   { ss. rewrite int_sub_add. econs 3; eauto. }
+                   { ss. }
+                   { destruct cur. ss.
+                     exploit Int.Z_mod_modulus_range. instantiate (1:=intval - 1). i. des; auto.
+                     assert (intval - 1 < MAX) by nia.
+                     rewrite Int.Z_mod_modulus_eq.
+                     rewrite <- Int.unsigned_repr_eq.
+                     rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia. }
+                   { ss. }
         }
       + (* focus - return *)
         destruct (classic (cur = max)).

@@ -239,7 +239,8 @@ Theorem correct
 Proof.
   econs; eauto; ss. i. inv SSLE.
   econs; ss; i.
-  { econs; ss; eauto; [esplits; eauto|econs; ss]. }
+  { i. eapply SoundTop.sound_state_local_preservation. }
+  { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
 
   assert (FPTRSRC: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program Cminor.fn_sig DemoSource.prog)) DemoSource.prog) (Args.fptr args_src) =
                    Some (AST.Internal DemoSource.func)).

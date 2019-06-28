@@ -215,7 +215,7 @@ Lemma match_states_lxsim
       (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
   :
     <<XSIM: lxsim (md_src skenv_link) (md_tgt skenv_link)
-                  (fun (_: genv) st => exists su m_init, SoundTop.sound_state su m_init st)
+                  (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
                   sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
 .
 Proof.
@@ -235,8 +235,6 @@ Proof.
         - econs; eauto. econs.
         - ii. ss. des; clarify.
         - econs. }
-      { ii. inv H. inv H0. }
-      { ii. inv H. inv H0. }
       econs 2.
       { split.
         - econs 2.
@@ -323,8 +321,6 @@ Proof.
           - econs; eauto. econs.
           - ii. ss. des; clarify.
           - econs. }
-        { ii. inv H0. inv H1. }
-        { ii. inv H0. inv H1. }
         econs 2.
         { split.
           - econs 2; ss.
@@ -498,7 +494,7 @@ Proof.
               econs; eauto. econs; eauto.
               - econs; eauto. ss.
               - econs; eauto. ss.
-              - inv RETV. ss. unfold typify. des_ifs. ss. }
+              - inv RETV. ss. unfold typify. des_ifs. }
 
             eapply star_left with (t1 := E0) (t2 := E0); ss.
             { econs; eauto.
@@ -560,8 +556,6 @@ Proof.
           - econs; eauto. econs.
           - ii. ss. des; clarify.
           - econs. }
-        { ii. inv H0. inv H1. }
-        { ii. inv H0. inv H1. }
         econs 2.
         { split.
           - econs 2; ss.
@@ -687,6 +681,7 @@ Theorem sim_modsem
 Proof.
   econs; eauto.
   { i. eapply SoundTop.sound_state_local_preservation. }
+  { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
   i. ss. esplits; eauto.
 
   - i. des. inv SAFESRC.

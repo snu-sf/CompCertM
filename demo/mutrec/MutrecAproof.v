@@ -111,7 +111,7 @@ Lemma match_states_lxsim
       (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
   :
     <<XSIM: lxsim (md_src skenv_link) (md_tgt skenv_link)
-                  (fun (_: unit) st => exists su m_init, SoundTop.sound_state su m_init st)
+                  (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
                   sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
 .
 Proof.
@@ -291,6 +291,7 @@ Theorem sim_modsem
 Proof.
   eapply ModSemPair.sim_intro with (sidx := unit); ss; eauto.
   { i. eapply SoundTop.sound_state_local_preservation. }
+  { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
   i. ss. esplits; eauto; cycle 1.
   { (* init progress *)
     i.

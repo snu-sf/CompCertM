@@ -342,8 +342,8 @@ Section SIMGE.
       (* clears sm_init; clear sm_init. *)
       - exploit system_local_preservation. intro SYSSU; des.
         econs.
-        { instantiate (1:= unit). ss. }
-        { ii; ss. instantiate (1:= fun _ => system_sound_state). ss. }
+        { ss. eauto. }
+        { instantiate (2:= Empty_set). ii; ss. }
         ii. inv SIMSKENV0. ss.
         split; cycle 1.
         { ii; des. esplits; eauto. econs; eauto. }
@@ -464,6 +464,7 @@ Section SIMGE.
     - rewrite SYSTGT. ss.
   Unshelve.
     all: try apply idx_bot.
+    all: try (by ii; ss).
   Qed.
 
 End SIMGE.
@@ -527,7 +528,7 @@ Section ADQMATCH.
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
       sidx
       (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
-      (PRSV: forall si, local_preservation ms_src (sound_states_local si))
+      (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
       (K: forall
           sm_ret retv_src retv_tgt
           (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
@@ -550,7 +551,7 @@ Section ADQMATCH.
             /\
             (<<MLE: SimMem.le sm_at sm_after>>)
             /\
-            (<<LXSIM: lxsim ms_src ms_tgt (fun si st => exists su m_arg, (sound_states_local si) su m_arg st)
+            (<<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                             tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
       (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
       (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt)
@@ -588,8 +589,8 @@ Section ADQMATCH.
       ms_tgt lst_tgt
       sidx
       (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
-      (PRSV: forall si, local_preservation ms_src (sound_states_local si))
-      (TOP: lxsim ms_src ms_tgt (fun si st => exists su m_arg, (sound_states_local si) su m_arg st) tail_sm
+      (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
+      (TOP: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st) tail_sm
                   i0 lst_src lst_tgt sm0)
       (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
       (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt)
@@ -845,15 +846,18 @@ Section ADQSTEP.
     sguard in SESRC. sguard in SETGT.
     folder.
     rewrite LINKSRC in *. rewrite LINKTGT in *.
-    punfold TOP. inv TOP.
-
+    punfold TOP. rr in TOP. hexploit1 TOP; eauto.
+    { unsguard SUST. des.
+      ii. exploit sound_progress_star; eauto. { eapply lift_star; eauto. } intro SUST0; des.
+      inv SUST0. des.
+      simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
+      specialize (H (sound_states_local si)). esplits; eauto. eapply H; eauto. }
+    inv TOP.
 
     - (* fstep *)
       left.
       exploit SU0.
-      { unsguard SUST. des. inv SUST. des.
-        simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
-        specialize (H (sound_states_local si)). esplits; eauto. eapply H; eauto. }
+      { ss. }
       i; des. clear SU0.
       right.
       econs; ss; eauto.
@@ -892,9 +896,7 @@ Section ADQSTEP.
     - (* bstep *)
       right. ss.
       exploit SU0.
-      { unsguard SUST. des. inv SUST. des.
-        simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
-        specialize (H (sound_states_local si)). esplits; eauto. eapply H; eauto. }
+      { ss. }
       i; des. clear SU0.
       assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
                        -> safe_modsem ms_src lst_src).
@@ -943,9 +945,7 @@ Section ADQSTEP.
       inv STEPSRC; ss; ModSem.tac.
       des_ifs.
       hexploit1 SU0.
-      { unsguard SUST. des_safe. inv SUST. des.
-        simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
-        esplits. eapply H; eauto. }
+      { ss. }
       rename SU0 into CALLFSIM.
 
       exploit CALLFSIM; eauto.

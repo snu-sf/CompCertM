@@ -70,7 +70,8 @@ Proof.
   { instantiate (1:=sm_init_link).
     exploit SymSymbId_SymSymbDrop_bot; eauto. }
   i. inv H. ss.
-  econs; ss; eauto. i. exploit SIM; eauto.
+  econs; try eassumption; eauto; ss. i.
+  exploit SIM; eauto.
   inv SIMSKENV. ss. econs; ss.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKE; eauto.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKELINK; eauto.

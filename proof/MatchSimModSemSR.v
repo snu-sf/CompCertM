@@ -233,13 +233,13 @@ Section MATCHSIMFORWARD.
         (* su0 *)
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsimSR ms_src ms_tgt (fun (si: unit) st => exists su0 m_init, sound_state su0 m_init st)
+      <<LXSIM: lxsimSR ms_src ms_tgt (fun st => unit -> exists su0 m_init, sound_state su0 m_init st)
                        sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.
     (* move su0 at top. *)
     revert_until BAR.
-    pcofix CIH. i. pfold.
+    pcofix CIH. i. pfold. ii.
     generalize (classic (ModSem.is_call ms_src st_src0)). intro CALLSRC; des.
     {
       (* CALL *)
@@ -247,11 +247,11 @@ Section MATCHSIMFORWARD.
         exploit ATMWF; eauto. i; des.
         eapply lxsimSR_at_external; eauto.
         ii. clear CALLSRC.
-        hexploit1 SU0; ss.
-        exploit ATFSIM; eauto. i; des.
+        exploit ATFSIM; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. apply tt. } i; des.
         (* determ_tac ModSem.at_external_dtm. clear_tac. *)
         esplits; eauto. i.
         exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
+        { ii. eapply SUSTAR; eauto. eapply star_refl. apply tt. }
         { econs; eauto. }
         { eapply SimMem.unlift_wf; eauto. }
         { eapply SimMem.unlift_spec; eauto. }
@@ -277,8 +277,8 @@ Section MATCHSIMFORWARD.
     {
       eapply lxsimSR_step_forward; eauto.
       i.
-      hexploit1 SU0; ss.
-      exploit STEPFSIM0; eauto. i; des.
+      (* hexploit1 SU0; ss. *)
+      exploit STEPFSIM0; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. apply tt. } i; des.
       esplits; eauto.
       econs 1; eauto.
       ii. exploit STEPFSIM1; eauto. i; des_safe.
@@ -294,8 +294,8 @@ Section MATCHSIMFORWARD.
       rr in STEPBSIM0.
       eapply lxsimSR_step_backward; eauto.
       i.
-      hexploit1 SU0; ss.
-      exploit STEPBSIM0; eauto. i; des. rr in PROGRESS. des.
+      (* hexploit1 SU0; ss. *)
+      exploit STEPBSIM0; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. apply tt. } i; des. rr in PROGRESS. des.
       esplits; eauto; cycle 1.
       econs 1; eauto.
       ii. exploit STEPBSIM1; eauto. i; des_safe.
@@ -315,8 +315,8 @@ Section MATCHSIMFORWARD.
   .
   Proof.
     econs.
-    { instantiate (1 := unit). ss. }
-    { ii. eapply PRSV; eauto. }
+    { eauto. }
+    { instantiate (2 := unit). ii. eapply local_preservation_noguarantee_weak; eauto. eapply PRSV. }
     ii; ss.
     folder.
     exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.

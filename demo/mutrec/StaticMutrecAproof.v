@@ -12,7 +12,7 @@ Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 (* Require SimMemInjC. *)
 Require SoundTop.
-Require SimMemInjInv.
+Require SimMemInjInvC.
 Require Import Clightdefs.
 Require Import CtypesC.
 
@@ -31,7 +31,7 @@ Definition memoized_inv: SimMemInjInv.memblk_invariant :=
       (<<VAL: forall (NZERO: i.(Int.intval) <> 0),
           (<<MEMO: i = sum (Int.repr ind)>>)>>).
 
-Local Instance SimMemMemoized: SimMem.class := SimMemInjInv.SimMemInjInv memoized_inv.
+Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
 
@@ -462,7 +462,7 @@ Proof.
             - i. des. des_ifs. eauto. }
           intros [m_tgt STR].
 
-          exploit SimMemInjInv.SimMemInjInv_obligation_7; eauto. intros MLE1.
+          exploit SimMemInjInvC.SimMemInjInv_obligation_7; eauto. intros MLE1.
           exploit memoized_inv_store_le; eauto.
           { eapply SimMemInjInv.mem_inv_le; eauto. }
           i. des.
@@ -538,7 +538,7 @@ Proof.
           }
 
           right. eapply CIH.
-          { eapply SimMemInjInv.SimSymbIdInv_obligation_7; cycle 1; eauto. }
+          { eapply SimMemInjInvC.SimSymbIdInv_obligation_7; cycle 1; eauto. }
           { econs; ss.
             - replace (Int.add (sum (Int.sub i Int.one)) i) with (sum i); cycle 1.
               { admit "arithmetic". }

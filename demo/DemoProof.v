@@ -1,7 +1,7 @@
 Require Import CoqlibC Maps Postorder.
 Require Import AST Linking.
 Require Import ValuesC Memory Globalenvs Events Smallstep.
-Require Import CtypesC CminorC Csyntax AsmC.
+Require Import CtypesC CminorC Csyntax AsmC AsmExtra.
 Require Import sflib.
 
 Require Export Renumberproof.

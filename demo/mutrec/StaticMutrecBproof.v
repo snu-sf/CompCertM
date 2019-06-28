@@ -10,7 +10,7 @@ Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 (* Require SimMemInjC. *)
 Require SoundTop.
-Require SimMemInjInv.
+Require SimMemInjInvC.
 Require Import AsmC.
 
 Set Implicit Arguments.
@@ -22,7 +22,7 @@ Definition memoized_inv: SimMemInjInv.memblk_invariant :=
       (<<VINDEX: mem Mint32 0 = Some (Vint i)>>) /\
       (<<VSUM: mem Mint32 (size_chunk Mint32) = Some (Vint (sum i))>>).
 
-Local Instance SimMemMemoized: SimMem.class := SimMemInjInv.SimMemInjInv memoized_inv.
+Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
 

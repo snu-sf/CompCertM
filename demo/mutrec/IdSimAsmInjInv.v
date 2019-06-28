@@ -2,7 +2,7 @@ Require Import Program.
 
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
 Require Import AsmC.
-Require SimMemInjInv.
+Require SimMemInjInvC.
 Require Import CoqlibC.
 Require Import ValuesC.
 Require Import LinkingC.
@@ -160,7 +160,7 @@ Section INJINV.
 
 Variable P: SimMemInjInv.memblk_invariant.
 
-Local Instance SimMemP: SimMem.class := SimMemInjInv.SimMemInjInv P.
+Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv P.
 
 Inductive match_states
           (skenv_link_tgt: SkEnv.t)
@@ -1126,7 +1126,7 @@ Proof.
           admit "genv". }
         { inv SIMSKENV. ss.
           eapply symbols_inject_weak_imply.
-          eapply SimMemInjInv.skenv_inject_symbols_inject; eauto. }
+          eapply SimMemInjInvC.skenv_inject_symbols_inject; eauto. }
 
         i. des.
         exploit SimMemInjInv.unchanged_on_mle; eauto.

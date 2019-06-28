@@ -530,7 +530,7 @@ Section TRIAL2.
             - exfalso. eapply n1. eapply Mem.perm_valid_block; eauto. }
           { ii. des_ifs; eauto. unfold proj_sumbool in *. des_ifs. }
           { etrans; eauto. }
-        * i. eapply UnreachC.Unreach_obligation_3; eauto.
+        * i. eapply UnreachC.Unreach_obligation_2; eauto.
         * inv WF. rewrite NB in *. econs; ss.
           { i. des_ifs; eauto.
             destruct (if Unreach.unreach su0 x0

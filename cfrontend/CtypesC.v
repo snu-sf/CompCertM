@@ -190,7 +190,7 @@ Module CSkEnv.
       hexploit (CSk.of_program_prog_defmap prog get_sg x0). intro REL. rewrite PR in *. inv REL. symmetry in H1.
       exploit DEFS; et. i; des. clarify.
     }
-    econs; eauto; i; ss; cycle 1.
+    econs; eauto; i; ss; swap 1 2.
     - des.
       unfold SkEnv.revive in *.
       apply_all_once Genv_map_defs_def. des; ss.
@@ -265,6 +265,10 @@ Module CSkEnv.
           { rewrite CSk.of_program_internals in *. u. des_ifs. ss. bsimpl. ss. }
           intro GD; des. uge. clarify.
       }
+    - unfold SkEnv.revive in *. erewrite Genv_map_defs_symb in SYMB. inv PROJ.
+      apply NNPP; ii. exploit SYMBDROP; eauto.
+      { rewrite CSk.of_program_defs. eauto. }
+      i; des. clarify.
   Qed.
 
   Lemma project_revive_no_external

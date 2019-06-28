@@ -537,6 +537,11 @@ I think "sim_skenv_monotone" should be sufficient.
         ,
           exists id, <<SYMB: Genv.find_symbol ge id = Some b>> /\ <<PROG: p.(prog_defmap) ! id = Some g>>
                                                                           /\ <<INTERNAL: ~ (is_external g)>>)
+      (SYMB2P: forall
+          id blk
+          (SYMB: Genv.find_symbol ge id = Some blk)
+        ,
+          <<IN: p.(defs) id>>)
   .
 
   Lemma project_revive_precise
@@ -570,7 +575,7 @@ I think "sim_skenv_monotone" should be sufficient.
       hexploit (Sk.of_program_prog_defmap prog get_sg x0). intro REL. rewrite PR in *. inv REL. symmetry in H1.
       exploit DEFS; et. i; des. clarify.
     }
-    econs; eauto; i; ss; cycle 1.
+    econs; eauto; i; ss; swap 1 2.
     - des.
       unfold SkEnv.revive in *.
       apply_all_once Genv_map_defs_def. des; ss.
@@ -645,6 +650,10 @@ I think "sim_skenv_monotone" should be sufficient.
           { rewrite Sk.of_program_internals in *. u. des_ifs. ss. bsimpl. ss. }
           intro GD; des. uge. clarify.
       }
+    - unfold revive in *. erewrite Genv_map_defs_symb in SYMB. inv PROJ.
+      apply NNPP; ii. exploit SYMBDROP; eauto.
+      { rewrite Sk.of_program_defs. eauto. }
+      i; des. clarify.
   Qed.
 
   Lemma project_revive_no_external

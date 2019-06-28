@@ -1,6 +1,6 @@
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
 Require Import Cop Ctypes ClightC.
-Require SimMemId SimMemExt SimMemInj SimMemInjInv.
+Require SimMemId SimMemExt SimMemInj SimMemInjInvC.
 Require SimSymbId SimSymbDrop.
 Require Import CoqlibC.
 Require Import ValuesC.
@@ -31,7 +31,7 @@ Section INJINV.
 
 Variable P: SimMemInjInv.memblk_invariant.
 
-Local Instance SimMemP: SimMem.class := SimMemInjInv.SimMemInjInv P.
+Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv P.
 
 
 Inductive match_states_clight_inv (sm_arg: SimMem.t)
@@ -113,8 +113,8 @@ Proof.
     + ii. inv MATCH. exploit clight_step_preserve_injection2; try eassumption.
       { instantiate (1:=cgenv skenv_link_tgt clight). ss. }
       { eapply function_entry1_inject. ss. }
-      { eapply SimMemInjInv.skenv_inject_symbols_inject; eauto.
-        eapply SimMemInjInv.SimSymbIdInv_obligation_7; eauto. }
+      { eapply SimMemInjInvC.skenv_inject_symbols_inject; eauto.
+        eapply SimMemInjInvC.SimSymbIdInv_obligation_7; eauto. }
 
       {
         (* TODO: make lemma - match_genv *)

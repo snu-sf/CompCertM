@@ -27,7 +27,7 @@ Section SOUNDPRODUCT.
     {
       Sound.t := SU0.(@Sound.t) * SU1.(@Sound.t);
       Sound.mle su0 m0 m1 := SU0.(@Sound.mle) su0.(fst) m0 m1 /\ SU1.(@Sound.mle) su0.(snd) m0 m1;
-      Sound.le su0 su1 := SU0.(@Sound.le) su0.(fst) su1.(fst) /\ SU1.(@Sound.le) su0.(snd) su1.(snd);
+      Sound.lift su0 su1 := SU0.(@Sound.lift) su0.(fst) su1.(fst) /\ SU1.(@Sound.lift) su0.(snd) su1.(snd);
       Sound.hle su0 su1 := SU0.(@Sound.hle) su0.(fst) su1.(fst) /\ SU1.(@Sound.hle) su0.(snd) su1.(snd);
       Sound.wf su0 := SU0.(@Sound.wf) su0.(fst) /\ SU1.(@Sound.wf) su0.(snd);
       Sound.val su0 v := SU0.(@Sound.val) su0.(fst) v /\ SU1.(@Sound.val) su0.(snd) v;
@@ -50,19 +50,19 @@ Section SOUNDPRODUCT.
     - esplits; eauto; refl.
     - esplits; eauto; etrans; eauto.
   Qed.
+  (* Next Obligation. *)
+  (*   ii; ss. des. *)
+  (*   (* destruct su0, su1; ss. *) *)
+  (*   esplits; ss; eauto. *)
+  (*   - eapply Sound.hle_le; et. *)
+  (*   - eapply Sound.hle_le; et. *)
+  (* Qed. *)
   Next Obligation.
     ii; ss. des.
     (* destruct su0, su1; ss. *)
     esplits; ss; eauto.
-    - eapply Sound.hle_le; et.
-    - eapply Sound.hle_le; et.
-  Qed.
-  Next Obligation.
-    ii; ss. des.
-    (* destruct su0, su1; ss. *)
-    esplits; ss; eauto.
-    - eapply Sound.le_spec; et.
-    - eapply Sound.le_spec; et.
+    - eapply Sound.lift_spec; et.
+    - eapply Sound.lift_spec; et.
   Qed.
   Next Obligation.
     ii; ss. des.
@@ -80,8 +80,8 @@ Section SOUNDPRODUCT.
   Qed.
   Next Obligation.
     ss. esplits; eauto.
-    - eapply Sound.skenv_le; eauto.
-    - eapply Sound.skenv_le; eauto.
+    - eapply Sound.skenv_lift; eauto.
+    - eapply Sound.skenv_lift; eauto.
   Qed.
   Next Obligation.
     ss. esplits; eauto.

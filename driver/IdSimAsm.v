@@ -266,6 +266,7 @@ Section TRIAL2.
   Proof.
     esplits.
     eapply local_preservation_strong_horizontal_excl_spec with (sound_state := (sound_state)); eauto.
+    { eapply UnreachC.hle_lift; eauto. }
     instantiate (1:= AsmC.get_mem).
     eapply local_preservation_strong_horizontal_excl_intro with
         (has_footprint := has_footprint)

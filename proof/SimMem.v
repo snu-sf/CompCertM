@@ -42,7 +42,7 @@ Module SimMem.
     lift_tgt: forall mrel, (lift mrel).(tgt) = mrel.(tgt);
     unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(src) = mrel1.(src);
     unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(tgt) = mrel1.(tgt);
-    unlift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> wf mrel0 -> le mrel0 (unlift mrel0 mrel1);
+    lift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> wf mrel0 -> le mrel0 (unlift mrel0 mrel1);
     unlift_wf: forall mrel0 mrel1,
         wf mrel0 -> wf mrel1 -> le (lift mrel0) mrel1 -> wf (unlift mrel0 mrel1);
 

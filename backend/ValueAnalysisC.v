@@ -348,8 +348,8 @@ Section PRSV.
         i; des. ss.
         esplits; eauto.
         - exploit (@UnreachC.get_greatest_le); ss; eauto.
-          + change le' with Sound.le. eapply Sound.hle_le; et.
-        - rr in GR. des. etrans; eauto. change le' with Sound.le. eapply Sound.hle_le; eauto.
+          + eapply UnreachC.hle_lift; eauto.
+        - rr in GR. des. etrans; eauto. eapply UnreachC.hle_lift; eauto.
       }
       des.
       esplits; eauto.
@@ -362,9 +362,9 @@ Section PRSV.
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
         assert(BCARGS: (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)).(Sound.args) args).
         { ss. inv AT; ss. r. s. rpapply sound_state_sound_args; eauto. }
-        assert(BCLE0: Sound.le su0 (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock))).
-        { change le' with Sound.le. eapply Sound.hle_le; et. }
-        assert(BCLE1: Sound.le (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) su_gr).
+        assert(BCLE0: Sound.lift su0 (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock))).
+        { change le' with Sound.lift. eapply UnreachC.hle_lift; eauto. }
+        assert(BCLE1: Sound.lift (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) su_gr).
         { eapply GR; eauto. }
         set (f := fun b => if plt b (Mem.nextblock m_arg)
                            then bc b

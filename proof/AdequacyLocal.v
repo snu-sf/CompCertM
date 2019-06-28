@@ -375,10 +375,10 @@ Section SIMGE.
             (* eapply external_call_symbols_preserved; eauto. *)
             (* apply System.skenv_globlaenv_equiv. *)
         }
-        { eapply SimMem.unlift_spec; eauto. }
+        { eapply SimMem.lift_spec; eauto. }
         left. pfold.
         econs 4.
-        { eapply SimMem.unlift_spec; eauto. }
+        { eapply SimMem.lift_spec; eauto. }
         { eapply SimMem.unlift_wf; eauto. }
         { econs; eauto. }
         { econs; eauto. }

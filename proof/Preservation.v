@@ -49,7 +49,7 @@ Set Implicit Arguments.
 (*       (*              <<SU: lprsv m_init su st1>>>>)) *) *)
 (*       su_lifted args *)
 (*       (AT: ms.(ModSem.at_external) st0 args) *)
-(*       (LE: Sound.le su su_lifted) *)
+(*       (LE: Sound.lift su su_lifted) *)
 (*       (ARGS: su_lifted.(Sound.args) args) *)
 (*       (K: forall *)
 (*           retv st1 *)
@@ -112,8 +112,8 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
         <<MLE: Sound.mle su0 m_arg args.(Args.m)>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
-          (<<LE: Sound.le su0 su_gr>>) /\
-          (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
+          (<<LE: Sound.lift su0 su_gr>>) /\
+          (* (<<LE: Sound.lift su0 su_lifted>>) /\ *)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
               su_ret retv st1
@@ -160,8 +160,8 @@ Inductive local_preservation_noguarantee (sound_state: Sound.t -> mem -> ms.(sta
         (* (<<ARGS: su0.(Sound.args) args>>) /\ *)
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
-          (<<LE: Sound.le su0 su_gr>>) /\
-          (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
+          (<<LE: Sound.lift su0 su_gr>>) /\
+          (* (<<LE: Sound.lift su0 su_lifted>>) /\ *)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
               su_ret retv st1
@@ -214,8 +214,8 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
-          (<<LE: Sound.le su0 su_gr>>) /\
-          (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
+          (<<LE: Sound.lift su0 su_gr>>) /\
+          (* (<<LE: Sound.lift su0 su_lifted>>) /\ *)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
               su_ret retv st1
@@ -263,11 +263,11 @@ Proof.
     i; des.
     assert(SKENV: Sound.skenv su0 (get_mem st1) (ModSem.skenv ms)).
     { eapply Sound.skenv_mle; et. etrans; et. etrans; et.
-      eapply Sound.le_spec; et.
+      eapply Sound.lift_spec; et.
     }
     esplits; eauto.
     etrans; eauto.
-    etrans; eauto. etrans; eauto. eapply Sound.le_spec; eauto.
+    etrans; eauto. etrans; eauto. eapply Sound.lift_spec; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; eauto.
     etrans; eauto.
 Qed.
@@ -297,11 +297,11 @@ Inductive local_preservation_strong_horizontal (sound_state: Sound.t -> ms.(stat
         (AT: ms.(ModSem.at_external) st0 args)
       ,
         <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.m)>> /\
-        (* (exists su_lifted, <<LE: Sound.le su0 su_lifted>> /\ <<ARGS: su_lifted.(Sound.args) args>>) /\ *)
+        (* (exists su_lifted, <<LE: Sound.lift su0 su_lifted>> /\ <<ARGS: su_lifted.(Sound.args) args>>) /\ *)
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
-          (<<LE: Sound.le su0 su_gr>>) /\
-          (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
+          (<<LE: Sound.lift su0 su_gr>>) /\
+          (* (<<LE: Sound.lift su0 su_lifted>>) /\ *)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
               su_ret retv st1
@@ -326,6 +326,8 @@ Inductive local_preservation_strong_horizontal (sound_state: Sound.t -> ms.(stat
         <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.m)>>)
 .
 
+Hypothesis (HLELIFT: forall su0 su1 (HLE: Sound.hle su0 su1) (WF: Sound.wf su0), <<LE: Sound.lift su0 su1>>).
+
 Theorem local_preservation_strong_horizontal_spec
         sound_state
         (PRSV: local_preservation_strong_horizontal sound_state)
@@ -346,19 +348,19 @@ Proof.
     + etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des.
     (* exploit Sound.get_greatest_hle; eauto. intro GRH. des. *)
-    (* assert(LE1: Sound.le su_h su_gr). *)
+    (* assert(LE1: Sound.lift su_h su_gr). *)
     (* { eapply Sound.greatest_adq; eauto. } *)
     esplits; eauto.
     { etrans; eauto.
       + eapply Sound.hle_spec; eauto.
     }
-    { etrans; eauto. eapply Sound.hle_le; eauto. }
+    { etrans; eauto. eapply HLELIFT; eauto. }
     ii. exploit K; eauto. i; des. esplits; try apply SUST; eauto.
     + etrans; eauto.
       eapply Sound.hle_spec; eauto.
       etrans; eauto.
       etrans; eauto.
-      eapply Sound.le_spec; eauto.
+      eapply Sound.lift_spec; eauto.
     + etrans; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; try apply RETV; eauto.
     + etrans; eauto.
@@ -398,7 +400,7 @@ Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> 
         <<FOOT: has_footprint st0 su0 st0.(get_mem)>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
-          (<<LE: Sound.le su0 su_gr>>) /\
+          (<<LE: Sound.lift su0 su_gr>>) /\
           (<<K: forall
               su_ret retv st1
               (LE: Sound.hle su_gr su_ret)
@@ -431,7 +433,7 @@ Proof.
     ii. exploit K; eauto. i; des. esplits; eauto.
     etrans; eauto.
     eapply FOOTEXCL; try apply MLE1; eauto.
-    { etrans; eauto. eapply Sound.le_spec; eauto. }
+    { etrans; eauto. eapply Sound.lift_spec; eauto. }
   - ii; des. exploit RET; eauto. i; des. esplits; eauto.
     etrans; eauto.
 Qed.
@@ -472,9 +474,9 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
         <<FOOT: has_footprint st0 su0 st0.(get_mem)>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
-          (<<LE: Sound.le su0 su_gr>>) /\
+          (<<LE: Sound.lift su0 su_gr>>) /\
           (* (<<GR: Sound.get_greatest su0 args su_gr>>) /\ *)
-          (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
+          (* (<<LE: Sound.lift su0 su_lifted>>) /\ *)
           (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
           (<<K: forall
               su_ret retv st1
@@ -519,19 +521,19 @@ Proof.
     + etrans; eauto.
   - ii. des. exploit CALL; eauto. i; des.
     (* exploit Sound.get_greatest_hle; eauto. intro GRH. des. *)
-    (* assert(LE1: Sound.le su_h su_gr). *)
+    (* assert(LE1: Sound.lift su_h su_gr). *)
     (* { eapply Sound.greatest_adq; eauto. } *)
     esplits; eauto.
     { etrans; eauto.
       + eapply Sound.hle_spec; eauto.
     }
-    { etrans; eauto. eapply Sound.hle_le; eauto. }
+    { etrans; eauto. eapply HLELIFT; eauto. }
     ii. exploit K; eauto. i; des. esplits; try apply SUST; eauto.
     + etrans; eauto.
       eapply Sound.hle_spec; eauto.
       eapply FOOTEXCL; eauto.
       etrans; eauto.
-      eapply Sound.le_spec; eauto.
+      eapply Sound.lift_spec; eauto.
     + etrans; eauto.
   - ii; des. exploit RET; eauto. i; des. esplits; try apply RETV; eauto.
     + etrans; eauto.

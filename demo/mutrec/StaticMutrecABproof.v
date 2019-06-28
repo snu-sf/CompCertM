@@ -66,7 +66,7 @@ Section LXSIM.
   Let LINKTGT: link_sk (ctx ++ [(StaticMutrecAspec.module) ; (StaticMutrecBspec.module)]) = Some sk_link.
   Proof. rewrite link_sk_same. ss. Qed.
   Hypothesis WFCTX: forall md : Mod.t, In md ctx -> Sk.wf md.
-  
+
   Let INCLA: SkEnv.includes skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog).
   Proof.
     unfold skenv_link.
@@ -287,34 +287,33 @@ Section LXSIM.
                        f_id = Some blk>>)
   .
   Proof.
-   (* inv INCLA. ss. *)
-   (* inv SKEWF. ss. *)
-   (* unfold prog_defmap in DEFS. ss. *)
-   (* specialize (DEFS f_id). ss. *)
-   (* exploit DEFS; eauto. i. des. *)
-   (* esplits; eauto. *)
-   (* - unfold Genv.find_symbol in *. ss. des_ifs. *)
-   (*   exploit MapsC.PTree_filter_key_spec. *)
-   (*   instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function StaticMutrecA.prog) id)). *)
-   (*   instantiate (2:=(PTree.Node *)
-   (*                      (PTree.Node t12 o8 *)
-   (*                                  (PTree.Node *)
-   (*                                     (PTree.Node t13 o10 *)
-   (*                                                 (PTree.Node t7 o11 (PTree.Node (PTree.Node (PTree.Node t15 (Some blk) t19) o13 t18) o12 t17))) o9 t14)) o7 *)
-   (*                      t11)). *)
-   (*   instantiate (1:=f_id). rewrite Heq. ss. *)
-   (* - unfold Genv.find_symbol in *. ss. des_ifs. *)
-   (*   exploit MapsC.PTree_filter_key_spec. *)
-   (*   instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig StaticMutrecB.prog) id)). *)
-   (*   instantiate (2:=(PTree.Node *)
-   (*                      (PTree.Node t12 o8 *)
-   (*                                  (PTree.Node *)
-   (*                                     (PTree.Node t13 o10 *)
-   (*                                                 (PTree.Node t7 o11 (PTree.Node (PTree.Node (PTree.Node t15 (Some blk) t19) o13 t18) o12 t17))) o9 t14)) o7 *)
-   (*                      t11)). *)
-    (*   instantiate (1:=f_id). rewrite Heq. ss. *)
-    admit "".
-  Qed.              
+   inv INCLA. ss.
+   inv SKEWF. ss.
+   unfold prog_defmap in DEFS. ss.
+   specialize (DEFS f_id). ss.
+   exploit DEFS; eauto. i. des.
+   esplits; eauto.
+   - unfold Genv.find_symbol in *. ss. des_ifs.
+     exploit MapsC.PTree_filter_key_spec.
+     instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function StaticMutrecA.prog) id)).
+     instantiate (2:=(PTree.Node
+                        (PTree.Node t12 o8
+                                    (PTree.Node
+                                       (PTree.Node t13 o10
+                                                   (PTree.Node t7 o11 (PTree.Node (PTree.Node (PTree.Node t15 (Some blk) t19) o13 t18) o12 t17))) o9 t14)) o7
+                        t11)).
+     instantiate (1:=f_id). rewrite Heq. ss.
+   - unfold Genv.find_symbol in *. ss. des_ifs.
+     exploit MapsC.PTree_filter_key_spec.
+     instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig StaticMutrecB.prog) id)).
+     instantiate (2:=(PTree.Node
+                        (PTree.Node t12 o8
+                                    (PTree.Node
+                                       (PTree.Node t13 o10
+                                                   (PTree.Node t7 o11 (PTree.Node (PTree.Node (PTree.Node t15 (Some blk) t19) o13 t18) o12 t17))) o9 t14)) o7
+                        t11)).
+     instantiate (1:=f_id). rewrite Heq. ss.
+  Qed.
 
   Lemma find_g_id
     :
@@ -328,31 +327,30 @@ Section LXSIM.
                        g_id = Some blk>>)
   .
   Proof.
-    (* inv INCLB. ss. *)
-    (* inv SKEWF. ss. *)
-    (* unfold prog_defmap in DEFS. ss. *)
-    (* specialize (DEFS g_id). ss. *)
-    (* exploit DEFS; eauto. i. des. *)
-    (* esplits; eauto. *)
-    (* - unfold Genv.find_symbol in *. ss. des_ifs. *)
-    (*   exploit MapsC.PTree_filter_key_spec. *)
-    (*   instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function StaticMutrecA.prog) id)). *)
-    (*   instantiate (2:=(PTree.Node *)
-    (*          (PTree.Node *)
-    (*             (PTree.Node *)
-    (*                (PTree.Node (PTree.Node t7 o11 (PTree.Node t12 o12 (PTree.Node (PTree.Node t17 (Some blk) t19) o13 t18))) o10 *)
-    (*                   t15) o9 t14) o8 t13) o7 t11)). *)
-    (*   instantiate (1:=g_id). rewrite Heq. ss. *)
-    (* - unfold Genv.find_symbol in *. ss. des_ifs. *)
-    (*   exploit MapsC.PTree_filter_key_spec. *)
-    (*   instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig StaticMutrecB.prog) id)). *)
-    (*   instantiate (2:=(PTree.Node *)
-    (*          (PTree.Node *)
-    (*             (PTree.Node *)
-    (*                (PTree.Node (PTree.Node t7 o11 (PTree.Node t12 o12 (PTree.Node (PTree.Node t17 (Some blk) t19) o13 t18))) o10 *)
-    (*                   t15) o9 t14) o8 t13) o7 t11)). *)
-    (*   instantiate (1:=g_id). rewrite Heq. ss. *)
-    admit "".
+    inv INCLB. ss.
+    inv SKEWF. ss.
+    unfold prog_defmap in DEFS. ss.
+    specialize (DEFS g_id). ss.
+    exploit DEFS; eauto. i. des.
+    esplits; eauto.
+    - unfold Genv.find_symbol in *. ss. des_ifs.
+      exploit MapsC.PTree_filter_key_spec.
+      instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function StaticMutrecA.prog) id)).
+      instantiate (2:=(PTree.Node
+             (PTree.Node
+                (PTree.Node
+                   (PTree.Node (PTree.Node t7 o11 (PTree.Node t12 o12 (PTree.Node (PTree.Node t17 (Some blk) t19) o13 t18))) o10
+                      t15) o9 t14) o8 t13) o7 t11)).
+      instantiate (1:=g_id). rewrite Heq. ss.
+    - unfold Genv.find_symbol in *. ss. des_ifs.
+      exploit MapsC.PTree_filter_key_spec.
+      instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig StaticMutrecB.prog) id)).
+      instantiate (2:=(PTree.Node
+             (PTree.Node
+                (PTree.Node
+                   (PTree.Node (PTree.Node t7 o11 (PTree.Node t12 o12 (PTree.Node (PTree.Node t17 (Some blk) t19) o13 t18))) o10
+                      t15) o9 t14) o8 t13) o7 t11)).
+      instantiate (1:=g_id). rewrite Heq. ss.
   Qed.
 
   Inductive match_focus: mem -> int -> int -> list Frame.t -> Prop :=
@@ -386,12 +384,11 @@ Section LXSIM.
     Local Transparent Int.repr.
     unfold Int.repr. ss.
     rewrite Int.Z_mod_modulus_eq.
-    Locate "mod".
     unfold Int.Z_mod_modulus. des_ifs.
     rewrite <- Int.unsigned_repr_eq.
     rewrite Int.unsigned_repr. auto. split; omega.
   Qed.
-      
+
   Lemma match_focus_over_nil
         m max hds_tgt
         (RANGE: max.(Int.intval) < MAX)
@@ -452,7 +449,7 @@ Section LXSIM.
       (IDX: idx = max.(Int.intval) - cur.(Int.intval))
       (RANGE: max.(Int.intval) < MAX)
     :
-      match_stacks fromcall idx (hd_src :: ctx_stk) tmpvar 
+      match_stacks fromcall idx (hd_src :: ctx_stk) tmpvar
   .
 
   Inductive match_states (i: Z): Sem.state -> Sem.state -> Prop :=
@@ -612,7 +609,8 @@ Section LXSIM.
         pfold. right. econs; et.
         { ii; ss. inv FINALTGT. unsguard TGT. des; clarify; ss; inv FINAL. }
         i.
-        econs; ss; des_ifs; eauto; cycle 1.
+        econs; ss; try rewrite LINKSRC, LINKTGT in *; eauto; cycle 1; ss.
+        (* econs; ss; des_ifs; eauto; cycle 1. *)
         { i. specialize (SAFESRC _ (star_refl _ _ _ _)). ss. des.
           - inv SAFESRC. inv FINAL.
           - des_ifs. inv SAFESRC; ss.
@@ -633,7 +631,7 @@ Section LXSIM.
             + esplits; eauto.
               * right. esplits; eauto.
                 { apply star_refl. }
-                { instantiate (1:= 2 * (Int.intval cur) - 1). rr. esplits; eauto; try lia.     
+                { instantiate (1:= 2 * (Int.intval cur) - 1). rr. esplits; eauto; try lia.
                   destruct cur. ss. omega. }
               * left. pfold. left. right. econs; eauto.
                 hexploit find_g_id; eauto. i; des.
@@ -876,7 +874,7 @@ Section LXSIM.
   Qed.
 
 End LXSIM.
-  
+
 
 Theorem mutrecABcorrect
         ctx

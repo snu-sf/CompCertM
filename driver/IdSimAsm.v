@@ -298,9 +298,9 @@ Section TRIAL2.
                  (Unreach.ge_nb su_arg)
                  (Mem.nextblock (JunkBlock.assign_junk_blocks m0 n))).
       assert (UNCH: Mem.unchanged_on
-                        (SimMemInj.valid_blocks (Args.m args))
-                        (Args.m args)
-                        (JunkBlock.assign_junk_blocks m0 n)).
+                      top2
+                      (Args.m args)
+                      (JunkBlock.assign_junk_blocks m0 n)).
       { etrans.
         - eapply store_arguments_unchanged_on; eauto.
         - eapply Mem.unchanged_on_implies.
@@ -425,8 +425,9 @@ Section TRIAL2.
                 exploit store_arguments_unchanged_on; eauto. intros UNCH0.
                 erewrite Mem.unchanged_on_contents; eauto.
                 * ii. ss. eapply SOUNDIMPLY. eapply SOUND; eauto.
-                  eapply Mem.unchanged_on_perm; eauto.
-                * eapply Mem.unchanged_on_perm; eauto.
+                  eapply Mem.unchanged_on_perm; eauto. ss.
+                * ss.
+                * eapply Mem.unchanged_on_perm; eauto. ss.
           }
           { ii. apply WFHI in PR. rewrite NB in *.
             unfold Mem.valid_block. etrans; eauto. }
@@ -436,9 +437,9 @@ Section TRIAL2.
           apply Plt_Ple. auto.
         * inv SKENV. ss.
       + econs; ss.
-        * i. eapply Mem.unchanged_on_perm; eauto.
-        * eapply Mem.unchanged_on_implies; eauto.
-        * eapply Mem.unchanged_on_implies; eauto.
+        * i. eapply Mem.unchanged_on_perm; eauto. ss.
+        * eapply Mem.unchanged_on_implies; eauto. ss.
+        * eapply Mem.unchanged_on_implies; eauto. ss.
 
     - (* step *)
 
@@ -1949,12 +1950,12 @@ Proof.
           + eauto.
           + eapply junk_inj_incr; eauto.
         - etrans.
-          + i. exploit store_arguments_unchanged_on; try apply ARGTGT; eauto. i. eapply Mem.unchanged_on_implies; eauto.
+          + i. exploit store_arguments_unchanged_on; try apply ARGTGT; eauto. i. eapply Mem.unchanged_on_implies; eauto. ss.
           + eapply Mem.unchanged_on_implies;
               try apply JunkBlock.assign_junk_blocks_unchanged_on; ss.
         - etrans.
           + i. exploit store_arguments_unchanged_on; try apply H; eauto.
-            i. eapply Mem.unchanged_on_implies; eauto.
+            i. eapply Mem.unchanged_on_implies; eauto. ss.
           + eapply Mem.unchanged_on_implies;
               try apply JunkBlock.assign_junk_blocks_unchanged_on; ss.
         - econs; ss; eauto. i. des.
@@ -2022,8 +2023,7 @@ Proof.
                 eapply PR; eauto.
                 eapply store_arguments_unchanged_on in ARGTGT. inv ARGTGT.
                 eapply unchanged_on_perm; eauto.
-                - eapply Mem.valid_block_inject_1; eauto.
-                - eapply Mem.valid_block_inject_1; eauto. }
+                eapply Mem.valid_block_inject_1; eauto. }
               { rewrite JunkBlock.assign_junk_blocks_perm in *.
                 eapply Mem.perm_valid_block in H2. eauto. }
               { apply n0. inv ARGTGT. rewrite <- NB.

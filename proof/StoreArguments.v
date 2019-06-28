@@ -246,13 +246,12 @@ Section STOREARGUMENTS_PROPERTY.
   Lemma store_arguments_unchanged_on m0 m1 rs args sg
         (STORE: store_arguments m0 rs args sg m1)
     :
-      Mem.unchanged_on (SimMemInj.valid_blocks m0) m0 m1.
+      Mem.unchanged_on top2 m0 m1.
   Proof.
     inv STORE. dup ALC. eapply Mem.alloc_unchanged_on in ALC0.
-    eapply Mem.unchanged_on_trans; eauto.
     eapply Mem.unchanged_on_implies; eauto.
-    i. ss. des_ifs. red in H.
-    exfalso. eapply Mem.fresh_block_alloc; eauto.
+    - eapply Mem.unchanged_on_trans; eauto.
+    - i. ss. des_ifs. exfalso. eapply Mem.fresh_block_alloc; eauto.
   Qed.
 
 End STOREARGUMENTS_PROPERTY.

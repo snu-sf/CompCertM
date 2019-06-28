@@ -294,7 +294,7 @@ Proof.
   - unfold Genv.find_funct in FINDF. des_ifs.
     instantiate (1:=nat_idx 10).
     destruct (Val.floatoflongu (typify v0 AST.Tlong)) eqn:VEQ; cycle 1.
-    { unfold lxsim. pcofix CIH. pfold. ss.
+    { instantiate (1:=unit). unfold lxsim. pcofix CIH. pfold. ss.
       econs 1. ii.
       econs 1; cycle 2.
       { eapply CminorC.modsem_receptive; eauto. }
@@ -319,9 +319,8 @@ Proof.
 
     unfold lxsim. pcofix CIH. pfold. ss.
     econs 2. i; des.
-    splits; swap 3 4.
-    { ii. rr in H. des. inv H. des. clarify. }
-    { ii. rr in H. des. inv H. }
+
+    splits; cycle 1.
     { esplits. instantiate (1:= mkstate _ (State _ _)). econs; ss.
       econs; eauto; [des_ifs|ss]. }
 
@@ -479,5 +478,5 @@ Proof.
            rewrite Int64.unsigned_zero in *. rewrite Int64.unsigned_repr in *; nia.
         -- ss.
         -- eauto.
-           Unshelve. all: eauto. apply 1%nat.
+           Unshelve. all: eauto.
 Qed.

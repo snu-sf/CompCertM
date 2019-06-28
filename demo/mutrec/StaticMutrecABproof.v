@@ -184,7 +184,7 @@ Section LXSIM.
           { unfold StaticMutrecA.prog, prog_defmap in *. ss.
             unfold StaticMutrecA.global_definitions in *. ss.
             rewrite PTree_Properties.of_list_elements in *. des_ifs.
-            simpl in Heq5. exploit PTree.elements_correct. eapply Heq5. i.
+            simpl in Heq6. exploit PTree.elements_correct. eapply Heq6. i.
             unfold PTree.elements, PTree.xelements in H1. simpl in H1.
             inv H1; clarify. ss. des; clarify. }
         }
@@ -243,7 +243,7 @@ Section LXSIM.
           { unfold StaticMutrecB.prog, prog_defmap in *. ss.
             unfold StaticMutrecA.global_definitions in *. ss.
             rewrite PTree_Properties.of_list_elements in *. des_ifs.
-            simpl in Heq5. exploit PTree.elements_correct. eapply Heq5. i.
+            simpl in Heq6. exploit PTree.elements_correct. eapply Heq6. i.
             unfold PTree.elements, PTree.xelements in H1. simpl in H1.
             inv H1; clarify. ss. des; clarify. }
         }

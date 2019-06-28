@@ -54,7 +54,7 @@ Definition code: list instruction :=
      Pmovl_mr (Addrmode None None (inr (_memoized, Ptrofs.zero))) RAX;
      (*	movl	%ebx, memoized(%rip) *)
      Pmovl_mr (Addrmode None None (inr (_memoized, Ptrofs.repr 4))) RAX;
-     (*	movl	%ebx, (memoized + 4)(%rip) *)     
+     (*	movl	%ebx, (memoized + 4)(%rip) *)
      Pjmp_l lb1;
      (* jmp    .L101 *)
 
@@ -62,7 +62,7 @@ Definition code: list instruction :=
      (* .L102: *)
      Pmovl_rm RAX (Addrmode None None (inr (_memoized, Ptrofs.repr 4)));
      (* movl	(memoized + 4)(%rip), %eax *)
-     
+
      Plabel lb1 ;
      (* .L101: *)
      Pmov_rm_a RBX (Addrmode (Some RSP) None (inl 8));

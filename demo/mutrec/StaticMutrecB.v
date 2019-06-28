@@ -9,6 +9,12 @@ Definition lb0: label := 1%positive.
 Definition lb1: label := 2%positive.
 Definition lb2: label := 3%positive.
 
+Definition v_memoized := {|
+  gvar_info := tt;
+  gvar_init := (Init_int32 (Int.zero) :: Init_int32 (Int.zero) :: nil);
+  gvar_readonly := false;
+  gvar_volatile := false
+|}.
 
 Definition code: list instruction :=
  [
@@ -71,6 +77,15 @@ Definition func_g: function :=
   mkfunction (mksignature [Tint] (Some Tint) cc_default) code
 .
 
-Definition prog: program := mkprogram [(g_id, (Gfun (Internal func_g)))] [g_id ; main_id] main_id.
+Definition global_definitions : list (ident * globdef fundef unit) :=
+((f_id,
+   Gfun(External (EF_external "f"
+                   (mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default)))) :: (_memoized, Gvar v_memoized) ::
+ (g_id, Gfun(Internal func_g)) :: nil).
+
+Definition public_idents : list ident :=
+(f_id :: g_id :: nil).
+
+Definition prog: program := mkprogram global_definitions public_idents main_id.
 
 Definition md: Mod.t := AsmC.module prog.

@@ -103,6 +103,24 @@ Proof.
   }
 Qed.
 
+Lemma stricter_link_list_aux X `{L0: Linker X} `{L1: Linker X}
+      (STRICT: forall x0 x1 xl, (@link _ L1) x0 x1 = Some xl -> (@link _ L0) x0 x1 = Some xl)
+      (l: list X) (x: X)
+      (LINK: @link_list_aux _ L1 l = success x)
+  :
+    @link_list_aux _ L0 l = success x.
+Proof.
+  revert x LINK. induction l; ss.
+  i. des_ifs; ss; clarify.
+  - eapply link_list_aux_empty_inv in Heq. des. clarify.
+  - eapply link_list_aux_empty_inv in Heq0. des. clarify.
+  - exploit IHl; eauto. clarify.
+  - eapply link_list_aux_empty_inv in Heq1. des. clarify.
+  - exploit IHl; eauto. i. clarify. exploit STRICT; eauto. i. clarify.
+  - eapply link_list_aux_empty_inv in Heq1. des. clarify.
+  - exploit IHl; eauto. i. clarify. exploit STRICT; eauto. i. clarify.
+Qed.
+
 Section LINK_LIST_MATCH.
 
   Context {A B: Type} {LA: Linker A} {LB: Linker B} (prog_match: A -> B -> Prop) {TL: TransfLink prog_match}.
@@ -228,7 +246,7 @@ Proof.
   destruct (link_build_composite_env (prog_types x) (prog_types y) typs
        (prog_comp_env x) (prog_comp_env y) (prog_comp_env_eq x)
        (prog_comp_env_eq y) EQ) as (env & P & Q & R).
-  destruct (link_linkorder _ _ _ LP). 
+  destruct (link_linkorder _ _ _ LP).
   intros X; inv X.
   split; split; auto.
 Defined.

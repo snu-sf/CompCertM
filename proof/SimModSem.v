@@ -277,8 +277,9 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
       (* (SIMSKENV: sim_skenv msp msp.(sm)) *)
       sidx
       sound_states
-      (INHAB: inhabited sidx)
-      (PRSV: forall (si: sidx), local_preservation msp.(src) (sound_states si))
+      sound_state_ex
+      (PRSV: local_preservation msp.(src) sound_state_ex)
+      (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))
       (SIM: forall
           sm_arg
           args_src args_tgt

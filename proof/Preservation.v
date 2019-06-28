@@ -135,6 +135,57 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
         <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) m_arg retv.(Retv.m)>>)
 .
 
+(* It does not need to show "mle". *)
+Inductive local_preservation_noguarantee (sound_state: Sound.t -> mem -> ms.(state) -> Prop): Prop :=
+| local_preservation_noguarantee_intro
+    (INIT: forall
+        su_init args st_init
+        (SUARG: Sound.args su_init args)
+        (SKENV: Sound.skenv su_init args.(Args.m) ms.(ModSem.skenv))
+        (INIT: ms.(ModSem.initial_frame) args st_init)
+      ,
+        <<SUST: sound_state su_init args.(Args.m) st_init>>)
+    (STEP: forall
+        m_arg su0 st0 tr st1
+        (SUST: sound_state su0 m_arg st0)
+        (SAFE: ~ ms.(ModSem.is_call) st0 /\ ~ ms.(ModSem.is_return) st0)
+        (STEP: Step ms st0 tr st1)
+      ,
+        <<SUST: sound_state su0 m_arg st1>>)
+    (CALL: forall
+        m_arg su0 st0 args
+        (SUST: sound_state su0 m_arg st0)
+        (AT: ms.(ModSem.at_external) st0 args)
+      ,
+        (* (<<ARGS: su0.(Sound.args) args>>) /\ *)
+        exists su_gr,
+          (<<ARGS: Sound.args su_gr args>>) /\
+          (<<LE: Sound.le su0 su_gr>>) /\
+          (* (<<LE: Sound.le su0 su_lifted>>) /\ *)
+          (* (<<ARGS: su_lifted.(Sound.args) args>>) /\ *)
+          (<<K: forall
+              su_ret retv st1
+              (LE: Sound.hle su_gr su_ret)
+              (RETV: su_ret.(Sound.retv) retv)
+              (* retv st1 *)
+              (* (RETV: su_gr.(Sound.retv) retv) *)
+              (MLE: Sound.mle su_gr args.(Args.m) retv.(Retv.m))
+              (AFTER: ms.(ModSem.after_external) st0 retv st1)
+            ,
+              (* (<<SUST: sound_state su0 args.(Args.m) st1>>)>>)) *)
+              (<<SUST: sound_state su0 m_arg st1>>)>>))
+.
+
+Lemma local_preservation_noguarantee_weak
+  :
+    <<INCL: local_preservation <1= local_preservation_noguarantee>>
+.
+Proof.
+  ii. inv PR. econs; eauto.
+  - ii; ss. exploit CALL; eauto. i; des. esplits; eauto.
+  (* - ii. exploit RET; eauto. i; des. esplits; eauto. *)
+Qed.
+
 Variable get_mem: ms.(ModSem.state) -> mem.
 
 Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop): Prop :=

@@ -103,13 +103,13 @@ Section ADQSOUND.
         ,
           (<<HD: forall
                  sound_state_all
-                 (PRSV: local_preservation ms sound_state_all)
+                 (PRSV: local_preservation_noguarantee ms sound_state_all)
                ,
                  <<SUST: sound_state_all su0 args_tail.(Args.m) lst0>>>>)
           /\
           (<<K: forall
                  sound_state_all
-                 (PRSV: local_preservation ms sound_state_all)
+                 (PRSV: local_preservation_noguarantee ms sound_state_all)
                ,
                  (* (<<SUST: sound_state_all su0 args.(Args.m) lst0>>) *)
                  (* /\ *)
@@ -153,7 +153,7 @@ Section ADQSOUND.
         ,
           (<<HD: forall
               sound_state_all
-              (PRSV: local_preservation ms sound_state_all)
+              (PRSV: local_preservation_noguarantee ms sound_state_all)
             ,
               <<SUST: sound_state_all su0 m_arg lst0>>>>))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
@@ -223,7 +223,7 @@ Section ADQSOUND.
   Proof.
     inv STEP.
     - (* CALL *)
-      inv SUST. ss. des. exploit FORALLSU; eauto. intro T; des.
+      inv SUST. ss. des. exploit FORALLSU; eauto. { eapply local_preservation_noguarantee_weak; eauto. } intro T; des.
       inv EX. exploit CALL; eauto. i; des.
       esplits; eauto. econs; eauto; cycle 1.
       + esplits; eauto. eapply vle_preserves_sound_ge; eauto. eapply mle_preserves_sound_ge; eauto.
@@ -235,7 +235,7 @@ Section ADQSOUND.
           inv PRSV. exploit CALL0; eauto. i; des. esplits; eauto.
           ii. eapply K0; eauto.
         * exploit FORALLSU; eauto.
-          { econs; eauto. }
+          { eapply local_preservation_noguarantee_weak; eauto. econs; eauto. }
           i; des. exploit CALL; eauto. i; des. ss.
     - (* INIT *)
       inv SUST. ss. des_ifs.
@@ -262,12 +262,12 @@ Section ADQSOUND.
         { eapply SkEnv.load_skenv_wf; et. }
         { eapply SSLE; eauto. }
         { eauto. }
-        intro SIM; des. inv SIM. ss. inv INHAB. esplits; eauto.
+        intro SIM; des. inv SIM. ss. esplits; eauto.
     - (* INTERNAL *)
       inv SUST. ss.
       esplits; eauto. econs; eauto.
       i. des.
-      exploit FORALLSU; eauto. intro U; des. esplits; eauto. i. ss. inv PRSV.
+      exploit FORALLSU; eauto. { eapply local_preservation_noguarantee_weak; eauto. } intro U; des. esplits; eauto. i. ss. inv PRSV.
       eapply STEP; eauto.
       + eapply FORALLSU; eauto. econs; eauto.
       + split; ii; ModSem.tac.
@@ -286,11 +286,13 @@ Section ADQSOUND.
         bar.
         inv EX.
         exploit RET; eauto.
-        { eapply FORALLSU; eauto. { eapply vle_preserves_sound_ge; try apply LE. eapply mle_preserves_sound_ge; eauto. } econs; et. }
+        { eapply FORALLSU; eauto.
+          { eapply vle_preserves_sound_ge; try apply LE. eapply mle_preserves_sound_ge; eauto. }
+          { eapply local_preservation_noguarantee_weak; eauto. econs; et. } }
         i; des.
         eapply K0; eauto.
   Unshelve.
-    ss.
+    all: ss.
   Qed.
 
   Lemma sound_progress_star

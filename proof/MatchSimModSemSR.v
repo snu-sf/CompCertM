@@ -315,8 +315,8 @@ Section MATCHSIMFORWARD.
   .
   Proof.
     econs.
-    { instantiate (1 := unit). ss. }
-    { ii. eapply PRSV; eauto. }
+    { eauto. }
+    { instantiate (2 := unit). ii. eapply local_preservation_noguarantee_weak; eauto. eapply PRSV. }
     ii; ss.
     folder.
     exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.

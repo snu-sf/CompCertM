@@ -340,8 +340,8 @@ Section SIMGE.
       (* clears sm_init; clear sm_init. *)
       - exploit system_local_preservation. intro SYSSU; des.
         econs.
-        { instantiate (1:= unit). ss. }
-        { ii; ss. instantiate (1:= fun _ => system_sound_state). ss. }
+        { ss. eauto. }
+        { instantiate (2:= Empty_set). ii; ss. }
         ii. inv SIMSKENV0. ss.
         split; cycle 1.
         { ii; des. esplits; eauto. econs; eauto. }
@@ -462,6 +462,7 @@ Section SIMGE.
     - rewrite SYSTGT. ss.
   Unshelve.
     all: try apply idx_bot.
+    all: try (by ii; ss).
   Qed.
 
 End SIMGE.
@@ -525,7 +526,7 @@ Section ADQMATCH.
       (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
       sidx
       (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
-      (PRSV: forall si, local_preservation ms_src (sound_states_local si))
+      (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
       (K: forall
           sm_ret retv_src retv_tgt
           (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
@@ -586,7 +587,7 @@ Section ADQMATCH.
       ms_tgt lst_tgt
       sidx
       (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
-      (PRSV: forall si, local_preservation ms_src (sound_states_local si))
+      (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
       (TOP: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st) tail_sm
                   i0 lst_src lst_tgt sm0)
       (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)

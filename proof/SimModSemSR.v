@@ -241,9 +241,10 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   | simSR_intro
       (* (SIMSKENV: sim_skenv msp msp.(sm)) *)
       sidx
-      (sound_states : sidx -> Sound.t -> mem -> msp.(src).(ModSem.state) -> Prop)
-      (INHAB: inhabited sidx)
-      (PRSV: forall si, local_preservation msp.(src) (sound_states si))
+      sound_states
+      sound_state_ex
+      (PRSV: local_preservation msp.(src) sound_state_ex)
+      (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))
       (SIM: forall
           sm_arg
           args_src args_tgt
@@ -487,8 +488,8 @@ Section FACTORSOURCE.
   Proof.
     inv SIM. ss.
     econs; eauto; ss.
-    { instantiate (1:= fun si su m st_src => sound_states si su m st_src.(snd)). ss.
-      i. specialize (PRSV si).
+    { instantiate (1:= fun su m st_src => sound_state_ex su m st_src.(snd)). ss.
+      i. specialize (PRSV).
       inv PRSV. econs; ss; eauto.
       - ii. exploit INIT; eauto. rr in INIT0. des. ss.
       - ii. inv STEP0; ss.
@@ -508,6 +509,27 @@ Section FACTORSOURCE.
         exploit CALL; eauto. i; des. esplits; eauto.
         i. exploit K; eauto. rr in AFTER. des. ss.
       - i. exploit RET; eauto. rr in FINAL. des. ss.
+    }
+    { i. instantiate (1:= fun si su m st_src => sound_states si su m st_src.(snd)). ss.
+      i. specialize (PRSVNOGR si).
+      inv PRSVNOGR. econs; ss; eauto.
+      - ii. exploit INIT; eauto. rr in INIT0. des. ss.
+      - ii. inv STEP0; ss.
+        { exploit STEP; eauto.
+          { des. split; intro T; rr in T; des.
+            - contradict SAFE. rr. esplits; eauto. econs; eauto.
+            - contradict SAFE0. rr. esplits; eauto. econs; eauto.
+          }
+        }
+        { exploit STEP; eauto.
+          { des. split; intro T; rr in T; des.
+            - contradict SAFE. rr. esplits; eauto. econs; eauto.
+            - contradict SAFE0. rr. esplits; eauto. econs; eauto.
+          }
+        }
+      - i. rr in AT. des. destruct st0; ss. clarify.
+        exploit CALL; eauto. i; des. esplits; eauto.
+        i. exploit K; eauto. rr in AFTER. des. ss.
     }
     i. exploit SIM0; eauto.
     { inv SIMSKENV. ss. econs; eauto. }

@@ -193,7 +193,7 @@ Proof.
     pattern elem0. eapply well_founded_ind; try eassumption. ii. clear_tac.
     econs; eauto. ii. destruct y; ss.
     inv H0. ss. clarify.
-    eapply H. Undo 1. (* IDK why but apply acts in weird way. *)
+    (* eapply H. Undo 1. (* IDK why but apply acts in weird way. *) *)
     specialize (H elem0). unfold eq_rect in *.
     specialize (H ORD).
     apply JMeq_eq in EQORD. clarify. clear_tac.

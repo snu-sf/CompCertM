@@ -1667,8 +1667,7 @@ Proof.
       (** TODO: remove redundancy **)
       inv SIMSKENV. ss.
       assert(fptr_arg = tfptr).
-      { eapply fsim_external_inject_eq; try apply SIG; et. Undo 1.
-        inv FPTR; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
+      { inv FPTR; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
         inv SIMSKE. ss. inv INJECT; ss.
         exploit (DOMAIN b1); eauto.
         { eapply Genv.genv_defs_range; et. }
@@ -1943,8 +1942,8 @@ Proof.
 
 
     ss; clarify.
-    des_ifs; sep_simpl_tac; des; ss. Undo 1.
-    des_ifs; sep_simpl_tac; des_safe; ss. Undo 1. (*** TODO: Fix des_safe with check_safe!! ***)
+    (* des_ifs; sep_simpl_tac; des; ss. Undo 1. *)
+    (* des_ifs; sep_simpl_tac; des_safe; ss. Undo 1. (*** TODO: Fix des_safe with check_safe!! ***) *)
     des.
     des_ifs; sep_simpl_tac; des; ss.
     (* unsguard AGLOCS. *)

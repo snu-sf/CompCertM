@@ -337,7 +337,9 @@ Section MATCHSIMFORWARD.
       <<SIM: msp.(ModSemPair.sim)>>
   .
   Proof.
+    inv INHAB.
     econs; eauto.
+    { i. eapply local_preservation_noguarantee_weak; eauto. }
     ii; ss.
     folder.
     exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.
@@ -349,6 +351,8 @@ Section MATCHSIMFORWARD.
       eapply match_states_lxsim; eauto.
       { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
     - exploit INITPROGRESS; eauto.
+  Unshelve.
+    all: ss.
   Qed.
 
 End MATCHSIMFORWARD.

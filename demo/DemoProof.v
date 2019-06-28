@@ -194,44 +194,6 @@ Hint Resolve E0_double.
 
 Require Import StoreArguments.
 
-(* TODO : unify with IdSimAsm *)
-Lemma asm_init_succeed skenv_link p args fd
-      (FPTR: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig p)) p) args.(Args.fptr)
-             = Some (AST.Internal fd))
-      (LEN: Datatypes.length args.(Args.vs) = Datatypes.length (sig_args (fn_sig fd)))
-      (SZ: 4 * Conventions1.size_arguments (fn_sig fd) <= Ptrofs.max_unsigned)
-  :
-    exists st_init : state, initial_frame skenv_link p args st_init.
-Proof.
-  destruct args. ss.
-  exploit store_arguments_progress.
-  { eapply typify_has_type_list; eauto. }
-  { eauto. }
-  i. des. instantiate (1:=m) in STR.
-  eexists (mkstate _ (Asm.State _ _)).
-  econs; ss; eauto.
-  - instantiate (1:= ((to_pregset rs) #PC <- fptr
-                                      #RSP <- (Vptr (Mem.nextblock m) Ptrofs.zero)
-                                      #RA <- Vnullptr)).
-    ss.
-  - econs; eauto.
-  - econs.
-    + inv STR. econs; eauto.
-      eapply extcall_arguments_same; eauto.
-      i. unfold to_mregset, to_pregset, Pregmap.set, to_preg, preg_of. des_ifs; ss; clarify.
-    + des_ifs.
-  - split.
-    + des_ifs.
-    + des_ifs.
-  - i. des_ifs.
-  - i. unfold Pregmap.set, to_pregset in PTR. des_ifs; eauto.
-    + exfalso. apply PTR. ss.
-    + left. esplits; eauto.
-      apply NNPP. ii. exploit PTRFREE; eauto.
-    + exfalso. apply PTR. ss.
-      Unshelve. apply 0%nat.
-Qed.
-
 Theorem correct
   :
     ModPair.sim mp
@@ -273,7 +235,7 @@ Proof.
 
   esplits; ss; i; cycle 1.
   { des. inv SAFESRC. clarify. inv SIMARGS. ss.
-    eapply asm_init_succeed; eauto; ss.
+    eapply asm_initial_frame_succeed; eauto; ss.
     eapply inject_list_length in VALS.
     rewrite <- LEN. eauto. }
 

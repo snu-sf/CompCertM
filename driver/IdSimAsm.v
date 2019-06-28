@@ -23,7 +23,7 @@ Require Import MatchSimModSem.
 Require Import StoreArguments.
 Require Import AsmStepInj AsmStepExt IntegersC.
 Require Import Coq.Logic.PropExtensionality.
-Require Import IdSimExtra.
+Require Import AsmExtra IdSimExtra.
 
 Set Implicit Arguments.
 
@@ -825,42 +825,6 @@ Proof.
     exfalso. exploit loc_args_callee_save_disjoint; eauto.
     apply NNPP. ii. rewrite <- loc_notin_not_in in H. eauto.
   - rewrite to_preg_to_mreg in *. clarify.
-Qed.
-
-Lemma asm_initial_frame_succeed (asm: Asm.program) args skenv_link fd
-      (ARGS: Datatypes.length args.(Args.vs) = Datatypes.length (sig_args fd.(fn_sig)))
-      (SIZE: 4 * size_arguments fd.(fn_sig) <= Ptrofs.max_unsigned)
-      (SIG: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm) (args.(Args.fptr)) =
-            Some (Internal fd))
-  :
-    exists st_init, initial_frame skenv_link asm args st_init.
-Proof.
-  exploit StoreArguments.store_arguments_progress; eauto.
-  { eapply typify_has_type_list; eauto. }
-  instantiate (1:=0%nat). instantiate (1:=args.(Args.m)). i. des. destruct args. ss.
-  eexists (AsmC.mkstate ((to_pregset (set_regset_undef rs fd.(fn_sig)))
-                           #PC <- fptr
-                           #RA <- Vnullptr
-                           #RSP <- (Vptr (Mem.nextblock m) Ptrofs.zero))
-                        (Asm.State _ m2)).
-  inv STR.
-  econs; eauto; ss.
-  - econs; ss. econs; eauto.
-    eapply extcall_arguments_same; eauto.
-    i. unfold to_mregset, to_pregset.
-    rewrite Pregmap.gso; cycle 1.
-    { unfold to_preg, preg_of. des_ifs. }
-    rewrite Pregmap.gso; cycle 1.
-    { unfold to_preg, preg_of. des_ifs. }
-    rewrite Pregmap.gso; cycle 1.
-    { unfold to_preg, preg_of. des_ifs. }
-    rewrite to_preg_to_mreg.
-    unfold set_regset_undef. des_ifs. exfalso.
-    eapply Loc.notin_not_in in n. eauto.
-  - instantiate (1:=0%nat). eauto.
-  - intros pr. unfold JunkBlock.is_junk_value, to_pregset, set_regset_undef, Pregmap.set.
-    des_ifs; ss; eauto.
-    ii. left. esplits; eauto. erewrite loc_notin_not_in in n2. tauto.
 Qed.
 
 Lemma asm_ext_unreach

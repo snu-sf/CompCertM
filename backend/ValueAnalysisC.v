@@ -354,7 +354,9 @@ Section PRSV.
       des.
       esplits; eauto.
       { inv AT; ss. refl. }
+      { exploit H; eauto. { apply linkorder_refl. } intro T; des. inv T; ss. }
       { eapply GR; eauto. }
+      { refl. }
       ii.
       r in RETV. des.
       esplits; eauto; cycle 1.

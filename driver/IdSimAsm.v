@@ -266,7 +266,6 @@ Section TRIAL2.
   Proof.
     esplits.
     eapply local_preservation_strong_horizontal_excl_spec with (sound_state := (sound_state)); eauto.
-    { eapply UnreachC.hle_lift; eauto. }
     instantiate (1:= AsmC.get_mem).
     eapply local_preservation_strong_horizontal_excl_intro with
         (has_footprint := has_footprint)
@@ -530,7 +529,7 @@ Section TRIAL2.
             - exfalso. eapply n1. eapply Mem.perm_valid_block; eauto. }
           { ii. des_ifs; eauto. unfold proj_sumbool in *. des_ifs. }
           { etrans; eauto. }
-        * i. eapply UnreachC.Unreach_obligation_2; eauto.
+        * i. eapply UnreachC.Unreach_obligation_3; eauto.
         * inv WF. rewrite NB in *. econs; ss.
           { i. des_ifs; eauto.
             destruct (if Unreach.unreach su0 x0

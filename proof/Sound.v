@@ -52,6 +52,15 @@ Module Sound.
     (*   , *)
     (*     <<LE: le su0 su1>> *)
     (* ; *)
+    hle_mle: forall
+        m0 m1 su0 su1
+        (MLE: mle su1 m0 m1)
+        (HLE: hle su0 su1)
+        (WF: wf su0)
+      ,
+        <<MLE: mle su0 m0 m1>>
+    ;
+
     lift_spec: forall
         su0 su1 m0 m1
         (MLE: mle su1 m0 m1)
@@ -124,6 +133,14 @@ Module Sound.
         m0 su0 su1 ske
         (SKE: su0.(skenv) m0 ske)
         (LE: lift su0 su1)
+      ,
+        <<SKE: su1.(skenv) m0 ske>>
+    ;
+
+    skenv_hle: forall
+        m0 su0 su1 ske
+        (SKE: su0.(skenv) m0 ske)
+        (MLE: hle su0 su1)
       ,
         <<SKE: su1.(skenv) m0 ske>>
     ;

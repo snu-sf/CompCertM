@@ -58,6 +58,13 @@ Section SOUNDPRODUCT.
   (*   - eapply Sound.hle_le; et. *)
   (* Qed. *)
   Next Obligation.
+    ii; ss.
+    (* destruct su0, su1; ss. *)
+    esplits; ss; eauto.
+    - eapply Sound.hle_mle; et.
+    - eapply Sound.hle_mle; et.
+  Qed.
+  Next Obligation.
     ii; ss. des.
     (* destruct su0, su1; ss. *)
     esplits; ss; eauto.
@@ -82,6 +89,11 @@ Section SOUNDPRODUCT.
     ss. esplits; eauto.
     - eapply Sound.skenv_lift; eauto.
     - eapply Sound.skenv_lift; eauto.
+  Qed.
+  Next Obligation.
+    ss. esplits; eauto.
+    - eapply Sound.skenv_hle; eauto.
+    - eapply Sound.skenv_hle; eauto.
   Qed.
   Next Obligation.
     ss. esplits; eauto.
@@ -182,6 +194,8 @@ Section SOUNDPRODUCT.
       { instantiate (1:= (su_gr, su_gr0)).
         eapply sound_args_iff; eauto.
       }
+      { instantiate (1:= (_, _)). ss. eauto. }
+      { ss. eauto. }
       { ss. }
       { ss. }
       i. ss. des.

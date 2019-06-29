@@ -770,6 +770,12 @@ Global Program Instance Unreach: Sound.class := {
 }
 .
 Next Obligation.
+  inv MLE. econs; eauto.
+  eapply Mem.unchanged_on_implies; eauto.
+  ii. unfold flip in *. inv WF. exploit WFHI; eauto. i. unfold Mem.valid_block in *.
+  rr in HLE. des. rewrite <- OLD; eauto.
+Qed.
+Next Obligation.
   eapply mle_monotone; try apply MLE; eauto.
   r in LE. des; ss.
 Qed.
@@ -813,6 +819,9 @@ Next Obligation.
   inv LE.
   inv SKE. econs; eauto.
   congruence.
+Qed.
+Next Obligation.
+  rr in MLE. des. inv SKE. econs; eauto. congruence.
 Qed.
 Next Obligation.
   inv MLE.

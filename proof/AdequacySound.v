@@ -72,6 +72,20 @@ Section ADQSOUND.
     ii. eapply Sound.skenv_lift; eauto.
   Qed.
 
+  Lemma hle_preserves_sound_ge
+        m0 su0 su1
+        (GE: sound_ge su0 m0)
+        (LE: Sound.hle su0 su1)
+    :
+      <<GE: sound_ge su1 m0>>
+  .
+  Proof.
+    inv GE.
+    econs; eauto.
+    rewrite Forall_forall in *.
+    ii. admit "". (* eapply Sound.skenv_lift; eauto. *)
+  Qed.
+
   Lemma mle_preserves_sound_ge
         m0 m1 su0
         (GE: sound_ge su0 m0)
@@ -115,7 +129,7 @@ Section ADQSOUND.
                  (* /\ *)
                  exists su_gr,
                    (<<ARGS: Sound.args su_gr args>>) /\
-                   (<<LE: Sound.lift su0 su_gr>>) /\
+                   (<<LE: exists su_imd, Sound.hle su0 su_imd /\ Sound.lift su_imd su_gr>>) /\
                    (<<K: forall
                        retv lst1
                        su_ret
@@ -226,7 +240,8 @@ Section ADQSOUND.
       inv SUST. ss. des. exploit FORALLSU; eauto. { eapply local_preservation_noguarantee_weak; eauto. } intro T; des.
       inv EX. exploit CALL; eauto. i; des.
       esplits; eauto. econs; eauto; cycle 1.
-      + esplits; eauto. eapply lift_preserves_sound_ge; eauto. eapply mle_preserves_sound_ge; eauto.
+      + esplits; eauto. eapply lift_preserves_sound_ge; eauto. eapply hle_preserves_sound_ge; eauto.
+        { eapply mle_preserves_sound_ge; eauto. }
       + econs; eauto; cycle 1.
         { esplits; eauto. econs; eauto. }
         ii. esplits; eauto.
@@ -287,7 +302,8 @@ Section ADQSOUND.
         inv EX.
         exploit RET; eauto.
         { eapply FORALLSU; eauto.
-          { eapply lift_preserves_sound_ge; try apply LE. eapply mle_preserves_sound_ge; eauto. }
+          { eapply lift_preserves_sound_ge; try apply LE0. eapply hle_preserves_sound_ge; try apply LE.
+            eapply mle_preserves_sound_ge; eauto. }
           { eapply local_preservation_noguarantee_weak; eauto. econs; et. } }
         i; des.
         eapply K0; eauto.

@@ -26,6 +26,7 @@ Definition code: list instruction :=
      (* movq    %rax, 0(%rsp) *)
      Pmov_mr_a (Addrmode (Some RSP) None (inl 8)) RBX;
      (* movq    %rbx, 8(%rsp) *)
+
      Pmov_rr RBX RDI ;
      (* movq    %rdi, %rbx *)
      Ptestl_rr RBX RBX ;
@@ -47,14 +48,16 @@ Definition code: list instruction :=
      (* je	.L102 *)
      Pleal RDI (Addrmode (Some RBX) None (inl (- 1)));
      (* leal    -1(%ebx), %edi *)
+
      Pcall_s f_id (mksignature [Tint] (Some Tint) cc_default);
      (* call    f *)
+
      Pleal RAX (Addrmode (Some RAX) (Some (RBX, 1)) (inl 0));
      (* leal    0(%eax,%ebx,1), %eax *)
-     Pmovl_mr (Addrmode None None (inr (_memoized, Ptrofs.zero))) RAX;
+     Pmovl_mr (Addrmode None None (inr (_memoized, Ptrofs.zero))) RBX;
      (*	movl	%ebx, memoized(%rip) *)
      Pmovl_mr (Addrmode None None (inr (_memoized, Ptrofs.repr 4))) RAX;
-     (*	movl	%ebx, (memoized + 4)(%rip) *)
+     (*	movl	%eax, (memoized + 4)(%rip) *)
      Pjmp_l lb1;
      (* jmp    .L101 *)
 

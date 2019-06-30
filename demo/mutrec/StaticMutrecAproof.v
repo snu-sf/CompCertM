@@ -242,6 +242,7 @@ Proof.
           + econs 1.
           + ss.
         - admit "index". }
+      { refl. }
       left. pfold.
       econs 1. i; des.
       econs 2.
@@ -288,6 +289,7 @@ Proof.
         }
 
         apply star_refl.
+      * refl.
       (* * refl. *)
       * right. eapply CIH; eauto. econs; ss; eauto.
         replace (Int.repr 0) with (sum Int.zero).
@@ -329,6 +331,7 @@ Proof.
             + econs; eauto.
             + ss.
           - admit "index". }
+        { refl. }
 
         left. pfold.
         econs.
@@ -435,6 +438,8 @@ Proof.
 
           eapply star_refl.
 
+        * refl.
+
         * left. pfold. econs 3; et.
           { econs; eauto. }
           { econs. econs; eauto. }
@@ -536,6 +541,7 @@ Proof.
 
             eapply star_refl.
           }
+          { refl. }
 
           right. eapply CIH.
           { eapply SimMemInjInvC.SimSymbIdInv_obligation_7; cycle 1; eauto. }
@@ -563,6 +569,7 @@ Proof.
             + econs; eauto.
             + ss.
           - admit "index". }
+        { refl. }
 
         left. pfold.
         econs.
@@ -659,6 +666,8 @@ Proof.
             - ss. }
 
           apply star_refl.
+
+        * refl.
 
         * right. eapply CIH; eauto.
           { econs; eauto.

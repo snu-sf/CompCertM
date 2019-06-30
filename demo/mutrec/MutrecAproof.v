@@ -180,7 +180,7 @@ Proof.
           econs; ss; eauto; try (by repeat (econs; ss; eauto)).
           unfold _x. unfold _t'1. rr. ii; ss. des; ss. clarify.
         }
-        
+
         eapply star_left with (t1 := E0) (t2 := E0); ss.
         { econs; eauto.
           { eapply modsem2_determinate; eauto. }
@@ -220,6 +220,7 @@ Proof.
 
         apply star_refl.
       * left. pfold. econs 3; et.
+        { rr. eauto. }
         { rr. esplits; eauto. ss. econs; et. ii. destruct i; ss. clarify. apply H. unfold Int.zero.
           Local Transparent Int.repr.
           unfold Int.repr.
@@ -250,7 +251,7 @@ Proof.
             { eapply modsem2_determinate; eauto. }
             econs; eauto.
           }
-          
+
           eapply star_left with (t1 := E0) (t2 := E0); ss.
           { econs; eauto.
             { eapply modsem2_determinate; eauto. }
@@ -268,7 +269,7 @@ Proof.
 
           eapply star_refl.
         }
-        
+
         right. eapply CIH. instantiate (1:= SimMemId.mk _ _).
         econs; ss; eauto; try lia.
         rewrite sum_recurse. des_ifs.
@@ -352,4 +353,3 @@ Proof.
   econs; ss.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.
-

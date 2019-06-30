@@ -890,8 +890,10 @@ Section ADQSTEP.
           { etransitivity; eauto. }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dplus; eauto. { unsguard SETGT. ss. des_ifs. } }
-          right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
-
+          right. eapply CIH; eauto. instantiate (1:=sm1). econs; eauto.
+          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
+            eapply rtc_once; eauto. }
+          { etrans; eauto. }
 
     - (* bstep *)
       right. ss.
@@ -933,8 +935,10 @@ Section ADQSTEP.
             eapply sound_progress_star; eauto.
             eapply lift_star; eauto.
           }
-          econs; eauto. folder. ss; des_ifs.
-
+          instantiate (1:=sm1). econs; eauto.
+          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
+            eapply rtc_once; eauto. }
+          { etrans; eauto. }
 
     - (* call *)
       left. right.

@@ -51,9 +51,10 @@ Section SIMMODSEM.
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm1>>)
       (RECEP: strongly_receptive_at ms_src st_src0)
   | fsim_step_stutter
-      i1 st_tgt1
+      i1 st_tgt1 sm1
       (STAR: DPlus ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
-      (BSIM: fsim i1 st_src0 st_tgt1 sm0)
+      (MLE: SimMem.le sm0 sm1)
+      (BSIM: fsim i1 st_src0 st_tgt1 sm1)
   .
 
   Inductive bsim_step (bsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
@@ -69,9 +70,10 @@ Section SIMMODSEM.
             /\ <<MLE: SimMem.le sm0 sm1>>
             /\ <<BSIM: bsim i1 st_src1 st_tgt1 sm1>>)
   | bsim_step_stutter
-      i1 st_src1
+      i1 st_src1 sm1
       (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
-      (BSIM: bsim i1 st_src1 st_tgt0 sm0)
+      (MLE: SimMem.le sm0 sm1)
+      (BSIM: bsim i1 st_src1 st_tgt0 sm1)
   .
 
   Print xsim.

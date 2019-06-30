@@ -905,7 +905,7 @@ Section ADQSTEP.
       + ii. exploit PROGRESS; eauto. intro STEPTGT; des.
         clear - FINALTGT STEPTGT. inv FINALTGT. ss. ModSem.tac.
       + ii. exploit PROGRESS; eauto. intro STEPTGT; des.
-        inv BSTEP.
+        hexploit BSTEP; eauto. intro T. inv T.
         * econs 1; eauto; cycle 1.
           { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
           ii. inv STEPTGT0; ModSem.tac.

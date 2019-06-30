@@ -102,9 +102,9 @@ Section SIMMODSEM.
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (<<BSTEP:
-        (*  forall *)
-        (*   (SAFESRC: safe ms_src st_src0) *)
-        (* , *)
+         forall
+          (SAFESRC: safe_modsem ms_src st_src0)
+        ,
          (<<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
       (<<PROGRESS:
          forall
@@ -220,7 +220,8 @@ Section SIMMODSEM.
       i. (* specialize (BSTEP SAFESRC0). *)
       exploit SU; eauto. i; des.
       esplits; eauto.
-      inv BSTEP.
+      ii. hexploit BSTEP; eauto. i.
+      inv H.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 3; eauto.
@@ -399,7 +400,7 @@ Section FACTORTARGET.
       - econs 2.
         i. exploit SU; eauto. i; des. esplits; eauto.
         + (* bsim *)
-          clear - SINGLE WBT CIH BSTEP. inv BSTEP.
+          clear - SINGLE WBT CIH BSTEP. i. hexploit1 BSTEP; eauto. inv BSTEP.
           * econs 1; eauto. i.
             destruct tr; ss.
             {

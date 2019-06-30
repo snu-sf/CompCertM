@@ -96,9 +96,9 @@ Section SIMMODSEM.
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (<<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>) /\ *)
       (<<BSTEP:
-        (*  forall *)
-        (*   (SAFESRC: safe ms_src st_src0) *)
-        (* , *)
+         forall
+          (SAFESRC: safe_modsem ms_src st_src0)
+        ,
          (<<BSTEP: bsim_step (lxsimSR sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
       (<<PROGRESS:
          forall
@@ -213,7 +213,7 @@ Section SIMMODSEM.
       i. (* specialize (BSTEP SAFESRC0). *)
       exploit SU; eauto. i; des.
       esplits; eauto.
-      inv BSTEP.
+      i. hexploit BSTEP; eauto. i. inv H.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 3; eauto.
@@ -331,7 +331,21 @@ Proof.
   exploit atomic_lift_step; eauto.
 Qed.
 
-
+Lemma atomic_unlift_safe_modsem
+      ms_src st_src0
+      (SAFE: safe_modsem (Atomic.trans ms_src) ([], st_src0))
+      (WBT: well_behaved_traces ms_src)
+  :
+    <<SAFE: safe_modsem ms_src st_src0>>
+.
+Proof.
+  ii. exploit SAFE; eauto.
+  { instantiate (1:= (_, _)). eapply atomic_lift_star; eauto. }
+  i; des.
+  - left. rr in EVCALL. des. rr. inv EVCALL. ss. esplits; eauto.
+  - right. left. rr in EVRET. des. rr. inv EVRET. ss. esplits; eauto.
+  - right. right. rr in EVSTEP. inv EVSTEP; esplits; eauto.
+Qed.
 
 Section FACTORSOURCE.
 
@@ -443,7 +457,7 @@ Section FACTORSOURCE.
       - econs 2.
         i. exploit SU; eauto. i; des. esplits; eauto.
         + (* bsim *)
-          clear - WBT SINGLE CIH BSTEP. inv BSTEP.
+          clear - WBT SINGLE CIH BSTEP. i. hexploit1 BSTEP; eauto. { eapply atomic_unlift_safe_modsem; eauto. } inv BSTEP.
           * econs 1; eauto. i.
             exploit STEP; eauto. i; des_safe. esplits; eauto.
             { des.

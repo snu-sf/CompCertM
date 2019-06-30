@@ -127,6 +127,7 @@ Section MODSEM.
       (RETV: loc_result sg = One mr)
       (EXTERNAL: external_state ge (rs # PC))
       (RSRA: rs # PC = init_rs # RA)
+      (* TODO: why different with definition if initial_frame? *)
       (RANOTFPTR: Genv.find_funct skenv_link (init_rs RA) = None)
       (* (JUNK1: ge.(Genv.find_funct) (rs PC) = None) *)
       (* (RSRSP: Val.lessdef (rs # RSP) (init_rs # RSP)) *)
@@ -201,7 +202,7 @@ Section MODSEM.
       inv STEP; try (exploit external_call_receptive; eauto; check_safe; intro T; des); try by (inv_match_traces; (eexists (mkstate _ _); econs; [econs|]; eauto; ss)).
     - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
-  
+
   Lemma modsem_determinate
         st
     :

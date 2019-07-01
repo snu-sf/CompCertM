@@ -890,10 +890,13 @@ Proof.
     { ii. clarify. }
     { eapply Mem.free_unchanged_on; eauto.
       ii. unfold loc_unmapped in *. clarify. }
-    { eapply Mem.free_unchanged_on; eauto.
+    { cinv MWF.
+      eapply Mem.free_unchanged_on; eauto.
       ii. exploit H0; eauto. eapply Mem.perm_cur. eapply Mem.perm_implies.
-      - eapply Mem.free_range_perm; eauto. i.
-        admit "somehow".
+      - eapply Mem.free_range_perm; eauto.
+        erewrite Mem.address_inject in H; eauto; cycle 1.
+        { eapply Mem.free_range_perm; eauto. clear - H. lia. }
+        clear - H. lia.
       - econs. }
     { ii. eapply Mem.perm_free_3; eauto. }
     { ii. eapply Mem.perm_free_3; eauto. } i. des.
@@ -1054,8 +1057,24 @@ Proof.
                 eapply INVRANGE; eauto.
                 - inv MLE1. ss. rewrite MINVEQ. auto.
                 - inv HISTORY. ss. inv CALLSRC. ss.
-                  admit "user FREE". }
-          + i. admit "use MWFAFTR".
+                  instantiate (1:=Ptrofs.unsigned ofs + delta).
+                  rewrite RSRSP in *. rewrite FPTR in *. clarify.
+                  des. des_ifs.
+                  eapply Mem.perm_cur. eapply Mem.perm_implies.
+                  + eapply Mem.free_range_perm; eauto. lia.
+                  + econs. }
+          + i. exploit INVRANGE0; eauto. i. des. split.
+            * cinv MLE1. ss. exploit INVRANGE; eauto.
+              { rewrite MINVEQ. eauto. }
+              i. des. ii.
+destruct (SimMemInjInv.inj sm0 b1) eqn:BLK.
+              { destruct p. dup BLK. eapply INCR in BLK. clarify.
+                exploit H3; eauto.
+                eapply MAXSRC; eauto.
+                eapply Mem.valid_block_inject_1; eauto. }
+              { exploit FROZEN; eauto. i. des. clarify. }
+            * unfold Mem.valid_block.
+              erewrite <- Mem_nextblock_unfree; eauto.
         - unfold Genv.find_funct. rewrite Heq0. des_ifs. eauto.
         - eauto.
         - eauto.
@@ -1111,10 +1130,15 @@ Proof.
     + econs; ss; eauto.
       * eapply SimMemInjInv.unchanged_on_invariant; eauto.
         { ii. eapply INVRANGE; eauto. apply 0. }
-        { eapply Mem.free_unchanged_on; eauto.
+        { eapply Mem.free_unchanged_on; eauto. psimpl.
           ii. exploit INVRANGE; eauto. i. des.
-          exploit H3; eauto. admit "ez - use FREE0.". }
-      * i. admit "ez - use FREE".
+          exploit H3; eauto. eapply Mem.perm_cur. eapply Mem.perm_implies.
+          - eapply Mem.free_range_perm; eauto.
+            instantiate (1:=i). lia.
+          - econs. }
+      * i. exploit INVRANGE; eauto. i. des. split.
+        { ii. exploit H; eauto. eapply Mem.perm_free_3; eauto. }
+        { eapply Mem.valid_block_free_1; eauto. }
 
   - left; i.
     esplits; ss; i.
@@ -1148,7 +1172,7 @@ Proof.
           + eapply agree_incr; eauto.
           + i. exploit RSPDELTA; eauto. i. des. esplits; eauto.
       }
-      Unshelve. apply 0. apply 0. apply 0.
+      Unshelve. apply 0. apply 0.
 Qed.
 
 End INJINV.

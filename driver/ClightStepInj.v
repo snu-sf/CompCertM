@@ -25,6 +25,7 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
+(* TODO: move it to MemoryC *)
 Lemma external_call_parallel ef se_src se_tgt vargs_src vargs_tgt
       sm0 tr vres_src m_src1
       (CALL: external_call ef se_src vargs_src (SimMemInj.src sm0) tr vres_src m_src1)
@@ -39,7 +40,10 @@ Lemma external_call_parallel ef se_src se_tgt vargs_src vargs_tgt
       (<<VRES: Val.inject (SimMemInj.inj sm1) vres_src vres_tgt>>) /\
       (<<CALL: external_call ef se_tgt vargs_tgt (SimMemInj.tgt sm0) tr vres_tgt (SimMemInj.tgt sm1)>>).
 Proof.
-  admit "compcomp #295".
+  cinv MWF.
+  exploit external_call_mem_inject_gen; eauto. i. des.
+  exploit SimMemInj.external_call; eauto.
+  i. des. clarify. esplits; eauto.
 Qed.
 
 Definition match_env (j: meminj) (env_src env_tgt: env) :=

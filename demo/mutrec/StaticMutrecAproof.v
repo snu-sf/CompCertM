@@ -60,7 +60,6 @@ Proof.
         ii. eapply H0.
         eapply INVRANGE; eauto.
       * auto.
-      * symmetry. eapply Mem.nextblock_store; eauto.
     + ii. clarify.
       exploit SAT; eauto. i. des. des_ifs.
       * destruct (peq blk blk0).

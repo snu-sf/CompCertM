@@ -7,7 +7,6 @@ Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require Import AsmC.
 Require Import DemoHeader.
-Require Import DemoTarget.
 
 Set Implicit Arguments.
 
@@ -47,6 +46,8 @@ Section MODSEM.
 
   Program Definition modsem: ModSem.t :=
     {|
+      ModSem.state := state;
+      ModSem.genvtype := Genv.t (AST.fundef signature) unit;
       ModSem.step := bot5;
       ModSem.at_external := bot2;
       ModSem.initial_frame := initial_frame;

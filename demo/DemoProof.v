@@ -249,7 +249,7 @@ Proof.
   unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs.
   inv H3. inv H0.
 
-  eexists. eexists (SimMemInj.mk _ _ _ _ _ _ _). esplits; eauto.
+  eexists. esplits; eauto.
   - econs; ss; eauto; try refl.
     econs. i. des. clarify.
   - econs; eauto. ss.
@@ -332,7 +332,7 @@ Proof.
         eapply Mem.alloc_result in ALC. rewrite ALC in *. clarify. }
     des.
 
-    econs 2.
+    econs 2; eauto.
     { ss. split; cycle 1; eauto.
       econs 2; eauto.
       { econs; ss; eauto. }
@@ -372,6 +372,7 @@ Proof.
           unfold nextinstr_nf, nextinstr, undef_regs;
           repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0); des_ifs).
         econs 1; eauto.
+      * refl.
       * left. pfold. econs 4; cycle 2; ss.
         -- econs; ss; eauto.
            ++ ii. unfold Conventions1.is_callee_save in *.
@@ -411,6 +412,7 @@ Proof.
               unfold nextinstr_nf, nextinstr, undef_regs;
               repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0); des_ifs).
         econs 1; eauto.
+      * refl.
       * left. pfold. econs 4; cycle 2; ss.
         -- econs; ss; eauto.
            ++ ii. unfold Conventions1.is_callee_save in *.

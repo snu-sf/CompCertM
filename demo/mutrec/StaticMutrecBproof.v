@@ -60,9 +60,6 @@ Proof.
           ii. eapply H0.
           eapply INVRANGE; eauto. }
       * auto.
-      * symmetry.
-        erewrite Mem.nextblock_store; try apply STR1; eauto.
-        erewrite Mem.nextblock_store; try apply STR0; eauto.
     + ii. exploit SAT; eauto. i. inv H. des. des_ifs.
       * assert (Mem.valid_access m_tgt1 Mint32 blk0 0 Writable).
         { eapply Mem.store_valid_access_1; eauto.
@@ -702,8 +699,7 @@ Proof.
       { eapply private_unchanged_inject; eauto.
         - eapply Mem.free_unchanged_on; eauto. ii. omega.
         - instantiate (1:=~2 loc_out_of_reach (SimMemInjInv.inj sm0) (SimMemInjInv.src sm0)).
-          ss.
-        - symmetry. eapply Mem.nextblock_free; eauto. }
+          ss. }
       { ii. clarify. }
       { refl. }
       { eapply Mem.free_unchanged_on; eauto. ii. omega. }

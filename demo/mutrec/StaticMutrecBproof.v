@@ -274,8 +274,6 @@ Proof.
   pcofix CIH.
   i. pfold. inv MATCH.
 
-
-
   (* initial *)
   - intros _. inv CURRPC.
 
@@ -296,8 +294,7 @@ Proof.
       * i. ss. inv STEPSRC; ss.
 
         esplits.
-        {
-          left. econs; eauto.
+        { left. econs; eauto.
           { instantiate (1:=AsmC.mkstate _ _). split.
             - eapply modsem_determinate; eauto.
             - ss. econs; ss. econs; eauto.
@@ -375,9 +372,7 @@ Proof.
       * admit "spec receptive".
 
     (* i <> Int.zero *)
-    +
-
-      cinv MWF. ss.
+    + cinv MWF. ss.
       assert (INVAR: SimMemInjInv.mem_inv sm0 b_memo).
       { inv SIMSK. ss. inv INJECT.
         eapply INVCOMPAT; eauto. ss. }
@@ -545,7 +540,11 @@ Proof.
               { unfold nextinstr_nf, nextinstr.
                 repeat rewrite Pregmap.gss. ss. econs; eauto. }
 
-        - admit "safe". }
+        - i. ss. esplits; eauto.
+          instantiate (1:=AsmC.mkstate _ (Asm.State _ _)). econs; ss.
+          econs; eauto.
+          + des_ifs.
+          + ss. }
 
       (* not memoized *)
       { clarify. econs 2. i. splits.
@@ -665,8 +664,11 @@ Proof.
                 rewrite ARG. ss. f_equal.
                 admit "arithmetic". }
 
-        - admit "safe".
-      }
+        - i. ss. esplits; eauto.
+          instantiate (1:=AsmC.mkstate _ (Asm.State _ _)). econs; ss.
+          econs; eauto.
+          + des_ifs.
+          + ss. }
 
   - intros _. inv CURRPC.
     econs 1. i. econs 2.
@@ -733,32 +735,40 @@ Proof.
 
       * i. inv SIMRETV. inv AFTERSRC. ss.
         exploit Mem_unfree_suceeds.
-        { instantiate (1:=stk).
-          instantiate (1:=SimMemInjInv.tgt sm_ret).
-          admit "ez". } i. des.
-        eexists.
-        eexists (SimMemInjInv.mk
-                   (SimMemInjInv.src sm_ret)
-                   m1
-                   (SimMemInjInv.inj sm_ret)
-                   (SimMemInjInv.mem_inv sm_ret)).
-        eexists. esplits; ss; eauto.
+        { instantiate (1:=stk). instantiate (1:=SimMemInjInv.tgt sm_ret).
+          inv MLE1. ss. unfold Mem.valid_block.
+          eapply Plt_Ple_trans; eauto.
+          erewrite Mem.nextblock_free; eauto.
+          eapply Mem.perm_valid_block; eauto.
+          eapply STKPERM; eauto. instantiate (1:=0). lia. } i. des.
+        exploit Mem_unfree_right_inject; try apply UNFR; eauto.
+        { inv MWF1. eauto. }
+        { instantiate (1:=0). instantiate (1:=0). ii. lia. } intros INJ.
+        exploit SimMemInjInv.unchanged_on_mle; eauto.
+        { ii. clarify. }
+        { refl. }
+        { eapply Mem.unchanged_on_implies.
+          - eapply Mem_unfree_unchanged_on; eauto.
+          - unfold brange. ii. des. lia. }
+        { ii. eapply Mem_unfree_unchanged_on; eauto.
+          unfold brange. ii. des. lia. } i. des.
 
+        eexists. eexists (SimMemInjInv.mk (SimMemInjInv.src sm_ret) m1 _ _).
+        esplits; ss.
         { econs; ss; eauto.
-          - instantiate (1:=mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default).
+          - instantiate (1:=mksignature [AST.Tint] (Some AST.Tint) cc_default).
             admit "genv".
           - unfold size_arguments. des_ifs. ss. psimpl.
             rewrite MEMTGT. eauto. }
-        { admit "make lemma". }
-
+        { etrans; eauto. etrans; eauto. }
         { right. eapply CIH; eauto.
-          { admit "find lemma". }
+          { exploit SimSymb.mle_preserves_sim_skenv; ss; cycle 1; eauto.
+            etrans; eauto. etrans; eauto. }
           econs 3; ss; eauto.
-          - admit "make lemma".
-          - admit "make lemma".
+          - etrans; eauto. etrans; eauto. etrans; eauto.
           - eapply well_saved_keep; eauto.
             + admit "ez".
-            + admit "ez".
+            + admit "unprovable...".
           - admit "ez".
           - repeat rewrite Pregmap.gss. rewrite RSPC.
             repeat (rewrite Pregmap.gso; [| clarify; fail]).
@@ -870,7 +880,7 @@ Proof.
     + eauto.
 
     + right. eapply CIH; eauto.
-      { admit "ez". }
+      { exploit SimSymb.mle_preserves_sim_skenv; ss; cycle 1; eauto. }
       econs 4; ss; eauto.
 
       * etrans; eauto.
@@ -880,7 +890,6 @@ Proof.
         { admit "ez". }
 
       * repeat rewrite Pregmap.gss. econs; eauto.
-
 
   - admit "see well_saved final".
 

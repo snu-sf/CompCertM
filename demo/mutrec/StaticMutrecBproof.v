@@ -10,7 +10,7 @@ Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 (* Require SimMemInjC. *)
 Require SoundTop.
-Require SimMemInjInv SimMemInjInvC.
+Require SimMemInjC SimMemInjInv SimMemInjInvC.
 Require Mach.
 Require Import AsmC AsmregsC Conventions1C MemoryC AsmExtra.
 
@@ -35,23 +35,38 @@ Lemma memoized_inv_store_le i v_ind v_sum blk ofs0 ofs1 m_tgt0 m_tgt1
       (OFSV: ofs1 = size_chunk Mint32)
       (INDEX: v_ind = Vint i)
       (SUM: v_sum = Vint (sum i))
-      (STR0: Mem.store Mint32 sm0.(SimMemInjInv.tgt) blk ofs0 v_ind = Some m_tgt0)
+      (STR0: Mem.store Mint32 sm0.(SimMemInjInv.minj).(SimMemInj.tgt) blk ofs0 v_ind = Some m_tgt0)
       (STR1: Mem.store Mint32 m_tgt0 blk ofs1 v_sum = Some m_tgt1)
-      (MREL: sm1 = SimMemInjInv.mk sm0.(SimMemInjInv.src) m_tgt1 sm0.(SimMemInjInv.inj) sm0.(SimMemInjInv.mem_inv))
+      (MREL: sm1 = SimMemInjInv.mk
+                     (SimMemInjC.update
+                        (sm0.(SimMemInjInv.minj))
+                        (sm0.(SimMemInjInv.minj).(SimMemInj.src))
+                        m_tgt1
+                        (sm0.(SimMemInjInv.minj).(SimMemInj.inj)))
+                     sm0.(SimMemInjInv.mem_inv))
   :
     (<<MLE: SimMem.le sm0 sm1>>) /\
     (<<MWF: SimMem.wf sm1>>).
 Proof.
-  inv MWF. split.
-  - econs; ss; eauto.
+  unfold SimMemInjC.update in *. clarify. ss.
+  inv MWF. inv WF. split.
+  - econs; ss; eauto. econs; ss; eauto.
     + refl.
-    + erewrite <- Mem.nextblock_store; eauto.
-      erewrite <- Mem.nextblock_store; eauto. refl.
-    + ii. clarify.
+    + etrans.
+      * eapply Mem.store_unchanged_on; eauto.
+        ii. exploit INVRANGE; eauto. i. des.
+        exfalso. eauto.
+      * eapply Mem.store_unchanged_on; eauto.
+        ii. exploit INVRANGE; eauto. i. des.
+        exfalso. eauto.
+    + econs. ii. des. clarify.
     + ii. eapply Mem.perm_store_2; eauto. eapply Mem.perm_store_2; eauto.
   - econs; ss; eauto.
-    + eapply MemoryC.private_unchanged_inject; eauto.
-      * instantiate (1:=~2 loc_out_of_reach (SimMemInjInv.inj sm0) (SimMemInjInv.src sm0)).
+    + econs; ss; eauto.
+      * eapply MemoryC.private_unchanged_inject; eauto; cycle 1.
+        { instantiate (1:=~2
+                        loc_out_of_reach (SimMemInj.inj (SimMemInjInv.minj sm0))
+                        (SimMemInj.src (SimMemInjInv.minj sm0))). ss. }
         etrans.
         { eapply Mem.store_unchanged_on; eauto.
           ii. eapply H0.
@@ -59,7 +74,13 @@ Proof.
         { eapply Mem.store_unchanged_on; eauto.
           ii. eapply H0.
           eapply INVRANGE; eauto. }
-      * auto.
+      * etrans; eauto.
+        unfold SimMemInj.tgt_private, SimMemInj.valid_blocks in *. ss.
+        ii. des. split; auto. eapply Mem.store_valid_block_1; eauto.
+        eapply Mem.store_valid_block_1; eauto.
+      * rpapply TGTLE. etrans.
+        { eapply Mem.nextblock_store; eauto. }
+        { eapply Mem.nextblock_store; eauto. }
     + ii. exploit SAT; eauto. i. inv H. des. des_ifs.
       * assert (Mem.valid_access m_tgt1 Mint32 blk0 0 Writable).
         { eapply Mem.store_valid_access_1; eauto.
@@ -78,9 +99,10 @@ Proof.
             erewrite Mem.load_store_other; try apply STR0; eauto.
           - erewrite Mem.load_store_other; try apply STR1; eauto.
             erewrite Mem.load_store_other; try apply STR0; eauto. }
-    + i. unfold Mem.valid_block in *.
-      erewrite Mem.nextblock_store; try apply STR1; eauto.
-      erewrite Mem.nextblock_store; try apply STR0; eauto.
+    + i. exploit INVRANGE; eauto. i. des.
+      unfold SimMemInjC.update, Mem.valid_block, SimMemInj.tgt_private in *.
+      ss. des. splits; eauto. eapply Mem.store_valid_block_1; eauto.
+      eapply Mem.store_valid_block_1; eauto.
 Qed.
 
 Section SIMMODSEM.
@@ -175,10 +197,14 @@ Inductive match_states (sm_init: SimMem.t)
     (MWF: SimMem.wf sm0)
     (MLE: SimMem.le sm_init sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
-    (OUTSIDE: forall
-        blk_src blk_tgt delta
-        (DETLA: SimMemInjInv.inj sm0 blk_src = Some (blk_tgt, delta)),
-        blk_tgt <> stk)
+    (PRIV: forall
+           blk_src blk_tgt delta
+           (DETLA: sm0.(SimMemInjInv.minj).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
+           blk_tgt <> stk)
+    (NOTEXT: forall
+        ofs,
+        ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
+    (NINV: ~ sm0.(SimMemInjInv.mem_inv) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 2))
     (ARG: rs RDI = Vint i)
     (RANGE: 0 <= i.(Int.intval) < MAX)
@@ -194,10 +220,14 @@ Inductive match_states (sm_init: SimMem.t)
     (MWF: SimMem.wf sm0)
     (MLE: SimMem.le sm_init sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
-    (OUTSIDE: forall
-        blk_src blk_tgt delta
-        (DETLA: SimMemInjInv.inj sm0 blk_src = Some (blk_tgt, delta)),
-        blk_tgt <> stk)
+    (PRIV: forall
+           blk_src blk_tgt delta
+           (DETLA: sm0.(SimMemInjInv.minj).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
+           blk_tgt <> stk)
+    (NOTEXT: forall
+        ofs,
+        ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
+    (NINV: ~ sm0.(SimMemInjInv.mem_inv) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 12))
     (ARG: rs RBX = Vint i)
     (FARG: rs RDI = Vint (Int.sub i (Int.repr 1)))
@@ -213,10 +243,14 @@ Inductive match_states (sm_init: SimMem.t)
     (MWF: SimMem.wf sm0)
     (MLE: SimMem.le sm_init sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
-    (OUTSIDE: forall
+    (PRIV: forall
         blk_src blk_tgt delta
-        (DETLA: SimMemInjInv.inj sm0 blk_src = Some (blk_tgt, delta)),
+        (DETLA: sm0.(SimMemInjInv.minj).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
         blk_tgt <> stk)
+    (NOTEXT: forall
+        ofs,
+        ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
+    (NINV: ~ sm0.(SimMemInjInv.mem_inv) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 13))
     (ARG: rs RBX = Vint i)
     (SUM: rs RAX = Vint (sum (Int.sub i Int.one)))
@@ -232,10 +266,14 @@ Inductive match_states (sm_init: SimMem.t)
     (MWF: SimMem.wf sm0)
     (MLE: SimMem.le sm_init sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
-    (OUTSIDE: forall
+    (PRIV: forall
         blk_src blk_tgt delta
-        (DETLA: SimMemInjInv.inj sm0 blk_src = Some (blk_tgt, delta)),
+        (DETLA: sm0.(SimMemInjInv.minj).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
         blk_tgt <> stk)
+    (NOTEXT: forall
+        ofs,
+        ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
+    (NINV: ~ sm0.(SimMemInjInv.mem_inv) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 20))
     (ARG: rs RAX = Vint i)
   :
@@ -280,7 +318,7 @@ Proof.
     assert (CMP: compare_ints
                    (Val.and (rs RDI) (rs RDI)) Vzero
                    (rs # RBX <- (rs RDI)) # PC <- (Vptr blk (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one))
-                   (SimMemInjInv.tgt sm0) ZF = if (Int.eq_dec i Int.zero) then Vtrue else Vfalse).
+                   (SimMemInj.tgt sm0.(SimMemInjInv.minj)) ZF = if (Int.eq_dec i Int.zero) then Vtrue else Vfalse).
     { unfold compare_ints, nextinstr, Val.cmpu.
       repeat (rewrite Pregmap.gso; [| clarify; fail]).
       repeat rewrite Pregmap.gss.
@@ -386,24 +424,24 @@ Proof.
                         (((compare_ints (Val.and (rs RDI) (rs RDI)) Vzero
                                         (rs # RBX <- (rs RDI)) # PC <-
                                         (Vptr blk (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one))
-                                        (SimMemInjInv.tgt sm0)) # PC <-
+                                        (SimMemInj.tgt sm0.(SimMemInjInv.minj))) # PC <-
                                                                 (Vptr blk (Ptrofs.add (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one) Ptrofs.one)))
                            # PC <- (Vptr blk (Ptrofs.repr 8))) # RAX <- (Vint x) RBX)
                      (nextinstr_nf
                         (((compare_ints (Val.and (rs RDI) (rs RDI)) Vzero
                                         (rs # RBX <- (rs RDI)) # PC <-
                                         (Vptr blk (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one))
-                                        (SimMemInjInv.tgt sm0)) # PC <-
+                                        (SimMemInj.tgt sm0.(SimMemInjInv.minj))) # PC <-
                                                                 (Vptr blk (Ptrofs.add (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one) Ptrofs.one)))
                            # PC <- (Vptr blk (Ptrofs.repr 8))) # RAX <- (Vint x) RAX)
                      (nextinstr_nf
                         (((compare_ints (Val.and (rs RDI) (rs RDI)) Vzero
                                         (rs # RBX <- (rs RDI)) # PC <-
                                         (Vptr blk (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one))
-                                        (SimMemInjInv.tgt sm0)) # PC <-
+                                        (SimMemInj.tgt sm0.(SimMemInjInv.minj))) # PC <-
                                                                 (Vptr blk (Ptrofs.add (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one) Ptrofs.one)))
                            # PC <- (Vptr blk (Ptrofs.repr 8))) # RAX <- (Vint x))
-                     (SimMemInjInv.tgt sm0)) ZF =
+                     (SimMemInj.tgt sm0.(SimMemInjInv.minj))) ZF =
                 if (Int.eq_dec x i) then Vtrue else Vfalse).
       { unfold compare_ints at 1.
         unfold nextinstr_nf, undef_regs, nextinstr.
@@ -697,11 +735,15 @@ Proof.
       cinv MWF.
       hexploit (@SimMemInjInv.unchanged_on_mle
                   memoized_inv sm0
-                  sm0.(SimMemInjInv.src) m_tgt sm0.(SimMemInjInv.inj)); ss; eauto.
+                  sm0.(SimMemInjInv.minj).(SimMemInj.src) m_tgt sm0.(SimMemInjInv.minj).(SimMemInj.inj)); ss; eauto.
       { eapply private_unchanged_inject; eauto.
-        - eapply Mem.free_unchanged_on; eauto. ii. omega.
-        - instantiate (1:=~2 loc_out_of_reach (SimMemInjInv.inj sm0) (SimMemInjInv.src sm0)).
-          ss. }
+        - cinv WF0. eauto.
+        - instantiate (1:=~2
+                        loc_out_of_reach (SimMemInj.inj (SimMemInjInv.minj sm0))
+                        (SimMemInj.src (SimMemInjInv.minj sm0))).
+          eapply Mem.free_unchanged_on; eauto.
+          ii. omega.
+        - ss. }
       { ii. clarify. }
       { refl. }
       { eapply Mem.free_unchanged_on; eauto. ii. omega. }
@@ -735,14 +777,16 @@ Proof.
 
       * i. inv SIMRETV. inv AFTERSRC. ss.
         exploit Mem_unfree_suceeds.
-        { instantiate (1:=stk). instantiate (1:=SimMemInjInv.tgt sm_ret).
-          inv MLE1. ss. unfold Mem.valid_block.
-          eapply Plt_Ple_trans; eauto.
-          erewrite Mem.nextblock_free; eauto.
-          eapply Mem.perm_valid_block; eauto.
-          eapply STKPERM; eauto. instantiate (1:=0). lia. } i. des.
+        { instantiate (1:=stk).
+          instantiate (1:=SimMemInj.tgt sm_ret.(SimMemInjInv.minj)).
+          inv MLE1. inv MLE2. ss.
+          unfold Mem.valid_block. eapply Plt_Ple_trans; eauto.
+          - eapply Mem.perm_valid_block; eauto.
+            eapply STKPERM; eauto. instantiate (1:=0). lia.
+          - erewrite <- Mem.nextblock_free; eauto.
+            eapply Mem.unchanged_on_nextblock; eauto. } i. des.
         exploit Mem_unfree_right_inject; try apply UNFR; eauto.
-        { inv MWF1. eauto. }
+        { inv MWF1. inv WF1. eauto. }
         { instantiate (1:=0). instantiate (1:=0). ii. lia. } intros INJ.
         exploit SimMemInjInv.unchanged_on_mle; eauto.
         { ii. clarify. }
@@ -753,7 +797,11 @@ Proof.
         { ii. eapply Mem_unfree_unchanged_on; eauto.
           unfold brange. ii. des. lia. } i. des.
 
-        eexists. eexists (SimMemInjInv.mk (SimMemInjInv.src sm_ret) m1 _ _).
+        eexists.
+        eexists (SimMemInjInv.mk
+                   (SimMemInj.mk
+                      (SimMemInj.src sm_ret.(SimMemInjInv.minj))
+                      m1 _ _ _ _ _) _).
         esplits; ss.
         { econs; ss; eauto.
           - instantiate (1:=mksignature [AST.Tint] (Some AST.Tint) cc_default).
@@ -768,8 +816,15 @@ Proof.
           - etrans; eauto. etrans; eauto. etrans; eauto.
           - eapply well_saved_keep; eauto.
             + admit "ez".
-            + admit "unprovable...".
-          - admit "ez".
+            + admit "todo...".
+          - inv MLE1. ss. inv MLE3. ss. ii. clarify.
+            destruct (SimMemInj.inj (SimMemInjInv.minj sm0) blk_src) eqn:BLK0.
+            + destruct p. dup BLK0. eapply INCR in BLK0.
+              clarify. hexploit PRIV; eauto.
+            + admit "".
+          - ii. eapply NOTEXT. inv MLE1. inv MLE3. ss.
+            rewrite TGTPARENTEQ. eauto.
+          - inv MLE1. inv MLE3. ss. rewrite <- MINVEQ. eauto.
           - repeat rewrite Pregmap.gss. rewrite RSPC.
             repeat (rewrite Pregmap.gso; [| clarify; fail]).
             repeat rewrite Pregmap.gss. ss. econs; eauto.

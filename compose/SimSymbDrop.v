@@ -113,8 +113,11 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
                         (<<SIM: def_src = def_tgt>>))
     (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
     (PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public))
+    (* NOW BELOW IS DERIVABLE FROM WF *)
     (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb))
     (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb))
+    (NBSRC: skenv_src.(Genv.genv_next) = sm0.(src_ge_nb))
+    (NBTGT: skenv_tgt.(Genv.genv_next) = sm0.(tgt_ge_nb))
 .
 
 Theorem sim_skenv_symbols_inject
@@ -217,6 +220,8 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
     (<<PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public)>>)
     /\ (<<BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb)>>)
     /\ (<<BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb)>>)
+    /\ (<<NBSRC: skenv_src.(Genv.genv_next) = sm0.(src_ge_nb)>>)
+    /\ (<<NBTGT: skenv_tgt.(Genv.genv_next) = sm0.(tgt_ge_nb)>>)
 .
 
 Theorem sim_skenv_splittable_spec
@@ -360,7 +365,9 @@ Lemma init_meminj_simskenv
       (LOADMEMSRC: Sk.load_mem sk_src = Some m_src)
       (LOADMEMTGT: Sk.load_mem sk_tgt = Some m_tgt)
       (SIMSK: sim_sk ss sk_src sk_tgt)
-  : sim_skenv (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt))
+  : sim_skenv (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt)
+                  (Mem.nextblock m_src) (Mem.nextblock m_tgt)
+              )
               ss (Sk.load_skenv sk_src) (Sk.load_skenv sk_tgt).
 Proof.
   econs; ss; i.
@@ -400,6 +407,8 @@ Proof.
   - inv SIMSK. unfold Sk.load_skenv. do 2 rewrite Genv.globalenv_public. ss.
   - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
   - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
+  - inv SIMSK. erewrite Genv.init_mem_genv_next; et.
+  - inv SIMSK. erewrite Genv.init_mem_genv_next; et.
 Qed.
 
 Lemma init_meminj_invert_strong
@@ -625,7 +634,7 @@ Qed.
 Next Obligation.
   exploit init_mem_exists; et. intros LOADMEMTGT; des.
   exploit init_meminj_simskenv; try eapply SIMSK; et. intros SIMSKENV.
-  eexists m_tgt. exists (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt)).
+  eexists m_tgt. exists (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt) (Mem.nextblock m_src) (Mem.nextblock m_tgt)).
   esplits; et.
   { econs; ss; try xomega. constructor; intros.
     { intros; constructor; intros.
@@ -1015,7 +1024,7 @@ Next Obligation.
   do 2 eexists.
   dsplits; eauto.
   - instantiate (1:= Retv.mk _ _); ss. eauto.
-  - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
+  - instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs; ss; eauto.
   - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
       eapply SRCEXT in H6. unfold src_private in *. ss. des; ss.

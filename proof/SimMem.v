@@ -35,7 +35,7 @@ Module SimMem.
 
     le_PreOrder :> PreOrder le;
 
-    pub_priv: le <2= lepriv;
+    pub_priv: forall sm0 sm1, wf sm0 -> le sm0 sm1 -> lepriv sm0 sm1;
     (* lift_le: forall mrel, le mrel (lift mrel); *)
     (* lift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> wf mrel0 -> le mrel0 (unlift mrel0 mrel1); *)
 
@@ -50,6 +50,7 @@ Module SimMem.
   Lemma le_sim_val
         `{SM: class}
         mrel0 mrel1
+        (MWF: SimMem.wf mrel0)
         (MLE: le mrel0 mrel1)
     :
       sim_val mrel0 <2= sim_val mrel1

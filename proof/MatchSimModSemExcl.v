@@ -63,9 +63,6 @@ Section MATCHSIMFORWARD.
         <<MLE: SimMem.le sm0 sm2>>
   .
 
-  Hypothesis MLEPRIV: forall st_init_src st_init_tgt sm0 sm1,
-      mle_excl st_init_src st_init_tgt sm0 sm1 -> SimMem.lepriv sm0 sm1.
-
   Inductive match_states_at_helper
             (sm_init: SimMem.t)
             (idx_at: index) (st_src0: ms_src.(ModSem.state)) (st_tgt0: ms_tgt.(ModSem.state)) (sm_at sm_arg: SimMem.t): Prop :=
@@ -153,8 +150,7 @@ Section MATCHSIMFORWARD.
       (MLE: SimMem.le sm0 sm_arg)
       (* (MWF: SimMem.wf sm_arg) *)
       sm_ret
-      sm_arg_lift
-      (MLE: SimMem.le sm_arg_lift sm_ret)
+      (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
       (MWF: SimMem.wf sm_ret)
       retv_src retv_tgt
       (SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret)
@@ -166,12 +162,11 @@ Section MATCHSIMFORWARD.
       (HISTORY: match_states_at_helper sm_init idx0 st_src0 st_tgt0 sm0 sm_arg)
 
       (* just helpers *)
-      sm_unlift
-      (MWFAFTR: SimMem.wf sm_unlift)
-      (MLEAFTR: SimMem.le sm_arg sm_unlift)
+      (MWFAFTR: SimMem.wf (SimMem.unlift sm_arg sm_ret))
+      (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret))
     ,
       exists sm_after idx1 st_tgt1,
-        (<<MLE: mle_excl st_src0 st_tgt0 sm_unlift sm_after>>)
+        (<<MLE: mle_excl st_src0 st_tgt0 (SimMem.unlift sm_arg sm_ret) sm_after>>)
         /\
         forall (MLE: SimMem.le sm0 sm_after) (* helper *),
           ((<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>)
@@ -276,21 +271,21 @@ Section MATCHSIMFORWARD.
         ii. clear CALLSRC.
         exploit ATFSIM; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. } i; des.
         (* determ_tac ModSem.at_external_dtm. clear_tac. *)
-        esplits; eauto. { eapply SimMem.pub_priv; et. } i.
+        esplits; eauto. i.
         exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
         { ii. eapply SUSTAR. eapply star_refl. }
         { econs; eauto. }
-        (* { eapply SimMem.unlift_wf; eauto. } *)
-        (* { eapply SimMem.lift_spec; eauto. } *)
+        { eapply SimMem.unlift_wf; eauto. }
+        { eapply SimMem.lift_spec; eauto. }
         i; des.
         assert(MLE3: SimMem.le sm0 sm_after).
-        { eapply FOOTEXCL; et. etrans; et. (* eapply SimMem.lift_spec; et. *) }
+        { eapply FOOTEXCL; et. etrans; et. eapply SimMem.lift_spec; et. }
         spc H1. des.
         esplits; eauto.
         right.
         eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
-          apply rtc_once. eapply SimMem.pub_priv; et.
+          apply rtc_once. left. et.
         }
         { etrans; eauto. }
     }
@@ -316,7 +311,7 @@ Section MATCHSIMFORWARD.
         + left. eauto.
         + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
       - right. eapply CIH; eauto.
-        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. eapply SimMem.pub_priv; et. }
+        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
         { etransitivity; eauto. }
     }
     {
@@ -332,7 +327,7 @@ Section MATCHSIMFORWARD.
         + left. eauto.
         + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
       - right. eapply CIH; eauto.
-        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. eapply SimMem.pub_priv; et. }
+        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
         { etransitivity; eauto. }
     }
   Qed.
@@ -354,7 +349,7 @@ Section MATCHSIMFORWARD.
     - exploit INITBSIM; eauto. i; des.
       esplits; eauto.
       eapply match_states_lxsim; eauto.
-      { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. eapply SimMem.pub_priv; et. }
+      { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
     - exploit INITPROGRESS; eauto.
   Unshelve.
     all: ss.

@@ -12,7 +12,7 @@ Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 (* Require SimMemInjC. *)
 Require SoundTop.
-Require SimMemInjInvC.
+Require SimMemInjC SimMemInjInvC.
 Require Import Clightdefs.
 Require Import CtypesC.
 
@@ -41,25 +41,40 @@ Lemma memoized_inv_store_le i ind blk ofs m_tgt
       (INVAR: sm0.(SimMemInjInv.mem_inv) blk)
       (SUM: i = sum (Int.repr ind))
       (OFS: ofs = size_chunk Mint32 * ind)
-      (STR: Mem.store Mint32 sm0.(SimMemInjInv.tgt) blk ofs (Vint i) = Some m_tgt)
-      (MREL: sm1 = SimMemInjInv.mk sm0.(SimMemInjInv.src) m_tgt sm0.(SimMemInjInv.inj) sm0.(SimMemInjInv.mem_inv))
+      (STR: Mem.store Mint32 sm0.(SimMemInjInv.minj).(SimMemInj.tgt) blk ofs (Vint i) = Some m_tgt)
+      (MREL: sm1 = SimMemInjInv.mk
+                     (SimMemInjC.update
+                        (sm0.(SimMemInjInv.minj))
+                        (sm0.(SimMemInjInv.minj).(SimMemInj.src))
+                        m_tgt
+                        (sm0.(SimMemInjInv.minj).(SimMemInj.inj)))
+                     sm0.(SimMemInjInv.mem_inv))
   :
     (<<MLE: SimMem.le sm0 sm1>>) /\
     (<<MWF: SimMem.wf sm1>>).
 Proof.
   inv MWF. split.
-  - econs; ss; eauto.
+  - econs; ss; eauto. econs; ss; eauto.
     + refl.
-    + erewrite <- Mem.nextblock_store; eauto. refl.
-    + ii. clarify.
+    + eapply Mem.store_unchanged_on; eauto.
+      ii. inv WF. exploit INVRANGE; eauto. i. des.
+      exfalso. eauto.
+    + eapply SimMemInj.frozen_refl.
     + ii. eapply Mem.perm_store_2; eauto.
-  - econs; ss; eauto.
-    + eapply MemoryC.private_unchanged_inject; eauto.
-      * eapply Mem.store_unchanged_on; eauto.
-        instantiate (1:=~2 loc_out_of_reach (SimMemInjInv.inj sm0) (SimMemInjInv.src sm0)).
-        ii. eapply H0.
-        eapply INVRANGE; eauto.
-      * auto.
+  - inv WF. econs; ss; eauto.
+    + unfold SimMemInjC.update. econs; ss; eauto.
+      * eapply MemoryC.private_unchanged_inject; eauto.
+        { eapply Mem.store_unchanged_on; eauto.
+          instantiate (1:=~2
+                        loc_out_of_reach (SimMemInj.inj (SimMemInjInv.minj sm0))
+                        (SimMemInj.src (SimMemInjInv.minj sm0))).
+          ss. ii. eapply H0.
+          exploit INVRANGE; eauto. i. des. eapply H1. }
+        { ss. }
+      * etrans; eauto.
+        unfold SimMemInj.tgt_private, SimMemInj.valid_blocks in *. ss.
+        ii. des. split; auto. eapply Mem.store_valid_block_1; eauto.
+      * rpapply TGTLE. eapply Mem.nextblock_store; eauto.
     + ii. clarify.
       exploit SAT; eauto. i. des. des_ifs.
       * destruct (peq blk blk0).
@@ -71,8 +86,9 @@ Proof.
         { exists i. erewrite Mem.load_store_other; eauto. }
       * exfalso. eapply n.
         eapply Mem.store_valid_access_1; eauto.
-    + i. unfold Mem.valid_block in *.
-      erewrite Mem.nextblock_store; eauto.
+    + i. exploit INVRANGE; eauto. i. des.
+      unfold SimMemInjC.update, Mem.valid_block, SimMemInj.tgt_private in *.
+      ss. des. splits; eauto. eapply Mem.store_valid_block_1; eauto.
 Qed.
 
 Section SIMMODSEM.
@@ -484,15 +500,15 @@ Proof.
           i. inv AFTERSRC. destruct retv_src, retv_tgt; ss. clarify. inv SIMRETV; ss; clarify.
 
           hexploit Mem.valid_access_store.
-          { instantiate (4:=sm_ret.(SimMemInjInv.tgt)).
-            inv MWF. exploit SAT1; eauto.
-            - eapply SimMemInjInv.mem_inv_le; eauto.
+          { instantiate (4:=sm_ret.(SimMemInjInv.minj).(SimMemInj.tgt)).
+            inv MWF. inv WF. exploit SAT1; eauto.
+            - inv MLE0. erewrite <- MINVEQ. eauto.
             - i. des. des_ifs. eauto. }
           intros [m_tgt STR].
 
           exploit SimMemInjInvC.SimMemInjInv_obligation_7; eauto. intros MLE1.
           exploit memoized_inv_store_le; eauto.
-          { eapply SimMemInjInv.mem_inv_le; eauto. }
+          { inv MLE0. erewrite <- MINVEQ. eauto. }
           i. des.
 
           esplits.

@@ -14,7 +14,7 @@ Require Export SimMemInjInv.
 Require Import Coq.Logic.FunctionalExtensionality.
 Require Import Coq.Logic.ClassicalChoice.
 Require Import Coq.Logic.ChoiceFacts.
-      
+
 Set Implicit Arguments.
 
 
@@ -26,17 +26,17 @@ Section MEMINJINV.
   Global Program Instance SimMemInjInv : SimMem.class :=
     {
       t := t';
-      src := src;
-      tgt := tgt;
+      src := SimMemInj.src;
+      tgt := SimMemInj.tgt;
       wf := wf' P;
       le := le';
       lift := fun sm => sm;
       unlift := fun _ sm => sm;
-      sim_val := fun (mrel: t') => Val.inject mrel.(inj);
-      sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
+      sim_val := fun (mrel: t') => Val.inject mrel.(SimMemInj.inj);
+      sim_val_list := fun (mrel: t') => Val.inject_list mrel.(SimMemInj.inj);
     }.
   Next Obligation.
-    inv MLE. ii. eapply val_inject_incr; eauto.
+    inv MLE. inv MLE0. ii. eapply val_inject_incr; eauto.
   Qed.
   Next Obligation.
     extensionality l0. extensionality l1. eapply prop_ext2.
@@ -61,7 +61,7 @@ End MEMINJINV.
 
 
 (* Copied from Unusedglob.v *)
-Definition ref_init (il : list init_data) (id : ident): Prop := 
+Definition ref_init (il : list init_data) (id : ident): Prop :=
   exists ofs, In (Init_addrof id ofs) il
 .
 
@@ -78,7 +78,7 @@ Section SIMSYMBINV.
         ,
           <<OUTSIDESRC: ~ sk_src.(defs) id>> /\ <<OUTSIDETGT: ~ sk_tgt.(defs) id>>)
   .
-  
+
   Inductive invariant_globvar F V: globdef F V -> Prop :=
   | invariant_globvar_intro
       v
@@ -89,7 +89,7 @@ Section SIMSYMBINV.
     :
       invariant_globvar (Gvar v)
   .
-  
+
   Inductive sim_sk (ss: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
   | sim_sk_intro
       (SKSAME: sk_src = sk_tgt)
@@ -104,7 +104,7 @@ Section SIMSYMBINV.
           id gv
           (PROG: sk_tgt.(prog_defmap) ! id  = Some (Gvar gv))
         ,
-          <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)      
+          <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)
   .
 
   Inductive skenv_inject {F V} (ge: Genv.t F V) (j: meminj)
@@ -126,16 +126,16 @@ Section SIMSYMBINV.
       (INVCOMPAT: forall id blk (FIND: skenv_tgt.(Genv.find_symbol) id = Some blk),
           ss id <-> sm.(mem_inv) blk)
       (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
-      (INJECT: skenv_inject skenv_src sm.(inj) sm.(mem_inv))
-      (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm.(src).(Mem.nextblock))
-      (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(tgt).(Mem.nextblock))
+      (INJECT: skenv_inject skenv_src sm.(SimMemInj.inj) sm.(mem_inv))
+      (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm.(SimMemInj.src_parent_nb))
+      (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(SimMemInj.tgt_parent_nb))
       (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
   .
 
   Lemma skenv_inject_symbols_inject sm ss skenv_src skenv_tgt
         (SKENVINJ: sim_skenv_inj sm ss skenv_src skenv_tgt)
     :
-      symbols_inject sm.(inj) skenv_src skenv_tgt.
+      symbols_inject sm.(SimMemInj.inj) skenv_src skenv_tgt.
   Proof.
     inv SKENVINJ. inv SIMSKENV. inv INJECT. econs; ss. splits.
     - i. exploit IMAGE; eauto.
@@ -153,8 +153,8 @@ Section SIMSYMBINV.
         exploit IMAGE; eauto. i. des. clarify.
       + destruct (Genv.block_is_volatile skenv_tgt b2) eqn:VOL2; auto.
         dup VOL2. eapply Genv.block_is_volatile_below in VOL2.
-        exploit IMAGE; eauto. i. des. clarify .       
-  Qed.       
+        exploit IMAGE; eauto. i. des. clarify .
+  Qed.
 
   (* TODO: from SimSymbDrop *)
   Lemma Mem_getN_forall2:
@@ -169,7 +169,7 @@ Section SIMSYMBINV.
       + congruence.
       + apply IHn with (p + 1); auto. omega. omega.
   Qed.
-  
+
   Lemma init_mem_inject ss sk sk_tgt j m
         (SIMSK: sim_sk ss sk sk_tgt)
         (LOADMEM: Genv.init_mem sk = Some m)
@@ -256,7 +256,7 @@ Section SIMSYMBINV.
     - ii. eapply mi_representable; eauto. des_ifs.
     - i. eapply mi_perm_inv; eauto. des_ifs.
   Qed.
-  
+
   Global Program Instance SimSymbIdInv: SimSymb.class (SimMemInjInv P) :=
     {
       t := ident -> Prop;
@@ -346,12 +346,12 @@ Section SIMSYMBINV.
           i. exploit CLOSED0; eauto. i. des.
           eapply prog_defmap_dom in H2. des.
           exploit H0; eauto. i. des.
-          exploit CLOSED0; eauto. 
+          exploit CLOSED0; eauto.
         * destruct H1. exploit WFPTR0; eauto.
           i. exploit CLOSED; eauto. i. des.
           eapply prog_defmap_dom in H2. des.
           exploit H0; eauto. i. des.
-          exploit CLOSED; eauto. 
+          exploit CLOSED; eauto.
         * exploit NOREF0; eauto. eapply prog_defmap_norepet; eauto.
   Qed.
   Next Obligation.
@@ -372,7 +372,7 @@ Section SIMSYMBINV.
                               | None => None
                               end
                          else None).
-    eexists (mk _ _ j _). ss.
+    eexists (mk (SimMemInj.mk _ _ j bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_src)) _). ss.
     instantiate (1:=fun blk => exists id,
                         (<<FIND: (Sk.load_skenv sk_tgt).(Genv.find_symbol) id = Some blk>>) /\
                         (<<SINV: ss id>>)).
@@ -398,13 +398,17 @@ Section SIMSYMBINV.
       + rewrite <- LOADMEMSRC. refl.
 
     - econs; ss; eauto.
-      + eapply init_mem_inject; ss; eauto.
+      + econs; ss.
+        * eapply init_mem_inject; ss; eauto.
+        * refl.
+        * refl.
       + ii. unfold inv_sat_blk. des. exploit CLOSED; eauto. i. des.
         inv INV.
         admit "fill invariant_globvar".
-      + i. des. split.
-        * unfold j. ii.
-          des. eapply Genv.find_invert_symbol in INV. des_ifs.
+
+      + i. des. split; ss.
+        unfold j. split; ss.
+        * ii. eapply Genv.find_invert_symbol in INV. des_ifs.
         * eapply Genv.genv_symb_range in INV.
           rewrite LOADMEMSRC in *. auto.
     - unfold Genv.symbol_address. des_ifs.
@@ -416,22 +420,23 @@ Section SIMSYMBINV.
       eapply Genv.find_invert_symbol in Heq. des_ifs.
   Qed.
   Next Obligation.
-    inv MLE. inv SIMSKENV. inv SIMSKENV0.
-    destruct sm0, sm1. ss. clarify.
+    inv MLE. inv MLE0. inv SIMSKENV. inv SIMSKENV0.
+    destruct sm0, sm1. destruct minj. destruct minj0. ss. clarify.
     rename inj0 into inj1. rename inj into inj0.
     econs; ss; eauto.
     - inv INJECT. econs; ss; eauto.
       + i. destruct (inj1 b) as [[b0 delta]|]eqn:BLK; auto.
-        exfalso. exploit FROZEN; eauto. i. des.
-        eapply H0. eapply Plt_Ple_trans; eauto.
+        exfalso. inv FROZEN. hexploit NEW_IMPLIES_OUTSIDE; eauto.
+        i. des. eapply (Plt_strict b).
+        eapply Plt_Ple_trans; eauto. etrans; eauto.
       + i. destruct (inj0 b1) as [[b0 delta0]|]eqn:BLK; auto.
         * dup BLK. eapply INCR in BLK. clarify.
           eapply IMAGE; eauto.
-        * exploit FROZEN; eauto. i. des.
-          { exfalso. eapply H1. eapply Plt_Ple_trans; eauto. }
-          { exfalso. eapply H2. eapply Plt_Ple_trans; eauto. }
-    - etrans; eauto.
-    - clear BOUNDSRC. etrans; eauto.
+        * inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
+          { exfalso. eapply (Plt_strict b1).
+            eapply Plt_Ple_trans; eauto. etrans; eauto. }
+          { exfalso. eapply (Plt_strict b2). clear BOUNDSRC.
+            eapply Plt_Ple_trans; eauto. etrans; eauto. }
   Qed.
   Next Obligation.
     inv LE. inv SIMSKENV. econs; ss; eauto.
@@ -488,11 +493,12 @@ Section SIMSYMBINV.
   Qed.
   Next Obligation.
     dup SIMSKENV. inv SIMSKENV. inv SIMSKENV1.
-    inv ARGS. dup MWF. inv MWF. ss. rewrite MEMSRC in *. rewrite MEMTGT in *.
+    inv ARGS. dup MWF. inv MWF. inv WF.
+    ss. rewrite MEMSRC in *. rewrite MEMTGT in *.
     exploit ec_mem_inject; eauto.
     - eapply external_call_spec.
     - eapply skenv_inject_symbols_inject; eauto.
-    - i. des. exploit unchanged_on_mle; eauto. 
+    - i. des. exploit unchanged_on_mle; eauto.
       + ii. eapply ec_max_perm; eauto. eapply external_call_spec.
       + ii. eapply ec_max_perm; eauto. eapply external_call_spec.
       + i. des. esplits; eauto.

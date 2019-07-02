@@ -405,3 +405,11 @@ Proof.
   { eapply DStep_Step; eauto. }
   { eapply DStar_Star; eauto. }
 Qed.
+
+Definition safe_modsem (ms: ModSem.t) (st0: ms.(ModSem.state)): Prop :=
+  forall st1 (STAR: Star ms st0 E0 st1),
+    (<<EVCALL: ms.(ModSem.is_call) st1>>) \/
+    (<<EVRET: ms.(ModSem.is_return) st1>>) \/
+    (<<EVSTEP: exists tr st2, Step ms st1 tr st2>>)
+.
+Hint Unfold safe_modsem.

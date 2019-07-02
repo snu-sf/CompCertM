@@ -81,6 +81,23 @@ Section PROPS.
     r. etrans; et.
   Qed.
 
+  Lemma lift_args
+        args_src args_tgt sm_arg0
+        (ARGS: SimMem.sim_args args_src args_tgt sm_arg0)
+    :
+      <<ARGS: SimMem.sim_args args_src args_tgt (SimMemLift.lift sm_arg0)>>
+  .
+  Proof.
+    inv ARGS. econs; eauto.
+    - eapply SimMemLift.lift_sim_val; et.
+    - erewrite <- SimMem.sim_val_list_spec in *.
+      eapply Forall2_impl.
+      { eapply SimMemLift.lift_sim_val; et. }
+      ss.
+    - rewrite SimMemLift.lift_src. ss.
+    - rewrite SimMemLift.lift_tgt. ss.
+  Qed.
+
   (* Lemma unlift_le_lepriv *)
   (*       sm_arg sm_ret sm1 *)
   (*       (MWF0: SimMem.wf sm_arg) *)

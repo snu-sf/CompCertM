@@ -79,7 +79,7 @@ Module SimMem.
 
   (* Definition lifted `{SM: class} (sm0 sm1: t): Prop := SimMem.lift sm0 = sm1 /\ SimMem.wf sm0. *)
 
-  Definition future `{SM: class}: t -> t -> Prop := rtc (lepriv).
+  Definition future `{SM: class}: t -> t -> Prop := rtc (lepriv \2/ le).
 
   (* Definition sim_regset `{SM: class} (sm0: t) (rs_src rs_tgt: regset): Prop := *)
   (*   forall pr, sm0.(sim_val) (rs_src pr) (rs_tgt pr) *)

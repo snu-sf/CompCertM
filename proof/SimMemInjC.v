@@ -88,8 +88,8 @@ Qed.
 Inductive lepriv (sm0 sm1: SimMemInj.t'): Prop :=
 | lepriv_intro
     (INCR: inject_incr sm0.(inj) sm1.(inj))
-    (SRCUNCHANGED: Mem.unchanged_on sm0.(src_external) sm0.(src) sm1.(src))
-    (TGTUNCHANGED: Mem.unchanged_on sm0.(tgt_external) sm0.(tgt) sm1.(tgt))
+    (* (SRCUNCHANGED: Mem.unchanged_on sm0.(src_external) sm0.(src) sm1.(src)) *)
+    (* (TGTUNCHANGED: Mem.unchanged_on sm0.(tgt_external) sm0.(tgt) sm1.(tgt)) *)
     (* (SRCPARENTEQ: sm0.(src_external) = sm1.(src_external)) *)
     (* (TGTPARENTEQ: sm0.(tgt_external) = sm1.(tgt_external)) *)
     (* (SRCPARENTEQNB: (sm0.(src_parent_nb) <= sm1.(src_parent_nb))%positive) *)
@@ -98,8 +98,8 @@ Inductive lepriv (sm0 sm1: SimMemInj.t'): Prop :=
     (TGTPARENTNB: (sm0.(tgt_ge_nb) <= sm1.(tgt_parent_nb))%positive)
     (SRCGENB: sm0.(src_ge_nb) = sm1.(src_ge_nb))
     (TGTGENB: sm0.(tgt_ge_nb) = sm1.(tgt_ge_nb))
-    (FROZEN: frozen sm0.(inj) sm1.(inj) (sm0.(src_parent_nb))
-                                            (sm0.(tgt_parent_nb)))
+    (FROZEN: frozen sm0.(inj) sm1.(inj) (sm0.(src_ge_nb))
+                                            (sm0.(tgt_ge_nb)))
 .
 
 Global Program Instance SimMemInj : SimMem.class :=
@@ -119,6 +119,9 @@ Next Obligation.
   inv H0. econs; et.
   - inv H. rewrite <- SRCPARENTEQNB. lia.
   - inv H. rewrite <- TGTPARENTEQNB. lia.
+  - eapply frozen_shortened; et.
+    + inv H. ss.
+    + inv H. ss.
 Qed.
 (* Next Obligation. *)
 (*   rename H into VALID. *)
@@ -530,7 +533,7 @@ Inductive sim_skenv_inj (sm: SimMem.t) (__noname__: unit) (skenv_src skenv_tgt: 
     (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(tgt_parent_nb))
     (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
     (NBSRC: skenv_src.(Genv.genv_next) = sm.(src_ge_nb))
-    (NBTGT: skenv_src.(Genv.genv_next) = sm.(tgt_ge_nb))
+    (NBTGT: skenv_tgt.(Genv.genv_next) = sm.(tgt_ge_nb))
 .
 
 Section REVIVE.
@@ -608,6 +611,22 @@ Next Obligation.
     eapply IMAGE; eauto.
     erewrite frozen_preserves_tgt; eauto.
     eapply Plt_Ple_trans; eauto.
+  - inv MLE. eauto with congruence.
+  - inv MLE. eauto with congruence.
+  - inv MLE. eauto with congruence.
+  - inv MLE. eauto with congruence.
+Qed.
+Next Obligation.
+  inv SIMSKENV. inv INJECT.
+  econs; eauto.
+  econs; eauto.
+  - ii. exploit DOMAIN; eauto. i. eapply MLE; eauto.
+  - ii. inv MLE.
+    eapply IMAGE; eauto.
+    erewrite frozen_preserves_tgt; eauto.
+    eapply Plt_Ple_trans; eauto.
+    rewrite <- NBTGT.
+    rr in SIMSKENV0. clarify. refl.
   - inv MLE. eauto with congruence.
   - inv MLE. eauto with congruence.
   - inv MLE. eauto with congruence.

@@ -842,7 +842,7 @@ Section ADQSTEP.
         }
         instantiate (1:= sm_init).
         econs; try apply SIM0; eauto.
-        + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once. eapply SimMem.pub_priv; et.
+        + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once. et.
         + eapply lxsim_stack_le; eauto.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SESRC; et.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SETGT; et.
@@ -892,13 +892,13 @@ Section ADQSTEP.
           { unsguard SUST. des_safe. eapply sound_progress; eauto.
             eapply lift_step; eauto. }
           econs; eauto.
-          { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. eapply SimMem.pub_priv; et. }
+          { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
           { etransitivity; eauto. }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dplus; eauto. { unsguard SETGT. ss. des_ifs. } }
           right. eapply CIH; eauto. instantiate (1:=sm1). econs; eauto.
           { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
-            eapply rtc_once; eauto. eapply SimMem.pub_priv; et. }
+            eapply rtc_once; eauto. }
           { etrans; eauto. }
 
     - (* bstep *)
@@ -932,7 +932,7 @@ Section ADQSTEP.
               eapply lift_star; eauto.
           }
           econs; eauto.
-          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. eapply SimMem.pub_priv; et. }
+          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_star; eauto. }
@@ -943,7 +943,7 @@ Section ADQSTEP.
           }
           instantiate (1:=sm1). econs; eauto.
           { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
-            eapply rtc_once; eauto. eapply SimMem.pub_priv; et. }
+            eapply rtc_once; eauto. }
           { etrans; eauto. }
 
     - (* call *)
@@ -1052,7 +1052,7 @@ Section ADQSTEP.
         econs; ss; cycle 3.
         { eauto. }
         (* { eauto. } *)
-        { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. eapply SimMem.pub_priv; et. }
+        { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. }
         { eauto. }
         { etrans; eauto. }
   Qed.

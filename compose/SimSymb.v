@@ -118,13 +118,21 @@ Module SimSymb.
 
       mle_preserves_sim_skenv: forall
           sm0 sm1
-          (MLE: SimMem.lepriv sm0 sm1)
+          (MLE: SimMem.le sm0 sm1)
           ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
         ,
           <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>
       ;
 
+      mlepriv_preserves_sim_skenv: forall
+          sm0 sm1
+          (MLE: SimMem.lepriv sm0 sm1)
+          ss skenv_src skenv_tgt
+          (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
+        ,
+          <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>
+      ;
 
       (* sim_skenv_monotone_ss: forall *)
       (*     sm ss_link skenv_src skenv_tgt *)
@@ -236,6 +244,7 @@ Module SimSymb.
   Proof.
     induction MFUTURE; ss.
     des.
+    - eapply IHMFUTURE; eauto. eapply mlepriv_preserves_sim_skenv; eauto.
     - eapply IHMFUTURE; eauto. eapply mle_preserves_sim_skenv; eauto.
   Qed.
 

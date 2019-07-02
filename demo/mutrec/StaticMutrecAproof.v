@@ -88,22 +88,22 @@ Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) p
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) symbol_memoized sm_link.
 
-
-Inductive match_states_internal: StaticMutrecAspec.state -> Clight.state -> Prop :=
+Inductive match_states_internal: nat -> StaticMutrecAspec.state -> Clight.state -> Prop :=
 | match_callstate_nonzero
-    i m_src m_tgt
+    idx i m_src m_tgt
     fptr
     (* targs tres cconv *)
     (RANGE: 0 <= i.(Int.intval) < MAX)
     (FINDF: Genv.find_funct (Smallstep.globalenv (modsem2 skenv_link prog)) fptr = Some (Internal func_f))
+    (IDX: (idx > 3)%nat)
   :
-    match_states_internal (Callstate i m_src) (Clight.Callstate fptr (Tfunction (* targs tres cconv) *)
-                                                                        (Tcons tint Tnil) tint cc_default)
-                                                                [Vint i] Kstop m_tgt)
+    match_states_internal idx (Callstate i m_src) (Clight.Callstate fptr (Tfunction (* targs tres cconv) *)
+                                                                            (Tcons tint Tnil) tint cc_default)
+                                                                    [Vint i] Kstop m_tgt)
 | match_returnstate
-    i m_src m_tgt
+    idx i m_src m_tgt
   :
-    match_states_internal (Returnstate i m_src) (Clight.Returnstate (Vint i) Kstop m_tgt)
+    match_states_internal idx (Returnstate i m_src) (Clight.Returnstate (Vint i) Kstop m_tgt)
 .
 
 
@@ -145,12 +145,12 @@ Inductive match_states_internal: StaticMutrecAspec.state -> Clight.state -> Prop
 Inductive match_states (sm_init: SimMem.t)
           (idx: nat) (st_src0: StaticMutrecAspec.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: match_states_internal st_src0 st_tgt0)
+    (MATCHST: match_states_internal idx st_src0 st_tgt0)
     (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
     (MLE: SimMem.le sm_init sm0)
-    (IDX: (idx > 3)%nat)
+    (* (IDX: (idx > 3)%nat) *)
 .
 
 Lemma g_blk_exists
@@ -223,7 +223,7 @@ Proof.
   i.
   pfold.
   generalize g_blk_exists; et. i; des.
-  inv MATCH. ss. inv MATCHST; ss; clarify.
+  inv MATCH; subst. ss. inv MATCHST; ss; clarify.
   - (* call *)
     destruct (classic (i = Int.zero)).
     + (* zero *)
@@ -240,8 +240,10 @@ Proof.
           + ss. econs 1.
           + econs 1.
           + ss.
-        - admit "index". }
-      { refl. }
+        - eapply Ord.lift_idx_spec.
+          instantiate (1:=3%nat). nia. }
+      refl.
+
       left. pfold.
       econs 1. i; des.
       econs 2.
@@ -253,7 +255,8 @@ Proof.
       (* esplits; eauto. *)
 
       * split; cycle 1.
-        { admit "index". }
+        { apply Ord.lift_idx_spec.
+          instantiate (1:=2%nat). nia. }
 
         (* left. *)
         eapply plus_left with (t1 := E0) (t2 := E0); ss.
@@ -293,17 +296,20 @@ Proof.
       * right. eapply CIH; eauto. econs; ss; eauto.
         replace (Int.repr 0) with (sum Int.zero).
         { econs; eauto. }
-        { admit "arithmetic". }
+        { rewrite sum_recurse. des_ifs. }
 
     + (* nonzero *)
 
       destruct (Genv.find_symbol
                   (SkEnv.project skenv_link (CSk.of_program signature_of_function prog))
                   _memoized) eqn:BLK; cycle 1.
-      { exfalso. clear - INCL BLK. inv INCL.
+      { exfalso. clear - INCL BLK. inversion INCL; subst.
         exploit DEFS; eauto.
         - instantiate (2:=_memoized). ss.
-        - i. des. admit "genv". }
+        - i. des.
+          exploit SkEnv.project_impl_spec. eapply INCL. i. inv H. ss.
+          exploit SYMBKEEP. instantiate (1:=_memoized). ss. i.
+          rr in H. rewrite H in *. clarify. }
 
       inv MWF. ss.
 
@@ -326,18 +332,20 @@ Proof.
         { split.
           - econs 2; ss.
             + econs 2; eauto.
-              clear - H. admit "arithmetic".
+              clear - H.
+              exploit Int.eq_false; eauto. i.
+              unfold Int.eq in *. ss. des_ifs.
             + econs; eauto.
             + ss.
-          - admit "index". }
-        { refl. }
+          - eapply Ord.lift_idx_spec. eauto. }
+        refl.
 
         left. pfold.
         econs.
         i; des.
         econs 2; eauto.
         * esplits; cycle 1.
-          { eapply Ord.lift_idx_spec. instantiate (1:= 2%nat). admit "index". }
+          { eapply Ord.lift_idx_spec. eauto. }
 
           eapply plus_left with (t1 := E0) (t2 := E0); ss.
           { econs; eauto.
@@ -388,7 +396,15 @@ Proof.
               + econs 1; ss. psimpl.
                 replace (Ptrofs.unsigned (Ptrofs.mul (Ptrofs.repr 4) (Ptrofs.of_ints i)))
                   with (4 * Int.intval i); cycle 1.
-                { admit "arithmetic". } eauto. }
+                { unfold Ptrofs.mul. ss.
+                  destruct i. ss. unfold Ptrofs.of_ints. ss.
+                  unfold Int.signed. ss. des_ifs; cycle 1;
+                  unfold Int.half_modulus, Int.modulus, two_power_nat in *; ss;
+                    unfold MAX in *; rewrite <- Zdiv2_div in *; ss.
+                  { lia. }
+                  repeat rewrite Ptrofs.unsigned_repr. auto.
+                  all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power;
+                  unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega. } eauto. }
 
           eapply star_left with (t1 := E0) (t2 := E0); ss.
           { econs; eauto.
@@ -410,8 +426,10 @@ Proof.
               + econs; ss.
               + econs; ss.
               + ss.
-            - ss. instantiate (1:=true). admit "arithmetic". }
-
+            - ss. instantiate (1:=true).
+              unfold Cop.bool_val. ss.
+              unfold Int.eq. unfold Val.of_bool.
+              destruct (zeq (Int.unsigned i0) (Int.unsigned (Int.repr 0))) eqn:EQ; ss. }
           eapply star_left with (t1 := E0) (t2 := E0); ss.
           { econs; eauto.
             { eapply modsem2_determinate; eauto. }
@@ -454,7 +472,13 @@ Proof.
           (* eexists (SimMemInjInv.mk minj _ _ (SimMemInjInv.mem_inv sm_init)). *)
           esplits; ss; eauto.
           { econs; ss; eauto.
-            instantiate (1:=Vptr g_blk Ptrofs.zero). admit "genv". }
+            instantiate (1:=Vptr g_blk Ptrofs.zero).
+            inv SIMSK. inv SIMSKENV. inv INJECT. ss.
+            econs. eapply DOMAIN; eauto.
+            exploit Genv.genv_symb_range. unfold Genv.find_symbol in *. eauto.
+            i. ss. ii.
+            exploit INVCOMPAT; eauto. i. rewrite <- H1 in H0. ss.
+            rewrite Ptrofs.add_zero_l. ss. }
           { refl. }
           { econs; eauto. }
           i. inv AFTERSRC. destruct retv_src, retv_tgt; ss. clarify. inv SIMRETV; ss; clarify.
@@ -513,7 +537,7 @@ Proof.
               - econs; eauto. econs; eauto.
                 + econs; eauto.
                   * eapply eval_Evar_global; ss.
-                    instantiate (1:=b). admit "genv".
+                    instantiate (1:=b). ss.
                   * ss. econs 2; eauto.
                 + econs; eauto. ss.
                 + econs; eauto.
@@ -521,8 +545,22 @@ Proof.
               - ss.
               - ss. psimpl. econs; ss; eauto.
                 rpapply STR. f_equal.
-                + admit "arithmetic".
-                + f_equal. admit "arithmetic". }
+                + unfold Ptrofs.mul. ss.
+                  destruct i. ss. unfold Ptrofs.of_ints. ss.
+                  unfold Int.signed. ss. des_ifs; cycle 1;
+                  unfold Int.half_modulus, Int.modulus, two_power_nat in *; ss;
+                    unfold MAX in *; rewrite <- Zdiv2_div in *; ss.
+                  { lia. }
+                  repeat rewrite Ptrofs.unsigned_repr. auto.
+                  all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power;
+                  unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega.
+                + f_equal.
+                  rewrite Int.repr_unsigned.
+                  rewrite sum_recurse with (i := i). des_ifs.
+                  rewrite Z.eqb_eq in Heq.
+                  exploit Int.eq_spec. instantiate (1:=i). instantiate (1:=Int.zero).
+                  unfold Int.eq. unfold Int.unsigned. rewrite Heq. des_ifs. i. subst i.
+                  rewrite Int.sub_zero_r. rewrite sum_recurse. des_ifs. }
 
             eapply star_left with (t1 := E0) (t2 := E0); ss.
             { econs; eauto.
@@ -546,10 +584,15 @@ Proof.
           { eapply SimMemInjInvC.SimSymbIdInv_obligation_7; cycle 1; eauto. }
           { econs; ss.
             - replace (Int.add (sum (Int.sub i Int.one)) i) with (sum i); cycle 1.
-              { admit "arithmetic". }
+              { rewrite sum_recurse with (i := i). des_ifs.
+                rewrite Z.eqb_eq in Heq.
+                exploit Int.eq_spec. instantiate (1:=i). instantiate (1:=Int.zero).
+                unfold Int.eq. unfold Int.unsigned. rewrite Heq. des_ifs. i. subst i.
+                rewrite Int.sub_zero_r. rewrite sum_recurse. des_ifs. }
+
               econs 2.
             - etrans; eauto. etrans; eauto.
-            - omega. }
+            (* - omega. *) }
       }
 
       { hexploit VAL; eauto. i. des. clarify.
@@ -567,15 +610,15 @@ Proof.
             + econs; eauto.
             + econs; eauto.
             + ss.
-          - admit "index". }
-        { refl. }
+          - eapply Ord.lift_idx_spec. eauto. }
+        refl.
 
         left. pfold.
         econs.
         i; des.
         econs 2; eauto.
         * esplits; cycle 1.
-          { eapply Ord.lift_idx_spec. instantiate (1:= 2%nat). admit "index". }
+          { eapply Ord.lift_idx_spec. eauto. }
 
           eapply plus_left with (t1 := E0) (t2 := E0); ss.
           { econs; eauto.
@@ -619,14 +662,22 @@ Proof.
               + ss. econs. econs; ss.
                 * econs.
                   { eapply eval_Evar_global; ss.
-                    instantiate (1:=b). admit "genv". }
+                    instantiate (1:=b). ss. }
                   { econs 2; ss. }
                 * econs; ss.
                 * ss.
               + econs 1; ss. psimpl.
                 replace (Ptrofs.unsigned (Ptrofs.mul (Ptrofs.repr 4) (Ptrofs.of_ints i)))
                   with (4 * Int.intval i); cycle 1.
-                { admit "arithmetic". } eauto. }
+                { unfold Ptrofs.mul. ss.
+                  destruct i. ss. unfold Ptrofs.of_ints. ss.
+                  unfold Int.signed. ss. des_ifs; cycle 1;
+                  unfold Int.half_modulus, Int.modulus, two_power_nat in *; ss;
+                    unfold MAX in *; rewrite <- Zdiv2_div in *; ss.
+                  { lia. }
+                  repeat rewrite Ptrofs.unsigned_repr. auto.
+                  all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power;
+                  unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega. } eauto. }
 
           eapply star_left with (t1 := E0) (t2 := E0); ss.
           { econs; eauto.
@@ -648,7 +699,11 @@ Proof.
               + econs; ss.
               + econs; ss.
               + ss.
-            - ss. instantiate (1:=false). admit "arithmetic". }
+            - ss. instantiate (1:=false).
+              unfold Cop.bool_val. ss.
+              unfold Int.eq. unfold Val.of_bool.
+              destruct (zeq (Int.unsigned (sum (Int.repr (Int.intval i))))
+                            (Int.unsigned (Int.repr 0))) eqn:EQ; ss. }
 
           eapply star_left with (t1 := E0) (t2 := E0); ss.
           { econs; eauto.
@@ -672,14 +727,18 @@ Proof.
           { econs; eauto.
             - ss. replace (Int.repr (Int.intval i)) with i.
               + econs; eauto.
-              + admit "arithmetic".
+              + symmetry. eapply Int.eqm_repr_eq.
+                eapply Int.eqm_refl2. ss.
             - econs; eauto. }
       }
 
   - (* return *)
     econs 4; ss; eauto.
     econs; ss; eauto.
-    Unshelve. all: admit "".
+    Unshelve.
+    eapply memoized_inv.
+    ss. eapply MLE2.
+    admit "".
 Qed.
 
 Theorem sim_modsem
@@ -696,11 +755,28 @@ Proof.
     esplits; eauto.
     + refl.
     + econs; eauto.
-    +
-      instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
+    + instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
       inv INITTGT. inv TYP. ss.
       assert (FD: fd = func_f).
-      { admit "genv". } clarify.
+      { destruct args_src, args_tgt; ss. clarify.
+        inv SIMARGS. ss. clarify. inv VALS. inv H1. inv H3. inv FPTR. ss.
+        des_ifs.
+        inv SIMSKENV. ss. inv SIMSKE. ss. inv INJECT. ss.
+        exploit IMAGE; eauto.
+        { exploit Genv.genv_symb_range.
+          unfold Genv.find_symbol in SYMB. eauto. i. ss. eauto. }
+        ii. des. subst. clarify.
+
+        rewrite Genv.find_funct_ptr_iff in FINDF.
+        unfold Genv.find_def in FINDF. ss.
+        do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+        des_ifs.
+        destruct (Genv.invert_symbol
+                    (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)) b2) eqn:SKENVSYMB; ss.
+        unfold o_bind in FINDF. ss.
+        exploit Genv.find_invert_symbol. eauto. i.
+        rewrite H in *. clarify.
+        destruct ((prog_defmap prog) ! f_id) eqn:DMAP; ss. clarify. } clarify.
 
       inv SIMARGS. ss. rewrite VS in *. inv VALS.
       inv H2. inv H3. rewrite <- H1 in *.
@@ -710,9 +786,9 @@ Proof.
       eapply match_states_lxsim; ss.
       * inv SIMSKENV; eauto.
       * econs; eauto.
-        { econs; eauto. }
+        { econs; eauto. omega. }
         { refl. }
-        { omega. }
+        (* { omega. } *)
 
   - (* init progress *)
     i.
@@ -726,7 +802,22 @@ Proof.
 
     esplits; eauto. econs; eauto.
     + instantiate (1:= func_f).
-      ss. admit "genv".
+      ss.
+      destruct args_src, args_tgt; ss. clarify.
+      inv VALS. inv H1. inv H3. inv FPTR0. ss.
+      des_ifs.
+      inv SIMSKENV. ss. inv SIMSKE. ss. inv INJECT. ss.
+      exploit IMAGE; eauto.
+      { exploit Genv.genv_symb_range.
+        unfold Genv.find_symbol in SYMB. eauto. i. ss. eauto. }
+      ii. des. subst. clarify.
+
+      rewrite Genv.find_funct_ptr_iff in *.
+      unfold Genv.find_def in *; ss.
+      do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+      des_ifs.
+      exploit Genv.find_invert_symbol. eauto. i.
+      rewrite H in *. clarify.
     + econs; ss. erewrite <- inject_list_length; eauto.
       rewrite VS. auto.
 Qed.

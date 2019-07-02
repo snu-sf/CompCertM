@@ -231,6 +231,7 @@ Inductive match_states (sm_init: SimMem.t)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 12))
     (ARG: rs RBX = Vint i)
     (FARG: rs RDI = Vint (Int.sub i (Int.repr 1)))
+    (RANGE: 0 < i.(Int.intval) < MAX)
   :
     match_states sm_init idx (Interstate i m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt)) sm0
@@ -254,6 +255,7 @@ Inductive match_states (sm_init: SimMem.t)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 13))
     (ARG: rs RBX = Vint i)
     (SUM: rs RAX = Vint (sum (Int.sub i Int.one)))
+    (RANGE: 0 < i.(Int.intval) < MAX)
   :
     match_states sm_init idx (Returnstate (sum i) m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt))sm0
@@ -281,6 +283,61 @@ Inductive match_states (sm_init: SimMem.t)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt)) sm0
 .
 
+Lemma f_blk_exists
+  :
+    exists f_blk,
+      (<<FINDF: Genv.find_symbol
+                  (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog)
+                  f_id = Some f_blk>>)
+      /\
+      (<<FINDF: Genv.find_funct_ptr
+                  (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog)
+                  f_blk = None>>)
+      /\
+      (<<FINDF: exists skd, Genv.find_funct_ptr skenv_link f_blk = Some skd /\
+                            (mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default) = SkEnv.get_sig skd>>)
+.
+Proof.
+  exploit (prog_defmap_norepet prog f_id); eauto.
+  { unfold prog_defs_names. ss. repeat (econs; eauto).
+    - ii; ss; des; ss.
+    - ii; ss; des; ss. }
+  { ss. eauto. }
+  intro T; des.
+  destruct ((prog_defmap (Sk.of_program fn_sig prog)) ! f_id) eqn:DMAP; clarify.
+  exploit SkEnv.project_impl_spec; eauto. intro PROJ.
+  assert(PREC: SkEnv.genv_precise
+                 (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog)
+                 prog).
+  { eapply SkEnv.project_revive_precise; ss; et. }
+  inv PREC.
+  exploit (P2GE f_id); eauto. i; des. des_ifs.
+  rename b into f_blk.
+  eexists. splits; et.
+  { unfold Genv.find_funct_ptr. des_ifs. }
+  (* exploit (@SkEnv.project_revive_precise _ _ skenv_link); eauto. *)
+  { inv INCL.
+    exploit (Sk.of_program_prog_defmap prog fn_sig); et. rewrite DMAP. intro S. ss.
+
+    remember ((prog_defmap (Sk.of_program fn_sig prog)) ! f_id) as U in *.
+    destruct U eqn:V; try (by ss). inv S. inv H1.
+
+    exploit DEFS; eauto. i; des.
+    assert(blk = f_blk).
+    { inv PROJ. exploit SYMBKEEP; et.
+      - instantiate (1:= f_id). unfold defs. des_sumbool. ss. et.
+      - i. rewrite SYMB0 in *. clear - SYMB H. unfold SkEnv.revive in *. rewrite Genv_map_defs_symb in *. ss.
+        rewrite SYMB in *. des. clarify.
+    }
+    clarify. inv MATCH.
+    esplits; eauto.
+    - unfold Genv.find_funct_ptr. rewrite DEF0. et.
+    - ss. des_ifs. clear - H. inv H; ss.
+    - ss.
+  }
+Qed.
+
+
 (* TODO: from DempProof *)
 Lemma E0_double:
   E0 = E0 ** E0.
@@ -303,14 +360,21 @@ Proof.
   destruct (Genv.find_symbol
               ((skenv_link.(SkEnv.project) prog.(Sk.of_program fn_sig)).(SkEnv.revive) prog)
               _memoized) as [b_memo|] eqn:BLK; cycle 1.
-  { exfalso. clear - INCL BLK. inv INCL.
+  { exfalso. clear - INCL BLK. inversion INCL; subst.
     exploit DEFS; eauto.
     - instantiate (2:=_memoized). ss.
-    - i. des. admit "genv". }
+    - i. des.
+      exploit SkEnv.project_impl_spec. eapply INCL. i. inv H. ss.
+      exploit SYMBKEEP. instantiate (1:=_memoized). ss. i.
+      rr in H. rewrite <- H in *.
+      assert (Genv.find_symbol (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog) _memoized = Some blk).
+      { ss. } clarify. }
 
   revert_until tge.
   pcofix CIH.
-  i. pfold. inv MATCH.
+  i. pfold.
+  generalize f_blk_exists; et. i; des.
+  inv MATCH.
 
   (* initial *)
   - intros _. inv CURRPC.
@@ -405,9 +469,12 @@ Proof.
             unfold nextinstr_nf, nextinstr, undef_regs.
             repeat (rewrite Pregmap.gso; [| clarify; fail]).
             repeat rewrite Pregmap.gss.
-            admit "arithemetic". }
+            unfold Vzero. rewrite sum_recurse. des_ifs. }
 
-      * admit "spec receptive".
+      * econs; ss.
+        { ii. inv H; ss.
+          eexists. inv H0. econs. }
+        { ii. inv H; ss; nia. }
 
     (* i <> Int.zero *)
     + cinv MWF. ss.
@@ -463,7 +530,8 @@ Proof.
         - econs 2.
           + split.
             * apply star_one. ss. econs 1.
-            * admit "index".
+            * eapply Ord.lift_idx_spec.
+              admit "index".
           + refl.
           + left. pfold. intros _. econs 1. i. econs 2.
 
@@ -519,7 +587,8 @@ Proof.
                       unfold Genv.symbol_address. ss. rewrite BLK. psimpl.
                       des_ifs_safe. ss. psimpl.
                       replace (Ptrofs.unsigned (Ptrofs.of_int64 Int64.zero)) with 0; cycle 1.
-                      { admit "arithmetic". }
+                      { unfold Int64.zero.
+                        exploit Ptrofs.of_int64_to_int64; eauto. }
                       rewrite VINDEX. ss. }
 
                 econs 2; eauto.
@@ -551,7 +620,7 @@ Proof.
                       unfold Genv.symbol_address. ss. rewrite BLK. psimpl.
                       des_ifs_safe. ss.
                       replace (Ptrofs.unsigned (Ptrofs.add (Ptrofs.repr 4) (Ptrofs.of_int64 Int64.zero))) with 4; cycle 1.
-                      { admit "arithmetic". }
+                      { exploit Ptrofs.of_int64_to_int64; eauto. }
                       rewrite VSUM. ss. }
 
                 econs 2; eauto.
@@ -589,7 +658,8 @@ Proof.
         - econs 2.
           + split.
             * apply star_one. ss. econs 2.
-              admit "arithmetic".
+              exploit Int.eq_false. eapply H. ii.
+              unfold Int.eq in H0. des_ifs.
             * admit "index".
           + refl.
           + left. pfold. intros _. econs 1. i. econs 2.
@@ -646,7 +716,8 @@ Proof.
                       unfold Genv.symbol_address. ss. rewrite BLK. psimpl.
                       des_ifs_safe. ss. psimpl.
                       replace (Ptrofs.unsigned (Ptrofs.of_int64 Int64.zero)) with 0; cycle 1.
-                      { admit "arithmetic". }
+                      { unfold Int64.zero.
+                        exploit Ptrofs.of_int64_to_int64; eauto. }
                       rewrite VINDEX. ss. }
 
                 econs 2; eauto.
@@ -700,7 +771,12 @@ Proof.
                 repeat (rewrite Pregmap.gso; [| clarify; fail]). ss.
                 repeat rewrite Pregmap.gss.
                 rewrite ARG. ss. f_equal.
-                admit "arithmetic". }
+                rewrite Int.add_zero_l.
+                rewrite Int.add_signed. rewrite Int.sub_signed. ss. }
+              { exploit Int.eq_false. eapply H. i.
+                unfold Int.eq in H0.
+                rewrite Int.unsigned_zero in H0.
+                des_ifs. split; eauto. destruct i. ss. omega. }
 
         - i. ss. esplits; eauto.
           instantiate (1:=AsmC.mkstate _ (Asm.State _ _)). econs; ss.
@@ -721,7 +797,6 @@ Proof.
 
     left. pfold. intros _. econs 3; eauto.
     + econs; eauto. econs; eauto.
-      instantiate (1:=g_id). admit "genv".
     + ii.
 
       hexploit Mem.range_perm_free.
@@ -754,14 +829,51 @@ Proof.
       eexists (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _).
       esplits; eauto.
       * econs; ss; eauto.
-        admit "genv".
+        instantiate (1:=Vptr g_fptr Ptrofs.zero).
+        inv SIMSK. inv SIMSKENV. inv INJECT. ss.
+        econs. eapply DOMAIN; eauto.
+        exploit Genv.genv_symb_range. unfold Genv.find_symbol in *. eauto.
+        i. ss. ii.
+        exploit INVCOMPAT; eauto. i. rewrite <- H0 in H. ss.
+        rewrite Ptrofs.add_zero_l. ss.
       * econs; eauto.
         { repeat rewrite Pregmap.gss. ss.
-          instantiate (1:=g_fptr).
-          admit "genv". }
-        { admit "genv". }
+          unfold Genv.symbol_address.
+          assert (Genv.find_symbol
+                    (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog) f_id = Some g_fptr) by ss.
+          rewrite H. ss. }
+        { unfold Genv.find_funct. des_ifs.
+          unfold Genv.find_funct_ptr. des_ifs.
+          unfold Genv.find_def in Heq. ss.
+          do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+          des_ifs.
+          exploit Genv.find_invert_symbol. eauto. i. rewrite H in *.
+          unfold o_bind in Heq. ss. clarify.
+          destruct (Genv.invert_symbol skenv_link g_fptr) eqn:SYMB.
+          unfold o_bind in Heq0. ss. des_ifs.
+          exploit SkEnv.project_impl_spec. eapply INCL. i. inv H0. ss.
+          destruct ((prog_defmap (Sk.of_program fn_sig prog)) ! i0) eqn:DMAP; ss.
+          assert (defs (Sk.of_program fn_sig prog) i0).
+          { rewrite <- defs_prog_defmap. eauto. }
+          exploit SYMBKEEP; eauto. i. rr in H1.
+          clarify. exploit Genv.invert_find_symbol. eapply SYMB. i.
+          rewrite <- H1 in H2. exploit Genv.find_invert_symbol; eauto. i.
+          rewrite H3 in *. clarify.
+          unfold o_bind in Heq0. ss. }
         { instantiate (1:=(mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default)).
-          admit "genv". }
+          destruct ((prog_defmap (Sk.of_program fn_sig prog)) ! f_id) eqn:DMAP; clarify.
+          assert (DEFS0: defs (Sk.of_program fn_sig prog) f_id).
+          { rewrite <- defs_prog_defmap. eauto. }
+          exploit SkEnv.project_impl_spec. eapply INCL. i. inv H.
+          inv INCL.
+          exploit DEFS; eauto. i. des.
+          exploit SYMBKEEP; eauto. i. rr in H.
+          rewrite H in *. rewrite FINDG in *. ss. clarify.
+          inv MATCH. ss. inv H1.
+          - des_ifs. esplits.
+            rewrite Genv.find_funct_ptr_iff. eauto. ss.
+          - des_ifs. esplits.
+            rewrite Genv.find_funct_ptr_iff. eauto. ss. }
         { unfold size_arguments. des_ifs. }
         { econs; eauto.
           - econs; eauto. ss.
@@ -804,7 +916,14 @@ Proof.
         esplits; ss.
         { econs; ss; eauto.
           - instantiate (1:=mksignature [AST.Tint] (Some AST.Tint) cc_default).
-            admit "genv".
+            assert (SYMBREV: Genv.find_symbol
+                               (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog) f_id = Some g_fptr) by ss.
+            unfold Genv.symbol_address. rewrite SYMBREV. ss. des_ifs.
+            destruct ((prog_defmap (Sk.of_program fn_sig prog)) ! f_id) eqn:DMAP; clarify.
+            assert (DEFS0: defs (Sk.of_program fn_sig prog) f_id).
+            { rewrite <- defs_prog_defmap. eauto. }
+            exploit SkEnv.project_impl_spec. eapply INCL. i. inv H.
+            inv INCL. exploit DEFS; eauto.
           - unfold size_arguments. des_ifs. ss. psimpl.
             rewrite MEMTGT. eauto. }
         { etrans; eauto. etrans; eauto. }
@@ -876,7 +995,8 @@ Proof.
               repeat (rewrite Pregmap.gso; [| clarify; fail]).
               rewrite ARG.
               replace (Ptrofs.unsigned (Ptrofs.of_int64 Int64.zero)) with 0; cycle 1.
-              { admit "arithmetic". }
+              { unfold Int64.zero.
+                exploit Ptrofs.of_int64_to_int64; eauto. }
               rewrite STR0.
               ss. }
 
@@ -901,7 +1021,9 @@ Proof.
               replace
                 (Val.add (Vint (sum (Int.sub i Int.one))) (Vint (Int.add i (Int.repr 0))))
                 with (Vint (sum i)); cycle 1.
-              { admit "arithmetic". }
+              { rewrite sum_recurse with (i := i). des_ifs; cycle 1.
+                - unfold Val.add. rewrite Int.add_zero. auto.
+                - rewrite Z.eqb_eq in Heq0. omega. }
               rewrite STR1. ss. }
 
         econs 2; eauto.
@@ -947,7 +1069,7 @@ Proof.
 
   - admit "see well_saved final".
 
-    Unshelve. all:admit"".
+    Unshelve. all: admit "".
 Qed.
 
 (* Lemma well_saved_initial init_rs rs0 m0 arg *)
@@ -1121,7 +1243,25 @@ Proof.
     + instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
       inv INITTGT. inv TYP. ss.
       assert (FD: fd = func_g).
-      { admit "genv". } clarify.
+      { destruct args_src, args_tgt; ss. clarify.
+        inv SIMARGS. ss. clarify. inv VALS. inv H1. inv H3. inv FPTR. ss.
+        des_ifs.
+        inv SIMSKENV. inv SIMSKE. inv INJECT. ss.
+        exploit IMAGE; eauto.
+        { exploit Genv.genv_symb_range.
+          unfold Genv.find_symbol in SYMB. eauto. i. ss. eauto. }
+        ii. des. subst. clarify.
+        unfold Genv.find_funct in FINDF. ss. des_ifs.
+        rewrite Genv.find_funct_ptr_iff in FINDF.
+        unfold Genv.find_def in FINDF. ss.
+        do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+        des_ifs.
+        destruct (Genv.invert_symbol
+             (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) b) eqn:SKENVSYMB; ss.
+        unfold o_bind in FINDF. ss.
+        exploit Genv.find_invert_symbol. eauto. i.
+        rewrite H in *. clarify.
+        destruct ((prog_defmap prog) ! g_id) eqn:DMAP; ss. clarify. } clarify.
 
       admit "see well_saved_initial".
 
@@ -1135,7 +1275,22 @@ Proof.
       eapply inject_list_length in VALS. des. rewrite <- VALS.
       rewrite VS. ss.
     + ss.
-    + admit "genv".
+    + ss.
+      destruct args_src, args_tgt; ss. clarify.
+      inv VALS. inv H1. inv H3. inv FPTR0. ss.
+      des_ifs.
+      inv SIMSKENV. inv SIMSKE. inv INJECT. ss.
+      exploit IMAGE; eauto.
+      { exploit Genv.genv_symb_range.
+        unfold Genv.find_symbol in SYMB. eauto. i. ss. eauto. }
+      ii. des. subst. clarify.
+
+      rewrite Genv.find_funct_ptr_iff in *.
+      unfold Genv.find_def in *; ss.
+      do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+      des_ifs.
+      exploit Genv.find_invert_symbol. eauto. i.
+      rewrite H in *. clarify.
 Qed.
 
 

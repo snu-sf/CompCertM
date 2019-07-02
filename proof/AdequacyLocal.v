@@ -375,14 +375,17 @@ Section SIMGE.
             (* eapply external_call_symbols_preserved; eauto. *)
             (* apply System.skenv_globlaenv_equiv. *)
         }
-        { eapply SimMem.lift_spec; eauto. }
+        (* { eapply SimMem.lift_spec; eauto. } *)
         left. pfold.
         econs 4.
-        { eapply SimMem.lift_spec; eauto. }
-        { eapply SimMem.unlift_wf; eauto. }
+        (* { eapply SimMem.lift_spec; eauto. } *)
+        (* { eapply SimMem.unlift_wf; eauto. } *)
+        { eauto. }
+        { eauto. }
         { econs; eauto. }
         { econs; eauto. }
-        { clear - RETV. eapply SimMem.sim_retv_unlift; et. }
+        (* { clear - RETV. eapply SimMem.sim_retv_unlift; et. } *)
+        { eauto. }
     }
     des.
     rewrite <- SYSSRC. rewrite <- SYSTGT.
@@ -519,19 +522,20 @@ Section ADQMATCH.
       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
       ms_src lst_src0
       ms_tgt lst_tgt0
-      sm_at sm_arg
+      sm_at sm_arg sm_arg_lift
       (MWF: SimMem.wf sm_arg)
       (GE: sim_ge sm_at sem_src.(globalenv) sem_tgt.(globalenv))
       (MLE: SimMem.le tail_sm sm_at)
       (MLE: SimMem.le sm_at sm_arg)
       sm_init
-      (MLE: SimMem.le (SimMem.lift sm_arg) sm_init)
+      (MLELIFT: SimMem.lepriv sm_arg sm_arg_lift)
+      (MLE: SimMem.le sm_arg_lift sm_init)
       sidx
       (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
       (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
       (K: forall
           sm_ret retv_src retv_tgt
-          (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
+          (MLE: SimMem.le sm_arg_lift sm_ret)
           (MWF: SimMem.wf sm_ret)
           (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
           lst_src1
@@ -549,7 +553,9 @@ Section ADQMATCH.
           exists lst_tgt1 sm_after i1,
             (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 retv_tgt lst_tgt1>>)
             /\
-            (<<MLE: SimMem.le sm_at sm_after>>)
+            (<<MLEPRIV: SimMem.lepriv sm_ret sm_after>>)
+            /\
+            (<<MLEPUB: SimMem.le sm_at sm_after>>)
             /\
             (<<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                             tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
@@ -836,7 +842,7 @@ Section ADQSTEP.
         }
         instantiate (1:= sm_init).
         econs; try apply SIM0; eauto.
-        + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once. eauto.
+        + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once. eapply SimMem.pub_priv; et.
         + eapply lxsim_stack_le; eauto.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SESRC; et.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SETGT; et.
@@ -886,13 +892,13 @@ Section ADQSTEP.
           { unsguard SUST. des_safe. eapply sound_progress; eauto.
             eapply lift_step; eauto. }
           econs; eauto.
-          { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
+          { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. eapply SimMem.pub_priv; et. }
           { etransitivity; eauto. }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dplus; eauto. { unsguard SETGT. ss. des_ifs. } }
           right. eapply CIH; eauto. instantiate (1:=sm1). econs; eauto.
           { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
-            eapply rtc_once; eauto. }
+            eapply rtc_once; eauto. eapply SimMem.pub_priv; et. }
           { etrans; eauto. }
 
     - (* bstep *)
@@ -926,7 +932,7 @@ Section ADQSTEP.
               eapply lift_star; eauto.
           }
           econs; eauto.
-          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
+          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. eapply SimMem.pub_priv; et. }
           etransitivity; eauto.
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_star; eauto. }
@@ -937,7 +943,7 @@ Section ADQSTEP.
           }
           instantiate (1:=sm1). econs; eauto.
           { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
-            eapply rtc_once; eauto. }
+            eapply rtc_once; eauto. eapply SimMem.pub_priv; et. }
           { etrans; eauto. }
 
     - (* call *)
@@ -967,13 +973,12 @@ Section ADQSTEP.
         { unsguard SUST. des_safe. eapply sound_progress; eauto.
           ss. folder. des_ifs_safe. econs; eauto. }
         {
-          instantiate (1:= (SimMem.lift sm_arg)).
+          (* instantiate (1:= (SimMem.lift sm_arg)). *)
+          instantiate (1:= sm_arg).
           econs 2; eauto.
           * ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto.
-            econs 2.
-            { left. et. }
             econs 2; et.
-          * instantiate (1:= (SimMem.lift sm_arg)).
+          * instantiate (1:= sm_arg).
             econs; [eassumption|..]; revgoals.
             { unsguard SETGT. ss. }
             { unsguard SESRC. ss. }
@@ -989,16 +994,17 @@ Section ADQSTEP.
             { ss. }
             { reflexivity. }
             { et. }
+            { refl. }
             { et. }
             { ss. folder. des_ifs. }
             { eauto. }
           * reflexivity.
-          * eapply SimMem.lift_wf; eauto.
-          * inv SIMARGS. econs; ss; eauto.
-            { eapply SimMem.lift_sim_val; eauto. }
-            { eapply SimMem.sim_val_list_lift; et. }
-            { erewrite SimMem.lift_src. ss. }
-            { erewrite SimMem.lift_tgt. ss. }
+          (* * eapply SimMem.lift_wf; eauto. *)
+          (* * inv SIMARGS. econs; ss; eauto. *)
+          (*   { eapply SimMem.lift_sim_val; eauto. } *)
+          (*   { eapply SimMem.sim_val_list_lift; et. } *)
+          (*   { erewrite SimMem.lift_src. ss. } *)
+          (*   { erewrite SimMem.lift_tgt. ss. } *)
         }
 
 
@@ -1046,7 +1052,7 @@ Section ADQSTEP.
         econs; ss; cycle 3.
         { eauto. }
         (* { eauto. } *)
-        { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. }
+        { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. eapply SimMem.pub_priv; et. }
         { eauto. }
         { etrans; eauto. }
   Qed.

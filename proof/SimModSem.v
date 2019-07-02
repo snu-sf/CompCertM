@@ -158,12 +158,12 @@ Section SIMMODSEM.
           exists args_tgt sm_arg,
             (<<SIMARGS: SimMem.sim_args args_src args_tgt sm_arg>>
             /\ (<<MWF: SimMem.wf sm_arg>>)
-            /\ (<<MLE: SimMem.le sm0 sm_arg>>)
+            /\ (<<MLE: SimMem.lepriv sm0 sm_arg>>)
             /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 args_tgt>>)
             /\
             (<<K: forall
                 sm_ret retv_src retv_tgt
-                (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
+                (MLE: SimMem.le sm_arg sm_ret)
                 (MWF: SimMem.wf sm_ret)
                 (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
                 st_src1
@@ -172,7 +172,9 @@ Section SIMMODSEM.
                 exists st_tgt1 sm_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>)
                   /\
-                  (<<MLE: SimMem.le sm0 sm_after>>)
+                  (<<MLEPRIV: SimMem.lepriv sm_ret sm_after>>)
+                  /\
+                  (<<MLEPUB: SimMem.le sm0 sm_after>>)
                   /\
                   (<<LXSIM: lxsim sm_init i1 st_src1 st_tgt1 sm_after>>)>>)
                   )>>)

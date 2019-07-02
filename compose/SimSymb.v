@@ -118,20 +118,11 @@ Module SimSymb.
 
       mle_preserves_sim_skenv: forall
           sm0 sm1
-          (MLE: SimMem.le sm0 sm1)
+          (MLE: SimMem.lepriv sm0 sm1)
           ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
         ,
           <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>
-      ;
-
-      mlift_preserves_sim_skenv: forall
-          sm0
-          (MWF: SimMem.wf sm0)
-          ss skenv_src skenv_tgt
-          (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
-        ,
-          <<SIMSKENV: sim_skenv (SimMem.lift sm0) ss skenv_src skenv_tgt>>
       ;
 
 
@@ -219,13 +210,15 @@ Module SimSymb.
                                  tr
                                  (retv_src.(Retv.v)) (retv_src.(Retv.m)))
         ,
+          (* exists sm_lift, SimMem.lepriv sm0 sm_lift /\ *)
           exists sm1 retv_tgt,
             (<<SYSTGT: external_call ef skenv_sys_tgt (args_tgt.(Args.vs)) (args_tgt.(Args.m))
                                      tr
                                      (retv_tgt.(Retv.v)) (retv_tgt.(Retv.m))>>)
             /\ (<<RETV: SimMem.sim_retv retv_src retv_tgt sm1>>)
-            /\ (<<MLE: SimMem.le sm0.(SimMem.lift) sm1>>)
+            /\ (<<MLE0: SimMem.le sm0 sm1>>)
             /\ (<<MWF: SimMem.wf sm1>>)
+            (* /\ exists sm_unlift, (<<MLE1: SimMem.le sm0 sm_unlift>>) /\ (<<MLE2: SimMem.lepriv sm1 sm_unlift>>) *)
       ;
 
     }
@@ -244,7 +237,6 @@ Module SimSymb.
     induction MFUTURE; ss.
     des.
     - eapply IHMFUTURE; eauto. eapply mle_preserves_sim_skenv; eauto.
-    - u in H. des. eapply IHMFUTURE; eauto. clarify. eapply mlift_preserves_sim_skenv; eauto.
   Qed.
 
   Lemma simskenv_func_fsim

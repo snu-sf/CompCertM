@@ -722,10 +722,10 @@ Next Obligation.
       exploit Genv.genv_defs_range; eauto. xomega.
   (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *)
 Qed.
-Next Obligation.
-  inv SIMSKENV. inv MWF.
-  econs; eauto; ss; xomega.
-Qed.
+(* Next Obligation. *)
+(*   inv SIMSKENV. inv MWF. *)
+(*   econs; eauto; ss; xomega. *)
+(* Qed. *)
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
@@ -1018,14 +1018,30 @@ Next Obligation.
   - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
   - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+      eapply SRCEXT in H6. unfold src_private in *. ss. des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
-    + eapply inject_separated_frozen; eauto.
+      eapply TGTEXT in H6. unfold tgt_private in *. ss. des; ss.
+    + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto.
+      i; des. esplits; xomega.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
   - apply inject_separated_frozen in H5.
     econs; ss.
-    + eapply after_private_src; ss; eauto.
-    + eapply after_private_tgt; ss; eauto.
+    + etrans; eauto.
+      unfold src_private. ss. ii. des. esplits; eauto.
+      * rr. rr in PR. destruct (f' x0) eqn:T; ss. destruct p; ss.
+        inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
+        unfold Mem.valid_block in *. xomega.
+      * r. eapply Mem.valid_block_unchanged_on; et.
+    + etrans; eauto.
+      unfold tgt_private. ss. ii. des. esplits; eauto.
+      * rr. rr in PR. ii. destruct (inj b0) eqn:T; ss.
+        -- destruct p; ss. exploit H4; eauto. i; clarify.
+           eapply PR; et. eapply external_call_max_perm; et.
+           eapply Mem.valid_block_inject_1; try apply T; et.
+        -- inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
+           unfold Mem.valid_block in *. xomega.
+      * r. eapply Mem.valid_block_unchanged_on; et.
     + inv H2. xomega.
     + inv H3. xomega.
 Qed.

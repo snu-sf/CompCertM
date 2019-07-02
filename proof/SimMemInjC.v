@@ -84,6 +84,20 @@ Qed.
 (* TODO: apply this policy for identity/extension *)
 
 (* "Global" is needed as it is inside section *)
+
+Inductive lepriv (sm0 sm1: SimMemInj.t'): Prop :=
+| lepriv_intro
+    (INCR: inject_incr sm0.(inj) sm1.(inj))
+    (SRCUNCHANGED: Mem.unchanged_on sm0.(src_external) sm0.(src) sm1.(src))
+    (TGTUNCHANGED: Mem.unchanged_on sm0.(tgt_external) sm0.(tgt) sm1.(tgt))
+    (SRCPARENTEQ: sm0.(src_external) = sm1.(src_external))
+    (SRCPARENTEQNB: sm0.(src_parent_nb) = sm1.(src_parent_nb))
+    (TGTPARENTEQ: sm0.(tgt_external) = sm1.(tgt_external))
+    (TGTPARENTEQNB: sm0.(tgt_parent_nb) = sm1.(tgt_parent_nb))
+    (FROZEN: frozen sm0.(inj) sm1.(inj) (sm0.(src_parent_nb))
+                                            (sm0.(tgt_parent_nb)))
+.
+
 Global Program Instance SimMemInj : SimMem.class :=
 {
   t := t';
@@ -91,27 +105,27 @@ Global Program Instance SimMemInj : SimMem.class :=
   tgt := tgt;
   wf := wf';
   le := le';
-  lift := lift';
-  unlift := unlift';
+  (* lift := lift'; *)
+  (* unlift := unlift'; *)
+  lepriv := lepriv;
   sim_val := fun (mrel: t') => Val.inject mrel.(inj);
   sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
 }.
 Next Obligation.
-  rename H into VALID.
-  inv VALID. econs; ss; eauto; ii; des; ss; eauto.
-  - eapply Pos.compare_gt_iff in H. xomega.
-  - eapply Pos.compare_gt_iff in H. xomega.
-  (* - econs; eauto. *)
-  (*   ii; des. clarify. *)
-  (* - eapply Mem.unchanged_on_refl. *)
-  (* - eapply Mem.unchanged_on_refl. *)
+  ii. inv PR. econs; et.
 Qed.
-Next Obligation.
-  eapply unlift_spec; eauto.
-Qed.
-Next Obligation.
-  eapply unlift_wf; eauto.
-Qed.
+(* Next Obligation. *)
+(*   rename H into VALID. *)
+(*   inv VALID. econs; ss; eauto; ii; des; ss; eauto. *)
+(*   - eapply Pos.compare_gt_iff in H. xomega. *)
+(*   - eapply Pos.compare_gt_iff in H. xomega. *)
+(* Qed. *)
+(* Next Obligation. *)
+(*   eapply unlift_spec; eauto. *)
+(* Qed. *)
+(* Next Obligation. *)
+(*   eapply unlift_wf; eauto. *)
+(* Qed. *)
 Next Obligation.
   ii. inv MLE. eapply val_inject_incr; eauto.
 Qed.
@@ -571,12 +585,12 @@ Next Obligation.
   - inv MLE. eauto with congruence.
   - inv MLE. eauto with congruence.
 Qed.
-Next Obligation.
-  inv MWF. inv SIMSKENV.
-  econs; eauto.
-  - etransitivity; try apply SRCLE; eauto.
-  - etransitivity; try apply TGTLE; eauto.
-Qed.
+(* Next Obligation. *)
+(*   inv MWF. inv SIMSKENV. *)
+(*   econs; eauto. *)
+(*   - etransitivity; try apply SRCLE; eauto. *)
+(*   - etransitivity; try apply TGTLE; eauto. *)
+(* Qed. *)
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_proj_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
@@ -632,14 +646,32 @@ Next Obligation.
   - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
   - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+      eapply SRCEXT in H6. unfold src_private in *. ss. des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
-    + eapply inject_separated_frozen; eauto.
+      eapply TGTEXT in H6. unfold tgt_private in *. ss. des; ss.
+    + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto.
+      i; des. esplits; xomega.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
   - apply inject_separated_frozen in H5.
     econs; ss.
-    + eapply after_private_src; ss; eauto.
-    + eapply after_private_tgt; ss; eauto.
+    (* + eapply after_private_src; ss; eauto. *)
+    (* + eapply after_private_tgt; ss; eauto. *)
+    + etrans; eauto.
+      unfold src_private. ss. ii. des. esplits; eauto.
+      * rr. rr in PR. destruct (f' x0) eqn:T; ss. destruct p; ss.
+        inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
+        unfold Mem.valid_block in *. xomega.
+      * r. eapply Mem.valid_block_unchanged_on; et.
+    + etrans; eauto.
+      unfold tgt_private. ss. ii. des. esplits; eauto.
+      * rr. rr in PR. ii. destruct (inj b0) eqn:T; ss.
+        -- destruct p; ss. exploit H4; eauto. i; clarify.
+           eapply PR; et. eapply external_call_max_perm; et.
+           eapply Mem.valid_block_inject_1; try apply T; et.
+        -- inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
+           unfold Mem.valid_block in *. xomega.
+      * r. eapply Mem.valid_block_unchanged_on; et.
     + inv H2. xomega.
     + inv H3. xomega.
 Qed.

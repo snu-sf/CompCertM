@@ -122,7 +122,9 @@ Section MATCHSIMFORWARD.
       (MLE: SimMem.le sm0 sm_arg)
       (* (MWF: SimMem.wf sm_arg) *)
       sm_ret
-      (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
+      (* (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret) *)
+      sm_arg_lift
+      (MLE: SimMem.le sm_arg_lift sm_ret)
       (MWF: SimMem.wf sm_ret)
       retv_src retv_tgt
       (SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret)
@@ -134,15 +136,18 @@ Section MATCHSIMFORWARD.
       (HISTORY: match_states_at_helper sm_init idx0 st_src0 st_tgt0 sm0 sm_arg)
 
       (* just helpers *)
-      (MWFAFTR: SimMem.wf (SimMem.unlift sm_arg sm_ret))
-      (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret))
+      sm_unlift
+      (MWFAFTR: SimMem.wf sm_unlift)
+      (MLEAFTR: SimMem.le sm_arg sm_unlift)
+      (* (MWFAFTR: SimMem.wf (SimMem.unlift sm_arg sm_ret)) *)
+      (* (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret)) *)
     ,
       exists sm_after idx1 st_tgt1,
         (<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>)
         /\
         (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm_after>>)
         /\
-        (<<MLE: SimMem.le (SimMem.unlift sm_arg sm_ret) sm_after>>)
+        (<<MLE: SimMem.le sm_unlift sm_after>>)
   .
 
   Hypothesis FINALFSIM: forall
@@ -235,8 +240,9 @@ Section MATCHSIMFORWARD.
     { ss. }
     { ii. eapply PRSV. }
     { ii. r. etrans; eauto. }
+    { i. eapply SimMem.pub_priv; et. }
     { ii. exploit ATFSIM; eauto. { eapply SOUND. ss. } i; des. esplits; eauto. }
-    { i. exploit AFTERFSIM; et.
+    { i. exploit AFTERFSIM; try apply SIMRET; et.
       { eapply SOUND. ss. }
       { inv HISTORY; econs; eauto. }
       i; des. esplits; eauto.

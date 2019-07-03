@@ -28,6 +28,27 @@ Proof.
   apply Ptrofs.zero.
 Qed.
 
+Lemma mul_le_div
+      a b
+      (LE: 4 * a <= b)
+  :
+    <<LE: a <= b / 4>>
+.
+Proof.
+  red.
+  assert(4 * a / 4 = a).
+  { rewrite Z.mul_comm.
+    SearchAbout(_ * _ / _).
+    rewrite Z.div_mul; ss.
+  }
+  rewrite <- H.
+  eapply Z_div_le; eauto.
+  xomega.
+Qed.
+
+Lemma Z2Nat_range n:
+  Z.of_nat (Z.to_nat n) = if (zle 0 n) then n else 0.
+Proof. destruct n; ss; try nia. Qed.
 
 Hint Rewrite Ptrofs.unsigned_zero Ptrofs.add_zero Ptrofs.add_zero_l
      Ptrofs.repr_unsigned Ptrofs_add_repr : psimpl

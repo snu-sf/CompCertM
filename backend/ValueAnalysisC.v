@@ -1,7 +1,7 @@
 Require Import FunInd.
 Require Import CoqlibC Maps Integers Floats Lattice Kildall.
 Require Import Compopts AST Linking.
-Require Import ValuesC Memory Globalenvs Events.
+Require Import ValuesC MemoryC Globalenvs Events.
 Require Import Registers Op RTLC.
 Require Import ValueDomain ValueAOp Liveness.
 Require Import sflib.
@@ -14,25 +14,8 @@ Require Import Sound.
 Require Import ModSem.
 
 
-(* TODO: move to MemoryC *)
-Lemma Mem_loadbytes_succeeds
-      m0 blk ofs mv
-      (PERM: Mem.perm m0 blk ofs Cur Readable)
-      (MV: ZMap.get ofs (Mem.mem_contents m0) # blk = mv)
-  :
-    Mem.loadbytes m0 blk ofs 1 = Some [mv]
-.
-Proof.
-  Local Transparent Mem.loadbytes.
-  unfold Mem.loadbytes.
-  des_ifs.
-  exfalso. apply n. r. ii. assert(ofs0 = ofs) by xomega. clarify.
-  Local Opaque Mem.loadbytes.
-Qed.
-
 Lemma sound_state_sound_args
-      bc m0 stack su0 p skenv_link vs_arg cunit
-      ge
+      bc m0 stack su0 p skenv_link vs_arg cunit ge
       (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p))
       (STK: sound_stack cunit ge su0 bc stack m0 (Mem.nextblock m0))
       (ARGS: forall v : val, In v vs_arg -> vmatch bc v Vtop)
@@ -41,10 +24,8 @@ Lemma sound_state_sound_args
       (GE: genv_match bc ge)
       (NOSTK: bc_nostack bc)
       fptr_arg sg_arg
-      (SIG: exists skd, Genv.find_funct skenv_link fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg)
-  :
-    args' (bc2su bc ge.(Genv.genv_next) m0.(Mem.nextblock)) (Args.mk fptr_arg vs_arg m0)
-.
+      (SIG: exists skd, Genv.find_funct skenv_link fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg):
+    args' (bc2su bc ge.(Genv.genv_next) m0.(Mem.nextblock)) (Args.mk fptr_arg vs_arg m0).
 Proof.
   { r. s. esplits; eauto.
     - des. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs. ss. r. ii; clarify. ss.
@@ -84,8 +65,7 @@ Proof.
       + ss. r in GE. ss. des. r in mmatch_below.
         apply NNPP. ii. apply Pos.lt_nle in H.
         exploit GE0; eauto. i; des.
-        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des.
-        xomega.
+        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des. xomega.
     - econs; ss; i; des_ifs. r in GE. des. ss. des_sumbool. apply NNPP. ii.
       exploit (GE0 x0); eauto. { xomega. } i; des. congruence.
   }
@@ -93,18 +73,15 @@ Qed.
 
 (* copied from above *)
 Lemma sound_state_sound_retv
-      bc m_ret su0 p skenv_link v_ret cunit
-      ge
+      bc m_ret su0 p skenv_link v_ret cunit ge
       (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p))
       (STK: sound_stack cunit ge su0 bc [] m_ret (Mem.nextblock m_ret))
       (RES: vmatch bc v_ret Vtop)
       (RO: romatch bc m_ret (romem_for cunit))
       (MM: mmatch bc m_ret mtop)
       (GE: genv_match bc ge)
-      (NOSTK: bc_nostack bc)
-  :
-    Sound.retv (bc2su bc ge.(Genv.genv_next) m_ret.(Mem.nextblock)) (Retv.mk v_ret m_ret)
-.
+      (NOSTK: bc_nostack bc):
+    Sound.retv (bc2su bc ge.(Genv.genv_next) m_ret.(Mem.nextblock)) (Retv.mk v_ret m_ret).
 Proof.
   { r. s. esplits; eauto.
     - ii; clarify.
@@ -125,8 +102,7 @@ Proof.
           specialize (H0 ofs blk0 ofs0 q n).
           exploit H0.
           { eapply Mem_loadbytes_succeeds; et. }
-          intro PM.
-          inv PM. ss.
+          intro PM. inv PM. ss.
         }
         esplits; eauto.
         { u. des_ifs. i; des_sumbool; ss. }
@@ -135,11 +111,9 @@ Proof.
       + ss. r in GE. ss. des. r in mmatch_below.
         apply NNPP. ii. apply Pos.lt_nle in H.
         exploit GE0; eauto. i; des.
-        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des.
-        xomega.
+        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des. xomega.
     - econs; eauto; ss; i; des_ifs. des_sumbool.
-      rr in GE. des.
-      apply NNPP. ii.
+      rr in GE. des. apply NNPP. ii.
       exploit (GE0 x0); eauto.
       { unfold fundef in *. xomega. }
       i; des. congruence.
@@ -163,14 +137,11 @@ Section PRSV.
 
   Local Existing Instance Unreach.
 
-  Theorem sound_state_preservation
-    :
-      local_preservation_strong modsem get_mem (sound_state p modsem.(globalenv))
-  .
+  Theorem sound_state_preservation:
+    local_preservation_strong modsem get_mem (sound_state p modsem.(globalenv)).
   Proof.
     econs; eauto.
-    - i. inv INIT. ss.
-      esplits; eauto; cycle 1.
+    - i. inv INIT. ss. esplits; eauto; cycle 1.
       { refl. }
       econs; eauto. i.
       set (ge := (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p)) in *.
@@ -179,8 +150,7 @@ Section PRSV.
                     match Genv.invert_symbol ge b with None => BCglob None | Some id => BCglob (Some id) end
                   else
                     if (plt b args.(Args.m).(Mem.nextblock)) && (negb (su_init b))
-                    then BCother
-                    else BCinvalid).
+                    then BCother else BCinvalid).
       assert(IMG: exists bc, bc.(bc_img) = f).
       { unshelve eexists (BC _ _ _); s; eauto.
         - ii. subst f. ss. des_ifs.
@@ -193,13 +163,11 @@ Section PRSV.
       assert(NB: Ple ge.(Genv.genv_next) args.(Args.m).(Mem.nextblock)).
       { inv SKENV. ss. }
       assert(GE: genv_match bc ge).
-      { r.
-        esplits; eauto.
+      { r. esplits; eauto.
         * ii. rewrite IMG in *. split; i.
           { exploit Genv.genv_symb_range; eauto. i.
             apply_all_once Genv.find_invert_symbol.
-            unfold fundef in *.
-            des_ifs.
+            unfold fundef in *. des_ifs.
           }
           des_ifs. apply Genv.invert_find_symbol; eauto.
         * rewrite IMG. ii.
@@ -211,15 +179,13 @@ Section PRSV.
       eapply sound_call_state with (bc:= bc); eauto.
       + econs; eauto; cycle 1.
         { inv MEM; ss. rewrite NB0. xomega. }
-      + ii. repeat spc VALS. destruct v; econs; eauto. econs; eauto. rewrite IMG.
-        inv TYP. ss.
+      + ii. repeat spc VALS. destruct v; econs; eauto. econs; eauto. rewrite IMG. inv TYP. ss.
         apply in_zip_iff in H0. des. unfold typify in *. des_ifs.
         hexploit1 VALS.
         { eapply nth_error_In; eauto. }
         repeat spc VALS. specialize (VALS eq_refl). (* TODO: fix spc ... *) des.
         des_ifs; ss. bsimpl. des; ss. des_sumbool. inv MEM. congruence.
-      + inv SKENV. ss.
-        clear - IMG ROMATCH H INCL.
+      + inv SKENV. ss. clear - IMG ROMATCH H INCL.
         ii. exploit (ROMATCH b id ab); eauto.
         { rewrite IMG in *. des_ifs. ss. des_ifs.
           - clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
@@ -228,8 +194,7 @@ Section PRSV.
             rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
         }
         { hexploit (romem_for_consistent_2 _ _ H); eauto. intro LO.
-          exploit LO; eauto. intro LOA; des.
-          clarify.
+          exploit LO; eauto. intro LOA; des. clarify.
           rewrite IMG in *. des_ifs. apply Genv.invert_find_symbol in Heq.
           eapply romem_for_ske_complete; et.
           clear - LOA LOA0 LOA1 LOA2 Heq INCL.
@@ -241,29 +206,23 @@ Section PRSV.
           assert(DEFSID: defs (Sk.of_program fn_sig p) id).
           { eapply internals_defs; et. }
           assert(BIG: Genv.find_def skenv_link b = Some (Gvar v)).
-          {
-            generalize (Sk.of_program_prog_defmap p fn_sig id). intro REL.
+          { generalize (Sk.of_program_prog_defmap p fn_sig id). intro REL.
             inv REL; try congruence. rewrite LOA in *. clarify.
             assert(y = Gvar v).
             { inv H1. inv H2. ss. destruct i1, i2; ss. }
-            clarify.
-            inv INCL. exploit DEFS; et. i; des.
+            clarify. inv INCL. exploit DEFS; et. i; des.
             assert(blk = b).
-            { inv PROJ.
-              exploit (SYMBKEEP id); et.
+            { inv PROJ. exploit (SYMBKEEP id); et.
               i; des. rewrite SYMB0 in *. clear - H SYMB. subst ge. unfold SkEnv.revive in *.
               rewrite Genv_map_defs_symb in *. clarify.
             }
-            clarify.
-            rewrite DEF0.
-            clear - MATCH LOA2.
+            clarify. rewrite DEF0. clear - MATCH LOA2.
             (*** TODO: make lemma!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ***)
             inv MATCH. inv H0. destruct info1, info2; ss.
             inv H1; ss.
           }
           assert(SMALL: Genv.find_def (SkEnv.project skenv_link (Sk.of_program fn_sig p)) b = Some (Gvar v)).
-          {
-            inv PROJ.
+          { inv PROJ.
             exploit DEFKEEP; et.
             { apply Genv.find_invert_symbol; et. rewrite <- SYMBKEEP; et. }
             i; des.
@@ -278,16 +237,13 @@ Section PRSV.
           }
           unfold Genv.find_var_info. des_ifs.
         }
-        intro RO; des.
-        esplits; et.
-        eapply bmatch_incr; et.
+        intro RO; des. esplits; et. eapply bmatch_incr; et.
         ii. ss. rewrite IMG. des_ifs.
         * clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
           rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
         * clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
           rewrite Genv_map_defs_symb in Heq. eapply Genv.find_invert_symbol in Heq. clarify.
-        *
-          clear - Heq0 Heq H0.
+        * clear - Heq0 Heq H0.
           apply_all_once Genv.invert_find_symbol.
           assert(Genv.find_symbol ge i = Some b0).
           { subst ge. unfold SkEnv.revive. rewrite Genv_map_defs_symb. ss. }
@@ -304,8 +260,7 @@ Section PRSV.
         }
         assert(SUMEM: forall b : block, bc b <> BCinvalid -> smatch bc (Args.m args) b Ptop).
         { i. rr. rename H0 into SU.
-          hexploit BCSU; eauto. intro SU0.
-          split; i.
+          hexploit BCSU; eauto. intro SU0. split; i.
           - hexploit mem'_load_val'; eauto. intro SUV.
             { destruct v; econs; et. econs; et. exploit SUV; et. i; des. ii.
               exploit BCSU; et.
@@ -345,19 +300,15 @@ Section PRSV.
         exploit sound_state_sound_args; eauto. i.
         hexploit (@UnreachC.greatest_ex (bc2su bc (Genv.genv_next skenv_link) (Mem.nextblock m0)) args0); eauto.
         { esplits; eauto. ss. refl. }
-        i; des. ss.
-        esplits; eauto.
+        i; des. ss. esplits; eauto.
         - exploit (@UnreachC.get_greatest_le); ss; eauto.
           + change le' with Sound.le. eapply Sound.hle_le; et.
         - rr in GR. des. etrans; eauto. change le' with Sound.le. eapply Sound.hle_le; eauto.
       }
-      des.
-      esplits; eauto.
+      des. esplits; eauto.
       { inv AT; ss. refl. }
       { eapply GR; eauto. }
-      ii.
-      r in RETV. des.
-      esplits; eauto; cycle 1.
+      ii. r in RETV. des. esplits; eauto; cycle 1.
       { inv AT; inv AFTER; ss. refl. }
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
         assert(BCARGS: (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)).(Sound.args) args).
@@ -396,13 +347,11 @@ Section PRSV.
         { rr in GRARGS. des. ss. }
         intro LEOLD.
         assert (VMTOP0: forall v, Sound.val su_gr v -> vmatch bc' v Vtop).
-        { i.
-          ss. r in H. destruct v; econs; eauto. econs; eauto.
+        { i. ss. r in H. destruct v; econs; eauto. econs; eauto.
           exploit H; eauto. i; des. rewrite IMG. subst f. s. des_ifs_safe.
           assert(NBC: ~ (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) b).
           { ii. ss. r in BCLE1. des. exploit PRIV; eauto. des_ifs. }
-          ss. inv MEM.
-          rr in GRARGS. des. inv MEM. ss.
+          ss. inv MEM. rr in GRARGS. des. inv MEM. ss.
           inv AT; ss. rewrite NB0 in *. des_ifs; try xomega.
           intro BC. unfold bc2su in *. ss. rewrite BC in *. ss.
         }
@@ -434,23 +383,18 @@ Section PRSV.
           ii. rewrite H1 in *. ss.
         }
         assert (PMTOP1: forall blk ofs
-                               (BELOW: bc_below bc (Mem.nextblock m_arg))
-                 ,
+                          (BELOW: bc_below bc (Mem.nextblock m_arg)),
                    pmatch bc blk ofs Ptop -> pmatch bc' blk ofs Ptop).
         { i. inv H; econs; eauto.
           exploit BELOW; eauto. i.
           ss. rewrite IMG. unfold f. des_ifs.
         }
         assert (SMTOP: forall b, bc' b <> BCinvalid -> smatch bc' retv.(Retv.m) b Ptop).
-        {
-          intros; split; intros.
-          -
-            destruct (su_gr b) eqn:T.
+        { intros; split; intros.
+          - destruct (su_gr b) eqn:T.
             + assert(Plt b (Mem.nextblock m_arg)).
-              {
-                rr in GRARGS. des. inv MEM0. inv AT; ss.
-                inv WF1. exploit WFHI; eauto. i.
-                Unreach.nb_tac. ss.
+              { rr in GRARGS. des. inv MEM0. inv AT; ss.
+                inv WF1. exploit WFHI; eauto. i. Unreach.nb_tac. ss.
               }
               rewrite IMG in *. subst f. ss. des_ifs.
 
@@ -459,18 +403,15 @@ Section PRSV.
               { inv MLE. inv AT. ss. erewrite <- Mem.load_unchanged_on_1; try apply PRIV; eauto. }
               exploit SM; eauto.
             + assert(~ su_ret b).
-              {
-                rewrite IMG in *. subst f. ss. des_ifs.
+              { rewrite IMG in *. subst f. ss. des_ifs.
                 rr in LE. des. ss. erewrite <- OLD; eauto.
                 { congruence. }
                 rr in GRARGS. des. inv MEM0. inv AT; ss. Unreach.nb_tac. ss.
               }
               eapply VMTOP; eauto. eapply mem'_load_val'; eauto.
-          -
-            destruct (su_gr b) eqn:T.
+          - destruct (su_gr b) eqn:T.
             + assert(Plt b (Mem.nextblock m_arg)).
-              {
-                rr in GRARGS. des. inv MEM0. inv AT; ss.
+              { rr in GRARGS. des. inv MEM0. inv AT; ss.
                 inv WF1. exploit WFHI; eauto. i.
                 Unreach.nb_tac. ss.
               }
@@ -482,10 +423,8 @@ Section PRSV.
               exploit SM0; eauto.
             + try (by econs; eauto).
               assert(~ su_ret b).
-              {
-                rewrite IMG in *. subst f. ss. des_ifs.
-                rr in LE. des. ss. erewrite <- OLD; eauto.
-                { congruence. }
+              { rewrite IMG in *. subst f. ss. des_ifs.
+                rr in LE. des. ss. erewrite <- OLD; eauto; try congruence.
                 rr in GRARGS. des. inv MEM0. inv AT; ss. Unreach.nb_tac. ss.
               }
               eapply PMTOP; eauto; cycle 1.
@@ -494,37 +433,31 @@ Section PRSV.
                 unfold Mem.loadbytes in *. des_ifs.
                 exploit (SOUND b ofs); eauto.
                 { eapply r. xomega. }
-                i; des. ss.
-                Unreach.nb_tac. xomega.
+                i; des. ss. Unreach.nb_tac. xomega.
               }
               eapply mem'_loadbytes_val'; eauto.
         }
 
         eapply sound_return_state with (bc := bc'); eauto.
-        *
-          apply sound_stack_new_bound with (Mem.nextblock m_arg); cycle 1.
+        * apply sound_stack_new_bound with (Mem.nextblock m_arg); cycle 1.
           { inv HLEAFTER. des. ss. }
           apply sound_stack_exten with bc; auto; cycle 1.
           { i. rewrite IMG. unfold f. des_ifs. }
           apply sound_stack_inv with m_arg; auto.
-          i. inv MLE.
-          inv AT. ss.
+          i. inv MLE. inv AT. ss.
           eapply Mem.loadbytes_unchanged_on_1; try apply PRIV; eauto.
-          u. i.
-          eapply BCLE1; et. ss. des_ifs. des_sumbool. ss.
+          u. i. eapply BCLE1; et. ss. des_ifs. des_sumbool. ss.
         * eapply VMTOP; et. unfold typify. des_ifs.
         * eapply romatch_exten; cycle 1.
           { instantiate (1 := bc). rewrite IMG. subst f. split; i; try by des_ifs.
             des_ifs_safe. exfalso. eapply n. eapply mmatch_below. eauto. congruence.
           }
-          inv AT. ss. inv MLE.
-          eapply romatch_ext; et; i.
+          inv AT. ss. inv MLE. eapply romatch_ext; et; i.
           { assert(RANGE_PERM: Mem.range_perm (Retv.m retv) b ofs (ofs + n) Cur Readable).
             { eapply Mem.loadbytes_range_perm; et. }
             erewrite <- Mem.loadbytes_unchanged_on_1; try eapply RO0; et.
             - eapply mmatch_below; et. congruence.
-            - i. inv SKENV. ss.
-              rr in ROMATCH. des.
+            - i. inv SKENV. ss. rr in ROMATCH. des.
               exploit (romem_for_consistent cunit); eauto. intro X; des.
 
               inv GE. hexploit (H3 id b); eauto. intro Y. des.
@@ -534,9 +467,7 @@ Section PRSV.
               + unfold ske2bc. s. rename b into blk. exploit Genv.genv_symb_range; et. intro BNB. des_ifs_safe.
                 dup Y0. unfold SkEnv.revive in Y1. ss. rewrite Genv_map_defs_symb in Y1.
                 exploit Genv.find_invert_symbol; et. intro INV. rewrite INV. ss.
-              + eapply romem_for_ske_complete; et.
-                clear - LO X INCL Y0 X2.
-                inv INCL.
+              + eapply romem_for_ske_complete; et. clear - LO X INCL Y0 X2. inv INCL.
                 exploit (prog_defmap_linkorder cunit); et. intro Z; des.
                 hexploit (Sk.of_program_prog_defmap p fn_sig id); et. intro REL.
                 unfold fundef in *. rewrite Z in REL. inv REL. symmetry in H0.
@@ -546,21 +477,17 @@ Section PRSV.
                   rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
                   (* TODO: make lemma *)
                 } clarify.
-                unfold SkEnv.project. ss.
-                unfold Genv.find_var_info.
+                unfold SkEnv.project. ss. unfold Genv.find_var_info.
                 erewrite Genv_map_defs_def_inv; et; cycle 1.
                 exploit Genv.find_invert_symbol; et. intro INV.
                 rewrite INV. unfold o_bind. s. rewrite H0. s. unfold internals. rewrite H0. s.
-                inv Z0. inv H1. ss.
-                inv H2. inv H3. inv MATCH. inv H3. inv H9. destruct info1, i3; ss. repeat f_equal; ss.
+                inv Z0. inv H1. ss. inv H2. inv H3. inv MATCH. inv H3. inv H9. destruct info1, i3; ss. repeat f_equal; ss.
 
                 (* TODO: make lemma *)
                 clear - X2 H1. unfold ValueAnalysis.definitive_initializer in *. des_ifs; inv H1; ss.
           }
           { apply PERM; et. eapply mmatch_below; et. congruence. }
-        *
-          {
-            constructor; simpl; intros.
+        * { constructor; simpl; intros.
             + apply ablock_init_sound. apply SMTOP. simpl; congruence.
             + rewrite PTree.gempty in H0; discriminate.
             + apply SMTOP; auto.
@@ -579,8 +506,7 @@ Section PRSV.
         * red; simpl; intros. rewrite IMG. unfold f. des_ifs.
           eapply NOSTK; auto.
         * ss. etrans; eauto.
-    - ii.
-      inv FINAL. s.
+    - ii. inv FINAL. s.
       inv SUST. specialize (H p (linkorder_refl _)). inv H.
       exists (bc2su bc (Genv.genv_next skenv_link) m_ret.(Mem.nextblock)).
       esplits; try refl; ss; eauto.

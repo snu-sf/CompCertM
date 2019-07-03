@@ -22,17 +22,14 @@ Set Implicit Arguments.
 
 
 Definition strong_wf_tgt (st_tgt0: LTL.state): Prop :=
-  exists sg_init ls_init, last_option st_tgt0.(LTLC.get_stack) = Some (LTL.dummy_stack sg_init ls_init)
-.
+  exists sg_init ls_init, last_option st_tgt0.(LTLC.get_stack) = Some (LTL.dummy_stack sg_init ls_init).
 
 Lemma agree_callee_save_after
       tstks ls sg tv
       (NOTNIL: tstks <> [])
-      (AG: agree_callee_save (parent_locset tstks) ls)
-  :
+      (AG: agree_callee_save (parent_locset tstks) ls):
     <<AG: agree_callee_save (parent_locset (stackframes_after_external tstks))
-                            (Locmap.setpair (loc_result sg) tv (undef_caller_save_regs ls))>>
-.
+                            (Locmap.setpair (loc_result sg) tv (undef_caller_save_regs ls))>>.
 Proof.
   hexploit (loc_result_one sg); et. intro ONE.
   unfold agree_callee_save in *. ii. exploit AG; et. intro T.
@@ -44,10 +41,8 @@ Qed.
 
 Lemma match_stackframes_after
       tse tge stks tstks sg
-      (STACKS: match_stackframes tse tge stks tstks sg)
-  :
-    <<STACKS: match_stackframes tse tge stks tstks.(stackframes_after_external) sg>>
-.
+      (STACKS: match_stackframes tse tge stks tstks sg):
+    <<STACKS: match_stackframes tse tge stks tstks.(stackframes_after_external) sg>>.
 Proof.
   inv STACKS; econs; et.
   i. exploit STEPS; et. clear - H1.
@@ -57,23 +52,15 @@ Qed.
 
 Lemma match_stackframes_not_nil
       skenv_link tge stack ts sg_arg
-      (MATCH: match_stackframes skenv_link tge stack ts sg_arg)
-  :
-    ts <> []
-.
-Proof.
-  inv MATCH; ss.
-Qed.
+      (MATCH: match_stackframes skenv_link tge stack ts sg_arg):
+  ts <> [].
+Proof. inv MATCH; ss. Qed.
 
 Lemma getpair_equal
       sg_init sg ls
-      (SAMERES : sig_res sg_init = sig_res sg)
-  :
-    Locmap.getpair (map_rpair R (loc_result sg_init)) ls = Locmap.getpair (map_rpair R (loc_result sg)) ls
-.
-Proof.
-  do 2 f_equal. unfold loc_result. des_ifs. unfold loc_result_64. des_ifs.
-Qed.
+      (SAMERES : sig_res sg_init = sig_res sg):
+  Locmap.getpair (map_rpair R (loc_result sg_init)) ls = Locmap.getpair (map_rpair R (loc_result sg)) ls.
+Proof. do 2 f_equal. unfold loc_result. des_ifs. unfold loc_result_64. des_ifs. Qed.
 
 Section SIMMODSEM.
 
@@ -98,8 +85,7 @@ Inductive match_states
     (MATCHST: Allocproof.match_states skenv_link tge st_src0 st_tgt0)
     (MCOMPATSRC: st_src0.(RTL.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(LTLC.get_mem) = sm0.(SimMem.tgt))
-    (DUMMYTGT: strong_wf_tgt st_tgt0)
-.
+    (DUMMYTGT: strong_wf_tgt st_tgt0).
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk))
@@ -107,10 +93,7 @@ Theorem make_match_genvs :
   Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
-Theorem sim_modsem
-  :
-    ModSemPair.sim msp
-.
+Theorem sim_modsem: ModSemPair.sim msp.
 Proof.
   eapply match_states_sim with (match_states := match_states) (match_states_at := top4) (sound_state := fun _ _ => wt_state);
     eauto; ii; ss.
@@ -118,20 +101,16 @@ Proof.
   - eapply wt_state_local_preservation; et.
     ii. exploit wt_prog; eauto.
   - (* init bsim *)
-    destruct sm_arg; ss. clarify.
-    inv SIMARGS; ss. clarify.
-    inv INITTGT.
+    destruct sm_arg; ss. clarify. inv SIMARGS; ss. clarify. inv INITTGT.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     exploit lessdef_list_length; et. intro LEN; des.
     exploit (bsim_internal_funct_id SIMGE); et. i; des.
     exploit (sig_function_translated); eauto. intro SGEQ. ss.
-    eexists. eexists (SimMemExt.mk _ _).
-    esplits; cycle 2.
+    eexists. eexists (SimMemExt.mk _ _). esplits; cycle 2.
     + econs; eauto; ss.
-      * inv TYP. eapply match_states_call; eauto.
+      * inv TYP. eapply match_states_call; eauto; ss.
         { econs; et. }
         { rewrite <- TYP0. eapply lessdef_list_typify_list; try apply VALS; et. xomega. }
-        { ii. ss. }
         { eapply JunkBlock.assign_junk_block_extends; eauto. }
         { eapply typify_has_type_list; et. xomega. }
       * rr. ss. esplits; et.
@@ -140,9 +119,7 @@ Proof.
       inv TYP0; ss. congruence.
     + ss.
   - (* init progress *)
-    des. inv SAFESRC.
-    inv SIMARGS; ss.
-    inv FPTR; cycle 1.
+    des. inv SAFESRC. inv SIMARGS; ss. inv FPTR; cycle 1.
     { rewrite <- H0 in *. ss. }
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des.
@@ -156,8 +133,7 @@ Proof.
       unfold typify_list. rewrite zip_length. rewrite <- LEN.
       erewrite <- lessdef_list_length; et. eapply Min.min_idempotent.
     }
-    i; des.
-    rename ls1 into ls_init.
+    i; des. rename ls1 into ls_init.
     exploit fill_arguments_spec; et. i; des.
 
     esplits; eauto. econs; eauto.
@@ -172,27 +148,21 @@ Proof.
   - (* call fsim *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     inv CALLSRC. inv MATCHST; ss.
-    folder.
-    esplits; eauto.
+    folder. esplits; eauto.
     + econs; eauto.
-      * folder. des.
-        r in TRANSL. r in TRANSL.
+      * folder. des. r in TRANSL. r in TRANSL.
         exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
         { apply SIMSKENV. }
-        intro GE.
-        apply (fsim_external_funct_id GE); ss.
-        folder.
-        inv FPTR; ss.
+        intro GE. apply (fsim_external_funct_id GE); ss.
+        folder. inv FPTR; ss.
       * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss.
     + econs; ss; eauto.
       * instantiate (1:= SimMemExt.mk _ _). ss.
       * ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC.
-    inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
-    inv MATCH; ss. inv MATCHST; ss.
-    esplits; eauto.
+    inv AFTERSRC. inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
       * eapply match_stackframes_after; et.
@@ -206,14 +176,10 @@ Proof.
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv STACKS; ss. destruct sm0; ss. clarify.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto.
-    econs; et; ss.
-    rpapply RES.
-    eapply getpair_equal; et.
-  - left; i.
-    esplits; eauto.
+    econs; et; ss. rpapply RES. eapply getpair_equal; et.
+  - left; i. esplits; eauto.
     { apply RTLC.modsem2_receptive; et. }
-    inv MATCH.
-    ii. hexploit (@step_simulation prog _ skenv_link skenv_link); eauto.
+    inv MATCH. ii. hexploit (@step_simulation prog _ skenv_link skenv_link); eauto.
     { inv SIMSKENV. ss. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { ss. des. ss. }
@@ -231,7 +197,6 @@ Proof.
     + instantiate (1:= (SimMemExt.mk _ _)). econs; ss.
 Unshelve.
   all: ss.
-  all: econs; et.
 Qed.
 
 End SIMMODSEM.
@@ -244,10 +209,7 @@ Variable tprog: LTL.program.
 Hypothesis TRANSL: match_prog prog tprog.
 Definition mp: ModPair.t := ModPair.mk (RTLC.module2 prog) (LTLC.module tprog) tt.
 
-Theorem sim_mod
-  :
-    ModPair.sim mp
-.
+Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
   - r. eapply Sk.match_program_eq; eauto.

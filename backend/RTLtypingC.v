@@ -38,19 +38,14 @@ Section LPRSV.
   Variable prog: program.
 
   Hypothesis wt_prog:
-    forall i fd, In (i, Gfun fd) prog.(prog_defs) -> wt_fundef fd
-  .
-
-  Theorem wt_state_local_preservation
-          skenv_link
-    :
-      local_preservation (modsem2 skenv_link prog) (fun _ _ st => wt_state st)
-  .
+    forall i fd, In (i, Gfun fd) prog.(prog_defs) -> wt_fundef fd.
+  
+  Theorem wt_state_local_preservation: forall skenv_link,
+      local_preservation (modsem2 skenv_link prog) (fun _ _ st => wt_state st).
   Proof.
     econs; ii; ss; eauto.
     - (* init *)
-      inv INIT.
-      econs; et.
+      inv INIT. econs; et.
       + econs; et.
       + inv TYP. eapply typify_has_type_list; et.
     - (* step *)
@@ -61,12 +56,7 @@ Section LPRSV.
       esplits. eapply in_prog_defmap; eauto.
     - esplits; eauto.
       { rr. esplits; ss; eauto. rr. rewrite Forall_forall. ii; ss. }
-      ii.
-      inv AFTER.
-      inv SUST.
-
-      econs; et.
-      apply typify_has_type.
+      ii. inv AFTER. inv SUST. econs; et. apply typify_has_type.
     - esplits; eauto. ss.
   Unshelve.
     all: ss.

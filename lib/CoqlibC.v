@@ -1411,5 +1411,73 @@ Ltac clarify_meq :=
     | [ H0: ?A m= ?B |- _ ] => inv H0
     | [ H0: ?A = ?A -> _ |- _ ] => exploit H0; eauto; check_safe; intro; des; clear H0
     end;
-    clarify
+    clarify.
+
+Local Transparent list_nth_z.
+Lemma list_nth_z_eq
+      A (l: list A) z
+      (POS: 0 <= z)
+  :
+    list_nth_z l z = List.nth_error l z.(Z.to_nat)
 .
+Proof.
+  ginduction l; ii; ss.
+  - destruct ((Z.to_nat z)); ss.
+  - des_ifs. destruct (Z.to_nat) eqn:T; ss.
+    + destruct z; ss. destruct p; ss. xomega.
+    + rewrite IHl; ss; eauto; try xomega.
+      rewrite Z2Nat.inj_pred. rewrite T. ss.
+Qed.
+Local Opaque list_nth_z.
+
+Lemma list_nth_z_firstn
+      (A:Type) (l: list A) n x
+      (T:list_nth_z l n = Some x)
+    :
+      list_nth_z (firstn (Z.to_nat (n + 1)) l) n = Some x.
+Proof.
+  exploit list_nth_z_range; eauto. intro RANGE; des.
+  rewrite list_nth_z_eq in *; try xomega.
+  rewrite Z2Nat.inj_add; ss. rewrite Pos2Nat.inj_1. rewrite Nat.add_comm.
+  exploit nth_error_Some; et. intro X. rewrite T in X. des.
+  exploit X; eauto. { ss. } intro Y.
+  erewrite <- (firstn_skipn (1 + (Z.to_nat n)) l) in T.
+  rewrite nth_error_app1 in T; eauto. rewrite firstn_length.
+  xomega.
+Qed.
+
+Lemma firstn_S
+      (A: Type) (l: list A) n
+  :
+      (le (Datatypes.length l) n /\ firstn (n + 1) l = firstn n l)
+    \/ (lt n (Datatypes.length l) /\ exists x, firstn (n + 1) l = (firstn n l) ++ [x]).
+Proof.
+  ginduction l; i; try by (left; do 2 rewrite firstn_nil; split; ss; omega).
+  destruct n.
+  { right. ss. split; try omega. eauto. }
+  specialize (IHl n). ss. des.
+  - left. split; try omega. rewrite IHl0. ss.
+  - right. split; try omega. rewrite IHl0. eauto.
+Qed.
+
+Lemma map_firstn
+      (A B: Type) (l: list A) (f: A -> B) n
+  :
+    map f (firstn n l) = firstn n (map f l).
+Proof.
+  ginduction l; ss; i.
+  { ss. do 2 rewrite firstn_nil. ss. }
+  destruct n; ss.
+  rewrite IHl. ss.
+Qed.
+
+Lemma list_nth_z_map
+      (A B: Type) (l: list A) n x (f: A -> B)
+      (NTH: list_nth_z l n = Some x)
+  :
+    list_nth_z (map f l) n = Some (f x).
+Proof.
+  exploit list_nth_z_range; eauto. intro RANGE; des.
+  rewrite list_nth_z_eq in *; try xomega.
+  rewrite list_map_nth in *. rewrite NTH. ss.
+Qed.

@@ -50,8 +50,7 @@ Definition get_rs (ms: Mach.state) : Mach.regset :=
 
 Record agree_eq (ms: Mach.regset) (sp: val) (rs: Asm.regset) (sg: signature): Prop :=
   mkagree
-    {
-      agree_sp: rs#SP = sp;
+    { agree_sp: rs#SP = sp;
       agree_sp_def: sp <> Vundef;
       agree_mregs_less:
         forall (r: mreg) (IN: In (R r) (regs_of_rpairs (loc_arguments sg))),
@@ -63,13 +62,11 @@ Record agree_eq (ms: Mach.regset) (sp: val) (rs: Asm.regset) (sg: signature): Pr
 
 Definition set_regset (rs0 rs1: Mach.regset) (sg: signature) (mr: mreg) : val :=
   if Loc.notin_dec (R mr) (regs_of_rpairs (loc_arguments sg))
-  then rs1 mr
-  else rs0 mr.
+  then rs1 mr else rs0 mr.
 
 Definition set_regset_undef (rs: Mach.regset) (sg: signature) (mr: mreg) : val :=
   if Loc.notin_dec (R mr) (regs_of_rpairs (loc_arguments sg))
-  then Vundef
-  else rs mr.
+  then Vundef else rs mr.
 
 Inductive match_init_data init_sp init_ra
           init_rs_src init_sg_src init_rs_tgt : Prop :=
@@ -77,20 +74,15 @@ Inductive match_init_data init_sp init_ra
     (INITRA: init_ra = init_rs_tgt RA)
     (INITRAPTR: <<TPTR: Val.has_type (init_ra) Tptr>> /\ <<RADEF: init_ra <> Vundef>>)
     (INITRS: agree_eq init_rs_src init_sp init_rs_tgt init_sg_src )
-    (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src)
-.
+    (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src).
 
-Inductive stack_base (initial_parent_sp initial_parent_ra: val)
-  : list Mach.stackframe -> Prop :=
-| stack_base_dummy
-  :
-    stack_base
-      initial_parent_sp initial_parent_ra
+Inductive stack_base (initial_parent_sp initial_parent_ra: val): list Mach.stackframe -> Prop :=
+| stack_base_dummy:
+    stack_base initial_parent_sp initial_parent_ra
       ((dummy_stack initial_parent_sp initial_parent_ra)::[])
 | stack_base_cons
     fr ls
-    (TL: stack_base initial_parent_sp initial_parent_ra ls)
-  :
+    (TL: stack_base initial_parent_sp initial_parent_ra ls):
     stack_base
       initial_parent_sp initial_parent_ra
       (fr::ls).
@@ -115,12 +107,10 @@ Inductive match_states
     (* (SPPTR: ValuesC.is_real_ptr (st_tgt0.(init_rs) RSP)) *)
     (MCOMPATSRC: st_src0.(MachC.st).(MachC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
-    (IDX: measure st_src0.(MachC.st) = idx)
-.
+    (IDX: measure st_src0.(MachC.st) = idx).
 
 Lemma asm_step_dstep init_rs st0 st1 tr
-      (STEP: Asm.step skenv_link tge st0 tr st1)
-  :
+      (STEP: Asm.step skenv_link tge st0 tr st1):
     Simulation.DStep (modsem skenv_link tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
@@ -131,19 +121,16 @@ Proof.
 Qed.
 
 Lemma asm_star_dstar init_rs st0 st1 tr
-      (STEP: star Asm.step skenv_link tge st0 tr st1)
-  :
+      (STEP: star Asm.step skenv_link tge st0 tr st1):
     Simulation.DStar (modsem skenv_link tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
 Proof.
-  induction STEP; econs; eauto.
-  eapply asm_step_dstep; auto.
+  induction STEP; econs; eauto. eapply asm_step_dstep; auto.
 Qed.
 
 Lemma asm_plus_dplus init_rs st0 st1 tr
-      (STEP: plus Asm.step skenv_link tge st0 tr st1)
-  :
+      (STEP: plus Asm.step skenv_link tge st0 tr st1):
     Simulation.DPlus (modsem skenv_link tprog)
                      (mkstate init_rs st0) tr
                      (mkstate init_rs st1).
@@ -161,16 +148,11 @@ Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
 Lemma transf_function_sig
       fd_src fd_tgt
-      (TRANS: transf_function fd_src = OK fd_tgt)
-  :
-    fd_src.(Mach.fn_sig) = fd_tgt.(fn_sig)
-.
+      (TRANS: transf_function fd_src = OK fd_tgt):
+    fd_src.(Mach.fn_sig) = fd_tgt.(fn_sig).
 Proof. repeat unfold transf_function, bind, transl_function in *. des_ifs. Qed.
 
-Theorem sim_modsem
-  :
-    ModSemPair.sim msp
-.
+Theorem sim_modsem: ModSemPair.sim msp.
 Proof.
   eapply match_states_sim with (match_states := match_states)
                                (match_states_at := top4); eauto; ii; ss.
@@ -186,14 +168,12 @@ Proof.
                StoreArguments.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
            agree_eq rs_src (Vptr (Mem.nextblock src)
                           Ptrofs.zero) rs (fn_sig fd) /\ Mem.extends m_src m0).
-    {
-      inv TYP.
+    { inv TYP.
       exploit store_arguments_parallel_extends.
       - eapply typify_has_type_list. eauto.
       - eauto.
       - instantiate (1:= typify_list vs (sig_args (fn_sig fd))).
-        eapply lessdef_list_typify_list; eauto.
-        erewrite lessdef_list_length; eauto.
+        eapply lessdef_list_typify_list; eauto. erewrite lessdef_list_length; eauto.
       - eapply MWF.
       - inv STORE. eauto.
       - i. des. exists (set_regset rs_src (to_mregset rs) (fn_sig fd)).
@@ -211,14 +191,11 @@ Proof.
             eapply LocationsC.Loc_not_in_notin_R in NOTIN. contradiction.
     }
 
-    destruct SRCSTORE as [rs_src [m_src [SRCSTORE [AGREE EXTENDS]]]].
-    inv AGREE.
+    destruct SRCSTORE as [rs_src [m_src [SRCSTORE [AGREE EXTENDS]]]]. inv AGREE.
     exists (MachC.mkstate
               rs_src (fn_sig fd)
               (Callstate
-                 [dummy_stack
-                    (Vptr (Mem.nextblock src)
-                          Ptrofs.zero) (rs RA)]
+                 [dummy_stack (Vptr (Mem.nextblock src) Ptrofs.zero) (rs RA)]
                  fptr rs_src (assign_junk_blocks m_src n))).
     inv FPTR; cycle 1.
     { clear - SAFESRC. inv SAFESRC. ss. }
@@ -226,8 +203,7 @@ Proof.
     + inv SAFESRC. ss.
       inv TYP0. clear_tac.
       assert(SIG: fn_sig fd = Mach.fn_sig fd0).
-      {
-        hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
+      { hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
         folder. ss; try unfold bind in *; des_ifs.
         symmetry. eapply transf_function_sig; eauto.
       }
@@ -249,10 +225,7 @@ Proof.
         -- destruct mr; clarify.
         -- destruct mr; clarify.
     + instantiate (1:= mk (assign_junk_blocks m_src n) (assign_junk_blocks m0 n)).
-      econs; ss.
-      * instantiate (1:=rs RA). eauto.
-      * eauto.
-      * eauto.
+      econs; ss; eauto.
       * econs; eauto.
       * econs; ss; eauto.
       * econs; eauto; ss; try by (econs; eauto).
@@ -267,8 +240,7 @@ Proof.
     hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des. ss; unfold bind in *; des_ifs. rename f into fd_tgt.
     inv TYP.
     assert(SIG: fn_sig fd_tgt = Mach.fn_sig fd).
-    {
-      hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
+    { hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
       folder. ss; try unfold bind in *; des_ifs.
       symmetry. eapply transf_function_sig; eauto.
     }
@@ -285,12 +257,10 @@ Proof.
                        (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments (Mach.fn_sig fd)))>>)>>) \/
                    (<<INPC: pr = PC>>) \/
                    (<<INRSP: pr = RSP>>)>>)).
-    {
-      exploit StoreArguments.store_arguments_progress.
+    { exploit StoreArguments.store_arguments_progress.
       - instantiate (2:=typify_list (Args.vs args_tgt) (sig_args (fn_sig fd_tgt))).
         eapply typify_has_type_list.
-        erewrite <- lessdef_list_length; eauto.
-        erewrite SIG. eauto.
+        erewrite <- lessdef_list_length; eauto. erewrite SIG. eauto.
       - erewrite SIG. eauto.
       - instantiate (1:= n). i. des.
         exists ((to_pregset (set_regset_undef rs0 (fn_sig fd_tgt)))
@@ -298,9 +268,7 @@ Proof.
                   #RA <- Vnullptr
                   #RSP <- (Vptr (Mem.nextblock (Args.m args_tgt)) Ptrofs.zero)).
         esplits; eauto.
-        + split; ss.
-          inv STR. econs; eauto. eapply extcall_arguments_same; eauto.
-          i.
+        + split; ss. inv STR. econs; eauto. eapply extcall_arguments_same; eauto. i.
           { assert (NNIN: ~ Loc.notin (R r) (regs_of_rpairs (loc_arguments (fn_sig fd_tgt)))).
             { intros X. eapply Loc.notin_not_in; eauto. }
             unfold set_regset_undef, to_pregset, to_mregset, Pregmap.set, to_preg, preg_of, to_mreg in *.
@@ -316,11 +284,9 @@ Proof.
           destruct pr; des_ifs; ss; eauto.
           exfalso. apply PTR. ss.
     }
-    des.
-    eexists. econs; eauto.
+    des. eexists. econs; eauto.
     + folder. inv FPTR; ss. rewrite <- H1 in *. ss.
-    + rewrite SIG. econs; eauto. rewrite <- LEN.
-      symmetry. eapply lessdef_list_length. eauto.
+    + rewrite SIG. econs; eauto. rewrite <- LEN. symmetry. eapply lessdef_list_length. eauto.
     + rewrite RSRA. econs; ss.
     + rewrite RSRA. ss.
     + erewrite <- transf_function_sig; eauto. ii. hexploit PTRFREE0; et.
@@ -330,25 +296,21 @@ Proof.
       inv STORE. inv STORE0. inv H1. rewrite <- NB0. rewrite <- NB in *.
       erewrite Mem.nextblock_alloc; eauto.
       erewrite (Mem.nextblock_alloc (Args.m args_src)) in H0; eauto.
-      inv MWF. rewrite <- mext_next.
-      des; esplits; eauto; try xomega.
+      inv MWF. rewrite <- mext_next. des; esplits; eauto; try xomega.
   - inv MATCH; ss. destruct st_src0, st_tgt0, sm0. ss. inv MATCHST; ss.
 
   - ss. inv CALLSRC. inv MATCH. inv INITDATA. inv MATCHST. ss.
-    destruct st_tgt0. ss. clarify.
-    des.
+    destruct st_tgt0. ss. clarify. des.
     inv FPTR; ss. destruct (rs0 PC) eqn:PCEQ; ss. des_ifs.
 
     exploit Asmgenproof0.extcall_arguments_match; eauto.
     intros TGRARGS. des.
-    exploit Mem.free_parallel_extends; eauto. intros TGTFREE. des.
-    esplits; ss.
+    exploit Mem.free_parallel_extends; eauto. intros TGTFREE. des. esplits; ss.
     + econs; eauto.
       * r in TRANSF. r in TRANSF.
         exploit (SimSymbId.sim_skenv_revive TRANSF); eauto.
         { apply SIMSKENV. }
-        intro GE.
-        apply (fsim_external_funct_id GE); ss.
+        intro GE. apply (fsim_external_funct_id GE); ss.
       * inv AG. rewrite agree_sp0. clarify.
       * inv STACKS; ss.
         -- inv STACKWF; [|inv TL]. inv ATLR; auto; exfalso; auto.
@@ -359,12 +321,9 @@ Proof.
   - inv AFTERSRC. ss. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
     inv INITDATA. inv SIMRET. destruct sm_ret. ss. clarify.
     exploit Mem_unfree_parallel_extends; try eapply UNFREE; eauto.
-    intros TGTUNFREE. des.
-    esplits; auto.
+    intros TGTUNFREE. des. esplits; auto.
     + econs.
-      * exists skd. esplits; eauto.
-        replace (r PC) with fptr; auto.
-        inv FPTR; ss.
+      * exists skd. esplits; eauto. replace (r PC) with fptr; auto. inv FPTR; ss.
       * ss.
       * inv AG. rewrite agree_sp0. eauto.
       * eauto.
@@ -410,8 +369,7 @@ Proof.
       * ss.
     + ss.
 
-  - left; i.
-    ss. esplits.
+  - left; i. ss. esplits.
     + eapply MachC.modsem_receptive; et.
 
     + i. inv STEPSRC. inv MATCH. set (INITDATA0 := INITDATA). inv INITDATA0.
@@ -444,7 +402,6 @@ Proof.
 
   Unshelve.
     all: ss.
-    all: try apply 0%nat.
 Qed.
 
 End PRESERVATION.
@@ -458,10 +415,7 @@ Variable tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
 Definition mp: ModPair.t := ModPair.mk (MachC.module prog return_address_offset) (AsmC.module tprog) tt.
 
-Theorem sim_mod
-  :
-    ModPair.sim mp
-.
+Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
   - r. eapply Sk.match_program_eq; eauto.

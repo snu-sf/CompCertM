@@ -7,40 +7,24 @@ Set Implicit Arguments.
 
 
 
-Lemma loc_arguments_length_aux
-      tys ir fr ofs
-  :
-    <<LEN: length (loc_arguments_64 tys ir fr ofs) = length tys>>
-.
-Proof.
-  ginduction tys; ii; ss.
-  des_ifs; s; rewrite IHtys; ss.
-Qed.
+Lemma loc_arguments_length_aux: forall tys ir fr ofs,
+    <<LEN: length (loc_arguments_64 tys ir fr ofs) = length tys>>.
+Proof. i. ginduction tys; ii; ss. des_ifs; s; rewrite IHtys; ss. Qed.
 
-Lemma loc_arguments_length
-      sg
-  :
-    <<LEN: length (loc_arguments sg) = length (sig_args sg)>>
-.
+Lemma loc_arguments_length: forall sg,
+    <<LEN: length (loc_arguments sg) = length (sig_args sg)>>.
 Proof.
-  destruct sg; ss.
-  unfold loc_arguments. des_ifs. ss.
-  rewrite loc_arguments_length_aux. ss.
+  destruct sg; ss. unfold loc_arguments. des_ifs. ss. rewrite loc_arguments_length_aux. ss.
 Qed.
 
 Local Opaque Z.add Z.mul Z.sub Z.div.
 Local Opaque list_nth_z.
 
 Let size_arguments_loc_arguments_aux: forall
-    tys
-    ofs
-    x y z
-    (IN: z <= ofs < size_arguments_64 tys x y z)
-  ,
+    tys ofs x y z
+    (IN: z <= ofs < size_arguments_64 tys x y z),
     exists base ty, (<<IN: In (S Outgoing base ty) (regs_of_rpairs (loc_arguments_64 tys x y z))>>)
-                    /\
-                    (<<RANGE: base <= ofs < base + (Memdata.size_chunk (chunk_of_type ty))>>)
-.
+               /\ (<<RANGE: base <= ofs < base + (Memdata.size_chunk (chunk_of_type ty))>>).
 Proof.
   i. ginduction tys; ii; ss.
   { xomega. }
@@ -73,12 +57,9 @@ Qed.
 
 Lemma size_arguments_loc_arguments
       sg ofs
-      (IN: 0 <= ofs < size_arguments sg)
-  :
+      (IN: 0 <= ofs < size_arguments sg):
     exists base ty, (<<IN: In (S Outgoing base ty) (regs_of_rpairs (loc_arguments sg))>>)
-                    /\
-                    (<<RANGE: base <= ofs < base + (Memdata.size_chunk (chunk_of_type ty))>>)
-.
+               /\ (<<RANGE: base <= ofs < base + (Memdata.size_chunk (chunk_of_type ty))>>).
 Proof.
   destruct sg; ss.
   unfold size_arguments, loc_arguments in *. ss. des_ifs. clear_tac.
@@ -86,8 +67,7 @@ Proof.
 Qed.
 
 Lemma loc_args_callee_save_disjoint sg mr
-      (EXT: In (R mr) (regs_of_rpairs (loc_arguments sg)))
-  :
+      (EXT: In (R mr) (regs_of_rpairs (loc_arguments sg))):
     ~ Conventions1.is_callee_save mr.
 Proof.
   exploit in_regs_of_rpairs_inv; eauto. i. des.

@@ -27,10 +27,7 @@ Module SimMemLift.
   Class class (SM: SimMem.class) :=
   {
     (* lepriv_PreOrder :> PreOrder SimMem.lepriv; *)
-    (* lepriv_Trans :> Transitive SimMem.lepriv; *)
-    trans_pub_priv: forall sm0 sm1 sm2, SimMem.lepriv sm0 sm1 -> SimMem.le sm1 sm2 -> SimMem.lepriv sm0 sm2;
-    trans_priv_pub: forall sm0 sm1 sm2 (MWF: SimMem.wf sm0), SimMem.le sm0 sm1 -> SimMem.lepriv sm1 sm2 -> SimMem.lepriv sm0 sm2;
-
+    lepriv_Trans :> Transitive SimMem.lepriv;
 
     lift: SimMem.t -> SimMem.t;
     unlift: SimMem.t -> SimMem.t -> SimMem.t;
@@ -82,7 +79,7 @@ Section PROPS.
   Proof.
     subst.
     hexploit (SimMemLift.lift_priv sm1); eauto. intro T.
-    r. eapply SimMemLift.trans_priv_pub; et.
+    r. etrans; et.
   Qed.
 
   Lemma lift_args

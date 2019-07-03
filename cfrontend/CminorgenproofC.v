@@ -89,8 +89,8 @@ Proof.
         { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
           econs; eauto.
           - eapply SimMemInjC.sim_skenv_symbols_inject; et.
-          - etrans; try apply MWF. ss.
-          - etrans; try apply MWF. ss.
+          - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBSRC. xomega.
+          - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBTGT. xomega.
         }
         { econs; et. }
         { inv TYP. eapply inject_list_typify_list; eauto. }

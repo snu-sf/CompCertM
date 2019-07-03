@@ -114,8 +114,8 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
     (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
     (PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public))
     (* NOW BELOW IS DERIVABLE FROM WF *)
-    (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb))
-    (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb))
+    (* (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb)) *)
+    (* (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb)) *)
     (NBSRC: skenv_src.(Genv.genv_next) = sm0.(src_ge_nb))
     (NBTGT: skenv_tgt.(Genv.genv_next) = sm0.(tgt_ge_nb))
 .
@@ -218,8 +218,8 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
     (<<PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss>>)
     /\
     (<<PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public)>>)
-    /\ (<<BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb)>>)
-    /\ (<<BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb)>>)
+    (* /\ (<<BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb)>>) *)
+    (* /\ (<<BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb)>>) *)
     /\ (<<NBSRC: skenv_src.(Genv.genv_next) = sm0.(src_ge_nb)>>)
     /\ (<<NBTGT: skenv_tgt.(Genv.genv_next) = sm0.(tgt_ge_nb)>>)
 .
@@ -405,8 +405,8 @@ Proof.
   - ii. inv SIMSK. apply CLOSED in H. unfold privs in *. apply andb_true_iff in H. des.
     apply negb_true_iff in H0. unfold Sk.load_skenv in *. rewrite Genv.globalenv_public in PR. des_sumbool. ss.
   - inv SIMSK. unfold Sk.load_skenv. do 2 rewrite Genv.globalenv_public. ss.
-  - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
-  - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
+  (* - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega. *)
+  (* - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega. *)
   - inv SIMSK. erewrite Genv.init_mem_genv_next; et.
   - inv SIMSK. erewrite Genv.init_mem_genv_next; et.
 Qed.
@@ -709,36 +709,6 @@ Next Obligation.
   inv MLE. inv SIMSKENV.
   assert (SAME: forall b b' delta, Plt b (Genv.genv_next skenv_src) ->
                                    inj sm1 b = Some(b', delta) -> inj sm0 b = Some(b', delta)).
-  { i. erewrite frozen_preserves_src; eauto. i. xomega. }
-  apply sim_skenv_splittable_spec.
-  rr.
-  dsplits; eauto; try congruence; ii.
-  - i. eapply SIMSYMB1; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto.
-  - i. exploit SIMSYMB2; eauto. i; des. eexists. splits; eauto.
-  - i. exploit SIMSYMB3; eauto. i; des. eexists. splits; eauto.
-  - i. exploit SIMDEF; eauto. eapply SAME; try eapply Genv.genv_defs_range; eauto.
-  - i. eapply DISJ; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto.
-    destruct (inj sm0 blk_src1) eqn:T; ss.
-    { destruct p; ss. exploit INCR; et. i; clarify. }
-    exfalso.
-    inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
-    exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac.
-    exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT BOUNDTGT. xomega.
-  - i. eapply SIMDEFINV; eauto.
-    destruct (inj sm0 blk_src) as [[b1 delta1] | ] eqn: J.
-    + exploit INCR; eauto. congruence.
-    + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
-      exploit Genv.genv_defs_range; eauto. xomega.
-  (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *)
-Qed.
-(* Next Obligation. *)
-(*   inv SIMSKENV. inv MWF. *)
-(*   econs; eauto; ss; xomega. *)
-(* Qed. *)
-Next Obligation.
-  inv MLE. inv SIMSKENV.
-  assert (SAME: forall b b' delta, Plt b (Genv.genv_next skenv_src) ->
-                                   inj sm1 b = Some(b', delta) -> inj sm0 b = Some(b', delta)).
   { i. erewrite frozen_preserves_src; eauto. congruence. }
   apply sim_skenv_splittable_spec.
   rr.
@@ -753,16 +723,18 @@ Next Obligation.
     exfalso.
     inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
     exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac.
-    exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT NBTGT.
-    exploit Plt_Ple_trans; try apply OUTSIDE_TGT. { rewrite <- NBTGT. et. } i. xomega.
+    exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT NBTGT. rewrite NBTGT in *. xomega.
   - i. eapply SIMDEFINV; eauto.
     destruct (inj sm0 blk_src) as [[b1 delta1] | ] eqn: J.
     + exploit INCR; eauto. congruence.
     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
-      exploit Genv.genv_defs_range; eauto. i.
-      exploit Plt_Ple_trans; try apply OUTSIDE_TGT. { rewrite <- NBTGT. et. } i. xomega.
+      exploit Genv.genv_defs_range; eauto. i. rewrite NBTGT in *. xomega.
   (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *)
 Qed.
+(* Next Obligation. *)
+(*   inv SIMSKENV. inv MWF. *)
+(*   econs; eauto; ss; xomega. *)
+(* Qed. *)
 (* Next Obligation. *)
 (*   inv MLE. inv SIMSKENV. *)
 (*   assert (SAME: forall b b' delta, Plt b (Genv.genv_next skenv_src) -> *)

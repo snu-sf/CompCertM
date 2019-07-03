@@ -1416,8 +1416,6 @@ Proof.
     eapply wt_prog; eauto.
   - inv FOOT. inv MLEEXCL. rewrite RSP in *. clarify. des. clarify. eapply SimMemInjC.foot_excl; et.
   - inv EXCL. inv MLEEXCL. inv MWF. econs; et.
-    + congruence.
-    + congruence.
     + eapply SimMemInj.frozen_shortened; et.
   - (* init bsim *)
     {
@@ -1600,7 +1598,7 @@ Proof.
             { rewrite <- SG. ss. rewrite <- MEMSRC in *. eauto. }
             { rewrite DEF, SM. s. f_equal; eauto. }
             { inv SIMSKENV. ss. inv SIMSKE. ss.
-              etrans; et. inv MWF0. ss. }
+              - etrans; try apply MWF0. ss. etrans; try apply MWF. rewrite NBTGT. xomega. }
             intro SEP.
             eapply dummy_frame_contents_incr; try apply MLE0; eauto.
             eapply dummy_frame_contents_incr; try apply MLE; eauto.
@@ -1775,7 +1773,7 @@ Proof.
       * rewrite MEMTGT. inv MWFAFTR. ss.
         etrans; eauto.
         inv MLE. rewrite <- TGTPARENTEQNB.
-        inv SIMSKENV. inv SIMSKELINK. ss.
+        inv SIMSKENV. inv SIMSKELINK. ss. rewrite NBTGT. congruence.
       * psimpl. zsimpl. rp; eauto.
     + econs; ss; eauto with congruence; cycle 1.
       {
@@ -1832,7 +1830,7 @@ Proof.
           - destruct p. exploit INCR; et. i; des. clarify.
           - inv FROZEN.
             exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. inv SIMSKELINK. inv INJECT.
-            inv SIMSKENV. xomega.
+            inv SIMSKENV. admit "Frozen lo will fix this". (* xomega. *)
         }
         eapply match_stacks_le; try apply STACKS; et.
         { intros ? ? ? VALID0 MAP0. rewrite MINJ in *.

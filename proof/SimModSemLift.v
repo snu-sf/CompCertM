@@ -377,10 +377,8 @@ Section IMPLIES.
       exploit K; eauto. i; des. pclearbot.
       eexists _, sm_after. 
       esplits; eauto.
-      { eapply SimMemLift.trans_pub_priv; cycle 1.
-        (* etrans; cycle 1. *)
-        -
-          eapply EXCLPRIV; try apply MLE1; et.
+      { etrans; cycle 1.
+        - eapply EXCLPRIV; try apply MLE1; et.
           eapply SimMemLift.unlift_wf; et.
         - eapply SimMemLift.unlift_priv; et. eapply SimMemLift.lift_priv; et. }
       { eapply FOOTEXCL; et. etrans; et. eapply SimMemLift.lift_spec; et. }

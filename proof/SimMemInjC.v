@@ -111,10 +111,18 @@ Global Program Instance SimMemInj : SimMem.class :=
   le := le';
   (* lift := lift'; *)
   (* unlift := unlift'; *)
-  lepriv := lepriv \2/ le';
+  lepriv := lepriv;
   sim_val := fun (mrel: t') => Val.inject mrel.(inj);
   sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
 }.
+Next Obligation.
+  inv H0. econs; et.
+  - inv H. rewrite <- SRCPARENTEQNB. lia.
+  - inv H. rewrite <- TGTPARENTEQNB. lia.
+  - eapply frozen_shortened; et.
+    + inv H. ss.
+    + inv H. ss.
+Qed.
 (* Next Obligation. *)
 (*   rename H into VALID. *)
 (*   inv VALID. econs; ss; eauto; ii; des; ss; eauto. *)
@@ -128,9 +136,7 @@ Global Program Instance SimMemInj : SimMem.class :=
 (*   eapply unlift_wf; eauto. *)
 (* Qed. *)
 Next Obligation.
-  des.
-  - ii. inv MLE. eapply val_inject_incr; eauto.
-  - ii. inv MLE. eapply val_inject_incr; eauto.
+  ii. inv MLE. eapply val_inject_incr; eauto.
 Qed.
 Next Obligation.
   do 2 (apply Axioms.functional_extensionality; i).
@@ -174,38 +180,6 @@ Global Program Instance SimMemInjLift : SimMemLift.class SimMemInj :=
   unlift := unlift';
 }.
 Next Obligation.
-  des; cycle 1.
-  - right. etrans; et.
-  - left. inv H. inv H0.
-    econs; ss; eauto; des; ss; eauto; try congruence.
-    + ii; des; ss; eauto.
-    + inv FROZEN0. inv FROZEN. econs. ii; des; ss; eauto.
-      destruct (inj sm1 b_src) eqn:T.
-      { destruct p; ss.
-        exploit INCR0; et. i; clarify.
-        exploit NEW_IMPLIES_OUTSIDE0; et. }
-      exploit NEW_IMPLIES_OUTSIDE; et. i; des. esplits; et; try congruence.
-      * etrans; et.
-      * etrans; et.
-Qed.
-Next Obligation.
-  inv MWF.
-  des; cycle 1.
-  - right. etrans; et.
-  - left. inv H. inv H0.
-    econs; ss; eauto; des; ss; eauto; try congruence.
-    + ii; des; ss; eauto.
-    + inv FROZEN0. inv FROZEN. econs. ii; des; ss; eauto.
-      destruct (inj sm1 b_src) eqn:T.
-      { destruct p; ss.
-        exploit INCR0; et. i; clarify.
-        exploit NEW_IMPLIES_OUTSIDE0; et. i; des. esplits; et.
-        - etrans; et.
-        - etrans; et.
-      }
-      exploit NEW_IMPLIES_OUTSIDE; et. i; des. esplits; et; try congruence.
-Qed.
-Next Obligation.
   rename H into VALID.
   inv VALID. econs; ss; eauto; ii; des; ss; eauto.
   - eapply Pos.compare_gt_iff in H. xomega.
@@ -228,10 +202,9 @@ Next Obligation.
   - eapply frozen_refl.
 Qed.
 Next Obligation.
-  inv MWF. inv MLE. left.
+  inv MWF. inv MLE. inv MLIFT.
   (* destruct sm1; ss. *)
-  des; inv MLIFT; econs; ss; et; try congruence.
-  - eapply frozen_refl.
+  econs; ss; et; try congruence.
   - eapply frozen_refl.
 Qed.
 
@@ -688,37 +661,34 @@ Next Obligation.
     + psimpl. ss.
 Qed.
 Next Obligation.
-  des.
-  {
-    inv SIMSKENV. inv INJECT.
-    econs; eauto.
-    econs; eauto.
-    - ii. exploit DOMAIN; eauto. i. eapply MLE; eauto.
-    - ii. inv MLE.
-      eapply IMAGE; eauto.
-      erewrite frozen_preserves_tgt; eauto.
-      eapply Plt_Ple_trans; eauto.
-      rewrite <- NBTGT.
-      rr in SIMSKENV0. clarify. refl.
-    - inv MLE. eauto with congruence.
-    - inv MLE. eauto with congruence.
-    - inv MLE. eauto with congruence.
-    - inv MLE. eauto with congruence.
-  }
-  {
-    inv SIMSKENV. inv INJECT.
-    econs; eauto.
-    econs; eauto.
-    - ii. exploit DOMAIN; eauto. i. eapply MLE; eauto.
-    - ii. inv MLE.
-      eapply IMAGE; eauto.
-      erewrite frozen_preserves_tgt; eauto.
-      eapply Plt_Ple_trans; eauto.
-    - inv MLE. eauto with congruence.
-    - inv MLE. eauto with congruence.
-    - inv MLE. eauto with congruence.
-    - inv MLE. eauto with congruence.
-  }
+  inv SIMSKENV. inv INJECT.
+  econs; eauto.
+  econs; eauto.
+  - ii. exploit DOMAIN; eauto. i. eapply MLE; eauto.
+  - ii. inv MLE.
+    eapply IMAGE; eauto.
+    erewrite frozen_preserves_tgt; eauto.
+    eapply Plt_Ple_trans; eauto.
+  - inv MLE. eauto with congruence.
+  - inv MLE. eauto with congruence.
+  - inv MLE. eauto with congruence.
+  - inv MLE. eauto with congruence.
+Qed.
+Next Obligation.
+  inv SIMSKENV. inv INJECT.
+  econs; eauto.
+  econs; eauto.
+  - ii. exploit DOMAIN; eauto. i. eapply MLE; eauto.
+  - ii. inv MLE.
+    eapply IMAGE; eauto.
+    erewrite frozen_preserves_tgt; eauto.
+    eapply Plt_Ple_trans; eauto.
+    rewrite <- NBTGT.
+    rr in SIMSKENV0. clarify. refl.
+  - inv MLE. eauto with congruence.
+  - inv MLE. eauto with congruence.
+  - inv MLE. eauto with congruence.
+  - inv MLE. eauto with congruence.
 Qed.
 (* Next Obligation. *)
 (*   inv MWF. inv SIMSKENV. *)

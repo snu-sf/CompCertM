@@ -116,14 +116,14 @@ Module SimSymb.
                                        (Genv.symbol_address skenv_tgt sk_tgt.(prog_main) Ptrofs.zero)>>)
       ;
 
-      mle_preserves_sim_skenv: forall
-          sm0 sm1
-          (MLE: SimMem.le sm0 sm1)
-          ss skenv_src skenv_tgt
-          (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
-        ,
-          <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>
-      ;
+      (* mle_preserves_sim_skenv: forall *)
+      (*     sm0 sm1 *)
+      (*     (MLE: SimMem.le sm0 sm1) *)
+      (*     ss skenv_src skenv_tgt *)
+      (*     (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt) *)
+      (*   , *)
+      (*     <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>> *)
+      (* ; *)
 
       mlepriv_preserves_sim_skenv: forall
           sm0 sm1
@@ -231,6 +231,21 @@ Module SimSymb.
 
     }
   .
+
+  Lemma mle_preserves_sim_skenv: forall
+      `{SM: SimMem.class} `{SS: @class SM}
+      sm0 sm1
+      (MLE: SimMem.le sm0 sm1)
+      ss skenv_src skenv_tgt
+      (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt)
+    ,
+      <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>
+  .
+  Proof.
+    i.
+    eapply mlepriv_preserves_sim_skenv; et.
+    eapply SimMem.pub_priv; et.
+  Qed.
 
   Lemma mfuture_preserves_sim_skenv
         `{SM: SimMem.class} `{SS: @class SM}

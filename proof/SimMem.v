@@ -35,7 +35,8 @@ Module SimMem.
 
     le_PreOrder :> PreOrder le;
 
-    pub_priv: forall sm0 sm1, wf sm0 -> le sm0 sm1 -> lepriv sm0 sm1;
+    (* pub_priv: forall sm0 sm1, wf sm0 -> le sm0 sm1 -> lepriv sm0 sm1; *)
+    pub_priv: le <2= lepriv;
     (* lift_le: forall mrel, le mrel (lift mrel); *)
     (* lift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> wf mrel0 -> le mrel0 (unlift mrel0 mrel1); *)
 

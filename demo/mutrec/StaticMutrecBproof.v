@@ -208,6 +208,7 @@ Inductive match_states (sm_init: SimMem.t)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 2))
     (ARG: rs RDI = Vint i)
     (RANGE: 0 <= i.(Int.intval) < MAX)
+    (IDX: (idx > 9)%nat)
   :
     match_states sm_init idx (Callstate i m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt)) sm0
@@ -232,6 +233,7 @@ Inductive match_states (sm_init: SimMem.t)
     (ARG: rs RBX = Vint i)
     (FARG: rs RDI = Vint (Int.sub i (Int.repr 1)))
     (RANGE: 0 < i.(Int.intval) < MAX)
+    (IDX: (idx > 6)%nat)
   :
     match_states sm_init idx (Interstate i m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt)) sm0
@@ -256,6 +258,7 @@ Inductive match_states (sm_init: SimMem.t)
     (ARG: rs RBX = Vint i)
     (SUM: rs RAX = Vint (sum (Int.sub i Int.one)))
     (RANGE: 0 < i.(Int.intval) < MAX)
+    (IDX: (idx > 3)%nat)
   :
     match_states sm_init idx (Returnstate (sum i) m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt))sm0
@@ -530,8 +533,7 @@ Proof.
         - econs 2.
           + split.
             * apply star_one. ss. econs 1.
-            * eapply Ord.lift_idx_spec.
-              admit "index".
+            * eapply Ord.lift_idx_spec. eauto.
           + refl.
           + left. pfold. intros _. econs 1. i. econs 2.
 
@@ -635,7 +637,7 @@ Proof.
                 econs 1.
               }
 
-              { admit "index". }
+              { eapply Ord.lift_idx_spec. eauto. }
 
             * refl.
 
@@ -660,7 +662,7 @@ Proof.
             * apply star_one. ss. econs 2.
               exploit Int.eq_false. eapply H. ii.
               unfold Int.eq in H0. des_ifs.
-            * admit "index".
+            * eapply Ord.lift_idx_spec. eauto.
           + refl.
           + left. pfold. intros _. econs 1. i. econs 2.
 
@@ -750,7 +752,7 @@ Proof.
                 econs 1.
               }
 
-              { admit "index". }
+              { eapply Ord.lift_idx_spec. eauto. }
 
             * refl.
 
@@ -792,7 +794,7 @@ Proof.
         + ss. econs; ss. econs; eauto.
           * des_ifs.
           * ss.
-      - admit "index". }
+      - eapply Ord.lift_idx_spec. eauto. }
     { refl. }
 
     left. pfold. intros _. econs 3; eauto.
@@ -1051,7 +1053,7 @@ Proof.
 
         econs 1; eauto.
 
-      * admit "index".
+      * eapply Ord.lift_idx_spec. eauto.
 
     + eauto.
 

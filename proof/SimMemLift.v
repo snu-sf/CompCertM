@@ -11,7 +11,8 @@ Require Import Ordered.
 Require Import AST.
 Require Import Integers.
 
-Require Import ModSem SimMem.
+Require Import ModSem.
+Require Export SimMem.
 (* Include SimMem. *)
 
 Set Implicit Arguments.
@@ -36,7 +37,7 @@ Module SimMemLift.
     lift_tgt: forall mrel, (lift mrel).(SimMem.tgt) = mrel.(SimMem.tgt);
     unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.src) = mrel1.(SimMem.src);
     unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.tgt) = mrel1.(SimMem.tgt);
-    unlift_spec: forall mrel0 mrel1, SimMem.le (lift mrel0) mrel1 -> SimMem.wf mrel0 -> SimMem.le mrel0 (unlift mrel0 mrel1);
+    lift_spec: forall mrel0 mrel1, SimMem.le (lift mrel0) mrel1 -> SimMem.wf mrel0 -> SimMem.le mrel0 (unlift mrel0 mrel1);
     unlift_wf: forall mrel0 mrel1,
         SimMem.wf mrel0 -> SimMem.wf mrel1 -> SimMem.le (lift mrel0) mrel1 -> SimMem.wf (unlift mrel0 mrel1);
 

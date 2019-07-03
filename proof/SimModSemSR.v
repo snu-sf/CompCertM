@@ -105,7 +105,7 @@ Section SIMMODSEM.
       (<<PROGRESS:
          forall
            (* (STEPSRC: ms_src.(ModSem.is_step) st_src0) *)
-           (STEPSRC: SimModSem.safe_modsem ms_src st_src0)
+           (STEPSRC: safe_modsem ms_src st_src0)
          ,
            (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
 
@@ -157,7 +157,7 @@ Section SIMMODSEM.
             /\
             (<<K: forall
                 sm_ret retv_src retv_tgt
-                (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
+                (MLE: SimMem.lepriv sm_arg sm_ret)
                 (MWF: SimMem.wf sm_ret)
                 (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
                 st_src1
@@ -165,6 +165,8 @@ Section SIMMODSEM.
               ,
                 exists st_tgt1 sm_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>)
+                  /\
+                  (<<MLE: SimMem.lepriv sm_ret sm_after>>)
                   /\
                   (<<MLE: SimMem.le sm0 sm_after>>)
                   /\

@@ -11,7 +11,7 @@ Local Open Scope sep_scope.
 (* newly added *)
 Require Export Stackingproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSemExcl.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMemLift AsmregsC MatchSimModSemExcl.
 Require Import Conventions1C.
 Require SimMemInjC.
 Require Import AxiomsC.
@@ -784,9 +784,9 @@ Lemma external_call_parallel_rule_simmem
       (MWF2: SimMem.wf sm_after)
       (MWFAFTR : SimMem.wf (SimMemInj.unlift' sm_arg sm_ret))
       (MLE: SimMem.le sm_at sm_arg)
-      (MLE0: SimMem.le (SimMem.lift sm_arg) sm_ret)
-      (MLE1: SimMem.le (SimMem.unlift sm_at sm_ret) sm_after)
-      (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret))
+      (MLE0: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
+      (MLE1: SimMem.le (SimMemLift.unlift sm_at sm_ret) sm_after)
+      (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret))
       (PRIV0: sm_at.(SimMemInj.tgt_private) = sm_arg.(SimMemInj.tgt_private))
       (PRIV1: sm_ret.(SimMemInj.tgt_private) = sm_after.(SimMemInj.tgt_private))
       (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg))
@@ -1415,6 +1415,10 @@ Proof.
   - eapply wt_state_local_preservation; eauto.
     eapply wt_prog; eauto.
   - inv FOOT. inv MLEEXCL. rewrite RSP in *. clarify. des. clarify. eapply SimMemInjC.foot_excl; et.
+  - inv EXCL. inv MLEEXCL. inv MWF. econs; et.
+    + congruence.
+    + congruence.
+    + eapply SimMemInj.frozen_shortened; et.
   - (* init bsim *)
     {
       inv INITTGT. inv STORE. folder.

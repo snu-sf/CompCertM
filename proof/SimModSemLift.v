@@ -17,6 +17,8 @@ Import ModSem.
 Require Import ModSemProps.
 Require Import Events.
 Require Import SmallstepC.
+Require Import SimModSem.
+
 
 Set Implicit Arguments.
 
@@ -213,7 +215,7 @@ Section SIMMODSEM.
         <<LXSIM: _lxsim_pre lxsim sm_init i0 st_src0 st_tgt0 sm0>>)
   .
 
-  Definition lxsim: _ -> _ -> _ -> _ -> _ -> Prop := paco5 _lxsim bot5.
+  Definition lxsimL: _ -> _ -> _ -> _ -> _ -> Prop := paco5 _lxsim bot5.
 
   Lemma lxsim_mon:
     monotone5 _lxsim.
@@ -241,7 +243,7 @@ Section SIMMODSEM.
 
 End SIMMODSEM.
 
-Hint Unfold lxsim.
+Hint Unfold lxsimL.
 Hint Resolve lxsim_mon: paco.
 
 Print HintDb typeclass_instances.
@@ -249,15 +251,14 @@ Print HintDb typeclass_instances.
 
 
 
-Require Import SimModSem.
-
 Module ModSemPair.
+Include SimModSem.ModSemPair.
 Section MODSEMPAIR.
 Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 Context {SMLIFT: SimMemLift.class SM}.
 
-  Inductive sim (msp: ModSemPair.t): Prop :=
-  | sim_intro
+  Inductive simL (msp: ModSemPair.t): Prop :=
+  | simL_intro
       (* (SIMSKENV: sim_skenv msp msp.(sm)) *)
       sidx
       sound_states
@@ -276,6 +277,7 @@ Context {SMLIFT: SimMemLift.class SM}.
           <<MLE: SimMem.le sm0 sm2>>)
       (EXCLPRIV: forall
           st_init_src st_init_tgt sm0 sm1
+          (MWF: SimMem.wf sm0)
           (EXCL: mle_excl st_init_src st_init_tgt sm0 sm1)
         ,
           <<LE: SimMem.lepriv sm0 sm1>>)
@@ -300,7 +302,7 @@ Context {SMLIFT: SimMemLift.class SM}.
               exists st_init_src sm_init idx_init,
                 (<<MLE: SimMem.le sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(ModSemPair.src).(initial_frame) args_src st_init_src>>) /\
-                (<<SIM: Top.lxsim msp.(ModSemPair.src) msp.(ModSemPair.tgt)
+                (<<SIM: lxsimL msp.(ModSemPair.src) msp.(ModSemPair.tgt)
                           (fun st => forall si, exists su m_init, sound_states si su m_init st)
                           has_footprint
                           mle_excl
@@ -340,12 +342,13 @@ Section IMPLIES.
             <<MLE: SimMem.le sm0 sm2>>)
         (EXCLPRIV: forall
             st_init_src st_init_tgt sm0 sm1
+            (MWF: SimMem.wf sm0)
             (EXCL: mle_excl st_init_src st_init_tgt sm0 sm1)
           ,
             <<LE: SimMem.lepriv sm0 sm1>>)
-        (SIM: Top.lxsim ms_src ms_tgt sound_state has_footprint mle_excl sm_arg idx_init st_init_src st_init_tgt sm_init)
+        (SIM: lxsimL ms_src ms_tgt sound_state has_footprint mle_excl sm_arg idx_init st_init_src st_init_tgt sm_init)
     :
-      <<SIM: lxsim ms_src ms_tgt sound_state sm_arg idx_init st_init_src st_init_tgt sm_init>>
+      <<SIM: SimModSem.lxsim ms_src ms_tgt sound_state sm_arg idx_init st_init_src st_init_tgt sm_init>>
   .
   Proof.
     move has_footprint at top.
@@ -375,15 +378,16 @@ Section IMPLIES.
       eexists _, sm_after. 
       esplits; eauto.
       { etrans; cycle 1.
-        - eapply EXCLPRIV; et.
+        - eapply EXCLPRIV; try apply MLE1; et.
+          eapply SimMemLift.unlift_wf; et.
         - eapply SimMemLift.unlift_priv; et. eapply SimMemLift.lift_priv; et. }
-      { eapply FOOTEXCL; et. etrans; et. eapply SimMemLift.unlift_spec; et. }
+      { eapply FOOTEXCL; et. etrans; et. eapply SimMemLift.lift_spec; et. }
     - econs 4; et.
   Qed.
 
   Theorem sim_mod_sem_implies
           msp
-          (SIMMS: Top.ModSemPair.sim msp)
+          (SIMMS: ModSemPair.simL msp)
     :
       <<SIMMS: SimModSem.ModSemPair.sim msp>>
   .

@@ -220,7 +220,7 @@ Section CLIGHTINJ.
     { inv MWF. eauto. }
     i. des.
     inv MWF.
-    eexists (SimMemInj.mk _ _ _ _ _ _ _).
+    eexists (SimMemInj.mk _ _ _ _ _ _ _ _ _).
     esplits; ss; eauto; cycle 1.
     - econs; ss; eauto.
       + eapply Mem.storebytes_unchanged_on; eauto.
@@ -276,7 +276,7 @@ Section CLIGHTINJ.
         destruct (Mem.range_perm_storebytes (SimMemInj.tgt sm0) blk_tgt (Ptrofs.unsigned (Ptrofs.add ofs_src (Ptrofs.repr delta0))) nil)
           as [tm' SB].
         { simpl. red; intros; omegaContradiction. }
-        eexists (SimMemInj.mk _ tm' _ _ _ _ _); ss. esplits; cycle 3; eauto.
+        eexists (SimMemInj.mk _ tm' _ _ _ _ _ _ _); ss. esplits; cycle 3; eauto.
         * econs; ss; eauto.
           { eapply Mem.storebytes_unchanged_on; eauto.
             i. ss. omega. }
@@ -1007,13 +1007,15 @@ Section CLIGHTINJ.
                (loc_unmapped j0 /2\ SimMemInj.valid_blocks m_src0)
                (loc_out_of_reach j0 m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
                (Mem.nextblock m_src0)
-               (Mem.nextblock m_tgt0)).
+               (Mem.nextblock m_tgt0) 1%positive 1%positive).
     assert (SYMBINJ: symbols_inject (SimMemInj.inj sm) se_src se_tgt).
     { eauto. }
     exploit clight_step_preserve_injection; eauto; ss.
     - econs; eauto. econs; ss; eauto.
       + refl.
       + refl.
+      + xomega.
+      + xomega.
     - instantiate (1:=sm). i. des. destruct sm1.
       inv MATCH0. inv MLE. inv MWF. ss.
       esplits; eauto.

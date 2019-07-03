@@ -1358,9 +1358,11 @@ Inductive mle_excl
 
     (SRCPARENTEQ: mrel0.(SimMemInj.src_external) = mrel1.(SimMemInj.src_external))
     (SRCPARENTEQNB: mrel0.(SimMemInj.src_parent_nb) = mrel1.(SimMemInj.src_parent_nb))
+    (SRCGENB: mrel0.(SimMemInj.src_ge_nb) = mrel1.(SimMemInj.src_ge_nb))
     (TGTPARENTEQ: mrel0.(SimMemInj.tgt_external) /2\
                                                  (~2 brange blk1_tgt (ofs_tgt.(Ptrofs.unsigned)) (ofs_tgt.(Ptrofs.unsigned) + 4 * (size_arguments sg))) = mrel1.(SimMemInj.tgt_external))
     (TGTPARENTEQNB: mrel0.(SimMemInj.tgt_parent_nb) = mrel1.(SimMemInj.tgt_parent_nb))
+    (TGTGENB: mrel0.(SimMemInj.tgt_ge_nb) = mrel1.(SimMemInj.tgt_ge_nb))
     (FROZEN: SimMemInj.frozen mrel0.(SimMemInj.inj) mrel1.(SimMemInj.inj) (mrel0.(SimMemInj.src_parent_nb))
                                                                           (mrel0.(SimMemInj.tgt_parent_nb)))
 
@@ -1755,6 +1757,7 @@ Proof.
     + etrans; eauto.
     + etrans; eauto.
     + etrans; eauto.
+    + etrans; eauto.
       rewrite TGTPARENTEQ in *. des. des_ifs. clarify.
       rewrite FPTR in *. clarify.
       rewrite RSPTGT in *. clarify.
@@ -1763,6 +1766,7 @@ Proof.
       extensionality ofs.
       rewrite <- TGTPARENTEQ0.
       eapply propositional_extensionality. split; auto; tauto.
+    + etrans; eauto.
     + etrans; eauto.
     + inv FROZEN. inv FROZEN0.
       econs; ss; eauto.
@@ -1808,6 +1812,11 @@ Proof.
       inv TGTUNCHANGED.
       unfold Mem.valid_block.
       eapply Plt_Ple_trans; eauto.
+
+  - inv EXCL. inv MWF. econs; et.
+    + congruence.
+    + congruence.
+    + eapply SimMemInj.frozen_shortened; et.
 
   - exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
@@ -1887,7 +1896,7 @@ Proof.
         instantiate (1:=SimMemInj.mk
                           (JunkBlock.assign_junk_blocks m_src1 n) (JunkBlock.assign_junk_blocks m0 n)
                           (junk_inj m_src1 m0 (update_meminj inj (Mem.nextblock src) (Mem.nextblock tgt) 0) n)
-                          _ _ _ _).
+                          _ _ _ _ _ _).
         econs; ss; auto.
         - etrans.
           + eauto.
@@ -2185,7 +2194,7 @@ Proof.
     i. des. rewrite <- MEMSRC in *.
 
     esplits; ss.
-    + instantiate (1:=SimMemInj.mk m1 m2' (SimMemInj.inj sm_ret) _ _ _ _).
+    + instantiate (1:=SimMemInj.mk m1 m2' (SimMemInj.inj sm_ret) _ _ _ _ _ _).
       econs; ss; eauto.
       * eapply Mem.unchanged_on_implies.
         { rewrite <- MEMSRC. eapply Mem_unfree_unchanged_on; eauto. }
@@ -2289,6 +2298,8 @@ Proof.
           + inv MWFAFTR. ss.
             etrans; eauto.
             erewrite Mem_nextblock_unfree; eauto. refl.
+          + inv MLE. congruence.
+          + inv MLE. congruence.
         - unfold Genv.find_funct. rewrite Heq0. des_ifs. eauto.
         - eauto.
         - eauto.
@@ -2311,7 +2322,7 @@ Proof.
     { exploit RSPDELTA; eauto. i. des. clarify. }
     clarify. ss. zsimpl.
 
-    eexists (SimMemInj.mk _ _ _ _ _ _ _). esplits; ss; eauto.
+    eexists (SimMemInj.mk _ _ _ _ _ _ _ _ _). esplits; ss; eauto.
     + cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl.
       econs; ss; ii; eauto.
       * specialize (CALLEESAVE _ H).
@@ -2397,7 +2408,7 @@ Proof.
 
         i. des.
         eexists (AsmC.mkstate init_rs_tgt (Asm.State _ _)).
-        eexists (SimMemInj.mk _ _ _ _ _ _ _).
+        eexists (SimMemInj.mk _ _ _ _ _ _ _ _ _).
         esplits.
         - left. econs; cycle 1.
           + apply star_refl.
@@ -2405,7 +2416,7 @@ Proof.
           + econs.
             * apply AsmC.modsem_determinate.
             * econs; ss; eauto.
-        - instantiate (5 := j1).
+        - instantiate (7 := j1).
           econs; ss.
           + eapply Mem.unchanged_on_implies. eauto.
             i. eapply SRCEXT; eauto.

@@ -94,12 +94,14 @@ Inductive lepriv (sm0 sm1: SimMemInj.t'): Prop :=
     (* (TGTPARENTEQ: sm0.(tgt_external) = sm1.(tgt_external)) *)
     (* (SRCPARENTEQNB: (sm0.(src_parent_nb) <= sm1.(src_parent_nb))%positive) *)
     (* (TGTPARENTEQNB: (sm0.(tgt_parent_nb) <= sm1.(tgt_parent_nb))%positive) *)
-    (SRCPARENTNB: (sm0.(src_ge_nb) <= sm1.(src_parent_nb))%positive)
-    (TGTPARENTNB: (sm0.(tgt_ge_nb) <= sm1.(tgt_parent_nb))%positive)
+
+
+    (* (SRCPARENTNB: (sm0.(src_ge_nb) <= sm1.(src_parent_nb))%positive) *)
+    (* (TGTPARENTNB: (sm0.(tgt_ge_nb) <= sm1.(tgt_parent_nb))%positive) *)
     (SRCGENB: sm0.(src_ge_nb) = sm1.(src_ge_nb))
     (TGTGENB: sm0.(tgt_ge_nb) = sm1.(tgt_ge_nb))
-    (FROZEN: frozen sm0.(inj) sm1.(inj) (sm0.(src_ge_nb))
-                                            (sm0.(tgt_ge_nb)))
+    (FROZEN: frozen sm0.(inj) sm1.(inj) (sm0.(src_parent_nb))
+                                            (sm0.(tgt_parent_nb)))
 .
 
 Global Program Instance SimMemInj : SimMem.class :=
@@ -116,13 +118,18 @@ Global Program Instance SimMemInj : SimMem.class :=
   sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
 }.
 Next Obligation.
-  inv H0. econs; et.
-  - inv H. rewrite <- SRCPARENTEQNB. lia.
-  - inv H. rewrite <- TGTPARENTEQNB. lia.
-  - eapply frozen_shortened; et.
-    + inv H. ss.
-    + inv H. ss.
+  inv H. econs; et.
 Qed.
+(* Next Obligation. *)
+(*   inv H0. econs; et. *)
+(*   - inv H. rewrite <- SRCPARENTEQNB. lia. *)
+(*   - inv H. rewrite <- TGTPARENTEQNB. lia. *)
+(*   - eapply frozen_shortened; et. *)
+(*     + inv H. ss. *)
+(*     + inv H. ss. *)
+(* Qed. *)
+
+
 (* Next Obligation. *)
 (*   rename H into VALID. *)
 (*   inv VALID. econs; ss; eauto; ii; des; ss; eauto. *)
@@ -155,23 +162,23 @@ Qed.
 
 
 
-Global Program Instance lepriv_Transitive: RelationClasses.Transitive lepriv.
-Next Obligation.
-  ii. inv H; inv H0.
-  des; clarify.
-  econs; eauto with mem congruence.
-  + eapply inject_incr_trans; eauto.
-  + econs; eauto.
-    ii; des.
-    destruct (inj y b_src) eqn:T.
-    * destruct p.
-      exploit INCR0; eauto. i; clarify.
-      inv FROZEN.
-      hexploit NEW_IMPLIES_OUTSIDE; eauto.
-    * inv FROZEN0.
-      hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des.
-      esplits; congruence.
-Qed.
+(* Global Program Instance lepriv_Transitive: RelationClasses.Transitive lepriv. *)
+(* Next Obligation. *)
+(*   ii. inv H; inv H0. *)
+(*   des; clarify. *)
+(*   econs; eauto with mem congruence. *)
+(*   + eapply inject_incr_trans; eauto. *)
+(*   + econs; eauto. *)
+(*     ii; des. *)
+(*     destruct (inj y b_src) eqn:T. *)
+(*     * destruct p. *)
+(*       exploit INCR0; eauto. i; clarify. *)
+(*       inv FROZEN. *)
+(*       hexploit NEW_IMPLIES_OUTSIDE; eauto. *)
+(*     * inv FROZEN0. *)
+(*       hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des. *)
+(*       esplits; try congruence. *)
+(* Qed. *)
 
 
 Global Program Instance SimMemInjLift : SimMemLift.class SimMemInj :=
@@ -179,6 +186,36 @@ Global Program Instance SimMemInjLift : SimMemLift.class SimMemInj :=
   lift := lift';
   unlift := unlift';
 }.
+Next Obligation.
+  - inv H. inv H0.
+    econs; ss; eauto; des; ss; eauto; try congruence.
+    + ii; des; ss; eauto.
+    + inv FROZEN0. inv FROZEN. econs. ii; des; ss; eauto.
+      destruct (inj sm1 b_src) eqn:T.
+      { destruct p; ss.
+        exploit INCR0; et. i; clarify.
+        exploit NEW_IMPLIES_OUTSIDE0; et. }
+      exploit NEW_IMPLIES_OUTSIDE; et. i; des. esplits; et; try congruence.
+      * etrans; et.
+      * etrans; et.
+Qed.
+Next Obligation.
+  inv MWF.
+  des; cycle 1.
+  - right. etrans; et.
+  - left. inv H. inv H0.
+    econs; ss; eauto; des; ss; eauto; try congruence.
+    + ii; des; ss; eauto.
+    + inv FROZEN0. inv FROZEN. econs. ii; des; ss; eauto.
+      destruct (inj sm1 b_src) eqn:T.
+      { destruct p; ss.
+        exploit INCR0; et. i; clarify.
+        exploit NEW_IMPLIES_OUTSIDE0; et. i; des. esplits; et.
+        - etrans; et.
+        - etrans; et.
+      }
+      exploit NEW_IMPLIES_OUTSIDE; et. i; des. esplits; et; try congruence.
+Qed.
 Next Obligation.
   rename H into VALID.
   inv VALID. econs; ss; eauto; ii; des; ss; eauto.

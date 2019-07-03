@@ -2356,12 +2356,13 @@ Proof.
    + econs; ss. eapply val_inject_incr; cycle 1; eauto.
      inv MLE. eauto.
 
-  - left; i.
+  - (** ******************* step **********************************)
+    left; i.
     esplits; ss; i.
     + apply AsmC.modsem_receptive.
     + exists O.
       { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
-        inv MWF. inv SIMSKENV. destruct st0. ss. clarify.
+        inv SIMSKENV. destruct st0. ss. clarify.
 
         exploit asm_step_preserve_injection; eauto.
         { exploit SimSymbDrop_match_globals; eauto.
@@ -2369,66 +2370,27 @@ Proof.
           exploit DEFLE; eauto. i. des. clarify. esplits; eauto. }
         { eapply symbols_inject_weak_imply.
           eapply SimSymbDrop_symbols_inject; eauto. }
+        { cinv MWF. eauto. }
 
         i. des.
         eexists (AsmC.mkstate init_rs_tgt (Asm.State _ _)).
-        eexists (SimMemInj.mk _ _ _ _ _ _ _).
-        esplits.
+
+        exploit SimMemInjC.parallel_gen; eauto.
+        { ii. eapply asm_step_max_perm; eauto. }
+        { ii. eapply asm_step_max_perm; eauto. }
+        i. des.
+
+        esplits; eauto.
         - left. econs; cycle 1.
           + apply star_refl.
           + symmetry. apply E0_right.
           + econs.
             * apply AsmC.modsem_determinate.
             * econs; ss; eauto.
-        - instantiate (5 := j1).
-          econs; ss.
-          + eapply Mem.unchanged_on_implies. eauto.
-            i. eapply SRCEXT; eauto.
-          + eapply Mem.unchanged_on_implies; eauto.
-            i. eapply TGTEXT; eauto.
-          + econs. ii. des.
-            exploit SEP; eauto. i. des.
-            unfold Mem.valid_block in *. split.
-            * eapply Ple_trans; eauto.
-              apply Pos.le_nlt; eauto.
-            * eapply Ple_trans; eauto.
-              apply Pos.le_nlt; eauto.
-
-          + ii. eapply asm_step_max_perm; eauto.
-          + ii. eapply asm_step_max_perm; eauto.
-        - econs; eauto.
+        - econs; ss; eauto.
           + eapply agree_incr; eauto.
-          + { econs; ss.
-              - etrans; eauto.
-                unfold SimMemInj.src_private, loc_unmapped in *. ii. des; ss.
-                split.
-                + destruct (j1 x0) eqn:MAPPED; eauto. destruct p.
-                  exfalso. exploit SEP; eauto.
-                  i. des. eauto.
-                + inv UNCHSRC. unfold SimMemInj.valid_blocks, Mem.valid_block in *.
-                  xomega.
-              - etrans; eauto.
-                unfold SimMemInj.tgt_private, loc_out_of_reach in *. ii. des; ss.
-                split; i.
-                + destruct (SimMemInj.inj sm0 b0) eqn:MAP.
-                  * destruct p.
-                    dup MAP. apply INCR in MAP. clarify. ii.
-                    exploit PR; eauto.
-                    eapply asm_step_max_perm in STEP; eauto.
-                    eapply Mem.valid_block_inject_1; eauto.
-                  * exploit SEP; eauto. i. des. exfalso. eauto.
-                + inv UNCHTGT. unfold SimMemInj.valid_blocks, Mem.valid_block in *.
-                  xomega.
-              - etrans; eauto.
-                inv UNCHSRC. unfold SimMemInj.valid_blocks, Mem.valid_block in *.
-                xomega.
-              - etrans; eauto.
-                inv UNCHTGT. unfold SimMemInj.valid_blocks, Mem.valid_block in *.
-                xomega.
-            }
           + i. exploit RSPDELTA; eauto. i. des. esplits; eauto.
       }
-Unshelve.
 Qed.
 
 Lemma asm_inj_drop

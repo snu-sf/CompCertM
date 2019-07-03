@@ -25,27 +25,6 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
-(* TODO: move it to MemoryC *)
-Lemma external_call_parallel ef se_src se_tgt vargs_src vargs_tgt
-      sm0 tr vres_src m_src1
-      (CALL: external_call ef se_src vargs_src (SimMemInj.src sm0) tr vres_src m_src1)
-      (SENV: symbols_inject (SimMemInj.inj sm0) se_src se_tgt)
-      (ARGS: Val.inject_list (SimMemInj.inj sm0) vargs_src vargs_tgt)
-      (MWF: SimMemInj.wf' sm0)
-  :
-    exists sm1 vres_tgt,
-      (<<MEMSRC: SimMemInj.src sm1 = m_src1>>) /\
-      (<<MWF: SimMemInj.wf' sm1>>) /\
-      (<<MLE: SimMemInj.le' sm0 sm1>>) /\
-      (<<VRES: Val.inject (SimMemInj.inj sm1) vres_src vres_tgt>>) /\
-      (<<CALL: external_call ef se_tgt vargs_tgt (SimMemInj.tgt sm0) tr vres_tgt (SimMemInj.tgt sm1)>>).
-Proof.
-  cinv MWF.
-  exploit external_call_mem_inject_gen; eauto. i. des.
-  exploit SimMemInj.external_call; eauto.
-  i. des. clarify. esplits; eauto.
-Qed.
-
 Definition match_env (j: meminj) (env_src env_tgt: env) :=
   forall id,
     (<<MAPPED: exists blk_src blk_tgt ty,
@@ -828,7 +807,10 @@ Section CLIGHTINJ.
       + refl.
 
     - cinv MWF. exploit eval_exprlist_inject; eauto. i. des.
-      exploit external_call_parallel; eauto.
+      exploit external_call_mem_inject_gen; eauto. i. des.
+      exploit SimMemInjC.parallel_gen; eauto.
+      { ii. eapply external_call_max_perm; eauto. }
+      { ii. eapply external_call_max_perm; eauto. }
       i. des. esplits; eauto.
       + econs 4; eauto.
       + cinv MLE. econs; eauto. econs; eauto.
@@ -957,13 +939,16 @@ Section CLIGHTINJ.
         cinv MLE. eapply match_cont_incr; eauto.
       + eauto.
 
-    - exploit match_globals_find_funct; eauto. intros FPTRTGT.
-      exploit external_call_parallel; eauto.
+    - cinv MWF. exploit match_globals_find_funct; eauto. intros FPTRTGT.
+      exploit external_call_mem_inject_gen; eauto. i. des.
+      exploit SimMemInjC.parallel_gen; eauto.
+      { ii. eapply external_call_max_perm; eauto. }
+      { ii. eapply external_call_max_perm; eauto. }
       i. des. esplits; eauto.
       + econs 24; eauto.
-      + cinv MLE. econs; eauto. clarify. econs; eauto.
+      + cinv MLE. econs; eauto. econs; eauto.
         eapply match_cont_incr; eauto.
-
+        
     - inv CONT. esplits.
       + econs 25; eauto.
       + econs; eauto. clarify. econs; eauto. destruct optid; ss.

@@ -259,6 +259,31 @@ Section SIMSYMBINV.
     - i. eapply mi_perm_inv; eauto. des_ifs.
   Qed.
 
+  Lemma sim_skenv_inj_le ss sm0 sm1 skenv_src skenv_tgt
+        (MLE: le' sm0 sm1)
+        (SIMSKENV : sim_skenv_inj sm0 ss skenv_src skenv_tgt)
+    :
+      sim_skenv_inj sm1 ss skenv_src skenv_tgt.
+  Proof.
+    inv MLE. inv MLE0. inv SIMSKENV.
+    destruct sm0, sm1. destruct minj. destruct minj0. ss. clarify.
+    rename inj0 into inj1. rename inj into inj0.
+    econs; ss; eauto.
+    - inv INJECT. econs; ss; eauto.
+      + i. destruct (inj1 b) as [[b0 delta]|]eqn:BLK; auto.
+        exfalso. inv FROZEN. hexploit NEW_IMPLIES_OUTSIDE; eauto.
+        i. des. eapply (Plt_strict b).
+        eapply Plt_Ple_trans; eauto. etrans; eauto.
+      + i. destruct (inj0 b1) as [[b0 delta0]|]eqn:BLK; auto.
+        * dup BLK. eapply INCR in BLK. clarify.
+          eapply IMAGE; eauto.
+        * inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
+          { exfalso. eapply (Plt_strict b1).
+            eapply Plt_Ple_trans; eauto. etrans; eauto. }
+          { inv SIMSKENV0. exfalso. eapply (Plt_strict b2). clear BOUNDSRC.
+            eapply Plt_Ple_trans; eauto. etrans; eauto. }
+  Qed.
+
   Global Program Instance SimSymbIdInv: SimSymb.class (SimMemInjInv top1 P) :=
     {
       t := ident -> Prop;
@@ -422,23 +447,7 @@ Section SIMSYMBINV.
       eapply Genv.find_invert_symbol in Heq. des_ifs.
   Qed.
   Next Obligation.
-    inv MLE. inv MLE0. inv SIMSKENV.
-    destruct sm0, sm1. destruct minj. destruct minj0. ss. clarify.
-    rename inj0 into inj1. rename inj into inj0.
-    econs; ss; eauto.
-    - inv INJECT. econs; ss; eauto.
-      + i. destruct (inj1 b) as [[b0 delta]|]eqn:BLK; auto.
-        exfalso. inv FROZEN. hexploit NEW_IMPLIES_OUTSIDE; eauto.
-        i. des. eapply (Plt_strict b).
-        eapply Plt_Ple_trans; eauto. etrans; eauto.
-      + i. destruct (inj0 b1) as [[b0 delta0]|]eqn:BLK; auto.
-        * dup BLK. eapply INCR in BLK. clarify.
-          eapply IMAGE; eauto.
-        * inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
-          { exfalso. eapply (Plt_strict b1).
-            eapply Plt_Ple_trans; eauto. etrans; eauto. }
-          { inv SIMSKENV0. exfalso. eapply (Plt_strict b2). clear BOUNDSRC.
-            eapply Plt_Ple_trans; eauto. etrans; eauto. }
+    eapply sim_skenv_inj_le; eauto.
   Qed.
   Next Obligation.
     inv SIMSKENV. inv MWF. inv WF.

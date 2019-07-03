@@ -31,14 +31,14 @@ Definition memoized_inv: SimMemInjInv.memblk_invariant :=
       (<<VAL: forall (NZERO: i.(Int.intval) <> 0),
           (<<MEMO: i = sum (Int.repr ind)>>)>>).
 
-Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv memoized_inv.
+Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv top1 memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
 
 Lemma memoized_inv_store_le i ind blk ofs m_tgt
       (sm0 sm1: SimMemInjInv.t')
       (MWF: SimMem.wf sm0)
-      (INVAR: sm0.(SimMemInjInv.mem_inv) blk)
+      (INVAR: sm0.(SimMemInjInv.mem_inv_tgt) blk)
       (SUM: i = sum (Int.repr ind))
       (OFS: ofs = size_chunk Mint32 * ind)
       (STR: Mem.store Mint32 sm0.(SimMemInjInv.minj).(SimMemInj.tgt) blk ofs (Vint i) = Some m_tgt)
@@ -48,7 +48,8 @@ Lemma memoized_inv_store_le i ind blk ofs m_tgt
                         (sm0.(SimMemInjInv.minj).(SimMemInj.src))
                         m_tgt
                         (sm0.(SimMemInjInv.minj).(SimMemInj.inj)))
-                     sm0.(SimMemInjInv.mem_inv))
+                     sm0.(SimMemInjInv.mem_inv_src)
+                     sm0.(SimMemInjInv.mem_inv_tgt))
   :
     (<<MLE: SimMem.le sm0 sm1>>) /\
     (<<MWF: SimMem.wf sm1>>).
@@ -57,7 +58,7 @@ Proof.
   - econs; ss; eauto. econs; ss; eauto.
     + refl.
     + eapply Mem.store_unchanged_on; eauto.
-      ii. inv WF. exploit INVRANGE; eauto. i. des.
+      ii. inv WF. exploit INVRANGETGT; eauto. i. des.
       exfalso. eauto.
     + eapply SimMemInj.frozen_refl.
     + ii. eapply Mem.perm_store_2; eauto.
@@ -69,14 +70,14 @@ Proof.
                         loc_out_of_reach (SimMemInj.inj (SimMemInjInv.minj sm0))
                         (SimMemInj.src (SimMemInjInv.minj sm0))).
           ss. ii. eapply H0.
-          exploit INVRANGE; eauto. i. des. eapply H1. }
+          exploit INVRANGETGT; eauto. i. des. eapply H1. }
         { ss. }
       * etrans; eauto.
         unfold SimMemInj.tgt_private, SimMemInj.valid_blocks in *. ss.
         ii. des. split; auto. eapply Mem.store_valid_block_1; eauto.
       * rpapply TGTLE. eapply Mem.nextblock_store; eauto.
     + ii. clarify.
-      exploit SAT; eauto. i. des. des_ifs.
+      exploit SATTGT; eauto. i. des. des_ifs.
       * destruct (peq blk blk0).
         { clarify. destruct (zeq ind ind0).
           - clarify. exists (sum (Int.repr ind0)).
@@ -86,9 +87,6 @@ Proof.
         { exists i. erewrite Mem.load_store_other; eauto. }
       * exfalso. eapply n.
         eapply Mem.store_valid_access_1; eauto.
-    + i. exploit INVRANGE; eauto. i. des.
-      unfold SimMemInjC.update, Mem.valid_block, SimMemInj.tgt_private in *.
-      ss. des. splits; eauto. eapply Mem.store_valid_block_1; eauto.
 Qed.
 
 Section SIMMODSEM.
@@ -329,11 +327,11 @@ Proof.
 
       inv MWF. ss.
 
-      assert (INVAR: SimMemInjInv.mem_inv sm0 b).
+      assert (INVAR: SimMemInjInv.mem_inv_tgt sm0 b).
       { inv SIMSK. ss. inv INJECT.
         eapply INVCOMPAT; eauto. ss. }
 
-      hexploit SAT; eauto. intros SAT0.
+      hexploit SATTGT; eauto. intros SAT0.
       exploit SAT0; eauto. i. des. des_ifs.
       destruct (zeq (Int.intval i0) 0).
       {
@@ -501,19 +499,20 @@ Proof.
 
           hexploit Mem.valid_access_store.
           { instantiate (4:=sm_ret.(SimMemInjInv.minj).(SimMemInj.tgt)).
-            inv MWF. inv WF. exploit SAT1; eauto.
-            - inv MLE0. erewrite <- MINVEQ. eauto.
+            inv MWF. inv WF. exploit SATTGT0; eauto.
+            - inv MLE0. erewrite <- MINVEQTGT. eauto.
             - i. des. des_ifs. eauto. }
           intros [m_tgt STR].
 
-          exploit SimMemInjInvC.SimMemInjInv_obligation_7; eauto. intros MLE1.
+          exploit SimMemInjInv.unlift_wf; try apply MLE0; eauto.
+          { econs; eauto. } intros MLE1.
           exploit memoized_inv_store_le; eauto.
-          { inv MLE0. erewrite <- MINVEQ. eauto. }
           i. des.
 
           esplits.
           { econs; eauto. }
-          { etrans; eauto. }
+          { etrans; eauto. eapply SimMemInjInv.unlift_spec; eauto.
+            econs; eauto. }
 
           left. pfold. econs; eauto. i; des. econs 2; eauto.
           {
@@ -597,7 +596,9 @@ Proof.
           { refl. }
 
           right. eapply CIH.
-          { eapply SimMemInjInvC.SimSymbIdInv_obligation_7; cycle 1; eauto. }
+          { eapply SimMemInjInvC.sim_skenv_inj_le; cycle 1; eauto.
+            etrans; eauto. eapply SimMemInjInv.unlift_spec; eauto.
+            econs; eauto. }
           { econs; ss.
             - replace (Int.add (sum (Int.sub i Int.one)) i) with (sum i); cycle 1.
               { rewrite sum_recurse with (i := i). des_ifs.
@@ -608,6 +609,7 @@ Proof.
 
               econs 2.
             - etrans; eauto. etrans; eauto.
+              eapply SimMemInjInv.unlift_spec; eauto. econs; eauto.
             (* - omega. *) }
       }
 
@@ -751,10 +753,6 @@ Proof.
   - (* return *)
     econs 4; ss; eauto.
     econs; ss; eauto.
-    Unshelve.
-    eapply memoized_inv.
-    ss. eapply MLE2.
-    admit "".
 Qed.
 
 Theorem sim_modsem

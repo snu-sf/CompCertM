@@ -2300,10 +2300,10 @@ Proof.
 
     exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
-    inv MATCH. inv FINALSRC. inv MWF.
+    inv MATCH. inv FINALSRC.
 
     cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl.
-    exploit Mem_free_parallel_inject'; eauto.
+    exploit Mem_free_parallel'; eauto.
     { instantiate (3:=Ptrofs.zero). zsimpl. psimpl. eauto. }
     i. des.
 
@@ -2311,7 +2311,7 @@ Proof.
     { exploit RSPDELTA; eauto. i. des. clarify. }
     clarify. ss. zsimpl.
 
-    eexists (SimMemInj.mk _ _ _ _ _ _ _). esplits; ss; eauto.
+    esplits; ss; eauto.
     + cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl.
       econs; ss; ii; eauto.
       * specialize (CALLEESAVE _ H).
@@ -2353,33 +2353,8 @@ Proof.
            cinv (AGREE PC); rewrite RSRA in *; clarify.
       * cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify.
         cinv (AGREE RSP); rewrite RSRSP in *; clarify.
-    + econs; ss.
-    + econs; ss.
-      * eapply Mem.free_unchanged_on; eauto.
-        ii. eapply SRCEXT in H0. unfold SimMemInj.src_private in *. des.
-        unfold loc_unmapped in *. congruence.
-      * eapply Mem.free_unchanged_on; eauto.
-        ii. eapply TGTEXT in H0. unfold SimMemInj.tgt_private in *. des.
-        unfold loc_out_of_reach in *.
-        exploit H0; eauto. eapply Mem.perm_cur_max. eapply Mem.perm_implies.
-        -- eapply Mem.free_range_perm; eauto.
-           rewrite Ptrofs.add_zero_l in *.
-           erewrite Ptrofs.unsigned_repr in *; split; try lia; eapply max_unsigned_zero.
-        -- econs.
-      * econs; ss; eauto. ii. des. clarify.
-      * ii. eapply Mem.perm_free_3; eauto.
-      * ii. eapply Mem.perm_free_3; eauto.
-    + econs; ss; unfold SimMemInj.src_private, SimMemInj.tgt_private in *; ss; eauto; i.
-      * ii. eapply SRCEXT in PR. des. splits; eauto.
-        eapply Mem.valid_block_free_1; eauto.
-      * ii. eapply TGTEXT in PR. des.
-        unfold loc_out_of_reach in *.
-        splits; eauto.
-        -- ii. eapply PR; eauto.
-           eapply Mem.perm_free_3; eauto.
-        -- eapply Mem.valid_block_free_1; eauto.
-      * etrans; eauto. erewrite <- Mem.nextblock_free; eauto. refl.
-      * etrans; eauto. erewrite <- Mem.nextblock_free; eauto. refl.
+   + econs; ss. eapply val_inject_incr; cycle 1; eauto.
+     inv MLE. eauto.
 
   - left; i.
     esplits; ss; i.

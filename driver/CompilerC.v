@@ -734,6 +734,20 @@ Section Stacking.
   Hypothesis CSIM: Forall ModPair.sim cps.
   Hypothesis ASIM: Forall ModPair.sim aps.
 
+  Lemma return_address_offset_deterministic:
+    forall f c ofs ofs',
+      Asmgenproof0.return_address_offset f c ofs ->
+      Asmgenproof0.return_address_offset f c ofs' ->
+      ofs = ofs'.
+  Proof.
+    i. inv H; inv H0.
+    rewrite TF in TF0. inv TF0. rewrite TC in TC0. inv TC0.
+    eapply Asmgenproof0.code_tail_unique in TL; eauto.
+    assert(Integers.Ptrofs.eq ofs ofs' = true).
+    unfold Integers.Ptrofs.eq. rewrite TL. rewrite zeq_true. auto.
+    exploit Integers.Ptrofs.eq_spec. rewrite H. auto.
+  Qed.
+
   Lemma Stacking_correct
         src tgt
         (TRANSF: Stacking.transf_program src = OK tgt)
@@ -746,7 +760,7 @@ Section Stacking.
     lift.
     eapply StackingproofC.sim_mod; eauto.
     { eapply Asmgenproof.return_address_exists; eauto. }
-    { admit "ez - ask @yonghyunkim. int2ptr repository has the proof (10 LOC?)". }
+    { ii. determ_tac return_address_offset_deterministic. }
     eapply Stackingproof.transf_program_match; eauto.
   Qed.
 
@@ -1168,4 +1182,3 @@ Proof.
   { rewrite map_app. rewrite <- app_assoc. ss. }
   { rewrite map_app. rewrite <- app_assoc. ss. }
 Qed.
-

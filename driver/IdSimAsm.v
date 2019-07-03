@@ -1745,6 +1745,18 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
 
   - inv MLE. inv FOOT. inv MLEEXCL.
+    assert(FROZENHI: SimMemInj.frozen (SimMemInj.inj sm0) (SimMemInj.inj sm2) (SimMemInj.src_parent_nb sm0) (SimMemInj.tgt_parent_nb sm0)).
+    { + inv FROZEN. inv FROZEN0.
+        econs; ss; eauto.
+        i. des.
+        destruct (SimMemInj.inj sm1 b_src) eqn:EQ.
+        * destruct p.
+          exploit NEW_IMPLIES_OUTSIDE; eauto.
+          eapply INCR0 in EQ. clarify.
+        * exploit NEW_IMPLIES_OUTSIDE0; eauto.
+          rewrite SRCPARENTEQNB.
+          rewrite TGTPARENTEQNB.
+          eauto. }
     ss. econs; ss; eauto.
     + etrans; eauto.
     + eapply Mem.unchanged_on_trans; eauto.
@@ -1768,17 +1780,7 @@ Proof.
       eapply propositional_extensionality. split; auto; tauto.
     + etrans; eauto.
     + etrans; eauto.
-    + inv FROZEN. inv FROZEN0.
-      econs; ss; eauto.
-      i. des.
-      destruct (SimMemInj.inj sm1 b_src) eqn:EQ.
-      * destruct p.
-        exploit NEW_IMPLIES_OUTSIDE; eauto.
-        eapply INCR0 in EQ. clarify.
-      * exploit NEW_IMPLIES_OUTSIDE0; eauto.
-        rewrite SRCPARENTEQNB.
-        rewrite TGTPARENTEQNB.
-        eauto.
+    + eapply SimMemInj.frozen_shortened; et; try apply MWF.
 
     + ii. des. des_ifs. clarify.
       destruct (classic (brange blk1_src0 (Ptrofs.unsigned ofs_src0)
@@ -1814,8 +1816,6 @@ Proof.
       eapply Plt_Ple_trans; eauto.
 
   - inv EXCL. inv MWF. econs; et.
-    + congruence.
-    + congruence.
     + eapply SimMemInj.frozen_shortened; et.
 
   - exploit SimSymbDrop_match_globals.
@@ -1876,7 +1876,7 @@ Proof.
           { eapply Plt_Ple_trans; eauto.
             inv SIMSKENV. inv SIMSKELINK. ss.
             eapply store_arguments_unchanged_on in ARGTGT. inv ARGTGT.
-            clear - SRCLE BOUNDSRC unchanged_on_nextblock. xomega. }
+            clear - SRCLE SRCLE SRCLEGE unchanged_on_nextblock. xomega. }
           exfalso. eapply Plt_lemma; eauto.
         - i. unfold Pregmap.set in *. des_ifs; eauto.
           { exploit PTRFREE.
@@ -1897,6 +1897,16 @@ Proof.
                           (JunkBlock.assign_junk_blocks m_src1 n) (JunkBlock.assign_junk_blocks m0 n)
                           (junk_inj m_src1 m0 (update_meminj inj (Mem.nextblock src) (Mem.nextblock tgt) 0) n)
                           _ _ _ _ _ _).
+        assert(FROZENHI: SimMemInj.frozen inj (junk_inj m_src1 m0 (update_meminj inj (Mem.nextblock src) (Mem.nextblock tgt) 0) n) src_parent_nb tgt_parent_nb).
+        { - econs; ss; eauto. i. des.
+          unfold junk_inj, update_meminj in *. des_ifs; ss. split.
+          + red. etrans; eauto. eapply store_arguments_unchanged_on in ARGTGT.
+            eapply Mem.unchanged_on_nextblock in ARGTGT. clear - ARGTGT n0. xomega.
+          + red. etrans; eauto. eapply store_arguments_unchanged_on in H.
+            eapply Mem.unchanged_on_nextblock in H. clear - H n0. etrans; eauto.
+            clear - n0. hexploit Plt_lemma; eauto. instantiate (1:=Mem.nextblock m0).
+            remember (b_src + Mem.nextblock m0 - Mem.nextblock m_src1)%positive.
+            clear Heqp. xomega. }
         econs; ss; auto.
         - etrans.
           + eauto.
@@ -1910,15 +1920,7 @@ Proof.
             i. eapply Mem.unchanged_on_implies; eauto. ss.
           + eapply Mem.unchanged_on_implies;
               try apply JunkBlock.assign_junk_blocks_unchanged_on; ss.
-        - econs; ss; eauto. i. des.
-          unfold junk_inj, update_meminj in *. des_ifs; ss. split.
-          + red. etrans; eauto. eapply store_arguments_unchanged_on in ARGTGT.
-            eapply Mem.unchanged_on_nextblock in ARGTGT. clear - ARGTGT n0. xomega.
-          + red. etrans; eauto. eapply store_arguments_unchanged_on in H.
-            eapply Mem.unchanged_on_nextblock in H. clear - H n0. etrans; eauto.
-            clear - n0. hexploit Plt_lemma; eauto. instantiate (1:=Mem.nextblock m0).
-            remember (b_src + Mem.nextblock m0 - Mem.nextblock m_src1)%positive.
-            clear Heqp. xomega.
+        - eapply SimMemInj.frozen_shortened; et.
         - ii. erewrite JunkBlock.assign_junk_blocks_perm in *.
           eapply store_arguments_unchanged_on in ARGTGT. inv ARGTGT.
           eapply unchanged_on_perm in PR; eauto.
@@ -2378,6 +2380,7 @@ Proof.
            erewrite Ptrofs.unsigned_repr in *; split; try lia; eapply max_unsigned_zero.
         -- econs.
       * econs; ss; eauto. ii. des. clarify.
+      * econs; ss; eauto. ii. des. clarify.
       * ii. eapply Mem.perm_free_3; eauto.
       * ii. eapply Mem.perm_free_3; eauto.
     + econs; ss; unfold SimMemInj.src_private, SimMemInj.tgt_private in *; ss; eauto; i.
@@ -2417,18 +2420,20 @@ Proof.
             * apply AsmC.modsem_determinate.
             * econs; ss; eauto.
         - instantiate (7 := j1).
+          assert(FROZENHI: SimMemInj.frozen (SimMemInj.inj sm0) j1 (SimMemInj.src_parent_nb sm0) (SimMemInj.tgt_parent_nb sm0)).
+          { + econs. ii. des.
+              exploit SEP; eauto. i. des.
+              unfold Mem.valid_block in *. split.
+              * eapply Ple_trans; eauto.
+                apply Pos.le_nlt; eauto.
+              * eapply Ple_trans; eauto.
+                apply Pos.le_nlt; eauto. }
           econs; ss.
           + eapply Mem.unchanged_on_implies. eauto.
             i. eapply SRCEXT; eauto.
           + eapply Mem.unchanged_on_implies; eauto.
             i. eapply TGTEXT; eauto.
-          + econs. ii. des.
-            exploit SEP; eauto. i. des.
-            unfold Mem.valid_block in *. split.
-            * eapply Ple_trans; eauto.
-              apply Pos.le_nlt; eauto.
-            * eapply Ple_trans; eauto.
-              apply Pos.le_nlt; eauto.
+          + eapply SimMemInj.frozen_shortened; et.
 
           + ii. eapply asm_step_max_perm; eauto.
           + ii. eapply asm_step_max_perm; eauto.

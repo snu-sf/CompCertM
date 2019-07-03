@@ -1828,9 +1828,9 @@ Proof.
           i. inv SIMSKENV. ss. inv MLE2. clear MAXSRC MAXTGT.
           destruct (SimMemInj.inj sm0 b1) eqn:T; ss.
           - destruct p. exploit INCR; et. i; des. clarify.
-          - inv FROZEN.
+          - inv FROZENLO.
             exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. inv SIMSKELINK. inv INJECT.
-            inv SIMSKENV. admit "Frozen lo will fix this". (* xomega. *)
+            inv SIMSKENV. rewrite <- NBTGT in *. xomega.
         }
         eapply match_stacks_le; try apply STACKS; et.
         { intros ? ? ? VALID0 MAP0. rewrite MINJ in *.

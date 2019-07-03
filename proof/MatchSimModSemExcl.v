@@ -57,6 +57,7 @@ Section MATCHSIMFORWARD.
 
   Hypothesis FOOTEXCL: forall
         st_at_src st_at_tgt sm0 sm1 sm2
+        (MWF: SimMem.wf sm0)
         (FOOT: has_footprint st_at_src st_at_tgt sm0)
         (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
         (MLE: SimMem.le sm0 sm1)

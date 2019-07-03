@@ -270,6 +270,7 @@ Context {SMLIFT: SimMemLift.class SM}.
       (mle_excl: msp.(ModSemPair.src).(ModSem.state) -> msp.(ModSemPair.tgt).(ModSem.state) -> SimMem.t -> SimMem.t -> Prop)
       (FOOTEXCL: forall
           st_at_src st_at_tgt sm0 sm1 sm2
+          (MWF: SimMem.wf sm0)
           (FOOT: has_footprint st_at_src st_at_tgt sm0)
           (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
           (MLE: SimMem.le sm0 sm1)
@@ -335,6 +336,7 @@ Section IMPLIES.
         (mle_excl: ms_src.(ModSem.state) -> ms_tgt.(ModSem.state) -> SimMem.t -> SimMem.t -> Prop)
         (FOOTEXCL: forall
             st_at_src st_at_tgt sm0 sm1 sm2
+            (MWF: SimMem.wf sm0)
             (FOOT: has_footprint st_at_src st_at_tgt sm0)
             (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
             (MLE: SimMem.le sm0 sm1)

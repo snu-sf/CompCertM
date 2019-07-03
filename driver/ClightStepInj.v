@@ -239,6 +239,7 @@ Section CLIGHTINJ.
         i. eapply Mem.perm_cur_max. eapply Mem.perm_implies; eauto.
         eapply perm_any_N.
       + eapply SimMemInj.frozen_refl.
+      + eapply SimMemInj.frozen_refl.
       + ii. eapply Mem.perm_storebytes_2; eauto.
       + ii. eapply Mem.perm_storebytes_2; eauto.
     - econs; ss; eauto.
@@ -282,6 +283,7 @@ Section CLIGHTINJ.
             i. ss. omega. }
           { eapply Mem.storebytes_unchanged_on; eauto.
             i. ss. omega. }
+          { econs. i. clear - NEW. des. clarify. }
           { econs. i. clear - NEW. des. clarify. }
           { ii. eapply Mem.perm_storebytes_2; eauto. }
           { ii. eapply Mem.perm_storebytes_2; eauto. }

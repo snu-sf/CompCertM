@@ -20,6 +20,8 @@ Require Import JunkBlock.
 
 Set Implicit Arguments.
 
+Local Obligation Tactic := ii; ss; des; inv_all_once; des; ss; clarify; eauto with congruence.
+
 Section NEWSTEP.
 
 Variable return_address_offset: function -> code -> ptrofs -> Prop.
@@ -34,8 +36,7 @@ Definition get_stack (st: state): list stackframe :=
   end.
 
 Definition step: state -> trace -> state -> Prop := fun st0 tr st1 =>
-  <<STEP: Mach.step return_address_offset se ge st0 tr st1>> /\ <<NOTDUMMY: st1.(get_stack) <> []>>
-.
+  <<STEP: Mach.step return_address_offset se ge st0 tr st1>> /\ <<NOTDUMMY: st1.(get_stack) <> []>>.
 
 End NEWSTEP.
 
@@ -52,11 +53,8 @@ Definition get_mem (st: state): mem :=
 Section MODSEM.
 
   Variable rao: function -> code -> ptrofs -> Prop.
-  Hypothesis rao_dtm:
-    forall f c ofs ofs',
-      rao f c ofs ->
-      rao f c ofs' ->
-      ofs = ofs'.
+  Hypothesis rao_dtm: forall f c ofs ofs',
+      rao f c ofs -> rao f c ofs' -> ofs = ofs'.
 
 
   Variable skenv_link: SkEnv.t.
@@ -72,7 +70,7 @@ Section MODSEM.
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
-      stack rs m0 m1 fptr sg vs blk ofs
+      stack rs m0 m1 fptr sg vs blk ofs init_rs init_sg
       (EXTERNAL: Genv.find_funct ge fptr = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
@@ -80,37 +78,27 @@ Section MODSEM.
       (RSP: (parent_sp stack) = Vptr blk ofs)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))
-      (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
-      init_rs init_sg
-    :
-      at_external (mkstate init_rs init_sg (Callstate stack fptr rs m0)) (Args.mk fptr vs m1)
-  .
+      (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1):
+      at_external (mkstate init_rs init_sg (Callstate stack fptr rs m0)) (Args.mk fptr vs m1).
 
-  Inductive initial_frame (args: Args.t)
-    : state -> Prop :=
+  Inductive initial_frame (args: Args.t) : state -> Prop :=
   | initial_frame_intro
-      fd m0 rs sg ra
+      fd m0 rs sg ra targs n m1
       (RAPTR: Val.has_type ra Tptr)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
-      targs
       (TYP: typecheck args.(Args.vs) sg targs)
       (STORE: store_arguments args.(Args.m) rs targs sg m0)
-      n m1
       (JUNK: assign_junk_blocks m0 n = m1)
-      (PTRFREE: forall
-          mr
-          (* (NOTIN: Loc.notin (R mr) (regs_of_rpairs (loc_arguments sg))) *)
-          (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg)))
-        ,
-          <<PTRFREE: is_junk_value m0 m1 (rs mr)>>)
-    :
+      (PTRFREE: forall mr
+                  (* (NOTIN: Loc.notin (R mr) (regs_of_rpairs (loc_arguments sg))) *)
+                  (NOTIN: ~In (R mr) (regs_of_rpairs (loc_arguments sg))),
+          <<PTRFREE: is_junk_value m0 m1 (rs mr)>>):
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack
                                                 (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero) ra]
-                                             args.(Args.fptr) rs m1))
+                                             args.(Args.fptr) rs m1)).
   (* TODO: change (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero) into sp *)
-  .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_intro
@@ -118,42 +106,33 @@ Section MODSEM.
       (CALLEESAVE: forall mr, Conventions1.is_callee_save mr -> Val.lessdef (init_rs mr) (rs mr))
       (INITRSP: init_sp = Vptr blk Ptrofs.zero)
       (FREE: Mem.free m0 blk 0 (4 * size_arguments init_sg) = Some m1)
-      (RETV: loc_result init_sg = One mr)
-    :
-      final_frame (mkstate init_rs init_sg (Returnstate [dummy_stack init_sp ra] rs m0))
-                  (Retv.mk (rs mr) m1)
-  .
+      (RETV: loc_result init_sg = One mr):
+      final_frame (mkstate init_rs init_sg (Returnstate [dummy_stack init_sp ra] rs m0)) (Retv.mk (rs mr) m1).
 
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
-      init_rs init_sg stack fptr ls0 m0 ls1 m1 retv
-      sg blk ofs
+      init_rs init_sg stack fptr ls0 m0 ls1 m1 retv sg blk ofs
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs)
       (MEMWF: Ple (Senv.nextblock skenv_link) retv.(Retv.m).(Mem.nextblock))
-      (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
-    :
+      (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1):
       after_external (mkstate init_rs init_sg (Callstate stack fptr ls0 m0))
                      retv
-                     (mkstate init_rs init_sg (Returnstate stack ls1 m1))
-  .
+                     (mkstate init_rs init_sg (Returnstate stack ls1 m1)).
 
   Inductive step' (se: Senv.t) (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
   | step'_intro
       (STEP: Mach.step rao se ge st0.(st) tr st1.(st))
       (INITRS: st0.(init_rs) = st1.(init_rs))
       (INITFPTR: st0.(init_sg) = st1.(init_sg))
-      (NOTDUMMY: st1.(st).(get_stack) <> [])
-  .
+      (NOTDUMMY: st1.(st).(get_stack) <> []).
 
   Lemma extcall_arguments_dtm
         rs m rsp sg vs0 vs1
         (ARGS0: Mach.extcall_arguments rs m rsp sg vs0)
-        (ARGS1: Mach.extcall_arguments rs m rsp sg vs1)
-    :
-      vs0 = vs1
-  .
+        (ARGS1: Mach.extcall_arguments rs m rsp sg vs1):
+      vs0 = vs1.
   Proof.
     generalize dependent vs1. generalize dependent vs0. generalize dependent sg.
     assert (A: forall l v1 v2,
@@ -175,75 +154,48 @@ Section MODSEM.
 
   Lemma extcall_arguments_length
         rs m rsp sg vs
-        (ARGS: extcall_arguments rs m rsp sg vs)
-    :
-      length (loc_arguments sg) = length vs
-  .
+        (ARGS: extcall_arguments rs m rsp sg vs):
+      length (loc_arguments sg) = length vs.
   Proof.
-    unfold extcall_arguments in *.
-    abstr (loc_arguments sg) locs.
-    ginduction vs; ii; inv ARGS; ss.
-    f_equal. erewrite IHvs; eauto.
+    unfold extcall_arguments in *. abstr (loc_arguments sg) locs.
+    ginduction vs; ii; inv ARGS; ss. f_equal. erewrite IHvs; eauto.
   Qed.
-  
+
   Program Definition modsem: ModSem.t :=
-    {|
-      ModSem.step := step';
-      ModSem.at_external := at_external;
-      ModSem.initial_frame := initial_frame;
-      ModSem.final_frame := final_frame;
-      ModSem.after_external := after_external;
-      ModSem.globalenv := ge;
-      ModSem.skenv := skenv;
-      ModSem.skenv_link := skenv_link;
-    |}
-  .
+    {| ModSem.step := step';
+       ModSem.at_external := at_external;
+       ModSem.initial_frame := initial_frame;
+       ModSem.final_frame := final_frame;
+       ModSem.after_external := after_external;
+       ModSem.globalenv := ge;
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
+    |}.
   Next Obligation.
-    ii; ss; des. inv_all_once; des; ss; clarify. rewrite RSP in *. clarify. determ_tac extcall_arguments_dtm.
+    rewrite RSP in *. clarify. determ_tac extcall_arguments_dtm.
   Qed.
   Next Obligation.
-    ii; ss; des. inv_all_once; des; ss; clarify.
-    eauto with congruence.
+    inv STEP; clarify. unfold Genv.find_funct in *. des_ifs_safe ss. clarify.
   Qed.
   Next Obligation.
-    ii; ss; des. inv_all_once; des; ss; clarify.
-    rewrite RSP in *. clarify.
-  Qed.
-  Next Obligation.
-    ii; ss; des. inv_all_once; ss; clarify. des. clarify.
-    inv STEP; clarify.
-    unfold Genv.find_funct in *. des_ifs_safe ss. clarify.
-  Qed.
-  Next Obligation.
-    ii; ss; des. inv_all_once; ss; clarify.
     inv STEP; clarify. destruct st1; ss. destruct st0; ss. clarify.
   Qed.
-  Next Obligation.
-    ii; ss; des.
-    inv_all_once; ss; clarify.
-  Qed.
     
-  Lemma modsem_receptive
-        st
-    :
-      receptive_at modsem st
-  .
+  Lemma modsem_receptive: forall st, receptive_at modsem st.
   Proof.
     econs; eauto.
-    - ii; ss. inv H. destruct st; ss. destruct s1; ss. clarify.
+    - ii; ss. inv H. destruct st0; ss. destruct s1; ss. clarify.
       inv STEP; try (exploit external_call_receptive; eauto; check_safe; intro T; des); try by (inv_match_traces; (eexists (mkstate _ _ _); econs; [econs| | |]; eauto)).
     - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
 
-  Lemma modsem_determinate
-        st
-    :
-      determinate_at modsem st
-  .
+  Lemma modsem_determinate: forall st, determinate_at modsem st.
   Proof.
     econs; eauto.
-    - ii; ss. inv H; inv H0. destruct st; ss. destruct s1; ss. destruct s2; ss. clarify.
-      inv STEP; inv STEP0; clarify_meq; try (determ_tac rao_dtm; check_safe); try (determ_tac extcall_arguments_dtm; check_safe); try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); try (by rewrite Genv.find_funct_find_funct_ptr in *; congruence); ii; eq_closure_tac; clarify_meq.
+    - ii; ss. inv H; inv H0. destruct st0; ss. destruct s1; ss. destruct s2; ss. clarify.
+      inv STEP; inv STEP0; clarify_meq; try (determ_tac rao_dtm; check_safe); try (determ_tac extcall_arguments_dtm; check_safe);
+        try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe);
+          esplits; eauto; try (econs; eauto); try (by rewrite Genv.find_funct_find_funct_ptr in *; congruence); ii; eq_closure_tac; clarify_meq.
     - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
 
@@ -255,53 +207,29 @@ Section PROPS.
 Variable rao: function -> code -> ptrofs -> Prop.
 
 Lemma lift_star
-      se ge st0 tr st1
-      init_sg init_rs
-      (STAR: star (step rao) se ge st0 tr st1)
-  :
+      se ge st0 tr st1 init_sg init_rs
+      (STAR: star (step rao) se ge st0 tr st1):
     star (step' rao) se ge (mkstate init_rs init_sg st0) tr
-         (mkstate init_rs init_sg st1)
-.
+         (mkstate init_rs init_sg st1).
 Proof.
   ginduction STAR; ii; ss.
   { econs; et. }
-  inv H.
-  econs; et.
-  - econs; et.
+  inv H. econs; et. econs; et.
 Qed.
 
 Lemma lift_plus
-      se ge st0 tr st1
-      init_sg init_rs
-      (PLUS: plus (step rao) se ge st0 tr st1)
-  :
+      se ge st0 tr st1 init_sg init_rs
+      (PLUS: plus (step rao) se ge st0 tr st1):
     plus (step' rao) se ge (mkstate init_rs init_sg st0) tr
-         (mkstate init_rs init_sg st1)
-.
+         (mkstate init_rs init_sg st1).
 Proof.
-  inv PLUS. inv H.
-  econs; et.
-  { instantiate (1:= mkstate init_rs init_sg s2).
-    econs; ss; et.
-  }
+  inv PLUS. inv H. econs; et.
+  { instantiate (1:= mkstate init_rs init_sg s2). econs; ss; et. }
   eapply lift_star; et.
 Qed.
 
 End PROPS.
 
+Program Definition module (p: program) (rao: function -> code -> ptrofs -> Prop): Mod.t :=
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem rao; |}.
 
-Section MODULE.
-
-  Variable p: program.
-
-  Variable rao: function -> code -> ptrofs -> Prop.
-
-  Program Definition module: Mod.t :=
-    {|
-      Mod.data := p;
-      Mod.get_sk := Sk.of_program fn_sig;
-      Mod.get_modsem := modsem rao;
-    |}
-  .
-
-End MODULE.

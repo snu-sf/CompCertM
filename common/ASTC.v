@@ -12,22 +12,12 @@ Set Implicit Arguments.
 
 Generalizable Variables F.
 
-
-
-
-
-
-
-
-
-
 Lemma prog_defmap_spec
       F V
       (p: program F V)
       id
   :
-    In id p.(prog_defs_names) <-> exists g, p.(prog_defmap) ! id = Some g
-.
+    In id p.(prog_defs_names) <-> exists g, p.(prog_defmap) ! id = Some g.
 Proof.
   split; ii.
   - exploit prog_defmap_dom; eauto.
@@ -44,8 +34,7 @@ Lemma prog_defmap_image
       id g
       (GET: (prog_defmap p) ! id = Some g)
   :
-    <<IN: In id (prog_defs_names p)>>
-.
+    <<IN: In id (prog_defs_names p)>>.
 Proof.
   eapply prog_defmap_spec; et.
 Qed.
@@ -55,8 +44,7 @@ Lemma prog_defmap_update_snd
       X Y (f: X -> Y) (defs: list (positive * X)) id
   :
     (PTree_Properties.of_list (map (update_snd f) defs)) ! id =
-    option_map f ((PTree_Properties.of_list defs) ! id)
-.
+    option_map f ((PTree_Properties.of_list defs) ! id).
 Proof.
   unfold PTree_Properties.of_list.
   rewrite <- ! fold_left_rev_right in *. rewrite <- map_rev.
@@ -71,22 +59,9 @@ Proof.
   rewrite IHxs. rewrite PTree.gsspec. des_ifs.
 Qed.
 
-
-
-
-
-
-
-
-
-
-
-
-
 Class HasExternal (X: Type): Type := {
   is_external: X -> bool;
-}
-.
+}.
 
 Module PLAYGROUND.
 
@@ -114,8 +89,7 @@ Section FUNCTIONS.
         f
         (ISEXT: is_external (transf_fundef transf f))
     :
-      <<ISEXT: is_external f>>
-  .
+      <<ISEXT: is_external f>>.
   Proof.
     compute in ISEXT. des_ifs.
   Qed.
@@ -126,8 +100,7 @@ Section FUNCTIONS.
         f ef
         (EXT: (transf_fundef transf f) = External ef)
     :
-      f = External ef
-  .
+      f = External ef.
   Proof.
     compute in EXT. des_ifs.
   Qed.
@@ -139,8 +112,7 @@ Section FUNCTIONS.
         (TRANSF: (transf_partial_fundef transf_partial f) = OK tf)
         (ISEXT: is_external tf)
     :
-      <<ISEXT: is_external f>>
-  .
+      <<ISEXT: is_external f>>.
   Proof.
     ss. des_ifs.
   Qed.
@@ -151,8 +123,7 @@ Section FUNCTIONS.
         f ef
         (TRANSF: (transf_partial_fundef transf_partial f) = OK (External ef))
     :
-      <<ISEXT: f = External ef>>
-  .
+      <<ISEXT: f = External ef>>.
   Proof.
     compute in TRANSF.
     des_ifs.
@@ -178,8 +149,7 @@ Section FUNCTIONS.
         f
         (ISEXT: is_external_fd (transf_fundef transf f))
     :
-      <<ISEXT: is_external_fd f>>
-  .
+      <<ISEXT: is_external_fd f>>.
   Proof.
     compute in ISEXT. des_ifs.
   Qed.
@@ -190,8 +160,7 @@ Section FUNCTIONS.
         f ef
         (EXT: (transf_fundef transf f) = External ef)
     :
-      f = External ef
-  .
+      f = External ef.
   Proof.
     compute in EXT. des_ifs.
   Qed.
@@ -203,8 +172,7 @@ Section FUNCTIONS.
         (TRANSF: (transf_partial_fundef transf_partial f) = OK tf)
         (ISEXT: is_external_fd tf)
     :
-      <<ISEXT: is_external_fd f>>
-  .
+      <<ISEXT: is_external_fd f>>.
   Proof.
     compute in ISEXT. des_ifs.
     compute in TRANSF. des_ifs.
@@ -216,8 +184,7 @@ Section FUNCTIONS.
         f ef
         (TRANSF: (transf_partial_fundef transf_partial f) = OK (External ef))
     :
-      <<ISEXT: f = External ef>>
-  .
+      <<ISEXT: f = External ef>>.
   Proof.
     compute in TRANSF.
     des_ifs.
@@ -230,15 +197,13 @@ Section FUNCTIONS.
     | EF_runtime _ _
     | EF_inline_asm _ _ _ => false
     | _ => true
-    end
-  .
+    end.
 
   Definition is_dtm_fd F (fd: AST.fundef F): bool :=
     match fd with
     | External ef => is_dtm_ef ef
     | _ => true
-    end
-  .
+    end.
 
 End FUNCTIONS.
 
@@ -252,8 +217,7 @@ Definition is_external_gd `{HasExternal F} V (gd: globdef F V): bool :=
   match gd with
   | Gfun fd => is_external fd
   | Gvar _ => false
-  end
-.
+  end.
 
 Arguments is_external_fd {F}.
 Arguments is_external_gd {_} {_} {V}.
@@ -294,7 +258,7 @@ Section PROGRAMS.
   (* . *)
 
   Definition good_prog (p: program F V): Prop :=
-    incl p.(prog_public) (* (List.map fst p.(prog_defmap).(PTree.elements)) *) p.(prog_defs_names)
+    incl p.(prog_public) (* (List.map fst p.(prog_defmap).(PTree.elements)) *) p.(prog_defs_names).
   (* It also makes sense to add list_norept of prog_defs_names. "prog_defmap_norepet" *)
   (* Actually both are enforced in Unusedglob. *)
   (*** valid_used_set in Unusedglobproof.v
@@ -307,7 +271,6 @@ Section PROGRAMS.
 https://sflab.slack.com/archives/G25737B47/p1517939898000786
 I think the same is true for prog_public thing too.
    ***)
-  .
 
   Definition defs: ident -> bool := fun id => In_dec ident_eq id p.(prog_defs_names).
   Check (defs: ident -> Prop).
@@ -320,17 +283,12 @@ I think the same is true for prog_public thing too.
   Qed.
 
   Definition privs: ident -> bool :=
-    fun id => andb (<<DEFS: defs id>>) (<<PRIVS: negb (In_dec ident_eq id p.(prog_public))>>)
+    fun id => andb (<<DEFS: defs id>>) (<<PRIVS: negb (In_dec ident_eq id p.(prog_public))>>).
     (* fun id => andb (<<DEFS: defs id>>) (<<PRIVS: negb (In_dec ident_eq id p.(prog_public))>>) *)
-  .
   Definition privs_old: ident -> Prop :=
-    <<DEFS: defs_old>> /1\ <<PRIVS: (fun id => ~ In id p.(prog_public))>>
-  .
+    <<DEFS: defs_old>> /1\ <<PRIVS: (fun id => ~ In id p.(prog_public))>>.
 
-  Lemma privs_defs_old
-    :
-      <<LE: (privs_old <1= defs_old)>>
-  .
+  Lemma privs_defs_old: <<LE: (privs_old <1= defs_old)>>.
   Proof.
     ii. inv PR. eauto.
   Qed.
@@ -340,8 +298,7 @@ End PROGRAMS.
 Lemma defs_prog_defmap
       F V (prog: AST.program F V)
   :
-    forall id, (exists gd, (prog_defmap prog) ! id = Some gd) <-> defs prog id
-.
+    forall id, (exists gd, (prog_defmap prog) ! id = Some gd) <-> defs prog id.
 Proof.
   ii. etrans.
   { symmetry. eapply prog_defmap_spec. }
@@ -360,8 +317,7 @@ Section PROGRAMS2.
     fun id => match p.(prog_defmap)!id with
               | Some gd => negb (is_external gd)
               | None => false
-              end
-  .
+              end.
 
   Definition internals': ident -> bool :=
     fun id => is_some
@@ -376,8 +332,7 @@ Lemma internals_defs
       `{HasExternal F} V
       (p: AST.program F V)
   :
-    p.(internals) <1= p.(defs)
-.
+    p.(internals) <1= p.(defs).
 Proof.
   u. ii. des_sumbool. eapply prog_defmap_spec. des_ifs; et.
 Qed.
@@ -394,3 +349,11 @@ Qed.
 (*   end *)
 (* . *)
 
+Lemma chunk_type_chunk
+      ty
+  :
+    (type_of_chunk (chunk_of_type ty)) = ty
+.
+Proof.
+  destruct ty; ss.
+Qed.

@@ -19,8 +19,7 @@ Lemma separation_private
       m_src m_tgt F P
       (MATCH: m_tgt |= P ** minjection F m_src)
   :
-     P.(m_footprint) <2= loc_out_of_reach F m_src
-.
+     P.(m_footprint) <2= loc_out_of_reach F m_src.
 Proof.
   inv MATCH. des; ss.
   ii. unfold disjoint_footprint in *. ss.
@@ -32,8 +31,7 @@ Lemma disjoint_footprint_drop_empty
       (EMPTY: Q0.(m_footprint) <2= bot2)
       (DISJ: disjoint_footprint P Q1)
   :
-    <<DISJ: disjoint_footprint P (Q0 ** Q1)>>
-.
+    <<DISJ: disjoint_footprint P (Q0 ** Q1)>>.
 Proof.
   ii. ss. unfold disjoint_footprint in *. des; eauto.
   eapply EMPTY; eauto.
@@ -54,8 +52,7 @@ Lemma disjoint_footprint_mconj
       P Q0 Q1
   :
     <<DISJ: disjoint_footprint P (mconj Q0 Q1)>>
-    <-> <<DISJ0: disjoint_footprint P Q0>> /\ <<DISJ1: disjoint_footprint P Q1>>
-.
+    <-> <<DISJ0: disjoint_footprint P Q0>> /\ <<DISJ1: disjoint_footprint P Q1>>.
 Proof.
   split; ii; ss; unfold disjoint_footprint in *; des; eauto.
   esplits; ii; ss; eauto.
@@ -65,9 +62,7 @@ Lemma disjoint_footprint_sepconj
       P Q0 Q1
   :
     (<<DISJ0: disjoint_footprint P Q0>>) /\ (<<DISJ1: disjoint_footprint P Q1>>)
-    <->
-    (<<DISJ: disjoint_footprint P (Q0 ** Q1)>>)
-.
+    <-> (<<DISJ: disjoint_footprint P (Q0 ** Q1)>>).
 Proof.
   unfold disjoint_footprint in *.
   split; esplits; ii; ss; des; eauto.
@@ -95,8 +90,7 @@ Lemma massert_eq
       (EQ0: pred0 = pred1)
       (EQ1: footprint0 = footprint1)
   :
-    Build_massert pred0 footprint0 INVAR0 VALID0 = Build_massert pred1 footprint1 INVAR1 VALID1
-.
+    Build_massert pred0 footprint0 INVAR0 VALID0 = Build_massert pred1 footprint1 INVAR1 VALID1.
 Proof.
   clarify.
   f_equal.
@@ -107,8 +101,7 @@ Qed.
 Lemma mconj_sym
       P Q
   :
-    <<EQ: (mconj P Q) = (mconj Q P)>>
-.
+    <<EQ: (mconj P Q) = (mconj Q P)>>.
 Proof.
   apply massert_eq; ss.
   - apply Axioms.functional_extensionality. ii; ss.
@@ -123,8 +116,7 @@ Qed.
 Lemma sepconj_sym
       P Q
   :
-    <<EQ: (sepconj P Q) = (sepconj Q P)>>
-.
+    <<EQ: (sepconj P Q) = (sepconj Q P)>>.
 Proof.
   apply massert_eq; ss.
   - apply Axioms.functional_extensionality. ii; ss.
@@ -143,8 +135,7 @@ Local Transparent sepconj.
 Lemma sep_drop_tail3
       P Q R
   :
-    massert_imp (P ** Q ** R) (P ** Q)
-.
+    massert_imp (P ** Q ** R) (P ** Q).
 Proof.
   unfold massert_imp. ss. split; ii; eauto.
   - des; esplits; eauto. apply disjoint_footprint_sepconj in H1. des; ss.
@@ -157,8 +148,7 @@ Lemma sepconj_isolated_mutation0
       (* (UNCH: Mem.unchanged_on (~2 P.(m_footprint)) m0 m1) *)
       (UNCH: Mem.unchanged_on (fun blk ofs => ~ P.(m_footprint) blk ofs /\ Mem.valid_block m0 blk) m0 m1)
   :
-    <<SEP: m1 |= Q>>
-.
+    <<SEP: m1 |= Q>>.
 Proof.
   destruct SEP as (A & B & C).
   eapply m_invar; eauto.
@@ -170,8 +160,7 @@ Lemma sepconj_isolated_mutation1
       (SEP: m0 |= P ** Q)
       (UNCH: Mem.unchanged_on (~2 P.(m_footprint)) m0 m1)
   :
-    <<SEP: m1 |= Q>>
-.
+    <<SEP: m1 |= Q>>.
 Proof.
   eapply sepconj_isolated_mutation0; eauto.
   eapply Mem.unchanged_on_implies; eauto. ii. des; ss.
@@ -184,8 +173,7 @@ Lemma sepconj_isolated_mutation_strong
       (IMP: massert_imp P0 P1)
       (FOOT: P1.(m_footprint) <2= Q)
   :
-    <<SEP: m1 |= P1>>
-.
+    <<SEP: m1 |= P1>>.
 Proof.
   hnf in IMP. des.
   eapply m_invar; eauto.
@@ -200,8 +188,7 @@ Lemma sepconj_isolated_mutation_stronger
       (ISOL0: CHNG <2= P0.(m_footprint))
       (ISOL1: P1.(m_footprint) <2= ~2 CHNG)
   :
-    <<SEP: m1 |= P1 ** CTX>>
-.
+    <<SEP: m1 |= P1 ** CTX>>.
 Proof.
   destruct SEP as (A & B & C).
   hnf in IMP. des.
@@ -222,8 +209,7 @@ Lemma globalenv_inject_incr_strong
       (SEP: m_tgt0 |= globalenv_inject ge j)
       (MLE: (m_tgt0.(Mem.nextblock) <= m_tgt1.(Mem.nextblock))%positive)
   :
-    <<SEP: m_tgt1 |= globalenv_inject ge j'>>
-.
+    <<SEP: m_tgt1 |= globalenv_inject ge j'>>.
 Proof.
   assert(m_tgt0 |= globalenv_inject ge j').
   { ss. des. esplits; eauto. inv SEP0. econs; eauto. ii. eapply IMAGE; eauto.
@@ -241,8 +227,7 @@ Lemma disjoint_footprint_sep
       (DISJ0: A.(m_footprint) <2= WALL)
       (DISJ1: B.(m_footprint) <2= ~2 WALL)
   :
-    <<DISJ: disjoint_footprint A B>>
-.
+    <<DISJ: disjoint_footprint A B>>.
 Proof.
   ii. apply DISJ0 in H. apply DISJ1 in H0. ss.
 Qed.
@@ -253,8 +238,7 @@ Program Definition freed_range (b: block) (lo hi: Z): massert := {|
   ;
   m_footprint := brange b lo hi
   ;
-|}
-.
+|}.
 Next Obligation. des. esplits; eauto. i. eapply Mem.valid_block_unchanged_on; eauto. Qed.
 Next Obligation. hnf in H0. des; clarify. eapply H1. lia. Qed.
 
@@ -263,17 +247,14 @@ Hint Unfold freed_range.
 Lemma add_pure_r
       m P
   :
-    <<SEP: m |= P>> <->
-    <<SEP: m |= P ** pure True>>
-.
+    <<SEP: m |= P>> <-> <<SEP: m |= P ** pure True>>.
 Proof. split; ii. - sep_split; ss. - destruct H. ss. Qed.
 
 Lemma range_split0
       b lo mid hi
       (RANEG: lo <= mid <= hi)
   :
-    massert_imp (range b lo hi) (range b lo mid ** range b mid hi)
-.
+    massert_imp (range b lo hi) (range b lo mid ** range b mid hi).
 Proof.
   econs; ii.
   - apply add_pure_r. apply add_pure_r in H. r. rewrite sep_assoc. eapply range_split; eauto.
@@ -283,8 +264,7 @@ Qed.
 Lemma range_freed_range
       sp lo hi
   :
-    massert_imp (range sp lo hi) (freed_range sp lo hi)
-.
+    massert_imp (range sp lo hi) (freed_range sp lo hi).
 Proof.
   econs; ii; ss.
   des; esplits; eauto. i. specialize (H1 lo).
@@ -296,8 +276,7 @@ Qed.
 Lemma add_pure_r_eq
       P
   :
-    P = P ** pure True
-.
+    P = P ** pure True.
 Proof.
   destruct P; ss. unfold sepconj. ss.
   eapply massert_eq.
@@ -310,9 +289,7 @@ Qed.
 Lemma mconj_distr
       m P Q CTX
   :
-    <<SEP: m |= (mconj P Q) ** CTX>> <->
-    <<SEP: m |= P ** CTX>> /\ <<SEP: m |= Q ** CTX>>
-.
+    <<SEP: m |= (mconj P Q) ** CTX>> <-> <<SEP: m |= P ** CTX>> /\ <<SEP: m |= Q ** CTX>>.
 Proof.
   split; ii.
   - destruct H as (A & B & C). ss. des. sym in C. apply disjoint_footprint_mconj in C. des.
@@ -331,8 +308,7 @@ Lemma range_nonnil_valid_block
       (SEP: m |= range b lo hi)
       (RANGE: lo < hi)
   :
-    <<VALID: m.(Mem.valid_block) b>>
-.
+    <<VALID: m.(Mem.valid_block) b>>.
 Proof.
   ss. des. specialize (SEP1 lo). exploit SEP1; eauto. { lia. } i. eapply Mem.perm_valid_block; eauto.
 Unshelve.
@@ -350,8 +326,7 @@ Lemma sepconj_isolated_mutation_strongest
       (ISOL1: P1.(m_footprint) <2= ~2 CHNG)
       (DISJ: disjoint_footprint P0 P1)
   :
-    <<SEP: m1 |= P0 ** P1 ** CTX>>
-.
+    <<SEP: m1 |= P0 ** P1 ** CTX>>.
 Proof.
   destruct SEP as (A & B & C).
   hnf in IMP. des.
@@ -375,8 +350,7 @@ Lemma sepconj_isolated_mutation_revisited
       (PRED: m1 |= P1)
       (FOOT: P1.(m_footprint) <2= P0.(m_footprint))
   :
-    <<SEP: m1 |= P1 ** CTX>>
-.
+    <<SEP: m1 |= P1 ** CTX>>.
 Proof.
   destruct SEP as (A & B & C).
   sep_split; eauto.
@@ -391,9 +365,7 @@ Lemma mconj_footprint_le
       (LEA: A0.(m_footprint) <2= A1.(m_footprint))
       (LEB: B0.(m_footprint) <2= B1.(m_footprint))
   :
-    (mconj A0 B0).(m_footprint) <2= 
-    (mconj A1 B1).(m_footprint)
-.
+    (mconj A0 B0).(m_footprint) <2= (mconj A1 B1).(m_footprint).
 Proof.
   ss. ii. des; et.
 Qed.
@@ -403,9 +375,7 @@ Lemma sepconj_footprint_le
       (LEA: A0.(m_footprint) <2= A1.(m_footprint))
       (LEB: B0.(m_footprint) <2= B1.(m_footprint))
   :
-    (sepconj A0 B0).(m_footprint) <2= 
-    (sepconj A1 B1).(m_footprint)
-.
+    (sepconj A0 B0).(m_footprint) <2= (sepconj A1 B1).(m_footprint).
 Proof.
 Local Transparent sepconj.
   ss. ii. des; et.
@@ -418,16 +388,14 @@ Lemma m_footprint_sepconj_le
       (LEP: P0.(m_footprint) <2= P1.(m_footprint))
       (LEQ: Q0.(m_footprint) <2= Q1.(m_footprint))
   :
-    <<LE: (P0 ** Q0).(m_footprint) <2= (P1 ** Q1).(m_footprint)>>
-.
+    <<LE: (P0 ** Q0).(m_footprint) <2= (P1 ** Q1).(m_footprint)>>.
 Proof. ii; ss. des; ss; eauto. Qed.
 
 Lemma sep_assoc_footprint
       P Q R
   :
     ((P ** Q) ** R).(m_footprint) =
-    (P ** Q ** R).(m_footprint)
-.
+    (P ** Q ** R).(m_footprint).
 Proof.
   ss.
   apply func_ext2. ii; ss. apply prop_ext.
@@ -441,8 +409,7 @@ Lemma assign_junk_blocks_rule
       (PRED: m_src0 |= P)
       n
   :
-    (assign_junk_blocks m_src0 n) |= P
-.
+    (assign_junk_blocks m_src0 n) |= P.
 Proof.
   destruct P; ss.
   eapply m_invar; eauto.

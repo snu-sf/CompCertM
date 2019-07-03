@@ -41,18 +41,14 @@ Inductive match_states
     (MATCHST: Cminorgenproof.match_states skenv_link skenv_link ge st_src0 st_tgt0 sm0)
     (MCOMPATSRC: st_src0.(CsharpminorC.get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(CminorC.get_mem) = sm0.(SimMem.tgt))
-    (MCOMPATIDX: idx = Cminorgenproof.measure st_src0)
-.
+    (MCOMPATIDX: idx = Cminorgenproof.measure st_src0).
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
   Genv.match_genvs (match_globdef (fun cu f tf => transl_fundef f = OK tf) eq prog) ge tge.
 Proof. subst_locals. ss. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
-Theorem sim_modsem
-  :
-    ModSemPair.sim msp
-.
+Theorem sim_modsem: ModSemPair.sim msp.
 Proof.
   eapply match_states_sim with (match_states := match_states)
                                (match_states_at := fun _ _ => eq)
@@ -63,22 +59,17 @@ Proof.
   - (* init bsim *)
     (* destruct sm_arg; ss. clarify. *)
     destruct args_src, args_tgt; ss.
-    inv SIMARGS; ss. clarify.
-    inv INITTGT.
+    inv SIMARGS; ss. clarify. inv INITTGT.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    eexists. exists sm_arg.
-    esplits; eauto.
+    eexists. exists sm_arg. esplits; eauto.
     { refl. }
     + econs; eauto; ss; cycle 1.
       { inv SAFESRC. ss. }
-      * inv TYP.
-        inv SAFESRC. folder. ss.
+      * inv TYP. inv SAFESRC. folder. ss.
         exploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. intro FINDFTGT; des. ss.
         assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link)).
-        {
-          inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
-          econs; eauto.
+        { inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. econs; eauto.
           + ii. ss. eapply Plt_Ple_trans. { genext. } ss. refl.
           + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
           + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
@@ -86,8 +77,7 @@ Proof.
         hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
         rpapply match_callstate; ss; eauto.
         { apply MWF. }
-        { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
-          econs; eauto.
+        { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. econs; eauto.
           - eapply SimMemInjC.sim_skenv_symbols_inject; et.
           - etrans; try apply MWF. ss.
           - etrans; try apply MWF. ss.
@@ -98,8 +88,7 @@ Proof.
         { unfold transl_function in *. unfold bind in *. des_ifs. eapply sig_preserved_body; eauto. }
         f_equal; try congruence.
   - (* init progress *)
-    des. inv SAFESRC.
-    inv SIMARGS; ss.
+    des. inv SAFESRC. inv SIMARGS; ss.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
@@ -118,10 +107,8 @@ Proof.
   - (* call fsim *)
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    inv MATCH; ss. destruct sm0; ss. clarify.
-    inv CALLSRC. inv MATCHST; ss.
-    folder.
-    inv MCOMPAT; ss. clear_tac.
+    inv MATCH; ss. destruct sm0; ss. clarify. inv CALLSRC. inv MATCHST; ss.
+    folder. inv MCOMPAT; ss. clear_tac.
     exploit (fsim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
     esplits; eauto.
     + econs; eauto.
@@ -150,15 +137,11 @@ Proof.
   - (* after fsim *)
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    inv AFTERSRC.
-    inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
-    inv MATCH; ss. inv MATCHST; ss.
-    inv HISTORY. ss. clear_tac.
-    esplits; eauto.
+    inv AFTERSRC. inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
+    inv MATCH; ss. inv MATCHST; ss. inv HISTORY. ss. clear_tac. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify.
-      inv MLE0; ss.
-      inv MCOMPAT. clear_tac.
+      inv MLE0; ss. inv MCOMPAT. clear_tac.
       rpapply match_returnstate; ss; eauto; ss.
       { eapply MWFAFTR. }
       { eapply match_callstack_le; eauto. eapply match_callstack_incr_bound; try eapply Mem.unchanged_on_nextblock; eauto.
@@ -173,16 +156,14 @@ Proof.
       { eapply inject_typify; eauto. }
     + refl.
   - (* final fsim *)
-    inv MATCH. inv FINALSRC; inv MATCHST; ss.
-    inv MK. inv MCOMPAT; ss.
+    inv MATCH. inv FINALSRC; inv MATCHST; ss. inv MK. inv MCOMPAT; ss.
     eexists sm0. esplits; ss; eauto. refl.
   - left; i.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
 
     esplits; eauto.
     { apply CsharpminorC.modsem_receptive. }
-    inv MATCH.
-    ii. hexploit (@transl_step_correct prog tprog TRANSL skenv_link skenv_link); eauto; ss.
+    inv MATCH. ii. hexploit (@transl_step_correct prog tprog TRANSL skenv_link skenv_link); eauto; ss.
     { eapply SkEnv.senv_genv_compat; ss. }
     { eapply SkEnv.senv_genv_compat; ss. }
     i; des.
@@ -210,14 +191,10 @@ Variable tprog: Cminor.program.
 Hypothesis TRANSL: match_prog prog tprog.
 Definition mp: ModPair.t := ModPair.mk (CsharpminorC.module prog) (CminorC.module tprog) tt.
 
-Theorem sim_mod
-  :
-    ModPair.sim mp
-.
+Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
-  - r. eapply Sk.match_program_eq; eauto.
-    ii. destruct f1; ss.
+  - r. eapply Sk.match_program_eq; eauto. ii. destruct f1; ss.
     + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. unfold transl_function in *. des_ifs.
       unfold transl_funbody in *. unfold bind in Heq. des_ifs.
     + clarify. left. esplits; eauto.

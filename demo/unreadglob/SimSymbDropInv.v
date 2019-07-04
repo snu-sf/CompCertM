@@ -570,6 +570,12 @@ Next Obligation.
     destruct (classic (ss0 a)).
     + exploit CLOSED; et. intro T. unfold privs in T. bsimpl. des. unfold NW in *. bsimpl. des_sumbool. ss.
     + exploit KEPT; eauto. intro T. rewrite H0 in *. exploit prog_defmap_image; eauto.
+  - i. destruct (classic (ss0 id)).
+    + exploit DROP; eauto. i.
+      eapply prog_defmap_norepet in IN. clarify. rewrite <- NoDup_norepet. eauto.
+    + exploit KEPT; eauto. i.
+      eapply WFPARAM. eapply in_prog_defmap. erewrite <- H0.
+      eapply prog_defmap_norepet; eauto. rewrite <- NoDup_norepet. eauto.
 Qed.
 Next Obligation.
   inv SIMSK. inv SIMSK0.

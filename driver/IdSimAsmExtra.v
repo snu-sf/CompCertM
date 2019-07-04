@@ -296,6 +296,40 @@ Section TOMEMORYC.
         eapply NOPERM; eauto. }
   Qed.
 
+  Lemma Mem_unfree_perm_restore m0 m1 m2 m3 blk lo hi
+        (FREE: Mem.free m0 blk lo hi = Some m1)
+        (MAXPERM: forall
+            b ofs
+            (VALID: Mem.valid_block m0 b)
+          ,
+            <<MAX: Mem.perm m2 b ofs Max <1= Mem.perm m1 b ofs Max>>)
+        (UNFREE: Mem_unfree m2 blk lo hi = Some m3)
+        (NBLE: Ple (Mem.nextblock m1) (Mem.nextblock m2))
+    :
+      forall b ofs
+             (VALID: Mem.valid_block m0 b)
+      ,
+        (<<MAX: Mem.perm m3 b ofs Max <1= Mem.perm m0 b ofs Max>>).
+  Proof.
+    ii. destruct (classic (brange blk lo hi b ofs)).
+    - destruct H. clarify. eapply Mem.perm_cur. eapply Mem.perm_implies.
+      { eapply Mem.free_range_perm; eauto. }
+      { econs. }
+    - eapply Mem.perm_unchanged_on_2.
+      { eapply Mem.free_unchanged_on; eauto.
+        instantiate (1:= ~2 brange blk lo hi).
+        ii. eapply H1. splits; auto. }
+      { auto. }
+      { auto. }
+      eapply MAXPERM; eauto.
+      eapply Mem.perm_unchanged_on_2; eauto.
+      { eapply Mem_unfree_unchanged_on; eauto. }
+      { auto. }
+      { eapply Mem.nextblock_free in FREE.
+        eapply Plt_Ple_trans; eauto.
+        erewrite <- FREE. auto. }
+  Qed.
+
   Lemma Mem_unfree_parallel
         sm0 sm_arg sm_ret blk_src ofs_src ofs_tgt sz blk_tgt delta
         m_src1
@@ -395,51 +429,14 @@ Section TOMEMORYC.
                 * eapply Mem.free_range_perm; eauto. lia.
               + econs. }
         + admit "ez".
-        + ii. destruct (classic (brange
-                                   blk_src
-                                   (Ptrofs.unsigned ofs_src)
-                                   (Ptrofs.unsigned ofs_src + sz)
-                                   b ofs)).
-          * destruct H. clarify. eapply Mem.perm_cur. eapply Mem.perm_implies.
-            { eapply Mem.free_range_perm; eauto. }
-            { econs. }
-          * eapply Mem.perm_unchanged_on_2.
-            { eapply Mem.free_unchanged_on; eauto.
-              instantiate (1:= ~2 brange blk_src (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned ofs_src + sz)).
-              ii. eapply H1. splits; auto. }
-            { auto. }
-            { auto. }
-            eapply MAXSRC0; eauto.
-            { eapply Mem.valid_block_free_1; eauto. }
-            eapply Mem.perm_unchanged_on_2; eauto.
-            { eapply Mem_unfree_unchanged_on; eauto. }
-            { auto. }
-            { eapply Mem.valid_block_unchanged_on; eauto.
-              eapply Mem.valid_block_free_1; eauto. }
-        + ii. destruct (classic (brange
-                                   blk_tgt
-                                   (Ptrofs.unsigned (Ptrofs.add ofs_src (Ptrofs.repr delta)))
-                                   (Ptrofs.unsigned (Ptrofs.add ofs_src (Ptrofs.repr delta)) + sz)
-                                   b ofs)).
-          * destruct H. clarify. eapply Mem.perm_cur. eapply Mem.perm_implies.
-            { eapply Mem.free_range_perm; eauto. }
-            { econs. }
-          * eapply Mem.perm_unchanged_on_2.
-            { eapply Mem.free_unchanged_on; eauto.
-              instantiate (1:= ~2
-                                brange
-                                blk_tgt (Ptrofs.unsigned (Ptrofs.add ofs_src (Ptrofs.repr delta)))
-                                (Ptrofs.unsigned (Ptrofs.add ofs_src (Ptrofs.repr delta)) + sz)).
-              ii. eapply H1. splits; auto. }
-            { auto. }
-            { auto. }
-            eapply MAXTGT0; eauto.
-            { eapply Mem.valid_block_free_1; eauto. }
-            eapply Mem.perm_unchanged_on_2; eauto.
-            { eapply Mem_unfree_unchanged_on; eauto. }
-            { auto. }
-            { eapply Mem.valid_block_unchanged_on; eauto.
-              eapply Mem.valid_block_free_1; eauto. }
+        + eapply Mem_unfree_perm_restore; try apply UNFREESRC; eauto.
+          * ii. eapply MAXSRC0; eauto.
+            unfold Mem.valid_block in *. erewrite Mem.nextblock_free; eauto.
+          * eapply Mem.unchanged_on_nextblock; eauto.
+        + eapply Mem_unfree_perm_restore; try apply UNFREE; eauto.
+          * ii. eapply MAXTGT0; eauto.
+            unfold Mem.valid_block in *. erewrite Mem.nextblock_free; eauto.
+          * eapply Mem.unchanged_on_nextblock; eauto.
     }
   Qed.
 

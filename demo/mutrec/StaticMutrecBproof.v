@@ -841,6 +841,9 @@ Proof.
           assert (Genv.find_symbol
                     (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog) f_id = Some g_fptr) by ss.
           rewrite H. ss. }
+        { zsimpl. inv WF.
+          rewrite Genv.find_funct_ptr_iff in FINDF1.
+          eapply WFPARAM in FINDF1. eauto. }
         { unfold Genv.find_funct. des_ifs.
           unfold Genv.find_funct_ptr. des_ifs.
           unfold Genv.find_def in Heq. ss.
@@ -859,8 +862,7 @@ Proof.
           rewrite <- H1 in H2. exploit Genv.find_invert_symbol; eauto. i.
           rewrite H3 in *. clarify.
           unfold o_bind in Heq0. ss. }
-        { instantiate (1:=(mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default)).
-          destruct ((prog_defmap (Sk.of_program fn_sig prog)) ! f_id) eqn:DMAP; clarify.
+        { destruct ((prog_defmap (Sk.of_program fn_sig prog)) ! f_id) eqn:DMAP; clarify.
           assert (DEFS0: defs (Sk.of_program fn_sig prog) f_id).
           { rewrite <- defs_prog_defmap. eauto. }
           exploit SkEnv.project_impl_spec. eapply INCL. i. inv H.
@@ -873,8 +875,7 @@ Proof.
             rewrite Genv.find_funct_ptr_iff. eauto. ss.
           - des_ifs. esplits.
             rewrite Genv.find_funct_ptr_iff. eauto. ss. }
-        { unfold size_arguments. des_ifs. }
-        { econs; eauto.
+        { rewrite <- FINDF2. econs; eauto.
           - econs; eauto. ss.
             rpapply extcall_arg_reg. ss.
           - econs. }
@@ -884,7 +885,7 @@ Proof.
           - repeat (rewrite Pregmap.gso; [| clarify; fail]).
             rewrite Pregmap.gss. rewrite RSPC. ss. }
         { ii. apply Z.divide_0_r. }
-        { eauto. }
+        { rewrite <- FINDF2. eauto. }
 
       * i. inv SIMRETV. inv AFTERSRC. ss.
         exploit Mem_unfree_suceeds.

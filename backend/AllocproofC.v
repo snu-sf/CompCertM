@@ -163,8 +163,7 @@ Proof.
     esplits; eauto. econs; eauto.
     + folder. rewrite <- H1. eauto.
     + econs; eauto.
-      * erewrite <- lessdef_list_length; eauto. congruence.
-      * inv TYP; ss. congruence.
+      erewrite <- lessdef_list_length; eauto. congruence.
     + ii. rewrite OUT; ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.

@@ -99,7 +99,6 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg ls vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SZARGS: 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg)
       (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg))
     :

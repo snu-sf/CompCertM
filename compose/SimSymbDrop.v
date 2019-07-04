@@ -22,7 +22,7 @@ Require Import ModSem.
 
 
 (* Copied from Unusedglob.v *)
-Definition ref_init (il : list init_data) (id : ident): Prop := 
+Definition ref_init (il : list init_data) (id : ident): Prop :=
   exists ofs, In (Init_addrof id ofs) il
 .
 
@@ -521,6 +521,16 @@ Next Obligation.
     destruct (classic (ss0 a)).
     + exploit CLOSED; et. intro T. unfold privs in T. bsimpl. des. unfold NW in *. bsimpl. des_sumbool. ss.
     + exploit KEPT; eauto. intro T. rewrite H0 in *. exploit prog_defmap_image; eauto.
+  - ss.
+    i. eapply WFPARAM. instantiate (1:=id).
+    destruct (classic (ss0 id)).
+    + exploit DROP; eauto. i.
+      exploit prog_defmap_norepet; eauto.
+      rewrite <- NoDup_norepet. eauto. i. rewrite H1 in H0. clarify.
+    + exploit KEPT; eauto. i.
+      eapply prog_defmap_norepet in IN; cycle 1.
+      rewrite <- NoDup_norepet. eauto.
+      eapply in_prog_defmap. rewrite <- H0. eauto.
 Qed.
 Next Obligation.
   inv SIMSK. inv SIMSK0.
@@ -799,7 +809,7 @@ Next Obligation.
 
   - (* SIMSYMB3 *)
     inv LETGT.
-    destruct (classic (defs sk_tgt id)); cycle 1. 
+    destruct (classic (defs sk_tgt id)); cycle 1.
     { exploit SYMBDROP; eauto. i; des. clarify. }
 
     erewrite SYMBKEEP in *; ss.
@@ -920,7 +930,7 @@ Next Obligation.
       unfold internals in *. des_ifs_safe.
       exploit SPLITHINT; et. i; des. clear_tac.
       hexploit (KEPT id0); et. intro T. rewrite Heq in *.
-      des_ifs. 
+      des_ifs.
     }
     exploit DEFKEEP; et.
     { apply Genv.find_invert_symbol; eauto. }
@@ -1031,4 +1041,3 @@ Next Obligation.
 Qed.
 
 End MEMINJ.
-

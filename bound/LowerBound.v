@@ -949,6 +949,7 @@ Section PRESERVATION.
       hexploit Mem_alloc_range_perm; eauto. ii. exploit H; eauto. i.
       unfold Mem.perm, callee_initial_mem' in *. ss. rewrite MEQ. ss.
       eapply Mem.alloc_result in MEQ. clarify.
+    -
   Qed.
 
   Lemma callee_initial_inj_incr blk ofs j m_src

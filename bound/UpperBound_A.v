@@ -226,15 +226,15 @@ Section PRESERVATION.
       In (id, Gfun fd) (prog_defs cp) ->
       ~ is_external_fd fd -> In (id, Gfun fd) builtins.
 
-  Hypothesis WF_PARAMLINK:
-    forall id fd,
-      In (id, (Gfun (Internal fd))) cp_link.(prog_defs) ->
-      4 * size_arguments_64 (typlist_of_typelist (type_of_params (fn_params fd))) 0 0 0 <= Ptrofs.max_unsigned.
+  (* Hypothesis WF_PARAMLINK: *)
+  (*   forall id fd, *)
+  (*     In (id, (Gfun (Internal fd))) cp_link.(prog_defs) -> *)
+  (*     4 * size_arguments_64 (typlist_of_typelist (type_of_params (fn_params fd))) 0 0 0 <= Ptrofs.max_unsigned. *)
 
-  Hypothesis WF_PARAM:
-    forall id fd cp (IN: is_focus cp),
-      In (id, (Gfun (Internal fd))) cp.(prog_defs) ->
-      4 * size_arguments (signature_of_function fd) <= Ptrofs.max_unsigned.
+  (* Hypothesis WF_PARAM: *)
+  (*   forall id fd cp (IN: is_focus cp), *)
+  (*     In (id, (Gfun (Internal fd))) cp.(prog_defs) -> *)
+  (*     4 * size_arguments (signature_of_function fd) <= Ptrofs.max_unsigned. *)
 
   Let INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function cp_link).
   Proof.
@@ -931,7 +931,7 @@ Section PRESERVATION.
       { inv STK. left. right.
         econs 1; eauto.
         econs 1; eauto.
-        - econs 1; eauto. i. inv STEPSRC. 
+        - econs 1; eauto. i. inv STEPSRC.
         - i. ss. econs. eauto. i. ss. inv FINAL0; inv FINAL1.
           i. inv FINAL. }
       rename t into fr_src.
@@ -1198,10 +1198,17 @@ Section PRESERVATION.
                               (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) blk); ss.
                   unfold o_bind in Heq. ss.
                   destruct ((prog_defmap cp_link) ! i0) eqn:DMAP; ss. clarify.
-                  eapply WF_PARAMLINK.
-                  instantiate (1:=i0).
-                  unfold prog_defmap in DMAP. ss.
-                  eapply PTree_Properties.in_of_list; eauto.
+                  inv WTSKLINK. unfold size_arguments in WFPARAM. des_ifs.
+                  assert (INTERNAL: In (i0, Gfun (AST.Internal (signature_of_function f))) (AST.prog_defs (CSk.of_program signature_of_function cp_link))).
+                  { eapply in_prog_defmap. ss.
+                    exploit CSk.of_program_prog_defmap.
+                    instantiate (4 := i0).
+                    instantiate (1 := cp_link).
+                    instantiate (1 := signature_of_function). i.
+                    inv H; rewrite DMAP in *; clarify.
+                    inv H3. ss. des_ifs. }
+                  eapply (WFPARAM i0 (AST.Internal (signature_of_function f)) SkEnv.get_sig) in INTERNAL. ss.
+                  rewrite typlist_of_typelist_eq. eauto.
             }
             { ss.
               assert(WTPROG: wt_program cp_top).
@@ -1858,6 +1865,4 @@ Proof.
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
-  { unfold signature_of_function, size_arguments in *. i.
-    rewrite typlist_of_typelist_eq. des_ifs. eapply WFPARAM; eauto. }
 Qed.

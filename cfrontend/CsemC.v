@@ -183,11 +183,4 @@ Inductive typechecked (builtins: list (ident * globdef (Ctypes.fundef function) 
         (BUILTIN: ~ is_external_fd fd)
       ,
         In (id, Gfun fd) builtins)
-    (* The sum of the sizes of the function parameters must be less than INT_MAX. *)
-    (WFPARAM: forall
-        id fd
-        (IN: In (id, (Gfun (Internal fd))) p.(prog_defs))
-      ,
-          4 * size_arguments (signature_of_function fd) <= Ptrofs.max_unsigned
-)
 .

@@ -1592,7 +1592,8 @@ Proof.
             exploit (@init_match_frame_contents sm_arg); try apply MLE; try apply MLE0; eauto.
             { apply SIMSKENV. }
             { inv TYPTGT. econs; eauto. rewrite <- MEMTGT. ss. }
-            { inv TYPTGT. unfold Ptrofs.max_unsigned in *. s. xomega. }
+            { exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF.
+              eapply WFPARAM in H. eauto. ss. unfold Ptrofs.max_unsigned in H. red in H. omega. }
             { rewrite <- SG. ss. rewrite <- MEMSRC in *. eauto. }
             { rewrite DEF, SM. s. f_equal; eauto. }
             { inv SIMSKENV. ss. inv SIMSKE. ss.
@@ -1621,13 +1622,12 @@ Proof.
     i; des. monadInv MATCH. rename x into fd_tgt.
     assert(exists targs_tgt, <<TYPTGT: typecheck (Args.vs args_tgt) (fn_sig fd_tgt) targs_tgt>>).
     { inv TYP. eexists. econs; eauto.
-      - erewrite <- inject_list_length; eauto. erewrite <- transf_function_sig; eauto.
-      - erewrite <- transf_function_sig; eauto.
+      erewrite <- inject_list_length; eauto. erewrite <- transf_function_sig; eauto.
     }
     des.
     exploit (store_arguments_progress (Args.m args_tgt) targs_tgt (fn_sig fd_tgt)); et.
     { inv TYPTGT. eapply typify_has_type_list; et. }
-    { inv TYPTGT. ss. }
+    { exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF. eapply WFPARAM in H. eauto. }
     i; des.
     esplits; et.
     econs; et.
@@ -1680,7 +1680,8 @@ Proof.
       * folder. eapply (fsim_external_funct_inject SIMGE); et.
         { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. apply SIMSKENV. }
         ii. clarify.
-      * psimpl. zsimpl. auto.
+      * psimpl. zsimpl. des. inv WF. unfold Genv.find_funct in EXTTGT. des_ifs.
+        rewrite Genv.find_funct_ptr_iff in EXTTGT. ss. eapply WFPARAM in EXTTGT. rewrite <- EXTTGT0. eauto.
       * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
     + econs; ss; eauto with congruence.
     + econs; ss; et.

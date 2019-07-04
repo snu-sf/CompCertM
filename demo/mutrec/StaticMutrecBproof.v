@@ -23,14 +23,14 @@ Definition memoized_inv: SimMemInjInv.memblk_invariant :=
       (<<VINDEX: mem Mint32 0 = Some (Vint i)>>) /\
       (<<VSUM: mem Mint32 (size_chunk Mint32) = Some (Vint (sum i))>>).
 
-Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv memoized_inv.
+Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv top1 memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
 
 Lemma memoized_inv_store_le i v_ind v_sum blk ofs0 ofs1 m_tgt0 m_tgt1
       (sm0 sm1: SimMemInjInv.t')
       (MWF: SimMem.wf sm0)
-      (INVAR: sm0.(SimMemInjInv.mem_inv) blk)
+      (INVAR: sm0.(SimMemInjInv.mem_inv_tgt) blk)
       (OFSI: ofs0 = 0)
       (OFSV: ofs1 = size_chunk Mint32)
       (INDEX: v_ind = Vint i)
@@ -43,7 +43,8 @@ Lemma memoized_inv_store_le i v_ind v_sum blk ofs0 ofs1 m_tgt0 m_tgt1
                         (sm0.(SimMemInjInv.minj).(SimMemInj.src))
                         m_tgt1
                         (sm0.(SimMemInjInv.minj).(SimMemInj.inj)))
-                     sm0.(SimMemInjInv.mem_inv))
+                     sm0.(SimMemInjInv.mem_inv_src)
+                     sm0.(SimMemInjInv.mem_inv_tgt))
   :
     (<<MLE: SimMem.le sm0 sm1>>) /\
     (<<MWF: SimMem.wf sm1>>).
@@ -54,10 +55,10 @@ Proof.
     + refl.
     + etrans.
       * eapply Mem.store_unchanged_on; eauto.
-        ii. exploit INVRANGE; eauto. i. des.
+        ii. exploit INVRANGETGT; eauto. i. des.
         exfalso. eauto.
       * eapply Mem.store_unchanged_on; eauto.
-        ii. exploit INVRANGE; eauto. i. des.
+        ii. exploit INVRANGETGT; eauto. i. des.
         exfalso. eauto.
     + econs. ii. des. clarify.
     + ii. eapply Mem.perm_store_2; eauto. eapply Mem.perm_store_2; eauto.
@@ -70,10 +71,10 @@ Proof.
         etrans.
         { eapply Mem.store_unchanged_on; eauto.
           ii. eapply H0.
-          eapply INVRANGE; eauto. }
+          eapply INVRANGETGT; eauto. }
         { eapply Mem.store_unchanged_on; eauto.
           ii. eapply H0.
-          eapply INVRANGE; eauto. }
+          eapply INVRANGETGT; eauto. }
       * etrans; eauto.
         unfold SimMemInj.tgt_private, SimMemInj.valid_blocks in *. ss.
         ii. des. split; auto. eapply Mem.store_valid_block_1; eauto.
@@ -81,7 +82,7 @@ Proof.
       * rpapply TGTLE. etrans.
         { eapply Mem.nextblock_store; eauto. }
         { eapply Mem.nextblock_store; eauto. }
-    + ii. exploit SAT; eauto. i. inv H. des. des_ifs.
+    + ii. exploit SATTGT; eauto. i. inv H. des. des_ifs.
       * assert (Mem.valid_access m_tgt1 Mint32 blk0 0 Writable).
         { eapply Mem.store_valid_access_1; eauto.
           eapply Mem.store_valid_access_1; eauto. }
@@ -99,10 +100,6 @@ Proof.
             erewrite Mem.load_store_other; try apply STR0; eauto.
           - erewrite Mem.load_store_other; try apply STR1; eauto.
             erewrite Mem.load_store_other; try apply STR0; eauto. }
-    + i. exploit INVRANGE; eauto. i. des.
-      unfold SimMemInjC.update, Mem.valid_block, SimMemInj.tgt_private in *.
-      ss. des. splits; eauto. eapply Mem.store_valid_block_1; eauto.
-      eapply Mem.store_valid_block_1; eauto.
 Qed.
 
 Section SIMMODSEM.
@@ -204,7 +201,7 @@ Inductive match_states (sm_init: SimMem.t)
     (NOTEXT: forall
         ofs,
         ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
-    (NINV: ~ sm0.(SimMemInjInv.mem_inv) stk)
+    (NINV: ~ sm0.(SimMemInjInv.mem_inv_tgt) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 2))
     (ARG: rs RDI = Vint i)
     (RANGE: 0 <= i.(Int.intval) < MAX)
@@ -228,7 +225,7 @@ Inductive match_states (sm_init: SimMem.t)
     (NOTEXT: forall
         ofs,
         ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
-    (NINV: ~ sm0.(SimMemInjInv.mem_inv) stk)
+    (NINV: ~ sm0.(SimMemInjInv.mem_inv_tgt) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 12))
     (ARG: rs RBX = Vint i)
     (FARG: rs RDI = Vint (Int.sub i (Int.repr 1)))
@@ -253,7 +250,7 @@ Inductive match_states (sm_init: SimMem.t)
     (NOTEXT: forall
         ofs,
         ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
-    (NINV: ~ sm0.(SimMemInjInv.mem_inv) stk)
+    (NINV: ~ sm0.(SimMemInjInv.mem_inv_tgt) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 13))
     (ARG: rs RBX = Vint i)
     (SUM: rs RAX = Vint (sum (Int.sub i Int.one)))
@@ -278,7 +275,7 @@ Inductive match_states (sm_init: SimMem.t)
     (NOTEXT: forall
         ofs,
         ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
-    (NINV: ~ sm0.(SimMemInjInv.mem_inv) stk)
+    (NINV: ~ sm0.(SimMemInjInv.mem_inv_tgt) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 20))
     (ARG: rs RAX = Vint i)
   :
@@ -481,10 +478,10 @@ Proof.
 
     (* i <> Int.zero *)
     + cinv MWF. ss.
-      assert (INVAR: SimMemInjInv.mem_inv sm0 b_memo).
+      assert (INVAR: SimMemInjInv.mem_inv_tgt sm0 b_memo).
       { inv SIMSK. ss. inv INJECT.
         eapply INVCOMPAT; eauto. ss. }
-      hexploit SAT; eauto. intros SAT0.
+      hexploit SATTGT; eauto. intros SAT0.
       specialize (SAT0 _ INVAR). destruct SAT0. des. des_ifs_safe.
 
       assert (CMP0:
@@ -811,7 +808,7 @@ Proof.
 
       cinv MWF.
       hexploit (@SimMemInjInv.unchanged_on_mle
-                  memoized_inv sm0
+                  top1 memoized_inv sm0
                   sm0.(SimMemInjInv.minj).(SimMemInj.src) m_tgt sm0.(SimMemInjInv.minj).(SimMemInj.inj)); ss; eauto.
       { eapply private_unchanged_inject; eauto.
         - cinv WF0. eauto.
@@ -902,8 +899,10 @@ Proof.
         exploit Mem_unfree_right_inject; try apply UNFR; eauto.
         { inv MWF1. inv WF1. eauto. }
         { instantiate (1:=0). instantiate (1:=0). ii. lia. } intros INJ.
+        eapply SimMemInjInv.unlift_wf in MWF1; try apply MLE1; eauto.
+        eapply SimMemInjInv.unlift_spec in MLE1; eauto.
         exploit SimMemInjInv.unchanged_on_mle; eauto.
-        { ii. clarify. }
+        { ss. ii. clarify. }
         { refl. }
         { eapply Mem.unchanged_on_implies.
           - eapply Mem_unfree_unchanged_on; eauto.
@@ -914,7 +913,7 @@ Proof.
         eexists (SimMemInjInv.mk
                    (SimMemInj.mk
                       (SimMemInj.src sm_ret.(SimMemInjInv.minj))
-                      m1 _ _ _ _ _) _).
+                      m1 _ _ _ _ _) _ _).
         esplits; ss.
         { econs; ss; eauto.
           - instantiate (1:=mksignature [AST.Tint] (Some AST.Tint) cc_default).
@@ -942,9 +941,6 @@ Proof.
             + destruct p. dup BLK0. eapply INCR in BLK0.
               clarify. hexploit PRIV; eauto.
             + admit "".
-          - ii. eapply NOTEXT. inv MLE1. inv MLE3. ss.
-            rewrite TGTPARENTEQ. eauto.
-          - inv MLE1. inv MLE3. ss. rewrite <- MINVEQ. eauto.
           - repeat rewrite Pregmap.gss. rewrite RSPC.
             repeat (rewrite Pregmap.gso; [| clarify; fail]).
             repeat rewrite Pregmap.gss. ss. econs; eauto.
@@ -957,10 +953,10 @@ Proof.
   - intros _. econs 1. i. cinv CURRPC.
 
     cinv MWF. ss.
-    assert (INVAR: SimMemInjInv.mem_inv sm0 b_memo).
+    assert (INVAR: SimMemInjInv.mem_inv_tgt sm0 b_memo).
     { inv SIMSK. ss. inv INJECT.
       eapply INVCOMPAT; eauto. ss. }
-    hexploit SAT; eauto. intros SAT0.
+    hexploit SATTGT; eauto. intros SAT0.
     specialize (SAT0 _ INVAR). destruct SAT0. des. des_ifs_safe.
 
     hexploit Mem.valid_access_store.

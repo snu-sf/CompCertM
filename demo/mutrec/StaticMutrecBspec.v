@@ -28,7 +28,7 @@ Section MODSEM.
       (i: int)
       (m: mem)
   | Returnstate
-      (i: int)
+      (s: int)
       (m: mem)
   .
 
@@ -86,9 +86,9 @@ Section MODSEM.
 
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_return
-      i m
+      s m
     :
-      final_frame (Returnstate i m) (Retv.mk (Vint i) m)
+      final_frame (Returnstate s m) (Retv.mk (Vint s) m)
   .
 
   Program Definition modsem: ModSem.t :=

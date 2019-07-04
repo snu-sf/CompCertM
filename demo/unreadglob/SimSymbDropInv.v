@@ -22,13 +22,13 @@ Require Import ModSem.
 
 
 (* Copied from Unusedglob.v *)
-Definition ref_init (il : list init_data) (id : ident): Prop := 
+Definition ref_init (il : list init_data) (id : ident): Prop :=
   exists ofs, In (Init_addrof id ofs) il
 .
 
 Section MEMINJ.
 
-Let SM := SimMemInjInvC.SimMemInjInv top1.
+Let SM := SimMemInjInvC.SimMemInjInv top1 top1.
 Local Existing Instance SM.
 
 (* Definition t': Type := ident -> bool. *)
@@ -66,7 +66,7 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
 | sim_skenv_intro
     (SIMSYMB1: forall
         id blk_src blk_tgt delta
-        (SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, delta))
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
       ,
         (<<DELTA: delta = 0>>) /\
@@ -81,19 +81,25 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
       ,
         exists blk_tgt,
           (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
-          (<<SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, 0)>>))
+          (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>))
     (SIMSYMB3: forall
         id blk_tgt
         (BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt)
       ,
         exists blk_src,
           (<<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>) /\
-          (<<SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, 0)>>)
+          (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)
     (* /\ <<KEPT: ss.(kept) id>> <---------- This can be obtained via SIMSYMB1. *)
     )
+    (SSINV: forall
+        id blk_src
+        (KEPT: ss id)
+        (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
+      ,
+        sm0.(SimMemInjInv.mem_inv_src) blk_src)
     (SIMDEF: forall
         blk_src blk_tgt delta def_src
-        (SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, delta))
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src)
       ,
         exists def_tgt, (<<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>>) /\
@@ -102,13 +108,13 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
     (DISJ: forall
         id blk_src0 blk_src1 blk_tgt
         (SYMBSRC: Genv.find_symbol skenv_src id = Some blk_src0)
-        (SIMVAL0: sm0.(SimMemInjInv.inj) blk_src0 = Some (blk_tgt, 0))
-        (SIMVAL1: sm0.(SimMemInjInv.inj) blk_src1 = Some (blk_tgt, 0))
+        (SIMVAL0: sm0.(SimMemInj.inj) blk_src0 = Some (blk_tgt, 0))
+        (SIMVAL1: sm0.(SimMemInj.inj) blk_src1 = Some (blk_tgt, 0))
       ,
         blk_src0 = blk_src1)
     (SIMDEFINV: forall
         blk_src blk_tgt delta def_tgt
-        (SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, delta))
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt)
       ,
         exists def_src, (<<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>>) /\
@@ -116,17 +122,15 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
                         (<<SIM: def_src = def_tgt>>))
     (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
     (PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public))
-    (* (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb)) *)
-    (* (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb)) *)
-    (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src).(Mem.nextblock))
-    (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt).(Mem.nextblock))
+    (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(SimMemInj.src_parent_nb))
+    (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(SimMemInj.tgt_parent_nb))
 .
 
 Theorem sim_skenv_symbols_inject
         sm0 ss0 skenv_src skenv_tgt
         (SIMSKENV: sim_skenv sm0 ss0 skenv_src skenv_tgt)
   :
-    <<SINJ: symbols_inject sm0.(SimMemInjInv.inj) skenv_src skenv_tgt>>
+    <<SINJ: symbols_inject sm0.(SimMemInj.inj) skenv_src skenv_tgt>>
 .
 Proof.
   { clear - SIMSKENV.
@@ -163,7 +167,7 @@ Qed.
 Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
     (<<SIMSYMB1: forall
         id blk_src blk_tgt delta
-        (SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, delta))
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
       ,
         (<<DELTA: delta = 0>>) /\
@@ -179,7 +183,7 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
       ,
         exists blk_tgt,
           (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
-          (<<SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, 0)>>)>>)
+          (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)>>)
     /\
     (<<SIMSYMB3: forall
         id blk_tgt
@@ -187,13 +191,20 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
       ,
         exists blk_src,
           (<<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>) /\
-          (<<SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, 0)>>)
+          (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)
     (* /\ <<KEPT: ss.(kept) id>> <---------- This can be obtained via SIMSYMB1. *)
     >>)
     /\
+    (<<SSINV: forall
+        id blk_src
+        (KEPT: ss id)
+        (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
+      ,
+        sm0.(SimMemInjInv.mem_inv_src) blk_src>>)
+    /\
     (<<SIMDEF: forall
         blk_src blk_tgt delta def_src
-        (SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, delta))
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src)
       ,
         exists def_tgt, (<<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>>) /\
@@ -203,14 +214,14 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
     (<<DISJ: forall
         id blk_src0 blk_src1 blk_tgt
         (SYMBSRC: Genv.find_symbol skenv_src id = Some blk_src0)
-        (SIMVAL0: sm0.(SimMemInjInv.inj) blk_src0 = Some (blk_tgt, 0))
-        (SIMVAL1: sm0.(SimMemInjInv.inj) blk_src1 = Some (blk_tgt, 0))
+        (SIMVAL0: sm0.(SimMemInj.inj) blk_src0 = Some (blk_tgt, 0))
+        (SIMVAL1: sm0.(SimMemInj.inj) blk_src1 = Some (blk_tgt, 0))
       ,
         blk_src0 = blk_src1>>)
     /\
     (<<SIMDEFINV: forall
         blk_src blk_tgt delta def_tgt
-        (SIMVAL: sm0.(SimMemInjInv.inj) blk_src = Some (blk_tgt, delta))
+        (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
         (DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt)
       ,
         exists def_src, (<<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>>) /\
@@ -220,8 +231,8 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
     (<<PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss>>)
     /\
     (<<PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public)>>)
-    /\ (<<BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src).(Mem.nextblock)>>)
-    /\ (<<BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt).(Mem.nextblock)>>)
+    /\ (<<BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(SimMemInj.src_parent_nb)>>)
+    /\ (<<BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(SimMemInj.tgt_parent_nb)>>)
 .
 
 Theorem sim_skenv_splittable_spec
@@ -365,8 +376,10 @@ Lemma init_meminj_simskenv
       (LOADMEMSRC: Sk.load_mem sk_src = Some m_src)
       (LOADMEMTGT: Sk.load_mem sk_tgt = Some m_tgt)
       (SIMSK: sim_sk ss sk_src sk_tgt)
-  : sim_skenv (mk m_src m_tgt (init_meminj sk_src sk_tgt) (fun blk => forall ofs, loc_out_of_reach (init_meminj sk_src sk_tgt) m_src blk ofs /\ Mem.valid_block m_tgt blk))
-              ss (Sk.load_skenv sk_src) (Sk.load_skenv sk_tgt).
+  : sim_skenv
+      (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt))
+          (fun blk => forall ofs, loc_unmapped (init_meminj sk_src sk_tgt) blk ofs /\ Mem.valid_block m_src blk) bot1)
+      ss (Sk.load_skenv sk_src) (Sk.load_skenv sk_tgt).
 Proof.
   econs; ss; i.
   - exploit init_meminj_invert; eauto. intros (A & id1 & B & C & D).
@@ -385,6 +398,15 @@ Proof.
     }
     des. exists blk_src; split; auto.
     eapply init_meminj_eq; eauto.
+  - split.
+    + unfold init_meminj, loc_unmapped. des_ifs.
+      dup BLKSRC. eapply Genv.find_invert_symbol in BLKSRC. clarify.
+      inv SIMSK. eapply Genv.find_symbol_inversion in Heq0.
+      eapply prog_defmap_dom in Heq0. des. specialize (DROP id KEPT). clarify.
+    + eapply Genv.genv_symb_range in BLKSRC.
+      unfold Sk.load_mem, Sk.load_skenv in *.
+      eapply Genv.init_mem_genv_next in LOADMEMSRC.
+      rewrite LOADMEMSRC in BLKSRC. auto.
   - exploit init_meminj_invert; eauto. intros (A & id & B & C & D).
     assert ((prog_defmap sk_src)!id = Some def_src).
     { rewrite Genv.find_def_symbol. exists blk_src; auto. }
@@ -471,7 +493,29 @@ Proof.
 + apply IHn with (p + 1); auto. omega. omega.
 Qed.
 
-Global Program Instance SimSymbDrop: SimSymb.class (SimMemInjInv top1) := {
+Lemma SimSymbDropInv_func_bisim sm ss skenv_src skenv_tgt
+      (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)
+  :
+    SimSymb.skenv_func_bisim (Val.inject (SimMemInj.inj sm)) skenv_src skenv_tgt.
+Proof.
+  inv SIMSKENV.
+  econs; eauto; ii; ss.
+  - inv SIMFPTR; ss.
+    des_ifs_safe; ss. unfold Genv.find_funct_ptr in *. des_ifs_safe.
+    exploit SIMDEF; eauto. i; des.
+    inv SIM.
+    rewrite DEFTGT.
+    esplits; eauto.
+    des_ifs.
+  - inv SIMFPTR; ss; cycle 1.
+    des_ifs_safe. unfold Genv.find_funct_ptr in *. des_ifs_safe.
+    exploit SIMDEFINV; eauto. i; des. clarify. psimpl. clarify.
+    rewrite DEFSRC.
+    esplits; eauto.
+    des_ifs.
+Qed.
+
+Global Program Instance SimSymbDrop: SimSymb.class (SimMemInjInv top1 top1) := {
   t := t';
   le := le;
   sim_sk := sim_sk;
@@ -630,9 +674,13 @@ Qed.
 Next Obligation.
   exploit init_mem_exists; et. intros LOADMEMTGT; des.
   exploit init_meminj_simskenv; try eapply SIMSK; et. intros SIMSKENV.
-  eexists m_tgt. exists (mk m_src m_tgt (init_meminj sk_src sk_tgt) (fun blk => forall ofs, loc_out_of_reach (init_meminj sk_src sk_tgt) m_src blk ofs /\ Mem.valid_block m_tgt blk)).
-  esplits; et.
-  { econs; ss; try xomega. constructor; intros.
+  eexists m_tgt.
+  exists (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt))
+             (fun blk => forall ofs, loc_unmapped (init_meminj sk_src sk_tgt) blk ofs /\ Mem.valid_block m_src blk) bot1).
+  esplits; et. eauto.
+  { econs; ss; cycle 1.
+    { ii. exploit INV; eauto. i. des. splits; eauto. }
+    econs; ss; try xomega. constructor; intros.
     { intros; constructor; intros.
       - exploit init_meminj_invert_strong; eauto. intros (A & id & gd & B & C & D & E).
         exploit (Genv.init_mem_characterization_gen sk_src); eauto.
@@ -702,34 +750,40 @@ Next Obligation.
   (* admit "See 'init_meminj_preserves_globals' in Unusedglobproof.v". *)
 Qed.
 Next Obligation.
-  inv MLE. inv SIMSKENV.
+  inv MLE. inv MLE0. inv SIMSKENV.
   assert (SAME: forall b b' delta, Plt b (Genv.genv_next skenv_src) ->
-                                   inj sm1 b = Some(b', delta) -> inj sm0 b = Some(b', delta)).
-  { i. destruct (inj sm0 b) eqn:T; ss.
+                                   SimMemInj.inj sm1 b = Some(b', delta) -> SimMemInj.inj sm0 b = Some(b', delta)).
+  { i. destruct (SimMemInj.inj sm0 b) eqn:T; ss.
     - destruct p; ss. exploit INCR; eauto. i; clarify.
-    - exploit FROZEN; eauto. i; des. unfold Mem.valid_block in *. contradict H1. xomega. }
+    - inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
+      unfold Mem.valid_block in *. xomega. }
   apply sim_skenv_splittable_spec.
   rr.
   dsplits; eauto; try congruence; [..|M|M]; Mskip ii.
   - i. eapply SIMSYMB1; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto.
   - i. exploit SIMSYMB2; eauto. i; des. eexists. splits; eauto.
   - i. exploit SIMSYMB3; eauto. i; des. eexists. splits; eauto.
+  - rewrite <- MINVEQSRC. eauto.
   - i. exploit SIMDEF; eauto. eapply SAME; try eapply Genv.genv_defs_range; eauto.
-  - i. eapply DISJ; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto.
-    destruct (inj sm0 blk_src1) eqn:T; ss.
+  - ii. eapply DISJ; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto.
+    destruct (SimMemInj.inj sm0 blk_src1) eqn:T; ss.
     { destruct p; ss. exploit INCR; et. i; clarify. }
     exfalso.
-    exploit FROZEN; eauto. i; des.
+    inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
     exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac.
     exploit Genv.genv_symb_range; eauto. i. unfold Mem.valid_block in *. xomega.
-  - i. eapply SIMDEFINV; eauto.
-    destruct (inj sm0 blk_src) as [[b1 delta1] | ] eqn: J.
+  - ii. eapply SIMDEFINV; eauto.
+    destruct (SimMemInj.inj sm0 blk_src) as [[b1 delta1] | ] eqn: J.
     + exploit INCR; eauto. congruence.
-    + exploit FROZEN; eauto. i; des.
+    + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
       exploit Genv.genv_defs_range; eauto. i. unfold Mem.valid_block in *. xomega.
   (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *)
-  - r. etrans; eauto.
-  - r. etrans; eauto.
+Qed.
+Next Obligation.
+  inv SIMSKENV. inv MWF. inv WF.
+  destruct sm0; ss. destruct minj; ss. econs; ss; eauto.
+  - ss. etrans; eauto.
+  - ss. etrans; eauto.
 Qed.
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_src.
@@ -804,7 +858,7 @@ Next Obligation.
 
   - (* SIMSYMB3 *)
     inv LETGT.
-    destruct (classic (defs sk_tgt id)); cycle 1. 
+    destruct (classic (defs sk_tgt id)); cycle 1.
     { exploit SYMBDROP; eauto. i; des. clarify. }
 
     erewrite SYMBKEEP in *; ss.
@@ -821,6 +875,11 @@ Next Obligation.
       { erewrite DROP in *; ss. }
       exploit KEPT; eauto. i; des. rewrite <- H1. esplits; eauto.
     }
+
+  - eapply SSINV; eauto.
+    + inv LE. eauto.
+    + unfold skenv_src, Genv.find_symbol in *. ss.
+      rewrite PTree_filter_key_spec in BLKSRC. des_ifs.
 
   - (* SIMDEF *)
 
@@ -893,7 +952,7 @@ Next Obligation.
     exploit SPLITHINT1; eauto. i; des.
     Fail clears blk_src.
     assert(blk_src = blk_src0).
-    { symmetry. eapply SPLITHINT3; et. }
+    { symmetry. eapply SPLITHINT4; et. }
     clarify.
 
     inv LESRC.
@@ -925,7 +984,7 @@ Next Obligation.
       unfold internals in *. des_ifs_safe.
       exploit SPLITHINT; et. i; des. clear_tac.
       hexploit (KEPT id0); et. intro T. rewrite Heq in *.
-      des_ifs. 
+      des_ifs.
     }
     exploit DEFKEEP; et.
     { apply Genv.find_invert_symbol; eauto. }
@@ -950,21 +1009,7 @@ Next Obligation.
   - inv SIMSK. ss.
 Qed.
 Next Obligation.
-  inv SIMSKENV.
-  econs; eauto; ii; ss.
-  - inv SIMFPTR; ss.
-    des_ifs_safe; ss. unfold Genv.find_funct_ptr in *. des_ifs_safe.
-    exploit SIMDEF; eauto. i; des.
-    inv SIM.
-    rewrite DEFTGT.
-    esplits; eauto.
-    des_ifs.
-  - inv SIMFPTR; ss; cycle 1.
-    des_ifs_safe. unfold Genv.find_funct_ptr in *. des_ifs_safe.
-    exploit SIMDEFINV; eauto. i; des. clarify. psimpl. clarify.
-    rewrite DEFSRC.
-    esplits; eauto.
-    des_ifs.
+  eapply SimSymbDropInv_func_bisim; eauto.
 Qed.
 Next Obligation.
   inv SIMSKENV.
@@ -980,59 +1025,19 @@ Next Obligation.
   - eapply PUBKEPT; eauto.
 Qed.
 Next Obligation.
-  destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
-  inv SIMSKENV; ss.
-  exploit external_call_mem_inject_gen; eauto.
-  { instantiate (1:= skenv_sys_tgt).
-    rr. esplits; ii; ss.
-    - unfold Genv.public_symbol.
-      rewrite <- PUB.
-      destruct (Genv.find_symbol skenv_sys_tgt id) eqn:T.
-      + exploit SIMSYMB3; et. i; des. rewrite BLKSRC. ss.
-      + des_ifs. des_sumbool. ii.
-        exploit PUBKEPT; et.
-        apply NNPP. ii.
-        exploit SIMSYMB2; et. i; des. clarify.
-    - exploit SIMSYMB1; eauto. i; des. esplits; et.
-    - exploit SIMSYMB2; eauto.
-      { ii. eapply PUBKEPT; eauto. unfold Genv.public_symbol in H. des_ifs. des_sumbool. ss. }
-      i; des.
-      esplits; eauto.
-    - unfold Genv.block_is_volatile, Genv.find_var_info.
-      destruct (Genv.find_def skenv_sys_src b1) eqn:T0.
-      { exploit SIMDEF; try eassumption.
-        i; des.
-        des_ifs.
-      }
-      destruct (Genv.find_def skenv_sys_tgt b2) eqn:T1.
-      { exploit SIMDEFINV; try eassumption.
-        i; des.
-        des_ifs.
-      }
-      ss.
-  }
-  i; des.
-
-
-
-
-  (* TODO: almost exactly copied from SimMemInjInv. we may remove duplicate code some way *)
-  do 2 eexists.
-  dsplits; eauto.
-  - instantiate (1:= Retv.mk _ _); ss. eauto.
-  - instantiate (1:= mk _ _ _ _). econs; ss; eauto.
-  - econs; ss; eauto.
-    + eapply Mem.unchanged_on_implies; eauto.
-    + eapply Mem.unchanged_on_implies; eauto.
-    + ii. eapply external_call_max_perm; eauto.
-    + ii. eapply external_call_max_perm; eauto.
-  - econs; ss; eauto. ii. exploit INVRANGE; eauto. intro T. des. esplits; eauto.
-    + ii. destruct (inj b0) eqn:U.
-      * destruct p; ss. exploit H4; eauto. i; clarify. eapply T; eauto. eapply external_call_max_perm; eauto.
-        eapply Mem.valid_block_inject_1; try apply WF; eauto.
-      * exploit H5; eauto. i; des. ss.
-    + eapply Mem.valid_block_unchanged_on; eauto.
+  dup SIMSKENV. inv SIMSKENV.
+  inv ARGS. dup MWF. inv MWF. inv WF.
+  ss. rewrite MEMSRC in *. rewrite MEMTGT in *.
+  exploit ec_mem_inject; eauto.
+  - eapply external_call_spec.
+  - eapply sim_skenv_symbols_inject; eauto.
+  - exploit lift_wf; eauto. i. des.
+    exploit unchanged_on_mle; eauto.
+    + ii. eapply ec_max_perm; eauto. eapply external_call_spec.
+    + ii. eapply ec_max_perm; eauto. eapply external_call_spec.
+    + i. des. esplits; eauto.
+      * instantiate (1:=Retv.mk vres' m2'). ss.
+      * ss.
 Qed.
 
 End MEMINJ.
-

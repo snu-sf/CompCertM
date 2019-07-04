@@ -493,6 +493,28 @@ Proof.
 + apply IHn with (p + 1); auto. omega. omega.
 Qed.
 
+Lemma SimSymbDropInv_func_bisim sm ss skenv_src skenv_tgt
+      (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt)
+  :
+    SimSymb.skenv_func_bisim (Val.inject (SimMemInj.inj sm)) skenv_src skenv_tgt.
+Proof.
+  inv SIMSKENV.
+  econs; eauto; ii; ss.
+  - inv SIMFPTR; ss.
+    des_ifs_safe; ss. unfold Genv.find_funct_ptr in *. des_ifs_safe.
+    exploit SIMDEF; eauto. i; des.
+    inv SIM.
+    rewrite DEFTGT.
+    esplits; eauto.
+    des_ifs.
+  - inv SIMFPTR; ss; cycle 1.
+    des_ifs_safe. unfold Genv.find_funct_ptr in *. des_ifs_safe.
+    exploit SIMDEFINV; eauto. i; des. clarify. psimpl. clarify.
+    rewrite DEFSRC.
+    esplits; eauto.
+    des_ifs.
+Qed.
+
 Global Program Instance SimSymbDrop: SimSymb.class (SimMemInjInv top1 top1) := {
   t := t';
   le := le;
@@ -987,21 +1009,7 @@ Next Obligation.
   - inv SIMSK. ss.
 Qed.
 Next Obligation.
-  inv SIMSKENV.
-  econs; eauto; ii; ss.
-  - inv SIMFPTR; ss.
-    des_ifs_safe; ss. unfold Genv.find_funct_ptr in *. des_ifs_safe.
-    exploit SIMDEF; eauto. i; des.
-    inv SIM.
-    rewrite DEFTGT.
-    esplits; eauto.
-    des_ifs.
-  - inv SIMFPTR; ss; cycle 1.
-    des_ifs_safe. unfold Genv.find_funct_ptr in *. des_ifs_safe.
-    exploit SIMDEFINV; eauto. i; des. clarify. psimpl. clarify.
-    rewrite DEFSRC.
-    esplits; eauto.
-    des_ifs.
+  eapply SimSymbDropInv_func_bisim; eauto.
 Qed.
 Next Obligation.
   inv SIMSKENV.

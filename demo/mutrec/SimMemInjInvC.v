@@ -158,6 +158,28 @@ Section SIMSYMBINV.
         exploit IMAGE; eauto. i. des. clarify .
   Qed.
 
+  Lemma SimSymbIdInv_skenv_func_bisim sm ss skenv_src skenv_tgt
+        (SIMSKENV: sim_skenv_inj sm ss skenv_src skenv_tgt)
+    :
+      SimSymb.skenv_func_bisim (Val.inject (SimMemInj.inj sm)) skenv_src skenv_tgt.
+  Proof.
+    inv SIMSKENV. inv SIMSKENV0. econs; ss; eauto.
+    - i. assert (fptr_tgt = fptr_src).
+      { unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
+        inv SIMFPTR. inv INJECT.
+        exploit IMAGE; eauto.
+        - left. eapply Genv.genv_defs_range; eauto.
+        - i. des. clarify. }
+      clarify. eauto.
+    - i. assert (fptr_tgt = fptr_src).
+      { unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
+        inv SIMFPTR; clarify. inv INJECT.
+        exploit IMAGE; eauto.
+        - right. eapply Genv.genv_defs_range; eauto.
+        - i. des. clarify. psimpl. clarify. }
+      clarify. eauto.
+  Qed.
+
   (* TODO: from SimSymbDrop *)
   Lemma Mem_getN_forall2:
     forall (P: memval -> memval -> Prop) c1 c2 i n p,
@@ -487,21 +509,7 @@ Section SIMSYMBINV.
     - inv SIMSKENV0. inv SIMSK. ss.
   Qed.
   Next Obligation.
-    inv SIMSKENV. inv SIMSKENV0. econs; ss; eauto.
-    - i. assert (fptr_tgt = fptr_src).
-      { unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
-        inv SIMFPTR. inv INJECT.
-        exploit IMAGE; eauto.
-        - left. eapply Genv.genv_defs_range; eauto.
-        - i. des. clarify. }
-      clarify. eauto.
-    - i. assert (fptr_tgt = fptr_src).
-      { unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
-        inv SIMFPTR; clarify. inv INJECT.
-        exploit IMAGE; eauto.
-        - right. eapply Genv.genv_defs_range; eauto.
-        - i. des. clarify. psimpl. clarify. }
-      clarify. eauto.
+    eapply SimSymbIdInv_skenv_func_bisim; eauto.
   Qed.
   Next Obligation.
     inv SIMSKENV. econs; eauto.

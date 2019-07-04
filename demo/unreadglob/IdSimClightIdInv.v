@@ -137,11 +137,9 @@ Proof.
       exploit clight_step_preserve_injection2; try eassumption.
       { instantiate (1:=cgenv skenv_link_tgt clight). ss. }
       { eapply function_entry2_inject. ss. }
-      { inv SIMSKENV. ss. rpapply SimSymbIdInv_symbols_inject; eauto. }
       { inv SIMSKENV. ss.
-        (* eapply SimSymbIdInv_match_globals. SimSymbIdInv_match_globals; eauto. *)
-        admit "".
-      } i. des.
+        exploit SimMemInjInvC.skenv_inject_symbols_inject; eauto. }
+      { inv SIMSKENV. ss. exploit SimSymbIdInv_match_globals; eauto. } i. des.
       exploit SimMemInjC.parallel_gen; eauto. i. des.
       hexploit SimMemInjInv.le_inj_wf_wf; eauto.
       { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.

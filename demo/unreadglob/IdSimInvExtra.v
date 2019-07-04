@@ -47,28 +47,6 @@ Proof.
     exploit SIMSYMB2; try apply FINDSRC; eauto.
 Qed.
 
-Lemma SimSymbDropInv_symbols_inject sm0 ss_link skenv_src skenv_tgt
-      (SIMSKELINK: SimSymbDropInv.sim_skenv sm0 ss_link skenv_src skenv_tgt)
-  :
-    symbols_inject (SimMemInj.inj sm0.(SimMemInjInv.minj)) skenv_src skenv_tgt.
-Proof.
-  inv SIMSKELINK. econs; esplits; ss; i.
-  - unfold Genv.public_symbol, proj_sumbool.
-    rewrite PUB in *. des_ifs; ss.
-    + exploit SIMSYMB3; eauto. i. des. clarify.
-    + exploit SIMSYMB2; eauto. i. des. clarify.
-  - exploit SIMSYMB1; eauto. i. des. eauto.
-  - exploit SIMSYMB2; eauto.
-    { unfold Genv.public_symbol, proj_sumbool in *. des_ifs. eauto. }
-    i. des. eauto.
-  - unfold Genv.block_is_volatile, Genv.find_var_info.
-    destruct (Genv.find_def skenv_src b1) eqn:DEQ.
-    + exploit SIMDEF; eauto. i. des. clarify.
-      rewrite DEFTGT. eauto.
-    + des_ifs_safe. exfalso. exploit SIMDEFINV; eauto.
-      i. des. clarify.
-Qed.
-
 Lemma SimSymbDropInv_find_None F `{HasExternal F} V (p: AST.program F V)
       sm0 skenv_src skenv_tgt fptr_src fptr_tgt
       (FINDSRC: Genv.find_funct (SkEnv.revive skenv_src p) fptr_src = None)
@@ -116,15 +94,13 @@ Lemma SimSymbIdInv_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p
       (SkEnv.revive skenv_tgt p)
       (SimMemInj.inj sm0.(SimMemInjInv.minj)).
 Proof.
-  admit "".
-Qed.
-
-Lemma SimSymbIdInv_symbols_inject sm0 ss_link skenv_src skenv_tgt
-      (SIMSKELINK: SimMemInjInvC.sim_skenv_inj sm0 ss_link skenv_src skenv_tgt)
-  :
-    symbols_inject (SimMemInj.inj sm0.(SimMemInjInv.minj)) skenv_src skenv_tgt.
-Proof.
-  admit "".
+  inv SIMSKE. inv INJECT. inv SIMSKENV. econs; ss; eauto.
+  - ii. exploit IMAGE; eauto.
+    + left. eapply Genv.genv_defs_range in FINDSRC. eauto.
+    + i. des. clarify. esplits; eauto.
+  - i. exploit INVCOMPAT; eauto. i. des.
+    exploit DOMAIN; eauto.
+    eapply Genv.genv_symb_range in FINDSRC. eauto.
 Qed.
 
 Lemma SimSymbIdInv_find_None F `{HasExternal F} V (p: AST.program F V)
@@ -136,7 +112,13 @@ Lemma SimSymbIdInv_find_None F `{HasExternal F} V (p: AST.program F V)
   :
     Genv.find_funct (SkEnv.revive skenv_tgt p) fptr_tgt = None.
 Proof.
-  admit "".
+  destruct (Genv.find_funct (SkEnv.revive skenv_tgt p) fptr_tgt) eqn:FIND; auto.
+  inv SIMSKE. inv SIMSKENV. inv INJECT. inv FPTR; eauto.
+  - exploit IMAGE; eauto.
+    + right. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+      eapply Genv.genv_defs_range in Heq. ss.
+    + i. des. clarify. erewrite Integers.Ptrofs.add_zero in FIND. clarify.
+  - clarify.
 Qed.
 
 End INJINVID.

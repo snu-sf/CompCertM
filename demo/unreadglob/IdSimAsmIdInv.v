@@ -433,7 +433,7 @@ Proof.
           intros MATCH. inv MATCH. econs; ss; i; eauto.
           exploit DEFLE; eauto. i. des. clarify. esplits; eauto. }
         { eapply symbols_inject_weak_imply.
-          ss. rpapply SimSymbIdInv_symbols_inject; eauto. }
+          exploit SimMemInjInvC.skenv_inject_symbols_inject; eauto. }
         { cinv MWF. eauto. }
 
         i. des.

@@ -209,8 +209,28 @@ Proof.
   { i. des. eexists (SimMemInjInv.mk (SimMemInjC.update sm0 _ _ _) mem_inv_src_ret mem_inv_tgt_ret).
     inv MLE0. inv MLE1. inv MWF1. inv MWF2. esplits; ss; eauto.
     - econs; ss; eauto; [econs; ss; eauto|..].
-      + admit "".
-      + admit "".
+      + etrans. rewrite SRCPARENTEQ. eapply SRCEXT1.
+        unfold SimMemInj.src_private, SimMemInj.valid_blocks in *. ss. ii; des. split.
+        * eapply SimMemInj.loc_unmapped_frozen; eauto.
+        * rewrite <- Mem_valid_block_unfree; try eapply UNFREESRC.
+          eapply Mem.valid_block_unchanged_on; eauto.
+      + unfold SimMemInj.tgt_private, SimMemInj.valid_blocks in *. ss. ii; des. split.
+        * r. ii. destruct (eq_block b0 blk_src).
+          { subst. clarify. eapply TGTEXT in PR. des. r in PR. eapply PR; et.
+            eapply Mem_unfree_perm_restore; try eapply UNFREESRC; et.
+            - ii. eapply MAXSRC0; et. eapply Mem.valid_block_free_1; et.
+            - eapply Mem.unchanged_on_nextblock; et.
+            - eapply Mem.valid_block_inject_1; try eapply PUBLIC; et.
+          }
+          { rewrite TGTPARENTEQ in PR. eapply TGTEXT1 in PR. des. r in PR. eapply PR; et.
+            { eapply SimMemInj.frozen_preserves_tgt; et. }
+            eapply MAXSRC0; et.
+            { eapply Mem.valid_block_inject_1; try eapply PUBLIC1. eapply SimMemInj.frozen_preserves_tgt; et. }
+            clear - H0 UNFREESRC n. unfold Mem_unfree, Mem.perm in *. des_ifs. ss. rewrite PMap.gso in H0; et.
+          }
+        * rewrite TGTPARENTEQ in PR. eapply TGTEXT1 in PR. des.
+          rewrite <- Mem_valid_block_unfree; try eapply UNFREE.
+          eapply Mem.valid_block_unchanged_on; eauto.
       + etrans; eauto.
         eapply Mem.unchanged_on_nextblock in SRCUNCHANGED0.
         eapply Mem.unchanged_on_nextblock in SRCUNCHANGED.
@@ -232,14 +252,27 @@ Proof.
             - eapply Mem.free_range_perm; eauto.
               instantiate (1:=Ptrofs.unsigned ofs_src + delta). clear - a. lia.
             - econs. }
-      + admit "".
-      + admit "".
+      + ii. exploit INVRANGESRC0; et. i; des. exploit INVRANGESRC2; et. i; des. esplits; et.
+      + ii. exploit INVRANGETGT0; et. i; des. esplits; et. r. ii. destruct (eq_block b0 blk_src).
+          { subst. clarify. r in H. eapply H; et.
+            eapply Mem_unfree_perm_restore; try eapply UNFREESRC; et.
+            - ii. eapply MAXSRC0; et. eapply Mem.valid_block_free_1; et.
+            - eapply Mem.unchanged_on_nextblock; et.
+            - eapply Mem.valid_block_inject_1; try eapply PUBLIC; et.
+          }
+          { exploit INVRANGETGT1; et. i; des. r in H4. eapply H4; et.
+            { eapply SimMemInj.frozen_preserves_tgt; et. eapply Pos.lt_le_trans; et. }
+            eapply MAXSRC0; et.
+            { eapply Mem.valid_block_inject_1; try eapply PUBLIC1.
+              eapply SimMemInj.frozen_preserves_tgt; et. eapply Pos.lt_le_trans; et. }
+            clear - H0 UNFREESRC n. unfold Mem_unfree, Mem.perm in *. des_ifs. ss. rewrite PMap.gso in H3; et.
+          }
     - econs; ss; eauto. econs; ss; eauto.
       + etrans; eauto.
       + etrans; eauto. etrans; eauto.
         { rewrite SRCPARENTEQ in *.
           eapply Mem.unchanged_on_implies; eauto.
-          ss. ii. admit "". }
+          ss. ii. split; et. ii. exploit INVRANGESRC0; et. i; des. et. }
         { eapply Mem.unchanged_on_implies.
           - eapply Mem_unfree_unchanged_on; eauto.
           - ss. ii. eapply SRCEXT in H. destruct H.
@@ -247,7 +280,7 @@ Proof.
       + etrans; eauto. etrans; eauto.
         { rewrite TGTPARENTEQ in *.
           eapply Mem.unchanged_on_implies; eauto.
-          ss. ii. admit "". }
+          ss. ii. split; et. ii. exploit INVRANGETGT0; et. i; des. et. }
         { eapply Mem.unchanged_on_implies.
           - eapply Mem_unfree_unchanged_on; eauto.
           - ii. eapply TGTEXT in H. destruct H.
@@ -258,7 +291,13 @@ Proof.
               * lia.
               * eapply Mem.free_range_perm; eauto. lia.
             + econs. }
-      + admit "ez".
+        + econs. ii. des. destruct (SimMemInj.inj sm_arg b_src) eqn: T.
+          * destruct p. erewrite INCR0 in NEW0; et. clarify. eapply FROZEN. split; eauto.
+          * eapply SimMemInj.inject_separated_frozen in FROZEN0. exploit FROZEN0; eauto. i. des.
+            rewrite SRCPARENTEQNB, TGTPARENTEQNB. unfold Mem.valid_block in *. clear - H H0 SRCLE1 TGTLE1.
+            assert(Ple (Mem.nextblock (SimMemInj.src sm_arg)) b_src) by xomega.
+            assert(Ple (Mem.nextblock (SimMemInj.tgt sm_arg)) b_tgt) by xomega.
+            split; eapply Pos.le_trans; eauto.
       + eapply Mem_unfree_perm_restore; try apply UNFREESRC; eauto.
         * ii. eapply MAXSRC0; eauto.
           unfold Mem.valid_block in *. erewrite Mem.nextblock_free; eauto.

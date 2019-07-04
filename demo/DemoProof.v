@@ -243,7 +243,7 @@ Proof.
   inv INITTGT. clarify. inv TYP. ss. destruct args_tgt. ss.
   destruct vs; clarify. destruct vs; clarify; ss.
   inv SIMARGS. ss. clarify. inv VALS. inv H3. destruct args_src.
-  ss. clarify. clear SZ. unfold AsmC.store_arguments in *. des.
+  ss. clarify. unfold AsmC.store_arguments in *. des.
   dup STORE0. inv STORE0.
   unfold typify_list, zip in *. inv VALS. des_ifs_safe.
   unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs.

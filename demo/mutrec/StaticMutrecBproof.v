@@ -1347,9 +1347,7 @@ Proof.
               + ss. unfold exec_store, eval_addrmode, eval_addrmode64. ss.
                 des_ifs_safe. psimpl. unfold nextinstr.
                 repeat (rewrite Pregmap.gso; [| clarify; fail]).
-                rewrite Int64.add_zero_l. unfold Ptrofs.of_int64.
-                erewrite Int64.unsigned_repr; eauto.
-                erewrite Ptrofs.unsigned_repr; eauto.
+                replace (Ptrofs.unsigned (Ptrofs.repr (Int64.unsigned (Int64.repr 8)))) with 8; ss.
                 rewrite STR2. ss. }
           econs 1.
         }
@@ -1366,11 +1364,13 @@ Proof.
               eapply Mem.perm_store_1; eauto.
               eapply Mem_alloc_range_perm; eauto.
             + psimpl. erewrite Mem.load_store_other; eauto; cycle 1.
+              { rewrite size_chunk_Mptr. des_ifs. ss. right. lia. }
               erewrite Mem.load_store_same; eauto.
               f_equal. erewrite <- Val.load_result_same; eauto. ss.
             + psimpl. erewrite Mem.load_store_other; eauto; cycle 1.
               { rewrite size_chunk_Mptr. des_ifs. ss. right. lia. }
               erewrite Mem.load_store_other; eauto; cycle 1.
+              { rewrite size_chunk_Mptr. des_ifs. ss. right. lia. }
               erewrite Mem.load_store_same; eauto.
               f_equal. rewrite H1. ss.
             + ii. unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,

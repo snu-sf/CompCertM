@@ -949,7 +949,7 @@ Section PRESERVATION.
       hexploit Mem_alloc_range_perm; eauto. ii. exploit H; eauto. i.
       unfold Mem.perm, callee_initial_mem' in *. ss. rewrite MEQ. ss.
       eapply Mem.alloc_result in MEQ. clarify.
-    -
+    - set (Ptrofs.unsigned_range_2 ofs). nia.
   Qed.
 
   Lemma callee_initial_inj_incr blk ofs j m_src
@@ -2228,7 +2228,8 @@ Section PRESERVATION.
         ss. rewrite LINK_SK in *.
         rewrite <- (find_fptr_owner_determ OWNER MSFIND) in *. i.
         inv INIT. econs; eauto.
-        inv TYP. eauto.
+        exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+        exploit ININCL; eauto. i. des. inv WFSKELINK. eapply WFPARAM in H0. ss.
     - destruct (classic (Ge.find_fptr_owner ge fptr (System.modsem skenv_link))).
       { right. left. esplits; eauto. }
       right. right. intros SAFE. clarify. exploit SAFE; [econs|].

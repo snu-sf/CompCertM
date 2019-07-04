@@ -228,6 +228,8 @@ Section TRIAL2.
 
   Lemma asm_unreach_local_preservation
         asm
+        (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig asm))
+        (SKENVWF : SkEnv.wf skenv_link)
     :
       exists sound_state, <<PRSV: local_preservation (modsem skenv_link asm) sound_state>>
   .
@@ -367,7 +369,8 @@ Section TRIAL2.
                       ss. psimpl. zsimpl. clarify.
                       rewrite Ptrofs.unsigned_repr in *; cycle 1.
                       { eapply loc_arguments_acceptable_2 in IN.
-                        inv IN. lia. }
+                        exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+                        i. des. inv SKENVWF. eapply WFPARAM in H0. ss. red in H0. inv IN. lia. }
                       Local Transparent Mem.load.
                       unfold Mem.load in H5. des_ifs.
                       exploit MemdataC.decode_fragment_all; eauto.
@@ -704,7 +707,7 @@ Proof.
   ii. inv SSLE. clear_tac.
 
   fold SkEnv.t in skenv_link_src.
-  hexploit (TRIAL2.asm_unreach_local_preservation skenv_link_src asm); eauto. i; des.
+  hexploit (TRIAL2.asm_unreach_local_preservation INCLSRC WFSRC); eauto. i; des.
 
   eapply match_states_sim with
       (match_states :=
@@ -724,6 +727,8 @@ Proof.
     inv STORE. des.
     exploit store_arguments_parallel_extends; [..| eauto |]; eauto.
     + eapply typify_has_type_list; eauto.
+    + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+      i. des. inv WFTGT. eapply WFPARAM in H1. ss.
     + rewrite val_inject_list_lessdef in *.
       eapply inject_list_typify_list; try eassumption.
       erewrite inject_list_length; eauto.
@@ -796,6 +801,8 @@ Proof.
     eapply asm_initial_frame_succeed; eauto.
     + inv SIMARGS. ss. apply lessdef_list_length in VALS.
       transitivity (Datatypes.length (Args.vs args_src)); eauto.
+    + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+      i. des. inv WFSRC. eapply WFPARAM in H. ss.
     + inv SIMSKENVLINK. inv SIMARGS. ss. inv FPTR; ss.
       rewrite <- H0 in *. ss.
 
@@ -943,6 +950,8 @@ Proof.
     inv STORE. des.
     exploit store_arguments_parallel_extends; [..| eauto |]; eauto.
     + eapply typify_has_type_list; eauto.
+    + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+      i. des. inv WFTGT. eapply WFPARAM in H1. ss.
     + rewrite val_inject_list_lessdef in *.
       eapply inject_list_typify_list; try eassumption.
       erewrite inject_list_length; eauto.
@@ -1015,6 +1024,8 @@ Proof.
     eapply asm_initial_frame_succeed; eauto.
     + inv SIMARGS. ss. apply lessdef_list_length in VALS.
       transitivity (Datatypes.length (Args.vs args_src)); eauto.
+    + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+      i. des. inv WFSRC. eapply WFPARAM in H. ss.
     + inv SIMSKENVLINK. inv SIMARGS. ss. inv FPTR; ss.
       rewrite <- H0 in *. ss.
 
@@ -1188,6 +1199,8 @@ Proof.
 
     exploit store_arguments_parallel; eauto.
     { eapply typify_has_type_list; eauto. }
+    { exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+      i. des. inv WFTGT. eapply WFPARAM in H1. ss. }
     { eapply inject_list_typify_list; try eassumption.
       erewrite inject_list_length; eauto. } i. des.
     hexploit (assign_junk_blocks_parallel n); eauto. i. des.
@@ -1298,6 +1311,8 @@ Proof.
     eapply asm_initial_frame_succeed; eauto.
     + apply inject_list_length in VALS.
       transitivity (Datatypes.length (Args.vs args_src)); eauto.
+    + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+      i. des. inv WFSRC. eapply WFPARAM in H. ss.
     + exploit match_globals_find_funct; eauto.
 
   - inv MATCH. ss.
@@ -1318,15 +1333,7 @@ Proof.
     eexists (Args.mk (Vptr b2 _) _ _). exists sm1.
     esplits; eauto; ss; i.
     + econs; auto.
-      * exploit SimSymbDrop_find_None; try eassumption.
-        { unfold Genv.find_funct. des_ifs. eauto. }
-        { clarify. }
-        { rewrite <- H2. ss. }
-      * esplits; eauto.  unfold Genv.find_funct, Genv.find_funct_ptr in *.
-        des_ifs_safe. inv SIMSKELINK.
-        exploit SIMDEF; try apply Heq1; eauto. i. des. clarify.
-        rewrite DEFTGT. eauto.
-      * instantiate (1:=Ptrofs.add ofs (Ptrofs.repr delta)).
+      * instantiate (2:=Ptrofs.add ofs (Ptrofs.repr delta)).
         destruct (zlt 0 (size_arguments (SkEnv.get_sig skd))).
         { inv MWF. exploit Mem.mi_representable; eauto.
           - right.
@@ -1337,8 +1344,8 @@ Proof.
             + clear - ARGSRANGE l. lia.
             + clear- ARGSRANGE. set (size_arguments_above (SkEnv.get_sig skd)).
               set (Ptrofs.unsigned_range_2 ofs). lia.
-          - repeat rewrite unsigned_add.
-            + lia.
+          - repeat rewrite unsigned_add. i. des.
+            + instantiate (1:=(SkEnv.get_sig skd)). lia.
             + exploit Mem.mi_representable; eauto. left. eapply Mem.perm_cur.
               eapply Mem.perm_implies; try eapply Mem.free_range_perm; eauto; [|econs].
               clear - ARGSRANGE l. lia.
@@ -1346,6 +1353,14 @@ Proof.
               set (size_arguments_above (SkEnv.get_sig skd)).
               set (Ptrofs.unsigned_range_2 ofs). lia. }
         { set (Ptrofs.unsigned_range_2 (Ptrofs.add ofs (Ptrofs.repr delta))). lia. }
+      * exploit SimSymbDrop_find_None; try eassumption.
+        { unfold Genv.find_funct. des_ifs. eauto. }
+        { clarify. }
+        { rewrite <- H2. eauto. }
+      * esplits; eauto. unfold Genv.find_funct, Genv.find_funct_ptr in *.
+        des_ifs_safe. inv SIMSKELINK.
+        exploit SIMDEF; try apply Heq1; eauto. i. des. clarify.
+        rewrite DEFTGT. eauto.
       * eauto.
       * eauto.
       * clear - AGREE TPTR RADEF. splits.

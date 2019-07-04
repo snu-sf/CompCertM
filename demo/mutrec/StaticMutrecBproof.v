@@ -392,7 +392,9 @@ Proof.
 
     (* i = Int.zero *)
     + clarify. econs 1. i. econs.
-      * admit "ez".
+      * split; ii.
+        { inv H. inv H0. }
+        { inv H. inv H0. }
       * i. ss. inv STEPSRC; ss.
 
         esplits.
@@ -456,9 +458,10 @@ Proof.
         { refl. }
 
         { right. eapply CIH; eauto. econs 4; eauto.
-
           - eapply well_saved_keep; eauto.
-            + admit "ez".
+            + unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,
+              to_preg, preg_of, compare_ints, Pregmap.set.
+              ii. des_ifs.
             + refl.
 
           - ss.
@@ -641,7 +644,9 @@ Proof.
             * right. eapply CIH; eauto.
               econs 4; eauto.
               { eapply well_saved_keep; eauto.
-                - admit "ez".
+                - unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,
+                  to_preg, preg_of, compare_ints, Pregmap.set.
+                  destruct mr; ss.
                 - refl. }
               { unfold nextinstr_nf, nextinstr.
                 repeat rewrite Pregmap.gss. ss. econs; eauto. }
@@ -756,7 +761,9 @@ Proof.
             * right. eapply CIH; eauto.
               econs 2; eauto.
               { eapply well_saved_keep; eauto.
-                - admit "ez".
+                - unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,
+                  to_preg, preg_of, compare_ints, Pregmap.set.
+                  destruct mr; ss.
                 - refl. }
               { unfold nextinstr_nf, nextinstr.
                 repeat rewrite Pregmap.gss. ss. econs; eauto. }
@@ -901,7 +908,7 @@ Proof.
         { inv MWF1. inv WF1. eauto. }
         { instantiate (1:=0). instantiate (1:=0). ii. lia. } intros INJ.
         eapply SimMemInjInv.unlift_wf in MWF1; try apply MLE1; eauto.
-        eapply SimMemInjInv.unlift_spec in MLE1; eauto.
+        dup MLE1. eapply SimMemInjInv.unlift_spec in MLE1; eauto.
         exploit SimMemInjInv.unchanged_on_mle; eauto.
         { ss. ii. clarify. }
         { refl. }
@@ -935,13 +942,30 @@ Proof.
           econs 3; ss; eauto.
           - etrans; eauto. etrans; eauto. etrans; eauto.
           - eapply well_saved_keep; eauto.
-            + admit "ez".
-            + admit "todo...".
-          - inv MLE1. ss. inv MLE3. ss. ii. clarify.
+            + unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,
+              to_preg, preg_of, compare_ints, Pregmap.set.
+              destruct mr; ss.
+            + etrans.
+              { eapply Mem.free_unchanged_on; eauto. clear. ii. lia. }
+              etrans.
+              { inv MLE2. ss. inv MLE4. ss.
+                eapply Mem.unchanged_on_implies; eauto.
+                ii. clarify. split; auto. split; ss; auto.
+                ii. eapply PRIV; eauto. }
+              { eapply Mem.unchanged_on_implies; eauto.
+                - eapply Mem_unfree_unchanged_on; eauto.
+                - clear. ii. destruct H1. lia. }
+          - inv MLE1. ss. inv MLE4. ss. ii. clarify.
             destruct (SimMemInj.inj (SimMemInjInv.minj sm0) blk_src) eqn:BLK0.
             + destruct p. dup BLK0. eapply INCR in BLK0.
               clarify. hexploit PRIV; eauto.
-            + admit "".
+            + inv MLE2. ss. inv MLE1. ss. inv FROZEN0.
+              exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
+              inv SAVED. eapply (Plt_strict stk).
+              eapply Plt_Ple_trans; eauto.
+              eapply Mem.nextblock_free in FREE. rewrite FREE.
+              eapply Mem.perm_valid_block; eauto.
+              eapply STKPERM; eauto. instantiate (1:=0). clear. lia.
           - repeat rewrite Pregmap.gss. rewrite RSPC.
             repeat (rewrite Pregmap.gso; [| clarify; fail]).
             repeat rewrite Pregmap.gss. ss. econs; eauto.
@@ -1061,8 +1085,12 @@ Proof.
       * etrans; eauto.
 
       * eapply well_saved_keep; eauto.
-        { admit "ez". }
-        { admit "ez". }
+        { unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,
+          to_preg, preg_of, compare_ints, Pregmap.set.
+          destruct mr; ss. }
+        { etrans.
+          - eapply Mem.store_unchanged_on; eauto. ii. clarify.
+          - eapply Mem.store_unchanged_on; eauto. ii. clarify. }
 
       * repeat rewrite Pregmap.gss. econs; eauto.
 

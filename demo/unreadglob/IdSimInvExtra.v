@@ -10,33 +10,16 @@ Require Import MemoryC.
 Require Import SmallstepC.
 Require Import Events.
 Require Import Preservation.
+Require Import IdSimExtra.
 
 Set Implicit Arguments.
 
-Inductive meminj_match_globals F V (R: globdef F V -> globdef F V -> Prop)
-          (ge_src ge_tgt: Genv.t F V) (j: meminj) : Prop :=
-| meminj_match_globals_intro
-    (DEFLE: forall
-        b_src b_tgt delta d_src
-        (FINDSRC: Genv.find_def ge_src b_src = Some d_src)
-        (INJ: j b_src = Some (b_tgt, delta)),
-        exists d_tgt,
-          (<<FINDTGT: Genv.find_def ge_tgt b_tgt = Some d_tgt>>) /\
-          (<<DELTA: delta = 0>>) /\
-          (<<DEFMATCH: R d_src d_tgt>>))
-    (SYMBLE: forall
-        i b_src
-        (FINDSRC: Genv.find_symbol ge_src i = Some b_src),
-        exists b_tgt,
-          (<<FINDTGT: Genv.find_symbol ge_tgt i = Some b_tgt>>) /\
-          (<<INJ: j b_src = Some (b_tgt, 0)>>)).
-
-Section INJINV.
+Section INJINVDROP.
 
 Local Instance SimMemTop: SimMem.class := SimMemInjInvC.SimMemInjInv top1 top1.
 Local Instance SimSymbTop: SimSymb.class SimMemTop := SimSymbDropInv.SimSymbDrop.
 
-Lemma SimSymbDrop_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: AST.program F V)
+Lemma SimSymbDropInv_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: AST.program F V)
       (SIMSKE: SimSymbDropInv.sim_skenv sm0 bot1 skenv_src skenv_tgt)
   :
     meminj_match_globals
@@ -64,7 +47,7 @@ Proof.
     exploit SIMSYMB2; try apply FINDSRC; eauto.
 Qed.
 
-Lemma SimSymbDrop_symbols_inject sm0 ss_link skenv_src skenv_tgt
+Lemma SimSymbDropInv_symbols_inject sm0 ss_link skenv_src skenv_tgt
       (SIMSKELINK: SimSymbDropInv.sim_skenv sm0 ss_link skenv_src skenv_tgt)
   :
     symbols_inject (SimMemInj.inj sm0.(SimMemInjInv.minj)) skenv_src skenv_tgt.
@@ -86,18 +69,7 @@ Proof.
       i. des. clarify.
 Qed.
 
-Lemma match_globals_find_funct F V (ge_src ge_tgt: Genv.t F V) j fptr_src fptr_tgt d
-      (FINDSRC: Genv.find_funct ge_src fptr_src = Some d)
-      (GENV: meminj_match_globals eq ge_src ge_tgt j)
-      (FPTR: Val.inject j fptr_src fptr_tgt)
-  :
-    Genv.find_funct ge_tgt fptr_tgt = Some d.
-Proof.
-  inv GENV. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-  inv FPTR. exploit DEFLE; eauto. i. des. clarify. des_ifs.
-Qed.
-
-Lemma SimSymbDrop_find_None F `{HasExternal F} V (p: AST.program F V)
+Lemma SimSymbDropInv_find_None F `{HasExternal F} V (p: AST.program F V)
       sm0 skenv_src skenv_tgt fptr_src fptr_tgt
       (FINDSRC: Genv.find_funct (SkEnv.revive skenv_src p) fptr_src = None)
       (SIMSKE: SimSymbDropInv.sim_skenv sm0 bot1 skenv_src skenv_tgt)
@@ -126,7 +98,49 @@ Proof.
     clarify.
 Qed.
 
-End INJINV.
+End INJINVDROP.
+
+Section INJINVID.
+
+Variable P: SimMemInjInv.memblk_invariant.
+
+Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv top1 P.
+Local Instance SimSymbP: SimSymb.class SimMemP := SimMemInjInvC.SimSymbIdInv P.
+
+Lemma SimSymbIdInv_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: AST.program F V)
+      (SIMSKE: SimMemInjInvC.sim_skenv_inj sm0 bot1 skenv_src skenv_tgt)
+  :
+    meminj_match_globals
+      eq
+      (SkEnv.revive skenv_src p)
+      (SkEnv.revive skenv_tgt p)
+      (SimMemInj.inj sm0.(SimMemInjInv.minj)).
+Proof.
+  admit "".
+Qed.
+
+Lemma SimSymbIdInv_symbols_inject sm0 ss_link skenv_src skenv_tgt
+      (SIMSKELINK: SimMemInjInvC.sim_skenv_inj sm0 ss_link skenv_src skenv_tgt)
+  :
+    symbols_inject (SimMemInj.inj sm0.(SimMemInjInv.minj)) skenv_src skenv_tgt.
+Proof.
+  admit "".
+Qed.
+
+Lemma SimSymbIdInv_find_None F `{HasExternal F} V (p: AST.program F V)
+      sm0 skenv_src skenv_tgt fptr_src fptr_tgt
+      (FINDSRC: Genv.find_funct (SkEnv.revive skenv_src p) fptr_src = None)
+      (SIMSKE: SimMemInjInvC.sim_skenv_inj sm0 bot1 skenv_src skenv_tgt)
+      (FPTR: Val.inject (SimMemInj.inj sm0.(SimMemInjInv.minj)) fptr_src fptr_tgt)
+      (FPTRDEF: fptr_src <> Vundef)
+  :
+    Genv.find_funct (SkEnv.revive skenv_tgt p) fptr_tgt = None.
+Proof.
+  admit "".
+Qed.
+
+End INJINVID.
+
 
 Require Import IdSimAsmExtra.
 Require Import Integers.
@@ -137,7 +151,7 @@ Section UNFREEPARALLEL.
 
 Variable P_tgt : SimMemInjInv.memblk_invariant.
 
-Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv top1 P_tgt.
+Local Instance SimMemTopP: SimMem.class := SimMemInjInvC.SimMemInjInv top1 P_tgt.
 
 Lemma Mem_unfree_parallel
       (sm0 sm_arg sm_ret: SimMem.t) blk_src ofs_src ofs_tgt sz blk_tgt delta

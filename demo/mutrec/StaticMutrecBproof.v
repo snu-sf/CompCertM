@@ -18,12 +18,16 @@ Set Implicit Arguments.
 
 
 Definition memoized_inv: SimMemInjInv.memblk_invariant :=
-  fun mem =>
-    exists i,
-      (<<VINDEX: mem Mint32 0 = Some (Vint i)>>) /\
-      (<<VSUM: mem Mint32 (size_chunk Mint32) = Some (Vint (sum i))>>).
+  SimMemInjInv.memblk_invarant_mk
+    (fun mem =>
+       exists i,
+         (<<VINDEX: mem Mint32 0 = Some (Vint i)>>) /\
+         (<<VSUM: mem Mint32 (size_chunk Mint32) = Some (Vint (sum i))>>))
+    (fun chunk ofs p =>
+       (chunk = Mint32 /\ ofs = 0 /\ p = Writable) \/
+       (chunk = Mint32 /\ ofs = (size_chunk Mint32) /\ p = Writable)).
 
-Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv top1 memoized_inv.
+Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInvC.top_inv memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
 
@@ -85,21 +89,26 @@ Proof.
     + ii. exploit SATTGT; eauto. i. inv H. des. des_ifs.
       * assert (Mem.valid_access m_tgt1 Mint32 blk0 0 Writable).
         { eapply Mem.store_valid_access_1; eauto.
-          eapply Mem.store_valid_access_1; eauto. }
+          eapply Mem.store_valid_access_1; eauto.
+          hexploit PERMISSIONS; ss; eauto. }
         assert (Mem.valid_access m_tgt1 Mint32 blk0 (size_chunk Mint32) Writable).
         { eapply Mem.store_valid_access_1; eauto.
-          eapply Mem.store_valid_access_1; eauto. }
-        destruct (peq blk blk0).
-        { clarify. exists (i). des_ifs. split.
-          - erewrite Mem.load_store_other; try apply STR1; eauto.
-            + erewrite Mem.load_store_same; eauto. ss.
-            + ss. right. left. refl.
-          - erewrite Mem.load_store_same; eauto. ss. }
-        { exists x. des_ifs. split.
-          - erewrite Mem.load_store_other; try apply STR1; eauto.
-            erewrite Mem.load_store_other; try apply STR0; eauto.
-          - erewrite Mem.load_store_other; try apply STR1; eauto.
-            erewrite Mem.load_store_other; try apply STR0; eauto. }
+          eapply Mem.store_valid_access_1; eauto.
+          hexploit PERMISSIONS; ss; eauto. }
+        econs.
+        { ii. ss. des; clarify; eauto. }
+        { destruct (peq blk blk0).
+          { clarify. exists (i). des_ifs. split.
+            - erewrite Mem.load_store_other; try apply STR1; eauto.
+              + erewrite Mem.load_store_same; eauto. ss.
+              + ss. right. left. refl.
+            - erewrite Mem.load_store_same; eauto. ss. }
+          { ss. des. exists i0. split.
+            - erewrite Mem.load_store_other; try apply STR1; eauto.
+              erewrite Mem.load_store_other; try apply STR0; eauto.
+            - erewrite Mem.load_store_other; try apply STR1; eauto.
+              erewrite Mem.load_store_other; try apply STR0; eauto. }
+        }
 Qed.
 
 Section SIMMODSEM.
@@ -483,9 +492,8 @@ Proof.
       assert (INVAR: SimMemInjInv.mem_inv_tgt sm0 b_memo).
       { inv SIMSK. ss. inv INJECT.
         eapply INVCOMPAT; eauto. ss. }
-      hexploit SATTGT; eauto. intros SAT0.
-      specialize (SAT0 _ INVAR). destruct SAT0. des. des_ifs_safe.
-
+      exploit SATTGT; eauto. intros SAT0. inv SAT0. ss.
+      des. rename i0 into x.
       assert (CMP0:
                 nextinstr
                   (compare_ints
@@ -573,9 +581,8 @@ Proof.
                       repeat (rewrite Pregmap.gso; [| clarify; fail]).
                       repeat rewrite Pregmap.gss.
                       repeat (rewrite Pregmap.gso; [| clarify; fail]).
-                      rewrite RSPC. ss. rewrite CMP.
-                      simpl.
-                      des_ifs. }
+                      rewrite RSPC. ss. rewrite CMP. des_ifs.
+                      exfalso. unfold Vfalse in *. clarify. }
 
                 econs 2; eauto.
                 { instantiate (1:=AsmC.mkstate _ _). split.
@@ -705,8 +712,8 @@ Proof.
                       repeat rewrite Pregmap.gss.
                       repeat (rewrite Pregmap.gso; [| clarify; fail]).
                       rewrite RSPC. ss. rewrite CMP.
-                      simpl.
-                      des_ifs. }
+                      simpl. des_ifs.
+                      unfold Vfalse in *. clarify. }
 
                 econs 2; eauto.
                 { instantiate (1:=AsmC.mkstate _ _). split.
@@ -814,7 +821,7 @@ Proof.
 
       cinv MWF.
       hexploit (@SimMemInjInv.unchanged_on_mle
-                  top1 memoized_inv sm0
+                  SimMemInjInvC.top_inv memoized_inv sm0
                   sm0.(SimMemInjInv.minj).(SimMemInj.src) m_tgt sm0.(SimMemInjInv.minj).(SimMemInj.inj)); ss; eauto.
       { eapply private_unchanged_inject; eauto.
         - cinv WF0. eauto.
@@ -984,9 +991,10 @@ Proof.
     specialize (SAT0 _ INVAR). destruct SAT0. des. des_ifs_safe.
 
     hexploit Mem.valid_access_store.
-    { eapply v0. } intros [m_tgt0 STR0].
+    { eapply PERMISSIONS. ss. left. eauto. } intros [m_tgt0 STR0].
     hexploit Mem.valid_access_store.
-    { eapply Mem.store_valid_access_1; eauto. } intros [m_tgt1 STR1].
+    { eapply Mem.store_valid_access_1; eauto.
+      eapply PERMISSIONS. ss. right. eauto. } intros [m_tgt1 STR1].
 
     hexploit memoized_inv_store_le; try refl; eauto.
     instantiate (1:=i) in STR0. i. des.
@@ -1159,7 +1167,7 @@ Proof.
     + left. pfold. intros _. econs 4; ss.
       * instantiate (1:=SimMemInjInv.mk sm2 _ _). econs; ss; eauto.
         etrans; eauto. etrans; eauto. inv MLE. eauto.
-      * hexploit (@SimMemInjInv.le_inj_wf_wf top1 memoized_inv sm0 sm2); ss; eauto.
+      * hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInvC.top_inv memoized_inv sm0 sm2); ss; eauto.
         { etrans; eauto. }
         { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
           - ii. exploit INVRANGETGT; eauto. i. des.
@@ -1437,7 +1445,16 @@ Proof.
   econs; ss.
   - econs; ss. i. inv SS. esplits; ss; eauto.
     + econs; ss.
-      admit "fill definition".
+      ii. econs.
+      * ii. ss. des; clarify.
+        { econs.
+          - ii. eapply PERM; eauto. ss. lia.
+          - apply Z.divide_0_r. }
+        { econs.
+          - ii. eapply PERM; eauto. ss. lia.
+          - ss. exists 1. eauto. }
+      * ss. des. exists Int.zero. esplits; eauto.
+        rewrite sum_recurse. des_ifs.
     + ii. des; clarify.
     + ii. destruct H. eapply in_prog_defmap in PROG.
       ss. unfold update_snd in PROG. ss.

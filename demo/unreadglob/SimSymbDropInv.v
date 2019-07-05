@@ -28,7 +28,7 @@ Definition ref_init (il : list init_data) (id : ident): Prop :=
 
 Section MEMINJ.
 
-Let SM := SimMemInjInvC.SimMemInjInv top1 top1.
+Let SM := SimMemInjInvC.SimMemInjInv top_inv top_inv.
 Local Existing Instance SM.
 
 (* Definition t': Type := ident -> bool. *)
@@ -515,7 +515,7 @@ Proof.
     des_ifs.
 Qed.
 
-Global Program Instance SimSymbDrop: SimSymb.class (SimMemInjInv top1 top1) := {
+Global Program Instance SimSymbDrop: SimSymb.class (SimMemInjInv top_inv top_inv) := {
   t := t';
   le := le;
   sim_sk := sim_sk;
@@ -685,7 +685,7 @@ Next Obligation.
              (fun blk => forall ofs, loc_unmapped (init_meminj sk_src sk_tgt) blk ofs /\ Mem.valid_block m_src blk) bot1).
   esplits; et. eauto.
   { econs; ss; cycle 1.
-    { ii. exploit INV; eauto. i. des. splits; eauto. }
+    { i. exploit INV; eauto. i. des. split; eauto. }
     econs; ss; try xomega. constructor; intros.
     { intros; constructor; intros.
       - exploit init_meminj_invert_strong; eauto. intros (A & id & gd & B & C & D & E).

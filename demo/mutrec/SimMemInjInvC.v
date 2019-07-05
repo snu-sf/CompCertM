@@ -18,6 +18,13 @@ Require Import Coq.Logic.ChoiceFacts.
 Set Implicit Arguments.
 
 
+Definition top_inv: memblk_invariant := memblk_invarant_mk top1 bot3.
+
+Lemma top_inv_satisfied_always m minv
+  :
+    inv_sat_mem top_inv minv m.
+Proof. econs; ss. Qed.
+Hint Resolve top_inv_satisfied_always.
 
 Section MEMINJINV.
 
@@ -86,8 +93,15 @@ Section SIMSYMBINV.
       v
       (NVOL: v.(gvar_volatile) = false)
       (WRITABLE: v.(gvar_readonly) = false)
-      (INITD: admit "about init data" v.(gvar_init))
-      (* (INITD: forall m b (INIT: Genv.load_store_init_data ge m b 0 (gvar_init v)), *)
+      (* (INITD: admit "about init data" v.(gvar_init)) *)
+      (INITD: forall
+          (ge: Genv.t F V) m b
+          (INIT: Genv.load_store_init_data ge m b 0 (gvar_init v))
+          (PERM: Mem.range_perm
+                   m b 0 (init_data_list_size (gvar_init v)) Cur
+                   (Genv.perm_globvar v))
+        ,
+          inv_sat_blk P b m)
     :
       invariant_globvar (Gvar v)
   .
@@ -101,7 +115,6 @@ Section SIMSYMBINV.
             (<<INV: invariant_globvar g>>) /\
             (<<PRVT: ~ In id (prog_public sk_tgt)>>))
       (NOMAIN: ~ ss sk_src.(prog_main))
-
       (NOREF: forall
           id gv
           (PROG: sk_tgt.(prog_defmap) ! id  = Some (Gvar gv))
@@ -306,7 +319,7 @@ Section SIMSYMBINV.
             eapply Plt_Ple_trans; eauto. etrans; eauto. }
   Qed.
 
-  Global Program Instance SimSymbIdInv: SimSymb.class (SimMemInjInv top1 P) :=
+  Global Program Instance SimSymbIdInv: SimSymb.class (SimMemInjInv top_inv P) :=
     {
       t := ident -> Prop;
       le := le;
@@ -451,11 +464,12 @@ Section SIMSYMBINV.
         * eapply init_mem_inject; ss; eauto.
         * refl.
         * refl.
-      + ii. unfold inv_sat_blk. des. exploit CLOSED; eauto. i. des.
-        inv INV.
-        admit "fill invariant_globvar".
-
-      + instantiate (1:=bot1). i. des. split; ss.
+      + ii. des. exploit CLOSED; eauto. i. des.
+        inv INV. erewrite Genv.find_def_symbol in DEF. des. clarify.
+        hexploit Genv.init_mem_characterization_gen; eauto.
+        i. exploit H; eauto. ss. intros [A [B [C D]]].
+        exploit INITD; eauto.
+      + instantiate (1:=bot1). clarify.
       + i. des. unfold j. splits; ss.
         * ii. eapply Genv.find_invert_symbol in INV. des_ifs.
         * eapply Genv.genv_symb_range in INV.

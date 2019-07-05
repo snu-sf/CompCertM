@@ -20,18 +20,24 @@ Set Implicit Arguments.
 
 
 Definition memoized_inv: SimMemInjInv.memblk_invariant :=
-  fun mem =>
-    forall
-      chunk ofs ind
-      (BOUND: 0 <= ind < 1000)
-      (INT: chunk = Mint32)
-      (INDEX: size_chunk Mint32 * ind = ofs),
-    exists i,
-      (<<VINT: mem chunk ofs = Some (Vint i)>>) /\
-      (<<VAL: forall (NZERO: i.(Int.intval) <> 0),
-          (<<MEMO: i = sum (Int.repr ind)>>)>>).
+  SimMemInjInv.memblk_invarant_mk
+    (fun mem =>
+       forall
+         chunk ofs ind
+         (BOUND: 0 <= ind < 1000)
+         (INT: chunk = Mint32)
+         (INDEX: size_chunk Mint32 * ind = ofs),
+       exists i,
+         (<<VINT: mem chunk ofs = Some (Vint i)>>) /\
+         (<<VAL: forall (NZERO: i.(Int.intval) <> 0),
+             (<<MEMO: i = sum (Int.repr ind)>>)>>))
+    (fun chunk ofs p =>
+       exists ind,
+         (<<CHUNK: chunk = Mint32>>) /\ (<<BOUND: 0 <= ind < 1000>>) /\
+         (<<INDEX: ofs = size_chunk Mint32 * ind>>) /\ (<<WRITABLE: p = Writable>>)).
 
-Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv top1 memoized_inv.
+Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv
+                                                 SimMemInjInvC.top_inv memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
 
@@ -76,17 +82,16 @@ Proof.
         unfold SimMemInj.tgt_private, SimMemInj.valid_blocks in *. ss.
         ii. des. split; auto. eapply Mem.store_valid_block_1; eauto.
       * rpapply TGTLE. eapply Mem.nextblock_store; eauto.
-    + ii. clarify.
-      exploit SATTGT; eauto. i. des. des_ifs.
-      * destruct (peq blk blk0).
+    + ii. exploit SATTGT; eauto. i. inv H. econs; ss.
+      * i. exploit PERMISSIONS; eauto. i.
+        eapply Mem.store_valid_access_1; eauto.
+      * i. exploit LOADVALS; eauto. i. des. destruct (peq blk blk0).
         { clarify. destruct (zeq ind ind0).
           - clarify. exists (sum (Int.repr ind0)).
             esplits; eauto. erewrite Mem.load_store_same; eauto. ss.
           - exists i. erewrite Mem.load_store_other; eauto.
             right. clear - n. ss. omega. }
         { exists i. erewrite Mem.load_store_other; eauto. }
-      * exfalso. eapply n.
-        eapply Mem.store_valid_access_1; eauto.
 Qed.
 
 Section SIMMODSEM.
@@ -332,7 +337,9 @@ Proof.
         eapply INVCOMPAT; eauto. ss. }
 
       hexploit SATTGT; eauto. intros SAT0.
-      exploit SAT0; eauto. i. des. des_ifs.
+      exploit SAT0; eauto. i. inv H0. ss.
+      hexploit LOADVALS; eauto. i. des.
+
       destruct (zeq (Int.intval i0) 0).
       {
         econs 2. i. splits; cycle 3.
@@ -501,7 +508,8 @@ Proof.
           { instantiate (4:=sm_ret.(SimMemInjInv.minj).(SimMemInj.tgt)).
             inv MWF. inv WF. exploit SATTGT0; eauto.
             - inv MLE0. erewrite <- MINVEQTGT. eauto.
-            - i. des. des_ifs. eauto. }
+            - i. inv H0. hexploit PERMISSIONS0; eauto. ss.
+              esplits; eauto. }
           intros [m_tgt STR].
 
           exploit SimMemInjInv.unlift_wf; try apply MLE0; eauto.
@@ -560,15 +568,22 @@ Proof.
               - ss.
               - ss. psimpl. econs; ss; eauto.
                 rpapply STR. f_equal.
-                + unfold Ptrofs.mul. ss.
-                  destruct i. ss. unfold Ptrofs.of_ints. ss.
-                  unfold Int.signed. ss. des_ifs; cycle 1;
-                  unfold Int.half_modulus, Int.modulus, two_power_nat in *; ss;
-                    unfold MAX in *; rewrite <- Zdiv2_div in *; ss.
-                  { lia. }
-                  repeat rewrite Ptrofs.unsigned_repr. auto.
-                  all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power;
-                  unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega.
+                + admit "".
+
+                (* unfold Ptrofs.mul. ss. *)
+                  (* destruct i. ss. unfold Ptrofs.of_ints. ss. *)
+                  (* unfold Int.signed. ss. des_ifs; cycle 1; *)
+                  (* unfold Int.half_modulus, Int.modulus, two_power_nat in *; ss; *)
+                  (*   unfold MAX in *; rewrite <- Zdiv2_div in *; ss. *)
+                  (* { admit "". } *)
+                  (* { lia. *)
+
+                  (*   ss. *)
+
+                  (*   lia. } *)
+                  (* repeat rewrite Ptrofs.unsigned_repr. auto. *)
+                  (* all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power; *)
+                  (* unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega. *)
                 + f_equal.
                   rewrite Int.repr_unsigned.
                   rewrite sum_recurse with (i := i). des_ifs.
@@ -846,10 +861,19 @@ Theorem sim_mod
 .
 Proof.
   econs; ss.
-  - econs; ss. i. inv SS. esplits; ss; eauto.
-    + econs; ss.
-      admit "fill definition".
-    + ii. des; clarify.
+  - econs; ss.
+    + i. inv SS. esplits; ss; eauto.
+      * econs; ss.
+        ii. des. econs.
+        { ii. ss. des. clarify. econs; ss.
+          - ii. eapply PERM; eauto. unfold MAX in *. lia.
+          - eapply Z.divide_factor_l. }
+        { ss. i. clarify. erewrite INIT; ss; eauto.
+          - esplits; eauto. i. rewrite sum_recurse. des_ifs.
+          - lia.
+          - unfold MAX. lia.
+          - eapply Z.divide_factor_l. }
+      * ii. des; clarify.
     + ii. destruct H. eapply in_prog_defmap in PROG.
       ss. unfold update_snd in PROG. ss.
       des; clarify; inv DROP; ss.

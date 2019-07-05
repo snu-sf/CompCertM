@@ -203,8 +203,8 @@ Proof.
         rpapply match_states_call; ss; eauto.
         { econs; ss; et.
           - inv SIMSKENV. ss. eapply SimSymbDropInv.sim_skenv_symbols_inject; et.
-          - inv SIMSKENV. inv MWF. inv WF. inv SIMSKELINK. etrans; eauto.
-          - inv SIMSKENV. inv MWF. inv WF. inv SIMSKELINK. etrans; eauto.
+          - inv SIMSKENV. inv MWF. inv WF. inv SIMSKELINK. ss. etrans; eauto. etrans; eauto. rewrite NBSRC. refl. 
+          - inv SIMSKENV. inv MWF. inv WF. inv SIMSKELINK. ss. etrans; eauto. etrans; eauto. rewrite NBTGT. refl. 
         }
         { eapply inject_list_typify_list; eauto. }
         { eapply MWF. }
@@ -246,7 +246,7 @@ Proof.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInjInv.mem_inv_src sm0) (SimMemInj.inj sm0.(SimMemInjInv.minj))).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     inv AFTERSRC.
-    inv SIMRET. ss. exists (SimMemInjInv.unlift' sm_arg sm_ret).
+    inv SIMRET. ss. exists (SimMemInjInvC.unlift' sm_arg sm_ret).
     inv MATCH; ss. inv MATCHST; ss.
     inv HISTORY. ss. clear_tac.
     esplits; try refl; eauto.

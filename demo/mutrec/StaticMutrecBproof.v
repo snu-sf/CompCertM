@@ -916,8 +916,8 @@ Proof.
         exploit Mem_unfree_right_inject; try apply UNFR; eauto.
         { inv MWF1. inv WF1. eauto. }
         { instantiate (1:=0). instantiate (1:=0). ii. lia. } intros INJ.
-        eapply SimMemInjInv.unlift_wf in MWF1; try apply MLE1; eauto.
-        dup MLE1. eapply SimMemInjInv.unlift_spec in MLE1; eauto.
+        eapply SimMemInjInvC.unlift_wf in MWF1; try apply MLE1; eauto.
+        dup MLE1. eapply SimMemInjInvC.unlift_spec in MLE1; eauto.
         exploit SimMemInjInvC.unchanged_on_mle; eauto.
         { ss. ii. clarify. }
         { refl. }

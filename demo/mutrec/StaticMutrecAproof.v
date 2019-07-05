@@ -513,7 +513,7 @@ Proof.
               esplits; eauto. }
           intros [m_tgt STR].
 
-          exploit SimMemInjInv.unlift_wf; try apply MLE0; eauto.
+          exploit SimMemInjInvC.unlift_wf; try apply MLE0; eauto.
           { econs; eauto. } intros MLE1.
           exploit memoized_inv_store_le; eauto.
           i. des.
@@ -631,7 +631,7 @@ Proof.
 
               econs 2.
             - etrans; eauto. etrans; eauto.
-              eapply SimMemInjInv.unlift_spec; eauto. econs; eauto.
+              eapply SimMemInjInvC.unlift_spec; eauto. econs; eauto.
             (* - omega. *) }
       }
 

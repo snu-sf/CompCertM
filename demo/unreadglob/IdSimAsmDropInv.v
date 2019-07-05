@@ -111,6 +111,8 @@ Proof.
 
     exploit store_arguments_parallel; eauto.
     { eapply typify_has_type_list; eauto. }
+    { exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+      i. des. inv WFTGT. eapply WFPARAM in H1. ss. }
     { eapply inject_list_typify_list; try eassumption.
       erewrite inject_list_length; eauto. } i. des.
     hexploit (assign_junk_blocks_parallel n); eauto. i. des.
@@ -223,6 +225,8 @@ Proof.
     eapply asm_initial_frame_succeed; eauto.
     + apply inject_list_length in VALS.
       transitivity (Datatypes.length (Args.vs args_src)); eauto.
+    + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+      i. des. inv WFSRC. eapply WFPARAM in H. ss.
     + exploit match_globals_find_funct; eauto.
 
   - inv MATCH. ss.
@@ -249,15 +253,7 @@ Proof.
     eexists (Args.mk (Vptr b2 _) _ _). eexists (SimMemInjInv.mk sm1 _ _).
     esplits; eauto; ss; i.
     + econs; auto.
-      * exploit SimSymbDropInv_find_None; try eassumption.
-        { unfold Genv.find_funct. des_ifs. eauto. }
-        { clarify. }
-        { rewrite <- H2. ss. }
-      * esplits; eauto.  unfold Genv.find_funct, Genv.find_funct_ptr in *.
-        des_ifs_safe. inv SIMSKELINK.
-        exploit SIMDEF; try apply Heq1; eauto. i. des. clarify.
-        rewrite DEFTGT. eauto.
-      * instantiate (1:=Ptrofs.add ofs (Ptrofs.repr delta)).
+      * instantiate (2:=Ptrofs.add ofs (Ptrofs.repr delta)).
         destruct (zlt 0 (size_arguments (SkEnv.get_sig skd))).
         { inv MWF. exploit Mem.mi_representable; eauto.
           - right.
@@ -268,8 +264,8 @@ Proof.
             + clear - ARGSRANGE l. lia.
             + clear- ARGSRANGE. set (size_arguments_above (SkEnv.get_sig skd)).
               set (Ptrofs.unsigned_range_2 ofs). lia.
-          - repeat rewrite unsigned_add.
-            + lia.
+          - repeat rewrite unsigned_add. i. des.
+            + instantiate (1:=(SkEnv.get_sig skd)). lia.
             + exploit Mem.mi_representable; eauto. left. eapply Mem.perm_cur.
               eapply Mem.perm_implies; try eapply Mem.free_range_perm; eauto; [|econs].
               clear - ARGSRANGE l. lia.
@@ -277,6 +273,14 @@ Proof.
               set (size_arguments_above (SkEnv.get_sig skd)).
               set (Ptrofs.unsigned_range_2 ofs). lia. }
         { set (Ptrofs.unsigned_range_2 (Ptrofs.add ofs (Ptrofs.repr delta))). lia. }
+      * exploit SimSymbDropInv_find_None; try eassumption.
+        { unfold Genv.find_funct. des_ifs. eauto. }
+        { clarify. }
+        { rewrite <- H2. ss. }
+      * esplits; eauto.  unfold Genv.find_funct, Genv.find_funct_ptr in *.
+        des_ifs_safe. inv SIMSKELINK.
+        exploit SIMDEF; try apply Heq1; eauto. i. des. clarify.
+        rewrite DEFTGT. eauto.
       * eauto.
       * eauto.
       * clear - AGREE TPTR RADEF. splits.

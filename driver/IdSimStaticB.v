@@ -3,7 +3,7 @@ Require Import Cop Ctypes ClightC.
 Require SimMemId SimMemExt SimMemInj.
 Require SoundTop UnreachC.
 Require SimSymbId SimSymbDrop.
-Require Import StaticMutrecA StaticMutrecAspec StaticMutrecAproof.
+Require Import StaticMutrecA StaticMutrecBspec StaticMutrecBproof.
 Require Import CoqlibC.
 Require Import ValuesC.
 Require Import LinkingC.
@@ -28,7 +28,7 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
-Inductive match_states_ext_a (sm_arg: SimMemExt.t')
+Inductive match_states_ext_b (sm_arg: SimMemExt.t')
   : unit -> state -> state -> SimMemExt.t' -> Prop :=
 | match_ext_Callstate
     i m_src m_tgt sm0
@@ -36,7 +36,7 @@ Inductive match_states_ext_a (sm_arg: SimMemExt.t')
     (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
     (MWF: Mem.extends m_src m_tgt)
   :
-    match_states_ext_a
+    match_states_ext_b
       sm_arg tt
       (Callstate i m_src)
       (Callstate i m_tgt)
@@ -47,7 +47,7 @@ Inductive match_states_ext_a (sm_arg: SimMemExt.t')
     (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
     (MWF: Mem.extends m_src m_tgt)
   :
-    match_states_ext_a
+    match_states_ext_b
       sm_arg tt
       (Interstate i m_src)
       (Interstate i m_tgt)
@@ -58,39 +58,39 @@ Inductive match_states_ext_a (sm_arg: SimMemExt.t')
     (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
     (MWF: Mem.extends m_src m_tgt)
   :
-    match_states_ext_a
+    match_states_ext_b
       sm_arg tt
       (Returnstate i m_src)
       (Returnstate i m_tgt)
       sm0.
 
-Section AEXT.
+Section BEXT.
 
   Variable se: Senv.t.
   Variable ge: SkEnv.t.
 
-  Lemma a_step_preserve_extension
+  Lemma b_step_preserve_extension
         sm_arg u st_src0 st_tgt0 st_src1 sm0 tr
-        (MATCH: match_states_ext_a sm_arg u st_src0 st_tgt0 sm0)
+        (MATCH: match_states_ext_b sm_arg u st_src0 st_tgt0 sm0)
         (STEP: step se ge st_src0 tr st_src1)
   :
     exists st_tgt1 sm1,
       (<<STEP: step se ge st_tgt0 tr st_tgt1>>) /\
-      (<<MATCH: match_states_ext_a sm_arg u st_src1 st_tgt1 sm1>>).
+      (<<MATCH: match_states_ext_b sm_arg u st_src1 st_tgt1 sm1>>).
   Proof.
     inv STEP; inv MATCH.
     - esplits. econs. econs; eauto.
     - esplits. econs 2; eauto. econs; eauto.
   Qed.
 
-End AEXT.
+End BEXT.
 
-Section ASOUNDSTATE.
+Section BSOUNDSTATE.
 
   Variable skenv_link: SkEnv.t.
   Variable su: Sound.t.
 
-  Inductive sound_state_a
+  Inductive sound_state_b
     : state -> Prop :=
   | sound_Callstate
       i m
@@ -98,39 +98,38 @@ Section ASOUNDSTATE.
       (MEM: UnreachC.mem' su m)
       (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
     :
-      sound_state_a (Callstate i m)
+      sound_state_b (Callstate i m)
   | sound_Interstate
       i m
       (WF: Sound.wf su)
       (MEM: UnreachC.mem' su m)
       (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
       (NZERO: Int.intval i <> 0)
-      (* (EXT: sound_external) *)
     :
-      sound_state_a (Interstate i m)
+      sound_state_b (Interstate i m)
   | sound_Returnstate
       i m
       (WF: Sound.wf su)
       (MEM: UnreachC.mem' su m)
       (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
     :
-      sound_state_a (Returnstate i m)
+      sound_state_b (Returnstate i m)
   .
 
-End ASOUNDSTATE.
+End BSOUNDSTATE.
 
 
-Section ASOUND.
+Section BSOUND.
 
   Variable skenv_link: SkEnv.t.
 
-  Lemma a_unreach_local_preservation
+  Lemma b_unreach_local_preservation
     :
       exists sound_state, <<PRSV: local_preservation (modsem skenv_link tt) sound_state>>
   .
   Proof.
     esplits.
-    eapply local_preservation_strong_horizontal_spec with (sound_state := sound_state_a skenv_link); eauto.
+    eapply local_preservation_strong_horizontal_spec with (sound_state := sound_state_b skenv_link); eauto.
     econs; ss; i.
     - inv INIT. ss. inv SUARG. des. esplits.
       + refl.
@@ -179,53 +178,53 @@ Section ASOUND.
       esplits; try refl. ss.
   Qed.
 
-End ASOUND.
+End BSOUND.
 
-Inductive match_states_a_internal:
+Inductive match_states_b_internal:
   state -> state -> meminj -> mem -> mem -> Prop :=
 | match_Callstate
     i m_src m_tgt j
   :
-    match_states_a_internal
+    match_states_b_internal
       (Callstate i m_src)
       (Callstate i m_tgt)
       j m_src m_tgt
 | match_Interstate
     i m_src m_tgt j
   :
-    match_states_a_internal
+    match_states_b_internal
       (Interstate i m_src)
       (Interstate i m_tgt)
       j m_src m_tgt
 | match_Returnstate
     i m_src m_tgt j
   :
-    match_states_a_internal
+    match_states_b_internal
       (Returnstate i m_src)
       (Returnstate i m_tgt)
       j m_src m_tgt
 .
 
-Inductive match_states_a (sm_arg: SimMemInj.t')
+Inductive match_states_b (sm_arg: SimMemInj.t')
   : unit -> state -> state -> SimMemInj.t' -> Prop :=
 | match_states_clight_intro
     st_src st_tgt j m_src m_tgt sm0
     (MWFSRC: m_src = sm0.(SimMemInj.src))
     (MWFTGT: m_tgt = sm0.(SimMemInj.tgt))
     (MWFINJ: j = sm0.(SimMemInj.inj))
-    (MATCHST: match_states_a_internal st_src st_tgt j m_src m_tgt)
+    (MATCHST: match_states_b_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMemInj.wf' sm0)
   :
-    match_states_a
+    match_states_b
       sm_arg tt st_src st_tgt sm0
 .
 
-Lemma a_id
+Lemma b_id
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -238,7 +237,7 @@ Proof.
   - instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
                        (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>) /\
-                       (<<stmwf: st_src.(StaticMutrecAspec.get_mem) =
+                       (<<stmwf: st_src.(StaticMutrecBspec.get_mem) =
                                  sm0.(SimMemId.src)>>)).
     ss.
     destruct args_src, args_tgt, sm_arg. ii. inv SIMARGS; ss; clarify.
@@ -266,20 +265,20 @@ Proof.
       left. econs; eauto; [econs 1|]. symmetry. apply E0_right.
 Qed.
 
-Lemma a_ext_unreach
+Lemma b_ext_unreach
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto. instantiate (1:=tt).
   econs; ss; i.
   destruct SIMSKENVLINK.
-  exploit a_unreach_local_preservation. i. des.
-  eapply match_states_sim with (match_states := match_states_ext_a); ss.
+  exploit b_unreach_local_preservation. i. des.
+  eapply match_states_sim with (match_states := match_states_ext_b); ss.
   - apply unit_ord_wf.
   - ss. eauto.
   - i. ss.
@@ -337,19 +336,19 @@ Proof.
         econs; eauto.
 Qed.
 
-Lemma a_ext_top
+Lemma b_ext_top
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto. instantiate (1:=tt).
   econs; ss; i.
   destruct SIMSKENVLINK.
-  eapply match_states_sim with (match_states := match_states_ext_a); ss.
+  eapply match_states_sim with (match_states := match_states_ext_b); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
   - i. ss.
@@ -407,13 +406,13 @@ Proof.
         econs; eauto.
 Qed.
 
-Lemma a_inj_drop_bot
-      (WF: Sk.wf (StaticMutrecAspec.module))
+Lemma b_inj_drop_bot
+      (WF: Sk.wf (StaticMutrecBspec.module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
       /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>)
 .
 Proof.
@@ -422,7 +421,7 @@ Proof.
   econs; ss; i.
   { econs; ss; i; clarify.
     inv WF. auto. }
-  eapply match_states_sim with (match_states := match_states_a); ss.
+  eapply match_states_sim with (match_states := match_states_b); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
 
@@ -494,26 +493,26 @@ Proof.
         econs; eauto. econs.
 Qed.
 
-Lemma a_inj_drop
-      (WF: Sk.wf (StaticMutrecAspec.module))
+Lemma b_inj_drop
+      (WF: Sk.wf (StaticMutrecBspec.module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
 .
 Proof.
-  exploit a_inj_drop_bot; eauto. i. des. eauto.
+  exploit b_inj_drop_bot; eauto. i. des. eauto.
 Qed.
 
-Lemma a_inj_id
-      (WF: Sk.wf (StaticMutrecAspec.module))
+Lemma b_inj_id
+      (WF: Sk.wf (StaticMutrecBspec.module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
 .
 Proof.
-  apply sim_inj_drop_bot_id. apply a_inj_drop_bot; auto.
+  apply sim_inj_drop_bot_id. apply b_inj_drop_bot; auto.
 Qed.

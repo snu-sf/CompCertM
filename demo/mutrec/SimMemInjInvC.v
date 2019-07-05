@@ -8,7 +8,7 @@ Require Import AST.
 
 Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.
-Require Import SimMem.
+Require Import SimMem SimMemLift.
 Require SimSymbId.
 Require Export SimMemInjInv.
 Require Import Coq.Logic.FunctionalExtensionality.
@@ -23,6 +23,16 @@ Section MEMINJINV.
   Variable P_src : memblk_invariant.
   Variable P_tgt : memblk_invariant.
 
+  Inductive lepriv (sm0 sm1: t'): Prop :=
+  | lepriv_intro
+      (INCR: inject_incr sm0.(SimMemInj.inj) sm1.(SimMemInj.inj))
+      (SRCGENB: sm0.(SimMemInj.src_ge_nb) = sm1.(SimMemInj.src_ge_nb))
+      (TGTGENB: sm0.(SimMemInj.tgt_ge_nb) = sm1.(SimMemInj.tgt_ge_nb))
+      (FROZEN: SimMemInj.frozen sm0.(SimMemInj.inj) sm1.(SimMemInj.inj) (sm0.(SimMemInj.src_ge_nb)) (sm0.(SimMemInj.tgt_ge_nb)))
+      (INVSRC: sm0.(mem_inv_src) = sm1.(mem_inv_src))
+      (INVTGT: sm0.(mem_inv_tgt) = sm1.(mem_inv_tgt))
+  .
+
   Global Program Instance SimMemInjInv : SimMem.class :=
     {
       t := t';
@@ -30,22 +40,17 @@ Section MEMINJINV.
       tgt := SimMemInj.tgt;
       wf := wf' P_src P_tgt;
       le := le';
-      lift := lift';
-      unlift := unlift';
+      lepriv := lepriv;
+      (* lift := lift'; *)
+      (* unlift := unlift'; *)
       sim_val := fun (mrel: t') => Val.inject mrel.(SimMemInj.inj);
       sim_val_list := fun (mrel: t') => Val.inject_list mrel.(SimMemInj.inj);
     }.
   Next Obligation.
-    eapply lift_wf; eauto.
+    inv H. inv MLE. econs; eauto.
   Qed.
   Next Obligation.
-    eapply unlift_spec; eauto.
-  Qed.
-  Next Obligation.
-    eapply unlift_wf; eauto.
-  Qed.
-  Next Obligation.
-    inv MLE. inv MLE0. eauto.
+    inv MLE. eauto.
   Qed.
   Next Obligation.
     extensionality l0. extensionality l1. eapply prop_ext2.
@@ -151,6 +156,142 @@ Section MEMINJINV.
           eapply H2; eauto. eapply Plt_Ple_trans; eauto.
   Qed.
 
+  Definition lift' (mrel0: t'): t' :=
+    mk (SimMemInj.mk
+          (SimMemInj.src mrel0)
+          (SimMemInj.tgt mrel0)
+          (SimMemInj.inj mrel0)
+          (SimMemInj.src_private mrel0 /2\ fun blk _ => ~ mrel0.(mem_inv_src) blk)
+          (SimMemInj.tgt_private mrel0 /2\ fun blk _ => ~ mrel0.(mem_inv_tgt) blk)
+          ((SimMemInj.src mrel0).(Mem.nextblock))
+          ((SimMemInj.tgt mrel0).(Mem.nextblock))
+          ((SimMemInj.src_ge_nb mrel0))
+          ((SimMemInj.tgt_ge_nb mrel0)))
+       (mem_inv_src mrel0)
+       (mem_inv_tgt mrel0)
+  .
+
+  Definition unlift' (mrel0 mrel1: t'): t' :=
+    mk (SimMemInj.mk
+          (SimMemInj.src mrel1)
+          (SimMemInj.tgt mrel1)
+          (SimMemInj.inj mrel1)
+          (SimMemInj.src_external mrel0)
+          (SimMemInj.tgt_external mrel0)
+          (SimMemInj.src_parent_nb mrel0)
+          (SimMemInj.tgt_parent_nb mrel0)
+          (SimMemInj.src_ge_nb mrel0)
+          (SimMemInj.tgt_ge_nb mrel0)) (mem_inv_src mrel0) (mem_inv_tgt mrel0).
+
+  Lemma unlift_spec : forall mrel0 mrel1 : t',
+      le' (lift' mrel0) mrel1 -> wf' P_src P_tgt mrel0 -> le' mrel0 (unlift' mrel0 mrel1).
+  Proof.
+    i.
+    inv H; ss. inv MLE. econs; eauto. inv H0. inv WF. ss.
+    econs; ss; eauto; ii; des; ss.
+    - eapply Mem.unchanged_on_implies; eauto.
+      ii. ss. split; eauto. ii.
+      exploit INVRANGESRC; eauto. i. des. eauto.
+    - eapply Mem.unchanged_on_implies; eauto.
+      ii. ss. split; eauto.
+      ii. eapply INVRANGETGT in H1. des. apply H2. eauto.
+    - ss. eapply SimMemInj.frozen_shortened; eauto.
+  Qed.
+
+  Lemma lift_wf : forall mrel0 : t',
+      wf' P_src P_tgt mrel0 ->
+      wf' P_src P_tgt (lift' mrel0).
+  Proof.
+    i. inv H. inv WF. econs; ss; eauto.
+    - econs; ss; eauto.
+      + ii. des. destruct PR. split; ss.
+      + ii. des. destruct PR. split; ss.
+      + reflexivity.
+      + reflexivity.
+      + xomega.
+      + xomega.
+    - ii. exploit INVRANGESRC; eauto. i. des. splits; eauto.
+      + ii. des. clarify.
+      + eapply Plt_Ple_trans; eauto.
+    - ii. exploit INVRANGETGT; eauto. i. des. splits; eauto.
+      + ii. des. clarify.
+      + eapply Plt_Ple_trans; eauto.
+  Qed.
+
+  Lemma unlift_wf : forall mrel0 mrel1 : t',
+      wf' P_src P_tgt mrel0 ->
+      wf' P_src P_tgt mrel1 -> le' (lift' mrel0) mrel1 -> wf' P_src P_tgt (unlift' mrel0 mrel1).
+  Proof.
+    i.
+    inv H. inv H0. inv H1. inv WF. inv WF0. inv MLE.
+    econs; ss; eauto.
+    - econs; ss; try etransitivity; eauto.
+      + ii. destruct (classic (mem_inv_src mrel0 x0)).
+        * rewrite MINVEQSRC in *. exploit INVRANGESRC0; eauto.
+          i. des. split; eauto. ss. destruct PR.
+          eapply Mem.valid_block_unchanged_on; eauto.
+        * eapply SRCEXT0. rewrite <- SRCPARENTEQ. auto.
+      + ii. destruct (classic (mem_inv_tgt mrel0 x0)).
+        * rewrite MINVEQTGT in *. exploit INVRANGETGT0; eauto.
+          i. des. split; eauto. ss. destruct PR.
+          eapply Mem.valid_block_unchanged_on; eauto.
+        * eapply TGTEXT0. rewrite <- TGTPARENTEQ. auto.
+      + inv SRCUNCHANGED; ss.
+      + inv TGTUNCHANGED; ss.
+    - rewrite MINVEQSRC. eauto.
+    - rewrite MINVEQTGT. eauto.
+    - ii. split.
+      + eapply INVRANGESRC0. rewrite <- MINVEQSRC. auto.
+      + eapply INVRANGESRC; eauto.
+    - ii. split.
+      + eapply INVRANGETGT0. rewrite <- MINVEQTGT. auto.
+      + eapply INVRANGETGT; eauto.
+  Qed.
+
+  Global Program Instance lepriv_PreOrder: RelationClasses.PreOrder lepriv.
+  Next Obligation.
+    ii. econs; eauto. apply SimMemInj.frozen_refl.
+  Qed.
+  Next Obligation.
+    ii. inv H; inv H0.
+    des; clarify.
+    econs; eauto with mem congruence.
+    + eapply inject_incr_trans; eauto.
+    + econs; eauto.
+      ii; des.
+      destruct (SimMemInj.inj y b_src) eqn:T.
+      * destruct p.
+        exploit INCR0; eauto. i; clarify.
+        inv FROZEN.
+        hexploit NEW_IMPLIES_OUTSIDE; eauto.
+      * inv FROZEN0.
+        hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des.
+        esplits; congruence.
+  Qed.
+
+  Global Program Instance SimMemInjInvLift : SimMemLift.class SimMemInjInv :=
+    {
+      lift := lift';
+      unlift := unlift';
+    }.
+  Next Obligation.
+    eapply lift_wf; eauto.
+  Qed.
+  Next Obligation.
+    eapply unlift_spec; eauto.
+  Qed.
+  Next Obligation.
+    eapply unlift_wf; eauto.
+  Qed.
+  Next Obligation.
+    econs; eauto. ss. eapply SimMemInj.frozen_refl.
+  Qed.
+  Next Obligation.
+    inv MWF. inv MLE. inv MLE0. inv MLIFT.
+    econs; ss; et; try congruence.
+    - eapply SimMemInj.frozen_refl.
+  Qed.
+
 End MEMINJINV.
 
 
@@ -229,9 +370,9 @@ Section SIMSYMBINV.
           ss id <-> sm.(mem_inv_tgt) blk)
       (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
       (INJECT: skenv_inject skenv_src sm.(SimMemInj.inj) sm.(mem_inv_tgt))
-      (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm.(SimMemInj.src_parent_nb))
-      (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm.(SimMemInj.tgt_parent_nb))
       (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
+      (NBSRC: skenv_src.(Genv.genv_next) = sm.(SimMemInj.src_ge_nb))
+      (NBTGT: skenv_tgt.(Genv.genv_next) = sm.(SimMemInj.tgt_ge_nb))
   .
 
   Lemma skenv_inject_symbols_inject sm ss skenv_src skenv_tgt
@@ -381,13 +522,13 @@ Section SIMSYMBINV.
     - i. eapply mi_perm_inv; eauto. des_ifs.
   Qed.
 
-  Lemma sim_skenv_inj_le ss sm0 sm1 skenv_src skenv_tgt
-        (MLE: le' sm0 sm1)
+  Lemma sim_skenv_inj_lepriv ss sm0 sm1 skenv_src skenv_tgt
+        (MLE: lepriv sm0 sm1)
         (SIMSKENV : sim_skenv_inj sm0 ss skenv_src skenv_tgt)
     :
       sim_skenv_inj sm1 ss skenv_src skenv_tgt.
   Proof.
-    inv MLE. inv MLE0. inv SIMSKENV.
+    inv MLE. inv SIMSKENV.
     destruct sm0, sm1. destruct minj. destruct minj0. ss. clarify.
     rename inj0 into inj1. rename inj into inj0.
     econs; ss; eauto.
@@ -395,15 +536,15 @@ Section SIMSYMBINV.
       + i. destruct (inj1 b) as [[b0 delta]|]eqn:BLK; auto.
         exfalso. inv FROZEN. hexploit NEW_IMPLIES_OUTSIDE; eauto.
         i. des. eapply (Plt_strict b).
-        eapply Plt_Ple_trans; eauto. etrans; eauto.
+        eapply Plt_Ple_trans; eauto.
       + i. destruct (inj0 b1) as [[b0 delta0]|]eqn:BLK; auto.
         * dup BLK. eapply INCR in BLK. clarify.
           eapply IMAGE; eauto.
         * inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
           { exfalso. eapply (Plt_strict b1).
-            eapply Plt_Ple_trans; eauto. etrans; eauto. }
-          { inv SIMSKENV0. exfalso. eapply (Plt_strict b2). clear BOUNDSRC.
-            eapply Plt_Ple_trans; eauto. etrans; eauto. }
+            eapply Plt_Ple_trans; eauto. }
+          { inv SIMSKENV0. exfalso. eapply (Plt_strict b2).
+            eapply Plt_Ple_trans; eauto. }
   Qed.
 
   Global Program Instance SimSymbIdInv: SimSymb.class (SimMemInjInv top_inv P) :=
@@ -543,16 +684,14 @@ Section SIMSYMBINV.
         * i. unfold j. des. apply Genv.find_invert_symbol in NINV.
           des_ifs.
         * i. unfold j in *. des_ifs.
-      + rewrite <- LOADMEMSRC. refl.
-      + rewrite <- LOADMEMSRC. refl.
 
     - econs; ss; eauto.
       + econs; ss.
         * eapply init_mem_inject; ss; eauto.
         * refl.
         * refl.
-        * refl.
-        * refl.
+        * rewrite LOADMEMSRC. refl.
+        * rewrite LOADMEMSRC. refl.
       + ii. des. exploit CLOSED; eauto. i. des.
         inv INV. erewrite Genv.find_def_symbol in DEF. des. clarify.
         hexploit Genv.init_mem_characterization_gen; eauto.
@@ -572,14 +711,14 @@ Section SIMSYMBINV.
       eapply Genv.find_invert_symbol in Heq. des_ifs.
   Qed.
   Next Obligation.
-    eapply sim_skenv_inj_le; eauto.
+    eapply sim_skenv_inj_lepriv; eauto.
   Qed.
-  Next Obligation.
-    inv SIMSKENV. inv MWF. inv WF.
-    destruct sm0; ss. destruct minj; ss. econs; ss; eauto.
-    - ss. etrans; eauto.
-    - ss. etrans; eauto.
-  Qed.
+  (* Next Obligation. *)
+  (*   inv SIMSKENV. inv MWF. inv WF. *)
+  (*   destruct sm0; ss. destruct minj; ss. econs; ss; eauto. *)
+  (*   - ss. etrans; eauto. *)
+  (*   - ss. etrans; eauto. *)
+  (* Qed. *)
   Next Obligation.
     inv LE. inv SIMSKENV. econs; ss; eauto.
     - i. assert (Genv.find_symbol skenv_link_tgt id = Some blk).
@@ -627,7 +766,6 @@ Section SIMSYMBINV.
     - eapply external_call_spec.
     - eapply skenv_inject_symbols_inject; eauto.
     - i. des.
-      exploit lift_wf; eauto. i.
       exploit unchanged_on_mle; eauto.
       + ii. eapply ec_max_perm; eauto. eapply external_call_spec.
       + ii. eapply ec_max_perm; eauto. eapply external_call_spec.

@@ -8,10 +8,9 @@ Require Import AST.
 
 Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.
-Require Import SimMem.
+Require Import SimMemLift.
 Require SimSymbId.
 Require Import Conventions1.
-Require MachC.
 Require Export SimMemInj.
 
 Set Implicit Arguments.
@@ -22,6 +21,7 @@ Section MEMINJ.
 
 Definition update (sm0: t') (src tgt: mem) (inj: meminj): t' :=
   mk src tgt inj sm0.(src_external) sm0.(tgt_external) sm0.(src_parent_nb) sm0.(tgt_parent_nb)
+                                                       sm0.(src_ge_nb) sm0.(tgt_ge_nb)
 .
 Hint Unfold update.
 (* Notation "sm0 '.(update_tgt)' tgt" := (sm0.(update) sm0.(src) tgt sm0.(inj)) (at level 50). *)
@@ -84,6 +84,25 @@ Qed.
 (* TODO: apply this policy for identity/extension *)
 
 (* "Global" is needed as it is inside section *)
+
+Inductive lepriv (sm0 sm1: SimMemInj.t'): Prop :=
+| lepriv_intro
+    (INCR: inject_incr sm0.(inj) sm1.(inj))
+    (* (SRCUNCHANGED: Mem.unchanged_on sm0.(src_external) sm0.(src) sm1.(src)) *)
+    (* (TGTUNCHANGED: Mem.unchanged_on sm0.(tgt_external) sm0.(tgt) sm1.(tgt)) *)
+    (* (SRCPARENTEQ: sm0.(src_external) = sm1.(src_external)) *)
+    (* (TGTPARENTEQ: sm0.(tgt_external) = sm1.(tgt_external)) *)
+    (* (SRCPARENTEQNB: (sm0.(src_parent_nb) <= sm1.(src_parent_nb))%positive) *)
+    (* (TGTPARENTEQNB: (sm0.(tgt_parent_nb) <= sm1.(tgt_parent_nb))%positive) *)
+
+
+    (* (SRCPARENTNB: (sm0.(src_ge_nb) <= sm1.(src_parent_nb))%positive) *)
+    (* (TGTPARENTNB: (sm0.(tgt_ge_nb) <= sm1.(tgt_parent_nb))%positive) *)
+    (SRCGENB: sm0.(src_ge_nb) = sm1.(src_ge_nb))
+    (TGTGENB: sm0.(tgt_ge_nb) = sm1.(tgt_ge_nb))
+    (FROZEN: frozen sm0.(inj) sm1.(inj) (sm0.(src_ge_nb)) (sm0.(tgt_ge_nb)))
+.
+
 Global Program Instance SimMemInj : SimMem.class :=
 {
   t := t';
@@ -91,27 +110,28 @@ Global Program Instance SimMemInj : SimMem.class :=
   tgt := tgt;
   wf := wf';
   le := le';
-  lift := lift';
-  unlift := unlift';
+  (* lift := lift'; *)
+  (* unlift := unlift'; *)
+  lepriv := lepriv;
   sim_val := fun (mrel: t') => Val.inject mrel.(inj);
   sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
 }.
 Next Obligation.
-  rename H into VALID.
-  inv VALID. econs; ss; eauto; ii; des; ss; eauto.
-  - eapply Pos.compare_gt_iff in H. xomega.
-  - eapply Pos.compare_gt_iff in H. xomega.
-  (* - econs; eauto. *)
-  (*   ii; des. clarify. *)
-  (* - eapply Mem.unchanged_on_refl. *)
-  (* - eapply Mem.unchanged_on_refl. *)
+  rename H into LE.
+  inv LE. econs; et.
 Qed.
-Next Obligation.
-  eapply unlift_spec; eauto.
-Qed.
-Next Obligation.
-  eapply unlift_wf; eauto.
-Qed.
+(* Next Obligation. *)
+(*   rename H into VALID. *)
+(*   inv VALID. econs; ss; eauto; ii; des; ss; eauto. *)
+(*   - eapply Pos.compare_gt_iff in H. xomega. *)
+(*   - eapply Pos.compare_gt_iff in H. xomega. *)
+(* Qed. *)
+(* Next Obligation. *)
+(*   eapply unlift_spec; eauto. *)
+(* Qed. *)
+(* Next Obligation. *)
+(*   eapply unlift_wf; eauto. *)
+(* Qed. *)
 Next Obligation.
   ii. inv MLE. eapply val_inject_incr; eauto.
 Qed.
@@ -128,6 +148,62 @@ Next Obligation.
   inv H. ss.
 Qed.
 
+
+
+
+
+Global Program Instance lepriv_Transitive: RelationClasses.Transitive lepriv.
+Next Obligation.
+  ii. inv H; inv H0.
+  des; clarify.
+  econs; eauto with mem congruence.
+  + eapply inject_incr_trans; eauto.
+  + econs; eauto.
+    ii; des.
+    destruct (inj y b_src) eqn:T.
+    * destruct p.
+      exploit INCR0; eauto. i; clarify.
+      inv FROZEN.
+      hexploit NEW_IMPLIES_OUTSIDE; eauto.
+    * inv FROZEN0.
+      hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des.
+      esplits; congruence.
+Qed.
+
+
+Global Program Instance SimMemInjLift : SimMemLift.class SimMemInj :=
+{
+  lift := lift';
+  unlift := unlift';
+}.
+Next Obligation.
+  rename H into VALID.
+  inv VALID. econs; ss; eauto; ii; des; ss; eauto.
+  - eapply Pos.compare_gt_iff in H. xomega.
+  - eapply Pos.compare_gt_iff in H. xomega.
+  - eapply Pos.compare_gt_iff in H. xomega.
+  - eapply Pos.compare_gt_iff in H. xomega.
+Qed.
+Next Obligation.
+  eapply unlift_spec; et.
+Qed.
+Next Obligation.
+  eapply unlift_wf; eauto.
+Qed.
+Next Obligation.
+  inv MWF.
+  destruct sm0; ss.
+  econs; ss; et.
+  - eapply frozen_refl.
+Qed.
+Next Obligation.
+  inv MWF. inv MLE. inv MLIFT.
+  (* destruct sm1; ss. *)
+  econs; ss; et; try congruence.
+  - eapply frozen_refl.
+Qed.
+
+
 Section ORIGINALS.
 
 Inductive le_excl (excl_src excl_tgt: block -> Z -> Prop) (mrel0 mrel1: t'): Prop :=
@@ -137,8 +213,10 @@ Inductive le_excl (excl_src excl_tgt: block -> Z -> Prop) (mrel0 mrel1: t'): Pro
     (TGTUNCHANGED: Mem.unchanged_on mrel0.(tgt_external) mrel0.(tgt) mrel1.(tgt))
     (SRCPARENTEQ: mrel0.(src_external) = mrel1.(src_external))
     (SRCPARENTEQNB: mrel0.(src_parent_nb) = mrel1.(src_parent_nb))
+    (SRCGENB: mrel0.(src_ge_nb) = mrel1.(src_ge_nb))
     (TGTPARENTEQ: mrel0.(tgt_external) = mrel1.(tgt_external))
     (TGTPARENTEQNB: mrel0.(tgt_parent_nb) = mrel1.(tgt_parent_nb))
+    (TGTGENB: mrel0.(tgt_ge_nb) = mrel1.(tgt_ge_nb))
     (FROZEN: frozen mrel0.(inj) mrel1.(inj) (mrel0.(src_parent_nb))
                                             (mrel0.(tgt_parent_nb)))
     (MAXSRC: forall
@@ -195,6 +273,8 @@ Proof.
       u. ii; des; esplits; eauto. erewrite <- Mem_valid_block_unfree; eauto.
     + etransitivity; try apply MWF; eauto. reflexivity.
     + etransitivity; try apply MWF; eauto. erewrite Mem_nextblock_unfree; eauto. refl.
+    + inv MWF. ss.
+    + inv MWF. ss.
   - econs; ss; eauto.
     + refl.
     + eapply Mem.unchanged_on_implies. { eapply Mem_unfree_unchanged_on; eauto. } ii. eapply RANGE; et.
@@ -204,6 +284,7 @@ Qed.
 
 Lemma foot_excl
       sm0 sm1 sm2 excl_src excl_tgt
+      (MWF: SimMem.wf sm0)
       (FOOT: has_footprint excl_src excl_tgt sm0)
       (MLE: le' sm0 sm1)
       (MLEEXCL: le_excl excl_src excl_tgt sm1 sm2)
@@ -212,6 +293,14 @@ Lemma foot_excl
 .
 Proof.
   inv MLE. inv MLEEXCL.
+  assert(FROZENHI: frozen (inj sm0) (inj sm2) (src_parent_nb sm0) (tgt_parent_nb sm0)).
+  { - clear - FROZEN FROZEN0 INCR0 SRCPARENTEQNB TGTPARENTEQNB.
+      inv FROZEN. inv FROZEN0. econs.
+      i. des.
+      destruct (inj sm1 b_src) eqn:T.
+      + destruct p; ss. exploit INCR0; et. i; clarify.
+        exploit NEW_IMPLIES_OUTSIDE; et.
+      + exploit NEW_IMPLIES_OUTSIDE0; et. i; des. esplits; eauto with congruence xomega. }
   econs; et.
   - etrans; et.
   - etrans; et. rewrite SRCPARENTEQ. ss.
@@ -220,13 +309,9 @@ Proof.
   - etrans; et.
   - etrans; et.
   - etrans; et.
-  - clear - FROZEN FROZEN0 INCR0 SRCPARENTEQNB TGTPARENTEQNB.
-    inv FROZEN. inv FROZEN0. econs.
-    i. des.
-    destruct (inj sm1 b_src) eqn:T.
-    + destruct p; ss. exploit INCR0; et. i; clarify.
-      exploit NEW_IMPLIES_OUTSIDE; et.
-    + exploit NEW_IMPLIES_OUTSIDE0; et. i; des. esplits; eauto with congruence xomega.
+  - etrans; et.
+  - etrans; et.
+  - eapply frozen_shortened; et; try apply MWF.
   - ii.
     destruct (classic (excl_src b ofs)).
     + inv FOOT. eapply Mem.perm_cur_max. eapply Mem.perm_implies with (p1 := Freeable); [|eauto with mem].
@@ -267,26 +352,24 @@ Lemma parallel_gen sm0 m_src1 m_tgt1 j1
         ,
           <<MAX: Mem.perm m_tgt1 b ofs Max <1= Mem.perm sm0.(tgt) b ofs Max>>)
 :
-  (<<MLE: le' sm0 (mk
-                     m_src1 m_tgt1 j1
-                     (src_external sm0)
-                     (tgt_external sm0)
-                     (src_parent_nb sm0)
-                     (tgt_parent_nb sm0))>>) /\
-  (<<MWF: wf' (mk
-                 m_src1 m_tgt1 j1
-                 (src_external sm0)
-                 (tgt_external sm0)
-                 (src_parent_nb sm0)
-                 (tgt_parent_nb sm0))>>).
+  (<<MLE: le' sm0 (mk m_src1 m_tgt1 j1
+                     (src_external sm0) (tgt_external sm0)
+                     (src_parent_nb sm0) (tgt_parent_nb sm0)
+                     (src_ge_nb sm0) (tgt_ge_nb sm0))>>) /\
+  (<<MWF: wf' (mk m_src1 m_tgt1 j1
+                 (src_external sm0) (tgt_external sm0)
+                 (src_parent_nb sm0) (tgt_parent_nb sm0)
+                 (src_ge_nb sm0) (tgt_ge_nb sm0))>>).
 Proof.
   inv WF. split.
-  - econs; ss; eauto.
+  - assert(FROZEN: frozen (inj sm0) j1 (src_parent_nb sm0) (tgt_parent_nb sm0)).
+    { econs. ii. des. exploit SEP; eauto. i. des. split.
+      * unfold Mem.valid_block in *. red. xomega.
+      * unfold Mem.valid_block in *. red. xomega. }
+    econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. ii. eapply SRCEXT; eauto.
     + eapply Mem.unchanged_on_implies; eauto. ii. eapply TGTEXT; eauto.
-    + econs. ii. des. exploit SEP; eauto. i. des. split.
-      * unfold Mem.valid_block in *. red. xomega.
-      * unfold Mem.valid_block in *. red. xomega.
+    + eapply frozen_shortened; eauto.
   - econs; ss; eauto.
     + etransitivity; eauto.
       ii. destruct PR. split; ss.
@@ -325,7 +408,9 @@ Lemma alloc_left_zero_simmem
                                then Some (blk_tgt, 0)
                                else sm0.(inj) blk)
                          sm0.(src_external) sm0.(tgt_external)
-                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in
+                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)
+                         sm0.(src_ge_nb) sm0.(tgt_ge_nb)
+               ) in
     <<MWF: SimMem.wf sm1>>
     /\
     <<MLE: SimMem.le sm0 sm1>>
@@ -353,7 +438,13 @@ Proof.
       + eapply PR0; eauto. eauto with mem.
     - etransitivity; eauto.
       exploit Mem.nextblock_alloc; eauto. i. rewrite H. xomega.
-  * econs; cbn; eauto with mem; try xomega.
+  *
+    assert(FROZEN: frozen (inj sm0)
+       (fun blk => if eq_block blk (Mem.nextblock (src sm0)) then Some (blk_tgt, 0) else inj sm0 blk)
+       (src_parent_nb sm0) (tgt_parent_nb sm0)).
+    { - econs; eauto.
+        ii; ss. des; ss. des_ifs. }
+    econs; cbn; eauto with mem; try xomega.
     - ii; ss. des_ifs; ss. exfalso.
       exploit Mem.mi_freeblocks; try apply MWF; eauto.
       { eauto with mem. }
@@ -361,8 +452,8 @@ Proof.
     - eapply Mem_unchanged_on_trans_strong; eauto.
       { eapply Mem.alloc_unchanged_on; eauto. }
       eauto with mem.
-    - econs; eauto.
-      ii; ss. des; ss. des_ifs.
+    - eapply frozen_shortened; et.
+    - ii. eauto with mem.
 Qed.
 
 Lemma store_undef_simmem
@@ -374,7 +465,9 @@ Lemma store_undef_simmem
   :
     let sm1 := (mk m_src1 sm0.(tgt) sm0.(inj)
                          sm0.(src_external) sm0.(tgt_external)
-                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)) in
+                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)
+                         sm0.(src_ge_nb) sm0.(tgt_ge_nb)
+               ) in
     <<MWF: SimMem.wf sm1>> /\
     <<MLE: SimMem.le sm0 sm1>>
 .
@@ -394,6 +487,7 @@ Proof.
     + eapply Mem.unchanged_on_implies with (P:= sm0.(src_private)).
       { eapply Mem.store_unchanged_on; eauto. }
       i. eauto.
+    + eapply frozen_refl; eauto.
     + eapply frozen_refl; eauto.
 Qed.
 
@@ -435,6 +529,8 @@ Qed.
 
 Local Opaque Z.mul.
 
+Require StoreArguments.
+
 (*************** TODO: Move to MachExtra.v *********************)
 Lemma mach_store_arguments_simmem
       sm0 rs vs sg m_tgt0
@@ -445,7 +541,9 @@ Lemma mach_store_arguments_simmem
     exists sm1,
     <<SM: sm1 = (mk sm0.(src) m_tgt0 sm0.(inj)
                          sm0.(src_external) sm0.(tgt_external)
-                         sm0.(src_parent_nb) sm0.(tgt_parent_nb))>> /\
+                         sm0.(src_parent_nb) sm0.(tgt_parent_nb)
+                         sm0.(src_ge_nb) sm0.(tgt_ge_nb)
+                )>> /\
     <<MWF: SimMem.wf sm1>> /\
     <<MLE: SimMem.le sm0 sm1>> /\
     <<PRIV: forall ofs (IN: 0 <= ofs < 4 * size_arguments sg),
@@ -492,6 +590,7 @@ Proof.
       eapply Mem.unchanged_on_implies; eauto.
       i. ss. des_ifs. apply TGTEXT in H0. u in H0. des.
       exfalso. eapply Mem.fresh_block_alloc; eauto.
+    + eapply frozen_refl.
     + eapply frozen_refl.
     + ii. eauto with mem xomega.
     + i. r.
@@ -552,9 +651,12 @@ Qed.
 Inductive sim_skenv_inj (sm: SimMem.t) (__noname__: unit) (skenv_src skenv_tgt: SkEnv.t): Prop :=
 | sim_skenv_inj_intro
     (INJECT: skenv_inject skenv_src sm.(inj))
-    (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm.(src_parent_nb))
-    (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(tgt_parent_nb))
+    (* NOW BELOW IS DERIVABLE FROM WF *)
+    (* (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm.(src_parent_nb)) *)
+    (* (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(tgt_parent_nb)) *)
     (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
+    (NBSRC: skenv_src.(Genv.genv_next) = sm.(src_ge_nb))
+    (NBTGT: skenv_tgt.(Genv.genv_next) = sm.(tgt_ge_nb))
 .
 
 Section REVIVE.
@@ -603,14 +705,14 @@ Qed.
 Next Obligation.
   exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
   eexists. eexists (mk m_src m_src (Mem.flat_inj m_src.(Mem.nextblock))
-                       bot2 bot2 m_src.(Mem.nextblock) m_src.(Mem.nextblock)). ss.
+                       bot2 bot2 m_src.(Mem.nextblock) m_src.(Mem.nextblock) m_src.(Mem.nextblock) m_src.(Mem.nextblock)). ss.
   esplits; ss; eauto.
   - econs; ss; eauto.
     + econs; eauto; ii; ss.
       * unfold Mem.flat_inj in *. erewrite ! Genv.init_mem_genv_next in *; eauto. des_ifs.
       * unfold Mem.flat_inj in *. erewrite ! Genv.init_mem_genv_next in *; eauto. des_ifs.
-    + ss. erewrite ! Genv.init_mem_genv_next; eauto. reflexivity.
-    + ss. erewrite ! Genv.init_mem_genv_next; eauto. reflexivity.
+    + ss. erewrite ! Genv.init_mem_genv_next; eauto.
+    + ss. erewrite ! Genv.init_mem_genv_next; eauto.
   - econs; ss; try xomega; ii; des; ss; eauto.
     eapply Genv.initmem_inject; eauto.
     u in *. eauto.
@@ -630,15 +732,17 @@ Next Obligation.
     eapply IMAGE; eauto.
     erewrite frozen_preserves_tgt; eauto.
     eapply Plt_Ple_trans; eauto.
+    rewrite <- NBTGT.
+    rr in SIMSKENV0. clarify. refl.
   - inv MLE. eauto with congruence.
   - inv MLE. eauto with congruence.
 Qed.
-Next Obligation.
-  inv MWF. inv SIMSKENV.
-  econs; eauto.
-  - etransitivity; try apply SRCLE; eauto.
-  - etransitivity; try apply TGTLE; eauto.
-Qed.
+(* Next Obligation. *)
+(*   inv MWF. inv SIMSKENV. *)
+(*   econs; eauto. *)
+(*   - etransitivity; try apply SRCLE; eauto. *)
+(*   - etransitivity; try apply TGTLE; eauto. *)
+(* Qed. *)
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_proj_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
@@ -691,17 +795,37 @@ Next Obligation.
   - instantiate (1:= Retv.mk _ _); ss.
     eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV.
-  - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
-  - econs; ss; eauto.
+  - instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs; ss; eauto.
+  - assert(FROZEN: frozen inj f' src_parent_nb tgt_parent_nb).
+    { + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto.
+      i; des. esplits; xomega. }
+    econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+      eapply SRCEXT in H6. unfold src_private in *. ss. des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
-    + eapply inject_separated_frozen; eauto.
+      eapply TGTEXT in H6. unfold tgt_private in *. ss. des; ss.
+    + eapply frozen_shortened; et.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
   - apply inject_separated_frozen in H5.
     econs; ss.
-    + eapply after_private_src; ss; eauto.
-    + eapply after_private_tgt; ss; eauto.
+    (* + eapply after_private_src; ss; eauto. *)
+    (* + eapply after_private_tgt; ss; eauto. *)
+    + etrans; eauto.
+      unfold src_private. ss. ii. des. esplits; eauto.
+      * rr. rr in PR. destruct (f' x0) eqn:T; ss. destruct p; ss.
+        inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
+        unfold Mem.valid_block in *. xomega.
+      * r. eapply Mem.valid_block_unchanged_on; et.
+    + etrans; eauto.
+      unfold tgt_private. ss. ii. des. esplits; eauto.
+      * rr. rr in PR. ii. destruct (inj b0) eqn:T; ss.
+        -- destruct p; ss. exploit H4; eauto. i; clarify.
+           eapply PR; et. eapply external_call_max_perm; et.
+           eapply Mem.valid_block_inject_1; try apply T; et.
+        -- inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
+           unfold Mem.valid_block in *. xomega.
+      * r. eapply Mem.valid_block_unchanged_on; et.
     + inv H2. xomega.
     + inv H3. xomega.
 Qed.
@@ -770,6 +894,7 @@ Proof.
     + eapply Mem.unchanged_on_implies.
       { eapply assign_junk_blocks_unchanged_on; et. }
       ii. ss.
+    + econs; eauto. ii. des. des_ifs.
     + econs; eauto. ii. des. des_ifs.
     + i. rewrite assign_junk_blocks_perm. ss.
   - clarify. clear - n. unfold tgt_private. ss. ii. des. esplits; et.
@@ -867,9 +992,8 @@ Proof.
     + clarify. eapply Mem.unchanged_on_implies.
       { eapply assign_junk_blocks_unchanged_on; et. }
       ii. ss.
-    + econs; eauto. ii. des. des_ifs. bsimpl. des. des_sumbool.
-      inv MWF.
-      esplits; eauto with xomega.
+    + econs; eauto. ii. des. des_ifs. bsimpl. des. des_sumbool. inv MWF. esplits; eauto with xomega.
+    + econs; eauto. ii. des. des_ifs. bsimpl. des. des_sumbool. inv MWF. esplits; eauto with xomega.
     + i. rewrite assign_junk_blocks_perm. ss.
     + i. clarify. rewrite assign_junk_blocks_perm. ss.
   - ss. repeat (apply func_ext1; i). apply AxiomsC.prop_ext.

@@ -2,8 +2,9 @@ Require Import CoqlibC.
 Require Import SmallstepC.
 Require Import Simulation.
 Require Import ModSem AsmregsC GlobalenvsC MemoryC ASTC.
-Require Import Skeleton SimModSem SimMem SimSymb.
+Require Import Skeleton SimModSem SimMemLift SimSymb.
 Require Import Sound Preservation.
+Require Import ModSemProps.
 Require MatchSimModSemExcl.
 
 Set Implicit Arguments.
@@ -15,6 +16,7 @@ Set Implicit Arguments.
 Section MATCHSIMFORWARD.
 
   Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+  Context {SML: SimMemLift.class SM}.
 
   Variable msp: ModSemPair.t.
   Variable index: Type.
@@ -122,7 +124,7 @@ Section MATCHSIMFORWARD.
       (MLE: SimMem.le sm0 sm_arg)
       (* (MWF: SimMem.wf sm_arg) *)
       sm_ret
-      (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
+      (MLE: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
       (MWF: SimMem.wf sm_ret)
       retv_src retv_tgt
       (SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret)
@@ -134,15 +136,15 @@ Section MATCHSIMFORWARD.
       (HISTORY: match_states_at_helper sm_init idx0 st_src0 st_tgt0 sm0 sm_arg)
 
       (* just helpers *)
-      (MWFAFTR: SimMem.wf (SimMem.unlift sm_arg sm_ret))
-      (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret))
+      (MWFAFTR: SimMem.wf (SimMemLift.unlift sm_arg sm_ret))
+      (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret))
     ,
       exists sm_after idx1 st_tgt1,
         (<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>)
         /\
         (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm_after>>)
         /\
-        (<<MLE: SimMem.le (SimMem.unlift sm_arg sm_ret) sm_after>>)
+        (<<MLE: SimMem.le (SimMemLift.unlift sm_arg sm_ret) sm_after>>)
   .
 
   Hypothesis FINALFSIM: forall

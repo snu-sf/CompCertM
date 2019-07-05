@@ -11,7 +11,7 @@ Local Open Scope sep_scope.
 (* newly added *)
 Require Export Stackingproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSemExcl.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMemLift AsmregsC MatchSimModSemExcl.
 Require Import Conventions1C.
 Require SimMemInjC.
 Require Import AxiomsC.
@@ -634,9 +634,9 @@ Lemma external_call_parallel_rule_simmem
       (MWF2: SimMem.wf sm_after)
       (MWFAFTR : SimMem.wf (SimMemInj.unlift' sm_arg sm_ret))
       (MLE: SimMem.le sm_at sm_arg)
-      (MLE0: SimMem.le (SimMem.lift sm_arg) sm_ret)
-      (MLE1: SimMem.le (SimMem.unlift sm_at sm_ret) sm_after)
-      (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret))
+      (MLE0: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
+      (MLE1: SimMem.le (SimMemLift.unlift sm_at sm_ret) sm_after)
+      (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret))
       (PRIV0: sm_at.(SimMemInj.tgt_private) = sm_arg.(SimMemInj.tgt_private))
       (PRIV1: sm_ret.(SimMemInj.tgt_private) = sm_after.(SimMemInj.tgt_private))
       (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg))
@@ -1173,6 +1173,8 @@ Proof.
   - eapply wt_state_local_preservation; eauto.
     eapply wt_prog; eauto.
   - inv FOOT. inv MLEEXCL. rewrite RSP in *. clarify. des. clarify. eapply SimMemInjC.foot_excl; et.
+  - inv EXCL. inv MLEEXCL. inv MWF. econs; et.
+    + eapply SimMemInj.frozen_shortened; et.
   - (* init bsim *)
     { inv INITTGT. inv STORE. folder. inv SIMARGS. ss.
       exploit functions_translated_inject; eauto.
@@ -1332,7 +1334,8 @@ Proof.
               eapply WFPARAM in H. eauto. ss. unfold Ptrofs.max_unsigned in H. red in H. omega. }
             { rewrite <- SG. ss. rewrite <- MEMSRC in *. eauto. }
             { rewrite DEF, SM. s. f_equal; eauto. }
-            { inv SIMSKENV. ss. inv SIMSKE. ss. etrans; et. inv MWF0. ss. }
+            { inv SIMSKENV. ss. inv SIMSKE. ss.
+              - etrans; try apply MWF0. ss. etrans; try apply MWF. rewrite NBTGT. xomega. }
             intro SEP.
             eapply dummy_frame_contents_incr; try apply MLE0; eauto. eapply dummy_frame_contents_incr; try apply MLE; eauto.
             subst; ss.
@@ -1486,7 +1489,7 @@ Proof.
     + econs; et.
     + econs; eauto.
       * rewrite MEMTGT. inv MWFAFTR. ss. etrans; eauto.
-        inv MLE. rewrite <- TGTPARENTEQNB. inv SIMSKENV. inv SIMSKELINK. ss.
+        inv MLE. rewrite <- TGTPARENTEQNB. inv SIMSKENV. inv SIMSKELINK. ss. rewrite NBTGT. congruence.
       * psimpl. zsimpl. rp; eauto.
     + econs; ss; eauto with congruence; cycle 1.
       { clear - MLE2 GOOD DUMMY STACKS. destruct stack; ss; des_ifs; ss.
@@ -1527,8 +1530,8 @@ Proof.
         { rewrite <- MINJ. clear - SIMSKENV MLE2.
           i. inv SIMSKENV. ss. inv MLE2. clear MAXSRC MAXTGT. destruct (SimMemInj.inj sm0 b1) eqn:T; ss.
           - destruct p. exploit INCR; et. i; des. clarify.
-          - inv FROZEN.
-            exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. inv SIMSKELINK. inv INJECT. inv SIMSKENV. xomega.
+          - inv FROZENLO. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. inv SIMSKELINK. inv INJECT.
+            inv SIMSKENV. rewrite <- NBTGT in *. xomega.
         }
         eapply match_stacks_le; try apply STACKS; et.
         { intros ? ? ? VALID0 MAP0. rewrite MINJ in *.

@@ -113,8 +113,11 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
                         (<<SIM: def_src = def_tgt>>))
     (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
     (PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public))
-    (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb))
-    (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb))
+    (* NOW BELOW IS DERIVABLE FROM WF *)
+    (* (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb)) *)
+    (* (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb)) *)
+    (NBSRC: skenv_src.(Genv.genv_next) = sm0.(src_ge_nb))
+    (NBTGT: skenv_tgt.(Genv.genv_next) = sm0.(tgt_ge_nb))
 .
 
 Theorem sim_skenv_symbols_inject
@@ -215,8 +218,10 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
     (<<PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss>>)
     /\
     (<<PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public)>>)
-    /\ (<<BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb)>>)
-    /\ (<<BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb)>>)
+    (* /\ (<<BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(src_parent_nb)>>) *)
+    (* /\ (<<BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(tgt_parent_nb)>>) *)
+    /\ (<<NBSRC: skenv_src.(Genv.genv_next) = sm0.(src_ge_nb)>>)
+    /\ (<<NBTGT: skenv_tgt.(Genv.genv_next) = sm0.(tgt_ge_nb)>>)
 .
 
 Theorem sim_skenv_splittable_spec
@@ -360,7 +365,9 @@ Lemma init_meminj_simskenv
       (LOADMEMSRC: Sk.load_mem sk_src = Some m_src)
       (LOADMEMTGT: Sk.load_mem sk_tgt = Some m_tgt)
       (SIMSK: sim_sk ss sk_src sk_tgt)
-  : sim_skenv (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt))
+  : sim_skenv (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt)
+                  (Mem.nextblock m_src) (Mem.nextblock m_tgt)
+              )
               ss (Sk.load_skenv sk_src) (Sk.load_skenv sk_tgt).
 Proof.
   econs; ss; i.
@@ -398,8 +405,10 @@ Proof.
   - ii. inv SIMSK. apply CLOSED in H. unfold privs in *. apply andb_true_iff in H. des.
     apply negb_true_iff in H0. unfold Sk.load_skenv in *. rewrite Genv.globalenv_public in PR. des_sumbool. ss.
   - inv SIMSK. unfold Sk.load_skenv. do 2 rewrite Genv.globalenv_public. ss.
-  - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
-  - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
+  (* - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega. *)
+  (* - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega. *)
+  - inv SIMSK. erewrite Genv.init_mem_genv_next; et.
+  - inv SIMSK. erewrite Genv.init_mem_genv_next; et.
 Qed.
 
 Lemma init_meminj_invert_strong
@@ -635,7 +644,7 @@ Qed.
 Next Obligation.
   exploit init_mem_exists; et. intros LOADMEMTGT; des.
   exploit init_meminj_simskenv; try eapply SIMSK; et. intros SIMSKENV.
-  eexists m_tgt. exists (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt)).
+  eexists m_tgt. exists (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt) (Mem.nextblock m_src) (Mem.nextblock m_tgt)).
   esplits; et.
   { econs; ss; try xomega. constructor; intros.
     { intros; constructor; intros.
@@ -710,7 +719,7 @@ Next Obligation.
   inv MLE. inv SIMSKENV.
   assert (SAME: forall b b' delta, Plt b (Genv.genv_next skenv_src) ->
                                    inj sm1 b = Some(b', delta) -> inj sm0 b = Some(b', delta)).
-  { i. erewrite frozen_preserves_src; eauto. i. xomega. }
+  { i. erewrite frozen_preserves_src; eauto. congruence. }
   apply sim_skenv_splittable_spec.
   rr.
   dsplits; eauto; try congruence; ii.
@@ -724,18 +733,44 @@ Next Obligation.
     exfalso.
     inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
     exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac.
-    exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT BOUNDTGT. xomega.
+    exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT NBTGT. rewrite NBTGT in *. xomega.
   - i. eapply SIMDEFINV; eauto.
     destruct (inj sm0 blk_src) as [[b1 delta1] | ] eqn: J.
     + exploit INCR; eauto. congruence.
     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
-      exploit Genv.genv_defs_range; eauto. xomega.
+      exploit Genv.genv_defs_range; eauto. i. rewrite NBTGT in *. xomega.
   (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *)
 Qed.
-Next Obligation.
-  inv SIMSKENV. inv MWF.
-  econs; eauto; ss; xomega.
-Qed.
+(* Next Obligation. *)
+(*   inv SIMSKENV. inv MWF. *)
+(*   econs; eauto; ss; xomega. *)
+(* Qed. *)
+(* Next Obligation. *)
+(*   inv MLE. inv SIMSKENV. *)
+(*   assert (SAME: forall b b' delta, Plt b (Genv.genv_next skenv_src) -> *)
+(*                                    inj sm1 b = Some(b', delta) -> inj sm0 b = Some(b', delta)). *)
+(*   { i. erewrite frozen_preserves_src; eauto. i. xomega. } *)
+(*   apply sim_skenv_splittable_spec. *)
+(*   rr. *)
+(*   dsplits; eauto; try congruence; ii. *)
+(*   - i. eapply SIMSYMB1; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto. *)
+(*   - i. exploit SIMSYMB2; eauto. i; des. eexists. splits; eauto. *)
+(*   - i. exploit SIMSYMB3; eauto. i; des. eexists. splits; eauto. *)
+(*   - i. exploit SIMDEF; eauto. eapply SAME; try eapply Genv.genv_defs_range; eauto. *)
+(*   - i. eapply DISJ; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto. *)
+(*     destruct (inj sm0 blk_src1) eqn:T; ss. *)
+(*     { destruct p; ss. exploit INCR; et. i; clarify. } *)
+(*     exfalso. *)
+(*     inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. *)
+(*     exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac. *)
+(*     exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT BOUNDTGT. xomega. *)
+(*   - i. eapply SIMDEFINV; eauto. *)
+(*     destruct (inj sm0 blk_src) as [[b1 delta1] | ] eqn: J. *)
+(*     + exploit INCR; eauto. congruence. *)
+(*     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. *)
+(*       exploit Genv.genv_defs_range; eauto. xomega. *)
+(*   (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *) *)
+(* Qed. *)
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
@@ -1025,17 +1060,33 @@ Next Obligation.
   do 2 eexists.
   dsplits; eauto.
   - instantiate (1:= Retv.mk _ _); ss. eauto.
-  - instantiate (1:= mk _ _ _ _ _ _ _). econs; ss; eauto.
+  - instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs; ss; eauto.
   - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+      eapply SRCEXT in H6. unfold src_private in *. ss. des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
-    + eapply inject_separated_frozen; eauto.
+      eapply TGTEXT in H6. unfold tgt_private in *. ss. des; ss.
+    + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; xomega.
+    + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; xomega.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
   - apply inject_separated_frozen in H5.
     econs; ss.
-    + eapply after_private_src; ss; eauto.
-    + eapply after_private_tgt; ss; eauto.
+    + etrans; eauto.
+      unfold src_private. ss. ii. des. esplits; eauto.
+      * rr. rr in PR. destruct (f' x0) eqn:T; ss. destruct p; ss.
+        inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
+        unfold Mem.valid_block in *. xomega.
+      * r. eapply Mem.valid_block_unchanged_on; et.
+    + etrans; eauto.
+      unfold tgt_private. ss. ii. des. esplits; eauto.
+      * rr. rr in PR. ii. destruct (inj b0) eqn:T; ss.
+        -- destruct p; ss. exploit H4; eauto. i; clarify.
+           eapply PR; et. eapply external_call_max_perm; et.
+           eapply Mem.valid_block_inject_1; try apply T; et.
+        -- inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
+           unfold Mem.valid_block in *. xomega.
+      * r. eapply Mem.valid_block_unchanged_on; et.
     + inv H2. xomega.
     + inv H3. xomega.
 Qed.

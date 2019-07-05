@@ -29,32 +29,36 @@ Module SimMem.
     tgt: t -> mem;
     wf: t -> Prop;
     le: t -> t -> Prop;
-    lift: t -> t;
+    lepriv: t -> t -> Prop;
     (* Time order: unlift second arg into first arg. *)
     (* TODO: reorder arg? from->to? *)
-    unlift: t -> t -> t;
 
     le_PreOrder :> PreOrder le;
 
+    pub_priv: forall sm0 sm1, le sm0 sm1 -> lepriv sm0 sm1;
     (* lift_le: forall mrel, le mrel (lift mrel); *)
-    lift_wf: forall mrel, wf mrel -> wf (lift mrel);
-    lift_src: forall mrel, (lift mrel).(src) = mrel.(src);
-    lift_tgt: forall mrel, (lift mrel).(tgt) = mrel.(tgt);
-    unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(src) = mrel1.(src);
-    unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(tgt) = mrel1.(tgt);
-    lift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> wf mrel0 -> le mrel0 (unlift mrel0 mrel1);
-    unlift_wf: forall mrel0 mrel1,
-        wf mrel0 -> wf mrel1 -> le (lift mrel0) mrel1 -> wf (unlift mrel0 mrel1);
+    (* lift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> wf mrel0 -> le mrel0 (unlift mrel0 mrel1); *)
 
     sim_val: t -> val -> val -> Prop;
     sim_val_list: t -> list val -> list val -> Prop;
-    le_sim_val: forall mrel0 mrel1 (MLE: le mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
-    lift_sim_val: forall mrel, sim_val mrel <2= sim_val (lift mrel);
-    unlift_sim_val: forall sm0 sm1, sim_val sm1 <2= sim_val (unlift sm0 sm1);
+    lepriv_sim_val: forall mrel0 mrel1 (MLE: lepriv mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
     sim_val_list_spec: forall sm0, (List.Forall2 sm0.(sim_val) = sm0.(sim_val_list));
     sim_val_int: forall sm0 v_src v_tgt, sim_val sm0 v_src v_tgt -> forall i, v_src = Vint i -> v_tgt = Vint i;
   }
   .
+
+  Lemma le_sim_val
+        `{SM: class}
+        mrel0 mrel1
+        (MWF: SimMem.wf mrel0)
+        (MLE: le mrel0 mrel1)
+    :
+      sim_val mrel0 <2= sim_val mrel1
+  .
+  Proof.
+    eapply lepriv_sim_val; et.
+    eapply pub_priv; et.
+  Qed.
 
   Lemma sim_val_list_length
         `{SM: class} (sm0: t)
@@ -73,9 +77,9 @@ Module SimMem.
     sm0.(sim_val) (Vptr blk_src Ptrofs.zero) (Vptr blk_tgt Ptrofs.zero)
   .
 
-  Definition lifted `{SM: class} (sm0 sm1: t): Prop := SimMem.lift sm0 = sm1 /\ SimMem.wf sm0.
+  (* Definition lifted `{SM: class} (sm0 sm1: t): Prop := SimMem.lift sm0 = sm1 /\ SimMem.wf sm0. *)
 
-  Definition future `{SM: class}: t -> t -> Prop := rtc (le \2/ lifted).
+  Definition future `{SM: class}: t -> t -> Prop := rtc (lepriv \2/ le).
 
   (* Definition sim_regset `{SM: class} (sm0: t) (rs_src rs_tgt: regset): Prop := *)
   (*   forall pr, sm0.(sim_val) (rs_src pr) (rs_tgt pr) *)
@@ -96,36 +100,25 @@ Module SimMem.
       (MEMTGT: retv_tgt.(Retv.m) = sm0.(SimMem.tgt))
   .
 
-  Lemma sim_val_list_lift
+  Lemma sim_val_list_lepriv
         `{SM: class}
-        sm0 vs_src vs_tgt
+        sm0 sm1 vs_src vs_tgt
+        (LEPRIV: SimMem.lepriv sm0 sm1)
         (SIMVS: SimMem.sim_val_list sm0 vs_src vs_tgt)
     :
-      <<SIMVS: SimMem.sim_val_list (SimMem.lift sm0) vs_src vs_tgt>>
+      <<SIMVS: SimMem.sim_val_list sm1 vs_src vs_tgt>>
   .
   Proof.
     rewrite <- sim_val_list_spec in *.
     induction SIMVS; ii; ss.
     econs; eauto.
-    eapply lift_sim_val; et.
-  Qed.
-
-  Lemma sim_retv_unlift
-        `{SM: class}
-        retv_src retv_tgt sm0 sm1
-        (SIM: sim_retv retv_src retv_tgt sm1)
-    :
-      <<SIM: sim_retv retv_src retv_tgt (unlift sm0 sm1)>>
-  .
-  Proof.
-    inv SIM. econs; eauto.
-    - eapply unlift_sim_val; et.
-    - rewrite unlift_src. ss.
-    - rewrite unlift_tgt. ss.
+    eapply lepriv_sim_val; et.
   Qed.
 
 End SimMem.
 
-Hint Unfold SimMem.future SimMem.lifted.
+Hint Unfold SimMem.future.
+
+Hint Resolve SimMem.pub_priv.
 
 

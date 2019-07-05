@@ -377,7 +377,7 @@ Lemma init_meminj_simskenv
       (LOADMEMTGT: Sk.load_mem sk_tgt = Some m_tgt)
       (SIMSK: sim_sk ss sk_src sk_tgt)
   : sim_skenv
-      (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt))
+      (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt) (Mem.nextblock m_src) (Mem.nextblock m_tgt))
           (fun blk => forall ofs, loc_unmapped (init_meminj sk_src sk_tgt) blk ofs /\ Mem.valid_block m_src blk) bot1)
       ss (Sk.load_skenv sk_src) (Sk.load_skenv sk_tgt).
 Proof.
@@ -681,7 +681,7 @@ Next Obligation.
   exploit init_mem_exists; et. intros LOADMEMTGT; des.
   exploit init_meminj_simskenv; try eapply SIMSK; et. intros SIMSKENV.
   eexists m_tgt.
-  exists (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt))
+  exists (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt) (Mem.nextblock m_src) (Mem.nextblock m_tgt))
              (fun blk => forall ofs, loc_unmapped (init_meminj sk_src sk_tgt) blk ofs /\ Mem.valid_block m_src blk) bot1).
   esplits; et. eauto.
   { econs; ss; cycle 1.

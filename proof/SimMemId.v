@@ -14,7 +14,7 @@ Require Import Integers.
 Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.
 Require SimSymbId.
-Require Import SimMem.
+Require Import SimMemLift.
 
 Set Implicit Arguments.
 
@@ -33,8 +33,7 @@ Program Instance SimMemId : SimMem.class :=
   tgt := tgt;
   wf := fun (rel: t') => rel.(src) = rel.(tgt);
   le := fun (mrel0 mrel1: t') => True;
-  lift := id;
-  unlift := fun _ => id;
+  lepriv := top2;
   sim_val := fun (_: t') => eq;
   sim_val_list := fun (_: t') => eq;
 }.
@@ -65,7 +64,11 @@ Qed.
 
 
 
-
+Program Instance SimMemIdLift: SimMemLift.class SimMemId :=
+{
+  lift := id;
+  unlift := fun _ => id;
+}.
 
 
 

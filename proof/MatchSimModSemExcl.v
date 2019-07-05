@@ -2,8 +2,8 @@ Require Import CoqlibC.
 Require Import SmallstepC.
 Require Import Simulation.
 Require Import ModSem AsmregsC GlobalenvsC MemoryC ASTC.
-Require Import Skeleton SimModSem SimMem SimSymb.
-Require Import Sound Preservation.
+Require Import Skeleton SimModSemLift SimMem SimMemLift SimSymb.
+Require Import Sound Preservation ModSemProps.
 
 Set Implicit Arguments.
 
@@ -14,6 +14,7 @@ Set Implicit Arguments.
 Section MATCHSIMFORWARD.
 
   Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+  Context {SML: SimMemLift.class SM}.
 
   Variable msp: ModSemPair.t.
   Variable index: Type.
@@ -56,11 +57,20 @@ Section MATCHSIMFORWARD.
 
   Hypothesis FOOTEXCL: forall
         st_at_src st_at_tgt sm0 sm1 sm2
+        (MWF: SimMem.wf sm0)
         (FOOT: has_footprint st_at_src st_at_tgt sm0)
         (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
         (MLE: SimMem.le sm0 sm1)
       ,
         <<MLE: SimMem.le sm0 sm2>>
+  .
+
+  Hypothesis (EXCLPRIV: forall
+                 st_init_src st_init_tgt sm0 sm1
+                 (MWF: SimMem.wf sm0)
+                 (EXCL: mle_excl st_init_src st_init_tgt sm0 sm1)
+               ,
+                 <<LE: SimMem.lepriv sm0 sm1>>)
   .
 
   Inductive match_states_at_helper
@@ -150,7 +160,7 @@ Section MATCHSIMFORWARD.
       (MLE: SimMem.le sm0 sm_arg)
       (* (MWF: SimMem.wf sm_arg) *)
       sm_ret
-      (MLE: SimMem.le (SimMem.lift sm_arg) sm_ret)
+      (MLE: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
       (MWF: SimMem.wf sm_ret)
       retv_src retv_tgt
       (SIMRET: SimMem.sim_retv retv_src retv_tgt sm_ret)
@@ -162,11 +172,11 @@ Section MATCHSIMFORWARD.
       (HISTORY: match_states_at_helper sm_init idx0 st_src0 st_tgt0 sm0 sm_arg)
 
       (* just helpers *)
-      (MWFAFTR: SimMem.wf (SimMem.unlift sm_arg sm_ret))
-      (MLEAFTR: SimMem.le sm_arg (SimMem.unlift sm_arg sm_ret))
+      (MWFAFTR: SimMem.wf (SimMemLift.unlift sm_arg sm_ret))
+      (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret))
     ,
       exists sm_after idx1 st_tgt1,
-        (<<MLE: mle_excl st_src0 st_tgt0 (SimMem.unlift sm_arg sm_ret) sm_after>>)
+        (<<MLE: mle_excl st_src0 st_tgt0 (SimMemLift.unlift sm_arg sm_ret) sm_after>>)
         /\
         forall (MLE: SimMem.le sm0 sm_after) (* helper *),
           ((<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>)
@@ -253,8 +263,9 @@ Section MATCHSIMFORWARD.
         (* su0 *)
     :
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su0 m_init, sound_states si su0 m_init st)
-                     sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
+      <<LXSIM: lxsimL ms_src ms_tgt (fun st => forall si, exists su0 m_init, sound_states si su0 m_init st)
+                      has_footprint mle_excl
+                      sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>
   .
   Proof.
     (* move su0 at top. *)
@@ -275,11 +286,11 @@ Section MATCHSIMFORWARD.
         exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
         { ii. eapply SUSTAR. eapply star_refl. }
         { econs; eauto. }
-        { eapply SimMem.unlift_wf; eauto. }
-        { eapply SimMem.lift_spec; eauto. }
+        { eapply SimMemLift.unlift_wf; eauto. }
+        { eapply SimMemLift.lift_spec; eauto. }
         i; des.
         assert(MLE3: SimMem.le sm0 sm_after).
-        { eapply FOOTEXCL; et. etrans; et. eapply SimMem.lift_spec; et. }
+        { eapply FOOTEXCL; et. etrans; et. eapply SimMemLift.lift_spec; et. }
         spc H1. des.
         esplits; eauto.
         right.
@@ -337,6 +348,7 @@ Section MATCHSIMFORWARD.
       <<SIM: msp.(ModSemPair.sim)>>
   .
   Proof.
+    eapply sim_mod_sem_implies; et.
     inv INHAB.
     econs; eauto.
     { i. eapply local_preservation_noguarantee_weak; eauto. }

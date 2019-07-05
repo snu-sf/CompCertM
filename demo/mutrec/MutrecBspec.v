@@ -6,7 +6,8 @@ Require Import SmallstepC.
 Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require Import AsmC.
-Require Import MutrecHeader MutrecB.
+Require Import MutrecHeader.
+Require Import MutrecB.
 
 Set Implicit Arguments.
 
@@ -17,20 +18,24 @@ Section MODSEM.
   Variable skenv_link: SkEnv.t.
   Variable p: unit.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) prog.(Sk.of_program fn_sig).
-  (* Let ge: genv := skenv.(SkEnv.revive) prog. *)
+  (* Let ge: genv := Build_genv (skenv.(SkEnv.revive) prog) prog.(prog_comp_env). *)
 
   Inductive state: Type :=
   | Callstate
       (i: int)
       (m: mem)
-  | Returnstate
+  | Interstate
       (i: int)
+      (m: mem)
+  | Returnstate
+      (s: int)
       (m: mem)
   .
 
   Definition get_mem (st: state): mem :=
     match st with
     | Callstate _ m => m
+    | Interstate _ m => m
     | Returnstate _ m => m
     end
   .
@@ -40,7 +45,9 @@ Section MODSEM.
       i m blk
       (SYMB: Genv.find_symbol skenv g_id = Some blk)
       (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero)
-      (* (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal func_g)) *)
+      (RANGE: 0 <= i.(Int.intval) < MAX)
+      (* (DEF: Genv.find_funct skenv args.(Args.fptr) = *)
+      (*         Some (AST.Internal (mksignature [AST.Tint] (Some AST.Tint) cc_default))) *)
       (VS: args.(Args.vs) = [Vint i])
       (M: args.(Args.m) = m)
     :
@@ -49,11 +56,10 @@ Section MODSEM.
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
-      f_fptr i m
-      (FINDG: Genv.find_symbol skenv f_id = Some f_fptr)
-      (NZERO: i.(Int.intval) <> 0%Z)
+      g_fptr i m
+      (FINDG: Genv.find_symbol skenv f_id = Some g_fptr)
     :
-      at_external (Callstate i m) (Args.mk (Vptr f_fptr Ptrofs.zero) [Vint (Int.sub i (Int.repr 1))] m)
+      at_external (Interstate i m) (Args.mk (Vptr g_fptr Ptrofs.zero) [Vint (Int.sub i (Int.repr 1))] m)
   .
 
   Inductive after_external: state -> Retv.t -> state -> Prop :=
@@ -63,22 +69,26 @@ Section MODSEM.
       (INT: retv.(Retv.v) = Vint i_after)
       (SUM: i_after = sum (Int.sub i Int.one))
     :
-      after_external (Callstate i m) retv (Returnstate (sum i) retv.(Retv.m))
+      after_external (Interstate i m) retv (Returnstate (sum i) retv.(Retv.m))
   .
 
   Inductive step (se: Senv.t) (ge: SkEnv.t): state -> trace -> state -> Prop :=
-  | step_zero
+  | step_sum
       i m
-      (ZERO: i.(Int.intval) = 0%Z)
     :
-      step se ge (Callstate i m) E0 (Returnstate i m)
+      step se ge (Callstate i m) E0 (Returnstate (sum i) m)
+  | step_call
+      i m
+      (NZERO: i.(Int.intval) <> 0%Z)
+    :
+      step se ge (Callstate i m) E0 (Interstate i m)
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_return
-      i m
+      s m
     :
-      final_frame (Returnstate i m) (Retv.mk (Vint i) m)
+      final_frame (Returnstate s m) (Retv.mk (Vint s) m)
   .
 
   Program Definition modsem: ModSem.t :=
@@ -90,7 +100,7 @@ Section MODSEM.
       ModSem.after_external := after_external;
       ModSem.globalenv := skenv;
       ModSem.skenv := skenv;
-      ModSem.skenv_link := skenv_link; 
+      ModSem.skenv_link := skenv_link;
     |}
   .
 
@@ -98,3 +108,39 @@ End MODSEM.
 
 Program Definition module: Mod.t :=
   {| Mod.data := tt; Mod.get_sk := fun _ => Sk.of_program fn_sig prog; Mod.get_modsem := modsem; |}.
+
+Lemma find_symbol_find_funct_ptr
+      skenv_link blk
+      ske
+      (WF: SkEnv.wf skenv_link)
+      (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig MutrecB.prog))
+      (SKE: ske = (SkEnv.project skenv_link (Sk.of_program fn_sig MutrecB.prog)))
+  :
+    (<<SYMB: Genv.find_symbol ske g_id = Some blk>>) <->
+    (<<FINDF: exists if_sig, Genv.find_funct_ptr ske blk = Some (AST.Internal if_sig)>>)
+.
+Proof.
+  clarify.
+  hexploit (SkEnv.project_impl_spec INCL); eauto. intro PROJ.
+  exploit SkEnv.project_spec_preserves_wf; eauto. intro WFSMALL.
+  inv INCL. specialize (DEFS g_id (Gfun(AST.Internal fg_sig))). exploit DEFS; eauto. i; des.
+  inv MATCH. inv H0.
+  inv PROJ. exploit (SYMBKEEP g_id); eauto. intro T; des. rewrite T in *.
+  exploit DEFKEEP; eauto.
+  { eapply Genv.find_invert_symbol; et. }
+  { ss. }
+  i; des.
+  inv LO. inv H1; ss. clarify.
+  split; ii; ss; des; clarify.
+  - unfold Genv.find_funct_ptr. rewrite DEFSMALL. ss. esplits; eauto.
+  - unfold Genv.find_funct_ptr in *. des_ifs.
+    clear_tac.
+    assert(blk = blk0).
+    {
+      clear - DEFSMALL Heq.
+      uge. ss. rewrite MapsC.PTree_filter_map_spec in *. uo. des_ifs.
+      apply_all_once in_prog_defmap. ss. unfold update_snd in *. ss. des; clarify.
+      apply_all_once Genv.invert_find_symbol. clarify.
+    }
+    clarify.
+Qed.

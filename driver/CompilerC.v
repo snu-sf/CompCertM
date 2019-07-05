@@ -734,6 +734,20 @@ Section Stacking.
   Hypothesis CSIM: Forall ModPair.sim cps.
   Hypothesis ASIM: Forall ModPair.sim aps.
 
+  Lemma return_address_offset_deterministic:
+    forall f c ofs ofs',
+      Asmgenproof0.return_address_offset f c ofs ->
+      Asmgenproof0.return_address_offset f c ofs' ->
+      ofs = ofs'.
+  Proof.
+    i. inv H; inv H0.
+    rewrite TF in TF0. inv TF0. rewrite TC in TC0. inv TC0.
+    eapply Asmgenproof0.code_tail_unique in TL; eauto.
+    assert(Integers.Ptrofs.eq ofs ofs' = true).
+    unfold Integers.Ptrofs.eq. rewrite TL. rewrite zeq_true. auto.
+    exploit Integers.Ptrofs.eq_spec. rewrite H. auto.
+  Qed.
+
   Lemma Stacking_correct
         src tgt
         (TRANSF: Stacking.transf_program src = OK tgt)
@@ -746,7 +760,7 @@ Section Stacking.
     lift.
     eapply StackingproofC.sim_mod; eauto.
     { eapply Asmgenproof.return_address_exists; eauto. }
-    { admit "ez - ask @yonghyunkim. int2ptr repository has the proof (10 LOC?)". }
+    { ii. determ_tac return_address_offset_deterministic. }
     eapply Stackingproof.transf_program_match; eauto.
   Qed.
 
@@ -836,106 +850,16 @@ Ltac find_sim LANG :=
     end
 .
 
-Lemma clightgen_single
-        (src: Csyntax.program)
-        (tgt: Clight.program)
-        (cs: list Csyntax.program)
-        (cls: list Clight.program)
-        (asms: list Asm.program)
-        (TRANSF: SimplExpr.transl_program src = OK tgt)
-  :
-    improves (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms)))
-             (sem ((map CsemC.module cs) ++ [ClightC.module1 tgt] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms)))
-.
-Proof.
-  destruct (classic (forall x (IN: In x ((map CsemC.module cs) ++ [CsemC.module src] ++ (map ClightC.module1 cls) ++ (map AsmC.module asms))), Sk.wf x)) as [WF|NWF]; cycle 1.
-  { eapply sk_nwf_improves; auto. }
-  cbn in *.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.ccc_id cs).
-  { ii. eapply WF. eapply in_or_app. left. eapply in_map. auto. } intro CSID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cls).
-  { ii. eapply WF. eapply in_or_app. right. right.
-    eapply in_or_app. left. eapply in_map. auto. } intro CLSID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms).
-  { ii. eapply WF. eapply in_or_app. right. right.
-    eapply in_or_app. right. eapply in_map. auto. } intro ASMSID; des.
+(** Copied from Compiler.v, but without "SimplLocals.transf_program" **)
+(** SimplLocals translate Clight1 into Clight2 and our source program is Clight2. **)
+(** We chose Clight2 because VST uses Clight2. **)
 
-  etrans; eapply bsim_improves.
-  - rp; [eapply Cstrategy_correct|..]; try refl.
-    + find_sim Csyntax.program.
-    + eapply Forall_app.
-      * find_sim Clight.program.
-      * find_sim Asm.program.
-    + unfold __GUARD__ in *. des. ss.
-      unfold ProgPair.src in *. rewrite map_app.
-      repeat f_equal; eauto.
-  - rp; [eapply SimplExpr_correct|..].
-    + find_sim Csyntax.program.
-    + eapply Forall_app.
-      * find_sim Clight.program.
-      * find_sim Asm.program.
-    + eauto.
-    + unfold __GUARD__ in *. des.
-      unfold ProgPair.src, ProgPair.tgt in *.
-      repeat rewrite map_app. all ltac:(fun H => rewrite H); eauto.
-    + unfold __GUARD__ in *. des.
-      unfold ProgPair.src, ProgPair.tgt in *.
-      repeat rewrite map_app. all ltac:(fun H => rewrite H); eauto.
-Qed.
-
-Lemma clightgen_correct
-        (srcs: list Csyntax.program)
-        (cls tgts: list Clight.program)
-        (hands: list Asm.program)
-        (TR: mmap SimplExpr.transl_program srcs = OK tgts)
-  :
-    improves (sem ((map CsemC.module srcs) ++ (map ClightC.module1 cls) ++ (map AsmC.module hands)))
-             (sem ((map ClightC.module1 tgts) ++ (map ClightC.module1 cls) ++ (map AsmC.module hands)))
-.
-Proof.
-  apply mmap_inversion in TR.
-  apply forall2_eq in TR.
-  generalize dependent hands.
-  remember (length srcs) as len. rename Heqlen into T.
-  generalize dependent srcs.
-  generalize dependent cls.
-  generalize dependent tgts.
-  induction len; i; ss.
-  { destruct srcs; ss. inv TR. refl. }
-
-  destruct (last_opt srcs) eqn:T2; cycle 1.
-  {
-    eapply last_none in T2. clarify.
-  }
-  apply last_some in T2. des. clarify.
-  apply Forall2_app_inv_l in TR. des. clarify. inv TR0. inv H3.
-  rename hds into srcs. rename l1' into tgts.
-  rename p into c_src. rename y into cl_tgt.
-  rewrite ! map_app. ss.
-  etrans.
-  { rp; [eapply clightgen_single with (cs:= srcs) (asms:= hands)|..]; eauto.
-    rewrite app_assoc_reverse. ss.
-  }
-  { rewrite <- ! app_assoc. ss.
-    rewrite app_length in *. ss. rewrite Nat.add_1_r in *. clarify.
-    eapply (IHlen tgts (cl_tgt :: cls) srcs); eauto.
-  }
-Qed.
-
-Lemma compiler_correct_single
-        (src: Csyntax.program)
-        (tgt: Asm.program)
-        (cs: list Csyntax.program)
-        (asms: list Asm.program)
-        (TRANSF: transf_c_program src = OK tgt)
-  :
-    Smallstep.backward_simulation (sem ((map CsemC.module cs) ++ [CsemC.module src] ++ (map AsmC.module asms)))
-                                  (sem ((map CsemC.module cs) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
-.
-Proof.
-  eapply compose_backward_simulation; eauto.
-  idtac "SINGLE EVENTS!!!!".
-Abort.
+Definition transf_clight_program (p: Clight.program) : res Asm.program :=
+  OK p
+   @@ print print_Clight
+  @@@ time "C#minor generation" Cshmgen.transl_program
+  @@@ time "Cminor generation" Cminorgen.transl_program
+  @@@ transf_cminor_program.
 
 Lemma compiler_correct_single
       (src: Clight.program)
@@ -944,11 +868,11 @@ Lemma compiler_correct_single
       (asms: list Asm.program)
       (TRANSF: transf_clight_program src = OK tgt)
   :
-    improves (sem ((map ClightC.module1 cls) ++ [ClightC.module1 src] ++ (map AsmC.module asms)))
-             (sem ((map ClightC.module1 cls) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
+    improves (sem ((map ClightC.module2 cls) ++ [ClightC.module2 src] ++ (map AsmC.module asms)))
+             (sem ((map ClightC.module2 cls) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
 .
 Proof.
-  destruct (classic (forall x (IN: In x ((map ClightC.module1 cls) ++ [ClightC.module1 src] ++ (map AsmC.module asms))), Sk.wf x)) as [WF|NWF]; cycle 1.
+  destruct (classic (forall x (IN: In x ((map ClightC.module2 cls) ++ [ClightC.module2 src] ++ (map AsmC.module asms))), Sk.wf x)) as [WF|NWF]; cycle 1.
   { eapply sk_nwf_improves; auto. }
 
   unfold transf_clight_program in *.
@@ -964,7 +888,7 @@ Proof.
   set (Tunneling.tunnel_program p5) as ptunnel in *.
   set (CleanupLabels.transf_program p4) as pclean in *.
 
-  assert (SRCSWF: forall x, In x cls -> Sk.wf (ClightC.module1 x)).
+  assert (SRCSWF: forall x, In x cls -> Sk.wf (ClightC.module2 x)).
   { ii. eapply WF. eapply in_or_app. left. eapply in_map. auto. }
   assert (ASMSWF: forall x, In x asms -> Sk.wf (AsmC.module x)).
   { ii. eapply WF. eapply in_or_app. right. right. eapply in_map. auto. }
@@ -990,7 +914,7 @@ Proof.
     folder
   .
 
-  next SimplLocals_correct.
+  (* next SimplLocals_correct. *)
   next Cshmgen_correct.
   next Cminorgen_correct.
   next Selection_correct.
@@ -1029,12 +953,12 @@ Note: we can't vertically compose in simulation level, because
 induction: src/tgt length is fixed (we don't do horizontal composition in behavior level)
 **)
 
-Lemma clight_compiler_correct
+Theorem compiler_correct
         (srcs: list Clight.program)
         (tgts hands: list Asm.program)
         (TR: mmap transf_clight_program srcs = OK tgts)
   :
-    improves (sem ((map ClightC.module1 srcs) ++ (map AsmC.module hands)))
+    improves (sem ((map ClightC.module2 srcs) ++ (map AsmC.module hands)))
              (sem ((map AsmC.module tgts) ++ (map AsmC.module hands)))
 .
 Proof.
@@ -1067,24 +991,194 @@ Proof.
   }
 Qed.
 
-Theorem compiler_correct
+(****************************************************************************************)
+(****************************************************************************************)
+(****************************************************************************************)
+
+(** Additionally, we support C as a source language too. **)
+
+Lemma clightgen_correct
+        (srcs: list Csyntax.program)
+        (cls tgts: list Clight.program)
+        (hands: list Asm.program)
+        (* (TR: mmap (fun src => OK src @@@ SimplExpr.transl_program @@@ SimplLocals.transf_program) srcs = OK tgts) *)
+        irs
+        (TR0: mmap (SimplExpr.transl_program) srcs = OK irs)
+        (TR1: mmap (SimplLocals.transf_program) irs = OK tgts)
+  :
+    improves (sem ((map CsemC.module srcs) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands)))
+             (sem ((map ClightC.module2 tgts) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands)))
+.
+Proof.
+  (* apply mmap_inversion in TR. *)
+  (* apply forall2_eq in TR. *)
+  (* unfold apply_partial in *. *)
+  (* assert(TR0: exists irs, mmap (SimplExpr.transl_program) srcs = OK irs /\ mmap (SimplLocals.transf_program) irs = OK tgts). *)
+  (* { ginduction TR; ii; ss. *)
+  (*   { esplits; eauto. } *)
+  (*   des_ifs. exploit IHTR; eauto. i; des. *)
+  (*   eexists (_ :: _). ss. unfold bind. des_ifs_safe. esplits; eauto. des_ifs. *)
+  (* } *)
+  (* clear TR. des. *)
+  apply mmap_inversion in TR0.
+  apply mmap_inversion in TR1.
+  rewrite forall2_eq in *.
+
+  destruct (classic (forall x (IN: In x ((map CsemC.module srcs) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands))), Sk.wf x)) as [WF|NWF]; cycle 1.
+  { eapply sk_nwf_improves; auto. }
+
+  assert (SRCSWF: forall x, In x cls -> Sk.wf (ClightC.module2 x)).
+  { ii. eapply WF. eapply in_or_app. right. eapply in_app_iff. left. rewrite in_map_iff. eauto. }
+  assert (ASMSWF: forall x, In x hands -> Sk.wf (AsmC.module x)).
+  { ii. eapply WF. eapply in_or_app. right. eapply in_app_iff. right. rewrite in_map_iff. eauto. }
+
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_drop cls); auto. intro SRCINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_id cls); auto. intro SRCINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_top cls); auto. intro SRCEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_unreach cls); auto. intro SRCEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cls); auto. intro SRCID; des.
+
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop hands); auto. intro TGTINJDROP; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id hands); auto. intro TGTINJID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_top hands); auto. intro TGTEXTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_unreach hands); auto. intro TGTEXTUNREACH; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id hands); auto. intro TGTID; des.
+
+  unfold __GUARD__ in *. des.
+
+  etrans.
+  { instantiate (1:= (sem ((map (Mod.Atomic.trans <*> CstrategyC.module) srcs) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands)))).
+    eapply bsim_improves.
+    eapply mixed_to_backward_simulation.
+    move srcs at bottom.
+
+    set (map (fun src => @ModPair.mk _ SimMemId.SimSymbId (CsemC.module src)
+                                     (Mod.Atomic.trans (CstrategyC.module src)) tt) srcs) as X.
+    exploit (@adequacy_local _ SimMemId.SimSymbId SoundTop.Top (X ++ pp3 ++ pp8)).
+    { rr.
+      eapply Forall_app; eauto.
+      { subst X. rewrite Forall_forall. ii; ss. rewrite in_map_iff in *. des. clarify.
+        eapply CstrategyC.sim_mod; eauto.
+      }
+      eapply Forall_app; eauto.
+    }
+    intro T. rpapply T; ss.
+    { unfold ProgPair.src in *.
+      rewrite ! map_app. repeat f_equal; try congruence.
+      subst X. rewrite map_map. ss.
+    }
+    { unfold ProgPair.tgt in *.
+      rewrite ! map_app. repeat f_equal; try congruence.
+      subst X. rewrite map_map. ss.
+    }
+  }
+
+  etrans.
+  { instantiate (1:= (sem ((map ClightC.module1 irs) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands)))).
+    eapply bsim_improves.
+    eapply mixed_to_backward_simulation.
+    move srcs at bottom.
+
+    set (zip (fun src tgt => @ModPair.mk _ SimMemId.SimSymbId (Mod.Atomic.trans (CstrategyC.module src))
+                                         (ClightC.module1 tgt) tt) srcs irs) as X.
+    exploit (@adequacy_local _ SimMemId.SimSymbId SoundTop.Top (X ++ pp3 ++ pp8)).
+    { rr.
+      eapply Forall_app; eauto.
+      { subst X. rewrite Forall_forall. ii; ss. apply in_zip_iff in H. des. clarify.
+        eapply SimplExprproofC.sim_mod; eauto.
+        clear - TR0 X Y.
+        ginduction srcs; ii; ss.
+        { destruct n; ss. }
+        unfold bind in *. des_ifs. inv TR0.
+        destruct n; ss; des_ifs.
+        { eapply SimplExprproof.transf_program_match; et. }
+        eapply IHsrcs; et.
+      }
+      eapply Forall_app; eauto.
+    }
+    intro T. rpapply T; ss.
+    { unfold ProgPair.src in *.
+      rewrite ! map_app. repeat f_equal; try congruence.
+      subst X. exploit Forall2_length; et. intro U.
+      clear - U. ginduction srcs; ii; ss.
+      des_ifs. ss. f_equal. erewrite IHsrcs; ss; eauto.
+    }
+    { unfold ProgPair.tgt in *.
+      rewrite ! map_app. repeat f_equal; try congruence.
+      subst X. exploit Forall2_length; et. intro U.
+      clear - U. ginduction srcs; ii; ss.
+      { destruct irs; ss. }
+      des_ifs. ss. f_equal. erewrite IHsrcs; ss; eauto.
+    }
+  }
+
+  etrans.
+  { instantiate (1:= (sem (map ClightC.module2 tgts ++ map ClightC.module2 cls ++ map AsmC.module hands))).
+    eapply bsim_improves.
+    eapply mixed_to_backward_simulation.
+    move srcs at bottom.
+
+    set (zip (fun ir tgt => @ModPair.mk _ SimMemInjC.SimSymbId (ClightC.module1 ir)
+                                         (ClightC.module2 tgt) tt) irs tgts) as X.
+    exploit (@adequacy_local _ SimMemInjC.SimSymbId SoundTop.Top (X ++ pp0 ++ pp5)).
+    { rr.
+      eapply Forall_app; eauto.
+      { subst X. rewrite Forall_forall. ii; ss. apply in_zip_iff in H. des. clarify.
+        eapply SimplLocalsproofC.sim_mod; eauto.
+        clear - TR1 X Y.
+        ginduction irs; ii; ss.
+        { destruct n; ss. }
+        unfold bind in *. des_ifs. inv TR1.
+        destruct n; ss; des_ifs.
+        { eapply SimplLocalsproof.match_transf_program; et. }
+        eapply IHirs; et.
+      }
+      eapply Forall_app; eauto.
+    }
+    intro T. rpapply T; ss.
+    { unfold ProgPair.src in *.
+      rewrite ! map_app. repeat f_equal; try congruence.
+      subst X. clear TR0. exploit Forall2_length; et. intro U.
+      clear - U. ginduction irs; ii; ss.
+      des_ifs. ss. f_equal. erewrite IHirs; ss; eauto.
+    }
+    { unfold ProgPair.tgt in *.
+      rewrite ! map_app. repeat f_equal; try congruence.
+      subst X. clear TR0. exploit Forall2_length; et. intro U.
+      clear - U. ginduction irs; ii; ss.
+      { destruct tgts; ss. }
+      des_ifs. ss. f_equal. erewrite IHirs; ss; eauto.
+    }
+  }
+
+  refl.
+Qed.
+
+Theorem compiler_correct_full
         (srcs0: list Csyntax.program)
         (srcs1: list Clight.program)
         (tgts0 tgts1 hands: list Asm.program)
         (TR0: mmap transf_c_program srcs0 = OK tgts0)
         (TR1: mmap transf_clight_program srcs1 = OK tgts1)
   :
-    improves (sem ((map CsemC.module srcs0) ++ (map ClightC.module1 srcs1) ++ (map AsmC.module hands)))
+    improves (sem ((map CsemC.module srcs0) ++ (map ClightC.module2 srcs1) ++ (map AsmC.module hands)))
              (sem ((map AsmC.module tgts0) ++ (map AsmC.module tgts1) ++ (map AsmC.module hands)))
 .
 Proof.
-  unfold transf_c_program, time, print in *.
-  apply mmap_partial in TR0. des.
-  etrans.
-  - eapply clightgen_correct; eauto.
-  - rp.
-    + eapply clight_compiler_correct.
-      erewrite mmap_app. unfold bind. rewrite MMAP1. rewrite TR1. ss.
-    + rewrite app_assoc. rewrite <- list_append_map. ss.
-    + rewrite app_assoc. rewrite <- list_append_map. ss.
+  replace transf_c_program with
+      (fun p => OK p @@@ SimplExpr.transl_program @@@ SimplLocals.transf_program @@@ transf_clight_program)
+    in TR0; cycle 1.
+  { unfold transf_c_program, transf_clight_program, Compiler.transf_clight_program.
+    apply func_ext1. i. ss. unfold apply_partial, time, print.
+    des_ifs_safe. des_ifs; ss. }
+  eapply mmap_partial in TR0; eauto. des.
+  eapply mmap_partial in MMAP0; eauto. des.
+  hexploit clightgen_correct; eauto. intro T.
+  etrans; eauto.
+  rewrite app_assoc.
+  rewrite app_assoc.
+  rpapply (@compiler_correct (lb ++ srcs1) (tgts0 ++ tgts1) hands) ; eauto.
+  { rewrite mmap_app. unfold bind. des_ifs. }
+  { rewrite map_app. rewrite <- app_assoc. ss. }
+  { rewrite map_app. rewrite <- app_assoc. ss. }
 Qed.

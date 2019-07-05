@@ -171,7 +171,8 @@ Proof.
     { inv TYP.
       exploit store_arguments_parallel_extends.
       - eapply typify_has_type_list. eauto.
-      - eauto.
+      - exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF.
+        eapply WFPARAM in H. eauto.
       - instantiate (1:= typify_list vs (sig_args (fn_sig fd))).
         eapply lessdef_list_typify_list; eauto. erewrite lessdef_list_length; eauto.
       - eapply MWF.
@@ -261,7 +262,8 @@ Proof.
       - instantiate (2:=typify_list (Args.vs args_tgt) (sig_args (fn_sig fd_tgt))).
         eapply typify_has_type_list.
         erewrite <- lessdef_list_length; eauto. erewrite SIG. eauto.
-      - erewrite SIG. eauto.
+      - exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF.
+        eapply WFPARAM in H0. eauto.
       - instantiate (1:= n). i. des.
         exists ((to_pregset (set_regset_undef rs0 (fn_sig fd_tgt)))
                   #PC <- (Args.fptr args_tgt)

@@ -5,6 +5,8 @@ Require Export ASTC.
 Require Import MapsC.
 Require Import Values.
 Require Import Linking.
+Require Import Conventions1.
+Require Import Integers.
 
 Set Implicit Arguments.
 
@@ -217,6 +219,13 @@ Module Sk.
 
   Definition empty: t := (mkprogram [] [] 1%positive).
 
+  Definition get_sig (skdef: (AST.fundef signature)): signature :=
+    match skdef with
+    | Internal sg0 => sg0
+    | External ef => ef.(ef_sig)
+    end
+  .
+
   Inductive wf (sk: t): Prop :=
   | wf_intro
       (NODUP: NoDup sk.(prog_defs_names)) (* list_norepet *)
@@ -229,6 +238,12 @@ Module Sk.
         ,
           <<IN: In id_to sk.(prog_defs_names)>>)
       (PUBINCL: incl sk.(prog_public) sk.(prog_defs_names))
+      (* The sum of the sizes of the function parameters must be less than INT_MAX. *)
+      (WFPARAM: forall
+          id skd
+          (IN: In (id, (Gfun skd)) sk.(prog_defs))
+        ,
+          4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned)
   .
 
 End Sk.
@@ -240,6 +255,13 @@ Module SkEnv.
 
   (* TODO: Fix properly to cope with Ctypes.fundef *)
   Definition t := Genv.t (AST.fundef signature) unit.
+
+  Definition get_sig (skdef: (AST.fundef signature)): signature :=
+    match skdef with
+    | Internal sg0 => sg0
+    | External ef => ef.(ef_sig)
+    end
+  .
 
   Inductive wf (skenv: t): Prop :=
   | wf_intro
@@ -253,6 +275,11 @@ Module SkEnv.
         (DEF: skenv.(Genv.find_def) blk = Some skd)
      ,
        <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>>)
+    (WFPARAM: forall
+        blk skd
+        (DEF: skenv.(Genv.find_def) blk = Some (Gfun skd))
+      ,
+        <<SIZE: 4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned>>)
   .
 
   Inductive wf_mem (skenv: t) (sk: Sk.t) (m0: mem): Prop :=
@@ -283,7 +310,7 @@ Module SkEnv.
       <<WF: SkEnv.wf sk.(Sk.load_skenv)>>
   .
   Proof.
-    unfold Sk.load_skenv. u. econs; r.
+    unfold Sk.load_skenv. u. econs; try r.
     - unfold Genv.globalenv, Genv.find_symbol, Genv.find_def. eapply Genv.add_globals_preserves; i; ss.
       + destruct (peq id0 id).
         { subst id0. rewrite PTree.gss in SYMB. inv SYMB. exists g. eapply PTree.gss. }
@@ -312,6 +339,8 @@ Module SkEnv.
       { unfold P, Genv.find_def. i. ss. rewrite PTree.gempty in H. inv H. }
       { inv WF. eauto. }
       { i. unfold Genv.find_symbol. ss. eapply PTree.gempty. }
+    - inv WF. i. eapply Genv.find_def_inversion in DEF. des.
+      eapply WFPARAM in DEF. eauto.
   Qed.
 
   (* Note:
@@ -537,6 +566,11 @@ I think "sim_skenv_monotone" should be sufficient.
         ,
           exists id, <<SYMB: Genv.find_symbol ge id = Some b>> /\ <<PROG: p.(prog_defmap) ! id = Some g>>
                                                                           /\ <<INTERNAL: ~ (is_external g)>>)
+      (SYMB2P: forall
+          id blk
+          (SYMB: Genv.find_symbol ge id = Some blk)
+        ,
+          <<IN: p.(defs) id>>)
   .
 
   Lemma project_revive_precise
@@ -570,7 +604,7 @@ I think "sim_skenv_monotone" should be sufficient.
       hexploit (Sk.of_program_prog_defmap prog get_sg x0). intro REL. rewrite PR in *. inv REL. symmetry in H1.
       exploit DEFS; et. i; des. clarify.
     }
-    econs; eauto; i; ss; cycle 1.
+    econs; eauto; i; ss; swap 1 2.
     - des.
       unfold SkEnv.revive in *.
       apply_all_once Genv_map_defs_def. des; ss.
@@ -645,6 +679,10 @@ I think "sim_skenv_monotone" should be sufficient.
           { rewrite Sk.of_program_internals in *. u. des_ifs. ss. bsimpl. ss. }
           intro GD; des. uge. clarify.
       }
+    - unfold revive in *. erewrite Genv_map_defs_symb in SYMB. inv PROJ.
+      apply NNPP; ii. exploit SYMBDROP; eauto.
+      { rewrite Sk.of_program_defs. eauto. }
+      i; des. clarify.
   Qed.
 
   Lemma project_revive_no_external
@@ -684,13 +722,6 @@ I think "sim_skenv_monotone" should be sufficient.
       end
   .
 
-  Definition get_sig (skdef: (AST.fundef signature)): signature :=
-    match skdef with
-    | Internal sg0 => sg0
-    | External ef => ef.(ef_sig)
-    end
-  .
-
   Definition empty: t := @Genv.empty_genv _ _ [].
 
   Lemma senv_genv_compat
@@ -706,6 +737,24 @@ I think "sim_skenv_monotone" should be sufficient.
     econs; eauto. i. ss.
     (* inv INCL. inv PREC. *)
     ss. uge. unfold SkEnv.revive in *. ss. rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
+  Qed.
+
+  Lemma revive_incl_skenv
+        F V (skenv:t) fn_sig (prog: program (AST.fundef F) V) fptr fd
+        (INCL : includes skenv (Sk.of_program fn_sig prog))
+        (WF : wf skenv)
+        (FINDF : Genv.find_funct (SkEnv.revive (SkEnv.project skenv (Sk.of_program fn_sig prog)) prog) fptr =
+                 Some (Internal fd))
+    :
+      exists blk, Genv.find_def skenv blk = Some (Gfun (Internal (fn_sig fd))).
+  Proof.
+    exploit SkEnv.project_revive_precise.
+    eapply SkEnv.project_impl_spec. eauto. eauto. i. inv H. ss.
+    unfold Genv.find_funct in FINDF. des_ifs.
+    rewrite Genv.find_funct_ptr_iff in FINDF. eapply GE2P in FINDF. des.
+    inv INCL. ss. exploit (Sk.of_program_prog_defmap prog fn_sig).
+    instantiate (1 := id). i. inv H; rewrite PROG in *; clarify.
+    inv H2. ss. des_ifs. symmetry in H1. eapply DEFS in H1. des. inv MATCH. inv H1. eauto.
   Qed.
 
 End SkEnv.

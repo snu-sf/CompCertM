@@ -71,10 +71,10 @@ Section MODSEM.
       rs m0 m1 sg vs blk0 blk1 ofs
       init_rs
       (FPTR: rs # PC = Vptr blk0 Ptrofs.zero)
+      (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (EXTERNAL: Genv.find_funct ge (Vptr blk0 Ptrofs.zero) = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero)
                         = Some skd /\ SkEnv.get_sig skd = sg)
-      (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (VALS: Asm.extcall_arguments rs m0 sg vs)
       (RSP: rs RSP = Vptr blk1 ofs)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
@@ -118,6 +118,7 @@ Section MODSEM.
       (RETV: loc_result sg = One mr)
       (EXTERNAL: external_state ge (rs # PC))
       (RSRA: rs # PC = init_rs # RA)
+      (* TODO: why different with definition if initial_frame? *)
       (RANOTFPTR: Genv.find_funct skenv_link (init_rs RA) = None)
       (* (JUNK1: ge.(Genv.find_funct) (rs PC) = None) *)
       (* (RSRSP: Val.lessdef (rs # RSP) (init_rs # RSP)) *)
@@ -166,7 +167,7 @@ Section MODSEM.
       inv STEP; try (exploit external_call_receptive; eauto; check_safe; intro T; des); try by (inv_match_traces; (eexists (mkstate _ _); econs; [econs|]; eauto; ss)).
     - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
-  
+
   Lemma modsem_determinate: forall st, determinate_at modsem st.
   Proof.
     econs; eauto.

@@ -167,9 +167,8 @@ Lemma private_unchanged_inject
       (INJ: Mem.inject F m_src m_tgt0)
       (UNCH: Mem.unchanged_on P m_tgt0 m_tgt1)
       (PRIV: ~2 loc_out_of_reach F m_src <2= P)
-      (NB: (Mem.nextblock m_tgt0) = (Mem.nextblock m_tgt1))
-  :
-    <<INJ: Mem.inject F m_src m_tgt1>>
+:
+  <<INJ: Mem.inject F m_src m_tgt1>>
 .
 Proof.
   inv UNCH.
@@ -194,27 +193,26 @@ Proof.
         { replace (ofs + delta - delta) with ofs by lia. eauto with mem. }
         i; ss.
     + ii.
-      destruct (classic (P b2 (ofs + delta) /\ Mem.valid_block m_tgt1 b2)).
+      destruct (classic (P b2 (ofs + delta) /\ Mem.valid_block m_tgt0 b2)).
       * (* publics *)
         des.
         erewrite <- unchanged_on_perm; eauto.
         { eapply INJ; eauto with mem. }
-        { eauto with congruence. }
       * (* privs *)
         apply not_and_or in H1. des; cycle 1.
         { exfalso. inv INJ.
-          exploit mi_mappedblocks; eauto. i. eauto with congruence. }
+          exploit mi_mappedblocks; eauto. }
         exfalso.
         apply H1. apply PRIV. unfold loc_out_of_reach. ii. exploit H2; eauto.
         replace (ofs + delta - delta) with ofs by lia.
         eauto with mem.
   - ii. eapply INJ; eauto with mem congruence.
-  - ii. unfold Mem.valid_block. rewrite <- NB.
-    eapply INJ; eauto with mem congruence.
+  - ii. eapply Plt_Ple_trans; eauto.
+    eapply Mem.valid_block_inject_2; eauto.
   - ii. eapply INJ; eauto with mem congruence.
   - ii. eapply INJ; eauto with mem congruence.
   - ii.
-    destruct (classic (P b2 (ofs + delta) /\ Mem.valid_block m_tgt1 b2)).
+    destruct (classic (P b2 (ofs + delta) /\ Mem.valid_block m_tgt0 b2)).
     + (* publics *)
       des.
       eapply INJ; eauto.
@@ -222,7 +220,7 @@ Proof.
     + (* privs *)
       apply not_and_or in H1. des; cycle 1.
       { exfalso. inv INJ.
-        exploit mi_mappedblocks; eauto. i. eauto with congruence. }
+        exploit mi_mappedblocks; eauto. }
       assert(~ Mem.perm m_src b1 ofs Max Nonempty).
       { ii. apply H1. apply PRIV. ii. exploit H3; eauto.
         replace (ofs + delta - delta) with ofs by lia.

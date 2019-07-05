@@ -242,7 +242,7 @@ Inductive typecheck (vs: list val) (sg: signature) (tvs: list val): Prop :=
 | typecheck_intro
     (LEN: length vs = length sg.(sig_args))
     (TYP: typify_list vs sg.(sig_args) = tvs)
-    (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+    (* (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
 .
 
 Lemma Val_hiword_spec

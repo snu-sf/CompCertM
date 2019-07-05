@@ -58,9 +58,10 @@ Section SIMMODSEM.
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm1>>)
       (RECEP: receptive_at ms_src st_src0)
   | fsim_step_stutter
-      i1 st_tgt1
+      i1 st_tgt1 sm1
       (PLUS: DPlus ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
-      (BSIM: fsim i1 st_src0 st_tgt1 sm0)
+      (MLE: SimMem.le sm0 sm1)
+      (BSIM: fsim i1 st_src0 st_tgt1 sm1)
   .
 
   Inductive bsim_step (bsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
@@ -76,9 +77,10 @@ Section SIMMODSEM.
             /\ <<MLE: SimMem.le sm0 sm1>>
             /\ <<BSIM: bsim i1 st_src1 st_tgt1 sm1>>)
   | bsim_step_stutter
-      i1 st_src1
+      i1 st_src1 sm1
       (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
-      (BSIM: bsim i1 st_src1 st_tgt0 sm0)
+      (MLE: SimMem.le sm0 sm1)
+      (BSIM: bsim i1 st_src1 st_tgt0 sm1)
   .
 
   Print xsim.
@@ -102,9 +104,9 @@ Section SIMMODSEM.
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (<<BSTEP:
-        (*  forall *)
-        (*   (SAFESRC: safe ms_src st_src0) *)
-        (* , *)
+         forall
+          (SAFESRC: safe_modsem ms_src st_src0)
+        ,
          (<<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
       (<<PROGRESS:
          forall
@@ -213,14 +215,15 @@ Section SIMMODSEM.
     repeat intro. rr in IN. hexploit1 IN; eauto. inv IN; eauto.
     - econs 1; ss.
       ii. spc SU. des. esplits; eauto.
-      inv SU. 
+      inv SU.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 2; ss.
       i. (* specialize (BSTEP SAFESRC0). *)
       exploit SU; eauto. i; des.
       esplits; eauto.
-      inv BSTEP.
+      ii. hexploit BSTEP; eauto. i.
+      inv H.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 3; eauto.
@@ -399,7 +402,7 @@ Section FACTORTARGET.
       - econs 2.
         i. exploit SU; eauto. i; des. esplits; eauto.
         + (* bsim *)
-          clear - SINGLE WBT CIH BSTEP. inv BSTEP.
+          clear - SINGLE WBT CIH BSTEP. i. hexploit1 BSTEP; eauto. inv BSTEP.
           * econs 1; eauto. i.
             destruct tr; ss.
             {
@@ -473,6 +476,3 @@ Section FACTORTARGET.
   Qed.
 
 End FACTORTARGET.
-
-
-

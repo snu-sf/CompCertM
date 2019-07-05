@@ -313,6 +313,8 @@ Section SIMGE.
                /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)>>)
                /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)>>)
                /\ (<<SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link>>)
+               /\ (<<MAINSIM: SimMem.sim_val sm_init (Genv.symbol_address skenv_link_src sk_link_src.(prog_main) Ptrofs.zero)
+                                             (Genv.symbol_address skenv_link_tgt sk_link_tgt.(prog_main) Ptrofs.zero)>>)
   .
   Proof.
     assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
@@ -373,14 +375,14 @@ Section SIMGE.
             (* eapply external_call_symbols_preserved; eauto. *)
             (* apply System.skenv_globlaenv_equiv. *)
         }
-        { eapply SimMem.unlift_spec; eauto. }
+        { eapply SimMem.lift_spec; eauto. }
         left. pfold.
         econs 4.
-        { eapply SimMem.unlift_spec; eauto. }
+        { eapply SimMem.lift_spec; eauto. }
         { eapply SimMem.unlift_wf; eauto. }
         { econs; eauto. }
         { econs; eauto. }
-        { clear - RETV. admit "ez - add as lemma in SimMem". }
+        { clear - RETV. eapply SimMem.sim_retv_unlift; et. }
     }
     des.
     rewrite <- SYSSRC. rewrite <- SYSTGT.
@@ -686,7 +688,6 @@ Section ADQINIT.
                 [] sm_init.(SimMem.tgt)) as args_tgt in *.
     assert(SIMARGS: SimMem.sim_args args_src args_tgt sm_init).
     { econs; ss; eauto.
-      - admit "ez - strengthen sim_skenv specs".
       - rewrite <- SimMem.sim_val_list_spec. econs; eauto. }
 
     esplits; eauto.
@@ -695,7 +696,7 @@ Section ADQINIT.
       econs; eauto; cycle 1.
       apply_all_once SimSymb.sim_skenv_func_bisim. des. inv SIMSKENV.
       exploit FUNCFSIM; eauto.
-      { apply SIMARGS. }
+      (* { apply SIMARGS. } *)
       i; des. clarify.
     - econs; eauto.
       + ss. folder. des_ifs.
@@ -889,8 +890,10 @@ Section ADQSTEP.
           { etransitivity; eauto. }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dplus; eauto. { unsguard SETGT. ss. des_ifs. } }
-          right. eapply CIH; eauto. econs; eauto. folder. ss; des_ifs.
-
+          right. eapply CIH; eauto. instantiate (1:=sm1). econs; eauto.
+          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
+            eapply rtc_once; eauto. }
+          { etrans; eauto. }
 
     - (* bstep *)
       right. ss.
@@ -904,7 +907,7 @@ Section ADQSTEP.
       + ii. exploit PROGRESS; eauto. intro STEPTGT; des.
         clear - FINALTGT STEPTGT. inv FINALTGT. ss. ModSem.tac.
       + ii. exploit PROGRESS; eauto. intro STEPTGT; des.
-        inv BSTEP.
+        hexploit BSTEP; eauto. intro T. inv T.
         * econs 1; eauto; cycle 1.
           { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
           ii. inv STEPTGT0; ModSem.tac.
@@ -932,8 +935,10 @@ Section ADQSTEP.
             eapply sound_progress_star; eauto.
             eapply lift_star; eauto.
           }
-          econs; eauto. folder. ss; des_ifs.
-
+          instantiate (1:=sm1). econs; eauto.
+          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
+            eapply rtc_once; eauto. }
+          { etrans; eauto. }
 
     - (* call *)
       left. right.
@@ -991,7 +996,7 @@ Section ADQSTEP.
           * eapply SimMem.lift_wf; eauto.
           * inv SIMARGS. econs; ss; eauto.
             { eapply SimMem.lift_sim_val; eauto. }
-            { admit "ez - eapply SimMem.lift_sim_val_list; eauto.". }
+            { eapply SimMem.sim_val_list_lift; et. }
             { erewrite SimMem.lift_src. ss. }
             { erewrite SimMem.lift_tgt. ss. }
         }
@@ -1005,7 +1010,8 @@ Section ADQSTEP.
         inv STACK.
         econs; ss; eauto.
         - econs; ss; eauto.
-          admit "ez - obligate to SimMem.val".
+          inv SIMRETV.
+          eapply SimMem.sim_val_int; et.
         - i. inv FINAL0; inv FINAL1; ss.
           exploit ModSem.final_frame_dtm; [apply FINAL|apply FINAL0|..]. i; clarify.
           congruence.

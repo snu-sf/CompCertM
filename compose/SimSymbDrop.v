@@ -22,7 +22,7 @@ Require Import ModSem.
 
 
 (* Copied from Unusedglob.v *)
-Definition ref_init (il : list init_data) (id : ident): Prop := 
+Definition ref_init (il : list init_data) (id : ident): Prop :=
   exists ofs, In (Init_addrof id ofs) il
 .
 
@@ -56,6 +56,7 @@ Inductive sim_sk (ss: t') (sk_src sk_tgt: Sk.t): Prop :=
       ,
         <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)
     (NODUP: NoDup (prog_defs_names sk_tgt))
+    (NOMAIN: ~ ss sk_src.(prog_main))
 .
 
 Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
@@ -520,6 +521,16 @@ Next Obligation.
     destruct (classic (ss0 a)).
     + exploit CLOSED; et. intro T. unfold privs in T. bsimpl. des. unfold NW in *. bsimpl. des_sumbool. ss.
     + exploit KEPT; eauto. intro T. rewrite H0 in *. exploit prog_defmap_image; eauto.
+  - ss.
+    i. eapply WFPARAM. instantiate (1:=id).
+    destruct (classic (ss0 id)).
+    + exploit DROP; eauto. i.
+      exploit prog_defmap_norepet; eauto.
+      rewrite <- NoDup_norepet. eauto. i. rewrite H1 in H0. clarify.
+    + exploit KEPT; eauto. i.
+      eapply prog_defmap_norepet in IN; cycle 1.
+      rewrite <- NoDup_norepet. eauto.
+      eapply in_prog_defmap. rewrite <- H0. eauto.
 Qed.
 Next Obligation.
   inv SIMSK. inv SIMSK0.
@@ -611,6 +622,7 @@ Next Obligation.
       * inv WFTGT0. rr in H1. des_safe. exploit WFPTR; eauto.
       * inv WFTGT1. rr in H1. des_safe. exploit WFPTR; eauto.
     + apply NoDup_norepet. apply PTree.elements_keys_norepet.
+    + des; congruence.
 (*   admit "See 'link_match_program' in Unusedglobproof.v. *)
 (* Note that we have one more goal (exists ss) but it is OK, as the 'link_match_program' proof already proves it.". *)
 Qed.
@@ -682,6 +694,15 @@ Next Obligation.
         apply Q2 in H0. destruct H0. subst.
         left. apply Mem.perm_cur. eapply Mem.perm_implies; eauto.
         apply P1. omega.
+  }
+  {
+    ss. inv SIMSK. rewrite <- MAIN. unfold init_meminj.
+    inv SIMSKENV. ss. unfold Genv.symbol_address. des_ifs; cycle 1.
+    { exploit SIMSYMB2; et. i; des. clarify. }
+    apply Genv.find_invert_symbol in Heq.
+    econs; eauto; cycle 1.
+    { psimpl. ss. }
+    rewrite Heq. rewrite Heq0. eauto.
   }
   (* admit "See 'init_meminj_preserves_globals' in Unusedglobproof.v". *)
 Qed.
@@ -788,7 +809,7 @@ Next Obligation.
 
   - (* SIMSYMB3 *)
     inv LETGT.
-    destruct (classic (defs sk_tgt id)); cycle 1. 
+    destruct (classic (defs sk_tgt id)); cycle 1.
     { exploit SYMBDROP; eauto. i; des. clarify. }
 
     erewrite SYMBKEEP in *; ss.
@@ -848,7 +869,7 @@ Next Obligation.
     }
     exploit DEFKEEP0; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    { inv SIMSK. exploit KEPT1; eauto. i.
+    { inv SIMSK. exploit (KEPT1 id); eauto. i.
       unfold internals in *. des_ifs.
     }
     i; des. clarify.
@@ -909,7 +930,7 @@ Next Obligation.
       unfold internals in *. des_ifs_safe.
       exploit SPLITHINT; et. i; des. clear_tac.
       hexploit (KEPT id0); et. intro T. rewrite Heq in *.
-      des_ifs. 
+      des_ifs.
     }
     exploit DEFKEEP; et.
     { apply Genv.find_invert_symbol; eauto. }
@@ -1020,4 +1041,3 @@ Next Obligation.
 Qed.
 
 End MEMINJ.
-

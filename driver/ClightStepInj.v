@@ -25,23 +25,6 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
-Lemma external_call_parallel ef se_src se_tgt vargs_src vargs_tgt
-      sm0 tr vres_src m_src1
-      (CALL: external_call ef se_src vargs_src (SimMemInj.src sm0) tr vres_src m_src1)
-      (SENV: symbols_inject (SimMemInj.inj sm0) se_src se_tgt)
-      (ARGS: Val.inject_list (SimMemInj.inj sm0) vargs_src vargs_tgt)
-      (MWF: SimMemInj.wf' sm0)
-  :
-    exists sm1 vres_tgt,
-      (<<MEMSRC: SimMemInj.src sm1 = m_src1>>) /\
-      (<<MWF: SimMemInj.wf' sm1>>) /\
-      (<<MLE: SimMemInj.le' sm0 sm1>>) /\
-      (<<VRES: Val.inject (SimMemInj.inj sm1) vres_src vres_tgt>>) /\
-      (<<CALL: external_call ef se_tgt vargs_tgt (SimMemInj.tgt sm0) tr vres_tgt (SimMemInj.tgt sm1)>>).
-Proof.
-  admit "compcomp #295".
-Qed.
-
 Definition match_env (j: meminj) (env_src env_tgt: env) :=
   forall id,
     (<<MAPPED: exists blk_src blk_tgt ty,
@@ -92,94 +75,51 @@ Inductive match_cont (j: meminj): cont -> cont -> Prop :=
     match_cont j (Kcall id fn env_src tenv_src K_src) (Kcall id fn env_tgt tenv_tgt K_tgt)
 .
 
-Inductive match_states_clight (sm_arg: SimMemInj.t')
-  : unit -> state -> state -> SimMemInj.t' -> Prop :=
+Inductive match_states_clight_internal:
+  state -> state -> meminj -> mem -> mem -> Prop :=
 | match_State
-    fn stmt K_src K_tgt env_src env_tgt tenv_src tenv_tgt m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemInj.src))
-    (MWFTGT: m_tgt = sm0.(SimMemInj.tgt))
-    (MWF: SimMemInj.wf' sm0)
-    (ENV: match_env sm0.(SimMemInj.inj) env_src env_tgt)
-    (TENV: match_temp_env sm0.(SimMemInj.inj) tenv_src tenv_tgt)
-    (CONT: match_cont sm0.(SimMemInj.inj) K_src K_tgt)
+    fn stmt K_src K_tgt env_src env_tgt tenv_src tenv_tgt m_src m_tgt j
+    (ENV: match_env j env_src env_tgt)
+    (TENV: match_temp_env j tenv_src tenv_tgt)
+    (CONT: match_cont j K_src K_tgt)
   :
-    match_states_clight
-      sm_arg tt
+    match_states_clight_internal
       (State fn stmt K_src env_src tenv_src m_src)
       (State fn stmt K_tgt env_tgt tenv_tgt m_tgt)
-      sm0
+      j m_src m_tgt
 | match_Callstate
-    fptr_src fptr_tgt ty args_src args_tgt K_src K_tgt m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemInj.src))
-    (MWFTGT: m_tgt = sm0.(SimMemInj.tgt))
-    (MWF: SimMemInj.wf' sm0)
-    (INJ: Val.inject sm0.(SimMemInj.inj) fptr_src fptr_tgt)
-    (VALS: Val.inject_list sm0.(SimMemInj.inj) args_src args_tgt)
-    (CONT: match_cont sm0.(SimMemInj.inj) K_src K_tgt)
+    fptr_src fptr_tgt ty args_src args_tgt K_src K_tgt m_src m_tgt j
+    (INJ: Val.inject j fptr_src fptr_tgt)
+    (VALS: Val.inject_list j args_src args_tgt)
+    (CONT: match_cont j K_src K_tgt)
   :
-    match_states_clight
-      sm_arg tt
+    match_states_clight_internal
       (Callstate fptr_src ty args_src K_src m_src)
       (Callstate fptr_tgt ty args_tgt K_tgt m_tgt)
-      sm0
+      j m_src m_tgt
 | match_Returnstate
-    retv_src retv_tgt K_src K_tgt m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemInj.src))
-    (MWFTGT: m_tgt = sm0.(SimMemInj.tgt))
-    (MWF: SimMemInj.wf' sm0)
-    (INJ: Val.inject sm0.(SimMemInj.inj) retv_src retv_tgt)
-    (CONT: match_cont sm0.(SimMemInj.inj) K_src K_tgt)
+    retv_src retv_tgt K_src K_tgt m_src m_tgt j
+    (INJ: Val.inject j retv_src retv_tgt)
+    (CONT: match_cont j K_src K_tgt)
   :
-    match_states_clight
-      sm_arg tt
+    match_states_clight_internal
       (Returnstate retv_src K_src m_src)
       (Returnstate retv_tgt K_tgt m_tgt)
-      sm0
+      j m_src m_tgt
 .
 
-Inductive match_states_ext_clight (sm_arg: SimMemExt.t')
-  : unit -> state -> state -> SimMemExt.t' -> Prop :=
-| match_ext_State
-    fn stmt K_src K_tgt env_src env_tgt tenv_src tenv_tgt m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemExt.src))
-    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
-    (MWF: Mem.extends m_src m_tgt)
-    (ENV: match_env inject_id env_src env_tgt)
-    (TENV: match_temp_env inject_id tenv_src tenv_tgt)
-    (CONT: match_cont inject_id K_src K_tgt)
+Inductive match_states_clight (sm_arg: SimMemInj.t')
+  : unit -> state -> state -> SimMemInj.t' -> Prop :=
+| match_states_clight_intro
+    st_src st_tgt j m_src m_tgt sm0
+    (MWFSRC: m_src = sm0.(SimMemInj.src))
+    (MWFTGT: m_tgt = sm0.(SimMemInj.tgt))
+    (MWFINJ: j = sm0.(SimMemInj.inj))
+    (MATCHST: match_states_clight_internal st_src st_tgt j m_src m_tgt)
+    (MWF: SimMemInj.wf' sm0)
   :
-    match_states_ext_clight
-      sm_arg tt
-      (State fn stmt K_src env_src tenv_src m_src)
-      (State fn stmt K_tgt env_tgt tenv_tgt m_tgt)
-      sm0
-| match_ext_Callstate
-    fptr_src fptr_tgt ty args_src args_tgt K_src K_tgt m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemExt.src))
-    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
-    (MWF: Mem.extends m_src m_tgt)
-    (INJ: Val.lessdef fptr_src fptr_tgt)
-    (VALS: Val.lessdef_list args_src args_tgt)
-    (CONT: match_cont inject_id K_src K_tgt)
-  :
-    match_states_ext_clight
-      sm_arg tt
-      (Callstate fptr_src ty args_src K_src m_src)
-      (Callstate fptr_tgt ty args_tgt K_tgt m_tgt)
-      sm0
-| match_ext_Returnstate
-    retv_src retv_tgt K_src K_tgt m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemExt.src))
-    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
-    (MWF: Mem.extends m_src m_tgt)
-    (INJ: Val.lessdef retv_src retv_tgt)
-    (CONT: match_cont inject_id K_src K_tgt)
-  :
-    match_states_ext_clight
-      sm_arg tt
-      (Returnstate retv_src K_src m_src)
-      (Returnstate retv_tgt K_tgt m_tgt)
-      sm0
+    match_states_clight
+      sm_arg tt st_src st_tgt sm0
 .
 
 Section CLIGHTINJ.
@@ -840,7 +780,7 @@ Section CLIGHTINJ.
         (<<MATCH: match_states_clight sm_arg u st_src1 st_tgt1 sm1>>) /\
         (<<MLE: SimMemInj.le' sm0 sm1>>).
   Proof.
-    inv STEP; inv MATCH.
+    inv STEP; inv MATCH; inv MATCHST.
     - cinv MWF. exploit eval_expr_inject; eauto. i. des.
       exploit eval_lvalue_inject; eauto. i. des.
       exploit sem_cast_inject; eauto. i. des.
@@ -848,7 +788,7 @@ Section CLIGHTINJ.
       rewrite CENV in *.
       esplits.
       + econs 1; eauto.
-      + cinv MLE. econs; eauto.
+      + cinv MLE. econs; eauto. econs; eauto.
         * eapply match_env_incr; eauto.
         * eapply match_temp_env_incr; eauto.
         * eapply match_cont_incr; eauto.
@@ -856,21 +796,24 @@ Section CLIGHTINJ.
 
     - cinv MWF. exploit eval_expr_inject; eauto. i. des. esplits.
       + econs 2; eauto.
-      + econs; eauto.
+      + econs; eauto. econs; eauto.
         eapply set_match_temp_env; eauto.
       + refl.
 
     - cinv MWF. exploit eval_exprlist_inject; eauto. i. des.
       exploit eval_expr_inject; eauto. i. des. esplits.
       + econs 3; eauto.
-      + econs; eauto. econs; eauto.
+      + econs; eauto. econs; eauto. econs; eauto.
       + refl.
 
     - cinv MWF. exploit eval_exprlist_inject; eauto. i. des.
-      exploit external_call_parallel; eauto.
+      exploit external_call_mem_inject_gen; eauto. i. des.
+      exploit SimMemInjC.parallel_gen; eauto.
+      { ii. eapply external_call_max_perm; eauto. }
+      { ii. eapply external_call_max_perm; eauto. }
       i. des. esplits; eauto.
       + econs 4; eauto.
-      + cinv MLE. econs; eauto.
+      + cinv MLE. econs; eauto. econs; eauto.
         * eapply match_env_incr; eauto.
         * unfold set_opttemp. des_ifs.
           { eapply set_match_temp_env; eauto.
@@ -880,60 +823,60 @@ Section CLIGHTINJ.
 
     - esplits.
       + econs 5; eauto.
-      + econs; eauto. econs; eauto.
+      + econs; eauto. econs; eauto. econs; eauto.
       + refl.
 
     - inv CONT. esplits.
       + econs 6; eauto.
-      + econs; eauto.
+      + econs; eauto. econs; eauto.
       + refl.
 
     - inv CONT. esplits.
       + econs 7; eauto.
-      + econs; eauto.
+      + econs; eauto. econs; eauto.
       + refl.
 
     - inv CONT. esplits.
       + econs 8; eauto.
-      + econs; eauto.
+      + econs; eauto. econs; eauto.
       + refl.
 
     - cinv MWF. exploit eval_expr_inject; eauto. i. des.
       exploit bool_val_inject; eauto. i. esplits.
       + econs 9; eauto.
-      + econs; eauto.
+      + econs; eauto. econs; eauto.
       + refl.
 
     - esplits.
       + econs 10; eauto.
-      + econs; eauto. econs; eauto.
+      + econs; eauto. econs; eauto. econs; eauto.
       + refl.
 
     - inv CONT. esplits.
       + econs 11; eauto.
-      + econs; eauto. econs; eauto.
+      + econs; eauto. econs; eauto. econs; eauto.
       + refl.
 
     - inv CONT. esplits.
       + econs 12; eauto.
-      + econs; eauto.
+      + econs; eauto. econs; eauto.
       + refl.
 
     - inv CONT. esplits.
       + econs 13; eauto.
-      + econs; eauto.
+      + econs; eauto. econs; eauto.
       + refl.
 
     - inv CONT. esplits.
       + econs 14; eauto.
-      + econs; eauto.
+      + econs; eauto. econs; eauto.
       + refl.
 
     - exploit free_list_inject_parallel; eauto.
       { eapply blocks_of_env_match; eauto. } i. des.
       esplits.
       + econs 15; eauto.
-      + econs; eauto. eapply call_cont_match; eauto.
+      + econs; eauto. clarify. econs; eauto. eapply call_cont_match; eauto.
         cinv MLE. eapply match_cont_incr; eauto.
       + eauto.
 
@@ -943,7 +886,7 @@ Section CLIGHTINJ.
       { eapply blocks_of_env_match; eauto. } i. des.
       esplits.
       + econs 16; eauto.
-      + econs; eauto.
+      + econs; eauto. clarify. econs; eauto.
         * cinv MLE. eapply val_inject_incr; eauto.
         * eapply call_cont_match; eauto.
           cinv MLE. eapply match_cont_incr; eauto.
@@ -954,7 +897,7 @@ Section CLIGHTINJ.
       esplits.
       + econs 17; eauto.
         unfold is_call_cont in *. destruct CONT; clarify.
-      + econs; eauto.
+      + econs; eauto. clarify. econs; eauto.
         cinv MLE. eapply match_cont_incr; eauto.
       + eauto.
 
@@ -963,51 +906,108 @@ Section CLIGHTINJ.
       { unfold sem_switch_arg in *. inv INJ; ss; clarify; des_ifs. }
       esplits.
       + econs 18; eauto.
-      + econs; eauto. econs; eauto.
+      + econs; eauto. clarify. econs; eauto. econs; eauto.
       + refl.
 
     - inv CONT. esplits.
       + econs 19; eauto.
-      + econs; eauto.
+      + econs; eauto. clarify. econs; eauto.
       + refl.
 
     - inv CONT. esplits.
       + econs 20; eauto.
-      + econs; eauto.
+      + econs; eauto. clarify. econs; eauto.
       + refl.
 
     - esplits.
       + econs 21; eauto.
-      + econs; eauto.
+      + econs; eauto. clarify. econs; eauto.
       + refl.
 
     - exploit find_label_match; eauto.
       { eapply call_cont_match; eauto. } i. des.
       esplits.
       + econs 22; eauto.
-      + econs; eauto.
+      + econs; eauto. clarify. econs; eauto.
       + refl.
 
     - exploit match_globals_find_funct; eauto. intros FPTRTGT.
       exploit FUNCTIONENTRY; eauto. i. des.
       esplits.
       + econs 23; eauto.
-      + econs; eauto.
+      + econs; eauto. clarify. econs; eauto.
         cinv MLE. eapply match_cont_incr; eauto.
       + eauto.
 
-    - exploit match_globals_find_funct; eauto. intros FPTRTGT.
-      exploit external_call_parallel; eauto.
+    - cinv MWF. exploit match_globals_find_funct; eauto. intros FPTRTGT.
+      exploit external_call_mem_inject_gen; eauto. i. des.
+      exploit SimMemInjC.parallel_gen; eauto.
+      { ii. eapply external_call_max_perm; eauto. }
+      { ii. eapply external_call_max_perm; eauto. }
       i. des. esplits; eauto.
       + econs 24; eauto.
-      + cinv MLE. econs; eauto.
+      + cinv MLE. econs; eauto. econs; eauto.
         eapply match_cont_incr; eauto.
-
+        
     - inv CONT. esplits.
       + econs 25; eauto.
-      + econs; eauto. destruct optid; ss.
+      + econs; eauto. clarify. econs; eauto. destruct optid; ss.
         eapply set_match_temp_env; eauto.
       + refl.
+  Qed.
+
+  Lemma clight_step_preserve_injection2
+        st_src0 st_tgt0 st_src1 j0 m_src0 m_tgt0 tr
+        (SYMBOLS: symbols_inject j0 se_src se_tgt)
+        (GENV: meminj_match_globals eq ge_src ge_tgt j0)
+        (INJECT: Mem.inject j0 m_src0 m_tgt0)
+        (MATCH: match_states_clight_internal st_src0 st_tgt0 j0 m_src0 m_tgt0)
+        (STEP: step se_src ge_src (function_entry ge_src) st_src0 tr st_src1)
+    :
+      exists st_tgt1 m_src1 m_tgt1 j1 ,
+        (<<STEP: step se_tgt ge_tgt (function_entry ge_tgt) st_tgt0 tr st_tgt1>>) /\
+        (<<MATCH: match_states_clight_internal st_src1 st_tgt1 j1 m_src1 m_tgt1>>) /\
+        (<<INJECT: Mem.inject j1 m_src1 m_tgt1>>) /\
+        (<<INCR: inject_incr j0 j1>>) /\
+        (<<SEP: inject_separated j0 j1 m_src0 m_tgt0>>) /\
+        (<<UNCHSRC: Mem.unchanged_on
+                      (loc_unmapped j0)
+                      m_src0 m_src1>>) /\
+        (<<UNCHTGT: Mem.unchanged_on
+                      (loc_out_of_reach j0 m_src0)
+                      m_tgt0 m_tgt1>>) /\
+        (<<MAXSRC: forall
+            b ofs
+            (VALID: Mem.valid_block m_src0 b)
+          ,
+            <<MAX: Mem.perm m_src1 b ofs Max <1= Mem.perm m_src0 b ofs Max>> >>) /\
+        (<<MAXTGT: forall
+            b ofs
+            (VALID: Mem.valid_block m_tgt0 b)
+          ,
+            <<MAX: Mem.perm m_tgt1 b ofs Max <1= Mem.perm m_tgt0 b ofs Max>> >>).
+  Proof.
+    set (sm:=SimMemInj.mk
+               m_src0 m_tgt0 j0
+               (loc_unmapped j0 /2\ SimMemInj.valid_blocks m_src0)
+               (loc_out_of_reach j0 m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+               (Mem.nextblock m_src0)
+               (Mem.nextblock m_tgt0)).
+    assert (SYMBINJ: symbols_inject (SimMemInj.inj sm) se_src se_tgt).
+    { eauto. }
+    exploit clight_step_preserve_injection; eauto; ss.
+    - econs; eauto. econs; ss; eauto.
+      + refl.
+      + refl.
+    - instantiate (1:=sm). i. des. destruct sm1.
+      inv MATCH0. inv MLE. inv MWF. ss.
+      esplits; eauto.
+      + inv FROZEN. ii. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
+        unfold Mem.valid_block. clear - OUTSIDE_SRC OUTSIDE_TGT. xomega.
+      + eapply Mem.unchanged_on_implies; eauto.
+        ii. ss.
+      + eapply Mem.unchanged_on_implies; eauto.
+        ii. ss.
   Qed.
 
 End CLIGHTINJ.

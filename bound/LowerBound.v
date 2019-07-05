@@ -23,7 +23,9 @@ Record sub_match_genvs A B V W (R: globdef A V -> globdef B W -> Prop)
   }.
 
 Definition match_prog (sk: Sk.t) (tprog: Asm.program) : Prop
-  := match_program (fun cu tf f => tf = AST.transf_fundef fn_sig f) eq sk tprog.
+  := @match_program
+       _ _ _ _ (Linking.Linker_fundef signature) Linker_unit
+       (fun cu tf f => tf = AST.transf_fundef fn_sig f) eq sk tprog.
 
 Lemma module_match_prog p
   :
@@ -56,8 +58,36 @@ Lemma link_success progs sk
   :
     exists tprog, link_list progs = Some tprog /\ match_prog sk tprog.
 Proof.
-  eapply link_list_match; eauto.
-  - eapply TransfTotalLink_rev.
+  assert((@link_list _ (@Linker_prog _ _ (Linking.Linker_fundef signature) _)
+                     (map Mod.sk (map module progs))) = Some sk).
+  { unfold link_sk, link_list in *. des_ifs_safe.
+    eapply (@stricter_link_list_aux _ (@Linker_prog (AST.fundef signature) unit (Linking.Linker_fundef signature) Linker_unit) (@Linker_prog (AST.fundef signature) unit Linker_skfundef Linker_unit)) in Heq.
+    - rewrite Heq. auto.
+    - clear Heq.
+      Local Transparent Linker_prog Linker_def Linking.Linker_fundef Linker_skfundef.
+      i. ss. unfold link_prog, proj_sumbool, andb in *. des_ifs_safe.
+      assert (FORALL: @PTree_Properties.for_all
+                        _ (prog_defmap x0) (@link_prog_check _ _ (Linking.Linker_fundef signature) _ x0 x1)
+                      = true).
+      + rewrite PTree_Properties.for_all_correct in Heq0.
+        rewrite PTree_Properties.for_all_correct.
+        i. unfold link_prog_check, proj_sumbool, andb in *. des_ifs_safe.
+        exploit Heq0; eauto. i. des_ifs.
+        ss. unfold link_def in *. des_ifs.
+        ss. unfold link_skfundef, Linking.link_fundef in *. des_ifs.
+      + rewrite FORALL. f_equal. f_equal. eapply PTree.elements_extensional.
+        i. erewrite PTree.gcombine; eauto. erewrite PTree.gcombine; eauto.
+        rewrite PTree_Properties.for_all_correct in Heq0.
+        rewrite PTree_Properties.for_all_correct in FORALL.
+        unfold link_prog_merge. des_ifs.
+        exploit Heq0; eauto. i. exploit FORALL; eauto. i. clear Heq0 FORALL.
+        unfold link_prog_check, proj_sumbool, andb in *. des_ifs.
+        ss. unfold link_def in *. des_ifs.
+        ss. unfold link_skfundef, Linking.link_fundef in *. des_ifs. }
+  clear LINK_SK. rename H into LINK_SK.
+  eapply (@link_list_match (AST.program (AST.fundef signature) unit) Asm.program (@Linker_prog (AST.fundef signature) unit (Linking.Linker_fundef signature)
+                                                                                               Linker_unit)); eauto.
+  - eapply (@TransfTotalLink_rev function signature unit Linker_unit fn_sig).
   - rewrite list_map_compose. clear LINK_SK.
     induction progs; ss.
     + econs.
@@ -919,6 +949,7 @@ Section PRESERVATION.
       hexploit Mem_alloc_range_perm; eauto. ii. exploit H; eauto. i.
       unfold Mem.perm, callee_initial_mem' in *. ss. rewrite MEQ. ss.
       eapply Mem.alloc_result in MEQ. clarify.
+    - set (Ptrofs.unsigned_range_2 ofs). nia.
   Qed.
 
   Lemma callee_initial_inj_incr blk ofs j m_src
@@ -2197,7 +2228,8 @@ Section PRESERVATION.
         ss. rewrite LINK_SK in *.
         rewrite <- (find_fptr_owner_determ OWNER MSFIND) in *. i.
         inv INIT. econs; eauto.
-        inv TYP. eauto.
+        exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+        exploit ININCL; eauto. i. des. inv WFSKELINK. eapply WFPARAM in H0. ss.
     - destruct (classic (Ge.find_fptr_owner ge fptr (System.modsem skenv_link))).
       { right. left. esplits; eauto. }
       right. right. intros SAFE. clarify. exploit SAFE; [econs|].

@@ -236,3 +236,49 @@ Qed.
 Local Opaque Linker_def.
 Local Opaque Linker_vardef.
 Local Opaque Linker_varinit.
+
+
+
+Definition link_skfundef (fd1 fd2: AST.fundef signature) :=
+  match fd1, fd2 with
+  | Internal _, Internal _ => None
+  | External ef1, External ef2 =>
+      if external_function_eq ef1 ef2 then Some (External ef1) else None
+  | Internal f, External ef =>
+      match ef with
+      | EF_external id sg =>
+        if signature_eq f sg
+        then Some (Internal f)
+        else None
+      | _ => None
+      end
+  | External ef, Internal f =>
+      match ef with
+      | EF_external id sg =>
+        if signature_eq f sg
+        then Some (Internal f)
+        else None
+      | _ => None
+      end
+  end.
+
+Inductive linkorder_skfundef: AST.fundef signature -> AST.fundef signature -> Prop :=
+  | linkorder_skfundef_refl: forall fd, linkorder_skfundef fd fd
+  | linkorder_skfundef_ext_int: forall id sg, linkorder_skfundef (External (EF_external id sg)) (Internal sg).
+
+Program Instance Linker_skfundef: Linker (AST.fundef signature) :=
+{|
+  link := link_skfundef;
+  linkorder := linkorder_skfundef;
+|}
+.
+Next Obligation.
+  destruct x; econs; eauto.
+Qed.
+Next Obligation.
+  inv H; inv H0; econs; et.
+Qed.
+Next Obligation.
+  pose x as X. pose y as Y.
+  destruct x, y; ss; des_ifs; esplits; eauto; try (econs; et).
+Qed.

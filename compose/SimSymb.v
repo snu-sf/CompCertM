@@ -111,7 +111,9 @@ Module SimSymb.
             (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
             (<<MEMSRC: sm.(SimMem.src) = m_src>>) /\
             (<<MEMTGT: sm.(SimMem.tgt) = m_tgt>>) /\
-            (<<MWF: sm.(SimMem.wf)>>)
+            (<<MWF: sm.(SimMem.wf)>>) /\
+            (<<MAINSIM: SimMem.sim_val sm (Genv.symbol_address skenv_src sk_src.(prog_main) Ptrofs.zero)
+                                       (Genv.symbol_address skenv_tgt sk_tgt.(prog_main) Ptrofs.zero)>>)
       ;
 
       mle_preserves_sim_skenv: forall

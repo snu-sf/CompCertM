@@ -1,6 +1,7 @@
 COQMODULE    := compcomp
-COQTHEORIES  := $(wildcard */*.v) #*/*.v
-COQTHEORIES  := $(filter-out proof/SimMemInjNew.v proof/SimMemInj_old.v common/MemoryExplore.v, $(COQTHEORIES))
+# COQTHEORIES  := $(wildcard */*.v) #*/*.v
+COQTHEORIES  := $(shell find . -iname '*.v')
+COQTHEORIES  := $(filter-out ./proof/SimMemInjNew.v ./proof/SimMemInj_old.v ./common/MemoryExplore.v, $(COQTHEORIES))
 
 .PHONY: all proof proof-quick
 
@@ -28,6 +29,7 @@ Makefile.coq: Makefile $(COQTHEORIES)
    echo "-R ../flocq compcert.flocq"; \
    echo "-R ../exportclight compcert.exportclight"; \
    echo "-R ../cparser compcert.cparser"; \
+   echo "-R ../demo compcert.demo"; \
 			\
    echo "-R lib $(COQMODULE)"; \
    echo "-R common $(COQMODULE)"; \

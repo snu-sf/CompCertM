@@ -254,10 +254,10 @@ Section MATCHSIMFORWARD.
         { ii. eapply SUSTAR; eauto. eapply star_refl. apply tt. }
         { econs; eauto. }
         { eapply SimMem.unlift_wf; eauto. }
-        { eapply SimMem.unlift_spec; eauto. }
+        { eapply SimMem.lift_spec; eauto. }
         i; des.
         assert(MLE3: SimMem.le sm0 sm_after).
-        { etrans; cycle 1. { et. } etrans; et. eapply SimMem.unlift_spec; et. }
+        { etrans; cycle 1. { et. } etrans; et. eapply SimMem.lift_spec; et. }
         esplits; eauto.
         right.
         eapply CIH; eauto.

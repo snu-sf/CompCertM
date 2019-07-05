@@ -60,8 +60,6 @@ Proof.
   - ss. eapply has_type_list_typify; eauto.
     rpapply val_casted_has_type_list; eauto.
     rewrite typlist_of_typelist_eq; ss.
-  - unfold Conventions1.size_arguments. des_ifs. etrans; eauto.
-    rewrite typlist_of_typelist_eq. unfold signature_of_function. ss. refl.
 Qed.
 
 Lemma transf_function_type
@@ -191,8 +189,7 @@ Proof.
         (***************** TODO: Add as a lemma in GlobalenvsC. *******************)
         inv SIMSKENV.
         assert(fptr_arg = tv).
-        { eapply fsim_external_inject_eq; try apply SIG; et. Undo 1.
-          inv VAL; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
+        { inv VAL; ss. des_ifs_safe. apply Genv.find_funct_ptr_iff in SIG. unfold Genv.find_def in *.
           inv SIMSKE. ss. inv INJECT; ss.
           exploit (DOMAIN b1); eauto.
           { eapply Genv.genv_defs_range; et. }

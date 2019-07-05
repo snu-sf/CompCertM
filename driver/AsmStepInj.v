@@ -247,10 +247,10 @@ Section ASMSTEP.
         (<<INJ: Mem.inject j m_src1 m_tgt1>>) /\
         (<<STORE: Mem.storev chunk m_tgt0 a_tgt v_tgt = Some m_tgt1>>) /\
         (<<UNCHSRC: Mem.unchanged_on
-                      (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
+                      (loc_unmapped j)
                       m_src0 m_src1>>) /\
         (<<UNCHTGT: Mem.unchanged_on
-                      (loc_out_of_reach j m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+                      (loc_out_of_reach j m_src0)
                       m_tgt0 m_tgt1>>).
   Proof.
     exploit Mem.storev_mapped_inject; eauto. i. des.
@@ -288,10 +288,10 @@ Section ASMSTEP.
         (<<INJ: Mem.inject (update_meminj j (Mem.nextblock m_src0) (Mem.nextblock m_tgt0) 0) m_src1 m_tgt1>>) /\
         (<<ALLOC: Mem.alloc m_tgt0 lo2 hi2 = (m_tgt1, Mem.nextblock m_tgt0)>>) /\
         (<<UNCHSRC: Mem.unchanged_on
-                      (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
+                      (loc_unmapped j)
                       m_src0 m_src1>>) /\
         (<<UNCHTGT: Mem.unchanged_on
-                      (loc_out_of_reach j m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+                      (loc_out_of_reach j m_src0)
                       m_tgt0 m_tgt1>>).
   Proof.
     exploit Mem.alloc_parallel_inject; eauto. i. des.
@@ -397,10 +397,10 @@ Section ASMSTEP.
           (<<INJ: Mem.inject j m_src1 m_tgt1>>) /\
           (<<FREE: Mem.free m_tgt0 blk_tgt ofs_tgt.(Ptrofs.unsigned) (ofs_tgt.(Ptrofs.unsigned) + sz) = Some m_tgt1>>) /\
           (<<UNCHSRC: Mem.unchanged_on
-                        (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
+                        (loc_unmapped j)
                         m_src0 m_src1>>) /\
           (<<UNCHTGT: Mem.unchanged_on
-                        (loc_out_of_reach j m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+                        (loc_out_of_reach j m_src0)
                         m_tgt0 m_tgt1>>).
     Proof.
       exploit Mem_free_parallel_inject'; eauto. i. des.
@@ -418,7 +418,7 @@ Section ASMSTEP.
           eapply H; eauto.
           eapply Mem.perm_cur. eapply Mem.perm_implies.
           * eapply Mem.free_range_perm; eauto.
-            erewrite Mem.address_inject in H4; try apply INJ; eauto; cycle 1.
+            erewrite Mem.address_inject in H2; try apply INJ; eauto; cycle 1.
             { eapply Mem.free_range_perm; eauto. lia. }
             erewrite Mem.address_inject in H3; try apply INJ; eauto; cycle 1.
             { eapply Mem.free_range_perm; eauto. lia. }
@@ -447,7 +447,7 @@ Section ASMSTEP.
         (<<INJ: Mem.inject j m_src1 m_tgt0>>) /\
         (<<EXEC: exec_load ge_tgt chunk m_tgt0 a rs_tgt0 rd = Next rs_tgt1 m_tgt0>>) /\
         (<<UNCHSRC: Mem.unchanged_on
-                      (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
+                      (loc_unmapped j)
                       m_src0 m_src1>>)
   .
   Proof.
@@ -501,10 +501,10 @@ Section ASMSTEP.
         (<<INJ: Mem.inject j m_src1 m_tgt1>>) /\
         (<<EXEC: exec_store ge_tgt chunk m_tgt0 a rs_tgt0 rd l = Next rs_tgt1 m_tgt1>>) /\
         (<<UNCHSRC: Mem.unchanged_on
-                      (loc_unmapped j /2\ SimMemInj.valid_blocks m_src0)
+                      (loc_unmapped j)
                       m_src0 m_src1>>) /\
         (<<UNCHTGT: Mem.unchanged_on
-                      (loc_out_of_reach j m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+                      (loc_out_of_reach j m_src0)
                       m_tgt0 m_tgt1>>)
   .
   Proof.
@@ -937,6 +937,16 @@ Section ASMSTEP.
       inject_incr j (update_meminj j b_src b_tgt ofs).
   Proof. unfold update_meminj. ii. des_ifs. Qed.
 
+  (* TODO: unify with LowerBound - move to MemoryC *)
+  Lemma Mem_unchanged_on_strengthen P m0 m1
+    :
+      Mem.unchanged_on P m0 m1 <-> Mem.unchanged_on (SimMemInj.valid_blocks m0 /2\ P) m0 m1.
+  Proof.
+    split; i.
+    - eapply Mem.unchanged_on_implies; eauto. i. des. auto.
+    - eapply Mem.unchanged_on_implies; eauto. ss.
+  Qed.
+
   Local Opaque Mem.storev.
   Theorem asm_step_preserve_injection
         rs_src0 rs_src1 m_src0 m_src1 tr j0
@@ -958,10 +968,10 @@ Section ASMSTEP.
         (<<SEP: inject_separated j0 j1 m_src0 m_tgt0>>) /\
 
         (<<UNCHSRC: Mem.unchanged_on
-                      (loc_unmapped j0 /2\ SimMemInj.valid_blocks m_src0)
+                      (loc_unmapped j0)
                       m_src0 m_src1>>) /\
         (<<UNCHTGT: Mem.unchanged_on
-                      (loc_out_of_reach j0 m_src0 /2\ SimMemInj.valid_blocks m_tgt0)
+                      (loc_out_of_reach j0 m_src0)
                       m_tgt0 m_tgt1>>)
   .
   Proof.
@@ -1427,17 +1437,26 @@ tac_cal AGREE.
           { econs. unfold update_meminj. des_ifs. ss. }
         * ii. unfold update_meminj in *. des_ifs.
           esplits; apply Plt_strict.
-        * eapply Mem.unchanged_on_trans; eauto.
-          eapply Mem.unchanged_on_trans; eapply Mem.unchanged_on_implies; eauto;
-            ii; des; esplits; eauto; unfold loc_unmapped, update_meminj in *;
-              des_ifs; exfalso; eapply Plt_strict; eauto.
-        * eapply Mem.unchanged_on_trans; eauto.
-          eapply Mem.unchanged_on_trans; eapply Mem.unchanged_on_implies; eauto;
-            ii; des; esplits; eauto; unfold loc_out_of_reach, update_meminj in *;
-              ii; des_ifs; try by (eapply Plt_strict; eauto).
-          { eapply H; eauto. eapply Mem.perm_alloc_4; eauto. }
-          { eapply H; eauto. eapply Mem.perm_alloc_4; eauto.
-            Local Transparent Mem.storev. ss. eapply Mem.perm_store_2; eauto. }
+        * erewrite Mem_unchanged_on_strengthen in *.
+          eapply Mem.unchanged_on_trans; eauto.
+          eapply Mem.unchanged_on_trans; eapply Mem.unchanged_on_implies; eauto.
+          { ii; des; esplits; eauto; unfold loc_unmapped, update_meminj in *.
+            des_ifs. exfalso. eapply Plt_strict; eauto. }
+          { ii; des; esplits; eauto; unfold loc_unmapped, update_meminj in *.
+            des_ifs. exfalso. eapply Plt_strict; eauto. }
+        * erewrite Mem_unchanged_on_strengthen in *.
+          eapply Mem.unchanged_on_trans; eauto.
+          eapply Mem.unchanged_on_trans; eapply Mem.unchanged_on_implies; eauto.
+          { ii; des; esplits; eauto; unfold loc_out_of_reach, update_meminj in *.
+            ii; des_ifs.
+            - eapply Plt_strict; eauto.
+            - eapply H4; eauto. eapply Mem.perm_alloc_4; eauto. }
+          { ii. ss. des. split; eauto. ii.
+            unfold update_meminj in *. ii. des_ifs.
+            - eapply Plt_strict; eauto.
+            - exploit H4; eauto. eapply Mem.perm_alloc_4; eauto.
+              Local Transparent Mem.storev. ss.
+              eapply Mem.perm_store_2; eauto. }
 
       + cinv (AGREE RSP); rewrite Heq1 in *; clarify.
         exploit mem_free_inject; try apply Heq2; eauto. i. des. zsimpl.
@@ -1491,8 +1510,6 @@ tac_cal AGREE.
         eapply undef_regs_agree.
         eapply set_res_agree; eauto.
         eapply undef_regs_agree. eauto.
-      + eapply Mem.unchanged_on_implies; eauto. i. des. eauto.
-      + eapply Mem.unchanged_on_implies; eauto. i. des. eauto.
 
     - exploit extcall_arguments_inject; eauto. i. des.
       exploit ec_mem_inject_weak; eauto.
@@ -1515,8 +1532,6 @@ tac_cal AGREE.
         eapply set_pair_inject; eauto.
         eapply regset_after_external_inject; eauto.
         eapply agree_incr; eauto.
-      + eapply Mem.unchanged_on_implies; eauto. i. des. eauto.
-      + eapply Mem.unchanged_on_implies; eauto. i. des. eauto.
   Qed.
 
 End ASMSTEP.

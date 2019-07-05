@@ -311,6 +311,7 @@ Proof.
       }
       { clarify. apply DROP0. des_sumbool. ss. }
     + inv TRANSL1. eapply NoDup_norepet; et. rewrite Sk.of_program_defs_names; ss.
+    + ii. des. eapply H0. des_sumbool. inv TRANSL1. eauto.
   - ii. eapply sim_modsem; eauto.
 Unshelve.
   all: ss.

@@ -752,9 +752,15 @@ Qed.
 
 End MATCH_PROJ.
 
+Lemma hle_lift: forall su0 su1 (HLE: hle su0 su1) (WF: wf su0), <<LE: le' su0 su1>>.
+Proof.
+  ii. rr. rr in HLE. des. esplits; eauto.
+  ii. rewrite <- OLD; ss. inv WF. eauto.
+Qed.
+
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
-  le := le';
+  lift := le';
   wf := wf;
   hle := hle;
   val := val';
@@ -764,8 +770,10 @@ Global Program Instance Unreach: Sound.class := {
 }
 .
 Next Obligation.
-  rr. rr in HLE. des. esplits; eauto.
-  ii. rewrite <- OLD; ss. inv WF. eauto.
+  inv MLE. econs; eauto.
+  eapply Mem.unchanged_on_implies; eauto.
+  ii. unfold flip in *. inv WF. exploit WFHI; eauto. i. unfold Mem.valid_block in *.
+  rr in HLE. des. rewrite <- OLD; eauto.
 Qed.
 Next Obligation.
   eapply mle_monotone; try apply MLE; eauto.
@@ -811,6 +819,9 @@ Next Obligation.
   inv LE.
   inv SKE. econs; eauto.
   congruence.
+Qed.
+Next Obligation.
+  rr in MLE. des. inv SKE. econs; eauto. congruence.
 Qed.
 Next Obligation.
   inv MLE.
@@ -1008,7 +1019,7 @@ Qed.
 
 Lemma greatest_ex: forall
     su0 args0
-    (INHAB: exists (inhab: Sound.t), <<LE: Sound.le su0 inhab>> /\ <<ARGS: inhab.(Sound.args) args0>>)
+    (INHAB: exists (inhab: Sound.t), <<LE: Sound.lift su0 inhab>> /\ <<ARGS: inhab.(Sound.args) args0>>)
   ,
     exists su_gr, <<GR: get_greatest su0 args0 su_gr>>
 .
@@ -1040,7 +1051,7 @@ Lemma greatest_adq: forall
     su0 args0 su_gr
     (GR: get_greatest su0 args0 su_gr)
   ,
-    <<SUARGS: Sound.args su_gr args0>> /\ <<LE: Sound.le su0 su_gr>>
+    <<SUARGS: Sound.args su_gr args0>> /\ <<LE: Sound.lift su0 su_gr>>
 .
 Proof.
   ii.
@@ -1051,7 +1062,7 @@ Lemma get_greatest_le: forall
     su0 su1 args0 su_gr
     (GR: get_greatest su1 args0 su_gr)
     (SUARG: Sound.args su1 args0)
-    (LE: Sound.le su0 su1)
+    (LE: Sound.lift su0 su1)
   ,
     <<GR: get_greatest su0 args0 su_gr>>
 .

@@ -131,7 +131,9 @@ Section SIM.
         bsimpl. des; des_sumbool; ss; clarify.
         clear - Heq2 CHK0 H1 H4.
         des_ifs. inv H1; inv H4; ss.
-        - unfold CtypesC.CSk.match_fundef in *. des_ifs; ss; des_ifs. bsimpl; des; des_sumbool; clarify.
+        - unfold CtypesC.CSk.match_fundef in *. des_ifs; ss; des_ifs; bsimpl; des; des_sumbool; clarify.
+          { unfold signature_of_function, signature_of_type in *. apply n. f_equal. rewrite Heq3. rewrite typ_of_type_list; ss. }
+          { unfold signature_of_function, signature_of_type in *. apply n. f_equal. rewrite Heq3. rewrite typ_of_type_list; ss. }
         - des_ifs. inv H; inv H0; ss. unfold link_vardef in *. ss. des_ifs.
       }
       bsimpl. des. des_sumbool.
@@ -151,13 +153,11 @@ Section SIM.
       destruct x eqn:Tx; ss. destruct y eqn:Ty; ss. unfold x in Tx. unfold y in Ty.
       exploit Q; eauto. intro CHK. (* unfold link_prog_check, prog_defmap in CHK. *)
       unfold option_map. des_ifs; ss; cycle 1.
-      - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef in *; des_ifs; ss; des_ifs.
-        + unfold link_prog_check in CHK. unfold prog_defmap in *. unfold program_of_program in CHK. ss.
-          des_ifs_safe. bsimpl. des_safe. des_sumbool. des_ifs. bsimpl. des; ss; des_sumbool; clarify.
-        + unfold link_prog_check in CHK. unfold prog_defmap in *. unfold program_of_program in CHK. ss.
-          des_ifs_safe. bsimpl. des_safe.
+      - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef, link_prog_check, prog_defmap, program_of_program in *; des_ifs; ss; des_ifs; bsimpl; des; des_sumbool; clarify.
       - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef in *; des_ifs; ss;
-          unfold fundef_of_fundef in *; des_ifs.
+          unfold fundef_of_fundef in *; des_ifs; bsimpl; des; des_sumbool; clarify.
+        + exfalso. apply n. destruct f3; ss. unfold signature_of_function, signature_of_type. ss. f_equal. rewrite Heq1. rewrite typ_of_type_list; ss.
+        + exfalso. apply n. destruct f3; ss. unfold signature_of_function, signature_of_type. ss. f_equal. rewrite Heq1. rewrite typ_of_type_list; ss.
         + destruct g; ss. unfold link_vardef in *. des_ifs. ss. bsimpl. des. rewrite eqb_true_iff in *.
           f_equal. destruct gvar_info; ss. f_equal; ss. f_equal; ss. clarify.
         + exfalso.

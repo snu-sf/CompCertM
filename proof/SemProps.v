@@ -203,6 +203,20 @@ Proof.
     unfold prog_defs_names. ss. rewrite in_map_iff. des. eexists (_, _). s. esplits; eauto.
     eapply PTree.elements_correct. rewrite PTree.gcombine; ss.
     unfold link_prog_merge. des_ifs; eauto.
+  - i. eapply PTree.elements_complete in IN.
+    rewrite PTree.gcombine in IN; ss.
+    unfold link_prog_merge in IN. des_ifs.
+    + Local Transparent Linker_def. ss. unfold link_def in IN. des_ifs.
+      Local Transparent Linker_skfundef. ss.
+      inv WFSK0; inv WFSK1.
+      unfold link_skfundef in Heq1. des_ifs.
+      * eapply WFPARAM; eauto. eapply in_prog_defmap; eauto.
+      * eapply WFPARAM0; eauto. eapply in_prog_defmap; eauto.
+      * eapply WFPARAM; eauto. eapply in_prog_defmap; eauto.
+    + inv WFSK0.
+      eapply WFPARAM; eauto. eapply in_prog_defmap; eauto.
+    + inv WFSK1.
+      eapply WFPARAM; eauto. eapply in_prog_defmap; eauto.
 Qed.
 
 Theorem link_list_preserves_wf_sk
@@ -328,12 +342,18 @@ Section INITDTM.
   .
   Proof.
     inv WF. unfold skenv_fill_internals.
-    econs; ii; ss; eauto.
+    econs; i; ss; eauto.
     - rewrite Genv_map_defs_symb in *. exploit SYMBDEF; eauto. i; des.
       hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto.
       rewrite H0; ss.
     - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs.
       exploit DEFSYMB; eauto.
+    - unfold Genv_map_defs, Genv.find_def in *; ss.
+      rewrite PTree_filter_map_spec in DEF.
+      destruct ((Genv.genv_defs skenv0) ! blk) eqn:DMAP; ss.
+      unfold o_bind in DEF; ss. des_ifs.
+      { eapply WFPARAM in DMAP; eauto. }
+      { eapply WFPARAM in DMAP; eauto. }
   Qed.
 
   Lemma system_disjoint

@@ -124,6 +124,9 @@ Next Obligation.
   - ginduction x1; ii; inv H; ss.
     econs; eauto.
 Qed.
+Next Obligation.
+  inv H. ss.
+Qed.
 
 Section ORIGINALS.
 
@@ -241,6 +244,68 @@ Proof.
 Qed.
 
 End ORIGINALS.
+
+Lemma parallel_gen sm0 m_src1 m_tgt1 j1
+      (WF: wf' sm0)
+      (INJECT: Mem.inject j1 m_src1 m_tgt1)
+      (INCR: inject_incr sm0.(inj) j1)
+      (SEP: inject_separated sm0.(inj) j1 sm0.(src) sm0.(tgt))
+      (UNCHSRC: Mem.unchanged_on
+                  (loc_unmapped sm0.(inj))
+                  sm0.(src) m_src1)
+      (UNCHTGT: Mem.unchanged_on
+                  (loc_out_of_reach sm0.(inj) sm0.(src))
+                  sm0.(tgt) m_tgt1)
+      (MAXSRC: forall
+          b ofs
+          (VALID: Mem.valid_block sm0.(src) b)
+        ,
+          <<MAX: Mem.perm m_src1 b ofs Max <1= Mem.perm sm0.(src) b ofs Max>>)
+      (MAXTGT: forall
+          b ofs
+          (VALID: Mem.valid_block sm0.(tgt) b)
+        ,
+          <<MAX: Mem.perm m_tgt1 b ofs Max <1= Mem.perm sm0.(tgt) b ofs Max>>)
+:
+  (<<MLE: le' sm0 (mk
+                     m_src1 m_tgt1 j1
+                     (src_external sm0)
+                     (tgt_external sm0)
+                     (src_parent_nb sm0)
+                     (tgt_parent_nb sm0))>>) /\
+  (<<MWF: wf' (mk
+                 m_src1 m_tgt1 j1
+                 (src_external sm0)
+                 (tgt_external sm0)
+                 (src_parent_nb sm0)
+                 (tgt_parent_nb sm0))>>).
+Proof.
+  inv WF. split.
+  - econs; ss; eauto.
+    + eapply Mem.unchanged_on_implies; eauto. ii. eapply SRCEXT; eauto.
+    + eapply Mem.unchanged_on_implies; eauto. ii. eapply TGTEXT; eauto.
+    + econs. ii. des. exploit SEP; eauto. i. des. split.
+      * unfold Mem.valid_block in *. red. xomega.
+      * unfold Mem.valid_block in *. red. xomega.
+  - econs; ss; eauto.
+    + etransitivity; eauto.
+      ii. destruct PR. split; ss.
+      * unfold loc_unmapped. destruct (j1 x0) eqn:BLK; eauto.
+        destruct p. exploit SEP; eauto. i. des. clarify.
+      * eapply Plt_Ple_trans; eauto.
+        eapply Mem.unchanged_on_nextblock; eauto.
+    + etransitivity; eauto.
+      ii. destruct PR. split; ss.
+      * ii. destruct (inj sm0 b0) eqn:BLK.
+        { destruct p. dup BLK. eapply INCR in BLK. clarify.
+          exploit H; eauto. eapply MAXSRC; eauto.
+          eapply Mem.valid_block_inject_1; eauto. }
+        { exploit SEP; eauto. i. des. clarify. }
+      * eapply Plt_Ple_trans; eauto.
+        eapply Mem.unchanged_on_nextblock; eauto.
+    + etransitivity; eauto. eapply Mem.unchanged_on_nextblock; eauto.
+    + etransitivity; eauto. eapply Mem.unchanged_on_nextblock; eauto.
+Qed.
 
 Lemma alloc_left_zero_simmem
       sm0
@@ -549,6 +614,12 @@ Next Obligation.
   - econs; ss; try xomega; ii; des; ss; eauto.
     eapply Genv.initmem_inject; eauto.
     u in *. eauto.
+  - rewrite MAINSIM.
+    unfold Genv.symbol_address. des_ifs. unfold Mem.flat_inj. econs; eauto.
+    + des_ifs. exfalso. apply n. eapply Plt_Ple_trans.
+      { eapply Genv.genv_symb_range; et. }
+      erewrite Genv.init_mem_genv_next; eauto. refl.
+    + psimpl. ss.
 Qed.
 Next Obligation.
   inv SIMSKENV. inv INJECT.
@@ -748,7 +819,7 @@ Proof.
         exploit Mem.alloc_result; try apply Q; intro Y. clarify.
         exploit Mem.nextblock_alloc; try apply Q; intro Y.
         rewrite ! X. rewrite ! Y.
-        unfold block in *. 
+        unfold block in *.
         destruct n; ss.
         { des_ifs.
           - bsimpl. des. des_sumbool.

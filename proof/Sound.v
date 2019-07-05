@@ -32,8 +32,8 @@ Module Sound.
     mle: t -> Memory.mem -> Memory.mem -> Prop;
     mle_PreOrder su0 :> PreOrder (mle su0);
 
-    le: t -> t -> Prop;
-    le_PreOrder :> PreOrder le;
+    lift: t -> t -> Prop;
+    lift_PreOrder :> PreOrder lift;
     hle: t -> t -> Prop;
     hle_PreOrder :> PreOrder hle;
     (* le_val: forall *)
@@ -45,17 +45,26 @@ Module Sound.
 
     (* TODO: rename it into le_monotone *)
     wf: t -> Prop;
-    hle_le: forall
-        su0 su1
+    (* hle_le: forall *)
+    (*     su0 su1 *)
+    (*     (HLE: hle su0 su1) *)
+    (*     (WF: wf su0) *)
+    (*   , *)
+    (*     <<LE: le su0 su1>> *)
+    (* ; *)
+    hle_mle: forall
+        m0 m1 su0 su1
+        (MLE: mle su1 m0 m1)
         (HLE: hle su0 su1)
         (WF: wf su0)
       ,
-        <<LE: le su0 su1>>
+        <<MLE: mle su0 m0 m1>>
     ;
-    le_spec: forall
+
+    lift_spec: forall
         su0 su1 m0 m1
         (MLE: mle su1 m0 m1)
-        (LE: le su0 su1)
+        (LE: lift su0 su1)
       ,
         <<MLE: mle su0 m0 m1>>
     ;
@@ -120,10 +129,18 @@ Module Sound.
           (<<SUSKE: su_init.(skenv) m_init skenv_link>>)
     ;
 
-    skenv_le: forall
+    skenv_lift: forall
         m0 su0 su1 ske
         (SKE: su0.(skenv) m0 ske)
-        (LE: le su0 su1)
+        (LE: lift su0 su1)
+      ,
+        <<SKE: su1.(skenv) m0 ske>>
+    ;
+
+    skenv_hle: forall
+        m0 su0 su1 ske
+        (SKE: su0.(skenv) m0 ske)
+        (MLE: hle su0 su1)
       ,
         <<SKE: su1.(skenv) m0 ske>>
     ;
@@ -178,6 +195,7 @@ Module Sound.
 
   Lemma hle_spec: forall
         su0 su1 m0 m1
+        (HLELIFT: forall su0 su1 (HLE: hle su0 su1) (WF: wf su0), <<LE: lift su0 su1>>)
         (MLE: mle su1 m0 m1)
         (LE: hle su0 su1)
         (WF: wf su0)
@@ -185,7 +203,7 @@ Module Sound.
         <<MLE: mle su0 m0 m1>>
   .
   Proof.
-    i. eapply Sound.le_spec; et. eapply Sound.hle_le; et.
+    i. eapply Sound.lift_spec; et. eapply HLELIFT; et.
   Qed.
 
 

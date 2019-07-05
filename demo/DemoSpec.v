@@ -25,12 +25,12 @@ Section MODSEM.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) prog.(Sk.of_program id).
   Let ge: Genv.t (AST.fundef signature) unit := skenv.(SkEnv.revive) prog.
 
-  Record state := mkstate { get_arg: val; get_mem: mem; }.
+  Record state := mkstate { get_arg: int64; get_mem: mem; }.
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame1_intro
       st
-      (VS: args.(Args.vs) = [st.(get_arg)])
+      (VS: args.(Args.vs) = [Vlong st.(get_arg)])
       (M: args.(Args.m) = st.(get_mem))
     :
       initial_frame args st
@@ -39,7 +39,7 @@ Section MODSEM.
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_return
       st v_ret
-      (SPEC: Val.floatoflongu st.(get_arg) = Some v_ret)
+      (SPEC: Val.floatoflongu (Vlong st.(get_arg)) = Some v_ret)
     :
       final_frame st (Retv.mk v_ret st.(get_mem))
   .

@@ -225,6 +225,8 @@ Proof.
     eapply inject_list_length in VALS.
     rewrite VS in *. ss. }
 
+  assert (ARGLONG: exists lng, (Args.vs args_src) = [Vlong lng]).
+  { inv SAFESRC. inv H. rewrite VS. eauto. }
   clear SAFESRC.
   inv INITTGT. clarify. inv TYP. ss. destruct args_tgt. ss.
   destruct vs; clarify. destruct vs; clarify; ss.
@@ -235,19 +237,19 @@ Proof.
   unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs.
   inv H3. inv H0.
 
-  eexists (DemoSpec.mkstate v0 (SimMemInj.src sm_arg)). esplits; eauto.
+  eexists (DemoSpec.mkstate lng (SimMemInj.src sm_arg)). esplits; eauto.
   - refl.
   - ss.
   - unfold Genv.find_funct in FINDF. des_ifs.
     instantiate (1:=nat_idx 10).
-    destruct (Val.floatoflongu (typify v0 AST.Tlong)) eqn:VEQ; cycle 1.
+    destruct (Val.floatoflongu (typify (Vlong lng) AST.Tlong)) eqn:VEQ; cycle 1.
     { instantiate (1:=unit). unfold lxsim. pfold. ss.
       intros _. econs 1. ii. econs 1.
       - split; ii.
         + inv H0. inv H1.
         + inv H0. inv H1. ss.
-          clear - VEQ SPEC. unfold typify in *.
-          destruct v0; ss. des_ifs. ss.
+          clear - VEQ SPEC. unfold typify in *. clarify.
+          des_ifs. ss.
       - ii. inv STEPSRC.
       - econs; ii; ss. }
 

@@ -207,7 +207,7 @@ Inductive match_states_b_internal:
 
 Inductive match_states_b (sm_arg: SimMemInj.t')
   : unit -> state -> state -> SimMemInj.t' -> Prop :=
-| match_states_clight_intro
+| match_states_b_intro
     st_src st_tgt j m_src m_tgt sm0
     (MWFSRC: m_src = sm0.(SimMemInj.src))
     (MWFTGT: m_tgt = sm0.(SimMemInj.tgt))

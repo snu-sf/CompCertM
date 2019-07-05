@@ -7,7 +7,7 @@ Require Import sflib.
 Require Import MutrecHeader IntegersC.
 Require Import StaticMutrecB StaticMutrecBspec.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift AsmregsC MatchSimModSem.
 (* Require SimMemInjC. *)
 Require SoundTop.
 Require SimMemInjC SimMemInjInv SimMemInjInvC.
@@ -64,7 +64,7 @@ Proof.
       * eapply Mem.store_unchanged_on; eauto.
         ii. exploit INVRANGETGT; eauto. i. des.
         exfalso. eauto.
-    + econs. ii. des. clarify.
+    + eapply SimMemInj.frozen_refl. + eapply SimMemInj.frozen_refl.
     + ii. eapply Mem.perm_store_2; eauto. eapply Mem.perm_store_2; eauto.
   - econs; ss; eauto.
     + econs; ss; eauto.
@@ -361,9 +361,10 @@ Lemma match_states_lxsim
                 (SkEnv.project skenv_link (Sk.of_program fn_sig prog)))
       (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
   :
-    <<XSIM: lxsim (md_src skenv_link) (md_tgt skenv_link)
-                  (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
-                  sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
+    <<XSIM: lxsimL (md_src skenv_link) (md_tgt skenv_link)
+                   (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
+                   (top3) (fun _ _ => SimMem.le)
+                   sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
 .
 Proof.
   destruct (Genv.find_symbol
@@ -822,7 +823,7 @@ Proof.
 
 
       cinv MWF.
-      hexploit (@SimMemInjInv.unchanged_on_mle
+      hexploit (@SimMemInjInvC.unchanged_on_mle
                   SimMemInjInv.top_inv memoized_inv sm0
                   sm0.(SimMemInjInv.minj).(SimMemInj.src) m_tgt sm0.(SimMemInjInv.minj).(SimMemInj.inj)); ss; eauto.
       { eapply private_unchanged_inject; eauto.
@@ -915,9 +916,9 @@ Proof.
         exploit Mem_unfree_right_inject; try apply UNFR; eauto.
         { inv MWF1. inv WF1. eauto. }
         { instantiate (1:=0). instantiate (1:=0). ii. lia. } intros INJ.
-        eapply SimMemInjInv.unlift_wf in MWF1; try apply MLE1; eauto.
-        dup MLE1. eapply SimMemInjInv.unlift_spec in MLE1; eauto.
-        exploit SimMemInjInv.unchanged_on_mle; eauto.
+        eapply SimMemInjInvC.unlift_wf in MWF1; try apply MLE1; eauto.
+        dup MLE1. eapply SimMemInjInvC.unlift_spec in MLE1; eauto.
+        exploit SimMemInjInvC.unchanged_on_mle; eauto.
         { ss. ii. clarify. }
         { refl. }
         { eapply Mem.unchanged_on_implies.
@@ -929,7 +930,7 @@ Proof.
         eexists (SimMemInjInv.mk
                    (SimMemInj.mk
                       (SimMemInj.src sm_ret.(SimMemInjInv.minj))
-                      m1 _ _ _ _ _) _ _).
+                      m1 _ _ _ _ _ _ _) _ _).
         esplits; ss.
         { econs; ss; eauto.
           - instantiate (1:=mksignature [AST.Tint] (Some AST.Tint) cc_default).
@@ -943,7 +944,7 @@ Proof.
             inv INCL. exploit DEFS; eauto.
           - unfold size_arguments. des_ifs. ss. psimpl.
             rewrite MEMTGT. eauto. }
-        { etrans; eauto. etrans; eauto. }
+        { etrans; eauto. refl. }
         { right. eapply CIH; eauto.
           { exploit SimSymb.mle_preserves_sim_skenv; ss; cycle 1; eauto.
             etrans; eauto. etrans; eauto. }
@@ -1209,9 +1210,12 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  econs; eauto.
+  eapply sim_mod_sem_implies.
+  eapply ModSemPair.simL_intro with (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le).
   { i. eapply SoundTop.sound_state_local_preservation. }
   { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
+  { ii; ss. r. etrans; eauto. }
+  { ii. eapply SimMem.pub_priv; et. }
   i. ss. esplits; eauto.
 
   - i. des. inv SAFESRC. instantiate (1:=unit).
@@ -1318,7 +1322,7 @@ Proof.
       { econs; ss; eauto. econs; ss; eauto.
         - refl.
         - eapply Mem.unchanged_on_implies; eauto; ss.
-        - eapply SimMemInj.frozen_refl.
+        - eapply SimMemInj.frozen_refl. - eapply SimMemInj.frozen_refl.
         - ii. eapply Mem.perm_unchanged_on_2; eauto; ss. }
 
       assert (MWF1: SimMem.wf sm1).
@@ -1365,7 +1369,7 @@ Proof.
       * eauto.
       * left. unfold StaticMutrecBspec.module in *.
         eapply match_states_lxsim; eauto.
-        { inv SIMSKENV. eapply SimMemInjInvC.sim_skenv_inj_le; eauto. }
+        { inv SIMSKENV. eapply SimMemInjInvC.sim_skenv_inj_lepriv; eauto. hexploit SimMem.pub_priv; et. }
         { ss. econs; ss; eauto.
           - econs; ss; eauto.
             + rewrite RSPC. eauto.

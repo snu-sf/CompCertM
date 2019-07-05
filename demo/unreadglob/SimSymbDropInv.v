@@ -122,8 +122,8 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
                         (<<SIM: def_src = def_tgt>>))
     (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
     (PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public))
-    (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(SimMemInj.src_parent_nb))
-    (BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(SimMemInj.tgt_parent_nb))
+    (NBSRC: skenv_src.(Genv.genv_next) = sm0.(SimMemInj.src_ge_nb))
+    (NBTGT: skenv_tgt.(Genv.genv_next) = sm0.(SimMemInj.tgt_ge_nb))
 .
 
 Theorem sim_skenv_symbols_inject
@@ -231,8 +231,8 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
     (<<PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss>>)
     /\
     (<<PUB: skenv_src.(Genv.genv_public) = skenv_tgt.(Genv.genv_public)>>)
-    /\ (<<BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm0.(SimMemInj.src_parent_nb)>>)
-    /\ (<<BOUNDTGT: Ple skenv_tgt.(Genv.genv_next) sm0.(SimMemInj.tgt_parent_nb)>>)
+    /\ (<<NBSRC: skenv_src.(Genv.genv_next) = sm0.(SimMemInj.src_ge_nb)>>)
+    /\ (<<NBTGT: skenv_tgt.(Genv.genv_next) = sm0.(SimMemInj.tgt_ge_nb)>>)
 .
 
 Theorem sim_skenv_splittable_spec
@@ -377,7 +377,7 @@ Lemma init_meminj_simskenv
       (LOADMEMTGT: Sk.load_mem sk_tgt = Some m_tgt)
       (SIMSK: sim_sk ss sk_src sk_tgt)
   : sim_skenv
-      (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt))
+      (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt) (Mem.nextblock m_src) (Mem.nextblock m_tgt))
           (fun blk => forall ofs, loc_unmapped (init_meminj sk_src sk_tgt) blk ofs /\ Mem.valid_block m_src blk) bot1)
       ss (Sk.load_skenv sk_src) (Sk.load_skenv sk_tgt).
 Proof.
@@ -425,8 +425,8 @@ Proof.
   - ii. inv SIMSK. apply CLOSED in H. unfold privs in *. apply andb_true_iff in H. des.
     apply negb_true_iff in H0. unfold Sk.load_skenv in *. rewrite Genv.globalenv_public in PR. des_sumbool. ss.
   - inv SIMSK. unfold Sk.load_skenv. do 2 rewrite Genv.globalenv_public. ss.
-  - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
-  - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega.
+  - inv SIMSK. erewrite Genv.init_mem_genv_next; et.
+  - inv SIMSK. erewrite Genv.init_mem_genv_next; et.
 Qed.
 
 Lemma init_meminj_invert_strong
@@ -681,7 +681,7 @@ Next Obligation.
   exploit init_mem_exists; et. intros LOADMEMTGT; des.
   exploit init_meminj_simskenv; try eapply SIMSK; et. intros SIMSKENV.
   eexists m_tgt.
-  exists (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt))
+  exists (mk (SimMemInj.mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt) (Mem.nextblock m_src) (Mem.nextblock m_tgt))
              (fun blk => forall ofs, loc_unmapped (init_meminj sk_src sk_tgt) blk ofs /\ Mem.valid_block m_src blk) bot1).
   esplits; et. eauto.
   { econs; ss; cycle 1.
@@ -756,20 +756,20 @@ Next Obligation.
   (* admit "See 'init_meminj_preserves_globals' in Unusedglobproof.v". *)
 Qed.
 Next Obligation.
-  inv MLE. inv MLE0. inv SIMSKENV.
+  inv MLE. inv SIMSKENV.
   assert (SAME: forall b b' delta, Plt b (Genv.genv_next skenv_src) ->
                                    SimMemInj.inj sm1 b = Some(b', delta) -> SimMemInj.inj sm0 b = Some(b', delta)).
   { i. destruct (SimMemInj.inj sm0 b) eqn:T; ss.
     - destruct p; ss. exploit INCR; eauto. i; clarify.
     - inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
-      unfold Mem.valid_block in *. xomega. }
+      unfold Mem.valid_block in *. rewrite <- NBSRC in *. xomega. }
   apply sim_skenv_splittable_spec.
   rr.
   dsplits; eauto; try congruence; [..|M|M]; Mskip ii.
   - i. eapply SIMSYMB1; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto.
   - i. exploit SIMSYMB2; eauto. i; des. eexists. splits; eauto.
   - i. exploit SIMSYMB3; eauto. i; des. eexists. splits; eauto.
-  - rewrite <- MINVEQSRC. eauto.
+  - rewrite <- INVSRC. eauto.
   - i. exploit SIMDEF; eauto. eapply SAME; try eapply Genv.genv_defs_range; eauto.
   - ii. eapply DISJ; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto.
     destruct (SimMemInj.inj sm0 blk_src1) eqn:T; ss.
@@ -777,20 +777,20 @@ Next Obligation.
     exfalso.
     inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
     exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac.
-    exploit Genv.genv_symb_range; eauto. i. unfold Mem.valid_block in *. xomega.
+    exploit Genv.genv_symb_range; eauto. i. unfold Mem.valid_block in *. rewrite <- NBTGT in *. xomega.
   - ii. eapply SIMDEFINV; eauto.
     destruct (SimMemInj.inj sm0 blk_src) as [[b1 delta1] | ] eqn: J.
     + exploit INCR; eauto. congruence.
     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
-      exploit Genv.genv_defs_range; eauto. i. unfold Mem.valid_block in *. xomega.
+      exploit Genv.genv_defs_range; eauto. i. unfold Mem.valid_block in *. rewrite <- NBTGT in *. xomega.
   (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *)
 Qed.
-Next Obligation.
-  inv SIMSKENV. inv MWF. inv WF.
-  destruct sm0; ss. destruct minj; ss. econs; ss; eauto.
-  - ss. etrans; eauto.
-  - ss. etrans; eauto.
-Qed.
+(* Next Obligation. *)
+(*   inv SIMSKENV. inv MWF. inv WF. *)
+(*   destruct sm0; ss. destruct minj; ss. econs; ss; eauto. *)
+(*   - ss. etrans; eauto. *)
+(*   - ss. etrans; eauto. *)
+(* Qed. *)
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
@@ -1037,7 +1037,7 @@ Next Obligation.
   exploit ec_mem_inject; eauto.
   - eapply external_call_spec.
   - eapply sim_skenv_symbols_inject; eauto.
-  - exploit lift_wf; eauto. i. des.
+  - i. des.
     exploit unchanged_on_mle; eauto.
     + ii. eapply ec_max_perm; eauto. eapply external_call_spec.
     + ii. eapply ec_max_perm; eauto. eapply external_call_spec.

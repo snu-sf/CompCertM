@@ -286,7 +286,7 @@ Proof.
       - esplits; eauto. econs; ss; eauto.
         + refl.
         + eapply Mem.unchanged_on_implies; eauto.
-        + econs. ii. des. clarify.
+        + econs. ii. des. clarify. + econs. ii. des. clarify.
         + ii. eapply Mem.perm_unchanged_on_2; eauto. } des.
 
     assert (NEXT0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) PC

@@ -13,6 +13,8 @@ Require Import BehaviorsC.
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem.
 
+Require Import ModSemProps.
+
 Set Implicit Arguments.
 
 

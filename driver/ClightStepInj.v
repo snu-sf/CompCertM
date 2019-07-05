@@ -25,6 +25,96 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
+(* copied from ClightC *)
+Definition get_mem (st: state): mem :=
+  match st with
+  | State _ _ _ _ _ m0 => m0
+  | Callstate _ _ _ _ m0 => m0
+  | Returnstate _ _ m0 => m0
+  end
+.
+
+(* TODO : copied from AsmStepInj. move it to IdSimExtra *)
+Section MOVETOIDSIMEXTRA.
+  Lemma mem_store_readonly
+        chunk m0 m1 b ofs v
+        (STORE: Mem.store chunk m0 b ofs v = Some m1)
+  :
+    Mem.unchanged_on (loc_not_writable m0) m0 m1.
+  Proof.
+    eapply Mem.unchanged_on_implies; try eapply Mem.store_unchanged_on; eauto.
+    ii. apply Mem.store_valid_access_3 in STORE. apply H0.
+    apply Mem.perm_cur_max. eapply STORE; eauto.
+  Qed.
+
+  Lemma mem_free_readonly
+        m0 m1 b lo hi
+        (STORE: Mem.free m0 b lo hi = Some m1)
+    :
+      Mem.unchanged_on (loc_not_writable m0) m0 m1.
+  Proof.
+    eapply Mem.unchanged_on_implies; try eapply Mem.free_unchanged_on; eauto.
+    ii. apply H0.
+    apply Mem.perm_cur_max. eapply Mem.perm_implies.
+    - eapply Mem.free_range_perm; eauto.
+    - econs.
+  Qed.
+
+  Lemma mem_readonly_trans
+        m0 m1 m2
+        (UNCH0: Mem.unchanged_on (loc_not_writable m0) m0 m1)
+        (UNCH1: Mem.unchanged_on (loc_not_writable m1) m1 m2)
+    :
+      Mem.unchanged_on (loc_not_writable m0) m0 m2.
+  Proof.
+    inv UNCH0. inv UNCH1.
+    econs.
+    - etrans; eauto.
+    - ii. exploit unchanged_on_perm; eauto. i. etrans; eauto.
+      eapply unchanged_on_perm0; eauto.
+      + ii. eapply unchanged_on_perm in H2; eauto.
+      + unfold Mem.valid_block in *. eapply Plt_Ple_trans; eauto.
+    - ii. exploit unchanged_on_contents; eauto. i. etrans; try apply H1.
+      eapply unchanged_on_contents0; eauto.
+      + ii. eapply unchanged_on_perm in H2; eauto.
+        eapply Mem.perm_valid_block; eauto.
+      + eapply unchanged_on_perm; eauto.
+        eapply Mem.perm_valid_block; eauto.
+  Qed.
+End MOVETOIDSIMEXTRA.
+
+Lemma mem_free_list_readonly
+      m0 m1 ls
+      (STORE: Mem.free_list m0 ls = Some m1)
+  :
+    Mem.unchanged_on (loc_not_writable m0) m0 m1.
+Proof.
+  revert m0 m1 STORE. induction ls; ss; i.
+  - clarify. refl.
+  - des_ifs. eapply mem_readonly_trans; eauto.
+    eapply mem_free_readonly; eauto.
+Qed.
+
+Lemma clight_step_readonly se ge st0 st1 tr
+      (STEP: step se ge (function_entry2 ge) st0 tr st1)
+  :
+    Mem.unchanged_on (loc_not_writable st0.(get_mem)) st0.(get_mem) st1.(get_mem).
+Proof.
+  inv STEP; ss; try refl.
+  - inv H2.
+    + unfold Mem.storev in *. eapply mem_store_readonly; eauto.
+    + eapply Mem.storebytes_unchanged_on; eauto. ii.
+      unfold loc_not_writable in *. eapply H9. eapply Mem.perm_cur.
+      eapply Mem.storebytes_range_perm; eauto.
+  - eapply external_call_readonly; eauto.
+  - eapply mem_free_list_readonly; eauto.
+  - eapply mem_free_list_readonly; eauto.
+  - eapply mem_free_list_readonly; eauto.
+  - inv H. eapply alloc_variables_unchanged_on; eauto.
+  - eapply external_call_readonly; eauto.
+Qed.
+
+
 Definition match_env (j: meminj) (env_src env_tgt: env) :=
   forall id,
     (<<MAPPED: exists blk_src blk_tgt ty,
@@ -950,7 +1040,7 @@ Section CLIGHTINJ.
       + econs 24; eauto.
       + cinv MLE. econs; eauto. econs; eauto.
         eapply match_cont_incr; eauto.
-        
+
     - inv CONT. esplits.
       + econs 25; eauto.
       + econs; eauto. clarify. econs; eauto. destruct optid; ss.

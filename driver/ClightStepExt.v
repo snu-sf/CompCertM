@@ -792,7 +792,7 @@ Section CLIGHTSOUND.
       + eapply match_states_clight_get_mem in MATCH.
         eapply match_states_clight_get_mem in MATCHST. des. clarify.
         econs; ss; eauto.
-        * admit "todo".
+        * eapply clight_step_readonly; eauto.
         * eapply Mem.unchanged_on_implies; eauto.
           unfold flip, loc_unmapped, UnreachC.to_inj. i. des_ifs.
 

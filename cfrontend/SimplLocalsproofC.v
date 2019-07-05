@@ -78,8 +78,6 @@ Proof.
   - ss. eapply has_type_list_typify; eauto.
     rpapply val_casted_has_type_list; eauto.
     rewrite typlist_of_typelist_eq; ss.
-  - unfold Conventions1.size_arguments. des_ifs. etrans; eauto.
-    rewrite typlist_of_typelist_eq. unfold signature_of_function. ss. refl.
 Qed.
 
 Lemma transf_function_type

@@ -39,7 +39,7 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Section INJINV.
 
-Local Instance SimMemTop: SimMem.class := SimMemInjInvC.SimMemInjInv top1 top1.
+Local Instance SimMemTop: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv SimMemInjInv.top_inv.
 Local Instance SimSymbTop: SimSymb.class SimMemTop := SimSymbDropInv.SimSymbDrop.
 Local Existing Instance SoundTop.Top.
 

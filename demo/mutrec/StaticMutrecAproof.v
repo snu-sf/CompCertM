@@ -37,7 +37,7 @@ Definition memoized_inv: SimMemInjInv.memblk_invariant :=
          (<<INDEX: ofs = size_chunk Mint32 * ind>>) /\ (<<WRITABLE: p = Writable>>)).
 
 Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv
-                                                 SimMemInjInvC.top_inv memoized_inv.
+                                                 SimMemInjInv.top_inv memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
 

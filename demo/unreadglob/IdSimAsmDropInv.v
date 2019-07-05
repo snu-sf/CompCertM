@@ -39,7 +39,7 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Section INJINV.
 
-Local Instance SimMemTop: SimMem.class := SimMemInjInvC.SimMemInjInv top1 top1.
+Local Instance SimMemTop: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv SimMemInjInv.top_inv.
 Local Instance SimSymbTop: SimSymb.class SimMemTop := SimSymbDropInv.SimSymbDrop.
 Local Existing Instance SoundTop.Top.
 
@@ -120,7 +120,7 @@ Proof.
                              # RA <- (src_junk_val (SimMemInj.src sm1) m0 n (rs RA)))
                           # RSP <- (Vptr (Mem.nextblock (SimMemInj.src sm_arg)) Ptrofs.zero)
                           (Asm.State _ _)).
-    hexploit (@SimMemInjInv.le_inj_wf_wf top1 top1 sm_arg sm0); eauto.
+    hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv SimMemInjInv.top_inv sm_arg sm0); eauto.
     { etrans; eauto. } intros MWFINV1.
 
     eexists (SimMemInjInv.mk sm0 _ _). esplits; eauto.
@@ -248,7 +248,7 @@ Proof.
     i. des. cinv (AGREE Asm.RSP); rewrite RSP in *; clarify.
 
     exploit Mem_free_parallel'; eauto. i. des.
-    hexploit (@SimMemInjInv.le_inj_wf_wf top1 top1 sm0 sm1); eauto. intros MWFINV0.
+    hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv SimMemInjInv.top_inv sm0 sm1); eauto. intros MWFINV0.
 
     eexists (Args.mk (Vptr b2 _) _ _). eexists (SimMemInjInv.mk sm1 _ _).
     esplits; eauto; ss; i.
@@ -317,7 +317,7 @@ Proof.
       - instantiate (1:=Gfun skd). rewrite FPTR0 in *. clarify.
       - i. des. clarify. } clarify.
 
-    hexploit (@Mem_unfree_parallel top1 sm0 sm_arg sm_ret); eauto.
+    hexploit (@Mem_unfree_parallel SimMemInjInv.top_inv sm0 sm_arg sm_ret); eauto.
     { rewrite MEMSRC in *. eauto. }
 
     i. des. esplits; eauto. i.
@@ -354,7 +354,7 @@ Proof.
     exploit Mem_free_parallel'; eauto.
     { instantiate (3:=Ptrofs.zero). zsimpl. psimpl. eauto. }
     i. des.
-    hexploit (@SimMemInjInv.le_inj_wf_wf top1 top1 sm0 sm1); eauto. intros MWFINV0.
+    hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv SimMemInjInv.top_inv sm0 sm1); eauto. intros MWFINV0.
 
     assert (delta = 0).
     { exploit RSPDELTA; eauto. i. des. clarify. }

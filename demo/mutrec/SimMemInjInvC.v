@@ -18,14 +18,6 @@ Require Import Coq.Logic.ChoiceFacts.
 Set Implicit Arguments.
 
 
-Definition top_inv: memblk_invariant := memblk_invarant_mk top1 bot3.
-
-Lemma top_inv_satisfied_always m minv
-  :
-    inv_sat_mem top_inv minv m.
-Proof. econs; ss. Qed.
-Hint Resolve top_inv_satisfied_always.
-
 Section MEMINJINV.
 
   Variable P_src : memblk_invariant.

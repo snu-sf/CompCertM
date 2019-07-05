@@ -41,7 +41,7 @@ Section INJINV.
 
 Variable P: SimMemInjInv.memblk_invariant.
 
-Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv top1 P.
+Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv P.
 Local Instance SimSymbP: SimSymb.class SimMemP := SimMemInjInvC.SimSymbIdInv P.
 
 Local Existing Instance SoundTop.Top.

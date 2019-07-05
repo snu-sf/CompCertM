@@ -27,7 +27,7 @@ Definition memoized_inv: SimMemInjInv.memblk_invariant :=
        (chunk = Mint32 /\ ofs = 0 /\ p = Writable) \/
        (chunk = Mint32 /\ ofs = (size_chunk Mint32) /\ p = Writable)).
 
-Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInvC.top_inv memoized_inv.
+Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
 
@@ -821,7 +821,7 @@ Proof.
 
       cinv MWF.
       hexploit (@SimMemInjInv.unchanged_on_mle
-                  SimMemInjInvC.top_inv memoized_inv sm0
+                  SimMemInjInv.top_inv memoized_inv sm0
                   sm0.(SimMemInjInv.minj).(SimMemInj.src) m_tgt sm0.(SimMemInjInv.minj).(SimMemInj.inj)); ss; eauto.
       { eapply private_unchanged_inject; eauto.
         - cinv WF0. eauto.
@@ -1167,7 +1167,7 @@ Proof.
     + left. pfold. intros _. econs 4; ss.
       * instantiate (1:=SimMemInjInv.mk sm2 _ _). econs; ss; eauto.
         etrans; eauto. etrans; eauto. inv MLE. eauto.
-      * hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInvC.top_inv memoized_inv sm0 sm2); ss; eauto.
+      * hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv memoized_inv sm0 sm2); ss; eauto.
         { etrans; eauto. }
         { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
           - ii. exploit INVRANGETGT; eauto. i. des.

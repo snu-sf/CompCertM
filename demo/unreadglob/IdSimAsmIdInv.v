@@ -41,7 +41,7 @@ Section INJINV.
 
 Variable P: SimMemInjInv.memblk_invariant.
 
-Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv top1 P.
+Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv P.
 Local Instance SimSymbP: SimSymb.class SimMemP := SimMemInjInvC.SimSymbIdInv P.
 
 Local Existing Instance SoundTop.Top.
@@ -122,7 +122,7 @@ Proof.
                              # RA <- (src_junk_val (SimMemInj.src sm1) m0 n (rs RA)))
                           # RSP <- (Vptr (Mem.nextblock (SimMemInj.src sm_arg)) Ptrofs.zero)
                           (Asm.State _ _)).
-    hexploit (@SimMemInjInv.le_inj_wf_wf top1 P sm_arg sm0); eauto.
+    hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv P sm_arg sm0); eauto.
     { etrans; eauto. }
     { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
       - ii. exploit INVRANGETGT; eauto. i. des. inv MWF. eapply Plt_Ple_trans; eauto.
@@ -258,7 +258,7 @@ Proof.
     i. des. cinv (AGREE Asm.RSP); rewrite RSP in *; clarify.
 
     exploit Mem_free_parallel'; eauto. i. des.
-    hexploit (@SimMemInjInv.le_inj_wf_wf top1 P sm0 sm1); eauto.
+    hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv P sm0 sm1); eauto.
     { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
       - ii. exploit INVRANGETGT; eauto. i. des. inv MWF. eapply Plt_Ple_trans; eauto.
       - eapply Mem.free_unchanged_on; eauto. ii.
@@ -374,7 +374,7 @@ Proof.
     exploit Mem_free_parallel'; eauto.
     { instantiate (3:=Ptrofs.zero). zsimpl. psimpl. eauto. }
     i. des.
-    hexploit (@SimMemInjInv.le_inj_wf_wf top1 P sm0 sm1); eauto.
+    hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv P sm0 sm1); eauto.
     { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
       - ii. exploit INVRANGETGT; eauto. i. des. inv MWF. eapply Plt_Ple_trans; eauto.
       - eapply Mem.free_unchanged_on; eauto.

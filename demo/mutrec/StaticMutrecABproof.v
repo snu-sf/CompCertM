@@ -42,6 +42,7 @@ Proof.
   - ss. i. des; clarify.
     unfold update_snd in *. ss. clarify. ss. des; clarify.
   - ii. ss. des; clarify; eauto.
+  - i. ss. des; clarify; inv IN; ss.
 Qed.
 
 Lemma wf_module_Bspec: Sk.wf StaticMutrecBspec.module.
@@ -53,6 +54,7 @@ Proof.
     unfold update_snd in *. ss. clarify. ss.
     admit "definition has admits".
   - ii. ss. des; clarify; eauto.
+  - i. ss. des; clarify; inv IN; ss.
 Qed.
 
 Definition is_focus (x: Mod.t) := x = StaticMutrecAspec.module \/ x = StaticMutrecBspec.module.

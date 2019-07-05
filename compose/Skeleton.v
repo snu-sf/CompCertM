@@ -219,6 +219,13 @@ Module Sk.
 
   Definition empty: t := (mkprogram [] [] 1%positive).
 
+  Definition get_sig (skdef: (AST.fundef signature)): signature :=
+    match skdef with
+    | Internal sg0 => sg0
+    | External ef => ef.(ef_sig)
+    end
+  .
+
   Inductive wf (sk: t): Prop :=
   | wf_intro
       (NODUP: NoDup sk.(prog_defs_names)) (* list_norepet *)
@@ -233,10 +240,10 @@ Module Sk.
       (PUBINCL: incl sk.(prog_public) sk.(prog_defs_names))
       (* The sum of the sizes of the function parameters must be less than INT_MAX. *)
       (WFPARAM: forall
-          id skd get_sg
+          id skd
           (IN: In (id, (Gfun skd)) sk.(prog_defs))
         ,
-          4 * size_arguments (get_sg skd) <= Ptrofs.max_unsigned)
+          4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned)
   .
 
 End Sk.

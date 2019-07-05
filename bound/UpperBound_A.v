@@ -1207,7 +1207,7 @@ Section PRESERVATION.
                     instantiate (1 := signature_of_function). i.
                     inv H; rewrite DMAP in *; clarify.
                     inv H3. ss. des_ifs. }
-                  eapply (WFPARAM i0 (AST.Internal (signature_of_function f)) SkEnv.get_sig) in INTERNAL. ss.
+                  eapply (WFPARAM i0 (AST.Internal (signature_of_function f))) in INTERNAL. ss.
                   rewrite typlist_of_typelist_eq. eauto.
             }
             { ss.

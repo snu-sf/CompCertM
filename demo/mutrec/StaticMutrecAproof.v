@@ -568,22 +568,15 @@ Proof.
               - ss.
               - ss. psimpl. econs; ss; eauto.
                 rpapply STR. f_equal.
-                + admit "".
-
-                (* unfold Ptrofs.mul. ss. *)
-                  (* destruct i. ss. unfold Ptrofs.of_ints. ss. *)
-                  (* unfold Int.signed. ss. des_ifs; cycle 1; *)
-                  (* unfold Int.half_modulus, Int.modulus, two_power_nat in *; ss; *)
-                  (*   unfold MAX in *; rewrite <- Zdiv2_div in *; ss. *)
-                  (* { admit "". } *)
-                  (* { lia. *)
-
-                  (*   ss. *)
-
-                  (*   lia. } *)
-                  (* repeat rewrite Ptrofs.unsigned_repr. auto. *)
-                  (* all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power; *)
-                  (* unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega. *)
+                + unfold Ptrofs.mul. ss.
+                  destruct i. ss. unfold Ptrofs.of_ints. ss.
+                  unfold Int.signed. ss. des_ifs; cycle 1;
+                  unfold Int.half_modulus, Int.modulus, two_power_nat in *; ss;
+                    unfold MAX in *; rewrite <- Zdiv2_div in *; ss.
+                  { lia. }
+                  repeat rewrite Ptrofs.unsigned_repr. auto.
+                  all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power;
+                    unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega.
                 + f_equal.
                   rewrite Int.repr_unsigned.
                   rewrite sum_recurse with (i := i). des_ifs.

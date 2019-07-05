@@ -286,6 +286,7 @@ Inductive match_states (sm_init: SimMem.t)
     (NINV: ~ sm0.(SimMemInjInv.mem_inv_tgt) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 20))
     (ARG: rs RAX = Vint i)
+    (IDX: (idx >= 2)%nat)
   :
     match_states sm_init idx (Returnstate i m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt)) sm0
@@ -656,6 +657,7 @@ Proof.
                 - refl. }
               { unfold nextinstr_nf, nextinstr.
                 repeat rewrite Pregmap.gss. ss. econs; eauto. }
+              { omega. }
 
         - i. ss. esplits; eauto.
           instantiate (1:=AsmC.mkstate _ (Asm.State _ _)). econs; ss.
@@ -1160,7 +1162,7 @@ Proof.
 
         econs 1.
 
-      * admit "index".
+      * eapply Ord.lift_idx_spec. eauto.
 
     + instantiate (1:=SimMemInjInv.mk sm1 _ _). econs; ss; eauto.
 
@@ -1199,7 +1201,7 @@ Proof.
         { rewrite MSRC0. eauto. }
 
         Unshelve. all: ss; eauto. apply Ptrofs.zero. apply Ptrofs.zero.
-        apply Ptrofs.zero. apply Ptrofs.zero. apply Ord.idx_bot. apply 0.
+        apply Ptrofs.zero. apply Ptrofs.zero. econs.
 Qed.
 
 Theorem sim_modsem
@@ -1359,7 +1361,7 @@ Proof.
                 rewrite STR2. ss. }
           econs 1.
         }
-        { admit "index". }
+        { eapply Ord.lift_idx_spec. eauto. }
       * eauto.
       * left. unfold StaticMutrecBspec.module in *.
         eapply match_states_lxsim; eauto.
@@ -1402,7 +1404,7 @@ Proof.
             ss. des_ifs; ss. inv VALS0.
             unfold loc_arguments in *. des_ifs. inv H6. inv H4; ss.
             inv H; ss. clarify.
-        }
+          - omega. }
 
   - (* init progress *)
     i.

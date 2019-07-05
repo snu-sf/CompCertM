@@ -10,17 +10,13 @@ Require Import Lia.
 
 Local Opaque Z.add Z.mul.
 
-Lemma bound_outgoing_stack_data
-      b
-  :
-    (4 * bound_outgoing b <= fe_stack_data (make_env b))
-.
+Lemma bound_outgoing_stack_data: forall b,
+   (4 * bound_outgoing b <= fe_stack_data (make_env b)).
 Proof.
   Local Transparent make_env.
   ss.
   Local Opaque make_env.
-  des_ifs.
-  etrans; cycle 1.
+  des_ifs. etrans; cycle 1.
   { eapply align_le; eauto. lia. }
   etrans; cycle 1.
   { generalize (bound_local_pos b); i.

@@ -682,13 +682,13 @@ Proof. eapply Mem.inject_extends_compose; eauto. eapply Mem_unfree_extends; eaut
 
 Local Ltac simp := repeat (bsimpl; des; des_sumbool; ss; clarify).
 
-Lemma setN_in_nth
-      vl p q c
-      (IN: p <= q < p + Z.of_nat (Datatypes.length vl))
-  :
-    (ZMap.get q (Mem.setN vl p c)) = (nth (q - p).(Z.to_nat) vl c.(fst))
-.
-Proof.
+(* Lemma setN_in_nth *)
+(*       vl p q c *)
+(*       (IN: p <= q < p + Z.of_nat (Datatypes.length vl)) *)
+(*   : *)
+(*     (ZMap.get q (Mem.setN vl p c)) = (nth (q - p).(Z.to_nat) vl c.(fst)) *)
+(* . *)
+(* Proof. *)
 (*   remember (rev vl) as tmp. *)
 (*   generalize dependent vl. *)
 (*   ginduction tmp; ii; ss; clarify. *)
@@ -716,7 +716,7 @@ Proof.
 (*       rewrite ZMap.gso; ss. *)
 (*     erewrite IHvl; eauto. *)
 (* Qed. *)
-Abort.
+(* Abort. *)
 
 Lemma Mem_setN_in_repeat
       n v p q c
@@ -730,11 +730,6 @@ Proof.
   i.
   apply in_list_repeat in H. ss.
 Qed.
-
-(* TODO move it *)
-Lemma Z2Nat_range n:
-  Z.of_nat (Z.to_nat n) = if (zle 0 n) then n else 0.
-Proof. destruct n; ss; try nia. Qed.
 
 Theorem Mem_unfree_parallel_extends m1 m2 b lo hi m1'
         (EXTEND: Mem.extends m1 m2)
@@ -815,7 +810,6 @@ Proof.
     eapply PERM. split; try xomega.
 Qed.
 
-(* TODO: Move to MemoryC *)
 Lemma Mem_unchanged_on_bot
       m0 m1
       (NB: ((Mem.nextblock m0) <= (Mem.nextblock m1))%positive)
@@ -825,3 +819,18 @@ Lemma Mem_unchanged_on_bot
 Proof. econs; ss; eauto. Qed.
 
 Hint Resolve Mem.unchanged_on_nextblock: mem.
+
+Lemma Mem_loadbytes_succeeds
+      m0 blk ofs mv
+      (PERM: Mem.perm m0 blk ofs Cur Readable)
+      (MV: ZMap.get ofs (Mem.mem_contents m0) # blk = mv)
+  :
+    Mem.loadbytes m0 blk ofs 1 = Some [mv]
+.
+Proof.
+  Local Transparent Mem.loadbytes.
+  unfold Mem.loadbytes.
+  des_ifs.
+  exfalso. apply n. r. ii. assert(ofs0 = ofs) by xomega. clarify.
+  Local Opaque Mem.loadbytes.
+Qed.

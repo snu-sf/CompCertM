@@ -244,3 +244,27 @@ Inductive typecheck (vs: list val) (sg: signature) (tvs: list val): Prop :=
     (TYP: typify_list vs sg.(sig_args) = tvs)
     (* (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned) *)
 .
+
+Lemma Val_hiword_spec
+      vhi vlo
+      (DEFINED: (Val.longofwords vhi vlo) <> Vundef)
+  :
+    <<EQ: (Val.hiword (Val.longofwords vhi vlo)) = vhi>>
+.
+Proof.
+  u.
+  unfold Val.longofwords, Val.hiword. des_ifs; ss; eauto.
+  rewrite Int64.hi_ofwords. ss.
+Qed.
+
+Lemma Val_loword_spec
+      vhi vlo
+      (DEFINED: (Val.longofwords vhi vlo) <> Vundef)
+  :
+    <<EQ: (Val.loword (Val.longofwords vhi vlo)) = vlo>>
+.
+Proof.
+  u.
+  unfold Val.longofwords, Val.loword. des_ifs; ss; eauto.
+  rewrite Int64.lo_ofwords. ss.
+Qed.

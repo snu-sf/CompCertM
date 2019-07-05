@@ -51,8 +51,7 @@ Proof.
   - unfold prog_defs_names; ss.
     repeat (econs; ss; ii; des; clarify).
   - ss. i. des; clarify.
-    unfold update_snd in *. ss. clarify. ss.
-    admit "definition has admits".
+    unfold update_snd in *. ss. clarify. ss. des; clarify.
   - ii. ss. des; clarify; eauto.
   - i. ss. des; clarify; inv IN; ss.
 Qed.

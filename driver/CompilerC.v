@@ -27,6 +27,7 @@ Require Renumber.
 Require Constprop.
 Require CSE.
 Require Deadcode.
+Require Unreadglob.
 Require Unusedglob.
 Require Allocation.
 Require Tunneling.
@@ -73,7 +74,7 @@ Require Import Simulation.
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
 Require Import SemProps AdequacyLocal.
 
-Require SimMemInj SoundTop SimSymbDrop.
+Require SimMemInj SoundTop SimSymbDrop SimSymbDropInv.
 Require IdSim.
 
 
@@ -532,6 +533,36 @@ End Deadcode.
 
 
 
+Section Unreadglob.
+
+  Require Import UnreadglobproofC.
+
+  Local Existing Instance SimSymbDropInv.SimMemInvTop | 0.
+  Local Existing Instance SimSymbDropInv.SimSymbDropInv | 0.
+  Local Existing Instance SoundTop.Top | 0.
+
+  Variable cps: list ModPair.t.
+  Variable aps: list ModPair.t.
+  Hypothesis CSIM: Forall ModPair.sim cps.
+  Hypothesis ASIM: Forall ModPair.sim aps.
+
+  Lemma Unreadglob_correct
+        src tgt
+        (TRANSF: Unreadglob.transform_program src = OK tgt)
+    :
+      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
+                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+  .
+  Proof.
+    lift.
+    eapply UnreadglobproofC.sim_mod; eauto.
+    eapply Unreadglobproof.transf_program_match; eauto.
+  Qed.
+
+End Unreadglob.
+
+
+
 Section Unusedglob.
 
   Require Import UnusedglobproofC.
@@ -882,7 +913,7 @@ Proof.
   unfold apply_total, apply_partial in *. des_ifs_safe.
 
   set (total_if optim_tailcalls Tailcall.transf_program p0) as ptail in *.
-  set (Renumber.transf_program p9) as prenum0 in *.
+  set (Renumber.transf_program p10) as prenum0 in *.
   set (total_if optim_constprop Constprop.transf_program prenum0) as pconst in *.
   set (total_if optim_constprop Renumber.transf_program pconst) as prenum1 in *.
   set (Tunneling.tunnel_program p5) as ptunnel in *.
@@ -898,12 +929,14 @@ Proof.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_top cls); auto. intro SRCEXTID; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_unreach cls); auto. intro SRCEXTUNREACH; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cls); auto. intro SRCID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_inv_drop cls); auto. intro SRCINJINVDROP; des.
 
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop asms); auto. intro TGTINJDROP; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id asms); auto. intro TGTINJID; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_top asms); auto. intro TGTEXTID; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_unreach asms); auto. intro TGTEXTUNREACH; des.
   hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms); auto. intro TGTID; des.
+  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_inv_drop asms); auto. intro TGTINJINVDROP; des.
 
 
   Ltac next PASS_CORRECT :=
@@ -926,6 +959,7 @@ Proof.
   next Renumber1_correct.
   next CSE_correct.
   next Deadcode_correct.
+  next Unreadglob_correct.
   next Unusedglob_correct.
   next Allocation_correct.
   next Tunneling_correct.

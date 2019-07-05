@@ -25,6 +25,10 @@ Require IdSimCCC.
 Include IdSimCCC.
 Require IdSimClight.
 Include IdSimClight.
+Require IdSimAsmDropInv.
+Include IdSimAsmDropInv.
+Require IdSimClightDropInv.
+Include IdSimClightDropInv.
 
 Set Implicit Arguments.
 

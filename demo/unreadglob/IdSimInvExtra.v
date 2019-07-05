@@ -16,9 +16,8 @@ Set Implicit Arguments.
 
 Section INJINVDROP.
 
-Local Instance SimMemTop: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv SimMemInjInv.top_inv.
-Local Instance SimMemLiftTop: SimMemLift.class SimMemTop := SimMemInjInvC.SimMemInjInvLift SimMemInjInv.top_inv SimMemInjInv.top_inv.
-Local Instance SimSymbTop: SimSymb.class SimMemTop := SimSymbDropInv.SimSymbDrop.
+Local Existing Instance SimSymbDropInv.SimMemInvTop.
+Local Existing Instance SimSymbDropInv.SimSymbDropInv.
 
 Lemma SimSymbDropInv_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: AST.program F V)
       (SIMSKE: SimSymbDropInv.sim_skenv sm0 bot1 skenv_src skenv_tgt)
@@ -83,9 +82,6 @@ Section INJINVID.
 
 Variable P: SimMemInjInv.memblk_invariant.
 
-Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv P.
-Local Instance SimSymbP: SimSymb.class SimMemP := SimMemInjInvC.SimSymbIdInv P.
-
 Lemma SimSymbIdInv_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: AST.program F V)
       (SIMSKE: SimMemInjInvC.sim_skenv_inj sm0 bot1 skenv_src skenv_tgt)
   :
@@ -134,7 +130,7 @@ Section UNFREEPARALLEL.
 
 Variable P_tgt : SimMemInjInv.memblk_invariant.
 
-Local Instance SimMemTopP: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv P_tgt.
+Local Instance SimMemInvP : SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv P_tgt.
 
 Lemma Mem_unfree_parallel
       (sm0 sm_arg sm_ret: SimMem.t) blk_src ofs_src ofs_tgt sz blk_tgt delta

@@ -39,16 +39,16 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Section INJINV.
 
-Local Instance SimMemTop: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv SimMemInjInv.top_inv.
-Local Instance SimSymbTop: SimSymb.class SimMemTop := SimSymbDropInv.SimSymbDrop.
+Local Existing Instance SimSymbDropInv.SimMemInvTop.
+Local Existing Instance SimSymbDropInv.SimSymbDropInv.
 Local Existing Instance SoundTop.Top.
 
-Inductive match_states
+Inductive match_states_inv_asm
           (skenv_link_tgt: SkEnv.t)
           (ge_src ge_tgt: genv)
           (sm_init : SimMem.t)
   : nat-> AsmC.state -> AsmC.state -> SimMem.t -> Prop :=
-| match_states_intro
+| match_states_inv_asm_intro
     j init_rs_src init_rs_tgt rs_src rs_tgt m_src m_tgt
     (sm0 : SimMem.t)
     (AGREE: AsmStepInj.agree j rs_src rs_tgt)
@@ -67,7 +67,7 @@ Inductive match_states
         exists blk_tgt,
           (j blk_src = Some (blk_tgt, 0)))
   :
-    match_states
+    match_states_inv_asm
       skenv_link_tgt
       ge_src ge_tgt sm_init 0
       (AsmC.mkstate init_rs_src (Asm.State rs_src m_src))
@@ -91,7 +91,7 @@ Proof.
     inv WF. auto. }
   eapply MatchSimModSemExcl2.match_states_sim with
       (match_states :=
-         match_states
+         match_states_inv_asm
            skenv_link_tgt
            (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program fn_sig asm)) asm)
            (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm))

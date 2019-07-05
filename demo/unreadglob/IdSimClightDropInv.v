@@ -39,13 +39,14 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Section INJINV.
 
-Local Instance SimMemTop: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv SimMemInjInv.top_inv.
-Local Instance SimSymbTop: SimSymb.class SimMemTop := SimSymbDropInv.SimSymbDrop.
+
+Local Existing Instance SimSymbDropInv.SimMemInvTop.
+Local Existing Instance SimSymbDropInv.SimSymbDropInv.
 Local Existing Instance SoundTop.Top.
 
 Inductive match_states_clight_inv (sm_arg: SimMem.t)
   : unit -> Clight.state -> Clight.state -> SimMem.t -> Prop :=
-| match_states_clight_intro
+| match_states_clight_inv_intro
     st_src st_tgt j m_src m_tgt sm0
     (MWFSRC: m_src = sm0.(SimMem.src))
     (MWFTGT: m_tgt = sm0.(SimMem.tgt))
@@ -57,7 +58,7 @@ Inductive match_states_clight_inv (sm_arg: SimMem.t)
       sm_arg tt st_src st_tgt sm0
 .
 
-Lemma clight_inj_drop_inv
+Lemma clight_inj_inv_drop
       (clight: Clight.program)
       (WF: Sk.wf clight.(module2))
   :

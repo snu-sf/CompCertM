@@ -20,8 +20,8 @@ Set Implicit Arguments.
 
 
 
-Let SM := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv SimMemInjInv.top_inv.
-Local Existing Instance SM.
+Local Existing Instance SimSymbDropInv.SimMemInvTop.
+Local Existing Instance SimSymbDropInv.SimSymbDropInv.
 
 Section SIMMODSEM.
 

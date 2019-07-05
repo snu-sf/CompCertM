@@ -22,10 +22,267 @@ Require Import ClightStepInj ClightStepExt.
 Require Import IdSimExtra IdSimClightExtra.
 Require Import CtypingC.
 Require Import CopC.
+Require Import sflib.
 
 Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
+
+Inductive match_states_ext_a (sm_arg: SimMemExt.t')
+  : unit -> state -> state -> SimMemExt.t' -> Prop :=
+| match_ext_Callstate
+    i m_src m_tgt sm0
+    (MWFSRC: m_src = sm0.(SimMemExt.src))
+    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWF: Mem.extends m_src m_tgt)
+  :
+    match_states_ext_a
+      sm_arg tt
+      (Callstate i m_src)
+      (Callstate i m_tgt)
+      sm0
+| match_inter_Callstate
+    i m_src m_tgt sm0
+    (MWFSRC: m_src = sm0.(SimMemExt.src))
+    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWF: Mem.extends m_src m_tgt)
+  :
+    match_states_ext_a
+      sm_arg tt
+      (Interstate i m_src)
+      (Interstate i m_tgt)
+      sm0
+| match_return_Callstate
+    i m_src m_tgt sm0
+    (MWFSRC: m_src = sm0.(SimMemExt.src))
+    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWF: Mem.extends m_src m_tgt)
+  :
+    match_states_ext_a
+      sm_arg tt
+      (Returnstate i m_src)
+      (Returnstate i m_tgt)
+      sm0.
+
+Section AEXT.
+
+  Variable se: Senv.t.
+  Variable ge: SkEnv.t.
+
+  Lemma a_step_preserve_extension
+        sm_arg u st_src0 st_tgt0 st_src1 sm0 tr
+        (MATCH: match_states_ext_a sm_arg u st_src0 st_tgt0 sm0)
+        (STEP: step se ge st_src0 tr st_src1)
+  :
+    exists st_tgt1 sm1,
+      (<<STEP: step se ge st_tgt0 tr st_tgt1>>) /\
+      (<<MATCH: match_states_ext_a sm_arg u st_src1 st_tgt1 sm1>>).
+  Proof.
+    inv STEP; inv MATCH.
+    - esplits. econs. econs; eauto.
+    - esplits. econs 2; eauto. econs; eauto.
+  Qed.
+
+End AEXT.
+
+Section ASOUNDSTATE.
+
+  Variable skenv_link: SkEnv.t.
+  Variable su: Sound.t.
+
+  Inductive sound_state_a
+    : state -> Prop :=
+  | sound_Callstate
+      i m
+      (WF: Sound.wf su)
+      (MEM: UnreachC.mem' su m)
+      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
+    :
+      sound_state_a (Callstate i m)
+  | sound_Interstate
+      i m
+      (WF: Sound.wf su)
+      (MEM: UnreachC.mem' su m)
+      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
+      (NZERO: Int.intval i <> 0)
+      (* (EXT: sound_external) *)
+    :
+      sound_state_a (Interstate i m)
+  | sound_Returnstate
+      i m
+      (WF: Sound.wf su)
+      (MEM: UnreachC.mem' su m)
+      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
+    :
+      sound_state_a (Returnstate i m)
+  .
+
+End ASOUNDSTATE.
+
+
+Section ASOUND.
+
+  Variable skenv_link: SkEnv.t.
+
+  Lemma a_unreach_local_preservation
+    :
+      exists sound_state, <<PRSV: local_preservation (modsem skenv_link tt) sound_state>>
+  .
+  Proof.
+    esplits.
+    eapply local_preservation_strong_horizontal_spec with (sound_state := sound_state_a skenv_link); eauto.
+    econs; ss; i.
+    - inv INIT. ss. inv SUARG. des. esplits.
+      + refl.
+      + econs; eauto.
+        * inv SKENV. eauto.
+      + instantiate (1:=get_mem). ss. refl.
+    - exists su0. esplits; eauto.
+      + refl.
+      + inv STEP; eauto.
+        { inv SUST. econs; eauto. }
+        { inv SUST. econs; eauto. }
+          (* ss. des_ifs. *)
+      + inv STEP; eauto.
+        { ss. refl. }
+        { ss. refl. }
+    - inv AT; inv SUST; ss.
+      split.
+      + rr. refl.
+      + inversion WF; subst.
+        exists su0.
+        esplits.
+        * econs; ss; eauto.
+          { ss. ii. split.
+            - ii. clarify. eapply WFLO in H.
+              rewrite SKE in H.
+              unfold Genv.find_symbol in FINDG.
+              exploit Genv.genv_symb_range; eauto. i. ss. xomega.
+            - clarify.
+              inv MEM. ss. rewrite NB.
+              exploit Genv.genv_symb_range; eauto. i. ss.
+              rewrite SKE in GENB.
+              eapply Plt_Ple_trans; eauto. }
+          esplits; eauto.
+          econs; ss.
+        * refl.
+        * i.
+          destruct retv. ss.
+          rr in RETV. des; ss. inv MEM0.
+          exists su_ret.
+          inv AFTER.
+          esplits; eauto.
+          { econs; ss; eauto.
+            inv LE. ss. des. rewrite <- GENB0. eauto. }
+          { ss. refl. }
+    - exists su0. inv SUST; inv FINAL; ss.
+      esplits; try refl. ss.
+  Qed.
+
+End ASOUND.
+
+Inductive match_states_a_internal:
+  state -> state -> meminj -> mem -> mem -> Prop :=
+| match_Callstate
+    i m_src m_tgt j
+  :
+    match_states_a_internal
+      (Callstate i m_src)
+      (Callstate i m_tgt)
+      j m_src m_tgt
+| match_Interstate
+    i m_src m_tgt j
+  :
+    match_states_a_internal
+      (Interstate i m_src)
+      (Interstate i m_tgt)
+      j m_src m_tgt
+| match_Returnstate
+    i m_src m_tgt j
+  :
+    match_states_a_internal
+      (Returnstate i m_src)
+      (Returnstate i m_tgt)
+      j m_src m_tgt
+.
+
+Inductive match_states_a (sm_arg: SimMemInj.t')
+  : unit -> state -> state -> SimMemInj.t' -> Prop :=
+| match_states_clight_intro
+    st_src st_tgt j m_src m_tgt sm0
+    (MWFSRC: m_src = sm0.(SimMemInj.src))
+    (MWFTGT: m_tgt = sm0.(SimMemInj.tgt))
+    (MWFINJ: j = sm0.(SimMemInj.inj))
+    (MATCHST: match_states_a_internal st_src st_tgt j m_src m_tgt)
+    (MWF: SimMemInj.wf' sm0)
+  :
+    match_states_a
+      sm_arg tt st_src st_tgt sm0
+.
+
+Section AINJ.
+
+  Variable se_src se_tgt: Senv.t.
+  Variable ge_src ge_tgt: SkEnv.t.
+
+  Lemma a_step_preserve_injection
+        sm_arg u st_src0 st_tgt0 st_src1 sm0 tr
+        (SYMBOLS: symbols_inject (SimMemInj.inj sm0) se_src se_tgt)
+        (GENV: meminj_match_globals eq ge_src ge_tgt (SimMemInj.inj sm0))
+        (MATCH: match_states_a sm_arg u st_src0 st_tgt0 sm0)
+        (STEP: step se_src ge_src st_src0 tr st_src1)
+    :
+      exists st_tgt1 sm1,
+        (<<STEP: step se_tgt ge_tgt st_tgt0 tr st_tgt1>>) /\
+        (<<MATCH: match_states_a sm_arg u st_src1 st_tgt1 sm1>>) /\
+        (<<MLE: SimMemInj.le' sm0 sm1>>).
+  Proof.
+    inv STEP; inv MATCH; inv MATCHST.
+    - inversion MWF. esplits. econs; eauto.
+      econs; eauto. econs; eauto. refl.
+    - inversion MWF. esplits. econs 2; eauto.
+      econs; eauto. econs; eauto. refl.
+  Qed.
+
+  Lemma clight_step_preserve_injection2
+        st_src0 st_tgt0 st_src1 j0 m_src0 m_tgt0 tr
+        (SYMBOLS: symbols_inject j0 se_src se_tgt)
+        (GENV: meminj_match_globals eq ge_src ge_tgt j0)
+        (INJECT: Mem.inject j0 m_src0 m_tgt0)
+        (MATCH: match_states_a_internal st_src0 st_tgt0 j0 m_src0 m_tgt0)
+        (STEP: step se_src ge_src st_src0 tr st_src1)
+    :
+      exists st_tgt1 m_src1 m_tgt1 j1 ,
+        (<<STEP: step se_tgt ge_tgt st_tgt0 tr st_tgt1>>) /\
+        (<<MATCH: match_states_a_internal st_src1 st_tgt1 j1 m_src1 m_tgt1>>) /\
+        (<<INJECT: Mem.inject j1 m_src1 m_tgt1>>) /\
+        (<<INCR: inject_incr j0 j1>>) /\
+        (<<SEP: inject_separated j0 j1 m_src0 m_tgt0>>) /\
+        (<<UNCHSRC: Mem.unchanged_on
+                      (loc_unmapped j0)
+                      m_src0 m_src1>>) /\
+        (<<UNCHTGT: Mem.unchanged_on
+                      (loc_out_of_reach j0 m_src0)
+                      m_tgt0 m_tgt1>>) /\
+        (<<MAXSRC: forall
+            b ofs
+            (VALID: Mem.valid_block m_src0 b)
+          ,
+            <<MAX: Mem.perm m_src1 b ofs Max <1= Mem.perm m_src0 b ofs Max>> >>) /\
+        (<<MAXTGT: forall
+            b ofs
+            (VALID: Mem.valid_block m_tgt0 b)
+          ,
+            <<MAX: Mem.perm m_tgt1 b ofs Max <1= Mem.perm m_tgt0 b ofs Max>> >>).
+  Proof.
+    inv STEP; inv MATCH.
+    - esplits; eauto. econs; eauto.
+      econs; eauto. ii. clarify. refl. refl.
+    - esplits; eauto. econs 2; eauto.
+      econs; eauto. ii. clarify. refl. refl.
+  Qed.
+
+End AINJ.
 
 Lemma a_id
   :
@@ -85,37 +342,32 @@ Proof.
   esplits; eauto. instantiate (1:=tt).
   econs; ss; i.
   destruct SIMSKENVLINK.
-  eapply match_states_sim.
+  exploit a_unreach_local_preservation. i. des.
+  eapply match_states_sim with (match_states := match_states_ext_a); ss.
   - apply unit_ord_wf.
-  - ss. instantiate (1:=SoundTop.sound_state).
+  - ss. eauto.
   - i. ss.
-    inv INITTGT. inv SAFESRC. inv H.
+    inv INITTGT. inv SAFESRC. inv H. clarify.
     inv SIMARGS. ss.
-    assert (FD: fd = fd0).
-    { ss. inv FPTR.
-      - rewrite H1 in *. clarify.
-      - rewrite <- H0 in *. clarify. } clarify.
     esplits; eauto.
     + econs; eauto.
-    + econs; eauto.
-      * rewrite MEMSRC. rewrite MEMTGT. eauto.
-      * inv TYP. inv TYP0. eapply lessdef_list_typify_list; et.
-      * econs; et.
-
+    + assert (i = i0).
+      { destruct args_src, args_tgt; ss. clarify.
+        ss. inv VALS. inv H2. auto. }
+      subst. econs; eauto.
+      rewrite MEMTGT. eauto.
   - i. ss. des. inv SAFESRC. esplits. econs; ss.
-    + inv SIMARGS. ss. inv FPTR.
-      * rewrite H1 in *. eauto.
-      * rewrite <- H0 in *. clarify.
-    + inv SIMARGS. ss. inv TYP. econs; eauto.
-      erewrite <- lessdef_list_length; eauto.
-
+    + inv SIMARGS. ss. inv FPTR. eauto.
+    + inv SIMARGS. ss. inv FPTR0; eauto.
+      rewrite <- H0 in *. clarify.
+    + eauto.
+    + inv SIMARGS. ss. rewrite VS in *. inv VALS. inv H2. inv H3. eauto.
   - i. ss. inv MATCH; eauto.
 
   - i. ss. clear SOUND. inv CALLSRC. inv MATCH. ss.
     esplits; eauto.
-    + des. inv INJ; ss; clarify.
-      econs; ss; eauto.
-    + econs; ss.
+    + econs. eauto.
+    + econs; ss; eauto.
     + instantiate (1:=top4). ss.
 
   - i. ss. clear SOUND HISTORY.
@@ -123,70 +375,69 @@ Proof.
     inv AFTERSRC. inv MATCH.
     esplits; eauto.
     + econs; eauto.
-    + inv SIMRET. rewrite MEMSRC. rewrite MEMTGT.
-      econs; eauto.
-      eapply lessdef_typify; eauto.
+      inv SIMRET. ss. inv RETV; ss. rewrite <- H0 in *. clarify.
+    + inv SIMRET; ss. econs; eauto.
+      rewrite MEMSRC, MEMTGT. eauto.
 
-  - i. ss. inv FINALSRC. inv MATCH. inv CONT.
+  - i. ss. inv FINALSRC. inv MATCH.
     esplits; eauto.
     + econs.
     + econs; eauto.
+      econs.
 
-  - left. i. split.
-    { eapply modsem2_receptive. }
-    ii. exploit clight_step_preserve_extension; eauto.
-    { eapply function_entry2_extends. }
-    i. des. esplits; eauto.
-    left. apply plus_one. econs; ss; eauto.
-    eapply modsem2_determinate.
+  - right. ii. des.
+    esplits.
+    + i. inv MATCH; ss.
+      * unfold ModSem.is_step. do 2 eexists. ss. econs; eauto.
+      * unfold safe_modsem in H.
+        exploit H. eapply star_refl. ii. des; clarify. inv EVSTEP.
+      * ss. exfalso. eapply NOTRET. econs. ss.
+    + ii. inv STEPTGT; inv MATCH; ss.
+      * esplits; eauto.
+        { left. eapply plus_one. econs. }
+        econs; eauto.
+      * esplits; eauto.
+        { left. eapply plus_one. econs 2. eauto. }
+        econs; eauto.
 Qed.
 
-
-Lemma clight_ext_top
-      (clight: Clight.program)
-      (WF: Sk.wf clight.(module2))
+Lemma a_ext_top
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto. instantiate (1:=tt).
   econs; ss; i.
   destruct SIMSKENVLINK.
-  eapply match_states_sim with (match_states := match_states_ext_clight); ss.
+  eapply match_states_sim with (match_states := match_states_ext_a); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
   - i. ss.
-    inv INITTGT. inv SAFESRC. inv H.
+    inv INITTGT. inv SAFESRC. inv H. clarify.
     inv SIMARGS. ss.
-    assert (FD: fd = fd0).
-    { ss. inv FPTR.
-      - rewrite H1 in *. clarify.
-      - rewrite <- H0 in *. clarify. } clarify.
     esplits; eauto.
     + econs; eauto.
-    + econs; eauto.
-      * rewrite MEMSRC. rewrite MEMTGT. eauto.
-      * inv TYP. inv TYP0. eapply lessdef_list_typify_list; eauto.
-      * econs; eauto.
-
+    + assert (i = i0).
+      { destruct args_src, args_tgt; ss. clarify.
+        ss. inv VALS. inv H2. auto. }
+      subst. econs; eauto.
+      rewrite MEMTGT. eauto.
   - i. ss. des. inv SAFESRC. esplits. econs; ss.
-    + inv SIMARGS. ss. inv FPTR.
-      * rewrite H1 in *. eauto.
-      * rewrite <- H0 in *. clarify.
-    + inv SIMARGS. ss. inv TYP. econs; eauto.
-      erewrite <- lessdef_list_length; eauto.
-
+    + inv SIMARGS. ss. inv FPTR. eauto.
+    + inv SIMARGS. ss. inv FPTR0; eauto.
+      rewrite <- H0 in *. clarify.
+    + eauto.
+    + inv SIMARGS. ss. rewrite VS in *. inv VALS. inv H2. inv H3. eauto.
   - i. ss. inv MATCH; eauto.
 
   - i. ss. clear SOUND. inv CALLSRC. inv MATCH. ss.
     esplits; eauto.
-    + des. inv INJ; ss; clarify.
-      econs; ss; eauto.
-    + econs; ss.
+    + econs. eauto.
+    + econs; ss; eauto.
     + instantiate (1:=top4). ss.
 
   - i. ss. clear SOUND HISTORY.
@@ -194,31 +445,39 @@ Proof.
     inv AFTERSRC. inv MATCH.
     esplits; eauto.
     + econs; eauto.
-    + inv SIMRET. rewrite MEMSRC. rewrite MEMTGT.
-      econs; eauto. eapply lessdef_typify; eauto.
+      inv SIMRET. ss. inv RETV; ss. rewrite <- H0 in *. clarify.
+    + inv SIMRET; ss. econs; eauto.
+      rewrite MEMSRC, MEMTGT. eauto.
 
-  - i. ss. inv FINALSRC. inv MATCH. inv CONT.
+  - i. ss. inv FINALSRC. inv MATCH.
     esplits; eauto.
     + econs.
     + econs; eauto.
+      econs.
 
-  - left. i. split.
-    { eapply modsem2_receptive. }
-    ii. exploit clight_step_preserve_extension; eauto.
-    { eapply function_entry2_extends. }
-    i. des. esplits; eauto.
-    left. apply plus_one. econs; ss; eauto.
-    eapply modsem2_determinate.
+  - right. ii. des.
+    esplits.
+    + i. inv MATCH; ss.
+      * unfold ModSem.is_step. do 2 eexists. ss. econs; eauto.
+      * unfold safe_modsem in H.
+        exploit H. eapply star_refl. ii. des; clarify. inv EVSTEP.
+      * ss. exfalso. eapply NOTRET. econs. ss.
+    + ii. inv STEPTGT; inv MATCH; ss.
+      * esplits; eauto.
+        { left. eapply plus_one. econs. }
+        econs; eauto.
+      * esplits; eauto.
+        { left. eapply plus_one. econs 2. eauto. }
+        econs; eauto.
 Qed.
 
-Lemma clight_inj_drop_bot
-      (clight: Clight.program)
-      (WF: Sk.wf clight.(module2))
+Lemma a_inj_drop_bot
+      (WF: Sk.wf (StaticMutrecAspec.module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
       /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>)
 .
 Proof.
@@ -227,41 +486,43 @@ Proof.
   econs; ss; i.
   { econs; ss; i; clarify.
     inv WF. auto. }
-  eapply match_states_sim with (match_states := match_states_clight); ss.
+  eapply match_states_sim with (match_states := match_states_a); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
 
-  - i. ss. exploit SimSymbDrop_match_globals.
-    { inv SIMSKENV. ss. eauto. } intros GEMATCH.
+  - i. ss.
     inv INITTGT. inv SAFESRC. inv SIMARGS. inv H. ss.
-    exploit match_globals_find_funct; eauto.
-    i. clarify.
+    eauto.
     esplits; eauto.
     + econs; eauto.
     + refl.
-    + econs; eauto. econs; eauto.
-      { inv TYP. inv TYP0. eapply inject_list_typify_list; eauto. }
-      econs.
+    + econs; eauto.
+      assert (i = i0).
+      { destruct args_src, args_tgt; ss. inv VALS; ss.
+        destruct vl, vl'; ss. clarify. inv H. auto. }
+      rewrite MEMTGT, MEMSRC. subst i0. econs.
 
   - i. ss. exploit SimSymbDrop_match_globals.
-    { inv SIMSKENV. ss. eauto. } intros GEMATCH.
-    des. inv SAFESRC. inv SIMARGS. esplits. econs; ss.
-    + eapply match_globals_find_funct; eauto.
-    + inv TYP. econs; eauto.
-      erewrite <- inject_list_length; eauto.
+    { inv SIMSKENV. ss. eauto. }
+    instantiate (1 := prog). intros GEMATCH.
+    des. inv SAFESRC. inv SIMARGS.
+    inv GEMATCH. exploit SYMBLE; eauto. i. des; eauto.
+    esplits. econs; ss; eauto.
+    + clear -MWF INJ FPTR FPTR0.
+      rewrite FPTR in FPTR0. inv FPTR0; ss.
+      rewrite H2 in INJ. clarify.
+    + rewrite VS in VALS. inv VALS; ss. inv H3. inv H2. auto.
 
   - i. ss. inv MATCH; eauto.
 
-  - i. ss. clear SOUND. inv CALLSRC. inv MATCH. inv MATCHST. inv SIMSKENV. ss.
+  - i. ss. clear SOUND. inv CALLSRC. inv MATCH. inv MATCHST. inversion SIMSKENV; subst. ss.
+    i. ss. exploit SimSymbDrop_match_globals.
+    { inv SIMSKENV. ss. eauto. }
+    instantiate (2 := prog). intros GEMATCH.
+    inv GEMATCH. exploit SYMBLE; eauto. i. des; eauto.
     esplits; eauto.
     + econs; ss; eauto.
-      * eapply SimSymbDrop_find_None; eauto.
-        ii. clarify. ss. des. clarify.
-      * des. clear EXTERNAL.
-        unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-        inv INJ. inv SIMSKELINK.
-        exploit SIMDEF; eauto. i. des. clarify. des_ifs. esplits; eauto.
-    + econs; ss.
+    + econs; ss; econs; eauto.
     + refl.
     + instantiate (1:=top4). ss.
 
@@ -269,53 +530,54 @@ Proof.
     exists (SimMemInj.unlift' sm_arg sm_ret).
     inv AFTERSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
-    + econs; eauto.
+    + econs; eauto. inv SIMRET. rewrite INT in *. inv RETV. ss.
     + inv SIMRET. econs; eauto. econs; eauto.
-      { eapply inject_typify; et. }
-      ss. eapply match_cont_incr; try eassumption.
-      inv MLE. inv MLE0. etrans; eauto.
-    +  refl.
-
-  - i. ss. inv FINALSRC. inv MATCH. inv MATCHST. inv CONT.
-    esplits; eauto.
-    + econs.
-    + econs; eauto.
     + refl.
 
-  - left. i. split.
-    + eapply modsem2_receptive.
-    + ii. exploit clight_step_preserve_injection; try eassumption.
-      { instantiate (1:=cgenv skenv_link_tgt clight). ss. }
-      { eapply function_entry2_inject. ss. }
-      { inv SIMSKENV. ss. eapply SimSymbDrop_symbols_inject; eauto. }
-      { inv SIMSKENV. ss. eapply SimSymbDrop_match_globals; eauto. }
-      i. des. esplits; eauto.
-      left. apply plus_one. econs; ss; eauto.
-      eapply modsem2_determinate.
+  - i. ss. inv FINALSRC. inv MATCH. inv MATCHST.
+    esplits; eauto.
+    + econs.
+    + econs; eauto. econs.
+    + refl.
+
+  - right. ii. des.
+    esplits.
+    + i. inv MATCH. inv MATCHST.
+      * unfold ModSem.is_step. do 2 eexists. ss. econs; eauto.
+      * unfold safe_modsem in H.
+        exploit H. eapply star_refl. ii. des; clarify. inv EVSTEP.
+      * ss. exfalso. eapply NOTRET. econs. ss.
+    + ii. inv STEPTGT; inv MATCH; inv MATCHST.
+      * esplits; eauto.
+        { left. eapply plus_one. econs. }
+        refl.
+        econs; eauto. econs.
+      * esplits; eauto.
+        { left. eapply plus_one. econs 2. eauto. }
+        refl.
+        econs; eauto. econs.
 Qed.
 
-Lemma clight_inj_drop
-      (clight: Clight.program)
-      (WF: Sk.wf clight.(module2))
+Lemma a_inj_drop
+      (WF: Sk.wf (StaticMutrecAspec.module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
 .
 Proof.
-  exploit clight_inj_drop_bot; eauto. i. des. eauto.
+  exploit a_inj_drop_bot; eauto. i. des. eauto.
 Qed.
 
-Lemma clight_inj_id
-      (clight: Clight.program)
-      (WF: Sk.wf clight.(module2))
+Lemma a_inj_id
+      (WF: Sk.wf (StaticMutrecAspec.module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
 .
 Proof.
-  apply sim_inj_drop_bot_id. apply clight_inj_drop_bot; auto.
+  apply sim_inj_drop_bot_id. apply a_inj_drop_bot; auto.
 Qed.

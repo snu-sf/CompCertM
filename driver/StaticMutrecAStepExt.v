@@ -413,10 +413,10 @@ Section ASOUNDSTATE.
   Variable skenv_link: SkEnv.t.
   Variable su: Sound.t.
 
-  Definition sound_external :=
-             forall g_fptr, Genv.find_symbol (SkEnv.project skenv_link (CtypesC.CSk.of_program signature_of_function prog))
-                                         MutrecHeader.g_id = Some g_fptr ->
-                        Sound.val su (Vptr g_fptr Ptrofs.zero).
+  (* Definition sound_external := *)
+  (*            forall g_fptr, Genv.find_symbol (SkEnv.project skenv_link (CtypesC.CSk.of_program signature_of_function prog)) *)
+  (*                                        MutrecHeader.g_id = Some g_fptr -> *)
+  (*                       Sound.val su (Vptr g_fptr Ptrofs.zero). *)
 
   Inductive sound_state_a
     : state -> Prop :=
@@ -463,7 +463,7 @@ Section ASOUND.
     - inv INIT. ss. inv SUARG. des. esplits.
       + refl.
       + econs; eauto.
-        inv SKENV. eauto.
+        * inv SKENV. eauto.
       + instantiate (1:=get_mem). ss. refl.
     - exists su0. esplits; eauto.
       + refl.
@@ -474,118 +474,41 @@ Section ASOUND.
       + inv STEP; eauto.
         { ss. refl. }
         { ss. refl. }
-    - split.
-      + inv SUST; inv AT. ss. rr. refl.
-      + esplits.
-        { unfold Sound.args. ss.
-          unfold Sound.args. ss. splits.
-          - instantiate (1:=su0). inv AT. ss.
-            inv SUST. rr in EXT. exploit EXT; eauto.
-          - inv AT. ss. unfold Sound.vals. ss. econs; ss.
-          - inv SUST; inv AT; ss.
-          - inv SUST; eauto.
-        }
-        refl.
-        ii. inv SUST. ss.
-        { exists su0. ss.
-          esplits. refl.
-          inv AFTER. inv AFTER. }
-        { exists su_ret.
+    - inv AT; inv SUST; ss.
+      split.
+      + rr. refl.
+      + cinv WF.
+        exists su0.
+        esplits.
+        * econs; ss; eauto.
+          { ss. ii. split.
+            - ii. clarify. eapply WFLO in H.
+              rewrite SKE in H.
+              unfold Genv.find_symbol in FINDG.
+              exploit Genv.genv_symb_range; eauto. i. ss.
+              admit "true".
+            - clarify.
+              inv MEM. ss. rewrite NB.
+              exploit Genv.genv_symb_range; eauto. i. ss.
+              rewrite SKE in GENB.
+              eapply Plt_Ple_trans; eauto. }
           esplits; eauto.
-          inv AFTER. ss. econs.
-        refl.
-        { inv AFTER. inv SUST. econs; eauto. ss. inv AT. ss. inv RETV. ss.
-          inv MLE. ss.
-          inv SUST; inv AT. ss. econs; ss.
-          - red. rr. i. clarify.
-
-        econs. ss. econs.
-
-        inv SUST. econs; eauto. }
-        { inv SUST. econs; eauto. }
-
-      (* des. *)
-      (* hexploit clight_step_preserve_injection; eauto. *)
-      (* { eapply function_entry2_inject. eauto. } *)
-      (* { *)
-      (*   instantiate (2:=st0). instantiate (2:=tt). *)
-      (*   instantiate (1:=SimMemInj.mk *)
-      (*                     (get_mem st0) *)
-      (*                     (get_mem st0) *)
-      (*                     (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) *)
-      (*                     (loc_unmapped (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) /2\ SimMemInj.valid_blocks (get_mem st0)) *)
-      (*                     (loc_out_of_reach (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) (get_mem st0) /2\ SimMemInj.valid_blocks (get_mem st0)) *)
-      (*                     _ _). *)
-      (*   (* inv SUST; econs; ss; eauto. *) *)
-      (*   (* - econs; ss; eauto. *) *)
-      (*   (*   + eapply UnreachC.to_inj_mem. eauto. *) *)
-      (*   (*   + unfold SimMemInj.tgt_private. ss. *) *)
-      (*   admit "". *)
-      (* } *)
-
-      admit "sound step".
-
-    - admit "at external".
-
-    (* - inv AT. inv SUST. ss. split; [red; refl|]. *)
-    (*   exploit Sound.greatest_ex. *)
-    (*   + exists su0. instantiate (1:=Args.mk fptr_arg vs_arg m0). *)
-    (*     instantiate (1:=su0). split. *)
-    (*     * red. refl. *)
-    (*     * econs; ss; eauto. *)
-    (*   + i. des. splits; auto. *)
-    (*     { econs; eauto. } *)
-
-    (*     exists su_gr. esplits; eauto. *)
-    (*     i. inv AFTER. inv RETV. inv GR. des. ss. *)
-    (*     assert(GRARGS: Sound.args su_gr (Args.mk fptr_arg vs_arg m0)). *)
-    (*     { rr in GR. des. ss. } *)
-    (*     set (su1 := Unreach.mk (fun blk => *)
-    (*                               if plt blk (Mem.nextblock m0) *)
-    (*                               then su0.(Unreach.unreach) blk *)
-    (*                               else su_ret.(Unreach.unreach) blk) *)
-    (*                            su0.(Unreach.ge_nb) (Retv.m retv).(Mem.nextblock)). *)
-    (*     assert(LEOLD: Unreach.hle_old su_gr su_ret). *)
-    (*     { eapply Unreach.hle_hle_old; et. rr in GRARGS. des. ss. } *)
-
-
-    (*     assert(HLEA: Sound.hle su0 su1). *)
-    (*     { unfold su1. rr. ss. *)
-    (*       inv MEM. rewrite NB in *. *)
-    (*       esplits; et. *)
-    (*       - ii. des_ifs. *)
-    (*       - inv MLE. eapply Mem.unchanged_on_nextblock; eauto. *)
-    (*     } *)
-    (*     assert(LEA: UnreachC.le' su0 su1). *)
-    (*     { unfold su1. *)
-    (*       rr. ss. esplits; eauto. *)
-    (*       ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto. *)
-    (*     } *)
-    (*     assert(LEB: UnreachC.le' su1 su_ret). *)
-    (*     { rr in GR. des. unfold su1. *)
-    (*       rr. ss. esplits; eauto. *)
-    (*       - ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto. *)
-    (*       - rr in LE. des. rr in LE0. des. congruence. *)
-    (*     } *)
-
-
-    (*     exists su1. splits; eauto. *)
-    (*     * econs; eauto. *)
-    (*       { admit "sound wf". } *)
-    (*       { *)
-
-    (*       econs; ss; eauto; splits; ss. *)
-    (*       { admit "??". } *)
-    (*       { inv MLE. inv MEM. rewrite NB. *)
-    (*         eapply Mem.unchanged_on_nextblock; eauto. } *)
-    (*     * econs; eauto. *)
-
-    - inv FINAL. inv SUST. esplits; eauto.
+          econs; ss.
+        * refl.
+        * i.
+          destruct retv. ss.
+          rr in RETV. des; ss. inv MEM0.
+          exists su_ret.
+          inv AFTER.
+          esplits; eauto.
+          { econs; ss; eauto.
+            inv LE. ss. des. rewrite <- GENB0. eauto. }
+          { ss. refl. }
+    - exists su0. inv SUST; inv FINAL; ss.
+      esplits.
       + refl.
-      + econs; eauto.
-      + econs; ss; eauto; refl.
-
-        Unshelve. all: admit "".
+      + ss.
+      + refl.
   Qed.
 
-End CLIGHTSOUND.
+End ASOUND.

@@ -57,7 +57,102 @@ Section MEMINJINV.
     inv H. ss.
   Qed.
 
+  Lemma unchanged_on_mle (sm0: t') m_src1 m_tgt1 j1
+        (WF: SimMemInjInv.wf' P_src P_tgt sm0)
+        (INJECT: Mem.inject j1 m_src1 m_tgt1)
+        (INCR: inject_incr sm0.(SimMemInj.inj) j1)
+        (SEP: inject_separated sm0.(SimMemInj.inj) j1 sm0.(SimMemInj.src) sm0.(SimMemInj.tgt))
+        (UNCHSRC: Mem.unchanged_on
+                    (loc_unmapped sm0.(SimMemInj.inj))
+                    sm0.(SimMemInj.src) m_src1)
+        (UNCHTGT: Mem.unchanged_on
+                    (loc_out_of_reach sm0.(SimMemInj.inj) sm0.(SimMemInj.src))
+                    sm0.(SimMemInj.tgt) m_tgt1)
+        (MAXSRC: forall
+            b ofs
+            (VALID: Mem.valid_block sm0.(SimMemInj.src) b)
+          ,
+            <<MAX: Mem.perm m_src1 b ofs Max <1= Mem.perm sm0.(SimMemInj.src) b ofs Max>>)
+        (MAXTGT: forall
+            b ofs
+            (VALID: Mem.valid_block sm0.(SimMemInj.tgt) b)
+          ,
+            <<MAX: Mem.perm m_tgt1 b ofs Max <1= Mem.perm sm0.(SimMemInj.tgt) b ofs Max>>)
+    :
+      (<<MLE: SimMemInjInv.le' sm0 (mk (SimMemInj.mk
+                                       m_src1 m_tgt1 j1
+                                       (SimMemInj.src_external sm0)
+                                       (SimMemInj.tgt_external sm0)
+                                       (SimMemInj.src_parent_nb sm0)
+                                       (SimMemInj.tgt_parent_nb sm0)
+                                       (SimMemInj.src_ge_nb sm0)
+                                       (SimMemInj.tgt_ge_nb sm0)) sm0.(mem_inv_src) sm0.(mem_inv_tgt))>>) /\
+      (<<MWF: SimMemInjInv.wf' P_src P_tgt
+                               (mk (SimMemInj.mk
+                                   m_src1 m_tgt1 j1
+                                   (SimMemInj.src_external sm0)
+                                   (SimMemInj.tgt_external sm0)
+                                   (SimMemInj.src_parent_nb sm0)
+                                   (SimMemInj.tgt_parent_nb sm0)
+                                   (SimMemInj.src_ge_nb sm0)
+                                   (SimMemInj.tgt_ge_nb sm0)) sm0.(mem_inv_src) sm0.(mem_inv_tgt))>>).
+  Proof.
+    split.
+    - assert(FROZEN: SimMemInj.frozen (SimMemInj.inj sm0) j1 (SimMemInj.src_parent_nb sm0) (SimMemInj.tgt_parent_nb sm0)).
+      { + econs. ii. des. exploit SEP; eauto. i. des. inv WF. inv WF0. split.
+          * clear - H SRCLE. unfold Mem.valid_block in *. red. xomega.
+          * clear - H0 TGTLE. unfold Mem.valid_block in *. red. xomega.
+      }
+      econs; ss; eauto. econs; ss; eauto.
+      + eapply Mem.unchanged_on_implies; eauto. inv WF. inv WF0.
+        ii. eapply SRCEXT; eauto.
+      + eapply Mem.unchanged_on_implies; eauto. inv WF. inv WF0.
+        ii. eapply TGTEXT; eauto.
+      + inv WF. inv WF0. eapply SimMemInj.frozen_shortened; eauto; try xomega.
+    - inv WF. inv WF0. econs; ss; eauto.
+      + econs; ss; eauto.
+        * etransitivity; eauto.
+          ii. destruct PR. split; ss.
+          { unfold loc_unmapped. destruct (j1 x0) eqn:BLK; eauto.
+            destruct p. exploit SEP; eauto. i. des. clarify. }
+          { eapply Plt_Ple_trans; eauto.
+            eapply Mem.unchanged_on_nextblock; eauto. }
+        * etransitivity; eauto.
+          ii. destruct PR. split; ss.
+          { ii. destruct (SimMemInj.inj sm0 b0) eqn:BLK.
+            - destruct p. dup BLK. eapply INCR in BLK. clarify.
+              exploit H; eauto. eapply MAXSRC; eauto.
+              eapply Mem.valid_block_inject_1; eauto.
+            - exploit SEP; eauto. i. des. clarify. }
+          { eapply Plt_Ple_trans; eauto.
+            eapply Mem.unchanged_on_nextblock; eauto. }
+        * etransitivity; eauto. eapply Mem.unchanged_on_nextblock; eauto.
+        * etransitivity; eauto. eapply Mem.unchanged_on_nextblock; eauto.
+      + eapply private_unchanged_on_invariant; eauto.
+        * ii. eapply Plt_Ple_trans; eauto.
+          eapply INVRANGESRC; eauto. apply 0.
+        * eapply Mem.unchanged_on_implies; eauto.
+          i. eapply INVRANGESRC; eauto.
+      + eapply private_unchanged_on_invariant; eauto.
+        * ii. eapply Plt_Ple_trans; eauto.
+          eapply INVRANGETGT; eauto. apply 0.
+        * eapply Mem.unchanged_on_implies; eauto.
+          i. eapply INVRANGETGT; eauto.
+      + i. eapply INVRANGESRC in INV. des. split; eauto.
+        destruct (j1 blk) eqn:BLK; auto.
+        destruct p. exploit SEP; eauto. i. des.
+        exfalso. eapply H. eapply Plt_Ple_trans; eauto.
+      + i. eapply INVRANGETGT in INV. des. split; eauto.
+        ii. destruct (SimMemInj.inj sm0 b0) eqn:BLK.
+        * destruct p. dup BLK. eapply INCR in BLK. clarify.
+          exploit INV; eauto. eapply MAXSRC; eauto.
+          eapply Mem.valid_block_inject_1; eauto.
+        * exploit SEP; eauto. i. des.
+          eapply H2; eauto. eapply Plt_Ple_trans; eauto.
+  Qed.
+
 End MEMINJINV.
+
 
 
 
@@ -426,7 +521,7 @@ Section SIMSYMBINV.
                               | None => None
                               end
                          else None).
-    eexists (mk (SimMemInj.mk _ _ j bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_src)) _ _). ss.
+    eexists (mk (SimMemInj.mk _ _ j bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_src) _ _) _ _). ss.
     instantiate (1:=fun blk => exists id,
                         (<<FIND: (Sk.load_skenv sk_tgt).(Genv.find_symbol) id = Some blk>>) /\
                         (<<SINV: ss id>>)).
@@ -454,6 +549,8 @@ Section SIMSYMBINV.
     - econs; ss; eauto.
       + econs; ss.
         * eapply init_mem_inject; ss; eauto.
+        * refl.
+        * refl.
         * refl.
         * refl.
       + ii. des. exploit CLOSED; eauto. i. des.

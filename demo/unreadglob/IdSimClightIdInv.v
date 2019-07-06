@@ -60,7 +60,7 @@ Inductive match_states_clight_inv (sm_arg: SimMem.t)
       sm_arg tt st_src st_tgt sm0
 .
 
-Lemma clight_inj_inv
+Lemma clight_inj_inv_id
       (clight: Clight.program)
       (WF: Sk.wf clight.(module2))
   :

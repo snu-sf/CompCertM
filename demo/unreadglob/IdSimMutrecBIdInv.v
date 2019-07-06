@@ -60,7 +60,7 @@ Inductive match_states_b_inv (sm_arg: SimMem.t)
       sm_arg tt st_src st_tgt sm0
 .
 
-Lemma b_inj_inv
+Lemma b_inj_inv_id
       (WF: Sk.wf (MutrecBspec.module))
   :
     exists mp,

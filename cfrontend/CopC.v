@@ -12,13 +12,6 @@ Require Import sflib.
 Require Conventions1.
 
 
-
-Fixpoint typelist_to_listtype (tys: typelist): list type :=
-  match tys with
-  | Tnil => []
-  | Tcons hd tl => hd :: typelist_to_listtype tl
-  end.
-
 Inductive typecheck (vs: list val) (tys: typelist): Prop :=
 | typecheck_intro
     (TYP: Forall2 (val_casted) vs (typelist_to_listtype tys))
@@ -50,5 +43,3 @@ Proof. i. ginduction itys; ii; ss; des_ifs; ss. f_equal. ss. Qed.
 Lemma typelist_to_listtype_length: forall itys,
     length (typelist_to_listtype (type_of_params itys)) = length (map typ_of_type (map snd itys)).
 Proof. i. ginduction itys; ii; ss; des_ifs; ss. xomega. Qed.
-
-

@@ -157,6 +157,7 @@ Proof.
         assert (PLT: Plt (b + Mem.nextblock (SimMemInj.src sm1) - Mem.nextblock (SimMemInj.tgt sm1)) (Mem.nextblock (SimMemInj.src sm1))).
         { eapply Plt_Ple_trans; eauto.
           inv SIMSKENV. inv SIMSKELINK. ss. inv MLE. inv MWF.
+          rewrite NBSRC.
           etrans; eauto. etrans; eauto. eapply Mem.unchanged_on_nextblock; eauto. }
         exfalso. eapply Plt_lemma; eauto.
       - i. unfold Pregmap.set in *. des_ifs; eauto.

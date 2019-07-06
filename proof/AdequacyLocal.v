@@ -553,8 +553,6 @@ Section ADQMATCH.
           exists lst_tgt1 sm_after i1,
             (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 retv_tgt lst_tgt1>>)
             /\
-            (<<MLEPRIV: SimMem.lepriv sm_ret sm_after>>)
-            /\
             (<<MLEPUB: SimMem.le sm_at sm_after>>)
             /\
             (<<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)

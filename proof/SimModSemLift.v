@@ -278,12 +278,6 @@ Context {SMLIFT: SimMemLift.class SM}.
           (MLE: SimMem.le sm0 sm1)
         ,
           <<MLE: SimMem.le sm0 sm2>>)
-      (EXCLPRIV: forall
-          st_init_src st_init_tgt sm0 sm1
-          (MWF: SimMem.wf sm0)
-          (EXCL: mle_excl st_init_src st_init_tgt sm0 sm1)
-        ,
-          <<LE: SimMem.lepriv sm0 sm1>>)
       (SIM: forall
           sm_arg
           args_src args_tgt
@@ -344,12 +338,6 @@ Section IMPLIES.
             (MLE: SimMem.le sm0 sm1)
           ,
             <<MLE: SimMem.le sm0 sm2>>)
-        (EXCLPRIV: forall
-            st_init_src st_init_tgt sm0 sm1
-            (MWF: SimMem.wf sm0)
-            (EXCL: mle_excl st_init_src st_init_tgt sm0 sm1)
-          ,
-            <<LE: SimMem.lepriv sm0 sm1>>)
         (SIM: lxsimL ms_src ms_tgt sound_state has_footprint mle_excl sm_arg idx_init st_init_src st_init_tgt sm_init)
     :
       <<SIM: SimModSem.lxsim ms_src ms_tgt sound_state sm_arg idx_init st_init_src st_init_tgt sm_init>>
@@ -358,7 +346,6 @@ Section IMPLIES.
     move has_footprint at top.
     move mle_excl at top.
     move FOOTEXCL at top.
-    move EXCLPRIV at top.
     revert_until sound_state.
     pcofix CIH. i. pfold.
     punfold SIM. rr in SIM. ii. exploit SIM; eauto. intro T.
@@ -381,10 +368,6 @@ Section IMPLIES.
       exploit K; eauto. i; des. pclearbot.
       eexists _, sm_after. 
       esplits; eauto.
-      { etrans; cycle 1.
-        - eapply EXCLPRIV; try apply MLE1; et.
-          eapply SimMemLift.unlift_wf; et.
-        - eapply SimMemLift.unlift_priv; et. eapply SimMemLift.lift_priv; et. }
       { eapply FOOTEXCL; et. etrans; et. eapply SimMemLift.lift_spec; et. }
     - econs 4; et.
   Qed.

@@ -426,7 +426,16 @@ Section TOMEMORYC.
           eapply Mem.unchanged_on_nextblock in TGTUNCHANGED.
           etrans; eauto. etrans; eauto.
           eapply Mem_nextblock_unfree in UNFREE. rewrite UNFREE. refl.
-      - econs; ss; eauto.
+      - assert(FROZENHI: SimMemInj.frozen (SimMemInj.inj sm0) (SimMemInj.inj sm_ret) (SimMemInj.src_parent_nb sm0) (SimMemInj.tgt_parent_nb sm0)).
+        { + econs. ii. des. destruct (SimMemInj.inj sm_arg b_src) eqn: T.
+            * destruct p. erewrite INCR0 in NEW0; et. clarify. eapply FROZEN. split; eauto.
+            * eapply SimMemInj.inject_separated_frozen in FROZEN0. exploit FROZEN0; eauto. i. des.
+              rewrite SRCPARENTEQNB, TGTPARENTEQNB. unfold Mem.valid_block in *. clear - H H0 SRCLE1 TGTLE1.
+              assert(Ple (Mem.nextblock (SimMemInj.src sm_arg)) b_src) by xomega.
+              assert(Ple (Mem.nextblock (SimMemInj.tgt sm_arg)) b_tgt) by xomega.
+              split; eapply Pos.le_trans; eauto.
+        }
+        econs; ss; eauto.
         + etrans; eauto.
         + etrans; eauto. etrans; eauto.
           { rewrite SRCPARENTEQ in *.
@@ -448,13 +457,7 @@ Section TOMEMORYC.
                 * lia.
                 * eapply Mem.free_range_perm; eauto. lia.
               + econs. }
-        + econs. ii. des. destruct (SimMemInj.inj sm_arg b_src) eqn: T.
-          * destruct p. erewrite INCR0 in NEW0; et. clarify. eapply FROZEN. split; eauto.
-          * eapply SimMemInj.inject_separated_frozen in FROZEN0. exploit FROZEN0; eauto. i. des.
-            rewrite SRCPARENTEQNB, TGTPARENTEQNB. unfold Mem.valid_block in *. clear - H H0 SRCLE1 TGTLE1.
-            assert(Ple (Mem.nextblock (SimMemInj.src sm_arg)) b_src) by xomega.
-            assert(Ple (Mem.nextblock (SimMemInj.tgt sm_arg)) b_tgt) by xomega.
-            split; eapply Pos.le_trans; eauto.
+        + eapply SimMemInj.frozen_shortened; eauto.
         + eapply Mem_unfree_perm_restore; try apply UNFREESRC; eauto.
           * ii. eapply MAXSRC0; eauto.
             unfold Mem.valid_block in *. erewrite Mem.nextblock_free; eauto.

@@ -1088,8 +1088,6 @@ Inductive match_states
           (idx: nat) (st_src0: Linear.state) (st_tgt0: MachC.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Stackingproof.match_states skenv_link skenv_link ge tge st_src0 st_tgt0.(st) sm0)
-    (MCOMPATSRC: st_src0.(LinearC.get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(st).(get_mem) = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
     (INITRS: exists dummy_stack_src,
         <<DUMMY: st_src0.(LinearC.get_stack).(last_option) = Some dummy_stack_src>> /\
@@ -1337,8 +1335,6 @@ Proof.
             intro SEP.
             eapply dummy_frame_contents_incr; try apply MLE0; eauto. eapply dummy_frame_contents_incr; try apply MLE; eauto.
             subst; ss.
-        - clarify; ss; congruence.
-        - clarify.
         - esplits; ss.
           + i. ss. split; i.
             * rewrite OUT in H; ss.
@@ -1384,6 +1380,7 @@ Proof.
     assert(VALID: Mem.valid_block (SimMemInj.tgt sm0) sp).
     { exploit match_stacks_sp_valid; eauto. i; des. eauto. }
 
+    inv MCOMPAT; ss.
     exploit SimMemInj.free_right; eauto.
     { u. ii. esplits; eauto. do 2 spc H0. zsimpl. eauto. }
     { exploit match_stacks_sp_valid; eauto. i; des. eauto. }
@@ -1468,9 +1465,9 @@ Proof.
       - eapply Mem.unchanged_on_implies; try apply MLE0. ii. ss. u. esplits; eauto.
         hexploit arguments_private; eauto.
         { eapply sep_drop_tail3 in SEP. eauto. }
-        i; des. psimpl. spc H1. zsimpl. inv MATCHARG. rewrite <- MEMSRC0. rewrite <- INJ.
+        i; des. psimpl. spc H1. zsimpl. inv MATCHARG. rewrite <- INJ.
         u in H. des; clarify. eapply H1. eauto.
-      - eapply Mem.valid_block_free_1; eauto.
+      - inv MCOMPAT. eapply Mem.valid_block_free_1; eauto.
     }
     { ss. bar. inv MLE. rewrite <- TGTPARENTEQ. clear_until_bar. r. unfold brange.
       hexploit match_stacks_sp_valid; eauto. intro SPVALID; des.
@@ -1500,9 +1497,9 @@ Proof.
           (LTL.undef_caller_save_regs ls_arg)) (Retv.m retv_src))).
       { clear - SOUND. exploit SOUND; ss; eauto. intro Q; des. inv Q.
 
-        (** directly copied from LineartypingC.v **)
-        (** TODO: provide it in metatheory **)
-        (** I tried it (just add "(SOUND: sound_state su0 m_init st_src1)" in MatchSimModSem.v - AFTERFSIM,
+      (** directly copied from LineartypingC.v **)
+      (** TODO: provide it in metatheory **)
+      (** I tried it (just add "(SOUND: sound_state su0 m_init st_src1)" in MatchSimModSem.v - AFTERFSIM,
           but it has some difficulty.. **)
         hexploit (loc_result_caller_save sg_arg); eauto. intro RES.
         hexploit (loc_result_one sg_arg); eauto. intro ONE.
@@ -1545,7 +1542,7 @@ Proof.
         }
         { intros b_src b_tgt delta ofs VALID0 MAP0 PERM.
           assert(VALID1: Mem.valid_block (SimMemInj.src sm0) b_src).
-          { rewrite MSRC in *. rewrite MINJ in *.
+          { inv MCOMPAT. rewrite MSRC in *. rewrite MINJ in *.
             inv HISTORY. inv MATCHARG; ss. clarify. rewrite H0 in *. rewrite INJ in *.
             clear - MLE0 VALID0 MAP0 PERM MWF0 MWF3 NB.
             apply NNPP. intro OUTSRC.
@@ -1627,7 +1624,7 @@ Proof.
     Local Transparent stack_contents_args dummy_frame_contents.
     ss. unfold dummy_frame_contents in *. psimpl. clarify.
     hexploit (Mem.range_perm_free sm0.(SimMemInj.tgt) sp 0 (4 * (size_arguments init_sg))); eauto.
-    { clear - SEP. apply sep_pick1 in SEP. rr in SEP. des. zsimpl. eauto with xomega. }
+    { inv MCOMPAT. clear - SEP. apply sep_pick1 in SEP. rr in SEP. des. zsimpl. eauto with xomega. }
     intros (sm_tgt1 & FREETGT).
 
     assert(j = sm0.(SimMemInj.inj)).
@@ -1635,7 +1632,7 @@ Proof.
     clarify.
 
     exploit SimMemInj.free_right; eauto.
-    { clear - SEP SPVALID. apply sep_drop_tail3 in SEP.
+    { inv MCOMPAT. clear - SEP SPVALID. apply sep_drop_tail3 in SEP.
       destruct SEP as (A & B & DISJ). ss. des. zsimpl. clear_tac.
       ii. rr in DISJ. rr. esplits; eauto.
       specialize (DISJ sp ofs). ss. ii. exploit DISJ; eauto.
@@ -1643,9 +1640,9 @@ Proof.
     i; des_safe. rename sm1 into sm_ret.
 
     eexists sm_ret, (Retv.mk _ _). esplits; eauto; cycle 1.
-    + econs; ss; eauto.
-      * rewrite ONE. ss. specialize (AGREGS mr_res). eapply val_inject_incr; try apply MLE; eauto.
-    + econs; eauto.
+    + inv MCOMPAT. econs; ss; eauto.
+      rewrite ONE. ss. specialize (AGREGS mr_res). eapply val_inject_incr; try apply MLE; eauto.
+    + inv MCOMPAT. econs; eauto.
       * ii. specialize (AGCSREGS mr). ss. specialize (GOOD mr H). des_safe.
         rewrite <- AGCSREGS in *; ss. destruct (Val.eq (ls0 (R mr)) Vundef).
         { rewrite GOOD; ss. }

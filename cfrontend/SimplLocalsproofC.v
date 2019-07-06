@@ -93,9 +93,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: Clight.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: SimplLocalsproof.match_states skenv_link skenv_link ge st_src0 st_tgt0 sm0)
-    (MCOMPATSRC: st_src0.(ClightC.get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt)).
+    (MATCHST: SimplLocalsproof.match_states skenv_link skenv_link ge st_src0 st_tgt0 sm0).
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
@@ -129,11 +127,10 @@ Proof.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     eexists. exists sm_arg. esplits; eauto; try refl.
     + econs; eauto; ss; cycle 1.
-      { inv SAFESRC. ss. }
       * inv TYP. inv SAFESRC. folder. ss.
         exploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. intro FINDFTGT; des. ss.
         assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link)).
-        { inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
+        { inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
           econs; eauto.
           + ii. ss. eapply Plt_Ple_trans. { genext. } ss. refl.
           + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
@@ -143,7 +140,7 @@ Proof.
         exploit typecheck_inject; eauto. intro TYPTGT0; des.
         exploit typecheck_typecheck; eauto. intro TYPTGT1; des.
         rpapply match_call_state; ss; eauto.
-        { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
+        { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
           econs; eauto.
           - eapply SimMemInjC.sim_skenv_symbols_inject; et.
           - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBSRC. xomega.
@@ -224,7 +221,6 @@ Proof.
     eexists sm0. esplits; ss; eauto. refl.
   - left; i.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    
     inv MATCH. esplits; eauto.
     { apply modsem1_receptive. }
     ii. hexploit (@step_simulation prog skenv_link skenv_link); eauto; ss. i; des.
@@ -256,4 +252,3 @@ Proof.
 Qed.
 
 End SIMMOD.
-

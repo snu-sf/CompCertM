@@ -42,9 +42,7 @@ Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Unusedglobproof.match_states prog tprog (used_set tprog) skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0 sm0)
-    (MCOMPATSRC: st_src0.(RTL.get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(RTL.get_mem) = sm0.(SimMem.tgt)).
+    (MATCHST: Unusedglobproof.match_states prog tprog (used_set tprog) skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0 sm0).
 
 Lemma find_funct_inject
       used fptr tfptr fd j
@@ -79,7 +77,7 @@ Proof.
     exploit SIMDEF; et. i; des. clarify. psimpl.
     uo. des_ifs_safe.
     exploit Genv.invert_find_symbol; et. intro SYMBSRC; des.
-    exploit SIMSYMB1; et. i; des. psimpl. clear_tac. 
+    exploit SIMSYMB1; et. i; des. psimpl. clear_tac.
     exploit Genv.find_invert_symbol; et. intro SYMBTGT; des.
 
     destruct (classic (defs prog i)); cycle 1.
@@ -149,12 +147,10 @@ Proof.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     des. eexists.
-    
+
     exploit SimMemInjC.inject_junk_blocks_tgt; et. intro P; des.
     exists sm1. esplits; eauto.
     + econs; eauto; ss; cycle 1.
-      { inv SAFESRC. ss. }
-      { rewrite DEF. ss. }
       * inv TYP. inv SAFESRC. folder. ss. inv TYP.
         exploit find_funct_inject; et. i; des. clarify.
         rpapply match_states_call; ss; eauto.
@@ -318,4 +314,3 @@ Unshelve.
 Qed.
 
 End SIMMOD.
-

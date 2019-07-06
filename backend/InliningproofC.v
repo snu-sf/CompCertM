@@ -19,7 +19,7 @@ Set Implicit Arguments.
 
 
 Section SIMMODSEM.
-  
+
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
@@ -38,8 +38,6 @@ Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Inliningproof.match_states prog skenv_link skenv_link ge st_src0 st_tgt0 sm0)
-    (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
     (MCOMPATIDX: idx = Inliningproof.measure st_src0).
 
 Theorem make_match_genvs :
@@ -64,11 +62,10 @@ Proof.
     eexists. exists sm_arg. esplits; eauto.
     { refl. }
     + econs; eauto; ss; cycle 1.
-      { inv SAFESRC. ss. }
       * inv TYP. inv SAFESRC. folder. ss.
         exploit (Genv.find_funct_match_genv SIMGE); eauto. intro FINDFTGT; des. ss.
         assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link)).
-        { inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
+        { inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
           econs; eauto.
           + ii. ss. eapply Plt_Ple_trans. { genext. } ss. refl.
           + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
@@ -76,12 +73,12 @@ Proof.
         }
         hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
         rpapply match_call_states; ss; eauto.
-        { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss. 
+        { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
           econs; eauto.
           - eapply SimMemInjC.sim_skenv_symbols_inject; eauto.
           - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBTGT. xomega.
         }
-        { inv TYP. eapply inject_list_typify_list; try apply VALS; eauto. } 
+        { inv TYP. eapply inject_list_typify_list; try apply VALS; eauto. }
         { apply MWF. }
         assert (fn_sig fd = fn_sig fd0).
         { unfold transf_function in *. unfold Errors.bind in *. des_ifs. }
@@ -181,8 +178,6 @@ Proof.
     + esplits; eauto.
       * left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.
       * econs; ss.
-        { inv H0; ss; inv MCOMPAT; ss. }
-        { inv H0; ss; inv MCOMPAT; ss. }
     + esplits; eauto.
       * right. subst tr. split. econs. eauto.
       * assert(MCOMPAT: get_mem st_src1 = SimMem.src sm1 /\ get_mem st_tgt0 = SimMem.tgt sm1).
@@ -214,4 +209,3 @@ Proof.
 Qed.
 
 End SIMMOD.
-

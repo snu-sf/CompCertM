@@ -1,7 +1,6 @@
 COQMODULE    := compcomp
 # COQTHEORIES  := $(wildcard */*.v) #*/*.v
 COQTHEORIES  := $(shell find . -iname '*.v')
-COQTHEORIES  := $(filter-out ./proof/SimMemInjNew.v ./proof/SimMemInj_old.v ./common/MemoryExplore.v, $(COQTHEORIES))
 
 .PHONY: all proof proof-quick
 

@@ -114,7 +114,7 @@ Proof.
     + instantiate (1:=top4). ss.
 
   - i. ss. clear SOUND HISTORY.
-    exists (SimMemInjInv.unlift' sm_arg sm_ret).
+    exists (SimMemInjInvC.unlift' sm_arg sm_ret).
     inv AFTERSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
     + econs; eauto.

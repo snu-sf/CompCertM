@@ -1,4 +1,4 @@
-Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
+Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMemLift Sound SimSymb.
 Require SimMemInjInv.
 Require SoundTop SimSymbId SimSymbDropInv.
 Require Import CoqlibC.
@@ -17,6 +17,7 @@ Set Implicit Arguments.
 Section INJINVDROP.
 
 Local Instance SimMemTop: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv SimMemInjInv.top_inv.
+Local Instance SimMemLiftTop: SimMemLift.class SimMemTop := SimMemInjInvC.SimMemInjInvLift SimMemInjInv.top_inv SimMemInjInv.top_inv.
 Local Instance SimSymbTop: SimSymb.class SimMemTop := SimSymbDropInv.SimSymbDrop.
 
 Lemma SimSymbDropInv_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: AST.program F V)
@@ -152,7 +153,7 @@ Lemma Mem_unfree_parallel
       (MWF0: SimMem.wf sm0)
       (MWF1: SimMem.wf sm_arg)
       (MWF2: SimMem.wf sm_ret)
-      (MLE1: SimMem.le (SimMem.lift sm_arg) sm_ret)
+      (MLE1: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
       (UNFREESRC: Mem_unfree
                     (SimMem.src sm_ret) blk_src
                     (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned ofs_src + sz) =
@@ -267,7 +268,18 @@ Proof.
               eapply SimMemInj.frozen_preserves_tgt; et. eapply Pos.lt_le_trans; et. }
             clear - H0 UNFREESRC n. unfold Mem_unfree, Mem.perm in *. des_ifs. ss. rewrite PMap.gso in H3; et.
           }
-    - econs; ss; eauto. econs; ss; eauto.
+    - econs; ss; eauto.
+      assert(FROZENHI: SimMemInj.frozen (SimMemInj.inj sm0) (SimMemInj.inj sm_ret) (SimMemInj.src_parent_nb sm0)
+                                        (SimMemInj.tgt_parent_nb sm0)).
+      { + econs. ii. des. destruct (SimMemInj.inj sm_arg b_src) eqn: T.
+          * destruct p. erewrite INCR0 in NEW0; et. clarify. eapply FROZEN. split; eauto.
+          * eapply SimMemInj.inject_separated_frozen in FROZEN0. exploit FROZEN0; eauto. i. des.
+            rewrite SRCPARENTEQNB, TGTPARENTEQNB. unfold Mem.valid_block in *. clear - H H0 SRCLE1 TGTLE1.
+            assert(Ple (Mem.nextblock (SimMemInj.src sm_arg)) b_src) by xomega.
+            assert(Ple (Mem.nextblock (SimMemInj.tgt sm_arg)) b_tgt) by xomega.
+            split; eapply Pos.le_trans; eauto.
+      }
+      econs; ss; eauto.
       + etrans; eauto.
       + etrans; eauto. etrans; eauto.
         { rewrite SRCPARENTEQ in *.
@@ -291,13 +303,7 @@ Proof.
               * lia.
               * eapply Mem.free_range_perm; eauto. lia.
             + econs. }
-        + econs. ii. des. destruct (SimMemInj.inj sm_arg b_src) eqn: T.
-          * destruct p. erewrite INCR0 in NEW0; et. clarify. eapply FROZEN. split; eauto.
-          * eapply SimMemInj.inject_separated_frozen in FROZEN0. exploit FROZEN0; eauto. i. des.
-            rewrite SRCPARENTEQNB, TGTPARENTEQNB. unfold Mem.valid_block in *. clear - H H0 SRCLE1 TGTLE1.
-            assert(Ple (Mem.nextblock (SimMemInj.src sm_arg)) b_src) by xomega.
-            assert(Ple (Mem.nextblock (SimMemInj.tgt sm_arg)) b_tgt) by xomega.
-            split; eapply Pos.le_trans; eauto.
+      + eapply SimMemInj.frozen_shortened; eauto.
       + eapply Mem_unfree_perm_restore; try apply UNFREESRC; eauto.
         * ii. eapply MAXSRC0; eauto.
           unfold Mem.valid_block in *. erewrite Mem.nextblock_free; eauto.

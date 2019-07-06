@@ -251,7 +251,8 @@ Proof.
 
   eexists. esplits; eauto.
   - econs; ss; eauto; try refl.
-    econs. i. des. clarify.
+    + econs. i. des. clarify.
+    + econs. i. des. clarify.
   - econs; eauto. ss.
   - unfold Genv.find_funct in FINDF. des_ifs.
     instantiate (1:=nat_idx 10).
@@ -320,6 +321,7 @@ Proof.
         - refl.
         - eapply Mem.unchanged_on_implies; eauto.
           i. ss. des_ifs. omega.
+        - eapply SimMemInj.frozen_refl.
         - eapply SimMemInj.frozen_refl.
         - i. ss. ii.
           eapply Mem.unchanged_on_perm; eauto. ss. des_ifs. omega. }

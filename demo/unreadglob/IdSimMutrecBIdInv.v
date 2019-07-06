@@ -4,7 +4,7 @@ Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem S
 Require Import Cop Ctypes ClightC.
 Require Import AsmC.
 Require SimMemInjInvC.
-Require Import StaticMutrecA StaticMutrecAspec StaticMutrecAproof IdSimStaticA.
+Require Import MutrecB MutrecBspec MutrecBproof IdSimMutrecB.
 Require Import CoqlibC.
 Require Import ValuesC.
 Require Import LinkingC.
@@ -27,11 +27,10 @@ Require Import Coq.Logic.PropExtensionality.
 Require Import CtypingC.
 Require Import CopC.
 
-Require Import MatchSimModSem.
+Require Import MatchSimModSem ModSemProps.
 Require Import Conventions1C.
 
-Require Import ClightStepInj.
-Require Import IdSimExtra IdSimInvExtra IdSimClightExtra.
+Require Import IdSimExtra IdSimInvExtra.
 Require Import mktac.
 
 Set Implicit Arguments.
@@ -47,40 +46,41 @@ Local Instance SimSymbP: SimSymb.class SimMemP := SimMemInjInvC.SimSymbIdInv P.
 
 Local Existing Instance SoundTop.Top.
 
-Inductive match_states_a_inv (sm_arg: SimMem.t)
+Inductive match_states_b_inv (sm_arg: SimMem.t)
   : unit -> state -> state -> SimMem.t -> Prop :=
 | match_states_a_intro
     st_src st_tgt j m_src m_tgt sm0
     (MWFSRC: m_src = sm0.(SimMem.src))
     (MWFTGT: m_tgt = sm0.(SimMem.tgt))
     (MWFINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
-    (MATCHST: match_states_a_internal st_src st_tgt j m_src m_tgt)
+    (MATCHST: match_states_b_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMem.wf sm0)
   :
-    match_states_a_inv
+    match_states_b_inv
       sm_arg tt st_src st_tgt sm0
 .
 
-Lemma a_inj_inv
-      (WF: Sk.wf (StaticMutrecAspec.module))
+Lemma b_inj_inv
+      (WF: Sk.wf (MutrecBspec.module))
   :
     exists mp,
       (<<SIM: ModPair.sim mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecAspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecAspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (MutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecBspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto.
   econs; ss; i.
   { instantiate (1:=bot1). econs; ss; i; clarify. }
-  eapply match_states_sim with (match_states := match_states_a_inv); ss.
+  eapply match_states_sim with (match_states := match_states_b_inv); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
 
-  - i. ss. exploit SimSymbIdInv_match_globals.
-    { inv SIMSKENV. ss. eauto. }
-    instantiate (1 := prog). intros GEMATCH.
+  - i. ss.
+    cinv SIMSKENV. ss.
+    exploit (@SimSymbIdInv_match_globals fundef _ _ sm_arg (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig prog)) prog).
+    { eauto. } intros GEMATCH.
     inv INITTGT. inv SAFESRC. inv SIMARGS. inv H. ss.
     inv GEMATCH. exploit SYMBLE; eauto. i. des.
     clarify.
@@ -93,9 +93,10 @@ Proof.
         destruct vl, vl'; ss. clarify. inv H. auto. }
       rewrite MEMTGT, MEMSRC. subst i0. econs.
 
-  - i. ss. exploit SimSymbIdInv_match_globals.
-    { inv SIMSKENV. ss. eauto. }
-    instantiate (1 := prog). intros GEMATCH.
+  - i. ss.
+    cinv SIMSKENV. ss.
+    exploit (@SimSymbIdInv_match_globals fundef _ _ sm_arg (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig prog)) prog).
+    { eauto. } intros GEMATCH.
     des. inv SAFESRC. inv SIMARGS.
     inv GEMATCH. exploit SYMBLE; eauto. i. des; eauto.
     esplits. econs; ss; eauto.
@@ -107,9 +108,9 @@ Proof.
   - i. ss. inv MATCH; eauto.
 
   - i. ss. clear SOUND. inv CALLSRC. inv MATCH. inv MATCHST. inversion SIMSKENV; subst. ss.
-    i. ss. exploit SimSymbIdInv_match_globals.
-    { inv SIMSKENV. ss. eauto. }
-    instantiate (2 := prog). intros GEMATCH.
+    i. ss. cinv SIMSKENV. ss.
+    exploit (@SimSymbIdInv_match_globals fundef _ _ sm0 (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig prog)) prog).
+    { eauto. } intros GEMATCH.
     inv GEMATCH. exploit SYMBLE; eauto. i. des; eauto.
     esplits; eauto.
     + econs; ss; eauto.
@@ -118,7 +119,7 @@ Proof.
     + instantiate (1:=top4). ss.
 
   - i. ss. clear SOUND HISTORY.
-    exists (SimMemInjInv.unlift' sm_arg sm_ret).
+    exists (SimMemInjInvC.unlift' sm_arg sm_ret).
     inv AFTERSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
     + econs; eauto. inv SIMRET. rewrite INT in *. inv RETV. ss.

@@ -27,11 +27,10 @@ Require Import Coq.Logic.PropExtensionality.
 Require Import CtypingC.
 Require Import CopC.
 
-Require Import MatchSimModSem.
+Require Import MatchSimModSem ModSemProps.
 Require Import Conventions1C.
 
-Require Import ClightStepInj.
-Require Import IdSimExtra IdSimInvExtra IdSimClightExtra.
+Require Import IdSimExtra IdSimInvExtra.
 Require Import mktac.
 
 Set Implicit Arguments.

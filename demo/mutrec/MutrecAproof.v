@@ -9,7 +9,7 @@ Require Import IntegersC.
 Require Import MutrecHeader.
 Require Import MutrecA MutrecAspec.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift AsmregsC MatchSimModSem.
 (* Require SimMemInjC. *)
 Require SoundTop.
 Require SimMemInjC SimMemInjInvC.
@@ -36,7 +36,7 @@ Definition memoized_inv: SimMemInjInv.memblk_invariant :=
          (<<CHUNK: chunk = Mint32>>) /\ (<<BOUND: 0 <= ind < 1000>>) /\
          (<<INDEX: ofs = size_chunk Mint32 * ind>>) /\ (<<WRITABLE: p = Writable>>)).
 
-Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv
+Local Instance SimMemMemoizedA: SimMem.class := SimMemInjInvC.SimMemInjInv
                                                  SimMemInjInv.top_inv memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
@@ -66,8 +66,7 @@ Proof.
     + eapply Mem.store_unchanged_on; eauto.
       ii. inv WF. exploit INVRANGETGT; eauto. i. des.
       exfalso. eauto.
-    + eapply SimMemInj.frozen_refl.
-    + eapply SimMemInj.frozen_refl.
+    + eapply SimMemInj.frozen_refl. + eapply SimMemInj.frozen_refl.
     + ii. eapply Mem.perm_store_2; eauto.
   - inv WF. econs; ss; eauto.
     + unfold SimMemInjC.update. econs; ss; eauto.
@@ -233,9 +232,10 @@ Lemma match_states_lxsim
                 (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)))
       (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
   :
-    <<XSIM: lxsim (md_src skenv_link) (md_tgt skenv_link)
-                  (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
-                  sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
+    <<XSIM: lxsimL (md_src skenv_link) (md_tgt skenv_link)
+                   (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
+                   top3 (fun _ _ => SimMem.le)
+                   sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
 .
 Proof.
   revert_until tge.
@@ -513,15 +513,18 @@ Proof.
               esplits; eauto. }
           intros [m_tgt STR].
 
-          exploit SimMemInjInv.unlift_wf; try apply MLE0; eauto.
-          { econs; eauto.  } intros MLE1.
+          exploit SimMemInjInvC.unlift_wf; try apply MLE0; eauto.
+          { econs; eauto. } intros MLE1.
           exploit memoized_inv_store_le; eauto.
           i. des.
 
           esplits.
           { econs; eauto. }
-          { etrans; eauto. eapply SimMemInjInv.unlift_spec; eauto.
-            econs; eauto. }
+          { apply MLE2. (* eassumption. *)
+            (* etrans; eauto. refl. *)
+            (* eapply SimMemInjInv.unlift_spec; eauto. *)
+            (* econs; eauto. } *)
+          }
 
           left. pfold. econs; eauto. i; des. econs 2; eauto.
           {
@@ -605,9 +608,19 @@ Proof.
           { refl. }
 
           right. eapply CIH.
-          { eapply SimMemInjInvC.sim_skenv_inj_le; cycle 1; eauto.
-            etrans; eauto. eapply SimMemInjInv.unlift_spec; eauto.
-            econs; eauto. }
+          { eapply SimMemInjInvC.sim_skenv_inj_lepriv; cycle 1; eauto.
+            etrans; eauto.
+            { exploit (SimMemLift.lift_priv sm0); eauto. ss. }
+            etrans; eauto; cycle 1.
+            { hexploit SimMem.pub_priv; try apply MLE2. eauto. }
+            etrans; eauto.
+            { hexploit SimMem.pub_priv; try apply MLE0; eauto. }
+            hexploit SimMemLift.unlift_priv; revgoals.
+            { intro T. ss. eauto. }
+            { eauto. }
+            { eauto. }
+            { exploit (SimMemLift.lift_priv sm0); eauto. ss. }
+            { econs; eauto. } }
           { econs; ss.
             - replace (Int.add (sum (Int.sub i Int.one)) i) with (sum i); cycle 1.
               { rewrite sum_recurse with (i := i). des_ifs.
@@ -618,7 +631,7 @@ Proof.
 
               econs 2.
             - etrans; eauto. etrans; eauto.
-              eapply SimMemInjInv.unlift_spec; eauto. econs; eauto.
+              eapply SimMemInjInvC.unlift_spec; eauto. econs; eauto.
             (* - omega. *) }
       }
 
@@ -769,9 +782,11 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  econs; eauto.
+  eapply sim_mod_sem_implies.
+  eapply ModSemPair.simL_intro with (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le).
   { i. eapply SoundTop.sound_state_local_preservation. }
   { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
+  { ii; ss. r. etrans; eauto. }
   i. ss. esplits; eauto.
 
   - i. des. inv SAFESRC.

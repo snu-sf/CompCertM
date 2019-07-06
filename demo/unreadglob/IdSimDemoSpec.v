@@ -17,8 +17,7 @@ Require Import Preservation.
 Require Import Integers.
 Require Import LocationsC Conventions.
 
-Require Import MatchSimModSem.
-Require Import ClightStepInj ClightStepExt.
+Require Import MatchSimModSem ModSemProps.
 Require Import IdSimExtra IdSimClightExtra.
 Require Import CtypingC.
 Require Import CopC.

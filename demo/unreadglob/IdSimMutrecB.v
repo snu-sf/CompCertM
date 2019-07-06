@@ -3,7 +3,7 @@ Require Import Cop Ctypes ClightC.
 Require SimMemId SimMemExt SimMemInj.
 Require SoundTop UnreachC.
 Require SimSymbId SimSymbDrop.
-Require Import StaticMutrecA StaticMutrecBspec StaticMutrecBproof.
+Require Import MutrecA MutrecBspec MutrecBproof.
 Require Import CoqlibC.
 Require Import ValuesC.
 Require Import LinkingC.
@@ -17,9 +17,8 @@ Require Import Preservation.
 Require Import Integers.
 Require Import LocationsC Conventions.
 
-Require Import MatchSimModSem.
-Require Import ClightStepInj ClightStepExt.
-Require Import IdSimExtra IdSimClightExtra.
+Require Import MatchSimModSem ModSemProps.
+Require Import IdSimExtra.
 Require Import CtypingC.
 Require Import CopC.
 Require Import sflib.
@@ -223,8 +222,8 @@ Lemma b_id
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (MutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecBspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -237,7 +236,7 @@ Proof.
   - instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
                        (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>) /\
-                       (<<stmwf: st_src.(StaticMutrecBspec.get_mem) =
+                       (<<stmwf: st_src.(MutrecBspec.get_mem) =
                                  sm0.(SimMemId.src)>>)).
     ss.
     destruct args_src, args_tgt, sm_arg. ii. inv SIMARGS; ss; clarify.
@@ -269,8 +268,8 @@ Lemma b_ext_unreach
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (MutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecBspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -340,8 +339,8 @@ Lemma b_ext_top
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (MutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecBspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -407,12 +406,12 @@ Proof.
 Qed.
 
 Lemma b_inj_drop_bot
-      (WF: Sk.wf (StaticMutrecBspec.module))
+      (WF: Sk.wf (MutrecBspec.module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (MutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecBspec.module)>>)
       /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>)
 .
 Proof.
@@ -494,24 +493,24 @@ Proof.
 Qed.
 
 Lemma b_inj_drop
-      (WF: Sk.wf (StaticMutrecBspec.module))
+      (WF: Sk.wf (MutrecBspec.module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (MutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecBspec.module)>>)
 .
 Proof.
   exploit b_inj_drop_bot; eauto. i. des. eauto.
 Qed.
 
 Lemma b_inj_id
-      (WF: Sk.wf (StaticMutrecBspec.module))
+      (WF: Sk.wf (MutrecBspec.module))
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (StaticMutrecBspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (StaticMutrecBspec.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (MutrecBspec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecBspec.module)>>)
 .
 Proof.
   apply sim_inj_drop_bot_id. apply b_inj_drop_bot; auto.

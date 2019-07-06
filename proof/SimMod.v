@@ -26,18 +26,6 @@ Set Implicit Arguments.
 
 Module ModPair.
 
-  Record t: Type := mk {
-    src: Mod.t;
-    tgt: Mod.t;
-    SM:> SimMem.class;
-    SS:> SimSymb.class SM;
-    ss: SimSymb.t;
-    wf:= SimSymb.sim_sk ss src.(Mod.sk) tgt.(Mod.sk)
-  }
-  .
-
-  Reset t. (* Need to state SS = SS in SimMem... JMEQ THINGS !!!!!!!!!!!!! *)
-
 Section MODPAIR.
 Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
@@ -77,5 +65,3 @@ End MODPAIR.
 End ModPair.
 
 Hint Unfold ModPair.to_msp.
-
-

@@ -3,7 +3,7 @@ Require Import Cop Ctypes ClightC.
 Require SimMemId SimMemExt SimMemInj.
 Require SoundTop UnreachC.
 Require SimSymbId SimSymbDrop.
-Require Import DemoSource DemoSpec DemoProof.
+Require Import DemoSpec.
 Require Import CoqlibC.
 Require Import ValuesC.
 Require Import LinkingC.

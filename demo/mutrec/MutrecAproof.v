@@ -67,6 +67,7 @@ Proof.
       ii. inv WF. exploit INVRANGETGT; eauto. i. des.
       exfalso. eauto.
     + eapply SimMemInj.frozen_refl.
+    + eapply SimMemInj.frozen_refl.
     + ii. eapply Mem.perm_store_2; eauto.
   - inv WF. econs; ss; eauto.
     + unfold SimMemInjC.update. econs; ss; eauto.
@@ -513,7 +514,7 @@ Proof.
           intros [m_tgt STR].
 
           exploit SimMemInjInv.unlift_wf; try apply MLE0; eauto.
-          { econs; eauto. } intros MLE1.
+          { econs; eauto.  } intros MLE1.
           exploit memoized_inv_store_le; eauto.
           i. des.
 

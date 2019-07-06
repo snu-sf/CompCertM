@@ -83,7 +83,8 @@ Section ADQSOUND.
     inv GE.
     econs; eauto.
     rewrite Forall_forall in *.
-    ii. admit "". (* eapply Sound.skenv_lift; eauto. *)
+    ii. eapply Sound.skenv_hle; eauto.
+    (* eapply Sound.skenv_lift; eauto. *)
   Qed.
 
   Lemma mle_preserves_sound_ge

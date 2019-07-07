@@ -128,8 +128,9 @@ Section BSOUND.
   .
   Proof.
     esplits.
-    eapply local_preservation_strong_horizontal_spec with (sound_state := sound_state_b skenv_link); eauto.
+    eapply local_preservation_strong_horizontal_spec with (lift := UnreachC.le') (sound_state := sound_state_b skenv_link); eauto.
     econs; ss; i.
+    { eapply UnreachC.liftspec; et. }
     - inv INIT. ss. inv SUARG. des. esplits.
       + refl.
       + econs; eauto.

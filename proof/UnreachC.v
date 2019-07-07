@@ -760,7 +760,8 @@ Qed.
 
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
-  lift := le';
+  (* lift := le'; *)
+  lepriv := le';
   wf := wf;
   hle := hle;
   val := val';
@@ -770,14 +771,14 @@ Global Program Instance Unreach: Sound.class := {
 }
 .
 Next Obligation.
+  rr. rr in HLE. des. esplits; eauto.
+  ii. rewrite <- OLD; ss. inv WF. eauto.
+Qed.
+Next Obligation.
   inv MLE. econs; eauto.
   eapply Mem.unchanged_on_implies; eauto.
   ii. unfold flip in *. inv WF. exploit WFHI; eauto. i. unfold Mem.valid_block in *.
   rr in HLE. des. rewrite <- OLD; eauto.
-Qed.
-Next Obligation.
-  eapply mle_monotone; try apply MLE; eauto.
-  r in LE. des; ss.
 Qed.
 Next Obligation.
   rr in HLE. des. rr in VAL. rr.
@@ -820,9 +821,13 @@ Next Obligation.
   inv SKE. econs; eauto.
   congruence.
 Qed.
-Next Obligation.
-  rr in MLE. des. inv SKE. econs; eauto. congruence.
-Qed.
+(* Next Obligation. *)
+(*   eapply mle_monotone; try apply MLE; eauto. *)
+(*   r in LE. des; ss. *)
+(* Qed. *)
+(* Next Obligation. *)
+(*   rr in MLE. des. inv SKE. econs; eauto. congruence. *)
+(* Qed. *)
 Next Obligation.
   inv MLE.
   inv SKE. econs; eauto; cycle 1.
@@ -991,6 +996,12 @@ Next Obligation.
       rr. unfold to_inj. des_ifs.
 Qed.
 
+Lemma liftspec: forall su0 su1 m0 m1 (MLE: Unreach.mle su1 m0 m1) (LE: le' su0 su1), Unreach.mle su0 m0 m1.
+Proof.
+  ii. eapply mle_monotone; try eassumption; eauto.
+  r in LE. des; ss.
+Qed.
+
 Definition get_greatest (su0: t) (args: Args.t) := greatest le' (fun su => <<LE: le' su0 su>> /\ su.(args') args).
 
 Lemma greatest_dtm: forall
@@ -1019,7 +1030,7 @@ Qed.
 
 Lemma greatest_ex: forall
     su0 args0
-    (INHAB: exists (inhab: Sound.t), <<LE: Sound.lift su0 inhab>> /\ <<ARGS: inhab.(Sound.args) args0>>)
+    (INHAB: exists (inhab: Sound.t), <<LE: le' su0 inhab>> /\ <<ARGS: inhab.(Sound.args) args0>>)
   ,
     exists su_gr, <<GR: get_greatest su0 args0 su_gr>>
 .
@@ -1051,7 +1062,7 @@ Lemma greatest_adq: forall
     su0 args0 su_gr
     (GR: get_greatest su0 args0 su_gr)
   ,
-    <<SUARGS: Sound.args su_gr args0>> /\ <<LE: Sound.lift su0 su_gr>>
+    <<SUARGS: Sound.args su_gr args0>> /\ <<LE: le' su0 su_gr>>
 .
 Proof.
   ii.
@@ -1062,7 +1073,7 @@ Lemma get_greatest_le: forall
     su0 su1 args0 su_gr
     (GR: get_greatest su1 args0 su_gr)
     (SUARG: Sound.args su1 args0)
-    (LE: Sound.lift su0 su1)
+    (LE: le' su0 su1)
   ,
     <<GR: get_greatest su0 args0 su_gr>>
 .

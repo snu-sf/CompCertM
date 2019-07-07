@@ -32,10 +32,12 @@ Module Sound.
     mle: t -> Memory.mem -> Memory.mem -> Prop;
     mle_PreOrder su0 :> PreOrder (mle su0);
 
-    lift: t -> t -> Prop;
-    lift_PreOrder :> PreOrder lift;
+    (* lift: t -> t -> Prop; *)
+    (* lift_PreOrder :> PreOrder lift; *)
     hle: t -> t -> Prop;
     hle_PreOrder :> PreOrder hle;
+    lepriv: t -> t -> Prop;
+    lepriv_PreOrder :> PreOrder lepriv;
     (* le_val: forall *)
     (*     su0 su1 *)
     (*     (LE: le su0 su1) *)
@@ -52,19 +54,20 @@ Module Sound.
     (*   , *)
     (*     <<LE: le su0 su1>> *)
     (* ; *)
+
+    hle_lepriv: forall
+        su0 su1
+        (HLE: hle su0 su1)
+        (WF: wf su0)
+      ,
+        <<LE: lepriv su0 su1>>
+    ;
+
     hle_mle: forall
         m0 m1 su0 su1
         (MLE: mle su1 m0 m1)
         (HLE: hle su0 su1)
         (WF: wf su0)
-      ,
-        <<MLE: mle su0 m0 m1>>
-    ;
-
-    lift_spec: forall
-        su0 su1 m0 m1
-        (MLE: mle su1 m0 m1)
-        (LE: lift su0 su1)
       ,
         <<MLE: mle su0 m0 m1>>
     ;
@@ -129,18 +132,10 @@ Module Sound.
           (<<SUSKE: su_init.(skenv) m_init skenv_link>>)
     ;
 
-    skenv_lift: forall
+    skenv_lepriv: forall
         m0 su0 su1 ske
         (SKE: su0.(skenv) m0 ske)
-        (LE: lift su0 su1)
-      ,
-        <<SKE: su1.(skenv) m0 ske>>
-    ;
-
-    skenv_hle: forall
-        m0 su0 su1 ske
-        (SKE: su0.(skenv) m0 ske)
-        (MLE: hle su0 su1)
+        (LE: lepriv su0 su1)
       ,
         <<SKE: su1.(skenv) m0 ske>>
     ;
@@ -193,18 +188,30 @@ Module Sound.
   Section SOUND.
   Context {SU: class}.
 
-  Lemma hle_spec: forall
-        su0 su1 m0 m1
-        (HLELIFT: forall su0 su1 (HLE: hle su0 su1) (WF: wf su0), <<LE: lift su0 su1>>)
-        (MLE: mle su1 m0 m1)
-        (LE: hle su0 su1)
-        (WF: wf su0)
-      ,
-        <<MLE: mle su0 m0 m1>>
+  Lemma skenv_hle: forall
+      m0 su0 su1 ske
+      (WF: Sound.wf su0)
+      (SKE: su0.(skenv) m0 ske)
+      (MLE: hle su0 su1)
+    ,
+      <<SKE: su1.(skenv) m0 ske>>
   .
   Proof.
-    i. eapply Sound.lift_spec; et. eapply HLELIFT; et.
+    i. eapply skenv_lepriv; eauto. eapply hle_lepriv; eauto.
   Qed.
+
+  (* Lemma hle_spec: forall *)
+  (*       su0 su1 m0 m1 *)
+  (*       (HLELIFT: forall su0 su1 (HLE: hle su0 su1) (WF: wf su0), <<LE: lift su0 su1>>) *)
+  (*       (MLE: mle su1 m0 m1) *)
+  (*       (LE: hle su0 su1) *)
+  (*       (WF: wf su0) *)
+  (*     , *)
+  (*       <<MLE: mle su0 m0 m1>> *)
+  (* . *)
+  (* Proof. *)
+  (*   i. eapply Sound.lift_spec; et. eapply HLELIFT; et. *)
+  (* Qed. *)
 
 
   (* Lemma get_greatest_le *)

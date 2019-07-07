@@ -71,12 +71,12 @@ Section MODSEM.
       fptr rs m0 m1 sg vs blk1 ofs
       init_rs
       (FPTR: rs # PC = fptr)
-      (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (EXTERNAL: Genv.find_funct ge fptr = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = Some sg)
+      (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (VALS: Asm.extcall_arguments rs m0 sg vs)
       (RSP: rs RSP = Vptr blk1 ofs)
-      (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
+      (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))
       (FREE: Mem.free m0 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
@@ -99,13 +99,13 @@ Section MODSEM.
       (SIG: Some sg = fd.(fn_sig))
       (CSTYLE: args = Args.Cstyle fptr_arg vs_arg m_arg)
       (FINDF: Genv.find_funct ge fptr_arg = Some (Internal fd))
-      (RSPC: rs # PC = fptr_arg)
-      (TYP: typecheck vs_arg sg targs)
-      (STORE: store_arguments m_arg rs targs sg m0)
       (JUNK: assign_junk_blocks m0 n = m1)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (RANOTFPTR: forall blk ofs (RAVAL: rs RA = Vptr blk ofs),
           ~ Plt blk (Genv.genv_next skenv))
+      (RSPC: rs # PC = fptr_arg)
+      (TYP: typecheck vs_arg sg targs)
+      (STORE: store_arguments m_arg rs targs sg m0)
       (PTRFREE: forall pr (PTR: ~ is_junk_value m0 m1 (rs pr)),
           (<<INARG: exists mr,
               (<<MR: to_mreg pr = Some mr>>) /\
@@ -122,6 +122,7 @@ Section MODSEM.
       (RAPTR: <<TPTR: Val.has_type ra Tptr>> /\ <<RADEF: ra <> Vundef>>)
       (RANOTFPTR: forall blk ofs (RAVAL: ra = Vptr blk ofs),
           ~ Plt blk (Genv.genv_next skenv))
+      (RAJUNK: is_junk_value m_arg m1 ra)
       (RS: rs = rs_arg # RA <- ra)
     :
       initial_frame args (mkstate rs (State rs m1))
@@ -130,16 +131,17 @@ Section MODSEM.
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_cstyle
       (init_rs rs: regset) m0 m1 blk sg mr
-      (CALLEESAVE: forall mr, Conventions1.is_callee_save mr ->
-                              Val.lessdef (init_rs mr.(to_preg)) (rs mr.(to_preg)))
-      (INITRSP: init_rs # RSP = Vptr blk Ptrofs.zero)
       (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC) = Some (Internal fd) /\ fd.(fn_sig) = Some sg)
-      (FREE: Mem.free m0 blk 0 (4 * size_arguments sg) = Some m1)
-      (RETV: loc_result sg = One mr)
       (EXTERNAL: external_state ge (rs # PC))
       (RSRA: rs # PC = init_rs # RA)
       (RANOTFPTR: Genv.find_funct skenv_link (init_rs RA) = None)
-      (RSRSP: rs # RSP = init_rs # RSP):
+      (CALLEESAVE: forall mr, Conventions1.is_callee_save mr ->
+                              Val.lessdef (init_rs mr.(to_preg)) (rs mr.(to_preg)))
+      (INITRSP: init_rs # RSP = Vptr blk Ptrofs.zero)
+      (RSRSP: rs # RSP = init_rs # RSP)
+      (FREE: Mem.free m0 blk 0 (4 * size_arguments sg) = Some m1)
+      (RETV: loc_result sg = One mr)
+    :
       final_frame (mkstate init_rs (State rs m0)) (Retv.Cstyle (rs mr.(to_preg)) m1)
   | final_frame_asmstyle
       (init_rs rs: regset) m0

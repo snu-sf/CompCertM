@@ -42,29 +42,35 @@ Module Args.
     end
   .
 
-  (* for backward compatibility: it should be used only when Cstyle is sure *)
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
   Definition fptr (args: Args.t): val :=
     match args with
     | Args.Cstyle fptr _ _ => fptr
-    | Args.Asmstyle rs _ => Vundef
+    | Args.Asmstyle rs _ => Vundef (* should not happen *)
     end
   .
 
-  (* for backward compatibility: it should be used only when Cstyle is sure *)
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
   Definition vs (args: Args.t): list val :=
     match args with
     | Args.Cstyle _ vs _ => vs
-    | Args.Asmstyle _ _ => []
+    | Args.Asmstyle _ _ => [] (* should not happen *)
     end
   .
 
-  (* for backward compatibility: it should be used only when Cstyle is sure *)
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
   Definition m (args: Args.t): mem :=
     match args with
     | Args.Cstyle _ _ m => m
-    | Args.Asmstyle _ m => Mem.empty
+    | Args.Asmstyle _ m => Mem.empty (* should not happen *)
     end
   .
+
+  (* for backward compatibility *)
+  Definition mk (fptr: val) (vs: list val) (m: mem): t := Args.Cstyle fptr vs m.
 
   Definition is_cstyle (args: t): bool :=
     match args with
@@ -72,8 +78,6 @@ Module Args.
     | _ => false
     end
   .
-
-  Definition mk (fptr: val) (vs: list val) (m: mem): t := Args.Cstyle fptr vs m.
 
   Lemma get_m_m: forall args (CSTYLE: is_cstyle args), args.(get_m) = args.(m). Proof. destruct args; ss. Qed.
 
@@ -98,30 +102,33 @@ Module Retv.
     end
   .
 
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
+  Definition v (retv: Retv.t): val :=
+    match retv with
+    | Retv.Cstyle v _ => v
+    | Retv.Asmstyle _ _ => Vundef (* should not happen *)
+    end
+  .
+
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
+  Definition m (retv: Retv.t): mem :=
+    match retv with
+    | Retv.Cstyle _ m => m
+    | Retv.Asmstyle _ m => Mem.empty (* should not happen *)
+    end
+  .
+
+  (* for backward compatibility *)
+  Definition mk (v: val) (m: mem): t := Retv.Cstyle v m.
+
   Definition is_cstyle (retv: t): bool :=
     match retv with
     | Cstyle _ _ => true
     | _ => false
     end
   .
-
-  (* for backward compatibility: it should be used only when Cstyle is sure *)
-  Definition v (retv: Retv.t): val :=
-    match retv with
-    | Retv.Cstyle v _ => v
-    | Retv.Asmstyle _ _ => Vundef
-    end
-  .
-
-  (* for backward compatibility: it should be used only when Cstyle is sure *)
-  Definition m (retv: Retv.t): mem :=
-    match retv with
-    | Retv.Cstyle _ m => m
-    | Retv.Asmstyle _ m => Mem.empty
-    end
-  .
-
-  Definition mk (v: val) (m: mem): t := Retv.Cstyle v m.
 
   Lemma get_m_m: forall retv (CSTYLE: is_cstyle retv), retv.(get_m) = retv.(m). Proof. destruct retv; ss. Qed.
 

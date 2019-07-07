@@ -7,7 +7,7 @@ Require Import sflib.
 Require Import IntegersC.
 
 Require Import MutrecHeader.
-Require Import StaticMutrecAspec StaticMutrecBspec StaticMutrecABspec.
+Require Import MutrecAspec MutrecBspec MutrecABspec.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 (* Require SimMemInjC. *)
@@ -24,7 +24,7 @@ Set Implicit Arguments.
 Lemma link_sk_same
       ctx
   :
-    link_sk (ctx ++ [(StaticMutrecAspec.module) ; (StaticMutrecBspec.module)])
+    link_sk (ctx ++ [(MutrecAspec.module) ; (MutrecBspec.module)])
     = link_sk (ctx ++ [module])
 .
 Proof.
@@ -34,9 +34,9 @@ Proof.
   eapply link_list_app_commut; eauto.
 Qed.
 
-Lemma wf_module_Aspec: Sk.wf StaticMutrecAspec.module.
+Lemma wf_module_Aspec: Sk.wf MutrecAspec.module.
 Proof.
-  ss. unfold StaticMutrecA.prog. econs.
+  ss. unfold MutrecA.prog. econs.
   - unfold prog_defs_names; ss.
     repeat (econs; ss; ii; des; clarify).
   - ss. i. des; clarify.
@@ -45,19 +45,18 @@ Proof.
   - i. ss. des; clarify; inv IN; ss.
 Qed.
 
-Lemma wf_module_Bspec: Sk.wf StaticMutrecBspec.module.
+Lemma wf_module_Bspec: Sk.wf MutrecBspec.module.
 Proof.
-  ss. unfold StaticMutrecB.prog. econs.
+  ss. unfold MutrecB.prog. econs.
   - unfold prog_defs_names; ss.
     repeat (econs; ss; ii; des; clarify).
   - ss. i. des; clarify.
-    unfold update_snd in *. ss. clarify. ss.
-    admit "definition has admits".
+    unfold update_snd in *. ss. clarify. ss. des; clarify.
   - ii. ss. des; clarify; eauto.
   - i. ss. des; clarify; inv IN; ss.
 Qed.
 
-Definition is_focus (x: Mod.t) := x = StaticMutrecAspec.module \/ x = StaticMutrecBspec.module.
+Definition is_focus (x: Mod.t) := x = MutrecAspec.module \/ x = MutrecBspec.module.
 
 Section LXSIM.
 
@@ -65,25 +64,25 @@ Section LXSIM.
   Variable sk_link: Sk.t.
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
   Hypothesis (LINKSRC: link_sk (ctx ++ [module]) = Some sk_link).
-  Let LINKTGT: link_sk (ctx ++ [(StaticMutrecAspec.module) ; (StaticMutrecBspec.module)]) = Some sk_link.
+  Let LINKTGT: link_sk (ctx ++ [(MutrecAspec.module) ; (MutrecBspec.module)]) = Some sk_link.
   Proof. rewrite link_sk_same. ss. Qed.
   Hypothesis WFCTX: forall md : Mod.t, In md ctx -> Sk.wf md.
 
-  Let INCLA: SkEnv.includes skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog).
+  Let INCLA: SkEnv.includes skenv_link (CSk.of_program signature_of_function MutrecA.prog).
   Proof.
     unfold skenv_link.
     exploit link_includes.
     eapply LINKTGT.
-    instantiate (1:=StaticMutrecAspec.module).
+    instantiate (1:=MutrecAspec.module).
     eapply in_or_app; ss. auto. i. ss.
   Qed.
 
-  Let INCLB: SkEnv.includes skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog).
+  Let INCLB: SkEnv.includes skenv_link (Sk.of_program Asm.fn_sig MutrecB.prog).
   Proof.
     unfold skenv_link.
     exploit link_includes.
     eapply LINKTGT.
-    instantiate (1:=StaticMutrecBspec.module).
+    instantiate (1:=MutrecBspec.module).
     eapply in_or_app; ss. auto. i. ss.
   Qed.
 
@@ -94,7 +93,7 @@ Section LXSIM.
   Lemma genv_sim
         fptr if_sig
     :
-      (<<FINDF: Genv.find_funct (SkEnv.project skenv_link StaticMutrecABspec.sk_link) fptr =
+      (<<FINDF: Genv.find_funct (SkEnv.project skenv_link MutrecABspec.sk_link) fptr =
                 Some (AST.Internal if_sig)>>)
       <->
       (<<FINDF: exists md, (<<FOCUS: is_focus md>>) /\
@@ -109,8 +108,8 @@ Section LXSIM.
       des_ifs.
       destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss.
       unfold o_bind in H. ss. des_ifs.
-      destruct ((prog_defmap StaticMutrecABspec.sk_link) ! i) eqn:Hdefmap; ss; clarify.
-      unfold StaticMutrecABspec.sk_link in *. ss. des_ifs.
+      destruct ((prog_defmap MutrecABspec.sk_link) ! i) eqn:Hdefmap; ss; clarify.
+      unfold MutrecABspec.sk_link in *. ss. des_ifs.
 
       Local Transparent Linker_program. ss.
       unfold link_program in *. des_ifs.
@@ -130,7 +129,7 @@ Section LXSIM.
       destruct (classic (i = f_id)).
       { subst. ss.
         clarify. des; clarify.
-        red. exists (StaticMutrecAspec.module). split.
+        red. exists (MutrecAspec.module). split.
         - unfold is_focus. ss. auto.
         - ss. red. rewrite Genv.find_funct_ptr_iff.
           des_ifs; clarify. des; clarify. inv H2.
@@ -141,7 +140,7 @@ Section LXSIM.
       destruct (classic (i = g_id)).
       { subst. ss.
         clarify. des; clarify.
-        red. exists (StaticMutrecBspec.module). split.
+        red. exists (MutrecBspec.module). split.
         - unfold is_focus. ss. auto.
         - ss. red. rewrite Genv.find_funct_ptr_iff.
           des_ifs; clarify. des; clarify. inv H2.
@@ -160,7 +159,7 @@ Section LXSIM.
       + rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *. des_ifs.
         destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. unfold o_bind in *. ss.
         des_ifs; cycle 1.
-        { unfold StaticMutrecABspec.sk_link in Heq0. ss. des_ifs.
+        { unfold MutrecABspec.sk_link in Heq0. ss. des_ifs.
           Local Transparent Linker_program. ss.
           unfold link_program in *. des_ifs.
           Local Transparent Linker_prog. ss.
@@ -177,21 +176,21 @@ Section LXSIM.
           destruct (classic (i = g_id)).
           { subst. ss. }
           unfold internals in *. ss. des_ifs.
-          { unfold StaticMutrecA.prog, prog_defmap in *. ss.
-            unfold StaticMutrecA.global_definitions in *. ss.
+          { unfold MutrecA.prog, prog_defmap in *. ss.
+            unfold MutrecA.global_definitions in *. ss.
             rewrite PTree_Properties.of_list_elements in *. des_ifs.
             simpl in Heq. exploit PTree.elements_correct. eapply Heq. i.
             unfold PTree.elements, PTree.xelements in H1. simpl in H1.
             inv H1; clarify. ss. des; clarify. }
-          { unfold StaticMutrecA.prog, prog_defmap in *. ss.
-            unfold StaticMutrecA.global_definitions in *. ss.
+          { unfold MutrecA.prog, prog_defmap in *. ss.
+            unfold MutrecA.global_definitions in *. ss.
             rewrite PTree_Properties.of_list_elements in *. des_ifs.
             simpl in Heq6. exploit PTree.elements_correct. eapply Heq6. i.
             unfold PTree.elements, PTree.xelements in H1. simpl in H1.
             inv H1; clarify. ss. des; clarify. }
         }
-        destruct ((prog_defmap (CSk.of_program signature_of_function StaticMutrecA.prog)) ! i) eqn:DMAP; ss; clarify.
-        unfold StaticMutrecABspec.sk_link in *. ss. des_ifs.
+        destruct ((prog_defmap (CSk.of_program signature_of_function MutrecA.prog)) ! i) eqn:DMAP; ss; clarify.
+        unfold MutrecABspec.sk_link in *. ss. des_ifs.
         Local Transparent Linker_program. ss.
         unfold link_program in *. des_ifs.
         Local Transparent Linker_prog. ss.
@@ -208,18 +207,18 @@ Section LXSIM.
 
         clear -DMAP H2 H3.
         exfalso.
-        exploit (CSk.of_program_prog_defmap StaticMutrecA.prog signature_of_function).
+        exploit (CSk.of_program_prog_defmap MutrecA.prog signature_of_function).
         i. inv H; rewrite DMAP in *. clarify.
         clarify. inv H4. unfold CtypesC.CSk.match_fundef in H6. des_ifs. symmetry in H0.
         clear DMAP.
-        unfold StaticMutrecA.prog, prog_defmap in *. ss.
-        unfold StaticMutrecA.global_definitions in *. ss.
+        unfold MutrecA.prog, prog_defmap in *. ss.
+        unfold MutrecA.global_definitions in *. ss.
         eapply PTree_Properties.in_of_list in H0. ss. simpl in H0.
         inv H0; clarify. ss. des; clarify.
       + rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *. des_ifs.
         destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. unfold o_bind in *. ss.
         des_ifs; cycle 1.
-        { unfold StaticMutrecABspec.sk_link in Heq0. ss. des_ifs.
+        { unfold MutrecABspec.sk_link in Heq0. ss. des_ifs.
           Local Transparent Linker_program. ss.
           unfold link_program in *. des_ifs.
           Local Transparent Linker_prog. ss.
@@ -236,21 +235,21 @@ Section LXSIM.
           destruct (classic (i = g_id)).
           { subst. ss. }
           unfold internals in *. ss. des_ifs.
-          { unfold StaticMutrecB.prog, prog_defmap in *. ss.
-            unfold StaticMutrecB.global_definitions in *. ss.
+          { unfold MutrecB.prog, prog_defmap in *. ss.
+            unfold MutrecB.global_definitions in *. ss.
             rewrite PTree_Properties.of_list_elements in *. des_ifs.
             simpl in Heq. exploit PTree.elements_correct. eapply Heq. i.
             unfold PTree.elements, PTree.xelements in H1. simpl in H1.
             inv H1; clarify. ss. des; clarify. }
-          { unfold StaticMutrecB.prog, prog_defmap in *. ss.
-            unfold StaticMutrecA.global_definitions in *. ss.
+          { unfold MutrecB.prog, prog_defmap in *. ss.
+            unfold MutrecA.global_definitions in *. ss.
             rewrite PTree_Properties.of_list_elements in *. des_ifs.
             simpl in Heq6. exploit PTree.elements_correct. eapply Heq6. i.
             unfold PTree.elements, PTree.xelements in H1. simpl in H1.
             inv H1; clarify. ss. des; clarify. }
         }
-        destruct ((prog_defmap (Sk.of_program Asm.fn_sig StaticMutrecB.prog)) ! i) eqn:DMAP; ss; clarify.
-        unfold StaticMutrecABspec.sk_link in *. ss. des_ifs.
+        destruct ((prog_defmap (Sk.of_program Asm.fn_sig MutrecB.prog)) ! i) eqn:DMAP; ss; clarify.
+        unfold MutrecABspec.sk_link in *. ss. des_ifs.
         Local Transparent Linker_program. ss.
         unfold link_program in *. des_ifs.
         Local Transparent Linker_prog. ss.
@@ -267,12 +266,12 @@ Section LXSIM.
 
         clear -DMAP H2 H3.
         exfalso.
-        exploit (Sk.of_program_prog_defmap StaticMutrecB.prog Asm.fn_sig).
+        exploit (Sk.of_program_prog_defmap MutrecB.prog Asm.fn_sig).
         i. inv H; rewrite DMAP in *. clarify.
         clarify. inv H4. unfold CtypesC.CSk.match_fundef in H6. des_ifs. symmetry in H0.
         clear DMAP.
-        unfold StaticMutrecA.prog, prog_defmap in *. ss.
-        unfold StaticMutrecA.global_definitions in *. ss.
+        unfold MutrecA.prog, prog_defmap in *. ss.
+        unfold MutrecA.global_definitions in *. ss.
         eapply PTree_Properties.in_of_list in H0. ss. simpl in H0.
         inv H0; clarify. ss. des; clarify.
   Qed.
@@ -282,10 +281,10 @@ Section LXSIM.
       exists blk,
         (<<SYMBBIG: Genv.find_symbol skenv_link f_id = Some blk>>)
         /\ (<<SYMBA: Genv.find_symbol
-                       (SkEnv.project skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog))
+                       (SkEnv.project skenv_link (CSk.of_program signature_of_function MutrecA.prog))
                        f_id = Some blk>>)
         /\ (<<SYMBB: Genv.find_symbol
-                       (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog))
+                       (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig MutrecB.prog))
                        f_id = Some blk>>)
   .
   Proof.
@@ -297,7 +296,7 @@ Section LXSIM.
    esplits; eauto.
    - unfold Genv.find_symbol in *. ss. des_ifs.
      exploit MapsC.PTree_filter_key_spec.
-     instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function StaticMutrecA.prog) id)).
+     instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function MutrecA.prog) id)).
      instantiate (2:=(PTree.Node
                         (PTree.Node t12 o8
                                     (PTree.Node
@@ -307,7 +306,7 @@ Section LXSIM.
      instantiate (1:=f_id). rewrite Heq. ss.
    - unfold Genv.find_symbol in *. ss. des_ifs.
      exploit MapsC.PTree_filter_key_spec.
-     instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig StaticMutrecB.prog) id)).
+     instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig MutrecB.prog) id)).
      instantiate (2:=(PTree.Node
                         (PTree.Node t12 o8
                                     (PTree.Node
@@ -322,10 +321,10 @@ Section LXSIM.
       exists blk,
         (<<SYMBBIG: Genv.find_symbol skenv_link g_id = Some blk>>)
         /\ (<<SYMBA: Genv.find_symbol
-                       (SkEnv.project skenv_link (CSk.of_program signature_of_function StaticMutrecA.prog))
+                       (SkEnv.project skenv_link (CSk.of_program signature_of_function MutrecA.prog))
                        g_id = Some blk>>)
         /\ (<<SYMBB: Genv.find_symbol
-                       (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig StaticMutrecB.prog))
+                       (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig MutrecB.prog))
                        g_id = Some blk>>)
   .
   Proof.
@@ -337,7 +336,7 @@ Section LXSIM.
     esplits; eauto.
     - unfold Genv.find_symbol in *. ss. des_ifs.
       exploit MapsC.PTree_filter_key_spec.
-      instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function StaticMutrecA.prog) id)).
+      instantiate (6:=(fun id : ident => defs (CSk.of_program signature_of_function MutrecA.prog) id)).
       instantiate (2:=(PTree.Node
              (PTree.Node
                 (PTree.Node
@@ -346,7 +345,7 @@ Section LXSIM.
       instantiate (1:=g_id). rewrite Heq. ss.
     - unfold Genv.find_symbol in *. ss. des_ifs.
       exploit MapsC.PTree_filter_key_spec.
-      instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig StaticMutrecB.prog) id)).
+      instantiate (6:=(fun id : ident => defs (Sk.of_program Asm.fn_sig MutrecB.prog) id)).
       instantiate (2:=(PTree.Node
              (PTree.Node
                 (PTree.Node
@@ -366,13 +365,13 @@ Section LXSIM.
       (REC: match_focus m (Int.add cur Int.one) max tl_tgt)
       (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
     :
-      match_focus m cur max ((Frame.mk (StaticMutrecAspec.modsem skenv_link tt) (StaticMutrecAspec.Interstate cur m)) :: tl_tgt)
+      match_focus m cur max ((Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Interstate cur m)) :: tl_tgt)
   | match_focus_cons_B
       cur max m tl_tgt
       (REC: match_focus m (Int.add cur Int.one) max tl_tgt)
       (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
     :
-      match_focus m cur max ((Frame.mk (StaticMutrecBspec.modsem skenv_link tt) (StaticMutrecBspec.Interstate cur m)) :: tl_tgt)
+      match_focus m cur max ((Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Interstate cur m)) :: tl_tgt)
   .
 
   Lemma add_one_same
@@ -422,12 +421,12 @@ Section LXSIM.
   | match_stacks_focus_top_call
       ctx_stk
       cur max m hd_src hds_tgt
-      (SRC: hd_src = Frame.mk (StaticMutrecABspec.modsem skenv_link tt) (StaticMutrecABspec.Callstate max m))
+      (SRC: hd_src = Frame.mk (MutrecABspec.modsem skenv_link tt) (MutrecABspec.Callstate max m))
       hd_tgt
       tmpvar
       (TMPVAR: tmpvar = (hd_tgt :: hds_tgt ++ ctx_stk))
-      (TGT: __GUARD__ ((hd_tgt = Frame.mk (StaticMutrecAspec.modsem skenv_link tt) (StaticMutrecAspec.Callstate cur m)) \/
-                       (hd_tgt = Frame.mk (StaticMutrecBspec.modsem skenv_link tt) (StaticMutrecBspec.Callstate cur m))))
+      (TGT: __GUARD__ ((hd_tgt = Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Callstate cur m)) \/
+                       (hd_tgt = Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Callstate cur m))))
       (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (* (IDX: idx = (max.(Int.intval) + cur.(Int.intval)) + 1) *)
@@ -439,12 +438,12 @@ Section LXSIM.
   | match_stacks_focus_top_return
       ctx_stk
       cur max m hd_src hds_tgt
-      (SRC: hd_src = Frame.mk (StaticMutrecABspec.modsem skenv_link tt) (StaticMutrecABspec.Returnstate (sum max) m))
+      (SRC: hd_src = Frame.mk (MutrecABspec.modsem skenv_link tt) (MutrecABspec.Returnstate (sum max) m))
       hd_tgt
       tmpvar
       (TMPVAR: tmpvar = (hd_tgt :: hds_tgt ++ ctx_stk))
-      (TGT: __GUARD__ ((hd_tgt = Frame.mk (StaticMutrecAspec.modsem skenv_link tt) (StaticMutrecAspec.Returnstate (sum cur) m)) \/
-                       (hd_tgt = Frame.mk (StaticMutrecBspec.modsem skenv_link tt) (StaticMutrecBspec.Returnstate (sum cur) m))))
+      (TGT: __GUARD__ ((hd_tgt = Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Returnstate (sum cur) m)) \/
+                       (hd_tgt = Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Returnstate (sum cur) m))))
       (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (FROMCALL: fromcall = false)
@@ -485,7 +484,7 @@ Section LXSIM.
         i st_src0 st_tgt0
         (MATCH: match_states i st_src0 st_tgt0)
     :
-      xsim (sem (ctx ++ [module])) (sem (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module]))
+      xsim (sem (ctx ++ [module])) (sem (ctx ++ [MutrecAspec.module; MutrecBspec.module]))
            (Zwf.Zwf 0) i st_src0 st_tgt0
   .
   Proof.
@@ -515,7 +514,7 @@ Section LXSIM.
                 ss. right. unfold load_modsems. rewrite in_map_iff.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
               econs; ss; eauto.
-              - eapply StaticMutrecAspec.find_symbol_find_funct_ptr; et.
+              - eapply MutrecAspec.find_symbol_find_funct_ptr; et.
             }
             { esplits; eauto. econs.
               { econs; eauto; cycle 1.
@@ -523,7 +522,7 @@ Section LXSIM.
                 ss. right. unfold load_modsems. rewrite in_map_iff.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
               econs; ss; eauto.
-              - eapply StaticMutrecBspec.find_symbol_find_funct_ptr; et.
+              - eapply MutrecBspec.find_symbol_find_funct_ptr; et.
             }
         }
         i. ss. rewrite LINKSRC, LINKTGT in *. inv STEPTGT. inv MSFIND. ss.
@@ -542,14 +541,14 @@ Section LXSIM.
             { econs.
               { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff.
                 ss. eauto. }
-              eapply genv_sim. exists StaticMutrecAspec.module. esplits; ss; eauto. rr. eauto.
+              eapply genv_sim. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
             }
             econs; ss; eauto.
-            + eapply genv_sim. exists StaticMutrecAspec.module. esplits; ss; eauto. rr. eauto.
+            + eapply genv_sim. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
           - right. eapply CIH; eauto. econs; eauto.
             (* rewrite cons_app with (xhd := {| *)
-            (*   Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) StaticMutrecAspec.module; *)
-            (*   Frame.st := StaticMutrecAspec.Callstate i (Args.m args) |}). *)
+            (*   Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecAspec.module; *)
+            (*   Frame.st := MutrecAspec.Callstate i (Args.m args) |}). *)
             econs; ss; try refl; eauto.
             { f_equal. instantiate (1:= []). ss. }
             { unfold __GUARD__. eauto. }
@@ -563,14 +562,14 @@ Section LXSIM.
             { econs.
               { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff.
                 ss. eauto. }
-              eapply genv_sim. exists StaticMutrecBspec.module. esplits; ss; eauto. rr. eauto.
+              eapply genv_sim. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
             }
             econs; ss; eauto.
-            + eapply genv_sim. exists StaticMutrecBspec.module. esplits; ss; eauto. rr. eauto.
+            + eapply genv_sim. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
           - right. eapply CIH; eauto. econs; eauto.
             (* rewrite cons_app with (xhd := {| *)
-            (*   Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) StaticMutrecBspec.module; *)
-            (*   Frame.st := StaticMutrecBspec.Callstate i (Args.m args) |}). *)
+            (*   Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecBspec.module; *)
+            (*   Frame.st := MutrecBspec.Callstate i (Args.m args) |}). *)
             econs; ss; try refl; eauto.
             { f_equal. instantiate (1:= []). ss. }
             { unfold __GUARD__. eauto. }
@@ -637,7 +636,7 @@ Section LXSIM.
                   destruct cur. ss. omega. }
               * left. pfold. left. right. econs; eauto.
                 hexploit find_g_id; eauto. i; des.
-                hexploit (StaticMutrecBspec.find_symbol_find_funct_ptr); eauto. instantiate (1:= blk). i; des.
+                hexploit (MutrecBspec.find_symbol_find_funct_ptr); eauto. instantiate (1:= blk). i; des.
                 exploit SYMB; eauto. intro T; des. clear SYMB FINDF.
                 econs 2; eauto; esplits.
                 -- eapply plus_two with (t1 := []) (t2 := []); ss.
@@ -655,15 +654,15 @@ Section LXSIM.
                           esplits; eauto.
                           { econs. }
                           { i.
-                            assert (Ge.find_fptr_owner (load_genv (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module]) (Sk.load_skenv sk_link))
-                                                       (Vptr blk Ptrofs.zero) (Mod.get_modsem StaticMutrecBspec.module skenv_link tt)).
+                            assert (Ge.find_fptr_owner (load_genv (ctx ++ [MutrecAspec.module; MutrecBspec.module]) (Sk.load_skenv sk_link))
+                                                       (Vptr blk Ptrofs.zero) (Mod.get_modsem MutrecBspec.module skenv_link tt)).
                             { ss. econs.
                               - ss. right. unfold load_modsems. rewrite list_append_map. ss.
-                                unfold StaticMutrecBspec.module, flip, Mod.modsem. ss.
+                                unfold MutrecBspec.module, flip, Mod.modsem. ss.
                                 eapply in_or_app. ss. auto.
                               - ss. des_ifs. eauto. }
                             exploit find_fptr_owner_determ.
-                            instantiate (1 := (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module])).
+                            instantiate (1 := (ctx ++ [MutrecAspec.module; MutrecBspec.module])).
                             i. eapply in_app_or in IN. ss. des; clarify.
                             { eapply WFCTX; eauto. }
                             { eapply wf_module_Aspec. }
@@ -672,7 +671,7 @@ Section LXSIM.
                             ss. des_ifs. eapply MSFIND0.
                             i. subst ms.
                             exploit find_fptr_owner_determ.
-                            instantiate (1 := (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module])).
+                            instantiate (1 := (ctx ++ [MutrecAspec.module; MutrecBspec.module])).
                             i. eapply in_app_or in IN. ss. des; clarify.
                             { eapply WFCTX; eauto. }
                             { eapply wf_module_Aspec. }
@@ -728,7 +727,7 @@ Section LXSIM.
                   destruct cur. ss. omega. }
               * left. pfold. left. right. econs; eauto.
                 hexploit find_f_id; eauto. i; des.
-                hexploit (StaticMutrecAspec.find_symbol_find_funct_ptr); eauto. instantiate (1:= blk). i; des.
+                hexploit (MutrecAspec.find_symbol_find_funct_ptr); eauto. instantiate (1:= blk). i; des.
                 exploit SYMB; eauto. intro T; des. clear SYMB FINDF.
                 econs 2; eauto; esplits.
                 -- eapply plus_two with (t1 := []) (t2 := []); ss.
@@ -746,15 +745,15 @@ Section LXSIM.
                           esplits; eauto.
                           { econs. }
                           { i.
-                            assert (Ge.find_fptr_owner (load_genv (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module]) (Sk.load_skenv sk_link))
-                                                       (Vptr blk Ptrofs.zero) (Mod.get_modsem StaticMutrecAspec.module skenv_link tt)).
+                            assert (Ge.find_fptr_owner (load_genv (ctx ++ [MutrecAspec.module; MutrecBspec.module]) (Sk.load_skenv sk_link))
+                                                       (Vptr blk Ptrofs.zero) (Mod.get_modsem MutrecAspec.module skenv_link tt)).
                             { ss. econs.
                               - ss. right. unfold load_modsems. rewrite list_append_map. ss.
-                                unfold StaticMutrecBspec.module, flip, Mod.modsem. ss.
+                                unfold MutrecBspec.module, flip, Mod.modsem. ss.
                                 eapply in_or_app. ss. auto.
                               - ss. des_ifs. eauto. }
                             exploit find_fptr_owner_determ.
-                            instantiate (1 := (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module])).
+                            instantiate (1 := (ctx ++ [MutrecAspec.module; MutrecBspec.module])).
                             i. eapply in_app_or in IN. ss. des; clarify.
                             { eapply WFCTX; eauto. }
                             { eapply wf_module_Aspec. }
@@ -763,7 +762,7 @@ Section LXSIM.
                             ss. des_ifs. eapply MSFIND0.
                             i. subst ms.
                             exploit find_fptr_owner_determ.
-                            instantiate (1 := (ctx ++ [StaticMutrecAspec.module; StaticMutrecBspec.module])).
+                            instantiate (1 := (ctx ++ [MutrecAspec.module; MutrecBspec.module])).
                             i. eapply in_app_or in IN. ss. des; clarify.
                             { eapply WFCTX; eauto. }
                             { eapply wf_module_Aspec. }
@@ -969,8 +968,8 @@ End LXSIM.
 Theorem mutrecABcorrect
         ctx
   :
-    (<<REFINE: improves (Sem.sem (ctx ++ [(StaticMutrecABspec.module)]))
-                        (Sem.sem (ctx ++ [(StaticMutrecAspec.module) ; (StaticMutrecBspec.module)]))
+    (<<REFINE: improves (Sem.sem (ctx ++ [(MutrecABspec.module)]))
+                        (Sem.sem (ctx ++ [(MutrecAspec.module) ; (MutrecBspec.module)]))
                         >>)
 .
 Proof.

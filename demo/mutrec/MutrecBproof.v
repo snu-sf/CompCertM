@@ -5,7 +5,7 @@ Require Import Op Registers ClightC Renumber.
 Require Import sflib.
 
 Require Import MutrecHeader IntegersC.
-Require Import StaticMutrecB StaticMutrecBspec.
+Require Import MutrecB MutrecBspec.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift AsmregsC MatchSimModSem.
 (* Require SimMemInjC. *)
@@ -27,7 +27,7 @@ Definition memoized_inv: SimMemInjInv.memblk_invariant :=
        (chunk = Mint32 /\ ofs = 0 /\ p = Writable) \/
        (chunk = Mint32 /\ ofs = (size_chunk Mint32) /\ p = Writable)).
 
-Local Instance SimMemMemoized: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv memoized_inv.
+Local Instance SimMemMemoizedB: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv memoized_inv.
 
 Definition symbol_memoized: ident -> Prop := eq _memoized.
 
@@ -115,7 +115,7 @@ Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
-Let md_src: Mod.t := (StaticMutrecBspec.module).
+Let md_src: Mod.t := (MutrecBspec.module).
 Let md_tgt: Mod.t := (AsmC.module prog).
 Hypothesis (INCL: SkEnv.includes skenv_link md_src.(Mod.sk)).
 Hypothesis (WF: SkEnv.wf skenv_link).
@@ -193,7 +193,7 @@ Qed.
 
 Inductive match_states (sm_init: SimMem.t)
   :
-    nat -> StaticMutrecBspec.state -> AsmC.state -> SimMem.t -> Prop :=
+    nat -> MutrecBspec.state -> AsmC.state -> SimMem.t -> Prop :=
 | match_states_initial
     idx m_src sm0
     i stk initstk init_rs rs m_tgt
@@ -1366,7 +1366,7 @@ Proof.
         }
         { eapply Ord.lift_idx_spec. eauto. }
       * eauto.
-      * left. unfold StaticMutrecBspec.module in *.
+      * left. unfold MutrecBspec.module in *.
         eapply match_states_lxsim; eauto.
         { inv SIMSKENV. eapply SimMemInjInvC.sim_skenv_inj_lepriv; eauto. hexploit SimMem.pub_priv; et. }
         { ss. econs; ss; eauto.
@@ -1444,7 +1444,7 @@ End SIMMODSEM.
 
 Theorem sim_mod
   :
-    ModPair.sim (ModPair.mk (StaticMutrecBspec.module) (AsmC.module prog) symbol_memoized)
+    ModPair.sim (ModPair.mk (MutrecBspec.module) (AsmC.module prog) symbol_memoized)
 .
 Proof.
   econs; ss.

@@ -548,97 +548,163 @@ Section CLIGHTEXT.
 
 End CLIGHTEXT.
 
+Definition unreach_inj_compat (j: meminj) (su: Unreach.t) :=
+  forall blk (VALID: Plt blk su.(Unreach.nb)),
+    j blk = None <-> Unreach.unreach su blk = true.
+
+Lemma to_inj_compat su
+  :
+    unreach_inj_compat (UnreachC.to_inj su su.(Unreach.nb)) su.
+Proof.
+  unfold UnreachC.to_inj. ii. des_ifs.
+Qed.
+
+Lemma match_states_clight_get_mem st_src st_tgt j m_src m_tgt
+      (MATCH: match_states_clight_internal st_src st_tgt j m_src m_tgt)
+  :
+    (<<MSRC: st_src.(get_mem) = m_src>>) /\ (<<MTGT: st_tgt.(get_mem) = m_tgt>>).
+Proof.
+  inv MATCH; ss.
+Qed.
+
+Definition flattize_inj (j: meminj): meminj :=
+  fun blk => match j blk with
+             | Some _ => Some (blk, 0)
+             | _ => None
+             end.
+
+Lemma flattize_inj_val j v v_tgt
+      (VAL: Val.inject j v v_tgt)
+  :
+    Val.inject (flattize_inj j) v v.
+Proof.
+  destruct v; ss. inv VAL. unfold flattize_inj.
+  econs; eauto.
+  - rewrite H1. eauto.
+  - psimpl. auto.
+Qed.
+
+Lemma flattize_inj_env j env_src env_tgt
+      (ENV: match_env j env_src env_tgt)
+  :
+    match_env (flattize_inj j) env_src env_src.
+Proof.
+  ii. specialize (ENV id). des.
+  - left. esplits; eauto. unfold flattize_inj. des_ifs.
+  - right. eauto.
+Qed.
+
+Lemma flattize_inj_temp_env j tenv_src tenv_tgt
+      (TENV: match_temp_env j tenv_src tenv_tgt)
+  :
+    match_temp_env (flattize_inj j) tenv_src tenv_src.
+Proof.
+  ii. specialize (TENV id). inv TENV.
+  - econs.
+  - econs. eapply flattize_inj_val; eauto.
+Qed.
+
+Lemma flattize_inj_cont j K_src K_tgt
+      (TENV: match_cont j K_src K_tgt)
+  :
+    match_cont (flattize_inj j) K_src K_src.
+Proof.
+  revert K_tgt TENV.
+  induction K_src; eauto; i; inv TENV; econs; eauto.
+  - eapply flattize_inj_env; eauto.
+  - eapply flattize_inj_temp_env; eauto.
+Qed.
+
+Lemma flattiize_inj_states j st_src st_tgt m_src m_tgt
+      (MATCH: match_states_clight_internal st_src st_tgt j m_src m_tgt)
+  :
+    match_states_clight_internal st_src st_src (flattize_inj j) m_src m_src.
+Proof.
+  inv MATCH; econs.
+  - eapply flattize_inj_env; eauto.
+  - eapply flattize_inj_temp_env; eauto.
+  - eapply flattize_inj_cont; eauto.
+  - eapply flattize_inj_val; eauto.
+  - revert args_tgt VALS. induction args_src; ss.
+    i. inv VALS. econs; eauto.
+    eapply flattize_inj_val; eauto.
+  - eapply flattize_inj_cont; eauto.
+  - eapply flattize_inj_val; eauto.
+  - eapply flattize_inj_cont; eauto.
+Qed.
+
 Section CLIGHTSOUNDSTATE.
 
   Variable skenv_link: SkEnv.t.
   Variable su: Sound.t.
 
-  Definition sound_env (en: env) :=
-    forall id blk ty (ENV: en ! id = Some (blk, ty)),
-      su.(Unreach.unreach) blk = false.
-
-  Definition sound_temp_env (tenv: temp_env) :=
-    forall id v (ENV: tenv ! id = Some v),
-      UnreachC.val' su v.
-
-  Inductive sound_cont: cont -> Prop :=
-  | sound_Kstop:
-      sound_cont Kstop
-  | sound_Kseq
-      stmt K
-      (CONT: sound_cont K)
-    :
-      sound_cont (Kseq stmt K)
-  | sound_Kloop1
-      stmt0 stmt1 K
-      (CONT: sound_cont K)
-    :
-      sound_cont (Kloop1 stmt0 stmt1 K)
-  | sound_Kloop2
-      stmt0 stmt1 K
-      (CONT: sound_cont K)
-    :
-      sound_cont (Kloop2 stmt0 stmt1 K)
-  | sound_Kswitch
-      K
-      (CONT: sound_cont K)
-    :
-      sound_cont (Kswitch K)
-  | sound_Kcall
-      id fn en tenv K
-      (ENV: sound_env en)
-      (TENV: sound_temp_env tenv)
-      (CONT: sound_cont K)
-    :
-      sound_cont (Kcall id fn en tenv K)
-  .
-
-  Inductive sound_state_clight
-    : state -> Prop :=
-  | sound_State
-      fn stmt K en tenv m
+  Inductive sound_state_clight: state -> Prop :=
+  | match_states_clight_intro
+      st j m
       (WF: Sound.wf su)
-      (* (MLE: Unreach.mle su m_init m) *)
       (MEM: UnreachC.mem' su m)
+      (INJ: j = UnreachC.to_inj su su.(Unreach.nb))
       (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
-      (ENV: sound_env en)
-      (TENV: sound_temp_env tenv)
-      (CONT: sound_cont K)
+      (SKLE: Ple skenv_link.(Genv.genv_next) su.(Unreach.nb))
+      (MATCHST: match_states_clight_internal st st j m m)
     :
-      sound_state_clight (State fn stmt K en tenv m)
-  | sound_Callstate
-      fptr ty args K m
-      (WF: Sound.wf su)
-      (* (MLE: Unreach.mle su m_init m) *)
-      (MEM: UnreachC.mem' su m)
-      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
-      (FPTR: UnreachC.val' su fptr)
-      (VALS: Sound.vals su args)
-      (CONT: sound_cont K)
-    :
-      sound_state_clight
-        (* m_init *)
-        (Callstate fptr ty args K m)
-  | sound_Returnstate
-      retv K m
-      (WF: Sound.wf su)
-      (* (MLE: Unreach.mle su m_init m) *)
-      (MEM: UnreachC.mem' su m)
-      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
-      (RETV: UnreachC.val' su retv)
-      (CONT: sound_cont K)
-    :
-      sound_state_clight
-        (* m_init *)
-        (Returnstate retv K m)
+      sound_state_clight st
   .
 
 End CLIGHTSOUNDSTATE.
 
+Require Import Program.
 
 Section CLIGHTSOUND.
 
   Variable skenv_link: SkEnv.t.
+
+  Lemma unreach_to_inj_val su v
+    :
+      Val.inject (UnreachC.to_inj su (Unreach.nb su)) v v <-> UnreachC.val' su v.
+  Proof.
+    split.
+    - ii. clarify. inv H. unfold UnreachC.to_inj in H3. des_ifs.
+    - i. destruct v; auto. exploit H; eauto. i. des.
+      unfold UnreachC.to_inj. econs; eauto.
+      + des_ifs.
+      + psimpl. auto.
+  Qed.
+
+  Lemma unreach_to_inj_vals su vs
+    :
+      Val.inject_list (UnreachC.to_inj su (Unreach.nb su)) vs vs <->
+      Sound.vals su vs.
+  Proof.
+    induction vs; ss; split; i.
+    - econs.
+    - econs.
+    - inv H. econs; eauto.
+      + eapply unreach_to_inj_val; eauto.
+      + eapply IHvs; eauto.
+    - inv H. econs; eauto.
+      + eapply unreach_to_inj_val; eauto.
+      + eapply IHvs; eauto.
+  Qed.
+
+  (* TODO: move it to UnreachC *)
+  Lemma mem_to_su j genb m m_tgt
+        (GENB: Ple genb (Mem.nextblock m))
+        (INJECT: Mem.inject j m m_tgt)
+    :
+      UnreachC.mem' (UnreachC.to_su j genb (Mem.nextblock m)) m.
+  Proof.
+    cinv INJECT. inv mi_inj. unfold UnreachC.to_su. econs; ss; eauto.
+    - ii. ss. clarify. destruct (j blk) eqn:BLK.
+      + destruct p. exploit mi_memval; eauto. rewrite PTR. i.
+        inv H. inv H1. des_ifs; split; auto.
+        * eapply Mem.valid_block_inject_1; eauto.
+        * eapply Mem.valid_block_inject_1; eauto.
+      + des_ifs; split; eauto.
+        * eapply Mem.perm_valid_block in PERM. eauto.
+        * eapply Mem.perm_valid_block in PERM. exfalso. eauto.
+    - ii. des_ifs.
+  Qed.
 
   Lemma clight_unreach_local_preservation
         clight
@@ -648,99 +714,115 @@ Section CLIGHTSOUND.
   Proof.
     esplits.
     eapply local_preservation_strong_horizontal_spec with (sound_state := sound_state_clight skenv_link); eauto.
+    instantiate (1:=get_mem).
     econs; ss; i.
-    - inv INIT. ss. inv SUARG. des. esplits.
+
+    - inv INIT. ss. inv SUARG. des. esplits; ss.
       + refl.
-      + econs; eauto.
-        * inv SKENV. eauto.
-        * admit "ez".
+      + inv SKENV. cinv MEM. econs; ss; eauto.
+        { rewrite NB0. eauto. }
+        econs; eauto.
+        * eapply unreach_to_inj_val; eauto.
+        * inv TYP. unfold typify_list. revert VALS.
+          generalize (sig_args (signature_of_function fd)). clear.
+          induction (Args.vs args); ss. i. inv VALS.
+          des_ifs. econs; eauto.
+          unfold typify. des_ifs. eapply unreach_to_inj_val; eauto.
         * econs.
-      + instantiate (1:=get_mem). ss. refl.
-
-    -
-
-      (* des. *)
-      (* hexploit clight_step_preserve_injection; eauto. *)
-      (* { eapply function_entry2_inject. eauto. } *)
-      (* { *)
-      (*   instantiate (2:=st0). instantiate (2:=tt). *)
-      (*   instantiate (1:=SimMemInj.mk *)
-      (*                     (get_mem st0) *)
-      (*                     (get_mem st0) *)
-      (*                     (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) *)
-      (*                     (loc_unmapped (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) /2\ SimMemInj.valid_blocks (get_mem st0)) *)
-      (*                     (loc_out_of_reach (UnreachC.to_inj su0 (Mem.nextblock (get_mem st0))) (get_mem st0) /2\ SimMemInj.valid_blocks (get_mem st0)) *)
-      (*                     _ _). *)
-      (*   (* inv SUST; econs; ss; eauto. *) *)
-      (*   (* - econs; ss; eauto. *) *)
-      (*   (*   + eapply UnreachC.to_inj_mem. eauto. *) *)
-      (*   (*   + unfold SimMemInj.tgt_private. ss. *) *)
-      (*   admit "". *)
-      (* } *)
-
-      admit "sound step".
-
-    - admit "at external".
-
-    (* - inv AT. inv SUST. ss. split; [red; refl|]. *)
-    (*   exploit Sound.greatest_ex. *)
-    (*   + exists su0. instantiate (1:=Args.mk fptr_arg vs_arg m0). *)
-    (*     instantiate (1:=su0). split. *)
-    (*     * red. refl. *)
-    (*     * econs; ss; eauto. *)
-    (*   + i. des. splits; auto. *)
-    (*     { econs; eauto. } *)
-
-    (*     exists su_gr. esplits; eauto. *)
-    (*     i. inv AFTER. inv RETV. inv GR. des. ss. *)
-    (*     assert(GRARGS: Sound.args su_gr (Args.mk fptr_arg vs_arg m0)). *)
-    (*     { rr in GR. des. ss. } *)
-    (*     set (su1 := Unreach.mk (fun blk => *)
-    (*                               if plt blk (Mem.nextblock m0) *)
-    (*                               then su0.(Unreach.unreach) blk *)
-    (*                               else su_ret.(Unreach.unreach) blk) *)
-    (*                            su0.(Unreach.ge_nb) (Retv.m retv).(Mem.nextblock)). *)
-    (*     assert(LEOLD: Unreach.hle_old su_gr su_ret). *)
-    (*     { eapply Unreach.hle_hle_old; et. rr in GRARGS. des. ss. } *)
-
-
-    (*     assert(HLEA: Sound.hle su0 su1). *)
-    (*     { unfold su1. rr. ss. *)
-    (*       inv MEM. rewrite NB in *. *)
-    (*       esplits; et. *)
-    (*       - ii. des_ifs. *)
-    (*       - inv MLE. eapply Mem.unchanged_on_nextblock; eauto. *)
-    (*     } *)
-    (*     assert(LEA: UnreachC.le' su0 su1). *)
-    (*     { unfold su1. *)
-    (*       rr. ss. esplits; eauto. *)
-    (*       ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto. *)
-    (*     } *)
-    (*     assert(LEB: UnreachC.le' su1 su_ret). *)
-    (*     { rr in GR. des. unfold su1. *)
-    (*       rr. ss. esplits; eauto. *)
-    (*       - ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto. *)
-    (*       - rr in LE. des. rr in LE0. des. congruence. *)
-    (*     } *)
-
-
-    (*     exists su1. splits; eauto. *)
-    (*     * econs; eauto. *)
-    (*       { admit "sound wf". } *)
-    (*       { *)
-
-    (*       econs; ss; eauto; splits; ss. *)
-    (*       { admit "??". } *)
-    (*       { inv MLE. inv MEM. rewrite NB. *)
-    (*         eapply Mem.unchanged_on_nextblock; eauto. } *)
-    (*     * econs; eauto. *)
-
-    - inv FINAL. inv SUST. esplits; eauto.
       + refl.
-      + econs; eauto.
-      + econs; ss; eauto; refl.
 
-        Unshelve. all: admit "".
+    - inv SUST. ss.
+      exploit clight_step_preserve_injection2; eauto.
+      { eapply function_entry2_inject; eauto. }
+      { instantiate (1:=skenv_link). unfold UnreachC.to_inj.
+        unfold symbols_inject. esplits; ss; eauto.
+        - ii. des_ifs.
+        - ii. exists b1; esplit; eauto. inv WF. des_ifs.
+          + exfalso. erewrite SKE in WFLO. eapply WFLO in Heq.
+            eapply Genv.genv_symb_range in H0. xomega.
+          + eapply Genv.genv_symb_range in H0. ss. exfalso. apply n.
+            inv MEM. rewrite SKE in *. rewrite NB in *.
+            eapply Plt_Ple_trans; eauto.
+        - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs. }
+      { unfold UnreachC.to_inj, Mem.flat_inj in *. econs; ss; i.
+        - unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
+          esplits; eauto.
+        - esplits; eauto. des_ifs.
+          + eapply Genv.genv_symb_range in FINDSRC. ss.
+            exfalso. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
+          + eapply Genv.genv_symb_range in FINDSRC. ss. exfalso. apply n.
+            inv MEM. rewrite SKE in *. rewrite NB in *.
+            eapply Plt_Ple_trans; eauto. }
+      { cinv MEM. rewrite NB. eapply UnreachC.to_inj_mem; eauto. }
+      i. des.
+      exists (UnreachC.to_su j1 (Genv.genv_next skenv_link) (Mem.nextblock m_src1)).
+      esplits; eauto.
+      + unfold Unreach.hle. splits; ss.
+        * i. des_ifs.
+          { destruct p0. destruct (Unreach.unreach su0 blk) eqn:U; auto.
+            exploit SEP; eauto.
+            - unfold UnreachC.to_inj. des_ifs.
+            - i. des. exfalso. eapply H. inv MEM.
+              eapply BOUND; eauto. }
+          { destruct (Unreach.unreach su0 blk) eqn:U;auto.
+            exfalso. exploit INCR.
+            - unfold UnreachC.to_inj. des_ifs.
+            - i. clarify. }
+          { exfalso. eapply n. eapply Plt_Ple_trans; eauto.
+            inv MEM. rewrite NB. eapply Mem.unchanged_on_nextblock; eauto. }
+        * inv MEM. rewrite NB. eapply Mem.unchanged_on_nextblock; eauto.
+      + eapply flattiize_inj_states in MATCH.
+        econs; ss; eauto.
+        * econs; ss; eauto.
+          { i. des_ifs. inv WF. rewrite <- SKE.
+            destruct ((UnreachC.to_inj su0 (Unreach.nb su0)) x0) eqn:BLK.
+            - destruct p0. eapply INCR in BLK. clarify.
+            - unfold UnreachC.to_inj in BLK. des_ifs.
+              + eapply WFLO; eauto.
+              + rewrite SKE. etrans; eauto.
+                clear - n. xomega. }
+          { i. des_ifs. }
+        * eapply mem_to_su; eauto. etrans; eauto.
+          inv MEM. rewrite NB. eapply Mem.unchanged_on_nextblock; eauto.
+        * etrans; eauto. inv MEM. rewrite NB.
+          eapply Mem.unchanged_on_nextblock; eauto.
+        * rpapply MATCH. unfold UnreachC.to_inj, flattize_inj.
+          extensionality blk. ss. des_ifs.
+          exfalso. apply n. destruct p. eapply Mem.valid_block_inject_1; eauto.
+      + eapply match_states_clight_get_mem in MATCH.
+        eapply match_states_clight_get_mem in MATCHST. des. clarify.
+        econs; ss; eauto.
+        * eapply clight_step_readonly; eauto.
+        * eapply Mem.unchanged_on_implies; eauto.
+          unfold flip, loc_unmapped, UnreachC.to_inj. i. des_ifs.
+
+    - inv AT. inv SUST. inv MATCHST. ss. esplits; eauto.
+      + refl.
+      + unfold Sound.args; ss. instantiate (1:=su0). esplits; eauto.
+        * ii. subst. clear EXTERNAL. des. ss.
+          unfold Genv.find_funct_ptr in *. des_ifs.
+          eapply Genv.genv_defs_range in Heq. inv WF. split.
+          { ii. rewrite SKE in *. eapply Plt_strict. eapply Plt_Ple_trans; eauto. }
+          { rewrite SKE in *. eapply Plt_Ple_trans; eauto. }
+        * eapply unreach_to_inj_vals; eauto.
+      + refl.
+      + i. inv AFTER. unfold Sound.retv in *. des. ss. esplits; eauto.
+        * unfold Unreach.hle in *. des. econs; eauto.
+          { rewrite <- GENB. auto. }
+          { etrans; eauto. }
+          { econs; eauto.
+            - eapply unreach_to_inj_val. unfold typify. des_ifs.
+            - eapply match_cont_incr; cycle 1; eauto.
+              unfold UnreachC.to_inj. ii. des_ifs.
+              + ss. erewrite OLD in *; eauto. clarify.
+              + exfalso. eapply n. eapply Plt_Ple_trans; eauto. }
+        * refl.
+
+    - inv FINAL. inv SUST. inv MATCHST. esplits; ss; eauto.
+      + refl.
+      + unfold Sound.retv. ss. esplits; eauto.
+        eapply unreach_to_inj_val; eauto.
+      + refl.
   Qed.
 
 End CLIGHTSOUND.

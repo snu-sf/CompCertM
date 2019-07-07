@@ -77,7 +77,7 @@ Inductive match_states
       (AsmC.mkstate init_rs_tgt (Asm.State rs_tgt m_tgt)) sm0
 .
 
-Lemma asm_inj_id_drop
+Lemma asm_inj_inv_id
       (asm: Asm.program)
       (WF: Sk.wf asm.(module))
   :

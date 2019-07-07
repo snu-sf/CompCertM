@@ -27,6 +27,7 @@ Require Renumber.
 Require Constprop.
 Require CSE.
 Require Deadcode.
+Require Unreadglob.
 Require Unusedglob.
 Require Allocation.
 Require Tunneling.
@@ -73,233 +74,204 @@ Require Import Simulation.
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
 Require Import SemProps AdequacyLocal.
 
-Require SimMemInj SoundTop SimSymbDrop.
+Require SimMemInj SoundTop SimSymbDrop SimSymbDropInv.
 Require IdSim.
 
+Require Import RUSC.
 
-Set Implicit Arguments.
+Definition CompCert_relations_list: list program_relation.t :=
+  [
+    (mkPR SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top) ;
+    (mkPR SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top) ;
+    (mkPR SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach) ;
+    (mkPR SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top) ;
+    (mkPR SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top) ;
+    (mkPR SimSymbDropInv.SimMemInvTop SimSymbDropInv.SimSymbDropInv SoundTop.Top)
+  ].
 
-Local Open Scope string_scope.
-Local Open Scope list_scope.
+Definition CompCert_relations := (fun r => In r CompCert_relations_list).
 
+Lemma asm_self_related (asm: Asm.program)
+  :
+    self_related CompCert_relations [asm.(AsmC.module)].
+Proof.
+  intros r RELIN. unfold CompCert_relations in *. ss.
+  des; clarify; eapply relate_single_program; intros WF.
+  - exploit IdSim.asm_id; ss; eauto.
+  - exploit IdSim.asm_ext_top; ss; eauto.
+  - exploit IdSim.asm_ext_unreach; ss; eauto.
+  - exploit IdSim.asm_inj_drop; ss; eauto.
+  - exploit IdSim.asm_inj_id; ss; eauto.
+  - exploit IdSim.asm_inj_inv_drop; ss; eauto.
+Qed.
 
+Lemma asms_self_related (asms: list Asm.program)
+  :
+    self_related CompCert_relations (map AsmC.module asms).
+Proof.
+  induction asms; ss; ii.
+  exploit IHasms; ss; eauto. i.
+  eapply (@program_relation.horizontal _ [a.(AsmC.module)] _ [a.(AsmC.module)]); eauto.
+  eapply asm_self_related; eauto.
+Qed.
 
-Ltac lift :=
-  eapply mixed_to_backward_simulation;
-  rpapply adequacy_local;
-  [|
-   instantiate (1:= _ ++ [ModPair.mk _ _ _] ++ _); ss; f_equal; u; rewrite map_app; ss
-   |
-   u; rewrite map_app; ss
-  ];
-  r; rewrite Forall_forall in *; ii;
-  rewrite in_app_iff in *; des; eauto;
-  rewrite in_app_iff in *; des; eauto; ss; des; ss; clarify
-.
+Lemma clight_self_related (cl: Clight.program)
+  :
+    self_related CompCert_relations [cl.(ClightC.module2)].
+Proof.
+  intros r RELIN. unfold CompCert_relations in *. ss.
+  des; clarify; eapply relate_single_program; intros WF.
+  - exploit IdSim.clight_id; ss; eauto.
+  - exploit IdSim.clight_ext_top; ss; eauto.
+  - exploit IdSim.clight_ext_unreach; ss; eauto.
+  - exploit IdSim.clight_inj_drop; ss; eauto.
+  - exploit IdSim.clight_inj_id; ss; eauto.
+  - exploit IdSim.clight_inj_inv_drop; ss; eauto.
+Qed.
+
+Lemma clights_self_related (cls: list Clight.program)
+  :
+    self_related CompCert_relations (map ClightC.module2 cls).
+Proof.
+  induction cls; ss; ii.
+  exploit IHcls; ss; eauto. i.
+  eapply (@program_relation.horizontal _ [a.(ClightC.module2)] _ [a.(ClightC.module2)]); eauto.
+  eapply clight_self_related; eauto.
+Qed.
+
 
 Section Cstrategy.
 
   Require CstrategyC.
-
-  Local Existing Instance SimMemId.SimMemId | 0.
-  Local Existing Instance SimMemId.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Cstrategy_correct
         src tgt
         (TRANSF: src = tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [CsemC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [(CstrategyC.module tgt).(Mod.Atomic.trans)] ++ aps.(ProgPair.tgt)))
-  .
+      relate_single
+        SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top
+        (CsemC.module src) (CstrategyC.module tgt).(Mod.Atomic.trans).
   Proof.
-    lift.
-    eapply CstrategyC.sim_mod; eauto.
+    unfold relate_single. clarify. exploit CstrategyC.sim_mod; eauto.
+    esplits; eauto; ss.
   Qed.
 
 End Cstrategy.
 
 
-
 Section SimplExpr.
 
   Require SimplExprproofC.
-
-  Local Existing Instance SimMemId.SimMemId | 0.
-  Local Existing Instance SimMemId.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma SimplExpr_correct
         src tgt
         (TRANSF: SimplExpr.transl_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [(CstrategyC.module src).(Mod.Atomic.trans)] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [ClightC.module1 tgt] ++ aps.(ProgPair.tgt)))
-  .
+      relate_single
+        SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top
+        (CstrategyC.module src).(Mod.Atomic.trans) (ClightC.module1 tgt).
   Proof.
-    lift.
-    eapply SimplExprproofC.sim_mod; eauto.
-    eapply SimplExprproof.transf_program_match; eauto.
+    unfold relate_single. exploit SimplExprproofC.sim_mod; eauto.
+    { eapply SimplExprproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End SimplExpr.
 
 
-
 Section SimplLocals.
 
   Require SimplLocalsproofC.
-
-  Local Existing Instance SimMemInjC.SimMemInj | 0.
-  Local Existing Instance SimMemInjC.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma SimplLocals_correct
         src tgt
         (TRANSF: SimplLocals.transf_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [ClightC.module1 src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [ClightC.module2 tgt] ++ aps.(ProgPair.tgt)))
-  .
+      relate_single
+        SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top
+        (ClightC.module1 src) (ClightC.module2 tgt).
   Proof.
-    lift.
-    eapply SimplLocalsproofC.sim_mod; eauto.
-    eapply SimplLocalsproof.match_transf_program; eauto.
+    unfold relate_single. exploit SimplLocalsproofC.sim_mod; eauto.
+    { eapply SimplLocalsproof.match_transf_program; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End SimplLocals.
 
 
-
 Section Cshmgen.
 
   Require CshmgenproofC.
-
-  Local Existing Instance SimMemId.SimMemId | 0.
-  Local Existing Instance SimMemId.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Cshmgen_correct
         src tgt
         (TRANSF: Cshmgen.transl_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [ClightC.module2 src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [CsharpminorC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top
+        (ClightC.module2 src) (CsharpminorC.module tgt)
   .
   Proof.
-    lift.
-    eapply CshmgenproofC.sim_mod; eauto.
-    eapply Cshmgenproof.transf_program_match; eauto.
+    unfold relate_single. exploit CshmgenproofC.sim_mod; eauto.
+    { eapply Cshmgenproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End Cshmgen.
 
 
-
 Section Cminorgen.
 
   Require CminorgenproofC.
-
-  Local Existing Instance SimMemInjC.SimMemInj | 0.
-  Local Existing Instance SimMemInjC.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Cminorgen_correct
         src tgt
         (TRANSF: Cminorgen.transl_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [CsharpminorC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [CminorC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top
+        (CsharpminorC.module src) (CminorC.module tgt)
   .
   Proof.
-    lift.
-    eapply CminorgenproofC.sim_mod; eauto.
-    eapply Cminorgenproof.transf_program_match; eauto.
+    unfold relate_single. exploit CminorgenproofC.sim_mod; eauto.
+    { eapply Cminorgenproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End Cminorgen.
 
 
-
 Section Selection.
 
   Require SelectionproofC.
-
-  Local Existing Instance SimMemExt.SimMemExt | 0.
-  Local Existing Instance SimMemExt.SimSymbExtends | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Selection_correct
         src tgt
         (TRANSF: Selection.sel_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [CminorC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [CminorSelC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top
+        (CminorC.module src) (CminorSelC.module tgt)
   .
   Proof.
-    lift.
-    eapply SelectionproofC.sim_mod; eauto.
-    eapply Selectionproof.transf_program_match; eauto.
+    unfold relate_single. exploit SelectionproofC.sim_mod; eauto.
+    { eapply Selectionproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End Selection.
 
 
-
 Section RTLgen.
 
   Require RTLgenproofC.
-
-  Local Existing Instance SimMemExt.SimMemExt | 0.
-  Local Existing Instance SimMemExt.SimSymbExtends | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma RTLgen_correct
         src tgt
         (TRANSF: RTLgen.transl_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [CminorSelC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+
+      relate_single
+        SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top
+        (CminorSelC.module src) (RTLC.module tgt)
   .
   Proof.
-    lift.
-    eapply RTLgenproofC.sim_mod; eauto.
-    eapply RTLgenproof.transf_program_match; eauto.
+    unfold relate_single. exploit RTLgenproofC.sim_mod; eauto.
+    { eapply RTLgenproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End RTLgen.
@@ -309,125 +281,82 @@ End RTLgen.
 Section Renumber0.
 
   Require RenumberproofC.
-
-  Local Existing Instance SimMemId.SimMemId | 0.
-  Local Existing Instance SimMemId.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Renumber0_correct
         src tgt
         (TRANSF: Renumber.transf_program src = tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top
+        (RTLC.module src) (RTLC.module tgt)
   .
   Proof.
-    lift.
-    eapply RenumberproofC.sim_mod; eauto.
-    eapply Renumberproof.transf_program_match; eauto.
+    unfold relate_single. exploit RenumberproofC.sim_mod; eauto.
+    { eapply Renumberproof.transf_program_match; eauto. }
+    i. rewrite TRANSF in *. esplits; eauto; ss.
   Qed.
 
 End Renumber0.
 
 
-
 Section Tailcall.
 
   Require Import TailcallproofC.
-
-  Local Existing Instance SimMemExt.SimMemExt | 0.
-  Local Existing Instance SimMemExt.SimSymbExtends | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
-  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
-
   Lemma Tailcall_correct
         src tgt
         (TRANSF: total_if optim_tailcalls Tailcall.transf_program src = tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+      rtc (relate_single
+             SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top)
+          (RTLC.module src) (RTLC.module tgt)
   .
   Proof.
-    unfold total_if in *. des_ifs; cycle 1.
-    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    lift.
-    eapply TailcallproofC.sim_mod; eauto.
-    eapply Tailcallproof.transf_program_match; eauto.
+    unfold total_if in *. des_ifs.
+    - apply rtc_once. unfold relate_single. exploit TailcallproofC.sim_mod; eauto.
+      { eapply Tailcallproof.transf_program_match; eauto. }
+      i.  esplits; eauto; ss.
+    - refl.
   Qed.
 
 End Tailcall.
 
 
-
 Section Inlining.
 
   Require Import InliningproofC.
-
-  Local Existing Instance SimMemInjC.SimMemInj | 0.
-  Local Existing Instance SimMemInjC.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Inlining_correct
         src tgt
         (TRANSF: Inlining.transf_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top
+        (RTLC.module src) (RTLC.module tgt)
   .
   Proof.
-    lift.
-    eapply InliningproofC.sim_mod; eauto.
-    eapply Inliningproof.transf_program_match; eauto.
+    unfold relate_single. exploit InliningproofC.sim_mod; eauto.
+    { eapply Inliningproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End Inlining.
 
 
-
 Section Constprop.
 
   Require Import ConstpropproofC.
-
-  Local Existing Instance SimMemExt.SimMemExt | 0.
-  Local Existing Instance SimMemExt.SimSymbExtends | 0.
-  Local Existing Instance UnreachC.Unreach | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
-  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
-
   Lemma Constprop_correct
         src tgt
         (TRANSF: total_if optim_constprop Constprop.transf_program src = tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+      rtc (relate_single
+             SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach)
+          (RTLC.module src) (RTLC.module tgt)
   .
   Proof.
-    unfold total_if in *. des_ifs; cycle 1.
-    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    lift.
-    eapply ConstpropproofC.sim_mod; eauto.
-    eapply Constpropproof.transf_program_match; eauto.
+    unfold total_if in *. des_ifs.
+    - apply rtc_once. unfold relate_single. exploit ConstpropproofC.sim_mod; eauto.
+      { eapply Constpropproof.transf_program_match; eauto. }
+      i. esplits; eauto; ss.
+    - refl.
   Qed.
 
 End Constprop.
@@ -437,160 +366,126 @@ End Constprop.
 Section Renumber1.
 
   Require RenumberproofC.
-
-  Local Existing Instance SimMemId.SimMemId | 0.
-  Local Existing Instance SimMemId.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
-  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
-
   Lemma Renumber1_correct
         src tgt
         (TRANSF: total_if optim_constprop Renumber.transf_program src = tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+      rtc (relate_single
+             SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top)
+          (RTLC.module src) (RTLC.module tgt)
   .
   Proof.
-    unfold total_if in *. des_ifs; cycle 1.
-    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    lift.
-    eapply RenumberproofC.sim_mod; eauto.
-    eapply Renumberproof.transf_program_match; eauto.
+    unfold total_if in *. des_ifs.
+    - apply rtc_once. unfold relate_single. exploit RenumberproofC.sim_mod; eauto.
+      { eapply Renumberproof.transf_program_match; eauto. }
+      i. esplits; eauto; ss.
+    - refl.
   Qed.
 
 End Renumber1.
 
 
-
 Section CSE.
 
   Require CSEproofC.
-
-  Local Existing Instance SimMemExt.SimMemExt | 0.
-  Local Existing Instance SimMemExt.SimSymbExtends | 0.
-  Local Existing Instance UnreachC.Unreach | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
-  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
-
   Lemma CSE_correct
         src tgt
         (TRANSF: partial_if optim_CSE CSE.transf_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+      rtc (relate_single
+             SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach)
+          (RTLC.module src) (RTLC.module tgt)
   .
   Proof.
-    unfold partial_if in *. des_ifs; cycle 1.
-    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    lift.
-    eapply CSEproofC.sim_mod; eauto.
-    eapply CSEproof.transf_program_match; eauto.
+    unfold partial_if in *. des_ifs.
+    - apply rtc_once. unfold relate_single. exploit CSEproofC.sim_mod; eauto.
+      { eapply CSEproof.transf_program_match; eauto. }
+      i. esplits; eauto; ss.
+    - refl.
   Qed.
 
 End CSE.
 
 
-
 Section Deadcode.
 
   Require Import DeadcodeproofC.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
-  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
-
   Lemma Deadcode_correct
         src tgt
         (TRANSF: partial_if optim_redundancy Deadcode.transf_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module tgt] ++ aps.(ProgPair.tgt)))
+      rtc (relate_single
+             SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach)
+          (RTLC.module src) (RTLC.module tgt)
   .
   Proof.
-    unfold partial_if in *. des_ifs; cycle 1.
-    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    lift.
-    eapply DeadcodeproofC.sim_mod; eauto.
-    eapply Deadcodeproof.transf_program_match; eauto.
+    unfold partial_if in *. des_ifs.
+    - apply rtc_once. unfold relate_single. exploit DeadcodeproofC.sim_mod; eauto.
+      { eapply Deadcodeproof.transf_program_match; eauto. }
+      i. esplits; eauto; ss.
+    - refl.
   Qed.
 
 End Deadcode.
 
 
 
+Section Unreadglob.
+
+  Require Import UnreadglobproofC.
+  Lemma Unreadglob_correct
+        src tgt
+        (TRANSF: Unreadglob.transform_program src = OK tgt)
+    :
+      relate_single
+        SimSymbDropInv.SimMemInvTop SimSymbDropInv.SimSymbDropInv SoundTop.Top                     (RTLC.module src) (RTLC.module tgt)
+  .
+  Proof.
+    unfold relate_single. exploit UnreadglobproofC.sim_mod; eauto.
+    { eapply Unreadglobproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
+  Qed.
+
+End Unreadglob.
+
+
+
 Section Unusedglob.
 
   Require Import UnusedglobproofC.
-
-  Local Existing Instance SimMemInjC.SimMemInj | 0.
-  Local Existing Instance SimSymbDrop.SimSymbDrop | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Unusedglob_correct
         src tgt
         (TRANSF: Unusedglob.transform_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [RTLC.module2 tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top
+        (RTLC.module src) (RTLC.module2 tgt)
   .
   Proof.
-    lift.
-    eapply UnusedglobproofC.sim_mod; eauto.
-    eapply Unusedglobproof.transf_program_match; eauto.
+    unfold relate_single. exploit UnusedglobproofC.sim_mod; eauto.
+    { eapply Unusedglobproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End Unusedglob.
 
 
 
-
-
-
-
-
 Section Allocation.
 
   Require Import AllocproofC.
-
-  Local Existing Instance SimMemExt.SimMemExt | 0.
-  Local Existing Instance SimMemExt.SimSymbExtends | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Allocation_correct
         src tgt
         (TRANSF: Allocation.transf_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [RTLC.module2 src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [LTLC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top
+        (RTLC.module2 src) (LTLC.module tgt)
   .
   Proof.
-    lift.
-    eapply AllocproofC.sim_mod; eauto.
-    eapply Allocproof.transf_program_match; eauto.
+    unfold relate_single. exploit AllocproofC.sim_mod; eauto.
+    { eapply Allocproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End Allocation.
@@ -600,27 +495,18 @@ End Allocation.
 Section Tunneling.
 
   Require Import TunnelingproofC.
-
-  Local Existing Instance SimMemExt.SimMemExt | 0.
-  Local Existing Instance SimMemExt.SimSymbExtends | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Tunneling_correct
         src tgt
         (TRANSF: Tunneling.tunnel_program src = tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [LTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [LTLC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top
+        (LTLC.module src) (LTLC.module tgt)
   .
   Proof.
-    lift.
-    eapply TunnelingproofC.sim_mod; eauto.
-    eapply Tunnelingproof.transf_program_match; eauto.
+    unfold relate_single. exploit TunnelingproofC.sim_mod; eauto.
+    { eapply Tunnelingproof.transf_program_match; eauto. }
+    i. rewrite TRANSF in *. esplits; eauto; ss.
   Qed.
 
 End Tunneling.
@@ -630,27 +516,18 @@ End Tunneling.
 Section Linearize.
 
   Require Import LinearizeproofC.
-
-  Local Existing Instance SimMemId.SimMemId | 0.
-  Local Existing Instance SimMemId.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Linearize_correct
         src tgt
         (TRANSF: Linearize.transf_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [LTLC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [LinearC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top
+        (LTLC.module src) (LinearC.module tgt)
   .
   Proof.
-    lift.
-    eapply LinearizeproofC.sim_mod; eauto.
-    eapply Linearizeproof.transf_program_match; eauto.
+    unfold relate_single. exploit LinearizeproofC.sim_mod; eauto.
+    { eapply Linearizeproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End Linearize.
@@ -660,27 +537,18 @@ End Linearize.
 Section CleanupLabels.
 
   Require Import CleanupLabelsproofC.
-
-  Local Existing Instance SimMemId.SimMemId | 0.
-  Local Existing Instance SimMemId.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma CleanupLabels_correct
         src tgt
         (TRANSF: CleanupLabels.transf_program src = tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [LinearC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [LinearC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top
+        (LinearC.module src) (LinearC.module tgt)
   .
   Proof.
-    lift.
-    eapply CleanupLabelsproofC.sim_mod; eauto.
-    eapply CleanupLabelsproof.transf_program_match; eauto.
+    unfold relate_single. exploit CleanupLabelsproofC.sim_mod; eauto.
+    { eapply CleanupLabelsproof.transf_program_match; eauto. }
+    i. rewrite TRANSF in *. esplits; eauto; ss.
   Qed.
 
 End CleanupLabels.
@@ -690,31 +558,20 @@ End CleanupLabels.
 Section Debugvar.
 
   Require Import DebugvarproofC.
-
-  Local Existing Instance SimMemId.SimMemId | 0.
-  Local Existing Instance SimMemId.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-  Hypothesis CEQ: cps.(ProgPair.src) = cps.(ProgPair.tgt).
-  Hypothesis AEQ: aps.(ProgPair.src) = aps.(ProgPair.tgt).
-
   Lemma Debugvar_correct
         src tgt
         (TRANSF: partial_if debug Debugvar.transf_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [LinearC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [LinearC.module tgt] ++ aps.(ProgPair.tgt)))
+      rtc (relate_single
+             SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top)
+        (LinearC.module src) (LinearC.module tgt)
   .
   Proof.
-    unfold partial_if in *. des_ifs; cycle 1.
-    { rpapply backward_simulation_refl. repeat f_equal; eauto. }
-    lift.
-    eapply DebugvarproofC.sim_mod; eauto.
-    eapply Debugvarproof.transf_program_match; eauto.
+    unfold partial_if in *. des_ifs.
+    - apply rtc_once. unfold relate_single. exploit DebugvarproofC.sim_mod; eauto.
+      { eapply Debugvarproof.transf_program_match; eauto. }
+      i. esplits; eauto; ss.
+    - refl.
   Qed.
 
 End Debugvar.
@@ -724,15 +581,6 @@ End Debugvar.
 Section Stacking.
 
   Require Import StackingproofC.
-
-  Local Existing Instance SimMemInjC.SimMemInj | 0.
-  Local Existing Instance SimMemInjC.SimSymbId | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
 
   Lemma return_address_offset_deterministic:
     forall f c ofs ofs',
@@ -753,15 +601,16 @@ Section Stacking.
         (TRANSF: Stacking.transf_program src = OK tgt)
         (COMPILESUCCED: exists final_tgt, Asmgenproof.match_prog tgt final_tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [LinearC.module src] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [MachC.module tgt Asmgenproof0.return_address_offset] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top
+        (LinearC.module src) (MachC.module tgt Asmgenproof0.return_address_offset)
   .
   Proof.
-    lift.
-    eapply StackingproofC.sim_mod; eauto.
+    unfold relate_single. des. exploit StackingproofC.sim_mod; eauto.
     { eapply Asmgenproof.return_address_exists; eauto. }
     { ii. determ_tac return_address_offset_deterministic. }
-    eapply Stackingproof.transf_program_match; eauto.
+    { eapply Stackingproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End Stacking.
@@ -769,86 +618,26 @@ End Stacking.
 
 
 
-
-
 Section Asmgen.
 
   Require Import AsmgenproofC.
-
-  Local Existing Instance SimMemExt.SimMemExt | 0.
-  Local Existing Instance SimMemExt.SimSymbExtends | 0.
-  Local Existing Instance SoundTop.Top | 0.
-
-  Variable cps: list ModPair.t.
-  Variable aps: list ModPair.t.
-  Hypothesis CSIM: Forall ModPair.sim cps.
-  Hypothesis ASIM: Forall ModPair.sim aps.
-
   Lemma Asmgen_correct
         src tgt
         (TRANSF: Asmgen.transf_program src = OK tgt)
     :
-      backward_simulation (sem (cps.(ProgPair.src) ++ [MachC.module src Asmgenproof0.return_address_offset] ++ aps.(ProgPair.src)))
-                          (sem (cps.(ProgPair.tgt) ++ [AsmC.module tgt] ++ aps.(ProgPair.tgt)))
+      relate_single
+        SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top
+        (MachC.module src Asmgenproof0.return_address_offset) (AsmC.module tgt)
   .
   Proof.
-    lift.
-    eapply AsmgenproofC.sim_mod; eauto.
-    eapply Asmgenproof.transf_program_match; eauto.
+    unfold relate_single. exploit AsmgenproofC.sim_mod; eauto.
+    { eapply Asmgenproof.transf_program_match; eauto. }
+    i. esplits; eauto; ss.
   Qed.
 
 End Asmgen.
 
 
-
-
-
-(* From stdpp Require list. *)
-
-Ltac contains_term TERM :=
-  match goal with
-  | [ |- context[TERM] ] => idtac
-  | _ => fail
-  end
-.
-
-Ltac contains_term_in TERM H :=
-  multimatch goal with
-  | [ H': context[TERM] |- _ ] =>
-    (* idtac H'; *)
-    check_equal H H'
-  | _ => fail
-  end
-.
-
-Ltac find_sim LANG :=
-  repeat
-    multimatch goal with
-    (* | [H0: ?L0 = ?R0, H1: ?L1 = ?R1 |- _ ] => *)
-    (*   rewrite <- H0; rewrite <- H1; refl *)
-    | [ T: @__GUARD__ _ (?SIM /\ ?SRC /\ ?TGT)  |- _ ] =>
-      match SIM with
-      | (@ProgPair.sim ?SIMMEM ?SIMSYMB ?SOUND _) =>
-        contains_term SIMMEM;
-        contains_term SIMSYMB;
-        contains_term SOUND;
-        contains_term_in LANG T;
-        unfold __GUARD__ in T;
-        let X := fresh "T" in
-        let Y := fresh "T" in
-        let Z := fresh "T" in
-        destruct T as [X [Y Z]];
-        (* let tx := type of X in *)
-        (* let ty := type of Y in *)
-        (* let tz := type of Z in *)
-        (* idtac "-------------------------------------------"; *)
-        (* idtac X; idtac Y; idtac Z; *)
-        (* idtac tx; idtac ty; idtac tz; *)
-        apply X
-      | _ => idtac (* SIM *)
-      end
-    end
-.
 
 (** Copied from Compiler.v, but without "SimplLocals.transf_program" **)
 (** SimplLocals translate Clight1 into Clight2 and our source program is Clight2. **)
@@ -861,60 +650,36 @@ Definition transf_clight_program (p: Clight.program) : res Asm.program :=
   @@@ time "Cminor generation" Cminorgen.transl_program
   @@@ transf_cminor_program.
 
-Lemma compiler_correct_single
+
+Lemma compiler_single_rusc
       (src: Clight.program)
       (tgt: Asm.program)
-      (cls: list Clight.program)
-      (asms: list Asm.program)
       (TRANSF: transf_clight_program src = OK tgt)
   :
-    improves (sem ((map ClightC.module2 cls) ++ [ClightC.module2 src] ++ (map AsmC.module asms)))
-             (sem ((map ClightC.module2 cls) ++ [AsmC.module tgt] ++ (map AsmC.module asms)))
-.
+    rusc CompCert_relations [src.(ClightC.module2)] [tgt.(AsmC.module)].
 Proof.
-  destruct (classic (forall x (IN: In x ((map ClightC.module2 cls) ++ [ClightC.module2 src] ++ (map AsmC.module asms))), Sk.wf x)) as [WF|NWF]; cycle 1.
-  { eapply sk_nwf_improves; auto. }
-
   unfold transf_clight_program in *.
   unfold transf_cminor_program in *. unfold transf_rtl_program in *. unfold time in *.
-  (* unfold total_if, partial_if in *. *)
   unfold print in *. cbn in *.
   unfold apply_total, apply_partial in *. des_ifs_safe.
 
   set (total_if optim_tailcalls Tailcall.transf_program p0) as ptail in *.
-  set (Renumber.transf_program p9) as prenum0 in *.
+  set (Renumber.transf_program p10) as prenum0 in *.
   set (total_if optim_constprop Constprop.transf_program prenum0) as pconst in *.
   set (total_if optim_constprop Renumber.transf_program pconst) as prenum1 in *.
   set (Tunneling.tunnel_program p5) as ptunnel in *.
   set (CleanupLabels.transf_program p4) as pclean in *.
 
-  assert (SRCSWF: forall x, In x cls -> Sk.wf (ClightC.module2 x)).
-  { ii. eapply WF. eapply in_or_app. left. eapply in_map. auto. }
-  assert (ASMSWF: forall x, In x asms -> Sk.wf (AsmC.module x)).
-  { ii. eapply WF. eapply in_or_app. right. right. eapply in_map. auto. }
-
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_drop cls); auto. intro SRCINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_id cls); auto. intro SRCINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_top cls); auto. intro SRCEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_unreach cls); auto. intro SRCEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cls); auto. intro SRCID; des.
-
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop asms); auto. intro TGTINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id asms); auto. intro TGTINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_top asms); auto. intro TGTEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_unreach asms); auto. intro TGTEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id asms); auto. intro TGTID; des.
-
-
   Ltac next PASS_CORRECT :=
-    etrans; [
-      eapply bsim_improves; rp; [eapply PASS_CORRECT|..]; try refl; [find_sim Clight.program|find_sim Asm.program|..];
-      try (by unfold __GUARD__ in *; des; all ltac:(fun H => rewrite H); eauto)
-     |];
-    folder
-  .
+    etrans; [try (hexploit PASS_CORRECT; eauto;
+                  [..|intros REL;
+                   eapply (@relate_single_rtc_rusc) in REL; eauto;
+                   unfold CompCert_relations; ss; eauto 10; fail]);
+             (hexploit PASS_CORRECT; eauto;
+              [..|intros REL;
+               eapply (@relate_single_rusc) in REL; eauto;
+               unfold CompCert_relations; ss; eauto 10])|].
 
-  (* next SimplLocals_correct. *)
   next Cshmgen_correct.
   next Cminorgen_correct.
   next Selection_correct.
@@ -926,6 +691,7 @@ Proof.
   next Renumber1_correct.
   next CSE_correct.
   next Deadcode_correct.
+  next Unreadglob_correct.
   next Unusedglob_correct.
   next Allocation_correct.
   next Tunneling_correct.
@@ -935,23 +701,30 @@ Proof.
   next Stacking_correct.
   { eexists. eapply transf_program_match; eauto. }
   next Asmgen_correct.
-
-  unfold __GUARD__ in *. des.
-  repeat all ltac:(fun H => rewrite H).
   refl.
-
 Qed.
 
-
-
-
-(**
-Note: we can't vertically compose in simulation level, because
-1) it requires maximal memory relation (closure)
-2) single_events of tgt (which is not true)
-
-induction: src/tgt length is fixed (we don't do horizontal composition in behavior level)
-**)
+Lemma compiler_rusc
+      (srcs: list Clight.program)
+      (tgts: list Asm.program)
+      (TR: mmap transf_clight_program srcs = OK tgts)
+  :
+    rusc CompCert_relations (map ClightC.module2 srcs) (map AsmC.module tgts).
+Proof.
+  apply mmap_inversion in TR. revert tgts TR. induction srcs; ss.
+  - i. inv TR. refl.
+  - i. inv TR. ss.
+    replace (ClightC.module2 a :: map ClightC.module2 srcs) with
+        ([ClightC.module2 a] ++ map ClightC.module2 srcs); auto.
+    replace (AsmC.module b1 :: map AsmC.module bl) with
+        ([AsmC.module b1] ++ map AsmC.module bl); auto.
+    eapply rusc_horizontal; eauto.
+    + eapply compiler_single_rusc; auto.
+    + eapply clight_self_related.
+    + eapply clights_self_related.
+    + eapply asm_self_related.
+    + eapply asms_self_related.
+Qed.
 
 Theorem compiler_correct
         (srcs: list Clight.program)
@@ -962,34 +735,11 @@ Theorem compiler_correct
              (sem ((map AsmC.module tgts) ++ (map AsmC.module hands)))
 .
 Proof.
-  apply mmap_inversion in TR.
-  apply forall2_eq in TR.
-  generalize dependent hands.
-  remember (length srcs) as len. rename Heqlen into T.
-  generalize dependent srcs.
-  generalize dependent tgts.
-  induction len; i; ss.
-  { destruct srcs; ss. inv TR. refl. }
-
-  destruct (last_opt srcs) eqn:T2; cycle 1.
-  {
-    eapply last_none in T2. clarify.
-  }
-  apply last_some in T2. des. clarify.
-  apply Forall2_app_inv_l in TR. des. clarify. inv TR0. inv H3.
-  rename hds into srcs. rename l1' into tgts.
-  rename p into hand_src. rename y into hand_tgt.
-  rewrite ! map_app. ss.
-  etrans.
-  { rp; [eapply compiler_correct_single with (cls:= srcs) (asms:= hands)|..]; eauto.
-    rewrite app_assoc. ss.
-  }
-  { rewrite <- ! app_assoc. ss.
-    rewrite app_length in *. ss. rewrite Nat.add_1_r in *. clarify.
-    specialize (IHlen tgts srcs). spc IHlen. specialize (IHlen (eq_refl _)).
-    eapply (IHlen (hand_tgt :: hands)).
-  }
+  eapply rusc_adequacy_right_ctx.
+  - eapply compiler_rusc; eauto.
+  - eapply asms_self_related.
 Qed.
+
 
 (****************************************************************************************)
 (****************************************************************************************)
@@ -997,11 +747,66 @@ Qed.
 
 (** Additionally, we support C as a source language too. **)
 
+
+
+
+(* TODO: Move it to proper place  *)
+Lemma Forall2_apply_Forall2 A B C D (f: A -> C) (g : B -> D)
+      (P: A -> B -> Prop) (Q: C -> D -> Prop)
+      la lb
+      (FORALL: Forall2 P la lb)
+      (IMPLY: forall a b (INA: In a la) (INB: In b lb),
+          P a b -> Q (f a) (g b))
+  :
+    Forall2 Q (map f la) (map g lb).
+Proof.
+  ginduction la; ss; i.
+  - inv FORALL. ss.
+  - inv FORALL. ss. econs; eauto.
+Qed.
+
+Lemma clightgen_rusc
+        (srcs: list Csyntax.program)
+        (tgts: list Clight.program)
+        irs
+        (TR0: mmap (SimplExpr.transl_program) srcs = OK irs)
+        (TR1: mmap (SimplLocals.transf_program) irs = OK tgts)
+  :
+    rusc
+      CompCert_relations
+      (map CsemC.module srcs)
+      (map ClightC.module2 tgts).
+Proof.
+  apply mmap_inversion in TR0.
+  apply mmap_inversion in TR1.
+  rewrite forall2_eq in *.
+
+  transitivity (map (Mod.Atomic.trans <*> CstrategyC.module) srcs).
+  { eapply rusc_incl.
+    - eapply (relate_each_program SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top).
+      eapply Forall2_apply_Forall2 with (P:=eq); eauto.
+      + clear. induction srcs; eauto.
+      + i. eapply Cstrategy_correct; eauto.
+    - unfold CompCert_relations. ss. auto. }
+
+  transitivity (map ClightC.module1 irs).
+  { eapply rusc_incl.
+    - eapply (relate_each_program SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top).
+      eapply Forall2_apply_Forall2; eauto.
+      i. eapply SimplExpr_correct; eauto.
+    - unfold CompCert_relations. ss. auto. }
+
+  { eapply rusc_incl.
+    - eapply (relate_each_program SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top).
+      eapply Forall2_apply_Forall2; eauto.
+      i. eapply SimplLocals_correct; eauto.
+    - unfold CompCert_relations. ss. auto 10. }
+Qed.
+
 Lemma clightgen_correct
         (srcs: list Csyntax.program)
         (cls tgts: list Clight.program)
         (hands: list Asm.program)
-        (* (TR: mmap (fun src => OK src @@@ SimplExpr.transl_program @@@ SimplLocals.transf_program) srcs = OK tgts) *)
         irs
         (TR0: mmap (SimplExpr.transl_program) srcs = OK irs)
         (TR1: mmap (SimplLocals.transf_program) irs = OK tgts)
@@ -1010,148 +815,11 @@ Lemma clightgen_correct
              (sem ((map ClightC.module2 tgts) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands)))
 .
 Proof.
-  (* apply mmap_inversion in TR. *)
-  (* apply forall2_eq in TR. *)
-  (* unfold apply_partial in *. *)
-  (* assert(TR0: exists irs, mmap (SimplExpr.transl_program) srcs = OK irs /\ mmap (SimplLocals.transf_program) irs = OK tgts). *)
-  (* { ginduction TR; ii; ss. *)
-  (*   { esplits; eauto. } *)
-  (*   des_ifs. exploit IHTR; eauto. i; des. *)
-  (*   eexists (_ :: _). ss. unfold bind. des_ifs_safe. esplits; eauto. des_ifs. *)
-  (* } *)
-  (* clear TR. des. *)
-  apply mmap_inversion in TR0.
-  apply mmap_inversion in TR1.
-  rewrite forall2_eq in *.
-
-  destruct (classic (forall x (IN: In x ((map CsemC.module srcs) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands))), Sk.wf x)) as [WF|NWF]; cycle 1.
-  { eapply sk_nwf_improves; auto. }
-
-  assert (SRCSWF: forall x, In x cls -> Sk.wf (ClightC.module2 x)).
-  { ii. eapply WF. eapply in_or_app. right. eapply in_app_iff. left. rewrite in_map_iff. eauto. }
-  assert (ASMSWF: forall x, In x hands -> Sk.wf (AsmC.module x)).
-  { ii. eapply WF. eapply in_or_app. right. eapply in_app_iff. right. rewrite in_map_iff. eauto. }
-
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_drop cls); auto. intro SRCINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_inj_id cls); auto. intro SRCINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_top cls); auto. intro SRCEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_ext_unreach cls); auto. intro SRCEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.clight_id cls); auto. intro SRCID; des.
-
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_drop hands); auto. intro TGTINJDROP; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_inj_id hands); auto. intro TGTINJID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_top hands); auto. intro TGTEXTID; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_ext_unreach hands); auto. intro TGTEXTUNREACH; des.
-  hexploit (@IdSim.lift _ _ _ _ _ IdSim.asm_id hands); auto. intro TGTID; des.
-
-  unfold __GUARD__ in *. des.
-
-  etrans.
-  { instantiate (1:= (sem ((map (Mod.Atomic.trans <*> CstrategyC.module) srcs) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands)))).
-    eapply bsim_improves.
-    eapply mixed_to_backward_simulation.
-    move srcs at bottom.
-
-    set (map (fun src => @ModPair.mk _ SimMemId.SimSymbId (CsemC.module src)
-                                     (Mod.Atomic.trans (CstrategyC.module src)) tt) srcs) as X.
-    exploit (@adequacy_local _ SimMemId.SimSymbId SoundTop.Top (X ++ pp3 ++ pp8)).
-    { rr.
-      eapply Forall_app; eauto.
-      { subst X. rewrite Forall_forall. ii; ss. rewrite in_map_iff in *. des. clarify.
-        eapply CstrategyC.sim_mod; eauto.
-      }
-      eapply Forall_app; eauto.
-    }
-    intro T. rpapply T; ss.
-    { unfold ProgPair.src in *.
-      rewrite ! map_app. repeat f_equal; try congruence.
-      subst X. rewrite map_map. ss.
-    }
-    { unfold ProgPair.tgt in *.
-      rewrite ! map_app. repeat f_equal; try congruence.
-      subst X. rewrite map_map. ss.
-    }
-  }
-
-  etrans.
-  { instantiate (1:= (sem ((map ClightC.module1 irs) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands)))).
-    eapply bsim_improves.
-    eapply mixed_to_backward_simulation.
-    move srcs at bottom.
-
-    set (zip (fun src tgt => @ModPair.mk _ SimMemId.SimSymbId (Mod.Atomic.trans (CstrategyC.module src))
-                                         (ClightC.module1 tgt) tt) srcs irs) as X.
-    exploit (@adequacy_local _ SimMemId.SimSymbId SoundTop.Top (X ++ pp3 ++ pp8)).
-    { rr.
-      eapply Forall_app; eauto.
-      { subst X. rewrite Forall_forall. ii; ss. apply in_zip_iff in H. des. clarify.
-        eapply SimplExprproofC.sim_mod; eauto.
-        clear - TR0 X Y.
-        ginduction srcs; ii; ss.
-        { destruct n; ss. }
-        unfold bind in *. des_ifs. inv TR0.
-        destruct n; ss; des_ifs.
-        { eapply SimplExprproof.transf_program_match; et. }
-        eapply IHsrcs; et.
-      }
-      eapply Forall_app; eauto.
-    }
-    intro T. rpapply T; ss.
-    { unfold ProgPair.src in *.
-      rewrite ! map_app. repeat f_equal; try congruence.
-      subst X. exploit Forall2_length; et. intro U.
-      clear - U. ginduction srcs; ii; ss.
-      des_ifs. ss. f_equal. erewrite IHsrcs; ss; eauto.
-    }
-    { unfold ProgPair.tgt in *.
-      rewrite ! map_app. repeat f_equal; try congruence.
-      subst X. exploit Forall2_length; et. intro U.
-      clear - U. ginduction srcs; ii; ss.
-      { destruct irs; ss. }
-      des_ifs. ss. f_equal. erewrite IHsrcs; ss; eauto.
-    }
-  }
-
-  etrans.
-  { instantiate (1:= (sem (map ClightC.module2 tgts ++ map ClightC.module2 cls ++ map AsmC.module hands))).
-    eapply bsim_improves.
-    eapply mixed_to_backward_simulation.
-    move srcs at bottom.
-
-    set (zip (fun ir tgt => @ModPair.mk _ SimMemInjC.SimSymbId (ClightC.module1 ir)
-                                         (ClightC.module2 tgt) tt) irs tgts) as X.
-    exploit (@adequacy_local _ SimMemInjC.SimSymbId SoundTop.Top (X ++ pp0 ++ pp5)).
-    { rr.
-      eapply Forall_app; eauto.
-      { subst X. rewrite Forall_forall. ii; ss. apply in_zip_iff in H. des. clarify.
-        eapply SimplLocalsproofC.sim_mod; eauto.
-        clear - TR1 X Y.
-        ginduction irs; ii; ss.
-        { destruct n; ss. }
-        unfold bind in *. des_ifs. inv TR1.
-        destruct n; ss; des_ifs.
-        { eapply SimplLocalsproof.match_transf_program; et. }
-        eapply IHirs; et.
-      }
-      eapply Forall_app; eauto.
-    }
-    intro T. rpapply T; ss.
-    { unfold ProgPair.src in *.
-      rewrite ! map_app. repeat f_equal; try congruence.
-      subst X. clear TR0. exploit Forall2_length; et. intro U.
-      clear - U. ginduction irs; ii; ss.
-      des_ifs. ss. f_equal. erewrite IHirs; ss; eauto.
-    }
-    { unfold ProgPair.tgt in *.
-      rewrite ! map_app. repeat f_equal; try congruence.
-      subst X. clear TR0. exploit Forall2_length; et. intro U.
-      clear - U. ginduction irs; ii; ss.
-      { destruct tgts; ss. }
-      des_ifs. ss. f_equal. erewrite IHirs; ss; eauto.
-    }
-  }
-
-  refl.
+  eapply rusc_adequacy_right_ctx.
+  - eapply clightgen_rusc; eauto.
+  - eapply self_related_horizontal.
+    + eapply clights_self_related.
+    + eapply asms_self_related.
 Qed.
 
 Theorem compiler_correct_full

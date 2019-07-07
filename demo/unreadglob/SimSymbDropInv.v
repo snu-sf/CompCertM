@@ -28,8 +28,8 @@ Definition ref_init (il : list init_data) (id : ident): Prop :=
 
 Section MEMINJ.
 
-Let SM := SimMemInjInvC.SimMemInjInv top_inv top_inv.
-Local Existing Instance SM.
+Definition SimMemInvTop: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv SimMemInjInv.top_inv.
+Local Existing Instance SimMemInvTop.
 
 (* Definition t': Type := ident -> bool. *)
 Definition t': Type := ident -> Prop.
@@ -515,7 +515,7 @@ Proof.
     des_ifs.
 Qed.
 
-Global Program Instance SimSymbDrop: SimSymb.class (SimMemInjInv top_inv top_inv) := {
+Global Program Instance SimSymbDropInv: SimSymb.class SimMemInvTop := {
   t := t';
   le := le;
   sim_sk := sim_sk;

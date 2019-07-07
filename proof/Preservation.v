@@ -256,7 +256,7 @@ Theorem local_preservation_standard_spec
 Proof.
   inv PRSV.
   econs; eauto.
-  - ii. exploit INIT; eauto. i; des. r in SUARG. des_ifs. des. esplits; eauto. eapply Sound.hle_mle; eauto.
+  - ii. exploit INIT; eauto. i; des. r in SUARG. des_ifs; des; esplits; eauto; eapply Sound.hle_mle; eauto.
   - ii. des. exploit STEP; eauto. i; des. esplits; try apply SUST; eauto.
     + etrans; eauto.
       eapply Sound.hle_mle; eauto.
@@ -441,7 +441,7 @@ Theorem local_preservation_strong_horizontal_spec
 Proof.
   inv PRSV.
   econs; eauto.
-  - ii. exploit INIT; eauto. i; des. r in SUARG. des_ifs. des. esplits; eauto. eapply Sound.hle_mle; eauto.
+  - ii. exploit INIT; eauto. i; des. r in SUARG. des_ifs; des; esplits; eauto; eapply Sound.hle_mle; eauto.
   - ii. des. exploit STEP; eauto. i; des. esplits; try apply SUST; eauto.
     + etrans; eauto.
       eapply Sound.hle_mle; eauto.
@@ -619,7 +619,7 @@ Theorem local_preservation_strong_horizontal_excl_spec
 Proof.
   inv PRSV.
   econs; eauto.
-  - ii. exploit INIT; eauto. i; des. r in SUARG. des_ifs. des. esplits; eauto. eapply Sound.hle_mle; eauto.
+  - ii. exploit INIT; eauto. i; des. r in SUARG. des_ifs; des; esplits; eauto; eapply Sound.hle_mle; eauto.
   - ii. des. exploit STEP; eauto. i; des. esplits; try apply SUST; eauto.
     + etrans; eauto.
       eapply Sound.hle_mle; eauto.

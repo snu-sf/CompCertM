@@ -29,16 +29,16 @@ Module Args.
   Definition get_fptr (args: Args.t): val :=
     match args with
     | Args.Cstyle fptr _ _ => fptr
-    (* | Args.Asmstyle rs _ => rs Asm.PC *)
-    | _ => Vundef
+    | Args.Asmstyle rs _ => rs Asm.PC
+    (* | _ => Vundef *)
     end
   .
 
   Definition get_m (args: Args.t): mem :=
     match args with
     | Args.Cstyle _ _ m => m
-    (* | Args.Asmstyle _ m => m *)
-    | Args.Asmstyle _ m => Mem.empty
+    | Args.Asmstyle _ m => m
+    (* | Args.Asmstyle _ m => Mem.empty *)
     end
   .
 
@@ -65,8 +65,8 @@ Module Retv.
   Definition get_m (retv: Retv.t): mem :=
     match retv with
     | Retv.Cstyle _ m => m
-    (* | Retv.Asmstyle _ m => m *)
-    | Retv.Asmstyle _ m => Mem.empty
+    | Retv.Asmstyle _ m => m
+    (* | Retv.Asmstyle _ m => Mem.empty *)
     end
   .
 

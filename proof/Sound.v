@@ -75,6 +75,8 @@ Module Sound.
     val: t -> Values.val -> Prop;
     vals: t -> list Values.val -> Prop := fun su vs => Forall su.(val) vs;
     mem: t -> mem -> Prop;
+
+    regset: t -> Asm.regset -> Prop := fun su rs => forall pr, su.(val) (rs pr);
     args: t -> Args.t -> Prop :=
       fun su args =>
         match args with
@@ -83,7 +85,10 @@ Module Sound.
           (<<VALS: vals su vs>>) /\
           (<<MEM: mem su m>>) /\
           (<<WF: wf su>>)
-        | _ => False
+        | Args.Asmstyle rs m =>
+          (<<REGSET: regset su rs>>) /\
+          (<<MEM: mem su m>>) /\
+          (<<WF: wf su>>)
         end
     ;
     retv: t -> Retv.t -> Prop :=
@@ -93,7 +98,10 @@ Module Sound.
           (<<VAL: val su v>>) /\
           (<<MEM: mem su m>>) /\
           (<<WF: wf su>>)
-        | _ => False
+        | Retv.Asmstyle rs m =>
+          (<<REGSET: regset su rs>>) /\
+          (<<MEM: mem su m>>) /\
+          (<<WF: wf su>>)
         end
     ;
 

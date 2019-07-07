@@ -85,16 +85,16 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program (Some <*> fn_sig)).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       stack fptr_arg sg ls vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_sig skd = Some sg)
       (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg)):
-      at_external (Callstate stack fptr_arg sg ls m0) (Args.mk fptr_arg vs_arg m0).
+      at_external (Callstate stack fptr_arg sg ls m0) (Args.Cstyle fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro

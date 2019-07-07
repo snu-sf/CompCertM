@@ -356,7 +356,7 @@ Section MATCHSIMFORWARD.
     folder.
     exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.
     Print SimSymb.sim_skenv.
-    inv FSIM. exploit FUNCFSIM; eauto. { apply SIMARGS. } i; des.
+    inv FSIM. exploit FUNCFSIM; eauto. { apply SimMem.sim_args_sim_fptr; et. } i; des.
     split; ii.
     - exploit INITBSIM; eauto. i; des.
       esplits; eauto.

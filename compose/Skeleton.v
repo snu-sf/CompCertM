@@ -74,8 +74,8 @@ Module Sk.
         F1 V1 F2 V2
         `{Linker (fundef F1)} `{Linker V1}
         match_fundef match_varinfo
-        (p1: AST.program (fundef (option F1)) V1)
-        (p2: AST.program (fundef (option F2)) V2)
+        (p1: AST.program (fundef F1) V1)
+        (p2: AST.program (fundef F2) V2)
         (MATCH: match_program match_fundef match_varinfo p1 p2)
         fn_sig1 fn_sig2
         (WF: wf_match_fundef match_fundef fn_sig1 fn_sig2)
@@ -90,11 +90,11 @@ Module Sk.
     clear - MATCH WF.
     ginduction prog_defs; ii; ss; inv MATCH; ss.
     erewrite IHprog_defs; eauto. f_equal; eauto.
-    inv H2. destruct a, b1; ss. clarify.
-    inv H1; ss.
+    inv H3. destruct a, b1; ss. clarify.
+    inv H2; ss.
     - unfold update_snd. exploit WF; eauto. i; des; clarify; ss.
       + repeat f_equal. exploit WF; et.
-    - inv H. ss.
+    - inv H1. ss.
   Qed.
 
   Let match_fundef F0 F1 (get_sig: F0 -> F1) (_: unit): AST.fundef F0 -> AST.fundef F1 -> Prop :=

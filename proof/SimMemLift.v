@@ -59,13 +59,13 @@ Module SimMemLift.
   }
   .
 
-End SimMemLift.
+  Section PROPS.
 
+  Context {SM: SimMem.class}.
+  Context {SML: SimMemLift.class SM}.
 
-
-Section PROPS.
-
-  Context {SM: SimMem.class} {SML: SimMemLift.class SM}.
+  Lemma lift_sim_regset: forall sm0, SimMem.sim_regset sm0 <2= SimMem.sim_regset (SimMemLift.lift sm0).
+  Proof. ii. eapply SimMemLift.lift_sim_val; et. Qed.
 
   Lemma le_lift_lepriv
         sm0 sm1 sm_lift
@@ -89,14 +89,19 @@ Section PROPS.
       <<ARGS: SimMem.sim_args args_src args_tgt (SimMemLift.lift sm_arg0)>>
   .
   Proof.
-    inv ARGS. econs; eauto.
-    - eapply SimMemLift.lift_sim_val; et.
-    - erewrite <- SimMem.sim_val_list_spec in *.
-      eapply Forall2_impl.
-      { eapply SimMemLift.lift_sim_val; et. }
-      ss.
-    - rewrite SimMemLift.lift_src. ss.
-    - rewrite SimMemLift.lift_tgt. ss.
+    inv ARGS.
+    - econs; eauto.
+      + eapply SimMemLift.lift_sim_val; et.
+      + erewrite <- SimMem.sim_val_list_spec in *.
+        eapply Forall2_impl.
+        { eapply SimMemLift.lift_sim_val; et. }
+        ss.
+      + rewrite SimMemLift.lift_src. ss.
+      + rewrite SimMemLift.lift_tgt. ss.
+    - econs 2; eauto.
+      + eapply lift_sim_regset; et.
+      + rewrite SimMemLift.lift_src. ss.
+      + rewrite SimMemLift.lift_tgt. ss.
   Qed.
 
   (* Lemma unlift_le_lepriv *)
@@ -112,5 +117,9 @@ Section PROPS.
   (*   r. etrans; et. *)
   (* Qed. *)
 
-End PROPS.
+  End PROPS.
+
+End SimMemLift.
+
+
 

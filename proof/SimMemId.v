@@ -115,7 +115,7 @@ Next Obligation.
   eapply SimSymbId.system_sim_skenv; eauto.
 Qed.
 Next Obligation.
-  inv ARGS; ss. destruct args_src, args_tgt; ss. clarify. destruct sm0; ss. clarify.
+  inv ARGS; ss. clarify. destruct sm0; ss. clarify.
   esplits; eauto.
   - eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto.

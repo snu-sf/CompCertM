@@ -5,9 +5,9 @@
 	.globl f
 f:
 	.cfi_startproc
-	subq	$24, %rsp
-	.cfi_adjust_cfa_offset	24
-	leaq	32(%rsp), %rax
+	subq	$16, %rsp ;; original CompCert generated : subq	$24, % rsp
+	.cfi_adjust_cfa_offset	16
+	leaq	24(%rsp), %rax
 	movq	%rax, 0(%rsp)
 	movq	%rbx, 8(%rsp)
 	movq	%rdi, %rbx
@@ -21,7 +21,7 @@ f:
 	leal	0(%eax,%ebx,1), %eax
 .L101:
 	movq	8(%rsp), %rbx
-	addq	$24, %rsp
+	addq	$16, %rsp
 	ret
 	.cfi_endproc
 	.type	f, @function

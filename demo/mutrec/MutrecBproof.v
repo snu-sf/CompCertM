@@ -135,8 +135,8 @@ Inductive well_saved (initstk stk: block)
     (RANOTFPTR: forall blk ofs (RAVAL: init_rs RA = Vptr blk ofs),
         ~ Plt blk (Genv.genv_next skenv_link))
     (RSPVAL: rs RSP = Vptr stk Ptrofs.zero)
-    (STKPERM: Mem.range_perm m stk 0 32 Cur Freeable)
-    (RASAVED: Mem.loadv Mptr m (Val.offset_ptr (rs RSP) (Ptrofs.repr 24)) = Some (init_rs RA))
+    (STKPERM: Mem.range_perm m stk 0 24 Cur Freeable)
+    (RASAVED: Mem.loadv Mptr m (Val.offset_ptr (rs RSP) (Ptrofs.repr 16)) = Some (init_rs RA))
     (RSPSAVED: Mem.loadv Mptr m (Val.offset_ptr (rs RSP) Ptrofs.zero) = Some (init_rs RSP))
     (REGSAVED: forall mr (CALLEESAVE: Conventions1.is_callee_save mr)
                       (INREG: mr <> Machregs.BX), init_rs mr.(to_preg) = rs mr.(to_preg))
@@ -1247,7 +1247,7 @@ Proof.
       unfold Genv.find_funct in FINDF. des_ifs.
 
       cinv STORE. des. ss.
-      destruct (Mem.alloc (JunkBlock.assign_junk_blocks m0 n) 0 32) as [m2 stk] eqn:ALLOC.
+      destruct (Mem.alloc (JunkBlock.assign_junk_blocks m0 n) 0 24) as [m2 stk] eqn:ALLOC.
       hexploit Mem.valid_access_store.
       { eapply Mem.valid_access_implies.
         - instantiate (4:=Mptr).
@@ -1263,9 +1263,9 @@ Proof.
           eapply Mem.store_valid_access_1; eauto.
           eapply Mem.valid_access_alloc_same.
           + eauto.
-          + instantiate (1:=Ptrofs.unsigned (Ptrofs.repr 24)). ss.
+          + instantiate (1:=Ptrofs.unsigned (Ptrofs.repr 16)). ss.
           + unfold Mptr. des_ifs.
-          + rewrite align_chunk_Mptr. des_ifs. exists 3. ss.
+          + rewrite align_chunk_Mptr. des_ifs. exists 2. ss.
         - econs. } intros [m4 STR1].
       hexploit Mem.valid_access_store.
       { eapply Mem.valid_access_implies.

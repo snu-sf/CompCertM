@@ -19,10 +19,10 @@ Definition v_memoized := {|
 Definition code: list instruction :=
  [
    (* .cfi_startproc *)
-   Pallocframe 32 (Ptrofs.repr 24) Ptrofs.zero ;
-     (* subq    $24, %rsp *)
-     (* .cfi_adjust_cfa_offset    24 *)
-     (* leaq    32(%rsp), %rax *)
+   Pallocframe 24 (Ptrofs.repr 16) Ptrofs.zero ; (* original : Pallocframe 32 *)
+     (* subq    $16, %rsp *)
+     (* .cfi_adjust_cfa_offset    16 *)
+     (* leaq    24(%rsp), %rax *)
      (* movq    %rax, 0(%rsp) *)
      Pmov_mr_a (Addrmode (Some RSP) None (inl 8)) RBX;
      (* movq    %rbx, 8(%rsp) *)
@@ -70,8 +70,8 @@ Definition code: list instruction :=
      (* .L101: *)
      Pmov_rm_a RBX (Addrmode (Some RSP) None (inl 8));
      (* movq    8(%rsp), %rbx *)
-     Pfreeframe 32 (Ptrofs.repr 24) Ptrofs.zero;
-     (* addq    $24, %rsp *)
+     Pfreeframe 24 (Ptrofs.repr 16) Ptrofs.zero;
+     (* addq    $16, %rsp *)
      Pret
        (* ret *)
  ].

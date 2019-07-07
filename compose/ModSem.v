@@ -26,19 +26,43 @@ Module Args.
       (m: mem)
   .
 
+  (* intentional: it should work for both cases *)
   Definition get_fptr (args: Args.t): val :=
     match args with
     | Args.Cstyle fptr _ _ => fptr
     | Args.Asmstyle rs _ => rs Asm.PC
-    (* | _ => Vundef *)
     end
   .
 
+  (* intentional: it should work for both cases *)
   Definition get_m (args: Args.t): mem :=
     match args with
     | Args.Cstyle _ _ m => m
     | Args.Asmstyle _ m => m
-    (* | Args.Asmstyle _ m => Mem.empty *)
+    end
+  .
+
+  (* for backward compatibility: it should be used only when Cstyle is sure *)
+  Definition fptr (args: Args.t): val :=
+    match args with
+    | Args.Cstyle fptr _ _ => fptr
+    | Args.Asmstyle rs _ => Vundef
+    end
+  .
+
+  (* for backward compatibility: it should be used only when Cstyle is sure *)
+  Definition vs (args: Args.t): list val :=
+    match args with
+    | Args.Cstyle _ vs _ => vs
+    | Args.Asmstyle _ _ => []
+    end
+  .
+
+  (* for backward compatibility: it should be used only when Cstyle is sure *)
+  Definition m (args: Args.t): mem :=
+    match args with
+    | Args.Cstyle _ _ m => m
+    | Args.Asmstyle _ m => Mem.empty
     end
   .
 
@@ -48,6 +72,8 @@ Module Args.
     | _ => false
     end
   .
+
+  Definition mk (fptr: val) (vs: list val) (m: mem): t := Args.Cstyle fptr vs m.
 
 End Args.
 
@@ -62,11 +88,11 @@ Module Retv.
       (m: mem)
   .
 
+  (* intentional: it should work for both cases *)
   Definition get_m (retv: Retv.t): mem :=
     match retv with
     | Retv.Cstyle _ m => m
     | Retv.Asmstyle _ m => m
-    (* | Retv.Asmstyle _ m => Mem.empty *)
     end
   .
 
@@ -76,6 +102,24 @@ Module Retv.
     | _ => false
     end
   .
+
+  (* for backward compatibility: it should be used only when Cstyle is sure *)
+  Definition v (retv: Retv.t): val :=
+    match retv with
+    | Retv.Cstyle v _ => v
+    | Retv.Asmstyle _ _ => Vundef
+    end
+  .
+
+  (* for backward compatibility: it should be used only when Cstyle is sure *)
+  Definition m (retv: Retv.t): mem :=
+    match retv with
+    | Retv.Cstyle _ m => m
+    | Retv.Asmstyle _ m => Mem.empty
+    end
+  .
+
+  Definition mk (v: val) (m: mem): t := Retv.Cstyle v m.
 
 End Retv.
 

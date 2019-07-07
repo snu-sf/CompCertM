@@ -170,4 +170,4 @@ Section PROPS.
 End PROPS.
 
 Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program (Some <*> fn_sig); Mod.get_modsem := modsem; |}.

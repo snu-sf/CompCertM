@@ -54,13 +54,14 @@ Proof.
     + econs; eauto; ss.
       * inv TYP. rpapply match_callstates; eauto.
         { econs; eauto. }
-        inv SAFESRC. folder. inv TYP.
+        inv SAFESRC. ss. folder. inv TYP.
         exploit (Genv.find_funct_transf_genv SIMGE); eauto. intro FINDFSRC; clarify.
   - (* init progress *)
     des. inv SAFESRC. inv SIMARGS; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
-    inv TYP. esplits; eauto. econs; eauto. ss.
+    inv TYP. esplits; eauto. econs; eauto.
+    + ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify. inv CALLSRC. inv MATCHST; ss.
   - (* call fsim *)
@@ -76,10 +77,10 @@ Proof.
       * ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET; clarify. ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
-    + econs; ss; eauto. econs; eauto.
+    + econs; ss; eauto. clarify. econs; eauto.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv STACKS; ss. destruct sm0; ss. clarify.

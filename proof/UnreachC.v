@@ -930,7 +930,10 @@ Next Obligation.
     rpapply ROMATCH; ss.
 Qed.
 Next Obligation.
-  des. rename H into VAL. rename H0 into VALS. rename H1 into MEM. rename H2 into WF.
+  assert(T: <<VAL: val' su0 args0.(Args.fptr)>> /\ <<VALS: Forall (val' su0) args0.(Args.vs)>> /\ <<MEM: mem' su0 args0.(Args.m)>> /\ <<WF: wf su0 >>).
+  { des_ifs. }
+  clear ARGS. des.
+  (* des. rename H into VAL. rename H0 into VALS. rename H1 into MEM. rename H2 into WF. *)
   exploit (@external_call_mem_inject_gen ef skenv0 skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret
                                          (to_inj su0 (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
   { unfold to_inj. r. esplits; ii; ss; des_ifs; eauto.
@@ -1030,6 +1033,7 @@ Qed.
 
 Lemma greatest_ex: forall
     su0 args0
+    (CSTYLE: Args.is_cstyle args0)
     (INHAB: exists (inhab: Sound.t), <<LE: le' su0 inhab>> /\ <<ARGS: inhab.(Sound.args) args0>>)
   ,
     exists su_gr, <<GR: get_greatest su0 args0 su_gr>>
@@ -1042,7 +1046,7 @@ Proof.
   - typeclasses eauto.
   - ii. eapply lubsucc; eauto.
   - ii. eapply lubspec; eauto.
-  - rr. destruct args0.
+  - rr. destruct args0; try (by ss).
     eapply finite_nat_prop with (j:= J) (fuel := m.(Mem.nextblock)); eauto.
     + ii. des. inv H0. inv H3. des; ss.
       inv MEM. inv MEM0.
@@ -1056,21 +1060,24 @@ Proof.
     + i. exists (3 ^ (m.(Mem.nextblock)).(Pos.to_nat))%nat. i.
       eapply J_bound; eauto.
   - ii. eapply lubclosed; try apply LUB; eauto.
+  - esplits; eauto. rr in INHAB0; ss. des_ifs; ss.
 Qed.
 
 Lemma greatest_adq: forall
     su0 args0 su_gr
+    (CSTYLE: Args.is_cstyle args0)
     (GR: get_greatest su0 args0 su_gr)
   ,
     <<SUARGS: Sound.args su_gr args0>> /\ <<LE: le' su0 su_gr>>
 .
 Proof.
   ii.
-  rr in GR. des. eauto.
+  rr in GR. des. destruct args0; ss.
 Qed.
 
 Lemma get_greatest_le: forall
     su0 su1 args0 su_gr
+    (CSTYLE: Args.is_cstyle args0)
     (GR: get_greatest su1 args0 su_gr)
     (SUARG: Sound.args su1 args0)
     (LE: le' su0 su1)
@@ -1084,6 +1091,7 @@ Proof.
   { i. eapply lubsucc; eauto. }
   { i. eapply lubspec; eauto. }
   { i. eapply lubclosed; revgoals; eauto. }
+  { destruct args0; ss. }
 Qed.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.

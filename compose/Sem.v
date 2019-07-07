@@ -160,15 +160,15 @@ Section SEMANTICS.
       (SIG: skenv_link.(Genv.find_funct) fptr_init = Some (Internal (Some signature_main)))
       (WF: forall md (IN: In md p), <<WF: Sk.wf md>>)
     :
-      initial_state (Callstate (Args.Cstyle fptr_init [] m_init) [])
+      initial_state (Callstate (Args.mk fptr_init [] m_init) [])
   .
 
   Inductive final_state: state -> int -> Prop :=
   | final_state_intro
-      fr0 retv m
-      (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) (Retv.Cstyle retv m))
+      fr0 retv
+      (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) retv)
       i
-      (INT: retv = Vint i)
+      (INT: retv.(Retv.v) = Vint i)
     :
       final_state (State [fr0]) i
   .

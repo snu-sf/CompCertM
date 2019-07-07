@@ -50,7 +50,7 @@ Section MODSEM.
       fptr_arg vs_arg targs tres cconv k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd)
+                        /\ Some (signature_of_type targs tres cconv) = Sk.get_sig skd)
       (CALL: is_call_cont_strong k0):
     (* how can i check sg_args and tyf are same type? *)
     (* typ_of_type function is a projection type to typ. it delete some info *)
@@ -59,6 +59,7 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd tyf
+      (CSTYLE: Args.is_cstyle args)
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
       (TYP: typecheck args.(Args.vs) (type_of_params (fn_params fd))):
@@ -73,6 +74,7 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       fptr_arg vs_arg m_arg k retv tv targs tres cconv
+      (CSTYLE: Retv.is_cstyle retv)
       (* tyf *)
       (TYP: typify_c retv.(Retv.v) tres tv):
       after_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)

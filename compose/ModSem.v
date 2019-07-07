@@ -75,6 +75,8 @@ Module Args.
 
   Definition mk (fptr: val) (vs: list val) (m: mem): t := Args.Cstyle fptr vs m.
 
+  Lemma get_m_m: forall args (CSTYLE: is_cstyle args), args.(get_m) = args.(m). Proof. destruct args; ss. Qed.
+
 End Args.
 
 Module Retv.
@@ -121,9 +123,12 @@ Module Retv.
 
   Definition mk (v: val) (m: mem): t := Retv.Cstyle v m.
 
+  Lemma get_m_m: forall retv (CSTYLE: is_cstyle retv), retv.(get_m) = retv.(m). Proof. destruct retv; ss. Qed.
+
 End Retv.
 
-Hint Unfold Args.is_cstyle Retv.is_cstyle.
+Hint Unfold Args.is_cstyle Args.mk Args.fptr Args.vs Args.m Retv.is_cstyle Retv.mk Retv.v Retv.m.
+Hint Constructors Args.t Retv.t.
 
 Module ModSem.
 

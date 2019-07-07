@@ -60,19 +60,20 @@ Definition stackframes_after_external (stack: list stackframe): list stackframe 
 
 
 
+Definition fn_ssig := fun fd => Some (fd.(fn_sig)).
 
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_ssig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       stack fptr_arg sg_arg ls vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_sig skd = Some sg_arg)
       (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg_arg)):
       at_external (Callstate stack fptr_arg sg_arg ls m0) (Args.mk fptr_arg vs_arg m0).
 
@@ -152,5 +153,5 @@ Section PROPS.
 End PROPS.
 
 Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_ssig; Mod.get_modsem := modsem; |}.
 

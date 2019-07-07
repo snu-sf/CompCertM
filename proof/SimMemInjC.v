@@ -783,7 +783,7 @@ Next Obligation.
   - eapply SimSymbId.system_sim_skenv; eauto.
 Qed.
 Next Obligation.
-  destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
+  destruct sm0, args_src, args_tgt; ss; inv ARGS; ss. inv MWF; ss. clarify.
   (* Note: It may be easier && more natural to use
 "external_call_mem_inject" with "external_call_symbols_preserved", instead of "external_call_mem_inject_gen" *)
   (* exploit external_call_mem_inject_gen; eauto. *)
@@ -795,7 +795,8 @@ Next Obligation.
   - instantiate (1:= Retv.mk _ _); ss.
     eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV.
-  - instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs; ss; eauto.
+  - destruct retv_src; ss. instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs 1; ss; eauto.
+    instantiate (1:= retv_src.(Retv.m)). ss.
   - assert(FROZEN: frozen inj f' src_parent_nb tgt_parent_nb).
     { + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto.
       i; des. esplits; xomega. }

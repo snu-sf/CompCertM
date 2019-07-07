@@ -132,8 +132,6 @@ Section SIM.
         clear - Heq2 CHK0 H1 H4.
         des_ifs. inv H1; inv H4; ss.
         - unfold CtypesC.CSk.match_fundef in *. des_ifs; ss; des_ifs; bsimpl; des; des_sumbool; clarify.
-          { unfold signature_of_function, signature_of_type in *. apply n. f_equal. rewrite Heq3. rewrite typ_of_type_list; ss. }
-          { unfold signature_of_function, signature_of_type in *. apply n. f_equal. rewrite Heq3. rewrite typ_of_type_list; ss. }
         - des_ifs. inv H; inv H0; ss. unfold link_vardef in *. ss. des_ifs.
       }
       bsimpl. des. des_sumbool.
@@ -156,8 +154,6 @@ Section SIM.
       - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef, link_prog_check, prog_defmap, program_of_program in *; des_ifs; ss; des_ifs; bsimpl; des; des_sumbool; clarify.
       - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef in *; des_ifs; ss;
           unfold fundef_of_fundef in *; des_ifs; bsimpl; des; des_sumbool; clarify.
-        + exfalso. apply n. destruct f3; ss. unfold signature_of_function, signature_of_type. ss. f_equal. rewrite Heq1. rewrite typ_of_type_list; ss.
-        + exfalso. apply n. destruct f3; ss. unfold signature_of_function, signature_of_type. ss. f_equal. rewrite Heq1. rewrite typ_of_type_list; ss.
         + destruct g; ss. unfold link_vardef in *. des_ifs. ss. bsimpl. des. rewrite eqb_true_iff in *.
           f_equal. destruct gvar_info; ss. f_equal; ss. f_equal; ss. clarify.
         + exfalso.
@@ -1319,7 +1315,7 @@ Section SIM.
           eapply NCALLTGT.
           eexists.
           econs; eauto.
-          - assert (Genv.find_funct skenv_link fptr = Some (AST.Internal (signature_of_function f))).
+          - assert (Genv.find_funct skenv_link fptr = Some (AST.Internal (Some (signature_of_function f)))).
             { assert (SkEnv.wf skenv_link).
               { eapply SkEnv.load_skenv_wf.
                 eapply link_list_preserves_wf_sk; eauto. }
@@ -1334,7 +1330,7 @@ Section SIM.
               inv H3.
               destruct (Genv.invert_symbol skenv_link b) eqn:SKENV; ss.
               unfold o_bind in Heq. ss. des_ifs.
-              assert (Genv.find_def (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b = Some (Gfun (AST.Internal (signature_of_function f)))).
+              assert (Genv.find_def (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b = Some (Gfun (AST.Internal (Some (signature_of_function f))))).
               { unfold Genv.find_def. ss. rewrite PTree_filter_map_spec, o_bind_ignore. des_ifs.
                 rewrite SKENV. unfold o_bind. ss. des_ifs.
                 destruct ((prog_defmap (CSk.of_program signature_of_function cp_link)) ! i) eqn:DMAP; ss.
@@ -1358,8 +1354,7 @@ Section SIM.
               unfold signature_of_function. unfold signature_of_type. ss.
               f_equal. remember (fn_params f) as l. clear Heql.
               clear.
-              induction l. ss. ss.
-              destruct a. ss. rewrite IHl. eauto.
+              induction l. ss. ss. destruct a. ss. clarify. rewrite H0. ss.
           - inv WTTGT. ss.
             inv WTK; ss.
             exploit WTKS.
@@ -1435,7 +1430,7 @@ Section SIM.
             esplits; eauto.
             inv WTPROGLINK.
             unfold prog_defmap in DMAP0. ss. eapply PTree_Properties.in_of_list in DMAP0.
-            exploit H2; eauto.
+            exploit H2; eauto. i. congruence.
           - inv WTTGT. ss.
             inv WTK; ss.
             exploit WTKS.

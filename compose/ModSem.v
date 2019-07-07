@@ -26,6 +26,29 @@ Module Args.
       (m: mem)
   .
 
+  Definition get_fptr (args: Args.t): val :=
+    match args with
+    | Args.Cstyle fptr _ _ => fptr
+    (* | Args.Asmstyle rs _ => rs Asm.PC *)
+    | _ => Vundef
+    end
+  .
+
+  Definition get_m (args: Args.t): mem :=
+    match args with
+    | Args.Cstyle _ _ m => m
+    (* | Args.Asmstyle _ m => m *)
+    | Args.Asmstyle _ m => Mem.empty
+    end
+  .
+
+  Definition is_cstyle (args: t): bool :=
+    match args with
+    | Cstyle _ _ _ => true
+    | _ => false
+    end
+  .
+
 End Args.
 
 Module Retv.
@@ -39,7 +62,24 @@ Module Retv.
       (m: mem)
   .
 
+  Definition get_m (retv: Retv.t): mem :=
+    match retv with
+    | Retv.Cstyle _ m => m
+    (* | Retv.Asmstyle _ m => m *)
+    | Retv.Asmstyle _ m => Mem.empty
+    end
+  .
+
+  Definition is_cstyle (retv: t): bool :=
+    match retv with
+    | Cstyle _ _ => true
+    | _ => false
+    end
+  .
+
 End Retv.
+
+Hint Unfold Args.is_cstyle Retv.is_cstyle.
 
 Module ModSem.
 

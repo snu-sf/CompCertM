@@ -208,22 +208,24 @@ Module SimSymb.
       system_axiom: forall
           sm0 ss_sys
           skenv_sys_src skenv_sys_tgt
-          args_src args_tgt
-          tr retv_src
+          fptr_src vs_src m_src
+          fptr_tgt vs_tgt m_tgt
+          tr
+          retv_src retm_src
           ef
           (SIMSKENV: sim_skenv sm0 ss_sys skenv_sys_src skenv_sys_tgt)
           (MWF: SimMem.wf sm0)
-          (ARGS: SimMem.sim_args args_src args_tgt sm0)
-          (SYSSRC: external_call ef skenv_sys_src (args_src.(Args.vs)) (args_src.(Args.m))
+          (ARGS: SimMem.sim_args (Args.Cstyle fptr_src vs_src m_src) (Args.Cstyle fptr_tgt vs_tgt m_tgt) sm0)
+          (SYSSRC: external_call ef skenv_sys_src vs_src m_src
                                  tr
-                                 (retv_src.(Retv.v)) (retv_src.(Retv.m)))
+                                 retv_src retm_src)
         ,
           (* exists sm_lift, SimMem.lepriv sm0 sm_lift /\ *)
-          exists sm1 retv_tgt,
-            (<<SYSTGT: external_call ef skenv_sys_tgt (args_tgt.(Args.vs)) (args_tgt.(Args.m))
+          exists sm1 retv_tgt retm_tgt,
+            (<<SYSTGT: external_call ef skenv_sys_tgt vs_tgt m_tgt
                                      tr
-                                     (retv_tgt.(Retv.v)) (retv_tgt.(Retv.m))>>)
-            /\ (<<RETV: SimMem.sim_retv retv_src retv_tgt sm1>>)
+                                     retv_tgt retm_tgt>>)
+            /\ (<<RETV: SimMem.sim_retv (Retv.Cstyle retv_src retm_src) (Retv.Cstyle retv_tgt retm_tgt) sm1>>)
             /\ (<<MLE0: SimMem.le sm0 sm1>>)
             /\ (<<MWF: SimMem.wf sm1>>)
             (* /\ exists sm_unlift, (<<MLE1: SimMem.le sm0 sm_unlift>>) /\ (<<MLE2: SimMem.lepriv sm1 sm_unlift>>) *)

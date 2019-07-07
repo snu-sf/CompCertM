@@ -23,7 +23,7 @@ Section SYSMODSEM.
   Definition skenv: SkEnv.t :=
     skenv_link.(Genv_map_defs)(fun _ gd =>
                                  match gd with
-                                 | Gfun (External ef) => Some (Gfun (Internal ef.(ef_sig)))
+                                 | Gfun (External ef) => Some (Gfun (Internal (Some ef.(ef_sig))))
                                  | Gfun _ => None
                                  | Gvar gv => Some gd
                                  end)
@@ -45,32 +45,38 @@ Section SYSMODSEM.
 
   Inductive state: Type :=
   | Callstate
-      (args: Args.t)
+      (fptr: val)
+      (vs: list val)
+      (m: mem)
   | Returnstate
-      (retv: Retv.t)
+      (v: val)
+      (m: mem)
   .
 
   Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
   | step_intro
-      args ef
-      (FPTR: ge.(Genv.find_funct) args.(Args.fptr) = Some (External ef))
-      tr retv
-      (EXTCALL: external_call ef ge args.(Args.vs) args.(Args.m) tr retv.(Retv.v) retv.(Retv.m))
+      ef
+      fptr vs m0 v m1
+      (FPTR: ge.(Genv.find_funct) fptr = Some (External ef))
+      tr
+      (EXTCALL: external_call ef ge vs m0 tr v m1)
     :
-      step se ge (Callstate args) tr (Returnstate retv)
+      step se ge (Callstate fptr vs m0) tr (Returnstate v m1)
   .
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
+      fptr vs m
+      (CSTYLE: args = Args.Cstyle fptr vs m)
     :
-      initial_frame args (Callstate args)
+      initial_frame args (Callstate fptr vs m)
   .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_intro
-      retv
+      v m
     :
-      final_frame (Returnstate retv) retv
+      final_frame (Returnstate v m) (Retv.Cstyle v m)
   .
 
   Program Definition modsem: ModSem.t := {|
@@ -83,6 +89,7 @@ Section SYSMODSEM.
     ModSem.after_external := bot3;
     ModSem.globalenv:= globalenv;
     ModSem.skenv := skenv;
+    ModSem.skenv_link := skenv_link;
   |}
   .
   Next Obligation. all_prop_inv; ss. Qed.
@@ -100,7 +107,7 @@ Section SYSMODSEM.
   Proof.
     econs; ii; ss.
     - inv H. exploit external_call_receptive; eauto. i; des.
-      esplits; et. econs; et. instantiate (1:= Retv.mk _ _). s. et.
+      esplits; et. econs; et.
     - inv H. eapply external_call_trace_length; et.
   Qed.
 
@@ -115,7 +122,7 @@ Section SYSMODSEM.
       determ_tac external_call_match_traces.
       esplits; et.
       i; clarify.
-      determ_tac external_call_deterministic. destruct retv, retv0; ss. clarify.
+      determ_tac external_call_deterministic.
     - inv H. eapply external_call_trace_length; et.
   Qed.
 

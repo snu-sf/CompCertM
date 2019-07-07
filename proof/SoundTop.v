@@ -27,7 +27,7 @@ Set Implicit Arguments.
 
 Global Program Instance Top: Sound.class := {
   t := unit;
-  lift := top2;
+  lepriv := top2;
   wf := top1;
   val := top2;
   mem := top2;

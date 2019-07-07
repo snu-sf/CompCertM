@@ -138,9 +138,10 @@ Section PRSV.
   Local Existing Instance Unreach.
 
   Theorem sound_state_preservation:
-    local_preservation_strong modsem get_mem (sound_state p modsem.(globalenv)).
+    local_preservation_strong modsem get_mem le' (sound_state p modsem.(globalenv)).
   Proof.
     econs; eauto.
+    { ss. eapply UnreachC.liftspec; et. }
     - i. inv INIT. ss. esplits; eauto; cycle 1.
       { refl. }
       econs; eauto. i.
@@ -315,9 +316,9 @@ Section PRSV.
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
         assert(BCARGS: (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)).(Sound.args) args).
         { ss. inv AT; ss. r. s. rpapply sound_state_sound_args; eauto. }
-        assert(BCLE0: Sound.lift su0 (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock))).
-        { change le' with Sound.lift. eapply UnreachC.hle_lift; eauto. }
-        assert(BCLE1: Sound.lift (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) su_gr).
+        assert(BCLE0: le' su0 (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock))).
+        { eapply UnreachC.hle_lift; eauto. }
+        assert(BCLE1: le' (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) su_gr).
         { eapply GR; eauto. }
         set (f := fun b => if plt b (Mem.nextblock m_arg)
                            then bc b

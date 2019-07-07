@@ -180,11 +180,12 @@ Section TRIAL2.
   .
   Proof.
     esplits.
-    eapply local_preservation_strong_horizontal_excl_spec with (sound_state := (sound_state)); eauto.
+    eapply local_preservation_strong_horizontal_excl_spec with (lift := UnreachC.le') (sound_state := (sound_state)); eauto.
     instantiate (1:= AsmC.get_mem).
     eapply local_preservation_strong_horizontal_excl_intro with
         (has_footprint := has_footprint)
         (mle_excl := mle_excl); ii; ss; eauto.
+    { eapply UnreachC.liftspec; et. }
     - (* FOOTEXCL *)
       inv MLE. inv FOOT. inv MLEEXCL. ss. des. rewrite FPTR in *. rewrite RSP in *. clarify. econs; et.
       + i.

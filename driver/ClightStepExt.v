@@ -713,10 +713,10 @@ Section CLIGHTSOUND.
   .
   Proof.
     esplits.
-    eapply local_preservation_strong_horizontal_spec with (sound_state := sound_state_clight skenv_link); eauto.
+    eapply local_preservation_strong_horizontal_spec with (lift := UnreachC.le') (sound_state := sound_state_clight skenv_link); eauto.
     instantiate (1:=get_mem).
     econs; ss; i.
-
+    { eapply UnreachC.liftspec; et. }
     - inv INIT. ss. inv SUARG. des. esplits; ss.
       + refl.
       + inv SKENV. cinv MEM. econs; ss; eauto.

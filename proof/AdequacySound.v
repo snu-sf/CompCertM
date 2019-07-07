@@ -58,10 +58,10 @@ Section ADQSOUND.
       (GE: Forall (fun ms => su0.(Sound.skenv) m0 ms.(ModSem.skenv)) sem_src.(Smallstep.globalenv).(fst))
   .
 
-  Lemma lift_preserves_sound_ge
+  Lemma lepriv_preserves_sound_ge
         m0 su0 su1
         (GE: sound_ge su0 m0)
-        (LE: Sound.lift su0 su1)
+        (LE: Sound.lepriv su0 su1)
     :
       <<GE: sound_ge su1 m0>>
   .
@@ -69,22 +69,19 @@ Section ADQSOUND.
     inv GE.
     econs; eauto.
     rewrite Forall_forall in *.
-    ii. eapply Sound.skenv_lift; eauto.
+    ii. eapply Sound.skenv_lepriv; eauto.
   Qed.
 
   Lemma hle_preserves_sound_ge
         m0 su0 su1
+        (WF: Sound.wf su0)
         (GE: sound_ge su0 m0)
         (LE: Sound.hle su0 su1)
     :
       <<GE: sound_ge su1 m0>>
   .
   Proof.
-    inv GE.
-    econs; eauto.
-    rewrite Forall_forall in *.
-    ii. eapply Sound.skenv_hle; eauto.
-    (* eapply Sound.skenv_lift; eauto. *)
+    eapply lepriv_preserves_sound_ge; eauto. eapply Sound.hle_lepriv; et.
   Qed.
 
   Lemma mle_preserves_sound_ge
@@ -130,7 +127,7 @@ Section ADQSOUND.
                  (* /\ *)
                  exists su_gr,
                    (<<ARGS: Sound.args su_gr args>>) /\
-                   (<<LE: exists su_imd, Sound.hle su0 su_imd /\ Sound.lift su_imd su_gr>>) /\
+                   (<<LE: Sound.lepriv su0 su_gr>>) /\
                    (<<K: forall
                        retv lst1
                        su_ret
@@ -241,7 +238,7 @@ Section ADQSOUND.
       inv SUST. ss. des. exploit FORALLSU; eauto. { eapply local_preservation_noguarantee_weak; eauto. } intro T; des.
       inv EX. exploit CALL; eauto. i; des.
       esplits; eauto. econs; eauto; cycle 1.
-      + esplits; eauto. eapply lift_preserves_sound_ge; eauto. eapply hle_preserves_sound_ge; eauto.
+      + esplits; eauto. eapply lepriv_preserves_sound_ge; eauto.
         { eapply mle_preserves_sound_ge; eauto. }
       + econs; eauto; cycle 1.
         { esplits; eauto. econs; eauto. }
@@ -303,8 +300,7 @@ Section ADQSOUND.
         inv EX.
         exploit RET; eauto.
         { eapply FORALLSU; eauto.
-          { eapply lift_preserves_sound_ge; try apply LE0. eapply hle_preserves_sound_ge; try apply LE.
-            eapply mle_preserves_sound_ge; eauto. }
+          { eapply lepriv_preserves_sound_ge. { eapply mle_preserves_sound_ge; eauto. } eauto. }
           { eapply local_preservation_noguarantee_weak; eauto. econs; et. } }
         i; des.
         eapply K0; eauto.

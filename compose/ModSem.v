@@ -8,6 +8,7 @@ From Paco Require Import paco.
 Require Import sflib.
 Require Import Skeleton.
 Require Import CoqlibC.
+Require Asm.
 
 Set Implicit Arguments.
 
@@ -15,21 +16,28 @@ Set Implicit Arguments.
 
 Module Args.
 
-  Record t := mk {
-    fptr: val;
-    (* sg: signature; *)
-    vs: list val;
-    m: mem;
-  }.
+  Inductive t: Type :=
+  | Cstyle
+      (fptr: val)
+      (vs: list val)
+      (m: mem)
+  | Asmstyle
+      (rs: Asm.regset)
+      (m: mem)
+  .
 
 End Args.
 
 Module Retv.
 
-  Record t := mk {
-    v: val;
-    m: mem;
-  }.
+  Inductive t: Type :=
+  | Cstyle
+      (v: val)
+      (m: mem)
+  | Asmstyle
+      (rs: Asm.regset)
+      (m: mem)
+  .
 
 End Retv.
 
@@ -139,7 +147,7 @@ Module ModSem.
   Module Atomic.
   Section Atomic.
 
-    Local Coercion ModSem.to_semantics: ModSem.t >-> semantics.
+    Local Coercion ModSem.to_semantics: ModSem.t >-> Smallstep.semantics.
 
     Variable ms: t.
 

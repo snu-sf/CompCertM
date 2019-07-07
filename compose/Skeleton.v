@@ -14,8 +14,8 @@ Generalizable Variables F.
 
 
 
-Definition skdef_of_gdef {F V} (get_sg: F -> signature)
-           (gdef: globdef (AST.fundef F) V): globdef (AST.fundef signature) unit :=
+Definition skdef_of_gdef {F V} (get_sg: F -> option signature)
+           (gdef: globdef (AST.fundef F) V): globdef (AST.fundef (option signature)) unit :=
   match gdef with
   | Gfun (Internal f) => Gfun (Internal f.(get_sg))
   | Gfun (External ef) => Gfun (External ef)
@@ -33,29 +33,29 @@ Proof.
   u. des_ifs. ss. clarify.
 Qed.
 
-Definition skdefs_of_gdefs {F V} (get_sg: F -> signature)
+Definition skdefs_of_gdefs {F V} (get_sg: F -> option signature)
            (gdefs: list (ident * globdef (AST.fundef F) V)):
-  list (ident * globdef (AST.fundef signature) unit) :=
+  list (ident * globdef (AST.fundef (option signature)) unit) :=
   map (update_snd (skdef_of_gdef get_sg)) gdefs
 .
 
 (* Skeleton *)
 Module Sk.
 
-  Definition t := AST.program (AST.fundef signature) unit.
+  Definition t := AST.program (AST.fundef (option signature)) unit.
 
-  Definition load_skenv: t -> Genv.t (AST.fundef signature) unit := @Genv.globalenv (AST.fundef signature) unit.
+  Definition load_skenv: t -> Genv.t (AST.fundef (option signature)) unit := @Genv.globalenv (AST.fundef (option signature)) unit.
   (* No coercion! *)
 
-  Definition load_mem: t -> option mem := @Genv.init_mem (AST.fundef signature) unit.
+  Definition load_mem: t -> option mem := @Genv.init_mem (AST.fundef (option signature)) unit.
   (* No coercion! *)
 
-  Definition of_program {F V} (get_sg: F -> signature) (prog: AST.program (AST.fundef F) V): t :=
+  Definition of_program {F V} (get_sg: F -> option signature) (prog: AST.program (AST.fundef F) V): t :=
     mkprogram (skdefs_of_gdefs get_sg prog.(prog_defs)) prog.(prog_public) prog.(prog_main)
   .
 
   Definition wf_match_fundef CTX F1 F2 (match_fundef: CTX -> fundef F1 -> fundef F2 -> Prop)
-             (fn_sig1: F1 -> signature) (fn_sig2: F2 -> signature): Prop := forall
+             (fn_sig1: F1 -> option signature) (fn_sig2: F2 -> option signature): Prop := forall
       ctx f1 f2
       (MATCH: match_fundef ctx f1 f2)
     ,
@@ -74,8 +74,8 @@ Module Sk.
         F1 V1 F2 V2
         `{Linker (fundef F1)} `{Linker V1}
         match_fundef match_varinfo
-        (p1: AST.program (fundef F1) V1)
-        (p2: AST.program (fundef F2) V2)
+        (p1: AST.program (fundef (option F1)) V1)
+        (p2: AST.program (fundef (option F2)) V2)
         (MATCH: match_program match_fundef match_varinfo p1 p2)
         fn_sig1 fn_sig2
         (WF: wf_match_fundef match_fundef fn_sig1 fn_sig2)
@@ -90,11 +90,11 @@ Module Sk.
     clear - MATCH WF.
     ginduction prog_defs; ii; ss; inv MATCH; ss.
     erewrite IHprog_defs; eauto. f_equal; eauto.
-    inv H3. destruct a, b1; ss. clarify.
-    inv H2; ss.
+    inv H2. destruct a, b1; ss. clarify.
+    inv H1; ss.
     - unfold update_snd. exploit WF; eauto. i; des; clarify; ss.
       + repeat f_equal. exploit WF; et.
-    - inv H1. ss.
+    - inv H. ss.
   Qed.
 
   Let match_fundef F0 F1 (get_sig: F0 -> F1) (_: unit): AST.fundef F0 -> AST.fundef F1 -> Prop :=
@@ -219,10 +219,14 @@ Module Sk.
 
   Definition empty: t := (mkprogram [] [] 1%positive).
 
-  Definition get_sig (skdef: (AST.fundef signature)): signature :=
+  Definition get_sig (skdef: (AST.fundef (option signature))): option signature :=
     match skdef with
-    | Internal sg0 => sg0
-    | External ef => ef.(ef_sig)
+    | Internal sg0 =>
+      match sg0 with
+      | Some sg0 => Some sg0
+      | None => None
+      end
+    | External ef => Some ef.(ef_sig)
     end
   .
 
@@ -240,10 +244,11 @@ Module Sk.
       (PUBINCL: incl sk.(prog_public) sk.(prog_defs_names))
       (* The sum of the sizes of the function parameters must be less than INT_MAX. *)
       (WFPARAM: forall
-          id skd
+          id skd sg
           (IN: In (id, (Gfun skd)) sk.(prog_defs))
+          (SIGSOME: get_sig skd = Some sg)
         ,
-          4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned)
+          4 * size_arguments sg <= Ptrofs.max_unsigned)
   .
 
 End Sk.
@@ -254,14 +259,7 @@ Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
 Module SkEnv.
 
   (* TODO: Fix properly to cope with Ctypes.fundef *)
-  Definition t := Genv.t (AST.fundef signature) unit.
-
-  Definition get_sig (skdef: (AST.fundef signature)): signature :=
-    match skdef with
-    | Internal sg0 => sg0
-    | External ef => ef.(ef_sig)
-    end
-  .
+  Definition t := Genv.t (AST.fundef (option signature)) unit.
 
   Inductive wf (skenv: t): Prop :=
   | wf_intro
@@ -276,10 +274,11 @@ Module SkEnv.
      ,
        <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>>)
     (WFPARAM: forall
-        blk skd
+        blk skd sg
         (DEF: skenv.(Genv.find_def) blk = Some (Gfun skd))
+        (SG: (Sk.get_sig skd) = Some sg)
       ,
-        <<SIZE: 4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned>>)
+        <<SIZE: 4 * size_arguments sg <= Ptrofs.max_unsigned>>)
   .
 
   Inductive wf_mem (skenv: t) (sk: Sk.t) (m0: mem): Prop :=
@@ -340,7 +339,7 @@ Module SkEnv.
       { inv WF. eauto. }
       { i. unfold Genv.find_symbol. ss. eapply PTree.gempty. }
     - inv WF. i. eapply Genv.find_def_inversion in DEF. des.
-      eapply WFPARAM in DEF. eauto.
+      eapply WFPARAM in DEF. eauto. ss.
   Qed.
 
   (* Note:
@@ -355,7 +354,7 @@ Module SkEnv.
        includes a b  === a.(includes) b  === a >= b
    *)
 
-  Inductive includes (skenv: SkEnv.t) (sk: AST.program (AST.fundef signature) unit): Prop :=
+  Inductive includes (skenv: SkEnv.t) (sk: AST.program (AST.fundef (option signature)) unit): Prop :=
   | includes_intro
       (DEFS: forall
           id gd0

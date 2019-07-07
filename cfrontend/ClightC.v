@@ -49,12 +49,13 @@ Section MODSEM.
       targs tres cconv
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd):
+                        /\ Some (signature_of_type targs tres cconv) = Sk.get_sig skd):
       at_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k0 m0) (Args.mk fptr_arg vs_arg m0).
 
   Inductive initial_frame1 (args: Args.t): state -> Prop :=
   | initial_frame1_intro
       fd tyf
+      (CSTYLE: Args.is_cstyle args)
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
       (TYP: CopC.typecheck args.(Args.vs) (type_of_params (fn_params fd))):
@@ -68,6 +69,7 @@ Section MODSEM.
   Inductive after_external1: state -> Retv.t -> state -> Prop :=
   | after_external1_intro
       fptr_arg vs_arg m_arg k retv tv targs tres cconv
+      (CSTYLE: Retv.is_cstyle retv)
       (* tyf *)
       (TYP: typify_c retv.(Retv.v) tres tv):
       after_external1 (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
@@ -88,6 +90,7 @@ Section MODSEM.
   Inductive initial_frame2 (args: Args.t): state -> Prop :=
   | initial_frame2_intro
       tvs fd tyf
+      (CSTYLE: Args.is_cstyle args)
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
       (TYP: ValuesC.typecheck args.(Args.vs) (signature_of_function fd) tvs):
@@ -96,6 +99,7 @@ Section MODSEM.
   Inductive after_external2: state -> Retv.t -> state -> Prop :=
   | after_external2_intro
       fptr_arg vs_arg m_arg k retv tv targs tres cconv
+      (CSTYLE: Retv.is_cstyle retv)
       (* tyf *)
       (TYP: tv = typify retv.(Retv.v) (typ_of_type tres)):
       after_external2 (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)

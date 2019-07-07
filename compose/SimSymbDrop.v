@@ -531,7 +531,7 @@ Next Obligation.
     + exploit CLOSED; et. intro T. unfold privs in T. bsimpl. des. unfold NW in *. bsimpl. des_sumbool. ss.
     + exploit KEPT; eauto. intro T. rewrite H0 in *. exploit prog_defmap_image; eauto.
   - ss.
-    i. eapply WFPARAM. instantiate (1:=id).
+    i. eapply WFPARAM; eauto. instantiate (1:=id).
     destruct (classic (ss0 id)).
     + exploit DROP; eauto. i.
       exploit prog_defmap_norepet; eauto.
@@ -1020,7 +1020,7 @@ Next Obligation.
   - eapply PUBKEPT; eauto.
 Qed.
 Next Obligation.
-  destruct sm0, args_src, args_tgt; ss. inv MWF; ss. inv ARGS; ss. clarify.
+  inv ARGS; ss. destruct sm0; ss. inv MWF; ss. clarify.
   inv SIMSKENV; ss.
   exploit external_call_mem_inject_gen; eauto.
   { instantiate (1:= skenv_sys_tgt).
@@ -1060,7 +1060,8 @@ Next Obligation.
   do 2 eexists.
   dsplits; eauto.
   - instantiate (1:= Retv.mk _ _); ss. eauto.
-  - instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs; ss; eauto.
+  - destruct retv_src; ss. instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs 1; ss; eauto.
+    instantiate (1:= retv_src.(Retv.m)). ss.
   - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
       eapply SRCEXT in H6. unfold src_private in *. ss. des; ss.

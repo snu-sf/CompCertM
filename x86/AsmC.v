@@ -169,7 +169,7 @@ Section MODSEM.
       init_rs rs0 m0 rs1 retv retv_rs retv_m
       (ASMSTYLE: retv = (Retv.Asmstyle retv_rs retv_m))
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC) = Some skd /\ Sk.get_sig skd = None)
-      (RS: rs1 = retv_rs # RA <- (rs0 # RA))
+      (RS: rs1 = retv_rs # PC <- (rs0 # RA))
     :
       after_external (mkstate init_rs (State rs0 m0))
                      retv

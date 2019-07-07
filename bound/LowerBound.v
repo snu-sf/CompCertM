@@ -22,10 +22,14 @@ Record sub_match_genvs A B V W (R: globdef A V -> globdef B W -> Prop)
       exists d1, <<FIND: Genv.find_def ge2 b = Some d1>> /\ <<MATCHDEF: R d0 d1>>;
   }.
 
-Definition match_prog (sk: Sk.t) (tprog: Asm.program) : Prop
-  := @match_program
-       _ _ _ _ (Linking.Linker_fundef signature) Linker_unit
+Program Definition match_prog (sk: Sk.t) (tprog: Asm.program) : Prop
+  := match_program
        (fun cu tf f => tf = AST.transf_fundef fn_sig f) eq sk tprog.
+
+(* Definition match_prog (sk: Sk.t) (tprog: Asm.program) : Prop *)
+(*   := @match_program *)
+(*        _ _ _ _ (Linking.Linker_fundef signature) Linker_unit *)
+(*        (fun cu tf f => tf = AST.transf_fundef fn_sig f) eq sk tprog. *)
 
 Lemma module_match_prog p
   :
@@ -58,36 +62,13 @@ Lemma link_success progs sk
   :
     exists tprog, link_list progs = Some tprog /\ match_prog sk tprog.
 Proof.
-  assert((@link_list _ (@Linker_prog _ _ (Linking.Linker_fundef signature) _)
+  assert((@link_list _ (@Linker_prog _ _ _ _)
                      (map Mod.sk (map module progs))) = Some sk).
-  { unfold link_sk, link_list in *. des_ifs_safe.
-    eapply (@stricter_link_list_aux _ (@Linker_prog (AST.fundef signature) unit (Linking.Linker_fundef signature) Linker_unit) (@Linker_prog (AST.fundef signature) unit Linker_skfundef Linker_unit)) in Heq.
-    - rewrite Heq. auto.
-    - clear Heq.
-      Local Transparent Linker_prog Linker_def Linking.Linker_fundef Linker_skfundef.
-      i. ss. unfold link_prog, proj_sumbool, andb in *. des_ifs_safe.
-      assert (FORALL: @PTree_Properties.for_all
-                        _ (prog_defmap x0) (@link_prog_check _ _ (Linking.Linker_fundef signature) _ x0 x1)
-                      = true).
-      + rewrite PTree_Properties.for_all_correct in Heq0.
-        rewrite PTree_Properties.for_all_correct.
-        i. unfold link_prog_check, proj_sumbool, andb in *. des_ifs_safe.
-        exploit Heq0; eauto. i. des_ifs.
-        ss. unfold link_def in *. des_ifs.
-        ss. unfold link_skfundef, Linking.link_fundef in *. des_ifs.
-      + rewrite FORALL. f_equal. f_equal. eapply PTree.elements_extensional.
-        i. erewrite PTree.gcombine; eauto. erewrite PTree.gcombine; eauto.
-        rewrite PTree_Properties.for_all_correct in Heq0.
-        rewrite PTree_Properties.for_all_correct in FORALL.
-        unfold link_prog_merge. des_ifs.
-        exploit Heq0; eauto. i. exploit FORALL; eauto. i. clear Heq0 FORALL.
-        unfold link_prog_check, proj_sumbool, andb in *. des_ifs.
-        ss. unfold link_def in *. des_ifs.
-        ss. unfold link_skfundef, Linking.link_fundef in *. des_ifs. }
+  { unfold link_sk, link_list in *. des_ifs_safe. }
   clear LINK_SK. rename H into LINK_SK.
-  eapply (@link_list_match (AST.program (AST.fundef signature) unit) Asm.program (@Linker_prog (AST.fundef signature) unit (Linking.Linker_fundef signature)
+  eapply (@link_list_match (AST.program (AST.fundef (option signature)) unit) Asm.program (@Linker_prog (AST.fundef (option signature)) unit (Linking.Linker_fundef (option signature))
                                                                                                Linker_unit)); eauto.
-  - eapply (@TransfTotalLink_rev function signature unit Linker_unit fn_sig).
+  - eapply (@TransfTotalLink_rev function (option signature) unit Linker_unit fn_sig).
   - rewrite list_map_compose. clear LINK_SK.
     induction progs; ss.
     + econs.
@@ -225,7 +206,7 @@ Section PRESERVATION.
       fd
       (MSFIND: ge.(Ge.find_fptr_owner) fptr (AsmC.modsem skenv_link p))
       (FINDF: Genv.find_funct (local_genv p) fptr = Some (Internal fd))
-      (SIZEWF: 4 * size_arguments (fn_sig fd) <= Ptrofs.max_unsigned)
+      (* (SIZEWF: 4 * size_arguments (fn_sig fd) <= Ptrofs.max_unsigned) *)
       (PROGIN: In (AsmC.module p) prog)
   .
 
@@ -350,7 +331,7 @@ Section PRESERVATION.
         skd
         (GLOBAL: Genv.find_funct skenv_link fptr = Some skd)
     :
-      SkEnv.get_sig skd = fd.(fn_sig)
+      Sk.get_sig skd = fd.(fn_sig)
   .
   Proof.
     inv LE.
@@ -360,7 +341,8 @@ Section PRESERVATION.
     cinv (mge_defs b).
     - rewrite Heq in *. clarify.
     - rewrite Heq in *. clarify.
-      unfold skdef_of_gdef, fundef in *. rewrite FIND in *. inv MATCHDEF. des_ifs.
+      unfold skdef_of_gdef, fundef in *. rewrite FIND in *. inv MATCHDEF.
+      des_ifs. ss. des_ifs.
   Qed.
 
 (** ********************* initial memory *********************************)
@@ -446,7 +428,7 @@ Section PRESERVATION.
         (FIND0: Genv.find_funct (System.globalenv skenv_link) v = Some (External ef))
         (FIND1: Genv.find_funct skenv_link v = Some skd)
     :
-      SkEnv.get_sig skd = ef_sig ef
+      Sk.get_sig skd = Some (ef_sig ef)
   .
   Proof.
     unfold System.globalenv in *. clarify.
@@ -512,7 +494,6 @@ Section PRESERVATION.
           exploit external_call_receptive; eauto; cycle 1.
           * i. des.
             eexists. econs; eauto. ss. econs; eauto.
-            instantiate (1:=Retv.mk _ _); eauto.
           * unfold System.globalenv in *.
             unfold SkEnv.t in *.
             eapply match_traces_preserved; [| eauto].
@@ -695,7 +676,7 @@ Section PRESERVATION.
       init_rs P
       (RSRA: init_rs # RA = Vnullptr)
       (RSPC: init_rs # PC = Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero)
-      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal signature_main))
+      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal (Some signature_main)))
     :
       match_stack j P init_rs nil
   | match_stack_cons
@@ -706,11 +687,22 @@ Section PRESERVATION.
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
-                        = Some skd /\ SkEnv.get_sig skd = sg)
+                        = Some skd /\ Sk.get_sig skd = Some sg)
       (RSPPTR: st.(st_rs) # RSP = Vptr blk ofs)
       (RANGE: P0 \2/ (brange blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned ofs + 4 * size_arguments sg)) <2= P1)
     :
       match_stack j P1 init_rs0 (fr::frs)
+  | match_stack_cons_asmstyle
+      fr frs p st init_rs0 init_rs1 P0
+      (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate init_rs1 st))
+      (STACK: match_stack j P0 init_rs1 frs)
+      (WF: inj_same j (st.(st_rs) # RA) (init_rs0 # RA))
+      (GELE: genv_le (local_genv p) tge)
+      (PROGIN: In (AsmC.module p) prog)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
+                        = Some skd /\ Sk.get_sig skd = None)
+    :
+      match_stack j P0 init_rs0 (fr::frs)
   .
 
   Inductive match_stack_call (j: meminj) : mem -> (Values.block -> Z -> Prop) -> regset -> list Frame.t -> Prop :=
@@ -718,7 +710,7 @@ Section PRESERVATION.
       init_rs m P
       (MEM: m = m_init)
       (INITRS: init_rs = initial_regset)
-      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal signature_main))
+      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal (Some signature_main)))
     :
       match_stack_call j m P init_rs nil
   | match_stack_call_cons
@@ -731,11 +723,24 @@ Section PRESERVATION.
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
-                        = Some skd /\ SkEnv.get_sig skd = sg)
+                        = Some skd /\ Sk.get_sig skd = Some sg)
       (RSPPTR: init_rs0 # RSP = Vptr blk ofs)
       (RANGE: P0 \2/ (brange blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned ofs + 4 * size_arguments sg)) <2= P1)
     :
       match_stack_call j m P1 init_rs0 (fr::frs)
+  | match_stack_call_cons_asmstyle
+      fr frs p st init_rs0 init_rs1 m P0
+      (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p)
+                            (AsmC.mkstate init_rs1 st))
+      (INITRS: init_rs0 = st.(st_rs))
+      (STACK: match_stack j P0 init_rs1 frs)
+      (MEM: m = st.(st_m))
+      (GELE: genv_le (local_genv p) tge)
+      (PROGIN: In (AsmC.module p) prog)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
+                        = Some skd /\ Sk.get_sig skd = None)
+    :
+      match_stack_call j m P0 init_rs0 (fr::frs)
   .
 
   Lemma match_stack_incr j1 j2 init_rs l P0 P1
@@ -745,9 +750,9 @@ Section PRESERVATION.
     :
       match_stack j2 P1 init_rs l.
   Proof.
-    revert init_rs INCR P0 P1 PLE MATCH. induction l; ss; ii.
-    - inv MATCH; econs; ss; eauto.
-    - inv MATCH. econs; ss; auto.
+    revert init_rs INCR P0 P1 PLE MATCH. induction l; ss; ii; inv MATCH.
+    - econs; ss; eauto.
+    - econs; ss; auto.
       + eapply IHl; cycle 2; eauto.
       + inv WF. econs; eauto.
         * eapply inj_same_incr; eauto.
@@ -756,6 +761,7 @@ Section PRESERVATION.
       + eauto.
       + eauto.
       + eauto.
+    - econs 3; ss; eauto. eapply inj_same_incr; eauto.
   Qed.
 
   Lemma frame_inj a0 b0 a1 b1
@@ -1418,28 +1424,46 @@ Section PRESERVATION.
     :
       match_states (State (fr::frs)) (Asm.State rs_tgt m_tgt) n
   | match_states_call
-      j init_rs frs args m_src rs_tgt m_tgt ofs blk sg P n
+      j init_rs frs args fptr_arg vs_arg m_arg m_src rs_tgt m_tgt ofs blk sg P n
+      (CSTYLE: args = Args.Cstyle fptr_arg vs_arg m_arg)
       (STACK: match_stack_call j m_src P init_rs frs)
       (PWF: P <2= ~2 (SimMemInj.valid_blocks m_init /2\ loc_not_writable m_init))
       (AGREE: agree j init_rs rs_tgt)
       (INJECT: Mem.inject j m_src m_tgt)
       (MEMWF: Mem.unchanged_on (loc_not_writable m_init) m_init m_src)
       (GEINJECT: skenv_inject skenv_link j m_src)
-      (FPTR: args.(Args.fptr) = init_rs # PC)
+      (FPTR: fptr_arg = init_rs # PC)
       (ARGRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) args.(Args.fptr)
-                        = Some skd /\ SkEnv.get_sig skd = sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg
+                        = Some skd /\ Sk.get_sig skd = Some sg)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))
-      (ARGS: Asm.extcall_arguments init_rs m_src sg args.(Args.vs))
+      (ARGS: Asm.extcall_arguments init_rs m_src sg vs_arg)
       (RSPPTR: init_rs # RSP = Vptr blk ofs)
-      (WFINJ: inj_range_wf skenv_link j args.(Args.m) P)
+      (WFINJ: inj_range_wf skenv_link j m_arg P)
       (* (RAPTR: wf_RA (init_rs RA)) *)
       (RAPTR: <<TPTR: Val.has_type (init_rs RA) Tptr>> /\ <<RADEF: init_rs RA <> Vundef>>)
-      (FREE: freed_from m_src args.(Args.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)))
+      (FREE: freed_from m_src m_arg blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)))
       (ORD: n = 1%nat)
     :
-      match_states (Callstate args frs) (Asm.State rs_tgt m_tgt) n.
+      match_states (Callstate args frs) (Asm.State rs_tgt m_tgt) n
+  | match_states_call_asmstyle
+      j init_rs frs args m_src rs_tgt m_tgt P n
+      (ASMSTYLE: args = Args.Asmstyle init_rs m_src)
+      (STACK: match_stack_call j m_src P init_rs frs)
+      (PWF: P <2= ~2 (SimMemInj.valid_blocks m_init /2\ loc_not_writable m_init))
+      (AGREE: agree j init_rs rs_tgt)
+      (INJECT: Mem.inject j m_src m_tgt)
+      (MEMWF: Mem.unchanged_on (loc_not_writable m_init) m_init m_src)
+      (GEINJECT: skenv_inject skenv_link j m_src)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs # PC)
+                        = Some skd /\ Sk.get_sig skd = None)
+      (WFINJ: inj_range_wf skenv_link j m_src P)
+      (RAPTR: <<TPTR: Val.has_type (init_rs RA) Tptr>> /\ <<RADEF: init_rs RA <> Vundef>>)
+      (ORD: n = 1%nat)
+    :
+      match_states (Callstate args frs) (Asm.State rs_tgt m_tgt) n
+  .
 
   Lemma init_volatile_readonly blk
         (VOL: Genv.block_is_volatile skenv_link blk)
@@ -1468,10 +1492,34 @@ Section PRESERVATION.
     unfold Mem.valid_block. erewrite <- Genv.init_mem_genv_next; eauto; ss.
   Qed.
 
+  Lemma inj_range_wf_step j0 j1 m0 m1 P
+        (MEMPERM: forall blk ofs p, Mem.perm m1 blk ofs Max p -> Mem.perm m0 blk ofs Max p \/ j0 blk = None)
+        (INCR: inject_incr j0 j1)
+        (RANGEWF: inj_range_wf skenv_link j0 m0 P)
+        (INJ: exists m_tgt, Mem.inject j1 m1 m_tgt)
+    :
+      inj_range_wf skenv_link j1 m1 P.
+  Proof.
+    ii. des. inv INJ. inv mi_inj.
+    destruct (RANGEWF blk).
+    - destruct (j1 blk) eqn:EQ.
+      + destruct p. econs 2; eauto; ii.
+        * eapply mi_align; eauto. ii.
+          specialize (H _ H0). ss. des.
+          -- eapply Mem.perm_max; eauto.
+          -- exfalso. eapply BOT. eauto.
+        * des; exfalso; eapply BOT; eauto.
+        * exfalso. eapply BOT. eauto.
+      + econs 1; eauto.
+    - econs 2; eauto. ii.
+      eapply ALIGN. ii. specialize (H x0 PR). ss. des; eauto.
+      eapply Mem.perm_max in H. eapply MEMPERM in H. des; clarify. eauto.
+  Qed.
+
   Lemma asm_step_init_simulation
         args frs st_tgt p n
         (MTCHST: match_states (Callstate args frs) st_tgt n)
-        (OWNER: valid_owner args.(Args.fptr) p)
+        (OWNER: valid_owner args.(Args.get_fptr) p)
         (PROGIN: In (AsmC.module p) prog)
     :
       exists rs m,
@@ -1479,351 +1527,409 @@ Section PRESERVATION.
         (match_states (State ((Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate rs (Asm.State rs m))) :: frs)) st_tgt 0).
   Proof.
 
-    inv MTCHST. dup OWNER. inv OWNER.
-    exploit owner_genv_le; eauto. intros GELE.
-    des. ss.
-    destruct (Mem.alloc args.(Args.m) 0 (4 * size_arguments (fn_sig fd))) eqn:MEQ.
-    exploit Mem.alloc_result; eauto. i. clarify.
-    assert (Genv.find_funct skenv_link (Args.fptr args) =
-            Some (Internal (fn_sig fd))).
-    { dup OWNER0. Local Transparent Genv.find_funct.
-      unfold Genv.find_funct, Genv.find_funct_ptr in *.
-      exploit sub_match_local_genv; eauto. intros MATCHGE.
-      set (sub_mge_defs MATCHGE).
-      des_ifs. specialize (e _ _ Heq1). des; clarify.
-      inv MATCHDEF. ss.
-    }
-    clarify. ss.
-
-    assert (TYPCHK: typecheck (Args.vs args) (fn_sig fd) (typify_list (Args.vs args) (sig_args (fn_sig fd)))).
-    { econs; eauto. rewrite sig_args_length.
-      symmetry. eapply list_forall2_length; eauto. }
-
-
-    exploit callee_initial_inject'; try eapply FREE; eauto.
-    intros INJECT0.
-
-    hexploit callee_initial_inj_incr.
-    { instantiate (1:=Args.m args).
-      inv FREE. rewrite freed_from_nextblock.
-      eapply Mem.mi_freeblocks; try apply INJECT.
-      apply Plt_strict. }
-    instantiate (1:= ofs). instantiate (1:= blk). intros INCR.
-
-    hexploit callee_initial_arguments; eauto.
-    intros ARGS0. instantiate (1:=Args.m args) in ARGS0.
-
-    hexploit callee_initial_rsp_inj_same.
-    { instantiate (1:=Args.m args).
-      inv FREE. rewrite freed_from_nextblock.
-      eapply Mem.mi_freeblocks; try apply INJECT.
-      apply Plt_strict. }
-    { instantiate (1:=blk). ii. cinv (AGREE RSP); rewrite RSPPTR in *; clarify. }
-    instantiate (1:=ofs). intros SAME.
-
-    set (callee_initial_reg :=
-           fun pr => match Asm.to_mreg pr with
-                     | Some mr =>
-                       if (is_callee_save mr)
-                       then (init_rs pr)
-                       else
-                         (callee_initial_reg' (fn_sig fd)
-                                              (typify_list (Args.vs args) (sig_args (fn_sig fd))))
-                           mr
-                     | None =>
-                       match pr with
-                       | IR RSP => (Vptr (Mem.nextblock m_src) Ptrofs.zero)
-                       | PC => init_rs PC
-                       | RA => init_rs RA
-                       | _ => Vundef
-                       end
-                     end).
-
-    destruct (callee_initial_junk'
-                callee_initial_reg
-                (Mem.nextblock (callee_initial_mem' blk ofs m_src (Args.m args)
-                                                    (fn_sig fd) (typify_list (Args.vs args) (sig_args (fn_sig fd)))))
-                (callee_initial_inj' blk ofs j (Args.m args))
-                callee_save_registers) as [[rs_callee n] j_callee] eqn:JUNKED.
-    exploit callee_initial_junk_spec; try apply JUNKED; eauto.
-    { instantiate (1:=rs_tgt). ii.
-      unfold callee_initial_reg. des_ifs; eauto.
-      - unfold callee_initial_reg'. des_ifs.
-        eapply Mem.val_lessdef_inject_compose.
-        + eapply val_inject_id.
-          eapply _FillArgsParallel.fill_args_src_reg_agree.
-          * eapply val_inject_list_lessdef.
-            apply typify_list_lessdef; eauto.
-            inv TYPCHK. auto.
-          * inv TYPCHK. rewrite typify_list_length; auto. apply sig_args_length.
-          * eapply extcall_arguments_extcall_arg_in_reg; eauto.
-            { instantiate (1:=Ptrofs.unsigned ofs).
-              set (Ptrofs.unsigned_range_2 ofs). lia. }
-            { rewrite Ptrofs.repr_unsigned. rewrite <- RSPPTR.
-              eapply asm_extcall_arguments_mach; eauto. }
-        + eapply val_inject_incr; eauto.
-          unfold AsmregsC.to_mregset. erewrite to_mreg_preg_of; eauto.
-    - eapply inj_same_inj.
-        + symmetry. dup SAME.
-          inv FREE. rewrite <- freed_from_nextblock. eassumption.
-        + rewrite <- RSPPTR. eauto. }
-
-    i. des.
-
-    exists rs_callee.
-    exists (assign_junk_blocks
-              (callee_initial_mem' blk ofs m_src (Args.m args)
-                                   (fn_sig fd) (typify_list (Args.vs args) (sig_args (fn_sig fd)))) n).
-
-    assert (UNCH: Mem.unchanged_on
-                    (fun (b : Values.block) (ofs0 : Z) =>
-                       if eq_block b (Mem.nextblock (Args.m args))
-                       then ~ 0 <= ofs0 < 4 * size_arguments (fn_sig fd)
-                       else True) m
-                    (callee_initial_mem' blk ofs m_src (Args.m args) (fn_sig fd)
-                                         (typify_list (Args.vs args) (sig_args (fn_sig fd))))).
+    inv MTCHST.
+    (* Cstyle function *)
     {
-      econs; ss.
-      - erewrite Mem.nextblock_alloc; eauto. refl.
-      - i. Local Opaque Mem.alloc. unfold Mem.perm. ss. rewrite MEQ. ss.
-      - i. clear - MEQ H0 H1. des_ifs.
-        + exfalso. eapply Mem.perm_alloc_3 in H1; eauto.
-        + repeat rewrite PMap.gso; eauto.
-          symmetry. eapply Mem.unchanged_on_contents; eauto.
-          * eapply Mem.alloc_unchanged_on; eauto.
-          * instantiate (1:=top2). auto.
-          * eapply Mem.perm_alloc_4; eauto. }
-    split.
+      dup OWNER. inv OWNER.
+      exploit owner_genv_le; eauto. intros GELE.
+      des. ss.
+      destruct (Mem.alloc m_arg 0 (4 * size_arguments sg)) eqn:MEQ.
+      exploit Mem.alloc_result; eauto. i. clarify.
+      assert (Genv.find_funct skenv_link (init_rs PC) =
+              Some (Internal (fn_sig fd))).
+      { dup OWNER0. Local Transparent Genv.find_funct.
+        unfold Genv.find_funct, Genv.find_funct_ptr in *.
+        exploit sub_match_local_genv; eauto. intros MATCHGE.
+        set (sub_mge_defs MATCHGE).
+        des_ifs. specialize (e _ _ Heq1). des; clarify.
+        inv MATCHDEF. ss.
+      }
+      clarify. ss.
 
-    { econs; eauto.
+      assert (TYPCHK: typecheck vs_arg sg (typify_list vs_arg (sig_args sg))).
+      { econs; eauto. rewrite sig_args_length.
+        symmetry. eapply list_forall2_length; eauto. }
 
-      - erewrite <- EQ.
-        + unfold callee_initial_reg. ss.
-        + ss. ii. des; clarify.
+      exploit callee_initial_inject'; try eapply FREE; eauto.
+      intros INJECT0.
 
-      - econs.
-        + econs; eauto.
-          * eapply extcall_arguments_same; eauto.
-            i. hexploit Conventions1C.loc_args_callee_save_disjoint; eauto. i.
-            unfold AsmregsC.to_mregset. erewrite <- EQ.
-            { unfold callee_initial_reg.
-              rewrite to_preg_to_mreg. des_ifs. }
-            { ii. eapply callee_save_registers_spec in H1. des.
-              - apply f_equal with (f:=to_mreg) in MR.
-                repeat rewrite to_preg_to_mreg in *. clarify.
-              - apply f_equal with (f:=to_mreg) in H1.
-                repeat rewrite to_preg_to_mreg in *. ss. }
+      hexploit callee_initial_inj_incr.
+      { instantiate (1:=m_arg).
+        inv FREE. rewrite freed_from_nextblock.
+        eapply Mem.mi_freeblocks; try apply INJECT.
+        apply Plt_strict. }
+      instantiate (1:= ofs). instantiate (1:= blk). intros INCR.
 
-          * clear JUNKED.
-            assert (LEN: Datatypes.length (Args.vs args) = Datatypes.length (sig_args (fn_sig fd))).
-            { rewrite sig_args_length. symmetry.
-              eapply list_forall2_length; eauto. }
+      hexploit callee_initial_arguments; eauto.
+      intros ARGS0. instantiate (1:=m_arg) in ARGS0.
 
-            hexploit _FillArgsParallel.fill_args_src_blk_only_args.
-            { eapply val_inject_list_lessdef.
-              eapply typify_list_lessdef; eauto. }
-            { eapply loc_arguments_norepet. }
-            { erewrite typify_list_length; eauto.
-              eapply sig_args_length. }
-            { eapply loc_arguments_one. }
-            { eapply extcall_arguments_extcall_arg_in_stack.
-              - instantiate (1:=Ptrofs.unsigned ofs).
-                set (Ptrofs.unsigned_range ofs). lia.
-              - erewrite Ptrofs.repr_unsigned. erewrite <- RSPPTR.
+      hexploit callee_initial_rsp_inj_same.
+      { instantiate (1:=m_arg).
+        inv FREE. rewrite freed_from_nextblock.
+        eapply Mem.mi_freeblocks; try apply INJECT.
+        apply Plt_strict. }
+      { instantiate (1:=blk). ii. cinv (AGREE RSP); rewrite RSPPTR in *; clarify. }
+      instantiate (1:=ofs). intros SAME.
+
+      set (callee_initial_reg :=
+             fun pr => match Asm.to_mreg pr with
+                       | Some mr =>
+                         if (is_callee_save mr)
+                         then (init_rs pr)
+                         else
+                           (callee_initial_reg' sg
+                                                (typify_list vs_arg (sig_args sg)))
+                             mr
+                       | None =>
+                         match pr with
+                         | IR RSP => (Vptr (Mem.nextblock m_src) Ptrofs.zero)
+                         | PC => init_rs PC
+                         | RA => init_rs RA
+                         | _ => Vundef
+                         end
+                       end).
+
+      destruct (callee_initial_junk'
+                  callee_initial_reg
+                  (Mem.nextblock (callee_initial_mem' blk ofs m_src m_arg
+                                                      sg (typify_list vs_arg (sig_args sg))))
+                  (callee_initial_inj' blk ofs j m_arg)
+                  callee_save_registers) as [[rs_callee n] j_callee] eqn:JUNKED.
+      exploit callee_initial_junk_spec; try apply JUNKED; eauto.
+      { instantiate (1:=rs_tgt). ii.
+        unfold callee_initial_reg. des_ifs; eauto.
+        - unfold callee_initial_reg'. des_ifs.
+          eapply Mem.val_lessdef_inject_compose.
+          + eapply val_inject_id.
+            eapply _FillArgsParallel.fill_args_src_reg_agree.
+            * eapply val_inject_list_lessdef.
+              apply typify_list_lessdef; eauto.
+              inv TYPCHK. auto.
+            * inv TYPCHK. rewrite typify_list_length; auto. apply sig_args_length.
+            * eapply extcall_arguments_extcall_arg_in_reg; eauto.
+              { instantiate (1:=Ptrofs.unsigned ofs).
+                set (Ptrofs.unsigned_range_2 ofs). lia. }
+              { rewrite Ptrofs.repr_unsigned. rewrite <- RSPPTR.
                 eapply asm_extcall_arguments_mach; eauto. }
+          + eapply val_inject_incr; eauto.
+            unfold AsmregsC.to_mregset. erewrite to_mreg_preg_of; eauto.
+        - eapply inj_same_inj.
+          + symmetry. dup SAME.
+            inv FREE. rewrite <- freed_from_nextblock. eassumption.
+          + rewrite <- RSPPTR. eauto. }
 
-            intros ONLY ofs0. specialize (ONLY ofs0).
-            Local Transparent Mem.alloc Mem.load.
-            unfold callee_initial_mem', Mem.alloc. ss. des.
-            { left. repeat rewrite PMap.gss. eauto. }
-            { right. esplits; eauto. unfold Mem.load. ss.
-              hexploit loc_arguments_bounded; eauto. i.
-              hexploit loc_arguments_acceptable; eauto.
-              { instantiate (1:=fn_sig fd).
-                instantiate (1:=One (S Outgoing ofs1 ty)).
-                exploit in_regs_of_rpairs_inv; eauto. i. des.
-                rpapply H1.
-                eapply loc_arguments_one in H1. unfold is_one in *. des_ifs.
-                ss. des; clarify. } i. inv H1.
-              rewrite Ptrofs.add_zero_l. rewrite Ptrofs.unsigned_repr; cycle 1.
-              { rewrite typesize_chunk in *. lia. } des_ifs.
-              - repeat erewrite PMap.gss. auto.
-              - exfalso. eapply n0.
-                unfold Mem.valid_access, Mem.range_perm, Mem.perm. ss. split.
-                + ii. rewrite PMap.gss. rewrite typesize_chunk in *.
-                  unfold proj_sumbool; des_ifs; (try by econs); try lia.
-                + clear - H3.
-                  destruct ty; ss; try by eapply Z.divide_factor_l.
-                  eapply Z.mul_divide_mono_l with (p:=4) in H3. eauto. }
+      i. des.
 
-          * ss. eapply Mem.nextblock_alloc; eauto.
-          * unfold Mem.range_perm. i. erewrite callee_initial_mem_perm. des_ifs.
-            unfold proj_sumbool. clear - H0. des_ifs; lia.
-        + erewrite <- EQ.
-          * unfold callee_initial_reg. ss.
-            inv FREE. rewrite freed_from_nextblock. auto.
-          * ss. ii. des; clarify.
+      exists rs_callee.
+      exists (assign_junk_blocks
+                (callee_initial_mem' blk ofs m_src m_arg
+                                     sg (typify_list vs_arg (sig_args sg))) n).
 
-      - clear - TPTR RADEF SAME0.
-        cinv (SAME0 RA).
-        + rewrite VAL1. econs; ss.
-        + rewrite <- EQ. unfold callee_initial_reg. ss.
+      assert (UNCH: Mem.unchanged_on
+                      (fun (b : Values.block) (ofs0 : Z) =>
+                         if eq_block b (Mem.nextblock m_arg)
+                         then ~ 0 <= ofs0 < 4 * size_arguments sg
+                         else True) m
+                      (callee_initial_mem' blk ofs m_src m_arg sg
+                                           (typify_list vs_arg (sig_args sg)))).
+      {
+        econs; ss.
+        - erewrite Mem.nextblock_alloc; eauto. refl.
+        - i. Local Opaque Mem.alloc. unfold Mem.perm. ss. rewrite MEQ. ss.
+        - i. clear - MEQ H0 H1. des_ifs.
+          + exfalso. eapply Mem.perm_alloc_3 in H1; eauto.
+          + repeat rewrite PMap.gso; eauto.
+            symmetry. eapply Mem.unchanged_on_contents; eauto.
+            * eapply Mem.alloc_unchanged_on; eauto.
+            * instantiate (1:=top2). auto.
+            * eapply Mem.perm_alloc_4; eauto. }
+      split.
 
-      - ii. exploit JUNK.
-        + instantiate (1:=RA). ss. eauto.
-        + i. unfold is_junk_value in *. rewrite RAVAL in *. apply H1.
-          unfold Mem.valid_block. eapply Plt_Ple_trans; eauto.
-          erewrite callee_initial_mem_nextblock.
-          hexploit skenv_inject_memory; eauto. i.
-          inv FREE. rewrite freed_from_nextblock in *. ss. clear - H2. xomega.
-      - ii.
-        assert (NIN: ~ In pr callee_save_registers); eauto.
-        dup NIN. erewrite callee_save_registers_spec in NIN.
-        rewrite <- EQ in PTR; auto.
-        unfold callee_initial_reg in PTR.
-        destruct (to_mreg pr) eqn:MR.
-        + des_ifs.
-          * exfalso. apply NIN. left. esplits; eauto.
-            eapply AsmregsC.to_mreg_some_to_preg; eauto.
-          * unfold callee_initial_reg' in PTR. des_ifs; ss.
-            left. esplits; eauto.
-        + right. des_ifs; ss; eauto. exfalso. eauto.
+      { econs; eauto.
+        - des_ifs.
+
+        - clear - TPTR RADEF SAME0.
+          cinv (SAME0 RA).
+          + rewrite VAL1. econs; ss.
+          + rewrite <- EQ. unfold callee_initial_reg. ss.
+
+        - ii. exploit JUNK.
+          + instantiate (1:=RA). ss. eauto.
+          + i. unfold is_junk_value in *. rewrite RAVAL in *. apply H1.
+            unfold Mem.valid_block. eapply Plt_Ple_trans; eauto.
+            erewrite callee_initial_mem_nextblock.
+            hexploit skenv_inject_memory; eauto. i.
+            inv FREE. rewrite freed_from_nextblock in *. ss. clear - H2. xomega.
+
+        - erewrite <- EQ.
+          + unfold callee_initial_reg. ss.
+          + ss. ii. des; clarify.
+
+        - econs.
+          + econs; eauto.
+            * eapply extcall_arguments_same; eauto.
+              i. hexploit Conventions1C.loc_args_callee_save_disjoint; eauto. i.
+              unfold AsmregsC.to_mregset. erewrite <- EQ.
+              { unfold callee_initial_reg.
+                rewrite to_preg_to_mreg. des_ifs. }
+              { ii. eapply callee_save_registers_spec in H1. des.
+                - apply f_equal with (f:=to_mreg) in MR.
+                  repeat rewrite to_preg_to_mreg in *. clarify.
+                - apply f_equal with (f:=to_mreg) in H1.
+                  repeat rewrite to_preg_to_mreg in *. ss. }
+
+            * clear JUNKED.
+              assert (LEN: Datatypes.length vs_arg = Datatypes.length (sig_args sg)).
+              { rewrite sig_args_length. symmetry.
+                eapply list_forall2_length; eauto. }
+
+              hexploit _FillArgsParallel.fill_args_src_blk_only_args.
+              { eapply val_inject_list_lessdef.
+                eapply typify_list_lessdef; eauto. }
+              { eapply loc_arguments_norepet. }
+              { erewrite typify_list_length; eauto.
+                eapply sig_args_length. }
+              { eapply loc_arguments_one. }
+              { eapply extcall_arguments_extcall_arg_in_stack.
+                - instantiate (1:=Ptrofs.unsigned ofs).
+                  set (Ptrofs.unsigned_range ofs). lia.
+                - erewrite Ptrofs.repr_unsigned. erewrite <- RSPPTR.
+                  eapply asm_extcall_arguments_mach; eauto. }
+
+              intros ONLY ofs0. specialize (ONLY ofs0).
+              Local Transparent Mem.alloc Mem.load.
+              unfold callee_initial_mem', Mem.alloc. ss. des.
+              { left. repeat rewrite PMap.gss. eauto. }
+              { right. esplits; eauto. unfold Mem.load. ss.
+                hexploit loc_arguments_bounded; eauto. i.
+                hexploit loc_arguments_acceptable; eauto.
+                { instantiate (1:=sg).
+                  instantiate (1:=One (S Outgoing ofs1 ty)).
+                  exploit in_regs_of_rpairs_inv; eauto. i. des.
+                  rpapply H1.
+                  eapply loc_arguments_one in H1. unfold is_one in *. des_ifs.
+                  ss. des; clarify. } i. inv H1.
+                rewrite Ptrofs.add_zero_l. rewrite Ptrofs.unsigned_repr; cycle 1.
+                { rewrite typesize_chunk in *. clear - H0 H2 ARGRANGE.
+                  set (Ptrofs.unsigned_range_2 ofs). set (typesize_pos ty). lia. } des_ifs.
+                - repeat erewrite PMap.gss. auto.
+                - exfalso. eapply n0.
+                  unfold Mem.valid_access, Mem.range_perm, Mem.perm. ss. split.
+                  + ii. rewrite PMap.gss. rewrite typesize_chunk in *.
+                    unfold proj_sumbool; des_ifs; (try by econs); try lia.
+                  + clear - H3.
+                    destruct ty; ss; try by eapply Z.divide_factor_l.
+                    eapply Z.mul_divide_mono_l with (p:=4) in H3. eauto. }
+
+            * ss. eapply Mem.nextblock_alloc; eauto.
+            * unfold Mem.range_perm. i. erewrite callee_initial_mem_perm. des_ifs.
+              unfold proj_sumbool. clear - H0. des_ifs; lia.
+          + erewrite <- EQ.
+            * unfold callee_initial_reg. ss.
+              inv FREE. rewrite freed_from_nextblock. auto.
+            * ss. ii. des; clarify.
+
+        - ii.
+          assert (NIN: ~ In pr callee_save_registers); eauto.
+          dup NIN. erewrite callee_save_registers_spec in NIN.
+          rewrite <- EQ in PTR; auto.
+          unfold callee_initial_reg in PTR.
+          destruct (to_mreg pr) eqn:MR.
+          + des_ifs.
+            * exfalso. apply NIN. left. esplits; eauto.
+              eapply AsmregsC.to_mreg_some_to_preg; eauto.
+            * unfold callee_initial_reg' in PTR. des_ifs; ss.
+              left. esplits; eauto.
+          + right. des_ifs; ss; eauto. exfalso. eauto.
+      }
+
+      { econs.
+        - eapply AGREE0.
+        - eapply INJECT1.
+        - clear JUNKED.
+          apply mem_readonly_trans with m_src; eauto.
+          apply mem_readonly_trans with m_arg.
+          { inv FREE. eapply Mem.unchanged_on_implies; eauto.
+            ii. ss. des_ifs. ii. eapply H0. eapply Mem.perm_implies.
+            - eapply Mem.perm_cur. eapply freed_from_perm. auto.
+            - econs. }
+          apply mem_readonly_trans with m.
+          { eapply Mem.alloc_unchanged_on. eauto. }
+          apply mem_readonly_trans with (callee_initial_mem'
+                                           blk ofs m_src m_arg sg
+                                           (typify_list vs_arg (sig_args sg))).
+          { inv FREE. eapply Mem.unchanged_on_implies; try eassumption.
+            ii. ss. des_ifs. ii. apply H0. eapply Mem.perm_implies.
+            - eapply Mem.perm_cur. eapply Mem_alloc_range_perm; eauto.
+            - econs. }
+          eapply Mem.unchanged_on_implies.
+          { eapply assign_junk_blocks_unchanged_on. }
+          ss.
+        - eauto.
+        - eauto.
+        - dup GEINJECT. inv GEINJECT. econs.
+          + ii. exploit DOMAIN; eauto.
+          + ii. des.
+            * dup PERM. eapply Senv.block_is_volatile_below in PERM.
+              apply DOMAIN in PERM. eapply IMAGE; eauto. instantiate (1:=0).
+              rewrite PERM. apply INCR in PERM. apply INCR0 in PERM. clarify.
+            * rewrite assign_junk_blocks_perm in PERM.
+              rewrite callee_initial_mem_perm in PERM. des_ifs.
+              { destruct (callee_initial_inj' blk ofs j m_arg (Mem.nextblock m_arg)) as [[]|] eqn:DELTA.
+                - dup DELTA. apply INCR0 in DELTA0. clarify.
+                  unfold callee_initial_inj' in DELTA. des_ifs.
+                  eapply IMAGE in Heq0.
+                  + rewrite Heq0. ss.
+                    destruct (Genv.block_is_volatile skenv_link blk) eqn:VEQ0.
+                    { exfalso. eapply volatile_readonly in VEQ0; eauto.
+                      eapply VEQ0. eapply Mem.perm_cur. eapply Mem.perm_implies.
+                      - eapply freed_from_perm; eauto.
+                        instantiate (1:=Ptrofs.unsigned ofs + ofs0).
+                        unfold proj_sumbool in *. clear JUNKED. des_ifs. lia.
+                      - econs. }
+                    destruct (Genv.block_is_volatile skenv_link (Mem.nextblock m_arg)) eqn: VEQ1; auto.
+                    apply Genv.block_is_volatile_below in VEQ1.
+                    hexploit skenv_inject_memory; try eassumption. i.
+                    inv FREE. rewrite freed_from_nextblock in *. clear - VEQ1 H1. xomega.
+                  + right. exists (Ptrofs.unsigned ofs + ofs0).
+                    eapply Mem.perm_cur. eapply Mem.perm_implies.
+                    * inv FREE. eapply freed_from_perm.
+                      unfold proj_sumbool in *. des_ifs. clear - l0 l. lia.
+                    * econs.
+
+                - hexploit SEP; try eassumption. i.
+                  unfold Mem.valid_block in *. rewrite callee_initial_mem_nextblock in *.
+                  clear - H1. xomega.
+              }
+              { destruct (callee_initial_inj' blk ofs j m_arg b1) as [[]|] eqn:DELTA.
+                - unfold callee_initial_inj' in DELTA. des_ifs.
+                  dup DELTA. eapply INCR in DELTA. eapply INCR0 in DELTA. clarify.
+                  eapply IMAGE; try eassumption. right. exists ofs0.
+                  eapply freed_from_perm_greater; eauto.
+                - hexploit SEP; try eassumption. i.
+                  unfold Mem.valid_block in *. rewrite callee_initial_mem_nextblock in *.
+                  eapply Mem.perm_valid_block in PERM. exfalso. apply H0.
+                  unfold Mem.valid_block in PERM. clear - PERM. xomega. }
+
+        - ss.
+
+        - instantiate (1:=P).
+          inv STACK.
+          + econs; eauto.
+            * specialize (SAME0 RA). unfold callee_initial_reg in SAME0. ss.
+              unfold initial_regset, Pregmap.set in SAME0. des_ifs.
+            * erewrite <- EQ. unfold callee_initial_reg. ss.
+              clear. ii. ss; des; clarify.
+          + econs; eauto.
+            * eapply match_stack_incr; try apply STACK0; eauto. etrans; eauto.
+            * econs.
+              { rewrite <- EQ. unfold callee_initial_reg. ss.
+                clear. ii. ss; des; clarify. }
+              { ii. exploit JUNK.
+                - instantiate (1:=RA). ss. eauto.
+                - unfold is_junk_value. rewrite RAVAL. i. apply H1.
+                  unfold Mem.valid_block. ss.
+                  hexploit skenv_inject_memory; eauto. i.
+                  inv FREE. rewrite freed_from_nextblock in *.
+                  eapply Plt_Ple_trans; eauto. clear - H2. xomega. }
+              { etrans; try eapply SAME0.
+                unfold callee_initial_reg. ss. refl. }
+              { etrans; try eapply SAME0.
+                unfold callee_initial_reg. ss. rewrite RSPPTR0.
+                rewrite RSPPTR in *. clarify.
+                inv FREE. rewrite <- freed_from_nextblock.
+                eapply inj_same_incr; eauto. }
+              { ii. etrans; try apply SAME0.
+                unfold callee_initial_reg. rewrite to_preg_to_mreg.
+                des_ifs_safe. refl. }
+            * replace (rs_callee PC) with (st_rs st PC); eauto.
+              erewrite <- EQ; ss.
+              clear. ii. des; clarify.
+          + exfalso. des. clarify.
+            eapply local_global_consistent in FINDF; eauto. ss. des_ifs.
+
+        - auto.
+
+        - ii. cinv (WFINJ blk0).
+          + destruct (j_callee blk0) as [[]|]eqn:BLK.
+            * econs 2; eauto.
+              { ii. eapply Mem.mi_align; try apply INJECT1; eauto.
+                ii. eapply H0 in H1. des; clarify.
+                - eapply Mem.perm_max. eauto.
+                - exfalso. eapply BOT; eauto. }
+              { ii. eapply Mem.mi_representable; try apply INJECT1; eauto.
+                exfalso. des; eapply BOT; eauto. }
+              { ii. exfalso. eapply BOT. eauto. }
+
+            * econs 1; eauto.
+
+          + econs 2; eauto. i. eapply ALIGN0.
+            ii. apply H0 in PR. des; eauto. left.
+            rewrite assign_junk_blocks_perm in PR.
+            rewrite callee_initial_mem_perm in PR. des_ifs; eauto.
+            exfalso. eapply Mem.valid_block_inject_1 in DELTA; eauto.
+            inv FREE. rewrite freed_from_nextblock in *. eapply Plt_strict; eauto.
+
+        - des_ifs. exfalso. unfold external_state in *.
+          erewrite <- EQ in Heq.
+          + unfold callee_initial_reg in *. ss. clear JUNKED. des_ifs.
+            unfold Genv.find_funct in FINDF. clear - Heq2 FINDF. des_ifs.
+          + clear. ii. ss. des; clarify.
+      }
     }
 
-    { econs.
-      - eapply AGREE0.
-      - eapply INJECT1.
-      - clear JUNKED.
-        apply mem_readonly_trans with m_src; eauto.
-        apply mem_readonly_trans with (Args.m args).
-        { inv FREE. eapply Mem.unchanged_on_implies; eauto.
-          ii. ss. des_ifs. ii. eapply H0. eapply Mem.perm_implies.
-          - eapply Mem.perm_cur. eapply freed_from_perm. auto.
-          - econs. }
-        apply mem_readonly_trans with m.
-        { eapply Mem.alloc_unchanged_on. eauto. }
-        apply mem_readonly_trans with (callee_initial_mem'
-                                         blk ofs m_src (Args.m args) (fn_sig fd)
-                                         (typify_list (Args.vs args) (sig_args (fn_sig fd)))).
-        { inv FREE. eapply Mem.unchanged_on_implies; try eassumption.
-          ii. ss. des_ifs. ii. apply H0. eapply Mem.perm_implies.
-          - eapply Mem.perm_cur. eapply Mem_alloc_range_perm; eauto.
-          - econs. }
-        eapply Mem.unchanged_on_implies.
-        { eapply assign_junk_blocks_unchanged_on. }
-        ss.
-      - eauto.
-      - eauto.
-      - dup GEINJECT. inv GEINJECT. econs.
-        + ii. exploit DOMAIN; eauto.
-        + ii. des.
-          * dup PERM. eapply Senv.block_is_volatile_below in PERM.
-            apply DOMAIN in PERM. eapply IMAGE; eauto. instantiate (1:=0).
-            rewrite PERM. apply INCR in PERM. apply INCR0 in PERM. clarify.
-          * rewrite assign_junk_blocks_perm in PERM.
-            rewrite callee_initial_mem_perm in PERM. des_ifs.
-            { destruct (callee_initial_inj' blk ofs j (Args.m args) (Mem.nextblock (Args.m args))) as [[]|] eqn:DELTA.
-              - dup DELTA. apply INCR0 in DELTA0. clarify.
-                unfold callee_initial_inj' in DELTA. des_ifs.
-                eapply IMAGE in Heq.
-                + rewrite Heq. ss.
-                  destruct (Genv.block_is_volatile skenv_link blk) eqn:VEQ0.
-                  { exfalso. eapply volatile_readonly in VEQ0; eauto.
-                    eapply VEQ0. eapply Mem.perm_cur. eapply Mem.perm_implies.
-                    - eapply freed_from_perm; eauto.
-                      instantiate (1:=Ptrofs.unsigned ofs + ofs0).
-                      unfold proj_sumbool in *. clear JUNKED. des_ifs. lia.
-                    - econs. }
-                  destruct (Genv.block_is_volatile skenv_link (Mem.nextblock (Args.m args))) eqn: VEQ1; auto.
-                  apply Genv.block_is_volatile_below in VEQ1.
-                  hexploit skenv_inject_memory; try eassumption. i.
-                  inv FREE. rewrite freed_from_nextblock in *. clear - VEQ1 H1. xomega.
-                + right. exists (Ptrofs.unsigned ofs + ofs0).
-                  eapply Mem.perm_cur. eapply Mem.perm_implies.
-                  * inv FREE. eapply freed_from_perm.
-                    unfold proj_sumbool in *. des_ifs. clear - l0 l. lia.
-                  * econs.
-
-              - hexploit SEP; try eassumption. i.
-                unfold Mem.valid_block in *. rewrite callee_initial_mem_nextblock in *.
-                clear - H1. xomega.
-            }
-            { destruct (callee_initial_inj' blk ofs j (Args.m args) b1) as [[]|] eqn:DELTA.
-              - unfold callee_initial_inj' in DELTA. des_ifs.
-                dup DELTA. eapply INCR in DELTA. eapply INCR0 in DELTA. clarify.
-                eapply IMAGE; try eassumption. right. exists ofs0.
-                eapply freed_from_perm_greater; eauto.
-              - hexploit SEP; try eassumption. i.
-                unfold Mem.valid_block in *. rewrite callee_initial_mem_nextblock in *.
-                eapply Mem.perm_valid_block in PERM. exfalso. apply H0.
-                unfold Mem.valid_block in PERM. clear - PERM. xomega. }
-
-      - ss.
-
-      - instantiate (1:=P).
-        inv STACK.
-        + econs; eauto.
-          * specialize (SAME0 RA). unfold callee_initial_reg in SAME0. ss.
-            unfold initial_regset, Pregmap.set in SAME0. des_ifs.
-          * erewrite <- EQ. unfold callee_initial_reg. ss.
-            clear. ii. ss; des; clarify.
-        + econs; eauto.
-          * eapply match_stack_incr; try apply STACK0; eauto. etrans; eauto.
-          * econs.
-            { rewrite <- EQ. unfold callee_initial_reg. ss.
-              clear. ii. ss; des; clarify. }
-            { ii. exploit JUNK.
-              - instantiate (1:=RA). ss. eauto.
-              - unfold is_junk_value. rewrite RAVAL. i. apply H1.
-                unfold Mem.valid_block. ss.
-                hexploit skenv_inject_memory; eauto. i.
-                inv FREE. rewrite freed_from_nextblock in *.
-                eapply Plt_Ple_trans; eauto. clear - H2. xomega. }
-            { etrans; try eapply SAME0.
-              unfold callee_initial_reg. ss. refl. }
-            { etrans; try eapply SAME0.
-              unfold callee_initial_reg. ss. rewrite RSPPTR0.
-              rewrite RSPPTR in *. clarify.
-              inv FREE. rewrite <- freed_from_nextblock.
-              eapply inj_same_incr; eauto. }
-            { ii. etrans; try apply SAME0.
-              unfold callee_initial_reg. rewrite to_preg_to_mreg.
-              des_ifs_safe. refl. }
-          * replace (rs_callee PC) with (st_rs st PC); eauto.
-            erewrite <- EQ; ss.
-            clear. ii. des; clarify.
-
-      - auto.
-
-      - ii. cinv (WFINJ blk0).
-        + destruct (j_callee blk0) as [[]|]eqn:BLK.
-          * econs 2; eauto.
-            { ii. eapply Mem.mi_align; try apply INJECT1; eauto.
-              ii. eapply H0 in H1. des; clarify.
-              - eapply Mem.perm_max. eauto.
-              - exfalso. eapply BOT; eauto. }
-            { ii. eapply Mem.mi_representable; try apply INJECT1; eauto.
-              exfalso. des; eapply BOT; eauto. }
-            { ii. exfalso. eapply BOT. eauto. }
-
-          * econs 1; eauto.
-
-        + econs 2; eauto. i. eapply ALIGN0.
-          ii. apply H0 in PR. des; eauto. left.
-          rewrite assign_junk_blocks_perm in PR.
-          rewrite callee_initial_mem_perm in PR. des_ifs; eauto.
-          exfalso. eapply Mem.valid_block_inject_1 in DELTA; eauto.
-          inv FREE. rewrite freed_from_nextblock in *. eapply Plt_strict; eauto.
-
-      - des_ifs. exfalso. unfold external_state in *.
-        erewrite <- EQ in Heq.
-        + unfold callee_initial_reg in *. ss. rewrite <- FPTR in *.
-          unfold Genv.find_funct in FINDF. clear - Heq FINDF. des_ifs.
-        + clear. ii. ss. des; clarify.
+    (* asmstyle function *)
+    {
+      dup OWNER. inv OWNER.
+      exploit owner_genv_le; eauto. intros GELE. des. ss.
+      destruct (callee_initial_junk' init_rs m_src.(Mem.nextblock) j [RA])
+        as [[rs_callee n] j_callee] eqn:JUNKED.
+      exploit callee_initial_junk_spec; eauto. i. des.
+      exists rs_callee. exists (assign_junk_blocks m_src n).
+      splits.
+      - econs 2; ss.
+        + eapply local_global_consistent in FINDF; eauto. ss.
+          rewrite FINDF in *. eauto.
+        + eauto.
+        + instantiate (1:=rs_callee # RA). des_ifs.
+          rewrite Heq. ss.
+        + ii. ss. des_ifs; clarify.
+          * exploit JUNK; eauto. i. rewrite RAVAL in *. ss.
+          * rewrite Pregmap.gss in *. clarify.
+            hexploit skenv_inject_memory; eauto. i. clear - H H0.
+            unfold pos_nat_add in *. des_ifs. xomega.
+        + eapply JUNK; eauto.
+        + extensionality pr. unfold Pregmap.set. des_ifs; eauto.
+          symmetry. eapply EQ. ii. des; clarify.
+      - econs; eauto.
+        + etrans; eauto. eapply Mem.unchanged_on_implies with (P:=top2).
+          eapply assign_junk_blocks_unchanged_on. i. ss.
+        + cinv GEINJECT. econs; eauto. i. destruct (j b1) eqn:BLK.
+          * destruct p0. dup BLK. apply INCR in BLK. clarify.
+            rewrite assign_junk_blocks_perm in *. eapply IMAGE; eauto.
+          * eapply SEP in INJ; auto. exfalso. des.
+            { eapply INJ. eapply Senv.block_is_volatile_below in PERM.
+              eapply Plt_Ple_trans; eauto. eapply skenv_inject_memory; eauto. }
+            { rewrite assign_junk_blocks_perm in *.
+              eapply Mem.perm_valid_block in PERM. auto. }
+        + inv STACK.
+          * exfalso. clear - FINDF SIG SIG0 SIG1.
+            unfold initial_regset, Pregmap.set in *. ss. des_ifs_safe.
+          * exfalso. des. eapply local_global_consistent in FINDF; eauto.
+            rewrite SIG in *. clarify.
+          * econs 3; eauto.
+            { eapply match_stack_incr; try apply STACK0; eauto. }
+            { rewrite <- EQ; eauto. ii. ss. des; clarify. }
+        + eapply inj_range_wf_step; cycle 2; eauto.
+          i. rewrite assign_junk_blocks_perm in H. auto.
+        + unfold external_state, Genv.find_funct in *.
+          rewrite <- EQ; eauto.
+          * des_ifs.
+          * ii. ss. des; clarify.
     }
-
   Qed.
 
+  (* skenv_inject skenv_link j_callee (assign_junk_blocks m_src n) *)
 
 (** ********************* transf initial final  *********************************)
 
@@ -1872,41 +1978,18 @@ Section PRESERVATION.
       match_states st1 st2 n -> Sem.final_state st1 r -> Asm.final_state st2 r.
   Proof.
     intros st_src st_tgt r n MTCHST FINAL. inv FINAL. inv MTCHST. ss.
-    inv FINAL0. clarify. inv STACK. econs.
+    inv FINAL0; clarify. inv STACK. econs.
     - specialize (AGREE PC). rewrite RSRA in *. rewrite RSRA0 in *.
       inv AGREE; ss.
     - des. rewrite RSPC in *. exploit local_global_consistent; eauto.
       intro SGEQ. rewrite <- SGEQ in *. clarify.
       ss. unfold signature_main, loc_arguments, loc_result in *.
       Transparent Archi.ptr64. ss. unfold loc_result_64 in *. ss. clarify.
-      ss. specialize (AGREE RAX). rewrite INT in *. inv AGREE; auto.
+      ss. specialize (AGREE RAX). clarify. ss.
+      rewrite INT in *. inv AGREE; auto.
   Qed.
 
 (** ********************* transf step  *********************************)
-
-  Lemma inj_range_wf_step j0 j1 m0 m1 P
-        (MEMPERM: forall blk ofs p, Mem.perm m1 blk ofs Max p -> Mem.perm m0 blk ofs Max p \/ j0 blk = None)
-        (INCR: inject_incr j0 j1)
-        (RANGEWF: inj_range_wf skenv_link j0 m0 P)
-        (INJ: exists m_tgt, Mem.inject j1 m1 m_tgt)
-    :
-      inj_range_wf skenv_link j1 m1 P.
-  Proof.
-    ii. des. inv INJ. inv mi_inj.
-    destruct (RANGEWF blk).
-    - destruct (j1 blk) eqn:EQ.
-      + destruct p. econs 2; eauto; ii.
-        * eapply mi_align; eauto. ii.
-          specialize (H _ H0). ss. des.
-          -- eapply Mem.perm_max; eauto.
-          -- exfalso. eapply BOT. eauto.
-        * des; exfalso; eapply BOT; eauto.
-        * exfalso. eapply BOT. eauto.
-      + econs 1; eauto.
-    - econs 2; eauto. ii.
-      eapply ALIGN. ii. specialize (H x0 PR). ss. des; eauto.
-      eapply Mem.perm_max in H. eapply MEMPERM in H. des; clarify. eauto.
-  Qed.
 
   Lemma asm_step_internal_simulation
         st_src0 st_src1 st_tgt0 tr frs p init_rs n0
@@ -2030,29 +2113,50 @@ Section PRESERVATION.
       exists n1, match_states (State ((fr1.(Frame.update_st) st0) :: frs)) st_tgt n1
                  /\ (n1 < n0)%nat.
   Proof.
-    inv MTCHST. inv STACK. ss. inv FINAL. inv AFTER. set WF as WF2. inv WF2. ss.
-    rewrite PCSAME in *. des. rewrite RSPPTR in *. clarify.
-    assert (SG: fn_sig fd = SkEnv.get_sig skd0).
-    { exploit local_global_consistent; try apply GELE; eauto. }
-    exploit unfree_free_inj_inj_wf; ss; try apply INJ.
-    { rewrite Ptrofs.unsigned_zero. rewrite Z.add_0_l. eauto. }
-    { rewrite SG. eauto. }
-    { eauto. }
-    { rewrite INITRSP in *. auto. }
-    { rewrite INITRSP in *. ii. cinv (AGREE RSP); rewrite RSRSP in *; clarify.
-      inv RSPSAME; clarify. }
-    { ii. eapply RANGE. right. rewrite <- SG. eauto. }
-    i. des.
-    esplits; eauto.
-    - econs; unfold Frame.update_st; simpl; cycle 5; eauto.
-      + eapply inj_range_wf_le; eauto.
-      + eapply callee_save_agree; eauto. repeat f_equal. eauto.
-      + rewrite Mem_unchanged_on_strengthen. transitivity m1.
-        * rewrite <- Mem_unchanged_on_strengthen.
-          eapply mem_readonly_trans; eauto. eapply mem_free_readonly; eauto.
-        * eapply Mem.unchanged_on_implies; try eapply Mem_unfree_unchanged_on; eauto.
-          ii. eapply PWF; eauto.
-    - des_ifs; lia.
+    inv MTCHST. inv STACK.
+    { ss. inv FINAL; cycle 1.
+      { exfalso. des. eapply local_global_consistent in INITSIG; eauto.
+        rewrite INITSIG in *. clarify. }
+      inv AFTER; cycle 1.
+      { exfalso. des. eapply local_global_consistent in INITSIG; eauto.
+        rewrite INITSIG in *. clarify. }
+      set WF as WF2. inv WF2. ss.
+      rewrite PCSAME in *. des. rewrite RSPPTR in *. clarify.
+      assert (SG: fn_sig fd = Sk.get_sig skd0).
+      { exploit local_global_consistent; try apply GELE; eauto. }
+      assert (sg = sg0).
+      { rewrite SG in *. rewrite SIG1 in *. clarify. } clarify.
+      exploit unfree_free_inj_inj_wf; ss; try apply INJ.
+      { rewrite Ptrofs.unsigned_zero. rewrite Z.add_0_l. eauto. }
+      { rewrite SG in *. eauto. }
+      { eauto. }
+      { rewrite INITRSP in *. auto. }
+      { rewrite INITRSP in *. ii. cinv (AGREE RSP); rewrite RSRSP in *; clarify.
+        inv RSPSAME; clarify. }
+      { ii. eapply RANGE. right. eauto. }
+      i. des.
+      esplits; eauto.
+      - econs; unfold Frame.update_st; simpl; cycle 5; eauto.
+        + eapply inj_range_wf_le; eauto.
+        + eapply callee_save_agree; eauto.
+        + rewrite Mem_unchanged_on_strengthen. transitivity retv_m.
+          * rewrite <- Mem_unchanged_on_strengthen.
+            eapply mem_readonly_trans; eauto. eapply mem_free_readonly; eauto.
+          * eapply Mem.unchanged_on_implies; try eapply Mem_unfree_unchanged_on; eauto.
+            ii. eapply PWF; eauto.
+      - des_ifs; lia.
+    }
+    { ss. inv FINAL.
+      { exfalso. des. eapply local_global_consistent in INITSIG; eauto.
+        rewrite INITSIG in *. clarify. }
+      inv AFTER.
+      { exfalso. des. eapply local_global_consistent in INITSIG; eauto.
+        rewrite INITSIG in *. clarify. }
+      clarify. esplits; eauto.
+      - eapply match_states_intro with (rs_src := retv_rs # PC <- (rs0 RA)); ss; eauto.
+        ii. unfold Pregmap.set. des_ifs. eapply inj_same_inj; eauto.
+        rewrite <- RSRA. eauto.
+      - des_ifs. lia. }
   Qed.
 
   Lemma step_call_simulation
@@ -2064,56 +2168,59 @@ Section PRESERVATION.
   Proof.
 
     inv MTCHST. ss. inv AT.
-    econstructor 2 with (P := (P \2/ brange blk1 (Ptrofs.unsigned ofs) (Ptrofs.unsigned ofs + 4 * size_arguments sg))); ss; eauto.
-    - econs; ss; eauto. rewrite FPTR. eauto.
-    - intros blk ofs0. i. des; eauto. ii.
-      unfold brange in *. des. clarify. eapply H0.
-      eapply Mem.perm_unchanged_on_2; eauto. eapply Mem.perm_cur.
-      eapply Mem.perm_implies.
-      + eapply Mem.free_range_perm; eauto.
-      + econs.
-    - ii. destruct (eq_block blk1 blk); clarify.
-      + destruct (j blk) eqn:EQ.
-        * destruct p0. destruct (WFINJ blk); clarify.
-          econs 2; eauto; ii.
-          -- eapply ALIGN0. ii.
-             instantiate (1:= Nonempty). instantiate (1:=Max).
-             eapply H in PR. des; eauto.
-             ++ left. eapply Mem.perm_free_3 in PR; eauto.
-                eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-             ++ left. eapply Mem.free_range_perm in FREE.
-                exploit FREE. instantiate (1:=x0).
-                ** eapply PR.
-                ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-          -- inv INJ; des; eauto.
-             ++ eapply mi_representable; eauto. left.
-                eapply Mem.free_range_perm in FREE. exploit FREE.
-                ** eapply H.
-                ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-             ++ eapply mi_representable; eauto. right.
-                eapply Mem.free_range_perm in FREE. exploit FREE.
-                ** eapply H.
-                ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
-          -- des.
-             ++ eapply VOLATILE; eauto.
-             ++ inv GEINJECT. eapply IMAGE; try eassumption.
-                right. exists ofs0. apply Mem.perm_cur.
-                eapply Mem.perm_implies.
-                ** eapply Mem.free_range_perm; eauto. destruct IN. auto.
-                ** econs.
-        * exfalso. specialize (AGREE (IR Asm.RSP)). rewrite RSP in AGREE. inv AGREE. clarify.
-      + destruct (j blk) eqn:EQ.
-        * destruct p0. destruct (WFINJ blk); clarify.
-          econs 2; eauto; ii.
-          { eapply ALIGN0. ii. eapply H in PR. unfold brange in *. des; eauto; clarify.
-            left. eapply Mem.perm_free_3; eauto. }
-          { unfold brange in *. des; eauto; clarify. }
-          { des.
-            - eapply VOLATILE; eauto.
-            - destruct IN. clarify. }
-        * econs 1; eauto. destruct (WFINJ blk); clarify.
-          ii. des; eauto. clarify. unfold brange in *. des. clarify.
-    - eapply free_freed_from; eauto.
+    {
+      econstructor 2 with (P := (P \2/ brange blk1 (Ptrofs.unsigned ofs) (Ptrofs.unsigned ofs + 4 * size_arguments sg))); ss; eauto.
+      - econs; ss; eauto.
+      - intros blk ofs0. i. des; eauto. ii.
+        unfold brange in *. des. clarify. eapply H0.
+        eapply Mem.perm_unchanged_on_2; eauto. eapply Mem.perm_cur.
+        eapply Mem.perm_implies.
+        + eapply Mem.free_range_perm; eauto.
+        + econs.
+      - ii. destruct (eq_block blk1 blk); clarify.
+        + destruct (j blk) eqn:EQ.
+          * destruct p0. destruct (WFINJ blk); clarify.
+            econs 2; eauto; ii.
+            -- eapply ALIGN0. ii.
+               instantiate (1:= Nonempty). instantiate (1:=Max).
+               eapply H in PR. des; eauto.
+               ++ left. eapply Mem.perm_free_3 in PR; eauto.
+                  eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
+               ++ left. eapply Mem.free_range_perm in FREE.
+                  exploit FREE. instantiate (1:=x0).
+                  ** eapply PR.
+                  ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
+            -- inv INJ; des; eauto.
+               ++ eapply mi_representable; eauto. left.
+                  eapply Mem.free_range_perm in FREE. exploit FREE.
+                  ** eapply H.
+                  ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
+               ++ eapply mi_representable; eauto. right.
+                  eapply Mem.free_range_perm in FREE. exploit FREE.
+                  ** eapply H.
+                  ** i. eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
+            -- des.
+               ++ eapply VOLATILE; eauto.
+               ++ inv GEINJECT. eapply IMAGE; try eassumption.
+                  right. exists ofs0. apply Mem.perm_cur.
+                  eapply Mem.perm_implies.
+                  ** eapply Mem.free_range_perm; eauto. destruct IN. auto.
+                  ** econs.
+          * exfalso. specialize (AGREE (IR Asm.RSP)). rewrite RSP in AGREE. inv AGREE. clarify.
+        + destruct (j blk) eqn:EQ.
+          * destruct p0. destruct (WFINJ blk); clarify.
+            econs 2; eauto; ii.
+            { eapply ALIGN0. ii. eapply H in PR. unfold brange in *. des; eauto; clarify.
+              left. eapply Mem.perm_free_3; eauto. }
+            { unfold brange in *. des; eauto; clarify. }
+            { des.
+              - eapply VOLATILE; eauto.
+              - destruct IN. clarify. }
+          * econs 1; eauto. destruct (WFINJ blk); clarify.
+            ii. des; eauto. clarify. unfold brange in *. des. clarify.
+      - eapply free_freed_from; eauto.
+    }
+    { econs 3; eauto. econs 3; eauto. }
   Qed.
 
   Lemma below_block_is_volatile F V (ge': Genv.t F V) b
@@ -2129,7 +2236,7 @@ Section PRESERVATION.
   Lemma step_init_simulation
         args frs st_tgt p n
         (MTCHST: match_states (Callstate args frs) st_tgt n)
-        (OWNER: valid_owner args.(Args.fptr) p)
+        (OWNER: valid_owner args.(Args.get_fptr) p)
         (PROGIN: In (AsmC.module p) prog)
     :
       exists st_src,
@@ -2151,9 +2258,13 @@ Section PRESERVATION.
   Proof.
     inv MTCHST.
     replace (at_external skenv_link p) with (at_external skenv_link p0) in *.
-    - inv ATEXTERNAL. apply asm_frame_inj in FRAME. clarify.
-      unfold external_state. des_ifs. omega.
-      unfold local_genv, fundef in *. clarify.
+    - inv ATEXTERNAL.
+      + apply asm_frame_inj in FRAME. clarify.
+        unfold external_state. des_ifs; try omega.
+        unfold local_genv, fundef in *. ss. des. des_ifs.
+      + apply asm_frame_inj in FRAME. clarify.
+        unfold external_state. des_ifs; try omega.
+        unfold local_genv, fundef in *. ss. des. des_ifs.
     - apply f_equal with (f := Frame.ms) in FRAME. ss.
       inv FRAME. apply Eqdep.EqdepTheory.inj_pair2 in H0. auto.
   Qed.
@@ -2209,17 +2320,17 @@ Section PRESERVATION.
 
   Lemma init_case st args frs fptr
         (STATE: st = Callstate args frs)
-        (FPTR: fptr = args.(Args.fptr))
+        (FPTR: fptr = args.(Args.get_fptr))
     :
       (<<ASMMOD: exists p, valid_owner fptr p>>) \/
       (<<SYSMOD: ge.(Ge.find_fptr_owner)
                       fptr (System.modsem skenv_link)>>) \/
       (<<UNSAFE: ~ safe (sem prog) st>>).
   Proof.
-    destruct (classic (exists p, Ge.find_fptr_owner ge args.(Args.fptr) (modsem skenv_link p)
+    destruct (classic (exists p, Ge.find_fptr_owner ge args.(Args.get_fptr) (modsem skenv_link p)
                                  /\ In (AsmC.module p) prog)) as [[p OWNER] | NOOWNER].
     - des. simpl_depind.
-      destruct (classic (valid_owner args.(Args.fptr) p)); eauto.
+      destruct (classic (valid_owner args.(Args.get_fptr) p)); eauto.
       right. right. intros SAFE. exploit SAFE; [econs|].
       i. des.
       + inv H0.
@@ -2229,7 +2340,7 @@ Section PRESERVATION.
         rewrite <- (find_fptr_owner_determ OWNER MSFIND) in *. i.
         inv INIT. econs; eauto.
         exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
-        exploit ININCL; eauto. i. des. inv WFSKELINK. eapply WFPARAM in H0. ss.
+        exploit ININCL; eauto. i. ss. econs; eauto.
     - destruct (classic (Ge.find_fptr_owner ge fptr (System.modsem skenv_link))).
       { right. left. esplits; eauto. }
       right. right. intros SAFE. clarify. exploit SAFE; [econs|].
@@ -2249,7 +2360,7 @@ Section PRESERVATION.
   Lemma syscall_receptive
         st_src0 st_src1 st_tgt0 args frs fptr tr0 n0
         (STATE: st_src0 = Callstate args frs)
-        (FPTR: fptr = args.(Args.fptr))
+        (FPTR: fptr = args.(Args.get_fptr))
         (SYSMOD: ge.(Ge.find_fptr_owner)
                       fptr (System.modsem skenv_link))
         (MTCHST: match_states st_src0 st_tgt0 n0)
@@ -2265,7 +2376,7 @@ Section PRESERVATION.
   Lemma syscall_simulation
         st_src0 st_src1 st_src2 st_tgt0 args frs fptr tr0 tr1 n0
         (STATE: st_src0 = Callstate args frs)
-        (FPTR: fptr = args.(Args.fptr))
+        (FPTR: fptr = args.(Args.get_fptr))
         (SYSMOD: ge.(Ge.find_fptr_owner)
                       fptr (System.modsem skenv_link))
         (MTCHST: match_states st_src0 st_tgt0 n0)
@@ -2280,9 +2391,12 @@ Section PRESERVATION.
             match_states st_src3 st_tgt1 n1 /\ tr2 = E0>>) /\
         (n1 < length frs + 3)%nat.
   Proof.
-    clarify; inv MTCHST. inv STEP0; ss.
+    clarify; inv MTCHST; cycle 1.
+    { exfalso. des. inv STEP0. destruct (find_fptr_owner_determ SYSMOD MSFIND).
+      ss. inv INIT. clarify. }
+    inv STEP0; ss.
     destruct (find_fptr_owner_determ SYSMOD MSFIND). ss. inv INIT.
-    inv STEP1; ss; [|inv FINAL]. inv STEP.
+    inv STEP1; ss; [|inv FINAL]. inv STEP. clarify.
     exploit extcall_arguments_inject; eauto.
     i. des.
     exploit ec_mem_inject_weak; eauto.
@@ -2298,58 +2412,54 @@ Section PRESERVATION.
                 ((set_pair (loc_external_result (ef_sig ef)) vres'
                            (regset_after_external rs_tgt)) #PC <- (rs_tgt RA))
                 m2').
-      inv STACK.
+      inv STACK; cycle 2.
+      { exfalso. des. clarify. }
       { exfalso. clarify.
-        rewrite FPTR in *.
-        unfold System.globalenv, initial_regset in *. unfold Pregmap.set in *. ss. clarify.
-      }
-      assert (SIGEQ: SkEnv.get_sig skd = ef_sig ef).
+        unfold System.globalenv, initial_regset, Pregmap.set in *. ss. clarify. }
+      assert (SIGEQ: Sk.get_sig skd = Some (ef_sig ef)).
       { eapply external_function_sig; eauto. }
       exists (
         if
           external_state (local_genv p)
-                         ((set_pair (loc_external_result (ef_sig ef)) (Retv.v retv)
+                         ((set_pair (loc_external_result (ef_sig ef)) vres'
                                     (regset_after_external st.(st_rs))) # PC <- (st.(st_rs) RA) PC)
         then (length frs0 + 2)%nat
         else 0%nat).
       splits.
-      + set (AGREEPC:= AGREE PC). rewrite <- FPTR in *.
-        destruct (Args.fptr args) eqn:EQ; ss; des_ifs; clarify. inv AGREEPC.
+      + destruct (st_rs st PC) eqn:EQ; ss; des_ifs; clarify.
+        cinv (AGREE PC); rewrite EQ in *; clarify.
         econs 3.
         * instantiate (1 := b2).
           assert (delta = 0); clarify.
           eapply system_function_ofs; eauto.
         * instantiate (1 := ef).
           eapply system_sig; eauto.
-        * instantiate (1 := args2).
-          rewrite <- SIGEQ. auto.
+        * instantiate (1 := args2). auto.
         * eapply H.
         * auto.
       + i. inv STEP2; [inv AT|inv STEP|]. inv FINAL. split; auto.
-        ss. unfold Frame.update_st. ss. inv AFTER. ss. clarify.
-        assert (SGEQ: sg = ef_sig ef).
-        { des. rewrite FPTR in *. clarify. } clarify.
+        ss. unfold Frame.update_st. ss. inv AFTER; cycle 1.
+        { exfalso. des. clarify. }
+        ss. clarify.
         set (AGREE RSP). rewrite RSPPTR in *. clarify. inv i.
         exploit private_unfree_inj_inj_wf; [eauto|eauto|..].
         { instantiate (2:=Ptrofs.unsigned ofs0).
           instantiate (1:=Ptrofs.unsigned ofs0+4 * size_arguments (ef_sig ef)).
           ii. exploit Mem.unchanged_on_perm; eauto.
           - eapply freed_from_out_of_reach; eauto.
-            rewrite SIGEQ. eauto.
             instantiate (1:= ofs). lia.
           - eapply Mem.mi_mappedblocks; eauto.
           - intros PERM. eapply PERM.
             exploit Mem.perm_inject; eauto.
-            eapply freed_from_perm; eauto. instantiate (1:=ofs-delta).
-            rewrite SIGEQ. omega.
-            i. replace ofs with (ofs - delta + delta); [auto|omega]. }
+            + eapply freed_from_perm; eauto. instantiate (1:=ofs-delta). omega.
+            + i. replace ofs with (ofs - delta + delta); [auto|omega]. }
         { intros delta' BOUND. eapply separated_out_of_reach; cycle 2; eauto.
           - eapply Mem.mi_mappedblocks; eauto.
           - eapply freed_from_out_of_reach; eauto.
-            rewrite SIGEQ. unfold range in *. lia.
+            unfold range in *. lia.
           - i. eapply ec_max_perm; eauto. eapply external_call_spec.
           - eapply freed_from_inject; eauto. }
-        { eauto. }
+        { rpapply UNFREE. repeat f_equal. des. clarify. }
         { inv GEINJECT. econs; [eauto|].
           i. destruct (j b1) as [[]|] eqn:DELTA.
           + dup DELTA. apply H4 in DELTA. clarify.
@@ -2370,13 +2480,13 @@ Section PRESERVATION.
                 eapply DOMAIN in VEQ1. clarify. }
         }
         { eapply inj_range_wf_step; try apply WFINJ; eauto.
-          i. destruct (classic (Mem.valid_block (Args.m args) blk)).
+          i. destruct (classic (Mem.valid_block m blk)).
           - eapply external_call_max_perm in EXTCALL; eauto.
           - right. eapply Mem.mi_freeblocks; eauto.
             unfold Mem.valid_block in *. inv FREE.
             rewrite <- freed_from_nextblock. ss. }
         { ii. eapply RANGE. right. split; eauto.
-          unfold range in *. des. rewrite FPTR in *. clarify. rewrite SIGEQ. lia. }
+          unfold range in *. des. clarify. }
         i. des.
         econs; cycle 4.
         * eauto.
@@ -2394,10 +2504,10 @@ Section PRESERVATION.
           -- eapply Val.hiword_inject; eauto.
           -- eapply Val.loword_inject; eauto.
         * tauto.
-        * rewrite Mem_unchanged_on_strengthen. transitivity (Retv.m retv0).
+        * rewrite Mem_unchanged_on_strengthen. transitivity retv_m.
           { rewrite <- Mem_unchanged_on_strengthen.
             eapply mem_readonly_trans; eauto.
-            apply mem_readonly_trans with (Args.m args); eauto.
+            apply mem_readonly_trans with m; eauto.
             - eapply Mem.unchanged_on_implies.
               + eapply freed_from_unchanged; eauto.
               + ii. ss. des_ifs. ii. eapply H6. eapply Mem.perm_implies.
@@ -2405,8 +2515,7 @@ Section PRESERVATION.
                 * econs.
             - eapply external_call_readonly; eauto. }
           { eapply Mem.unchanged_on_implies; try eapply Mem_unfree_unchanged_on; eauto.
-            ii. eapply PWF; eauto. eapply RANGE. right.
-            rewrite FPTR in *. clarify. rewrite SIGEQ in *. eauto. }
+            ii. eapply PWF; eauto. eapply RANGE. right. clarify. }
         * ss.
       + ss. des_ifs; omega.
   Qed.
@@ -2415,7 +2524,7 @@ Section PRESERVATION.
         (MTCHST: match_states (Callstate args frs) st_tgt n)
     :
       1%nat = n.
-  Proof. inv MTCHST. auto. Qed.
+  Proof. inv MTCHST; auto. Qed.
 
   Lemma src_receptive_at st_src st_tgt n
         (MTCHST: match_states st_src st_tgt n)
@@ -2427,6 +2536,9 @@ Section PRESERVATION.
       { ss. des_ifs. }
       ss.
       eapply modsem_receptive.
+    - econs; i.
+      + set (STEP := H). inv STEP. inv H0. eexists. eauto.
+      + ii. inv H. ss. omega.
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
       + ii. inv H. ss. omega.
@@ -2442,10 +2554,15 @@ Section PRESERVATION.
       instantiate (1:=frs). instantiate (2:=args). i. des.
       + destruct (match_states_call_ord_1 MTCHST).
         right. econs; i.
-        * exfalso. inv MTCHST. inv FINALTGT. inv ASMMOD.
-          inv MSFIND. unfold Genv.find_funct in *. des_ifs.
-          specialize (AGREE PC). rewrite <- FPTR in *.
-          inv AGREE. unfold Vnullptr in *. des_ifs. congruence.
+        * exfalso. inv MTCHST.
+          { inv FINALTGT. inv ASMMOD.
+            inv MSFIND. unfold Genv.find_funct in *. ss. des_ifs.
+            specialize (AGREE PC). inv AGREE; rewrite Heq in *; clarify.
+            unfold Vnullptr in *. des_ifs. congruence. }
+          { inv FINALTGT. inv ASMMOD.
+            inv MSFIND. unfold Genv.find_funct in *. ss. des_ifs.
+            specialize (AGREE PC). inv AGREE; rewrite Heq in *; clarify.
+            unfold Vnullptr in *. des_ifs. congruence. }
         * exploit step_init_simulation; try eassumption.
           { inv ASMMOD. eauto. }
           i. des. econs 2; ss; eauto. rewrite LINK_SK.
@@ -2481,9 +2598,7 @@ Section PRESERVATION.
           inv STEP. inv FINALSRC. ss. inv MTCHST.
           inv STACK. inv SYSMOD. ss.
           unfold System.globalenv in *.
-          clear - FPTR SIG0 FPTR0.
-          unfold initial_regset, Pregmap.set in *. des_ifs.
-          rewrite FPTR0 in *. clarify.
+          unfold initial_regset, Pregmap.set in *. des_ifs. clarify.
         }
         i.
         ss. rewrite LINK_SK in *. apply MTCHST0 in STEPSRC1. des. clarify.

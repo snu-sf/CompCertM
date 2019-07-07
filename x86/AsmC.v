@@ -20,7 +20,7 @@ Definition get_mem (st: state): mem :=
 Definition funsig (fd: fundef) :=
   match fd with
   | Internal f => fn_sig f
-  | External ef => ef_sig ef
+  | External ef => Some (ef_sig ef)
   end.
 
 Definition st_rs (st0: state): regset :=
@@ -67,76 +67,113 @@ Section MODSEM.
       (* (ISRETURN: step_ret st0.(st) = st1.(extret)) *)
 
   Inductive at_external: state -> Args.t -> Prop :=
-  | at_external_intro
-      rs m0 m1 sg vs blk0 blk1 ofs
+  | at_external_cstyle
+      fptr rs m0 m1 sg vs blk1 ofs
       init_rs
-      (FPTR: rs # PC = Vptr blk0 Ptrofs.zero)
+      (FPTR: rs # PC = fptr)
       (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
-      (EXTERNAL: Genv.find_funct ge (Vptr blk0 Ptrofs.zero) = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (Vptr blk0 Ptrofs.zero)
-                        = Some skd /\ SkEnv.get_sig skd = sg)
+      (EXTERNAL: Genv.find_funct ge fptr = None)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = Some sg)
       (VALS: Asm.extcall_arguments rs m0 sg vs)
       (RSP: rs RSP = Vptr blk1 ofs)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))
-      (FREE: Mem.free m0 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1):
-      at_external (mkstate init_rs (State rs m0)) (Args.mk (Vptr blk0 Ptrofs.zero) vs m1).
+      (FREE: Mem.free m0 blk1 ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1)
+    :
+      at_external (mkstate init_rs (State rs m0)) (Args.Cstyle fptr vs m1)
+  | at_external_asmstyle
+      fptr rs m0
+      init_rs
+      (FPTR: rs # PC = fptr)
+      (EXTERNAL: Genv.find_funct ge fptr = None)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = None)
+      (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
+    :
+      at_external (mkstate init_rs (State rs m0)) (Args.Asmstyle rs m0)
+  .
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
-  | initial_frame_intro
-      fd m0 rs sg targs n m1
-      (SIG: sg = fd.(fn_sig))
-      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
-      (RSPC: rs # PC = args.(Args.fptr))
-      (TYP: typecheck args.(Args.vs) sg targs)
-      (STORE: store_arguments args.(Args.m) rs targs sg m0)
+  | initial_frame_cstyle
+      fd m0 rs sg targs n m1 fptr_arg vs_arg m_arg
+      (SIG: Some sg = fd.(fn_sig))
+      (CSTYLE: args = Args.Cstyle fptr_arg vs_arg m_arg)
+      (FINDF: Genv.find_funct ge fptr_arg = Some (Internal fd))
+      (RSPC: rs # PC = fptr_arg)
+      (TYP: typecheck vs_arg sg targs)
+      (STORE: store_arguments m_arg rs targs sg m0)
       (JUNK: assign_junk_blocks m0 n = m1)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
-      (* (RAJUNK: is_junk_value m0 m1 (rs RA)) *)
       (RANOTFPTR: forall blk ofs (RAVAL: rs RA = Vptr blk ofs),
           ~ Plt blk (Genv.genv_next skenv))
-      (* (<<NOTFPTR0: ge.(Genv.find_funct) (rs RA) = None>>) *)
-      (* (RAJUNK1: skenv_link.(Genv.find_funct) (rs RA) = None) *)
       (PTRFREE: forall pr (PTR: ~ is_junk_value m0 m1 (rs pr)),
           (<<INARG: exists mr,
               (<<MR: to_mreg pr = Some mr>>) /\
               (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments sg))>>)>>) \/
           (<<INPC: pr = PC>>) \/
           (<<INRSP: pr = RSP>>)):
-      initial_frame args (mkstate rs (State rs m1)).
+      initial_frame args (mkstate rs (State rs m1))
+  | initial_frame_asmstyle
+      fd ra n m1 rs_arg rs m_arg
+      (SIG: None = fd.(fn_sig))
+      (ASMSTYLE: args = Args.Asmstyle rs_arg m_arg)
+      (FINDF: Genv.find_funct ge (rs_arg # PC) = Some (Internal fd))
+      (JUNK: assign_junk_blocks m_arg n = m1)
+      (RAPTR: <<TPTR: Val.has_type ra Tptr>> /\ <<RADEF: ra <> Vundef>>)
+      (RANOTFPTR: forall blk ofs (RAVAL: ra = Vptr blk ofs),
+          ~ Plt blk (Genv.genv_next skenv))
+      (RS: rs = rs_arg # RA <- ra)
+    :
+      initial_frame args (mkstate rs (State rs m1))
+  .
 
   Inductive final_frame: state -> Retv.t -> Prop :=
-  | final_frame_intro
+  | final_frame_cstyle
       (init_rs rs: regset) m0 m1 blk sg mr
       (CALLEESAVE: forall mr, Conventions1.is_callee_save mr ->
                               Val.lessdef (init_rs mr.(to_preg)) (rs mr.(to_preg)))
       (INITRSP: init_rs # RSP = Vptr blk Ptrofs.zero)
-      (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC)
-                           = Some (Internal fd) /\ fd.(fn_sig) = sg)
+      (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC) = Some (Internal fd) /\ fd.(fn_sig) = Some sg)
       (FREE: Mem.free m0 blk 0 (4 * size_arguments sg) = Some m1)
       (RETV: loc_result sg = One mr)
       (EXTERNAL: external_state ge (rs # PC))
       (RSRA: rs # PC = init_rs # RA)
-      (* TODO: why different with definition if initial_frame? *)
       (RANOTFPTR: Genv.find_funct skenv_link (init_rs RA) = None)
-      (* (JUNK1: ge.(Genv.find_funct) (rs PC) = None) *)
-      (* (RSRSP: Val.lessdef (rs # RSP) (init_rs # RSP)) *)
       (RSRSP: rs # RSP = init_rs # RSP):
-      final_frame (mkstate init_rs (State rs m0)) (Retv.mk (rs mr.(to_preg)) m1).
+      final_frame (mkstate init_rs (State rs m0)) (Retv.Cstyle (rs mr.(to_preg)) m1)
+  | final_frame_asmstyle
+      (init_rs rs: regset) m0
+      (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC) = Some (Internal fd) /\ fd.(fn_sig) = None)
+      (EXTERNAL: external_state ge (rs # PC))
+      (RSRA: rs # PC = init_rs # RA)
+      (RANOTFPTR: Genv.find_funct skenv_link (init_rs RA) = None)
+    :
+      final_frame (mkstate init_rs (State rs m0)) (Retv.Asmstyle rs m0)
+  .
 
   Inductive after_external: state -> Retv.t -> state -> Prop :=
-  | after_external_intro
-      init_rs rs0 m0 rs1 m1 retv sg blk ofs
+  | after_external_cstyle
+      init_rs rs0 m0 rs1 m1 retv retv_v retv_m sg blk ofs
+      (CSTYLE: retv = (Retv.Cstyle retv_v retv_m))
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
-                        = Some skd /\ SkEnv.get_sig skd = sg)
-      (RS: rs1 = (set_pair (loc_external_result sg) retv.(Retv.v) (regset_after_external rs0)) #PC <- (rs0 RA))
+                        = Some skd /\ Sk.get_sig skd = Some sg)
+      (RS: rs1 = (set_pair (loc_external_result sg) retv_v (regset_after_external rs0)) #PC <- (rs0 RA))
       (RSRSP: rs0 RSP = Vptr blk ofs)
-      (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1):
+      (UNFREE: Mem_unfree retv_m blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1):
       after_external (mkstate init_rs (State rs0 m0))
                      retv
-                     (mkstate init_rs (State rs1 m1)).
-  
+                     (mkstate init_rs (State rs1 m1))
+  | after_external_asmstyle
+      init_rs rs0 m0 rs1 retv retv_rs retv_m
+      (ASMSTYLE: retv = (Retv.Asmstyle retv_rs retv_m))
+      (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC) = Some skd /\ Sk.get_sig skd = None)
+      (RS: rs1 = retv_rs # RA <- (rs0 # RA))
+    :
+      after_external (mkstate init_rs (State rs0 m0))
+                     retv
+                     (mkstate init_rs (State rs1 retv_m))
+  .
+
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
        ModSem.at_external := at_external;
@@ -148,16 +185,13 @@ Section MODSEM.
        ModSem.skenv_link := skenv_link;
     |}.
   Next Obligation.
-    rewrite RSP in *. clarify. rewrite FPTR in *. clarify. f_equal. eapply Asm.extcall_arguments_determ; eauto.
+    rewrite RSP in *. clarify. f_equal. eapply Asm.extcall_arguments_determ; eauto.
   Qed.
   Next Obligation.
-    exfalso. inv STEP; ss; rewrite FPTR in *; inv H2; des_ifs.
+    all: inv STEP; rewrite H2 in *; ss; des_ifs.
   Qed.
   Next Obligation.
-    inv EXTERNAL. unfold external_state in *. des_ifs; inv STEP; ss; des_ifs; rewrite Heq in *; clarify.
-  Qed.
-  Next Obligation.
-    des. rewrite FPTR in *. ss. des_ifs. rewrite <- RSRA in *. ss. des_ifs.
+    all: inv EXTERNAL; unfold external_state in *; des_ifs; inv STEP; ss; des_ifs; rewrite Heq in *; clarify.
   Qed.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.
@@ -182,4 +216,3 @@ End MODSEM.
 
 Program Definition module (p: program): Mod.t :=
   {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
-

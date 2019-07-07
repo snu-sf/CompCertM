@@ -206,3 +206,49 @@ Proof.
     { exploit DISJ; eauto. }
     clarify.
 Qed.
+
+Require MatchSimModSem.
+
+Lemma any_id
+      (md: Mod.t)
+      (WF: Sk.wf md)
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = md>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = md>>)
+.
+Proof.
+  eexists (ModPair.mk _ _ _); s.
+  esplits; eauto. instantiate (1:=tt).
+  econs; ss; i.
+  rewrite SIMSKENVLINK in *.
+  inv SIMSKENVLINK. inv SSLE.
+  eapply MatchSimModSem.match_states_sim; ss.
+  - apply unit_ord_wf.
+  - eapply SoundTop.sound_state_local_preservation.
+  - instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
+                       (<<EQ: st_src = st_tgt>>) /\
+                       (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>)).
+    ss. i. inv SIMARGS. ss. destruct args_src, args_tgt, sm_arg. ss. clarify.
+    esplits; eauto. instantiate (1:= SimMemId.mk _ _). ss.
+  - ii. destruct args_src, args_tgt, sm_arg. inv SIMARGS; ss; clarify.
+  - ii. ss. des. clarify.
+  - i. ss. des. clarify. destruct args_src, sm0; ss. clarify.
+    eexists _, (SimMemId.mk _ _). ss. esplits; eauto.
+    + econs; ss; eauto.
+    + instantiate (1:=top4). ss.
+  - i. clear HISTORY. ss. destruct sm_ret, retv_src, retv_tgt.
+    inv SIMRET. des. ss. clarify. eexists (SimMemId.mk _ _). esplits; eauto.
+  - i. ss. des. destruct sm0. ss. clarify. destruct retv_src; ss. eexists (SimMemId.mk m m).
+    esplits; eauto. econs; ss; eauto.
+  - right. ii. des. destruct sm0. ss. clarify. esplits; eauto.
+    + i. exploit H; ss.
+      * econs 1.
+      * i. des; clarify. econs; eauto.
+    + i. exists tt, st_tgt1. eexists (SimMemId.mk _ _). ss.
+      esplits; eauto.
+      left. econs; eauto; [econs 1|]. symmetry. apply E0_right.
+Unshelve.
+  all: ss.
+Qed.

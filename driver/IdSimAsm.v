@@ -49,62 +49,7 @@ Lemma asm_id
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
 .
 Proof.
-  eexists (ModPair.mk _ _ _); s.
-  assert(PROGSKEL: match_program (fun _ => eq) eq (Sk.of_program fn_sig asm) (Sk.of_program fn_sig asm)).
-  { econs; eauto. ss. eapply match_program_refl; eauto. }
-  assert(PROG: match_program (fun _ => eq) eq asm asm).
-  { econs; eauto. ss. eapply match_program_refl; eauto. }
-  esplits; eauto.
-  econs; ss; eauto.
-  ii. inv SSLE. clear_tac.
-
-  exploit (SimSymbId.sim_skenv_revive PROG); try apply SIMSKENV; eauto.
-  intro GENV; des.
-  inv SIMSKENVLINK.
-
-  eapply match_states_sim with (index := unit)
-                               (sound_state := SoundTop.sound_state)
-                               (match_states := fun sm_arg idx st_src0 st_tgt0 sm =>
-                                                  st_src0 = st_tgt0 /\ SimMem.wf sm)
-                               (match_states_at := top4); ss.
-  - (* WF *)
-    eapply unit_ord_wf.
-  - (* lprsv *)
-    eapply SoundTop.sound_state_local_preservation; eauto.
-  - (* init bsim *)
-    ii. des. exists st_init_tgt. inv SAFESRC. econs; ss; eauto.
-    esplits; ss; eauto.
-    inv SIMARGS. destruct args_src, args_tgt; ss. clarify. destruct sm_arg; ss. clarify.
-  - (* init progress *)
-    ii. des.
-    inv SIMARGS. destruct args_src, args_tgt; ss. clarify. destruct sm_arg; ss. clarify.
-    exists st_init_src. inv SAFESRC. econs; ss; eauto.
-  - (* call wf *)
-    ii; des; ss.
-  - (* call fsim *)
-    ii; des; ss.
-    destruct sm0; ss. clarify.
-    eexists _, (SimMemId.mk _ _); ss. esplits; eauto.
-    econs; ss; eauto.
-  - (* after fsim *)
-    ii; des; ss.
-    destruct sm_ret; ss. clarify. clear_tac.
-    destruct retv_src, retv_tgt; ss. inv SIMRET. ss. clarify.
-    esplits; eauto.
-  - (* final fsim *)
-    ii; des; ss. clarify.
-    destruct retv_src; ss.
-    exists (SimMemId.mk m m).
-    esplits; ss; eauto.
-  - (* step fsim *)
-    left; i.
-    ii; ss. des. clarify. clear_tac.
-    esplits; eauto.
-    { apply AsmC.modsem_receptive. }
-    ii; des. esplits; eauto. left. apply plus_one. econs; eauto.
-    { apply AsmC.modsem_determinate. }
-Unshelve.
-  all: ss.
+  eapply any_id; eauto.
 Qed.
 
 Inductive sound_state (skenv: SkEnv.t) (su: Sound.t) (m_init: mem): AsmC.state -> Prop :=

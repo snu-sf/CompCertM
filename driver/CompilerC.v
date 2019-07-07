@@ -438,7 +438,8 @@ Section Unreadglob.
         (TRANSF: Unreadglob.transform_program src = OK tgt)
     :
       relate_single
-        SimSymbDropInv.SimMemInvTop SimSymbDropInv.SimSymbDropInv SoundTop.Top                     (RTLC.module src) (RTLC.module tgt)
+        SimSymbDropInv.SimMemInvTop SimSymbDropInv.SimSymbDropInv SoundTop.Top
+        (RTLC.module src) (RTLC.module tgt)
   .
   Proof.
     unfold relate_single. exploit UnreadglobproofC.sim_mod; eauto.

@@ -49,8 +49,6 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end.
 
-Definition fn_ssig := fun fd => Some (fd.(fn_sig)).
-
 Section MODSEM.
 
   Variable rao: function -> code -> ptrofs -> Prop.
@@ -60,7 +58,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_ssig).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Record state := mkstate {
@@ -73,7 +71,7 @@ Section MODSEM.
   | at_external_intro
       stack rs m0 m1 fptr sg vs blk ofs init_rs init_sg
       (EXTERNAL: Genv.find_funct ge fptr = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = Some sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
       (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
       (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (RSP: (parent_sp stack) = Vptr blk ofs)
@@ -115,7 +113,7 @@ Section MODSEM.
   | after_external_intro
       init_rs init_sg stack fptr ls0 m0 ls1 m1 retv sg blk ofs
       (CSTYLE: Retv.is_cstyle retv)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = Some sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs)
       (MEMWF: Ple (Senv.nextblock skenv_link) retv.(Retv.m).(Mem.nextblock))
@@ -234,5 +232,5 @@ Qed.
 End PROPS.
 
 Program Definition module (p: program) (rao: function -> code -> ptrofs -> Prop): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_ssig; Mod.get_modsem := modsem rao; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem rao; |}.
 

@@ -17,12 +17,6 @@ Definition get_mem (st: state): mem :=
   | State _ m0 => m0
   end.
 
-Definition funsig (fd: fundef) :=
-  match fd with
-  | Internal f => fn_sig f
-  | External ef => Some (ef_sig ef)
-  end.
-
 Definition st_rs (st0: state): regset :=
   match st0 with
   | State rs _ => rs
@@ -72,7 +66,7 @@ Section MODSEM.
       init_rs
       (FPTR: rs # PC = fptr)
       (EXTERNAL: Genv.find_funct ge fptr = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = Some sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
       (VALS: Asm.extcall_arguments rs m0 sg vs)
       (RSP: rs RSP = Vptr blk1 ofs)
@@ -87,7 +81,7 @@ Section MODSEM.
       init_rs
       (FPTR: rs # PC = fptr)
       (EXTERNAL: Genv.find_funct ge fptr = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = None)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = None)
       (RAPTR: <<TPTR: Val.has_type (rs RA) Tptr>> /\ <<RADEF: rs RA <> Vundef>>)
     :
       at_external (mkstate init_rs (State rs m0)) (Args.Asmstyle rs m0)
@@ -96,7 +90,7 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_cstyle
       fd m0 rs sg targs n m1 fptr_arg vs_arg m_arg
-      (SIG: Some sg = fd.(fn_sig))
+      (SIG: true = fd.(fn_sig).(sig_cstyle))
       (CSTYLE: args = Args.Cstyle fptr_arg vs_arg m_arg)
       (FINDF: Genv.find_funct ge fptr_arg = Some (Internal fd))
       (JUNK: assign_junk_blocks m0 n = m1)
@@ -115,7 +109,7 @@ Section MODSEM.
       initial_frame args (mkstate rs (State rs m1))
   | initial_frame_asmstyle
       fd ra n m1 rs_arg rs m_arg
-      (SIG: None = fd.(fn_sig))
+      (SIG: false = fd.(fn_sig).(sig_cstyle))
       (ASMSTYLE: args = Args.Asmstyle rs_arg m_arg)
       (FINDF: Genv.find_funct ge (rs_arg # PC) = Some (Internal fd))
       (JUNK: assign_junk_blocks m_arg n = m1)
@@ -131,7 +125,7 @@ Section MODSEM.
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_cstyle
       (init_rs rs: regset) m0 m1 blk sg mr
-      (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC) = Some (Internal fd) /\ fd.(fn_sig) = Some sg)
+      (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC) = Some (Internal fd) /\ fd.(fn_sig) = sg /\ sg.(sig_cstyle) = true)
       (EXTERNAL: external_state ge (rs # PC))
       (RSRA: rs # PC = init_rs # RA)
       (RANOTFPTR: Genv.find_funct skenv_link (init_rs RA) = None)
@@ -145,7 +139,7 @@ Section MODSEM.
       final_frame (mkstate init_rs (State rs m0)) (Retv.Cstyle (rs mr.(to_preg)) m1)
   | final_frame_asmstyle
       (init_rs rs: regset) m0
-      (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC) = Some (Internal fd) /\ fd.(fn_sig) = None)
+      (INITSIG: exists fd, ge.(Genv.find_funct) (init_rs # PC) = Some (Internal fd) /\ fd.(fn_sig).(sig_cstyle) = false)
       (EXTERNAL: external_state ge (rs # PC))
       (RSRA: rs # PC = init_rs # RA)
       (RANOTFPTR: Genv.find_funct skenv_link (init_rs RA) = None)
@@ -158,7 +152,7 @@ Section MODSEM.
       init_rs rs0 m0 rs1 m1 retv retv_v retv_m sg blk ofs
       (CSTYLE: retv = (Retv.Cstyle retv_v retv_m))
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
-                        = Some skd /\ Sk.get_sig skd = Some sg)
+                        = Some skd /\ Sk.get_csig skd = Some sg)
       (RS: rs1 = (set_pair (loc_external_result sg) retv_v (regset_after_external rs0)) #PC <- (rs0 RA))
       (RSRSP: rs0 RSP = Vptr blk ofs)
       (UNFREE: Mem_unfree retv_m blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1):
@@ -168,7 +162,7 @@ Section MODSEM.
   | after_external_asmstyle
       init_rs rs0 m0 rs1 retv retv_rs retv_m
       (ASMSTYLE: retv = (Retv.Asmstyle retv_rs retv_m))
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC) = Some skd /\ Sk.get_sig skd = None)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC) = Some skd /\ Sk.get_csig skd = None)
       (RS: rs1 = retv_rs # PC <- (rs0 # RA))
     :
       after_external (mkstate init_rs (State rs0 m0))

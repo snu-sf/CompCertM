@@ -219,6 +219,15 @@ Module Sk.
 
   Definition empty: t := (mkprogram [] [] 1%positive).
 
+  Definition get_csig (skdef: (AST.fundef signature)): option signature :=
+    match skdef with
+    | Internal sg0 =>
+      if sg0.(sig_cstyle) then Some sg0 else None
+    | External ef =>
+      if ef.(ef_sig).(sig_cstyle) then Some ef.(ef_sig) else None
+    end
+  .
+
   Definition get_sig (skdef: (AST.fundef signature)): signature :=
     match skdef with
     | Internal sg0 => sg0

@@ -132,11 +132,17 @@ Section SIM.
         clear - Heq2 CHK0 H1 H4.
         des_ifs. inv H1; inv H4; ss.
         - unfold CtypesC.CSk.match_fundef in *. des_ifs; ss; des_ifs; bsimpl; des; des_sumbool; clarify.
+          + unfold signature_of_function in *. ss. unfold signature_of_type in *.
+            eapply n. f_equal. rewrite Heq3.
+            clear. ginduction t. ss. ss. rewrite IHt. eauto.
+          + unfold signature_of_function in *. ss. unfold signature_of_type in *.
+            eapply n. f_equal. rewrite Heq3.
+            clear. ginduction t. ss. ss. rewrite IHt. eauto.
         - des_ifs. inv H; inv H0; ss. unfold link_vardef in *. ss. des_ifs.
       }
       bsimpl. des. des_sumbool.
       f_equal. unfold CSk.of_program. ss. f_equal.
-      unfold skdefs_of_gdefs. (* unfold prog_defmap. ss. *)
+      unfold skdefs_of_gdefs.
       rewrite PTree_elements_map.
       rewrite PTree_elements_map.
       eapply PTree.elements_extensional. intro id. rewrite PTree.gcombine; ss.
@@ -149,11 +155,15 @@ Section SIM.
       set ((PTree_Properties.of_list (prog_defs p1)) ! id) as y.
       clear_tac.
       destruct x eqn:Tx; ss. destruct y eqn:Ty; ss. unfold x in Tx. unfold y in Ty.
-      exploit Q; eauto. intro CHK. (* unfold link_prog_check, prog_defmap in CHK. *)
+      exploit Q; eauto. intro CHK.
       unfold option_map. des_ifs; ss; cycle 1.
       - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef, link_prog_check, prog_defmap, program_of_program in *; des_ifs; ss; des_ifs; bsimpl; des; des_sumbool; clarify.
       - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef in *; des_ifs; ss;
           unfold fundef_of_fundef in *; des_ifs; bsimpl; des; des_sumbool; clarify.
+        + exfalso. unfold signature_of_function in *. ss. unfold signature_of_type in *.
+          eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
+        + exfalso. unfold signature_of_function in *. ss. unfold signature_of_type in *.
+          eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
         + destruct g; ss. unfold link_vardef in *. des_ifs. ss. bsimpl. des. rewrite eqb_true_iff in *.
           f_equal. destruct gvar_info; ss. f_equal; ss. f_equal; ss. clarify.
         + exfalso.
@@ -185,10 +195,9 @@ Section SIM.
   Lemma prog_defmap_func_same_rev
         pgm id func
         (FOC: is_focus pgm)
-        (DMAP: (prog_defmap pgm) ! id = Some (Gfun func)) (* (Internal func))) *)
-        (INTERNAL: negb (is_external_fd func) = true)
-    :
-      (prog_defmap cp_link) ! id = Some (Gfun func). (* (Internal func')). *)
+        (DMAP: (prog_defmap pgm) ! id = Some (Gfun func))
+        (INTERNAL: negb (is_external_fd func) = true) :
+      (prog_defmap cp_link) ! id = Some (Gfun func).
   Proof.
     Local Transparent Linker_program. ss.
     unfold link_program in *. des_ifs.
@@ -219,19 +228,14 @@ Section SIM.
       cp
       (FOCUS: is_focus cp)
       (K0: exists _f _e _C _k, k0 = (Kcall _f _e _C _tres _k) /\ <<WTYK: wtype_cont (prog_comp_env cp) _k>>)
-      (* (WTTGT: exists ge_cp, wt_state ge_cp (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m)) *)
-      (WTTGT: wt_state cp (geof cp) (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m))
-    :
+      (WTTGT: wt_state cp (geof cp) (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m)) :
       sum_cont ((Frame.mk (CsemC.modsem skenv_link cp)
-                          (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m)) :: tl) k2
-  .
+                          (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m)) :: tl) k2.
 
   Lemma sum_cont_kstop_inv
         frs
-        (SUM: sum_cont frs Kstop)
-    :
-      frs = []
-  .
+        (SUM: sum_cont frs Kstop) :
+      frs = [].
   Proof.
     clear - SUM.
     inv SUM; ss.
@@ -263,31 +267,11 @@ Section SIM.
     :
       match_focus_state Csem.Stuckstate Csem.Stuckstate k0
   .
-  (* Let sum_cont := sum_cont cps sk_link. *)
-  (* variable cp_link cp0 cp1: Csyntax.program. *)
-  (* Variable ctx: Syntax.program. *)
-  (* Hypothesis FOCUS: link cp0 cp1 = Some cp_link. *)
-  (* (* Let prog_src := cp_link.(CsemC.module) :: ctx. *) *)
-  (* (* Let prog_tgt := cp1.(CsemC.module) :: cp2.(CsemC.module) :: ctx. *) *)
-  (* Let prog_src := ctx ++ [cp_link.(CsemC.module)]. *)
-  (* Let prog_tgt := ctx ++ [cp0.(CsemC.module) ; cp1.(CsemC.module)]. *)
-  (* Variable sk_link: Sk.t. *)
-  (* Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link). *)
-  (* Hypothesis (LINKSRC: link_sk prog_src = Some sk_link). *)
-
-  (* Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env)) *)
-  (*                          (at level 50, no associativity, only parsing). *)
-
-  (* Let sum_cont := sum_cont *)
-  (*                   cp0 cp1 sk_link. *)
 
   Lemma call_cont_app_cont
         k k0
-        tl_tgt (SUM: sum_cont tl_tgt k0)
-    (* (CASE: k0 = Kstop \/ is_call_cont_strong k0) *)
-    :
-      (app_cont (call_cont k) k0) = call_cont (app_cont k k0)
-  .
+        tl_tgt (SUM: sum_cont tl_tgt k0) :
+      (app_cont (call_cont k) k0) = call_cont (app_cont k k0).
   Proof.
     clear - SUM.
     assert(CASE: k0 = Kstop \/ is_call_cont_strong k0).
@@ -308,14 +292,11 @@ Section SIM.
     | Csem.Callstate fptr tyf vargs k1 m => Csem.Callstate fptr tyf vargs (app_cont k1 k0) m
     | Csem.Returnstate vres k1 m => Csem.Returnstate vres (app_cont k1 k0) m
     | Csem.Stuckstate => Csem.Stuckstate
-    end
-  .
+    end.
 
   Lemma match_focus_state_iff
-        st_src0 st_tgt0 k0
-    :
-      <<MATCH: match_focus_state st_src0 st_tgt0 k0>> <-> <<MATCH: st_src0 = matched_state_source st_tgt0 k0>>
-  .
+        st_src0 st_tgt0 k0 :
+      <<MATCH: match_focus_state st_src0 st_tgt0 k0>> <-> <<MATCH: st_src0 = matched_state_source st_tgt0 k0>>.
   Proof.
     split; i.
     - inv H; ss.
@@ -326,8 +307,7 @@ Section SIM.
 
   Lemma defmap_with_signature
         (cp:Csyntax.program) i g
-        (DMAP: (prog_defmap cp) ! i = Some g)
-    :
+        (DMAP: (prog_defmap cp) ! i = Some g) :
       exists gd, (prog_defmap (CSk.of_program signature_of_function cp)) ! i = Some gd.
   Proof.
     exploit (CSk.of_program_prog_defmap cp signature_of_function).
@@ -336,8 +316,7 @@ Section SIM.
 
   Lemma defmap_with_signature_internal
         (cp:Csyntax.program) i if_sig
-        (DMAP: (prog_defmap cp) ! i = Some (Gfun (Internal if_sig)))
-    :
+        (DMAP: (prog_defmap cp) ! i = Some (Gfun (Internal if_sig))) :
       exists if_sig0, (prog_defmap (CSk.of_program signature_of_function cp)) ! i = Some (Gfun (AST.Internal if_sig0)).
   Proof.
     exploit (CSk.of_program_prog_defmap cp signature_of_function).
@@ -351,14 +330,12 @@ Section SIM.
         (FOC: is_focus cp)
         (SYMBSKENV : Genv.invert_symbol skenv_link b = Some i0)
         (DEFS: defs (CSk.of_program signature_of_function cp) i)
-        (SYMB : Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b = Some i)
-    :
+        (SYMB : Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b = Some i) :
       i = i0.
   Proof.
     exploit Genv.invert_find_symbol. eauto. i. exploit Genv.invert_find_symbol. eapply SYMBSKENV. i.
     exploit SkEnv.project_impl_spec. eapply INCL_FOCUS. eauto. i. inv H1.
     exploit SYMBKEEP; eauto. i.
-    (* rewrite <- defs_prog_defmap. eapply defmap_with_signature; eauto. i. *)
     rewrite H1 in H.
     exploit Genv.find_invert_symbol. eapply H. i. exploit Genv.find_invert_symbol. eapply H0. i.
     rewrite H2 in H3. clarify.
@@ -367,9 +344,8 @@ Section SIM.
   Lemma prog_defmap_same_rev
         pgm id func
         (FOC: is_focus pgm)
-        (DMAP: (prog_defmap pgm) ! id = Some (Gfun (Internal func))) (* (Internal func))) *)
-    :
-      (prog_defmap cp_link) ! id = Some (Gfun (Internal func)). (* (Internal func')). *)
+        (DMAP: (prog_defmap pgm) ! id = Some (Gfun (Internal func))) :
+      (prog_defmap cp_link) ! id = Some (Gfun (Internal func)).
   Proof.
     Local Transparent Linker_program. ss.
     unfold link_program in *. des_ifs.
@@ -389,9 +365,9 @@ Section SIM.
   Lemma prog_defmap_gvar_exists_rev
         pgm id var
         (FOC: is_focus pgm)
-        (DMAP: (prog_defmap pgm) ! id = Some (Gvar var)) (* (Internal func))) *)
+        (DMAP: (prog_defmap pgm) ! id = Some (Gvar var))
     :
-      exists var', (prog_defmap cp_link) ! id = Some (Gvar var'). (* (Internal func')). *)
+      exists var', (prog_defmap cp_link) ! id = Some (Gvar var').
   Proof.
     Local Transparent Linker_program. ss.
     unfold link_program in *. des_ifs.
@@ -410,9 +386,8 @@ Section SIM.
   Lemma prog_defmap_exists_rev
         pgm id func
         (FOC: is_focus pgm)
-        (DMAP: (prog_defmap pgm) ! id = Some (Gfun func)) (* (Internal func))) *)
-    :
-      exists func', (prog_defmap cp_link) ! id = Some (Gfun func'). (* (Internal func')). *)
+        (DMAP: (prog_defmap pgm) ! id = Some (Gfun func)) :
+      exists func', (prog_defmap cp_link) ! id = Some (Gfun func').
   Proof.
     Local Transparent Linker_program. ss.
     unfold link_program in *. des_ifs.
@@ -432,9 +407,8 @@ Section SIM.
         b i0 i
         (SYMBSKENV : Genv.invert_symbol skenv_link b = Some i0)
         (DEFS: defs (CSk.of_program signature_of_function cp_link) i)
-        (SYMB : Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b = Some i)
-    :
-      i = i0.
+        (SYMB : Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b = Some i) :
+    i = i0.
   Proof.
     exploit Genv.invert_find_symbol. eauto. i. exploit Genv.invert_find_symbol. eapply SYMBSKENV. i.
     exploit SkEnv.project_impl_spec. eapply INCL_LINKED. i. inv H1.
@@ -448,8 +422,7 @@ Section SIM.
   Lemma internals_linking
         cp i
         (FOC: is_focus cp)
-        (INTERNALS : internals (CSk.of_program signature_of_function cp) i = true)
-    :
+        (INTERNALS : internals (CSk.of_program signature_of_function cp) i = true) :
       internals (CSk.of_program signature_of_function cp_link) i = true.
   Proof.
     rewrite CSk.of_program_internals in *.
@@ -470,8 +443,7 @@ Section SIM.
         cp b func
         (FOC: is_focus cp)
         (INTERNAL: negb (is_external_fd (fundef_of_fundef func)) = true)
-        (FIND: Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) b = Some (Gfun func))
-    :
+        (FIND: Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) b = Some (Gfun func)) :
       Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) cp_link) b = Some (Gfun func).
   Proof.
     unfold Genv.find_def in FIND. ss. rewrite MapsC.PTree_filter_map_spec in FIND. rewrite o_bind_ignore in FIND. des_ifs.
@@ -495,8 +467,7 @@ Section SIM.
   Lemma prog_find_defs_same_rev
         cp b if_sig
         (FOC: is_focus cp)
-        (FIND: Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) b = Some (Gfun (Internal if_sig)))
-    :
+        (FIND: Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) b = Some (Gfun (Internal if_sig))) :
       Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) cp_link) b = Some (Gfun (Internal if_sig)).
   Proof.
     exploit prog_find_defs_same_rev2; eauto. ss.
@@ -506,14 +477,13 @@ Section SIM.
         cp f0 co delta
         (FOC : linkorder_program cp cp_link)
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
-        (COMPLETE : complete_members (prog_comp_env cp) (co_members co) = true)
-    :
+        (COMPLETE : complete_members (prog_comp_env cp) (co_members co) = true) :
       field_offset (prog_comp_env cp) f0 (co_members co) = Errors.OK delta <->
       field_offset (prog_comp_env cp_link) f0 (co_members co) = Errors.OK delta.
   Proof.
     unfold field_offset in *.
     remember 0 as n. clear Heqn.
-    revert COMPLETE (* OFFSET *) FOC EXTENDS.
+    revert COMPLETE FOC EXTENDS.
     revert cp delta f0 n.
     induction (co_members co) as [| mhd mtl]; try (by ss); i.
     ss. destruct mhd.
@@ -539,8 +509,7 @@ Section SIM.
         (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
-        (CLASSADD : classify_add ty1 ty2 = add_case_pi ty0 si)
-    :
+        (CLASSADD : classify_add ty1 ty2 = add_case_pi ty0 si) :
       sem_add_ptr_int (prog_comp_env cp) ty0 si v1 v2 = Some v <->
       sem_add_ptr_int (prog_comp_env cp_link) ty0 si v1 v2 = Some v.
   Proof.
@@ -561,8 +530,7 @@ Section SIM.
         (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
-        (CLASSADD : classify_add ty1 ty2 = add_case_ip si ty0)
-    :
+        (CLASSADD : classify_add ty1 ty2 = add_case_ip si ty0) :
       sem_add_ptr_int (prog_comp_env cp) ty0 si v2 v1 = Some v <->
       sem_add_ptr_int (prog_comp_env cp_link) ty0 si v2 v1 = Some v.
   Proof.
@@ -583,8 +551,7 @@ Section SIM.
         (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
-        (CLASSADD : classify_add ty1 ty2 = add_case_pl ty0)
-    :
+        (CLASSADD : classify_add ty1 ty2 = add_case_pl ty0) :
       sem_add_ptr_long (prog_comp_env cp) ty0 v1 v2 = Some v <->
       sem_add_ptr_long (prog_comp_env cp_link) ty0 v1 v2 = Some v.
   Proof.
@@ -605,8 +572,7 @@ Section SIM.
         (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (CTX : context k1 k2 CC)
-        (CLASSADD : classify_add ty1 ty2 = add_case_lp ty0)
-    :
+        (CLASSADD : classify_add ty1 ty2 = add_case_lp ty0) :
       sem_add_ptr_long (prog_comp_env cp) ty0 v2 v1 = Some v <->
       sem_add_ptr_long (prog_comp_env cp_link) ty0 v2 v1 = Some v.
   Proof.
@@ -627,8 +593,7 @@ Section SIM.
         (WTSRC : wt_state cp_link ge_cp_link (ExprState f (CC (Ebinop Osub (Eval v1 ty1) (Eval v2 ty2) ty)) (app_cont k k0) e m'))
         (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Osub (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
-        (CTX : context k1 k2 CC)
-    :
+        (CTX : context k1 k2 CC) :
       sem_sub (prog_comp_env cp) v1 ty1 v2 ty2 m' = Some v <->
       sem_sub (prog_comp_env cp_link) v1 ty1 v2 ty2 m' = Some v.
   Proof.
@@ -660,8 +625,7 @@ Section SIM.
         cp f v1 ty1 v2 ty2 ty CC k e m' k1 k2 v
         (WTTGT : wt_state cp (geof cp) (ExprState f (CC (Ebinop Oadd (Eval v1 ty1) (Eval v2 ty2) ty)) k e m'))
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
-        (CTX : context k1 k2 CC)
-    :
+        (CTX : context k1 k2 CC) :
       sem_add (prog_comp_env cp) v1 ty1 v2 ty2 m' = Some v <->
       sem_add (prog_comp_env cp_link) v1 ty1 v2 ty2 m' = Some v.
   Proof.
@@ -677,8 +641,7 @@ Section SIM.
         (WTENV: forall id blk ty, e ! id = Some (blk, ty) -> wt_type (prog_comp_env cp) ty)
         (EXTENDS : forall (id : positive) (cmp : composite),
             (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
-        (FREE : Mem.free_list m (blocks_of_env (geof cp_link) e) = Some m')
-    :
+        (FREE : Mem.free_list m (blocks_of_env (geof cp_link) e) = Some m') :
       Mem.free_list m (blocks_of_env (geof cp) e) = Some m'.
   Proof.
     unfold blocks_of_env, block_of_binding in *. ss.
@@ -699,8 +662,7 @@ Section SIM.
         (WTENV: forall id blk ty, e ! id = Some (blk, ty) -> wt_type (prog_comp_env cp) ty)
         (EXTENDS : forall (id : positive) (cmp : composite),
             (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
-        (FREE : Mem.free_list m (blocks_of_env (geof cp) e) = Some m')
-    :
+        (FREE : Mem.free_list m (blocks_of_env (geof cp) e) = Some m') :
       Mem.free_list m (blocks_of_env ge_cp_link e) = Some m'.
   Proof.
     unfold blocks_of_env, block_of_binding in *. ss.
@@ -732,8 +694,7 @@ Section SIM.
         cp f m e m1
         (WT : Forall (fun t : type => wt_type (prog_comp_env cp) t) (map snd (fn_params f ++ fn_vars f)))
         (EXTENDS: forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
-        (ALLOC : alloc_variables (geof cp) empty_env m (fn_params f ++ fn_vars f) e m1)
-    :
+        (ALLOC : alloc_variables (geof cp) empty_env m (fn_params f ++ fn_vars f) e m1) :
       alloc_variables ge_cp_link empty_env m (fn_params f ++ fn_vars f) e m1.
   Proof.
     assert (EMPTY:forall i blk ty, empty_env ! i = Some (blk, ty) -> wt_type (prog_comp_env cp) ty).
@@ -757,8 +718,7 @@ Section SIM.
         cp f vargs  m1 e m2
         (WT : Forall (fun t : type => wt_type (prog_comp_env cp) t) (map snd (fn_params f ++ fn_vars f)))
         (EXTENDS: forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
-        (BIND : bind_parameters skenv_link (geof cp) e m1 (fn_params f) vargs m2)
-    :
+        (BIND : bind_parameters skenv_link (geof cp) e m1 (fn_params f) vargs m2) :
       bind_parameters skenv_link ge_cp_link e m1 (fn_params f) vargs m2.
   Proof.
     assert (EMPTY:forall i blk ty, empty_env ! i = Some (blk, ty) -> wt_type (prog_comp_env cp) ty).
@@ -780,11 +740,8 @@ Section SIM.
   Lemma preservation_alloc
         cp_top m1 e l m0
         (FOCUS1 : is_focus cp_top)
-        (ALLOC : alloc_variables ge_cp_link empty_env m0
-                   l e m1)
-        (COMP : Forall (fun t : type => wt_type (prog_comp_env cp_top) t)
-                       (map snd l))
-    :
+        (ALLOC : alloc_variables ge_cp_link empty_env m0 l e m1)
+        (COMP : Forall (fun t : type => wt_type (prog_comp_env cp_top) t) (map snd l)) :
       alloc_variables (geof cp_top) empty_env m0 l e m1.
   Proof.
     induction ALLOC.
@@ -803,8 +760,7 @@ Section SIM.
         cp_top m1 e l l' m2 vs_arg
         (FOCUS1 : is_focus cp_top)
         (PARAM : bind_parameters skenv_link ge_cp_link e m1 l vs_arg m2)
-        (COMP : Forall (fun t : type => wt_type (prog_comp_env cp_top) t) (map snd (l ++ l')))
-    :
+        (COMP : Forall (fun t : type => wt_type (prog_comp_env cp_top) t) (map snd (l ++ l'))) :
       bind_parameters skenv_link (geof cp_top) e m1 l vs_arg m2.
   Proof.
     induction PARAM.
@@ -828,8 +784,7 @@ Section SIM.
   Lemma find_label_same_None
         tl_tgt k0 lbl s k
         (SUM : sum_cont tl_tgt k0)
-        (LABEL : find_label lbl s k = None)
-    :
+        (LABEL : find_label lbl s k = None) :
       find_label lbl s (app_cont k k0) = None.
   Proof.
     revert_until s. revert s lbl k0 tl_tgt.
@@ -847,8 +802,7 @@ Section SIM.
   Lemma find_label_same_None'
         tl_tgt k0 lbl s k k'
         (SUM : sum_cont tl_tgt k0)
-        (LABEL : find_label lbl s k = None)
-    :
+        (LABEL : find_label lbl s k = None) :
       find_label lbl s k' = None.
   Proof.
     revert_until s. revert s lbl k0 tl_tgt.
@@ -870,8 +824,7 @@ Section SIM.
   Lemma find_label_exists
         tl_tgt k0 lbl s k s' k' k1
         (SUM : sum_cont tl_tgt k0)
-        (LABEL : find_label lbl s k = Some (s', k'))
-    :
+        (LABEL : find_label lbl s k = Some (s', k')) :
       exists k1', find_label lbl s k1 = Some (s', k1').
   Proof.
     revert SUM. revert_until s.
@@ -914,8 +867,7 @@ Section SIM.
   Lemma find_label_same
         tl_tgt k0 lbl s k s' k'
         (SUM : sum_cont tl_tgt k0)
-        (LABEL : find_label lbl s k = Some (s', k'))
-    :
+        (LABEL : find_label lbl s k = Some (s', k')) :
       find_label lbl s (app_cont k k0) = Some (s', app_cont k' k0).
   Proof.
     revert SUM. revert_until s.
@@ -967,8 +919,7 @@ Section SIM.
         (WTTGT: wt_state cp (geof cp) (ExprState f (C a) k3 e m))
         (EXTENDS: forall (id : positive) (cmp : composite),
             (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
-        (LRED: lred ge_cp_link e a m a' m')
-    :
+        (LRED: lred ge_cp_link e a m a' m') :
       exists a1 m1, lred (geof cp) e a m a1 m1.
   Proof.
     inv LRED.
@@ -1005,8 +956,7 @@ Section SIM.
         (WTTGT: wt_state cp (geof cp) cst_tgt0)
         (STEP: Csem.step skenv_link (geof cp) cst_tgt0 tr cst_tgt1)
         tl_tgt
-        (SUM: sum_cont tl_tgt k0)
-    :
+        (SUM: sum_cont tl_tgt k0) :
       <<STEP: Csem.step skenv_link (geof cp_link) cst_src0 tr (matched_state_source cst_tgt1 k0)>>
   .
   Proof.
@@ -1269,7 +1219,6 @@ Section SIM.
           inv WTTGT. exploit free_list_exists; eauto.
       + eexists. right. ss. eapply step_skip_call; eauto.
         * exploit Cstrategy.is_call_cont_call_cont; et. intro T.
-          (* TODO: make lemma *)
           clear - H T SUM. unfold is_call_cont in H. des_ifs. ss.
           destruct k3; destruct k0; ss.
           inv SUM; ss. des; clarify.

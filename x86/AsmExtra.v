@@ -28,18 +28,30 @@ Proof.
                                       #RSP <- (Vptr (Mem.nextblock m) Ptrofs.zero)
                                       #RA <- Vnullptr)).
     ss.
+  - rewrite Pregmap.gss. ii. clarify.
+  - repeat (rewrite Pregmap.gso; [|clarify; fail]). eapply Pregmap.gss.
   - econs; eauto.
   - econs.
     + inv STR. econs; eauto.
       eapply extcall_arguments_same; eauto.
       i. unfold to_mregset, to_pregset, Pregmap.set, to_preg, preg_of. des_ifs; ss; clarify.
     + des_ifs.
-  - split.
-    + des_ifs.
-    + des_ifs.
-  - i. des_ifs.
   - instantiate (1:=0%nat). i. unfold Pregmap.set, to_pregset in PTR. des_ifs; eauto.
     + exfalso. apply PTR. ss.
     + left. esplits; eauto. apply NNPP. eauto.
     + exfalso. apply PTR. ss.
+Qed.
+
+Lemma asm_initial_frame_succeed_asmstyle (asm: Asm.program) args rs m skenv_link fd
+      (ARGS: args = Args.Asmstyle rs m)
+      (FPTR: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm) (rs PC) =
+            Some (Internal fd))
+      (SIG: fd.(fn_sig) = None)
+
+  :
+    exists st_init, initial_frame skenv_link asm args st_init.
+Proof.
+  exists (AsmC.mkstate (rs # RA <- Vnullptr)
+                       (Asm.State (rs # RA <- Vnullptr) (JunkBlock.assign_junk_blocks m 0%nat))).
+  econs 2; eauto; ss.
 Qed.

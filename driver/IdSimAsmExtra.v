@@ -719,16 +719,43 @@ Proof.
   - i. des. esplits; eauto; ss.
 Qed.
 
-Inductive wf_init_rs (sg: signature) (rs: regset) : Prop :=
-| wf_init_rs_intro
-    (RSPDEF: rs RSP <> Vundef)
-    (TPTR: Val.has_type (rs RA) Tptr)
-    (RADEF: rs RA <> Vundef)
-.
 
 Definition undef_bisim (rs_src rs_tgt: regset): Prop :=
   forall (r: mreg) (IN: Conventions1.is_callee_save r = true) (UNDEF: rs_src (to_preg r) = Vundef),
     rs_tgt (to_preg r) = Vundef.
+
+Inductive wf_init_rs (rs: regset): Prop :=
+| wf_init_rs_intro
+    (RSPDEF: rs RSP <> Vundef)
+    (TPTR: Val.has_type (rs RA) Tptr)
+    (RADEF: rs RA <> Vundef)
+  :
+    wf_init_rs rs
+.
+
+Inductive wf_init_rs_asmstyle (rs: regset): Prop :=
+| wf_init_rs_amstyle_intro
+    (TPTR: Val.has_type (rs RA) Tptr)
+    (RADEF: rs RA <> Vundef)
+  :
+    wf_init_rs_asmstyle rs
+.
+
+Inductive wf_init_rss: option signature -> regset -> regset -> Prop :=
+| wf_init_rss_intro
+    sg init_rs_src init_rs_tgt
+    (WFINITSRC: wf_init_rs init_rs_src)
+    (WFINITTGT: wf_init_rs init_rs_tgt)
+    (UNDEF: undef_bisim init_rs_src init_rs_tgt)
+  :
+    wf_init_rss (Some sg) init_rs_src init_rs_tgt
+| wf_init_rss_asmstyle
+    init_rs_src init_rs_tgt
+    (WFINITSRC: wf_init_rs_asmstyle init_rs_src)
+    (WFINITTGT: wf_init_rs_asmstyle init_rs_tgt)
+  :
+    wf_init_rss None init_rs_src init_rs_tgt
+.
 
 Inductive match_states_ext
           (skenv_link_tgt : SkEnv.t)
@@ -744,11 +771,9 @@ Inductive match_states_ext
     (MCOMPATSRC: m_src = sm0.(SimMem.src))
     (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
-    (UNDEF: undef_bisim init_rs_src init_rs_tgt)
     fd
     (FINDF: Genv.find_funct ge_src (init_rs_src PC) = Some (Internal fd))
-    (WFINITSRC: wf_init_rs fd.(fn_sig) init_rs_src)
-    (WFINITTGT: wf_init_rs fd.(fn_sig) init_rs_tgt)
+    (WFINITRS: wf_init_rss fd.(fn_sig) init_rs_src init_rs_tgt)
     (RAWF: Genv.find_funct skenv_link_tgt (init_rs_tgt RA) = None)
   :
     match_states_ext

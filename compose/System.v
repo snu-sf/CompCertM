@@ -23,7 +23,7 @@ Section SYSMODSEM.
   Definition skenv: SkEnv.t :=
     skenv_link.(Genv_map_defs)(fun _ gd =>
                                  match gd with
-                                 | Gfun (External ef) => Some (Gfun (Internal (Some ef.(ef_sig))))
+                                 | Gfun (External ef) => Some (Gfun (Internal (ef.(ef_sig))))
                                  | Gfun _ => None
                                  | Gvar gv => Some gd
                                  end)

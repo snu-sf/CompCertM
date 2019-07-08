@@ -90,7 +90,8 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_cstyle
       fd m0 rs sg targs n m1 fptr_arg vs_arg m_arg
-      (SIG: true = fd.(fn_sig).(sig_cstyle))
+      (SIG: sg = fd.(fn_sig))
+      (CSTYLE0: sg.(sig_cstyle))
       (CSTYLE: args = Args.Cstyle fptr_arg vs_arg m_arg)
       (FINDF: Genv.find_funct ge fptr_arg = Some (Internal fd))
       (JUNK: assign_junk_blocks m0 n = m1)

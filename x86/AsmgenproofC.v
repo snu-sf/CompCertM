@@ -74,7 +74,7 @@ Inductive match_init_data init_sp init_ra
     (INITRA: init_ra = init_rs_tgt RA)
     (INITRAPTR: <<TPTR: Val.has_type (init_ra) Tptr>> /\ <<RADEF: init_ra <> Vundef>>)
     (INITRS: agree_eq init_rs_src init_sp init_rs_tgt init_sg_src )
-    (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = Some init_sg_src).
+    (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src /\ init_sg_src.(sig_cstyle)).
 
 Inductive stack_base (initial_parent_sp initial_parent_ra: val): list Mach.stackframe -> Prop :=
 | stack_base_dummy:
@@ -149,7 +149,7 @@ Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 Lemma transf_function_sig
       fd_src fd_tgt
       (TRANS: transf_function fd_src = OK fd_tgt):
-    Some fd_src.(Mach.fn_sig) = fd_tgt.(fn_sig).
+  fd_src.(Mach.fn_sig) = fd_tgt.(fn_sig).
 Proof. repeat unfold transf_function, bind, transl_function in *. des_ifs. Qed.
 
 Theorem sim_modsem: ModSemPair.sim msp.
@@ -166,19 +166,19 @@ Proof.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
 
     assert (SRCSTORE: exists rs_src m_src,
-               StoreArguments.store_arguments src rs_src (typify_list vs_src (sig_args sg)) sg m_src /\
+               StoreArguments.store_arguments src rs_src (typify_list vs_src (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
            agree_eq rs_src (Vptr (Mem.nextblock src)
-                          Ptrofs.zero) rs sg /\ Mem.extends m_src m0).
+                          Ptrofs.zero) rs (fn_sig fd) /\ Mem.extends m_src m0).
     { inv TYP.
       exploit store_arguments_parallel_extends.
       - eapply typify_has_type_list. eauto.
       - exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF.
-        eapply WFPARAM in H; eauto. ss. des_ifs.
-      - instantiate (1:= typify_list vs_src (sig_args sg)).
+        eapply WFPARAM in H; eauto.
+      - instantiate (1:= typify_list vs_src (sig_args (fn_sig fd))).
         eapply lessdef_list_typify_list; eauto. erewrite lessdef_list_length; eauto.
       - eapply MWF.
       - inv STORE. eauto.
-      - i. des. exists (set_regset rs_src (to_mregset rs) sg).
+      - i. des. exists (set_regset rs_src (to_mregset rs) (fn_sig fd)).
         esplits; eauto.
         + clear - ARGTGT. inv ARGTGT. econs; eauto.
           eapply extcall_arguments_same; eauto.
@@ -195,20 +195,21 @@ Proof.
 
     destruct SRCSTORE as [rs_src [m_src [SRCSTORE [AGREE EXTENDS]]]]. inv AGREE.
     exists (MachC.mkstate
-              rs_src sg
+              rs_src (fn_sig fd)
               (Callstate
                  [dummy_stack (Vptr (Mem.nextblock src) Ptrofs.zero) (rs RA)]
                  fptr_src rs_src (assign_junk_blocks m_src n))).
     inv FPTR; ss.
     esplits; auto; ss.
     + inv TYP0. clear_tac.
-      assert(SIG2: fn_sig fd = Some (Mach.fn_sig fd0)).
+      assert(SIG2: fn_sig fd = (Mach.fn_sig fd0)).
       { hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
         folder. ss; try unfold bind in *; des_ifs.
         symmetry. eapply transf_function_sig; eauto.
       }
       econs; auto.
-      * rewrite SIG2 in SIG. inv SIG. ss.
+      * eauto.
+      * ss.
       * ss.
       * econs; eauto; ss; eauto with congruence.
       * ss.
@@ -231,14 +232,14 @@ Proof.
       * econs; eauto; ss; try by (econs; eauto).
         { eapply assign_junk_block_extends; et. }
         econs; eauto. i.
-        destruct (classic (In (R r) (regs_of_rpairs (loc_arguments sg)))); eauto.
+        destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (fn_sig fd))))); eauto.
         erewrite agree_mregs_eq0; auto.
 
   - ss. des. inv SAFESRC. inv SIMARGS; ss. destruct sm_arg; ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des. ss; unfold bind in *; des_ifs. rename f into fd_tgt.
     inv TYP.
-    assert(SIG: fn_sig fd_tgt = Some (Mach.fn_sig fd)).
+    assert(SIG: fn_sig fd_tgt = (Mach.fn_sig fd)).
     { hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
       folder. ss; try unfold bind in *; des_ifs.
       symmetry. eapply transf_function_sig; eauto.
@@ -261,7 +262,7 @@ Proof.
         eapply typify_has_type_list.
         erewrite <- lessdef_list_length; eauto.
       - exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF.
-        eapply WFPARAM in H0. eauto. ss. rewrite SIG. ss.
+        eapply WFPARAM in H0. eauto. ss. rewrite <- SIG. ss.
       - instantiate (1:= n). i. des.
         exists ((to_pregset (set_regset_undef rs0 (Mach.fn_sig fd)))
                   #PC <- fptr_tgt
@@ -284,8 +285,9 @@ Proof.
           destruct pr; des_ifs; ss; eauto.
           exfalso. apply PTR. ss.
     }
-    des. eexists. econs; eauto.
-    + folder. inv FPTR; ss.
+    des. eexists. econs; eauto; swap 1 2.
+    + folder. inv FPTR; ss. eauto.
+    + erewrite <- transf_function_sig; et.
     + rewrite RSRA. econs; ss.
     + rewrite RSRA. ss.
     + econs; eauto. rewrite <- LEN. symmetry. eapply lessdef_list_length. eauto.

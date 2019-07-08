@@ -239,7 +239,7 @@ Local Opaque Linker_varinit.
 
 
 
-Definition link_skfundef (fd1 fd2: AST.fundef (option signature)) :=
+Definition link_skfundef (fd1 fd2: AST.fundef signature) :=
   match fd1, fd2 with
   | Internal _, Internal _ => None
   | External ef1, External ef2 =>
@@ -247,35 +247,26 @@ Definition link_skfundef (fd1 fd2: AST.fundef (option signature)) :=
   | Internal f, External ef =>
       match ef with
       | EF_external id sg =>
-        match f with
-        | Some fsg =>
-          if signature_eq fsg sg
-          then Some (Internal f)
-          else None
-        | None => Some (Internal f)
-        end
+        if signature_eq f sg
+        then Some (Internal f)
+        else None
       | _ => None
       end
   | External ef, Internal f =>
       match ef with
       | EF_external id sg =>
-        match f with
-        | Some fsg =>
-          if signature_eq fsg sg
-          then Some (Internal f)
-          else None
-        | None => Some (Internal f)
-        end
+        if signature_eq f sg
+        then Some (Internal f)
+        else None
       | _ => None
       end
   end.
 
-Inductive linkorder_skfundef: AST.fundef (option signature) -> AST.fundef (option signature) -> Prop :=
+Inductive linkorder_skfundef: AST.fundef signature -> AST.fundef signature -> Prop :=
   | linkorder_skfundef_refl: forall fd, linkorder_skfundef fd fd
-  | linkorder_skfundef_ext_int_some: forall id sg, linkorder_skfundef (External (EF_external id sg)) (Internal (Some sg))
-  | linkorder_skfundef_ext_int_none: forall id sg, linkorder_skfundef (External (EF_external id sg)) (Internal None).
+  | linkorder_skfundef_ext_int: forall id sg, linkorder_skfundef (External (EF_external id sg)) (Internal sg).
 
-Program Instance Linker_skfundef: Linker (AST.fundef (option signature)) :=
+Program Instance Linker_skfundef: Linker (AST.fundef signature) :=
 {|
   link := link_skfundef;
   linkorder := linkorder_skfundef;

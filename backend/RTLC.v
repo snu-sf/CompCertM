@@ -12,20 +12,18 @@ Set Implicit Arguments.
 
 Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
 
-Definition fn_ssig := fun fd => Some (fd.(fn_sig)).
-
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_ssig).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       stack fptr_arg sg_arg vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_sig skd = Some sg_arg):
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_sig skd = sg_arg /\ sg_arg.(sig_cstyle)):
       at_external (Callstate stack fptr_arg sg_arg vs_arg m0) (Args.mk fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
@@ -114,7 +112,7 @@ Section MODSEM.
 End MODSEM.
 
 Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_ssig; Mod.get_modsem := modsem; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
 
 Program Definition module2 (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_ssig; Mod.get_modsem := modsem2; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem2; |}.

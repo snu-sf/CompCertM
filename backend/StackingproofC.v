@@ -1106,7 +1106,7 @@ Inductive match_states_at
     (INJ: sm_at.(SimMemInj.inj) = sm_arg.(SimMemInj.inj))
     (INJ: sm_at.(SimMem.src) = sm_arg.(SimMem.src))
     init_rs init_sg cs' tfptr rs sp skd fptr cs ls sig
-    (SIGEQ: Sk.get_sig skd = Some sig)
+    (SIGEQ: Sk.get_csig skd = Some sig)
     (SRCST: st_src0 = Linear.Callstate cs fptr sig ls (SimMemInj.src sm_arg))
     (TGTST: st_tgt0 = mkstate init_rs init_sg (Callstate cs' tfptr rs (SimMemInj.tgt sm_at)))
     (RSP: parent_sp cs' = Vptr sp Ptrofs.zero)
@@ -1132,7 +1132,7 @@ Inductive has_footprint (st_src0: Linear.state): MachC.state -> SimMem.t -> Prop
 | has_footprint_intro
     (** copied from MachC **)
     stack rs m0 fptr sg blk ofs
-    (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = Some sg)
+    (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
     (RSP: (parent_sp stack) = Vptr blk ofs)
     (OFSZERO: ofs = Ptrofs.zero)
     init_rs init_sg
@@ -1148,7 +1148,7 @@ Inductive mle_excl (st_src0: Linear.state): MachC.state -> SimMem.t -> SimMem.t 
     (** copied from MachC **)
     init_rs init_sg stack fptr ls0 m0
     sg blk ofs
-    (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = Some sg)
+    (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
     (RSP: (parent_sp stack) = Vptr blk ofs)
     (** newly added **)
     sm0 sm1
@@ -1388,7 +1388,7 @@ Proof.
 
     hexpl Mem.nextblock_free NB.
     assert(EXTTGT: exists skd_tgt,
-              Genv.find_funct skenv_link tfptr = Some skd_tgt /\ Sk.get_sig skd_tgt = Some sg).
+              Genv.find_funct skenv_link tfptr = Some skd_tgt /\ Sk.get_csig skd_tgt = Some sg).
     { folder. esplits; eauto.
       (* copied from InliningproofC *)
       (** TODO: remove redundancy **)
@@ -1474,7 +1474,7 @@ Proof.
       ii. des_safe. clarify. eapply SPVALID1; eauto.
     } i; des. ss.
 
-    assert(EXTTGT: exists skd, Genv.find_funct skenv_link tfptr = Some skd /\ Sk.get_sig skd = Some sg_arg).
+    assert(EXTTGT: exists skd, Genv.find_funct skenv_link tfptr = Some skd /\ Sk.get_csig skd = Some sg_arg).
     { inv HISTORY. ss. inv MATCHARG. ss. inv SIMSKENV. ss. inv SIMSKELINK. rr in SIMSKENV.
       esplits; et. rpapply SIG.
       { f_equal. clarify. symmetry. eapply fsim_external_inject_eq; et. }
@@ -1698,7 +1698,7 @@ Proof.
   econs; ss.
   - r. eapply Sk.match_program_eq; eauto. ii. destruct f1; ss.
     + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto.
-      unfold LinearC.fn_ssig, fn_ssig. erewrite transf_function_sig; eauto.
+      unfold LinearC.fn_sig, fn_sig. erewrite transf_function_sig; eauto.
     + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
     i. ss. uge0. des_ifs. unfold SkEnv.revive in *. apply Genv_map_defs_def in Heq. des. ss. gesimpl.

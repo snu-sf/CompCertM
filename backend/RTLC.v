@@ -23,7 +23,7 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg_arg vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_csig skd = Some sg_arg):
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_csig skd = sg_arg /\ sg_arg.(sig_cstyle)):
       at_external (Callstate stack fptr_arg sg_arg vs_arg m0) (Args.mk fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
@@ -66,8 +66,8 @@ Section MODSEM.
        ModSem.final_frame := final_frame;
        ModSem.after_external := after_external;
        ModSem.globalenv := ge;
-       ModSem.skenv := skenv; 
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
     |}.
 
   Program Definition modsem2: ModSem.t :=
@@ -77,8 +77,8 @@ Section MODSEM.
        ModSem.final_frame := final_frame;
        ModSem.after_external := after_external;
        ModSem.globalenv := ge;
-       ModSem.skenv := skenv; 
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
     |}.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.

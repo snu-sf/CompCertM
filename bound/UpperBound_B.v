@@ -118,10 +118,7 @@ c0 + empty
       (STATE: st = (Csem.Callstate fptr tyf vargs k m))
       (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd
-                        /\ Some (signature_of_type targs tres cconv) = Sk.get_sig skd)
-                   (* /\ (SkEnv.get_sig skd = sg_arg *)
-                   (*    -> tyf = Tfunction targs tres cconv *)
-                   (*    -> signature_of_type targs tres cconv = sg_arg)) *)
+                        /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
       (FPTR: args.(Args.fptr) = fptr)
       (ARGS: args.(Args.vs) = vargs)
       (MEM: args.(Args.m) = m)

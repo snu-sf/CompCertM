@@ -331,7 +331,7 @@ Section PRESERVATION.
         skd
         (GLOBAL: Genv.find_funct skenv_link fptr = Some skd)
     :
-      Sk.get_sig skd = fd.(fn_sig)
+      Sk.get_csig skd = fd.(fn_sig)
   .
   Proof.
     inv LE.
@@ -428,7 +428,7 @@ Section PRESERVATION.
         (FIND0: Genv.find_funct (System.globalenv skenv_link) v = Some (External ef))
         (FIND1: Genv.find_funct skenv_link v = Some skd)
     :
-      Sk.get_sig skd = Some (ef_sig ef)
+      Sk.get_csig skd = Some (ef_sig ef)
   .
   Proof.
     unfold System.globalenv in *. clarify.
@@ -687,7 +687,7 @@ Section PRESERVATION.
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
-                        = Some skd /\ Sk.get_sig skd = Some sg)
+                        = Some skd /\ Sk.get_csig skd = Some sg)
       (RSPPTR: st.(st_rs) # RSP = Vptr blk ofs)
       (RANGE: P0 \2/ (brange blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned ofs + 4 * size_arguments sg)) <2= P1)
     :
@@ -700,7 +700,7 @@ Section PRESERVATION.
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
-                        = Some skd /\ Sk.get_sig skd = None)
+                        = Some skd /\ Sk.get_csig skd = None)
     :
       match_stack j P0 init_rs0 (fr::frs)
   .
@@ -723,7 +723,7 @@ Section PRESERVATION.
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
-                        = Some skd /\ Sk.get_sig skd = Some sg)
+                        = Some skd /\ Sk.get_csig skd = Some sg)
       (RSPPTR: init_rs0 # RSP = Vptr blk ofs)
       (RANGE: P0 \2/ (brange blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned ofs + 4 * size_arguments sg)) <2= P1)
     :
@@ -738,7 +738,7 @@ Section PRESERVATION.
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
-                        = Some skd /\ Sk.get_sig skd = None)
+                        = Some skd /\ Sk.get_csig skd = None)
     :
       match_stack_call j m P0 init_rs0 (fr::frs)
   .
@@ -1435,7 +1435,7 @@ Section PRESERVATION.
       (FPTR: fptr_arg = init_rs # PC)
       (ARGRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg
-                        = Some skd /\ Sk.get_sig skd = Some sg)
+                        = Some skd /\ Sk.get_csig skd = Some sg)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
           (align_chunk chunk | ofs.(Ptrofs.unsigned)))
       (ARGS: Asm.extcall_arguments init_rs m_src sg vs_arg)
@@ -1457,7 +1457,7 @@ Section PRESERVATION.
       (MEMWF: Mem.unchanged_on (loc_not_writable m_init) m_init m_src)
       (GEINJECT: skenv_inject skenv_link j m_src)
       (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs # PC)
-                        = Some skd /\ Sk.get_sig skd = None)
+                        = Some skd /\ Sk.get_csig skd = None)
       (WFINJ: inj_range_wf skenv_link j m_src P)
       (RAPTR: <<TPTR: Val.has_type (init_rs RA) Tptr>> /\ <<RADEF: init_rs RA <> Vundef>>)
       (ORD: n = 1%nat)
@@ -2122,7 +2122,7 @@ Section PRESERVATION.
         rewrite INITSIG in *. clarify. }
       set WF as WF2. inv WF2. ss.
       rewrite PCSAME in *. des. rewrite RSPPTR in *. clarify.
-      assert (SG: fn_sig fd = Sk.get_sig skd0).
+      assert (SG: fn_sig fd = Sk.get_csig skd0).
       { exploit local_global_consistent; try apply GELE; eauto. }
       assert (sg = sg0).
       { rewrite SG in *. rewrite SIG1 in *. clarify. } clarify.
@@ -2416,7 +2416,7 @@ Section PRESERVATION.
       { exfalso. des. clarify. }
       { exfalso. clarify.
         unfold System.globalenv, initial_regset, Pregmap.set in *. ss. clarify. }
-      assert (SIGEQ: Sk.get_sig skd = Some (ef_sig ef)).
+      assert (SIGEQ: Sk.get_csig skd = Some (ef_sig ef)).
       { eapply external_function_sig; eauto. }
       exists (
         if

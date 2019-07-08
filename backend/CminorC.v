@@ -27,20 +27,18 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end.
 
-Definition fn_ssig := fun fd => Some (fd.(fn_sig)).
-
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_ssig).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       fptr_arg sg_arg vs_arg k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_sig skd = Some sg_arg):
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_csig skd = sg_arg):
       at_external (Callstate fptr_arg sg_arg vs_arg k0 m0) (Args.mk fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
@@ -74,8 +72,8 @@ Section MODSEM.
        ModSem.final_frame := final_frame;
        ModSem.after_external := after_external;
        ModSem.globalenv := ge;
-       ModSem.skenv := skenv; 
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
     |}.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.
@@ -93,7 +91,7 @@ Section MODSEM.
     - apply IHeval_expr1 in H5. apply IHeval_expr2 in H7. subst. unfold eval_binop in *; des_ifs.
     - apply IHeval_expr in H3. subst. unfold Mem.loadv in *; des_ifs.
   Qed.
-  
+
   Let eval_exprlist_determ:
     forall sp e m al vl, eval_exprlist ge sp e m al vl  -> forall vl', eval_exprlist ge sp e m al vl' -> vl' = vl.
   Proof.
@@ -116,4 +114,4 @@ Section MODSEM.
 End MODSEM.
 
 Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_ssig; Mod.get_modsem := modsem; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.

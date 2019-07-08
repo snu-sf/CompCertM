@@ -211,7 +211,7 @@ Proof.
   econs; ss.
   - r. eapply Sk.match_program_eq; eauto.
     ii. exploit sig_function_translated; et. i. destruct f1; ss.
-    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. unfold RTLC.fn_ssig, fn_ssig. ss. congruence.
+    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. unfold RTLC.fn_sig, fn_sig. ss. congruence.
     + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.

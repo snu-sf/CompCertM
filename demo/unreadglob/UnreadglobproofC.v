@@ -302,12 +302,12 @@ Proof.
     econs; ss.
     + i. ss. inv TRANSL1.
       specialize (match_prog_def id).
-      generalize (Sk.of_program_prog_defmap prog fn_ssig id). intro REL0.
-      generalize (Sk.of_program_prog_defmap tprog fn_ssig id). intro REL1.
+      generalize (Sk.of_program_prog_defmap prog fn_sig id). intro REL0.
+      generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL1.
 
       destruct (classic (defs prog id)); cycle 1.
       {
-        rewrite <- (Sk.of_program_defs fn_ssig) in H.
+        rewrite <- (Sk.of_program_defs fn_sig) in H.
         inv REL0; align_opt; cycle 1.
         { exploit prog_defmap_image; et. i; des. unfold defs in *. align_bool; bsimpl. align_bool. des_sumbool. ss. }
         unfold fundef in *.
@@ -339,16 +339,16 @@ Proof.
 
     + i. ss. inv TRANSL1.
       specialize (match_prog_def id).
-      generalize (Sk.of_program_prog_defmap prog fn_ssig id). intro REL0.
-      generalize (Sk.of_program_prog_defmap tprog fn_ssig id). intro REL1.
+      generalize (Sk.of_program_prog_defmap prog fn_sig id). intro REL0.
+      generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL1.
 
       des. align_bool; bsimpl. align_bool. des_sumbool.
       inv REL1; ss; align_opt.
-      rewrite <- (Sk.of_program_defs fn_ssig) in DROP1.
+      rewrite <- (Sk.of_program_defs fn_sig) in DROP1.
       exploit prog_defmap_image; et. i; des. unfold defs in *; ss. des_sumbool. ss.
 
     + ii. unfold privs. bsimpl. des. bsimpl. des_sumbool.
-      rewrite (Sk.of_program_defs fn_ssig). split; ss.
+      rewrite (Sk.of_program_defs fn_sig). split; ss.
       unfold NW. align_bool; bsimpl. des_sumbool.
       ii.
 
@@ -363,7 +363,7 @@ Proof.
       assert(PROG0: (prog_defmap tprog) ! id = Some (Gvar gv)).
       {
         (* TODO: make lemma!!!!!!!!!!!!!!!!!!! *)
-        generalize (Sk.of_program_prog_defmap tprog fn_ssig id). intro REL.
+        generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL.
         inv REL; try congruence.
         rewrite PROG in *. clarify.
         inv H2. inv H4. ss. destruct i1, i2; ss.

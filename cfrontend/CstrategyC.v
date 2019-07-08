@@ -51,7 +51,7 @@ Section MODSEM.
       fptr_arg vs_arg targs tres cconv k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                        /\ Some (signature_of_type targs tres cconv) = Sk.get_sig skd)
+                        /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
       (CALL: is_call_cont_strong k0):
       at_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k0 m0) (Args.mk fptr_arg vs_arg m0).
 
@@ -87,9 +87,9 @@ Section MODSEM.
        ModSem.after_external := after_external;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv_link := skenv_link;
     |}.
-  
+
   Lemma modsem_strongly_receptive: forall st, strongly_receptive_at modsem st.
   Proof.
     i. econs; ss; i.
@@ -324,4 +324,3 @@ Proof.
 Qed.
 
 End SIMMOD.
-

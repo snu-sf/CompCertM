@@ -49,7 +49,7 @@ Section MODSEM.
       targs tres cconv
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                        /\ Some (signature_of_type targs tres cconv) = Sk.get_sig skd):
+                        /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd):
       at_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k0 m0) (Args.mk fptr_arg vs_arg m0).
 
   Inductive initial_frame1 (args: Args.t): state -> Prop :=
@@ -84,9 +84,9 @@ Section MODSEM.
        ModSem.after_external := after_external1;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv_link := skenv_link;
     |}.
-  
+
   Inductive initial_frame2 (args: Args.t): state -> Prop :=
   | initial_frame2_intro
       tvs fd tyf
@@ -114,9 +114,9 @@ Section MODSEM.
        ModSem.after_external := after_external2;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv_link := skenv_link;
     |}.
-  
+
   Lemma eval_expr_determ:
     forall e le m a v, eval_expr ge e le m a v -> forall v', eval_expr ge e le m a v' -> v = v'
   with eval_lvalue_determ:
@@ -138,7 +138,7 @@ Section MODSEM.
     exploit eval_expr_determ. apply H. apply H6. i. subst.
     rewrite H0 in H8. inv H8; auto.
   Qed.
-  
+
   Let alloc_variables_determ:
     forall env m vars e m1, alloc_variables ge env m vars e m1 -> forall e' m1', alloc_variables ge env m vars e' m1' -> e = e' /\ m1 = m1'.
   Proof.
@@ -151,7 +151,7 @@ Section MODSEM.
     induction 1; intros m1' EV; inv EV; f_equal; eauto. replace m1 with m3 in *. des_ifs. eapply IHbind_parameters; et.
     inv H0; inv H10; congruence.
   Qed.
-  
+
   Lemma modsem1_receptive: forall st, receptive_at modsem1 st.
   Proof.
     econs; eauto.
@@ -173,7 +173,7 @@ Section MODSEM.
   Unshelve.
     all: des; ss; try (by exfalso; des; ss).
   Qed.
-  
+
   Lemma modsem2_receptive: forall st, receptive_at modsem2 st.
   Proof.
     econs; eauto.
@@ -195,7 +195,7 @@ Section MODSEM.
   Unshelve.
     all: des; ss; try (by exfalso; des; ss).
   Qed.
-  
+
 End MODSEM.
 
 
@@ -204,4 +204,3 @@ Program Definition module1 (p: program): Mod.t :=
 
 Program Definition module2 (p: program): Mod.t :=
   {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function; Mod.get_modsem := modsem2; |}.
-

@@ -16,7 +16,7 @@ Require Import ModSem.
 
 Lemma sound_state_sound_args
       bc m0 stack su0 p skenv_link vs_arg cunit ge
-      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_ssig)) p))
+      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p))
       (STK: sound_stack cunit ge su0 bc stack m0 (Mem.nextblock m0))
       (ARGS: forall v : val, In v vs_arg -> vmatch bc v Vtop)
       (RO: romatch bc m0 (romem_for cunit))
@@ -24,7 +24,7 @@ Lemma sound_state_sound_args
       (GE: genv_match bc ge)
       (NOSTK: bc_nostack bc)
       fptr_arg sg_arg
-      (SIG: exists skd, Genv.find_funct skenv_link fptr_arg = Some skd /\ Sk.get_sig skd = sg_arg):
+      (SIG: exists skd, Genv.find_funct skenv_link fptr_arg = Some skd /\ Sk.get_csig skd = sg_arg):
     args' (bc2su bc ge.(Genv.genv_next) m0.(Mem.nextblock)) (Args.mk fptr_arg vs_arg m0).
 Proof.
   { r. s. esplits; eauto.
@@ -74,7 +74,7 @@ Qed.
 (* copied from above *)
 Lemma sound_state_sound_retv
       bc m_ret su0 p skenv_link v_ret cunit ge
-      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_ssig)) p))
+      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p))
       (STK: sound_stack cunit ge su0 bc [] m_ret (Mem.nextblock m_ret))
       (RES: vmatch bc v_ret Vtop)
       (RO: romatch bc m_ret (romem_for cunit))
@@ -131,7 +131,7 @@ Section PRSV.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
 
-  Hypothesis INCL: SkEnv.includes skenv_link (Sk.of_program fn_ssig p).
+  Hypothesis INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p).
 
   Let modsem := RTLC.modsem skenv_link p.
 
@@ -145,7 +145,7 @@ Section PRSV.
     - i. inv INIT. ss. esplits; eauto; cycle 1.
       { destruct args; ss. refl. }
       econs; eauto. i.
-      set (ge := (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_ssig)) p)) in *.
+      set (ge := (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p)) in *.
       set (f := fun b =>
                   if plt b (Genv.genv_next ge) then
                     match Genv.invert_symbol ge b with None => BCglob None | Some id => BCglob (Some id) end
@@ -204,12 +204,12 @@ Section PRSV.
           exploit SkEnv.project_impl_spec; et. intro PROJ.
           exploit SkEnv.project_revive_precise; et. intro PRECISE. inv PRECISE.
           exploit P2GE; et. i; des. ss. unfold fundef in *. folder. clarify.
-          assert(INTSID: internals (Sk.of_program fn_ssig p) id).
+          assert(INTSID: internals (Sk.of_program fn_sig p) id).
           { rewrite Sk.of_program_internals. unfold internals. des_ifs. }
-          assert(DEFSID: defs (Sk.of_program fn_ssig p) id).
+          assert(DEFSID: defs (Sk.of_program fn_sig p) id).
           { eapply internals_defs; et. }
           assert(BIG: Genv.find_def skenv_link b = Some (Gvar v)).
-          { generalize (Sk.of_program_prog_defmap p fn_ssig id). intro REL.
+          { generalize (Sk.of_program_prog_defmap p fn_sig id). intro REL.
             inv REL; try congruence. rewrite LOA in *. clarify.
             assert(y = Gvar v).
             { inv H1. inv H2. ss. destruct i1, i2; ss. }
@@ -224,14 +224,14 @@ Section PRSV.
             inv MATCH. inv H0. destruct info1, info2; ss.
             inv H1; ss.
           }
-          assert(SMALL: Genv.find_def (SkEnv.project skenv_link (Sk.of_program fn_ssig p)) b = Some (Gvar v)).
+          assert(SMALL: Genv.find_def (SkEnv.project skenv_link (Sk.of_program fn_sig p)) b = Some (Gvar v)).
           { inv PROJ.
             exploit DEFKEEP; et.
             { apply Genv.find_invert_symbol; et. rewrite <- SYMBKEEP; et. }
             i; des.
             assert(gd_small = (Gvar v)).
             { (* TODO: make lemma!!!!!!!!!!!!!!!!! *)
-              clear - PROG LOA. generalize (Sk.of_program_prog_defmap p fn_ssig id). intro REL.
+              clear - PROG LOA. generalize (Sk.of_program_prog_defmap p fn_sig id). intro REL.
               inv REL; try congruence.
               rewrite LOA in *. rewrite PROG in *. clarify.
               inv H1. inv H0. repeat f_equal. destruct i1, i2; ss.
@@ -240,7 +240,7 @@ Section PRSV.
           }
           unfold Genv.find_var_info. des_ifs.
         }
-        rewrite Args.get_m_m in *; ss. 
+        rewrite Args.get_m_m in *; ss.
         intro RO; des. esplits; et. eapply bmatch_incr; et.
         ii. ss. rewrite IMG. des_ifs.
         * clear - Heq Heq0. eapply Genv.invert_find_symbol in Heq. subst ge. unfold SkEnv.revive in *.
@@ -478,7 +478,7 @@ Section PRSV.
                 exploit Genv.find_invert_symbol; et. intro INV. rewrite INV. ss.
               + eapply romem_for_ske_complete; et. clear - LO X INCL Y0 X2. inv INCL.
                 exploit (prog_defmap_linkorder cunit); et. intro Z; des.
-                hexploit (Sk.of_program_prog_defmap p fn_ssig id); et. intro REL.
+                hexploit (Sk.of_program_prog_defmap p fn_sig id); et. intro REL.
                 unfold fundef in *. rewrite Z in REL. inv REL. symmetry in H0.
                 exploit DEFS; et. intro W; des.
                 assert(b = blk).

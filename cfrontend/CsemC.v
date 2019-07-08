@@ -50,7 +50,7 @@ Section MODSEM.
       fptr_arg vs_arg targs tres cconv k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                        /\ Some (signature_of_type targs tres cconv) = Sk.get_sig skd)
+                        /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
       (CALL: is_call_cont_strong k0):
     (* how can i check sg_args and tyf are same type? *)
     (* typ_of_type function is a projection type to typ. it delete some info *)
@@ -80,7 +80,7 @@ Section MODSEM.
       after_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
                      retv
                      (Returnstate tv k retv.(Retv.m)).
-  
+
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
        ModSem.at_external := at_external;
@@ -97,7 +97,7 @@ Section MODSEM.
       match goal with
       | [H: _ |- _ ] => try (exploit external_call_trace_length; eauto; check_safe; intro T; des); inv H; ss; try xomega
       end.
-  
+
   Lemma single_events_at: forall st, single_events_at modsem st.
   Proof.
     ii. inv H.

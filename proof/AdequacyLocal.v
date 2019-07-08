@@ -359,10 +359,11 @@ Section SIMGE.
         { eapply System.modsem_receptive; et. }
         { u. esplits; ii; des; ss; eauto. inv H0. }
         ii. inv STEPSRC.
-        exploit SimSymb.system_axiom; eauto; swap 1 2.
+        exploit SimSymb.system_axiom; eauto; swap 1 3; swap 2 4.
         { econs; eauto. }
-        { ss. }
         { ss. instantiate (1:= Retv.mk _ _). ss. eauto. }
+        { ss. }
+        { ss. }
         (* { eapply external_call_symbols_preserved; eauto. *)
         (*   symmetry. apply System.skenv_globlaenv_equiv. } *)
         i; des.

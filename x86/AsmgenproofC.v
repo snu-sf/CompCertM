@@ -74,7 +74,7 @@ Inductive match_init_data init_sp init_ra
     (INITRA: init_ra = init_rs_tgt RA)
     (INITRAPTR: <<TPTR: Val.has_type (init_ra) Tptr>> /\ <<RADEF: init_ra <> Vundef>>)
     (INITRS: agree_eq init_rs_src init_sp init_rs_tgt init_sg_src )
-    (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src).
+    (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = Some init_sg_src).
 
 Inductive stack_base (initial_parent_sp initial_parent_ra: val): list Mach.stackframe -> Prop :=
 | stack_base_dummy:
@@ -149,7 +149,7 @@ Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 Lemma transf_function_sig
       fd_src fd_tgt
       (TRANS: transf_function fd_src = OK fd_tgt):
-    fd_src.(Mach.fn_sig) = fd_tgt.(fn_sig).
+    Some fd_src.(Mach.fn_sig) = fd_tgt.(fn_sig).
 Proof. repeat unfold transf_function, bind, transl_function in *. des_ifs. Qed.
 
 Theorem sim_modsem: ModSemPair.sim msp.
@@ -160,24 +160,23 @@ Proof.
   - apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
 
-  - destruct sm_arg, args_src, args_tgt. inv SIMARGS. ss. clarify.
-    inv INITTGT. des. ss. clarify.
+  - inv INITTGT. des. inv SAFESRC. destruct sm_arg, args_src. inv SIMARGS. ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
 
     assert (SRCSTORE: exists rs_src m_src,
-               StoreArguments.store_arguments src rs_src (typify_list vs (sig_args (fn_sig fd))) (fn_sig fd) m_src /\
+               StoreArguments.store_arguments src rs_src (typify_list vs_src (sig_args sg)) sg m_src /\
            agree_eq rs_src (Vptr (Mem.nextblock src)
-                          Ptrofs.zero) rs (fn_sig fd) /\ Mem.extends m_src m0).
+                          Ptrofs.zero) rs sg /\ Mem.extends m_src m0).
     { inv TYP.
       exploit store_arguments_parallel_extends.
       - eapply typify_has_type_list. eauto.
       - exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF.
-        eapply WFPARAM in H. eauto.
-      - instantiate (1:= typify_list vs (sig_args (fn_sig fd))).
+        eapply WFPARAM in H; eauto. ss. des_ifs.
+      - instantiate (1:= typify_list vs_src (sig_args sg)).
         eapply lessdef_list_typify_list; eauto. erewrite lessdef_list_length; eauto.
       - eapply MWF.
       - inv STORE. eauto.
-      - i. des. exists (set_regset rs_src (to_mregset rs) (fn_sig fd)).
+      - i. des. exists (set_regset rs_src (to_mregset rs) sg).
         esplits; eauto.
         + clear - ARGTGT. inv ARGTGT. econs; eauto.
           eapply extcall_arguments_same; eauto.
@@ -194,22 +193,20 @@ Proof.
 
     destruct SRCSTORE as [rs_src [m_src [SRCSTORE [AGREE EXTENDS]]]]. inv AGREE.
     exists (MachC.mkstate
-              rs_src (fn_sig fd)
+              rs_src sg
               (Callstate
                  [dummy_stack (Vptr (Mem.nextblock src) Ptrofs.zero) (rs RA)]
-                 fptr rs_src (assign_junk_blocks m_src n))).
-    inv FPTR; cycle 1.
-    { clear - SAFESRC. inv SAFESRC. ss. }
+                 fptr_src rs_src (assign_junk_blocks m_src n))).
+    inv FPTR; ss.
     esplits; auto.
-    + inv SAFESRC. ss.
-      inv TYP0. clear_tac.
-      assert(SIG: fn_sig fd = Mach.fn_sig fd0).
+    + inv TYP0. clear_tac.
+      assert(SIG2: fn_sig fd = Some (Mach.fn_sig fd0)).
       { hexploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. i; des.
         folder. ss; try unfold bind in *; des_ifs.
         symmetry. eapply transf_function_sig; eauto.
       }
       econs; auto.
-      * eauto.
+      * rewrite SIG2 in SIG. inv SIG. ss.
       * ss.
       * econs; eauto; ss; eauto with congruence.
       * ss.
@@ -226,13 +223,13 @@ Proof.
         -- destruct mr; clarify.
         -- destruct mr; clarify.
     + instantiate (1:= mk (assign_junk_blocks m_src n) (assign_junk_blocks m0 n)).
-      econs; ss; eauto.
+      econs; try eapply RADEF; ss; eauto.
       * econs; eauto.
       * econs; ss; eauto.
       * econs; eauto; ss; try by (econs; eauto).
         { eapply assign_junk_block_extends; et. }
         econs; eauto. i.
-        destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (fn_sig fd))))); eauto.
+        destruct (classic (In (R r) (regs_of_rpairs (loc_arguments sg)))); eauto.
         erewrite agree_mregs_eq0; auto.
 
   - ss. des. inv SIMARGS. destruct sm_arg. ss. clarify.

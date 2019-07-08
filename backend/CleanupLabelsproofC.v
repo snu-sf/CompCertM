@@ -59,7 +59,7 @@ Proof.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
-    destruct sm_arg; ss. clarify. inv SIMARGS; ss. clarify. inv INITTGT.
+    inv INITTGT. destruct sm_arg; ss. clarify. inv SIMARGS; ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des. folder.
     exploit (bsim_internal_funct_id SIMGE); et. i; des.
     destruct fd_src; ss. eexists. eexists (SimMemId.mk _ _). esplits; cycle 2; ss.
@@ -71,9 +71,7 @@ Proof.
       (* * ss. esplits; et. *)
     + assert(SGEQ: fn_sig fd = fn_sig f). { inv MATCH; et. } rewrite SGEQ.
       rpapply LinearC.initial_frame_intro; revgoals; [ f_equal; et | .. ]; eauto with congruence.
-      * rewrite MEMTGT. eauto.
-      * ii. rewrite <- MEMTGT. eauto with congruence.
-      * folder. rewrite FPTR. ss.
+      * folder. rewrite <- SGEQ. ss.
   - (* init progress *)
     des. inv SAFESRC. inv SIMARGS; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
@@ -81,10 +79,7 @@ Proof.
     unfold transf_function in *. des_ifs.
     destruct sm_arg; ss. clarify.
     assert(SGEQ: fn_sig fd = fn_sig (transf_function fd)). { et. }
-    esplits; eauto. econs; eauto.
-    + folder. rewrite <- FPTR. rewrite H. eauto.
-    + econs; eauto; ss; try congruence.
-    + ss. rewrite MEMTGT in *. eauto.
+    esplits; eauto. econs; eauto; ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     u in CALLSRC. des. inv CALLSRC. inv MATCHST; ss.
@@ -104,11 +99,11 @@ Proof.
       * ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto.
-      * destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
+      * econs; eauto.
         { clear - H5. inv H5.
           { econs; et. }
           ss. des_ifs. econs; et. inv H; econs; et.
@@ -118,7 +113,7 @@ Proof.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv H3; ss. inv H4; ss. destruct sm0; ss. clarify.
-    eexists (SimMemId.mk _ _). esplits; ss; eauto.
+    eexists (SimMemId.mk _ _). esplits; ss; eauto; try econs; eauto; ss.
     rr in DUMMYTGT. des. ss. clarify.
     assert(sg_init = sg_init0).
     { inv H1; ss. }

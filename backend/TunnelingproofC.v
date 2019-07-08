@@ -60,11 +60,11 @@ Proof.
   - eapply lt_wf.
   - eapply SoundTop.sound_state_local_preservation; et.
   - (* init bsim *)
-    destruct sm_arg; ss. clarify.
-    inv SIMARGS; ss. clarify. inv INITTGT.
+    inv INITTGT. destruct sm_arg; ss. clarify.
+    inv SIMARGS; ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     inv TYP.
-    exploit (fill_arguments_progress ls_init (typify_list (Args.vs args_src) (sig_args (fn_sig fd)))
+    exploit (fill_arguments_progress ls_init (typify_list vs_src (sig_args (fn_sig fd)))
                                      (Conventions1.loc_arguments (fn_sig fd))); eauto.
     { apply (f_equal (@length _)) in TYP0. rewrite map_length in *. etrans; try apply TYP0; eauto.
       exploit lessdef_list_length; eauto. intro EQ.
@@ -77,13 +77,12 @@ Proof.
       - exploit in_regs_of_rpairs_inv; et. intro P; des.
         exploit loc_arguments_one; eauto. intro Q; des.
         destruct p; ss. des; clarify. clear - P FILL TYP0 VALS.
-        abstr (loc_arguments (fn_sig fd)) locs. abstr (Args.vs args_src) vs_src.
-        abstr (Args.vs args_tgt) vs_tgt. abstr (sig_args (fn_sig fd)) tys.
+        abstr (loc_arguments (fn_sig fd)) locs. abstr (sig_args (fn_sig fd)) tys.
         clear_tac. ginduction locs; ii; ss.
         destruct vs_src, vs_tgt; ss. inv VALS. destruct tys; ss. des; clarify; ss.
         + unfold typify_list in *. ss. des_ifs.
           rewrite <- H1. rewrite <- H5. eapply lessdef_typify; et.
-        + exploit (IHlocs vs_src vs_tgt); eauto.
+        + exploit (IHlocs vs_src ls_init vs_tgt); eauto.
           * unfold typify_list in *. ss. des_ifs; eauto.
           * unfold typify_list in *. ss. des_ifs; eauto.
       - erewrite OUT; ss.
@@ -98,24 +97,19 @@ Proof.
       * rr. ss. esplits; eauto.
     + bar. inv SAFESRC. inv TYP. bar.
       exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. folder. clarify.
-      inv FPTR; cycle 1.
-      { rewrite <- H2 in *. ss. }
-      rewrite H3 in *. clarify. rpapply initial_frame_intro.
-      * folder. rewrite H3. eauto.
-      * instantiate (1:= ls1). ss.
+      inv FPTR; ss.
+      clarify. eapply initial_frame_intro; ss.
       * ii. rewrite OUT; ss. exploit PTRFREE; eauto. clear - MWF. unfold JunkBlock.is_junk_value.
         i. des_ifs. des. esplits; eauto.
         { rewrite Mem.valid_block_extends; eauto. }
         { rewrite Mem.valid_block_extends; eauto. eapply JunkBlock.assign_junk_block_extends; eauto. }
       * ii. rewrite OUT; ss. rewrite SLOT; ss.
-      * ss. f_equal; ss.
   - (* init progress *)
-    des. inv SAFESRC. inv SIMARGS; ss. inv FPTR; cycle 1.
-    { rewrite <- H0 in *. ss. }
+    des. inv SAFESRC. inv SIMARGS; ss. inv FPTR; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify.
     inv TYP.
-    exploit (fill_arguments_progress (Locmap.init Vundef) (typify_list (Args.vs args_tgt) (sig_args (fn_sig fd)))
+    exploit (fill_arguments_progress (Locmap.init Vundef) (typify_list vs_tgt (sig_args (fn_sig fd)))
                                      (Conventions1.loc_arguments (fn_sig fd))); eauto.
     { apply (f_equal (@length _)) in TYP0. rewrite map_length in *. etrans; try apply TYP0; eauto.
       exploit lessdef_list_length; eauto. intro EQ.
@@ -123,12 +117,9 @@ Proof.
     }
     intro P; des.
     hexploit (fill_arguments_spec); eauto. intro Q; des.
-    esplits; eauto. econs; swap 1 2.
-    + folder. rewrite <- H1. eauto.
-    + instantiate (1:= fn_sig fd). ss.
+    esplits; eauto. econs; ss.
+    + folder. eauto.
     + econs; eauto. ss. erewrite <- lessdef_list_length; eauto.
-    + eauto.
-    + instantiate (2:= O). ss.
     + i. rewrite OUT; ss.
     + i. rewrite OUT; ss.
   - (* call wf *)
@@ -149,11 +140,11 @@ Proof.
       * ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto.
-      * destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
+      * econs; eauto.
         { inv STK; ss.
           { econs; et. }
           des_ifs. econs; et. inv H; econs; et; ii; unfold undef_outgoing_slots; des_ifs; ss.

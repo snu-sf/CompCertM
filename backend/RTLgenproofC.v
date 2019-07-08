@@ -62,7 +62,7 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation; eauto.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
-    inv SIMARGS; ss. clarify. inv INITTGT.
+    inv INITTGT. inv SIMARGS; ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     eexists. eexists (SimMemExt.mk _ _). esplits; eauto.
     + econs; eauto; ss.
@@ -72,23 +72,20 @@ Proof.
           symmetry. eapply lessdef_list_length; eauto. }
         folder. inv SAFESRC. inv TYP.
         exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. folder.
-        inv FPTR; cycle 1.
-        { rewrite <- H3 in *. ss. }
-        rewrite H4 in *. clarify. rr in H0. des. ss. unfold Errors.bind in *. des_ifs.
+        inv FPTR; ss.
+        rr in H0. des. ss. unfold Errors.bind in *. des_ifs.
         unfold fundef in *. clarify.
         assert(SGEQ: CminorSel.fn_sig fd0 = fn_sig fd).
         { destruct fd0; ss. unfold transl_function in *. ss. unfold bind in *. des_ifs. }
         f_equal; try congruence.
   - (* init progress *)
-    des. inv SAFESRC. inv SIMARGS; ss. inv FPTR; cycle 1.
-    { rewrite <- H0 in *. ss. }
+    des. inv SAFESRC. inv SIMARGS; ss. inv FPTR; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. unfold bind in *. folder. des_ifs.
     inv TYP. rr in H0. des. ss. unfold Errors.bind in *. des_ifs.
     assert(SGEQ: (CminorSel.fn_sig fd) = f.(fn_sig)).
     { destruct fd; ss. unfold transl_function in *. ss. unfold bind in *. des_ifs. }
     esplits; eauto. econs; eauto.
-    + folder. rewrite <- H1. eauto.
     + econs; eauto with congruence.
       erewrite <- lessdef_list_length; eauto. etrans; eauto with congruence.
     + erewrite <- lessdef_list_length; eauto. etrans; eauto with congruence.
@@ -110,15 +107,15 @@ Proof.
       * ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
-    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
+    + econs; ss; eauto. econs; eauto.
       eapply lessdef_typify; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv MS. destruct sm0; ss. clarify.
-    eexists (SimMemExt.mk _ _). esplits; ss; eauto.
+    eexists (SimMemExt.mk _ _). esplits; ss; eauto. econs; eauto.
   - left; i. esplits; eauto.
     { apply CminorSelC.modsem_receptive; et. }
     inv MATCH. ii. hexploit (@transl_step_correct prog skenv_link skenv_link); eauto.

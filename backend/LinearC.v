@@ -81,11 +81,13 @@ Proof.
   des_ifs; ss. right. ss.
 Qed.
 
+Definition fn_ssig := fun fd => Some (fd.(fn_sig)).
+
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program (Some <*> fn_sig)).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_ssig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
@@ -99,6 +101,7 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd ls_init sg tvs n m0
+      (CSTYLE: Args.is_cstyle args)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYP: typecheck args.(Args.vs) sg tvs)
@@ -124,6 +127,7 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       stack fptr_arg sg_arg ls_arg m_arg retv ls_after
+      (CSTYLE: Retv.is_cstyle retv)
       (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg)
                                           (typify retv.(Retv.v) sg_arg.(proj_sig_res))
                                           (undef_caller_save_regs ls_arg)):
@@ -170,4 +174,4 @@ Section PROPS.
 End PROPS.
 
 Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program (Some <*> fn_sig); Mod.get_modsem := modsem; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_ssig; Mod.get_modsem := modsem; |}.

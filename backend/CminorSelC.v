@@ -27,23 +27,26 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end.
 
+Definition fn_ssig := fun fd => Some (fd.(fn_sig)).
+
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
+  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_ssig).
   Let ge: genv := skenv.(SkEnv.revive) p.
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       fptr_arg sg_arg vs_arg k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg):
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_sig skd = Some sg_arg):
       at_external (Callstate fptr_arg sg_arg vs_arg k0 m0) (Args.mk fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd tvs
+      (CSTYLE: Args.is_cstyle args)
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
       (LEN: args.(Args.vs).(length) = fd.(fn_sig).(sig_args).(length)):
@@ -57,6 +60,7 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       fptr_arg sg_arg vs_arg k m_arg retv tv
+      (CSTYLE: Retv.is_cstyle retv)
       (TYP: typify retv.(Retv.v) sg_arg.(proj_sig_res) = tv):
       after_external (Callstate fptr_arg sg_arg vs_arg k m_arg)
                      retv
@@ -69,8 +73,8 @@ Section MODSEM.
        ModSem.final_frame := final_frame;
        ModSem.after_external := after_external;
        ModSem.globalenv := ge;
-       ModSem.skenv := skenv; 
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
     |}.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.
@@ -104,7 +108,7 @@ Section MODSEM.
   Proof.
     induction 1; intros vf' EV; inv EV; try congruence. determ_tac eval_expr_determ.
   Qed.
-  
+
   Let eval_exitexpr_determ:
     forall sp e m le a n, eval_exitexpr skenv_link ge sp e m le a n -> forall n', eval_exitexpr skenv_link ge sp e m le a n' -> n = n'.
   Proof.
@@ -128,7 +132,7 @@ Section MODSEM.
     { inv H. inv H0. ss. }
     inv H. inv H0. determ_tac eval_builtin_arg_determ. f_equal. eapply IHvl; et.
   Qed.
-  
+
   Lemma modsem_determinate: forall st, determinate_at modsem st.
   Proof.
     econs; eauto.
@@ -144,4 +148,4 @@ Section MODSEM.
 End MODSEM.
 
 Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_ssig; Mod.get_modsem := modsem; |}.

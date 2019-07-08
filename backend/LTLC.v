@@ -80,6 +80,7 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd tvs ls_init sg
+      (CSTYLE: Args.is_cstyle args)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
@@ -104,6 +105,7 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       stack fptr_arg sg_arg ls_arg m_arg retv ls_after
+      (CSTYLE: Retv.is_cstyle retv)
       (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg)
                                           (typify retv.(Retv.v) sg_arg.(proj_sig_res))
                                           (undef_caller_save_regs ls_arg)):

@@ -66,7 +66,7 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
-    inv SIMARGS; ss. clarify. inv INITTGT.
+    inv INITTGT. inv SIMARGS; ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     eexists. eexists (SimMemId.mk _ _). esplits; eauto.
     + econs; eauto; ss.
@@ -76,8 +76,7 @@ Proof.
         { ss. }
         inv TYP.
         exploit (Genv.find_funct_match_genv SIMGE); eauto. intro FINDFSRC; des.
-        rewrite <- FPTR in *. clarify.
-        inv FINDFSRC0. monadInv H1; ss. f_equal; try congruence.
+        inv FINDFSRC0. monadInv H0; ss. f_equal; try congruence.
         { exploit (function_type_implies_sig fd0); et. unfold type_of_function. ss. }
   - (* init progress *)
     des. inv SAFESRC. inv SIMARGS; ss.

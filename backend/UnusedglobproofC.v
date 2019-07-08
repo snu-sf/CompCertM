@@ -142,25 +142,24 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
     (* destruct sm_arg; ss. clarify. *)
-    destruct args_src, args_tgt; ss.
-    inv SIMARGS; ss. clarify. inv INITTGT. ss.
+    inv INITTGT. des. inv SAFESRC. destruct args_src, args_tgt; ss.
+    inv SIMARGS; ss. clarify.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     des. eexists.
 
     exploit SimMemInjC.inject_junk_blocks_tgt; et. intro P; des.
-    exists sm1. esplits; eauto.
-    + econs; eauto; ss; cycle 1.
-      * inv TYP. inv SAFESRC. folder. ss. inv TYP.
-        exploit find_funct_inject; et. i; des. clarify.
-        rpapply match_states_call; ss; eauto.
-        { econs; ss; et.
-          - inv SIMSKENV. ss. eapply SimSymbDrop.sim_skenv_symbols_inject; et.
-          - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite NBSRC. xomega.
-          - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite assign_junk_blocks_nextblock. rewrite NBTGT. des_ifs; xomega.
-        }
-        { eapply inject_list_typify_list; eauto. }
-        { eapply MWF0. }
+    exists sm1. esplits; eauto; econs; eauto; ss.
+    + inv TYP. folder. ss. inv TYP0.
+      exploit find_funct_inject; et. i; des. clarify.
+      rpapply match_states_call; ss; eauto.
+      { econs; ss; et.
+        - inv SIMSKENV. ss. eapply SimSymbDrop.sim_skenv_symbols_inject; et.
+        - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite NBSRC. xomega.
+        - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite assign_junk_blocks_nextblock. rewrite NBTGT. des_ifs; xomega.
+      }
+      { eapply inject_list_typify_list; eauto. }
+      { eapply MWF0. }
   - des. inv SAFESRC. inv SIMARGS; ss.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
@@ -190,12 +189,12 @@ Proof.
     des. clear_tac.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
-    inv AFTERSRC. inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret).
+    inv AFTERSRC. inv SIMRET; ss. exists (SimMemInj.unlift' sm_arg sm_ret).
     inv MATCH; ss. inv MATCHST; ss.
     inv HISTORY. ss. clear_tac.
     esplits; try refl; eauto.
     + econs; eauto.
-    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify.
+    + econs; ss; eauto.
       inv MLE0; ss. inv MCOMPAT. clear_tac.
       rpapply match_states_return; ss; eauto; ss.
       { eapply match_stacks_bound; et; cycle 1.
@@ -209,7 +208,7 @@ Proof.
 
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. inv STACKS. inv MCOMPAT; ss.
-    eexists sm0. esplits; ss; eauto. refl.
+    eexists sm0. esplits; ss; eauto; try refl. econs; eauto.
   - (* step *)
     left; i.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).
@@ -245,11 +244,11 @@ Proof.
     econs; ss.
     + i. ss. inv TRANSL1.
       specialize (match_prog_def id).
-      generalize (Sk.of_program_prog_defmap prog fn_sig id). intro REL0.
-      generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL1.
+      generalize (Sk.of_program_prog_defmap prog fn_ssig id). intro REL0.
+      generalize (Sk.of_program_prog_defmap tprog fn_ssig id). intro REL1.
 
       destruct (classic (defs prog id)); cycle 1.
-      { rewrite <- (Sk.of_program_defs fn_sig) in H.
+      { rewrite <- (Sk.of_program_defs fn_ssig) in H.
         inv REL0; align_opt; cycle 1.
         { exploit prog_defmap_image; et. i; des. unfold defs in *. align_bool; bsimpl. align_bool. des_sumbool. ss. }
         unfold fundef in *.
@@ -269,20 +268,20 @@ Proof.
       }
 
       des_ifs. unfold fundef in *. rewrite match_prog_def in *.
-      erewrite (Sk.of_program_prog_defmap_eq fn_sig prog tprog) in *; ss.
+      erewrite (Sk.of_program_prog_defmap_eq fn_ssig prog tprog) in *; ss.
 
     + i. ss. inv TRANSL1.
       specialize (match_prog_def id).
-      generalize (Sk.of_program_prog_defmap prog fn_sig id). intro REL0.
-      generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL1.
+      generalize (Sk.of_program_prog_defmap prog fn_ssig id). intro REL0.
+      generalize (Sk.of_program_prog_defmap tprog fn_ssig id). intro REL1.
 
       des. align_bool; bsimpl. align_bool. des_sumbool.
       inv REL1; ss; align_opt.
-      rewrite <- (Sk.of_program_defs fn_sig) in DROP1.
+      rewrite <- (Sk.of_program_defs fn_ssig) in DROP1.
       exploit prog_defmap_image; et. i; des. unfold defs in *; ss. des_sumbool. ss.
 
     + ii. unfold privs. bsimpl. des. bsimpl. des_sumbool.
-      rewrite (Sk.of_program_defs fn_sig). split; ss.
+      rewrite (Sk.of_program_defs fn_ssig). split; ss.
       unfold NW. align_bool; bsimpl. des_sumbool. ii.
 
       exploit used_public; et. intro IN. unfold used_set in IN. des_sumbool. ss. des; clarify; ss.
@@ -294,7 +293,7 @@ Proof.
     + ii. des. inv TRANSL0.
       assert(PROG0: (prog_defmap tprog) ! id = Some (Gvar gv)).
       { (* TODO: make lemma!!!!!!!!!!!!!!!!!!! *)
-        generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL.
+        generalize (Sk.of_program_prog_defmap tprog fn_ssig id). intro REL.
         inv REL; try congruence.
         rewrite PROG in *. clarify.
         inv H2. inv H4. ss. destruct i1, i2; ss.

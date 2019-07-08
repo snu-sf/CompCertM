@@ -85,6 +85,7 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t) : state -> Prop :=
   | initial_frame_intro
       fd m0 rs sg ra targs n m1
+      (CSTYLE: Args.is_cstyle args)
       (RAPTR: Val.has_type ra Tptr)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
@@ -113,6 +114,7 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       init_rs init_sg stack fptr ls0 m0 ls1 m1 retv sg blk ofs
+      (CSTYLE: Retv.is_cstyle retv)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_sig skd = Some sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs)

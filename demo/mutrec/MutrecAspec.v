@@ -115,16 +115,14 @@ Lemma find_symbol_find_funct_ptr
       ske
       (WF: SkEnv.wf skenv_link)
       (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function MutrecA.prog))
-      (SKE: ske = (SkEnv.project skenv_link (CSk.of_program signature_of_function MutrecA.prog)))
-  :
+      (SKE: ske = (SkEnv.project skenv_link (CSk.of_program signature_of_function MutrecA.prog))) :
     (<<SYMB: Genv.find_symbol ske f_id = Some blk>>) <->
-    (<<FINDF: exists if_sig, Genv.find_funct_ptr ske blk = Some (AST.Internal if_sig)>>)
-.
+    (<<FINDF: exists if_sig, Genv.find_funct_ptr ske blk = Some (AST.Internal if_sig)>>).
 Proof.
   clarify.
   hexploit (SkEnv.project_impl_spec INCL); eauto. intro PROJ.
   exploit SkEnv.project_spec_preserves_wf; eauto. intro WFSMALL.
-  inv INCL. specialize (DEFS f_id (Gfun(AST.Internal fg_sig))). exploit DEFS; eauto. i; des.
+  inv INCL. specialize (DEFS f_id). ss. exploit DEFS; eauto. i; des.
   inv MATCH. inv H0.
   inv PROJ. exploit (SYMBKEEP f_id); eauto. intro T; des. rewrite T in *.
   exploit DEFKEEP; eauto.
@@ -137,11 +135,9 @@ Proof.
   - unfold Genv.find_funct_ptr in *. des_ifs.
     clear_tac.
     assert(blk = blk0).
-    {
-      clear - DEFSMALL Heq.
+    { clear - DEFSMALL Heq.
       uge. ss. rewrite MapsC.PTree_filter_map_spec in *. uo. des_ifs.
       apply_all_once in_prog_defmap. ss. unfold update_snd in *. ss. des; clarify.
       apply_all_once Genv.invert_find_symbol. clarify.
-    }
-    clarify.
+    } clarify.
 Qed.

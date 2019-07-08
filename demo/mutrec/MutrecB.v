@@ -77,7 +77,7 @@ Definition code: list instruction :=
  ].
 
 Definition func_g: function :=
-  mkfunction (mksignature [Tint] (Some Tint) cc_default) code
+  mkfunction (Some (mksignature [Tint] (Some Tint) cc_default)) code
 .
 
 Definition global_definitions : list (ident * globdef fundef unit) :=

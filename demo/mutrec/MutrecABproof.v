@@ -42,7 +42,7 @@ Proof.
   - ss. i. des; clarify.
     unfold update_snd in *. ss. clarify. ss. des; clarify.
   - ii. ss. des; clarify; eauto.
-  - i. ss. des; clarify; inv IN; ss.
+  - i. ss. des; clarify; inv IN; ss; clarify.
 Qed.
 
 Lemma wf_module_Bspec: Sk.wf MutrecBspec.module.
@@ -53,7 +53,7 @@ Proof.
   - ss. i. des; clarify.
     unfold update_snd in *. ss. clarify. ss. des; clarify.
   - ii. ss. des; clarify; eauto.
-  - i. ss. des; clarify; inv IN; ss.
+  - i. ss. des; clarify; inv IN; ss; clarify.
 Qed.
 
 Definition is_focus (x: Mod.t) := x = MutrecAspec.module \/ x = MutrecBspec.module.

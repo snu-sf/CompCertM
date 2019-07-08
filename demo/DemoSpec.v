@@ -14,16 +14,15 @@ Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
 
 Section MODSEM.
 
-  Definition prog : AST.program (AST.fundef signature) unit :=
+  Definition prog : AST.program (AST.fundef (option signature)) unit :=
     {| prog_defs :=
-         [(func_id, Gfun (Internal (mksignature [Tlong] (Some Tfloat) cc_default)))];
+         [(func_id, Gfun (Internal (Some (mksignature [Tlong] (Some Tfloat) cc_default))))];
        prog_public := [func_id; main_id];
        prog_main := main_id |}.
 
   Variable skenv_link: SkEnv.t.
   Variable p: unit.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) prog.(Sk.of_program id).
-  Let ge: Genv.t (AST.fundef signature) unit := skenv.(SkEnv.revive) prog.
 
   Record state := mkstate { get_arg: int64; get_mem: mem; }.
 
@@ -47,13 +46,13 @@ Section MODSEM.
   Program Definition modsem: ModSem.t :=
     {|
       ModSem.state := state;
-      ModSem.genvtype := Genv.t (AST.fundef signature) unit;
+      ModSem.genvtype := unit;
       ModSem.step := bot5;
       ModSem.at_external := bot2;
       ModSem.initial_frame := initial_frame;
       ModSem.final_frame := final_frame;
       ModSem.after_external := bot3;
-      ModSem.globalenv := skenv;
+      ModSem.globalenv := tt;
       ModSem.skenv := skenv;
       ModSem.skenv_link := skenv_link;
     |}

@@ -514,7 +514,8 @@ Section LXSIM.
                 ss. right. unfold load_modsems. rewrite in_map_iff.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
               econs; ss; eauto.
-              - eapply MutrecAspec.find_symbol_find_funct_ptr; et.
+              - unfold Args.get_fptr in *. des_ifs. ss. clarify.
+                eapply MutrecAspec.find_symbol_find_funct_ptr; et.
             }
             { esplits; eauto. econs.
               { econs; eauto; cycle 1.
@@ -522,7 +523,8 @@ Section LXSIM.
                 ss. right. unfold load_modsems. rewrite in_map_iff.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
               econs; ss; eauto.
-              - eapply MutrecBspec.find_symbol_find_funct_ptr; et.
+              - unfold Args.get_fptr in *. des_ifs. ss. clarify.
+                eapply MutrecBspec.find_symbol_find_funct_ptr; et.
             }
         }
         i. ss. rewrite LINKSRC, LINKTGT in *. inv STEPTGT. inv MSFIND. ss.
@@ -544,11 +546,8 @@ Section LXSIM.
               eapply genv_sim. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
             }
             econs; ss; eauto.
-            + eapply genv_sim. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
+            + eapply genv_sim. destruct args; ss. clarify. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
           - right. eapply CIH; eauto. econs; eauto.
-            (* rewrite cons_app with (xhd := {| *)
-            (*   Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecAspec.module; *)
-            (*   Frame.st := MutrecAspec.Callstate i (Args.m args) |}). *)
             econs; ss; try refl; eauto.
             { f_equal. instantiate (1:= []). ss. }
             { unfold __GUARD__. eauto. }
@@ -565,7 +564,7 @@ Section LXSIM.
               eapply genv_sim. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
             }
             econs; ss; eauto.
-            + eapply genv_sim. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
+            + eapply genv_sim. destruct args; ss. clarify. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
           - right. eapply CIH; eauto. econs; eauto.
             (* rewrite cons_app with (xhd := {| *)
             (*   Frame.ms := flip Mod.modsem (Sk.load_skenv sk_link) MutrecBspec.module; *)

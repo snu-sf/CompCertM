@@ -46,7 +46,7 @@ Section MODSEM.
     : state -> Prop :=
   | initial_frame_intro
       fd tvs
-      (CSTYLE: Args.is_cstyle args)
+      (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
       (LEN: args.(Args.vs).(length) = fd.(fn_sig).(sig_args).(length))

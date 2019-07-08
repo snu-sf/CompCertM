@@ -71,7 +71,7 @@ Section MODSEM.
   | at_external_intro
       stack rs m0 m1 fptr sg vs blk ofs init_rs init_sg
       (EXTERNAL: Genv.find_funct ge fptr = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
       (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
       (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (RSP: (parent_sp stack) = Vptr blk ofs)
@@ -113,7 +113,7 @@ Section MODSEM.
   | after_external_intro
       init_rs init_sg stack fptr ls0 m0 ls1 m1 retv sg blk ofs
       (CSTYLE: Retv.is_cstyle retv)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs)
       (MEMWF: Ple (Senv.nextblock skenv_link) retv.(Retv.m).(Mem.nextblock))

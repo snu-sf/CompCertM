@@ -27,7 +27,7 @@ Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify; try by (f_equ
 Definition signature_of_function (fd: function) :=
   {| sig_args := map typ_of_type (map snd (fn_params fd));
      sig_res  := opttyp_of_type (fn_return fd);
-     sig_cc   := fn_callconv fd |}.
+     sig_cc   := fn_callconv fd ; sig_cstyle := true |}.
 
 Definition get_mem (st: state): mem :=
   match st with

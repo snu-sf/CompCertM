@@ -92,14 +92,14 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg ls vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_csig skd = sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_csig skd = Some sg)
       (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg)):
       at_external (Callstate stack fptr_arg sg ls m0) (Args.Cstyle fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd ls_init sg tvs n m0
-      (CSTYLE: Args.is_cstyle args)
+      (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYP: typecheck args.(Args.vs) sg tvs)

@@ -281,7 +281,7 @@ Module SkEnv.
         blk skd
         (DEF: skenv.(Genv.find_def) blk = Some (Gfun skd))
       ,
-        <<SIZE: 4 * size_arguments (Sk.get_csig skd) <= Ptrofs.max_unsigned>>)
+        <<SIZE: 4 * size_arguments (Sk.get_sig skd) <= Ptrofs.max_unsigned>>)
   .
 
   Inductive wf_mem (skenv: t) (sk: Sk.t) (m0: mem): Prop :=

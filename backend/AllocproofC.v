@@ -101,7 +101,7 @@ Proof.
   - eapply wt_state_local_preservation; et.
     ii. exploit wt_prog; eauto.
   - (* init bsim *)
-    destruct sm_arg; ss. clarify. inv SIMARGS; ss. clarify. inv INITTGT.
+    destruct sm_arg; ss. clarify. inv INITTGT. inv SIMARGS; ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     exploit lessdef_list_length; et. intro LEN; des.
     exploit (bsim_internal_funct_id SIMGE); et. i; des.
@@ -119,15 +119,14 @@ Proof.
       inv TYP0; ss. congruence.
     + ss.
   - (* init progress *)
-    des. inv SAFESRC. inv SIMARGS; ss. inv FPTR; cycle 1.
-    { rewrite <- H0 in *. ss. }
+    des. inv SAFESRC. inv SIMARGS; ss. inv FPTR; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des.
     exploit (sig_function_translated); eauto. intro SGEQ. ss.
     ss. unfold bind in *. folder. des_ifs. ss.
 
     exploit (fill_arguments_progress (Locmap.init Vundef)
-                                     (typify_list (Args.vs args_tgt) (sig_args (fn_sig f)))
+                                     (typify_list vs_tgt (sig_args (fn_sig f)))
                                      (loc_arguments f.(fn_sig))); eauto.
     { rewrite <- sig_args_length. rewrite SGEQ.
       unfold typify_list. rewrite zip_length. rewrite <- LEN.
@@ -137,7 +136,6 @@ Proof.
     exploit fill_arguments_spec; et. i; des.
 
     esplits; eauto. econs; eauto.
-    + folder. rewrite <- H1. eauto.
     + econs; eauto.
       erewrite <- lessdef_list_length; eauto. congruence.
     + ii. rewrite OUT; ss.
@@ -160,10 +158,10 @@ Proof.
       * ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
-    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
+    + econs; ss; eauto. econs; eauto.
       * eapply match_stackframes_after; et.
       * hexploit (loc_result_one sg_arg); et. intro ONE. destruct (loc_result sg_arg) eqn:T; ss.
         rewrite Locmap.gss. eapply lessdef_typify; et.
@@ -213,7 +211,7 @@ Proof.
   econs; ss.
   - r. eapply Sk.match_program_eq; eauto.
     ii. exploit sig_function_translated; et. i. destruct f1; ss.
-    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto.
+    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. unfold RTLC.fn_ssig, fn_ssig. ss. congruence.
     + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
 Qed.

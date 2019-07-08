@@ -76,7 +76,7 @@ Proof.
         { ss. }
         inv TYP.
         exploit (Genv.find_funct_match_genv SIMGE); eauto. intro FINDFSRC; des.
-        inv FINDFSRC0. monadInv H0; ss. f_equal; try congruence.
+        inv FINDFSRC0. ss. clarify. monadInv H0; ss. f_equal; try congruence.
         { exploit (function_type_implies_sig fd0); et. unfold type_of_function. ss. }
   - (* init progress *)
     des. inv SAFESRC. inv SIMARGS; ss.
@@ -86,9 +86,8 @@ Proof.
     assert(TYEQ: (ClightC.signature_of_function fd) = fn_sig tf0).
     { monadInv H3. ss. }
     esplits; eauto. econs; eauto.
-    + folder. rewrite <- FPTR. eauto.
-    + rewrite <- VALS. econs; eauto with congruence. rewrite <- TYEQ. ss.
-    + rewrite <- VALS. rewrite <- TYEQ. ss.
+    + ss. econs; ss. rewrite <- TYEQ. ss.
+    + rewrite <- TYEQ. ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify. inv CALLSRC. inv MATCHST; ss.
   - (* call fsim *)
@@ -105,14 +104,14 @@ Proof.
       * ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv AFTERSRC. inv SIMRET; inv CSTYLE. ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
-    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify.
+    + econs; ss; eauto. clarify.
       rpapply match_returnstate; eauto. repeat f_equal. rewrite proj_sig_res_type. ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. inv MK; ss. destruct sm0; ss. clarify.
-    eexists (SimMemId.mk _ _). esplits; ss; eauto.
+    eexists (SimMemId.mk _ _). esplits; ss; eauto. econs; ss; eauto.
   - left; i. esplits; eauto.
     { apply modsem2_receptive. }
     inv MATCH. ii. hexploit (@transl_step prog skenv_link skenv_link); eauto; ss.
@@ -150,4 +149,3 @@ Proof.
 Qed.
 
 End SIMMOD.
-

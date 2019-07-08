@@ -287,11 +287,12 @@ Proof.
     }
     des. eexists. econs; eauto; swap 1 2.
     + folder. inv FPTR; ss. eauto.
-    + erewrite <- transf_function_sig; et.
+    + congruence.
     + rewrite RSRA. econs; ss.
     + rewrite RSRA. ss.
-    + econs; eauto. rewrite <- LEN. symmetry. eapply lessdef_list_length. eauto.
-    + ii. hexploit PTRFREE0; et.
+    + rewrite SIG. econs; eauto. rewrite <- LEN. symmetry. eapply lessdef_list_length. eauto.
+    + erewrite <- transf_function_sig; eauto.
+    + erewrite <- transf_function_sig; eauto. ii. hexploit PTRFREE0; et.
       ii. apply PTR. unfold is_junk_value in *. des_ifs.
       unfold Mem.valid_block. unfold Mem.valid_block in H0.
       rewrite assign_junk_blocks_nextblock in *.

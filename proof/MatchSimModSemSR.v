@@ -322,14 +322,21 @@ Section MATCHSIMFORWARD.
     folder.
     exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.
     Print SimSymb.sim_skenv.
-    inv FSIM. exploit FUNCFSIM; eauto. { apply SIMARGS. } i; des.
-    split; ii.
-    - exploit INITBSIM; eauto. i; des.
-      esplits; eauto.
-      eapply match_states_lxsimSR; eauto.
-      { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
-    - exploit INITPROGRESS; eauto.
+    inv FSIM. inversion SIMARGS; subst; cycle 1.
+    - exploit FUNCFSIM; eauto. i; des.
+      split; ii.
+      + exploit INITBSIM; eauto. i; des.
+        esplits; eauto.
+        eapply match_states_lxsimSR; eauto.
+        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
+      + exploit INITPROGRESS; eauto.
+    - exploit FUNCFSIM; eauto. i; des.
+      split; ii.
+      + exploit INITBSIM; eauto. i; des.
+        esplits; eauto.
+        eapply match_states_lxsimSR; eauto.
+        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
+      + exploit INITPROGRESS; eauto.
   Qed.
 
 End MATCHSIMFORWARD.
-

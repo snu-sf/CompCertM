@@ -27,7 +27,7 @@ Definition code: list instruction :=
   ].
 
 Definition func: function :=
-  mkfunction (mksignature [Tlong] (Some Tfloat) cc_default) code
+  mkfunction (Some (mksignature [Tlong] (Some Tfloat) cc_default)) code
 .
 
 Definition prog: program := mkprogram [(func_id, (Gfun (Internal func)))] [func_id ; main_id] main_id.

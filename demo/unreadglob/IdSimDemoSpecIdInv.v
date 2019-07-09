@@ -85,14 +85,15 @@ Proof.
     + destruct x, st_init_tgt. ss.
       rewrite VS, VS0 in VALS. inv VALS. inv H4. inv H2; ss.
       econs; ss; eauto.
-      rewrite MEMSRC, MEMTGT. ss.
+    + ss.
+
   - i. ss. des. inv SAFESRC.
     inv MWF. ss. inv WF0. ss.
     set (sm_init_tgt := mkstate (get_arg st_init_src) (SimMemInj.tgt (SimMemInjInv.minj sm_arg))).
     exists sm_init_tgt.
     esplits. econs; ss.
-    + inv SIMARGS. ss. rewrite VS in *. inv VALS. inv H2; inv H3. eauto.
-    + inv SIMARGS. ss.
+    + inv SIMARGS; ss. rewrite VS in *. inv VALS. inv H1; inv H3. eauto.
+    + inv SIMARGS; ss.
   - i. ss. inv MATCH; eauto.
   - i. ss. inv FINALSRC. inv MATCH; inv MATCHST.
     esplits; eauto.

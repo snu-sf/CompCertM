@@ -141,7 +141,7 @@ Section ASOUND.
       + inv STEP; eauto.
         { inv SUST. econs; eauto. }
         { inv SUST. econs; eauto. }
-          (* ss. des_ifs. *)
+
       + inv STEP; eauto.
         { ss. refl. }
         { ss. refl. }

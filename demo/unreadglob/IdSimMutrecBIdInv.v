@@ -89,9 +89,9 @@ Proof.
     + refl.
     + econs; eauto.
       assert (i = i0).
-      { destruct args_src, args_tgt; ss. inv VALS; ss.
-        destruct vl, vl'; ss. clarify. inv H. auto. }
-      rewrite MEMTGT, MEMSRC. subst i0. econs.
+      { inv VALS. inv H2. auto. }
+      subst. econs; eauto.
+    + ss.
 
   - i. ss.
     cinv SIMSKENV. ss.
@@ -102,8 +102,9 @@ Proof.
     esplits. econs; ss; eauto.
     + clear -MWF INJ FPTR FPTR0.
       rewrite FPTR in FPTR0. inv FPTR0; ss.
-      rewrite H2 in INJ. clarify.
-    + rewrite VS in VALS. inv VALS; ss. inv H3. inv H2. auto.
+      rewrite H1 in INJ. clarify.
+    + rewrite VS in VALS. inv VALS; ss. inv H3. inv H1. auto.
+    + ss.
 
   - i. ss. inv MATCH; eauto.
 
@@ -122,8 +123,8 @@ Proof.
     exists (SimMemInjInvC.unlift' sm_arg sm_ret).
     inv AFTERSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
-    + econs; eauto. inv SIMRET. rewrite INT in *. inv RETV. ss.
-    + inv SIMRET. econs; eauto. econs; eauto.
+    + econs; eauto. inv SIMRET; ss. rewrite INT in *. inv RETV. ss.
+    + inv SIMRET; ss. econs; eauto. econs; eauto.
     + refl.
 
   - i. ss. inv FINALSRC. inv MATCH. inv MATCHST.

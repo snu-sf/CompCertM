@@ -73,7 +73,7 @@ Section DEMOSOUND.
     eapply local_preservation_strong_horizontal_spec with (lift := UnreachC.le') (sound_state := sound_state_demo skenv_link); eauto.
     econs; ss; i.
     { eapply UnreachC.liftspec; et. }
-    - inv INIT. ss. inv SUARG. des. esplits.
+    - inv INIT. ss. unfold Sound.args in SUARG. des_ifs. des. esplits.
       + refl.
       + destruct st_init.
         econs; eauto; ss; inv SKENV; ss.
@@ -126,21 +126,21 @@ Proof.
   eapply match_states_sim; ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
-  - instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
+  - ii. instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
                        (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>) /\
                        (<<stmwf: st_src.(DemoSpec.get_mem) =
                                  sm0.(SimMemId.src)>>)).
-    ss.
-    destruct args_src, args_tgt, sm_arg. ii. inv SIMARGS; ss; clarify.
+    ss. destruct args_src, args_tgt, sm_arg; ss; inv SIMARGS; ss; clarify; cycle 1.
+    { des. inv SAFESRC. ss. }
     clear SAFESRC. dup INITTGT. inv INITTGT. ss.
     eexists. eexists (SimMemId.mk tgt tgt). esplits; eauto; ss.
-  - ii. destruct args_src, args_tgt, sm_arg. inv SIMARGS; ss; clarify.
+  - ii. destruct args_src, args_tgt, sm_arg; inv SIMARGS; ss; clarify. des. inv SAFESRC. ss.
   - ii. ss. des. clarify.
-  - i. ss. des. clarify. esplits; eauto.
-    econs; ss.
-    + inv FINALSRC; ss.
-    + rewrite <- MWF. inv FINALSRC. ss.
+  - i. ss. des. destruct sm0. ss. clarify.
+    eexists (SimMemId.mk (get_mem st_tgt0) (get_mem st_tgt0)).
+    esplits; eauto.
+    inv FINALSRC. ss. econs; ss.
   - right. ii. des. destruct sm0. ss. clarify. esplits; eauto.
     + i. exploit H; ss.
       * econs 1.
@@ -176,14 +176,13 @@ Proof.
     + instantiate (2:=tt).
       destruct x, st_init_tgt. ss.
       rewrite VS, VS0 in VALS. inv VALS. inv H4. inv H2; ss.
-      econs; ss; eauto.
-      rewrite MEMSRC, MEMTGT. eauto.
+    + ss.
   - i. ss. des. inv SAFESRC.
     set (sm_init_tgt := mkstate (get_arg st_init_src) (SimMemExt.tgt sm_arg)).
     exists sm_init_tgt.
     esplits. econs; ss.
-    + inv SIMARGS. ss. rewrite VS in *. inv VALS. inv H2; inv H3. eauto.
-    + inv SIMARGS. ss.
+    + inv SIMARGS; ss. rewrite VS in *. inv VALS. inv H1; inv H3. eauto.
+    + inv SIMARGS; ss.
   - i. ss. inv MATCH; eauto.
   - i. ss. inv FINALSRC. inv MATCH.
     esplits; eauto.
@@ -221,14 +220,13 @@ Proof.
     + instantiate (2:=tt).
       destruct x, st_init_tgt. ss.
       rewrite VS, VS0 in VALS. inv VALS. inv H4. inv H2; ss.
-      econs; ss; eauto.
-      rewrite MEMSRC, MEMTGT. eauto.
+    + ss.
   - i. ss. des. inv SAFESRC.
     set (sm_init_tgt := mkstate (get_arg st_init_src) (SimMemExt.tgt sm_arg)).
     exists sm_init_tgt.
     esplits. econs; ss.
-    + inv SIMARGS. ss. rewrite VS in *. inv VALS. inv H2; inv H3. eauto.
-    + inv SIMARGS. ss.
+    + inv SIMARGS; ss. rewrite VS in *. inv VALS. inv H1; inv H3. eauto.
+    + inv SIMARGS; ss.
   - i. ss. inv MATCH; eauto.
   - i. ss. inv FINALSRC. inv MATCH.
     esplits; eauto.
@@ -270,13 +268,13 @@ Proof.
     + destruct x, st_init_tgt. ss.
       rewrite VS, VS0 in VALS. inv VALS. inv H4. inv H2; ss.
       econs; ss; eauto.
-      rewrite MEMSRC, MEMTGT. ss.
+    + ss.
   - i. ss. des. inv SAFESRC.
     set (sm_init_tgt := mkstate (get_arg st_init_src) (SimMemInj.tgt sm_arg)).
     exists sm_init_tgt.
     esplits. econs; ss.
-    + inv SIMARGS. ss. rewrite VS in *. inv VALS. inv H2; inv H3. eauto.
-    + inv SIMARGS. ss.
+    + inv SIMARGS; ss. rewrite VS in *. inv VALS. inv H1; inv H3. eauto.
+    + inv SIMARGS; ss.
   - i. ss. inv MATCH; eauto.
   - i. ss. inv FINALSRC. inv MATCH; inv MATCHST.
     esplits; eauto.

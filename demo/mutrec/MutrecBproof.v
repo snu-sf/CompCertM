@@ -304,7 +304,7 @@ Lemma f_blk_exists
                   f_blk = None>>)
       /\
       (<<FINDF: exists skd, Genv.find_funct_ptr skenv_link f_blk = Some skd /\
-                            (mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default) = SkEnv.get_sig skd>>)
+                            Some (mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default true) = Sk.get_csig skd>>)
 .
 Proof.
   exploit (prog_defmap_norepet prog f_id); eauto.
@@ -851,15 +851,12 @@ Proof.
         i. ss. ii.
         exploit INVCOMPAT; eauto. i. rewrite <- H0 in H. ss.
         rewrite Ptrofs.add_zero_l. ss.
-      * econs; eauto.
+      * econs 1; eauto.
         { repeat rewrite Pregmap.gss. ss.
           unfold Genv.symbol_address.
           assert (Genv.find_symbol
                     (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog) f_id = Some g_fptr) by ss.
           rewrite H. ss. }
-        { zsimpl. inv WF.
-          rewrite Genv.find_funct_ptr_iff in FINDF1.
-          eapply WFPARAM in FINDF1. eauto. }
         { unfold Genv.find_funct. des_ifs.
           unfold Genv.find_funct_ptr. des_ifs.
           unfold Genv.find_def in Heq. ss.
@@ -891,19 +888,22 @@ Proof.
             rewrite Genv.find_funct_ptr_iff. eauto. ss.
           - des_ifs. esplits.
             rewrite Genv.find_funct_ptr_iff. eauto. ss. }
-        { rewrite <- FINDF2. econs; eauto.
-          - econs; eauto. ss.
-            rpapply extcall_arg_reg. ss.
-          - econs. }
         { split; ss.
           - repeat (rewrite Pregmap.gso; [| clarify; fail]).
             rewrite Pregmap.gss. rewrite RSPC. ss.
           - repeat (rewrite Pregmap.gso; [| clarify; fail]).
             rewrite Pregmap.gss. rewrite RSPC. ss. }
+        { econs; eauto.
+          - econs; eauto. ss.
+            rpapply extcall_arg_reg. ss.
+          - econs. }
+        { zsimpl. psimpl. inv WF.
+          rewrite Genv.find_funct_ptr_iff in FINDF1.
+          eapply WFPARAM in FINDF1. generalize (size_arguments_above (Sk.get_sig skd)); i. etrans; eauto. xomega. }
         { ii. apply Z.divide_0_r. }
-        { rewrite <- FINDF2. eauto. }
+        { ss. }
 
-      * i. inv SIMRETV. inv AFTERSRC. ss.
+      * i. inv AFTERSRC. ss. inv SIMRETV; ss.
         exploit Mem_unfree_suceeds.
         { instantiate (1:=stk).
           instantiate (1:=SimMemInj.tgt sm_ret.(SimMemInjInv.minj)).
@@ -933,7 +933,7 @@ Proof.
                       m1 _ _ _ _ _ _ _) _ _).
         esplits; ss.
         { econs; ss; eauto.
-          - instantiate (1:=mksignature [AST.Tint] (Some AST.Tint) cc_default).
+          - instantiate (1:=mksignature [AST.Tint] (Some AST.Tint) cc_default true).
             assert (SYMBREV: Genv.find_symbol
                                (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog) f_id = Some g_fptr) by ss.
             unfold Genv.symbol_address. rewrite SYMBREV. ss. des_ifs.
@@ -942,8 +942,7 @@ Proof.
             { rewrite <- defs_prog_defmap. eauto. }
             exploit SkEnv.project_impl_spec. eapply INCL. i. inv H.
             inv INCL. exploit DEFS; eauto.
-          - unfold size_arguments. des_ifs. ss. psimpl.
-            rewrite MEMTGT. eauto. }
+          - unfold size_arguments. des_ifs. ss. psimpl. eauto. }
         { etrans; eauto. refl. }
         { right. eapply CIH; eauto.
           { exploit SimSymb.mle_preserves_sim_skenv; ss; cycle 1; eauto.
@@ -981,8 +980,7 @@ Proof.
           - unfold set_pair, loc_external_result, loc_result. des_ifs_safe. ss.
             clarify.
             repeat (rewrite Pregmap.gso; [| clarify; fail]).
-            repeat rewrite Pregmap.gss.
-            rewrite INT in *. inv RETV. auto. }
+            repeat rewrite Pregmap.gss. inv RETV; eauto. }
 
   - intros _. econs 1. i. cinv CURRPC.
 
@@ -1180,13 +1178,6 @@ Proof.
             + eapply Mem.free_unchanged_on; eauto. clear. ii. lia. }
         { destruct sm_init. inv MLE. ss. clarify. }
       * econs; ss; eauto.
-        { unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,
-          to_preg, preg_of, compare_ints, Pregmap.set in *.
-          ii. specialize (REGSAVED mr).
-          des_ifs; eapply Val.lessdef_same; try apply REGSAVED; eauto; clarify. }
-        { unfold size_arguments. ss. rewrite <- FINDF2 in *. ss. des_ifs.
-          psimpl. zsimpl. eauto. }
-        { rewrite <- FINDF2. ss. }
         { repeat rewrite Pregmap.gss.
           repeat (rewrite Pregmap.gso; [| clarify; fail]).
           repeat rewrite Pregmap.gss.
@@ -1196,6 +1187,11 @@ Proof.
           eapply RANOTFPTR; eauto. }
         { unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
           exfalso. exploit RANOTFPTR; eauto. eapply Genv.genv_defs_range; eauto. }
+        { unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,
+          to_preg, preg_of, compare_ints, Pregmap.set in *.
+          ii. specialize (REGSAVED mr).
+          des_ifs; eapply Val.lessdef_same; try apply REGSAVED; eauto; clarify. }
+        { ss. }
       * econs; ss.
         { repeat (rewrite Pregmap.gso; [| clarify; fail]).
           rewrite ARG. econs. }
@@ -1222,10 +1218,10 @@ Proof.
     + refl.
     + econs; eauto.
     + instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
-      inv INITTGT. inv TYP. ss.
+      inv SIMARGS; ss. inv INITTGT; ss.
+      inv TYP. ss. clarify.
       assert (FD: fd = func_g).
-      { destruct args_src, args_tgt; ss. clarify.
-        inv SIMARGS. ss. clarify. inv VALS. inv H1. inv H3. inv FPTR. ss.
+      { inv VALS. inv H1. inv H3. inv FPTR0. ss.
         des_ifs.
         inv SIMSKENV. inv SIMSKE. inv INJECT. ss.
         exploit IMAGE; eauto.
@@ -1279,11 +1275,10 @@ Proof.
           + ss. exists 2. auto.
         - econs. } intros [m5 STR2].
 
-      inv SIMARGS. ss.
       destruct sm_arg as [sm_arg minv_src minv_tgt].
 
       assert (UNCH0: Mem.unchanged_on top2 (SimMemInj.tgt sm_arg) (JunkBlock.assign_junk_blocks m0 n)).
-      { ss. rewrite MEMTGT in *. etrans.
+      { ss. etrans.
         { eapply store_arguments_unchanged_on; eauto. }
         { eapply JunkBlock.assign_junk_blocks_unchanged_on; eauto. } }
 
@@ -1292,7 +1287,7 @@ Proof.
         eapply Mem.valid_block_unchanged_on; eauto. }
 
       assert (UNCH: Mem.unchanged_on top2 (SimMemInj.tgt sm_arg) m5).
-      { ss. rewrite MEMTGT in *. etrans; eauto.
+      { ss. etrans; eauto.
         eapply Mem.unchanged_on_implies with (P:=fun blk ofs => blk <> stk); cycle 1.
         { ii. clarify. eapply Mem.fresh_block_alloc; eauto. } etrans.
         { eapply Mem.unchanged_on_implies with (P:=top2); ss.
@@ -1338,6 +1333,7 @@ Proof.
           + ii. exploit INVRANGETGT; eauto. i. des. eapply Plt_Ple_trans; eauto.
           + eapply Mem.unchanged_on_implies; eauto; ss. }
 
+      rename Heq into RSPC.
       pfold. intros _. econs 1. intros _. econs 2.
       * split.
         {
@@ -1402,25 +1398,22 @@ Proof.
             rewrite RSPC. ss. econs; eauto.
           - unfold nextinstr_nf, undef_regs, nextinstr.
             repeat (rewrite Pregmap.gso; [| clarify; fail]).
-            inv H0. rewrite VS in *. inv VALS. inv H4.
-            rewrite <- H2 in *. inv H3. ss. unfold typify_list, typify in *.
+            inv H0. inv VALS. inv H4. inv H2. ss. unfold typify_list, typify in *.
             ss. des_ifs; ss. inv VALS0.
-            unfold loc_arguments in *. des_ifs. inv H6. inv H4; ss.
+            unfold loc_arguments in *. des_ifs. inv H5. inv H3; ss.
             inv H; ss. clarify.
           - omega. }
 
   - (* init progress *)
     i.
     des. inv SAFESRC.
-    inv SIMARGS; ss.
+    inv SIMARGS; ss. clarify.
 
     exploit asm_initial_frame_succeed; eauto.
     + instantiate (1:=func_g). ss.
-      eapply inject_list_length in VALS. des. rewrite <- VALS.
-      rewrite VS. ss.
+      eapply inject_list_length in VALS. des. rewrite <- VALS. ss.
     + ss.
     + ss.
-      destruct args_src, args_tgt; ss. clarify.
       inv VALS. inv H1. inv H3. inv FPTR0. ss.
       des_ifs.
       inv SIMSKENV. inv SIMSKE. inv INJECT. ss.
@@ -1435,6 +1428,7 @@ Proof.
       des_ifs.
       exploit Genv.find_invert_symbol. eauto. i.
       rewrite H in *. clarify.
+    + ss.
 Unshelve. apply 0. apply 0.
 Qed.
 

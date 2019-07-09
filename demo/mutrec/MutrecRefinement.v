@@ -115,17 +115,6 @@ Proof.
   - unfold mutrec_relations. eauto.
 Qed.
 
-Theorem mutrecABcorrect
-        ctx0 ctx1
-  :
-    (<<REFINE: improves (Sem.sem (ctx0 ++ [(MutrecABspec.module)] ++ ctx1))
-                        (Sem.sem (ctx0 ++ [(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx1))
-                        >>)
-.
-Proof.
-  idtac "admit - genralize MutrecABproof".
-Admitted.
-
 Theorem MutrecAB_AB_rusc
   :
     rusc top1 [(MutrecABspec.module)] [(MutrecAspec.module) ; (MutrecBspec.module)]

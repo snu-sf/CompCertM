@@ -8,19 +8,6 @@ Require Import sflib.
 
 Set Implicit Arguments.
 
-(* TODO: Why Function does not work ??? *)
-(* Program Fixpoint link_list X `{Linker X} (xs: list X) { measure (length xs) }: option X := *)
-(*   match xs with *)
-(*   | [] => None *)
-(*   | x0 :: nil => Some x0 *)
-(*   | x0 :: x1 :: tl => *)
-(*     match (link x0 x1) with *)
-(*     | Some x => link_list (x :: tl) *)
-(*     | None => None *)
-(*     end *)
-(*   end *)
-(* . *)
-
 Inductive link_res (A: Type): Type :=
 | empty
 | fail
@@ -155,35 +142,6 @@ Proof.
   - destruct xs; ss.
 Qed.
 
-(* Lemma link_list_cons_commut *)
-(*       X `{Linker X} *)
-(*       x0 x1 x_link xs *)
-(*       (LINK: link x0 x1 = Some x_link) *)
-(*   : *)
-(*     <<CMT: link_list (x0 :: x1 :: xs) = link_list (x_link :: xs)>> *)
-(* . *)
-(* Proof. *)
-
-(*   { *)
-(*     remember (rev xs) as rem. *)
-(*     move rem at top. *)
-(*     revert_until H. *)
-(*     ginduction rem; ii; ss. *)
-(*     { hexpl rev_nil. clarify. ss. unfold link_list; ss. des_ifs. } *)
-
-(*   } *)
-(*   ginduction xs; ii; ss. *)
-(*   { unfold link_list. ss. des_ifs. } *)
-(*   unfold link_list. ss. *)
-(*   destruct  *)
-(*   destruct (link_list_aux xs) eqn:T. *)
-(*   { ss. *)
-(*   ss. des_ifs. *)
-(*   exploit IHxs; eauto. i; des. *)
-
-(*   ss. *)
-(* Qed. *)
-
 Lemma match_program_refl
       F V
       `{Linker F} `{Linker V}
@@ -236,47 +194,6 @@ Qed.
 Local Opaque Linker_def.
 Local Opaque Linker_vardef.
 Local Opaque Linker_varinit.
-
-(* Definition link_fundef {F: Type} (fd1 fd2: fundef F) := *)
-(*   match fd1, fd2 with *)
-(*   | Internal _, Internal _ => None *)
-(*   | External ef1, External ef2 => *)
-(*     match ef1, ef2 with *)
-(*     | EF_external id1 sg1, EF_external id2 sg2 => Some (External ef1) *)
-(*     | EF_builtin id1 sg1, EF_builtin id2 sg2 => Some (External ef1) *)
-(*     | EF_runtime id1 sg1, EF_runtime id2 sg2 => Some (External ef1) *)
-(*     | _, _ => if external_function_eq ef1 ef2 then Some (External ef1) else None *)
-(*     end *)
-(*   | Internal f, External ef => *)
-(*       match ef with EF_external id sg => Some (Internal f) | _ => None end *)
-(*   | External ef, Internal f => *)
-(*       match ef with EF_external id sg => Some (Internal f) | _ => None end *)
-(*   end. *)
-
-(* Inductive linkorder_fundef {F: Type}: fundef F -> fundef F -> Prop := *)
-(* | linkorder_fundef_refl: forall fd, linkorder_fundef fd fd *)
-(* | linkorder_fundef_ext_refl: forall id1 id2 sg1 sg2, linkorder_fundef (External (EF_external id1 sg1)) (External (EF_external id2 sg2)) *)
-(* | linkorder_fundef_runtime_refl: forall id1 id2 sg1 sg2, linkorder_fundef (External (EF_runtime id1 sg1)) (External (EF_runtime id2 sg2)) *)
-(* | linkorder_fundef_builtin_refl: forall id1 id2 sg1 sg2, linkorder_fundef (External (EF_builtin id1 sg1)) (External (EF_builtin id2 sg2)) *)
-(* | linkorder_fundef_ext_int: forall f id sg, linkorder_fundef (External (EF_external id sg)) (Internal f). *)
-
-(* Program Instance Linker_fundef (F: Type): Linker (fundef F) := { *)
-(*   link := link_fundef; *)
-(*   linkorder := linkorder_fundef *)
-(* }. *)
-(* Next Obligation. *)
-(*   constructor. *)
-(* Defined. *)
-(* Next Obligation. *)
-(*   inv H; inv H0; constructor. *)
-(* Defined. *)
-(* Next Obligation. *)
-(*   pose x as X. pose y as Y. *)
-(*   destruct x, y; ss; des_ifs; esplits; eauto; try (econs; et). *)
-(* Defined. *)
-
-(* Global Opaque Linker_fundef. *)
-
 
 Definition link_skfundef (fd1 fd2: AST.fundef signature) :=
   match fd1, fd2 with

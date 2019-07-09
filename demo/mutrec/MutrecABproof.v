@@ -24,8 +24,7 @@ Set Implicit Arguments.
 Lemma link_sk_same_aux1
       A B C
       (NOEMPTY: A <> [] /\ B <> [])
-      (SAME: link_sk A = link_sk B)
-  :
+      (SAME: link_sk A = link_sk B):
     link_sk (C ++ A) = link_sk (C ++ B).
 Proof.
   ginduction C; ss.
@@ -39,16 +38,11 @@ Proof.
   - unfold link_list. ss. rewrite Heq, Heq0. auto.
 Qed.
 
-Lemma link_sk_same_aux2 ctx :
+Lemma link_sk_same_aux2 ctx:
     link_sk ([(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx)
     = link_sk ([module] ++ ctx).
 Proof.
-  Local Transparent Linker_prog. ss.
-  Local Transparent Linker_def.
-  Local Transparent Linker_skfundef.
-  Local Transparent Linker_vardef.
-  Local Transparent Linker_unit.
-  Local Transparent Linker_varinit.
+  Local Transparent Linker_prog Linker_def Linker_skfundef Linker_vardef Linker_unit Linker_varinit. ss.
   assert (LINKSK: link_sk [MutrecAspec.module; MutrecBspec.module] = Some sk_link); ss.
   destruct (link_list_aux (List.map Mod.sk ctx)) eqn:CTXLINK.
   - eapply link_list_aux_empty_inv in CTXLINK. rr in CTXLINK.
@@ -69,12 +63,9 @@ Proof.
         assert (exists gd, (prog_defmap sk_link) ! id = Some gd).
         { rewrite H1. rewrite prog_defmap_elements.
           rewrite PTree.gcombine; cycle 1. ss.
-          exploit prog_defmap_image. eapply H4. i. rr in H6. simpl in H6. des; subst; clarify.
-          - simpl. des_ifs. eauto.
-          - simpl. des_ifs. eauto.
-          - simpl. des_ifs. eauto. }
-        des.
-        exploit H3; eauto. i. des; eauto.
+          exploit prog_defmap_image. eapply H4. i.
+          rr in H6. simpl in H6. des; subst; clarify; simpl; des_ifs; eauto. }
+        des. exploit H3; eauto. i. des; eauto.
         rewrite H1 in H7. simpl in H7. esplits; eauto.
         { simpl. des; eauto. }
         destruct (classic (id = f_id)).
@@ -83,41 +74,35 @@ Proof.
         destruct (classic (id = g_id)).
         { subst. clear H7. rewrite H1 in H6. rewrite prog_defmap_elements, PTree.gcombine in H6; cycle 1.
           auto. ii. simpl in H6, H4. clarify. des_ifs. }
-        des; clarify. }
+        clear -H7 H10 H11. des; clarify. }
       i. rewrite H4 in *. clarify.
     + hexploit (link_prog_inv _ _ _ Heq0). i. des.
       hexploit (link_prog_inv _ _ _ Heq2). i. des.
       hexploit (link_prog_inv _ _ _ Heq4). i. des.
-      dup Heq3.
-      unfold link_prog in Heq3.
+      dup Heq3. unfold link_prog in Heq3.
       assert (EQ: (AST.prog_main (CSk.of_program signature_of_function MutrecA.prog)) = AST.prog_main t1).
       { des_ifs. }
       exploit (link_prog_succeeds _ _ EQ).
-      { ii.
-        assert (exists gd, (prog_defmap sk_link) ! id = Some gd).
+      { ii. assert (exists gd, (prog_defmap sk_link) ! id = Some gd).
         { rewrite H1. rewrite prog_defmap_elements.
           rewrite PTree.gcombine; cycle 1. ss.
-          exploit prog_defmap_image. eapply H8. i. rr in H10. simpl in H10. des; subst; clarify.
-          - simpl. des_ifs. eauto.
-          - simpl. des_ifs. eauto.
-          - simpl. des_ifs. eauto. }
+          exploit prog_defmap_image. eapply H8. i.
+          rr in H10. simpl in H10. des; subst; clarify; simpl; des_ifs; eauto. }
         des. simpl. rewrite H7 in H9. rewrite H7.
         rewrite prog_defmap_elements, PTree.gcombine in H9; cycle 1. auto.
         unfold link_prog_merge in H9. des_ifs; simpl.
         - exploit H6; eauto. splits; des; eauto.
-          exploit H3; eauto. i. des.
-          rewrite H1 in H10.
+          exploit H3; eauto. i. des. rewrite H1 in H10.
           rewrite prog_defmap_elements, PTree.gcombine in H10; cycle 1. auto.
           unfold link_prog_merge in H10. des_ifs.
-          ii.
-          destruct (classic (id = f_id)).
+          ii. destruct (classic (id = f_id)).
           { subst. simpl. esplits; eauto.
             simpl in H8, H10, H11, H14. simpl in Heq8, Heq9. clarify.
-            unfold link_def in H10, H11, H14. des_ifs. simpl in Heq9, Heq8. des_ifs. }
+            unfold link_def in H10, H11, H14. des_ifs. simpl in Heq9, Heq8. destruct f0; des_ifs. }
           destruct (classic (id = g_id)).
           { subst. simpl. esplits; eauto.
             simpl in H8, H10, H11, H14. simpl in Heq8, Heq9. clarify.
-            unfold link_def in H10, H11, H14. des_ifs. simpl in Heq9, Heq8. des_ifs. }
+            unfold link_def in H10, H11, H14. des_ifs. simpl in Heq9, Heq8. destruct f0; des_ifs. }
           exploit prog_defmap_image. eapply Heq8. ii. rr in H16. simpl in H16. des; clarify.
         - exploit H0; eauto. i. des. esplits; eauto.
           { simpl in H4, H7. des; eauto. clarify. }
@@ -129,8 +114,7 @@ Proof.
     + hexploit (link_prog_inv _ _ _ Heq0). i. des.
       hexploit (link_prog_inv _ _ _ Heq). i. des.
       hexploit (link_prog_inv _ _ _ Heq4). i. des.
-      dup Heq2.
-      unfold link_prog in Heq2.
+      dup Heq2. unfold link_prog in Heq2.
       assert (EQ: (AST.prog_main sk_link) = AST.prog_main t).
       { rewrite H1. simpl. des_ifs. }
       exploit (link_prog_succeeds _ _ EQ).
@@ -150,12 +134,7 @@ Proof.
         - exploit prog_defmap_image. eapply H8. ii. rr in H4. simpl in H4. des; clarify.
           exploit H3; eauto. ii. des. simpl in H4. des; clarify. }
       ii. rewrite H8 in *. clarify.
-    + Local Transparent Linker_def.
-      Local Transparent Linker_skfundef.
-      Local Transparent Linker_vardef.
-      Local Transparent Linker_unit.
-      Local Transparent Linker_varinit.
-      hexploit (link_prog_inv _ _ _ Heq). i. des.
+    + hexploit (link_prog_inv _ _ _ Heq). i. des.
       hexploit (link_prog_inv _ _ _ Heq0). i. des.
       hexploit (link_prog_inv _ _ _ Heq2). i. des.
       hexploit (link_prog_inv _ _ _ Heq3). i. des.
@@ -167,11 +146,11 @@ Proof.
       repeat rewrite PTree.gcombine; (try by ss).
       destruct ((prog_defmap (CSk.of_program signature_of_function MutrecA.prog)) ! i) eqn:DMAPA; cycle 1.
       { destruct ((prog_defmap (Sk.of_program Asm.fn_sig MutrecB.prog)) ! i) eqn: DMAPB; cycle 1.
-        { destruct ((prog_defmap t) ! i) eqn: DMAPC; (try by ss). }
-        { destruct ((prog_defmap t) ! i) eqn: DMAPC; (try by ss). }
+        { destruct ((prog_defmap t) ! i) eqn: DMAPC; ss. }
+        { destruct ((prog_defmap t) ! i) eqn: DMAPC; ss. }
       }
       destruct ((prog_defmap (Sk.of_program Asm.fn_sig MutrecB.prog)) ! i) eqn: DMAPB; cycle 1.
-      { destruct ((prog_defmap t) ! i) eqn: DMAPC; (try by ss). }
+      { destruct ((prog_defmap t) ! i) eqn: DMAPC; ss. }
       { destruct ((prog_defmap t) ! i) eqn: DMAPC.
         - unfold link_prog_merge. des_ifs.
           + simpl in Heq1, Heq4. unfold link_def in *. des_ifs.
@@ -180,19 +159,21 @@ Proof.
               Local Transparent Linker_def. simpl. des_ifs.
               { unfold link_vardef in *. des_ifs.
                 simpl in Heq14, Heq12, Heq6, Heq8. unfold link_varinit in *.
-                simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. des_ifs. }
+                simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. clarify.
+                clear -Heq8 Heq6 Heq14 Heq12 Heq11. des_ifs. }
               { unfold link_vardef in *. des_ifs.
                 - simpl in Heq16, Heq13. rewrite andb_true_iff in *.
                   repeat rewrite eqb_true_iff in *. repeat rewrite andb_false_iff in *. repeat rewrite eqb_false_iff in *. des.
                   rewrite Heq9 in *. clarify. rewrite Heq4 in *. clarify.
                 - simpl in Heq14, Heq12, Heq6, Heq8. unfold link_varinit in *.
-                  simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. des_ifs. }
+                  simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. clarify.
+                  clear -Heq8 Heq6 Heq14 Heq12 Heq11. des_ifs. }
               { unfold link_vardef in *. des_ifs.
                 - simpl in Heq15, Heq13. rewrite andb_true_iff in *.
                   repeat rewrite eqb_true_iff in *. repeat rewrite andb_false_iff in *. repeat rewrite eqb_false_iff in *. des; clarify.
                 - simpl in Heq14, Heq12, Heq6, Heq8. unfold link_varinit in *.
                   simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. des_ifs.
-                  + simpl. clarify. simpl in n.
+                  + simpl in n.
                     destruct (classic (sz1 >= 0)).
                     { exploit Zmax_left; eauto. i. rewrite H7 in n. rewrite Z.add_0_r in n. nia. }
                     { eapply Znot_ge_lt in H1. rewrite Z.max_l in n. nia. nia. }
@@ -203,12 +184,9 @@ Proof.
         - unfold link_prog_merge. des_ifs. }
 Qed.
 
-Lemma link_sk_same
-      ctx1 ctx2
-  :
+Lemma link_sk_same ctx1 ctx2 :
     link_sk (ctx1 ++ [(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2)
-    = link_sk (ctx1 ++ [module] ++ ctx2)
-.
+    = link_sk (ctx1 ++ [module] ++ ctx2).
 Proof.
   assert ([(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2 <> [] /\ [module] ++ ctx2 <> []) by ss.
   exploit (link_sk_same_aux1 ctx1 H). { eapply link_sk_same_aux2. } i. eauto.
@@ -272,16 +250,10 @@ Section LXSIM.
   Let SKEWF: SkEnv.wf skenv_link.
   Proof. eapply SkEnv.load_skenv_wf; et. Qed.
 
-  Lemma genv_sim
-        fptr if_sig
-    :
-      (<<FINDF: Genv.find_funct (SkEnv.project skenv_link MutrecABspec.sk_link) fptr =
-                Some (AST.Internal if_sig)>>)
-      <->
-      (<<FINDF: exists md, (<<FOCUS: is_focus md>>) /\
-                           (<<FINDF: Genv.find_funct (ModSem.skenv (flip Mod.modsem skenv_link md)) fptr =
-                                     Some (AST.Internal if_sig)>>)>>)
-  .
+  Lemma genv_sim fptr if_sig :
+      (<<FINDF: Genv.find_funct (SkEnv.project skenv_link MutrecABspec.sk_link) fptr = Some (AST.Internal if_sig)>>)
+      <-> (<<FINDF: exists md, (<<FOCUS: is_focus md>>)
+         /\ (<<FINDF: Genv.find_funct (ModSem.skenv (flip Mod.modsem skenv_link md)) fptr = Some (AST.Internal if_sig)>>)>>).
   Proof.
     split; i.
     - rr in H.
@@ -453,17 +425,10 @@ Section LXSIM.
         inv H0; clarify. ss. des; clarify.
   Qed.
 
-  Lemma find_f_id
-    :
-      exists blk,
-        (<<SYMBBIG: Genv.find_symbol skenv_link f_id = Some blk>>)
-        /\ (<<SYMBA: Genv.find_symbol
-                       (SkEnv.project skenv_link (CSk.of_program signature_of_function MutrecA.prog))
-                       f_id = Some blk>>)
-        /\ (<<SYMBB: Genv.find_symbol
-                       (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig MutrecB.prog))
-                       f_id = Some blk>>)
-  .
+  Lemma find_f_id :
+    exists blk, (<<SYMBBIG: Genv.find_symbol skenv_link f_id = Some blk>>)
+            /\ (<<SYMBA: Genv.find_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function MutrecA.prog)) f_id = Some blk>>)
+            /\ (<<SYMBB: Genv.find_symbol (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig MutrecB.prog)) f_id = Some blk>>).
   Proof.
    inv INCLA. ss.
    inv SKEWF. ss.
@@ -493,20 +458,13 @@ Section LXSIM.
      instantiate (1:=f_id). rewrite Heq. ss.
   Qed.
 
-  Lemma find_g_id
-    :
-      exists blk,
-        (<<SYMBBIG: Genv.find_symbol skenv_link g_id = Some blk>>)
-        /\ (<<SYMBA: Genv.find_symbol
-                       (SkEnv.project skenv_link (CSk.of_program signature_of_function MutrecA.prog))
-                       g_id = Some blk>>)
-        /\ (<<SYMBB: Genv.find_symbol
-                       (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig MutrecB.prog))
-                       g_id = Some blk>>)
+  Lemma find_g_id :
+    exists blk, (<<SYMBBIG: Genv.find_symbol skenv_link g_id = Some blk>>)
+           /\ (<<SYMBA: Genv.find_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function MutrecA.prog)) g_id = Some blk>>)
+           /\ (<<SYMBB: Genv.find_symbol (SkEnv.project skenv_link (Sk.of_program Asm.fn_sig MutrecB.prog)) g_id = Some blk>>)
   .
   Proof.
-    inv INCLB. ss.
-    inv SKEWF. ss.
+    inv INCLB. ss. inv SKEWF. ss.
     unfold prog_defmap in DEFS. ss.
     specialize (DEFS g_id). ss.
     exploit DEFS; eauto. i. des.
@@ -534,27 +492,22 @@ Section LXSIM.
   Inductive match_focus: mem -> int -> int -> list Frame.t -> Prop :=
   | match_focus_nil
       cur max m
-      (OVER: cur.(Int.intval) > max.(Int.intval))
-    :
+      (OVER: cur.(Int.intval) > max.(Int.intval)):
       match_focus m cur max []
   | match_focus_cons_A
       cur max m tl_tgt
       (REC: match_focus m (Int.add cur Int.one) max tl_tgt)
-      (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
-    :
+      (LE: (cur.(Int.intval) <= max.(Int.intval))%Z):
       match_focus m cur max ((Frame.mk (MutrecAspec.modsem skenv_link tt) (MutrecAspec.Interstate cur m)) :: tl_tgt)
   | match_focus_cons_B
       cur max m tl_tgt
       (REC: match_focus m (Int.add cur Int.one) max tl_tgt)
-      (LE: (cur.(Int.intval) <= max.(Int.intval))%Z)
-    :
-      match_focus m cur max ((Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Interstate cur m)) :: tl_tgt)
-  .
+      (LE: (cur.(Int.intval) <= max.(Int.intval))%Z):
+      match_focus m cur max ((Frame.mk (MutrecBspec.modsem skenv_link tt) (MutrecBspec.Interstate cur m)) :: tl_tgt).
 
   Lemma add_one_same
         i
-        (BOUND: 0 <= Int.intval i + 1 <= Int.max_unsigned)
-    :
+        (BOUND: 0 <= Int.intval i + 1 <= Int.max_unsigned):
       Int.intval (Int.add i Int.one) = Int.intval i + 1.
   Proof.
     unfold Int.add. unfold Int.unsigned.
@@ -570,10 +523,8 @@ Section LXSIM.
   Lemma match_focus_over_nil
         m max hds_tgt
         (RANGE: max.(Int.intval) < MAX)
-        (FOCUS: match_focus m (Int.add max Int.one) max hds_tgt)
-    :
-      hds_tgt = nil
-  .
+        (FOCUS: match_focus m (Int.add max Int.one) max hds_tgt):
+      hds_tgt = nil.
   Proof.
     clear - RANGE FOCUS.
     inv FOCUS; ss.
@@ -592,8 +543,7 @@ Section LXSIM.
   Inductive match_stacks (fromcall: bool) (idx: Z): list Frame.t -> list Frame.t -> Prop :=
   | match_stacks_ctx
       ctx_stk
-      (IDX: idx = 0%Z)
-    :
+      (IDX: idx = 0%Z):
       match_stacks fromcall idx ctx_stk ctx_stk
   | match_stacks_focus_top_call
       ctx_stk
@@ -608,8 +558,7 @@ Section LXSIM.
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (FROMCALL: fromcall = false)
       (IDX: idx = 2 * cur.(Int.intval))
-      (RANGE: max.(Int.intval) < MAX)
-    :
+      (RANGE: max.(Int.intval) < MAX):
       match_stacks fromcall idx (hd_src :: ctx_stk) tmpvar
   | match_stacks_focus_top_return
       ctx_stk
@@ -624,24 +573,19 @@ Section LXSIM.
       (FOCUS: match_focus m (Int.add cur Int.one) max hds_tgt)
       (FROMCALL: fromcall = false)
       (IDX: idx = max.(Int.intval) - cur.(Int.intval))
-      (RANGE: max.(Int.intval) < MAX)
-    :
-      match_stacks fromcall idx (hd_src :: ctx_stk) tmpvar
-  .
+      (RANGE: max.(Int.intval) < MAX):
+      match_stacks fromcall idx (hd_src :: ctx_stk) tmpvar.
 
   Inductive match_states (i: Z): Sem.state -> Sem.state -> Prop :=
   | match_states_call
       frs_src frs_tgt
       args
-      (STK: match_stacks true i frs_src frs_tgt)
-    :
+      (STK: match_stacks true i frs_src frs_tgt):
       match_states i (Callstate args frs_src) (Callstate args frs_tgt)
   | match_states_normal
       frs_src frs_tgt
-      (STK: match_stacks false i frs_src frs_tgt)
-    :
-      match_states i (State frs_src) (State frs_tgt)
-  .
+      (STK: match_stacks false i frs_src frs_tgt):
+      match_states i (State frs_src) (State frs_tgt).
 
   Lemma int_zero_intval: Int.intval Int.zero = 0%Z.
   Proof. unfold Int.intval. ss. Qed.
@@ -658,11 +602,8 @@ Section LXSIM.
 
   Lemma match_states_xsim
         i st_src0 st_tgt0
-        (MATCH: match_states i st_src0 st_tgt0)
-    :
-      xsim (sem (ctx1 ++ [module] ++ ctx2)) (sem (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2))
-           (Zwf.Zwf 0) i st_src0 st_tgt0
-  .
+        (MATCH: match_states i st_src0 st_tgt0):
+    xsim (sem (ctx1 ++ [module] ++ ctx2)) (sem (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)) (Zwf.Zwf 0) i st_src0 st_tgt0.
   Proof.
     revert_until SKEWF. pcofix CIH. i.
     inv MATCH.
@@ -671,8 +612,7 @@ Section LXSIM.
       + (* ctx *)
         pfold. right. econs; et.
         { i; ss. des_ifs. inv FINALTGT. }
-        i.
-        econs; eauto; cycle 1.
+        i. econs; eauto; cycle 1.
         { i. specialize (SAFESRC _ (star_refl _ _ _ _)). ss. rewrite LINKTGT. rewrite LINKSRC in *. ss. des.
           - inv SAFESRC.
           - inv SAFESRC. right. inv MSFIND. ss. des; clarify.
@@ -691,8 +631,7 @@ Section LXSIM.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
               econs; ss; eauto.
               - unfold Args.get_fptr in *. des_ifs. ss. clarify.
-                eapply MutrecAspec.find_symbol_find_funct_ptr; et.
-            }
+                eapply MutrecAspec.find_symbol_find_funct_ptr; et. }
             { esplits; eauto. econs.
               { econs; eauto; cycle 1.
                 { unfold Genv.find_funct. des_ifs. eauto. }
@@ -703,8 +642,7 @@ Section LXSIM.
                 eapply MutrecBspec.find_symbol_find_funct_ptr; et.
             }
             { esplits; eauto. econs; eauto. econs; eauto. ss. right. unfold load_modsems.
-              rewrite in_map_iff. esplits; eauto. rewrite in_app_iff; eauto. ss. auto. }
-        }
+              rewrite in_map_iff. esplits; eauto. rewrite in_app_iff; eauto. ss. auto. } }
         i. ss. rewrite LINKSRC, LINKTGT in *. inv STEPTGT. inv MSFIND. ss.
         unfold load_modsems in *. des; clarify.
         { esplits; eauto.
@@ -721,8 +659,7 @@ Section LXSIM.
             { econs.
               { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff.
                 ss. eauto. }
-              eapply genv_sim. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
-            }
+              eapply genv_sim. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto. }
             econs; ss; eauto.
             + eapply genv_sim. destruct args; ss. clarify. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
           - right. eapply CIH; eauto. econs; eauto.
@@ -732,15 +669,13 @@ Section LXSIM.
             { econs; eauto.
               rewrite add_one_same. nia.
               unfold MAX, Int.max_unsigned in *; ss. omega. }
-            { des; ss. }
-        }
+            { des; ss. } }
         { inv INIT. ss. esplits; eauto.
           - left. apply plus_one. econs.
             { econs.
               { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff.
                 ss. eauto. }
-              eapply genv_sim. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
-            }
+              eapply genv_sim. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto. }
             econs; ss; eauto.
             + eapply genv_sim. destruct args; ss. clarify. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
           - right. eapply CIH; eauto. econs; eauto.
@@ -750,8 +685,7 @@ Section LXSIM.
             { econs; eauto.
               rewrite add_one_same. nia.
               unfold MAX, Int.max_unsigned in *; ss. omega. }
-            { des; ss. }
-        }
+            { des; ss. } }
         { esplits; eauto.
           - left. apply plus_one. econs; eauto. econs; eauto. ss. right.
             unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff; eauto. ss. eauto.
@@ -771,8 +705,7 @@ Section LXSIM.
           - right. inv SAFESRC; ss.
             { esplits; eauto. econs 1; eauto. }
             { esplits; eauto. econs 3; eauto. }
-            { esplits; eauto. econs 4; eauto. }
-        }
+            { esplits; eauto. econs 4; eauto. } }
         i. ss. des_ifs.
         inv STEPTGT; ss.
         * esplits; eauto.
@@ -787,23 +720,18 @@ Section LXSIM.
       + (* focus-call *)
         pfold. right. econs; et.
         { ii; ss. inv FINALTGT. unsguard TGT. des; clarify; ss; inv FINAL. }
-        i.
-        econs; ss; try rewrite LINKSRC, LINKTGT in *; eauto; cycle 1; ss.
-        (* econs; ss; des_ifs; eauto; cycle 1. *)
+        i. econs; ss; try rewrite LINKSRC, LINKTGT in *; eauto; cycle 1; ss.
         { i. specialize (SAFESRC _ (star_refl _ _ _ _)). ss. des.
           - inv SAFESRC. inv FINAL.
           - des_ifs. inv SAFESRC; ss.
             + inv STEP. right.
               unsguard TGT. des; clarify; ss; esplits; eauto; econs 3; ss; eauto; econs; eauto.
-            + unsguard TGT. des; clarify; ss; inv FINAL.
-        }
-        i.
-        inv STEPTGT; ss; swap 2 3.
+            + unsguard TGT. des; clarify; ss; inv FINAL. }
+        i. inv STEPTGT; ss; swap 2 3.
         { unsguard TGT; des; clarify; inv AT. }
         { unsguard TGT; des; clarify; inv FINAL. }
         unsguard TGT; des; clarify; ss.
-        {
-          - inv STEP; ss.
+        { - inv STEP; ss.
             + esplits; eauto.
               * left. apply plus_one. econs 3; ss; et.
               * right. eapply CIH. unfold Frame.update_st. ss. econs; et. econs 3; et; ss. unfold __GUARD__. eauto.
@@ -819,12 +747,10 @@ Section LXSIM.
                 econs 2; eauto; esplits.
                 -- eapply plus_two with (t1 := []) (t2 := []); ss.
                    ++ econs; eauto.
-                      { (* ez - determinate_at *)
-                        eapply lift_determinate_at; ss; des_ifs; eauto.
+                      { eapply lift_determinate_at; ss; des_ifs; eauto.
                         econs; eauto.
                         - ii; ss. inv H; inv H0; ss.
-                        - econs; eauto. inv H.
-                      }
+                        - econs; eauto. inv H. }
                       econs; ss; eauto. econs; eauto.
                    ++ unfold Frame.update_st. ss. econs; eauto.
                       { econs; ss; des_ifs.
@@ -893,10 +819,8 @@ Section LXSIM.
                      rewrite Int.Z_mod_modulus_eq.
                      rewrite <- Int.unsigned_repr_eq.
                      rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia. }
-                   { ss. }
-        }
-        {
-          - inv STEP; ss.
+                   { ss. } }
+        { - inv STEP; ss.
             + esplits; eauto.
               * left. apply plus_one. econs 3; ss; et.
               * right. eapply CIH. unfold Frame.update_st. ss. econs; et. econs 3; et; ss. unfold __GUARD__. eauto.
@@ -986,8 +910,7 @@ Section LXSIM.
                      rewrite Int.Z_mod_modulus_eq.
                      rewrite <- Int.unsigned_repr_eq.
                      rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia. }
-                   { ss. }
-        }
+                   { ss. } }
       + (* focus - return *)
         destruct (classic (cur = max)).
         * clarify. exploit match_focus_over_nil; eauto.
@@ -996,8 +919,7 @@ Section LXSIM.
           { i. ss. inv FINALTGT.
             unsguard TGT. des; clarify; ss.
             - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto.
-            - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto.
-          }
+            - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto. }
           i. econs; eauto; cycle 1.
           { i. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
             - inv SAFESRC; ss. inv FINAL. ss. clarify. left.
@@ -1007,8 +929,7 @@ Section LXSIM.
             - des_ifs. right. inv SAFESRC; ss.
               { inv STEP. }
               inv FINAL. esplits; eauto. econs 4; eauto.
-              unsguard TGT. des; clarify.
-          }
+              unsguard TGT. des; clarify. }
           i. ss. des_ifs. inv STEPTGT; ss.
           { unsguard TGT. des; clarify; inv AT. }
           { unsguard TGT. des; clarify; inv STEP. }
@@ -1016,7 +937,6 @@ Section LXSIM.
           -- left. apply plus_one. econs 4; eauto. ss. unsguard TGT. des; clarify; ss; inv FINAL; econs; eauto.
           -- right. eapply CIH. econs; eauto. econs; eauto.
         * pfold. left. right. econs; eauto.
-          (* TODO: ---------> we can remove redundancy. current match_states include A-A-B-A-B-A... or B-B-A-B-A-B ... *)
           unsguard TGT. des; clarify.
           { inv FOCUS; ss.
             { exfalso.
@@ -1027,8 +947,7 @@ Section LXSIM.
               rewrite Int.Z_mod_modulus_eq in OVER.
               rewrite <- Int.unsigned_repr_eq in OVER.
               rewrite Int.unsigned_repr in OVER. nia. unfold Int.max_unsigned. split; nia. }
-            {
-              econs 2; eauto.
+            { econs 2; eauto.
               - esplits; eauto.
                 + apply plus_one. econs; eauto.
                   { eapply lift_determinate_at; ss; des_ifs; et.
@@ -1051,10 +970,8 @@ Section LXSIM.
                   assert (intval - 1 < MAX) by nia.
                   rewrite Int.Z_mod_modulus_eq.
                   rewrite <- Int.unsigned_repr_eq.
-                  rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia.
-            }
-            {
-              econs 2; eauto.
+                  rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia. }
+            { econs 2; eauto.
               - esplits; eauto.
                 + apply plus_one. econs; eauto.
                   { eapply lift_determinate_at; ss; des_ifs; et.
@@ -1077,9 +994,7 @@ Section LXSIM.
                   assert (intval - 1 < MAX) by nia.
                   rewrite Int.Z_mod_modulus_eq.
                   rewrite <- Int.unsigned_repr_eq.
-                  rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia.
-            }
-          }
+                  rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia. } }
           { inv FOCUS; ss.
             { exfalso.
               exploit Int.eq_false; eauto. i.
@@ -1089,8 +1004,7 @@ Section LXSIM.
               rewrite Int.Z_mod_modulus_eq in OVER.
               rewrite <- Int.unsigned_repr_eq in OVER.
               rewrite Int.unsigned_repr in OVER. nia. unfold Int.max_unsigned. split; nia. }
-            {
-              econs 2; eauto.
+            { econs 2; eauto.
               - esplits; eauto.
                 + apply plus_one. econs; eauto.
                   { eapply lift_determinate_at; ss; des_ifs; et.
@@ -1113,10 +1027,8 @@ Section LXSIM.
                   assert (intval - 1 < MAX) by nia.
                   rewrite Int.Z_mod_modulus_eq.
                   rewrite <- Int.unsigned_repr_eq.
-                  rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia.
-            }
-            {
-              econs 2; eauto.
+                  rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia. }
+            { econs 2; eauto.
               - esplits; eauto.
                 + apply plus_one. econs; eauto.
                   { eapply lift_determinate_at; ss; des_ifs; et.
@@ -1139,21 +1051,15 @@ Section LXSIM.
                   assert (intval - 1 < MAX) by nia.
                   rewrite Int.Z_mod_modulus_eq.
                   rewrite <- Int.unsigned_repr_eq.
-                  rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia.
-            }
-          }
+                  rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia. } }
   Qed.
 
 End LXSIM.
 
 
-Theorem mutrecABcorrect
-        ctx1 ctx2
-  :
+Theorem mutrecABcorrect ctx1 ctx2 :
     (<<REFINE: improves (Sem.sem (ctx1 ++ [(MutrecABspec.module)] ++ ctx2))
-                        (Sem.sem (ctx1 ++ [(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2))
-                        >>)
-.
+                        (Sem.sem (ctx1 ++ [(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2))>>).
 Proof.
   eapply bsim_improves.
   eapply mixed_to_backward_simulation.
@@ -1174,8 +1080,7 @@ Proof.
         { eapply WF; et. rewrite in_app_iff. ss. et. }
         * eapply wf_module_Aspec; et.
         * eapply wf_module_Bspec; et.
-    - i; ss. inv INIT0. inv INIT1. clarify.
-  }
+    - i; ss. inv INIT0. inv INIT1. clarify. }
   eapply match_states_xsim; eauto.
   { ii. eapply WF. ss. eapply in_or_app. auto. }
   { ii. eapply WF. ss. eapply in_or_app. ss. auto. }

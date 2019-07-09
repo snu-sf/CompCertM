@@ -14,9 +14,9 @@ Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
 
 Section MODSEM.
 
-  Definition prog : AST.program (AST.fundef (option signature)) unit :=
+  Definition prog : AST.program (AST.fundef (signature)) unit :=
     {| prog_defs :=
-         [(func_id, Gfun (Internal (Some (mksignature [Tlong] (Some Tfloat) cc_default))))];
+         [(func_id, Gfun (Internal ((mksignature [Tlong] (Some Tfloat) cc_default true))))];
        prog_public := [func_id; main_id];
        prog_main := main_id |}.
 

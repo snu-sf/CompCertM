@@ -192,7 +192,7 @@ c0 + empty
   Qed.
 
   Lemma match_ge_skenv_link :
-    Genv.match_genvs (fun fdef skdef => skdef_of_gdef (fun f => Some (signature_of_function f)) ((globdef_of_globdef (V:=type)) fdef) = skdef) ge skenv_link.
+    Genv.match_genvs (fun fdef skdef => skdef_of_gdef signature_of_function ((globdef_of_globdef (V:=type)) fdef) = skdef) ge skenv_link.
   Proof.
     unfold ge, skenv_link. rewrite <- prog_sk_tgt. unfold Sk.load_skenv, Genv.globalenv. ss.
     eapply Genv.add_globals_match; cycle 1.
@@ -235,7 +235,7 @@ c0 + empty
     subst ge0.
     unfold tge, skenv_link, link_sk, link_list in *; inversion LINK_SK_TGT.
     assert (Genv.find_funct (Sk.load_skenv sk_tgt) (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero) =
-            Some (AST.Internal (Some signature_main))).
+            Some (AST.Internal signature_main)).
     { dup H.
       eapply MAIN_INTERNAL in H.
       ss. des_ifs.
@@ -303,10 +303,6 @@ c0 + empty
   Notation "'bind_parameters'" := (bind_parameters skenv_link) (only parsing).
   Notation "'rred'" := (rred skenv_link) (only parsing).
   Notation "'estep'" := (estep skenv_link) (only parsing).
-  (* Let assign_loc := assign_loc skenv_link. *)
-  (* Let bind_parameters := bind_parameters skenv_link. *)
-  (* Let rred := rred skenv_link. *)
-  (* Let estep := estep skenv_link. *)
 
   Lemma assign_loc_determ
         g ty m b
@@ -816,8 +812,7 @@ c0 + empty
       + instantiate (1 := m1).
         clear -H0. induction H0; try (by econs).
         econs; eauto.
-      + (* clear - MININTERNAL SKEWF WTSK INIT_MEM m_init ge LINK_SK_TGT tprog H1. *)
-        induction H1; try (by econs).
+      + induction H1; try (by econs).
         econs; eauto.
         rewrite assign_loc_same in H2. eauto.
         rewrite bind_parameters_same in H3. eauto.
@@ -994,11 +989,8 @@ c0 + empty
           rewrite <- mge_symb in H1. rewrite <- prog_sk_tgt in *. ss.
           rewrite Heq0 in H1. inversion H1. auto. } subst b0.
         assert (Genv.find_funct_ptr (Genv.globalenv prog) b = Some (Internal f)
-                <-> Genv.find_funct (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)) (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero) = Some (AST.Internal (Some signature_main))).
-        { (* exploit not_external_function_find_same; eauto; ss. *)
-          (* { instantiate (1:=(Internal f)); ss. } *)
-          (* { instantiate (1:=Vptr b Ptrofs.zero). ss. } *)
-          i. ss. des_ifs.
+                <-> Genv.find_funct (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)) (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero) = Some (AST.Internal signature_main)).
+        { i. ss. des_ifs.
           unfold Genv.symbol_address in *.
           des_ifs.
           unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
@@ -1019,9 +1011,9 @@ c0 + empty
         econs; i; ss; eauto. des_ifs.
         unfold Genv.symbol_address in *.
         des_ifs. erewrite <- H5. eauto.
-      + set (if_sig := (mksignature (typlist_of_typelist targs) (Some (typ_of_type tres)) cc)).
+      + set (if_sig := (mksignature (typlist_of_typelist targs) (Some (typ_of_type tres)) cc true)).
         econs; ss; auto.
-        instantiate (1:= (Some if_sig)). des_ifs.
+        instantiate (1:= if_sig). des_ifs.
   Qed.
 
   Lemma prog_precise

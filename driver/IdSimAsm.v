@@ -20,7 +20,7 @@ Require Import LocationsC Conventions.
 
 Require Import AsmregsC Conventions1C.
 Require Import MatchSimModSemExcl2 MatchSimModSem.
-Require Import StoreArguments.
+Require Import StoreArguments StoreArgumentsProps.
 Require Import AsmStepInj AsmStepExt IntegersC.
 Require Import Coq.Logic.PropExtensionality.
 Require Import AsmExtra IdSimExtra.
@@ -41,32 +41,16 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Lemma asm_id
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module))
-  :
+      (WF: Sk.wf asm.(module)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
-.
+      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
 Proof.
   eapply any_id; eauto.
 Qed.
 
-Inductive sound_state (skenv: SkEnv.t) (su: Sound.t) (m_init: mem): AsmC.state -> Prop :=
-| sound_state_intro
-    init_rs rs0 m0
-    (MLE: Unreach.mle su m_init m0)
-    (RS: forall pr, UnreachC.val' su (rs0#pr))
-    (MEM: UnreachC.mem' su m0)
-    (INIT: forall pr, UnreachC.val' su (init_rs#pr))
-    (WF: forall blk (PRIV: su.(Unreach.unreach) blk) (PUB: Plt blk su.(Unreach.ge_nb)), False)
-    (SKE: su.(Unreach.ge_nb) = skenv.(Genv.genv_next))
-  :
-    sound_state skenv su m_init (mkstate init_rs (State rs0 m0))
-.
-
-Module TRIAL2.
-Section TRIAL2.
+Section LOCALPRIV.
 
   Variable skenv_link: SkEnv.t.
 
@@ -77,15 +61,12 @@ Section TRIAL2.
       (MEM: UnreachC.mem' su m0)
       (* (INIT: forall pr, UnreachC.val' su (init_rs#pr)) *)
       (WF: Sound.wf su)
-      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
-    :
-      sound_state su (mkstate init_rs (State rs0 m0))
-  .
+      (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next)):
+      sound_state su (mkstate init_rs (State rs0 m0)).
 
   Inductive has_footprint: AsmC.state -> Sound.t -> mem -> Prop :=
   | has_footprint_intro
-      su0
-      blk1 ofs
+      su0 blk1 ofs
       init_rs (rs0: regset) m_unused m1 sg
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = Some sg)
@@ -94,17 +75,14 @@ Section TRIAL2.
                                 (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg))
                                 Cur Freeable)
       (VALID: Mem.valid_block m1 blk1)
-      (PUB: ~ su0.(Unreach.unreach) blk1)
-    :
+      (PUB: ~ su0.(Unreach.unreach) blk1):
       has_footprint (mkstate init_rs (State rs0 m_unused)) su0 m1
   | has_footprint_asmstyle
-      su0
-      init_rs (rs0: regset) m_unused m1
+      su0 init_rs (rs0: regset) m_unused m1
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = None)
     :
-      has_footprint (mkstate init_rs (State rs0 m_unused)) su0 m1
-  .
+      has_footprint (mkstate init_rs (State rs0 m_unused)) su0 m1.
 
   Inductive mle_excl: AsmC.state -> Sound.t -> mem -> mem -> Prop :=
   | mle_excl_intro
@@ -116,28 +94,22 @@ Section TRIAL2.
       UNFR
       (UNFRDEF: UNFR = (brange blk1 ofs1.(Ptrofs.unsigned)
                                            (ofs1.(Ptrofs.unsigned) + 4 * (size_arguments sg))))
-      (PERM: forall
-          blk ofs
+      (PERM: forall blk ofs
           (VALID: m0.(Mem.valid_block) blk)
-          (UNFREE: ~ UNFR blk ofs)
-        ,
+          (UNFREE: ~ UNFR blk ofs),
           m1.(Mem.perm) blk ofs Max <1= m0.(Mem.perm) blk ofs Max)
-      (UNCH: Mem.unchanged_on (~2 UNFR) m0 m1)
-    :
+      (UNCH: Mem.unchanged_on (~2 UNFR) m0 m1):
       mle_excl (mkstate init_rs (State rs0 m_unused)) su0 m0 m1
   | mle_excl_asmstyle
       init_rs rs0 m_unused (su0: Unreach.t) m0 m1
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = None)
-      (MEM: m0 = m1)
-    :
-      mle_excl (mkstate init_rs (State rs0 m_unused)) su0 m0 m1
-  .
+      (MEM: m0 = m1):
+      mle_excl (mkstate init_rs (State rs0 m_unused)) su0 m0 m1.
 
   Lemma unreach_free su m0 m1 blk lo hi
         (MEM: UnreachC.mem' su m0)
-        (FREE: Mem.free m0 blk lo hi = Some m1)
-    :
+        (FREE: Mem.free m0 blk lo hi = Some m1):
       UnreachC.mem' su m1.
   Proof.
     inv MEM. exploit Mem.free_unchanged_on; eauto.
@@ -146,8 +118,7 @@ Section TRIAL2.
     - ii. eapply SOUND; eauto.
       + eapply Mem.perm_free_3; eauto.
       + erewrite <- Mem.unchanged_on_contents; eauto.
-        * unfold brange. ii. des. clarify.
-          eapply Mem_free_noperm; eauto.
+        * unfold brange. ii. des. clarify. eapply Mem_free_noperm; eauto.
           apply Mem.perm_cur. eapply Mem.perm_implies; eauto. econs.
         * eapply Mem.perm_free_3; eauto.
     - ii. eapply BOUND in PR. eapply Mem.valid_block_unchanged_on; eauto.
@@ -157,27 +128,20 @@ Section TRIAL2.
 
   Lemma unreach_unfree su m0 m1 blk lo hi
         (MEM: UnreachC.mem' su m0)
-        (UNFREE: Mem_unfree m0 blk lo hi = Some m1)
-    :
+        (UNFREE: Mem_unfree m0 blk lo hi = Some m1):
       UnreachC.mem' su m1.
   Proof.
-    inv MEM. exploit Mem_unfree_unchanged_on; eauto. intros UNCH.
-    econs.
+    inv MEM. exploit Mem_unfree_unchanged_on; eauto. intros UNCH. econs.
     - ii. assert (NIN: ~ brange blk lo hi blk0 ofs).
-      { unfold brange. ii. des. clarify.
-        unfold Mem_unfree in *. des_ifs. ss.
+      { unfold brange. ii. des. clarify. unfold Mem_unfree in *. des_ifs. ss.
         rewrite PMap.gss in PTR. rewrite Mem_setN_in_repeat in PTR; clarify.
         rewrite Z2Nat_range. des_ifs; lia. }
       eapply SOUND; eauto.
-      + eapply Mem.perm_unchanged_on_2; eauto; ss.
-        eapply Mem.perm_valid_block in PERM.
-        eapply Mem_nextblock_unfree in UNFREE. unfold Mem.valid_block in *.
-        rewrite UNFREE. auto.
+      + eapply Mem.perm_unchanged_on_2; eauto; ss. eapply Mem.perm_valid_block in PERM.
+        eapply Mem_nextblock_unfree in UNFREE. unfold Mem.valid_block in *. rewrite UNFREE. auto.
       + erewrite <- Mem.unchanged_on_contents; eauto.
-        * eapply Mem.perm_unchanged_on_2; eauto; ss.
-          eapply Mem.perm_valid_block in PERM.
-          eapply Mem_nextblock_unfree in UNFREE. unfold Mem.valid_block in *.
-          rewrite UNFREE. auto.
+        * eapply Mem.perm_unchanged_on_2; eauto; ss. eapply Mem.perm_valid_block in PERM.
+          eapply Mem_nextblock_unfree in UNFREE. unfold Mem.valid_block in *. rewrite UNFREE. auto.
     - ii. eapply BOUND in PR. eapply Mem.valid_block_unchanged_on; eauto.
     - etrans; eauto. eapply Mem.unchanged_on_nextblock; eauto.
     - etrans; eauto. eapply Mem_nextblock_unfree; eauto.
@@ -186,13 +150,10 @@ Section TRIAL2.
   Lemma asm_unreach_local_preservation
         asm
         (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig asm))
-        (SKENVWF : SkEnv.wf skenv_link)
-    :
-      exists sound_state, <<PRSV: local_preservation (modsem skenv_link asm) sound_state>>
-  .
+        (SKENVWF : SkEnv.wf skenv_link):
+      exists sound_state, <<PRSV: local_preservation (modsem skenv_link asm) sound_state>>.
   Proof.
-    esplits.
-    eapply local_preservation_strong_horizontal_excl_spec with (lift := UnreachC.le') (sound_state := (sound_state)); eauto.
+    esplits. eapply local_preservation_strong_horizontal_excl_spec with (lift := UnreachC.le') (sound_state := (sound_state)); eauto.
     instantiate (1:= AsmC.get_mem).
     eapply local_preservation_strong_horizontal_excl_intro with
         (has_footprint := has_footprint)
@@ -411,15 +372,13 @@ Section TRIAL2.
           + eapply Mem.unchanged_on_implies; eauto; ss.
           + eapply Mem.unchanged_on_implies; eauto; ss. }
 
-    - (* step *)
-
-      inv STEP. des. destruct st0, st1. ss. clarify. destruct st, st0. ss.
+    (* step *)
+    - inv STEP. des. destruct st0, st1. ss. clarify. destruct st, st0. ss.
 
       hexploit asm_step_preserve_injection; try apply STEP0.
       { instantiate (1:=UnreachC.to_inj su0 (Mem.nextblock m)).
         unfold UnreachC.to_inj, Mem.flat_inj in *. econs; ss; i.
-        - unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs.
-          esplits; eauto.
+        - unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs. esplits; eauto.
         - inv SUST. esplits; eauto. des_ifs.
           + eapply Genv.genv_symb_range in FINDSRC. ss.
             exfalso. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
@@ -436,29 +395,19 @@ Section TRIAL2.
         - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs.
       }
 
-      { instantiate (1:= r). ii.
-        inv SUST. ss. specialize (RS pr). ss. unfold UnreachC.val' in *.
-        destruct (r pr); try by econs.
-        exploit RS; eauto. i. des. econs.
-        - unfold UnreachC.to_inj, Mem.flat_inj. des_ifs. exfalso. apply n.
-          inv MEM. rewrite NB in *. eauto.
-        - psimpl. auto.
-      }
-
+      { instantiate (1:= r). ii. inv SUST. inv MEM. rewrite <- NB. eapply UnreachC.unreach_to_inj_val; eauto. }
       { eapply UnreachC.to_inj_mem. inv SUST. eauto. }
 
       i. des. inv SUST. inv MEM.
       assert (MNB: Ple (Mem.nextblock m) (Mem.nextblock m0)).
       { eapply Mem.unchanged_on_nextblock; eauto. }
 
-      exists (Unreach.mk (fun blk => if j1 blk then false
-                                     else plt blk (Mem.nextblock m0))
+      exists (Unreach.mk (fun blk => if j1 blk then false else plt blk (Mem.nextblock m0))
                          (Unreach.ge_nb su0)
                          (Mem.nextblock m0)).
       assert (HLE: Unreach.hle
                      su0 (Unreach.mk
-                            (fun blk => if j1 blk then false
-                                        else plt blk (Mem.nextblock m0))
+                            (fun blk => if j1 blk then false else plt blk (Mem.nextblock m0))
                             (Unreach.ge_nb su0)
                             (Mem.nextblock m0))).
       { eapply Unreach.hle_update; [..|refl]; ss; rewrite NB in *; eauto; i.
@@ -469,15 +418,13 @@ Section TRIAL2.
           + unfold Mem.flat_inj, proj_sumbool in *. des_ifs. xomega. }
       assert (SOUNDV: forall v_src v_tgt (INJ: Val.inject j1 v_src v_tgt),
                  UnreachC.val' (Unreach.mk
-                                  (fun blk => if j1 blk then false
-                                              else plt blk (Mem.nextblock m0))
+                                  (fun blk => if j1 blk then false else plt blk (Mem.nextblock m0))
                                   (Unreach.ge_nb su0)
                                   (Mem.nextblock m0)) v_src).
       { ii. ss. clarify. inv INJ0. inv WF. rewrite NB in *.
         destruct (if Unreach.unreach su0 blk then None else Mem.flat_inj (Mem.nextblock m) blk) eqn: BEQ.
         - destruct p. dup BEQ. eapply INCR in BEQ0.
-          unfold Mem.flat_inj in *; des_ifs; esplits; eauto.
-          eapply Plt_Ple_trans; eauto.
+          unfold Mem.flat_inj in *; des_ifs; esplits; eauto. eapply Plt_Ple_trans; eauto.
         - specialize (SEP _ _ _ BEQ H1). des.
           unfold Mem.flat_inj in *; des_ifs; esplits; eauto.
           + eapply Plt_Ple_trans; eauto.
@@ -502,8 +449,7 @@ Section TRIAL2.
         * inv WF. rewrite NB in *. econs; ss.
           { i. des_ifs; eauto.
             destruct (if Unreach.unreach su0 x0
-                      then None
-                      else Mem.flat_inj (Mem.nextblock m) x0) as [[]|]eqn:EQ.
+                      then None else Mem.flat_inj (Mem.nextblock m) x0) as [[]|]eqn:EQ.
             - apply INCR in EQ. clarify.
             - unfold Mem.flat_inj in *. des_ifs; eauto. etrans; eauto. xomega. }
           { i. unfold proj_sumbool in *. des_ifs; eauto. }
@@ -706,41 +652,31 @@ Section TRIAL2.
         - refl. }
   Qed.
 
-End TRIAL2.
-End TRIAL2.
+End LOCALPRIV.
 
 Lemma asm_ext_unreach
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module))
-  :
+      (WF: Sk.wf asm.(module)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
-.
+      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
 Proof.
   eexists (ModPair.mk _ _ _); s.
   assert(PROGSKEL: match_program (fun _ => eq) eq (Sk.of_program fn_sig asm) (Sk.of_program fn_sig asm)).
   { econs; eauto. ss. eapply match_program_refl; eauto. }
   assert(PROG: match_program (fun _ => eq) eq asm asm).
   { econs; eauto. ss. eapply match_program_refl; eauto. }
-  esplits; eauto. instantiate (1:=tt).
-  econs; ss; eauto.
-  ii. inv SSLE. clear_tac.
-
-  fold SkEnv.t in skenv_link_src.
-  hexploit (TRIAL2.asm_unreach_local_preservation INCLSRC WFSRC); eauto. i; des.
+  esplits; eauto. instantiate (1:=tt). econs; ss; eauto.
+  ii. inv SSLE. clear_tac. fold SkEnv.t in skenv_link_src.
+  hexploit (asm_unreach_local_preservation INCLSRC WFSRC); eauto. i; des.
 
   eapply match_states_sim with
       (match_states :=
-         match_states_ext
-           skenv_link_tgt
-           (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program fn_sig asm)) asm)
-           (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm)); ss.
-  - (* WF *)
-    eapply unit_ord_wf.
-  - (* lprsv *)
-    eauto.
+         match_states_ext skenv_link_tgt
+                          (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program fn_sig asm)) asm)
+                          (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm)); eauto; ss.
+  - apply unit_ord_wf.
 
   - (* init bsim *)
     ii. inv SIMSKENV. ss.
@@ -997,40 +933,32 @@ Proof.
   - left. ii. esplits; ss; i.
     + apply AsmC.modsem_receptive.
     + exists tt.
-      { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
-        destruct st0. ss. clarify.
-        exploit asm_step_preserve_extension; try apply STEP; eauto. i. des.
-        rewrite SIMSKENVLINK in *.
-        esplits; auto.
-        - left. econs; [|econs 1|symmetry; eapply E0_right]. econs.
-          { apply AsmC.modsem_determinate. }
-          instantiate (1:=AsmC.mkstate _ _).
-          econs; ss; eauto.
-        - instantiate (1:=SimMemExt.mk _ _). econs; ss; eauto.
-      }
+      inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss. destruct st0. ss. clarify.
+      exploit asm_step_preserve_extension; try apply STEP; eauto. i. des.
+      rewrite SIMSKENVLINK in *. esplits; auto.
+      -- left. econs; [|econs 1|symmetry; eapply E0_right]. econs.
+         { apply AsmC.modsem_determinate. }
+         instantiate (1:=AsmC.mkstate _ _).
+         econs; ss; eauto.
+      -- instantiate (1:=SimMemExt.mk _ _). econs; ss; eauto.
 Qed.
 
 (* It's ***exactly*** same as asm_ext_sound *)
 Lemma asm_ext_top
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module))
-  :
+      (WF: Sk.wf asm.(module)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
-.
+      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
 Proof.
   eexists (ModPair.mk _ _ _); s.
   assert(PROGSKEL: match_program (fun _ => eq) eq (Sk.of_program fn_sig asm) (Sk.of_program fn_sig asm)).
   { econs; eauto. ss. eapply match_program_refl; eauto. }
   assert(PROG: match_program (fun _ => eq) eq asm asm).
   { econs; eauto. ss. eapply match_program_refl; eauto. }
-  esplits; eauto. instantiate (1:=tt).
-  econs; ss; eauto.
-  ii. inv SSLE. clear_tac.
-
-  fold SkEnv.t in skenv_link_src.
+  esplits; eauto. instantiate (1:=tt). econs; ss; eauto.
+  ii. inv SSLE. clear_tac. fold SkEnv.t in skenv_link_src.
 
   eapply match_states_sim with
       (match_states :=
@@ -1336,44 +1264,36 @@ Inductive match_states
     (RSPDELTA: forall (SIG: sig_cstyle fd.(fn_sig) = true)
                       blk_src ofs (RSPSRC: init_rs_src RSP = Vptr blk_src ofs),
         exists blk_tgt,
-          (j blk_src = Some (blk_tgt, 0)))
-  :
+          (j blk_src = Some (blk_tgt, 0))):
     match_states
       skenv_link_tgt
       ge_src ge_tgt sm_init 0
       (AsmC.mkstate init_rs_src (Asm.State rs_src m_src))
-      (AsmC.mkstate init_rs_tgt (Asm.State rs_tgt m_tgt)) sm0
-.
+      (AsmC.mkstate init_rs_tgt (Asm.State rs_tgt m_tgt)) sm0.
 
 Lemma asm_inj_drop_bot
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module))
-  :
+      (WF: Sk.wf asm.(module)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
-      /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>)
-.
+      /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>).
 Proof.
-  eexists (ModPair.mk _ _ _); s.
-  esplits; eauto.
-  econs; ss; i.
-  { econs; ss; i; clarify.
-    inv WF. auto. }
+  eexists (ModPair.mk _ _ _); s. esplits; eauto. econs; ss; i.
+  { econs; ss; i; clarify. inv WF. auto. }
   eapply MatchSimModSemExcl2.match_states_sim with
       (match_states :=
-         match_states
-           skenv_link_tgt
-           (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program fn_sig asm)) asm)
-           (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm))
+         match_states skenv_link_tgt
+                      (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program fn_sig asm)) asm)
+                      (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm))
       (match_states_at := top4)
       (sidx := unit); ss; eauto; ii.
   - apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
 
-  - (** ******************* initial **********************************)
-    exploit SimSymbDrop_match_globals.
+  (** ******************* initial **********************************)
+  - exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
     inv SIMARGS.
     { ss. clarify.
@@ -1567,7 +1487,7 @@ Proof.
       { inv MWF. eauto. }
       i. des. cinv (AGREE Asm.RSP); rewrite RSP in *; clarify.
 
-      exploit Mem_free_parallel'; eauto. i. des.
+      exploit SimMemInjC.Mem_free_parallel'; eauto. i. des.
       eexists (Args.mk (Vptr b2 _) _ _). exists sm1.
       esplits; eauto; ss; i.
       + econs; auto.
@@ -1642,8 +1562,8 @@ Proof.
       - econs 2; eauto.
       - refl. }
 
-  - (** ******************* after external **********************************)
-    exploit SimSymbDrop_match_globals.
+  (** ******************* after external **********************************)
+  - exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. } instantiate (1:=asm). intros GEMATCH.
     inv MATCH. inv AFTERSRC.
     { inv SIMRET; clarify. inv HISTORY; clarify.
@@ -1696,14 +1616,13 @@ Proof.
           * eapply AsmStepInj.agree_incr; eauto.
           * i. exploit RSPDELTA; eauto. i. des. eauto. }
 
-  - (** ******************* final **********************************)
-
-    exploit SimSymbDrop_match_globals.
+  (** ******************* final **********************************)
+  - exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
     inv MATCH. inv FINALSRC.
     {
       cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl.
-      exploit Mem_free_parallel'; eauto.
+      exploit SimMemInjC.Mem_free_parallel'; eauto.
       { instantiate (3:=Ptrofs.zero). zsimpl. psimpl. eauto. }
       i. des.
 
@@ -1795,31 +1714,24 @@ Proof.
       + econs 2; ss.
       + refl. }
 
-  - (** ******************* step **********************************)
-    left; i.
-    esplits; ss; i.
+  (** ******************* step **********************************)
+  - left; i. esplits; ss; i.
     + apply AsmC.modsem_receptive.
-    + exists O.
-      { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
-        inv SIMSKENV. destruct st0. ss. clarify.
+    + { exists O. inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss. inv SIMSKENV. destruct st0. ss. clarify.
 
         exploit asm_step_preserve_injection; eauto.
-        { exploit SimSymbDrop_match_globals; eauto.
-          intros MATCH. inv MATCH. econs; ss; i; eauto.
-          exploit DEFLE; eauto. i. des. clarify. esplits; eauto. }
+        { exploit SimSymbDrop_match_globals; eauto. intros MATCH. inv MATCH.
+          econs; ss; i; eauto. exploit DEFLE; eauto. i. des. clarify. esplits; eauto. }
         { eapply symbols_inject_weak_imply.
           eapply SimSymbDrop_symbols_inject; eauto. }
         { cinv MWF. eauto. }
 
-        i. des.
-        eexists (AsmC.mkstate init_rs_tgt (Asm.State _ _)).
+        i. des. eexists (AsmC.mkstate init_rs_tgt (Asm.State _ _)).
 
         exploit SimMemInjC.parallel_gen; eauto.
         { ii. eapply asm_step_max_perm; eauto. }
         { ii. eapply asm_step_max_perm; eauto. }
-        i. des.
-
-        esplits; eauto.
+        i. des. esplits; eauto.
         - left. econs; cycle 1.
           + apply star_refl.
           + symmetry. apply E0_right.
@@ -1834,26 +1746,22 @@ Qed.
 
 Lemma asm_inj_drop
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module))
-  :
+      (WF: Sk.wf asm.(module)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
-.
+      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
 Proof.
   exploit asm_inj_drop_bot; eauto. i. des. eauto.
 Qed.
 
 Lemma asm_inj_id
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module))
-  :
+      (WF: Sk.wf asm.(module)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
-.
+      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
 Proof.
   apply sim_inj_drop_bot_id. apply asm_inj_drop_bot; auto.
 Qed.

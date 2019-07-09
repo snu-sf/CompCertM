@@ -28,7 +28,7 @@ Definition st_m (st0: state): mem :=
   end.
 
 Definition store_arguments (m0: mem) (rs: regset) (vs: list val) (sg: signature) (m2: mem) : Prop :=
-  (<<STORE: store_arguments m0 (to_mregset rs) vs sg m2>>) /\
+  (<<STORE: StoreArguments.store_arguments m0 (to_mregset rs) vs sg m2>>) /\
   (<<RSRSP: rs RSP = Vptr m0.(Mem.nextblock) Ptrofs.zero>>).
 
 Definition external_state F V (ge: Genv.t F V) (v : val) : bool :=
@@ -51,19 +51,16 @@ Section MODSEM.
   Record state := mkstate {
     init_rs: regset;
     st:> Asm.state;
-    (* extret: bool; *)
   }.
 
   Inductive step (se: Senv.t) (ge: genv) (st0: state) (tr: trace) (st1: state): Prop :=
   | step_intro
       (STEP: Asm.step se ge st0.(st) tr st1.(st))
       (INITRS: st0.(init_rs) = st1.(init_rs)).
-      (* (ISRETURN: step_ret st0.(st) = st1.(extret)) *)
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_cstyle
-      fptr rs m0 m1 sg vs blk1 ofs
-      init_rs
+      fptr rs m0 m1 sg vs blk1 ofs init_rs
       (FPTR: rs # PC = fptr)
       (EXTERNAL: Genv.find_funct ge fptr = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
@@ -168,8 +165,7 @@ Section MODSEM.
     :
       after_external (mkstate init_rs (State rs0 m0))
                      retv
-                     (mkstate init_rs (State rs1 retv_m))
-  .
+                     (mkstate init_rs (State rs1 retv_m)).
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;

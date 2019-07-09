@@ -16,8 +16,7 @@ Module program_relation.
 
   Record t :=
     mk
-      {
-        rel : program -> program -> Prop;
+      { rel :> program -> program -> Prop;
         horizontal : forall
             p0_src p1_src p0_tgt p1_tgt
             (REL0: rel p0_src p0_tgt)
@@ -32,25 +31,23 @@ End program_relation.
 Hint Resolve program_relation.horizontal.
 Hint Resolve program_relation.adequacy.
 Hint Resolve program_relation.empty.
+Coercion program_relation.rel : program_relation.t >-> Funclass.
 
 Section RUSC.
 
   Variable R : program_relation.t -> Prop.
 
   Definition relate_R (p_src p_tgt: program) :=
-    forall r (RELIN: R r), r.(program_relation.rel) p_src p_tgt.
+    forall r (RELIN: R r), r p_src p_tgt.
 
   Definition self_related (p: program) := relate_R p p.
 
-  Lemma empty_self_related
-    :
-      self_related [].
+  Lemma empty_self_related: self_related [].
   Proof. ii. eauto. Qed.
 
   Lemma self_related_horizontal (p0 p1: program)
         (SELF0: self_related p0)
-        (SELF1: self_related p1)
-    :
+        (SELF1: self_related p1):
       self_related (p0 ++ p1).
   Proof. ii. eauto. Qed.
 
@@ -67,16 +64,14 @@ Section RUSC.
   Next Obligation. unfold rusc, Transitive. i. etrans; eauto. Qed.
 
   Lemma rusc_incl (p_src p_tgt: program) (r: program_relation.t)
-        (REL: r.(program_relation.rel) p_src p_tgt)
-        (RELIN: R r)
-    :
+        (REL: r p_src p_tgt)
+        (RELIN: R r):
       rusc p_src p_tgt.
   Proof. unfold rusc. i. eapply program_relation.adequacy. eauto. Qed.
 
   Lemma rusc_adequacy_left_ctx ctx (p_src p_tgt: program)
         (RUSC: rusc p_src p_tgt)
-        (SELF: self_related ctx)
-    :
+        (SELF: self_related ctx):
       improves (sem (ctx ++ p_src))
                (sem (ctx ++ p_tgt)).
   Proof.
@@ -87,8 +82,7 @@ Section RUSC.
 
   Lemma rusc_adequacy_right_ctx ctx (p_src p_tgt: program)
         (RUSC: rusc p_src p_tgt)
-        (SELF: self_related ctx)
-    :
+        (SELF: self_related ctx):
       improves (sem (p_src ++ ctx))
                (sem (p_tgt ++ ctx)).
   Proof.
@@ -97,8 +91,7 @@ Section RUSC.
   Qed.
 
   Lemma rusc_adequacy (p_src p_tgt: program)
-        (RUSC: rusc p_src p_tgt)
-    :
+        (RUSC: rusc p_src p_tgt):
       improves (sem p_src) (sem p_tgt).
   Proof.
     specialize (RUSC [] []). ss.
@@ -112,8 +105,7 @@ Section RUSC.
         (SELFSRC0: self_related p0_src)
         (SELFSRC1: self_related p1_src)
         (SELFTGT0: self_related p0_tgt)
-        (SELFTGT1: self_related p1_tgt)
-    :
+        (SELFTGT1: self_related p1_tgt):
       rusc (p0_src ++ p1_src) (p0_tgt ++ p1_tgt).
   Proof.
     unfold rusc in *. i. erewrite <- app_assoc. erewrite <- app_assoc.
@@ -127,8 +119,7 @@ Section RUSC.
 
   Lemma rusc_vertical (p0 p1 p2: program)
         (RUSC0: rusc p0 p1)
-        (RUSC1: rusc p1 p2)
-    :
+        (RUSC1: rusc p1 p2):
       rusc p0 p2.
   Proof. unfold rusc in *. i. etrans; eauto. Qed.
 
@@ -137,21 +128,17 @@ Hint Resolve self_related_horizontal.
 Hint Resolve empty_self_related.
 
 Lemma self_related_mon R0 R1
-      (LE: R0 <1= R1)
-  :
+      (LE: R0 <1= R1):
     self_related R1 <1= self_related R0.
 Proof. ii. eauto. Qed.
 Hint Resolve self_related_mon.
 
 Lemma rusc_mon R0 R1
-      (LE: R0 <1= R1)
-  :
+      (LE: R0 <1= R1):
     rusc R0 <2= rusc R1.
 Proof.
   intros p_src p_tgt RU ctx0 ctx1. i.
-  eapply RU; eauto.
-  - eapply self_related_mon; eauto.
-  - eapply self_related_mon; eauto.
+  eapply RU; eauto; eapply self_related_mon; eauto.
 Qed.
 Hint Resolve rusc_mon.
 
@@ -177,9 +164,7 @@ Next Obligation.
     + exists pp0. esplits; eauto.
     + exists pp. esplits; eauto.
     + i. eapply WF. eauto.
-    + i. des. exists (mp :: pp1). esplits; ss; eauto.
-      * f_equal; eauto.
-      * f_equal; eauto.
+    + i. des. exists (mp :: pp1). esplits; ss; eauto; f_equal; eauto.
 Qed.
 Next Obligation.
   destruct (classic (forall x (IN: In x p_src), Sk.wf x)) as [WF|NWF]; cycle 1.
@@ -189,9 +174,7 @@ Next Obligation.
   specialize (REL WF). des. clarify.
   eapply (@adequacy_local MR SR MP). auto.
 Qed.
-Next Obligation.
-  exists []. splits; ss.
-Qed.
+Next Obligation. exists []. splits; ss. Qed.
 
 
 Definition relate_single (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.class)
@@ -204,9 +187,8 @@ Definition relate_single (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.cl
 Arguments relate_single : clear implicits.
 
 Lemma relate_single_program MR SR MP p_src p_tgt
-      (REL: relate_single MR SR MP p_src p_tgt)
-  :
-    (mkPR MR SR MP).(program_relation.rel) [p_src] [p_tgt].
+      (REL: relate_single MR SR MP p_src p_tgt):
+    (mkPR MR SR MP) [p_src] [p_tgt].
 Proof.
   unfold relate_single. ss. i.
   exploit REL; [ss; eauto|]. i. des. clarify.
@@ -216,9 +198,8 @@ Arguments relate_single_program : clear implicits.
 
 Lemma relate_each_program MR SR MP
       (p_src p_tgt: program)
-      (REL: Forall2 (relate_single MR SR MP) p_src p_tgt)
-  :
-    (mkPR MR SR MP).(program_relation.rel) p_src p_tgt.
+      (REL: Forall2 (relate_single MR SR MP) p_src p_tgt):
+    (mkPR MR SR MP) p_src p_tgt.
 Proof.
   revert p_tgt REL. induction p_src; ss; i.
   - inv REL. exists []; splits; ss.
@@ -231,22 +212,18 @@ Arguments relate_each_program : clear implicits.
 Lemma relate_single_rtc_rusc (R: program_relation.t -> Prop) MR SR MP
       (p_src p_tgt: Mod.t)
       (REL: rtc (relate_single MR SR MP) p_src p_tgt)
-      (RELIN: R (mkPR MR SR MP))
-  :
+      (RELIN: R (mkPR MR SR MP)):
     rusc R [p_src] [p_tgt].
 Proof.
-  induction REL.
-  - refl.
-  - etrans; eauto. eapply rusc_incl; eauto.
-    eapply relate_single_program; eauto.
+  induction REL; try refl.
+  - etrans; eauto. eapply rusc_incl; eauto. eapply relate_single_program; eauto.
 Qed.
 Arguments relate_single_program : clear implicits.
 
 Lemma relate_single_rusc (R: program_relation.t -> Prop) MR SR MP
       (p_src p_tgt: Mod.t)
       (REL: (relate_single MR SR MP) p_src p_tgt)
-      (RELIN: R (mkPR MR SR MP))
-  :
+      (RELIN: R (mkPR MR SR MP)):
     rusc R [p_src] [p_tgt].
 Proof.
   eapply relate_single_rtc_rusc; eauto. eapply rtc_once. eauto.

@@ -23,8 +23,7 @@ Module Args.
       (m: mem)
   | Asmstyle
       (rs: Asm.regset)
-      (m: mem)
-  .
+      (m: mem).
 
   (* intentional: it should work for both cases *)
   Definition get_fptr (args: Args.t): val :=
@@ -91,8 +90,7 @@ Module Retv.
       (m: mem)
   | Asmstyle
       (rs: Asm.regset)
-      (m: mem)
-  .
+      (m: mem).
 
   (* intentional: it should work for both cases *)
   Definition get_m (retv: Retv.t): mem :=
@@ -149,11 +147,9 @@ Module ModSem.
     at_external (st0: state) (args: Args.t): Prop;
     initial_frame (args: Args.t) (st0: state): Prop;
     (* time: rs_arg >> st0 *)
-    final_frame (* (st_init: state) *) (st0: state)
-                (retv: Retv.t): Prop;
+    final_frame (* (st_init: state) *) (st0: state) (retv: Retv.t): Prop;
     (* time: st0 >> rs_arg *)
-    after_external (st0: state) (retv: Retv.t)
-                   (st1: state): Prop;
+    after_external (st0: state) (retv: Retv.t) (st1: state): Prop;
     globalenv: genvtype;
     (* internals: list block; *)
     (* internals: block -> Prop; *)
@@ -175,21 +171,15 @@ Module ModSem.
     (*     <<MEM: st0.(get_mem) = m_arg>> *)
     (* ; *)
 
-    at_external_dtm: forall
-        st args0 args1
+    at_external_dtm: forall st args0 args1
         (AT0: at_external st args0)
-        (AT1: at_external st args1)
-      ,
-        args0 = args1
-    ;
+        (AT1: at_external st args1),
+        args0 = args1;
 
-    final_frame_dtm: forall
-        st retv0 retv1
+    final_frame_dtm: forall st retv0 retv1
         (FINAL0: final_frame st retv0)
-        (FINAL1: final_frame st retv1)
-      ,
-        retv0 = retv1
-    ;
+        (FINAL1: final_frame st retv1),
+        retv0 = retv1;
     (* final_frame_dtm: forall *)
     (*     rs_init st rs_ret0 m_ret0 rs_ret1 m_ret1 *)
     (*     (FINAL0: final_frame rs_init st rs_ret0 m_ret0) *)
@@ -197,13 +187,10 @@ Module ModSem.
     (*   , *)
     (*     rs_ret0 = rs_ret1 /\ m_ret0 = m_ret1 *)
     (* ; *)
-    after_external_dtm: forall
-        st_call retv st0 st1
+    after_external_dtm: forall st_call retv st0 st1
         (AFTER0: after_external st_call retv st0)
-        (AFTER0: after_external st_call retv st1)
-      ,
-        st0 = st1
-    ;
+        (AFTER0: after_external st_call retv st1),
+        st0 = st1;
 
 
     is_call (st0: state): Prop := exists args, at_external st0 args;
@@ -223,22 +210,15 @@ Module ModSem.
 
   (* Note: I didn't want to define this tactic. I wanted to use eauto + Hint Resolve, but it didn't work. *)
   Ltac tac :=
-    try(
-        let TAC := u; esplits; eauto in
-        u in *; des_safe;
-        first[
-            exfalso; eapply ModSem.call_step_disjoint; TAC; fail
-          |
-          exfalso; eapply ModSem.step_return_disjoint; TAC; fail
-          |
-          exfalso; eapply ModSem.call_return_disjoint; TAC; fail
-          ]
-      )
-  .
+    try( let TAC := u; esplits; eauto in
+         u in *; des_safe;
+         first[ exfalso; eapply ModSem.call_step_disjoint; TAC; fail
+              | exfalso; eapply ModSem.step_return_disjoint; TAC; fail
+              | exfalso; eapply ModSem.call_return_disjoint; TAC; fail]
+       ).
 
   Definition to_semantics (ms: t) :=
-    (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) ms.(skenv_link))
-  .
+    (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) ms.(skenv_link)).
 
   Module Atomic.
   Section Atomic.
@@ -252,41 +232,32 @@ Module ModSem.
     Inductive step (se: Senv.t) (ge: ms.(genvtype)): state -> trace -> state -> Prop :=
     | step_silent
         st0 st1
-        (STEPSIL: Step ms st0 E0 st1)
-      :
+        (STEPSIL: Step ms st0 E0 st1):
         step se ge (E0, st0) E0 (E0, st1)
     | step_start
         st0 st1 ev tr
-        (STEPEV: Step ms st0 (ev :: tr) st1)
-      :
+        (STEPEV: Step ms st0 (ev :: tr) st1):
         step se ge (E0, st0) [ev] (tr, st1)
     | step_continue
         ev tr st0
-        (WBT: output_trace (ev :: tr))
-      :
-        step se ge (ev :: tr, st0) [ev] (tr, st0)
-    .
+        (WBT: output_trace (ev :: tr)):
+        step se ge (ev :: tr, st0) [ev] (tr, st0).
 
     Definition at_external (st0: state) (args: Args.t): Prop :=
-      st0.(fst) = [] /\ ms.(at_external) st0.(snd) args
-    .
+      st0.(fst) = [] /\ ms.(at_external) st0.(snd) args.
 
     Definition initial_frame (args: Args.t) (st0: state): Prop :=
-      st0.(fst) = [] /\ ms.(initial_frame) args st0.(snd)
-    .
+      st0.(fst) = [] /\ ms.(initial_frame) args st0.(snd).
 
     Definition final_frame (st0: state) (retv: Retv.t): Prop :=
-      st0.(fst) = [] /\ ms.(final_frame) st0.(snd) retv
-    .
+      st0.(fst) = [] /\ ms.(final_frame) st0.(snd) retv.
 
     Definition after_external (st0: state) (retv: Retv.t) (st1: state): Prop :=
-      st0.(fst) = [] /\ ms.(after_external) st0.(snd) retv st1.(snd) /\ st1.(fst) = []
-    .
+      st0.(fst) = [] /\ ms.(after_external) st0.(snd) retv st1.(snd) /\ st1.(fst) = [].
 
     Program Definition trans: t :=
       mk step at_external initial_frame final_frame after_external
-         ms.(globalenv) ms.(skenv) ms.(skenv_link) _ _ _ _ _ _
-    .
+         ms.(globalenv) ms.(skenv) ms.(skenv_link) _ _ _ _ _ _.
     Next Obligation. rr in AT0. rr in AT1. des. eapply at_external_dtm; eauto. Qed.
     Next Obligation. rr in FINAL0. rr in FINAL1. des. eapply final_frame_dtm; eauto. Qed.
     Next Obligation.
@@ -307,9 +278,7 @@ Module ModSem.
     Qed.
     Next Obligation.
       ii. des. destruct x0; ss. rr in PR. rr in PR0. ss. des. clarify.
-      eapply call_return_disjoint; eauto. esplits; eauto.
-      { rr. esplits; eauto. }
-      { rr. esplits; eauto. }
+      eapply call_return_disjoint; eauto. esplits; eauto; rr; esplits; eauto.
     Qed.
 
   End Atomic.

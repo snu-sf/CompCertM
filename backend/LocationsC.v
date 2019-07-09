@@ -16,18 +16,14 @@ Set Implicit Arguments.
 
 Lemma Loc_not_in_notin_R
       r locs
-      (NOTIN: ~ In (R r) locs)
-  :
+      (NOTIN: ~ In (R r) locs):
     <<NOTIN: Loc.notin (R r) locs>>.
 Proof. red. ginduction locs; ii; ss. esplits; eauto. destruct a; ss. ii; clarify. eauto. Qed.
 
-Lemma typealign_divide_8
-      ty
-  :
+Lemma typealign_divide_8: forall ty,
     <<DIV: (4 * typealign ty | 8)>>.
 Proof.
-  red. change 8 with (4 * 2).
-  eapply Z.mul_divide_mono_l.
+  i. red. change 8 with (4 * 2). eapply Z.mul_divide_mono_l.
   destruct ty; ss; try reflexivity; try apply Z.divide_1_l.
 Qed.
 
@@ -335,4 +331,36 @@ Proof.
   - ii; des. u. des_ifs.
     + contradict NOTIN. eauto.
     + erewrite OUT; eauto.
+Qed.
+
+Definition extcall_args_reg (mr: mreg) (sg: signature):
+  {In (R mr) (regs_of_rpairs (loc_arguments sg))} +
+  {~ In (R mr) (regs_of_rpairs (loc_arguments sg))}.
+Proof.
+  generalize (regs_of_rpairs (loc_arguments sg)). induction l.
+  - ss. tauto.
+  - ss. inv IHl; [tauto|]. destruct a.
+    + destruct (mreg_eq r mr); [clarify; eauto|]. right. intros []; clarify.
+    + right. intros []; clarify.
+Qed.
+
+Lemma arguments_loc sg sl delta ty
+      (IN: In (S sl delta ty) (regs_of_rpairs (loc_arguments sg))):
+    sl = Outgoing /\
+    0 <= delta /\
+    4 * delta + size_chunk (chunk_of_type ty) <= 4 * size_arguments sg.
+Proof.
+  generalize (loc_arguments_acceptable_2 _ _ IN). i. ss. des_ifs.
+  set (loc_arguments_bounded _ _ _ IN).
+  splits; eauto; [omega|]. unfold typesize in *. des_ifs; ss; lia.
+Qed.
+
+Lemma regs_of_rpair_In A (l: list (rpair A)):
+    (forall r (IN: In (One r) l), In r (regs_of_rpairs l))
+    /\ (forall r0 r1 (IN: In (Twolong r0 r1) l),
+           In r0 (regs_of_rpairs l) /\ In r1 (regs_of_rpairs l)).
+Proof.
+  induction l; i; ss; split; i; des; clarify; ss; eauto.
+  - eapply in_or_app. eauto.
+  - split; eapply in_or_app; right; eapply (IHl0 _ _ IN).
 Qed.

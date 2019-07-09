@@ -12,7 +12,7 @@ Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift Asmre
 Require SoundTop.
 Require SimMemInjC SimMemInjInv SimMemInjInvC.
 Require Mach.
-Require Import AsmC AsmregsC Conventions1C MemoryC AsmExtra.
+Require Import AsmC AsmregsC Conventions1C MemoryC AsmExtra StoreArgumentsProps.
 
 Set Implicit Arguments.
 
@@ -178,7 +178,6 @@ Inductive curr_pc (v: val) (ofs: ptrofs): Prop :=
 .
 
 Require Import mktac.
-Require Import StoreArguments.
 
 
 (* TODO: from LB *)

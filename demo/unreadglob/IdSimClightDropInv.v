@@ -20,7 +20,7 @@ Require Import Conventions1C.
 
 Require Import AsmregsC.
 Require Import MatchSimModSem.
-Require Import StoreArguments.
+Require Import StoreArguments StoreArgumentsProps.
 Require Import AsmStepInj IntegersC.
 Require Import Coq.Logic.PropExtensionality.
 Require Import CtypingC.

@@ -16,7 +16,7 @@ Require Import Conventions1C.
 Require SimMemInjC.
 Require Import AxiomsC.
 Require SoundTop.
-Require Import StoreArguments.
+Require Import StoreArguments StoreArgumentsProps.
 Require Import ModSemProps.
 Require Import LiftDummy.
 Require Import JunkBlock.

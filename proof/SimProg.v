@@ -64,61 +64,33 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Theorem sim_link_sk
           sk_link_src
           (LOADSRC: p_src.(link_sk) = Some sk_link_src)
-          (WF: forall md, In md p_src -> <<WF: Sk.wf md>>)
-    :
+          (WF: forall md, In md p_src -> <<WF: Sk.wf md>>):
       exists ss_link sk_link_tgt,
         <<LOADTGT: p_tgt.(link_sk) = Some sk_link_tgt>>
         /\ <<SIMSK: SimSymb.sim_sk ss_link sk_link_src sk_link_tgt>>
-        /\ <<LE: Forall (fun mp => (SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link)) pp>>
-  .
+        /\ <<LE: Forall (fun mp => (SimSymb.le mp.(ModPair.ss) mp.(ModPair.src) mp.(ModPair.tgt) ss_link)) pp>>.
   Proof.
-    {
-      u. subst_locals.
-      ginduction pp; ii; ss.
-      destruct a; ss.
-      unfold ProgPair.src in *.
-      unfold link_sk in *. ss.
-      destruct (classic (t = [])).
-      { clarify; ss. cbn in *. clarify. clear IHt. inv SIMPROG. inv H2. inv H1. ss.
-        esplits; eauto.
-        econs; eauto.
-        ss. apply SimSymb.le_refl.
-      }
-      rename H into NNIL.
-      eapply link_list_cons_inv in LOADSRC; cycle 1.
-      { destruct t; ss. }
-      des.
-      rename sk_link_src into sk_link_link_src.
-      rename restl into sk_link_src.
-      inv SIMPROG.
-      exploit IHt; eauto. intro IH; des.
-      inv H1. ss.
-      exploit SimSymb.sim_sk_link.
-      { apply SIMSK. }
-      { apply IH0. }
-      { eauto. }
-      { eapply WF; et. }
-      { eapply link_list_preserves_wf_sk; eauto. }
-      { eapply SimSymb.sim_sk_preserves_wf; et. eapply WF; et. }
-      { eapply SimSymb.sim_sk_preserves_wf; et. eapply link_list_preserves_wf_sk; eauto. }
-      i; des.
-      esplits; eauto.
-      - eapply link_list_cons; eauto.
-      - econs; eauto.
-        rewrite Forall_forall in *.
-        ii.
-        all ltac:(fun H => apply link_list_linkorder in H). des.
-        rewrite Forall_forall in *.
-        eapply SimSymb.le_trans; eauto.
-        + eapply TL; eauto.
-          destruct x; ss.
-          apply in_map_iff. esplits; ss; eauto.
-          apply in_map_iff. esplits; ss; eauto. ss.
-        + eapply IH; eauto.
-          destruct x; ss.
-          apply in_map_iff. esplits; ss; eauto.
-          apply in_map_iff. esplits; ss; eauto. ss.
+    u. subst_locals. ginduction pp; ii; ss. destruct a; ss.
+    unfold ProgPair.src in *. unfold link_sk in *. ss. destruct (classic (t = [])).
+    { clarify; ss. cbn in *. clarify. clear IHt. inv SIMPROG. inv H2. inv H1. ss.
+      esplits; eauto. econs; eauto. ss. apply SimSymb.le_refl.
     }
+    rename H into NNIL. eapply link_list_cons_inv in LOADSRC; cycle 1.
+    { destruct t; ss. }
+    des. rename sk_link_src into sk_link_link_src. rename restl into sk_link_src.
+    inv SIMPROG. exploit IHt; eauto. intro IH; des.
+    inv H1. ss. exploit (SimSymb.sim_sk_link); try eapply HD; eauto.
+    { eapply WF; et. }
+    { eapply link_list_preserves_wf_sk; eauto. }
+    { eapply SimSymb.sim_sk_preserves_wf; et. eapply WF; et. }
+    { eapply SimSymb.sim_sk_preserves_wf; et. eapply link_list_preserves_wf_sk; eauto. }
+    i; des. esplits; eauto.
+    - eapply link_list_cons; eauto.
+    - econs; eauto. rewrite Forall_forall in *. ii.
+      all ltac:(fun H => apply link_list_linkorder in H). des.
+      rewrite Forall_forall in *. eapply SimSymb.le_trans; eauto.
+      + eapply TL; eauto. destruct x; ss. do 2 (apply in_map_iff; esplits; ss; eauto). ss.
+      + eapply IH; eauto. destruct x; ss. do 2 (apply in_map_iff; esplits; ss; eauto). ss.
   Qed.
 
 End SIM.

@@ -254,7 +254,7 @@ Proof.
       - econs; ii; ss. }
 
     dup VEQ. unfold typify, to_mregset in *. ss.
-    unfold Val.floatoflongu in VEQ0. des_ifs; inv H1; ss.
+    unfold Val.floatoflongu in VEQ0. des_ifs; inv H; ss. inv H1.
     rename H into RDIV.
 
     rewrite Z.mul_0_r in *.
@@ -296,12 +296,12 @@ Proof.
     { unfold compare_longs, Pregmap.set in *. des_ifs. }
     assert (RDI0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) RDI
                   = Vlong i).
-    { unfold compare_longs, Pregmap.set in *. des_ifs. inv RDIV. ss. }
+    { unfold compare_longs, Pregmap.set in *. des_ifs. }
     assert (SF0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) SF
                  = if (Int64.lt i Int64.zero)
                    then (Vint Int.one)
                    else (Vint Int.zero)).
-    { unfold compare_longs, Pregmap.set. ss. inv RDIV. ss.
+    { unfold compare_longs, Pregmap.set. ss. rewrite RDIV in *. ss.
       unfold Int64.negative. rewrite Int64.and_idem. rewrite Int64.sub_zero_l. des_ifs. }
     assert (RA0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) RA
                  = rs RA).
@@ -324,12 +324,7 @@ Proof.
       * eauto.
       * left. pfold. econs 4; cycle 2; ss.
         -- econs; ss; eauto.
-           ++ ii. unfold Conventions1.is_callee_save in *.
-              des_ifs; unfold nextinstr_nf, nextinstr, undef_regs;
-                repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
-           ++ esplits; eauto. rewrite Heq. ss. des_ifs. eauto.
-           ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
-           ++ unfold Conventions1.loc_result. des_ifs.
+           ++ rewrite Heq. ss. des_ifs. esplits; eauto.
            ++ unfold nextinstr_nf, nextinstr, undef_regs;
                 repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
               unfold external_state. des_ifs. exfalso.
@@ -340,6 +335,11 @@ Proof.
               unfold Genv.find_funct, Genv.find_funct_ptr in FINDRA. des_ifs.
               exfalso. eapply Genv.genv_defs_range in Heq2.
               exploit RANOTFPTR; eauto.
+           ++ ii. unfold Conventions1.is_callee_save in *.
+              des_ifs; unfold nextinstr_nf, nextinstr, undef_regs;
+                repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
+           ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
+           ++ unfold Conventions1.loc_result. des_ifs.
         -- instantiate (1:= sm1).
            unfold nextinstr_nf, nextinstr, undef_regs;
              repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
@@ -364,12 +364,7 @@ Proof.
       * eauto.
       * left. pfold. econs 4; cycle 2; ss.
         -- econs; ss; eauto.
-           ++ ii. unfold Conventions1.is_callee_save in *.
-              des_ifs; unfold nextinstr_nf, nextinstr, undef_regs;
-                repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
-           ++ esplits; eauto. rewrite Heq. ss. des_ifs. eauto.
-           ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
-           ++ unfold Conventions1.loc_result. des_ifs.
+           ++ rewrite Heq. ss. des_ifs. esplits; eauto.
            ++ unfold nextinstr_nf, nextinstr, undef_regs;
                 repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
               unfold external_state. des_ifs. exfalso.
@@ -380,6 +375,11 @@ Proof.
               unfold Genv.find_funct, Genv.find_funct_ptr in FINDRA. des_ifs.
               exfalso. eapply Genv.genv_defs_range in Heq2.
               exploit RANOTFPTR; eauto.
+           ++ ii. unfold Conventions1.is_callee_save in *.
+              des_ifs; unfold nextinstr_nf, nextinstr, undef_regs;
+                repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
+           ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
+           ++ unfold Conventions1.loc_result. des_ifs.
         -- instantiate (1:= sm1).
            unfold nextinstr_nf, nextinstr, undef_regs;
              repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).

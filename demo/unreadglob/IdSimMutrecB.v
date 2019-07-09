@@ -131,7 +131,7 @@ Section BSOUND.
     eapply local_preservation_strong_horizontal_spec with (lift := UnreachC.le') (sound_state := sound_state_b skenv_link); eauto.
     econs; ss; i.
     { eapply UnreachC.liftspec; et. }
-    - inv INIT. ss. inv SUARG. des. esplits.
+    - inv INIT. ss. unfold Sound.args in SUARG. des_ifs. des. esplits.
       + refl.
       + econs; eauto.
         * inv SKENV. eauto.
@@ -141,7 +141,6 @@ Section BSOUND.
       + inv STEP; eauto.
         { inv SUST. econs; eauto. }
         { inv SUST. econs; eauto. }
-          (* ss. des_ifs. *)
       + inv STEP; eauto.
         { ss. refl. }
         { ss. refl. }
@@ -152,21 +151,20 @@ Section BSOUND.
         exists su0.
         esplits.
         * econs; ss; eauto.
-          { ss. ii. split.
-            - ii. clarify. eapply WFLO in H.
-              rewrite SKE in H.
-              unfold Genv.find_symbol in FINDG.
-              exploit Genv.genv_symb_range; eauto. i. ss. xomega.
-            - clarify.
-              inv MEM. ss. rewrite NB.
-              exploit Genv.genv_symb_range; eauto. i. ss.
-              rewrite SKE in GENB.
-              eapply Plt_Ple_trans; eauto. }
-          esplits; eauto.
-          econs; ss.
+          { ii. clarify. eapply WFLO in H.
+            rewrite SKE in H.
+            unfold Genv.find_symbol in FINDG.
+            exploit Genv.genv_symb_range; eauto. i. ss. xomega. }
+          { clarify.
+            inv MEM. ss. rewrite NB.
+            exploit Genv.genv_symb_range; eauto. i. ss.
+            rewrite SKE in GENB.
+            eapply Plt_Ple_trans; eauto. }
+        * econs; ss.
+        * eauto.
+        * eauto.
         * refl.
-        * i.
-          destruct retv. ss.
+        * i. destruct retv. ss.
           rr in RETV. des; ss. inv MEM0.
           exists su_ret.
           inv AFTER.
@@ -174,9 +172,11 @@ Section BSOUND.
           { econs; ss; eauto.
             inv LE. ss. des. rewrite <- GENB0. eauto. }
           { ss. refl. }
-    - exists su0. inv SUST; inv FINAL; ss.
+          inv AFTER. ss.
+    - exists su0.
       esplits; try refl. ss.
-  Qed.
+      inv SUST; inv FINAL; ss. inv FINAL. ss. refl.
+Qed.
 
 End BSOUND.
 
@@ -234,27 +234,27 @@ Proof.
   eapply match_states_sim; ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
-  - instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
+  - ii. instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
                        (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>) /\
                        (<<stmwf: st_src.(MutrecBspec.get_mem) =
                                  sm0.(SimMemId.src)>>)).
-    ss.
-    destruct args_src, args_tgt, sm_arg. ii. inv SIMARGS; ss; clarify.
+    ss. destruct args_src, args_tgt, sm_arg; ss; inv SIMARGS; ss; clarify; cycle 1.
+    { des. inv SAFESRC. ss. }
     clear SAFESRC. dup INITTGT. inv INITTGT. ss.
     eexists. eexists (SimMemId.mk tgt tgt). esplits; eauto; ss.
-  - ii. destruct args_src, args_tgt, sm_arg. inv SIMARGS; ss; clarify.
+  - ii. destruct args_src, args_tgt, sm_arg; inv SIMARGS; ss; clarify. des. inv SAFESRC. ss.
   - ii. ss. des. clarify.
   - i. ss. des. clarify. esplits; eauto.
-    + inv CALLSRC. ss. clarify.
+    + inv CALLSRC. ss. clarify. econs; ss.
     + instantiate (1:=top4). ss.
-  - i. clear HISTORY. ss. destruct sm_ret, retv_src, retv_tgt.
-    inv SIMRET. des. ss. clarify. eexists (SimMemId.mk _ _). esplits; eauto.
-    inv AFTERSRC. ss.
+  - i. clear HISTORY. ss. destruct sm_ret, retv_src, retv_tgt; inv SIMRET; des; ss; cycle 1.
+    { inv AFTERSRC. ss. }
+    clarify. eexists (SimMemId.mk _ _). esplits; eauto. inv AFTERSRC. ss.
   - i. ss. des. destruct sm0. ss. clarify.
     eexists (SimMemId.mk (get_mem st_tgt0) (get_mem st_tgt0)).
     esplits; eauto.
-    inv FINALSRC. ss.
+    inv FINALSRC. ss. econs; ss.
   - right. ii. des. destruct sm0. ss. clarify. esplits; eauto.
     + i. exploit H; ss.
       * econs 1.
@@ -284,19 +284,17 @@ Proof.
   - i. ss.
     inv INITTGT. inv SAFESRC. inv H. clarify.
     inv SIMARGS. ss.
-    esplits; eauto.
+    esplits; eauto; ss.
     + econs; eauto.
     + assert (i = i0).
-      { destruct args_src, args_tgt; ss. clarify.
-        ss. inv VALS. inv H2. auto. }
-      subst. econs; eauto.
-      rewrite MEMTGT. eauto.
+      { subst. inv VALS. inv H2. ss. }
+      subst. econs; eauto. ss.
+    + ss.
   - i. ss. des. inv SAFESRC. esplits. econs; ss.
-    + inv SIMARGS. ss. inv FPTR. eauto.
-    + inv SIMARGS. ss. inv FPTR0; eauto.
-      rewrite <- H0 in *. clarify.
+    + inv SIMARGS; ss. inv FPTR. eauto.
+    + inv SIMARGS; ss. inv FPTR0; eauto. clarify.
     + eauto.
-    + inv SIMARGS. ss. rewrite VS in *. inv VALS. inv H2. inv H3. eauto.
+    + inv SIMARGS; ss. subst. inv VALS. inv H1. inv H3. ss.
   - i. ss. inv MATCH; eauto.
 
   - i. ss. clear SOUND. inv CALLSRC. inv MATCH. ss.
@@ -310,15 +308,13 @@ Proof.
     inv AFTERSRC. inv MATCH.
     esplits; eauto.
     + econs; eauto.
-      inv SIMRET. ss. inv RETV; ss. rewrite <- H0 in *. clarify.
+      inv SIMRET; ss. inv RETV; ss.
     + inv SIMRET; ss. econs; eauto.
-      rewrite MEMSRC, MEMTGT. eauto.
 
   - i. ss. inv FINALSRC. inv MATCH.
     esplits; eauto.
     + econs.
-    + econs; eauto.
-      econs.
+    + econs; eauto. econs.
 
   - right. ii. des.
     esplits.
@@ -357,16 +353,14 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + assert (i = i0).
-      { destruct args_src, args_tgt; ss. clarify.
-        ss. inv VALS. inv H2. auto. }
-      subst. econs; eauto.
-      rewrite MEMTGT. eauto.
+      { subst. inv VALS. inv H2. ss. }
+      subst. econs; eauto. ss.
+    + ss.
   - i. ss. des. inv SAFESRC. esplits. econs; ss.
-    + inv SIMARGS. ss. inv FPTR. eauto.
-    + inv SIMARGS. ss. inv FPTR0; eauto.
-      rewrite <- H0 in *. clarify.
+    + inv SIMARGS; ss. inv FPTR. eauto.
+    + inv SIMARGS; ss. inv FPTR0; eauto. clarify.
     + eauto.
-    + inv SIMARGS. ss. rewrite VS in *. inv VALS. inv H2. inv H3. eauto.
+    + inv SIMARGS; ss. rewrite VS in *. inv VALS. inv H1. inv H3. eauto.
   - i. ss. inv MATCH; eauto.
 
   - i. ss. clear SOUND. inv CALLSRC. inv MATCH. ss.
@@ -380,15 +374,13 @@ Proof.
     inv AFTERSRC. inv MATCH.
     esplits; eauto.
     + econs; eauto.
-      inv SIMRET. ss. inv RETV; ss. rewrite <- H0 in *. clarify.
+      inv SIMRET; ss. inv RETV; ss.
     + inv SIMRET; ss. econs; eauto.
-      rewrite MEMSRC, MEMTGT. eauto.
 
   - i. ss. inv FINALSRC. inv MATCH.
     esplits; eauto.
     + econs.
-    + econs; eauto.
-      econs.
+    + econs; eauto. econs.
 
   - right. ii. des.
     esplits.
@@ -433,27 +425,28 @@ Proof.
     + refl.
     + econs; eauto.
       assert (i = i0).
-      { destruct args_src, args_tgt; ss. inv VALS; ss.
-        destruct vl, vl'; ss. clarify. inv H. auto. }
-      rewrite MEMTGT, MEMSRC. subst i0. econs.
+      { subst. inv VALS. inv H2. ss. }
+      subst i0. econs.
+    + ss.
 
   - i. ss. exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. }
-    instantiate (1 := prog). intros GEMATCH.
+    instantiate (1 := MutrecA.prog). intros GEMATCH.
     des. inv SAFESRC. inv SIMARGS.
     inv GEMATCH. exploit SYMBLE; eauto. i. des; eauto.
     esplits. econs; ss; eauto.
     + clear -MWF INJ FPTR FPTR0.
       rewrite FPTR in FPTR0. inv FPTR0; ss.
-      rewrite H2 in INJ. clarify.
-    + rewrite VS in VALS. inv VALS; ss. inv H3. inv H2. auto.
+      rewrite H1 in INJ. clarify.
+    + rewrite VS in VALS. inv VALS; ss. inv H3. inv H1. auto.
+    + ss.
 
   - i. ss. inv MATCH; eauto.
 
   - i. ss. clear SOUND. inv CALLSRC. inv MATCH. inv MATCHST. inversion SIMSKENV; subst. ss.
     i. ss. exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. }
-    instantiate (2 := prog). intros GEMATCH.
+    instantiate (2 := MutrecA.prog). intros GEMATCH.
     inv GEMATCH. exploit SYMBLE; eauto. i. des; eauto.
     esplits; eauto.
     + econs; ss; eauto.
@@ -465,8 +458,8 @@ Proof.
     exists (SimMemInj.unlift' sm_arg sm_ret).
     inv AFTERSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
-    + econs; eauto. inv SIMRET. rewrite INT in *. inv RETV. ss.
-    + inv SIMRET. econs; eauto. econs; eauto.
+    + econs; eauto. inv SIMRET; ss. inv RETV; ss.
+    + inv SIMRET; ss. econs; eauto. econs; eauto.
     + refl.
 
   - i. ss. inv FINALSRC. inv MATCH. inv MATCHST.

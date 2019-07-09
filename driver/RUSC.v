@@ -16,7 +16,7 @@ Module program_relation.
 
   Record t :=
     mk
-      { rel : program -> program -> Prop;
+      { rel :> program -> program -> Prop;
         horizontal : forall
             p0_src p1_src p0_tgt p1_tgt
             (REL0: rel p0_src p0_tgt)
@@ -31,13 +31,14 @@ End program_relation.
 Hint Resolve program_relation.horizontal.
 Hint Resolve program_relation.adequacy.
 Hint Resolve program_relation.empty.
+Coercion program_relation.rel : program_relation.t >-> Funclass.
 
 Section RUSC.
 
   Variable R : program_relation.t -> Prop.
 
   Definition relate_R (p_src p_tgt: program) :=
-    forall r (RELIN: R r), r.(program_relation.rel) p_src p_tgt.
+    forall r (RELIN: R r), r p_src p_tgt.
 
   Definition self_related (p: program) := relate_R p p.
 
@@ -63,7 +64,7 @@ Section RUSC.
   Next Obligation. unfold rusc, Transitive. i. etrans; eauto. Qed.
 
   Lemma rusc_incl (p_src p_tgt: program) (r: program_relation.t)
-        (REL: r.(program_relation.rel) p_src p_tgt)
+        (REL: r p_src p_tgt)
         (RELIN: R r):
       rusc p_src p_tgt.
   Proof. unfold rusc. i. eapply program_relation.adequacy. eauto. Qed.
@@ -187,7 +188,7 @@ Arguments relate_single : clear implicits.
 
 Lemma relate_single_program MR SR MP p_src p_tgt
       (REL: relate_single MR SR MP p_src p_tgt):
-    (mkPR MR SR MP).(program_relation.rel) [p_src] [p_tgt].
+    (mkPR MR SR MP) [p_src] [p_tgt].
 Proof.
   unfold relate_single. ss. i.
   exploit REL; [ss; eauto|]. i. des. clarify.
@@ -198,7 +199,7 @@ Arguments relate_single_program : clear implicits.
 Lemma relate_each_program MR SR MP
       (p_src p_tgt: program)
       (REL: Forall2 (relate_single MR SR MP) p_src p_tgt):
-    (mkPR MR SR MP).(program_relation.rel) p_src p_tgt.
+    (mkPR MR SR MP) p_src p_tgt.
 Proof.
   revert p_tgt REL. induction p_src; ss; i.
   - inv REL. exists []; splits; ss.

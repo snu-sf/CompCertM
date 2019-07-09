@@ -138,10 +138,16 @@ Inductive typechecked (builtins: list (ident * globdef (Ctypes.fundef function) 
      *)
     (WF: Sk.wf (module p))
     (* this property is already checked by the compiler, though they are not in Coq side *)
+    (CSTYLE: forall id ef tyargs ty cc (IN: In (id, (Gfun (Ctypes.External ef tyargs ty cc))) p.(prog_defs)),
+        ef.(ef_sig).(sig_cstyle))
+    (* C cannot call Asm-style function. *)
+    (* Actually, this property is checked by linker, so we can remove the property by changing UBD-B to: *)
+    (* C \plink empty >= C \llink empty *)
     (BINCL: incl builtins p.(prog_defs))
     (BCOMPLETE: forall
         id fd
         (IN: In (id, (Gfun fd)) p.(prog_defs))
         (BUILTIN: ~ is_external_fd fd),
         In (id, Gfun fd) builtins)
+    (* This condition basically says that all malloc/free/builtin functions share the same identifier among modules. *)
 .

@@ -205,8 +205,8 @@ Proof.
   { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
 
   assert (FPTRTGT: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig DemoTarget.prog)) DemoTarget.prog)
-                                   (Args.fptr args_tgt) = Some (AST.Internal (DemoTarget.func))).
-  { clear - INCLTGT FINDFTGT WFTGT.
+                                   (Args.get_fptr args_tgt) = Some (AST.Internal (DemoTarget.func))).
+  {  clear - INCLTGT FINDFTGT WFTGT.
     unfold Genv.find_funct in *. des_ifs.
     apply Genv.find_funct_ptr_iff in FINDFTGT. apply Genv.find_funct_ptr_iff.
     unfold SkEnv.revive. exploit SkEnv.project_impl_spec; eauto. i. inv H.
@@ -223,19 +223,19 @@ Proof.
   { des. inv SAFESRC. clarify. inv SIMARGS. ss.
     eapply asm_initial_frame_succeed; eauto; ss.
     eapply inject_list_length in VALS.
-    rewrite VS in *. ss. }
+    rewrite VS in *. ss. ss. }
 
   assert (ARGLONG: exists lng, (Args.vs args_src) = [Vlong lng]).
   { inv SAFESRC. inv H. rewrite VS. eauto. }
-  clear SAFESRC.
-  inv INITTGT. clarify. inv TYP. ss. destruct args_tgt. ss.
-  destruct vs; clarify. destruct vs; clarify; ss.
-  inv SIMARGS. ss. clarify. inv VALS. inv H3. destruct args_src.
+  (* clear SAFESRC. *)
+  inv INITTGT; ss; clarify. inv TYP. ss. (* destruct args_tgt. ss. *)
+  (* destruct vs; clarify. destruct vs; clarify; ss. *)
+  inv SIMARGS; ss. clarify. inv VALS; ss. inv H0; ss. (* destruct args_src. *)
   ss. clarify. unfold AsmC.store_arguments in *. des.
   dup STORE0. inv STORE0.
   unfold typify_list, zip in *. inv VALS. des_ifs_safe.
   unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs.
-  inv H3. inv H0.
+  inv H3. (* inv H0. *)
 
   eexists (DemoSpec.mkstate lng (SimMemInj.src sm_arg)). esplits; eauto.
   - refl.
@@ -246,15 +246,15 @@ Proof.
     { instantiate (1:=unit). unfold lxsim. pfold. ss.
       intros _. econs 1. ii. econs 1.
       - split; ii.
-        + inv H0. inv H1.
-        + inv H0. inv H1. ss.
+        + inv H0. inv H2.
+        + inv H0. inv H2. ss.
           clear - VEQ SPEC. unfold typify in *. clarify.
           des_ifs. ss.
       - ii. inv STEPSRC.
       - econs; ii; ss. }
 
     dup VEQ. unfold typify, to_mregset in *. ss.
-    unfold Val.floatoflongu in VEQ0. des_ifs; inv H2; ss.
+    unfold Val.floatoflongu in VEQ0. des_ifs; inv H1; ss.
     rename H into RDIV.
 
     rewrite Z.mul_0_r in *.
@@ -296,13 +296,13 @@ Proof.
     { unfold compare_longs, Pregmap.set in *. des_ifs. }
     assert (RDI0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) RDI
                   = Vlong i).
-    { unfold compare_longs, Pregmap.set in *. des_ifs. }
+    { unfold compare_longs, Pregmap.set in *. des_ifs. inv RDIV. ss. }
     assert (SF0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) SF
                  = if (Int64.lt i Int64.zero)
                    then (Vint Int.one)
                    else (Vint Int.zero)).
-    { unfold compare_longs, Pregmap.set. ss. rewrite <- RDIV. ss.
-      unfold Int64.negative. rewrite Int64.and_idem. rewrite Int64.sub_zero_l.  des_ifs. }
+    { unfold compare_longs, Pregmap.set. ss. inv RDIV. ss.
+      unfold Int64.negative. rewrite Int64.and_idem. rewrite Int64.sub_zero_l. des_ifs. }
     assert (RA0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) RA
                  = rs RA).
     { unfold compare_longs, Pregmap.set in *. des_ifs. }

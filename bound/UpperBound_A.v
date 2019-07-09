@@ -1667,4 +1667,5 @@ Proof.
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
   { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
+  { i. exploit TYPEDS; eauto. intro T. inv T. eauto. }
 Qed.

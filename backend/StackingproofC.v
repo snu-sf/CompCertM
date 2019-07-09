@@ -203,24 +203,6 @@ Qed.
 
 Lemma contains_locations_split
       j sp pos lo hi sl ls
-      (RANGE: pos <= lo <= hi)
-      (DIV: (2 | lo)%Z):
-    massert_imp (contains_locations j sp pos hi sl ls)
-                (contains_locations j sp pos lo sl ls ** contains_locations j sp (pos + 4 * lo) (hi - lo) sl ls).
-Proof.
-  Local Transparent sepconj.
-  (* unfold contains_locations. *)
-  econs; ss.
-  - ii. des.
-    esplits; eauto with xomega; ss.
-    { ii. eapply H2; try xomega; ss. }
-    { eapply Z.divide_add_r; et. change 8 with (4 * 2). apply Z.mul_divide_mono_l. ss. }
-    { ii. eapply H2; try xomega; ss. }
-    { ii. replace (pos + 4 * lo + 4 * ofs) with (pos + 4 * (lo + ofs)) by xomega. specialize (H3 (lo + ofs)).
-Abort.
-
-Lemma contains_locations_split
-      j sp pos lo hi sl ls
       (RANGE: 0 <= lo <= hi):
     massert_imp (contains_locations j sp pos hi sl ls)
                 (contains_locations j sp pos lo sl ls ** contains_locations_tl j sp pos lo hi sl ls).
@@ -248,21 +230,6 @@ Proof.
     + right. rr. split; et. xomega.
   - eapply contains_locations_split; et.
 Qed.
-
-Lemma contains_locations_merge
-      j sp pos lo hi sl ls
-      (RANGE: 0 <= lo <= hi):
-    massert_imp (contains_locations j sp pos lo sl ls ** contains_locations_tl j sp pos lo hi sl ls)
-                (contains_locations j sp pos hi sl ls).
-Proof.
-  - econs; ss.
-    + ii. des. esplits; eauto with xomega; ss.
-      { ii. destruct (classic (ofs < pos + 4 * lo)).
-        - eauto with xomega mem.
-        - eauto with xomega mem. }
-      { ii. destruct (classic (ofs + typesize ty <= lo)); eauto.
-        - eapply H4; eauto. try xomega.
-Abort.
 
 Lemma free_freed_contains_locations
       j sp pos sz sl ls m0 m1 CTX

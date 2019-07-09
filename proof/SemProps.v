@@ -211,10 +211,7 @@ Proof.
     + Local Transparent Linker_def. ss. unfold link_def in IN. des_ifs.
       Local Transparent Linker_skfundef. ss.
       inv WFSK0; inv WFSK1.
-      unfold link_skfundef in Heq1. des_ifs.
-      * eapply WFPARAM; eauto. eapply in_prog_defmap; eauto.
-      * eapply WFPARAM0; eauto. eapply in_prog_defmap; eauto.
-      * eapply WFPARAM; eauto. eapply in_prog_defmap; eauto.
+      unfold link_skfundef in Heq1. des_ifs; eauto using in_prog_defmap.
     + inv WFSK0.
       eapply WFPARAM; eauto. eapply in_prog_defmap; eauto.
     + inv WFSK1.

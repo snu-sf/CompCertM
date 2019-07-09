@@ -303,9 +303,7 @@ Section PRESERVATION.
       { ss. }
       assert(INT0: ~ASTC.is_external gd2).
       { Local Transparent Linker_def. inv H0.
-        - inv H2.
-          + ss.
-          + ss.
+        - inv H2; ss.
         - inv H2; ss.
       }
       exists gd2. splits; eauto.

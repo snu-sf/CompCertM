@@ -64,7 +64,7 @@ Proof.
     des. inv SAFESRC. inv SIMARGS; ss. inv FPTR; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. des_ifs.
-    inv TYP. esplits; eauto. econs; eauto.
+    inv TYP. esplits; eauto. econs; swap 1 2; eauto.
     + econs; eauto with congruence.
       erewrite <- lessdef_list_length; eauto.
     + erewrite <- lessdef_list_length; eauto.

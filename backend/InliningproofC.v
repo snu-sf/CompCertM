@@ -88,7 +88,7 @@ Proof.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
     hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR.
     unfold Errors.bind in *. unfold transf_function in *. des_ifs. inv TYP.
-    esplits; eauto. econs; eauto.
+    esplits; eauto. econs; swap 1 2; eauto.
     + econs; eauto. erewrite <- inject_list_length; eauto.
     + erewrite <- inject_list_length; eauto.
   - (* call wf *)

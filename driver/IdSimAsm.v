@@ -709,6 +709,307 @@ Section TRIAL2.
 End TRIAL2.
 End TRIAL2.
 
+Lemma asm_ext_unreach
+      (asm: Asm.program)
+      (WF: Sk.wf asm.(module))
+  :
+    exists mp,
+      (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
+.
+Proof.
+  eexists (ModPair.mk _ _ _); s.
+  assert(PROGSKEL: match_program (fun _ => eq) eq (Sk.of_program fn_sig asm) (Sk.of_program fn_sig asm)).
+  { econs; eauto. ss. eapply match_program_refl; eauto. }
+  assert(PROG: match_program (fun _ => eq) eq asm asm).
+  { econs; eauto. ss. eapply match_program_refl; eauto. }
+  esplits; eauto. instantiate (1:=tt).
+  econs; ss; eauto.
+  ii. inv SSLE. clear_tac.
+
+  fold SkEnv.t in skenv_link_src.
+  hexploit (TRIAL2.asm_unreach_local_preservation INCLSRC WFSRC); eauto. i; des.
+
+  eapply match_states_sim with
+      (match_states :=
+         match_states_ext
+           skenv_link_tgt
+           (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program fn_sig asm)) asm)
+           (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm)); ss.
+  - (* WF *)
+    eapply unit_ord_wf.
+  - (* lprsv *)
+    eauto.
+
+  - (* init bsim *)
+    ii. inv SIMSKENV. ss.
+    inv SIMARGS.
+    { destruct sm_arg. ss. clarify.
+      inv INITTGT; cycle 1.
+      { des. clarify. } clarify.
+      ss. inv TYP. rewrite val_inject_list_lessdef in *.
+      inv STORE. des.
+      exploit store_arguments_parallel_extends; [..| eauto |]; eauto.
+      + eapply typify_has_type_list; eauto.
+      + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+        i. des. inv WFTGT. eapply WFPARAM in H1; eauto; ss.
+      + ss. rewrite val_inject_list_lessdef in *.
+        eapply inject_list_typify_list; try eassumption.
+        erewrite inject_list_length; eauto.
+      + i. des.
+        eexists (AsmC.mkstate (asm_init_rs
+                                 rs_src (to_mregset rs)
+                                 (fn_sig fd) fptr_src (rs RA) (Mem.nextblock src))
+                              (Asm.State _ (JunkBlock.assign_junk_blocks m_src1 n))).
+        esplits; eauto.
+        { econs; ss; eauto.
+          - rewrite SIMSKENVLINK in *. cinv FPTR; ss; clarify; eauto.
+            exfalso. inv SAFESRC; clarify. rewrite <- H4 in *. ss.
+          - inv SIMSKENVLINK. unfold asm_init_rs, to_pregset, Pregmap.set. des_ifs.
+          - econs; eauto. erewrite inject_list_length; eauto.
+          - econs; eauto. inv ARGTGT. econs; eauto.
+            eapply extcall_arguments_same; eauto. i.
+            unfold asm_init_rs, Pregmap.set, to_mregset, to_pregset, to_preg.
+            erewrite to_preg_to_mreg.
+            des_ifs; clarify; ss.
+            * unfold preg_of in *; des_ifs.
+            * unfold preg_of in *; des_ifs.
+            * unfold preg_of in *; des_ifs.
+            * unfold set_regset. des_ifs; clarify; eauto.
+              exfalso. eapply Loc.notin_not_in in n3. eauto.
+          - intros pr. unfold asm_init_rs, to_pregset, Pregmap.set, set_regset.
+            des_ifs; eauto; ss.
+            + ii. exploit PTRFREE; eauto.
+              * instantiate (1:=RA). revert PTR.
+                unfold JunkBlock.is_junk_value, Mem.valid_block.
+                repeat rewrite JunkBlock.assign_junk_blocks_nextblock.
+                replace (Mem.nextblock m_src1) with (Mem.nextblock m0); auto.
+                symmetry. eapply Mem.mext_next; eauto.
+              * ss.
+            + ii. exploit PTRFREE.
+              * instantiate (1:=pr). ii. apply PTR. unfold to_mregset.
+                erewrite to_mreg_some_to_preg; eauto. revert H1.
+                unfold JunkBlock.is_junk_value, Mem.valid_block.
+                repeat rewrite JunkBlock.assign_junk_blocks_nextblock.
+                replace (Mem.nextblock m_src1) with (Mem.nextblock m0); auto.
+                symmetry. eapply Mem.mext_next; eauto.
+              * i. des; eauto. clarify. eauto.
+            + ii. left. esplits; eauto. rewrite loc_notin_not_in in n3. tauto. }
+        { assert (AGREE0 :
+                    AsmStepExt.agree
+                      (asm_init_rs
+                         rs_src (to_mregset rs)
+                         (fn_sig fd) fptr_src (rs RA) (Mem.nextblock src)) rs).
+          { ii.
+            unfold asm_init_rs, Pregmap.set, to_mregset, set_regset, to_pregset, to_preg, inject_id, set_regset in *.
+            des_ifs; ss; eauto; try rewrite val_inject_id in *; eauto.
+            - rewrite H0. erewrite Mem.mext_next; eauto.
+            - apply to_mreg_some_to_preg in Heq. unfold to_preg in *.
+              rewrite Heq in *. eauto.
+            - specialize (AGREE m). rewrite val_inject_id in *.
+              apply to_mreg_some_to_preg in Heq. unfold to_preg in *.
+              rewrite Heq in *. eauto. }
+          instantiate (1:=SimMemExt.mk _ _).
+          econs; ss.
+          - eapply JunkBlock.assign_junk_block_extends; eauto.
+          - unfold asm_init_rs, to_pregset, set_regset, Pregmap.set. des_ifs.
+            rewrite SIMSKENVLINK in *. inv FPTR; ss; clarify; eauto.
+            exfalso. inv SAFESRC. clarify. rewrite <- H4 in *. ss. clarify.
+          - econs.
+            + unfold asm_init_rs, to_pregset, set_regset, Pregmap.set. des_ifs.
+            + econs; ss. ii. rewrite H0 in *. clarify.
+            + eapply asm_init_rs_undef_bisim.
+            + ss.
+          - unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def. des_ifs.
+            hexploit RANOTFPTR; eauto. i. exfalso. eapply H1.
+            eapply Genv.genv_defs_range; eauto. }
+    }
+    { ss. inv INITTGT.
+      { exfalso. des. clarify. } clarify.
+      exists (AsmC.mkstate
+                (rs_src # RA <- ra)
+                (Asm.State (rs_src # RA <- ra) (JunkBlock.assign_junk_blocks (SimMemExt.src sm_arg) n))).
+      eexists (SimMemExt.mk _ _).
+      exploit JunkBlock.assign_junk_block_extends; eauto. intros EXTEND.
+      esplits; eauto.
+      - econs 2; eauto; ss.
+        + rewrite SIMSKE in *. cinv (RS PC); clarify.
+          * rewrite H2. auto.
+          * des. inv SAFESRC; des; clarify. rewrite <- H1 in *. ss.
+        + i. clarify. hexploit RANOTFPTR; eauto. rewrite SIMSKELINK. auto.
+        + unfold JunkBlock.is_junk_value in *. des_ifs. des. split.
+          * erewrite Mem.valid_block_extends; eauto.
+          * erewrite Mem.valid_block_extends; eauto.
+      - econs; ss.
+        + eapply agree_step; eauto.
+        + eapply agree_step; eauto.
+        + rewrite Pregmap.gso; clarify. rewrite SIMSKE. eauto. cinv (RS PC).
+          * rewrite H2. eauto.
+          * des. inv SAFESRC; des; clarify. rewrite <- H1 in *. ss.
+        + des. econs 2; eauto.
+          * econs.
+            { rewrite Pregmap.gss. eauto. }
+            { rewrite Pregmap.gss. eauto. }
+          * econs.
+            { rewrite Pregmap.gss. eauto. }
+            { rewrite Pregmap.gss. eauto. }
+        + rewrite Pregmap.gss. rewrite <- SIMSKELINK in *.
+          unfold Genv.find_funct, Genv.find_funct_ptr. des_ifs.
+          eapply Genv.genv_defs_range in Heq. exfalso. eapply RANOTFPTR; eauto. }
+
+  - ii. des. inv SAFESRC.
+    { inv TYP. inv SIMARGS; clarify.
+      eapply asm_initial_frame_succeed; eauto.
+      + ss. apply lessdef_list_length in VALS.
+        transitivity (Datatypes.length vs_src); eauto.
+      + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
+        i. des. inv WFSRC. eapply WFPARAM in H; eauto.
+      + inv SIMSKENVLINK. cinv FPTR; eauto.
+        rewrite <- H1 in *. ss. }
+    { inv SIMARGS; clarify.
+      eapply asm_initial_frame_succeed_asmstyle; eauto.
+      inv SIMSKENVLINK. cinv (RS PC); eauto. rewrite <- H1 in *. ss. }
+
+  - ii. inv MATCH. ss.
+
+  - (** ******************* at external **********************************)
+    ii. inv SIMSKENV. inv CALLSRC.
+    { inv MATCH.
+      des; ss; clarify. des_ifs.
+      set (INJPC:= AGREE PC). inv INJPC; cycle 1.
+      { rewrite <- H0 in *. ss. }
+      unfold inject_id in *. clarify. psimpl.
+      exploit extcall_arguments_extends; try apply AGREE; eauto. i. des.
+      cinv (AGREE Asm.RSP); rewrite RSP in *; clarify.
+      exploit Mem.free_parallel_extends; eauto. i. des.
+      eexists (Args.mk (rs_tgt PC) _ _). eexists (SimMemExt.mk _ _).
+      esplits; eauto; ss; i.
+      + econs; eauto.
+        * rewrite SIMSKENVLINK in *. rewrite <- H1. auto.
+        * esplits; eauto. rewrite SIMSKENVLINK in *. rewrite <- H1. ss.
+        * clear - AGREE TPTR RADEF. splits.
+          { rename TPTR into TPTR0. unfold Tptr in *.
+            des_ifs; cinv (AGREE RA); ss; rewrite <- H1 in *; ss. }
+          { rename TPTR into TPTR0. unfold Tptr in *.
+            des_ifs; cinv (AGREE RA); ss; rewrite <- H1 in *; ss. }
+      + econs; ss.
+      + instantiate (1:=top4). ss. }
+    { ss. inv MATCH. des; ss; clarify.
+      set (INJPC:= AGREE PC). inv INJPC; cycle 1.
+      { rewrite <- H0 in *. ss. }
+      exists (Args.Asmstyle rs_tgt (SimMemExt.tgt sm0)). esplits; eauto.
+      - econs; ss; eauto.
+        + rewrite <- H1. rewrite SIMSKE in *. auto.
+        + rewrite <- H1. rewrite SIMSKELINK in *. eauto.
+        + cinv (AGREE RA); clarify. exfalso. eauto.
+      - econs 2; eauto. }
+
+  - ii. destruct st_tgt0. destruct st. ss.
+    inv MATCH. inv AFTERSRC.
+    { inv SIMRET; ss.
+      cinv (AGREE RSP); rewrite RSRSP in *; ss. des.
+      unfold Genv.find_funct in FINDF. unfold Genv.find_funct in SIG. des_ifs. ss.
+      exploit Mem_unfree_parallel_extends; try apply MWF; eauto. i. des.
+      unfold inject_id in *. clarify.
+      esplits; ss.
+      + i. ss. splits.
+        { instantiate (1:=AsmC.mkstate _ (State _ _)). econs; ss.
+          - instantiate (1:=sg). esplits; eauto.
+            unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+            cinv (AGREE PC); rewrite Heq in *; clarify.
+            inv SIMSKENV. ss. inv SIMSKELINK. psimpl. des_ifs.
+          - eauto.
+          - instantiate (1:=m2').
+            rewrite <- UNFREE0. f_equal; psimpl; auto. }
+      + { instantiate (1:=SimMemExt.mk _ _).
+          econs; try assumption; ss.
+          - apply agree_step; eauto.
+            unfold set_pair. des_ifs; repeat (eapply agree_step; eauto).
+            + eapply regset_after_external_extends; eauto.
+            + eapply regset_after_external_extends; eauto.
+            + eapply Val.hiword_lessdef; eauto.
+            + eapply Val.loword_lessdef; eauto.
+          - unfold Genv.find_funct. rewrite Heq0. des_ifs. eauto.
+          - eauto. }
+    }
+    { inv SIMRET; ss. exists sm_ret. exists tt.
+      eexists (AsmC.mkstate _ (State _ _)). esplits; ss; eauto.
+      - econs 2; ss. inv SIMSKENV. ss. rewrite SIMSKELINK in *.
+        cinv (AGREE PC); eauto. rewrite <- H1 in *. ss. des. clarify.
+      - clarify. econs; eauto.
+        apply agree_step; eauto. }
+
+  - (** ******************* final **********************************)
+    i. inv MATCH. inv FINALSRC.
+    {
+      cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl. ss.
+      exploit Mem.free_parallel_extends; eauto. i. des.
+      unfold inject_id in *. clarify.
+      eexists (SimMemExt.mk _ _). esplits; ss; eauto.
+      + cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify.
+        econs; ss; ii; eauto.
+        * des. esplits; eauto.
+          rewrite SIMSKENVLINK in *. specialize (AGREEINIT PC).
+          inv AGREEINIT; clarify; ss. rewrite <- H3 in *. ss.
+        * unfold external_state in *. rewrite SIMSKENVLINK in *.
+          des_ifs_safe. exfalso.
+          specialize (AGREE PC). inv AGREE.
+          { rewrite H5 in *. rewrite Heq in *. des_ifs. }
+          { inv WFINITRS; ss; clarify. inv WFINITSRC.
+            rewrite <- H3 in *. eauto. }
+        * inv WFINITRS; clarify. inv WFINITSRC. inv WFINITTGT.
+          unfold Val.has_type in TPTR. des_ifs.
+          -- cinv (AGREEINIT RA); rewrite Heq in *; clarify.
+             cinv (AGREE PC); rewrite RSRA in *; clarify.
+          -- cinv (AGREEINIT RA); rewrite Heq in *; clarify.
+             cinv (AGREE PC); rewrite RSRA in *; clarify.
+        * specialize (CALLEESAVE _ H1).
+          specialize (AGREEINIT (to_preg mr0)).
+          specialize (AGREE (to_preg mr0)).
+          inv WFINITRS; clarify.
+          clear - CALLEESAVE AGREEINIT AGREE WFINITSRC H1 UNDEF. inv WFINITSRC.
+          eapply lessdef_commute; try eassumption.
+          -- rewrite <- val_inject_lessdef. eassumption.
+          -- rewrite <- val_inject_lessdef. eassumption.
+          -- eauto.
+        * cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify.
+          cinv (AGREE RSP); rewrite RSRSP in *; clarify.
+      + econs; ss.
+    }
+    { exists sm0. exists (Retv.Asmstyle rs_tgt (SimMemExt.tgt sm0)). ss.
+      esplits; eauto.
+      - econs 2; eauto.
+        + inv SIMSKENV. ss. rewrite <- SIMSKE.
+          cinv (AGREEINIT PC); ss. rewrite <- H1 in *. ss.
+        + unfold external_state in *. rewrite SIMSKENVLINK in *.
+          des_ifs_safe. exfalso.
+          specialize (AGREE PC). inv AGREE.
+          { rewrite H1 in *. rewrite Heq in *. des_ifs. }
+          { des. rewrite <- H0 in *. ss. des_ifs.
+            inv WFINITRS; ss; clarify. inv WFINITSRC. eauto. }
+        + des. clarify. inv WFINITRS; clarify.
+          inv WFINITSRC. cinv (AGREE PC); clarify.
+          * cinv (AGREEINIT RA); ss. exfalso. eauto.
+          * rewrite <- H1 in *. exfalso. eauto.
+      - econs 2; eauto. }
+
+  - left. ii. esplits; ss; i.
+    + apply AsmC.modsem_receptive.
+    + exists tt.
+      { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
+        destruct st0. ss. clarify.
+        exploit asm_step_preserve_extension; try apply STEP; eauto. i. des.
+        rewrite SIMSKENVLINK in *.
+        esplits; auto.
+        - left. econs; [|econs 1|symmetry; eapply E0_right]. econs.
+          { apply AsmC.modsem_determinate. }
+          instantiate (1:=AsmC.mkstate _ _).
+          econs; ss; eauto.
+        - instantiate (1:=SimMemExt.mk _ _). econs; ss; eauto.
+      }
+Qed.
+
 (* It's ***exactly*** same as asm_ext_sound *)
 Lemma asm_ext_top
       (asm: Asm.program)

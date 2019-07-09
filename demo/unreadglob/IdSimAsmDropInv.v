@@ -44,37 +44,6 @@ Local Existing Instance SimSymbDropInv.SimSymbDropInv.
 Local Existing Instance SoundTop.Top.
 
 
-Inductive match_states
-          (skenv_link_tgt: SkEnv.t)
-          (ge_src ge_tgt: genv)
-          (sm_init : SimMem.t)
-  : nat-> AsmC.state -> AsmC.state -> SimMem.t -> Prop :=
-| match_states_intro
-    j init_rs_src init_rs_tgt rs_src rs_tgt m_src m_tgt
-    (sm0 : SimMem.t)
-    (AGREE: AsmStepInj.agree j rs_src rs_tgt)
-    (AGREEINIT: AsmStepInj.agree j init_rs_src init_rs_tgt)
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
-    (MCOMPATINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
-    (MWF: SimMem.wf sm0)
-    fd
-    (FINDF: Genv.find_funct ge_src (init_rs_src PC) = Some (Internal fd))
-    (WFINITRS: wf_init_rss fd.(fn_sig) init_rs_src init_rs_tgt)
-    (RAWF: Genv.find_funct skenv_link_tgt (init_rs_tgt RA) = None)
-    (RSPDELTA: forall (SIG: sig_cstyle fd.(fn_sig) = true)
-                      blk_src ofs (RSPSRC: init_rs_src RSP = Vptr blk_src ofs),
-        exists blk_tgt,
-          (j blk_src = Some (blk_tgt, 0)))
-  :
-    match_states
-      skenv_link_tgt
-      ge_src ge_tgt sm_init 0
-      (AsmC.mkstate init_rs_src (Asm.State rs_src m_src))
-      (AsmC.mkstate init_rs_tgt (Asm.State rs_tgt m_tgt)) sm0
-.
-
-
 Lemma asm_inj_inv_drop
       (asm: Asm.program)
       (WF: Sk.wf asm.(module))
@@ -92,7 +61,8 @@ Proof.
     inv WF. auto. }
   eapply MatchSimModSemExcl2.match_states_sim with
       (match_states :=
-         match_states
+         @match_states
+           SimMemInjInv.top_inv SimMemInjInv.top_inv
            skenv_link_tgt
            (SkEnv.revive (SkEnv.project skenv_link_src (Sk.of_program fn_sig asm)) asm)
            (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig asm)) asm))

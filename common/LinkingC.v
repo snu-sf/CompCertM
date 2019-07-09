@@ -237,6 +237,45 @@ Local Opaque Linker_def.
 Local Opaque Linker_vardef.
 Local Opaque Linker_varinit.
 
+(* Definition link_fundef {F: Type} (fd1 fd2: fundef F) := *)
+(*   match fd1, fd2 with *)
+(*   | Internal _, Internal _ => None *)
+(*   | External ef1, External ef2 => *)
+(*     match ef1, ef2 with *)
+(*     | EF_external id1 sg1, EF_external id2 sg2 => Some (External ef1) *)
+(*     | EF_builtin id1 sg1, EF_builtin id2 sg2 => Some (External ef1) *)
+(*     | EF_runtime id1 sg1, EF_runtime id2 sg2 => Some (External ef1) *)
+(*     | _, _ => if external_function_eq ef1 ef2 then Some (External ef1) else None *)
+(*     end *)
+(*   | Internal f, External ef => *)
+(*       match ef with EF_external id sg => Some (Internal f) | _ => None end *)
+(*   | External ef, Internal f => *)
+(*       match ef with EF_external id sg => Some (Internal f) | _ => None end *)
+(*   end. *)
+
+(* Inductive linkorder_fundef {F: Type}: fundef F -> fundef F -> Prop := *)
+(* | linkorder_fundef_refl: forall fd, linkorder_fundef fd fd *)
+(* | linkorder_fundef_ext_refl: forall id1 id2 sg1 sg2, linkorder_fundef (External (EF_external id1 sg1)) (External (EF_external id2 sg2)) *)
+(* | linkorder_fundef_runtime_refl: forall id1 id2 sg1 sg2, linkorder_fundef (External (EF_runtime id1 sg1)) (External (EF_runtime id2 sg2)) *)
+(* | linkorder_fundef_builtin_refl: forall id1 id2 sg1 sg2, linkorder_fundef (External (EF_builtin id1 sg1)) (External (EF_builtin id2 sg2)) *)
+(* | linkorder_fundef_ext_int: forall f id sg, linkorder_fundef (External (EF_external id sg)) (Internal f). *)
+
+(* Program Instance Linker_fundef (F: Type): Linker (fundef F) := { *)
+(*   link := link_fundef; *)
+(*   linkorder := linkorder_fundef *)
+(* }. *)
+(* Next Obligation. *)
+(*   constructor. *)
+(* Defined. *)
+(* Next Obligation. *)
+(*   inv H; inv H0; constructor. *)
+(* Defined. *)
+(* Next Obligation. *)
+(*   pose x as X. pose y as Y. *)
+(*   destruct x, y; ss; des_ifs; esplits; eauto; try (econs; et). *)
+(* Defined. *)
+
+(* Global Opaque Linker_fundef. *)
 
 
 Definition link_skfundef (fd1 fd2: AST.fundef signature) :=

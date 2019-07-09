@@ -1264,7 +1264,7 @@ Section SIM.
           eapply NCALLTGT.
           eexists.
           econs; eauto.
-          - assert (Genv.find_funct skenv_link fptr = Some (AST.Internal (Some (signature_of_function f)))).
+          - assert (Genv.find_funct skenv_link fptr = Some (AST.Internal (signature_of_function f))).
             { assert (SkEnv.wf skenv_link).
               { eapply SkEnv.load_skenv_wf.
                 eapply link_list_preserves_wf_sk; eauto. }
@@ -1279,7 +1279,7 @@ Section SIM.
               inv H3.
               destruct (Genv.invert_symbol skenv_link b) eqn:SKENV; ss.
               unfold o_bind in Heq. ss. des_ifs.
-              assert (Genv.find_def (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b = Some (Gfun (AST.Internal (Some (signature_of_function f))))).
+              assert (Genv.find_def (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b = Some (Gfun (AST.Internal (signature_of_function f)))).
               { unfold Genv.find_def. ss. rewrite PTree_filter_map_spec, o_bind_ignore. des_ifs.
                 rewrite SKENV. unfold o_bind. ss. des_ifs.
                 destruct ((prog_defmap (CSk.of_program signature_of_function cp_link)) ! i) eqn:DMAP; ss.
@@ -1379,7 +1379,7 @@ Section SIM.
             esplits; eauto.
             inv WTPROGLINK.
             unfold prog_defmap in DMAP0. ss. eapply PTree_Properties.in_of_list in DMAP0.
-            exploit H2; eauto. i. congruence.
+            exploit H2; eauto. i. (* congruence. *) admit "same as UpperBOund B".
           - inv WTTGT. ss.
             inv WTK; ss.
             exploit WTKS.

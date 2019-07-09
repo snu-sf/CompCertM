@@ -161,8 +161,6 @@ Section PRESERVATION.
   Variable cps: list Csyntax.program.
   Variable ctx: Syntax.program.
   Hypothesis FOCUS: link_list cps = Some cp_link.
-  (* Let prog_src := cp_link.(CsemC.module) :: ctx. *)
-  (* Let prog_tgt := cp1.(CsemC.module) :: cp2.(CsemC.module) :: ctx. *)
   Let prog_src := ctx ++ [cp_link.(CsemC.module)].
   Let prog_tgt := ctx ++ map CsemC.module cps.
   Variable sk_link: Sk.t.
@@ -586,7 +584,7 @@ Section PRESERVATION.
     { inv MAPREL1.
       - rewrite Heq3 in H3. clarify.
       - rewrite H0 in H1. rewrite Heq3 in H2. clarify. inv H3. inv H5. }
-    clarify. exists o. rewrite Genv.find_funct_ptr_iff.
+    clarify. exists s. rewrite Genv.find_funct_ptr_iff.
     unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. rewrite o_bind_ignore. rewrite Hdefs. rewrite Hsymb.
     unfold o_bind. ss. unfold internals. rewrite Heq3. simpl. ss.
   Qed.
@@ -829,7 +827,6 @@ Section PRESERVATION.
       rename t into fr_tgt.
       destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_call) fr_tgt.(Frame.st))).
       { (* tgt call *)
-
         (* fsim *)
         left. right. econs; et. econs; et; cycle 1.
         { i. eapply final_fsim; et. econs; et. }
@@ -1068,13 +1065,13 @@ Section PRESERVATION.
                   unfold o_bind in Heq. ss.
                   destruct ((prog_defmap cp_link) ! i0) eqn:DMAP; ss. clarify.
                   inv WTSKLINK. unfold size_arguments in WFPARAM. des_ifs.
-                  assert (INTERNAL: In (i0, Gfun (AST.Internal (Some (signature_of_function f)))) (AST.prog_defs (CSk.of_program signature_of_function cp_link))).
+                  assert (INTERNAL: In (i0, Gfun (AST.Internal (signature_of_function f))) (AST.prog_defs (CSk.of_program signature_of_function cp_link))).
                   { eapply in_prog_defmap. ss.
                     exploit CSk.of_program_prog_defmap.
                     instantiate (4 := i0). instantiate (1 := cp_link). instantiate (1 := signature_of_function). i.
                     inv H; rewrite DMAP in *; clarify.
                     inv H3. ss. des_ifs. }
-                  rewrite typlist_of_typelist_eq. eauto. hexploit WFPARAM; eauto. ss. i. ss. }
+                  rewrite typlist_of_typelist_eq. eauto. hexploit WFPARAM; eauto. }
             { ss.
               assert(WTPROG: wt_program cp_top).
               { r in FOCUS1. des; clarify; eauto. }

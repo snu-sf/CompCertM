@@ -883,11 +883,7 @@ Proof.
           exploit DEFS; eauto. i. des.
           exploit SYMBKEEP; eauto. i. rr in H.
           rewrite H in *. rewrite FINDG in *. ss. clarify.
-          inv MATCH. ss. inv H1.
-          - des_ifs. esplits.
-            rewrite Genv.find_funct_ptr_iff. eauto. ss.
-          - des_ifs. esplits.
-            rewrite Genv.find_funct_ptr_iff. eauto. ss. }
+          inv MATCH. ss. inv H1; des_ifs; esplits; try rewrite Genv.find_funct_ptr_iff; eauto; ss. }
         { split; ss.
           - repeat (rewrite Pregmap.gso; [| clarify; fail]).
             rewrite Pregmap.gss. rewrite RSPC. ss.

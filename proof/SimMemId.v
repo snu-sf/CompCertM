@@ -27,8 +27,7 @@ Record t' := mk {
 }.
 
 Program Instance SimMemId : SimMem.class :=
-{
-  t := t';
+{ t := t';
   src := src;
   tgt := tgt;
   wf := fun (rel: t') => rel.(src) = rel.(tgt);
@@ -38,13 +37,9 @@ Program Instance SimMemId : SimMem.class :=
   sim_val_list := fun (_: t') => eq;
 }.
 Next Obligation.
-  do 2 (apply Axioms.functional_extensionality; i).
-  apply prop_ext1.
-  split; i; ss; clarify.
-  - ginduction x; ii; inv H; ss.
-    erewrite IHx; eauto.
-  - ginduction x1; ii; ss.
-    econs; eauto.
+  do 2 (apply Axioms.functional_extensionality; i). apply prop_ext1. split; i; ss; clarify.
+  - ginduction x; ii; inv H; ss. erewrite IHx; eauto.
+  - ginduction x1; ii; ss. econs; eauto.
 Qed.
 (* Next Obligation. *)
 (*   eexists (mkrelation _ _). *)
@@ -65,8 +60,7 @@ Qed.
 
 
 Program Instance SimMemIdLift: SimMemLift.class SimMemId :=
-{
-  lift := id;
+{ lift := id;
   unlift := fun _ => id;
 }.
 
@@ -85,35 +79,18 @@ Global Program Instance SimSymbId: SimSymb.class SimMemId := {
   le := SimSymbId.le;
   sim_sk := SimSymbId.sim_sk;
   sim_skenv (_: SimMem.t) (_: unit) := SimSymbId.sim_skenv;
-}
-.
-Next Obligation.
-  ss.
-Qed.
-Next Obligation.
-  rr in SIMSK. clarify.
-Qed.
-Next Obligation.
-  eapply SimSymbId.sim_sk_link; eauto.
-Qed.
-Next Obligation.
-  rr in SIMSKE. clarify.
-Qed.
+}.
+Next Obligation. ss. Qed.
+Next Obligation. rr in SIMSK. clarify. Qed.
+Next Obligation. eapply SimSymbId.sim_sk_link; eauto. Qed.
+Next Obligation. rr in SIMSKE. clarify. Qed.
 Next Obligation.
   exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
-  eexists. eexists (mk _ _).
-  esplits; ss; eauto.
+  eexists. eexists (mk _ _). esplits; ss; eauto.
 Qed.
-Next Obligation.
-  eapply SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto.
-Qed.
-Next Obligation.
-  eapply SimSymbId.sim_skenv_func_bisim; eauto.
-Qed.
-Next Obligation.
-  esplits; eauto.
-  eapply SimSymbId.system_sim_skenv; eauto.
-Qed.
+Next Obligation. eapply SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto. Qed.
+Next Obligation. eapply SimSymbId.sim_skenv_func_bisim; eauto. Qed.
+Next Obligation. esplits; eauto. eapply SimSymbId.system_sim_skenv; eauto. Qed.
 Next Obligation.
   inv ARGS; ss. clarify. destruct sm0; ss. clarify.
   destruct retv_src; ss.
@@ -123,6 +100,4 @@ Next Obligation.
     instantiate (1:= Retv.mk _ _). ss. eauto.
   - instantiate (1:= mk _ _). econs; ss; eauto.
   - ss.
-Unshelve.
 Qed.
-

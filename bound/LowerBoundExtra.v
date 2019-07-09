@@ -3,9 +3,9 @@ Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
 Require Import Locations Stacklayout Conventions Linking.
 (** newly added **)
 Require Export Asm.
-Require Import Simulation Memory ValuesC.
+Require Import Simulation Memory ValuesC GlobalenvsC .
 Require Import Skeleton ModSem Mod sflib AsmC Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC Lia LinkingC2 Conventions1C JunkBlock StoreArguments.
+Require Import Lia LinkingC2 Conventions1C JunkBlock StoreArguments StoreArgumentsProps.
 
 Set Implicit Arguments.
 
@@ -80,14 +80,6 @@ Proof.
     eapply Mem.mi_freeblocks in N; eauto. clarify.
   - specialize (SEPARATED _ _ _ EQ H). des.
     apply SEPARATED0. eauto.
-Qed.
-
-Lemma unfree_nextblock m_src0 m_src1 blk_src lo hi
-      (UNFREE: Mem_unfree m_src0 blk_src lo hi = Some m_src1)
-  :
-    m_src0.(Mem.nextblock) = m_src1.(Mem.nextblock).
-Proof.
-  unfold Mem_unfree in *. des_ifs.
 Qed.
 
 Record freed_from m0 m1 blk lo hi : Prop :=

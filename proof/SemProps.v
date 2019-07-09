@@ -20,10 +20,8 @@ Set Implicit Arguments.
 
 (* TODO: better namespace? *)
 Lemma includes_refl
-      sk
-  :
-    <<INCL: SkEnv.includes (Sk.load_skenv sk) sk>>
-.
+      sk:
+    <<INCL: SkEnv.includes (Sk.load_skenv sk) sk>>.
 Proof.
   econs; eauto.
   - ii. eapply Genv.find_def_symbol in DEF. des. esplits; eauto. apply linkorder_refl.
@@ -37,23 +35,18 @@ Lemma link_includes
       p sk_link_src
       (LINK: link_sk p = Some sk_link_src)
       md
-      (IN: In md p)
-  :
-    SkEnv.includes (Sk.load_skenv sk_link_src) md.(Mod.sk)
-.
+      (IN: In md p):
+    SkEnv.includes (Sk.load_skenv sk_link_src) md.(Mod.sk).
 Proof.
   unfold link_sk in *.
   (* TODO: can we remove `_ LINK` ? *)
   (* Arguments link_list_linkorder [_]. *)
   (* Arguments link_list_linkorder: default implicits. *)
   hexploit (link_list_linkorder _ LINK); et. intro LOS; des.
-  rewrite Forall_forall in *.
-  exploit (LOS md); et.
+  rewrite Forall_forall in *. exploit (LOS md); et.
   { rewrite in_map_iff. esplits; et. }
   intro LO.
-  Local Transparent Linker_prog.
-  ss. des.
-  Local Opaque Linker_prog.
+  Local Transparent Linker_prog. ss. des. Local Opaque Linker_prog.
   econs; et.
   - i. exploit LO1; et. i; des. eapply Genv.find_def_symbol in H. des. esplits; et.
   - rewrite Genv.globalenv_public. ss.
@@ -73,21 +66,14 @@ Lemma definitive_initializer_is_definitive_left
       (sk0 sk1: Sk.t) id_fr
       (LINK: link_prog_merge (prog_defmap sk0) ! id_fr (prog_defmap sk1) ! id_fr = Some (Gvar gv1))
       (IN: (prog_defmap sk0) ! id_fr = Some (Gvar gv0))
-      (DEF: definitive_initializer (gvar_init gv0))
-  :
-    gv0 = gv1
-.
+      (DEF: definitive_initializer (gvar_init gv0)):
+    gv0 = gv1.
 Proof.
-  {
-    unfold link_prog_merge in *. des_ifs_safe.
-    ss.
-    des_ifs_safe.
-    unfold link_vardef in *. des_ifs_safe. ss. destruct gv0; ss. unfold link_varinit in *. des_ifs_safe.
-    bsimpl. des. rewrite eqb_true_iff in *.
-    f_equal.
-    { destruct gvar_info; ss. }
-    des_ifs.
-  }
+  unfold link_prog_merge in *. des_ifs_safe. ss. des_ifs_safe.
+  unfold link_vardef in *. des_ifs_safe. ss. destruct gv0; ss. unfold link_varinit in *. des_ifs_safe.
+  bsimpl. des. rewrite eqb_true_iff in *. f_equal.
+  { destruct gvar_info; ss. }
+  des_ifs.
 Qed.
 
 Lemma definitive_initializer_is_definitive_right
@@ -95,33 +81,23 @@ Lemma definitive_initializer_is_definitive_right
       (sk0 sk1: Sk.t) id_fr
       (LINK: link_prog_merge (prog_defmap sk0) ! id_fr (prog_defmap sk1) ! id_fr = Some (Gvar gv1))
       (IN: (prog_defmap sk1) ! id_fr = Some (Gvar gv0))
-      (DEF: definitive_initializer (gvar_init gv0))
-  :
-    gv0 = gv1
-.
+      (DEF: definitive_initializer (gvar_init gv0)):
+    gv0 = gv1.
 Proof.
-  {
-    unfold link_prog_merge in *. des_ifs_safe. ss.
-    unfold link_def in *. des_ifs. ss.
-    unfold link_vardef in *. des_ifs_safe. ss.
-    clarify. destruct gv0; ss. unfold link_varinit in *. des_ifs_safe.
-    bsimpl. des. rewrite eqb_true_iff in *.
-    f_equal; ss.
-    { destruct gvar_info; ss. }
-    des_ifs.
-  }
+  unfold link_prog_merge in *. des_ifs_safe. ss. unfold link_def in *. des_ifs. ss.
+  unfold link_vardef in *. des_ifs_safe. ss. clarify. destruct gv0; ss. unfold link_varinit in *. des_ifs_safe.
+  bsimpl. des. rewrite eqb_true_iff in *. f_equal; ss.
+  { destruct gvar_info; ss. }
+  des_ifs.
 Qed.
 
 Lemma definitive_initializer_split
       (g0 g1 g: globvar unit)
       (DEF: definitive_initializer g.(gvar_init))
-      (LINK: link g0 g1 = Some g)
-  :
-    <<DEF: definitive_initializer g0.(gvar_init) \/ definitive_initializer g1.(gvar_init)>>
-.
+      (LINK: link g0 g1 = Some g):
+    <<DEF: definitive_initializer g0.(gvar_init) \/ definitive_initializer g1.(gvar_init)>>.
 Proof.
-  ss. unfold link_vardef in *. des_ifs. ss. clarify. unfold link_varinit in *.
-  des_ifs; ss; et.
+  ss. unfold link_vardef in *. des_ifs. ss. clarify. unfold link_varinit in *. des_ifs; ss; et.
 Qed.
 Local Opaque Linker_def Linker_vardef Linker_varinit Linker_unit.
 
@@ -129,21 +105,14 @@ Theorem link_preserves_wf_sk
         sk0 sk1 sk_link
         (WFSK0: Sk.wf sk0)
         (WFSK1: Sk.wf sk1)
-        (LINK: link sk0 sk1 = Some sk_link)
-  :
-    <<WF: Sk.wf sk_link>>
-.
+        (LINK: link sk0 sk1 = Some sk_link):
+    <<WF: Sk.wf sk_link>>.
 Proof.
-  Local Transparent Linker_prog.
-  ss.
-  Local Opaque Linker_prog.
-  hexploit (link_prog_inv _ _ _ LINK); et. intro INV; des. clarify. clear LINK.
-  econs; et; ss.
+  Local Transparent Linker_prog. ss. Local Opaque Linker_prog.
+  hexploit (link_prog_inv _ _ _ LINK); et. intro INV; des. clarify. clear LINK. econs; et; ss.
   - unfold prog_defs_names. ss. eapply NoDup_norepet. eapply PTree.elements_keys_norepet; et.
-  - i. unfold prog_defs_names. ss.
-    apply PTree.elements_complete in IN.
-    rewrite PTree.gcombine in *; ss.
-    apply in_map_iff.
+  - i. unfold prog_defs_names. ss. apply PTree.elements_complete in IN.
+    rewrite PTree.gcombine in *; ss. apply in_map_iff.
     assert((exists x, (prog_defmap sk0) ! id_to = Some x)
            \/ (exists x, (prog_defmap sk1) ! id_to = Some x)); cycle 1.
     { des.
@@ -161,39 +130,28 @@ Proof.
           unfold link_prog_merge. rewrite H. rewrite T. et.
     }
     assert((exists gv, (prog_defmap sk0) ! id_fr = Some (Gvar gv) /\ definitive_initializer gv.(gvar_init))
-           \/
-           (exists gv, (prog_defmap sk1) ! id_fr = Some (Gvar gv) /\ definitive_initializer gv.(gvar_init))).
+           \/ (exists gv, (prog_defmap sk1) ! id_fr = Some (Gvar gv) /\ definitive_initializer gv.(gvar_init))).
     { unfold link_prog_merge in *. des_ifs.
       - exploit (INV0 id_fr); et. intro X; des.
-        Local Transparent Linker_def.
-        ss.
-        Local Opaque Linker_def.
+        Local Transparent Linker_def. ss. Local Opaque Linker_def.
         destruct g, g0; ss; des_ifs.
         exploit (@definitive_initializer_split v v0 gv); et.
         { unfold definitive_initializer. des_ifs; ss; des; clarify. }
         i; des; et.
-      - left. esplits; et.
-        unfold definitive_initializer. des_ifs; ss; des; clarify.
-      - right. esplits; et.
-        unfold definitive_initializer. des_ifs; ss; des; clarify.
+      - left. esplits; et. unfold definitive_initializer. des_ifs; ss; des; clarify.
+      - right. esplits; et. unfold definitive_initializer. des_ifs; ss; des; clarify.
     }
     des.
     + assert(gv0 = gv).
       { eapply (definitive_initializer_is_definitive_left); eauto. }
-      clarify.
-      left.
-      inv WFSK0. exploit (WFPTR id_fr); et.
+      clarify. left. inv WFSK0. exploit (WFPTR id_fr); et.
       { apply in_prog_defmap; et. }
-      intro X; des.
-      eapply prog_defmap_dom; et.
+      intro X; des. eapply prog_defmap_dom; et.
     + assert(gv0 = gv).
       { eapply (definitive_initializer_is_definitive_right); eauto. }
-      clarify.
-      right.
-      inv WFSK1. exploit (WFPTR id_fr); et.
+      clarify. right. inv WFSK1. exploit (WFPTR id_fr); et.
       { apply in_prog_defmap; et. }
-      intro X; des.
-      eapply prog_defmap_dom; et.
+      intro X; des. eapply prog_defmap_dom; et.
   - ii.
     assert(exists gd, link_prog_merge (prog_defmap sk0) ! a (prog_defmap sk1) ! a = Some gd).
     { unfold link_prog_merge. des_ifs; eauto.
@@ -221,25 +179,15 @@ Qed.
 Theorem link_list_preserves_wf_sk
         p sk_link
         (LINK: link_sk p = Some sk_link)
-        (WFSK: forall md, In md p -> <<WF: Sk.wf md >>)
-  :
-    <<WF: Sk.wf sk_link>>
-.
+        (WFSK: forall md, In md p -> <<WF: Sk.wf md >>):
+    <<WF: Sk.wf sk_link>>.
 Proof.
-  unfold link_sk in *.
-  (* unfold Mod.sk in *. *)
-  ginduction p; ii; ss.
-  unfold link_list in LINK. des_ifs_safe. ss.
+  unfold link_sk in *. ginduction p; ii; ss. unfold link_list in LINK. des_ifs_safe. ss.
   destruct (link_list_aux (map Mod.sk p)) eqn:T; ss.
   { clarify. destruct p; ss; des_ifs. eapply WFSK. eauto. }
-  des_ifs.
-  rename t into tl. rename a into hd.
-  specialize (IHp tl).
-  exploit IHp; eauto.
+  des_ifs. rename t into tl. rename a into hd. specialize (IHp tl). exploit IHp; eauto.
   { unfold link_list. des_ifs. }
-  i; des.
-  eapply (@link_preserves_wf_sk hd tl); et.
-  eapply WFSK; et.
+  i; des. eapply (@link_preserves_wf_sk hd tl); et. eapply WFSK; et.
 Qed.
 
 
@@ -266,28 +214,23 @@ Section INITDTM.
         (SKLINK : link_list (Mod.get_sk md1 (Mod.data md1) :: map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0) = Some sk_link)
         (TLORD : Forall (fun x : Sk.t => linkorder x restl) (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0))
         (HDORD : linkorder (Mod.get_sk md1 (Mod.data md1)) sk_link)
-        (HDORD0 : linkorder restl sk_link)
-    :
+        (HDORD0 : linkorder restl sk_link):
       False.
   Proof.
-    rewrite <- Mod.get_modsem_skenv_spec in *.
-    rewrite Forall_forall in TLORD.
+    rewrite <- Mod.get_modsem_skenv_spec in *. rewrite Forall_forall in TLORD.
     assert (In (Mod.get_sk md0 (Mod.data md0)) (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0)).
     { rewrite in_map_iff. exists md0. auto. }
     assert (linkorder (Mod.get_sk md0 (Mod.data md0)) restl).
     { exploit TLORD; eauto. }
     Local Transparent Linker_prog.
 
-    exploit INCLS; eauto. intros INCL0.
-    inversion WFBIG.
+    exploit INCLS; eauto. intros INCL0. inversion WFBIG.
     exploit DEFSYMB; eauto. i. des.
     exploit SkEnv.project_impl_spec; eauto. i. inv H2.
     exploit SYMBKEEP; eauto. i.
 
     assert (INTERN0: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md0 (Mod.data md0))) = Some (Gfun (Internal int_sig))).
-    { rewrite SYMBBIG0 in H2.
-      exploit DEFKEPT. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des.
-      eauto. } des.
+    { rewrite SYMBBIG0 in H2. exploit DEFKEPT. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des. eauto. } des.
 
     exploit (@prog_defmap_linkorder (fundef signature) unit). eapply H0.
     instantiate (2:=id).
@@ -298,32 +241,17 @@ Section INITDTM.
     exploit SYMBKEEP; eauto. i.
 
     assert (INTERN1: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md1 (Mod.data md1))) = Some (Gfun (Internal int_sig))).
-    { rewrite SYMBBIG0 in H5.
-      exploit DEFKEPT0. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des.
-      eauto. } des.
+    { rewrite SYMBBIG0 in H5. exploit DEFKEPT0. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des. eauto. } des.
 
     exploit (@prog_defmap_linkorder (fundef signature) unit). eapply HDORD.
     instantiate (2:=id).
     eauto. i. des.
 
-    Local Transparent Linker_def.
-    simpl in *.
-    inv H4. inv H9.
-    Local Transparent Linker_fundef.
-    simpl in *.
-    inv H7. inv H8.
-
-    inv HD. unfold link_prog in H7.
-    des_ifs.
-    symmetry in Heq.
-    eapply andb_true_eq in Heq. des.
-    symmetry in Heq0.
-    rewrite Maps.PTree_Properties.for_all_correct in Heq0.
-    unfold defs in *.
-    exploit Heq0. eauto. i.
-    unfold link_prog_check in H8.
-    des_ifs. ss.
-    rewrite andb_false_r in H8. clarify.
+    Local Transparent Linker_def. simpl in *. inv H4. inv H9. Local Transparent Linker_fundef.
+    simpl in *. inv H7. inv H8. inv HD. unfold link_prog in H7. des_ifs.
+    symmetry in Heq. eapply andb_true_eq in Heq. des.
+    symmetry in Heq0. rewrite Maps.PTree_Properties.for_all_correct in Heq0. unfold defs in *. exploit Heq0. eauto. i.
+    unfold link_prog_check in H8. des_ifs. ss. rewrite andb_false_r in H8. clarify.
   Qed.
 
   Context `{SM: SimMem.class}.
@@ -335,40 +263,26 @@ Section INITDTM.
   Lemma skenv_fill_internals_preserves_wf
         skenv0 skenv1
         (WF: SkEnv.wf skenv0)
-        (FILL: skenv0.(skenv_fill_internals) = skenv1)
-    :
-      <<WF: SkEnv.wf skenv1>>
-  .
+        (FILL: skenv0.(skenv_fill_internals) = skenv1):
+      <<WF: SkEnv.wf skenv1>>.
   Proof.
-    inv WF. unfold skenv_fill_internals.
-    econs; i; ss; eauto.
+    inv WF. unfold skenv_fill_internals. econs; i; ss; eauto.
     - rewrite Genv_map_defs_symb in *. exploit SYMBDEF; eauto. i; des.
-      hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto.
-      rewrite H0; ss.
-    - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs.
-      exploit DEFSYMB; eauto.
-    - unfold Genv_map_defs, Genv.find_def in *; ss.
-      rewrite PTree_filter_map_spec in DEF.
-      destruct ((Genv.genv_defs skenv0) ! blk) eqn:DMAP; ss.
-      unfold o_bind in DEF; ss. des_ifs.
-      { eapply WFPARAM in DMAP; eauto. }
-      { eapply WFPARAM in DMAP; eauto. }
+      hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto. rewrite H0; ss.
+    - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs. exploit DEFSYMB; eauto.
+    - unfold Genv_map_defs, Genv.find_def in *; ss. rewrite PTree_filter_map_spec in DEF.
+      destruct ((Genv.genv_defs skenv0) ! blk) eqn:DMAP; ss. unfold o_bind in DEF; ss. des_ifs; eapply WFPARAM in DMAP; eauto.
   Qed.
 
   Lemma system_disjoint
-        skenv_link
+        skenv_link sys_def fptr md md_def
         (WFBIG: SkEnv.wf skenv_link)
-        sys_def
-        fptr
         (SYSTEM: Genv.find_funct (System.skenv skenv_link) fptr = Some (Internal sys_def))
-        md md_def
         (MOD: In md p)
         (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
                  Some (Internal md_def))
-        (INCL: SkEnv.includes skenv_link md.(Mod.sk))
-    :
-      False
-  .
+        (INCL: SkEnv.includes skenv_link md.(Mod.sk)):
+      False.
   Proof.
     hexploit (@Mod.get_modsem_projected_sk md skenv_link); eauto. intro SPEC; des.
     remember (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) as skenv_proj eqn:T in *.
@@ -376,48 +290,34 @@ Section INITDTM.
     { eapply SkEnv.project_spec_preserves_wf; eauto. }
     clarify. des. inv SPEC.
     exploit Genv.find_funct_inv; eauto. i; des. clarify. ss. des_ifs.
-    unfold Genv.find_funct_ptr in *. des_ifs.
-    inv WFSMALL. exploit DEFSYMB; eauto. intro SYMBSMALL; des.
+    unfold Genv.find_funct_ptr in *. des_ifs. inv WFSMALL. exploit DEFSYMB; eauto. intro SYMBSMALL; des.
     assert((defs (Mod.get_sk md (Mod.data md))) id).
-    { apply NNPP. ii.
-      exploit SYMBDROP; eauto. i; des. clarify.
-    }
-    exploit SYMBKEEP; eauto. intro SYMBBIG; des.
-    rewrite SYMB in *. symmetry in SYMBBIG.
+    { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
+    exploit SYMBKEEP; eauto. intro SYMBBIG; des. rewrite SYMB in *. symmetry in SYMBBIG.
     exploit DEFKEPT; eauto.
     { apply Genv.find_invert_symbol; eauto. }
-    i; des.
-    exploit DEFKEEP; eauto.
+    i; des. exploit DEFKEEP; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL0.
-    unfold System.skenv in *. ss.
+    intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL0. unfold System.skenv in *. ss.
     exploit Genv_map_defs_def; eauto. i; des. des_ifs. inv LO. inv H3.
   Qed.
 
-  Theorem genv_disjoint
-    :
-      <<DISJ: sem.(globalenv).(Ge.disjoint)>>
-  .
+  Theorem genv_disjoint: <<DISJ: sem.(globalenv).(Ge.disjoint)>>.
   Proof.
     ss. des_ifs; cycle 1.
     { econs; eauto. ii; ss. inv FIND0. ss. }
     assert(WFBIG: t.(Sk.load_skenv).(SkEnv.wf)).
     { eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; et. }
-    econs; eauto.
-    ii; ss.
-    inv FIND0; inv FIND1.
+    econs; eauto. ii; ss. inv FIND0; inv FIND1.
     generalize (link_includes p Heq). intro INCLS.
     unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss.
     abstr (Genv.globalenv t) skenv_link. rename t into sk_link.  rename Heq into SKLINK.
-    rewrite in_map_iff in *.
-    u in *.
-    destruct MODSEM.
+    rewrite in_map_iff in *. u in *. destruct MODSEM.
     { clarify. des; ss. exfalso. clarify. eapply system_disjoint; eauto. }
     des; ss.
     { clarify. ss. exfalso. eapply system_disjoint; eauto. }
 
-    rename x into md0. rename x0 into md1.
-    clarify.
+    rename x into md0. rename x0 into md1. clarify.
     destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs.
     rename Heq0 into DEF0. rename Heq into DEF1.
 
@@ -431,23 +331,15 @@ Section INITDTM.
     assert(WFSMALL1: skenv_proj1.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; try apply SPEC1; eauto. }
 
-    bar.
-    inv WFSMALL0. exploit DEFSYMB; eauto. i; des.
-    inv WFSMALL1. exploit DEFSYMB0; eauto. i; des.
+    bar. inv WFSMALL0. exploit DEFSYMB; eauto. i; des. inv WFSMALL1. exploit DEFSYMB0; eauto. i; des.
     rename SYMB0 into SYMB1. rename SYMB into SYMB0. rename id0 into id1. rename id into id0.
-    move SYMB0 at top. move SYMB1 at top. clear_until_bar.
-
-    inv SPEC0.
+    move SYMB0 at top. move SYMB1 at top. clear_until_bar. inv SPEC0.
     assert(DEFS0: defs (Mod.get_sk md0 (Mod.data md0)) id0).
     { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro SYMBBIG0; des. rewrite SYMB0 in *. symmetry in SYMBBIG0.
     exploit DEFKEPT; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    i; des.
-    move SYMBBIG0 at top.
-    move DEFBIG at top.
-    move DEFS0 at top.
-    clear_until_bar.
+    i; des. move SYMBBIG0 at top. move DEFBIG at top. move DEFS0 at top. clear_until_bar.
 
     inv SPEC1.
     assert(DEFS1: defs (Mod.get_sk md1 (Mod.data md1)) id1).
@@ -455,70 +347,45 @@ Section INITDTM.
     exploit SYMBKEEP; eauto. intro SYMBBIG1; des. rewrite SYMB1 in *. symmetry in SYMBBIG1.
     exploit DEFKEPT; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
-    i; des.
-    move SYMBBIG1 at top.
-    move DEFBIG0 at top.
-    move DEFS1 at top.
-    clear_until_bar.
+    i; des. move SYMBBIG1 at top. move DEFBIG0 at top. move DEFS1 at top. clear_until_bar.
 
     assert(id0 = id1).
-    { eapply Genv.genv_vars_inj.
-      { apply SYMBBIG0. }
-      { apply SYMBBIG1. }
-    } clarify.
+    { eapply Genv.genv_vars_inj; try eapply SYMBBIG0; eauto. } clarify.
     rename id1 into id.
 
     clear - SYMBBIG0 WFBIG INCLS DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK H0 MODSEM1.
     destruct (classic (md0 = md1)); ss.
     { clarify. }
 
-    exfalso.
-
-    clear_tac.
-    generalize dependent sk_link.
-    ginduction p; i; ss.
-    dup SKLINK.
+    exfalso. clear_tac. generalize dependent sk_link.
+    ginduction p; i; ss. dup SKLINK.
     eapply link_list_cons_inv in SKLINK; cycle 1.
-    { destruct p0; ss.
-      inv H0; inv MODSEM1; clarify.
-    }
+    { destruct p0; ss. inv H0; inv MODSEM1; clarify. }
     des_safe.
     hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe.
     hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
 
-    des; clarify.
-    - eapply link_sk_disjoint; try eapply DEFBIG; eauto.
-    - eapply link_sk_disjoint; try eapply DEFBIG; eauto.
+    des; clarify; try (by eapply link_sk_disjoint; try eapply DEFBIG; eauto).
     - eapply IHp0; try eapply DEFS1; try eapply DEFS0; try eapply DEFBIG; eauto.
   Qed.
 
   Lemma find_fptr_owner_determ
         fptr ms0 ms1
         (FIND0: Ge.find_fptr_owner sem.(globalenv) fptr ms0)
-        (FIND1: Ge.find_fptr_owner sem.(globalenv) fptr ms1)
-    :
-      ms0 = ms1
-  .
+        (FIND1: Ge.find_fptr_owner sem.(globalenv) fptr ms1):
+      ms0 = ms1.
   Proof.
-    inv FIND0; inv FIND1. ss. des_ifs.
-    unfold load_genv in *. ss.
-    generalize genv_disjoint; i. inv H.
-    eapply DISJOINT; eauto.
-    - econs; eauto. ss. des_ifs.
-    - econs; eauto. ss. des_ifs.
+    inv FIND0; inv FIND1. ss. des_ifs. unfold load_genv in *. ss. generalize genv_disjoint; i.
+    inv H. eapply DISJOINT; eauto; econs; eauto; ss; des_ifs.
   Qed.
 
   Theorem initial_state_determ
           st_init0 st_init1
           (INIT0: sem.(Smallstep.initial_state) st_init0)
-          (INIT1: sem.(Smallstep.initial_state) st_init1)
-    :
-      st_init0 = st_init1
-  .
+          (INIT1: sem.(Smallstep.initial_state) st_init1):
+      st_init0 = st_init1.
   Proof.
-    ss.
-    inv INIT0; inv INIT1; ss.
-    clarify.
+    ss. inv INIT0; inv INIT1; ss. clarify.
   Qed.
 
 End INITDTM.
@@ -528,26 +395,18 @@ End INITDTM.
 
 Lemma lift_step
       (ms: ModSem.t) st0 tr st1
-      (STEP: Step ms st0 tr st1)
-  :
+      (STEP: Step ms st0 tr st1):
     forall prog tail,
     <<STEP: Step (Sem.sem prog)
                  (State ((Frame.mk ms st0) :: tail)) tr
-                 (State ((Frame.mk ms st1) :: tail))>>
-.
-Proof.
-  ii. econs 3; eauto.
-Qed.
+                 (State ((Frame.mk ms st1) :: tail))>>.
+Proof. ii. econs 3; eauto. Qed.
 
 Lemma lift_star
       (ms: ModSem.t) st0 tr st1
-      (STAR: Star ms st0 tr st1)
-  :
+      (STAR: Star ms st0 tr st1):
     forall prog tail,
-    <<STAR: Star (Sem.sem prog)
-                 (State ((Frame.mk ms st0) :: tail)) tr
-                 (State ((Frame.mk ms st1) :: tail))>>
-.
+    <<STAR: Star (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
 Proof.
   ii. ginduction STAR; ii; ss.
   - econs 1; eauto.
@@ -558,16 +417,11 @@ Qed.
 
 Lemma lift_plus
       (ms: ModSem.t) st0 tr st1
-      (PLUS: Plus ms st0 tr st1)
-  :
+      (PLUS: Plus ms st0 tr st1):
     forall prog tail,
-    <<PLUS: Plus (Sem.sem prog)
-                 (State ((Frame.mk ms st0) :: tail)) tr
-                 (State ((Frame.mk ms st1) :: tail))>>
-.
+    <<PLUS: Plus (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
 Proof.
-  i. inv PLUS; ii; ss.
-  econs; eauto.
+  i. inv PLUS; ii; ss. econs; eauto.
   - eapply lift_step; eauto.
   - eapply lift_star; eauto.
 Qed.
@@ -575,44 +429,27 @@ Qed.
 Lemma lift_dstep
       (ms: ModSem.t) st0 tr st1 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
-      (DSTEP: DStep ms st0 tr st1)
-  :
+      (DSTEP: DStep ms st0 tr st1):
     forall tail,
-    <<DSTEP: DStep (Sem.sem prog)
-                   (State ((Frame.mk ms st0) :: tail)) tr
-                   (State ((Frame.mk ms st1) :: tail))>>
-.
+    <<DSTEP: DStep (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
 Proof.
-  ii. destruct DSTEP as [DTM STEP].
-  econs; eauto; cycle 1.
+  ii. destruct DSTEP as [DTM STEP]. econs; eauto; cycle 1.
   - econs; ss; eauto.
-  - inv DTM.
-    econs; eauto.
-    + ii. ss.
-      inv H; ss; ModSem.tac.
-      inv H0; ss; ModSem.tac.
-      clear STEP.
-      determ_tac sd_determ_at.
-      esplits; auto.
+  - inv DTM. econs; eauto.
+    + ii. ss. inv H; ss; ModSem.tac. inv H0; ss; ModSem.tac. clear STEP.
+      determ_tac sd_determ_at. esplits; auto.
       * eapply match_traces_preserved; try apply H. i. s. congruence.
       * ii. clarify. special H0; ss. clarify.
-    + ii. ss.
-      inv STEP0; ss; ModSem.tac.
-      inv FINAL; ss; ModSem.tac.
-    + ii. inv H; ss; ModSem.tac.
-      exploit sd_traces_at; eauto.
+    + ii. ss. inv STEP0; ss; ModSem.tac. inv FINAL; ss; ModSem.tac.
+    + ii. inv H; ss; ModSem.tac. exploit sd_traces_at; eauto.
 Qed.
 
 Lemma lift_dstar
       (ms: ModSem.t) st0 tr st1 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
-      (DSTAR: DStar ms st0 tr st1)
-  :
+      (DSTAR: DStar ms st0 tr st1):
     forall tail,
-    <<DSTAR: DStar (Sem.sem prog)
-                   (State ((Frame.mk ms st0) :: tail)) tr
-                   (State ((Frame.mk ms st1) :: tail))>>
-.
+    <<DSTAR: DStar (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
 Proof.
   i. ginduction DSTAR; ii; ss.
   - econs 1; eauto.
@@ -624,16 +461,11 @@ Qed.
 Lemma lift_dplus
       (ms: ModSem.t) st0 tr st1 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
-      (DPLUS: DPlus ms st0 tr st1)
-  :
+      (DPLUS: DPlus ms st0 tr st1):
     forall tail,
-    <<DPLUS: DPlus (Sem.sem prog)
-                   (State ((Frame.mk ms st0) :: tail)) tr
-                   (State ((Frame.mk ms st1) :: tail))>>
-.
+    <<DPLUS: DPlus (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
 Proof.
-  i. inv DPLUS; ii; ss.
-  econs; eauto.
+  i. inv DPLUS; ii; ss. econs; eauto.
   - eapply lift_dstep; eauto.
   - eapply lift_dstar; eauto.
 Qed.
@@ -641,40 +473,27 @@ Qed.
 Lemma lift_receptive_at
       (ms: ModSem.t) st0 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
-      (RECEP: receptive_at ms st0)
-  :
-    forall tail,
-    <<RECEP: receptive_at (Sem.sem prog)
-                          (State ((Frame.mk ms st0) :: tail))>>
-.
+      (RECEP: receptive_at ms st0):
+    forall tail, <<RECEP: receptive_at (Sem.sem prog) (State ((Frame.mk ms st0) :: tail))>>.
 Proof.
-  ii. inv RECEP. ss.
-  econs; eauto; ii.
+  ii. inv RECEP. ss. econs; eauto; ii.
   - inv H.
     + inv H0. esplits; eauto. econs 1; eauto.
-    + ss.
-      exploit sr_receptive_at; eauto.
+    + ss. exploit sr_receptive_at; eauto.
       { eapply match_traces_preserved; try apply H0. i. s. congruence. }
-      i; des.
-      esplits; eauto.
-      econs; eauto.
+      i; des. esplits; eauto. econs; eauto.
     + inv H0. esplits; eauto. econs 4; eauto.
-  - inv H; s; try omega.
-    exploit sr_traces_at; eauto.
+  - inv H; s; try omega. exploit sr_traces_at; eauto.
 Qed.
 
 Lemma lift_determinate_at
       (ms: ModSem.t) st0 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
-      (DTM: determinate_at ms st0)
-  :
+      (DTM: determinate_at ms st0):
     forall tail,
-    <<DTM: determinate_at (Sem.sem prog)
-                            (State ((Frame.mk ms st0) :: tail))>>
-.
+    <<DTM: determinate_at (Sem.sem prog) (State ((Frame.mk ms st0) :: tail))>>.
 Proof.
-  ii. inv DTM. ss.
-  econs; eauto; ii.
+  ii. inv DTM. ss. econs; eauto; ii.
   - inv H; inv H0; ModSem.tac.
     + esplits; et.
       { econs; et. }
@@ -684,11 +503,9 @@ Proof.
       i. clarify. repeat f_equal. eauto.
     + ss. esplits; et.
       { econs; et. }
-      i. repeat f_equal.
-      determ_tac ModSem.final_frame_dtm. eapply ModSem.after_external_dtm; et.
+      i. repeat f_equal. determ_tac ModSem.final_frame_dtm. eapply ModSem.after_external_dtm; et.
   - ss. inv FINAL. ss. inv STEP; ss; ModSem.tac.
-  - inv H; s; try omega.
-    exploit sd_traces_at; eauto.
+  - inv H; s; try omega. exploit sd_traces_at; eauto.
 Qed.
 
 (* Lemma callstate_receptive_at *)
@@ -735,66 +552,43 @@ Section WFMEM.
 
 (* TODO: move to proper place *)
 Lemma Genv_bytes_of_init_data_length
-      F V (ge: Genv.t F V) a
-  :
-    Datatypes.length (Genv.bytes_of_init_data ge a) = nat_of_Z (init_data_size a)
-.
+      F V (ge: Genv.t F V) a:
+    Datatypes.length (Genv.bytes_of_init_data ge a) = nat_of_Z (init_data_size a).
 Proof.
-  { clear - a .
-    destruct a; ss.
-    - rewrite length_list_repeat. rewrite Z2Nat.inj_max. ss. xomega.
-    - des_ifs.
-  }
+  clear - a. destruct a; ss; des_ifs. rewrite length_list_repeat. rewrite Z2Nat.inj_max. ss. xomega.
 Qed.
 
 Inductive wf_mem_weak (skenv ge0: SkEnv.t) (sk: Sk.t) (m0: mem): Prop :=
 | wf_mem_weak_intro
-    (WFPTR: forall
-        blk_fr _ofs_fr
-        blk_to _ofs_to
-        id_fr
-        _q _n
+    (WFPTR: forall blk_fr _ofs_fr blk_to _ofs_to id_fr _q _n gv
         (SYMB: ge0.(Genv.find_symbol) id_fr = Some blk_fr)
         (* (IN: In id_fr sk.(prog_defs_names)) *)
-        gv
         (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
         (NONVOL: gv.(gvar_volatile) = false)
         (DEFINITIVE: classify_init gv.(gvar_init) = Init_definitive gv.(gvar_init))
         (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
-        (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to) _q _n])
-      ,
+        (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to) _q _n]),
         exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)
-                      /\ (<<IN: In id_to sk.(prog_defs_names)>>)
-    )
-.
+                      /\ (<<IN: In id_to sk.(prog_defs_names)>>)).
 
-Let link_load_skenv_wf_sem_one: forall
-    md sk_link
+Let link_load_skenv_wf_sem_one: forall md sk_link m0 m1 id gd ge0
     (WF: Sk.wf md)
     (LO: linkorder md sk_link)
-    m0 m1
-    id gd
     (* (IN: sk_link.(prog_defmap) ! id = Some gd) *)
     (IN: In (id, gd) sk_link.(prog_defs))
     (NODUP: NoDup (prog_defs_names md))
     (NODUP: NoDup (prog_defs_names sk_link))
     (LOADM: Genv.alloc_global (Sk.load_skenv sk_link) m0 (id, gd) = Some m1)
-    ge0
     (NOTIN: Genv.find_symbol ge0 id = None)
     (WFM: wf_mem_weak (Sk.load_skenv sk_link) ge0 md m0)
     (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
-    (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
-  ,
+    (WFMB: Genv.genv_next ge0 = Mem.nextblock m0),
     (<<WFM: wf_mem_weak (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) md m1>>)
     /\ (<<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) (Genv.add_global ge0 (id, gd)) m1>>)
-    /\ (<<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>)
-.
+    /\ (<<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>).
 Proof.
-  i.
-  exploit Genv.alloc_global_initialized; et. intro FREETHM; des.
-  esplits; et.
-  econs; et. i. ss.
-  des_ifs.
+  i. exploit Genv.alloc_global_initialized; et. intro FREETHM; des.
+  esplits; et. econs; et. i. ss. des_ifs.
   - (* func *)
     assert(VALID: Mem.valid_block m0 blk_fr).
     { assert(NEQ: blk_fr <> b).
@@ -810,9 +604,7 @@ Proof.
       exploit Mem.valid_block_alloc_inv; eauto. i; des; des_ifs.
     }
     uge. unfold Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs.
-    + Local Transparent Linker_prog.
-      ss.
-      Local Opaque Linker_prog.
+    + Local Transparent Linker_prog. ss. Local Opaque Linker_prog.
       des.
       exploit prog_defmap_norepet; try apply IN; et.
       { apply NoDup_norepet. ss. }
@@ -834,15 +626,13 @@ Proof.
         clear - Heq LOADM NEQ VAL. exploit Mem.drop_perm_valid_block_2; eauto. i.
         exploit Mem.valid_block_alloc_inv; eauto. i; des; des_ifs.
       }
-      exploit WFPTR; et.
-      erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
+      exploit WFPTR; et. erewrite <- Mem.loadbytes_unchanged_on_1 with (P := fun blk _ => Mem.valid_block m0 blk); et.
       { etrans.
         - eapply Mem.alloc_unchanged_on; et.
         - eapply Mem.drop_perm_unchanged_on; et. intros ? ? TTT. clear - Heq TTT. eapply Mem.fresh_block_alloc; eauto.
       }
   - (* gvar *)
-    rename b into blk.
-    unfold Genv.find_symbol, Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs; cycle 1.
+    rename b into blk. unfold Genv.find_symbol, Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs; cycle 1.
     + assert(blk <> blk_fr).
       { ii; clarify. clear - WFMB Heq SYMB. exploit GlobalenvsC.Genv_update_publics_obligation_1; eauto. i.
         eapply Mem.alloc_result in Heq. subst. rewrite WFMB in H. xomega. }
@@ -868,49 +658,34 @@ Proof.
       clear FREETHM. intro FREETHM; des. ss. des.
       (* assert(gv.(gvar_init) = v.(gvar_init)). *)
       assert(LOA: linkorder gv v /\ gvar_volatile v = false).
-      {
-        Local Transparent Linker_prog.
-        ss.
-        Local Opaque Linker_prog.
-        des.
-        exploit LO1; et.
+      { Local Transparent Linker_prog. ss. Local Opaque Linker_prog.
+        des. exploit LO1; et.
         { apply prog_defmap_norepet; et. apply NoDup_norepet; et. }
-        i; des.
-        apply prog_defmap_norepet in IN; cycle 1. { apply NoDup_norepet; et. }
-        clarify.
-        inv H0. inv H4. ss.
+        i; des. apply prog_defmap_norepet in IN; cycle 1. { apply NoDup_norepet; et. }
+        clarify. inv H0. inv H4. ss.
       }
-      des.
-      exploit FREETHM3; et. intro LOADA; des.
+      des. exploit FREETHM3; et. intro LOADA; des.
       assert(DAT: exists id_to _ofs,
                 (<<IN: In (Init_addrof id_to _ofs) (gvar_init gv)>>)
-                /\ (<<SYMB: Genv.find_symbol (Sk.load_skenv sk_link) id_to = Some blk_to>>)
+                /\ (<<SYMB: Genv.find_symbol (Sk.load_skenv sk_link) id_to = Some blk_to>>)).
                 (* /\ (<<PLT :Plt blk_to (Genv.genv_next ge0)>>) *)
-            ).
       { assert(EQ: gv.(gvar_init) = v.(gvar_init)).
         { inv LOA. ss. inv H0; ss. }
         rewrite EQ in *.
-        abstr (gvar_init v) dts.
-        clear - LOAD LOADA FREETHM1.
-        abstr (Genv.genv_next ge0) blk. clear_tac.
+        abstr (gvar_init v) dts. clear - LOAD LOADA FREETHM1. abstr (Genv.genv_next ge0) blk. clear_tac.
         abstr ((Sk.load_skenv sk_link)) skenv_link. clear_tac.
         destruct (classic (0 <= _ofs_fr < init_data_list_size dts)); cycle 1.
-        {
-          hexploit Mem.loadbytes_range_perm; try apply LOAD; et. intro PERM.
+        { hexploit Mem.loadbytes_range_perm; try apply LOAD; et. intro PERM.
           exploit FREETHM1; et.
           { r in PERM. eapply PERM; et. instantiate (1:= _ofs_fr). xomega. }
           i; des. xomega.
         }
-        rename H into RANGE.
-        clear FREETHM1.
+        rename H into RANGE. clear FREETHM1.
         assert(POS: 0 <= 0) by xomega.
         change (init_data_list_size dts) with (0 + init_data_list_size dts) in RANGE.
-        revert_until skenv_link.
-        generalize 0 at 1 2 3 5 as ofs. i.
+        revert_until skenv_link. generalize 0 at 1 2 3 5 as ofs. i.
         (* generalize 0 at 1 2 4 as ofs. i. *)
-        ginduction dts; ii; ss.
-        { xomega. }
-        try rewrite Z.add_assoc in *.
+        ginduction dts; ii; ss; try xomega. try rewrite Z.add_assoc in *.
         assert(LOADB: Mem.loadbytes m1 blk (ofs + init_data_size a) (init_data_list_size dts) =
                       Some (Genv.bytes_of_init_data_list skenv_link dts) /\
                       <<LOADC: Mem.loadbytes m1 blk ofs (init_data_size a) =
@@ -943,134 +718,65 @@ Proof.
         - exploit IHdts; et; try xomega.
           { eapply OMEGA2; eauto. eapply Z.ge_le. eapply init_data_size_pos. }
           i; des. esplits; et.
-        - clear IHdts LOADB LOADA.
-          rename a into aa.
-          clear RANGE0.
-          Local Opaque Z.add.
-          Local Transparent Mem.loadbytes.
-          rename ofs into ofs_bound.
-          rename _ofs_fr into ofs_mid.
+        - clear IHdts LOADB LOADA. rename a into aa. clear RANGE0.
+          Local Opaque Z.add. Local Transparent Mem.loadbytes.
+          rename ofs into ofs_bound. rename _ofs_fr into ofs_mid.
           assert(T: ofs_mid < ofs_bound + init_data_size aa) by omega. clear H.
 
-          destruct aa; ss.
-          + exfalso. unfold Mem.loadbytes in *. des_ifs.
-            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
-                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
-                  ).
-            { omega. }
-            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
+          destruct aa; ss;
+            try (by exfalso; unfold Mem.loadbytes in *; des_ifs;
+                 assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                        \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                        \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by omega;
+                 des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss).
 
-          + exfalso. unfold Mem.loadbytes in *. des_ifs.
-            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
-                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
-                  ).
-            { omega. }
-            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
-
-          + exfalso. unfold Mem.loadbytes in *. des_ifs.
-            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
-                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
-                  ).
-            { omega. }
-            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
-
-          + exfalso. unfold Mem.loadbytes in *. des_ifs.
-            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
-                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
-                  ).
-            { omega. }
-            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
-
-          + exfalso. unfold Mem.loadbytes in *. des_ifs.
-            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
-                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
-                  ).
-            { omega. }
-            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
-
-          + exfalso. unfold Mem.loadbytes in *. des_ifs.
-            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
-                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
-                  ).
-            { omega. }
-            des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss.
-
-          + exfalso.
-            unfold Mem.loadbytes in *. des_ifs.
-            rename H0 into P. rename H1 into Q.
-            clear - P Q T RANGE POS.
+          + exfalso. unfold Mem.loadbytes in *. des_ifs. rename H0 into P. rename H1 into Q. clear - P Q T RANGE POS.
             abstr ((Mem.mem_contents m1) !! blk) MC. clear_tac.
             assert(POS0: 0 <= Z.max z 0) by xomega.
             exploit (@Mem.getN_in MC ofs_mid (Z.max z 0).(Z.to_nat) ofs_bound); eauto.
             { split; try xomega. rewrite Z2Nat.id; ss. }
-            intro R.
-            rewrite Q in *. unfold nat_of_Z in *. rewrite P in *.
-            clear - R.
-            apply in_list_repeat in R. ss.
+            intro R. rewrite Q in *. unfold nat_of_Z in *. rewrite P in *. clear - R. apply in_list_repeat in R. ss.
 
           + des_ifs; cycle 1.
             { exfalso. unfold Mem.loadbytes in *. des_ifs.
               assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
                      \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                     \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
-                    ).
-              { omega. }
+                     \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by omega.
               des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H8 in *; ss.
             }
-            esplits; et.
-            unfold inj_value in *. ss. unfold Mem.loadbytes in *. des_ifs.
-              assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
-                     \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                     \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7
-                    ).
-              { omega. }
-              des; subst; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H8 in *; congruence.
+            esplits; et. unfold inj_value in *. ss. unfold Mem.loadbytes in *. des_ifs.
+            assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
+                   \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
+                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by omega.
+            des; subst; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H8 in *; congruence.
           Local Opaque Mem.loadbytes.
       }
-      des.
-      bar. inv WF. exploit WFPTR; et. i ;des. esplits; et.
-      apply Genv.find_invert_symbol. ss.
+      des. bar. inv WF. exploit WFPTR; et. i ;des. esplits; et. apply Genv.find_invert_symbol. ss.
 Qed.
 
 
-Let link_load_skenv_wf_sem_mult: forall
-    md sk_link
+Let link_load_skenv_wf_sem_mult: forall md sk_link idgs m0 m1 ge0
     (WF: Sk.wf md)
     (LO: linkorder md sk_link)
-    idgs
     (INCL: incl idgs sk_link.(prog_defs))
     (NODUP: NoDup (prog_defs_names md))
     (NODUP: NoDup (prog_defs_names sk_link))
     (NODUP: NoDup (map fst idgs))
-    m0 m1
     (LOADM: Genv.alloc_globals (Sk.load_skenv sk_link) m0 idgs = Some m1)
-    ge0
     (NOTIN: forall id (IN: In id (map fst idgs)), Genv.find_symbol ge0 id = None)
     (WFM: wf_mem_weak (Sk.load_skenv sk_link) ge0 md m0)
     (WFMA: Genv.globals_initialized (Sk.load_skenv sk_link) ge0 m0)
-    (WFMB: Genv.genv_next ge0 = Mem.nextblock m0)
-  ,
+    (WFMB: Genv.genv_next ge0 = Mem.nextblock m0),
     <<WFM: wf_mem_weak (Sk.load_skenv sk_link) (Genv.add_globals ge0 idgs) md m1>>
            /\ <<WFMA: Genv.globals_initialized (Sk.load_skenv sk_link)
-                                               (Genv.add_globals ge0 idgs) m1>>
-                                               /\ <<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>
-.
+                                              (Genv.add_globals ge0 idgs) m1>>
+                     /\ <<WFMB: Genv.genv_next ge0 = Mem.nextblock m0>>.
 Proof.
-  i.
-  generalize dependent ge0.
-  generalize dependent m0.
-  generalize dependent m1.
+  i. generalize dependent ge0. generalize dependent m0. generalize dependent m1.
   (* generalize dependent FRESH. *)
   induction idgs; ii; ss.
   { clarify. }
-  des_ifs.
-  destruct a.
+  des_ifs. destruct a.
   exploit link_load_skenv_wf_sem_one; et.
   { eapply INCL; et. s. et. }
   i; des.
@@ -1081,28 +787,22 @@ Proof.
     - inv NODUP1. ss.
     - apply NOTIN. right. ss. }
   { s. clear - WFMB0 Heq. exploit Genv.alloc_global_nextblock; eauto. congruence. }
-  i; des.
-  esplits; et.
+  i; des. esplits; et.
 Qed.
 
 Lemma link_load_skenv_wf_mem
       p sk_link m_init
       (LINK: link_sk p = Some sk_link)
       (WF: forall md (IN: In md p), Sk.wf md)
-      (LOADM: Sk.load_mem sk_link = Some m_init)
-  :
+      (LOADM: Sk.load_mem sk_link = Some m_init):
     let skenv_link := Sk.load_skenv sk_link in
-    <<WFM: forall md (IN: In md p), SkEnv.wf_mem skenv_link md m_init>>
-.
+    <<WFM: forall md (IN: In md p), SkEnv.wf_mem skenv_link md m_init>>.
 Proof.
-  econs. i.
-  unfold link_sk in *.
+  econs. i. unfold link_sk in *.
   hexploit (link_list_linkorder _ LINK); et. intro LO. des.
-  rewrite Forall_forall in *.
-  exploit LO; et.
+  rewrite Forall_forall in *. exploit LO; et.
   { rewrite in_map_iff. esplits; et. }
-  clear LO.
-  intro LO.
+  clear LO. intro LO.
   exploit WF; et. clear WF. intro WF; des.
   assert(NODUP: NoDup (prog_defs_names sk_link)).
   { clear - LINK IN WF. destruct p; ss. destruct p; ss.
@@ -1110,29 +810,19 @@ Proof.
     - clear IN WF.
       exploit (link_list_cons_inv _ LINK); et.
       { ss. }
-      i; des.
-      clear - HD.
-      Local Transparent Linker_prog.
-      ss.
-      Local Opaque Linker_prog.
-      unfold link_prog in *. des_ifs.
-      apply NoDup_norepet.
-      unfold prog_defs_names.
-      apply PTree.elements_keys_norepet.
+      i; des. clear - HD.
+      Local Transparent Linker_prog. ss. Local Opaque Linker_prog.
+      unfold link_prog in *. des_ifs. apply NoDup_norepet. unfold prog_defs_names. apply PTree.elements_keys_norepet.
   }
   clear LINK IN.
 
 
-  {
-    eapply link_load_skenv_wf_sem_mult; et.
-    { refl. }
-    { apply WF. }
+  { eapply link_load_skenv_wf_sem_mult; et; try eapply WF; try refl.
     { i. uge. ss. rewrite PTree.gempty. ss. }
     { econs; et. i. exfalso. clear - LOAD0. eapply Mem.loadbytes_range_perm in LOAD0.
       exploit (LOAD0 _ofs_fr0). omega. eapply Mem.perm_empty.
     }
     { rr. ii. exfalso. clear - H. unfold Genv.find_def in H. rewrite PTree.gempty in H. des_ifs. }
-    { ss. }
   }
 Qed.
 
@@ -1143,41 +833,27 @@ Require Import Sem SimModSem.
 Theorem safe_implies_safe_modsem
         p sk ms lst tail
         (LINK: link_sk p = Some sk)
-        (SAFE: safe (sem p) (State ({| Frame.ms := ms; Frame.st := lst |} :: tail)))
-  :
-    <<SAFE: safe_modsem ms lst>>
-.
+        (SAFE: safe (sem p) (State ({| Frame.ms := ms; Frame.st := lst |} :: tail))):
+    <<SAFE: safe_modsem ms lst>>.
 Proof.
-
-  {
-    ii. ss. exploit SAFE.
-    { instantiate (1:= (State ({| Frame.ms := ms; Frame.st := st1 |} :: tail))). eapply lift_star; eauto. }
-    i; des.
-    - ss. inv H. ss. right. left. eauto.
-    - ss. des_ifs. inv H; ss.
-      + left. eauto.
-      + right. right. eauto.
-      + right. left. eauto.
-  }
+  ii. ss. exploit SAFE.
+  { instantiate (1:= (State ({| Frame.ms := ms; Frame.st := st1 |} :: tail))). eapply lift_star; eauto. }
+  i; des.
+  - ss. inv H. ss. right. left. eauto.
+  - ss. des_ifs. inv H; ss.
+    + left. eauto.
+    + right. right. eauto.
+    + right. left. eauto.
 Qed.
 
 
-Lemma backward_simulation_refl
-      SEM
-  :
-    backward_simulation SEM SEM
-.
+Lemma backward_simulation_refl: forall SEM, backward_simulation SEM SEM.
 Proof.
-  eapply (@Backward_simulation _ _ unit bot2).
-  econs; eauto.
+  i. eapply (@Backward_simulation _ _ unit bot2). econs; eauto.
   { apply unit_ord_wf. }
-  ii. ss.
-  exists tt.
-  esplits; eauto.
-  clear st_init_src_ INITSRC INITTGT.
-  rename st_init_tgt into st. revert st.
-  pcofix CIH. i. pfold.
-  econs; eauto.
+  ii. ss. exists tt. esplits; eauto.
+  clear st_init_src_ INITSRC INITTGT. rename st_init_tgt into st. revert st.
+  pcofix CIH. i. pfold. econs; eauto.
   { ii. esplits; eauto. econs; eauto. }
   ii. econs; eauto.
   { ii. esplits; eauto. left. apply plus_one. ss. }
@@ -1185,12 +861,8 @@ Proof.
 Qed.
 
 Lemma sk_nwf_improves (mds_src mds_tgt: program)
-      (NWF: ~ (forall x (IN: In x mds_src), Sk.wf x))
-  :
+      (NWF: ~ (forall x (IN: In x mds_src), Sk.wf x)):
       improves (sem mds_src) (sem mds_tgt).
 Proof.
-  eapply bsim_improves. econs. econs.
-  - eapply unit_ord_wf.
-  - i. inv INITSRC. clarify.
-  - i. inv INITSRC. clarify.
+  eapply bsim_improves. econs. econs; try (i; inv INITSRC; clarify). eapply unit_ord_wf.
 Qed.

@@ -13,44 +13,30 @@ Set Implicit Arguments.
 Generalizable Variables F.
 
 Lemma prog_defmap_spec
-      F V
-      (p: program F V)
-      id
-  :
+      F V (p: program F V) id:
     In id p.(prog_defs_names) <-> exists g, p.(prog_defmap) ! id = Some g.
 Proof.
   split; ii.
   - exploit prog_defmap_dom; eauto.
   - des. exploit in_prog_defmap; eauto. i.
-    clear - H0.
-    destruct p; ss.
-    u.
-    apply in_map_iff. esplits; eauto. ss.
+    clear - H0. destruct p; ss. u. apply in_map_iff. esplits; eauto. ss.
 Qed.
 
 Lemma prog_defmap_image
-      F V
-      (p : AST.program F V)
-      id g
-      (GET: (prog_defmap p) ! id = Some g)
-  :
+      F V (p : AST.program F V) id g
+      (GET: (prog_defmap p) ! id = Some g):
     <<IN: In id (prog_defs_names p)>>.
-Proof.
-  eapply prog_defmap_spec; et.
-Qed.
+Proof. eapply prog_defmap_spec; et. Qed.
 
 
 Lemma prog_defmap_update_snd
-      X Y (f: X -> Y) (defs: list (positive * X)) id
-  :
+      X Y (f: X -> Y) (defs: list (positive * X)) id:
     (PTree_Properties.of_list (map (update_snd f) defs)) ! id =
     option_map f ((PTree_Properties.of_list defs) ! id).
 Proof.
   unfold PTree_Properties.of_list.
-  rewrite <- ! fold_left_rev_right in *. rewrite <- map_rev.
-  unfold PTree.elt.
-  abstr (rev defs) xs. clear_tac.
-  generalize id.
+  rewrite <- ! fold_left_rev_right in *. rewrite <- map_rev.  unfold PTree.elt.
+  abstr (rev defs) xs. clear_tac.  generalize id.
   induction xs; ii; try rewrite PTree.gempty in *; ss.
   { unfold option_map. rewrite PTree.gempty in *; ss. }
   destruct a; ss.
@@ -84,50 +70,29 @@ Module PLAYGROUND.
 Section FUNCTIONS.
 
   Lemma transf_fundef_is_external
-        A B
-        (transf: A -> B)
-        f
-        (ISEXT: is_external (transf_fundef transf f))
-    :
+        A B (transf: A -> B) f
+        (ISEXT: is_external (transf_fundef transf f)):
       <<ISEXT: is_external f>>.
-  Proof.
-    compute in ISEXT. des_ifs.
-  Qed.
+  Proof. compute in ISEXT. des_ifs. Qed.
 
   Lemma transf_fundef_external
-        A B
-        (transf: A -> B)
-        f ef
-        (EXT: (transf_fundef transf f) = External ef)
-    :
+        A B (transf: A -> B) f ef
+        (EXT: (transf_fundef transf f) = External ef):
       f = External ef.
-  Proof.
-    compute in EXT. des_ifs.
-  Qed.
+  Proof. compute in EXT. des_ifs. Qed.
 
   Lemma transf_partial_fundef_is_external_fd
-        A B
-        (transf_partial: A -> res B)
-        f tf
+        A B (transf_partial: A -> res B) f tf
         (TRANSF: (transf_partial_fundef transf_partial f) = OK tf)
-        (ISEXT: is_external tf)
-    :
+        (ISEXT: is_external tf):
       <<ISEXT: is_external f>>.
-  Proof.
-    ss. des_ifs.
-  Qed.
+  Proof. ss. des_ifs. Qed.
 
   Lemma transf_partial_fundef_external
-        A B
-        (transf_partial: A -> res B)
-        f ef
-        (TRANSF: (transf_partial_fundef transf_partial f) = OK (External ef))
-    :
+        A B (transf_partial: A -> res B) f ef
+        (TRANSF: (transf_partial_fundef transf_partial f) = OK (External ef)):
       <<ISEXT: f = External ef>>.
-  Proof.
-    compute in TRANSF.
-    des_ifs.
-  Qed.
+  Proof. compute in TRANSF. des_ifs. Qed.
 
 End FUNCTIONS.
 End PLAYGROUND.
@@ -144,51 +109,29 @@ Section FUNCTIONS.
     end.
 
   Lemma transf_fundef_is_external
-        A B
-        (transf: A -> B)
-        f
-        (ISEXT: is_external_fd (transf_fundef transf f))
-    :
+        A B (transf: A -> B) f
+        (ISEXT: is_external_fd (transf_fundef transf f)):
       <<ISEXT: is_external_fd f>>.
-  Proof.
-    compute in ISEXT. des_ifs.
-  Qed.
+  Proof. compute in ISEXT. des_ifs. Qed.
 
   Lemma transf_fundef_external
-        A B
-        (transf: A -> B)
-        f ef
-        (EXT: (transf_fundef transf f) = External ef)
-    :
+        A B (transf: A -> B) f ef
+        (EXT: (transf_fundef transf f) = External ef):
       f = External ef.
-  Proof.
-    compute in EXT. des_ifs.
-  Qed.
+  Proof. compute in EXT. des_ifs. Qed.
 
   Lemma transf_partial_fundef_is_external_fd
-        A B
-        (transf_partial: A -> res B)
-        f tf
+        A B (transf_partial: A -> res B) f tf
         (TRANSF: (transf_partial_fundef transf_partial f) = OK tf)
-        (ISEXT: is_external_fd tf)
-    :
+        (ISEXT: is_external_fd tf):
       <<ISEXT: is_external_fd f>>.
-  Proof.
-    compute in ISEXT. des_ifs.
-    compute in TRANSF. des_ifs.
-  Qed.
+  Proof. compute in ISEXT. des_ifs. compute in TRANSF. des_ifs. Qed.
 
   Lemma transf_partial_fundef_external
-        A B
-        (transf_partial: A -> res B)
-        f ef
-        (TRANSF: (transf_partial_fundef transf_partial f) = OK (External ef))
-    :
+        A B (transf_partial: A -> res B) f ef
+        (TRANSF: (transf_partial_fundef transf_partial f) = OK (External ef)):
       <<ISEXT: f = External ef>>.
-  Proof.
-    compute in TRANSF.
-    des_ifs.
-  Qed.
+  Proof. compute in TRANSF. des_ifs. Qed.
 
   Definition is_dtm_ef (ef: external_function): bool :=
     match ef with
@@ -278,8 +221,7 @@ I think the same is true for prog_public thing too.
   Goal defs <1= defs_old.
   Proof.
     ii. exploit prog_defmap_dom; eauto. inv PR.
-    unfold defs in *. 
-    des_sumbool; ss.
+    unfold defs in *. des_sumbool; ss.
   Qed.
 
   Definition privs: ident -> bool :=
@@ -289,15 +231,12 @@ I think the same is true for prog_public thing too.
     <<DEFS: defs_old>> /1\ <<PRIVS: (fun id => ~ In id p.(prog_public))>>.
 
   Lemma privs_defs_old: <<LE: (privs_old <1= defs_old)>>.
-  Proof.
-    ii. inv PR. eauto.
-  Qed.
+  Proof. ii. inv PR. eauto. Qed.
 
 End PROGRAMS.
 
 Lemma defs_prog_defmap
-      F V (prog: AST.program F V)
-  :
+      F V (prog: AST.program F V):
     forall id, (exists gd, (prog_defmap prog) ! id = Some gd) <-> defs prog id.
 Proof.
   ii. etrans.
@@ -330,8 +269,7 @@ Hint Unfold defs_old privs_old internals'.
 
 Lemma internals_defs
       `{HasExternal F} V
-      (p: AST.program F V)
-  :
+      (p: AST.program F V):
     p.(internals) <1= p.(defs).
 Proof.
   u. ii. des_sumbool. eapply prog_defmap_spec. des_ifs; et.
@@ -349,11 +287,6 @@ Qed.
 (*   end *)
 (* . *)
 
-Lemma chunk_type_chunk
-      ty
-  :
-    (type_of_chunk (chunk_of_type ty)) = ty
-.
-Proof.
-  destruct ty; ss.
-Qed.
+Lemma chunk_type_chunk: forall ty,
+    (type_of_chunk (chunk_of_type ty)) = ty.
+Proof. destruct ty; ss. Qed.

@@ -28,13 +28,11 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Lemma ccc_id
       (ccc: Csyntax.program)
-      (WF: Sk.wf ccc.(module))
-  :
+      (WF: Sk.wf ccc.(module)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = ccc.(module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = ccc.(module)>>)
-.
+      /\ (<<TGT: mp.(ModPair.tgt) = ccc.(module)>>).
 Proof.
   eapply any_id; eauto.
 Qed.

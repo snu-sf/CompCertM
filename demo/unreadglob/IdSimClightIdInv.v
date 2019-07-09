@@ -18,10 +18,8 @@ Require Import Integers.
 Require Import LocationsC Conventions.
 Require Import Conventions1C.
 
-Require Import AsmregsC.
 Require Import MatchSimModSem.
-Require Import StoreArguments.
-Require Import AsmStepInj IntegersC.
+Require Import IntegersC.
 Require Import Coq.Logic.PropExtensionality.
 Require Import CtypingC.
 Require Import CopC.

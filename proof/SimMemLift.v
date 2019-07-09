@@ -25,9 +25,7 @@ Module SimMemLift.
   (* Context `{SM: SimMem.class}. *)
 
   Class class (SM: SimMem.class) :=
-  {
-    (* lepriv_PreOrder :> PreOrder SimMem.lepriv; *)
-    lepriv_Trans :> Transitive SimMem.lepriv;
+  { lepriv_Trans :> Transitive SimMem.lepriv;
 
     lift: SimMem.t -> SimMem.t;
     unlift: SimMem.t -> SimMem.t -> SimMem.t;
@@ -52,12 +50,9 @@ Module SimMemLift.
         (MWF: SimMem.wf sm_at)
         (MLIFT: SimMem.lepriv sm_at sm_arg)
         (MLE: SimMem.le sm_arg sm_ret)
-        (MWF: SimMem.wf sm_ret)
-      ,
-        SimMem.lepriv sm_ret (unlift sm_at sm_ret)
-    ;
-  }
-  .
+        (MWF: SimMem.wf sm_ret),
+        SimMem.lepriv sm_ret (unlift sm_at sm_ret);
+  }.
 
   Section PROPS.
 
@@ -72,22 +67,16 @@ Module SimMemLift.
         (MWF0: SimMem.wf sm0)
         (MWF1: SimMem.wf sm1)
         (MLE: SimMem.le sm0 sm1)
-        (MLIFT: SimMemLift.lift sm1 = sm_lift)
-    :
-      <<MLE: SimMem.lepriv sm0 sm_lift>>
-  .
+        (MLIFT: SimMemLift.lift sm1 = sm_lift):
+      <<MLE: SimMem.lepriv sm0 sm_lift>>.
   Proof.
-    subst.
-    hexploit (SimMemLift.lift_priv sm1); eauto. intro T.
-    r. etrans; et.
+    subst. hexploit (SimMemLift.lift_priv sm1); eauto. intro T. r. etrans; et.
   Qed.
 
   Lemma lift_args
         args_src args_tgt sm_arg0
-        (ARGS: SimMem.sim_args args_src args_tgt sm_arg0)
-    :
-      <<ARGS: SimMem.sim_args args_src args_tgt (SimMemLift.lift sm_arg0)>>
-  .
+        (ARGS: SimMem.sim_args args_src args_tgt sm_arg0):
+      <<ARGS: SimMem.sim_args args_src args_tgt (SimMemLift.lift sm_arg0)>>.
   Proof.
     inv ARGS.
     - econs; eauto.
@@ -120,6 +109,3 @@ Module SimMemLift.
   End PROPS.
 
 End SimMemLift.
-
-
-

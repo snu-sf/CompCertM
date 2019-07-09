@@ -9,7 +9,7 @@ Require Export Asmgenproof.
 Require Import SimModSem SimMemExt SimSymbId MemoryC ValuesC MemdataC LocationsC StoreArguments Conventions1C.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.
-Require Import JunkBlock.
+Require Import JunkBlock StoreArgumentsProps.
 Require SoundTop.
 
 Local Opaque Z.mul.
@@ -61,12 +61,10 @@ Record agree_eq (ms: Mach.regset) (sp: val) (rs: Asm.regset) (sg: signature): Pr
     }.
 
 Definition set_regset (rs0 rs1: Mach.regset) (sg: signature) (mr: mreg) : val :=
-  if Loc.notin_dec (R mr) (regs_of_rpairs (loc_arguments sg))
-  then rs1 mr else rs0 mr.
+  if Loc.notin_dec (R mr) (regs_of_rpairs (loc_arguments sg)) then rs1 mr else rs0 mr.
 
 Definition set_regset_undef (rs: Mach.regset) (sg: signature) (mr: mreg) : val :=
-  if Loc.notin_dec (R mr) (regs_of_rpairs (loc_arguments sg))
-  then Vundef else rs mr.
+  if Loc.notin_dec (R mr) (regs_of_rpairs (loc_arguments sg)) then Vundef else rs mr.
 
 Inductive match_init_data init_sp init_ra
           init_rs_src init_sg_src init_rs_tgt : Prop :=
@@ -83,9 +81,7 @@ Inductive stack_base (initial_parent_sp initial_parent_ra: val): list Mach.stack
 | stack_base_cons
     fr ls
     (TL: stack_base initial_parent_sp initial_parent_ra ls):
-    stack_base
-      initial_parent_sp initial_parent_ra
-      (fr::ls).
+    stack_base initial_parent_sp initial_parent_ra (fr::ls).
 
 Inductive match_states
           (sm_init: SimMem.t)
@@ -101,8 +97,7 @@ Inductive match_states
     (* (initial_parent_ra_junk1: tge.(Genv.find_funct) init_ra = None) *)
     (STACKWF: stack_base init_sp init_ra (get_stack st_src0.(MachC.st)))
     (INITDATA: match_init_data
-                 init_sp init_ra
-                 st_src0.(MachC.init_rs) st_src0.(init_sg) st_tgt0.(init_rs))
+                 init_sp init_ra st_src0.(MachC.init_rs) st_src0.(init_sg) st_tgt0.(init_rs))
     (MATCHST: Asmgenproof.match_states ge st_src0.(MachC.st) st_tgt0)
     (* (SPPTR: ValuesC.is_real_ptr (st_tgt0.(init_rs) RSP)) *)
     (MCOMPATSRC: st_src0.(MachC.st).(MachC.get_mem) = sm0.(SimMem.src))
@@ -111,9 +106,7 @@ Inductive match_states
 
 Lemma asm_step_dstep init_rs st0 st1 tr
       (STEP: Asm.step skenv_link tge st0 tr st1):
-    Simulation.DStep (modsem skenv_link tprog)
-                     (mkstate init_rs st0) tr
-                     (mkstate init_rs st1).
+    Simulation.DStep (modsem skenv_link tprog) (mkstate init_rs st0) tr (mkstate init_rs st1).
 Proof.
   econs.
   - eapply modsem_determinate; et.
@@ -122,18 +115,14 @@ Qed.
 
 Lemma asm_star_dstar init_rs st0 st1 tr
       (STEP: star Asm.step skenv_link tge st0 tr st1):
-    Simulation.DStar (modsem skenv_link tprog)
-                     (mkstate init_rs st0) tr
-                     (mkstate init_rs st1).
+    Simulation.DStar (modsem skenv_link tprog) (mkstate init_rs st0) tr (mkstate init_rs st1).
 Proof.
   induction STEP; econs; eauto. eapply asm_step_dstep; auto.
 Qed.
 
 Lemma asm_plus_dplus init_rs st0 st1 tr
       (STEP: plus Asm.step skenv_link tge st0 tr st1):
-    Simulation.DPlus (modsem skenv_link tprog)
-                     (mkstate init_rs st0) tr
-                     (mkstate init_rs st1).
+    Simulation.DPlus (modsem skenv_link tprog) (mkstate init_rs st0) tr (mkstate init_rs st1).
 Proof.
   inv STEP. econs; eauto.
   - eapply asm_step_dstep; eauto.
@@ -207,24 +196,16 @@ Proof.
         folder. ss; try unfold bind in *; des_ifs.
         symmetry. eapply transf_function_sig; eauto.
       }
-      econs; auto.
-      * eauto.
-      * ss.
-      * ss.
+      econs; eauto; ss.
       * econs; eauto; ss; eauto with congruence.
-      * ss.
       * ii. erewrite (agree_mregs_eq0 mr) in *; auto. unfold NW. apply NNPP. intro T.
         exploit PTRFREE; eauto.
         { instantiate (1:= preg_of mr). intro U. contradict T.
           unfold is_junk_value in U. unfold is_junk_value. des_ifs. des. split; ss.
           - erewrite Mem.valid_block_extends; eauto.
-          - erewrite Mem.valid_block_extends; eauto.
-            eapply assign_junk_block_extends; et.
+          - erewrite Mem.valid_block_extends; eauto. eapply assign_junk_block_extends; et.
         }
-        i. des.
-        -- rewrite Asm.to_preg_to_mreg in *. clarify.
-        -- destruct mr; clarify.
-        -- destruct mr; clarify.
+        i. des; try (by destruct mr; clarify). rewrite Asm.to_preg_to_mreg in *. clarify.
     + instantiate (1:= mk (assign_junk_blocks m_src n) (assign_junk_blocks m0 n)).
       econs; try eapply RADEF; ss; eauto.
       * econs; eauto.
@@ -257,10 +238,9 @@ Proof.
                        (<<ARG: In (R mr) (regs_of_rpairs (loc_arguments (Mach.fn_sig fd)))>>)>>) \/
                    (<<INPC: pr = PC>>) \/
                    (<<INRSP: pr = RSP>>)>>)).
-    { exploit StoreArguments.store_arguments_progress.
+    { exploit StoreArgumentsProps.store_arguments_progress.
       - instantiate (2:=typify_list vs_tgt (sig_args (Mach.fn_sig fd))).
-        eapply typify_has_type_list.
-        erewrite <- lessdef_list_length; eauto.
+        eapply typify_has_type_list. erewrite <- lessdef_list_length; eauto.
       - exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF.
         eapply WFPARAM in H0. eauto. ss. rewrite <- SIG. ss.
       - instantiate (1:= n). i. des.
@@ -280,10 +260,8 @@ Proof.
           { intros mr NIN. clear - NIN.
             eapply NNPP. intros X.
             eapply LocationsC.Loc_not_in_notin_R in X. des. contradiction. }
-          clear - NNIN PTR.
-          unfold set_regset_undef, to_pregset, to_mregset, Pregmap.set, to_preg, preg_of, to_mreg in *.
-          destruct pr; des_ifs; ss; eauto.
-          exfalso. apply PTR. ss.
+          clear - NNIN PTR. unfold set_regset_undef, to_pregset, to_mregset, Pregmap.set, to_preg, preg_of, to_mreg in *.
+          destruct pr; des_ifs; ss; eauto. exfalso. apply PTR. ss.
     }
     des. eexists. econs; eauto; swap 1 2.
     + folder. inv FPTR; ss. eauto.
@@ -302,12 +280,10 @@ Proof.
       inv MWF. rewrite <- mext_next. des; esplits; eauto; try xomega.
   - inv MATCH; ss. destruct st_src0, st_tgt0, sm0. ss. inv MATCHST; ss.
 
-  - ss. inv CALLSRC. inv MATCH. inv INITDATA. inv MATCHST. ss.
-    destruct st_tgt0. ss. clarify. des.
+  - ss. inv CALLSRC. inv MATCH. inv INITDATA. inv MATCHST. ss. destruct st_tgt0. ss. clarify. des.
     inv FPTR; ss. destruct (rs0 PC) eqn:PCEQ; ss. des_ifs.
 
-    exploit Asmgenproof0.extcall_arguments_match; eauto.
-    intros TGRARGS. des.
+    exploit Asmgenproof0.extcall_arguments_match; eauto. intros TGRARGS. des.
     exploit Mem.free_parallel_extends; eauto. intros TGTFREE. des. esplits; ss.
     + econs; eauto.
       * r in TRANSF. r in TRANSF.
@@ -333,8 +309,7 @@ Proof.
       * econs; eauto.
       * unfold loc_external_result, regset_after_external, Mach.regset_after_external.
         apply agree_set_other; auto. apply agree_set_pair; auto.
-        econstructor; ss; eauto.
-        intros. rewrite to_preg_to_mreg.
+        econstructor; ss; eauto. intros. rewrite to_preg_to_mreg.
         destruct (Conventions1.is_callee_save r0) eqn:T; eauto.
 
   - ss. inv FINALSRC. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
@@ -349,8 +324,7 @@ Proof.
           unfold Genv.find_funct_ptr, Genv.find_def in *. des_ifs.
           eapply Genv.genv_defs_range in Heq1. ss.
         }
-        inv ATPC; auto.
-        exfalso. auto.
+        inv ATPC; auto. exfalso. auto.
       * inv ATPC; auto. exfalso. auto.
       * unfold Genv.find_funct, Genv.find_funct_ptr. des_ifs.
         exfalso. exploit Genv.genv_defs_range; eauto. eapply initial_parent_ra_junk; ss.
@@ -391,8 +365,7 @@ Proof.
                              st_tgt0.(st).(get_mem)).
         econs; ss; eauto.
         { instantiate (1:=init_rs st_tgt0 RSP).
-          destruct st_src0, st_src1. clear - STEP STACKWF NOTDUMMY.
-          inv STEP; ss; clarify.
+          destruct st_src0, st_src1. clear - STEP STACKWF NOTDUMMY. inv STEP; ss; clarify.
           - econs. ss.
           - inv STACKWF; ss.
         }
@@ -416,8 +389,7 @@ Definition mp: ModPair.t := ModPair.mk (MachC.module prog return_address_offset)
 Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
-  - r. eapply Sk.match_program_eq; eauto.
-    ii. destruct f1; ss.
+  - r. eapply Sk.match_program_eq; eauto. ii. destruct f1; ss.
     + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto.
       unfold transf_function, transl_function, bind in *. des_ifs.
     + clarify. left. esplits; eauto.

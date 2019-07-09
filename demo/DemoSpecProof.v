@@ -192,7 +192,7 @@ Lemma E0_double:
 Proof. auto. Qed.
 Hint Resolve E0_double.
 
-Require Import StoreArguments.
+Require Import StoreArguments StoreArgumentsProps.
 
 Theorem correct
   :

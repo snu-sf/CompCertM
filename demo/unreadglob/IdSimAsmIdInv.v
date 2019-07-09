@@ -19,7 +19,7 @@ Require Import Conventions1C.
 
 Require Import AsmregsC.
 Require Import MatchSimModSem.
-Require Import StoreArguments.
+Require Import StoreArguments StoreArgumentsProps.
 Require Import AsmStepInj IntegersC.
 Require Import Coq.Logic.PropExtensionality.
 Require Import AsmExtra IdSimExtra IdSimAsmExtra IdSimInvExtra.
@@ -287,7 +287,7 @@ Proof.
       { inv MWF. eauto. }
       i. des. cinv (AGREE Asm.RSP); rewrite RSP in *; clarify.
 
-      exploit Mem_free_parallel'; eauto. i. des.
+      exploit SimMemInjC.Mem_free_parallel'; eauto. i. des.
       hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv P sm0 sm1); eauto.
       { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
         - ii. exploit INVRANGETGT; eauto. i. des. inv MWF. eapply Plt_Ple_trans; eauto.
@@ -442,7 +442,7 @@ Proof.
       dup MWF. rename MWF0 into MINVWF.
       destruct MWF as [MWF SATSRC SATTGT INVRANGESRC INVRANGETGT]. ss.
       cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl.
-      exploit Mem_free_parallel'; eauto.
+      exploit SimMemInjC.Mem_free_parallel'; eauto.
       { instantiate (3:=Ptrofs.zero). zsimpl. psimpl. eauto. }
       i. des.
       hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv P sm0 sm1); eauto.

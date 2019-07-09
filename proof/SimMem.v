@@ -23,8 +23,7 @@ Set Implicit Arguments.
 Module SimMem.
 
   Class class :=
-  {
-    t: Type;
+  { t: Type;
     src: t -> mem;
     tgt: t -> mem;
     wf: t -> Prop;
@@ -44,38 +43,25 @@ Module SimMem.
     lepriv_sim_val: forall mrel0 mrel1 (MLE: lepriv mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
     sim_val_list_spec: forall sm0, (List.Forall2 sm0.(sim_val) = sm0.(sim_val_list));
     sim_val_int: forall sm0 v_src v_tgt, sim_val sm0 v_src v_tgt -> forall i, v_src = Vint i -> v_tgt = Vint i;
-  }
-  .
+  }.
 
   Lemma le_sim_val
         `{SM: class}
         mrel0 mrel1
         (MWF: SimMem.wf mrel0)
-        (MLE: le mrel0 mrel1)
-    :
-      sim_val mrel0 <2= sim_val mrel1
-  .
-  Proof.
-    eapply lepriv_sim_val; et.
-    eapply pub_priv; et.
-  Qed.
+        (MLE: le mrel0 mrel1):
+      sim_val mrel0 <2= sim_val mrel1.
+  Proof. eapply lepriv_sim_val; et. eapply pub_priv; et. Qed.
 
   Lemma sim_val_list_length
         `{SM: class} (sm0: t)
         vs_src vs_tgt
-        (SIMVS: sm0.(sim_val_list) vs_src vs_tgt)
-    :
-      length vs_src = length vs_tgt
-  .
-  Proof.
-    rewrite <- sim_val_list_spec in SIMVS.
-    ginduction SIMVS; ii; ss.
-    congruence.
-  Qed.
+        (SIMVS: sm0.(sim_val_list) vs_src vs_tgt):
+      length vs_src = length vs_tgt.
+  Proof. rewrite <- sim_val_list_spec in SIMVS. ginduction SIMVS; ii; ss. congruence. Qed.
 
   Definition sim_block `{SM: class} (sm0: t) (blk_src blk_tgt: block): Prop :=
-    sm0.(sim_val) (Vptr blk_src Ptrofs.zero) (Vptr blk_tgt Ptrofs.zero)
-  .
+    sm0.(sim_val) (Vptr blk_src Ptrofs.zero) (Vptr blk_tgt Ptrofs.zero).
 
   (* Definition lifted `{SM: class} (sm0 sm1: t): Prop := SimMem.lift sm0 = sm1 /\ SimMem.wf sm0. *)
 
@@ -102,8 +88,7 @@ Module SimMem.
       (ASMTGT: args_tgt = Args.Asmstyle rs_tgt m_tgt)
       (RS: sm0.(sim_regset) rs_src rs_tgt)
       (MEMSRC: m_src = sm0.(SimMem.src))
-      (MEMTGT: m_tgt = sm0.(SimMem.tgt))
-  .
+      (MEMTGT: m_tgt = sm0.(SimMem.tgt)).
 
   Inductive sim_retv `{SM: class} (retv_src retv_tgt: Retv.t) (sm0: SimMem.t): Prop :=
   | sim_retv_Cstyle
@@ -119,8 +104,7 @@ Module SimMem.
       (ASMTGT: retv_tgt = Retv.Asmstyle rs_tgt m_tgt)
       (RS: sm0.(sim_regset) rs_src rs_tgt)
       (MEMSRC: m_src = sm0.(SimMem.src))
-      (MEMTGT: m_tgt = sm0.(SimMem.tgt))
-  .
+      (MEMTGT: m_tgt = sm0.(SimMem.tgt)).
 
   Lemma sim_args_sim_fptr `{SM: class}: forall sm0 args_src args_tgt (ARGS: sim_args args_src args_tgt sm0),
       sm0.(sim_val) args_src.(Args.get_fptr) args_tgt.(Args.get_fptr).
@@ -130,15 +114,11 @@ Module SimMem.
         `{SM: class}
         sm0 sm1 vs_src vs_tgt
         (LEPRIV: SimMem.lepriv sm0 sm1)
-        (SIMVS: SimMem.sim_val_list sm0 vs_src vs_tgt)
-    :
-      <<SIMVS: SimMem.sim_val_list sm1 vs_src vs_tgt>>
-  .
+        (SIMVS: SimMem.sim_val_list sm0 vs_src vs_tgt):
+      <<SIMVS: SimMem.sim_val_list sm1 vs_src vs_tgt>>.
   Proof.
-    rewrite <- sim_val_list_spec in *.
-    induction SIMVS; ii; ss.
-    econs; eauto.
-    eapply lepriv_sim_val; et.
+    rewrite <- sim_val_list_spec in *. induction SIMVS; ii; ss.
+    econs; eauto. eapply lepriv_sim_val; et.
   Qed.
 
 End SimMem.
@@ -146,5 +126,3 @@ End SimMem.
 Hint Unfold SimMem.future.
 
 Hint Resolve SimMem.pub_priv.
-
-

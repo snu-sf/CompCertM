@@ -39,8 +39,6 @@ Inductive match_states (sm_init: SimMem.t)
     (MATCHST: SimplExprproof.match_states tge st_src0 st_tgt0)
     (MWF: SimMem.wf sm0)
     (MEASURE: measure st_src0 = idx).
-    (* (MCOMPATSRC: st_src0.(CsemC.get_mem) = sm0.(SimMem.src)) *)
-    (* (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt)) *)
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk))
@@ -69,16 +67,16 @@ Proof.
       * inv TYP. rpapply match_callstates; eauto.
         { econs; eauto. }
         inv SAFESRC. folder. inv TYP.
-        exploit (Genv.find_funct_match_genv SIMGE); eauto. intro TFPTR; des. rewrite <- FPTR.
+        exploit (Genv.find_funct_match_genv SIMGE); eauto. intro TFPTR; des. ss.
         f_equal; ss. inv TFPTR0; ss. inv H0; ss. unfold Csyntax.type_of_function. unfold type_of_function.
         f_equal; try congruence.
+    + des. inv SAFESRC. ss.
   - (* init progress *)
     des. inv SAFESRC. inv SIMARGS; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
     inv TYP. inv H0. esplits; eauto. econs; eauto.
-    + folder. rewrite <- FPTR. eauto.
-    + rewrite <- VALS. inv H3. econs; eauto with congruence.
+    folder. inv H3. ss. econs; try rewrite H5; eauto.
   - (* call wf *)
     inv MATCH; ss.
   - (* call fsim *)
@@ -94,13 +92,14 @@ Proof.
       * ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
-    inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
-    + econs; eauto. rewrite RETV in *. eauto.
-    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
+    inv AFTERSRC. inv SIMRET; cycle 1.
+    { inv CSTYLE. }
+    ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv MATCH; ss. inv MATCHST; ss. esplits; eauto; econs; ss; eauto.
+    clarify. econs; eauto.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. inv H3. destruct sm0; ss. clarify.
-    eexists (SimMemId.mk _ _). esplits; ss; eauto.
+    eexists (SimMemId.mk _ _). esplits; ss; eauto. econs; ss; eauto.
   - left; i. esplits; eauto.
     { apply modsem_strongly_receptive; et. }
     inv MATCH. ii. hexploit (@simulation prog skenv_link skenv_link); eauto.

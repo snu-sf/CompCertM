@@ -249,7 +249,7 @@ Section MATCHSIMFORWARD.
         (* determ_tac ModSem.at_external_dtm. clear_tac. *)
         eexists _, (SimMemLift.lift sm_arg).
         esplits; eauto.
-        { eapply lift_args; eauto. }
+        { eapply SimMemLift.lift_args; eauto. }
         { eapply SimMemLift.lift_wf; eauto. }
         { etrans; eauto. eapply SimMemLift.lift_priv; eauto. }
         i.
@@ -323,7 +323,7 @@ Section MATCHSIMFORWARD.
     folder.
     exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.
     Print SimSymb.sim_skenv.
-    inv FSIM. exploit FUNCFSIM; eauto. { apply SIMARGS. } i; des.
+    inv FSIM. exploit FUNCFSIM; eauto. { apply SimMem.sim_args_sim_fptr; et. } i; des.
     split; ii.
     - exploit INITBSIM; eauto. i; des.
       esplits; eauto.

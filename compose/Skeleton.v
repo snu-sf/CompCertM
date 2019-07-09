@@ -219,6 +219,15 @@ Module Sk.
 
   Definition empty: t := (mkprogram [] [] 1%positive).
 
+  Definition get_csig (skdef: (AST.fundef signature)): option signature :=
+    match skdef with
+    | Internal sg0 =>
+      if sg0.(sig_cstyle) then Some sg0 else None
+    | External ef =>
+      if ef.(ef_sig).(sig_cstyle) then Some ef.(ef_sig) else None
+    end
+  .
+
   Definition get_sig (skdef: (AST.fundef signature)): signature :=
     match skdef with
     | Internal sg0 => sg0
@@ -256,13 +265,6 @@ Module SkEnv.
   (* TODO: Fix properly to cope with Ctypes.fundef *)
   Definition t := Genv.t (AST.fundef signature) unit.
 
-  Definition get_sig (skdef: (AST.fundef signature)): signature :=
-    match skdef with
-    | Internal sg0 => sg0
-    | External ef => ef.(ef_sig)
-    end
-  .
-
   Inductive wf (skenv: t): Prop :=
   | wf_intro
     (SYMBDEF: forall
@@ -279,7 +281,7 @@ Module SkEnv.
         blk skd
         (DEF: skenv.(Genv.find_def) blk = Some (Gfun skd))
       ,
-        <<SIZE: 4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned>>)
+        <<SIZE: 4 * size_arguments (Sk.get_sig skd) <= Ptrofs.max_unsigned>>)
   .
 
   Inductive wf_mem (skenv: t) (sk: Sk.t) (m0: mem): Prop :=

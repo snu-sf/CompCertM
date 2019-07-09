@@ -281,9 +281,9 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           sm_arg
           args_src args_tgt
           sg_init_src sg_init_tgt
-          (FINDFSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) args_src.(Args.fptr) =
+          (FINDFSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) args_src.(Args.get_fptr) =
                      Some (Internal sg_init_src))
-          (FINDFTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.fptr) =
+          (FINDFTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.get_fptr) =
                      Some (Internal sg_init_tgt))
           (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)

@@ -142,25 +142,24 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
     (* destruct sm_arg; ss. clarify. *)
-    destruct args_src, args_tgt; ss.
-    inv SIMARGS; ss. clarify. inv INITTGT. ss.
+    inv INITTGT. des. inv SAFESRC. destruct args_src, args_tgt; ss.
+    inv SIMARGS; ss. clarify.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     des. eexists.
 
     exploit SimMemInjC.inject_junk_blocks_tgt; et. intro P; des.
-    exists sm1. esplits; eauto.
-    + econs; eauto; ss; cycle 1.
-      * inv TYP. inv SAFESRC. folder. ss. inv TYP.
-        exploit find_funct_inject; et. i; des. clarify.
-        rpapply match_states_call; ss; eauto.
-        { econs; ss; et.
-          - inv SIMSKENV. ss. eapply SimSymbDrop.sim_skenv_symbols_inject; et.
-          - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite NBSRC. xomega.
-          - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite assign_junk_blocks_nextblock. rewrite NBTGT. des_ifs; xomega.
-        }
-        { eapply inject_list_typify_list; eauto. }
-        { eapply MWF0. }
+    exists sm1. esplits; eauto; econs; eauto; ss.
+    + inv TYP. folder. ss. inv TYP0.
+      exploit find_funct_inject; et. i; des. clarify.
+      rpapply match_states_call; ss; eauto.
+      { econs; ss; et.
+        - inv SIMSKENV. ss. eapply SimSymbDrop.sim_skenv_symbols_inject; et.
+        - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite NBSRC. xomega.
+        - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite assign_junk_blocks_nextblock. rewrite NBTGT. des_ifs; xomega.
+      }
+      { eapply inject_list_typify_list; eauto. }
+      { eapply MWF0. }
   - des. inv SAFESRC. inv SIMARGS; ss.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
@@ -190,12 +189,12 @@ Proof.
     des. clear_tac.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
-    inv AFTERSRC. inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret).
+    inv AFTERSRC. inv SIMRET; ss. exists (SimMemInj.unlift' sm_arg sm_ret).
     inv MATCH; ss. inv MATCHST; ss.
     inv HISTORY. ss. clear_tac.
     esplits; try refl; eauto.
     + econs; eauto.
-    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify.
+    + econs; ss; eauto.
       inv MLE0; ss. inv MCOMPAT. clear_tac.
       rpapply match_states_return; ss; eauto; ss.
       { eapply match_stacks_bound; et; cycle 1.
@@ -209,7 +208,7 @@ Proof.
 
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. inv STACKS. inv MCOMPAT; ss.
-    eexists sm0. esplits; ss; eauto. refl.
+    eexists sm0. esplits; ss; eauto; try refl. econs; eauto.
   - (* step *)
     left; i.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).

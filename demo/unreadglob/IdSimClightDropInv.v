@@ -88,6 +88,7 @@ Proof.
     + econs; eauto. econs; eauto.
       { inv TYP. inv TYP0. eapply inject_list_typify_list; eauto. }
       econs.
+    + ss.
 
   - i. ss. exploit SimSymbDropInv_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
@@ -95,6 +96,7 @@ Proof.
     + eapply match_globals_find_funct; eauto.
     + inv TYP. econs; eauto.
       erewrite <- inject_list_length; eauto.
+    + ss.
 
   - i. ss. inv MATCH; eauto.
 
@@ -115,8 +117,8 @@ Proof.
     exists (SimMemInjInvC.unlift' sm_arg sm_ret).
     inv AFTERSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
-    + econs; eauto.
-    + inv SIMRET. econs; eauto. econs; eauto.
+    + econs; eauto. inv SIMRET; ss.
+    + inv SIMRET; ss. econs; eauto. econs; eauto.
       { eapply inject_typify; et. }
       ss. eapply match_cont_incr; try eassumption.
       inv MLE. inv MLE1. inv MLE0. inv MLE. etrans; eauto.

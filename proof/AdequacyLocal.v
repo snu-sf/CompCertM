@@ -346,11 +346,12 @@ Section SIMGE.
         { instantiate (2:= Empty_set). ii; ss. }
         ii. inv SIMSKENV0. ss.
         split; cycle 1.
-        { ii; des. esplits; eauto. econs; eauto. }
+        { ii; des. inv SAFESRC. inv SIMARGS; ss. esplits; eauto. econs; eauto. }
         ii. sguard in SAFESRC. des. inv INITTGT.
+        inv SIMARGS; ss. clarify.
         esplits; eauto.
         { refl. }
-        { econs. }
+        { econs; eauto. }
         pfold.
         econs; eauto.
         i.
@@ -358,11 +359,14 @@ Section SIMGE.
         { eapply System.modsem_receptive; et. }
         { u. esplits; ii; des; ss; eauto. inv H0. }
         ii. inv STEPSRC.
-        exploit SimSymb.system_axiom; eauto.
+        exploit SimSymb.system_axiom; eauto; swap 1 3; swap 2 4.
+        { econs; eauto. }
+        { ss. instantiate (1:= Retv.mk _ _). ss. eauto. }
+        { ss. }
+        { ss. }
         (* { eapply external_call_symbols_preserved; eauto. *)
         (*   symmetry. apply System.skenv_globlaenv_equiv. } *)
         i; des.
-        inv SIMARGS.
         assert(SIMGE: SimSymb.sim_skenv sm_arg ss_link (System.globalenv (Sk.load_skenv sk_link_src))
                                         (System.globalenv (Sk.load_skenv sk_link_tgt))).
         { eapply SimSymb.mfuture_preserves_sim_skenv; eauto. }
@@ -385,7 +389,7 @@ Section SIMGE.
         { econs; eauto. }
         { econs; eauto. }
         (* { clear - RETV. eapply SimMem.sim_retv_unlift; et. } *)
-        { eauto. }
+        { inv RETV; ss. unfold Retv.mk in *. clarify. econs; ss; eauto. }
     }
     des.
     rewrite <- SYSSRC. rewrite <- SYSTGT.
@@ -795,7 +799,7 @@ Section ADQSTEP.
         specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
         - inv SAFESRC.
         - des_ifs. right. inv SAFESRC.
-          exploit find_fptr_owner_fsim; eauto. { apply SIMARGS. } i; des. clarify.
+          exploit find_fptr_owner_fsim; eauto. { eapply SimMem.sim_args_sim_fptr; eauto. } i; des. clarify.
           inv SIMMS.
           inv MSFIND. inv FINDTGT.
           exploit SIM; eauto. i; des.
@@ -811,7 +815,7 @@ Section ADQSTEP.
       inv SAFESRC.
       ss. des_ifs.
       bar.
-      exploit find_fptr_owner_fsim; eauto. { apply SIMARGS. } i; des. clarify.
+      exploit find_fptr_owner_fsim; eauto. { eapply SimMem.sim_args_sim_fptr; eauto. } i; des. clarify.
       exploit find_fptr_owner_determ; ss; eauto.
       { rewrite Heq. apply FINDTGT. }
       { rewrite Heq. apply MSFIND. }
@@ -1014,7 +1018,7 @@ Section ADQSTEP.
         inv STACK.
         econs; ss; eauto.
         - econs; ss; eauto.
-          inv SIMRETV.
+          inv SIMRETV; ss.
           eapply SimMem.sim_val_int; et.
         - i. inv FINAL0; inv FINAL1; ss.
           exploit ModSem.final_frame_dtm; [apply FINAL|apply FINAL0|..]. i; clarify.

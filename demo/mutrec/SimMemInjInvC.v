@@ -760,8 +760,7 @@ Section SIMSYMBINV.
   Qed.
   Next Obligation.
     dup SIMSKENV. inv SIMSKENV. inv SIMSKENV1.
-    inv ARGS. dup MWF. inv MWF. inv WF.
-    ss. rewrite MEMSRC in *. rewrite MEMTGT in *.
+    inv ARGS; ss. dup MWF. inv MWF. inv WF.
     exploit ec_mem_inject; eauto.
     - eapply external_call_spec.
     - eapply skenv_inject_symbols_inject; eauto.
@@ -771,7 +770,7 @@ Section SIMSYMBINV.
       + ii. eapply ec_max_perm; eauto. eapply external_call_spec.
       + i. des. esplits; eauto.
         * instantiate (1:=Retv.mk vres' m2'). ss.
-        * ss.
+        * destruct retv_src; ss. econs; ss.
   Qed.
 
 End SIMSYMBINV.

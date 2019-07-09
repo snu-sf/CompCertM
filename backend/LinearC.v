@@ -92,13 +92,14 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg ls vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_csig skd = Some sg)
       (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg)):
-      at_external (Callstate stack fptr_arg sg ls m0) (Args.mk fptr_arg vs_arg m0).
+      at_external (Callstate stack fptr_arg sg ls m0) (Args.Cstyle fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd ls_init sg tvs n m0
+      (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYP: typecheck args.(Args.vs) sg tvs)
@@ -124,6 +125,7 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       stack fptr_arg sg_arg ls_arg m_arg retv ls_after
+      (CSTYLE: Retv.is_cstyle retv)
       (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg)
                                           (typify retv.(Retv.v) sg_arg.(proj_sig_res))
                                           (undef_caller_save_regs ls_arg)):

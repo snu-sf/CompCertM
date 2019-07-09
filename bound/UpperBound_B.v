@@ -104,6 +104,11 @@ c0 + empty
       external_call ef skenv_link vargs m t vres m' ->
       wt_retval vres res.
 
+  Hypothesis CSTYLE_EXTERN:
+    forall id ef tyargs ty cc,
+      In (id, (Gfun (Ctypes.External ef tyargs ty cc))) prog.(prog_defs) ->
+      ef.(ef_sig).(sig_cstyle).
+
   Definition local_genv (p : Csyntax.program) :=
     (skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function)).(SkEnv.revive) p.
 
@@ -118,10 +123,7 @@ c0 + empty
       (STATE: st = (Csem.Callstate fptr tyf vargs k m))
       (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd
-                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd)
-                   (* /\ (SkEnv.get_sig skd = sg_arg *)
-                   (*    -> tyf = Tfunction targs tres cconv *)
-                   (*    -> signature_of_type targs tres cconv = sg_arg)) *)
+                        /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
       (FPTR: args.(Args.fptr) = fptr)
       (ARGS: args.(Args.vs) = vargs)
       (MEM: args.(Args.m) = m)
@@ -306,10 +308,6 @@ c0 + empty
   Notation "'bind_parameters'" := (bind_parameters skenv_link) (only parsing).
   Notation "'rred'" := (rred skenv_link) (only parsing).
   Notation "'estep'" := (estep skenv_link) (only parsing).
-  (* Let assign_loc := assign_loc skenv_link. *)
-  (* Let bind_parameters := bind_parameters skenv_link. *)
-  (* Let rred := rred skenv_link. *)
-  (* Let estep := estep skenv_link. *)
 
   Lemma assign_loc_determ
         g ty m b
@@ -819,8 +817,7 @@ c0 + empty
       + instantiate (1 := m1).
         clear -H0. induction H0; try (by econs).
         econs; eauto.
-      + (* clear - MININTERNAL SKEWF WTSK INIT_MEM m_init ge LINK_SK_TGT tprog H1. *)
-        induction H1; try (by econs).
+      + induction H1; try (by econs).
         econs; eauto.
         rewrite assign_loc_same in H2. eauto.
         rewrite bind_parameters_same in H3. eauto.
@@ -998,10 +995,7 @@ c0 + empty
           rewrite Heq0 in H1. inversion H1. auto. } subst b0.
         assert (Genv.find_funct_ptr (Genv.globalenv prog) b = Some (Internal f)
                 <-> Genv.find_funct (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)) (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero) = Some (AST.Internal signature_main)).
-        { (* exploit not_external_function_find_same; eauto; ss. *)
-          (* { instantiate (1:=(Internal f)); ss. } *)
-          (* { instantiate (1:=Vptr b Ptrofs.zero). ss. } *)
-          i. ss. des_ifs.
+        { i. ss. des_ifs.
           unfold Genv.symbol_address in *.
           des_ifs.
           unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
@@ -1022,9 +1016,9 @@ c0 + empty
         econs; i; ss; eauto. des_ifs.
         unfold Genv.symbol_address in *.
         des_ifs. erewrite <- H5. eauto.
-      + set (if_sig := (mksignature (typlist_of_typelist targs) (Some (typ_of_type tres)) cc)).
+      + set (if_sig := (mksignature (typlist_of_typelist targs) (Some (typ_of_type tres)) cc true)).
         econs; ss; auto.
-        instantiate (1:=if_sig). des_ifs.
+        instantiate (1:= if_sig). des_ifs.
   Qed.
 
   Lemma prog_precise
@@ -1076,9 +1070,11 @@ c0 + empty
         * inv FINALSRC.
         * econs; i.
           -- (* step *)
-            econs; i.
             exploit init_case; eauto. i. des.
             { inv CMOD. clarify. }
+            assert (CSTYLEARGS: exists fptr vs m, args = Args.Cstyle fptr vs m).
+            { inv SYSMOD; ss. destruct args; ss. eauto. }
+            des; subst args; econs; i.
             esplits.
             ++ left. split; cycle 1. {
           -- (* receptive *)
@@ -1099,25 +1095,25 @@ c0 + empty
                  --- (* determ *)
                    econs; i.
                    { inv H; inv H0.
-                     split. econs.
-                     i. ss.
+                     split. econs. i. ss.
                      dup LINK_SK_TGT.
                      unfold tge, skenv_link, link_sk, link_list in LINK_SK_TGT0, SYSMOD; inversion LINK_SK_TGT0.
                      rewrite -> H1 in *.
+                     unfold Args.get_fptr in *. des_ifs.
                      determ_tac find_fptr_owner_determ.
-                     generalize dependent st_init0.
                      subst ms0.
                      exploit find_fptr_owner_determ.
                      unfold tge, skenv_link, link_sk, link_list. rewrite <- H1 in *. eapply MSFIND.
                      unfold tge, skenv_link, link_sk, link_list. rewrite <- H1 in *. eapply MSFIND0.
                      i. subst ms.
                      rewrite H1. auto.
-                     inversion INIT0; inversion INIT. auto.
-                   }
+                     inversion INIT0; inversion INIT. rewrite CSTYLE in *. clarify.
+                     rewrite H5. rewrite H6. rewrite H7. eauto. }
                    { inv FINAL. }
                    { red. i. inv H. auto. }
                  --- eapply step_init; ss.
-                     { unfold tge, skenv_link, link_sk, link_list in *; inversion LINK_SK_TGT.
+                     { unfold Args.get_fptr. des_ifs.
+                       unfold tge, skenv_link, link_sk, link_list in *; inversion LINK_SK_TGT.
                        rewrite H0. eauto. }
                      { ss. }
                ** inv STEPSRC; inv H.
@@ -1138,11 +1134,7 @@ c0 + empty
                           destruct senv_equiv_ge_link. des. rewrite symb_preserved.
                           rewrite <- H2. auto. }
                         { i. subst.
-                          exploit H0; eauto. i. des.
-                          assert (retv = retv0).
-                          { destruct retv; destruct retv0; ss; subst. auto. }
-                          subst. auto. }
-                      }
+                          exploit H0; eauto. i. des. rewrite H1. rewrite H2. eauto. } }
                       { inv FINAL. }
                       { red. i. inv H; auto.
                         inv STEP.
@@ -1150,7 +1142,7 @@ c0 + empty
                     +++ (* step *)
                       instantiate (2 := tr).
                       eapply step_internal. ss.
-                      instantiate (1 := (System.Returnstate (Retv.mk vres m'))).
+                      instantiate (1 := (System.Returnstate vres m')).
                       econs; ss.
                       { instantiate (1 := ef).
                         unfold System.globalenv.
@@ -1185,10 +1177,9 @@ c0 + empty
                       eapply step_return.
                       { instantiate (1 := (Retv.mk vres m')). econs. }
                       ss.
-                      assert (after_external (Csem.Callstate (Args.fptr args) (Tfunction targs0 tres0 cc) (Args.vs args) k (Args.m args))
-                                             {| Retv.v := vres; Retv.m := m' |} (Returnstate vres k m')).
-                      { econs. ss.
-                        econs. ss.
+                      assert (after_external (Csem.Callstate fptr (Tfunction targs0 tres0 cc) vs k m)
+                                             (Retv.mk vres m') (Returnstate vres k m')).
+                      { econs. ss. econs. ss.
                         unfold Genv.find_funct in FPTR. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
                         exploit Genv.find_def_inversion; eauto. i. des. exploit WT_EXTERNAL. eauto.
                         exploit external_call_symbols_preserved. eapply senv_equiv_ge_link. eauto. i. eauto. i. eauto. }
@@ -1238,7 +1229,7 @@ c0 + empty
                         dup LINK_SK_TGT.
                         unfold tge, skenv_link, link_sk, link_list in LINK_SK_TGT0; inversion LINK_SK_TGT0.
                         rewrite -> H5 in *.
-                        dup LINK_SK_TGT.
+                        dup LINK_SK_TGT. unfold Args.get_fptr in *. destruct args; ss.
                         exploit find_fptr_owner_determ.
                         unfold tge. eauto.
                         eapply MSFIND. i.
@@ -1249,22 +1240,15 @@ c0 + empty
                         ss. inversion INIT0; inversion INIT. auto.
                         rewrite FINDF0 in FINDF1. inversion FINDF1. subst fd0.
                         rewrite TYPE0 in TYPE1.
-                        rewrite TYPE1 in *. auto.
-                        (* repeat f_equal. *)
-                        (* inversion TYP. inversion TYP0. congruence. *)
-                      }
+                        rewrite TYPE1 in *. auto. }
                       { inv FINAL. }
                       { red. i. inv H3. auto. }
-                    +++ ss.
-                        eapply step_init.
+                    +++ ss. eapply step_init.
                         { instantiate (1 := modsem skenv_link prog). ss.
                           unfold tge in MSFIND.
                           unfold tge, skenv_link, link_sk, link_list in *.
-                          des_ifs.
-                          inversion Heq. rewrite <- H4 in MSFIND.
-                          eauto.
-                        }
-                         ss. des_ifs.
+                          des_ifs. inversion Heq. rewrite <- H4 in MSFIND. unfold Args.get_fptr. des_ifs. }
+                        ss. des_ifs.
                         instantiate (1 := (Csem.Callstate (Vptr b Ptrofs.zero) (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
                         assert  (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero = (Vptr b Ptrofs.zero)).
                         { destruct match_ge_skenv_link. specialize (mge_symb (prog_main prog)).
@@ -1273,8 +1257,7 @@ c0 + empty
                           - unfold fundef in *. rewrite H3 in Heq. rewrite <- prog_sk_tgt in *; ss.
                             rewrite H0 in Heq. clarify.
                           - unfold fundef in *. rewrite H3 in Heq. rewrite <- prog_sk_tgt in *; ss.
-                            rewrite H0 in Heq. clarify. (* refact plz *)
-                        }
+                            rewrite H0 in Heq. clarify. }
                         assert (Genv.init_mem prog = Some m_init).
                         { eapply SRC_INIT_MEM. }
                         unfold Sk.load_mem in *. Eq. clarify.
@@ -1416,13 +1399,11 @@ c0 + empty
                   - assert (x = (Gfun (External ef targs tres cc))).
                     { unfold fundef in *. rewrite <- H0 in Heq. clarify. }
                     subst. ss. }
-                exploit Genv.find_funct_inversion; eauto. i; des.
-                inv WTPROG. eauto.
-              }
+                exploit Genv.find_funct_inversion; eauto. i; des. f_equal.
+                inv WTPROG. exploit CSTYLE_EXTERN; eauto. i. des_ifs. f_equal. eapply H3; eauto. }
               { inv WTST; ss. exploit WTKS; eauto. { ii. clarify. } esplits; ss; eauto. rr. des. des_ifs. }
             ++ (* internal *)
               exploit progress_step; eauto.
-              Unshelve.
   Qed.
 
   Lemma transf_xsim_properties

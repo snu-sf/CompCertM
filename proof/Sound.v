@@ -75,18 +75,34 @@ Module Sound.
     val: t -> Values.val -> Prop;
     vals: t -> list Values.val -> Prop := fun su vs => Forall su.(val) vs;
     mem: t -> mem -> Prop;
+
+    regset: t -> Asm.regset -> Prop := fun su rs => forall pr, su.(val) (rs pr);
     args: t -> Args.t -> Prop :=
       fun su args =>
-        (<<VAL: val su args.(Args.fptr)>>) /\
-        (<<VALS: vals su args.(Args.vs)>>) /\
-        (<<MEM: mem su args.(Args.m)>>) /\
-        (<<WF: wf su>>)
+        match args with
+        | Args.Cstyle fptr vs m =>
+          (<<VAL: val su fptr>>) /\
+          (<<VALS: vals su vs>>) /\
+          (<<MEM: mem su m>>) /\
+          (<<WF: wf su>>)
+        | Args.Asmstyle rs m =>
+          (<<REGSET: regset su rs>>) /\
+          (<<MEM: mem su m>>) /\
+          (<<WF: wf su>>)
+        end
     ;
     retv: t -> Retv.t -> Prop :=
       fun su retv =>
-        (<<VAL: val su retv.(Retv.v)>>) /\
-        (<<MEM: mem su retv.(Retv.m)>>) /\
-        (<<WF: wf su>>)
+        match retv with
+        | Retv.Cstyle v m =>
+          (<<VAL: val su v>>) /\
+          (<<MEM: mem su m>>) /\
+          (<<WF: wf su>>)
+        | Retv.Asmstyle rs m =>
+          (<<REGSET: regset su rs>>) /\
+          (<<MEM: mem su m>>) /\
+          (<<WF: wf su>>)
+        end
     ;
 
     hle_val: forall
@@ -176,6 +192,7 @@ Module Sound.
     system_axiom: forall
         ef skenv0 su0 args0
         tr v_ret m_ret
+        (CSTYLE: Args.is_cstyle args0)
         (ARGS: su0.(args) args0)
         (SKE: skenv su0 args0.(Args.m) skenv0)
         (EXT: (external_call ef) skenv0 args0.(Args.vs) args0.(Args.m) tr v_ret m_ret)

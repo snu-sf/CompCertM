@@ -80,7 +80,7 @@ Proof.
 
   - i. ss. exploit SimSymbIdInv_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
-    inv INITTGT. inv SAFESRC. inv SIMARGS. inv H. ss.
+    inv INITTGT. inv SAFESRC. inv SIMARGS; ss. inv H. ss.
     exploit match_globals_find_funct; eauto.
     i. clarify.
     esplits; eauto.
@@ -92,7 +92,7 @@ Proof.
 
   - i. ss. exploit SimSymbIdInv_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
-    des. inv SAFESRC. inv SIMARGS. esplits. econs; ss.
+    des. inv SAFESRC. inv SIMARGS; ss. esplits. econs; ss.
     + eapply match_globals_find_funct; eauto.
     + inv TYP. econs; eauto.
       erewrite <- inject_list_length; eauto.
@@ -117,8 +117,8 @@ Proof.
     exists (SimMemInjInvC.unlift' sm_arg sm_ret).
     inv AFTERSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
-    + econs; eauto.
-    + inv SIMRET. econs; eauto. econs; eauto.
+    + econs; eauto. inv SIMRET; ss.
+    + inv SIMRET; ss. econs; eauto. econs; eauto.
       { eapply inject_typify; et. }
       ss. eapply match_cont_incr; try eassumption.
       inv MLE. inv MLE1. inv MLE0. inv MLE. etrans; eauto.

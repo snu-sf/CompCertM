@@ -29,16 +29,14 @@ Section MODSEM.
       (m: mem)
   | Returnstate
       (s: int)
-      (m: mem)
-  .
+      (m: mem).
 
   Definition get_mem (st: state): mem :=
     match st with
     | Callstate _ m => m
     | Interstate _ m => m
     | Returnstate _ m => m
-    end
-  .
+    end.
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame1_intro
@@ -49,47 +47,36 @@ Section MODSEM.
       (* (DEF: Genv.find_funct skenv args.(Args.fptr) = *)
       (*         Some (AST.Internal (mksignature [AST.Tint] (Some AST.Tint) cc_default))) *)
       (VS: args.(Args.vs) = [Vint i])
-      (M: args.(Args.m) = m)
-    :
-      initial_frame args (Callstate i m)
-  .
+      (M: args.(Args.m) = m) :
+      initial_frame args (Callstate i m).
 
   Inductive at_external: state -> Args.t -> Prop :=
   | at_external_intro
       g_fptr i m
-      (FINDG: Genv.find_symbol skenv f_id = Some g_fptr)
-    :
-      at_external (Interstate i m) (Args.mk (Vptr g_fptr Ptrofs.zero) [Vint (Int.sub i (Int.repr 1))] m)
-  .
+      (FINDG: Genv.find_symbol skenv f_id = Some g_fptr) :
+      at_external (Interstate i m) (Args.mk (Vptr g_fptr Ptrofs.zero) [Vint (Int.sub i (Int.repr 1))] m).
 
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       i m retv
       i_after
       (INT: retv.(Retv.v) = Vint i_after)
-      (SUM: i_after = sum (Int.sub i Int.one))
-    :
-      after_external (Interstate i m) retv (Returnstate (sum i) retv.(Retv.m))
-  .
+      (SUM: i_after = sum (Int.sub i Int.one)) :
+      after_external (Interstate i m) retv (Returnstate (sum i) retv.(Retv.m)).
 
   Inductive step (se: Senv.t) (ge: SkEnv.t): state -> trace -> state -> Prop :=
   | step_sum
-      i m
-    :
+      i m :
       step se ge (Callstate i m) E0 (Returnstate (sum i) m)
   | step_call
       i m
-      (NZERO: i.(Int.intval) <> 0%Z)
-    :
-      step se ge (Callstate i m) E0 (Interstate i m)
-  .
+      (NZERO: i.(Int.intval) <> 0%Z) :
+      step se ge (Callstate i m) E0 (Interstate i m).
 
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_return
-      s m
-    :
-      final_frame (Returnstate s m) (Retv.mk (Vint s) m)
-  .
+      s m :
+      final_frame (Returnstate s m) (Retv.mk (Vint s) m).
 
   Program Definition modsem: ModSem.t :=
     {|
@@ -101,8 +88,7 @@ Section MODSEM.
       ModSem.globalenv := skenv;
       ModSem.skenv := skenv;
       ModSem.skenv_link := skenv_link;
-    |}
-  .
+    |}.
 
 End MODSEM.
 
@@ -114,16 +100,14 @@ Lemma find_symbol_find_funct_ptr
       ske
       (WF: SkEnv.wf skenv_link)
       (INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig MutrecB.prog))
-      (SKE: ske = (SkEnv.project skenv_link (Sk.of_program fn_sig MutrecB.prog)))
-  :
+      (SKE: ske = (SkEnv.project skenv_link (Sk.of_program fn_sig MutrecB.prog))) :
     (<<SYMB: Genv.find_symbol ske g_id = Some blk>>) <->
-    (<<FINDF: exists if_sig, Genv.find_funct_ptr ske blk = Some (AST.Internal if_sig)>>)
-.
+    (<<FINDF: exists if_sig, Genv.find_funct_ptr ske blk = Some (AST.Internal if_sig)>>).
 Proof.
   clarify.
   hexploit (SkEnv.project_impl_spec INCL); eauto. intro PROJ.
   exploit SkEnv.project_spec_preserves_wf; eauto. intro WFSMALL.
-  inv INCL. specialize (DEFS g_id (Gfun(AST.Internal fg_sig))). exploit DEFS; eauto. i; des.
+  inv INCL. specialize (DEFS g_id). ss. exploit DEFS; eauto. i; des.
   inv MATCH. inv H0.
   inv PROJ. exploit (SYMBKEEP g_id); eauto. intro T; des. rewrite T in *.
   exploit DEFKEEP; eauto.
@@ -136,11 +120,8 @@ Proof.
   - unfold Genv.find_funct_ptr in *. des_ifs.
     clear_tac.
     assert(blk = blk0).
-    {
-      clear - DEFSMALL Heq.
+    { clear - DEFSMALL Heq.
       uge. ss. rewrite MapsC.PTree_filter_map_spec in *. uo. des_ifs.
       apply_all_once in_prog_defmap. ss. unfold update_snd in *. ss. des; clarify.
-      apply_all_once Genv.invert_find_symbol. clarify.
-    }
-    clarify.
+      apply_all_once Genv.invert_find_symbol. clarify. } clarify.
 Qed.

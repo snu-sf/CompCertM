@@ -49,7 +49,6 @@ Definition get_mem (st: state): mem :=
   | Returnstate _ _ m0 => m0
   end.
 
-
 Section MODSEM.
 
   Variable rao: function -> code -> ptrofs -> Prop.
@@ -72,7 +71,7 @@ Section MODSEM.
   | at_external_intro
       stack rs m0 m1 fptr sg vs blk ofs init_rs init_sg
       (EXTERNAL: Genv.find_funct ge fptr = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
       (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
       (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (RSP: (parent_sp stack) = Vptr blk ofs)
@@ -84,6 +83,7 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t) : state -> Prop :=
   | initial_frame_intro
       fd m0 rs sg ra targs n m1
+      (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (RAPTR: Val.has_type ra Tptr)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
@@ -112,7 +112,8 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       init_rs init_sg stack fptr ls0 m0 ls1 m1 retv sg blk ofs
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ SkEnv.get_sig skd = sg)
+      (CSTYLE: Retv.is_cstyle retv)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
       (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs)
       (MEMWF: Ple (Senv.nextblock skenv_link) retv.(Retv.m).(Mem.nextblock))
@@ -180,7 +181,7 @@ Section MODSEM.
   Next Obligation.
     inv STEP; clarify. destruct st1; ss. destruct st0; ss. clarify.
   Qed.
-    
+
   Lemma modsem_receptive: forall st, receptive_at modsem st.
   Proof.
     econs; eauto.
@@ -232,4 +233,3 @@ End PROPS.
 
 Program Definition module (p: program) (rao: function -> code -> ptrofs -> Prop): Mod.t :=
   {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem rao; |}.
-

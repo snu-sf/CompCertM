@@ -51,13 +51,14 @@ Section MODSEM.
       fptr_arg vs_arg targs tres cconv k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd)
+                        /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
       (CALL: is_call_cont_strong k0):
       at_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k0 m0) (Args.mk fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd tyf
+      (CSTYLE: Args.is_cstyle args)
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
       (TYP: typecheck args.(Args.vs) (type_of_params (fn_params fd))):
@@ -71,6 +72,7 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       fptr_arg vs_arg m_arg k retv tv targs tres cconv
+      (CSTYLE: Retv.is_cstyle retv)
       (* tyf *)
       (TYP: typify_c retv.(Retv.v) tres tv):
       after_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
@@ -85,9 +87,9 @@ Section MODSEM.
        ModSem.after_external := after_external;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv_link := skenv_link;
     |}.
-  
+
   Lemma modsem_strongly_receptive: forall st, strongly_receptive_at modsem st.
   Proof.
     i. econs; ss; i.
@@ -257,13 +259,12 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
-    inv SIMARGS. ss. subst *. destruct args_src, args_tgt; ss. subst *. inv INITTGT.
+    inv INITTGT. inv SIMARGS; ss. subst *.
     eexists. eexists (SimMemId.mk _ _). esplits; eauto; cycle 1.
     + econs; ss; eauto.
     + econs; eauto; ss.
   - (* init progress *)
-    des. inv SAFESRC. inv SIMARGS; ss.
-    destruct args_src, args_tgt; ss. subst *. inv TYP.
+    des. inv SAFESRC. inv SIMARGS; ss. subst *. inv TYP.
     esplits; eauto. econs; eauto. ss.
   - (* call wf *)
     inv MATCH; ss.
@@ -271,14 +272,15 @@ Proof.
     inv MATCH; ss. destruct sm0; ss. clarify. inv CALLSRC. ss. des; ss. clarify.
     folder. eexists _, (SimMemId.mk _ _). esplits; ss; eauto.
     + econs; eauto.
+    + econs; ss; eauto.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
-    inv MATCH; ss. des; ss. clarify. destruct retv_src, retv_tgt; ss. clarify. esplits; eauto.
+    inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv MATCH; ss. des; ss. clarify. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto.
   - (* final fsim *)
     inv MATCH. inv FINALSRC. ss. des; ss. clarify.
-    eexists (SimMemId.mk _ _). esplits; ss; eauto.
+    eexists (SimMemId.mk _ _). esplits; ss; eauto. econs; ss; eauto.
   - (* step *)
     right; i. inv MATCH; ss. splits.
     { ii. exploit progress; eauto.
@@ -322,4 +324,3 @@ Proof.
 Qed.
 
 End SIMMOD.
-

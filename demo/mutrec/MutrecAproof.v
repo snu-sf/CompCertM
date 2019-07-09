@@ -184,7 +184,7 @@ Lemma g_blk_exists
                   g_blk = None>>)
       /\
       (<<FINDG: exists skd, Genv.find_funct_ptr skenv_link g_blk = Some skd /\
-                            signature_of_type (Tcons tint Tnil) tint cc_default = SkEnv.get_sig skd>>)
+                            Some (signature_of_type (Tcons tint Tnil) tint cc_default) = Sk.get_csig skd>>)
 .
 Proof.
   exploit (prog_defmap_norepet prog g_id); eauto.
@@ -503,7 +503,7 @@ Proof.
             rewrite Ptrofs.add_zero_l. ss. }
           { refl. }
           { econs; eauto. }
-          i. inv AFTERSRC. destruct retv_src, retv_tgt; ss. clarify. inv SIMRETV; ss; clarify.
+          i. inv AFTERSRC. inv SIMRETV; ss; clarify.
 
           hexploit Mem.valid_access_store.
           { instantiate (4:=sm_ret.(SimMemInjInv.minj).(SimMemInj.tgt)).
@@ -797,7 +797,7 @@ Proof.
       inv INITTGT. inv TYP. ss.
       assert (FD: fd = func_f).
       { destruct args_src, args_tgt; ss. clarify.
-        inv SIMARGS. ss. clarify. inv VALS. inv H1. inv H3. inv FPTR. ss.
+        inv SIMARGS; ss. clarify. inv VALS. inv H1. inv H3. inv FPTR. ss.
         des_ifs.
         inv SIMSKENV. ss. inv SIMSKE. ss. inv INJECT. ss.
         exploit IMAGE; eauto.
@@ -816,11 +816,10 @@ Proof.
         rewrite H in *. clarify.
         destruct ((prog_defmap prog) ! f_id) eqn:DMAP; ss. clarify. } clarify.
 
-      inv SIMARGS. ss. rewrite VS in *. inv VALS.
-      inv H2. inv H3. rewrite <- H1 in *.
+      inv SIMARGS; ss. rewrite VS in *. inv VALS.
+      inv H3. inv H1.
       unfold typify_list, zip, typify. ss. des_ifs; ss.
 
-      rewrite MEMSRC in *. rewrite MEMTGT in *.
       eapply match_states_lxsim; ss.
       * inv SIMSKENV; eauto.
       * econs; eauto.
@@ -841,8 +840,7 @@ Proof.
     esplits; eauto. econs; eauto.
     + instantiate (1:= func_f).
       ss.
-      destruct args_src, args_tgt; ss. clarify.
-      inv VALS. inv H1. inv H3. inv FPTR0. ss.
+      inv VALS; ss. inv H1. inv H0. inv FPTR0. ss.
       des_ifs.
       inv SIMSKENV. ss. inv SIMSKE. ss. inv INJECT. ss.
       exploit IMAGE; eauto.
@@ -855,7 +853,7 @@ Proof.
       do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
       des_ifs.
       exploit Genv.find_invert_symbol. eauto. i.
-      rewrite H in *. clarify.
+      rewrite H0 in *. clarify.
     + econs; ss. erewrite <- inject_list_length; eauto.
       rewrite VS. auto.
 Qed.

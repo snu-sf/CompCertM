@@ -23,12 +23,13 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg_arg vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg):
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_csig skd = Some sg_arg /\ sg_arg.(sig_cstyle)):
       at_external (Callstate stack fptr_arg sg_arg vs_arg m0) (Args.mk fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd tvs
+      (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
       (LEN: args.(Args.vs).(length) = fd.(fn_sig).(sig_args).(length)):
@@ -37,6 +38,7 @@ Section MODSEM.
   Inductive initial_frame2 (args: Args.t): state -> Prop :=
   | initial_frame2_intro
       fd tvs n m0
+      (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
       (LEN: args.(Args.vs).(length) = fd.(fn_sig).(sig_args).(length))
@@ -51,6 +53,7 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       stack fptr_arg sg_arg vs_arg m_arg retv tv
+      (CSTYLE: Retv.is_cstyle retv)
       (TYP: typify retv.(Retv.v) sg_arg.(proj_sig_res) = tv):
       after_external (Callstate stack fptr_arg sg_arg vs_arg m_arg)
                      retv
@@ -63,8 +66,8 @@ Section MODSEM.
        ModSem.final_frame := final_frame;
        ModSem.after_external := after_external;
        ModSem.globalenv := ge;
-       ModSem.skenv := skenv; 
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
     |}.
 
   Program Definition modsem2: ModSem.t :=
@@ -74,8 +77,8 @@ Section MODSEM.
        ModSem.final_frame := final_frame;
        ModSem.after_external := after_external;
        ModSem.globalenv := ge;
-       ModSem.skenv := skenv; 
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
     |}.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.

@@ -82,7 +82,7 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 
 | step_init
     args frs ms
-    (MSFIND: ge.(Ge.find_fptr_owner) args.(Args.fptr) ms)
+    (MSFIND: ge.(Ge.find_fptr_owner) args.(Args.get_fptr) ms)
     st_init
     (INIT: ms.(ModSem.initial_frame) args st_init)
   :
@@ -126,7 +126,7 @@ Section SEMANTICS.
     skenv.(Genv_map_defs) (fun _ gd =>
                              Some
                                match gd with
-                               | Gfun (External ef) => (Gfun (Internal ef.(ef_sig)))
+                               | Gfun (External ef) => (Gfun (Internal (ef.(ef_sig))))
                                | Gfun _ => gd
                                | Gvar gv => gd
                                end)
@@ -157,7 +157,7 @@ Section SEMANTICS.
       (INITMEM: sk_link.(Sk.load_mem) = Some m_init)
       fptr_init
       (FPTR: fptr_init = (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero))
-      (SIG: skenv_link.(Genv.find_funct) fptr_init = Some (Internal signature_main))
+      (SIG: skenv_link.(Genv.find_funct) fptr_init = Some (Internal (signature_main)))
       (WF: forall md (IN: In md p), <<WF: Sk.wf md>>)
     :
       initial_state (Callstate (Args.mk fptr_init [] m_init) [])

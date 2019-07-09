@@ -34,7 +34,7 @@ Global Instance fundef_HasExternal {F}: HasExternal (Ctypes.fundef F) :=
 Module CSk.
 
   Definition of_program {F} (get_sg: F -> signature) (prog: Ctypes.program F): Sk.t :=
-    mkprogram (skdefs_of_gdefs get_sg (map (update_snd (@globdef_of_globdef F type)) prog.(prog_defs))) prog.(prog_public) prog.(prog_main).
+    mkprogram (skdefs_of_gdefs (get_sg) (map (update_snd (@globdef_of_globdef F type)) prog.(prog_defs))) prog.(prog_public) prog.(prog_main).
 
   Lemma of_program_defs
         F get_sg (p: Ctypes.program F):
@@ -88,7 +88,7 @@ Module CSk.
 
   Lemma of_program_prog_defmap: forall F (p: Ctypes.program F) (get_sg: F -> signature),
       <<SIM: forall id, option_rel (@Linking.match_globdef unit _ _ _ _ _
-                                                           (@match_fundef _ _ get_sg)
+                                                           (@match_fundef _ _ (get_sg))
                                                            top2
                                                            tt)
                                    (p.(prog_defmap) ! id) ((of_program get_sg p).(prog_defmap) ! id)>>.

@@ -109,10 +109,10 @@ Section SOUNDPRODUCT.
   Next Obligation.
     ss. des.
     exploit (@Sound.system_axiom SU0); et.
-    { rr. esplits; eauto. rr. rewrite Forall_forall in *. ii; ss; eauto. eapply H2; eauto. }
+    { des_ifs; ss. des. rr. esplits; eauto. rr. rewrite Forall_forall in *. ii; ss; eauto. eapply VALS; eauto. }
     intro T.
     exploit (@Sound.system_axiom SU1); et.
-    { rr. esplits; eauto. rr. rewrite Forall_forall in *. ii; ss; eauto. eapply H2; eauto. }
+    { des_ifs; ss. des. rr. esplits; eauto. rr. rewrite Forall_forall in *. ii; ss; eauto. eapply VALS; eauto. }
     intro T0.
     des.
     unfold Sound.retv in *. ss. des.
@@ -126,9 +126,13 @@ Section SOUNDPRODUCT.
   .
   Proof.
     unfold Sound.args. unfold Sound.vals. ss.
-    split; ii; des; esplits; eauto; rewrite Forall_forall in *; ii; ss; eauto.
-    - eapply VALS; eauto.
-    - eapply VALS; eauto.
+    des_ifs.
+    - split; ii; des; esplits; eauto; rewrite Forall_forall in *; ii; ss; eauto.
+      + eapply VALS; eauto.
+      + eapply VALS; eauto.
+    - split; ii; des; esplits; eauto; ii; ss; eauto.
+      + eapply REGSET; eauto.
+      + eapply REGSET; eauto.
   Qed.
 
   Lemma sound_skenv_iff
@@ -147,7 +151,11 @@ Section SOUNDPRODUCT.
   .
   Proof.
     unfold Sound.retv. ss.
-    split; ii; des; esplits; eauto; rewrite Forall_forall in *; ii; ss; eauto.
+    des_ifs.
+    - split; ii; des; esplits; eauto; rewrite Forall_forall in *; ii; ss; eauto.
+    - split; ii; des; esplits; eauto; ii; ss; eauto.
+      + eapply REGSET.
+      + eapply REGSET.
   Qed.
 
   Theorem preservation_product

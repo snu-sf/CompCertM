@@ -24,7 +24,7 @@ Definition is_call_cont_strong (k0: cont): Prop :=
 Definition signature_of_function (fd: function) :=
   {| sig_args := map typ_of_type (map snd (fn_params fd));
      sig_res  := opttyp_of_type (fn_return fd);
-     sig_cc   := fn_callconv fd |}.
+     sig_cc   := fn_callconv fd ; sig_cstyle := true |}.
 
 Definition get_mem (st: state): option mem :=
   match st with
@@ -50,7 +50,7 @@ Section MODSEM.
       fptr_arg vs_arg targs tres cconv k0 m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
       (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
-                        /\ signature_of_type targs tres cconv = SkEnv.get_sig skd)
+                        /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
       (CALL: is_call_cont_strong k0):
     (* how can i check sg_args and tyf are same type? *)
     (* typ_of_type function is a projection type to typ. it delete some info *)
@@ -59,6 +59,7 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd tyf
+      (CSTYLE: Args.is_cstyle args)
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
       (TYP: typecheck args.(Args.vs) (type_of_params (fn_params fd))):
@@ -73,12 +74,13 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       fptr_arg vs_arg m_arg k retv tv targs tres cconv
+      (CSTYLE: Retv.is_cstyle retv)
       (* tyf *)
       (TYP: typify_c retv.(Retv.v) tres tv):
       after_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
                      retv
                      (Returnstate tv k retv.(Retv.m)).
-  
+
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
        ModSem.at_external := at_external;
@@ -95,7 +97,7 @@ Section MODSEM.
       match goal with
       | [H: _ |- _ ] => try (exploit external_call_trace_length; eauto; check_safe; intro T; des); inv H; ss; try xomega
       end.
-  
+
   Lemma single_events_at: forall st, single_events_at modsem st.
   Proof.
     ii. inv H.
@@ -136,10 +138,16 @@ Inductive typechecked (builtins: list (ident * globdef (Ctypes.fundef function) 
      *)
     (WF: Sk.wf (module p))
     (* this property is already checked by the compiler, though they are not in Coq side *)
+    (CSTYLE: forall id ef tyargs ty cc (IN: In (id, (Gfun (Ctypes.External ef tyargs ty cc))) p.(prog_defs)),
+        ef.(ef_sig).(sig_cstyle))
+    (* C cannot call Asm-style function. *)
+    (* Actually, this property is checked by linker, so we can remove the property by changing UBD-B to: *)
+    (* C \plink empty >= C \llink empty *)
     (BINCL: incl builtins p.(prog_defs))
     (BCOMPLETE: forall
         id fd
         (IN: In (id, (Gfun fd)) p.(prog_defs))
         (BUILTIN: ~ is_external_fd fd),
         In (id, Gfun fd) builtins)
+    (* This condition basically says that all malloc/free/builtin functions share the same identifier among modules. *)
 .

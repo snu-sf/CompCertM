@@ -8,6 +8,7 @@ From Paco Require Import paco.
 Require Import sflib.
 Require Import Skeleton.
 Require Import CoqlibC.
+Require Asm.
 
 Set Implicit Arguments.
 
@@ -15,23 +16,126 @@ Set Implicit Arguments.
 
 Module Args.
 
-  Record t := mk {
-    fptr: val;
-    (* sg: signature; *)
-    vs: list val;
-    m: mem;
-  }.
+  Inductive t: Type :=
+  | Cstyle
+      (fptr: val)
+      (vs: list val)
+      (m: mem)
+  | Asmstyle
+      (rs: Asm.regset)
+      (m: mem)
+  .
+
+  (* intentional: it should work for both cases *)
+  Definition get_fptr (args: Args.t): val :=
+    match args with
+    | Args.Cstyle fptr _ _ => fptr
+    | Args.Asmstyle rs _ => rs Asm.PC
+    end
+  .
+
+  (* intentional: it should work for both cases *)
+  Definition get_m (args: Args.t): mem :=
+    match args with
+    | Args.Cstyle _ _ m => m
+    | Args.Asmstyle _ m => m
+    end
+  .
+
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
+  Definition fptr (args: Args.t): val :=
+    match args with
+    | Args.Cstyle fptr _ _ => fptr
+    | Args.Asmstyle rs _ => Vundef (* should not happen *)
+    end
+  .
+
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
+  Definition vs (args: Args.t): list val :=
+    match args with
+    | Args.Cstyle _ vs _ => vs
+    | Args.Asmstyle _ _ => [] (* should not happen *)
+    end
+  .
+
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
+  Definition m (args: Args.t): mem :=
+    match args with
+    | Args.Cstyle _ _ m => m
+    | Args.Asmstyle _ m => Mem.empty (* should not happen *)
+    end
+  .
+
+  (* for backward compatibility *)
+  Definition mk (fptr: val) (vs: list val) (m: mem): t := Args.Cstyle fptr vs m.
+
+  Definition is_cstyle (args: t): bool :=
+    match args with
+    | Cstyle _ _ _ => true
+    | _ => false
+    end
+  .
+
+  Lemma get_m_m: forall args (CSTYLE: is_cstyle args), args.(get_m) = args.(m). Proof. destruct args; ss. Qed.
 
 End Args.
 
 Module Retv.
 
-  Record t := mk {
-    v: val;
-    m: mem;
-  }.
+  Inductive t: Type :=
+  | Cstyle
+      (v: val)
+      (m: mem)
+  | Asmstyle
+      (rs: Asm.regset)
+      (m: mem)
+  .
+
+  (* intentional: it should work for both cases *)
+  Definition get_m (retv: Retv.t): mem :=
+    match retv with
+    | Retv.Cstyle _ m => m
+    | Retv.Asmstyle _ m => m
+    end
+  .
+
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
+  Definition v (retv: Retv.t): val :=
+    match retv with
+    | Retv.Cstyle v _ => v
+    | Retv.Asmstyle _ _ => Vundef (* should not happen *)
+    end
+  .
+
+  (* for backward compatibility: it should be used only when "args" is known to be C-style. *)
+  (* it will return dummy value if it is assembly style. *)
+  Definition m (retv: Retv.t): mem :=
+    match retv with
+    | Retv.Cstyle _ m => m
+    | Retv.Asmstyle _ m => Mem.empty (* should not happen *)
+    end
+  .
+
+  (* for backward compatibility *)
+  Definition mk (v: val) (m: mem): t := Retv.Cstyle v m.
+
+  Definition is_cstyle (retv: t): bool :=
+    match retv with
+    | Cstyle _ _ => true
+    | _ => false
+    end
+  .
+
+  Lemma get_m_m: forall retv (CSTYLE: is_cstyle retv), retv.(get_m) = retv.(m). Proof. destruct retv; ss. Qed.
 
 End Retv.
+
+Hint Unfold Args.is_cstyle Args.mk Args.fptr Args.vs Args.m Retv.is_cstyle Retv.mk Retv.v Retv.m.
+Hint Constructors Args.t Retv.t.
 
 Module ModSem.
 
@@ -139,7 +243,7 @@ Module ModSem.
   Module Atomic.
   Section Atomic.
 
-    Local Coercion ModSem.to_semantics: ModSem.t >-> semantics.
+    Local Coercion ModSem.to_semantics: ModSem.t >-> Smallstep.semantics.
 
     Variable ms: t.
 

@@ -313,3 +313,36 @@ Proof.
 Qed.
 
 End UNFREEPARALLEL.
+
+Require Import AsmC.
+
+Inductive match_states P0 P1
+          (skenv_link_tgt: SkEnv.t)
+          (ge_src ge_tgt: genv)
+          (sm_init : SimMemInjInv.t')
+  : nat-> AsmC.state -> AsmC.state -> SimMemInjInv.t' -> Prop :=
+| match_states_intro
+    j init_rs_src init_rs_tgt rs_src rs_tgt m_src m_tgt
+    (sm0 : SimMemInjInv.t')
+    (AGREE: AsmStepInj.agree j rs_src rs_tgt)
+    (AGREEINIT: AsmStepInj.agree j init_rs_src init_rs_tgt)
+    (MCOMPATSRC: m_src = sm0.(SimMemInjInv.minj).(SimMemInj.src))
+    (MCOMPATTGT: m_tgt = sm0.(SimMemInjInv.minj).(SimMemInj.tgt))
+    (MCOMPATINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
+    (MWF: @SimMemInjInv.wf' P0 P1 sm0)
+    fd
+    (FINDF: Genv.find_funct ge_src (init_rs_src PC) = Some (Internal fd))
+    (WFINITRS: wf_init_rss fd.(fn_sig) init_rs_src init_rs_tgt)
+    (RAWF: Genv.find_funct skenv_link_tgt (init_rs_tgt RA) = None)
+    (RSPDELTA: forall (SIG: sig_cstyle fd.(fn_sig) = true)
+                      blk_src ofs (RSPSRC: init_rs_src RSP = Vptr blk_src ofs),
+        exists blk_tgt,
+          (j blk_src = Some (blk_tgt, 0)))
+  :
+    match_states
+      P0 P1
+      skenv_link_tgt
+      ge_src ge_tgt sm_init 0
+      (AsmC.mkstate init_rs_src (Asm.State rs_src m_src))
+      (AsmC.mkstate init_rs_tgt (Asm.State rs_tgt m_tgt)) sm0
+.

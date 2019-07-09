@@ -55,34 +55,32 @@ Proof.
   - eapply Nat.lt_wf_0.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
-    destruct args_src, args_tgt; ss.
-    inv SIMARGS; ss. clarify. inv INITTGT.
+    inv INITTGT. des. inv SAFESRC. destruct args_src, args_tgt; ss.
+    inv SIMARGS; ss. clarify.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    eexists. exists sm_arg. esplits; eauto.
-    { refl. }
-    + econs; eauto; ss; cycle 1.
-      * inv TYP. inv SAFESRC. folder. ss.
-        exploit (Genv.find_funct_match_genv SIMGE); eauto. intro FINDFTGT; des. ss.
-        assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link)).
-        { inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
-          econs; eauto.
-          + ii. ss. eapply Plt_Ple_trans. { genext. } ss. refl.
-          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
-          + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
-        }
-        hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
-        rpapply match_call_states; ss; eauto.
-        { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
-          econs; eauto.
-          - eapply SimMemInjC.sim_skenv_symbols_inject; eauto.
-          - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBTGT. xomega.
-        }
-        { inv TYP. eapply inject_list_typify_list; try apply VALS; eauto. }
-        { apply MWF. }
-        assert (fn_sig fd = fn_sig fd0).
-        { unfold transf_function in *. unfold Errors.bind in *. des_ifs. }
-        f_equal; eauto. f_equal; rewrite H; eauto.
+    eexists. exists sm_arg. esplits; eauto; try refl; econs; eauto.
+    +  inv TYP. folder. ss.
+       exploit (Genv.find_funct_match_genv SIMGE); eauto. intro FINDFTGT; des. ss.
+       assert(MGE: match_globalenvs ge (SimMemInj.inj sm_arg) (Genv.genv_next skenv_link)).
+       { inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
+         econs; eauto.
+         + ii. ss. eapply Plt_Ple_trans. { genext. } ss. refl.
+         + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
+         + ii. ss. uge. des_ifs. eapply Plt_Ple_trans. { genext. } ss. refl.
+       }
+       hexploit fsim_external_inject_eq; try apply FINDF0; et. i; clarify.
+       rpapply match_call_states; ss; eauto.
+       { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
+         econs; eauto.
+         - eapply SimMemInjC.sim_skenv_symbols_inject; eauto.
+         - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBTGT. xomega.
+       }
+       { inv TYP0. eapply inject_list_typify_list; try apply VALS; eauto. }
+       { apply MWF. }
+       assert (fn_sig fd = fn_sig fd0).
+       { unfold transf_function in *. unfold Errors.bind in *. des_ifs. }
+       f_equal; eauto. f_equal; rewrite H; eauto.
   - (* init progress *)
     des. inv SAFESRC. inv SIMARGS; ss.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
@@ -90,8 +88,7 @@ Proof.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
     hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR.
     unfold Errors.bind in *. unfold transf_function in *. des_ifs. inv TYP.
-    esplits; eauto. econs; eauto.
-    + folder. ss. rewrite <- FPTR. eauto.
+    esplits; eauto. econs; swap 1 2; eauto.
     + econs; eauto. erewrite <- inject_list_length; eauto.
     + erewrite <- inject_list_length; eauto.
   - (* call wf *)
@@ -125,18 +122,17 @@ Proof.
           i; clarify.
         }
         clarify.
-    + ss.
+    + econs; ss.
     + reflexivity.
   - (* after fsim *)
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    inv AFTERSRC. inv SIMRET. ss. exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
+    inv AFTERSRC. inv SIMRET; ss. exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss; cycle 1.
     { inv HISTORY. inv CALLTGT. }
     inv HISTORY. ss. clear_tac. esplits; eauto.
     + econs; eauto.
-    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify.
-      inv MLE0; ss. inv MCOMPAT. clear_tac.
+    + econs; ss; eauto. inv MLE0; ss. inv MCOMPAT. clear_tac.
       rpapply match_return_states; ss; eauto; ss.
       (* { clear - MWF. inv MWF. ii. apply TGTEXT in H. rr in H. des. ss. } *)
       { eapply match_stacks_le; eauto. eapply match_stacks_bound; cycle 1.
@@ -159,7 +155,7 @@ Proof.
     inv MS; cycle 1.
     { inv MS0; clarify. }
     inv MCOMPAT; ss.
-    eexists sm0. esplits; ss; eauto. refl.
+    eexists sm0. esplits; ss; eauto; try refl. econs; eauto.
   - (* step *)
     left; i.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.

@@ -85,12 +85,12 @@ Section SOUNDNESS.
       unfold Skeleton.SkEnv.revive in *.
       eapply Genv_map_defs_def in Heq. des. u in MAP. des_ifs_safe. bsimpl.
       esplits. eapply in_prog_defmap; eauto.
-    - esplits; eauto.
+    - inv AT; ss. esplits; eauto.
       { rr. esplits; ss; eauto. rr. rewrite Forall_forall. ii; ss. }
       ii. inv AFTER. inv SUST.
 
-      hexploit (loc_result_caller_save sg_arg); eauto. intro RES.
-      hexploit (loc_result_one sg_arg); eauto. intro ONE.
+      hexploit (loc_result_caller_save sg); eauto. intro RES.
+      hexploit (loc_result_one sg); eauto. intro ONE.
 
       econs; eauto.
       + destruct stack; ss. des_ifs. inv WTSTK.
@@ -111,7 +111,7 @@ Section SOUNDNESS.
           des_ifs; des; clarify; rewrite AFTER; ss.
         }
       + ii. rewrite locmap_get_set_loc_result; ss.
-    - esplits; eauto. ss.
+    - inv FINAL. esplits; eauto. ss.
   Unshelve.
     all: ss.
   Qed.

@@ -51,13 +51,12 @@ Definition undef_outgoing_slots (ls: locset): locset :=
     | S Outgoing  _ _ => Vundef
     | _ => ls l
     end.
-  
+
 Definition stackframes_after_external (stack: list stackframe): list stackframe :=
   match stack with
   | nil => nil
   | Stackframe f sp ls bb :: tl => Stackframe f sp ls.(undef_outgoing_slots) bb :: tl
   end.
-
 
 
 
@@ -72,13 +71,14 @@ Section MODSEM.
   | at_external_intro
       stack fptr_arg sg_arg ls vs_arg m0
       (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ SkEnv.get_sig skd = sg_arg)
+      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd /\ Sk.get_csig skd = Some sg_arg)
       (VALS: vs_arg = map (fun p => Locmap.getpair p ls) (loc_arguments sg_arg)):
       at_external (Callstate stack fptr_arg sg_arg ls m0) (Args.mk fptr_arg vs_arg m0).
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame_intro
       fd tvs ls_init sg
+      (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (SIG: sg = fd.(fn_sig))
       (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
       (TYP: typecheck args.(Args.vs) fd.(fn_sig) tvs)
@@ -103,6 +103,7 @@ Section MODSEM.
   Inductive after_external: state -> Retv.t -> state -> Prop :=
   | after_external_intro
       stack fptr_arg sg_arg ls_arg m_arg retv ls_after
+      (CSTYLE: Retv.is_cstyle retv)
       (LSAFTER: ls_after = Locmap.setpair (loc_result sg_arg)
                                           (typify retv.(Retv.v) sg_arg.(proj_sig_res))
                                           (undef_caller_save_regs ls_arg)):
@@ -117,10 +118,10 @@ Section MODSEM.
        ModSem.final_frame := final_frame;
        ModSem.after_external := after_external;
        ModSem.globalenv := ge;
-       ModSem.skenv := skenv; 
-       ModSem.skenv_link := skenv_link; 
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
     |}.
-  
+
   Lemma modsem_determinate: forall st, determinate_at modsem st.
   Proof.
     econs; eauto.
@@ -153,4 +154,3 @@ End PROPS.
 
 Program Definition module (p: program): Mod.t :=
   {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
-

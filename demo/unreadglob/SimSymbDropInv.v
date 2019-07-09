@@ -574,7 +574,7 @@ Next Obligation.
     + exploit DROP; eauto. i.
       eapply prog_defmap_norepet in IN. clarify. rewrite <- NoDup_norepet. eauto.
     + exploit KEPT; eauto. i.
-      eapply WFPARAM. eapply in_prog_defmap. erewrite <- H0.
+      eapply WFPARAM; eauto. eapply in_prog_defmap. erewrite <- H0.
       eapply prog_defmap_norepet; eauto. rewrite <- NoDup_norepet. eauto.
 Qed.
 Next Obligation.
@@ -1032,8 +1032,7 @@ Next Obligation.
 Qed.
 Next Obligation.
   dup SIMSKENV. inv SIMSKENV.
-  inv ARGS. dup MWF. inv MWF. inv WF.
-  ss. rewrite MEMSRC in *. rewrite MEMTGT in *.
+  inv ARGS; ss. dup MWF. inv MWF. inv WF.
   exploit ec_mem_inject; eauto.
   - eapply external_call_spec.
   - eapply sim_skenv_symbols_inject; eauto.
@@ -1043,7 +1042,7 @@ Next Obligation.
     + ii. eapply ec_max_perm; eauto. eapply external_call_spec.
     + i. des. esplits; eauto.
       * instantiate (1:=Retv.mk vres' m2'). ss.
-      * ss.
+      * ss. destruct retv_src; ss. econs; ss; eauto.
 Qed.
 
 End MEMINJ.

@@ -717,7 +717,7 @@ Section CLIGHTSOUND.
     instantiate (1:=get_mem).
     econs; ss; i.
     { eapply UnreachC.liftspec; et. }
-    - inv INIT. ss. inv SUARG. des. esplits; ss.
+    - inv INIT. ss. destruct args; ss. des. esplits; ss.
       + refl.
       + inv SKENV. cinv MEM. econs; ss; eauto.
         { rewrite NB0. eauto. }
@@ -725,7 +725,7 @@ Section CLIGHTSOUND.
         * eapply unreach_to_inj_val; eauto.
         * inv TYP. unfold typify_list. revert VALS.
           generalize (sig_args (signature_of_function fd)). clear.
-          induction (Args.vs args); ss. i. inv VALS.
+          induction vs; ss. i. inv VALS.
           des_ifs. econs; eauto.
           unfold typify. des_ifs. eapply unreach_to_inj_val; eauto.
         * econs.
@@ -796,7 +796,7 @@ Section CLIGHTSOUND.
         * eapply Mem.unchanged_on_implies; eauto.
           unfold flip, loc_unmapped, UnreachC.to_inj. i. des_ifs.
 
-    - inv AT. inv SUST. inv MATCHST. ss. esplits; eauto.
+    - inv AT. inv SUST. inv MATCHST. esplits; eauto.
       + refl.
       + unfold Sound.args; ss. instantiate (1:=su0). esplits; eauto.
         * ii. subst. clear EXTERNAL. des. ss.
@@ -807,7 +807,7 @@ Section CLIGHTSOUND.
         * eapply unreach_to_inj_vals; eauto.
       + refl.
       + i. inv AFTER. unfold Sound.retv in *. des. ss. esplits; eauto.
-        * unfold Unreach.hle in *. des. econs; eauto.
+        * des_ifs; ss. des; ss. unfold Unreach.hle in *. des. econs; eauto.
           { rewrite <- GENB. auto. }
           { etrans; eauto. }
           { econs; eauto.
@@ -816,7 +816,7 @@ Section CLIGHTSOUND.
               unfold UnreachC.to_inj. ii. des_ifs.
               + ss. erewrite OLD in *; eauto. clarify.
               + exfalso. eapply n. eapply Plt_Ple_trans; eauto. }
-        * refl.
+        * rewrite Retv.get_m_m; ss. refl.
 
     - inv FINAL. inv SUST. inv MATCHST. esplits; ss; eauto.
       + refl.

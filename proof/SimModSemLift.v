@@ -282,9 +282,9 @@ Context {SMLIFT: SimMemLift.class SM}.
           sm_arg
           args_src args_tgt
           sg_init_src sg_init_tgt
-          (FINDFSRC: msp.(ModSemPair.src).(ModSem.skenv).(Genv.find_funct) args_src.(Args.fptr) =
+          (FINDFSRC: msp.(ModSemPair.src).(ModSem.skenv).(Genv.find_funct) args_src.(Args.get_fptr) =
                      Some (Internal sg_init_src))
-          (FINDFTGT: msp.(ModSemPair.tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.fptr) =
+          (FINDFTGT: msp.(ModSemPair.tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.get_fptr) =
                      Some (Internal sg_init_tgt))
           (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
           (SIMSKENV: ModSemPair.sim_skenv msp sm_arg)
@@ -361,9 +361,9 @@ Section IMPLIES.
       ii. exploit SU0; et. i; des.
       eexists. exists (SimMemLift.lift sm_arg0).
       esplits; eauto.
-      { eapply lift_args; et. }
+      { eapply SimMemLift.lift_args; et. }
       { eapply SimMemLift.lift_wf; et. }
-      { eapply le_lift_lepriv; et. }
+      { eapply SimMemLift.le_lift_lepriv; et. }
       i; des.
       exploit K; eauto. i; des. pclearbot.
       eexists _, sm_after. 

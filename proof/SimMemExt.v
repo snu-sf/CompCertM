@@ -104,11 +104,12 @@ Next Obligation.
   eapply SimSymbId.system_sim_skenv; eauto.
 Qed.
 Next Obligation.
-  inv ARGS; ss. destruct args_src, args_tgt; destruct sm0; ss; clarify.
+  inv ARGS; ss. destruct sm0; ss; clarify.
   exploit external_call_mem_extends; eauto. i. des. 
   exists (mk retv_src.(Retv.m) m2'). exists (Retv.mk vres' m2').
   esplits; ss; eauto.
-  eapply external_call_symbols_preserved; eauto.
-  eapply SimSymbId.sim_skenv_equiv; eauto.
+  { eapply external_call_symbols_preserved; eauto.
+    eapply SimSymbId.sim_skenv_equiv; eauto. }
+  destruct retv_src; ss. econs; ss; eauto.
 Qed.
 

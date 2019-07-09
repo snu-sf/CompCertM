@@ -54,15 +54,14 @@ Proof.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
-    destruct sm_arg; ss. clarify.
-    inv SIMARGS; ss. clarify. inv INITTGT. inv TYP.
-    exploit (fill_arguments_progress ls_init (typify_list (Args.vs args_src) (sig_args (fn_sig fd)))
+    inv INITTGT. destruct sm_arg; ss. clarify.
+    inv SIMARGS; ss. clarify. inv TYP.
+    exploit (fill_arguments_progress ls_init (typify_list vs_tgt (sig_args (fn_sig fd)))
                                      (Conventions1.loc_arguments (fn_sig fd))); eauto.
-    { apply (f_equal (@length _)) in TYP0. rewrite map_length in *. etrans; try apply TYP0; eauto. congruence. }
+    { apply (f_equal (@length _)) in TYP0. rewrite map_length in *. etrans; try apply TYP0; eauto. }
     intro P; des.
     hexploit (@fill_arguments_spec); et. intro Q; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    destruct args_src, args_tgt; ss. clarify.
     eexists. eexists (SimMemId.mk _ _). esplits; ss; cycle 1.
     + econs; eauto; ss.
       * rpapply match_states_call.
@@ -80,7 +79,7 @@ Proof.
     + inv SAFESRC. folder. inv TYP.
       exploit (Genv.find_funct_transf_partial_genv SIMGE); eauto. intro FINDFSRC; des; clarify.
       unfold transf_fundef; ss. unfold Errors.bind in *. des_ifs.
-      econs; swap 1 2.
+      econs; swap 1 3.
       { folder; ss. eauto. }
       all: ss.
       unfold transf_function in *. des_ifs.
@@ -88,17 +87,17 @@ Proof.
     des. inv SAFESRC. inv SIMARGS; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
-    inv TYP. destruct args_src, args_tgt; ss. clarify. unfold Errors.bind in *. des_ifs.
+    inv TYP. unfold Errors.bind in *. des_ifs.
     destruct sm_arg; ss. clarify.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify.
-    exploit (fill_arguments_progress (Locmap.init Vundef) (typify_list vs0 (sig_args (fn_sig fd)))
+    exploit (fill_arguments_progress (Locmap.init Vundef) (typify_list vs_tgt (sig_args (fn_sig fd)))
                                      (Conventions1.loc_arguments (fn_sig fd))); eauto.
     { apply (f_equal (@length _)) in TYP0. rewrite map_length in *. etrans; try apply TYP0; eauto. }
     intro P; des.
     hexploit (fill_arguments_spec); eauto. intro Q; des.
     assert(SGEQ: fn_sig fd = fn_sig f).
     { unfold transf_function in *; des_ifs. }
-    esplits; eauto. econs; swap 1 2.
+    esplits; eauto. econs; swap 1 3.
     { ss. folder. eauto. }
     all: ss; eauto with congruence.
     + econs; ss; eauto with congruence.
@@ -121,10 +120,10 @@ Proof.
       * ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET. ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
-    + econs; ss; eauto. destruct retv_src, retv_tgt; ss. clarify. econs; eauto.
+    + econs; ss; eauto. econs; eauto.
       { inv H5; ss. - econs; eauto. - des_ifs. econs; eauto. inv H. econs; eauto. }
       { clear - DUMMYTGT. unfold strong_wf_tgt in *. des. destruct ts; ss. unfold dummy_stack, dummy_function in *. des_ifs; ss; clarify; esplits; et. }
   - (* final fsim *)

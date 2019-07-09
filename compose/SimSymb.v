@@ -213,6 +213,8 @@ Module SimSymb.
           ef
           (SIMSKENV: sim_skenv sm0 ss_sys skenv_sys_src skenv_sys_tgt)
           (MWF: SimMem.wf sm0)
+          (CSTYLE: Args.is_cstyle args_src)
+          (CSTYLE: Retv.is_cstyle retv_src)
           (ARGS: SimMem.sim_args args_src args_tgt sm0)
           (SYSSRC: external_call ef skenv_sys_src (args_src.(Args.vs)) (args_src.(Args.m))
                                  tr

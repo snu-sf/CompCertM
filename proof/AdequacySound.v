@@ -101,7 +101,7 @@ Section ADQSOUND.
   (* stack can go preservation when su0 is given *)
   Inductive sound_stack (args: Args.t): list Frame.t -> Prop :=
   | sound_stack_nil
-      (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex args.(Args.m))
+      (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex args.(Args.get_m))
     :
       sound_stack args []
   | sound_stack_cons
@@ -111,19 +111,19 @@ Section ADQSOUND.
       (FORALLSU: forall
           su0
           (SUARGS: Sound.args su0 args_tail)
-          (SUGE: sound_ge su0 args_tail.(Args.m))
+          (SUGE: sound_ge su0 args_tail.(Args.get_m))
         ,
           (<<HD: forall
                  sound_state_all
                  (PRSV: local_preservation_noguarantee ms sound_state_all)
                ,
-                 <<SUST: sound_state_all su0 args_tail.(Args.m) lst0>>>>)
+                 <<SUST: sound_state_all su0 args_tail.(Args.get_m) lst0>>>>)
           /\
           (<<K: forall
                  sound_state_all
                  (PRSV: local_preservation_noguarantee ms sound_state_all)
                ,
-                 (* (<<SUST: sound_state_all su0 args.(Args.m) lst0>>) *)
+                 (* (<<SUST: sound_state_all su0 args.(Args.get_m) lst0>>) *)
                  (* /\ *)
                  exists su_gr,
                    (<<ARGS: Sound.args su_gr args>>) /\
@@ -133,16 +133,16 @@ Section ADQSOUND.
                        su_ret
                        (LE: Sound.hle su_gr su_ret)
                        (SURETV: Sound.retv su_ret retv)
-                       (MLE: Sound.mle su_gr args.(Args.m) retv.(Retv.m))
+                       (MLE: Sound.mle su_gr args.(Args.get_m) retv.(Retv.get_m))
                        (AFTER: ms.(ModSem.after_external) lst0 retv lst1)
                      ,
-                       (* sound_state_all su0 args.(Args.m) lst1>>) *)
-                       sound_state_all su0 args_tail.(Args.m) lst1>>)
+                       (* sound_state_all su0 args.(Args.get_m) lst1>>) *)
+                       sound_state_all su0 args_tail.(Args.get_m) lst1>>)
              >>)
           /\
-          (<<MLE: Sound.mle su0 args_tail.(Args.m) args.(Args.m)>>)
+          (<<MLE: Sound.mle su0 args_tail.(Args.get_m) args.(Args.get_m)>>)
       )
-      (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex args_tail.(Args.m))
+      (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex args_tail.(Args.get_m))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
       (* sound_state_ex *)
       (* (PRSV: local_preservation ms sound_state_ex) *)
@@ -161,7 +161,7 @@ Section ADQSOUND.
       (FORALLSU: forall
           su0
           (SUARGS: Sound.args su0 args_tail)
-          (SUGE: sound_ge su0 args_tail.(Args.m))
+          (SUGE: sound_ge su0 args_tail.(Args.get_m))
         ,
           (<<HD: forall
               sound_state_all
@@ -169,7 +169,7 @@ Section ADQSOUND.
             ,
               <<SUST: sound_state_all su0 m_arg lst0>>>>))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
-      (ABCD: args_tail.(Args.m) = m_arg)
+      (ABCD: args_tail.(Args.get_m) = m_arg)
     :
       sound_state m_arg (State ((Frame.mk ms lst0) :: tail))
   | sound_state_call
@@ -177,8 +177,8 @@ Section ADQSOUND.
       args
       (* (ARGS: Sound.args su0 args) *)
       (STK: sound_stack args frs)
-      (* (MLE: Sound.mle su0 m_tail args.(Args.m)) *)
-      (EQ: args.(Args.m) = m_tail)
+      (* (MLE: Sound.mle su0 m_tail args.(Args.get_m)) *)
+      (EQ: args.(Args.get_m) = m_tail)
       (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex m_tail)
       (* (FORALLSU: forall *)
       (*     su0 *)

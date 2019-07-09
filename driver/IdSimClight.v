@@ -59,23 +59,19 @@ Proof.
   - eauto.
   - i. ss.
     inv INITTGT. inv SAFESRC. inv H.
-    inv SIMARGS. ss.
+    inv SIMARGS; ss.
     assert (FD: fd = fd0).
-    { ss. inv FPTR.
-      - rewrite H1 in *. clarify.
-      - rewrite <- H0 in *. clarify. } clarify.
+    { inv FPTR; ss. rewrite FINDF in FINDF0. clarify. }
     esplits; eauto.
     + econs; eauto.
-    + econs; eauto.
-      * rewrite MEMSRC. rewrite MEMTGT. eauto.
+    + ss. subst. econs 2; eauto.
       * inv TYP. inv TYP0. eapply lessdef_list_typify_list; et.
       * econs; et.
 
-  - i. ss. des. inv SAFESRC. esplits. econs; ss.
-    + inv SIMARGS. ss. inv FPTR.
-      * rewrite H1 in *. eauto.
-      * rewrite <- H0 in *. clarify.
-    + inv SIMARGS. ss. inv TYP. econs; eauto.
+
+  - i. ss. des. inv SAFESRC. inv SIMARGS; ss. esplits. econs; ss.
+    + inv FPTR; ss. eauto.
+    + inv TYP. econs; ss; eauto.
       erewrite <- lessdef_list_length; eauto.
 
   - i. ss. inv MATCH; eauto.
@@ -91,8 +87,8 @@ Proof.
     exists sm_ret.
     inv AFTERSRC. inv MATCH.
     esplits; eauto.
-    + econs; eauto.
-    + inv SIMRET. rewrite MEMSRC. rewrite MEMTGT.
+    + econs; eauto. inv SIMRET; ss.
+    + inv SIMRET; ss.
       econs; eauto.
       eapply lessdef_typify; eauto.
 
@@ -130,23 +126,17 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
   - i. ss.
     inv INITTGT. inv SAFESRC. inv H.
-    inv SIMARGS. ss.
+    inv SIMARGS; ss.
     assert (FD: fd = fd0).
-    { ss. inv FPTR.
-      - rewrite H1 in *. clarify.
-      - rewrite <- H0 in *. clarify. } clarify.
+    { inv FPTR; ss. rewrite FINDF in FINDF0. clarify. }
     esplits; eauto.
     + econs; eauto.
-    + econs; eauto.
-      * rewrite MEMSRC. rewrite MEMTGT. eauto.
+    + ss. subst. econs; eauto.
       * inv TYP. inv TYP0. eapply lessdef_list_typify_list; eauto.
       * econs; eauto.
-
-  - i. ss. des. inv SAFESRC. esplits. econs; ss.
-    + inv SIMARGS. ss. inv FPTR.
-      * rewrite H1 in *. eauto.
-      * rewrite <- H0 in *. clarify.
-    + inv SIMARGS. ss. inv TYP. econs; eauto.
+  - i. ss. des. inv SAFESRC. inv SIMARGS; ss. esplits. econs; ss.
+    + inv FPTR; ss. eauto.
+    + inv TYP. econs; ss; eauto.
       erewrite <- lessdef_list_length; eauto.
 
   - i. ss. inv MATCH; eauto.
@@ -162,9 +152,10 @@ Proof.
     exists sm_ret.
     inv AFTERSRC. inv MATCH.
     esplits; eauto.
-    + econs; eauto.
-    + inv SIMRET. rewrite MEMSRC. rewrite MEMTGT.
-      econs; eauto. eapply lessdef_typify; eauto.
+    + econs; eauto. inv SIMRET; ss.
+    + inv SIMRET; ss.
+      econs; eauto.
+      eapply lessdef_typify; eauto.
 
   - i. ss. inv FINALSRC. inv MATCH. inv CONT.
     esplits; eauto.
@@ -202,7 +193,7 @@ Proof.
 
   - i. ss. exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
-    inv INITTGT. inv SAFESRC. inv SIMARGS. inv H. ss.
+    inv INITTGT. inv SAFESRC. inv SIMARGS; ss. inv H. ss.
     exploit match_globals_find_funct; eauto.
     i. clarify.
     esplits; eauto.
@@ -214,7 +205,7 @@ Proof.
 
   - i. ss. exploit SimSymbDrop_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
-    des. inv SAFESRC. inv SIMARGS. esplits. econs; ss.
+    des. inv SAFESRC. inv SIMARGS; ss. esplits. econs; ss.
     + eapply match_globals_find_funct; eauto.
     + inv TYP. econs; eauto.
       erewrite <- inject_list_length; eauto.
@@ -238,8 +229,8 @@ Proof.
     exists (SimMemInj.unlift' sm_arg sm_ret).
     inv AFTERSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
-    + econs; eauto.
-    + inv SIMRET. econs; eauto. econs; eauto.
+    + econs; eauto. inv SIMRET; ss.
+    + inv SIMRET; ss. econs; eauto. econs; eauto.
       { eapply inject_typify; et. }
       ss. eapply match_cont_incr; try eassumption.
       inv MLE. inv MLE0. etrans; eauto.

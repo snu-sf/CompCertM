@@ -243,7 +243,10 @@ Definition link_skfundef (fd1 fd2: AST.fundef signature) :=
   match fd1, fd2 with
   | Internal _, Internal _ => None
   | External ef1, External ef2 =>
-      if external_function_eq ef1 ef2 then Some (External ef1) else None
+    match ef1, ef2 with
+    | EF_external _ sg1, EF_external _ sg2 => if signature_eq sg1 sg2 then Some (External ef1) else None
+    | _, _ => if external_function_eq ef1 ef2 then Some (External ef1) else None
+    end
   | Internal f, External ef =>
       match ef with
       | EF_external id sg =>
@@ -264,6 +267,7 @@ Definition link_skfundef (fd1 fd2: AST.fundef signature) :=
 
 Inductive linkorder_skfundef: AST.fundef signature -> AST.fundef signature -> Prop :=
   | linkorder_skfundef_refl: forall fd, linkorder_skfundef fd fd
+  | linkorder_fundef_ext_ext: forall name0 name1 sg, linkorder_skfundef (External (EF_external name0 sg)) (External (EF_external name1 sg))
   | linkorder_skfundef_ext_int: forall id sg, linkorder_skfundef (External (EF_external id sg)) (Internal sg).
 
 Program Instance Linker_skfundef: Linker (AST.fundef signature) :=

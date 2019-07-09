@@ -14,7 +14,7 @@ Proof.
   - discriminate.
   - destruct e; clarify. esplits; eauto. ss. rewrite EQ. ss. clarify. eauto.
   - destruct e; clarify. esplits; eauto. ss. rewrite EQ. ss. clarify. eauto.
-  - destruct (external_function_eq e e0); clarify; inv H; des_ifs. eauto.
+  - des_ifs; clarify; inv H; des_ifs; eauto.
 Qed.
 
 Instance TransfPartialContextualLink_rev
@@ -61,7 +61,7 @@ Proof.
 + discriminate.
 + destruct e; inv H2. econstructor; eauto.
 + destruct e; inv H2. econstructor; eauto.
-+ destruct (external_function_eq e e0); inv H2. econstructor; eauto.
++ des_ifs; eauto.
 - intros; subst. exists v; auto.
 Qed.
 
@@ -79,7 +79,7 @@ Proof.
 + discriminate.
 + destruct e; inv H2. econstructor; eauto.
 + destruct e; inv H2. econstructor; eauto.
-+ destruct (external_function_eq e e0); inv H2. econstructor; eauto.
++ des_ifs; econstructor; eauto.
 - intros; subst. exists v; auto.
 Qed.
 

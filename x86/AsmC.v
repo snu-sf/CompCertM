@@ -195,7 +195,8 @@ Section MODSEM.
   Proof.
     econs; eauto.
     - ii; ss. inv H. destruct st0; ss. destruct s1; ss. clarify.
-      inv STEP; try (exploit external_call_receptive; eauto; check_safe; intro T; des); try by (inv_match_traces; (eexists (mkstate _ _); econs; [econs|]; eauto; ss)).
+      inv STEP; try (exploit external_call_receptive; eauto; check_safe; intro T; des);
+        try by (inv_match_traces; (eexists (mkstate _ _); econs; [econs|]; eauto; ss)).
     - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
 
@@ -203,7 +204,8 @@ Section MODSEM.
   Proof.
     econs; eauto.
     - ii; ss. inv H; inv H0. destruct st0; ss. destruct s1; ss. destruct s2; ss. clarify.
-      inv STEP; inv STEP0; eq_closure_tac; clarify_meq; try (determ_tac extcall_arguments_determ; check_safe); try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+      inv STEP; inv STEP0; eq_closure_tac; clarify_meq; try (determ_tac extcall_arguments_determ; check_safe); try (determ_tac eval_builtin_args_determ; check_safe);
+        try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
     - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Qed.
 

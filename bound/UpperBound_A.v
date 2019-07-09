@@ -732,14 +732,6 @@ Section PRESERVATION.
     unfold prog_src. rewrite in_app_iff. right; ss. left; ss.
   Qed.
 
-  Lemma app_cont_call_cont_strong
-        k0 k1
-        (APP: is_call_cont_strong (app_cont k0 k1)) :
-      <<CONT: is_call_cont_strong k0>>.
-  Proof.
-    r in APP. rr. des_ifs. exploit app_cont_stop_left; et. i.
-  Abort.
-
   Lemma preservation_cp_link
         st0 tr st1
         (WT: wt_state cp_link ge_cp_link st0)

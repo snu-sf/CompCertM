@@ -11,16 +11,10 @@ Require Import Ordered.
 Require Import AST.
 Require Import Integers.
 
-(* Require Import IntegersC LinkingC. *)
-(* Require Import SimSymb Skeleton Mod ModSem. *)
 Require Import ModSem Skeleton.
-(* Require SimSymbId. *)
-(* Require Import SimMem. *)
 
 Require Import Sound.
 Require Unreach.
-(* Export Unreach. *)
-(* Include Unreach. *)
 Import Unreach.
 Require Import SemiLattice.
 Require Import FinFun.
@@ -30,9 +24,6 @@ Set Implicit Arguments.
 
 Local Open Scope nat.
 
-(* Coercion unreach: t >-> Funclass. *)
-(* Coercion Unreach.nb: Unreach.t >-> block. *)
-(* Identity Coercion block_to_pos: block >-> positive. *)
 
 
 
@@ -74,33 +65,12 @@ Inductive mem': Unreach.t -> Memory.mem -> Prop :=
     mem' su m0
 .
 
-Lemma mle_mem
-      su0 m0 m1
-      (MEM: mem' su0 m0)
-      (MLE: mle su0 m0 m1)
-      (NB: Ple m0.(Mem.nextblock) m1.(Mem.nextblock))
-  :
-    <<MEM: mem' su0 m1>>
-.
-Proof.
-  inv MEM.
-  inv MLE.
-  econs; eauto; cycle 1.
-  { ii. unfold Mem.valid_block in *. exploit BOUND; eauto. i. xomega. }
-  { xomega. }
-  ii. clarify.
-  (* MLE: private is not changed *)
-  (* we need to show: public may changed, but still not pointing private *)
-Abort.
-
 Hint Unfold val' memval'.
 
 Definition le' (x y: Unreach.t): Prop :=
   (<<PRIV: x.(unreach) <1= y.(unreach)>>)
   /\
   (<<PUB: x.(ge_nb) = y.(ge_nb)>>)
-  (* /\ *)
-  (* (<<NB: x.(nb) = y.(nb)>>) *)
 .
 
 Global Program Instance le'_PreOrder: PreOrder le'.
@@ -112,13 +82,10 @@ Next Obligation.
   r; esplits; ss; eauto; etrans; eauto.
 Qed.
 
-(* TODO: I really don't want to define this. It is redundant with `Sound.args`, but it seems there is no other way *)
 Definition args' (su: Unreach.t) (args0: Args.t) :=
   (<<VAL: val' su (Args.fptr args0)>>)
   /\ (<<VALS: List.Forall (su.(val')) (Args.vs args0)>>)
   /\ (<<MEM: mem' su (Args.m args0)>>)
-  (* /\ (<<WF: forall blk (PRIV: su blk) (PUB: Plt blk su.(ge_nb)), False>>) *)
-  (* /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>) *)
   /\ (<<WF: wf su>>)
 .
 
@@ -162,7 +129,6 @@ Lemma finite_map_prop
       (j: X -> Y -> Prop)
       (INJ: forall x0 x1 y, P x0 -> P x1 -> j x0 y -> j x1 y -> x0 = x1)
       (FUNC: forall x, P x -> exists y, j x y)
-      (* (FUNC: forall x, exists ! y, j x y) *)
       (FIN: exists ly, forall x y, P x -> j x y -> In y ly)
   :
     <<FIN: exists lx, forall x, P x -> In x lx>>
@@ -249,7 +215,7 @@ Qed.
 
 Inductive J: positive -> Unreach.t -> nat -> Prop :=
 | J_runout
-    su 
+    su
   :
     J (1%positive) su 0
 | J_true
@@ -766,7 +732,6 @@ Global Program Instance Unreach: Sound.class := {
   hle := hle;
   val := val';
   mem := mem';
-  (* mle := Unreach.mle; *) (* TODO: How did `Program` guess the implementation of `mle` ???? *)
   skenv := skenv;
 }
 .
@@ -787,9 +752,6 @@ Next Obligation.
   - rewrite <- OLD; ss.
   - xomega.
 Qed.
-(* Next Obligation. *)
-(*   rr in GR. des. eapply MAX; eauto. (* econs; eauto. *) *)
-(* Qed. *)
 Next Obligation.
   set (Sk.load_skenv sk_link) as skenv.
   exists (mk (fun _ => false) skenv.(Genv.genv_next) m_init.(Mem.nextblock)).
@@ -821,13 +783,6 @@ Next Obligation.
   inv SKE. econs; eauto.
   congruence.
 Qed.
-(* Next Obligation. *)
-(*   eapply mle_monotone; try apply MLE; eauto. *)
-(*   r in LE. des; ss. *)
-(* Qed. *)
-(* Next Obligation. *)
-(*   rr in MLE. des. inv SKE. econs; eauto. congruence. *)
-(* Qed. *)
 Next Obligation.
   inv MLE.
   inv SKE. econs; eauto; cycle 1.
@@ -1197,4 +1152,3 @@ Proof.
     eapply PRIV; eauto.
   - rr in LE. des. xomega.
 Qed.
-

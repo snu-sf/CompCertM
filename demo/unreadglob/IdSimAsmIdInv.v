@@ -43,7 +43,6 @@ Variable P: SimMemInjInv.memblk_invariant.
 
 Local Instance SimMemP: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv P.
 Local Instance SimSymbP: SimSymb.class SimMemP := SimMemInjInvC.SimSymbIdInv P.
-
 Local Existing Instance SoundTop.Top.
 
 
@@ -416,7 +415,6 @@ Proof.
       { ss. des. clarify. ss. inv SIMARGS; clarify. } inv SIMARGS; clarify.
       rewrite RSRSP in *. des. ss. des_ifs. clarify.
       cinv (AGREE Asm.RSP); rewrite RSRSP in *; ss; clarify; rewrite RSP0 in *; clarify.
-
 
       assert (SKD: skd1 = skd).
       { inv SIMSKENV. inv SIMSKELINK. ss. inv INJECT.

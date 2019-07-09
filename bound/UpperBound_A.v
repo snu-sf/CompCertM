@@ -180,6 +180,7 @@ Section PRESERVATION.
       In (id, Gfun (External ef args res cc)) cp_link.(prog_defs) ->
       external_call ef skenv_link vargs m t vres m' ->
       wt_retval vres res.
+
   Hypothesis WT_EXTERNALS:
     forall cp (IN: In cp cps),
     forall id ef args res cc vargs m t vres m',
@@ -198,6 +199,17 @@ Section PRESERVATION.
   Hypothesis BINTERNAL: forall cp (IN: is_focus cp) id fd,
       In (id, Gfun fd) (prog_defs cp) ->
       ~ is_external_fd fd -> In (id, Gfun fd) builtins.
+
+  Hypothesis CSTYLE_EXTERN_LINK:
+    forall id ef tyargs ty cc,
+      In (id, (Gfun (Ctypes.External ef tyargs ty cc))) cp_link.(prog_defs) ->
+      ef.(ef_sig).(sig_cstyle).
+
+  Hypothesis CSTYLE_EXTERN:
+    forall id ef tyargs ty cc cp,
+      is_focus cp ->
+      In (id, (Gfun (Ctypes.External ef tyargs ty cc))) cp.(prog_defs) ->
+      ef.(ef_sig).(sig_cstyle).
 
   Let INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function cp_link).
   Proof.
@@ -1645,8 +1657,7 @@ Proof.
     { econs; et. i. ss. inv INITSRC. clarify. }
     i; des. ss. des_ifs.
     hexploit link_sk_match.
-    instantiate (1 := cp_link).
-    instantiate (1 := cps). eauto.
+    instantiate (1 := cp_link). instantiate (1 := cps). eauto.
     instantiate (1 := ctx). i. des. congruence. }
   rename t into link_sk. des.
   rewrite Forall_forall in *. inv TYPEDLINK.

@@ -85,7 +85,18 @@ Section SIM.
   Hypothesis WTPROGLINK: wt_program cp_link.
   Hypothesis WTPROGS: forall cp (IN: In cp cps), wt_program cp.
 
+  Hypothesis CSTYLE_EXTERN_LINK:
+    forall id ef tyargs ty cc,
+      In (id, (Gfun (Ctypes.External ef tyargs ty cc))) cp_link.(prog_defs) ->
+      ef.(ef_sig).(sig_cstyle).
+
   Definition is_focus (cp: Csyntax.program): Prop := In cp cps.
+
+  Hypothesis CSTYLE_EXTERN:
+    forall id ef tyargs ty cc cp,
+      is_focus cp ->
+      In (id, (Gfun (Ctypes.External ef tyargs ty cc))) cp.(prog_defs) ->
+      ef.(ef_sig).(sig_cstyle).
 
   Lemma link_sk_match
     :
@@ -1379,7 +1390,7 @@ Section SIM.
             esplits; eauto.
             inv WTPROGLINK.
             unfold prog_defmap in DMAP0. ss. eapply PTree_Properties.in_of_list in DMAP0.
-            exploit H2; eauto. i. (* congruence. *) admit "same as UpperBOund B".
+            exploit H2; eauto. i. exploit CSTYLE_EXTERN_LINK; eauto. i. des_ifs. congruence.
           - inv WTTGT. ss.
             inv WTK; ss.
             exploit WTKS.

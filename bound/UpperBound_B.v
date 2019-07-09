@@ -104,6 +104,11 @@ c0 + empty
       external_call ef skenv_link vargs m t vres m' ->
       wt_retval vres res.
 
+  Hypothesis CSTYLE_EXTERN:
+    forall id ef tyargs ty cc,
+      In (id, (Gfun (Ctypes.External ef tyargs ty cc))) prog.(prog_defs) ->
+      ef.(ef_sig).(sig_cstyle).
+
   Definition local_genv (p : Csyntax.program) :=
     (skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function)).(SkEnv.revive) p.
 
@@ -1395,7 +1400,7 @@ c0 + empty
                     { unfold fundef in *. rewrite <- H0 in Heq. clarify. }
                     subst. ss. }
                 exploit Genv.find_funct_inversion; eauto. i; des. f_equal.
-                inv WTPROG. eauto. }
+                inv WTPROG. exploit CSTYLE_EXTERN; eauto. i. des_ifs. f_equal. eapply H3; eauto. }
               { inv WTST; ss. exploit WTKS; eauto. { ii. clarify. } esplits; ss; eauto. rr. des. des_ifs. }
             ++ (* internal *)
               exploit progress_step; eauto.

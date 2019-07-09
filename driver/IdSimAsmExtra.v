@@ -741,20 +741,22 @@ Inductive wf_init_rs_asmstyle (rs: regset): Prop :=
     wf_init_rs_asmstyle rs
 .
 
-Inductive wf_init_rss: option signature -> regset -> regset -> Prop :=
+Inductive wf_init_rss: signature -> regset -> regset -> Prop :=
 | wf_init_rss_intro
     sg init_rs_src init_rs_tgt
     (WFINITSRC: wf_init_rs init_rs_src)
     (WFINITTGT: wf_init_rs init_rs_tgt)
     (UNDEF: undef_bisim init_rs_src init_rs_tgt)
+    (CSTYLE: sg.(sig_cstyle) = true)
   :
-    wf_init_rss (Some sg) init_rs_src init_rs_tgt
+    wf_init_rss sg init_rs_src init_rs_tgt
 | wf_init_rss_asmstyle
-    init_rs_src init_rs_tgt
+    sg init_rs_src init_rs_tgt
     (WFINITSRC: wf_init_rs_asmstyle init_rs_src)
     (WFINITTGT: wf_init_rs_asmstyle init_rs_tgt)
+    (CSTYLE: sg.(sig_cstyle) = false)
   :
-    wf_init_rss None init_rs_src init_rs_tgt
+    wf_init_rss sg init_rs_src init_rs_tgt
 .
 
 Inductive match_states_ext

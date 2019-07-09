@@ -88,7 +88,7 @@ Section TRIAL2.
       blk1 ofs
       init_rs (rs0: regset) m_unused m1 sg
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
-                        = Some skd /\ Sk.get_sig skd = Some sg)
+                        = Some skd /\ Sk.get_csig skd = Some sg)
       (RSP: rs0 RSP = Vptr blk1 ofs)
       (FREEABLE: Mem.range_perm m1 blk1 (ofs.(Ptrofs.unsigned))
                                 (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg))
@@ -101,7 +101,7 @@ Section TRIAL2.
       su0
       init_rs (rs0: regset) m_unused m1
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
-                        = Some skd /\ Sk.get_sig skd = None)
+                        = Some skd /\ Sk.get_csig skd = None)
     :
       has_footprint (mkstate init_rs (State rs0 m_unused)) su0 m1
   .
@@ -111,7 +111,7 @@ Section TRIAL2.
       init_rs rs0 m_unused (su0: Unreach.t) m0 m1
       blk1 sg ofs1
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
-                        = Some skd /\ Sk.get_sig skd = Some sg)
+                        = Some skd /\ Sk.get_csig skd = Some sg)
       (RSP: rs0 RSP = Vptr blk1 ofs1)
       UNFR
       (UNFRDEF: UNFR = (brange blk1 ofs1.(Ptrofs.unsigned)
@@ -128,7 +128,7 @@ Section TRIAL2.
   | mle_excl_asmstyle
       init_rs rs0 m_unused (su0: Unreach.t) m0 m1
       (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
-                        = Some skd /\ Sk.get_sig skd = None)
+                        = Some skd /\ Sk.get_csig skd = None)
       (MEM: m0 = m1)
     :
       mle_excl (mkstate init_rs (State rs0 m_unused)) su0 m0 m1
@@ -286,9 +286,9 @@ Section TRIAL2.
                 clear - VALS0 ARG MR PTR VALS NB H1 SOUNDIMPLY.
                 unfold typify_list, Sound.vals, Mach.extcall_arguments in *.
                 revert VALS pr PTR mr MR ARG VALS0.
-                generalize (loc_arguments_one sg).
-                generalize (loc_arguments sg).
-                generalize (sig_args sg).
+                generalize (loc_arguments_one (fn_sig fd)).
+                generalize (loc_arguments (fn_sig fd)).
+                generalize (sig_args (fn_sig fd)).
 
                 induction vs_arg; ss.
                 * ii. inv VALS. inv VALS0. ss.
@@ -315,7 +315,7 @@ Section TRIAL2.
               - destruct (peq blk (Mem.nextblock m_arg)).
                 + clarify. inv H.
                   exploit Mem.alloc_result; eauto. i. clarify.
-                  assert (RANGE: 0 <= ofs < 4 * size_arguments sg).
+                  assert (RANGE: 0 <= ofs < 4 * size_arguments (fn_sig fd)).
                   { apply NNPP. ii.
                     rewrite <- Mem.unchanged_on_perm in PERM; eauto.
                     - eapply Mem.perm_alloc_3 in PERM; eauto.
@@ -339,7 +339,7 @@ Section TRIAL2.
                         rewrite Ptrofs.unsigned_repr in *; cycle 1.
                         { eapply loc_arguments_acceptable_2 in IN.
                           exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
-                          i. des. ss. clarify. inv SKENVWF; ss. rewrite <- SIG in *.
+                          i. des. ss. clarify. inv SKENVWF; ss.
                           eapply WFPARAM in H; ss. red in H. inv IN. lia. }
                         Local Transparent Mem.load.
                         unfold Mem.load in H4. des_ifs.
@@ -350,7 +350,7 @@ Section TRIAL2.
                         * i. rewrite <- H in *.
                           unfold typify_list in IN0.
                           revert VALS IN0.
-                          generalize (sig_args sg). clear.
+                          generalize (sig_args (fn_sig fd)). clear.
                           induction vs_arg; ss.
                           i. des_ifs. ss. des.
                           { unfold typify in *. des_ifs. clear h. ss.
@@ -756,14 +756,14 @@ Proof.
       exploit store_arguments_parallel_extends; [..| eauto |]; eauto.
       + eapply typify_has_type_list; eauto.
       + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
-        i. des. inv WFTGT. rewrite <- SIG in *. eapply WFPARAM in H1; eauto; ss.
+        i. des. inv WFTGT. eapply WFPARAM in H1; eauto; ss.
       + ss. rewrite val_inject_list_lessdef in *.
         eapply inject_list_typify_list; try eassumption.
         erewrite inject_list_length; eauto.
       + i. des.
         eexists (AsmC.mkstate (asm_init_rs
                                  rs_src (to_mregset rs)
-                                 sg fptr_src (rs RA) (Mem.nextblock src))
+                                 (fn_sig fd) fptr_src (rs RA) (Mem.nextblock src))
                               (Asm.State _ (JunkBlock.assign_junk_blocks m_src1 n))).
         esplits; eauto.
         { econs; ss; eauto.
@@ -803,7 +803,7 @@ Proof.
                     AsmStepExt.agree
                       (asm_init_rs
                          rs_src (to_mregset rs)
-                         sg fptr_src (rs RA) (Mem.nextblock src)) rs).
+                         (fn_sig fd) fptr_src (rs RA) (Mem.nextblock src)) rs).
           { ii.
             unfold asm_init_rs, Pregmap.set, to_mregset, set_regset, to_pregset, to_preg, inject_id, set_regset in *.
             des_ifs; ss; eauto; try rewrite val_inject_id in *; eauto.
@@ -819,10 +819,11 @@ Proof.
           - unfold asm_init_rs, to_pregset, set_regset, Pregmap.set. des_ifs.
             rewrite SIMSKENVLINK in *. inv FPTR; ss; clarify; eauto.
             exfalso. inv SAFESRC. clarify. rewrite <- H4 in *. ss. clarify.
-          - rewrite <- SIG. econs.
+          - econs.
             + unfold asm_init_rs, to_pregset, set_regset, Pregmap.set. des_ifs.
             + econs; ss. ii. rewrite H0 in *. clarify.
             + eapply asm_init_rs_undef_bisim.
+            + ss.
           - unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def. des_ifs.
             hexploit RANOTFPTR; eauto. i. exfalso. eapply H1.
             eapply Genv.genv_defs_range; eauto. }
@@ -849,7 +850,7 @@ Proof.
         + rewrite Pregmap.gso; clarify. rewrite SIMSKE. eauto. cinv (RS PC).
           * rewrite H2. eauto.
           * des. inv SAFESRC; des; clarify. rewrite <- H1 in *. ss.
-        + rewrite <- SIG. des. econs; eauto.
+        + des. econs 2; eauto.
           * econs.
             { rewrite Pregmap.gss. eauto. }
             { rewrite Pregmap.gss. eauto. }
@@ -866,7 +867,7 @@ Proof.
       + ss. apply lessdef_list_length in VALS.
         transitivity (Datatypes.length vs_src); eauto.
       + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
-        i. des. inv WFSRC. rewrite <- SIG in *. eapply WFPARAM in H; eauto.
+        i. des. inv WFSRC. eapply WFPARAM in H; eauto.
       + inv SIMSKENVLINK. cinv FPTR; eauto.
         rewrite <- H1 in *. ss. }
     { inv SIMARGS; clarify.
@@ -958,9 +959,9 @@ Proof.
           des_ifs_safe. exfalso.
           specialize (AGREE PC). inv AGREE.
           { rewrite H5 in *. rewrite Heq in *. des_ifs. }
-          { rewrite INITSIG0 in *. inv WFINITRS; ss; clarify. inv WFINITSRC.
+          { inv WFINITRS; ss; clarify. inv WFINITSRC.
             rewrite <- H3 in *. eauto. }
-        * rewrite INITSIG0 in *. inv WFINITRS. inv WFINITSRC. inv WFINITTGT.
+        * inv WFINITRS; clarify. inv WFINITSRC. inv WFINITTGT.
           unfold Val.has_type in TPTR. des_ifs.
           -- cinv (AGREEINIT RA); rewrite Heq in *; clarify.
              cinv (AGREE PC); rewrite RSRA in *; clarify.
@@ -969,7 +970,7 @@ Proof.
         * specialize (CALLEESAVE _ H1).
           specialize (AGREEINIT (to_preg mr0)).
           specialize (AGREE (to_preg mr0)).
-          rewrite INITSIG0 in *. inv WFINITRS.
+          inv WFINITRS; clarify.
           clear - CALLEESAVE AGREEINIT AGREE WFINITSRC H1 UNDEF. inv WFINITSRC.
           eapply lessdef_commute; try eassumption.
           -- rewrite <- val_inject_lessdef. eassumption.
@@ -988,9 +989,9 @@ Proof.
           des_ifs_safe. exfalso.
           specialize (AGREE PC). inv AGREE.
           { rewrite H1 in *. rewrite Heq in *. des_ifs. }
-          { des. rewrite <- H0 in *. ss. des_ifs. rewrite INITSIG0 in *.
+          { des. rewrite <- H0 in *. ss. des_ifs.
             inv WFINITRS; ss; clarify. inv WFINITSRC. eauto. }
-        + des. clarify. rewrite INITSIG0 in *. inv WFINITRS.
+        + des. clarify. inv WFINITRS; clarify.
           inv WFINITSRC. cinv (AGREE PC); clarify.
           * cinv (AGREEINIT RA); ss. exfalso. eauto.
           * rewrite <- H1 in *. exfalso. eauto.
@@ -1031,7 +1032,7 @@ Inductive match_states
     (FINDF: Genv.find_funct ge_src (init_rs_src PC) = Some (Internal fd))
     (WFINITRS: wf_init_rss fd.(fn_sig) init_rs_src init_rs_tgt)
     (RAWF: Genv.find_funct skenv_link_tgt (init_rs_tgt RA) = None)
-    (RSPDELTA: forall (SIG: exists sg, fd.(fn_sig) = Some sg)
+    (RSPDELTA: forall (SIG: sig_cstyle fd.(fn_sig) = true)
                       blk_src ofs (RSPSRC: init_rs_src RSP = Vptr blk_src ofs),
         exists blk_tgt,
           (j blk_src = Some (blk_tgt, 0)))
@@ -1079,12 +1080,12 @@ Proof.
 
       exploit store_arguments_parallel; eauto.
       { eapply typify_has_type_list; eauto. }
-      { exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
-        rewrite <- SIG in *. i. des. inv WFTGT. eapply WFPARAM; eauto; ss. }
+      { exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto. i. des.
+        inv WFTGT. rpapply WFPARAM; eauto; ss. }
       { eapply inject_list_typify_list; try eassumption.
         erewrite inject_list_length; eauto. } i. des.
       hexploit (assign_junk_blocks_parallel n); eauto. i. des.
-      eexists (AsmC.mkstate (((to_pregset (set_regset_junk (SimMemInj.src sm1) m0 n rs_src (to_mregset rs) sg)) # PC <- fptr_src)
+      eexists (AsmC.mkstate (((to_pregset (set_regset_junk (SimMemInj.src sm1) m0 n rs_src (to_mregset rs) (fn_sig fd))) # PC <- fptr_src)
                                # RA <- (src_junk_val (SimMemInj.src sm1) m0 n (rs RA)))
                             # RSP <- (Vptr (Mem.nextblock (SimMemInj.src sm_arg)) Ptrofs.zero)
                             (Asm.State _ _)).
@@ -1134,7 +1135,7 @@ Proof.
       { assert (AGREE0:
                   AsmStepInj.agree
                     (SimMemInj.inj sm0)
-                    (((to_pregset (set_regset_junk (SimMemInj.src sm1) m0 n rs_src (to_mregset rs) sg))
+                    (((to_pregset (set_regset_junk (SimMemInj.src sm1) m0 n rs_src (to_mregset rs) (fn_sig fd)))
                         # PC <- fptr_src) # RA <- (src_junk_val (SimMemInj.src sm1) m0 n (rs RA))) # RSP <-
                     (Vptr (Mem.nextblock (SimMemInj.src sm_arg)) Ptrofs.zero) rs).
         { ii. unfold Pregmap.set, to_mregset, to_pregset, to_preg.
@@ -1155,7 +1156,7 @@ Proof.
         - instantiate (1:=fd). inv SAFESRC; clarify. ss. des.
           exploit match_globals_find_funct; eauto. i.
           setoid_rewrite FINDF in H. clarify.
-        - rewrite <- SIG. econs.
+        - econs.
           + econs; eauto.
             * unfold Pregmap.set. des_ifs.
             * unfold Pregmap.set. des_ifs. unfold src_junk_val. des_ifs.
@@ -1182,6 +1183,7 @@ Proof.
                   unfold Mem.valid_block in *. exfalso. des. des_ifs.
                 * erewrite loc_notin_not_in in n3. apply NNPP in n3.
                   apply loc_args_callee_save_disjoint in n3. exfalso. eauto. }
+          + ss.
         - unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def. des_ifs.
           eapply Genv.genv_defs_range in Heq0. exfalso. eapply RANOTFPTR; eauto.
         - unfold Pregmap.set. des_ifs. ii. clarify. rewrite MINJ. rewrite INJ.
@@ -1224,14 +1226,14 @@ Proof.
           exploit match_globals_find_funct; eauto.
           * eapply RS.
           * i. setoid_rewrite FINDF in H. clarify. eauto.
-        + erewrite <- SIG. econs 2; eauto.
+        + econs 2; eauto.
           * unfold src_junk_val. econs; eauto; rewrite Pregmap.gss.
             { des_ifs. }
             { des_ifs; clarify; ss; des; clarify. }
           * econs; eauto; rewrite Pregmap.gss.
         + rewrite Pregmap.gss. unfold Genv.find_funct, Genv.find_funct_ptr. des_ifs.
           eapply Genv.genv_defs_range in Heq. exfalso. eapply RANOTFPTR; eauto.
-        + i. des. rewrite <- SIG in *. clarify. }
+        + i. des. clarify. }
 
   - (** ******************* safe **********************************)
     exploit SimSymbDrop_match_globals.
@@ -1242,7 +1244,7 @@ Proof.
       + apply inject_list_length in VALS.
         transitivity (Datatypes.length vs_src); eauto.
       + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
-        i. des. inv WFSRC. eapply WFPARAM in H; eauto. rewrite <- SIG in *. ss.
+        i. des. inv WFSRC. eapply WFPARAM in H; eauto.
       + exploit match_globals_find_funct; eauto. }
     { inv SIMARGS; clarify. ss.
       eapply asm_initial_frame_succeed_asmstyle; eauto.
@@ -1434,9 +1436,8 @@ Proof.
             - exploit SIMSYMB3; eauto. i. des.
               rewrite BLKSRC. f_equal.
               exploit DISJ; eauto. }
-          { rewrite <- H2 in *. rewrite INITSIG0 in *.
-            inv WFINITRS. inv WFINITSRC. eauto. }
-        * rewrite INITSIG0 in *. inv WFINITRS. inv WFINITSRC. inv WFINITTGT.
+          { rewrite <- H2 in *. inv WFINITRS; clarify. inv WFINITSRC. eauto. }
+        * inv WFINITRS; clarify. inv WFINITSRC. inv WFINITTGT.
           unfold Val.has_type in TPTR. des_ifs.
           -- cinv (AGREEINIT RA); rewrite Heq in *; clarify.
              cinv (AGREE PC); rewrite RSRA in *; clarify.
@@ -1445,7 +1446,7 @@ Proof.
              cinv (AGREE PC); rewrite RSRA in *; clarify.
         * specialize (CALLEESAVE _ H).
           specialize (AGREEINIT (to_preg mr0)).
-          specialize (AGREE (to_preg mr0)). rewrite INITSIG0 in *. inv WFINITRS.
+          specialize (AGREE (to_preg mr0)). inv WFINITRS; clarify.
           clear - CALLEESAVE AGREEINIT AGREE WFINITSRC WFINITTGT H UNDEF.
           inv WFINITSRC.
           eapply lessdef_commute; eauto.
@@ -1480,10 +1481,10 @@ Proof.
             - exploit SIMSYMB3; eauto. i. des.
               rewrite BLKSRC. f_equal.
               exploit DISJ; eauto. }
-          { rewrite <- H1 in *. ss. des. des_ifs. clarify. rewrite INITSIG0 in *.
-            inv WFINITRS. inv WFINITSRC. congruence. }
-        * des. des_ifs. clarify. rewrite INITSIG0 in *.
-          inv WFINITRS. inv WFINITSRC. inv WFINITTGT.
+          { rewrite <- H1 in *. ss. des. des_ifs. clarify.
+            inv WFINITRS; clarify. inv WFINITSRC. congruence. }
+        * des. des_ifs. clarify.
+          inv WFINITRS; clarify. inv WFINITSRC. inv WFINITTGT.
           unfold Val.has_type in TPTR. des_ifs.
           -- cinv (AGREEINIT RA); rewrite Heq in *; clarify.
              cinv (AGREE PC); rewrite RSRA in *; clarify.

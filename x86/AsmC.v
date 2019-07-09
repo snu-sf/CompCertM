@@ -91,7 +91,7 @@ Section MODSEM.
   | initial_frame_cstyle
       fd m0 rs sg targs n m1 fptr_arg vs_arg m_arg
       (SIG: sg = fd.(fn_sig))
-      (CSTYLE0: sg.(sig_cstyle))
+      (CSTYLE0: sg.(sig_cstyle) = true)
       (CSTYLE: args = Args.Cstyle fptr_arg vs_arg m_arg)
       (FINDF: Genv.find_funct ge fptr_arg = Some (Internal fd))
       (JUNK: assign_junk_blocks m0 n = m1)
@@ -110,7 +110,7 @@ Section MODSEM.
       initial_frame args (mkstate rs (State rs m1))
   | initial_frame_asmstyle
       fd ra n m1 rs_arg rs m_arg
-      (SIG: false = fd.(fn_sig).(sig_cstyle))
+      (SIG: fd.(fn_sig).(sig_cstyle) = false)
       (ASMSTYLE: args = Args.Asmstyle rs_arg m_arg)
       (FINDF: Genv.find_funct ge (rs_arg # PC) = Some (Internal fd))
       (JUNK: assign_junk_blocks m_arg n = m1)

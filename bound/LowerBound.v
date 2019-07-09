@@ -22,14 +22,10 @@ Record sub_match_genvs A B V W (R: globdef A V -> globdef B W -> Prop)
       exists d1, <<FIND: Genv.find_def ge2 b = Some d1>> /\ <<MATCHDEF: R d0 d1>>;
   }.
 
-Program Definition match_prog (sk: Sk.t) (tprog: Asm.program) : Prop
-  := match_program
+Definition match_prog (sk: Sk.t) (tprog: Asm.program) : Prop
+  := @match_program
+       _ _ _ _ (Linking.Linker_fundef signature) Linker_unit
        (fun cu tf f => tf = AST.transf_fundef fn_sig f) eq sk tprog.
-
-(* Definition match_prog (sk: Sk.t) (tprog: Asm.program) : Prop *)
-(*   := @match_program *)
-(*        _ _ _ _ (Linking.Linker_fundef signature) Linker_unit *)
-(*        (fun cu tf f => tf = AST.transf_fundef fn_sig f) eq sk tprog. *)
 
 Lemma module_match_prog p
   :
@@ -62,13 +58,35 @@ Lemma link_success progs sk
   :
     exists tprog, link_list progs = Some tprog /\ match_prog sk tprog.
 Proof.
-  assert((@link_list _ (@Linker_prog _ _ _ _)
+  assert((@link_list _ (@Linker_prog _ _ (Linking.Linker_fundef signature) _)
                      (map Mod.sk (map module progs))) = Some sk).
-  { unfold link_sk, link_list in *. des_ifs_safe. }
+  { unfold link_sk, link_list in *. des_ifs_safe.
+    eapply (@stricter_link_list_aux _ (@Linker_prog (AST.fundef signature) unit (Linking.Linker_fundef signature) Linker_unit) (@Linker_prog (AST.fundef signature) unit Linker_skfundef Linker_unit)) in Heq.
+    - rewrite Heq. auto.
+    - clear Heq.
+      Local Transparent Linker_prog Linker_def Linking.Linker_fundef Linker_skfundef.
+      i. ss. unfold link_prog, proj_sumbool, andb in *. des_ifs_safe.
+      assert (FORALL: @PTree_Properties.for_all
+                        _ (prog_defmap x0) (@link_prog_check _ _ (Linking.Linker_fundef signature) _ x0 x1)
+                      = true).
+      + rewrite PTree_Properties.for_all_correct in Heq0.
+        rewrite PTree_Properties.for_all_correct.
+        i. unfold link_prog_check, proj_sumbool, andb in *. des_ifs_safe.
+        exploit Heq0; eauto. i. des_ifs.
+        ss. unfold link_def in *. des_ifs.
+        ss. unfold link_skfundef, Linking.link_fundef in *. des_ifs.
+      + rewrite FORALL. f_equal. f_equal. eapply PTree.elements_extensional.
+        i. erewrite PTree.gcombine; eauto. erewrite PTree.gcombine; eauto.
+        rewrite PTree_Properties.for_all_correct in Heq0.
+        rewrite PTree_Properties.for_all_correct in FORALL.
+        unfold link_prog_merge. des_ifs.
+        exploit Heq0; eauto. i. exploit FORALL; eauto. i. clear Heq0 FORALL.
+        unfold link_prog_check, proj_sumbool, andb in *. des_ifs.
+        ss. unfold link_def in *. des_ifs.
+        ss. unfold link_skfundef, Linking.link_fundef in *. des_ifs. }
   clear LINK_SK. rename H into LINK_SK.
-  eapply (@link_list_match (AST.program (AST.fundef (option signature)) unit) Asm.program (@Linker_prog (AST.fundef (option signature)) unit (Linking.Linker_fundef (option signature))
-                                                                                               Linker_unit)); eauto.
-  - eapply (@TransfTotalLink_rev function (option signature) unit Linker_unit fn_sig).
+  eapply (@link_list_match (AST.program (AST.fundef signature) unit) Asm.program (@Linker_prog (AST.fundef signature) unit (Linking.Linker_fundef signature) Linker_unit)); eauto.
+  - eapply (@TransfTotalLink_rev function signature unit Linker_unit fn_sig).
   - rewrite list_map_compose. clear LINK_SK.
     induction progs; ss.
     + econs.
@@ -331,7 +349,7 @@ Section PRESERVATION.
         skd
         (GLOBAL: Genv.find_funct skenv_link fptr = Some skd)
     :
-      Sk.get_csig skd = fd.(fn_sig)
+      Sk.get_sig skd = fd.(fn_sig)
   .
   Proof.
     inv LE.
@@ -342,7 +360,7 @@ Section PRESERVATION.
     - rewrite Heq in *. clarify.
     - rewrite Heq in *. clarify.
       unfold skdef_of_gdef, fundef in *. rewrite FIND in *. inv MATCHDEF.
-      des_ifs. ss. des_ifs.
+      des_ifs.
   Qed.
 
 (** ********************* initial memory *********************************)
@@ -428,7 +446,7 @@ Section PRESERVATION.
         (FIND0: Genv.find_funct (System.globalenv skenv_link) v = Some (External ef))
         (FIND1: Genv.find_funct skenv_link v = Some skd)
     :
-      Sk.get_csig skd = Some (ef_sig ef)
+      Sk.get_sig skd = ef_sig ef
   .
   Proof.
     unfold System.globalenv in *. clarify.
@@ -676,7 +694,7 @@ Section PRESERVATION.
       init_rs P
       (RSRA: init_rs # RA = Vnullptr)
       (RSPC: init_rs # PC = Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero)
-      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal (Some signature_main)))
+      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal signature_main))
     :
       match_stack j P init_rs nil
   | match_stack_cons
@@ -710,7 +728,7 @@ Section PRESERVATION.
       init_rs m P
       (MEM: m = m_init)
       (INITRS: init_rs = initial_regset)
-      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal (Some signature_main)))
+      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal signature_main))
     :
       match_stack_call j m P init_rs nil
   | match_stack_call_cons
@@ -1544,9 +1562,9 @@ Section PRESERVATION.
         des_ifs. specialize (e _ _ Heq1). des; clarify.
         inv MATCHDEF. ss.
       }
-      clarify. ss.
+      clarify. ss. des_ifs.
 
-      assert (TYPCHK: typecheck vs_arg sg (typify_list vs_arg (sig_args sg))).
+      assert (TYPCHK: typecheck vs_arg (fn_sig fd) (typify_list vs_arg (sig_args (fn_sig fd)))).
       { econs; eauto. rewrite sig_args_length.
         symmetry. eapply list_forall2_length; eauto. }
 
@@ -1577,8 +1595,8 @@ Section PRESERVATION.
                          if (is_callee_save mr)
                          then (init_rs pr)
                          else
-                           (callee_initial_reg' sg
-                                                (typify_list vs_arg (sig_args sg)))
+                           (callee_initial_reg' (fn_sig fd)
+                                                (typify_list vs_arg (sig_args (fn_sig fd))))
                              mr
                        | None =>
                          match pr with
@@ -1592,7 +1610,7 @@ Section PRESERVATION.
       destruct (callee_initial_junk'
                   callee_initial_reg
                   (Mem.nextblock (callee_initial_mem' blk ofs m_src m_arg
-                                                      sg (typify_list vs_arg (sig_args sg))))
+                                                      (fn_sig fd) (typify_list vs_arg (sig_args (fn_sig fd)))))
                   (callee_initial_inj' blk ofs j m_arg)
                   callee_save_registers) as [[rs_callee n] j_callee] eqn:JUNKED.
       exploit callee_initial_junk_spec; try apply JUNKED; eauto.
@@ -1623,15 +1641,15 @@ Section PRESERVATION.
       exists rs_callee.
       exists (assign_junk_blocks
                 (callee_initial_mem' blk ofs m_src m_arg
-                                     sg (typify_list vs_arg (sig_args sg))) n).
+                                     (fn_sig fd) (typify_list vs_arg (sig_args (fn_sig fd)))) n).
 
       assert (UNCH: Mem.unchanged_on
                       (fun (b : Values.block) (ofs0 : Z) =>
                          if eq_block b (Mem.nextblock m_arg)
-                         then ~ 0 <= ofs0 < 4 * size_arguments sg
+                         then ~ 0 <= ofs0 < 4 * size_arguments (fn_sig fd)
                          else True) m
-                      (callee_initial_mem' blk ofs m_src m_arg sg
-                                           (typify_list vs_arg (sig_args sg)))).
+                      (callee_initial_mem' blk ofs m_src m_arg (fn_sig fd)
+                                           (typify_list vs_arg (sig_args (fn_sig fd))))).
       {
         econs; ss.
         - erewrite Mem.nextblock_alloc; eauto. refl.
@@ -1646,8 +1664,6 @@ Section PRESERVATION.
       split.
 
       { econs; eauto.
-        - des_ifs.
-
         - clear - TPTR RADEF SAME0.
           cinv (SAME0 RA).
           + rewrite VAL1. econs; ss.
@@ -1679,7 +1695,7 @@ Section PRESERVATION.
                   repeat rewrite to_preg_to_mreg in *. ss. }
 
             * clear JUNKED.
-              assert (LEN: Datatypes.length vs_arg = Datatypes.length (sig_args sg)).
+              assert (LEN: Datatypes.length vs_arg = Datatypes.length (sig_args (fn_sig fd))).
               { rewrite sig_args_length. symmetry.
                 eapply list_forall2_length; eauto. }
 
@@ -1703,7 +1719,7 @@ Section PRESERVATION.
               { right. esplits; eauto. unfold Mem.load. ss.
                 hexploit loc_arguments_bounded; eauto. i.
                 hexploit loc_arguments_acceptable; eauto.
-                { instantiate (1:=sg).
+                { instantiate (1:=(fn_sig fd)).
                   instantiate (1:=One (S Outgoing ofs1 ty)).
                   exploit in_regs_of_rpairs_inv; eauto. i. des.
                   rpapply H1.
@@ -1756,8 +1772,8 @@ Section PRESERVATION.
           apply mem_readonly_trans with m.
           { eapply Mem.alloc_unchanged_on. eauto. }
           apply mem_readonly_trans with (callee_initial_mem'
-                                           blk ofs m_src m_arg sg
-                                           (typify_list vs_arg (sig_args sg))).
+                                           blk ofs m_src m_arg (fn_sig fd)
+                                           (typify_list vs_arg (sig_args (fn_sig fd)))).
           { inv FREE. eapply Mem.unchanged_on_implies; try eassumption.
             ii. ss. des_ifs. ii. apply H0. eapply Mem.perm_implies.
             - eapply Mem.perm_cur. eapply Mem_alloc_range_perm; eauto.
@@ -1871,7 +1887,7 @@ Section PRESERVATION.
             inv FREE. rewrite freed_from_nextblock in *. eapply Plt_strict; eauto.
 
         - des_ifs. exfalso. unfold external_state in *.
-          erewrite <- EQ in Heq.
+          erewrite <- EQ in Heq0.
           + unfold callee_initial_reg in *. ss. clear JUNKED. des_ifs.
             unfold Genv.find_funct in FINDF. clear - Heq2 FINDF. des_ifs.
           + clear. ii. ss. des; clarify.
@@ -1887,10 +1903,9 @@ Section PRESERVATION.
       exploit callee_initial_junk_spec; eauto. i. des.
       exists rs_callee. exists (assign_junk_blocks m_src n).
       splits.
-      - econs 2; ss.
-        + eapply local_global_consistent in FINDF; eauto. ss.
-          rewrite FINDF in *. eauto.
-        + eauto.
+      - dup FINDF. eapply local_global_consistent in FINDF; eauto. econs 2; ss.
+        + rewrite <- FINDF. unfold Sk.get_csig in *. des_ifs.
+        + ss.
         + instantiate (1:=rs_callee # RA). des_ifs.
           rewrite Heq. ss.
         + ii. ss. des_ifs; clarify.
@@ -2116,16 +2131,16 @@ Section PRESERVATION.
     inv MTCHST. inv STACK.
     { ss. inv FINAL; cycle 1.
       { exfalso. des. eapply local_global_consistent in INITSIG; eauto.
-        rewrite INITSIG in *. clarify. }
+        rewrite <- INITSIG in *. unfold Sk.get_csig in *. des_ifs; ss; clarify. }
       inv AFTER; cycle 1.
       { exfalso. des. eapply local_global_consistent in INITSIG; eauto.
-        rewrite INITSIG in *. clarify. }
+        rewrite <- INITSIG in *. unfold Sk.get_csig in *. des_ifs; ss; clarify. }
       set WF as WF2. inv WF2. ss.
       rewrite PCSAME in *. des. rewrite RSPPTR in *. clarify.
-      assert (SG: fn_sig fd = Sk.get_csig skd0).
+      assert (SG: fn_sig fd = Sk.get_sig skd0).
       { exploit local_global_consistent; try apply GELE; eauto. }
-      assert (sg = sg0).
-      { rewrite SG in *. rewrite SIG1 in *. clarify. } clarify.
+      assert (sg = fn_sig fd).
+      { rewrite SG in *. ss. unfold Sk.get_csig in *. des_ifs. } clarify.
       exploit unfree_free_inj_inj_wf; ss; try apply INJ.
       { rewrite Ptrofs.unsigned_zero. rewrite Z.add_0_l. eauto. }
       { rewrite SG in *. eauto. }
@@ -2148,10 +2163,10 @@ Section PRESERVATION.
     }
     { ss. inv FINAL.
       { exfalso. des. eapply local_global_consistent in INITSIG; eauto.
-        rewrite INITSIG in *. clarify. }
+        rewrite <- INITSIG in *. unfold Sk.get_csig in *. des_ifs; ss; clarify. }
       inv AFTER.
       { exfalso. des. eapply local_global_consistent in INITSIG; eauto.
-        rewrite INITSIG in *. clarify. }
+        rewrite <- INITSIG in *. unfold Sk.get_csig in *. des_ifs; ss; clarify. }
       clarify. esplits; eauto.
       - eapply match_states_intro with (rs_src := retv_rs # PC <- (rs0 RA)); ss; eauto.
         ii. unfold Pregmap.set. des_ifs. eapply inj_same_inj; eauto.
@@ -2416,8 +2431,9 @@ Section PRESERVATION.
       { exfalso. des. clarify. }
       { exfalso. clarify.
         unfold System.globalenv, initial_regset, Pregmap.set in *. ss. clarify. }
-      assert (SIGEQ: Sk.get_csig skd = Some (ef_sig ef)).
-      { eapply external_function_sig; eauto. }
+      assert (SIGEQ: sg = ef_sig ef).
+      { unfold Sk.get_csig in *.
+        eapply external_function_sig in SIG; eauto. des_ifs; ss. }
       exists (
         if
           external_state (local_genv p)
@@ -2434,7 +2450,7 @@ Section PRESERVATION.
           eapply system_function_ofs; eauto.
         * instantiate (1 := ef).
           eapply system_sig; eauto.
-        * instantiate (1 := args2). auto.
+        * instantiate (1 := args2). eauto.
         * eapply H.
         * auto.
       + i. inv STEP2; [inv AT|inv STEP|]. inv FINAL. split; auto.

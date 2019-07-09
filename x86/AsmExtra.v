@@ -13,11 +13,12 @@ Lemma asm_initial_frame_succeed (asm: Asm.program) args fptr vs m skenv_link fd 
       (SIZE: 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (FPTR: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm) fptr =
             Some (Internal fd))
-      (SIG: fd.(fn_sig) = Some sg)
-
+      (SIG: fd.(fn_sig) = sg)
+      (CSTYLE: sg.(sig_cstyle) = true)
   :
     exists st_init, initial_frame skenv_link asm args st_init.
 Proof.
+  rewrite <- SIG in *.
   exploit store_arguments_progress.
   { eapply typify_has_type_list; eauto. }
   { eauto. }
@@ -46,8 +47,7 @@ Lemma asm_initial_frame_succeed_asmstyle (asm: Asm.program) args rs m skenv_link
       (ARGS: args = Args.Asmstyle rs m)
       (FPTR: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig asm)) asm) (rs PC) =
             Some (Internal fd))
-      (SIG: fd.(fn_sig) = None)
-
+      (ASMSTYLE: fd.(fn_sig).(sig_cstyle) = false)
   :
     exists st_init, initial_frame skenv_link asm args st_init.
 Proof.

@@ -58,8 +58,8 @@ Lemma sound_state_local_preservation
 .
 Proof.
   econs; ii; ss; eauto.
-  { esplits; eauto. rr. esplits; eauto. rr. rewrite Forall_forall. ii; ss. }
-  { esplits; eauto. rr. esplits; eauto. }
+  { esplits; eauto. rr. des_ifs. esplits; eauto. rr. rewrite Forall_forall. ii; ss. }
+  { esplits; eauto. rr. des_ifs. }
 Unshelve.
   all: ss.
 Qed.

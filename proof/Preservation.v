@@ -673,9 +673,11 @@ Proof.
   - inv INIT. rr. esplits; eauto.
     + refl.
   - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply EXTCALL; eauto.
-    { instantiate (1:= Args.Cstyle _ _ _). ss. esplits; eauto. }
+    { instantiate (1:= Args.Cstyle _ _ _). ss. }
+    { rr. esplits; eauto. }
     { eapply Sound.system_skenv; eauto. eapply Sound.skenv_mle; eauto. }
-    i; des. r in RETV. des. ss. esplits; eauto.
+    { eauto. }
+    i; des. r in RETV. ss. des. ss. esplits; eauto.
     + etrans; eauto.
     + eapply Sound.skenv_mle; eauto. etrans; eauto.
   - inv FINAL. ss. des. esplits; eauto.

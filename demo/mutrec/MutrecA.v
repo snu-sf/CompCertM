@@ -57,7 +57,7 @@ Definition composites : list composite_definition := nil.
 Definition global_definitions : list (ident * globdef fundef type) :=
 ((g_id,
    Gfun(External (EF_external "g"
-                   (mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default))
+                   (mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default true))
      (Tcons tint Tnil) tint cc_default)) :: (_memoized, Gvar v_memoized) ::
  (f_id, Gfun(Internal func_f)) :: nil).
 

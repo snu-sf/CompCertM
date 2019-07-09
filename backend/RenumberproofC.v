@@ -60,8 +60,7 @@ Proof.
     des. inv SAFESRC. inv SIMARGS; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
-    inv TYP. esplits; eauto. econs; eauto.
-    + ss.
+    inv TYP. esplits; eauto. econs; swap 1 2; eauto; ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify. inv CALLSRC. inv MATCHST; ss.
   - (* call fsim *)

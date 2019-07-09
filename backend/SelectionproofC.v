@@ -91,7 +91,8 @@ Proof.
     assert(SGEQ: (Cminor.fn_sig fd) = f.(fn_sig)).
     { destruct fd; ss. unfold sel_function in *. ss. unfold bind in *. des_ifs. }
     esplits; eauto. econs; eauto.
-   + econs; eauto with congruence.
+    + rewrite <- SGEQ. ss.
+    + econs; eauto with congruence.
       erewrite <- lessdef_list_length; eauto. etrans; eauto with congruence.
     + erewrite <- lessdef_list_length; eauto. etrans; eauto with congruence.
   - (* call wf *)

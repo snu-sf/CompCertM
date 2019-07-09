@@ -95,9 +95,9 @@ Proof.
     unfold bind in *. des_ifs.
     assert(FN_SIG: fn_sig f = Csharpminor.fn_sig fd).
     { unfold transl_function in *. unfold bind in *. des_ifs. eapply sig_preserved_body; eauto. }
-    esplits; eauto. econs; eauto.
-    + rewrite FN_SIG. inv TYP. econs; ss. exploit inject_list_length; et. congruence.
-  (* inv TYP. econs. eapply typecheck_inject; et. congruence. *)
+    esplits; eauto. econs; eauto; rewrite FN_SIG; ss.
+    + inv TYP. econs; ss. exploit inject_list_length; et. congruence.
+    (* inv TYP. econs. eapply typecheck_inject; et. congruence. *)
     + ss. exploit inject_list_length; et. congruence.
   - (* call wf *)
     inv MATCH; ss. inv MATCHST; ss.

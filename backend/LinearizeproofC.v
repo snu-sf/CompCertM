@@ -80,7 +80,7 @@ Proof.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. unfold bind in *. folder. des_ifs.
     inv TYP. unfold transf_function in *. unfold bind in *. des_ifs.
-    destruct sm_arg; ss. clarify. esplits; eauto. econs; eauto. ss.
+    destruct sm_arg; ss. clarify. esplits; eauto. econs; eauto; ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     u in CALLSRC. des. inv CALLSRC. inv MATCHST; ss.

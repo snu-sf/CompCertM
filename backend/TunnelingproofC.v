@@ -98,7 +98,7 @@ Proof.
     + bar. inv SAFESRC. inv TYP. bar.
       exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. folder. clarify.
       inv FPTR; ss.
-      clarify. eapply initial_frame_intro; ss.
+      clarify. eapply initial_frame_intro; ss; eauto.
       * ii. rewrite OUT; ss. exploit PTRFREE; eauto. clear - MWF. unfold JunkBlock.is_junk_value.
         i. des_ifs. des. esplits; eauto.
         { rewrite Mem.valid_block_extends; eauto. }
@@ -117,10 +117,8 @@ Proof.
     }
     intro P; des.
     hexploit (fill_arguments_spec); eauto. intro Q; des.
-    esplits; eauto. econs; ss.
-    + folder. eauto.
+    esplits; eauto. econs; swap 1 3; folder; eauto.
     + econs; eauto. ss. erewrite <- lessdef_list_length; eauto.
-    + i. rewrite OUT; ss.
     + i. rewrite OUT; ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify. u in CALLSRC. des. inv CALLSRC. inv MATCHST; ss.

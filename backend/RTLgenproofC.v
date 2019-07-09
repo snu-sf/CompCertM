@@ -86,6 +86,7 @@ Proof.
     assert(SGEQ: (CminorSel.fn_sig fd) = f.(fn_sig)).
     { destruct fd; ss. unfold transl_function in *. ss. unfold bind in *. des_ifs. }
     esplits; eauto. econs; eauto.
+    + ss. rewrite <- SGEQ. ss.
     + econs; eauto with congruence.
       erewrite <- lessdef_list_length; eauto. etrans; eauto with congruence.
     + erewrite <- lessdef_list_length; eauto. etrans; eauto with congruence.
@@ -101,7 +102,7 @@ Proof.
         { apply SIMSKENV. }
         intro GE. apply (fsim_external_funct_id GE); ss.
         folder. inv FPTR; ss.
-      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss.
+      * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. unfold Sk.get_csig in *. des_ifs.
     + econs; ss; eauto.
       * instantiate (1:= SimMemExt.mk _ _). ss.
       * ss.

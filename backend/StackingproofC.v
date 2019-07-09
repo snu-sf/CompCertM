@@ -1210,9 +1210,6 @@ Proof.
       esplits.
       { (* initial frame *)
         econs; eauto with congruence; cycle 2.
-        - ii. hexpl OUT.
-        - inv TYP. econs; eauto with congruence.
-          erewrite SimMem.sim_val_list_length; try apply VALS0. ss. etrans; eauto with congruence.
         - instantiate (1:= n). ii. hexpl OUT. destruct loc; ss.
           + hexploit PTRFREE; eauto.
             { rewrite <- SG. eauto. }
@@ -1241,6 +1238,10 @@ Proof.
               rewrite Z2Pos.inj_sub; ss; try lia.
               des_ifs; lia.
           + rewrite OUT0 in *. ss.
+        - ii. hexpl OUT.
+        - esplits; ss. clear - Heq CSTYLE0. unfold transf_function in Heq. des_ifs.
+        - inv TYP. econs; eauto with congruence.
+          erewrite SimMem.sim_val_list_length; try apply VALS0. ss. etrans; eauto with congruence.
       }
       { instantiate (1:= sm2). etrans; eauto. }
       { (* match states *)
@@ -1360,6 +1361,7 @@ Proof.
     { inv TYPTGT. eapply typify_has_type_list; et. }
     { exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF. eapply WFPARAM in H; eauto. }
     i; des. esplits; et. econs; et.
+    { esplits; ss. unfold transf_function in EQ. des_ifs. }
     { instantiate (1:= Vlong Int64.zero). ss. }
   - (* callstate wf *)
     inv MATCH; ss.
@@ -1408,7 +1410,7 @@ Proof.
         { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. apply SIMSKENV. }
         ii. clarify.
       * psimpl. zsimpl. des. inv WF. unfold Genv.find_funct in EXTTGT. des_ifs.
-        rewrite Genv.find_funct_ptr_iff in EXTTGT. ss. eapply WFPARAM in EXTTGT; eauto.
+        rewrite Genv.find_funct_ptr_iff in EXTTGT. ss. eapply WFPARAM in EXTTGT; eauto. unfold Sk.get_csig in *. des_ifs.
       * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
     + econs; ss; eauto with congruence.
     + econs; ss; et. econs; ss; et. u. i. des. clarify. eapply Mem.free_range_perm; et.
@@ -1697,8 +1699,7 @@ Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
   - r. eapply Sk.match_program_eq; eauto. ii. destruct f1; ss.
-    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto.
-      unfold LinearC.fn_sig, fn_sig. erewrite transf_function_sig; eauto.
+    + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. erewrite transf_function_sig; eauto.
     + clarify. left. esplits; eauto.
   - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
     i. ss. uge0. des_ifs. unfold SkEnv.revive in *. apply Genv_map_defs_def in Heq. des. ss. gesimpl.

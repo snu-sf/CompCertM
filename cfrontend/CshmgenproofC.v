@@ -85,7 +85,8 @@ Proof.
     inv TYP. inv H0. ss.
     assert(TYEQ: (ClightC.signature_of_function fd) = fn_sig tf0).
     { monadInv H3. ss. }
-    esplits; eauto. econs; eauto.
+    esplits; eauto. econs; swap 1 2; ss; eauto.
+    + esplits; ss. unfold ClightC.signature_of_function in *. rewrite <- TYEQ. ss.
     + ss. econs; ss. rewrite <- TYEQ. ss.
     + rewrite <- TYEQ. ss.
   - (* call wf *)

@@ -79,7 +79,7 @@ Proof.
     unfold transf_function in *. des_ifs.
     destruct sm_arg; ss. clarify.
     assert(SGEQ: fn_sig fd = fn_sig (transf_function fd)). { et. }
-    esplits; eauto. econs; eauto; ss.
+    esplits; eauto. econs; swap 1 3; eauto; ss.
   - (* call wf *)
     inv MATCH; ss. destruct sm0; ss. clarify.
     u in CALLSRC. des. inv CALLSRC. inv MATCHST; ss.

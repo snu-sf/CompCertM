@@ -300,7 +300,7 @@ Section PRSV.
                                                     su_gr /\ le' su0 su_gr).
       { specialize (H p (linkorder_refl _)).
         set (args0 := args).
-        inv AT. inv H; ss.
+        inv AT. inv H; ss. des.
         exploit sound_state_sound_args; eauto. i.
         hexploit (@UnreachC.greatest_ex (bc2su bc (Genv.genv_next skenv_link) (Mem.nextblock m0)) args0); eauto.
         { subst args0. r in H. des. esplits; eauto; cycle 1. { r. ss. esplits; eauto. } ss. refl. }
@@ -319,7 +319,7 @@ Section PRSV.
       { inv AT; inv AFTER; ss. rewrite Retv.get_m_m; ss. refl. }
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
         assert(BCARGS: (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)).(Sound.args) args).
-        { ss. inv AT; ss. s. rpapply sound_state_sound_args; eauto. }
+        { ss. inv AT; ss. s. des. rpapply sound_state_sound_args; eauto. }
         assert(BCLE0: le' su0 (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock))).
         { eapply UnreachC.hle_lift; eauto. }
         assert(BCLE1: le' (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) su_gr).

@@ -206,9 +206,8 @@ Proof.
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     exploit find_funct_inject; et. i; des. clarify.
     inv TYP.
-    esplits; eauto. econs; eauto.
-    + (* TODO: add lemma *)
-      econs; et.
+    esplits; eauto. econs; try eapply H; eauto.
+    + econs; et.
       etrans; try apply LEN; et. symmetry. eapply inject_list_length; et.
     + etrans; try apply LEN; et. symmetry. eapply inject_list_length; et.
   - (* call wf *)

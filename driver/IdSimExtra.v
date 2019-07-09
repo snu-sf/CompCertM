@@ -230,18 +230,23 @@ Proof.
   - instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
                        (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>)).
-    ss. i. inv SIMARGS. ss. destruct args_src, args_tgt, sm_arg. ss. clarify.
-    esplits; eauto. instantiate (1:= SimMemId.mk _ _). ss.
-  - ii. destruct args_src, args_tgt, sm_arg. inv SIMARGS; ss; clarify.
+    ss. i. inv SIMARGS; ss; esplits; eauto; try congruence.
+    assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). congruence.
+  - ii. destruct args_src, args_tgt, sm_arg; inv SIMARGS; ss; clarify.
+    assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). subst. eauto.
   - ii. ss. des. clarify.
-  - i. ss. des. clarify. destruct args_src, sm0; ss. clarify.
-    eexists _, (SimMemId.mk _ _). ss. esplits; eauto.
+  - i. ss. des. clarify. destruct args_src, sm0; ss; clarify.
+    + eexists _, (SimMemId.mk _ _). ss. esplits; eauto.
+      * econs; ss; eauto.
+      * instantiate (1:=top4). ss.
+    + eexists _, (SimMemId.mk _ _). ss. esplits; eauto.
+      * econs 2; ss; eauto.
+  - i. clear HISTORY. ss.
+    destruct sm_ret, retv_src, retv_tgt; inv SIMRET; des; ss; clarify; eexists (SimMemId.mk _ _); esplits; eauto.
+    assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). congruence.
+  - i. ss. des. destruct sm0. ss. clarify. destruct retv_src; ss; eexists (SimMemId.mk m m); esplits; eauto.
     + econs; ss; eauto.
-    + instantiate (1:=top4). ss.
-  - i. clear HISTORY. ss. destruct sm_ret, retv_src, retv_tgt.
-    inv SIMRET. des. ss. clarify. eexists (SimMemId.mk _ _). esplits; eauto.
-  - i. ss. des. destruct sm0. ss. clarify. destruct retv_src; ss. eexists (SimMemId.mk m m).
-    esplits; eauto. econs; ss; eauto.
+    + econs 2; ss; eauto.
   - right. ii. des. destruct sm0. ss. clarify. esplits; eauto.
     + i. exploit H; ss.
       * econs 1.

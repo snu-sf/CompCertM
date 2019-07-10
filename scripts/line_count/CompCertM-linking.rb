@@ -26,7 +26,7 @@ puts "<<Demo>>"
 puts
 system("find . -type f -path './demo/*' ! -path './demo/unreadglob/*' -name '*.v' | xargs coqwc")
 
-PASS_PROOFS=["cfrontend/Cstrategy.v", "cfrontend/SimplExprproof", "cfrontend/SimplLocalsproof", "cfrontend/Cshmgenproof", "cfrontend/Cminorgenproof",
+PASS_PROOFS=["cfrontend/Cstrategyproof", "cfrontend/SimplExprproof", "cfrontend/SimplLocalsproof", "cfrontend/Cshmgenproof", "cfrontend/Cminorgenproof",
              "backend/Selectionproof", "backend/RTLgenproof", "backend/Tailcallproof", "backend/Inliningproof", "backend/Renumberproof", "backend/Constpropproof",
              "backend/CSEproof", "backend/Deadcodeproof", "backend/Unusedglobproof", "backend/Allocproof", "backend/Tunnelingproof", "backend/Linearizeproof",
              "backend/CleanupLabelsproof", "backend/Debugvarproof", "backend/Stackingproof", "x86/Asmgenproof"]

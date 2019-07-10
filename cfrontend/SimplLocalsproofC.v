@@ -35,21 +35,6 @@ Proof.
   eapply forall2_val_casted_inject; eauto.
 Qed.
 
-Lemma typify_inject
-      v_src ty tv_src v_tgt j
-      (TYP: typify_c v_src ty tv_src)
-      (INJ: Val.inject j v_src v_tgt):
-    <<INJ: Val.inject j tv_src (typify v_tgt (typ_of_type ty))>>.
-Proof.
-  inv TYP.
-  - exploit wt_retval_has_type; eauto. i; des. unfold typify. des_ifs. inv INJ; ss.
-  - ss.
-Qed.
-
-Lemma proj_sig_res_type: forall targs0 tres0 cconv0,
-    proj_sig_res (signature_of_type targs0 tres0 cconv0) = typ_of_type tres0.
-Proof. destruct tres0; ss. Qed.
-
 Lemma typecheck_typecheck
       vs fd
       (CTYS: typecheck vs (type_of_params (fn_params fd))):
@@ -152,8 +137,7 @@ Proof.
         f_equal.
         { unfold transf_function in *. unfold bind in *. des_ifs. }
         { inv TYPTGT1. rewrite <- TYP0 at 2. f_equal. ss.
-          unfold transf_function in *. unfold bind in *. des_ifs.
-        }
+          unfold transf_function in *. unfold bind in *. des_ifs. }
   - (* init progress *)
     des. inv SAFESRC. inv SIMARGS; ss.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.

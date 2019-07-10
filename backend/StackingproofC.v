@@ -1420,7 +1420,7 @@ Proof.
       (** I tried it (just add "(SOUND: sound_state su0 m_init st_src1)" in MatchSimModSem.v - AFTERFSIM,
           but it has some difficulty.. **)
         hexploit (loc_result_caller_save sg_arg); eauto. intro RES.
-        hexploit (loc_result_one sg_arg); eauto. intro ONE.
+        hexploit (loc_result_one2 sg_arg); eauto. intro ONE.
         des. econs; ss; eauto.
         + ii. unfold Locmap.setpair. des_ifs. ss.
           apply wt_setreg; ss; cycle 1.
@@ -1537,7 +1537,7 @@ Proof.
     des. des_ifs; sep_simpl_tac; des; ss.
     (* unsguard AGLOCS. *)
     destruct st_tgt0; ss. clarify. ss. clarify. ss. inv STACKS.
-    hexploit (loc_result_one init_sg); eauto. i; des_safe.
+    hexploit (loc_result_one2 init_sg); eauto. i; des_safe.
     Local Transparent stack_contents_args dummy_frame_contents.
     ss. unfold dummy_frame_contents in *. psimpl. clarify.
     hexploit (Mem.range_perm_free sm0.(SimMemInj.tgt) sp 0 (4 * (size_arguments init_sg))); eauto.

@@ -171,12 +171,8 @@ Proof.
     + econs; ss; eauto.
       inv MLE0; ss. inv MCOMPAT. clear_tac.
       rpapply match_states_return; ss; eauto; ss.
-      { eapply match_stacks_bound; et; cycle 1.
-        { eauto with mem. }
-        { eauto with mem. }
-        eapply match_stacks_incr; et.
-        { i. inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; et. }
-      }
+      { eapply match_stacks_bound; eauto with mem. eapply match_stacks_incr; et.
+        i. inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; et. }
       { eapply inject_typify; et. }
       { eapply MWFAFTR. }
 

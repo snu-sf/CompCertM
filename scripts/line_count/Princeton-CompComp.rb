@@ -8,21 +8,29 @@ puts
 
 PASS_PROOFS=["cfrontend/Cshmgenproof_comp",
              "cfrontend/Cminorgenproof_comp", "cfrontend/CminorgenproofSIM", "cfrontend/CminorgenproofRestructured",
-             "backend/Selectionproof_comp",
-             "backend/RTLgenproof_comp",
+             "backend/Selectionproof_comp", "ia32/SelectOpproof", "backend/SelectLongproof_comp", "backend/SelectDivproof",
+             "backend/RTLgenproof_comp", "backend/RTLgenproof_comp",
              "backend/Tailcallproof_comp",
-             "backend/Inliningproof_comp",
+             "backend/Inliningproof_comp", "backend/Inliningspec",
              "backend/Renumberproof_comp",
-             "backend/Constpropproof_comp",
-             "backend/CSEproof_comp",
+             "backend/Constpropproof_comp", "ia32/ConstpropOpproof",
+             "backend/CSEproof_comp", "ia32/CombineOpproof",
              "backend/Allocproof_comp",
              "backend/Tunnelingproof_comp",
              "backend/Linearizeproof_comp",
              "backend/CleanupLabelsproof_comp",
              "backend/Stackingproof_comp",
-             "backend/Asmgenproof_comp"]
+             "backend/Asmgenproof_comp", "backend/Asmgenproof0_comp", "backend/Asmgenproof1_comp"]
 
 PASS_PROOFS.map!{|i| i + ".v"}
+
+EXCLUDE_FOLDERS=["arm", "powerpc", "unused"]
+
+EXCLUDE_FOLDER=EXCLUDE_FOLDERS.inject(""){|sum, i| sum + "! -path \'*" + i + "\/*\' "}
+
+EXCLUDE_FILES=["Cexec", "initializers", "initilizersproof", "Cstrategy", "Csem", "Csyntax", "SimplLocals", "SimplLocalsproof", "SimplExpr", "SimplExprproof", "Ctyping"]
+
+EXCLUDE_FILE=EXCLUDE_FILES.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}
 
 puts
 puts "<<<PASS_PROOFS>>>"
@@ -58,17 +66,14 @@ UNUSED.each{ |i| system("mv #{i} unused/#{i}")}
 puts
 puts "<<WHOLE>>"
 puts
-system("find . -type f ! -path '*arm/*' ! -path '*powerpc/*' ! -path '*unused/*' ! -path '*cpaser/*' \
-          ! -path '*cfrontend/Cexec.v' ! -path '*cfrontend/initializers.v' ! -path '*cfrontend/initilizersproof.v' ! -path '*cfrontend/Cstrategy.v' \
-          ! -path '*cfrontend/Csem.v' ! -path '*cfrontend/Csyntax.v' ! -path '*cfrontend/SimplLocals.v' ! -path '*cfrontend/SimplLocalsproof.v' \
-          ! -path '*cfrontend/SimplExpr.v' ! -path '*cfrontend/SimplExprproof.v' \
-          -name '*.v' ! -name 'Ctyping.v' | xargs coqwc")
+system("find . -type f " + EXCLUDE_FOLDER + "-name '*.v' " + EXCLUDE_FILE + " | xargs coqwc")
 
-
+=begin
 puts
 puts "<<UNUSED>>"
 puts
-system("find . -type f -path '*unused/*' -name '*.v'| xargs coqwc")
+system("find unused -type f -name '*.v'| xargs coqwc")
 
 UNUSED.each{ |i| system("mv unused/#{i} #{i}")}
 system("rm -rf unused")
+=end

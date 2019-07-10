@@ -151,20 +151,12 @@ Program Definition mkPR (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.cla
                                  /\ (<<SRCS: pp.(ProgPair.src) = p_src>>)
                                  /\ (<<TGTS: pp.(ProgPair.tgt) = p_tgt>>)) _ _ _.
 Next Obligation.
-  revert p0_src p1_src p0_tgt p1_tgt REL0 REL1 WF.
-  induction p0_src.
-  - i. exploit REL0; clarify; eauto. i. exploit REL1; clarify; eauto. i. des.
-    destruct pp0; ss; clarify. esplits; eauto.
-  - i. exploit REL0; ss; eauto.
-    { i. des; eauto. eapply WF; eauto. right. eapply in_or_app; eauto. } i.
-    exploit REL1; ss; eauto.
-    { i. des; eauto. eapply WF; eauto. right. eapply in_or_app; eauto. } i. des.
-    clarify. destruct pp0 as [|mp pp0]; ss; clarify.
-    inv SIMS0. exploit IHp0_src.
-    + exists pp0. esplits; eauto.
-    + exists pp. esplits; eauto.
-    + i. eapply WF. eauto.
-    + i. des. exists (mp :: pp1). esplits; ss; eauto; f_equal; eauto.
+  exploit REL0; eauto. { i. eapply WF. rewrite in_app_iff. eauto. } intro T0; des.
+  exploit REL1; eauto. { i. eapply WF. rewrite in_app_iff. eauto. } intro T1; des.
+  clarify. unfold ProgPair.sim in *. rewrite Forall_forall in *. eexists (_ ++ _). esplits; eauto.
+  - rewrite Forall_forall in *. i. rewrite in_app_iff in *. des; [apply SIMS|apply SIMS0]; eauto.
+  - unfold ProgPair.src. rewrite map_app. ss.
+  - unfold ProgPair.tgt. rewrite map_app. ss.
 Qed.
 Next Obligation.
   destruct (classic (forall x (IN: In x p_src), Sk.wf x)) as [WF|NWF]; cycle 1.

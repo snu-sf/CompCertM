@@ -1,7 +1,7 @@
 #!/bin/bash
 
 if [ $# -ne 1 ]; then
-  echo "Use one arguments [CompCert_v2.1 / CompCert_v3.0.1 / CompCert_v3.5 / CompCertX / CompComp / CompCertM / CompCertM-linking]"
+  echo "Use one arguments [CompCert_v2.1 / CompCert_v3.0.1 / CompCert_v3.5 / CompCertX / CompComp / CompCertM / CompCertM-linking / tex]"
   exit 1
 fi
 
@@ -60,6 +60,12 @@ elif [ "$1" == "CompCertM-linking" ]; then
     ruby CompCertM-linking.rb
     rm CompCertM-linking.rb
     cd scripts
+elif [ "$1" == "tex" ]; then
+    cp line_count/CompCertM-linking-tex.rb ../
+    cd ../
+    ruby CompCertM-linking-tex.rb
+    rm CompCertM-linking-tex.rb
+    cd scripts
 else
-  echo "Use one arguments [CompCert_v2.1 / CompCert_v3.0.1 / CompCert_v3.5 / CompCertX / CompComp / CompCertM / CompCertM-linking]"
+  echo "Use one arguments [CompCert_v2.1 / CompCert_v3.0.1 / CompCert_v3.5 / CompCertX / CompComp / CompCertM / CompCertM-linking/ tex]"
 fi

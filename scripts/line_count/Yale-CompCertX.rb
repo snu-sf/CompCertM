@@ -1,3 +1,10 @@
+def print_result(result)
+  printf result
+  result=result.split("\n")[-1].split(" ")
+  puts
+  puts "RESULTS: #{result[0].to_i + result[1].to_i}"
+end
+
 puts "Count Yale-CompCertX"
 puts
 puts "<<Preprocessing>>"
@@ -46,34 +53,10 @@ EXCLUDE_FILE=EXCLUDE_FILES.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}
 puts
 puts "<<<PASS_PROOFS>>>"
 puts
-system("coqwc #{PASS_PROOFS_ALL.join(" ")}")
+print_result(`coqwc #{PASS_PROOFS_ALL.join(" ")}`)
 puts
 
 puts
 puts "<<WHOLE>>"
 puts
-system("find compcert compcertx coqrel liblayers -type f " + EXCLUDE_FOLDER + "-name '*.v' " + EXCLUDE_FILE + " | xargs coqwc")
-
-=begin
-puts
-puts "<<<PASS_PROOFSX>>>"
-puts
-system("coqwc #{PASS_PROOFXS.join(" ")}")
-puts
-
-puts
-puts "<<Refactored>>"
-puts
-system("find compcert -type f ! -path '*arm/*' ! -path '*compcert/powerpc/*' ! -path '*compcert/x86_32/*' ! -path '*compcert/cparser/*' \
-          ! -name '*compcert/cfrontend/Cexec.v' ! -name '*compcert/cfrontend/initializers.v' ! -name '*compcert/cfrontend/initilizersproof.v' ! -name '*compcert/cfrontend/Cstrategy.v' \
-          ! -name '*compcert/cfrontend/Csem.v' ! -name '*compcert/cfrontend/Csyntax.v' ! -name '*compcert/cfrontend/SimplLocals.v' ! -name '*compcert/cfrontend/SimplLocalsproof.v' \
-          ! -name '*compcert/cfrontend/SimplExpr.v' ! -name '*compcert/cfrontend/SimplExprproof.v' ! -name '*compcert/cfrontend/Ctyping.v' ! -name '*compcert/cfrontend/Cexecimpl.v' \
-          ! -name '*compcert/backend/Unusedglob.v' ! -name '*compcert/backend/Unusedglobproof.v' \
-          -name '*.v' ! -name 'Ctyping.v' | xargs coqwc")
-
-puts
-puts "<<Added>>"
-puts
-system("find compcertx coqrel liblayers -type f -name '*.v'| xargs coqwc")
-=end
-
+print_result(`find compcert compcertx coqrel liblayers -type f #{EXCLUDE_FOLDER} -name '*.v' #{EXCLUDE_FILE} | xargs coqwc`)

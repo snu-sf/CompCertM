@@ -1,5 +1,11 @@
+def print_result(result)
+  printf result
+  result=result.split("\n")[-1].split(" ")
+  puts
+  puts "RESULTS: #{result[0].to_i + result[1].to_i}"
+end
+
 puts "Count CompCert v2.1"
-# system("find . -name '*.v'| xargs coqwc")
 puts
 puts "<<Preprocessing>>"
 puts "make *.vp > *.v"
@@ -27,10 +33,10 @@ EXCLUDE_FILE=EXCLUDE_FILES.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}
 puts
 puts "<<<PASS_PROOFS>>>"
 puts
-system("coqwc #{PASS_PROOFS.join(" ")}")
+print_result(`coqwc #{PASS_PROOFS.join(" ")}`)
 puts
 
 puts
 puts "<<WHOLE>>"
 puts
-system("find . -type f " + EXCLUDE_FOLDER + "-name '*.v' " + EXCLUDE_FILE + " | xargs coqwc")
+print_result(`find . -type f #{EXCLUDE_FOLDER} -name '*.v' #{EXCLUDE_FILE} | xargs coqwc`)

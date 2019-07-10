@@ -1,3 +1,10 @@
+def print_result(result)
+  printf result
+  result=result.split("\n")[-1].split(" ")
+  puts
+  puts "RESULTS: #{result[0].to_i + result[1].to_i}"
+end
+
 puts "Counting Princeton-compcomp"
 puts
 puts "<<Preprocessing>>"
@@ -35,7 +42,7 @@ EXCLUDE_FILE=EXCLUDE_FILES.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}
 puts
 puts "<<<PASS_PROOFS>>>"
 puts
-system("coqwc #{PASS_PROOFS.join(" ")}")
+print_result(`coqwc #{PASS_PROOFS.join(" ")}`)
 puts
 
 UNUSED=["cfrontend/Cshmgenproof", "cfrontend/Clight", "cfrontend/Csharpminor",
@@ -66,14 +73,4 @@ UNUSED.each{ |i| system("mv #{i} unused/#{i}")}
 puts
 puts "<<WHOLE>>"
 puts
-system("find . -type f " + EXCLUDE_FOLDER + "-name '*.v' " + EXCLUDE_FILE + " | xargs coqwc")
-
-=begin
-puts
-puts "<<UNUSED>>"
-puts
-system("find unused -type f -name '*.v'| xargs coqwc")
-
-UNUSED.each{ |i| system("mv unused/#{i} #{i}")}
-system("rm -rf unused")
-=end
+print_result(`find . -type f #{EXCLUDE_FOLDER} -name '*.v' #{EXCLUDE_FILE} | xargs coqwc`)

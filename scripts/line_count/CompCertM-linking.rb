@@ -46,7 +46,7 @@ system("coqwc compose/Sem.v compose/Mod.v compose/ModSem.v compose/System.v comp
 puts
 puts "<<Language Semantics>>"
 puts
-system("coqwc cfrontend/CstrategyC,v cfrontend/ClightC.v cfrontend/CsharminorC.v backend/CminorC.v backend/CminorSelC.v backend/RTLC.v backend/LTLC.v backend/LinearC.v backend/MachC.v x86/AsmC.v")
+system("coqwc cfrontend/CstrategyC.v cfrontend/ClightC.v cfrontend/CsharpminorC.v backend/CminorC.v backend/CminorSelC.v backend/RTLC.v backend/LTLC.v backend/LinearC.v backend/MachC.v x86/AsmC.v")
 
 puts
 puts "<<Our Meta Theory>>"

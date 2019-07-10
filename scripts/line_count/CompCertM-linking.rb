@@ -41,7 +41,7 @@ system("coqwc #{PASS_PROOFS.join(" ")}")
 puts
 puts "<<Interation Semantics>>"
 puts
-system("coqwc compose/Sem.v compose/Mod.v compose/ModSem.v compose/System.v compose/Skeleton.v compose/Syntax.v")
+system("coqwc compose/*.v")
 
 puts
 puts "<<Language Semantics>>"
@@ -51,7 +51,7 @@ system("coqwc cfrontend/CstrategyC.v cfrontend/ClightC.v cfrontend/CsharpminorC.
 puts
 puts "<<Our Meta Theory>>"
 puts
-system("coqwc compose/JunkBlock.v compose/ModSemProps.v compose/SimSymbDrop.v compose/SimSymb.v proof/*.v")
+system("coqwc proof/*.v")
 
 puts
 puts "<<Mixed Simulation>>"

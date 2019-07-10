@@ -1385,10 +1385,10 @@ Proof.
   - (* final fsim *)
     inv FINALSRC. inv MATCH. inv MATCHST.
     exploit match_stacks_sp_ofs; eauto; intro RSP; des_safe.
-    ss; clarify. des_ifs; sep_simpl_tac; des; ss. Undo 1.
-    des_ifs; sep_simpl_tac; des_safe; ss. Undo 1.
+    (* ss; clarify. des_ifs; sep_simpl_tac; des; ss. Undo 1. *)
+    (* des_ifs; sep_simpl_tac; des_safe; ss. Undo 1. *)
     (*** TODO: Fix des_safe with check_safe!! ***)
-    des. des_ifs; sep_simpl_tac; des; ss.
+    ss; clarify. des. des_ifs; sep_simpl_tac; des; ss.
     (* unsguard AGLOCS. *)
     destruct st_tgt0; ss. clarify. ss. clarify. ss. inv STACKS.
     hexploit (loc_result_one init_sg); eauto. i; des_safe.

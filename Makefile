@@ -2,13 +2,13 @@ COQMODULE    := compcomp
 # COQTHEORIES  := $(wildcard */*.v) #*/*.v
 COQTHEORIES  := $(shell find . -iname '*.v')
 
-.PHONY: all proof proof-quick
-
-graph:
-		sh make_graph.sh
+.PHONY: all proof proof-quick graph
 
 all:
 	$(MAKE) proof
+
+graph:
+		sh make_graph.sh
 
 ### Quick
 # proof-quick: Makefile.coq $(COQTHEORIES)

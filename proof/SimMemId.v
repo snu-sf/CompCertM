@@ -41,19 +41,6 @@ Next Obligation.
   - ginduction x; ii; inv H; ss. erewrite IHx; eauto.
   - ginduction x1; ii; ss. econs; eauto.
 Qed.
-(* Next Obligation. *)
-(*   eexists (mkrelation _ _). *)
-(*   esplits; ss; eauto. *)
-(*   inv WF. ss. *)
-(*   clear_tac. *)
-(*   assert(NOCOVER0: forall id, <<EQ: sk_src.(prog_defmap) ! id = sk_tgt.(prog_defmap) ! id>>). *)
-(*   { i. eapply NOCOVER. eauto. } *)
-(*   clear NOCOVER. *)
-(*   clear_tac. *)
-(*   econs; eauto. *)
-(*   - admit "This should hold; Maybe ""Genv.init_mem_match"" and ""Genv.init_mem_genv_next"" might help". *)
-(*   - admit "This should hold;". *)
-(* Qed. *)
 
 
 

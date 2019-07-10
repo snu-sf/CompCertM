@@ -668,8 +668,6 @@ Next Obligation.
       * inv WFTGT1. rr in H1. des_safe. exploit WFPTR; eauto.
     + apply NoDup_norepet. apply PTree.elements_keys_norepet.
     + des; congruence.
-(*   admit "See 'link_match_program' in Unusedglobproof.v. *)
-(* Note that we have one more goal (exists ss) but it is OK, as the 'link_match_program' proof already proves it.". *)
 Qed.
 Next Obligation.
   inv SIMSKE. unfold Genv.public_symbol. apply func_ext1. intro i0.
@@ -753,7 +751,6 @@ Next Obligation.
     { psimpl. ss. }
     rewrite Heq. rewrite Heq0. eauto.
   }
-  (* admit "See 'init_meminj_preserves_globals' in Unusedglobproof.v". *)
 Qed.
 Next Obligation.
   inv MLE. inv SIMSKENV.
@@ -783,14 +780,7 @@ Next Obligation.
     + exploit INCR; eauto. congruence.
     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
       exploit Genv.genv_defs_range; eauto. i. unfold Mem.valid_block in *. rewrite <- NBTGT in *. xomega.
-  (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *)
 Qed.
-(* Next Obligation. *)
-(*   inv SIMSKENV. inv MWF. inv WF. *)
-(*   destruct sm0; ss. destruct minj; ss. econs; ss; eauto. *)
-(*   - ss. etrans; eauto. *)
-(*   - ss. etrans; eauto. *)
-(* Qed. *)
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.

@@ -321,7 +321,6 @@ Section SIMSYMBINV.
       v
       (NVOL: v.(gvar_volatile) = false)
       (WRITABLE: v.(gvar_readonly) = false)
-      (* (INITD: admit "about init data" v.(gvar_init)) *)
       (INITD: forall
           (ge: Genv.t F V) m b
           (INIT: Genv.load_store_init_data ge m b 0 (gvar_init v))

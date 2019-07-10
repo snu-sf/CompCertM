@@ -49,6 +49,7 @@ Proof.
 Qed.
 
 Lemma loc_result_one: forall sg, exists mr_res, <<ONE: loc_result sg = One mr_res>>.
+Proof. i. compute. des_ifs; eauto. Qed.
 
 Lemma Loc_cons_right_disjoint
       xs0 xs1 x

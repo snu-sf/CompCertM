@@ -110,7 +110,7 @@ Definition is_external_gd `{HasExternal F} V (gd: globdef F V): bool :=
 
 Arguments is_external_fd {F}.
 Arguments is_external_gd {_} {_} {V}.
-Hint Unfold is_external_gd is_external_fd
+Hint Unfold is_external_gd is_external_fd.
 
 Global Instance external_function_HasExternal: HasExternal external_function :=
   Build_HasExternal is_external_ef.

@@ -376,10 +376,6 @@ I think "sim_skenv_monotone" should be sufficient.
     { erewrite SYMBKEEP; eauto. u. des_sumbool. eapply prog_defmap_image; et. }
   Qed.
 
-  (* Definition project (skenv: t) (ids: list ident): option SkEnv.t. *)
-  (*   admit "". *)
-  (* Defined. *)
-
   Definition internals (skenv: t): list block :=
     List.map fst (skenv.(Genv.genv_defs).(PTree.elements)).
 

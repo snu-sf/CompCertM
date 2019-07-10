@@ -25,8 +25,7 @@ Definition is_external (ge: genv) (s:Csem.state) : Prop :=
     | None => False
     end
   | _ => False
-  end
-.
+  end.
 
 Definition internal_function_state (ge: genv) (s: Csem.state) : Prop :=
   match s with
@@ -40,12 +39,11 @@ Definition internal_function_state (ge: genv) (s: Csem.state) : Prop :=
     | None => False
     end
   | _ => False
-  end
-.
+  end.
 
 Section PRESERVATION.
 
-(** PLAN B-0*)
+(* PLAN B-0*)
 
 (*
 B-0
@@ -76,13 +74,10 @@ c0 + empty
   Variable prog: Csyntax.program.
   Let tprog : Syntax.program := List.map CsemC.module [prog].
 
-  (* TODO: prog always exists *)
-
 (** ********************* genv *********************************)
 
   Variable sk_tgt: Sk.t.
   Hypothesis LINK_SK_TGT: link_sk tprog = Some sk_tgt.
-  (* TODO: consider linking fail case *)
   Let skenv_link := Sk.load_skenv sk_tgt.
   Hypothesis WTSK: Sk.wf sk_tgt.
   Let SKEWF: SkEnv.wf skenv_link.
@@ -115,8 +110,7 @@ c0 + empty
   Inductive match_states : Csem.state -> Sem.state -> nat -> Prop :=
   | match_states_intro
       fr (st: Csem.state)
-      (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st)
-    :
+      (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st):
       match_states st (Sem.State [fr]) 1
   | match_states_call
       fptr tyf vargs k m args fr (st: Csem.state) cconv tres targs n
@@ -128,16 +122,13 @@ c0 + empty
       (ARGS: args.(Args.vs) = vargs)
       (MEM: args.(Args.m) = m)
       (NOTPROG: Genv.find_funct (local_genv prog) (Args.fptr args) = None)
-      (ORD: n = 0%nat)
-    :
+      (ORD: n = 0%nat):
       match_states (Csem.Callstate fptr tyf vargs k m) (Callstate args [fr]) n
   | match_states_init
       st_src st_tgt
       (INITSRC: Csem.initial_state prog st_src)
-      (INITTGT: initial_state tprog st_tgt)
-    :
-      match_states st_src st_tgt 0
-  .
+      (INITTGT: initial_state tprog st_tgt):
+      match_states st_src st_tgt 0.
 
   Let INCL: SkEnv.includes (Sk.load_skenv (CSk.of_program signature_of_function prog)) (CSk.of_program signature_of_function prog).
   Proof. eapply includes_refl. Qed.
@@ -146,7 +137,6 @@ c0 + empty
 
   Variable m_init : mem.
   Hypothesis INIT_MEM: sk_tgt.(Sk.load_mem) = Some m_init.
-  (* TODO: m_init exist *)
 
   Definition m_src_init := m_init.
 
@@ -181,9 +171,7 @@ c0 + empty
   Lemma skenv_link_wf:
     SkEnv.wf skenv_link.
   Proof.
-    clear INIT_MEM.
-    (unfold skenv_link; eapply SkEnv.load_skenv_wf).
-    ss.
+    clear INIT_MEM. (unfold skenv_link; eapply SkEnv.load_skenv_wf). ss.
   Qed.
 
   Lemma proj_wf:
@@ -212,8 +200,7 @@ c0 + empty
       eapply IHl; eauto.
   Qed.
 
-  Lemma symb_preserved id
-    :
+  Lemma symb_preserved id:
       Senv.public_symbol (symbolenv (sem tprog)) id =
       Senv.public_symbol (symbolenv (semantics prog)) id.
   Proof.
@@ -272,16 +259,13 @@ c0 + empty
   | valid_owner_intro
       fd
       (MSFIND: tge.(Ge.find_fptr_owner) fptr (CsemC.modsem skenv_link p))
-      (FINDF: Genv.find_funct (local_genv p) fptr = Some (Internal fd))
-  .
+      (FINDF: Genv.find_funct (local_genv p) fptr = Some (Internal fd)).
 
   Lemma find_fptr_owner_determ
         fptr ms0 ms1
         (FIND0: Ge.find_fptr_owner tge fptr ms0)
-        (FIND1: Ge.find_fptr_owner tge fptr ms1)
-    :
-      ms0 = ms1
-  .
+        (FIND1: Ge.find_fptr_owner tge fptr ms1):
+      ms0 = ms1.
   Proof.
     eapply SemProps.find_fptr_owner_determ; ss;
       try rewrite LINK_SK_TGT; eauto.
@@ -293,8 +277,7 @@ c0 + empty
         vars e2 m2
         e2' m2'
         (ALLOCV1: alloc_variables g e m vars e2 m2)
-        (ALLOCV2: alloc_variables g e m vars e2' m2')
-    :
+        (ALLOCV2: alloc_variables g e m vars e2' m2'):
       e2' = e2 /\ m2' = m2.
   Proof.
     generalize dependent g.
@@ -313,8 +296,7 @@ c0 + empty
         g ty m b
         ofs v tr m1 m1'
         (ASSIGN1: assign_loc g ty m b ofs v tr m1)
-        (ASSIGN2: assign_loc g ty m b ofs v tr m1')
-    :
+        (ASSIGN2: assign_loc g ty m b ofs v tr m1'):
       m1 = m1'.
   Proof.
     generalize dependent g.
@@ -326,8 +308,7 @@ c0 + empty
   Lemma bind_parameters_determ
         g env m l vl m1 m1'
         (BIND1: bind_parameters g env m l vl m1)
-        (BIND2: bind_parameters g env m l vl m1')
-    :
+        (BIND2: bind_parameters g env m l vl m1'):
       m1 = m1'.
   Proof.
     generalize dependent g.
@@ -367,18 +348,14 @@ c0 + empty
           destruct (mge_defs b); clarify; des_ifs.
   Qed.
 
-  Lemma id_in_prog
-        id
-    :
+  Lemma id_in_prog id:
       defs prog id <-> In id (prog_defs_names prog).
   Proof.
     split; i; unfold defs, in_dec, ident_eq in *; destruct (prog_defs_names prog); ss; des_ifs; eauto.
     inv H; clarify.
   Qed.
 
-  Lemma id_not_in_prog
-        id
-    :
+  Lemma id_not_in_prog id:
       ~ defs prog id <-> ~ In id (prog_defs_names prog).
   Proof.
     split; i; unfold not; i.
@@ -386,9 +363,7 @@ c0 + empty
     - rewrite id_in_prog in H0. clarify.
   Qed.
 
-  Lemma not_prog_defmap_spec
-        F V p id
-    :
+  Lemma not_prog_defmap_spec F V p id:
       ~ In id (prog_defs_names p) <-> ~ (exists g : globdef F V, (prog_defmap p) ! id = Some g).
   Proof.
     split; i; unfold not; i.
@@ -398,8 +373,7 @@ c0 + empty
 
   Lemma var_info_same
         blk g
-        (VAR: Genv.find_var_info (Genv.globalenv prog) blk = Some g)
-    :
+        (VAR: Genv.find_var_info (Genv.globalenv prog) blk = Some g):
       Genv.find_var_info (local_genv prog) blk = Some g
   .
   Proof.
@@ -412,8 +386,7 @@ c0 + empty
     specialize (mge_defs blk). inv mge_defs.
     { rewrite VAR in H0. inv H0. }
     symmetry in H0.
-    eapply DEFSYMB in H0. des.
-    des_ifs.
+    eapply DEFSYMB in H0. des. des_ifs.
     - destruct (Genv.invert_symbol (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)) blk) eqn:SYMINV; ss; cycle 1.
       + assert ((prog_defmap prog) ! id = Some x).
         { rewrite Genv.find_def_symbol. exists blk. splits.
@@ -438,8 +411,7 @@ c0 + empty
         rewrite H1. ss. rewrite VAR in H. inv H. ss.
     - unfold o_bind in Heq; ss.
       exploit Genv.find_invert_symbol; eauto. i. rewrite H1 in Heq. ss.
-      rewrite VAR in *. clarify.
-      des_ifs.
+      rewrite VAR in *. clarify. des_ifs.
       { uo. unfold internals in *. des_ifs. }
       unfold Genv.find_symbol in *. rewrite mge_symb in H0.
       assert ((prog_defmap prog) ! id = Some (Gvar g)).
@@ -451,23 +423,19 @@ c0 + empty
 
   Lemma var_info_same'
         blk g
-        (VAR: Genv.find_var_info (local_genv prog) blk = Some g)
-    :
+        (VAR: Genv.find_var_info (local_genv prog) blk = Some g):
       Genv.find_var_info (Genv.globalenv prog) blk = Some g.
   Proof.
     destruct match_ge_skenv_link.
     destruct skenv_link_wf. destruct proj_wf.
-    rewrite Genv.find_var_info_iff in *.
-    dup VAR.
+    rewrite Genv.find_var_info_iff in *. dup VAR.
     unfold Genv.find_def in VAR. ss.
     repeat rewrite MapsC.PTree_filter_map_spec in VAR.
-    rewrite o_bind_ignore in VAR.
-    des_ifs.
+    rewrite o_bind_ignore in VAR. des_ifs.
     destruct ((Genv.genv_defs skenv_link) ! blk) eqn:LINKDEF; cycle 1.
     { unfold o_bind in *; ss. }
     unfold o_bind in Heq; ss.
-    destruct (Genv.invert_symbol skenv_link blk) eqn:LINKINV; cycle 1; ss.
-    des_ifs.
+    destruct (Genv.invert_symbol skenv_link blk) eqn:LINKINV; cycle 1; ss. des_ifs.
     exploit Genv.invert_find_symbol; eauto. i.
     exploit SYMBKEEP; eauto. { eapply internals_defs; et. } i. rewrite <- H0 in H.
     exploit Genv.find_invert_symbol; eauto. i.
@@ -483,8 +451,7 @@ c0 + empty
 
   Lemma volatile_block_same
         blk b
-        (VOLATILE: Genv.block_is_volatile (local_genv prog) blk = b)
-    :
+        (VOLATILE: Genv.block_is_volatile (local_genv prog) blk = b):
       Genv.block_is_volatile (Genv.globalenv prog) blk = b.
   Proof.
     destruct match_ge_skenv_link.
@@ -495,8 +462,7 @@ c0 + empty
 
   Lemma volatile_block_same'
         blk b
-        (VOLATILE: Genv.block_is_volatile (Genv.globalenv prog) blk = b)
-    :
+        (VOLATILE: Genv.block_is_volatile (Genv.globalenv prog) blk = b):
       Genv.block_is_volatile (local_genv prog) blk = b.
   Proof.
     destruct match_ge_skenv_link.
@@ -508,9 +474,7 @@ c0 + empty
     - exploit var_info_same; eauto. i. rewrite H in Heq. clarify.
   Qed.
 
-  Lemma symbol_same
-        id
-    :
+  Lemma symbol_same id:
       Genv.find_symbol (local_genv prog) id =  Genv.find_symbol (Genv.globalenv prog) id.
   Proof.
     destruct match_ge_skenv_link.
@@ -529,9 +493,7 @@ c0 + empty
     rewrite Genv.find_def_symbol. exists b. split; eauto.
   Qed.
 
-  Lemma public_same
-        id
-    :
+  Lemma public_same id:
       Genv.public_symbol {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} id =
       Genv.public_symbol (Genv.globalenv prog) id.
   Proof.
@@ -563,21 +525,18 @@ c0 + empty
            eapply volatile_block_same'; eauto.
   Qed.
 
-  Lemma volatile_load_same
-        chunk m' b ofs tr v
-    :
+  Lemma volatile_load_same chunk m' b ofs tr v:
       volatile_load {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} chunk
-                    m' b ofs tr v <->
-      volatile_load (globalenv prog) chunk m' b ofs tr v.
+                    m' b ofs tr v
+      <-> volatile_load (globalenv prog) chunk m' b ofs tr v.
   Proof.
     split; i;
       exploit volatile_load_preserved; eauto. eapply Senv_equiv2. eapply Senv_equiv1.
   Qed.
 
-  Lemma deref_loc_same
-        ty m' b ofs tr v
-    :
-      deref_loc {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} ty m' b ofs tr v <-> deref_loc (globalenv prog) ty m' b ofs tr v.
+  Lemma deref_loc_same ty m' b ofs tr v:
+    deref_loc {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} ty m' b ofs tr v
+    <-> deref_loc (globalenv prog) ty m' b ofs tr v.
   Proof.
     destruct match_ge_skenv_link.
     split; intro DEREF;
@@ -587,27 +546,21 @@ c0 + empty
     - rewrite volatile_load_same; eauto.
   Qed.
 
-  Lemma volatile_store_same
-        chunk m b ofs v tr m'
-    :
+  Lemma volatile_store_same chunk m b ofs v tr m':
         volatile_store
-          {|
-            genv_genv := (local_genv prog);
-            genv_cenv := prog_comp_env prog |} chunk m b ofs v tr m'
+          {| genv_genv := (local_genv prog);
+             genv_cenv := prog_comp_env prog |} chunk m b ofs v tr m'
         <-> volatile_store (globalenv prog) chunk m b ofs v tr m'.
   Proof.
     split; i;
       exploit volatile_store_preserved; eauto. eapply Senv_equiv2. eapply Senv_equiv1.
   Qed.
 
-  Lemma assign_loc_same
-        ty m b ofs v tr m'
-    :
+  Lemma assign_loc_same ty m b ofs v tr m':
       assign_loc
-        {|
-          genv_genv := (local_genv prog);
-          genv_cenv := prog_comp_env prog |} ty m b ofs v tr m'
-        <-> assign_loc (globalenv prog) ty m b ofs v tr m'.
+        {| genv_genv := (local_genv prog);
+           genv_cenv := prog_comp_env prog |} ty m b ofs v tr m'
+      <-> assign_loc (globalenv prog) ty m b ofs v tr m'.
   Proof.
     destruct match_ge_skenv_link.
     split; intro ASSIGN;
@@ -615,9 +568,7 @@ c0 + empty
         econs 2; eauto.
   Qed.
 
-  Lemma bind_parameters_same
-        e m1 params vl m2
-    :
+  Lemma bind_parameters_same e m1 params vl m2:
       bind_parameters {| genv_genv := local_genv prog;
                          genv_cenv := prog_comp_env prog |} e m1 params vl m2
       <-> bind_parameters (globalenv prog) e m1 params vl m2.
@@ -630,9 +581,7 @@ c0 + empty
       rewrite <- assign_loc_same in H0. eauto.
   Qed.
 
-  Lemma lred_same
-        e a m a' m'
-    :
+  Lemma lred_same e a m a' m':
         lred {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} e a m a' m'
         <-> lred (globalenv prog) e a m a' m'.
   Proof.
@@ -663,8 +612,7 @@ c0 + empty
         st_src tr st0
         (ESTEP: estep
                   {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
-                  st_src tr st0)
-    :
+                  st_src tr st0):
       estep (globalenv prog) st_src tr st0.
   Proof.
     destruct match_ge_skenv_link.
@@ -691,10 +639,8 @@ c0 + empty
   Lemma def_same
         b f
         (DEF: Genv.find_def
-                {|
-                  genv_genv := (local_genv prog);
-                  genv_cenv := prog_comp_env prog |} b = Some f)
-    :
+                {| genv_genv := (local_genv prog);
+                   genv_cenv := prog_comp_env prog |} b = Some f):
       Genv.find_def ge b = Some f.
   Proof.
     destruct match_ge_skenv_link.
@@ -717,8 +663,7 @@ c0 + empty
 
   Lemma function_find_same
         fptr f
-        (FUNC: Genv.find_funct (local_genv prog) fptr = Some f)
-    :
+        (FUNC: Genv.find_funct (local_genv prog) fptr = Some f):
       Genv.find_funct ge fptr = Some f.
   Proof.
     unfold Genv.find_funct in FUNC. des_ifs.
@@ -737,11 +682,8 @@ c0 + empty
   Lemma not_external_function_find_same
         f fptr
         (INTERN : is_external_fd function f = false)
-        (FUNC : Genv.find_funct (Genv.globalenv prog) fptr = Some f)
-        (* (External ef targs tres cc) *)
-    :
-      Genv.find_funct (local_genv prog) fptr =
-      Some f.
+        (FUNC : Genv.find_funct (Genv.globalenv prog) fptr = Some f):
+      Genv.find_funct (local_genv prog) fptr = Some f.
   Proof.
     destruct match_ge_skenv_link.
     destruct proj_wf. destruct skenv_link_wf.
@@ -762,15 +704,13 @@ c0 + empty
           apply prog_defmap_spec in H. des. des_ifs_safe. ss.
           destruct (is_external_gd g) eqn:ISEXT; ss; cycle 1.
           { uo. generalize (CSk.of_program_prog_defmap prog signature_of_function i). intro REL.
-            inv REL; ss; try congruence. des_ifs.
-          }
+            inv REL; ss; try congruence. des_ifs. }
           apply Genv.find_def_symbol in Heq0. des. uge. clarify.
           apply Genv.invert_find_symbol in SYMB. uge.
           assert(b0 = b).
           { rewrite mge_symb in *. clarify. }
           clarify.
-          clear - INTERN ISEXT. bsimpl. ss. destruct f; ss. clarify.
-        }
+          clear - INTERN ISEXT. bsimpl. ss. destruct f; ss. clarify. }
         exploit Genv.invert_find_symbol; eauto. i.
         unfold Genv.find_symbol in *. rewrite mge_symb in H1.
         assert ((prog_defmap prog) ! i = Some (Gfun f)).
@@ -806,8 +746,7 @@ c0 + empty
         st_src tr st0
         (SSTEP: sstep
                   {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
-                  st_src tr st0)
-    :
+                  st_src tr st0):
       sstep (globalenv prog) st_src tr st0.
   Proof.
     inv SSTEP; ss; try (by econs; eauto).
@@ -830,8 +769,7 @@ c0 + empty
         st_src tr st0
         (STEP: Csem.step skenv_link
                  {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
-                 st_src tr st0)
-    :
+                 st_src tr st0):
       Csem.step skenv_link (globalenv prog) st_src tr st0.
   Proof.
     inv STEP.
@@ -842,10 +780,8 @@ c0 + empty
   Lemma system_internal
         ptr fn_sig f
         (SYSCALL: Genv.find_funct (System.skenv skenv_link) ptr = Some (AST.Internal fn_sig))
-        (INTERNAL: Genv.find_funct ge ptr = Some (Internal f))
-    :
-      False
-  .
+        (INTERNAL: Genv.find_funct ge ptr = Some (Internal f)):
+      False.
   Proof.
     destruct match_ge_skenv_link.
     unfold System.skenv in SYSCALL. ss. unfold skenv_link in *.
@@ -858,8 +794,7 @@ c0 + empty
 
   Lemma estep_progress
         st_src tr st0
-        (ESTEP: estep (globalenv prog) st_src tr st0)
-    :
+        (ESTEP: estep (globalenv prog) st_src tr st0):
       estep
         {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
         st_src tr st0.
@@ -883,8 +818,7 @@ c0 + empty
   Lemma sstep_progress
         st_src tr st0
         (INTERN: ~ is_external ge st_src)
-        (SSTEP: sstep (globalenv prog) st_src tr st0)
-    :
+        (SSTEP: sstep (globalenv prog) st_src tr st0):
       sstep
         {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |}
         st_src tr st0.
@@ -906,17 +840,13 @@ c0 + empty
         Unshelve. all: auto.
   Qed.
 
-  Lemma senv_same
-    :
-      ((Genv.globalenv prog): Senv.t) = (skenv_link: Senv.t)
-  .
+  Lemma senv_same : ((Genv.globalenv prog): Senv.t) = (skenv_link: Senv.t).
   Proof.
     generalize match_ge_skenv_link; intro MGE.
     clear - skenv_link LINK_SK_TGT MGE.
     subst skenv_link. ss. unfold Sk.load_skenv in *. subst tprog. unfold link_sk in *. ss.
     unfold link_list in *. ss. clarify.
-    inv MGE.
-    apply senv_eta; ss.
+    inv MGE. apply senv_eta; ss.
     - uge. apply func_ext1. i. ss.
     - unfold Genv.public_symbol. uge. apply func_ext1. i. specialize (mge_symb x0). rewrite mge_symb. des_ifs.
       rewrite mge_pubs. ss.
@@ -935,8 +865,7 @@ c0 + empty
         st_src frs n t st_src'
         (INTERN: ~ is_external ge st_src)
         (MTCHST : match_states st_src (State frs) n)
-        (STEP: Step (semantics prog) st_src t st_src')
-    :
+        (STEP: Step (semantics prog) st_src t st_src'):
       exists (tr : trace) (st_tgt1 : Smallstep.state (sem tprog)), Step (sem tprog) (State frs) tr st_tgt1.
   Proof.
     inv MTCHST; inv STEP; ss; exists t.
@@ -950,8 +879,7 @@ c0 + empty
         (STATE: st = Callstate args frs)
         (FPTR: fptr = args.(Args.fptr))
         (MTCHST: match_states st_src st 0)
-        (SAFESRC: Step (semantics prog) st_src tr st_src')
-    :
+        (SAFESRC: Step (semantics prog) st_src tr st_src'):
       (<<CMOD: valid_owner fptr prog>>) \/
       (<<SYSMOD: tge.(Ge.find_fptr_owner)
                       fptr (System.modsem skenv_link)>>).
@@ -959,8 +887,8 @@ c0 + empty
     subst.
     destruct (classic (valid_owner args.(Args.fptr) prog)); eauto.
     right. inv MTCHST.
-    - (* syscall *)
-      inv SAFESRC; inv H0.
+    (* syscall *)
+    - inv SAFESRC; inv H0.
       + ss. exploit not_external_function_find_same; eauto. ss.
         i. unfold local_genv in *. Eq.
       + econs.
@@ -977,8 +905,8 @@ c0 + empty
           rewrite FPTR in H0. inv H0. ss. rewrite SIG in H1. inv H1.
           rewrite MapsC.PTree_filter_map_spec. rewrite SIG.
           unfold o_bind. ss.
-    - (* initial state *)
-      inv INITTGT; ss.
+    (* initial state *)
+    - inv INITTGT; ss.
       assert (SAME: sk_link = sk_tgt).
       { rewrite LINK_SK_TGT in INITSK. clarify. }
       clear INITSK.
@@ -994,7 +922,9 @@ c0 + empty
           rewrite <- mge_symb in H1. rewrite <- prog_sk_tgt in *. ss.
           rewrite Heq0 in H1. inversion H1. auto. } subst b0.
         assert (Genv.find_funct_ptr (Genv.globalenv prog) b = Some (Internal f)
-                <-> Genv.find_funct (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)) (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero) = Some (AST.Internal signature_main)).
+                <-> Genv.find_funct (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function))
+                                   (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero)
+                   = Some (AST.Internal signature_main)).
         { i. ss. des_ifs.
           unfold Genv.symbol_address in *.
           des_ifs.
@@ -1008,8 +938,7 @@ c0 + empty
             rewrite <- prog_sk_tgt in *. ss. eauto. }
           { rewrite CSk.of_program_internals. unfold internals. rename b into bb.
             hexploit (Genv.find_def_symbol prog (prog_main prog) (Gfun (Internal f))); et. intro T; des.
-            exploit T0; et. i. des_ifs.
-          }
+            exploit T0; et. i. des_ifs. }
           i. unfold Genv.find_funct_ptr. des. rewrite DEFSMALL. inv LO; ss. inv H7; ss.
         }
         econs; i; eauto.
@@ -1021,8 +950,7 @@ c0 + empty
         instantiate (1:= if_sig). des_ifs.
   Qed.
 
-  Lemma prog_precise
-    :
+  Lemma prog_precise:
       SkEnv.genv_precise (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)) prog) prog.
   Proof.
     eapply CSkEnv.project_revive_precise; eauto.
@@ -1033,10 +961,8 @@ c0 + empty
   Lemma preservation_prog
         st0 tr st1
         (WT: wt_state prog ge st0)
-        (STEP: Csem.step skenv_link ge st0 tr st1)
-    :
-      <<WT: wt_state prog ge st1>>
-  .
+        (STEP: Csem.step skenv_link ge st0 tr st1):
+      <<WT: wt_state prog ge st1>>.
   Proof.
     eapply preservation; try apply STEP; try refl; eauto; et; destruct prog_precise.
     - ii. eapply Genv.find_def_symbol. esplits; eauto.
@@ -1045,8 +971,7 @@ c0 + empty
       destruct match_ge_skenv_link.
       specialize (mge_defs blk). inv mge_defs; unfold Genv.find_def in *.
       + unfold ge in DEF. unfold fundef in *.
-        symmetry in H0. unfold fundef, genv_genv in *. ss.
-        Eq.
+        symmetry in H0. unfold fundef, genv_genv in *. ss. Eq.
       + unfold ge in DEF. unfold fundef in *.
         symmetry in H. unfold fundef, genv_genv in *. ss.
         Eq. symmetry in H0.
@@ -1055,286 +980,266 @@ c0 + empty
         unfold Genv.find_symbol in *. rewrite mge_symb in H. eauto.
   Qed.
 
-  Lemma match_state_xsim
-    :
+  Lemma match_state_xsim:
       forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n) (WTST: wt_state prog ge st_src),
         xsim (Csem.semantics prog) (Sem.sem tprog) lt n%nat st_src st_tgt.
   Proof.
     pcofix CIH. i. pfold.
     destruct match_ge_skenv_link.
     destruct st_tgt.
-    - (* call state *)
-      inversion MTCHST; subst.
-      + (* syscall *)
-        left. right. econs; i. econs; i; cycle 1.
+    (* call state *)
+    - inversion MTCHST; subst.
+      (* syscall *)
+      + left. right. econs; i. econs; i; cycle 1.
         * inv FINALSRC.
         * econs; i.
-          -- (* step *)
-            exploit init_case; eauto. i. des.
-            { inv CMOD. clarify. }
-            assert (CSTYLEARGS: exists fptr vs m, args = Args.Cstyle fptr vs m).
-            { inv SYSMOD; ss. destruct args; ss. eauto. }
-            des; subst args; econs; i.
-            esplits.
-            ++ left. split; cycle 1. {
-          -- (* receptive *)
-            econs.
-            ++ i. inv H; inv H1; ss; clarify.
-             { inv H0. eexists. econs 2.
-               eapply step_internal_function; eauto. }
-             { exploit external_call_receptive; eauto. i. des.
-               eexists. econs 2.
-               eapply step_external_function; eauto. }
-            ++ red. i.
-               inv H; inv H0; ss; clarify; auto.
-               exploit external_call_trace_length; eauto.
-               }
-               eapply plus_left'.
-               ** (* step init *)
-                 econs; i.
-                 --- (* determ *)
-                   econs; i.
-                   { inv H; inv H0.
-                     split. econs. i. ss.
-                     dup LINK_SK_TGT.
-                     unfold tge, skenv_link, link_sk, link_list in LINK_SK_TGT0, SYSMOD; inversion LINK_SK_TGT0.
-                     rewrite -> H1 in *.
-                     unfold Args.get_fptr in *. des_ifs.
-                     determ_tac find_fptr_owner_determ.
-                     subst ms0.
-                     exploit find_fptr_owner_determ.
-                     unfold tge, skenv_link, link_sk, link_list. rewrite <- H1 in *. eapply MSFIND.
-                     unfold tge, skenv_link, link_sk, link_list. rewrite <- H1 in *. eapply MSFIND0.
-                     i. subst ms.
-                     rewrite H1. auto.
-                     inversion INIT0; inversion INIT. rewrite CSTYLE in *. clarify.
-                     rewrite H5. rewrite H6. rewrite H7. eauto. }
-                   { inv FINAL. }
-                   { red. i. inv H. auto. }
-                 --- eapply step_init; ss.
-                     { unfold Args.get_fptr. des_ifs.
-                       unfold tge, skenv_link, link_sk, link_list in *; inversion LINK_SK_TGT.
-                       rewrite H0. eauto. }
-                     { ss. }
-               ** inv STEPSRC; inv H.
-                  { ss. exploit not_external_function_find_same; eauto; ss.
-                    i. unfold local_genv in *. Eq. }
-                  eapply plus_left'.
-                  --- (* step internal *)
-                    econs; i.
-                    +++ (* determ *)
-                      econs; i.
-                      { inv H; inv H0; try (by ss); try (by inv FINAL).
-                        inv STEP; inv STEP0; ss.
-                        rewrite FPTR1 in FPTR0. inv FPTR0.
-                        exploit external_call_determ. eapply EXTCALL.
-                        eapply EXTCALL0. i. des.
-                        splits; eauto.
-                        { eapply match_traces_le; eauto. ii.
-                          destruct senv_equiv_ge_link. des. rewrite symb_preserved.
-                          rewrite <- H2. auto. }
-                        { i. subst.
-                          exploit H0; eauto. i. des. rewrite H1. rewrite H2. eauto. } }
-                      { inv FINAL. }
-                      { red. i. inv H; auto.
-                        inv STEP.
-                        exploit external_call_trace_length; eauto. }
-                    +++ (* step *)
-                      instantiate (2 := tr).
-                      eapply step_internal. ss.
-                      instantiate (1 := (System.Returnstate vres m')).
-                      econs; ss.
-                      { instantiate (1 := ef).
-                        unfold System.globalenv.
-                        (* make lemma *)
-                        unfold Genv.find_funct in *. des_ifs.
-                        rewrite Genv.find_funct_ptr_iff in *.
-                        specialize (mge_defs b). inv mge_defs; unfold Genv.find_def in *; unfold fundef.
-                        { rewrite SIG in H. inv H. }
-                        unfold fundef in *. rewrite FPTR in H. inv H; ss. }
-                      unfold System.globalenv.
-                      exploit external_call_symbols_preserved; eauto.
-                      eapply senv_equiv_ge_link.
-                  --- (* step_return *)
-                    eapply plus_one.
-                    instantiate (2:=E0).
-                    econs; i.
-                    +++ (* determ *)
-                      econs; i.
-                      { inv H; inv H0; try (by ss); try (by inv FINAL; inv AFTER; inv STEP).
-                        - inv STEP; inv STEP0.
-                        - inv FINAL; inv FINAL0. inv AFTER; inv AFTER0.
-                          split; eauto.
-                          { econs. }
-                          { ii; ss. repeat f_equal. des.
-                            determ_tac typify_c_dtm.
-                          }
-                      }
-                      { inv FINAL. }
-                      { red. i. inv H; auto. inv STEP. }
-                    +++ (* step *)
-                      ss.
-                      eapply step_return.
-                      { instantiate (1 := (Retv.mk vres m')). econs. }
-                      ss.
-                      assert (after_external (Csem.Callstate fptr (Tfunction targs0 tres0 cc) vs k m)
-                                             (Retv.mk vres m') (Returnstate vres k m')).
-                      { econs. ss. econs. ss.
-                        unfold Genv.find_funct in FPTR. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
-                        exploit Genv.find_def_inversion; eauto. i. des. exploit WT_EXTERNAL. eauto.
-                        exploit external_call_symbols_preserved. eapply senv_equiv_ge_link. eauto. i. eauto. i. eauto. }
-                      eauto.
-                  --- traceEq.
-               ** traceEq.
-            ++ right. eapply CIH.
-               { econs. ss. }
-               { ss. eapply preservation_prog; eauto. rewrite <- senv_same. et. }
-      + (* initial state *)
-        inversion INITSRC; subst; ss.
+          (* step *)
+          -- exploit init_case; eauto. i. des.
+             { inv CMOD. clarify. }
+             assert (CSTYLEARGS: exists fptr vs m, args = Args.Cstyle fptr vs m).
+             { inv SYSMOD; ss. destruct args; ss. eauto. }
+             des; subst args; econs; i.
+             esplits.
+             ++ left. split; cycle 1. {
+          (* receptive *)
+          -- econs.
+             ++ i. inv H; inv H1; ss; clarify.
+                { inv H0. eexists. econs 2.
+                  eapply step_internal_function; eauto. }
+                { exploit external_call_receptive; eauto. i. des.
+                  eexists. econs 2.
+                  eapply step_external_function; eauto. }
+             ++ red. i.
+                inv H; inv H0; ss; clarify; auto.
+                exploit external_call_trace_length; eauto. }
+                eapply plus_left'.
+                (* step init *)
+                ** econs; i.
+                   (* determ *)
+                   --- econs; i.
+                       { inv H; inv H0.
+                         split. econs. i. ss.
+                         dup LINK_SK_TGT.
+                         unfold tge, skenv_link, link_sk, link_list in LINK_SK_TGT0, SYSMOD; inversion LINK_SK_TGT0.
+                         rewrite -> H1 in *.
+                         unfold Args.get_fptr in *. des_ifs.
+                         determ_tac find_fptr_owner_determ.
+                         subst ms0. exploit find_fptr_owner_determ.
+                         unfold tge, skenv_link, link_sk, link_list. rewrite <- H1 in *. eapply MSFIND.
+                         unfold tge, skenv_link, link_sk, link_list. rewrite <- H1 in *. eapply MSFIND0.
+                         i. subst ms. rewrite H1. auto.
+                         inversion INIT0; inversion INIT. rewrite CSTYLE in *. clarify.
+                         rewrite H5. rewrite H6. rewrite H7. eauto. }
+                       { inv FINAL. }
+                       { red. i. inv H. auto. }
+                   --- eapply step_init; ss.
+                       { unfold Args.get_fptr. des_ifs.
+                         unfold tge, skenv_link, link_sk, link_list in *; inversion LINK_SK_TGT.
+                         rewrite H0. eauto. }
+                       { ss. }
+                ** inv STEPSRC; inv H.
+                   { ss. exploit not_external_function_find_same; eauto; ss.
+                     i. unfold local_genv in *. Eq. }
+                   eapply plus_left'.
+                   (* step internal *)
+                   --- econs; i.
+                       (* determ *)
+                       +++ econs; i.
+                           { inv H; inv H0; try (by ss); try (by inv FINAL).
+                             inv STEP; inv STEP0; ss.
+                             rewrite FPTR1 in FPTR0. inv FPTR0.
+                             exploit external_call_determ. eapply EXTCALL.
+                             eapply EXTCALL0. i. des.
+                             splits; eauto.
+                             { eapply match_traces_le; eauto. ii.
+                               destruct senv_equiv_ge_link. des. rewrite symb_preserved.
+                               rewrite <- H2. auto. }
+                             { i. subst.
+                               exploit H0; eauto. i. des. rewrite H1. rewrite H2. eauto. } }
+                           { inv FINAL. }
+                           { red. i. inv H; auto.
+                             inv STEP.
+                             exploit external_call_trace_length; eauto. }
+                       (* step *)
+                       +++ instantiate (2 := tr).
+                           eapply step_internal. ss.
+                           instantiate (1 := (System.Returnstate vres m')).
+                           econs; ss.
+                           { instantiate (1 := ef). unfold System.globalenv.
+                             unfold Genv.find_funct in *. des_ifs.
+                             rewrite Genv.find_funct_ptr_iff in *.
+                             specialize (mge_defs b). inv mge_defs; unfold Genv.find_def in *; unfold fundef.
+                             { rewrite SIG in H. inv H. }
+                             unfold fundef in *. rewrite FPTR in H. inv H; ss. }
+                           unfold System.globalenv.
+                           exploit external_call_symbols_preserved; eauto.
+                           eapply senv_equiv_ge_link.
+                   (* step_return *)
+                   --- eapply plus_one.
+                       instantiate (2:=E0).
+                       econs; i.
+                       (* determ *)
+                       +++ econs; i.
+                           { inv H; inv H0; try (by ss); try (by inv FINAL; inv AFTER; inv STEP).
+                             - inv STEP; inv STEP0.
+                             - inv FINAL; inv FINAL0. inv AFTER; inv AFTER0.
+                               split; eauto.
+                               { econs. }
+                               { ii; ss. repeat f_equal. des.
+                                 determ_tac typify_c_dtm. } }
+                           { inv FINAL. }
+                           { red. i. inv H; auto. inv STEP. }
+                       (* step *)
+                       +++ ss. eapply step_return.
+                           { instantiate (1 := (Retv.mk vres m')). econs. } ss.
+                           assert (after_external (Csem.Callstate fptr (Tfunction targs0 tres0 cc) vs k m)
+                                                  (Retv.mk vres m') (Returnstate vres k m')).
+                           { econs. ss. econs. ss.
+                             unfold Genv.find_funct in FPTR. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
+                             exploit Genv.find_def_inversion; eauto. i. des. exploit WT_EXTERNAL. eauto.
+                             exploit external_call_symbols_preserved. eapply senv_equiv_ge_link. eauto. i. eauto. i. eauto. }
+                           eauto.
+                   --- traceEq.
+                ** traceEq.
+             ++ right. eapply CIH.
+                { econs. ss. }
+                { ss. eapply preservation_prog; eauto. rewrite <- senv_same. et. }
+      (* initial state *)
+      + inversion INITSRC; subst; ss.
         left. right. econs; i. econs; i; cycle 1.
-        * (* FINAL *)
-          inv FINALSRC.
+        (* FINAL *)
+        * inv FINALSRC.
         * econs; i; cycle 1.
-          -- (* step *)
-            exploit init_case; eauto. i. des.
-            ++ (* main is C internal function *)
-              inv CMOD; ss.
-              inversion STEPSRC; inv H3; cycle 1.
-              ** (* external *)
-                exploit MAIN_INTERNAL; eauto. intro INTERN.
-                inv MSFIND; ss. des_ifs.
-              ** (* internal *)
-                esplits.
-                --- left. split; cycle 1. {
-          -- (* receptive at *)
-            econs; i.
-            ++ inv H3; inv H5.
-               { inv H4. eexists. econs 2.
-                 eapply step_internal_function; eauto.
-               }
-               { exploit external_call_receptive; eauto. i. des.
-                 eexists. econs 2.
-                 eapply step_external_function; eauto. }
-            ++ red. i.
-               inv H3; inv H4; auto.
-               exploit external_call_trace_length; eauto.
-                    }
-                    eapply plus_two.
-                    econs; i.
-                    +++ (* determ *)
-                      econs; i.
-                      { inv H3; inv H4.
-                        split. econs.
-                        i. ss.
-                        dup LINK_SK_TGT.
-                        unfold tge, skenv_link, link_sk, link_list in LINK_SK_TGT0; inversion LINK_SK_TGT0.
-                        rewrite -> H5 in *.
-                        dup LINK_SK_TGT. unfold Args.get_fptr in *. destruct args; ss.
-                        exploit find_fptr_owner_determ.
-                        unfold tge. eauto.
-                        eapply MSFIND. i.
-                        generalize dependent st_init0.
-                        subst ms0.
-                        exploit find_fptr_owner_determ.
-                        unfold tge. eapply MSFIND0. eauto. i. des. subst ms.
-                        ss. inversion INIT0; inversion INIT. auto.
-                        rewrite FINDF0 in FINDF1. inversion FINDF1. subst fd0.
-                        rewrite TYPE0 in TYPE1.
-                        rewrite TYPE1 in *. auto. }
-                      { inv FINAL. }
-                      { red. i. inv H3. auto. }
-                    +++ ss. eapply step_init.
-                        { instantiate (1 := modsem skenv_link prog). ss.
-                          unfold tge in MSFIND.
-                          unfold tge, skenv_link, link_sk, link_list in *.
-                          des_ifs. inversion Heq. rewrite <- H4 in MSFIND. unfold Args.get_fptr. des_ifs. }
-                        ss. des_ifs.
-                        instantiate (1 := (Csem.Callstate (Vptr b Ptrofs.zero) (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
-                        assert  (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero = (Vptr b Ptrofs.zero)).
-                        { destruct match_ge_skenv_link. specialize (mge_symb (prog_main prog)).
-                          destruct senv_equiv_ge_link; ss.
-                          unfold Genv.symbol_address. des_ifs.
-                          - unfold fundef in *. rewrite H3 in Heq. rewrite <- prog_sk_tgt in *; ss.
-                            rewrite H0 in Heq. clarify.
-                          - unfold fundef in *. rewrite H3 in Heq. rewrite <- prog_sk_tgt in *; ss.
-                            rewrite H0 in Heq. clarify. }
-                        assert (Genv.init_mem prog = Some m_init).
-                        { eapply SRC_INIT_MEM. }
-                        unfold Sk.load_mem in *. Eq. clarify.
-                        inv INITTGT; ss; unfold Sk.load_mem in *.
-                        rewrite LINK_SK_TGT in INITSK. inversion INITSK. rewrite <- H5 in *.
-                        rewrite INIT_MEM in INITMEM. inversion INITMEM. rewrite <- H6 in *.
-                        rewrite H3. econs; ss; des_ifs; eauto.
-                        { unfold fundef in *.
-                          exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero)); eauto. }
-                        { unfold type_of_function in *. clarify.
-                          destruct (fn_params f) eqn:T; ss; des_ifs.
-                          econs; ss.
-                        }
-                    +++ (* step_internal *)
-                      econs; i.
-                      *** (* determ *)
-                        econs; i.
-                        {
-                          inv H3; inv H4; ss; try (by ss); try (by inv FINAL).
-                          - inv AT; inv AT0. ss.
-                          - inv AT. ss.
-                          - inv AT. ss.
-                          - inv STEP; inv STEP0; inv H3; inv H4; ss; des_ifs.
-                            + des_ifs.
-                              exploit alloc_variables_determ. eapply H16. eauto. i. des. subst.
-                              exploit bind_parameters_determ. eapply H17. eapply H19. i. subst.
-                              split; [ apply match_traces_E0 | i; auto].
-                            + unfold fundef in *.
-                              exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero)); eauto.
-                              i. ss. des_ifs. unfold local_genv in *. des_ifs.
-                        }
-                        { inv STEP; inv FINAL; inv FINAL0. }
-                        { red. i. inv H3; auto.
-                          inv STEP; inv H3; auto.
-                          exploit external_call_trace_length; eauto. }
-                      *** (* step *)
-                        instantiate (2:=E0).
-                        eapply step_internal. ss.
-                        econs 2.
-                        inv STEPSRC; inv H3. des_ifs.
-                        instantiate (1 := (Csem.State f (fn_body f) Kstop e m2)).
-                        eapply step_internal_function; ss; eauto.
-                        { des_ifs.
-                          unfold fundef in *.
-                          exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero)); eauto. }
-                        { instantiate (1 := m3).
-                          clear -INIT_MEM m_init ge LINK_SK_TGT tprog H17.
-                          induction H17; try (by econs).
-                          econs; eauto. }
-                        { clear - INCL WT_EXTERNAL WTPROG MAIN_INTERNAL SKEWF WTSK INIT_MEM m_init ge LINK_SK_TGT tprog H18.
-                          induction H18; try (by econs).
-                          econs; eauto.
-                          unfold fundef in *. rewrite senv_same in H0.
-                          rewrite <- assign_loc_same in H0. eauto. }
-                    +++ traceEq.
-                --- (* match state *)
-                  right. eapply CIH.
-                  { ss. instantiate (1:= 1%nat). inv INITTGT.
-                    eapply match_states_intro. ss. }
-                  { ss. eapply preservation_prog; eauto. rewrite <- senv_same; et. }
-            ++ (* main is syscall *)
-              inv SYSMOD. inv INITTGT. ss.
-              assert (SAME: sk_tgt = sk_link) by (Eq; auto). clear INITSK.
-              exploit MAIN_INTERNAL; eauto. i. unfold internal_function_state in H3.
-              assert  (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero = (Vptr b Ptrofs.zero)).
-              { des_ifs. destruct match_ge_skenv_link. specialize (mge_symb (prog_main prog)).
-                unfold Genv.find_symbol, skenv_link, Genv.symbol_address in *.
-                rewrite <- prog_sk_tgt in *.
-                unfold Genv.find_symbol in *.
-                des_ifs; ss; unfold fundef in *; rewrite mge_symb in Heq0; Eq; auto. }
-              destruct (Genv.find_funct ge (Vptr b Ptrofs.zero)) eqn:HFUNC; ss.
-              destruct f. ss.
-              exploit system_internal; eauto; clarify. des_ifs.
-              rewrite SAME in *. rewrite H4 in *. unfold fundef in *. eauto. i.
-              clarify.
-    - (* state *)
-      right. econs; i; ss.
+          (* step *)
+          -- exploit init_case; eauto. i. des.
+             (* main is C internal function *)
+             ++ inv CMOD; ss.
+                inversion STEPSRC; inv H3; cycle 1.
+                (* external *)
+                ** exploit MAIN_INTERNAL; eauto. intro INTERN.
+                   inv MSFIND; ss. des_ifs.
+                (* internal *)
+                ** esplits.
+                   --- left. split; cycle 1. {
+          (* receptive at *)
+          -- econs; i.
+             ++ inv H3; inv H5.
+                { inv H4. eexists. econs 2.
+                  eapply step_internal_function; eauto. }
+                { exploit external_call_receptive; eauto. i. des.
+                  eexists. econs 2.
+                  eapply step_external_function; eauto. }
+             ++ red. i.
+                inv H3; inv H4; auto.
+                exploit external_call_trace_length; eauto.
+                       }
+                       eapply plus_two.
+                       econs; i.
+                       (* determ *)
+                       +++ econs; i.
+                           { inv H3; inv H4.
+                             split. econs. i. ss.
+                             dup LINK_SK_TGT.
+                             unfold tge, skenv_link, link_sk, link_list in LINK_SK_TGT0; inversion LINK_SK_TGT0.
+                             rewrite -> H5 in *.
+                             dup LINK_SK_TGT. unfold Args.get_fptr in *. destruct args; ss.
+                             exploit find_fptr_owner_determ.
+                             unfold tge. eauto.
+                             eapply MSFIND. i.
+                             generalize dependent st_init0. subst ms0.
+                             exploit find_fptr_owner_determ.
+                             unfold tge. eapply MSFIND0. eauto. i. des. subst ms.
+                             ss. inversion INIT0; inversion INIT. auto.
+                             rewrite FINDF0 in FINDF1. inversion FINDF1. subst fd0.
+                             rewrite TYPE0 in TYPE1.
+                             rewrite TYPE1 in *. auto. }
+                           { inv FINAL. }
+                           { red. i. inv H3. auto. }
+                       +++ ss. eapply step_init.
+                           { instantiate (1 := modsem skenv_link prog). ss.
+                             unfold tge in MSFIND.
+                             unfold tge, skenv_link, link_sk, link_list in *.
+                             des_ifs. inversion Heq. rewrite <- H4 in MSFIND. unfold Args.get_fptr. des_ifs. }
+                           ss. des_ifs.
+                           instantiate (1 := (Csem.Callstate (Vptr b Ptrofs.zero) (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
+                           assert  (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero = (Vptr b Ptrofs.zero)).
+                           { destruct match_ge_skenv_link. specialize (mge_symb (prog_main prog)).
+                             destruct senv_equiv_ge_link; ss.
+                             unfold Genv.symbol_address. des_ifs.
+                             - unfold fundef in *. rewrite H3 in Heq. rewrite <- prog_sk_tgt in *; ss.
+                               rewrite H0 in Heq. clarify.
+                             - unfold fundef in *. rewrite H3 in Heq. rewrite <- prog_sk_tgt in *; ss.
+                               rewrite H0 in Heq. clarify. }
+                           assert (Genv.init_mem prog = Some m_init).
+                           { eapply SRC_INIT_MEM. }
+                           unfold Sk.load_mem in *. Eq. clarify.
+                           inv INITTGT; ss; unfold Sk.load_mem in *.
+                           rewrite LINK_SK_TGT in INITSK. inversion INITSK. rewrite <- H5 in *.
+                           rewrite INIT_MEM in INITMEM. inversion INITMEM. rewrite <- H6 in *.
+                           rewrite H3. econs; ss; des_ifs; eauto.
+                           { unfold fundef in *.
+                             exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero)); eauto. }
+                           { unfold type_of_function in *. clarify.
+                             destruct (fn_params f) eqn:T; ss; des_ifs.
+                             econs; ss. }
+                       (* step_internal *)
+                       +++ econs; i.
+                           (* determ *)
+                           *** econs; i.
+                               { inv H3; inv H4; ss; try (by ss); try (by inv FINAL).
+                                 - inv AT; inv AT0. ss.
+                                 - inv AT. ss.
+                                 - inv AT. ss.
+                                 - inv STEP; inv STEP0; inv H3; inv H4; ss; des_ifs.
+                                   + des_ifs.
+                                     exploit alloc_variables_determ. eapply H16. eauto. i. des. subst.
+                                     exploit bind_parameters_determ. eapply H17. eapply H19. i. subst.
+                                     split; [ apply match_traces_E0 | i; auto].
+                                   + unfold fundef in *.
+                                     exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero)); eauto.
+                                     i. ss. des_ifs. unfold local_genv in *. des_ifs. }
+                               { inv STEP; inv FINAL; inv FINAL0. }
+                               { red. i. inv H3; auto.
+                                 inv STEP; inv H3; auto.
+                                 exploit external_call_trace_length; eauto. }
+                           (* step *)
+                           *** instantiate (2:=E0).
+                               eapply step_internal. ss. econs 2.
+                               inv STEPSRC; inv H3. des_ifs.
+                               instantiate (1 := (Csem.State f (fn_body f) Kstop e m2)).
+                               eapply step_internal_function; ss; eauto.
+                               { des_ifs. unfold fundef in *.
+                                 exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero)); eauto. }
+                               { instantiate (1 := m3).
+                                 clear -INIT_MEM m_init ge LINK_SK_TGT tprog H17.
+                                 induction H17; try (by econs).
+                                 econs; eauto. }
+                               { clear - INCL WT_EXTERNAL WTPROG MAIN_INTERNAL SKEWF WTSK INIT_MEM m_init ge LINK_SK_TGT tprog H18.
+                                 induction H18; try (by econs). econs; eauto.
+                                 unfold fundef in *. rewrite senv_same in H0.
+                                 rewrite <- assign_loc_same in H0. eauto. }
+                       +++ traceEq.
+                   (* match state *)
+                   --- right. eapply CIH.
+                       { ss. instantiate (1:= 1%nat). inv INITTGT.
+                         eapply match_states_intro. ss. }
+                       { ss. eapply preservation_prog; eauto. rewrite <- senv_same; et. }
+             (* main is syscall *)
+             ++ inv SYSMOD. inv INITTGT. ss.
+                assert (SAME: sk_tgt = sk_link) by (Eq; auto). clear INITSK.
+                exploit MAIN_INTERNAL; eauto. i. unfold internal_function_state in H3.
+                assert  (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero = (Vptr b Ptrofs.zero)).
+                { des_ifs. destruct match_ge_skenv_link. specialize (mge_symb (prog_main prog)).
+                  unfold Genv.find_symbol, skenv_link, Genv.symbol_address in *.
+                  rewrite <- prog_sk_tgt in *. unfold Genv.find_symbol in *.
+                  des_ifs; ss; unfold fundef in *; rewrite mge_symb in Heq0; Eq; auto. }
+                destruct (Genv.find_funct ge (Vptr b Ptrofs.zero)) eqn:HFUNC; ss.
+                destruct f. ss.
+                exploit system_internal; eauto; clarify. des_ifs.
+                rewrite SAME in *. rewrite H4 in *. unfold fundef in *. eauto. i.
+                clarify.
+    (* state *)
+    - right. econs; i; ss.
       + inv MTCHST.
         * inv FINALTGT. inv FINAL. ss. subst.
           esplits.
@@ -1342,54 +1247,50 @@ c0 + empty
           econs.
         * inv INITTGT.
       + econs; i.
-        * (* step *)
-          inv MTCHST; cycle 1.
+        (* step *)
+        * inv MTCHST; cycle 1.
           { inv INITTGT. }
           inv STEPTGT; ss.
-          -- (* step_call *)
-            inv AT; ss. des.
-            esplits.
-            ++ right.
-               splits; auto. eapply star_refl.
-            ++ right. eapply CIH.
-               { econs; eauto. }
-               { ss. }
-          -- (* step_internal *)
-            assert(STEPSRC: Csem.step skenv_link (globalenv prog) st_src tr st0).
-            { exploit cstep_same; eauto. }
-            esplits.
-            ++ left. eapply plus_one. unfold fundef in *. rewrite senv_same. eauto.
-            ++ right. eapply CIH.
-               { econs; eauto. }
-               { ss. eapply preservation_prog; eauto. }
-        * (* progress *)
-          specialize (SAFESRC _ (star_refl _ _ _ _)). des.
-          -- (* final *)
-            inv SAFESRC; inv MTCHST; cycle 1.
-            { inv INITTGT. }
-            left. exists r0. econs; ss.
-          -- (* step *)
-            destruct (classic (is_external ge st_src)).
-            ++ (* external *)
-              right. inv SAFESRC; inv H0; ss; des_ifs.
+          (* step_call *)
+          -- inv AT; ss. des.
+             esplits.
+             ++ right.
+                splits; auto. eapply star_refl.
+             ++ right. eapply CIH.
+                { econs; eauto. }
+                { ss. }
+          (* step_internal *)
+          -- assert(STEPSRC: Csem.step skenv_link (globalenv prog) st_src tr st0).
+             { exploit cstep_same; eauto. }
+             esplits.
+             ++ left. eapply plus_one. unfold fundef in *. rewrite senv_same. eauto.
+             ++ right. eapply CIH.
+                { econs; eauto. }
+                { ss. eapply preservation_prog; eauto. }
+        (* progress *)
+        * specialize (SAFESRC _ (star_refl _ _ _ _)). des.
+          (* final *)
+          -- inv SAFESRC; inv MTCHST; cycle 1.
+             { inv INITTGT. }
+             left. exists r0. econs; ss.
+          (* step *)
+          -- destruct (classic (is_external ge st_src)).
+             (* external *)
+             ++ right. inv SAFESRC; inv H0; ss; des_ifs.
               inv MTCHST; cycle 1.
               { inv INITTGT. }
               set ef as XX.
-              (* unfold is_external_ef in *. des_ifs. *)
               exists E0. esplits. eapply step_call; ss. econs.
               { unfold Genv.find_funct. des_ifs.
                 unfold Genv.find_funct_ptr. des_ifs.
                 eapply CSkEnv.project_revive_no_external in Heq0; clarify; cycle 1.
-                {
-                  rpapply link_includes; et.
+                { rpapply link_includes; et.
                   { ss. left. et. }
-                  ss.
-                }
+                  ss. }
                 ss. des_ifs. rewrite Genv.find_funct_ptr_iff in Heq.
                 exploit def_same; eauto. i. unfold ge in H0.
                 ss. Eq. ss. }
-              {
-                exists (External ef targs tres cc); ss.
+              { exists (External ef targs tres cc); ss.
                 splits.
                 { unfold Genv.find_funct in *. des_ifs.
                   rewrite Genv.find_funct_ptr_iff in *.
@@ -1402,12 +1303,11 @@ c0 + empty
                 exploit Genv.find_funct_inversion; eauto. i; des. f_equal.
                 inv WTPROG. exploit CSTYLE_EXTERN; eauto. i. des_ifs. f_equal. eapply H3; eauto. }
               { inv WTST; ss. exploit WTKS; eauto. { ii. clarify. } esplits; ss; eauto. rr. des. des_ifs. }
-            ++ (* internal *)
-              exploit progress_step; eauto.
+             (* internal *)
+             ++ exploit progress_step; eauto.
   Qed.
 
-  Lemma transf_xsim_properties
-    :
+  Lemma transf_xsim_properties:
       xsim_properties (Csem.semantics prog) (Sem.sem tprog) nat lt.
   Proof.
     econs; [apply lt_wf| |i; apply symb_preserved].
@@ -1437,14 +1337,12 @@ c0 + empty
            - contradict H5; eauto.
            - exploit MAIN_INTERNAL; eauto.
              { econs; eauto. }
-             i; des. ss. des_ifs.
-        }
+             i; des. ss. des_ifs. }
         assert(UB: ~safe (semantics prog) (Csem.Callstate (Vptr b Ptrofs.zero)
                                                           (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
         { ii; ss. specialize (H6 _ (star_refl _ _ _ _)). des; ss.
           - inv H6; ss.
-          - rr in NOSTEP. contradict NOSTEP; eauto.
-        }
+          - rr in NOSTEP. contradict NOSTEP; eauto. }
         pfold. right. econs; ii; ss.
   Qed.
 
@@ -1466,10 +1364,8 @@ Theorem upperbound_b_correct
             (<<INTERNAL: cprog.(prog_defmap) ! (cprog.(prog_main)) = Some (Gfun (Internal main_f))>>)
             /\
             (<<SIG: type_of_function main_f = Tfunction Tnil type_int32s cc_default>>))
-        (TYPED: typechecked builtins cprog)
-  :
-    (<<REFINE: improves (Csem.semantics cprog) (Sem.sem (map CsemC.module [cprog]))>>)
-.
+        (TYPED: typechecked builtins cprog):
+    (<<REFINE: improves (Csem.semantics cprog) (Sem.sem (map CsemC.module [cprog]))>>).
 Proof.
   destruct (link_sk (map CsemC.module [cprog])) eqn:T; cycle 1.
   { ii. ss. }

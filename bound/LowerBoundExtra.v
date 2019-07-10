@@ -25,8 +25,8 @@ Inductive inj_same (j: meminj) v0 v1 : Prop :=
     (INJ1: j blk1 = Some (blk, delta1))
     (DELTA: Ptrofs.unsigned ofs0 + delta0 = Ptrofs.unsigned ofs1 + delta1)
 | inj_same_refl
-    (EQ: v0 = v1)
-.
+    (EQ: v0 = v1).
+
 Hint Constructors inj_same.
 
 Program Instance inj_same_equivalence j: Equivalence (inj_same j).
@@ -38,8 +38,7 @@ Qed.
 
 Lemma inj_same_inj j v0 v1 v_tgt
       (SAME: inj_same j v0 v1)
-      (INJ: Val.inject j v1 v_tgt)
-  :
+      (INJ: Val.inject j v1 v_tgt):
     Val.inject j v0 v_tgt.
 Proof.
   inv SAME; eauto. inv INJ. rewrite H1 in *. inv INJ1.
@@ -51,9 +50,8 @@ Proof.
 Qed.
 
 Lemma inj_same_incr j0 j1
-      (INCR: inject_incr j0 j1)
-  :
-    inj_same j0 <2= inj_same j1.
+      (INCR: inject_incr j0 j1):
+  inj_same j0 <2= inj_same j1.
 Proof.
   ii. inv PR; eauto.
 Qed.
@@ -67,12 +65,10 @@ Lemma separated_out_of_reach j0 j1 m_src0 m_src1 m_tgt0 blk delta
       (MAXPERM: forall b ofs p
                        (VALED: Mem.valid_block m_src0 b)
                        (PERM: Mem.perm m_src1 b ofs Max p),
-          Mem.perm m_src0 b ofs Max p)
-  :
-    loc_out_of_reach j1 m_src1 blk delta.
+          Mem.perm m_src0 b ofs Max p):
+  loc_out_of_reach j1 m_src1 blk delta.
 Proof.
-  ii.
-  unfold inject_separated in *.
+  ii. unfold inject_separated in *.
   destruct (j0 b0) eqn:EQ.
   - destruct p. specialize (INCR _ _ _ EQ). clarify.
     eapply OUTOFREACH; eauto. eapply MAXPERM; eauto.
@@ -84,8 +80,7 @@ Qed.
 
 Record freed_from m0 m1 blk lo hi : Prop :=
   mk_freed_from
-    {
-      freed_from_unchanged: Mem.unchanged_on
+    { freed_from_unchanged: Mem.unchanged_on
                               (fun blk' ofs =>
                                  if eq_block blk' blk
                                  then ~ (lo <= ofs < hi)
@@ -96,13 +91,11 @@ Record freed_from m0 m1 blk lo hi : Prop :=
       freed_from_noperm: Mem_range_noperm m1 blk lo hi;
       freed_from_contents: forall ofs (IN: lo <= ofs < hi),
           ZMap.get ofs (Mem.mem_contents m0) !! blk =
-          ZMap.get ofs (Mem.mem_contents m1) !! blk;
-    }.
+          ZMap.get ofs (Mem.mem_contents m1) !! blk; }.
 
 Lemma freed_from_perm_le m_src0 m_src1 blk lo hi blk' ofs k p
       (FREED: freed_from m_src0 m_src1 blk lo hi)
-      (PERM: Mem.perm m_src1 blk' ofs k p)
-  :
+      (PERM: Mem.perm m_src1 blk' ofs k p):
     Mem.perm m_src0 blk' ofs k p.
 Proof.
   destruct (eq_block blk' blk).
@@ -110,19 +103,16 @@ Proof.
     + exfalso. eapply freed_from_noperm; eauto.
       eapply Mem.perm_max. eapply Mem.perm_implies; eauto. econs.
     + eapply (Mem.unchanged_on_perm _ _ _ (freed_from_unchanged FREED)); auto.
-      des_ifs; eauto.
-      eapply Mem.perm_valid_block in PERM.
+      des_ifs; eauto. eapply Mem.perm_valid_block in PERM.
       unfold Mem.valid_block in *. erewrite <- freed_from_nextblock; eauto.
   - eapply (Mem.unchanged_on_perm _ _ _ (freed_from_unchanged FREED)); auto.
-    des_ifs; eauto.
-    eapply Mem.perm_valid_block in PERM.
+    des_ifs; eauto. eapply Mem.perm_valid_block in PERM.
     unfold Mem.valid_block in *. erewrite <- freed_from_nextblock; eauto.
 Qed.
 
 Lemma freed_from_inject j m_src0 m_src1 m_tgt blk lo hi
       (INJ: Mem.inject j m_src0 m_tgt)
-      (FREED: freed_from m_src0 m_src1 blk lo hi)
-  :
+      (FREED: freed_from m_src0 m_src1 blk lo hi):
     Mem.inject j m_src1 m_tgt.
 Proof.
   eapply Mem.extends_inject_compose; eauto.
@@ -145,11 +135,9 @@ Proof.
   - i. destruct (eq_block b blk).
     + clarify. destruct (classic (lo <= ofs < hi)).
       * right. eapply freed_from_noperm; eauto.
-      * left.
-        eapply (Mem.unchanged_on_perm _ _ _ (freed_from_unchanged FREED)); auto.
+      * left. eapply (Mem.unchanged_on_perm _ _ _ (freed_from_unchanged FREED)); auto.
         des_ifs; eauto. eapply Mem.perm_valid_block; eauto.
-    + left.
-      eapply (Mem.unchanged_on_perm _ _ _ (freed_from_unchanged FREED)); auto.
+    + left. eapply (Mem.unchanged_on_perm _ _ _ (freed_from_unchanged FREED)); auto.
       des_ifs; eauto. eapply Mem.perm_valid_block; eauto.
 Qed.
 
@@ -157,8 +145,7 @@ Lemma freed_from_out_of_reach j m_src0 m_src1 m_tgt blk lo hi blk' delta ofs
       (INJECT: Mem.inject j m_src0 m_tgt)
       (FREED: freed_from m_src0 m_src1 blk lo hi)
       (DELTA: j blk = Some (blk', delta))
-      (IN: lo + delta <= ofs < hi + delta)
-  :
+      (IN: lo + delta <= ofs < hi + delta):
     loc_out_of_reach j m_src1 blk' ofs.
 Proof.
   ii. destruct (eq_block b0 blk).
@@ -173,8 +160,7 @@ Proof.
 Qed.
 
 Lemma freed_from_perm_greater m0 m1 blk lo hi
-      (FREE: freed_from m0 m1 blk lo hi)
-  :
+      (FREE: freed_from m0 m1 blk lo hi):
     Mem.perm m1 <4= Mem.perm m0.
 Proof.
   ii. inv FREE. inv freed_from_unchanged0.
@@ -189,8 +175,7 @@ Proof.
 Qed.
 
 Lemma free_freed_from m0 m1 blk lo hi
-      (FREE: Mem.free m0 blk lo hi = Some m1)
-  :
+      (FREE: Mem.free m0 blk lo hi = Some m1):
     freed_from m0 m1 blk lo hi.
 Proof.
   econs.
@@ -203,8 +188,7 @@ Proof.
     des_ifs.
 Qed.
 
-Lemma init_mem_freed_from m_init
-  :
+Lemma init_mem_freed_from m_init:
     freed_from m_init m_init 1%positive 0 0.
 Proof.
   econs; ii; auto; try omega.
@@ -216,15 +200,13 @@ Inductive skenv_inject {F V} (ge: Genv.t F V) (j: meminj) (m: mem) : Prop :=
     (DOMAIN: forall b, Plt b ge.(Genv.genv_next) -> j b = Some(b, 0))
     (IMAGE: forall b1 b2 delta (INJ: j b1 = Some(b2, delta))
                    (PERM: Senv.block_is_volatile ge b1 = true \/ exists ofs, Mem.perm m b1 ofs Max Nonempty),
-        Senv.block_is_volatile ge b2 = Senv.block_is_volatile ge b1)
-.
+        Senv.block_is_volatile ge b2 = Senv.block_is_volatile ge b1).
 
 Lemma skenv_inject_max_perm {F V} (genv: Genv.t F V) (j: meminj) (m0 m1 m_tgt: mem)
       (INJ: Mem.inject j m0 m_tgt)
       (MAXPERM: forall b ofs p (VALID: Mem.valid_block m0 b) (PERM: Mem.perm m1 b ofs Max p),
           Mem.perm m0 b ofs Max p)
-      (SYMB: skenv_inject genv j m0)
-  :
+      (SYMB: skenv_inject genv j m0):
     skenv_inject genv j m1.
 Proof.
   inv SYMB. econs; eauto. i. eapply IMAGE; eauto.
@@ -254,16 +236,14 @@ Inductive inj_range_block_wf (j: meminj) (m: mem) blk_src
     (VOLATILE: forall
         ofs
         (VOL: Senv.block_is_volatile ge blk_src = false)
-        (IN: P ofs), Senv.block_is_volatile ge blk_tgt = Senv.block_is_volatile ge blk_src)
-.
+        (IN: P ofs), Senv.block_is_volatile ge blk_tgt = Senv.block_is_volatile ge blk_src).
 
 Definition inj_range_wf (j: meminj) (m: mem) (P: Values.block -> Z -> Prop) :=
   forall blk, inj_range_block_wf j m blk (P blk).
 
 Lemma inj_range_wf_le j m P0 P1
       (INJWF: inj_range_wf j m P0)
-      (PLE: P1 <2= P0)
-  :
+      (PLE: P1 <2= P0):
     inj_range_wf j m P1.
 Proof.
   ii. destruct (INJWF blk).
@@ -280,10 +260,8 @@ Lemma private_unfree_symbols_inject
       (PERM: Mem.range_perm m_tgt blk_tgt (delta + lo) (delta + hi) Cur Freeable)
       (UNFREE: Mem_unfree m_src0 blk_src lo hi = Some m_src1)
       (SYMB: skenv_inject ge j m_src0)
-      (* --------------------------------------------------------- *)
       (WFINJ: inj_range_wf j m_src0 P)
-      (RANGE: range lo hi <1= P blk_src)
-  :
+      (RANGE: range lo hi <1= P blk_src):
     <<SYMB: skenv_inject ge j m_src1>>
 .
 Proof.
@@ -307,12 +285,9 @@ Lemma private_unfree_inj_wf
       (PERM: Mem.range_perm m_tgt blk_tgt (delta + lo) (delta + hi) Cur Freeable)
       (PRVT: range (delta + lo) (delta + hi) <1= loc_out_of_reach j m_src0 blk_tgt)
       (UNFREE: Mem_unfree m_src0 blk_src lo hi = Some m_src1)
-      (* --------------------------------------------------------- *)
       (WFINJ: inj_range_wf j m_src0 P)
-      (RANGE: range lo hi <1= P blk_src)
-  :
-    <<WFINJ: inj_range_wf j m_src1 P>>
-.
+      (RANGE: range lo hi <1= P blk_src):
+  <<WFINJ: inj_range_wf j m_src1 P>>.
 Proof.
   ii. destruct (WFINJ blk).
   - econs 1; eauto.
@@ -333,21 +308,15 @@ Lemma private_unfree_inj
       (PERM: Mem.range_perm m_tgt blk_tgt (delta + lo) (delta + hi) Cur Freeable)
       (PRVT: range (delta + lo) (delta + hi) <1= loc_out_of_reach j m_src0 blk_tgt)
       (UNFREE: Mem_unfree m_src0 blk_src lo hi = Some m_src1)
-      (* --------------------------------------------------------- *)
       (WFINJ: inj_range_wf j m_src0 P)
-      (RANGE: range lo hi <1= P blk_src)
-  :
-    <<INJ: Mem.inject j m_src1 m_tgt>>
-.
+      (RANGE: range lo hi <1= P blk_src):
+  <<INJ: Mem.inject j m_src1 m_tgt>>.
 Proof.
   unfold Mem.inject in *.
   unfold Mem_unfree in *. des_ifs.
   inv INJ.
   econs; eauto.
-  -
-    (* clear_until mi_inj. *)
-
-    inv mi_inj. econs; ii; ss; eauto.
+  - inv mi_inj. econs; ii; ss; eauto.
     + unfold Mem.perm, Mem.perm_order' in H0. ss. des_ifs_safe.
       rewrite PMap.gsspec in *.
       destruct (peq b1 blk_src && zle lo ofs && zlt ofs hi) eqn:T; clarify; cycle 1.
@@ -374,31 +343,26 @@ Proof.
       destruct (peq b1 blk_src && zle lo ofs && zlt ofs hi) eqn:T; clarify; cycle 1.
       * assert(Mem.perm m_src0 b1 ofs Cur Readable).
         { rewrite PMap.gsspec in H0. des_ifs; simp. }
-        clear H0.
-        rewrite PMap.gsspec.
+        clear H0. rewrite PMap.gsspec.
         des_ifs; ss; cycle 1.
         { eapply mi_memval; eauto. }
         destruct (classic (0 <= hi - lo)); cycle 1.
         { assert(NEG: exists n, hi - lo = Z.neg n).
           { assert(Z.sgn (hi - lo) = - 1).
             { eapply Z.sgn_neg. xomega. }
-            unfold Z.sgn in *. des_ifs. eauto.
-          }
+            unfold Z.sgn in *. des_ifs. eauto. }
           des. rewrite NEG. rewrite Z2Nat.inj_neg. ss.
-          eapply mi_memval; eauto.
-        }
+          eapply mi_memval; eauto. }
         rewrite Mem.setN_other; ss.
         { eapply mi_memval; eauto. }
-        ii. rewrite length_list_repeat in *.
-        simp.
+        ii. rewrite length_list_repeat in *. simp.
         { rewrite Z2Nat.id in *; ss. xomega. }
       * simp. rewrite PMap.gsspec. des_ifs.
         destruct (classic (0 <= hi - lo)); cycle 1.
         { rewrite PMap.gsspec in *. des_ifs; simp. xomega. }
         rewrite Mem_setN_in_repeat; ss.
         { econs; eauto. }
-        rewrite Z2Nat.id; ss.
-        xomega.
+        rewrite Z2Nat.id; ss. xomega.
   - clear_until mi_no_overlap.
     rr. unfold Mem.perm; ss. ii.
     destruct (peq b1 blk_src && zle lo ofs1 && zlt ofs1 hi) eqn:T1; clarify.
@@ -409,8 +373,7 @@ Proof.
       eapply not_and_or. ii. des. clarify.
       eapply PRVT; try apply H1; eauto; cycle 1.
       { instantiate (1:= ofs2 + delta2). zsimpl. eauto. }
-      { rr. xomega. }
-    }
+      { rr. xomega. } }
     destruct (peq b2 blk_src && zle lo ofs2 && zlt ofs2 hi) eqn:T2; clarify.
     { sguard in T1. simp. clear mi_no_overlap.
       rewrite PMap.gss in *. des_ifs; simp. clear H3.
@@ -436,8 +399,7 @@ Proof.
       { unfold Mem.range_perm, Mem.perm in *. ss.
         rewrite PMap.gso in H0; eauto. } clear H0.
       eapply mi_representable; eauto.
-  - unfold Mem.perm. ss.
-    ii.
+  - unfold Mem.perm. ss. ii.
     exploit mi_perm_inv; eauto. i.
     destruct (peq b1 blk_src && zle lo ofs && zlt ofs hi) eqn:T; clarify.
     + bsimpl. des_safe. des_sumbool. rewrite PMap.gsspec. des_ifs_safe. ss. left. eauto with mem.
@@ -452,14 +414,11 @@ Lemma private_unfree_inj_inj_wf
       (PRVT: range (delta + lo) (delta + hi) <1= loc_out_of_reach j m_src0 blk_tgt)
       (UNFREE: Mem_unfree m_src0 blk_src lo hi = Some m_src1)
       (SYMB: skenv_inject ge j m_src0)
-      (* --------------------------------------------------------- *)
       (WFINJ: inj_range_wf j m_src0 P)
-      (RANGE: range lo hi <1= P blk_src)
-  :
+      (RANGE: range lo hi <1= P blk_src):
     (<<INJ: Mem.inject j m_src1 m_tgt>>) /\
     (<<WFINJ: inj_range_wf j m_src1 P>>) /\
-    (<<SYMB: skenv_inject ge j m_src1>>)
-.
+    (<<SYMB: skenv_inject ge j m_src1>>).
 Proof.
   splits.
   - eapply private_unfree_inj; eauto.
@@ -478,20 +437,17 @@ Lemma unfree_free_inj_inj_wf P j (m_src0 m_src1 m_src2 m_tgt: mem)
       (MAPPED: j blk1 <> None)
       (INJ: Mem.inject j m_src0 m_tgt)
       (WFINJ: inj_range_wf j m_src0 P)
-      (RANGE: range delta2 (delta2 + size) <1= P blk1)
-  :
+      (RANGE: range delta2 (delta2 + size) <1= P blk1):
     (<<INJ: Mem.inject j m_src2 m_tgt>>) /\
     (<<WFINJ: inj_range_wf j m_src2 P>>) /\
-    (<<SYMB: skenv_inject ge j m_src2>>)
-.
+    (<<SYMB: skenv_inject ge j m_src2>>).
 Proof.
   subst. destruct (j blk1) as [[]|] eqn:BEQ; clarify; cycle 1.
   assert (SAME0: j blk0 = Some (b, z - Ptrofs.unsigned ofs1 + Ptrofs.unsigned ofs2)).
   { inv SAME.
     - inv VAL0. inv VAL1. rewrite BEQ in *. inv INJ0. rewrite INJ1.
       repeat f_equal. lia.
-    - inv EQ. rewrite BEQ. repeat f_equal. lia.
-  }
+    - inv EQ. rewrite BEQ. repeat f_equal. lia. }
   eapply private_unfree_inj_inj_wf; cycle 4; eauto.
   - eapply skenv_inject_max_perm; eauto.
     i. eapply Mem.perm_free_3; eauto.

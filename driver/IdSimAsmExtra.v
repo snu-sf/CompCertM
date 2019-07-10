@@ -35,10 +35,6 @@ Set Implicit Arguments.
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
 
-(* Local Existing Instance SimMemId.SimMemId | 0. *)
-(* Local Existing Instance SimMemId.SimSymbId | 0. *)
-(* Local Existing Instance SoundTop.Top | 0. *)
-
 
 Lemma lessdef_commute j src0 src1 tgt0 tgt1
       (INJ0: Val.inject j src0 tgt0)
@@ -52,8 +48,35 @@ Proof.
   - rewrite UNDEF; auto.
 Qed.
 
-(* move it to MemoryC after stablizing *)
-Section TOMEMORYC.
+Section MEMORYLEMMA.
+
+  Lemma Plt_lemma a b c
+        (LE: ~ Plt a b):
+    ~ Plt (a + c - b) c.
+  Proof.
+    ii. unfold Plt in *.
+    erewrite <- Pos.compare_lt_iff in H. erewrite <- Pos.add_compare_mono_r in H. instantiate (1:=b) in H.
+    erewrite Pos.sub_add in H; [|xomega]. rewrite Pos.add_comm in H. apply LE.
+    erewrite -> Pos.compare_lt_iff in H. xomega.
+  Qed.
+
+  Lemma Plt_lemma2 a b c d
+        (LE: ~ Plt a b)
+        (LT: Plt a (b + d)):
+    Plt (a + c - b) (c + d).
+  Proof.
+    unfold Plt in *.
+    erewrite <- Pos.compare_lt_iff in LT.
+    erewrite <- Pos.add_compare_mono_r in LT. instantiate (1:=c) in LT.
+    erewrite <- Pos.sub_compare_mono_r in LT.
+    - instantiate (1:=b) in LT.
+      erewrite -> Pos.compare_lt_iff in LT.
+      rpapply LT. replace (b + d + c)%positive with (c + d + b)%positive.
+      + rewrite Pos.add_sub. auto.
+      + clear. xomega.
+    - clear LT. xomega.
+    - clear. xomega.
+  Qed.
 
   Lemma Z2Nat_range n:
     Z.of_nat (Z.to_nat n) = if (zle 0 n) then n else 0.
@@ -294,7 +317,7 @@ Section TOMEMORYC.
     }
   Qed.
 
-End TOMEMORYC.
+End MEMORYLEMMA.
 
 Definition junk_inj (m_src0 m_tgt0: mem) (j: meminj) (n: nat): meminj :=
   fun blk =>
@@ -313,35 +336,6 @@ Definition src_junk_val (m_src0 m_tgt0: mem) (n: nat) (v: val): val :=
          else Vundef
   | _ => v
   end.
-
-(* TODO: Move this lemmas *)
-Lemma Plt_lemma a b c
-      (LE: ~ Plt a b):
-    ~ Plt (a + c - b) c.
-Proof.
-  ii. unfold Plt in *.
-  erewrite <- Pos.compare_lt_iff in H. erewrite <- Pos.add_compare_mono_r in H. instantiate (1:=b) in H.
-  erewrite Pos.sub_add in H; [|xomega]. rewrite Pos.add_comm in H. apply LE.
-  erewrite -> Pos.compare_lt_iff in H. xomega.
-Qed.
-
-Lemma Plt_lemma2 a b c d
-      (LE: ~ Plt a b)
-      (LT: Plt a (b + d)):
-    Plt (a + c - b) (c + d).
-Proof.
-  unfold Plt in *.
-  erewrite <- Pos.compare_lt_iff in LT.
-  erewrite <- Pos.add_compare_mono_r in LT. instantiate (1:=c) in LT.
-  erewrite <- Pos.sub_compare_mono_r in LT.
-  - instantiate (1:=b) in LT.
-    erewrite -> Pos.compare_lt_iff in LT.
-    rpapply LT. replace (b + d + c)%positive with (c + d + b)%positive.
-    + rewrite Pos.add_sub. auto.
-    + clear. xomega.
-  - clear LT. xomega.
-  - clear. xomega.
-Qed.
 
 Lemma src_junk_val_inj m_src0 m_tgt0 j n v
       (INJ: Mem.inject j m_src0 m_tgt0):

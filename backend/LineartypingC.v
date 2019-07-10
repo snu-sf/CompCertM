@@ -90,7 +90,7 @@ Section SOUNDNESS.
       ii. inv AFTER. inv SUST.
 
       hexploit (loc_result_caller_save sg); eauto. intro RES.
-      hexploit (loc_result_one sg); eauto. intro ONE.
+      hexploit (loc_result_one sg); eauto. intro ONE. des.
 
       econs; eauto.
       + destruct stack; ss. des_ifs. inv WTSTK.
@@ -117,4 +117,3 @@ Section SOUNDNESS.
   Qed.
 
 End SOUNDNESS.
-

@@ -281,6 +281,40 @@ Module ModSem.
       eapply call_return_disjoint; eauto. esplits; eauto; rr; esplits; eauto.
     Qed.
 
+    Lemma atomic_continue tr0 tr1 st_src0
+          (WBT: output_trace (tr1 ** tr0)):
+      star step (skenv_link ms) (globalenv ms) (tr1 ** tr0, st_src0) tr1 (tr0, st_src0).
+    Proof.
+      ginduction tr1; ii; ss.
+      { econs; eauto. }
+      des. econs; eauto; cycle 1.
+      { instantiate (1:= [_]). ss. }
+      econs; eauto. ss.
+    Qed.
+
+    Lemma atomic_lift_step st_src0 tr st_src1
+          (WBT: well_behaved_traces ms)
+          (STEP: Step ms st_src0 tr st_src1):
+      Star trans ([], st_src0) tr ([], st_src1).
+    Proof.
+      destruct tr; ss.
+      { apply star_one. econs; eauto. }
+      eapply star_trans; swap 2 3.
+      { eapply star_one with (t := [e]). econs; eauto. }
+      { ss. }
+      rpapply atomic_continue; ss; unfold Eapp in *; try rewrite app_nil_r in *; eauto. exploit WBT; eauto.
+    Qed.
+
+    Lemma atomic_lift_star st_src0 tr st_src1
+          (WBT: well_behaved_traces ms)
+          (STAR: Star ms st_src0 tr st_src1):
+      Star trans ([], st_src0) tr ([], st_src1).
+    Proof.
+      ginduction STAR; ii; ss.
+      { econs; eauto. }
+      eapply star_trans; eauto. clear - H WBT. exploit atomic_lift_step; eauto.
+    Qed.
+
   End Atomic.
   End Atomic.
 

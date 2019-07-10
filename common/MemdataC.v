@@ -55,3 +55,8 @@ Proof.
   unfold decode_val, Val.load_result in *. des_ifs; unfold proj_value in *; des_ifs;
       repeat (repeat (apply_all_once andb_prop; des); des_sumbool; clarify; des_ifs_safe; ss; des; ss; clarify); eauto; des_ifs.
 Qed.
+
+Program Instance memval_inject_Reflexive: RelationClasses.Reflexive (@memval_inject inject_id).
+Next Obligation.
+  destruct x; ss; econs; eauto. apply val_inject_id. ss.
+Qed.

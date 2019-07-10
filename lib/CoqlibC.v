@@ -73,18 +73,6 @@ Lemma Forall_app A P (l0 l1: list A)
     Forall P (l0 ++ l1).
 Proof. ginduction l0; i; ss. inv FORALL0. econs; eauto. Qed.
 
-(* Lemma list_forall2_flip *)
-(*       X Y (P: X -> Y -> Prop) xs ys *)
-(*       (FORALL2: list_forall2 P xs ys) *)
-(*   : *)
-(*     <<FORALL2: list_forall2 (Basics.flip P) ys xs>> *)
-(* . *)
-(* Proof. *)
-(*   ginduction FORALL2; ii; ss. *)
-(*   - econs; eauto. *)
-(*   - econs; eauto. *)
-(* Qed. *)
-
 Lemma list_forall2_stronger
       X Y xs ys (P: X -> Y -> Prop) Q
       (FORALL2: list_forall2 P xs ys)

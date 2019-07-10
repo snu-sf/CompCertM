@@ -8,7 +8,7 @@ Require Import ASTC.
 Require Import IntegersC.
 Require Import Floats.
 Require Import ValuesC.
-Require Export Memdata.
+Require Export Memdata MemdataC.
 Require Export Memtype.
 Require Import sflib.
 Require Import Lia.
@@ -25,14 +25,6 @@ Require Export Memory.
 
 
 
-
-
-
-(* TODO: Move to MemdataC *)
-Program Instance memval_inject_Reflexive: RelationClasses.Reflexive (@memval_inject inject_id).
-Next Obligation.
-  destruct x; ss; econs; eauto. apply val_inject_id. ss.
-Qed.
 
 
 
@@ -341,36 +333,6 @@ Lemma Mem_store_perm_eq
     <<EQ: all4 (Mem.perm m0 =4= Mem.perm m1)>>.
 Proof. eapply prop_ext4. eapply Mem_store_perm_iff; eauto. Qed.
 
-(* Local Transparent store. *)
-(* Lemma Mem_store_mapped_inject_undef *)
-(*       f m1 m2 b1 ofs chunk n1 *)
-(*       (INJ: Mem.inject f m1 m2) *)
-(*       (STORESRC: Mem.store chunk m1 b1 ofs Vundef = Some n1): *)
-(*     inject f n1 m2. *)
-(* Proof. *)
-(*   hexploit Mem_store_perm_iff; eauto. intro PERM. des. *)
-(*   econs; try apply INJ; eauto. *)
-(*   - econs; eauto. *)
-(*     + ii; clarify. eapply INJ; eauto. ii. eapply PERM; eauto. *)
-(*     + ii; clarify. eapply INJ; eauto. ii. eapply PERM; eauto. *)
-(*     + ii; clarify. unfold store in *. *)
-(*       Local Opaque encode_val. *)
-(*       des_ifs. ss. unfold ZMap.get; rewrite PMap.gsspec. des_ifs; cycle 1. *)
-(*       { eapply INJ; eauto. } *)
-(*       unfold perm in *. ss. *)
-(*       (* inv INJ. clear_until mi_inj0. inv mi_inj0. clear mi_perm0 mi_align0. *) *)
-(*       Local Transparent encode_val. *)
-(*       destruct chunk; ss; repeat (unfold ZMap.set in *; rewrite PMap.gsspec; des_ifs; [econs; eauto|]); try (eapply INJ; eauto). *)
-(*  - ii. eapply mi_freeblocks; eauto. ii. eapply H. eapply store_valid_block_1; eauto. *)
-(*  - eapply no_overlap_equiv. ii. erewrite Mem_store_perm_eq; try eapply STORESRC. eauto. eapply mi_no_overlap; eauto. *)
-(*  - ii. exploit mi_representable; eauto. des. *)
-(*    { left. eapply perm_store_2; eauto. } *)
-(*    { right. eapply perm_store_2; eauto. } *)
-(*  - ii. exploit mi_perm_inv; eauto. ii. des. *)
-(*    { left. eapply perm_store_1; eauto. } *)
-(*    { right. ii. eapply H1. eapply perm_store_2; eauto. } *)
-(* Qed. *)
-
 End ARGPASSING.
 
 
@@ -515,42 +477,6 @@ Lemma Mem_unfree_right_inject
 Proof. eapply Mem.inject_extends_compose; eauto. eapply Mem_unfree_extends; eauto. Qed.
 
 Local Ltac simp := repeat (bsimpl; des; des_sumbool; ss; clarify).
-
-(* Lemma setN_in_nth *)
-(*       vl p q c *)
-(*       (IN: p <= q < p + Z.of_nat (Datatypes.length vl)) *)
-(*   : *)
-(*     (ZMap.get q (Mem.setN vl p c)) = (nth (q - p).(Z.to_nat) vl c.(fst)) *)
-(* . *)
-(* Proof. *)
-(*   remember (rev vl) as tmp. *)
-(*   generalize dependent vl. *)
-(*   ginduction tmp; ii; ss; clarify. *)
-(*   - admit "". *)
-(*   - destruct (classic (p = q)); subst. *)
-(*     { zsimpl. ss. admit "". } *)
-(*     destruct vl; ss. *)
-(*     specialize (IHtmp _ (p + 1) q c vl). exploit IHtmp; eauto. *)
-(*     { xomega. } *)
-(*     i. *)
-(*     rewrite Mem.setN_other; ss. *)
-
-(*   ginduction vl; ii; ss. *)
-(*   - xomega. *)
-(*   - destruct (classic (p = q)); subst. *)
-(*     { zsimpl. ss. admit "". } *)
-(*     specialize (IHvl _ (p + 1) q c). exploit IHvl; eauto. *)
-(*     { xomega. } *)
-(*     i. *)
-(*     rewrite Mem.setN_other; ss. *)
-(*     rewrite ZMap.gso; try xomega. *)
-(*       rewrite H0. *)
-(*     des_ifs; ss. *)
-(*     { rewrite Mem.setN_outside; ss. *)
-(*       rewrite ZMap.gso; ss. *)
-(*     erewrite IHvl; eauto. *)
-(* Qed. *)
-(* Abort. *)
 
 Lemma Mem_setN_in_repeat
       n v p q c

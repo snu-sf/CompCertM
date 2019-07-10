@@ -1,7 +1,7 @@
 Require Import CoqlibC Errors.
 Require Import IntegersC ASTC Linking.
 Require Import ValuesC MemoryC SeparationC Events GlobalenvsC Smallstep.
-Require Import LTL Op LocationsC LinearC MachC.
+Require Import LTL Op LocationsC LinearC MachC MachExtra.
 Require Import Bounds ConventionsC StacklayoutC LineartypingC.
 Require Import Stacking.
 
@@ -420,7 +420,8 @@ Proof.
     eapply frame_contents_footprint_irr.
   }
   { eapply sepconj_footprint_le; et.
-    eapply frame_contents_footprint_irr.
+    - eapply frame_contents_footprint_irr.
+    - eapply IHcs; eauto.
   }
 Qed.
 
@@ -476,7 +477,6 @@ End STACKINGEXTRA.
 
 Definition strong_wf_tgt (st_tgt0: Mach.state): Prop :=
   exists parent_sp parent_ra, last_option st_tgt0.(MachC.get_stack) = Some (Mach.dummy_stack parent_sp parent_ra).
-
 
 
 Local Transparent make_env sepconj.
@@ -982,7 +982,7 @@ Proof.
                  (typify_list vs_src (sig_args (Linear.fn_sig f)))
                  (* args_src.(Args.vs) *)
                  f.(Linear.fn_sig)); eauto. i; des.
-      exploit SimMemInjC.mach_store_arguments_simmem; eauto.
+      exploit MachExtra.mach_store_arguments_simmem; eauto.
       { econs; eauto with congruence. }
       i; des.
 

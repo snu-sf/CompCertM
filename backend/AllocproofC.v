@@ -164,7 +164,7 @@ Proof.
     + econs; eauto.
     + econs; ss; eauto. econs; eauto.
       * eapply match_stackframes_after; et.
-      * hexploit (loc_result_one sg_arg); et. intro ONE. destruct (loc_result sg_arg) eqn:T; ss.
+      * hexploit (loc_result_one sg_arg); et. i. des. rewrite ONE. ss.
         rewrite Locmap.gss. eapply lessdef_typify; et.
       * eapply agree_callee_save_after; et. eapply match_stackframes_not_nil; et.
       * eapply typify_has_type; et.

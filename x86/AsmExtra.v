@@ -7,14 +7,12 @@ Require Import AsmC StoreArguments StoreArgumentsProps.
 Set Implicit Arguments.
 
 
-Lemma loc_external_result_one
-      sg
-  :
-    is_one (loc_external_result sg)
+Lemma loc_external_result_one sg:
+  is_one (loc_external_result sg)
 .
 Proof.
   unfold loc_external_result. generalize (loc_result_one sg); i.
-  destruct (loc_result sg) eqn:T; ss.
+  destruct (loc_result sg) eqn:T; ss. des; clarify.
 Qed.
 
 Lemma asm_initial_frame_succeed (asm: Asm.program) args fptr vs m skenv_link fd sg

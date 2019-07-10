@@ -179,17 +179,6 @@ Inductive curr_pc (v: val) (ofs: ptrofs): Prop :=
 
 Require Import mktac.
 
-
-(* TODO: from LB *)
-Lemma Mem_unchanged_on_strengthen P m0 m1
-  :
-    Mem.unchanged_on P m0 m1 <-> Mem.unchanged_on (SimMemInj.valid_blocks m0 /2\ P) m0 m1.
-Proof.
-  split; i.
-  - eapply Mem.unchanged_on_implies; eauto. i. des. auto.
-  - eapply Mem.unchanged_on_implies; eauto. ss.
-Qed.
-
 Inductive match_states (sm_init: SimMem.t)
   :
     nat -> MutrecBspec.state -> AsmC.state -> SimMem.t -> Prop :=
@@ -346,7 +335,7 @@ Proof.
 Qed.
 
 
-(* TODO: from DempProof *)
+(* from DempProof *)
 Lemma E0_double:
   E0 = E0 ** E0.
 Proof. auto. Qed.

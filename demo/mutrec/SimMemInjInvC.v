@@ -421,7 +421,7 @@ Section SIMSYMBINV.
       clarify. eauto.
   Qed.
 
-  (* TODO: from SimSymbDrop *)
+  (* from SimSymbDrop *)
   Lemma Mem_getN_forall2:
     forall (P: memval -> memval -> Prop) c1 c2 i n p,
       list_forall2 P (Mem.getN n p c1) (Mem.getN n p c2) ->

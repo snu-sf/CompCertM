@@ -197,7 +197,6 @@ Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
 (* Skeleton Genv *)
 Module SkEnv.
 
-  (* TODO: Fix properly to cope with Ctypes.fundef *)
   Definition t := Genv.t (AST.fundef signature) unit.
 
   Inductive wf (skenv: t): Prop :=
@@ -283,43 +282,13 @@ Module SkEnv.
 
   Inductive project_spec (skenv: t) (prog: Sk.t) (skenv_proj: t): Prop :=
   | project_spec_intro
-      (* (PUBLIC: skenv_proj.(Genv.genv_public) = []) *)
-      (* TODO: is this OK? Check if this info affects semantics except for linking *)
       (NEXT: skenv.(Genv.genv_next) = skenv_proj.(Genv.genv_next))
-      (* (SYMBKEEP: forall *)
-      (*     id *)
-      (*     (KEEP: keep id) *)
-      (*     blk *)
-      (*     (BIG: skenv.(Genv.find_symbol) id = Some blk) *)
-      (*   , *)
-      (*     (<<SMALL: skenv_proj.(Genv.find_symbol) id = Some blk>>)) *)
       (SYMBKEEP: forall id
           (KEEP: prog.(defs) id),
           (<<KEEP: skenv_proj.(Genv.find_symbol) id = skenv.(Genv.find_symbol) id>>))
       (SYMBDROP: forall id
           (DROP: ~ prog.(defs) id),
           <<NONE: skenv_proj.(Genv.find_symbol) id = None>>)
-      (* (DEFKEEP: forall *)
-      (*     id blk *)
-      (*     (INV: skenv.(Genv.invert_symbol) blk = Some id) *)
-      (*     (KEEP: keep id) *)
-      (*     gd *)
-      (*     (BIG: skenv.(Genv.find_def) id = Some gd) *)
-      (*   , *)
-      (*     <<SMALL: skenv_proj.(Genv.find_def) id = Some gd>>) *)
-
-      (* (DEFKEEP: forall *)
-      (*     id blk *)
-      (*     (INV: skenv.(Genv.invert_symbol) blk = Some id) *)
-      (*     (KEEP: keep id) *)
-      (*   , *)
-      (*     <<SMALL: skenv_proj.(Genv.find_def) blk = skenv.(Genv.find_def) blk>>) *)
-      (* (DEFDROP: forall *)
-      (*     id blk *)
-      (*     (INV: skenv.(Genv.invert_symbol) blk = Some id) *)
-      (*     (DROP: ~ keep id) *)
-      (*   , *)
-      (*     <<SMALL: skenv_proj.(Genv.find_def) blk = None>>) *)
       (DEFKEEP: forall id blk gd_big
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
           (KEEP: prog.(internals) id)

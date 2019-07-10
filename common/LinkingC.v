@@ -133,6 +133,19 @@ Unshelve.
   all: ss.
 Qed.
 
+Lemma match_globdef_eq
+      C F V
+      `{Linker C} ctx:
+    match_globdef ((fun _ => eq): C -> F -> F -> Prop)
+                  (eq: V -> V -> Prop)
+                  ctx = eq.
+Proof.
+  do 2 (eapply Axioms.functional_extensionality; i).
+  eapply AxiomsC.prop_ext. split; i.
+  - inv H0; ss. inv H1; ss.
+  - clarify. destruct x0; econs; try eapply linkorder_refl; eauto. destruct v; ss.
+Qed.
+
 Local Transparent Linker_def Linker_vardef Linker_varinit.
 
 Lemma link_unit_same

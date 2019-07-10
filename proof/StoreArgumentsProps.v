@@ -19,7 +19,7 @@ Definition agree (j: meminj) (rs0 rs1: Mach.regset) : Prop :=
   forall mr, Val.inject j (rs0 mr) (rs1 mr).
 
 Lemma typesize_chunk: forall ty,
-    size_chunk (chunk_of_type ty) =4 * ty.(typesize).
+    size_chunk (chunk_of_type ty) = 4 * ty.(typesize).
 Proof. destruct ty; ss. Qed.
 
 Section STOREARGUMENTS_PROPERTY.
@@ -44,23 +44,6 @@ Section STOREARGUMENTS_PROPERTY.
     forall ofs ty (EQ: l = One (S Outgoing ofs ty)),
       decode_val (chunk_of_type ty) (Mem.getN (size_chunk_nat (chunk_of_type ty)) (lo + 4 * ofs) m) = v.
 
-  (* todo: move to LocationC *)
-  Lemma loc_arguments_ofs_bounded
-        sg lo
-        (SZ: 0 <= lo /\ lo + 4 * size_arguments sg <= Ptrofs.max_unsigned)
-        ofs ty
-        (IN: In (One (S Outgoing ofs ty)) (loc_arguments sg)):
-      0 <= lo + 4 * ofs <= Ptrofs.max_unsigned.
-  Proof.
-    hexploit loc_arguments_bounded.
-    - instantiate (1:=sg). instantiate (1:=ty). instantiate (1:=ofs).
-      revert ofs ty IN. induction (loc_arguments sg); ss; i.
-      des; clarify; ss; eauto. eapply in_app_iff. right. eapply IHl; eauto.
-    - i. split.
-      + hexploit (loc_arguments_acceptable sg); eauto. intros ACCP. inv ACCP. lia.
-      + destruct ty; ss; lia.
-  Qed.
-
   Lemma extcall_arguments_extcall_arg_in_reg
         rs m blk sg vs lo
         (SZ: 0 <= lo /\ lo + 4 * size_arguments sg <= Ptrofs.max_unsigned)
@@ -69,7 +52,7 @@ Section STOREARGUMENTS_PROPERTY.
                  (loc_arguments sg) vs):
       list_forall2 (extcall_arg_in_reg rs) (loc_arguments sg) vs.
   Proof.
-    generalize (loc_arguments_acceptable sg). generalize (loc_arguments_ofs_bounded sg lo SZ).
+    generalize (loc_arguments_acceptable sg). generalize (@loc_arguments_ofs_bounded sg lo SZ).
     revert vs ARGS. induction (loc_arguments sg); ss; i; inv ARGS; econs.
     - ii. clarify. inv H3. inv H2. auto.
     - eapply IHl; eauto.
@@ -85,7 +68,7 @@ Section STOREARGUMENTS_PROPERTY.
         (extcall_arg_in_stack (m.(Mem.mem_contents) !! blk) lo)
         (loc_arguments sg) vs.
   Proof.
-    generalize (loc_arguments_acceptable sg). generalize (loc_arguments_ofs_bounded sg lo SZ).
+    generalize (loc_arguments_acceptable sg). generalize (@loc_arguments_ofs_bounded sg lo SZ).
     revert vs ARGS. induction (loc_arguments sg); ss; i; inv ARGS; econs.
     - ii. clarify. inv H3. inv H2. unfold load_stack in *. ss.
       Local Transparent Mem.load. unfold Mem.load in *. des_ifs.
@@ -109,7 +92,7 @@ Section STOREARGUMENTS_PROPERTY.
   Proof.
     generalize (loc_arguments_acceptable sg).
     assert (SZ0: 0 <= 0 /\ 0 + 4 * size_arguments sg <= Ptrofs.max_unsigned) by lia.
-    generalize (loc_arguments_ofs_bounded sg 0 SZ0).
+    generalize (@loc_arguments_ofs_bounded sg 0 SZ0).
     assert (RANGE: forall ofs ty (In: In (S Outgoing ofs ty) (regs_of_rpairs (loc_arguments sg))),
                Mem.range_perm m blk (4 * ofs) (4 * (ofs + typesize ty)) Cur Freeable).
     { i. hexploit loc_arguments_bounded; eauto. ii. eapply PERM. split; try lia.
@@ -157,7 +140,7 @@ End STOREARGUMENTS_PROPERTY.
 
 Module _FillArgsParallel.
 
-  (* TODO: it's from AsmStepInj *)
+  (* it's from AsmStepInj *)
   Lemma unsigned_add ofs delta
         (RANGE: delta >= 0 /\ 0 <= Ptrofs.unsigned ofs + delta <= Ptrofs.max_unsigned):
       Ptrofs.unsigned (Ptrofs.add ofs (Ptrofs.repr delta))

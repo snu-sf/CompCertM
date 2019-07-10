@@ -36,18 +36,6 @@ Local Opaque make_env.
 
 
 
-Lemma sim_skenv_inj_globalenv_inject
-      skenv_proj_src skenv_proj_tgt sm_arg (prog: Linear.program) m_tgt0
-      (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg tt skenv_proj_src skenv_proj_tgt)
-      (NB: Ple (Genv.genv_next skenv_proj_src) (Mem.nextblock m_tgt0)):
-    m_tgt0 |= globalenv_inject (SkEnv.revive skenv_proj_src prog) (SimMemInj.inj sm_arg).
-Proof.
-  ss. inv SIMSKE. inv INJECT. esplits; et.
-  - econs; et.
-    + ii. exploit Genv.genv_symb_range; eauto.
-    + ii. uge0. des_ifs. exploit Genv.genv_defs_range; eauto.
-    + ii. uge0. des_ifs. exploit Genv.genv_defs_range; eauto.
-Qed.
 
 
 
@@ -490,79 +478,6 @@ Definition strong_wf_tgt (st_tgt0: Mach.state): Prop :=
   exists parent_sp parent_ra, last_option st_tgt0.(MachC.get_stack) = Some (Mach.dummy_stack parent_sp parent_ra).
 
 
-
-Lemma minjection_disjoint_footprint_private
-      sm0 P
-      (SEP: (SimMemInj.tgt sm0) |= P)
-      (DISJ: disjoint_footprint (minjection (SimMemInj.inj sm0) (SimMemInj.src sm0)) P):
-    P.(m_footprint) <2= sm0.(SimMemInj.tgt_private).
-Proof.
-  u. ii. esplits; eauto.
-  - ii. eapply DISJ; eauto. ss. esplits; eauto.
-  - destruct P; ss. eapply m_valid; eauto.
-Qed.
-
-Lemma minjection_private_disjoint_footprint
-      sm0 P
-      (PRIV: P.(m_footprint) <2= sm0.(SimMemInj.tgt_private)):
-    <<DISJ: disjoint_footprint (minjection (SimMemInj.inj sm0) (SimMemInj.src sm0)) P>>.
-Proof.
-  - ii. ss. des. eapply PRIV; eauto.
-Qed.
-
-Lemma external_call_parallel_rule_simmem
-      (F V: Type) (ge0: Genv.t F V)
-      sm_at sm_after P
-      (SEP: sm_at.(SimMem.tgt) |= (minjection sm_at.(SimMemInj.inj) sm_at.(SimMem.src))
-                             ** globalenv_inject ge0 sm_at.(SimMemInj.inj) ** P)
-      sm_arg sm_ret
-      (MWF: SimMem.wf sm_at)
-      (MWF0: SimMem.wf sm_arg)
-      (MWF1: SimMem.wf sm_ret)
-      (MWF2: SimMem.wf sm_after)
-      (MWFAFTR : SimMem.wf (SimMemInj.unlift' sm_arg sm_ret))
-      (MLE: SimMem.le sm_at sm_arg)
-      (MLE0: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
-      (MLE1: SimMem.le (SimMemLift.unlift sm_at sm_ret) sm_after)
-      (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret))
-      (PRIV0: sm_at.(SimMemInj.tgt_private) = sm_arg.(SimMemInj.tgt_private))
-      (PRIV1: sm_ret.(SimMemInj.tgt_private) = sm_after.(SimMemInj.tgt_private))
-      (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg))
-      (UNCH1: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_ret) (SimMemInj.tgt sm_after)):
-    <<SEP: sm_after.(SimMem.tgt) |= (minjection sm_after.(SimMemInj.inj) sm_after.(SimMem.src))
-                            ** globalenv_inject ge0 sm_at.(SimMemInj.inj) ** P>>.
-Proof.
-  (* See external_call_parallel_rule *)
-  destruct SEP as (A & B & C). simpl in A.
-  apply disjoint_footprint_sepconj in C. des. ss.
-  eapply minjection_disjoint_footprint_private in DISJ1; cycle 1.
-  { apply sep_drop in B. ss. }
-  sep_split.
-  { ss. eapply MWF2. }
-  { apply disjoint_footprint_sepconj. ss. split; ss.
-    apply minjection_private_disjoint_footprint. etrans; eauto.
-    rewrite PRIV0. rewrite <- PRIV1. inv MLEAFTR. inv MLE0. inv MWF0. inv MWF1. ss.
-    etrans; try apply TGTEXT0; eauto. rewrite TGTPARENTEQ0. reflexivity. }
-  sep_split.
-  { eapply globalenv_inject_incr in B; eauto.
-    - apply sep_pick1 in B. ss. des. esplits; eauto.
-      etrans; eauto. inv MLE. inv MLE0. inv MLE1. inv MLEAFTR.
-      etrans; eauto with mem. etrans; eauto with mem.
-    - apply SimMemInj.inject_separated_frozen; eauto.
-      eapply SimMemInj.frozen_refl; eauto.
-  }
-  { ss. }
-  destruct B as (X & Y & Z); ss.
-  eapply m_invar; eauto. eapply Mem.unchanged_on_implies; cycle 1.
-  { ii. exploit DISJ1; eauto. }
-  rewrite PRIV0. etrans.
-  { instantiate (1:= (SimMemInj.tgt sm_arg)). eauto. }
-  etrans; cycle 1.
-  { instantiate (1:= (SimMemInj.tgt sm_ret)). eauto. }
-  clears sm_after. clear sm_after. clears sm_at. clear sm_at. inv MLE0. ss.
-Unshelve.
-  all: try apply Mem.empty.
-Qed.
 
 Local Transparent make_env sepconj.
 Lemma contains_callee_saves_footprint

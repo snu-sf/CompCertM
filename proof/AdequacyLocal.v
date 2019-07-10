@@ -318,9 +318,6 @@ Section ADQMATCH.
 
   Let skenv_link_src := sk_link_src.(Sk.load_skenv).
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
-  Compute sem_src.(Smallstep.state).
-
-  Print Frame.t.
 
   (* Interpretation: the stack called top with following regset/regset/SimMem.t as arguments. *)
   (* (SimMem.t is lifted. lifting/unlifting is caller's duty) *)
@@ -427,7 +424,6 @@ Section ADQINIT.
   Hint Unfold lxsim_lift.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
-  Print Sem.initial_state.
 
   Let skenv_link_src := sk_link_src.(Sk.load_skenv).
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).

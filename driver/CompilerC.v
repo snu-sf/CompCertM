@@ -46,11 +46,7 @@ Require RTLgenproof.
 Require Tailcallproof.
 Require Inliningproof.
 (**
-Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem MatchSimModSem.
-Print Instances SimMem.class.
 (** nothing **)
-Require RenumberproofC.
-Print Instances SimMem.class.
 (** SimMemId **)
 **)
 Require Renumberproof.

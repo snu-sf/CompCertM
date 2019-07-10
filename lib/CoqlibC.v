@@ -315,7 +315,6 @@ Notation "p -2 q" := (p /2\ ~2 q) (at level 50).
 Notation "p -3 q" := (p /3\ ~3 q) (at level 50).
 Notation "p -4 q" := (p /4\ ~4 q) (at level 50).
 
-Print Ltac uf.
 Tactic Notation "u" "in" hyp(H) := repeat (autounfold with * in H; cbn in H).
 Tactic Notation "u" := repeat (autounfold with *; cbn).
 Tactic Notation "u" "in" "*" := repeat (autounfold with * in *; cbn in *).

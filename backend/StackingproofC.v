@@ -553,14 +553,7 @@ Hypothesis return_address_offset_deterministic: forall f c ofs ofs',
 
 Let match_stacks := match_stacks skenv_link skenv_link.
 
-Print Instances SimMem.class.
-Print Instances SimSymb.class.
-
 Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
-
-Compute last_option (@nil Z).
-Compute last_option [1].
-Compute last_option [1 ; 2].
 
 Lemma functions_translated_inject
       sm0 fptr_src fd_tgt fptr_tgt

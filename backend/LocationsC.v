@@ -50,10 +50,6 @@ Qed.
 
 Lemma loc_result_one: forall sg, exists mr_res, <<ONE: loc_result sg = One mr_res>>.
 
-Print Loc.notin.
-Print Loc.norepet.
-Print Loc.no_overlap.
-
 Lemma Loc_cons_right_disjoint
       xs0 xs1 x
       (DISJ: Loc.disjoint xs0 xs1)

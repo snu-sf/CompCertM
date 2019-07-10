@@ -142,7 +142,6 @@ Module Sk.
     destruct p; ss. unfold internals', of_program. ss.
     apply Axioms.functional_extensionality. intro id; ss.
     unfold skdefs_of_gdefs. rewrite find_map. unfold compose. ss. unfold ident.
-    (* Print Instances HasExternal. *)
     replace (fun (x: positive * globdef (fundef F) V) =>
                ident_eq id (fst x) && is_external_gd (skdef_of_gdef get_sg (snd x))) with
         (fun (x: positive * globdef (fundef F) V) => ident_eq id (fst x) && is_external (snd x)).
@@ -514,7 +513,6 @@ I think "sim_skenv_monotone" should be sufficient.
     clarify.
   Qed.
 
-  Print Genv.public_symbol.
   Definition privs (skenv: SkEnv.t): ident -> bool :=
     fun id =>
       match skenv.(Genv.find_symbol) id with
@@ -532,7 +530,6 @@ I think "sim_skenv_monotone" should be sufficient.
     exploit SkEnv.project_revive_precise; eauto.
     { eapply SkEnv.project_impl_spec; eauto. }
     intro PREC. econs; eauto. i. ss.
-    (* inv INCL. inv PREC. *)
     ss. uge. unfold SkEnv.revive in *. ss. rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
   Qed.
 
@@ -556,6 +553,3 @@ I think "sim_skenv_monotone" should be sufficient.
 End SkEnv.
 
 Hint Unfold SkEnv.empty.
-
-
-(* Hint Unfold SkEnv.revive. *)

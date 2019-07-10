@@ -40,18 +40,18 @@ Module SimMem.
 
     sim_val: t -> val -> val -> Prop;
     sim_val_list: t -> list val -> list val -> Prop;
-    lepriv_sim_val: forall mrel0 mrel1 (MLE: lepriv mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
+    le_sim_val: forall mrel0 mrel1 (MLE: le mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
     sim_val_list_spec: forall sm0, (List.Forall2 sm0.(sim_val) = sm0.(sim_val_list));
     sim_val_int: forall sm0 v_src v_tgt, sim_val sm0 v_src v_tgt -> forall i, v_src = Vint i -> v_tgt = Vint i;
   }.
 
-  Lemma le_sim_val
-        `{SM: class}
-        mrel0 mrel1
-        (MWF: SimMem.wf mrel0)
-        (MLE: le mrel0 mrel1):
-      sim_val mrel0 <2= sim_val mrel1.
-  Proof. eapply lepriv_sim_val; et. eapply pub_priv; et. Qed.
+  (* Lemma le_sim_val *)
+  (*       `{SM: class} *)
+  (*       mrel0 mrel1 *)
+  (*       (MWF: SimMem.wf mrel0) *)
+  (*       (MLE: le mrel0 mrel1): *)
+  (*     sim_val mrel0 <2= sim_val mrel1. *)
+  (* Proof. eapply lepriv_sim_val; et. eapply pub_priv; et. Qed. *)
 
   Lemma sim_val_list_length
         `{SM: class} (sm0: t)
@@ -110,15 +110,15 @@ Module SimMem.
       sm0.(sim_val) args_src.(Args.get_fptr) args_tgt.(Args.get_fptr).
   Proof. i. inv ARGS; ss. Qed.
 
-  Lemma sim_val_list_lepriv
+  Lemma sim_val_list_le
         `{SM: class}
         sm0 sm1 vs_src vs_tgt
-        (LEPRIV: SimMem.lepriv sm0 sm1)
+        (LEPRIV: SimMem.le sm0 sm1)
         (SIMVS: SimMem.sim_val_list sm0 vs_src vs_tgt):
       <<SIMVS: SimMem.sim_val_list sm1 vs_src vs_tgt>>.
   Proof.
     rewrite <- sim_val_list_spec in *. induction SIMVS; ii; ss.
-    econs; eauto. eapply lepriv_sim_val; et.
+    econs; eauto. eapply le_sim_val; et.
   Qed.
 
 End SimMem.

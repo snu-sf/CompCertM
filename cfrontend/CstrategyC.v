@@ -40,7 +40,6 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  (* Set Printing All. *)
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function).
   Let ce_ge: composite_env := prog_comp_env p.
   Let ge_ge: Genv.t fundef type := SkEnv.revive skenv p.

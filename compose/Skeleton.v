@@ -142,7 +142,6 @@ Module Sk.
     destruct p; ss. unfold internals', of_program. ss.
     apply Axioms.functional_extensionality. intro id; ss.
     unfold skdefs_of_gdefs. rewrite find_map. unfold compose. ss. unfold ident.
-    (* Print Instances HasExternal. *)
     replace (fun (x: positive * globdef (fundef F) V) =>
                ident_eq id (fst x) && is_external_gd (skdef_of_gdef get_sg (snd x))) with
         (fun (x: positive * globdef (fundef F) V) => ident_eq id (fst x) && is_external (snd x)).
@@ -197,7 +196,6 @@ Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
 (* Skeleton Genv *)
 Module SkEnv.
 
-  (* TODO: Fix properly to cope with Ctypes.fundef *)
   Definition t := Genv.t (AST.fundef signature) unit.
 
   Inductive wf (skenv: t): Prop :=
@@ -283,43 +281,13 @@ Module SkEnv.
 
   Inductive project_spec (skenv: t) (prog: Sk.t) (skenv_proj: t): Prop :=
   | project_spec_intro
-      (* (PUBLIC: skenv_proj.(Genv.genv_public) = []) *)
-      (* TODO: is this OK? Check if this info affects semantics except for linking *)
       (NEXT: skenv.(Genv.genv_next) = skenv_proj.(Genv.genv_next))
-      (* (SYMBKEEP: forall *)
-      (*     id *)
-      (*     (KEEP: keep id) *)
-      (*     blk *)
-      (*     (BIG: skenv.(Genv.find_symbol) id = Some blk) *)
-      (*   , *)
-      (*     (<<SMALL: skenv_proj.(Genv.find_symbol) id = Some blk>>)) *)
       (SYMBKEEP: forall id
           (KEEP: prog.(defs) id),
           (<<KEEP: skenv_proj.(Genv.find_symbol) id = skenv.(Genv.find_symbol) id>>))
       (SYMBDROP: forall id
           (DROP: ~ prog.(defs) id),
           <<NONE: skenv_proj.(Genv.find_symbol) id = None>>)
-      (* (DEFKEEP: forall *)
-      (*     id blk *)
-      (*     (INV: skenv.(Genv.invert_symbol) blk = Some id) *)
-      (*     (KEEP: keep id) *)
-      (*     gd *)
-      (*     (BIG: skenv.(Genv.find_def) id = Some gd) *)
-      (*   , *)
-      (*     <<SMALL: skenv_proj.(Genv.find_def) id = Some gd>>) *)
-
-      (* (DEFKEEP: forall *)
-      (*     id blk *)
-      (*     (INV: skenv.(Genv.invert_symbol) blk = Some id) *)
-      (*     (KEEP: keep id) *)
-      (*   , *)
-      (*     <<SMALL: skenv_proj.(Genv.find_def) blk = skenv.(Genv.find_def) blk>>) *)
-      (* (DEFDROP: forall *)
-      (*     id blk *)
-      (*     (INV: skenv.(Genv.invert_symbol) blk = Some id) *)
-      (*     (DROP: ~ keep id) *)
-      (*   , *)
-      (*     <<SMALL: skenv_proj.(Genv.find_def) blk = None>>) *)
       (DEFKEEP: forall id blk gd_big
           (INV: skenv.(Genv.invert_symbol) blk = Some id)
           (KEEP: prog.(internals) id)
@@ -407,10 +375,6 @@ I think "sim_skenv_monotone" should be sufficient.
     u in H. des_ifs_safe. esplits; eauto.
     { erewrite SYMBKEEP; eauto. u. des_sumbool. eapply prog_defmap_image; et. }
   Qed.
-
-  (* Definition project (skenv: t) (ids: list ident): option SkEnv.t. *)
-  (*   admit "". *)
-  (* Defined. *)
 
   Definition internals (skenv: t): list block :=
     List.map fst (skenv.(Genv.genv_defs).(PTree.elements)).
@@ -545,7 +509,6 @@ I think "sim_skenv_monotone" should be sufficient.
     clarify.
   Qed.
 
-  Print Genv.public_symbol.
   Definition privs (skenv: SkEnv.t): ident -> bool :=
     fun id =>
       match skenv.(Genv.find_symbol) id with
@@ -563,7 +526,6 @@ I think "sim_skenv_monotone" should be sufficient.
     exploit SkEnv.project_revive_precise; eauto.
     { eapply SkEnv.project_impl_spec; eauto. }
     intro PREC. econs; eauto. i. ss.
-    (* inv INCL. inv PREC. *)
     ss. uge. unfold SkEnv.revive in *. ss. rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
   Qed.
 
@@ -587,6 +549,3 @@ I think "sim_skenv_monotone" should be sufficient.
 End SkEnv.
 
 Hint Unfold SkEnv.empty.
-
-
-(* Hint Unfold SkEnv.revive. *)

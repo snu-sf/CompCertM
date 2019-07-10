@@ -73,18 +73,6 @@ Lemma Forall_app A P (l0 l1: list A)
     Forall P (l0 ++ l1).
 Proof. ginduction l0; i; ss. inv FORALL0. econs; eauto. Qed.
 
-(* Lemma list_forall2_flip *)
-(*       X Y (P: X -> Y -> Prop) xs ys *)
-(*       (FORALL2: list_forall2 P xs ys) *)
-(*   : *)
-(*     <<FORALL2: list_forall2 (Basics.flip P) ys xs>> *)
-(* . *)
-(* Proof. *)
-(*   ginduction FORALL2; ii; ss. *)
-(*   - econs; eauto. *)
-(*   - econs; eauto. *)
-(* Qed. *)
-
 Lemma list_forall2_stronger
       X Y xs ys (P: X -> Y -> Prop) Q
       (FORALL2: list_forall2 P xs ys)
@@ -327,7 +315,6 @@ Notation "p -2 q" := (p /2\ ~2 q) (at level 50).
 Notation "p -3 q" := (p /3\ ~3 q) (at level 50).
 Notation "p -4 q" := (p /4\ ~4 q) (at level 50).
 
-Print Ltac uf.
 Tactic Notation "u" "in" hyp(H) := repeat (autounfold with * in H; cbn in H).
 Tactic Notation "u" := repeat (autounfold with *; cbn).
 Tactic Notation "u" "in" "*" := repeat (autounfold with * in *; cbn in *).

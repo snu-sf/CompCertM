@@ -2,7 +2,7 @@ Require Import String.
 Require Import CoqlibC Maps Integers Floats Errors.
 Require Import AST Linking.
 Require Import Values Memory Globalenvs Events.
-Require Import CtypesC Cop Csyntax Csem.
+Require Import CtypesC Cop Csyntax Csem ValuesC.
 Require Import sflib.
 (** newly added **)
 Require Export Ctyping.
@@ -76,3 +76,14 @@ Lemma wt_retval_has_type
       (WT: wt_retval v ty):
     <<TY: Val.has_type v ty.(typ_of_type)>>.
 Proof. inv WT; ss. inv WTV; ss. erewrite NVOID; ss. Qed.
+
+Lemma typify_inject
+      v_src ty tv_src v_tgt j
+      (TYP: typify_c v_src ty tv_src)
+      (INJ: Val.inject j v_src v_tgt):
+    <<INJ: Val.inject j tv_src (typify v_tgt (typ_of_type ty))>>.
+Proof.
+  inv TYP.
+  - exploit wt_retval_has_type; eauto. i; des. unfold typify. des_ifs. inv INJ; ss.
+  - ss.
+Qed.

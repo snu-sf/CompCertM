@@ -69,7 +69,6 @@ Section SIMMODSEM.
       (MLE: SimMem.le sm0 sm1)
       (BSIM: bsim i1 st_src1 st_tgt0 sm1).
 
-  Print xsim.
 
   Inductive _lxsim_pre (lxsim: SimMem.t ->
                                idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
@@ -201,7 +200,6 @@ End SIMMODSEM.
 Hint Unfold lxsim.
 Hint Resolve lxsim_mon: paco.
 
-Print HintDb typeclass_instances.
 
 
 

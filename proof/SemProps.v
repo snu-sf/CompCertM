@@ -194,10 +194,7 @@ Qed.
 
 Section INITDTM.
 
-  Print fsim_properties.
-  Print determinate.
-
-  Lemma link_sk_disjoint
+ Lemma link_sk_disjoint
         md0 md1 p0 id skenv_link b if_sig if_sig0 restl sk_link gd_big0
         (IN : In md0 p0)
         (NOTSAME : md0 <> md1)

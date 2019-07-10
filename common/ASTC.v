@@ -53,7 +53,7 @@ Class HasExternal (X: Type): Type := {
 
 
 Section FUNCTIONS.
-  
+
   Definition is_external_fd F (f: fundef F): bool :=
     match f with
     | External ef => is_external_ef ef
@@ -102,12 +102,6 @@ Section FUNCTIONS.
 
 End FUNCTIONS.
 
-(* Definition is_external F V (gd: globdef (fundef F) V): bool := *)
-(*   match gd with *)
-(*   | Gfun fd => is_external_fd fd *)
-(*   | Gvar _ => false *)
-(*   end *)
-(* . *)
 Definition is_external_gd `{HasExternal F} V (gd: globdef F V): bool :=
   match gd with
   | Gfun fd => is_external fd
@@ -116,9 +110,7 @@ Definition is_external_gd `{HasExternal F} V (gd: globdef F V): bool :=
 
 Arguments is_external_fd {F}.
 Arguments is_external_gd {_} {_} {V}.
-Hint Unfold is_external_gd is_external_fd (* is_external_ef *).
-
-Print Instances HasExternal.
+Hint Unfold is_external_gd is_external_fd.
 
 Global Instance external_function_HasExternal: HasExternal external_function :=
   Build_HasExternal is_external_ef.
@@ -127,9 +119,6 @@ Global Instance fundef_HasExternal {F}: HasExternal (AST.fundef F) :=
 Global Instance globdef_HasExternal `{HasExternal F} {V}: HasExternal (globdef F V) :=
   Build_HasExternal is_external_gd.
 
-(* Variable F V: Type. *)
-(* Variable TT: globdef (fundef F) V. *)
-(* Check (is_external TT). *)
 
 
 
@@ -143,17 +132,8 @@ Section PROGRAMS.
   Variable F V: Type.
   Variable p: program F V.
 
-  (* Definition is_private (p: program F V) (id: ident): Prop := *)
-  (*   (exists gd, <<FIND: p.(prog_defmap)!id = Some gd>>) /\ <<PRIV: ~In id p.(prog_public)>> *)
-  (* . *)
-
-  (* (* This one is without parameter *) *)
-  (* Definition is_private_plain (id: ident) (ids: list ident) (pubs: list ident): Prop := *)
-  (*   <<IN: In id ids>> /\ <<PRIV: ~In id pubs>> *)
-  (* . *)
-
   Definition good_prog (p: program F V): Prop :=
-    incl p.(prog_public) (* (List.map fst p.(prog_defmap).(PTree.elements)) *) p.(prog_defs_names).
+    incl p.(prog_public) p.(prog_defs_names).
   (* It also makes sense to add list_norept of prog_defs_names. "prog_defmap_norepet" *)
   (* Actually both are enforced in Unusedglob. *)
   (*** valid_used_set in Unusedglobproof.v
@@ -178,7 +158,6 @@ I think the same is true for prog_public thing too.
 
   Definition privs: ident -> bool :=
     fun id => andb (<<DEFS: defs id>>) (<<PRIVS: negb (In_dec ident_eq id p.(prog_public))>>).
-    (* fun id => andb (<<DEFS: defs id>>) (<<PRIVS: negb (In_dec ident_eq id p.(prog_public))>>) *)
   Definition privs_old: ident -> Prop :=
     <<DEFS: defs_old>> /1\ <<PRIVS: (fun id => ~ In id p.(prog_public))>>.
 

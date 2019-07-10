@@ -494,8 +494,6 @@ Next Obligation.
       * inv WFTGT1. rr in H1. des_safe. exploit WFPTR; eauto.
     + apply NoDup_norepet. apply PTree.elements_keys_norepet.
     + des; congruence.
-(*   admit "See 'link_match_program' in Unusedglobproof.v. *)
-(* Note that we have one more goal (exists ss) but it is OK, as the 'link_match_program' proof already proves it.". *)
 Qed.
 Next Obligation.
   inv SIMSKE. unfold Genv.public_symbol. apply func_ext1. intro i0.
@@ -561,7 +559,6 @@ Next Obligation.
     { psimpl. ss. }
     rewrite Heq. rewrite Heq0. eauto.
   }
-  (* admit "See 'init_meminj_preserves_globals' in Unusedglobproof.v". *)
 Qed.
 Next Obligation.
   inv MLE. inv SIMSKENV.
@@ -584,38 +581,7 @@ Next Obligation.
     + exploit INCR; eauto. congruence.
     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
       exploit Genv.genv_defs_range; eauto. i. rewrite NBTGT in *. xomega.
-  (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *)
 Qed.
-(* Next Obligation. *)
-(*   inv SIMSKENV. inv MWF. *)
-(*   econs; eauto; ss; xomega. *)
-(* Qed. *)
-(* Next Obligation. *)
-(*   inv MLE. inv SIMSKENV. *)
-(*   assert (SAME: forall b b' delta, Plt b (Genv.genv_next skenv_src) -> *)
-(*                                    inj sm1 b = Some(b', delta) -> inj sm0 b = Some(b', delta)). *)
-(*   { i. erewrite frozen_preserves_src; eauto. i. xomega. } *)
-(*   apply sim_skenv_splittable_spec. *)
-(*   rr. *)
-(*   dsplits; eauto; try congruence; ii. *)
-(*   - i. eapply SIMSYMB1; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto. *)
-(*   - i. exploit SIMSYMB2; eauto. i; des. eexists. splits; eauto. *)
-(*   - i. exploit SIMSYMB3; eauto. i; des. eexists. splits; eauto. *)
-(*   - i. exploit SIMDEF; eauto. eapply SAME; try eapply Genv.genv_defs_range; eauto. *)
-(*   - i. eapply DISJ; eauto. eapply SAME; try eapply Genv.genv_symb_range; eauto. *)
-(*     destruct (inj sm0 blk_src1) eqn:T; ss. *)
-(*     { destruct p; ss. exploit INCR; et. i; clarify. } *)
-(*     exfalso. *)
-(*     inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. *)
-(*     exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac. *)
-(*     exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT BOUNDTGT. xomega. *)
-(*   - i. eapply SIMDEFINV; eauto. *)
-(*     destruct (inj sm0 blk_src) as [[b1 delta1] | ] eqn: J. *)
-(*     + exploit INCR; eauto. congruence. *)
-(*     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. *)
-(*       exploit Genv.genv_defs_range; eauto. xomega. *)
-(*   (* admit "The proof must exist in Unusedglobproof.v. See match_stacks_preserves_globals, match_stacks_incr". *) *)
-(* Qed. *)
 Next Obligation.
   set (SkEnv.project skenv_link_src sk_src) as skenv_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.

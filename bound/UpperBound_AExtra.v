@@ -125,7 +125,6 @@ Section SIM.
             Linker_vardef Linker_def Linking.Linker_fundef.
       ss.
       rename a into p0. rename restl into p1. fold Csyntax.program in *.
-      (* Set Printing Implicit. *)
       unfold link_program in *. des_ifs. ss.
       clear - Heq.
       unfold link_prog in *. ss. des_ifs_safe. bsimpl. des. des_sumbool.

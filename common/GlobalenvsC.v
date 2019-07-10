@@ -370,21 +370,6 @@ Proof. destruct ge1, ge2; ss. clarify. f_equal; apply proof_irr. Qed.
 
 Arguments fsim_external_inject_eq [_].
 
-
-(* TODO: move to LinkingC.v *)
-Lemma match_globdef_eq
-      C F V
-      `{Linker C} ctx:
-    match_globdef ((fun _ => eq): C -> F -> F -> Prop)
-                  (eq: V -> V -> Prop)
-                  ctx = eq.
-Proof.
-  do 2 (eapply Axioms.functional_extensionality; i).
-  eapply AxiomsC.prop_ext. split; i.
-  - inv H0; ss. inv H1; ss.
-  - clarify. destruct x0; econs; try eapply linkorder_refl; eauto. destruct v; ss.
-Qed.
-
 Lemma senv_eta
       se tse
       (EQ0: se.(Senv.find_symbol) = tse.(Senv.find_symbol))

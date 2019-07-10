@@ -268,12 +268,6 @@ Proof.
       econs 1. i; des.
       econs 2.
 
-      (* econs 2; cycle 2. *)
-      (* { admit "ez - spec is receptive". } *)
-      (* { split; ii; rr in H; inv H; inv H0; ss. } *)
-      (* i. ss. inv STEPSRC. *)
-      (* esplits; eauto. *)
-
       * split; cycle 1.
         { apply Ord.lift_idx_spec.
           instantiate (1:=2%nat). nia. }

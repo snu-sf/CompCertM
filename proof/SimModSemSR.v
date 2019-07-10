@@ -70,8 +70,6 @@ Section SIMMODSEM.
       (MLE: SimMem.le sm0 sm1)
       (BSIM: bsim i1 st_src1 st_tgt0 sm1).
 
-  Print xsim.
-
   Inductive _lxsimSR_pre (lxsimSR: SimMem.t ->
                                    idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (sm_init: SimMem.t)
@@ -200,8 +198,6 @@ End SIMMODSEM.
 Hint Unfold lxsimSR.
 Hint Resolve lxsimSR_mon: paco.
 
-Print HintDb typeclass_instances.
-
 
 Module ModSemPair.
 Include SimModSem.ModSemPair.
@@ -245,55 +241,14 @@ End ModSemPair.
 
 Hint Constructors ModSemPair.sim_skenv.
 
-
-
-
-(* TODO: move to ModSem.Atomic *)
-Lemma atomic_continue
-      (ms_src: ModSem.t) tr0 tr1 st_src0
-      (WBT: output_trace (tr1 ** tr0)):
-    star (Atomic.step ms_src) (skenv_link ms_src) (globalenv ms_src) (tr1 ** tr0, st_src0) tr1 (tr0, st_src0).
-Proof.
-  ginduction tr1; ii; ss.
-  { econs; eauto. }
-  des. econs; eauto; cycle 1.
-  { instantiate (1:= [_]). ss. }
-  econs; eauto. ss.
-Qed.
-
-Lemma atomic_lift_step
-      (ms_src: ModSem.t) st_src0 tr st_src1
-      (WBT: well_behaved_traces ms_src)
-      (STEP: Step ms_src st_src0 tr st_src1):
-    Star (Atomic.trans ms_src) ([], st_src0) tr ([], st_src1).
-Proof.
-  destruct tr; ss.
-  { apply star_one. econs; eauto. }
-  eapply star_trans; swap 2 3.
-  { eapply star_one with (t := [e]). econs; eauto. }
-  { ss. }
-  rpapply atomic_continue; ss; unfold Eapp in *; try rewrite app_nil_r in *; eauto. exploit WBT; eauto.
-Qed.
-
-Lemma atomic_lift_star
-      (ms_src: ModSem.t) st_src0 tr st_src1
-      (WBT: well_behaved_traces ms_src)
-      (STAR: Star ms_src st_src0 tr st_src1):
-    Star (Atomic.trans ms_src) ([], st_src0) tr ([], st_src1).
-Proof.
-  ginduction STAR; ii; ss.
-  { econs; eauto. }
-  eapply star_trans; eauto. clear - H WBT. exploit atomic_lift_step; eauto.
-Qed.
-
 Lemma atomic_unlift_safe_modsem
       ms_src st_src0
       (SAFE: safe_modsem (Atomic.trans ms_src) ([], st_src0))
       (WBT: well_behaved_traces ms_src):
-    <<SAFE: safe_modsem ms_src st_src0>>.
+  <<SAFE: safe_modsem ms_src st_src0>>.
 Proof.
   ii. exploit SAFE; eauto.
-  { instantiate (1:= (_, _)). eapply atomic_lift_star; eauto. }
+  { instantiate (1:= (_, _)). eapply ModSem.Atomic.atomic_lift_star; eauto. }
   i; des.
   - left. rr in EVCALL. des. rr. inv EVCALL. ss. esplits; eauto.
   - right. left. rr in EVRET. des. rr. inv EVRET. ss. esplits; eauto.
@@ -344,7 +299,7 @@ Section FACTORSOURCE.
           + pclearbot. right. eapply CIH; eauto. econs; eauto.
       }
       punfold MATCH. rr in MATCH. ii. hexploit1 MATCH; eauto.
-      { ii. exploit SUSTAR. { instantiate (1:= (_, _)). eapply atomic_lift_star; eauto. } ii; ss. }
+      { ii. exploit SUSTAR. { instantiate (1:= (_, _)). eapply ModSem.Atomic.atomic_lift_star; eauto. } ii; ss. }
       inv MATCH.
       - econs 1. i. exploit SU; eauto. i; des_safe.
         rename H into FSTEP. clear - SINGLE CIH FSTEP. inv FSTEP.

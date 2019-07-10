@@ -48,14 +48,8 @@ Proof.
   - des_ifs; repeat (des; ss; clarify); eapply IHsig_args; eauto.
 Qed.
 
-Lemma loc_result_one: forall sg, is_one (loc_result sg).
-Proof. i. unfold loc_result. des_ifs. unfold loc_result_64. des_ifs. Qed.
-Lemma loc_result_one2: forall sg, exists mr_res, <<ONE: loc_result sg = One mr_res>>.
+Lemma loc_result_one: forall sg, exists mr_res, <<ONE: loc_result sg = One mr_res>>.
 Proof. i. compute. des_ifs; eauto. Qed.
-
-Print Loc.notin.
-Print Loc.norepet.
-Print Loc.no_overlap.
 
 Lemma Loc_cons_right_disjoint
       xs0 xs1 x
@@ -219,23 +213,22 @@ Proof.
 Qed.
 
 Lemma loc_arguments_ofs_bounded
-      sg ofs ty
-      (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
+      sg lo
+      (SZ: 0 <= lo /\ lo + 4 * size_arguments sg <= Ptrofs.max_unsigned)
+      ofs ty
       (IN: In (One (S Outgoing ofs ty)) (loc_arguments sg)):
-    0 <= 4 * ofs <= Ptrofs.max_unsigned.
+  0 <= lo + 4 * ofs <= Ptrofs.max_unsigned.
 Proof.
   hexploit loc_arguments_bounded.
   - instantiate (1:=sg). instantiate (1:=ty). instantiate (1:=ofs).
-    revert ofs ty IN.
-    induction (loc_arguments sg); ss; i. des; clarify; ss; eauto.
-    eapply in_app_iff. right. eapply IHl; eauto.
+    revert ofs ty IN. induction (loc_arguments sg); ss; i.
+    des; clarify; ss; eauto. eapply in_app_iff. right. eapply IHl; eauto.
   - i. split.
-    + hexploit (loc_arguments_acceptable sg); eauto.
-      intros ACCP. inv ACCP. lia.
+    + hexploit (loc_arguments_acceptable sg); eauto. intros ACCP. inv ACCP. lia.
     + destruct ty; ss; lia.
 Qed.
 
-Lemma sig_args_length sg
+  Lemma sig_args_length sg
   :
     Datatypes.length (sig_args sg) = Datatypes.length (loc_arguments sg).
 Proof.

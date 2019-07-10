@@ -228,7 +228,6 @@ Section MATCHSIMFORWARD.
     { instantiate (2 := unit). ii. eapply local_preservation_noguarantee_weak; eauto. eapply PRSV. }
     ii; ss. folder.
     exploit SimSymb.sim_skenv_func_bisim; eauto. { apply SIMSKENV. } intro FSIM; des.
-    Print SimSymb.sim_skenv.
     inv FSIM. exploit FUNCFSIM; eauto. { apply SimMem.sim_args_sim_fptr; et. } i; des.
     split; ii.
     - exploit INITBSIM; eauto. i; des.

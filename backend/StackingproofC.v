@@ -1,7 +1,7 @@
 Require Import CoqlibC Errors.
 Require Import IntegersC ASTC Linking.
 Require Import ValuesC MemoryC SeparationC Events GlobalenvsC Smallstep.
-Require Import LTL Op LocationsC LinearC MachC.
+Require Import LTL Op LocationsC LinearC MachC MachExtra.
 Require Import Bounds ConventionsC StacklayoutC LineartypingC.
 Require Import Stacking.
 
@@ -420,7 +420,8 @@ Proof.
     eapply frame_contents_footprint_irr.
   }
   { eapply sepconj_footprint_le; et.
-    eapply frame_contents_footprint_irr.
+    - eapply frame_contents_footprint_irr.
+    - eapply IHcs; eauto.
   }
 Qed.
 
@@ -476,7 +477,6 @@ End STACKINGEXTRA.
 
 Definition strong_wf_tgt (st_tgt0: Mach.state): Prop :=
   exists parent_sp parent_ra, last_option st_tgt0.(MachC.get_stack) = Some (Mach.dummy_stack parent_sp parent_ra).
-
 
 
 Local Transparent make_env sepconj.
@@ -553,14 +553,7 @@ Hypothesis return_address_offset_deterministic: forall f c ofs ofs',
 
 Let match_stacks := match_stacks skenv_link skenv_link.
 
-Print Instances SimMem.class.
-Print Instances SimSymb.class.
-
 Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
-
-Compute last_option (@nil Z).
-Compute last_option [1].
-Compute last_option [1 ; 2].
 
 Lemma functions_translated_inject
       sm0 fptr_src fd_tgt fptr_tgt
@@ -982,7 +975,7 @@ Proof.
                  (typify_list vs_src (sig_args (Linear.fn_sig f)))
                  (* args_src.(Args.vs) *)
                  f.(Linear.fn_sig)); eauto. i; des.
-      exploit SimMemInjC.mach_store_arguments_simmem; eauto.
+      exploit MachExtra.mach_store_arguments_simmem; eauto.
       { econs; eauto with congruence. }
       i; des.
 
@@ -1083,9 +1076,6 @@ Proof.
             rewrite COND1 in *. ss.
         }
         rename targs into targs_tgt. rename TYP into TYPTGT.
-        (* assert(TYPSRC: exists targs_src, typecheck (Args.vs args_src) (fn_sig fd) targs_src). *)
-        (* { esplits; eauto. econs; eauto. inv TYPTGT. rewrite <- LEN. clear - VALS0. admit "ez". } *)
-        (* des. *)
         econs; ss; eauto.
         - econs; ss; eauto.
           + rewrite DEF. ss. rewrite SM. ss.
@@ -1284,7 +1274,7 @@ Proof.
       (** I tried it (just add "(SOUND: sound_state su0 m_init st_src1)" in MatchSimModSem.v - AFTERFSIM,
           but it has some difficulty.. **)
         hexploit (loc_result_caller_save sg_arg); eauto. intro RES.
-        hexploit (loc_result_one2 sg_arg); eauto. intro ONE.
+        hexploit (loc_result_one sg_arg); eauto. intro ONE.
         des. econs; ss; eauto.
         + ii. unfold Locmap.setpair. des_ifs. ss.
           apply wt_setreg; ss; cycle 1.
@@ -1395,13 +1385,13 @@ Proof.
   - (* final fsim *)
     inv FINALSRC. inv MATCH. inv MATCHST.
     exploit match_stacks_sp_ofs; eauto; intro RSP; des_safe.
-    ss; clarify. des_ifs; sep_simpl_tac; des; ss. Undo 1.
-    des_ifs; sep_simpl_tac; des_safe; ss. Undo 1.
+    (* ss; clarify. des_ifs; sep_simpl_tac; des; ss. Undo 1. *)
+    (* des_ifs; sep_simpl_tac; des_safe; ss. Undo 1. *)
     (*** TODO: Fix des_safe with check_safe!! ***)
-    des. des_ifs; sep_simpl_tac; des; ss.
+    ss; clarify. des. des_ifs; sep_simpl_tac; des; ss.
     (* unsguard AGLOCS. *)
     destruct st_tgt0; ss. clarify. ss. clarify. ss. inv STACKS.
-    hexploit (loc_result_one2 init_sg); eauto. i; des_safe.
+    hexploit (loc_result_one init_sg); eauto. i; des_safe.
     Local Transparent stack_contents_args dummy_frame_contents.
     ss. unfold dummy_frame_contents in *. psimpl. clarify.
     hexploit (Mem.range_perm_free sm0.(SimMemInj.tgt) sp 0 (4 * (size_arguments init_sg))); eauto.

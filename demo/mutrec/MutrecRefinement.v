@@ -124,21 +124,21 @@ Proof.
 Qed.
 
 Lemma MutrecAB_impl_rusc
-  :
-    rusc mutrec_relations
-         [MutrecABspec.module]
-         [MutrecA.prog.(ClightC.module2); MutrecB.prog.(AsmC.module)].
+ :
+   rusc mutrec_relations
+        [MutrecABspec.module]
+        [MutrecA.prog.(ClightC.module2); MutrecB.prog.(AsmC.module)].
 Proof.
-  unfold rusc. i. etrans.
-  - eapply mutrecABcorrect.
-  - hexploit rusc_horizontal.
-    + eapply MutrecA_rusc.
-    + eapply MutrecB_rusc.
-    + eapply specA_self_related.
-    + eapply specB_self_related.
-    + eapply clight_self_related.
-    + eapply asm_self_related.
-    + i. eauto.
+ etrans.
+ - eapply rusc_mon; [|eapply MutrecAB_AB_rusc]; ss.
+ - hexploit rusc_horizontal.
+   + eapply MutrecA_rusc.
+   + eapply MutrecB_rusc.
+   + eapply specA_self_related.
+   + eapply specB_self_related.
+   + eapply clight_self_related.
+   + eapply asm_self_related.
+   + i. eauto.
 Qed.
 
 Theorem Mutrec_correct

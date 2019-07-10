@@ -49,54 +49,6 @@ Class HasExternal (X: Type): Type := {
   is_external: X -> bool;
 }.
 
-Module PLAYGROUND.
-
-  Local Instance external_function_HasExternal: HasExternal external_function :=
-    Build_HasExternal (fun ef => match ef with
-                                 | EF_external _ _ => true
-                                 | _ => false
-                                 end).
-  Local Instance fundef_HasExternal F: HasExternal (AST.fundef F) :=
-    Build_HasExternal (fun fd => match fd with
-                                 | Internal _ => true
-                                 | External ef => is_external ef
-                                 end).
-  Local Instance globdef_HasExternal `{HasExternal F} V: HasExternal (globdef F V) :=
-    Build_HasExternal (fun gd => match gd with
-                                 | Gfun fd => is_external fd
-                                 | Gvar _ => false
-                                 end).
-
-Section FUNCTIONS.
-
-  Lemma transf_fundef_is_external
-        A B (transf: A -> B) f
-        (ISEXT: is_external (transf_fundef transf f)):
-      <<ISEXT: is_external f>>.
-  Proof. compute in ISEXT. des_ifs. Qed.
-
-  Lemma transf_fundef_external
-        A B (transf: A -> B) f ef
-        (EXT: (transf_fundef transf f) = External ef):
-      f = External ef.
-  Proof. compute in EXT. des_ifs. Qed.
-
-  Lemma transf_partial_fundef_is_external_fd
-        A B (transf_partial: A -> res B) f tf
-        (TRANSF: (transf_partial_fundef transf_partial f) = OK tf)
-        (ISEXT: is_external tf):
-      <<ISEXT: is_external f>>.
-  Proof. ss. des_ifs. Qed.
-
-  Lemma transf_partial_fundef_external
-        A B (transf_partial: A -> res B) f ef
-        (TRANSF: (transf_partial_fundef transf_partial f) = OK (External ef)):
-      <<ISEXT: f = External ef>>.
-  Proof. compute in TRANSF. des_ifs. Qed.
-
-End FUNCTIONS.
-End PLAYGROUND.
-
 
 
 

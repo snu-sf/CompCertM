@@ -117,7 +117,7 @@ Qed.
 
 Theorem MutrecAB_AB_rusc
   :
-    rusc top1 [(MutrecABspec.module)] [(MutrecAspec.module) ; (MutrecBspec.module)]
+    rusc bot1 [(MutrecABspec.module)] [(MutrecAspec.module) ; (MutrecBspec.module)]
 .
 Proof.
   unfold rusc. i. eapply mutrecABcorrect.

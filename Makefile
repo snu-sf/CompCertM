@@ -7,6 +7,9 @@ COQTHEORIES  := $(shell find . -iname '*.v')
 graph:
 		sh make_graph.sh
 
+all:
+	$(MAKE) proof
+
 ### Quick
 # proof-quick: Makefile.coq $(COQTHEORIES)
 # 	$(MAKE) -f Makefile.coq quick

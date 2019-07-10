@@ -418,3 +418,17 @@ Proof.
   ss.
 Qed.
 
+Lemma unfree_freed_range
+      sp m0 m1 lo mid hi
+      (SEP: m0 |= freed_range sp lo mid ** range sp mid hi)
+      (UNFREE: Mem_unfree m0 sp lo mid = Some m1):
+    <<SEP: m1 |= range sp lo hi>>.
+Proof.
+  ss. des. esplits; et. ii.
+  hexploit Mem_unfree_unchanged_on; et. intro UNCH; des.
+  destruct (classic (i < mid)).
+  - eapply Mem_unfree_perm; et.
+  - eapply Mem.perm_unchanged_on; et.
+    + u. ii. des. xomega.
+    + eapply SEP3; et. xomega.
+Qed.

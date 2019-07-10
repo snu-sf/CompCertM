@@ -243,34 +243,6 @@ Proof.
   - ss. des. esplits; et. eapply Mem.valid_block_free_1; et.
 Qed.
 
-Lemma brange_split
-      blk lo mid hi
-      (RANGE: lo <= mid < hi):
-    brange blk lo hi = brange blk lo mid \2/ brange blk mid hi.
-Proof.
-  apply func_ext1; i. apply func_ext1; i.
-  apply prop_ext. unfold brange. split.
-  - ii. des; clarify. destruct (classic (x1 < mid)).
-    + left. esplits; et.
-    + right. esplits; et. xomega.
-  - ii. des; clarify; esplits; et; xomega.
-Qed.
-
-Lemma unfree_freed_range
-      sp m0 m1 lo mid hi
-      (SEP: m0 |= freed_range sp lo mid ** range sp mid hi)
-      (UNFREE: Mem_unfree m0 sp lo mid = Some m1):
-    <<SEP: m1 |= range sp lo hi>>.
-Proof.
-  ss. des. esplits; et. ii.
-  hexploit Mem_unfree_unchanged_on; et. intro UNCH; des.
-  destruct (classic (i < mid)).
-  - eapply Mem_unfree_perm; et.
-  - eapply Mem.perm_unchanged_on; et.
-    + u. ii. des. xomega.
-    + eapply SEP3; et. xomega.
-Qed.
-
 Lemma unfree_freed_contains_locations
       j sp pos sz bound ls m0 m1 CTX
       (SEP: m0 |= freed_contains_locations j sp pos sz Outgoing ls
@@ -746,18 +718,6 @@ Qed.
 
 Hypothesis TRANSL: match_prog prog tprog.
 
-Definition locset_copy (diff: Z) (rs: Mach.regset): locset :=
-  fun loc =>
-    match loc with
-    | S _ _ _ => Vundef
-    | R r =>
-      match rs r with
-      | Vptr blk ofs => Vptr (blk.(Zpos) + diff).(Z.to_pos) ofs
-      | _ => rs r
-      end
-    end.
-Hint Unfold locset_copy.
-
 Lemma transf_function_sig
       f tf
       (TRANSFF: transf_function f = OK tf):
@@ -1045,11 +1005,6 @@ Proof.
 Qed.
 Local Opaque sepconj.
 
-Definition current_function (stk: Linear.stackframe): Linear.function :=
-  match stk with
-  | Linear.Stackframe f _ _ _ => f
-  end.
-
 Inductive match_states
           (sm_init: SimMem.t)
           (idx: nat) (st_src0: Linear.state) (st_tgt0: MachC.state) (sm0: SimMem.t): Prop :=
@@ -1084,11 +1039,6 @@ Inductive match_states_at
     (SEP: SimMemInj.tgt sm_arg |= stack_contents_at_external (SimMemInj.inj sm_arg) cs cs' sig
                         ** minjection (SimMemInj.inj sm_arg) (SimMemInj.src sm_arg) **
                         globalenv_inject ge (SimMemInj.inj sm_arg)).
-
-(* TODO: Move to LocationsC *)
-Lemma loc_result_one: forall sg,
-    exists mr_res, <<ONE: loc_result sg = One mr_res>>.
-Proof. i. compute. des_ifs; eauto. Qed.
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->

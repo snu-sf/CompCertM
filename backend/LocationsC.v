@@ -364,3 +364,19 @@ Proof.
   - eapply in_or_app. eauto.
   - split; eapply in_or_app; right; eapply (IHl0 _ _ IN).
 Qed.
+
+Definition locset_copy (diff: Z) (rs: Mach.regset): locset :=
+  fun loc =>
+    match loc with
+    | S _ _ _ => Vundef
+    | R r =>
+      match rs r with
+      | Vptr blk ofs => Vptr (blk.(Zpos) + diff).(Z.to_pos) ofs
+      | _ => rs r
+      end
+    end.
+Hint Unfold locset_copy.
+
+Lemma loc_result_one: forall sg,
+    exists mr_res, <<ONE: loc_result sg = One mr_res>>.
+Proof. i. compute. des_ifs; eauto. Qed.

@@ -662,7 +662,7 @@ Proof.
   sep_split.
   { ss. inv MWF1; ss. }
   { ss. }
-  eapply sim_skenv_inj_globalenv_inject; et.
+  eapply SimMemInjC.sim_skenv_inj_globalenv_inject; et.
   { eapply SimSymb.mle_preserves_sim_skenv in SIMSKE; et. etrans; et. }
   { rewrite assign_junk_blocks_nextblock. ss. des_ifs; xomega. }
 Unshelve. all: eauto.
@@ -1374,8 +1374,8 @@ Proof.
         rewrite sep_comm. rewrite sep_comm in B. destruct B as (D & E & F).
         sep_split.
         { ss. rp; try eapply MWF2; eauto with congruence. }
-        { hexploit minjection_disjoint_footprint_private; eauto. intro PRIV0.
-          eapply minjection_private_disjoint_footprint.
+        { hexploit SimMemInjC.minjection_disjoint_footprint_private; eauto. intro PRIV0.
+          eapply SimMemInjC.minjection_private_disjoint_footprint.
           assert(SimMemInj.tgt_private sm_arg <2= SimMemInj.tgt_external sm_ret).
           { clear - MLE0. inv MLE0. ss. rewrite <- TGTPARENTEQ. ss. }
           inv MWF. do 3 (etrans; try eassumption; eauto). etrans; cycle 1.
@@ -1385,7 +1385,7 @@ Proof.
         assert(STEP0: SimMemInj.tgt sm_ret |= stack_contents_at_external (SimMemInj.inj sm_arg)
                                     cs cs'0 sig).
         { eapply m_invar; eauto. inv MLE0. ss. eapply Mem.unchanged_on_implies; eauto.
-          ii. eapply minjection_disjoint_footprint_private; eauto. }
+          ii. eapply SimMemInjC.minjection_disjoint_footprint_private; eauto. }
 
         assert(STEP1: SimMemInj.tgt sm_ret |= stack_contents_at_external (SimMemInj.inj sm_ret)
                                     cs cs'0 sig).

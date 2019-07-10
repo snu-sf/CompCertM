@@ -9,7 +9,7 @@ puts
 PASS_PROOFS=["cfrontend/Cshmgenproof_comp",
              "cfrontend/Cminorgenproof_comp", "cfrontend/CminorgenproofSIM", "cfrontend/CminorgenproofRestructured",
              "backend/Selectionproof_comp", "ia32/SelectOpproof", "backend/SelectLongproof_comp", "backend/SelectDivproof",
-             "backend/RTLgenproof_comp", "backend/RTLgenproof_comp",
+             "backend/RTLgenproof_comp", "backend/RTLgenspec",
              "backend/Tailcallproof_comp",
              "backend/Inliningproof_comp", "backend/Inliningspec",
              "backend/Renumberproof_comp",

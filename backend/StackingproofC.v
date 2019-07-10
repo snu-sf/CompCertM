@@ -467,21 +467,6 @@ Proof.
 Qed.
 Local Opaque frame_contents_at_external.
 
-Lemma stack_contents_change_meminj:
-  forall m j j', inject_incr j j' ->
-  forall cs cs' P,
-  m |= stack_contents j cs cs' ** P ->
-  m |= stack_contents j' cs cs' ** P.
-Proof.
-Local Opaque sepconj.
-  induction cs as [ | [] cs]; destruct cs' as [ | [] cs']; simpl; intros; auto.
-  destruct sp0; auto.
-  destruct cs, cs'; sep_simpl_tac; des; try congruence.
-  { eapply dummy_frame_contents_incr; eauto. }
-  apply frame_contents_incr with (j := j); auto.
-  rewrite sep_swap. apply IHcs. rewrite sep_swap. assumption.
-Qed.
-
 Lemma stack_contents_at_external_change_meminj:
   forall m j j', inject_incr j j' ->
             forall cs cs' sg,
@@ -493,7 +478,7 @@ Proof.
   des_ifs.
   - eapply frame_contents_at_external_incr; eauto.
   - eapply frame_contents_at_external_incr; eauto. rewrite sep_comm.
-    eapply stack_contents_change_meminj; eauto. rewrite sep_comm. assumption.
+    exploit stack_contents_change_meminj; try apply H; des_ifs; eauto. rewrite sep_comm. assumption.
 Qed.
 
 End STACKINGEXTRA.

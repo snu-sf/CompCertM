@@ -50,6 +50,8 @@ Qed.
 
 Lemma loc_result_one: forall sg, is_one (loc_result sg).
 Proof. i. unfold loc_result. des_ifs. unfold loc_result_64. des_ifs. Qed.
+Lemma loc_result_one2: forall sg, exists mr_res, <<ONE: loc_result sg = One mr_res>>.
+Proof. i. compute. des_ifs; eauto. Qed.
 
 Print Loc.notin.
 Print Loc.norepet.

@@ -42,6 +42,18 @@ End NEWSTEP.
 
 Hint Unfold step.
 
+Definition locset_copy (diff: Z) (rs: Mach.regset): locset :=
+  fun loc =>
+    match loc with
+    | S _ _ _ => Vundef
+    | R r =>
+      match rs r with
+      | Vptr blk ofs => Vptr (blk.(Zpos) + diff).(Z.to_pos) ofs
+      | _ => rs r
+      end
+    end.
+Hint Unfold locset_copy.
+
 Definition get_mem (st: state): mem :=
   match st with
   | State _ _ _ _ _ m0 => m0

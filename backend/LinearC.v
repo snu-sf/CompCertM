@@ -59,6 +59,11 @@ Definition current_locset (stk: stackframe): locset :=
   | Stackframe _ _ ls _ => ls
   end.
 
+Definition current_function (stk: Linear.stackframe): Linear.function :=
+  match stk with
+  | Linear.Stackframe f _ _ _ => f
+  end.
+
 Definition undef_outgoing_slots (ls: locset): locset :=
   fun l =>
     match l with

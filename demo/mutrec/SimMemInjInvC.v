@@ -50,7 +50,7 @@ Section MEMINJINV.
     inv H. inv MLE. econs; eauto.
   Qed.
   Next Obligation.
-    inv MLE. eauto.
+    inv MLE. inv MLE0. eauto.
   Qed.
   Next Obligation.
     extensionality l0. extensionality l1. eapply prop_ext2.

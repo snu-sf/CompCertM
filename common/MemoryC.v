@@ -674,3 +674,17 @@ Proof.
   - exploit Mem.free_parallel_inject; eauto. i. des.
     esplits; eauto. erewrite Mem_free_zero_same; eauto; lia.
 Qed.
+
+Lemma brange_split
+      blk lo mid hi
+      (RANGE: lo <= mid < hi):
+    brange blk lo hi = brange blk lo mid \2/ brange blk mid hi.
+Proof.
+  apply func_ext1; i. apply func_ext1; i.
+  apply AxiomsC.prop_ext. unfold brange. split.
+  - ii. des; clarify. destruct (classic (x1 < mid)).
+    + left. esplits; et.
+    + right. esplits; et. xomega.
+  - ii. des; clarify; esplits; et; xomega.
+Qed.
+

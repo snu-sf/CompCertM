@@ -65,6 +65,7 @@ elif [ "$1" == "tex" ]; then
     cd ../
     ruby CompCertM-linking-tex.rb
     rm CompCertM-linking-tex.rb
+    mv results_table.tex scripts/
     cd scripts
 else
   echo "Use one arguments [CompCert_v2.1 / CompCert_v3.0.1 / CompCert_v3.5 / CompCertX / CompComp / CompCertM / CompCertM-linking/ tex]"

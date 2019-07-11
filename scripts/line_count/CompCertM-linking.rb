@@ -11,7 +11,10 @@ puts "Count MultiComp"
 puts
 
 UNREADGLOBPROOFS=["UnreadglobproofC"]
-UNREADGLOBPROOFS
+
+MUTRECPROOFS=["MutrecAproof", "MutrecBproof", "MutrecABproof"]
+
+UTODPROOFS=["DemoSpecProof"]
 
 PASS_PROOFS=["cfrontend/Cstrategyproof", "cfrontend/SimplExprproof", "cfrontend/SimplLocalsproof", "cfrontend/Cshmgenproof", "cfrontend/Cminorgenproof",
              "backend/Selectionproof", "backend/RTLgenproof", "backend/Tailcallproof", "backend/Inliningproof", "backend/Renumberproof", "backend/Constpropproof",
@@ -20,10 +23,23 @@ PASS_PROOFS=["cfrontend/Cstrategyproof", "cfrontend/SimplExprproof", "cfrontend/
 
 PASS_PROOFS.map!{|i| i + "C.v"}
 
+UPPERBOUNDS=["UpperBound_AExtra", "UpperBound_A", "UpperBound_B"]
+
+INTERACTIONS=["SemProps", "ModSemProps"]
+
+LANGUAGE=["cfrontend/CsemC", "cfrontend/CstrategyC", "cfrontend/ClightC", "cfrontend/CsharpminorC",
+          "backend/CminorC", "backend/CminorSelC", "backend/RTLC", "backend/LTLC", "backend/LinearC",
+          "backend/MachC", "backend/MachExtra", "x86/AsmC", "x86/AsmExtra"]
+
+LOWERBOUNDS=["LinkingC2", "LowerBoundExtra", "LowerBound"]
+
+loc=`find . ! -path '*demo/*' #{UPPERBOUNDS.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}} -name '*.v' | xargs coqwc`.split("\n")[-1].split(" ")
+loc=loc[0].to_i + loc[1].to_i
+
 puts
 puts "<<<PASS_PROOFS>>>"
 puts
-print_result(`coqwc #{PASS_PROOFS.join(" ")}`)
+loc=loc-print_result(`coqwc #{PASS_PROOFS.join(" ")}`)
 
 puts
 puts "<<Unreadglob-PASS PROOF>>"
@@ -33,14 +49,12 @@ print_result(`coqwc #{UNREADGLOBPROOFS.map{|i| "demo/unreadglob/" + i + ".v"}.jo
 puts
 puts "<<Unreadglob-rest>>"
 puts
-print_result(`find demo/mutrec #{UNREADGLOBPROOFS.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}} -name '*.v' | xargs coqwc`)
+print_result(`find demo/unreadglob #{UNREADGLOBPROOFS.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}} -name '*.v' | xargs coqwc`)
 
 puts
 puts "<<Unreadglob-whole>>"
 puts
 print_result(`coqwc demo/unreadglob/*.v`)
-
-MUTRECPROOFS=["MutrecAproof", "MutrecBproof", "MutrecABproof"]
 
 puts
 puts "<<Mutrec-PASS PROOF>>"
@@ -56,8 +70,6 @@ puts
 puts "<<Mutrec-whole>>"
 puts
 print_result(`coqwc demo/mutrec/*.v`)
-
-UTODPROOFS=["DemoSpecProof"]
 
 puts
 puts "<<Utod-PASS PROOF>>"
@@ -77,44 +89,50 @@ print_result(`coqwc demo/utod/*.v`)
 puts
 puts "<<Adq. w.r.t. C>>"
 puts
-print_result(`coqwc bound/UpperBound_AExtra.v bound/UpperBound_A.v bound/UpperBound_B.v`)
+print_result(`coqwc #{UPPERBOUNDS.map{|i| "bound/" + i + ".v"}.join(" ")}`)
 
 puts
 puts "<<Interation Semantics>>"
 puts
-print_result(`coqwc compose/*.v`)
+loc=loc-print_result(`coqwc compose/*.v #{INTERACTIONS.map{|i| "proof/" + i + ".v"}.join(" ")}`)
 
 puts
 puts "<<Language Semantics>>"
 puts
-print_result(`coqwc cfrontend/CsemC.v cfrontend/CstrategyC.v cfrontend/ClightC.v cfrontend/CsharpminorC.v \
-                         backend/CminorC.v backend/CminorSelC.v backend/RTLC.v backend/LTLC.v backend/LinearC.v backend/MachC.v x86/AsmC.v`)
+loc=loc-print_result(`coqwc #{LANGUAGE.map{|i| i + ".v"}.join(" ")}`)
 
 puts
 puts "<<Self Simulation>>"
 puts
-print_result(`coqwc selfsim/*.v`)
+loc=loc-print_result(`coqwc selfsim/*.v`)
+
 
 puts
-puts "<<CompCert Meta: the Rest>>"
+puts "<<CompCert Meta>>"
 puts
+loc=loc-print_result(`find . ! -path '*demo/*' ! -path '*compose/*' ! -path '*proof/*' ! -path '*bound/*' ! -path '*selfsim/*' -name '*.v' \
+#{PASS_PROOFS.inject(""){|sum, i| sum + "! -wholename \'\*" + i + "\' "}} #{INTERACTIONS.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}} \
+#{LANGUAGE.inject(""){|sum, i| sum + "! -wholename \'\*" + i + ".v\' "}} #{LOWERBOUNDS.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}} | xargs coqwc`)
 
 puts
 puts "<<CompCertM meta>>"
 puts
-print_result(`find proof -name '*.v' ! -name 'Simulation.v' | xargs coqwc`)
+loc=loc-print_result(`find proof -name '*.v' ! -name 'Simulation.v' ! -name 'SemProps.v' ! -name 'ModSemProps.v' | xargs coqwc`)
 
 puts
 puts "<<Mixed Simulation>>"
 puts
-print_result(`coqwc proof/Simulation.v`)
+loc=loc-print_result(`coqwc proof/Simulation.v`)
 
 puts
 puts "<<Adq. w.r.t. Asm>>"
 puts
-print_result(`coqwc bound/LinkingC2.v bound/LowerBoundExtra.v bound/LowerBound.v`)
+loc=loc-print_result(`coqwc #{LOWERBOUNDS.map{|i| "bound/" + i + ".v"}.join(" ")}`)
 
 puts
 puts "<<WHOLE>>"
 puts
-print_result(`find . ! -path '*demo/*' -name '*.v' ! -name 'UpperBound_AExtra.v' ! -name 'UpperBound_A.v' ! -name 'UpperBound_B.v' | xargs coqwc`)
+print_result(`find . ! -path '*demo/*' #{UPPERBOUNDS.inject(""){|sum, i| sum + "! -name \'" + i + ".v\' "}} -name '*.v' | xargs coqwc`)
+
+puts
+puts "Check #{loc} must be 0"

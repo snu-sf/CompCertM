@@ -633,13 +633,17 @@ Qed.
 Theorem compiler_correct
         (srcs: list Clight.program)
         (tgts hands: list Asm.program)
-        (TR: mmap transf_clight_program srcs = OK tgts):
-    improves (sem ((map ClightC.module2 srcs) ++ (map AsmC.module hands)))
-             (sem ((map AsmC.module tgts) ++ (map AsmC.module hands))).
+        (TR: mmap transf_clight_program srcs = OK tgts)
+        ctx
+        (SELF: self_related CompCert_relations ctx)
+  :
+    improves (sem ((map ClightC.module2 srcs) ++ (map AsmC.module hands) ++ ctx))
+             (sem ((map AsmC.module tgts) ++ (map AsmC.module hands) ++ ctx)).
 Proof.
   eapply rusc_adequacy_right_ctx.
   - eapply compiler_rusc; eauto.
-  - eapply asms_self_related.
+  - eapply self_related_horizontal; eauto.
+    eapply asms_self_related.
 Qed.
 
 
@@ -651,11 +655,12 @@ Qed.
 
 
 Lemma clightgen_rusc
-        (srcs: list Csyntax.program)
-        (tgts: list Clight.program)
-        irs
-        (TR0: mmap (SimplExpr.transl_program) srcs = OK irs)
-        (TR1: mmap (SimplLocals.transf_program) irs = OK tgts):
+      (srcs: list Csyntax.program)
+      (tgts: list Clight.program)
+      irs
+      (TR0: mmap (SimplExpr.transl_program) srcs = OK irs)
+      (TR1: mmap (SimplLocals.transf_program) irs = OK tgts)
+  :
     rusc
       CompCert_relations
       (map CsemC.module srcs)
@@ -684,20 +689,24 @@ Proof.
 Qed.
 
 Lemma clightgen_correct
-        (srcs: list Csyntax.program)
-        (cls tgts: list Clight.program)
-        (hands: list Asm.program)
-        irs
-        (TR0: mmap (SimplExpr.transl_program) srcs = OK irs)
-        (TR1: mmap (SimplLocals.transf_program) irs = OK tgts):
-    improves (sem ((map CsemC.module srcs) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands)))
-             (sem ((map ClightC.module2 tgts) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands))).
+      (srcs: list Csyntax.program)
+      (cls tgts: list Clight.program)
+      (hands: list Asm.program)
+      irs
+      (TR0: mmap (SimplExpr.transl_program) srcs = OK irs)
+      (TR1: mmap (SimplLocals.transf_program) irs = OK tgts)
+      ctx
+      (SELF: self_related CompCert_relations ctx)
+  :
+    improves (sem ((map CsemC.module srcs) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands) ++ ctx))
+             (sem ((map ClightC.module2 tgts) ++ (map ClightC.module2 cls) ++ (map AsmC.module hands) ++ ctx)).
 Proof.
   eapply rusc_adequacy_right_ctx.
   - eapply clightgen_rusc; eauto.
   - eapply self_related_horizontal.
     + eapply clights_self_related.
-    + eapply asms_self_related.
+    + eapply self_related_horizontal; eauto.
+      eapply asms_self_related.
 Qed.
 
 Theorem compiler_correct_full
@@ -705,9 +714,12 @@ Theorem compiler_correct_full
         (srcs1: list Clight.program)
         (tgts0 tgts1 hands: list Asm.program)
         (TR0: mmap transf_c_program srcs0 = OK tgts0)
-        (TR1: mmap transf_clight_program srcs1 = OK tgts1):
-    improves (sem ((map CsemC.module srcs0) ++ (map ClightC.module2 srcs1) ++ (map AsmC.module hands)))
-             (sem ((map AsmC.module tgts0) ++ (map AsmC.module tgts1) ++ (map AsmC.module hands))).
+        (TR1: mmap transf_clight_program srcs1 = OK tgts1)
+        ctx
+        (SELF: self_related CompCert_relations ctx)
+  :
+    improves (sem ((map CsemC.module srcs0) ++ (map ClightC.module2 srcs1) ++ (map AsmC.module hands) ++ ctx))
+             (sem ((map AsmC.module tgts0) ++ (map AsmC.module tgts1) ++ (map AsmC.module hands) ++ ctx)).
 Proof.
   replace transf_c_program with
       (fun p => OK p @@@ SimplExpr.transl_program @@@ SimplLocals.transf_program @@@ transf_clight_program)

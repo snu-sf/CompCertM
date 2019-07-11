@@ -404,20 +404,13 @@ Section SIMSYMBINV.
       SimSymb.skenv_func_bisim (Val.inject (SimMemInj.inj sm)) skenv_src skenv_tgt.
   Proof.
     inv SIMSKENV. inv SIMSKENV0. econs; ss; eauto.
-    - i. assert (fptr_tgt = fptr_src).
-      { unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
-        inv SIMFPTR. inv INJECT.
-        exploit IMAGE; eauto.
-        - left. eapply Genv.genv_defs_range; eauto.
-        - i. des. clarify. }
-      clarify. eauto.
-    - i. assert (fptr_tgt = fptr_src).
-      { unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
-        inv SIMFPTR; clarify. inv INJECT.
-        exploit IMAGE; eauto.
-        - right. eapply Genv.genv_defs_range; eauto.
-        - i. des. clarify. psimpl. clarify. }
-      clarify. eauto.
+    i. assert (fptr_tgt = fptr_src).
+    { unfold Genv.find_funct, Genv.find_funct_ptr, Genv.find_def in *. des_ifs_safe.
+      inv SIMFPTR. inv INJECT.
+      exploit IMAGE; eauto.
+      - left. eapply Genv.genv_defs_range; eauto.
+      - i. des. clarify. }
+    clarify. eauto.
   Qed.
 
   (* from SimSymbDrop *)

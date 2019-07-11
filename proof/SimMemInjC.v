@@ -449,16 +449,10 @@ Qed.
 Next Obligation.
   exploit SimSymbId.sim_skenv_func_bisim; eauto. { eapply SIMSKENV. } i; des.
   inv H. inv SIMSKENV. inv INJECT. inv SIMSKENV0. econs; eauto.
-  - ii; ss. eapply FUNCFSIM; eauto. rpapply FUNCSRC. f_equal.
-    { inv SIMFPTR; ss. des_ifs. rewrite Ptrofs.add_zero_l.
-      unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-      exploit DOMAIN; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify. }
-  - ii; ss. eapply FUNCBSIM; eauto. rpapply FUNCTGT. f_equal.
-    { inv SIMFPTR; ss. des_ifs. unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
-      exploit IMAGE; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify.
-      exploit DOMAIN; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify.
-      rewrite e. rewrite Ptrofs.add_zero in *. clarify.
-    }
+  ii; ss. eapply FUNCFSIM; eauto. rpapply FUNCSRC. f_equal.
+  { inv SIMFPTR; ss. des_ifs. rewrite Ptrofs.add_zero_l.
+    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+    exploit DOMAIN; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify. }
 Qed.
 Next Obligation.
   inv SIMSKENV. econs; eauto.

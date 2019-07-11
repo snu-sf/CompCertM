@@ -71,8 +71,7 @@ Next Obligation. eapply SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto.
 Next Obligation.
   exploit SimSymbId.sim_skenv_func_bisim; eauto. i; des.
   inv H. inv SIMSKENV. econs; eauto.
-  - ii; ss. eapply FUNCFSIM; eauto. rpapply FUNCSRC. f_equal. inv SIMFPTR; ss.
-  - ii; ss. eapply FUNCBSIM; eauto. rpapply FUNCTGT. f_equal. inv SIMFPTR; ss.
+  ii; ss. eapply FUNCFSIM; eauto. rpapply FUNCSRC. f_equal. inv SIMFPTR; ss.
 Qed.
 Next Obligation. esplits; eauto. eapply SimSymbId.system_sim_skenv; eauto.
 Qed.

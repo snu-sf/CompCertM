@@ -500,19 +500,11 @@ Lemma SimSymbDropInv_func_bisim sm ss skenv_src skenv_tgt
 Proof.
   inv SIMSKENV.
   econs; eauto; ii; ss.
-  - inv SIMFPTR; ss.
-    des_ifs_safe; ss. unfold Genv.find_funct_ptr in *. des_ifs_safe.
-    exploit SIMDEF; eauto. i; des.
-    inv SIM.
-    rewrite DEFTGT.
-    esplits; eauto.
-    des_ifs.
-  - inv SIMFPTR; ss; cycle 1.
-    des_ifs_safe. unfold Genv.find_funct_ptr in *. des_ifs_safe.
-    exploit SIMDEFINV; eauto. i; des. clarify. psimpl. clarify.
-    rewrite DEFSRC.
-    esplits; eauto.
-    des_ifs.
+  inv SIMFPTR; ss.
+  des_ifs_safe; ss. unfold Genv.find_funct_ptr in *. des_ifs_safe.
+  exploit SIMDEF; eauto. i; des.
+  inv SIM. rewrite DEFTGT.
+  esplits; eauto. des_ifs.
 Qed.
 
 Global Program Instance SimSymbDropInv: SimSymb.class SimMemInvTop := {
@@ -520,8 +512,7 @@ Global Program Instance SimSymbDropInv: SimSymb.class SimMemInvTop := {
   le := le;
   sim_sk := sim_sk;
   sim_skenv := sim_skenv;
-}
-.
+}.
 (* Next Obligation. *)
 (*   inv SIMSK. *)
 (*   econs; eauto. *)

@@ -25,12 +25,7 @@ Module SimSymb.
       (FUNCFSIM: forall fptr_src fptr_tgt def_src
           (SIMFPTR: sim_val fptr_src fptr_tgt)
           (FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src),
-          exists def_tgt, <<FUNCSRC: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt>> /\ <<SIM: def_src = def_tgt>>)
-      (FUNCBSIM: forall fptr_src fptr_tgt def_tgt
-          (SAFESRC: fptr_src <> Vundef)
-          (SIMFPTR: sim_val fptr_src fptr_tgt)
-          (FUNCTGT: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt),
-          exists def_src, <<FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src>> /\ <<SIM: def_src = def_tgt>>).
+          exists def_tgt, <<FUNCSRC: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt>> /\ <<SIM: def_src = def_tgt>>).
 
   (* TODO: Try moving t into argument? sim_symb coercion gets broken and I don't know how to fix it. *)
   Class class (SM: SimMem.class) :=
@@ -125,7 +120,7 @@ Module SimSymb.
       (*   , *)
       (*     <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>> *)
       (* ; *)
-          
+
       (* TODO: Can we separate sim_skenv_monotone_skenv, like sim_skenv_monotone_ss? *)
       sim_skenv_monotone: forall
           sm ss_link skenv_link_src skenv_link_tgt
@@ -214,4 +209,3 @@ Module SimSymb.
   Proof. exploit SimSymb.sim_skenv_func_bisim; eauto. i; des. inv H. exploit FUNCFSIM; eauto. i; des. clarify. Qed.
 
 End SimSymb.
-

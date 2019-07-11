@@ -18,7 +18,7 @@ Require Import Integers.
 Require Import LocationsC Conventions.
 
 Require Import MatchSimModSem ModSemProps.
-Require Import IdSimExtra IdSimClightExtra.
+Require Import IdSimExtra.
 Require Import CtypingC.
 Require Import CopC.
 Require Import sflib.
@@ -112,6 +112,7 @@ Inductive match_states_demo (sm_arg: SimMemInj.t')
 .
 
 Lemma demo_id
+      (WF: Sk.wf DemoSpec.module)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
@@ -119,40 +120,11 @@ Lemma demo_id
       /\ (<<TGT: mp.(ModPair.tgt) = (DemoSpec.module)>>)
 .
 Proof.
-  eexists (ModPair.mk _ _ _); s.
-  esplits; eauto. instantiate (1:=tt).
-  econs; ss; i.
-  rewrite SIMSKENVLINK in *.
-  eapply match_states_sim; ss.
-  - apply unit_ord_wf.
-  - eapply SoundTop.sound_state_local_preservation.
-  - ii. instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
-                       (<<EQ: st_src = st_tgt>>) /\
-                       (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>) /\
-                       (<<stmwf: st_src.(DemoSpec.get_mem) =
-                                 sm0.(SimMemId.src)>>)).
-    ss. destruct args_src, args_tgt, sm_arg; ss; inv SIMARGS; ss; clarify; cycle 1.
-    { des. inv SAFESRC. ss. }
-    clear SAFESRC. dup INITTGT. inv INITTGT. ss.
-    eexists. eexists (SimMemId.mk tgt tgt). esplits; eauto; ss.
-  - ii. destruct args_src, args_tgt, sm_arg; inv SIMARGS; ss; clarify. des. inv SAFESRC. ss.
-  - ii. ss. des. clarify.
-  - i. ss. des. destruct sm0. ss. clarify.
-    eexists (SimMemId.mk (get_mem st_tgt0) (get_mem st_tgt0)).
-    esplits; eauto.
-    inv FINALSRC. ss. econs; ss.
-  - right. ii. des. destruct sm0. ss. clarify. esplits; eauto.
-    + i. exploit H; ss.
-      * econs 1.
-      * i. des; clarify.
-    + i. exists tt, st_tgt1.
-      eexists (SimMemId.mk (get_mem st_tgt1) (get_mem st_tgt1)).
-      esplits; eauto.
-      left. econs; eauto; [econs 1|]. symmetry. apply E0_right.
-      Unshelve. ss. eapply bot4.
+  eapply any_id; eauto.
 Qed.
 
 Lemma demo_ext_unreach
+      (WF: Sk.wf DemoSpec.module)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
@@ -198,6 +170,7 @@ Proof.
 Qed.
 
 Lemma demo_ext_top
+      (WF: Sk.wf DemoSpec.module)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
@@ -242,7 +215,7 @@ Proof.
 Qed.
 
 Lemma demo_inj_drop_bot
-      (WF: Sk.wf (DemoSpec.module))
+      (WF: Sk.wf DemoSpec.module)
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
@@ -313,3 +286,78 @@ Lemma demo_inj_id
 Proof.
   apply sim_inj_drop_bot_id. apply demo_inj_drop_bot; auto.
 Qed.
+
+Require Import IdSimInvExtra.
+
+Section INJINV.
+
+Local Existing Instance SimSymbDropInv.SimMemInvTop.
+Local Existing Instance SimSymbDropInv.SimSymbDropInv.
+Local Existing Instance SoundTop.Top.
+
+
+Inductive match_states_demo_inv (sm_arg: SimMem.t)
+  : unit -> state -> state -> SimMem.t -> Prop :=
+| match_states_demo_inv_intro
+    st_src st_tgt j m_src m_tgt sm0
+    (MWFSRC: m_src = sm0.(SimMem.src))
+    (MWFTGT: m_tgt = sm0.(SimMem.tgt))
+    (MWFINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
+    (MATCHST: match_states_demo_internal st_src st_tgt j m_src m_tgt)
+    (MWF: SimMem.wf sm0)
+  :
+    match_states_demo_inv
+      sm_arg tt st_src st_tgt sm0
+.
+
+Lemma demo_inj_inv
+      (WF: Sk.wf (DemoSpec.module))
+  :
+    exists mp,
+      (<<SIM: ModPair.sim mp>>)
+      /\ (<<SRC: mp.(ModPair.src) = (DemoSpec.module)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (DemoSpec.module)>>)
+.
+Proof.
+  eexists (ModPair.mk _ _ _); s.
+  esplits; eauto.
+  econs; ss; i.
+  { instantiate (1:=bot1). econs; ss; i; clarify.
+    inv WF. auto. }
+  eapply match_states_sim with (match_states := match_states_demo_inv); ss.
+  - apply unit_ord_wf.
+  - eapply SoundTop.sound_state_local_preservation.
+  - i. ss.
+    inv INITTGT. inv SAFESRC. inv H. clarify.
+    inv SIMARGS. ss.
+    esplits; eauto.
+    + econs; eauto.
+    + refl.
+    + destruct x, st_init_tgt. ss.
+      rewrite VS, VS0 in VALS. inv VALS. inv H4. inv H2; ss.
+      econs; ss; eauto.
+    + ss.
+
+  - i. ss. des. inv SAFESRC.
+    inv MWF. ss. inv WF0. ss.
+    set (sm_init_tgt := mkstate (get_arg st_init_src) (SimMemInj.tgt (SimMemInjInv.minj sm_arg))).
+    exists sm_init_tgt.
+    esplits. econs; ss.
+    + inv SIMARGS; ss. rewrite VS in *. inv VALS. inv H1; inv H3. eauto.
+    + inv SIMARGS; ss.
+  - i. ss. inv MATCH; eauto.
+  - i. ss. inv FINALSRC. inv MATCH; inv MATCHST.
+    esplits; eauto.
+    + econs. ss.
+    + econs; eauto; ss. clarify.
+    + refl.
+  - right. ii. des.
+    esplits.
+    + i. inv MATCH; ss.
+      unfold safe_modsem in H.
+      exploit H. eapply star_refl. ii. des; clarify.
+    + ii. inv STEPTGT; inv MATCH; ss.
+      Unshelve. ss. eapply bot4.
+Qed.
+
+End INJINV.

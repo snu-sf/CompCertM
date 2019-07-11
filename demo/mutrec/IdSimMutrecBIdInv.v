@@ -4,7 +4,7 @@ Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem S
 Require Import Cop Ctypes ClightC.
 Require Import AsmC.
 Require SimMemInjInvC.
-Require Import MutrecB MutrecBspec MutrecBproof IdSimMutrecB.
+Require Import MutrecB MutrecBspec MutrecBproof.
 Require Import CoqlibC.
 Require Import ValuesC.
 Require Import LinkingC.
@@ -36,6 +36,31 @@ Require Import mktac.
 Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
+
+Inductive match_states_b_internal:
+  state -> state -> meminj -> mem -> mem -> Prop :=
+| match_Callstate
+    i m_src m_tgt j
+  :
+    match_states_b_internal
+      (Callstate i m_src)
+      (Callstate i m_tgt)
+      j m_src m_tgt
+| match_Interstate
+    i m_src m_tgt j
+  :
+    match_states_b_internal
+      (Interstate i m_src)
+      (Interstate i m_tgt)
+      j m_src m_tgt
+| match_Returnstate
+    i m_src m_tgt j
+  :
+    match_states_b_internal
+      (Returnstate i m_src)
+      (Returnstate i m_tgt)
+      j m_src m_tgt
+.
 
 Section INJINV.
 

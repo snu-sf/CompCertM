@@ -33,44 +33,53 @@ Lemma system_sim_skenv
     <<SIMSKENV: sim_skenv (skenv_src).(System.skenv) (skenv_tgt).(System.skenv)>>.
 Proof. inv SIMSKENV. econs; eauto. Qed.
 
-Definition sim_sk (u: unit) (sk_src sk_tgt: Sk.t): Prop := sk_src = sk_tgt.
+Record t' := mk {
+  src: Sk.t;
+  tgt: Sk.t;
+}.
 
-Definition le: unit -> Sk.t -> Sk.t -> unit -> Prop := top4.
+Definition wf (ss: t'): Prop := ss.(src) = ss.(tgt).
 
-Lemma sim_sk_link: forall ss0 (sk_src0 sk_tgt0: Sk.t) ss1 sk_src1 sk_tgt1 sk_src
-          (SIMSK: sim_sk ss0 sk_src0 sk_tgt0)
-          (SIMSK: sim_sk ss1 sk_src1 sk_tgt1)
-          (LINKSRC: link sk_src0 sk_src1 = Some sk_src),
+Definition le: t' -> t' -> Prop := top2.
+
+Global Program Instance le_PreOrder: PreOrder le.
+
+Lemma wf_link: forall ss0 ss1 sk_src
+          (SIMSK: wf ss0)
+          (SIMSK: wf ss1)
+          (LINKSRC: link ss0.(src) ss1.(src) = Some sk_src),
           exists ss sk_tgt,
-            <<LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt>> /\
-            <<LE0: le ss0 sk_src0 sk_tgt0 ss>> /\
-            <<LE1: le ss1 sk_src1 sk_tgt1 ss>> /\
-            <<SIMSK: sim_sk ss sk_src sk_tgt>>.
+            <<LINKTGT: link ss0.(tgt) ss1.(tgt) = Some sk_tgt>> /\
+            <<SKSRC: ss.(src) = sk_src>> /\
+            <<SKTGT: ss.(tgt) = sk_tgt>> /\
+            <<LE0: le ss0 ss>> /\
+            <<LE1: le ss1 ss>> /\
+            <<SIMSK: wf ss>>.
 Proof.
-  i. inv SIMSK. inv SIMSK0. esplits; ss; eauto.
+  i. inv SIMSK. inv SIMSK0. eexists (mk _ _). esplits; ss; eauto.
 Unshelve.
   all: ss.
 Qed.
 
-Lemma sim_sk_load_sim_skenv: forall ss sk_src sk_tgt skenv_src skenv_tgt m_src
-          (SIMSK: sim_sk ss sk_src sk_tgt)
-          (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src)
-          (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt)
-          (LOADMEMSRC: sk_src.(Sk.load_mem) = Some m_src),
-            (<<LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_src>>) /\
+Lemma wf_load_sim_skenv: forall ss skenv_src skenv_tgt m_src
+          (SIMSK: wf ss)
+          (LOADSRC: ss.(src).(Sk.load_skenv) = skenv_src)
+          (LOADTGT: ss.(tgt).(Sk.load_skenv) = skenv_tgt)
+          (LOADMEMSRC: ss.(src).(Sk.load_mem) = Some m_src),
+            (<<LOADMEMTGT: ss.(tgt).(Sk.load_mem) = Some m_src>>) /\
             (<<SIMSKENV: sim_skenv skenv_src skenv_tgt>>) /\
-            (<<MAINSIM: (Genv.symbol_address skenv_src (prog_main sk_src) Ptrofs.zero)
-                        = (Genv.symbol_address skenv_tgt (prog_main sk_tgt) Ptrofs.zero)>>).
-Proof. i. u in *. inv SIMSK. esplits; eauto. rr. ss. Qed.
+            (<<MAINSIM: (Genv.symbol_address skenv_src (prog_main ss.(src)) Ptrofs.zero)
+                        = (Genv.symbol_address skenv_tgt (prog_main ss.(tgt)) Ptrofs.zero)>>).
+Proof. i. u in *. inv SIMSK. esplits; eauto with congruence. Qed.
 
-Lemma sim_skenv_monotone: forall ss_link skenv_link_src skenv_link_tgt ss sk_src sk_tgt skenv_src skenv_tgt
+Lemma sim_skenv_monotone: forall ss_link skenv_link_src skenv_link_tgt ss skenv_src skenv_tgt
           (WFSRC: SkEnv.wf skenv_link_src)
           (WFTGT: SkEnv.wf skenv_link_tgt)
           (SIMSKENV: sim_skenv skenv_link_src skenv_link_tgt)
-          (SIMSK: sim_sk ss sk_src sk_tgt)
-          (LE: le ss sk_src sk_tgt ss_link)
-          (LESRC: SkEnv.project skenv_link_src sk_src = skenv_src)
-          (LETGT: SkEnv.project skenv_link_tgt sk_tgt = skenv_tgt),
+          (SIMSK: wf ss)
+          (LE: le ss ss_link)
+          (LESRC: SkEnv.project skenv_link_src ss.(src) = skenv_src)
+          (LETGT: SkEnv.project skenv_link_tgt ss.(tgt) = skenv_tgt),
           <<SIMSKENV: sim_skenv skenv_src skenv_tgt>>.
 Proof. i. clarify. rr. inv SIMSK. inv SIMSKENV. ss. Qed.
 

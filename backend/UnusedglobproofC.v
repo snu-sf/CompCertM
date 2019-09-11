@@ -35,7 +35,7 @@ Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt)
-                ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
+                (SimSymbDrop.mk ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop) md_src md_tgt)
                 sm_link.
 
 Inductive match_states
@@ -57,7 +57,7 @@ Qed.
 
 Theorem sim_skenv_meminj_preserves_globals: forall sm_arg
     (SIMSKENV: SimSymbDrop.sim_skenv
-                 sm_arg ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
+                 sm_arg (SimSymbDrop.mk ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop) md_src md_tgt)
                  (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk))),
     <<SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)>>.
 Proof.
@@ -205,7 +205,7 @@ Variable tprog: RTL.program.
 Hypothesis TRANSL: match_prog prog tprog.
 
 Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module2 tprog) ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop).
+  ModPair.mk (RTLC.module prog) (RTLC.module2 tprog) (SimSymbDrop.mk ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop) (RTLC.module prog) (RTLC.module2 tprog)).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.

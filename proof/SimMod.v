@@ -42,13 +42,15 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   (* Advantage: We can unify ord at Mod state. *)
   Inductive sim (mp: t): Prop :=
   | sim_intro
-      (SIMSK: SimSymb.sim_sk mp.(ss) mp.(src).(Mod.sk) mp.(tgt).(Mod.sk))
+      (SIMSK: SimSymb.wf mp.(ss))
+      (SKSRC: mp.(ss).(SimSymb.src) = mp.(src).(Mod.sk))
+      (SKTGT: mp.(ss).(SimSymb.tgt) = mp.(tgt).(Mod.sk))
       (SIMMS: forall skenv_link_src skenv_link_tgt ss_link sm_init_link
           (INCLSRC: SkEnv.includes skenv_link_src mp.(src).(Mod.sk))
           (INCLTGT: SkEnv.includes skenv_link_tgt mp.(tgt).(Mod.sk))
           (WFSRC: SkEnv.wf skenv_link_src)
           (WFTGT: SkEnv.wf skenv_link_tgt)
-          (SSLE: SimSymb.le mp.(ss) mp.(src) mp.(tgt) ss_link)
+          (SSLE: SimSymb.le mp.(ss) ss_link)
           (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt),
           <<SIMMSP: ModSemPair.sim mp.(to_msp skenv_link_src skenv_link_tgt sm_init_link)>>).
 

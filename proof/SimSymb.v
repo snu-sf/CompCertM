@@ -30,36 +30,33 @@ Module SimSymb.
   (* TODO: Try moving t into argument? sim_symb coercion gets broken and I don't know how to fix it. *)
   Class class (SM: SimMem.class) :=
     { t: Type;
-      le: t -> Sk.t -> Sk.t -> t -> Prop;
+      le: t -> t -> Prop;
+      src: t -> Sk.t;
+      tgt: t -> Sk.t;
 
-      le_refl: forall ss0 sk_src0 sk_tgt0,
-          <<LE: le ss0 sk_src0 sk_tgt0 ss0>>;
-      le_trans: forall ss0 sk_src0 sk_tgt0 ss1 sk_src1 sk_tgt1 ss2
-          (LE0: le ss0 sk_src0 sk_tgt0 ss1)
-          (LE1: le ss1 sk_src1 sk_tgt1 ss2)
-          (LINKORD0: linkorder sk_src0 sk_src1)
-          (LINKORD1: linkorder sk_tgt0 sk_tgt1),
-          <<LE: le ss0 sk_src0 sk_tgt0 ss2>>;
+      le_PreOrder :> PreOrder le;
 
-      sim_sk: t -> Sk.t -> Sk.t -> Prop;
-      sim_sk_preserves_wf: forall ss0 (sk_src0 sk_tgt0: Sk.t)
-          (SIMSK: sim_sk ss0 sk_src0 sk_tgt0)
-          (WFSRC: Sk.wf sk_src0),
-          <<WFTGT: Sk.wf sk_tgt0>>;
+      wf: t -> Prop;
+      wf_preserves_wf: forall ss0
+          (SIMSK: wf ss0)
+          (WFSRC: Sk.wf ss0.(src)),
+          <<WFTGT: Sk.wf ss0.(tgt)>>;
 
-      sim_sk_link: forall ss0 (sk_src0 sk_tgt0: Sk.t) ss1 sk_src1 sk_tgt1 sk_src
-          (SIMSK: sim_sk ss0 sk_src0 sk_tgt0)
-          (SIMSK: sim_sk ss1 sk_src1 sk_tgt1)
-          (LINKSRC: link sk_src0 sk_src1 = Some sk_src)
-          (WFSRC0: Sk.wf sk_src0)
-          (WFSRC1: Sk.wf sk_src1)
-          (WFTGT0: Sk.wf sk_tgt0)
-          (WFTGT1: Sk.wf sk_tgt1),
+      wf_link: forall ss0 ss1 sk_src
+          (SIMSK: wf ss0)
+          (SIMSK: wf ss1)
+          (LINKSRC: link ss0.(src) ss1.(src) = Some sk_src)
+          (WFSRC0: Sk.wf ss0.(src))
+          (WFSRC1: Sk.wf ss1.(src))
+          (WFTGT0: Sk.wf ss0.(tgt))
+          (WFTGT1: Sk.wf ss1.(tgt)),
           exists ss sk_tgt,
-            <<LINKTGT: link sk_tgt0 sk_tgt1 = Some sk_tgt>> /\
-            <<LE0: le ss0 sk_src0 sk_tgt0 ss>> /\
-            <<LE1: le ss1 sk_src1 sk_tgt1 ss>> /\
-            <<SIMSK: sim_sk ss sk_src sk_tgt>>;
+            <<LINKTGT: link ss0.(tgt) ss1.(tgt) = Some sk_tgt>> /\
+            <<SKSRC: ss.(src) = sk_src>> /\
+            <<SKTGT: ss.(tgt) = sk_tgt>> /\
+            <<LE0: le ss0 ss>> /\
+            <<LE1: le ss1 ss>> /\
+            <<SIMSK: wf ss>>;
 
       sim_skenv: SimMem.t -> t -> SkEnv.t -> SkEnv.t -> Prop;
 
@@ -67,19 +64,19 @@ Module SimSymb.
           (SIMSKE: sim_skenv sm0 ss0 skenv_src skenv_tgt),
           skenv_src.(Genv.public_symbol) = skenv_tgt.(Genv.public_symbol);
 
-      sim_sk_load_sim_skenv: forall ss sk_src sk_tgt skenv_src skenv_tgt m_src
-          (SIMSK: sim_sk ss sk_src sk_tgt)
-          (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src)
-          (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt)
-          (LOADMEMSRC: sk_src.(Sk.load_mem) = Some m_src),
+      wf_load_sim_skenv: forall ss skenv_src skenv_tgt m_src
+          (SIMSK: wf ss)
+          (LOADSRC: ss.(src).(Sk.load_skenv) = skenv_src)
+          (LOADTGT: ss.(tgt).(Sk.load_skenv) = skenv_tgt)
+          (LOADMEMSRC: ss.(src).(Sk.load_mem) = Some m_src),
           exists m_tgt sm,
-            (<<LOADMEMTGT: sk_tgt.(Sk.load_mem) = Some m_tgt>>) /\
+            (<<LOADMEMTGT: ss.(tgt).(Sk.load_mem) = Some m_tgt>>) /\
             (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
             (<<MEMSRC: sm.(SimMem.src) = m_src>>) /\
             (<<MEMTGT: sm.(SimMem.tgt) = m_tgt>>) /\
             (<<MWF: sm.(SimMem.wf)>>) /\
-            (<<MAINSIM: SimMem.sim_val sm (Genv.symbol_address skenv_src sk_src.(prog_main) Ptrofs.zero)
-                                       (Genv.symbol_address skenv_tgt sk_tgt.(prog_main) Ptrofs.zero)>>);
+            (<<MAINSIM: SimMem.sim_val sm (Genv.symbol_address skenv_src ss.(src).(prog_main) Ptrofs.zero)
+                                       (Genv.symbol_address skenv_tgt ss.(tgt).(prog_main) Ptrofs.zero)>>);
 
       (* mle_preserves_sim_skenv: forall *)
       (*     sm0 sm1 *)
@@ -124,19 +121,19 @@ Module SimSymb.
       (* TODO: Can we separate sim_skenv_monotone_skenv, like sim_skenv_monotone_ss? *)
       sim_skenv_monotone: forall
           sm ss_link skenv_link_src skenv_link_tgt
-          ss sk_src sk_tgt skenv_src skenv_tgt
+          ss skenv_src skenv_tgt
           (WFSRC: SkEnv.wf skenv_link_src)
           (WFTGT: SkEnv.wf skenv_link_tgt)
           (SIMSKENV: sim_skenv sm ss_link skenv_link_src skenv_link_tgt)
           (* F_src V_src F_tgt V_tgt *)
           (* (flesh_src: list (ident * globdef (AST.fundef F_src) V_src)) *)
           (* (flesh_tgt: list (ident * globdef (AST.fundef F_tgt) V_tgt)) *)
-          (SIMSK: sim_sk ss sk_src sk_tgt)
-          (LE: le ss sk_src sk_tgt ss_link)
-          (INCLSRC: SkEnv.includes skenv_link_src sk_src)
-          (INCLTGT: SkEnv.includes skenv_link_tgt sk_tgt)
-          (LESRC: SkEnv.project skenv_link_src sk_src = skenv_src)
-          (LETGT: SkEnv.project skenv_link_tgt sk_tgt = skenv_tgt),
+          (SIMSK: wf ss)
+          (LE: le ss ss_link)
+          (INCLSRC: SkEnv.includes skenv_link_src ss.(src))
+          (INCLTGT: SkEnv.includes skenv_link_tgt ss.(tgt))
+          (LESRC: SkEnv.project skenv_link_src ss.(src) = skenv_src)
+          (LETGT: SkEnv.project skenv_link_tgt ss.(tgt) = skenv_tgt),
           <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>;
 
       sim_skenv_func_bisim: forall sm ss skenv_src skenv_tgt

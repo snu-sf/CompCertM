@@ -52,17 +52,18 @@ Program Instance SimMemExtLift: SimMemLift.class SimMemExt :=
 }.
 
 Global Program Instance SimSymbExtends: SimSymb.class SimMemExt := {
-  t := unit;
+  t := SimSymbId.t';
+  src := SimSymbId.src;
+  tgt := SimSymbId.tgt;
   le := SimSymbId.le;
-  sim_sk := SimSymbId.sim_sk;
-  sim_skenv (_: SimMem.t) (_: unit) := SimSymbId.sim_skenv;
+  wf := SimSymbId.wf;
+  sim_skenv (_: SimMem.t) (_: SimSymbId.t') := SimSymbId.sim_skenv;
 }.
-Next Obligation. ss. Qed.
-Next Obligation. rr in SIMSK. clarify. Qed.
-Next Obligation. eapply SimSymbId.sim_sk_link; eauto. Qed.
+Next Obligation. rr in SIMSK. r. congruence. Qed.
+Next Obligation. eapply SimSymbId.wf_link; eauto. Qed.
 Next Obligation. rr in SIMSKE. clarify. Qed.
 Next Obligation.
-  exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
+  exploit SimSymbId.wf_load_sim_skenv; eauto. i; des.
   eexists. eexists (mk _ _). esplits; ss; eauto.
   - apply Mem.extends_refl.
   - rewrite MAINSIM. ss.

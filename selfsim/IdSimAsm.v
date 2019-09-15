@@ -667,7 +667,7 @@ Proof.
   { econs; eauto. ss. eapply match_program_refl; eauto. }
   assert(PROG: match_program (fun _ => eq) eq asm asm).
   { econs; eauto. ss. eapply match_program_refl; eauto. }
-  esplits; eauto. instantiate (1:=tt). econs; ss; eauto.
+  esplits; eauto. instantiate (1:=(SimSymbId.mk (module asm) (module asm))). econs; ss; eauto.
   ii. inv SSLE. clear_tac. fold SkEnv.t in skenv_link_src.
   hexploit (asm_unreach_local_preservation INCLSRC WFSRC); eauto. i; des.
 
@@ -957,7 +957,7 @@ Proof.
   { econs; eauto. ss. eapply match_program_refl; eauto. }
   assert(PROG: match_program (fun _ => eq) eq asm asm).
   { econs; eauto. ss. eapply match_program_refl; eauto. }
-  esplits; eauto. instantiate (1:=tt). econs; ss; eauto.
+  esplits; eauto. instantiate (1:=(SimSymbId.mk (module asm) (module asm))). econs; ss; eauto.
   ii. inv SSLE. clear_tac. fold SkEnv.t in skenv_link_src.
 
   eapply match_states_sim with
@@ -1278,7 +1278,7 @@ Lemma asm_inj_drop_bot
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
-      /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>).
+      /\ (<<SSBOT: mp.(ModPair.ss) = (SimSymbDrop.mk bot1 (module asm) (module asm))>>).
 Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. econs; ss; i.
   { econs; ss; i; clarify. inv WF. auto. }
@@ -1763,5 +1763,5 @@ Lemma asm_inj_id
       /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
 Proof.
-  apply sim_inj_drop_bot_id. apply asm_inj_drop_bot; auto.
+  eapply sim_inj_drop_bot_id; eauto. apply asm_inj_drop_bot; auto.
 Qed.

@@ -124,7 +124,7 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 
 Let tge := (skenv_link.(SkEnv.project) prog.(Sk.of_program fn_sig)).(SkEnv.revive) prog.
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) symbol_memoized sm_link.
+  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimMemInjInvC.mk symbol_memoized md_src md_tgt) sm_link.
 
 Inductive well_saved (initstk stk: block)
   : regset -> regset -> mem -> Prop :=
@@ -344,7 +344,7 @@ Hint Resolve E0_double.
 Lemma match_states_lxsim
       sm_init idx st_src0 st_tgt0 sm0
       (SIMSK: SimSymb.sim_skenv
-                sm0 symbol_memoized
+                sm0 (SimMemInjInvC.mk symbol_memoized md_src md_tgt)
                 (SkEnv.project skenv_link (Sk.of_program fn_sig prog))
                 (SkEnv.project skenv_link (Sk.of_program fn_sig prog)))
       (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
@@ -1422,7 +1422,7 @@ End SIMMODSEM.
 
 Theorem sim_mod
   :
-    ModPair.sim (ModPair.mk (MutrecBspec.module) (AsmC.module prog) symbol_memoized)
+    ModPair.sim (ModPair.mk (MutrecBspec.module) (AsmC.module prog) (SimMemInjInvC.mk symbol_memoized (MutrecBspec.module) (AsmC.module prog)))
 .
 Proof.
   econs; ss.

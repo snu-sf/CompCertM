@@ -32,7 +32,7 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge: Csharpminor.genv := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
 Let tge: Cminor.genv := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states
           (sm_init: SimMem.t)
@@ -183,7 +183,7 @@ Section SIMMOD.
 Variable prog: Csharpminor.program.
 Variable tprog: Cminor.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Definition mp: ModPair.t := ModPair.mk (CsharpminorC.module prog) (CminorC.module tprog) tt.
+Definition mp: ModPair.t := SimSymbId.mk_mp (CsharpminorC.module prog) (CminorC.module tprog).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.

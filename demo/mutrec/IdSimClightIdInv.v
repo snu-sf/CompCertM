@@ -68,10 +68,10 @@ Lemma clight_inj_inv_id
       /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
 .
 Proof.
-  eexists (ModPair.mk _ _ _); s.
+  eexists (ModPair.mk _ _ _); s. instantiate (3:= (SimMemInjInvC.mk bot1 _ _)).
   esplits; eauto.
   econs; ss; i.
-  { instantiate (1:=bot1). econs; ss; i; clarify. }
+  { econs; ss; i; clarify. }
   eapply match_states_sim with (match_states := match_states_clight_inv); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.

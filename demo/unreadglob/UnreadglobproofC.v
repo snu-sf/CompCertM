@@ -40,7 +40,7 @@ Let ge := (SkEnv.revive (SkEnv.project skenv_link_src md_src.(Mod.sk)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)) tprog).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src.(Mod.modsem) skenv_link_src) (md_tgt.(Mod.modsem) skenv_link_tgt)
-                ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
+                (SimSymbDropInv.mk (prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))) md_src md_tgt)
                 sm_link
 .
 
@@ -72,7 +72,7 @@ Theorem sim_skenv_meminj_preserves_globals
         sm_arg
         (SIMSKENV:
            SimSymbDropInv.sim_skenv
-             sm_arg ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
+             sm_arg (SimSymbDropInv.mk (prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))) md_src md_tgt)
              (SkEnv.project skenv_link_src md_src.(Mod.sk)) (SkEnv.project skenv_link_tgt md_tgt.(Mod.sk)))
   :
     <<SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInjInv.mem_inv_src sm_arg) (SimMemInj.inj sm_arg.(SimMemInjInv.minj))>>
@@ -288,7 +288,7 @@ Variable tprog: RTL.program.
 Hypothesis TRANSL: match_prog prog tprog.
 
 Definition mp: ModPair.t :=
-  ModPair.mk (RTLC.module prog) (RTLC.module tprog) ((prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop)
+  ModPair.mk (RTLC.module prog) (RTLC.module tprog) (SimSymbDropInv.mk (prog.(defs) -1 tprog.(defs) -1 (Pos.eq_dec tprog.(prog_main))) (RTLC.module prog) (RTLC.module tprog))
 .
 
 Theorem sim_mod

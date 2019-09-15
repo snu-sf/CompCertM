@@ -25,7 +25,7 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states (sm_init: SimMem.t)
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
@@ -105,7 +105,7 @@ Section SIMMOD.
 
 Variables prog tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
-Definition mp: ModPair.t := ModPair.mk (RTLC.module prog) (RTLC.module tprog) tt.
+Definition mp: ModPair.t := SimSymbId.mk_mp (RTLC.module prog) (RTLC.module tprog).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.

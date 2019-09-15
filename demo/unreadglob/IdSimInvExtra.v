@@ -19,8 +19,8 @@ Section INJINVDROP.
 Local Existing Instance SimSymbDropInv.SimMemInvTop.
 Local Existing Instance SimSymbDropInv.SimSymbDropInv.
 
-Lemma SimSymbDropInv_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: AST.program F V)
-      (SIMSKE: SimSymbDropInv.sim_skenv sm0 bot1 skenv_src skenv_tgt)
+Lemma SimSymbDropInv_match_globals F `{HasExternal F} V sm0 sk_src sk_tgt skenv_src skenv_tgt (p: AST.program F V)
+      (SIMSKE: SimSymbDropInv.sim_skenv sm0 (SimSymbDropInv.mk bot1 sk_src sk_tgt) skenv_src skenv_tgt)
   :
     meminj_match_globals
       eq
@@ -48,9 +48,9 @@ Proof.
 Qed.
 
 Lemma SimSymbDropInv_find_None F `{HasExternal F} V (p: AST.program F V)
-      sm0 skenv_src skenv_tgt fptr_src fptr_tgt
+      sm0 sk_src sk_tgt skenv_src skenv_tgt fptr_src fptr_tgt
       (FINDSRC: Genv.find_funct (SkEnv.revive skenv_src p) fptr_src = None)
-      (SIMSKE: SimSymbDropInv.sim_skenv sm0 bot1 skenv_src skenv_tgt)
+      (SIMSKE: SimSymbDropInv.sim_skenv sm0 (SimSymbDropInv.mk bot1 sk_src sk_tgt) skenv_src skenv_tgt)
       (FPTR: Val.inject (SimMemInj.inj sm0.(SimMemInjInv.minj)) fptr_src fptr_tgt)
       (FPTRDEF: fptr_src <> Vundef)
   :
@@ -82,8 +82,8 @@ Section INJINVID.
 
 Variable P: SimMemInjInv.memblk_invariant.
 
-Lemma SimSymbIdInv_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: AST.program F V)
-      (SIMSKE: SimMemInjInvC.sim_skenv_inj sm0 bot1 skenv_src skenv_tgt)
+Lemma SimSymbIdInv_match_globals F `{HasExternal F} V sm0 sk_src sk_tgt skenv_src skenv_tgt (p: AST.program F V)
+      (SIMSKE: SimMemInjInvC.sim_skenv_inj sm0 (SimMemInjInvC.mk bot1 sk_src sk_tgt) skenv_src skenv_tgt)
   :
     meminj_match_globals
       eq
@@ -101,9 +101,9 @@ Proof.
 Qed.
 
 Lemma SimSymbIdInv_find_None F `{HasExternal F} V (p: AST.program F V)
-      sm0 skenv_src skenv_tgt fptr_src fptr_tgt
+      sm0 sk_src sk_tgt skenv_src skenv_tgt fptr_src fptr_tgt
       (FINDSRC: Genv.find_funct (SkEnv.revive skenv_src p) fptr_src = None)
-      (SIMSKE: SimMemInjInvC.sim_skenv_inj sm0 bot1 skenv_src skenv_tgt)
+      (SIMSKE: SimMemInjInvC.sim_skenv_inj sm0 (SimMemInjInvC.mk bot1 sk_src sk_tgt) skenv_src skenv_tgt)
       (FPTR: Val.inject (SimMemInj.inj sm0.(SimMemInjInv.minj)) fptr_src fptr_tgt)
       (FPTRDEF: fptr_src <> Vundef)
   :

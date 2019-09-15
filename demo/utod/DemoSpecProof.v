@@ -178,7 +178,7 @@ Qed.
 
 
 Program Definition mp: ModPair.t :=
-  ModPair.mk DemoSpec.module DemoTarget.md tt.
+  ModPair.mk DemoSpec.module DemoTarget.md (SimSymbId.mk DemoSpec.module DemoTarget.md).
 
 Program Definition nat_idx (n: nat): Ord.idx := @Ord.mk nat Nat.lt _ _.
 

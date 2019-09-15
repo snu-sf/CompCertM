@@ -306,15 +306,42 @@ Section SIMSYMBINV.
 
   Variable P : memblk_invariant.
 
-  Inductive le (ss0: ident -> Prop) (sk_src sk_tgt: Sk.t) (ss1: ident -> Prop): Prop :=
+  Record t' := mk {
+    inv_ids:> ident -> Prop;
+    src: Sk.t;
+    tgt: Sk.t;
+  }.
+
+  Inductive le (ss0: t') (ss1: t'): Prop :=
   | symb_le_intro
       (LE: ss0 <1= ss1)
       (OUTSIDE: forall
           id
           (IN: (ss1 -1 ss0) id)
         ,
-          <<OUTSIDESRC: ~ sk_src.(defs) id>> /\ <<OUTSIDETGT: ~ sk_tgt.(defs) id>>)
+          <<OUTSIDESRC: ~ ss0.(src).(defs) id>> /\ <<OUTSIDETGT: ~ ss0.(tgt).(defs) id>>)
+    (SKLESRC: linkorder ss0.(src) ss1.(src))
+    (SKLETGT: linkorder ss0.(tgt) ss1.(tgt))
   .
+
+  Global Program Instance le_PreOrder: PreOrder le.
+  Next Obligation.
+    ii. econs; eauto; try apply linkorder_refl. ii; des. tauto.
+  Qed.
+  Next Obligation.
+    ii. inv H; inv H0. econs; eauto; try eapply linkorder_trans; eauto. ii. des.
+    destruct (classic (y id)).
+    - exploit OUTSIDE; et.
+    - exploit OUTSIDE0; et. i; des.
+      Local Transparent Linker_prog.
+      ss.
+      Local Opaque Linker_prog.
+      esplits; et.
+      + ii. apply defs_prog_defmap in H0. des. exploit SKLESRC4; et. i; des.
+        apply OUTSIDESRC. apply defs_prog_defmap. eauto.
+      + ii. apply defs_prog_defmap in H0. des. exploit SKLETGT4; et. i; des.
+        apply OUTSIDETGT. apply defs_prog_defmap. eauto.
+  Qed.
 
   Inductive invariant_globvar F V: globdef F V -> Prop :=
   | invariant_globvar_intro
@@ -333,18 +360,18 @@ Section SIMSYMBINV.
       invariant_globvar (Gvar v)
   .
 
-  Inductive sim_sk (ss: ident -> Prop) (sk_src sk_tgt: Sk.t): Prop :=
+  Inductive wf (ss: t'): Prop :=
   | sim_sk_intro
-      (SKSAME: sk_src = sk_tgt)
+      (SKSAME: ss.(src) = ss.(tgt))
       (CLOSED: forall id (SS: ss id),
           exists g,
-            (<<DEF: sk_tgt.(prog_defmap) ! id = Some g>>) /\
+            (<<DEF: ss.(tgt).(prog_defmap) ! id = Some g>>) /\
             (<<INV: invariant_globvar g>>) /\
-            (<<PRVT: ~ In id (prog_public sk_tgt)>>))
-      (NOMAIN: ~ ss sk_src.(prog_main))
+            (<<PRVT: ~ In id (prog_public ss.(tgt))>>))
+      (NOMAIN: ~ ss ss.(src).(prog_main))
       (NOREF: forall
           id gv
-          (PROG: sk_tgt.(prog_defmap) ! id  = Some (Gvar gv))
+          (PROG: ss.(tgt).(prog_defmap) ! id  = Some (Gvar gv))
         ,
           <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)
   .
@@ -363,7 +390,7 @@ Section SIMSYMBINV.
                                   (<<BLK: b1 = b2>> /\ <<DELTA: delta = 0>>))
   .
 
-  Inductive sim_skenv_inj (sm: t') (ss: ident -> Prop) (skenv_src skenv_tgt: SkEnv.t): Prop :=
+  Inductive sim_skenv_inj (sm: SimMemInjInv.t') (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
   | sim_skenv_inj_intro
       (INVCOMPAT: forall id blk (FIND: skenv_tgt.(Genv.find_symbol) id = Some blk),
           ss id <-> sm.(mem_inv_tgt) blk)
@@ -427,14 +454,14 @@ Section SIMSYMBINV.
       + apply IHn with (p + 1); auto. omega. omega.
   Qed.
 
-  Lemma init_mem_inject ss sk sk_tgt j m
-        (SIMSK: sim_sk ss sk sk_tgt)
-        (LOADMEM: Genv.init_mem sk = Some m)
+  Lemma init_mem_inject ss j m
+        (SIMSK: wf ss)
+        (LOADMEM: Genv.init_mem ss.(src) = Some m)
         (SS: forall id, {ss id} + {~ ss id})
         (J: j = fun blk : positive =>
                   if plt blk (Mem.nextblock m)
                   then
-                    match Genv.invert_symbol (Genv.globalenv sk) blk with
+                    match Genv.invert_symbol (Genv.globalenv ss.(src)) blk with
                     | Some id => if SS id then None else Some (blk, 0)
                     | None => None
                     end
@@ -464,7 +491,7 @@ Section SIMSYMBINV.
             unfold Genv.perm_globvar in *. des_ifs. inv H5. }
           des. clear H2.
           generalize (H3 eq_refl). intros LOADDATA. clear H3.
-          hexploit NOREF; eauto. clear NOREF. intros NOREF. zsimpl.
+          hexploit NOREF; eauto. { rewrite <- SKSAME; et. } clear NOREF. intros NOREF. zsimpl.
           eapply Mem_getN_forall2 with
               (P:=fun m0 : memval =>
                     (fun m1 : memval =>
@@ -472,7 +499,7 @@ Section SIMSYMBINV.
                          (fun blk : positive =>
                             if plt blk (Mem.nextblock m)
                             then
-                              match Genv.invert_symbol (Genv.globalenv sk_tgt) blk with
+                              match Genv.invert_symbol (Genv.globalenv ss.(src)) blk with
                               | Some id => if SS id then None else Some (blk, 0)
                               | None => None
                               end
@@ -541,53 +568,40 @@ Section SIMSYMBINV.
 
   Global Program Instance SimSymbIdInv: SimSymb.class (SimMemInjInv top_inv P) :=
     {
-      t := ident -> Prop;
+      t := t';
+      src := src;
+      tgt := tgt;
       le := le;
-      sim_sk := sim_sk;
+      wf := wf;
       sim_skenv := sim_skenv_inj;
     }
   .
   Next Obligation.
-    econs; eauto. i. des. clarify.
+    inv SIMSK. eauto with congruence.
   Qed.
   Next Obligation.
-    inv LE0. inv LE1. econs; eauto.
-    i. des.
-    destruct (classic (ss1 id)).
-    - exploit OUTSIDE; eauto.
-    - exploit OUTSIDE0; eauto. i. des.
-      inv LINKORD0. inv LINKORD1. des.
-      split; eauto.
-      + ii. eapply OUTSIDESRC.
-        eapply defs_prog_defmap in H6. des.
-        eapply defs_prog_defmap. exploit H5; eauto. i. des. eauto.
-      + ii. eapply OUTSIDETGT.
-        eapply defs_prog_defmap in H6. des.
-        eapply defs_prog_defmap. exploit H4; eauto. i. des. eauto.
-  Qed.
-  Next Obligation.
-    inv SIMSK. eauto.
-  Qed.
-  Next Obligation.
-    inv SIMSK. inv SIMSK0. exists (ss0 \1/ ss1).
-    hexploit (link_prog_inv sk_tgt0 sk_tgt1); eauto. i. des. clarify.
-    esplits; eauto.
-    - econs; eauto. i. des; clarify.
+    inv SIMSK. inv SIMSK0. eexists (mk (ss0 \1/ ss1) _ _).
+    rewrite <- SKSAME in *. rewrite <- SKSAME0 in *.
+    exploit (link_linkorder ss0.(src)); eauto. intro LO; des. ss.
+    hexploit (link_prog_inv ss0.(src) ss1.(src)); eauto. i. des. clarify.
+    esplits; ss; eauto.
+    - econs; ss; eauto with congruence. i. des; clarify.
       exploit CLOSED0; eauto. i. des.
-      assert (~ defs sk_tgt0 id); eauto.
+      rewrite SKSAME. assert (~ defs ss0.(tgt) id); eauto.
       unfold defs, proj_sumbool. des_ifs.
       eapply prog_defmap_dom in i. des.
-      exploit H0; eauto. i. des. clarify.
-    - econs; eauto. i. des; clarify.
+      exploit H0; eauto. { rewrite SKSAME; et. } i. des. clarify.
+    - econs; ss; eauto with congruence. i. des; clarify.
       exploit CLOSED; eauto. i. des.
-      assert (~ defs sk_tgt1 id); eauto.
+      rewrite SKSAME0. assert (~ defs ss1.(tgt) id); eauto.
       unfold defs, proj_sumbool. des_ifs.
       eapply prog_defmap_dom in i. des.
-      exploit H0; eauto. i. des. clarify.
-    - econs; ss; eauto.
+      exploit H0; eauto. { rewrite SKSAME0; et. } i. des. clarify.
+    - rewrite SKSAME in *. rewrite SKSAME0 in *.
+      econs; ss; eauto.
       + i. des.
         * exploit CLOSED; eauto. i. des.
-          destruct ((prog_defmap sk_tgt1) ! id) eqn:NONE.
+          destruct ((prog_defmap ss1.(tgt)) ! id) eqn:NONE.
           { exploit H0; eauto. i. des. clarify. }
           esplits; ss; eauto.
           { erewrite prog_defmap_elements.
@@ -597,7 +611,7 @@ Section SIMSYMBINV.
             inv WFSRC1. eapply PUBINCL in H1.
             eapply prog_defmap_spec in H1. des. clarify. }
         * exploit CLOSED0; eauto. i. des.
-          destruct ((prog_defmap sk_tgt0) ! id) eqn:NONE.
+          destruct ((prog_defmap ss0.(tgt)) ! id) eqn:NONE.
           { exploit H0; eauto. i. des. clarify. }
           esplits; ss; eauto.
           { erewrite prog_defmap_elements.
@@ -609,8 +623,8 @@ Section SIMSYMBINV.
       + ii. rewrite H in *. des; clarify.
 
       + ii.
-        assert(T: (In (id, Gvar gv) (prog_defs sk_tgt0))
-                  \/ (In (id, Gvar gv) (prog_defs sk_tgt1))).
+        assert(T: (In (id, Gvar gv) (prog_defs ss0.(tgt)))
+                  \/ (In (id, Gvar gv) (prog_defs ss1.(tgt)))).
         { unfold prog_defmap in PROG. ss.
           rewrite PTree_Properties.of_list_elements in *.
           rewrite PTree.gcombine in *; ss.
@@ -648,19 +662,20 @@ Section SIMSYMBINV.
       - i. destruct (classic (ss x)); eauto.
       - i. des. esplits; eauto. } destruct H as [SS].
     set (j := fun blk => if (plt blk (Mem.nextblock m_src))
-                         then match Genv.invert_symbol (Sk.load_skenv sk_tgt) blk with
+                         then match Genv.invert_symbol (Sk.load_skenv ss.(src)) blk with
                               | Some id =>
                                 if (SS id) then None else Some (blk, 0)
                               | None => None
                               end
                          else None).
-    eexists (mk (SimMemInj.mk _ _ j bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_src) _ _) _ _). ss.
+    eexists (SimMemInjInv.mk (SimMemInj.mk _ _ j bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_src) _ _) _ _). ss.
     instantiate (1:=fun blk => exists id,
-                        (<<FIND: (Sk.load_skenv sk_tgt).(Genv.find_symbol) id = Some blk>>) /\
+                        (<<FIND: (Sk.load_skenv ss.(tgt)).(Genv.find_symbol) id = Some blk>>) /\
                         (<<SINV: ss id>>)).
     unfold Sk.load_mem, Sk.load_skenv in *. dup LOADMEMSRC.
     apply Genv.init_mem_genv_next in LOADMEMSRC.
-    esplits; eauto.
+    rewrite <- SKSAME in *.
+    esplits; ss; eauto.
     - econs; ss; eauto.
       + i. split; i; eauto. des.
         apply Genv.find_invert_symbol in FIND.
@@ -733,14 +748,14 @@ Section SIMSYMBINV.
       i. inv H.
       econs; ss; eauto.
       + i. eapply DOMAIN; eauto. instantiate (1:=i).
-        destruct (classic (defs sk_src i)).
+        destruct (classic (defs ss.(src) i)).
         * rewrite <- SYMBKEEP; eauto.
         * rewrite SYMBDROP in SYMB; eauto. clarify.
       + i. eapply NDOMAIN; eauto. instantiate (1:=i).
-        destruct (classic (defs sk_src i)).
+        destruct (classic (defs ss.(src) i)).
         * rewrite <- SYMBKEEP; eauto.
         * rewrite SYMBDROP in SYMB; eauto. clarify.
-    - inv SIMSKENV0. inv SIMSK. ss.
+    - inv SIMSKENV0. inv SIMSK. r. congruence.
   Qed.
   Next Obligation.
     eapply SimSymbIdInv_skenv_func_bisim; eauto.

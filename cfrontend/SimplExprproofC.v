@@ -31,7 +31,7 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge: Csem.genv := Csem.Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
 Let tge: genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog) tprog.(prog_comp_env).
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states (sm_init: SimMem.t)
           (idx: nat) (st_src0: Csem.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
@@ -126,7 +126,7 @@ Section SIMMOD.
 Variable prog: Csyntax.program.
 Variable tprog: Clight.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Definition mp: ModPair.t := ModPair.mk (CstrategyC.module prog).(Mod.Atomic.trans) (ClightC.module1 tprog) tt.
+Definition mp: ModPair.t := SimSymbId.mk_mp (CstrategyC.module prog).(Mod.Atomic.trans) (ClightC.module1 tprog).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.

@@ -368,7 +368,7 @@ Proof.
   - symmetry. eapply IMAGE; eauto. unfold Genv.find_var_info in *. des_ifs. eapply Genv.genv_defs_range; eauto.
 Qed.
 
-Inductive sim_skenv_inj (sm: SimMem.t) (__noname__: unit) (skenv_src skenv_tgt: SkEnv.t): Prop :=
+Inductive sim_skenv_inj (sm: SimMem.t) (__noname__: SimSymbId.t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
 | sim_skenv_inj_intro
     (INJECT: skenv_inject skenv_src sm.(inj))
     (* NOW BELOW IS DERIVABLE FROM WF *)
@@ -395,19 +395,19 @@ End REVIVE.
 
 
 
-
 Global Program Instance SimSymbId: SimSymb.class SimMemInj := {
-  t := unit;
+  t := SimSymbId.t';
+  src := SimSymbId.src;
+  tgt := SimSymbId.tgt;
   le := SimSymbId.le;
-  sim_sk := SimSymbId.sim_sk;
+  wf := SimSymbId.wf;
   sim_skenv := sim_skenv_inj;
 }.
-Next Obligation. ss. Qed.
-Next Obligation. rr in SIMSK. clarify. Qed.
-Next Obligation. eapply SimSymbId.sim_sk_link; eauto. Qed.
+Next Obligation. rr in SIMSK. r. congruence. Qed.
+Next Obligation. eapply SimSymbId.wf_link; eauto. Qed.
 Next Obligation. inv SIMSKE. inv SIMSKENV. ss. Qed.
 Next Obligation.
-  exploit SimSymbId.sim_sk_load_sim_skenv; eauto. i; des.
+  exploit SimSymbId.wf_load_sim_skenv; eauto. i; des.
   eexists. eexists (mk m_src m_src (Mem.flat_inj m_src.(Mem.nextblock))
                        bot2 bot2 m_src.(Mem.nextblock) m_src.(Mem.nextblock) m_src.(Mem.nextblock) m_src.(Mem.nextblock)). ss.
   esplits; ss; eauto.
@@ -439,9 +439,9 @@ Qed.
 (*   - etransitivity; try apply TGTLE; eauto. *)
 (* Qed. *)
 Next Obligation.
-  set (SkEnv.project skenv_link_src sk_src) as skenv_proj_src.
+  set (SkEnv.project skenv_link_src ss.(SimSymbId.src)) as skenv_proj_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
-  set (SkEnv.project skenv_link_tgt sk_tgt) as skenv_proj_tgt.
+  set (SkEnv.project skenv_link_tgt ss.(SimSymbId.tgt)) as skenv_proj_tgt.
   generalize (SkEnv.project_impl_spec INCLTGT); intro LETGT.
   exploit SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto. i; des.
   inv SIMSKENV. inv LESRC. inv LETGT. econs; eauto. inv INJECT. econs; ii; eauto.
@@ -793,8 +793,8 @@ Qed.
 
 Lemma sim_skenv_inj_globalenv_inject
       F `{HasExternal F} V
-      skenv_proj_src skenv_proj_tgt sm_arg (prog: AST.program F V) m_tgt0
-      (SIMSKE: sim_skenv_inj sm_arg tt skenv_proj_src skenv_proj_tgt)
+      ss skenv_proj_src skenv_proj_tgt sm_arg (prog: AST.program F V) m_tgt0
+      (SIMSKE: sim_skenv_inj sm_arg ss skenv_proj_src skenv_proj_tgt)
       (NB: Ple (Genv.genv_next skenv_proj_src) (Mem.nextblock m_tgt0)):
     m_tgt0 |= globalenv_inject (SkEnv.revive skenv_proj_src prog) (SimMemInj.inj sm_arg).
 Proof.

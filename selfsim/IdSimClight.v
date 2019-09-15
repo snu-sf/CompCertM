@@ -45,7 +45,7 @@ Lemma clight_ext_unreach
       /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>).
 Proof.
-  eexists (ModPair.mk _ _ _); s. esplits; eauto. instantiate (1:=tt).
+  eexists (ModPair.mk _ _ _); s. esplits; eauto. instantiate (1:=(SimSymbId.mk _ _)).
   econs; ss; i. destruct SIMSKENVLINK.
   exploit clight_unreach_local_preservation. i. des.
   eapply match_states_sim with (match_states := match_states_ext_clight); ss; eauto.
@@ -97,7 +97,7 @@ Lemma clight_ext_top
       /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>).
 Proof.
-  eexists (ModPair.mk _ _ _); s. esplits; eauto. instantiate (1:=tt).
+  eexists (ModPair.mk _ _ _); s. esplits; eauto. instantiate (1:=(SimSymbId.mk _ _)).
   econs; ss; i. destruct SIMSKENVLINK.
   eapply match_states_sim with (match_states := match_states_ext_clight); ss.
   - apply unit_ord_wf.
@@ -150,7 +150,7 @@ Lemma clight_inj_drop_bot
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
-      /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>).
+      /\ (<<SSBOT: mp.(ModPair.ss) = (SimSymbDrop.mk bot1 clight.(module2) clight.(module2))>>).
 Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. econs; ss; i.
   { econs; ss; i; clarify. inv WF. auto. }
@@ -223,5 +223,5 @@ Lemma clight_inj_id
       /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>).
 Proof.
-  apply sim_inj_drop_bot_id. apply clight_inj_drop_bot; auto.
+  eapply sim_inj_drop_bot_id. apply clight_inj_drop_bot; auto.
 Qed.

@@ -28,28 +28,32 @@ Definition ref_init (il : list init_data) (id : ident): Prop :=
 Section MEMINJ.
 
 (* Definition t': Type := ident -> bool. *)
-Definition t': Type := ident -> Prop.
+Record t': Type := mk {
+  dropped:> ident -> Prop;
+  src: Sk.t;
+  tgt: Sk.t;
+}.
 
-Inductive sim_sk (ss: t') (sk_src sk_tgt: Sk.t): Prop :=
+Inductive wf (ss: t'): Prop :=
 | sim_sk_intro
     (KEPT: forall id
         (KEPT: ~ ss id),
-       sk_tgt.(prog_defmap) ! id = sk_src.(prog_defmap) ! id)
+       ss.(tgt).(prog_defmap) ! id = ss.(src).(prog_defmap) ! id)
     (DROP: forall id
         (DROP: ss id),
-        sk_tgt.(prog_defmap) ! id = None)
+        ss.(tgt).(prog_defmap) ! id = None)
     (* (SIMSK: forall *)
     (*     id *)
     (*   , *)
     (*    sk_tgt.(prog_defmap) ! id = if ss id then None else sk_src.(prog_defmap) ! id) *)
-    (CLOSED: ss <1= sk_src.(privs))
-    (PUB: sk_src.(prog_public) = sk_tgt.(prog_public))
-    (MAIN: sk_src.(prog_main) = sk_tgt.(prog_main))
+    (CLOSED: ss <1= ss.(src).(privs))
+    (PUB: ss.(src).(prog_public) = ss.(tgt).(prog_public))
+    (MAIN: ss.(src).(prog_main) = ss.(tgt).(prog_main))
     (NOREF: forall id gv
-        (PROG: sk_tgt.(prog_defmap) ! id  = Some (Gvar gv)),
+        (PROG: ss.(tgt).(prog_defmap) ! id  = Some (Gvar gv)),
         <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)
-    (NODUP: NoDup (prog_defs_names sk_tgt))
-    (NOMAIN: ~ ss sk_src.(prog_main)).
+    (NODUP: NoDup (prog_defs_names ss.(tgt)))
+    (NOMAIN: ~ ss ss.(src).(prog_main)).
 
 Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
 | sim_skenv_intro
@@ -169,22 +173,15 @@ Proof.
   split; ii; inv PR; ss; des; econs; eauto. splits; ss.
 Qed.
 
-Inductive le (ss0: t') (sk_src sk_tgt: Sk.t) (ss1: t'): Prop :=
+Inductive le (ss0: t') (ss1: t'): Prop :=
 | le_intro
     (LE: ss0 <1= ss1)
     (OUTSIDE: forall id
         (IN: (ss1 -1 ss0) id),
-        <<OUTSIDESRC: ~ sk_src.(defs) id>> /\ <<OUTSIDETGT: ~ sk_tgt.(defs) id>>).
-
-Global Program Definition link_ss (ss0 ss1: t'): option t' :=
-  (* Some (fun id => orb (ss0 id) (ss1 id)) *)
-  Some (ss0 \1/ ss1).
-
-Global Program Instance Linker_t: Linker t' := {|
-  link := link_ss;
-  linkorder (ss0 ss1: t') := ss0 <1= ss1;
-|}.
-
+        <<OUTSIDESRC: ~ ss0.(src).(defs) id>> /\ <<OUTSIDETGT: ~ ss0.(tgt).(defs) id>>)
+    (SKLESRC: linkorder ss0.(src) ss1.(src))
+    (SKLETGT: linkorder ss0.(tgt) ss1.(tgt))
+.
 
 Lemma linkorder_defs
       F V
@@ -233,39 +230,39 @@ Let init_meminj (sk_src sk_tgt:Sk.t) : meminj :=
     end.
 
 Remark init_meminj_invert
-       sk_src sk_tgt ss b b' delta
-       (INJ: (init_meminj sk_src sk_tgt) b = Some(b', delta))
-       (SIMSK : sim_sk ss sk_src sk_tgt):
-  delta = 0 /\ exists id, Genv.find_symbol (Sk.load_skenv sk_src) id = Some b /\ Genv.find_symbol (Sk.load_skenv sk_tgt) id = Some b' /\ ~ ss id.
+       ss b b' delta
+       (INJ: (init_meminj ss.(src) ss.(tgt)) b = Some(b', delta))
+       (SIMSK: wf ss):
+  delta = 0 /\ exists id, Genv.find_symbol (Sk.load_skenv ss.(src)) id = Some b /\ Genv.find_symbol (Sk.load_skenv ss.(tgt)) id = Some b' /\ ~ ss id.
 Proof.
   unfold init_meminj in *; intros.
-  destruct (Genv.invert_symbol (Sk.load_skenv sk_src) b) as [id|] eqn:S; try discriminate.
-  destruct (Genv.find_symbol (Sk.load_skenv sk_tgt) id) as [b''|] eqn:F; inv INJ.
+  destruct (Genv.invert_symbol (Sk.load_skenv ss.(src)) b) as [id|] eqn:S; try discriminate.
+  destruct (Genv.find_symbol (Sk.load_skenv ss.(tgt)) id) as [b''|] eqn:F; inv INJ.
   split. auto. exists id. split. apply Genv.invert_find_symbol; auto. split. auto.
   ii. unfold Sk.load_skenv in *. apply Genv.find_symbol_inversion in F. apply prog_defmap_dom in F. des.
   inv SIMSK. apply DROP in H. congruence.
 Qed.
 
 Remark init_meminj_eq
-       sk_src sk_tgt ss id b b'
-       (SYMBOL: Genv.find_symbol (Sk.load_skenv sk_src) id = Some b)
-       (SYMBOL2: Genv.find_symbol (Sk.load_skenv sk_tgt) id = Some b')
-       (SIMSK: sim_sk ss sk_src sk_tgt):
-  (init_meminj sk_src sk_tgt) b = Some(b', 0).
+       ss id b b'
+       (SYMBOL: Genv.find_symbol (Sk.load_skenv ss.(src)) id = Some b)
+       (SYMBOL2: Genv.find_symbol (Sk.load_skenv ss.(tgt)) id = Some b')
+       (SIMSK: wf ss):
+  (init_meminj ss.(src) ss.(tgt)) b = Some(b', 0).
 Proof.
   intros. unfold init_meminj. erewrite Genv.find_invert_symbol by eauto. rewrite SYMBOL2. auto.
 Qed.
 
 Lemma init_mem_exists
-      sk_src sk_tgt ss m_src
-      (SIMSK: sim_sk ss sk_src sk_tgt)
-      (LOADMEMSRC: Sk.load_mem sk_src = Some m_src):
-    exists m_tgt, Sk.load_mem sk_tgt = Some m_tgt.
+      ss m_src
+      (SIMSK: wf ss)
+      (LOADMEMSRC: Sk.load_mem ss.(src) = Some m_src):
+    exists m_tgt, Sk.load_mem ss.(tgt) = Some m_tgt.
 Proof.
   inv SIMSK. unfold Sk.load_mem in *. apply Genv.init_mem_exists. i.
-  assert (P: (prog_defmap sk_tgt)!id = Some (Gvar v)).
+  assert (P: (prog_defmap ss.(tgt))!id = Some (Gvar v)).
   { eapply prog_defmap_norepet; eauto. apply NoDup_norepet. ss. }
-  assert (Q: (prog_defmap sk_src) ! id = Some (Gvar v)).
+  assert (Q: (prog_defmap ss.(src)) ! id = Some (Gvar v)).
   { rewrite <- KEPT; ss. ii. rewrite DROP in P; ss. }
   exploit Genv.init_mem_inversion; eauto. apply in_prog_defmap; eauto. intros [AL FV].
   split; auto. intros. exploit FV; eauto. intros (b & FS).
@@ -275,39 +272,39 @@ Proof.
 Qed.
 
 Lemma init_meminj_simskenv
-      sk_src sk_tgt ss m_src m_tgt
-      (LOADMEMSRC: Sk.load_mem sk_src = Some m_src)
-      (LOADMEMTGT: Sk.load_mem sk_tgt = Some m_tgt)
-      (SIMSK: sim_sk ss sk_src sk_tgt)
-  : sim_skenv (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt)
+      ss m_src m_tgt
+      (LOADMEMSRC: Sk.load_mem ss.(src) = Some m_src)
+      (LOADMEMTGT: Sk.load_mem ss.(tgt) = Some m_tgt)
+      (SIMSK: wf ss)
+  : sim_skenv (SimMemInj.mk m_src m_tgt (init_meminj ss.(src) ss.(tgt)) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt)
                   (Mem.nextblock m_src) (Mem.nextblock m_tgt))
-              ss (Sk.load_skenv sk_src) (Sk.load_skenv sk_tgt).
+              ss (Sk.load_skenv ss.(src)) (Sk.load_skenv ss.(tgt)).
 Proof.
   econs; ss; i; try (by inv SIMSK; erewrite Genv.init_mem_genv_next; eauto).
   - exploit init_meminj_invert; eauto. intros (A & id1 & B & C & D).
-    assert (id1 = id) by (eapply (Genv.genv_vars_inj (Sk.load_skenv sk_src)); eauto). subst id1. esplits; auto.
-  - assert(exists blk_tgt : block, Genv.find_symbol (Sk.load_skenv sk_tgt) id = Some blk_tgt).
+    assert (id1 = id) by (eapply (Genv.genv_vars_inj (Sk.load_skenv ss.(src))); eauto). subst id1. esplits; auto.
+  - assert(exists blk_tgt : block, Genv.find_symbol (Sk.load_skenv ss.(tgt)) id = Some blk_tgt).
     { apply Genv.find_symbol_inversion in BLKSRC. apply prog_defmap_dom in BLKSRC. destruct BLKSRC as (g & P).
       apply Genv.find_symbol_exists with g. apply in_prog_defmap. inv SIMSK. rewrite KEPT0; ss.
     }
     des. exists blk_tgt; split; auto. eapply init_meminj_eq; eauto.
-  - assert(exists blk_src : block, Genv.find_symbol (Sk.load_skenv sk_src) id = Some blk_src).
+  - assert(exists blk_src : block, Genv.find_symbol (Sk.load_skenv ss.(src)) id = Some blk_src).
     { apply Genv.find_symbol_inversion in BLKTGT. apply prog_defmap_dom in BLKTGT. destruct BLKTGT as (g & P).
       apply Genv.find_symbol_exists with g. apply in_prog_defmap. inv SIMSK. rewrite <- KEPT; ss.
       ii. rewrite DROP in P; ss.
     }
     des. exists blk_src; split; auto. eapply init_meminj_eq; eauto.
   - exploit init_meminj_invert; eauto. intros (A & id & B & C & D).
-    assert ((prog_defmap sk_src)!id = Some def_src).
+    assert ((prog_defmap ss.(src))!id = Some def_src).
     { rewrite Genv.find_def_symbol. exists blk_src; auto. }
-    assert ((prog_defmap sk_tgt)!id = Some def_src).
+    assert ((prog_defmap ss.(tgt))!id = Some def_src).
     { inv SIMSK. rewrite KEPT; ss. }
     rewrite Genv.find_def_symbol in H0. destruct H0 as (b & P & Q).
     unfold Sk.load_skenv in *. replace b with blk_tgt in * by congruence. exists def_src. split; auto.
   - unfold init_meminj in *. des_ifs. apply_all_once Genv.find_invert_symbol. rewrite Heq2 in Heq0. inv Heq0.
     apply_all_once Genv.invert_find_symbol. congruence.
   - exploit init_meminj_invert; eauto. intros (A & id & B & C & D).
-    assert ((prog_defmap sk_tgt)!id = Some def_tgt).
+    assert ((prog_defmap ss.(tgt))!id = Some def_tgt).
     { rewrite Genv.find_def_symbol. exists blk_tgt; auto. }
     inv SIMSK. rewrite KEPT in H; ss. rewrite Genv.find_def_symbol in H. destruct H as (b & P & Q).
     unfold Sk.load_skenv in *. replace b with blk_src in * by congruence. exists def_tgt. split; auto.
@@ -319,32 +316,32 @@ Proof.
 Qed.
 
 Lemma init_meminj_invert_strong
-      sk_src sk_tgt ss b b' delta
-      (INJ: (init_meminj sk_src sk_tgt) b = Some(b', delta))
-      (SIMSK : sim_sk ss sk_src sk_tgt):
+      ss b b' delta
+      (INJ: (init_meminj ss.(src) ss.(tgt)) b = Some(b', delta))
+      (SIMSK : wf ss):
     delta = 0 /\
     exists id gd,
-      Genv.find_symbol (Sk.load_skenv sk_src) id = Some b
-      /\ Genv.find_symbol (Sk.load_skenv sk_tgt) id = Some b'
-      /\ Genv.find_def (Sk.load_skenv sk_src) b = Some gd
-      /\ Genv.find_def (Sk.load_skenv sk_tgt) b' = Some gd.
+      Genv.find_symbol (Sk.load_skenv ss.(src)) id = Some b
+      /\ Genv.find_symbol (Sk.load_skenv ss.(tgt)) id = Some b'
+      /\ Genv.find_def (Sk.load_skenv ss.(src)) b = Some gd
+      /\ Genv.find_def (Sk.load_skenv ss.(tgt)) b' = Some gd.
 Proof.
   intros. exploit init_meminj_invert; eauto. intros (A & id & B & C & D). unfold Sk.load_skenv in *.
-  assert (exists gd, (prog_defmap sk_src)!id = Some gd).
+  assert (exists gd, (prog_defmap ss.(src))!id = Some gd).
   { apply prog_defmap_dom. eapply Genv.find_symbol_inversion; eauto. }
   destruct H as [gd DM].
-  assert ((prog_defmap sk_tgt)!id = Some gd).
+  assert ((prog_defmap ss.(tgt))!id = Some gd).
   { inv SIMSK. rewrite KEPT; ss. }
   rewrite Genv.find_def_symbol in DM. destruct DM as (b'' & P & Q). rewrite P in B; inv B.
   rewrite Genv.find_def_symbol in H. destruct H as (b'' & R & S). rewrite R in C; inv C. esplits; et.
 Qed.
 
 Lemma bytes_of_init_inject
-      sk_src sk_tgt ss m_src il
-      (SIMSK: sim_sk ss sk_src sk_tgt)
-      (LOADMEMSRC: Sk.load_mem sk_src = Some m_src)
+      ss m_src il
+      (SIMSK: wf ss)
+      (LOADMEMSRC: Sk.load_mem ss.(src) = Some m_src)
       (REF: forall id, ref_init il id -> ~ ss id):
-    list_forall2 (memval_inject (init_meminj sk_src sk_tgt)) (Genv.bytes_of_init_data_list (Sk.load_skenv sk_src) il) (Genv.bytes_of_init_data_list (Sk.load_skenv sk_tgt) il).
+    list_forall2 (memval_inject (init_meminj ss.(src) ss.(tgt))) (Genv.bytes_of_init_data_list (Sk.load_skenv ss.(src)) il) (Genv.bytes_of_init_data_list (Sk.load_skenv ss.(tgt)) il).
 Proof.
   exploit init_mem_exists; et. intros LOADMEMTGT; des.
   induction il as [ | i1 il]; simpl; intros; try constructor.
@@ -352,11 +349,11 @@ Proof.
     + exploit init_meminj_simskenv; try eapply SIMSK; et. i. inv H; ss.
       destruct i1; simpl; try (apply inj_bytes_inject).
       { induction (Z.to_nat z); simpl; constructor. constructor. auto. }
-      destruct (Genv.find_symbol (Sk.load_skenv sk_src) i) as [b|] eqn:FS.
+      destruct (Genv.find_symbol (Sk.load_skenv ss.(src)) i) as [b|] eqn:FS.
       * assert (~ ss i). { apply REF. red. exists i0; auto with coqlib. }
         exploit SIMSYMB2; et. intros (b' & A & B). rewrite A. apply inj_value_inject.
         econstructor; eauto. symmetry; apply Ptrofs.add_zero.
-      * destruct (Genv.find_symbol (Sk.load_skenv sk_tgt) i) as [b'|] eqn:FS'.
+      * destruct (Genv.find_symbol (Sk.load_skenv ss.(tgt)) i) as [b'|] eqn:FS'.
         exploit SIMSYMB3; et. intros (b & A & B). congruence. apply repeat_Undef_inject_self.
     + apply IHil. intros id [ofs IN]. apply REF. exists ofs; auto with coqlib.
 Qed.
@@ -373,10 +370,31 @@ Proof.
 + apply IHn with (p + 1); auto. omega. omega.
 Qed.
 
+Global Program Instance le_PreOrder: PreOrder le.
+Next Obligation.
+  ii. econs; eauto.
+  - ii. des. tauto.
+  - eapply linkorder_refl.
+  - eapply linkorder_refl.
+Qed.
+Next Obligation.
+  ii. inv H. inv H0. econs; eauto.
+  - ii. des.
+    destruct (classic (y id)).
+    + exploit OUTSIDE; eauto.
+    + exploit OUTSIDE0; eauto. i; des. esplits; eauto.
+      { ii. eapply linkorder_defs in H0; try eassumption; eauto. }
+      { ii. eapply linkorder_defs in H0; try eassumption; eauto. }
+  - eapply linkorder_trans; eauto.
+  - eapply linkorder_trans; eauto.
+Qed.
+
 Global Program Instance SimSymbDrop: SimSymb.class SimMemInj := {
   t := t';
+  src := src;
+  tgt := tgt;
   le := le;
-  sim_sk := sim_sk;
+  wf := wf;
   sim_skenv := sim_skenv;
 }.
 (* Next Obligation. *)
@@ -389,15 +407,15 @@ Global Program Instance SimSymbDrop: SimSymb.class SimMemInj := {
 (*     esplits; eauto. *)
 (*     reflexivity. *)
 (* Qed. *)
-Next Obligation. econs; eauto. ii. des; ss. Qed.
-Next Obligation.
-  inv LE0. inv LE1. econs; eauto. ii; des.
-  specialize (OUTSIDE id). specialize (OUTSIDE0 id). destruct (classic (ss1 id)).
-  - exploit OUTSIDE; eauto.
-  - exploit OUTSIDE0; eauto. i; des.
-    hexploit (linkorder_defs LINKORD0); eauto. i; des.
-    hexploit (linkorder_defs LINKORD1); eauto. i; des. esplits; eauto.
-Qed.
+(* Next Obligation. econs; eauto. ii. des; ss. Qed. *)
+(* Next Obligation. *)
+(*   inv LE0. inv LE1. econs; eauto. ii; des. *)
+(*   specialize (OUTSIDE id). specialize (OUTSIDE0 id). destruct (classic (ss1 id)). *)
+(*   - exploit OUTSIDE; eauto. *)
+(*   - exploit OUTSIDE0; eauto. i; des. *)
+(*     hexploit (linkorder_defs LINKORD0); eauto. i; des. *)
+(*     hexploit (linkorder_defs LINKORD1); eauto. i; des. esplits; eauto. *)
+(* Qed. *)
 Next Obligation.
   inv SIMSK. inv WFSRC. econs; et. i. apply prog_defmap_norepet in IN; cycle 1.
   { apply NoDup_norepet; ss. }
@@ -420,26 +438,38 @@ Next Obligation.
 Qed.
 Next Obligation.
   inv SIMSK. inv SIMSK0.
-  exploit (link_prog_inv sk_src0 sk_src1); eauto. i; des.
-  assert(AUX1: forall id, ss1 id -> ~ ss0 id -> (prog_defmap sk_src0) ! id = None).
-  { i. destruct ((prog_defmap sk_src0) ! id) eqn:T; ss.
+  exploit (link_prog_inv ss0.(src) ss1.(src)); eauto. i; des.
+  assert(AUX1: forall id, ss1 id -> ~ ss0 id -> (prog_defmap ss0.(src)) ! id = None).
+  { i. destruct ((prog_defmap ss0.(src)) ! id) eqn:T; ss.
     apply CLOSED0 in H2. unfold privs, defs, NW in *. bsimpl. des. des_sumbool.
     exploit prog_defmap_dom; eauto. i; des. exploit H0; eauto. i; des. clarify.
   }
-  assert(AUX2: forall id, ss0 id -> ~ ss1 id -> (prog_defmap sk_src1) ! id = None).
-  { i. destruct ((prog_defmap sk_src1) ! id) eqn:T; ss.
+  assert(AUX2: forall id, ss0 id -> ~ ss1 id -> (prog_defmap ss1.(src)) ! id = None).
+  { i. destruct ((prog_defmap ss1.(src)) ! id) eqn:T; ss.
     apply CLOSED in H2. unfold privs, defs, NW in *. bsimpl. des. des_sumbool.
     exploit prog_defmap_dom; eauto. i; des. exploit H0; eauto. i; des. clarify.
   }
-  i. exists (ss0 \1/ ss1). eexists. esplits; eauto.
-  - eapply (link_prog_succeeds sk_tgt0 sk_tgt1); eauto; try congruence. i. exploit H0.
+  assert(LINKTGT: link ss0.(tgt) ss1.(tgt) = Some (mkprogram
+      (PTree.elements (PTree.combine link_prog_merge (prog_defmap ss0.(tgt))
+                                     (prog_defmap ss1.(tgt))))
+      (prog_public ss0.(tgt) ++ prog_public ss1.(tgt))
+      (prog_main ss0.(tgt)))).
+  { eapply (link_prog_succeeds ss0.(tgt) ss1.(tgt)); eauto; try congruence. i. exploit H0.
     { erewrite <- KEPT; et. ii. eapply DROP in H4. congruence. }
     { erewrite <- KEPT0; et. ii. eapply DROP0 in H4. congruence. }
     i; des. esplits; congruence.
-  - econs; ii; et. des; des_ifs.
-    esplits; et; ii; eapply defs_prog_defmap in H1; des; exploit AUX1; eauto; try congruence; exploit KEPT; eauto; congruence.
-  - econs; ii; et. des; des_ifs.
-    esplits; et; ii; eapply defs_prog_defmap in H1; des; exploit AUX2; eauto; try congruence; exploit KEPT0; eauto; congruence.
+  }
+  i. eexists (mk (ss0 \1/ ss1) _ _). eexists. esplits; ss; eauto.
+  - econs; ii; ss; et.
+     + des; des_ifs.
+       esplits; et; ii; eapply defs_prog_defmap in H1; des; exploit AUX1; eauto; try congruence; exploit KEPT; eauto; congruence.
+     + eapply link_linkorder in LINKSRC; des; ss.
+     + eapply link_linkorder in LINKTGT; des; ss.
+  - econs; ii; ss; et.
+    + des; des_ifs.
+      esplits; et; ii; eapply defs_prog_defmap in H1; des; exploit AUX2; eauto; try congruence; exploit KEPT0; eauto; congruence.
+    + eapply link_linkorder in LINKSRC; des; ss.
+    + eapply link_linkorder in LINKTGT; des; ss.
   - subst. econs; ss; ii; try congruence.
     + eapply not_or_and in KEPT1. des. rewrite ! prog_defmap_elements, !PTree.gcombine by auto.
       rewrite KEPT; ss. rewrite KEPT0; ss.
@@ -448,14 +478,14 @@ Next Obligation.
       * rewrite DROP; ss. rewrite KEPT0; ss. apply AUX2; ss.
       * rewrite DROP0; ss. rewrite KEPT; ss. rewrite AUX1; ss.
     + rr. unfold privs. ss. bsimpl. split.
-      { assert(T: exists x1, link_prog_merge (prog_defmap sk_src0) ! x0 (prog_defmap sk_src1) ! x0 = Some x1).
+      { assert(T: exists x1, link_prog_merge (prog_defmap ss0.(src)) ! x0 (prog_defmap ss1.(src)) ! x0 = Some x1).
         { des.
           - exploit CLOSED; et. intro T. unfold privs in T. unfold NW in *. bsimpl. des_safe. des_sumbool.
-            apply defs_prog_defmap in T. des. rewrite T. destruct ((prog_defmap sk_src1) ! x0) eqn:EQN.
+            apply defs_prog_defmap in T. des. rewrite T. destruct ((prog_defmap ss1.(src)) ! x0) eqn:EQN.
             + exploit H0; et. i; des. ss.
             + eexists. ss.
           - exploit CLOSED0; et. intro T. unfold privs in T. unfold NW in *. bsimpl. des_safe. des_sumbool.
-            apply defs_prog_defmap in T. des. rewrite T. destruct ((prog_defmap sk_src0) ! x0) eqn:EQN.
+            apply defs_prog_defmap in T. des. rewrite T. destruct ((prog_defmap ss0.(src)) ! x0) eqn:EQN.
             + exploit H0; et. i; des. ss.
             + eexists. ss.
         }
@@ -470,7 +500,7 @@ Next Obligation.
       * exploit CLOSED0; eauto. intro TT. unfold privs, NW in TT. bsimpl. des_safe. des_sumbool.
         des; ss. apply defs_prog_defmap in TT. inv WFSRC0. apply PUBINCL in T. apply prog_defmap_dom in T. des.
         exploit H0; et. i; des. ss.
-    + assert(T: (In (id, Gvar gv) (prog_defs sk_tgt0)) \/ (In (id, Gvar gv) (prog_defs sk_tgt1))).
+    + assert(T: (In (id, Gvar gv) (prog_defs ss0.(tgt))) \/ (In (id, Gvar gv) (prog_defs ss1.(tgt)))).
       { unfold prog_defmap in PROG. ss. rewrite PTree_Properties.of_list_elements in *.
         rewrite PTree.gcombine in *; ss. unfold link_prog_merge in PROG. clear - PROG. des_ifs.
         - apply PTree_Properties.in_of_list in Heq. apply PTree_Properties.in_of_list in Heq0.
@@ -478,7 +508,7 @@ Next Obligation.
         - apply PTree_Properties.in_of_list in Heq. eauto.
         - apply PTree_Properties.in_of_list in PROG. eauto.
       }
-      assert(U: ~ In id_drop (prog_defs_names sk_tgt0) /\ ~ In id_drop (prog_defs_names sk_tgt1)).
+      assert(U: ~ In id_drop (prog_defs_names ss0.(tgt)) /\ ~ In id_drop (prog_defs_names ss1.(tgt))).
       { split.
         - destruct (classic (ss0 id_drop)).
           + exploit DROP; eauto. intro V. intro W. exploit prog_defmap_dom; et. i; des; clarify.
@@ -504,21 +534,21 @@ Qed.
 Next Obligation.
   exploit init_mem_exists; et. intros LOADMEMTGT; des.
   exploit init_meminj_simskenv; try eapply SIMSK; et. intros SIMSKENV.
-  eexists m_tgt. exists (mk m_src m_tgt (init_meminj sk_src sk_tgt) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt) (Mem.nextblock m_src) (Mem.nextblock m_tgt)).
+  eexists m_tgt. exists (SimMemInj.mk m_src m_tgt (init_meminj ss.(src) ss.(tgt)) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt) (Mem.nextblock m_src) (Mem.nextblock m_tgt)).
   esplits; et.
   { econs; ss; try xomega. constructor; intros.
     { intros; constructor; intros.
       - exploit init_meminj_invert_strong; eauto. intros (A & id & gd & B & C & D & E).
-        exploit (Genv.init_mem_characterization_gen sk_src); eauto.
-        exploit (Genv.init_mem_characterization_gen sk_tgt); eauto.
+        exploit (Genv.init_mem_characterization_gen ss.(src)); eauto.
+        exploit (Genv.init_mem_characterization_gen ss.(tgt)); eauto.
         destruct gd as [f|v].
         + intros (P2 & Q2) (P1 & Q1). apply Q1 in H0. destruct H0. subst. apply Mem.perm_cur. auto.
         + intros (P2 & Q2 & R2 & S2) (P1 & Q1 & R1 & S1). apply Q1 in H0. destruct H0. subst.
           apply Mem.perm_cur. eapply Mem.perm_implies; eauto. apply P2. omega.
       - exploit init_meminj_invert; eauto. intros (A & id & B & C). subst delta. apply Z.divide_0_r.
       - exploit init_meminj_invert_strong; eauto. intros (A & id & gd & B & C & D & E).
-        exploit (Genv.init_mem_characterization_gen sk_src); eauto.
-        exploit (Genv.init_mem_characterization_gen sk_tgt); eauto.
+        exploit (Genv.init_mem_characterization_gen ss.(src)); eauto.
+        exploit (Genv.init_mem_characterization_gen ss.(tgt)); eauto.
         destruct gd as [f|v].
         + intros (P2 & Q2) (P1 & Q1). apply Q1 in H0. destruct H0; discriminate.
         + intros (P2 & Q2 & R2 & S2) (P1 & Q1 & R1 & S1). apply Q1 in H0. destruct H0.
@@ -532,7 +562,7 @@ Next Obligation.
           { ii. inv SIMSK. eapply NOREF; et. eapply Genv.find_def_symbol. eexists. split; et. }
           rewrite nat_of_Z_eq by (apply init_data_list_size_pos). omega.
     }
-    - destruct ((init_meminj sk_src sk_tgt) b) as [[b' delta]|] eqn:INJ; auto.
+    - destruct ((init_meminj ss.(src) ss.(tgt)) b) as [[b' delta]|] eqn:INJ; auto.
       elim H. exploit init_meminj_invert; eauto. intros (A & id & B & C & D).
       unfold Sk.load_skenv, Sk.load_mem in *. eapply Genv.find_symbol_not_fresh; eauto.
     - exploit init_meminj_invert; eauto. intros (A & id & B & C & D).
@@ -544,8 +574,8 @@ Next Obligation.
     - exploit init_meminj_invert; eauto. intros (A & id & B & C & D). subst delta.
       split. omega. generalize (Ptrofs.unsigned_range_2 ofs). omega.
     - exploit init_meminj_invert_strong; eauto. intros (A & id & gd & B & C & D & E).
-      exploit (Genv.init_mem_characterization_gen sk_src); eauto.
-      exploit (Genv.init_mem_characterization_gen sk_tgt); eauto.
+      exploit (Genv.init_mem_characterization_gen ss.(src)); eauto.
+      exploit (Genv.init_mem_characterization_gen ss.(tgt)); eauto.
       destruct gd as [f|v].
       + intros (P2 & Q2) (P1 & Q1). apply Q2 in H0. destruct H0. subst. replace ofs with 0 by omega.
         left; apply Mem.perm_cur; auto.
@@ -583,9 +613,9 @@ Next Obligation.
       exploit Genv.genv_defs_range; eauto. i. rewrite NBTGT in *. xomega.
 Qed.
 Next Obligation.
-  set (SkEnv.project skenv_link_src sk_src) as skenv_src.
+  set (SkEnv.project skenv_link_src ss.(src)) as skenv_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
-  set (SkEnv.project skenv_link_tgt sk_tgt) as skenv_tgt.
+  set (SkEnv.project skenv_link_tgt ss.(tgt)) as skenv_tgt.
   generalize (SkEnv.project_impl_spec INCLTGT); intro LETGT.
   exploit SkEnv.project_spec_preserves_wf; try apply LESRC; eauto. intro WFSMALLSRC.
   exploit SkEnv.project_spec_preserves_wf; try apply LETGT; eauto. intro WFSMALLTGT.
@@ -593,13 +623,13 @@ Next Obligation.
   inv SIMSKENV. ss. apply sim_skenv_splittable_spec. folder.
   dsplits; eauto; ii; ss.
   - (* SIMSYMB1 *)
-    inv LESRC. destruct (classic (defs sk_src id)); cycle 1.
+    inv LESRC. destruct (classic (defs ss.(src) id)); cycle 1.
     { exfalso. exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro KEEP; des.
 
     exploit SIMSYMB1; eauto. { rewrite <- KEEP. ss. } i; des.
 
-    inv LETGT. destruct (classic (defs sk_tgt id)); cycle 1.
+    inv LETGT. destruct (classic (defs ss.(tgt) id)); cycle 1.
     { erewrite SYMBDROP0; ss. exfalso. clear - LE KEPT H H0 SIMSK.
       apply H0. clear H0. inv SIMSK. u in *. simpl_bool. des_sumbool. rewrite prog_defmap_spec in *. des.
       destruct (classic (ss id)); cycle 1.
@@ -613,7 +643,7 @@ Next Obligation.
 
 
   - (* SIMSYMB2 *)
-    inv LESRC. destruct (classic (defs sk_src id)); cycle 1.
+    inv LESRC. destruct (classic (defs ss.(src) id)); cycle 1.
     { exfalso. exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro KEEP; des.
 
@@ -623,7 +653,7 @@ Next Obligation.
       exploit OUTSIDE; eauto. i; des. ss.
     }
     i; des. esplits; eauto. inv LETGT. erewrite SYMBKEEP0; ss.
-    destruct (classic (defs sk_tgt id)); ss.
+    destruct (classic (defs ss.(tgt) id)); ss.
     { exfalso. clear - LE KEPT H H0 SIMSK. apply H0. clear H0.
       inv SIMSK. u in *. simpl_bool. des_sumbool. rewrite prog_defmap_spec in *.
       destruct (classic (ss id)); cycle 1.
@@ -632,7 +662,7 @@ Next Obligation.
     }
 
   - (* SIMSYMB3 *)
-    inv LETGT. destruct (classic (defs sk_tgt id)); cycle 1.
+    inv LETGT. destruct (classic (defs ss.(tgt) id)); cycle 1.
     { exploit SYMBDROP; eauto. i; des. clarify. }
 
     erewrite SYMBKEEP in *; ss. exploit SIMSYMB3; eauto. i; des. esplits; eauto.
@@ -649,7 +679,7 @@ Next Obligation.
   - (* SIMDEF *)
 
     inv LESRC. inv WFSMALLSRC. exploit DEFSYMB; eauto. intro SYMBSMALL; des. rename SYMB into SYMBSMALL.
-    destruct (classic (defs sk_src id)); cycle 1.
+    destruct (classic (defs ss.(src) id)); cycle 1.
     { exploit SYMBDROP; eauto. i; des. clarify. }
     exploit SYMBKEEP; eauto. intro SYMBBIG; des. rewrite SYMBSMALL in *. symmetry in SYMBBIG. inv WFSRC.
     exploit SYMBDEF; eauto. i; des.
@@ -682,7 +712,7 @@ Next Obligation.
     }
     i; des. clarify.
 
-  - inv LESRC. destruct (classic (defs sk_src id)); cycle 1.
+  - inv LESRC. destruct (classic (defs ss.(src) id)); cycle 1.
     { exploit SYMBDROP; et. i; des. clarify. }
     eapply DISJ; et. erewrite <- SYMBKEEP; et.
 
@@ -703,12 +733,12 @@ Next Obligation.
     { symmetry. eapply SPLITHINT3; et. }
     clarify. inv LESRC. inv WFSRC. exploit DEFSYMB; eauto. i; des.
     assert(id = id0). { eapply Genv.genv_vars_inj. apply SYMBSMALLTGT. eauto. } clarify.
-    assert(DSRC: defs sk_src id0).
+    assert(DSRC: defs ss.(src) id0).
     { apply NNPP. ii. erewrite SYMBDROP in *; eauto. ss. }
     exploit SYMBKEEP; eauto. i; des. rewrite BLKSRC in *. symmetry in H.
-    assert(DTGT: defs sk_tgt id0).
+    assert(DTGT: defs ss.(tgt) id0).
     { apply NNPP. ii. inv LETGT. erewrite SYMBDROP0 in *; eauto. ss. }
-    assert(ITGT: internals sk_tgt id0).
+    assert(ITGT: internals ss.(tgt) id0).
     { dup DTGT. unfold defs in DTGT. des_sumbool. apply prog_defmap_spec in DTGT. des.
 
       inv INCLTGT. exploit DEFS; et. i; des.
@@ -718,7 +748,7 @@ Next Obligation.
       { apply Genv.find_invert_symbol; eauto. }
       i; des. ss.
     }
-    assert(ISRC: internals sk_src id0).
+    assert(ISRC: internals ss.(src) id0).
     { inv SIMSK. unfold internals in *. des_ifs_safe.
       exploit SPLITHINT; et. i; des. clear_tac.
       hexploit (KEPT id0); et. intro T. rewrite Heq in *. des_ifs.
@@ -787,7 +817,7 @@ Next Obligation.
   (* TODO: almost exactly copied from SimMemInj. we may remove duplicate code some way *)
   do 2 eexists. dsplits; eauto.
   - instantiate (1:= Retv.mk _ _); ss. eauto.
-  - destruct retv_src; ss. instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs 1; ss; eauto.
+  - destruct retv_src; ss. instantiate (1:= SimMemInj.mk _ _ _ _ _ _ _ _ _). econs 1; ss; eauto.
     instantiate (1:= retv_src.(Retv.m)). ss.
   - econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.

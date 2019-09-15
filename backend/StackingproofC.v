@@ -553,7 +553,7 @@ Hypothesis return_address_offset_deterministic: forall f c ofs ofs',
 
 Let match_stacks := match_stacks skenv_link skenv_link.
 
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Lemma functions_translated_inject
       sm0 fptr_src fd_tgt fptr_tgt
@@ -1464,7 +1464,7 @@ Hypothesis return_address_offset_deterministic: forall f c ofs ofs',
     rao f c ofs -> rao f c ofs' -> ofs = ofs'.
 Hypothesis TRANSF: match_prog prog tprog.
 
-Definition mp: ModPair.t := ModPair.mk (LinearC.module prog) (MachC.module tprog rao) tt.
+Definition mp: ModPair.t := SimSymbId.mk_mp (LinearC.module prog) (MachC.module tprog rao).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.

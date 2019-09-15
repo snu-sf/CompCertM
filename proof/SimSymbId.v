@@ -128,3 +128,5 @@ Section REVIVE.
 
 End REVIVE.
 
+Require Import SimMod.
+Notation mk_mp := (fun md_src md_tgt => ModPair.mk md_src md_tgt (mk md_src md_tgt)).

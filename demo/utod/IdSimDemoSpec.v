@@ -133,7 +133,7 @@ Lemma demo_ext_unreach
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
-  esplits; eauto. instantiate (1:=tt).
+  esplits; eauto. instantiate (1:=SimSymbId.mk _ _).
   econs; ss; i.
   destruct SIMSKENVLINK.
   exploit demo_unreach_local_preservation. i. des.
@@ -179,7 +179,7 @@ Lemma demo_ext_top
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
-  esplits; eauto. instantiate (1:=tt).
+  esplits; eauto. instantiate (1:=SimSymbId.mk _ _).
   econs; ss; i.
   destruct SIMSKENVLINK.
   eapply match_states_sim with (match_states := match_states_ext_demo); ss.
@@ -221,7 +221,7 @@ Lemma demo_inj_drop_bot
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = (DemoSpec.module)>>)
       /\ (<<TGT: mp.(ModPair.tgt) = (DemoSpec.module)>>)
-      /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>)
+      /\ (<<SSBOT: mp.(ModPair.ss) = SimSymbDrop.mk bot1 (DemoSpec.module) (DemoSpec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -284,7 +284,7 @@ Lemma demo_inj_id
       /\ (<<TGT: mp.(ModPair.tgt) = (DemoSpec.module)>>)
 .
 Proof.
-  apply sim_inj_drop_bot_id. apply demo_inj_drop_bot; auto.
+  eapply sim_inj_drop_bot_id. apply demo_inj_drop_bot; auto.
 Qed.
 
 Require Import IdSimInvExtra.
@@ -320,9 +320,9 @@ Lemma demo_inj_inv
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
-  esplits; eauto.
+  esplits; eauto. instantiate (1:=SimSymbDropInv.mk bot1 _ _).
   econs; ss; i.
-  { instantiate (1:=bot1). econs; ss; i; clarify.
+  { econs; ss; i; clarify.
     inv WF. auto. }
   eapply match_states_sim with (match_states := match_states_demo_inv); ss.
   - apply unit_ord_wf.

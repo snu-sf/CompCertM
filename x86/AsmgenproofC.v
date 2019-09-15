@@ -39,7 +39,7 @@ Definition msp: ModSemPair.t :=
   ModSemPair.mk (SM := SimMemExt)
                 (md_src.(Mod.modsem) skenv_link)
                 (md_tgt.(Mod.modsem) skenv_link)
-                tt sm_link.
+                (SimSymbId.mk md_src md_tgt) sm_link.
 
 Definition get_rs (ms: Mach.state) : Mach.regset :=
   match ms with
@@ -206,7 +206,7 @@ Proof.
           - erewrite Mem.valid_block_extends; eauto. eapply assign_junk_block_extends; et.
         }
         i. des; try (by destruct mr; clarify). rewrite Asm.to_preg_to_mreg in *. clarify.
-    + instantiate (1:= mk (assign_junk_blocks m_src n) (assign_junk_blocks m0 n)).
+    + instantiate (1:= SimMemExt.mk (assign_junk_blocks m_src n) (assign_junk_blocks m0 n)).
       econs; try eapply RADEF; ss; eauto.
       * econs; eauto.
       * econs; ss; eauto.
@@ -294,7 +294,7 @@ Proof.
         -- inv STACKWF; [|inv TL]. inv ATLR; auto; exfalso; auto.
         -- destruct ra; ss; try inv H0. inv ATLR. ss.
       * inv AG. rewrite agree_sp0. clarify.
-    + instantiate (1:=mk m1 m2'). econs; ss; eauto.
+    + instantiate (1:= SimMemExt.mk m1 m2'). econs; ss; eauto.
     + ss.
 
   - inv AFTERSRC. ss. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
@@ -304,7 +304,7 @@ Proof.
     + econs; ss; eauto.
       * exists skd. esplits; eauto. replace (r PC) with fptr; auto. inv FPTR; ss.
       * inv AG. rewrite agree_sp0. eauto.
-    + instantiate (1:= mk m1 m2'). inv INITRS. inv AG.
+    + instantiate (1:= SimMemExt.mk m1 m2'). inv INITRS. inv AG.
       econs; ss; eauto; econs; eauto.
       * econs; eauto.
       * unfold loc_external_result, regset_after_external, Mach.regset_after_external.
@@ -337,7 +337,7 @@ Proof.
       * inv AG. rewrite agree_sp0. ss.
     + econs; simpl; ss.
       * ss. inv AG. auto.
-      * instantiate (1:= mk _ _). ss.
+      * instantiate (1:= SimMemExt.mk _ _). ss.
       * ss.
     + ss.
 
@@ -351,7 +351,7 @@ Proof.
       i. des; ss; esplits; auto; clarify.
       * left. instantiate (1 := mkstate st_tgt0.(init_rs) S2'). ss.
         destruct st_tgt0. eapply asm_plus_dplus; eauto.
-      * instantiate (1 := mk (MachC.get_mem (MachC.st st_src1)) (get_mem S2')).
+      * instantiate (1 := SimMemExt.mk (MachC.get_mem (MachC.st st_src1)) (get_mem S2')).
         econs; ss; eauto.
         { instantiate (1:=init_rs st_tgt0 RSP).
           destruct st_src0, st_src1. clear - STEP STACKWF NOTDUMMY.
@@ -361,8 +361,7 @@ Proof.
         }
         rewrite <- INITRS. rewrite <- INITFPTR. auto.
       * right. split; eauto. apply star_refl.
-      * instantiate (1 := mk (MachC.get_mem (MachC.st st_src1))
-                             st_tgt0.(st).(get_mem)).
+      * instantiate (1 := SimMemExt.mk (MachC.get_mem (MachC.st st_src1)) st_tgt0.(st).(get_mem)).
         econs; ss; eauto.
         { instantiate (1:=init_rs st_tgt0 RSP).
           destruct st_src0, st_src1. clear - STEP STACKWF NOTDUMMY. inv STEP; ss; clarify.
@@ -384,7 +383,7 @@ Section SIMMOD.
 Variable prog: Mach.program.
 Variable tprog: program.
 Hypothesis TRANSL: match_prog prog tprog.
-Definition mp: ModPair.t := ModPair.mk (MachC.module prog return_address_offset) (AsmC.module tprog) tt.
+Definition mp: ModPair.t := mk_mp (MachC.module prog return_address_offset) (AsmC.module tprog).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.

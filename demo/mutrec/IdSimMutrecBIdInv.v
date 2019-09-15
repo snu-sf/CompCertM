@@ -95,16 +95,16 @@ Lemma b_inj_inv_id
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
-  esplits; eauto.
+  esplits; eauto. instantiate (1:=SimMemInjInvC.mk bot1 _ _).
   econs; ss; i.
-  { instantiate (1:=bot1). econs; ss; i; clarify. }
+  { econs; ss; i; clarify. }
   eapply match_states_sim with (match_states := match_states_b_inv); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
 
   - i. ss.
     cinv SIMSKENV. ss.
-    exploit (@SimSymbIdInv_match_globals fundef _ _ sm_arg (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig prog)) prog).
+    exploit (@SimSymbIdInv_match_globals fundef _ _ sm_arg (MutrecBspec.module) (MutrecBspec.module) (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig prog)) prog).
     { eauto. } intros GEMATCH.
     inv INITTGT. inv SAFESRC. inv SIMARGS. inv H. ss.
     inv GEMATCH. exploit SYMBLE; eauto. i. des.
@@ -120,7 +120,7 @@ Proof.
 
   - i. ss.
     cinv SIMSKENV. ss.
-    exploit (@SimSymbIdInv_match_globals fundef _ _ sm_arg (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig prog)) prog).
+    exploit (@SimSymbIdInv_match_globals fundef _ _ sm_arg (MutrecBspec.module) (MutrecBspec.module) (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig prog)) prog).
     { eauto. } intros GEMATCH.
     des. inv SAFESRC. inv SIMARGS.
     inv GEMATCH. exploit SYMBLE; eauto. i. des; eauto.
@@ -135,7 +135,7 @@ Proof.
 
   - i. ss. clear SOUND. inv CALLSRC. inv MATCH. inv MATCHST. inversion SIMSKENV; subst. ss.
     i. ss. cinv SIMSKENV. ss.
-    exploit (@SimSymbIdInv_match_globals fundef _ _ sm0 (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig prog)) prog).
+    exploit (@SimSymbIdInv_match_globals fundef _ _ sm0 (MutrecBspec.module) (MutrecBspec.module) (SkEnv.project skenv_link_src (Sk.of_program fn_sig prog)) (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig prog)) prog).
     { eauto. } intros GEMATCH.
     inv GEMATCH. exploit SYMBLE; eauto. i. des; eauto.
     esplits; eauto.

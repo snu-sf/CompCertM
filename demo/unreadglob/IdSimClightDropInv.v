@@ -69,9 +69,9 @@ Lemma clight_inj_inv_drop
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
-  esplits; eauto.
+  esplits; eauto. instantiate (1:=SimSymbDropInv.mk bot1 _ _).
   econs; ss; i.
-  { instantiate (1:=bot1). econs; ss; i; clarify.
+  { econs; ss; i; clarify.
     inv WF. auto. }
   eapply match_states_sim with (match_states := match_states_clight_inv); ss.
   - apply unit_ord_wf.
@@ -138,7 +138,7 @@ Proof.
       { instantiate (1:=cgenv skenv_link_tgt clight). ss. }
       { eapply function_entry2_inject. ss. }
       { inv SIMSKENV. exploit SimSymbDropInv.sim_skenv_symbols_inject; eauto. }
-      { inv SIMSKENV. rpapply SimSymbDropInv_match_globals; eauto. } i. des.
+      { inv SIMSKENV. ss. rpapply SimSymbDropInv_match_globals; eauto. } i. des.
       exploit SimMemInjC.parallel_gen; eauto. i. des.
       hexploit SimMemInjInv.le_inj_wf_wf; eauto. intros MWFINV0.
 

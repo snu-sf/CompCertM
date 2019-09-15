@@ -70,10 +70,10 @@ Section MEMORYLEMMAS.
 End MEMORYLEMMAS.
 
 
-Lemma SymSymbId_SymSymbDrop_bot sm_arg ss_link ge_src ge_tgt
+Lemma SymSymbId_SymSymbDrop_bot sm_arg ss_link ge_src ge_tgt sk_src sk_tgt
       (SIMSKE: SimMemInjC.sim_skenv_inj sm_arg ss_link ge_src ge_tgt)
   :
-    SimSymbDrop.sim_skenv sm_arg bot1 ge_src ge_tgt.
+    SimSymbDrop.sim_skenv sm_arg (SimSymbDrop.mk bot1 sk_src sk_tgt) ge_src ge_tgt.
 Proof.
   inv SIMSKE. ss. unfold SimSymbId.sim_skenv in *. clarify.
   inv INJECT. ss.
@@ -101,12 +101,12 @@ Proof.
 Qed.
 
 Lemma sim_inj_drop_bot_id
-      src
+      sk_src sk_tgt src
       (DROP: exists mp,
           (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
           /\ (<<SRC: mp.(ModPair.src) = src>>)
           /\ (<<TGT: mp.(ModPair.tgt) = src>>)
-          /\ (<<SSBOT: mp.(ModPair.ss) = bot1>>)):
+          /\ (<<SSBOT: mp.(ModPair.ss) = (SimSymbDrop.mk bot1 sk_src sk_tgt)>>)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
       /\ (<<SRC: mp.(ModPair.src) = src>>)
@@ -114,16 +114,21 @@ Lemma sim_inj_drop_bot_id
 Proof.
   des. clarify. destruct mp eqn: EQ. ss. clarify. inv SIM. ss.
   unfold ModPair.to_msp in *. ss.
-  eexists (ModPair.mk _ _ _). esplits; ss. instantiate (1:=tt).
-  econs; ss. unfold ModPair.to_msp. ss.
+  eexists (ModPair.mk _ _ _). esplits; ss. instantiate (1:=(SimSymbId.mk sk_src sk_tgt)).
+  econs; ss.
+  { inv SIMSK. ss. }
+  unfold ModPair.to_msp. ss.
   i. destruct ss_link.
   exploit SIMMS; [apply INCLSRC|apply INCLTGT|..]; eauto.
-  { inv SSLE. instantiate (1:=bot1). econs; ss. i. des. clarify. }
+  { inv SSLE. instantiate (1:=SimSymbDrop.mk bot1 src src).
+    econs; ss; try apply Linking.linkorder_refl. i. des. clarify. }
   { instantiate (1:=sm_init_link). exploit SymSymbId_SymSymbDrop_bot; eauto. }
   i. inv H. ss. econs; try eassumption; eauto; ss. i.
   exploit SIM; eauto. inv SIMSKENV. ss. econs; ss.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKE; eauto.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKELINK; eauto.
+Unshelve.
+  all: ss.
 Qed.
 
 Inductive def_match A V: globdef A V -> globdef A V -> Prop :=
@@ -160,8 +165,8 @@ Inductive meminj_match_globals F V (R: globdef F V -> globdef F V -> Prop)
           (<<FINDTGT: Genv.find_symbol ge_tgt i = Some b_tgt>>) /\
           (<<INJ: j b_src = Some (b_tgt, 0)>>)).
 
-Lemma SimSymbDrop_match_globals F `{HasExternal F} V sm0 skenv_src skenv_tgt (p: program F V)
-      (SIMSKE: SimSymbDrop.sim_skenv sm0 bot1 skenv_src skenv_tgt):
+Lemma SimSymbDrop_match_globals F `{HasExternal F} V sm0 sk_src sk_tgt skenv_src skenv_tgt (p: program F V)
+      (SIMSKE: SimSymbDrop.sim_skenv sm0 (SimSymbDrop.mk bot1 sk_src sk_tgt) skenv_src skenv_tgt):
     meminj_match_globals
       eq
       (SkEnv.revive skenv_src p)
@@ -211,9 +216,9 @@ Proof.
 Qed.
 
 Lemma SimSymbDrop_find_None F `{HasExternal F} V (p: program F V)
-      sm0 skenv_src skenv_tgt fptr_src fptr_tgt
+      sm0 sk_src sk_tgt skenv_src skenv_tgt fptr_src fptr_tgt
       (FINDSRC: Genv.find_funct (SkEnv.revive skenv_src p) fptr_src = None)
-      (SIMSKE: SimSymbDrop.sim_skenv sm0 bot1 skenv_src skenv_tgt)
+      (SIMSKE: SimSymbDrop.sim_skenv sm0 (SimSymbDrop.mk bot1 sk_src sk_tgt) skenv_src skenv_tgt)
       (FPTR: Val.inject (SimMemInj.inj sm0) fptr_src fptr_tgt)
       (FPTRDEF: fptr_src <> Vundef):
     Genv.find_funct (SkEnv.revive skenv_tgt p) fptr_tgt = None.
@@ -242,7 +247,7 @@ Lemma any_id
       /\ (<<TGT: mp.(ModPair.tgt) = md>>).
 Proof.
   eexists (ModPair.mk _ _ _); s.
-  esplits; eauto. instantiate (1:=tt). econs; ss; i.
+  esplits; eauto. instantiate (1:=(SimSymbId.mk md md)). econs; ss; i.
   rewrite SIMSKENVLINK in *. inv SIMSKENVLINK. inv SSLE.
   eapply MatchSimModSem.match_states_sim; ss.
   - apply unit_ord_wf.
@@ -250,7 +255,7 @@ Proof.
   - instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
                        (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>)).
-    ss. i. inv SIMARGS; ss; esplits; eauto; try congruence.
+    ss. i. inv SIMARGS; ss; esplits; eauto; try congruence; ss.
     assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). congruence.
   - ii. destruct args_src, args_tgt, sm_arg; inv SIMARGS; ss; clarify.
     assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). subst. eauto.

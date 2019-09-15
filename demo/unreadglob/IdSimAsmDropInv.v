@@ -55,9 +55,9 @@ Lemma asm_inj_inv_drop
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
-  esplits; eauto.
+  esplits; eauto. instantiate (1:=SimSymbDropInv.mk bot1 _ _).
   econs; ss; i.
-  { instantiate (1:=bot1). econs; ss; i; clarify.
+  { econs; ss; i; clarify.
     inv WF. auto. }
   eapply MatchSimModSemExcl2.match_states_sim with
       (match_states :=

@@ -105,7 +105,7 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Let ge := (SkEnv.project skenv_link md_src.(Mod.sk)).
 Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) prog) prog.(prog_comp_env).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) symbol_memoized sm_link.
+  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimMemInjInvC.mk symbol_memoized md_src md_tgt) sm_link.
 
 Inductive match_states_internal: nat -> MutrecAspec.state -> Clight.state -> Prop :=
 | match_callstate_nonzero
@@ -227,7 +227,7 @@ Qed.
 Lemma match_states_lxsim
       sm_init idx st_src0 st_tgt0 sm0
       (SIMSK: SimSymb.sim_skenv
-                sm0 symbol_memoized
+                sm0 (SimMemInjInvC.mk symbol_memoized md_src md_tgt)
                 (SkEnv.project skenv_link (CSk.of_program signature_of_function prog))
                 (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)))
       (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
@@ -858,7 +858,7 @@ End SIMMODSEM.
 
 Theorem sim_mod
   :
-    ModPair.sim (ModPair.mk (MutrecAspec.module) (ClightC.module2 prog) symbol_memoized)
+    ModPair.sim (ModPair.mk (MutrecAspec.module) (ClightC.module2 prog) (SimMemInjInvC.mk symbol_memoized (MutrecAspec.module) (ClightC.module2 prog)))
 .
 Proof.
   econs; ss.

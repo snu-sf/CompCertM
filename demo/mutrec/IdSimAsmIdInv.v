@@ -56,9 +56,9 @@ Lemma asm_inj_inv_id
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
-  esplits; eauto.
+  esplits; eauto. instantiate (1:=SimMemInjInvC.mk bot1 _ _).
   econs; ss; i.
-  { instantiate (1:=bot1). econs; ss; i; clarify. }
+  { econs; ss; i; clarify. }
   eapply MatchSimModSemExcl2.match_states_sim with
       (match_states :=
          @match_states

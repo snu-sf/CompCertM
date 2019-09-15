@@ -42,7 +42,7 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) tt sm_link.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states
           (sm_init: SimMem.t)
@@ -132,12 +132,12 @@ Section SIMMOD.
 Variable prog: Clight.program.
 Variable tprog: Csharpminor.program.
 Hypothesis TRANSL: match_prog prog tprog.
-Definition mp: ModPair.t := ModPair.mk (ClightC.module2 prog) (CsharpminorC.module tprog) tt.
+Definition mp: ModPair.t := SimSymbId.mk_mp (ClightC.module2 prog) (CsharpminorC.module tprog).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
-  - r. inv TRANSL. des. unfold CSk.of_program, Sk.of_program. f_equal; ss.
+  - r. inv TRANSL. des. unfold CSk.of_program, Sk.of_program. ss. f_equal; ss.
     revert H. generalize prog at 1 as CTX. i.
     destruct prog, tprog; ss. clear - H.
     ginduction prog_defs; ii; ss; inv H; ss.

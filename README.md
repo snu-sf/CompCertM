@@ -17,12 +17,12 @@ For directories that existed in [CompCert](https://github.com/AbsInt/CompCert) (
 
 New directories are roughly as follows.
 
-- bound: adequacy w.r.t. C and assembly ([UpperBound_A.v](bound/UpperBound_A.v), [UpperBound_B.v](bound/UpperBound_B.v), [LowerBound.v](bound/LowerBound.v))  
-- compose: interaction semantics and its properties  
-- demo: examples including Unreadglob, mutual-sum and utod
-- selfsim: self-simulation of Clight and Assembly  
-- scripts: scripts used for SLOC counting (Table 1, 2, 3)  
-- proof: our meta theory
+- bound/: adequacy w.r.t. C and assembly ([UpperBound_A.v](bound/UpperBound_A.v), [UpperBound_B.v](bound/UpperBound_B.v), [LowerBound.v](bound/LowerBound.v))  
+- compose/: interaction semantics and its properties  
+- demo/: examples including Unreadglob, mutual-sum and utod
+- selfsim/: self-simulation of Clight and Assembly  
+- scripts/: scripts used for SLOC counting (Table 1, 2, 3)  
+- proof/: our meta theory
 
 We list up few important definitions/proofs from the paper.
 

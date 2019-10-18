@@ -417,7 +417,7 @@ Next Obligation.
       * unfold Mem.flat_inj in *. erewrite ! Genv.init_mem_genv_next in *; eauto. des_ifs.
     + ss. erewrite ! Genv.init_mem_genv_next; eauto.
     + ss. erewrite ! Genv.init_mem_genv_next; eauto.
-  - econs; ss; try xomega; ii; des; ss; eauto. eapply Genv.initmem_inject; eauto. u in *. eauto.
+  - econs; ss; try xomega; ii; des; ss; eauto. eapply Genv.initmem_inject; eauto; (u in *; eauto).
   - rewrite MAINSIM. unfold Genv.symbol_address. des_ifs. unfold Mem.flat_inj. econs; eauto.
     + des_ifs. exfalso. apply n. eapply Plt_Ple_trans.
       { eapply Genv.genv_symb_range; et. }

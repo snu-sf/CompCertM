@@ -1,4 +1,4 @@
-# CompCertM
+# CompCertM: CompCert with Lightweight Modular Verification and Multi-Language Linking
 - Youngju Song, Minki Cho, Dongjoo Kim, Yonghyun Kim, Jeehoon Kang, Chung-Kil Hur.  
 [CompCertM: CompCert with Lightweight Modular Verification and Multi-Language Linking](https://sf.snu.ac.kr/compcertm/)
 

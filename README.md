@@ -31,6 +31,7 @@ We list up few important definitions/proofs from the paper.
 - Module _(Page 18, Fig. 9)_: [compose/Mod.v](compose/Mod.v)  
 - Module Semantics _(Page 18, Fig. 9)_: [compose/ModSem.v](compose/ModSem.v#L140)  
 - RUSC Theory _(Section 2.3)_: [proof/RUSC.v](proof/RUSC.v)  
+
 **Verification Techniques**  
 - Mixed Simulation _(Section 2.4)_: [proof/Simulation.v](proof/Simulation.v) - [`xsim`](proof/Simulation.v#L486)  
 - Parameter-MemRel _(Page 20, Fig. 10)_: [proof/SimMem.v](proof/SimMem.v)  

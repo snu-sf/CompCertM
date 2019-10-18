@@ -41,7 +41,7 @@ We list up few important definitions/proofs from the paper.
 - Parameter-MemPred _(Page 20, Fig. 10)_: [proof/Sound.v](proof/Sound.v)  
 - Parameterized Open Simulation _(Page 21, Fig. 11)_: [proof/SimModSem.v](proof/SimModSem.v)  
 - Open Preservation _(Page 21, Fig. 11)_: [proof/Preservation.v](proof/Preservation.v) - [`local_preservation_standard`](proof/Preservation.v#L102)  
-- Adequacy of Parameterized Open Simulation _(Page 22, Theorem 6.2)_: [proof/AdequacyLocal.v](proof/AdequacyLocal.v) - [`Theorem adequacy_local`](proof/AdequacyLocal.v#705).  
+- Adequacy of Parameterized Open Simulation _(Page 22, Theorem 6.2)_: [proof/AdequacyLocal.v](proof/AdequacyLocal.v) - [`Theorem adequacy_local`](proof/AdequacyLocal.v#L705).  
 - Unreadglob example _(Section 4.1)_: [demo/unreadglob](demo/unreadglob) ([demo directory in CompCertR](https://github.com/snu-sf/CompCertR/tree/v3.5_adapt/demo) also contains actual optimization and proof files)  
 - mutual-sum example _(Section 4.2)_: [demo/mutrec](demo/mutrec)  
 - utod example: [demo/utod](demo/utod)  

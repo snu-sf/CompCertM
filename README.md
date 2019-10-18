@@ -17,7 +17,7 @@ For directories that existed in [CompCert](https://github.com/AbsInt/CompCert) (
 
 New directories are roughly as follows.
 
-- bound/: adequacy w.r.t. C and assembly ([UpperBound_A.v](bound/UpperBound_A.v), [UpperBound_B.v](bound/UpperBound_B.v), [LowerBound.v](bound/LowerBound.v))  
+- bound/: adequacy w.r.t. C and assembly (UpperBound_A.v, UpperBound_B.v, LowerBound.v)  
 - compose/: interaction semantics and its properties  
 - demo/: examples including Unreadglob, mutual-sum and utod
 - selfsim/: self-simulation of Clight and Assembly  

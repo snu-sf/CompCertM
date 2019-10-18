@@ -51,5 +51,9 @@ We list up few important definitions/proofs from the paper.
 
 **Examples**  
 - Unreadglob example _(Section 4.1)_: [demo/unreadglob](demo/unreadglob) ([demo directory in CompCertR](https://github.com/snu-sf/CompCertR/tree/v3.5_adapt/demo) also contains actual optimization and proof files)  
-- mutual-sum example _(Section 4.2)_: [demo/mutrec](demo/mutrec)  
+- mutual-sum example _(Section 4.2)_: [demo/mutrec](demo/mutrec)
+  + a.c, b.asm (Page 16, Fig. 7): [a.c](mutrec/a.c), [b.s](mutrec/b.s)
+  + a.spec, b.spec (Page 16, Fig. 7): [MutrecAspec.v](MutrecAspec.v), [MutrecBspec.v](MutrecBspec.v)
+  + ab.spec (Page 16, Fig. 7): [MutrecABspec.v](demo/mutrec/MutrecABspec.v)
+  + refinement proof: [MutrecRefinement.v](demo/mutrec/MutrecRefinement.v) - [`Theorem Mutrec_correct`](demo/mutrec/MutrecRefinement.v#L144)
 - utod example: [demo/utod](demo/utod)  

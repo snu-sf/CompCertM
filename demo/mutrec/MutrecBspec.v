@@ -18,7 +18,6 @@ Section MODSEM.
   Variable skenv_link: SkEnv.t.
   Variable p: unit.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) prog.(Sk.of_program fn_sig).
-  (* Let ge: genv := Build_genv (skenv.(SkEnv.revive) prog) prog.(prog_comp_env). *)
 
   Inductive state: Type :=
   | Callstate
@@ -44,8 +43,6 @@ Section MODSEM.
       (SYMB: Genv.find_symbol skenv g_id = Some blk)
       (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero)
       (RANGE: 0 <= i.(Int.intval) < MAX)
-      (* (DEF: Genv.find_funct skenv args.(Args.fptr) = *)
-      (*         Some (AST.Internal (mksignature [AST.Tint] (Some AST.Tint) cc_default))) *)
       (VS: args.(Args.vs) = [Vint i])
       (M: args.(Args.m) = m) :
       initial_frame args (Callstate i m).

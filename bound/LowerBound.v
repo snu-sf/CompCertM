@@ -140,7 +140,6 @@ Section PRESERVATION.
   Qed.
 
   Definition genv_le (ge_src ge_tgt: Genv.t fundef unit): Prop :=
-    (* sub_match_genvs eq ge_src ge_tgt. *)
     sub_match_genvs (@def_match _ _) ge_src ge_tgt.
 
   Lemma skenv_link_public_eq id:
@@ -1716,8 +1715,6 @@ Section PRESERVATION.
           * des_ifs.
           * ii. ss. des; clarify. }
   Qed.
-
-  (* skenv_inject skenv_link j_callee (assign_junk_blocks m_src n) *)
 
 (** ********************* transf initial final  *********************************)
 

@@ -836,7 +836,7 @@ Section LXSIM.
                 econs 2; eauto; esplits.
                 -- eapply plus_two with (t1 := []) (t2 := []); ss.
                    ++ econs; eauto.
-                      { (* ez - determinate_at *)
+                      { 
                         eapply lift_determinate_at; ss; des_ifs; eauto.
                         econs; eauto.
                         - ii; ss. inv H; inv H0; ss.

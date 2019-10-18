@@ -80,8 +80,6 @@ Proof.
       des_ifs.
       lia.
     }
-    (* unfold Float32.of_longu. *)
-    (* rewrite Float32.of_long_round_odd. *)
     rewrite Float.of_longu_of_long_1; ss.
   }
   { rename g0 into G.
@@ -95,7 +93,6 @@ Proof.
     rewrite two_power_pos_correct in *.
     assert(P0: Z.pow_pos 2 36 <= Int64.unsigned l).
     { etrans; eauto. unfold Val.orl in *. des_ifs. }
-    (* des_ifs. ss. clarify. *)
     rename i into rto.
     assert(P1: Z.pow_pos 2 36 <= (Z.abs (Int64.signed (Int64.or (Int64.shru' l Int.one)
                                                                 (Int64.and l Int64.one))))).
@@ -141,9 +138,6 @@ Proof.
       etrans; cycle 1.
       { eapply Int64.or_le; eauto. }
       rewrite Int64.unsigned_repr in *; ss.
-      (* assert(Int64.unsigned l <= 2 * Int64.unsigned (Int64.shru' l Int.one)). *)
-      (* { *)
-      (* } *)
       assert(Int64.testbit l 63 = true).
       { rewrite Int64.sign_bit_of_unsigned. des_ifs. rewrite Int64.half_modulus_power in *. ss.
         rewrite two_power_pos_correct in *. lia.
@@ -227,15 +221,13 @@ Proof.
 
   assert (ARGLONG: exists lng, (Args.vs args_src) = [Vlong lng]).
   { inv SAFESRC. inv H. rewrite VS. eauto. }
-  (* clear SAFESRC. *)
-  inv INITTGT; ss; clarify. inv TYP. ss. (* destruct args_tgt. ss. *)
-  (* destruct vs; clarify. destruct vs; clarify; ss. *)
-  inv SIMARGS; ss. clarify. inv VALS; ss. inv H0; ss. (* destruct args_src. *)
+  inv INITTGT; ss; clarify. inv TYP. ss.
+  inv SIMARGS; ss. clarify. inv VALS; ss. inv H0; ss. 
   ss. clarify. unfold AsmC.store_arguments in *. des.
   dup STORE0. inv STORE0.
   unfold typify_list, zip in *. inv VALS. des_ifs_safe.
   unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs.
-  inv H3. (* inv H0. *)
+  inv H3. 
 
   eexists (DemoSpec.mkstate lng (SimMemInj.src sm_arg)). esplits; eauto.
   - refl.

@@ -9,7 +9,7 @@ Require Import Integers.
 Require Import Events.
 
 Require Import Skeleton ModSem Mod Sem.
-Require Import SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
+Require Import SimSymb SimMem SimMod SimModSem SimProg SimProg.
 Require Import ModSemProps SemProps Ord.
 Require Import Sound Preservation AdequacySound.
 Require Import Program.
@@ -26,7 +26,6 @@ Section SIMGE.
   Context `{SM: SimMem.class}.
   Context `{SU: Sound.class}.
   Context {SS: SimSymb.class SM}.
-  (* Inductive sim_gepair (sm0: SimMem.t) (ge_src ge_tgt: list ModSem.t): Prop := *)
   Inductive sim_ge (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
   | sim_ge_src_stuck
       ge_tgt skenv_link_src skenv_link_tgt:
@@ -42,20 +41,6 @@ Section SIMGE.
       (SESRC: List.Forall (fun ms => ms.(ModSem.to_semantics).(symbolenv) = skenv_link_src) ge_src)
       (SETGT: List.Forall (fun ms => ms.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt) ge_tgt):
       sim_ge sm0 (ge_src, skenv_link_src) (ge_tgt, skenv_link_tgt).
-  (* | sim_ge_intro *)
-  (*     msps *)
-  (*     (SIMSKENV: List.Forall (fun msp => ModSemPair.sim_skenv msp sm0) msps) *)
-  (*     (SIMMSS: List.Forall (ModSemPair.sim) msps) *)
-  (*     ge_src ge_tgt *)
-  (*     skenv_link_src skenv_link_tgt *)
-  (*     (GESRC: ge_src = System.modsem skenv_link_src :: (map (ModSemPair.src) msps)) *)
-  (*     (GETGT: ge_tgt = System.modsem skenv_link_tgt :: (map (ModSemPair.tgt) msps)) *)
-  (*     ss_link *)
-  (*     (SIMSYS: SimSymb.sim_skenv sm0 ss_link skenv_link_src skenv_link_tgt) *)
-  (*   : *)
-  (*     sim_ge sm0 ge_src ge_tgt  *)
-
-
 
   Lemma find_fptr_owner_fsim
         sm0 ge_src ge_tgt fptr_src fptr_tgt ms_src
@@ -130,7 +115,6 @@ Section SIMGE.
         (SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_src skenv_tgt):
         <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp skenv_src skenv_tgt sm_init mp) sm_init>>.
   Proof.
-    (* inv SIMMP. specialize (SIMMS skenv_src skenv_tgt). *)
     u. econs; ss; eauto; cycle 1.
     { rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
     inv SIMMP.
@@ -182,8 +166,6 @@ Section SIMGE.
               /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) sm_init>>)).
     { exploit SimSymb.system_sim_skenv; eauto. i; des.
       eexists (ModSemPair.mk _ _ ss_link sm_init). ss. esplits; eauto.
-      (* eapply SimSymb.sim_skenv_func_bisim in SIMSKENV. des. *)
-      (* clears sm_init; clear sm_init. *)
       - exploit system_local_preservation. intro SYSSU; des. econs.
         { ss. eauto. }
         { instantiate (2:= Empty_set). ii; ss. }
@@ -309,7 +291,6 @@ Section ADQMATCH.
   Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
-  (* Hypothesis SIMPROG: ProgPair.sim pp. *)
   Let p_src := pp.(ProgPair.src).
   Let p_tgt := pp.(ProgPair.tgt).
 
@@ -322,10 +303,6 @@ Section ADQMATCH.
   Let skenv_link_src := sk_link_src.(Sk.load_skenv).
   Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
 
-  (* Interpretation: the stack called top with following regset/regset/SimMem.t as arguments. *)
-  (* (SimMem.t is lifted. lifting/unlifting is caller's duty) *)
-  (* Simulation can go continuation when SimMem.t bigger than argument is given, (after unlifting it) *)
-  (* with after_external fed with regsets sent. *)
   Inductive lxsim_stack: SimMem.t ->
                          list Frame.t -> list Frame.t -> Prop :=
   | lxsim_stack_nil
@@ -703,7 +680,6 @@ Section ADQSTEP.
         { unsguard SUST. des_safe. eapply sound_progress; eauto.
           ss. folder. des_ifs_safe. econs; eauto. }
         instantiate (1:= sm_after). econs; ss; cycle 3; eauto.
-        (* { eauto. } *)
         { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. }
         { etrans; eauto. }
   Qed.

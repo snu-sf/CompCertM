@@ -3,13 +3,14 @@
 [CompCertM: CompCert with Lightweight Modular Verification and Multi-Language Linking](https://sf.snu.ac.kr/compcertm/)
 
 ## Build
-Clone https://github.com/snu-sf/CompCertR and build CompCertR.  
-**Go to CompCertR directory** and issue the following commands:
-```
+CompCertM is based on [CompCertR](https://github.com/snu-sf/CompCertR) which is the refactored version of CompCert. In order to build CompCertM, You need to build CompCertR first.
+1) Clone https://github.com/snu-sf/CompCertR and follow [install instructions](https://github.com/snu-sf/CompCertR#installation-instructions).  
+
+2) **Go to CompCertR directory** and issue the following commands: <pre>
 git clone https://github.com/snu-sf/CompCertM.git linking
 cd linking
 make -j[N]
-```
+</pre>
 
 ## Code Structure
 

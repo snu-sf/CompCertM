@@ -9,8 +9,7 @@ CompCertM is based on [CompCertR](https://github.com/snu-sf/CompCertR) which is 
 2) **Go to CompCertR directory** and issue the following commands: <pre>
 git clone https://github.com/snu-sf/CompCertM.git linking
 cd linking
-make -j[N]
-</pre>
+make -j[N]</pre>
 
 ## Code Structure
 

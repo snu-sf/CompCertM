@@ -28,12 +28,6 @@ Section SIMMODSEM.
   Context {SS: SimSymb.class SM}.
   Variable sound_states: ms_src.(state) -> Prop.
 
-  (* Record mem_compat (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop := { *)
-  (*   mcompat_src: <<MCOMPATSRC: ms_src.(get_mem) st_src0 = sm0.(SimMem.src)>>; *)
-  (*   mcompat_tgt: <<MCOMPATTGT: ms_tgt.(get_mem) st_tgt0 = sm0.(SimMem.tgt)>>; *)
-  (* } *)
-  (* . *)
-
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | fsim_step_step
@@ -42,9 +36,7 @@ Section SIMMODSEM.
           (STEPSRC: Step ms_src st_src0 tr st_src1),
           exists i1 st_tgt1 sm1,
             (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ ord i1 i0>>)
-            (* /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>> *)
             /\ <<MLE: SimMem.le sm0 sm1>>
-(* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm1>>)
       (RECEP: receptive_at ms_src st_src0)
   | fsim_step_stutter
@@ -60,7 +52,6 @@ Section SIMMODSEM.
           (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1),
           exists i1 st_src1 sm1,
             (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>)
-            (* /\ <<MCOMPAT: mem_compat st_src1 st_tgt1 sm1>> *)
             /\ <<MLE: SimMem.le sm0 sm1>>
             /\ <<BSIM: bsim i1 st_src1 st_tgt1 sm1>>)
   | bsim_step_stutter
@@ -76,61 +67,20 @@ Section SIMMODSEM.
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | lxsim_step_forward
       (SU: forall (SU: DUMMY_PROP),
-      (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
-      (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
-      (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
-      <<FSTEP: fsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>
-      (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
-      (* sd_determ_at_final becomes nothing, but it is OK. *)
-      (* In composed semantics, when it stepped, it must not be final *))
+      <<FSTEP: fsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)
 
   | lxsim_step_backward
       (SU: forall (SU: DUMMY_PROP),
-      (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
-      (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (<<BSTEP: forall
           (SAFESRC: safe_modsem ms_src st_src0),
          (<<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
       (<<PROGRESS: forall
-           (* (STEPSRC: ms_src.(ModSem.is_step) st_src0) *)
            (STEPSRC: safe_modsem ms_src st_src0),
            (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
 
-  (* | lxsim_at_external *)
-  (*     rs_arg_src rs_arg_tgt *)
-  (*     (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
-  (*     m_arg_src m_arg_tgt *)
-  (*     (ATSRC: ms_src.(at_external) st_src0 rs_arg_src m_arg_src) *)
-  (*     (ATTGT: ms_tgt.(at_external) st_tgt0 rs_arg_tgt m_arg_tgt) *)
-  (*     (RSREL: sm0.(SimMem.sim_regset) rs_arg_src rs_arg_tgt) *)
-  (*     (VALID: SimMem.wf sm0) *)
-  (*     (AFTER: forall *)
-  (*         sm1 rs_ret_src rs_ret_tgt *)
-  (*         (MLE: SimMem.le (SimMem.lift sm0) sm1) *)
-  (*         (VALID: SimMem.wf sm1) *)
-  (*         (RETVREL: sm1.(SimMem.sim_regset) rs_ret_src rs_ret_tgt) *)
-  (*         st_tgt1 *)
-  (*         (AFTERTGT: ms_tgt.(after_external) st_tgt0 rs_arg_tgt rs_ret_tgt sm1.(SimMem.tgt) *)
-  (*                                                                                st_tgt1) *)
-  (*       , *)
-  (*         exists i1 st_src1, *)
-  (*         (<<AFTERSRC: ms_src.(after_external) st_src0 rs_arg_src rs_ret_src sm1.(SimMem.src) *)
-  (*                                                                                  st_src1>>) *)
-  (*         /\ *)
-  (*         (<<LXSIM: lxsim i1 st_src1 st_tgt1 (SimMem.unlift sm0 sm1)>>)) *)
-
   | lxsim_at_external
-      (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
       (MWF: SimMem.wf sm0)
-      (* (CALLPROGRESS: forall *)
-      (*     rs_arg_src m_arg_src *)
-      (*     (ATSRC: ms_src.(at_external) st_src0 rs_arg_src m_arg_src) *)
-      (*   , *)
-      (*     exists rs_arg_tgt m_arg_tgt, <<ATTGT: ms_tgt.(at_external) st_tgt0 rs_arg_tgt m_arg_tgt>>) *)
-      (* (SAFESRC: exists rs_arg_src m_arg_src, <<ATSRC: ms_src.(at_external) st_src0 rs_arg_src m_arg_src>>) *)
-      (* (SAFESRC: ms_tgt.(is_call) st_tgt0) *)
       (SAFESRC: ms_src.(is_call) st_src0)
-      (* (PROGSRC: ms_src.(is_call) st_src0) *)
       (SU: forall (SU: DUMMY_PROP),
       <<CALLFSIM: forall args_src
           (ATSRC: ms_src.(at_external) st_src0 args_src),
@@ -146,8 +96,6 @@ Section SIMMODSEM.
                 (AFTERSRC: ms_src.(after_external) st_src0 retv_src st_src1),
                 exists st_tgt1 sm_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>) /\
-                  (* (<<MLEPRIV: SimMem.lepriv sm_ret sm_after>>) *)
-                  (* /\ *)
                   (<<MLEPUB: SimMem.le sm0 sm_after>>) /\
                   (<<LXSIM: lxsim sm_init i1 st_src1 st_tgt1 sm_after>>)>>))>>)
 
@@ -155,22 +103,9 @@ Section SIMMODSEM.
       sm_ret retv_src retv_tgt
       (MLE: SimMem.le sm_init sm_ret)
       (MWF: SimMem.wf sm_ret)
-      (* (PROGRESS: ms_tgt.(is_return) rs_init_tgt st_tgt0) *)
-      (* (RETBSIM: forall           *)
-      (*     rs_ret_tgt m_ret_tgt *)
-      (*     (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt) *)
-      (*   , *)
-      (*     exists rs_ret_src m_ret_src, *)
-      (*       (<<RSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt>>) *)
-      (*       /\ (<<FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src m_ret_src>>)) *)
       (FINALSRC: ms_src.(final_frame) st_src0 retv_src)
       (FINALTGT: ms_tgt.(final_frame) st_tgt0 retv_tgt)
       (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret).
-
-      (* Note: Actually, final_frame can be defined as a function. *)
-
-      (* (FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src m_ret_src) *)
-      (* (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt) *)
 
 
   Definition _lxsim (lxsim: SimMem.t -> idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop) (sm_init: SimMem.t)
@@ -231,7 +166,6 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Inductive sim (msp: t): Prop :=
   | sim_intro
-      (* (SIMSKENV: sim_skenv msp msp.(sm)) *)
       sidx sound_states sound_state_ex
       (PRSV: local_preservation msp.(src) sound_state_ex)
       (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))

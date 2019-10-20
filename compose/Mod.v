@@ -25,7 +25,6 @@ Module Mod.
   (* 2) This definition will give an error when datatype is changed. *)
   Record t: Type := mk {
     datatype: Type;
-    (* skel: Skel.t; *)
     get_sk: datatype -> Sk.t;
     get_modsem: SkEnv.t -> datatype -> ModSem.t;
     data: datatype;

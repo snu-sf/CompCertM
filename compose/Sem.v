@@ -27,7 +27,6 @@ Module Frame.
 
   Record t: Type := mk {
     ms: ModSem.t;
-    (* st_init: ms.(ModSem.state); *)
     st: ms.(ModSem.state); (* local state *)
   }.
 
@@ -80,7 +79,6 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 
 | step_internal
     fr0 frs tr st0
-    (* (INTERNAL: fr0.(Frame.is_internal)) *)
     (STEP: Step (fr0.(Frame.ms)) fr0.(Frame.st) tr st0):
     step ge (State (fr0 :: frs))
          tr (State ((fr0.(Frame.update_st) st0) :: frs))
@@ -97,13 +95,8 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 Section SEMANTICS.
 
   Variable p: program.
-  (* Variable init_skel: Skel.t. *)
-  (* Hypothesis LINKED: link_list (List.map Mod.skel p) = Some init_skel. *)
 
   Definition link_sk: option Sk.t := link_list (List.map Mod.sk p).
-
-  (* Definition init_skenv: option SkEnv.t := option_map (@Genv.globalenv (fundef unit) unit) init_sk. *)
-  (* Definition init_skenv (init_sk: Sk.t): SkEnv.t := (@Genv.globalenv (fundef (option signature)) unit) init_sk. *)
 
   Definition skenv_fill_internals (skenv: SkEnv.t): SkEnv.t :=
     skenv.(Genv_map_defs) (fun _ gd => Some
@@ -118,11 +111,6 @@ Section SEMANTICS.
 
   Definition load_modsems (skenv: SkEnv.t): list ModSem.t := List.map ((flip Mod.modsem) skenv) p.
 
-  (* Definition init_mem: option mem := option_join (option_map (@Genv.init_mem (fundef unit) unit) init_sk). *)
-  (* Definition init_mem (init_sk: Sk.t): option mem := (@Genv.init_mem (fundef (option signature)) unit) init_sk. *)
-
-  (* Definition init_genv: option Ge.t := *)
-  (*   option_map (fun skenv => (Ge.mk skenv (init_modsem skenv))) init_skenv. *)
   Definition load_genv (init_skenv: SkEnv.t): Ge.t :=
     let (system, skenv) := load_system init_skenv in
     (system :: (load_modsems init_skenv), init_skenv).

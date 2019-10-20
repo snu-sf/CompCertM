@@ -27,33 +27,15 @@ Module Sound.
   Class class :=
   {
     t: Type;
-    (* wf: t -> Prop; *)
 
     mle: t -> Memory.mem -> Memory.mem -> Prop;
     mle_PreOrder su0 :> PreOrder (mle su0);
 
-    (* lift: t -> t -> Prop; *)
-    (* lift_PreOrder :> PreOrder lift; *)
     hle: t -> t -> Prop;
     hle_PreOrder :> PreOrder hle;
     lepriv: t -> t -> Prop;
     lepriv_PreOrder :> PreOrder lepriv;
-    (* le_val: forall *)
-    (*     su0 su1 *)
-    (*     (LE: le su0 su1) *)
-    (*   , *)
-    (*     <<LE: su1.(val) <1= su0.(val)>> *)
-    (* ; *)
-
-    (* TODO: rename it into le_monotone *)
     wf: t -> Prop;
-    (* hle_le: forall *)
-    (*     su0 su1 *)
-    (*     (HLE: hle su0 su1) *)
-    (*     (WF: wf su0) *)
-    (*   , *)
-    (*     <<LE: le su0 su1>> *)
-    (* ; *)
 
     hle_lepriv: forall su0 su1
         (HLE: hle su0 su1)
@@ -155,43 +137,6 @@ Module Sound.
   Proof.
     i. eapply skenv_lepriv; eauto. eapply hle_lepriv; eauto.
   Qed.
-
-  (* Lemma hle_spec: forall *)
-  (*       su0 su1 m0 m1 *)
-  (*       (HLELIFT: forall su0 su1 (HLE: hle su0 su1) (WF: wf su0), <<LE: lift su0 su1>>) *)
-  (*       (MLE: mle su1 m0 m1) *)
-  (*       (LE: hle su0 su1) *)
-  (*       (WF: wf su0) *)
-  (*     , *)
-  (*       <<MLE: mle su0 m0 m1>> *)
-  (* . *)
-  (* Proof. *)
-  (*   i. eapply Sound.lift_spec; et. eapply HLELIFT; et. *)
-  (* Qed. *)
-
-
-  (* Lemma get_greatest_le *)
-  (*       su0 su1 args0 su_gr *)
-  (*       (GR: get_greatest su1 args0 su_gr) *)
-  (*       (LE: le su0 su1) *)
-  (*   : *)
-  (*     <<GR: get_greatest su0 args0 su_gr>> *)
-  (* . *)
-  (* Proof. *)
-  (*    exploit Sound.greatest_adq; eauto. i; des. *)
-  (*    exploit (Sound.greatest_ex su0); eauto. *)
-  (*    { esplits; try apply SUARGS; eauto. etrans; eauto. } *)
-  (*    i; des. *)
-  (*    rp; eauto. symmetry. *)
-  (*    eapply Sound.get_greatest_irr; eauto. *)
-  (* Qed. *)
-
-  (* Inductive args (su: t) (args0: Args.t): Prop := *)
-  (* | args_intro *)
-  (*     (VAL: su.(val) args0.(Args.fptr)) *)
-  (*     (VALS: su.(val_list) args0.(Args.vs)) *)
-  (*     (MEM: su.(mem) args0.(Args.m)) *)
-  (* . *)
 
   End SOUND.
 

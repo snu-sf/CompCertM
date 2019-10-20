@@ -41,8 +41,6 @@ Section MEMINJINV.
       wf := wf' P_src P_tgt;
       le := le';
       lepriv := lepriv;
-      (* lift := lift'; *)
-      (* unlift := unlift'; *)
       sim_val := fun (mrel: t') => Val.inject mrel.(SimMemInj.inj);
       sim_val_list := fun (mrel: t') => Val.inject_list mrel.(SimMemInj.inj);
     }.
@@ -720,12 +718,6 @@ Section SIMSYMBINV.
   Next Obligation.
     eapply sim_skenv_inj_lepriv; eauto.
   Qed.
-  (* Next Obligation. *)
-  (*   inv SIMSKENV. inv MWF. inv WF. *)
-  (*   destruct sm0; ss. destruct minj; ss. econs; ss; eauto. *)
-  (*   - ss. etrans; eauto. *)
-  (*   - ss. etrans; eauto. *)
-  (* Qed. *)
   Next Obligation.
     inv LE. inv SIMSKENV. econs; ss; eauto.
     - i. assert (Genv.find_symbol skenv_link_tgt id = Some blk).

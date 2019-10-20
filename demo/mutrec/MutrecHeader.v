@@ -29,7 +29,6 @@ Proof.
   clarify.
 Qed.
 
-(* Local Transparent Int.repr. *)
 Lemma sum_recurse
       i
   :
@@ -75,19 +74,6 @@ Proof.
     Local Opaque Int.repr.
     rewrite MOD1. lia.
 Qed.
-
-(* Function elements_rec (lo hi: Z) {wf (Zwf lo) hi} : list Z := *)
-(*   if zlt lo hi then (hi - 1)%Z :: elements_rec lo (hi - 1) else nil. *)
-(* Proof. *)
-(*   intros. red. omega. *)
-(*   apply Zwf_well_founded. *)
-(* Qed. *)
-
-(* Function sum (i: int): int := *)
-(*   m *)
-(* Fixpoint sum (i: int): int := *)
-(*   i.(intval) *)
-(* . *)
 
 Require AST.
 

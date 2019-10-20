@@ -128,7 +128,6 @@ Proof.
       erewrite Genv_map_defs_def_inv; et.
       uo. des_ifs_safe.
       erewrite match_prog_def; et. rewrite Heq1. ss. des_ifs_safe.
-      (* exploit IS.mem_1; et. i; clarify. *)
     + i. eapply used_closed; et.
   - unfold tge. i.
     exploit Genv_map_defs_def; et. i; des.
@@ -174,7 +173,6 @@ Theorem sim_modsem
     ModSemPair.sim msp
 .
 Proof.
-  (* rr in TRANSL. destruct TRANSL as [TRANSL0 TRANSL1]. *)
   destruct TRANSL as [used0 TRANSL0]. des.
   eapply match_states_sim with (match_states := match_states)
                                (match_states_at := fun _ _ => eq)
@@ -183,7 +181,6 @@ Proof.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
-    (* destruct sm_arg; ss. clarify. *)
     inv INITTGT. des. inv SAFESRC. destruct args_src, args_tgt; ss.
     inv SIMARGS; ss. clarify.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInjInv.mem_inv_src sm_arg) (SimMemInj.inj sm_arg.(SimMemInjInv.minj))).
@@ -361,7 +358,6 @@ Proof.
       inv TRANSL0.
       assert(PROG0: (prog_defmap tprog) ! id = Some (Gvar gv)).
       {
-        (* TODO: make lemma!!!!!!!!!!!!!!!!!!! *)
         generalize (Sk.of_program_prog_defmap tprog fn_sig id). intro REL.
         inv REL; try congruence.
         rewrite PROG in *. clarify.

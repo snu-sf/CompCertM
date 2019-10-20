@@ -31,7 +31,6 @@ Section MEMINJ.
 Definition SimMemInvTop: SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInjInv.top_inv SimMemInjInv.top_inv.
 Local Existing Instance SimMemInvTop.
 
-(* Definition t': Type := ident -> bool. *)
 Record t': Type := mk {
   dropped:> ident -> Prop;
   src: Sk.t;
@@ -46,10 +45,6 @@ Inductive wf (ss: t'): Prop :=
     (DROP: forall id
         (DROP: ss id),
         ss.(tgt).(prog_defmap) ! id = None)
-    (* (SIMSK: forall *)
-    (*     id *)
-    (*   , *)
-    (*    sk_tgt.(prog_defmap) ! id = if ss id then None else sk_src.(prog_defmap) ! id) *)
     (CLOSED: ss <1= ss.(src).(privs))
     (PUB: ss.(src).(prog_public) = ss.(tgt).(prog_public))
     (MAIN: ss.(src).(prog_main) = ss.(tgt).(prog_main))
@@ -86,7 +81,6 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
         exists blk_src,
           (<<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>) /\
           (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)
-    (* /\ <<KEPT: ss.(kept) id>> <---------- This can be obtained via SIMSYMB1. *)
     )
     (SSINV: forall
         id blk_src
@@ -189,7 +183,6 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
         exists blk_src,
           (<<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>) /\
           (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)
-    (* /\ <<KEPT: ss.(kept) id>> <---------- This can be obtained via SIMSYMB1. *)
     >>)
     /\
     (<<SSINV: forall
@@ -518,32 +511,6 @@ Global Program Instance SimSymbDropInv: SimSymb.class SimMemInvTop := {
   wf := wf;
   sim_skenv := sim_skenv;
 }.
-(* Next Obligation. *)
-(*   inv SIMSK. *)
-(*   econs; eauto. *)
-(*   ii. *)
-(*   destruct (classic (ss id)). *)
-(*   - erewrite DROP in *; eauto. ss. *)
-(*   - erewrite <- KEPT; ss. *)
-(*     esplits; eauto. *)
-(*     reflexivity. *)
-(* Qed. *)
-(* Next Obligation. *)
-(*   econs; eauto. ii. des; ss. *)
-(* Qed. *)
-(* Next Obligation. *)
-(*   inv LE0. inv LE1. *)
-(*   econs; eauto. *)
-(*   ii; des. *)
-(*   specialize (OUTSIDE id). *)
-(*   specialize (OUTSIDE0 id). *)
-(*   destruct (classic (ss1 id)). *)
-(*   - exploit OUTSIDE; eauto. *)
-(*   - exploit OUTSIDE0; eauto. i; des. *)
-(*     hexploit (linkorder_defs LINKORD0); eauto. i; des. *)
-(*     hexploit (linkorder_defs LINKORD1); eauto. i; des. *)
-(*     esplits; eauto. *)
-(* Qed. *)
 Next Obligation.
   inv SIMSK. inv WFSRC.
   econs; et.
@@ -902,9 +869,6 @@ Next Obligation.
     rename H1 into KEEP.
     clarify.
 
-    (* assert(def_src = def_tgt). *)
-    (* { exploit DEFKEEP; eauto. eapply Genv.find_invert_symbol; eauto. i. *)
-    (*   rewrite DEFSRC in *. rewrite H0 in *. des. clarify. } clarify. *)
     esplits; eauto.
 
     inv LETGT.

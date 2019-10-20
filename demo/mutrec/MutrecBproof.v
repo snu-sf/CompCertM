@@ -8,7 +8,6 @@ Require Import MutrecHeader IntegersC.
 Require Import MutrecB MutrecBspec.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift AsmregsC MatchSimModSem.
-(* Require SimMemInjC. *)
 Require SoundTop.
 Require SimMemInjC SimMemInjInv SimMemInjInvC.
 Require Mach.
@@ -119,8 +118,6 @@ Let md_src: Mod.t := (MutrecBspec.module).
 Let md_tgt: Mod.t := (AsmC.module prog).
 Hypothesis (INCL: SkEnv.includes skenv_link md_src.(Mod.sk)).
 Hypothesis (WF: SkEnv.wf skenv_link).
-(* Let ge := (SkEnv.project skenv_link md_src.(Mod.sk)). *)
-(* Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)). *)
 
 Let tge := (skenv_link.(SkEnv.project) prog.(Sk.of_program fn_sig)).(SkEnv.revive) prog.
 Definition msp: ModSemPair.t :=
@@ -312,7 +309,6 @@ Proof.
   rename b into f_blk.
   eexists. splits; et.
   { unfold Genv.find_funct_ptr. des_ifs. }
-  (* exploit (@SkEnv.project_revive_precise _ _ skenv_link); eauto. *)
   { inv INCL.
     exploit (Sk.of_program_prog_defmap prog fn_sig); et. rewrite DMAP. intro S. ss.
 

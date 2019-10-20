@@ -43,17 +43,6 @@ Definition internal_function_state (ge: genv) (s: Csem.state) : Prop :=
 
 Section PRESERVATION.
 
-(* PLAN B-0*)
-
-(*
-B-0
-* : Physical
-+ : Logical
-c0 * empty
->=
-c0 + empty
-*)
-
   Inductive my_eq {A: Type} (x: A): A -> Prop :=
   | my_eq_refl: my_eq x x.
 

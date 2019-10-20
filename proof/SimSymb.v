@@ -27,7 +27,6 @@ Module SimSymb.
           (FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src),
           exists def_tgt, <<FUNCSRC: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt>> /\ <<SIM: def_src = def_tgt>>).
 
-  (* TODO: Try moving t into argument? sim_symb coercion gets broken and I don't know how to fix it. *)
   Class class (SM: SimMem.class) :=
     { t: Type;
       le: t -> t -> Prop;
@@ -78,56 +77,17 @@ Module SimSymb.
             (<<MAINSIM: SimMem.sim_val sm (Genv.symbol_address skenv_src ss.(src).(prog_main) Ptrofs.zero)
                                        (Genv.symbol_address skenv_tgt ss.(tgt).(prog_main) Ptrofs.zero)>>);
 
-      (* mle_preserves_sim_skenv: forall *)
-      (*     sm0 sm1 *)
-      (*     (MLE: SimMem.le sm0 sm1) *)
-      (*     ss skenv_src skenv_tgt *)
-      (*     (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt) *)
-      (*   , *)
-      (*     <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>> *)
-      (* ; *)
-
       mlepriv_preserves_sim_skenv: forall sm0 sm1 ss skenv_src skenv_tgt
           (MLE: SimMem.lepriv sm0 sm1)
           (SIMSKENV: sim_skenv sm0 ss skenv_src skenv_tgt),
           <<SIMSKENV: sim_skenv sm1 ss skenv_src skenv_tgt>>;
 
-      (* sim_skenv_monotone_ss: forall *)
-      (*     sm ss_link skenv_src skenv_tgt *)
-      (*     (SIMSKENV: sim_skenv sm ss_link skenv_src skenv_tgt) *)
-      (*     ss *)
-      (*     (LE: linkorder ss ss_link) *)
-      (*   , *)
-      (*     <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>> *)
-      (* (* Note: this should be trivial. kept becomes smaller *) *)
-      (* ; *)
-
-      (* (* TODO: Can we separate sim_skenv_monotone_skenv, like sim_skenv_monotone_ss? *) *)
-      (* sim_skenv_monotone_skenv: forall *)
-      (*     sm ss skenv_link_src skenv_link_tgt *)
-      (*     (SIMSKENV: sim_skenv sm ss skenv_link_src skenv_link_tgt) *)
-      (*     (* F_src V_src F_tgt V_tgt *) *)
-      (*     (* (flesh_src: list (ident * globdef (AST.fundef F_src) V_src)) *) *)
-      (*     (* (flesh_tgt: list (ident * globdef (AST.fundef F_tgt) V_tgt)) *) *)
-      (*     sk_src sk_tgt *)
-      (*     (SIMSK: sim_sk ss sk_src sk_tgt) *)
-      (*     skenv_src skenv_tgt *)
-      (*     (LESRC: skenv_link_src.(SkEnv.project) sk_src.(defs) skenv_src) *)
-      (*     (LETGT: skenv_link_tgt.(SkEnv.project) sk_tgt.(defs) skenv_tgt) *)
-      (*   , *)
-      (*     <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>> *)
-      (* ; *)
-
-      (* TODO: Can we separate sim_skenv_monotone_skenv, like sim_skenv_monotone_ss? *)
       sim_skenv_monotone: forall
           sm ss_link skenv_link_src skenv_link_tgt
           ss skenv_src skenv_tgt
           (WFSRC: SkEnv.wf skenv_link_src)
           (WFTGT: SkEnv.wf skenv_link_tgt)
           (SIMSKENV: sim_skenv sm ss_link skenv_link_src skenv_link_tgt)
-          (* F_src V_src F_tgt V_tgt *)
-          (* (flesh_src: list (ident * globdef (AST.fundef F_src) V_src)) *)
-          (* (flesh_tgt: list (ident * globdef (AST.fundef F_tgt) V_tgt)) *)
           (SIMSK: wf ss)
           (LE: le ss ss_link)
           (INCLSRC: SkEnv.includes skenv_link_src ss.(src))
@@ -143,17 +103,6 @@ Module SimSymb.
       system_sim_skenv: forall sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt),
           <<SIMSKENV: sim_skenv sm ss skenv_src.(System.skenv) skenv_tgt.(System.skenv)>>;
-      (* system_sim_skenv_sim_ge: forall *)
-      (*     sm ss_sys ss sk_src sk_tgt *)
-      (*     skenv_src skenv_tgt *)
-      (*     (LOADSRC: sk_src.(Sk.load_skenv) = skenv_src) *)
-      (*     (LOADTGT: sk_tgt.(Sk.load_skenv) = skenv_tgt) *)
-      (*     (SIMSK: sim_sk ss sk_src sk_tgt) *)
-      (*     (* (LE: SimSymb.le ss_sys ss) *) *)
-      (*     (SIMSKENV: sim_skenv sm ss_sys skenv_src.(System.skenv) skenv_tgt.(System.skenv)) *)
-      (*   , *)
-      (*     <<SIMGE: sim_skenv sm ss_sys skenv_src.(System.globalenv) skenv_tgt.(System.globalenv)>> *)
-      (* ; *)
       system_axiom: forall
           sm0 ss_sys skenv_sys_src skenv_sys_tgt
           args_src args_tgt tr retv_src ef
@@ -165,7 +114,6 @@ Module SimSymb.
           (SYSSRC: external_call ef skenv_sys_src (args_src.(Args.vs)) (args_src.(Args.m))
                                  tr
                                  (retv_src.(Retv.v)) (retv_src.(Retv.m))),
-          (* exists sm_lift, SimMem.lepriv sm0 sm_lift /\ *)
           exists sm1 retv_tgt,
             (<<SYSTGT: external_call ef skenv_sys_tgt (args_tgt.(Args.vs)) (args_tgt.(Args.m))
                                      tr
@@ -173,7 +121,6 @@ Module SimSymb.
             /\ (<<RETV: SimMem.sim_retv retv_src retv_tgt sm1>>)
             /\ (<<MLE0: SimMem.le sm0 sm1>>)
             /\ (<<MWF: SimMem.wf sm1>>);
-            (* /\ exists sm_unlift, (<<MLE1: SimMem.le sm0 sm_unlift>>) /\ (<<MLE2: SimMem.lepriv sm1 sm_unlift>>) *)
     }.
 
   Lemma mle_preserves_sim_skenv: forall

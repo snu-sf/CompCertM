@@ -27,7 +27,6 @@ Section MODSEM.
   Variable skenv_link: SkEnv.t.
   Variable p: unit.
   Let skenv: SkEnv.t := skenv_link.(SkEnv.project) sk_link.
-  (* Let ge: genv := Build_genv (skenv.(SkEnv.revive) p) p.(prog_comp_env). *)
   Let ge: SkEnv.t := skenv.
 
   Inductive state: Type :=

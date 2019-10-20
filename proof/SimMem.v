@@ -29,14 +29,10 @@ Module SimMem.
     wf: t -> Prop;
     le: t -> t -> Prop;
     lepriv: t -> t -> Prop;
-    (* Time order: unlift second arg into first arg. *)
-    (* TODO: reorder arg? from->to? *)
 
     le_PreOrder :> PreOrder le;
 
     pub_priv: forall sm0 sm1, le sm0 sm1 -> lepriv sm0 sm1;
-    (* lift_le: forall mrel, le mrel (lift mrel); *)
-    (* lift_spec: forall mrel0 mrel1, le (lift mrel0) mrel1 -> wf mrel0 -> le mrel0 (unlift mrel0 mrel1); *)
 
     sim_val: t -> val -> val -> Prop;
     sim_val_list: t -> list val -> list val -> Prop;
@@ -44,14 +40,6 @@ Module SimMem.
     sim_val_list_spec: forall sm0, (List.Forall2 sm0.(sim_val) = sm0.(sim_val_list));
     sim_val_int: forall sm0 v_src v_tgt, sim_val sm0 v_src v_tgt -> forall i, v_src = Vint i -> v_tgt = Vint i;
   }.
-
-  (* Lemma le_sim_val *)
-  (*       `{SM: class} *)
-  (*       mrel0 mrel1 *)
-  (*       (MWF: SimMem.wf mrel0) *)
-  (*       (MLE: le mrel0 mrel1): *)
-  (*     sim_val mrel0 <2= sim_val mrel1. *)
-  (* Proof. eapply lepriv_sim_val; et. eapply pub_priv; et. Qed. *)
 
   Lemma sim_val_list_length
         `{SM: class} (sm0: t)
@@ -63,13 +51,8 @@ Module SimMem.
   Definition sim_block `{SM: class} (sm0: t) (blk_src blk_tgt: block): Prop :=
     sm0.(sim_val) (Vptr blk_src Ptrofs.zero) (Vptr blk_tgt Ptrofs.zero).
 
-  (* Definition lifted `{SM: class} (sm0 sm1: t): Prop := SimMem.lift sm0 = sm1 /\ SimMem.wf sm0. *)
-
   Definition future `{SM: class}: t -> t -> Prop := rtc (lepriv \2/ le).
 
-  (* Definition sim_regset `{SM: class} (sm0: t) (rs_src rs_tgt: regset): Prop := *)
-  (*   forall pr, sm0.(sim_val) (rs_src pr) (rs_tgt pr) *)
-  (* . *)
 
   Definition sim_regset `{SM: class} (sm0: SimMem.t) (rs_src rs_tgt: Asm.regset): Prop := forall pr, sm0.(sim_val) (rs_src pr) (rs_tgt pr).
 

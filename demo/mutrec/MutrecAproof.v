@@ -10,7 +10,6 @@ Require Import MutrecHeader.
 Require Import MutrecA MutrecAspec.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift AsmregsC MatchSimModSem.
-(* Require SimMemInjC. *)
 Require SoundTop.
 Require SimMemInjC SimMemInjInvC.
 Require Import Clightdefs.
@@ -111,12 +110,11 @@ Inductive match_states_internal: nat -> MutrecAspec.state -> Clight.state -> Pro
 | match_callstate_nonzero
     idx i m_src m_tgt
     fptr
-    (* targs tres cconv *)
     (RANGE: 0 <= i.(Int.intval) < MAX)
     (FINDF: Genv.find_funct (Smallstep.globalenv (modsem2 skenv_link prog)) fptr = Some (Internal func_f))
     (IDX: (idx > 3)%nat)
   :
-    match_states_internal idx (Callstate i m_src) (Clight.Callstate fptr (Tfunction (* targs tres cconv) *)
+    match_states_internal idx (Callstate i m_src) (Clight.Callstate fptr (Tfunction
                                                                             (Tcons tint Tnil) tint cc_default)
                                                                     [Vint i] Kstop m_tgt)
 | match_returnstate
@@ -126,40 +124,6 @@ Inductive match_states_internal: nat -> MutrecAspec.state -> Clight.state -> Pro
 .
 
 
-(* Inductive match_states_internal: MutrecAspec.state -> Clight.state -> Prop := *)
-(* | match_callstate_nonzero_memoized *)
-(*     i m_src m_tgt *)
-(*     fptr blk memov *)
-(*     (* targs tres cconv *) *)
-(*     (FINDF: Genv.find_funct (Smallstep.globalenv (modsem2 skenv_link prog)) fptr = Some (Internal func_f)) *)
-(*     (SYMB: Genv.find_symbol skenv_link _memoized = Some blk) *)
-(*     (MEMOLD: Mem.loadv *)
-(*                Mint64 m_tgt *)
-(*                (Vptr blk (Ptrofs.repr (size_chunk Mint64 * i.(Int.intval)))) = Some (Vint memov)) *)
-(*     (MEMOIZED: memov = sum i) *)
-(*   : *)
-(*     match_states_internal (Callstate i m_src) (Clight.Callstate fptr (Tfunction (* targs tres cconv) *) *)
-(*                                                                         (Tcons tint Tnil) tint cc_default) *)
-(*                                                                 [Vint i] Kstop m_tgt) *)
-(* | match_callstate_nonzero_nonmemoized *)
-(*     i m_src m_tgt *)
-(*     fptr blk memov *)
-(*     (* targs tres cconv *) *)
-(*     (FINDF: Genv.find_funct (Smallstep.globalenv (modsem2 skenv_link prog)) fptr = Some (Internal func_f)) *)
-(*     (SYMB: Genv.find_symbol skenv_link _memoized = Some blk) *)
-(*     (MEMOLD: Mem.loadv *)
-(*                Mint64 m_tgt *)
-(*                (Vptr blk (Ptrofs.repr (size_chunk Mint64 * i.(Int.intval)))) = Some (Vint memov)) *)
-(*     (NONMEMOIZED: memov.(Int.intval) < 0) *)
-(*   : *)
-(*     match_states_internal (Callstate i m_src) (Clight.Callstate fptr (Tfunction (* targs tres cconv) *) *)
-(*                                                                         (Tcons tint Tnil) tint cc_default) *)
-(*                                                                 [Vint i] Kstop m_tgt) *)
-(* | match_returnstate *)
-(*     i m_src m_tgt *)
-(*   : *)
-(*     match_states_internal (Returnstate i m_src) (Clight.Returnstate (Vint i) Kstop m_tgt) *)
-(* . *)
 
 Inductive match_states (sm_init: SimMem.t)
           (idx: nat) (st_src0: MutrecAspec.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
@@ -169,7 +133,6 @@ Inductive match_states (sm_init: SimMem.t)
     (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
     (MLE: SimMem.le sm_init sm0)
-    (* (IDX: (idx > 3)%nat) *)
 .
 
 Lemma g_blk_exists
@@ -203,7 +166,6 @@ Proof.
   rename b into g_blk.
   eexists. splits; et.
   { unfold Genv.find_funct_ptr. des_ifs. }
-  (* exploit (@SkEnv.project_revive_precise _ _ skenv_link); eauto. *)
   { inv INCL.
     exploit (CSk.of_program_prog_defmap prog signature_of_function); et. rewrite T. intro S.
 
@@ -272,7 +234,6 @@ Proof.
         { apply Ord.lift_idx_spec.
           instantiate (1:=2%nat). nia. }
 
-        (* left. *)
         eapply plus_left with (t1 := E0) (t2 := E0); ss.
         { econs; eauto.
           { eapply modsem2_determinate; eauto. }
@@ -306,7 +267,6 @@ Proof.
 
         apply star_refl.
       * refl.
-      (* * refl. *)
       * right. eapply CIH; eauto. econs; ss; eauto.
         replace (Int.repr 0) with (sum Int.zero).
         { econs; eauto. }
@@ -485,7 +445,6 @@ Proof.
           clarify.
           eexists (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _).
           exists sm0.
-          (* eexists (SimMemInjInv.mk minj _ _ (SimMemInjInv.mem_inv sm_init)). *)
           esplits; ss; eauto.
           { econs; ss; eauto.
             instantiate (1:=Vptr g_blk Ptrofs.zero).
@@ -514,11 +473,7 @@ Proof.
 
           esplits.
           { econs; eauto. }
-          { apply MLE2. (* eassumption. *)
-            (* etrans; eauto. refl. *)
-            (* eapply SimMemInjInv.unlift_spec; eauto. *)
-            (* econs; eauto. } *)
-          }
+          { apply MLE2. }
 
           left. pfold. econs; eauto. i; des. econs 2; eauto.
           {
@@ -626,7 +581,7 @@ Proof.
               econs 2.
             - etrans; eauto. etrans; eauto.
               eapply SimMemInjInvC.unlift_spec; eauto. econs; eauto.
-            (* - omega. *) }
+          }
       }
 
       { hexploit VAL; eauto. i. des. clarify.
@@ -819,17 +774,11 @@ Proof.
       * econs; eauto.
         { econs; eauto. omega. }
         { refl. }
-        (* { omega. } *)
 
   - (* init progress *)
     i.
     des. inv SAFESRC.
     inv SIMARGS; ss.
-    (* hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des. *)
-
-    (* exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. *)
-
-    (* hexploit (@fsim_external_inject_eq); try apply FINDF; eauto. clear FPTR. intro FPTR. *)
 
     esplits; eauto. econs; eauto.
     + instantiate (1:= func_f).

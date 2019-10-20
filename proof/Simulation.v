@@ -690,7 +690,6 @@ Proof.
       { i. eapply PROGRESS. eapply star_safe; eauto. }
     + econs 2; try apply BSIM; eauto. des. esplits; eauto. eapply star_trans; eauto. inv STAR0; econs; eauto.
       { eapply t_trans; eauto. }
-  (* - i. exploit PROGRESS; eauto. ii. eapply SAFESRC. eapply star_trans; eauto. *)
 Qed.
 
 Lemma x2b_progress:
@@ -719,7 +718,7 @@ Proof.
         }
         subst. exploit REC; eauto. eapply star_safe; eauto. apply star_one; auto.
         i. eapply x2b_transitions_src_tau_rev; eauto. apply star_one; ss.
-      + des. pclearbot. clears t. clear t. inv PLUS. (* TODO: update tactic properly *)
+      + des. pclearbot. clears t. clear t. inv PLUS.
         destruct t1, t2; ss. clear_tac.
         eapply x2b_trans_forward_stutter; eauto. apply star_refl. econs; eauto. apply rt_refl.
   }
@@ -734,7 +733,6 @@ Lemma xsim_simulation_not_E0:
     receptive_at mt L1 s1 ->
     (forall t s1', Step L1 s1 t s1' ->
      exists i', exists s2',
-        (* (DPlus mt L2 s2 t s2' \/ (DStar mt L2 s2 t s2')) *)
         (DPlus mt L2 s2 t s2' \/ (s2 = s2' /\ t = E0))
      /\ match_states i' s1' s2') ->
   exists i', exists s2', DPlus mt L2 s2 t s2' /\ match_states i' s1' s2'.

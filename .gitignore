@@ -9,6 +9,7 @@ Makefile.coq.conf
 *.vio
 *.v.d
 *.glob
+.*.aux
 
 graph.png
 graph.dot

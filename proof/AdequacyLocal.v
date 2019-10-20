@@ -12,7 +12,7 @@ Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem SimMod SimModSem SimProg SimProg.
 Require Import ModSemProps SemProps Ord.
 Require Import Sound Preservation AdequacySound.
-Require Import Program.
+Require Import Program RUSC.
 
 Set Implicit Arguments.
 
@@ -728,3 +728,88 @@ Section ADQ.
   Qed.
 
 End ADQ.
+
+Require Import BehaviorsC SemProps.
+
+Program Definition mkPR (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.class)
+  : program_relation.t := program_relation.mk
+                            (fun (p_src p_tgt: program) =>
+                               forall (WF: forall x (IN: In x p_src), Sk.wf x),
+                               exists pp,
+                                 (<<SIMS: @ProgPair.sim MR SR MP pp>>)
+                                 /\ (<<SRCS: pp.(ProgPair.src) = p_src>>)
+                                 /\ (<<TGTS: pp.(ProgPair.tgt) = p_tgt>>)) _ _ _.
+Next Obligation.
+(* horizontal composition *)
+  exploit REL0; eauto. { i. eapply WF. rewrite in_app_iff. eauto. } intro T0; des.
+  exploit REL1; eauto. { i. eapply WF. rewrite in_app_iff. eauto. } intro T1; des.
+  clarify. unfold ProgPair.sim in *. rewrite Forall_forall in *. eexists (_ ++ _). esplits; eauto.
+  - rewrite Forall_forall in *. i. rewrite in_app_iff in *. des; [apply SIMS|apply SIMS0]; eauto.
+  - unfold ProgPair.src. rewrite map_app. ss.
+  - unfold ProgPair.tgt. rewrite map_app. ss.
+Qed.
+Next Obligation.
+(* adequacy *)
+  destruct (classic (forall x (IN: In x p_src), Sk.wf x)) as [WF|NWF]; cycle 1.
+  { eapply sk_nwf_improves; auto. }
+  eapply bsim_improves.
+  eapply mixed_to_backward_simulation.
+  specialize (REL WF). des. clarify.
+  eapply (@adequacy_local MR SR MP). auto.
+Qed.
+Next Obligation. exists []. splits; ss. Qed.
+Arguments mkPR: clear implicits.
+
+
+Definition relate_single (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.class)
+           (p_src p_tgt: Mod.t) : Prop :=
+  forall (WF: Sk.wf p_src),
+  exists mp,
+    (<<SIM: @ModPair.sim MR SR MP mp>>)
+    /\ (<<SRC: mp.(ModPair.src) = p_src>>)
+    /\ (<<TGT: mp.(ModPair.tgt) = p_tgt>>).
+Arguments relate_single : clear implicits.
+
+Lemma relate_single_program MR SR MP p_src p_tgt
+      (REL: relate_single MR SR MP p_src p_tgt):
+    (mkPR MR SR MP) [p_src] [p_tgt].
+Proof.
+  unfold relate_single. ss. i.
+  exploit REL; [ss; eauto|]. i. des. clarify.
+  exists [mp]. esplits; ss; eauto.
+Qed.
+Arguments relate_single_program : clear implicits.
+
+Lemma relate_each_program MR SR MP
+      (p_src p_tgt: program)
+      (REL: Forall2 (relate_single MR SR MP) p_src p_tgt):
+    (mkPR MR SR MP) p_src p_tgt.
+Proof.
+  revert p_tgt REL. induction p_src; ss; i.
+  - inv REL. exists []; splits; ss.
+  - inv REL. exploit IHp_src; eauto. i. des.
+    exploit H1; eauto. i. des. clarify.
+    exists (mp :: pp); splits; ss. econs; eauto.
+Qed.
+Arguments relate_each_program : clear implicits.
+
+Lemma relate_single_rtc_rusc (R: program_relation.t -> Prop) MR SR MP
+      (p_src p_tgt: Mod.t)
+      (REL: rtc (relate_single MR SR MP) p_src p_tgt)
+      (RELIN: R (mkPR MR SR MP)):
+    rusc R [p_src] [p_tgt].
+Proof.
+  induction REL; try refl.
+  - etrans; eauto. eapply rusc_incl; eauto. eapply relate_single_program; eauto.
+Qed.
+Arguments relate_single_program : clear implicits.
+
+Lemma relate_single_rusc (R: program_relation.t -> Prop) MR SR MP
+      (p_src p_tgt: Mod.t)
+      (REL: (relate_single MR SR MP) p_src p_tgt)
+      (RELIN: R (mkPR MR SR MP)):
+    rusc R [p_src] [p_tgt].
+Proof.
+  eapply relate_single_rtc_rusc; eauto. eapply rtc_once. eauto.
+Qed.
+Arguments relate_single_program : clear implicits.

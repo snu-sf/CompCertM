@@ -3,8 +3,8 @@
 [CompCertM: CompCert with Lightweight Modular Verification and Multi-Language Linking](https://sf.snu.ac.kr/compcertm/)
 
 ## Build
-CompCertM is based on [CompCertR](https://github.com/snu-sf/CompCertR) which is the refactored version of CompCert. In order to build CompCertM, You need to build CompCertR first.
-1) Clone https://github.com/snu-sf/CompCertR and follow [install instructions](https://github.com/snu-sf/CompCertR#installation-instructions).  
+CompCertM is relied on [CompCertR](https://github.com/snu-sf/CompCertR) which is the refactored version of CompCert. In order to build CompCertM, you need to build CompCertR first.
+1) Clone https://github.com/snu-sf/CompCertR and follow [installation instructions](https://github.com/snu-sf/CompCertR#installation-instructions).  
 
 2) **Go to CompCertR directory** and issue the following commands: <pre>
 git clone https://github.com/snu-sf/CompCertM.git linking
@@ -38,6 +38,7 @@ We list up few important definitions/proofs from the paper.
 - Parameter-MemRel _(Page 20, Fig. 10)_: [proof/SimMem.v](proof/SimMem.v)  
 - Parameter-SymbRel _(Page 20, Fig. 10)_: [proof/SimSymb.v](proof/SimSymb.v)  
 - Parameter-MemPred _(Page 20, Fig. 10)_: [proof/Sound.v](proof/Sound.v)  
+(NOTE: The definition of a memory predicate is a little different from that in the paper. If we consider `(Sound.t * Memory.mem)` as a single component (= "t" in the paper), two definitions are equivalent.)  
 - Parameterized Open Simulation _(Page 21, Fig. 11)_: [proof/SimModSem.v](proof/SimModSem.v)  
 - Open Preservation _(Page 21, Fig. 11)_: [proof/Preservation.v](proof/Preservation.v) - [`local_preservation_standard`](proof/Preservation.v#L102)  
 - Adequacy of Parameterized Open Simulation _(Page 22, Theorem 6.2)_: [proof/AdequacyLocal.v](proof/AdequacyLocal.v) - [`Theorem adequacy_local`](proof/AdequacyLocal.v#L705).  

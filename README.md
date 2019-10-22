@@ -7,9 +7,16 @@ CompCertM is relied on [CompCertR](https://github.com/snu-sf/CompCertR) which is
 1) Clone https://github.com/snu-sf/CompCertR and follow [installation instructions](https://github.com/snu-sf/CompCertR#installation-instructions).  
 
 2) **Go to CompCertR directory** and issue the following commands: <pre>
-git clone https://github.com/snu-sf/CompCertM.git linking
-cd linking
+git clone https://github.com/snu-sf/CompCertM.git
+cd CompCertM
 make -j[N]</pre>
+
+
+Or, you can download a Docker image in which `/home/coq/CompCertR/CompCertM` contains build result:
+```
+docker pull minkiminki/popl20-93:v3.5
+docker run -it minkiminki/popl20-93:v3.5
+```
 
 ## Code Structure
 

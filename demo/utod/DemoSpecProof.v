@@ -222,12 +222,12 @@ Proof.
   assert (ARGLONG: exists lng, (Args.vs args_src) = [Vlong lng]).
   { inv SAFESRC. inv H. rewrite VS. eauto. }
   inv INITTGT; ss; clarify. inv TYP. ss.
-  inv SIMARGS; ss. clarify. inv VALS; ss. inv H0; ss. 
+  inv SIMARGS; ss. clarify. inv VALS; ss. inv H0; ss.
   ss. clarify. unfold AsmC.store_arguments in *. des.
   dup STORE0. inv STORE0.
   unfold typify_list, zip in *. inv VALS. des_ifs_safe.
   unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs.
-  inv H3. 
+  inv H3.
 
   eexists (DemoSpec.mkstate lng (SimMemInj.src sm_arg)). esplits; eauto.
   - refl.
@@ -341,7 +341,7 @@ Proof.
            { rewrite Int64.unsigned_zero in *. set (Int64.unsigned_range_2 i). nia. }
            ss. rewrite Float.mul2_add. rewrite Float.of_longu_of_long_2; auto.
            unfold Int64.ltu. des_ifs.
-        -- ss.
+        -- refl.
         -- eauto.
 
     + econs 2.
@@ -381,7 +381,7 @@ Proof.
            set (Int64.unsigned_range i).
            unfold Int64.ltu, Int64.lt, Int64.signed in *. zsimpl. des_ifs.
            rewrite Int64.unsigned_zero in *. rewrite Int64.unsigned_repr in *; nia.
-        -- ss.
+        -- refl.
         -- eauto.
            Unshelve. all: eauto.
 Qed.

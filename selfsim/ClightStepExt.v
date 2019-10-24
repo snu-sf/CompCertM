@@ -25,7 +25,7 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
-Inductive match_states_ext_clight (sm_arg: SimMemExt.t')
+Inductive match_states_ext_clight
   : unit -> state -> state -> SimMemExt.t' -> Prop :=
 | match_ext_State
     fn stmt K_src K_tgt env_src env_tgt tenv_src tenv_tgt m_src m_tgt sm0
@@ -36,7 +36,7 @@ Inductive match_states_ext_clight (sm_arg: SimMemExt.t')
     (TENV: match_temp_env inject_id tenv_src tenv_tgt)
     (CONT: match_cont inject_id K_src K_tgt):
     match_states_ext_clight
-      sm_arg tt
+      tt
       (State fn stmt K_src env_src tenv_src m_src)
       (State fn stmt K_tgt env_tgt tenv_tgt m_tgt)
       sm0
@@ -49,7 +49,7 @@ Inductive match_states_ext_clight (sm_arg: SimMemExt.t')
     (VALS: Val.lessdef_list args_src args_tgt)
     (CONT: match_cont inject_id K_src K_tgt):
     match_states_ext_clight
-      sm_arg tt
+      tt
       (Callstate fptr_src ty args_src K_src m_src)
       (Callstate fptr_tgt ty args_tgt K_tgt m_tgt)
       sm0
@@ -61,7 +61,7 @@ Inductive match_states_ext_clight (sm_arg: SimMemExt.t')
     (INJ: Val.lessdef retv_src retv_tgt)
     (CONT: match_cont inject_id K_src K_tgt):
     match_states_ext_clight
-      sm_arg tt
+      tt
       (Returnstate retv_src K_src m_src)
       (Returnstate retv_tgt K_tgt m_tgt)
       sm0.
@@ -342,12 +342,12 @@ Section CLIGHTEXT.
   Qed.
 
   Lemma clight_step_preserve_extension
-        sm_arg u st_src0 st_tgt0 st_src1 sm0 tr
-        (MATCH: match_states_ext_clight sm_arg u st_src0 st_tgt0 sm0)
+        u st_src0 st_tgt0 st_src1 sm0 tr
+        (MATCH: match_states_ext_clight u st_src0 st_tgt0 sm0)
         (STEP: step se ge (function_entry ge) st_src0 tr st_src1):
     exists st_tgt1 sm1,
       (<<STEP: step se ge (function_entry ge) st_tgt0 tr st_tgt1>>) /\
-      (<<MATCH: match_states_ext_clight sm_arg u st_src1 st_tgt1 sm1>>).
+      (<<MATCH: match_states_ext_clight u st_src1 st_tgt1 sm1>>).
   Proof.
     inv STEP; inv MATCH; try (by inv CONT; esplits; do 3 (econs; eauto)).
     - exploit eval_expr_extends; eauto. i. des.

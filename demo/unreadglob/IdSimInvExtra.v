@@ -319,7 +319,6 @@ Require Import AsmC.
 Inductive match_states P0 P1
           (skenv_link_tgt: SkEnv.t)
           (ge_src ge_tgt: genv)
-          (sm_init : SimMemInjInv.t')
   : nat-> AsmC.state -> AsmC.state -> SimMemInjInv.t' -> Prop :=
 | match_states_intro
     j init_rs_src init_rs_tgt rs_src rs_tgt m_src m_tgt
@@ -342,7 +341,7 @@ Inductive match_states P0 P1
     match_states
       P0 P1
       skenv_link_tgt
-      ge_src ge_tgt sm_init 0
+      ge_src ge_tgt 0
       (AsmC.mkstate init_rs_src (Asm.State rs_src m_src))
       (AsmC.mkstate init_rs_tgt (Asm.State rs_tgt m_tgt)) sm0
 .

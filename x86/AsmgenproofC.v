@@ -84,7 +84,6 @@ Inductive stack_base (initial_parent_sp initial_parent_ra: val): list Mach.stack
     stack_base initial_parent_sp initial_parent_ra (fr::ls).
 
 Inductive match_states
-          (sm_init: SimMem.t)
           (idx: nat) (st_src0: MachC.state) (st_tgt0: AsmC.state)
           (sm0: SimMem.t): Prop :=
 | match_states_intro

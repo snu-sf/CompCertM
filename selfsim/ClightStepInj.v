@@ -106,7 +106,7 @@ Inductive match_states_clight_internal:
       (Returnstate retv_tgt K_tgt m_tgt)
       j m_src m_tgt.
 
-Inductive match_states_clight (sm_arg: SimMemInj.t')
+Inductive match_states_clight
   : unit -> state -> state -> SimMemInj.t' -> Prop :=
 | match_states_clight_intro
     st_src st_tgt j m_src m_tgt sm0
@@ -115,7 +115,7 @@ Inductive match_states_clight (sm_arg: SimMemInj.t')
     (MWFINJ: j = sm0.(SimMemInj.inj))
     (MATCHST: match_states_clight_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMemInj.wf' sm0):
-    match_states_clight sm_arg tt st_src st_tgt sm0.
+    match_states_clight tt st_src st_tgt sm0.
 
 Section CLIGHTINJ.
 
@@ -574,14 +574,14 @@ Section CLIGHTINJ.
   Qed.
 
   Lemma clight_step_preserve_injection
-        sm_arg u st_src0 st_tgt0 st_src1 sm0 tr
+        u st_src0 st_tgt0 st_src1 sm0 tr
         (SYMBOLS: symbols_inject (SimMemInj.inj sm0) se_src se_tgt)
         (GENV: meminj_match_globals eq ge_src ge_tgt (SimMemInj.inj sm0))
-        (MATCH: match_states_clight sm_arg u st_src0 st_tgt0 sm0)
+        (MATCH: match_states_clight u st_src0 st_tgt0 sm0)
         (STEP: step se_src ge_src (function_entry ge_src) st_src0 tr st_src1):
       exists st_tgt1 sm1,
         (<<STEP: step se_tgt ge_tgt (function_entry ge_tgt) st_tgt0 tr st_tgt1>>) /\
-        (<<MATCH: match_states_clight sm_arg u st_src1 st_tgt1 sm1>>) /\
+        (<<MATCH: match_states_clight u st_src1 st_tgt1 sm1>>) /\
         (<<MLE: SimMemInj.le' sm0 sm1>>).
   Proof.
     inv STEP; inv MATCH; inv MATCHST; try (by inv CONT; esplits; try refl; do 3 (econs; eauto)).
@@ -697,7 +697,7 @@ Section CLIGHTINJ.
     assert (SYMBINJ: symbols_inject (SimMemInj.inj sm) se_src se_tgt) by eauto.
     exploit clight_step_preserve_injection; eauto; ss.
     - econs; eauto. econs; ss; eauto; try refl; try xomega.
-    - instantiate (1:=sm). i. des. destruct sm1.
+    - i. des. destruct sm1.
       inv MATCH0. inv MLE. inv MWF. ss. esplits; eauto; try (eapply Mem.unchanged_on_implies; eauto; ii; ss).
       + inv FROZEN. ii. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
         unfold Mem.valid_block. clear - OUTSIDE_SRC OUTSIDE_TGT. xomega.

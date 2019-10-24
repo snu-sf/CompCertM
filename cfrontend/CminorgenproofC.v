@@ -35,7 +35,6 @@ Let tge: Cminor.genv := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk))
 Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states
-          (sm_init: SimMem.t)
           (idx: nat) (st_src0: Csharpminor.state) (st_tgt0: Cminor.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Cminorgenproof.match_states skenv_link skenv_link ge st_src0 st_tgt0 sm0)

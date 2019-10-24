@@ -28,7 +28,7 @@ Section MATCHSIMFORWARD.
   Hypothesis PRSV: forall si, local_preservation ms_src (sound_states si).
 
   Variable match_states: forall
-      (sm_arg: SimMem.t) (idx: index) (st_src0: ms_src.(ModSem.state)) (st_tgt0: ms_tgt.(ModSem.state)) (sm0: SimMem.t),
+      (idx: index) (st_src0: ms_src.(ModSem.state)) (st_tgt0: ms_tgt.(ModSem.state)) (sm0: SimMem.t),
       Prop.
 
   Variable match_states_at: forall
@@ -59,10 +59,9 @@ Section MATCHSIMFORWARD.
                  <<LE: SimMem.lepriv sm0 sm1>>).
 
   Inductive match_states_at_helper
-            (sm_init: SimMem.t)
             (idx_at: index) (st_src0: ms_src.(ModSem.state)) (st_tgt0: ms_tgt.(ModSem.state)) (sm_at sm_arg: SimMem.t): Prop :=
   | match_states_at_intro
-      (MATCH: match_states sm_init idx_at st_src0 st_tgt0 sm_at)
+      (MATCH: match_states idx_at st_src0 st_tgt0 sm_at)
       args_src args_tgt
       (CALLSRC: ms_src.(ModSem.at_external) st_src0 args_src)
       (CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 args_tgt)
@@ -81,8 +80,7 @@ Section MATCHSIMFORWARD.
       exists st_init_src sm_init idx_init,
         (<<INITSRC: ms_src.(ModSem.initial_frame) args_src st_init_src>>) /\
         (<<MLE: SimMem.le sm_arg sm_init>>) /\
-        (<<MATCH: match_states sm_arg
-                               idx_init st_init_src st_init_tgt sm_init>>).
+        (<<MATCH: match_states idx_init st_init_src st_init_tgt sm_init>>).
 
   Hypothesis INITPROGRESS: forall sm_arg args_src args_tgt
       (SIMSKENV: ModSemPair.sim_skenv msp sm_arg)
@@ -91,14 +89,14 @@ Section MATCHSIMFORWARD.
       (SAFESRC: exists st_init_src, ms_src.(ModSem.initial_frame) args_src st_init_src),
       exists st_init_tgt, (<<INITTGT: ms_tgt.(ModSem.initial_frame) args_tgt st_init_tgt>>).
 
-  Hypothesis ATMWF: forall sm_init idx0 st_src0 st_tgt0 sm0
-      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
+  Hypothesis ATMWF: forall idx0 st_src0 st_tgt0 sm0
+      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
       (CALLSRC: ms_src.(ModSem.is_call) st_src0),
       <<MWF: SimMem.wf sm0>>.
 
-  Hypothesis ATFSIM: forall sm_init idx0 st_src0 st_tgt0 sm0 args_src
+  Hypothesis ATFSIM: forall idx0 st_src0 st_tgt0 sm0 args_src
       (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
+      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
       (CALLSRC: ms_src.(ModSem.at_external) st_src0 args_src)
       (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0),
       exists args_tgt sm_arg,
@@ -109,9 +107,9 @@ Section MATCHSIMFORWARD.
         (<<MWF: SimMem.wf sm_arg>>) /\
         (<<MATCHAT: match_states_at st_src0 st_tgt0 sm0 sm_arg>>).
 
-  Hypothesis AFTERFSIM: forall sm_init idx0 st_src0 st_tgt0 sm0 sm_arg sm_ret retv_src retv_tgt st_src1
+  Hypothesis AFTERFSIM: forall idx0 st_src0 st_tgt0 sm0 sm_arg sm_ret retv_src retv_tgt st_src1
       (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
+      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
       (MLE: SimMem.le sm0 sm_arg)
       (* (MWF: SimMem.wf sm_arg) *)
       (MLE: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
@@ -121,7 +119,7 @@ Section MATCHSIMFORWARD.
       (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0)
 
       (* history *)
-      (HISTORY: match_states_at_helper sm_init idx0 st_src0 st_tgt0 sm0 sm_arg)
+      (HISTORY: match_states_at_helper idx0 st_src0 st_tgt0 sm0 sm_arg)
 
       (* just helpers *)
       (MWFAFTR: SimMem.wf (SimMemLift.unlift sm_arg sm_ret))
@@ -130,12 +128,11 @@ Section MATCHSIMFORWARD.
         (<<MLE: mle_excl st_src0 st_tgt0 (SimMemLift.unlift sm_arg sm_ret) sm_after>>) /\
         forall (MLE: SimMem.le sm0 sm_after) (* helper *),
           ((<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>) /\
-           (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm_after>>)).
+           (<<MATCH: match_states idx1 st_src1 st_tgt1 sm_after>>)).
 
-  Hypothesis FINALFSIM: forall sm_init idx0 st_src0 st_tgt0 sm0 retv_src
+  Hypothesis FINALFSIM: forall idx0 st_src0 st_tgt0 sm0 retv_src
       (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-      (MFUTURE: SimMem.le sm_init sm0)
-      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
+      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
       (FINALSRC: ms_src.(ModSem.final_frame) st_src0 retv_src),
       exists sm_ret retv_tgt,
         (<<FINALTGT: ms_tgt.(ModSem.final_frame) st_tgt0 retv_tgt>>) /\
@@ -143,11 +140,11 @@ Section MATCHSIMFORWARD.
         (<<MLE: SimMem.le sm0 sm_ret>>) /\
         (<<MWF: SimMem.wf sm_ret>>).
 
-  Let STEPFSIM := forall sm_init idx0 st_src0 st_tgt0 sm0
+  Let STEPFSIM := forall idx0 st_src0 st_tgt0 sm0
       (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
-      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
+      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
       (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0),
       (<<RECEP: receptive_at ms_src st_src0>>) /\
       (<<STEPFSIM: forall tr st_src1
@@ -157,13 +154,13 @@ Section MATCHSIMFORWARD.
                            <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
                /\ (<<MLE: SimMem.le sm0 sm1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
-               /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)>>).
+               /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 sm1>>)>>).
 
-  Let STEPBSIM := forall sm_init idx0 st_src0 st_tgt0 sm0
+  Let STEPBSIM := forall idx0 st_src0 st_tgt0 sm0
       (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
-      (MATCH: match_states sm_init idx0 st_src0 st_tgt0 sm0)
+      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
       (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0) ,
       (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) /\
       (<<STEPBSIM: forall tr st_tgt1
@@ -173,24 +170,23 @@ Section MATCHSIMFORWARD.
                            <<STAR: Star ms_src st_src0 tr st_src1 /\ order idx1 idx0>>)
                /\ (<<MLE: SimMem.le sm0 sm1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
-               /\ (<<MATCH: match_states sm_init idx1 st_src1 st_tgt1 sm1>>)>>).
+               /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 sm1>>)>>).
 
   Hypothesis STEPSIM: STEPFSIM \/ STEPBSIM.
 
   Hypothesis BAR: bar_True.
 
   Lemma match_states_lxsim
-        sm_init i0 st_src0 st_tgt0 sm0
+        i0 st_src0 st_tgt0 sm0
         (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-        (MLE: SimMem.le sm_init sm0)
         (* (MWF: SimMem.wf sm0) *)
         (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
-        (MATCH: match_states sm_init i0 st_src0 st_tgt0 sm0):
+        (MATCH: match_states i0 st_src0 st_tgt0 sm0):
         (* su0 *)
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
       <<LXSIM: lxsimL ms_src ms_tgt (fun st => forall si, exists su0 m_init, sound_states si su0 m_init st)
                       has_footprint mle_excl
-                      sm_init i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>.
+                      i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>.
   Proof.
     (* move su0 at top. *)
     revert_until BAR. pcofix CIH. i. pfold. ii.
@@ -208,16 +204,16 @@ Section MATCHSIMFORWARD.
         i; des.
         assert(MLE3: SimMem.le sm0 sm_after).
         { eapply FOOTEXCL; et. etrans; et. eapply SimMemLift.lift_spec; et. }
-        spc H1. des. esplits; eauto. right. eapply CIH; eauto.
+        spc H1. des. esplits; eauto. right.
+        eapply CIH; [..|eauto].
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
           apply rtc_once. left. et.
         }
-        { etrans; eauto. }
     }
     generalize (classic (ModSem.is_return ms_src st_src0)). intro RETSRC; des.
     { (* RETURN *)
       u in RETSRC. des. exploit FINALFSIM; eauto. i; des. ii.
-      eapply lxsim_final; try apply SIMRET; eauto. etrans; eauto.
+      eapply lxsim_final; try apply SIMRET; eauto.
     }
     destruct STEPSIM as [STEPFSIM0|STEPBSIM0].
     { eapply lxsim_step_forward; eauto. i.
@@ -226,9 +222,8 @@ Section MATCHSIMFORWARD.
       - des.
         + left. eauto.
         + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
-      - right. eapply CIH; eauto.
+      - right. eapply CIH; [..|eauto].
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
-        { etransitivity; eauto. }
     }
     { rr in STEPBSIM0.
       eapply lxsim_step_backward; eauto. i.
@@ -237,9 +232,8 @@ Section MATCHSIMFORWARD.
       - des.
         + left. eauto.
         + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
-      - right. eapply CIH; eauto.
+      - right. eapply CIH; [..|eauto].
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
-        { etransitivity; eauto. }
     }
   Qed.
 

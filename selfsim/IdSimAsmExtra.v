@@ -533,7 +533,6 @@ Inductive wf_init_rss: signature -> regset -> regset -> Prop :=
 Inductive match_states_ext
           (skenv_link_tgt : SkEnv.t)
           (ge_src ge_tgt: genv)
-          (sm_init : @SimMem.t SimMemExt.SimMemExt)
   : unit -> AsmC.state -> AsmC.state -> (@SimMem.t SimMemExt.SimMemExt) -> Prop :=
 | match_states_ext_intro
     init_rs_src init_rs_tgt rs_src rs_tgt m_src m_tgt
@@ -550,7 +549,7 @@ Inductive match_states_ext
     (RAWF: Genv.find_funct skenv_link_tgt (init_rs_tgt RA) = None)
   :
     match_states_ext
-      skenv_link_tgt ge_src ge_tgt sm_init tt
+      skenv_link_tgt ge_src ge_tgt tt
       (AsmC.mkstate init_rs_src (Asm.State rs_src m_src))
       (AsmC.mkstate init_rs_tgt (Asm.State rs_tgt m_tgt)) sm0.
 

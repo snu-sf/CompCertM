@@ -70,16 +70,14 @@ Section SIMMODSEM.
       (MLE: SimMem.le sm0 sm1)
       (BSIM: bsim i1 st_src1 st_tgt0 sm1).
 
-  Inductive _lxsimSR_pre (lxsimSR: SimMem.t ->
-                                   idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
-            (sm_init: SimMem.t)
+  Inductive _lxsimSR_pre (lxsimSR: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | lxsimSR_step_forward
       (SU: forall (SU: DUMMY_PROP),
       (* (INTERNALSRC: ms_src.(ModSem.is_internal) st_src0) *)
       (* (INTERNALTGT: ms_tgt.(ModSem.is_internal) st_tgt0) *)
       (* (SAFESRC: ms_src.(ModSem.is_step) st_src0) *)
-      <<FSTEP: fsim_step (lxsimSR sm_init) i0 st_src0 st_tgt0 sm0>>
+      <<FSTEP: fsim_step lxsimSR i0 st_src0 st_tgt0 sm0>>
       (* Note: We used coercion on determinate_at. See final_state, which is bot2. *)
       (* sd_determ_at_final becomes nothing, but it is OK. *)
       (* In composed semantics, when it stepped, it must not be final *))
@@ -91,7 +89,7 @@ Section SIMMODSEM.
       (* (<<SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0>>) /\ *)
       (<<BSTEP: forall
           (SAFESRC: safe_modsem ms_src st_src0),
-         (<<BSTEP: bsim_step (lxsimSR sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
+         (<<BSTEP: bsim_step lxsimSR i0 st_src0 st_tgt0 sm0>>)>>) /\
       (<<PROGRESS: forall
            (* (STEPSRC: ms_src.(ModSem.is_step) st_src0) *)
            (STEPSRC: safe_modsem ms_src st_src0),
@@ -148,11 +146,11 @@ Section SIMMODSEM.
                 exists st_tgt1 sm_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>) /\
                   (<<MLE: SimMem.le sm0 sm_after>>) /\
-                  (<<LXSIMSR: lxsimSR sm_init i1 st_src1 st_tgt1 sm_after>>)>>))>>)
+                  (<<LXSIMSR: lxsimSR i1 st_src1 st_tgt1 sm_after>>)>>))>>)
 
   | lxsimSR_final
       sm_ret retv_src retv_tgt
-      (MLE: SimMem.le sm_init sm_ret)
+      (MLE: SimMem.le sm0 sm_ret)
       (MWF: SimMem.wf sm_ret)
       (* (PROGRESS: ms_tgt.(is_return) rs_init_tgt st_tgt0) *)
       (* (RETBSIM: forall           *)
@@ -171,14 +169,14 @@ Section SIMMODSEM.
       (* (FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src m_ret_src) *)
       (* (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt) *)
 
-  Definition _lxsimSR (lxsimSR: SimMem.t -> idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop) (sm_init: SimMem.t)
+  Definition _lxsimSR (lxsimSR: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
              (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
     (forall (SUSTAR: forall st_src1 tr (STAR: Star ms_src st_src0 tr st_src1), sound_states st_src1),
-        <<LXSIM: _lxsimSR_pre lxsimSR sm_init i0 st_src0 st_tgt0 sm0>>).
+        <<LXSIM: _lxsimSR_pre lxsimSR i0 st_src0 st_tgt0 sm0>>).
 
-  Definition lxsimSR: _ -> _ -> _ -> _ -> _ -> Prop := paco5 _lxsimSR bot5.
+  Definition lxsimSR: _ -> _ -> _ -> _ -> Prop := paco4 _lxsimSR bot4.
 
-  Lemma lxsimSR_mon: monotone5 _lxsimSR.
+  Lemma lxsimSR_mon: monotone4 _lxsimSR.
   Proof.
     repeat intro. rr in IN. hexploit1 IN; eauto. inv IN; eauto.
     - econs 1; ss. ii. spc SU. des. inv SU.
@@ -230,7 +228,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
                 (<<MLE: SimMem.le sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(src).(initial_frame) args_src st_init_src>>) /\
                 (<<SIM: lxsimSR msp.(src) msp.(tgt) (fun st => forall si, exists su m_init, (sound_states si) su m_init st)
-                                                  sm_arg idx_init st_init_src st_init_tgt sm_init>>)>>) /\
+                                                  idx_init st_init_src st_init_tgt sm_init>>)>>) /\
           (<<INITPROGRESS: forall
               (SAFESRC: exists st_init_src, msp.(src).(initial_frame) args_src st_init_src),
               exists st_init_tgt,
@@ -267,23 +265,22 @@ Section FACTORSOURCE.
   Section LXSIM.
 
     Variable sound_states: state ms_src -> Prop.
-    Variable sm_arg: SimMem.t.
 
     Inductive ffs_match: idx -> (trace * state ms_src) -> state ms_tgt -> SimMem.t -> Prop :=
     | ffs_match_at
         idx0 st_src0 st_tgt0 sm0
-        (MATCH: lxsimSR ms_src ms_tgt sound_states sm_arg idx0 st_src0 st_tgt0 sm0):
+        (MATCH: lxsimSR ms_src ms_tgt sound_states idx0 st_src0 st_tgt0 sm0):
         ffs_match idx0 ([], st_src0) st_tgt0 sm0
     | ffs_match_buffer
         idx0 st_src0 ev tr st_tgt0 st_tgt1 sm0
         (* (SSR: strongly_receptive_at ms_src st_src0) *)
         (PLUS: DPlus ms_tgt st_tgt0 (ev :: tr) st_tgt1)
-        (MATCH: lxsimSR ms_src ms_tgt sound_states sm_arg idx0 st_src0 st_tgt1 sm0):
+        (MATCH: lxsimSR ms_src ms_tgt sound_states idx0 st_src0 st_tgt1 sm0):
         ffs_match idx0 (ev :: tr, st_src0) st_tgt0 sm0.
 
     Lemma factor_lxsim_source: forall idx0 st_src0 tr st_tgt0 sm0
         (SIM: ffs_match idx0 (tr, st_src0) st_tgt0 sm0),
-        <<SIM: SimModSem.lxsim (Atomic.trans ms_src) ms_tgt (fun st => sound_states st.(snd)) sm_arg idx0 (tr, st_src0) st_tgt0 sm0>>.
+        <<SIM: SimModSem.lxsim (Atomic.trans ms_src) ms_tgt (fun st => sound_states st.(snd)) idx0 (tr, st_src0) st_tgt0 sm0>>.
     Proof.
       clear_tac. unfold NW. pcofix CIH. i. pfold. inv SIM; cycle 1.
       (* exploit atomic_receptive; eauto. intro RECEP. *)

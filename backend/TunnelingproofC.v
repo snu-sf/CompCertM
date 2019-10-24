@@ -35,7 +35,6 @@ Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
 Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states
-          (sm_init: SimMem.t)
           (idx: nat) (st_src0: LTL.state) (st_tgt0: LTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Tunnelingproof.match_states st_src0 st_tgt0)
@@ -91,7 +90,7 @@ Proof.
     + econs; eauto; ss.
       * rpapply match_states_call; eauto.
         { econs; eauto.
-          - instantiate (1:= (dummy_stack (fn_sig fd) ls1)). unfold dummy_stack, dummy_function. econs; eauto. 
+          - instantiate (1:= (dummy_stack (fn_sig fd) ls1)). unfold dummy_stack, dummy_function. econs; eauto.
           - econs; eauto. }
         { eapply JunkBlock.assign_junk_block_extends; eauto. }
       * rr. ss. esplits; eauto.

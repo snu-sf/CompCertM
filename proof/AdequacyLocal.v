@@ -201,7 +201,7 @@ Section SIMGE.
           - ss. econs; eauto. }
         left. pfold.
         econs 4.
-        { eauto. }
+        { refl. }
         { eauto. }
         { econs; eauto. }
         { econs; eauto. }
@@ -329,7 +329,7 @@ Section ADQMATCH.
             (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 retv_tgt lst_tgt1>>)
             /\ (<<MLEPUB: SimMem.le sm_at sm_after>>)
             /\ (<<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
-                            tail_sm i1 lst_src1 lst_tgt1 sm_after>>))
+                            i1 lst_src1 lst_tgt1 sm_after>>))
       (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
       (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt):
       lxsim_stack sm_init
@@ -356,7 +356,7 @@ Section ADQMATCH.
       (MLE: SimMem.le tail_sm sm0)
       (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
       (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
-      (TOP: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st) tail_sm
+      (TOP: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                   i0 lst_src lst_tgt sm0)
       (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
       (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt):
@@ -537,7 +537,7 @@ Section ADQSTEP.
         }
         instantiate (1:= sm_init). econs; try apply SIM0; eauto.
         + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once. et.
-        + eapply lxsim_stack_le; eauto.
+        + etrans; eauto.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SESRC; et.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SETGT; et.
 
@@ -666,7 +666,7 @@ Section ADQSTEP.
       inv STACK; ss. folder. sguard in SESRC0. sguard in SETGT0. des_ifs.
       determ_tac ModSem.final_frame_dtm. clear_tac.
       exploit K; try apply SIMRETV; eauto.
-      { etransitivity; eauto. }
+      { etransitivity; eauto. etrans; eauto. }
       { unsguard SUST. des_safe. inv SUST. des. simpl_depind. clarify. i. inv TL. simpl_depind. clarify. des.
         exploit FORALLSU0; eauto. i; des. esplits; eauto. eapply HD; eauto.
       }

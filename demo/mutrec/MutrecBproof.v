@@ -176,7 +176,7 @@ Inductive curr_pc (v: val) (ofs: ptrofs): Prop :=
 
 Require Import mktac.
 
-Inductive match_states (sm_init: SimMem.t)
+Inductive match_states
   :
     nat -> MutrecBspec.state -> AsmC.state -> SimMem.t -> Prop :=
 | match_states_initial
@@ -185,7 +185,6 @@ Inductive match_states (sm_init: SimMem.t)
     (MCOMPATSRC: m_src = sm0.(SimMem.src))
     (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
-    (MLE: SimMem.le sm_init sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
            blk_src blk_tgt delta
@@ -200,7 +199,7 @@ Inductive match_states (sm_init: SimMem.t)
     (RANGE: 0 <= i.(Int.intval) < MAX)
     (IDX: (idx > 9)%nat)
   :
-    match_states sm_init idx (Callstate i m_src)
+    match_states idx (Callstate i m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt)) sm0
 
 | match_states_at_external
@@ -209,7 +208,6 @@ Inductive match_states (sm_init: SimMem.t)
     (MCOMPATSRC: m_src = sm0.(SimMem.src))
     (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
-    (MLE: SimMem.le sm_init sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
            blk_src blk_tgt delta
@@ -225,7 +223,7 @@ Inductive match_states (sm_init: SimMem.t)
     (RANGE: 0 < i.(Int.intval) < MAX)
     (IDX: (idx > 6)%nat)
   :
-    match_states sm_init idx (Interstate i m_src)
+    match_states idx (Interstate i m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt)) sm0
 
 | match_states_after_external
@@ -234,7 +232,6 @@ Inductive match_states (sm_init: SimMem.t)
     (MCOMPATSRC: m_src = sm0.(SimMem.src))
     (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
-    (MLE: SimMem.le sm_init sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
         blk_src blk_tgt delta
@@ -250,7 +247,7 @@ Inductive match_states (sm_init: SimMem.t)
     (RANGE: 0 < i.(Int.intval) < MAX)
     (IDX: (idx > 3)%nat)
   :
-    match_states sm_init idx (Returnstate (sum i) m_src)
+    match_states idx (Returnstate (sum i) m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt))sm0
 
 | match_states_final
@@ -259,7 +256,6 @@ Inductive match_states (sm_init: SimMem.t)
     (MCOMPATSRC: m_src = sm0.(SimMem.src))
     (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
-    (MLE: SimMem.le sm_init sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
         blk_src blk_tgt delta
@@ -273,7 +269,7 @@ Inductive match_states (sm_init: SimMem.t)
     (ARG: rs RAX = Vint i)
     (IDX: (idx >= 2)%nat)
   :
-    match_states sm_init idx (Returnstate i m_src)
+    match_states idx (Returnstate i m_src)
                  (AsmC.mkstate init_rs (Asm.State rs m_tgt)) sm0
 .
 
@@ -338,17 +334,17 @@ Proof. auto. Qed.
 Hint Resolve E0_double.
 
 Lemma match_states_lxsim
-      sm_init idx st_src0 st_tgt0 sm0
+      idx st_src0 st_tgt0 sm0
       (SIMSK: SimSymb.sim_skenv
                 sm0 (SimMemInjInvC.mk symbol_memoized md_src md_tgt)
                 (SkEnv.project skenv_link (Sk.of_program fn_sig prog))
                 (SkEnv.project skenv_link (Sk.of_program fn_sig prog)))
-      (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
+      (MATCH: match_states idx st_src0 st_tgt0 sm0)
   :
     <<XSIM: lxsimL (md_src skenv_link) (md_tgt skenv_link)
                    (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
                    (top3) (fun _ _ => SimMem.le)
-                   sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
+                   (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
 .
 Proof.
   destruct (Genv.find_symbol
@@ -887,7 +883,7 @@ Proof.
         exploit Mem_unfree_suceeds.
         { instantiate (1:=stk).
           instantiate (1:=SimMemInj.tgt sm_ret.(SimMemInjInv.minj)).
-          inv MLE1. inv MLE2. ss.
+          inv MLE0. inv MLE1. ss.
           unfold Mem.valid_block. eapply Plt_Ple_trans; eauto.
           - eapply Mem.perm_valid_block; eauto.
             eapply STKPERM; eauto. instantiate (1:=0). lia.
@@ -896,8 +892,8 @@ Proof.
         exploit Mem_unfree_right_inject; try apply UNFR; eauto.
         { inv MWF1. inv WF1. eauto. }
         { instantiate (1:=0). instantiate (1:=0). ii. lia. } intros INJ.
-        eapply SimMemInjInvC.unlift_wf in MWF1; try apply MLE1; eauto.
-        dup MLE1. eapply SimMemInjInvC.unlift_spec in MLE1; eauto.
+        eapply SimMemInjInvC.unlift_wf in MWF1; try apply MLE0; eauto.
+        dup MLE0. eapply SimMemInjInvC.unlift_spec in MLE0; eauto.
         exploit SimMemInjInvC.unchanged_on_mle; eauto.
         { ss. ii. clarify. }
         { refl. }
@@ -928,7 +924,6 @@ Proof.
           { exploit SimSymb.mle_preserves_sim_skenv; ss; cycle 1; eauto.
             etrans; eauto. etrans; eauto. }
           econs 3; ss; eauto.
-          - etrans; eauto. etrans; eauto. etrans; eauto.
           - eapply well_saved_keep; eauto.
             + unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,
               to_preg, preg_of, compare_ints, Pregmap.set.
@@ -936,18 +931,18 @@ Proof.
             + etrans.
               { eapply Mem.free_unchanged_on; eauto. clear. ii. lia. }
               etrans.
-              { inv MLE2. ss. inv MLE4. ss.
+              { inv MLE1. ss. inv MLE3. ss.
                 eapply Mem.unchanged_on_implies; eauto.
                 ii. clarify. split; auto. split; ss; auto.
                 ii. eapply PRIV; eauto. }
               { eapply Mem.unchanged_on_implies; eauto.
                 - eapply Mem_unfree_unchanged_on; eauto.
                 - clear. ii. destruct H1. lia. }
-          - inv MLE1. ss. inv MLE4. ss. ii. clarify.
+          - inv MLE0. ss. inv MLE3. ss. ii. clarify.
             destruct (SimMemInj.inj (SimMemInjInv.minj sm0) blk_src) eqn:BLK0.
             + destruct p. dup BLK0. eapply INCR in BLK0.
               clarify. hexploit PRIV; eauto.
-            + inv MLE2. ss. inv MLE1. ss. inv FROZEN0.
+            + inv MLE1. ss. inv MLE0. ss. inv FROZEN0.
               exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
               inv SAVED. eapply (Plt_strict stk).
               eapply Plt_Ple_trans; eauto.
@@ -1070,8 +1065,6 @@ Proof.
       { exploit SimSymb.mle_preserves_sim_skenv; ss; cycle 1; eauto. }
       econs 4; ss; eauto.
 
-      * etrans; eauto.
-
       * eapply well_saved_keep; eauto.
         { unfold is_callee_save, nextinstr_nf, nextinstr, undef_regs,
           to_preg, preg_of, compare_ints, Pregmap.set.
@@ -1147,7 +1140,6 @@ Proof.
 
     + left. pfold. intros _. econs 4; ss.
       * instantiate (1:=SimMemInjInv.mk sm2 _ _). econs; ss; eauto.
-        etrans; eauto. etrans; eauto. inv MLE. eauto.
       * hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv memoized_inv sm0 sm2); ss; eauto.
         { etrans; eauto. }
         { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
@@ -1156,7 +1148,6 @@ Proof.
           - etrans.
             + eapply Mem.free_unchanged_on; eauto.
             + eapply Mem.free_unchanged_on; eauto. clear. ii. lia. }
-        { destruct sm_init. inv MLE. ss. clarify. }
       * econs; ss; eauto.
         { repeat rewrite Pregmap.gss.
           repeat (rewrite Pregmap.gso; [| clarify; fail]).

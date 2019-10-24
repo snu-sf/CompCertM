@@ -26,7 +26,7 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
-Inductive match_states_ext_ab (sm_arg: SimMemExt.t')
+Inductive match_states_ext_ab
   : unit -> state -> state -> SimMemExt.t' -> Prop :=
 | match_ext_Callstate
     i m_src m_tgt sm0
@@ -35,7 +35,7 @@ Inductive match_states_ext_ab (sm_arg: SimMemExt.t')
     (MWF: Mem.extends m_src m_tgt)
   :
     match_states_ext_ab
-      sm_arg tt
+      tt
       (Callstate i m_src)
       (Callstate i m_tgt)
       sm0
@@ -46,7 +46,7 @@ Inductive match_states_ext_ab (sm_arg: SimMemExt.t')
     (MWF: Mem.extends m_src m_tgt)
   :
     match_states_ext_ab
-      sm_arg tt
+      tt
       (Returnstate i m_src)
       (Returnstate i m_tgt)
       sm0.
@@ -55,7 +55,7 @@ Section ABSOUNDSTATE.
 
   Variable skenv_link: SkEnv.t.
   Variable su: Sound.t.
-  
+
   Inductive sound_state_ab
     : state -> Prop :=
   | sound_Callstate
@@ -124,7 +124,7 @@ Inductive match_states_ab_internal:
       j m_src m_tgt
 .
 
-Inductive match_states_ab (sm_arg: SimMemInj.t')
+Inductive match_states_ab
   : unit -> state -> state -> SimMemInj.t' -> Prop :=
 | match_states_ab_intro
     st_src st_tgt j m_src m_tgt sm0
@@ -135,7 +135,7 @@ Inductive match_states_ab (sm_arg: SimMemInj.t')
     (MWF: SimMemInj.wf' sm0)
   :
     match_states_ab
-      sm_arg tt st_src st_tgt sm0
+      tt st_src st_tgt sm0
 .
 
 Lemma a_id
@@ -150,7 +150,7 @@ Proof.
   eapply any_id; auto.
 Qed.
 
-Lemma a_ext_unreach 
+Lemma a_ext_unreach
       (WF: Sk.wf MutrecABspec.module)
  :
     exists mp,
@@ -284,14 +284,14 @@ Proof.
     inv SIMSKENV. ss. inv SIMSKE. ss. inv FPTR.  exploit SIMDEF; eauto.
     i. des. clarify. esplits; eauto. econs; ss; eauto.
     unfold Genv.find_funct_ptr. des_ifs.
-      
+
   - i. inv MATCH; eauto.
 
   - i. ss. inv FINALSRC. inv MATCH. inv MATCHST. esplits; eauto.
     + econs.
     + econs; eauto. econs.
     + refl.
-      
+
   - right. ii. des.
     esplits.
     + i. inv MATCH; inv MATCHST; ss.
@@ -338,7 +338,7 @@ Local Existing Instance SimSymbDropInv.SimSymbDropInv.
 Local Existing Instance SoundTop.Top.
 
 
-Inductive match_states_ab_inv (sm_arg: SimMem.t)
+Inductive match_states_ab_inv
   : unit -> state -> state -> SimMem.t -> Prop :=
 | match_states_ab_inv_intro
     st_src st_tgt j m_src m_tgt sm0
@@ -349,7 +349,7 @@ Inductive match_states_ab_inv (sm_arg: SimMem.t)
     (MWF: SimMem.wf sm0)
   :
     match_states_ab_inv
-      sm_arg tt st_src st_tgt sm0.
+      tt st_src st_tgt sm0.
 
 
 Lemma ab_inj_inv_id
@@ -385,14 +385,14 @@ Proof.
     inv SIMSKENV. ss. inv SIMSKE. ss. inv FPTR.  exploit SIMDEF; eauto.
     i. des. clarify. esplits; eauto. econs; ss; eauto.
     unfold Genv.find_funct_ptr. des_ifs.
-      
+
   - i. inv MATCH; eauto.
 
   - i. ss. inv FINALSRC. inv MATCH. inv MATCHST. esplits; eauto.
     + econs.
     + econs; eauto. econs.
     + refl.
-      
+
   - right. ii. des.
     esplits.
     + i. inv MATCH; inv MATCHST; ss.

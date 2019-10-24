@@ -61,19 +61,17 @@ Section SIMMODSEM.
       (BSIM: bsim i1 st_src1 st_tgt0 sm1).
 
 
-  Inductive _lxsim_pre (lxsim: SimMem.t ->
-                               idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
-            (sm_init: SimMem.t)
+  Inductive _lxsim_pre (lxsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
   | lxsim_step_forward
       (SU: forall (SU: DUMMY_PROP),
-      <<FSTEP: fsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)
+      <<FSTEP: fsim_step lxsim i0 st_src0 st_tgt0 sm0>>)
 
   | lxsim_step_backward
       (SU: forall (SU: DUMMY_PROP),
       (<<BSTEP: forall
           (SAFESRC: safe_modsem ms_src st_src0),
-         (<<BSTEP: bsim_step (lxsim sm_init) i0 st_src0 st_tgt0 sm0>>)>>) /\
+         (<<BSTEP: bsim_step lxsim i0 st_src0 st_tgt0 sm0>>)>>) /\
       (<<PROGRESS: forall
            (STEPSRC: safe_modsem ms_src st_src0),
            (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
@@ -97,25 +95,25 @@ Section SIMMODSEM.
                 exists st_tgt1 sm_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMem.le sm0 sm_after>>) /\
-                  (<<LXSIM: lxsim sm_init i1 st_src1 st_tgt1 sm_after>>)>>))>>)
+                  (<<LXSIM: lxsim i1 st_src1 st_tgt1 sm_after>>)>>))>>)
 
   | lxsim_final
       sm_ret retv_src retv_tgt
-      (MLE: SimMem.le sm_init sm_ret)
+      (MLE: SimMem.le sm0 sm_ret)
       (MWF: SimMem.wf sm_ret)
       (FINALSRC: ms_src.(final_frame) st_src0 retv_src)
       (FINALTGT: ms_tgt.(final_frame) st_tgt0 retv_tgt)
       (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret).
 
 
-  Definition _lxsim (lxsim: SimMem.t -> idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop) (sm_init: SimMem.t)
+  Definition _lxsim (lxsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
              (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
     (forall (SUSTAR: forall st_src1 tr (STAR: Star ms_src st_src0 tr st_src1), sound_states st_src1),
-        <<LXSIM: _lxsim_pre lxsim sm_init i0 st_src0 st_tgt0 sm0>>).
+        <<LXSIM: _lxsim_pre lxsim i0 st_src0 st_tgt0 sm0>>).
 
-  Definition lxsim: _ -> _ -> _ -> _ -> _ -> Prop := paco5 _lxsim bot5.
+  Definition lxsim: _ -> _ -> _ -> _ -> Prop := paco4 _lxsim bot4.
 
-  Lemma lxsim_mon: monotone5 _lxsim.
+  Lemma lxsim_mon: monotone4 _lxsim.
   Proof.
     repeat intro. rr in IN. hexploit1 IN; eauto. inv IN; eauto.
     - econs 1; ss. ii. spc SU. des. esplits; eauto. inv SU.
@@ -187,7 +185,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
                 (<<MLE: SimMem.le sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(src).(initial_frame) args_src st_init_src>>) /\
                 (<<SIM: lxsim msp.(src) msp.(tgt) (fun st => forall si, exists su m_init, sound_states si su m_init st)
-                                                  sm_arg idx_init st_init_src st_init_tgt sm_init>>)>>) /\
+                                                  idx_init st_init_src st_init_tgt sm_init>>)>>) /\
           (<<INITPROGRESS: forall
               (SAFESRC: exists st_init_src, msp.(src).(initial_frame) args_src st_init_src),
               exists st_init_tgt, (<<INITTGT: msp.(tgt).(initial_frame) args_tgt st_init_tgt>>)>>)).
@@ -214,18 +212,17 @@ Section FACTORTARGET.
   Section LXSIM.
 
     Variable sound_states: state ms_src -> Prop.
-    Variable sm_arg: SimMem.t.
 
     Inductive fbs_match: idx -> state ms_src -> (trace * state ms_tgt) -> SimMem.t -> Prop :=
     | fbs_match_intro
         idx0 st_src0 tr st_src1 st_tgt0 sm0
         (STAR: (st_src0 = st_src1 /\ tr = E0) \/ ((Plus ms_src st_src0 tr st_src1) /\ output_trace tr /\ tr <> []))
-        (MATCH: lxsim ms_src ms_tgt sound_states sm_arg idx0 st_src1 st_tgt0 sm0):
+        (MATCH: lxsim ms_src ms_tgt sound_states idx0 st_src1 st_tgt0 sm0):
         fbs_match idx0 st_src0 (tr, st_tgt0) sm0.
 
     Lemma factor_lxsim_target: forall idx0 st_src0 tr st_tgt0 sm0
         (SIM: fbs_match idx0 st_src0 (tr, st_tgt0) sm0),
-        <<SIM: lxsim ms_src (Atomic.trans ms_tgt) sound_states sm_arg idx0 st_src0 (tr, st_tgt0) sm0>>.
+        <<SIM: lxsim ms_src (Atomic.trans ms_tgt) sound_states idx0 st_src0 (tr, st_tgt0) sm0>>.
     Proof.
       clear_tac. unfold NW. pcofix CIH.
       i. pfold. inv SIM. punfold MATCH. des; clarify; cycle 1.

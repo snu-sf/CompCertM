@@ -125,14 +125,13 @@ Inductive match_states_internal: nat -> MutrecAspec.state -> Clight.state -> Pro
 
 
 
-Inductive match_states (sm_init: SimMem.t)
+Inductive match_states
           (idx: nat) (st_src0: MutrecAspec.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: match_states_internal idx st_src0 st_tgt0)
     (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
     (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
-    (MLE: SimMem.le sm_init sm0)
 .
 
 Lemma g_blk_exists
@@ -187,17 +186,17 @@ Proof.
 Qed.
 
 Lemma match_states_lxsim
-      sm_init idx st_src0 st_tgt0 sm0
+      idx st_src0 st_tgt0 sm0
       (SIMSK: SimSymb.sim_skenv
                 sm0 (SimMemInjInvC.mk symbol_memoized md_src md_tgt)
                 (SkEnv.project skenv_link (CSk.of_program signature_of_function prog))
                 (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)))
-      (MATCH: match_states sm_init idx st_src0 st_tgt0 sm0)
+      (MATCH: match_states idx st_src0 st_tgt0 sm0)
   :
     <<XSIM: lxsimL (md_src skenv_link) (md_tgt skenv_link)
                    (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
                    top3 (fun _ _ => SimMem.le)
-                   sm_init (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
+                   (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
 .
 Proof.
   revert_until tge.
@@ -461,19 +460,19 @@ Proof.
           hexploit Mem.valid_access_store.
           { instantiate (4:=sm_ret.(SimMemInjInv.minj).(SimMemInj.tgt)).
             inv MWF. inv WF. exploit SATTGT0; eauto.
-            - inv MLE0. erewrite <- MINVEQTGT. eauto.
+            - inv MLE. erewrite <- MINVEQTGT. eauto.
             - i. inv H0. hexploit PERMISSIONS0; eauto. ss.
               esplits; eauto. }
           intros [m_tgt STR].
 
-          exploit SimMemInjInvC.unlift_wf; try apply MLE0; eauto.
+          exploit SimMemInjInvC.unlift_wf; try apply MLE; eauto.
           { econs; eauto. } intros MLE1.
           exploit memoized_inv_store_le; eauto.
           i. des.
 
           esplits.
           { econs; eauto. }
-          { apply MLE2. }
+          { apply MLE0. }
 
           left. pfold. econs; eauto. i; des. econs 2; eauto.
           {
@@ -561,9 +560,9 @@ Proof.
             etrans; eauto.
             { exploit (SimMemLift.lift_priv sm0); eauto. ss. }
             etrans; eauto; cycle 1.
-            { hexploit SimMem.pub_priv; try apply MLE2. eauto. }
+            { hexploit SimMem.pub_priv; try apply MLE0. eauto. }
             etrans; eauto.
-            { hexploit SimMem.pub_priv; try apply MLE0; eauto. }
+            { hexploit SimMem.pub_priv; try apply MLE; eauto. }
             hexploit SimMemLift.unlift_priv; revgoals.
             { intro T. ss. eauto. }
             { eauto. }
@@ -579,8 +578,6 @@ Proof.
                 rewrite Int.sub_zero_r. rewrite sum_recurse. des_ifs. }
 
               econs 2.
-            - etrans; eauto. etrans; eauto.
-              eapply SimMemInjInvC.unlift_spec; eauto. econs; eauto.
           }
       }
 
@@ -723,7 +720,8 @@ Proof.
 
   - (* return *)
     econs 4; ss; eauto.
-    econs; ss; eauto.
+    + refl.
+    + econs; ss; eauto.
 Qed.
 
 Theorem sim_modsem
@@ -773,7 +771,6 @@ Proof.
       * inv SIMSKENV; eauto.
       * econs; eauto.
         { econs; eauto. omega. }
-        { refl. }
 
   - (* init progress *)
     i.

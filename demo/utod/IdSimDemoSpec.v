@@ -27,7 +27,7 @@ Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.
 
-Inductive match_states_ext_demo (sm_arg: SimMemExt.t')
+Inductive match_states_ext_demo
   : unit -> state -> state -> SimMemExt.t' -> Prop :=
 | match_ext
     i m_src m_tgt sm0
@@ -36,7 +36,7 @@ Inductive match_states_ext_demo (sm_arg: SimMemExt.t')
     (MWF: Mem.extends m_src m_tgt)
   :
     match_states_ext_demo
-      sm_arg tt
+      tt
       (mkstate i m_src)
       (mkstate i m_tgt)
       sm0
@@ -97,7 +97,7 @@ Inductive match_states_demo_internal:
       j m_src m_tgt
 .
 
-Inductive match_states_demo (sm_arg: SimMemInj.t')
+Inductive match_states_demo
   : unit -> state -> state -> SimMemInj.t' -> Prop :=
 | match_states_demo_intro
     st_src st_tgt j m_src m_tgt sm0
@@ -108,7 +108,7 @@ Inductive match_states_demo (sm_arg: SimMemInj.t')
     (MWF: SimMemInj.wf' sm0)
   :
     match_states_demo
-      sm_arg tt st_src st_tgt sm0
+      tt st_src st_tgt sm0
 .
 
 Lemma demo_id
@@ -296,7 +296,7 @@ Local Existing Instance SimSymbDropInv.SimSymbDropInv.
 Local Existing Instance SoundTop.Top.
 
 
-Inductive match_states_demo_inv (sm_arg: SimMem.t)
+Inductive match_states_demo_inv
   : unit -> state -> state -> SimMem.t -> Prop :=
 | match_states_demo_inv_intro
     st_src st_tgt j m_src m_tgt sm0
@@ -307,7 +307,7 @@ Inductive match_states_demo_inv (sm_arg: SimMem.t)
     (MWF: SimMem.wf sm0)
   :
     match_states_demo_inv
-      sm_arg tt st_src st_tgt sm0
+      tt st_src st_tgt sm0
 .
 
 Lemma demo_inj_inv

@@ -71,7 +71,7 @@ Local Instance SimSymbP: SimSymb.class SimMemP := SimMemInjInvC.SimSymbIdInv P.
 
 Local Existing Instance SoundTop.Top.
 
-Inductive match_states_a_inv (sm_arg: SimMem.t)
+Inductive match_states_a_inv
   : unit -> state -> state -> SimMem.t -> Prop :=
 | match_states_a_intro
     st_src st_tgt j m_src m_tgt sm0
@@ -82,7 +82,7 @@ Inductive match_states_a_inv (sm_arg: SimMem.t)
     (MWF: SimMem.wf sm0)
   :
     match_states_a_inv
-      sm_arg tt st_src st_tgt sm0
+      tt st_src st_tgt sm0
 .
 
 Lemma a_inj_inv_id

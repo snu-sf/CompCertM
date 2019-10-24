@@ -252,7 +252,7 @@ Proof.
   eapply MatchSimModSem.match_states_sim; ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
-  - instantiate (1:= fun sm_arg _ st_src st_tgt sm0 =>
+  - instantiate (1:= fun _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
                        (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>)).
     ss. i. inv SIMARGS; ss; esplits; eauto; try congruence; ss.

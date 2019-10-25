@@ -163,7 +163,9 @@ Lemma Mem_unfree_parallel
                        (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned ofs_tgt + sz)
                      = Some sm1.(SimMem.tgt)>>)
       /\ (<<MWF: SimMem.wf sm1>>)
-      /\ (<<MLE: SimMem.le sm0 sm1>>).
+      /\ (<<MLE: SimMem.le sm0 sm1>>)
+      /\ (<<MLEPRIV: SimMem.lepriv sm_ret sm1>>)
+.
 Proof.
   ss.
   destruct sm0 as [sm0 mem_inv_src0 mem_inv_tgt0].
@@ -308,6 +310,10 @@ Proof.
         * ii. eapply MAXTGT0; eauto.
           unfold Mem.valid_block in *. erewrite Mem.nextblock_free; eauto.
         * eapply Mem.unchanged_on_nextblock; eauto.
+    - econs; ss.
+      + rewrite SRCGENB. eauto.
+      + rewrite TGTGENB. eauto.
+      + eapply SimMemInj.frozen_refl.
   }
   Unshelve. apply 0.
 Qed.

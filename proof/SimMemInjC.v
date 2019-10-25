@@ -242,6 +242,17 @@ Proof.
     + eapply MAXTGT; et. eapply MAXTGT0; et. eapply Mem.valid_block_unchanged_on; et.
 Qed.
 
+Lemma excl_priv
+      sm0 sm1 excl_src excl_tgt
+      (MWF: SimMem.wf sm0)
+      (MLEEXCL: le_excl excl_src excl_tgt sm0 sm1)
+  :
+    <<MLEPRIV: lepriv sm0 sm1>>.
+Proof.
+  inv MLEEXCL. inv MWF. econs; eauto.
+  eapply frozen_shortened; eauto.
+Qed.
+
 End ORIGINALS.
 
 Lemma parallel_gen sm0 m_src1 m_tgt1 j1

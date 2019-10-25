@@ -26,7 +26,7 @@ Require Import AsmExtra IdSimExtra IdSimAsmExtra IdSimInvExtra.
 
 Require Import MatchSimModSemExcl2.
 Require Import Conventions1C.
-
+Require Import SimMemLift.
 Require Import mktac.
 
 
@@ -423,6 +423,12 @@ Proof.
       exists (SimMemInjInvC.unlift' sm_arg sm_ret).
       eexists. eexists (AsmC.mkstate _ (Asm.State _ _)). esplits; eauto.
       - etrans; eauto.
+      - exploit SimMemLift.unlift_priv.
+        { eapply MWF1. }
+        { eapply SimMemLift.lift_priv. eauto. }
+        { eapply MLE0. }
+        { eauto. }
+        { eauto. }
       - i. esplits; eauto.
         + econs 2; eauto.
         + exploit SimMemInjInvC.unlift_wf; try apply MLE0; eauto. i. inv MLE2.

@@ -104,6 +104,7 @@ Section MATCHSIMFORWARD.
       (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret)),
       exists sm_after idx1 st_tgt1,
         (<<MLE: SimMem.le sm0 sm_after>>) /\
+        (<<MLEPRIV: SimMem.lepriv sm_ret sm_after>>) /\
         forall (MLE: SimMem.le sm0 sm_after) (* helper *),
           ((<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>) /\
            (<<MATCH: match_states idx1 st_src1 st_tgt1 sm_after>>)).
@@ -161,10 +162,10 @@ Section MATCHSIMFORWARD.
         (* (MWF: SimMem.wf sm0) *)
         (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
         (MATCH: match_states i0 st_src0 st_tgt0 sm0):
-        (* su0 *)
-      (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
-      <<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su0 m_init, sound_states si su0 m_init st)
-                     i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>.
+    (* su0 *)
+    (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
+    <<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su0 m_init, sound_states si su0 m_init st)
+                   i0.(Ord.lift_idx WFORD) st_src0 st_tgt0 sm0>>.
   Proof.
     (* move su0 at top. *)
     revert_until BAR. pcofix CIH. i. pfold. ii.
@@ -184,7 +185,7 @@ Section MATCHSIMFORWARD.
         { econs; eauto. }
         { eapply SimMemLift.unlift_wf; eauto. }
         { eapply SimMemLift.lift_spec; eauto. }
-        i; des. spc H1. des. esplits; eauto. right. eapply CIH; eauto.
+        i; des. spc H0. des. esplits; eauto. right. eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
           apply rtc_once. left. et.
         }

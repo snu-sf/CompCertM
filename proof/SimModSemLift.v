@@ -194,6 +194,10 @@ Context {SMLIFT: SimMemLift.class SM}.
           (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
           (MLE: SimMem.le sm0 sm1),
           <<MLE: SimMem.le sm0 sm2>>)
+      (MLEEXCLPRIV: forall st_at_src st_at_tgt sm1 sm2
+                           (MWF: SimMem.wf sm1)
+                           (MLEEXCL: mle_excl st_at_src st_at_tgt sm1 sm2),
+          SimMem.lepriv sm1 sm2)
       (SIM: forall
           sm_arg args_src args_tgt
           sg_init_src sg_init_tgt
@@ -237,13 +241,16 @@ Section IMPLIES.
         (has_footprint: ms_src.(ModSem.state) -> ms_tgt.(ModSem.state) -> SimMem.t -> Prop)
         (mle_excl: ms_src.(ModSem.state) -> ms_tgt.(ModSem.state) -> SimMem.t -> SimMem.t -> Prop)
         (FOOTEXCL: forall st_at_src st_at_tgt sm0 sm1 sm2
-            (MWF: SimMem.wf sm0)
-            (FOOT: has_footprint st_at_src st_at_tgt sm0)
-            (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
-            (MLE: SimMem.le sm0 sm1),
+                          (MWF: SimMem.wf sm0)
+                          (FOOT: has_footprint st_at_src st_at_tgt sm0)
+                          (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
+                          (MLE: SimMem.le sm0 sm1),
             <<MLE: SimMem.le sm0 sm2>>)
+        (MLEEXCLPRIV: forall st_at_src st_at_tgt sm1 sm2 (MWF: SimMem.wf sm1)
+                             (MLEEXCL: mle_excl st_at_src st_at_tgt sm1 sm2),
+            SimMem.lepriv sm1 sm2)
         (SIM: lxsimL ms_src ms_tgt sound_state has_footprint mle_excl idx_init st_init_src st_init_tgt sm_init):
-      <<SIM: SimModSem.lxsim ms_src ms_tgt sound_state idx_init st_init_src st_init_tgt sm_init>>.
+    <<SIM: SimModSem.lxsim ms_src ms_tgt sound_state idx_init st_init_src st_init_tgt sm_init>>.
   Proof.
     move has_footprint at top. move mle_excl at top. move FOOTEXCL at top.
     revert_until sound_state. pcofix CIH. i. pfold.
@@ -266,6 +273,9 @@ Section IMPLIES.
       eexists _, sm_after.
       esplits; eauto.
       { eapply FOOTEXCL; et. etrans; et. eapply SimMemLift.lift_spec; et. }
+      { eapply MLEEXCLPRIV in MLE1. etrans; eauto.
+        eapply SimMemLift.unlift_priv; eauto. eapply SimMemLift.lift_priv; eauto.
+        eapply SimMemLift.unlift_wf; eauto. }
     - econs 4; et.
   Qed.
 

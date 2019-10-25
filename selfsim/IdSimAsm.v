@@ -24,7 +24,7 @@ Require Import StoreArguments StoreArgumentsProps.
 Require Import AsmStepInj AsmStepExt IntegersC.
 Require Import Coq.Logic.PropExtensionality.
 Require Import AsmExtra IdSimExtra.
-Require Import IdSimAsmExtra.
+Require Import IdSimAsmExtra SimMemLift.
 
 Require Import mktac.
 
@@ -1607,6 +1607,12 @@ Proof.
       exists (SimMemInj.unlift' sm_arg sm_ret).
       eexists. eexists (AsmC.mkstate _ (Asm.State _ _)). esplits; eauto.
       - etrans; eauto.
+      - exploit SimMemLift.unlift_priv.
+        { eapply MWF1. }
+        { eapply SimMemLift.lift_priv. eauto. }
+        { eapply MLE0. }
+        { eauto. }
+        { eauto. }
       - i. esplits; eauto.
         + econs 2; eauto.
         + exploit SimMemInj.unlift_wf; try apply MLE0; eauto. i. inv MLE2.

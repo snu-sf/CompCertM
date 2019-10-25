@@ -95,6 +95,7 @@ Section SIMMODSEM.
                 exists st_tgt1 sm_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMem.le sm0 sm_after>>) /\
+                  (<<MLEPRIV: SimMem.lepriv sm_ret sm_after>>) /\
                   (<<LXSIM: lxsim i1 st_src1 st_tgt1 sm_after>>)>>))>>)
 
   | lxsim_final

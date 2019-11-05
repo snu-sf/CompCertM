@@ -541,7 +541,7 @@ Section LOCALPRIV.
             - ii. des_ifs. eapply LEOLD; eauto. eapply LE0; eauto.
             - rr in LE. des. rr in LE0. des. congruence.
           }
-          esplits; eauto; cycle 1.
+          esplits; eauto; cycle 2.
           { (* unfree mle_excl *)
             des. clarify. ss. des_ifs. clear_tac.
             econs; et.
@@ -550,6 +550,7 @@ Section LOCALPRIV.
               (* u. ii; des; ss; clarify. *)
               (* rr in H. eapply H. *)
           }
+          { inv LEB. ss. }
           (* { inv SUST. inv MEM. rr. split; ss. ii. des_ifs. apply BOUND in PR. unfold Mem.valid_block in *. ss. } *)
           inv SUST.
           generalize (loc_external_result_one sg0); intro ONE.
@@ -630,6 +631,7 @@ Section LOCALPRIV.
         - i. inv AFTER.
           { des. clarify. }
           ss. des. esplits; eauto.
+          + refl.
           + econs; eauto.
             * i. unfold Pregmap.set. des_ifs.
               { eapply (@Sound.hle_val UnreachC.Unreach); ss; et. }

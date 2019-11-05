@@ -206,6 +206,7 @@ Section PRSV.
       { refl. }
       ii. r in RETV. des. esplits; eauto; cycle 1.
       { inv AT; inv AFTER; ss. rewrite Retv.get_m_m; ss. refl. }
+      { inv GR0. inv LE. des. red. symmetry. etrans; eauto. }
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
         assert(BCARGS: (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)).(Sound.args) args).
         { ss. inv AT; ss. s. des. rpapply sound_state_sound_args; eauto. }

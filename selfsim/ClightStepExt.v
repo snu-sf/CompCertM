@@ -575,6 +575,7 @@ Section CLIGHTSOUND.
         * eapply UnreachC.unreach_to_inj_vals; eauto.
       + refl.
       + i. inv AFTER. unfold Sound.retv in *. des. ss. esplits; eauto.
+        * refl.
         * des_ifs; ss. des; ss. unfold Unreach.hle in *. des. econs; eauto.
           { rewrite <- GENB. auto. }
           { etrans; eauto. }

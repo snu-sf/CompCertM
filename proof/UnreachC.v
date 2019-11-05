@@ -65,6 +65,10 @@ Definition le' (x y: Unreach.t): Prop :=
   (<<PRIV: x.(unreach) <1= y.(unreach)>>) /\
   (<<PUB: x.(ge_nb) = y.(ge_nb)>>).
 
+Definition lepriv' (x y: Unreach.t): Prop :=
+  (* (<<PRIV: x.(unreach) <1= y.(unreach)>>) /\ *)
+  (<<PUB: x.(ge_nb) = y.(ge_nb)>>).
+
 Global Program Instance le'_PreOrder: PreOrder le'.
 Next Obligation. ii; r; esplits; ss; eauto.
 Qed.
@@ -591,10 +595,25 @@ Proof.
   ii. rr. rr in HLE. des. esplits; eauto. ii. rewrite <- OLD; ss. inv WF. eauto.
 Qed.
 
+Global Program Instance lepriv'_PreOrder: PreOrder lepriv'.
+Next Obligation. ii; r; esplits; ss; eauto.
+Qed.
+Next Obligation.
+  ii. r in H. r in H0. des.
+  r; esplits; ss; eauto; etrans; eauto.
+Qed.
+
+Lemma le'_lepriv':
+  le' <2= lepriv'.
+Proof.
+  ii. inv PR. eauto.
+Qed.
+Hint Resolve le'_lepriv'.
+
 Global Program Instance Unreach: Sound.class := {
   t := Unreach.t;
   (* lift := le'; *)
-  lepriv := le';
+  lepriv := lepriv';
   wf := wf;
   hle := hle;
   val := val';
@@ -602,7 +621,8 @@ Global Program Instance Unreach: Sound.class := {
   skenv := skenv;
 }.
 Next Obligation.
-  rr. rr in HLE. des. esplits; eauto. ii. rewrite <- OLD; ss. inv WF. eauto.
+  rr. rr in HLE. des. esplits; eauto.
+  (* ii. rewrite <- OLD; ss. inv WF. eauto. *)
 Qed.
 Next Obligation.
   inv MLE. econs; eauto. eapply Mem.unchanged_on_implies; eauto.

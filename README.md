@@ -11,13 +11,6 @@ git clone https://github.com/snu-sf/CompCertM.git
 cd CompCertM
 make -j[N]</pre>
 
-
-Or, you can download a Docker image in which `/home/coq/CompCertR/CompCertM` contains build result:
-```
-docker pull minkiminki/popl20-93:v3.5
-docker run -it minkiminki/popl20-93:v3.5
-```
-
 ## Code Structure
 
 For directories that existed in [CompCert](https://github.com/AbsInt/CompCert) (e.g. backend/), there are files that extends original CompCert's files.

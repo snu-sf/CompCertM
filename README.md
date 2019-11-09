@@ -3,16 +3,16 @@
 [CompCertM: CompCert with Lightweight Modular Verification and Multi-Language Linking](https://sf.snu.ac.kr/compcertm/)
 
 ## Build
-CompCertM is relied on [CompCertR](https://github.com/snu-sf/CompCertR) which is the refactored version of CompCert. In order to build CompCertM, you need to build CompCertR first.
-1) Clone https://github.com/snu-sf/CompCertR and follow [installation instructions](https://github.com/snu-sf/CompCertR#installation-instructions).  
+CompCertM is based on [CompCertR](https://github.com/snu-sf/CompCertR) which is a refactored version of CompCert. In order to build CompCertM, you need to build CompCertR first.
+1) Clone https://github.com/snu-sf/CompCertR and follow the [installation instructions](https://github.com/snu-sf/CompCertR#installation-instructions).  
 
-2) **Go to CompCertR directory** and issue the following commands: <pre>
+2) **Go to the CompCertR directory** and issue the following commands: <pre>
 git clone https://github.com/snu-sf/CompCertM.git
 cd CompCertM
 make -j[N]</pre>
 
 
-Or, you can download a Docker image in which `/home/coq/CompCertR/CompCertM` contains build result:
+Or, you can download a Docker image in which `/home/coq/CompCertR/CompCertM` contains the build result:
 ```
 docker pull minkiminki/popl20-93:v3.5
 docker run -it minkiminki/popl20-93:v3.5
@@ -32,7 +32,7 @@ New directories are roughly as follows.
 - proof/: our meta theory
 
 
-We list up few important definitions/proofs from the paper.
+We list a few important definitions/proofs from the paper.
 
 **Semantics**  
 - Interaction Semantics _(Section 5)_ : [compose/Sem.v](compose/Sem.v)  

@@ -68,7 +68,7 @@ We list a few important definitions/proofs from the paper.
 
 ## Workflow
 
-We first describe the step-by-step process of software verification using CompCert, and then describe such instructions for CompCertM.
+We first describe a step-by-step process of software verification using CompCert, and then describe such instructions for CompCertM.
 
 (Running)
 Write a C program, compile it to binary using CompCert executable (i.e. `compcomp`), and run it.

@@ -84,9 +84,9 @@ For CompCertM, it is basically the same except we also support hand-written asse
 Write a program (you can use both C and *assembly*), compile C modules to binary using CompCert executable (i.e. `compcomp`), and run it. ([a.c](demo/mutrec/a.c), [b.s](demo/mutrec/b.s))
 
 (Verifying)
-- Translate each C module into Coq using `clightgen` as before. ([MutrecA.v](demo/mutrec/MutrecA.v), [MutrecB.v](demo/mutrec/MutrecB.v))
+- Translate each C module into Coq using `clightgen` as before. ([MutrecA.v](demo/mutrec/MutrecA.v))
 
-  Unfortunately, as there is no such translation tool yet for assembly language, user should manually translate assembly modules into Coq.
+  Unfortunately, as there is no such translation tool yet for assembly language, user should manually translate assembly modules into Coq. ([MutrecB.v](demo/mutrec/MutrecB.v))
 
   CompCert emits assembly module (defined in Coq) into actual `.s` file using `PrintAsm.ml`.
 

@@ -91,7 +91,7 @@ Write a program (you can use both C and *assembly*), compile C modules to binary
   CompCert emits assembly module (defined in Coq) into actual `.s` file using `PrintAsm.ml`.
 
   You should make sure that printing your assembly (defined in Coq) using `PrintAsm.ml` yields a `.s` file that is equivalent to the one you have manually wrote.
-- CompCertM's interaction semantics formally defines [behavior of your translated program]((https://github.com/snu-sf/CompCertM/blob/v3.5/demo/mutrec/MutrecRefinement.v#L149)). 
+- CompCertM's interaction semantics formally defines [behavior of your translated program](https://github.com/snu-sf/CompCertM/blob/v3.5/demo/mutrec/MutrecRefinement.v#L149). 
 - Verify properties about such behavior with your own technique.
 
   As discussed in the paper, we advocate the use of RUSC theory in program verification, and we demonstrate this with [mutrec](demo/mutrec) example.

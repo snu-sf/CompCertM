@@ -71,7 +71,7 @@ We list a few important definitions/proofs from the paper.
 We first describe a step-by-step process of software verification using CompCert, and then describe such instructions for CompCertM.
 
 (Running)
-Write a C program, compile it to binary using CompCert executable (i.e. `compcomp`), and run it.
+Write a C program, compile it to binary using CompCert executable (i.e. `ccomp`), and run it.
 
 (Verifying)
 - Translate each C module into Coq using `clightgen`.

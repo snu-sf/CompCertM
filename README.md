@@ -48,7 +48,7 @@ We list a few important definitions/proofs from the paper.
 (NOTE: The definition of a memory predicate is a little different from that in the paper. If we consider `(Sound.t * Memory.mem)` as a single component (= "t" in the paper), two definitions are equivalent.)  
 - Parameterized Open Simulation _(Page 21, Fig. 11)_: [proof/SimModSem.v](proof/SimModSem.v)  
 - Open Preservation _(Page 21, Fig. 11)_: [proof/Preservation.v](proof/Preservation.v) - [`local_preservation_standard`](proof/Preservation.v#L102)  
-- Adequacy of Parameterized Open Simulation _(Page 22, Theorem 6.2)_: [proof/AdequacyLocal.v](proof/AdequacyLocal.v) - [`Theorem adequacy_local`](proof/AdequacyLocal.v#L705).  
+- Adequacy of Parameterized Open Simulation _(Page 22, Theorem 6.2)_: [proof/AdequacyLocal.v](proof/AdequacyLocal.v) - [`Theorem adequacy_local`](proof/AdequacyLocal.v#L705), [corollary](https://github.com/snu-sf/CompCertM/blob/v3.5/proof/AdequacyLocal.v#L731).  
 
 **Correctness Theorems**  
 - Compiler cocrrectness theorem (main result): [driver/CompilerC.v](driver/CompilerC.v)

@@ -115,6 +115,6 @@ Roughly speaking, the implementation is strictly more general or equivalent to t
 - The paper hides coinductive nature of `open_sim` (following CompCert's style), but in implementation we used coinductive predicate using Paco library, which gives more flexibility to the user (e.g. allowing intermediate states outside the `match_states`).
 - In (INIT) case, the paper presents it in a forward-style, but it is implemented in backward-style.
 - In paper, (SIM:MOD) asserts `open_prsv` of `sound_state` but in implementation (SIM:MODSEM) asserts it. We designed `Mod` datatype to be minimal syntactic data, so it does not know the type of `state` and can't state about `sound_state`. Changing the implementation to follow the paper's presentation will take just 3 person-hour or so, but we prefer current design.
-- In implementation, we have `local_preservation_noguarantee` which is not mentioned in the paper. This predicate is strictly easier to prove than the `local_preservation`, lessening the proof obligation for user.
+- In implementation, we have `local_preservation_noguarantee` which is not mentioned in the paper. This predicate is strictly easier to prove than the `local_preservation`, lessening the proof obligation for user once (s)he have proven `local_preservation` for at least one analysis.
 
 

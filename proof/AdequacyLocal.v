@@ -688,6 +688,7 @@ End ADQSTEP.
 
 
 
+Require Import BehaviorsC SemProps.
 
 Section ADQ.
 
@@ -727,9 +728,10 @@ Section ADQ.
     all: ss.
   Qed.
 
-End ADQ.
+  Goal BehaviorsC.improves sem_src sem_tgt.
+  Proof. eapply bsim_improves; eauto. eapply mixed_to_backward_simulation; eauto. eapply adequacy_local. Qed.
 
-Require Import BehaviorsC SemProps.
+End ADQ.
 
 Program Definition mkPR (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.class)
   : program_relation.t := program_relation.mk

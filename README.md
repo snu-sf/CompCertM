@@ -105,3 +105,16 @@ Write a program (you can use both C and *assembly*), compile C modules to binary
   Prove self-simulations required for RUSC theory. (IdSim*.v)
   
   Get final result with RUSC theory. ([MutrecRefinement.v](demo/mutrec/MutrecRefinement.v))
+
+## Delta Between Paper's Presentation
+Roughly speaking, the implementation is strictly more general or equivalent to the presentation of the paper.
+
+**Fig 11**
+- In (STEP) case, the implementation is more general than the paper version, allowing "stuttering". (We support 4 different kinds of stuttering, forward/backward x source/target)
+- In (CALL) case, the implementation existentially quantifies source call data (`(SAFESRC: ms_src.(is_call) st_src0)`) and then universally quantifies it `(ATSRC: ms_src.(at_external) st_src0 args_src)`, following forward simulation style. In paper, it is just existentially quantified. However, as we require `at_external` to be deterministic (`ModSem.at_external_dtm`), both are equivalent. The implementation followed this style just for uniformity with forward (STEP) case.
+- The paper hides coinductive nature of `open_sim` (following CompCert's style), but in implementation we used coinductive predicate using Paco library, which gives more flexibility to the user (e.g. allowing intermediate states outside the `match_states`).
+- In (INIT) case, the paper presents it in a forward-style, but it is implemented in backward-style.
+- In paper, (SIM:MOD) asserts `open_prsv` of `sound_state` but in implementation (SIM:MODSEM) asserts it. We designed `Mod` datatype to be minimal syntactic data, so it does not know the type of `state` and can't state about `sound_state`. Changing the implementation to follow the paper's presentation will take just 3 person-hour or so, but we prefer current design.
+- In implementation, we have `local_preservation_noguarantee` which is not mentioned in the paper. This predicate is strictly easier to prove than the `local_preservation`, lessening the proof obligation for user.
+
+

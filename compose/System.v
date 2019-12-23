@@ -22,9 +22,9 @@ Section SYSMODSEM.
   Definition globalenv: genvtype := skenv_link.
 
   Definition skenv: SkEnv.t :=
-    skenv_link.(Genv_map_defs)(fun _ gd =>
+    (Genv_map_defs skenv_link)(fun _ gd =>
                                  match gd with
-                                 | Gfun (External ef) => Some (Gfun (Internal (ef.(ef_sig))))
+                                 | Gfun (External ef) => Some (Gfun (Internal (ef_sig (ef))))
                                  | Gfun _ => None
                                  | Gvar gv => Some gd
                                  end).
@@ -51,7 +51,7 @@ Section SYSMODSEM.
   Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
   | step_intro
       ef fptr vs m0 v m1 tr
-      (FPTR: ge.(Genv.find_funct) fptr = Some (External ef))
+      (FPTR: (Genv.find_funct ge) fptr = Some (External ef))
       (EXTCALL: external_call ef ge vs m0 tr v m1):
       step se ge (Callstate fptr vs m0) tr (Returnstate v m1).
 

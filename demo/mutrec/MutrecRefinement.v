@@ -30,7 +30,7 @@ Definition mutrec_relations :=
 
 Lemma asm_self_related (asm: Asm.program)
   :
-    self_related mutrec_relations [asm.(AsmC.module)].
+    self_related mutrec_relations [(AsmC.module asm)].
 Proof.
   intros r RELIN. unfold mutrec_relations in *. ss.
   des; clarify; eapply relate_single_program; intros WF.
@@ -39,7 +39,7 @@ Qed.
 
 Lemma clight_self_related (cls: Clight.program)
   :
-    self_related mutrec_relations [cls.(ClightC.module2)].
+    self_related mutrec_relations [(ClightC.module2 cls)].
 Proof.
   intros r RELIN. unfold mutrec_relations in *. ss.
   des; clarify; eapply relate_single_program; intros WF.
@@ -52,7 +52,7 @@ Lemma asms_self_related (asms: list Asm.program)
 Proof.
   induction asms; ss; ii.
   exploit IHasms; ss; eauto. i.
-  eapply (@program_relation.horizontal _ [a.(AsmC.module)] _ [a.(AsmC.module)]); eauto.
+  eapply (@program_relation.horizontal _ [(AsmC.module a)] _ [(AsmC.module a)]); eauto.
   eapply asm_self_related; eauto.
 Qed.
 
@@ -62,7 +62,7 @@ Lemma clights_self_related (cls: list Clight.program)
 Proof.
   induction cls; ss; ii.
   exploit IHcls; ss; eauto. i.
-  eapply (@program_relation.horizontal _ [a.(ClightC.module2)] _ [a.(ClightC.module2)]); eauto.
+  eapply (@program_relation.horizontal _ [(ClightC.module2 a)] _ [(ClightC.module2 a)]); eauto.
   eapply clight_self_related; eauto.
 Qed.
 
@@ -91,7 +91,7 @@ Qed.
 
 Lemma MutrecA_rusc
   :
-    rusc mutrec_relations [MutrecAspec.module] [MutrecA.prog.(ClightC.module2)].
+    rusc mutrec_relations [MutrecAspec.module] [(ClightC.module2 MutrecA.prog)].
 Proof.
   eapply (@relate_single_rusc
             _
@@ -104,7 +104,7 @@ Qed.
 
 Lemma MutrecB_rusc
   :
-    rusc mutrec_relations [MutrecBspec.module] [MutrecB.prog.(AsmC.module)].
+    rusc mutrec_relations [MutrecBspec.module] [(AsmC.module MutrecB.prog)].
 Proof.
   eapply (@relate_single_rusc
             _
@@ -127,7 +127,7 @@ Lemma MutrecAB_impl_rusc
  :
    rusc mutrec_relations
         [MutrecABspec.module]
-        [MutrecA.prog.(ClightC.module2); MutrecB.prog.(AsmC.module)].
+        [(ClightC.module2 MutrecA.prog); (AsmC.module MutrecB.prog)].
 Proof.
  etrans.
  - eapply rusc_mon; [|eapply MutrecAB_AB_rusc]; ss.
@@ -146,7 +146,7 @@ Theorem Mutrec_correct
         (hands: list Asm.program)
   :
     improves (sem ((map ClightC.module2 srcs) ++ (map AsmC.module hands) ++ [MutrecABspec.module]))
-             (sem ((map ClightC.module2 srcs) ++ (map AsmC.module hands) ++ [MutrecA.prog.(ClightC.module2); MutrecB.prog.(AsmC.module)])).
+             (sem ((map ClightC.module2 srcs) ++ (map AsmC.module hands) ++ [(ClightC.module2 MutrecA.prog); (AsmC.module MutrecB.prog)])).
 Proof.
   replace (map ClightC.module2 srcs ++ map AsmC.module hands ++ [MutrecABspec.module]) with
       ((map ClightC.module2 srcs ++ map AsmC.module hands) ++ [MutrecABspec.module]); cycle 1.

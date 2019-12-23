@@ -197,9 +197,9 @@ Context {SMLIFT: SimMemLift.class SM}.
       (SIM: forall
           sm_arg args_src args_tgt
           sg_init_src sg_init_tgt
-          (FINDFSRC: msp.(ModSemPair.src).(ModSem.skenv).(Genv.find_funct) args_src.(Args.get_fptr) =
+          (FINDFSRC: (Genv.find_funct msp.(ModSemPair.src).(ModSem.skenv)) (Args.get_fptr args_src) =
                      Some (Internal sg_init_src))
-          (FINDFTGT: msp.(ModSemPair.tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.get_fptr) =
+          (FINDFTGT: (Genv.find_funct msp.(ModSemPair.tgt).(ModSem.skenv)) (Args.get_fptr args_tgt) =
                      Some (Internal sg_init_tgt))
           (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
           (SIMSKENV: ModSemPair.sim_skenv msp sm_arg)

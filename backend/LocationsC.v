@@ -101,8 +101,8 @@ Lemma loc_arguments_norepet_aux
       tys (ir fr ofs: Z) locs
       (LOCS: (regs_of_rpairs (loc_arguments_64 tys ir fr ofs)) = locs):
     (<<NOREP: Loc.norepet locs>>)
-    /\ (<<NOTINIR: Loc.disjoint (map R (List.firstn ir.(Z.to_nat) int_param_regs)) locs>>)
-    /\ (<<NOTINFR: Loc.disjoint (map R (List.firstn fr.(Z.to_nat) float_param_regs)) locs>>).
+    /\ (<<NOTINIR: Loc.disjoint (map R (List.firstn (Z.to_nat ir) int_param_regs)) locs>>)
+    /\ (<<NOTINFR: Loc.disjoint (map R (List.firstn (Z.to_nat fr) float_param_regs)) locs>>).
 Proof.
   ginduction tys; ii; clarify.
   { esplits; ii; ss; econs. }
@@ -278,7 +278,7 @@ Fixpoint fill_arguments (ls0: locset) (args: list val) (locs: list (rpair loc)):
       match loc with
       | One loc => Some (locmap_put loc arg ls1)
       | Twolong hi lo => (* not used *)
-        Some (Locmap.set lo arg.(Val.loword) (Locmap.set hi arg.(Val.hiword) ls1))
+        Some (Locmap.set lo (Val.loword arg) (Locmap.set hi (Val.hiword arg) ls1))
       end
     | None => None
     end

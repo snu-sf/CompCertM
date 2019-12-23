@@ -60,12 +60,12 @@ Inductive match_states_clight_inv
 
 Lemma clight_inj_inv_drop
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module2))
+      (WF: Sk.wf (module2 clight))
   :
     exists mp,
       (<<SIM: ModPair.sim mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (module2 clight)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (module2 clight)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.

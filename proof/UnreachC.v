@@ -44,7 +44,7 @@ Definition val' (su: Unreach.t) (v: val): Prop :=
   forall blk ofs (PTR: v = Vptr blk ofs), ~su blk /\ (blk < su.(nb))%positive.
 
 Definition memval' (su: Unreach.t) (mv: memval): Prop :=
-  forall v q n (PTR: mv = Fragment v q n), su.(val') v.
+  forall v q n (PTR: mv = Fragment v q n), (val' su) v.
 
 Inductive mem': Unreach.t -> Memory.mem -> Prop :=
 | mem'_intro
@@ -52,8 +52,8 @@ Inductive mem': Unreach.t -> Memory.mem -> Prop :=
     (SOUND: forall blk ofs
         (PUB: ~ su blk)
         (PERM: Mem.perm m0 blk ofs Cur Readable), (* <------------ Cur? *)
-        su.(memval') (ZMap.get ofs (Mem.mem_contents m0) !! blk))
-    (BOUND: su.(Unreach.unreach) <1= m0.(Mem.valid_block))
+        (memval' su) (ZMap.get ofs (Mem.mem_contents m0) !! blk))
+    (BOUND: su.(Unreach.unreach) <1= (Mem.valid_block m0))
     (* (BOUND: Ple su.(Unreach.nb) m0.(Mem.nextblock)) *)
     (GENB: Ple su.(Unreach.ge_nb) m0.(Mem.nextblock))
     (NB: su.(Unreach.nb) = m0.(Mem.nextblock)):
@@ -75,7 +75,7 @@ Qed.
 
 Definition args' (su: Unreach.t) (args0: Args.t) :=
   (<<VAL: val' su (Args.fptr args0)>>)
-  /\ (<<VALS: List.Forall (su.(val')) (Args.vs args0)>>)
+  /\ (<<VALS: List.Forall (val' (su)) (Args.vs args0)>>)
   /\ (<<MEM: mem' su (Args.m args0)>>)
   (* /\ (<<WF: forall blk (PRIV: su blk) (PUB: Plt blk su.(ge_nb)), False>>) *)
   (* /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>) *)
@@ -181,12 +181,12 @@ Inductive J: positive -> Unreach.t -> nat -> Prop :=
     fuel su n
     (PRED: J fuel su n)
     (TRUE: su fuel = true):
-    J fuel.(Pos.succ) su (2 * n + 1)
+    J (Pos.succ fuel) su (2 * n + 1)
 | J_false
     fuel su n
     (PRED: J fuel su n)
     (FALSE: su fuel = false):
-    J fuel.(Pos.succ) su (2 * n).
+    J (Pos.succ fuel) su (2 * n).
 
 Let eta
       x0 x1
@@ -238,7 +238,7 @@ Qed.
 
 Let J_bound: forall fuel x n
     (J: J fuel x n),
-    (n <= 3 ^ fuel.(Pos.to_nat))%nat.
+    (n <= 3 ^ (Pos.to_nat fuel))%nat.
 Proof.
   intro fuel. pattern fuel. eapply Pos.peano_ind; clear fuel; i.
   { inv J0; try xomega. }
@@ -356,7 +356,7 @@ Definition loadable_init_data (m: mem) (ske: SkEnv.t) (b: block) (p: Z) (id: ini
   | Init_float32 n => Mem.load Mfloat32 m b p = Some (Vsingle n)
   | Init_float64 n => Mem.load Mfloat64 m b p = Some (Vfloat n)
   | Init_addrof symb ofs =>
-      match ske.(Genv.find_symbol) symb with
+      match (Genv.find_symbol ske) symb with
       | None => False
       | Some b' => Mem.load Mptr m b p = Some (Vptr b' ofs)
       end
@@ -403,9 +403,9 @@ Qed.
 
 Definition romem_for_ske (ske: SkEnv.t): ident -> option ablock :=
   fun id =>
-    match ske.(Genv.find_symbol) id with
+    match (Genv.find_symbol ske) id with
     | Some blk =>
-      match ske.(Genv.find_var_info) blk with
+      match (Genv.find_var_info ske) blk with
       | Some gv =>
         (* if <<RO: gv.(gvar_readonly)>> && <<NONVOL: negb gv.(gvar_volatile)>> *)
         (*        && <<DEFI: definitive_initializer gv.(gvar_init)>> *)
@@ -421,8 +421,8 @@ Definition romem_for_ske (ske: SkEnv.t): ident -> option ablock :=
 
 Lemma romem_for_ske_complete
       blk ske id gv
-      (SYMB: ske.(Genv.find_symbol) id = Some blk)
-      (VAR: ske.(Genv.find_var_info) blk = Some gv)
+      (SYMB: (Genv.find_symbol ske) id = Some blk)
+      (VAR: (Genv.find_var_info ske) blk = Some gv)
       (RO: gv.(gvar_readonly) = true)
       (VOL: gv.(gvar_volatile) = false)
       (DEFI: definitive_initializer gv.(gvar_init) = true):
@@ -484,7 +484,7 @@ Qed.
 Inductive skenv (su: Unreach.t) (m0: mem) (ske: SkEnv.t): Prop :=
 | skenv_intro
     (PUB: su.(ge_nb) = ske.(Genv.genv_next))
-    (ROMATCH: romatch_ske ske.(ske2bc) m0 (romem_for_ske ske))
+    (ROMATCH: romatch_ske (ske2bc ske) m0 (romem_for_ske ske))
     (NB: Ple ske.(Genv.genv_next) m0.(Mem.nextblock)).
 
 (* Lemma loadbytes_loadable *)
@@ -725,7 +725,7 @@ Next Obligation.
   - econs; eauto. rpapply ROMATCH; ss.
 Qed.
 Next Obligation.
-  assert(T: <<VAL: val' su0 args0.(Args.fptr)>> /\ <<VALS: Forall (val' su0) args0.(Args.vs)>> /\ <<MEM: mem' su0 args0.(Args.m)>> /\ <<WF: wf su0 >>).
+  assert(T: <<VAL: val' su0 (Args.fptr args0)>> /\ <<VALS: Forall (val' su0) (Args.vs args0)>> /\ <<MEM: mem' su0 (Args.m args0)>> /\ <<WF: wf su0 >>).
   { des_ifs. }
   clear ARGS. des.
   (* des. rename H into VAL. rename H0 into VALS. rename H1 into MEM. rename H2 into WF. *)
@@ -788,7 +788,7 @@ Proof.
   ii. eapply mle_monotone; try eassumption; eauto. r in LE. des; ss.
 Qed.
 
-Definition get_greatest (su0: t) (args: Args.t) := greatest le' (fun su => <<LE: le' su0 su>> /\ su.(args') args).
+Definition get_greatest (su0: t) (args: Args.t) := greatest le' (fun su => <<LE: le' su0 su>> /\ (args' su) args).
 
 Lemma greatest_dtm: forall args0 su0 su_gr0 su_gr1
     (GR0: get_greatest su0 args0 su_gr0)
@@ -829,7 +829,7 @@ Proof.
       { hexploit BOUND0; eauto. i. r in H4. xomega. }
       { hexploit BOUND; eauto. i. r in H4. xomega. }
     + ii. eapply J_func.
-    + i. exists (3 ^ (m.(Mem.nextblock)).(Pos.to_nat))%nat. i. eapply J_bound; eauto.
+    + i. exists (3 ^ (Pos.to_nat (m.(Mem.nextblock))))%nat. i. eapply J_bound; eauto.
   - ii. eapply lubclosed; try apply LUB; eauto.
   - esplits; eauto. rr in INHAB0; ss. des_ifs; ss.
 Qed.

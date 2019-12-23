@@ -36,23 +36,23 @@ Variable prog: Clight.program.
 Variable tprog: Csharpminor.program.
 Let md_src: Mod.t := (ClightC.module2 prog).
 Let md_tgt: Mod.t := (CsharpminorC.module tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link (Mod.sk md_src)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link (Mod.sk md_tgt)).
 Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
+Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog) prog.(prog_comp_env).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog).
 Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states
           (idx: nat) (st_src0: Clight.state) (st_tgt0: Csharpminor.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Cshmgenproof.match_states prog ge st_src0 st_tgt0)
-    (MCOMPATSRC: st_src0.(ClightC.get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(CsharpminorC.get_mem) = sm0.(SimMem.tgt)).
+    (MCOMPATSRC: (ClightC.get_mem st_src0) = sm0.(SimMem.src))
+    (MCOMPATTGT: (CsharpminorC.get_mem st_tgt0) = sm0.(SimMem.tgt)).
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link (Mod.sk md_src)) (SkEnv.project skenv_link (Mod.sk md_tgt)) ->
   Genv.match_genvs (match_globdef match_fundef match_varinfo prog) ge tge.
 Proof. subst_locals. ss. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 

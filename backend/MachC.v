@@ -36,7 +36,7 @@ Definition get_stack (st: state): list stackframe :=
   end.
 
 Definition step: state -> trace -> state -> Prop := fun st0 tr st1 =>
-  <<STEP: Mach.step return_address_offset se ge st0 tr st1>> /\ <<NOTDUMMY: st1.(get_stack) <> []>>.
+  <<STEP: Mach.step return_address_offset se ge st0 tr st1>> /\ <<NOTDUMMY: (get_stack st1) <> []>>.
 
 End NEWSTEP.
 
@@ -48,7 +48,7 @@ Definition locset_copy (diff: Z) (rs: Mach.regset): locset :=
     | S _ _ _ => Vundef
     | R r =>
       match rs r with
-      | Vptr blk ofs => Vptr (blk.(Zpos) + diff).(Z.to_pos) ofs
+      | Vptr blk ofs => Vptr (Z.to_pos (blk.(Zpos) + diff)) ofs
       | _ => rs r
       end
     end.
@@ -70,8 +70,8 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig).
-  Let ge: genv := skenv.(SkEnv.revive) p.
+  Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program fn_sig p).
+  Let ge: genv := (SkEnv.revive skenv) p.
 
   Record state := mkstate {
     init_rs: Mach.regset;
@@ -83,13 +83,13 @@ Section MODSEM.
   | at_external_intro
       stack rs m0 m1 fptr sg vs blk ofs init_rs init_sg
       (EXTERNAL: Genv.find_funct ge fptr = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
+      (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd /\ Sk.get_csig skd = Some sg)
       (VALS: Mach.extcall_arguments rs m0 (parent_sp stack) sg vs)
       (ARGSRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
       (RSP: (parent_sp stack) = Vptr blk ofs)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
-          (align_chunk chunk | ofs.(Ptrofs.unsigned)))
-      (FREE: Mem.free m0 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1):
+          (align_chunk chunk | (Ptrofs.unsigned ofs)))
+      (FREE: Mem.free m0 blk (Ptrofs.unsigned ofs) ((Ptrofs.unsigned ofs) + 4 * (size_arguments sg)) = Some m1):
       at_external (mkstate init_rs init_sg (Callstate stack fptr rs m0)) (Args.mk fptr vs m1).
 
   Inductive initial_frame (args: Args.t) : state -> Prop :=
@@ -98,9 +98,9 @@ Section MODSEM.
       (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (RAPTR: Val.has_type ra Tptr)
       (SIG: sg = fd.(fn_sig))
-      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
-      (TYP: typecheck args.(Args.vs) sg targs)
-      (STORE: store_arguments args.(Args.m) rs targs sg m0)
+      (FINDF: Genv.find_funct ge (Args.fptr args) = Some (Internal fd))
+      (TYP: typecheck (Args.vs args) sg targs)
+      (STORE: store_arguments (Args.m args) rs targs sg m0)
       (JUNK: assign_junk_blocks m0 n = m1)
       (PTRFREE: forall mr
                   (* (NOTIN: Loc.notin (R mr) (regs_of_rpairs (loc_arguments sg))) *)
@@ -108,8 +108,8 @@ Section MODSEM.
           <<PTRFREE: is_junk_value m0 m1 (rs mr)>>):
       initial_frame args (mkstate rs sg
                                   (Callstate [dummy_stack
-                                                (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero) ra]
-                                             args.(Args.fptr) rs m1)).
+                                                (Vptr (Args.m args).(Mem.nextblock) Ptrofs.zero) ra]
+                                             (Args.fptr args) rs m1)).
   (* TODO: change (Vptr args.(Args.m).(Mem.nextblock) Ptrofs.zero) into sp *)
 
   Inductive final_frame: state -> Retv.t -> Prop :=
@@ -125,11 +125,11 @@ Section MODSEM.
   | after_external_intro
       init_rs init_sg stack fptr ls0 m0 ls1 m1 retv sg blk ofs
       (CSTYLE: Retv.is_cstyle retv)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd /\ Sk.get_csig skd = Some sg)
-      (REGSET: ls1 = (set_pair (loc_result sg) retv.(Retv.v) (regset_after_external ls0)))
+      (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd /\ Sk.get_csig skd = Some sg)
+      (REGSET: ls1 = (set_pair (loc_result sg) (Retv.v retv) (regset_after_external ls0)))
       (RSP: (parent_sp stack) = Vptr blk ofs)
-      (MEMWF: Ple (Senv.nextblock skenv_link) retv.(Retv.m).(Mem.nextblock))
-      (UNFREE: Mem_unfree retv.(Retv.m) blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)) = Some m1):
+      (MEMWF: Ple (Senv.nextblock skenv_link) (Retv.m retv).(Mem.nextblock))
+      (UNFREE: Mem_unfree (Retv.m retv) blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned (ofs) + 4 * (size_arguments sg)) = Some m1):
       after_external (mkstate init_rs init_sg (Callstate stack fptr ls0 m0))
                      retv
                      (mkstate init_rs init_sg (Returnstate stack ls1 m1)).
@@ -139,7 +139,7 @@ Section MODSEM.
       (STEP: Mach.step rao se ge st0.(st) tr st1.(st))
       (INITRS: st0.(init_rs) = st1.(init_rs))
       (INITFPTR: st0.(init_sg) = st1.(init_sg))
-      (NOTDUMMY: st1.(st).(get_stack) <> []).
+      (NOTDUMMY: (get_stack st1.(st)) <> []).
 
   Lemma extcall_arguments_dtm
         rs m rsp sg vs0 vs1

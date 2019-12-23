@@ -377,7 +377,7 @@ Qed.
 Program Definition Mem_unfree (m: mem) (b: block) (lo hi: Z): option mem :=
   if plt b m.(Mem.nextblock)
   then Some (Mem.mkmem
-               (PMap.set b (Mem.setN (list_repeat (hi-lo).(Z.to_nat) Undef) lo ((Mem.mem_contents m) # b))
+               (PMap.set b (Mem.setN (list_repeat (Z.to_nat (hi-lo)) Undef) lo ((Mem.mem_contents m) # b))
                          (Mem.mem_contents m))
                (PMap.set b
                          (fun ofs k => if zle lo ofs && zlt ofs hi then Some Freeable else m.(Mem.mem_access)#b ofs k)
@@ -408,7 +408,7 @@ Proof. unfold Mem_unfree in *. des_ifs; ss. Qed.
 Lemma Mem_valid_block_unfree
       m0 m1 blk lo hi
       (UNFR: Mem_unfree m0 blk lo hi = Some m1):
-    all1 (m0.(Mem.valid_block) <1> m1.(Mem.valid_block)).
+    all1 ((Mem.valid_block m0) <1> (Mem.valid_block m1)).
 Proof. unfold Mem_unfree in *. des_ifs; ss. Qed.
 
 Lemma Mem_unfree_unchanged_on0
@@ -480,7 +480,7 @@ Local Ltac simp := repeat (bsimpl; des; des_sumbool; ss; clarify).
 
 Lemma Mem_setN_in_repeat
       n v p q c
-      (IN: p <= q < p + n.(Z.of_nat)):
+      (IN: p <= q < p + (Z.of_nat n)):
     (ZMap.get q (Mem.setN (list_repeat n v) p c)) = v.
 Proof.
   exploit (Mem.setN_in (list_repeat n v) p q c); eauto.
@@ -533,7 +533,7 @@ Proof.
     { instantiate (1:= Ptrofs.zero). rewrite Ptrofs.unsigned_zero. xomega. }
     left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max. perm_impl_tac. eapply PERM. split; try xomega.
   - exploit Mem.mi_representable; try apply MWF; eauto; cycle 1.
-    { instantiate (1:= sz.(Ptrofs.repr)). rewrite Ptrofs.unsigned_repr; try xomega. }
+    { instantiate (1:= (Ptrofs.repr sz)). rewrite Ptrofs.unsigned_repr; try xomega. }
     right. rewrite Ptrofs.unsigned_repr; try xomega.
     eapply Mem.perm_cur_max. perm_impl_tac. eapply PERM. split; try xomega.
 Qed.
@@ -586,9 +586,9 @@ Theorem Mem_free_parallel_inject'
         f m1 m2 blk_src blk_tgt ofs_src ofs_tgt sz m1'
         (INJ: Mem.inject f m1 m2)
         (VAL: Val.inject f (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
-        (FREE: Mem.free m1 blk_src ofs_src.(Ptrofs.unsigned) (ofs_src.(Ptrofs.unsigned) + sz) = Some m1'):
+        (FREE: Mem.free m1 blk_src (Ptrofs.unsigned ofs_src) ((Ptrofs.unsigned ofs_src) + sz) = Some m1'):
     exists m2',
-      (<<FREE: Mem.free m2 blk_tgt ofs_tgt.(Ptrofs.unsigned) (ofs_tgt.(Ptrofs.unsigned) + sz) = Some m2'>>)
+      (<<FREE: Mem.free m2 blk_tgt (Ptrofs.unsigned ofs_tgt) ((Ptrofs.unsigned ofs_tgt) + sz) = Some m2'>>)
       /\ (<<INJ: Mem.inject f m1' m2'>>).
 Proof.
   inv VAL. destruct (zlt 0 sz).

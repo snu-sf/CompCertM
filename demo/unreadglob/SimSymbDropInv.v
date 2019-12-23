@@ -41,15 +41,15 @@ Inductive wf (ss: t'): Prop :=
 | sim_sk_intro
     (KEPT: forall id
         (KEPT: ~ ss id),
-       ss.(tgt).(prog_defmap) ! id = ss.(src).(prog_defmap) ! id)
+       (prog_defmap ss.(tgt)) ! id = (prog_defmap ss.(src)) ! id)
     (DROP: forall id
         (DROP: ss id),
-        ss.(tgt).(prog_defmap) ! id = None)
-    (CLOSED: ss <1= ss.(src).(privs))
+        (prog_defmap ss.(tgt)) ! id = None)
+    (CLOSED: ss <1= (privs ss.(src)))
     (PUB: ss.(src).(prog_public) = ss.(tgt).(prog_public))
     (MAIN: ss.(src).(prog_main) = ss.(tgt).(prog_main))
     (NOREF: forall id gv
-        (PROG: ss.(tgt).(prog_defmap) ! id  = Some (Gvar gv)),
+        (PROG: (prog_defmap ss.(tgt)) ! id  = Some (Gvar gv)),
         <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)
     (NODUP: NoDup (prog_defs_names ss.(tgt)))
     (NOMAIN: ~ ss ss.(src).(prog_main)).
@@ -59,41 +59,41 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
     (SIMSYMB1: forall
         id blk_src blk_tgt delta
         (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
-        (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
+        (BLKSRC: (Genv.find_symbol skenv_src) id = Some blk_src)
       ,
         (<<DELTA: delta = 0>>) /\
-        (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
+        (<<BLKTGT: (Genv.find_symbol skenv_tgt) id = Some blk_tgt>>) /\
         (<<KEPT: ~ ss id>>)
     )
     (SIMSYMB2: forall
         id
         (KEPT: ~ ss id)
         blk_src
-        (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
+        (BLKSRC: (Genv.find_symbol skenv_src) id = Some blk_src)
       ,
         exists blk_tgt,
-          (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
+          (<<BLKTGT: (Genv.find_symbol skenv_tgt) id = Some blk_tgt>>) /\
           (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>))
     (SIMSYMB3: forall
         id blk_tgt
-        (BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt)
+        (BLKTGT: (Genv.find_symbol skenv_tgt) id = Some blk_tgt)
       ,
         exists blk_src,
-          (<<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>) /\
+          (<<BLKSRC: (Genv.find_symbol skenv_src) id = Some blk_src>>) /\
           (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)
     )
     (SSINV: forall
         id blk_src
         (KEPT: ss id)
-        (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
+        (BLKSRC: (Genv.find_symbol skenv_src) id = Some blk_src)
       ,
         sm0.(SimMemInjInv.mem_inv_src) blk_src)
     (SIMDEF: forall
         blk_src blk_tgt delta def_src
         (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
-        (DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src)
+        (DEFSRC: (Genv.find_def skenv_src) blk_src = Some def_src)
       ,
-        exists def_tgt, (<<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>>) /\
+        exists def_tgt, (<<DEFTGT: (Genv.find_def skenv_tgt) blk_tgt = Some def_tgt>>) /\
                         (<<DELTA: delta = 0>>) /\
                         (<<SIM: def_src = def_tgt>>))
     (DISJ: forall
@@ -106,9 +106,9 @@ Inductive sim_skenv (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: SkEnv.t): Pro
     (SIMDEFINV: forall
         blk_src blk_tgt delta def_tgt
         (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
-        (DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt)
+        (DEFTGT: (Genv.find_def skenv_tgt) blk_tgt = Some def_tgt)
       ,
-        exists def_src, (<<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>>) /\
+        exists def_src, (<<DEFSRC: (Genv.find_def skenv_src) blk_src = Some def_src>>) /\
                         (<<DELTA: delta = 0>>) /\
                         (<<SIM: def_src = def_tgt>>))
     (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
@@ -159,10 +159,10 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
     (<<SIMSYMB1: forall
         id blk_src blk_tgt delta
         (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
-        (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
+        (BLKSRC: (Genv.find_symbol skenv_src) id = Some blk_src)
       ,
         (<<DELTA: delta = 0>>) /\
-        (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
+        (<<BLKTGT: (Genv.find_symbol skenv_tgt) id = Some blk_tgt>>) /\
         (<<KEPT: ~ ss id>>)
     >>)
     /\
@@ -170,34 +170,34 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
         id
         (KEPT: ~ ss id)
         blk_src
-        (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
+        (BLKSRC: (Genv.find_symbol skenv_src) id = Some blk_src)
       ,
         exists blk_tgt,
-          (<<BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt>>) /\
+          (<<BLKTGT: (Genv.find_symbol skenv_tgt) id = Some blk_tgt>>) /\
           (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)>>)
     /\
     (<<SIMSYMB3: forall
         id blk_tgt
-        (BLKTGT: skenv_tgt.(Genv.find_symbol) id = Some blk_tgt)
+        (BLKTGT: (Genv.find_symbol skenv_tgt) id = Some blk_tgt)
       ,
         exists blk_src,
-          (<<BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src>>) /\
+          (<<BLKSRC: (Genv.find_symbol skenv_src) id = Some blk_src>>) /\
           (<<SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, 0)>>)
     >>)
     /\
     (<<SSINV: forall
         id blk_src
         (KEPT: ss id)
-        (BLKSRC: skenv_src.(Genv.find_symbol) id = Some blk_src)
+        (BLKSRC: (Genv.find_symbol skenv_src) id = Some blk_src)
       ,
         sm0.(SimMemInjInv.mem_inv_src) blk_src>>)
     /\
     (<<SIMDEF: forall
         blk_src blk_tgt delta def_src
         (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
-        (DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src)
+        (DEFSRC: (Genv.find_def skenv_src) blk_src = Some def_src)
       ,
-        exists def_tgt, (<<DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt>>) /\
+        exists def_tgt, (<<DEFTGT: (Genv.find_def skenv_tgt) blk_tgt = Some def_tgt>>) /\
                         (<<DELTA: delta = 0>>) /\
                         (<<SIM: def_src = def_tgt>>)>>)
     /\
@@ -212,9 +212,9 @@ Definition sim_skenv_splittable (sm0: SimMem.t) (ss: t') (skenv_src skenv_tgt: S
     (<<SIMDEFINV: forall
         blk_src blk_tgt delta def_tgt
         (SIMVAL: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
-        (DEFTGT: skenv_tgt.(Genv.find_def) blk_tgt = Some def_tgt)
+        (DEFTGT: (Genv.find_def skenv_tgt) blk_tgt = Some def_tgt)
       ,
-        exists def_src, (<<DEFSRC: skenv_src.(Genv.find_def) blk_src = Some def_src>>) /\
+        exists def_src, (<<DEFSRC: (Genv.find_def skenv_src) blk_src = Some def_src>>) /\
                         (<<DELTA: delta = 0>>) /\
                         (<<SIM: def_src = def_tgt>>)>>)
     /\
@@ -241,7 +241,7 @@ Inductive le (ss0: t') (ss1: t'): Prop :=
         id
         (IN: (ss1 -1 ss0) id)
       ,
-        <<OUTSIDESRC: ~ ss0.(src).(defs) id>> /\ <<OUTSIDETGT: ~ ss0.(tgt).(defs) id>>)
+        <<OUTSIDESRC: ~ (defs ss0.(src)) id>> /\ <<OUTSIDETGT: ~ (defs ss0.(tgt)) id>>)
     (SKLESRC: linkorder ss0.(src) ss1.(src))
     (SKLETGT: linkorder ss0.(tgt) ss1.(tgt))
 .
@@ -252,7 +252,7 @@ Lemma linkorder_defs
       (p0 p1: AST.program F V)
       (LINKORD: linkorder p0 p1)
   :
-    <<DEFS: p0.(defs) <1= p1.(defs)>>
+    <<DEFS: (defs p0) <1= (defs p1)>>
 .
 Proof.
   inv LINKORD.
@@ -685,11 +685,11 @@ Next Obligation.
           generalize (S1 NO). unfold Mem.loadbytes. destruct Mem.range_perm_dec; intros E1; inv E1.
           generalize (S2 NO). unfold Mem.loadbytes. destruct Mem.range_perm_dec; intros E2; inv E2.
           rewrite Z.add_0_r.
-          apply Mem_getN_forall2 with (p := 0) (n := nat_of_Z (init_data_list_size (gvar_init v))).
+          apply Mem_getN_forall2 with (p := 0) (n := Z.to_nat (init_data_list_size (gvar_init v))).
           rewrite H3, H4. eapply bytes_of_init_inject; et.
           { ii. inv SIMSK. eapply NOREF; et. eapply Genv.find_def_symbol. eexists. split; et. }
           omega.
-          rewrite nat_of_Z_eq by (apply init_data_list_size_pos). omega.
+          rewrite Z2Nat.id; try xomega.
     }
     - destruct ((init_meminj ss.(src) ss.(tgt)) b) as [[b' delta]|] eqn:INJ; auto.
       elim H. exploit init_meminj_invert; eauto. intros (A & id & B & C & D).

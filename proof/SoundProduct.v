@@ -25,13 +25,13 @@ Section SOUNDPRODUCT.
 
   Global Program Instance sound_class_product: Sound.class :=
     { Sound.t := SU0.(@Sound.t) * SU1.(@Sound.t);
-      Sound.mle su0 m0 m1 := SU0.(@Sound.mle) su0.(fst) m0 m1 /\ SU1.(@Sound.mle) su0.(snd) m0 m1;
-      Sound.lepriv su0 su1 := SU0.(@Sound.lepriv) su0.(fst) su1.(fst) /\ SU1.(@Sound.lepriv) su0.(snd) su1.(snd);
-      Sound.hle su0 su1 := SU0.(@Sound.hle) su0.(fst) su1.(fst) /\ SU1.(@Sound.hle) su0.(snd) su1.(snd);
-      Sound.wf su0 := SU0.(@Sound.wf) su0.(fst) /\ SU1.(@Sound.wf) su0.(snd);
-      Sound.val su0 v := SU0.(@Sound.val) su0.(fst) v /\ SU1.(@Sound.val) su0.(snd) v;
-      Sound.mem su0 m := SU0.(@Sound.mem) su0.(fst) m /\ SU1.(@Sound.mem) su0.(snd) m;
-      Sound.skenv su0 m ske := SU0.(@Sound.skenv) su0.(fst) m ske /\ SU1.(@Sound.skenv) su0.(snd) m ske
+      Sound.mle su0 m0 m1 := SU0.(@Sound.mle) (fst su0) m0 m1 /\ SU1.(@Sound.mle) (snd su0) m0 m1;
+      Sound.lepriv su0 su1 := SU0.(@Sound.lepriv) (fst su0) (fst su1) /\ SU1.(@Sound.lepriv) (snd su0) (snd su1);
+      Sound.hle su0 su1 := SU0.(@Sound.hle) (fst su0) (fst su1) /\ SU1.(@Sound.hle) (snd su0) (snd su1);
+      Sound.wf su0 := SU0.(@Sound.wf) (fst su0) /\ SU1.(@Sound.wf) (snd su0);
+      Sound.val su0 v := SU0.(@Sound.val) (fst su0) v /\ SU1.(@Sound.val) (snd su0) v;
+      Sound.mem su0 m := SU0.(@Sound.mem) (fst su0) m /\ SU1.(@Sound.mem) (snd su0) m;
+      Sound.skenv su0 m ske := SU0.(@Sound.skenv) (fst su0) m ske /\ SU1.(@Sound.skenv) (snd su0) m ske
     }
   .
   Next Obligation.
@@ -138,12 +138,12 @@ Section SOUNDPRODUCT.
           (PRSV0: @local_preservation SU0 ms sound_state0)
           (PRSV1: @local_preservation SU1 ms sound_state1):
       <<PRSV: @local_preservation sound_class_product ms
-                                  (fun su m st => sound_state0 su.(fst) m st /\ sound_state1 su.(snd) m st)>>.
+                                  (fun su m st => sound_state0 (fst su) m st /\ sound_state1 (snd su) m st)>>.
   Proof.
     inv PRSV0. inv PRSV1. econs; eauto.
     - clear - INIT INIT0. ii. ss.
-      specialize (INIT su_init.(fst)).
-      specialize (INIT0 su_init.(snd)).
+      specialize (INIT (fst su_init)).
+      specialize (INIT0 (snd su_init)).
       split; ss.
       + eapply INIT; eauto.
         { destruct su_init; ss. eapply sound_args_iff in SUARG; eauto. ss; des; ss. }
@@ -152,7 +152,7 @@ Section SOUNDPRODUCT.
         { destruct su_init; ss. eapply sound_args_iff in SUARG; eauto. des. ss. }
         { destruct su_init; ss. eapply sound_skenv_iff in SKENV; eauto. ss; des; ss. }
     - clear - STEP STEP0. ii. ss. des.
-      specialize (STEP m_arg su0.(fst)). specialize (STEP0 m_arg su0.(snd)).
+      specialize (STEP m_arg (fst su0)). specialize (STEP0 m_arg (snd su0)).
       split; ss.
       + eapply STEP; eauto.
       + eapply STEP0; eauto.
@@ -167,7 +167,7 @@ Section SOUNDPRODUCT.
       + eapply K; eauto. destruct su_ret; ss. eapply sound_retv_iff in RETV. des; ss.
       + eapply K0; eauto. destruct su_ret; ss. eapply sound_retv_iff in RETV. des; ss.
     - clear - RET RET0. ii. ss. des.
-      specialize (RET m_arg su0.(fst)). specialize (RET0 m_arg su0.(snd)).
+      specialize (RET m_arg (fst su0)). specialize (RET0 m_arg (snd su0)).
       exploit RET; eauto. i; des.
       exploit RET0; eauto. i; des.
       exists (su_ret, su_ret0). esplits; eauto. eapply sound_retv_iff. ss.

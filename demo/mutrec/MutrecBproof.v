@@ -116,10 +116,10 @@ Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Let md_src: Mod.t := (MutrecBspec.module).
 Let md_tgt: Mod.t := (AsmC.module prog).
-Hypothesis (INCL: SkEnv.includes skenv_link md_src.(Mod.sk)).
+Hypothesis (INCL: SkEnv.includes skenv_link (Mod.sk md_src)).
 Hypothesis (WF: SkEnv.wf skenv_link).
 
-Let tge := (skenv_link.(SkEnv.project) prog.(Sk.of_program fn_sig)).(SkEnv.revive) prog.
+Let tge := (SkEnv.revive ((SkEnv.project skenv_link) (Sk.of_program fn_sig prog))) prog.
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimMemInjInvC.mk symbol_memoized md_src md_tgt) sm_link.
 
@@ -127,7 +127,7 @@ Inductive well_saved (initstk stk: block)
   : regset -> regset -> mem -> Prop :=
 | well_saved_intro
     (init_rs rs: regset) m
-    (INITSIG: tge.(Genv.find_funct) (init_rs # PC) = Some (Internal func_g))
+    (INITSIG: (Genv.find_funct tge) (init_rs # PC) = Some (Internal func_g))
     (INITRSPVAL: init_rs RSP = Vptr initstk Ptrofs.zero)
     (RANOTFPTR: forall blk ofs (RAVAL: init_rs RA = Vptr blk ofs),
         ~ Plt blk (Genv.genv_next skenv_link))
@@ -136,7 +136,7 @@ Inductive well_saved (initstk stk: block)
     (RASAVED: Mem.loadv Mptr m (Val.offset_ptr (rs RSP) (Ptrofs.repr 16)) = Some (init_rs RA))
     (RSPSAVED: Mem.loadv Mptr m (Val.offset_ptr (rs RSP) Ptrofs.zero) = Some (init_rs RSP))
     (REGSAVED: forall mr (CALLEESAVE: Conventions1.is_callee_save mr)
-                      (INREG: mr <> Machregs.BX), init_rs mr.(to_preg) = rs mr.(to_preg))
+                      (INREG: mr <> Machregs.BX), init_rs (to_preg mr) = rs (to_preg mr))
     (REGSAVEDSTK: Mem.loadv Many64 m (Val.addl (rs RSP) (Vlong (Int64.repr 8))) = Some (init_rs RBX))
   :
     well_saved
@@ -149,7 +149,7 @@ Lemma well_saved_keep init_rs initstk stk rs0 rs1 m0 m1
                 init_rs rs0 m0)
       (REGSAME: forall mr (CALLEESAVE: Conventions1.is_callee_save mr)
                        (INREG: mr <> Machregs.BX),
-          rs0 mr.(to_preg) = rs1 mr.(to_preg))
+          rs0 (to_preg mr) = rs1 (to_preg mr))
       (RSPSAME: rs0 RSP = rs1 RSP)
       (UNCHSTK: Mem.unchanged_on
                    (fun blk _ => blk = stk) m0 m1)
@@ -348,7 +348,7 @@ Lemma match_states_lxsim
 .
 Proof.
   destruct (Genv.find_symbol
-              ((skenv_link.(SkEnv.project) prog.(Sk.of_program fn_sig)).(SkEnv.revive) prog)
+              ((SkEnv.revive ((SkEnv.project skenv_link) (Sk.of_program fn_sig prog))) prog)
               _memoized) as [b_memo|] eqn:BLK; cycle 1.
   { exfalso. clear - INCL BLK. inversion INCL; subst.
     exploit DEFS; eauto.

@@ -34,7 +34,7 @@ Lemma update_src_private
       sm0 sm1
       (INJ: sm0.(inj) = sm1.(inj))
       (SRC: sm0.(src).(Mem.nextblock) = sm1.(src).(Mem.nextblock)):
-    sm0.(src_private) = (sm1).(src_private).
+    (src_private sm0) = (src_private (sm1)).
 Proof.
   repeat (apply Axioms.functional_extensionality; i). apply prop_ext1.
   u. split; ii; des; esplits; eauto with congruence.
@@ -45,7 +45,7 @@ Lemma update_tgt_private
       (SRC: sm0.(src) = sm1.(src))
       (TGT: sm0.(tgt).(Mem.nextblock) = sm1.(tgt).(Mem.nextblock))
       (INJ: sm0.(inj) = sm1.(inj)):
-    sm0.(tgt_private) = sm1.(tgt_private).
+    (tgt_private sm0) = (tgt_private sm1).
 Proof.
   repeat (apply Axioms.functional_extensionality; i). apply prop_ext1.
   u. split; ii; des; esplits; eauto with congruence.
@@ -204,7 +204,7 @@ Lemma unfree_right
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le_excl bot2 (brange blk lo hi) sm0 sm1>>).
 Proof.
-  exists (sm0.(update) sm0.(src) m_tgt0 sm0.(inj)).
+  exists (update (sm0) sm0.(src) m_tgt0 sm0.(inj)).
   exploit Mem_unfree_unchanged_on; et. intro UNCH. esplits; u; ss; eauto.
   - econs; ss; eauto; try (by inv MWF; ss).
     + inv MWF. eapply Mem_unfree_right_inject; eauto.
@@ -296,7 +296,7 @@ Lemma alloc_left_zero_simmem
       sm0 blk_src sz m_src1 blk_tgt
       (MWF: SimMem.wf sm0)
       (ALLOC: Mem.alloc sm0.(SimMem.src) 0 sz = (m_src1, blk_src))
-      (TGTPRIV: (range 0 sz) <1= sm0.(tgt_private) blk_tgt)
+      (TGTPRIV: (range 0 sz) <1= (tgt_private sm0) blk_tgt)
       (TGTNOTEXT: ((range 0 sz) /1\ sm0.(tgt_external) blk_tgt) <1= bot1)
       (TGTPERM: forall ofs k p (BOUND: 0 <= ofs < sz), Mem.perm sm0.(SimMem.tgt) blk_tgt ofs k p)
       (* (SZPOS: 0 < sz) *)
@@ -470,7 +470,7 @@ Next Obligation.
   - instantiate (1:= Retv.mk _ _); ss. eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV.
   - destruct retv_src; ss. instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs 1; ss; eauto.
-    instantiate (1:= retv_src.(Retv.m)). ss.
+    instantiate (1:= (Retv.m retv_src)). ss.
   - assert(FROZEN: frozen inj f' src_parent_nb tgt_parent_nb).
     { eapply inject_separated_frozen in H5. inv H5. econs; eauto. i.
       exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; xomega. }
@@ -534,8 +534,8 @@ Lemma inject_junk_blocks_tgt
       (<<DEF: sm1 = update sm0 sm0.(SimMem.src) m_tgt0 sm0.(SimMemInj.inj)>>) /\
       (<<MWF: SimMem.wf sm1>>) /\
       (<<MLE: SimMem.le sm0 sm1>>) /\
-      (<<PRIVSRC: sm0.(SimMemInj.src_private) = sm1.(SimMemInj.src_private)>>) /\
-      (<<PRIVTGT: sm0.(SimMemInj.tgt_private) <2= sm1.(SimMemInj.tgt_private)>>).
+      (<<PRIVSRC: (SimMemInj.src_private sm0) = (SimMemInj.src_private sm1)>>) /\
+      (<<PRIVTGT: (SimMemInj.tgt_private sm0) <2= (SimMemInj.tgt_private sm1)>>).
 Proof.
   esplits; eauto.
   - ss. inv MWF. econs; ss; eauto.
@@ -570,8 +570,8 @@ Lemma inject_junk_blocks_parallel
                            (inject_junk_blocks sm0.(SimMem.src) sm0.(SimMem.tgt) n sm0.(SimMemInj.inj))>>) /\
       (<<MWF: SimMem.wf sm1>>) /\
       (<<MLE: SimMem.le sm0 sm1>>) /\
-      (<<PRIVSRC: sm0.(SimMemInj.src_private) = sm1.(SimMemInj.src_private)>>) /\
-      (<<PRIVTGT: sm0.(SimMemInj.tgt_private) <2= sm1.(SimMemInj.tgt_private)>>).
+      (<<PRIVSRC: (SimMemInj.src_private sm0) = (SimMemInj.src_private sm1)>>) /\
+      (<<PRIVTGT: (SimMemInj.tgt_private sm0) <2= (SimMemInj.tgt_private sm1)>>).
 Proof.
   unfold inject_junk_blocks. esplits; eauto.
   - ss. inv MWF. econs; ss; eauto.
@@ -654,11 +654,11 @@ Lemma Mem_free_parallel'
       sm0 blk_src blk_tgt ofs_src ofs_tgt sz m_src0
       (MWF: wf' sm0)
       (VAL: Val.inject sm0.(inj) (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
-      (FREESRC: Mem.free sm0.(src) blk_src ofs_src.(Ptrofs.unsigned) (ofs_src.(Ptrofs.unsigned) + sz) = Some m_src0):
+      (FREESRC: Mem.free sm0.(src) blk_src (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned (ofs_src) + sz) = Some m_src0):
     exists sm1,
       (<<MSRC: sm1.(src) = m_src0>>)
       /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<FREETGT: Mem.free sm0.(tgt) blk_tgt ofs_tgt.(Ptrofs.unsigned) (ofs_tgt.(Ptrofs.unsigned) + sz) = Some sm1.(tgt)>>)
+      /\ (<<FREETGT: Mem.free sm0.(tgt) blk_tgt (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned (ofs_tgt) + sz) = Some sm1.(tgt)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>).
 Proof.
@@ -722,7 +722,7 @@ Lemma minjection_disjoint_footprint_private
       sm0 P
       (SEP: (SimMemInj.tgt sm0) |= P)
       (DISJ: disjoint_footprint (minjection (SimMemInj.inj sm0) (SimMemInj.src sm0)) P):
-    P.(m_footprint) <2= sm0.(SimMemInj.tgt_private).
+    P.(m_footprint) <2= (SimMemInj.tgt_private sm0).
 Proof.
   u. ii. esplits; eauto.
   - ii. eapply DISJ; eauto. ss. esplits; eauto.
@@ -731,7 +731,7 @@ Qed.
 
 Lemma minjection_private_disjoint_footprint
       sm0 P
-      (PRIV: P.(m_footprint) <2= sm0.(SimMemInj.tgt_private)):
+      (PRIV: P.(m_footprint) <2= (SimMemInj.tgt_private sm0)):
     <<DISJ: disjoint_footprint (minjection (SimMemInj.inj sm0) (SimMemInj.src sm0)) P>>.
 Proof.
   - ii. ss. des. eapply PRIV; eauto.
@@ -752,8 +752,8 @@ Lemma external_call_parallel_rule_simmem
       (MLE0: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
       (MLE1: SimMem.le (SimMemLift.unlift sm_at sm_ret) sm_after)
       (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret))
-      (PRIV0: sm_at.(SimMemInj.tgt_private) = sm_arg.(SimMemInj.tgt_private))
-      (PRIV1: sm_ret.(SimMemInj.tgt_private) = sm_after.(SimMemInj.tgt_private))
+      (PRIV0: (SimMemInj.tgt_private sm_at) = (SimMemInj.tgt_private sm_arg))
+      (PRIV1: (SimMemInj.tgt_private sm_ret) = (SimMemInj.tgt_private sm_after))
       (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg))
       (UNCH1: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_ret) (SimMemInj.tgt sm_after)):
     <<SEP: sm_after.(SimMem.tgt) |= (minjection sm_after.(SimMemInj.inj) sm_after.(SimMem.src))

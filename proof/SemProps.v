@@ -36,7 +36,7 @@ Lemma link_includes
       (LINK: link_sk p = Some sk_link_src)
       md
       (IN: In md p):
-    SkEnv.includes (Sk.load_skenv sk_link_src) md.(Mod.sk).
+    SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk md).
 Proof.
   unfold link_sk in *.
   (* TODO: can we remove `_ LINK` ? *)
@@ -260,7 +260,7 @@ Section INITDTM.
   Lemma skenv_fill_internals_preserves_wf
         skenv0 skenv1
         (WF: SkEnv.wf skenv0)
-        (FILL: skenv0.(skenv_fill_internals) = skenv1):
+        (FILL: (skenv_fill_internals skenv0) = skenv1):
       <<WF: SkEnv.wf skenv1>>.
   Proof.
     inv WF. unfold skenv_fill_internals. econs; i; ss; eauto.
@@ -278,7 +278,7 @@ Section INITDTM.
         (MOD: In md p)
         (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
                  Some (Internal md_def))
-        (INCL: SkEnv.includes skenv_link md.(Mod.sk)):
+        (INCL: SkEnv.includes skenv_link (Mod.sk md)):
       False.
   Proof.
     hexploit (@Mod.get_modsem_projected_sk md skenv_link); eauto. intro SPEC; des.
@@ -303,7 +303,7 @@ Section INITDTM.
   Proof.
     ss. des_ifs; cycle 1.
     { econs; eauto. ii; ss. inv FIND0. ss. }
-    assert(WFBIG: t.(Sk.load_skenv).(SkEnv.wf)).
+    assert(WFBIG: (Sk.load_skenv t).(SkEnv.wf)).
     { eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; et. }
     econs; eauto. ii; ss. inv FIND0; inv FIND1.
     generalize (link_includes p Heq). intro INCLS.
@@ -550,7 +550,7 @@ Section WFMEM.
 (* TODO: move to proper place *)
 Lemma Genv_bytes_of_init_data_length
       F V (ge: Genv.t F V) a:
-    Datatypes.length (Genv.bytes_of_init_data ge a) = nat_of_Z (init_data_size a).
+    Datatypes.length (Genv.bytes_of_init_data ge a) = Z.to_nat (init_data_size a).
 Proof.
   clear - a. destruct a; ss; des_ifs. rewrite length_list_repeat. rewrite Z2Nat.inj_max. ss. xomega.
 Qed.
@@ -558,15 +558,15 @@ Qed.
 Inductive wf_mem_weak (skenv ge0: SkEnv.t) (sk: Sk.t) (m0: mem): Prop :=
 | wf_mem_weak_intro
     (WFPTR: forall blk_fr _ofs_fr blk_to _ofs_to id_fr _q _n gv
-        (SYMB: ge0.(Genv.find_symbol) id_fr = Some blk_fr)
+        (SYMB: (Genv.find_symbol ge0) id_fr = Some blk_fr)
         (* (IN: In id_fr sk.(prog_defs_names)) *)
         (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
         (NONVOL: gv.(gvar_volatile) = false)
         (DEFINITIVE: classify_init gv.(gvar_init) = Init_definitive gv.(gvar_init))
         (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
         (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to) _q _n]),
-        exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)
-                      /\ (<<IN: In id_to sk.(prog_defs_names)>>)).
+        exists id_to, (<<SYMB: (Genv.invert_symbol skenv) blk_to = Some id_to>>)
+                      /\ (<<IN: In id_to (prog_defs_names sk)>>)).
 
 Let link_load_skenv_wf_sem_one: forall md sk_link m0 m1 id gd ge0
     (WF: Sk.wf md)
@@ -730,9 +730,9 @@ Proof.
           + exfalso. unfold Mem.loadbytes in *. des_ifs. rename H0 into P. rename H1 into Q. clear - P Q T RANGE POS.
             abstr ((Mem.mem_contents m1) !! blk) MC. clear_tac.
             assert(POS0: 0 <= Z.max z 0) by xomega.
-            exploit (@Mem.getN_in MC ofs_mid (Z.max z 0).(Z.to_nat) ofs_bound); eauto.
+            exploit (@Mem.getN_in MC ofs_mid (Z.to_nat (Z.max z 0)) ofs_bound); eauto.
             { split; try xomega. rewrite Z2Nat.id; ss. }
-            intro R. rewrite Q in *. unfold nat_of_Z in *. rewrite P in *. clear - R. apply in_list_repeat in R. ss.
+            intro R. rewrite Q in *. unfold Z.to_nat in *. rewrite P in *. clear - R. apply in_list_repeat in R. ss.
 
           + des_ifs; cycle 1.
             { exfalso. unfold Mem.loadbytes in *. des_ifs.

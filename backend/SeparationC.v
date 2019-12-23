@@ -234,7 +234,7 @@ Qed.
 
 Program Definition freed_range (b: block) (lo hi: Z): massert := {|
   m_pred := fun m =>
-              <<RANGE: 0 <= lo /\ hi <= Ptrofs.modulus>> /\ <<VALID: lo < hi -> m.(Mem.valid_block) b>>
+              <<RANGE: 0 <= lo /\ hi <= Ptrofs.modulus>> /\ <<VALID: lo < hi -> (Mem.valid_block m) b>>
   ;
   m_footprint := brange b lo hi
   ;
@@ -308,7 +308,7 @@ Lemma range_nonnil_valid_block
       (SEP: m |= range b lo hi)
       (RANGE: lo < hi)
   :
-    <<VALID: m.(Mem.valid_block) b>>.
+    <<VALID: (Mem.valid_block m) b>>.
 Proof.
   ss. des. specialize (SEP1 lo). exploit SEP1; eauto. { lia. } i. eapply Mem.perm_valid_block; eauto.
 Unshelve.

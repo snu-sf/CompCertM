@@ -195,7 +195,7 @@ Section LIFT.
   Lemma lift_idx_spec
         i0 i1
         (ORD: order i0 i1):
-      <<ORD: ord i0.(lift_idx) i1.(lift_idx)>>.
+      <<ORD: ord (lift_idx i0) (lift_idx i1)>>.
   Proof. econs; eauto. cbn. instantiate (1:= eq_refl). cbn. ss. Qed.
 
   Hint Unfold lift_idx.

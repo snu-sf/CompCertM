@@ -78,7 +78,7 @@ Module Args.
     end
   .
 
-  Lemma get_m_m: forall args (CSTYLE: is_cstyle args), args.(get_m) = args.(m). Proof. destruct args; ss. Qed.
+  Lemma get_m_m: forall args (CSTYLE: is_cstyle args), (get_m args) = (m args). Proof. destruct args; ss. Qed.
 
 End Args.
 
@@ -128,7 +128,7 @@ Module Retv.
     end
   .
 
-  Lemma get_m_m: forall retv (CSTYLE: is_cstyle retv), retv.(get_m) = retv.(m). Proof. destruct retv; ss. Qed.
+  Lemma get_m_m: forall retv (CSTYLE: is_cstyle retv), (get_m retv) = (m retv). Proof. destruct retv; ss. Qed.
 
 End Retv.
 
@@ -208,16 +208,16 @@ Module ModSem.
         step se ge (ev :: tr, st0) [ev] (tr, st0).
 
     Definition at_external (st0: state) (args: Args.t): Prop :=
-      st0.(fst) = [] /\ ms.(at_external) st0.(snd) args.
+      (fst st0) = [] /\ ms.(at_external) (snd st0) args.
 
     Definition initial_frame (args: Args.t) (st0: state): Prop :=
-      st0.(fst) = [] /\ ms.(initial_frame) args st0.(snd).
+      (fst st0) = [] /\ ms.(initial_frame) args (snd st0).
 
     Definition final_frame (st0: state) (retv: Retv.t): Prop :=
-      st0.(fst) = [] /\ ms.(final_frame) st0.(snd) retv.
+      (fst st0) = [] /\ ms.(final_frame) (snd st0) retv.
 
     Definition after_external (st0: state) (retv: Retv.t) (st1: state): Prop :=
-      st0.(fst) = [] /\ ms.(after_external) st0.(snd) retv st1.(snd) /\ st1.(fst) = [].
+      (fst st0) = [] /\ ms.(after_external) (snd st0) retv (snd st1) /\ (fst st1) = [].
 
     Program Definition trans: t :=
       mk step at_external initial_frame final_frame after_external

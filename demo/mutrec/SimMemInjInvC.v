@@ -317,7 +317,7 @@ Section SIMSYMBINV.
           id
           (IN: (ss1 -1 ss0) id)
         ,
-          <<OUTSIDESRC: ~ ss0.(src).(defs) id>> /\ <<OUTSIDETGT: ~ ss0.(tgt).(defs) id>>)
+          <<OUTSIDESRC: ~ (defs ss0.(src)) id>> /\ <<OUTSIDETGT: ~ (defs ss0.(tgt)) id>>)
     (SKLESRC: linkorder ss0.(src) ss1.(src))
     (SKLETGT: linkorder ss0.(tgt) ss1.(tgt))
   .
@@ -363,13 +363,13 @@ Section SIMSYMBINV.
       (SKSAME: ss.(src) = ss.(tgt))
       (CLOSED: forall id (SS: ss id),
           exists g,
-            (<<DEF: ss.(tgt).(prog_defmap) ! id = Some g>>) /\
+            (<<DEF: (prog_defmap ss.(tgt)) ! id = Some g>>) /\
             (<<INV: invariant_globvar g>>) /\
             (<<PRVT: ~ In id (prog_public ss.(tgt))>>))
       (NOMAIN: ~ ss ss.(src).(prog_main))
       (NOREF: forall
           id gv
-          (PROG: ss.(tgt).(prog_defmap) ! id  = Some (Gvar gv))
+          (PROG: (prog_defmap ss.(tgt)) ! id  = Some (Gvar gv))
         ,
           <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)
   .
@@ -390,7 +390,7 @@ Section SIMSYMBINV.
 
   Inductive sim_skenv_inj (sm: SimMemInjInv.t') (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
   | sim_skenv_inj_intro
-      (INVCOMPAT: forall id blk (FIND: skenv_tgt.(Genv.find_symbol) id = Some blk),
+      (INVCOMPAT: forall id blk (FIND: (Genv.find_symbol skenv_tgt) id = Some blk),
           ss id <-> sm.(mem_inv_tgt) blk)
       (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
       (INJECT: skenv_inject skenv_src sm.(SimMemInj.inj) sm.(mem_inv_tgt))
@@ -529,9 +529,9 @@ Section SIMSYMBINV.
                 unfold ref_init in *. des. esplits; ss; eauto.
           }
           { eapply H1; eauto. }
-          { zsimpl. rewrite nat_of_Z_eq.
+          { zsimpl. rewrite Z2Nat.id.
             - eapply H1; eauto.
-            - eapply init_data_list_size_pos. }
+            - hexploit (init_data_list_size_pos (gvar_init v)); eauto. i. xomega. }
     - i. des_ifs.
     - i. des_ifs.
     - ii. des_ifs. eapply mi_no_overlap; eauto; des_ifs.
@@ -668,7 +668,7 @@ Section SIMSYMBINV.
                          else None).
     eexists (SimMemInjInv.mk (SimMemInj.mk _ _ j bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_src) _ _) _ _). ss.
     instantiate (1:=fun blk => exists id,
-                        (<<FIND: (Sk.load_skenv ss.(tgt)).(Genv.find_symbol) id = Some blk>>) /\
+                        (<<FIND: (Genv.find_symbol (Sk.load_skenv ss.(tgt))) id = Some blk>>) /\
                         (<<SINV: ss id>>)).
     unfold Sk.load_mem, Sk.load_skenv in *. dup LOADMEMSRC.
     apply Genv.init_mem_genv_next in LOADMEMSRC.

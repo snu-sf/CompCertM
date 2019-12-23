@@ -154,7 +154,7 @@ Section MAP.
           (f: block -> globdef F1 V1 -> option (globdef F2 V2)): Genv.t F2 V2 :=
   {| Genv.genv_public := ge0.(Genv.genv_public);
      Genv.genv_symb := ge0.(Genv.genv_symb);
-     Genv.genv_defs := ge0.(Genv.genv_defs).(PTree_filter_map f);
+     Genv.genv_defs := (PTree_filter_map f ge0.(Genv.genv_defs));
      Genv.genv_next := ge0.(Genv.genv_next);
   |}.
   Next Obligation. eapply Genv.genv_symb_range; eauto. Qed.
@@ -163,8 +163,8 @@ Section MAP.
 
   Lemma Genv_map_defs_def
         ge (f: block -> globdef F1 V1 -> option (globdef F2 V2)) blk gd2
-        (FIND: (ge.(Genv_map_defs) f).(Genv.find_def) blk = Some gd2):
-      exists gd1, <<FIND: ge.(Genv.find_def) blk = Some gd1>> /\ <<MAP: f blk gd1 = Some gd2>>.
+        (FIND: (Genv.find_def (Genv_map_defs ge f)) blk = Some gd2):
+      exists gd1, <<FIND: (Genv.find_def ge) blk = Some gd1>> /\ <<MAP: f blk gd1 = Some gd2>>.
   Proof.
     unfold Genv.find_def in *. unfold Genv_map_defs in *. ss.
     rewrite PTree_filter_map_spec in *. u in FIND. des_ifs. esplits; eauto.
@@ -172,9 +172,9 @@ Section MAP.
 
   Lemma Genv_map_defs_def_inv
         ge blk gd
-        (FIND: ge.(Genv.find_def) blk = Some gd):
+        (FIND: (Genv.find_def ge) blk = Some gd):
       <<FIND: forall (f: block -> globdef F1 V1 -> option (globdef F2 V2)),
-        (ge.(Genv_map_defs) f).(Genv.find_def) blk = f blk gd>>.
+        (Genv.find_def (Genv_map_defs ge f)) blk = f blk gd>>.
   Proof.
     ii. unfold Genv.find_def in *. unfold Genv_map_defs in *. ss.
     rewrite PTree_filter_map_spec in *. u. des_ifs.
@@ -182,14 +182,14 @@ Section MAP.
 
   Lemma Genv_map_defs_symb
         ge (f: block -> globdef F1 V1 -> option (globdef F2 V2)):
-      <<FIND: all1 ((ge.(Genv_map_defs) f).(Genv.find_symbol) =1= ge.(Genv.find_symbol))>>.
+      <<FIND: all1 ((Genv.find_symbol (Genv_map_defs ge f)) =1= (Genv.find_symbol ge))>>.
   Proof. ii; ss. Qed.
 
   (* Note: genv_defs will have spurious data, but this is actually Compcert's interpretation. *)
   Program Definition Genv_filter_symb (ge0: Genv.t F1 V1)
           (f: ident -> bool): Genv.t F1 V1 :=
   {| Genv.genv_public := ge0.(Genv.genv_public);
-     Genv.genv_symb := ge0.(Genv.genv_symb).(PTree_filter_key f);
+     Genv.genv_symb := (PTree_filter_key f ge0.(Genv.genv_symb));
      Genv.genv_defs := ge0.(Genv.genv_defs);
      Genv.genv_next := ge0.(Genv.genv_next);
   |}.
@@ -342,7 +342,7 @@ Section MATCHPROG.
   Hypothesis (MATCHPROG: match_program_gen match_fundef match_varinfo ctx p_src p_tgt).
 
   Lemma match_program_gen_defs:
-      <<EQ: p_src.(defs) = p_tgt.(defs)>>.
+      <<EQ: (defs p_src) = (defs p_tgt)>>.
   Proof.
     apply Axioms.functional_extensionality. ii; ss. u. inv MATCHPROG. des.
     (* hexploit (match_program_defmap _ _ ctx p_src p_tgt MATCH x). intro REL. *)

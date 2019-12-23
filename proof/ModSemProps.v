@@ -197,17 +197,17 @@ Proof.
 Qed.
 
 Lemma atomic_single_events_at: forall (ms: ModSem.t),
-    <<SINGLE: forall st, single_events_at ms.(ModSem.Atomic.trans) st>>.
+    <<SINGLE: forall st, single_events_at (ModSem.Atomic.trans ms) st>>.
 Proof. ii. inv H; ss. xomega. Qed.
 
 Lemma atomic_single_evnents: forall (ms: ModSem.t),
-    <<SINGLE: single_events ms.(ModSem.Atomic.trans)>>.
+    <<SINGLE: single_events (ModSem.Atomic.trans ms)>>.
 Proof. ii. inv H; ss. xomega. Qed.
 
 Lemma atomic_receptive_at
       (ms: ModSem.t) st0
       (SSR: strongly_receptive_at ms st0):
-    <<RCP: forall tr, receptive_at ms.(ModSem.Atomic.trans) (tr, st0)>>.
+    <<RCP: forall tr, receptive_at (ModSem.Atomic.trans ms) (tr, st0)>>.
 Proof.
   generalize (@atomic_single_evnents ms); eauto. intro SINGLE.
   inv SSR. econs; ss.
@@ -226,7 +226,7 @@ Proof.
 Qed.
 
 Lemma atomic_receptive_at_nonnil: forall (ms: ModSem.t),
-    <<RCP: forall st0 ev tr, receptive_at ms.(ModSem.Atomic.trans) (ev :: tr, st0)>>.
+    <<RCP: forall st0 ev tr, receptive_at (ModSem.Atomic.trans ms) (ev :: tr, st0)>>.
 Proof.
   i. generalize (@atomic_single_evnents ms); eauto. intro SINGLE. ii. econs; ss.
   { ii. ss. destruct t1; ss.
@@ -244,7 +244,7 @@ Qed.
 Lemma atomic_receptive
       (ms: ModSem.t)
       (SSR: strongly_receptive ms):
-    <<RCP: receptive ms.(ModSem.Atomic.trans)>>.
+    <<RCP: receptive (ModSem.Atomic.trans ms)>>.
 Proof.
   generalize (@atomic_single_evnents ms); eauto. intro SINGLE.
   inv SSR. econs; ss.

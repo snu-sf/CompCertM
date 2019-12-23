@@ -489,27 +489,20 @@ Section ASMSTEP.
         * apply nextinstr_agree. unfold compare_longs. (repeat eapply agree_step; eauto); agree_invs AGREE.
       + esplits; eauto.
         * econs; eauto; ss.
-          repeat erewrite (@eval_testcond_ext rs_src0 rs_tgt0); ss; eauto.
-          unfold goto_label, nextinstr. repeat f_equal.
-        * repeat (eapply agree_step; eauto); ss. unfold Pregmap.set. des_ifs.
-          cinv (AGREE PC); ss.
+        * exploit eval_testcond_ext; eauto. intro T. rewrite T.
+          repeat (eapply agree_step; eauto); ss.
+          eapply Val_offset_ptr_lessdef; eauto.
+          eapply AGREE.
       + esplits; eauto.
         * econs; eauto; ss.
-          repeat erewrite (@eval_testcond_ext rs_src0 rs_tgt0); ss; eauto.
-          unfold goto_label, nextinstr. repeat f_equal.
-        * repeat (eapply agree_step; eauto); ss.
-          cinv (AGREE PC); eauto.
+        * exploit eval_testcond_ext; eauto. intro T. rewrite T.
+          repeat (eapply agree_step; eauto); ss.
+          eapply Val_offset_ptr_lessdef; eauto.
+          eapply AGREE.
       + esplits; eauto.
         * econs; eauto; ss.
-          instantiate (1 := match eval_testcond c rs_tgt0 with
-                            | Some true => (nextinstr rs_tgt0 # rd <- (rs_tgt0 r1))
-                            | Some false =>  (nextinstr rs_tgt0)
-                            | None => (nextinstr rs_tgt0 # rd <- Vundef)
-                            end).
-          des_ifs; eauto.
         * unfold nextinstr. des_ifs; ss; repeat eapply agree_step; eauto;
           try (by repeat (rewrite Pregmap.gso; [| ii; clarify]); cinv (AGREE PC); eauto).
-          unfold Pregmap.set. ii. des_ifs; eauto.
       + esplits; eauto.
         * econs; eauto; ss.
         * repeat (eapply agree_step; eauto); ss.

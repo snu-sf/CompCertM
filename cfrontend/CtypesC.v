@@ -38,7 +38,7 @@ Module CSk.
 
   Lemma of_program_defs
         F get_sg (p: Ctypes.program F):
-      (of_program get_sg p).(defs) = p.(defs).
+      (defs (of_program get_sg p)) = (defs p).
   Proof.
     destruct p; ss.
     Local Opaque in_dec.
@@ -91,7 +91,7 @@ Module CSk.
                                                            (@match_fundef _ _ (get_sg))
                                                            top2
                                                            tt)
-                                   (p.(prog_defmap) ! id) ((of_program get_sg p).(prog_defmap) ! id)>>.
+                                   ((prog_defmap p) ! id) ((prog_defmap (of_program get_sg p)) ! id)>>.
   Proof.
     ii. unfold prog_defmap, of_program, skdefs_of_gdefs. ss.
     rewrite prog_defmap_update_snd. rewrite prog_defmap_update_snd.
@@ -108,7 +108,7 @@ Module CSk.
   Local Opaque prog_defmap.
 
   Lemma of_program_internals: forall F get_sg (p: Ctypes.program F),
-      (of_program get_sg p).(internals) = p.(internals).
+      (internals (of_program get_sg p)) = (internals p).
   Proof.
     unfold internals. destruct p; ss.
     apply Axioms.functional_extensionality. intro id; ss. u.
@@ -130,14 +130,14 @@ Module CSkEnv.
         (* (DEFS0: forall id, In id prog.(prog_defs_names) -> is_some (skenv.(Genv.find_symbol) id)) *)
         (* (WF: wf skenv) *)
         (* (PROJ: skenv = SkEnv.project skenv_link prog) *)
-        (PROJ: SkEnv.project_spec skenv_link prog.(CSk.of_program get_sg) skenv)
+        (PROJ: SkEnv.project_spec skenv_link (CSk.of_program get_sg prog) skenv)
         (* (WF: SkEnv.wf skenv_link) *)
         (* (PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog *)
-        (INCL: SkEnv.includes skenv_link prog.(CSk.of_program get_sg)):
+        (INCL: SkEnv.includes skenv_link (CSk.of_program get_sg prog)):
       <<PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog>>.
   Proof.
     assert(H: DUMMY_PROP) by ss.
-    assert(DEFS: prog.(defs) <1= fun id => is_some (skenv.(Genv.find_symbol) id)).
+    assert(DEFS: (defs prog) <1= fun id => is_some (Genv.find_symbol (skenv) id)).
     { ii; ss. u. des_ifs. exfalso.
       bar. inv PROJ. bar. inv INCL. bar.
       exploit SYMBKEEP; et.

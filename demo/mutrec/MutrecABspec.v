@@ -26,7 +26,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: unit.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) sk_link.
+  Let skenv: SkEnv.t := (SkEnv.project skenv_link) sk_link.
   Let ge: SkEnv.t := skenv.
 
   Inductive state: Type :=
@@ -48,9 +48,9 @@ Section MODSEM.
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame1_intro
       i m func_fg
-      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (AST.Internal func_fg))
-      (VS: args.(Args.vs) = [Vint i])
-      (M: args.(Args.m) = m)
+      (FINDF: Genv.find_funct ge (Args.fptr args) = Some (AST.Internal func_fg))
+      (VS: (Args.vs args) = [Vint i])
+      (M: (Args.m args) = m)
       (RANGE: 0 <= i.(Int.intval) < MAX)
     :
       initial_frame args (Callstate i m)

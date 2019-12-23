@@ -29,7 +29,7 @@ Theorem separate_compilation_correct
         (TYPECHECKLINK: CsemC.typechecked builtins src_link)
         (LINK: link_list srcs = Some src_link)
         (MAIN: exists main_f,
-            (<<INTERNAL: src_link.(prog_defmap) ! (src_link.(prog_main)) = Some (Gfun (Ctypes.Internal main_f))>>) /\
+            (<<INTERNAL: (prog_defmap src_link) ! (src_link.(prog_main)) = Some (Gfun (Ctypes.Internal main_f))>>) /\
             (<<SIG: type_of_function main_f = Tfunction Ctypes.Tnil type_int32s cc_default>>))
         (TR: Errors.mmap transf_c_program srcs = Errors.OK tgts):
     (<<INITUB: program_behaves (Csem.semantics src_link) (Goes_wrong E0)>>) \/

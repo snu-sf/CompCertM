@@ -46,12 +46,12 @@ Local Existing Instance SoundTop.Top.
 
 Lemma asm_inj_inv_drop
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module))
+      (WF: Sk.wf (module asm))
   :
     exists mp,
       (<<SIM: ModPair.sim mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.

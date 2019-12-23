@@ -41,11 +41,11 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Lemma asm_id
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module)):
+      (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
 Proof.
   eapply any_id; eauto.
 Qed.
@@ -68,18 +68,18 @@ Section LOCALPRIV.
   | has_footprint_intro
       su0 blk1 ofs
       init_rs (rs0: regset) m_unused m1 sg
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
+      (SIG: exists skd, (Genv.find_funct skenv_link) (rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = Some sg)
       (RSP: rs0 RSP = Vptr blk1 ofs)
-      (FREEABLE: Mem.range_perm m1 blk1 (ofs.(Ptrofs.unsigned))
-                                (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg))
+      (FREEABLE: Mem.range_perm m1 blk1 (Ptrofs.unsigned (ofs))
+                                (Ptrofs.unsigned (ofs) + 4 * (size_arguments sg))
                                 Cur Freeable)
       (VALID: Mem.valid_block m1 blk1)
       (PUB: ~ su0.(Unreach.unreach) blk1):
       has_footprint (mkstate init_rs (State rs0 m_unused)) su0 m1
   | has_footprint_asmstyle
       su0 init_rs (rs0: regset) m_unused m1
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
+      (SIG: exists skd, (Genv.find_funct skenv_link) (rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = None)
     :
       has_footprint (mkstate init_rs (State rs0 m_unused)) su0 m1.
@@ -88,21 +88,21 @@ Section LOCALPRIV.
   | mle_excl_intro
       init_rs rs0 m_unused (su0: Unreach.t) m0 m1
       blk1 sg ofs1
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
+      (SIG: exists skd, (Genv.find_funct skenv_link) (rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = Some sg)
       (RSP: rs0 RSP = Vptr blk1 ofs1)
       UNFR
-      (UNFRDEF: UNFR = (brange blk1 ofs1.(Ptrofs.unsigned)
-                                           (ofs1.(Ptrofs.unsigned) + 4 * (size_arguments sg))))
+      (UNFRDEF: UNFR = (brange blk1 (Ptrofs.unsigned ofs1)
+                                           (Ptrofs.unsigned (ofs1) + 4 * (size_arguments sg))))
       (PERM: forall blk ofs
-          (VALID: m0.(Mem.valid_block) blk)
+          (VALID: (Mem.valid_block m0) blk)
           (UNFREE: ~ UNFR blk ofs),
-          m1.(Mem.perm) blk ofs Max <1= m0.(Mem.perm) blk ofs Max)
+          (Mem.perm m1) blk ofs Max <1= (Mem.perm m0) blk ofs Max)
       (UNCH: Mem.unchanged_on (~2 UNFR) m0 m1):
       mle_excl (mkstate init_rs (State rs0 m_unused)) su0 m0 m1
   | mle_excl_asmstyle
       init_rs rs0 m_unused (su0: Unreach.t) m0 m1
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (rs0 # PC)
+      (SIG: exists skd, (Genv.find_funct skenv_link) (rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = None)
       (MEM: m0 = m1):
       mle_excl (mkstate init_rs (State rs0 m_unused)) su0 m0 m1.
@@ -656,11 +656,11 @@ End LOCALPRIV.
 
 Lemma asm_ext_unreach
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module)):
+      (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
 Proof.
   eexists (ModPair.mk _ _ _); s.
   assert(PROGSKEL: match_program (fun _ => eq) eq (Sk.of_program fn_sig asm) (Sk.of_program fn_sig asm)).
@@ -946,11 +946,11 @@ Qed.
 (* It's ***exactly*** same as asm_ext_sound *)
 Lemma asm_ext_top
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module)):
+      (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
 Proof.
   eexists (ModPair.mk _ _ _); s.
   assert(PROGSKEL: match_program (fun _ => eq) eq (Sk.of_program fn_sig asm) (Sk.of_program fn_sig asm)).
@@ -1272,11 +1272,11 @@ Inductive match_states
 
 Lemma asm_inj_drop_bot
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module)):
+      (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>)
+      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>)
       /\ (<<SSBOT: mp.(ModPair.ss) = (SimSymbDrop.mk bot1 (module asm) (module asm))>>).
 Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. econs; ss; i.
@@ -1745,22 +1745,22 @@ Qed.
 
 Lemma asm_inj_drop
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module)):
+      (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
 Proof.
   exploit asm_inj_drop_bot; eauto. i. des. eauto.
 Qed.
 
 Lemma asm_inj_id
       (asm: Asm.program)
-      (WF: Sk.wf asm.(module)):
+      (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = asm.(AsmC.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = asm.(AsmC.module)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
 Proof.
   eapply sim_inj_drop_bot_id; eauto. apply asm_inj_drop_bot; auto.
 Qed.

@@ -27,8 +27,8 @@ Section ADQSOUND.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.
-  Let p_src := pp.(ProgPair.src).
-  Let p_tgt := pp.(ProgPair.tgt).
+  Let p_src := (ProgPair.src pp).
+  Let p_tgt := (ProgPair.tgt pp).
   Hypothesis (WFSKSRC: forall md (IN: In md p_src), <<WF: Sk.wf md>>).
   Hypothesis (WFSKTGT: forall md (IN: In md p_tgt), <<WF: Sk.wf md>>).
 
@@ -38,14 +38,14 @@ Section ADQSOUND.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
 
-  Let skenv_link_src := sk_link_src.(Sk.load_skenv).
-  Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
+  Let skenv_link_src := (Sk.load_skenv sk_link_src).
+  Let skenv_link_tgt := (Sk.load_skenv sk_link_tgt).
 
   Variable ss_link: SimSymb.t.
   Hypothesis (SIMSKENV: exists sm, SimSymb.sim_skenv sm ss_link skenv_link_src skenv_link_tgt).
 
-  Hypothesis INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk).
-  Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk).
+  Hypothesis INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src)).
+  Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt)).
   Hypothesis SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link.
 
   Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_list_preserves_wf_sk; et. Qed.
@@ -55,7 +55,7 @@ Section ADQSOUND.
 
   Inductive sound_ge (su0: Sound.t) (m0: mem): Prop :=
   | sound_ge_intro
-      (GE: Forall (fun ms => su0.(Sound.skenv) m0 ms.(ModSem.skenv)) sem_src.(Smallstep.globalenv).(fst)).
+      (GE: Forall (fun ms => su0.(Sound.skenv) m0 ms.(ModSem.skenv)) (fst sem_src.(Smallstep.globalenv))).
 
   Lemma lepriv_preserves_sound_ge
         m0 su0 su1
@@ -88,18 +88,18 @@ Section ADQSOUND.
   (* stack can go preservation when su0 is given *)
   Inductive sound_stack (args: Args.t): list Frame.t -> Prop :=
   | sound_stack_nil
-      (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex args.(Args.get_m)):
+      (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex (Args.get_m args)):
       sound_stack args []
   | sound_stack_cons
       args_tail tail ms lst0
       (TL: sound_stack args_tail tail)
       (FORALLSU: forall su0
           (SUARGS: Sound.args su0 args_tail)
-          (SUGE: sound_ge su0 args_tail.(Args.get_m)),
+          (SUGE: sound_ge su0 (Args.get_m args_tail)),
           (<<HD: forall
                  sound_state_all
                  (PRSV: local_preservation_noguarantee ms sound_state_all),
-                 <<SUST: sound_state_all su0 args_tail.(Args.get_m) lst0>>>>)
+                 <<SUST: sound_state_all su0 (Args.get_m args_tail) lst0>>>>)
           /\
           (<<K: forall
                  sound_state_all
@@ -112,15 +112,15 @@ Section ADQSOUND.
                    (<<K: forall retv lst1 su_ret
                        (LE: Sound.hle su_gr su_ret)
                        (SURETV: Sound.retv su_ret retv)
-                       (MLE: Sound.mle su_gr args.(Args.get_m) retv.(Retv.get_m))
+                       (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
                        (AFTER: ms.(ModSem.after_external) lst0 retv lst1),
                        (* sound_state_all su0 args.(Args.get_m) lst1>>) *)
-                       sound_state_all su0 args_tail.(Args.get_m) lst1>>)
+                       sound_state_all su0 (Args.get_m args_tail) lst1>>)
              >>)
           /\
-          (<<MLE: Sound.mle su0 args_tail.(Args.get_m) args.(Args.get_m)>>)
+          (<<MLE: Sound.mle su0 (Args.get_m args_tail) (Args.get_m args)>>)
       )
-      (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex args_tail.(Args.get_m))
+      (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex (Args.get_m args_tail))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex):
       sound_stack args ((Frame.mk ms lst0) :: tail).
 
@@ -131,13 +131,13 @@ Section ADQSOUND.
       (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex m_arg)
       (FORALLSU: forall su0
           (SUARGS: Sound.args su0 args_tail)
-          (SUGE: sound_ge su0 args_tail.(Args.get_m)),
+          (SUGE: sound_ge su0 (Args.get_m args_tail)),
           (<<HD: forall
               sound_state_all
               (PRSV: local_preservation_noguarantee ms sound_state_all),
               <<SUST: sound_state_all su0 m_arg lst0>>>>))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
-      (ABCD: args_tail.(Args.get_m) = m_arg)
+      (ABCD: (Args.get_m args_tail) = m_arg)
     :
       sound_state m_arg (State ((Frame.mk ms lst0) :: tail))
   | sound_state_call
@@ -145,7 +145,7 @@ Section ADQSOUND.
       (* (ARGS: Sound.args su0 args) *)
       (STK: sound_stack args frs)
       (* (MLE: Sound.mle su0 m_tail args.(Args.get_m)) *)
-      (EQ: args.(Args.get_m) = m_tail)
+      (EQ: (Args.get_m args) = m_tail)
       (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex m_tail):
       sound_state m_tail (Callstate args frs).
 
@@ -162,7 +162,7 @@ Section ADQSOUND.
     { econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
       rewrite in_map_iff in IN. des; ss; clarify.
       + s. rewrite <- Sound.system_skenv; eauto.
-      + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) x0.(Mod.sk)).
+      + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk x0)).
         { unfold p_src in IN0. unfold ProgPair.src in *. rewrite in_map_iff in IN0. des. clarify. eapply INCLSRC; et. }
         eapply Sound.skenv_project; eauto.
         { eapply link_load_skenv_wf_mem; et. }

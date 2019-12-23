@@ -28,22 +28,22 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Lemma clight_id
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module2)):
+      (WF: Sk.wf (module2 clight)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (module2 clight)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (module2 clight)>>).
 Proof.
   eapply any_id; eauto.
 Qed.
 
 Lemma clight_ext_unreach
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module2)):
+      (WF: Sk.wf (module2 clight)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (module2 clight)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (module2 clight)>>).
 Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. instantiate (1:=(SimSymbId.mk _ _)).
   econs; ss; i. destruct SIMSKENVLINK.
@@ -91,11 +91,11 @@ Qed.
 
 Lemma clight_ext_top
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module2)):
+      (WF: Sk.wf (module2 clight)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (module2 clight)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (module2 clight)>>).
 Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. instantiate (1:=(SimSymbId.mk _ _)).
   econs; ss; i. destruct SIMSKENVLINK.
@@ -145,12 +145,12 @@ Qed.
 
 Lemma clight_inj_drop_bot
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module2)):
+      (WF: Sk.wf (module2 clight)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>)
-      /\ (<<SSBOT: mp.(ModPair.ss) = (SimSymbDrop.mk bot1 clight.(module2) clight.(module2))>>).
+      /\ (<<SRC: mp.(ModPair.src) = (module2 clight)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (module2 clight)>>)
+      /\ (<<SSBOT: mp.(ModPair.ss) = (SimSymbDrop.mk bot1 (module2 clight) (module2 clight))>>).
 Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. econs; ss; i.
   { econs; ss; i; clarify. inv WF. auto. }
@@ -206,22 +206,22 @@ Qed.
 
 Lemma clight_inj_drop
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module2)):
+      (WF: Sk.wf (module2 clight)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (module2 clight)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (module2 clight)>>).
 Proof.
   exploit clight_inj_drop_bot; eauto. i. des. eauto.
 Qed.
 
 Lemma clight_inj_id
       (clight: Clight.program)
-      (WF: Sk.wf clight.(module2)):
+      (WF: Sk.wf (module2 clight)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = clight.(module2)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = clight.(module2)>>).
+      /\ (<<SRC: mp.(ModPair.src) = (module2 clight)>>)
+      /\ (<<TGT: mp.(ModPair.tgt) = (module2 clight)>>).
 Proof.
   eapply sim_inj_drop_bot_id. apply clight_inj_drop_bot; auto.
 Qed.

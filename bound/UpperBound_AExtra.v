@@ -64,12 +64,12 @@ Section SIM.
   Variable cps: list Csyntax.program.
   Variable ctx: Syntax.program.
   Hypothesis FOCUS: link_list cps = Some cp_link.
-  Let prog_src := ctx ++ [cp_link.(CsemC.module)].
+  Let prog_src := ctx ++ [(CsemC.module cp_link)].
   Let prog_tgt := ctx ++ map CsemC.module cps.
   Variable sk_link: Sk.t.
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
   Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
-  Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env))
+  Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) cp.(prog_comp_env))
                            (at level 50, no associativity, only parsing).
   Let ge_cp_link: genv := geof cp_link.
   Hypothesis WTPROGLINK: wt_program cp_link.
@@ -78,7 +78,7 @@ Section SIM.
   Hypothesis CSTYLE_EXTERN_LINK:
     forall id ef tyargs ty cc,
       In (id, (Gfun (Ctypes.External ef tyargs ty cc))) cp_link.(prog_defs) ->
-      ef.(ef_sig).(sig_cstyle).
+      (ef_sig ef).(sig_cstyle).
 
   Definition is_focus (cp: Csyntax.program): Prop := In cp cps.
 
@@ -86,7 +86,7 @@ Section SIM.
     forall id ef tyargs ty cc cp,
       is_focus cp ->
       In (id, (Gfun (Ctypes.External ef tyargs ty cc))) cp.(prog_defs) ->
-      ef.(ef_sig).(sig_cstyle).
+      (ef_sig ef).(sig_cstyle).
 
   Lemma link_sk_match:
       <<EQ: link_sk prog_src = link_sk prog_tgt>>.

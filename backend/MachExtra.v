@@ -30,7 +30,7 @@ Lemma mach_store_arguments_simmem
     <<MWF: SimMem.wf sm1>> /\
     <<MLE: SimMem.le sm0 sm1>> /\
     <<PRIV: forall ofs (IN: 0 <= ofs < 4 * size_arguments sg),
-             sm1.(tgt_private) sm0.(SimMem.tgt).(Mem.nextblock) ofs>>.
+             (tgt_private sm1) sm0.(SimMem.tgt).(Mem.nextblock) ofs>>.
 Proof.
   i. subst_locals. inv STORE.
   exploit Mem.alloc_right_inject; try apply MWF; eauto. i; des.

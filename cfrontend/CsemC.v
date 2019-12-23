@@ -39,7 +39,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: program.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function).
+  Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_function p).
   Let ce_ge: composite_env := prog_comp_env p.
   Let ge_ge: Genv.t fundef type := SkEnv.revive skenv p.
   Let ge: genv := Build_genv ge_ge ce_ge.
@@ -47,8 +47,8 @@ Section MODSEM.
   Inductive at_external : state -> Args.t -> Prop :=
   | at_external_intro
       fptr_arg vs_arg targs tres cconv k0 m0
-      (EXTERNAL: ge.(Genv.find_funct) fptr_arg = None)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg = Some skd
+      (EXTERNAL: (Genv.find_funct ge) fptr_arg = None)
+      (SIG: exists skd, (Genv.find_funct skenv_link) fptr_arg = Some skd
                         /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
       (CALL: is_call_cont_strong k0):
     (* how can i check sg_args and tyf are same type? *)
@@ -59,10 +59,10 @@ Section MODSEM.
   | initial_frame_intro
       fd tyf
       (CSTYLE: Args.is_cstyle args)
-      (FINDF: Genv.find_funct ge args.(Args.fptr) = Some (Internal fd))
+      (FINDF: Genv.find_funct ge (Args.fptr args) = Some (Internal fd))
       (TYPE: type_of_fundef (Internal fd) = tyf) (* TODO: rename this into sig *)
-      (TYP: typecheck args.(Args.vs) (type_of_params (fn_params fd))):
-      initial_frame args (Callstate args.(Args.fptr) tyf args.(Args.vs) Kstop args.(Args.m)).
+      (TYP: typecheck (Args.vs args) (type_of_params (fn_params fd))):
+      initial_frame args (Callstate (Args.fptr args) tyf (Args.vs args) Kstop (Args.m args)).
 
   Inductive final_frame: state -> Retv.t -> Prop :=
   | final_frame_intro
@@ -75,10 +75,10 @@ Section MODSEM.
       fptr_arg vs_arg m_arg k retv tv targs tres cconv
       (CSTYLE: Retv.is_cstyle retv)
       (* tyf *)
-      (TYP: typify_c retv.(Retv.v) tres tv):
+      (TYP: typify_c (Retv.v retv) tres tv):
       after_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
                      retv
-                     (Returnstate tv k retv.(Retv.m)).
+                     (Returnstate tv k (Retv.m retv)).
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
@@ -138,7 +138,7 @@ Inductive typechecked (builtins: list (ident * globdef (Ctypes.fundef function) 
     (WF: Sk.wf (module p))
     (* this property is already checked by the compiler, though they are not in Coq side *)
     (CSTYLE: forall id ef tyargs ty cc (IN: In (id, (Gfun (Ctypes.External ef tyargs ty cc))) p.(prog_defs)),
-        ef.(ef_sig).(sig_cstyle))
+        (ef_sig ef).(sig_cstyle))
     (* C cannot call Asm-style function. *)
     (* Actually, this property is checked by linker, so we can remove the property by changing UBD-B to: *)
     (* C \plink empty >= C \llink empty *)

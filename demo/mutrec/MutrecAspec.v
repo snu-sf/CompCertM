@@ -18,7 +18,7 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: unit.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) prog.(CSk.of_program signature_of_function).
+  Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_function prog).
 
   Inductive state: Type :=
   | Callstate
@@ -44,10 +44,10 @@ Section MODSEM.
   | initial_frame1_intro
       i m blk
       (SYMB: Genv.find_symbol skenv f_id = Some blk)
-      (FPTR: args.(Args.fptr) = Vptr blk Ptrofs.zero)
+      (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
       (RANGE: 0 <= i.(Int.intval) < MAX)
-      (VS: args.(Args.vs) = [Vint i])
-      (M: args.(Args.m) = m)
+      (VS: (Args.vs args) = [Vint i])
+      (M: (Args.m args) = m)
     :
       initial_frame args (Callstate i m)
   .
@@ -64,10 +64,10 @@ Section MODSEM.
   | after_external_intro
       i m retv
       i_after
-      (INT: retv.(Retv.v) = Vint i_after)
+      (INT: (Retv.v retv) = Vint i_after)
       (SUM: i_after = sum (Int.sub i Int.one))
     :
-      after_external (Interstate i m) retv (Returnstate (sum i) retv.(Retv.m))
+      after_external (Interstate i m) retv (Returnstate (sum i) (Retv.m retv))
   .
 
   Inductive step (se: Senv.t) (ge: SkEnv.t): state -> trace -> state -> Prop :=

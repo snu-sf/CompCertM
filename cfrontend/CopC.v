@@ -22,7 +22,7 @@ Lemma val_casted_has_type
       v ty
       (WT: val_casted v ty)
       (NVOID: ty <> Tvoid):
-    Val.has_type v ty.(typ_of_type).
+    Val.has_type v (typ_of_type ty).
 Proof. inv WT; ss. Qed.
 
 Lemma val_casted_has_type_list

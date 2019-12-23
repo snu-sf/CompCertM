@@ -91,7 +91,7 @@ Module Sk.
         F V (p: AST.program (AST.fundef F) V) get_sg:
       <<SIM: forall id, option_rel (@Linking.match_globdef unit _ _ _ _ _
                                                            (@match_fundef _ _ get_sg) top2 tt)
-                                   (p.(prog_defmap) ! id) ((of_program get_sg p).(prog_defmap) ! id)>>.
+                                   ((prog_defmap p) ! id) ((prog_defmap (of_program get_sg p)) ! id)>>.
   Proof.
     ii. unfold prog_defmap, of_program, skdefs_of_gdefs. ss. rewrite prog_defmap_update_snd.
     destruct ((PTree_Properties.of_list (prog_defs p)) ! id) eqn:T; ss.
@@ -106,7 +106,7 @@ Module Sk.
 
   Lemma of_program_defs_names
         F V get_sg (p: AST.program (AST.fundef F) V):
-      (of_program get_sg p).(prog_defs_names) = p.(prog_defs_names).
+      (prog_defs_names (of_program get_sg p)) = (prog_defs_names p).
   Proof.
     destruct p; ss.
     Local Opaque in_dec.
@@ -117,7 +117,7 @@ Module Sk.
 
   Lemma of_program_defs
         F V get_sg (p: AST.program (AST.fundef F) V):
-      (of_program get_sg p).(defs) = p.(defs).
+    (defs (of_program get_sg p)) = (defs p).
   Proof.
     unfold defs. rewrite of_program_defs_names; ss.
   Qed.
@@ -125,7 +125,7 @@ Module Sk.
   Local Opaque prog_defmap.
   Lemma of_program_internals
         F V get_sg (p: AST.program (AST.fundef F) V):
-      (of_program get_sg p).(internals) = p.(internals).
+      (internals (of_program get_sg p)) = (internals p).
   Proof.
     unfold internals. destruct p; ss.
     apply Axioms.functional_extensionality. intro id; ss.
@@ -137,7 +137,7 @@ Module Sk.
 
   Lemma of_program_internals'
         F V get_sg (p: AST.program (AST.fundef F) V):
-      (of_program get_sg p).(internals') = p.(internals').
+      (internals' (of_program get_sg p)) = (internals' p).
   Proof.
     destruct p; ss. unfold internals', of_program. ss.
     apply Axioms.functional_extensionality. intro id; ss.
@@ -165,25 +165,25 @@ Module Sk.
     | Internal sg0 =>
       if sg0.(sig_cstyle) then Some sg0 else None
     | External ef =>
-      if ef.(ef_sig).(sig_cstyle) then Some ef.(ef_sig) else None
+      if (ef_sig ef).(sig_cstyle) then Some (ef_sig ef) else None
     end
   .
 
   Definition get_sig (skdef: (AST.fundef signature)): signature :=
     match skdef with
     | Internal sg0 => sg0
-    | External ef => ef.(ef_sig)
+    | External ef => (ef_sig ef)
     end.
 
   Inductive wf (sk: t): Prop :=
   | wf_intro
-      (NODUP: NoDup sk.(prog_defs_names)) (* list_norepet *)
+      (NODUP: NoDup (prog_defs_names sk)) (* list_norepet *)
       (WFPTR: forall id_fr gv id_to _ofs
           (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
           (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
           (INDAT: In (Init_addrof id_to _ofs) gv.(gvar_init)),
-          <<IN: In id_to sk.(prog_defs_names)>>)
-      (PUBINCL: incl sk.(prog_public) sk.(prog_defs_names))
+          <<IN: In id_to (prog_defs_names sk)>>)
+      (PUBINCL: incl sk.(prog_public) (prog_defs_names sk))
       (* The sum of the sizes of the function parameters must be less than INT_MAX. *)
       (WFPARAM: forall id skd
           (IN: In (id, (Gfun skd)) sk.(prog_defs)),
@@ -201,31 +201,31 @@ Module SkEnv.
   Inductive wf (skenv: t): Prop :=
   | wf_intro
     (SYMBDEF: forall id blk
-        (SYMB: skenv.(Genv.find_symbol) id = Some blk),
-       <<DEF: exists skd, skenv.(Genv.find_def) blk = Some skd>>)
+        (SYMB: (Genv.find_symbol skenv) id = Some blk),
+       <<DEF: exists skd, (Genv.find_def skenv) blk = Some skd>>)
     (DEFSYMB: forall blk skd
-        (DEF: skenv.(Genv.find_def) blk = Some skd),
-       <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>>)
+        (DEF: (Genv.find_def skenv) blk = Some skd),
+       <<SYMB: exists id, (Genv.find_symbol skenv) id = Some blk>>)
     (WFPARAM: forall blk skd
-        (DEF: skenv.(Genv.find_def) blk = Some (Gfun skd)),
+        (DEF: (Genv.find_def skenv) blk = Some (Gfun skd)),
         <<SIZE: 4 * size_arguments (Sk.get_sig skd) <= Ptrofs.max_unsigned>>).
 
   Inductive wf_mem (skenv: t) (sk: Sk.t) (m0: mem): Prop :=
   | wf_mem_intro
       (WFPTR: forall blk_fr _ofs_fr blk_to _ofs_to id_fr _q _n gv
-          (SYMB: skenv.(Genv.find_symbol) id_fr = Some blk_fr)
+          (SYMB: (Genv.find_symbol skenv) id_fr = Some blk_fr)
           (* (IN: In id_fr sk.(prog_defs_names)) *)
           (IN: In (id_fr, (Gvar gv)) sk.(prog_defs))
           (NONVOL: gv.(gvar_volatile) = false)
           (DEFINITIVE: classify_init gv.(gvar_init) = Init_definitive gv.(gvar_init))
           (* (IN: sk.(prog_defmap) ! id_fr = Some (Gvar gv)) *)
           (LOAD: Mem.loadbytes m0 blk_fr _ofs_fr 1 = Some [Fragment (Vptr blk_to _ofs_to) _q _n]),
-          exists id_to, (<<SYMB: skenv.(Genv.invert_symbol) blk_to = Some id_to>>)
-                   /\ (<<IN: In id_to sk.(prog_defs_names)>>)).
+          exists id_to, (<<SYMB: (Genv.invert_symbol skenv) blk_to = Some id_to>>)
+                   /\ (<<IN: In id_to (prog_defs_names sk)>>)).
 
   Lemma load_skenv_wf
         sk (WF: Sk.wf sk):
-      <<WF: SkEnv.wf sk.(Sk.load_skenv)>>.
+      <<WF: SkEnv.wf (Sk.load_skenv sk)>>.
   Proof.
     unfold Sk.load_skenv. u. econs; try r.
     - unfold Genv.globalenv, Genv.find_symbol, Genv.find_def. eapply Genv.add_globals_preserves; i; ss.
@@ -273,9 +273,9 @@ Module SkEnv.
   Inductive includes (skenv: SkEnv.t) (sk: AST.program (AST.fundef signature) unit): Prop :=
   | includes_intro
       (DEFS: forall id gd0
-          (DEF: sk.(prog_defmap) ! id = Some gd0),
-          exists blk gd1, (<<SYMB: skenv.(Genv.find_symbol) id = Some blk>>) /\
-                          (<<DEF: skenv.(Genv.find_def) blk = Some gd1>>) /\
+          (DEF: (prog_defmap sk) ! id = Some gd0),
+          exists blk gd1, (<<SYMB: (Genv.find_symbol skenv) id = Some blk>>) /\
+                          (<<DEF: (Genv.find_def skenv) blk = Some gd1>>) /\
                           (<<MATCH: linkorder gd0 gd1>>))
       (PUBS: incl sk.(prog_public) skenv.(Genv.genv_public)).
 
@@ -283,29 +283,29 @@ Module SkEnv.
   | project_spec_intro
       (NEXT: skenv.(Genv.genv_next) = skenv_proj.(Genv.genv_next))
       (SYMBKEEP: forall id
-          (KEEP: prog.(defs) id),
-          (<<KEEP: skenv_proj.(Genv.find_symbol) id = skenv.(Genv.find_symbol) id>>))
+          (KEEP: (defs prog) id),
+          (<<KEEP: (Genv.find_symbol skenv_proj) id = (Genv.find_symbol skenv) id>>))
       (SYMBDROP: forall id
-          (DROP: ~ prog.(defs) id),
-          <<NONE: skenv_proj.(Genv.find_symbol) id = None>>)
+          (DROP: ~ (defs prog) id),
+          <<NONE: (Genv.find_symbol skenv_proj) id = None>>)
       (DEFKEEP: forall id blk gd_big
-          (INV: skenv.(Genv.invert_symbol) blk = Some id)
-          (KEEP: prog.(internals) id)
-          (BIG: skenv.(Genv.find_def) blk = Some gd_big),
-          exists gd_small, <<DEFSMALL: skenv_proj.(Genv.find_def) blk = Some gd_small>>
+          (INV: (Genv.invert_symbol skenv) blk = Some id)
+          (KEEP: (internals prog) id)
+          (BIG: (Genv.find_def skenv) blk = Some gd_big),
+          exists gd_small, <<DEFSMALL: (Genv.find_def skenv_proj) blk = Some gd_small>>
                                     /\ <<INTERNAL: ~is_external gd_small>>
                                     /\ <<LO: linkorder gd_small gd_big>>
-                                    /\ <<PROG: prog.(prog_defmap) ! id = Some gd_small>>)
+                                    /\ <<PROG: (prog_defmap prog) ! id = Some gd_small>>)
       (DEFKEPT: forall id blk gd_small
-          (INV: skenv.(Genv.invert_symbol) blk = Some id)
-          (SMALL: skenv_proj.(Genv.find_def) blk = Some gd_small),
-          <<KEEP: prog.(internals) id>> /\ <<INTERNAL: ~is_external gd_small>>
-                                        /\ <<PROG: prog.(prog_defmap) ! id = Some gd_small>> /\
-          exists gd_big, <<DEFBIG: skenv.(Genv.find_def) blk = Some gd_big>> /\ <<LO: linkorder gd_small gd_big>>)
+          (INV: (Genv.invert_symbol skenv) blk = Some id)
+          (SMALL: (Genv.find_def skenv_proj) blk = Some gd_small),
+          <<KEEP: (internals prog) id>> /\ <<INTERNAL: ~is_external gd_small>>
+                                        /\ <<PROG: (prog_defmap prog) ! id = Some gd_small>> /\
+          exists gd_big, <<DEFBIG: (Genv.find_def skenv) blk = Some gd_big>> /\ <<LO: linkorder gd_small gd_big>>)
       (DEFORPHAN: forall (* TODO: is it needed? *)
           blk
-          (INV: skenv.(Genv.invert_symbol) blk = None),
-          <<SMALL: skenv_proj.(Genv.find_def) blk = None>>)
+          (INV: (Genv.invert_symbol skenv) blk = None),
+          <<SMALL: (Genv.find_def skenv_proj) blk = None>>)
       (PUBLIC: prog.(prog_public) = skenv_proj.(Genv.genv_public)).
 
   (* NOTE: it is total function! This is helpful because we don't need to state bsim of this, like
@@ -313,13 +313,14 @@ Module SkEnv.
 I think "sim_skenv_monotone" should be sufficient.
    *)
   Definition project (skenv: t) (prog: Sk.t): t :=
-    ((Genv_update_publics skenv prog.(prog_public)).(Genv_filter_symb) (fun id => prog.(defs) id))
-    .(Genv_map_defs) (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
-                                       assertion(prog.(internals) id);
+    (Genv_map_defs
+       ((Genv_filter_symb (Genv_update_publics skenv prog.(prog_public))) (fun id => (defs prog) id))
+       (fun blk gd => (do id <- (Genv.invert_symbol skenv) blk;
+                                       assertion((internals prog) id);
                                        (* assertion(prog.(defs) id); *)
                                        (* assertion(negb (is_external gd)); *) (* <--------- this is wrong *)
-                                       do gd <- prog.(prog_defmap) ! id;
-                                       Some gd)).
+                                       do gd <- (prog_defmap prog) ! id;
+                                       Some gd))).
 
   Lemma match_globdef_is_external_gd
         (gd1 gd2: globdef (AST.fundef signature) unit)
@@ -356,8 +357,8 @@ I think "sim_skenv_monotone" should be sufficient.
   Inductive wf_proj (skenv: t): Prop :=
   | wf_proj_intro
     (DEFSYMB: forall blk skd
-        (DEF: skenv.(Genv.find_def) blk = Some skd),
-       <<SYMB: exists id, skenv.(Genv.find_symbol) id = Some blk>> /\ <<INTERNAL: ~is_external skd>>).
+        (DEF: (Genv.find_def skenv) blk = Some skd),
+       <<SYMB: exists id, (Genv.find_symbol skenv) id = Some blk>> /\ <<INTERNAL: ~is_external skd>>).
 
   Lemma project_spec_preserves_wf
         skenv
@@ -377,33 +378,33 @@ I think "sim_skenv_monotone" should be sufficient.
   Qed.
 
   Definition internals (skenv: t): list block :=
-    List.map fst (skenv.(Genv.genv_defs).(PTree.elements)).
+    List.map fst (PTree.elements (skenv.(Genv.genv_defs))).
 
   (* We will not need this for now. Fix it when we need it (dynamic linking/incremental compilation) *)
   Definition filter_symbols (skenv: t) (symbols: list ident): t :=
-    skenv.(Genv_filter_symb) (fun id => List.in_dec ident_eq id symbols).
+    (Genv_filter_symb skenv) (fun id => List.in_dec ident_eq id symbols).
 
   (* Note: We only remove definitions. One can still get the address of external identifier. *)
   Definition revive `{HasExternal F} {V} (skenv: SkEnv.t) (prog: AST.program F V): Genv.t F V :=
-    (skenv.(Genv_map_defs)
-             (fun blk gd => (do id <- skenv.(Genv.invert_symbol) blk;
-                               do gd <- prog.(prog_defmap) ! id;
+    (Genv_map_defs (skenv)
+             (fun blk gd => (do id <- (Genv.invert_symbol skenv) blk;
+                               do gd <- (prog_defmap prog) ! id;
                                (* assertion (negb (is_external gd)); *)
                                Some gd))).
 
   Inductive genv_precise `{HasExternal F} {V} (ge: Genv.t F V) (p: program F V): Prop :=
   | genv_compat_intro
       (P2GE: forall id g
-          (PROG: p.(prog_defmap) ! id = Some g),
+          (PROG: (prog_defmap p) ! id = Some g),
           (exists b, <<SYMB: Genv.find_symbol ge id = Some b>> /\
                      <<DEF: Genv.find_def ge b = if negb (is_external g) then Some g else None>>))
       (GE2P: forall b g
           (DEF: Genv.find_def ge b = Some g),
-          exists id, <<SYMB: Genv.find_symbol ge id = Some b>> /\ <<PROG: p.(prog_defmap) ! id = Some g>>
+          exists id, <<SYMB: Genv.find_symbol ge id = Some b>> /\ <<PROG: (prog_defmap p) ! id = Some g>>
                                                                           /\ <<INTERNAL: ~ (is_external g)>>)
       (SYMB2P: forall id blk
           (SYMB: Genv.find_symbol ge id = Some blk),
-          <<IN: p.(defs) id>>).
+          <<IN: (defs p) id>>).
 
   Lemma project_revive_precise
         F V
@@ -413,16 +414,16 @@ I think "sim_skenv_monotone" should be sufficient.
         skenv_link
         (* (PROJ: skenv = SkEnv.project skenv_link prog) *)
         get_sg
-        (PROJ: SkEnv.project_spec skenv_link prog.(Sk.of_program get_sg) skenv)
+        (PROJ: SkEnv.project_spec skenv_link (Sk.of_program get_sg prog) skenv)
         (* (WF: SkEnv.wf skenv_link) *)
-        (INCL: SkEnv.includes skenv_link prog.(Sk.of_program get_sg))
+        (INCL: SkEnv.includes skenv_link (Sk.of_program get_sg prog))
     (* (PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog *)
     :
       <<PRECISE: SkEnv.genv_precise (SkEnv.revive skenv prog) prog>>
   .
   Proof.
     assert(H: DUMMY_PROP) by ss.
-    assert(DEFS: prog.(defs) <1= fun id => is_some (skenv.(Genv.find_symbol) id)).
+    assert(DEFS: (defs prog) <1= fun id => is_some (Genv.find_symbol (skenv) id)).
     { ii; ss. u. des_ifs. exfalso.
       bar. inv PROJ. bar. inv INCL. bar.
       exploit SYMBKEEP; et.
@@ -511,7 +512,7 @@ I think "sim_skenv_monotone" should be sufficient.
 
   Definition privs (skenv: SkEnv.t): ident -> bool :=
     fun id =>
-      match skenv.(Genv.find_symbol) id with
+      match (Genv.find_symbol skenv) id with
       | Some _ => negb (proj_sumbool (in_dec ident_eq id skenv.(Genv.genv_public)))
       | None => false
       end.

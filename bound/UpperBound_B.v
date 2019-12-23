@@ -91,10 +91,10 @@ Section PRESERVATION.
   Hypothesis CSTYLE_EXTERN:
     forall id ef tyargs ty cc,
       In (id, (Gfun (Ctypes.External ef tyargs ty cc))) prog.(prog_defs) ->
-      ef.(ef_sig).(sig_cstyle).
+      (ef_sig ef).(sig_cstyle).
 
   Definition local_genv (p : Csyntax.program) :=
-    (skenv_link.(SkEnv.project) p.(CSk.of_program signature_of_function)).(SkEnv.revive) p.
+    (SkEnv.revive ((SkEnv.project skenv_link) (CSk.of_program signature_of_function p))) p.
 
   Inductive match_states : Csem.state -> Sem.state -> nat -> Prop :=
   | match_states_intro
@@ -105,11 +105,11 @@ Section PRESERVATION.
       fptr tyf vargs k m args fr (st: Csem.state) cconv tres targs n
       (STATE: st = (Csem.Callstate fptr tyf vargs k m))
       (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr = Some skd
+      (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
                         /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
-      (FPTR: args.(Args.fptr) = fptr)
-      (ARGS: args.(Args.vs) = vargs)
-      (MEM: args.(Args.m) = m)
+      (FPTR: (Args.fptr args) = fptr)
+      (ARGS: (Args.vs args) = vargs)
+      (MEM: (Args.m args) = m)
       (NOTPROG: Genv.find_funct (local_genv prog) (Args.fptr args) = None)
       (ORD: n = 0%nat):
       match_states (Csem.Callstate fptr tyf vargs k m) (Callstate args [fr]) n
@@ -125,7 +125,7 @@ Section PRESERVATION.
   (** ********************* init_memory *********************************)
 
   Variable m_init : mem.
-  Hypothesis INIT_MEM: sk_tgt.(Sk.load_mem) = Some m_init.
+  Hypothesis INIT_MEM: (Sk.load_mem sk_tgt) = Some m_init.
 
   Definition m_src_init := m_init.
 
@@ -164,7 +164,7 @@ Section PRESERVATION.
   Qed.
 
   Lemma proj_wf:
-    SkEnv.project_spec skenv_link prog.(CSk.of_program signature_of_function) (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)).
+    SkEnv.project_spec skenv_link (CSk.of_program signature_of_function prog) (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)).
   Proof.
     eapply SkEnv.project_impl_spec.
     unfold skenv_link.
@@ -376,7 +376,7 @@ Section PRESERVATION.
     { rewrite VAR in H0. inv H0. }
     symmetry in H0.
     eapply DEFSYMB in H0. des. des_ifs.
-    - destruct (Genv.invert_symbol (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function)) blk) eqn:SYMINV; ss; cycle 1.
+    - destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)) blk) eqn:SYMINV; ss; cycle 1.
       + assert ((prog_defmap prog) ! id = Some x).
         { rewrite Genv.find_def_symbol. exists blk. splits.
           unfold Genv.find_symbol in *. rewrite <- mge_symb. ss.
@@ -866,7 +866,7 @@ Section PRESERVATION.
 
   Lemma init_case st args frs fptr tr st_src st_src'
         (STATE: st = Callstate args frs)
-        (FPTR: fptr = args.(Args.fptr))
+        (FPTR: fptr = (Args.fptr args))
         (MTCHST: match_states st_src st 0)
         (SAFESRC: Step (semantics prog) st_src tr st_src'):
       (<<CMOD: valid_owner fptr prog>>) \/
@@ -874,7 +874,7 @@ Section PRESERVATION.
                       fptr (System.modsem skenv_link)>>).
   Proof.
     subst.
-    destruct (classic (valid_owner args.(Args.fptr) prog)); eauto.
+    destruct (classic (valid_owner (Args.fptr args) prog)); eauto.
     right. inv MTCHST.
     (* syscall *)
     - inv SAFESRC; inv H0.
@@ -911,7 +911,7 @@ Section PRESERVATION.
           rewrite <- mge_symb in H1. rewrite <- prog_sk_tgt in *. ss.
           rewrite Heq0 in H1. inversion H1. auto. } subst b0.
         assert (Genv.find_funct_ptr (Genv.globalenv prog) b = Some (Internal f)
-                <-> Genv.find_funct (SkEnv.project skenv_link prog.(CSk.of_program signature_of_function))
+                <-> Genv.find_funct (SkEnv.project skenv_link (CSk.of_program signature_of_function prog))
                                    (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero)
                    = Some (AST.Internal signature_main)).
         { i. ss. des_ifs.
@@ -1350,7 +1350,7 @@ Theorem upperbound_b_correct
         builtins
         (cprog: Csyntax.program)
         (MAIN: exists main_f,
-            (<<INTERNAL: cprog.(prog_defmap) ! (cprog.(prog_main)) = Some (Gfun (Internal main_f))>>)
+            (<<INTERNAL: (prog_defmap cprog) ! (cprog.(prog_main)) = Some (Gfun (Internal main_f))>>)
             /\
             (<<SIG: type_of_function main_f = Tfunction Tnil type_int32s cc_default>>))
         (TYPED: typechecked builtins cprog):

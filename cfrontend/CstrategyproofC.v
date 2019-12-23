@@ -33,11 +33,11 @@ Variable sm_link: SimMem.t.
 Variables prog: program.
 Let md_src: Mod.t := (CsemC.module prog).
 Let md_tgt: Mod.t := (module prog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link (Mod.sk md_src)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link (Mod.sk md_tgt)).
 Hypothesis (WF: SkEnv.wf skenv_link).
-Let ge: genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
-Let tge: genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) prog) prog.(prog_comp_env).
+Let ge: genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog) prog.(prog_comp_env).
+Let tge: genv := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) prog) prog.(prog_comp_env).
 Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states
@@ -106,7 +106,7 @@ End SIMMODSEM.
 Section SIMMOD.
 
 Variables prog: program.
-Definition mp: ModPair.t := SimSymbId.mk_mp (CsemC.module prog) (module prog).(Mod.Atomic.trans).
+Definition mp: ModPair.t := SimSymbId.mk_mp (CsemC.module prog) (Mod.Atomic.trans (module prog)).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.

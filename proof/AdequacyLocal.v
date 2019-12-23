@@ -38,8 +38,8 @@ Section SIMGE.
       (GETGT: ge_tgt = (map (ModSemPair.tgt) msps))
       (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm0 ss_link skenv_link_src skenv_link_tgt)
       (MFUTURE: List.Forall (fun msp => SimMem.future msp.(ModSemPair.sm) sm0) msps)
-      (SESRC: List.Forall (fun ms => ms.(ModSem.to_semantics).(symbolenv) = skenv_link_src) ge_src)
-      (SETGT: List.Forall (fun ms => ms.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt) ge_tgt):
+      (SESRC: List.Forall (fun ms => (ModSem.to_semantics ms).(symbolenv) = skenv_link_src) ge_src)
+      (SETGT: List.Forall (fun ms => (ModSem.to_semantics ms).(symbolenv) = skenv_link_tgt) ge_tgt):
       sim_ge sm0 (ge_src, skenv_link_src) (ge_tgt, skenv_link_tgt).
 
   Lemma find_fptr_owner_fsim
@@ -108,8 +108,8 @@ Section SIMGE.
         sm_init mp skenv_src skenv_tgt ss_link
         (WFSRC: SkEnv.wf skenv_src)
         (WFTGT: SkEnv.wf skenv_tgt)
-        (INCLSRC: SkEnv.includes skenv_src mp.(ModPair.src).(Mod.sk))
-        (INCLTGT: SkEnv.includes skenv_tgt mp.(ModPair.tgt).(Mod.sk))
+        (INCLSRC: SkEnv.includes skenv_src (Mod.sk mp.(ModPair.src)))
+        (INCLTGT: SkEnv.includes skenv_tgt (Mod.sk mp.(ModPair.tgt)))
         (SIMMP: ModPair.sim mp)
         (LESS: SimSymb.le (ModPair.ss mp) ss_link)
         (SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_src skenv_tgt):
@@ -125,8 +125,8 @@ Section SIMGE.
           pp p_src p_tgt ss_link skenv_link_src skenv_link_tgt m_src
           (NOTNIL: pp <> [])
           (SIMPROG: ProgPair.sim pp)
-          (PSRC: p_src = pp.(ProgPair.src))
-          (PTGT: p_tgt = pp.(ProgPair.tgt))
+          (PSRC: p_src = (ProgPair.src pp))
+          (PTGT: p_tgt = (ProgPair.tgt pp))
           (SSLE: Forall (fun mp => SimSymb.le (ModPair.ss mp) ss_link) pp)
           (SIMSK: SimSymb.wf ss_link)
           (SKSRC: link_sk p_src = Some ss_link.(SimSymb.src))
@@ -143,16 +143,16 @@ Section SIMGE.
          /\ <<LOADTGT: Sk.load_mem ss_link.(SimSymb.tgt) = Some sm_init.(SimMem.tgt)>>
          /\ <<MSRC: sm_init.(SimMem.src) = m_src>>
          /\ (<<SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_link_src skenv_link_tgt>>)
-         /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)>>)
-         /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)>>)
+         /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))>>)
+         /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt))>>)
          /\ (<<SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link>>)
          /\ (<<MAINSIM: SimMem.sim_val sm_init (Genv.symbol_address skenv_link_src ss_link.(SimSymb.src).(prog_main) Ptrofs.zero)
                                              (Genv.symbol_address skenv_link_tgt ss_link.(SimSymb.tgt).(prog_main) Ptrofs.zero)>>).
   Proof.
-    assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
+    assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))).
     { ii. clarify. eapply link_includes; eauto.
       unfold ProgPair.src. rewrite in_map_iff. esplits; et. }
-    assert(INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)).
+    assert(INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt))).
     { ii. clarify. eapply link_includes; eauto.
       unfold ProgPair.tgt. rewrite in_map_iff. esplits; et. }
     clarify. exploit SimSymb.wf_load_sim_skenv; eauto. i; des. rename sm into sm_init. clarify.
@@ -291,8 +291,8 @@ Section ADQMATCH.
   Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
-  Let p_src := pp.(ProgPair.src).
-  Let p_tgt := pp.(ProgPair.tgt).
+  Let p_src := (ProgPair.src pp).
+  Let p_tgt := (ProgPair.tgt pp).
 
   Variable sk_link_src sk_link_tgt: Sk.t.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
@@ -300,8 +300,8 @@ Section ADQMATCH.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
 
-  Let skenv_link_src := sk_link_src.(Sk.load_skenv).
-  Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
+  Let skenv_link_src := (Sk.load_skenv sk_link_src).
+  Let skenv_link_tgt := (Sk.load_skenv sk_link_tgt).
 
   Inductive lxsim_stack: SimMem.t ->
                          list Frame.t -> list Frame.t -> Prop :=
@@ -330,8 +330,8 @@ Section ADQMATCH.
             /\ (<<MLEPUB: SimMem.le sm_at sm_after>>)
             /\ (<<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                             i1 lst_src1 lst_tgt1 sm_after>>))
-      (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
-      (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt):
+      (SESRC: (ModSem.to_semantics ms_src).(symbolenv) = skenv_link_src)
+      (SETGT: (ModSem.to_semantics ms_tgt).(symbolenv) = skenv_link_tgt):
       lxsim_stack sm_init
                   ((Frame.mk ms_src lst_src0) :: tail_src)
                   ((Frame.mk ms_tgt lst_tgt0) :: tail_tgt).
@@ -358,8 +358,8 @@ Section ADQMATCH.
       (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
       (TOP: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                   i0 lst_src lst_tgt sm0)
-      (SESRC: ms_src.(ModSem.to_semantics).(symbolenv) = skenv_link_src)
-      (SETGT: ms_tgt.(ModSem.to_semantics).(symbolenv) = skenv_link_tgt):
+      (SESRC: (ModSem.to_semantics ms_src).(symbolenv) = skenv_link_src)
+      (SETGT: (ModSem.to_semantics ms_tgt).(symbolenv) = skenv_link_tgt):
       lxsim_lift i0 (State ((Frame.mk ms_src lst_src) :: tail_src)) (State ((Frame.mk ms_tgt lst_tgt) :: tail_tgt)) sm0
   | lxsim_lift_callstate
        sm_arg tail_src tail_tgt tail_sm args_src args_tgt
@@ -393,8 +393,8 @@ Section ADQINIT.
   Variable pp: ProgPair.t.
   Hypothesis NOTNIL: pp <> [].
   Hypothesis SIMPROG: ProgPair.sim pp.
-  Let p_src := pp.(ProgPair.src).
-  Let p_tgt := pp.(ProgPair.tgt).
+  Let p_src := (ProgPair.src pp).
+  Let p_tgt := (ProgPair.tgt pp).
 
   Variable sk_link_src sk_link_tgt: Sk.t.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
@@ -405,8 +405,8 @@ Section ADQINIT.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
 
-  Let skenv_link_src := sk_link_src.(Sk.load_skenv).
-  Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
+  Let skenv_link_src := (Sk.load_skenv sk_link_src).
+  Let skenv_link_tgt := (Sk.load_skenv sk_link_tgt).
 
   Theorem init_lxsim_lift_forward
           st_init_src
@@ -414,8 +414,8 @@ Section ADQINIT.
       exists idx st_init_tgt sm_init,
         <<INITTGT: sem_tgt.(Dinitial_state) st_init_tgt>>
         /\ (<<SIM: lxsim_lift sk_link_src sk_link_tgt idx st_init_src st_init_tgt sm_init>>)
-        /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)>>)
-        /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)>>).
+        /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))>>)
+        /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt))>>).
   Proof.
     ss. inv INITSRC; ss. clarify. rename INITSK into INITSKSRC. rename INITMEM into INITMEMSRC.
 
@@ -466,8 +466,8 @@ Section ADQSTEP.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.
-  Let p_src := pp.(ProgPair.src).
-  Let p_tgt := pp.(ProgPair.tgt).
+  Let p_src := (ProgPair.src pp).
+  Let p_tgt := (ProgPair.tgt pp).
 
   Variable sk_link_src sk_link_tgt: Sk.t.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
@@ -478,13 +478,13 @@ Section ADQSTEP.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
 
-  Let skenv_link_src := sk_link_src.(Sk.load_skenv).
-  Let skenv_link_tgt := sk_link_tgt.(Sk.load_skenv).
+  Let skenv_link_src := (Sk.load_skenv sk_link_src).
+  Let skenv_link_tgt := (Sk.load_skenv sk_link_tgt).
   Variable ss_link: SimSymb.t.
   Hypothesis (SIMSKENV: exists sm, SimSymb.sim_skenv sm ss_link skenv_link_src skenv_link_tgt).
 
-  Hypothesis (INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src mp.(ModPair.src).(Mod.sk)).
-  Hypothesis (INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt mp.(ModPair.tgt).(Mod.sk)).
+  Hypothesis (INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))).
+  Hypothesis (INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt))).
   Hypothesis (SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link).
 
   Hypothesis (WFKSSRC: forall md (IN: In md (ProgPair.src pp)), <<WF: Sk.wf md >>).
@@ -698,8 +698,8 @@ Section ADQ.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.
-  Let p_src := pp.(ProgPair.src).
-  Let p_tgt := pp.(ProgPair.tgt).
+  Let p_src := (ProgPair.src pp).
+  Let p_tgt := (ProgPair.tgt pp).
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
 
@@ -739,8 +739,8 @@ Program Definition mkPR (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.cla
                                forall (WF: forall x (IN: In x p_src), Sk.wf x),
                                exists pp,
                                  (<<SIMS: @ProgPair.sim MR SR MP pp>>)
-                                 /\ (<<SRCS: pp.(ProgPair.src) = p_src>>)
-                                 /\ (<<TGTS: pp.(ProgPair.tgt) = p_tgt>>)) _ _ _.
+                                 /\ (<<SRCS: (ProgPair.src pp) = p_src>>)
+                                 /\ (<<TGTS: (ProgPair.tgt pp) = p_tgt>>)) _ _ _.
 Next Obligation.
 (* horizontal composition *)
   exploit REL0; eauto. { i. eapply WF. rewrite in_app_iff. eauto. } intro T0; des.

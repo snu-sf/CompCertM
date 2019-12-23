@@ -87,7 +87,7 @@ Definition CompCert_relations_list: list program_relation.t :=
 Definition CompCert_relations := (fun r => In r CompCert_relations_list).
 
 Lemma asm_self_related (asm: Asm.program):
-    self_related CompCert_relations [asm.(AsmC.module)].
+    self_related CompCert_relations [(AsmC.module asm)].
 Proof.
   intros r RELIN. unfold CompCert_relations in *. ss.
   des; clarify; eapply relate_single_program; intros WF.
@@ -104,12 +104,12 @@ Lemma asms_self_related (asms: list Asm.program):
 Proof.
   induction asms; ss; ii.
   exploit IHasms; ss; eauto. i.
-  eapply (@program_relation.horizontal _ [a.(AsmC.module)] _ [a.(AsmC.module)]); eauto.
+  eapply (@program_relation.horizontal _ [(AsmC.module a)] _ [(AsmC.module a)]); eauto.
   eapply asm_self_related; eauto.
 Qed.
 
 Lemma clight_self_related (cl: Clight.program):
-    self_related CompCert_relations [cl.(ClightC.module2)].
+    self_related CompCert_relations [(ClightC.module2 cl)].
 Proof.
   intros r RELIN. unfold CompCert_relations in *. ss.
   des; clarify; eapply relate_single_program; intros WF.
@@ -126,7 +126,7 @@ Lemma clights_self_related (cls: list Clight.program):
 Proof.
   induction cls; ss; ii.
   exploit IHcls; ss; eauto. i.
-  eapply (@program_relation.horizontal _ [a.(ClightC.module2)] _ [a.(ClightC.module2)]); eauto.
+  eapply (@program_relation.horizontal _ [(ClightC.module2 a)] _ [(ClightC.module2 a)]); eauto.
   eapply clight_self_related; eauto.
 Qed.
 
@@ -139,7 +139,7 @@ Section Cstrategy.
         (TRANSF: src = tgt):
       relate_single
         SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top
-        (CsemC.module src) (CstrategyC.module tgt).(Mod.Atomic.trans).
+        (CsemC.module src) (Mod.Atomic.trans (CstrategyC.module tgt)).
   Proof.
     unfold relate_single. clarify. exploit CstrategyproofC.sim_mod; eauto. esplits; eauto; ss.
   Qed.
@@ -155,7 +155,7 @@ Section SimplExpr.
         (TRANSF: SimplExpr.transl_program src = OK tgt):
       relate_single
         SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top
-        (CstrategyC.module src).(Mod.Atomic.trans) (ClightC.module1 tgt).
+        (Mod.Atomic.trans (CstrategyC.module src)) (ClightC.module1 tgt).
   Proof.
     unfold relate_single. exploit SimplExprproofC.sim_mod; i; esplits; eauto; ss.
     eapply SimplExprproof.transf_program_match; eauto.
@@ -580,7 +580,7 @@ Lemma compiler_single_rusc
       (src: Clight.program)
       (tgt: Asm.program)
       (TRANSF: transf_clight_program src = OK tgt):
-    rusc CompCert_relations [src.(ClightC.module2)] [tgt.(AsmC.module)].
+    rusc CompCert_relations [(ClightC.module2 src)] [(AsmC.module tgt)].
 Proof.
   unfold transf_clight_program in *. unfold transf_cminor_program in *. unfold transf_rtl_program in *.
   unfold time in *. unfold print in *. cbn in *. unfold apply_total, apply_partial in *. des_ifs_safe.

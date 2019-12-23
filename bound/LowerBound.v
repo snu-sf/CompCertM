@@ -111,11 +111,11 @@ Section PRESERVATION.
   Let WFSKELINK: SkEnv.wf skenv_link.
   Proof. eapply SkEnv.load_skenv_wf. ss. Qed.
 
-  Let ININCL: forall p (IN: In p prog), <<INCL: SkEnv.includes skenv_link p.(Mod.sk)>>.
+  Let ININCL: forall p (IN: In p prog), <<INCL: SkEnv.includes skenv_link (Mod.sk p)>>.
   Proof. eapply link_includes; et. Qed.
 
   Definition local_genv (p : Asm.program) :=
-    (skenv_link.(SkEnv.project) p.(Sk.of_program fn_sig)).(SkEnv.revive) p.
+    (SkEnv.revive (SkEnv.project (skenv_link) (Sk.of_program fn_sig p))) p.
 
   Lemma match_genvs_sub A B V W R (ge1: Genv.t A V) (ge2: Genv.t B W)
         (MATCHGE: Genv.match_genvs R ge1 ge2):
@@ -214,10 +214,10 @@ Section PRESERVATION.
       i. ss. }
 
     cinv match_skenv_link_tge.
-    cinv (@SkEnv.project_impl_spec skenv_link x.(Sk.of_program fn_sig) INCL).
+    cinv (@SkEnv.project_impl_spec skenv_link (Sk.of_program fn_sig x) INCL).
     unfold skenv_link in *.
 
-    assert (SKWF: SkEnv.wf_proj (SkEnv.project (Genv.globalenv sk) x.(Sk.of_program fn_sig))).
+    assert (SKWF: SkEnv.wf_proj (SkEnv.project (Genv.globalenv sk) (Sk.of_program fn_sig x))).
     { eapply SkEnv.project_spec_preserves_wf.
       - eapply SkEnv.load_skenv_wf. et.
       - eapply SkEnv.project_impl_spec; et. }
@@ -319,7 +319,7 @@ Section PRESERVATION.
 (** ********************* initial memory *********************************)
 
   Variable m_init : mem.
-  Hypothesis INIT_MEM: sk.(Sk.load_mem) = Some m_init.
+  Hypothesis INIT_MEM: (Sk.load_mem sk) = Some m_init.
 
   Definition m_tgt_init := m_init.
 
@@ -551,10 +551,10 @@ Section PRESERVATION.
         (AGREE: agree j rs_callee rs_tgt)
         (RETV: loc_result sg = One mr)
         (CALLEESAVE: forall mr, Conventions1.is_callee_save mr ->
-                                Val.lessdef (init_rs mr.(to_preg)) (rs_callee mr.(to_preg)))
+                                Val.lessdef (init_rs (to_preg mr)) (rs_callee (to_preg mr)))
         (RSRA: rs_callee # PC = init_rs # RA)
         (RSRSP: rs_callee # RSP = init_rs # RSP)
-        (RS: rs = (set_pair (loc_external_result sg) (rs_callee mr.(to_preg)) (Asm.regset_after_external rs_caller)) #PC <- (rs_caller RA)):
+        (RS: rs = (set_pair (loc_external_result sg) (rs_callee (to_preg mr)) (Asm.regset_after_external rs_caller)) #PC <- (rs_caller RA)):
         agree j rs rs_tgt.
   Proof.
     inv WF. clarify.
@@ -578,28 +578,28 @@ Section PRESERVATION.
       init_rs P
       (RSRA: init_rs # RA = Vnullptr)
       (RSPC: init_rs # PC = Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero)
-      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal signature_main)):
+      (SIG: (Genv.find_funct skenv_link) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal signature_main)):
       match_stack j P init_rs nil
   | match_stack_cons
       fr frs p st init_rs0 init_rs1 P0 P1 sg blk ofs
       (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate init_rs1 st))
       (STACK: match_stack j P0 init_rs1 frs)
-      (WF: wf_init_rs j st.(st_rs) init_rs0)
+      (WF: wf_init_rs j (st_rs st) init_rs0)
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
+      (SIG: exists skd, (Genv.find_funct skenv_link) (init_rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = Some sg)
-      (RSPPTR: st.(st_rs) # RSP = Vptr blk ofs)
+      (RSPPTR: (st_rs st) # RSP = Vptr blk ofs)
       (RANGE: P0 \2/ (brange blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned ofs + 4 * size_arguments sg)) <2= P1):
       match_stack j P1 init_rs0 (fr::frs)
   | match_stack_cons_asmstyle
       fr frs p st init_rs0 init_rs1 P0
       (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate init_rs1 st))
       (STACK: match_stack j P0 init_rs1 frs)
-      (WF: inj_same j (st.(st_rs) # RA) (init_rs0 # RA))
+      (WF: inj_same j ((st_rs st) # RA) (init_rs0 # RA))
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
+      (SIG: exists skd, (Genv.find_funct skenv_link) (init_rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = None):
       match_stack j P0 init_rs0 (fr::frs)
   .
@@ -609,18 +609,18 @@ Section PRESERVATION.
       init_rs m P
       (MEM: m = m_init)
       (INITRS: init_rs = initial_regset)
-      (SIG: skenv_link.(Genv.find_funct) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal signature_main)):
+      (SIG: (Genv.find_funct skenv_link) (Genv.symbol_address tge tprog.(prog_main) Ptrofs.zero) = Some (Internal signature_main)):
       match_stack_call j m P init_rs nil
   | match_stack_call_cons
       fr frs p st init_rs0 init_rs1 m P0 P1 sg blk ofs
       (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p)
                             (AsmC.mkstate init_rs1 st))
-      (INITRS: init_rs0 = st.(st_rs))
+      (INITRS: init_rs0 = (st_rs st))
       (STACK: match_stack j P0 init_rs1 frs)
-      (MEM: m = st.(st_m))
+      (MEM: m = (st_m st))
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
+      (SIG: exists skd, (Genv.find_funct skenv_link) (init_rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = Some sg)
       (RSPPTR: init_rs0 # RSP = Vptr blk ofs)
       (RANGE: P0 \2/ (brange blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned ofs + 4 * size_arguments sg)) <2= P1):
@@ -629,12 +629,12 @@ Section PRESERVATION.
       fr frs p st init_rs0 init_rs1 m P0
       (FRAME: fr = Frame.mk (AsmC.modsem skenv_link p)
                             (AsmC.mkstate init_rs1 st))
-      (INITRS: init_rs0 = st.(st_rs))
+      (INITRS: init_rs0 = (st_rs st))
       (STACK: match_stack j P0 init_rs1 frs)
-      (MEM: m = st.(st_m))
+      (MEM: m = (st_m st))
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs0 # PC)
+      (SIG: exists skd, (Genv.find_funct skenv_link) (init_rs0 # PC)
                         = Some skd /\ Sk.get_csig skd = None):
       match_stack_call j m P0 init_rs0 (fr::frs).
 
@@ -824,11 +824,11 @@ Section PRESERVATION.
         (INJECT: Mem.inject j m_src0 m_tgt)
         (ARGS: Asm.extcall_arguments rs m_src0 sg args)
         (RSRSP: rs RSP = Vptr blk ofs)
-        (FREE: freed_from m_src0 m_src1 blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)))
+        (FREE: freed_from m_src0 m_src1 blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned (ofs) + 4 * (size_arguments sg)))
         (ARGRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
         (TYP: typecheck args sg targs)
         (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
-          (align_chunk chunk | ofs.(Ptrofs.unsigned))):
+          (align_chunk chunk | (Ptrofs.unsigned ofs))):
       Mem.inject
         (callee_initial_inj' blk ofs j m_src1)
         (callee_initial_mem' blk ofs m_src0 m_src1 sg targs)
@@ -1244,15 +1244,15 @@ Section PRESERVATION.
       (GEINJECT: skenv_inject skenv_link j m_src)
       (FPTR: fptr_arg = init_rs # PC)
       (ARGRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) fptr_arg
+      (SIG: exists skd, (Genv.find_funct skenv_link) fptr_arg
                         = Some skd /\ Sk.get_csig skd = Some sg)
       (ALIGN: forall chunk (CHUNK: size_chunk chunk <= 4 * (size_arguments sg)),
-          (align_chunk chunk | ofs.(Ptrofs.unsigned)))
+          (align_chunk chunk | (Ptrofs.unsigned ofs)))
       (ARGS: Asm.extcall_arguments init_rs m_src sg vs_arg)
       (RSPPTR: init_rs # RSP = Vptr blk ofs)
       (WFINJ: inj_range_wf skenv_link j m_arg P)
       (RAPTR: <<TPTR: Val.has_type (init_rs RA) Tptr>> /\ <<RADEF: init_rs RA <> Vundef>>)
-      (FREE: freed_from m_src m_arg blk ofs.(Ptrofs.unsigned) (ofs.(Ptrofs.unsigned) + 4 * (size_arguments sg)))
+      (FREE: freed_from m_src m_arg blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned (ofs) + 4 * (size_arguments sg)))
       (ORD: n = 1%nat):
       match_states (Callstate args frs) (Asm.State rs_tgt m_tgt) n
   | match_states_call_asmstyle
@@ -1264,7 +1264,7 @@ Section PRESERVATION.
       (INJECT: Mem.inject j m_src m_tgt)
       (MEMWF: Mem.unchanged_on (loc_not_writable m_init) m_init m_src)
       (GEINJECT: skenv_inject skenv_link j m_src)
-      (SIG: exists skd, skenv_link.(Genv.find_funct) (init_rs # PC)
+      (SIG: exists skd, (Genv.find_funct skenv_link) (init_rs # PC)
                         = Some skd /\ Sk.get_csig skd = None)
       (WFINJ: inj_range_wf skenv_link j m_src P)
       (RAPTR: <<TPTR: Val.has_type (init_rs RA) Tptr>> /\ <<RADEF: init_rs RA <> Vundef>>)
@@ -1323,7 +1323,7 @@ Section PRESERVATION.
   Lemma asm_step_init_simulation
         args frs st_tgt p n
         (MTCHST: match_states (Callstate args frs) st_tgt n)
-        (OWNER: valid_owner args.(Args.get_fptr) p)
+        (OWNER: valid_owner (Args.get_fptr args) p)
         (PROGIN: In (AsmC.module p) prog):
       exists rs m,
         (AsmC.initial_frame skenv_link p args (AsmC.mkstate rs (Asm.State rs m))) /\
@@ -1864,7 +1864,7 @@ Section PRESERVATION.
         (STEP: fr0.(Frame.ms).(ModSem.step) skenv_link fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
         (MTCHST: match_states (State (fr0 :: frs)) st_tgt0 n0):
       exists st_tgt1 n1, Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
-                     match_states (State ((fr0.(Frame.update_st) st0) :: frs)) st_tgt1 n1.
+                     match_states (State (((Frame.update_st fr0) st0) :: frs)) st_tgt1 n1.
   Proof.
     inv MTCHST. inv STEP.
     exploit asm_step_internal_simulation; ss; eauto.
@@ -1886,7 +1886,7 @@ Section PRESERVATION.
         (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) retv)
         (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) retv st0)
         (MTCHST: match_states (State (fr0 :: fr1 :: frs)) st_tgt n0):
-      exists n1, match_states (State ((fr1.(Frame.update_st) st0) :: frs)) st_tgt n1 /\ (n1 < n0)%nat.
+      exists n1, match_states (State (((Frame.update_st fr1) st0) :: frs)) st_tgt n1 /\ (n1 < n0)%nat.
   Proof.
     inv MTCHST. inv STACK.
     { ss. inv FINAL; cycle 1.
@@ -2006,7 +2006,7 @@ Section PRESERVATION.
   Lemma step_init_simulation
         args frs st_tgt p n
         (MTCHST: match_states (Callstate args frs) st_tgt n)
-        (OWNER: valid_owner args.(Args.get_fptr) p)
+        (OWNER: valid_owner (Args.get_fptr args) p)
         (PROGIN: In (AsmC.module p) prog):
       exists st_src, step ge (Callstate args frs) E0 st_src /\ match_states st_src st_tgt 0.
   Proof.
@@ -2082,16 +2082,16 @@ Section PRESERVATION.
 
   Lemma init_case st args frs fptr
         (STATE: st = Callstate args frs)
-        (FPTR: fptr = args.(Args.get_fptr)):
+        (FPTR: fptr = (Args.get_fptr args)):
       (<<ASMMOD: exists p, valid_owner fptr p>>) \/
       (<<SYSMOD: ge.(Ge.find_fptr_owner)
                       fptr (System.modsem skenv_link)>>) \/
       (<<UNSAFE: ~ safe (sem prog) st>>).
   Proof.
-    destruct (classic (exists p, Ge.find_fptr_owner ge args.(Args.get_fptr) (modsem skenv_link p)
+    destruct (classic (exists p, Ge.find_fptr_owner ge (Args.get_fptr args) (modsem skenv_link p)
                                  /\ In (AsmC.module p) prog)) as [[p OWNER] | NOOWNER].
     - des. simpl_depind.
-      destruct (classic (valid_owner args.(Args.get_fptr) p)); eauto.
+      destruct (classic (valid_owner (Args.get_fptr args) p)); eauto.
       right. right. intros SAFE. exploit SAFE; [econs|].
       i. des.
       + inv H0.
@@ -2120,7 +2120,7 @@ Section PRESERVATION.
   Lemma syscall_receptive
         st_src0 st_src1 st_tgt0 args frs fptr tr0 n0
         (STATE: st_src0 = Callstate args frs)
-        (FPTR: fptr = args.(Args.get_fptr))
+        (FPTR: fptr = (Args.get_fptr args))
         (SYSMOD: ge.(Ge.find_fptr_owner)
                       fptr (System.modsem skenv_link))
         (MTCHST: match_states st_src0 st_tgt0 n0)
@@ -2135,7 +2135,7 @@ Section PRESERVATION.
   Lemma syscall_simulation
         st_src0 st_src1 st_src2 st_tgt0 args frs fptr tr0 tr1 n0
         (STATE: st_src0 = Callstate args frs)
-        (FPTR: fptr = args.(Args.get_fptr))
+        (FPTR: fptr = (Args.get_fptr args))
         (SYSMOD: ge.(Ge.find_fptr_owner)
                       fptr (System.modsem skenv_link))
         (MTCHST: match_states st_src0 st_tgt0 n0)
@@ -2177,7 +2177,7 @@ Section PRESERVATION.
       { unfold Sk.get_csig in *. des. unfold System.globalenv in *. des_ifs. }
       exists (if external_state (local_genv p)
                           ((set_pair (loc_external_result (ef_sig ef)) vres'
-                                     (regset_after_external st.(st_rs))) # PC <- (st.(st_rs) RA) PC)
+                                     (regset_after_external (st_rs st))) # PC <- ((st_rs st) RA) PC)
         then (length frs0 + 2)%nat
         else 0%nat).
       splits.

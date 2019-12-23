@@ -16,14 +16,14 @@ Require DemoTarget.
 Require Import DemoHeader.
 
 Require Import Floats Integers IntegersC.
-Require Import Fappli_rnd_odd.
+(* Require Import Fappli_rnd_odd. *)
 Definition round_to_odd (v: val): val := Val.orl (Val.shrlu v (Vint Int.one)) (Val.andl v (Vlong Int64.one)).
 
 Lemma arithmetic_fact
       l
   :
     Val.floatoflongu (Vlong l) =
-    if zlt l.(Int64.unsigned) Int64.half_modulus
+    if zlt (Int64.unsigned l) Int64.half_modulus
     then Val.floatoflong (Vlong l)
     else
       match Val.floatoflong (round_to_odd (Vlong l)) with

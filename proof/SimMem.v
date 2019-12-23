@@ -69,7 +69,7 @@ Module SimMem.
       rs_src m_src rs_tgt m_tgt
       (ASMSRC: args_src = Args.Asmstyle rs_src m_src)
       (ASMTGT: args_tgt = Args.Asmstyle rs_tgt m_tgt)
-      (RS: sm0.(sim_regset) rs_src rs_tgt)
+      (RS: (sim_regset sm0) rs_src rs_tgt)
       (MEMSRC: m_src = sm0.(SimMem.src))
       (MEMTGT: m_tgt = sm0.(SimMem.tgt)).
 
@@ -85,12 +85,12 @@ Module SimMem.
       rs_src m_src rs_tgt m_tgt
       (ASMSRC: retv_src = Retv.Asmstyle rs_src m_src)
       (ASMTGT: retv_tgt = Retv.Asmstyle rs_tgt m_tgt)
-      (RS: sm0.(sim_regset) rs_src rs_tgt)
+      (RS: (sim_regset sm0) rs_src rs_tgt)
       (MEMSRC: m_src = sm0.(SimMem.src))
       (MEMTGT: m_tgt = sm0.(SimMem.tgt)).
 
   Lemma sim_args_sim_fptr `{SM: class}: forall sm0 args_src args_tgt (ARGS: sim_args args_src args_tgt sm0),
-      sm0.(sim_val) args_src.(Args.get_fptr) args_tgt.(Args.get_fptr).
+      sm0.(sim_val) (Args.get_fptr args_src) (Args.get_fptr args_tgt).
   Proof. i. inv ARGS; ss. Qed.
 
   Lemma sim_val_list_le

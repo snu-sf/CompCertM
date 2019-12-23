@@ -161,19 +161,19 @@ Section PRESERVATION.
   Variable cps: list Csyntax.program.
   Variable ctx: Syntax.program.
   Hypothesis FOCUS: link_list cps = Some cp_link.
-  Let prog_src := ctx ++ [cp_link.(CsemC.module)].
+  Let prog_src := ctx ++ [(CsemC.module cp_link)].
   Let prog_tgt := ctx ++ map CsemC.module cps.
   Variable sk_link: Sk.t.
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
   Hypothesis (LINKSRC: link_sk prog_src = Some sk_link).
-  Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env))
+  Notation " 'geof' cp" := (Build_genv (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) cp.(prog_comp_env))
                            (at level 50, no associativity, only parsing).
   Let ge_cp_link: genv := geof cp_link.
 
   Hypothesis WTPROGLINK: wt_program cp_link.
-  Hypothesis WTSKLINK: Sk.wf cp_link.(CsemC.module).
+  Hypothesis WTSKLINK: Sk.wf (CsemC.module cp_link).
   Hypothesis WTPROGS: forall cp (IN: In cp cps), wt_program cp.
-  Hypothesis WTSKS: forall cp (IN: In cp cps), Sk.wf cp.(CsemC.module).
+  Hypothesis WTSKS: forall cp (IN: In cp cps), Sk.wf (CsemC.module cp).
 
   Hypothesis WT_EXTERNALLINK:
     forall id ef args res cc vargs m t vres m',
@@ -203,13 +203,13 @@ Section PRESERVATION.
   Hypothesis CSTYLE_EXTERN_LINK:
     forall id ef tyargs ty cc,
       In (id, (Gfun (Ctypes.External ef tyargs ty cc))) cp_link.(prog_defs) ->
-      ef.(ef_sig).(sig_cstyle).
+      (ef_sig ef).(sig_cstyle).
 
   Hypothesis CSTYLE_EXTERN:
     forall id ef tyargs ty cc cp,
       is_focus cp ->
       In (id, (Gfun (Ctypes.External ef tyargs ty cc))) cp.(prog_defs) ->
-      ef.(ef_sig).(sig_cstyle).
+      (ef_sig ef).(sig_cstyle).
 
   Let INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function cp_link).
   Proof.
@@ -1605,14 +1605,14 @@ End PRESERVATION.
 Require Import BehaviorsC.
 
 Let geof := fun skenv_link (cp: Csyntax.program) =>
-              (Build_genv (SkEnv.revive (SkEnv.project skenv_link cp.(CSk.of_program signature_of_function)) cp) cp.(prog_comp_env)).
+              (Build_genv (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) cp.(prog_comp_env)).
 
 Theorem upperbound_a_correct
         builtins (cp_link: Csyntax.program) cps ctx
         (TYPEDS: Forall (fun cp => (typechecked builtins cp)) cps)
         (TYPEDLINK: typechecked builtins cp_link)
         (LINK: link_list cps = Some cp_link) :
-    (<<REFINE: improves (Sem.sem (ctx ++ [cp_link.(CsemC.module)]))
+    (<<REFINE: improves (Sem.sem (ctx ++ [(CsemC.module cp_link)]))
                         (Sem.sem (ctx ++ map CsemC.module cps))>>).
 Proof.
   eapply bsim_improves.

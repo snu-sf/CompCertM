@@ -30,7 +30,7 @@ Proof. rewrite SIMSKENV. eapply GlobalenvsC.Senv_eq_equiv_obligation_1. Qed.
 Lemma system_sim_skenv
       skenv_src skenv_tgt
       (SIMSKENV: sim_skenv skenv_src skenv_tgt):
-    <<SIMSKENV: sim_skenv (skenv_src).(System.skenv) (skenv_tgt).(System.skenv)>>.
+    <<SIMSKENV: sim_skenv (System.skenv (skenv_src)) (System.skenv (skenv_tgt))>>.
 Proof. inv SIMSKENV. econs; eauto. Qed.
 
 Record t' := mk {
@@ -63,10 +63,10 @@ Qed.
 
 Lemma wf_load_sim_skenv: forall ss skenv_src skenv_tgt m_src
           (SIMSK: wf ss)
-          (LOADSRC: ss.(src).(Sk.load_skenv) = skenv_src)
-          (LOADTGT: ss.(tgt).(Sk.load_skenv) = skenv_tgt)
-          (LOADMEMSRC: ss.(src).(Sk.load_mem) = Some m_src),
-            (<<LOADMEMTGT: ss.(tgt).(Sk.load_mem) = Some m_src>>) /\
+          (LOADSRC: (Sk.load_skenv ss.(src)) = skenv_src)
+          (LOADTGT: (Sk.load_skenv ss.(tgt)) = skenv_tgt)
+          (LOADMEMSRC: (Sk.load_mem ss.(src)) = Some m_src),
+            (<<LOADMEMTGT: (Sk.load_mem ss.(tgt)) = Some m_src>>) /\
             (<<SIMSKENV: sim_skenv skenv_src skenv_tgt>>) /\
             (<<MAINSIM: (Genv.symbol_address skenv_src (prog_main ss.(src)) Ptrofs.zero)
                         = (Genv.symbol_address skenv_tgt (prog_main ss.(tgt)) Ptrofs.zero)>>).

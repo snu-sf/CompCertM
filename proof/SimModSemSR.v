@@ -213,9 +213,9 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           sm_arg
           args_src args_tgt
           sg_init_src sg_init_tgt
-          (FINDFSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) args_src.(Args.get_fptr) =
+          (FINDFSRC: (Genv.find_funct msp.(src).(ModSem.skenv)) (Args.get_fptr args_src) =
                      Some (Internal sg_init_src))
-          (FINDFTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.get_fptr) =
+          (FINDFTGT: (Genv.find_funct msp.(tgt).(ModSem.skenv)) (Args.get_fptr args_tgt) =
                      Some (Internal sg_init_tgt))
           (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
@@ -280,7 +280,7 @@ Section FACTORSOURCE.
 
     Lemma factor_lxsim_source: forall idx0 st_src0 tr st_tgt0 sm0
         (SIM: ffs_match idx0 (tr, st_src0) st_tgt0 sm0),
-        <<SIM: SimModSem.lxsim (Atomic.trans ms_src) ms_tgt (fun st => sound_states st.(snd)) idx0 (tr, st_src0) st_tgt0 sm0>>.
+        <<SIM: SimModSem.lxsim (Atomic.trans ms_src) ms_tgt (fun st => sound_states (snd st)) idx0 (tr, st_src0) st_tgt0 sm0>>.
     Proof.
       clear_tac. unfold NW. pcofix CIH. i. pfold. inv SIM; cycle 1.
       (* exploit atomic_receptive; eauto. intro RECEP. *)
@@ -352,10 +352,10 @@ Section FACTORSOURCE.
 
   Theorem factor_simmodsem_source
           (SIM: ModSemPair.simSR (ModSemPair.mk ms_src ms_tgt ss sm)):
-      ModSemPair.sim (ModSemPair.mk ms_src.(ModSem.Atomic.trans) ms_tgt ss sm).
+      ModSemPair.sim (ModSemPair.mk (ModSem.Atomic.trans ms_src) ms_tgt ss sm).
   Proof.
     inv SIM. ss. econs; eauto; ss.
-    { instantiate (1:= fun su m st_src => sound_state_ex su m st_src.(snd)). ss.
+    { instantiate (1:= fun su m st_src => sound_state_ex su m (snd st_src)). ss.
       i. specialize (PRSV). inv PRSV. econs; ss; eauto.
       - ii. exploit INIT; eauto. rr in INIT0. des. ss.
       - ii. inv STEP0; ss.
@@ -376,7 +376,7 @@ Section FACTORSOURCE.
         i. exploit K; eauto. rr in AFTER. des. ss.
       - i. exploit RET; eauto. rr in FINAL. des. ss.
     }
-    { i. instantiate (1:= fun si su m st_src => sound_states si su m st_src.(snd)). ss.
+    { i. instantiate (1:= fun si su m st_src => sound_states si su m (snd st_src)). ss.
       i. specialize (PRSVNOGR si).
       inv PRSVNOGR. econs; ss; eauto.
       - ii. exploit INIT; eauto. rr in INIT0. des. ss.

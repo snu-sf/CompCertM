@@ -29,10 +29,10 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
 | local_preservation_intro
     (INIT: forall su_init args st_init
         (SUARG: Sound.args su_init args)
-        (SKENV: Sound.skenv su_init args.(Args.get_m) ms.(ModSem.skenv))
+        (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
-        <<SUST: sound_state su_init args.(Args.get_m) st_init>>)
+        <<SUST: sound_state su_init (Args.get_m args) st_init>>)
     (STEP: forall
         m_arg su0 st0 tr st1
         (SUST: sound_state su0 m_arg st0)
@@ -42,14 +42,14 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
     (CALL: forall m_arg su0 st0 args
         (SUST: sound_state su0 m_arg st0)
         (AT: ms.(ModSem.at_external) st0 args),
-        <<MLE: Sound.mle su0 m_arg args.(Args.get_m)>> /\
+        <<MLE: Sound.mle su0 m_arg (Args.get_m args)>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
           (<<LE: Sound.lepriv su0 su_gr>>) /\
           (<<K: forall su_ret retv st1
               (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
-              (MLE: Sound.mle su_gr args.(Args.get_m) retv.(Retv.get_m))
+              (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
               (<<SUST: sound_state su0 m_arg st1>>)>>))
@@ -57,7 +57,7 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
         (SUST: sound_state su0 m_arg st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv),
         exists su_ret, <<LE: Sound.hle su0 su_ret>> /\
-        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) m_arg retv.(Retv.get_m)>>)
+        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) m_arg (Retv.get_m retv)>>)
 .
 
 (* It does not need to show "mle". *)
@@ -65,10 +65,10 @@ Inductive local_preservation_noguarantee (sound_state: Sound.t -> mem -> ms.(sta
 | local_preservation_noguarantee_intro
     (INIT: forall su_init args st_init
         (SUARG: Sound.args su_init args)
-        (SKENV: Sound.skenv su_init args.(Args.get_m) ms.(ModSem.skenv))
+        (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
-        <<SUST: sound_state su_init args.(Args.get_m) st_init>>)
+        <<SUST: sound_state su_init (Args.get_m args) st_init>>)
     (STEP: forall
         m_arg su0 st0 tr st1
         (SUST: sound_state su0 m_arg st0)
@@ -84,7 +84,7 @@ Inductive local_preservation_noguarantee (sound_state: Sound.t -> mem -> ms.(sta
           (<<K: forall su_ret retv st1
               (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
-              (MLE: Sound.mle su_gr args.(Args.get_m) retv.(Retv.get_m))
+              (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
               (<<SUST: sound_state su0 m_arg st1>>)>>))
@@ -103,12 +103,12 @@ Inductive local_preservation_standard (sound_state: Sound.t -> ms.(state) -> Pro
 | local_preservation_standard_intro
     (INIT: forall su_arg args st_init
         (SUARG: Sound.args su_arg args)
-        (SKENV: Sound.skenv su_arg args.(Args.get_m) ms.(ModSem.skenv))
+        (SKENV: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         exists su_init, (<<LE: Sound.hle su_arg su_init>>) /\
                         (<<SUST: sound_state su_init st_init>>)
-                        /\ (<<MLE: su_init.(Sound.mle) args.(Args.get_m) st_init.(get_mem)>>))
+                        /\ (<<MLE: su_init.(Sound.mle) (Args.get_m args) st_init.(get_mem)>>))
     (STEP: forall
         su0 st0 tr st1
         (SUST: sound_state su0 st0)
@@ -119,25 +119,25 @@ Inductive local_preservation_standard (sound_state: Sound.t -> ms.(state) -> Pro
         (SUST: sound_state su0 st0)
         (AT: ms.(ModSem.at_external) st0 args)
       ,
-        <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.get_m)>> /\
+        <<MLE: Sound.mle su0 st0.(get_mem) (Args.get_m args)>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
           (<<LE: Sound.lepriv su0 su_gr>>) /\
           (<<K: forall su_ret retv st1
               (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
-              (MLE: Sound.mle su_gr args.(Args.get_m) retv.(Retv.get_m))
+              (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
               exists su1,
                 <<LE: Sound.hle su0 su1>> /\
-              (<<SUST: sound_state su1 st1>> /\ <<MLE: su0.(Sound.mle) args.(Args.get_m) st1.(get_mem)>>)>>))
+              (<<SUST: sound_state su1 st1>> /\ <<MLE: su0.(Sound.mle) (Args.get_m args) st1.(get_mem)>>)>>))
     (RET: forall
         su0 st0 retv
         (SUST: sound_state su0 st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv),
         exists su_ret, <<LE: Sound.hle su0 su_ret>> /\
-        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.get_m)>>)
+        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) (Retv.get_m retv)>>)
 .
 
 Theorem local_preservation_standard_spec
@@ -169,10 +169,10 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
     (LIFTPRIV: lift <2= Sound.lepriv)
     (INIT: forall su_init args st_init
         (SUARG: Sound.args su_init args)
-        (SKENV: Sound.skenv su_init args.(Args.get_m) ms.(ModSem.skenv))
+        (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
-        <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) args.(Args.get_m) st_init.(get_mem)>>)
+        <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) (Args.get_m args) st_init.(get_mem)>>)
     (STEP: forall
         su0 st0 tr st1
         (SKENV: Sound.skenv su0 st0.(get_mem) ms.(ModSem.skenv))
@@ -185,7 +185,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
         (SUST: sound_state su0 st0)
         (AT: ms.(ModSem.at_external) st0 args)
       ,
-        <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.get_m)>> /\
+        <<MLE: Sound.mle su0 st0.(get_mem) (Args.get_m args)>> /\
         <<WF: Sound.wf su0>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
@@ -193,20 +193,20 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
           (<<K: forall su_ret retv st1
               (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
-              (MLE: Sound.mle su_gr args.(Args.get_m) retv.(Retv.get_m))
+              (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
               (AFTER: ms.(ModSem.after_external) st0 retv st1)
             ,
               (<<SUST: forall
-                 (MLE: su0.(Sound.mle) retv.(Retv.get_m) st1.(get_mem))
+                 (MLE: su0.(Sound.mle) (Retv.get_m retv) st1.(get_mem))
                  (SKENV: Sound.skenv su0 st1.(get_mem) ms.(ModSem.skenv)),
-                 sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) retv.(Retv.get_m) st1.(get_mem)>>)>>))
+                 sound_state su0 st1>> /\ <<MLE: su0.(Sound.mle) (Retv.get_m retv) st1.(get_mem)>>)>>))
     (RET: forall
         su0 st0 retv
         (SKENV: Sound.skenv su0 st0.(get_mem) ms.(ModSem.skenv))
         (SUST: sound_state su0 st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv),
         exists su_ret, <<LE: Sound.hle su0 su_ret>> /\
-        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.get_m)>>).
+        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) (Retv.get_m retv)>>).
 
 Theorem local_preservation_strong_spec
         sound_state
@@ -236,12 +236,12 @@ Inductive local_preservation_strong_horizontal (sound_state: Sound.t -> ms.(stat
     (LIFTPRIV: lift <2= Sound.lepriv)
     (INIT: forall su_arg args st_init
         (SUARG: Sound.args su_arg args)
-        (SKENV: Sound.skenv su_arg args.(Args.get_m) ms.(ModSem.skenv))
+        (SKENV: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         exists su_init, (<<LE: Sound.hle su_arg su_init>>) /\
                         (<<SUST: sound_state su_init st_init>>)
-                        /\ (<<MLE: su_init.(Sound.mle) args.(Args.get_m) st_init.(get_mem)>>))
+                        /\ (<<MLE: su_init.(Sound.mle) (Args.get_m args) st_init.(get_mem)>>))
     (STEP: forall
         su0 st0 tr st1
         (SUST: sound_state su0 st0)
@@ -251,24 +251,24 @@ Inductive local_preservation_strong_horizontal (sound_state: Sound.t -> ms.(stat
     (CALL: forall su0 st0 args
         (SUST: sound_state su0 st0)
         (AT: ms.(ModSem.at_external) st0 args),
-        <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.get_m)>> /\
+        <<MLE: Sound.mle su0 st0.(get_mem) (Args.get_m args)>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
           (<<LE: lift su0 su_gr>>) /\
           (<<K: forall su_ret retv st1
               (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
-              (MLE: Sound.mle su_gr args.(Args.get_m) retv.(Retv.get_m))
+              (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
               (AFTER: ms.(ModSem.after_external) st0 retv st1),
               exists su1,
                 <<LE: Sound.hle su0 su1>> /\
-              (<<SUST: sound_state su1 st1>> /\ <<MLE: su0.(Sound.mle) retv.(Retv.get_m) st1.(get_mem)>>)>>))
+              (<<SUST: sound_state su1 st1>> /\ <<MLE: su0.(Sound.mle) (Retv.get_m retv) st1.(get_mem)>>)>>))
     (RET: forall
         su0 st0 retv
         (SUST: sound_state su0 st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv),
         exists su_ret, <<LE: Sound.hle su0 su_ret>> /\
-        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.get_m)>>).
+        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) (Retv.get_m retv)>>).
 
 Theorem local_preservation_strong_horizontal_spec
         sound_state
@@ -307,10 +307,10 @@ Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> 
         <<MLE: Sound.mle su0 m0 m2>>)
     (INIT: forall su_init args st_init
         (SUARG: Sound.args su_init args)
-        (SKENV: Sound.skenv su_init args.(Args.get_m) ms.(ModSem.skenv))
+        (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
-        <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) args.(Args.get_m) st_init.(get_mem)>>)
+        <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) (Args.get_m args) st_init.(get_mem)>>)
     (STEP: forall
         su0 st0 tr st1
         (SUST: sound_state su0 st0)
@@ -320,7 +320,7 @@ Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> 
     (CALL: forall su0 st0 args
         (SUST: sound_state su0 st0)
         (AT: ms.(ModSem.at_external) st0 args),
-        <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.get_m)>> /\
+        <<MLE: Sound.mle su0 st0.(get_mem) (Args.get_m args)>> /\
         <<FOOT: has_footprint st0 su0 st0.(get_mem)>> /\
         <<WF: Sound.wf su0>> /\
         exists su_gr,
@@ -329,15 +329,15 @@ Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> 
           (<<K: forall su_ret retv st1
               (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
-              (MLE: Sound.mle su_gr args.(Args.get_m) retv.(Retv.get_m))
+              (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
               (AFTER: ms.(ModSem.after_external) st0 retv st1),
-              (<<SUST: sound_state su0 st1>> /\ <<MLE: (mle_excl st0) su0 retv.(Retv.get_m) st1.(get_mem)>>)>>))
+              (<<SUST: sound_state su0 st1>> /\ <<MLE: (mle_excl st0) su0 (Retv.get_m retv) st1.(get_mem)>>)>>))
     (RET: forall
         su0 st0 retv
         (SUST: sound_state su0 st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv),
         exists su_ret, <<LE: Sound.hle su0 su_ret>> /\
-        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.get_m)>>).
+        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) (Retv.get_m retv)>>).
 
 Theorem local_preservation_strong_excl_spec
         sound_state
@@ -365,11 +365,11 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
         <<MLE: Sound.mle su0 m0 m2>>)
     (INIT: forall su_arg args st_init
         (SUARG: Sound.args su_arg args)
-        (SKENV: Sound.skenv su_arg args.(Args.get_m) ms.(ModSem.skenv))
+        (SKENV: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init),
         exists su_init, (<<LE: Sound.hle su_arg su_init>>) /\
                         (<<SUST: sound_state su_init st_init>>)
-                        /\ (<<MLE: su_init.(Sound.mle) args.(Args.get_m) st_init.(get_mem)>>))
+                        /\ (<<MLE: su_init.(Sound.mle) (Args.get_m args) st_init.(get_mem)>>))
     (STEP: forall
         su0 st0 tr st1
         (SUST: sound_state su0 st0)
@@ -379,7 +379,7 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
     (CALL: forall su0 st0 args
         (SUST: sound_state su0 st0)
         (AT: ms.(ModSem.at_external) st0 args),
-        <<MLE: Sound.mle su0 st0.(get_mem) args.(Args.get_m)>> /\
+        <<MLE: Sound.mle su0 st0.(get_mem) (Args.get_m args)>> /\
         <<FOOT: has_footprint st0 su0 st0.(get_mem)>> /\
         exists su_gr,
           (<<ARGS: Sound.args su_gr args>>) /\
@@ -387,17 +387,17 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
           (<<K: forall su_ret retv st1
               (LE: Sound.hle su_gr su_ret)
               (RETV: su_ret.(Sound.retv) retv)
-              (MLE: Sound.mle su_gr args.(Args.get_m) retv.(Retv.get_m))
+              (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
               (AFTER: ms.(ModSem.after_external) st0 retv st1),
               exists su1,
                 <<LE: Sound.hle su0 su1>> /\
-              (<<SUST: sound_state su1 st1>> /\ <<MLE: (mle_excl st0) su0 retv.(Retv.get_m) st1.(get_mem)>>)>>))
+              (<<SUST: sound_state su1 st1>> /\ <<MLE: (mle_excl st0) su0 (Retv.get_m retv) st1.(get_mem)>>)>>))
     (RET: forall
         su0 st0 retv
         (SUST: sound_state su0 st0)
         (FINAL: ms.(ModSem.final_frame) st0 retv),
         exists su_ret, <<LE: Sound.hle su0 su_ret>> /\
-        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) retv.(Retv.get_m)>>).
+        <<RETV: su_ret.(Sound.retv) retv>> /\ <<MLE: su0.(Sound.mle) st0.(get_mem) (Retv.get_m retv)>>).
 
 Theorem local_preservation_strong_horizontal_excl_spec
         sound_state

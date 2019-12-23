@@ -24,21 +24,21 @@ Variable prog: Mach.program.
 Variable tprog: Asm.program.
 Let md_src: Mod.t := (MachC.module prog return_address_offset).
 Let md_tgt: Mod.t := (AsmC.module tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link (Mod.sk md_src)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link (Mod.sk md_tgt)).
 Hypothesis (WF: SkEnv.wf skenv_link).
 
 Hypothesis TRANSF: match_prog prog tprog.
 
-Let ge := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog).
 
 Variable sm_link: SimMem.t.
 
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (SM := SimMemExt)
-                (md_src.(Mod.modsem) skenv_link)
-                (md_tgt.(Mod.modsem) skenv_link)
+                (Mod.modsem (md_src) skenv_link)
+                (Mod.modsem (md_tgt) skenv_link)
                 (SimSymbId.mk md_src md_tgt) sm_link.
 
 Definition get_rs (ms: Mach.state) : Mach.regset :=
@@ -72,7 +72,7 @@ Inductive match_init_data init_sp init_ra
     (INITRA: init_ra = init_rs_tgt RA)
     (INITRAPTR: <<TPTR: Val.has_type (init_ra) Tptr>> /\ <<RADEF: init_ra <> Vundef>>)
     (INITRS: agree_eq init_rs_src init_sp init_rs_tgt init_sg_src )
-    (SIG: exists fd, tge.(Genv.find_funct) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src /\ init_sg_src.(sig_cstyle)).
+    (SIG: exists fd, (Genv.find_funct tge) (init_rs_tgt PC) = Some (Internal fd) /\ fd.(fn_sig) = init_sg_src /\ init_sg_src.(sig_cstyle)).
 
 Inductive stack_base (initial_parent_sp initial_parent_ra: val): list Mach.stackframe -> Prop :=
 | stack_base_dummy:
@@ -99,8 +99,8 @@ Inductive match_states
                  init_sp init_ra st_src0.(MachC.init_rs) st_src0.(init_sg) st_tgt0.(init_rs))
     (MATCHST: Asmgenproof.match_states ge st_src0.(MachC.st) st_tgt0)
     (* (SPPTR: ValuesC.is_real_ptr (st_tgt0.(init_rs) RSP)) *)
-    (MCOMPATSRC: st_src0.(MachC.st).(MachC.get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(get_mem) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: (MachC.get_mem st_src0.(MachC.st)) = sm0.(SimMem.src))
+    (MCOMPATTGT: (get_mem st_tgt0) = sm0.(SimMem.tgt))
     (IDX: measure st_src0.(MachC.st) = idx).
 
 Lemma asm_step_dstep init_rs st0 st1 tr
@@ -129,8 +129,8 @@ Proof.
 Qed.
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk))
-                      (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link (Mod.sk md_src))
+                      (SkEnv.project skenv_link (Mod.sk md_tgt)) ->
   Genv.match_genvs (match_globdef (fun _ f tf => transf_fundef f = OK tf) eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
@@ -360,7 +360,7 @@ Proof.
         }
         rewrite <- INITRS. rewrite <- INITFPTR. auto.
       * right. split; eauto. apply star_refl.
-      * instantiate (1 := SimMemExt.mk (MachC.get_mem (MachC.st st_src1)) st_tgt0.(st).(get_mem)).
+      * instantiate (1 := SimMemExt.mk (MachC.get_mem (MachC.st st_src1)) (get_mem st_tgt0.(st))).
         econs; ss; eauto.
         { instantiate (1:=init_rs st_tgt0 RSP).
           destruct st_src0, st_src1. clear - STEP STACKWF NOTDUMMY. inv STEP; ss; clarify.

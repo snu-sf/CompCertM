@@ -22,15 +22,15 @@ Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
   Variable p: unit.
-  Let skenv: SkEnv.t := skenv_link.(SkEnv.project) prog.(Sk.of_program id).
+  Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program id prog).
 
   Record state := mkstate { get_arg: int64; get_mem: mem; }.
 
   Inductive initial_frame (args: Args.t): state -> Prop :=
   | initial_frame1_intro
       st
-      (VS: args.(Args.vs) = [Vlong st.(get_arg)])
-      (M: args.(Args.m) = st.(get_mem))
+      (VS: (Args.vs args) = [Vlong st.(get_arg)])
+      (M: (Args.m args) = st.(get_mem))
     :
       initial_frame args st
   .

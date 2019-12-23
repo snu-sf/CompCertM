@@ -99,10 +99,10 @@ Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Let md_src: Mod.t := (MutrecAspec.module).
 Let md_tgt: Mod.t := (ClightC.module2 prog).
-Hypothesis (INCL: SkEnv.includes skenv_link md_src.(Mod.sk)).
+Hypothesis (INCL: SkEnv.includes skenv_link (Mod.sk md_src)).
 Hypothesis (WF: SkEnv.wf skenv_link).
-Let ge := (SkEnv.project skenv_link md_src.(Mod.sk)).
-Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) prog) prog.(prog_comp_env).
+Let ge := (SkEnv.project skenv_link (Mod.sk md_src)).
+Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) prog) prog.(prog_comp_env).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimMemInjInvC.mk symbol_memoized md_src md_tgt) sm_link.
 
@@ -129,8 +129,8 @@ Inductive match_states
           (idx: nat) (st_src0: MutrecAspec.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: match_states_internal idx st_src0 st_tgt0)
-    (MCOMPATSRC: st_src0.(get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(ClightC.get_mem) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: (get_mem st_src0) = sm0.(SimMem.src))
+    (MCOMPATTGT: (ClightC.get_mem st_tgt0) = sm0.(SimMem.tgt))
     (MWF: SimMem.wf sm0)
 .
 

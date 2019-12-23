@@ -14,7 +14,7 @@ Generalizable Variables F.
 
 Lemma prog_defmap_spec
       F V (p: program F V) id:
-    In id p.(prog_defs_names) <-> exists g, p.(prog_defmap) ! id = Some g.
+    In id (prog_defs_names p) <-> exists g, (prog_defmap p) ! id = Some g.
 Proof.
   split; ii.
   - exploit prog_defmap_dom; eauto.
@@ -133,7 +133,7 @@ Section PROGRAMS.
   Variable p: program F V.
 
   Definition good_prog (p: program F V): Prop :=
-    incl p.(prog_public) p.(prog_defs_names).
+    incl p.(prog_public) (prog_defs_names p).
   (* It also makes sense to add list_norept of prog_defs_names. "prog_defmap_norepet" *)
   (* Actually both are enforced in Unusedglob. *)
   (*** valid_used_set in Unusedglobproof.v
@@ -147,9 +147,9 @@ https://sflab.slack.com/archives/G25737B47/p1517939898000786
 I think the same is true for prog_public thing too.
    ***)
 
-  Definition defs: ident -> bool := fun id => In_dec ident_eq id p.(prog_defs_names).
+  Definition defs: ident -> bool := fun id => In_dec ident_eq id (prog_defs_names p).
   Check (defs: ident -> Prop).
-  Definition defs_old: ident -> Prop := fun id => exists gd, p.(prog_defmap)!id = Some gd.
+  Definition defs_old: ident -> Prop := fun id => exists gd, (prog_defmap p)!id = Some gd.
   Goal defs <1= defs_old.
   Proof.
     ii. exploit prog_defmap_dom; eauto. inv PR.
@@ -184,14 +184,14 @@ Section PROGRAMS2.
   Variable p: program F V.
 
   Definition internals: ident -> bool :=
-    fun id => match p.(prog_defmap)!id with
+    fun id => match (prog_defmap p)!id with
               | Some gd => negb (is_external gd)
               | None => false
               end.
 
   Definition internals': ident -> bool :=
     fun id => is_some
-                (List.find (fun idg => andb (ident_eq id idg.(fst)) (is_external idg.(snd))) p.(prog_defs)).
+                (List.find (fun idg => andb (ident_eq id (fst idg)) (is_external (snd idg))) p.(prog_defs)).
 
 End PROGRAMS2.
 
@@ -201,7 +201,7 @@ Hint Unfold defs_old privs_old internals'.
 Lemma internals_defs
       `{HasExternal F} V
       (p: AST.program F V):
-    p.(internals) <1= p.(defs).
+    (internals p) <1= (defs p).
 Proof.
   u. ii. des_sumbool. eapply prog_defmap_spec. des_ifs; et.
 Qed.

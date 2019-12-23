@@ -170,9 +170,9 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
       (SIM: forall
           sm_arg args_src args_tgt
           sg_init_src sg_init_tgt
-          (FINDFSRC: msp.(src).(ModSem.skenv).(Genv.find_funct) args_src.(Args.get_fptr) =
+          (FINDFSRC: (Genv.find_funct msp.(src).(ModSem.skenv)) (Args.get_fptr args_src) =
                      Some (Internal sg_init_src))
-          (FINDFTGT: msp.(tgt).(ModSem.skenv).(Genv.find_funct) args_tgt.(Args.get_fptr) =
+          (FINDFTGT: (Genv.find_funct msp.(tgt).(ModSem.skenv)) (Args.get_fptr args_tgt) =
                      Some (Internal sg_init_tgt))
           (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
@@ -294,7 +294,7 @@ Section FACTORTARGET.
 
   Theorem factor_simmodsem_target
           (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm)):
-      ModSemPair.sim (ModSemPair.mk ms_src ms_tgt.(ModSem.Atomic.trans) ss sm).
+      ModSemPair.sim (ModSemPair.mk ms_src (ModSem.Atomic.trans ms_tgt) ss sm).
   Proof.
     inv SIM. ss. econs; eauto. ss. i. exploit SIM0; eauto.
     { inv SIMSKENV. ss. econs; eauto. }

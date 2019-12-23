@@ -66,12 +66,12 @@ Variable sm_link: SimMem.t.
 Variable prog tprog: Clight.program.
 Let md_src: Mod.t := (ClightC.module1 prog).
 Let md_tgt: Mod.t := (ClightC.module2 tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link (Mod.sk md_src)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link (Mod.sk md_tgt)).
 Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog) prog.(prog_comp_env).
-Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog) tprog.(prog_comp_env).
+Let ge := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog) prog.(prog_comp_env).
+Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog) tprog.(prog_comp_env).
 Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states
@@ -80,7 +80,7 @@ Inductive match_states
     (MATCHST: SimplLocalsproof.match_states skenv_link skenv_link ge st_src0 st_tgt0 sm0).
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk)) (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link (Mod.sk md_src)) (SkEnv.project skenv_link (Mod.sk md_tgt)) ->
   Genv.match_genvs (match_globdef (fun (ctx: AST.program fundef type) f tf => transf_fundef f = OK tf) eq prog) ge tge
   /\ prog_comp_env prog = prog_comp_env tprog.
 Proof.

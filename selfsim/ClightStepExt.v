@@ -411,7 +411,7 @@ End CLIGHTEXT.
 
 Lemma match_states_clight_get_mem st_src st_tgt j m_src m_tgt
       (MATCH: match_states_clight_internal st_src st_tgt j m_src m_tgt):
-    (<<MSRC: st_src.(get_mem) = m_src>>) /\ (<<MTGT: st_tgt.(get_mem) = m_tgt>>).
+    (<<MSRC: (get_mem st_src) = m_src>>) /\ (<<MTGT: (get_mem st_tgt) = m_tgt>>).
 Proof. inv MATCH; ss. Qed.
 
 Definition flattize_inj (j: meminj): meminj :=

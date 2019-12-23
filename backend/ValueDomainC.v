@@ -16,7 +16,7 @@ Definition bc2su (bc: block_classification) (ge_nb: block) (nb: block): Unreach.
 
 Lemma sound_state_sound_args
       bc m0 p skenv_link vs_arg rm (ge: genv)
-      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p))
+      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig p)) p))
       (ARGS: forall v : val, In v vs_arg -> vmatch bc v Vtop)
       (RO: romatch bc m0 rm)
       (MM: mmatch bc m0 mtop)
@@ -73,7 +73,7 @@ Qed.
 (* copied from above *)
 Lemma sound_state_sound_retv
       bc m_ret p skenv_link v_ret rm (ge: genv)
-      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p))
+      (GENV: ge = (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig p)) p))
       (RES: vmatch bc v_ret Vtop)
       (RO: romatch bc m_ret rm)
       (MM: mmatch bc m_ret mtop)

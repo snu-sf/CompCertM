@@ -1,5 +1,7 @@
 Require Import CoqlibC Maps Errors AST Linking LinkingC sflib.
 
+Local Obligation Tactic := idtac.
+
 Remark link_transf_partial_fundef_rev:
   forall (A B: Type) (tr1 tr2: A -> res B) (f1 f2: fundef A) (tf1 tf2: fundef B) (tf: fundef B),
   link tf1 tf2 = Some tf ->
@@ -171,14 +173,14 @@ Definition link_fundef (fd1 fd2: fundef) :=
       then Some (External ef1 targs1 tres1 cc1)
       else None
   | Internal f, External ef targs tres cc =>
-    if (list_eq_dec type_eq f.(fn_params).(map snd) targs.(typelist_to_listtype))
+    if (list_eq_dec type_eq (map snd f.(fn_params)) (typelist_to_listtype targs))
          && (type_eq f.(fn_return) tres)
          && (calling_convention_eq f.(fn_callconv) cc)
     then
       match ef with EF_external id sg => if signature_eq (signature_of_type targs tres cc) sg then Some (Internal f) else None | _ => None end
     else None
   | External ef targs tres cc, Internal f =>
-    if (list_eq_dec type_eq f.(fn_params).(map snd) targs.(typelist_to_listtype))
+    if (list_eq_dec type_eq (map snd f.(fn_params)) (typelist_to_listtype targs))
          && (type_eq f.(fn_return) tres)
          && (calling_convention_eq f.(fn_callconv) cc)
     then
@@ -192,13 +194,17 @@ Inductive linkorder_fundef: fundef -> fundef -> Prop :=
   | linkorder_fundef_ext_int: forall f id sg targs tres cc,
       linkorder_fundef (External (EF_external id sg) targs tres cc) (Internal f).
 
-Instance Linker_fundef: Linker (fundef) := {
+Program Instance Linker_fundef: Linker (fundef) := {
   link := link_fundef;
   linkorder := linkorder_fundef
 }.
-Proof.
+Next Obligation.
 - intros; constructor.
+Defined.
+Next Obligation.
 - intros. inv H; inv H0; constructor.
+Defined.
+Next Obligation.
 - intros x y z EQ. destruct x, y; simpl in EQ.
 + discriminate.
 + des_ifs. split; constructor.
@@ -232,14 +238,18 @@ Definition linkorder_program (p1 p2: program) : Prop :=
      linkorder (program_of_program p1) (program_of_program p2)
   /\ (forall id co, p1.(prog_comp_env)!id = Some co -> p2.(prog_comp_env)!id = Some co).
 
-Instance Linker_program: Linker (program) := {
+Program Instance Linker_program: Linker (program) := {
   link := link_program;
   linkorder := linkorder_program
 }.
-Proof.
+Next Obligation.
 - intros; split. apply linkorder_refl. auto. 
+Defined.
+Next Obligation.
 - intros. destruct H, H0. split. eapply linkorder_trans; eauto.
   intros; auto.
+Defined.
+Next Obligation.
 - intros until z. unfold link_program. 
   destruct (link (program_of_program x) (program_of_program y)) as [p|] eqn:LP; try discriminate.
   destruct (lift_option (link (prog_types x) (prog_types y))) as [[typs EQ]|EQ]; try discriminate.

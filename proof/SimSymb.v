@@ -24,8 +24,8 @@ Module SimSymb.
   | skenv_func_bisim_intro
       (FUNCFSIM: forall fptr_src fptr_tgt def_src
           (SIMFPTR: sim_val fptr_src fptr_tgt)
-          (FUNCSRC: skenv_src.(Genv.find_funct) fptr_src = Some def_src),
-          exists def_tgt, <<FUNCSRC: skenv_tgt.(Genv.find_funct) fptr_tgt = Some def_tgt>> /\ <<SIM: def_src = def_tgt>>).
+          (FUNCSRC: (Genv.find_funct skenv_src) fptr_src = Some def_src),
+          exists def_tgt, <<FUNCSRC: (Genv.find_funct skenv_tgt) fptr_tgt = Some def_tgt>> /\ <<SIM: def_src = def_tgt>>).
 
   Class class (SM: SimMem.class) :=
     { t: Type;
@@ -61,15 +61,15 @@ Module SimSymb.
 
       sim_skenv_public_symbols: forall sm0 ss0 skenv_src skenv_tgt
           (SIMSKE: sim_skenv sm0 ss0 skenv_src skenv_tgt),
-          skenv_src.(Genv.public_symbol) = skenv_tgt.(Genv.public_symbol);
+          (Genv.public_symbol skenv_src) = (Genv.public_symbol skenv_tgt);
 
       wf_load_sim_skenv: forall ss skenv_src skenv_tgt m_src
           (SIMSK: wf ss)
-          (LOADSRC: ss.(src).(Sk.load_skenv) = skenv_src)
-          (LOADTGT: ss.(tgt).(Sk.load_skenv) = skenv_tgt)
-          (LOADMEMSRC: ss.(src).(Sk.load_mem) = Some m_src),
+          (LOADSRC: (Sk.load_skenv ss.(src)) = skenv_src)
+          (LOADTGT: (Sk.load_skenv ss.(tgt)) = skenv_tgt)
+          (LOADMEMSRC: (Sk.load_mem ss.(src)) = Some m_src),
           exists m_tgt sm,
-            (<<LOADMEMTGT: ss.(tgt).(Sk.load_mem) = Some m_tgt>>) /\
+            (<<LOADMEMTGT: (Sk.load_mem ss.(tgt)) = Some m_tgt>>) /\
             (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
             (<<MEMSRC: sm.(SimMem.src) = m_src>>) /\
             (<<MEMTGT: sm.(SimMem.tgt) = m_tgt>>) /\
@@ -102,7 +102,7 @@ Module SimSymb.
 
       system_sim_skenv: forall sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt),
-          <<SIMSKENV: sim_skenv sm ss skenv_src.(System.skenv) skenv_tgt.(System.skenv)>>;
+          <<SIMSKENV: sim_skenv sm ss (System.skenv skenv_src) (System.skenv skenv_tgt)>>;
       system_axiom: forall
           sm0 ss_sys skenv_sys_src skenv_sys_tgt
           args_src args_tgt tr retv_src ef
@@ -111,13 +111,13 @@ Module SimSymb.
           (CSTYLE: Args.is_cstyle args_src)
           (CSTYLE: Retv.is_cstyle retv_src)
           (ARGS: SimMem.sim_args args_src args_tgt sm0)
-          (SYSSRC: external_call ef skenv_sys_src (args_src.(Args.vs)) (args_src.(Args.m))
+          (SYSSRC: external_call ef skenv_sys_src (Args.vs (args_src)) (Args.m (args_src))
                                  tr
-                                 (retv_src.(Retv.v)) (retv_src.(Retv.m))),
+                                 (Retv.v (retv_src)) (Retv.m (retv_src))),
           exists sm1 retv_tgt,
-            (<<SYSTGT: external_call ef skenv_sys_tgt (args_tgt.(Args.vs)) (args_tgt.(Args.m))
+            (<<SYSTGT: external_call ef skenv_sys_tgt (Args.vs (args_tgt)) (Args.m (args_tgt))
                                      tr
-                                     (retv_tgt.(Retv.v)) (retv_tgt.(Retv.m))>>)
+                                     (Retv.v (retv_tgt)) (Retv.m (retv_tgt))>>)
             /\ (<<RETV: SimMem.sim_retv retv_src retv_tgt sm1>>)
             /\ (<<MLE0: SimMem.le sm0 sm1>>)
             /\ (<<MWF: SimMem.wf sm1>>);

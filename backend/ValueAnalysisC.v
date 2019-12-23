@@ -34,12 +34,12 @@ Section PRSV.
     - i. inv INIT. ss. esplits; eauto; cycle 1.
       { destruct args; ss. refl. }
       econs; eauto. i.
-      set (ge := (SkEnv.revive (SkEnv.project skenv_link p.(Sk.of_program fn_sig)) p)) in *.
+      set (ge := (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig p)) p)) in *.
       set (f := fun b =>
                   if plt b (Genv.genv_next ge) then
                     match Genv.invert_symbol ge b with None => BCglob None | Some id => BCglob (Some id) end
                   else
-                    if (plt b args.(Args.m).(Mem.nextblock)) && (negb (su_init b))
+                    if (plt b (Args.m args).(Mem.nextblock)) && (negb (su_init b))
                     then BCother else BCinvalid).
       assert(IMG: exists bc, bc.(bc_img) = f).
       { unshelve eexists (BC _ _ _); s; eauto.
@@ -52,7 +52,7 @@ Section PRSV.
       clear SUARG. des. ss. unfold Sound.vals in *. rewrite Forall_forall in *.
       assert(FP: forall blk, su_init blk -> Ple ge.(Genv.genv_next) blk).
       { inv SKENV. ss. i. inv MEM. rewrite <- PUB. apply NNPP. ii. inv WF. exploit WFHI; eauto. }
-      assert(NB: Ple ge.(Genv.genv_next) args.(Args.m).(Mem.nextblock)).
+      assert(NB: Ple ge.(Genv.genv_next) (Args.m args).(Mem.nextblock)).
       { inv SKENV. ss. destruct args; ss. }
       assert(GE: genv_match bc ge).
       { r. esplits; eauto.
@@ -216,7 +216,7 @@ Section PRSV.
         set (f := fun b => if plt b (Mem.nextblock m_arg)
                            then bc b
                            else
-                             if plt b (Mem.nextblock retv.(Retv.m))
+                             if plt b (Mem.nextblock (Retv.m retv))
                              then
                                if su_ret b
                                then BCinvalid
@@ -285,7 +285,7 @@ Section PRSV.
           exploit BELOW; eauto. i.
           ss. rewrite IMG. unfold f. des_ifs.
         }
-        assert (SMTOP: forall b, bc' b <> BCinvalid -> smatch bc' retv.(Retv.m) b Ptop).
+        assert (SMTOP: forall b, bc' b <> BCinvalid -> smatch bc' (Retv.m retv) b Ptop).
         { intros; split; intros.
           - destruct (su_gr b) eqn:T.
             + assert(Plt b (Mem.nextblock m_arg)).

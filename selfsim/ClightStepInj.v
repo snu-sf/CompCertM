@@ -27,7 +27,7 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Lemma clight_step_readonly se ge st0 st1 tr
       (STEP: step se ge (function_entry2 ge) st0 tr st1):
-    Mem.unchanged_on (loc_not_writable st0.(get_mem)) st0.(get_mem) st1.(get_mem).
+    Mem.unchanged_on (loc_not_writable (get_mem st0)) (get_mem st0) (get_mem st1).
 Proof.
   inv STEP; ss; try refl; try (by eapply mem_free_list_readonly; eauto); try (by eapply external_call_readonly; eauto).
   - inv H2.
@@ -207,7 +207,7 @@ Section CLIGHTINJ.
         { replace (sizeof ce ty) with (Z.of_nat (List.length bytes)).
           - eapply Mem.range_perm_implies; try eapply perm_any_N. eapply Mem.storebytes_range_perm; eauto.
           - exploit Mem.loadbytes_length; try apply H3; eauto. intros LEN.
-            rewrite LEN. apply nat_of_Z_eq. omega. }
+            rewrite LEN. rewrite Z2Nat.id; try omega. }
         assert (PSRC: Mem.perm (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') Cur Nonempty) by (apply RPSRC; omega).
         assert (PDST: Mem.perm (SimMemInj.src sm0) blk_src (Ptrofs.unsigned ofs_src) Cur Nonempty) by (apply RPDST; omega).
         exploit Mem.address_inject; try apply PSRC; eauto. intros EQ1.

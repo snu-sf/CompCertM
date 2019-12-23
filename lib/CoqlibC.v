@@ -39,9 +39,9 @@ Ltac determ_tac LEMMA :=
 
 (* TODO: if it is mature enough, move it to sflib & remove this file *)
 
-Definition update_fst {A B C: Type} (f: A -> C) (ab: A * B): C * B := (f ab.(fst), ab.(snd)).
+Definition update_fst {A B C: Type} (f: A -> C) (ab: A * B): C * B := (f (fst ab), (snd ab)).
 
-Definition update_snd {A B C: Type} (f: B -> C) (ab: A * B): A * C := (ab.(fst), f ab.(snd)).
+Definition update_snd {A B C: Type} (f: B -> C) (ab: A * B): A * C := ((fst ab), f (snd ab)).
 
 Lemma dep_split_right
       (A B: Prop) (PA: A)
@@ -96,7 +96,7 @@ Definition is_none {X} := negb <*> (@is_some X).
 Hint Unfold is_some is_none.
 
 
-Notation "x $" := (x.(proj1_sig)) (at level 50, no associativity (* , only parsing *)).
+Notation "x $" := ((proj1_sig x)) (at level 50, no associativity (* , only parsing *)).
 
 Notation top1 := (fun _ => True).
 Notation top2 := (fun _ _ => True).
@@ -276,10 +276,10 @@ Definition o_join A (a: option (option A)): option A :=
 Definition o_bind A B (oa: option A) (f: A -> option B): option B := o_join (o_map oa f).
 Hint Unfold o_map o_join o_bind.
 
-Definition curry2 A B C (f: A -> B -> C): (A * B) -> C := fun ab => f ab.(fst) ab.(snd).
+Definition curry2 A B C (f: A -> B -> C): (A * B) -> C := fun ab => f (fst ab) (snd ab).
 
 Definition o_bind2 A B C (oab: option (A * B)) (f: A -> B -> option C) : option C :=
-o_join (o_map oab f.(curry2)).
+o_join (o_map oab (curry2 f)).
 
 (* Notation "o >>= f" := (o_bind o f) (at level 50, no associativity) : option_monad_scope. *)
 
@@ -1047,14 +1047,14 @@ Qed.
 
 Lemma pos_elim_succ: forall p,
     <<ONE: p = 1%positive>> \/
-    <<SUCC: exists q, q.(Pos.succ) = p>>.
+    <<SUCC: exists q, (Pos.succ q) = p>>.
 Proof. i. hexploit (Pos.succ_pred_or p); eauto. i; des; ss; eauto. Qed.
 
 Lemma ple_elim_succ
       p q
       (PLE: Ple p q):
     <<EQ: p = q>> \/
-    <<SUCC: Ple p.(Pos.succ) q>>.
+    <<SUCC: Ple (Pos.succ p) q>>.
 Proof.
   revert_until p. pattern p. apply Pos.peano_ind; clear p; i.
   { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto. right. r. xomega. }
@@ -1077,10 +1077,10 @@ Variable A B C D: Type.
 Variable f: A -> B -> C -> D.
 
 Let put_dummy_arg_without_filp A DUMMY B: (A -> B) -> (A -> DUMMY -> B) := fun f => (fun a _ => f a).
-Let put_dummy_arg1 A DUMMY B: (A -> B) -> (A -> DUMMY -> B) := fun f => (fun _ => f).(flip).
-Let put_dummy_arg21 A DUMMY B C: (A -> B -> C) -> (A -> DUMMY -> B -> C) := fun f => (fun _ => f).(flip).
+Let put_dummy_arg1 A DUMMY B: (A -> B) -> (A -> DUMMY -> B) := fun f => (flip (fun _ => f)).
+Let put_dummy_arg21 A DUMMY B C: (A -> B -> C) -> (A -> DUMMY -> B -> C) := fun f => (flip (fun _ => f)).
 Let put_dummy_arg22 A B DUMMY C: (A -> B -> C) -> (A -> B -> DUMMY -> C) :=
-  fun f => (fun _ => f).(flip).(flip2).
+  fun f => (flip2 (flip (fun _ => f))).
 
 End FLIPS.
 Hint Unfold flip2 flip3 flip4.
@@ -1100,7 +1100,7 @@ Local Transparent list_nth_z.
 Lemma list_nth_z_eq
       A (l: list A) z
       (POS: 0 <= z):
-    list_nth_z l z = List.nth_error l z.(Z.to_nat).
+    list_nth_z l z = List.nth_error l (Z.to_nat z).
 Proof.
   ginduction l; ii; ss.
   - destruct ((Z.to_nat z)); ss.

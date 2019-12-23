@@ -174,10 +174,10 @@ Section ASMSTEP.
   Lemma mem_free_inject j m_src0 m_tgt0 m_src1 ofs_src ofs_tgt blk_src blk_tgt sz
         (INJ: Mem.inject j m_src0 m_tgt0)
         (VAL: Val.inject j (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
-        (FREE: Mem.free m_src0 blk_src ofs_src.(Ptrofs.unsigned) (ofs_src.(Ptrofs.unsigned) + sz) = Some m_src1):
+        (FREE: Mem.free m_src0 blk_src (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned (ofs_src) + sz) = Some m_src1):
     exists m_tgt1,
       (<<INJ: Mem.inject j m_src1 m_tgt1>>) /\
-      (<<FREE: Mem.free m_tgt0 blk_tgt ofs_tgt.(Ptrofs.unsigned) (ofs_tgt.(Ptrofs.unsigned) + sz) = Some m_tgt1>>) /\
+      (<<FREE: Mem.free m_tgt0 blk_tgt (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned (ofs_tgt) + sz) = Some m_tgt1>>) /\
       (<<UNCHSRC: Mem.unchanged_on (loc_unmapped j) m_src0 m_src1>>) /\
       (<<UNCHTGT: Mem.unchanged_on (loc_out_of_reach j m_src0) m_tgt0 m_tgt1>>).
   Proof.
@@ -897,36 +897,28 @@ Section ASMSTEP.
         * refl.
       + esplits; eauto.
         * econs; eauto; ss.
-          repeat erewrite (@eval_testcond_inj rs_src0 rs_tgt0); ss; eauto.
-          unfold goto_label, nextinstr. repeat f_equal.
-        * repeat (eapply agree_step; eauto); ss.
+        * exploit eval_testcond_inj; eauto. intro T. rewrite T.
+          repeat (eapply agree_step; eauto); ss.
           eapply Val.offset_ptr_inject. apply agree_step; eauto.
         * eapply inject_separated_refl.
         * refl.
         * refl.
       + esplits; eauto.
         * econs; eauto; ss.
-          repeat erewrite (@eval_testcond_inj rs_src0 rs_tgt0); ss; eauto.
-          unfold goto_label, nextinstr. repeat f_equal.
-        * repeat (eapply agree_step; eauto); ss.
+        * exploit eval_testcond_inj; eauto. intro T. rewrite T.
+          repeat (eapply agree_step; eauto); ss.
           eapply Val.offset_ptr_inject. eauto.
+          eapply AGREE.
         * eapply inject_separated_refl.
         * refl.
         * refl.
       + esplits; eauto.
         * econs; eauto; ss.
-          instantiate (1 := match eval_testcond c rs_tgt0 with
-                            | Some true => (nextinstr rs_tgt0 # rd <- (rs_tgt0 r1))
-                            | Some false =>  (nextinstr rs_tgt0)
-                            | None => (nextinstr rs_tgt0 # rd <- Vundef)
-                            end).
-          des_ifs; eauto.
         * unfold nextinstr. des_ifs; ss; repeat eapply agree_step; eauto.
           -- apply Val.offset_ptr_inject.
              repeat (rewrite Pregmap.gso; [| ii; clarify]). eauto.
           -- unfold Pregmap.set. ii. des_ifs; eauto.
-          -- apply Val.offset_ptr_inject.
-             repeat (rewrite Pregmap.gso; [| ii; clarify]). eauto.
+             eapply Val.offset_ptr_inject. eapply AGREE.
           -- apply Val.offset_ptr_inject.
              repeat (rewrite Pregmap.gso; [| ii; clarify]). eauto.
         * eapply inject_separated_refl.

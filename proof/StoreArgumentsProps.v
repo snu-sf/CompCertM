@@ -19,7 +19,7 @@ Definition agree (j: meminj) (rs0 rs1: Mach.regset) : Prop :=
   forall mr, Val.inject j (rs0 mr) (rs1 mr).
 
 Lemma typesize_chunk: forall ty,
-    size_chunk (chunk_of_type ty) = 4 * ty.(typesize).
+    size_chunk (chunk_of_type ty) = 4 * (typesize ty).
 Proof. destruct ty; ss. Qed.
 
 Section STOREARGUMENTS_PROPERTY.

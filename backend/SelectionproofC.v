@@ -27,26 +27,26 @@ Variable prog: Cminor.program.
 Variable tprog: CminorSel.program.
 Let md_src: Mod.t := (CminorC.module prog).
 Let md_tgt: Mod.t := (CminorSelC.module tprog).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link md_src.(Mod.sk)).
-Hypothesis (INCLTGT: SkEnv.includes skenv_link md_tgt.(Mod.sk)).
+Hypothesis (INCLSRC: SkEnv.includes skenv_link (Mod.sk md_src)).
+Hypothesis (INCLTGT: SkEnv.includes skenv_link (Mod.sk md_tgt)).
 Hypothesis (WF: SkEnv.wf skenv_link).
 
 Hypothesis TRANSL: match_prog prog tprog.
-Let ge := (SkEnv.revive (SkEnv.project skenv_link md_src.(Mod.sk)) prog).
-Let tge := (SkEnv.revive (SkEnv.project skenv_link md_tgt.(Mod.sk)) tprog).
+Let ge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog).
+Let tge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog).
 Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states
           (idx: nat) (st_src0: Cminor.state) (st_tgt0: CminorSel.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Selectionproof.match_states prog skenv_link ge tge st_src0 st_tgt0)
-    (MCOMPATSRC: st_src0.(CminorC.get_mem) = sm0.(SimMem.src))
-    (MCOMPATTGT: st_tgt0.(CminorSelC.get_mem) = sm0.(SimMem.tgt))
+    (MATCHST: Selectionproof.match_states prog ge st_src0 st_tgt0)
+    (MCOMPATSRC: (CminorC.get_mem st_src0) = sm0.(SimMem.src))
+    (MCOMPATTGT: (CminorSelC.get_mem st_tgt0) = sm0.(SimMem.tgt))
     (MEASURE: idx = measure st_src0).
 
 Theorem make_match_genvs :
-  SimSymbId.sim_skenv (SkEnv.project skenv_link md_src.(Mod.sk))
-                      (SkEnv.project skenv_link md_tgt.(Mod.sk)) ->
+  SimSymbId.sim_skenv (SkEnv.project skenv_link (Mod.sk md_src))
+                      (SkEnv.project skenv_link (Mod.sk md_tgt)) ->
   Genv.match_genvs (match_globdef match_fundef eq prog) ge tge.
 Proof. subst_locals. eapply SimSymbId.sim_skenv_revive; eauto. Qed.
 
@@ -122,7 +122,7 @@ Proof.
       eapply lessdef_typify; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. rr in MC. destruct sm0; ss. clarify.
-    exploit MC; eauto. intro P. inv P.
+    inv MC.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto. econs; eauto.
   - left; i. esplits; eauto.
     { apply CminorC.modsem_receptive; et. }
@@ -149,6 +149,7 @@ Proof.
         rpapply PROG. f_equal. eapply Genv.genv_vars_inj; eauto.
     }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
+    { admit "FILL THIS". }
     i; des_safe. folder. des.
     + esplits; eauto.
       * left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
@@ -156,9 +157,13 @@ Proof.
     + clarify. esplits; eauto.
       * right. esplits; eauto. { apply star_refl. }
       * instantiate (1:= (SimMemExt.mk _ _)). ss.
+    + admit "".
+      (* clarify. esplits; eauto. *)
+      (* * left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et. *)
+      (* * instantiate (1:= (SimMemExt.mk _ _)). ss. *)
 Unshelve.
   all: ss. apply msp.
-  { eapply mk_helper_functions; ss; eauto. all: repeat econs; eauto. }
+  (* { eapply mk_helper_functions; ss; eauto. all: repeat econs; eauto. } *)
 Qed.
 
 End SIMMODSEM.

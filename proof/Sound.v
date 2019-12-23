@@ -114,16 +114,16 @@ Module Sound.
         <<SKE: su.(skenv) m0 skenv0>>;
 
     system_skenv: forall su m0 skenv_link,
-        su.(skenv) m0 skenv_link <-> su.(skenv) m0 skenv_link.(System.skenv);
+        su.(skenv) m0 skenv_link <-> su.(skenv) m0 (System.skenv skenv_link);
 
     system_axiom: forall
         ef skenv0 su0 args0
         tr v_ret m_ret
         (CSTYLE: Args.is_cstyle args0)
         (ARGS: su0.(args) args0)
-        (SKE: skenv su0 args0.(Args.m) skenv0)
-        (EXT: (external_call ef) skenv0 args0.(Args.vs) args0.(Args.m) tr v_ret m_ret),
-        exists su1, <<LE: hle su0 su1>> /\ <<RETV: su1.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su0.(mle) args0.(Args.m) m_ret>>;
+        (SKE: skenv su0 (Args.m args0) skenv0)
+        (EXT: (external_call ef) skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret),
+        exists su1, <<LE: hle su0 su1>> /\ <<RETV: su1.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su0.(mle) (Args.m args0) m_ret>>;
   }.
 
   Section SOUND.

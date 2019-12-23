@@ -68,13 +68,13 @@ Lemma wt_val_has_type
       v ty
       (WT: wt_val v ty)
       (NVOID: ty <> Tvoid):
-    <<TY: Val.has_type v ty.(typ_of_type)>>.
+    <<TY: Val.has_type v (typ_of_type ty)>>.
 Proof. inv WT; ss. Qed.
 
 Lemma wt_retval_has_type
       v ty
       (WT: wt_retval v ty):
-    <<TY: Val.has_type v ty.(typ_of_type)>>.
+    <<TY: Val.has_type v (typ_of_type ty)>>.
 Proof. inv WT; ss. inv WTV; ss. erewrite NVOID; ss. Qed.
 
 Lemma typify_inject

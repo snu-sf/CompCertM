@@ -1,7 +1,7 @@
 Require Import FunInd.
 Require Import CoqlibC Maps.
 Require Import ASTC LinkingC Errors Integers ValuesC Memory Events Globalenvs Smallstep.
-Require Import Switch CminorC Op CminorSelC.
+Require Import Switch CminorC Op CminorSelC CminortypingC.
 Require Import SelectOp SelectDiv SplitLong SelectLong Selection.
 Require Import SelectOpproof SelectDivproof SplitLongproof SelectLongproof.
 Require Import sflib.
@@ -11,9 +11,6 @@ Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSemExcl.
 Require SimMemExt.
 Require SoundTop.
-
-Local Open Scope cminorsel_scope.
-Local Open Scope error_monad_scope.
 
 
 Set Implicit Arguments.
@@ -65,7 +62,7 @@ Proof.
                                (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le) (sidx := unit);
     eauto; ii; ss.
   - apply lt_wf.
-  - eapply SoundTop.sound_state_local_preservation; eauto.
+  - eapply CminortypingC.wt_state_local_preservation; eauto. eapply wt_prog; eauto.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
     inv INITTGT. inv SIMARGS; ss. clarify.
@@ -150,7 +147,7 @@ Proof.
         rpapply PROG. f_equal. eapply Genv.genv_vars_inj; eauto.
     }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
-    { admit "FILL THIS". }
+    { exploit SOUND; eauto. { apply tt. } i; des. ss. }
     i; des_safe. folder. des.
     + esplits; eauto; try apply star_refl.
       * left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.

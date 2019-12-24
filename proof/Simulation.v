@@ -145,6 +145,10 @@ Section BACKWARD_SIM.
          (SAFESRC: safe L1 st_src0),
           <<FINAL: exists retv, final_state L2 st_tgt0 retv>> \/
           <<STEP: exists tr st_tgt1, Step L2 st_tgt0 tr st_tgt1>>)
+      (FINAL: forall retv
+          (FINALTGT: final_state L2 st_tgt0 retv),
+          exists st_src1, <<STEPSRC: Star L1 st_src0 E0 st_src1>> /\
+                                     <<FINALSRC: final_state L1 st_src1 retv>>)
   | bsim_step_stutter
       i1 st_src1
       (STAR: Star L1 st_src0 nil st_src1 /\ order i1 i0)
@@ -152,11 +156,6 @@ Section BACKWARD_SIM.
 
   Inductive _bsim bsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop :=
   | bsim_intro
-      (FINAL: forall retv
-          (FINALTGT: final_state L2 st_tgt0 retv)
-          (SAFESRC: safe L1 st_src0),
-          exists st_src1, <<STEPSRC: Star L1 st_src0 E0 st_src1>> /\
-                                     <<FINALSRC: final_state L1 st_src1 retv>>)
       (STEP: forall
           (SAFESRC: safe L1 st_src0),
           <<STEP: bsim_step bsim i0 st_src0 st_tgt0>>).
@@ -210,7 +209,12 @@ Lemma bsim_to_nostutter_bsim
 Proof.
   red. generalize dependent i0. generalize dependent st_src0. generalize dependent st_tgt0.
   pcofix CIH. i. pfold. econs; eauto.
-  - i. punfold BSIM. inv BSIM. eapply FINAL; eauto.
+  - generalize dependent BSIM. generalize dependent st_src0. generalize dependent st_tgt0. pattern i0.
+    eapply (well_founded_ind WF); eauto. i. rename H into IH. clear i0.
+    punfold BSIM. inv BSIM. hexploit1 STEP; eauto. inv STEP.
+    + eapply FINAL; eauto.
+    + pclearbot. des. exploit IH; eauto. { eapply star_safe; eauto. } i; des. esplits; try apply FINALSRC.
+      eapply star_trans; eauto.
   - generalize dependent st_src0. generalize dependent st_tgt0. pattern i0.
     eapply (well_founded_ind WF); eauto. i. rename H into IH.
     punfold BSIM. inv BSIM. exploit STEP; eauto. i; des_safe. inv H.
@@ -474,11 +478,6 @@ Section MIXED_SIM.
 
   Inductive _xsim_backward xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop :=
   | _xsim_backward_intro
-      (FINAL: forall retv
-          (FINALTGT: final_state L2 st_tgt0 retv)
-          (SAFESRC: safe L1 st_src0),
-          exists st_src1, <<STEPSRC: Star L1 st_src0 E0 st_src1>> /\
-                                     <<FINALSRC: final_state L1 st_src1 retv>>)
       (STEP: forall
           (SAFESRC: safe L1 st_src0),
           <<STEP: bsim_step xsim i0 st_src0 st_tgt0>>).
@@ -680,15 +679,16 @@ Proof.
   * eapply x2b_trans_forward_step; cycle 1; eauto. eapply star_trans; eauto.
   * eapply x2b_trans_forward_stutter; cycle 1; eauto.
     eapply rt_trans; eauto. constructor. auto. eapply star_trans; eauto.
-  * eapply x2b_trans_backward; cycle 1; eauto. inv BSIM. econs; eauto.
-  - i. exploit FINAL; eauto. ii. eapply SAFESRC. eapply star_trans; eauto.
-    i; des. esplits; try eapply FINALSRC; eauto. eapply star_trans; eauto.
-  - i. exploit STEP. { ii. apply SAFESRC. eapply star_trans; eauto. } i; des. inv H.
-    + econs 1; eauto. i. exploit STEP0; eauto. i; des.
-      { esplits; eauto. left. eapply star_plus_trans; eauto. }
-      { esplits; eauto. right. split. eapply star_trans; eauto. inv STAR0; econs; eauto. eapply t_trans; eauto. }
-      { i. eapply PROGRESS. eapply star_safe; eauto. }
-    + econs 2; try apply BSIM; eauto. des. esplits; eauto. eapply star_trans; eauto. inv STAR0; econs; eauto.
+  * eapply x2b_trans_backward; cycle 1; eauto. inv BSIM. econs; eauto. i. hexploit1 STEP.
+    { eapply star_safe; eauto. }
+    inv STEP.
+    - econs 1; eauto.
+      + i. exploit STEP0; eauto. i; des.
+        { esplits; eauto. left. eapply star_plus_trans; eauto. }
+        { esplits; eauto. right. split. eapply star_trans; eauto. inv STAR0; econs; eauto. eapply t_trans; eauto. }
+      + { i. eapply PROGRESS. eapply star_safe; eauto. }
+      + i. exploit FINAL; eauto. ii. des. esplits; try eapply FINALSRC; eauto. eapply star_trans; eauto.
+    - econs 2; try apply BSIM; eauto. des. esplits; eauto. { eapply star_trans; eauto. } inv STAR0; econs; eauto.
       { eapply t_trans; eauto. }
 Qed.
 
@@ -800,13 +800,19 @@ Proof.
     + rename H into STARN. inv STARN. unfold SDStep in *. des. right; econstructor; econstructor; eauto.
   }
   econs; eauto.
+  assert(FINALLEMMA: forall retv (SAFESRC: safe L1 st_src0) (FINALTGT: final_state L2 st_tgt0 retv),
+            exists st_src1, <<STAR: Star L1 st_src0 E0 st_src1 >> /\ <<FINAL: final_state L1 st_src1 retv >>).
   { (* FINAL *)
+    clear - MATCH CIH MIXED_SIM.
+    generalize dependent MATCH. generalize dependent st_src0. generalize dependent st_tgt0. pattern i0_x2b.
+    eapply (well_founded_ind wf_x2b_order); eauto. i. rename H into IH. clear i0_x2b.
     i. inv MATCH.
     + exploit x2b_progress; eauto. intro TRANS. inv TRANS.
       * assert(retv = r). { inv FINALTGT0. eapply DTM; eauto. } clarify. esplits; eauto.
       * rename H2 into PLUS. inv PLUS. unfold DStep in *. des. exploit sd_determ_at_final; eauto. contradiction.
       * rename H2 into PLUS. inv PLUS. unfold SDStep in *. des. exploit ssd_determ_at_final; eauto. contradiction.
-      * inv BSIM. exploit FINAL; eauto.
+      * inv BSIM. hexploit1 STEP; eauto. inv STEP; eauto. des. exploit IH; eauto.
+        { eapply star_safe; eauto. } i; des. esplits; try apply FINAL. eapply star_trans; eauto.
     + rename H2 into STARN. inv STARN. congruence. unfold DStep in *. des. exploit sd_determ_at_final; eauto. contradiction.
     + rename H into STARN. inv STARN. unfold SDStep in *. des. exploit ssd_determ_at_final; eauto. contradiction.
   }
@@ -816,11 +822,13 @@ Proof.
     exploit x2b_progress; eauto. intros TRANS; inv TRANS.
     { (* final *)
       (* 1.1  L1 can reach final state and L2 is at final state: impossible! *)
-      econs 1; ss. i. inv FINALTGT. exploit DTM0; eauto. i; ss.
+      econs 1; ss; eauto.
+      i. inv FINALTGT. exploit DTM0; eauto. i; ss.
     }
     { (* forward *)
       (* 1.2  L1 can make 0 or several steps; L2 can make 1 or several matching steps. *)
-      econs 1; ss. i. rename H3 into H4. inv H2.
+      econs 1; ss; eauto.
+      i. rename H3 into H4. inv H2.
       exploit STEP; eauto. intros [i''' [s2''' [STEP''' MATCH''']]].
       destruct H3. exploit determinacy_inv. eexact H2. eexact H3. eexact STEPTGT.
       intros [[EQ1 [EQ2 EQ3]] | [NOT1 [NOT2 MT]]].
@@ -860,7 +868,8 @@ Proof.
         destruct (star_starN H7) as [n STEPS2]. exists (X2BI_after n i''''); exists s1'''; split. left. eapply plus_right; eauto.
         right. eapply CIH. eapply x2b_match_after'; eauto. eapply DStarN_E0_SDStarN; eauto.
     }
-    { econs 1; ss. i. inv H2.
+    { econs 1; ss; eauto.
+      i. inv H2.
       - destruct t1, t2; ss. clear_tac.
         exploit ssd_determ_at. apply H4. apply H4. apply STEPTGT. i; des. clarify.
         destruct H4. clear_tac. destruct (star_starN H5) as [n STEPS2]. destruct n.
@@ -878,7 +887,8 @@ Proof.
     }
 
   - (* 2. Before *)
-    econs 1; ss. i. assert(DUMMY_PROP) by ss. inv H2. congruence. destruct H5.
+    econs 1; ss; eauto.
+    i. assert(DUMMY_PROP) by ss. inv H2. congruence. destruct H5.
     exploit determinacy_inv. eauto. eexact H5. eexact STEPTGT.
     intros [[EQ1 [EQ2 EQ3]] | [NOT1 [NOT2 MT]]].
     + (* 2.1 L2 makes a silent transition: remain in "before" state *)
@@ -908,7 +918,8 @@ Proof.
       left. apply plus_one; auto. right. eapply CIH. eapply x2b_match_after'; eauto. eapply DStarN_E0_SDStarN; eauto.
 
   - (* 3. After *)
-    econs 1; ss. i. inv H. exploit Eapp_E0_inv; eauto. intros [EQ1 EQ2]; subst.
+    econs 1; ss; eauto.
+    i. inv H. exploit Eapp_E0_inv; eauto. intros [EQ1 EQ2]; subst.
     destruct H2. exploit ssd_determ_at. eapply H. eexact H1. eexact STEPTGT. i; des. clarify.
     exists (X2BI_after n i); exists st_src0; split.
     right; split. apply star_refl. constructor. constructor; omega. right. eapply CIH.
@@ -1088,11 +1099,6 @@ Section MIXED_SIM.
 
   Inductive _xsim_backward xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop :=
   | _xsim_backward_intro
-      (FINAL: forall retv
-          (FINALTGT: final_state L2 st_tgt0 retv)
-          (SAFESRC: safe L1 st_src0),
-          exists st_src1, <<STEPSRC: Star L1 st_src0 E0 st_src1>> /\
-                                     <<FINALSRC: final_state L1 st_src1 retv>>)
       (STEP: forall
           (SAFESRC: safe L1 st_src0),
           <<STEP: bsim_step xsim i0 st_src0 st_tgt0>>).

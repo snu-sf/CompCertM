@@ -851,10 +851,10 @@ Proof.
   ii. ss. exists tt. esplits; eauto.
   clear st_init_src_ INITSRC INITTGT. rename st_init_tgt into st. revert st.
   pcofix CIH. i. pfold. econs; eauto.
-  { ii. esplits; eauto. econs; eauto. }
   ii. econs; eauto.
   { ii. esplits; eauto. left. apply plus_one. ss. }
-  i. r in SAFESRC. specialize (SAFESRC st (star_refl _ _ _ _)). ss.
+  { i. r in SAFESRC. specialize (SAFESRC st (star_refl _ _ _ _)). ss. }
+  { ii. esplits; eauto. econs; eauto. }
 Qed.
 
 Lemma sk_nwf_improves (mds_src mds_tgt: program)

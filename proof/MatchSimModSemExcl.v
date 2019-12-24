@@ -140,28 +140,19 @@ Section MATCHSIMFORWARD.
         (<<MLE: SimMem.le sm0 sm_ret>>) /\
         (<<MWF: SimMem.wf sm_ret>>).
 
-  Let STEPFSIM := forall idx0 st_src0 st_tgt0 sm0
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
-      (NOTRET: ~ ModSem.is_return ms_src st_src0)
-      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
-      (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0),
+  Let STEPFSIM idx0 st_src0 st_tgt0 sm0 :=
       (<<RECEP: receptive_at ms_src st_src0>>) /\
       (<<STEPFSIM: forall tr st_src1
              (STEPSRC: Step ms_src st_src0 tr st_src1) ,
-             exists idx1 st_tgt1 sm1,
+             exists st_src2 idx1 st_tgt1 sm1,
+               (<<STARSRC: Star ms_src st_src1 nil st_src2>>) /\
                (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/
                            <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
                /\ (<<MLE: SimMem.le sm0 sm1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
-               /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 sm1>>)>>).
+               /\ (<<MATCH: match_states idx1 st_src2 st_tgt1 sm1>>)>>).
 
-  Let STEPBSIM := forall idx0 st_src0 st_tgt0 sm0
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
-      (NOTRET: ~ ModSem.is_return ms_src st_src0)
-      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
-      (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0) ,
+  Let STEPBSIM idx0 st_src0 st_tgt0 sm0 :=
       (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) /\
       (<<STEPBSIM: forall tr st_tgt1
              (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1) ,
@@ -172,7 +163,13 @@ Section MATCHSIMFORWARD.
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
                /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 sm1>>)>>).
 
-  Hypothesis STEPSIM: STEPFSIM \/ STEPBSIM.
+  Hypothesis STEPSIM: forall idx0 st_src0 st_tgt0 sm0
+      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
+      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
+      (NOTRET: ~ ModSem.is_return ms_src st_src0)
+      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
+      (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0),
+      STEPFSIM idx0 st_src0 st_tgt0 sm0 \/ STEPBSIM idx0 st_src0 st_tgt0 sm0.
 
   Hypothesis BAR: bar_True.
 
@@ -186,7 +183,7 @@ Section MATCHSIMFORWARD.
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
       <<LXSIM: lxsimL ms_src ms_tgt (fun st => forall si, exists su0 m_init, sound_states si su0 m_init st)
                       has_footprint mle_excl
-                      (Ord.lift_idx WFORD i0) st_src0 st_tgt0 sm0>>.
+                      (Ord.lift_idx (wf_lex_ord WFORD lt_wf) (i0, 1%nat)) st_src0 st_tgt0 sm0>>.
   Proof.
     (* move su0 at top. *)
     revert_until BAR. pcofix CIH. i. pfold. ii.
@@ -215,25 +212,31 @@ Section MATCHSIMFORWARD.
       u in RETSRC. des. exploit FINALFSIM; eauto. i; des. ii.
       eapply lxsim_final; try apply SIMRET; eauto.
     }
+    exploit STEPSIM; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. } clear STEPSIM. intro STEPSIM.
     destruct STEPSIM as [STEPFSIM0|STEPBSIM0].
     { eapply lxsim_step_forward; eauto. i.
-      exploit STEPFSIM0; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. } i; des.
+      r in STEPFSIM0. des.
       esplits; eauto. econs 1; eauto. ii. exploit STEPFSIM1; eauto. i; des_safe. esplits; eauto.
       - des.
         + left. eauto.
-        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
-      - right. eapply CIH; [..|eauto].
+        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto. econs 1; eauto.
+      - left. pfold. ii. eapply lxsim_step_backward; eauto. ii.
+        econs 2; eauto.
+        { esplits; eauto. eapply Ord.lift_idx_spec; eauto. econs 2; eauto. }
+        { refl. }
+        right. eapply CIH; [..|eauto].
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
     }
     { rr in STEPBSIM0.
-      eapply lxsim_step_backward; eauto. i.
-      exploit STEPBSIM0; eauto. { ii. eapply SUSTAR; eauto. eapply star_refl. } i; des. rr in PROGRESS. des.
-      esplits; eauto; cycle 1. econs 1; eauto. ii. exploit STEPBSIM1; eauto. i; des_safe. esplits; eauto.
-      - des.
-        + left. eauto.
-        + right. esplits; eauto. eapply Ord.lift_idx_spec; eauto.
-      - right. eapply CIH; [..|eauto].
-        { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
+      eapply lxsim_step_backward; eauto. ii. des.
+      econs 1; eauto.
+      - ii. exploit STEPBSIM1; eauto. i; des_safe. esplits; eauto.
+        + des.
+          * left. eauto.
+          * right. esplits; eauto. eapply Ord.lift_idx_spec; eauto. econs 1; eauto.
+        + right. eapply CIH; [..|eauto].
+          { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto. }
+      - eapply PROGRESS; eauto.
     }
   Qed.
 

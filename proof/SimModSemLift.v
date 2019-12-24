@@ -66,6 +66,7 @@ Section SIMMODSEM.
             (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>)
             /\ <<MLE: SimMem.le sm0 sm1>>
             /\ <<BSIM: bsim i1 st_src1 st_tgt1 sm1>>)
+      (PROGRESS: <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)
   | bsim_step_stutter
       i1 st_src1 sm1
       (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
@@ -85,11 +86,7 @@ Section SIMMODSEM.
       (SU: forall (SU: DUMMY_PROP),
       (<<BSTEP:
          forall (SAFESRC: safe_modsem ms_src st_src0) ,
-         (<<BSTEP: bsim_step lxsim i0 st_src0 st_tgt0 sm0>>)>>) /\
-      (<<PROGRESS:
-         forall (STEPSRC: safe_modsem ms_src st_src0),
-           (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
-
+         (<<BSTEP: bsim_step lxsim i0 st_src0 st_tgt0 sm0>>)>>))
 
   | lxsim_at_external
       (* (MCOMPAT: mem_compat st_src0 st_tgt0 sm0) *)
@@ -158,8 +155,7 @@ Section SIMMODSEM.
     - econs 1; ss. ii. spc SU. des. esplits; eauto. inv SU.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
-    - econs 2; ss. i. exploit SU; eauto. i; des.
-      esplits; eauto. ii. hexploit BSTEP; eauto. i. inv H.
+    - econs 2; ss. ii. exploit SU; eauto. i; des. inv H.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 3; eauto. ii; ss. exploit SU; eauto. i; des.
@@ -251,7 +247,7 @@ Section IMPLIES.
     - econs 1; eauto. i. hexploit1 SU0; ss. inv SU0.
       + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; et. right. pclearbot. eapply CIH; et.
       + pclearbot. econs 2; eauto.
-    - econs 2; eauto. i. hexploit1 SU0; ss. des. esplits; eauto. i. hexploit BSTEP; ss. intro T. inv T.
+    - econs 2; eauto. i. hexploit1 SU0; ss. des. esplits; eauto. i. hexploit SU0; ss. intro T. inv T.
       + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; et. right. pclearbot. eapply CIH; et.
       + pclearbot. econs 2; eauto.
     - econs 3; et.

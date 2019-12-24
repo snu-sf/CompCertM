@@ -114,36 +114,35 @@ Section MATCHSIMFORWARD.
         (<<MLE: SimMem.le sm0 sm_ret>>) /\
         (<<MWF: SimMem.wf sm_ret>>).
 
-  Let STEPFSIM := forall idx0 st_src0 st_tgt0 sm0
-      (SIMSKENV: ModSemPair.sim_skenv msp sm0)
-      (NOTCALL: ~ ModSem.is_call ms_src st_src0)
-      (NOTRET: ~ ModSem.is_return ms_src st_src0)
-      (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
-      (SOUND: exists su0 m_init, (sound_state) su0 m_init st_src0),
+  Let STEPFSIM idx0 st_src0 st_tgt0 sm0 :=
       (<<RECEP: receptive_at ms_src st_src0>>) /\
       (<<STEPFSIM: forall tr st_src1
-             (STEPSRC: Step ms_src st_src0 tr st_src1),
+             (STEPSRC: Step ms_src st_src0 tr st_src1) ,
              exists idx1 st_tgt1 sm1,
-               (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
+               (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/
+                           <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
                /\ (<<MLE: SimMem.le sm0 sm1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
                /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 sm1>>)>>).
 
-  Let STEPBSIM := forall idx0 st_src0 st_tgt0 sm0
+  Let STEPBSIM idx0 st_src0 st_tgt0 sm0 :=
+      (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) /\
+      (<<STEPBSIM: forall tr st_tgt1
+             (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1) ,
+             exists idx1 st_src1 sm1,
+               (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/
+                           <<STAR: Star ms_src st_src0 tr st_src1 /\ order idx1 idx0>>)
+               /\ (<<MLE: SimMem.le sm0 sm1>>)
+               (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
+               /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 sm1>>)>>).
+
+  Hypothesis STEPSIM: forall idx0 st_src0 st_tgt0 sm0
       (SIMSKENV: ModSemPair.sim_skenv msp sm0)
       (NOTCALL: ~ ModSem.is_call ms_src st_src0)
       (NOTRET: ~ ModSem.is_return ms_src st_src0)
       (MATCH: match_states idx0 st_src0 st_tgt0 sm0)
       (SOUND: exists su0 m_init, (sound_state) su0 m_init st_src0),
-      (* (<<PROGRESS: ModSem.is_step ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) *)
-      (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) /\
-      (<<STEPBSIM: forall tr st_tgt1
-             (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1),
-             exists idx1 st_src1 sm1,
-               (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ order idx1 idx0>>)
-               /\ (<<MLE: SimMem.le sm0 sm1>>)
-               (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMem.wf, beacuse of DCEproof *)
-               /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 sm1>>)>>).
+      STEPFSIM idx0 st_src0 st_tgt0 sm0 \/ STEPBSIM idx0 st_src0 st_tgt0 sm0.
 
   Remark safe_modsem_is_smaller
          st_src0
@@ -152,8 +151,6 @@ Section MATCHSIMFORWARD.
          (SAFE: safe_modsem ms_src st_src0):
       ModSem.is_step ms_src st_src0.
   Proof. rr. specialize (SAFE _ (star_refl _ _ _ _)). des; ss. eauto. Qed.
-
-  Hypothesis STEPSIM: STEPFSIM \/ STEPBSIM.
 
   Hypothesis BAR: bar_True.
 
@@ -169,9 +166,8 @@ Section MATCHSIMFORWARD.
       { inv HISTORY; econs; eauto. }
       i; des. esplits; eauto.
     }
-    { destruct STEPSIM.
-      - left. subst STEPFSIM. ii. exploit H; eauto. { eapply SOUND; ss. }
-      - right. subst STEPBSIM. ii. exploit H; eauto. { eapply SOUND; ss. }
+    { ii. exploit STEPSIM; eauto. { eapply SOUND; ss. } i; des; r in H; des; eauto.
+      left. esplits; eauto. i. exploit STEPFSIM0; eauto. i; des_safe. esplits; eauto. apply star_refl.
     }
   Qed.
 

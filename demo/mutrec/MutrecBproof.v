@@ -639,12 +639,7 @@ Proof.
               { unfold nextinstr_nf, nextinstr.
                 repeat rewrite Pregmap.gss. ss. econs; eauto. }
               { omega. }
-
-        - i. ss. esplits; eauto.
-          instantiate (1:=AsmC.mkstate _ (Asm.State _ _)). econs; ss.
-          econs; eauto.
-          + des_ifs.
-          + ss. }
+      }
 
       (* not memoized *)
       { clarify. econs 2. i. splits.
@@ -772,12 +767,7 @@ Proof.
                 unfold Int.eq in H0.
                 rewrite Int.unsigned_zero in H0.
                 des_ifs. split; eauto. destruct i. ss. omega. }
-
-        - i. ss. esplits; eauto.
-          instantiate (1:=AsmC.mkstate _ (Asm.State _ _)). econs; ss.
-          econs; eauto.
-          + des_ifs.
-          + ss. }
+      }
 
   - intros _. inv CURRPC.
     econs 1. i. econs 2.

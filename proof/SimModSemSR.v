@@ -322,8 +322,12 @@ Section FACTORSOURCE.
         + des. econs 2; eauto. pclearbot. right. eapply CIH; eauto. econs; eauto.
       - econs 2. i. exploit SU; eauto. i; des. esplits; eauto.
         + (* bsim *)
-          clear - WBT SINGLE CIH BSTEP. i. hexploit1 BSTEP; eauto. { eapply atomic_unlift_safe_modsem; eauto. } inv BSTEP.
-          * econs 1; eauto. i.
+          clear - WBT SINGLE CIH BSTEP PROGRESS. i. hexploit BSTEP; eauto.
+          { eapply atomic_unlift_safe_modsem; eauto. }
+          clear BSTEP; intro BSTEP. inv BSTEP.
+          * econs 1; eauto; cycle 1.
+            { (* progress *) i. exploit PROGRESS; eauto. eapply atomic_unlift_safe_modsem; eauto. }
+            i.
             exploit STEP; eauto. i; des_safe. esplits; eauto.
             { des.
               - left. instantiate (1:= (_, _)). eapply plus_atomic_plus; eauto.
@@ -333,13 +337,6 @@ Section FACTORSOURCE.
           * des. econs 2; eauto.
             { split; eauto. instantiate (1:= (_, _)). eapply star_atomic_star; et. }
             pclearbot. right. eapply CIH; eauto. econs; eauto.
-        + (* progress *)
-          i. exploit PROGRESS; eauto. clear - STEPSRC WBT. ii. exploit STEPSRC; eauto.
-          { instantiate (1:= (_ ,_)). eapply star_atomic_star; eauto. }
-          i; des; eauto.
-          * left. rr. rr in EVCALL. des. inv EVCALL. ss; clarify. eauto.
-          * right. left. rr. rr in EVRET. des. inv EVRET. ss; clarify. eauto.
-          * right. right. rr. rr in EVSTEP. inv EVSTEP; ss; clarify; eauto.
       - rr in SAFESRC. des. econs 3; eauto.
         { rr. esplits; eauto. econs; eauto. }
         ii. exploit SU; eauto. i; des. inv ATSRC. ss. determ_tac at_external_dtm.

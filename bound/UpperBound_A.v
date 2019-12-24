@@ -1467,12 +1467,17 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
 
       (* src internal && tgt internal *)
       right. econs; et.
+      assert(FINALLEMMA: forall retv, Smallstep.final_state (sem prog_tgt) (State (fr_tgt :: frs_tgt)) retv ->
+                                      safe (sem prog_src) (State (fr_src :: frs_src)) ->
+                                      exists st_src1 : Smallstep.state (sem prog_src),
+                                        <<STAR: Star (sem prog_src) (State (fr_src :: frs_src)) E0 st_src1>> /\
+                                        <<FINAL: Smallstep.final_state (sem prog_src) st_src1 retv>>).
       { i. exploit final_bsim; et. { econs; et. } i; des. esplits; et. apply star_refl. }
       i.
       inv STK.
       (* ctx *)
       { clear_tac.
-        econs; cycle 1.
+        econs; eauto; cycle 1.
         (* progress *)
         - i. right. ss. des_ifs. clear_tac. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
           { inv SAFESRC. contradict NRETTGT. rr. et. }
@@ -1492,7 +1497,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           right. eapply CIH; eauto. econs; et. econs; et. }
       (* focus *)
       { inversion HD; subst; ss. clarify; ss.
-        econs; cycle 1.
+        econs; eauto; cycle 1.
         (* progress *)
         - i. right. ss. des_ifs. clear_tac. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
           { inv SAFESRC. contradict NRETSRC. rr. et. }
@@ -1500,7 +1505,6 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           inv SAFESRC; swap 2 3.
           { contradict NCALLSRC. rr. et. }
           { contradict NRETSRC. rr. et. }
-          ss. inv LINKSRC.
           exploit match_focus_state_progress; try eapply ST; eauto.
           { ii. eapply NCALLTGT. unfold ModSem.is_call. ss. }
           i. des.
@@ -1524,7 +1528,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           exploit match_stacks_focus; eauto. }
     (* call state *)
     - right. econs; ss; et.
-      { i. inv FINALTGT. }
+      i.
       econs; cycle 1.
       { i. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
         { inv SAFESRC. }
@@ -1538,6 +1542,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           { inv MSFIND0. ss. des_ifs. unfold Args.get_fptr, Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
             ss. clarify. exploit same_prog. eapply H. eapply ISFOCTGT. eauto. eauto. eauto. }
           subst. eauto. }
+      { i. inv FINALTGT. }
       i. inv STEPTGT. ss.
       exploit msfind_bsim; et.
       { des_ifs. eauto. } i; des.

@@ -611,7 +611,6 @@ Section LXSIM.
       inv STK.
       + (* ctx *)
         pfold. right. econs; et.
-        { i; ss. des_ifs. inv FINALTGT. }
         i. econs; eauto; cycle 1.
         { i. specialize (SAFESRC _ (star_refl _ _ _ _)). ss. rewrite LINKTGT. rewrite LINKSRC in *. ss. des.
           - inv SAFESRC.
@@ -643,6 +642,7 @@ Section LXSIM.
             }
             { esplits; eauto. econs; eauto. econs; eauto. ss. right. unfold load_modsems.
               rewrite in_map_iff. esplits; eauto. rewrite in_app_iff; eauto. ss. auto. } }
+        { i; ss. des_ifs. inv FINALTGT. }
         i. ss. rewrite LINKSRC, LINKTGT in *. inv STEPTGT. inv MSFIND. ss.
         unfold load_modsems in *. des; clarify.
         { esplits; eauto.
@@ -698,7 +698,6 @@ Section LXSIM.
       inv STK.
       + (* ctx *)
         pfold. right. econs; eauto.
-        { ii; ss. inv FINALTGT. des_ifs. esplits; eauto. { apply star_refl. } econs; eauto. }
         i. ss. econs; eauto; cycle 1.
         { i. specialize (SAFESRC _ (star_refl _ _ _ _)). ss; des_ifs. des; ss.
           - left. esplits; eauto.
@@ -706,6 +705,7 @@ Section LXSIM.
             { esplits; eauto. econs 1; eauto. }
             { esplits; eauto. econs 3; eauto. }
             { esplits; eauto. econs 4; eauto. } }
+        { ii; ss. inv FINALTGT. des_ifs. esplits; eauto. { apply star_refl. } econs; eauto. }
         i. ss. des_ifs.
         inv STEPTGT; ss.
         * esplits; eauto.
@@ -719,7 +719,6 @@ Section LXSIM.
           right. eapply CIH; eauto. econs; eauto. econs; eauto.
       + (* focus-call *)
         pfold. right. econs; et.
-        { ii; ss. inv FINALTGT. unsguard TGT. des; clarify; ss; inv FINAL. }
         i. econs; ss; try rewrite LINKSRC, LINKTGT in *; eauto; cycle 1; ss.
         { i. specialize (SAFESRC _ (star_refl _ _ _ _)). ss. des.
           - inv SAFESRC. inv FINAL.
@@ -727,6 +726,7 @@ Section LXSIM.
             + inv STEP. right.
               unsguard TGT. des; clarify; ss; esplits; eauto; econs 3; ss; eauto; econs; eauto.
             + unsguard TGT. des; clarify; ss; inv FINAL. }
+        { ii; ss. inv FINALTGT. unsguard TGT. des; clarify; ss; inv FINAL. }
         i. inv STEPTGT; ss; swap 2 3.
         { unsguard TGT; des; clarify; inv AT. }
         { unsguard TGT; des; clarify; inv FINAL. }
@@ -916,10 +916,6 @@ Section LXSIM.
         * clarify. exploit match_focus_over_nil; eauto.
           i; clarify.
           pfold. right. econs; eauto.
-          { i. ss. inv FINALTGT.
-            unsguard TGT. des; clarify; ss.
-            - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto.
-            - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto. }
           i. econs; eauto; cycle 1.
           { i. specialize (SAFESRC _ (star_refl _ _ _ _)). desH SAFESRC; ss.
             - inv SAFESRC; ss. inv FINAL. ss. clarify. left.
@@ -930,6 +926,10 @@ Section LXSIM.
               { inv STEP. }
               inv FINAL. esplits; eauto. econs 4; eauto.
               unsguard TGT. des; clarify. }
+          { i. ss. inv FINALTGT.
+            unsguard TGT. des; clarify; ss.
+            - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto.
+            - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto. }
           i. ss. des_ifs. inv STEPTGT; ss.
           { unsguard TGT. des; clarify; inv AT. }
           { unsguard TGT. des; clarify; inv STEP. }

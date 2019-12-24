@@ -1434,7 +1434,7 @@ Proof.
       - des_ifs; ss; eauto. right. ii. inv HSTEP0; ss. }
     { ii. unfold strong_wf_tgt in *; des. inv HSTEP; try inv STACKS; ss; clarify; et; des_ifs; et. }
     { intro T. inv H0; ss; clarify; try inv STACKS; ss. }
-    i; des. esplits; eauto.
+    i; des. esplits; try apply star_refl; eauto.
     + left. eapply spread_dplus; et.
       { eapply modsem_determinate; eauto. }
       s. folder. eapply MachC.lift_plus; et.

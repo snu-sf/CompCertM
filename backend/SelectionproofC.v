@@ -8,7 +8,7 @@ Require Import sflib.
 (* newly added *)
 Require Export Selectionproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSemExcl.
 Require SimMemExt.
 Require SoundTop.
 
@@ -61,7 +61,8 @@ Inductive match_states_at: Cminor.state -> CminorSel.state -> SimMem.t -> SimMem
 
 Theorem sim_modsem: ModSemPair.sim msp.
 Proof.
-  eapply match_states_sim with (match_states := match_states) (match_states_at := match_states_at);
+  eapply match_states_sim with (match_states := match_states) (match_states_at := match_states_at)
+                               (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le) (sidx := unit);
     eauto; ii; ss.
   - apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation; eauto.
@@ -116,7 +117,7 @@ Proof.
     inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss; cycle 1.
     { inv HISTORY. ss. inv MATCHARG. folder. clarify. }
-    esplits; eauto.
+    esplits; eauto. i. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto. econs; eauto.
       eapply lessdef_typify; ss.
@@ -151,19 +152,17 @@ Proof.
     { apply make_match_genvs; eauto. apply SIMSKENV. }
     { admit "FILL THIS". }
     i; des_safe. folder. des.
+    + esplits; eauto; try apply star_refl.
+      * left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
+      * instantiate (1:= (SimMemExt.mk _ _)). ss.
+    + clarify. esplits; eauto; try apply star_refl.
+      * right. esplits; eauto. { apply star_refl. }
+      * instantiate (1:= (SimMemExt.mk _ _)). ss.
     + esplits; eauto.
       * left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
       * instantiate (1:= (SimMemExt.mk _ _)). ss.
-    + clarify. esplits; eauto.
-      * right. esplits; eauto. { apply star_refl. }
-      * instantiate (1:= (SimMemExt.mk _ _)). ss.
-    + admit "".
-      (* clarify. esplits; eauto. *)
-      (* * left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et. *)
-      (* * instantiate (1:= (SimMemExt.mk _ _)). ss. *)
 Unshelve.
   all: ss. apply msp.
-  (* { eapply mk_helper_functions; ss; eauto. all: repeat econs; eauto. } *)
 Qed.
 
 End SIMMODSEM.

@@ -209,12 +209,7 @@ Proof.
     destruct (classic (i = Int.zero)).
     + (* zero *)
       clarify.
-      econs 2. i. esplits; cycle 3.
-      { ii. esplits. econs; eauto. econs; ss; eauto.
-        - econs.
-        - econs; eauto. econs.
-        - ii. ss. des; clarify.
-        - econs. }
+      econs 2. ii.
       econs 2.
       { split.
         - econs 2.
@@ -296,13 +291,7 @@ Proof.
 
       destruct (zeq (Int.intval i0) 0).
       {
-        econs 2. i. splits; cycle 3.
-        { i. esplits. econs; ss; eauto.
-          econs; ss; eauto.
-          - econs.
-          - econs; eauto. econs.
-          - ii. ss. des; clarify.
-          - econs. }
+        econs 2. ii.
         econs 2.
         { split.
           - econs 2; ss.
@@ -583,13 +572,7 @@ Proof.
 
       { hexploit VAL; eauto. i. des. clarify.
 
-        econs 2. i. splits; cycle 3.
-        { i. esplits. econs; ss; eauto.
-          econs; ss; eauto.
-          - econs.
-          - econs; eauto. econs.
-          - ii. ss. des; clarify.
-          - econs. }
+        econs 2. ii.
         econs 2.
         { split.
           - econs 2; ss.

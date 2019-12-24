@@ -1229,12 +1229,6 @@ Section PRESERVATION.
                 clarify.
     (* state *)
     - right. econs; i; ss.
-      + inv MTCHST.
-        * inv FINALTGT. inv FINAL. ss. subst.
-          esplits.
-          { eapply star_refl. }
-          econs.
-        * inv INITTGT.
       + econs; i.
         (* step *)
         * inv MTCHST; cycle 1.
@@ -1294,6 +1288,12 @@ Section PRESERVATION.
               { inv WTST; ss. exploit WTKS; eauto. { ii. clarify. } esplits; ss; eauto. rr. des. des_ifs. }
              (* internal *)
              ++ exploit progress_step; eauto.
+        * inv MTCHST.
+          { inv FINALTGT. inv FINAL. ss. subst.
+            esplits.
+            { eapply star_refl. }
+            econs. }
+          { inv INITTGT. }
   Qed.
 
   Lemma transf_xsim_properties:

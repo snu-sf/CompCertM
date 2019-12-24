@@ -2306,15 +2306,6 @@ Section PRESERVATION.
       instantiate (1:=frs). instantiate (2:=args). i. des.
       + destruct (match_states_call_ord_1 MTCHST).
         right. econs; i.
-        * exfalso. inv MTCHST.
-          { inv FINALTGT. inv ASMMOD.
-            inv MSFIND. unfold Genv.find_funct in *. ss. des_ifs.
-            specialize (AGREE PC). inv AGREE; rewrite Heq in *; clarify.
-            unfold Vnullptr in *. des_ifs. congruence. }
-          { inv FINALTGT. inv ASMMOD.
-            inv MSFIND. unfold Genv.find_funct in *. ss. des_ifs.
-            specialize (AGREE PC). inv AGREE; rewrite Heq in *; clarify.
-            unfold Vnullptr in *. des_ifs. congruence. }
         * exploit step_init_simulation; try eassumption.
           { inv ASMMOD. eauto. }
           i. des. econs 2; ss; eauto. rewrite LINK_SK.

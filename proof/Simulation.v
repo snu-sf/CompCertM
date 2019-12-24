@@ -137,7 +137,6 @@ Section BACKWARD_SIM.
   Inductive bsim_step bsim (i0: index) (st_src0: L1.(state)) (st_tgt0: L2.(state)): Prop :=
   | bsim_step_step
       (STEP: forall st_tgt1 tr
-          (SAFESRC: safe L1 st_src0)
           (STEPTGT: Step L2 st_tgt0 tr st_tgt1),
           exists i1 st_src1,
             (<<PLUS: Plus L1 st_src0 tr st_src1>> \/ <<STAR: Star L1 st_src0 tr st_src1 /\ order i1 i0>>)
@@ -158,14 +157,15 @@ Section BACKWARD_SIM.
           (SAFESRC: safe L1 st_src0),
           exists st_src1, <<STEPSRC: Star L1 st_src0 E0 st_src1>> /\
                                      <<FINALSRC: final_state L1 st_src1 retv>>)
-      (STEP:
+      (STEP: forall
+          (SAFESRC: safe L1 st_src0),
           <<STEP: bsim_step bsim i0 st_src0 st_tgt0>>).
 
   Definition bsim: _ -> _ -> _ -> Prop := paco3 _bsim bot3.
 
   Lemma bsim_mon: monotone3 _bsim.
   Proof.
-    ii. inv IN. econs; eauto. inv STEP.
+    ii. inv IN. econs; eauto. i. exploit STEP; eauto. i; des_safe. inv H.
     - eleft; eauto. i. exploit STEP0; eauto. i; des_safe. esplits; eauto.
     - eright; eauto.
   Qed.
@@ -213,7 +213,7 @@ Proof.
   - i. punfold BSIM. inv BSIM. eapply FINAL; eauto.
   - generalize dependent st_src0. generalize dependent st_tgt0. pattern i0.
     eapply (well_founded_ind WF); eauto. i. rename H into IH.
-    punfold BSIM. inv BSIM. inv STEP.
+    punfold BSIM. inv BSIM. exploit STEP; eauto. i; des_safe. inv H.
     + exploit STEP0; eauto. i; des_safe. pclearbot. esplits; eauto. des.
       * left; ss.
       * right; ss. esplits; eauto.
@@ -226,7 +226,7 @@ Proof.
         apply clos_trans_tn1_iff. econs 2; eauto. apply clos_trans_tn1_iff. ss.
   - generalize dependent BSIM. generalize dependent st_src0. generalize dependent st_tgt0. pattern i0.
     eapply (well_founded_ind WF); eauto. i. rename H into IH. clear i0.
-    punfold BSIM. inv BSIM. inv STEP.
+    punfold BSIM. inv BSIM. specialize (STEP SAFESRC). inv STEP.
     + exploit PROGRESS; eauto.
     + des. pclearbot. exploit IH; eauto. eapply star_safe; eauto.
 Qed.
@@ -479,7 +479,8 @@ Section MIXED_SIM.
           (SAFESRC: safe L1 st_src0),
           exists st_src1, <<STEPSRC: Star L1 st_src0 E0 st_src1>> /\
                                      <<FINALSRC: final_state L1 st_src1 retv>>)
-      (STEP:
+      (STEP: forall
+          (SAFESRC: safe L1 st_src0),
           <<STEP: bsim_step xsim i0 st_src0 st_tgt0>>).
 
   Definition xsim: _ -> _ -> _ -> Prop := paco3 (_xsim_forward \4/ _xsim_backward) bot3.
@@ -493,7 +494,7 @@ Section MIXED_SIM.
 
   Lemma _xsim_backward_mon: monotone3 (_xsim_backward).
   Proof.
-    ii. inv IN. econs; eauto. inv STEP.
+    ii. inv IN. econs; eauto. i. exploit STEP; eauto. i; des_safe. inv H.
     - eleft; eauto. i. exploit STEP0; eauto. i; des_safe. esplits; eauto.
     - eright; eauto.
   Qed.
@@ -627,7 +628,7 @@ Lemma _xsim_backward_mon_x2b
       (BSIM: _xsim_backward L1 L2 order match_states i0 st_src0 st_tgt0):
     <<BSIM: _xsim_backward L1 L2 x2b_order x2b_match_states (X2BI_after 0 i0) st_src0 st_tgt0>>.
 Proof.
-  red. inv BSIM. econs; eauto. inv STEP.
+  red. inv BSIM. econs; eauto. i. exploit STEP; eauto. i; des. inv H.
   - econs 1; eauto. i. exploit STEP0; eauto. i; des; pclearbot; esplits; eauto.
     econs; eauto. right. esplits; eauto. econs 3; eauto. econs; eauto.
   - pclearbot. des. econs 2; eauto. esplits; eauto. econs 3; eauto. econs; eauto.
@@ -662,11 +663,10 @@ Inductive x2b_transitions: index -> state L1 -> state L2 -> Prop :=
       forall (ORD0: clos_refl_trans _ order i' i)
         (ORD1: order i'' i'),
         x2b_transitions i s1 s2
-  (* | x2b_trans_backward *)
-  (*     i0 st_src0 st_tgt0 *)
-  (*     (BSIM: _xsim_backward L1 L2 x2b_order x2b_match_states (X2BI_after 0 i0) st_src0 st_tgt0): *)
-  (*     x2b_transitions i0 st_src0 st_tgt0 *)
-.
+  | x2b_trans_backward
+      i0 st_src0 st_tgt0
+      (BSIM: _xsim_backward L1 L2 x2b_order x2b_match_states (X2BI_after 0 i0) st_src0 st_tgt0):
+      x2b_transitions i0 st_src0 st_tgt0.
 
 Lemma x2b_transitions_src_tau_rev
       s1 s1' i i' s2
@@ -680,75 +680,50 @@ Proof.
   * eapply x2b_trans_forward_step; cycle 1; eauto. eapply star_trans; eauto.
   * eapply x2b_trans_forward_stutter; cycle 1; eauto.
     eapply rt_trans; eauto. constructor. auto. eapply star_trans; eauto.
-Qed.
-
-Lemma xsim_backward_src_tau_rev
-      s1 s1' i i' s2
-      (STEPSRC: Star L1 s1 E0 s1')
-      (ORDER: order i' i)
-      (BSIM: _xsim_backward L1 L2 x2b_order x2b_match_states (X2BI_after 0 i') s1' s2):
-    <<TRANS: _xsim_backward L1 L2 x2b_order x2b_match_states (X2BI_after 0 i) s1 s2>>.
-Proof.
-  * inv BSIM. econs; eauto.
+  * eapply x2b_trans_backward; cycle 1; eauto. inv BSIM. econs; eauto.
   - i. exploit FINAL; eauto. ii. eapply SAFESRC. eapply star_trans; eauto.
     i; des. esplits; try eapply FINALSRC; eauto. eapply star_trans; eauto.
-  - inv STEP.
-    + econs 1; eauto; cycle 1.
-      { ii. eapply PROGRESS; eauto. eapply star_safe; eauto. }
-      i. exploit STEP0; eauto. { eapply star_safe; eauto. } i; des.
+  - i. exploit STEP. { ii. apply SAFESRC. eapply star_trans; eauto. } i; des. inv H.
+    + econs 1; eauto. i. exploit STEP0; eauto. i; des.
       { esplits; eauto. left. eapply star_plus_trans; eauto. }
       { esplits; eauto. right. split. eapply star_trans; eauto. inv STAR0; econs; eauto. eapply t_trans; eauto. }
+      { i. eapply PROGRESS. eapply star_safe; eauto. }
     + econs 2; try apply BSIM; eauto. des. esplits; eauto. eapply star_trans; eauto. inv STAR0; econs; eauto.
       { eapply t_trans; eauto. }
 Qed.
 
 Lemma x2b_progress:
-  forall i s1 s2, match_states i s1 s2 -> (safe L1 s1 -> x2b_transitions i s1 s2) \/ (_xsim_backward L1 L2 x2b_order x2b_match_states (X2BI_after 0 i) s1 s2).
+  forall i s1 s2, match_states i s1 s2 -> safe L1 s1 -> x2b_transitions i s1 s2.
 Proof.
   intros i0; pattern i0. apply well_founded_ind with (R := order). eapply xsim_order_wf; eauto.
-  intros i REC s1 s2 MATCH. inversion MIXED_SIM. dup MATCH. punfold MATCH0. des.
+  intros i REC s1 s2 MATCH SAFE. inversion MIXED_SIM. dup MATCH. punfold MATCH0. des.
   { (* forward *)
-    inversion MATCH0; subst. unfold NW in *.
-    destruct (classic (exists r, final_state L1 s1 r)); rename H into FINAL1.
-    { (* final state reached *)
-      des. left. intro SAFE.
+    inversion MATCH0; subst. unfold NW in *. destruct (SAFE s1) as [[r FINAL1] | [t [s1' STEP1]]]. apply star_refl.
+    - (* final state reached *)
       inv STEP.
       + eapply x2b_trans_forward_final; try eapply star_refl; eauto. eapply FINAL; eauto.
       + des. pclearbot. inv PLUS.
         eapply x2b_trans_forward_stutter; try apply STAR0; try eapply star_refl; eauto.
         { econs; eauto. }
         econs 2; eauto.
-    }
 
-    destruct (classic (exists t s2, Step L1 s1 t s2)); rename H into STEP1; des.
-    { inv STEP.
+    - inv STEP.
       + (* L1 can make one step *)
         hexploit STEP0; eauto. intros [i' [s2' [A MATCH']]]. pclearbot.
         assert (B: DPlus mt L2 s2 t s2' \/ (s2 = s2' /\ t = E0 /\ order i' i)).
         { des; eauto. }
         clear A. destruct B as [PLUS2 | [EQ1 [EQ2 ORDER]]].
-        { left. intro SAFE.
-          eapply x2b_trans_forward_step; eauto. apply star_refl.
+        { eapply x2b_trans_forward_step; eauto. apply star_refl.
           i. exploit STEP0; eauto. i; des_safe. pclearbot. esplits; eauto.
         }
-        subst. exploit REC; eauto.
-        i. des; eauto.
-        { left. intro SAFE. eapply x2b_transitions_src_tau_rev; eauto. { apply star_one; ss. eauto. }
-          eapply H. eapply star_safe; eauto. apply star_one; auto.
-        }
-        { right. eapply xsim_backward_src_tau_rev; eauto. apply star_one; eauto. }
+        subst. exploit REC; eauto. eapply star_safe; eauto. apply star_one; auto.
+        i. eapply x2b_transitions_src_tau_rev; eauto. apply star_one; ss.
       + des. pclearbot. clears t. clear t. inv PLUS.
         destruct t1, t2; ss. clear_tac.
-        left. intro SAFE.
         eapply x2b_trans_forward_stutter; eauto. apply star_refl. econs; eauto. apply rt_refl.
-    }
-    { left. i. exploit H; eauto. { apply star_refl. } i; des; eauto.
-      - contradict FINAL1. eauto.
-      - contradict STEP1. eauto.
-    }
   }
   { (* backward *)
-    right. eapply _xsim_backward_mon_x2b; eauto. eapply _xsim_backward_mon; eauto. i. pclearbot. ss.
+    econs 4. eapply _xsim_backward_mon_x2b; eauto. eapply _xsim_backward_mon; eauto. i. pclearbot. ss.
   }
 Qed.
 
@@ -814,47 +789,38 @@ Proof.
   { (* PROGRESS *)
     generalize dependent st_src0. generalize dependent st_tgt0. pattern i0_x2b.
     eapply (well_founded_ind wf_x2b_order). clear i0_x2b. intros ? IH ? ? ? SAFE. i. inv MATCH.
-    + exploit x2b_progress; eauto. intros TRANS; des; cycle 1.
-      { inv TRANS. inv STEP.
-        { exploit PROGRESS; eauto. }
-        { des. exploit IH; eauto. eapply star_safe; eauto. } }
-      hexploit1 TRANS. { eauto. } inv TRANS.
+    + exploit x2b_progress; eauto. intros TRANS; inv TRANS.
       * left. esplits; eauto. apply FINALTGT.
       * rename H2 into PLUS. inv PLUS. unfold DStep in *. des. right; econstructor; econstructor; eauto.
       * right. rename H2 into PLUS. inv PLUS. rename H2 into STEP. inv STEP. esplits; eauto.
+      * inv BSIM. specialize (STEP SAFE). inv STEP.
+        { exploit PROGRESS; eauto. }
+        { des. exploit IH; eauto. eapply star_safe; eauto. }
     + rename H2 into STARN. inv STARN. congruence. unfold DStep in *. des. right; econstructor; econstructor; eauto.
     + rename H into STARN. inv STARN. unfold SDStep in *. des. right; econstructor; econstructor; eauto.
   }
   econs; eauto.
   { (* FINAL *)
     i. inv MATCH.
-    + exploit x2b_progress; eauto. intro TRANS. des; cycle 1.
-      { inv TRANS. exploit FINAL; eauto. }
-      hexploit1 TRANS; eauto. inv TRANS.
+    + exploit x2b_progress; eauto. intro TRANS. inv TRANS.
       * assert(retv = r). { inv FINALTGT0. eapply DTM; eauto. } clarify. esplits; eauto.
       * rename H2 into PLUS. inv PLUS. unfold DStep in *. des. exploit sd_determ_at_final; eauto. contradiction.
       * rename H2 into PLUS. inv PLUS. unfold SDStep in *. des. exploit ssd_determ_at_final; eauto. contradiction.
+      * inv BSIM. exploit FINAL; eauto.
     + rename H2 into STARN. inv STARN. congruence. unfold DStep in *. des. exploit sd_determ_at_final; eauto. contradiction.
     + rename H into STARN. inv STARN. unfold SDStep in *. des. exploit ssd_determ_at_final; eauto. contradiction.
   }
   { (* STEP *)
     i. inv MATCH.
   - (* 1. At matching states *)
-    exploit x2b_progress; eauto. intros TRANS; des; cycle 1.
-    { (* backward *)
-      inv TRANS. inv STEP.
-      - econs 1; eauto. i. exploit STEP0; eauto. i; des; esplits; eauto.
-      - econs 2; eauto.
-    }
-    econs 1; ss. i.
-    hexploit1 TRANS; eauto. inv TRANS.
+    exploit x2b_progress; eauto. intros TRANS; inv TRANS.
     { (* final *)
       (* 1.1  L1 can reach final state and L2 is at final state: impossible! *)
-      i. inv FINALTGT. exploit DTM0; eauto. i; ss.
+      econs 1; ss. i. inv FINALTGT. exploit DTM0; eauto. i; ss.
     }
     { (* forward *)
       (* 1.2  L1 can make 0 or several steps; L2 can make 1 or several matching steps. *)
-      rename H3 into H4. inv H2.
+      econs 1; ss. i. rename H3 into H4. inv H2.
       exploit STEP; eauto. intros [i''' [s2''' [STEP''' MATCH''']]].
       destruct H3. exploit determinacy_inv. eexact H2. eexact H3. eexact STEPTGT.
       intros [[EQ1 [EQ2 EQ3]] | [NOT1 [NOT2 MT]]].
@@ -894,7 +860,7 @@ Proof.
         destruct (star_starN H7) as [n STEPS2]. exists (X2BI_after n i''''); exists s1'''; split. left. eapply plus_right; eauto.
         right. eapply CIH. eapply x2b_match_after'; eauto. eapply DStarN_E0_SDStarN; eauto.
     }
-    { inv H2.
+    { econs 1; ss. i. inv H2.
       - destruct t1, t2; ss. clear_tac.
         exploit ssd_determ_at. apply H4. apply H4. apply STEPTGT. i; des. clarify.
         destruct H4. clear_tac. destruct (star_starN H5) as [n STEPS2]. destruct n.
@@ -904,6 +870,11 @@ Proof.
         + exists (X2BI_after (S n) i''). esplits; eauto.
           * right. esplits; eauto. econs; eauto. eapply clos_t_rt; eauto.
           * right. eapply CIH. econs 3; eauto.
+    }
+    { (* backward *)
+      inv BSIM. exploit STEP; eauto. i. inv H0.
+      - econs 1; eauto. i. exploit STEP0; eauto. i; des; esplits; eauto.
+      - econs 2; eauto.
     }
 
   - (* 2. Before *)
@@ -951,7 +922,7 @@ Lemma bsim_to_xsim
     <<XSIM: xsim L1 L2 order i0 st_src0 st_tgt0>>.
 Proof.
   generalize dependent i0. generalize dependent st_src0. generalize dependent st_tgt0. pcofix CIH. i.
-  pfold. right. punfold BSIM. inv BSIM. econs; eauto. inv STEP.
+  pfold. right. punfold BSIM. inv BSIM. econs; eauto. i. exploit STEP; eauto. i; des. inv H.
   - econs 1; eauto. i. exploit STEP0; eauto. i; des_safe. pclearbot. esplits; eauto.
   - econs 2; eauto. pclearbot. eauto.
 Qed.
@@ -1122,7 +1093,8 @@ Section MIXED_SIM.
           (SAFESRC: safe L1 st_src0),
           exists st_src1, <<STEPSRC: Star L1 st_src0 E0 st_src1>> /\
                                      <<FINALSRC: final_state L1 st_src1 retv>>)
-      (STEP:
+      (STEP: forall
+          (SAFESRC: safe L1 st_src0),
           <<STEP: bsim_step xsim i0 st_src0 st_tgt0>>).
 
   Definition xsim: _ -> _ -> _ -> Prop := paco3 (_xsim_strict_forward \4/ _xsim_forward \4/ _xsim_backward) bot3.
@@ -1143,7 +1115,7 @@ Section MIXED_SIM.
 
   Lemma _xsim_backward_mon: monotone3 (_xsim_backward).
   Proof.
-    ii. inv IN. econs; eauto. inv STEP.
+    ii. inv IN. econs; eauto. i. exploit STEP; eauto. i; des_safe. inv H.
     - eleft; eauto. i. exploit STEP0; eauto. i; des_safe. esplits; eauto.
     - eright; eauto.
   Qed.
@@ -1296,7 +1268,7 @@ Proof.
         eapply GENMT_receptive_at_iff; eauto.
       * esplits; eauto.
     + pclearbot. econs 2; eauto. des. esplits; eauto. eapply DPlus_E0_SDPlus; eauto.
-  - right. inv XSIM. econs; eauto. inv STEP.
+  - right. inv XSIM. econs; eauto. i. exploit STEP; eauto. i; des. inv H.
     + econs 1; eauto. i. exploit STEP0; eauto. i; des_safe. pclearbot. esplits; eauto.
     + pclearbot. econs 2; eauto.
 Qed.

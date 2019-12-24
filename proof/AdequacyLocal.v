@@ -500,7 +500,6 @@ Section ADQSTEP.
     pcofix CIH. i. pfold. inv LXSIM; ss; cycle 1.
     { (* init *)
       folder. des_ifs. right. econs; eauto.
-      { i. ss. inv FINALTGT. }
       i. econs; eauto; cycle 1.
       { ii. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
         - inv SAFESRC.
@@ -512,6 +511,7 @@ Section ADQSTEP.
           exploit INITPROGRESS; eauto. i; des.
           esplits; eauto. econs; eauto. econs; eauto.
       }
+      { i. ss. inv FINALTGT. }
       i. inv STEPTGT.
       specialize (SAFESRC _ (star_refl _ _ _ _)). des.
       { inv SAFESRC. }
@@ -585,40 +585,37 @@ Section ADQSTEP.
           { etrans; eauto. }
 
     - (* bstep *)
-      right. ss. exploit SU0.
-      { ss. }
-      i; des. clear SU0.
+      right. ss. hexploit1 SU0; ss.
       assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
                        -> safe_modsem ms_src lst_src).
       { eapply safe_implies_safe_modsem; eauto. }
       econs; ss; eauto.
-      + ii. exploit PROGRESS; eauto. intro STEPTGT; des. clear - FINALTGT STEPTGT. inv FINALTGT. ss. ModSem.tac.
-      + ii. exploit PROGRESS; eauto. intro STEPTGT; des.
-        hexploit BSTEP; eauto. intro T. inv T.
-        * econs 1; eauto; cycle 1.
-          { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
-          ii. inv STEPTGT0; ModSem.tac. ss. exploit STEP; eauto. i; des_safe.
-          exists i1, (State ((Frame.mk ms_src st_src1) :: tail_src)).
-          esplits; eauto.
-          { des.
-            - left. eapply lift_plus; eauto.
-            - right. esplits; eauto. eapply lift_star; eauto.
-          }
-          pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
-          { unsguard SUST. des_safe. destruct H.
-            - eapply sound_progress_plus; eauto. eapply lift_plus; eauto.
-            - des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto.
-          }
-          econs; eauto.
-          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
-          etransitivity; eauto.
-        * des. pclearbot. econs 2.
-          { esplits; eauto. eapply lift_star; eauto. }
-          right. eapply CIH; eauto.
-          { unsguard SUST. des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto. }
-          instantiate (1:=sm1). econs; eauto.
-          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. eapply rtc_once; eauto. }
-          { etrans; eauto. }
+      i. exploit SU0; eauto. intro T. clear SU0. inv T.
+      + econs 1; eauto; revgoals.
+        { ii. des. clear - FINALTGT PROGRESS. inv FINALTGT. ss. ModSem.tac. }
+        { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
+        ii. inv STEPTGT; ModSem.tac. ss. exploit STEP; eauto. i; des_safe.
+        exists i1, (State ((Frame.mk ms_src st_src1) :: tail_src)).
+        esplits; eauto.
+        { des.
+          - left. eapply lift_plus; eauto.
+          - right. esplits; eauto. eapply lift_star; eauto.
+        }
+        pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
+        { unsguard SUST. des_safe. destruct H.
+          - eapply sound_progress_plus; eauto. eapply lift_plus; eauto.
+          - des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto.
+        }
+        econs; eauto.
+        { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
+        etransitivity; eauto.
+      + des. pclearbot. econs 2.
+        { esplits; eauto. eapply lift_star; eauto. }
+        right. eapply CIH; eauto.
+        { unsguard SUST. des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto. }
+        instantiate (1:=sm1). econs; eauto.
+        { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. eapply rtc_once; eauto. }
+        { etrans; eauto. }
 
     - (* call *)
       left. right. econs; eauto. econs; eauto; cycle 1.

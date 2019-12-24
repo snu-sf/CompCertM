@@ -54,6 +54,7 @@ Section SIMMODSEM.
             (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>)
             /\ <<MLE: SimMem.le sm0 sm1>>
             /\ <<BSIM: bsim i1 st_src1 st_tgt1 sm1>>)
+      (PROGRESS: <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)
   | bsim_step_stutter
       i1 st_src1 sm1
       (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
@@ -71,10 +72,7 @@ Section SIMMODSEM.
       (SU: forall (SU: DUMMY_PROP),
       (<<BSTEP: forall
           (SAFESRC: safe_modsem ms_src st_src0),
-         (<<BSTEP: bsim_step lxsim i0 st_src0 st_tgt0 sm0>>)>>) /\
-      (<<PROGRESS: forall
-           (STEPSRC: safe_modsem ms_src st_src0),
-           (<<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)>>))
+         (<<BSTEP: bsim_step lxsim i0 st_src0 st_tgt0 sm0>>)>>))
 
   | lxsim_at_external
       (MWF: SimMem.wf sm0)
@@ -119,8 +117,8 @@ Section SIMMODSEM.
     - econs 1; ss. ii. spc SU. des. esplits; eauto. inv SU.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
-    - econs 2; ss. i. exploit SU; eauto. i; des. esplits; eauto.
-      ii. hexploit BSTEP; eauto. i. inv H.
+    - econs 2; ss. ii. exploit SU; eauto. i; des.
+      inv H.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
     - econs 3; eauto. ii; ss. exploit SU; eauto. i; des.
@@ -226,7 +224,7 @@ Section FACTORTARGET.
     Proof.
       clear_tac. unfold NW. pcofix CIH.
       i. pfold. inv SIM. punfold MATCH. des; clarify; cycle 1.
-      { rename st_src2 into st_src1. econs 2; eauto. i. split; i.
+      { rename st_src2 into st_src1. econs 2; eauto. ii. econs 1; ii.
         - (* bsim *)
           econs; eauto.
           exploit star_non_E0_split'_strong; eauto.
@@ -253,10 +251,16 @@ Section FACTORTARGET.
         + econs 2; eauto.
           { des. esplits; eauto. exploit dplus_atomic_dplus; eauto. }
           pclearbot. right. eapply CIH; eauto. econs; eauto.
-      - econs 2. i. exploit SU; eauto. i; des. esplits; eauto.
+      - econs 2. ii. exploit SU; eauto. i; des. inv H; ii.
         + (* bsim *)
-          clear - SINGLE WBT CIH BSTEP. i. hexploit1 BSTEP; eauto. inv BSTEP.
-          * econs 1; eauto. i. destruct tr; ss.
+          econs 1; eauto; cycle 1.
+          { (* progress *)
+            des. destruct tr.
+            * esplits; eauto. instantiate (1:= (_, _)). econs 1; eauto.
+            * esplits; eauto. instantiate (1:= (_, _)). econs 2; eauto.
+          }
+          clear - SINGLE WBT CIH STEP.
+          * i. destruct tr; ss.
             { inv STEPTGT.
               exploit STEP; eauto. i; des_safe. esplits; eauto.
               pclearbot. right. eapply CIH; eauto. econs; eauto.
@@ -277,11 +281,7 @@ Section FACTORTARGET.
                pclearbot. right. eapply CIH; eauto. econs.
                { right. esplits; eauto; ss. eapply star_inv in P0. des; clarify; ss. eauto. }
                eauto.
-          * econs 2; eauto. pclearbot. right. eapply CIH; eauto. econs; eauto.
-        + (* progress *)
-          i. exploit PROGRESS; eauto. i; des. destruct tr.
-          * esplits; eauto. instantiate (1:= (_, _)). econs 1; eauto.
-          * esplits; eauto. instantiate (1:= (_, _)). econs 2; eauto.
+        + econs 2; eauto. pclearbot. right. eapply CIH; eauto. econs; eauto.
       - econs 3; eauto. ii. exploit SU; eauto. i; des. esplits; eauto.
         { rr. ss. }
         i. exploit K; eauto. i; des. eexists (_, _). esplits; eauto.

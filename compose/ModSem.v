@@ -138,10 +138,8 @@ Hint Constructors Args.t Retv.t.
 Module ModSem.
 
   Record t: Type := mk {
-    local_state: Type;
-    shared_state: Type;
+    state: Type;
     genvtype: Type;
-    state := (local_state * shared_state)%type;
     step (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop;
     at_external (st0: state) (args: Args.t): Prop;
     initial_frame (args: Args.t) (st0: state): Prop;
@@ -184,7 +182,7 @@ Module ModSem.
        ).
 
   Definition to_semantics (ms: t) :=
-    (Semantics_gen (@step ms) bot1 bot2 ms.(globalenv) ms.(skenv_link)).
+    (Semantics_gen ms.(step) bot1 bot2 ms.(globalenv) ms.(skenv_link)).
 
   Module Atomic.
   Section Atomic.
@@ -210,16 +208,16 @@ Module ModSem.
         step se ge (ev :: tr, st0) [ev] (tr, st0).
 
     Definition at_external (st0: state) (args: Args.t): Prop :=
-      (fst st0) = [] /\ (@at_external ms) (snd st0) args.
+      (fst st0) = [] /\ ms.(at_external) (snd st0) args.
 
     Definition initial_frame (args: Args.t) (st0: state): Prop :=
-      (fst st0) = [] /\ (@initial_frame ms) args (snd st0).
+      (fst st0) = [] /\ ms.(initial_frame) args (snd st0).
 
     Definition final_frame (st0: state) (retv: Retv.t): Prop :=
-      (fst st0) = [] /\ (@final_frame ms) (snd st0) retv.
+      (fst st0) = [] /\ ms.(final_frame) (snd st0) retv.
 
     Definition after_external (st0: state) (retv: Retv.t) (st1: state): Prop :=
-      (fst st0) = [] /\ (@after_external ms) (snd st0) retv (snd st1) /\ (fst st1) = [].
+      (fst st0) = [] /\ ms.(after_external) (snd st0) retv (snd st1) /\ (fst st1) = [].
 
     Program Definition trans: t :=
       mk step at_external initial_frame final_frame after_external
@@ -227,7 +225,7 @@ Module ModSem.
     Next Obligation. rr in AT0. rr in AT1. des. eapply at_external_dtm; eauto. Qed.
     Next Obligation. rr in FINAL0. rr in FINAL1. des. eapply final_frame_dtm; eauto. Qed.
     Next Obligation.
-      rr in AFTER0. rr in AFTER1. des. destruct s, s0; ss. clarify. f_equal.
+      rr in AFTER0. rr in AFTER1. des. destruct st0, st1; ss. clarify. f_equal.
       eapply after_external_dtm; eauto.
     Qed.
     Next Obligation.

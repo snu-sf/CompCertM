@@ -55,10 +55,10 @@ Section SYSMODSEM.
       (EXTCALL: external_call ef ge vs m0 tr v m1):
       step se ge (Callstate fptr vs m0) tr (Returnstate v m1).
 
-  Inductive initial_frame (args: Args.t): state -> Prop :=
+  Inductive initial_frame (args: Args.t unit): state -> Prop :=
   | initial_frame_intro
       fptr vs m
-      (CSTYLE: args = Args.Cstyle fptr vs m)
+      (CSTYLE: args = Args.Cstyle fptr vs tt m)
     :
       initial_frame args (Callstate fptr vs m).
 

@@ -15,29 +15,34 @@ Set Implicit Arguments.
 
 
 Module Args.
+Section Args.
+
+  Variable OWNED_HEAP: Type.
 
   Inductive t: Type :=
   | Cstyle
       (fptr: val)
       (vs: list val)
+      (oh: OWNED_HEAP)
       (m: mem)
   | Asmstyle
       (rs: Asm.regset)
+      (oh: OWNED_HEAP)
       (m: mem).
 
   (* intentional: it should work for both cases *)
   Definition get_fptr (args: Args.t): val :=
     match args with
-    | Args.Cstyle fptr _ _ => fptr
-    | Args.Asmstyle rs _ => rs Asm.PC
+    | Args.Cstyle fptr _ _ _ => fptr
+    | Args.Asmstyle rs _ _ => rs Asm.PC
     end
   .
 
   (* intentional: it should work for both cases *)
   Definition get_m (args: Args.t): mem :=
     match args with
-    | Args.Cstyle _ _ m => m
-    | Args.Asmstyle _ m => m
+    | Args.Cstyle _ _ _ m => m
+    | Args.Asmstyle _ _ m => m
     end
   .
 
@@ -45,8 +50,8 @@ Module Args.
   (* it will return dummy value if it is assembly style. *)
   Definition fptr (args: Args.t): val :=
     match args with
-    | Args.Cstyle fptr _ _ => fptr
-    | Args.Asmstyle rs _ => Vundef (* should not happen *)
+    | Args.Cstyle fptr _ _ _ => fptr
+    | Args.Asmstyle rs _ _ => Vundef (* should not happen *)
     end
   .
 
@@ -54,8 +59,8 @@ Module Args.
   (* it will return dummy value if it is assembly style. *)
   Definition vs (args: Args.t): list val :=
     match args with
-    | Args.Cstyle _ vs _ => vs
-    | Args.Asmstyle _ _ => [] (* should not happen *)
+    | Args.Cstyle _ vs _ _ => vs
+    | Args.Asmstyle _ _ _ => [] (* should not happen *)
     end
   .
 
@@ -63,23 +68,24 @@ Module Args.
   (* it will return dummy value if it is assembly style. *)
   Definition m (args: Args.t): mem :=
     match args with
-    | Args.Cstyle _ _ m => m
-    | Args.Asmstyle _ m => Mem.empty (* should not happen *)
+    | Args.Cstyle _ _ _ m => m
+    | Args.Asmstyle _ _ m => Mem.empty (* should not happen *)
     end
   .
 
   (* for backward compatibility *)
-  Definition mk (fptr: val) (vs: list val) (m: mem): t := Args.Cstyle fptr vs m.
+  Definition mk (fptr: val) (vs: list val) (oh: OWNED_HEAP) (m: mem): t := Args.Cstyle fptr vs oh m.
 
   Definition is_cstyle (args: t): bool :=
     match args with
-    | Cstyle _ _ _ => true
+    | Cstyle _ _ _ _ => true
     | _ => false
     end
   .
 
   Lemma get_m_m: forall args (CSTYLE: is_cstyle args), (get_m args) = (m args). Proof. destruct args; ss. Qed.
 
+End Args.
 End Args.
 
 Module Retv.
@@ -139,10 +145,11 @@ Module ModSem.
 
   Record t: Type := mk {
     state: Type;
+    owned_heap: Type;
     genvtype: Type;
     step (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop;
-    at_external (st0: state) (args: Args.t): Prop;
-    initial_frame (args: Args.t) (st0: state): Prop;
+    at_external (st0: state) (args: Args.t owned_heap): Prop;
+    initial_frame (args: Args.t owned_heap) (st0: state): Prop;
     final_frame (st0: state) (retv: Retv.t): Prop;
     after_external (st0: state) (retv: Retv.t) (st1: state): Prop;
     globalenv: genvtype;
@@ -207,10 +214,10 @@ Module ModSem.
         (WBT: output_trace (ev :: tr)):
         step se ge (ev :: tr, st0) [ev] (tr, st0).
 
-    Definition at_external (st0: state) (args: Args.t): Prop :=
+    Definition at_external (st0: state) (args: Args.t ms.(owned_heap)): Prop :=
       (fst st0) = [] /\ ms.(at_external) (snd st0) args.
 
-    Definition initial_frame (args: Args.t) (st0: state): Prop :=
+    Definition initial_frame (args: Args.t ms.(owned_heap)) (st0: state): Prop :=
       (fst st0) = [] /\ ms.(initial_frame) args (snd st0).
 
     Definition final_frame (st0: state) (retv: Retv.t): Prop :=

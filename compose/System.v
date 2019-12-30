@@ -48,26 +48,27 @@ Section SYSMODSEM.
       (v: val)
       (m: mem).
 
-  Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
+  Inductive step (se: Senv.t) (ge: genvtype): (state * unit) -> trace -> (state * unit) -> Prop :=
   | step_intro
       ef fptr vs m0 v m1 tr
       (FPTR: (Genv.find_funct ge) fptr = Some (External ef))
       (EXTCALL: external_call ef ge vs m0 tr v m1):
-      step se ge (Callstate fptr vs m0) tr (Returnstate v m1).
+      step se ge ((Callstate fptr vs m0), tt) tr ((Returnstate v m1), tt).
 
-  Inductive initial_frame (args: Args.t): state -> Prop :=
+  Inductive initial_frame (args: Args.t): (state * unit) -> Prop :=
   | initial_frame_intro
       fptr vs m
       (CSTYLE: args = Args.Cstyle fptr vs m)
     :
-      initial_frame args (Callstate fptr vs m).
+      initial_frame args ((Callstate fptr vs m), tt).
 
-  Inductive final_frame: state -> Retv.t -> Prop :=
+  Inductive final_frame: (state * unit) -> Retv.t -> Prop :=
   | final_frame_intro v m :
-      final_frame (Returnstate v m) (Retv.Cstyle v m).
+      final_frame ((Returnstate v m), tt) (Retv.Cstyle v m).
 
   Program Definition modsem: ModSem.t := {|
-    ModSem.state := state;
+    ModSem.local_state := state;
+    ModSem.shared_state := unit;
     ModSem.genvtype := genvtype;
     ModSem.step := step;
     ModSem.at_external := bot2;

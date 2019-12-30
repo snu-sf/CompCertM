@@ -139,34 +139,35 @@ Module ModSem.
 
   Record t: Type := mk {
     state: Type;
+    owned_heap: Type;
     genvtype: Type;
     step (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop;
-    at_external (st0: state) (args: Args.t): Prop;
-    initial_frame (args: Args.t) (st0: state): Prop;
-    final_frame (st0: state) (retv: Retv.t): Prop;
-    after_external (st0: state) (retv: Retv.t) (st1: state): Prop;
+    at_external (st0: state) (oh: owned_heap) (args: Args.t): Prop;
+    initial_frame (oh: owned_heap) (args: Args.t) (st0: state): Prop;
+    final_frame (st0: state) (oh: owned_heap) (retv: Retv.t): Prop;
+    after_external (st0: state) (oh: owned_heap) (retv: Retv.t) (st1: state): Prop;
     globalenv: genvtype;
     skenv: SkEnv.t;
     skenv_link: SkEnv.t;
 
-    at_external_dtm: forall st args0 args1
-        (AT0: at_external st args0)
-        (AT1: at_external st args1),
+    at_external_dtm: forall st oh0 oh1 args0 args1
+        (AT0: at_external st oh0 args0)
+        (AT1: at_external st oh1 args1),
         args0 = args1;
 
-    final_frame_dtm: forall st retv0 retv1
-        (FINAL0: final_frame st retv0)
-        (FINAL1: final_frame st retv1),
+    final_frame_dtm: forall st oh0 oh1 retv0 retv1
+        (FINAL0: final_frame st oh0 retv0)
+        (FINAL1: final_frame st oh1 retv1),
         retv0 = retv1;
-    after_external_dtm: forall st_call retv st0 st1
-        (AFTER0: after_external st_call retv st0)
-        (AFTER0: after_external st_call retv st1),
+    after_external_dtm: forall st_call oh retv st0 st1
+        (AFTER0: after_external st_call oh retv st0)
+        (AFTER0: after_external st_call oh retv st1),
         st0 = st1;
 
 
-    is_call (st0: state): Prop := exists args, at_external st0 args;
+    is_call (st0: state): Prop := exists oh args, at_external st0 oh args;
     is_step (st0: state): Prop := exists tr st1, step skenv_link globalenv st0 tr st1;
-    is_return (st0: state): Prop := exists retv, final_frame st0 retv;
+    is_return (st0: state): Prop := exists oh retv, final_frame st0 oh retv;
 
     call_step_disjoint: is_call /1\ is_step <1= bot1;
     step_return_disjoint: is_step /1\ is_return <1= bot1;
@@ -192,6 +193,7 @@ Module ModSem.
     Variable ms: t.
 
     Let state := (trace * ms.(state))%type.
+    Let owned_heap := ms.(owned_heap).
 
     Inductive step (se: Senv.t) (ge: ms.(genvtype)): state -> trace -> state -> Prop :=
     | step_silent
@@ -207,17 +209,17 @@ Module ModSem.
         (WBT: output_trace (ev :: tr)):
         step se ge (ev :: tr, st0) [ev] (tr, st0).
 
-    Definition at_external (st0: state) (args: Args.t): Prop :=
-      (fst st0) = [] /\ ms.(at_external) (snd st0) args.
+    Definition at_external (st0: state) (oh: owned_heap) (args: Args.t): Prop :=
+      (fst st0) = [] /\ ms.(at_external) (snd st0) oh args.
 
-    Definition initial_frame (args: Args.t) (st0: state): Prop :=
-      (fst st0) = [] /\ ms.(initial_frame) args (snd st0).
+    Definition initial_frame (oh: owned_heap) (args: Args.t) (st0: state): Prop :=
+      (fst st0) = [] /\ ms.(initial_frame) oh args (snd st0).
 
-    Definition final_frame (st0: state) (retv: Retv.t): Prop :=
-      (fst st0) = [] /\ ms.(final_frame) (snd st0) retv.
+    Definition final_frame (st0: state) (oh: owned_heap) (retv: Retv.t): Prop :=
+      (fst st0) = [] /\ ms.(final_frame) (snd st0) oh retv.
 
-    Definition after_external (st0: state) (retv: Retv.t) (st1: state): Prop :=
-      (fst st0) = [] /\ ms.(after_external) (snd st0) retv (snd st1) /\ (fst st1) = [].
+    Definition after_external (st0: state) (oh: owned_heap) (retv: Retv.t) (st1: state): Prop :=
+      (fst st0) = [] /\ ms.(after_external) (snd st0) oh retv (snd st1) /\ (fst st1) = [].
 
     Program Definition trans: t :=
       mk step at_external initial_frame final_frame after_external
@@ -276,7 +278,7 @@ Module ModSem.
     Proof.
       ginduction STAR; ii; ss.
       { econs; eauto. }
-      eapply star_trans; eauto. clear - H WBT. exploit atomic_lift_step; eauto.
+      eapply star_trans; eauto. clear - owned_heap H WBT. exploit atomic_lift_step; eauto.
     Qed.
 
   End Atomic.

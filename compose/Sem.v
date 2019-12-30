@@ -28,9 +28,10 @@ Module Frame.
   Record t: Type := mk {
     ms: ModSem.t;
     st: ms.(ModSem.state); (* local state *)
+    midx: nat;
   }.
 
-  Definition update_st (fr0: t) (st0: fr0.(ms).(ModSem.state)): t := (mk fr0.(ms) st0).
+  Definition update_st (fr0: t) (st0: fr0.(ms).(ModSem.state)): t := (mk fr0.(ms) st0 fr0.(midx)).
 
 End Frame.
 
@@ -39,20 +40,22 @@ End Frame.
 Module Ge.
 
   (* NOTE: Ge.(snd) is not used in semantics. It seems it is just for convenience in meta theory *)
-  Definition t: Type := (list ModSem.t * SkEnv.t).
+  Definition t: Type := (list {ms: ModSem.t & ms.(ModSem.owned_heap)} * SkEnv.t).
 
-  Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=
+  Inductive find_fptr_owner (ge: t) (fptr: val) (midx: nat): Prop :=
   | find_fptr_owner_intro
-      (MODSEM: In ms (fst ge))
+      ms oh 
+      (MODSEM: List.nth_error (fst ge) midx = Some (existT _ ms oh))
       if_sig
-      (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig)).
+      (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig))
+  .
 
   Inductive disjoint (ge: t): Prop :=
   | disjoint_intro
-      (DISJOINT: forall fptr ms0 ms1
-          (FIND0: ge.(find_fptr_owner) fptr ms0)
-          (FIND1: ge.(find_fptr_owner) fptr ms1),
-          ms0 = ms1).
+      (DISJOINT: forall fptr midx0 midx1
+          (FIND0: ge.(find_fptr_owner) fptr midx0)
+          (FIND1: ge.(find_fptr_owner) fptr midx1),
+          midx0 = midx1).
 
 End Ge.
 
@@ -65,17 +68,19 @@ Inductive state: Type :=
 
 Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 | step_call
-    fr0 frs args
-    (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) args):
+    fr0 frs args oh
+    (OH: List.nth_error (fst ge) fr0.(Frame.midx) = Some (existT _ fr0.(Frame.ms) oh))
+    (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) oh args):
     step ge (State (fr0 :: frs))
          E0 (Callstate args (fr0 :: frs))
 
 | step_init
-    args frs ms st_init
-    (MSFIND: ge.(Ge.find_fptr_owner) (Args.get_fptr args) ms)
-    (INIT: ms.(ModSem.initial_frame) args st_init):
+    args frs midx ms oh st_init
+    (MSFIND: ge.(Ge.find_fptr_owner) (Args.get_fptr args) midx)
+    (OH: List.nth_error (fst ge) midx = Some (existT _ ms oh))
+    (INIT: ms.(ModSem.initial_frame) oh args st_init):
     step ge (Callstate args frs)
-         E0 (State ((Frame.mk ms st_init) :: frs))
+         E0 (State ((Frame.mk ms st_init midx) :: frs))
 
 | step_internal
     fr0 frs tr st0
@@ -83,11 +88,14 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     step ge (State (fr0 :: frs))
          tr (State (((Frame.update_st fr0) st0) :: frs))
 | step_return
-    fr0 fr1 frs retv st0
-    (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) retv)
-    (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) retv st0):
+    fr0 fr1 frs retv st0 oh0 oh1
+    (OHCALLER: List.nth_error (fst ge) fr0.(Frame.midx) = Some (existT _ fr0.(Frame.ms) oh0))
+    (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) oh0 retv)
+    (OHCALLEE: List.nth_error (fst ge) fr0.(Frame.midx) = Some (existT _ fr0.(Frame.ms) oh0))
+    (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) oh1 retv st0):
     step ge (State (fr0 :: fr1 :: frs))
-         E0 (State (((Frame.update_st fr1) st0) :: frs)).
+         E0 (State (((Frame.update_st fr1) st0) :: frs))
+.
 
 
 

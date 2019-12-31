@@ -162,15 +162,17 @@ Section SEMANTICS.
       final_state (State [fr0] msohs) i.
 
   Definition sem: semantics :=
-    let skenv_link := match link_sk with
-                      | Some sk_link => (Sk.load_skenv sk_link)
-                      | None => SkEnv.empty
-                      end in
-    let ge := load_genv skenv_link in
+    let ge := (match link_sk with
+                    | Some sk_link => load_genv (Sk.load_skenv sk_link)
+                    | None => (nil, SkEnv.empty)
+                    end) in
     (Semantics_gen (fun _ => step) (initial_state ge) final_state
                    ge 
                    (* NOTE: The symbolenv here is never actually evoked in our semantics. Putting this value is merely for our convenience. (lifting receptive/determinate) Whole proof should be sound even if we put dummy data here. *)
-                   skenv_link).
+                   (match link_sk with
+                    | Some sk_link => (Sk.load_skenv sk_link)
+                    | None => SkEnv.empty
+                    end)).
 
   (* Note: I don't want to make it option type. If it is option type, there is a problem. *)
   (* I have to state this way:

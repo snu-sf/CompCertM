@@ -14,6 +14,7 @@ Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem.
 
 Require Import ModSemProps.
+Require Import Program.
 
 Set Implicit Arguments.
 
@@ -301,79 +302,101 @@ Section INITDTM.
 
   Theorem genv_disjoint: <<DISJ: sem.(globalenv).(Ge.disjoint)>>.
   Proof.
-    ss. des_ifs; cycle 1.
-    { econs; eauto. ii; ss. inv FIND0. ss. }
-    assert(WFBIG: (Sk.load_skenv t).(SkEnv.wf)).
-    { eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; et. }
-    econs; eauto. ii; ss. inv FIND0; inv FIND1.
-    generalize (link_includes p Heq). intro INCLS.
-    unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss.
-    abstr (Genv.globalenv t) skenv_link. rename t into sk_link.  rename Heq into SKLINK.
-    rewrite in_map_iff in *. u in *. destruct MODSEM.
-    { clarify. des; ss. exfalso. clarify. eapply system_disjoint; eauto. }
-    des; ss.
-    { clarify. ss. exfalso. eapply system_disjoint; eauto. }
+    admit "".
+    (* ss. des_ifs; cycle 1. *)
+    (* { econs; eauto. ii; ss. inv FIND0. ss. destruct midx0; ss. } *)
+    (* assert(WFBIG: (Sk.load_skenv t).(SkEnv.wf)). *)
+    (* { eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; et. } *)
+    (* econs; eauto. ii; ss. inv FIND0; inv FIND1. *)
+    (* generalize (link_includes p Heq). intro INCLS. *)
+    (* unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss. *)
+    (* abstr (Genv.globalenv t) skenv_link. rename t into sk_link.  rename Heq into SKLINK. *)
+    (* destruct midx0; ss. *)
+    (* { clarify. destruct midx1; ss; clarify. exfalso. rewrite list_map_nth in *. unfold option_map in *. des_ifs. *)
+    (*   apply_all_once nth_error_In; eauto. eapply system_disjoint; eauto; ss. } *)
+    (* destruct midx1; ss. *)
+    (* { clarify. exfalso. rewrite list_map_nth in *. unfold option_map in *. des_ifs. *)
+    (*   apply_all_once nth_error_In; eauto. eapply system_disjoint; eauto; ss. } *)
+    (* rewrite list_map_nth in *. unfold option_map in *. des_ifs. *)
 
-    rename x into md0. rename x0 into md1. clarify.
-    destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs.
-    rename Heq0 into DEF0. rename Heq into DEF1.
+    (* rename Heq0 into NTH0. rename Heq into NTH1. *)
+    (* exploit nth_error_In; try apply NTH0; eauto. intro IN0. *)
+    (* exploit nth_error_In; try apply NTH1; eauto. intro IN1. *)
+    (* rename t0 into md0. rename t into md1. clarify. *)
+    (* destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs. *)
+    (* rename Heq0 into DEF0. rename Heq into DEF1. *)
 
-    hexploit (@Mod.get_modsem_projected_sk md0 skenv_link); eauto. intro SPEC0; des.
-    hexploit (@Mod.get_modsem_projected_sk md1 skenv_link); eauto. intro SPEC1; des.
-    remember (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
-    remember (ModSem.skenv (Mod.get_modsem md1 skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *.
+    (* hexploit (@Mod.get_modsem_projected_sk md0 skenv_link); eauto. intro SPEC0; des. *)
+    (* hexploit (@Mod.get_modsem_projected_sk md1 skenv_link); eauto. intro SPEC1; des. *)
+    (* remember (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *. *)
+    (* remember (ModSem.skenv (Mod.get_modsem md1 skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *. *)
 
-    assert(WFSMALL0: skenv_proj0.(SkEnv.wf_proj)).
-    { eapply SkEnv.project_spec_preserves_wf; try apply SPEC0; eauto. }
-    assert(WFSMALL1: skenv_proj1.(SkEnv.wf_proj)).
-    { eapply SkEnv.project_spec_preserves_wf; try apply SPEC1; eauto. }
+    (* assert(WFSMALL0: skenv_proj0.(SkEnv.wf_proj)). *)
+    (* { eapply SkEnv.project_spec_preserves_wf; try apply SPEC0; eauto. } *)
+    (* assert(WFSMALL1: skenv_proj1.(SkEnv.wf_proj)). *)
+    (* { eapply SkEnv.project_spec_preserves_wf; try apply SPEC1; eauto. } *)
 
-    bar. inv WFSMALL0. exploit DEFSYMB; eauto. i; des. inv WFSMALL1. exploit DEFSYMB0; eauto. i; des.
-    rename SYMB0 into SYMB1. rename SYMB into SYMB0. rename id0 into id1. rename id into id0.
-    move SYMB0 at top. move SYMB1 at top. clear_until_bar. inv SPEC0.
-    assert(DEFS0: defs (Mod.get_sk md0 (Mod.data md0)) id0).
-    { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
-    exploit SYMBKEEP; eauto. intro SYMBBIG0; des. rewrite SYMB0 in *. symmetry in SYMBBIG0.
-    exploit DEFKEPT; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    i; des. move SYMBBIG0 at top. move DEFBIG at top. move DEFS0 at top. clear_until_bar.
+    (* bar. inv WFSMALL0. exploit DEFSYMB; eauto. i; des. inv WFSMALL1. exploit DEFSYMB0; eauto. i; des. *)
+    (* rename SYMB0 into SYMB1. rename SYMB into SYMB0. rename id0 into id1. rename id into id0. *)
+    (* move SYMB0 at top. move SYMB1 at top. clear_until_bar. inv SPEC0. *)
+    (* assert(DEFS0: defs (Mod.get_sk md0 (Mod.data md0)) id0). *)
+    (* { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. } *)
+    (* exploit SYMBKEEP; eauto. intro SYMBBIG0; des. rewrite SYMB0 in *. symmetry in SYMBBIG0. *)
+    (* exploit DEFKEPT; eauto. *)
+    (* { eapply Genv.find_invert_symbol; eauto. } *)
+    (* i; des. move SYMBBIG0 at top. move DEFBIG at top. move DEFS0 at top. clear_until_bar. *)
 
-    inv SPEC1.
-    assert(DEFS1: defs (Mod.get_sk md1 (Mod.data md1)) id1).
-    { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
-    exploit SYMBKEEP; eauto. intro SYMBBIG1; des. rewrite SYMB1 in *. symmetry in SYMBBIG1.
-    exploit DEFKEPT; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    i; des. move SYMBBIG1 at top. move DEFBIG0 at top. move DEFS1 at top. clear_until_bar.
+    (* inv SPEC1. *)
+    (* assert(DEFS1: defs (Mod.get_sk md1 (Mod.data md1)) id1). *)
+    (* { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. } *)
+    (* exploit SYMBKEEP; eauto. intro SYMBBIG1; des. rewrite SYMB1 in *. symmetry in SYMBBIG1. *)
+    (* exploit DEFKEPT; eauto. *)
+    (* { eapply Genv.find_invert_symbol; eauto. } *)
+    (* i; des. move SYMBBIG1 at top. move DEFBIG0 at top. move DEFS1 at top. clear_until_bar. *)
 
-    assert(id0 = id1).
-    { eapply Genv.genv_vars_inj; try eapply SYMBBIG0; eauto. } clarify.
-    rename id1 into id.
+    (* assert(id0 = id1). *)
+    (* { eapply Genv.genv_vars_inj; try eapply SYMBBIG0; eauto. } clarify. *)
+    (* rename id1 into id. *)
 
-    clear - SYMBBIG0 WFBIG INCLS DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK H0 MODSEM1.
-    destruct (classic (md0 = md1)); ss.
-    { clarify. }
+    (* { *)
+    (*   clear - SYMBBIG0 WFBIG INCLS DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK (* IN0 IN1 *) NTH0 NTH1. *)
+    (*   ginduction p; i; ss. dup SKLINK. *)
+    (*   rename a into hd. *)
+    (*   destruct midx0; ss; clarify. *)
+    (*   - destruct midx1; ss; clarify. exfalso. *)
+    (*     exploit (@link_sk_disjoint md0 md1); eauto; ss. *)
+    (* } *)
+    (* clear - SYMBBIG0 WFBIG INCLS DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK IN0 IN1 NTH0 NTH1. *)
+    (* destruct (classic (md0 = md1 /\ midx0 = midx1)); ss. *)
+    (* { des; clarify. } *)
+    (* apply not_and_or in H. *)
 
-    exfalso. clear_tac. generalize dependent sk_link.
-    ginduction p; i; ss. dup SKLINK.
-    eapply link_list_cons_inv in SKLINK; cycle 1.
-    { destruct p0; ss. inv H0; inv MODSEM1; clarify. }
-    des_safe.
-    hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe.
-    hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
+    (* exfalso. clear_tac. generalize dependent sk_link. *)
+    (* ginduction p; i; ss. dup SKLINK. *)
+    (* destruct midx0, midx1; ss. try (by des; eauto with lia). *)
+    (* eapply link_list_cons_inv in SKLINK; cycle 1. *)
+    (* { destruct p0; ss. des; clarify. *)
+    (*   destruct midx0, midx1; try destruct midx0; try destruct midx1; ss; clarify. } *)
+    (* des_safe. *)
+    (* hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe. *)
+    (* hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe. *)
 
-    des; clarify; try (by eapply link_sk_disjoint; try eapply DEFBIG; eauto).
-    - eapply IHp0; try eapply DEFS1; try eapply DEFS0; try eapply DEFBIG; eauto.
+    (* des; clarify; try (by eapply link_sk_disjoint; try eapply DEFBIG; eauto). *)
+    (* - eapply IHp0; try eapply DEFS1; try eapply DEFS0; try eapply DEFBIG; eauto. *)
+Unshelve.
   Qed.
 
   Lemma find_fptr_owner_determ
-        fptr ms0 ms1
-        (FIND0: Ge.find_fptr_owner sem.(globalenv) fptr ms0)
-        (FIND1: Ge.find_fptr_owner sem.(globalenv) fptr ms1):
-      ms0 = ms1.
+        fptr ms0 ms1 midx0 midx1
+        (FIND0: Ge.find_fptr_owner sem.(globalenv) fptr ms0 midx0)
+        (FIND1: Ge.find_fptr_owner sem.(globalenv) fptr ms1 midx1):
+      ms0 = ms1 /\ midx0 = midx1.
   Proof.
-    inv FIND0; inv FIND1. ss. des_ifs. unfold load_genv in *. ss. generalize genv_disjoint; i.
-    inv H. eapply DISJOINT; eauto; econs; eauto; ss; des_ifs.
+    inv FIND0; inv FIND1. ss. des_ifs.
+    { unfold load_genv in *. ss. generalize genv_disjoint; i.
+      inv H. eapply DISJOINT; eauto; econs; eauto; ss; des_ifs.
+    }
+    ss. destruct midx0, midx1; ss.
   Qed.
 
   Theorem initial_state_determ
@@ -393,17 +416,18 @@ End INITDTM.
 Lemma lift_step
       (ms: ModSem.t) st0 tr st1
       (STEP: Step ms st0 tr st1):
-    forall prog tail,
+    forall prog midx msohs tail,
     <<STEP: Step (Sem.sem prog)
-                 (State ((Frame.mk ms st0) :: tail)) tr
-                 (State ((Frame.mk ms st1) :: tail))>>.
+                 (State ((Frame.mk ms st0 midx) :: tail) msohs) tr
+                 (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
 Proof. ii. econs 3; eauto. Qed.
 
 Lemma lift_star
       (ms: ModSem.t) st0 tr st1
       (STAR: Star ms st0 tr st1):
-    forall prog tail,
-    <<STAR: Star (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
+    forall prog midx msohs tail,
+    <<STAR: Star (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
+                 tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
 Proof.
   ii. ginduction STAR; ii; ss.
   - econs 1; eauto.
@@ -415,8 +439,9 @@ Qed.
 Lemma lift_plus
       (ms: ModSem.t) st0 tr st1
       (PLUS: Plus ms st0 tr st1):
-    forall prog tail,
-    <<PLUS: Plus (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
+    forall prog midx msohs tail,
+    <<PLUS: Plus (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
+                 tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
 Proof.
   i. inv PLUS; ii; ss. econs; eauto.
   - eapply lift_step; eauto.
@@ -427,8 +452,9 @@ Lemma lift_dstep
       (ms: ModSem.t) st0 tr st1 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DSTEP: DStep ms st0 tr st1):
-    forall tail,
-    <<DSTEP: DStep (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
+    forall midx msohs tail,
+    <<DSTEP: DStep (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
+                   tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
 Proof.
   ii. destruct DSTEP as [DTM STEP]. econs; eauto; cycle 1.
   - econs; ss; eauto.
@@ -445,8 +471,9 @@ Lemma lift_dstar
       (ms: ModSem.t) st0 tr st1 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DSTAR: DStar ms st0 tr st1):
-    forall tail,
-    <<DSTAR: DStar (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
+    forall midx msohs tail,
+    <<DSTAR: DStar (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
+                   tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
 Proof.
   i. ginduction DSTAR; ii; ss.
   - econs 1; eauto.
@@ -459,8 +486,9 @@ Lemma lift_dplus
       (ms: ModSem.t) st0 tr st1 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DPLUS: DPlus ms st0 tr st1):
-    forall tail,
-    <<DPLUS: DPlus (Sem.sem prog) (State ((Frame.mk ms st0) :: tail)) tr (State ((Frame.mk ms st1) :: tail))>>.
+    forall midx msohs tail,
+    <<DPLUS: DPlus (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
+                   tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
 Proof.
   i. inv DPLUS; ii; ss. econs; eauto.
   - eapply lift_dstep; eauto.
@@ -471,7 +499,7 @@ Lemma lift_receptive_at
       (ms: ModSem.t) st0 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (RECEP: receptive_at ms st0):
-    forall tail, <<RECEP: receptive_at (Sem.sem prog) (State ((Frame.mk ms st0) :: tail))>>.
+    forall midx msohs tail, <<RECEP: receptive_at (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)>>.
 Proof.
   ii. inv RECEP. ss. econs; eauto; ii.
   - inv H.
@@ -487,20 +515,20 @@ Lemma lift_determinate_at
       (ms: ModSem.t) st0 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DTM: determinate_at ms st0):
-    forall tail,
-    <<DTM: determinate_at (Sem.sem prog) (State ((Frame.mk ms st0) :: tail))>>.
+    forall midx msohs tail,
+    <<DTM: determinate_at (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)>>.
 Proof.
   ii. inv DTM. ss. econs; eauto; ii.
   - inv H; inv H0; ModSem.tac.
     + esplits; et.
       { econs; et. }
-      i. f_equal. eapply ModSem.at_external_dtm; et.
+      i. repeat f_equal; ss; eapply ModSem.at_external_dtm; et.
     + ss. determ_tac sd_determ_at. esplits; et.
       { eapply match_traces_preserved; try apply H. i. s. congruence. }
       i. clarify. repeat f_equal. eauto.
     + ss. esplits; et.
       { econs; et. }
-      i. repeat f_equal. determ_tac ModSem.final_frame_dtm. eapply ModSem.after_external_dtm; et.
+      i. determ_tac ModSem.final_frame_dtm. simpl_existT; clarify. repeat f_equal. eapply ModSem.after_external_dtm; et.
   - ss. inv FINAL. ss. inv STEP; ss; ModSem.tac.
   - inv H; s; try omega. exploit sd_traces_at; eauto.
 Qed.
@@ -828,13 +856,13 @@ End WFMEM.
 
 Require Import Sem SimModSem.
 Theorem safe_implies_safe_modsem
-        p sk ms lst tail
+        p sk ms lst midx msohs tail
         (LINK: link_sk p = Some sk)
-        (SAFE: safe (sem p) (State ({| Frame.ms := ms; Frame.st := lst |} :: tail))):
+        (SAFE: safe (sem p) (State ((Frame.mk ms lst midx) :: tail) msohs)):
     <<SAFE: safe_modsem ms lst>>.
 Proof.
   ii. ss. exploit SAFE.
-  { instantiate (1:= (State ({| Frame.ms := ms; Frame.st := st1 |} :: tail))). eapply lift_star; eauto. }
+  { instantiate (1:= (State ((Frame.mk ms st1 midx) :: tail) msohs)). eapply lift_star; eauto. }
   i; des.
   - ss. inv H. ss. right. left. eauto.
   - ss. des_ifs. inv H; ss.

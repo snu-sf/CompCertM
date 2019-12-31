@@ -29,14 +29,7 @@ Section SIMMODSEM.
   Context {SS: SimSymb.class SM}.
   Variable sound_states: ms_src.(state) -> Prop.
 
-  Check SimMem.t.
-  Check (SimMemOh.t).
-  Set Printing All.
-  Variable ab: (@SimMemOh.t SM ms_src.(ModSem.owned_heap) ms_tgt.(ModSem.owned_heap) SMO).
-  Variable abc: (SimMemOh.t (SM := SM) (owned_heap_src := ms_src.(ModSem.owned_heap))
-                            (owned_heap_tgt := ms_tgt.(ModSem.owned_heap))).
-  Fail Variable abcd: SimMemOh.t.
-  Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
+  Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMemOh.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMemOh.t): Prop :=
   | fsim_step_step
       (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
@@ -44,13 +37,13 @@ Section SIMMODSEM.
           (STEPSRC: Step ms_src st_src0 tr st_src1),
           exists i1 st_tgt1 sm1,
             (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ ord i1 i0>>)
-            /\ <<MLE: SimMem.le sm0 sm1>>
+            /\ <<MLE: SimMemOh.le sm0 sm1>>
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 sm1>>)
       (RECEP: receptive_at ms_src st_src0)
   | fsim_step_stutter
       i1 st_tgt1 sm1
       (PLUS: DPlus ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
-      (MLE: SimMem.le sm0 sm1)
+      (MLE: SimMemOh.le sm0 sm1)
       (BSIM: fsim i1 st_src0 st_tgt1 sm1).
 
   Inductive bsim_step (bsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)

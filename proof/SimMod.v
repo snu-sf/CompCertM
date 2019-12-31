@@ -35,7 +35,9 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     ss: SimSymb.t;
   }.
 
-  Definition to_msp (skenv_link_src skenv_link_tgt: SkEnv.t) (sm: SimMem.t) (mp: t): ModSemPair.t :=
+  Definition to_msp (skenv_link_src skenv_link_tgt: SkEnv.t) (sm: SimMem.t) (mp: t)
+             (SMO: SimMemOh.class ((Mod.modsem (mp.(src)) skenv_link_src).(ModSem.owned_heap))
+                                  ((Mod.modsem (mp.(tgt)) skenv_link_tgt).(ModSem.owned_heap))): ModSemPair.t :=
     ModSemPair.mk (Mod.modsem (mp.(src)) skenv_link_src) (Mod.modsem (mp.(tgt)) skenv_link_tgt) mp.(ss) sm.
 
   (* TODO: Actually, ModPair can have idx/ord and transfer it to ModSemPair. *)
@@ -52,7 +54,13 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           (WFTGT: SkEnv.wf skenv_link_tgt)
           (SSLE: SimSymb.le mp.(ss) ss_link)
           (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt),
-          <<SIMMSP: ModSemPair.sim (to_msp skenv_link_src skenv_link_tgt sm_init_link mp)>>).
+          exists SMO, <<SIMMSP: ModSemPair.sim (to_msp skenv_link_src skenv_link_tgt sm_init_link mp SMO)>>).
+  (* TODO: quantifying "exists SMO" here looks somewhat dirty... *)
+  (* I would like to quantify it directly inside "sim_intro", but I need to put it here because *)
+  (* I need to know "owned_heap" type which needs to know "skenv_link_src,tgt". *)
+  (* It gives me feeling like "owned_heap" type differs as "skenv_link_src,tgt" changes. *)
+  (* We can fix this by putting "owned_heap" in Mod.t, not ModSem.t. *)
+  (* TODO: the same goes for "state" too. *)
 
   (* Design: ModPair only has data, properties are stated in sim *)
 

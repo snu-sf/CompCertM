@@ -91,7 +91,7 @@ Section ADQSOUND.
       (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex (Args.get_m args)):
       sound_stack args []
   | sound_stack_cons
-      args_tail tail ms lst0
+      args_tail tail ms lst0 midx
       (TL: sound_stack args_tail tail)
       (FORALLSU: forall su0
           (SUARGS: Sound.args su0 args_tail)
@@ -109,11 +109,11 @@ Section ADQSOUND.
                  exists su_gr,
                    (<<ARGS: Sound.args su_gr args>>) /\
                    (<<LE: Sound.lepriv su0 su_gr>>) /\
-                   (<<K: forall retv lst1 su_ret
+                   (<<K: forall oh retv lst1 su_ret
                        (LE: Sound.hle su_gr su_ret)
                        (SURETV: Sound.retv su_ret retv)
                        (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
-                       (AFTER: ms.(ModSem.after_external) lst0 retv lst1),
+                       (AFTER: ms.(ModSem.after_external) lst0 oh retv lst1),
                        (* sound_state_all su0 args.(Args.get_m) lst1>>) *)
                        sound_state_all su0 (Args.get_m args_tail) lst1>>)
              >>)
@@ -122,11 +122,11 @@ Section ADQSOUND.
       )
       (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex (Args.get_m args_tail))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex):
-      sound_stack args ((Frame.mk ms lst0) :: tail).
+      sound_stack args ((Frame.mk ms lst0 midx) :: tail).
 
   Inductive sound_state: state -> Prop :=
   | sound_state_normal
-      args_tail tail ms lst0 m_arg
+      args_tail tail ms lst0 midx m_arg msohs
       (TL: sound_stack args_tail tail)
       (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex m_arg)
       (FORALLSU: forall su0
@@ -139,15 +139,15 @@ Section ADQSOUND.
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
       (ABCD: (Args.get_m args_tail) = m_arg)
     :
-      sound_state (State ((Frame.mk ms lst0) :: tail))
+      sound_state (State ((Frame.mk ms lst0 midx) :: tail) msohs)
   | sound_state_call
-      m_tail frs args
+      m_tail frs args msohs
       (* (ARGS: Sound.args su0 args) *)
       (STK: sound_stack args frs)
       (* (MLE: Sound.mle su0 m_tail args.(Args.get_m)) *)
       (EQ: (Args.get_m args) = m_tail)
       (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex m_tail):
-      sound_state (Callstate args frs).
+      sound_state (Callstate args frs msohs).
 
   Lemma sound_init
         st0
@@ -202,11 +202,14 @@ Section ADQSOUND.
       inv SUST. ss. des_ifs. esplits; eauto. econs; eauto.
       + ii. esplits; eauto.
         * ii. inv PRSV. eapply INIT0; eauto. inv SUGE. rewrite Forall_forall in *. eapply GE. inv MSFIND. ss. des_ifs.
-      + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *. des; clarify.
+          eapply nth_error_In; eauto.
+      + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *. destruct midx; ss; clarify.
         { eapply system_local_preservation. }
-        u in MODSEM. rewrite in_map_iff in MODSEM. des; clarify. rename x into md_src.
+        u in MODSEM. rewrite list_map_nth in MODSEM. unfold option_map in *; des_ifs. des; clarify.
+        rename t into md_src. rename Heq0 into MODSEM0.
         assert(exists mp, In mp pp /\ mp.(ModPair.src) = md_src).
-        { clear - MODSEM0. rr in pp. rr in p_src. subst p_src. rewrite in_map_iff in *. des. eauto. }
+        { clear - MODSEM0. rr in pp. rr in p_src. subst p_src. rewrite list_map_nth in *.
+          unfold option_map in *. des_ifs. esplits; eauto. eapply nth_error_In; et. }
         des. exploit SIMPROG; eauto. intros MPSIM. inv MPSIM.
         destruct SIMSKENV. exploit SIMMS.
         { eapply INCLSRC; et. }
@@ -215,7 +218,7 @@ Section ADQSOUND.
         { eapply SkEnv.load_skenv_wf; et. }
         { eapply SSLE; eauto. }
         { eauto. }
-        intro SIM; des. inv SIM. ss. esplits; eauto.
+        intro SIM; des. inv SIMMSP. ss. esplits; eauto.
     - (* INTERNAL *)
       inv SUST. ss. esplits; eauto. econs; eauto. i. des.
       exploit FORALLSU; eauto. { eapply local_preservation_noguarantee_weak; eauto. } intro U; des. esplits; eauto. i. ss. inv PRSV.

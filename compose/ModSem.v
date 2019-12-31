@@ -154,12 +154,12 @@ Module ModSem.
     at_external_dtm: forall st oh0 oh1 args0 args1
         (AT0: at_external st oh0 args0)
         (AT1: at_external st oh1 args1),
-        args0 = args1;
+        oh0 = oh1 /\ args0 = args1;
 
     final_frame_dtm: forall st oh0 oh1 retv0 retv1
         (FINAL0: final_frame st oh0 retv0)
         (FINAL1: final_frame st oh1 retv1),
-        retv0 = retv1;
+        oh0 = oh1 /\ retv0 = retv1;
     after_external_dtm: forall st_call oh retv st0 st1
         (AFTER0: after_external st_call oh retv st0)
         (AFTER0: after_external st_call oh retv st1),

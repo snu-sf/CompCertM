@@ -138,8 +138,23 @@ Section SimMemOh.
     lepriv_proj: (lepriv ==> SimMem.lepriv) sm sm; (* TODO: better style? *)
   }.
 
+  Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
+
+  Definition sim_args `{SMO: class} (oh_src: owned_heap_src) (oh_tgt: owned_heap_tgt)
+             (args_src args_tgt: Args.t) (smo0: SimMemOh.t): Prop :=
+    (<<SIMARGS: SimMem.sim_args args_src args_tgt smo0>>) /\
+    (<<OHSRC: oh_src = smo0.(SimMemOh.oh_src)>>) /\ (<<OHTGT: oh_tgt = smo0.(SimMemOh.oh_tgt)>>)
+  .
+
+  Definition sim_retv `{SMO: class} (oh_src: owned_heap_src) (oh_tgt: owned_heap_tgt)
+             (retv_src retv_tgt: Retv.t) (smo0: SimMemOh.t): Prop :=
+    (<<SIMARGS: SimMem.sim_retv retv_src retv_tgt smo0>>) /\
+    (<<OHSRC: oh_src = smo0.(SimMemOh.oh_src)>>) /\ (<<OHTGT: oh_tgt = smo0.(SimMemOh.oh_tgt)>>)
+  .
+
 End SimMemOh.
 End SimMemOh.
+Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
 
 
 Local Obligation Tactic := try (by econs); try (by ii; ss).
@@ -155,17 +170,22 @@ Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class uni
 Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.
 
 
-Section TEST.
+(* Section TEST. *)
 
-  Variable A B: Type.
-  Context {SM: SimMem.class}.
-  Context {SMO: SimMemOh.class A B}.
+(*   Variable A B: Type. *)
+(*   Context {SM: SimMem.class}. *)
+(*   Context {SMO: SimMemOh.class A B}. *)
 
-  Check SimMem.t.
-  Check (SimMemOh.t).
-  Set Printing All.
-  Variable ab: (@SimMemOh.t SM A B SMO).
-  Variable abc: (SimMemOh.t (SM := SM) (owned_heap_src := A) (owned_heap_tgt := B)).
-  Variable abcd: SimMemOh.t.
+(*   Check SimMem.t. *)
+(*   Check (SimMemOh.t). *)
+(*   Set Printing All. *)
+(*   Variable ab: (@SimMemOh.t SM A B SMO). *)
+(*   Variable abc: (SimMemOh.t (SM := SM) (owned_heap_src := A) (owned_heap_tgt := B)). *)
+(*   Variable abcd: SimMemOh.t. *)
+(*   Fail Check abcd: SimMem.t. *)
+(*   Check abcd.(SimMemOh.sm): SimMem.t. *)
+(*   Print Coercions. *)
+(*   Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t. *)
+(*   Check abcd: SimMem.t. *)
 
-End TEST.
+(* End TEST. *)

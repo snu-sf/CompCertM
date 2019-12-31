@@ -109,3 +109,46 @@ End SimMem.
 Hint Unfold SimMem.future.
 
 Hint Resolve SimMem.pub_priv.
+
+
+Module SimMemOh.
+Section SimMemOh.
+
+  Context {SM: SimMem.class}.
+  Variable owned_heap_src owned_heap_tgt: Type.
+
+  Local Open Scope signature_scope.
+  Class class :=
+  {
+    t: Type;
+    sm:> t -> SimMem.t;
+    oh_src: t -> owned_heap_src;
+    oh_tgt: t -> owned_heap_tgt;
+    wf: t -> Prop;
+    le: t -> t -> Prop;
+    lepriv: t -> t -> Prop;
+
+    le_PreOrder :> PreOrder le;
+
+    pub_priv: forall smo0 smo1, le smo0 smo1 -> lepriv smo0 smo1;
+
+    wf_proj: wf <1= SimMem.wf <*> sm;
+    le_proj: (le ==> SimMem.le) sm sm; (* TODO: better style? *)
+    lepriv_proj: (lepriv ==> SimMem.lepriv) sm sm; (* TODO: better style? *)
+  }.
+
+End SimMemOh.
+End SimMemOh.
+
+
+Local Obligation Tactic := try (by econs); try (by ii; ss).
+
+Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class unit unit) :=
+  {
+    sm := id;
+    wf := SimMem.wf;
+    le := SimMem.le;
+    lepriv := SimMem.lepriv;
+  }
+.
+Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.

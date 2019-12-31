@@ -25,11 +25,19 @@ Section SIMMODSEM.
 
   Variables ms_src ms_tgt: ModSem.t.
   Context {SM: SimMem.class}.
+  Context {SMO: SimMemOh.class ms_src.(ModSem.owned_heap) ms_tgt.(ModSem.owned_heap)}.
   Context {SS: SimSymb.class SM}.
   Variable sound_states: ms_src.(state) -> Prop.
 
+  Check SimMem.t.
+  Check (SimMemOh.t).
+  Set Printing All.
+  Variable ab: (@SimMemOh.t SM ms_src.(ModSem.owned_heap) ms_tgt.(ModSem.owned_heap) SMO).
+  Variable abc: (SimMemOh.t (SM := SM) (owned_heap_src := ms_src.(ModSem.owned_heap))
+                            (owned_heap_tgt := ms_tgt.(ModSem.owned_heap))).
+  Fail Variable abcd: SimMemOh.t.
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMem.t -> Prop)
-            (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMem.t): Prop :=
+            (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMemOh.t): Prop :=
   | fsim_step_step
       (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
       (STEP: forall st_src1 tr
@@ -78,29 +86,29 @@ Section SIMMODSEM.
       (MWF: SimMem.wf sm0)
       (SAFESRC: ms_src.(is_call) st_src0)
       (SU: forall (SU: DUMMY_PROP),
-      <<CALLFSIM: forall args_src
-          (ATSRC: ms_src.(at_external) st_src0 args_src),
-          exists args_tgt sm_arg,
+      <<CALLFSIM: forall oh_src0 args_src
+          (ATSRC: ms_src.(at_external) st_src0 oh_src0 args_src),
+          exists oh_tgt0 args_tgt sm_arg,
             (<<SIMARGS: SimMem.sim_args args_src args_tgt sm_arg>>
             /\ (<<MWF: SimMem.wf sm_arg>>)
             /\ (<<MLE: SimMem.lepriv sm0 sm_arg>>)
-            /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 args_tgt>>)
-            /\ (<<K: forall sm_ret retv_src retv_tgt st_src1
+            /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 oh_tgt0 args_tgt>>)
+            /\ (<<K: forall sm_ret oh_src1 retv_src oh_tgt1 retv_tgt st_src1
                 (MLE: SimMem.le sm_arg sm_ret)
                 (MWF: SimMem.wf sm_ret)
                 (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
-                (AFTERSRC: ms_src.(after_external) st_src0 retv_src st_src1),
+                (AFTERSRC: ms_src.(after_external) st_src0 oh_src1 retv_src st_src1),
                 exists st_tgt1 sm_after i1,
-                  (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 retv_tgt st_tgt1>>) /\
+                  (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 oh_tgt1 retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMem.le sm0 sm_after>>) /\
                   (<<LXSIM: lxsim i1 st_src1 st_tgt1 sm_after>>)>>))>>)
 
   | lxsim_final
-      sm_ret retv_src retv_tgt
+      sm_ret oh_src oh_tgt retv_src retv_tgt
       (MLE: SimMem.le sm0 sm_ret)
       (MWF: SimMem.wf sm_ret)
-      (FINALSRC: ms_src.(final_frame) st_src0 retv_src)
-      (FINALTGT: ms_tgt.(final_frame) st_tgt0 retv_tgt)
+      (FINALSRC: ms_src.(final_frame) st_src0 oh_src retv_src)
+      (FINALTGT: ms_tgt.(final_frame) st_tgt0 oh_tgt retv_tgt)
       (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret).
 
 

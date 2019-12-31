@@ -115,11 +115,11 @@ Hint Resolve SimMem.pub_priv.
 Module SimMemOh.
 Section SimMemOh.
 
-  Context {SM: SimMem.class}.
-  Variable owned_heap_src owned_heap_tgt: Type.
+  (* Context {SM: SimMem.class}. *)
+  (* Variable owned_heap_src owned_heap_tgt: Type. *)
 
   Local Open Scope signature_scope.
-  Class class :=
+  Class class {SM: SimMem.class} (owned_heap_src owned_heap_tgt: Type) :=
   {
     t: Type;
     sm:> t -> SimMem.t;
@@ -153,3 +153,19 @@ Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class uni
   }
 .
 Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.
+
+
+Section TEST.
+
+  Variable A B: Type.
+  Context {SM: SimMem.class}.
+  Context {SMO: SimMemOh.class A B}.
+
+  Check SimMem.t.
+  Check (SimMemOh.t).
+  Set Printing All.
+  Variable ab: (@SimMemOh.t SM A B SMO).
+  Variable abc: (SimMemOh.t (SM := SM) (owned_heap_src := A) (owned_heap_tgt := B)).
+  Variable abcd: SimMemOh.t.
+
+End TEST.

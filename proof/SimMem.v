@@ -118,8 +118,10 @@ Section SimMemOh.
   (* Variable owned_heap_src owned_heap_tgt: Type. *)
 
   Local Open Scope signature_scope.
-  Class class {SM: SimMem.class} (owned_heap_src owned_heap_tgt: Type) :=
+  Class class {SM: SimMem.class} :=
   {
+    owned_heap_src: Type;
+    owned_heap_tgt: Type;
     t: Type;
     sm:> t -> SimMem.t;
     oh_src: t -> owned_heap_src;
@@ -158,9 +160,11 @@ Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
 
 Local Obligation Tactic := try (by econs); try (by ii; ss).
 
-Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class unit unit) :=
+Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class) :=
   {
     sm := id;
+    owned_heap_src := unit;
+    owned_heap_tgt := unit;
     wf := SimMem.wf;
     le := SimMem.le;
     lepriv := SimMem.lepriv;

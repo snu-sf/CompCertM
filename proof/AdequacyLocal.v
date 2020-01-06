@@ -43,28 +43,28 @@ Section SIMGE.
       sim_ge sm0 (ge_src, skenv_link_src) (ge_tgt, skenv_link_tgt).
 
   Lemma find_fptr_owner_fsim
-        sm0 ge_src ge_tgt fptr_src fptr_tgt ms_src
+        sm0 ge_src ge_tgt fptr_src fptr_tgt ms_src midx
         (SIMGE: sim_ge sm0 ge_src ge_tgt)
         (SIMFPTR: SimMem.sim_val sm0 fptr_src fptr_tgt)
-        (FINDSRC: Ge.find_fptr_owner ge_src fptr_src ms_src):
+        (FINDSRC: Ge.find_fptr_owner ge_src fptr_src ms_src midx):
       exists msp,
         <<SRC: msp.(ModSemPair.src) = ms_src>>
-        /\ <<FINDTGT: Ge.find_fptr_owner ge_tgt fptr_tgt msp.(ModSemPair.tgt)>>
+        /\ <<FINDTGT: Ge.find_fptr_owner ge_tgt fptr_tgt msp.(ModSemPair.tgt) midx>>
         /\ <<SIMMS: ModSemPair.sim msp>>
         /\ <<SIMSKENV: ModSemPair.sim_skenv msp sm0>>
         /\ <<MFUTURE: SimMem.future msp.(ModSemPair.sm) sm0>>.
   Proof.
     inv SIMGE.
-    { inv FINDSRC; ss. }
+    { inv FINDSRC; ss. destruct midx; ss. }
     rewrite Forall_forall in *. inv FINDSRC. ss.
-    rewrite in_map_iff in MODSEM. des. rename x into msp. esplits; eauto. clarify.
+    rewrite list_map_nth in *. destruct (nth_error msps midx) eqn:T; ss; clarify.  rename t into msp.
+    hexpl nth_error_In.
     specialize (SIMMSS msp). exploit SIMMSS; eauto. clear SIMMSS. intro SIMMS.
     specialize (SIMSKENV msp). exploit SIMSKENV; eauto. clear SIMSKENV. intro SIMSKENV.
 
     exploit SimSymb.sim_skenv_func_bisim; try apply SIMSKENV. intro SIMFUNC; des.
-    inv SIMFUNC. exploit FUNCFSIM; eauto. i; des. clear_tac. inv SIM. econs; eauto.
-    apply in_map_iff. esplits; eauto.
-
+    inv SIMFUNC. exploit FUNCFSIM; eauto. i; des. clear_tac. inv SIM. esplits; eauto. econs; eauto.
+    ss. rewrite list_map_nth. rewrite T. ss.
   Qed.
 
   Theorem mfuture_preserves_sim_ge
@@ -170,10 +170,11 @@ Section SIMGE.
         { ss. eauto. }
         { instantiate (2:= Empty_set). ii; ss. }
         ii. inv SIMSKENV0. ss.
+        rr in SIMARGS; des. clarify.
         split; cycle 1.
-        { ii; des. inv SAFESRC. inv SIMARGS; ss. esplits; eauto. econs; eauto. }
+        { ii; des. inv SAFESRC. inv SIMARGS0; ss. esplits; eauto. econs; eauto. }
         ii. sguard in SAFESRC. des. inv INITTGT.
-        inv SIMARGS; ss. clarify.
+        inv SIMARGS0; ss. clarify.
         esplits; eauto.
         { refl. }
         { econs; eauto. }
@@ -205,7 +206,7 @@ Section SIMGE.
         { eauto. }
         { econs; eauto. }
         { econs; eauto. }
-        { inv RETV; ss. unfold Retv.mk in *. clarify. econs; ss; eauto. }
+        { inv RETV; ss. unfold Retv.mk in *. clarify. rr. esplits; eauto. econs; ss; eauto. }
     }
     des. rewrite <- SYSSRC. rewrite <- SYSTGT. eapply sim_ge_cons; ss.
     - ii. destruct pp; ss.

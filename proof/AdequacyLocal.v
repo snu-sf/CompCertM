@@ -19,6 +19,7 @@ Set Implicit Arguments.
 
 
 
+Global Program Instance LeibEq_trivial (A: Type): LeibEq A A.
 
 
 Section SIMGE.

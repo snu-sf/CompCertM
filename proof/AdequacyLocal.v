@@ -94,15 +94,15 @@ Section SIMGE.
                       (msp.(ModSemPair.tgt) :: tl_tgt, skenv_link_tgt)>>.
   Proof. red. inv SIMGETL; ss. econstructor 2 with (msps := msp :: msps); eauto. Qed.
 
-  Lemma to_msp_tgt: forall skenv_tgt skenv_src pp sm_init,
-          map ModSemPair.tgt (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) =
-          map (fun md => Mod.modsem md skenv_tgt) (ProgPair.tgt pp).
-  Proof. i. ginduction pp; ii; ss. f_equal. erewrite IHpp; eauto. Qed.
+  (* Lemma to_msp_tgt: forall skenv_tgt skenv_src pp sm_init, *)
+  (*         map ModSemPair.tgt (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) = *)
+  (*         map (fun md => Mod.modsem md skenv_tgt) (ProgPair.tgt pp). *)
+  (* Proof. i. ginduction pp; ii; ss. f_equal. erewrite IHpp; eauto. Qed. *)
 
-  Lemma to_msp_src: forall skenv_tgt skenv_src pp sm_init,
-      map ModSemPair.src (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) =
-      map (fun md => Mod.modsem md skenv_src) (ProgPair.src pp).
-  Proof. i. ginduction pp; ii; ss. f_equal. erewrite IHpp; eauto. Qed.
+  (* Lemma to_msp_src: forall skenv_tgt skenv_src pp sm_init, *)
+  (*     map ModSemPair.src (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) = *)
+  (*     map (fun md => Mod.modsem md skenv_src) (ProgPair.src pp). *)
+  (* Proof. i. ginduction pp; ii; ss. f_equal. erewrite IHpp; eauto. Qed. *)
 
   Lemma to_msp_sim_skenv
         sm_init mp skenv_src skenv_tgt ss_link
@@ -113,11 +113,13 @@ Section SIMGE.
         (SIMMP: ModPair.sim mp)
         (LESS: SimSymb.le (ModPair.ss mp) ss_link)
         (SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_src skenv_tgt):
-        <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp skenv_src skenv_tgt sm_init mp) sm_init>>.
+        exists SMO, <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp skenv_src skenv_tgt sm_init mp SMO) sm_init>>.
   Proof.
+    inv SIMMP.
+    exploit SIMMS; eauto. i; des.
+    esplits; eauto.
     u. econs; ss; eauto; cycle 1.
     { rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
-    inv SIMMP.
     eapply SimSymb.sim_skenv_monotone; revgoals; try rewrite SKSRC; try rewrite SKTGT; try eapply Mod.get_modsem_skenv_spec; try eapply SIMMP; ss; eauto.
   Qed.
 
@@ -168,7 +170,7 @@ Section SIMGE.
       eexists (ModSemPair.mk _ _ ss_link sm_init). ss. esplits; eauto.
       - exploit system_local_preservation. intro SYSSU; des. econs.
         { ss. eauto. }
-        { instantiate (2:= Empty_set). ii; ss. }
+        { instantiate (3:= Empty_set). ii; ss. }
         ii. inv SIMSKENV0. ss.
         rr in SIMARGS; des. clarify.
         split; cycle 1.
@@ -200,6 +202,7 @@ Section SIMGE.
         { left. apply plus_one. econs.
           - eapply System.modsem_determinate; et.
           - ss. econs; eauto. }
+        { instantiate (2:= @SimMemOh_default SM). ss. eauto. }
         left. pfold.
         econs 4.
         { refl. }
@@ -218,10 +221,11 @@ Section SIMGE.
         set (skenv_src := (Sk.load_skenv (ModPair.src mp))) in *.
         set (skenv_tgt := (Sk.load_skenv (ModPair.tgt mp))) in *.
         inv SIMPROG. inv H3. rename H2 into SIMMP. inv SIMMP.
-        econstructor 2 with (msps := (map (ModPair.to_msp skenv_src skenv_tgt sm_init) [mp])); eauto; ss; revgoals; econs; eauto.
+        exploit SIMMS; eauto; try eapply SkEnv.load_skenv_wf; et. i; des.
+        (* econstructor 2 with (msps := (map (fun mpp => ModPair.to_msp skenv_src skenv_tgt sm_init mpp SMO) [mp])); eauto; ss; revgoals; econs; eauto. *)
+        econstructor 2 with (msps := [ModPair.to_msp skenv_src skenv_tgt sm_init mp SMO]); eauto; ss; revgoals; econs; eauto.
         - u. erewrite Mod.get_modsem_skenv_link_spec; ss.
         - u. erewrite Mod.get_modsem_skenv_link_spec; ss.
-        -  eapply SIMMS; eauto; eapply SkEnv.load_skenv_wf; et.
         - econs; ss; eauto; cycle 1.
           { unfold Mod.modsem. rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
           r. ss. eapply SimSymb.sim_skenv_monotone; try rewrite SKSRC0; try rewrite SKTGT0;

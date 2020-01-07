@@ -218,7 +218,7 @@ Section ADQSOUND.
         { eapply SkEnv.load_skenv_wf; et. }
         { eapply SSLE; eauto. }
         { eauto. }
-        intro SIM; des. inv SIM. ss. esplits; eauto.
+        intro SIM; des. inv SIMMSP. ss. esplits; eauto.
     - (* INTERNAL *)
       inv SUST. ss. esplits; eauto. econs; eauto. i. des.
       exploit FORALLSU; eauto. { eapply local_preservation_noguarantee_weak; eauto. } intro U; des. esplits; eauto. i. ss. inv PRSV.

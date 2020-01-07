@@ -25,7 +25,7 @@ Set Implicit Arguments.
 
 Module ProgPair.
 Section PROGPAIR.
-Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class} {SMO: @SimMemOh.class SM}.
 
   Definition t := list ModPair.t.
 
@@ -52,7 +52,7 @@ Hint Unfold ProgPair.sim ProgPair.src ProgPair.tgt.
 
 
 Section SIM.
-Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class} {SMO: @SimMemOh.class SM}.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.

@@ -160,16 +160,18 @@ Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
 
 Local Obligation Tactic := try (by econs); try (by ii; ss).
 
-Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class) :=
-  {
-    sm := id;
-    owned_heap_src := unit;
-    owned_heap_tgt := unit;
-    wf := SimMem.wf;
-    le := SimMem.le;
-    lepriv := SimMem.lepriv;
-  }
-.
+(* Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class) := *)
+(*   { *)
+(*     sm := id; *)
+(*     owned_heap_src := unit; *)
+(*     owned_heap_tgt := unit; *)
+(*     wf := SimMem.wf; *)
+(*     le := SimMem.le; *)
+(*     lepriv := SimMem.lepriv; *)
+(*   } *)
+(* . *)
+Program Definition SimMemOh_default (SM: SimMem.class): (SimMemOh.class) :=
+  @SimMemOh.Build_class SM unit unit SimMem.t id _ _ SimMem.wf SimMem.le SimMem.lepriv _ _ _ _ _.
 Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.
 
 

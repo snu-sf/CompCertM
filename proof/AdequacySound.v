@@ -24,6 +24,7 @@ Section ADQSOUND.
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
   Context `{SU: Sound.class}.
+  Context `{SMO: @SimMemOh.class SM}.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.

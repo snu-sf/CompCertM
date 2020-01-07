@@ -27,7 +27,7 @@ Set Implicit Arguments.
 Module ModPair.
 
 Section MODPAIR.
-Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class} {SMO: @SimMemOh.class SM}.
 
   Record t: Type := mk {
     src: Mod.t;

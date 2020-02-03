@@ -159,7 +159,7 @@ Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
 
 Local Obligation Tactic := try (by econs); try (by ii; ss).
 
-Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class unit unit) :=
+Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class unit unit) | 100 :=
   {
     sm := id;
     wf := SimMem.wf;
@@ -220,18 +220,30 @@ Section SimMemOhs.
 
   Require Import Program.
 
-  Definition sim_args `{SMOS: class} (midx: Midx.t) (oh_src: Ohs) (oh_tgt: Ohs)
+  Definition sim_args `{SMOS: class} (midx: Midx.t) (ohs_src: Ohs) (ohs_tgt: Ohs)
              (args_src args_tgt: Args.t) (smo0: SimMemOhs.t): Prop :=
     (<<SIMARGS: SimMem.sim_args args_src args_tgt smo0>>) /\
-    (<<OHSRC: oh_src ~= projT2 (smo0.(SimMemOhs.ohs_src) midx)>>) /\
-    (<<OHTGT: oh_tgt ~= projT2 (smo0.(SimMemOhs.ohs_tgt) midx)>>)
+    (* (<<OHSRC: ohs_src midx ~= projT2 (smo0.(SimMemOhs.ohs_src) midx)>>) /\ *)
+    (* (<<OHTGT: ohs_tgt midx ~= projT2 (smo0.(SimMemOhs.ohs_tgt) midx)>>) *)
+
+    (* (<<OHSRC: ohs_src midx = (smo0.(SimMemOhs.ohs_src) midx)>>) /\ *)
+    (* (<<OHTGT: ohs_tgt midx = (smo0.(SimMemOhs.ohs_tgt) midx)>>) *)
+
+    (<<OHSRC: ohs_src = (smo0.(SimMemOhs.ohs_src))>>) /\
+    (<<OHTGT: ohs_tgt = (smo0.(SimMemOhs.ohs_tgt))>>)
   .
 
-  Definition sim_retv `{SMOS: class} (midx: Midx.t) (oh_src: Ohs) (oh_tgt: Ohs)
+  Definition sim_retv `{SMOS: class} (midx: Midx.t) (ohs_src: Ohs) (ohs_tgt: Ohs)
              (retv_src retv_tgt: Retv.t) (smo0: SimMemOhs.t): Prop :=
     (<<SIMARGS: SimMem.sim_retv retv_src retv_tgt smo0>>) /\
-    (<<OHSRC: oh_src ~= projT2 (smo0.(SimMemOhs.ohs_src) midx)>>) /\
-    (<<OHTGT: oh_tgt ~= projT2 (smo0.(SimMemOhs.ohs_tgt) midx)>>)
+    (* (<<OHSRC: ohs_src midx ~= projT2 (smo0.(SimMemOhs.ohs_src) midx)>>) /\ *)
+    (* (<<OHTGT: ohs_tgt midx ~= projT2 (smo0.(SimMemOhs.ohs_tgt) midx)>>) *)
+
+    (* (<<OHSRC: ohs_src midx = (smo0.(SimMemOhs.ohs_src) midx)>>) /\ *)
+    (* (<<OHTGT: ohs_tgt midx = (smo0.(SimMemOhs.ohs_tgt) midx)>>) *)
+
+    (<<OHSRC: ohs_src = (smo0.(SimMemOhs.ohs_src))>>) /\
+    (<<OHTGT: ohs_tgt = (smo0.(SimMemOhs.ohs_tgt))>>)
   .
 
 End SimMemOhs.

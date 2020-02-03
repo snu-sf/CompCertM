@@ -11,7 +11,7 @@ Require Import Ordered.
 Require Import AST.
 Require Import Integers.
 
-Require Import ModSem.
+Require Import Sem ModSem.
 
 Set Implicit Arguments.
 
@@ -189,3 +189,51 @@ Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.
 (*   Check abcd: SimMem.t. *)
 
 (* End TEST. *)
+
+Module SimMemOhs.
+Section SimMemOhs.
+
+  (* Context {SM: SimMem.class}. *)
+  (* Variable owned_heap_src owned_heap_tgt: Type. *)
+
+  Local Open Scope signature_scope.
+  Class class {SM: SimMem.class} :=
+  {
+    t: Type;
+    sm:> t -> SimMem.t;
+    ohs_src: t -> Ohs;
+    ohs_tgt: t -> Ohs;
+    wf: t -> Prop;
+    le: t -> t -> Prop;
+    lepriv: t -> t -> Prop;
+
+    le_PreOrder :> PreOrder le;
+
+    pub_priv: forall smo0 smo1, le smo0 smo1 -> lepriv smo0 smo1;
+
+    wf_proj: wf <1= SimMem.wf <*> sm;
+    le_proj: (le ==> SimMem.le) sm sm; (* TODO: better style? *)
+    lepriv_proj: (lepriv ==> SimMem.lepriv) sm sm; (* TODO: better style? *)
+  }.
+
+  Coercion SimMemOhs.sm: SimMemOhs.t >-> SimMem.t.
+
+  Require Import Program.
+
+  Definition sim_args `{SMOS: class} (midx: Midx.t) (oh_src: Ohs) (oh_tgt: Ohs)
+             (args_src args_tgt: Args.t) (smo0: SimMemOhs.t): Prop :=
+    (<<SIMARGS: SimMem.sim_args args_src args_tgt smo0>>) /\
+    (<<OHSRC: oh_src ~= projT2 (smo0.(SimMemOhs.ohs_src) midx)>>) /\
+    (<<OHTGT: oh_tgt ~= projT2 (smo0.(SimMemOhs.ohs_tgt) midx)>>)
+  .
+
+  Definition sim_retv `{SMOS: class} (midx: Midx.t) (oh_src: Ohs) (oh_tgt: Ohs)
+             (retv_src retv_tgt: Retv.t) (smo0: SimMemOhs.t): Prop :=
+    (<<SIMARGS: SimMem.sim_retv retv_src retv_tgt smo0>>) /\
+    (<<OHSRC: oh_src ~= projT2 (smo0.(SimMemOhs.ohs_src) midx)>>) /\
+    (<<OHTGT: oh_tgt ~= projT2 (smo0.(SimMemOhs.ohs_tgt) midx)>>)
+  .
+
+End SimMemOhs.
+End SimMemOhs.
+Coercion SimMemOhs.sm: SimMemOhs.t >-> SimMem.t.

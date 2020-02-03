@@ -310,3 +310,203 @@ Section FACTORTARGET.
   Qed.
 
 End FACTORTARGET.
+
+
+
+Module Ohs.
+Section SIMMODSEM.
+
+  Variables ms_src ms_tgt: ModSem.t.
+  Context {SM: SimMem.class}.
+  Context {SMOS: SimMemOhs.class}.
+  (* TODO: make SS's argument "SM" implicit; like SMO *)
+  Context {SS: SimSymb.class SM}.
+  Variable sound_states: ms_src.(state) -> Prop.
+
+  Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMemOhs.t -> Prop)
+            (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smo0: SimMemOhs.t): Prop :=
+  | fsim_step_step
+      (SAFESRC: ~ ms_src.(ModSem.is_call) st_src0 /\ ~ ms_src.(ModSem.is_return) st_src0)
+      (STEP: forall st_src1 tr
+          (STEPSRC: Step ms_src st_src0 tr st_src1),
+          exists i1 st_tgt1 smo1,
+            (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ ord i1 i0>>)
+            /\ <<MLE: SimMemOhs.le smo0 smo1>>
+            /\ <<FSIM: fsim i1 st_src1 st_tgt1 smo1>>)
+      (RECEP: receptive_at ms_src st_src0)
+  | fsim_step_stutter
+      i1 st_tgt1 smo1
+      (PLUS: DPlus ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
+      (MLE: SimMemOhs.le smo0 smo1)
+      (BSIM: fsim i1 st_src0 st_tgt1 smo1).
+
+  Inductive bsim_step (bsim: idx -> state ms_src -> state ms_tgt -> SimMemOhs.t -> Prop)
+            (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smo0: SimMemOhs.t): Prop :=
+  | bsim_step_step
+      (STEP: forall st_tgt1 tr
+          (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1),
+          exists i1 st_src1 smo1,
+            (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>)
+            /\ <<MLE: SimMemOhs.le smo0 smo1>>
+            /\ <<BSIM: bsim i1 st_src1 st_tgt1 smo1>>)
+      (PROGRESS: <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)
+  | bsim_step_stutter
+      i1 st_src1 smo1
+      (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
+      (MLE: SimMemOhs.le smo0 smo1)
+      (BSIM: bsim i1 st_src1 st_tgt0 smo1).
+
+  Let midx: Midx.t := ms_src.(ModSem.midx).
+  Class LeibEq (A B: Type) := { leibeq: A = B }.
+  Arguments LeibEq: clear implicits.
+  Global Program Instance LeibEq_rev (A B: Type) `{LeibEq A B}: LeibEq B A.
+  Next Obligation. rewrite leibeq. eauto. Defined.
+  Definition cast (A B: Type) `{LeibEq A B} (a: A): B. rewrite <- leibeq. apply a. Defined.
+  Definition cast_sigT (a: {ty: Type & ty}) (B: Type) `{LeibEq (projT1 a) B}: B.
+    rewrite leibeq. destruct a. simpl. auto.
+  Defined.
+  Global Program Instance LeibEq_trivial (A: Type): LeibEq A A.
+  Definition Ohs_wf (ohs_src ohs_tgt: Sem.Ohs): Prop :=
+    (* (<<TYSRC: projT1 (ohs_src midx) = ms_src.(ModSem.owned_heap)>>) /\ *)
+    (* (<<TYTGT: projT1 (ohs_tgt midx) = ms_tgt.(ModSem.owned_heap)>>) *)
+    (<<TYSRC: LeibEq (projT1 (ohs_src midx)) ms_src.(ModSem.owned_heap)>>) /\
+    (<<TYTGT: LeibEq (projT1 (ohs_tgt midx)) ms_tgt.(ModSem.owned_heap)>>)
+  .
+
+  Inductive _lxsim_pre (lxsim: idx -> state ms_src -> state ms_tgt -> SimMemOhs.t -> Prop)
+            (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smo0: SimMemOhs.t): Prop :=
+  | lxsim_step_forward
+      (SU: forall (SU: DUMMY_PROP),
+      <<FSTEP: fsim_step lxsim i0 st_src0 st_tgt0 smo0>>)
+
+  | lxsim_step_backward
+      (SU: forall (SU: DUMMY_PROP),
+      (<<BSTEP: forall
+          (SAFESRC: safe_modsem ms_src st_src0),
+         (<<BSTEP: bsim_step lxsim i0 st_src0 st_tgt0 smo0>>)>>))
+
+  | lxsim_at_external
+      (MWF: SimMemOhs.wf smo0)
+      (SAFESRC: ms_src.(is_call) st_src0)
+      (SU: forall (SU: DUMMY_PROP),
+      <<CALLFSIM: forall (ohs_src0: Sem.Ohs) args_src
+          (OHSWFSRC: LeibEq (projT1 (ohs_src0 midx)) ms_src.(ModSem.owned_heap))
+          (ATSRC: ms_src.(at_external) st_src0 (cast_sigT (ohs_src0 midx)) args_src),
+          exists ohs_tgt0 oh_tgt0 args_tgt (smo_arg: SimMemOhs.t),
+            (<<SIMARGS: SimMemOhs.sim_args midx ohs_src0 ohs_tgt0 args_src args_tgt smo_arg>>
+            /\ (<<MWF: SimMemOhs.wf smo_arg>>)
+            /\ (<<MLE: SimMemOhs.lepriv smo0 smo_arg>>)
+            /\ (<<OHSWFTGT: LeibEq (projT1 (ohs_src0 midx)) ms_src.(ModSem.owned_heap)>>)
+            /\ (<<OHTGT: ohs_tgt0 midx ~= oh_tgt0>>)
+            /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 oh_tgt0 args_tgt>>)
+            /\ (<<K: forall smo_ret ohs_src1 retv_src ohs_tgt1 retv_tgt st_src1
+                (OHSWFSRC: LeibEq (projT1 (ohs_src1 midx)) ms_src.(ModSem.owned_heap))
+                (OHSWFTGT: LeibEq (projT1 (ohs_tgt1 midx)) ms_tgt.(ModSem.owned_heap))
+                (MLE: SimMemOhs.le smo_arg smo_ret)
+                (MWF: SimMemOhs.wf smo_ret)
+                (SIMRETV: SimMemOhs.sim_retv midx ohs_src1 ohs_tgt1 retv_src retv_tgt smo_ret)
+                (AFTERSRC: ms_src.(after_external) st_src0 (cast_sigT (ohs_src1 midx)) retv_src st_src1),
+                exists st_tgt1 smo_after i1,
+                  (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 (cast_sigT (ohs_tgt1 midx)) retv_tgt st_tgt1>>) /\
+                  (<<MLEPUB: SimMemOhs.le smo0 smo_after>>) /\
+                  (<<LXSIM: lxsim i1 st_src1 st_tgt1 smo_after>>)>>))>>)
+
+  | lxsim_final
+      smo_ret ohs_src ohs_tgt retv_src retv_tgt
+      (OHSWFSRC: LeibEq (projT1 (ohs_src midx)) ms_src.(ModSem.owned_heap))
+      (OHSWFTGT: LeibEq (projT1 (ohs_tgt midx)) ms_tgt.(ModSem.owned_heap))
+      (MLE: SimMemOhs.le smo0 smo_ret)
+      (MWF: SimMemOhs.wf smo_ret)
+      (FINALSRC: ms_src.(final_frame) st_src0 (cast_sigT (ohs_src midx)) retv_src)
+      (FINALTGT: ms_tgt.(final_frame) st_tgt0 (cast_sigT (ohs_tgt midx)) retv_tgt)
+      (SIMRETV: SimMemOhs.sim_retv midx ohs_src ohs_tgt retv_src retv_tgt smo_ret).
+
+
+  Definition _lxsim (lxsim: idx -> state ms_src -> state ms_tgt -> SimMemOhs.t -> Prop)
+             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smo0: SimMemOhs.t): Prop :=
+    (forall (SUSTAR: forall st_src1 tr (STAR: Star ms_src st_src0 tr st_src1), sound_states st_src1),
+        <<LXSIM: _lxsim_pre lxsim i0 st_src0 st_tgt0 smo0>>).
+
+  Definition lxsim: _ -> _ -> _ -> _ -> Prop := paco4 _lxsim bot4.
+
+  Lemma lxsim_mon: monotone4 _lxsim.
+  Proof.
+    repeat intro. rr in IN. hexploit1 IN; eauto. inv IN; eauto.
+    - econs 1; ss. ii. spc SU. des. esplits; eauto. inv SU.
+      + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
+      + econs 2; eauto.
+    - econs 2; ss. ii. exploit SU; eauto. i; des.
+      inv H.
+      + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
+      + econs 2; eauto.
+    - econs 3; eauto. ii; ss. exploit SU; eauto. i; des.
+      esplits; eauto. ii. exploit K; eauto. i; des. esplits; eauto.
+    - econs 4; eauto.
+  Qed.
+
+End SIMMODSEM.
+
+Module ModSemPair.
+Section MODSEMPAIR.
+Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+
+  Record t: Type := mk {
+    src: ModSem.t;
+    tgt: ModSem.t;
+    ss: SimSymb.t;
+    SMO:> SimMemOh.class src.(ModSem.owned_heap) tgt.(ModSem.owned_heap);
+    sm: SimMem.t;
+  }.
+
+  Inductive sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
+  | sim_skenv_intro
+    (SIMSKE: SimSymb.sim_skenv sm0 msp.(ss) msp.(src).(ModSem.skenv) msp.(tgt).(ModSem.skenv))
+    ss_link
+    (SIMSKELINK: SimSymb.sim_skenv sm0 ss_link msp.(src).(ModSem.skenv_link) msp.(tgt).(ModSem.skenv_link)).
+
+  Lemma mfuture_preserves_sim_skenv
+        msp sm0 sm1
+        (MFUTURE: SimMem.future sm0 sm1)
+        (SIMSKENV: sim_skenv msp sm0):
+      <<SIMSKENV: sim_skenv msp sm1>>.
+  Proof.
+    inv SIMSKENV. econs; eapply SimSymb.mfuture_preserves_sim_skenv; eauto.
+  Qed.
+
+  Inductive sim (msp: t): Prop :=
+  | sim_intro
+      sidx sound_states sound_state_ex
+      (PRSV: local_preservation msp.(src) sound_state_ex)
+      (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))
+      (SIM: forall
+          (sm_arg: SimMemOhs.t) ohs_src ohs_tgt args_src args_tgt
+          sg_init_src sg_init_tgt
+          (FINDFSRC: (Genv.find_funct msp.(src).(ModSem.skenv)) (Args.get_fptr args_src) =
+                     Some (Internal sg_init_src))
+          (FINDFTGT: (Genv.find_funct msp.(tgt).(ModSem.skenv)) (Args.get_fptr args_tgt) =
+                     Some (Internal sg_init_tgt))
+          (SIMARGS: SimMemOhs.sim_args msp.(src).(midx) ohs_src ohs_tgt args_src args_tgt sm_arg)
+          (SIMSKENV: sim_skenv msp sm_arg)
+          (MFUTURE: SimMem.future msp.(sm) sm_arg)
+          (MWF: SimMem.wf sm_arg),
+          (<<INITBSIM: forall st_init_tgt
+              (INITTGT: msp.(tgt).(initial_frame) ohs_tgt args_tgt st_init_tgt)
+              (SAFESRC: exists _st_init_src, msp.(src).(initial_frame) ohs_src args_src _st_init_src),
+              exists st_init_src sm_init idx_init,
+                (<<MLE: SimMemOhs.le sm_arg sm_init>>) /\
+                (<<INITSRC: msp.(src).(initial_frame) ohs_src args_src st_init_src>>) /\
+                (<<SIM: lxsim msp.(src) msp.(tgt) (fun st => forall si, exists su m_init, sound_states si su m_init st)
+                                                  idx_init st_init_src st_init_tgt sm_init>>)>>) /\
+          (<<INITPROGRESS: forall
+              (SAFESRC: exists st_init_src, msp.(src).(initial_frame) ohs_src args_src st_init_src),
+              exists st_init_tgt, (<<INITTGT: msp.(tgt).(initial_frame) ohs_tgt args_tgt st_init_tgt>>)>>)).
+
+End MODSEMPAIR.
+End ModSemPair.
+
+Arguments ModSemPair.mk [SM] [SS] _ _ _ [SMO].
+Hint Constructors ModSemPair.sim_skenv.
+End Ohs.
+
+Hint Unfold lxsim.
+Hint Resolve lxsim_mon: paco.

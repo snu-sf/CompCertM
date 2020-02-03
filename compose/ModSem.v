@@ -135,6 +135,69 @@ End Retv.
 Hint Unfold Args.is_cstyle Args.mk Args.fptr Args.vs Args.m Retv.is_cstyle Retv.mk Retv.v Retv.m.
 Hint Constructors Args.t Retv.t.
 
+(* Definition master_key : unit. *)
+(* apply tt. Qed. *)
+(* Module Import Midx. *)
+(*   Definition t := let t := master_key in nat. *)
+(*   Definition map_with_midx A B (f: t -> A -> B) (la: list A): list B := *)
+(*     let fix map_with_midx_aux (cur : t) (la : list A) {struct la}: list B := *)
+(*         match la with *)
+(*         | [] => [] *)
+(*         | hd :: tl => f cur hd :: map_with_midx_aux (Nat.succ cur) tl *)
+(*         end *)
+(*     in map_with_midx_aux (0%nat) la. *)
+(*   Definition update X (map: t -> X) (t0: t) (x: X): t -> X := fun t1 => if Nat.eq_dec t0 t1 then x else map t1. *)
+(* End Midx. *)
+(* Opaque Midx.t. *)
+(* Check (5%nat: Midx.t). *)
+
+Module Type MIDXCORE.
+  Parameter t: Type.
+  Parameter ground: t.
+  Parameter next: t -> t.
+  (* Parameter compare: t -> t -> comparison. *)
+  Parameter eqb: t -> t -> bool.
+  Parameter lt: t -> t -> Prop.
+  Axiom eqb_spec: forall t0 t1, eqb t0 t1 -> t0 = t1.
+  Axiom lt_trans: Transitive lt.
+  Axiom lt_neq: forall t0 t1, lt t0 t1 -> ~eqb t0 t1.
+  Axiom next_fresh: forall t0, lt t0 (next t0).
+End MIDXCORE.
+
+Module MidxCore: MIDXCORE.
+  Definition t := nat.
+  Definition ground: t := O.
+  Definition next: t -> t := S.
+  Definition eqb := Nat.eqb.
+  Definition lt := Nat.lt.
+  (* Definition compare := Nat.compare. *)
+  Lemma eqb_spec: forall t0 t1, eqb t0 t1 -> t0 = t1.
+  Proof. unfold eqb. i. eapply Nat.eqb_eq; eauto. Qed.
+  Lemma lt_trans: Transitive lt.
+  Proof. unfold lt. typeclasses eauto. Qed.
+  Lemma lt_neq: forall t0 t1, lt t0 t1 -> ~eqb t0 t1.
+  Proof. unfold lt, eqb. ii. unfold Nat.lt in *. eapply Nat.eqb_eq in H0; subst. omega. Qed.
+  Lemma next_fresh: forall t0, lt t0 (next t0).
+  Proof. ii. unfold next. unfold lt. unfold Nat.lt. omega. Qed.
+End MidxCore.
+
+Module Midx.
+  Include MidxCore.
+  Definition map_with_midx A B (f: t -> A -> B) (la: list A): list B :=
+    let fix map_with_midx_aux (cur : t) (la : list A) {struct la}: list B :=
+        match la with
+        | [] => []
+        | hd :: tl => f cur hd :: map_with_midx_aux (Midx.next cur) tl
+        end
+    in map_with_midx_aux Midx.ground la.
+  Definition update X (map: t -> X) (t0: t) (x: X): t -> X :=
+    fun t1 => if Midx.eqb t0 t1 then x else map t1.
+End Midx.
+
+(* TODO: move to CoqlibC? *)
+(* Definition is_eq: comparison -> bool := fun cmp => match cmp with | Eq => true | _ => false end. *)
+(* Coercion is_eq: comparison >-> bool. *)
+
 Module ModSem.
 
   Record t: Type := mk {
@@ -150,6 +213,7 @@ Module ModSem.
     globalenv: genvtype;
     skenv: SkEnv.t;
     skenv_link: SkEnv.t;
+    midx: Midx.t;
 
     at_external_dtm: forall st oh0 oh1 args0 args1
         (AT0: at_external st oh0 args0)
@@ -224,7 +288,7 @@ Module ModSem.
 
     Program Definition trans: t :=
       mk step at_external initial_frame final_frame after_external
-         ms.(initial_owned_heap) ms.(globalenv) ms.(skenv) ms.(skenv_link) _ _ _ _ _ _.
+         ms.(initial_owned_heap) ms.(globalenv) ms.(skenv) ms.(skenv_link) ms.(midx) _ _ _ _ _ _.
     Next Obligation. rr in AT0. rr in AT1. des. eapply at_external_dtm; eauto. Qed.
     Next Obligation. rr in FINAL0. rr in FINAL1. des. eapply final_frame_dtm; eauto. Qed.
     Next Obligation.

@@ -226,11 +226,11 @@ Section SimMemOhs.
     (* (<<OHSRC: ohs_src midx ~= projT2 (smo0.(SimMemOhs.ohs_src) midx)>>) /\ *)
     (* (<<OHTGT: ohs_tgt midx ~= projT2 (smo0.(SimMemOhs.ohs_tgt) midx)>>) *)
 
-    (* (<<OHSRC: ohs_src midx = (smo0.(SimMemOhs.ohs_src) midx)>>) /\ *)
-    (* (<<OHTGT: ohs_tgt midx = (smo0.(SimMemOhs.ohs_tgt) midx)>>) *)
+    (<<OHSRC: ohs_src midx = (smo0.(SimMemOhs.ohs_src) midx)>>) /\
+    (<<OHTGT: ohs_tgt midx = (smo0.(SimMemOhs.ohs_tgt) midx)>>)
 
-    (<<OHSRC: ohs_src = (smo0.(SimMemOhs.ohs_src))>>) /\
-    (<<OHTGT: ohs_tgt = (smo0.(SimMemOhs.ohs_tgt))>>)
+    (* (<<OHSRC: ohs_src = (smo0.(SimMemOhs.ohs_src))>>) /\ *)
+    (* (<<OHTGT: ohs_tgt = (smo0.(SimMemOhs.ohs_tgt))>>) *)
   .
 
   Definition sim_retv `{SMOS: class} (midx: Midx.t) (ohs_src: Ohs) (ohs_tgt: Ohs)
@@ -239,11 +239,11 @@ Section SimMemOhs.
     (* (<<OHSRC: ohs_src midx ~= projT2 (smo0.(SimMemOhs.ohs_src) midx)>>) /\ *)
     (* (<<OHTGT: ohs_tgt midx ~= projT2 (smo0.(SimMemOhs.ohs_tgt) midx)>>) *)
 
-    (* (<<OHSRC: ohs_src midx = (smo0.(SimMemOhs.ohs_src) midx)>>) /\ *)
-    (* (<<OHTGT: ohs_tgt midx = (smo0.(SimMemOhs.ohs_tgt) midx)>>) *)
+    (<<OHSRC: ohs_src midx = (smo0.(SimMemOhs.ohs_src) midx)>>) /\
+    (<<OHTGT: ohs_tgt midx = (smo0.(SimMemOhs.ohs_tgt) midx)>>)
 
-    (<<OHSRC: ohs_src = (smo0.(SimMemOhs.ohs_src))>>) /\
-    (<<OHTGT: ohs_tgt = (smo0.(SimMemOhs.ohs_tgt))>>)
+    (* (<<OHSRC: ohs_src = (smo0.(SimMemOhs.ohs_src))>>) /\ *)
+    (* (<<OHTGT: ohs_tgt = (smo0.(SimMemOhs.ohs_tgt))>>) *)
   .
 
 End SimMemOhs.

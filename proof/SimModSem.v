@@ -192,7 +192,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           (SIMARGS: SimMemOh.sim_args oh_src oh_tgt args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
           (MFUTURE: SimMem.future msp.(sm) sm_arg)
-          (MWF: SimMem.wf sm_arg),
+          (MWF: SimMemOh.wf sm_arg),
           (<<INITBSIM: forall st_init_tgt
               (INITTGT: msp.(tgt).(initial_frame) oh_tgt args_tgt st_init_tgt)
               (SAFESRC: exists _st_init_src, msp.(src).(initial_frame) oh_src args_src _st_init_src),
@@ -499,7 +499,7 @@ Context {SM: SimMem.class} {SMOS: SimMemOhs.class} {SS: SimSymb.class SM} {SU: S
           (SIMARGS: SimMemOhs.sim_args msp.(src).(midx) ohs_src ohs_tgt args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
           (MFUTURE: SimMem.future msp.(sm) sm_arg)
-          (MWF: SimMem.wf sm_arg),
+          (MWF: SimMemOhs.wf sm_arg),
           (<<INITBSIM: forall st_init_tgt
               (INITTGT: (msp.(tgt).(initial_frame)) oh_tgt args_tgt st_init_tgt)
               (SAFESRC: exists _st_init_src,
@@ -599,23 +599,30 @@ Proof.
   econs; eauto.
   clear - MIDX SIM0. ss.
   ii.
-  assert(SMPROJ: forall smos: SimMemOhs.t, exists smo: SimMemOh.t, sm_match msp smo smos).
+  (* assert(SMPROJ: forall smos: SimMemOhs.t, *)
+  (*           exists smo: SimMemOh.t, sm_match msp smo smos). *)
+  assert(SMPROJ: forall smos (MWF: SimMemOhs.wf smos),
+            exists smo, sm_match msp smo smos /\ SimMemOh.wf smo).
   { admit "". }
   assert(SMSIM: forall (smos0: SimMemOhs.t)
-                      (smo0 smo1: SimMemOh.t)
-                      (LE: SimMemOh.le smo0 smo1)
-                      (SMMATCH: sm_match msp smo0 smos0)
+                       (smo0 smo1: SimMemOh.t)
+                       (LE: SimMemOh.le smo0 smo1)
+                       (SMMATCH: sm_match msp smo0 smos0)
+                       (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0)
           ,
             exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
-                          /\ (<<SMMATCH: sm_match msp smo1 smos1>>)).
+                          /\ (<<SMMATCH: sm_match msp smo1 smos1>>)
+                          /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)).
   { admit "". }
   assert(SMSIMPRIV: forall (smos0: SimMemOhs.t)
                            (smo0 smo1: SimMemOh.t)
                            (SMMATCH: sm_match msp smo0 smos0)
                            (LE: SimMemOh.lepriv smo0 smo1)
+                           (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0)
           ,
-            exists smos1, <<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>
-                                       /\ <<SMMATCH: sm_match msp smo1 smos1>>).
+            exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
+                          /\ (<<SMMATCH: sm_match msp smo1 smos1>>)
+                          /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)).
   { admit "". }
   assert(SMMATCHLE: forall smo0 smo1 smos0 smos1
                            (SMMATCH0: sm_match msp smo0 smos0)
@@ -625,14 +632,13 @@ Proof.
             <<SMLE: SimMemOh.le smo0 smo1>>
         ).
   { admit "". }
-  assert(PROJARGS := SMPROJ sm_arg). des. rename smo into sm_arg_proj. rr in PROJARGS. des.
+  assert(PROJARGS := SMPROJ sm_arg MWF). des. rename smo into sm_arg_proj.
   assert(ARGS: SimMemOh.sim_args (sm_arg_proj.(SimMemOh.oh_src))
                                  (sm_arg_proj.(SimMemOh.oh_tgt))
                                  args_src args_tgt sm_arg_proj).
   { rr. esplits; eauto. rr in SIMARGS. des. erewrite <- smeq; eauto. }
   exploit SIM0; eauto.
   { erewrite <- smeq; eauto. inv SIMSKENV. econs; eauto. }
-  { erewrite <- smeq; eauto. }
   { erewrite <- smeq; eauto. }
   ii; des.
   assert(OHSRC0: oh_src = (SimMemOh.oh_src sm_arg_proj)).
@@ -656,9 +662,16 @@ Proof.
     exists st_init_src. esplits; eauto.
     { rewrite OHSRC0. ss. }
     instantiate (1:= idx_init).
-    clear - SIM SMSIM SMSIMPRIV SMPROJ SMMATCH SMMATCHLE MIDX.
+    clear - SIM SMSIM SMSIMPRIV SMPROJ SMMATCH SMMATCHLE MIDX WFWF.
     rename sm_init into smo0. rename smos1 into smos0.
     rename st_init_src into st_src0. rename st_init_tgt into st_tgt0.
+    (* assert(WF: SimMemOhs.wf smos0). *)
+    (* { admit "TODO". } *)
+    (* assert(SMWFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0). *)
+    (* { i. } *)
+
+
+
     revert_until SMSIM. pcofix CIH. i. pfold.
     punfold SIM. rr in SIM. ii. exploit SIM; eauto. intro T; des. inv T.
     + econs 1; eauto. ii. hexploit1 SU0; ss. inv SU0.
@@ -674,9 +687,9 @@ Proof.
       * exploit (SMSIM smos0); eauto. i; des.
         econs 2; eauto. pclearbot. right. eapply CIH; eauto.
     + econs 3; eauto.
-      { admit "WF - Hard: Small to big.". }
+      (* { admit "WF - Hard: Small to big.". } *)
       ii. exploit SU0; eauto. i; des. exploit SMSIMPRIV; eauto. i; des.
-      esplits; eauto.
+      esplits; try apply WFWF0; eauto.
       * rr in SIMARGS. des. rr. esplits; eauto.
         { erewrite smeq; eauto. }
         (* eapply eq_sigT_iff_eq_dep. *)
@@ -684,13 +697,13 @@ Proof.
         { erewrite (@leibeq _ _ OHSWFSRC).
           erewrite ohsrcty; eauto. }
         { eapply cast_sigT_proj in OHSRC; eauto. etrans; eauto. erewrite ohsrc; eauto. }
-      * admit "WF - Hard: Small to big.".
+      (* * admit "WF - Hard: Small to big.". *)
       * rr in SIMARGS. des. clarify.
         erewrite <- ohtgt; eauto.
       * i. hexploit (SMPROJ smos_ret); eauto. intro T; des.
         exploit K.
         { eapply SMMATCHLE; et. }
-        { admit "WF - EZ: Big to small.". }
+        { ss. }
         { rr in SIMRETV. des. rr. erewrite <- smeq; eauto. }
         { rp; eauto. symmetry. eapply cast_sigT_eq; eauto.
           rr in SIMRETV. des. rewrite OHSRC. erewrite <- ohsrc; eauto. }
@@ -710,7 +723,7 @@ Proof.
                               msp.(ModSemPair.tgt).(owned_heap)).
       { econs. rewrite MIDX. erewrite ohtgtty; eauto. }
       econs 4; eauto.
-      { admit "WF - Hard: Small to big". }
+      (* { admit "WF - Hard: Small to big". } *)
       { rp; eauto. eapply cast_sigT_eq; eauto.
         rr in SIMRETV. des. rewrite OHSRC. erewrite <- ohsrc; eauto. }
       { rp; eauto. eapply cast_sigT_eq; eauto.

@@ -587,7 +587,43 @@ Proof.
   destruct a, b; ss. clarify. apply JMeq_eq in EQVAL. clarify.
 Qed.
 
-Theorem fundamental_property
+Inductive good_properties SM {SS: SimSymb.class SM}
+          (SMOS: SimMemOhs.class) (msp: ModSemPair.t): Prop :=
+| good_properties_intro
+.
+
+Program Instance SimMemOhs_intro SM (SS: SimSymb.class SM)
+        (msps: list ModSemPair.t): SimMemOhs.class :=
+{|
+  SimMemOhs.t := SimMem.t * list SimMemOh.t;
+  SimMemOhs.sm := fst;
+  (* SimMemOhs.ohs_src := tttttt *)
+  (* SimMemOhs.ohs_src := tttttt *)
+|}
+.
+    ohs_src : t -> Sem.Ohs;
+    ohs_tgt : t -> Sem.Ohs;
+    wf : t -> Prop;
+    le : t -> t -> Prop;
+    lepriv : t -> t -> Prop;
+    le_PreOrder : PreOrder le;
+    pub_priv : forall smo0 smo1 : t, le smo0 smo1 -> lepriv smo0 smo1;
+    wf_proj : wf <1= SimMem.wf <*> sm;
+    le_proj : Morphisms.respectful le SimMem.le sm sm;
+    lepriv_proj : Morphisms.respectful lepriv SimMem.lepriv sm sm }
+Next Obligation.
+Qed.
+Theorem fundamental_theorem_merge
+        SM (SS: SimSymb.class SM)
+        (msps: list ModSemPair.t)
+  :
+    exists SMOS: SimMemOhs.class, Forall (good_properties SMOS) msps
+.
+Proof.
+  eexists (SimMemOhs.Build_class _ _ _ _ _ _ _ _ _ _ _ _).
+Qed.
+
+Theorem fundamental_theorem
         SM SMOS SS SU
         msp
         (SIM: msp.(@ModSemPair.sim SM SS SU))

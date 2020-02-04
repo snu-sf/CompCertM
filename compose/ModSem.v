@@ -164,7 +164,8 @@ Module Type MIDXCORE.
   Axiom next_fresh: forall t0, lt t0 (next t0).
 End MIDXCORE.
 
-Module MidxCore: MIDXCORE.
+(* Module MidxCore: MIDXCORE. *)
+Module MidxCore <: MIDXCORE.
   Definition t := nat.
   Definition ground: t := O.
   Definition next: t -> t := S.

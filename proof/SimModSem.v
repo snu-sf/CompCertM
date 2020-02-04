@@ -592,15 +592,161 @@ Inductive good_properties SM {SS: SimSymb.class SM}
 | good_properties_intro
 .
 
-Program Instance SimMemOhs_intro SM (SS: SimSymb.class SM)
-        (msps: list ModSemPair.t): SimMemOhs.class :=
+
+
+Section SimMemOhsIntro.
+
+  Context `{SM: SimMem.class} {SS: SimSymb.class SM}.
+  Variable msps: list ModSemPair.t.
+
+  Ltac des_let :=
+    match goal with
+    | [ H: context[let y := ?x in _ ] |- _ ] =>
+      let name := fresh "let" in destruct x eqn:name
+    end.
+
+  Definition o_get A (oa: option A) (default: A): A :=
+    match oa with
+    | Some a => a
+    | _ => default
+    end
+  .
+
+  Let SimMemOhs_t: Type :=
+    SimMem.t *
+    (forall midx,
+        match List.nth_error msps midx with
+        | Some msp => (@SimMemOh.t _ _ _ msp.(ModSemPair.SMO))
+        | None => SimMemOh.t
+        end
+        (* o_get (o_map (List.nth_error msps midx) *)
+        (*                   (fun msp => (@SimMemOh.t _ _ _ msp.(ModSemPair.SMO)))) *)
+        (*            SimMemOh.t *)
+    ).
+
+  (* Ltac uo := CoqlibC.uo; unfold o_get in *. *)
+
+  Let SimMemOhs_le (smos0 smos1: SimMemOhs_t): Prop.
+  Proof.
+    (* SimMemOhs.le *)
+    rename smos0 into X. rename smos1 into Y.
+    destruct X as [X0 X1], Y as [Y0 Y1].
+    eapply and.
+    { eapply (SimMem.le X0 Y0). }
+    refine (forall midx: nat, _: Prop).
+    specialize (X1 midx). specialize (Y1 midx).
+    uo.
+    cbv zeta in *. des_ifs.
+    - eapply (SimMemOh.le X1 Y1).
+    - eapply True.
+  Defined.
+
+  Obligation Tactic := idtac.
+
+  Ltac dep_destruct E :=
+    let x := fresh "x" in
+    remember E as x; simpl in x; dependent destruction x;
+    try match goal with
+        | [ H : _ = E |- _ ] => try rewrite <- H in *; clear H
+        end.
+
+Program Instance SimMemOhs_intro: SimMemOhs.class :=
 {|
-  SimMemOhs.t := SimMem.t * list SimMemOh.t;
+  (* SimMemOhs.t := SimMem.t * list SimMemOh.t; *)
+  SimMemOhs.t := SimMemOhs_t;
   SimMemOhs.sm := fst;
-  (* SimMemOhs.ohs_src := tttttt *)
-  (* SimMemOhs.ohs_src := tttttt *)
+  SimMemOhs.le := SimMemOhs_le;
+  (* SimMemOhs.le_PreOrder := _; *)
 |}
 .
+Next Obligation.
+  (* SimMemOhs.ohs_src *)
+  uo.
+  ii. destruct X. specialize (y H).
+  cbv zeta in y.
+  des_ifs.
+  - eexists. eapply y.
+  - eexists. eapply y.
+Defined.
+Next Obligation.
+  (* SimMemOhs.ohs_tgt *)
+  uo.
+  ii. destruct X. specialize (y H).
+  cbv zeta in y.
+  des_ifs.
+  - eexists. eapply y.
+  - eexists. eapply y.
+Defined.
+Next Obligation.
+  (* SimMemOhs.wf *)
+  uo.
+  ii. destruct X.
+  eapply and.
+  { eapply t0.(SimMem.wf). }
+  refine (forall midx: nat, _: Prop).
+  specialize (y midx).
+  cbv zeta in y. des_ifs.
+  - eapply and. { eapply (y.(SimMemOh.sm) = t0). } eapply y.(SimMemOh.wf).
+  - eapply True.
+    (* eapply and. { eapply (y.(SimMemOh.sm) = t0). } eapply y.(SimMemOh.wf). *)
+Defined.
+Next Obligation.
+  (* SimMemOhs.lepriv *)
+  uo.
+  intros X Y.
+  destruct X as [X0 X1], Y as [Y0 Y1].
+  eapply and.
+  { eapply (SimMem.le X0 Y0). }
+  refine (forall midx: nat, _: Prop).
+  specialize (X1 midx). specialize (Y1 midx).
+  cbv zeta in *. des_ifs.
+  - eapply (SimMemOh.le X1 Y1).
+  - eapply True.
+Defined.
+From Paco Require Import hpattern.
+Next Obligation.
+  econs.
+  - ii. r. des_ifs.
+    split; ss; try refl.
+    i. rename y into yyy.
+    Fail subst yyy.
+    Fail hrewrite yyy.
+    Fail rewrite yyy.
+    Fail unfold yyy.
+    (* dup y. specialize (y0 midx0). *)
+    Fail dep_destruct (nth_error msps midx0).
+    (* dependent destruction (nth_error msps midx0). *)
+    (* depdes (nth_error msps midx0). *)
+    generalize (yyy midx0).
+    destruct (nth_error msps midx0).
+    TTTTTTTTTTTTTTTTTTTTTT above two  lines !!!! 
+    unfold yyy.
+    revert yyy.
+    generalize (nth_error msps midx0).
+    destruct (nth_error msps midx0).
+    pattern (nth_error msps midx0) at 2. ss.
+    remember (nth_error msps midx0) as tmp.
+    pattern (nth_error msps midx0) at 2. ss.
+    destruct (nth_error msps midx0).
+    hpattern (nth_error msps midx0).
+    hresolve (nth_error msps midx0).
+    destruct (nth_error msps midx0).
+    hpattern
+    destruct (nth_error msps midx0) eqn:T.
+Qed.
+Next Obligation.
+  (* SimMemOhs.lepriv *)
+  intros ? ? ? X Y.
+  destruct X as [X0 X1], Y as [Y0 Y1].
+  eapply and.
+  { eapply (SimMem.le X0 Y0). }
+  refine (forall midx: nat, _: Prop).
+  specialize (X1 midx). specialize (Y1 midx).
+  cbv zeta in *. des_ifs.
+  - eapply (SimMemOh.le X1 Y1).
+  - eapply True.
+Defined.
+
     ohs_src : t -> Sem.Ohs;
     ohs_tgt : t -> Sem.Ohs;
     wf : t -> Prop;
@@ -611,8 +757,7 @@ Program Instance SimMemOhs_intro SM (SS: SimSymb.class SM)
     wf_proj : wf <1= SimMem.wf <*> sm;
     le_proj : Morphisms.respectful le SimMem.le sm sm;
     lepriv_proj : Morphisms.respectful lepriv SimMem.lepriv sm sm }
-Next Obligation.
-Qed.
+
 Theorem fundamental_theorem_merge
         SM (SS: SimSymb.class SM)
         (msps: list ModSemPair.t)

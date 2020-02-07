@@ -174,14 +174,11 @@ Section ADQSOUND.
     { eapply SkEnv.load_skenv_wf; et. }
     assert(GE: sound_ge su_init m_init).
     { econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
-      Fail rewrite Midx.in_mapi_iff in IN. (* TODO: SOLVE THIS !!!! *)
-      erewrite (Midx.in_mapi_iff
-                  (fun midx md => Mod.get_modsem md midx (Genv.globalenv sk_link_src)
-                                                 (Mod.data md)) p_src x) in IN.
+      rewrite Midx.in_mapi_iff in IN.
       des; ss; clarify.
       + s. rewrite <- Sound.system_skenv; eauto.
       + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk a)).
-        { unfold p_src in NTH0. unfold ProgPair.src in *. apply nth_error_map_some in NTH0.
+        { unfold p_src in IN0. unfold ProgPair.src in *. apply nth_error_map_some in IN0.
           des. des_ifs. eapply INCLSRC; et. eapply nth_error_In; eauto. }
         eapply Sound.skenv_project; eauto.
         { eapply link_load_skenv_wf_mem; et. eapply nth_error_In; eauto. }
@@ -224,10 +221,7 @@ Section ADQSOUND.
       + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *. des; clarify.
         { eapply system_local_preservation. }
         u in MODSEM.
-        Fail rewrite Midx.in_mapi_iff in MODSEM. (* TODO: SOLVE THIS !!!! *)
-        erewrite (Midx.in_mapi_iff (fun midx md => Mod.get_modsem
-                                                     md midx (Genv.globalenv sk_link_src)
-                                                     (Mod.data md)) p_src ms) in MODSEM.
+        rewrite Midx.in_mapi_iff in MODSEM.
         des; clarify. rename a into md_src.
         assert(exists mp, In mp pp /\ mp.(ModPair.src) = md_src).
         { clear - MODSEM0. rr in pp. rr in p_src. subst p_src.

@@ -184,6 +184,8 @@ Section Midx.
       { rp; eauto. f_equal. omega. }
   Qed.
 
+  (* NOTE: If you give name << >>, rewrite tactic does not work... *)
+  (* TODO: FIX IT *)
   Lemma in_mapi_iff
         A B (f: t -> A -> B) la b
     :
@@ -196,13 +198,13 @@ Section Midx.
     eapply in_mapi_aux_iff.
   Qed.
 
-  Let tmp: <<L: False>> <-> <<R: (0=1)%nat>>. Proof. ss. Qed.
-  Let tmp2: False <-> (0=1)%nat. Proof. ss. Qed.
-  Goal forall (H: (0=1)%nat /\ True), False.
-    intro.
-    rewrite <- tmp in H. Undo 1.
-    rewrite <- tmp2 in H. firstorder.
-  Qed.
+  (* Let tmp: <<L: False>> <-> <<R: (0=1)%nat>>. Proof. ss. Qed. *)
+  (* Let tmp2: False <-> (0=1)%nat. Proof. ss. Qed. *)
+  (* Goal forall (H: (0=1)%nat /\ True), False. *)
+  (*   intro. *)
+  (*   rewrite <- tmp in H. Undo 1. *)
+  (*   rewrite <- tmp2 in H. firstorder. *)
+  (* Qed. *)
 
   Fixpoint update A (la: list A) (midx: t) (a: A): list A :=
     match midx with

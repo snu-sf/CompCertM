@@ -196,7 +196,7 @@ Qed.
 Section INITDTM.
 
  Lemma link_sk_disjoint
-        md0 md1 p0 id skenv_link b if_sig if_sig0 restl sk_link gd_big0
+        midx0 midx1 md0 md1 p0 id skenv_link b if_sig if_sig0 restl sk_link gd_big0
         (IN : In md0 p0)
         (NOTSAME : md0 <> md1)
         (DEFS1 : defs (Mod.get_sk md1 (Mod.data md1)) id)
@@ -204,8 +204,8 @@ Section INITDTM.
         (DEFBIG0 : Genv.find_def skenv_link b = Some gd_big0)
         (SYMBBIG0 : Genv.find_symbol skenv_link id = Some b)
         (WFBIG : SkEnv.wf skenv_link)
-        (DEF0 : Genv.find_def (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) b = Some (Gfun (Internal if_sig)))
-        (DEF1 : Genv.find_def (ModSem.skenv (Mod.get_modsem md1 skenv_link (Mod.data md1))) b = Some (Gfun (Internal if_sig0)))
+        (DEF0 : Genv.find_def (ModSem.skenv (Mod.get_modsem md0 midx0 skenv_link (Mod.data md0))) b = Some (Gfun (Internal if_sig)))
+        (DEF1 : Genv.find_def (ModSem.skenv (Mod.get_modsem md1 midx1 skenv_link (Mod.data md1))) b = Some (Gfun (Internal if_sig0)))
         (INCLS : forall md : Mod.t, md1 = md \/ In md p0 -> SkEnv.includes skenv_link (Mod.get_sk md (Mod.data md)))
         (TL : link_list (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0) = Some restl)
         (HD : link (Mod.get_sk md1 (Mod.data md1)) restl = Some sk_link)
@@ -273,17 +273,17 @@ Section INITDTM.
   Qed.
 
   Lemma system_disjoint
-        skenv_link sys_def fptr md md_def
+        midx skenv_link sys_def fptr md md_def
         (WFBIG: SkEnv.wf skenv_link)
         (SYSTEM: Genv.find_funct (System.skenv skenv_link) fptr = Some (Internal sys_def))
         (MOD: In md p)
-        (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
+        (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md midx skenv_link (Mod.data md))) fptr =
                  Some (Internal md_def))
         (INCL: SkEnv.includes skenv_link (Mod.sk md)):
       False.
   Proof.
-    hexploit (@Mod.get_modsem_projected_sk md skenv_link); eauto. intro SPEC; des.
-    remember (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) as skenv_proj eqn:T in *.
+    hexploit (@Mod.get_modsem_projected_sk md midx skenv_link); eauto. intro SPEC; des.
+    remember (ModSem.skenv (Mod.get_modsem md midx skenv_link (Mod.data md))) as skenv_proj eqn:T in *.
     assert(WFSMALL: skenv_proj.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; eauto. }
     clarify. des. inv SPEC.
@@ -387,16 +387,15 @@ Unshelve.
   Qed.
 
   Lemma find_fptr_owner_determ
-        fptr ms0 ms1 midx0 midx1
-        (FIND0: Ge.find_fptr_owner sem.(globalenv) fptr ms0 midx0)
-        (FIND1: Ge.find_fptr_owner sem.(globalenv) fptr ms1 midx1):
-      ms0 = ms1 /\ midx0 = midx1.
+        fptr ms0 ms1
+        (FIND0: Ge.find_fptr_owner sem.(globalenv) fptr ms0)
+        (FIND1: Ge.find_fptr_owner sem.(globalenv) fptr ms1):
+      ms0 = ms1.
   Proof.
     inv FIND0; inv FIND1. ss. des_ifs.
     { unfold load_genv in *. ss. generalize genv_disjoint; i.
       inv H. eapply DISJOINT; eauto; econs; eauto; ss; des_ifs.
     }
-    ss. destruct midx0, midx1; ss.
   Qed.
 
   Theorem initial_state_determ
@@ -416,18 +415,18 @@ End INITDTM.
 Lemma lift_step
       (ms: ModSem.t) st0 tr st1
       (STEP: Step ms st0 tr st1):
-    forall prog midx msohs tail,
+    forall prog msohs tail,
     <<STEP: Step (Sem.sem prog)
-                 (State ((Frame.mk ms st0 midx) :: tail) msohs) tr
-                 (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
+                 (State ((Frame.mk ms st0) :: tail) msohs) tr
+                 (State ((Frame.mk ms st1) :: tail) msohs)>>.
 Proof. ii. econs 3; eauto. Qed.
 
 Lemma lift_star
       (ms: ModSem.t) st0 tr st1
       (STAR: Star ms st0 tr st1):
-    forall prog midx msohs tail,
-    <<STAR: Star (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
-                 tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
+    forall prog msohs tail,
+    <<STAR: Star (Sem.sem prog) (State ((Frame.mk ms st0) :: tail) msohs)
+                 tr (State ((Frame.mk ms st1) :: tail) msohs)>>.
 Proof.
   ii. ginduction STAR; ii; ss.
   - econs 1; eauto.
@@ -439,9 +438,9 @@ Qed.
 Lemma lift_plus
       (ms: ModSem.t) st0 tr st1
       (PLUS: Plus ms st0 tr st1):
-    forall prog midx msohs tail,
-    <<PLUS: Plus (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
-                 tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
+    forall prog msohs tail,
+    <<PLUS: Plus (Sem.sem prog) (State ((Frame.mk ms st0) :: tail) msohs)
+                 tr (State ((Frame.mk ms st1) :: tail) msohs)>>.
 Proof.
   i. inv PLUS; ii; ss. econs; eauto.
   - eapply lift_step; eauto.
@@ -452,9 +451,9 @@ Lemma lift_dstep
       (ms: ModSem.t) st0 tr st1 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DSTEP: DStep ms st0 tr st1):
-    forall midx msohs tail,
-    <<DSTEP: DStep (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
-                   tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
+    forall msohs tail,
+    <<DSTEP: DStep (Sem.sem prog) (State ((Frame.mk ms st0) :: tail) msohs)
+                   tr (State ((Frame.mk ms st1) :: tail) msohs)>>.
 Proof.
   ii. destruct DSTEP as [DTM STEP]. econs; eauto; cycle 1.
   - econs; ss; eauto.
@@ -471,9 +470,9 @@ Lemma lift_dstar
       (ms: ModSem.t) st0 tr st1 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DSTAR: DStar ms st0 tr st1):
-    forall midx msohs tail,
-    <<DSTAR: DStar (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
-                   tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
+    forall msohs tail,
+    <<DSTAR: DStar (Sem.sem prog) (State ((Frame.mk ms st0) :: tail) msohs)
+                   tr (State ((Frame.mk ms st1) :: tail) msohs)>>.
 Proof.
   i. ginduction DSTAR; ii; ss.
   - econs 1; eauto.
@@ -486,9 +485,9 @@ Lemma lift_dplus
       (ms: ModSem.t) st0 tr st1 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DPLUS: DPlus ms st0 tr st1):
-    forall midx msohs tail,
-    <<DPLUS: DPlus (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)
-                   tr (State ((Frame.mk ms st1 midx) :: tail) msohs)>>.
+    forall msohs tail,
+    <<DPLUS: DPlus (Sem.sem prog) (State ((Frame.mk ms st0) :: tail) msohs)
+                   tr (State ((Frame.mk ms st1) :: tail) msohs)>>.
 Proof.
   i. inv DPLUS; ii; ss. econs; eauto.
   - eapply lift_dstep; eauto.
@@ -499,7 +498,7 @@ Lemma lift_receptive_at
       (ms: ModSem.t) st0 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (RECEP: receptive_at ms st0):
-    forall midx msohs tail, <<RECEP: receptive_at (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)>>.
+    forall msohs tail, <<RECEP: receptive_at (Sem.sem prog) (State ((Frame.mk ms st0) :: tail) msohs)>>.
 Proof.
   ii. inv RECEP. ss. econs; eauto; ii.
   - inv H.
@@ -515,8 +514,8 @@ Lemma lift_determinate_at
       (ms: ModSem.t) st0 prog
       (PUBEQ: ms.(symbolenv).(Senv.public_symbol) = (Sem.sem prog).(symbolenv).(Senv.public_symbol))
       (DTM: determinate_at ms st0):
-    forall midx msohs tail,
-    <<DTM: determinate_at (Sem.sem prog) (State ((Frame.mk ms st0 midx) :: tail) msohs)>>.
+    forall msohs tail,
+    <<DTM: determinate_at (Sem.sem prog) (State ((Frame.mk ms st0) :: tail) msohs)>>.
 Proof.
   ii. inv DTM. ss. econs; eauto; ii.
   - inv H; inv H0; ModSem.tac.
@@ -528,7 +527,8 @@ Proof.
       i. clarify. repeat f_equal. eauto.
     + ss. esplits; et.
       { econs; et. }
-      i. determ_tac ModSem.final_frame_dtm. simpl_existT; clarify. repeat f_equal. eapply ModSem.after_external_dtm; et.
+      i. determ_tac ModSem.final_frame_dtm. simpl_depind. clarify.
+      repeat f_equal. eapply ModSem.after_external_dtm; et.
   - ss. inv FINAL. ss. inv STEP; ss; ModSem.tac.
   - inv H; s; try omega. exploit sd_traces_at; eauto.
 Qed.
@@ -856,13 +856,13 @@ End WFMEM.
 
 Require Import Sem SimModSem.
 Theorem safe_implies_safe_modsem
-        p sk ms lst midx msohs tail
+        p sk ms lst msohs tail
         (LINK: link_sk p = Some sk)
-        (SAFE: safe (sem p) (State ((Frame.mk ms lst midx) :: tail) msohs)):
+        (SAFE: safe (sem p) (State ((Frame.mk ms lst) :: tail) msohs)):
     <<SAFE: safe_modsem ms lst>>.
 Proof.
   ii. ss. exploit SAFE.
-  { instantiate (1:= (State ((Frame.mk ms st1 midx) :: tail) msohs)). eapply lift_star; eauto. }
+  { instantiate (1:= (State ((Frame.mk ms st1) :: tail) msohs)). eapply lift_star; eauto. }
   i; des.
   - ss. inv H. ss. right. left. eauto.
   - ss. des_ifs. inv H; ss.

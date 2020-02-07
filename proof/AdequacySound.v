@@ -18,6 +18,20 @@ Set Implicit Arguments.
 
 
 
+(* TODO: Move to CoqlibC !!! *)
+Lemma nth_error_map_some
+      A B (f: A -> B) la n b
+      (NTH: nth_error (map f la) n = Some b)
+  :
+    exists a, <<NTH: nth_error la n = Some a>> /\ <<MAP: f a = b>>
+.
+Proof.
+  ginduction la; ii; ss.
+  { destruct n; ss. }
+  destruct n; ss; clarify.
+  { esplits; eauto. }
+  eapply IHla; eauto.
+Qed.
 
 Section ADQSOUND.
 
@@ -91,7 +105,7 @@ Section ADQSOUND.
       (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex (Args.get_m args)):
       sound_stack args []
   | sound_stack_cons
-      args_tail tail ms lst0 midx
+      args_tail tail ms lst0
       (TL: sound_stack args_tail tail)
       (FORALLSU: forall su0
           (SUARGS: Sound.args su0 args_tail)
@@ -122,11 +136,11 @@ Section ADQSOUND.
       )
       (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex (Args.get_m args_tail))
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex):
-      sound_stack args ((Frame.mk ms lst0 midx) :: tail).
+      sound_stack args ((Frame.mk ms lst0) :: tail).
 
   Inductive sound_state: state -> Prop :=
   | sound_state_normal
-      args_tail tail ms lst0 midx m_arg msohs
+      args_tail tail ms lst0 m_arg msohs
       (TL: sound_stack args_tail tail)
       (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex m_arg)
       (FORALLSU: forall su0
@@ -139,7 +153,7 @@ Section ADQSOUND.
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
       (ABCD: (Args.get_m args_tail) = m_arg)
     :
-      sound_state (State ((Frame.mk ms lst0 midx) :: tail) msohs)
+      sound_state (State ((Frame.mk ms lst0) :: tail) msohs)
   | sound_state_call
       m_tail frs args msohs
       (* (ARGS: Sound.args su0 args) *)
@@ -160,12 +174,17 @@ Section ADQSOUND.
     { eapply SkEnv.load_skenv_wf; et. }
     assert(GE: sound_ge su_init m_init).
     { econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
-      rewrite in_map_iff in IN. des; ss; clarify.
+      Fail rewrite Midx.in_mapi_iff in IN. (* TODO: SOLVE THIS !!!! *)
+      erewrite (Midx.in_mapi_iff
+                  (fun midx md => Mod.get_modsem md midx (Genv.globalenv sk_link_src)
+                                                 (Mod.data md)) p_src x) in IN.
+      des; ss; clarify.
       + s. rewrite <- Sound.system_skenv; eauto.
-      + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk x0)).
-        { unfold p_src in IN0. unfold ProgPair.src in *. rewrite in_map_iff in IN0. des. clarify. eapply INCLSRC; et. }
+      + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk a)).
+        { unfold p_src in NTH0. unfold ProgPair.src in *. apply nth_error_map_some in NTH0.
+          des. des_ifs. eapply INCLSRC; et. eapply nth_error_In; eauto. }
         eapply Sound.skenv_project; eauto.
-        { eapply link_load_skenv_wf_mem; et. }
+        { eapply link_load_skenv_wf_mem; et. eapply nth_error_In; eauto. }
         rewrite <- Mod.get_modsem_skenv_spec; ss. eapply SkEnv.project_impl_spec; et.
     }
     econs; eauto. econs; eauto.
@@ -202,14 +221,18 @@ Section ADQSOUND.
       inv SUST. ss. des_ifs. esplits; eauto. econs; eauto.
       + ii. esplits; eauto.
         * ii. inv PRSV. eapply INIT0; eauto. inv SUGE. rewrite Forall_forall in *. eapply GE. inv MSFIND. ss. des_ifs.
-          eapply nth_error_In; eauto.
-      + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *. destruct midx; ss; clarify.
+      + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *. des; clarify.
         { eapply system_local_preservation. }
-        u in MODSEM. rewrite list_map_nth in MODSEM. unfold option_map in *; des_ifs. des; clarify.
-        rename t into md_src. rename Heq0 into MODSEM0.
+        u in MODSEM.
+        Fail rewrite Midx.in_mapi_iff in MODSEM. (* TODO: SOLVE THIS !!!! *)
+        erewrite (Midx.in_mapi_iff (fun midx md => Mod.get_modsem
+                                                     md midx (Genv.globalenv sk_link_src)
+                                                     (Mod.data md)) p_src ms) in MODSEM.
+        des; clarify. rename a into md_src.
         assert(exists mp, In mp pp /\ mp.(ModPair.src) = md_src).
-        { clear - MODSEM0. rr in pp. rr in p_src. subst p_src. rewrite list_map_nth in *.
-          unfold option_map in *. des_ifs. esplits; eauto. eapply nth_error_In; et. }
+        { clear - MODSEM0. rr in pp. rr in p_src. subst p_src.
+          apply nth_error_map_some in MODSEM0. des.
+          esplits; eauto. { eapply nth_error_In; eauto. } }
         des. exploit SIMPROG; eauto. intros MPSIM. inv MPSIM.
         destruct SIMSKENV. exploit SIMMS.
         { eapply INCLSRC; et. }

@@ -135,64 +135,107 @@ End Retv.
 Hint Unfold Args.is_cstyle Args.mk Args.fptr Args.vs Args.m Retv.is_cstyle Retv.mk Retv.v Retv.m.
 Hint Constructors Args.t Retv.t.
 
-(* Definition master_key : unit. *)
-(* apply tt. Qed. *)
-(* Module Import Midx. *)
-(*   Definition t := let t := master_key in nat. *)
-(*   Definition map_with_midx A B (f: t -> A -> B) (la: list A): list B := *)
-(*     let fix map_with_midx_aux (cur : t) (la : list A) {struct la}: list B := *)
-(*         match la with *)
-(*         | [] => [] *)
-(*         | hd :: tl => f cur hd :: map_with_midx_aux (Nat.succ cur) tl *)
-(*         end *)
-(*     in map_with_midx_aux (0%nat) la. *)
-(*   Definition update X (map: t -> X) (t0: t) (x: X): t -> X := fun t1 => if Nat.eq_dec t0 t1 then x else map t1. *)
-(* End Midx. *)
-(* Opaque Midx.t. *)
-(* Check (5%nat: Midx.t). *)
-
-Module Type MIDXCORE.
-  Parameter t: Type.
-  Parameter ground: t.
-  Parameter next: t -> t.
-  (* Parameter compare: t -> t -> comparison. *)
-  Parameter eqb: t -> t -> bool.
-  Parameter lt: t -> t -> Prop.
-  Axiom eqb_spec: forall t0 t1, eqb t0 t1 -> t0 = t1.
-  Axiom lt_trans: Transitive lt.
-  Axiom lt_neq: forall t0 t1, lt t0 t1 -> ~eqb t0 t1.
-  Axiom next_fresh: forall t0, lt t0 (next t0).
-End MIDXCORE.
-
-(* Module MidxCore: MIDXCORE. *)
-Module MidxCore <: MIDXCORE.
-  Definition t := nat.
-  Definition ground: t := O.
-  Definition next: t -> t := S.
-  Definition eqb := Nat.eqb.
-  Definition lt := Nat.lt.
-  (* Definition compare := Nat.compare. *)
-  Lemma eqb_spec: forall t0 t1, eqb t0 t1 -> t0 = t1.
-  Proof. unfold eqb. i. eapply Nat.eqb_eq; eauto. Qed.
-  Lemma lt_trans: Transitive lt.
-  Proof. unfold lt. typeclasses eauto. Qed.
-  Lemma lt_neq: forall t0 t1, lt t0 t1 -> ~eqb t0 t1.
-  Proof. unfold lt, eqb. ii. unfold Nat.lt in *. eapply Nat.eqb_eq in H0; subst. omega. Qed.
-  Lemma next_fresh: forall t0, lt t0 (next t0).
-  Proof. ii. unfold next. unfold lt. unfold Nat.lt. omega. Qed.
-End MidxCore.
-
+(* I want to make "Midx.t" somewhat opaque.
+   "Global Opaque" keyword or "let tmp := 42 in nat" approach --> not really opaque.
+   Module Type approach --> it works, but too much unwanted complexity.
+   Record wrapper --> too inconvenient. we can add coercions but then there is no meaning..
+ *)
+(* Note: I tried to make Midx.t more opaque (not exploiting "Midx.t == nat"),
+   but the object we will be handling (SimMemOhs.t) is inductively defined like a list,
+   and I need to exploit (Midx.t == nat) somewhere.
+ *)
+(* TODO: move to CoqlibC *)
 Module Midx.
-  Include MidxCore.
-  Definition map_with_midx A B (f: t -> A -> B) (la: list A): list B :=
-    let fix map_with_midx_aux (cur : t) (la : list A) {struct la}: list B :=
+Section Midx.
+  Definition t: Type := nat.
+  (* Definition nat2t: nat -> t := fun n => wrap n. *)
+  (* Definition t2nat: t -> nat := fun t => unwrap t. *)
+  (* Coercion nat2t: nat >-> t. *)
+  (* Coercion t2nat: t >-> nat. *)
+
+  Let mapi_aux A B (f: t -> A -> B) :=
+    let fix rec (cur : t) (la : list A) {struct la}: list B :=
         match la with
         | [] => []
-        | hd :: tl => f cur hd :: map_with_midx_aux (Midx.next cur) tl
+        | hd :: tl => f cur hd :: rec (S cur) tl
         end
-    in map_with_midx_aux Midx.ground la.
-  Definition update X (map: t -> X) (t0: t) (x: X): t -> X :=
-    fun t1 => if Midx.eqb t0 t1 then x else map t1.
+    in rec.
+
+  Definition mapi A B (f: t -> A -> B) (la: list A): list B :=
+    mapi_aux f (0%nat) la.
+
+  Lemma in_mapi_aux_iff
+        A B (f: t -> A -> B) la b
+    :
+      forall m,
+      In b (mapi_aux f m la) <->
+      (exists idx a, f (m + idx)%nat a = b /\ nth_error la idx = Some a)
+  .
+  Proof.
+    ginduction la; split; ii; ss; des; firstorder (subst; auto).
+    - destruct idx; ss.
+    - exists 0%nat. rewrite Nat.add_0_r. esplits; eauto.
+    - exploit IHla; eauto. intros [T _]. exploit T; eauto. i; des. esplits; eauto.
+      { rp; eauto. f_equal. instantiate (1:= (S idx%nat)). omega. }
+      ss.
+    - destruct idx; ss; clarify.
+      { left. f_equal. omega. }
+      right. eapply IHla; eauto. esplits; eauto.
+      { rp; eauto. f_equal. omega. }
+  Qed.
+
+  Lemma in_mapi_iff
+        A B (f: t -> A -> B) la b
+    :
+      (* (<<IN: In b (mapi f la)>>) <-> *)
+      (* (<<NTH: (exists idx a, f idx a = b /\ nth_error la idx = Some a)>>) *)
+      In b (mapi f la) <->
+      (exists idx a, f idx a = b /\ nth_error la idx = Some a)
+  .
+  Proof.
+    eapply in_mapi_aux_iff.
+  Qed.
+
+  Let tmp: <<L: False>> <-> <<R: (0=1)%nat>>. Proof. ss. Qed.
+  Let tmp2: False <-> (0=1)%nat. Proof. ss. Qed.
+  Goal forall (H: (0=1)%nat /\ True), False.
+    intro.
+    rewrite <- tmp in H. Undo 1.
+    rewrite <- tmp2 in H. firstorder.
+  Qed.
+
+  Fixpoint update A (la: list A) (midx: t) (a: A): list A :=
+    match midx with
+    | O => 
+      match la with
+      | hd :: tl => a :: tl
+      | _ => la
+      end
+    | S midx =>
+      match la with
+      | hd :: tl => hd :: (update tl midx a)
+      | _ => la
+      end
+    end
+  .
+
+  Lemma update_spec
+        A (la: list A) midx a
+    :
+      forall n (LT: (n < length la)%nat),
+        <<NTH: nth_error (update la midx a) n = if Nat.eqb n midx
+                                                then Some a
+                                                else nth_error la n>>.
+  Proof.
+    ginduction la; ii; ss.
+    { omega. }
+    destruct n; ss.
+    { des_ifs; ss. }
+    destruct midx; ss.
+    exploit (IHla midx a0 n); eauto. { omega. }
+  Qed.
+
+End Midx.
 End Midx.
 
 (* TODO: move to CoqlibC? *)

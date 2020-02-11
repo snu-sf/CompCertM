@@ -13,6 +13,7 @@ Require Import SimSymb SimMem SimMod SimModSem SimProg SimProg.
 Require Import ModSemProps SemProps Ord.
 Require Import Sound Preservation AdequacySound.
 Require Import Program RUSC.
+Require Import SimModSemUnify.
 
 Set Implicit Arguments.
 
@@ -26,7 +27,8 @@ Section SIMGE.
   Context `{SM: SimMem.class}.
   Context `{SU: Sound.class}.
   Context {SS: SimSymb.class SM}.
-  Inductive sim_ge (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
+  Context {SMOS: SimMemOhs.class}.
+  Inductive sim_ge (sm0: SimMemOhs.t): Ge.t -> Ge.t -> Prop :=
   | sim_ge_src_stuck
       ge_tgt skenv_link_src skenv_link_tgt:
       sim_ge sm0 ([], skenv_link_src) (ge_tgt, skenv_link_tgt)
@@ -68,10 +70,10 @@ Section SIMGE.
   Qed.
 
   Theorem mfuture_preserves_sim_ge
-          sm0 ge_src ge_tgt sm1
-          (SIMGE: sim_ge sm0 ge_src ge_tgt)
-          (MFUTURE: SimMem.future sm0 sm1):
-      <<SIMGE: sim_ge sm1 ge_src ge_tgt>>.
+          smos0 ge_src ge_tgt smos1
+          (SIMGE: sim_ge smos0 ge_src ge_tgt)
+          (MFUTURE: SimMem.future smos0.(SimMemOhs.sm) smos1.(SimMemOhs.sm)):
+      <<SIMGE: sim_ge smos1 ge_src ge_tgt>>.
   Proof.
     inv SIMGE.
     { econs; eauto. }
@@ -93,16 +95,6 @@ Section SIMGE.
       <<SIMGE: sim_ge sm_init (msp.(ModSemPair.src) :: tl_src, skenv_link_src)
                       (msp.(ModSemPair.tgt) :: tl_tgt, skenv_link_tgt)>>.
   Proof. red. inv SIMGETL; ss. econstructor 2 with (msps := msp :: msps); eauto. Qed.
-
-  Lemma to_msp_tgt: forall skenv_tgt skenv_src pp sm_init,
-          map ModSemPair.tgt (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) =
-          map (fun md => Mod.modsem md skenv_tgt) (ProgPair.tgt pp).
-  Proof. i. ginduction pp; ii; ss. f_equal. erewrite IHpp; eauto. Qed.
-
-  Lemma to_msp_src: forall skenv_tgt skenv_src pp sm_init,
-      map ModSemPair.src (map (ModPair.to_msp skenv_src skenv_tgt sm_init) pp) =
-      map (fun md => Mod.modsem md skenv_src) (ProgPair.src pp).
-  Proof. i. ginduction pp; ii; ss. f_equal. erewrite IHpp; eauto. Qed.
 
   Lemma to_msp_sim_skenv
         sm_init mp skenv_src skenv_tgt ss_link

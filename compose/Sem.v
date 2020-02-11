@@ -21,8 +21,8 @@ Set Implicit Arguments.
 
 
 
-(* Definition Ohs := Midx.t -> { oh: Type & oh }. *)
-Definition Ohs := list { oh: Type & oh }.
+Definition Ohs := Midx.t -> { oh: Type & oh }.
+(* Definition Ohs := list { oh: Type & oh }. *)
 
 Module Frame.
 
@@ -86,7 +86,8 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 | step_init
     args frs ms st_init oh ohs
     (MSFIND: ge.(Ge.find_fptr_owner) (Args.get_fptr args) ms)
-    (OH: nth_error ohs ms.(ModSem.midx) = Some (existT id _ oh))
+    (* (OH: nth_error ohs ms.(ModSem.midx) = Some (existT id _ oh)) *)
+    (OH: ohs ms.(ModSem.midx) = (existT id _ oh))
     (INIT: ms.(ModSem.initial_frame) oh args st_init):
     step ge (Callstate args frs ohs)
          E0 (State ((Frame.mk ms st_init) :: frs) ohs)
@@ -101,7 +102,8 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) oh0 retv)
     (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) oh1 retv st0)
     (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (existT id _ oh0))
-    (OH: nth_error ohs1 fr1.(Frame.ms).(ModSem.midx) = Some (existT id _ oh1)):
+    (* (OH: nth_error ohs1 fr1.(Frame.ms).(ModSem.midx) = Some (existT id _ oh1)): *)
+    (OH: ohs1 fr1.(Frame.ms).(ModSem.midx) = (existT id _ oh1)):
     step ge (State (fr0 :: fr1 :: frs) ohs0)
          E0 (State (((Frame.update_st fr1) st0) :: frs) ohs1)
 .
@@ -134,10 +136,13 @@ Section SEMANTICS.
     (system :: (load_modsems init_skenv), init_skenv).
 
   Definition load_owned_heaps (ge: Ge.t): Ohs :=
-    map (fun ms => existT id _ ms.(ModSem.initial_owned_heap)) (fst ge)
+    fun midx =>
+      match List.find (fun ms => Nat.eqb midx ms.(ModSem.midx)) (fst ge) with
+      | Some ms => existT id _ ms.(ModSem.initial_owned_heap)
+      | _ => (@existT Type (fun _ => _) unit tt)
+      end
+    (* map (fun ms => existT id _ ms.(ModSem.initial_owned_heap)) (fst ge) *)
   .
-      (* List.nth midx (map (fun ms => (existT id _ ms.(ModSem.initial_owned_heap))) (fst ge)) *)
-      (*                    (@existT Type (fun _ => _) unit tt) *)
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
   Inductive initial_state (ge: Ge.t): state -> Prop :=

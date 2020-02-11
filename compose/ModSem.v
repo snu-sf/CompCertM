@@ -206,36 +206,39 @@ Section Midx.
   (*   rewrite <- tmp2 in H. firstorder. *)
   (* Qed. *)
 
-  Fixpoint update A (la: list A) (midx: t) (a: A): list A :=
-    match midx with
-    | O => 
-      match la with
-      | hd :: tl => a :: tl
-      | _ => la
-      end
-    | S midx =>
-      match la with
-      | hd :: tl => hd :: (update tl midx a)
-      | _ => la
-      end
-    end
-  .
+  Definition update X (map: t -> X) (t0: t) (x: X): t -> X :=
+    fun t1 => if Nat.eqb t0 t1 then x else map t1.
 
-  Lemma update_spec
-        A (la: list A) midx a
-    :
-      forall n (LT: (n < length la)%nat),
-        <<NTH: nth_error (update la midx a) n = if Nat.eqb n midx
-                                                then Some a
-                                                else nth_error la n>>.
-  Proof.
-    ginduction la; ii; ss.
-    { omega. }
-    destruct n; ss.
-    { des_ifs; ss. }
-    destruct midx; ss.
-    exploit (IHla midx a0 n); eauto. { omega. }
-  Qed.
+  (* Fixpoint update A (la: list A) (midx: t) (a: A): list A := *)
+  (*   match midx with *)
+  (*   | O =>  *)
+  (*     match la with *)
+  (*     | hd :: tl => a :: tl *)
+  (*     | _ => la *)
+  (*     end *)
+  (*   | S midx => *)
+  (*     match la with *)
+  (*     | hd :: tl => hd :: (update tl midx a) *)
+  (*     | _ => la *)
+  (*     end *)
+  (*   end *)
+  (* . *)
+
+  (* Lemma update_spec *)
+  (*       A (la: list A) midx a *)
+  (*   : *)
+  (*     forall n (LT: (n < length la)%nat), *)
+  (*       <<NTH: nth_error (update la midx a) n = if Nat.eqb n midx *)
+  (*                                               then Some a *)
+  (*                                               else nth_error la n>>. *)
+  (* Proof. *)
+  (*   ginduction la; ii; ss. *)
+  (*   { omega. } *)
+  (*   destruct n; ss. *)
+  (*   { des_ifs; ss. } *)
+  (*   destruct midx; ss. *)
+  (*   exploit (IHla midx a0 n); eauto. { omega. } *)
+  (* Qed. *)
 
 End Midx.
 End Midx.

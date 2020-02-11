@@ -525,8 +525,9 @@ Proof.
       i. clarify. repeat f_equal. eauto.
     + ss. esplits; et.
       { econs; et. }
-      i. determ_tac ModSem.final_frame_dtm. simpl_depind. clarify.
+      i. determ_tac ModSem.final_frame_dtm.
       repeat f_equal. eapply ModSem.after_external_dtm; et.
+      rp; eauto. rewrite OH in *. simpl_depind. clarify.
   - ss. inv FINAL. ss. inv STEP; ss; ModSem.tac.
   - inv H; s; try omega. exploit sd_traces_at; eauto.
 Qed.

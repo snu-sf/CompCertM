@@ -136,10 +136,10 @@ Section SIMGE.
           (WFSKSRC: forall mp (IN: In mp pp), Sk.wf (ModPair.src mp))
           (WFSKTGT: forall mp (IN: In mp pp), Sk.wf (ModPair.tgt mp))
           (LOADSRC: Sk.load_mem ss_link.(SimSymb.src) = Some m_src):
-      exists sm_init, <<SIMGE: sim_ge sm_init
+      exists sm_init, <<SIMGE: sim_ge sm_init.(SimMemOhs.sm)
                                       (load_genv p_src (Sk.load_skenv ss_link.(SimSymb.src)))
                                       (load_genv p_tgt (Sk.load_skenv ss_link.(SimSymb.tgt)))>>
-         /\ <<MWF: SimMem.wf sm_init>>
+         /\ <<MWF: SimMemOhs.wf sm_init>>
          /\ <<LOADTGT: Sk.load_mem ss_link.(SimSymb.tgt) = Some sm_init.(SimMem.tgt)>>
          /\ <<MSRC: sm_init.(SimMem.src) = m_src>>
          /\ (<<SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_link_src skenv_link_tgt>>)
@@ -147,7 +147,12 @@ Section SIMGE.
          /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt))>>)
          /\ (<<SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link>>)
          /\ (<<MAINSIM: SimMem.sim_val sm_init (Genv.symbol_address skenv_link_src ss_link.(SimSymb.src).(prog_main) Ptrofs.zero)
-                                             (Genv.symbol_address skenv_link_tgt ss_link.(SimSymb.tgt).(prog_main) Ptrofs.zero)>>).
+                                             (Genv.symbol_address skenv_link_tgt ss_link.(SimSymb.tgt).(prog_main) Ptrofs.zero)>>)
+         /\ (<<OHSSRC: sm_init.(SimMemOhs.ohs_src)
+                       = load_owned_heaps (load_genv p_src skenv_link_src)>>)
+         /\ (<<OHSTGT: sm_init.(SimMemOhs.ohs_tgt)
+                       = load_owned_heaps (load_genv p_tgt skenv_link_tgt)>>)
+  .
   Proof.
     assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))).
     { ii. clarify. eapply link_includes; eauto.
@@ -156,16 +161,45 @@ Section SIMGE.
     { ii. clarify. eapply link_includes; eauto.
       unfold ProgPair.tgt. rewrite in_map_iff. esplits; et. }
     clarify. exploit SimSymb.wf_load_sim_skenv; eauto. i; des. rename sm into sm_init. clarify.
+    assert(INIT: exists smos_init,
+      smos_init.(SimMemOhs.sm) = sm_init
+      /\ SimMemOhs.wf smos_init
+      /\ (<<OHSSRC: smos_init.(SimMemOhs.ohs_src) =
+                    load_owned_heaps
+                      (load_genv (ProgPair.src pp) (Sk.load_skenv ss_link.(SimSymb.src)))>>)
+      /\ (<<OHSTGT: smos_init.(SimMemOhs.ohs_tgt) =
+                    load_owned_heaps
+                      (load_genv (ProgPair.tgt pp) (Sk.load_skenv ss_link.(SimSymb.tgt)))>>)
+          ).
+    { admit "Idea 1.
+Put something like this.
+ModSem.initial_owned_heap: SkEnv.t -> owned_heap;
+SimModSem.ModSemPair.t --> smo_init:
+  forall sm (skenv_src ~= skenv_tgt),
+  SimMem.wf sm ->
+  exists smo, SimMemOh.wf smo /\ smo = sm /\
+              SimMemOh.oh_src = MSP.src.inital_owned_heap skenv_src /\
+              SimMemOh.oh_tgt = MSP.tgt.inital_owned_heap skenv_tgt.
+
+skenv_src ~= skenv_tgt에서 SimSymb도 쓰임. SMO 에 넣기는 애매함.
+(SMO에서는 initial_owned_heap도 모름)
+
+Idea 2.
+SimSymb.wf_load_sim_skenv를 갈아 엎기. ProgPair.t 받도록
+(obligate a lot for user!)
+". }
+    des.
+    clarify.
     esplits; eauto; cycle 1.
     { rewrite Forall_forall in *. eauto. }
     unfold load_genv in *. ss. bar.
     assert(exists msp_sys,
               (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.src))>>)
               /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.tgt))>>)
-              /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>
-              /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) sm_init>>)).
+              /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys smos_init.(SimMemOhs.sm)>>
+              /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) smos_init>>)).
     { exploit SimSymb.system_sim_skenv; eauto. i; des.
-      eexists (ModSemPair.mk _ _ ss_link sm_init). ss. esplits; eauto.
+      eexists (ModSemPair.mk _ _ ss_link smos_init). ss. esplits; eauto.
       - exploit system_local_preservation. intro SYSSU; des. econs.
         { ss. }
         { ss. eauto. }
@@ -238,7 +272,7 @@ See good_properties --> sm_match.
         set (skenv_src := (Sk.load_skenv (ModPair.src mp))) in *.
         set (skenv_tgt := (Sk.load_skenv (ModPair.tgt mp))) in *.
         inv SIMPROG. inv H3. rename H2 into SIMMP. inv SIMMP.
-        econstructor 2 with (msps := (map (ModPair.to_msp 1%nat skenv_src skenv_tgt sm_init) [mp])); eauto; ss; revgoals; econs; eauto.
+        econstructor 2 with (msps := (map (ModPair.to_msp 1%nat skenv_src skenv_tgt smos_init) [mp])); eauto; ss; revgoals; econs; eauto.
         - u. erewrite Mod.get_modsem_skenv_link_spec; ss.
         - u. erewrite Mod.get_modsem_skenv_link_spec; ss.
         -  eapply SIMMS; eauto; eapply SkEnv.load_skenv_wf; et.
@@ -266,7 +300,7 @@ See good_properties --> sm_match.
         - ii; ss. des; clarify; et. unfold ProgPair.tgt in *. rewrite in_map_iff in *. des. clarify. et.
       }
       econstructor 2 with
-          (msps := (Midx.mapi_aux (fun midx => ModPair.to_msp midx skenv_src skenv_tgt sm_init) (1%nat) (mp :: pp))); eauto; revgoals.
+          (msps := (Midx.mapi_aux (fun midx => ModPair.to_msp midx skenv_src skenv_tgt smos_init) (1%nat) (mp :: pp))); eauto; revgoals.
       + rewrite Forall_forall in *. i. ss. des; clarify.
         { u. erewrite Mod.get_modsem_skenv_link_spec; ss. }
         u in H. rewrite Midx.in_mapi_aux_iff in H. des; clarify.
@@ -484,6 +518,7 @@ Section ADQINIT.
       + ss. folder. des_ifs.
       + hnf. econs; eauto.
       + reflexivity.
+      + des_ifs.
   Qed.
 
 End ADQINIT.
@@ -493,7 +528,7 @@ End ADQINIT.
 
 Section ADQSTEP.
 
-  Context `{SM: SimMem.class}.
+  Context `{SMOS: SimMemOhs.class}.
   Context {SS: SimSymb.class SM}.
   Context `{SU: Sound.class}.
 

@@ -374,7 +374,7 @@ Section ADQMATCH.
     econs 2; eauto. etransitivity; eauto.
   Qed.
 
-  Inductive lxsim_lift: idx -> sem_src.(Smallstep.state) -> sem_tgt.(Smallstep.state) -> SimMem.t -> Prop :=
+  Inductive lxsim_lift: idx -> sem_src.(Smallstep.state) -> sem_tgt.(Smallstep.state) -> SimMemOhs.t -> Prop :=
   | lxsim_lift_intro
       sm0 tail_src tail_tgt tail_sm i0 ms_src lst_src ms_tgt lst_tgt sidx ohs_src0 ohs_tgt0
       (GE: sim_ge (SimMemOhs.sm sm0) sem_src.(globalenv) sem_tgt.(globalenv))

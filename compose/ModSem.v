@@ -153,7 +153,8 @@ Section Midx.
   (* Coercion nat2t: nat >-> t. *)
   (* Coercion t2nat: t >-> nat. *)
 
-  Let mapi_aux A B (f: t -> A -> B) :=
+  (* Let mapi_aux A B (f: t -> A -> B) := *)
+  Definition mapi_aux A B (f: t -> A -> B) :=
     let fix rec (cur : t) (la : list A) {struct la}: list B :=
         match la with
         | [] => []
@@ -162,7 +163,7 @@ Section Midx.
     in rec.
 
   Definition mapi A B (f: t -> A -> B) (la: list A): list B :=
-    mapi_aux f (0%nat) la.
+    mapi_aux f (1%nat) la.
 
   Lemma in_mapi_aux_iff
         A B (f: t -> A -> B) la b
@@ -192,7 +193,7 @@ Section Midx.
       (* (<<IN: In b (mapi f la)>>) <-> *)
       (* (<<NTH: (exists idx a, f idx a = b /\ nth_error la idx = Some a)>>) *)
       In b (mapi f la) <->
-      (exists idx a, f idx a = b /\ nth_error la idx = Some a)
+      (exists idx a, f (S idx) a = b /\ nth_error la idx = Some a)
   .
   Proof.
     eapply in_mapi_aux_iff.

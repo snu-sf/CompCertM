@@ -35,7 +35,7 @@ Global Program Instance LeibEq_refl (A: Type): LeibEq A A.
 
 
 
-Module Ohs.
+(* Module Ohs. *)
 Section SIMMODSEM.
 
   Variables ms_src ms_tgt: ModSem.t.
@@ -273,19 +273,20 @@ End ModSemPair.
 
 Arguments ModSemPair.mk [SM] [SS] _ _ _.
 Hint Constructors ModSemPair.sim_skenv.
-End Ohs.
+(* End Ohs. *)
 
-Hint Unfold Ohs.lxsim.
-Hint Resolve Ohs.lxsim_mon: paco.
-
-
+Hint Unfold lxsim.
+Hint Resolve lxsim_mon: paco.
 
 
-Require Import SimModSem.
 
-Definition msp_to_msp SM SS (msp: @ModSemPair.t SM SS): Ohs.ModSemPair.t :=
-  Ohs.ModSemPair.mk (msp.(ModSemPair.src)) (msp.(ModSemPair.tgt))
-                    (msp.(ModSemPair.ss)) (msp.(ModSemPair.sm)).
+
+Require SimModSem.
+Module _ModSemPair := SimModSem.ModSemPair.
+
+Definition msp_to_msp SM SS (msp: @_ModSemPair.t SM SS): ModSemPair.t :=
+  ModSemPair.mk (msp.(_ModSemPair.src)) (msp.(_ModSemPair.tgt))
+                (msp.(_ModSemPair.ss)) (msp.(_ModSemPair.sm)).
 
 Lemma cast_sigT_eq
       Y (x: {ty: Type & ty}) (y: Y)
@@ -310,7 +311,7 @@ Proof.
   unfold cast_sigT in *. ss. des_ifs. ss. unfold eq_rect. des_ifs.
 Qed.
 
-Coercion ModSemPair.SMO: ModSemPair.t >-> SimMemOh.class.
+Coercion _ModSemPair.SMO: _ModSemPair.t >-> SimMemOh.class.
 (* Definition sm_match SM SS {SMOS: SimMemOhs.class} (msp: @ModSemPair.t SM SS): *)
 (*   (@SimMemOh.t _ _ _ msp.(ModSemPair.SMO)) -> SimMemOhs.t -> Prop := *)
 (*   (* TODO: I want to remove @ *) *)
@@ -321,17 +322,17 @@ Coercion ModSemPair.SMO: ModSemPair.t >-> SimMemOh.class.
 (*     (projT2 (smos.(SimMemOhs.ohs_tgt) (msp.(ModSemPair.src).(midx))) *)
 (*             ~= smo.(SimMemOh.oh_tgt)) *)
 (* . *)
-Record sm_match SM SS {SMOS: SimMemOhs.class} (msp: @ModSemPair.t SM SS)
-  (smo: (@SimMemOh.t _ _ _ msp.(ModSemPair.SMO))) (smos: SimMemOhs.t): Prop :=
+Record sm_match SM SS {SMOS: SimMemOhs.class} (msp: @_ModSemPair.t SM SS)
+  (smo: (@SimMemOh.t _ _ _ msp.(_ModSemPair.SMO))) (smos: SimMemOhs.t): Prop :=
   (* TODO: I want to remove @ *)
   { smeq: (smos.(SimMemOhs.sm) = smo.(SimMemOh.sm));
-    ohsrcty: (projT1 (smos.(SimMemOhs.ohs_src) (msp.(ModSemPair.src).(midx)))) =
-             msp.(ModSemPair.src).(owned_heap);
-    ohtgtty: (projT1 (smos.(SimMemOhs.ohs_tgt) (msp.(ModSemPair.tgt).(midx)))) =
-             msp.(ModSemPair.tgt).(owned_heap);
-    ohsrc: (projT2 (smos.(SimMemOhs.ohs_src) (msp.(ModSemPair.src).(midx)))
+    ohsrcty: (projT1 (smos.(SimMemOhs.ohs_src) (msp.(_ModSemPair.src).(midx)))) =
+             msp.(_ModSemPair.src).(owned_heap);
+    ohtgtty: (projT1 (smos.(SimMemOhs.ohs_tgt) (msp.(_ModSemPair.tgt).(midx)))) =
+             msp.(_ModSemPair.tgt).(owned_heap);
+    ohsrc: (projT2 (smos.(SimMemOhs.ohs_src) (msp.(_ModSemPair.src).(midx)))
                    ~= smo.(SimMemOh.oh_src));
-    ohtgt: (projT2 (smos.(SimMemOhs.ohs_tgt) (msp.(ModSemPair.src).(midx)))
+    ohtgt: (projT2 (smos.(SimMemOhs.ohs_tgt) (msp.(_ModSemPair.src).(midx)))
                    ~= smo.(SimMemOh.oh_tgt))
     (* oh_src: {oh: Type & oh}; *)
     (* oh_tgt: {oh: Type & oh}; *)
@@ -357,7 +358,7 @@ Proof.
 Qed.
 
 Inductive good_properties SM {SS: SimSymb.class SM}
-          (SMOS: SimMemOhs.class) (msp: ModSemPair.t): Prop :=
+          (SMOS: SimMemOhs.class) (msp: _ModSemPair.t): Prop :=
 | good_properties_intro
     (SMPROJ: forall smos (MWF: SimMemOhs.wf smos),
         exists smo, sm_match msp smo smos /\ SimMemOh.wf smo)
@@ -392,9 +393,9 @@ Inductive good_properties SM {SS: SimSymb.class SM}
 Theorem fundamental_theorem
         SM SMOS SS SU
         msp
-        (SIM: msp.(@ModSemPair.sim SM SS SU))
+        (SIM: msp.(@_ModSemPair.sim SM SS SU))
   :
-    (msp_to_msp msp).(@Ohs.ModSemPair.sim SM SMOS SS SU)
+    (msp_to_msp msp).(@ModSemPair.sim SM SMOS SS SU)
 .
 Proof.
   inv SIM.
@@ -527,12 +528,12 @@ Proof.
         pclearbot. right. eapply CIH; eauto.
     + exploit SMSIM; eauto. i; des.
       assert(OHSWFSRC: LeibEq (projT1 (smos1.(SimMemOhs.ohs_src)
-                                               (msp.(ModSemPair.src).(midx))))
-                              msp.(ModSemPair.src).(owned_heap)).
+                                               (msp.(_ModSemPair.src).(midx))))
+                              msp.(_ModSemPair.src).(owned_heap)).
       { econs. erewrite ohsrcty; eauto. }
       assert(OHSWFTGT: LeibEq (projT1 (smos1.(SimMemOhs.ohs_tgt)
-                                               (msp.(ModSemPair.src).(midx))))
-                              msp.(ModSemPair.tgt).(owned_heap)).
+                                               (msp.(_ModSemPair.src).(midx))))
+                              msp.(_ModSemPair.tgt).(owned_heap)).
       { econs. rewrite MIDX. erewrite ohtgtty; eauto. }
       econs 4; eauto.
       (* { admit "WF - Hard: Small to big". } *)

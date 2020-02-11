@@ -128,6 +128,7 @@ Section SimMemOh.
     wf: t -> Prop;
     le: t -> t -> Prop;
     lepriv: t -> t -> Prop;
+    update_sm: t -> SimMem.t -> t;
 
     le_PreOrder :> PreOrder le;
 
@@ -136,6 +137,14 @@ Section SimMemOh.
     wf_proj: wf <1= SimMem.wf <*> sm;
     le_proj: (le ==> SimMem.le) sm sm; (* TODO: better style? *)
     lepriv_proj: (lepriv ==> SimMem.lepriv) sm sm; (* TODO: better style? *)
+    update_sm_spec: forall smo0 sm1, (update_sm smo0 sm1).(sm) = sm1;
+    (* update_sm_spec: forall smo0, sm <*> (update_sm smo0) = id; *)
+    update_sm_le: forall smo0 sm1, SimMem.le smo0.(sm) sm1 ->
+                                   le smo0 (update_sm smo0 sm1);
+    (* can we state it nicely? adjoint? *)
+    update_sm_wf: forall smo0 sm1, wf smo0 ->
+                                   SimMem.wf sm1 ->
+                                   wf (update_sm smo0 sm1);
   }.
 
   Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.

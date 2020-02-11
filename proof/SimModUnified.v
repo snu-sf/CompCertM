@@ -14,7 +14,7 @@ Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.
 Require Import Sound.
-Require Import SimSymb SimMem SimModSem.
+Require Import SimSymb SimMem SimModSemUnified.
 
 Set Implicit Arguments.
 
@@ -27,7 +27,7 @@ Set Implicit Arguments.
 Module ModPair.
 
 Section MODPAIR.
-Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+Context `{SMOS: SimMemOhs.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Record t: Type := mk {
     src: Mod.t;
@@ -37,9 +37,6 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Definition to_msp (midx: Midx.t)
              (skenv_link_src skenv_link_tgt: SkEnv.t) (sm: SimMem.t) (mp: t)
-             (SMO: SimMemOh.class
-                     ((Mod.modsem (mp.(src)) midx skenv_link_src).(ModSem.owned_heap))
-                     ((Mod.modsem (mp.(tgt)) midx skenv_link_tgt).(ModSem.owned_heap)))
     : ModSemPair.t
     := ModSemPair.mk (Mod.modsem (mp.(src)) midx skenv_link_src)
                      (Mod.modsem (mp.(tgt)) midx skenv_link_tgt) mp.(ss) sm.
@@ -58,9 +55,8 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           (WFTGT: SkEnv.wf skenv_link_tgt)
           (SSLE: SimSymb.le mp.(ss) ss_link)
           (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt),
-          exists SMO, <<SIMMSP: ModSemPair.sim
-                                  (to_msp midx skenv_link_src skenv_link_tgt
-                                          sm_init_link mp SMO)>>).
+          <<SIMMSP: ModSemPair.sim (to_msp midx skenv_link_src skenv_link_tgt
+                                           sm_init_link mp)>>).
   (* TODO: quantifying "exists SMO" here looks somewhat dirty... *)
   (* I would like to quantify it directly inside "sim_intro", but I need to put it here because *)
   (* I need to know "owned_heap" type which needs to know "skenv_link_src,tgt". *)

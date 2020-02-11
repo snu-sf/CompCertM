@@ -326,10 +326,10 @@ Section INITDTM.
     destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs.
     rename Heq0 into DEF0. rename Heq into DEF1.
 
-    hexploit (@Mod.get_modsem_projected_sk md0 idx0 skenv_link); eauto. intro SPEC0; des.
-    hexploit (@Mod.get_modsem_projected_sk md1 idx1 skenv_link); eauto. intro SPEC1; des.
-    remember (ModSem.skenv (Mod.get_modsem md0 idx0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
-    remember (ModSem.skenv (Mod.get_modsem md1 idx1 skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *.
+    hexploit (@Mod.get_modsem_projected_sk md0 (S idx0) skenv_link); eauto. intro SPEC0; des.
+    hexploit (@Mod.get_modsem_projected_sk md1 (S idx1) skenv_link); eauto. intro SPEC1; des.
+    remember (ModSem.skenv (Mod.get_modsem md0 (S idx0) skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
+    remember (ModSem.skenv (Mod.get_modsem md1 (S idx1) skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *.
 
     assert(WFSMALL0: skenv_proj0.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; try apply SPEC0; eauto. }

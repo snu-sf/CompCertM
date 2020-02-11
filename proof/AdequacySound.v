@@ -9,7 +9,7 @@ Require Import Integers.
 Require Import Events.
 
 Require Import Skeleton ModSem Mod Sem.
-Require Import SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
+Require Import SimSymb SimMem SimModUnified SimModSemUnified SimProgUnified.
 Require Import SemProps Ord.
 Require Import Sound Preservation.
 Require Import Memory.
@@ -35,7 +35,7 @@ Qed.
 
 Section ADQSOUND.
 
-  Context `{SM: SimMem.class}.
+  Context `{SMOS: SimMemOhs.class}.
   Context {SS: SimSymb.class SM}.
   Context `{SU: Sound.class}.
 
@@ -235,7 +235,7 @@ Section ADQSOUND.
         { eapply SkEnv.load_skenv_wf; et. }
         { eapply SSLE; eauto. }
         { eauto. }
-        intro SIM; des. inv SIMMSP. ss. esplits; eauto.
+        intro SIM; des. inv SIM. ss. esplits; eauto.
     - (* INTERNAL *)
       inv SUST. ss. esplits; eauto. econs; eauto. i. des.
       exploit FORALLSU; eauto. { eapply local_preservation_noguarantee_weak; eauto. } intro U; des. esplits; eauto. i. ss. inv PRSV.

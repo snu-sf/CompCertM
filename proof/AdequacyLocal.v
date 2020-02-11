@@ -381,9 +381,10 @@ Section ADQMATCH.
       (K: forall sm_ret ohs_src1 retv_src (ohs_tgt1: Ohs) retv_tgt lst_src1
           (OHSWFSRC: LeibEq (projT1 (ohs_src1 midx)) ms_src.(ModSem.owned_heap))
           (OHSWFTGT: LeibEq (projT1 (ohs_tgt1 midx)) ms_tgt.(ModSem.owned_heap))
-          (MLE: SimMem.le sm_arg_lift sm_ret)
-          (MWF: SimMem.wf sm_ret)
-          (SIMRETV: SimMem.sim_retv retv_src retv_tgt sm_ret)
+          (* TODO: BELOW ARE NOT IN SIMMODSEMUNIFIED!!!!!!!!!!!!!!!!!!!!!!!!~~~~~~~~ *)
+          (MLE: SimMemOhs.le sm_arg_lift sm_ret)
+          (MWF: SimMemOhs.wf sm_ret)
+          (SIMRETV: SimMemOhs.sim_retv midx ohs_src1 ohs_tgt1  retv_src retv_tgt sm_ret)
           (SU: forall si, exists su m_arg, (sound_states_local si) su m_arg lst_src0)
           (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 (cast_sigT (ohs_src1 midx)) retv_src lst_src1),
           exists lst_tgt1 sm_after i1,
@@ -525,6 +526,18 @@ End ADQINIT.
 
 
 
+(* TODO: move to proper place !! *)
+Lemma cast_sigT_existT
+      (x: { ty: Type & ty }) X
+      (TY: LeibEq (projT1 x) X)
+  :
+    x = existT id _ (@cast_sigT x X TY)
+.
+Proof.
+  destruct x. destruct TY. ss. clarify.
+Qed.
+
+
 
 Section ADQSTEP.
 
@@ -576,9 +589,24 @@ Section ADQSTEP.
           exploit find_fptr_owner_fsim; eauto. { eapply SimMem.sim_args_sim_fptr; eauto. } i; des. clarify.
           inv SIMMS.
           inv MSFIND. inv FINDTGT.
-          exploit SIM; eauto. i; des.
-          exploit INITPROGRESS; eauto. i; des.
-          esplits; eauto. econs; eauto. econs; eauto.
+          assert(TYSRC: LeibEq (projT1 (sm0.(SimMemOhs.ohs_src)
+                                              (ModSem.midx (ModSemPair.src msp))))
+                     (ModSem.owned_heap (ModSemPair.src msp))).
+          { admit "WF". }
+          assert(TYTGT: LeibEq (projT1 (sm0.(SimMemOhs.ohs_tgt)
+                                              (ModSem.midx (ModSemPair.tgt msp))))
+                     (ModSem.owned_heap (ModSemPair.tgt msp))).
+          { admit "WF". }
+          exploit SIM; eauto. { rr. ss. } i; des.
+          exploit INITPROGRESS; eauto.
+          { esplits; eauto.
+            rp; eauto. eapply cast_sigT_eq; eauto.
+            rewrite OH. ss.
+          }
+          i; des.
+          esplits; eauto. econs; eauto.
+          + econs; eauto.
+          + eapply cast_sigT_existT.
       }
       { i. ss. inv FINALTGT. }
       i. inv STEPTGT.
@@ -595,14 +623,33 @@ Section ADQSTEP.
       inv SIMMS.
       specialize (SIM sm0).
       inv MSFIND. inv MSFIND0.
-      exploit SIM; eauto. i; des.
+      assert(TYSRC: LeibEq (projT1 (sm0.(SimMemOhs.ohs_src)
+                                          (ModSem.midx (ModSemPair.src msp))))
+                           (ModSem.owned_heap (ModSemPair.src msp))).
+      { admit "WF". }
+      assert(TYTGT: LeibEq (projT1 (sm0.(SimMemOhs.ohs_tgt)
+                                          (ModSem.midx (ModSemPair.tgt msp))))
+                           (ModSem.owned_heap (ModSemPair.tgt msp))).
+      { admit "WF". }
+      exploit SIM; eauto. { rr. ss. } i; des.
 
-      exploit INITBSIM; eauto. i; des.
+      exploit INITBSIM; eauto.
+      { rp; eauto. eapply cast_sigT_eq. rewrite OH. ss. }
+      { esplits; eauto.
+        rp; eauto. eapply cast_sigT_eq. rewrite OH0. ss. }
+      i; des.
+      assert(UNCHSRC: SimMemOhs.ohs_src sm0 = SimMemOhs.ohs_src sm_init).
+      { admit "strengthen simmodsem". }
+      assert(UNCHTGT: SimMemOhs.ohs_tgt sm0 = SimMemOhs.ohs_tgt sm_init).
+      { admit "strengthen simmodsem". }
       clears st_init0; clear st_init0. esplits; eauto.
-      - left. apply plus_one. econs; eauto. econs; eauto.
+      - left. apply plus_one. econs; eauto.
+        { econs; eauto. }
+        rp; eauto. symmetry. eapply cast_sigT_eq; eauto. rewrite OH0. ss.
       - right. eapply CIH.
         instantiate (1:= sm_init). econs; try apply SIM0; eauto.
-        + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once. et.
+        + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once.
+          eauto using SimMemOhs.le_proj.
         + etrans; eauto.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SESRC; et.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SETGT; et.
@@ -627,9 +674,14 @@ Section ADQSTEP.
           { exfalso. eapply SAFESRC; eauto. }
           { exfalso. eapply SAFESRC0. u. eauto. }
           exploit STEP; eauto. i; des_safe.
-          exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt)). esplits; eauto.
+          assert(UNCHSRC: (SimMemOhs.ohs_src sm0) = (SimMemOhs.ohs_src smos1)).
+          { admit "UNCH". }
+          assert(UNCHTGT: (SimMemOhs.ohs_tgt sm0) = (SimMemOhs.ohs_tgt smos1)).
+          { admit "UNCH". }
+          exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt) smos1.(SimMemOhs.ohs_tgt)). esplits; eauto.
           { assert(T: DPlus ms_tgt lst_tgt tr st_tgt1 \/ (lst_tgt = st_tgt1 /\ tr = E0 /\ ord i1 i0)).
             { des; et. inv STAR; et. left. econs; et. }
+            rewrite UNCHTGT.
             clear H. des.
             - left. split; cycle 1.
               { eapply lift_receptive_at; eauto. unsguard SESRC. s. des_ifs. }
@@ -637,44 +689,54 @@ Section ADQSTEP.
               { unsguard SETGT. ss. des_ifs. }
             - right. esplits; eauto. clarify.
           }
-          pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
+          pclearbot. right. eapply CIH with (sm0 := smos1); eauto.
           econs; eauto.
-          { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
+          { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto using SimMemOhs.le_proj. }
           { etransitivity; eauto. }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dplus; eauto. { unsguard SETGT. ss. des_ifs. } }
-          right. eapply CIH; eauto. instantiate (1:=sm1). econs; eauto.
+          right. eapply CIH; eauto. instantiate (1:=smos1). econs; eauto.
           { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
-            eapply rtc_once; eauto. }
+            eapply rtc_once; eauto using SimMemOhs.le_proj. }
           { etrans; eauto. }
+          { admit "UNCH". }
+          { admit "UNCH". }
 
     - (* bstep *)
-      right. ss. hexploit1 SU0; ss.
-      assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src))
-                       -> safe_modsem ms_src lst_src).
-      { eapply safe_implies_safe_modsem; eauto. }
-      econs; ss; eauto.
-      i. exploit SU0; eauto. intro T. clear SU0. inv T.
-      + econs 1; eauto; revgoals.
-        { ii. des. clear - FINALTGT PROGRESS. inv FINALTGT. ss. ModSem.tac. }
-        { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
-        ii. inv STEPTGT; ModSem.tac. ss. exploit STEP; eauto. i; des_safe.
-        exists i1, (State ((Frame.mk ms_src st_src1) :: tail_src)).
-        esplits; eauto.
-        { des.
-          - left. eapply lift_plus; eauto.
-          - right. esplits; eauto. eapply lift_star; eauto.
-        }
-        pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
-        econs; eauto.
-        { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
-        etransitivity; eauto.
-      + des. pclearbot. econs 2.
-        { esplits; eauto. eapply lift_star; eauto. }
-        right. eapply CIH; eauto.
-        instantiate (1:=sm1). econs; eauto.
-        { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. eapply rtc_once; eauto. }
-        { etrans; eauto. }
+      admit "SOMEHOW...".
+
+    (* - (* bstep *) *)
+    (*   right. ss. hexploit1 SU0; ss. *)
+    (*   assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src)) *)
+    (*                    -> safe_modsem ms_src lst_src). *)
+    (*   { eapply safe_implies_safe_modsem; eauto. } *)
+    (*   econs; ss; eauto. *)
+    (*   i. exploit SU0; eauto. intro T. clear SU0. inv T. *)
+    (*   + econs 1; eauto; revgoals. *)
+    (*     { ii. des. clear - FINALTGT PROGRESS. inv FINALTGT. ss. ModSem.tac. } *)
+    (*     { ii. right. des. esplits; eauto. eapply lift_step; eauto. } *)
+    (*     ii. inv STEPTGT; ModSem.tac. ss. exploit STEP; eauto. i; des_safe. *)
+    (*     exists i1, (State ((Frame.mk ms_src st_src1) :: tail_src)). *)
+    (*     esplits; eauto. *)
+    (*     { des. *)
+    (*       - left. eapply lift_plus; eauto. *)
+    (*       - right. esplits; eauto. eapply lift_star; eauto. *)
+    (*     } *)
+    (*     pclearbot. right. eapply CIH with (sm0 := sm1); eauto. *)
+    (*     { unsguard SUST. des_safe. destruct H. *)
+    (*       - eapply sound_progress_plus; eauto. eapply lift_plus; eauto. *)
+    (*       - des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto. *)
+    (*     } *)
+    (*     econs; eauto. *)
+    (*     { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. } *)
+    (*     etransitivity; eauto. *)
+    (*   + des. pclearbot. econs 2. *)
+    (*     { esplits; eauto. eapply lift_star; eauto. } *)
+    (*     right. eapply CIH; eauto. *)
+    (*     { unsguard SUST. des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto. } *)
+    (*     instantiate (1:=sm1). econs; eauto. *)
+    (*     { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. eapply rtc_once; eauto. } *)
+    (*     { etrans; eauto. } *)
 
     - (* call *)
       left. right. econs; eauto. econs; eauto; cycle 1.
@@ -683,17 +745,29 @@ Section ADQSTEP.
       { ss. }
       rename SU0 into CALLFSIM.
 
-      exploit CALLFSIM; eauto. i; des. esplits; eauto.
+      assert(KEYYYYY: exists sm1,
+                sm0.(SimMemOhs.sm) = sm1.(SimMemOhs.sm)
+                /\ (<<UPDATED: projT2 (SimMemOhs.ohs_src sm1 (ModSem.midx ms_src)) ~= oh>>)).
+      { admit "THIS SHOULD HOLD~~~~~~~~~~~~~~~~~~~~~~~~". }
+      des.
+      (* TODO: UNIFY NAMING . OHSWFSRC vs TYSRC *)
+      assert(OHSWFSRC: LeibEq (projT1 (sm1.(SimMemOhs.ohs_src) (ModSem.midx ms_src)))
+                              (ModSem.owned_heap ms_src)).
+      { admit "WF". }
+      exploit CALLFSIM; eauto.
+      { rp; eauto. eapply cast_sigT_eq; eauto. } i; des. esplits; eauto.
       + left. split; cycle 1.
         { eapply lift_receptive_at. { unsguard SESRC. ss. des_ifs. } eapply at_external_receptive_at; et. }
         apply plus_one. econs; ss; eauto.
         { eapply lift_determinate_at; et. { unsguard SETGT. ss. des_ifs. } eapply at_external_determinate_at; et. }
         des_ifs. econs 1; eauto.
       + right. eapply CIH; eauto.
-        { instantiate (1:= sm_arg). econs 2; eauto.
-          * ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. econs 2; et.
-          * instantiate (1:= sm_arg). econs; [eassumption|..]; revgoals; ss.
-            { ii. exploit K; eauto. i; des_safe. pclearbot. esplits; try apply LXSIM; eauto. }
+        { instantiate (1:= smos_arg). econs 2; eauto.
+          * ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto.
+            econs 2; eauto using SimMemOhs.lepriv_proj.
+          * instantiate (1:= smos_arg). econs; [eassumption|..]; revgoals; ss.
+            { ii.
+              exploit K; eauto. i; des_safe. pclearbot. esplits; try apply LXSIM; eauto. }
             { reflexivity. }
             { et. }
             { refl. }
@@ -701,6 +775,10 @@ Section ADQSTEP.
             { ss. folder. des_ifs. }
             { eauto. }
           * reflexivity.
+          * admit "HARD------------- ADd this is SimModSemUnified!".
+          * ss.
+            admit "HARD------------- ADd this is SimModSemUnified!".
+          * rr in SIMARGS. des; ss.
         }
 
 
@@ -711,21 +789,42 @@ Section ADQSTEP.
         inv STACK.
         econs; ss; eauto.
         - econs; ss; eauto.
+          rr in SIMRETV. des. rename SIMARGS into SIMRETV.
+          (* TODO: CHANGE SIMMODSEMUNIFIED !!!!! SIMARGS ----> SIMRETV *)
           inv SIMRETV; ss.
           eapply SimMem.sim_val_int; et.
         - i. inv FINAL0; inv FINAL1; ss.
-          exploit ModSem.final_frame_dtm; [apply FINAL|apply FINAL0|..]. i; clarify. congruence.
+          exploit ModSem.final_frame_dtm; [apply FINAL|apply FINAL0|..]. i; des; clarify. congruence.
         - ii. des_ifs. inv H; ss; ModSem.tac.
       }
       i. ss. des_ifs. inv STEPSRC; ModSem.tac. ss.
       inv STACK; ss. folder. sguard in SESRC0. sguard in SETGT0. des_ifs.
       determ_tac ModSem.final_frame_dtm. clear_tac.
-      exploit K; try apply SIMRETV; eauto.
+      assert(MIDXEQ: midx = (ModSem.midx ms_src)).
+      { admit "PUT IT IN lxsim_lift". }
+      clarify.
+      assert(TYSRC: LeibEq (projT1 (smos_ret.(SimMemOhs.ohs_src)
+                                               (ModSem.midx ms_src)))
+                                               (* midx)) *)
+                           (ModSem.owned_heap ms_src0)).
+      { admit "WF ----- HARD: We don't know anything about midx". }
+      assert(TYTGT: LeibEq (projT1 (smos_ret.(SimMemOhs.ohs_tgt)
+                                               (ModSem.midx ms_src)))
+                                               (* midx)) *)
+                           (ModSem.owned_heap ms_tgt0)).
+      { admit "WF ----- HARD: We don't know anything about midx". }
+      hexploit (@K smos_ret smos_ret.(SimMemOhs.ohs_src) retv smos_ret.(SimMemOhs.ohs_tgt));
+        try apply SIMRETV; eauto.
       { etransitivity; eauto. etrans; eauto. }
+      { move SIMRETV at bottom.
+        admit "NEED TO UNDERSTAND THIS... EVEN THOUGH BELOW PROOF WORKS
+rr. esplits; eauto. rr in SIMRETV. des. eauto.
+". }
       { exploit SSSRC. { eapply star_refl. } intro T; des. inv T. des. simpl_depind. clarify.
         inv TL. simpl_depind. clarify. des.
         exploit FORALLSU0; eauto. i; des. esplits; eauto. eapply HD; eauto.
       }
+      { rp; eauto. eapply cast_sigT_eq; eauto. admit "HARD ------ NEED TO UNDERSTAND". }
       i; des. esplits; eauto.
       + left. split; cycle 1.
         { eapply lift_receptive_at. { unsguard SESRC. ss. des_ifs. } eapply final_frame_receptive_at; et. }

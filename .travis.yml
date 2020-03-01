@@ -17,7 +17,7 @@ env:
   - NJOBS=1
     MENHIR="20181113"
     PACO="4.0.0"
-    COMPCERTR="git@github.com:snu-sf/CompCertR.git"
+    COMPCERTR="https://github.com/snu-sf/CompCertR.git"
 
   matrix:
   - COMPILER="4.07.1"
@@ -43,8 +43,8 @@ install:
 script:
   - eval $(opam config env)
   - opam config var root
+  - cd $TRAVIS_BUILD_DIR/CompCertR
   - rm -rf CompCertM
-  - mkdir CompCertM
-  - mv ../[^CompCertR]* CompCertM
+  - git clone https://github.com/$TRAVIS_REPO_SLUG.git CompCertM
   - cd CompCertM
   - make -j ${NJOBS}

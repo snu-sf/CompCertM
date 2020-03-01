@@ -1,10 +1,10 @@
 dist: trusty
-sudo: required
 language: c
 cache:
   apt: true
   directories:
   - $HOME/.opam
+  - $TRAVIS_BUILD_DIR/CompCertR
 addons:
   apt:
     sources:
@@ -37,13 +37,13 @@ install:
   - opam install -y --verbose -j ${NJOBS} coq-paco.${PACO} && opam pin add coq-paco ${PACO} -y
   - git clone ${COMPCERTR} CompCertR
   - cd CompCertR
-  - mkdir CompCertM
-  - mv ../[^CompCertR]* CompCertM
   - ./configure ${ARCHI}
   - make -j ${NJOBS}
 
 script:
   - eval $(opam config env)
   - opam config var root
+  - mkdir CompCertM
+  - mv ../[^CompCertR]* CompCertM
   - cd CompCertM
   - make -j ${NJOBS}

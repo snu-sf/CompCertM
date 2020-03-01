@@ -18,6 +18,7 @@ env:
     MENHIR="20190626"
     PACO="4.0.0"
     COMPCERTR="https://github.com/snu-sf/CompCertR.git"
+    BRANCH="v3.6+_adapt"
 
   matrix:
   - COMPILER="4.07.1"
@@ -37,6 +38,7 @@ install:
   - opam install -y --verbose -j ${NJOBS} coq-paco.${PACO} && opam pin add coq-paco ${PACO} -y
   - git clone ${COMPCERTR} CompCertR
   - cd CompCertR
+  - git checkout ${BRANCH}
   - ./configure ${ARCHI}
   - make -j ${NJOBS}
 

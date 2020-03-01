@@ -43,6 +43,7 @@ install:
 script:
   - eval $(opam config env)
   - opam config var root
+  - rm -rf CompCertM
   - mkdir CompCertM
   - mv ../[^CompCertR]* CompCertM
   - cd CompCertM

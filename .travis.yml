@@ -36,9 +36,12 @@ install:
   - opam install -y --verbose -j ${NJOBS} menhir.${MENHIR} && opam pin add menhir ${MENHIR} -y
   - opam repo add coq-released https://coq.inria.fr/opam/released
   - opam install -y --verbose -j ${NJOBS} coq-paco.${PACO} && opam pin add coq-paco ${PACO} -y
-  - git clone ${COMPCERTR} CompCertR
+  - if [ ! -d "./CompCertR" ] 
+    then
+      git clone ${COMPCERTR} CompCertR
+    fi
   - cd CompCertR
-  - git checkout ${BRANCH}
+  - git reset --hard origin/${BRANCH}
   - ./configure ${ARCHI}
   - make -j ${NJOBS}
 

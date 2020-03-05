@@ -1,0 +1,56 @@
+dist: trusty
+language: c
+cache:
+  apt: true
+  directories:
+  - $HOME/.opam
+  - $TRAVIS_BUILD_DIR/CompCertR
+addons:
+  apt:
+    sources:
+    - avsm
+    packages:
+    - opam
+    - aspcud
+env:
+  global:
+  - NJOBS=1
+    MENHIR="20190626"
+    PACO="4.0.0"
+    COMPCERTR="https://github.com/snu-sf/CompCertR.git"
+    BRANCH="v3.6+_adapt"
+
+  matrix:
+  - COMPILER="4.07.1"
+    TEST_TARGET="8.9.1"
+    ARCHI="x86_64-linux"
+
+before_script:
+  - ./ci/keep_alive.sh &
+
+install:
+  - opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
+  - eval $(opam config env)
+  - opam config var root
+  - opam install -y --verbose -j ${NJOBS} coq.${TEST_TARGET} && opam pin add coq ${TEST_TARGET} -y
+  - opam install -y --verbose -j ${NJOBS} menhir.${MENHIR} && opam pin add menhir ${MENHIR} -y
+  - opam repo add coq-released https://coq.inria.fr/opam/released
+  - opam install -y --verbose -j ${NJOBS} coq-paco.${PACO} && opam pin add coq-paco ${PACO} -y
+  - if [ ! -d "./CompCertR" ];
+    then
+      git clone ${COMPCERTR} CompCertR;
+    fi
+  - cd CompCertR
+  - git reset --hard origin/${BRANCH}
+  - ./configure ${ARCHI}
+  - make -j ${NJOBS}
+
+script:
+  - eval $(opam config env)
+  - opam config var root
+  - cd $TRAVIS_BUILD_DIR/CompCertR
+  - rm -rf CompCertM
+  - git clone https://github.com/$TRAVIS_REPO_SLUG.git CompCertM
+  - cd CompCertM
+  - git checkout $TRAVIS_COMMIT
+  - make -j ${NJOBS}

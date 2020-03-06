@@ -840,21 +840,22 @@ rr. esplits; eauto. rr in SIMRETV. des. eauto.
         rewrite <- ! cast_sigT_existT.
         unfold Midx.update. des_ifs.
         { admit "THIS SHOULD NOT HAPPEN. -- OR WE SHOULD STRENGTHEN 'K' TO ADDRESS THIS". }
-        rewrite <- cast_sigT_existT.
-
-                  Midx.update ohs0 (ModSem.midx (Frame.ms fr0))
-                    (existT id (ModSem.owned_heap (Frame.ms fr0)) oh0)
-                    (ModSem.midx (Frame.ms fr1)) =
-                    existT id (ModSem.owned_heap (Frame.ms fr1)) oh1
-                  ->
-                  ohs1 =
-                  Midx.update ohs0 (ModSem.midx (Frame.ms fr0))
-                    (existT id (ModSem.owned_heap (Frame.ms fr0)) oh0) ->
-                  ohs1 (ModSem.midx (Frame.ms fr1)) =
-                  existT id (ModSem.owned_heap (Frame.ms fr1)) oh1 ->
+        { admit "UNCH???????????". }
       + right. eapply CIH; eauto.
         instantiate (1:= sm_after). econs; ss; cycle 3; eauto.
-        { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. }
+        { apply func_ext1. unfold Midx.update. intro mi. des_ifs.
+          - rewrite <- cast_sigT_existT.
+            admit "?????????????????".
+          - admit "?????????".
+        }
+        { apply func_ext1. unfold Midx.update. intro mi. des_ifs.
+          - rewrite <- cast_sigT_existT.
+            admit "?????????????????".
+          - admit "?????????".
+        }
+        { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et.
+          right. eapply SimMemOhs.le_proj; eauto.
+        }
         { etrans; eauto. }
   Qed.
 

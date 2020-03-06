@@ -241,9 +241,9 @@ SimSymb.wf_load_sim_skenv를 갈아 엎기. ProgPair.t 받도록
           - eapply System.modsem_determinate; et.
           - ss. econs; eauto. }
         left. pfold.
-        assert(UNIT: (cast_sigT (ohs_tgt 0%nat)) = tt).
+        assert(UNIT: (cast_sigT (SimMemOhs.ohs_tgt sm_arg 0%nat)) = tt).
         { clear - TYTGT. eapply cast_sigT_eq.
-          destruct (ohs_tgt 0%nat) eqn:T. simpl_depind. Undo 1.
+          destruct (SimMemOhs.ohs_tgt sm_arg 0%nat) eqn:T. simpl_depind. Undo 1.
           (* IT REMOVES SOME INFORMATION!!!!!!!!! (Hypothesis T) *)
           destruct TYTGT. ss. clarify. destruct p; ss.
         }
@@ -368,8 +368,8 @@ Section ADQMATCH.
       lxsim_stack sm0 [] []
   | lxsim_stack_cons
       tail_src tail_tgt tail_sm ms_src lst_src0 ms_tgt lst_tgt0 sm_at sm_arg sm_arg_lift sm_init sidx
-      midx
       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
+      (MIDX: ms_src.(ModSem.midx) = ms_tgt.(ModSem.midx))
       (MWF: SimMemOhs.wf sm_arg)
       (GE: sim_ge (SimMemOhs.sm sm_at) sem_src.(globalenv) sem_tgt.(globalenv))
       (MLE: SimMemOhs.le tail_sm sm_at)
@@ -379,16 +379,18 @@ Section ADQMATCH.
       (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
       (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
       (K: forall sm_ret ohs_src1 retv_src (ohs_tgt1: Ohs) retv_tgt lst_src1
-          (OHSWFSRC: LeibEq (projT1 (ohs_src1 midx)) ms_src.(ModSem.owned_heap))
-          (OHSWFTGT: LeibEq (projT1 (ohs_tgt1 midx)) ms_tgt.(ModSem.owned_heap))
+          (OHSWFSRC: LeibEq (projT1 (ohs_src1 ms_src.(ModSem.midx))) ms_src.(ModSem.owned_heap))
+          (OHSWFTGT: LeibEq (projT1 (ohs_tgt1 ms_tgt.(ModSem.midx))) ms_tgt.(ModSem.owned_heap))
           (* TODO: BELOW ARE NOT IN SIMMODSEMUNIFIED!!!!!!!!!!!!!!!!!!!!!!!!~~~~~~~~ *)
           (MLE: SimMemOhs.le sm_arg_lift sm_ret)
           (MWF: SimMemOhs.wf sm_ret)
-          (SIMRETV: SimMemOhs.sim_retv midx ohs_src1 ohs_tgt1  retv_src retv_tgt sm_ret)
+          (SIMRETV: SimMemOhs.sim_retv ohs_src1 ohs_tgt1  retv_src retv_tgt sm_ret)
           (SU: forall si, exists su m_arg, (sound_states_local si) su m_arg lst_src0)
-          (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 (cast_sigT (ohs_src1 midx)) retv_src lst_src1),
+          (AFTERSRC: ms_src.(ModSem.after_external) lst_src0
+                       (cast_sigT (ohs_src1 ms_src.(ModSem.midx))) retv_src lst_src1),
           exists lst_tgt1 sm_after i1,
-            (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 (cast_sigT (ohs_tgt1 midx)) retv_tgt lst_tgt1>>)
+            (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0
+                           (cast_sigT (ohs_tgt1 ms_tgt.(ModSem.midx))) retv_tgt lst_tgt1>>)
             /\ (<<MLEPUB: SimMemOhs.le sm_at sm_after>>)
             /\ (<<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                             i1 lst_src1 lst_tgt1 sm_after>>))
@@ -412,6 +414,7 @@ Section ADQMATCH.
   Inductive lxsim_lift: idx -> sem_src.(Smallstep.state) -> sem_tgt.(Smallstep.state) -> SimMemOhs.t -> Prop :=
   | lxsim_lift_intro
       sm0 tail_src tail_tgt tail_sm i0 ms_src lst_src ms_tgt lst_tgt sidx ohs_src0 ohs_tgt0
+      (MIDX: ms_src.(ModSem.midx) = ms_tgt.(ModSem.midx))
       (GE: sim_ge (SimMemOhs.sm sm0) sem_src.(globalenv) sem_tgt.(globalenv))
 
       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
@@ -751,11 +754,12 @@ Section ADQSTEP.
       { admit "THIS SHOULD HOLD~~~~~~~~~~~~~~~~~~~~~~~~". }
       des.
       (* TODO: UNIFY NAMING . OHSWFSRC vs TYSRC *)
-      assert(OHSWFSRC: LeibEq (projT1 (sm1.(SimMemOhs.ohs_src) (ModSem.midx ms_src)))
+      assert(OHSWFSRC: LeibEq (projT1 (sm1.(SimMemOhs.ohs_src) (ModSem.midx ms_tgt)))
                               (ModSem.owned_heap ms_src)).
       { admit "WF". }
       exploit CALLFSIM; eauto.
-      { rp; eauto. eapply cast_sigT_eq; eauto. } i; des. esplits; eauto.
+      (* { rp; eauto. eapply cast_sigT_eq; eauto. } *)
+      i; des. esplits; eauto.
       + left. split; cycle 1.
         { eapply lift_receptive_at. { unsguard SESRC. ss. des_ifs. } eapply at_external_receptive_at; et. }
         apply plus_one. econs; ss; eauto.
@@ -775,9 +779,8 @@ Section ADQSTEP.
             { ss. folder. des_ifs. }
             { eauto. }
           * reflexivity.
-          * admit "HARD------------- ADd this is SimModSemUnified!".
-          * ss.
-            admit "HARD------------- ADd this is SimModSemUnified!".
+          * rr in SIMARGS. des; ss.
+          * rr in SIMARGS. des; ss.
           * rr in SIMARGS. des; ss.
         }
 
@@ -800,16 +803,14 @@ Section ADQSTEP.
       i. ss. des_ifs. inv STEPSRC; ModSem.tac. ss.
       inv STACK; ss. folder. sguard in SESRC0. sguard in SETGT0. des_ifs.
       determ_tac ModSem.final_frame_dtm. clear_tac.
-      assert(MIDXEQ: midx = (ModSem.midx ms_src)).
-      { admit "PUT IT IN lxsim_lift". }
       clarify.
       assert(TYSRC: LeibEq (projT1 (smos_ret.(SimMemOhs.ohs_src)
-                                               (ModSem.midx ms_src)))
+                                               (ModSem.midx ms_src0)))
                                                (* midx)) *)
                            (ModSem.owned_heap ms_src0)).
       { admit "WF ----- HARD: We don't know anything about midx". }
       assert(TYTGT: LeibEq (projT1 (smos_ret.(SimMemOhs.ohs_tgt)
-                                               (ModSem.midx ms_src)))
+                                               (ModSem.midx ms_tgt0)))
                                                (* midx)) *)
                            (ModSem.owned_heap ms_tgt0)).
       { admit "WF ----- HARD: We don't know anything about midx". }
@@ -831,6 +832,26 @@ rr. esplits; eauto. rr in SIMRETV. des. eauto.
         apply plus_one. econs; eauto.
         { eapply lift_determinate_at. { unsguard SETGT. ss. des_ifs. } eapply final_frame_determinate_at; et. }
         econs 4; ss; eauto.
+        (* econs 4; s. *)
+        (* { eauto. } *)
+        (* { eauto. } *)
+        (* { eauto. } *)
+        (* s. *)
+        rewrite <- ! cast_sigT_existT.
+        unfold Midx.update. des_ifs.
+        { admit "THIS SHOULD NOT HAPPEN. -- OR WE SHOULD STRENGTHEN 'K' TO ADDRESS THIS". }
+        rewrite <- cast_sigT_existT.
+
+                  Midx.update ohs0 (ModSem.midx (Frame.ms fr0))
+                    (existT id (ModSem.owned_heap (Frame.ms fr0)) oh0)
+                    (ModSem.midx (Frame.ms fr1)) =
+                    existT id (ModSem.owned_heap (Frame.ms fr1)) oh1
+                  ->
+                  ohs1 =
+                  Midx.update ohs0 (ModSem.midx (Frame.ms fr0))
+                    (existT id (ModSem.owned_heap (Frame.ms fr0)) oh0) ->
+                  ohs1 (ModSem.midx (Frame.ms fr1)) =
+                  existT id (ModSem.owned_heap (Frame.ms fr1)) oh1 ->
       + right. eapply CIH; eauto.
         instantiate (1:= sm_after). econs; ss; cycle 3; eauto.
         { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. }

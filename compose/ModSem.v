@@ -208,7 +208,7 @@ Section Midx.
   (* Qed. *)
 
   Definition update X (map: t -> X) (t0: t) (x: X): t -> X :=
-    fun t1 => if Nat.eqb t0 t1 then x else map t1.
+    fun t1 => if Nat.eq_dec t0 t1 then x else map t1.
 
   (* Fixpoint update A (la: list A) (midx: t) (a: A): list A := *)
   (*   match midx with *)

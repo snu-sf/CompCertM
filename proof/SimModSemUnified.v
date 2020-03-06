@@ -78,7 +78,8 @@ Section SIMMODSEM.
       (MLE: SimMemOhs.le smos0 smos1)
       (BSIM: bsim i1 st_src1 st_tgt0 smos1).
 
-  Let midx: Midx.t := ms_src.(ModSem.midx).
+  Let midx_src: Midx.t := ms_src.(ModSem.midx).
+  Let midx_tgt: Midx.t := ms_tgt.(ModSem.midx).
 
   Inductive _lxsim_pre (lxsim: idx -> state ms_src -> state ms_tgt -> SimMemOhs.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smos0: SimMemOhs.t): Prop :=
@@ -125,25 +126,27 @@ Section SIMMODSEM.
       (MWF: SimMemOhs.wf smos0)
       (SAFESRC: ms_src.(is_call) st_src0)
       (SU: forall (SU: DUMMY_PROP),
-      <<CALLFSIM: forall (ohs_src0: Sem.Ohs) args_src
-          (OHSWFSRC: LeibEq (projT1 (ohs_src0 midx)) ms_src.(ModSem.owned_heap))
-          (ATSRC: ms_src.(at_external) st_src0 (cast_sigT (ohs_src0 midx)) args_src),
-          exists ohs_tgt0 oh_tgt0 args_tgt (smos_arg: SimMemOhs.t),
-            (<<SIMARGS: SimMemOhs.sim_args midx ohs_src0 ohs_tgt0 args_src args_tgt smos_arg>>
+      <<CALLFSIM: forall oh_src0 args_src
+          (* (OHSWFSRC: LeibEq (projT1 (ohs_src0 midx)) ms_src.(ModSem.owned_heap)) *)
+          (* (ATSRC: ms_src.(at_external) st_src0 (cast_sigT (ohs_src0 midx)) args_src), *)
+          (ATSRC: ms_src.(at_external) st_src0 oh_src0 args_src),
+          exists oh_tgt0 args_tgt (smos_arg: SimMemOhs.t),
+            (<<SIMARGS: SimMemOhs.sim_args
+                          (Midx.update smos0.(SimMemOhs.ohs_src) midx_src (existT id _ oh_src0))
+                          (Midx.update smos0.(SimMemOhs.ohs_tgt) midx_tgt (existT id _ oh_tgt0))
+                          args_src args_tgt smos_arg>>
             /\ (<<MWF: SimMemOhs.wf smos_arg>>)
             /\ (<<MLE: SimMemOhs.lepriv smos0 smos_arg>>)
-            /\ (<<OHSWFTGT: LeibEq (projT1 (ohs_src0 midx)) ms_src.(ModSem.owned_heap)>>)
-            /\ (<<OHTGT: projT2 (ohs_tgt0 midx) ~= oh_tgt0>>)
             /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 oh_tgt0 args_tgt>>)
             /\ (<<K: forall smos_ret ohs_src1 retv_src ohs_tgt1 retv_tgt st_src1
-                (OHSWFSRC: LeibEq (projT1 (ohs_src1 midx)) ms_src.(ModSem.owned_heap))
-                (OHSWFTGT: LeibEq (projT1 (ohs_tgt1 midx)) ms_tgt.(ModSem.owned_heap))
+                (OHSWFSRC: LeibEq (projT1 (ohs_src1 midx_src)) ms_src.(ModSem.owned_heap))
+                (OHSWFTGT: LeibEq (projT1 (ohs_tgt1 midx_tgt)) ms_tgt.(ModSem.owned_heap))
                 (MLE: SimMemOhs.le smos_arg smos_ret)
                 (MWF: SimMemOhs.wf smos_ret)
-                (SIMRETV: SimMemOhs.sim_retv midx ohs_src1 ohs_tgt1 retv_src retv_tgt smos_ret)
-                (AFTERSRC: ms_src.(after_external) st_src0 (cast_sigT (ohs_src1 midx)) retv_src st_src1),
+                (SIMRETV: SimMemOhs.sim_retv ohs_src1 ohs_tgt1 retv_src retv_tgt smos_ret)
+                (AFTERSRC: ms_src.(after_external) st_src0 (cast_sigT (ohs_src1 midx_src)) retv_src st_src1),
                 exists st_tgt1 smos_after i1,
-                  (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 (cast_sigT (ohs_tgt1 midx)) retv_tgt st_tgt1>>) /\
+                  (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 (cast_sigT (ohs_tgt1 midx_tgt)) retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMemOhs.le smos0 smos_after>>) /\
                   (<<LXSIM: lxsim i1 st_src1 st_tgt1 smos_after>>)>>))>>)
 
@@ -161,13 +164,13 @@ Section SIMMODSEM.
 
   | lxsim_final
       smos_ret ohs_src ohs_tgt retv_src retv_tgt
-      (OHSWFSRC: LeibEq (projT1 (ohs_src midx)) ms_src.(ModSem.owned_heap))
-      (OHSWFTGT: LeibEq (projT1 (ohs_tgt midx)) ms_tgt.(ModSem.owned_heap))
+      (OHSWFSRC: LeibEq (projT1 (ohs_src midx_src)) ms_src.(ModSem.owned_heap))
+      (OHSWFTGT: LeibEq (projT1 (ohs_tgt midx_tgt)) ms_tgt.(ModSem.owned_heap))
       (MLE: SimMemOhs.le smos0 smos_ret)
       (MWF: SimMemOhs.wf smos_ret)
-      (FINALSRC: ms_src.(final_frame) st_src0 (cast_sigT (ohs_src midx)) retv_src)
-      (FINALTGT: ms_tgt.(final_frame) st_tgt0 (cast_sigT (ohs_tgt midx)) retv_tgt)
-      (SIMRETV: SimMemOhs.sim_retv midx ohs_src ohs_tgt retv_src retv_tgt smos_ret)
+      (FINALSRC: ms_src.(final_frame) st_src0 (cast_sigT (ohs_src midx_src)) retv_src)
+      (FINALTGT: ms_tgt.(final_frame) st_tgt0 (cast_sigT (ohs_tgt midx_tgt)) retv_tgt)
+      (SIMRETV: SimMemOhs.sim_retv ohs_src ohs_tgt retv_src retv_tgt smos_ret)
   .
 
 
@@ -250,7 +253,7 @@ Context {SM: SimMem.class} {SMOS: SimMemOhs.class} {SS: SimSymb.class SM} {SU: S
                      Some (Internal sg_init_src))
           (FINDFTGT: (Genv.find_funct msp.(tgt).(ModSem.skenv)) (Args.get_fptr args_tgt) =
                      Some (Internal sg_init_tgt))
-          (SIMARGS: SimMemOhs.sim_args msp.(src).(midx) ohs_src ohs_tgt args_src args_tgt sm_arg)
+          (SIMARGS: SimMemOhs.sim_args ohs_src ohs_tgt args_src args_tgt sm_arg)
 
           (SIMSKENV: sim_skenv msp sm_arg)
           (MFUTURE: SimMem.future msp.(sm) sm_arg)
@@ -332,7 +335,7 @@ Record sm_match SM SS {SMOS: SimMemOhs.class} (msp: @_ModSemPair.t SM SS)
              msp.(_ModSemPair.tgt).(owned_heap);
     ohsrc: (projT2 (smos.(SimMemOhs.ohs_src) (msp.(_ModSemPair.src).(midx)))
                    ~= smo.(SimMemOh.oh_src));
-    ohtgt: (projT2 (smos.(SimMemOhs.ohs_tgt) (msp.(_ModSemPair.src).(midx)))
+    ohtgt: (projT2 (smos.(SimMemOhs.ohs_tgt) (msp.(_ModSemPair.tgt).(midx)))
                    ~= smo.(SimMemOh.oh_tgt))
     (* oh_src: {oh: Type & oh}; *)
     (* oh_tgt: {oh: Type & oh}; *)
@@ -425,8 +428,21 @@ Proof.
           ,
             exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
                           /\ (<<SMMATCH: sm_match msp smo1 smos1>>)
-                          /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)).
+                          /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
+                          /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx (_ModSemPair.src msp)),
+                                 SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
+                          /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx (_ModSemPair.tgt msp)),
+                                 SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
+        ).
   { admit "". }
+  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
+  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
+  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
+  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
+  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
+  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
+  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
+  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
   assert(SMMATCHLE: forall smo0 smo1 smos0 smos1
                            (SMMATCH0: sm_match msp smo0 smos0)
                            (SMMATCH1: sm_match msp smo1 smos1)
@@ -454,7 +470,7 @@ Proof.
   { clear - MIDX SIMARGS OHTGT TYTGT PROJARGS. clarify.
     rr in SIMARGS. des.
     eapply cast_sigT_eq; eauto. rewrite <- MIDX. ss.
-    etrans; try eapply ohtgt; eauto. rewrite OHTGT. ss.
+    etrans; try eapply ohtgt; eauto. rewrite OHTGT. rewrite MIDX. ss.
   }
   (* assert(OHSRC0: (cast_sigT oh_src) = (SimMemOh.oh_src sm_arg_proj)). *)
   (* { rr in SIMARGS. des. eapply cast_sigT_eq; eauto. *)
@@ -505,14 +521,16 @@ Proof.
       esplits; try apply WFWF0; eauto.
       * rr in SIMARGS. des. rr. esplits; eauto.
         { erewrite smeq; eauto. }
-        (* eapply eq_sigT_iff_eq_dep. *)
-        eapply sigT_eta; eauto.
-        { erewrite (@leibeq _ _ OHSWFSRC).
-          erewrite ohsrcty; eauto. }
-        { eapply cast_sigT_proj in OHSRC; eauto. etrans; eauto. erewrite ohsrc; eauto. }
-      (* * admit "WF - Hard: Small to big.". *)
-      * rr in SIMARGS. des. clarify.
-        erewrite <- ohtgt; eauto.
+        { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto.
+          eapply sigT_eta; eauto.
+          - erewrite ohsrcty; eauto.
+          - ss. erewrite ohsrc; eauto.
+        }
+        { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto.
+          eapply sigT_eta; eauto.
+          - erewrite ohtgtty; eauto.
+          - ss. erewrite ohtgt; eauto.
+        }
       * i. hexploit (SMPROJ smos_ret); eauto. intro T; des.
         exploit K.
         { eapply SMMATCHLE; et. }
@@ -524,7 +542,8 @@ Proof.
         hexploit (SMSIM _ _ _ MLEPUB SMMATCH); eauto. i; des.
         esplits; eauto.
         { rp; eauto. eapply cast_sigT_eq; eauto.
-          rr in SIMRETV. des. rewrite OHTGT. erewrite <- ohtgt; eauto. }
+          rr in SIMRETV. des. rewrite OHTGT. erewrite <- ohtgt; eauto.
+        }
         pclearbot. right. eapply CIH; eauto.
     + exploit SMSIM; eauto. i; des.
       assert(OHSWFSRC: LeibEq (projT1 (smos1.(SimMemOhs.ohs_src)
@@ -532,9 +551,9 @@ Proof.
                               msp.(_ModSemPair.src).(owned_heap)).
       { econs. erewrite ohsrcty; eauto. }
       assert(OHSWFTGT: LeibEq (projT1 (smos1.(SimMemOhs.ohs_tgt)
-                                               (msp.(_ModSemPair.src).(midx))))
+                                               (msp.(_ModSemPair.tgt).(midx))))
                               msp.(_ModSemPair.tgt).(owned_heap)).
-      { econs. rewrite MIDX. erewrite ohtgtty; eauto. }
+      { econs. erewrite ohtgtty; eauto. }
       econs 4; eauto.
       (* { admit "WF - Hard: Small to big". } *)
       { rp; eauto. eapply cast_sigT_eq; eauto.

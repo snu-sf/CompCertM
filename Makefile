@@ -1,6 +1,8 @@
 COQMODULE    := compcomp
 # COQTHEORIES  := $(wildcard */*.v) #*/*.v
-COQTHEORIES  := $(shell find . -iname '*.v')
+# COQTHEORIES  := $(shell find . -iname '*.v')
+COQTHEORIES  := $(shell find . -type d \( -path ./bound -o -path ./selfsim -o -path ./demo -o -path ./backend -o -path ./x86 -o -path ./cfrontend \) -prune -o -iname '*.v')
+
 
 .PHONY: all proof proof-quick graph
 

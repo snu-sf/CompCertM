@@ -423,8 +423,10 @@ Section ADQMATCH.
       (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
       (TOP: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                   i0 lst_src lst_tgt sm0)
-      (OHSRC: ohs_src0 = sm0.(SimMemOhs.ohs_src))
-      (OHTGT: ohs_tgt0 = sm0.(SimMemOhs.ohs_tgt))
+      (OHSRC: forall mi (NEQ: mi <> ms_src.(ModSem.midx)),
+          ohs_src0 mi = sm0.(SimMemOhs.ohs_src) mi)
+      (OHTGT: forall mi (NEQ: mi <> ms_tgt.(ModSem.midx)),
+          ohs_tgt0 mi = sm0.(SimMemOhs.ohs_tgt) mi)
       (SESRC: (ModSem.to_semantics ms_src).(symbolenv) = skenv_link_src)
       (SETGT: (ModSem.to_semantics ms_tgt).(symbolenv) = skenv_link_tgt):
       lxsim_lift i0 (State ((Frame.mk ms_src lst_src) :: tail_src) ohs_src0) (State ((Frame.mk ms_tgt lst_tgt) :: tail_tgt) ohs_tgt0) sm0
@@ -641,10 +643,10 @@ Section ADQSTEP.
       { esplits; eauto.
         rp; eauto. eapply cast_sigT_eq. rewrite OH0. ss. }
       i; des.
-      assert(UNCHSRC: SimMemOhs.ohs_src sm0 = SimMemOhs.ohs_src sm_init).
-      { admit "strengthen simmodsem". }
-      assert(UNCHTGT: SimMemOhs.ohs_tgt sm0 = SimMemOhs.ohs_tgt sm_init).
-      { admit "strengthen simmodsem". }
+      (* assert(UNCHSRC: SimMemOhs.ohs_src sm0 = SimMemOhs.ohs_src sm_init). *)
+      (* { admit "strengthen simmodsem". } *)
+      (* assert(UNCHTGT: SimMemOhs.ohs_tgt sm0 = SimMemOhs.ohs_tgt sm_init). *)
+      (* { admit "strengthen simmodsem". } *)
       clears st_init0; clear st_init0. esplits; eauto.
       - left. apply plus_one. econs; eauto.
         { econs; eauto. }
@@ -654,6 +656,8 @@ Section ADQSTEP.
         + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once.
           eauto using SimMemOhs.le_proj.
         + etrans; eauto.
+        + admit "UNCHSRC".
+        + admit "UNCHTGT".
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SESRC; et.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SETGT; et.
 
@@ -677,14 +681,14 @@ Section ADQSTEP.
           { exfalso. eapply SAFESRC; eauto. }
           { exfalso. eapply SAFESRC0. u. eauto. }
           exploit STEP; eauto. i; des_safe.
-          assert(UNCHSRC: (SimMemOhs.ohs_src sm0) = (SimMemOhs.ohs_src smos1)).
-          { admit "UNCH". }
-          assert(UNCHTGT: (SimMemOhs.ohs_tgt sm0) = (SimMemOhs.ohs_tgt smos1)).
-          { admit "UNCH". }
-          exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt) smos1.(SimMemOhs.ohs_tgt)). esplits; eauto.
+          (* assert(UNCHSRC: (SimMemOhs.ohs_src sm0) = (SimMemOhs.ohs_src smos1)). *)
+          (* { admit "UNCH". } *)
+          (* assert(UNCHTGT: (SimMemOhs.ohs_tgt sm0) = (SimMemOhs.ohs_tgt smos1)). *)
+          (* { admit "UNCH". } *)
+          exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt) ohs_tgt0). esplits; eauto.
           { assert(T: DPlus ms_tgt lst_tgt tr st_tgt1 \/ (lst_tgt = st_tgt1 /\ tr = E0 /\ ord i1 i0)).
             { des; et. inv STAR; et. left. econs; et. }
-            rewrite UNCHTGT.
+            (* rewrite UNCHTGT. *)
             clear H. des.
             - left. split; cycle 1.
               { eapply lift_receptive_at; eauto. unsguard SESRC. s. des_ifs. }
@@ -696,14 +700,16 @@ Section ADQSTEP.
           econs; eauto.
           { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto using SimMemOhs.le_proj. }
           { etransitivity; eauto. }
+          { ss. etrans; try apply OHSRC; eauto. admit "UNCH". }
+          { ss. etrans; try apply OHTGT; eauto. admit "UNCH". }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dplus; eauto. { unsguard SETGT. ss. des_ifs. } }
           right. eapply CIH; eauto. instantiate (1:=smos1). econs; eauto.
           { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
             eapply rtc_once; eauto using SimMemOhs.le_proj. }
           { etrans; eauto. }
-          { admit "UNCH". }
-          { admit "UNCH". }
+          { ss. etrans; try apply OHSRC; eauto. admit "UNCH". }
+          { ss. etrans; try apply OHTGT; eauto. admit "UNCH". }
 
     - (* bstep *)
       admit "SOMEHOW...".
@@ -780,7 +786,13 @@ Section ADQSTEP.
             { eauto. }
           * reflexivity.
           * rr in SIMARGS. des; ss.
+            clear - OHSRC OHSRC0.
+            rewrite <- OHSRC0.
+            unfold Midx.update in *. apply func_ext1. intro mj. des_ifs. eauto.
           * rr in SIMARGS. des; ss.
+            clear - OHTGT OHTGT0.
+            rewrite <- OHTGT0.
+            unfold Midx.update in *. apply func_ext1. intro mj. des_ifs. eauto.
           * rr in SIMARGS. des; ss.
         }
 
@@ -840,11 +852,12 @@ rr. esplits; eauto. rr in SIMRETV. des. eauto.
         rewrite <- ! cast_sigT_existT.
         unfold Midx.update. des_ifs.
         { admit "THIS SHOULD NOT HAPPEN. -- OR WE SHOULD STRENGTHEN 'K' TO ADDRESS THIS". }
-        { admit "UNCH???????????". }
+        { rewrite OHTGT; eauto. admit "UNCH". }
       + right. eapply CIH; eauto.
         instantiate (1:= sm_after). econs; ss; cycle 3; eauto.
-        { apply func_ext1. unfold Midx.update. intro mi. des_ifs.
+        { unfold Midx.update. ii. des_ifs.
           - rewrite <- cast_sigT_existT.
+            rewrite OHSRC.
             admit "?????????????????".
           - admit "?????????".
         }

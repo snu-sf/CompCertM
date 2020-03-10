@@ -980,6 +980,8 @@ End BEH.
 
 
 
+Require Import SimProg SimMod.
+
 Program Definition mkPR (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.class)
   : program_relation.t := program_relation.mk
                             (fun (p_src p_tgt: program) =>
@@ -1002,7 +1004,13 @@ Next Obligation.
   destruct (classic (forall x (IN: In x p_src), Sk.wf x)) as [WF|NWF]; cycle 1.
   { eapply sk_nwf_improves; auto. }
   specialize (REL WF). des. clarify.
-  eapply (@adequacy_local MR SR MP). auto.
+  assert(UNIF: exists SMOS ppu,
+            (<<SIM: SimProgUnified.ProgPair.sim ppu (SMOS := SMOS)>>)
+            /\ (<<PROGSRC: (SimProgUnified.ProgPair.src ppu) = (ProgPair.src pp)>>)
+            /\ (<<PROGTGT: (SimProgUnified.ProgPair.tgt ppu) = (ProgPair.tgt pp)>>)).
+  { admit "Fundamental Theroem". }
+  des. rewrite <- PROGSRC. rewrite <- PROGTGT.
+  eapply (@adequacy_local MR SMOS SR MP). auto.
 Qed.
 Next Obligation. exists []. splits; ss. Qed.
 Arguments mkPR: clear implicits.

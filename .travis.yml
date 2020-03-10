@@ -28,6 +28,10 @@ before_script:
   - ./ci/keep_alive.sh &
 
 install:
+  - echo $TRAVIS_REPO_SLUG
+  - echo $TRAVIS_COMMIT
+  - echo $TRAVIS_PULL_REQUEST_BRANCH
+  - echo $TRAVIS_PULL_REQUEST_SLUG
   - opam init -j ${NJOBS} --compiler=${COMPILER} -n -y
   - eval $(opam config env)
   - opam config var root

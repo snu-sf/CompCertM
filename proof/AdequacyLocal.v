@@ -231,10 +231,24 @@ SimSymb.wf_load_sim_skenv를 갈아 엎기. ProgPair.t 받도록
         { eapply SimSymb.mfuture_preserves_sim_skenv; eauto. }
         hexpl SimSymb.sim_skenv_func_bisim SIMGE0.
         inv SIMGE0. exploit FUNCFSIM; eauto. i; des. clarify.
-        assert(exists smos1, <<MLE: SimMemOhs.le sm_arg smos1>>
-                                    /\ <<MWF: SimMemOhs.wf smos1>>
-                                              /\ <<MEQ: SimMemOhs.sm smos1 = sm1>>).
-        { admit "We need good_properties. 어디서 증명하는게 적절한 레벨인지? refactor". }
+        assert(exists smos1, (<<MLE: SimMemOhs.le sm_arg smos1>>)
+                             /\ (<<MWF: SimMemOhs.wf smos1>>)
+                             /\ (<<MEQ: SimMemOhs.sm smos1 = sm1>>)
+                             /\ (<<OHSRC: SimMemOhs.ohs_src smos1 0%nat = existT id _ ()>>)
+                             /\ (<<OHTGT: SimMemOhs.ohs_tgt smos1 0%nat = existT id _ ()>>)
+              ).
+        { admit "We need good_properties. 어디서 증명하는게 적절한 레벨인지? refactor
+
+(old comment)
+'Somehow need to know that smos1 has same type.
+See good_properties --> sm_match'
+
+(new comment)
+smos1 0%nat이 unit이라는걸 알아야 하는데...
+'SimMemOhs.le가 type preserve 한다는 이야기를 넣을 수도 있을텐데 overkill 인 것 같기도.
+원래는 SimMemOhs.wf 까보면 알 수 있는 내용이긴 할 텐데 여기서는 못까보니까
+".
+        }
         des.
         esplits; eauto.
         { left. apply plus_one. econs.
@@ -250,16 +264,12 @@ SimSymb.wf_load_sim_skenv를 갈아 엎기. ProgPair.t 받도록
         econs 4.
         { refl. }
         { eauto. }
-        { ss. rewrite UNIT. ss. }
-        { ss. rewrite UNIT. ss. }
+        { ss. }
+        { ss. }
+        { clear - OHSRC. ss. apply func_ext1. intro mi. unfold Midx.update. des_ifs. }
+        { clear - OHTGT. ss. apply func_ext1. intro mi. unfold Midx.update. des_ifs. }
         { inv RETV; ss. unfold Retv.mk in *. clarify. rr. esplits; eauto.
           - econs; ss; eauto.
-          - admit "Somehow need to know that smos1 has same type.
-See good_properties --> sm_match.
-".
-          - admit "Somehow need to know that smos1 has same type.
-See good_properties --> sm_match.
-".
         }
     }
     des. rewrite <- SYSSRC. rewrite <- SYSTGT. eapply sim_ge_cons; ss.
@@ -388,12 +398,12 @@ Section ADQMATCH.
           (SU: forall si, exists su m_arg, (sound_states_local si) su m_arg lst_src0)
           (AFTERSRC: ms_src.(ModSem.after_external) lst_src0
                        (cast_sigT (ohs_src1 ms_src.(ModSem.midx))) retv_src lst_src1),
-          exists lst_tgt1 sm_after i1,
+          exists lst_tgt1 smos_after i1,
             (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0
                            (cast_sigT (ohs_tgt1 ms_tgt.(ModSem.midx))) retv_tgt lst_tgt1>>)
-            /\ (<<MLEPUB: SimMemOhs.le sm_at sm_after>>)
+            /\ (<<MLEPUB: SimMemOhs.le sm_at smos_after>>)
             /\ (<<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
-                            i1 lst_src1 lst_tgt1 sm_after>>))
+                            i1 lst_src1 lst_tgt1 smos_after>>))
       (SESRC: (ModSem.to_semantics ms_src).(symbolenv) = skenv_link_src)
       (SETGT: (ModSem.to_semantics ms_tgt).(symbolenv) = skenv_link_tgt):
       lxsim_stack sm_init
@@ -829,15 +839,15 @@ Section ADQSTEP.
       hexploit (@K smos_ret smos_ret.(SimMemOhs.ohs_src) retv smos_ret.(SimMemOhs.ohs_tgt));
         try apply SIMRETV; eauto.
       { etransitivity; eauto. etrans; eauto. }
-      { move SIMRETV at bottom.
-        admit "NEED TO UNDERSTAND THIS... EVEN THOUGH BELOW PROOF WORKS
-rr. esplits; eauto. rr in SIMRETV. des. eauto.
-". }
       { exploit SSSRC. { eapply star_refl. } intro T; des. inv T. des. simpl_depind. clarify.
         inv TL. simpl_depind. clarify. des.
         exploit FORALLSU0; eauto. i; des. esplits; eauto. eapply HD; eauto.
       }
-      { rp; eauto. eapply cast_sigT_eq; eauto. admit "HARD ------ NEED TO UNDERSTAND". }
+      { rp; eauto. eapply cast_sigT_eq; eauto. rewrite UPDSRC.
+        unfold Midx.update. des_ifs.
+        { admit "THIS SHOULD NOT HAPPEN". }
+        ss.
+        admit "HARD ------ NEED TO UNDERSTAND". }
       i; des. esplits; eauto.
       + left. split; cycle 1.
         { eapply lift_receptive_at. { unsguard SESRC. ss. des_ifs. } eapply final_frame_receptive_at; et. }
@@ -854,17 +864,24 @@ rr. esplits; eauto. rr in SIMRETV. des. eauto.
         { admit "THIS SHOULD NOT HAPPEN. -- OR WE SHOULD STRENGTHEN 'K' TO ADDRESS THIS". }
         { rewrite OHTGT; eauto. admit "UNCH". }
       + right. eapply CIH; eauto.
-        instantiate (1:= sm_after). econs; ss; cycle 3; eauto.
+        instantiate (1:= smos_after). econs; ss; cycle 3; eauto.
         { unfold Midx.update. ii. des_ifs.
-          - rewrite <- cast_sigT_existT.
-            rewrite OHSRC.
-            admit "?????????????????".
-          - admit "?????????".
+          - clear - UPDSRC OH OHSRC.
+            replace smos_after with smos_ret by admit "UNCH".
+            rewrite UPDSRC. unfold Midx.update. des_ifs.
+          - clear - UPDSRC OH OHSRC NEQ n.
+            rewrite OHSRC; eauto.
+            replace smos_after with smos_ret by admit "UNCH".
+            rewrite UPDSRC. unfold Midx.update. des_ifs.
         }
-        { apply func_ext1. unfold Midx.update. intro mi. des_ifs.
-          - rewrite <- cast_sigT_existT.
-            admit "?????????????????".
-          - admit "?????????".
+        { unfold Midx.update. ii. des_ifs.
+          - clear - UPDTGT OH OHTGT.
+            replace smos_after with smos_ret by admit "UNCH".
+            rewrite UPDTGT. unfold Midx.update. des_ifs.
+          - clear - UPDTGT OH OHTGT NEQ n.
+            rewrite OHTGT; eauto.
+            replace smos_after with smos_ret by admit "UNCH".
+            rewrite UPDTGT. unfold Midx.update. des_ifs.
         }
         { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et.
           right. eapply SimMemOhs.le_proj; eauto.
@@ -880,7 +897,7 @@ Require Import BehaviorsC SemProps.
 
 Section ADQ.
 
-  Context `{SM: SimMem.class}.
+  Context `{SMOS: SimMemOhs.class}.
   Context {SS: SimSymb.class SM}.
   Context `{SU: Sound.class}.
 

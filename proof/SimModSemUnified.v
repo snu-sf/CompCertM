@@ -163,14 +163,19 @@ Section SIMMODSEM.
   (*     (SIMRETV: SimMemOhs.sim_retv midx ohs_src ohs_tgt retv_src retv_tgt smos_ret) *)
 
   | lxsim_final
-      smos_ret ohs_src ohs_tgt retv_src retv_tgt
-      (OHSWFSRC: LeibEq (projT1 (ohs_src midx_src)) ms_src.(ModSem.owned_heap))
-      (OHSWFTGT: LeibEq (projT1 (ohs_tgt midx_tgt)) ms_tgt.(ModSem.owned_heap))
+      smos_ret oh_src oh_tgt retv_src retv_tgt
       (MLE: SimMemOhs.le smos0 smos_ret)
       (MWF: SimMemOhs.wf smos_ret)
-      (FINALSRC: ms_src.(final_frame) st_src0 (cast_sigT (ohs_src midx_src)) retv_src)
-      (FINALTGT: ms_tgt.(final_frame) st_tgt0 (cast_sigT (ohs_tgt midx_tgt)) retv_tgt)
-      (SIMRETV: SimMemOhs.sim_retv ohs_src ohs_tgt retv_src retv_tgt smos_ret)
+      (FINALSRC: ms_src.(final_frame) st_src0 oh_src retv_src)
+      (FINALTGT: ms_tgt.(final_frame) st_tgt0 oh_tgt retv_tgt)
+      (UPDSRC: smos_ret.(SimMemOhs.ohs_src) =
+               Midx.update smos0.(SimMemOhs.ohs_src) midx_src (existT id _ oh_src))
+      (UPDTGT: smos_ret.(SimMemOhs.ohs_tgt) =
+               Midx.update smos0.(SimMemOhs.ohs_tgt) midx_tgt (existT id _ oh_tgt))
+      (SIMRETV: SimMemOhs.sim_retv
+                  (smos_ret.(SimMemOhs.ohs_src))
+                  (smos_ret.(SimMemOhs.ohs_tgt))
+                  retv_src retv_tgt smos_ret)
   .
 
 
@@ -418,7 +423,12 @@ Proof.
           ,
             exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
                           /\ (<<SMMATCH: sm_match msp smo1 smos1>>)
-                          /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)).
+                          /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
+                          /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx (_ModSemPair.src msp)),
+                                 SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
+                          /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx (_ModSemPair.tgt msp)),
+                                 SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
+        ).
   { admit "". }
   assert(SMSIMPRIV: forall (smos0: SimMemOhs.t)
                            (smo0 smo1: SimMemOh.t)
@@ -435,14 +445,6 @@ Proof.
                                  SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
         ).
   { admit "". }
-  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
-  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
-  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
-  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
-  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
-  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
-  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
-  (* YJ: Don't we need "UNCH" in "SMSIM" too? Why not? Understand it *)
   assert(SMMATCHLE: forall smo0 smo1 smos0 smos1
                            (SMMATCH0: sm_match msp smo0 smos0)
                            (SMMATCH1: sm_match msp smo1 smos1)
@@ -554,13 +556,15 @@ Proof.
                                                (msp.(_ModSemPair.tgt).(midx))))
                               msp.(_ModSemPair.tgt).(owned_heap)).
       { econs. erewrite ohtgtty; eauto. }
-      econs 4; eauto.
-      (* { admit "WF - Hard: Small to big". } *)
-      { rp; eauto. eapply cast_sigT_eq; eauto.
-        rr in SIMRETV. des. rewrite OHSRC. erewrite <- ohsrc; eauto. }
-      { rp; eauto. eapply cast_sigT_eq; eauto.
-        rr in SIMRETV. des. rewrite OHTGT. erewrite <- ohtgt; eauto. }
-      rr in SIMRETV. des. rr. esplits; eauto. erewrite smeq; eauto.
+
+      rr in SIMRETV. des. rr. econs 4; eauto.
+      * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
+        { eapply sigT_eta; eauto using ohsrcty, ohsrc. }
+        erewrite UNCHSRC; eauto.
+      * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
+        { eapply sigT_eta; eauto using ohtgtty, ohtgt. }
+        erewrite UNCHTGT; eauto.
+      * rr. esplits; eauto. erewrite smeq; eauto.
   - ii. des. exploit INITPROGRESS; eauto.
     { esplits; eauto. rewrite <- OHSRC0. eauto. }
     i; des. esplits; eauto. rewrite <- OHTGT0 in INITTGT. eauto.

@@ -49,5 +49,5 @@ script:
   - rm -rf CompCertM
   - git clone https://github.com/$TRAVIS_REPO_SLUG.git CompCertM
   - cd CompCertM
-  - git checkout $TRAVIS_COMMIT
+  - git checkout -qf $TRAVIS_COMMIT
   - make -j ${NJOBS}

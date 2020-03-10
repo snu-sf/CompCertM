@@ -103,7 +103,7 @@ Section MATCHSIMFORWARD.
       (MWFAFTR: SimMem.wf (SimMemLift.unlift sm_arg sm_ret))
       (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret)),
       exists sm_after idx1 st_tgt1,
-        (<<MLE: SimMem.le sm0 sm_after>>) /\
+        (<<MLE: SimMem.le sm0 sm_after>>) /\ (<<MLEPRIV: SimMem.lepriv sm_ret sm_after>>) /\
         forall (MLE: SimMem.le sm0 sm_after) (* helper *),
           ((<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 retv_tgt st_tgt1>>) /\
            (<<MATCH: match_states idx1 st_src1 st_tgt1 sm_after>>)).
@@ -184,7 +184,7 @@ Section MATCHSIMFORWARD.
         { econs; eauto. }
         { eapply SimMemLift.unlift_wf; eauto. }
         { eapply SimMemLift.lift_spec; eauto. }
-        i; des. spc H1. des. esplits; eauto. right. eapply CIH; eauto.
+        i; des. spc H0. des. esplits; eauto. right. eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
           apply rtc_once. left. et.
         }

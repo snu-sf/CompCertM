@@ -717,6 +717,7 @@ Proof.
   { i. eapply SoundTop.sound_state_local_preservation. }
   { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
   { ii; ss. r. etrans; eauto. }
+  { ii. eauto. }
   i. ss. esplits; eauto.
 
   - i. des. inv SAFESRC.

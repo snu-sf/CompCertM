@@ -39,8 +39,6 @@ install:
   - git clone ${COMPCERTR} CompCertR;
   - cd CompCertR
   - git checkout origin/${BRANCH}
-  - ./configure ${ARCHI}
-  - make -j ${NJOBS}
 
 script:
   - eval $(opam config env)
@@ -51,4 +49,3 @@ script:
   - cd CompCertM
   - git fetch origin +refs/pull/*/merge:refs/remotes/origin/pr/*
   - git checkout -qf $TRAVIS_COMMIT
-  - make -j ${NJOBS}

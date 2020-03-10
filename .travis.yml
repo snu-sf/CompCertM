@@ -4,7 +4,6 @@ cache:
   apt: true
   directories:
   - $HOME/.opam
-  - $TRAVIS_BUILD_DIR/CompCertR
 addons:
   apt:
     sources:
@@ -36,12 +35,10 @@ install:
   - opam install -y --verbose -j ${NJOBS} menhir.${MENHIR} && opam pin add menhir ${MENHIR} -y
   - opam repo add coq-released https://coq.inria.fr/opam/released
   - opam install -y --verbose -j ${NJOBS} coq-paco.${PACO} && opam pin add coq-paco ${PACO} -y
-  - if [ ! -d "./CompCertR" ];
-    then
-      git clone ${COMPCERTR} CompCertR;
-    fi
+  - rm -rf ./CompCertR
+  - git clone ${COMPCERTR} CompCertR;
   - cd CompCertR
-  - git reset --hard origin/${BRANCH}
+  - git checkout origin/${BRANCH}
   - ./configure ${ARCHI}
   - make -j ${NJOBS}
 
@@ -52,5 +49,6 @@ script:
   - rm -rf CompCertM
   - git clone https://github.com/$TRAVIS_REPO_SLUG.git CompCertM
   - cd CompCertM
-  - git checkout $TRAVIS_COMMIT
+  - git fetch origin +refs/pull/*/merge:refs/remotes/origin/pr/*
+  - git checkout -qf $TRAVIS_COMMIT
   - make -j ${NJOBS}

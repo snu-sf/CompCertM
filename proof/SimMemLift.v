@@ -34,6 +34,8 @@ Module SimMemOhLift.
     lift_wf: forall mrel, SimMemOh.wf mrel -> SimMemOh.wf (lift mrel);
     lift_src: forall mrel, (lift mrel).(SimMem.src) = mrel.(SimMem.src);
     lift_tgt: forall mrel, (lift mrel).(SimMem.tgt) = mrel.(SimMem.tgt);
+    lift_oh_src: forall mrel, (lift mrel).(SimMemOh.oh_src) = mrel.(SimMemOh.oh_src);
+    lift_oh_tgt: forall mrel, (lift mrel).(SimMemOh.oh_tgt) = mrel.(SimMemOh.oh_tgt);
     unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.src) = mrel1.(SimMem.src);
     unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.tgt) = mrel1.(SimMem.tgt);
     lift_spec: forall mrel0 mrel1, SimMemOh.le (lift mrel0) mrel1 -> SimMemOh.wf mrel0 -> SimMemOh.le mrel0 (unlift mrel0 mrel1);

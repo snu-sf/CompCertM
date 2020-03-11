@@ -10,10 +10,11 @@ Require Import JunkBlock.
 
 Set Implicit Arguments.
 
-Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
+Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify.
 
 Section MODSEM.
 
+  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program fn_sig p).
@@ -61,21 +62,22 @@ Section MODSEM.
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
-       ModSem.at_external := at_external;
-       ModSem.initial_frame := initial_frame;
-       ModSem.final_frame := final_frame;
-       ModSem.after_external := after_external;
+       ModSem.at_external := coerce at_external;
+       ModSem.initial_frame := coerce initial_frame;
+       ModSem.final_frame := coerce final_frame;
+       ModSem.after_external := coerce after_external;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
+       ModSem.midx := midx;
     |}.
 
   Program Definition modsem2: ModSem.t :=
     {| ModSem.step := step;
-       ModSem.at_external := at_external;
-       ModSem.initial_frame := initial_frame2;
-       ModSem.final_frame := final_frame;
-       ModSem.after_external := after_external;
+       ModSem.at_external := coerce at_external;
+       ModSem.initial_frame := coerce initial_frame2;
+       ModSem.final_frame := coerce final_frame;
+       ModSem.after_external := coerce after_external;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;

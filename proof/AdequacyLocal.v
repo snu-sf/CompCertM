@@ -814,9 +814,8 @@ Section ADQSTEP.
         inv STACK.
         econs; ss; eauto.
         - econs; ss; eauto.
-          rr in SIMRETV. des. rename SIMARGS into SIMRETV.
-          (* TODO: CHANGE SIMMODSEMUNIFIED !!!!! SIMARGS ----> SIMRETV *)
-          inv SIMRETV; ss.
+          rr in SIMRETV. des.
+          inv SIMRETV0; ss.
           eapply SimMem.sim_val_int; et.
         - i. inv FINAL0; inv FINAL1; ss.
           exploit ModSem.final_frame_dtm; [apply FINAL|apply FINAL0|..]. i; des; clarify. congruence.

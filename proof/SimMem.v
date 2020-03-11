@@ -157,7 +157,7 @@ Section SimMemOh.
 
   Definition sim_retv `{SMO: class} (oh_src: owned_heap_src) (oh_tgt: owned_heap_tgt)
              (retv_src retv_tgt: Retv.t) (smo0: SimMemOh.t): Prop :=
-    (<<SIMARGS: SimMem.sim_retv retv_src retv_tgt smo0>>) /\
+    (<<SIMRETV: SimMem.sim_retv retv_src retv_tgt smo0>>) /\
     (<<OHSRC: oh_src = smo0.(SimMemOh.oh_src)>>) /\ (<<OHTGT: oh_tgt = smo0.(SimMemOh.oh_tgt)>>)
   .
 
@@ -165,7 +165,7 @@ End SimMemOh.
 End SimMemOh.
 Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
 
-Hint Resolve SimMemOh.pub_priv.
+Hint Resolve SimMemOh.pub_priv SimMemOh.le_proj SimMemOh.lepriv_proj.
 
 
 Local Obligation Tactic := try (by econs); try (by ii; ss).
@@ -173,6 +173,8 @@ Local Obligation Tactic := try (by econs); try (by ii; ss).
 Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class unit unit) | 100 :=
   {
     sm := id;
+    oh_src := fun _ => tt;
+    oh_tgt := fun _ => tt;
     wf := SimMem.wf;
     le := SimMem.le;
     lepriv := SimMem.lepriv;
@@ -249,7 +251,7 @@ Section SimMemOhs.
 
   Definition sim_retv `{SMOS: class} (ohs_src: Ohs) (ohs_tgt: Ohs)
              (retv_src retv_tgt: Retv.t) (smo0: SimMemOhs.t): Prop :=
-    (<<SIMARGS: SimMem.sim_retv retv_src retv_tgt smo0>>) /\
+    (<<SIMRETV: SimMem.sim_retv retv_src retv_tgt smo0>>) /\
     (* (<<OHSRC: ohs_src midx ~= projT2 (smo0.(SimMemOhs.ohs_src) midx)>>) /\ *)
     (* (<<OHTGT: ohs_tgt midx ~= projT2 (smo0.(SimMemOhs.ohs_tgt) midx)>>) *)
 
@@ -265,7 +267,7 @@ Section SimMemOhs.
 
 End SimMemOhs.
 End SimMemOhs.
-Hint Resolve SimMemOhs.pub_priv.
+Hint Resolve SimMemOhs.pub_priv SimMemOhs.le_proj SimMemOhs.lepriv_proj.
 Coercion SimMemOhs.sm: SimMemOhs.t >-> SimMem.t.
 
 

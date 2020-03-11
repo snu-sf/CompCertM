@@ -1181,3 +1181,14 @@ Proof.
   - clarify. esplits; eauto. econs. auto.
   - eapply IHla in H3; eauto. des. esplits; eauto. econs 2. auto.
 Qed.
+
+Class Coercible (from to: Type): Type := {
+  coerce: from -> to;
+}.
+Global Program Instance insert_unit_Coercible A: Coercible A (unit -> A) :=
+  { coerce := fun x _ => x }.
+Global Program Instance fun_Coercible A F T `{Coercible F T}:
+  Coercible (A -> F) (A -> T) :=
+  { coerce := fun af a => coerce (af a) }.
+
+Ltac des_u := match goal with | [ a: unit |- _ ] => destruct a end.

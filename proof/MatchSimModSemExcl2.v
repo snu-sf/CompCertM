@@ -1,7 +1,7 @@
 Require Import CoqlibC.
 Require Import SmallstepC.
 Require Import Simulation.
-Require Import ModSem AsmregsC GlobalenvsC MemoryC ASTC.
+Require Import ModSem GlobalenvsC MemoryC ASTC.
 Require Import Skeleton SimModSem SimMem SimMemLift SimSymb.
 Require Import Sound Preservation.
 Require Import ModSemProps.

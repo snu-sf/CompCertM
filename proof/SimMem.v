@@ -165,6 +165,8 @@ End SimMemOh.
 End SimMemOh.
 Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
 
+Hint Resolve SimMemOh.pub_priv.
+
 
 Local Obligation Tactic := try (by econs); try (by ii; ss).
 
@@ -263,6 +265,7 @@ Section SimMemOhs.
 
 End SimMemOhs.
 End SimMemOhs.
+Hint Resolve SimMemOhs.pub_priv.
 Coercion SimMemOhs.sm: SimMemOhs.t >-> SimMem.t.
 
 

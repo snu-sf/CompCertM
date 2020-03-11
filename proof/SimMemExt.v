@@ -46,7 +46,7 @@ Qed.
 Next Obligation. inv H. ss. Qed.
 
 
-Program Instance SimMemExtLift: SimMemLift.class SimMemExt :=
+Program Instance SimMemExtLift: SimMemOhLift.class (SimMemOh_default SimMemExt) :=
 { lift := id;
   unlift := fun _ => id;
 }.

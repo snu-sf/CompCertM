@@ -15,10 +15,6 @@ Set Implicit Arguments.
 
 Section MATCHSIMFORWARD.
 
-  (* Context {owned_heap_src owned_heap_tgt: Type}. *)
-  (* Context `{SMO: SimMemOh.class owned_heap_src owned_heap_tgt} *)
-  (*         {SS: SimSymb.class SM} {SU: Sound.class}. *)
-  (* Context {SMOL: SimMemOhLift.class SMO}. *)
   Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Variable msp: ModSemPair.t.
   Let SMO := (ModSemPair.SMO msp).

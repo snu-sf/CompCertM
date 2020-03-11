@@ -146,7 +146,7 @@ Next Obligation. inv H. ss. Qed.
 
 
 
-Global Program Instance SimMemInjLift : SimMemLift.class SimMemInj :=
+Global Program Instance SimMemInjLift : SimMemOhLift.class (SimMemOh_default SimMemInj) :=
 { lift := lift';
   unlift := unlift';
 }.
@@ -751,9 +751,9 @@ Lemma external_call_parallel_rule_simmem
       (MWF2: SimMem.wf sm_after)
       (MWFAFTR : SimMem.wf (SimMemInj.unlift' sm_arg sm_ret))
       (MLE: SimMem.le sm_at sm_arg)
-      (MLE0: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
-      (MLE1: SimMem.le (SimMemLift.unlift sm_at sm_ret) sm_after)
-      (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret))
+      (MLE0: SimMem.le (SimMemOhLift.lift sm_arg) sm_ret)
+      (MLE1: SimMem.le (SimMemOhLift.unlift sm_at sm_ret) sm_after)
+      (MLEAFTR: SimMem.le sm_arg (SimMemOhLift.unlift sm_arg sm_ret))
       (PRIV0: (SimMemInj.tgt_private sm_at) = (SimMemInj.tgt_private sm_arg))
       (PRIV1: (SimMemInj.tgt_private sm_ret) = (SimMemInj.tgt_private sm_after))
       (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg))

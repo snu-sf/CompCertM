@@ -46,7 +46,7 @@ Qed.
 
 
 
-Program Instance SimMemIdLift: SimMemLift.class SimMemId :=
+Program Instance SimMemIdLift: SimMemOhLift.class (SimMemOh_default SimMemId) :=
 { lift := id;
   unlift := fun _ => id;
 }.

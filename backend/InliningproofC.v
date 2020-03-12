@@ -9,10 +9,9 @@ Require SimMemInj.
 (** newly added **)
 Require Export Inliningproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem MatchSimModSem.
 Require SimMemInjC.
 Require SoundTop.
-Require Import CtypingC.
 Require Import ModSemProps.
 
 Set Implicit Arguments.
@@ -20,6 +19,7 @@ Set Implicit Arguments.
 
 Section SIMMODSEM.
 
+Variable midx: Midx.t.
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
@@ -31,7 +31,8 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog).
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
+Definition msp: ModSemPair.t :=
+  ModSemPair.mk (md_src midx skenv_link) (md_tgt midx skenv_link) (SimSymbId.mk md_src md_tgt) (SimMemOh_default _) sm_link.
 
 Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
@@ -55,7 +56,7 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
     inv INITTGT. des. inv SAFESRC. destruct args_src, args_tgt; ss.
-    inv SIMARGS; ss. clarify.
+    rr in SIMARGS. des. inv SIMARGS0; ss. clarify.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     eexists. exists sm_arg. esplits; eauto; try refl; econs; eauto.
@@ -81,7 +82,7 @@ Proof.
        { unfold transf_function in *. unfold Errors.bind in *. des_ifs. }
        f_equal; eauto. f_equal; rewrite H; eauto.
   - (* init progress *)
-    des. inv SAFESRC. inv SIMARGS; ss.
+    des. inv SAFESRC. rr in SIMARGS. des. inv SIMARGS0; ss.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
@@ -100,7 +101,7 @@ Proof.
     { fold ge in EXTERNAL. clarify. }
     folder. inv MCOMPAT; ss. clear_tac.
     exploit (fsim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
-    esplits; eauto.
+    des_u. esplits; eauto.
     + econs; eauto.
       * des. clarify. esplits; eauto.
         (* exploit (sim_internal_funct_inject SIMGE); try apply SIG; et. *)
@@ -121,12 +122,13 @@ Proof.
           i; clarify.
         }
         clarify.
-    + econs; ss.
+    + rr. esplits; ss; eauto. econs; ss.
     + reflexivity.
   - (* after fsim *)
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    inv AFTERSRC. inv SIMRET; ss. exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
+    inv AFTERSRC. rr in SIMRET. des. inv SIMRETV; ss.
+    exists (SimMemInj.unlift' sm_arg sm_ret). destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss; cycle 1.
     { inv HISTORY. inv CALLTGT. }
     inv HISTORY. ss. clear_tac. esplits; eauto.
@@ -154,7 +156,7 @@ Proof.
     inv MS; cycle 1.
     { inv MS0; clarify. }
     inv MCOMPAT; ss.
-    eexists sm0. esplits; ss; eauto; try refl. econs; eauto.
+    eexists sm0. esplits; ss; eauto; try refl. des_u.  rr. esplits; eauto. econs; eauto.
   - (* step *)
     left; i.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
@@ -200,7 +202,7 @@ Proof.
     ii. destruct f1; ss.
     + clarify. right. unfold Errors.bind in MATCH. des_ifs. esplits; eauto. unfold transf_function in *. des_ifs.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. esplits; eauto. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

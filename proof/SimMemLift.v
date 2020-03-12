@@ -204,10 +204,10 @@ Module SimMemOhLift.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_tgt; eauto.
     Qed.
     Next Obligation.
-      admit "add condition".
+      rewrite SimMemOh.set_sm_oh_src; ss.
     Qed.
     Next Obligation.
-      admit "add condition".
+      rewrite SimMemOh.set_sm_oh_tgt; ss.
     Qed.
     Next Obligation.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.unlift_src; eauto.
@@ -243,7 +243,7 @@ Module SimMemOhLift.
       eapply memory_owned_heap_independent_lepriv; eauto.
       - rewrite SimMemOh.setget_sm.
         eapply SimMemLift.lift_priv; eauto. eapply SimMemOh.wf_proj; eauto.
-      - rewrite SimMemOh.setget_sm. admit "reflexivity".
+      - rewrite SimMemOh.setget_sm. refl.
     Qed.
     Next Obligation.
       rewrite <- SimMemOh.setget_sm with sm_ret.
@@ -254,11 +254,13 @@ Module SimMemOhLift.
         + eapply SimMemOh.lepriv_proj; eauto.
         + eapply SimMemOh.le_proj; eauto.
         + eapply SimMemOh.wf_proj; eauto.
-      - rewrite SimMemOh.setget_sm. admit "reflexivity".
+      - rewrite SimMemOh.setget_sm. refl.
     Qed.
 
   End TRANSFORMER.
 
+  Global Program Instance SimMemOhLift_default_transform `{SML: SimMemLift.class}:
+    SimMemOhLift.class (SimMemOh_default SM) := SimMemOhLift_transform _ _.
 
   Section PROPS.
 

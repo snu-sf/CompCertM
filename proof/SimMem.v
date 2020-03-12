@@ -181,7 +181,7 @@ Local Obligation Tactic := try (by econs); try (by ii; ss).
 
 Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class unit unit) | 100 :=
   {
-    sm := id;
+    sm := fun x => x;
     oh_src := fun _ => tt;
     oh_tgt := fun _ => tt;
     wf := SimMem.wf;

@@ -17,12 +17,13 @@ Require Import ModSem.
 
 Section PRSV.
 
+  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
 
   Hypothesis INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p).
 
-  Let modsem := RTLC.modsem skenv_link p.
+  Let modsem := RTLC.modsem midx skenv_link p.
 
   Local Existing Instance Unreach.
 

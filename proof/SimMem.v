@@ -31,6 +31,7 @@ Module SimMem.
     lepriv: t -> t -> Prop;
 
     le_PreOrder :> PreOrder le;
+    lepriv_PreOrder :> PreOrder lepriv;
 
     pub_priv: forall sm0 sm1, le sm0 sm1 -> lepriv sm0 sm1;
 

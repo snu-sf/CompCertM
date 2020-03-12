@@ -25,7 +25,7 @@ Module SimMemLift.
   (* Context `{SM: SimMem.class}. *)
 
   Class class (SM: SimMem.class) :=
-  { lepriv_Trans :> Transitive SimMem.lepriv;
+  {
 
     lift: SimMem.t -> SimMem.t;
     unlift: SimMem.t -> SimMem.t -> SimMem.t;
@@ -120,7 +120,7 @@ Module SimMemOhLift.
   (*       `(SMO: SimMemOh.class owned_heap_src owned_heap_tgt) := *)
   Class class {owned_heap_src owned_heap_tgt: Type} `{SM: SimMem.class}
         (SMO: SimMemOh.class owned_heap_src owned_heap_tgt) :=
-  { lepriv_Trans :> Transitive SimMemOh.lepriv;
+  {
 
     lift: SimMemOh.t -> SimMemOh.t;
     unlift: SimMemOh.t -> SimMemOh.t -> SimMemOh.t;
@@ -164,7 +164,7 @@ Module SimMemOhLift.
   (*   i. *)
   (* Qed. *)
 
-  Section INSTANTIATION.
+  Section TRANSFORMER.
 
     Context `{SML: SimMemLift.class}.
     Variable owned_heap_src owned_heap_tgt: Type.
@@ -175,52 +175,45 @@ Module SimMemOhLift.
         (MLE: SimMem.le sm0 sm1)
         (MLE: SimMemOh.le smo0 smo1)
       ,
-        <<MLE: SimMemOh.le (SimMemOh.update_sm smo0 sm0)
-                           (SimMemOh.update_sm smo1 sm1)>>
+        <<MLE: SimMemOh.le (SimMemOh.set_sm smo0 sm0)
+                           (SimMemOh.set_sm smo1 sm1)>>
     .
     Hypothesis memory_owned_heap_independent_lepriv: forall
         sm0 sm1 smo0 smo1
         (MLE: SimMem.lepriv sm0 sm1)
         (MLE: SimMemOh.lepriv smo0 smo1)
       ,
-        <<MLE: SimMemOh.lepriv (SimMemOh.update_sm smo0 sm0)
-                               (SimMemOh.update_sm smo1 sm1)>>
+        <<MLE: SimMemOh.lepriv (SimMemOh.set_sm smo0 sm0)
+                               (SimMemOh.set_sm smo1 sm1)>>
     .
 
-    Hypothesis update_sm_twice: forall smo0 sm0 sm1,
-        SimMemOh.update_sm (SimMemOh.update_sm smo0 sm0) sm1 = (SimMemOh.update_sm smo0 sm1).
-    Hypothesis update_sm_eq: forall smo0, SimMemOh.update_sm smo0 smo0 = smo0.
-
-    Global Program Instance SimMemOhLift_instance: SimMemOhLift.class SMO :=
+    Global Program Instance SimMemOhLift_transform: SimMemOhLift.class SMO :=
     {
-      lift   := fun smo0 => SimMemOh.update_sm smo0 (SimMemLift.lift smo0);
-      unlift := fun smo0 smo1 => SimMemOh.update_sm smo1 (SimMemLift.unlift smo0 smo1);
+      lift   := fun smo0 => SimMemOh.set_sm smo0 (SimMemLift.lift smo0);
+      unlift := fun smo0 smo1 => SimMemOh.set_sm smo1 (SimMemLift.unlift smo0 smo1);
     }
     .
     Next Obligation.
-      admit "".
-    Qed.
-    Next Obligation.
-      eapply SimMemOh.update_sm_wf; eauto. eapply SimMemLift.lift_wf; eauto.
+      eapply SimMemOh.set_sm_wf; eauto. eapply SimMemLift.lift_wf; eauto.
       eapply SimMemOh.wf_proj; eauto.
     Qed.
     Next Obligation.
-      rewrite SimMemOh.update_sm_spec. eapply SimMemLift.lift_src; eauto.
+      rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_src; eauto.
     Qed.
     Next Obligation.
-      rewrite SimMemOh.update_sm_spec. eapply SimMemLift.lift_tgt; eauto.
-    Qed.
-    Next Obligation.
-      admit "add condition".
+      rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_tgt; eauto.
     Qed.
     Next Obligation.
       admit "add condition".
     Qed.
     Next Obligation.
-      rewrite SimMemOh.update_sm_spec. eapply SimMemLift.unlift_src; eauto.
+      admit "add condition".
     Qed.
     Next Obligation.
-      rewrite SimMemOh.update_sm_spec. eapply SimMemLift.unlift_tgt; eauto.
+      rewrite SimMemOh.getset_sm. eapply SimMemLift.unlift_src; eauto.
+    Qed.
+    Next Obligation.
+      rewrite SimMemOh.getset_sm. eapply SimMemLift.unlift_tgt; eauto.
     Qed.
     Next Obligation.
       exploit SimMemLift.lift_spec; eauto.
@@ -228,43 +221,43 @@ Module SimMemOhLift.
         instantiate (1:= mrel1).
         instantiate (1:= mrel0).
         eapply SimMemOh.le_proj in H.
-        rewrite SimMemOh.update_sm_spec in H. ss.
+        rewrite SimMemOh.getset_sm in H. ss.
       }
       { eapply SimMemOh.wf_proj. ss. }
       intro T.
 
       eapply memory_owned_heap_independent_le in H.
-      { rewrite update_sm_twice in H. rewrite update_sm_eq in H. eauto. }
+      { rewrite SimMemOh.setset_sm in H. rewrite SimMemOh.setget_sm in H. eauto. }
       { eauto. }
     Qed.
     Next Obligation.
-      eapply SimMemOh.update_sm_wf; eauto.
+      eapply SimMemOh.set_sm_wf; eauto.
       eapply SimMemLift.unlift_wf; try eapply SimMemOh.wf_proj; eauto.
-      eapply SimMemOh.le_proj in H1. rewrite SimMemOh.update_sm_spec in H1. ss.
+      eapply SimMemOh.le_proj in H1. rewrite SimMemOh.getset_sm in H1. ss.
     Qed.
     Next Obligation.
-      rewrite SimMemOh.update_sm_spec. eapply SimMemLift.lift_sim_val; eauto.
+      rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_sim_val; eauto.
     Qed.
     Next Obligation.
-      rewrite <- update_sm_eq with sm0.
+      rewrite <- SimMemOh.setget_sm with sm0.
       eapply memory_owned_heap_independent_lepriv; eauto.
-      - rewrite update_sm_eq.
+      - rewrite SimMemOh.setget_sm.
         eapply SimMemLift.lift_priv; eauto. eapply SimMemOh.wf_proj; eauto.
-      - rewrite update_sm_eq. admit "reflexivity".
+      - rewrite SimMemOh.setget_sm. admit "reflexivity".
     Qed.
     Next Obligation.
-      rewrite <- update_sm_eq with sm_ret.
+      rewrite <- SimMemOh.setget_sm with sm_ret.
       eapply memory_owned_heap_independent_lepriv; eauto.
-      - rewrite update_sm_eq.
+      - rewrite SimMemOh.setget_sm.
         eapply SimMemLift.unlift_priv; eauto.
         + eapply SimMemOh.wf_proj; eauto.
         + eapply SimMemOh.lepriv_proj; eauto.
         + eapply SimMemOh.le_proj; eauto.
         + eapply SimMemOh.wf_proj; eauto.
-      - rewrite update_sm_eq. admit "reflexivity".
+      - rewrite SimMemOh.setget_sm. admit "reflexivity".
     Qed.
 
-  End INSTANTIATION.
+  End TRANSFORMER.
 
 
   Section PROPS.

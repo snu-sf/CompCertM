@@ -343,8 +343,6 @@ Qed.
 
 Local Opaque Z.mul.
 
-Require StoreArguments.
-
 End MEMINJ.
 
 Hint Unfold valid_blocks src_private tgt_private range.

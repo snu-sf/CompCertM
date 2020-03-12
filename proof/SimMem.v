@@ -128,23 +128,30 @@ Section SimMemOh.
     wf: t -> Prop;
     le: t -> t -> Prop;
     lepriv: t -> t -> Prop;
-    update_sm: t -> SimMem.t -> t;
 
     le_PreOrder :> PreOrder le;
+    lepriv_PreOrder :> PreOrder lepriv;
 
     pub_priv: forall smo0 smo1, le smo0 smo1 -> lepriv smo0 smo1;
 
     wf_proj: wf <1= SimMem.wf <*> sm;
     le_proj: (le ==> SimMem.le) sm sm; (* TODO: better style? *)
     lepriv_proj: (lepriv ==> SimMem.lepriv) sm sm; (* TODO: better style? *)
-    update_sm_spec: forall smo0 sm1, (update_sm smo0 sm1).(sm) = sm1;
-    (* update_sm_spec: forall smo0, sm <*> (update_sm smo0) = id; *)
-    update_sm_le: forall smo0 sm1, SimMem.le smo0.(sm) sm1 ->
-                                   le smo0 (update_sm smo0 sm1);
+    (* set_sm_spec: forall smo0, sm <*> (set_sm smo0) = id; *)
+
+    set_sm: t -> SimMem.t -> t;
+    set_sm_le: forall smo0 sm1, SimMem.le smo0.(sm) sm1 ->
+                                   le smo0 (set_sm smo0 sm1);
     (* can we state it nicely? adjoint? *)
-    update_sm_wf: forall smo0 sm1, wf smo0 ->
+    set_sm_wf: forall smo0 sm1, wf smo0 ->
                                    SimMem.wf sm1 ->
-                                   wf (update_sm smo0 sm1);
+                                   wf (set_sm smo0 sm1);
+
+    getset_sm: forall smo0 sm1, (set_sm smo0 sm1).(sm) = sm1;
+    setget_sm: forall smo0, (set_sm smo0 smo0.(sm)) = smo0;
+    setset_sm: forall smo0 sm0 sm1, (set_sm (set_sm smo0 sm0) sm1) = (set_sm smo0 sm1);
+    set_sm_oh_src: forall smo0 sm0, oh_src (set_sm smo0 sm0) = oh_src smo0;
+    set_sm_oh_tgt: forall smo0 sm0, oh_tgt (set_sm smo0 sm0) = oh_tgt smo0;
   }.
 
   Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
@@ -165,7 +172,9 @@ End SimMemOh.
 End SimMemOh.
 Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
 
-Hint Resolve SimMemOh.pub_priv SimMemOh.le_proj SimMemOh.lepriv_proj.
+(* Create HintDb SimMem. *)
+Hint Resolve SimMemOh.pub_priv SimMemOh.wf_proj SimMemOh.le_proj SimMemOh.lepriv_proj
+     SimMemOh.set_sm_le SimMemOh.set_sm_wf.
 
 
 Local Obligation Tactic := try (by econs); try (by ii; ss).
@@ -221,6 +230,7 @@ Section SimMemOhs.
     lepriv: t -> t -> Prop;
 
     le_PreOrder :> PreOrder le;
+    lepriv_PreOrder :> PreOrder lepriv;
 
     pub_priv: forall smo0 smo1, le smo0 smo1 -> lepriv smo0 smo1;
 
@@ -267,7 +277,7 @@ Section SimMemOhs.
 
 End SimMemOhs.
 End SimMemOhs.
-Hint Resolve SimMemOhs.pub_priv SimMemOhs.le_proj SimMemOhs.lepriv_proj.
-Coercion SimMemOhs.sm: SimMemOhs.t >-> SimMem.t.
 
+Coercion SimMemOhs.sm: SimMemOhs.t >-> SimMem.t.
+Hint Resolve SimMemOhs.pub_priv SimMemOhs.wf_proj SimMemOhs.le_proj SimMemOhs.lepriv_proj.
 

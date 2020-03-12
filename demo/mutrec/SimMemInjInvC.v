@@ -33,6 +33,27 @@ Section MEMINJINV.
       (INVTGT: sm0.(mem_inv_tgt) = sm1.(mem_inv_tgt))
   .
 
+  Global Program Instance lepriv_PreOrder: RelationClasses.PreOrder lepriv.
+  Next Obligation.
+    ii. econs; eauto. apply SimMemInj.frozen_refl.
+  Qed.
+  Next Obligation.
+    ii. inv H; inv H0.
+    des; clarify.
+    econs; eauto with mem congruence.
+    + eapply inject_incr_trans; eauto.
+    + econs; eauto.
+      ii; des.
+      destruct (SimMemInj.inj y b_src) eqn:T.
+      * destruct p.
+        exploit INCR0; eauto. i; clarify.
+        inv FROZEN.
+        hexploit NEW_IMPLIES_OUTSIDE; eauto.
+      * inv FROZEN0.
+        hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des.
+        esplits; congruence.
+  Qed.
+
   Global Program Instance SimMemInjInv : SimMem.class :=
     {
       t := t';
@@ -244,27 +265,6 @@ Section MEMINJINV.
     - ii. split.
       + eapply INVRANGETGT0. rewrite <- MINVEQTGT. auto.
       + eapply INVRANGETGT; eauto.
-  Qed.
-
-  Global Program Instance lepriv_PreOrder: RelationClasses.PreOrder lepriv.
-  Next Obligation.
-    ii. econs; eauto. apply SimMemInj.frozen_refl.
-  Qed.
-  Next Obligation.
-    ii. inv H; inv H0.
-    des; clarify.
-    econs; eauto with mem congruence.
-    + eapply inject_incr_trans; eauto.
-    + econs; eauto.
-      ii; des.
-      destruct (SimMemInj.inj y b_src) eqn:T.
-      * destruct p.
-        exploit INCR0; eauto. i; clarify.
-        inv FROZEN.
-        hexploit NEW_IMPLIES_OUTSIDE; eauto.
-      * inv FROZEN0.
-        hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des.
-        esplits; congruence.
   Qed.
 
   Global Program Instance SimMemInjInvLift : SimMemLift.class SimMemInjInv :=

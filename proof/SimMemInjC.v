@@ -97,6 +97,18 @@ Inductive lepriv (sm0 sm1: SimMemInj.t'): Prop :=
     (TGTGENB: sm0.(tgt_ge_nb) = sm1.(tgt_ge_nb))
     (FROZEN: frozen sm0.(inj) sm1.(inj) (sm0.(src_ge_nb)) (sm0.(tgt_ge_nb))).
 
+Global Program Instance lepriv_PreOrder: RelationClasses.PreOrder lepriv.
+Next Obligation.
+  ii. econs; eauto. eapply frozen_refl.
+Qed.
+Next Obligation.
+  ii. inv H; inv H0. des; clarify. econs; eauto with mem congruence.
+  + eapply inject_incr_trans; eauto.
+  + econs; eauto. ii; des. destruct (inj y b_src) eqn:T.
+    * destruct p. exploit INCR0; eauto. i; clarify. inv FROZEN. hexploit NEW_IMPLIES_OUTSIDE; eauto.
+    * inv FROZEN0. hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des. esplits; congruence.
+Qed.
+
 Global Program Instance SimMemInj : SimMem.class :=
 { t := t';
   src := src;
@@ -132,16 +144,6 @@ Next Obligation. inv H. ss. Qed.
 
 
 
-
-
-Global Program Instance lepriv_Transitive: RelationClasses.Transitive lepriv.
-Next Obligation.
-  ii. inv H; inv H0. des; clarify. econs; eauto with mem congruence.
-  + eapply inject_incr_trans; eauto.
-  + econs; eauto. ii; des. destruct (inj y b_src) eqn:T.
-    * destruct p. exploit INCR0; eauto. i; clarify. inv FROZEN. hexploit NEW_IMPLIES_OUTSIDE; eauto.
-    * inv FROZEN0. hexploit NEW_IMPLIES_OUTSIDE; eauto; []; i; des. esplits; congruence.
-Qed.
 
 
 Global Program Instance SimMemInjLift : SimMemLift.class SimMemInj :=

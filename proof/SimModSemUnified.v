@@ -203,34 +203,14 @@ Section SIMMODSEM.
 
 End SIMMODSEM.
 
+Require SimModSem.
 Module ModSemPair.
+Include SimModSem.ModSemPair.
 Section MODSEMPAIR.
 Context {SM: SimMem.class} {SMOS: SimMemOhs.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
-  Record t: Type := mk {
-    src: ModSem.t;
-    tgt: ModSem.t;
-    ss: SimSymb.t;
-    sm: SimMem.t;
-  }.
-
-  Inductive sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
-  | sim_skenv_intro
-    (SIMSKE: SimSymb.sim_skenv sm0 msp.(ss) msp.(src).(ModSem.skenv) msp.(tgt).(ModSem.skenv))
-    ss_link
-    (SIMSKELINK: SimSymb.sim_skenv sm0 ss_link msp.(src).(ModSem.skenv_link) msp.(tgt).(ModSem.skenv_link)).
-
-  Lemma mfuture_preserves_sim_skenv
-        msp sm0 sm1
-        (MFUTURE: SimMem.future sm0 sm1)
-        (SIMSKENV: sim_skenv msp sm0):
-      <<SIMSKENV: sim_skenv msp sm1>>.
-  Proof.
-    inv SIMSKENV. econs; eapply SimSymb.mfuture_preserves_sim_skenv; eauto.
-  Qed.
-
-  Inductive sim (msp: t): Prop :=
-  | sim_intro
+  Inductive simU (msp: t): Prop :=
+  | simU_intro
       sidx sound_states sound_state_ex
       (MIDX: msp.(src).(midx) = msp.(tgt).(midx))
       (PRSV: local_preservation msp.(src) sound_state_ex)
@@ -279,22 +259,16 @@ Context {SM: SimMem.class} {SMOS: SimMemOhs.class} {SS: SimSymb.class SM} {SU: S
 End MODSEMPAIR.
 End ModSemPair.
 
-Arguments ModSemPair.mk [SM] [SS] _ _ _.
-Hint Constructors ModSemPair.sim_skenv.
-(* End Ohs. *)
-
 Hint Unfold lxsim.
 Hint Resolve lxsim_mon: paco.
 
 
 
 
-Require SimModSem.
-Module _ModSemPair := SimModSem.ModSemPair.
 
-Definition msp_to_msp SM SS (msp: @_ModSemPair.t SM SS): ModSemPair.t :=
-  ModSemPair.mk (msp.(_ModSemPair.src)) (msp.(_ModSemPair.tgt))
-                (msp.(_ModSemPair.ss)) (msp.(_ModSemPair.sm)).
+
+
+Module _ModSemPair := SimModSem.ModSemPair.
 
 Lemma cast_sigT_eq
       Y (x: {ty: Type & ty}) (y: Y)
@@ -319,7 +293,6 @@ Proof.
   unfold cast_sigT in *. ss. des_ifs. ss. unfold eq_rect. des_ifs.
 Qed.
 
-Coercion _ModSemPair.SMO: _ModSemPair.t >-> SimMemOh.class.
 (* Definition sm_match SM SS {SMOS: SimMemOhs.class} (msp: @ModSemPair.t SM SS): *)
 (*   (@SimMemOh.t _ _ _ msp.(ModSemPair.SMO)) -> SimMemOhs.t -> Prop := *)
 (*   (* TODO: I want to remove @ *) *)
@@ -331,7 +304,9 @@ Coercion _ModSemPair.SMO: _ModSemPair.t >-> SimMemOh.class.
 (*             ~= smo.(SimMemOh.oh_tgt)) *)
 (* . *)
 Record sm_match SM SS {SMOS: SimMemOhs.class} (msp: @_ModSemPair.t SM SS)
-  (smo: (@SimMemOh.t _ _ _ msp.(_ModSemPair.SMO))) (smos: SimMemOhs.t): Prop :=
+       {SMO: SimMemOh.class (msp.(ModSemPair.src).(owned_heap))
+                            (msp.(ModSemPair.tgt).(owned_heap))}
+  (smo: SimMemOh.t) (smos: SimMemOhs.t): Prop :=
   (* TODO: I want to remove @ *)
   { smeq: (smos.(SimMemOhs.sm) = smo.(SimMemOh.sm));
     ohsrcty: (projT1 (smos.(SimMemOhs.ohs_src) (msp.(_ModSemPair.src).(midx)))) =
@@ -365,11 +340,14 @@ Proof.
   destruct a, b; ss. clarify. apply JMeq_eq in EQVAL. clarify.
 Qed.
 
-Inductive good_properties SM {SS: SimSymb.class SM}
-          (SMOS: SimMemOhs.class) (msp: _ModSemPair.t): Prop :=
-| good_properties_intro
+Inductive respects SM {SS: SimSymb.class SM}
+          (SMOS: SimMemOhs.class) (msp: _ModSemPair.t)
+          (SMO: SimMemOh.class (msp.(ModSemPair.src).(owned_heap))
+                               (msp.(ModSemPair.tgt).(owned_heap))): Prop :=
+| respects_intro
     (SMPROJ: forall smos (MWF: SimMemOhs.wf smos),
-        exists smo, sm_match msp smo smos /\ SimMemOh.wf smo)
+        exists smo, sm_match msp smo smos /\ SimMemOh.wf smo
+    )
     (SMSIM: forall (smos0: SimMemOhs.t)
                    (smo0 smo1: SimMemOh.t)
                    (LE: SimMemOh.le smo0 smo1)
@@ -378,7 +356,12 @@ Inductive good_properties SM {SS: SimSymb.class SM}
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match msp smo1 smos1>>)
-                      /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>))
+                      /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
+                      /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx (_ModSemPair.src msp)),
+                             SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
+                      /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx (_ModSemPair.tgt msp)),
+                             SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
+    )
     (SMSIMPRIV: forall (smos0: SimMemOhs.t)
                        (smo0 smo1: SimMemOh.t)
                        (SMMATCH: sm_match msp smo0 smos0)
@@ -387,7 +370,12 @@ Inductive good_properties SM {SS: SimSymb.class SM}
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match msp smo1 smos1>>)
-                      /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>))
+                      /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
+                      /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx (_ModSemPair.src msp)),
+                             SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
+                      /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx (_ModSemPair.tgt msp)),
+                             SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
+    )
     (SMMATCHLE: forall smo0 smo1 smos0 smos1
                        (SMMATCH0: sm_match msp smo0 smos0)
                        (SMMATCH1: sm_match msp smo1 smos1)
@@ -400,66 +388,68 @@ Inductive good_properties SM {SS: SimSymb.class SM}
 
 Theorem fundamental_theorem
         SM SMOS SS SU
-        msp
-        (SIM: msp.(@_ModSemPair.sim SM SS SU))
+        msp SMO
+        (RESPECT: respects SMOS msp SMO)
+        (SIM: msp.(@ModSemPair.sim SM SS SU) SMO)
   :
-    (msp_to_msp msp).(@ModSemPair.sim SM SMOS SS SU)
+    <<SIM: msp.(@ModSemPair.simU SM SMOS SS SU)>>
 .
 Proof.
   inv SIM.
   econs; eauto.
-  clear - MIDX SIM0. ss.
+  clear - MIDX SIM0 RESPECT. ss.
   ii.
+  destruct RESPECT.
   (* assert(SMPROJ: forall smos: SimMemOhs.t, *)
   (*           exists smo: SimMemOh.t, sm_match msp smo smos). *)
-  assert(SMPROJ: forall smos (MWF: SimMemOhs.wf smos),
-            exists smo, sm_match msp smo smos /\ SimMemOh.wf smo).
-  { admit "". }
-  assert(SMSIM: forall (smos0: SimMemOhs.t)
-                       (smo0 smo1: SimMemOh.t)
-                       (LE: SimMemOh.le smo0 smo1)
-                       (SMMATCH: sm_match msp smo0 smos0)
-                       (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0)
-          ,
-            exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
-                          /\ (<<SMMATCH: sm_match msp smo1 smos1>>)
-                          /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
-                          /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx (_ModSemPair.src msp)),
-                                 SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
-                          /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx (_ModSemPair.tgt msp)),
-                                 SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
-        ).
-  { admit "". }
-  assert(SMSIMPRIV: forall (smos0: SimMemOhs.t)
-                           (smo0 smo1: SimMemOh.t)
-                           (SMMATCH: sm_match msp smo0 smos0)
-                           (LE: SimMemOh.lepriv smo0 smo1)
-                           (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0)
-          ,
-            exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
-                          /\ (<<SMMATCH: sm_match msp smo1 smos1>>)
-                          /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
-                          /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx (_ModSemPair.src msp)),
-                                 SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
-                          /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx (_ModSemPair.tgt msp)),
-                                 SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
-        ).
-  { admit "". }
-  assert(SMMATCHLE: forall smo0 smo1 smos0 smos1
-                           (SMMATCH0: sm_match msp smo0 smos0)
-                           (SMMATCH1: sm_match msp smo1 smos1)
-                           (SMLE: SimMemOhs.le smos0 smos1)
-          ,
-            <<SMLE: SimMemOh.le smo0 smo1>>
-        ).
-  { admit "". }
+  (* assert(SMPROJ: forall smos (MWF: SimMemOhs.wf smos), *)
+  (*           exists smo, sm_match msp smo smos /\ SimMemOh.wf smo). *)
+  (* { admit "". } *)
+  (* assert(SMSIM: forall (smos0: SimMemOhs.t) *)
+  (*                      (smo0 smo1: SimMemOh.t) *)
+  (*                      (LE: SimMemOh.le smo0 smo1) *)
+  (*                      (SMMATCH: sm_match msp smo0 smos0) *)
+  (*                      (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0) *)
+  (*         , *)
+  (*           exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>) *)
+  (*                         /\ (<<SMMATCH: sm_match msp smo1 smos1>>) *)
+  (*                         /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>) *)
+  (*                         /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx (_ModSemPair.src msp)), *)
+  (*                                SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>) *)
+  (*                         /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx (_ModSemPair.tgt msp)), *)
+  (*                                SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>) *)
+  (*       ). *)
+  (* { admit "". } *)
+  (* assert(SMSIMPRIV: forall (smos0: SimMemOhs.t) *)
+  (*                          (smo0 smo1: SimMemOh.t) *)
+  (*                          (SMMATCH: sm_match msp smo0 smos0) *)
+  (*                          (LE: SimMemOh.lepriv smo0 smo1) *)
+  (*                          (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0) *)
+  (*         , *)
+  (*           exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>) *)
+  (*                         /\ (<<SMMATCH: sm_match msp smo1 smos1>>) *)
+  (*                         /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>) *)
+  (*                         /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx (_ModSemPair.src msp)), *)
+  (*                                SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>) *)
+  (*                         /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx (_ModSemPair.tgt msp)), *)
+  (*                                SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>) *)
+  (*       ). *)
+  (* { admit "". } *)
+  (* assert(SMMATCHLE: forall smo0 smo1 smos0 smos1 *)
+  (*                          (SMMATCH0: sm_match msp smo0 smos0) *)
+  (*                          (SMMATCH1: sm_match msp smo1 smos1) *)
+  (*                          (SMLE: SimMemOhs.le smos0 smos1) *)
+  (*         , *)
+  (*           <<SMLE: SimMemOh.le smo0 smo1>> *)
+  (*       ). *)
+  (* { admit "". } *)
   assert(PROJARGS := SMPROJ sm_arg MWF). des. rename smo into sm_arg_proj.
   assert(ARGS: SimMemOh.sim_args (sm_arg_proj.(SimMemOh.oh_src))
                                  (sm_arg_proj.(SimMemOh.oh_tgt))
                                  args_src args_tgt sm_arg_proj).
   { rr. esplits; eauto. rr in SIMARGS. des. erewrite <- smeq; eauto. }
   exploit SIM0; eauto.
-  { erewrite <- smeq; eauto. inv SIMSKENV. econs; eauto. }
+  { erewrite <- smeq; eauto. }
   { erewrite <- smeq; eauto. }
   ii; des.
   assert(OHSRC0: oh_src = (SimMemOh.oh_src sm_arg_proj)).
@@ -503,7 +493,7 @@ Proof.
 
 
 
-    revert_until SMSIM. pcofix CIH. i. pfold.
+    revert_until MIDX. pcofix CIH. i. pfold.
     punfold SIM. rr in SIM. ii. exploit SIM; eauto. intro T; des. inv T.
     + econs 1; eauto. ii. hexploit1 SU0; ss. inv SU0.
       * econs 1; eauto. ii. exploit STEP; eauto. i; des_safe.

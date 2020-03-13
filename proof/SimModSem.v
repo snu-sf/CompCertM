@@ -149,7 +149,6 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     src: ModSem.t;
     tgt: ModSem.t;
     ss: SimSymb.t;
-    SMO:> SimMemOh.class src.(ModSem.owned_heap) tgt.(ModSem.owned_heap);
     sm: SimMem.t;
   }.
 
@@ -168,14 +167,16 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     inv SIMSKENV. econs; eapply SimSymb.mfuture_preserves_sim_skenv; eauto.
   Qed.
 
-  Inductive sim (msp: t): Prop :=
+  Inductive sim (msp: t)
+            {SMO: SimMemOh.class (msp.(src).(ModSem.owned_heap))
+                                 (msp.(tgt).(ModSem.owned_heap))}: Prop :=
   | sim_intro
       sidx sound_states sound_state_ex
       (MIDX: msp.(src).(midx) = msp.(tgt).(midx))
       (PRSV: local_preservation msp.(src) sound_state_ex)
       (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))
       (SIM: forall
-          (sm_arg: SimMemOh.t (class := msp.(SMO))) oh_src oh_tgt args_src args_tgt
+          (sm_arg: SimMemOh.t (class := (SMO))) oh_src oh_tgt args_src args_tgt
           sg_init_src sg_init_tgt
           (FINDFSRC: (Genv.find_funct msp.(src).(ModSem.skenv)) (Args.get_fptr args_src) =
                      Some (Internal sg_init_src))
@@ -200,7 +201,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 End MODSEMPAIR.
 End ModSemPair.
 
-Arguments ModSemPair.mk [SM] [SS] _ _ _ [SMO].
+Arguments ModSemPair.mk [SM] [SS] _ _ _.
 Hint Constructors ModSemPair.sim_skenv.
 
 

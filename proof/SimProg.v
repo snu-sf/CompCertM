@@ -30,6 +30,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Definition t := list ModPair.t.
 
   Definition sim (pp: t) := List.Forall ModPair.sim pp.
+  Definition simU {SMOS: SimMemOhs.class} (pp: t) := List.Forall ModPair.simU pp.
 
   Definition src (pp: t): program := List.map ModPair.src pp.
   Definition tgt (pp: t): program := List.map ModPair.tgt pp.
@@ -109,3 +110,31 @@ End SIM.
 
 
 
+
+Theorem unification
+        {SM: SimMem.class}
+        {SU: Sound.class}
+        {SS: SimSymb.class _}
+        pp
+        (SIM: ProgPair.sim pp)
+  :
+    exists SMOS, (<<SIM: ProgPair.simU pp (SMOS := SMOS)>>).
+Proof.
+  rr in SIM.
+  (* rewrite Forall_forall in *. *)
+  ginduction pp; ii; ss.
+  { unshelve esplits; eauto.
+    - admit "Make default instance for SimMemOhs".
+    - econs; eauto.
+  }
+  inv SIM.
+  exploit IHpp; eauto. i; des.
+  assert(exists SMOS',
+            (<<SIM: SimProgUnified.ProgPair.sim (SMOS := SMOS') ppu>>) /\
+            (<<SIM: SimModUnified.ModPair.sim (SMOS := SMOS') (mp_to_mp a)>>)
+        ).
+  { admit "merge theorem". }
+  des.
+  eexists SMOS', ((mp_to_mp a) :: ppu).
+  esplits; ss; eauto.
+Qed.

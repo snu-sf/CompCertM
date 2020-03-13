@@ -55,8 +55,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           (SSLE: SimSymb.le mp.(ss) ss_link)
           (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt),
           exists SMO, <<SIMMSP: ModSemPair.sim
-                                  (to_msp midx skenv_link_src skenv_link_tgt
-                                          sm_init_link mp)
+                                  (to_msp midx skenv_link_src skenv_link_tgt sm_init_link mp)
                                   (SMO := SMO)>>).
   (* TODO: quantifying "exists SMO" here looks somewhat dirty... *)
   (* I would like to quantify it directly inside "sim_intro", but I need to put it here because *)

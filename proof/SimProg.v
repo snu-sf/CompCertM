@@ -14,7 +14,7 @@ Require Import Maps.
 Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.
-Require Import SimMem SimModSem SimMod.
+Require Import SimMem SimModSemUnified SimMod.
 Require Import Sound SemProps.
 
 Set Implicit Arguments.
@@ -110,6 +110,18 @@ End SIM.
 
 
 
+Variable respects2: forall
+    {SM: SimMem.class},
+    SimMemOhs.class -> SimMemOhs.class -> Prop
+.
+Hypothesis respects2_theorem: forall
+    {SM: SimMem.class} {SS: SimSymb.class _} {SU: Sound.class} SMOS0 SMOS1
+    (RESPECT: respects2 SMOS0 SMOS1)
+  ,
+    forall msp, (ModSemPair.simU (SMOS := SMOS0) msp) ->
+                (ModSemPair.simU (SMOS := SMOS1) msp)
+.
+           
 
 Theorem unification
         {SM: SimMem.class}
@@ -124,17 +136,17 @@ Proof.
   (* rewrite Forall_forall in *. *)
   ginduction pp; ii; ss.
   { unshelve esplits; eauto.
-    - admit "Make default instance for SimMemOhs".
+    - admit "Make default instance for SimMemOhs. nil theroem".
     - econs; eauto.
   }
   inv SIM.
   exploit IHpp; eauto. i; des.
   assert(exists SMOS',
-            (<<SIM: SimProgUnified.ProgPair.sim (SMOS := SMOS') ppu>>) /\
-            (<<SIM: SimModUnified.ModPair.sim (SMOS := SMOS') (mp_to_mp a)>>)
+            (<<SIM: ProgPair.simU (SMOS := SMOS') pp>>) /\
+            (<<SIM: ModPair.simU (SMOS := SMOS') a>>)
         ).
-  { admit "merge theorem". }
+  { admit "cons theorem". }
   des.
-  eexists SMOS', ((mp_to_mp a) :: ppu).
-  esplits; ss; eauto.
+  exists SMOS'. rr. econs; eauto.
 Qed.
+SimModSemUnified.fundamental_theorem

@@ -66,12 +66,12 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   (* Design: ModPair only has data, properties are stated in sim *)
 
-  Inductive simU {SMOS: SimMemOhs.class} (mp: t): Prop :=
+  Inductive simU {SMOS: SimMemOhs.class} (mp: t) (midx: Midx.t): Prop :=
   | simU_intro
       (SIMSK: SimSymb.wf mp.(ss))
       (SKSRC: mp.(ss).(SimSymb.src) = (Mod.sk mp.(src)))
       (SKTGT: mp.(ss).(SimSymb.tgt) = (Mod.sk mp.(tgt)))
-      (SIMMS: forall midx skenv_link_src skenv_link_tgt ss_link sm_init_link
+      (SIMMS: forall skenv_link_src skenv_link_tgt ss_link sm_init_link
           (INCLSRC: SkEnv.includes skenv_link_src (Mod.sk mp.(src)))
           (INCLTGT: SkEnv.includes skenv_link_tgt (Mod.sk mp.(tgt)))
           (WFSRC: SkEnv.wf skenv_link_src)

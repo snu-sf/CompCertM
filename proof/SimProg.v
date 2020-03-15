@@ -30,7 +30,10 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Definition t := list ModPair.t.
 
   Definition sim (pp: t) := List.Forall ModPair.sim pp.
-  Definition simU {SMOS: SimMemOhs.class} (pp: t) := List.Forall ModPair.simU pp.
+  Definition simU_aux {SMOS: SimMemOhs.class} (pp: t) (begin: Midx.t) :=
+    let ppi := Midx.mapi_aux (fun i x => (i, x)) begin pp in
+    List.Forall (fun '(i, x) => ModPair.simU x i) ppi.
+  Definition simU {SMOS: SimMemOhs.class} (pp: t) := simU_aux pp 0%nat.
 
   Definition src (pp: t): program := List.map ModPair.src pp.
   Definition tgt (pp: t): program := List.map ModPair.tgt pp.
@@ -143,10 +146,19 @@ Proof.
   exploit IHpp; eauto. i; des.
   assert(exists SMOS',
             (<<SIM: ProgPair.simU (SMOS := SMOS') pp>>) /\
-            (<<SIM: ModPair.simU (SMOS := SMOS') a>>)
+            (<<SIM: ModPair.simU (SMOS := SMOS') a 0%nat>>)
         ).
   { admit "cons theorem". }
+  clear - H.
   des.
-  exists SMOS'. rr. econs; eauto.
+  exists SMOS'. rr. rewrite Forall_forall. intros [i x] IN.
+  rewrite Midx.in_mapi_aux_iff in IN. des. clarify. destruct i; ss; clarify.
+  rr in SIM. rewrite Forall_forall in SIM.
+  exploit SIM; eauto.
+  { eapply Midx.in_mapi_aux_iff. esplits; eauto. }
+  i; des. des_ifs.
+  econs; eauto.
+  -
+  econs; eauto.
 Qed.
 SimModSemUnified.fundamental_theorem

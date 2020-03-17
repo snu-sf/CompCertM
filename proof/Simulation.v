@@ -313,6 +313,25 @@ Inductive Dinitial_state (L: semantics) (st: L.(state)): Prop :=
         st0 = st1).
 
 
+Record preservation {L: semantics} (sound_state: L.(state) -> Prop): Prop :=
+{
+  prsv_initial: forall st (INIT: L.(initial_state) st), (<<SS: sound_state st>>);
+  prsv_step: forall st0 tr st1 (SS: sound_state st0) (STEP: Step L st0 tr st1), (<<SS: sound_state st1>>);
+}
+.
+
+Theorem preservation_top: forall L, <<PRSV: @preservation L top1>>.
+Proof. ii. econs; eauto. Qed.
+
+Theorem prsv_star
+        L sound_state
+        (PRSV: preservation sound_state)
+  :
+    (<<PRSVSTAR: forall st0 tr st1 (SS: sound_state st0) (STAR: Star L st0 tr st1), (<<SS: sound_state st1>>)>>)
+.
+Proof.
+  ii. ginduction STAR; ii; ss. eapply IHSTAR; eauto. eapply prsv_step; eauto.
+Qed.
 
 Module GENMT.
 
@@ -452,6 +471,10 @@ Section MIXED_SIM.
   Variables L1 L2: semantics.
   Variable index: Type.
   Variable order: index -> index -> Prop.
+  Variable sound_state_src: L1.(state) -> Prop.
+  Variable sound_state_tgt: L2.(state) -> Prop.
+  Hypothesis (PRSVSRC: preservation sound_state_src).
+  Hypothesis (PRSVTGT: preservation sound_state_tgt).
 
   Inductive fsim_step xsim (i0: index) (st_src0: L1.(state)) (st_tgt0: L2.(state)): Prop :=
   | fsim_step_step
@@ -482,7 +505,14 @@ Section MIXED_SIM.
           (SAFESRC: safe L1 st_src0),
           <<STEP: bsim_step xsim i0 st_src0 st_tgt0>>).
 
-  Definition xsim: _ -> _ -> _ -> Prop := paco3 (_xsim_forward \4/ _xsim_backward) bot3.
+  Definition _xsim xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop := forall
+      (SSSRC: sound_state_src st_src0)
+      (SSTGT: sound_state_tgt st_tgt0)
+    ,
+      (<<XSIM: (_xsim_forward \4/ _xsim_backward) xsim i0 st_src0 st_tgt0>>)
+  .
+
+  Definition xsim: _ -> _ -> _ -> Prop := paco3 _xsim bot3.
 
   Lemma _xsim_forward_mon: monotone3 (_xsim_forward).
   Proof.
@@ -498,12 +528,42 @@ Section MIXED_SIM.
     - eright; eauto.
   Qed.
 
-  Lemma xsim_mon: monotone3 (_xsim_forward \4/ _xsim_backward).
+  Lemma xsim_mon: monotone3 _xsim.
   Proof.
-    ii. inv IN.
+    ii. repeat spc IN. inv IN.
     - econs 1; eauto. eapply _xsim_forward_mon; eauto.
     - econs 2; eauto. eapply _xsim_backward_mon; eauto.
   Qed.
+
+  Section TEST.
+    Definition xsim2: _ -> _ -> _ -> Prop := paco3 (_xsim_forward \4/ _xsim_backward) bot3.
+    Goal xsim2 <3= xsim.
+      pcofix CIH. ii. pfold. ii. exploit CIH; eauto. i.
+      rr in PR. punfold PR; cycle 1.
+      { ii. des; eauto using _xsim_forward_mon, _xsim_backward_mon. }
+      des.
+      - left. eapply _xsim_forward_mon; eauto. ii. pclearbot. right. eauto.
+      - right. eapply _xsim_backward_mon; eauto. ii. pclearbot. right. eauto.
+    Qed.
+    Definition xsim3: _ -> _ -> _ -> Prop := fun i st_src st_tgt =>
+      forall (SSSRC: sound_state_src st_src) (SSTGT: sound_state_tgt st_tgt),
+        (paco3 (_xsim_forward \4/ _xsim_backward) bot3) i st_src st_tgt.
+    Goal xsim3 <3= xsim.
+      pcofix CIH. ii. pfold. ii. exploit CIH; eauto. i.
+      rr in PR. repeat spc PR. punfold PR; cycle 1.
+      { ii. des; eauto using _xsim_forward_mon, _xsim_backward_mon. }
+      des.
+      - left. eapply _xsim_forward_mon; eauto. ii. pclearbot. right. eapply CIH; ii; eauto.
+      - right. eapply _xsim_backward_mon; eauto. ii. pclearbot. right. eapply CIH; ii; eauto.
+    Qed.
+    Goal xsim <3= xsim3.
+      pcofix CIH. ii. pfold. ii. exploit CIH; eauto. i.
+      rr in PR. punfold PR; cycle 1.
+      { eapply xsim_mon. }
+      rr in PR. repeat spc PR. des.
+      - left. eapply _xsim_forward_mon; eauto. ii. pclearbot. right.
+    Abort.
+  End TEST.
 
 End MIXED_SIM.
 
@@ -512,13 +572,14 @@ Hint Resolve xsim_mon: paco.
 Hint Resolve _xsim_forward_mon: paco.
 Hint Resolve _xsim_backward_mon: paco.
 
-Inductive xsim_init_sim (L1 L2: semantics) (index: Type)
-          (order: index -> index -> Prop): Prop :=
+Inductive xsim_init_sim (L1 L2: semantics) (index: Type) (order: index -> index -> Prop)
+          (ss_src: L1.(state) -> Prop) (ss_tgt: L2.(state) -> Prop): Prop :=
 | xsim_init_forward
     (INITSIM: forall st_init_src
         (INITSRC: initial_state L1 st_init_src),
-        exists i0 st_init_tgt, <<INITTGT: Dinitial_state L2 st_init_tgt>> /\
-                               <<XSIM: xsim L1 L2 order i0 st_init_src st_init_tgt>>)
+        exists i0 st_init_tgt,
+          (<<INITTGT: Dinitial_state L2 st_init_tgt>>) /\
+          (<<XSIM: xsim L1 L2 order ss_src ss_tgt i0 st_init_src st_init_tgt>>))
 | xsim_init_backward
     (INITEXISTS: forall st_init_src
         (INITSRC: initial_state L1 st_init_src),
@@ -527,13 +588,18 @@ Inductive xsim_init_sim (L1 L2: semantics) (index: Type)
         (INITSRC: initial_state L1 st_init_src_)
         st_init_tgt
         (INITTGT: initial_state L2 st_init_tgt),
-        exists i0 st_init_src, <<INITSRC: initial_state L1 st_init_src>> /\
-                               <<XSIM: xsim L1 L2 order i0 st_init_src st_init_tgt>>).
+        exists i0 st_init_src,
+          (<<INITSRC: initial_state L1 st_init_src>>) /\
+          (<<XSIM: xsim L1 L2 order ss_src ss_tgt i0 st_init_src st_init_tgt>>)).
 
 Record xsim_properties (L1 L2: semantics) (index: Type)
-                       (order: index -> index -> Prop): Prop := {
+                       (order: index -> index -> Prop): Type := {
+    ss_src: L1.(state) -> Prop;
+    ss_tgt: L2.(state) -> Prop;
+    preservation_src: preservation ss_src;
+    preservation_tgt: preservation ss_tgt;
     xsim_order_wf: <<WF: well_founded order>>;
-    xsim_initial_states_sim: <<INIT: xsim_init_sim L1 L2 order>>;
+    xsim_initial_states_sim: <<INIT: xsim_init_sim L1 L2 order ss_src ss_tgt>>;
 }.
 
 Arguments xsim_properties: clear implicits.
@@ -556,7 +622,12 @@ Variable index: Type.
 Variable order: index -> index -> Prop.
 Hypothesis MIXED_SIM: xsim_properties L1 L2 index order.
 
-Let match_states := xsim L1 L2 order.
+(* Let match_states := xsim L1 L2 order MIXED_SIM.(ss_src) MIXED_SIM.(ss_tgt). *)
+Let match_states (i0: index) (st_src0: state L1) (st_tgt0: state L2) :=
+  (<<MATCH: xsim L1 L2 order MIXED_SIM.(ss_src) MIXED_SIM.(ss_tgt) i0 st_src0 st_tgt0>>) /\
+  (<<SSSRC: MIXED_SIM.(ss_src) st_src0>>) /\
+  (<<SSTGT: MIXED_SIM.(ss_tgt) st_tgt0>>)
+.
 
 (** Orders *)
 

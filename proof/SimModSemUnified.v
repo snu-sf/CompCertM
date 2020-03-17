@@ -108,14 +108,14 @@ Section SIMMODSEM.
             /\ (<<MWF: SimMemOhs.wf smos_arg>>)
             /\ (<<MLE: SimMemOhs.lepriv smos0 smos_arg>>)
             /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 oh_tgt0 args_tgt>>)
-            /\ (<<K: forall smos_ret oh_src ohs_src1 retv_src ohs_tgt1 retv_tgt st_src1
+            /\ (<<K: forall smos_ret oh_src ohs_src1 retv_src oh_tgt ohs_tgt1 retv_tgt st_src1
                 (OHSRC: downcast (ohs_src1 midx_src) = Some oh_src)
+                (OHTGT: downcast (ohs_tgt1 midx_tgt) = Some oh_tgt)
                 (MLE: SimMemOhs.le smos_arg smos_ret)
                 (MWF: SimMemOhs.wf smos_ret)
                 (SIMRETV: SimMemOhs.sim_retv ohs_src1 ohs_tgt1 retv_src retv_tgt smos_ret)
                 (AFTERSRC: ms_src.(after_external) st_src0 oh_src retv_src st_src1),
-                exists oh_tgt st_tgt1 smos_after i1,
-                  (<<OHTGT: downcast (ohs_tgt1 midx_tgt) = Some oh_tgt>>) /\
+                exists st_tgt1 smos_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 oh_tgt retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMemOhs.le smos0 smos_after>>) /\
                   (<<LXSIM: lxsim i1 st_src1 st_tgt1 smos_after>>)>>))>>)
@@ -174,7 +174,7 @@ Context {SM: SimMem.class} {SMOS: SimMemOhs.class} {SS: SimSymb.class SM} {SU: S
       (PRSV: local_preservation msp.(src) sound_state_ex)
       (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))
       (SIM: forall
-          (sm_arg: SimMemOhs.t) ohs_src ohs_tgt
+          (sm_arg: SimMemOhs.t) ohs_src ohs_tgt oh_src oh_tgt
           args_src args_tgt
           (* (OHSRC: nth_error ohs_src msp.(src).(midx) = Some oh_src) *)
           (* (OHTGT: nth_error ohs_tgt msp.(tgt).(midx) = Some oh_tgt) *)
@@ -192,27 +192,22 @@ Context {SM: SimMem.class} {SMOS: SimMemOhs.class} {SS: SimSymb.class SM} {SU: S
           (FINDFTGT: (Genv.find_funct msp.(tgt).(ModSem.skenv)) (Args.get_fptr args_tgt) =
                      Some (Internal sg_init_tgt))
           (SIMARGS: SimMemOhs.sim_args ohs_src ohs_tgt args_src args_tgt sm_arg)
-
+          (OHSRC: (downcast (ohs_src msp.(tgt).(midx))) = Some oh_src)
+          (OHTGT: (downcast (ohs_tgt msp.(tgt).(midx))) = Some oh_tgt)
           (SIMSKENV: sim_skenv msp sm_arg)
           (MFUTURE: SimMem.future msp.(sm) sm_arg)
           (MWF: SimMemOhs.wf sm_arg),
-          (<<INITBSIM: forall oh_src oh_tgt st_init_tgt
-              (OHSRC: (downcast (ohs_src msp.(tgt).(midx))) = Some oh_src)
-              (OHTGT: (downcast (ohs_tgt msp.(tgt).(midx))) = Some oh_tgt)
+          (<<INITBSIM: forall st_init_tgt
               (INITTGT: (msp.(tgt).(initial_frame)) oh_tgt args_tgt st_init_tgt)
-              (SAFESRC: exists _st_init_src,
-                  (msp.(src).(initial_frame)) oh_src args_src _st_init_src),
+              (SAFESRC: exists _st_init_src, (msp.(src).(initial_frame)) oh_src args_src _st_init_src),
               exists st_init_src sm_init idx_init,
                 (<<MLE: SimMemOhs.le sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(src).(initial_frame) oh_src args_src st_init_src>>) /\
                 (<<SIM: lxsim msp.(src) msp.(tgt) (fun st => forall si, exists su m_init, sound_states si su m_init st)
                                                   idx_init st_init_src st_init_tgt sm_init>>)>>) /\
-          (<<INITPROGRESS: forall oh_src
-              (OHSRC: (downcast (ohs_src msp.(tgt).(midx))) = Some oh_src)
+          (<<INITPROGRESS: forall
               (SAFESRC: exists st_init_src, msp.(src).(initial_frame) oh_src args_src st_init_src),
-              exists oh_tgt st_init_tgt,
-                (<<OHTGT: (downcast (ohs_tgt msp.(tgt).(midx))) = Some oh_tgt>>) /\
-                (<<INITTGT: msp.(tgt).(initial_frame) oh_tgt args_tgt st_init_tgt>>)>>)).
+              exists st_init_tgt, (<<INITTGT: msp.(tgt).(initial_frame) oh_tgt args_tgt st_init_tgt>>)>>)).
 
 End MODSEMPAIR.
 End ModSemPair.
@@ -380,22 +375,22 @@ Proof.
   (*   inv PROJARGS. *)
   (*   rewrite <- OHSRC0 in *. rewrite MIDX in OHTGT0. rewrite <- OHTGT0 in *. clarify. *)
   (* } *)
+  
+  assert(ARGS: SimMemOh.sim_args (upcast oh_src)
+                                 (upcast oh_tgt)
+                                 args_src args_tgt sm_arg_proj).
+  { rr. rr in SIMARGS; des. clarify. esplits; eauto.
+    - erewrite <- smeq; eauto.
+    - erewrite <- ohsrc; eauto. symmetry. eapply upcast_downcast_iff; eauto with congruence.
+    - erewrite <- ohtgt; eauto. symmetry. eapply upcast_downcast_iff; eauto with congruence.
+  }
+  exploit SIM0; eauto.
+  { erewrite <- smeq; eauto. }
+  { erewrite <- smeq; eauto. }
+  ii; des.
+
   split; ss.
   - ii.
-
-
-    assert(ARGS: SimMemOh.sim_args (upcast oh_src)
-                                   (upcast oh_tgt)
-                                   args_src args_tgt sm_arg_proj).
-    { rr. rr in SIMARGS; des. clarify. esplits; eauto.
-      - erewrite <- smeq; eauto.
-      - erewrite <- ohsrc; eauto. symmetry. eapply upcast_downcast_iff; eauto with congruence.
-      - erewrite <- ohtgt; eauto. symmetry. eapply upcast_downcast_iff; eauto with congruence.
-    }
-    exploit SIM0; eauto.
-    { erewrite <- smeq; eauto. }
-    { erewrite <- smeq; eauto. }
-    ii; des.
     assert(OHSRC0: downcast (SimMemOh.oh_src sm_arg_proj) = Some oh_src).
     { clear - MIDX SIMARGS OHSRC SMMATCH.
       rewrite <- OHSRC.
@@ -474,7 +469,4 @@ Proof.
         { rewrite OHTGT. erewrite ohtgt; eauto with congruence. }
         erewrite UNCHTGT; eauto with congruence.
       * rr. esplits; eauto. erewrite smeq; eauto.
-  (* - ii. des. exploit INITPROGRESS; eauto. *)
-  (*   { esplits; eauto. rewrite <- OHSRC0. eauto. } *)
-  (*   i; des. esplits; eauto. rewrite <- OHTGT0 in INITTGT. eauto. *)
 Qed.

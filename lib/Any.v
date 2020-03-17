@@ -50,6 +50,15 @@ Proof.
   eapply downcast_intro; ss.
 Qed.
 
+Lemma projT1_upcast
+      (a: Any)
+  :
+    <<CAST: exists t: projT1 a, a = upcast t>>
+.
+Proof.
+  unfold upcast in *. dependent destruction a. ss. eauto.
+Qed.
+
 Lemma upcast_intro
       (a: Any)
   :

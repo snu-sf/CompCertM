@@ -602,33 +602,22 @@ Section ADQSTEP.
           inv MSFIND. inv FINDTGT.
           assert(OHTGT: exists (oh_tgt: msp.(ModSemPair.tgt).(ModSem.owned_heap)),
                   SimMemOhs.ohs_tgt sm0 msp.(ModSemPair.tgt).(ModSem.midx) = upcast oh_tgt).
-          { clear - WTST MODSEM0. rr in WTST. des. ss. des_ifs.
-            exploit WTY
-            unfold upcast. esplits; ss. simpl_depind.
-            rewrite upcast_intro.
-            inv WTST.
+          { clear - WTST MODSEM0 Heq1. rr in WTST. des. ss. des_ifs.
+            exploit (IDXNTH (ModSem.midx (ModSemPair.tgt msp))); ss; et. intro T; des_safe.
+            exploit WTY; et. intro Q; des_safe.
+            clear - Q.
+            abstr (ModSem.owned_heap (ModSemPair.tgt msp)) X. clarify.
+            eapply projT1_upcast; eauto.
           }
-          assert(TYSRC: LeibEq (projT1 (sm0.(SimMemOhs.ohs_src)
-                                              (ModSem.midx (ModSemPair.src msp))))
-                     (ModSem.owned_heap (ModSemPair.src msp))).
-          { admit "WF". }
-          assert(TYTGT: LeibEq (projT1 (sm0.(SimMemOhs.ohs_tgt)
-                                              (ModSem.midx (ModSemPair.tgt msp))))
-                     (ModSem.owned_heap (ModSemPair.tgt msp))).
-          { admit "WF". }
+          des.
           exploit SIM; eauto; swap 1 3.
-          { rr. ss. }
-          { eapply upcast_downcast_iff; eauto. }
+          { eapply upcast_downcast_iff; et. }
+          { eapply upcast_downcast_iff; et. }
+          { rr. esplits; eauto. }
           i; des.
-          exploit INITPROGRESS; eauto.
-          { esplits; eauto.
-            rp; eauto. eapply cast_sigT_eq; eauto.
-            rewrite OH. ss.
-          }
-          i; des.
+          exploit INITPROGRESS; eauto. i; des.
           esplits; eauto. econs; eauto.
           + econs; eauto.
-          + eapply cast_sigT_existT.
       }
       { i. ss. inv FINALTGT. }
       i. inv STEPTGT.
@@ -645,30 +634,20 @@ Section ADQSTEP.
       inv SIMMS.
       specialize (SIM sm0).
       inv MSFIND. inv MSFIND0.
-      assert(TYSRC: LeibEq (projT1 (sm0.(SimMemOhs.ohs_src)
-                                          (ModSem.midx (ModSemPair.src msp))))
-                           (ModSem.owned_heap (ModSemPair.src msp))).
-      { admit "WF". }
-      assert(TYTGT: LeibEq (projT1 (sm0.(SimMemOhs.ohs_tgt)
-                                          (ModSem.midx (ModSemPair.tgt msp))))
-                           (ModSem.owned_heap (ModSemPair.tgt msp))).
-      { admit "WF". }
-      exploit SIM; eauto. { rr. ss. } i; des.
 
-      exploit INITBSIM; eauto.
-      { rp; eauto. eapply cast_sigT_eq. rewrite OH. ss. }
-      { esplits; eauto.
-        rp; eauto. eapply cast_sigT_eq. rewrite OH0. ss. }
+      exploit SIM; eauto.
+      { rr. ss. }
+      { eapply upcast_downcast_iff; eauto. }
+      { eapply upcast_downcast_iff; eauto. }
       i; des.
-      (* assert(UNCHSRC: SimMemOhs.ohs_src sm0 = SimMemOhs.ohs_src sm_init). *)
-      (* { admit "strengthen simmodsem". } *)
-      (* assert(UNCHTGT: SimMemOhs.ohs_tgt sm0 = SimMemOhs.ohs_tgt sm_init). *)
-      (* { admit "strengthen simmodsem". } *)
+
+      exploit INITBSIM; eauto. i; des.
+
       clears st_init0; clear st_init0. esplits; eauto.
       - left. apply plus_one. econs; eauto.
         { econs; eauto. }
-        rp; eauto. symmetry. eapply cast_sigT_eq; eauto. rewrite OH0. ss.
       - right. eapply CIH.
+        { eapply SemTyping.sound_progress_star; eauto. }
         instantiate (1:= sm_init). econs; try apply SIM0; eauto.
         + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once.
           eauto using SimMemOhs.le_proj.

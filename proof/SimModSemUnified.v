@@ -238,7 +238,7 @@ Context {SM: SimMem.class} {SMOS: SimMemOhs.class} {SS: SimSymb.class SM} {SU: S
           (FINDFTGT: (Genv.find_funct msp.(tgt).(ModSem.skenv)) (Args.get_fptr args_tgt) =
                      Some (Internal sg_init_tgt))
           (SIMARGS: SimMemOhs.sim_args ohs_src ohs_tgt args_src args_tgt sm_arg)
-          (OHSRC: (downcast (ohs_src msp.(tgt).(midx))) = Some oh_src)
+          (OHSRC: (downcast (ohs_src msp.(src).(midx))) = Some oh_src)
           (OHTGT: (downcast (ohs_tgt msp.(tgt).(midx))) = Some oh_tgt)
           (SIMSKENV: sim_skenv msp sm_arg)
           (MFUTURE: SimMem.future msp.(sm) sm_arg)

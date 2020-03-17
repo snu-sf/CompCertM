@@ -15,6 +15,7 @@ Require Import Sound Preservation AdequacySound.
 Require Import Program RUSC.
 Require Import SimModSemUnified.
 Require Import Any.
+Require SemTyping.
 
 Set Implicit Arguments.
 
@@ -393,19 +394,16 @@ Section ADQMATCH.
       (MLE: SimMemOhs.le sm_arg_lift sm_init)
       (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
       (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
-      (K: forall sm_ret ohs_src1 retv_src (ohs_tgt1: Ohs) retv_tgt lst_src1
-          (OHSWFSRC: LeibEq (projT1 (ohs_src1 ms_src.(ModSem.midx))) ms_src.(ModSem.owned_heap))
-          (OHSWFTGT: LeibEq (projT1 (ohs_tgt1 ms_tgt.(ModSem.midx))) ms_tgt.(ModSem.owned_heap))
-          (* TODO: BELOW ARE NOT IN SIMMODSEMUNIFIED!!!!!!!!!!!!!!!!!!!!!!!!~~~~~~~~ *)
+      (K: forall sm_ret oh_src ohs_src1 retv_src oh_tgt (ohs_tgt1: Ohs) retv_tgt lst_src1
+          (OHSRC: downcast (ohs_src1 ms_src.(ModSem.midx)) = Some oh_src)
+          (OHTGT: downcast (ohs_tgt1 ms_tgt.(ModSem.midx)) = Some oh_tgt)
           (MLE: SimMemOhs.le sm_arg_lift sm_ret)
           (MWF: SimMemOhs.wf sm_ret)
           (SIMRETV: SimMemOhs.sim_retv ohs_src1 ohs_tgt1  retv_src retv_tgt sm_ret)
           (SU: forall si, exists su m_arg, (sound_states_local si) su m_arg lst_src0)
-          (AFTERSRC: ms_src.(ModSem.after_external) lst_src0
-                       (cast_sigT (ohs_src1 ms_src.(ModSem.midx))) retv_src lst_src1),
+          (AFTERSRC: ms_src.(ModSem.after_external) lst_src0 oh_src retv_src lst_src1),
           exists lst_tgt1 smos_after i1,
-            (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0
-                           (cast_sigT (ohs_tgt1 ms_tgt.(ModSem.midx))) retv_tgt lst_tgt1>>)
+            (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 oh_tgt retv_tgt lst_tgt1>>)
             /\ (<<MLEPUB: SimMemOhs.le sm_at smos_after>>)
             /\ (<<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                             i1 lst_src1 lst_tgt1 smos_after>>))
@@ -547,16 +545,6 @@ End ADQINIT.
 
 
 
-(* TODO: move to proper place !! *)
-Lemma cast_sigT_existT
-      (x: { ty: Type & ty }) X
-      (TY: LeibEq (projT1 x) X)
-  :
-    x = existT id _ (@cast_sigT x X TY)
-.
-Proof.
-  destruct x. destruct TY. ss. clarify.
-Qed.
 
 
 
@@ -595,6 +583,7 @@ Section ADQSTEP.
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
           (LXSIM: lxsim_lift sk_link_src sk_link_tgt i0 st_src0 st_tgt0 sm0)
+          (WTST: SemTyping.sound_state p_tgt st_tgt0)
     :
       <<XSIM: xsim sem_src sem_tgt ord (sound_state pp) top1 i0 st_src0 st_tgt0>>
   .
@@ -607,9 +596,18 @@ Section ADQSTEP.
       { ii. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
         - inv SAFESRC.
         - des_ifs. right. inv SAFESRC.
+          rename oh into oh_src. rename OH into OHSRC.
           exploit find_fptr_owner_fsim; eauto. { eapply SimMem.sim_args_sim_fptr; eauto. } i; des. clarify.
           inv SIMMS.
           inv MSFIND. inv FINDTGT.
+          assert(OHTGT: exists (oh_tgt: msp.(ModSemPair.tgt).(ModSem.owned_heap)),
+                  SimMemOhs.ohs_tgt sm0 msp.(ModSemPair.tgt).(ModSem.midx) = upcast oh_tgt).
+          { clear - WTST MODSEM0. rr in WTST. des. ss. des_ifs.
+            exploit WTY
+            unfold upcast. esplits; ss. simpl_depind.
+            rewrite upcast_intro.
+            inv WTST.
+          }
           assert(TYSRC: LeibEq (projT1 (sm0.(SimMemOhs.ohs_src)
                                               (ModSem.midx (ModSemPair.src msp))))
                      (ModSem.owned_heap (ModSemPair.src msp))).

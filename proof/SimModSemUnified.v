@@ -34,6 +34,52 @@ Next Obligation. rewrite leibeq. eauto. Defined.
 Definition cast (A B: Type) `{LeibEq A B} (a: A): B. rewrite <- leibeq. apply a. Defined.
 Global Program Instance LeibEq_refl (A: Type): LeibEq A A.
 
+Lemma cast_sigT_existT
+      (x: { ty: Type & ty }) X
+      (TY: LeibEq (projT1 x) X)
+  :
+    x = existT id _ (@cast_sigT x X TY)
+.
+Proof.
+  destruct x. destruct TY. ss. clarify.
+Qed.
+
+Lemma cast_sigT_eq
+      Y (x: {ty: Type & ty}) (y: Y)
+      (JMEQ: projT2 x ~= y)
+      (LEIBEQ: LeibEq (projT1 x) Y)
+  :
+    cast_sigT x = y
+.
+Proof.
+  unfold cast_sigT. unfold eq_rect_r. ss. des_ifs. ss.
+  unfold eq_rect. des_ifs.
+Qed.
+
+Lemma cast_sigT_proj
+      Y (x: {ty: Type & ty}) (y: Y)
+      (LEIBEQ: LeibEq (projT1 x) Y)
+      (EQ: cast_sigT x = y)
+  :
+      <<JMEQ: projT2 x ~= y>>
+.
+Proof.
+  unfold cast_sigT in *. ss. des_ifs. ss. unfold eq_rect. des_ifs.
+Qed.
+
+Lemma sigT_eta
+      (a: { A: Type & A})
+      (b: { B: Type & B})
+      (EQTY: projT1 a = projT1 b)
+      (EQVAL: projT2 a ~= projT2 b)
+  :
+    a = b
+.
+Proof.
+  destruct a, b; ss. clarify. apply JMeq_eq in EQVAL. clarify.
+Qed.
+
+
 
 
 (* Module Ohs. *)
@@ -222,29 +268,6 @@ Hint Resolve lxsim_mon: paco.
 
 Module _ModSemPair := SimModSem.ModSemPair.
 
-Lemma cast_sigT_eq
-      Y (x: {ty: Type & ty}) (y: Y)
-      (JMEQ: projT2 x ~= y)
-      (LEIBEQ: LeibEq (projT1 x) Y)
-  :
-    cast_sigT x = y
-.
-Proof.
-  unfold cast_sigT. unfold eq_rect_r. ss. des_ifs. ss.
-  unfold eq_rect. des_ifs.
-Qed.
-
-Lemma cast_sigT_proj
-      Y (x: {ty: Type & ty}) (y: Y)
-      (LEIBEQ: LeibEq (projT1 x) Y)
-      (EQ: cast_sigT x = y)
-  :
-      <<JMEQ: projT2 x ~= y>>
-.
-Proof.
-  unfold cast_sigT in *. ss. des_ifs. ss. unfold eq_rect. des_ifs.
-Qed.
-
 (* Definition sm_match SM SS {SMOS: SimMemOhs.class} (msp: @ModSemPair.t SM SS): *)
 (*   (@SimMemOh.t _ _ _ msp.(ModSemPair.SMO)) -> SimMemOhs.t -> Prop := *)
 (*   (* TODO: I want to remove @ *) *)
@@ -271,18 +294,6 @@ Record sm_match `{SMO: SimMemOh.class} (midx: Midx.t) {SMOS: SimMemOhs.class}
     (* ohtgt: (projT2 oh_tgt ~= smo.(SimMemOh.oh_tgt)) *)
 }
 .
-
-Lemma sigT_eta
-      (a: { A: Type & A})
-      (b: { B: Type & B})
-      (EQTY: projT1 a = projT1 b)
-      (EQVAL: projT2 a ~= projT2 b)
-  :
-    a = b
-.
-Proof.
-  destruct a, b; ss. clarify. apply JMeq_eq in EQVAL. clarify.
-Qed.
 
 Inductive respects `(SMO: SimMemOh.class) (midx: Midx.t) (SMOS: SimMemOhs.class): Prop :=
 | respects_intro

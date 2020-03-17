@@ -17,8 +17,6 @@ Require Import Any.
 Set Implicit Arguments.
 
 
-
-Module SemPrsv.
 Section PRSV.
 
   Local Open Scope pair_scope.
@@ -183,4 +181,3 @@ Section PRSV.
   Qed.
 
 End PRSV.
-End SemPrsv.

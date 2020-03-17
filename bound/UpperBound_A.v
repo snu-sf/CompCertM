@@ -732,7 +732,7 @@ Section PRESERVATION.
         (STEP: Csem.step skenv_link ge_cp_link st0 tr st1) :
       <<WT: wt_state cp_link ge_cp_link st1>>.
   Proof.
-    eapply preservation; try apply STEP; try refl; et; destruct cp_link_precise.
+    eapply Ctyping.preservation; try apply STEP; try refl; et; destruct cp_link_precise.
     - ii. red. unfold ge_cp_link in *. ss.
       exploit GE2P; eauto. i. des.
       eapply Genv.find_invert_symbol in SYMB. eapply Genv.find_invert_symbol in SYMB0.
@@ -750,7 +750,7 @@ Section PRESERVATION.
   Proof.
     exploit is_focus_precise; eauto. i. inv H.
     r in FOC.
-    eapply preservation; try apply STEP; try refl; et.
+    eapply Ctyping.preservation; try apply STEP; try refl; et.
     - ii. ss. exploit GE2P; eauto. i. des.
       eapply Genv.find_invert_symbol in SYMB. eapply Genv.find_invert_symbol in SYMB0.
       unfold Genv.invert_symbol in *. ss. rewrite SYMB in *. clarify.
@@ -802,7 +802,7 @@ Section PRESERVATION.
   Lemma match_xsim
         st_src0 st_tgt0
         (MATCH: match_states st_src0 st_tgt0) :
-      <<XSIM: xsim (sem prog_src) (sem prog_tgt) (fun _ _ => False) tt st_src0 st_tgt0>>
+      <<XSIM: xsim (sem prog_src) (sem prog_tgt) (fun _ _ => False) top1 top1 tt st_src0 st_tgt0>>
   .
   Proof.
     revert_until sum_cont. revert INCL_FOCUS INCL.
@@ -1595,7 +1595,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
   Theorem upperbound_a_xsim :
       <<XSIM: mixed_simulation (Sem.sem prog_src) (Sem.sem prog_tgt)>>.
   Proof.
-    econs; ss; eauto. econs; ss; eauto.
+    econs; ss; eauto. econs; try apply preservation_top; ss; eauto.
     { eapply unit_ord_wf. }
     { econs 1.
       ii. inversion INITSRC. exploit init_fsim; eauto. i; des. esplits; eauto.
@@ -1624,7 +1624,7 @@ Proof.
   eapply mixed_to_backward_simulation.
   destruct (link_sk (ctx ++ [module cp_link])) eqn:LINKSK; cycle 1.
   { econs; et.
-    econs; et.
+    econs; try apply preservation_top; et.
     { eapply unit_ord_wf. }
     { econs; et. i. ss. inv INITSRC. clarify. }
     i; des. ss. des_ifs.

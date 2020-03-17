@@ -494,7 +494,7 @@ Section ADQSTEP.
           i0 st_src0 st_tgt0 sm0
           (LXSIM: lxsim_lift sk_link_src sk_link_tgt i0 st_src0 st_tgt0 sm0)
           (SUST: sound_state pp st_src0):
-      <<XSIM: xsim sem_src sem_tgt ord i0 st_src0 st_tgt0>>.
+      <<XSIM: xsim sem_src sem_tgt ord top1 top1 i0 st_src0 st_tgt0>>.
   Proof.
     generalize dependent sm0. generalize dependent st_src0. generalize dependent st_tgt0. generalize dependent i0.
     pcofix CIH. i. pfold. inv LXSIM; ss; cycle 1.
@@ -704,8 +704,9 @@ Section ADQ.
   Proof.
     subst_locals. econstructor 1 with (order := ord); eauto. generalize wf_ord; intro WF.
     destruct (classic (pp <> [])); cycle 1.
-    { apply NNPP in H. clarify. ss. do 2 econs; eauto. ii. ss. inv INITSRC. ss. }
-    rename H into NOTNIL. econs; eauto.
+    { apply NNPP in H. clarify. ss. econs; try apply preservation_top; eauto.
+      econs; eauto. ii. ss. inv INITSRC. ss. }
+    rename H into NOTNIL. econs; try apply preservation_top; eauto.
     - econs 1; ss; eauto. ii. inv INITSRC.
       exploit sim_link_sk; eauto. i; des.
       exploit init_lxsim_lift_forward; eauto. { econs; eauto. } i; des.

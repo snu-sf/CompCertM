@@ -953,7 +953,7 @@ Section PRESERVATION.
         (STEP: Csem.step skenv_link ge st0 tr st1):
       <<WT: wt_state prog ge st1>>.
   Proof.
-    eapply preservation; try apply STEP; try refl; eauto; et; destruct prog_precise.
+    eapply Ctyping.preservation; try apply STEP; try refl; eauto; et; destruct prog_precise.
     - ii. eapply Genv.find_def_symbol. esplits; eauto.
     - i. rewrite Genv.find_def_symbol in MAP. des; eauto.
     - i.
@@ -971,7 +971,7 @@ Section PRESERVATION.
 
   Lemma match_state_xsim:
       forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n) (WTST: wt_state prog ge st_src),
-        xsim (Csem.semantics prog) (Sem.sem tprog) lt n%nat st_src st_tgt.
+        xsim (Csem.semantics prog) (Sem.sem tprog) lt top1 top1 n%nat st_src st_tgt.
   Proof.
     pcofix CIH. i. pfold.
     destruct match_ge_skenv_link.
@@ -1299,7 +1299,7 @@ Section PRESERVATION.
   Lemma transf_xsim_properties:
       xsim_properties (Csem.semantics prog) (Sem.sem tprog) nat lt.
   Proof.
-    econs; [apply lt_wf| |i; apply symb_preserved].
+    econs; try apply preservation_top; [apply lt_wf| |i; apply symb_preserved].
     econs. i.
     exploit (transf_initial_states); eauto.
     i. des. esplits. econs; eauto.

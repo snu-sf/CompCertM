@@ -603,7 +603,7 @@ Section LXSIM.
   Lemma match_states_xsim
         i st_src0 st_tgt0
         (MATCH: match_states i st_src0 st_tgt0):
-    xsim (sem (ctx1 ++ [module] ++ ctx2)) (sem (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)) (Zwf.Zwf 0) i st_src0 st_tgt0.
+    xsim (sem (ctx1 ++ [module] ++ ctx2)) (sem (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)) (Zwf.Zwf 0) top1 top1 i st_src0 st_tgt0.
   Proof.
     revert_until SKEWF. pcofix CIH. i.
     inv MATCH.
@@ -1064,7 +1064,7 @@ Proof.
   eapply bsim_improves.
   eapply mixed_to_backward_simulation.
   econs; eauto.
-  econs; swap 2 3.
+  econs; try apply preservation_top; swap 2 3.
   { instantiate (1:= Zwf.Zwf 0%Z). eapply Zwf.Zwf_well_founded. }
   { i; des. ss. inv SAFESRC. rewrite INITSK.
     exploit link_sk_same; ss. i. erewrite H. des_ifs. }

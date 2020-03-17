@@ -767,14 +767,21 @@ Lemma x2b_progress:
   forall i s1 s2, match_states i s1 s2 -> safe L1 s1 -> x2b_transitions i s1 s2.
 Proof.
   intros i0; pattern i0. apply well_founded_ind with (R := order). eapply xsim_order_wf; eauto.
-  intros i REC s1 s2 MATCH SAFE. inversion MIXED_SIM. dup MATCH. punfold MATCH0. des.
+  intros i REC s1 s2 MATCH SAFE. dup MATCH. rr in MATCH0. des.
+  punfold MATCH1. repeat spc MATCH1. des.
   { (* forward *)
-    inversion MATCH0; subst. unfold NW in *. destruct (SAFE s1) as [[r FINAL1] | [t [s1' STEP1]]]. apply star_refl.
+    inversion MATCH1; subst. unfold NW in *. destruct (SAFE s1) as [[r FINAL1] | [t [s1' STEP1]]]. apply star_refl.
     - (* final state reached *)
       inv STEP.
       + eapply x2b_trans_forward_final; try eapply star_refl; eauto. eapply FINAL; eauto.
       + des. pclearbot. inv PLUS.
-        eapply x2b_trans_forward_stutter; try apply STAR0; try eapply star_refl; eauto.
+        assert(XSIM': match_states i1 s1 st_tgt1).
+        { rr. esplits; eauto.
+          hexploit (prsv_star MIXED_SIM.(preservation_tgt)); eauto. intro T; des.
+          eapply T; eauto. econs; eauto.
+          { eapply H. } ss. eapply H0.
+        }
+        eapply x2b_trans_forward_stutter; try apply XSIM'; try eapply star_refl; debug eauto.
         { econs; eauto. }
         econs 2; eauto.
 

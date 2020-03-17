@@ -33,6 +33,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     src: Mod.t;
     tgt: Mod.t;
     ss: SimSymb.t;
+    SMO:> SimMemOh.class;
   }.
 
   Definition to_msp (midx: Midx.t)
@@ -54,9 +55,9 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           (WFTGT: SkEnv.wf skenv_link_tgt)
           (SSLE: SimSymb.le mp.(ss) ss_link)
           (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt),
-          exists SMO, <<SIMMSP: ModSemPair.sim
-                                  (to_msp midx skenv_link_src skenv_link_tgt sm_init_link mp)
-                                  (SMO := SMO)>>).
+          <<SIMMSP: ModSemPair.sim
+                      (to_msp midx skenv_link_src skenv_link_tgt sm_init_link mp)
+                      (SMO := mp.(SMO))>>).
   (* TODO: quantifying "exists SMO" here looks somewhat dirty... *)
   (* I would like to quantify it directly inside "sim_intro", but I need to put it here because *)
   (* I need to know "owned_heap" type which needs to know "skenv_link_src,tgt". *)

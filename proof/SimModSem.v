@@ -18,6 +18,7 @@ Require Import ModSemProps.
 Require Import Events.
 Require Import SmallstepC.
 From Paco Require Import hpattern.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -30,7 +31,7 @@ Section SIMMODSEM.
 
   Variables ms_src ms_tgt: ModSem.t.
   Context {SM: SimMem.class}.
-  Context {SMO: SimMemOh.class ms_src.(ModSem.owned_heap) ms_tgt.(ModSem.owned_heap)}.
+  Context {SMO: SimMemOh.class}.
   (* TODO: make SS's argument "SM" implicit; like SMO *)
   Context {SS: SimSymb.class SM}.
   Variable sound_states: ms_src.(state) -> Prop.
@@ -88,14 +89,14 @@ Section SIMMODSEM.
       <<CALLFSIM: forall oh_src0 args_src
           (ATSRC: ms_src.(at_external) st_src0 oh_src0 args_src),
           exists oh_tgt0 args_tgt (smo_arg: SimMemOh.t),
-            (<<SIMARGS: SimMemOh.sim_args oh_src0 oh_tgt0 args_src args_tgt smo_arg>>
+            (<<SIMARGS: SimMemOh.sim_args (upcast oh_src0) (upcast oh_tgt0) args_src args_tgt smo_arg>>
             /\ (<<MWF: SimMemOh.wf smo_arg>>)
             /\ (<<MLE: SimMemOh.lepriv smo0 smo_arg>>)
             /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 oh_tgt0 args_tgt>>)
             /\ (<<K: forall smo_ret oh_src1 retv_src oh_tgt1 retv_tgt st_src1
                 (MLE: SimMemOh.le smo_arg smo_ret)
                 (MWF: SimMemOh.wf smo_ret)
-                (SIMRETV: SimMemOh.sim_retv oh_src1 oh_tgt1 retv_src retv_tgt smo_ret)
+                (SIMRETV: SimMemOh.sim_retv (upcast oh_src1) (upcast oh_tgt1) retv_src retv_tgt smo_ret)
                 (AFTERSRC: ms_src.(after_external) st_src0 oh_src1 retv_src st_src1),
                 exists st_tgt1 smo_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 oh_tgt1 retv_tgt st_tgt1>>) /\
@@ -108,7 +109,7 @@ Section SIMMODSEM.
       (MWF: SimMemOh.wf smo_ret)
       (FINALSRC: ms_src.(final_frame) st_src0 oh_src retv_src)
       (FINALTGT: ms_tgt.(final_frame) st_tgt0 oh_tgt retv_tgt)
-      (SIMRETV: SimMemOh.sim_retv oh_src oh_tgt retv_src retv_tgt smo_ret).
+      (SIMRETV: SimMemOh.sim_retv (upcast oh_src) (upcast oh_tgt) retv_src retv_tgt smo_ret).
 
 
   Definition _lxsim (lxsim: idx -> state ms_src -> state ms_tgt -> SimMemOh.t -> Prop)
@@ -143,7 +144,7 @@ Hint Resolve lxsim_mon: paco.
 
 Module ModSemPair.
 Section MODSEMPAIR.
-Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+Context {SM: SimMem.class} {SMO: SimMemOh.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Record t: Type := mk {
     src: ModSem.t;
@@ -167,9 +168,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     inv SIMSKENV. econs; eapply SimSymb.mfuture_preserves_sim_skenv; eauto.
   Qed.
 
-  Inductive sim (msp: t)
-            {SMO: SimMemOh.class (msp.(src).(ModSem.owned_heap))
-                                 (msp.(tgt).(ModSem.owned_heap))}: Prop :=
+  Inductive sim (msp: t): Prop :=
   | sim_intro
       sidx sound_states sound_state_ex
       (MIDX: msp.(src).(midx) = msp.(tgt).(midx))
@@ -182,7 +181,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
                      Some (Internal sg_init_src))
           (FINDFTGT: (Genv.find_funct msp.(tgt).(ModSem.skenv)) (Args.get_fptr args_tgt) =
                      Some (Internal sg_init_tgt))
-          (SIMARGS: SimMemOh.sim_args oh_src oh_tgt args_src args_tgt sm_arg)
+          (SIMARGS: SimMemOh.sim_args (upcast oh_src) (upcast oh_tgt) args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
           (MFUTURE: SimMem.future msp.(sm) sm_arg)
           (MWF: SimMemOh.wf sm_arg),
@@ -213,7 +212,7 @@ Section FACTORTARGET.
 
   Variable ms_src ms_tgt: ModSem.t.
   Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
-  Context {SMO: SimMemOh.class ms_src.(ModSem.owned_heap) ms_tgt.(ModSem.owned_heap)}.
+  Context {SMO: SimMemOh.class}.
   Variable ss: SimSymb.t.
   Variable sm: SimMem.t.
   Hypothesis SINGLE: single_events ms_src.

@@ -11,7 +11,7 @@ Require Import Ordered.
 Require Import AST.
 Require Import Integers.
 
-Require Import Sem ModSem.
+Require Import Sem ModSem Any.
 
 Set Implicit Arguments.
 
@@ -119,12 +119,12 @@ Section SimMemOh.
   (* Variable owned_heap_src owned_heap_tgt: Type. *)
 
   Local Open Scope signature_scope.
-  Class class {SM: SimMem.class} (owned_heap_src owned_heap_tgt: Type) :=
+  Class class {SM: SimMem.class} :=
   {
     t: Type;
     sm:> t -> SimMem.t;
-    oh_src: t -> owned_heap_src;
-    oh_tgt: t -> owned_heap_tgt;
+    oh_src: t -> Any;
+    oh_tgt: t -> Any;
     wf: t -> Prop;
     le: t -> t -> Prop;
     lepriv: t -> t -> Prop;
@@ -156,13 +156,13 @@ Section SimMemOh.
 
   Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
 
-  Definition sim_args `{SMO: class} (oh_src: owned_heap_src) (oh_tgt: owned_heap_tgt)
+  Definition sim_args `{SMO: class} (oh_src: Any) (oh_tgt: Any)
              (args_src args_tgt: Args.t) (smo0: SimMemOh.t): Prop :=
     (<<SIMARGS: SimMem.sim_args args_src args_tgt smo0>>) /\
     (<<OHSRC: oh_src = smo0.(SimMemOh.oh_src)>>) /\ (<<OHTGT: oh_tgt = smo0.(SimMemOh.oh_tgt)>>)
   .
 
-  Definition sim_retv `{SMO: class} (oh_src: owned_heap_src) (oh_tgt: owned_heap_tgt)
+  Definition sim_retv `{SMO: class} (oh_src: Any) (oh_tgt: Any)
              (retv_src retv_tgt: Retv.t) (smo0: SimMemOh.t): Prop :=
     (<<SIMRETV: SimMem.sim_retv retv_src retv_tgt smo0>>) /\
     (<<OHSRC: oh_src = smo0.(SimMemOh.oh_src)>>) /\ (<<OHTGT: oh_tgt = smo0.(SimMemOh.oh_tgt)>>)
@@ -179,11 +179,11 @@ Hint Resolve SimMemOh.pub_priv SimMemOh.wf_proj SimMemOh.le_proj SimMemOh.lepriv
 
 Local Obligation Tactic := try (by econs); try (by ii; ss).
 
-Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class unit unit) | 100 :=
+Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class) | 100 :=
   {
     sm := fun x => x;
-    oh_src := fun _ => tt;
-    oh_tgt := fun _ => tt;
+    oh_src := fun _ => upcast tt;
+    oh_tgt := fun _ => upcast tt;
     wf := SimMem.wf;
     le := SimMem.le;
     lepriv := SimMem.lepriv;

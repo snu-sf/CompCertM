@@ -9,11 +9,12 @@ Require Import Integers.
 Require Import Events.
 
 Require Import Skeleton ModSem Mod Sem.
-Require Import SimSymb SimMem SimModUnified SimModSemUnified SimProgUnified.
+Require Import SimSymb SimMem SimMod SimModSemUnified SimProg.
 Require Import ModSemProps SemProps Ord.
 Require Import Sound Preservation AdequacySound.
 Require Import Program RUSC.
 Require Import SimModSemUnified.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -33,7 +34,7 @@ Section SIMGE.
   | sim_ge_intro
       msps ge_src ge_tgt skenv_link_src skenv_link_tgt
       (SIMSKENV: List.Forall (fun msp => ModSemPair.sim_skenv msp sm0) msps)
-      (SIMMSS: List.Forall (ModSemPair.sim) msps)
+      (SIMMSS: List.Forall (ModSemPair.simU) msps)
       (GESRC: ge_src = (map (ModSemPair.src) msps))
       (GETGT: ge_tgt = (map (ModSemPair.tgt) msps))
       (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm0 ss_link skenv_link_src skenv_link_tgt)
@@ -50,7 +51,7 @@ Section SIMGE.
       exists msp,
         <<SRC: msp.(ModSemPair.src) = ms_src>>
         /\ <<FINDTGT: Ge.find_fptr_owner ge_tgt fptr_tgt msp.(ModSemPair.tgt)>>
-        /\ <<SIMMS: ModSemPair.sim msp>>
+        /\ <<SIMMS: ModSemPair.simU msp>>
         /\ <<SIMSKENV: ModSemPair.sim_skenv msp sm0>>
         /\ <<MFUTURE: SimMem.future msp.(ModSemPair.sm) sm0>>.
   Proof.
@@ -84,7 +85,7 @@ Section SIMGE.
   Lemma sim_ge_cons
         sm_init tl_src tl_tgt msp skenv_link_src skenv_link_tgt
         (SAFESRC: tl_src <> [])
-        (SIMMSP: ModSemPair.sim msp)
+        (SIMMSP: ModSemPair.simU msp)
         (SIMGETL: sim_ge sm_init (tl_src, skenv_link_src) (tl_tgt, skenv_link_tgt))
         (SIMSKENV: ModSemPair.sim_skenv msp sm_init)
         (MFUTURE: SimMem.future (ModSemPair.sm msp) sm_init)
@@ -110,7 +111,7 @@ Section SIMGE.
         (WFTGT: SkEnv.wf skenv_tgt)
         (INCLSRC: SkEnv.includes skenv_src (Mod.sk mp.(ModPair.src)))
         (INCLTGT: SkEnv.includes skenv_tgt (Mod.sk mp.(ModPair.tgt)))
-        (SIMMP: ModPair.sim mp)
+        (SIMMP: ModPair.simU mp midx)
         (LESS: SimSymb.le (ModPair.ss mp) ss_link)
         (SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_src skenv_tgt):
         <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp midx skenv_src skenv_tgt sm_init mp) sm_init>>.
@@ -124,7 +125,7 @@ Section SIMGE.
   Theorem init_sim_ge_strong
           pp p_src p_tgt ss_link skenv_link_src skenv_link_tgt m_src
           (NOTNIL: pp <> [])
-          (SIMPROG: ProgPair.sim pp)
+          (SIMPROG: ProgPair.simU pp)
           (PSRC: p_src = (ProgPair.src pp))
           (PTGT: p_tgt = (ProgPair.tgt pp))
           (SSLE: Forall (fun mp => SimSymb.le (ModPair.ss mp) ss_link) pp)
@@ -196,7 +197,7 @@ SimSymb.wf_load_sim_skenv를 갈아 엎기. ProgPair.t 받도록
     assert(exists msp_sys,
               (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.src))>>)
               /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.tgt))>>)
-              /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys smos_init.(SimMemOhs.sm)>>
+              /\ <<SYSSIM: ModSemPair.simU msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys smos_init.(SimMemOhs.sm)>>
               /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) smos_init>>)).
     { exploit SimSymb.system_sim_skenv; eauto. i; des.
       eexists (ModSemPair.mk _ _ ss_link smos_init). ss. esplits; eauto.
@@ -208,7 +209,7 @@ SimSymb.wf_load_sim_skenv를 갈아 엎기. ProgPair.t 받도록
         split; cycle 1.
         { ii; des. inv SAFESRC. rr in SIMARGS. des. inv SIMARGS0; ss. esplits; eauto. econs; eauto. }
         ii. sguard in SAFESRC. des. inv INITTGT.
-        rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
+        rr in SIMARGS; des. inv SIMARGS0; ss. clarify. simpl_depind. clarify.
         esplits; eauto.
         { refl. }
         { econs; eauto. }
@@ -250,24 +251,25 @@ smos1 0%nat이 unit이라는걸 알아야 하는데...
 ".
         }
         des.
+        repeat des_u.
         esplits; eauto.
         { left. apply plus_one. econs.
           - eapply System.modsem_determinate; et.
           - ss. econs; eauto. }
         left. pfold.
-        assert(UNIT: (cast_sigT (SimMemOhs.ohs_tgt sm_arg 0%nat)) = tt).
-        { clear - TYTGT. eapply cast_sigT_eq.
-          destruct (SimMemOhs.ohs_tgt sm_arg 0%nat) eqn:T. simpl_depind. Undo 1.
-          (* IT REMOVES SOME INFORMATION!!!!!!!!! (Hypothesis T) *)
-          destruct TYTGT. ss. clarify. destruct p; ss.
-        }
+        (* assert(UNIT: (cast_sigT (SimMemOhs.ohs_tgt sm_arg 0%nat)) = tt). *)
+        (* { clear - TYTGT. eapply cast_sigT_eq. *)
+        (*   destruct (SimMemOhs.ohs_tgt sm_arg 0%nat) eqn:T. simpl_depind. Undo 1. *)
+        (*   (* IT REMOVES SOME INFORMATION!!!!!!!!! (Hypothesis T) *) *)
+        (*   destruct TYTGT. ss. clarify. destruct p; ss. *)
+        (* } *)
         econs 4.
         { refl. }
         { eauto. }
         { ss. }
         { ss. }
-        { clear - OHSRC. ss. apply func_ext1. intro mi. unfold Midx.update. des_ifs. }
-        { clear - OHTGT. ss. apply func_ext1. intro mi. unfold Midx.update. des_ifs. }
+        { clear - OHSRC OHSRC0. ss. apply func_ext1. i. unfold Midx.update. des_ifs. }
+        { clear - OHTGT OHTGT0. ss. apply func_ext1. i. unfold Midx.update. des_ifs. }
         { inv RETV; ss. unfold Retv.mk in *. clarify. rr. esplits; eauto.
           - econs; ss; eauto.
         }
@@ -285,7 +287,7 @@ smos1 0%nat이 unit이라는걸 알아야 하는데...
         econstructor 2 with (msps := (map (ModPair.to_msp 1%nat skenv_src skenv_tgt smos_init) [mp])); eauto; ss; revgoals; econs; eauto.
         - u. erewrite Mod.get_modsem_skenv_link_spec; ss.
         - u. erewrite Mod.get_modsem_skenv_link_spec; ss.
-        -  eapply SIMMS; eauto; eapply SkEnv.load_skenv_wf; et.
+        - eapply SIMMS; eauto; eapply SkEnv.load_skenv_wf; et.
         - econs; ss; eauto; cycle 1.
           { unfold Mod.modsem. rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
           r. ss. eapply SimSymb.sim_skenv_monotone; try rewrite SKSRC0; try rewrite SKTGT0;
@@ -326,12 +328,15 @@ smos1 0%nat이 unit이라는걸 알아야 하는데...
         * eapply SIMMP; eauto.
         * rewrite Forall_forall in *. i. apply Midx.in_mapi_aux_iff in H. des.
           exploit nth_error_in; eauto. intro IN.
-          specialize (SIMPROG a). special SIMPROG; ss. clarify. eapply SIMPROG; eauto.
+          specialize (SIMPROG ((2 + idx)%nat, a)). special SIMPROG; ss.
+          { eapply Midx.in_mapi_aux_iff. esplits; eauto. ss. }
+          clarify. eapply SIMPROG; eauto.
       + ss. econs; ss; eauto.
         * eapply to_msp_sim_skenv; eauto.
         * rewrite Forall_forall in *. i. apply Midx.in_mapi_aux_iff in H. des. clarify.
           exploit nth_error_in; eauto. intro IN.
           eapply to_msp_sim_skenv; eauto.
+          exploit (SIMPROG ((2 + idx)%nat, a)); eauto. eapply Midx.in_mapi_aux_iff; eauto.
     - rewrite SYSSRC. ss.
     - rewrite SYSTGT. ss.
   Unshelve.
@@ -476,6 +481,7 @@ Section ADQINIT.
   Variable pp: ProgPair.t.
   Hypothesis NOTNIL: pp <> [].
   Hypothesis SIMPROG: ProgPair.sim pp.
+  Hypothesis SIMPROGU: ProgPair.simU pp.
   Let p_src := (ProgPair.src pp).
   Let p_tgt := (ProgPair.tgt pp).
 
@@ -561,7 +567,7 @@ Section ADQSTEP.
   Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
-  Hypothesis SIMPROG: ProgPair.sim pp.
+  Hypothesis SIMPROG: ProgPair.simU pp.
   Let p_src := (ProgPair.src pp).
   Let p_tgt := (ProgPair.tgt pp).
 
@@ -612,7 +618,10 @@ Section ADQSTEP.
                                               (ModSem.midx (ModSemPair.tgt msp))))
                      (ModSem.owned_heap (ModSemPair.tgt msp))).
           { admit "WF". }
-          exploit SIM; eauto. { rr. ss. } i; des.
+          exploit SIM; eauto; swap 1 3.
+          { rr. ss. }
+          { eapply upcast_downcast_iff; eauto. }
+          i; des.
           exploit INITPROGRESS; eauto.
           { esplits; eauto.
             rp; eauto. eapply cast_sigT_eq; eauto.
@@ -901,7 +910,7 @@ Section ADQ.
   Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
-  Hypothesis SIMPROG: ProgPair.sim pp.
+  Hypothesis SIMPROG: ProgPair.simU pp.
   Let p_src := (ProgPair.src pp).
   Let p_tgt := (ProgPair.tgt pp).
   Let sem_src := Sem.sem p_src.
@@ -986,14 +995,14 @@ Program Definition mkPR (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.cla
                             (fun (p_src p_tgt: program) =>
                                forall (WF: forall x (IN: In x p_src), Sk.wf x),
                                exists pp,
-                                 (<<SIMS: @ProgPair.sim MR SR MP pp>>)
+                                 (<<SIMS: @ProgPair.simU MR SR MP pp>>)
                                  /\ (<<SRCS: (ProgPair.src pp) = p_src>>)
                                  /\ (<<TGTS: (ProgPair.tgt pp) = p_tgt>>)) _ _ _.
 Next Obligation.
 (* horizontal composition *)
   exploit REL0; eauto. { i. eapply WF. rewrite in_app_iff. eauto. } intro T0; des.
   exploit REL1; eauto. { i. eapply WF. rewrite in_app_iff. eauto. } intro T1; des.
-  clarify. unfold ProgPair.sim in *. rewrite Forall_forall in *. eexists (_ ++ _). esplits; eauto.
+  clarify. unfold ProgPair.simU in *. rewrite Forall_forall in *. eexists (_ ++ _). esplits; eauto.
   - rewrite Forall_forall in *. i. rewrite in_app_iff in *. des; [apply SIMS|apply SIMS0]; eauto.
   - unfold ProgPair.src. rewrite map_app. ss.
   - unfold ProgPair.tgt. rewrite map_app. ss.
@@ -1004,7 +1013,7 @@ Next Obligation.
   { eapply sk_nwf_improves; auto. }
   specialize (REL WF). des. clarify.
   assert(UNIF: exists SMOS ppu,
-            (<<SIM: SimProgUnified.ProgPair.sim ppu (SMOS := SMOS)>>)
+            (<<SIM: SimProgUnified.ProgPair.simU ppu (SMOS := SMOS)>>)
             /\ (<<PROGSRC: (SimProgUnified.ProgPair.src ppu) = (ProgPair.src pp)>>)
             /\ (<<PROGTGT: (SimProgUnified.ProgPair.tgt ppu) = (ProgPair.tgt pp)>>)).
   { admit "Fundamental Theroem". }

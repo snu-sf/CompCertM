@@ -10,6 +10,7 @@ Require Import LinkingC.
 Require Import CoqlibC.
 Require Import sflib.
 
+Require Import Any.
 Require Import ModSem Mod Skeleton System.
 Require Export Syntax.
 
@@ -21,8 +22,8 @@ Set Implicit Arguments.
 
 
 
-Definition Ohs := Midx.t -> { oh: Type & oh }.
-(* Definition Ohs := list { oh: Type & oh }. *)
+Definition Ohs := Midx.t -> Any.
+(* Definition Ohs := list Any. *)
 
 Module Frame.
 
@@ -79,7 +80,7 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 | step_call
     fr0 frs args oh ohs0 ohs1 
     (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) oh args)
-    (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (existT id _ oh)):
+    (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh)):
     step ge (State (fr0 :: frs) ohs0)
          E0 (Callstate args (fr0 :: frs) ohs1)
 
@@ -87,7 +88,7 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     args frs ms st_init oh ohs
     (MSFIND: ge.(Ge.find_fptr_owner) (Args.get_fptr args) ms)
     (* (OH: nth_error ohs ms.(ModSem.midx) = Some (existT id _ oh)) *)
-    (OH: ohs ms.(ModSem.midx) = (existT id _ oh))
+    (OH: (ohs ms.(ModSem.midx)) = upcast oh)
     (INIT: ms.(ModSem.initial_frame) oh args st_init):
     step ge (Callstate args frs ohs)
          E0 (State ((Frame.mk ms st_init) :: frs) ohs)
@@ -101,9 +102,9 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     fr0 fr1 frs retv st0 ohs0 ohs1 oh0 oh1
     (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) oh0 retv)
     (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) oh1 retv st0)
-    (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (existT id _ oh0))
+    (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh0))
     (* (OH: nth_error ohs1 fr1.(Frame.ms).(ModSem.midx) = Some (existT id _ oh1)): *)
-    (OH: ohs1 fr1.(Frame.ms).(ModSem.midx) = (existT id _ oh1)):
+    (OH: (ohs1 fr1.(Frame.ms).(ModSem.midx)) = upcast oh1):
     step ge (State (fr0 :: fr1 :: frs) ohs0)
          E0 (State (((Frame.update_st fr1) st0) :: frs) ohs1)
 .
@@ -137,9 +138,13 @@ Section SEMANTICS.
 
   Definition load_owned_heaps (ge: Ge.t): Ohs :=
     fun midx =>
-      match List.find (fun ms => Nat.eqb midx ms.(ModSem.midx)) (fst ge) with
-      | Some ms => existT id _ ms.(ModSem.initial_owned_heap)
-      | _ => (@existT Type (fun _ => _) unit tt)
+      (* match List.find (fun ms => Nat.eqb midx ms.(ModSem.midx)) (fst ge) with *)
+      (* | Some ms => upcast ms.(ModSem.initial_owned_heap) *)
+      (* | _ => upcast tt *)
+      (* end *)
+      match List.nth_error (fst ge) midx with
+      | Some ms => upcast ms.(ModSem.initial_owned_heap)
+      | _ => upcast tt
       end
     (* map (fun ms => existT id _ ms.(ModSem.initial_owned_heap)) (fst ge) *)
   .

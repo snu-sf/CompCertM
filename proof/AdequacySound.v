@@ -9,7 +9,7 @@ Require Import Integers.
 Require Import Events.
 
 Require Import Skeleton ModSem Mod Sem.
-Require Import SimSymb SimMem SimModUnified SimModSemUnified SimProgUnified.
+Require Import SimSymb SimMem SimMod SimModSemUnified SimProg.
 Require Import SemProps Ord.
 Require Import Sound Preservation.
 Require Import Memory.

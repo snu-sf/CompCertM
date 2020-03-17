@@ -199,6 +199,41 @@ Section Midx.
     eapply in_mapi_aux_iff.
   Qed.
 
+  Lemma nth_error_mapi_aux_iff
+        A B (f: t -> A -> B) la b
+    :
+      forall idx m,
+      nth_error (mapi_aux f m la) idx = Some b <->
+      (exists a, f (m + idx)%nat a = b /\ nth_error la idx = Some a)
+  .
+  Proof.
+    ginduction la; split; ii; ss; des; firstorder (subst; auto).
+    - destruct idx; ss.
+    - destruct idx; ss.
+    - destruct idx; ss; clarify.
+      + esplits; eauto. f_equal; xomega.
+      + exploit IHla; eauto. intros [T _]. eapply T in H. des. clarify.
+        esplits; eauto. ss. f_equal; xomega.
+    - destruct idx; ss; clarify.
+      { repeat f_equal; xomega. }
+      exploit IHla; eauto. intros [_ T]. exploit T; eauto. intro Q; des.
+      replace (m + S idx)%nat with (S m + idx)%nat by xomega.
+      rewrite Q. ss.
+  Qed.
+
+  Lemma nth_error_mapi_iff
+        A B (f: t -> A -> B) la b
+    :
+      forall idx,
+      nth_error (mapi f la) idx = Some b <->
+      (exists a, f (S idx)%nat a = b /\ nth_error la idx = Some a)
+  .
+  Proof.
+    split; ii; des.
+    - eapply nth_error_mapi_aux_iff in H; eauto.
+    - eapply nth_error_mapi_aux_iff; eauto.
+  Qed.
+
   (* Let tmp: <<L: False>> <-> <<R: (0=1)%nat>>. Proof. ss. Qed. *)
   (* Let tmp2: False <-> (0=1)%nat. Proof. ss. Qed. *)
   (* Goal forall (H: (0=1)%nat /\ True), False. *)

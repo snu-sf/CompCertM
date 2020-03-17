@@ -493,7 +493,7 @@ Section ADQSTEP.
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
           (LXSIM: lxsim_lift sk_link_src sk_link_tgt i0 st_src0 st_tgt0 sm0)
-          (SUST: __GUARD__ (exists m_arg, sound_state pp m_arg st_src0)):
+          (SUST: sound_state pp st_src0):
       <<XSIM: xsim sem_src sem_tgt ord i0 st_src0 st_tgt0>>.
   Proof.
     generalize dependent sm0. generalize dependent st_src0. generalize dependent st_tgt0. generalize dependent i0.
@@ -714,9 +714,7 @@ Section ADQ.
       hexploit lxsim_lift_xsim; eauto.
       { exploit SimSymb.wf_load_sim_skenv; et. { rewrite SKSRC; et. } i; des. esplits. rp; et; try congruence. }
       { rewrite Forall_forall in *. eauto. }
-      exploit sound_init; eauto.
-      { ss. econs; eauto. }
-      i; des. rr. esplits; eauto.
+      eapply sound_init; eauto. econs; eauto.
     - ss. i; des. inv SAFESRC.
       exploit sim_link_sk; eauto. i; des. des_ifs.
       exploit SimSymb.wf_load_sim_skenv; eauto. i; des. clarify.

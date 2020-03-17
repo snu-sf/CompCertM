@@ -124,7 +124,7 @@ Section ADQSOUND.
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex):
       sound_stack args ((Frame.mk ms lst0) :: tail).
 
-  Inductive sound_state: mem -> state -> Prop :=
+  Inductive sound_state: state -> Prop :=
   | sound_state_normal
       args_tail tail ms lst0 m_arg
       (TL: sound_stack args_tail tail)
@@ -139,7 +139,7 @@ Section ADQSOUND.
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
       (ABCD: (Args.get_m args_tail) = m_arg)
     :
-      sound_state m_arg (State ((Frame.mk ms lst0) :: tail))
+      sound_state (State ((Frame.mk ms lst0) :: tail))
   | sound_state_call
       m_tail frs args
       (* (ARGS: Sound.args su0 args) *)
@@ -147,12 +147,12 @@ Section ADQSOUND.
       (* (MLE: Sound.mle su0 m_tail args.(Args.get_m)) *)
       (EQ: (Args.get_m args) = m_tail)
       (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex m_tail):
-      sound_state m_tail (Callstate args frs).
+      sound_state (Callstate args frs).
 
   Lemma sound_init
         st0
         (INIT: sem_src.(Smallstep.initial_state) st0):
-      exists m_init0, <<MEM: Sk.load_mem sk_link_src = Some m_init0>> /\ <<SU: sound_state m_init0 st0>>.
+    <<SU: sound_state st0>>.
   Proof.
     inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT INCLTGT WFSKTGT SIMSKENV.
     hexploit Sound.init_spec; eauto. i; des. esplits; eauto.
@@ -178,10 +178,10 @@ Section ADQSOUND.
   Qed.
 
   Lemma sound_progress
-        st0 m_arg0 tr st1
-        (SUST: sound_state m_arg0 st0)
+        st0 tr st1
+        (SUST: sound_state st0)
         (STEP: Step sem_src st0 tr st1):
-      <<SUST: exists m_arg1, sound_state m_arg1 st1>>.
+      <<SUST: sound_state st1>>.
   Proof.
     inv STEP.
     - (* CALL *)
@@ -237,21 +237,21 @@ Section ADQSOUND.
   Qed.
 
   Lemma sound_progress_star
-        st0 m_arg0 tr st1
-        (SUST: sound_state m_arg0 st0)
+        st0 tr st1
+        (SUST: sound_state st0)
         (STEP: Star sem_src st0 tr st1):
-      <<SUST: exists m_arg1, sound_state m_arg1 st1>>.
+      <<SUST: sound_state st1>>.
   Proof.
-    generalize dependent m_arg0. induction STEP.
+    induction STEP.
     - esplits; eauto.
-    - clarify. i. exploit sound_progress; eauto. i; des. eapply IHSTEP; eauto.
+    - clarify. i. exploit sound_progress; eauto.
   Qed.
 
   Lemma sound_progress_plus
-        st0 m_arg0 tr st1
-        (SUST: sound_state m_arg0 st0)
+        st0 tr st1
+        (SUST: sound_state st0)
         (STEP: Plus sem_src st0 tr st1):
-      <<SUST: exists m_arg1, sound_state m_arg1 st1>>.
+      <<SUST: sound_state st1>>.
   Proof.
     eapply sound_progress_star; eauto. eapply plus_star; eauto.
   Qed.

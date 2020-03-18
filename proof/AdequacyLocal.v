@@ -749,15 +749,6 @@ Section ADQSTEP.
       { ss. }
       rename SU0 into CALLFSIM.
 
-      assert(KEYYYYY: exists sm1,
-                sm0.(SimMemOhs.sm) = sm1.(SimMemOhs.sm)
-                /\ (<<UPDATED: projT2 (SimMemOhs.ohs_src sm1 (ModSem.midx ms_src)) ~= oh>>)).
-      { admit "THIS SHOULD HOLD~~~~~~~~~~~~~~~~~~~~~~~~". }
-      des.
-      (* TODO: UNIFY NAMING . OHSWFSRC vs TYSRC *)
-      assert(OHSWFSRC: LeibEq (projT1 (sm1.(SimMemOhs.ohs_src) (ModSem.midx ms_tgt)))
-                              (ModSem.owned_heap ms_src)).
-      { admit "WF". }
       exploit CALLFSIM; eauto.
       (* { rp; eauto. eapply cast_sigT_eq; eauto. } *)
       i; des. esplits; eauto.
@@ -810,16 +801,6 @@ Section ADQSTEP.
       inv STACK; ss. folder. sguard in SESRC0. sguard in SETGT0. des_ifs.
       determ_tac ModSem.final_frame_dtm. clear_tac.
       clarify.
-      assert(TYSRC: LeibEq (projT1 (smos_ret.(SimMemOhs.ohs_src)
-                                               (ModSem.midx ms_src0)))
-                                               (* midx)) *)
-                           (ModSem.owned_heap ms_src0)).
-      { admit "WF ----- HARD: We don't know anything about midx". }
-      assert(TYTGT: LeibEq (projT1 (smos_ret.(SimMemOhs.ohs_tgt)
-                                               (ModSem.midx ms_tgt0)))
-                                               (* midx)) *)
-                           (ModSem.owned_heap ms_tgt0)).
-      { admit "WF ----- HARD: We don't know anything about midx". }
       rename oh0 into oh_src. rename oh1 into oh_src0. rename OH into OHSRC.
       assert(OHTGT: exists oh_tgt0: ms_tgt0.(ModSem.owned_heap),
                 Midx.update ohs_tgt0 (ms_tgt.(ModSem.midx)) (upcast oh_tgt) ms_tgt0.(ModSem.midx) =
@@ -898,7 +879,7 @@ End ADQSTEP.
 
 Require Import BehaviorsC SemProps.
 
-Section ADQ.
+Section ADQSIM.
 
   Context `{SMOS: SimMemOhs.class}.
   Context {SS: SimSymb.class SM}.
@@ -931,7 +912,7 @@ Section ADQ.
   Hypothesis (WFSKSRC: forall md (IN: In md (ProgPair.src pp)), <<WF: Sk.wf md >>).
   Hypothesis (WFSKTGT: forall md (IN: In md (ProgPair.tgt pp)), <<WF: Sk.wf md >>).
 
-  Theorem adequacy_local_aux: mixed_simulation sem_src sem_tgt.
+  Theorem adequacy_local_sim: mixed_simulation sem_src sem_tgt.
   Proof.
     subst_locals. econstructor 1 with (order := ord); eauto. generalize wf_ord; intro WF.
     econstructor; eauto.
@@ -950,11 +931,11 @@ Section ADQ.
     all: ss.
   Qed.
 
-End ADQ.
+End ADQSIM.
 
 
 
-Section BEH.
+Section ADQBEH.
 
   Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
@@ -973,14 +954,15 @@ Section BEH.
     eapply bsim_improves; eauto. eapply mixed_to_backward_simulation; eauto.
 
     des. inv INIT. ss. exploit sim_link_sk; eauto. i; des. clarify.
+    exploit unification; eauto. i; des.
     exploit init_lxsim_lift_forward; eauto. { destruct pp; ss. } { econs; eauto. } i; des.
     exploit SimSymb.wf_load_sim_skenv; eauto. i; des. clarify.
-    eapply adequacy_local_aux; ss; eauto.
+    eapply adequacy_local_sim; ss; eauto.
     { rewrite Forall_forall in *. ss. }
     { inv INITTGT. inv INIT. ss. }
   Qed.
 
-End BEH.
+End ADQBEH.
 
 
 
@@ -991,14 +973,14 @@ Program Definition mkPR (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.cla
                             (fun (p_src p_tgt: program) =>
                                forall (WF: forall x (IN: In x p_src), Sk.wf x),
                                exists pp,
-                                 (<<SIMS: @ProgPair.simU MR SR MP pp>>)
+                                 (<<SIMS: @ProgPair.sim MR SR MP pp>>)
                                  /\ (<<SRCS: (ProgPair.src pp) = p_src>>)
                                  /\ (<<TGTS: (ProgPair.tgt pp) = p_tgt>>)) _ _ _.
 Next Obligation.
 (* horizontal composition *)
   exploit REL0; eauto. { i. eapply WF. rewrite in_app_iff. eauto. } intro T0; des.
   exploit REL1; eauto. { i. eapply WF. rewrite in_app_iff. eauto. } intro T1; des.
-  clarify. unfold ProgPair.simU in *. rewrite Forall_forall in *. eexists (_ ++ _). esplits; eauto.
+  clarify. unfold ProgPair.sim in *. rewrite Forall_forall in *. eexists (_ ++ _). esplits; eauto.
   - rewrite Forall_forall in *. i. rewrite in_app_iff in *. des; [apply SIMS|apply SIMS0]; eauto.
   - unfold ProgPair.src. rewrite map_app. ss.
   - unfold ProgPair.tgt. rewrite map_app. ss.
@@ -1008,13 +990,7 @@ Next Obligation.
   destruct (classic (forall x (IN: In x p_src), Sk.wf x)) as [WF|NWF]; cycle 1.
   { eapply sk_nwf_improves; auto. }
   specialize (REL WF). des. clarify.
-  assert(UNIF: exists SMOS ppu,
-            (<<SIM: SimProgUnified.ProgPair.simU ppu (SMOS := SMOS)>>)
-            /\ (<<PROGSRC: (SimProgUnified.ProgPair.src ppu) = (ProgPair.src pp)>>)
-            /\ (<<PROGTGT: (SimProgUnified.ProgPair.tgt ppu) = (ProgPair.tgt pp)>>)).
-  { admit "Fundamental Theroem". }
-  des. rewrite <- PROGSRC. rewrite <- PROGTGT.
-  eapply (@adequacy_local MR SMOS SR MP). auto.
+  eapply (@adequacy_local MR SR MP). auto.
 Qed.
 Next Obligation. exists []. splits; ss. Qed.
 Arguments mkPR: clear implicits.

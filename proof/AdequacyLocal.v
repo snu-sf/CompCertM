@@ -493,8 +493,9 @@ Section ADQSTEP.
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
           (LXSIM: lxsim_lift sk_link_src sk_link_tgt i0 st_src0 st_tgt0 sm0)
-          (SUST: __GUARD__ (exists m_arg, sound_state pp m_arg st_src0)):
-      <<XSIM: xsim sem_src sem_tgt ord i0 st_src0 st_tgt0>>.
+    :
+      <<XSIM: xsim sem_src sem_tgt ord (sound_state pp) top1 i0 st_src0 st_tgt0>>
+  .
   Proof.
     generalize dependent sm0. generalize dependent st_src0. generalize dependent st_tgt0. generalize dependent i0.
     pcofix CIH. i. pfold. inv LXSIM; ss; cycle 1.
@@ -532,9 +533,6 @@ Section ADQSTEP.
       clears st_init0; clear st_init0. esplits; eauto.
       - left. apply plus_one. econs; eauto. econs; eauto.
       - right. eapply CIH.
-        { unsguard SUST. unfold __GUARD__. des. eapply sound_progress; eauto.
-          ss. folder. des_ifs. econs 2; eauto. econs; eauto.
-        }
         instantiate (1:= sm_init). econs; try apply SIM0; eauto.
         + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once. et.
         + etrans; eauto.
@@ -544,10 +542,9 @@ Section ADQSTEP.
     }
 
     sguard in SESRC. sguard in SETGT. folder. rewrite LINKSRC in *. rewrite LINKTGT in *.
-    punfold TOP. rr in TOP. hexploit1 TOP; eauto.
-    { unsguard SUST. des.
-      ii. exploit sound_progress_star; eauto. { eapply lift_star; eauto. } intro SUST0; des. inv SUST0. des.
-      simpl_depind. clarify. i. hexploit FORALLSU; eauto. i; des.
+    punfold TOP. rr in TOP. ii. hexploit1 TOP; eauto.
+    { ii. exploit SSSRC. { eapply lift_star; eauto. } intro SUST0; des. inv SUST0. des.
+      simpl_depind. clarify. hexploit FORALLSU; eauto. i; des.
       specialize (H (sound_states_local si)). esplits; eauto. eapply H; eauto. }
     inv TOP.
 
@@ -573,7 +570,6 @@ Section ADQSTEP.
             - right. esplits; eauto. clarify.
           }
           pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
-          { unsguard SUST. des_safe. eapply sound_progress; eauto. eapply lift_step; eauto. }
           econs; eauto.
           { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
           { etransitivity; eauto. }
@@ -602,17 +598,12 @@ Section ADQSTEP.
           - right. esplits; eauto. eapply lift_star; eauto.
         }
         pclearbot. right. eapply CIH with (sm0 := sm1); eauto.
-        { unsguard SUST. des_safe. destruct H.
-          - eapply sound_progress_plus; eauto. eapply lift_plus; eauto.
-          - des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto.
-        }
         econs; eauto.
         { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. }
         etransitivity; eauto.
       + des. pclearbot. econs 2.
         { esplits; eauto. eapply lift_star; eauto. }
         right. eapply CIH; eauto.
-        { unsguard SUST. des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto. }
         instantiate (1:=sm1). econs; eauto.
         { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. eapply rtc_once; eauto. }
         { etrans; eauto. }
@@ -631,7 +622,6 @@ Section ADQSTEP.
         { eapply lift_determinate_at; et. { unsguard SETGT. ss. des_ifs. } eapply at_external_determinate_at; et. }
         des_ifs. econs 1; eauto.
       + right. eapply CIH; eauto.
-        { unsguard SUST. des_safe. eapply sound_progress; eauto. ss. folder. des_ifs_safe. econs; eauto. }
         { instantiate (1:= sm_arg). econs 2; eauto.
           * ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. econs 2; et.
           * instantiate (1:= sm_arg). econs; [eassumption|..]; revgoals; ss.
@@ -664,7 +654,8 @@ Section ADQSTEP.
       determ_tac ModSem.final_frame_dtm. clear_tac.
       exploit K; try apply SIMRETV; eauto.
       { etransitivity; eauto. etrans; eauto. }
-      { unsguard SUST. des_safe. inv SUST. des. simpl_depind. clarify. i. inv TL. simpl_depind. clarify. des.
+      { exploit SSSRC. { eapply star_refl. } intro T; des. inv T. des. simpl_depind. clarify.
+        inv TL. simpl_depind. clarify. des.
         exploit FORALLSU0; eauto. i; des. esplits; eauto. eapply HD; eauto.
       }
       i; des. esplits; eauto.
@@ -674,8 +665,6 @@ Section ADQSTEP.
         { eapply lift_determinate_at. { unsguard SETGT. ss. des_ifs. } eapply final_frame_determinate_at; et. }
         econs 4; ss; eauto.
       + right. eapply CIH; eauto.
-        { unsguard SUST. des_safe. eapply sound_progress; eauto.
-          ss. folder. des_ifs_safe. econs; eauto. }
         instantiate (1:= sm_after). econs; ss; cycle 3; eauto.
         { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et. }
         { etrans; eauto. }
@@ -700,23 +689,36 @@ Section ADQ.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
 
-  Theorem adequacy_local: mixed_simulation sem_src sem_tgt.
+  Variable sk_link_src sk_link_tgt: Sk.t.
+  Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
+  Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
+
+  Let lxsim_lift := (lxsim_lift pp).
+  Hint Unfold lxsim_lift.
+
+  Let skenv_link_src := (Sk.load_skenv sk_link_src).
+  Let skenv_link_tgt := (Sk.load_skenv sk_link_tgt).
+  Variable ss_link: SimSymb.t.
+  Hypothesis (SIMSKENV: exists sm, SimSymb.sim_skenv sm ss_link skenv_link_src skenv_link_tgt).
+
+  Hypothesis (INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))).
+  Hypothesis (INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt))).
+  Hypothesis (SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link).
+
+  Hypothesis (WFSKSRC: forall md (IN: In md (ProgPair.src pp)), <<WF: Sk.wf md >>).
+  Hypothesis (WFSKTGT: forall md (IN: In md (ProgPair.tgt pp)), <<WF: Sk.wf md >>).
+
+  Theorem adequacy_local_aux: mixed_simulation sem_src sem_tgt.
   Proof.
     subst_locals. econstructor 1 with (order := ord); eauto. generalize wf_ord; intro WF.
-    destruct (classic (pp <> [])); cycle 1.
-    { apply NNPP in H. clarify. ss. do 2 econs; eauto. ii. ss. inv INITSRC. ss. }
-    rename H into NOTNIL. econs; eauto.
-    - econs 1; ss; eauto. ii. inv INITSRC.
-      exploit sim_link_sk; eauto. i; des.
-      exploit init_lxsim_lift_forward; eauto. { econs; eauto. } i; des.
+    econstructor; eauto.
+    - eapply preservation; eauto.
+    - eapply preservation_top.
+    - econs 1; ss; eauto. ii.
+      exploit init_lxsim_lift_forward; eauto. { destruct pp; ss. } i; des.
       assert(WFTGT: forall md, In md (ProgPair.tgt pp) -> <<WF: Sk.wf md >>).
       { inv INITTGT. inv INIT. ss. }
       hexploit lxsim_lift_xsim; eauto.
-      { exploit SimSymb.wf_load_sim_skenv; et. { rewrite SKSRC; et. } i; des. esplits. rp; et; try congruence. }
-      { rewrite Forall_forall in *. eauto. }
-      exploit sound_init; eauto.
-      { ss. econs; eauto. }
-      i; des. rr. esplits; eauto.
     - ss. i; des. inv SAFESRC.
       exploit sim_link_sk; eauto. i; des. des_ifs.
       exploit SimSymb.wf_load_sim_skenv; eauto. i; des. clarify.
@@ -725,10 +727,39 @@ Section ADQ.
     all: ss.
   Qed.
 
-  Goal BehaviorsC.improves sem_src sem_tgt.
-  Proof. eapply bsim_improves; eauto. eapply mixed_to_backward_simulation; eauto. eapply adequacy_local. Qed.
-
 End ADQ.
+
+
+
+Section BEH.
+
+  Context `{SM: SimMem.class}.
+  Context {SS: SimSymb.class SM}.
+  Context `{SU: Sound.class}.
+
+  Variable pp: ProgPair.t.
+  Hypothesis SIMPROG: ProgPair.sim pp.
+  Let p_src := (ProgPair.src pp).
+  Let p_tgt := (ProgPair.tgt pp).
+  Let sem_src := Sem.sem p_src.
+  Let sem_tgt := Sem.sem p_tgt.
+
+  Theorem adequacy_local: BehaviorsC.improves sem_src sem_tgt.
+  Proof.
+    eapply improves_free_theorem; i.
+    eapply bsim_improves; eauto. eapply mixed_to_backward_simulation; eauto.
+
+    des. inv INIT. ss. exploit sim_link_sk; eauto. i; des. clarify.
+    exploit init_lxsim_lift_forward; eauto. { destruct pp; ss. } { econs; eauto. } i; des.
+    exploit SimSymb.wf_load_sim_skenv; eauto. i; des. clarify.
+    eapply adequacy_local_aux; ss; eauto.
+    { rewrite Forall_forall in *. ss. }
+    { inv INITTGT. inv INIT. ss. }
+  Qed.
+
+End BEH.
+
+
 
 Program Definition mkPR (MR: SimMem.class) (SR: SimSymb.class MR) (MP: Sound.class)
   : program_relation.t := program_relation.mk
@@ -751,8 +782,6 @@ Next Obligation.
 (* adequacy *)
   destruct (classic (forall x (IN: In x p_src), Sk.wf x)) as [WF|NWF]; cycle 1.
   { eapply sk_nwf_improves; auto. }
-  eapply bsim_improves.
-  eapply mixed_to_backward_simulation.
   specialize (REL WF). des. clarify.
   eapply (@adequacy_local MR SR MP). auto.
 Qed.

@@ -4,25 +4,6 @@ Require Import CoqlibC.
 Require Import BehaviorsC LinkingC EventsC MapsC ASTC CtypesC.
 
 
-Lemma back_propagate_ub_behav
-      beh0
-      (INITUB: behavior_improves beh0 (Goes_wrong E0)):
-    <<INITUB: beh0 = Goes_wrong E0>>.
-Proof.
-  rr in INITUB. des; clarify; et.
-  rr in INITUB0. des. unfold behavior_app in *. des_ifs. destruct t; ss.
-Qed.
-
-Lemma back_propagate_ub_program
-      sem0 sem1
-      (IMPR: improves sem0 sem1)
-      (INITUB: program_behaves sem1 (Goes_wrong E0)):
-    <<INITUB: program_behaves sem0 (Goes_wrong E0)>>.
-Proof.
-  exploit IMPR; eauto. i; des.
-  hexploit back_propagate_ub_behav; et. i ;des. clarify.
-Qed.
-
 Theorem separate_compilation_correct
         (srcs: list Csyntax.program) (tgts: list Asm.program) builtins src_link
         (TYPECHECKS: Forall (fun src => CsemC.typechecked builtins src) srcs)

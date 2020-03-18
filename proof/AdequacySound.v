@@ -236,24 +236,31 @@ Section ADQSOUND.
     all: ss.
   Qed.
 
-  Lemma sound_progress_star
-        st0 tr st1
-        (SUST: sound_state st0)
-        (STEP: Star sem_src st0 tr st1):
-      <<SUST: sound_state st1>>.
-  Proof.
-    induction STEP.
-    - esplits; eauto.
-    - clarify. i. exploit sound_progress; eauto.
-  Qed.
+  (* Lemma sound_progress_star *)
+  (*       st0 tr st1 *)
+  (*       (SUST: sound_state st0) *)
+  (*       (STEP: Star sem_src st0 tr st1): *)
+  (*     <<SUST: sound_state st1>>. *)
+  (* Proof. *)
+  (*   induction STEP. *)
+  (*   - esplits; eauto. *)
+  (*   - clarify. i. exploit sound_progress; eauto. *)
+  (* Qed. *)
 
-  Lemma sound_progress_plus
-        st0 tr st1
-        (SUST: sound_state st0)
-        (STEP: Plus sem_src st0 tr st1):
-      <<SUST: sound_state st1>>.
+  (* Lemma sound_progress_plus *)
+  (*       st0 tr st1 *)
+  (*       (SUST: sound_state st0) *)
+  (*       (STEP: Plus sem_src st0 tr st1): *)
+  (*     <<SUST: sound_state st1>>. *)
+  (* Proof. *)
+  (*   eapply sound_progress_star; eauto. eapply plus_star; eauto. *)
+  (* Qed. *)
+
+  Theorem preservation: @preservation sem_src sound_state.
   Proof.
-    eapply sound_progress_star; eauto. eapply plus_star; eauto.
+    econs.
+    - eapply sound_init.
+    - eapply sound_progress.
   Qed.
 
 End ADQSOUND.

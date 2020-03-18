@@ -712,10 +712,8 @@ Section ADQ.
   Proof.
     subst_locals. econstructor 1 with (order := ord); eauto. generalize wf_ord; intro WF.
     econstructor; eauto.
-    - instantiate (1:= sound_state pp). econs.
-      + eapply sound_init; ss; eauto.
-      + eapply sound_progress; eauto.
-    - apply preservation_top.
+    - eapply preservation; eauto.
+    - eapply preservation_top.
     - econs 1; ss; eauto. ii.
       exploit init_lxsim_lift_forward; eauto. { destruct pp; ss. } i; des.
       assert(WFTGT: forall md, In md (ProgPair.tgt pp) -> <<WF: Sk.wf md >>).

@@ -1064,7 +1064,7 @@ Proof.
   eapply bsim_improves.
   eapply mixed_to_backward_simulation.
   econs; eauto.
-  econs; try apply progress_top; eauto; swap 2 3.
+  econs; try apply preservation_top; eauto; swap 2 3.
   { instantiate (1:= Zwf.Zwf 0%Z). eapply Zwf.Zwf_well_founded. }
   { i; des. ss. inv SAFESRC. rewrite INITSK.
     exploit link_sk_same; ss. i. erewrite H. des_ifs. }

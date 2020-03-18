@@ -2364,7 +2364,7 @@ Section PRESERVATION.
   Lemma transf_xsim_properties:
         xsim_properties (sem prog) (semantics tprog) nat lt.
   Proof.
-    econs; try apply progress_top; ss; [apply lt_wf| |i; apply symb_preserved].
+    econs; try apply preservation_top; ss; [apply lt_wf| |i; apply symb_preserved].
     econs. i.
     exploit (transf_initial_states); eauto.
     i. des. esplits. econs; eauto.

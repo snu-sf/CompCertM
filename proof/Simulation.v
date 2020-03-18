@@ -313,21 +313,24 @@ Inductive Dinitial_state (L: semantics) (st: L.(state)): Prop :=
         st0 = st1).
 
 
-Lemma progress_top
-      {L}
-  :
-    forall st0 tr st1 (SS: top1 st0) (STEP: Step L st0 tr st1), (<<SS: top1 st1>>)
+Record preservation {L: semantics} (sound_state: L.(state) -> Prop): Prop :=
+{
+  prsv_initial: forall st (INIT: L.(initial_state) st), (<<SS: sound_state st>>);
+  prsv_step: forall st0 tr st1 (SS: sound_state st0) (STEP: Step L st0 tr st1), (<<SS: sound_state st1>>);
+}
 .
-Proof. ss. Qed.
 
-Theorem progress_star
-        {L} {sound_state: _ -> Prop}
-        (PRSVSTEP: forall st0 tr st1 (SS: sound_state st0) (STEP: Step L st0 tr st1), (<<SS: sound_state st1>>))
+Theorem preservation_top: forall {L}, <<PRSV: @preservation L top1>>.
+Proof. ii. econs; eauto. Qed.
+
+Theorem prsv_star
+        L sound_state
+        (PRSV: preservation sound_state)
   :
     (<<PRSVSTAR: forall st0 tr st1 (SS: sound_state st0) (STAR: Star L st0 tr st1), (<<SS: sound_state st1>>)>>)
 .
 Proof.
-  ii. ginduction STAR; ii; ss. eapply IHSTAR; eauto. eapply PRSVSTEP; eauto.
+  ii. ginduction STAR; ii; ss. eapply IHSTAR; eauto. eapply prsv_step; eauto.
 Qed.
 
 Module GENMT.
@@ -470,8 +473,8 @@ Section MIXED_SIM.
   Variable order: index -> index -> Prop.
   Variable ss_src: L1.(state) -> Prop.
   Variable ss_tgt: L2.(state) -> Prop.
-  Hypothesis (PRSVSRC: forall st0 tr st1 (SS: ss_src st0) (STEP: Step L1 st0 tr st1), (<<SS: ss_src st1>>)).
-  Hypothesis (PRSVTGT: forall st0 tr st1 (SS: ss_tgt st0) (STEP: Step L2 st0 tr st1), (<<SS: ss_tgt st1>>)).
+  Hypothesis (PRSVSRC: preservation ss_src).
+  Hypothesis (PRSVTGT: preservation ss_tgt).
 
   Inductive fsim_step xsim (i0: index) (st_src0: L1.(state)) (st_tgt0: L2.(state)): Prop :=
   | fsim_step_step
@@ -503,8 +506,8 @@ Section MIXED_SIM.
           <<STEP: bsim_step xsim i0 st_src0 st_tgt0>>).
 
   Definition _xsim xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop := forall
-      (SSSRC: ss_src st_src0)
-      (SSTGT: ss_tgt st_tgt0)
+      (SSSRC: forall tr st_src1 (STAR: Star L1 st_src0 tr st_src1), <<SSSRC: ss_src st_src1>>)
+      (SSTGT: forall tr st_tgt1 (STAR: Star L2 st_tgt0 tr st_tgt1), <<SSTGT: ss_tgt st_tgt1>>)
     ,
       (<<XSIM: (_xsim_forward \4/ _xsim_backward) xsim i0 st_src0 st_tgt0>>)
   .
@@ -531,36 +534,6 @@ Section MIXED_SIM.
     - econs 1; eauto. eapply _xsim_forward_mon; eauto.
     - econs 2; eauto. eapply _xsim_backward_mon; eauto.
   Qed.
-
-  Section TEST.
-    Definition xsim2: _ -> _ -> _ -> Prop := paco3 (_xsim_forward \4/ _xsim_backward) bot3.
-    Goal xsim2 <3= xsim.
-      pcofix CIH. ii. pfold. ii. exploit CIH; eauto. i.
-      rr in PR. punfold PR; cycle 1.
-      { ii. des; eauto using _xsim_forward_mon, _xsim_backward_mon. }
-      des.
-      - left. eapply _xsim_forward_mon; eauto. ii. pclearbot. right. eauto.
-      - right. eapply _xsim_backward_mon; eauto. ii. pclearbot. right. eauto.
-    Qed.
-    Definition xsim3: _ -> _ -> _ -> Prop := fun i st_src st_tgt =>
-      forall (SSSRC: ss_src st_src) (SSTGT: ss_tgt st_tgt),
-        (paco3 (_xsim_forward \4/ _xsim_backward) bot3) i st_src st_tgt.
-    Goal xsim3 <3= xsim.
-      pcofix CIH. ii. pfold. ii. exploit CIH; eauto. i.
-      rr in PR. repeat spc PR. punfold PR; cycle 1.
-      { ii. des; eauto using _xsim_forward_mon, _xsim_backward_mon. }
-      des.
-      - left. eapply _xsim_forward_mon; eauto. ii. pclearbot. right. eapply CIH; ii; eauto.
-      - right. eapply _xsim_backward_mon; eauto. ii. pclearbot. right. eapply CIH; ii; eauto.
-    Qed.
-    Goal xsim <3= xsim3.
-      pcofix CIH. ii. pfold. ii. exploit CIH; eauto. i.
-      rr in PR. punfold PR; cycle 1.
-      { eapply xsim_mon. }
-      rr in PR. repeat spc PR. des.
-      - left. eapply _xsim_forward_mon; eauto. ii. pclearbot. right.
-    Abort.
-  End TEST.
 
 End MIXED_SIM.
 
@@ -591,14 +564,12 @@ Inductive xsim_init_sim (L1 L2: semantics) (index: Type) (order: index -> index 
 
 Record xsim_properties (L1 L2: semantics) (index: Type)
                        (order: index -> index -> Prop): Type := {
-    ss_src: L1.(state) -> Prop;
-    ss_tgt: L2.(state) -> Prop;
-    xsim_initial_sound_src: forall st (INIT: initial_state L1 st) (SAFE: safe L1 st), <<SS: ss_src st>>;
-    xsim_initial_sound_tgt: forall st (INIT: initial_state L2 st), <<SS: ss_tgt st>>;
-    xsim_progress_src: forall st0 tr st1 (SS: ss_src st0) (STEP: Step L1 st0 tr st1), (<<SS: ss_src st1>>);
-    xsim_progress_tgt: forall st0 tr st1 (SS: ss_tgt st0) (STEP: Step L2 st0 tr st1), (<<SS: ss_tgt st1>>);
+    xsim_ss_src: L1.(state) -> Prop;
+    xsim_ss_tgt: L2.(state) -> Prop;
+    xsim_prsv_src: preservation xsim_ss_src;
+    xsim_prsv_tgt: preservation xsim_ss_tgt;
     xsim_order_wf: <<WF: well_founded order>>;
-    xsim_initial_states_sim: <<INIT: xsim_init_sim L1 L2 order ss_src ss_tgt>>;
+    xsim_initial_states_sim: <<INIT: xsim_init_sim L1 L2 order xsim_ss_src xsim_ss_tgt>>;
 }.
 
 Arguments xsim_properties: clear implicits.
@@ -621,7 +592,7 @@ Variable index: Type.
 Variable order: index -> index -> Prop.
 Hypothesis XSIM: xsim_properties L1 L2 index order.
 
-Let match_states := xsim L1 L2 order XSIM.(ss_src) XSIM.(ss_tgt).
+Let match_states := xsim L1 L2 order XSIM.(xsim_ss_src) XSIM.(xsim_ss_tgt).
 
 (** Orders *)
 
@@ -758,7 +729,10 @@ Proof.
 Qed.
 
 Lemma x2b_progress:
-  forall i s1 s2 (SSSRC: XSIM.(ss_src) s1) (SSTGT: XSIM.(ss_tgt) s2),
+  forall i s1 s2
+         (SSSRC: forall tr s1' (STAR: Star L1 s1 tr s1'), <<SSSRC: XSIM.(xsim_ss_src) s1'>>)
+         (SSTGT: forall tr s2' (STAR: Star L2 s2 tr s2'), <<SSTGT: XSIM.(xsim_ss_tgt) s2'>>)
+  ,
     match_states i s1 s2 -> safe L1 s1 -> x2b_transitions i s1 s2.
 Proof.
   intros i0; pattern i0. apply well_founded_ind with (R := order). eapply xsim_order_wf; eauto.
@@ -783,7 +757,7 @@ Proof.
           i. exploit STEP0; eauto. i; des_safe. pclearbot. esplits; eauto.
         }
         subst. exploit REC; try apply MATCH'; eauto.
-        { eapply xsim_progress_src; eauto. }
+        { ii. eapply SSSRC; eauto. eapply star_left; eauto. }
         { eapply star_safe; eauto. apply star_one; auto. }
         i. eapply x2b_transitions_src_tau_rev; eauto. apply star_one; ss.
       + des. pclearbot. clears t. clear t. inv PLUS.
@@ -846,8 +820,8 @@ Qed.
 
 Lemma x2b_match_states_bsim
       i0_x2b st_src0 st_tgt0
-      (SSSRC: XSIM.(ss_src) st_src0)
-      (SSTGT: XSIM.(ss_tgt) st_tgt0)
+      (SSSRC: forall tr st_src1 (STAR: Star L1 st_src0 tr st_src1), <<SSSRC: XSIM.(xsim_ss_src) st_src1>>)
+      (SSTGT: forall tr st_tgt1 (STAR: Star L2 st_tgt0 tr st_tgt1), <<SSTGT: XSIM.(xsim_ss_tgt) st_tgt1>>)
       (MATCH: x2b_match_states i0_x2b st_src0 st_tgt0):
     <<BSIM: bsim L1 L2 x2b_order i0_x2b st_src0 st_tgt0>>.
 Proof.
@@ -866,7 +840,8 @@ Proof.
       * inv BSIM. specialize (STEP SAFE). inv STEP.
         { exploit PROGRESS; eauto. }
         { des. exploit IH; try apply BSIM; eauto.
-          eapply (progress_star XSIM.(xsim_progress_src)); eauto. eapply star_safe; eauto. }
+          { ii. eapply SSSRC; eauto. eapply star_trans; eauto. }
+          eapply star_safe; eauto. }
     + rename H2 into STARN. inv STARN. congruence. unfold DStep in *. des. right; econstructor; econstructor; eauto.
     + rename H into STARN. inv STARN. unfold SDStep in *. des. right; econstructor; econstructor; eauto.
   }
@@ -883,7 +858,7 @@ Proof.
       * rename H2 into PLUS. inv PLUS. unfold DStep in *. des. exploit sd_determ_at_final; eauto. contradiction.
       * rename H2 into PLUS. inv PLUS. unfold SDStep in *. des. exploit ssd_determ_at_final; eauto. contradiction.
       * inv BSIM. hexploit1 STEP; eauto. inv STEP; eauto. des. exploit IH; try apply BSIM; eauto.
-        { eapply (progress_star XSIM.(xsim_progress_src)); eauto. }
+        { ii. eapply SSSRC; eauto. eapply star_trans; eauto. }
         { eapply star_safe; eauto. } i; des. esplits; try apply FINAL. eapply star_trans; eauto.
     + rename H2 into STARN. inv STARN. congruence. unfold DStep in *. des. exploit sd_determ_at_final; eauto. contradiction.
     + rename H into STARN. inv STARN. unfold SDStep in *. des. exploit ssd_determ_at_final; eauto. contradiction.
@@ -910,14 +885,14 @@ Proof.
           subst. simpl in *. destruct (star_starN H5) as [n STEPS2].
           exists (X2BI_after n i''); exists s1''; split.
           left. eapply plus_right; eauto. right. eapply CIH.
-          { eapply (progress_star XSIM.(xsim_progress_src)); eauto. eapply star_right; et. }
-          { eapply (xsim_progress_tgt); eauto. }
+          { ii. eapply SSSRC; eauto. eapply star_trans; eauto. eapply star_left; eauto. }
+          { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
           eapply x2b_match_after'; eauto. eapply DStarN_E0_SDStarN; eauto.
         * (* 1.2.1.2 L1 makes a non-silent transition: keep it for later and go to "before" state *)
           subst. simpl in *. destruct (star_starN H5) as [n STEPS2].
           exists (X2BI_before n); exists s1'; split. right; split. auto. constructor. right. eapply CIH.
-          { eapply (progress_star XSIM.(xsim_progress_src)); eauto. }
-          { eapply (xsim_progress_tgt); eauto. }
+          { ii. eapply SSSRC; eauto. eapply star_trans; eauto. }
+          { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
           econstructor. eauto. auto. apply star_one; eauto. eauto. eauto.
           intros. exploit STEP; eauto. intros [i'''' [s2'''' [A MATCH'''']]].
           exists i''''. exists s2''''. destruct A as [?|[? ?]]; auto.
@@ -943,8 +918,8 @@ Proof.
         (* Perform transition now and go to "after" state *)
         destruct (star_starN H7) as [n STEPS2]. exists (X2BI_after n i''''); exists s1'''; split. left. eapply plus_right; eauto.
         right. eapply CIH.
-        { eapply (progress_star XSIM.(xsim_progress_src)); eauto. eapply star_right; et. }
-        { eapply (xsim_progress_tgt); eauto. }
+        { ii. eapply SSSRC; eauto. eapply star_trans; eauto. eapply star_left; eauto. }
+        { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
         eapply x2b_match_after'; eauto. eapply DStarN_E0_SDStarN; eauto.
     }
     { econs 1; ss; eauto.
@@ -955,27 +930,26 @@ Proof.
         + inv STEPS2. ss. exists (X2BI_after 0 i''). esplits; eauto.
           * right. esplits; eauto. econs; eauto. eapply clos_t_rt; eauto.
           * right. eapply CIH.
-            { eapply (progress_star XSIM.(xsim_progress_src)); eauto. }
-            { eapply (xsim_progress_tgt); eauto. }
+            { ii. eapply SSSRC; eauto. eapply star_trans; eauto. }
+            { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
             econs; eauto.
         + exists (X2BI_after (S n) i''). esplits; eauto.
           * right. esplits; eauto. econs; eauto. eapply clos_t_rt; eauto.
           * right. eapply CIH.
-            { eapply (progress_star XSIM.(xsim_progress_src)); eauto. }
-            { eapply (xsim_progress_tgt); eauto. }
+            { ii. eapply SSSRC; eauto. eapply star_trans; eauto. }
+            { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
             econs 3; eauto.
     }
     { (* backward *)
       inv BSIM. exploit STEP; eauto. i. inv H0.
       - econs 1; eauto. i. exploit STEP0; eauto. i; des_safe.
-        assert(SSSRC1: XSIM.(ss_src) st_src1).
-        { des; eapply (progress_star XSIM.(xsim_progress_src)); eauto. eapply plus_star; et. }
-        assert(SSTGT1: XSIM.(ss_tgt) st_tgt1).
-        { eapply (xsim_progress_tgt); eauto. }
-        esplits; eauto.
+        esplits; eauto. right. eapply CIH; eauto.
+        { ii. eapply SSSRC; eauto. des.
+          - eapply plus_star. eapply plus_star_trans; eauto. - eapply star_trans; eauto. }
+        { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
       - econs 2; eauto.
         right. eapply CIH; et.
-        { des; eapply (progress_star XSIM.(xsim_progress_src)); eauto. }
+        { ii. eapply SSSRC; eauto. des. eapply star_trans; eauto. }
     }
 
   - (* 2. Before *)
@@ -986,7 +960,7 @@ Proof.
     + (* 2.1 L2 makes a silent transition: remain in "before" state *)
       subst. simpl in *. exists (X2BI_before n0); exists st_src0; split.
       right; split. apply star_refl. constructor. omega. right. eapply CIH; et.
-      { eapply (xsim_progress_tgt); eauto. }
+      { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
       econstructor; eauto. eapply star_right; eauto.
     + (* 2.2 L2 make a non-silent transition *)
       assert(RECEPTIVE : receptive_at mt L1 st_src0).
@@ -1009,8 +983,8 @@ Proof.
       (* Perform transition now and go to "after" state *)
       destruct (star_starN H8) as [n STEPS2]. exists (X2BI_after n i'''); exists s1'''; split.
       left. apply plus_one; auto. right. eapply CIH; et.
-      { eapply (progress_star XSIM.(xsim_progress_src)); eauto. eapply star_right; et. eapply star_refl. }
-      { eapply (xsim_progress_tgt); eauto. }
+      { ii. eapply SSSRC; eauto. eapply star_left; eauto. }
+      { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
       eapply x2b_match_after'; eauto. eapply DStarN_E0_SDStarN; eauto.
 
   - (* 3. After *)
@@ -1019,7 +993,7 @@ Proof.
     destruct H2. exploit ssd_determ_at. eapply H. eexact H1. eexact STEPTGT. i; des. clarify.
     exists (X2BI_after n i); exists st_src0; split.
     right; split. apply star_refl. constructor. constructor; omega. right. eapply CIH; et.
-    { eapply (xsim_progress_tgt); eauto. }
+    { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
     eapply x2b_match_after'; eauto.
   }
 Qed.
@@ -1051,21 +1025,14 @@ Proof.
     + exploit INITSIM; eauto. i; des. inv INITTGT0.
       assert(st_init_tgt = st_init_tgt0).
       { eapply DTM; eauto. }
-      destruct (classic (safe L1 st_init_src_)); cycle 1.
-      { esplits; eauto. rr. pfold. econs. ii; ss. }
       clarify. esplits; eauto. eapply x2b_match_states_bsim; eauto.
-      { eapply xsim_initial_sound_src; eauto. }
-      { eapply xsim_initial_sound_tgt; eauto. }
+      { ii. eapply prsv_star; try apply props; et. }
+      { ii. eapply prsv_star; try apply props; et. }
       econs; eauto.
-    + exploit INITSIM; eauto. i; des.
-      destruct (classic (safe L1 st_init_src)); cycle 1.
-      { esplits; eauto. rr. pfold. econs. ii; ss. }
-      esplits; eauto. eapply x2b_match_states_bsim; eauto.
-      { eapply xsim_initial_sound_src; eauto. }
-      { eapply xsim_initial_sound_tgt; eauto. }
+    + exploit INITSIM; eauto. i; des. esplits; eauto. eapply x2b_match_states_bsim; eauto.
+      { ii. eapply prsv_star; try apply props; et. }
+      { ii. eapply prsv_star; try apply props; et. }
       econs; eauto.
-Unshelve.
-  all: by (repeat econs; eauto).
 Qed.
 
 Lemma mixed_to_compcert_backward_simulation
@@ -1081,7 +1048,10 @@ Lemma backward_to_mixed_simulation
       (BSIM: backward_simulation L1 L2):
     <<XSIM: mixed_simulation L1 L2>>.
 Proof.
-  inv BSIM. inv props. econs; eauto. econs; try apply progress_top; eauto. econs 2; eauto.
+  inv BSIM. inv props. econs; eauto. econs; eauto.
+  { eapply preservation_top. }
+  { eapply preservation_top. }
+  econs 2; eauto.
   i. exploit bsim_match_initial_states0; eauto. i; des.
   esplits; eauto. eapply bsim_to_xsim; eauto.
 Qed.
@@ -1164,8 +1134,8 @@ Section MIXED_SIM.
   Variable order: index -> index -> Prop.
   Variable ss_src: L1.(state) -> Prop.
   Variable ss_tgt: L2.(state) -> Prop.
-  Hypothesis (PRSVSRC: forall st0 tr st1 (SS: ss_src st0) (STEP: Step L1 st0 tr st1), (<<SS: ss_src st1>>)).
-  Hypothesis (PRSVTGT: forall st0 tr st1 (SS: ss_tgt st0) (STEP: Step L2 st0 tr st1), (<<SS: ss_tgt st1>>)).
+  Hypothesis (PRSVSRC: preservation ss_src).
+  Hypothesis (PRSVTGT: preservation ss_tgt).
 
   Inductive sfsim_step xsim (i0: index) (st_src0: L1.(state)) (st_tgt0: L2.(state)): Prop :=
   | sfsim_step_step
@@ -1216,8 +1186,8 @@ Section MIXED_SIM.
           <<STEP: bsim_step xsim i0 st_src0 st_tgt0>>).
 
   Definition _xsim xsim (i0: index) (st_src0: state L1) (st_tgt0: state L2): Prop := forall
-      (SSSRC: ss_src st_src0)
-      (SSTGT: ss_tgt st_tgt0)
+      (SSSRC: forall tr st_src1 (STAR: Star L1 st_src0 tr st_src1), <<SSSRC: ss_src st_src1>>)
+      (SSTGT: forall tr st_tgt1 (STAR: Star L2 st_tgt0 tr st_tgt1), <<SSTGT: ss_tgt st_tgt1>>)
     ,
       (<<XSIM: (_xsim_strict_forward \4/ _xsim_forward \4/ _xsim_backward)
                  xsim i0 st_src0 st_tgt0>>)
@@ -1285,14 +1255,12 @@ Inductive xsim_init_sim (L1 L2: semantics) (index: Type) (order: index -> index 
 
 Record xsim_properties (L1 L2: semantics) (index: Type)
                        (order: index -> index -> Prop): Prop := {
-    ss_src: L1.(state) -> Prop;
-    ss_tgt: L2.(state) -> Prop;
-    xsim_initial_sound_src: forall st (INIT: initial_state L1 st) (SAFE: safe L1 st), <<SS: ss_src st>>;
-    xsim_initial_sound_tgt: forall st (INIT: initial_state L2 st), <<SS: ss_tgt st>>;
-    xsim_progress_src: forall st0 tr st1 (SS: ss_src st0) (STEP: Step L1 st0 tr st1), (<<SS: ss_src st1>>);
-    xsim_progress_tgt: forall st0 tr st1 (SS: ss_tgt st0) (STEP: Step L2 st0 tr st1), (<<SS: ss_tgt st1>>);
+    xsim_ss_src: L1.(state) -> Prop;
+    xsim_ss_tgt: L2.(state) -> Prop;
+    xsim_prsv_src: preservation xsim_ss_src;
+    xsim_prsv_tgt: preservation xsim_ss_tgt;
     xsim_order_wf: <<WF: well_founded order>>;
-    xsim_initial_states_sim: <<INIT: xsim_init_sim L1 L2 order ss_src ss_tgt>>;
+    xsim_initial_states_sim: <<INIT: xsim_init_sim L1 L2 order xsim_ss_src xsim_ss_tgt>>;
     xsim_public_preserved: forall (SAFESRC: exists st_init_src, L1.(initial_state) st_init_src),
       forall id, Senv.public_symbol (symbolenv L2) id = Senv.public_symbol (symbolenv L1) id;
 }.

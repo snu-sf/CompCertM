@@ -704,9 +704,9 @@ Section ADQ.
   Proof.
     subst_locals. econstructor 1 with (order := ord); eauto. generalize wf_ord; intro WF.
     destruct (classic (pp <> [])); cycle 1.
-    { apply NNPP in H. clarify. ss. econs; try apply preservation_top; eauto.
+    { apply NNPP in H. clarify. ss. econs; try apply progress_top; eauto.
       econs; eauto. ii. ss. inv INITSRC. ss. }
-    rename H into NOTNIL. econs; try apply preservation_top; eauto.
+    rename H into NOTNIL. econs; try apply progress_top; eauto.
     - econs 1; ss; eauto. ii. inv INITSRC.
       exploit sim_link_sk; eauto. i; des.
       exploit init_lxsim_lift_forward; eauto. { econs; eauto. } i; des.

@@ -970,8 +970,8 @@ Section PRESERVATION.
   Qed.
 
   Lemma match_state_xsim:
-      forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n) (WTST: wt_state prog ge st_src),
-        xsim (Csem.semantics prog) (Sem.sem tprog) lt top1 top1 n%nat st_src st_tgt.
+      forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n),
+        xsim (Csem.semantics prog) (Sem.sem tprog) lt (wt_state prog ge) top1 n%nat st_src st_tgt.
   Proof.
     pcofix CIH. i. pfold.
     destruct match_ge_skenv_link.
@@ -1092,7 +1092,6 @@ Section PRESERVATION.
                 ** traceEq.
              ++ right. eapply CIH.
                 { econs. ss. }
-                { ss. eapply preservation_prog; eauto. rewrite <- senv_same. et. }
       (* initial state *)
       + inversion INITSRC; subst; ss.
         left. right. econs; i. econs; i; cycle 1.
@@ -1212,7 +1211,6 @@ Section PRESERVATION.
                    --- right. eapply CIH.
                        { ss. instantiate (1:= 1%nat). inv INITTGT.
                          eapply match_states_intro. ss. }
-                       { ss. eapply preservation_prog; eauto. rewrite <- senv_same; et. }
              (* main is syscall *)
              ++ inv SYSMOD. inv INITTGT. ss.
                 assert (SAME: sk_tgt = sk_link) by (Eq; auto). clear INITSK.
@@ -1241,7 +1239,6 @@ Section PRESERVATION.
                 splits; auto. eapply star_refl.
              ++ right. eapply CIH.
                 { econs; eauto. }
-                { ss. }
           (* step_internal *)
           -- assert(STEPSRC: Csem.step skenv_link (globalenv prog) st_src tr st0).
              { exploit cstep_same; eauto. }
@@ -1249,7 +1246,6 @@ Section PRESERVATION.
              ++ left. eapply plus_one. unfold fundef in *. rewrite senv_same. eauto.
              ++ right. eapply CIH.
                 { econs; eauto. }
-                { ss. eapply preservation_prog; eauto. }
         (* progress *)
         * specialize (SAFESRC _ (star_refl _ _ _ _)). des.
           (* final *)
@@ -1285,7 +1281,7 @@ Section PRESERVATION.
                     subst. ss. }
                 exploit Genv.find_funct_inversion; eauto. i; des. f_equal.
                 inv WTPROG. exploit CSTYLE_EXTERN; eauto. i. des_ifs. f_equal. eapply H3; eauto. }
-              { inv WTST; ss. exploit WTKS; eauto. { ii. clarify. } esplits; ss; eauto. rr. des. des_ifs. }
+              { inv SSSRC; ss. exploit WTKS; eauto. { ii. clarify. } esplits; ss; eauto. rr. des. des_ifs. }
              (* internal *)
              ++ exploit progress_step; eauto.
         * inv MTCHST.
@@ -1299,40 +1295,38 @@ Section PRESERVATION.
   Lemma transf_xsim_properties:
       xsim_properties (Csem.semantics prog) (Sem.sem tprog) nat lt.
   Proof.
-    econs; try apply preservation_top; [apply lt_wf| |i; apply symb_preserved].
-    econs. i.
-    exploit (transf_initial_states); eauto.
-    i. des. esplits. econs; eauto.
-    - i. inv INIT0. inv INIT1. clarify.
-    - ss. inv INITSRC.
+    econstructor 1 with (ss_src := wt_state prog ge) (ss_tgt := top1);
+      ss; [| |apply lt_wf| |i; apply symb_preserved].
+    { clear - MAIN_INTERNAL tprog WTPROG SKEWF LINK_SK_TGT.
+      ii. inv INIT.
       destruct (classic (exists fd, Genv.find_funct (globalenv prog) (Vptr b Ptrofs.zero) = Some (Internal fd))).
-      + apply match_state_xsim; eauto.
-        eapply wt_initial_state; eauto.
+      - eapply wt_initial_state; ss; eauto.
         { i. rr. rewrite Genv.find_def_symbol. esplits; eauto. }
         { des. ii.
           destruct SKEWF.
           destruct match_ge_skenv_link.
           specialize (mge_defs blk). inv mge_defs.
           { ss. unfold Genv.find_def in DEF. unfold fundef, genv_genv in *. ss.
-            symmetry in H7. Eq. }
-           ss. unfold Genv.find_def in DEF. unfold fundef, genv_genv in *. ss.
-          symmetry in H6. Eq.
-          symmetry in H7. exploit DEFSYMB; eauto. i. des.
-          unfold Genv.find_symbol in *. rewrite mge_symb in H6. eauto. }
-        { des_ifs. }
-      + assert(NOSTEP: Nostep (semantics prog) (Csem.Callstate (Vptr b Ptrofs.zero)
-                                                               (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
-        { ii. rr in H6. des; inv H6; ss; des_ifs.
-           - contradict H5; eauto.
-           - exploit MAIN_INTERNAL; eauto.
-             { econs; eauto. }
-             i; des. ss. des_ifs. }
-        assert(UB: ~safe (semantics prog) (Csem.Callstate (Vptr b Ptrofs.zero)
-                                                          (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
-        { ii; ss. specialize (H6 _ (star_refl _ _ _ _)). des; ss.
-          - inv H6; ss.
-          - rr in NOSTEP. contradict NOSTEP; eauto. }
-        pfold. right. econs; ii; ss.
+            symmetry in H5. Eq. }
+          ss. unfold Genv.find_def in DEF. unfold fundef, genv_genv in *. ss.
+          symmetry in H4. Eq.
+          symmetry in H5. exploit DEFSYMB; eauto. i. des.
+          unfold Genv.find_symbol in *. rewrite mge_symb in H4. eauto. }
+      - ss. des_ifs.
+        specialize (SAFE _ (star_refl _ _ _ _)). des; inv SAFE; ss.
+        { inv H4. }
+        { contradict H3. inv H4; ss; des_ifs; rewrite FPTR in *; eauto.
+          exploit MAIN_INTERNAL; eauto.
+          { econs; eauto. }
+          i; des. ss. des_ifs.
+        }
+    }
+    { ii. eapply preservation_prog; eauto. rewrite <- senv_same; et. }
+    econs. i.
+    exploit (transf_initial_states); eauto.
+    i. des. esplits. econs; eauto.
+    - i. inv INIT0. inv INIT1. clarify.
+    - apply match_state_xsim; eauto.
   Qed.
 
   Lemma transf_program_correct:

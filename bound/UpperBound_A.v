@@ -1595,7 +1595,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
   Theorem upperbound_a_xsim :
       <<XSIM: mixed_simulation (Sem.sem prog_src) (Sem.sem prog_tgt)>>.
   Proof.
-    econs; ss; eauto. econs; try apply preservation_top; ss; eauto.
+    econs; ss; eauto. econs; try apply progress_top; ss; eauto.
     { eapply unit_ord_wf. }
     { econs 1.
       ii. inversion INITSRC. exploit init_fsim; eauto. i; des. esplits; eauto.
@@ -1624,7 +1624,7 @@ Proof.
   eapply mixed_to_backward_simulation.
   destruct (link_sk (ctx ++ [module cp_link])) eqn:LINKSK; cycle 1.
   { econs; et.
-    econs; try apply preservation_top; et.
+    econs; try apply progress_top; et.
     { eapply unit_ord_wf. }
     { econs; et. i. ss. inv INITSRC. clarify. }
     i; des. ss. des_ifs.

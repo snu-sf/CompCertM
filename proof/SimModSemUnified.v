@@ -176,10 +176,8 @@ Section SIMMODSEM.
                Midx.update smos0.(SimMemOhs.ohs_src) midx_src (upcast oh_src))
       (UPDTGT: smos_ret.(SimMemOhs.ohs_tgt) =
                Midx.update smos0.(SimMemOhs.ohs_tgt) midx_tgt (upcast oh_tgt))
-      (SIMRETV: SimMemOhs.sim_retv
-                  (smos_ret.(SimMemOhs.ohs_src))
-                  (smos_ret.(SimMemOhs.ohs_tgt))
-                  retv_src retv_tgt smos_ret)
+      (SIMRETV: SimMemOhs.sim_retv (smos_ret.(SimMemOhs.ohs_src)) (smos_ret.(SimMemOhs.ohs_tgt))
+                                   retv_src retv_tgt smos_ret)
   .
 
 

@@ -394,7 +394,7 @@ Section ADQMATCH.
       (MLE: SimMemOhs.le sm_arg_lift sm_init)
       (sound_states_local: sidx -> Sound.t -> Memory.Mem.mem -> ms_src.(ModSem.state) -> Prop)
       (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
-      (K: forall sm_ret oh_src ohs_src1 retv_src oh_tgt (ohs_tgt1: Ohs) retv_tgt lst_src1
+      (K: forall sm_ret ohs_src1 ohs_tgt1 oh_src oh_tgt retv_src retv_tgt lst_src1
           (OHSRC: downcast (ohs_src1 ms_src.(ModSem.midx)) = Some oh_src)
           (OHTGT: downcast (ohs_tgt1 ms_tgt.(ModSem.midx)) = Some oh_tgt)
           (MLE: SimMemOhs.le sm_arg_lift sm_ret)
@@ -436,9 +436,9 @@ Section ADQMATCH.
       (PRSV: forall si, local_preservation_noguarantee ms_src (sound_states_local si))
       (TOP: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                   i0 lst_src lst_tgt sm0)
-      (OHSRC: forall mi (NEQ: mi <> ms_src.(ModSem.midx)),
+      (OHSSRC: forall mi (NEQ: mi <> ms_src.(ModSem.midx)),
           ohs_src0 mi = sm0.(SimMemOhs.ohs_src) mi)
-      (OHTGT: forall mi (NEQ: mi <> ms_tgt.(ModSem.midx)),
+      (OHSTGT: forall mi (NEQ: mi <> ms_tgt.(ModSem.midx)),
           ohs_tgt0 mi = sm0.(SimMemOhs.ohs_tgt) mi)
       (SESRC: (ModSem.to_semantics ms_src).(symbolenv) = skenv_link_src)
       (SETGT: (ModSem.to_semantics ms_tgt).(symbolenv) = skenv_link_tgt):
@@ -449,8 +449,8 @@ Section ADQMATCH.
        (STACK: lxsim_stack tail_sm tail_src tail_tgt)
        (MLE: SimMemOhs.le tail_sm sm_arg)
        (MWF: SimMemOhs.wf sm_arg)
-       (OHSRC: ohs_src0 = sm_arg.(SimMemOhs.ohs_src))
-       (OHTGT: ohs_tgt0 = sm_arg.(SimMemOhs.ohs_tgt))
+       (OHSSRC: ohs_src0 = sm_arg.(SimMemOhs.ohs_src))
+       (OHSTGT: ohs_tgt0 = sm_arg.(SimMemOhs.ohs_tgt))
        (* (SIMARGS: SimMemOhs.sim_args args_src args_tgt sm_arg) *)
        (SIMARGS: SimMem.sim_args args_src args_tgt sm_arg)
     :
@@ -472,7 +472,7 @@ End ADQMATCH.
 
 Section ADQINIT.
 
-  Context `{SMOMS: SimMemOhs.class}.
+  Context `{SMOS: SimMemOhs.class}.
   Context {SS: SimSymb.class SM}.
   Context `{SU: Sound.class}.
 
@@ -583,9 +583,8 @@ Section ADQSTEP.
   Theorem lxsim_lift_xsim
           i0 st_src0 st_tgt0 sm0
           (LXSIM: lxsim_lift sk_link_src sk_link_tgt i0 st_src0 st_tgt0 sm0)
-          (WTST: SemTyping.sound_state p_tgt st_tgt0)
     :
-      <<XSIM: xsim sem_src sem_tgt ord (sound_state pp) top1 i0 st_src0 st_tgt0>>
+      <<XSIM: xsim sem_src sem_tgt ord (sound_state pp) (SemTyping.sound_state p_tgt) i0 st_src0 st_tgt0>>
   .
   Proof.
     generalize dependent sm0. generalize dependent st_src0. generalize dependent st_tgt0. generalize dependent i0.
@@ -602,7 +601,8 @@ Section ADQSTEP.
           inv MSFIND. inv FINDTGT.
           assert(OHTGT: exists (oh_tgt: msp.(ModSemPair.tgt).(ModSem.owned_heap)),
                   SimMemOhs.ohs_tgt sm0 msp.(ModSemPair.tgt).(ModSem.midx) = upcast oh_tgt).
-          { clear - WTST MODSEM0 Heq1. rr in WTST. des. ss. des_ifs.
+          { clear - SSTGT MODSEM0 Heq1. specialize (SSTGT _ _ (star_refl _ _ _ _)).
+            rr in SSTGT. des. ss. des_ifs.
             exploit (IDXNTH (ModSem.midx (ModSemPair.tgt msp))); ss; et. intro T; des_safe.
             exploit WTY; et. intro Q; des_safe.
             clear - Q.
@@ -647,7 +647,6 @@ Section ADQSTEP.
       - left. apply plus_one. econs; eauto.
         { econs; eauto. }
       - right. eapply CIH.
-        { eapply SemTyping.sound_progress_star; eauto. }
         instantiate (1:= sm_init). econs; try apply SIM0; eauto.
         + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once.
           eauto using SimMemOhs.le_proj.
@@ -782,12 +781,12 @@ Section ADQSTEP.
             { eauto. }
           * reflexivity.
           * rr in SIMARGS. des; ss.
-            clear - OHSRC OHSRC0.
-            rewrite <- OHSRC0.
+            clear - OHSRC OHSSRC.
+            rewrite <- OHSRC.
             unfold Midx.update in *. apply func_ext1. intro mj. des_ifs. eauto.
           * rr in SIMARGS. des; ss.
-            clear - OHTGT OHTGT0.
-            rewrite <- OHTGT0.
+            clear - OHTGT OHSTGT.
+            rewrite <- OHTGT.
             unfold Midx.update in *. apply func_ext1. intro mj. des_ifs. eauto.
           * rr in SIMARGS. des; ss.
         }
@@ -821,50 +820,69 @@ Section ADQSTEP.
                                                (* midx)) *)
                            (ModSem.owned_heap ms_tgt0)).
       { admit "WF ----- HARD: We don't know anything about midx". }
-      hexploit (@K smos_ret smos_ret.(SimMemOhs.ohs_src) retv smos_ret.(SimMemOhs.ohs_tgt));
-        try apply SIMRETV; eauto.
+      rename oh0 into oh_src. rename oh1 into oh_src0. rename OH into OHSRC.
+      assert(OHTGT: exists oh_tgt0: ms_tgt0.(ModSem.owned_heap),
+                Midx.update ohs_tgt0 (ms_tgt.(ModSem.midx)) (upcast oh_tgt) ms_tgt0.(ModSem.midx) =
+                upcast oh_tgt0).
+      { specialize (SSTGT _ _ (star_refl _ _ _ _)).
+        rr in SSTGT. des. ss.
+        unfold Midx.update. des_ifs.
+        - assert(ms_tgt = ms_tgt0).
+          { inv FRAMES. inv H2. eapply UNIQ; eauto. }
+          clarify. eauto.
+        - inv FRAMES. clear H1. inv H2. exploit IDXNTH; eauto. intro NTH.
+          exploit WTY; eauto. intro T. ss. clear - T.
+          exploit projT1_upcast; eauto. rewrite T. i; des. eauto.
+      }
+      des.
+      exploit K; try apply SIMRETV; eauto.
+      {
+        clear - UPDSRC OHSSRC OHSRC.
+        rewrite UPDSRC.
+        unfold Midx.update in *.
+        destruct (Nat.eq_dec (ModSem.midx ms_src) (ModSem.midx ms_src0)).
+        - clear - OHSRC.
+          unfold upcast in *. simpl_depind. eapply upcast_downcast_iff. unfold upcast. ss.
+        - rewrite <- OHSSRC; try eauto. eapply upcast_downcast_iff. ss.
+      }
+      {
+        instantiate (1:= oh_tgt0).
+        clear - UPDTGT OHSTGT OHTGT.
+        rewrite UPDTGT.
+        unfold Midx.update in *.
+        destruct (Nat.eq_dec (ModSem.midx ms_tgt) (ModSem.midx ms_tgt0)).
+        - clear - OHTGT.
+          unfold upcast in *. simpl_depind. eapply upcast_downcast_iff. unfold upcast. ss.
+        - rewrite <- OHSTGT; try eauto. eapply upcast_downcast_iff. ss.
+      }
       { etransitivity; eauto. etrans; eauto. }
       { exploit SSSRC. { eapply star_refl. } intro T; des. inv T. des. simpl_depind. clarify.
         inv TL. simpl_depind. clarify. des.
         exploit FORALLSU0; eauto. i; des. esplits; eauto. eapply HD; eauto.
       }
-      { rp; eauto. eapply cast_sigT_eq; eauto. rewrite UPDSRC.
-        unfold Midx.update. des_ifs.
-        { admit "THIS SHOULD NOT HAPPEN". }
-        ss.
-        admit "HARD ------ NEED TO UNDERSTAND". }
       i; des. esplits; eauto.
       + left. split; cycle 1.
         { eapply lift_receptive_at. { unsguard SESRC. ss. des_ifs. } eapply final_frame_receptive_at; et. }
         apply plus_one. econs; eauto.
         { eapply lift_determinate_at. { unsguard SETGT. ss. des_ifs. } eapply final_frame_determinate_at; et. }
         econs 4; ss; eauto.
-        (* econs 4; s. *)
-        (* { eauto. } *)
-        (* { eauto. } *)
-        (* { eauto. } *)
-        (* s. *)
-        rewrite <- ! cast_sigT_existT.
-        unfold Midx.update. des_ifs.
-        { admit "THIS SHOULD NOT HAPPEN. -- OR WE SHOULD STRENGTHEN 'K' TO ADDRESS THIS". }
-        { rewrite OHTGT; eauto. admit "UNCH". }
       + right. eapply CIH; eauto.
         instantiate (1:= smos_after). econs; ss; cycle 3; eauto.
         { unfold Midx.update. ii. des_ifs.
-          - clear - UPDSRC OH OHSRC.
+          - clear - UPDSRC OHSSRC OHSRC.
             replace smos_after with smos_ret by admit "UNCH".
             rewrite UPDSRC. unfold Midx.update. des_ifs.
-          - clear - UPDSRC OH OHSRC NEQ n.
-            rewrite OHSRC; eauto.
+          - clear - UPDSRC OHSSRC OHSRC NEQ n.
+            rewrite OHSSRC; eauto.
             replace smos_after with smos_ret by admit "UNCH".
             rewrite UPDSRC. unfold Midx.update. des_ifs.
         }
         { unfold Midx.update. ii. des_ifs.
-          - clear - UPDTGT OH OHTGT.
+          - clear - UPDTGT OHSTGT OHTGT.
             replace smos_after with smos_ret by admit "UNCH".
             rewrite UPDTGT. unfold Midx.update. des_ifs.
-          - clear - UPDTGT OH OHTGT NEQ n.
-            rewrite OHTGT; eauto.
+          - clear - UPDTGT OHSTGT OHTGT NEQ n.
+            rewrite OHSTGT; eauto.
             replace smos_after with smos_ret by admit "UNCH".
             rewrite UPDTGT. unfold Midx.update. des_ifs.
         }
@@ -887,7 +905,8 @@ Section ADQ.
   Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
-  Hypothesis SIMPROG: ProgPair.simU pp.
+  Hypothesis SIMPROG: ProgPair.sim pp.
+  Hypothesis SIMPROGU: ProgPair.simU pp.
   Let p_src := (ProgPair.src pp).
   Let p_tgt := (ProgPair.tgt pp).
   Let sem_src := Sem.sem p_src.
@@ -916,8 +935,8 @@ Section ADQ.
   Proof.
     subst_locals. econstructor 1 with (order := ord); eauto. generalize wf_ord; intro WF.
     econstructor; eauto.
-    - eapply preservation; eauto.
-    - eapply preservation_top.
+    - eapply AdequacySound.preservation; eauto.
+    - eapply SemTyping.preservation.
     - econs 1; ss; eauto. ii.
       exploit init_lxsim_lift_forward; eauto. { destruct pp; ss. } i; des.
       assert(WFTGT: forall md, In md (ProgPair.tgt pp) -> <<WF: Sk.wf md >>).

@@ -204,3 +204,10 @@ Section PRSV.
   Qed.
 
 End PRSV.
+
+Theorem preservation {p}: @preservation (sem p) (sound_state p).
+Proof.
+  econs.
+  - ii. eapply sound_initial; eauto.
+  - ii. eapply sound_progress; eauto.
+Qed.

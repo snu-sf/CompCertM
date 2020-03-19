@@ -207,19 +207,6 @@ End WEMANYNOTNEETHIS.
 
 
 
-Variable respects2: forall
-    {SM: SimMem.class},
-    SimMemOhs.class -> SimMemOhs.class -> Prop
-.
-Hypothesis respects2_theorem: forall
-    {SM: SimMem.class} {SS: SimSymb.class _} {SU: Sound.class} SMOS0 SMOS1
-    (RESPECT: respects2 SMOS0 SMOS1)
-  ,
-    forall msp, (ModSemPair.simU (SMOS := SMOS0) msp) ->
-                (ModSemPair.simU (SMOS := SMOS1) msp)
-.
-           
-
 Theorem unification
         {SM: SimMem.class}
         {SU: Sound.class}
@@ -230,21 +217,60 @@ Theorem unification
     exists SMOS, (<<SIM: ProgPair.simU pp (SMOS := SMOS)>>).
 Proof.
   rr in SIM.
-  (* rewrite Forall_forall in *. *)
-  ginduction pp; ii; ss.
-  { unshelve esplits; eauto.
-    - admit "Make default instance for SimMemOhs. nil theroem".
-    - econs; eauto.
+  rewrite Forall_forall in *.
+  assert(RESPECTS: exists SMOS, forall n mp (NTH: nth_error pp n = Some mp),
+              (<<RESPECTS: respects mp.(ModPair.SMO) (S n) SMOS>>)).
+  { admit "somehow". }
+
+  des.
+  esplits; eauto.
+  rr.
+  rewrite Forall_forall. intros [j mp] ?.
+  rewrite Midx.in_mapi_aux_iff in *. des. clarify.
+  hexploit (RESPECTS idx); eauto. clear RESPECTS. intro RESPECTS; des. clarify.
+  exploit nth_error_In; eauto. intro IN.
+  exploit SIM; eauto. clear SIM. intro SIM.
+
+  {
+    clear - RESPECTS SIM.
+    (*********************************** TODO: Separate Lemma ***************************************)
+    (*********************************** TODO: Separate Lemma ***************************************)
+    (*********************************** TODO: Separate Lemma ***************************************)
+    (*********************************** TODO: Separate Lemma ***************************************)
+    (*********************************** TODO: Separate Lemma ***************************************)
+    (*********************************** TODO: Separate Lemma ***************************************)
+    (*********************************** TODO: Separate Lemma ***************************************)
+    (*********************************** TODO: Separate Lemma ***************************************)
+    (*********************************** TODO: Separate Lemma ***************************************)
+    inv SIM.
+    econs; eauto.
+    ii. exploit SIMMS; eauto. intro SIM; des.
+    (* Set Printing All. *)
+    instantiate (1:= (S idx)) in SIM.
+    remember (ModPair.to_msp (S idx) skenv_link_src skenv_link_tgt sm_init_link mp) as msp.
+    assert(MIDX: S idx = (ModSem.midx (ModSemPair.src msp))).
+    { clarify. ss. unfold Mod.modsem. erewrite Mod.get_modsem_midx_spec. ss. }
+    rewrite MIDX in RESPECTS.
+    assert(MIDX2: ModSem.midx (ModSemPair.src msp) = ModSem.midx (ModSemPair.tgt msp)).
+    { clarify. ss. unfold Mod.modsem. erewrite ! Mod.get_modsem_midx_spec. ss. }
+    hexploit (@fundamental_theorem SM SS SU _ SMOS _ MIDX2 RESPECTS); ss.
   }
-  inv SIM.
-  exploit IHpp; eauto. i; des.
-  assert(exists SMOS',
-            (<<SIM: ProgPair.simU (SMOS := SMOS') pp>>) /\
-            (<<SIM: ModPair.simU (SMOS := SMOS') a 0%nat>>)
-        ).
-  { admit "cons theorem". }
-  clear - H.
-  admit "".
+
+  (* (* rewrite Forall_forall in *. *) *)
+  (* ginduction pp; ii; ss. *)
+  (* { unshelve esplits; eauto. *)
+  (*   - admit "Make default instance for SimMemOhs. nil theroem". *)
+  (*   - econs; eauto. *)
+  (* } *)
+  (* inv SIM. *)
+  (* exploit IHpp; eauto. i; des. *)
+  (* assert(exists SMOS', *)
+  (*           (<<SIM: ProgPair.simU (SMOS := SMOS') pp>>) /\ *)
+  (*           (<<SIM: ModPair.simU (SMOS := SMOS') a 0%nat>>) *)
+  (*       ). *)
+  (* { admit "cons theorem". } *)
+  (* clear - H. *)
+  (* admit "". *)
   (* des. *)
   (* exists SMOS'. rr. rewrite Forall_forall. intros [i x] IN. *)
   (* rewrite Midx.in_mapi_aux_iff in IN. des. clarify. destruct idx; ss; clarify. *)

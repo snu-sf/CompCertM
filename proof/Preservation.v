@@ -31,6 +31,7 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
         (SUARG: Sound.args su_init args)
         (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
+        (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         <<SUST: sound_state su_init (Args.get_m args) st_init>>)
@@ -68,6 +69,7 @@ Inductive local_preservation_noguarantee (sound_state: Sound.t -> mem -> ms.(sta
         (SUARG: Sound.args su_init args)
         (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
+        (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         <<SUST: sound_state su_init (Args.get_m args) st_init>>)
@@ -107,6 +109,7 @@ Inductive local_preservation_standard (sound_state: Sound.t -> ms.(state) -> Pro
         (SUARG: Sound.args su_arg args)
         (SKENVLINK: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv))
+        (SKENVLINK: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv_link))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         exists su_init, (<<LE: Sound.hle su_arg su_init>>) /\
@@ -174,6 +177,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
         (SUARG: Sound.args su_init args)
         (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
+        (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) (Args.get_m args) st_init.(get_mem)>>)
@@ -242,6 +246,7 @@ Inductive local_preservation_strong_horizontal (sound_state: Sound.t -> ms.(stat
         (SUARG: Sound.args su_arg args)
         (SKENVLINK: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv))
+        (SKENVLINK: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv_link))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         exists su_init, (<<LE: Sound.hle su_arg su_init>>) /\
@@ -314,6 +319,7 @@ Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> 
         (SUARG: Sound.args su_init args)
         (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
+        (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
         <<SUST: sound_state su_init st_init>> /\ <<MLE: su_init.(Sound.mle) (Args.get_m args) st_init.(get_mem)>>)
@@ -373,6 +379,7 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
         (SUARG: Sound.args su_arg args)
         (SKENVLINK: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv))
+        (SKENVLINK: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv_link))
         (INIT: ms.(ModSem.initial_frame) args st_init),
         exists su_init, (<<LE: Sound.hle su_arg su_init>>) /\
                         (<<SUST: sound_state su_init st_init>>)
@@ -447,17 +454,19 @@ Definition system_sound_state `{SU: Sound.class} (ms: ModSem.t): Sound.t -> mem 
 
 Lemma system_local_preservation
       `{SU: Sound.class}
-      skenv:
-    exists system_sound_state, local_preservation (System.modsem skenv) system_sound_state.
+      sk_link skenv_link
+      (LOAD: Sk.load_skenv sk_link = skenv_link)
+  :
+    exists system_sound_state, local_preservation (System.modsem sk_link skenv_link) system_sound_state.
 Proof.
-  exists (system_sound_state (System.modsem skenv)).
+  exists (system_sound_state (System.modsem sk_link skenv_link)).
   econs; ii; ss; eauto.
   - inv INIT. rr. esplits; eauto; try refl.
-  - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply EXTCALL; eauto.
+  - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply EXTCALL; eauto; swap 3 4.
     { instantiate (1:= Args.Cstyle _ _ _). ss. }
     { rr. esplits; eauto. }
-    { eapply Sound.skenv_mle; eauto. }
     { eauto. }
+    { eapply Sound.skenv_mle; eauto. }
     i; des. r in RETV. ss. des. ss. esplits; eauto.
     + etrans; eauto.
     + eapply Sound.skenv_mle; eauto. etrans; eauto.

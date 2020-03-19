@@ -710,8 +710,9 @@ Next Obligation.
     }
 Qed.
 Next Obligation.
-  assert(BC: (ske2bc (System.skenv skenv_link)) = (ske2bc skenv_link)).
-  { apply bc_eta. i. ss. }
+  set (Sk.load_skenv sk_link) as skenv_link.
+  assert(BC: (ske2bc (System.skenv sk_link skenv_link)) = (ske2bc skenv_link)).
+  { apply bc_eta. i. ss. des_ifs_safe. }
   assert(RM: (romem_for_ske (System.skenv skenv_link)) = (romem_for_ske skenv_link)).
   { apply func_ext1. intro id.
     unfold romem_for_ske. unfold System.skenv. rewrite Genv_map_defs_symb.

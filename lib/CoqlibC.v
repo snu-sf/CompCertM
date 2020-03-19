@@ -1181,3 +1181,32 @@ Proof.
   - clarify. esplits; eauto. econs. auto.
   - eapply IHla in H3; eauto. des. esplits; eauto. econs 2. auto.
 Qed.
+
+Fixpoint filter_map A B (f: A -> option B) (l: list A): list B :=
+  match l with
+  | [] => []
+  | hd :: tl =>
+    match (f hd) with
+    | Some b => b :: (filter_map f tl)
+    | _ => filter_map f tl
+    end
+  end
+.
+
+Lemma filter_map_In_iff
+      A B (f: A -> option B) la b
+  :
+    (<<IN: In b (filter_map f la)>>) <->
+    (exists a, (<<IN: In a la>>) /\ (<<MAP: f a = Some b>>))
+.
+Proof.
+  split; i.
+  - ginduction la; ii; ss.
+    des_ifs.
+    + ss. des; clarify; try (by esplits; eauto). exploit IHla; et. i; des. esplits; et.
+    + exploit IHla; et. i; des. esplits; et.
+  - des.
+    ginduction la; ii; ss. des.
+    + des_ifs. ss. eauto.
+    + exploit IHla; eauto. i; des. des_ifs; ss; eauto.
+Qed.

@@ -33,6 +33,15 @@ Definition skdefs_of_gdefs {F V} (get_sg: F -> signature)
   list (ident * globdef (AST.fundef signature) unit) :=
   map (update_snd (skdef_of_gdef get_sg)) gdefs.
 
+Definition invert_skdef (igd: ident * globdef (fundef signature) unit):
+  option (ident * (globdef (fundef signature) unit)) :=
+  match igd with
+  | (i, Gfun (External ef)) => Some (i, Gfun (Internal (ef_sig (ef))))
+  | (i, Gfun _) => None
+  | (i, Gvar gv) => Some (i, Gvar gv)
+  end
+.
+
 (* Skeleton *)
 Module Sk.
 
@@ -188,6 +197,13 @@ Module Sk.
       (WFPARAM: forall id skd
           (IN: In (id, (Gfun skd)) sk.(prog_defs)),
           4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned).
+
+  Definition invert (sk: Sk.t): Sk.t :=
+    mkprogram
+      (filter_map invert_skdef sk.(prog_defs))
+      (sk.(prog_public))
+      (sk.(prog_main))
+  .
 
 End Sk.
 

@@ -13,31 +13,18 @@ Set Implicit Arguments.
 Local Obligation Tactic := ii; des; ss; all_prop_inv; ss.
 
 
+
 Section SYSMODSEM.
 
+  Variable sk_link: Sk.t.
+  (* Let skenv_link := Sk.load_skenv sk_link. *)
   Variable skenv_link: SkEnv.t.
 
   Definition genvtype: Type := SkEnv.t.
 
   Definition globalenv: genvtype := skenv_link.
 
-  Definition skenv: SkEnv.t :=
-    (Genv_map_defs skenv_link)(fun _ gd =>
-                                 match gd with
-                                 | Gfun (External ef) => Some (Gfun (Internal (ef_sig (ef))))
-                                 | Gfun _ => None
-                                 | Gvar gv => Some gd
-                                 end).
-
-  Lemma skenv_globlaenv_equiv: Senv.equiv skenv globalenv.
-  Proof.
-    rr. splits; ii; ss; eauto. unfold skenv, globalenv.
-    (* unfold skenv, globalenv. *)
-    unfold Genv.block_is_volatile, Genv.find_var_info.
-    des_ifs; repeat (apply_all_once Genv_map_defs_def; des); ss; des_ifs.
-    eapply_all_once Genv_map_defs_def_inv.
-    all_once_fast ltac:(fun H => try erewrite H in *; ss).
-  Qed.
+  Definition skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.invert sk_link).
 
   Inductive state: Type :=
   | Callstate
@@ -79,23 +66,29 @@ Section SYSMODSEM.
     ModSem.skenv_link := skenv_link;
   |}.
 
+  Hypothesis (LOAD: Sk.load_skenv sk_link = skenv_link).
+
   Lemma modsem_receptive st:receptive_at modsem st.
   Proof.
     econs; ii; ss.
-    - inv H. exploit external_call_receptive; eauto. i; des.
+    - inv H. exploit external_call_receptive; eauto. { unfold globalenv. rewrite <- LOAD; eauto. } i; des.
       esplits; et. econs; et.
-    - inv H. eapply external_call_trace_length; et.
+    - unfold globalenv, skenv in *. inv H. eapply external_call_trace_length; et.
   Qed.
 
   Lemma modsem_determinate: forall st, determinate_at modsem st.
   Proof.
     econs; ii; ss.
-    - inv H; inv H0. clarify.
+    - unfold globalenv in *. inv H; inv H0. clarify.
       determ_tac external_call_match_traces.
       esplits; et.
       i; clarify.
       determ_tac external_call_deterministic.
-    - inv H. eapply external_call_trace_length; et.
+    - unfold globalenv, skenv in *. inv H. eapply external_call_trace_length; et.
   Qed.
 
 End SYSMODSEM.
+
+Program Definition module (sk_link: Sk.t): Mod.t :=
+  {| Mod.data := unit; Mod.get_sk := fun _ => Sk.invert sk_link;
+     Mod.get_modsem := fun skenv_link _ => @modsem sk_link skenv_link; |}.

@@ -563,6 +563,29 @@ I think "sim_skenv_monotone" should be sufficient.
     inv H2. ss. des_ifs. symmetry in H1. eapply DEFS in H1. des. inv MATCH. inv H1. eauto.
   Qed.
 
+  Definition fill_internals (skenv: SkEnv.t): SkEnv.t :=
+    (Genv_map_defs skenv) (fun _ gd => Some
+                                         match gd with
+                                         | Gfun (External ef) => (Gfun (Internal (ef_sig ef)))
+                                         | Gfun _ => gd
+                                         | Gvar gv => gd
+                                         end)
+  .
+
+  Lemma fill_internals_preserves_wf
+        skenv0 skenv1
+        (WF: wf skenv0)
+        (FILL: (fill_internals skenv0) = skenv1):
+      <<WF: wf skenv1>>.
+  Proof.
+    inv WF. unfold fill_internals. econs; i; ss; eauto.
+    - rewrite Genv_map_defs_symb in *. exploit SYMBDEF; eauto. i; des.
+      hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto. rewrite H0; ss.
+    - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs. exploit DEFSYMB; eauto.
+    - unfold Genv_map_defs, Genv.find_def in *; ss. rewrite PTree_filter_map_spec in DEF.
+      destruct ((Genv.genv_defs skenv0) ! blk) eqn:DMAP; ss. unfold o_bind in DEF; ss. des_ifs; eapply WFPARAM in DMAP; eauto.
+  Qed.
+
 End SkEnv.
 
 Hint Unfold SkEnv.empty.

@@ -21,18 +21,6 @@ Set Implicit Arguments.
 
 Definition sim_skenv (skenv0 skenv1: SkEnv.t): Prop := skenv0 = skenv1.
 
-Lemma sim_skenv_equiv
-      skenv_src skenv_tgt
-      (SIMSKENV: sim_skenv skenv_src skenv_tgt):
-    <<EQUIV: Senv.equiv skenv_src skenv_tgt>>.
-Proof. rewrite SIMSKENV. eapply GlobalenvsC.Senv_eq_equiv_obligation_1. Qed.
-
-Lemma system_sim_skenv
-      skenv_src skenv_tgt
-      (SIMSKENV: sim_skenv skenv_src skenv_tgt):
-    <<SIMSKENV: sim_skenv (System.skenv (skenv_src)) (System.skenv (skenv_tgt))>>.
-Proof. inv SIMSKENV. econs; eauto. Qed.
-
 Record t' := mk {
   src: Sk.t;
   tgt: Sk.t;
@@ -90,6 +78,20 @@ Proof.
   i. inv SIMSKENV. econs; eauto; ii; assert(fptr_src = fptr_tgt) by ss;
                      clarify; unfold Genv.find_funct, Genv.find_funct_ptr in *; des_ifs_safe; esplits; eauto.
 Qed.
+
+Lemma sim_skenv_equiv
+      skenv_src skenv_tgt
+      (SIMSKENV: sim_skenv skenv_src skenv_tgt):
+    <<EQUIV: Senv.equiv skenv_src skenv_tgt>>.
+Proof. rewrite SIMSKENV. eapply GlobalenvsC.Senv_eq_equiv_obligation_1. Qed.
+
+Lemma system_sim_skenv
+      sk_src sk_tgt skenv_src skenv_tgt
+      (SIMSK: sk_src = sk_tgt)
+      (SIMSKENV: sim_skenv skenv_src skenv_tgt):
+    <<SIMSKENV: sim_skenv (System.skenv sk_src (skenv_src)) (System.skenv sk_tgt (skenv_tgt))>>.
+Proof. inv SIMSKENV. econs; eauto. Qed.
+
 
 
 Local Opaque prog_defmap.

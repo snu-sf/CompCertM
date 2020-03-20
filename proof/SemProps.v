@@ -18,6 +18,28 @@ Require Import ModSemProps.
 Set Implicit Arguments.
 
 
+
+
+(** TODO: Move to CoqlibC **)
+Lemma NoDup_pigeonhole
+      A B (f: A -> B) la a0 a1
+      (NODUP: NoDup (map f la))
+      (IN0: In a0 la)
+      (IN1: In a1 la)
+      (DIFF: a0 <> a1)
+      (EQ: f a0 = f a1)
+  :
+    False
+.
+Proof.
+  ginduction la; ii; ss.
+  inv NODUP.
+  des; ss; clarify; eauto.
+  { rewrite <- EQ in *. apply H1. rewrite in_map_iff; eauto. }
+  { rewrite EQ in *. apply H1. rewrite in_map_iff; eauto. }
+Qed.
+
+
 (* TODO: better namespace? *)
 Lemma includes_refl
       sk:
@@ -256,25 +278,15 @@ Section INITDTM.
   Variable p: program.
   Hypothesis (WFSK: forall md (IN: In md p), <<WF: Sk.wf md>>).
   Let sem := Sem.sem p.
-
-  Lemma skenv_fill_internals_preserves_wf
-        skenv0 skenv1
-        (WF: SkEnv.wf skenv0)
-        (FILL: (skenv_fill_internals skenv0) = skenv1):
-      <<WF: SkEnv.wf skenv1>>.
-  Proof.
-    inv WF. unfold skenv_fill_internals. econs; i; ss; eauto.
-    - rewrite Genv_map_defs_symb in *. exploit SYMBDEF; eauto. i; des.
-      hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto. rewrite H0; ss.
-    - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs. exploit DEFSYMB; eauto.
-    - unfold Genv_map_defs, Genv.find_def in *; ss. rewrite PTree_filter_map_spec in DEF.
-      destruct ((Genv.genv_defs skenv0) ! blk) eqn:DMAP; ss. unfold o_bind in DEF; ss. des_ifs; eapply WFPARAM in DMAP; eauto.
-  Qed.
+  Variable sk_link: Sk.t.
+  Hypothesis (SKLINK: link_sk p = Some sk_link).
+  Let SKWF: Sk.wf sk_link. eapply link_list_preserves_wf_sk; eauto. Qed.
 
   Lemma system_disjoint
         skenv_link sys_def fptr md md_def
+        (LOAD: Sk.load_skenv sk_link = skenv_link)
         (WFBIG: SkEnv.wf skenv_link)
-        (SYSTEM: Genv.find_funct (System.skenv skenv_link) fptr = Some (Internal sys_def))
+        (SYSTEM: Genv.find_funct (System.skenv sk_link (SkEnv.fill_internals skenv_link)) fptr = Some (Internal sys_def))
         (MOD: In md p)
         (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
                  Some (Internal md_def))
@@ -296,19 +308,47 @@ Section INITDTM.
     i; des. exploit DEFKEEP; eauto.
     { eapply Genv.find_invert_symbol; eauto. }
     intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL0. unfold System.skenv in *. ss.
-    exploit Genv_map_defs_def; eauto. i; des. des_ifs. inv LO. inv H3.
+    exploit Genv_map_defs_def; eauto. i; des. uo. des_ifs.
+    assert(i = id).
+    {
+      exploit Genv.invert_find_symbol; eauto. intro T. clear - SYMBBIG T.
+      unfold SkEnv.fill_internals in *. ss.
+      rewrite Genv_map_defs_symb in T.
+      exploit Genv.find_invert_symbol; try apply T; eauto. i.
+      exploit Genv.find_invert_symbol; try apply SYMBBIG; eauto. i.
+      clarify.
+    }
+    clarify.
+    clear_tac.
+    assert(P: exists fd, (prog_defmap sk_link) ! id = Some (Gfun (Internal fd))).
+    { exploit Genv.find_def_symbol; eauto. intro Q; des.
+      exploit Q0. { esplits; try apply DEFBIG; eauto. } intro R; des.
+      rewrite R. inv LO. inv H2.
+      esplits; eauto.
+    }
+    assert(Q: exists fd, (prog_defmap (Sk.invert sk_link)) ! id = Some (Gfun (Internal fd))).
+    { exploit Genv.find_def_symbol; eauto. }
+    clear - P Q SKWF.
+    des.
+    { apply_all_once in_prog_defmap.
+      apply filter_map_In_iff in Q. des. destruct a; ss.
+      des_ifs. eapply NoDup_pigeonhole; try apply SKWF.
+      { apply P. }  { apply IN. } { ii; ss. } { ss. }
+    }
+  Unshelve.
+    all: eauto.
   Qed.
 
   Theorem genv_disjoint: <<DISJ: sem.(globalenv).(Ge.disjoint)>>.
   Proof.
-    ss. des_ifs; cycle 1.
-    { econs; eauto. ii; ss. inv FIND0. ss. }
-    assert(WFBIG: (Sk.load_skenv t).(SkEnv.wf)).
+    ss. rewrite SKLINK.
+    assert(WFBIG: (Sk.load_skenv sk_link).(SkEnv.wf)).
     { eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; et. }
     econs; eauto. ii; ss. inv FIND0; inv FIND1.
-    generalize (link_includes p Heq). intro INCLS.
+    generalize (link_includes p SKLINK). intro INCLS.
     unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss.
-    abstr (Genv.globalenv t) skenv_link. rename t into sk_link.  rename Heq into SKLINK.
+    (* abstr (Genv.globalenv sk_link) skenv_link. *)
+    set (Genv.globalenv sk_link) as skenv_link in *.
     rewrite in_map_iff in *. u in *. destruct MODSEM.
     { clarify. des; ss. exfalso. clarify. eapply system_disjoint; eauto. }
     des; ss.
@@ -354,16 +394,18 @@ Section INITDTM.
     destruct (classic (md0 = md1)); ss.
     { clarify. }
 
+    clearbody skenv_link.
     exfalso. clear_tac. generalize dependent sk_link.
-    ginduction p; i; ss. dup SKLINK.
-    eapply link_list_cons_inv in SKLINK; cycle 1.
+    move md0 at top. move md1 at top.
+    ginduction p; i; ss. dup SKLINK0.
+    eapply link_list_cons_inv in SKLINK0; cycle 1.
     { destruct p0; ss. inv H0; inv MODSEM1; clarify. }
     des_safe.
     hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe.
     hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
 
     des; clarify; try (by eapply link_sk_disjoint; try eapply DEFBIG; eauto).
-    - eapply IHp0; try eapply DEFS1; try eapply DEFS0; try eapply DEFBIG; eauto.
+    - eapply (IHp0 md0 md1); try eapply DEFS1; try eapply DEFS0; try eapply DEFBIG; eauto.
   Qed.
 
   Lemma find_fptr_owner_determ
@@ -372,7 +414,7 @@ Section INITDTM.
         (FIND1: Ge.find_fptr_owner sem.(globalenv) fptr ms1):
       ms0 = ms1.
   Proof.
-    inv FIND0; inv FIND1. ss. des_ifs. unfold load_genv in *. ss. generalize genv_disjoint; i.
+    inv FIND0; inv FIND1. ss. rewrite SKLINK in *. unfold load_genv in *. ss. generalize genv_disjoint; i.
     inv H. eapply DISJOINT; eauto; econs; eauto; ss; des_ifs.
   Qed.
 

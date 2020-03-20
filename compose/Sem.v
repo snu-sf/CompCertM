@@ -98,21 +98,13 @@ Section SEMANTICS.
 
   Definition link_sk: option Sk.t := link_list (List.map Mod.sk p).
 
-  Definition skenv_fill_internals (skenv: SkEnv.t): SkEnv.t :=
-    (Genv_map_defs skenv) (fun _ gd => Some
-                                      match gd with
-                                      | Gfun (External ef) => (Gfun (Internal (ef_sig ef)))
-                                      | Gfun _ => gd
-                                      | Gvar gv => gd
-                                      end).
-
-  Definition load_system (skenv: SkEnv.t): (ModSem.t * SkEnv.t) :=
-    (System.modsem skenv, (skenv_fill_internals skenv)).
+  Definition load_system (sk_link: Sk.t) (skenv: SkEnv.t): (ModSem.t * SkEnv.t) :=
+    (System.modsem sk_link (SkEnv.fill_internals skenv), (SkEnv.fill_internals skenv)).
 
   Definition load_modsems (skenv: SkEnv.t): list ModSem.t := List.map ((flip Mod.modsem) skenv) p.
 
-  Definition load_genv (init_skenv: SkEnv.t): Ge.t :=
-    let (system, skenv) := load_system init_skenv in
+  Definition load_genv (sk_link: Sk.t) (init_skenv: SkEnv.t): Ge.t :=
+    let (system, _) := load_system sk_link init_skenv in
     (system :: (load_modsems init_skenv), init_skenv).
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
@@ -137,7 +129,7 @@ Section SEMANTICS.
   Definition sem: semantics :=
     (Semantics_gen (fun _ => step) initial_state final_state
                    (match link_sk with
-                    | Some sk_link => load_genv (Sk.load_skenv sk_link)
+                    | Some sk_link => load_genv sk_link (Sk.load_skenv sk_link)
                     | None => (nil, SkEnv.empty)
                     end)
                    (* NOTE: The symbolenv here is never actually evoked in our semantics. Putting this value is merely for our convenience. (lifting receptive/determinate) Whole proof should be sound even if we put dummy data here. *)

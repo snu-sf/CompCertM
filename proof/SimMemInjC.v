@@ -457,9 +457,11 @@ Next Obligation.
     exploit DOMAIN; eauto. { eapply Genv.genv_defs_range; eauto. } i; clarify. }
 Qed.
 Next Obligation.
-  inv SIMSKENV. econs; eauto.
+  inv SIMSKENV. eexists. econs; eauto.
   - inv INJECT. econs; eauto.
   - eapply SimSymbId.system_sim_skenv; eauto.
+Unshelve.
+  ss.
 Qed.
 Next Obligation.
   destruct sm0, args_src, args_tgt; ss; inv ARGS; ss. inv MWF; ss. clarify.

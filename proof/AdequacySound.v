@@ -55,7 +55,9 @@ Section ADQSOUND.
 
   Inductive sound_ge (su0: Sound.t) (m0: mem): Prop :=
   | sound_ge_intro
-      (GE: Forall (fun ms => su0.(Sound.skenv) m0 ms.(ModSem.skenv)) (fst sem_src.(Smallstep.globalenv))).
+      (GE: Forall (fun ms => su0.(Sound.skenv) m0 ms.(ModSem.skenv) /\ su0.(Sound.skenv) m0 ms.(ModSem.skenv_link))
+                  (fst sem_src.(Smallstep.globalenv)))
+  .
 
   Lemma lepriv_preserves_sound_ge
         m0 su0 su1
@@ -63,7 +65,7 @@ Section ADQSOUND.
         (LE: Sound.lepriv su0 su1):
       <<GE: sound_ge su1 m0>>.
   Proof.
-    inv GE. econs; eauto. rewrite Forall_forall in *. ii. eapply Sound.skenv_lepriv; eauto.
+    inv GE. econs; eauto. rewrite Forall_forall in *. ii. split; eapply Sound.skenv_lepriv; try apply GE0; eauto.
   Qed.
 
   Lemma hle_preserves_sound_ge
@@ -82,7 +84,7 @@ Section ADQSOUND.
         (LE: Sound.mle su0 m0 m1):
       <<GE: sound_ge su0 m1>>.
   Proof.
-    inv GE. econs; eauto. rewrite Forall_forall in *. ii. eapply Sound.skenv_mle; eauto.
+    inv GE. econs; eauto. rewrite Forall_forall in *. ii. split; eapply Sound.skenv_mle; try apply GE0; eauto.
   Qed.
 
   (* stack can go preservation when su0 is given *)
@@ -161,12 +163,14 @@ Section ADQSOUND.
     assert(GE: sound_ge su_init m_init).
     { econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
       rewrite in_map_iff in IN. des; ss; clarify.
-      + s. rewrite <- Sound.system_skenv; eauto.
+      + s. split; try eapply Sound.system_skenv; eauto.
       + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk x0)).
         { unfold p_src in IN0. unfold ProgPair.src in *. rewrite in_map_iff in IN0. des. clarify. eapply INCLSRC; et. }
-        eapply Sound.skenv_project; eauto.
-        { eapply link_load_skenv_wf_mem; et. }
-        rewrite <- Mod.get_modsem_skenv_spec; ss. eapply SkEnv.project_impl_spec; et.
+        split; ss.
+        * eapply Sound.skenv_project; eauto.
+          { eapply link_load_skenv_wf_mem; et. }
+          rewrite <- Mod.get_modsem_skenv_spec; ss. eapply SkEnv.project_impl_spec; et.
+        * rewrite Mod.get_modsem_skenv_link_spec. ss.
     }
     econs; eauto. econs; eauto.
     (* - eapply Sound.greatest_adq; eauto. *)
@@ -201,7 +205,8 @@ Section ADQSOUND.
     - (* INIT *)
       inv SUST. ss. des_ifs. esplits; eauto. econs; eauto.
       + ii. esplits; eauto.
-        * ii. inv PRSV. eapply INIT0; eauto. inv SUGE. rewrite Forall_forall in *. eapply GE. inv MSFIND. ss. des_ifs.
+        * ii. inv PRSV. inv SUGE. rewrite Forall_forall in *.
+          exploit GE; eauto. { ss. des_ifs. eapply MSFIND. } intro T; des. eapply INIT0; et.
       + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *. des; clarify.
         { eapply system_local_preservation. }
         u in MODSEM. rewrite in_map_iff in MODSEM. des; clarify. rename x into md_src.

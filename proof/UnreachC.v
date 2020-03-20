@@ -720,9 +720,8 @@ Next Obligation.
     - unfold Genv.find_var_info in *. des_ifs_safe. erewrite Genv_map_defs_def_inv; et. ss.
     - unfold Genv.find_var_info in *. des_ifs_safe. exploit Genv_map_defs_def; et. i; des. des_ifs.
   }
-  split; i; inv H; ss.
-  - econs; eauto. rpapply ROMATCH; ss.
-  - econs; eauto. rpapply ROMATCH; ss.
+  inv SKELINK.
+  econs; eauto. rpapply ROMATCH; ss.
 Qed.
 Next Obligation.
   assert(T: <<VAL: val' su0 (Args.fptr args0)>> /\ <<VALS: Forall (val' su0) (Args.vs args0)>> /\ <<MEM: mem' su0 (Args.m args0)>> /\ <<WF: wf su0 >>).

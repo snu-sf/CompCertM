@@ -81,9 +81,7 @@ Section SOUNDPRODUCT.
     ss. esplits; eauto; eapply Sound.skenv_project; eauto.
   Qed.
   Next Obligation.
-    ss. rr. esplits; ii; des.
-    - erewrite <- ! (Sound.system_skenv) in *; eauto.
-    - erewrite <- (Sound.system_skenv) in H; eauto. erewrite <- (Sound.system_skenv) in H0; eauto.
+    ss. esplits; eauto; eapply Sound.system_skenv; eauto.
   Qed.
   Next Obligation.
     ss. des.
@@ -148,8 +146,10 @@ Section SOUNDPRODUCT.
       + eapply INIT; eauto.
         { destruct su_init; ss. eapply sound_args_iff in SUARG; eauto. ss; des; ss. }
         { destruct su_init; ss. eapply sound_skenv_iff in SKENV; eauto. ss; des; ss. }
+        { destruct su_init; ss. eapply sound_skenv_iff in SKENV; eauto. ss; des; ss. }
       + eapply INIT0; eauto.
         { destruct su_init; ss. eapply sound_args_iff in SUARG; eauto. des. ss. }
+        { destruct su_init; ss. eapply sound_skenv_iff in SKENV; eauto. ss; des; ss. }
         { destruct su_init; ss. eapply sound_skenv_iff in SKENV; eauto. ss; des; ss. }
     - clear - STEP STEP0. ii. ss. des.
       specialize (STEP m_arg (fst su0)). specialize (STEP0 m_arg (snd su0)).

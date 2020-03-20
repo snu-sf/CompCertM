@@ -29,6 +29,7 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
 | local_preservation_intro
     (INIT: forall su_init args st_init
         (SUARG: Sound.args su_init args)
+        (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
@@ -65,6 +66,7 @@ Inductive local_preservation_noguarantee (sound_state: Sound.t -> mem -> ms.(sta
 | local_preservation_noguarantee_intro
     (INIT: forall su_init args st_init
         (SUARG: Sound.args su_init args)
+        (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
@@ -103,6 +105,7 @@ Inductive local_preservation_standard (sound_state: Sound.t -> ms.(state) -> Pro
 | local_preservation_standard_intro
     (INIT: forall su_arg args st_init
         (SUARG: Sound.args su_arg args)
+        (SKENVLINK: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
@@ -169,6 +172,7 @@ Inductive local_preservation_strong (sound_state: Sound.t -> ms.(state) -> Prop)
     (LIFTPRIV: lift <2= Sound.lepriv)
     (INIT: forall su_init args st_init
         (SUARG: Sound.args su_init args)
+        (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
@@ -236,6 +240,7 @@ Inductive local_preservation_strong_horizontal (sound_state: Sound.t -> ms.(stat
     (LIFTPRIV: lift <2= Sound.lepriv)
     (INIT: forall su_arg args st_init
         (SUARG: Sound.args su_arg args)
+        (SKENVLINK: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
@@ -307,6 +312,7 @@ Inductive local_preservation_strong_excl (sound_state: Sound.t -> ms.(state) -> 
         <<MLE: Sound.mle su0 m0 m2>>)
     (INIT: forall su_init args st_init
         (SUARG: Sound.args su_init args)
+        (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init)
       ,
@@ -365,6 +371,7 @@ Inductive local_preservation_strong_horizontal_excl (sound_state: Sound.t -> ms.
         <<MLE: Sound.mle su0 m0 m2>>)
     (INIT: forall su_arg args st_init
         (SUARG: Sound.args su_arg args)
+        (SKENVLINK: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv_link))
         (SKENV: Sound.skenv su_arg (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) args st_init),
         exists su_init, (<<LE: Sound.hle su_arg su_init>>) /\
@@ -432,10 +439,10 @@ Definition system_sound_state `{SU: Sound.class} (ms: ModSem.t): Sound.t -> mem 
   fun su m_arg st =>
     match st with
     | System.Callstate fptr vs m => su.(Sound.args) (Args.Cstyle fptr vs m) /\ su.(Sound.mle) m_arg m
-                               /\ su.(Sound.skenv) m_arg ms.(ModSem.skenv)
+                               /\ su.(Sound.skenv) m_arg ms.(ModSem.skenv_link)
     | System.Returnstate v m =>
       exists su_ret, Sound.hle su su_ret /\ su_ret.(Sound.retv) (Retv.Cstyle v m) /\ su.(Sound.mle) m_arg m
-        /\ su.(Sound.skenv) m ms.(ModSem.skenv)
+        /\ su.(Sound.skenv) m ms.(ModSem.skenv_link)
     end.
 
 Lemma system_local_preservation
@@ -449,7 +456,7 @@ Proof.
   - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply EXTCALL; eauto.
     { instantiate (1:= Args.Cstyle _ _ _). ss. }
     { rr. esplits; eauto. }
-    { eapply Sound.system_skenv; eauto. eapply Sound.skenv_mle; eauto. }
+    { eapply Sound.skenv_mle; eauto. }
     { eauto. }
     i; des. r in RETV. ss. des. ss. esplits; eauto.
     + etrans; eauto.

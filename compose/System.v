@@ -66,12 +66,10 @@ Section SYSMODSEM.
     ModSem.skenv_link := skenv_link;
   |}.
 
-  Hypothesis (LOAD: Sk.load_skenv sk_link = skenv_link).
-
   Lemma modsem_receptive st:receptive_at modsem st.
   Proof.
     econs; ii; ss.
-    - inv H. exploit external_call_receptive; eauto. { unfold globalenv. rewrite <- LOAD; eauto. } i; des.
+    - inv H. exploit external_call_receptive; eauto. i; des.
       esplits; et. econs; et.
     - unfold globalenv, skenv in *. inv H. eapply external_call_trace_length; et.
   Qed.

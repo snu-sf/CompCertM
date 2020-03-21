@@ -779,8 +779,9 @@ Next Obligation.
   inv SIM. rewrite DEFTGT. esplits; eauto. des_ifs.
 Qed.
 Next Obligation.
-  inv SIMSKENV. unfold System.skenv in *. esplits; eauto.
+  inv SIMSKENV. unfold System.skenv in *. exists (mk bot1 ss.(src) ss.(tgt)).
   econs; ii; ss; eauto; try rewrite Genv_map_defs_symb in *; apply_all_once Genv_map_defs_def; eauto.
+  - exploit SIMSYMB1; eauto.
   - des. exploit SIMDEF; eauto. i; des. clarify.
     esplits; eauto. eapply Genv_map_defs_def_inv in DEFTGT. rewrite DEFTGT. ss.
   - des. exploit SIMDEFINV; eauto. i; des. clarify.

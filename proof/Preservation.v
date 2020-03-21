@@ -455,7 +455,6 @@ Definition system_sound_state `{SU: Sound.class} (ms: ModSem.t): Sound.t -> mem 
 Lemma system_local_preservation
       `{SU: Sound.class}
       sk_link skenv_link
-      (LOAD: Sk.load_skenv sk_link = skenv_link)
   :
     exists system_sound_state, local_preservation (System.modsem sk_link skenv_link) system_sound_state.
 Proof.

@@ -100,12 +100,11 @@ Module SimSymb.
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt),
           <<DEF: skenv_func_bisim sm.(SimMem.sim_val) skenv_src skenv_tgt>>;
 
-      system_sim_skenv: forall sm ss skenv_src skenv_tgt
-          (SIMSK: wf ss)
-          (LOADSRC: (Sk.load_skenv ss.(src)) = skenv_src)
-          (LOADTGT: (Sk.load_skenv ss.(tgt)) = skenv_tgt)
-          (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt),
-          exists ss_sys, <<SIMSKENV: sim_skenv sm ss_sys (System.skenv ss.(src) skenv_src) (System.skenv ss.(tgt) skenv_tgt)>>;
+      system_wf: forall ss
+          (SIMSK: wf ss),
+          exists ss_sys, (<<SKSRC: ss_sys.(src) = Sk.invert ss.(src)>>) /\
+                         (<<SKTGT: ss_sys.(tgt) = Sk.invert ss.(tgt)>>) /\
+                         (<<SIMSK: wf ss_sys>>);
       system_axiom: forall
           sm0 ss_sys skenv_sys_src skenv_sys_tgt
           args_src args_tgt tr retv_src ef

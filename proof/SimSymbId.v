@@ -85,12 +85,15 @@ Lemma sim_skenv_equiv
     <<EQUIV: Senv.equiv skenv_src skenv_tgt>>.
 Proof. rewrite SIMSKENV. eapply GlobalenvsC.Senv_eq_equiv_obligation_1. Qed.
 
-Lemma system_sim_skenv
-      sk_src sk_tgt skenv_src skenv_tgt
-      (SIMSK: sk_src = sk_tgt)
-      (SIMSKENV: sim_skenv skenv_src skenv_tgt):
-    <<SIMSKENV: sim_skenv (System.skenv sk_src (skenv_src)) (System.skenv sk_tgt (skenv_tgt))>>.
-Proof. inv SIMSKENV. econs; eauto. Qed.
+Lemma system_wf
+      ss
+      (SIMSK: wf ss)
+  :
+    exists ss_sys, (<<SKSRC: ss_sys.(src) = Sk.invert ss.(src)>>) /\
+                   (<<SKTGT: ss_sys.(tgt) = Sk.invert ss.(tgt)>>) /\
+                   (<<WF: wf ss_sys>>)
+.
+Proof. inv SIMSK. destruct ss; ss. clarify. eexists (mk _ _). esplits; ss; eauto. Qed.
 
 
 

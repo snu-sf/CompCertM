@@ -101,7 +101,9 @@ Module SimSymb.
           <<DEF: skenv_func_bisim sm.(SimMem.sim_val) skenv_src skenv_tgt>>;
 
       system_wf: forall ss
-          (SIMSK: wf ss),
+          (SIMSK: wf ss)
+          (WFSRC: Sk.wf ss.(src))
+          (WFTGT: Sk.wf ss.(tgt)),
           exists ss_sys, (<<SKSRC: ss_sys.(src) = Sk.invert ss.(src)>>) /\
                          (<<SKTGT: ss_sys.(tgt) = Sk.invert ss.(tgt)>>) /\
                          (<<SIMSK: wf ss_sys>>);

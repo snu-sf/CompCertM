@@ -74,8 +74,7 @@ Next Obligation.
   inv H. inv SIMSKENV. econs; eauto.
   ii; ss. eapply FUNCFSIM; eauto. rpapply FUNCSRC. f_equal. inv SIMFPTR; ss.
 Qed.
-Next Obligation. esplits; eauto. eapply SimSymbId.system_sim_skenv; eauto.
-Qed.
+Next Obligation. eapply SimSymbId.system_wf; eauto. Qed.
 Next Obligation.
   inv ARGS; ss. destruct sm0; ss; clarify.
   exploit external_call_mem_extends; eauto. i. des.

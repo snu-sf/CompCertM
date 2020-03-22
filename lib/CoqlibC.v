@@ -1210,3 +1210,35 @@ Proof.
     + des_ifs. ss. eauto.
     + exploit IHla; eauto. i; des. des_ifs; ss; eauto.
 Qed.
+
+Lemma NoDup_pigeonhole
+      A B (f: A -> B) la a0 a1
+      (NODUP: NoDup (map f la))
+      (IN0: In a0 la)
+      (IN1: In a1 la)
+      (DIFF: a0 <> a1)
+      (EQ: f a0 = f a1)
+  :
+    False
+.
+Proof.
+  ginduction la; ii; ss.
+  inv NODUP.
+  des; ss; clarify; eauto.
+  { rewrite <- EQ in *. apply H1. rewrite in_map_iff; eauto. }
+  { rewrite EQ in *. apply H1. rewrite in_map_iff; eauto. }
+Qed.
+
+Lemma NoDup_pigeonhole2
+      A B (f: A -> B) la a0 a1
+      (NODUP: NoDup (map f la))
+      (IN0: In a0 la)
+      (IN1: In a1 la)
+      (EQ: f a0 = f a1)
+  :
+    a0 = a1
+.
+Proof.
+  eapply NNPP. ii.
+  exploit NoDup_pigeonhole; try apply H; eauto.
+Qed.

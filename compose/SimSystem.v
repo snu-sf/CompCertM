@@ -25,6 +25,8 @@ Section SIM.
   Let p_tgt: program := (ProgPair.tgt pp).
   Variable ss_link: SimSymb.t.
   Hypothesis (SIMSK: SimSymb.wf ss_link).
+  Hypothesis (WFSRC: Sk.wf ss_link.(SimSymb.src)).
+  Hypothesis (WFTGT: Sk.wf ss_link.(SimSymb.tgt)).
   (* Hypothesis (SSLE: Forall (fun mp => SimSymb.le (ModPair.ss mp) ss_link) pp). *)
   (* Hypothesis (SKSRC: link_sk p_src = Some (SimSymb.src ss_link)). *)
   (* Hypothesis (SKTGT: link_sk p_tgt = Some (SimSymb.tgt ss_link)). *)

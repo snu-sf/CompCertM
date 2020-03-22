@@ -33,14 +33,31 @@ Definition skdefs_of_gdefs {F V} (get_sg: F -> signature)
   list (ident * globdef (AST.fundef signature) unit) :=
   map (update_snd (skdef_of_gdef get_sg)) gdefs.
 
-Definition invert_skdef (igd: ident * globdef (fundef signature) unit):
-  option (ident * (globdef (fundef signature) unit)) :=
-  match igd with
-  | (i, Gfun (External ef)) => Some (i, Gfun (Internal (ef_sig (ef))))
-  | (i, Gfun _) => None
-  | (i, Gvar gv) => Some (i, Gvar gv)
+Definition invert_skdef (gd: globdef (fundef signature) unit):
+  option (globdef (fundef signature) unit) :=
+  match gd with
+  | (Gfun (External ef)) => Some (Gfun (Internal (ef_sig (ef))))
+  | (Gfun _) => None
+  | (Gvar gv) => None (* Some (Gvar gv) *)
   end
 .
+
+(* Definition invert_iskdef (igd: ident * globdef (fundef signature) unit): *)
+(*   option (ident * globdef (fundef signature) unit) := *)
+(*   match invert_skdef (snd igd) with *)
+(*   | Some gd => Some (fst igd, gd) *)
+(*   | _ => None *)
+(*   end *)
+(* . *)
+Notation invert_iskdef :=  (fun '((i, gd): ident * _) =>
+                              match invert_skdef gd with
+                              | Some gd => Some (i, gd)
+                              | _ => None
+                              end)
+.
+Check invert_iskdef.
+
+
 
 (* Skeleton *)
 Module Sk.
@@ -200,10 +217,150 @@ Module Sk.
 
   Definition invert (sk: Sk.t): Sk.t :=
     mkprogram
-      (filter_map invert_skdef sk.(prog_defs))
-      (sk.(prog_public))
+      (filter_map invert_iskdef sk.(prog_defs))
+      (* (filter_map (fun '(i, gd) => match invert_skdef gd with | Some gd => Some (i, gd) | _ => None end) *)
+      (*             sk.(prog_defs)) *)
+      nil
       (sk.(prog_main))
   .
+
+  Lemma invert_preserves_wf
+        sk
+        (WF: Sk.wf sk)
+    :
+      <<WF: Sk.wf (Sk.invert sk)>>
+  .
+  Proof.
+    inv WF. econs; ss; eauto.
+    - destruct sk; ss. unfold prog_defs_names in *; ss.
+      clear - NODUP. ginduction prog_defs; ii; ss. inv NODUP. des_ifs; eauto.
+      ss. econs; eauto. ii. rewrite in_map_iff in *. eapply H1. des; eauto. destruct x; ss. clarify.
+      apply filter_map_In_iff in H0. des. des_ifs.
+      eexists (_, _); ss. esplits; eauto.
+    - ii. apply filter_map_In_iff in IN. des. des_ifs.
+      unfold invert_skdef in *. des_ifs.
+    - ii. apply filter_map_In_iff in IN. des. des_ifs. destruct g; ss. des_ifs.
+      eapply WFPARAM; et.
+  Qed.
+
+  Lemma invert_prog_defmap
+        (sk: Sk.t)
+        (WF: Sk.wf sk)
+    :
+      <<REL: forall id,
+      (do gd <- ((prog_defmap sk) ! id) ; invert_skdef gd) = ((prog_defmap (Sk.invert sk)) ! id)>>
+  .
+  Proof.
+    ii. destruct ((prog_defmap sk) ! id) eqn:T.
+    - uo. destruct sk; ss. unfold invert. ss. unfold prog_defmap in *. ss.
+      exploit PTree_Properties.in_of_list; eauto. intro IN.
+      destruct (classic (exists g2, In (id, g2) (filter_map invert_iskdef prog_defs))).
+      + des.
+        exploit filter_map_In_iff; eauto. intros [Q _]. hexploit1 Q; eauto. des. destruct a; ss.
+        des_ifs.
+        assert(g0 = g).
+        { inv WF. ss. exploit NoDup_pigeonhole2; [|apply IN|apply IN0|..]; eauto. ii; clarify. }
+        clarify.
+        exploit PTree_Properties.of_list_norepet; try apply H; eauto.
+        { eapply NoDup_norepet. eapply invert_preserves_wf in WF. eapply WF. }
+        intro U. rewrite U. ss.
+      + assert(invert_iskdef (id, g) = None).
+        { eapply NNPP. ii. des_ifs. clear_tac.
+          exploit (filter_map_In_iff invert_iskdef); eauto. intros [_ Q].
+          exploit Q; eauto. exists (id, g). esplits; eauto. des_ifs.
+        }
+        ss. des_ifs. clear_tac.
+        destruct ((PTree_Properties.of_list (filter_map invert_iskdef prog_defs)) ! id) eqn: U; ss.
+        exfalso.
+        eapply PTree_Properties.in_of_list in U. eapply filter_map_In_iff in U. des. des_ifs.
+        assert(g0 = g).
+        { inv WF. ss. exploit NoDup_pigeonhole2; [|apply IN|apply IN0|..]; eauto. ii; clarify. }
+        assert(g1 = g).
+        { inv WF. ss. exploit NoDup_pigeonhole2; [|apply IN|apply IN0|..]; eauto. ii; clarify. }
+        clarify.
+    - uo. destruct ((prog_defmap (invert sk)) ! id) eqn:U; ss.
+      exfalso.
+      unfold prog_defmap in *. ss.
+      exploit PTree_Properties.in_of_list; eauto. intro V.
+      exploit filter_map_In_iff; eauto. intros [Q _]. hexploit1 Q; eauto. des. des_ifs.
+      exploit PTree_Properties.of_list_norepet; eauto.
+      { eapply NoDup_norepet. eapply WF. }
+      intro W. clarify.
+  Qed.
+
+  Inductive full (sk: t): Prop :=
+  | full_intro
+      (FULL: forall id gd (MAP: (prog_defmap sk) ! id = Some gd), <<INTERNAL: ~is_external gd>>)
+      (* (FULL: Forall (fun '(i, gd) => ~is_external gd) sk.(prog_defs)) *)
+  .
+
+  Theorem link_invert_full
+          sk sk_link
+          (WF: Sk.wf sk)
+          (LINK: link (Sk.invert sk) sk = Some sk_link)
+    :
+      <<FULL: full sk_link>>
+  .
+  Proof.
+    econs. ii.
+    Local Transparent Linker_prog Linker_def Linker_fundef.
+    ss.
+    unfold link_prog in *. des_ifs. simpl_bool. des. des_sumbool. unfold prog_defmap in *. ss.
+    rewrite PTree_Properties.of_list_elements in *.
+    rewrite PTree.gcombine in *; ss.
+    unfold link_prog_merge in *.
+    destruct ((PTree_Properties.of_list (prog_defs sk)) ! id) eqn:T; cycle 1.
+    - des_ifs.
+      exploit PTree_Properties.in_of_list; eauto. intro U. apply filter_map_In_iff in U. des.
+      des_ifs. destruct g; ss. des_ifs.
+    - destruct ((PTree_Properties.of_list (filter_map invert_iskdef (prog_defs sk))) ! id) eqn:U.
+      + exploit PTree_Properties.in_of_list; eauto. intro V. clear U. apply filter_map_In_iff in V. des.
+        des_ifs. unfold invert_skdef in *. des_ifs. ss. unfold link_def in *. des_ifs.
+      + clarify.
+        exploit PTree_Properties.in_of_list; eauto. intro V.
+        assert(INV: exists g, invert_iskdef (id, gd) = Some (id, g)).
+        { destruct gd; ss. destruct f; ss. eauto. }
+        des.
+        hexploit (filter_map_In_iff invert_iskdef); eauto. intros [_ Q]. hexploit1 Q; eauto.
+        exploit PTree_Properties.of_list_norepet; try apply Q.
+        { eapply NoDup_norepet. eapply invert_preserves_wf. eapply WF. }
+        intro W; ss. clarify.
+    Local Opaque Linker_prog Linker_def Linker_fundef.
+  Qed.
+
+  Theorem link_invert_full_old
+          sk sk_link
+          (WF: Sk.wf sk)
+          (LINK: link sk (Sk.invert sk) = Some sk_link)
+    :
+      <<FULL: full sk_link>>
+  .
+  Proof.
+    econs. ii.
+    Local Transparent Linker_prog Linker_def Linker_fundef.
+    ss.
+    unfold link_prog in *. des_ifs. simpl_bool. des. des_sumbool. unfold prog_defmap in *. ss.
+    rewrite PTree_Properties.of_list_elements in *.
+    rewrite PTree.gcombine in *; ss.
+    unfold link_prog_merge in *.
+    destruct ((PTree_Properties.of_list (prog_defs sk)) ! id) eqn:T; cycle 1.
+    - exploit PTree_Properties.in_of_list; eauto. intro U. apply filter_map_In_iff in U. des.
+      des_ifs. destruct g; ss. des_ifs.
+    - destruct ((PTree_Properties.of_list (filter_map invert_iskdef (prog_defs sk))) ! id) eqn:U.
+      + exploit PTree_Properties.in_of_list; eauto. intro V. clear U. apply filter_map_In_iff in V. des.
+        des_ifs. unfold invert_skdef in *. des_ifs. ss. unfold link_def in *. des_ifs. ss.
+        unfold LinkingC.link_skfundef in *. des_ifs.
+      + clarify.
+        exploit PTree_Properties.in_of_list; eauto. intro V.
+        assert(INV: exists g, invert_iskdef (id, gd) = Some (id, g)).
+        { destruct gd; ss. destruct f; ss. eauto. }
+        des.
+        hexploit (filter_map_In_iff invert_iskdef); eauto. intros [_ Q]. hexploit1 Q; eauto.
+        exploit PTree_Properties.of_list_norepet; try apply Q.
+        { eapply NoDup_norepet. eapply invert_preserves_wf. eapply WF. }
+        intro W; ss. clarify.
+    Local Opaque Linker_prog Linker_def Linker_fundef.
+  Qed.
 
 End Sk.
 
@@ -563,28 +720,28 @@ I think "sim_skenv_monotone" should be sufficient.
     inv H2. ss. des_ifs. symmetry in H1. eapply DEFS in H1. des. inv MATCH. inv H1. eauto.
   Qed.
 
-  Definition fill_internals (skenv: SkEnv.t): SkEnv.t :=
-    (Genv_map_defs skenv) (fun _ gd => Some
-                                         match gd with
-                                         | Gfun (External ef) => (Gfun (Internal (ef_sig ef)))
-                                         | Gfun _ => gd
-                                         | Gvar gv => gd
-                                         end)
-  .
+  (* Definition fill_internals (skenv: SkEnv.t): SkEnv.t := *)
+  (*   (Genv_map_defs skenv) (fun _ gd => Some *)
+  (*                                        match gd with *)
+  (*                                        | Gfun (External ef) => (Gfun (Internal (ef_sig ef))) *)
+  (*                                        | Gfun _ => gd *)
+  (*                                        | Gvar gv => gd *)
+  (*                                        end) *)
+  (* . *)
 
-  Lemma fill_internals_preserves_wf
-        skenv0 skenv1
-        (WF: wf skenv0)
-        (FILL: (fill_internals skenv0) = skenv1):
-      <<WF: wf skenv1>>.
-  Proof.
-    inv WF. unfold fill_internals. econs; i; ss; eauto.
-    - rewrite Genv_map_defs_symb in *. exploit SYMBDEF; eauto. i; des.
-      hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto. rewrite H0; ss.
-    - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs. exploit DEFSYMB; eauto.
-    - unfold Genv_map_defs, Genv.find_def in *; ss. rewrite PTree_filter_map_spec in DEF.
-      destruct ((Genv.genv_defs skenv0) ! blk) eqn:DMAP; ss. unfold o_bind in DEF; ss. des_ifs; eapply WFPARAM in DMAP; eauto.
-  Qed.
+  (* Lemma fill_internals_preserves_wf *)
+  (*       skenv0 skenv1 *)
+  (*       (WF: wf skenv0) *)
+  (*       (FILL: (fill_internals skenv0) = skenv1): *)
+  (*     <<WF: wf skenv1>>. *)
+  (* Proof. *)
+  (*   inv WF. unfold fill_internals. econs; i; ss; eauto. *)
+  (*   - rewrite Genv_map_defs_symb in *. exploit SYMBDEF; eauto. i; des. *)
+  (*     hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto. rewrite H0; ss. *)
+  (*   - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs. exploit DEFSYMB; eauto. *)
+  (*   - unfold Genv_map_defs, Genv.find_def in *; ss. rewrite PTree_filter_map_spec in DEF. *)
+  (*     destruct ((Genv.genv_defs skenv0) ! blk) eqn:DMAP; ss. unfold o_bind in DEF; ss. des_ifs; eapply WFPARAM in DMAP; eauto. *)
+  (* Qed. *)
 
 End SkEnv.
 

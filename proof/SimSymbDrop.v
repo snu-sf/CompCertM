@@ -1,6 +1,6 @@
 Require Import Events.
 Require Import Values.
-Require Import AST.
+Require Import ASTC.
 Require Import MemoryC.
 Require Import Globalenvs.
 Require Import Smallstep.
@@ -779,14 +779,27 @@ Next Obligation.
   inv SIM. rewrite DEFTGT. esplits; eauto. des_ifs.
 Qed.
 Next Obligation.
-  inv SIMSKENV. unfold System.skenv in *. exists (mk bot1 ss.(src) ss.(tgt)).
-  econs; ii; ss; eauto; try rewrite Genv_map_defs_symb in *; apply_all_once Genv_map_defs_def; eauto.
-  - exploit SIMSYMB1; eauto.
-  - des. exploit SIMDEF; eauto. i; des. clarify.
-    esplits; eauto. eapply Genv_map_defs_def_inv in DEFTGT. rewrite DEFTGT. ss.
-  - des. exploit SIMDEFINV; eauto. i; des. clarify.
-    esplits; eauto. eapply Genv_map_defs_def_inv in DEFSRC. rewrite DEFSRC. ss.
-  - eapply PUBKEPT; eauto.
+  eexists (mk bot1 _ _). ss. esplits; eauto.
+  econs; ii; ss; eauto.
+  - destruct ((prog_defmap (Sk.invert (tgt ss))) ! id) eqn:T1; ss.
+    + rewrite <- Sk.invert_prog_defmap in *; ss. uo. des_ifs_safe.
+      inv SIMSK. rewrite <- KEPT0; ss.
+      { des_ifs. }
+      ii. exploit DROP; eauto. i; clarify.
+    + rewrite <- Sk.invert_prog_defmap in *; ss. uo. des_ifs_safe.
+      inv SIMSK.
+      destruct (classic (ss id)).
+      * exploit DROP; eauto. intro T. rewrite T in *.
+        unfold invert_skdef. des_ifs. exfalso.
+        eapply CLOSED in H.
+        unfold privs in H. simpl_bool. des.
+        unfold defs in *. unfold NW in *. simpl_bool. des_sumbool.
+        exploit prog_defmap_dom; eauto. i; des. clarify.
+        admit "external (and non-definitive-initializer maybe?) is always prog_public".
+      * rewrite <- KEPT0 in *; ss.
+        { des_ifs. }
+  - inv SIMSK; ss.
+  - eapply Sk.invert_preserves_wf; eauto.
 Qed.
 Next Obligation.
   inv ARGS; ss. destruct sm0; ss. inv MWF; ss. clarify.

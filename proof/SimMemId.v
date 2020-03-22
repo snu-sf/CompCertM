@@ -78,7 +78,7 @@ Next Obligation.
 Qed.
 Next Obligation. eapply SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto. Qed.
 Next Obligation. eapply SimSymbId.sim_skenv_func_bisim; eauto. Qed.
-Next Obligation. esplits; eauto. eapply SimSymbId.system_sim_skenv; eauto. Qed.
+Next Obligation. eapply SimSymbId.system_wf; et. Qed.
 Next Obligation.
   inv ARGS; ss. clarify. destruct sm0; ss. clarify.
   destruct retv_src; ss.

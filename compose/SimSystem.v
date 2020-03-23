@@ -32,8 +32,8 @@ Section SIM.
   (* Hypothesis (SKTGT: link_sk p_tgt = Some (SimSymb.tgt ss_link)). *)
 
   Theorem sim_system: exists mp,
-      (<<SYSSRC: mp.(ModPair.src) = (System.module ss_link.(SimSymb.src))>>) /\
-      (<<SYSTGT: mp.(ModPair.tgt) = (System.module ss_link.(SimSymb.tgt))>>) /\
+      (<<SYSSRC: mp.(ModPair.src) = (System.module (Some ss_link.(SimSymb.src)))>>) /\
+      (<<SYSTGT: mp.(ModPair.tgt) = (System.module (Some ss_link.(SimSymb.tgt)))>>) /\
       (<<SYSSIM: ModPair.sim mp>>)
   .
   Proof.

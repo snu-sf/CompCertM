@@ -32,6 +32,9 @@ Section ADQSOUND.
   Hypothesis (WFSKSRC: forall md (IN: In md p_src), <<WF: Sk.wf md>>).
   Hypothesis (WFSKTGT: forall md (IN: In md p_tgt), <<WF: Sk.wf md>>).
 
+  Variable _sk_link_src _sk_link_tgt: Sk.t.
+  Hypothesis _LINKSRC: link_list (map Mod.sk p_src) = Some _sk_link_src.
+  Hypothesis _LINKTGT: link_list (map Mod.sk p_tgt) = Some _sk_link_tgt.
   Variable sk_link_src sk_link_tgt: Sk.t.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
   Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
@@ -48,8 +51,8 @@ Section ADQSOUND.
   Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt)).
   Hypothesis SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link.
 
-  Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_list_preserves_wf_sk; et. Qed.
-  Let WFSKLINKTGT: Sk.wf sk_link_tgt. eapply link_list_preserves_wf_sk; et. Qed.
+  Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_sk_preserves_wf_sk; et. Qed.
+  Let WFSKLINKTGT: Sk.wf sk_link_tgt. eapply link_sk_preserves_wf_sk; et. Qed.
 
   (* Let ge: Ge.t := sem_src.(Smallstep.globalenv). *)
 
@@ -156,14 +159,22 @@ Section ADQSOUND.
         (INIT: sem_src.(Smallstep.initial_state) st0):
     <<SU: sound_state st0>>.
   Proof.
-    inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt LINKTGT INCLTGT WFSKTGT SIMSKENV.
+    inv INIT. clarify. clear skenv_link_tgt p_tgt skenv_link_tgt sem_tgt _LINKTGT LINKTGT INCLTGT WFSKTGT SIMSKENV.
     hexploit Sound.init_spec; eauto. i; des. esplits; eauto.
     assert(WFSKE: SkEnv.wf (Sk.load_skenv sk_link_src)).
     { eapply SkEnv.load_skenv_wf; et. }
     assert(GE: sound_ge su_init m_init).
     { econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
       rewrite in_map_iff in IN. des; ss; clarify.
-      + s. split; try eapply Sound.system_skenv; eauto.
+      + set (x0 := System.module (link_list (map Mod.sk p_src))). ss.
+        ss.
+        assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk x0)).
+        { admit "somehow". }
+        ss. des_ifs.
+        split; ss.
+        * eapply Sound.skenv_project; eauto.
+          { admit "". }
+          unfold System.skenv. fold Mod.sk. des_ifs. eapply SkEnv.project_impl_spec; et.
       + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk x0)).
         { unfold p_src in IN0. unfold ProgPair.src in *. rewrite in_map_iff in IN0. des. clarify. eapply INCLSRC; et. }
         split; ss.

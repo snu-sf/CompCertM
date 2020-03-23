@@ -710,6 +710,8 @@ Next Obligation.
     }
 Qed.
 Next Obligation.
+  destruct sk_link; cycle 1; ss.
+  { }
   set (Sk.load_skenv sk_link) as skenv_link.
   assert(BC: (ske2bc (System.skenv sk_link skenv_link)) = (ske2bc skenv_link)).
   { apply bc_eta. i. ss. des_ifs_safe. }

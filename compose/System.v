@@ -16,7 +16,7 @@ Local Obligation Tactic := ii; des; ss; all_prop_inv; ss.
 
 Section SYSMODSEM.
 
-  Variable sk_link: Sk.t.
+  Variable sk_link: option Sk.t.
   (* Let skenv_link := Sk.load_skenv sk_link. *)
   Variable skenv_link: SkEnv.t.
 
@@ -24,7 +24,10 @@ Section SYSMODSEM.
 
   Definition globalenv: genvtype := skenv_link.
 
-  Definition skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.invert sk_link).
+  Definition skenv: SkEnv.t := match sk_link with
+                               | Some sk_link => (SkEnv.project skenv_link) (Sk.invert sk_link)
+                               | _ => SkEnv.project skenv_link Sk.empty 
+                               end.
 
   Inductive state: Type :=
   | Callstate
@@ -87,6 +90,10 @@ Section SYSMODSEM.
 
 End SYSMODSEM.
 
-Program Definition module (sk_link: Sk.t): Mod.t :=
-  {| Mod.data := unit; Mod.get_sk := fun _ => Sk.invert sk_link;
+Program Definition module (sk_link: option Sk.t): Mod.t :=
+  {| Mod.data := unit; Mod.get_sk := fun _ => match sk_link with
+                                              | Some sk_link => Sk.invert sk_link
+                                              | _ => Sk.empty
+                                              end;
      Mod.get_modsem := fun skenv_link _ => @modsem sk_link skenv_link; |}.
+Next Obligation. des_ifs. Qed.

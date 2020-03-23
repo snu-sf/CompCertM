@@ -94,18 +94,16 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 
 Section SEMANTICS.
 
-  Variable _p: program.
+  Variable p: program.
 
-  Let op: option program := o_map (link_list (List.map Mod.sk _p))
-                                  (fun sk_link => System.module sk_link :: _p).
+  Definition p_sys: program := System.module (link_list (List.map Mod.sk p)) :: p.
 
-  Definition link_sk: option Sk.t := do p <- op ; link_list (List.map Mod.sk p).
+  Definition link_sk: option Sk.t := link_list (List.map Mod.sk p_sys).
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
   Inductive initial_state: state -> Prop :=
   | initial_state_intro
-      p sk_link skenv_link m_init fptr_init
-      (SYSSOME: op = Some p)
+      sk_link skenv_link m_init fptr_init
       (INITSK: link_sk = Some sk_link)
       (INITSKENV: (Sk.load_skenv sk_link) = skenv_link)
       (INITMEM: (Sk.load_mem sk_link) = Some m_init)
@@ -123,20 +121,20 @@ Section SEMANTICS.
 
   (* Definition load_modsems (skenv: SkEnv.t): list ModSem.t := List.map ((flip Mod.modsem) skenv) p. *)
 
-  Definition load_genv (p: program) (init_skenv: SkEnv.t): Ge.t :=
-    (List.map ((flip Mod.modsem) init_skenv) p, init_skenv)
+  Definition load_genv (init_skenv: SkEnv.t): Ge.t :=
+    (List.map ((flip Mod.modsem) init_skenv) p_sys, init_skenv)
   .
 
   Definition sem: semantics :=
     (Semantics_gen (fun _ => step) initial_state final_state
-                   (match op, link_sk with
-                    | Some p, Some sk_link => load_genv p (Sk.load_skenv sk_link)
-                    | _, _ => (nil, SkEnv.empty)
+                   (match link_sk with
+                    | Some sk_link => load_genv (Sk.load_skenv sk_link)
+                    | _ => (nil, SkEnv.empty)
                     end)
                    (* NOTE: The symbolenv here is never actually evoked in our semantics. Putting this value is merely for our convenience. (lifting receptive/determinate) Whole proof should be sound even if we put dummy data here. *)
-                   (match op, link_sk with
-                    | Some p, Some sk_link => (Sk.load_skenv sk_link)
-                    | _, _ => SkEnv.empty
+                   (match link_sk with
+                    | Some sk_link => (Sk.load_skenv sk_link)
+                    | _ => SkEnv.empty
                     end)).
   (* Note: I don't want to make it option type. If it is option type, there is a problem. *)
   (* I have to state this way:

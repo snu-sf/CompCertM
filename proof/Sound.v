@@ -114,7 +114,7 @@ Module Sound.
         <<SKE: su.(skenv) m0 skenv0>>;
 
     system_skenv: forall su m0 sk_link skenv_link
-        (LOAD: Sk.load_skenv sk_link = skenv_link)
+        (* (LOAD: Sk.load_skenv sk_link = skenv_link) *)
         (SKELINK: su.(skenv) m0 skenv_link),
          <<SKESYS: su.(skenv) m0 (System.skenv sk_link skenv_link)>>;
 

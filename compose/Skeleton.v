@@ -184,8 +184,6 @@ Module Sk.
     rewrite ! prog_defmap_update_snd. rewrite EQ. ss.
   Qed.
 
-  Definition empty: t := (mkprogram [] [] 1%positive).
-
   Definition get_csig (skdef: (AST.fundef signature)): option signature :=
     match skdef with
     | Internal sg0 =>
@@ -214,6 +212,17 @@ Module Sk.
       (WFPARAM: forall id skd
           (IN: In (id, (Gfun skd)) sk.(prog_defs)),
           4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned).
+
+  Definition empty: t := (mkprogram [] [] 1%positive).
+
+  Lemma empty_wf
+    :
+      <<WF: Sk.wf Sk.empty>>
+  .
+  Proof.
+    econs; ss; eauto.
+    econs; eauto.
+  Qed.
 
   Definition invert (sk: Sk.t): Sk.t :=
     mkprogram

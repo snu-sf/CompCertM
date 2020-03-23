@@ -35,19 +35,17 @@ Qed.
 
 
 Lemma link_includes
-      p _sk_link sk_link
-      (LINK0: link_list (map Mod.sk p) = Some _sk_link)
-      (LINK1: link_sk p = Some sk_link)
+      p sk_link
+      (LINK: link_sk p = Some sk_link)
       md
-      (IN: In md ((System.module _sk_link) :: p)):
+      (IN: In md (p_sys p)):
     SkEnv.includes (Sk.load_skenv sk_link) (Mod.sk md).
 Proof.
-  unfold link_sk in *.
-  uo. des_ifs.
+  unfold link_sk in *. unfold p_sys in *.
   (* TODO: can we remove `_ LINK` ? *)
   (* Arguments link_list_linkorder [_]. *)
   (* Arguments link_list_linkorder: default implicits. *)
-  hexploit (link_list_linkorder _ H0); et. intro LOS; des.
+  hexploit (link_list_linkorder _ LINK); et. intro LOS; des.
   rewrite Forall_forall in *. exploit (LOS md); et.
   { rewrite in_map_iff. esplits; et. }
   intro LO.
@@ -181,7 +179,7 @@ Proof.
       eapply WFPARAM; eauto. eapply in_prog_defmap; eauto.
 Qed.
 
-Theorem link_list_preserves_wf_sk_aux
+Theorem link_list_preserves_wf_sk
         p sk_link
         (LINK: link_list (map Mod.sk p) = Some sk_link)
         (WFSK: forall md, In md p -> <<WF: Sk.wf md >>):
@@ -195,18 +193,19 @@ Proof.
   i; des. eapply (@link_preserves_wf_sk hd tl); et. eapply WFSK; et.
 Qed.
 
-Theorem link_list_preserves_wf_sk
+Theorem link_sk_preserves_wf_sk
         p sk_link
         (LINK1: link_sk p = Some sk_link)
         (WFSK: forall md, In md p -> <<WF: Sk.wf md>>):
     <<WF: Sk.wf sk_link>>.
 Proof.
   unfold link_sk in *. uo. des_ifs.
-  eapply link_list_preserves_wf_sk_aux; eauto.
+  eapply link_list_preserves_wf_sk; eauto.
   ii; ss.
-  des; clarify; eauto.
+  des; clarify; eauto. ss. des_ifs; cycle 1.
+  { eapply Sk.empty_wf. }
   eapply Sk.invert_preserves_wf; eauto.
-  eapply link_list_preserves_wf_sk_aux; eauto.
+  eapply link_list_preserves_wf_sk; eauto.
 Qed.
 
 Theorem link_sk_full
@@ -217,11 +216,18 @@ Theorem link_sk_full
     <<FULL: Sk.full sk_link>>
 .
 Proof.
-  unfold link_sk in *. uo. des_ifs.
-  exploit link_list_preserves_wf_sk_aux; try apply Heq; eauto. intro T; des.
-  destruct p; ss.
-  eapply link_list_cons_inv in H0; ss. des. clarify.
+  (* exploit link_list_preserves_wf_sk; eauto. intro WF; des. *)
+  destruct (classic (p = nil)).
+  { unfold link_sk in *. ss. unfold link_list in *. des_ifs. ss. clarify.
+    econs; eauto. ii. ss. unfold Sk.empty in *. unfold prog_defmap in *. ss.
+    hexpl PTree_Properties.in_of_list.
+  }
+  unfold link_sk, p_sys in *. ss. des_ifs; cycle 1.
+  { exfalso. exploit (link_list_cons_inv _ LINK); eauto. { destruct p; ss. } i; des. clarify. }
+  (* exploit link_list_preserves_wf_sk_aux; try apply Heq; eauto. intro T; des. *)
+  eapply link_list_cons_inv in LINK; ss; cycle 1. { destruct p; ss. } des. clarify.
   exploit (@Sk.link_invert_full t); eauto.
+  eapply link_list_preserves_wf_sk; eauto.
 Qed.
 
 
@@ -327,17 +333,17 @@ Section INITDTM.
   Variable p: program.
   Hypothesis (WFSK: forall md (IN: In md p), <<WF: Sk.wf md>>).
   Let sem := Sem.sem p.
-  Variable sk_link: Sk.t.
+  Variable _sk_link sk_link: Sk.t.
+  Hypothesis (_SKLINK: (link_list (map Mod.sk p)) = Some _sk_link).
   Hypothesis (SKLINK: link_sk p = Some sk_link).
   (* Let FULL: Sk.full sk_link. eapply link_sk_full; eauto. Qed. *)
-  Let SKWF: Sk.wf sk_link. eapply link_list_preserves_wf_sk; eauto. Qed.
+  Let SKWF: Sk.wf sk_link. eapply link_sk_preserves_wf_sk; eauto. Qed.
 
   Lemma system_disjoint
-        skenv_link sys_def fptr md md_def _sk_link
-        (LINK: link_list (List.map Mod.sk p) = Some _sk_link)
+        skenv_link sys_def fptr md md_def
         (LOAD: Sk.load_skenv sk_link = skenv_link)
         (WFBIG: SkEnv.wf skenv_link)
-        (SYSTEM: Genv.find_funct (System.skenv _sk_link skenv_link) fptr = Some (Internal sys_def))
+        (SYSTEM: Genv.find_funct (System.skenv (Some _sk_link) skenv_link) fptr = Some (Internal sys_def))
         (MOD: In md p)
         (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
                  Some (Internal md_def))
@@ -371,8 +377,8 @@ Section INITDTM.
     clear_tac.
     assert(P: exists fd, (prog_defmap _sk_link) ! id = Some (Gfun (Internal fd))).
     {
-      clear - PROG0 MOD LINK.
-      hexploit (link_list_linkorder _ LINK); eauto. intro T; des.
+      clear - PROG0 MOD _SKLINK.
+      hexploit (link_list_linkorder _ _SKLINK); eauto. intro T; des.
       rewrite Forall_forall in *.
       exploit T; try apply MOD. { rewrite in_map_iff. esplits; eauto. } clear T. intro T; des.
       ss. des. exploit T1; eauto. i; des. inv H0; ss. inv H3; ss. eauto.
@@ -380,15 +386,16 @@ Section INITDTM.
     assert(Q: exists fd, (prog_defmap (Sk.invert _sk_link)) ! id = Some (Gfun (Internal fd))).
     { exploit Genv.find_def_symbol; eauto. }
     assert(SKWF2: Sk.wf _sk_link).
-    { eapply link_list_preserves_wf_sk_aux; eauto. }
-    clear - P Q SKWF2 LINK SKLINK.
+    { eapply link_list_preserves_wf_sk; eauto. }
+    clear - P Q SKWF2 _SKLINK SKLINK.
     des.
     { apply_all_once in_prog_defmap.
       apply filter_map_In_iff in Q. des. destruct a; ss.
       des_ifs. destruct g; ss. des_ifs.
       unfold link_sk in *. uo. des_ifs. ss.
       destruct p; ss.
-      eapply link_list_cons_inv in H0; ss. des. clarify.
+      des_ifs.
+      eapply link_list_cons_inv in SKLINK; ss. destruct SKLINK. des. clarify.
       eapply NoDup_pigeonhole; try apply SKWF2.
       { apply P. }  { apply IN. } { ii; clarify. } { ss. }
     }
@@ -400,19 +407,20 @@ Section INITDTM.
   Proof.
     ss. rewrite SKLINK.
     assert(WFBIG: (Sk.load_skenv sk_link).(SkEnv.wf)).
-    { eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; et. }
+    { eapply SkEnv.load_skenv_wf. eapply link_sk_preserves_wf_sk; et. }
     econs; eauto. ii; ss. inv FIND0; inv FIND1.
     uo. des_ifs.
-    generalize (link_includes Heq0 SKLINK). intro INCLS.
+    generalize (link_includes SKLINK). intro INCLS.
     unfold Sk.load_skenv in *. unfold load_genv in *. des_ifs. ss.
     (* abstr (Genv.globalenv sk_link) skenv_link. *)
     set (Genv.globalenv sk_link) as skenv_link in *.
-    rewrite in_map_iff in *. u in *. destruct MODSEM.
+    rewrite in_map_iff in *.
+     rewrite _SKLINK in *.
+    destruct MODSEM.
     { clarify. des; ss. exfalso. clarify. eapply system_disjoint; eauto. }
     des; ss.
     { clarify. ss. exfalso. eapply system_disjoint; eauto. }
     des_ifs.
-    rename Heq into _SKLINK. rename H1 into SKLINK.
 
     rename x into md0. rename x0 into md1. clarify.
     destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs.
@@ -893,19 +901,11 @@ Proof.
   econs. i. unfold link_sk in *.
   hexploit (link_list_linkorder _ LINK); et. intro LO. des.
   rewrite Forall_forall in *. exploit LO; et.
-  { rewrite in_map_iff. esplits; et. }
+  { rewrite in_map_iff. esplits; et. right; et. }
   clear LO. intro LO.
-  exploit WF; et. clear WF. intro WF; des.
   assert(NODUP: NoDup (prog_defs_names sk_link)).
-  { clear - LINK IN WF. destruct p; ss. destruct p; ss.
-    - des; ss. clarify. unfold link_list in *. des_ifs. ss. clarify. apply WF.
-    - clear IN WF.
-      exploit (link_list_cons_inv _ LINK); et.
-      { ss. }
-      i; des. clear - HD.
-      Local Transparent Linker_prog. ss. Local Opaque Linker_prog.
-      unfold link_prog in *. des_ifs. apply NoDup_norepet. unfold prog_defs_names. apply PTree.elements_keys_norepet.
-  }
+  { eapply link_sk_preserves_wf_sk; eauto. }
+  exploit WF; et. clear WF. intro WF; des.
   clear LINK IN.
 
 

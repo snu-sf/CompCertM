@@ -30,9 +30,15 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Definition t := list ModPair.t.
 
   Definition sim (pp: t) := List.Forall ModPair.sim pp.
-
   Definition src (pp: t): program := List.map ModPair.src pp.
   Definition tgt (pp: t): program := List.map ModPair.tgt pp.
+
+  Definition simU (pp: t) := exists ppu,
+      (<<SRC: src ppu = p_sys (src pp)>>) /\
+      (<<TGT: tgt ppu = p_sys (tgt pp)>>) /\
+      (<<SIM: sim ppu>>)
+  .
+
 
   (* Definition ss_link (pp: t): option SimSymb.t := link_list (List.map ModPair.ss pp). *)
   (* ############ TODO: *)
@@ -63,10 +69,10 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Theorem sim_link_sk
           sk_link_src
-          (LOADSRC: (link_sk p_src) = Some sk_link_src)
+          (LOADSRC: (link_list (map Mod.sk p_src)) = Some sk_link_src)
           (WF: forall md, In md p_src -> <<WF: Sk.wf md>>):
       exists ss_link sk_link_tgt,
-        <<LOADTGT: (link_sk p_tgt) = Some sk_link_tgt>>
+        <<LOADTGT: (link_list (map Mod.sk p_tgt)) = Some sk_link_tgt>>
         /\ <<SIMSK: SimSymb.wf ss_link>>
         /\ <<SKSRC: ss_link.(SimSymb.src) = sk_link_src>>
         /\ <<SKTGT: ss_link.(SimSymb.tgt) = sk_link_tgt>>

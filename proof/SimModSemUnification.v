@@ -295,6 +295,23 @@ Section SimMemOhUnify.
 
   End SETSMO.
 
+  Record sm_match {SMO: SimMemOh.class} (midx: Midx.t) (smo: SimMemOh.t) (smos: SimMemOhs.t): Prop :=
+    (* TODO: I want to remove @ *)
+    { smeq: (smos.(SimMemOhs.sm) = smo.(SimMemOh.sm));
+      smnth: midx <> 0%nat -> nth_error smos.(anys) (pred midx) = Some (upcast smo);
+      ohsrc: (smos.(SimMemOhs.ohs_src) midx) = smo.(SimMemOh.oh_src);
+      ohtgt: (smos.(SimMemOhs.ohs_tgt) midx) = smo.(SimMemOh.oh_tgt);
+      (* oh_src: {oh: Type & oh}; *)
+      (* oh_tgt: {oh: Type & oh}; *)
+      (* OHSRC: (nth_error smos.(SimMemOhs.ohs_src) (msp.(ModSemPair.src).(midx))) = Some oh_src; *)
+      (* OHTGT: (nth_error smos.(SimMemOhs.ohs_tgt) (msp.(ModSemPair.tgt).(midx))) = Some oh_tgt; *)
+      (* ohsrcty: (projT1 oh_src) = msp.(ModSemPair.src).(owned_heap); *)
+      (* ohtgtty: (projT1 oh_tgt) = msp.(ModSemPair.tgt).(owned_heap); *)
+      (* ohsrc: (projT2 oh_src ~= smo.(SimMemOh.oh_src)); *)
+      (* ohtgt: (projT2 oh_tgt ~= smo.(SimMemOh.oh_tgt)) *)
+    }
+  .
+
   Theorem respects
     :
       exists SMOS, forall n mp (NTH: nth_error pp n = Some mp),
@@ -303,10 +320,12 @@ Section SimMemOhUnify.
   Proof.
     exists SimMemOhs_intro.
     ii.
-    econs; ss; eauto.
+    econstructor 1 with (sm_match_strong := sm_match (S n)); ss; eauto.
+    - ii. inv PR. econs; eauto.
     - ii. exploit (WTY2 smos); et. i; des. exists smo0. esplits; eauto.
       + econs; ss; eauto.
         * inv MWF; ss. exploit WFSMO; et. i; des; ss.
+        * ii; ss. rewrite NTH0. f_equal. eapply upcast_downcast_iff; eauto.
         * des_ifs.
         * des_ifs.
       + inv MWF. eapply WFSMO; et.
@@ -330,8 +349,14 @@ Section SimMemOhUnify.
           des_ifs.
           { rewrite upcast_downcast in *. clarify.
             assert(smo0 = smo2).
-            { admit "". }
+            { exploit SMMATCH.(smnth); ss. intro T. clarify. rewrite upcast_downcast in *. clarify. }
             clarify.
+          }
+          rewrite upcast_downcast in *. clarify.
+          eapply SimMemOh.set_sm_le; eauto.
+          assert(smo0.(SimMemOh.sm) = smo2).
+          { exploit SMMATCH.(smnth); ss. intro T. clarify. rewrite upcast_downcast in *. clarify. }
+          clarify.
   Qed
 
 End SimMemOhUnify.

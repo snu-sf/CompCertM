@@ -276,8 +276,14 @@ Module _ModSemPair := SimModSem.ModSemPair.
 (*     (projT2 (smos.(SimMemOhs.ohs_tgt) (msp.(ModSemPair.src).(midx))) *)
 (*             ~= smo.(SimMemOh.oh_tgt)) *)
 (* . *)
-Record sm_match `{SMO: SimMemOh.class} (midx: Midx.t) {SMOS: SimMemOhs.class}
-  (smo: SimMemOh.t) (smos: SimMemOhs.t): Prop :=
+Section RESPECTS.
+
+(* Context `{SMO: SimMemOh.class} {SMOS: SimMemOhs.class}. *)
+Variable (SM: SimMem.class).
+Variable (SMO: SimMemOh.class).
+Variable (midx: Midx.t).
+Variable (SMOS: SimMemOhs.class).
+Record sm_match (smo: SimMemOh.t) (smos: SimMemOhs.t): Prop :=
   (* TODO: I want to remove @ *)
   { smeq: (smos.(SimMemOhs.sm) = smo.(SimMemOh.sm));
     ohsrc: (smos.(SimMemOhs.ohs_src) midx) = smo.(SimMemOh.oh_src);
@@ -293,19 +299,21 @@ Record sm_match `{SMO: SimMemOh.class} (midx: Midx.t) {SMOS: SimMemOhs.class}
 }
 .
 
-Inductive respects `(SMO: SimMemOh.class) (midx: Midx.t) (SMOS: SimMemOhs.class): Prop :=
+Inductive respects: Prop :=
 | respects_intro
+    sm_match_strong
+    (STRONG: @sm_match_strong <2= @sm_match)
     (SMPROJ: forall smos (MWF: SimMemOhs.wf smos),
-        exists smo, (<<SMMATCH: sm_match midx smo smos>>) /\ (<<SMWF: SimMemOh.wf smo>>)
+        exists smo, (<<SMMATCH: sm_match_strong smo smos>>) /\ (<<SMWF: SimMemOh.wf smo>>)
     )
     (SMSIM: forall (smos0: SimMemOhs.t)
                    (smo0 smo1: SimMemOh.t)
                    (LE: SimMemOh.le smo0 smo1)
-                   (SMMATCH: sm_match midx smo0 smos0)
+                   (SMMATCH: sm_match_strong smo0 smos0)
                    (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0)
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
-                      /\ (<<SMMATCH: sm_match midx smo1 smos1>>)
+                      /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
                       /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
                       /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx),
                              SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
@@ -314,12 +322,12 @@ Inductive respects `(SMO: SimMemOh.class) (midx: Midx.t) (SMOS: SimMemOhs.class)
     )
     (SMSIMPRIV: forall (smos0: SimMemOhs.t)
                        (smo0 smo1: SimMemOh.t)
-                       (SMMATCH: sm_match midx smo0 smos0)
+                       (SMMATCH: sm_match_strong smo0 smos0)
                        (LE: SimMemOh.lepriv smo0 smo1)
                        (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0)
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
-                      /\ (<<SMMATCH: sm_match midx smo1 smos1>>)
+                      /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
                       /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
                       /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx),
                              SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
@@ -327,13 +335,15 @@ Inductive respects `(SMO: SimMemOh.class) (midx: Midx.t) (SMOS: SimMemOhs.class)
                              SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
     )
     (SMMATCHLE: forall smo0 smo1 smos0 smos1
-                       (SMMATCH0: sm_match midx smo0 smos0)
-                       (SMMATCH1: sm_match midx smo1 smos1)
+                       (SMMATCH0: sm_match_strong smo0 smos0)
+                       (SMMATCH1: sm_match_strong smo1 smos1)
                        (SMLE: SimMemOhs.le smos0 smos1)
       ,
         <<SMLE: SimMemOh.le smo0 smo1>>
     )
 .
+
+End RESPECTS.
 
 
 Theorem fundamental_theorem
@@ -401,16 +411,17 @@ Proof.
   split; ss.
   - ii.
     assert(OHSRC0: downcast (SimMemOh.oh_src sm_arg_proj) = Some oh_src).
-    { clear - MIDX SIMARGS OHSRC SMMATCH.
+    { clear - STRONG MIDX SIMARGS OHSRC SMMATCH.
       rewrite <- OHSRC.
       f_equal. rr in SIMARGS. des; ss. clarify.
       erewrite ohsrc; eauto with congruence.
     }
     assert(OHTGT0: downcast (SimMemOh.oh_tgt sm_arg_proj) = Some oh_tgt).
-    { clear - MIDX SIMARGS OHTGT SMMATCH.
+    { clear - STRONG MIDX SIMARGS OHTGT SMMATCH.
       rewrite <- OHTGT.
       f_equal. rr in SIMARGS. des; ss. clarify.
       erewrite ohtgt; eauto with congruence.
+      rewrite <- MIDX. eauto.
     }
 
 
@@ -419,7 +430,7 @@ Proof.
     exploit (SMSIM sm_arg); eauto. i; des.
     exists st_init_src. esplits; eauto.
     instantiate (1:= idx_init).
-    clear - SIM SMSIM SMSIMPRIV SMPROJ SMMATCH0 SMMATCHLE MIDX WFWF OHSRC0 OHTGT0.
+    clear - SIM STRONG SMSIM SMSIMPRIV SMPROJ SMMATCH0 SMMATCHLE MIDX WFWF OHSRC0 OHTGT0.
     rename sm_init into smo0. rename smos1 into smos0.
     rename st_init_src into st_src0. rename st_init_tgt into st_tgt0.
     (* assert(WF: SimMemOhs.wf smos0). *)
@@ -452,6 +463,7 @@ Proof.
         }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
           rewrite OHTGT. erewrite ohtgt; eauto with congruence.
+          rewrite <- MIDX. eauto.
         }
       * i. hexploit (SMPROJ smos_ret); eauto. intro T; des.
         exploit K.
@@ -475,7 +487,7 @@ Proof.
         { rewrite OHSRC. erewrite ohsrc; eauto with congruence. }
         erewrite UNCHSRC; eauto with congruence.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
-        { rewrite OHTGT. erewrite ohtgt; eauto with congruence. }
+        { rewrite OHTGT. erewrite ohtgt; eauto with congruence. rewrite <- MIDX. eauto. }
         erewrite UNCHTGT; eauto with congruence.
       * rr. esplits; eauto. erewrite smeq; eauto.
 Qed.

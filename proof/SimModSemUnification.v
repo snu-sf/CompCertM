@@ -25,6 +25,20 @@ Set Implicit Arguments.
 
 
 
+(*********** TODO: move to Midx module ************)
+(*********** TODO: move to Midx module ************)
+(*********** TODO: move to Midx module ************)
+Lemma mapi_aux_length
+      A B (f: Midx.t -> A -> B) m la
+  :
+    <<LEN: length (Midx.mapi_aux f m la) = length la>>
+.
+Proof.
+  ginduction la; ii; ss.
+  erewrite IHla; eauto.
+Qed.
+
+
 
 Module SimMemOhUnify.
 Section SimMemOhUnify.
@@ -35,9 +49,9 @@ Section SimMemOhUnify.
 
   Record t: Type := mk {
     sm:> SimMem.t;
-    smos: list Any;
-    LEN: <<LEN: length smos = length pp>>;
-    WTY: forall n mp a0 (NTH: nth_error pp n = Some mp) (NTH: nth_error smos n = Some a0),
+    anys: list Any;
+    LEN: <<LEN: length anys = length pp>>;
+    WTY: forall n mp a0 (NTH: nth_error pp n = Some mp) (NTH: nth_error anys n = Some a0),
          exists smo0, <<DOWNCAST: @downcast (SimMemOh.t (class := mp.(ModPair.SMO))) a0 = Some smo0>>;
   }.
 
@@ -45,14 +59,43 @@ Section SimMemOhUnify.
         smos0 n mp
         (NTH: nth_error pp n = Some mp)
     :
-      exists a0 smo0, (<<NTH: nth_error smos0.(smos) n = Some a0>>) /\
+      exists a0 smo0, (<<NTH: nth_error smos0.(anys) n = Some a0>>) /\
                       (<<DOWNCAST: @downcast (SimMemOh.t (class := mp.(ModPair.SMO))) a0 = Some smo0>>)
   .
   Proof.
-    destruct (nth_error smos0.(smos) n) eqn:T.
+    destruct (nth_error smos0.(anys) n) eqn:T.
     - exploit WTY; eauto. i; des. esplits; eauto.
     - exfalso. eapply nth_error_None in T. exploit nth_error_Some; eauto. rewrite NTH.
       i; des. exploit H; ss; et. intro U. rewrite LEN in *. xomega.
+  Qed.
+
+  Program Definition set_sm (smos0: t) (sm0: SimMem.t): t :=
+    mk
+      sm0
+      (Midx.mapi_aux (fun n a0 =>
+                        match nth_error pp n with
+                        | Some mp =>
+                          match @downcast (SimMemOh.t (class := mp.(ModPair.SMO))) a0 with
+                          | Some smo0 => upcast ((SimMemOh.set_sm smo0 sm0): SimMemOh.t)
+                          | _ => upcast tt
+                          end
+                        | _ => upcast tt
+                        end
+                     ) 0%nat (smos0.(anys)))
+      _
+      _
+  .
+  Next Obligation.
+    erewrite <- (smos0.(LEN)). rewrite mapi_aux_length. ss.
+  Qed.
+  Next Obligation.
+    rewrite Midx.nth_error_mapi_aux_iff in *. des.
+    ss. des_ifs_safe.
+    destruct (downcast a) eqn:T.
+    - unfold upcast in *. simpl_depind.
+      des_ifs. unfold eq_rect_r.
+      erewrite <- eq_rect_eq; eauto.
+    - exfalso. exploit smos0.(WTY); eauto. i; des. clarify.
   Qed.
 
   Inductive le (smos0 smos1: t): Prop :=
@@ -61,8 +104,8 @@ Section SimMemOhUnify.
       (LESMO: forall
           n a0 a1 mp (smo0 smo1: SimMemOh.t (class := mp.(ModPair.SMO)))
           (NTH: nth_error pp n = Some mp)
-          (NTH: nth_error smos0.(smos) n = Some a0)
-          (NTH: nth_error smos1.(smos) n = Some a1)
+          (NTH: nth_error smos0.(anys) n = Some a0)
+          (NTH: nth_error smos1.(anys) n = Some a1)
           (CAST: downcast a0 = Some smo0)
           (CAST: downcast a1 = Some smo1)
         ,
@@ -76,8 +119,8 @@ Section SimMemOhUnify.
       (LEPRIVSMO: forall
           n a0 a1 mp (smo0 smo1: SimMemOh.t (class := mp.(ModPair.SMO)))
           (NTH: nth_error pp n = Some mp)
-          (NTH: nth_error smos0.(smos) n = Some a0)
-          (NTH: nth_error smos1.(smos) n = Some a1)
+          (NTH: nth_error smos0.(anys) n = Some a0)
+          (NTH: nth_error smos1.(anys) n = Some a1)
           (CAST: downcast a0 = Some smo0)
           (CAST: downcast a1 = Some smo1)
         ,
@@ -91,7 +134,7 @@ Section SimMemOhUnify.
       (WFSMO: forall
           n a0 mp (smo0: SimMemOh.t (class := mp.(ModPair.SMO)))
           (NTH: nth_error pp n = Some mp)
-          (NTH: nth_error smos0.(smos) n = Some a0)
+          (NTH: nth_error smos0.(anys) n = Some a0)
           (CAST: downcast a0 = Some smo0)
         ,
           (<<WFSMO: SimMemOh.wf (class := mp.(ModPair.SMO)) smo0>>)
@@ -102,27 +145,83 @@ Section SimMemOhUnify.
 
   Definition ohs_src (smos0: t): Sem.Ohs :=
     fun mi =>
-      match nth_error pp mi, nth_error smos0.(smos) mi with
-      | Some mp, Some a0 =>
-        match @downcast (SimMemOh.t (class := mp.(ModPair.SMO))) a0 with
-        | Some smo0 => SimMemOh.oh_src smo0
-        | _ => upcast tt
+      match mi with
+      | O => upcast tt (* system *)
+      | S mi =>
+        match nth_error pp mi, nth_error smos0.(anys) mi with
+        | Some mp, Some a0 =>
+          match @downcast (SimMemOh.t (class := mp.(ModPair.SMO))) a0 with
+          | Some smo0 => SimMemOh.oh_src smo0
+          | _ => upcast tt
+          end
+        | _, _ => upcast tt
         end
-      | _, _ => upcast tt
       end
   .
 
   Definition ohs_tgt (smos0: t): Sem.Ohs :=
     fun mi =>
-      match nth_error pp mi, nth_error smos0.(smos) mi with
-      | Some mp, Some a0 =>
-        match @downcast (SimMemOh.t (class := mp.(ModPair.SMO))) a0 with
-        | Some smo0 => SimMemOh.oh_tgt smo0
-        | _ => upcast tt
+      match mi with
+      | O => upcast tt (* system *)
+      | S mi =>
+        match nth_error pp mi, nth_error smos0.(anys) mi with
+        | Some mp, Some a0 =>
+          match @downcast (SimMemOh.t (class := mp.(ModPair.SMO))) a0 with
+          | Some smo0 => SimMemOh.oh_tgt smo0
+          | _ => upcast tt
+          end
+        | _, _ => upcast tt
         end
-      | _, _ => upcast tt
       end
   .
+
+  Program Instance le_PreOrder: PreOrder le.
+  Next Obligation.
+    - ii. econs; eauto.
+      + refl.
+      + ii. clarify. r. refl.
+  Qed.
+  Next Obligation.
+    - ii. inv H. inv H0. econs; eauto.
+      + etrans; eauto.
+      + ii. r.
+        rename a0 into ax. rename a1 into az.
+        assert(CASTY: exists ay, nth_error (anys y) n = Some ay).
+        { destruct (nth_error (anys y) n) eqn:T; eauto. exfalso.
+          eapply nth_error_None in T. rewrite y.(LEN) in T.
+          exploit nth_error_Some; eauto.
+          { rewrite NTH. intro Q; ss. des. exploit Q; ss. i. xomega. }
+        }
+        des. exploit y.(WTY); eauto. i; des. rename smo2 into smoy.
+        transitivity smoy.
+        { eapply LESMO; eauto. }
+        { eapply LESMO0; eauto. }
+  Qed.
+
+  Program Instance lepriv_PreOrder: PreOrder lepriv.
+  Next Obligation.
+    - ii. econs; eauto.
+      + refl.
+      + ii. clarify. r. refl.
+  Qed.
+  Next Obligation.
+    - ii. inv H. inv H0. econs; eauto.
+      + etrans; eauto.
+      + ii. r.
+        rename a0 into ax. rename a1 into az.
+        assert(CASTY: exists ay, nth_error (anys y) n = Some ay).
+        { destruct (nth_error (anys y) n) eqn:T; eauto. exfalso.
+          eapply nth_error_None in T. rewrite y.(LEN) in T.
+          exploit nth_error_Some; eauto.
+          { rewrite NTH. intro Q; ss. des. exploit Q; ss. i. xomega. }
+        }
+        des. exploit y.(WTY); eauto. i; des. rename smo2 into smoy.
+        transitivity smoy.
+        { eapply LEPRIVSMO; eauto. }
+        { eapply LEPRIVSMO0; eauto. }
+  Qed.
+
+
 
   Program Instance SimMemOhs_intro: SimMemOhs.class :=
     {|
@@ -135,46 +234,6 @@ Section SimMemOhUnify.
       SimMemOhs.ohs_tgt := ohs_tgt;
     |}
   .
-  Next Obligation.
-    econs.
-    - ii. econs; eauto.
-      + refl.
-      + ii. clarify. r. refl.
-    - ii. inv H. inv H0. econs; eauto.
-      + etrans; eauto.
-      + ii. r.
-        rename a0 into ax. rename a1 into az.
-        assert(CASTY: exists ay, nth_error (smos y) n = Some ay).
-        { destruct (nth_error (smos y) n) eqn:T; eauto. exfalso.
-          eapply nth_error_None in T. rewrite y.(LEN) in T.
-          exploit nth_error_Some; eauto.
-          { rewrite NTH. intro Q; ss. des. exploit Q; ss. i. xomega. }
-        }
-        des. exploit y.(WTY); eauto. i; des. rename smo2 into smoy.
-        transitivity smoy.
-        { eapply LESMO; eauto. }
-        { eapply LESMO0; eauto. }
-  Qed.
-  Next Obligation.
-    econs.
-    - ii. econs; eauto.
-      + refl.
-      + ii. clarify. r. refl.
-    - ii. inv H. inv H0. econs; eauto.
-      + etrans; eauto.
-      + ii. r.
-        rename a0 into ax. rename a1 into az.
-        assert(CASTY: exists ay, nth_error (smos y) n = Some ay).
-        { destruct (nth_error (smos y) n) eqn:T; eauto. exfalso.
-          eapply nth_error_None in T. rewrite y.(LEN) in T.
-          exploit nth_error_Some; eauto.
-          { rewrite NTH. intro Q; ss. des. exploit Q; ss. i. xomega. }
-        }
-        des. exploit y.(WTY); eauto. i; des. rename smo2 into smoy.
-        transitivity smoy.
-        { eapply LEPRIVSMO; eauto. }
-        { eapply LEPRIVSMO0; eauto. }
-  Qed.
   Next Obligation.
     inv H.
     econs; eauto.
@@ -190,6 +249,52 @@ Section SimMemOhUnify.
     ii. apply H.
   Qed.
 
+  Section SETSMO.
+
+    Variable smos0: t.
+    Variable n: Midx.t.
+    Variable mp: ModPair.t.
+    Hypothesis (NTH: nth_error pp n = Some mp).
+    Variable smo': SimMemOh.t (class := mp.(ModPair.SMO)).
+    (* Hypothesis (SMMATCH: sm_match (S n) smo' smos0). *)
+
+    Program Definition set_smo: t :=
+      mk
+        smo'
+        (Midx.mapi_aux (fun m a0 =>
+                          if Nat.eq_dec n m then @upcast SimMemOh.t smo' else
+                            match nth_error pp m with
+                            | Some mp =>
+                              match @downcast (SimMemOh.t (class := mp.(ModPair.SMO))) a0 with
+                              | Some smo0 =>
+                                @upcast SimMemOh.t ((SimMemOh.set_sm smo0 smo'.(SimMemOh.sm)): SimMemOh.t)
+                              | _ => upcast tt
+                              end
+                            | _ => upcast tt
+                            end
+                       ) 0%nat (smos0.(anys)))
+        _
+        _
+    .
+    Next Obligation.
+      erewrite <- (smos0.(LEN)). rewrite mapi_aux_length. ss.
+    Qed.
+    Next Obligation.
+      rewrite Midx.nth_error_mapi_aux_iff in *. des.
+      ss. des_ifs_safe.
+      destruct (Nat.eq_dec n n0).
+      { clarify.
+        unfold upcast in *. simpl_depind.
+        des_ifs. unfold eq_rect_r. erewrite <- eq_rect_eq; eauto.
+      }
+      destruct (downcast a) eqn:T.
+      - unfold upcast in *. simpl_depind.
+        des_ifs. unfold eq_rect_r. erewrite <- eq_rect_eq; eauto.
+      - exfalso. exploit smos0.(WTY); eauto. i; des. clarify.
+    Qed.
+
+  End SETSMO.
+
   Theorem respects
     :
       exists SMOS, forall n mp (NTH: nth_error pp n = Some mp),
@@ -199,10 +304,34 @@ Section SimMemOhUnify.
     exists SimMemOhs_intro.
     ii.
     econs; ss; eauto.
-    - ii. exploit (WTY2 smos0); et. i; des. exists smo0. esplits; eauto.
+    - ii. exploit (WTY2 smos); et. i; des. exists smo0. esplits; eauto.
       + econs; ss; eauto.
         * inv MWF; ss. exploit WFSMO; et. i; des; ss.
-        * unfold ohs_src. des_ifs_safe. inv MWF; ss. exploit WFSMO; et. i; des; ss.
+        * des_ifs.
+        * des_ifs.
+      + inv MWF. eapply WFSMO; et.
+    - ii.
+      hexploit smos0.(LEN); eauto. intro LEN.
+      eexists (set_smo smos0 n NTH smo1).
+      (* destruct n; ss. *)
+      esplits; eauto.
+      + econs; ss; eauto.
+        *
+          replace sm with (SimMemOhs.sm) by ss.
+          erewrite SMMATCH.(smeq); eauto.
+          eapply SimMemOh.le_proj; eauto.
+          (* hexploit (SimMemOh.le_proj _ _ LE); eauto. intro MLE. *)
+          (* replace sm with (SimMemOhs.sm) by ss. *)
+          (* eapply SimMemOh.le_proj. hexploit (SimMemOh.le_proj _ _ LE); eauto. intro MLE. *)
+          (* replace sm with (SimMemOhs.sm) by ss. *)
+          (* erewrite SMMATCH.(smeq); eauto. *)
+        * ii; ss.
+          rewrite Midx.nth_error_mapi_aux_iff in *. des. ss. des_ifs_safe.
+          des_ifs.
+          { rewrite upcast_downcast in *. clarify.
+            assert(smo0 = smo2).
+            { admit "". }
+            clarify.
   Qed
 
 End SimMemOhUnify.

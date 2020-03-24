@@ -174,6 +174,15 @@ Context {SM: SimMem.class} {SMO: SimMemOh.class} {SS: SimSymb.class SM} {SU: Sou
       (MIDX: msp.(src).(midx) = msp.(tgt).(midx))
       (PRSV: local_preservation msp.(src) sound_state_ex)
       (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))
+      (INITOH: forall
+          sm
+          (WF: SimMem.wf sm)
+        ,
+          exists (smo: SimMemOh.t (class := (SMO))),
+            (<<WF: SimMemOh.wf smo>>) /\
+            (<<SMEQ: smo.(SimMemOh.sm) = sm>>) /\
+            (<<OHSRC: smo.(SimMemOh.oh_src) = upcast msp.(src).(initial_owned_heap)>>) /\
+            (<<OHTGT: smo.(SimMemOh.oh_tgt) = upcast msp.(tgt).(initial_owned_heap)>>))
       (SIM: forall
           (sm_arg: SimMemOh.t (class := (SMO))) oh_src oh_tgt args_src args_tgt
           sg_init_src sg_init_tgt
@@ -195,7 +204,8 @@ Context {SM: SimMem.class} {SMO: SimMemOh.class} {SS: SimSymb.class SM} {SU: Sou
                                                   idx_init st_init_src st_init_tgt sm_init>>)>>) /\
           (<<INITPROGRESS: forall
               (SAFESRC: exists st_init_src, msp.(src).(initial_frame) oh_src args_src st_init_src),
-              exists st_init_tgt, (<<INITTGT: msp.(tgt).(initial_frame) oh_tgt args_tgt st_init_tgt>>)>>)).
+              exists st_init_tgt, (<<INITTGT: msp.(tgt).(initial_frame) oh_tgt args_tgt st_init_tgt>>)>>))
+  .
 
 End MODSEMPAIR.
 End ModSemPair.

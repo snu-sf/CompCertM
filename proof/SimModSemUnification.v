@@ -151,12 +151,27 @@ Section SimMemOhUnify.
       )
   .
 
-  Inductive wf_except (midx: option Midx.t) (smos0: t): Prop :=
-  | wf_except_intro
+  Inductive wf_weak (midx: Midx.t) (smos0: t): Prop :=
+  | wf_weak_intro
+      (WFSMO: forall
+          n a0 mp sm0 (smo0: SimMemOh.t (class := mp.(ModPair.SMO)))
+          (WFSM: SimMem.wf sm0)
+          (EXCEPT: n <> midx)
+          (NTH: nth_error pp n = Some mp)
+          (NTH: nth_error smos0.(anys) n = Some a0)
+          (CAST: downcast a0 = Some smo0)
+        ,
+          (<<WFSMO: SimMemOh.wf (class := mp.(ModPair.SMO)) (SimMemOh.set_sm smo0 sm0)>>)
+          (* /\ *)
+          (* (<<SMEQ: smo0.(SimMemOh.sm) = smos0.(sm)>>) *)
+      )
+  .
+
+  Inductive wf (smos0: t): Prop :=
+  | wf_intro
       (WFSM: SimMem.wf smos0.(sm))
       (WFSMO: forall
           n a0 mp (smo0: SimMemOh.t (class := mp.(ModPair.SMO)))
-          (EXCEPT: Some n <> midx)
           (NTH: nth_error pp n = Some mp)
           (NTH: nth_error smos0.(anys) n = Some a0)
           (CAST: downcast a0 = Some smo0)
@@ -167,22 +182,43 @@ Section SimMemOhUnify.
       )
   .
 
-  Definition wf (smos0: t): Prop := wf_except None smos0.
+  Lemma wf_weak_wf
+        n smos0 mp a0
+        (WFW: wf_weak n smos0)
+        (NTH0: nth_error pp n = Some mp)
+        (NTH1: nth_error smos0.(anys) n = Some a0)
+        (smo0: SimMemOh.t (class := mp.(ModPair.SMO)))
+        (CAST: downcast a0 = Some smo0)
+        (WF: SimMemOh.wf smo0)
+    :
+      <<WF: wf smos0>>
+  .
+  Proof.
+    assert(WF0: SimMem.wf smos0).
+    { exploit smos0.(WTY); eauto. i; des. clarify.
+      rewrite <- SMEQ.
+      eapply SimMemOh.wf_proj; eauto.
+    }
+    econs; eauto. ii.
+    destruct (Nat.eq_dec n n0).
+    - clarify.
+    - r. erewrite <- SimMemOh.setget_sm. eapply WFW; eauto.
+  Qed.
 
-  (* Inductive wf (smos0: t): Prop := *)
-  (* | wf_intro *)
-  (*     (WFSM: SimMem.wf smos0.(sm)) *)
-  (*     (WFSMO: forall *)
-  (*         n a0 mp (smo0: SimMemOh.t (class := mp.(ModPair.SMO))) *)
-  (*         (NTH: nth_error pp n = Some mp) *)
-  (*         (NTH: nth_error smos0.(anys) n = Some a0) *)
-  (*         (CAST: downcast a0 = Some smo0) *)
-  (*       , *)
-  (*         (<<WFSMO: SimMemOh.wf (class := mp.(ModPair.SMO)) smo0>>) *)
-  (*         (* /\ *) *)
-  (*         (* (<<SMEQ: smo0.(SimMemOh.sm) = smos0.(sm)>>) *) *)
-  (*     ) *)
-  (* . *)
+  Lemma wf_wf_weak
+        n smos0 mp a0
+        (WF: wf smos0)
+        (NTH0: nth_error pp n = Some mp)
+        (NTH1: nth_error smos0.(anys) n = Some a0)
+        (smo0: SimMemOh.t (class := mp.(ModPair.SMO)))
+        (CAST: downcast a0 = Some smo0)
+    :
+      <<WFW: wf_weak n smos0>>
+  .
+  Proof.
+    econs; eauto. ii.
+    eapply WF; eauto.
+  Qed.
 
   Definition ohs_src (smos0: t): Sem.Ohs :=
     fun mi =>
@@ -343,6 +379,7 @@ Section SimMemOhUnify.
       smnth: midx <> 0%nat -> nth_error smos.(anys) (pred midx) = Some (upcast smo);
       ohsrc: (smos.(SimMemOhs.ohs_src) midx) = smo.(SimMemOh.oh_src);
       ohtgt: (smos.(SimMemOhs.ohs_tgt) midx) = smo.(SimMemOh.oh_tgt);
+      wfwf: midx <> 0%nat -> wf_weak (pred midx) smos;
       (* oh_src: {oh: Type & oh}; *)
       (* oh_tgt: {oh: Type & oh}; *)
       (* OHSRC: (nth_error smos.(SimMemOhs.ohs_src) (msp.(ModSemPair.src).(midx))) = Some oh_src; *)
@@ -363,14 +400,15 @@ Section SimMemOhUnify.
     exists SimMemOhs_intro.
     ii.
     econstructor 1 with (sm_match_strong := sm_match (S n)); ss; eauto.
-    - ii. inv PR. econs; eauto.
+    - ii. inv PR. econs; eauto. ii. eapply wf_weak_wf; eauto. rewrite upcast_downcast; ss.
     - ii. exploit (WTY2 smos); et. i; des. exists smo0. esplits; eauto.
       + econs; ss; eauto.
         * inv MWF; ss. exploit WTY; et. i; des; ss. clarify. rp; eauto. f_equal.
           sym. eapply upcast_downcast_iff; ss.
         * des_ifs.
         * des_ifs.
-      + inv MWF. eapply WFSMO; et. ss.
+        * ii. eapply wf_wf_weak; eauto.
+      + inv MWF. eapply WFSMO; et; ss.
     - ii.
       hexploit smos0.(LEN); eauto. intro LEN.
       eexists (set_smo smos0 n NTH smo1).
@@ -422,6 +460,17 @@ Section SimMemOhUnify.
             { eapply nth_error_None; eauto. xomega. }
             clarify.
           }
+        * ii. hexploit (SMMATCH.(wfwf)); eauto. intro WF; ss.
+          bar. econs. ii. ss.
+          des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
+          exploit smos0.(WTY); eauto. i; des. clarify.
+          des_ifs.
+          rewrite upcast_downcast in *. clarify.
+          eapply WF; eauto.
+          { }
+          eapply WF; try apply NTH0; try apply CAST; ss. eassumption. eauto.
+          { eapply 
+          eapply wf_wf_weak; eauto.
       + ii.
         econs; ss.
         { eapply SimMemOh.wf_proj; eauto. }

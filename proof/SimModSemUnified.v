@@ -288,6 +288,7 @@ Record sm_match (smo: SimMemOh.t) (smos: SimMemOhs.t): Prop :=
   { smeq: (smos.(SimMemOhs.sm) = smo.(SimMemOh.sm));
     ohsrc: (smos.(SimMemOhs.ohs_src) midx) = smo.(SimMemOh.oh_src);
     ohtgt: (smos.(SimMemOhs.ohs_tgt) midx) = smo.(SimMemOh.oh_tgt);
+    wfwf: <<WFWF: SimMemOh.wf smo -> SimMemOhs.wf smos>>;
     (* oh_src: {oh: Type & oh}; *)
     (* oh_tgt: {oh: Type & oh}; *)
     (* OHSRC: (nth_error smos.(SimMemOhs.ohs_src) (msp.(ModSemPair.src).(midx))) = Some oh_src; *)
@@ -310,11 +311,9 @@ Inductive respects: Prop :=
                    (smo0 smo1: SimMemOh.t)
                    (LE: SimMemOh.le smo0 smo1)
                    (SMMATCH: sm_match_strong smo0 smos0)
-                   (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0)
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
-                      /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
                       /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx),
                              SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
                       /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx),
@@ -324,11 +323,9 @@ Inductive respects: Prop :=
                        (smo0 smo1: SimMemOh.t)
                        (SMMATCH: sm_match_strong smo0 smos0)
                        (LE: SimMemOh.lepriv smo0 smo1)
-                       (WFWF: SimMemOh.wf smo0 -> SimMemOhs.wf smos0)
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
-                      /\ (<<WFWF: SimMemOh.wf smo1 -> SimMemOhs.wf smos1>>)
                       /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx),
                              SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
                       /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx),
@@ -430,7 +427,7 @@ Proof.
     exploit (SMSIM sm_arg); eauto. i; des.
     exists st_init_src. esplits; eauto.
     instantiate (1:= idx_init).
-    clear - SIM STRONG SMSIM SMSIMPRIV SMPROJ SMMATCH0 SMMATCHLE MIDX WFWF OHSRC0 OHTGT0.
+    clear - SIM STRONG SMSIM SMSIMPRIV SMPROJ SMMATCH0 SMMATCHLE MIDX OHSRC0 OHTGT0.
     rename sm_init into smo0. rename smos1 into smos0.
     rename st_init_src into st_src0. rename st_init_tgt into st_tgt0.
     (* assert(WF: SimMemOhs.wf smos0). *)
@@ -454,8 +451,9 @@ Proof.
       * exploit (SMSIM smos0); eauto. i; des.
         econs 2; eauto. pclearbot. right. eapply CIH; eauto.
     + econs 3; eauto.
+      { eapply wfwf; eauto. }
       ii. exploit SU0; eauto. i; des. exploit SMSIMPRIV; eauto. i; des.
-      esplits; try apply WFWF0; eauto.
+      esplits; try eapply wfwf; eauto.
       * rr in SIMARGS. des. rr. esplits; eauto.
         { erewrite smeq; eauto. }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
@@ -482,7 +480,7 @@ Proof.
         pclearbot. right. eapply CIH; eauto.
     + exploit SMSIM; eauto. i; des.
 
-      rr in SIMRETV. des. rr. econs 4; eauto.
+      rr in SIMRETV. des. rr. econs 4; try eapply wfwf; eauto.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
         { rewrite OHSRC. erewrite ohsrc; eauto with congruence. }
         erewrite UNCHSRC; eauto with congruence.

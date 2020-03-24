@@ -323,8 +323,6 @@ Section SIMGE.
                        = load_owned_heaps (load_genv p_tgt skenv_link_tgt)>>)
   .
   Proof.
-    exploit init_sim_ge_strong_aux; eauto. i; des.
-    esplits; try apply SIMGE; eauto.
     assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))).
     { ii. clarify. eapply link_includes; eauto.
       unfold ProgPair.src. rewrite in_map_iff. esplits; et. }

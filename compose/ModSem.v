@@ -294,6 +294,7 @@ Module ModSem.
     initial_frame (oh: owned_heap) (args: Args.t) (st0: state): Prop;
     final_frame (st0: state) (oh: owned_heap) (retv: Retv.t): Prop;
     after_external (st0: state) (oh: owned_heap) (retv: Retv.t) (st1: state): Prop;
+    initial_owned_heap: owned_heap;
     globalenv: genvtype;
     skenv: SkEnv.t;
     skenv_link: SkEnv.t;
@@ -372,7 +373,7 @@ Module ModSem.
 
     Program Definition trans: t :=
       mk step at_external initial_frame final_frame after_external
-         ms.(globalenv) ms.(skenv) ms.(skenv_link) ms.(midx) _ _ _ _ _ _.
+         ms.(initial_owned_heap) ms.(globalenv) ms.(skenv) ms.(skenv_link) ms.(midx) _ _ _ _ _ _.
     Next Obligation. rr in AT0. rr in AT1. des. eapply at_external_dtm; eauto. Qed.
     Next Obligation. rr in FINAL0. rr in FINAL1. des. eapply final_frame_dtm; eauto. Qed.
     Next Obligation.

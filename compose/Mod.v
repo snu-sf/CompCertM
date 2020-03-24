@@ -11,7 +11,6 @@ Require Import ASTC.
 Require Import Maps.
 
 Require Import ModSem.
-Require Import Any.
 
 Set Implicit Arguments.
 
@@ -29,15 +28,12 @@ Module Mod.
     get_sk: datatype -> Sk.t;
     get_modsem: Midx.t -> SkEnv.t -> datatype -> ModSem.t;
     data: datatype;
-    initial_owned_heap: Any;
     get_modsem_skenv_spec: forall skenv midx,
-        (<<PROJECTED: SkEnv.project skenv data.(get_sk) = data.(get_modsem midx skenv).(ModSem.skenv)>>);
+        <<PROJECTED: SkEnv.project skenv data.(get_sk) = data.(get_modsem midx skenv).(ModSem.skenv)>>;
     get_modsem_skenv_link_spec: forall skenv_link midx,
-        (<<EQ: data.(get_modsem midx skenv_link).(ModSem.skenv_link) = skenv_link>>);
+        <<EQ: data.(get_modsem midx skenv_link).(ModSem.skenv_link) = skenv_link>>;
     get_modsem_midx_spec: forall skenv midx,
-        (<<EQ: data.(get_modsem midx skenv).(ModSem.midx) = midx>>);
-    initial_owned_heap_wty: forall skenv midx,
-        (<<WTY: projT1 initial_owned_heap = data.(get_modsem midx skenv).(ModSem.owned_heap)>>);
+        <<EQ: data.(get_modsem midx skenv).(ModSem.midx) = midx>>;
   }.
 
   Lemma get_modsem_projected_sk
@@ -59,12 +55,10 @@ Module Mod.
     Variable m: t.
 
     Program Definition trans: t :=
-      mk (m.(get_sk)) (fun midx ske dat => ModSem.Atomic.trans (m.(get_modsem) midx ske dat)) (m.(data))
-         m.(initial_owned_heap) _ _ _ _.
+      mk m.(get_sk) (fun midx ske dat => ModSem.Atomic.trans (m.(get_modsem) midx ske dat)) m.(data) _ _ _.
     Next Obligation. exploit get_modsem_skenv_spec; eauto. Qed.
     Next Obligation. exploit get_modsem_skenv_link_spec; eauto. Qed.
     Next Obligation. exploit get_modsem_midx_spec; eauto. Qed.
-    Next Obligation. exploit initial_owned_heap_wty; eauto. Qed.
 
   End Atomic.
   End Atomic.

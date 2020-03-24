@@ -154,14 +154,14 @@ Section SimMemOhUnify.
   Inductive wf_weak (midx: Midx.t) (smos0: t): Prop :=
   | wf_weak_intro
       (WFSMO: forall
-          n a0 mp sm0 (smo0: SimMemOh.t (class := mp.(ModPair.SMO)))
-          (WFSM: SimMem.wf sm0)
+          n a0 mp (smo0: SimMemOh.t (class := mp.(ModPair.SMO)))
+          (WFSM: SimMem.wf smos0.(sm))
           (EXCEPT: n <> midx)
           (NTH: nth_error pp n = Some mp)
           (NTH: nth_error smos0.(anys) n = Some a0)
           (CAST: downcast a0 = Some smo0)
         ,
-          (<<WFSMO: SimMemOh.wf (class := mp.(ModPair.SMO)) (SimMemOh.set_sm smo0 sm0)>>)
+          (<<WFSMO: SimMemOh.wf (class := mp.(ModPair.SMO)) smo0>>)
           (* /\ *)
           (* (<<SMEQ: smo0.(SimMemOh.sm) = smos0.(sm)>>) *)
       )
@@ -202,7 +202,7 @@ Section SimMemOhUnify.
     econs; eauto. ii.
     destruct (Nat.eq_dec n n0).
     - clarify.
-    - r. erewrite <- SimMemOh.setget_sm. eapply WFW; eauto.
+    - eapply WFW; eauto.
   Qed.
 
   Lemma wf_wf_weak

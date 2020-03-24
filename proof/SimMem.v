@@ -141,7 +141,9 @@ Section SimMemOh.
 
     set_sm: t -> SimMem.t -> t;
     set_sm_le: forall smo0 sm1, SimMem.le smo0.(sm) sm1 ->
-                                   le smo0 (set_sm smo0 sm1);
+                                le smo0 (set_sm smo0 sm1);
+    set_sm_lepriv: forall smo0 sm1, SimMem.lepriv smo0.(sm) sm1 ->
+                                    lepriv smo0 (set_sm smo0 sm1);
     (* can we state it nicely? adjoint? *)
     set_sm_wf: forall smo0 sm1, wf smo0 ->
                                    SimMem.wf sm1 ->

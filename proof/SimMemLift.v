@@ -118,8 +118,7 @@ Module SimMemOhLift.
 
   (* Class class (owned_heap_src owned_heap_tgt: Type) *)
   (*       `(SMO: SimMemOh.class owned_heap_src owned_heap_tgt) := *)
-  Class class {owned_heap_src owned_heap_tgt: Type} `{SM: SimMem.class}
-        (SMO: SimMemOh.class owned_heap_src owned_heap_tgt) :=
+  Class class `{SM: SimMem.class} (SMO: SimMemOh.class) :=
   {
 
     lift: SimMemOh.t -> SimMemOh.t;
@@ -167,8 +166,7 @@ Module SimMemOhLift.
   Section TRANSFORMER.
 
     Context `{SML: SimMemLift.class}.
-    Variable owned_heap_src owned_heap_tgt: Type.
-    Context {SMO: SimMemOh.class owned_heap_src owned_heap_tgt}.
+    Context {SMO: SimMemOh.class}.
 
     Hypothesis memory_owned_heap_independent_le: forall
         sm0 sm1 smo0 smo1
@@ -264,8 +262,7 @@ Module SimMemOhLift.
 
   Section PROPS.
 
-  Context (owned_heap_src owned_heap_tgt: Type).
-  Context `{SMO: SimMemOh.class owned_heap_src owned_heap_tgt}.
+  Context `{SMO: SimMemOh.class}.
   Context {SML: SimMemOhLift.class SMO}.
 
   Lemma lift_sim_regset: forall (sm0: SimMemOh.t), SimMem.sim_regset sm0 <2= SimMem.sim_regset (SimMemOhLift.lift sm0).

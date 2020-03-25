@@ -13,6 +13,7 @@ Require Import SimSymb SimMem SimMod SimModSemUnified SimProg.
 Require Import ModSemProps SemProps Ord.
 Require Import Sound Preservation AdequacySound.
 Require Import Program RUSC.
+Require Import SimModSemUnification.
 Require Import SimModSemUnified.
 Require Import Any.
 Require SemTyping.
@@ -317,7 +318,8 @@ Section SIMGE.
 
   Theorem unification_modsem
           msps ohs_src ohs_tgt
-          (MIDXWF: True) (* nth_error msps midx = midx ? *)
+          (MIDXWF: forall n msp (NTH: nth_error msps n = Some msp),
+              <<MIDX: msp.(ModSemPair.src).(ModSem.midx) = n>>)
           (SIM: Forall ModSemPair.sim msps)
           (OHSSRC: load_owned_heaps ((map ModSemPair.src msps), SkEnv.empty) = ohs_src)
           (OHSTGT: load_owned_heaps ((map ModSemPair.tgt msps), SkEnv.empty) = ohs_tgt)
@@ -334,7 +336,17 @@ Section SIMGE.
                          (<<OHTGT: smos.(SimMemOhs.ohs_tgt) = ohs_tgt>>)>>)
   .
   Proof.
-    admit "".
+    exploit SimMemOhUnify.unification_smo; eauto.
+    i; des.
+    esplits; eauto.
+    - rewrite Forall_forall in *. ii.
+      repeat spc SIM.
+      eapply fundamental_theorem; eauto; try apply SIM; ss.
+      exploit In_nth_error; et. i; des.
+      exploit MIDXWF; et. i; des. clarify.
+      exploit RESPECTS; et.
+    - ii. exploit INITOH; eauto. i; des. clarify.
+      esplits; eauto.
   Qed.
 
   Theorem init_sim_geU
@@ -375,7 +387,9 @@ Section SIMGE.
     set (msps_src := fst (load_genv p_src (Sk.load_skenv (SimSymb.src ss_link)))).
     set (msps_tgt := fst (load_genv p_tgt (Sk.load_skenv (SimSymb.tgt ss_link)))).
     inv SIMGE.
-    exploit (unification_modsem); eauto. i; des.
+    exploit (unification_modsem); eauto.
+    { ii. }
+    i; des.
     (* Set Printing All. *)
     exploit INITOH; eauto. i; des.
     exists _, smos; ss.

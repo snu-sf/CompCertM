@@ -296,7 +296,7 @@ Theorem unification_modsem
         (SKSRC: link_sk p_src = Some sk_src)
         (SKTGT: link_sk p_tgt = Some sk_tgt)
         (GESRC: load_genv p_src (Sk.load_skenv sk_src) = ge_src)
-        (GETGT: load_genv p_tgt (Sk.load_skenv sktgt) = ge_tgt)
+        (GETGT: load_genv p_tgt (Sk.load_skenv sk_tgt) = ge_tgt)
         (OHSSRC: load_owned_heaps ge_src = ohs_src)
         (OHSTGT: load_owned_heaps ge_tgt = ohs_tgt)
   :
@@ -375,5 +375,5 @@ Proof.
     (* { eapply Midx.in_mapi_aux_iff. esplits; eauto. } *)
     (* i; des. des_ifs. *)
     (* admit "TODO----------------------------------". *)
-  -
+  - admit "".
 Qed.

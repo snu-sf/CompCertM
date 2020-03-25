@@ -687,10 +687,10 @@ Section ADQINIT.
     i; des. clarify. ss. des_ifs.
 
     set(Args.mk (Genv.symbol_address (Sk.load_skenv (SimSymb.src ss_link)) (prog_main (SimSymb.src ss_link)) Ptrofs.zero)
-                [] sm_init.(SimMem.src)) as args_src in *.
+                [] smos_init.(SimMem.src)) as args_src in *.
     set(Args.mk (Genv.symbol_address (Sk.load_skenv (SimSymb.tgt ss_link)) (prog_main (SimSymb.tgt ss_link)) Ptrofs.zero)
-                [] sm_init.(SimMem.tgt)) as args_tgt in *.
-    assert(SIMARGS: SimMem.sim_args args_src args_tgt sm_init).
+                [] smos_init.(SimMem.tgt)) as args_tgt in *.
+    assert(SIMARGS: SimMem.sim_args args_src args_tgt smos_init).
     { econs; ss; eauto.
       - rewrite <- SimMem.sim_val_list_spec. econs; eauto. }
 

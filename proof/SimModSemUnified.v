@@ -346,10 +346,10 @@ End RESPECTS.
 Theorem fundamental_theorem
         `{SM: SimMem.class}
         `{SS: @SimSymb.class _} `{SU: Sound.class}
-        {SMO: SimMemOh.class} {SMOS: SimMemOhs.class}
+        {SMOS: SimMemOhs.class}
         (msp: ModSemPair.t)
         (MIDX: msp.(ModSemPair.src).(midx) = msp.(ModSemPair.tgt).(midx))
-        (RESPECT: respects SMO msp.(ModSemPair.src).(midx) SMOS)
+        (RESPECT: respects msp.(ModSemPair.SMO) msp.(ModSemPair.src).(midx) SMOS)
         (SIM: msp.(ModSemPair.sim))
   :
     <<SIM: msp.(ModSemPair.simU)>>

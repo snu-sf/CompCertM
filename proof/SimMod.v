@@ -39,7 +39,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Definition to_msp (midx: Midx.t)
              (skenv_link_src skenv_link_tgt: SkEnv.t) (sm: SimMem.t) (mp: t): ModSemPair.t
     := ModSemPair.mk (Mod.modsem (mp.(src)) midx skenv_link_src)
-                     (Mod.modsem (mp.(tgt)) midx skenv_link_tgt) mp.(ss) sm.
+                     (Mod.modsem (mp.(tgt)) midx skenv_link_tgt) mp.(ss) sm mp.(SMO).
 
   (* TODO: Actually, ModPair can have idx/ord and transfer it to ModSemPair. *)
   (* Advantage: We can unify ord at Mod state. *)
@@ -56,8 +56,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           (SSLE: SimSymb.le mp.(ss) ss_link)
           (SIMSKENVLINK: SimSymb.sim_skenv sm_init_link ss_link skenv_link_src skenv_link_tgt),
           <<SIMMSP: ModSemPair.sim
-                      (to_msp midx skenv_link_src skenv_link_tgt sm_init_link mp)
-                      (SMO := mp.(SMO))>>).
+                      (to_msp midx skenv_link_src skenv_link_tgt sm_init_link mp)>>).
   (* TODO: quantifying "exists SMO" here looks somewhat dirty... *)
   (* I would like to quantify it directly inside "sim_intro", but I need to put it here because *)
   (* I need to know "owned_heap" type which needs to know "skenv_link_src,tgt". *)

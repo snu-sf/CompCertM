@@ -181,16 +181,27 @@ Hint Resolve SimMemOh.pub_priv SimMemOh.wf_proj SimMemOh.le_proj SimMemOh.lepriv
 
 Local Obligation Tactic := try (by econs); try (by ii; ss).
 
-Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class) | 100 :=
-  {
-    sm := fun x => x;
-    oh_src := fun _ => upcast tt;
-    oh_tgt := fun _ => upcast tt;
-    wf := SimMem.wf;
-    le := SimMem.le;
-    lepriv := SimMem.lepriv;
-  }
+(* Global Program Instance SimMemOh_default (SM: SimMem.class): (SimMemOh.class) | 100 := *)
+(*   { *)
+(*     sm := fun x => x; *)
+(*     oh_src := fun _ => upcast tt; *)
+(*     oh_tgt := fun _ => upcast tt; *)
+(*     wf := SimMem.wf; *)
+(*     le := SimMem.le; *)
+(*     lepriv := SimMem.lepriv; *)
+(*   } *)
+(* . *)
+Program Definition SimMemOh_default (SM: SimMem.class): (SimMemOh.class) :=
+  {|
+    SimMemOh.sm := fun x => x;
+    SimMemOh.oh_src := fun _ => upcast tt;
+    SimMemOh.oh_tgt := fun _ => upcast tt;
+    SimMemOh.wf := SimMem.wf;
+    SimMemOh.le := SimMem.le;
+    SimMemOh.lepriv := SimMem.lepriv;
+  |}
 .
+
 Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.
 
 

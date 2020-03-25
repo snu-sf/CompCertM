@@ -25,14 +25,35 @@ Set Implicit Arguments.
 
 Section SIMGE.
 
-  Context `{SMOS: SimMemOhs.class}.
+  Context `{SM: SimMem.class}.
   Context `{SU: Sound.class}.
   Context {SS: SimSymb.class SM}.
+
   Inductive sim_ge (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
   | sim_ge_src_stuck
       ge_tgt skenv_link_src skenv_link_tgt:
       sim_ge sm0 ([], skenv_link_src) (ge_tgt, skenv_link_tgt)
   | sim_ge_intro
+      msps ge_src ge_tgt skenv_link_src skenv_link_tgt
+      (SIMSKENV: List.Forall (fun msp => ModSemPair.sim_skenv msp sm0) msps)
+      (SIMMSS: List.Forall (ModSemPair.sim) msps)
+      (GESRC: ge_src = (map (ModSemPair.src) msps))
+      (GETGT: ge_tgt = (map (ModSemPair.tgt) msps))
+      (SIMSKENVLINK: exists ss_link, SimSymb.sim_skenv sm0 ss_link skenv_link_src skenv_link_tgt)
+      (MFUTURE: List.Forall (fun msp => SimMem.future msp.(ModSemPair.sm) sm0) msps)
+      (SESRC: List.Forall (fun ms => (ModSem.to_semantics ms).(symbolenv) = skenv_link_src) ge_src)
+      (SETGT: List.Forall (fun ms => (ModSem.to_semantics ms).(symbolenv) = skenv_link_tgt) ge_tgt):
+      sim_ge sm0 (ge_src, skenv_link_src) (ge_tgt, skenv_link_tgt).
+
+  Section UNIFIED.
+
+  Context {SMOS: SimMemOhs.class}.
+
+  Inductive sim_geU (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
+  | sim_geU_src_stuck
+      ge_tgt skenv_link_src skenv_link_tgt:
+      sim_geU sm0 ([], skenv_link_src) (ge_tgt, skenv_link_tgt)
+  | sim_geU_intro
       msps ge_src ge_tgt skenv_link_src skenv_link_tgt
       (SIMSKENV: List.Forall (fun msp => ModSemPair.sim_skenv msp sm0) msps)
       (SIMMSS: List.Forall (ModSemPair.simU) msps)
@@ -42,11 +63,11 @@ Section SIMGE.
       (MFUTURE: List.Forall (fun msp => SimMem.future msp.(ModSemPair.sm) sm0) msps)
       (SESRC: List.Forall (fun ms => (ModSem.to_semantics ms).(symbolenv) = skenv_link_src) ge_src)
       (SETGT: List.Forall (fun ms => (ModSem.to_semantics ms).(symbolenv) = skenv_link_tgt) ge_tgt):
-      sim_ge sm0 (ge_src, skenv_link_src) (ge_tgt, skenv_link_tgt).
+      sim_geU sm0 (ge_src, skenv_link_src) (ge_tgt, skenv_link_tgt).
 
   Lemma find_fptr_owner_fsim
         sm0 ge_src ge_tgt fptr_src fptr_tgt ms_src
-        (SIMGE: sim_ge sm0 ge_src ge_tgt)
+        (SIMGE: sim_geU sm0 ge_src ge_tgt)
         (SIMFPTR: SimMem.sim_val sm0 fptr_src fptr_tgt)
         (FINDSRC: Ge.find_fptr_owner ge_src fptr_src ms_src):
       exists msp,
@@ -69,11 +90,11 @@ Section SIMGE.
 
   Qed.
 
-  Theorem mfuture_preserves_sim_ge
+  Theorem mfuture_preserves_sim_geU
           sm0 ge_src ge_tgt sm1
-          (SIMGE: sim_ge sm0 ge_src ge_tgt)
+          (SIMGE: sim_geU sm0 ge_src ge_tgt)
           (MFUTURE: SimMem.future sm0 sm1):
-      <<SIMGE: sim_ge sm1 ge_src ge_tgt>>.
+      <<SIMGE: sim_geU sm1 ge_src ge_tgt>>.
   Proof.
     inv SIMGE.
     { econs; eauto. }
@@ -83,10 +104,12 @@ Section SIMGE.
     - rewrite Forall_forall in *. ii. etrans; eauto.
   Qed.
 
+  End UNIFIED.
+
   Lemma sim_ge_cons
         sm_init tl_src tl_tgt msp skenv_link_src skenv_link_tgt
         (SAFESRC: tl_src <> [])
-        (SIMMSP: ModSemPair.simU msp)
+        (SIMMSP: ModSemPair.sim msp)
         (SIMGETL: sim_ge sm_init (tl_src, skenv_link_src) (tl_tgt, skenv_link_tgt))
         (SIMSKENV: ModSemPair.sim_skenv msp sm_init)
         (MFUTURE: SimMem.future (ModSemPair.sm msp) sm_init)
@@ -95,6 +118,19 @@ Section SIMGE.
       <<SIMGE: sim_ge sm_init (msp.(ModSemPair.src) :: tl_src, skenv_link_src)
                       (msp.(ModSemPair.tgt) :: tl_tgt, skenv_link_tgt)>>.
   Proof. red. inv SIMGETL; ss. econstructor 2 with (msps := msp :: msps); eauto. Qed.
+
+  (* Lemma sim_geU_cons *)
+  (*       sm_init tl_src tl_tgt msp skenv_link_src skenv_link_tgt *)
+  (*       (SAFESRC: tl_src <> []) *)
+  (*       (SIMMSP: ModSemPair.simU msp) *)
+  (*       (SIMGETL: sim_geU sm_init (tl_src, skenv_link_src) (tl_tgt, skenv_link_tgt)) *)
+  (*       (SIMSKENV: ModSemPair.sim_skenv msp sm_init) *)
+  (*       (MFUTURE: SimMem.future (ModSemPair.sm msp) sm_init) *)
+  (*       (SESRC: (symbolenv (ModSemPair.src msp)) = skenv_link_src) *)
+  (*       (SETGT: (symbolenv (ModSemPair.tgt msp)) = skenv_link_tgt): *)
+  (*     <<SIMGE: sim_geU sm_init (msp.(ModSemPair.src) :: tl_src, skenv_link_src) *)
+  (*                     (msp.(ModSemPair.tgt) :: tl_tgt, skenv_link_tgt)>>. *)
+  (* Proof. red. inv SIMGETL; ss. econstructor 2 with (msps := msp :: msps); eauto. Qed. *)
 
   Lemma to_msp_src: forall midx skenv_tgt skenv_src pp sm_init,
           map ModSemPair.src (Midx.mapi_aux (fun midx => ModPair.to_msp midx skenv_src skenv_tgt sm_init) midx pp) =
@@ -112,7 +148,7 @@ Section SIMGE.
         (WFTGT: SkEnv.wf skenv_tgt)
         (INCLSRC: SkEnv.includes skenv_src (Mod.sk mp.(ModPair.src)))
         (INCLTGT: SkEnv.includes skenv_tgt (Mod.sk mp.(ModPair.tgt)))
-        (SIMMP: ModPair.simU mp midx)
+        (SIMMP: ModPair.sim mp)
         (LESS: SimSymb.le (ModPair.ss mp) ss_link)
         (SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_src skenv_tgt):
         <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp midx skenv_src skenv_tgt sm_init mp) sm_init>>.
@@ -123,10 +159,27 @@ Section SIMGE.
     eapply SimSymb.sim_skenv_monotone; revgoals; try rewrite SKSRC; try rewrite SKTGT; try eapply Mod.get_modsem_skenv_spec; try eapply SIMMP; ss; eauto.
   Qed.
 
-  Theorem init_sim_ge_strong_aux
+  (* Lemma to_msp_sim_skenv *)
+  (*       sm_init mp midx skenv_src skenv_tgt ss_link *)
+  (*       (WFSRC: SkEnv.wf skenv_src) *)
+  (*       (WFTGT: SkEnv.wf skenv_tgt) *)
+  (*       (INCLSRC: SkEnv.includes skenv_src (Mod.sk mp.(ModPair.src))) *)
+  (*       (INCLTGT: SkEnv.includes skenv_tgt (Mod.sk mp.(ModPair.tgt))) *)
+  (*       (SIMMP: ModPair.simU mp midx) *)
+  (*       (LESS: SimSymb.le (ModPair.ss mp) ss_link) *)
+  (*       (SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_src skenv_tgt): *)
+  (*       <<SIMSKENV: ModSemPair.sim_skenv (ModPair.to_msp midx skenv_src skenv_tgt sm_init mp) sm_init>>. *)
+  (* Proof. *)
+  (*   u. econs; ss; eauto; cycle 1. *)
+  (*   { rewrite ! Mod.get_modsem_skenv_link_spec. eauto. } *)
+  (*   inv SIMMP. *)
+  (*   eapply SimSymb.sim_skenv_monotone; revgoals; try rewrite SKSRC; try rewrite SKTGT; try eapply Mod.get_modsem_skenv_spec; try eapply SIMMP; ss; eauto. *)
+  (* Qed. *)
+
+  Theorem init_sim_ge
           pp p_src p_tgt ss_link skenv_link_src skenv_link_tgt m_src
           (NOTNIL: pp <> [])
-          (SIMPROG: ProgPair.simU pp)
+          (SIMPROG: ProgPair.sim pp)
           (PSRC: p_src = (ProgPair.src pp))
           (PTGT: p_tgt = (ProgPair.tgt pp))
           (SSLE: Forall (fun mp => SimSymb.le (ModPair.ss mp) ss_link) pp)
@@ -161,62 +214,56 @@ Section SIMGE.
     esplits; eauto; cycle 1.
     { rewrite Forall_forall in *. eauto. }
     unfold load_genv in *. ss. bar.
-    (* assert(exists msp_sys, *)
-    (*           (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.src))>>) *)
-    (*           /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.tgt))>>) *)
-    (*           /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>> *)
-    (*           /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) sm_init>>)). *)
-    (* { exploit SimSymb.system_sim_skenv; eauto. i; des. *)
-    (*   eexists (ModSemPair.mk _ _ ss_link sm_init). ss. esplits; eauto. *)
-    (*   - exploit system_local_preservation. intro SYSSU; des. econs. *)
-    (*     { ss. } *)
-    (*     { ss. eauto. } *)
-    (*     { instantiate (2:= Empty_set). ii; ss. } *)
-    (*     { ss. esplits; eauto. } *)
-    (*     ii. inv SIMSKENV0. ss. *)
-    (*     split; cycle 1. *)
-    (*     { ii; des. inv SAFESRC. rr in SIMARGS. des. inv SIMARGS0; ss. esplits; eauto. econs; eauto. } *)
-    (*     ii. sguard in SAFESRC. des. inv INITTGT. *)
-    (*     rr in SIMARGS. des. inv SIMARGS0; ss. clarify. simpl_depind. clarify. *)
-    (*     esplits; eauto. *)
-    (*     { refl. } *)
-    (*     { econs; eauto. } *)
-    (*     pfold. *)
-    (*     econs; eauto. *)
-    (*     i. *)
-    (*     econs; ss; cycle 2. *)
-    (*     { eapply System.modsem_receptive; et. } *)
-    (*     { u. esplits; ii; des; ss; eauto. inv H0. } *)
-    (*     ii. inv STEPSRC. *)
-    (*     exploit SimSymb.system_axiom; eauto; swap 1 3; swap 2 4. *)
-    (*     { econs; eauto. } *)
-    (*     { ss. instantiate (1:= Retv.mk _ _). ss. eauto. } *)
-    (*     { ss. } *)
-    (*     { ss. } *)
-    (*     i; des. *)
-    (*     assert(SIMGE: SimSymb.sim_skenv sm_arg ss_link (System.globalenv (Sk.load_skenv ss_link.(SimSymb.src))) *)
-    (*                                     (System.globalenv (Sk.load_skenv ss_link.(SimSymb.tgt)))). *)
-    (*     { eapply SimSymb.mfuture_preserves_sim_skenv; eauto. } *)
-    (*     hexpl SimSymb.sim_skenv_func_bisim SIMGE0. *)
-    (*     inv SIMGE0. exploit FUNCFSIM; eauto. i; des. clarify. *)
-    (*     esplits; eauto. *)
-    (*     { left. apply plus_one. econs. *)
-    (*       - eapply System.modsem_determinate; et. *)
-    (*       - ss. econs; eauto. } *)
-    (*     left. pfold. *)
-    (*     econs 4. *)
-    (*     { refl. } *)
-    (*     { eauto. } *)
-    (*     { econs; eauto. } *)
-    (*     { econs; eauto. } *)
-    (*     { inv RETV; ss. unfold Retv.mk in *. clarify. rr. esplits; ss; eauto. econs; ss; eauto. } *)
-    (* } *)
     assert(exists msp_sys,
               (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.src))>>)
               /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.tgt))>>)
-              /\ <<SYSSIM: ModSemPair.simU msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>
+              /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>
               /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) sm_init>>)).
-    { admit "". }
+    { exploit SimSymb.system_sim_skenv; eauto. i; des.
+      eexists (ModSemPair.mk _ _ ss_link sm_init (SimMemOh_default _)). ss. esplits; eauto.
+      - exploit system_local_preservation. intro SYSSU; des. econs.
+        { ss. }
+        { ss. eauto. }
+        { instantiate (2:= Empty_set). ii; ss. }
+        { ss. esplits; eauto. }
+        ii. inv SIMSKENV0. ss.
+        split; cycle 1.
+        { ii; des. inv SAFESRC. rr in SIMARGS. des. inv SIMARGS0; ss. esplits; eauto. econs; eauto. }
+        ii. sguard in SAFESRC. des. inv INITTGT.
+        rr in SIMARGS. des. inv SIMARGS0; ss. clarify. simpl_depind. clarify.
+        esplits; eauto.
+        { refl. }
+        { econs; eauto. }
+        pfold.
+        econs; eauto.
+        i.
+        econs; ss; cycle 2.
+        { eapply System.modsem_receptive; et. }
+        { u. esplits; ii; des; ss; eauto. inv H0. }
+        ii. inv STEPSRC.
+        exploit SimSymb.system_axiom; eauto; swap 1 3; swap 2 4.
+        { econs; eauto. }
+        { ss. instantiate (1:= Retv.mk _ _). ss. eauto. }
+        { ss. }
+        { ss. }
+        i; des.
+        assert(SIMGE: SimSymb.sim_skenv sm_arg ss_link (System.globalenv (Sk.load_skenv ss_link.(SimSymb.src)))
+                                        (System.globalenv (Sk.load_skenv ss_link.(SimSymb.tgt)))).
+        { eapply SimSymb.mfuture_preserves_sim_skenv; eauto. }
+        hexpl SimSymb.sim_skenv_func_bisim SIMGE0.
+        inv SIMGE0. exploit FUNCFSIM; eauto. i; des. clarify.
+        esplits; eauto.
+        { left. apply plus_one. econs.
+          - eapply System.modsem_determinate; et.
+          - ss. econs; eauto. }
+        left. pfold.
+        econs 4.
+        { refl. }
+        { eauto. }
+        { econs; eauto. }
+        { econs; eauto. }
+        { inv RETV; ss. unfold Retv.mk in *. clarify. rr. esplits; ss; eauto. econs; ss; eauto. }
+    }
     des. rewrite <- SYSSRC. rewrite <- SYSTGT. eapply sim_ge_cons; ss.
     - ii. destruct pp; ss.
     - clear_until_bar. clear TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.
@@ -249,19 +296,18 @@ Section SIMGE.
       + ss.
         * rr in SIMPROG.
           rewrite Forall_forall in *. i. apply Midx.in_mapi_iff in H. des. clarify.
-          specialize (SIMPROG (S idx, a)). special SIMPROG.
-          { rewrite Midx.in_mapi_aux_iff. esplits; eauto. }
+          specialize (SIMPROG a). special SIMPROG.
+          { eapply nth_error_In; eauto. }
+          (* { rewrite Midx.in_mapi_aux_iff. esplits; eauto. } *)
           des_ifs.
           exploit nth_error_In; eauto. intro IN.
           eapply SIMPROG; eauto.
       + ss.
         * rr in SIMPROG.
           rewrite Forall_forall in *. i. rewrite Midx.in_mapi_iff in *. des. clarify.
-          exploit nth_error_In; eauto. intro IN.
+          specialize (SIMPROG a). special SIMPROG.
+          { eapply nth_error_In; eauto. }
           eapply to_msp_sim_skenv; eauto.
-          specialize (SIMPROG (S idx, a)). special SIMPROG.
-          { rewrite Midx.in_mapi_aux_iff. esplits; eauto. }
-          des_ifs.
     - rewrite SYSSRC. ss.
     - rewrite SYSTGT. ss.
   Unshelve.
@@ -269,31 +315,32 @@ Section SIMGE.
     all: try (by ii; ss).
   Qed.
 
-  Theorem init_ohs
-          pp p_src p_tgt sk_link_src sk_link_tgt sm_init
-          (NOTNIL: pp <> [])
-          (SIMPROG: ProgPair.simU pp)
-          (SKSRC: link_sk p_src = Some sk_link_src)
-          (SKTGT: link_sk p_tgt = Some sk_link_tgt)
-          (MWF: SimMem.wf sm_init)
+  Theorem unification_modsem
+          msps ohs_src ohs_tgt
+          (MIDXWF: True) (* nth_error msps midx = midx ? *)
+          (SIM: Forall ModSemPair.sim msps)
+          (OHSSRC: load_owned_heaps ((map ModSemPair.src msps), SkEnv.empty) = ohs_src)
+          (OHSTGT: load_owned_heaps ((map ModSemPair.tgt msps), SkEnv.empty) = ohs_tgt)
     :
-      exists smos_init,
-      (<<MWF: SimMemOhs.wf smos_init>>)
-      /\ (<<SMEQ: smos_init.(SimMemOhs.sm) = sm_init>>)
-      /\ (<<OHSSRC: smos_init.(SimMemOhs.ohs_src) =
-                    load_owned_heaps
-                      (load_genv (ProgPair.src pp) (Sk.load_skenv sk_link_src))>>)
-      /\ (<<OHSTGT: smos_init.(SimMemOhs.ohs_tgt) =
-                    load_owned_heaps
-                      (load_genv (ProgPair.tgt pp) (Sk.load_skenv sk_link_tgt))>>)
+      exists SMOS, (<<SIM: Forall ModSemPair.simU msps>>) /\
+                   (<<INITOH: forall
+                       sm
+                       (WF: SimMem.wf sm)
+                     ,
+                       exists (smos: SimMemOhs.t (class := (SMOS))),
+                         (<<WF: SimMemOhs.wf smos>>) /\
+                         (<<SMEQ: smos.(SimMemOhs.sm) = sm>>) /\
+                         (<<OHSRC: smos.(SimMemOhs.ohs_src) = ohs_src>>) /\
+                         (<<OHTGT: smos.(SimMemOhs.ohs_tgt) = ohs_tgt>>)>>)
   .
   Proof.
-  Abort.
+    admit "".
+  Qed.
 
-  Theorem init_sim_ge_strong
+  Theorem init_sim_geU
           pp p_src p_tgt ss_link skenv_link_src skenv_link_tgt m_src
           (NOTNIL: pp <> [])
-          (SIMPROG: ProgPair.simU pp)
+          (SIMPROG: ProgPair.sim pp)
           (PSRC: p_src = (ProgPair.src pp))
           (PTGT: p_tgt = (ProgPair.tgt pp))
           (SSLE: Forall (fun mp => SimSymb.le (ModPair.ss mp) ss_link) pp)
@@ -305,9 +352,10 @@ Section SIMGE.
           (WFSKSRC: forall mp (IN: In mp pp), Sk.wf (ModPair.src mp))
           (WFSKTGT: forall mp (IN: In mp pp), Sk.wf (ModPair.tgt mp))
           (LOADSRC: Sk.load_mem ss_link.(SimSymb.src) = Some m_src):
-      exists smos_init, <<SIMGE: sim_ge smos_init.(SimMemOhs.sm)
-                                      (load_genv p_src (Sk.load_skenv ss_link.(SimSymb.src)))
-                                      (load_genv p_tgt (Sk.load_skenv ss_link.(SimSymb.tgt)))>>
+      exists SMOS smos_init,
+        <<SIMGE: @sim_geU SMOS (smos_init.(SimMemOhs.sm))
+                          (load_genv p_src (Sk.load_skenv ss_link.(SimSymb.src)))
+                          (load_genv p_tgt (Sk.load_skenv ss_link.(SimSymb.tgt)))>>
          /\ <<MWF: SimMemOhs.wf smos_init>>
          /\ <<LOADTGT: Sk.load_mem ss_link.(SimSymb.tgt) = Some smos_init.(SimMem.tgt)>>
          /\ <<MSRC: smos_init.(SimMem.src) = m_src>>
@@ -323,193 +371,19 @@ Section SIMGE.
                        = load_owned_heaps (load_genv p_tgt skenv_link_tgt)>>)
   .
   Proof.
-    assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))).
-    { ii. clarify. eapply link_includes; eauto.
-      unfold ProgPair.src. rewrite in_map_iff. esplits; et. }
-    assert(INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt))).
-    { ii. clarify. eapply link_includes; eauto.
-      unfold ProgPair.tgt. rewrite in_map_iff. esplits; et. }
-    clarify. exploit SimSymb.wf_load_sim_skenv; eauto. i; des. rename sm into sm_init. clarify.
-    assert(INIT: exists smos_init,
-      smos_init.(SimMemOhs.sm) = sm_init
-      /\ SimMemOhs.wf smos_init
-      /\ (<<OHSSRC: smos_init.(SimMemOhs.ohs_src) =
-                    load_owned_heaps
-                      (load_genv (ProgPair.src pp) (Sk.load_skenv ss_link.(SimSymb.src)))>>)
-      /\ (<<OHSTGT: smos_init.(SimMemOhs.ohs_tgt) =
-                    load_owned_heaps
-                      (load_genv (ProgPair.tgt pp) (Sk.load_skenv ss_link.(SimSymb.tgt)))>>)
-          ).
-    { admit "Idea 1.
-Put something like this.
-ModSem.initial_owned_heap: SkEnv.t -> owned_heap;
-SimModSem.ModSemPair.t --> smo_init:
-  forall sm (skenv_src ~= skenv_tgt),
-  SimMem.wf sm ->
-  exists smo, SimMemOh.wf smo /\ smo = sm /\
-              SimMemOh.oh_src = MSP.src.inital_owned_heap skenv_src /\
-              SimMemOh.oh_tgt = MSP.tgt.inital_owned_heap skenv_tgt.
-
-skenv_src ~= skenv_tgt에서 SimSymb도 쓰임. SMO 에 넣기는 애매함.
-(SMO에서는 initial_owned_heap도 모름)
-
-Idea 2.
-SimSymb.wf_load_sim_skenv 를 갈아 엎기. ProgPair.t 받도록
-(obligate a lot for user!)
-". }
-    des.
-    clarify.
-    esplits; eauto; cycle 1.
-    { rewrite Forall_forall in *. eauto. }
-    unfold load_genv in *. ss. bar.
-    assert(exists msp_sys,
-              (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.src))>>)
-              /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem 0%nat (Sk.load_skenv ss_link.(SimSymb.tgt))>>)
-              /\ <<SYSSIM: ModSemPair.simU msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys smos_init.(SimMemOhs.sm)>>
-              /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) smos_init>>)).
-    { exploit SimSymb.system_sim_skenv; eauto. i; des.
-      eexists (ModSemPair.mk _ _ ss_link smos_init). ss. esplits; eauto.
-      - exploit system_local_preservation. intro SYSSU; des. econs.
-        { ss. }
-        { ss. eauto. }
-        { instantiate (2:= Empty_set). ii; ss. }
-        ii. inv SIMSKENV0. ss.
-        split; cycle 1.
-        { ii; des. inv SAFESRC. rr in SIMARGS. des. inv SIMARGS0; ss. esplits; eauto. econs; eauto. }
-        ii. sguard in SAFESRC. des. inv INITTGT.
-        rr in SIMARGS; des. inv SIMARGS0; ss. clarify. simpl_depind. clarify.
-        esplits; eauto.
-        { refl. }
-        { econs; eauto. }
-        pfold.
-        econs; eauto.
-        i.
-        econs; ss; cycle 2.
-        { eapply System.modsem_receptive; et. }
-        { u. esplits; ii; des; ss; eauto. inv H0. }
-        ii. inv STEPSRC.
-        exploit SimSymb.system_axiom; eauto; [eapply SimMemOhs.wf_proj; eauto|..];
-          swap 1 3; swap 2 4.
-        { econs; eauto. }
-        { ss. instantiate (1:= Retv.mk _ _). ss. eauto. }
-        { ss. }
-        { ss. }
-        i; des.
-        assert(SIMGE: SimSymb.sim_skenv sm_arg ss_link (System.globalenv (Sk.load_skenv ss_link.(SimSymb.src)))
-                                        (System.globalenv (Sk.load_skenv ss_link.(SimSymb.tgt)))).
-        { eapply SimSymb.mfuture_preserves_sim_skenv; eauto. }
-        hexpl SimSymb.sim_skenv_func_bisim SIMGE0.
-        inv SIMGE0. exploit FUNCFSIM; eauto. i; des. clarify.
-        assert(exists smos1, (<<MLE: SimMemOhs.le sm_arg smos1>>)
-                             /\ (<<MWF: SimMemOhs.wf smos1>>)
-                             /\ (<<MEQ: SimMemOhs.sm smos1 = sm1>>)
-                             /\ (<<OHSRC: SimMemOhs.ohs_src smos1 0%nat = existT id _ ()>>)
-                             /\ (<<OHTGT: SimMemOhs.ohs_tgt smos1 0%nat = existT id _ ()>>)
-              ).
-        { admit "We need good_properties. 어디서 증명하는게 적절한 레벨인지? refactor
-
-(old comment)
-'Somehow need to know that smos1 has same type.
-See good_properties --> sm_match'
-
-(new comment)
-smos1 0%nat이 unit이라는걸 알아야 하는데...
-'SimMemOhs.le가 type preserve 한다는 이야기를 넣을 수도 있을텐데 overkill 인 것 같기도.
-원래는 SimMemOhs.wf 까보면 알 수 있는 내용이긴 할 텐데 여기서는 못까보니까
-".
-        }
-        des.
-        repeat des_u.
-        esplits; eauto.
-        { left. apply plus_one. econs.
-          - eapply System.modsem_determinate; et.
-          - ss. econs; eauto. }
-        left. pfold.
-        (* assert(UNIT: (cast_sigT (SimMemOhs.ohs_tgt sm_arg 0%nat)) = tt). *)
-        (* { clear - TYTGT. eapply cast_sigT_eq. *)
-        (*   destruct (SimMemOhs.ohs_tgt sm_arg 0%nat) eqn:T. simpl_depind. Undo 1. *)
-        (*   (* IT REMOVES SOME INFORMATION!!!!!!!!! (Hypothesis T) *) *)
-        (*   destruct TYTGT. ss. clarify. destruct p; ss. *)
-        (* } *)
-        econs 4.
-        { refl. }
-        { eauto. }
-        { ss. }
-        { ss. }
-        { clear - OHSRC OHSRC0. ss. apply func_ext1. i. unfold Midx.update. des_ifs. }
-        { clear - OHTGT OHTGT0. ss. apply func_ext1. i. unfold Midx.update. des_ifs. }
-        { inv RETV; ss. unfold Retv.mk in *. clarify. rr. esplits; eauto.
-          - econs; ss; eauto.
-        }
-    }
-    des. rewrite <- SYSSRC. rewrite <- SYSTGT. eapply sim_ge_cons; ss.
-    - ii. destruct pp; ss.
-    - clear_until_bar. clear TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT.
-      ginduction pp; ii; ss. unfold link_sk in *. ss. rename a into mp. destruct (classic (pp = [])).
-      { clarify. ss. clear IHpp. inv SSLE. inv H2. cbn in *. clarify.
-        rename H0 into SKSRC. rename H2 into SKTGT.
-        rewrite <- SKSRC in *. rewrite <- SKTGT in *.
-        set (skenv_src := (Sk.load_skenv (ModPair.src mp))) in *.
-        set (skenv_tgt := (Sk.load_skenv (ModPair.tgt mp))) in *.
-        inv SIMPROG. inv H3. rename H2 into SIMMP. inv SIMMP.
-        econstructor 2 with (msps := (map (ModPair.to_msp 1%nat skenv_src skenv_tgt smos_init) [mp])); eauto; ss; revgoals; econs; eauto.
-        - u. erewrite Mod.get_modsem_skenv_link_spec; ss.
-        - u. erewrite Mod.get_modsem_skenv_link_spec; ss.
-        - eapply SIMMS; eauto; eapply SkEnv.load_skenv_wf; et.
-        - econs; ss; eauto; cycle 1.
-          { unfold Mod.modsem. rewrite ! Mod.get_modsem_skenv_link_spec. eauto. }
-          r. ss. eapply SimSymb.sim_skenv_monotone; try rewrite SKSRC0; try rewrite SKTGT0;
-                   try apply SIMSKENV; try eapply SkEnv.load_skenv_wf; try eapply Mod.get_modsem_skenv_spec; eauto.
-      }
-      rename H into NNIL.
-      apply link_list_cons_inv in SKSRC; cycle 1. { destruct pp; ss. } des. rename restl into sk_src_tl.
-      apply link_list_cons_inv in SKTGT; cycle 1. { destruct pp; ss. } des. rename restl into sk_tgt_tl.
-      inv SIMPROG. rename H1 into SIMMP. rename H2 into SIMPROG. inv SSLE. rename H1 into SSLEHD. rename H2 into SSLETL. unfold flip.
-      set (skenv_src := (Sk.load_skenv (SimSymb.src ss_link))) in *.
-      set (skenv_tgt := (Sk.load_skenv (SimSymb.tgt ss_link))) in *.
-      assert(WFSRC: SkEnv.wf skenv_src).
-      { eapply SkEnv.load_skenv_wf; et.
-        eapply (link_list_preserves_wf_sk ((ModPair.src mp) :: (ProgPair.src pp))); et.
-        - unfold link_sk. ss. eapply link_list_cons; et.
-        - ii; ss. des; clarify; et. unfold ProgPair.src in *. rewrite in_map_iff in *. des. clarify. et.
-      }
-      assert(WFTGT: SkEnv.wf skenv_tgt).
-      { eapply SkEnv.load_skenv_wf; et.
-        eapply (link_list_preserves_wf_sk ((ModPair.tgt mp) :: (ProgPair.tgt pp))); et.
-        - unfold link_sk. ss. eapply link_list_cons; et.
-        - ii; ss. des; clarify; et. unfold ProgPair.tgt in *. rewrite in_map_iff in *. des. clarify. et.
-      }
-      econstructor 2 with
-          (msps := (Midx.mapi_aux (fun midx => ModPair.to_msp midx skenv_src skenv_tgt smos_init) (1%nat) (mp :: pp))); eauto; revgoals.
-      + rewrite Forall_forall in *. i. ss. des; clarify.
-        { u. erewrite Mod.get_modsem_skenv_link_spec; ss. }
-        u in H. rewrite Midx.in_mapi_aux_iff in H. des; clarify.
-        { u. erewrite Mod.get_modsem_skenv_link_spec; ss. }
-      + rewrite Forall_forall in *. i. ss. des; clarify.
-        { u. erewrite Mod.get_modsem_skenv_link_spec; ss. }
-        u in H. rewrite Midx.in_mapi_aux_iff in H. des; clarify.
-        { u. erewrite Mod.get_modsem_skenv_link_spec; ss. }
-      + ss. econs; eauto. rewrite Forall_forall in *. ii. rewrite Midx.in_mapi_aux_iff in H. des. clarify. ss. refl.
-      + ss. unfold load_modsems. unfold Midx.mapi. ss. f_equal. rewrite to_msp_tgt; ss.
-      + ss. f_equal. rewrite to_msp_src; ss.
-      + ss. econs; ss; eauto.
-        * eapply SIMMP; eauto.
-        * rewrite Forall_forall in *. i. apply Midx.in_mapi_aux_iff in H. des.
-          exploit nth_error_in; eauto. intro IN.
-          specialize (SIMPROG ((2 + idx)%nat, a)). special SIMPROG; ss.
-          { eapply Midx.in_mapi_aux_iff. esplits; eauto. ss. }
-          clarify. eapply SIMPROG; eauto.
-      + ss. econs; ss; eauto.
-        * eapply to_msp_sim_skenv; eauto.
-        * rewrite Forall_forall in *. i. apply Midx.in_mapi_aux_iff in H. des. clarify.
-          exploit nth_error_in; eauto. intro IN.
-          eapply to_msp_sim_skenv; eauto.
-          exploit (SIMPROG ((2 + idx)%nat, a)); eauto. eapply Midx.in_mapi_aux_iff; eauto.
-    - rewrite SYSSRC. ss.
-    - rewrite SYSTGT. ss.
-  Unshelve.
-    all: try apply idx_bot.
-    all: try (by ii; ss).
+    exploit init_sim_ge; eauto. i; des.
+    set (msps_src := fst (load_genv p_src (Sk.load_skenv (SimSymb.src ss_link)))).
+    set (msps_tgt := fst (load_genv p_tgt (Sk.load_skenv (SimSymb.tgt ss_link)))).
+    inv SIMGE.
+    exploit (unification_modsem); eauto. i; des.
+    (* Set Printing All. *)
+    exploit INITOH; eauto. i; des.
+    exists _, smos; ss.
+    rewrite SMEQ in *.
+    esplits; eauto.
+    - econstructor 2 with (msps := msps); ss; eauto.
+    - unfold load_owned_heaps. ss. rewrite GESRC. ss.
+    - unfold load_owned_heaps. ss. rewrite GETGT. ss.
   Qed.
 
 End SIMGE.
@@ -554,7 +428,7 @@ Section ADQMATCH.
       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
       (MIDX: ms_src.(ModSem.midx) = ms_tgt.(ModSem.midx))
       (MWF: SimMemOhs.wf sm_arg)
-      (GE: sim_ge (SimMemOhs.sm sm_at) sem_src.(globalenv) sem_tgt.(globalenv))
+      (GE: sim_geU (SimMemOhs.sm sm_at) sem_src.(globalenv) sem_tgt.(globalenv))
       (MLE: SimMemOhs.le tail_sm sm_at)
       (MLE: SimMemOhs.le sm_at sm_arg)
       (MLELIFT: SimMemOhs.lepriv sm_arg sm_arg_lift)
@@ -595,7 +469,7 @@ Section ADQMATCH.
   | lxsim_lift_intro
       sm0 tail_src tail_tgt tail_sm i0 ms_src lst_src ms_tgt lst_tgt sidx ohs_src0 ohs_tgt0
       (MIDX: ms_src.(ModSem.midx) = ms_tgt.(ModSem.midx))
-      (GE: sim_ge (SimMemOhs.sm sm0) sem_src.(globalenv) sem_tgt.(globalenv))
+      (GE: sim_geU (SimMemOhs.sm sm0) sem_src.(globalenv) sem_tgt.(globalenv))
 
       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
       (MLE: SimMemOhs.le tail_sm sm0)
@@ -612,7 +486,7 @@ Section ADQMATCH.
       lxsim_lift i0 (State ((Frame.mk ms_src lst_src) :: tail_src) ohs_src0) (State ((Frame.mk ms_tgt lst_tgt) :: tail_tgt) ohs_tgt0) sm0
   | lxsim_lift_callstate
        sm_arg tail_src tail_tgt tail_sm args_src args_tgt ohs_src0 ohs_tgt0
-       (GE: sim_ge (SimMemOhs.sm sm_arg) sem_src.(globalenv) sem_tgt.(globalenv))
+       (GE: sim_geU (SimMemOhs.sm sm_arg) sem_src.(globalenv) sem_tgt.(globalenv))
        (STACK: lxsim_stack tail_sm tail_src tail_tgt)
        (MLE: SimMemOhs.le tail_sm sm_arg)
        (MWF: SimMemOhs.wf sm_arg)
@@ -639,14 +513,13 @@ End ADQMATCH.
 
 Section ADQINIT.
 
-  Context `{SMOS: SimMemOhs.class}.
+  Context `{SM: SimMem.class}.
   Context {SS: SimSymb.class SM}.
   Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
   Hypothesis NOTNIL: pp <> [].
   Hypothesis SIMPROG: ProgPair.sim pp.
-  Hypothesis SIMPROGU: ProgPair.simU pp.
   Let p_src := (ProgPair.src pp).
   Let p_tgt := (ProgPair.tgt pp).
 
@@ -654,8 +527,6 @@ Section ADQINIT.
   Hypothesis LINKSRC: (link_sk p_src) = Some sk_link_src.
   Hypothesis LINKTGT: (link_sk p_tgt) = Some sk_link_tgt.
 
-  Let lxsim_lift := (lxsim_lift pp).
-  Hint Unfold lxsim_lift.
   Let sem_src := Sem.sem p_src.
   Let sem_tgt := Sem.sem p_tgt.
 
@@ -665,9 +536,9 @@ Section ADQINIT.
   Theorem init_lxsim_lift_forward
           st_init_src
           (INITSRC: sem_src.(Smallstep.initial_state) st_init_src):
-      exists idx st_init_tgt sm_init,
+      exists SMOS idx st_init_tgt (smos_init: SimMemOhs.t (class:=SMOS)),
         <<INITTGT: sem_tgt.(Dinitial_state) st_init_tgt>>
-        /\ (<<SIM: lxsim_lift sk_link_src sk_link_tgt idx st_init_src st_init_tgt sm_init>>)
+        /\ (<<SIM: lxsim_lift pp sk_link_src sk_link_tgt idx st_init_src st_init_tgt smos_init>>)
         /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))>>)
         /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt))>>).
   Proof.
@@ -681,7 +552,7 @@ Section ADQINIT.
       eapply SimSymb.wf_preserves_wf; et. rewrite SKSRC in *. eapply WF; et. rewrite in_map_iff. esplits; et.
     }
     rewrite <- SKSRC in *. rewrite <- SKTGT in *.
-    exploit init_sim_ge_strong; eauto.
+    exploit init_sim_geU; eauto.
     { ii. eapply WF; et. unfold p_src. unfold ProgPair.src. rewrite in_map_iff. et. }
     { ii. eapply WFTGT; et. unfold p_tgt. unfold ProgPair.tgt. rewrite in_map_iff. et. }
     i; des. clarify. ss. des_ifs.
@@ -722,7 +593,7 @@ Section ADQSTEP.
   Context `{SU: Sound.class}.
 
   Variable pp: ProgPair.t.
-  Hypothesis SIMPROG: ProgPair.simU pp.
+  (* Hypothesis SIMPROG: ProgPair.simU pp. *)
   Let p_src := (ProgPair.src pp).
   Let p_tgt := (ProgPair.tgt pp).
 
@@ -815,7 +686,7 @@ Section ADQSTEP.
         { econs; eauto. }
       - right. eapply CIH.
         instantiate (1:= sm_init). econs; try apply SIM0; eauto.
-        + ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once.
+        + ss. folder. des_ifs. eapply mfuture_preserves_sim_geU; eauto. apply rtc_once.
           eauto using SimMemOhs.le_proj.
         + etrans; eauto.
         + admit "UNCHSRC".
@@ -860,14 +731,14 @@ Section ADQSTEP.
           }
           pclearbot. right. eapply CIH with (sm0 := smos1); eauto.
           econs; eauto.
-          { ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto using SimMemOhs.le_proj. }
+          { ss. folder. des_ifs. eapply mfuture_preserves_sim_geU; eauto. apply rtc_once; eauto using SimMemOhs.le_proj. }
           { etransitivity; eauto. }
           { ss. etrans; try apply OHSRC; eauto. admit "UNCH". }
           { ss. etrans; try apply OHTGT; eauto. admit "UNCH". }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dplus; eauto. { unsguard SETGT. ss. des_ifs. } }
           right. eapply CIH; eauto. instantiate (1:=smos1). econs; eauto.
-          { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto.
+          { folder. ss; des_ifs. eapply mfuture_preserves_sim_geU; eauto.
             eapply rtc_once; eauto using SimMemOhs.le_proj. }
           { etrans; eauto. }
           { ss. etrans; try apply OHSRC; eauto. admit "UNCH". }
@@ -899,14 +770,14 @@ Section ADQSTEP.
     (*       - des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto. *)
     (*     } *)
     (*     econs; eauto. *)
-    (*     { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. apply rtc_once; eauto. } *)
+    (*     { folder. ss; des_ifs. eapply mfuture_preserves_sim_geU; eauto. apply rtc_once; eauto. } *)
     (*     etransitivity; eauto. *)
     (*   + des. pclearbot. econs 2. *)
     (*     { esplits; eauto. eapply lift_star; eauto. } *)
     (*     right. eapply CIH; eauto. *)
     (*     { unsguard SUST. des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto. } *)
     (*     instantiate (1:=sm1). econs; eauto. *)
-    (*     { folder. ss; des_ifs. eapply mfuture_preserves_sim_ge; eauto. eapply rtc_once; eauto. } *)
+    (*     { folder. ss; des_ifs. eapply mfuture_preserves_sim_geU; eauto. eapply rtc_once; eauto. } *)
     (*     { etrans; eauto. } *)
 
     - (* call *)
@@ -926,7 +797,7 @@ Section ADQSTEP.
         des_ifs. econs 1; eauto.
       + right. eapply CIH; eauto.
         { instantiate (1:= smos_arg). econs 2; eauto.
-          * ss. folder. des_ifs. eapply mfuture_preserves_sim_ge; eauto.
+          * ss. folder. des_ifs. eapply mfuture_preserves_sim_geU; eauto.
             econs 2; eauto using SimMemOhs.lepriv_proj.
           * instantiate (1:= smos_arg). econs; [eassumption|..]; revgoals; ss.
             { ii.
@@ -1034,7 +905,7 @@ Section ADQSTEP.
             replace smos_after with smos_ret by admit "UNCH".
             rewrite UPDTGT. unfold Midx.update. des_ifs.
         }
-        { folder. des_ifs. eapply mfuture_preserves_sim_ge; et. econs 2; et.
+        { folder. des_ifs. eapply mfuture_preserves_sim_geU; et. econs 2; et.
           right. eapply SimMemOhs.le_proj; eauto.
         }
         { etrans; eauto. }
@@ -1054,7 +925,7 @@ Section ADQSIM.
 
   Variable pp: ProgPair.t.
   Hypothesis SIMPROG: ProgPair.sim pp.
-  Hypothesis SIMPROGU: ProgPair.simU pp.
+  (* Hypothesis SIMPROGU: ProgPair.simU pp. *)
   Let p_src := (ProgPair.src pp).
   Let p_tgt := (ProgPair.tgt pp).
   Let sem_src := Sem.sem p_src.

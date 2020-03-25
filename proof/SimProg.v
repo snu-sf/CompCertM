@@ -253,7 +253,8 @@ Proof.
     rewrite MIDX in RESPECTS.
     assert(MIDX2: ModSem.midx (ModSemPair.src msp) = ModSem.midx (ModSemPair.tgt msp)).
     { clarify. ss. unfold Mod.modsem. erewrite ! Mod.get_modsem_midx_spec. ss. }
-    hexploit (@fundamental_theorem SM SS SU _ SMOS _ MIDX2 RESPECTS); ss.
+    hexploit (@fundamental_theorem SM SS SU SMOS _ MIDX2); ss.
+    { clarify. }
   }
 
   (* (* rewrite Forall_forall in *. *) *)
@@ -349,7 +350,8 @@ Proof.
       rewrite MIDX in RESPECTS.
       assert(MIDX2: ModSem.midx (ModSemPair.src msp) = ModSem.midx (ModSemPair.tgt msp)).
       { clarify. ss. unfold Mod.modsem. erewrite ! Mod.get_modsem_midx_spec. ss. }
-      hexploit (@fundamental_theorem SM SS SU _ SMOS _ MIDX2 RESPECTS); ss.
+      hexploit (@fundamental_theorem SM SS SU SMOS _ MIDX2); ss.
+      { clarify. }
     }
 
     (* (* rewrite Forall_forall in *. *) *)

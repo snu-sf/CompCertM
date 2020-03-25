@@ -144,13 +144,14 @@ Hint Resolve lxsim_mon: paco.
 
 Module ModSemPair.
 Section MODSEMPAIR.
-Context {SM: SimMem.class} {SMO: SimMemOh.class} {SS: SimSymb.class SM} {SU: Sound.class}.
+Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Record t: Type := mk {
     src: ModSem.t;
     tgt: ModSem.t;
     ss: SimSymb.t;
     sm: SimMem.t;
+    SMO: SimMemOh.class;
   }.
 
   Inductive sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
@@ -178,13 +179,13 @@ Context {SM: SimMem.class} {SMO: SimMemOh.class} {SS: SimSymb.class SM} {SU: Sou
           sm
           (WF: SimMem.wf sm)
         ,
-          exists (smo: SimMemOh.t (class := (SMO))),
+          exists (smo: SimMemOh.t (class := msp.(SMO))),
             (<<WF: SimMemOh.wf smo>>) /\
             (<<SMEQ: smo.(SimMemOh.sm) = sm>>) /\
             (<<OHSRC: smo.(SimMemOh.oh_src) = upcast msp.(src).(initial_owned_heap)>>) /\
             (<<OHTGT: smo.(SimMemOh.oh_tgt) = upcast msp.(tgt).(initial_owned_heap)>>))
       (SIM: forall
-          (sm_arg: SimMemOh.t (class := (SMO))) oh_src oh_tgt args_src args_tgt
+          (sm_arg: SimMemOh.t (class := msp.(SMO))) oh_src oh_tgt args_src args_tgt
           sg_init_src sg_init_tgt
           (FINDFSRC: (Genv.find_funct msp.(src).(ModSem.skenv)) (Args.get_fptr args_src) =
                      Some (Internal sg_init_src))
@@ -314,8 +315,8 @@ Section FACTORTARGET.
   End LXSIM.
 
   Theorem factor_simmodsem_target
-          (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm)):
-      ModSemPair.sim (ModSemPair.mk ms_src (ModSem.Atomic.trans ms_tgt) ss sm).
+          (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm SMO)):
+      ModSemPair.sim (ModSemPair.mk ms_src (ModSem.Atomic.trans ms_tgt) ss sm SMO).
   Proof.
     inv SIM. ss. econs; eauto. ss. i. exploit SIM0; eauto.
     { inv SIMSKENV. ss. econs; eauto. }

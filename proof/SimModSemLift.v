@@ -190,6 +190,8 @@ Context {SMLIFT: SimMemLift.class SM}.
           (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
           (MLE: SimMem.le sm0 sm1),
           <<MLE: SimMem.le sm0 sm2>>)
+      (EXCLPRIV: forall st_init_src st_init_tgt sm0 sm1 (MWF: SimMem.wf sm0),
+          mle_excl st_init_src st_init_tgt sm0 sm1 -> SimMem.lepriv sm0 sm1)
       (SIM: forall
           sm_arg args_src args_tgt
           sg_init_src sg_init_tgt
@@ -238,6 +240,8 @@ Section IMPLIES.
             (MLEEXCL: (mle_excl st_at_src st_at_tgt) sm1 sm2)
             (MLE: SimMem.le sm0 sm1),
             <<MLE: SimMem.le sm0 sm2>>)
+        (EXCLPRIV: forall st_init_src st_init_tgt sm0 sm1 (MWF: SimMem.wf sm0),
+            mle_excl st_init_src st_init_tgt sm0 sm1 -> SimMem.lepriv sm0 sm1)
         (SIM: lxsimL ms_src ms_tgt sound_state has_footprint mle_excl idx_init st_init_src st_init_tgt sm_init):
       <<SIM: SimModSem.lxsim ms_src ms_tgt sound_state idx_init st_init_src st_init_tgt sm_init>>.
   Proof.
@@ -262,6 +266,11 @@ Section IMPLIES.
       eexists _, sm_after.
       esplits; eauto.
       { eapply FOOTEXCL; et. etrans; et. eapply SimMemLift.lift_spec; et. }
+      { etrans.
+        - eapply SimMemLift.unlift_priv with (sm_at := sm_arg); eauto.
+          eapply SimMemLift.lift_priv; eauto.
+        - eapply EXCLPRIV; eauto. eapply SimMemLift.unlift_wf; eauto.
+      }
     - econs 4; et.
   Qed.
 

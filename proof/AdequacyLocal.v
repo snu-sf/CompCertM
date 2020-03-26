@@ -440,6 +440,7 @@ Section ADQMATCH.
           exists lst_tgt1 smos_after i1,
             (<<AFTERTGT: ms_tgt.(ModSem.after_external) lst_tgt0 oh_tgt retv_tgt lst_tgt1>>)
             /\ (<<MLEPUB: SimMemOhs.le sm_at smos_after>>)
+            /\ (<<UNCH: SimMemOhs.unch ms_src.(ModSem.midx) sm_at smos_after>>)
             /\ (<<LXSIM: lxsim ms_src ms_tgt (fun st => forall si, exists su m_arg, (sound_states_local si) su m_arg st)
                             i1 lst_src1 lst_tgt1 smos_after>>))
       (SESRC: (ModSem.to_semantics ms_src).(symbolenv) = skenv_link_src)
@@ -578,6 +579,24 @@ End ADQINIT.
 
 
 
+(********* TODO: move to coqlibC ***************)
+(********* TODO: move to coqlibC ***************)
+(********* TODO: move to coqlibC ***************)
+(********* TODO: move to coqlibC ***************)
+(********* TODO: move to coqlibC ***************)
+(********* TODO: move to coqlibC ***************)
+(********* TODO: move to coqlibC ***************)
+Lemma equal_f
+      A B
+      (x: A)
+      (f g: A -> B)
+      (EQ: f = g)
+  :
+    <<EQ: f x = g x>>
+.
+Proof. ii; clarify. Qed.
+
+
 
 
 Section ADQSTEP.
@@ -683,8 +702,8 @@ Section ADQSTEP.
         + ss. folder. des_ifs. eapply mfuture_preserves_sim_geU; eauto. apply rtc_once.
           eauto using SimMemOhs.le_proj.
         + etrans; eauto.
-        + admit "UNCHSRC".
-        + admit "UNCHTGT".
+        + ii. eapply UNCH; congruence.
+        + ii. eapply UNCH; congruence.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SESRC; et.
         + ss. inv GE. folder. rewrite Forall_forall in *. eapply SETGT; et.
 
@@ -708,10 +727,6 @@ Section ADQSTEP.
           { exfalso. eapply SAFESRC; eauto. }
           { exfalso. eapply SAFESRC0. u. eauto. }
           exploit STEP; eauto. i; des_safe.
-          (* assert(UNCHSRC: (SimMemOhs.ohs_src sm0) = (SimMemOhs.ohs_src smos1)). *)
-          (* { admit "UNCH". } *)
-          (* assert(UNCHTGT: (SimMemOhs.ohs_tgt sm0) = (SimMemOhs.ohs_tgt smos1)). *)
-          (* { admit "UNCH". } *)
           exists i1, (State ((Frame.mk ms_tgt st_tgt1) :: tail_tgt) ohs_tgt0). esplits; eauto.
           { assert(T: DPlus ms_tgt lst_tgt tr st_tgt1 \/ (lst_tgt = st_tgt1 /\ tr = E0 /\ ord i1 i0)).
             { des; et. inv STAR; et. left. econs; et. }
@@ -727,16 +742,16 @@ Section ADQSTEP.
           econs; eauto.
           { ss. folder. des_ifs. eapply mfuture_preserves_sim_geU; eauto. apply rtc_once; eauto using SimMemOhs.le_proj. }
           { etransitivity; eauto. }
-          { ss. etrans; try apply OHSRC; eauto. admit "UNCH". }
-          { ss. etrans; try apply OHTGT; eauto. admit "UNCH". }
+          { ss. etrans; eauto. rewrite OHSSRC; et. eapply UNCH; eauto with congruence. }
+          { ss. etrans; eauto. rewrite OHSTGT; et. eapply UNCH; eauto with congruence. }
         * des. pclearbot. econs 2.
           { esplits; eauto. eapply lift_dplus; eauto. { unsguard SETGT. ss. des_ifs. } }
           right. eapply CIH; eauto. instantiate (1:=smos1). econs; eauto.
           { folder. ss; des_ifs. eapply mfuture_preserves_sim_geU; eauto.
             eapply rtc_once; eauto using SimMemOhs.le_proj. }
           { etrans; eauto. }
-          { ss. etrans; try apply OHSRC; eauto. admit "UNCH". }
-          { ss. etrans; try apply OHTGT; eauto. admit "UNCH". }
+          { ss. etrans; eauto. rewrite OHSSRC; et. eapply UNCH; eauto with congruence. }
+          { ss. etrans; eauto. rewrite OHSTGT; et. eapply UNCH; eauto with congruence. }
 
     - (* bstep *)
       admit "SOMEHOW...".
@@ -880,9 +895,21 @@ Section ADQSTEP.
         { eapply lift_determinate_at. { unsguard SETGT. ss. des_ifs. } eapply final_frame_determinate_at; et. }
         econs 4; ss; eauto.
       + right. eapply CIH; eauto.
-        instantiate (1:= smos_after). econs; ss; cycle 3; eauto.
-        { unfold Midx.update. ii. des_ifs.
-          - clear - UPDSRC OHSSRC OHSRC.
+        instantiate (1:= smos_after).
+        econs; ss; cycle 3; eauto.
+        { ii.  destruct (UNCH0 mi) as [UNCHSRC UNCHTGT]; eauto. erewrite <- (UNCHSRC).
+          unfold Midx.update. des_ifs.
+          - clear - NEQ UNCH UNCH0 UPDSRC OHSSRC OHSRC.
+            eapply (equal_f (ModSem.midx ms_src)) in UPDSRC. des. unfold Midx.update in *.
+            des_ifH UPDSRC; clarify. des_ifH OHSRC.
+            { congruence. }
+            rewrite <- UPDSRC.
+            destruct (UNCH (ModSem.midx ms_src0)) as [UNCHSRC UNCHTGT]; ss. des.
+            rewrite <- UNCHSRC.
+            clarify.
+            des_ifs.
+            
+            unfold Midx.update in *. des_ifs.
             replace smos_after with smos_ret by admit "UNCH".
             rewrite UPDSRC. unfold Midx.update. des_ifs.
           - clear - UPDSRC OHSSRC OHSRC NEQ n.

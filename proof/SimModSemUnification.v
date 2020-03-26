@@ -455,25 +455,25 @@ Section SimMemOhUnify.
           rewrite upcast_downcast in *. clarify. rewrite SimMemOh.setset_sm.
           eapply WF; eauto.
       + ii.
-        unfold ohs_src; ss. des_ifs_safe. exploit (WTY2 smos0); eauto. i; des. des_ifs_safe.
-        des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-        { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_src. ss. }
-        { rewrite upcast_downcast in *. clarify. }
-        { apply nth_error_mapi_none_aux_iff in Heq2. des.
-          assert(NTH0: nth_error (anys smos0) mi <> None).
-          { destruct (nth_error (anys smos0) mi); ss. }
-          eapply nth_error_Some in NTH0; eauto. xomega.
-        }
-      + ii.
-        unfold ohs_tgt; ss. des_ifs_safe. exploit (WTY2 smos0); eauto. i; des. des_ifs_safe.
-        des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-        { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_tgt. ss. }
-        { rewrite upcast_downcast in *. clarify. }
-        { apply nth_error_mapi_none_aux_iff in Heq2. des.
-          assert(NTH0: nth_error (anys smos0) mi <> None).
-          { destruct (nth_error (anys smos0) mi); ss. }
-          eapply nth_error_Some in NTH0; eauto. xomega.
-        }
+        do 2 (unfold ohs_src, ohs_tgt; ss).
+        des_ifs_safe. exploit (WTY2 smos0); eauto. i; des. des_ifs_safe.
+        split.
+        * des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
+          { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_src. ss. }
+          { rewrite upcast_downcast in *. clarify. }
+          { apply nth_error_mapi_none_aux_iff in Heq2. des.
+            assert(NTH0: nth_error (anys smos0) mj <> None).
+            { destruct (nth_error (anys smos0) mj); ss. }
+            eapply nth_error_Some in NTH0; eauto. xomega.
+          }
+        * des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
+          { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_tgt. ss. }
+          { rewrite upcast_downcast in *. clarify. }
+          { apply nth_error_mapi_none_aux_iff in Heq2. des.
+            assert(NTH0: nth_error (anys smos0) mj <> None).
+            { destruct (nth_error (anys smos0) mj); ss. }
+            eapply nth_error_Some in NTH0; eauto. xomega.
+          }
     - ii.
       hexploit smos0.(LEN); eauto. intro LEN.
       eexists (set_smo smos0 n NTH smo1).
@@ -526,25 +526,25 @@ Section SimMemOhUnify.
           rewrite upcast_downcast in *. clarify. rewrite SimMemOh.setset_sm.
           eapply WF; eauto.
       + ii.
-        unfold ohs_src; ss. des_ifs_safe. exploit (WTY2 smos0); eauto. i; des. des_ifs_safe.
-        des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-        { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_src. ss. }
-        { rewrite upcast_downcast in *. clarify. }
-        { apply nth_error_mapi_none_aux_iff in Heq2. des.
-          assert(NTH0: nth_error (anys smos0) mi <> None).
-          { destruct (nth_error (anys smos0) mi); ss. }
-          eapply nth_error_Some in NTH0; eauto. xomega.
-        }
-      + ii.
-        unfold ohs_tgt; ss. des_ifs_safe. exploit (WTY2 smos0); eauto. i; des. des_ifs_safe.
-        des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-        { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_tgt. ss. }
-        { rewrite upcast_downcast in *. clarify. }
-        { apply nth_error_mapi_none_aux_iff in Heq2. des.
-          assert(NTH0: nth_error (anys smos0) mi <> None).
-          { destruct (nth_error (anys smos0) mi); ss. }
-          eapply nth_error_Some in NTH0; eauto. xomega.
-        }
+        do 2 (unfold ohs_src, ohs_tgt; ss).
+        des_ifs_safe. exploit (WTY2 smos0); eauto. i; des. des_ifs_safe.
+        split.
+        * des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
+          { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_src. ss. }
+          { rewrite upcast_downcast in *. clarify. }
+          { apply nth_error_mapi_none_aux_iff in Heq2. des.
+            assert(NTH0: nth_error (anys smos0) mj <> None).
+            { destruct (nth_error (anys smos0) mj); ss. }
+            eapply nth_error_Some in NTH0; eauto. xomega.
+          }
+        * des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
+          { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_tgt. ss. }
+          { rewrite upcast_downcast in *. clarify. }
+          { apply nth_error_mapi_none_aux_iff in Heq2. des.
+            assert(NTH0: nth_error (anys smos0) mj <> None).
+            { destruct (nth_error (anys smos0) mj); ss. }
+            eapply nth_error_Some in NTH0; eauto. xomega.
+          }
     - ii; ss. inv SMMATCH0. inv SMMATCH1. ss. des_ifs_safe.
       exploit (WTY2 smos0); eauto. i; des.
       exploit (WTY2 smos1); eauto. i; des.

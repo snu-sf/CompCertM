@@ -92,6 +92,9 @@ Section SIMMODSEM.
   Context {SS: SimSymb.class SM}.
   Variable sound_states: ms_src.(state) -> Prop.
 
+  Let midx_src: Midx.t := ms_src.(ModSem.midx).
+  Let midx_tgt: Midx.t := ms_tgt.(ModSem.midx).
+
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMemOhs.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smos0: SimMemOhs.t): Prop :=
   | fsim_step_step
@@ -101,12 +104,14 @@ Section SIMMODSEM.
           exists i1 st_tgt1 smos1,
             (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ ord i1 i0>>)
             /\ <<MLE: SimMemOhs.le smos0 smos1>>
+            /\ <<UNCH: SimMemOhs.unch midx_src smos0 smos1>>
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 smos1>>)
       (RECEP: receptive_at ms_src st_src0)
   | fsim_step_stutter
       i1 st_tgt1 smos1
       (PLUS: DPlus ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
       (MLE: SimMemOhs.le smos0 smos1)
+      (UNCH: SimMemOhs.unch midx_src smos0 smos1)
       (BSIM: fsim i1 st_src0 st_tgt1 smos1).
 
   Inductive bsim_step (bsim: idx -> state ms_src -> state ms_tgt -> SimMemOhs.t -> Prop)
@@ -117,16 +122,15 @@ Section SIMMODSEM.
           exists i1 st_src1 smos1,
             (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>)
             /\ <<MLE: SimMemOhs.le smos0 smos1>>
+            /\ <<UNCH: SimMemOhs.unch midx_src smos0 smos1>>
             /\ <<BSIM: bsim i1 st_src1 st_tgt1 smos1>>)
       (PROGRESS: <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)
   | bsim_step_stutter
       i1 st_src1 smos1
       (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
       (MLE: SimMemOhs.le smos0 smos1)
+      (UNCH: SimMemOhs.unch midx_src smos0 smos1)
       (BSIM: bsim i1 st_src1 st_tgt0 smos1).
-
-  Let midx_src: Midx.t := ms_src.(ModSem.midx).
-  Let midx_tgt: Midx.t := ms_tgt.(ModSem.midx).
 
   Inductive _lxsim_pre (lxsim: idx -> state ms_src -> state ms_tgt -> SimMemOhs.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smos0: SimMemOhs.t): Prop :=
@@ -153,6 +157,7 @@ Section SIMMODSEM.
                           args_src args_tgt smos_arg>>
             /\ (<<MWF: SimMemOhs.wf smos_arg>>)
             /\ (<<MLE: SimMemOhs.lepriv smos0 smos_arg>>)
+            /\ (<<UNCH: SimMemOhs.unch midx_src smos0 smos_arg>>)
             /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 oh_tgt0 args_tgt>>)
             /\ (<<K: forall smos_ret oh_src ohs_src1 retv_src oh_tgt ohs_tgt1 retv_tgt st_src1
                 (OHSRC: downcast (ohs_src1 midx_src) = Some oh_src)
@@ -164,11 +169,14 @@ Section SIMMODSEM.
                 exists st_tgt1 smos_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 oh_tgt retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMemOhs.le smos0 smos_after>>) /\
+                  (<<UNCH: SimMemOhs.unch midx_src smos0 smos_after>>) /\
+                  (<<UNCH: SimMemOhs.unch midx_src smos_ret smos_after>>) /\
                   (<<LXSIM: lxsim i1 st_src1 st_tgt1 smos_after>>)>>))>>)
 
   | lxsim_final
       smos_ret oh_src oh_tgt retv_src retv_tgt
       (MLE: SimMemOhs.le smos0 smos_ret)
+      (UNCH: SimMemOhs.unch midx_src smos0 smos_ret)
       (MWF: SimMemOhs.wf smos_ret)
       (FINALSRC: ms_src.(final_frame) st_src0 oh_src retv_src)
       (FINALTGT: ms_tgt.(final_frame) st_tgt0 oh_tgt retv_tgt)
@@ -246,6 +254,7 @@ Context {SM: SimMem.class} {SMOS: SimMemOhs.class} {SS: SimSymb.class SM} {SU: S
               (SAFESRC: exists _st_init_src, (msp.(src).(initial_frame)) oh_src args_src _st_init_src),
               exists st_init_src sm_init idx_init,
                 (<<MLE: SimMemOhs.le sm_arg sm_init>>) /\
+                (<<UNCH: SimMemOhs.unch msp.(src).(midx) sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(src).(initial_frame) oh_src args_src st_init_src>>) /\
                 (<<SIM: lxsim msp.(src) msp.(tgt) (fun st => forall si, exists su m_init, sound_states si su m_init st)
                                                   idx_init st_init_src st_init_tgt sm_init>>)>>) /\
@@ -314,10 +323,7 @@ Inductive respects: Prop :=
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
-                      /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx),
-                             SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
-                      /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx),
-                             SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
+                      /\ (<<UNCH: SimMemOhs.unch midx smos0 smos1>>)
     )
     (SMSIMPRIV: forall (smos0: SimMemOhs.t)
                        (smo0 smo1: SimMemOh.t)
@@ -326,10 +332,7 @@ Inductive respects: Prop :=
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
-                      /\ (<<UNCHSRC: forall mi (NEQ: mi <> midx),
-                             SimMemOhs.ohs_src smos0 mi = SimMemOhs.ohs_src smos1 mi>>)
-                      /\ (<<UNCHTGT: forall mi (NEQ: mi <> midx),
-                             SimMemOhs.ohs_tgt smos0 mi = SimMemOhs.ohs_tgt smos1 mi>>)
+                      /\ (<<UNCH: SimMemOhs.unch midx smos0 smos1>>)
     )
     (SMMATCHLE: forall smo0 smo1 smos0 smos1
                        (SMMATCH0: sm_match_strong smo0 smos0)
@@ -457,11 +460,13 @@ Proof.
       * rr in SIMARGS. des. rr. esplits; eauto.
         { erewrite smeq; eauto. }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
-          rewrite OHSRC. erewrite ohsrc; eauto with congruence.
+          - rewrite OHSRC. erewrite ohsrc; eauto with congruence.
+          - eapply UNCH; ss.
         }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
-          rewrite OHTGT. erewrite ohtgt; eauto with congruence.
-          rewrite <- MIDX. eauto.
+          - rewrite OHTGT. erewrite ohtgt; eauto with congruence.
+            rewrite <- MIDX. eauto.
+          - eapply UNCH; ss. eauto with congruence.
         }
       * i. hexploit (SMPROJ smos_ret); eauto. intro T; des.
         exploit K.
@@ -477,15 +482,16 @@ Proof.
         i; des.
         hexploit (SMSIM _ _ _ MLEPUB SMMATCH0); eauto. i; des.
         esplits; eauto.
+        { }
         pclearbot. right. eapply CIH; eauto.
     + exploit SMSIM; eauto. i; des.
 
       rr in SIMRETV. des. rr. econs 4; try eapply wfwf; eauto.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
         { rewrite OHSRC. erewrite ohsrc; eauto with congruence. }
-        erewrite UNCHSRC; eauto with congruence.
+        exploit (UNCH mi); i; des; eauto with congruence.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
         { rewrite OHTGT. erewrite ohtgt; eauto with congruence. rewrite <- MIDX. eauto. }
-        erewrite UNCHTGT; eauto with congruence.
+        exploit (UNCH mi); i; des; eauto with congruence.
       * rr. esplits; eauto. erewrite smeq; eauto.
 Qed.

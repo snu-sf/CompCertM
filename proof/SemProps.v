@@ -532,7 +532,7 @@ Proof.
       { econs; et. }
       i. determ_tac ModSem.final_frame_dtm.
       repeat f_equal. eapply ModSem.after_external_dtm; et.
-      rp; eauto. rewrite OH in *. clarify. simpl_depind. clarify.
+      rp; eauto. rewrite OH in *. eapply upcast_inj in OH0. des. clarify.
   - ss. inv FINAL. ss. inv STEP; ss; ModSem.tac.
   - inv H; s; try omega. exploit sd_traces_at; eauto.
 Qed.

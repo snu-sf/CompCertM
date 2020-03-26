@@ -16,7 +16,7 @@ Definition downcast {T: Type} (a: Any): option T.
 Defined.
 
 Definition upcast {T} (a: T): Any := existT (fun x => x) _ a.
-Hint Unfold downcast upcast.
+(* Hint Unfold downcast upcast. *)
 
 Lemma downcast_spec
       a T (t: T)
@@ -90,3 +90,23 @@ Definition Any_dec (a0 a1: Any): {a0=a1} + {a0<>a1}.
     + right. ii. simpl_depind. clarify.
   - right. ii. simpl_depind.
 Defined.
+
+Goal (upcast tt = upcast 0 -> False).
+  ii. Fail timeout 1 clarify.
+Abort.
+
+Lemma upcast_inj
+      A B (a: A) (b: B)
+      (EQ: upcast a = upcast b)
+  :
+    <<EQ: A = B>> /\ <<EQ: a ~= b>>
+.
+Proof. unfold upcast in *. simpl_depind. ss. Qed.
+
+(* Global Opaque upcast downcast. *)
+
+(* Goal (upcast tt = upcast 0 -> False). *)
+(*   ii. clarify. (* at least it terminates *) *)
+(*   Undo 1. *)
+(*   apply_all_once upcast_inj; des. *)
+(* Abort. *)

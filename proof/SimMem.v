@@ -288,9 +288,16 @@ Section SimMemOhs.
     (<<OHTGT: ohs_tgt = (smo0.(SimMemOhs.ohs_tgt))>>)
   .
 
+  Definition unch `{SMOS: class} (mi: Midx.t) (smos0 smos1: t): Prop :=
+    forall mj (NEQ: mi <> mj),
+      (<<UNCHSRC: SimMemOhs.ohs_src smos0 mj = SimMemOhs.ohs_src smos1 mj>>) /\
+      (<<UNCHTGT: SimMemOhs.ohs_tgt smos0 mj = SimMemOhs.ohs_tgt smos1 mj>>)
+  .
+
 End SimMemOhs.
 End SimMemOhs.
 
 Coercion SimMemOhs.sm: SimMemOhs.t >-> SimMem.t.
 Hint Resolve SimMemOhs.pub_priv SimMemOhs.wf_proj SimMemOhs.le_proj SimMemOhs.lepriv_proj.
+Hint Unfold SimMemOhs.unch.
 

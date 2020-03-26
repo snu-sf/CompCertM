@@ -169,6 +169,7 @@ Section SIMMODSEM.
                 exists st_tgt1 smos_after i1,
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 oh_tgt retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMemOhs.le smos0 smos_after>>) /\
+                  (<<MLEPRIV: SimMemOhs.lepriv smos_ret smos_after>>) /\
                   (<<UNCH: SimMemOhs.unch midx_src smos0 smos_after>>) /\
                   (<<UNCH: SimMemOhs.unch midx_src smos_ret smos_after>>) /\
                   (<<LXSIM: lxsim i1 st_src1 st_tgt1 smos_after>>)>>))>>)
@@ -318,8 +319,8 @@ Inductive respects: Prop :=
     )
     (SMSIM: forall (smos0: SimMemOhs.t)
                    (smo0 smo1: SimMemOh.t)
-                   (LE: SimMemOh.le smo0 smo1)
                    (SMMATCH: sm_match_strong smo0 smos0)
+                   (LE: SimMemOh.le smo0 smo1)
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
@@ -480,9 +481,11 @@ Proof.
         }
         { rp; eauto. }
         i; des.
-        hexploit (SMSIM _ _ _ MLEPUB SMMATCH0); eauto. i; des.
+        hexploit (SMSIM _ _ _ SMMATCH0 MLEPUB); eauto. i; des.
+        hexploit (SMSIMPRIV _ _ _ SMMATCH1 MLEPRIV); eauto. i; des.
         esplits; eauto.
-        { }
+        { admit "". }
+        { admit "". }
         pclearbot. right. eapply CIH; eauto.
     + exploit SMSIM; eauto. i; des.
 

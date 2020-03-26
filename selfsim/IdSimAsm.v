@@ -1607,6 +1607,7 @@ Proof.
       exists (SimMemInj.unlift' sm_arg sm_ret).
       eexists. eexists (AsmC.mkstate _ (Asm.State _ _)). esplits; eauto.
       - etrans; eauto.
+      - clear - MLE0. inv MLE0. ss. econs; ss; eauto. eapply SimMemInj.frozen_refl.
       - i. esplits; eauto.
         + econs 2; eauto.
         + exploit SimMemInj.unlift_wf; try apply MLE0; eauto. i. inv MLE2.

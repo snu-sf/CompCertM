@@ -113,8 +113,9 @@ Module Sound.
         (INCL: SkEnv.includes skenv_link sk),
         <<SKE: su.(skenv) m0 skenv0>>;
 
-    system_skenv: forall su m0 skenv_link,
-        su.(skenv) m0 skenv_link <-> su.(skenv) m0 (System.skenv skenv_link);
+    system_skenv: forall su m0 skenv_link
+        (SKELINK: su.(skenv) m0 skenv_link),
+        <<SKE: su.(skenv) m0 (System.skenv skenv_link)>>;
 
     system_axiom: forall
         ef skenv0 su0 args0

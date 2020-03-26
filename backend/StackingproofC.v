@@ -945,6 +945,8 @@ Proof.
   - eapply wt_state_local_preservation; eauto.
     eapply wt_prog; eauto.
   - inv FOOT. inv MLEEXCL. rewrite RSP in *. clarify. des. clarify. eapply SimMemInjC.foot_excl; et.
+  - inv EXCL. inv MLEEXCL. econs; ss; eauto.
+    inv MWF. eapply frozen_shortened; eauto with xomega.
   - (* init bsim *)
     { inv INITTGT. inv STORE. folder. inv SIMARGS; ss.
       exploit functions_translated_inject; eauto.

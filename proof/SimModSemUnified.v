@@ -163,6 +163,7 @@ Section SIMMODSEM.
                 (OHSRC: downcast (ohs_src1 midx_src) = Some oh_src)
                 (OHTGT: downcast (ohs_tgt1 midx_tgt) = Some oh_tgt)
                 (MLE: SimMemOhs.le smos_arg smos_ret)
+                (LEPRTL: SimMemOhs.le_partial (fun x => x <> midx_src) smos_arg smos_ret)
                 (MWF: SimMemOhs.wf smos_ret)
                 (SIMRETV: SimMemOhs.sim_retv ohs_src1 ohs_tgt1 retv_src retv_tgt smos_ret)
                 (AFTERSRC: ms_src.(after_external) st_src0 oh_src retv_src st_src1),
@@ -170,7 +171,7 @@ Section SIMMODSEM.
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 oh_tgt retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMemOhs.le smos0 smos_after>>) /\
                   (<<MLEPRIV: SimMemOhs.lepriv smos_ret smos_after>>) /\
-                  (<<UNCH: SimMemOhs.unch midx_src smos0 smos_after>>) /\
+                  (* (<<UNCH: SimMemOhs.unch midx_src smos0 smos_after>>) /\ *)
                   (<<UNCH: SimMemOhs.unch midx_src smos_ret smos_after>>) /\
                   (<<LXSIM: lxsim i1 st_src1 st_tgt1 smos_after>>)>>))>>)
 
@@ -317,6 +318,13 @@ Inductive respects: Prop :=
     (SMPROJ: forall smos (MWF: SimMemOhs.wf smos),
         exists smo, (<<SMMATCH: sm_match_strong smo smos>>) /\ (<<SMWF: SimMemOh.wf smo>>)
     )
+    (SMLEPRTL: forall
+        smo0 smos0 smo1 smos1
+        (SMMATCH0: sm_match_strong smo0 smos0)
+        (SMMATCH1: sm_match_strong smo1 smos1)
+        (LE: SimMemOh.le smo0 smo1)
+      ,
+        <<LEPARTIAL: SimMemOhs.le_partial (fun x => x = midx) smos0 smos1>>)
     (SMSIM: forall (smos0: SimMemOhs.t)
                    (smo0 smo1: SimMemOh.t)
                    (SMMATCH: sm_match_strong smo0 smos0)
@@ -324,7 +332,7 @@ Inductive respects: Prop :=
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
-                      /\ (<<UNCH: SimMemOhs.unch midx smos0 smos1>>)
+                      /\ (<<UNCH: SimMemOhs.eq_partial (fun x => x <> midx) smos0 smos1>>)
     )
     (SMSIMPRIV: forall (smos0: SimMemOhs.t)
                        (smo0 smo1: SimMemOh.t)
@@ -333,7 +341,7 @@ Inductive respects: Prop :=
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
-                      /\ (<<UNCH: SimMemOhs.unch midx smos0 smos1>>)
+                      /\ (<<UNCH: SimMemOhs.eq_partial (fun x => x <> midx) smos0 smos1>>)
     )
     (SMMATCHLE: forall smo0 smo1 smos0 smos1
                        (SMMATCH0: sm_match_strong smo0 smos0)
@@ -430,8 +438,9 @@ Proof.
     i; des.
     exploit (SMSIM sm_arg); eauto. i; des.
     exists st_init_src. esplits; eauto.
+    { eapply SimMemOhs.eq_partial_unch; eauto. }
     instantiate (1:= idx_init).
-    clear - SIM STRONG SMSIM SMSIMPRIV SMPROJ SMMATCH0 SMMATCHLE MIDX OHSRC0 OHTGT0.
+    clear - SIM STRONG SMLEPRTL SMSIM SMSIMPRIV SMPROJ SMMATCH0 SMMATCHLE MIDX OHSRC0 OHTGT0.
     rename sm_init into smo0. rename smos1 into smos0.
     rename st_init_src into st_src0. rename st_init_tgt into st_tgt0.
     (* assert(WF: SimMemOhs.wf smos0). *)
@@ -445,15 +454,23 @@ Proof.
     + econs 1; eauto. ii. hexploit1 SU0; ss. inv SU0.
       * econs 1; eauto. ii. exploit STEP; eauto. i; des_safe.
         exploit SMSIM; eauto. i; des_safe.
-        esplits; eauto. pclearbot. right. eapply CIH; eauto.
+        esplits; eauto.
+        { eapply SimMemOhs.eq_partial_unch; eauto. }
+        pclearbot. right. eapply CIH; eauto.
       * exploit (SMSIM smos0); eauto. i; des.
-        econs 2; eauto. pclearbot. right. eapply CIH; eauto.
+        econs 2; eauto.
+        { eapply SimMemOhs.eq_partial_unch; eauto. }
+        pclearbot. right. eapply CIH; eauto.
     + econs 2; eauto. ii. hexploit1 SU0; ss. r in SU0. hexploit1 SU0; ss. inv SU0.
       * econs 1; eauto. ii. exploit STEP; eauto. i; des_safe.
         exploit SMSIM; eauto. i; des_safe.
-        esplits; eauto. pclearbot. right. eapply CIH; eauto.
+        esplits; eauto.
+        { eapply SimMemOhs.eq_partial_unch; eauto. }
+        pclearbot. right. eapply CIH; eauto.
       * exploit (SMSIM smos0); eauto. i; des.
-        econs 2; eauto. pclearbot. right. eapply CIH; eauto.
+        econs 2; eauto.
+        { eapply SimMemOhs.eq_partial_unch; eauto. }
+        pclearbot. right. eapply CIH; eauto.
     + econs 3; eauto.
       { eapply wfwf; eauto. }
       ii. exploit SU0; eauto. i; des. exploit SMSIMPRIV; eauto. i; des.
@@ -462,13 +479,14 @@ Proof.
         { erewrite smeq; eauto. }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
           - rewrite OHSRC. erewrite ohsrc; eauto with congruence.
-          - eapply UNCH; ss.
+          - eapply SimMemOhs.eq_partial_unch; eauto.
         }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
           - rewrite OHTGT. erewrite ohtgt; eauto with congruence.
             rewrite <- MIDX. eauto.
-          - eapply UNCH; ss. eauto with congruence.
+          - eapply SimMemOhs.eq_partial_unch; eauto with congruence.
         }
+      * eapply SimMemOhs.eq_partial_unch; eauto.
       * i. hexploit (SMPROJ smos_ret); eauto. intro T; des.
         exploit K.
         { eapply SMMATCHLE; et. }
@@ -481,20 +499,33 @@ Proof.
         }
         { rp; eauto. }
         i; des.
-        hexploit (SMSIM _ _ _ SMMATCH0 MLEPUB); eauto. i; des.
+        (* hexploit (SMSIM _ _ _ SMMATCH0 MLEPUB); eauto. i; des. *)
         hexploit (SMSIMPRIV _ _ _ SMMATCH1 MLEPRIV); eauto. i; des.
-        esplits; eauto.
-        { admit "". }
-        { admit "". }
+        (* rename smos2 into _smos_after. *)
+        rename smos2 into smos_after.
+        esplits; try apply UNCH1; eauto.
+        { clear - MLEPUB SMMATCH2 SMMATCH0 SMLEPRTL LEPRTL UNCH UNCH0.
+          set (mi:= msp.(ModSemPair.src).(ModSem.midx)).
+          eapply SimMemOhs.le_partial_elim with (mis := fun x => x <> mi) (mjs := fun x => x = mi); eauto.
+          { ii. destruct (classic (x0 = mi)); eauto. }
+          esplits; eauto.
+          - eapply SimMemOhs.eq_le_partial; eauto.
+            eapply SimMemOhs.le_eq_partial; eauto.
+          - eapply SMLEPRTL; eauto.
+        }
+        { eapply SimMemOhs.eq_partial_unch; eauto. }
         pclearbot. right. eapply CIH; eauto.
     + exploit SMSIM; eauto. i; des.
 
       rr in SIMRETV. des. rr. econs 4; try eapply wfwf; eauto.
+      * eapply SimMemOhs.eq_partial_unch; eauto.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
         { rewrite OHSRC. erewrite ohsrc; eauto with congruence. }
+        eapply SimMemOhs.eq_partial_unch in UNCH.
         exploit (UNCH mi); i; des; eauto with congruence.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
         { rewrite OHTGT. erewrite ohtgt; eauto with congruence. rewrite <- MIDX. eauto. }
+        eapply SimMemOhs.eq_partial_unch in UNCH.
         exploit (UNCH mi); i; des; eauto with congruence.
       * rr. esplits; eauto. erewrite smeq; eauto.
 Qed.

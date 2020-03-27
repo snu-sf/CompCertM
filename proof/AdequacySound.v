@@ -178,7 +178,7 @@ Section ADQSOUND.
     { econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
       rewrite Midx.in_mapi_iff in IN.
       des; ss; clarify.
-      + s. rewrite <- Sound.system_skenv; eauto.
+      + split; ss. eapply Sound.system_skenv; eauto.
       + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk a)).
         { unfold p_src in IN0. unfold ProgPair.src in *. apply nth_error_map_some in IN0.
           des. des_ifs. eapply INCLSRC; et. eapply nth_error_In; eauto. }

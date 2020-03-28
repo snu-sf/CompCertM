@@ -170,7 +170,6 @@ Section SIMMODSEM.
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 oh_tgt retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMemOhs.le smos0 smos_after>>) /\
                   (<<MLEPRIV: SimMemOhs.lepriv smos_ret smos_after>>) /\
-                  (<<UNCH: SimMemOhs.unch midx_src smos0 smos_after>>) /\
                   (<<UNCH: SimMemOhs.unch midx_src smos_ret smos_after>>) /\
                   (<<LXSIM: lxsim i1 st_src1 st_tgt1 smos_after>>)>>))>>)
 
@@ -313,9 +312,26 @@ Record sm_match (smo: SimMemOh.t) (smos: SimMemOhs.t): Prop :=
 Inductive respects: Prop :=
 | respects_intro
     sm_match_strong
+    (* proj *)
+    (le_weak: SimMemOhs.t -> SimMemOhs.t -> Prop)
+    (le_weak_PreOrder: PreOrder (le_weak))
     (STRONG: @sm_match_strong <2= @sm_match)
+    (LELEWEAK: SimMemOhs.le <2= le_weak)
+    (LEWEAKLE: forall
+        smo0 smo1 smos0 smos1
+        (LE: le_weak smos0 smos1)
+        (SMMATCH: sm_match_strong smo0 smos0)
+        (SMMATCH: sm_match_strong smo1 smos1)
+        (* (PROJ0: proj smos0 = Some smo0) *)
+        (* (PROJ1: proj smos1 = Some smo1) *)
+        (LE: SimMemOh.le smo0 smo1)
+      ,
+        <<LE: SimMemOhs.le smos0 smos1>>
+    )
+    (* (MATCHPROJ: forall smo smos (SMMATCH: sm_match_strong smo smos), proj smos = Some smo) *)
     (SMPROJ: forall smos (MWF: SimMemOhs.wf smos),
         exists smo, (<<SMMATCH: sm_match_strong smo smos>>) /\ (<<SMWF: SimMemOh.wf smo>>)
+                    (* /\ (<<PROJ: proj smos = Some smo>>) *)
     )
     (SMSIM: forall (smos0: SimMemOhs.t)
                    (smo0 smo1: SimMemOh.t)
@@ -334,6 +350,7 @@ Inductive respects: Prop :=
         exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
                       /\ (<<UNCH: SimMemOhs.unch midx smos0 smos1>>)
+                      /\ (<<LEWEAK: le_weak smos0 smos1>>)
     )
     (SMMATCHLE: forall smo0 smo1 smos0 smos1
                        (SMMATCH0: sm_match_strong smo0 smos0)
@@ -431,7 +448,8 @@ Proof.
     exploit (SMSIM sm_arg); eauto. i; des.
     exists st_init_src. esplits; eauto.
     instantiate (1:= idx_init).
-    clear - SIM STRONG SMSIM SMSIMPRIV SMPROJ SMMATCH0 SMMATCHLE MIDX OHSRC0 OHTGT0.
+    clear - SIM le_weak_PreOrder LELEWEAK LEWEAKLE STRONG SMSIM SMSIMPRIV SMPROJ
+                SMMATCH0 SMMATCHLE MIDX OHSRC0 OHTGT0.
     rename sm_init into smo0. rename smos1 into smos0.
     rename st_init_src into st_src0. rename st_init_tgt into st_tgt0.
     (* assert(WF: SimMemOhs.wf smos0). *)
@@ -481,11 +499,17 @@ Proof.
         }
         { rp; eauto. }
         i; des.
-        hexploit (SMSIM _ _ _ SMMATCH0 MLEPUB); eauto. i; des.
+        (* hexploit (SMSIM _ _ _ SMMATCH0 MLEPUB); eauto. i; des. *)
         hexploit (SMSIMPRIV _ _ _ SMMATCH1 MLEPRIV); eauto. i; des.
-        esplits; eauto.
-        { admit "". }
-        { admit "". }
+        esplits; try apply SMSTEPBIG1; eauto.
+        { clear - LEWEAK LEWEAK0 MLEPUB LELEWEAK LEWEAKLE le_weak_PreOrder SMSTEPBIG0
+                         MLEPUB MLEPRIV SMMATCH SMMATCH2 SMMATCH1 SMMATCH0 MLE0
+          .
+          rename smos2 into smos3. rename smos_ret into smos2. rename smo_after into smo3.
+          rename smo_arg into smo1. rename smo into smo2.
+          eapply LEWEAKLE; eauto.
+          { etrans; eauto. etrans; eauto. }
+        }
         pclearbot. right. eapply CIH; eauto.
     + exploit SMSIM; eauto. i; des.
 

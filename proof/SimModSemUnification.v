@@ -136,6 +136,52 @@ Section SimMemOhUnify.
       )
   .
 
+  Inductive le_weak (mi: Midx.t) (smos0 smos1: t): Prop :=
+  | le_weak_intro
+      (* (LESM: SimMem.le smos0.(sm) smos1.(sm)) *)
+      (LESMO: forall
+          n a0 a1 msp (smo0 smo1: SimMemOh.t (class := msp.(ModSemPair.SMO)))
+          (MOREFACT: forall
+              msp a0 a1 smo0 smo1
+              (NTH: nth_error msps mi = Some msp)
+              (NTH: nth_error smos0.(anys) mi = Some a0)
+              (NTH: nth_error smos1.(anys) mi = Some a1)
+              (CAST: downcast a0 = Some smo0)
+              (CAST: downcast a1 = Some smo1)
+            ,
+              <<LE: SimMemOh.le (class := msp.(ModSemPair.SMO)) smo0 smo1>>
+          )
+          (NTH: nth_error msps n = Some msp)
+          (NTH: nth_error smos0.(anys) n = Some a0)
+          (NTH: nth_error smos1.(anys) n = Some a1)
+          (CAST: downcast a0 = Some smo0)
+          (CAST: downcast a1 = Some smo1)
+        ,
+          <<LESMO: SimMemOh.le (class := msp.(ModSemPair.SMO)) smo0 smo1>>
+      )
+  .
+
+  Program Instance le_weak_PreOrder mi: PreOrder (le_weak mi).
+  Next Obligation.
+    ii. econs; ii; et. clarify. r. refl.
+  Qed.
+  Next Obligation.
+    ii. econs; ii; et. inv H. inv H0. r.
+    exploit (WTY2 y); eauto. i; des.
+    etrans; eauto.
+    { eapply LESMO; et.
+      ii. eapply MOREFACT; et.
+    } clarify. r. refl.
+  Qed.
+
+  (* Definition proj (mi: Midx.t) (msp: ModSemPair.t) (NTH: nth_error msps mi = Some msp) *)
+  (*            (smos: t): option (SimMemOh.t (class := msp.(ModSemPair.SMO))) := *)
+  (*   match nth_error smos.(anys) mi with *)
+  (*   | Some a0 => downcast a0 *)
+  (*   | _ => None *)
+  (*   end *)
+  (* . *)
+
   Inductive lepriv (smos0 smos1: t): Prop :=
   | lepriv_intro
       (LEPRIVSM: SimMem.lepriv smos0.(sm) smos1.(sm))
@@ -393,8 +439,20 @@ Section SimMemOhUnify.
   Proof.
     (* exists SimMemOhs_intro. *)
     ii.
-    econstructor 1 with (sm_match_strong := sm_match n); ss; eauto.
+    econstructor 1 with (sm_match_strong := sm_match n) (le_weak := (le_weak n)); ss; eauto.
+    - admit "PREORDER".
     - ii. inv PR. econs; eauto. ii. eapply wf_weak_wf; eauto. rewrite upcast_downcast; ss.
+    - ii. inv PR. econs; eauto.
+    - ii. inv LE. econs; eauto.
+      { erewrite smeq; eauto. erewrite smeq; eauto.
+        eapply SimMemOh.le_proj; eauto.
+      }
+      ii.
+      eapply LESMO; eauto.
+      ii.
+      hexploit SMMATCH.(smnth); eauto. i; des.
+      hexploit SMMATCH0.(smnth); eauto. i; des.
+      clarify. rewrite upcast_downcast in *. clarify.
     - ii. exploit (WTY2 smos); et. i; des. exists smo0. esplits; eauto.
       + econs; ss; eauto.
         * inv MWF; ss. exploit WTY; et. i; des; ss. clarify. rp; eauto. f_equal.
@@ -545,6 +603,20 @@ Section SimMemOhUnify.
             { destruct (nth_error (anys smos0) mj); ss. }
             eapply nth_error_Some in NTH0; eauto. xomega.
           }
+      + econs; eauto.
+        ii. revert_until MOREFACT. hide_goal.
+        exploit (WTY2 smos0); eauto. i; des.
+        exploit (WTY2 (set_smo smos0 n NTH smo1)); eauto. i; des.
+        exploit MOREFACT; eauto. intro T; des.
+        unhide_goal.
+        ii.
+        rename n0 into m.
+        ss.
+        des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
+        rewrite upcast_downcast in *. clarify.
+        eapply SimMemOh.set_sm_le; eauto.
+        exploit (WTY smos0 m); eauto. i; des. clarify.
+        rewrite SMEQ1. eapply SimMemOh.le_proj in T. rewrite SMEQ in *. ss.
     - ii; ss. inv SMMATCH0. inv SMMATCH1. ss. des_ifs_safe.
       exploit (WTY2 smos0); eauto. i; des.
       exploit (WTY2 smos1); eauto. i; des.

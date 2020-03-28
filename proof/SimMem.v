@@ -239,10 +239,10 @@ Section SimMemOhs.
     ohs_src: t -> Ohs;
     ohs_tgt: t -> Ohs;
     wf: t -> Prop;
-    le_partial: (Midx.t -> Prop) -> t -> t -> Prop;
-    le: t -> t -> Prop := le_partial top1;
+    le: t -> t -> Prop;
     lepriv: t -> t -> Prop;
 
+    le_PreOrder :> PreOrder le;
     lepriv_PreOrder :> PreOrder lepriv;
 
     pub_priv: forall smo0 smo1, le smo0 smo1 -> lepriv smo0 smo1;
@@ -250,41 +250,7 @@ Section SimMemOhs.
     wf_proj: wf <1= SimMem.wf <*> sm;
     le_proj: (le ==> SimMem.le) sm sm; (* TODO: better style? *)
     lepriv_proj: (lepriv ==> SimMem.lepriv) sm sm; (* TODO: better style? *)
-
-    le_partial_intro: forall mis, le <2= le_partial mis;
-    le_partial_elim: forall mis mjs (FULL: all1 (mis \1/ mjs)), le_partial mis /2\ le_partial mjs <2= le;
-
-    eq_partial: (Midx.t -> Prop) -> t -> t -> Prop;
-    eq_partial_ohs: forall
-        mis smos0 smos1
-        (EQ: eq_partial mis smos0 smos1)
-      ,
-        (<<OHSSRC: forall mi (IN: mis mi), smos0.(ohs_src) mi = smos1.(ohs_src) mi>>) /\
-        (<<OHSTGT: forall mi (IN: mis mi), smos0.(ohs_tgt) mi = smos1.(ohs_tgt) mi>>);
-
-    le_partial_PreOrder mis :> PreOrder (le_partial mis);
-    eq_partial_Equivalence mis :> Equivalence (eq_partial mis);
-    (* le_partial_PartialOrder mis :> PartialOrder (eq_partial mis) (le_partial mis); *)
-    le_eq_partial: forall
-        mis smos0 smos1 smos2
-        (LE: le_partial mis smos0 smos1)
-        (EQ: eq_partial mis smos1 smos2)
-      ,
-        (<<LE: le_partial mis smos0 smos2>>);
-    eq_le_partial: forall
-        mis smos0 smos1 smos2
-        (EQ: eq_partial mis smos0 smos1)
-        (LE: le_partial mis smos1 smos2)
-      ,
-        <<LE: le_partial mis smos0 smos2>>;
-
-    (* le_except: Midx.t -> t -> t -> Prop; *)
-    (* le_single: Midx.t -> t -> t -> Prop; *)
-    (* le_merge: forall mi, (le_except mi) /2\ (le_single mi) <2= le; *)
-    (* le_split: forall mi, le <2= ((le_except mi) /2\ (le_single mi)); *)
   }.
-
-  Global Program Instance le_PreOrder `{class}: PreOrder le.
 
   Coercion SimMemOhs.sm: SimMemOhs.t >-> SimMem.t.
 
@@ -328,20 +294,10 @@ Section SimMemOhs.
       (<<UNCHTGT: SimMemOhs.ohs_tgt smos0 mj = SimMemOhs.ohs_tgt smos1 mj>>)
   .
 
-  Lemma eq_partial_unch
-        `{SMOS: class}
-        mi smos0 smos1
-        (EQ: eq_partial (fun x => x <> mi) smos0 smos1)
-    :
-      <<UNCH: unch mi smos0 smos1>>
-  .
-  Proof. ii. exploit eq_partial_ohs; eauto. i; des. esplits; eauto. Qed.
-
 End SimMemOhs.
 End SimMemOhs.
 
 Coercion SimMemOhs.sm: SimMemOhs.t >-> SimMem.t.
 Hint Resolve SimMemOhs.pub_priv SimMemOhs.wf_proj SimMemOhs.le_proj SimMemOhs.lepriv_proj.
-Hint Resolve SimMemOhs.eq_partial_unch.
 Hint Unfold SimMemOhs.unch.
 

@@ -163,6 +163,7 @@ Section SIMMODSEM.
                 (OHSRC: downcast (ohs_src1 midx_src) = Some oh_src)
                 (OHTGT: downcast (ohs_tgt1 midx_tgt) = Some oh_tgt)
                 (MLE: SimMemOhs.le smos_arg smos_ret)
+                (LEPRTL: SimMemOhs.le_partial (fun x => x <> midx_src) smos_arg smos_ret)
                 (MWF: SimMemOhs.wf smos_ret)
                 (SIMRETV: SimMemOhs.sim_retv ohs_src1 ohs_tgt1 retv_src retv_tgt smos_ret)
                 (AFTERSRC: ms_src.(after_external) st_src0 oh_src retv_src st_src1),
@@ -503,15 +504,14 @@ Proof.
         (* rename smos2 into _smos_after. *)
         rename smos2 into smos_after.
         esplits; try apply UNCH1; eauto.
-        { clear - MLEPUB SMMATCH2 SMMATCH0 SMLEPRTL UNCH UNCH0 MLE0.
+        { clear - MLEPUB SMMATCH2 SMMATCH0 SMLEPRTL LEPRTL UNCH UNCH0.
           set (mi:= msp.(ModSemPair.src).(ModSem.midx)).
           eapply SimMemOhs.le_partial_elim with (mis := fun x => x <> mi) (mjs := fun x => x = mi); eauto.
           { ii. destruct (classic (x0 = mi)); eauto. }
           esplits; eauto.
           - eapply SimMemOhs.eq_le_partial; eauto.
             eapply SimMemOhs.le_eq_partial; eauto.
-            eapply SimMemOhs.le_partial_intro; eauto.
-          - eapply SMLEPRTL; eauto. eapply SimMemOh.le_proj; eauto.
+          - eapply SMLEPRTL; eauto.
         }
         { eapply SimMemOhs.eq_partial_unch; eauto. }
         pclearbot. right. eapply CIH; eauto.

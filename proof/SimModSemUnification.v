@@ -121,12 +121,11 @@ Section SimMemOhUnify.
     - exfalso. exploit smos0.(WTY); eauto. i; des. clarify.
   Qed.
 
-  Inductive le_partial (mis: Midx.t -> Prop) (smos0 smos1: t): Prop :=
+  Inductive le (smos0 smos1: t): Prop :=
   | le_intro
       (LESM: SimMem.le smos0.(sm) smos1.(sm))
       (LESMO: forall
           n a0 a1 msp (smo0 smo1: SimMemOh.t (class := msp.(ModSemPair.SMO)))
-          (IN: mis n)
           (NTH: nth_error msps n = Some msp)
           (NTH: nth_error smos0.(anys) n = Some a0)
           (NTH: nth_error smos1.(anys) n = Some a1)
@@ -134,22 +133,6 @@ Section SimMemOhUnify.
           (CAST: downcast a1 = Some smo1)
         ,
           <<LESMO: SimMemOh.le (class := msp.(ModSemPair.SMO)) smo0 smo1>>
-      )
-  .
-
-  Inductive eq_partial (mis: Midx.t -> Prop) (smos0 smos1: t): Prop :=
-  | eq_intro
-      (EQSM: smos0.(sm) = smos1.(sm))
-      (EQSMO: forall
-          n a0 a1 msp (smo0 smo1: SimMemOh.t (class := msp.(ModSemPair.SMO)))
-          (IN: mis n)
-          (NTH: nth_error msps n = Some msp)
-          (NTH: nth_error smos0.(anys) n = Some a0)
-          (NTH: nth_error smos1.(anys) n = Some a1)
-          (CAST: downcast a0 = Some smo0)
-          (CAST: downcast a1 = Some smo1)
-        ,
-          <<EQSMO: smo0 = smo1>>
       )
   .
 
@@ -263,7 +246,7 @@ Section SimMemOhUnify.
       end
   .
 
-  Program Instance le_partial_PreOrder mis: PreOrder (le_partial mis).
+  Program Instance le_PreOrder: PreOrder le.
   Next Obligation.
     - ii. econs; eauto.
       + refl.
@@ -309,27 +292,13 @@ Section SimMemOhUnify.
         { eapply LEPRIVSMO0; eauto. }
   Qed.
 
-  Program Instance eq_partialEquivalence mis: Equivalence (eq_partial mis).
-  Next Obligation.
-    ii. econs; eauto. ii; ss. clarify.
-  Qed.
-  Next Obligation.
-    ii. inv H. econs; eauto. ii; ss. exploit EQSMO; eauto.
-  Qed.
-  Next Obligation.
-    ii. inv H. inv H0. econs; eauto.
-    { etrans; eauto. }
-    ii. r. exploit (WTY2 y); eauto. i; des. etrans.
-    { eapply EQSMO; eauto. }
-    { eapply EQSMO0; eauto. }
-  Qed.
+
 
   Program Instance SimMemOhs_intro: SimMemOhs.class :=
     {|
       SimMemOhs.t := t;
       SimMemOhs.sm := sm;
-      SimMemOhs.le_partial := le_partial;
-      SimMemOhs.eq_partial := eq_partial;
+      SimMemOhs.le := le;
       SimMemOhs.lepriv := lepriv;
       SimMemOhs.wf := wf;
       SimMemOhs.ohs_src := ohs_src;
@@ -349,47 +318,6 @@ Section SimMemOhUnify.
   Qed.
   Next Obligation.
     ii. apply H.
-  Qed.
-  Next Obligation.
-    ii. inv PR. econs; eauto.
-  Qed.
-  Next Obligation.
-    ii. des. inv PR. inv PR0. econs; eauto. ii.
-    destruct (FULL n); eauto.
-  Qed.
-  Next Obligation.
-    inv EQ.
-    esplits; eauto.
-    - ii.
-      destruct (nth_error msps mi) eqn:T; ss.
-      + exploit (WTY2 smos0); eauto. i; des.
-        exploit (WTY2 smos1); eauto. i; des.
-        exploit EQSMO; eauto. i; des.
-        unfold ohs_src. des_ifs.
-      + unfold ohs_src. des_ifs.
-    - ii.
-      destruct (nth_error msps mi) eqn:T; ss.
-      + exploit (WTY2 smos0); eauto. i; des.
-        exploit (WTY2 smos1); eauto. i; des.
-        exploit EQSMO; eauto. i; des.
-        unfold ohs_tgt. des_ifs.
-      + unfold ohs_tgt. des_ifs.
-  Qed.
-  Next Obligation.
-    inv LE. inv EQ.
-    econs; eauto.
-    { etrans; eauto. rewrite EQSM. refl. }
-    ii. exploit (WTY2 smos1); eauto. i; des. clarify.
-    eapply LESMO; eauto.
-    rp; eauto. f_equal. exploit EQSMO; eauto.
-  Qed.
-  Next Obligation.
-    inv LE. inv EQ.
-    econs; eauto.
-    { etrans; eauto. rewrite EQSM. refl. }
-    ii. exploit (WTY2 smos1); eauto. i; des. clarify.
-    eapply LESMO; eauto.
-    rp; eauto. f_equal. exploit EQSMO; eauto.
   Qed.
 
   Section SETSMO.
@@ -475,16 +403,6 @@ Section SimMemOhUnify.
         * unfold ohs_tgt. des_ifs.
         * ii. eapply wf_wf_weak; eauto.
       + inv MWF. eapply WFSMO; et; ss.
-    - ii. econs; eauto.
-      { repeat replace sm with (SimMemOhs.sm) by ss.
-        erewrite SMMATCH0.(smeq).
-        erewrite SMMATCH1.(smeq).
-        eapply SimMemOh.le_proj; eauto.
-      }
-      ii. clarify.
-      hexploit SMMATCH0.(smnth); eauto. i; clarify.
-      hexploit SMMATCH1.(smnth); eauto. i; clarify.
-      rewrite upcast_downcast in *. clarify.
     - ii.
       hexploit smos0.(LEN); eauto. intro LEN.
       eexists (set_smo smos0 n NTH smo1).

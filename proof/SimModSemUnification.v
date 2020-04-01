@@ -161,18 +161,18 @@ Section SimMemOhUnify.
       )
   .
 
-  Program Instance le_weak_PreOrder mi: PreOrder (le_weak mi).
-  Next Obligation.
-    ii. econs; ii; et. clarify. r. refl.
-  Qed.
-  Next Obligation.
-    ii. econs; ii; et. inv H. inv H0. r.
-    exploit (WTY2 y); eauto. i; des.
-    etrans; eauto.
-    { eapply LESMO; et.
-      ii. eapply MOREFACT; et.
-    } clarify. r. refl.
-  Qed.
+  (* Program Instance le_weak_PreOrder mi: PreOrder (le_weak mi). *)
+  (* Next Obligation. *)
+  (*   ii. econs; ii; et. clarify. r. refl. *)
+  (* Qed. *)
+  (* Next Obligation. *)
+  (*   ii. econs; ii; et. inv H. inv H0. r. *)
+  (*   exploit (WTY2 y); eauto. i; des. *)
+  (*   etrans; eauto. *)
+  (*   { eapply LESMO; et. *)
+  (*     ii. eapply MOREFACT; et. *)
+  (*   } clarify. r. refl. *)
+  (* Qed. *)
 
   (* Definition proj (mi: Midx.t) (msp: ModSemPair.t) (NTH: nth_error msps mi = Some msp) *)
   (*            (smos: t): option (SimMemOh.t (class := msp.(ModSemPair.SMO))) := *)
@@ -430,6 +430,81 @@ Section SimMemOhUnify.
       (* ohtgt: (projT2 oh_tgt ~= smo.(SimMemOh.oh_tgt)) *)
     }
   .
+
+  Theorem provethis
+          n
+          msp smo0 smo1 smo2 smo3 (smos0 smos1 smos2 smos3: SimMemOhs.t)
+          (NTH: nth_error msps n = Some msp)
+          (SMMATCH0: sm_match n smo0 smos0)
+          (SMMATCH1: sm_match n smo1 smos1)
+          (SMMATCH2: sm_match n smo2 smos2)
+          (SMMATCH3: sm_match n smo3 smos3)
+          (LE0: SimMemOh.lepriv smo0 smo1)
+          (LEN: Datatypes.length (anys smos0) = Datatypes.length msps)
+          (def0: smos1 = (set_smo smos0 n NTH smo1))
+          (LEBRIDGE: SimMemOhs.le smos1 smos2)
+          (LE2: SimMemOh.lepriv smo2 smo3)
+          (LELONG: SimMemOh.le smo0 smo3)
+          (def1: smos3 = (set_smo smos2 n NTH smo3))
+    :
+      <<LE: SimMemOhs.le smos0 smos3>>
+  .
+  Proof.
+    ss.
+    clarify.
+    set (set_smo smos0 n NTH smo1) as smos1 in *.
+    set (set_smo smos2 n NTH smo3) as smos3 in *.
+    econs; eauto.
+    { ss. erewrite smeq; eauto. eapply SimMemOh.le_proj; eauto. }
+    unfold smos3. unfold set_smo. ss. ii.
+    inv LEBRIDGE. ss.
+    des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
+    rename n0 into m.
+    rename smo4 into smo0m.
+    rename smo5 into smo3m.
+    des_ifs.
+    - rewrite upcast_downcast in *. clarify.
+      erewrite smnth in NTH1; eauto.
+      erewrite smnth in NTH3; eauto. clarify. rewrite upcast_downcast in *. clarify.
+    - rewrite upcast_downcast in *. clarify.
+      rename t0 into smo2m.
+      r. exploit (LESMO m (upcast (SimMemOh.set_sm smo0m smo1)) a); eauto.
+      { rewrite Midx.nth_error_mapi_aux_iff. ss. des_ifs. esplits; eauto. des_ifs. }
+      { rewrite upcast_downcast. eauto. }
+      intro LEBRIDGE; des.
+      assert(OBLIG: forall
+                {SMO: SimMemOh.class}
+                (smo0 smo2: SimMemOh.t) sm1 sm3
+                (LEPRIV: SimMem.lepriv smo0 sm1)
+                (LEBRIDGE: SimMemOh.le (SimMemOh.set_sm smo0 sm1) smo2)
+                (LEPRIV: SimMem.lepriv smo2 sm3)
+                (LELONG: SimMem.le smo0 sm3)
+              ,
+                <<LE: SimMemOh.le smo0 (SimMemOh.set_sm smo2 sm3)>>).
+      { clear_until SM. ii.
+        r.
+        assert(SimMemOh.lepriv smo0 (SimMemOh.set_sm smo0 sm1)).
+        { eapply SimMemOh.set_sm_lepriv; eauto. }
+        assert(SimMemOh.lepriv smo2 (SimMemOh.set_sm smo2 sm3)).
+        { eapply SimMemOh.set_sm_lepriv; eauto. }
+        assert(SimMemOh.lepriv smo0 (SimMemOh.set_sm smo2 sm3)).
+        { etrans; eauto. etrans; eauto. }
+      }
+      etrans; eauto; [etrans; eauto|].
+      + eapply SimMemOh.set_sm_le; eauto.
+      etrans; eauto.
+      { }
+      SimMemOh.set_sm_le
+    -
+    { rewrite upcast_downcast in *. clarify. }
+    { apply nth_error_mapi_none_aux_iff in Heq2. des.
+      assert(NTH0: nth_error (anys smos0) mj <> None).
+      { destruct (nth_error (anys smos0) mj); ss. }
+      eapply nth_error_Some in NTH0; eauto. xomega.
+    }
+    ii. des_ifs.
+    des_ifs.
+  Qed.
 
   Theorem respects_intro
     :

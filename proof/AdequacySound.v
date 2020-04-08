@@ -178,7 +178,7 @@ Section ADQSOUND.
     { econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
       rewrite Midx.in_mapi_iff in IN.
       des; ss; clarify.
-      + s. rewrite <- Sound.system_skenv; eauto.
+      + s. split; ss; try apply Sound.system_skenv; eauto.
       + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk a)).
         { unfold p_src in IN0. unfold ProgPair.src in *. apply nth_error_map_some in IN0.
           des. des_ifs. eapply INCLSRC; et. eapply nth_error_In; eauto. }
@@ -240,7 +240,9 @@ Section ADQSOUND.
         { eapply SkEnv.load_skenv_wf; et. }
         { eapply SSLE; eauto. }
         { eauto. }
-        intro SIM; des. inv SIM. ss. esplits; eauto.
+        intro SIM; des.
+        try by (inv SIM; ss; esplits; eauto).
+        try by (inv SIMMSP; ss; esplits; eauto).
     - (* INTERNAL *)
       inv SUST. ss. esplits; eauto. econs; eauto. i. des.
       exploit FORALLSU; eauto. { eapply local_preservation_noguarantee_weak; eauto. } intro U; des. esplits; eauto. i. ss. inv PRSV.

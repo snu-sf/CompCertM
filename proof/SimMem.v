@@ -224,7 +224,8 @@ Section SimMemOh.
         smo0 sm1
         (WF: wf smo0)
         (WF: SimMem.wf sm1)
-        (UNCH: SimMem.unch mi smo0.(sm) sm1)
+        (UNCH: SimMem.unchanged_on (privmods mi smo0.(sm).(SimMem.ptt_src))
+                                   smo0.(sm).(SimMem.src) sm1.(SimMem.src))
       ,
         <<WF: wf (set_sm smo0 sm1)>>;
 

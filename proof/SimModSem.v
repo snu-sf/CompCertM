@@ -31,10 +31,12 @@ Section SIMMODSEM.
 
   Variables ms_src ms_tgt: ModSem.t.
   Context {SM: SimMem.class}.
-  Context {SMO: SimMemOh.class}.
+  Context {SMO: SimMemOh.class ms_src.(ModSem.midx)}.
   (* TODO: make SS's argument "SM" implicit; like SMO *)
   Context {SS: SimSymb.class SM}.
   Variable sound_states: ms_src.(state) -> Prop.
+
+  Let midx := ms_src.(ModSem.midx).
 
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMemOh.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smo0: SimMemOh.t): Prop :=
@@ -45,12 +47,14 @@ Section SIMMODSEM.
           exists i1 st_tgt1 smo1,
             (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/ <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ ord i1 i0>>)
             /\ <<MLE: SimMemOh.le smo0 smo1>>
+            /\ <<UNCH: SimMem.unch midx smo0 smo1>>
             /\ <<FSIM: fsim i1 st_src1 st_tgt1 smo1>>)
       (RECEP: receptive_at ms_src st_src0)
   | fsim_step_stutter
       i1 st_tgt1 smo1
       (PLUS: DPlus ms_tgt st_tgt0 nil st_tgt1 /\ ord i1 i0)
       (MLE: SimMemOh.le smo0 smo1)
+      (UNCH: SimMem.unch midx smo0 smo1)
       (BSIM: fsim i1 st_src0 st_tgt1 smo1).
 
   Inductive bsim_step (bsim: idx -> state ms_src -> state ms_tgt -> SimMemOh.t -> Prop)
@@ -61,12 +65,14 @@ Section SIMMODSEM.
           exists i1 st_src1 smo1,
             (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/ <<STAR: Star ms_src st_src0 tr st_src1 /\ ord i1 i0>>)
             /\ <<MLE: SimMemOh.le smo0 smo1>>
+            /\ <<UNCH: SimMem.unch midx smo0 smo1>>
             /\ <<BSIM: bsim i1 st_src1 st_tgt1 smo1>>)
       (PROGRESS: <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>)
   | bsim_step_stutter
       i1 st_src1 smo1
       (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
       (MLE: SimMemOh.le smo0 smo1)
+      (UNCH: SimMem.unch midx smo0 smo1)
       (BSIM: bsim i1 st_src1 st_tgt0 smo1).
 
 
@@ -92,6 +98,7 @@ Section SIMMODSEM.
             (<<SIMARGS: SimMemOh.sim_args (upcast oh_src0) (upcast oh_tgt0) args_src args_tgt smo_arg>>
             /\ (<<MWF: SimMemOh.wf smo_arg>>)
             /\ (<<MLE: SimMemOh.lepriv smo0 smo_arg>>)
+            /\ (<<UNCH: SimMem.unch midx smo0 smo_arg>>)
             /\ (<<ATTGT: ms_tgt.(at_external) st_tgt0 oh_tgt0 args_tgt>>)
             /\ (<<K: forall smo_ret oh_src1 retv_src oh_tgt1 retv_tgt st_src1
                 (MLE: SimMemOh.le smo_arg smo_ret)
@@ -102,11 +109,13 @@ Section SIMMODSEM.
                   (<<AFTERTGT: ms_tgt.(after_external) st_tgt0 oh_tgt1 retv_tgt st_tgt1>>) /\
                   (<<MLEPUB: SimMemOh.le smo0 smo_after>>) /\
                   (<<MLEPRIV: SimMemOh.lepriv smo_ret smo_after>>) /\
+                  (<<UNCH: SimMem.unch midx smo_ret smo_after>>) /\
                   (<<LXSIM: lxsim i1 st_src1 st_tgt1 smo_after>>)>>))>>)
 
   | lxsim_final
       smo_ret oh_src oh_tgt retv_src retv_tgt
       (MLE: SimMemOh.le smo0 smo_ret)
+      (UNCH: SimMem.unch midx smo0 smo_ret)
       (MWF: SimMemOh.wf smo_ret)
       (FINALSRC: ms_src.(final_frame) st_src0 oh_src retv_src)
       (FINALTGT: ms_tgt.(final_frame) st_tgt0 oh_tgt retv_tgt)
@@ -152,7 +161,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     tgt: ModSem.t;
     ss: SimSymb.t;
     sm: SimMem.t;
-    SMO: SimMemOh.class;
+    SMO: SimMemOh.class src.(ModSem.midx);
   }.
 
   Inductive sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
@@ -201,6 +210,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
               (SAFESRC: exists _st_init_src, msp.(src).(initial_frame) oh_src args_src _st_init_src),
               exists st_init_src sm_init idx_init,
                 (<<MLE: SimMemOh.le sm_arg sm_init>>) /\
+                (<<UNCH: SimMem.unch msp.(src).(midx) sm_arg sm_init>>) /\
                 (<<INITSRC: msp.(src).(initial_frame) oh_src args_src st_init_src>>) /\
                 (<<SIM: lxsim msp.(src) msp.(tgt) (fun st => forall si, exists su m_init, sound_states si su m_init st)
                                                   idx_init st_init_src st_init_tgt sm_init>>)>>) /\
@@ -224,7 +234,7 @@ Section FACTORTARGET.
 
   Variable ms_src ms_tgt: ModSem.t.
   Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
-  Context {SMO: SimMemOh.class}.
+  Context {SMO: SimMemOh.class ms_src.(ModSem.midx)}.
   Variable ss: SimSymb.t.
   Variable sm: SimMem.t.
   Hypothesis SINGLE: single_events ms_src.
@@ -253,6 +263,7 @@ Section FACTORTARGET.
           exploit star_non_E0_split'_strong; eauto.
           { apply plus_star; eauto. }
           intro P; des. des_ifs. des_safe. i. inv STEPTGT. esplits; eauto.
+          { refl. }
           { refl. }
           pclearbot. right. eapply CIH; eauto. econs; eauto. ss. des; ss.
           { right. esplits; eauto. }

@@ -18,6 +18,37 @@ Set Implicit Arguments.
 
 
 
+(* ownership *)
+Inductive ownership: Type :=
+| privmod (mi: Midx.t)
+| others
+.
+
+Definition is_privmod (ons: ownership) (mi: Midx.t): bool :=
+  match ons with
+  | privmod mj => Nat.eq_dec mi mj
+  | _ => false
+  end
+.
+
+Notation partition := (block -> Z -> ownership).
+
+Definition privmods (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
+  fun b ofs =>
+    match (ptt b ofs) with
+    | privmod mj => (Nat.eq_dec mi mj)
+    | _ => false
+    end
+.
+
+Definition privmod_others (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
+  fun b ofs =>
+    match (ptt b ofs) with
+    | privmod mj => negb (Nat.eq_dec mi mj)
+    | _ => false
+    end
+.
+
 
 
 Module SimMem.
@@ -25,7 +56,9 @@ Module SimMem.
   Class class :=
   { t: Type;
     src: t -> mem;
+    ptt_src: t -> partition;
     tgt: t -> mem;
+    ptt_tgt: t -> partition;
     wf: t -> Prop;
     le: t -> t -> Prop;
     lepriv: t -> t -> Prop;
@@ -40,7 +73,36 @@ Module SimMem.
     le_sim_val: forall mrel0 mrel1 (MLE: le mrel0 mrel1), sim_val mrel0 <2= sim_val mrel1;
     sim_val_list_spec: forall sm0, (List.Forall2 sm0.(sim_val) = sm0.(sim_val_list));
     sim_val_int: forall sm0 v_src v_tgt, sim_val sm0 v_src v_tgt -> forall i, v_src = Vint i -> v_tgt = Vint i;
+
+    (* Note: SimMemId/Ext does not satisfiy Mem.unchanged_on, because of NB (nextblock) *)
+    (* Ideally, I would like to obligate NB thing in SimMemId/SimMemExt proof too,
+       but Xavier might not accept it*)
+    unchanged_on (P: block -> Z -> Prop) (m0 m1: mem): Prop;
+    unchanged_on_PreOrder P:> PreOrder (unchanged_on P);
+    unchanged_on_monotone: forall
+        P0 P1
+        (INCL: P1 <2= P0)
+      ,
+        <<INCL: unchanged_on P0 <2= unchanged_on P1>>;
   }.
+
+  Inductive unch `{SM: class} (mi: Midx.t) (sm0 sm1: t): Prop :=
+  | unch_intro
+      (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_src)) sm0.(src) sm1.(src))
+      (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_tgt)) sm0.(tgt) sm1.(tgt))
+      (LESRC: (privmod_others mi sm0.(ptt_src)) <2= (privmod_others mi sm1.(ptt_src)))
+      (LETGT: (privmod_others mi sm0.(ptt_tgt)) <2= (privmod_others mi sm1.(ptt_tgt)))
+  .
+
+  Global Program Instance unch_PreOrder `{SM: class} (mi: Midx.t): PreOrder (unch mi).
+  Next Obligation.
+    ii. econs; eauto; try refl.
+  Qed.
+  Next Obligation.
+    ii. inv H. inv H0. econs; eauto; try etrans; et.
+    - eapply unchanged_on_monotone; et.
+    - eapply unchanged_on_monotone; et.
+  Qed.
 
   Lemma sim_val_list_length
         `{SM: class} (sm0: t)
@@ -119,7 +181,7 @@ Section SimMemOh.
   (* Variable owned_heap_src owned_heap_tgt: Type. *)
 
   Local Open Scope signature_scope.
-  Class class {SM: SimMem.class} :=
+  Class class {SM: SimMem.class} (mi: Midx.t) :=
   {
     t: Type;
     sm:> t -> SimMem.t;
@@ -140,14 +202,31 @@ Section SimMemOh.
     (* set_sm_spec: forall smo0, sm <*> (set_sm smo0) = id; *)
 
     set_sm: t -> SimMem.t -> t;
-    set_sm_le: forall smo0 sm1, SimMem.le smo0.(sm) sm1 ->
-                                le smo0 (set_sm smo0 sm1);
-    set_sm_lepriv: forall smo0 sm1, SimMem.lepriv smo0.(sm) sm1 ->
-                                    lepriv smo0 (set_sm smo0 sm1);
+    (* set_sm_le: forall smo0 sm1, SimMem.le smo0.(sm) sm1 -> *)
+    (*                             le smo0 (set_sm smo0 sm1); *)
+    (* set_sm_lepriv: forall smo0 sm1, SimMem.lepriv smo0.(sm) sm1 -> *)
+    (*                                 lepriv smo0 (set_sm smo0 sm1); *)
     (* can we state it nicely? adjoint? *)
-    set_sm_wf: forall smo0 sm1, wf smo0 ->
-                                   SimMem.wf sm1 ->
-                                   wf (set_sm smo0 sm1);
+
+    set_sm_le: forall
+      sm0 sm1 smo0 smo1
+      (MLE: SimMem.le sm0 sm1)
+      (MLE: le smo0 smo1)
+    ,
+      <<MLE: le (set_sm smo0 sm0) (set_sm smo1 sm1)>>;
+    set_sm_lepriv: forall
+      sm0 sm1 smo0 smo1
+      (MLE: SimMem.lepriv sm0 sm1)
+      (MLE: lepriv smo0 smo1)
+    ,
+      <<MLE: lepriv (set_sm smo0 sm0) (set_sm smo1 sm1)>>;
+    set_sm_wf: forall
+        smo0 sm1
+        (WF: wf smo0)
+        (WF: SimMem.wf sm1)
+        (UNCH: SimMem.unch mi smo0.(sm) sm1)
+      ,
+        <<WF: wf (set_sm smo0 sm1)>>;
 
     getset_sm: forall smo0 sm1, (set_sm smo0 sm1).(sm) = sm1;
     setget_sm: forall smo0, (set_sm smo0 smo0.(sm)) = smo0;
@@ -191,7 +270,7 @@ Local Obligation Tactic := try (by econs); try (by ii; ss).
 (*     lepriv := SimMem.lepriv; *)
 (*   } *)
 (* . *)
-Program Definition SimMemOh_default (SM: SimMem.class): (SimMemOh.class) :=
+Program Definition SimMemOh_default (SM: SimMem.class) (mi: Midx.t): (SimMemOh.class mi) :=
   {|
     SimMemOh.sm := fun x => x;
     SimMemOh.oh_src := fun _ => upcast tt;

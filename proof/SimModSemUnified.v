@@ -289,8 +289,8 @@ Section RESPECTS.
 
 (* Context `{SMO: SimMemOh.class} {SMOS: SimMemOhs.class}. *)
 Variable (SM: SimMem.class).
-Variable (SMO: SimMemOh.class).
 Variable (midx: Midx.t).
+Variable (SMO: SimMemOh.class midx).
 Variable (SMOS: SimMemOhs.class).
 Record sm_match (smo: SimMemOh.t) (smos: SimMemOhs.t): Prop :=
   (* TODO: I want to remove @ *)
@@ -370,7 +370,7 @@ Theorem fundamental_theorem
         {SMOS: SimMemOhs.class}
         (msp: ModSemPair.t)
         (MIDX: msp.(ModSemPair.src).(midx) = msp.(ModSemPair.tgt).(midx))
-        (RESPECT: respects msp.(ModSemPair.SMO) msp.(ModSemPair.src).(midx) SMOS)
+        (RESPECT: respects msp.(ModSemPair.SMO) SMOS)
         (SIM: msp.(ModSemPair.sim))
   :
     <<SIM: msp.(ModSemPair.simU)>>
@@ -438,8 +438,8 @@ Proof.
     { clear - STRONG MIDX SIMARGS OHTGT SMMATCH.
       rewrite <- OHTGT.
       f_equal. rr in SIMARGS. des; ss. clarify.
-      erewrite ohtgt; eauto with congruence.
       rewrite <- MIDX. eauto.
+      erewrite ohtgt; eauto with congruence.
     }
 
 
@@ -480,12 +480,12 @@ Proof.
         { erewrite smeq; eauto. }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
           - rewrite OHSRC. erewrite ohsrc; eauto with congruence.
-          - eapply UNCH; ss.
+          - eapply UNCH0; ss.
         }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
-          - rewrite OHTGT. erewrite ohtgt; eauto with congruence.
-            rewrite <- MIDX. eauto.
-          - eapply UNCH; ss. eauto with congruence.
+          - rewrite <- MIDX. eauto.
+            rewrite OHTGT. erewrite ohtgt; eauto with congruence.
+          - eapply UNCH0; ss. eauto with congruence.
         }
       * i. hexploit (SMPROJ smos_ret); eauto. intro T; des.
         exploit K.
@@ -516,9 +516,9 @@ Proof.
       rr in SIMRETV. des. rr. econs 4; try eapply wfwf; eauto.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
         { rewrite OHSRC. erewrite ohsrc; eauto with congruence. }
-        exploit (UNCH mi); i; des; eauto with congruence.
+        exploit (UNCH0 mi); i; des; eauto with congruence.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
-        { rewrite OHTGT. erewrite ohtgt; eauto with congruence. rewrite <- MIDX. eauto. }
-        exploit (UNCH mi); i; des; eauto with congruence.
+        { rewrite OHTGT. rewrite <- MIDX. eauto. erewrite ohtgt; eauto with congruence. }
+        exploit (UNCH0 mi); i; des; eauto with congruence.
       * rr. esplits; eauto. erewrite smeq; eauto.
 Qed.

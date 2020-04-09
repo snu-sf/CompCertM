@@ -120,6 +120,7 @@ Module SimSymb.
                                      (Retv.v (retv_tgt)) (Retv.m (retv_tgt))>>)
             /\ (<<RETV: SimMem.sim_retv retv_src retv_tgt sm1>>)
             /\ (<<MLE0: SimMem.le sm0 sm1>>)
+            /\ (<<UNCH: SimMem.unch O sm0 sm1>>)
             /\ (<<MWF: SimMem.wf sm1>>);
     }.
 

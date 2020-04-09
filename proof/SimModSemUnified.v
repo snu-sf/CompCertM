@@ -313,22 +313,23 @@ Inductive respects: Prop :=
 | respects_intro
     sm_match_strong
     (* proj *)
-    (le_weak: SimMemOhs.t -> SimMemOhs.t -> Prop)
-    (le_weak_PreOrder: PreOrder (le_weak))
+    (* (le_weak: SimMemOhs.t -> SimMemOhs.t -> Prop) *)
+    (* (le_weak_PreOrder: PreOrder (le_weak)) *)
     (STRONG: @sm_match_strong <2= @sm_match)
-    (LELEWEAK: SimMemOhs.le <2= le_weak)
-    (LEWEAKLE: forall
-        smo0 smo1 smos0 smos1
-        (LE: le_weak smos0 smos1)
-        (SMMATCH: sm_match_strong smo0 smos0)
-        (SMMATCH: sm_match_strong smo1 smos1)
-        (* (PROJ0: proj smos0 = Some smo0) *)
-        (* (PROJ1: proj smos1 = Some smo1) *)
-        (LE: SimMemOh.le smo0 smo1)
-      ,
-        <<LE: SimMemOhs.le smos0 smos1>>
-    )
+    (* (LELEWEAK: SimMemOhs.le <2= le_weak) *)
+    (* (LEWEAKLE: forall *)
+    (*     smo0 smo1 smos0 smos1 *)
+    (*     (LE: le_weak smos0 smos1) *)
+    (*     (SMMATCH: sm_match_strong smo0 smos0) *)
+    (*     (SMMATCH: sm_match_strong smo1 smos1) *)
+    (*     (* (PROJ0: proj smos0 = Some smo0) *) *)
+    (*     (* (PROJ1: proj smos1 = Some smo1) *) *)
+    (*     (LE: SimMemOh.le smo0 smo1) *)
+    (*   , *)
+    (*     <<LE: SimMemOhs.le smos0 smos1>> *)
+    (* ) *)
     (* (MATCHPROJ: forall smo smos (SMMATCH: sm_match_strong smo smos), proj smos = Some smo) *)
+    is_set_smo
     (SMPROJ: forall smos (MWF: SimMemOhs.wf smos),
         exists smo, (<<SMMATCH: sm_match_strong smo smos>>) /\ (<<SMWF: SimMemOh.wf smo>>)
                     (* /\ (<<PROJ: proj smos = Some smo>>) *)
@@ -337,20 +338,24 @@ Inductive respects: Prop :=
                    (smo0 smo1: SimMemOh.t)
                    (SMMATCH: sm_match_strong smo0 smos0)
                    (LE: SimMemOh.le smo0 smo1)
+                   (UNCH: SimMem.unch midx smo0 smo1)
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.le smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
                       /\ (<<UNCH: SimMemOhs.unch midx smos0 smos1>>)
+                      /\ (<<EQ: is_set_smo smos0 midx smo1 smos1>>)
     )
     (SMSIMPRIV: forall (smos0: SimMemOhs.t)
                        (smo0 smo1: SimMemOh.t)
                        (SMMATCH: sm_match_strong smo0 smos0)
                        (LE: SimMemOh.lepriv smo0 smo1)
+                       (UNCH: SimMem.unch midx smo0 smo1)
       ,
         exists smos1, (<<SMSTEPBIG: SimMemOhs.lepriv smos0 smos1>>)
                       /\ (<<SMMATCH: sm_match_strong smo1 smos1>>)
+                      (* /\ (<<LEWEAK: le_weak smos0 smos1>>) *)
                       /\ (<<UNCH: SimMemOhs.unch midx smos0 smos1>>)
-                      /\ (<<LEWEAK: le_weak smos0 smos1>>)
+                      /\ (<<EQ: is_set_smo smos0 midx smo1 smos1>>)
     )
     (SMMATCHLE: forall smo0 smo1 smos0 smos1
                        (SMMATCH0: sm_match_strong smo0 smos0)
@@ -359,6 +364,23 @@ Inductive respects: Prop :=
       ,
         <<SMLE: SimMemOh.le smo0 smo1>>
     )
+    (SMCOMPLEX: forall
+        smo0 smo1 smo2 smo3
+        smos0 smos1 smos2 smos3
+        (SMMATCH0: sm_match_strong smo0 smos0)
+        (SMMATCH1: sm_match_strong smo1 smos1)
+        (SMMATCH2: sm_match_strong smo2 smos2)
+        (SMMATCH3: sm_match_strong smo3 smos3)
+        (MLEPUB: SimMemOh.le smo0 smo3)
+        (MLEPUBOHS: SimMemOhs.le smos1 smos2)
+        (UNCH0: SimMem.unch midx smo0 smo1)
+        (UNCHOHS0: SimMemOhs.unch midx smos0 smos1)
+        (UNCH1: SimMem.unch midx smo2 smo3)
+        (UNCHOHS1: SimMemOhs.unch midx smos2 smos3)
+        (EQ0: is_set_smo smos0 midx smo1 smos1)
+        (EQ2: is_set_smo smos2 midx smo3 smos3)
+      ,
+        <<MLEPUB: SimMemOhs.le smos0 smos3>>)
 .
 
 End RESPECTS.
@@ -448,8 +470,8 @@ Proof.
     exploit (SMSIM sm_arg); eauto. i; des.
     exists st_init_src. esplits; eauto.
     instantiate (1:= idx_init).
-    clear - SIM le_weak_PreOrder LELEWEAK LEWEAKLE STRONG SMSIM SMSIMPRIV SMPROJ
-                SMMATCH0 SMMATCHLE MIDX OHSRC0 OHTGT0.
+    clear - SIM STRONG SMSIM SMSIMPRIV SMPROJ
+                SMMATCH0 SMMATCHLE SMCOMPLEX MIDX OHSRC0 OHTGT0.
     rename sm_init into smo0. rename smos1 into smos0.
     rename st_init_src into st_src0. rename st_init_tgt into st_tgt0.
     (* assert(WF: SimMemOhs.wf smos0). *)
@@ -480,12 +502,12 @@ Proof.
         { erewrite smeq; eauto. }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
           - rewrite OHSRC. erewrite ohsrc; eauto with congruence.
-          - eapply UNCH0; ss.
+          - eapply UNCH0; et.
         }
         { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
           - rewrite <- MIDX. eauto.
             rewrite OHTGT. erewrite ohtgt; eauto with congruence.
-          - eapply UNCH0; ss. eauto with congruence.
+          - eapply UNCH0; et. eauto with congruence.
         }
       * i. hexploit (SMPROJ smos_ret); eauto. intro T; des.
         exploit K.
@@ -502,13 +524,14 @@ Proof.
         (* hexploit (SMSIM _ _ _ SMMATCH0 MLEPUB); eauto. i; des. *)
         hexploit (SMSIMPRIV _ _ _ SMMATCH1 MLEPRIV); eauto. i; des.
         esplits; try apply SMSTEPBIG1; eauto.
-        { clear - LEWEAK LEWEAK0 MLEPUB LELEWEAK LEWEAKLE le_weak_PreOrder SMSTEPBIG0
-                         MLEPUB MLEPRIV SMMATCH SMMATCH2 SMMATCH1 SMMATCH0 MLE0
-          .
+        { clear - MLEPUB SMSTEPBIG0 MLEPUB MLEPRIV SMCOMPLEX SMMATCH SMMATCH2 SMMATCH1 SMMATCH0 MLE0
+                         UNCH UNCH0 UNCH1 UNCH2 EQ EQ0.
           rename smos2 into smos3. rename smos_ret into smos2. rename smo_after into smo3.
           rename smo_arg into smo1. rename smo into smo2.
-          eapply LEWEAKLE; eauto.
-          { etrans; eauto. etrans; eauto. }
+          rename SMMATCH2 into SMMATCH3.
+          rename SMMATCH1 into SMMATCH2.
+          rename SMMATCH into SMMATCH1.
+          eapply SMCOMPLEX; [eapply SMMATCH0|eapply SMMATCH1|eapply SMMATCH2|eapply SMMATCH3|..]; et.
         }
         pclearbot. right. eapply CIH; eauto.
     + exploit SMSIM; eauto. i; des.
@@ -516,9 +539,10 @@ Proof.
       rr in SIMRETV. des. rr. econs 4; try eapply wfwf; eauto.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
         { rewrite OHSRC. erewrite ohsrc; eauto with congruence. }
-        exploit (UNCH0 mi); i; des; eauto with congruence.
+        symmetry. eapply UNCH0; et.
+        (* exploit (UNCH0 mi); i; des; eauto with congruence. *)
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
         { rewrite OHTGT. rewrite <- MIDX. eauto. erewrite ohtgt; eauto with congruence. }
-        exploit (UNCH0 mi); i; des; eauto with congruence.
+        symmetry. eapply UNCH0; et. eauto with congruence.
       * rr. esplits; eauto. erewrite smeq; eauto.
 Qed.

@@ -90,8 +90,10 @@ Module SimMem.
   | unch_intro
       (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_src)) sm0.(src) sm1.(src))
       (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_tgt)) sm0.(tgt) sm1.(tgt))
-      (LESRC: (privmod_others mi sm0.(ptt_src)) <2= (privmod_others mi sm1.(ptt_src)))
-      (LETGT: (privmod_others mi sm0.(ptt_tgt)) <2= (privmod_others mi sm1.(ptt_tgt)))
+      (LESRC: forall mj (NEQ: mi <> mj),
+          (privmods mj sm0.(ptt_src)) <2= (privmods mj sm1.(ptt_src)))
+      (LETGT: forall mj (NEQ: mi <> mj),
+          (privmods mj sm0.(ptt_tgt)) <2= (privmods mj sm1.(ptt_tgt)))
   .
 
   Global Program Instance unch_PreOrder `{SM: class} (mi: Midx.t): PreOrder (unch mi).
@@ -100,8 +102,26 @@ Module SimMem.
   Qed.
   Next Obligation.
     ii. inv H. inv H0. econs; eauto; try etrans; et.
-    - eapply unchanged_on_monotone; et.
-    - eapply unchanged_on_monotone; et.
+    - eapply unchanged_on_monotone; et. intros b ofs ?.
+      unfold privmod_others in PR. des_ifs.
+      des_sumbool. (**** TODO: fix tactic ****)
+      unfold is_true in PR. simpl_bool. des_sumbool.
+      hexploit (LESRC mi0); et. intro U. specialize (U b ofs); ss.
+      hexploit (LESRC0 mi0); et. intro V. specialize (V b ofs); ss.
+      clear - PR U V Heq.
+      unfold privmods, privmod_others in *. des_ifs_safe.
+      exploit U; et. { des_sumbool; ss. } intro W; des_ifs_safe. des_sumbool. clarify.
+      simpl_bool. des_sumbool. ii. clarify.
+    - eapply unchanged_on_monotone; et. intros b ofs ?.
+      unfold privmod_others in PR. des_ifs.
+      des_sumbool. (**** TODO: fix tactic ****)
+      unfold is_true in PR. simpl_bool. des_sumbool.
+      hexploit (LETGT mi0); et. intro U. specialize (U b ofs); ss.
+      hexploit (LETGT0 mi0); et. intro V. specialize (V b ofs); ss.
+      clear - PR U V Heq.
+      unfold privmods, privmod_others in *. des_ifs_safe.
+      exploit U; et. { des_sumbool; ss. } intro W; des_ifs_safe. des_sumbool. clarify.
+      simpl_bool. des_sumbool. ii. clarify.
   Qed.
 
   Lemma sim_val_list_length

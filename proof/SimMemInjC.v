@@ -113,6 +113,8 @@ Global Program Instance SimMemInj : SimMem.class :=
 { t := t';
   src := src;
   tgt := tgt;
+  ptt_src := fun _ _ _ => others;
+  ptt_tgt := fun _ _ _ => others;
   wf := wf';
   le := le';
   (* lift := lift'; *)
@@ -120,6 +122,7 @@ Global Program Instance SimMemInj : SimMem.class :=
   lepriv := lepriv;
   sim_val := fun (mrel: t') => Val.inject mrel.(inj);
   sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
+  unchanged_on := top3;
 }.
 Next Obligation. rename H into LE. inv LE. econs; et. Qed.
 (* Next Obligation. *)
@@ -146,7 +149,7 @@ Next Obligation. inv H. ss. Qed.
 
 
 
-Global Program Instance SimMemInjLift : SimMemOhLift.class (SimMemOh_default SimMemInj) :=
+Global Program Instance SimMemInjLift : SimMemLift.class SimMemInj :=
 { lift := lift';
   unlift := unlift';
 }.
@@ -157,6 +160,15 @@ Next Obligation. eapply unlift_spec; et. Qed.
 Next Obligation. eapply unlift_wf; eauto. Qed.
 Next Obligation. inv MWF. destruct sm0; ss. econs; ss; et. eapply frozen_refl. Qed.
 Next Obligation. inv MWF. inv MLE. inv MLIFT. econs; ss; et; try congruence. eapply frozen_refl. Qed.
+
+Global Program Instance SimMemInjOhLift (mi: Midx.t): SimMemOhLift.class (@SimMemOh_default SimMemInj mi)
+  := SimMemOhLift.SimMemOhLift_transform.
+
+Goal forall mi, SimMemOhLift.SimMemOhLift_transform = SimMemOhLift.SimMemOhLift_default_transform mi.
+  ss.
+Qed.
+(* TODO: Remove "SimMemOhLift.SimMemOhLift_default_transform", Coq is smart enough *)
+
 
 
 Section ORIGINALS.
@@ -466,7 +478,7 @@ Next Obligation.
   (* exploit external_call_mem_inject_gen; eauto. *)
   exploit external_call_mem_inject; eauto.
   { eapply skenv_inject_meminj_preserves_globals; eauto. inv SIMSKENV; ss. }
-  i; des. do 2 eexists. dsplits; eauto.
+  i; des. do 2 eexists. dsplits; eauto; ss.
   - instantiate (1:= Retv.mk _ _); ss. eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV.
   - destruct retv_src; ss. instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs 1; ss; eauto.
@@ -737,6 +749,9 @@ Proof.
   - ii. ss. des. eapply PRIV; eauto.
 Qed.
 
+Variable mi: Midx.t.
+Let SML := (SimMemInjLift).
+Local Existing Instance SML.
 Lemma external_call_parallel_rule_simmem
       (F V: Type) (ge0: Genv.t F V)
       sm_at sm_after P
@@ -749,9 +764,9 @@ Lemma external_call_parallel_rule_simmem
       (MWF2: SimMem.wf sm_after)
       (MWFAFTR : SimMem.wf (SimMemInj.unlift' sm_arg sm_ret))
       (MLE: SimMem.le sm_at sm_arg)
-      (MLE0: SimMem.le (SimMemOhLift.lift sm_arg) sm_ret)
-      (MLE1: SimMem.le (SimMemOhLift.unlift sm_at sm_ret) sm_after)
-      (MLEAFTR: SimMem.le sm_arg (SimMemOhLift.unlift sm_arg sm_ret))
+      (MLE0: SimMem.le (SimMemLift.lift sm_arg) sm_ret)
+      (MLE1: SimMem.le (SimMemLift.unlift sm_at sm_ret) sm_after)
+      (MLEAFTR: SimMem.le sm_arg (SimMemLift.unlift sm_arg sm_ret))
       (PRIV0: (SimMemInj.tgt_private sm_at) = (SimMemInj.tgt_private sm_arg))
       (PRIV1: (SimMemInj.tgt_private sm_ret) = (SimMemInj.tgt_private sm_after))
       (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg))

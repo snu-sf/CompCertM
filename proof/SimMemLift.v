@@ -168,22 +168,22 @@ Module SimMemOhLift.
     Context `{SML: SimMemLift.class}.
     Context {SMO: SimMemOh.class}.
 
-    Hypothesis memory_owned_heap_independent_le: forall
-        sm0 sm1 smo0 smo1
-        (MLE: SimMem.le sm0 sm1)
-        (MLE: SimMemOh.le smo0 smo1)
-      ,
-        <<MLE: SimMemOh.le (SimMemOh.set_sm smo0 sm0)
-                           (SimMemOh.set_sm smo1 sm1)>>
-    .
-    Hypothesis memory_owned_heap_independent_lepriv: forall
-        sm0 sm1 smo0 smo1
-        (MLE: SimMem.lepriv sm0 sm1)
-        (MLE: SimMemOh.lepriv smo0 smo1)
-      ,
-        <<MLE: SimMemOh.lepriv (SimMemOh.set_sm smo0 sm0)
-                               (SimMemOh.set_sm smo1 sm1)>>
-    .
+    (* Hypothesis memory_owned_heap_independent_le: forall *)
+    (*     sm0 sm1 smo0 smo1 *)
+    (*     (MLE: SimMem.le sm0 sm1) *)
+    (*     (MLE: SimMemOh.le smo0 smo1) *)
+    (*   , *)
+    (*     <<MLE: SimMemOh.le (SimMemOh.set_sm smo0 sm0) *)
+    (*                        (SimMemOh.set_sm smo1 sm1)>> *)
+    (* . *)
+    (* Hypothesis memory_owned_heap_independent_lepriv: forall *)
+    (*     sm0 sm1 smo0 smo1 *)
+    (*     (MLE: SimMem.lepriv sm0 sm1) *)
+    (*     (MLE: SimMemOh.lepriv smo0 smo1) *)
+    (*   , *)
+    (*     <<MLE: SimMemOh.lepriv (SimMemOh.set_sm smo0 sm0) *)
+    (*                            (SimMemOh.set_sm smo1 sm1)>> *)
+    (* . *)
 
     Global Program Instance SimMemOhLift_transform: SimMemOhLift.class SMO :=
     {
@@ -192,8 +192,10 @@ Module SimMemOhLift.
     }
     .
     Next Obligation.
-      eapply SimMemOh.set_sm_wf; eauto. eapply SimMemLift.lift_wf; eauto.
-      eapply SimMemOh.wf_proj; eauto.
+      eapply SimMemOh.set_sm_wf; eauto.
+      - eapply SimMemLift.lift_wf; eauto.
+        eapply SimMemOh.wf_proj; eauto.
+      - rewrite SimMemLift.lift_src. refl.
     Qed.
     Next Obligation.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_src; eauto.
@@ -224,28 +226,29 @@ Module SimMemOhLift.
       { eapply SimMemOh.wf_proj. ss. }
       intro T.
 
-      eapply memory_owned_heap_independent_le in H.
+      eapply SimMemOh.set_sm_le in H.
       { rewrite SimMemOh.setset_sm in H. rewrite SimMemOh.setget_sm in H. eauto. }
       { eauto. }
     Qed.
     Next Obligation.
       eapply SimMemOh.set_sm_wf; eauto.
-      eapply SimMemLift.unlift_wf; try eapply SimMemOh.wf_proj; eauto.
-      eapply SimMemOh.le_proj in H1. rewrite SimMemOh.getset_sm in H1. ss.
+      - eapply SimMemLift.unlift_wf; try eapply SimMemOh.wf_proj; eauto.
+        eapply SimMemOh.le_proj in H1. rewrite SimMemOh.getset_sm in H1. ss.
+      - rewrite SimMemLift.unlift_src. refl.
     Qed.
     Next Obligation.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_sim_val; eauto.
     Qed.
     Next Obligation.
       rewrite <- SimMemOh.setget_sm with sm0.
-      eapply memory_owned_heap_independent_lepriv; eauto.
+      eapply SimMemOh.set_sm_lepriv; eauto.
       - rewrite SimMemOh.setget_sm.
         eapply SimMemLift.lift_priv; eauto. eapply SimMemOh.wf_proj; eauto.
       - rewrite SimMemOh.setget_sm. refl.
     Qed.
     Next Obligation.
       rewrite <- SimMemOh.setget_sm with sm_ret.
-      eapply memory_owned_heap_independent_lepriv; eauto.
+      eapply SimMemOh.set_sm_lepriv; eauto.
       - rewrite SimMemOh.setget_sm.
         eapply SimMemLift.unlift_priv; eauto.
         + eapply SimMemOh.wf_proj; eauto.
@@ -257,8 +260,8 @@ Module SimMemOhLift.
 
   End TRANSFORMER.
 
-  Global Program Instance SimMemOhLift_default_transform `{SML: SimMemLift.class}:
-    SimMemOhLift.class (SimMemOh_default SM) := SimMemOhLift_transform _ _.
+  Global Program Instance SimMemOhLift_default_transform `{SML: SimMemLift.class} (mi: Midx.t):
+    SimMemOhLift.class (SimMemOh_default SM mi) := @SimMemOhLift_transform _ _ (SimMemOh_default SM mi).
 
   Section PROPS.
 

@@ -31,12 +31,13 @@ Section SIMMODSEM.
 
   Variables ms_src ms_tgt: ModSem.t.
   Context {SM: SimMem.class}.
-  Context {SMO: SimMemOh.class ms_src.(ModSem.midx)}.
+  Context {SMO: SimMemOh.class}.
   (* TODO: make SS's argument "SM" implicit; like SMO *)
   Context {SS: SimSymb.class SM}.
   Variable sound_states: ms_src.(state) -> Prop.
 
-  Let midx := ms_src.(ModSem.midx).
+  (* Let midx := ms_src.(ModSem.midx). *)
+  Let midx := SimMemOh.midx.
 
   Inductive fsim_step (fsim: idx -> state ms_src -> state ms_tgt -> SimMemOh.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smo0: SimMemOh.t): Prop :=
@@ -161,7 +162,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     tgt: ModSem.t;
     ss: SimSymb.t;
     sm: SimMem.t;
-    SMO: SimMemOh.class src.(ModSem.midx);
+    SMO: SimMemOh.class;
   }.
 
   Inductive sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
@@ -182,6 +183,8 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Inductive sim (msp: t): Prop :=
   | sim_intro
       sidx sound_states sound_state_ex
+      (* (MIDX: (@SimMemOh.midx _ msp.(SMO)) = msp.(src).(midx)) *)
+      (MIDX: SimMemOh.midx (class := msp.(SMO)) = msp.(src).(midx))
       (MIDX: msp.(src).(midx) = msp.(tgt).(midx))
       (PRSV: local_preservation msp.(src) sound_state_ex)
       (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))
@@ -234,7 +237,7 @@ Section FACTORTARGET.
 
   Variable ms_src ms_tgt: ModSem.t.
   Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
-  Context {SMO: SimMemOh.class ms_src.(ModSem.midx)}.
+  Context {SMO: SimMemOh.class}.
   Variable ss: SimSymb.t.
   Variable sm: SimMem.t.
   Hypothesis SINGLE: single_events ms_src.

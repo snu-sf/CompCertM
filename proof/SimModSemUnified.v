@@ -289,9 +289,10 @@ Section RESPECTS.
 
 (* Context `{SMO: SimMemOh.class} {SMOS: SimMemOhs.class}. *)
 Variable (SM: SimMem.class).
-Variable (midx: Midx.t).
-Variable (SMO: SimMemOh.class midx).
+Variable (SMO: SimMemOh.class).
 Variable (SMOS: SimMemOhs.class).
+
+Let midx: Midx.t := SimMemOh.midx (class := SMO).
 Record sm_match (smo: SimMemOh.t) (smos: SimMemOhs.t): Prop :=
   (* TODO: I want to remove @ *)
   { smeq: (smos.(SimMemOhs.sm) = smo.(SimMemOh.sm));
@@ -386,12 +387,13 @@ Inductive respects: Prop :=
 End RESPECTS.
 
 
+Ltac ec := eauto with congruence.
+
 Theorem fundamental_theorem
         `{SM: SimMem.class}
         `{SS: @SimSymb.class _} `{SU: Sound.class}
         {SMOS: SimMemOhs.class}
         (msp: ModSemPair.t)
-        (MIDX: msp.(ModSemPair.src).(midx) = msp.(ModSemPair.tgt).(midx))
         (RESPECT: respects msp.(ModSemPair.SMO) SMOS)
         (SIM: msp.(ModSemPair.sim))
   :
@@ -400,7 +402,7 @@ Theorem fundamental_theorem
 Proof.
   inv SIM.
   econs; eauto.
-  clear - MIDX SIM0 RESPECT. ss.
+  clear - MIDX MIDX0 SIM0 RESPECT. ss.
   ii.
   destruct RESPECT.
   (* assert(SMPROJ: forall smos: SimMemOhs.t, *)
@@ -440,8 +442,8 @@ Proof.
                                  args_src args_tgt sm_arg_proj).
   { rr. rr in SIMARGS; des. clarify. esplits; eauto.
     - erewrite <- smeq; eauto.
-    - erewrite <- ohsrc; eauto. symmetry. eapply upcast_downcast_iff; eauto with congruence.
-    - erewrite <- ohtgt; eauto. symmetry. eapply upcast_downcast_iff; eauto with congruence.
+    - erewrite <- ohsrc; eauto. symmetry. eapply upcast_downcast_iff; ec.
+    - erewrite <- ohtgt; eauto. symmetry. eapply upcast_downcast_iff; ec.
   }
   exploit SIM0; eauto.
   { erewrite <- smeq; eauto. }
@@ -451,27 +453,28 @@ Proof.
   split; ss.
   - ii.
     assert(OHSRC0: downcast (SimMemOh.oh_src sm_arg_proj) = Some oh_src).
-    { clear - STRONG MIDX SIMARGS OHSRC SMMATCH.
+    { clear - STRONG MIDX MIDX0 SIMARGS OHSRC SMMATCH.
       rewrite <- OHSRC.
       f_equal. rr in SIMARGS. des; ss. clarify.
-      erewrite ohsrc; eauto with congruence.
+      rewrite <- MIDX.
+      erewrite ohsrc; ec.
     }
     assert(OHTGT0: downcast (SimMemOh.oh_tgt sm_arg_proj) = Some oh_tgt).
-    { clear - STRONG MIDX SIMARGS OHTGT SMMATCH.
+    { clear - STRONG MIDX MIDX0 SIMARGS OHTGT SMMATCH.
       rewrite <- OHTGT.
       f_equal. rr in SIMARGS. des; ss. clarify.
-      rewrite <- MIDX. eauto.
-      erewrite ohtgt; eauto with congruence.
+      rewrite <- MIDX0. rewrite <- MIDX.
+      erewrite ohtgt; ec.
     }
 
 
     clear INITPROGRESS. ii. exploit INITBSIM; eauto.
     i; des.
-    exploit (SMSIM sm_arg); eauto. i; des.
-    exists st_init_src. esplits; eauto.
+    exploit (SMSIM sm_arg); ec. i; des.
+    exists st_init_src. esplits; ec.
     instantiate (1:= idx_init).
     clear - SIM STRONG SMSIM SMSIMPRIV SMPROJ
-                SMMATCH0 SMMATCHLE SMCOMPLEX MIDX OHSRC0 OHTGT0.
+                SMMATCH0 SMMATCHLE SMCOMPLEX MIDX MIDX0 OHSRC0 OHTGT0.
     rename sm_init into smo0. rename smos1 into smos0.
     rename st_init_src into st_src0. rename st_init_tgt into st_tgt0.
     (* assert(WF: SimMemOhs.wf smos0). *)
@@ -484,30 +487,29 @@ Proof.
     punfold SIM. rr in SIM. ii. exploit SIM; eauto. intro T; des. inv T.
     + econs 1; eauto. ii. hexploit1 SU0; ss. inv SU0.
       * econs 1; eauto. ii. exploit STEP; eauto. i; des_safe.
-        exploit SMSIM; eauto. i; des_safe.
-        esplits; eauto. pclearbot. right. eapply CIH; eauto.
-      * exploit (SMSIM smos0); eauto. i; des.
-        econs 2; eauto. pclearbot. right. eapply CIH; eauto.
+        exploit SMSIM; ec. i; des_safe.
+        esplits; ec. pclearbot. right. eapply CIH; eauto.
+      * exploit (SMSIM smos0); ec. i; des.
+        econs 2; ec. pclearbot. right. eapply CIH; eauto.
     + econs 2; eauto. ii. hexploit1 SU0; ss. r in SU0. hexploit1 SU0; ss. inv SU0.
       * econs 1; eauto. ii. exploit STEP; eauto. i; des_safe.
-        exploit SMSIM; eauto. i; des_safe.
-        esplits; eauto. pclearbot. right. eapply CIH; eauto.
-      * exploit (SMSIM smos0); eauto. i; des.
-        econs 2; eauto. pclearbot. right. eapply CIH; eauto.
+        exploit SMSIM; ec. i; des_safe.
+        esplits; ec. pclearbot. right. eapply CIH; eauto.
+      * exploit (SMSIM smos0); ec. i; des.
+        econs 2; ec. pclearbot. right. eapply CIH; eauto.
     + econs 3; eauto.
       { eapply wfwf; eauto. }
-      ii. exploit SU0; eauto. i; des. exploit SMSIMPRIV; eauto. i; des.
-      esplits; try eapply wfwf; eauto.
-      * rr in SIMARGS. des. rr. esplits; eauto.
+      ii. exploit SU0; eauto. i; des. exploit SMSIMPRIV; ec. i; des.
+      esplits; try eapply wfwf; ec.
+      * rr in SIMARGS. des. rr. esplits; ec.
         { erewrite smeq; eauto. }
-        { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
-          - rewrite OHSRC. erewrite ohsrc; eauto with congruence.
-          - eapply UNCH0; et.
+        { apply func_ext1. intro mi. unfold Midx.update. des_ifs; ec.
+          - rewrite OHSRC. rewrite <- MIDX. erewrite ohsrc; ec.
+          - eapply UNCH0; ec.
         }
-        { apply func_ext1. intro mi. unfold Midx.update. des_ifs; eauto with congruence.
-          - rewrite <- MIDX. eauto.
-            rewrite OHTGT. erewrite ohtgt; eauto with congruence.
-          - eapply UNCH0; et. eauto with congruence.
+        { apply func_ext1. intro mi. unfold Midx.update. des_ifs; ec.
+          - rewrite OHTGT. rewrite <- MIDX0. rewrite <- MIDX. erewrite ohtgt; ec.
+          - eapply UNCH0; et. ec.
         }
       * i. hexploit (SMPROJ smos_ret); eauto. intro T; des.
         exploit K.
@@ -515,34 +517,34 @@ Proof.
         { ss. }
         { rr in SIMRETV. des. rr. erewrite <- smeq; eauto. esplits; eauto.
           - instantiate (1:= oh_src1). clarify.
-            erewrite <- ohsrc; eauto. sym. eapply upcast_downcast_iff; eauto with congruence.
+            erewrite <- ohsrc; eauto. sym. eapply upcast_downcast_iff; ec.
           - instantiate (1:= oh_tgt1). clarify.
-            erewrite <- ohtgt; eauto. sym. eapply upcast_downcast_iff; eauto with congruence.
+            erewrite <- ohtgt; eauto. sym. eapply upcast_downcast_iff; ec.
         }
         { rp; eauto. }
         i; des.
         (* hexploit (SMSIM _ _ _ SMMATCH0 MLEPUB); eauto. i; des. *)
-        hexploit (SMSIMPRIV _ _ _ SMMATCH1 MLEPRIV); eauto. i; des.
-        esplits; try apply SMSTEPBIG1; eauto.
+        hexploit (SMSIMPRIV _ _ _ SMMATCH1 MLEPRIV); ec. i; des.
+        esplits; try apply SMSTEPBIG1; ec.
         { clear - MLEPUB SMSTEPBIG0 MLEPUB MLEPRIV SMCOMPLEX SMMATCH SMMATCH2 SMMATCH1 SMMATCH0 MLE0
-                         UNCH UNCH0 UNCH1 UNCH2 EQ EQ0.
+                         UNCH UNCH0 UNCH1 UNCH2 EQ EQ0 MIDX MIDX0.
           rename smos2 into smos3. rename smos_ret into smos2. rename smo_after into smo3.
           rename smo_arg into smo1. rename smo into smo2.
           rename SMMATCH2 into SMMATCH3.
           rename SMMATCH1 into SMMATCH2.
           rename SMMATCH into SMMATCH1.
-          eapply SMCOMPLEX; [eapply SMMATCH0|eapply SMMATCH1|eapply SMMATCH2|eapply SMMATCH3|..]; et.
+          eapply SMCOMPLEX; [eapply SMMATCH0|eapply SMMATCH1|eapply SMMATCH2|eapply SMMATCH3|..]; ec.
         }
         pclearbot. right. eapply CIH; eauto.
-    + exploit SMSIM; eauto. i; des.
+    + exploit SMSIM; ec. i; des.
 
-      rr in SIMRETV. des. rr. econs 4; try eapply wfwf; eauto.
+      rr in SIMRETV. des. rr. econs 4; try eapply wfwf; ec.
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
-        { rewrite OHSRC. erewrite ohsrc; eauto with congruence. }
-        symmetry. eapply UNCH0; et.
-        (* exploit (UNCH0 mi); i; des; eauto with congruence. *)
+        { rewrite OHSRC. rewrite <- MIDX. erewrite ohsrc; ec. }
+        symmetry. eapply UNCH0; ec.
+        (* exploit (UNCH0 mi); i; des; ec. *)
       * apply func_ext1. intro mi. unfold Midx.update. des_ifs.
-        { rewrite OHTGT. rewrite <- MIDX. eauto. erewrite ohtgt; eauto with congruence. }
-        symmetry. eapply UNCH0; et. eauto with congruence.
+        { rewrite OHTGT. rewrite <- MIDX0. rewrite <- MIDX. eauto. erewrite ohtgt; ec. }
+        symmetry. eapply UNCH0; et. ec.
       * rr. esplits; eauto. erewrite smeq; eauto.
 Qed.

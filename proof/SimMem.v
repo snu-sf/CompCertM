@@ -201,7 +201,7 @@ Section SimMemOh.
   (* Variable owned_heap_src owned_heap_tgt: Type. *)
 
   Local Open Scope signature_scope.
-  Class class {SM: SimMem.class} (mi: Midx.t) :=
+  Class class {SM: SimMem.class} :=
   {
     t: Type;
     sm:> t -> SimMem.t;
@@ -210,6 +210,7 @@ Section SimMemOh.
     wf: t -> Prop;
     le: t -> t -> Prop;
     lepriv: t -> t -> Prop;
+    midx: Midx.t;
 
     le_PreOrder :> PreOrder le;
     lepriv_PreOrder :> PreOrder lepriv;
@@ -244,7 +245,7 @@ Section SimMemOh.
         smo0 sm1
         (WF: wf smo0)
         (WF: SimMem.wf sm1)
-        (UNCH: SimMem.unchanged_on (privmods mi smo0.(sm).(SimMem.ptt_src))
+        (UNCH: SimMem.unchanged_on (privmods midx smo0.(sm).(SimMem.ptt_src))
                                    smo0.(sm).(SimMem.src) sm1.(SimMem.src))
       ,
         <<WF: wf (set_sm smo0 sm1)>>;
@@ -291,7 +292,7 @@ Local Obligation Tactic := try (by econs); try (by ii; ss).
 (*     lepriv := SimMem.lepriv; *)
 (*   } *)
 (* . *)
-Program Definition SimMemOh_default (SM: SimMem.class) (mi: Midx.t): (SimMemOh.class mi) :=
+Program Definition SimMemOh_default (SM: SimMem.class) (mi: Midx.t): (SimMemOh.class) :=
   {|
     SimMemOh.sm := fun x => x;
     SimMemOh.oh_src := fun _ => upcast tt;
@@ -299,6 +300,7 @@ Program Definition SimMemOh_default (SM: SimMem.class) (mi: Midx.t): (SimMemOh.c
     SimMemOh.wf := SimMem.wf;
     SimMemOh.le := SimMem.le;
     SimMemOh.lepriv := SimMem.lepriv;
+    SimMemOh.midx := mi;
   |}
 .
 

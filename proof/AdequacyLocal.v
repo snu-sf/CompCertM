@@ -258,6 +258,7 @@ Section SIMGE.
       eexists (ModSemPair.mk _ _ ss_link sm_init (SimMemOh_default _ _)). ss. esplits; eauto.
       - exploit system_local_preservation. intro SYSSU; des. econs.
         { ss. }
+        { ss. }
         { ss. eauto. }
         { instantiate (2:= Empty_set). ii; ss. }
         { ss. esplits; eauto. }

@@ -9,6 +9,7 @@ Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem MatchSimModSem.
 Require SimMemId.
 Require SoundTop.
+Require Import Program.
 
 Set Implicit Arguments.
 
@@ -26,7 +27,7 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog).
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src midx skenv_link) (md_tgt midx skenv_link) (SimSymbId.mk md_src md_tgt) (SimMemOh_default _) sm_link.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src midx skenv_link) (md_tgt midx skenv_link) (SimSymbId.mk md_src md_tgt) sm_link (SimMemOh_default _ midx).
 
 Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
@@ -49,9 +50,9 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
     destruct sm_arg; ss. clarify.
-    inv INITTGT. rr in SIMARGS. des; ss. inv SIMARGS0; ss; clarify.
+    inv INITTGT. rr in SIMARGS. des; ss. inv SIMARGS0; ss; clarify. simpl_depind. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    eexists. eexists (SimMemId.mk _ _). esplits; eauto.
+    eexists. eexists (SimMemId.mk _ _). esplits; ss; eauto.
     + econs; eauto; ss.
       * inv TYP. rpapply match_callstates; eauto.
         { econs; eauto. }
@@ -66,7 +67,7 @@ Proof.
     inv MATCH; ss. destruct sm0; ss. clarify. inv CALLSRC. inv MATCHST; ss.
   - (* call fsim *)
     inv MATCH; ss. destruct sm0; ss. clarify.
-    inv CALLSRC. inv MATCHST; ss. folder. esplits; eauto.
+    inv CALLSRC. inv MATCHST; ss. folder. esplits; ss; eauto.
     + econs; eauto.
       * folder. des. r in TRANSL. r in TRANSL.
         exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
@@ -78,8 +79,7 @@ Proof.
     + ss.
   - (* after fsim *)
     inv AFTERSRC. rr in SIMRET. des; ss. inv SIMRETV; ss. exists sm_ret. destruct sm_ret; ss. clarify.
-    inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
-    + econs; eauto.
+    inv MATCH; ss. inv MATCHST; ss. esplits; ss; eauto.
     + econs; ss; eauto. clarify. econs; eauto.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
@@ -90,9 +90,10 @@ Proof.
     inv MATCH. ii. hexploit (@step_simulation prog skenv_link); eauto.
     { inv SIMSKENV. ss. }
     { apply make_match_genvs; eauto. apply SIMSKENV. }
-    i; des. esplits; eauto.
+    i; des. esplits; ss; eauto.
     + left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
     + instantiate (1:= SimMemId.mk _ _). econs; ss.
+  - esplits; eauto.
 Unshelve.
   all: ss; try (by econs).
 Qed.

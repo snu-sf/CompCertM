@@ -1,7 +1,7 @@
 Require Import FSets.
 Require Import CoqlibC Errors Ordered Maps IntegersC Floats.
 Require Import AST Linking.
-Require Import ValuesC Memory GlobalenvsC Events Smallstep.
+Require Import ValuesC MemoryC GlobalenvsC Events Smallstep.
 Require Import Registers Op RTLC.
 Require Import ValueDomain ValueAnalysisC NeedDomain NeedOp Inlining.
 Require Import sflib.
@@ -13,6 +13,7 @@ Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem MatchSimModSe
 Require SimMemInjC.
 Require SoundTop.
 Require Import ModSemProps.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -32,7 +33,7 @@ Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src midx skenv_link) (md_tgt midx skenv_link) (SimSymbId.mk md_src md_tgt) (SimMemOh_default _) sm_link.
+  ModSemPair.mk (md_src midx skenv_link) (md_tgt midx skenv_link) (SimSymbId.mk md_src md_tgt) sm_link (SimMemOh_default _ midx).
 
 Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
@@ -56,7 +57,7 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
     inv INITTGT. des. inv SAFESRC. destruct args_src, args_tgt; ss.
-    rr in SIMARGS. des. inv SIMARGS0; ss. clarify.
+    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. Equality.simpl_existTs. clarify.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     eexists. exists sm_arg. esplits; eauto; try refl; econs; eauto.
@@ -82,7 +83,7 @@ Proof.
        { unfold transf_function in *. unfold Errors.bind in *. des_ifs. }
        f_equal; eauto. f_equal; rewrite H; eauto.
   - (* init progress *)
-    des. inv SAFESRC. rr in SIMARGS. des. inv SIMARGS0; ss.
+    des. inv SAFESRC. rr in SIMARGS. des. apply_all_once upcast_inj; des. inv SIMARGS0; ss. clarify.
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. clarify. folder.
@@ -101,7 +102,7 @@ Proof.
     { fold ge in EXTERNAL. clarify. }
     folder. inv MCOMPAT; ss. clear_tac.
     exploit (fsim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
-    des_u. esplits; eauto.
+    des_u. esplits; ss; eauto.
     + econs; eauto.
       * des. clarify. esplits; eauto.
         (* exploit (sim_internal_funct_inject SIMGE); try apply SIG; et. *)
@@ -124,6 +125,7 @@ Proof.
         clarify.
     + rr. esplits; ss; eauto. econs; ss.
     + reflexivity.
+    + econs; ss; refl.
   - (* after fsim *)
     hexploit (SimMemInjC.skenv_inject_revive prog); et. { apply SIMSKENV. } intro SIMSKENV0; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
@@ -150,13 +152,14 @@ Proof.
       { eapply inject_typify; eauto. }
       { eapply MWFAFTR. }
     + refl.
+    + econs; ss; refl.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss; cycle 1.
     { inv MS. clarify. }
     inv MS; cycle 1.
     { inv MS0; clarify. }
     inv MCOMPAT; ss.
-    eexists sm0. esplits; ss; eauto; try refl. des_u.  rr. esplits; eauto. econs; eauto.
+    eexists sm0. esplits; ss; eauto; try refl. des_u.  rr. esplits; ss; eauto. econs; eauto.
   - (* step *)
     left; i.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
@@ -174,12 +177,15 @@ Proof.
     i; des.
     + esplits; eauto.
       * left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.
+      * econs; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss; try apply MLE.
       * econs; ss.
     + esplits; eauto.
       * right. subst tr. split. econs. eauto.
+      * econs; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss; try apply MLE.
       * assert(MCOMPAT: get_mem st_src1 = SimMem.src sm1 /\ get_mem st_tgt0 = SimMem.tgt sm1).
         { inv H1; inv MCOMPAT; ss. }
         des. econs; eauto; ss.
+  - esplits; eauto.
 Unshelve.
   all: ss; try (by econs).
 Qed.

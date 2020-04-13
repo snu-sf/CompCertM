@@ -12,7 +12,7 @@ Require Import CtypingC.
 
 Set Implicit Arguments.
 
-Local Obligation Tactic := ii; ss; des; do 2 inv_all_once; ss; clarify.
+Local Obligation Tactic := ii; ss; des; do 2 inv_all_once; repeat des_u; ss; clarify.
 
 Definition is_call_cont_strong (k0: cont): Prop :=
   match k0 with
@@ -37,6 +37,7 @@ Definition get_mem (st: state): option mem :=
 
 Section MODSEM.
 
+  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_function p).
@@ -82,13 +83,14 @@ Section MODSEM.
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
-       ModSem.at_external := at_external;
-       ModSem.initial_frame := initial_frame;
-       ModSem.final_frame := final_frame;
-       ModSem.after_external := after_external;
+       ModSem.at_external := coerce at_external;
+       ModSem.initial_frame := coerce initial_frame;
+       ModSem.final_frame := coerce final_frame;
+       ModSem.after_external := coerce after_external;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
+       ModSem.midx := midx;
     |}.
 
   Ltac inv_single_events :=

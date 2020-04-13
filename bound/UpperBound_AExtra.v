@@ -212,11 +212,11 @@ Section SIM.
       (TL: sum_cont tl k1)
       k2
       (K: k2 = app_cont k0 k1)
-      cp
+      cp mi
       (FOCUS: is_focus cp)
       (K0: exists _f _e _C _k, k0 = (Kcall _f _e _C _tres _k) /\ <<WTYK: wtype_cont (prog_comp_env cp) _k>>)
       (WTTGT: wt_state cp (geof cp) (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m)):
-      sum_cont ((Frame.mk (CsemC.modsem skenv_link cp)
+      sum_cont ((Frame.mk (CsemC.modsem mi skenv_link cp)
                           (Csem.Callstate _fptr (Tfunction _targs _tres _cconv) _vs k0 _m)) :: tl) k2.
 
   Lemma sum_cont_kstop_inv
@@ -1060,11 +1060,11 @@ Section SIM.
   Qed.
 
   Lemma match_focus_state_progress
-        cst_src0 cst_tgt0 cst_src1 k0 cp tr
+        cst_src0 cst_tgt0 cst_src1 k0 cp tr mi0 mi1
         (NCALLTGT : ~ exists args, at_external skenv_link cp cst_tgt0 args)
         (NCALLSRC : ~ exists args, at_external skenv_link cp_link cst_src0 args)
-        (NRETTGT : ~ ModSem.is_return (modsem skenv_link cp) cst_tgt0)
-        (NRETSRC : ~ ModSem.is_return (modsem skenv_link cp_link) cst_src0)
+        (NRETTGT : ~ ModSem.is_return (modsem mi0 skenv_link cp) cst_tgt0)
+        (NRETSRC : ~ ModSem.is_return (modsem mi1 skenv_link cp_link) cst_src0)
         (ST: match_focus_state cst_src0 cst_tgt0 k0)
         (ISFOC: is_focus cp)
         (WTSRC: wt_state cp_link (geof cp_link) cst_src0)
@@ -1335,7 +1335,8 @@ Section SIM.
       + destruct k3; destruct k0; ss; clarify; try (by eexists; right; econs; eauto).
         inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
         ss. exfalso. eapply NRETTGT. ss. econs. unfold ModSem.final_frame. ss.
-        Unshelve. all:auto.
+        esplits; eauto. econs; eauto.
+        Unshelve. all: ss.
   Qed.
 
 End SIM.

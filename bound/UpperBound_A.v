@@ -236,6 +236,7 @@ Section PRESERVATION.
 
   Inductive match_focus: Frame.t -> list Frame.t -> Prop :=
   | match_focus_cons_right
+      mi_src mi_tgt
       cst_src cst_tgt
       tl_tgt k_tl_tgt
       (SUM: sum_cont tl_tgt k_tl_tgt)
@@ -244,8 +245,8 @@ Section PRESERVATION.
       (FOCUS: is_focus cp)
       (WTSRC: wt_state cp_link ge_cp_link cst_src)
       (WTTGT: wt_state cp (geof cp) cst_tgt) :
-      match_focus (Frame.mk (CsemC.modsem skenv_link cp_link) cst_src)
-                  ((Frame.mk (CsemC.modsem skenv_link cp) cst_tgt) :: tl_tgt).
+      match_focus (Frame.mk (CsemC.modsem mi_src skenv_link cp_link) cst_src)
+                  ((Frame.mk (CsemC.modsem mi_tgt skenv_link cp) cst_tgt) :: tl_tgt).
 
   Lemma match_focus_nonnil
         fr frs
@@ -280,17 +281,17 @@ Section PRESERVATION.
 
   Inductive match_states : Sem.state -> Sem.state -> Prop :=
   | match_states_normal
-      frs_src frs_tgt
+      frs_src frs_tgt ohs_src ohs_tgt
       (STK: match_stacks frs_src frs_tgt) :
-      match_states (State frs_src) (State frs_tgt)
+      match_states (State frs_src ohs_src) (State frs_tgt ohs_tgt)
   | match_states_call
-      frs_src frs_tgt args
+      frs_src frs_tgt args ohs_src ohs_tgt
       (STK: match_stacks frs_src frs_tgt) :
-      match_states (Callstate args frs_src) (Callstate args frs_tgt).
+      match_states (Callstate args frs_src ohs_src) (Callstate args frs_tgt ohs_tgt).
 
   Lemma init_fsim
         st_init_src
-        (INIT: initial_state prog_src st_init_src) :
+        (INIT: initial_state prog_src (load_genv prog_src skenv_link) st_init_src) :
       exists (i0: unit) st_init_tgt,
         (<<INIT: Dinitial_state (sem prog_tgt) st_init_tgt>>) /\
         (<<MATCH: match_states st_init_src st_init_tgt>>).

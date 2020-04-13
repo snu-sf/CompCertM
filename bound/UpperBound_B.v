@@ -1,6 +1,6 @@
 Require Import CoqlibC Maps.
 Require Import ASTC Integers Floats Values MemoryC EventsC GlobalenvsC Smallstep.
-Require Import Locations Stacklayout Conventions Linking.
+Require Import Stacklayout Conventions Linking.
 (** newly added **)
 Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
 Require Import Simulation Memory ValuesC.
@@ -8,6 +8,7 @@ Require Import Skeleton ModSem Mod sflib SemProps.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program.
 Require Import BehaviorsC.
 Require Import CtypingC.
+Require Import Any SemTyping.
 
 Set Implicit Arguments.
 
@@ -98,13 +99,14 @@ Section PRESERVATION.
 
   Inductive match_states : Csem.state -> Sem.state -> nat -> Prop :=
   | match_states_intro
-      fr (st: Csem.state)
-      (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st):
-      match_states st (Sem.State [fr]) 1
+      fr (st: Csem.state) mi ohs
+      (FRAME: fr = Frame.mk (CsemC.modsem mi skenv_link prog) st):
+      match_states st (Sem.State [fr] ohs) 1
   | match_states_call
       fptr tyf vargs k m args fr (st: Csem.state) cconv tres targs n
+      mi ohs
       (STATE: st = (Csem.Callstate fptr tyf vargs k m))
-      (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st)
+      (FRAME: fr = Frame.mk (CsemC.modsem mi skenv_link prog) st)
       (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
                         /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
       (FPTR: (Args.fptr args) = fptr)
@@ -112,11 +114,11 @@ Section PRESERVATION.
       (MEM: (Args.m args) = m)
       (NOTPROG: Genv.find_funct (local_genv prog) (Args.fptr args) = None)
       (ORD: n = 0%nat):
-      match_states (Csem.Callstate fptr tyf vargs k m) (Callstate args [fr]) n
+      match_states (Csem.Callstate fptr tyf vargs k m) (Callstate args [fr] ohs) n
   | match_states_init
       st_src st_tgt
       (INITSRC: Csem.initial_state prog st_src)
-      (INITTGT: initial_state tprog st_tgt):
+      (INITTGT: initial_state tprog tge st_tgt):
       match_states st_src st_tgt 0.
 
   Let INCL: SkEnv.includes (Sk.load_skenv (CSk.of_program signature_of_function prog)) (CSk.of_program signature_of_function prog).
@@ -207,7 +209,7 @@ Section PRESERVATION.
 
   Lemma transf_initial_states:
     forall st1, Csem.initial_state prog st1 ->
-           exists st2, Sem.initial_state tprog st2 /\ match_states st1 st2 0.
+           exists st2, Sem.initial_state tprog tge st2 /\ match_states st1 st2 0.
   Proof.
     destruct match_ge_skenv_link. destruct skenv_link_wf.
     i. inversion H; subst.
@@ -239,15 +241,15 @@ Section PRESERVATION.
       destruct p. inv H8. }
     esplits; eauto.
     { econs; et. i. ss. des; ss. clarify. }
-    { econs; et. econs; et. i. ss. des; ss. clarify. }
+    { econs; et. econs; et. i. ss. des; ss. clarify. unfold tge. repeat f_equal. eapply prog_sk_tgt. }
   Qed.
 
 (** ********************* transf step  *********************************)
 
   Inductive valid_owner fptr (p: Csyntax.program) : Prop :=
   | valid_owner_intro
-      fd
-      (MSFIND: tge.(Ge.find_fptr_owner) fptr (CsemC.modsem skenv_link p))
+      fd mi
+      (MSFIND: tge.(Ge.find_fptr_owner) fptr (CsemC.modsem mi skenv_link p))
       (FINDF: Genv.find_funct (local_genv p) fptr = Some (Internal fd)).
 
   Lemma find_fptr_owner_determ
@@ -851,11 +853,11 @@ Section PRESERVATION.
   Qed.
 
   Lemma progress_step
-        st_src frs n t st_src'
+        st_src frs ohs n t st_src'
         (INTERN: ~ is_external ge st_src)
-        (MTCHST : match_states st_src (State frs) n)
+        (MTCHST : match_states st_src (State frs ohs) n)
         (STEP: Step (semantics prog) st_src t st_src'):
-      exists (tr : trace) (st_tgt1 : Smallstep.state (sem tprog)), Step (sem tprog) (State frs) tr st_tgt1.
+      exists (tr : trace) (st_tgt1 : Smallstep.state (sem tprog)), Step (sem tprog) (State frs ohs) tr st_tgt1.
   Proof.
     inv MTCHST; inv STEP; ss; exists t.
     - esplits. econs; ss.  econs 1. exploit estep_progress; eauto. rewrite <- senv_same. eauto.
@@ -864,14 +866,14 @@ Section PRESERVATION.
     - inv INITSRC; inv INITTGT; inv H.
   Qed.
 
-  Lemma init_case st args frs fptr tr st_src st_src'
-        (STATE: st = Callstate args frs)
+  Lemma init_case st args frs ohs fptr tr st_src st_src'
+        (STATE: st = Callstate args frs ohs)
         (FPTR: fptr = (Args.fptr args))
         (MTCHST: match_states st_src st 0)
         (SAFESRC: Step (semantics prog) st_src tr st_src'):
       (<<CMOD: valid_owner fptr prog>>) \/
       (<<SYSMOD: tge.(Ge.find_fptr_owner)
-                      fptr (System.modsem skenv_link)>>).
+                      fptr (System.modsem 0%nat skenv_link)>>).
   Proof.
     subst.
     destruct (classic (valid_owner (Args.fptr args) prog)); eauto.
@@ -971,7 +973,7 @@ Section PRESERVATION.
 
   Lemma match_state_xsim:
       forall st_src st_tgt n (MTCHST: match_states st_src st_tgt n),
-        xsim (Csem.semantics prog) (Sem.sem tprog) lt (wt_state prog ge) top1 n%nat st_src st_tgt.
+        xsim (Csem.semantics prog) (Sem.sem tprog) lt (wt_state prog ge) (sound_state tprog) n%nat st_src st_tgt.
   Proof.
     pcofix CIH. i. pfold.
     destruct match_ge_skenv_link.
@@ -1025,6 +1027,13 @@ Section PRESERVATION.
                        { unfold Args.get_fptr. des_ifs.
                          unfold tge, skenv_link, link_sk, link_list in *; inversion LINK_SK_TGT.
                          rewrite H0. eauto. }
+                       { ss. instantiate (1:= tt).
+                         exploit SSTGT; et. { apply star_refl. } intro T; des. rr in T. des.
+                         exploit (WTY 0%nat); ss; et. i; des. clear - H. ss.
+                         hexploit (projT1_upcast (ohs 0%nat)); intro T. des.
+                         abstr (ohs 0%nat) x. destruct x; ss.
+                         unfold upcast in *. simpl_depind. clarify. f_equal. destruct t; ss.
+                       }
                        { ss. }
                 ** inv STEPSRC; inv H.
                    { ss. exploit not_external_function_find_same; eauto; ss.
@@ -1080,7 +1089,8 @@ Section PRESERVATION.
                            { red. i. inv H; auto. inv STEP. }
                        (* step *)
                        +++ ss. eapply step_return.
-                           { instantiate (1 := (Retv.mk vres m')). econs. } ss.
+                           { instantiate (1 := (Retv.mk vres m')). econs. }
+                           { ss.
                            assert (after_external (Csem.Callstate fptr (Tfunction targs0 tres0 cc) vs k m)
                                                   (Retv.mk vres m') (Returnstate vres k m')).
                            { econs. ss. econs. ss.
@@ -1088,6 +1098,19 @@ Section PRESERVATION.
                              exploit Genv.find_def_inversion; eauto. i. des. exploit WT_EXTERNAL. eauto.
                              exploit external_call_symbols_preserved. eapply senv_equiv_ge_link. eauto. i. eauto. i. eauto. }
                            eauto.
+                           }
+                           { ss. }
+                           { ss. instantiate (1:= tt).
+                             clear - SSTGT.
+                             exploit SSTGT. { eapply star_refl. } i; des.
+                             rr in H. des.
+                             destruct mi; ss. unfold Midx.update. des_ifs.
+                             rewrite Forall_forall in *. ss.
+                             exploit FRAMES; ss; eauto. ss. intro T; des_safe. simpl_depind.
+                             exploit (WTY 1%nat); ss; et. intro U; des. clear - U.
+                             abstr (ohs 1%nat) x. destruct x; ss. clarify. unfold upcast.
+                             f_equal. des_u; ss.
+                           }
                    --- traceEq.
                 ** traceEq.
              ++ right. eapply CIH.
@@ -1144,10 +1167,24 @@ Section PRESERVATION.
                            { inv FINAL. }
                            { red. i. inv H3. auto. }
                        +++ ss. eapply step_init.
-                           { instantiate (1 := modsem skenv_link prog). ss.
+                           { instantiate (1 := modsem mi skenv_link prog). ss.
                              unfold tge in MSFIND.
                              unfold tge, skenv_link, link_sk, link_list in *.
                              des_ifs. inversion Heq. rewrite <- H4 in MSFIND. unfold Args.get_fptr. des_ifs. }
+                           { instantiate (1:= tt). ss.
+                             assert(MIDX: mi = 0%nat \/ mi = 1%nat).
+                             { clear - MSFIND. inv MSFIND. ss. des; clarify; eauto.
+                               unfold modsem in *. ss. simpl_depind; eauto.
+                             }
+                             clear - SSTGT MIDX.
+                             exploit SSTGT; eauto. { eapply star_refl. } intro T; des_safe.
+                             rr in T. des_safe. ss.
+                             des; clarify.
+                             - exploit (WTY 0%nat); ss; et. intro U; des. clear - U.
+                               abstr (ohs 0%nat) x. destruct x; ss. clarify. des_u. refl.
+                             - exploit (WTY 1%nat); ss; et. intro U; des. clear - U.
+                               abstr (ohs 1%nat) x. destruct x; ss. clarify. des_u. refl.
+                           }
                            ss. des_ifs.
                            instantiate (1 := (Csem.Callstate (Vptr b Ptrofs.zero) (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
                            assert  (Genv.symbol_address (Sk.load_skenv sk_tgt) (AST.prog_main sk_tgt) Ptrofs.zero = (Vptr b Ptrofs.zero)).
@@ -1245,7 +1282,7 @@ Section PRESERVATION.
              esplits.
              ++ left. eapply plus_one. unfold fundef in *. rewrite senv_same. eauto.
              ++ right. eapply CIH.
-                { econs; eauto. }
+                { econs; eauto. ss. }
         (* progress *)
         * specialize (SAFESRC _ (star_refl _ _ _ _)). des.
           (* final *)
@@ -1290,6 +1327,8 @@ Section PRESERVATION.
             { eapply star_refl. }
             econs. }
           { inv INITTGT. }
+    Unshelve.
+      all: ss.
   Qed.
 
   Hypothesis INITSAFE: forall st (INIT: Smallstep.initial_state (semantics prog) st),
@@ -1298,8 +1337,8 @@ Section PRESERVATION.
   Lemma transf_xsim_properties:
       xsim_properties (Csem.semantics prog) (Sem.sem tprog) nat lt.
   Proof.
-    econstructor 1 with (xsim_ss_src := wt_state prog ge) (xsim_ss_tgt := top1);
-      ss; [|apply lt_wf| |i; apply symb_preserved].
+    econstructor 1 with (xsim_ss_src := wt_state prog ge) (xsim_ss_tgt := sound_state tprog);
+      ss; [| |apply lt_wf| |i; apply symb_preserved].
     { clear - MAIN_INTERNAL tprog WTPROG SKEWF LINK_SK_TGT INITSAFE WTSK WT_EXTERNAL INCL.
       econs.
       - ii. hexploit INITSAFE; eauto. intro SAFE. inv INIT.
@@ -1326,9 +1365,11 @@ Section PRESERVATION.
           }
       - ii. eapply preservation_prog; eauto. rewrite <- senv_same; et.
     }
+    { eapply preservation; et. }
     econs. i.
     exploit (transf_initial_states); eauto.
     i. des. esplits. econs; eauto.
+    - ss. rp; try eapply H; eauto. unfold tge. unfold skenv_link. rewrite prog_sk_tgt. ss.
     - i. inv INIT0. inv INIT1. clarify.
     - apply match_state_xsim; eauto.
   Qed.

@@ -10,7 +10,7 @@ Require Import JunkBlock.
 
 Set Implicit Arguments.
 
-Local Obligation Tactic := ii; ss; des; inv_all_once; des; ss; clarify; eauto with congruence.
+Local Obligation Tactic := ii; ss; des; inv_all_once; des; ss; clarify; repeat des_u; eauto with congruence.
 
 Definition get_mem (st: state): mem :=
   match st with
@@ -43,6 +43,7 @@ Definition external_state F V (ge: Genv.t F V) (v : val) : bool :=
 
 Section MODSEM.
 
+  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program fn_sig p).
@@ -169,19 +170,20 @@ Section MODSEM.
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
-       ModSem.at_external := at_external;
-       ModSem.initial_frame := initial_frame;
-       ModSem.final_frame := final_frame;
-       ModSem.after_external := after_external;
+       ModSem.at_external := coerce at_external;
+       ModSem.initial_frame := coerce initial_frame;
+       ModSem.final_frame := coerce final_frame;
+       ModSem.after_external := coerce after_external;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
+       ModSem.midx := midx;
     |}.
   Next Obligation.
-    rewrite RSP in *. clarify. f_equal. eapply Asm.extcall_arguments_determ; eauto.
+    all: split; ss; rewrite RSP in *; clarify; f_equal; eapply Asm.extcall_arguments_determ; eauto.
   Qed.
   Next Obligation.
-    all: inv STEP; rewrite H2 in *; ss; des_ifs.
+    all: unfold Genv.find_funct in *; des_ifs; inv STEP; try rewrite H2 in *; try rewrite H3 in *; ss; des_ifs.
   Qed.
   Next Obligation.
     all: inv EXTERNAL; unfold external_state in *; des_ifs; inv STEP; ss; des_ifs; rewrite Heq in *; clarify.

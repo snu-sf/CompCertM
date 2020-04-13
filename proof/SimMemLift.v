@@ -33,8 +33,13 @@ Module SimMemLift.
     lift_wf: forall mrel, SimMem.wf mrel -> SimMem.wf (lift mrel);
     lift_src: forall mrel, (lift mrel).(SimMem.src) = mrel.(SimMem.src);
     lift_tgt: forall mrel, (lift mrel).(SimMem.tgt) = mrel.(SimMem.tgt);
+    lift_ptt_src: forall mrel, (lift mrel).(SimMem.ptt_src) = mrel.(SimMem.ptt_src);
+    lift_ptt_tgt: forall mrel, (lift mrel).(SimMem.ptt_tgt) = mrel.(SimMem.ptt_tgt);
     unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.src) = mrel1.(SimMem.src);
     unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.tgt) = mrel1.(SimMem.tgt);
+    unlift_ptt_src: forall sm0 sm1, (unlift sm0 sm1).(SimMem.ptt_src) = sm1.(SimMem.ptt_src);
+    unlift_ptt_tgt: forall sm0 sm1, (unlift sm0 sm1).(SimMem.ptt_tgt) = sm1.(SimMem.ptt_tgt);
+
     lift_spec: forall mrel0 mrel1, SimMem.le (lift mrel0) mrel1 -> SimMem.wf mrel0 -> SimMem.le mrel0 (unlift mrel0 mrel1);
     unlift_wf: forall mrel0 mrel1,
         SimMem.wf mrel0 -> SimMem.wf mrel1 -> SimMem.le (lift mrel0) mrel1 -> SimMem.wf (unlift mrel0 mrel1);
@@ -93,6 +98,33 @@ Module SimMemLift.
       + rewrite SimMemLift.lift_tgt. ss.
   Qed.
 
+  Lemma lift_unch
+        (sm: SimMem.t)
+        mi
+    :
+      SimMem.unch mi sm (lift sm)
+  .
+  Proof.
+    econs.
+    - rewrite lift_src. refl.
+    - rewrite lift_tgt. refl.
+    - rewrite lift_ptt_src. refl.
+    - rewrite lift_ptt_tgt. refl.
+  Qed.
+
+  Lemma unlift_unch
+        (sm0 sm1: SimMem.t)
+        mi
+    :
+      SimMem.unch mi sm1 (unlift sm0 sm1)
+  .
+  Proof.
+    econs.
+    - rewrite unlift_src. refl.
+    - rewrite unlift_tgt. refl.
+    - rewrite unlift_ptt_src. refl.
+    - rewrite unlift_ptt_tgt. refl.
+  Qed.
   (* Lemma unlift_le_lepriv *)
   (*       sm_arg sm_ret sm1 *)
   (*       (MWF0: SimMem.wf sm_arg) *)
@@ -127,10 +159,15 @@ Module SimMemOhLift.
     lift_wf: forall mrel, SimMemOh.wf mrel -> SimMemOh.wf (lift mrel);
     lift_src: forall mrel, (lift mrel).(SimMem.src) = mrel.(SimMem.src);
     lift_tgt: forall mrel, (lift mrel).(SimMem.tgt) = mrel.(SimMem.tgt);
+    lift_ptt_src: forall mrel, (lift mrel).(SimMem.ptt_src) = mrel.(SimMem.ptt_src);
+    lift_ptt_tgt: forall mrel, (lift mrel).(SimMem.ptt_tgt) = mrel.(SimMem.ptt_tgt);
     lift_oh_src: forall mrel, (lift mrel).(SimMemOh.oh_src) = mrel.(SimMemOh.oh_src);
     lift_oh_tgt: forall mrel, (lift mrel).(SimMemOh.oh_tgt) = mrel.(SimMemOh.oh_tgt);
     unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.src) = mrel1.(SimMem.src);
     unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.tgt) = mrel1.(SimMem.tgt);
+    unlift_ptt_src: forall sm0 sm1, (unlift sm0 sm1).(SimMem.ptt_src) = sm1.(SimMem.ptt_src);
+    unlift_ptt_tgt: forall sm0 sm1, (unlift sm0 sm1).(SimMem.ptt_tgt) = sm1.(SimMem.ptt_tgt);
+
     lift_spec: forall mrel0 mrel1, SimMemOh.le (lift mrel0) mrel1 -> SimMemOh.wf mrel0 -> SimMemOh.le mrel0 (unlift mrel0 mrel1);
     unlift_wf: forall mrel0 mrel1,
         SimMemOh.wf mrel0 -> SimMemOh.wf mrel1 -> SimMemOh.le (lift mrel0) mrel1 -> SimMemOh.wf (unlift mrel0 mrel1);
@@ -150,6 +187,33 @@ Module SimMemOhLift.
         SimMemOh.lepriv sm_ret (unlift sm_at sm_ret);
   }.
 
+  Lemma lift_unch
+        `{SMOL: class}
+        (sm: SimMemOh.t)
+    :
+      SimMem.unch SimMemOh.midx sm (lift sm)
+  .
+  Proof.
+    econs.
+    - rewrite lift_src. refl.
+    - rewrite lift_tgt. refl.
+    - rewrite lift_ptt_src. refl.
+    - rewrite lift_ptt_tgt. refl.
+  Qed.
+
+  Lemma unlift_unch
+        `{SMOL: class}
+        (sm0 sm1: SimMemOh.t)
+    :
+      SimMem.unch SimMemOh.midx sm1 (unlift sm0 sm1)
+  .
+  Proof.
+    econs.
+    - rewrite unlift_src. refl.
+    - rewrite unlift_tgt. refl.
+    - rewrite unlift_ptt_src. refl.
+    - rewrite unlift_ptt_tgt. refl.
+  Qed.
   (* Lemma lift_sm_commute *)
   (*       {SM: SimMem.class} *)
   (*       {SML: SimMemLift.class SM} *)
@@ -204,6 +268,12 @@ Module SimMemOhLift.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_tgt; eauto.
     Qed.
     Next Obligation.
+      rewrite SimMemOh.getset_sm. rewrite SimMemLift.lift_ptt_src; eauto.
+    Qed.
+    Next Obligation.
+      rewrite SimMemOh.getset_sm. rewrite SimMemLift.lift_ptt_tgt; eauto.
+    Qed.
+    Next Obligation.
       rewrite SimMemOh.set_sm_oh_src; ss.
     Qed.
     Next Obligation.
@@ -214,6 +284,12 @@ Module SimMemOhLift.
     Qed.
     Next Obligation.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.unlift_tgt; eauto.
+    Qed.
+    Next Obligation.
+      rewrite SimMemOh.getset_sm. eapply SimMemLift.unlift_ptt_src; eauto.
+    Qed.
+    Next Obligation.
+      rewrite SimMemOh.getset_sm. eapply SimMemLift.unlift_ptt_tgt; eauto.
     Qed.
     Next Obligation.
       exploit SimMemLift.lift_spec; eauto.

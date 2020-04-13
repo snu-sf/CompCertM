@@ -5,6 +5,7 @@ Require Import ModSem GlobalenvsC MemoryC ASTC.
 Require Import Skeleton SimModSem SimMem SimMemLift SimSymb.
 Require Import Sound Preservation.
 Require Import ModSemProps.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -45,30 +46,32 @@ Section MATCHSIMFORWARD.
       oh_src oh_tgt args_src args_tgt
       (CALLSRC: ms_src.(ModSem.at_external) st_src0 oh_src args_src)
       (CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 oh_tgt args_tgt)
-      (SIMARGS: SimMemOh.sim_args oh_src oh_tgt args_src args_tgt smo_arg)
+      (SIMARGS: SimMemOh.sim_args (upcast oh_src) (upcast oh_tgt) args_src args_tgt smo_arg)
       (MLE: SimMemOh.le smo_at smo_arg)
       (MWF: SimMemOh.wf smo_arg)
       (MATCHARG: match_states_at st_src0 st_tgt0 smo_at smo_arg).
       (* (FOOT: has_footprint st_src0 st_tgt0 smo_at) *)
 
-  Hypothesis MIDX: ms_src.(ModSem.midx) = ms_tgt.(ModSem.midx).
+  Hypothesis MIDX: SimMemOh.midx = ms_src.(ModSem.midx).
+  Hypothesis MIDX0: ms_src.(ModSem.midx) = ms_tgt.(ModSem.midx).
 
   Hypothesis INITBSIM: forall
       oh_src oh_tgt (smo_arg: SimMemOh.t) args_src args_tgt st_init_tgt
       (SIMSKENV: ModSemPair.sim_skenv msp smo_arg)
       (MWF: SimMemOh.wf smo_arg)
-      (SIMARGS: SimMemOh.sim_args oh_src oh_tgt args_src args_tgt smo_arg)
+      (SIMARGS: SimMemOh.sim_args (upcast oh_src) (upcast oh_tgt) args_src args_tgt smo_arg)
       (INITTGT: ms_tgt.(ModSem.initial_frame) oh_tgt args_tgt st_init_tgt)
       (SAFESRC: exists _st_init_src, ms_src.(ModSem.initial_frame) oh_src args_src _st_init_src),
       exists st_init_src smo_init idx_init,
         (<<INITSRC: ms_src.(ModSem.initial_frame) oh_src args_src st_init_src>>) /\
         (<<MLE: SimMemOh.le smo_arg smo_init>>) /\
+        (<<UNCH: SimMem.unch SimMemOh.midx smo_arg smo_init>>) /\
         (<<MATCH: match_states idx_init st_init_src st_init_tgt smo_init>>).
 
   Hypothesis INITPROGRESS: forall (smo_arg: SimMemOh.t) oh_src oh_tgt args_src args_tgt
       (SIMSKENV: ModSemPair.sim_skenv msp smo_arg)
       (MWF: SimMemOh.wf smo_arg)
-      (SIMARGS: SimMemOh.sim_args oh_src oh_tgt args_src args_tgt smo_arg)
+      (SIMARGS: SimMemOh.sim_args (upcast oh_src) (upcast oh_tgt) args_src args_tgt smo_arg)
       (SAFESRC: exists st_init_src, ms_src.(ModSem.initial_frame) oh_src args_src st_init_src),
       exists st_init_tgt, (<<INITTGT: ms_tgt.(ModSem.initial_frame) oh_tgt args_tgt st_init_tgt>>).
 
@@ -84,8 +87,9 @@ Section MATCHSIMFORWARD.
       (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0),
       exists oh_tgt args_tgt smo_arg,
         (<<CALLTGT: ms_tgt.(ModSem.at_external) st_tgt0 oh_tgt args_tgt>>) /\
-        (<<SIMARGS: SimMemOh.sim_args oh_src oh_tgt args_src args_tgt smo_arg>>) /\
+        (<<SIMARGS: SimMemOh.sim_args (upcast oh_src) (upcast oh_tgt) args_src args_tgt smo_arg>>) /\
         (<<MLE: SimMemOh.le smo0 smo_arg>>) /\
+        (<<UNCH: SimMem.unch SimMemOh.midx smo0 smo_arg>>) /\
         (<<MWF: SimMemOh.wf smo_arg>>) /\
         (<<MATCHAT: match_states_at st_src0 st_tgt0 smo0 smo_arg>>).
 
@@ -98,7 +102,7 @@ Section MATCHSIMFORWARD.
       (* (MWF: SimMemOh.wf smo_arg) *)
       (MLE: SimMemOh.le (SimMemOhLift.lift smo_arg) smo_ret)
       (MWF: SimMemOh.wf smo_ret)
-      (SIMRET: SimMemOh.sim_retv oh_src oh_tgt retv_src retv_tgt smo_ret)
+      (SIMRET: SimMemOh.sim_retv (upcast oh_src) (upcast oh_tgt) retv_src retv_tgt smo_ret)
       (AFTERSRC: ms_src.(ModSem.after_external) st_src0 oh_src retv_src st_src1)
       (SOUND: forall si, exists su0 m_init, (sound_states si) su0 m_init st_src0)
 
@@ -109,7 +113,8 @@ Section MATCHSIMFORWARD.
       (MWFAFTR: SimMemOh.wf (SimMemOhLift.unlift smo_arg smo_ret))
       (MLEAFTR: SimMemOh.le smo_arg (SimMemOhLift.unlift smo_arg smo_ret)),
       exists smo_after idx1 st_tgt1,
-        (<<MLE: SimMemOh.le smo0 smo_after>>) /\ (<<MLEPRIV: SimMemOh.lepriv sm_ret sm_after>>) /\
+        (<<MLE: SimMemOh.le smo0 smo_after>>) /\ (<<MLEPRIV: SimMemOh.lepriv smo_ret smo_after>>) /\
+        (<<UNCH: SimMem.unch SimMemOh.midx smo_ret smo_after>>) /\
         forall (MLE: SimMemOh.le smo0 smo_after) (* helper *),
           ((<<AFTERTGT: ms_tgt.(ModSem.after_external) st_tgt0 oh_tgt retv_tgt st_tgt1>>) /\
            (<<MATCH: match_states idx1 st_src1 st_tgt1 smo_after>>)).
@@ -120,8 +125,9 @@ Section MATCHSIMFORWARD.
       (FINALSRC: ms_src.(ModSem.final_frame) st_src0 oh_src retv_src),
       exists smo_ret oh_tgt retv_tgt,
         (<<FINALTGT: ms_tgt.(ModSem.final_frame) st_tgt0 oh_tgt retv_tgt>>) /\
-        (<<SIMRET: SimMemOh.sim_retv oh_src oh_tgt retv_src retv_tgt smo_ret>>) /\
+        (<<SIMRET: SimMemOh.sim_retv (upcast oh_src) (upcast oh_tgt) retv_src retv_tgt smo_ret>>) /\
         (<<MLE: SimMemOh.le smo0 smo_ret>>) /\
+        (<<UNCH: SimMem.unch SimMemOh.midx smo0 smo_ret>>) /\
         (<<MWF: SimMemOh.wf smo_ret>>).
 
   Let STEPFSIM := forall idx0 st_src0 st_tgt0 (smo0: SimMemOh.t)
@@ -133,12 +139,13 @@ Section MATCHSIMFORWARD.
       (<<RECEP: receptive_at ms_src st_src0>>) /\
       (<<STEPFSIM: forall tr st_src1
              (STEPSRC: Step ms_src st_src0 tr st_src1),
-             exists idx1 st_tgt1 sm1,
+             exists idx1 st_tgt1 smo1,
                (<<PLUS: DPlus ms_tgt st_tgt0 tr st_tgt1>> \/
                            <<STAR: DStar ms_tgt st_tgt0 tr st_tgt1 /\ order idx1 idx0>>)
-               /\ (<<MLE: SimMemOh.le smo0 sm1>>)
+               /\ (<<MLE: SimMemOh.le smo0 smo1>>)
+               /\ (<<UNCH: SimMem.unch SimMemOh.midx smo0 smo1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMemOh.wf, beacuse of DCEproof *)
-               /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 sm1>>)>>).
+               /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 smo1>>)>>).
 
   Let STEPBSIM := forall idx0 st_src0 st_tgt0 (smo0: SimMemOh.t)
       (SIMSKENV: ModSemPair.sim_skenv msp smo0)
@@ -149,14 +156,26 @@ Section MATCHSIMFORWARD.
       (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) /\
       (<<STEPBSIM: forall tr st_tgt1
              (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1),
-             exists idx1 st_src1 sm1,
+             exists idx1 st_src1 smo1,
                (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/
                            <<STAR: Star ms_src st_src0 tr st_src1 /\ order idx1 idx0>>)
-               /\ (<<MLE: SimMemOh.le smo0 sm1>>)
+               /\ (<<MLE: SimMemOh.le smo0 smo1>>)
+               /\ (<<UNCH: SimMem.unch SimMemOh.midx smo0 smo1>>)
                (* Note: We require le for mle_preserves_sim_ge, but we cannot require SimMemOh.wf, beacuse of DCEproof *)
-               /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 sm1>>)>>).
+               /\ (<<MATCH: match_states idx1 st_src1 st_tgt1 smo1>>)>>).
 
   Hypothesis STEPSIM: STEPFSIM \/ STEPBSIM.
+
+  Hypothesis INITOH: forall
+      sm
+      (WF: SimMem.wf sm)
+    ,
+      exists (smo: SimMemOh.t),
+        (<<WF: SimMemOh.wf smo>>) /\
+        (<<SMEQ: smo.(SimMemOh.sm) = sm>>) /\
+        (<<OHSRC: smo.(SimMemOh.oh_src) = upcast msp.(ModSemPair.src).(ModSem.initial_owned_heap)>>) /\
+        (<<OHTGT: smo.(SimMemOh.oh_tgt) = upcast msp.(ModSemPair.tgt).(ModSem.initial_owned_heap)>>)
+  .
 
   Hypothesis BAR: bar_True.
 
@@ -188,12 +207,13 @@ Section MATCHSIMFORWARD.
           - rewrite SimMemOhLift.lift_oh_tgt; ss. }
         { eapply SimMemOhLift.lift_wf; eauto. }
         { etrans; eauto. eapply SimMemOhLift.lift_priv; eauto. }
+        { etrans; et. eapply SimMemOhLift.lift_unch. }
         i. exploit AFTERFSIM; try apply SAFESRC; try apply SIMRET; eauto.
         { ii. eapply SUSTAR. eapply star_refl. }
         { econs; eauto. }
         { eapply SimMemOhLift.unlift_wf; eauto. }
         { eapply SimMemOhLift.lift_spec; eauto. }
-        i; des. spc H0. des. esplits; eauto. right. eapply CIH; eauto.
+        i; des. spc H1. des. esplits; eauto. right. eapply CIH; eauto.
         { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto.
           apply rtc_once. left. eauto using SimMemOh.le_proj.
         }
@@ -233,7 +253,7 @@ Section MATCHSIMFORWARD.
     inv FSIM. exploit FUNCFSIM; eauto. { apply SimMem.sim_args_sim_fptr; et. eapply SIMARGS. } i; des.
     split; ii.
     - exploit INITBSIM; eauto. i; des.
-      esplits; eauto.
+      esplits; eauto with congruence.
       eapply match_states_lxsim; eauto.
       { eapply ModSemPair.mfuture_preserves_sim_skenv; try apply SIMSKENV; eauto. apply rtc_once; eauto using SimMemOh.le_proj. }
     - exploit INITPROGRESS; eauto.

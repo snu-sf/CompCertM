@@ -30,11 +30,14 @@ Program Instance SimMemExt : SimMem.class :=
 { t := t';
   src := src;
   tgt := tgt;
+  ptt_src := fun _ _ _ => etc;
+  ptt_tgt := fun _ _ _ => etc;
   wf := fun (rel: t') => Mem.extends rel.(src) rel.(tgt);
   le := fun (mrel0 mrel1: t') => True;
   lepriv := top2;
   sim_val := fun (_: t') => Val.lessdef;
   sim_val_list := fun (_: t') => Val.lessdef_list;
+  unchanged_on := top3;
 }.
 Next Obligation.
   do 2 (apply Axioms.functional_extensionality; i).
@@ -46,7 +49,7 @@ Qed.
 Next Obligation. inv H. ss. Qed.
 
 
-Program Instance SimMemExtLift: SimMemOhLift.class (SimMemOh_default SimMemExt) :=
+Program Instance SimMemExtLift: SimMemLift.class SimMemExt :=
 { lift := id;
   unlift := fun _ => id;
 }.

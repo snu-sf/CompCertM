@@ -21,7 +21,7 @@ Set Implicit Arguments.
 (* ownership *)
 Inductive ownership: Type :=
 | privmod (mi: Midx.t)
-| others
+| etc
 .
 
 Definition is_privmod (ons: ownership) (mi: Midx.t): bool :=

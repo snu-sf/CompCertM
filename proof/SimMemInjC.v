@@ -113,8 +113,8 @@ Global Program Instance SimMemInj : SimMem.class :=
 { t := t';
   src := src;
   tgt := tgt;
-  ptt_src := fun _ _ _ => others;
-  ptt_tgt := fun _ _ _ => others;
+  ptt_src := fun _ _ _ => etc;
+  ptt_tgt := fun _ _ _ => etc;
   wf := wf';
   le := le';
   (* lift := lift'; *)
@@ -122,7 +122,7 @@ Global Program Instance SimMemInj : SimMem.class :=
   lepriv := lepriv;
   sim_val := fun (mrel: t') => Val.inject mrel.(inj);
   sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
-  unchanged_on := top3;
+  unchanged_on := Mem.unchanged_on;
 }.
 Next Obligation. rename H into LE. inv LE. econs; et. Qed.
 (* Next Obligation. *)
@@ -144,6 +144,7 @@ Next Obligation.
   - ginduction x1; ii; inv H; ss. econs; eauto.
 Qed.
 Next Obligation. inv H. ss. Qed.
+Next Obligation. ii. eapply Mem.unchanged_on_implies; et. Qed.
 
 
 
@@ -492,6 +493,13 @@ Next Obligation.
     + eapply frozen_shortened; et.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
+  - econs; ss.
+    + eapply Mem.unchanged_on_implies.
+      { eapply Mem_unchanged_on_bot; et. eapply SPLITHINT1. }
+      ss.
+    + eapply Mem.unchanged_on_implies.
+      { eapply Mem_unchanged_on_bot; et. eapply SPLITHINT1. }
+      ss.
   - apply inject_separated_frozen in H5. econs; ss.
     (* + eapply after_private_src; ss; eauto. *)
     (* + eapply after_private_tgt; ss; eauto. *)

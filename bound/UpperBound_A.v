@@ -296,27 +296,26 @@ Section PRESERVATION.
         (<<INIT: Dinitial_state (sem prog_tgt) st_init_tgt>>) /\
         (<<MATCH: match_states st_init_src st_init_tgt>>).
   Proof.
-    exists tt, st_init_src.
+    exists tt. inv INIT.
     esplits; eauto.
-    { inv INIT. econs; ss; eauto.
+    { clarify. econs; ss; eauto.
       (* init *)
-      - econs; ss; eauto. subst prog_tgt.
-        erewrite <- UpperBound_AExtra.link_sk_match; eauto.
+      - des_ifs. econs; ss; eauto.
         unfold prog_src in WF. unfold prog_tgt. i. rewrite in_app_iff in IN. des.
         { eapply WF; et. rewrite in_app_iff. et. }
         { rewrite in_map_iff in *. des. clarify. ss. et. }
       (* dtm *)
       - ii. inv INIT0; inv INIT1; ss. f_equal.
         generalize link_sk_match; i. des. clarify. }
-    { inv INIT. econs; ss; eauto. econs; ss; eauto. }
+    { econs; ss; eauto. econs; ss; eauto. }
   Qed.
 
   Lemma final_bsim
-        retv frs_src frs_tgt
-        (MATCH: match_states (State frs_src) (State frs_tgt))
-        (FINAL: final_state (State frs_tgt) retv)
-        (SAFESRC: safe (sem prog_src) (State frs_src)) :
-      <<FINAL: final_state (State frs_src) retv>>.
+        retv ohs_src frs_src ohs_tgt frs_tgt
+        (MATCH: match_states (State frs_src ohs_src) (State frs_tgt ohs_tgt))
+        (FINAL: final_state (State frs_tgt ohs_tgt) retv)
+        (SAFESRC: safe (sem prog_src) (State frs_src ohs_src)) :
+      <<FINAL: final_state (State frs_src ohs_src) retv>>.
   Proof.
     ss. inv FINAL. inv MATCH; ss. inv STK; ss.
     (* ctx *)
@@ -327,15 +326,17 @@ Section PRESERVATION.
       hexploit match_focus_nonnil; et. i; des.
       destruct hds_tgt; ss. destruct tail_tgt; ss; try xomega. destruct hds_tgt; ss. clarify. clear_tac.
       exploit match_stacks_right_nil; et. i; des; clarify.
-      econs; et. inv HD. ss. inv SUM.
+      inv HD. ss.
+      econs; et. ss. inv SUM.
       inv FINAL0; ss. inv ST; ss.
+    Unshelve. all: ss.
   Qed.
 
   Lemma final_fsim
-        retv frs_src frs_tgt
-        (MATCH: match_states (State frs_src) (State frs_tgt))
-        (FINAL: final_state (State frs_src) retv) :
-      <<DFINAL: Dfinal_state (sem prog_tgt) (State frs_tgt) retv>>.
+        retv frs_src frs_tgt ohs_src ohs_tgt
+        (MATCH: match_states (State frs_src ohs_src) (State frs_tgt ohs_tgt))
+        (FINAL: final_state (State frs_src ohs_src) retv) :
+      <<DFINAL: Dfinal_state (sem prog_tgt) (State frs_tgt ohs_tgt) retv>>.
   Proof.
     rr. econs; ss; et.
     { inv FINAL. inv MATCH; ss. inv STK; ss.
@@ -353,6 +354,7 @@ Section PRESERVATION.
       - inv TAIL. inv H; ModSem.tac.
       (* focus *)
       - inv TAIL. rewrite app_nil_r in *. inv FINAL0; ss. inv H; ss; ModSem.tac. }
+    Unshelve. all: ss.
   Qed.
 
   Section WTMODULE.
@@ -546,7 +548,7 @@ Section PRESERVATION.
         if_sig fptr
         (INTERNAL : Genv.find_funct (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) fptr =
                     Some (AST.Internal if_sig)) :
-      exists pgm, is_focus pgm /\ exists sig, Genv.find_funct (ModSem.skenv (modsem skenv_link pgm)) fptr = Some (AST.Internal sig).
+      exists pgm, is_focus pgm /\ exists sig, Genv.find_funct (SkEnv.project skenv_link (CSk.of_program signature_of_function pgm)) fptr = Some (AST.Internal sig).
   Proof.
     unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
     rewrite MapsC.PTree_filter_map_spec in INTERNAL. unfold o_bind in *.

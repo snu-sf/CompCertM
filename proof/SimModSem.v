@@ -190,6 +190,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
       (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))
       (INITOH: forall
           sm
+          (SIMSKENV: sim_skenv msp sm)
           (WF: SimMem.wf sm)
         ,
           exists (smo: SimMemOh.t (class := msp.(SMO))),
@@ -333,7 +334,9 @@ Section FACTORTARGET.
           (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm SMO)):
       ModSemPair.sim (ModSemPair.mk ms_src (ModSem.Atomic.trans ms_tgt) ss sm SMO).
   Proof.
-    inv SIM. ss. econs; eauto. ss. i. exploit SIM0; eauto.
+    inv SIM. ss. econs; eauto.
+    { ss. ii. eapply INITOH; ss. inv SIMSKENV; ss. econs; eauto. }
+    ss. i. exploit SIM0; eauto.
     { inv SIMSKENV. ss. econs; eauto. }
     i; des. split; ss.
     - ii. rr in INITTGT. des. destruct st_init_tgt; ss. clarify. exploit INITBSIM; eauto. i; des.

@@ -344,6 +344,7 @@ Section SIMGE.
       exists SMOS, (<<SIM: Forall ModSemPair.simU msps>>) /\
                    (<<INITOH: forall
                        sm
+                       (SIMSKENV: Forall (fun msp => ModSemPair.sim_skenv msp sm) msps)
                        (WF: SimMem.wf sm)
                      ,
                        exists (smos: SimMemOhs.t (class := (SMOS))),

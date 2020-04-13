@@ -187,6 +187,7 @@ Section MATCHSIMFORWARD.
 
   Hypothesis INITOH: forall
       sm
+      (SIMSKENV: ModSemPair.sim_skenv msp sm)
       (WF: SimMem.wf sm)
     ,
       exists (smo: SimMemOh.t),

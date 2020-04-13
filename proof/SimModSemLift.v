@@ -201,6 +201,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
           mle_excl st_init_src st_init_tgt sm0 sm1 -> SimMemOh.lepriv sm0 sm1)
       (INITOH: forall
           sm
+          (SIMSKENV: sim_skenv msp sm)
           (WF: SimMem.wf sm)
         ,
           exists (smo: SimMemOh.t (class := msp.(SMO))),

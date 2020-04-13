@@ -703,6 +703,7 @@ Section SimMemOhUnify.
         /\
         (<<INITOH: forall
             sm
+            (SIMSKENV: Forall (fun msp => ModSemPair.sim_skenv msp sm) msps)
             (WF: SimMem.wf sm)
           ,
             exists (smos: SimMemOhs.t (class := (SMOS))),
@@ -725,6 +726,7 @@ Section SimMemOhUnify.
       - unfold ohs_tgt. apply func_ext1. intro n. ss. destruct n; ss.
     }
     inv SIM. rename H1 into HD. rename H2 into TL.
+    inv SIMSKENV. rename H1 into SKEHD. rename H2 into SKETL.
     exploit IHmsps; eauto. i; des.
     des_ifs.
     bar. inv HD. move INITOH at top. clear_until_bar. exploit INITOH; eauto. i; des.

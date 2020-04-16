@@ -25,36 +25,6 @@ Set Implicit Arguments.
 
 
 
-(*********** TODO: move to Midx module ************)
-(*********** TODO: move to Midx module ************)
-(*********** TODO: move to Midx module ************)
-Lemma mapi_aux_length
-      A B (f: Midx.t -> A -> B) m la
-  :
-    <<LEN: length (Midx.mapi_aux f m la) = length la>>
-.
-Proof.
-  ginduction la; ii; ss.
-  erewrite IHla; eauto.
-Qed.
-
-Lemma nth_error_mapi_none_aux_iff
-      A B  (f : Midx.t -> A -> B) la idx m
-  :
-    <<NTH: nth_error (Midx.mapi_aux f m la) idx = None>> <->
-    <<LEN: (length la <= idx)%nat>>
-.
-Proof.
-  split; i.
-  - ginduction la; ii; ss; des.
-    + destruct idx; ii; ss. r. xomega.
-    + destruct idx; ii; ss. r. exploit IHla; eauto. i; des. xomega.
-  - ginduction la; ii; ss; des.
-    + destruct idx; ii; ss.
-    + destruct idx; ii; ss. { xomega. } eapply IHla; eauto. r. xomega.
-Qed.
-
-
 
 Module SimMemOhUnify.
 Section SimMemOhUnify.

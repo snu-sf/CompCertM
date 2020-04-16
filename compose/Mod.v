@@ -26,29 +26,29 @@ Module Mod.
   Record t: Type := mk {
     datatype: Type;
     get_sk: datatype -> Sk.t;
-    get_modsem: option Midx.t -> SkEnv.t -> datatype -> ModSem.t;
+    get_modsem: SkEnv.t -> datatype -> ModSem.t;
     data: datatype;
-    midx: option Midx.t;
-    get_modsem_skenv_spec: forall skenv midx,
-        <<PROJECTED: SkEnv.project skenv data.(get_sk) = data.(get_modsem midx skenv).(ModSem.skenv)>>;
-    get_modsem_skenv_link_spec: forall skenv_link midx,
-        <<EQ: data.(get_modsem midx skenv_link).(ModSem.skenv_link) = skenv_link>>;
-    get_modsem_midx_spec: forall skenv midx,
-        <<EQ: data.(get_modsem midx skenv).(ModSem.midx) = midx>>;
+    midx: Midx.t;
+    get_modsem_skenv_spec: forall skenv,
+        <<PROJECTED: SkEnv.project skenv data.(get_sk) = data.(get_modsem skenv).(ModSem.skenv)>>;
+    get_modsem_skenv_link_spec: forall skenv_link,
+        <<EQ: data.(get_modsem skenv_link).(ModSem.skenv_link) = skenv_link>>;
+    get_modsem_midx_spec: forall skenv,
+        <<EQ: data.(get_modsem skenv).(ModSem.midx) = midx>>;
   }.
 
   Lemma get_modsem_projected_sk
-        (md: t) midx skenv
+        (md: t) skenv
         (INCL: SkEnv.includes skenv (get_sk md (data md))):
       <<PROJECTED: SkEnv.project_spec skenv ((md.(get_sk) md.(data)))
-                                      ((md.(get_modsem) midx skenv) md.(data)).(ModSem.skenv)>>.
+                                      ((md.(get_modsem) skenv) md.(data)).(ModSem.skenv)>>.
   Proof.
     erewrite <- get_modsem_skenv_spec. eapply SkEnv.project_impl_spec; et.
   Qed.
 
   Definition sk (md: t): Sk.t := md.(get_sk) md.(data).
 
-  Definition modsem (md: t) (skenv: SkEnv.t): ModSem.t := md.(get_modsem) md.(midx) skenv md.(data).
+  Definition modsem (md: t) (skenv: SkEnv.t): ModSem.t := md.(get_modsem) skenv md.(data).
 
   Module Atomic.
   Section Atomic.
@@ -56,7 +56,7 @@ Module Mod.
     Variable m: t.
 
     Program Definition trans: t :=
-      mk m.(get_sk) (fun midx ske dat => ModSem.Atomic.trans (m.(get_modsem) midx ske dat)) m.(data) m.(midx) _ _ _.
+      mk m.(get_sk) (fun ske dat => ModSem.Atomic.trans (m.(get_modsem) ske dat)) m.(data) _ _ _ (midx := m.(midx)).
     Next Obligation. exploit get_modsem_skenv_spec; eauto. Qed.
     Next Obligation. exploit get_modsem_skenv_link_spec; eauto. Qed.
     Next Obligation. exploit get_modsem_midx_spec; eauto. Qed.

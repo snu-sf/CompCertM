@@ -447,10 +447,10 @@ Definition system_sound_state `{SU: Sound.class} (ms: ModSem.t): Sound.t -> mem 
 
 Lemma system_local_preservation
       `{SU: Sound.class}
-      midx skenv:
-    exists system_sound_state, local_preservation (System.modsem midx skenv) system_sound_state.
+      skenv:
+    exists system_sound_state, local_preservation (System.modsem skenv) system_sound_state.
 Proof.
-  exists (system_sound_state (System.modsem midx skenv)).
+  exists (system_sound_state (System.modsem skenv)).
   econs; ii; ss; eauto.
   - inv INIT. rr. esplits; eauto; try refl.
   - inv STEP. ss. inv SUST. des. exploit Sound.system_axiom; try apply EXTCALL; eauto.

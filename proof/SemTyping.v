@@ -48,9 +48,17 @@ Section PRSV.
           (IDX1: ms1.(ModSem.midx) = Some mi)
         ,
           ms0 = ms1>>)
+      /\
+      (<<UNIQ: forall
+          ms0 ms1
+          (IN0: In ms0 mss)
+          (IN1: In ms1 mss)
+          (IDX: ms0.(ModSem.midx) = ms1.(ModSem.midx))
+        ,
+          ms0.(ModSem.owned_heap) = ms1.(ModSem.owned_heap)>>)
   .
   Proof.
-    ii. dsplits.
+    ii. dsplits; ii.
     (* - *)
     (*   ii. des. subst mss. ss. des_ifs. *)
     (*   destruct n; ss; clarify. *)
@@ -85,6 +93,10 @@ Section PRSV.
           rewrite in_map_iff. exists ms0. esplits; eauto.
         * exploit (IHmss ms0 ms1); eauto.
       + unfold id in *. des; clarify. eapply IHmss; eauto.
+    - destruct (ms0.(ModSem.midx)) eqn:T.
+      { exploit (SPLITHINT ms0 ms1); et. i; clarify. }
+      erewrite ms0.(ModSem.midx_none); eauto with congruence.
+      erewrite ms1.(ModSem.midx_none); eauto with congruence.
   Qed.
 
   Variable p: program.
@@ -112,7 +124,7 @@ Section PRSV.
         ms
         (IN: In ms (sem.(globalenv) #1))
       ,
-        <<TY: projT1 (Midx.get (get_ohs st) ms.(ModSem.midx)) = ms.(ModSem.owned_heap)>>>>)
+        (<<TY: projT1 (Midx.get (get_ohs st) ms.(ModSem.midx)) = ms.(ModSem.owned_heap)>>)>>)
     /\
     (<<LINK: exists sk_link, link_sk p = Some sk_link>>)
     /\
@@ -146,7 +158,66 @@ Section PRSV.
         (IDX1: ms1.(ModSem.midx) = Some mi)
       ,
         ms0 = ms1>>)
+    /\
+    (<<UNIQ: forall
+          ms0 ms1
+          (IN0: In ms0 (sem.(globalenv) #1))
+          (IN1: In ms1 (sem.(globalenv) #1))
+          (IDX: ms0.(ModSem.midx) = ms1.(ModSem.midx))
+        ,
+          ms0.(ModSem.owned_heap) = ms1.(ModSem.owned_heap)>>)
   .
+
+  Lemma sound_initial_aux
+        mss0 mss1
+        ohs0 ohs1
+        (* (DISJ: Midx.NoDup (map ModSem.midx (mss0 ++ (rev mss1)))) *)
+        (UNIQ: forall
+            ms0 ms1 mi
+            (IN0: In ms0 (mss0 ++ (rev mss1)))
+            (IN1: In ms1 (mss0 ++ (rev mss1)))
+            (IDX0: ms0.(ModSem.midx) = Some mi)
+            (IDX1: ms1.(ModSem.midx) = Some mi)
+          ,
+            ms0 = ms1)
+        (LOAD: fold_left (fun s i => Midx.update s i.(ModSem.midx) (upcast i.(ModSem.initial_owned_heap)))
+                         mss1 ohs0 = ohs1)
+        (WTY: forall
+            ms
+            (IN: In ms (mss0))
+          ,
+            (<<TY: projT1 (Midx.get ohs0 ms.(ModSem.midx)) = ms.(ModSem.owned_heap)>>))
+    :
+      (<<WTY: forall
+          ms
+          (IN: In ms (mss0 ++ mss1))
+        ,
+          (<<TY: projT1 (Midx.get ohs1 ms.(ModSem.midx)) = ms.(ModSem.owned_heap)>>)>>)
+  .
+  Proof.
+    clear sound_genv sem p.
+    unfold load_owned_heaps in *.
+    rewrite <- fold_left_rev_right in *. rewrite <- rev_involutive with (l := mss1).
+    abstr (rev mss1) x. clear mss1. rename x into mss1.
+    ii.
+    - ginduction mss1; ii; ss; des.
+      { rewrite in_app_iff in *. des; clarify; eauto. }
+      destruct (classic (a = ms)).
+      { clarify. unfold Midx.update. des_ifs. }
+      unfold Midx.update in *. des_ifs_safe.
+      des_ifs.
+      { ss.
+        destruct (a.(ModSem.midx)) eqn:U; ss.
+        - exploit (UNIQ a ms); ss; et.
+          { rewrite in_app_iff. right; ss; et. }
+          { repeat rewrite in_app_iff in *; ss; des; eauto; clarify. rewrite <- in_rev in *; eauto. }
+        - erewrite ms.(ModSem.midx_none); eauto with congruence.
+          erewrite a.(ModSem.midx_none); eauto with congruence.
+      }
+      erewrite (IHmss1 mss0); et.
+      { ii. eapply UNIQ; et; repeat rewrite in_app_iff in *; ss; des; eauto. }
+      { repeat rewrite in_app_iff in *; ss; des; eauto; clarify. }
+  Qed.
 
   Theorem sound_initial
           st
@@ -159,23 +230,13 @@ Section PRSV.
     generalize sound_genv; intro SG.
     hexploit SG; ss; eauto.
     { rewrite Heq. ss. }
-    intro T. des. des_ifs.
+    intro UNIQ. des. des_ifs.
     clear SG.
     esplits; ss; eauto.
-    ii. des; clarify. unfold load_genv. ss. unfold Midx.get. des_ifs; cycle 1.
-    { ss. }
-    exploit NTHIDX; eauto. intro T; des. clarify.
-    unfold load_owned_heaps. des_ifs; cycle 1.
-    {
-      exfalso. folder.
-      clear - NTH Heq.
-      exploit nth_error_Some. rewrite NTH. intro Q. ss.
-      desH Q. clear Q0. exploit Q; eauto. { ss. } intro QQ.
-      erewrite nth_error_None in *; eauto. ss. xomega.
-    }
-    unfold upcast. ss.
-    f_equal.
-    clarify.
+    hexploit (sound_initial_aux [] (Sem.sem p).(Smallstep.globalenv)#1); eauto.
+    { ss. des_ifs. ii. rewrite <- in_rev in *. eauto. }
+    { ii. ss. }
+    intro T. i. exploit (T ms); eauto. { ss. des_ifs. } intro U. rewrite <- U. ss. des_ifs.
   Qed.
 
   Theorem sound_progress
@@ -191,12 +252,10 @@ Section PRSV.
       rr in SS; des. rr; ss; des_ifs.
       esplits; eauto. ii.
       unfold Midx.update. des_ifs; ss.
-      + exploit nth_error_In; eauto. intro IN.
-        f_equal. eapply UNIQ; eauto.
+      + erewrite UNIQ0; eauto.
         { rewrite Forall_forall in *.
           eapply FRAMES; ss; eauto. }
-        exploit NTHIDX; eauto.
-      + eapply WTY; eauto.
+      + eapply WTY; et.
     - (* init *)
       rr in SS; des. rr; ss; des_ifs.
       esplits; eauto.
@@ -213,11 +272,9 @@ Section PRSV.
       { inv FRAMES. inv H2. econs; eauto. }
       ii.
       unfold Midx.update. des_ifs; ss.
-      + exploit nth_error_In; eauto. intro IN.
-        f_equal. eapply UNIQ; eauto.
+      + eapply UNIQ0; et.
         { rewrite Forall_forall in *.
           eapply FRAMES; ss; eauto. }
-        exploit NTHIDX; eauto.
       + eapply WTY; eauto.
   Qed.
 

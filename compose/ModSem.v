@@ -277,6 +277,34 @@ Section Midx.
   (*   exploit (IHla midx a0 n); eauto. { omega. } *)
   (* Qed. *)
 
+(*********** TODO: move to Midx module ************)
+(*********** TODO: move to Midx module ************)
+(*********** TODO: move to Midx module ************)
+Lemma mapi_aux_length
+      A B (f: Midx.t -> A -> B) m la
+  :
+    <<LEN: length (Midx.mapi_aux f m la) = length la>>
+.
+Proof.
+  ginduction la; ii; ss.
+  erewrite IHla; eauto.
+Qed.
+
+Lemma nth_error_mapi_none_aux_iff
+      A B  (f : Midx.t -> A -> B) la idx m
+  :
+    <<NTH: nth_error (Midx.mapi_aux f m la) idx = None>> <->
+    <<LEN: (length la <= idx)%nat>>
+.
+Proof.
+  split; i.
+  - ginduction la; ii; ss; des.
+    + destruct idx; ii; ss. r. xomega.
+    + destruct idx; ii; ss. r. exploit IHla; eauto. i; des. xomega.
+  - ginduction la; ii; ss; des.
+    + destruct idx; ii; ss.
+    + destruct idx; ii; ss. { xomega. } eapply IHla; eauto. r. xomega.
+Qed.
 End Midx.
 End Midx_old.
 
@@ -325,28 +353,23 @@ Qed.
 
 Module Midx.
 
-  Definition t: Type := string.
+  Definition t: Type := option string.
+
+  Definition eq_dec := option_dec string_dec.
 
   (* Definition update X (map: t -> X) (t0: t) (x: X): t -> X := *)
   (*   fun t1 => if string_dec t0 t1 then x else map t1. *)
 
-  Definition update X (map: t -> X) (t0: option t) (x: X): t -> X :=
-    match t0 with
-    | Some t0 => fun t1 => if string_dec t0 t1 then x else map t1
-    | _ => map
-    end
+  Definition update X (map: t -> X) (t0: t) (x: X): t -> X :=
+    fun t1 => if eq_dec t0 t1 then x else map t1
   .
 
-  Definition get (map: t -> Any) (t0: option t): Any :=
-    match t0 with
-    | Some t0 => map t0
-    | _ => upcast tt
-    end
-  .
+  Notation get := (fun map t0 => map t0).
+  (* Definition get (map: t -> Any) (t0: t): Any := *)
+  (*   map t0 *)
+  (* . *)
 
-  Definition NoDup (ts: list (option t)): Prop := NoDup (filter_map id ts).
-
-  Definition eq_dec := string_dec.
+  Definition NoDup (ts: list t): Prop := NoDup (filter_map id ts).
 
   (* Definition unique (ts: list (option t)): bool := *)
   (*   let ts := (filter_map id ts) in *)
@@ -392,7 +415,7 @@ Module ModSem.
     globalenv: genvtype;
     skenv: SkEnv.t;
     skenv_link: SkEnv.t;
-    midx: option Midx.t;
+    midx: Midx.t;
 
     at_external_dtm: forall st oh0 oh1 args0 args1
         (AT0: at_external st oh0 args0)

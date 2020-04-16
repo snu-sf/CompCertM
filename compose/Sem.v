@@ -135,13 +135,15 @@ Section SEMANTICS.
     let (system, skenv) := load_system init_skenv in
     (system :: (load_modsems init_skenv), init_skenv).
 
-  Definition load_owned_heaps (ge: Ge.t): Ohs :=
-    let xs: list (Midx.t * Any) :=
-        filter_map (fun ms => match ms.(ModSem.midx) with
-                              | Some mi => Some (mi, upcast ms.(ModSem.initial_owned_heap))
-                              | _ => None
-                              end) (fst ge) in
-    fold_left (fun s i => Midx.update s (Some (fst i)) (snd i)) xs (fun _ => upcast tt)
+  Definition load_owned_heaps (mss: list ModSem.t): Ohs :=
+    (* let xs: list (Midx.t * Any) := *)
+    (*     filter_map (fun ms => match ms.(ModSem.midx) with *)
+    (*                           | Some mi => Some (mi, upcast ms.(ModSem.initial_owned_heap)) *)
+    (*                           | _ => None *)
+    (*                           end) (fst ge) in *)
+    (* fold_left (fun s i => Midx.update s (Some (fst i)) (snd i)) xs (fun _ => upcast tt) *)
+    fold_left (fun s i => Midx.update s i.(ModSem.midx) (upcast i.(ModSem.initial_owned_heap))) mss
+              (fun _ => upcast tt)
   .
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
@@ -155,7 +157,7 @@ Section SEMANTICS.
       (SIG: (Genv.find_funct skenv_link) fptr_init = Some (Internal signature_main))
       (WF: forall md (IN: In md p), <<WF: Sk.wf md>>)
       (OHSUNIQ: Midx.NoDup (map ModSem.midx (fst ge)))
-      (OHS: ohs = load_owned_heaps ge):
+      (OHS: ohs = load_owned_heaps (fst ge)):
       initial_state ge (Callstate (Args.mk fptr_init [] m_init) [] ohs).
 
   Inductive final_state: state -> int -> Prop :=

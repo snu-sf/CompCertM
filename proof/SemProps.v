@@ -221,17 +221,17 @@ Section INITDTM.
   Qed.
 
   Lemma system_disjoint
-        midx skenv_link sys_def fptr md md_def
+        skenv_link sys_def fptr md md_def
         (WFBIG: SkEnv.wf skenv_link)
         (SYSTEM: Genv.find_funct (System.skenv skenv_link) fptr = Some (Internal sys_def))
         (MOD: In md p)
-        (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md midx skenv_link (Mod.data md))) fptr =
+        (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
                  Some (Internal md_def))
         (INCL: SkEnv.includes skenv_link (Mod.sk md)):
       False.
   Proof.
-    hexploit (@Mod.get_modsem_projected_sk md midx skenv_link); eauto. intro SPEC; des.
-    remember (ModSem.skenv (Mod.get_modsem md midx skenv_link (Mod.data md))) as skenv_proj eqn:T in *.
+    hexploit (@Mod.get_modsem_projected_sk md skenv_link); eauto. intro SPEC; des.
+    remember (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) as skenv_proj eqn:T in *.
     assert(WFSMALL: skenv_proj.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; eauto. }
     clarify. des. inv SPEC.
@@ -249,15 +249,16 @@ Section INITDTM.
   Qed.
 
   Lemma link_sk_disjoint
-        midx0 md0 md1 p0 id skenv_link b if_sig if_sig0 restl sk_link gd_big0
-        (IN0: nth_error p0 midx0 = Some md0)
-        (* (IN1: nth_error p0 midx1 = Some md1) *)
-        (* (NOTSAME : midx0 <> midx1) *)
+        md0 md1 p0 id skenv_link b if_sig if_sig0 restl sk_link gd_big0
+        (IN : In md0 p0)
+        (NOTSAME : md0 <> md1)
         (DEFS1 : defs (Mod.get_sk md1 (Mod.data md1)) id)
         (DEFS0 : defs (Mod.get_sk md0 (Mod.data md0)) id)
         (DEFBIG0 : Genv.find_def skenv_link b = Some gd_big0)
         (SYMBBIG0 : Genv.find_symbol skenv_link id = Some b)
         (WFBIG : SkEnv.wf skenv_link)
+        (* (DEF0 : Genv.find_def (ModSem.skenv (Mod.get_modsem md0 md0.(Mod.midx) skenv_link (Mod.data md0))) b = Some (Gfun (Internal if_sig))) *)
+        (* (DEF1 : Genv.find_def (ModSem.skenv (Mod.get_modsem md1 md1.(Mod.midx) skenv_link (Mod.data md1))) b = Some (Gfun (Internal if_sig0))) *)
         (DEF0 : Genv.find_def (SkEnv.project skenv_link (Mod.get_sk md0 (Mod.data md0))) b = Some (Gfun (Internal if_sig)))
         (DEF1 : Genv.find_def (SkEnv.project skenv_link (Mod.get_sk md1 (Mod.data md1))) b = Some (Gfun (Internal if_sig0)))
         (INCLS : forall md : Mod.t, md1 = md \/ In md p0 -> SkEnv.includes skenv_link (Mod.get_sk md (Mod.data md)))
@@ -315,26 +316,26 @@ Section INITDTM.
     econs; eauto. ii; ss. inv FIND0; inv FIND1.
     generalize (link_includes p Heq). intro INCLS.
     unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss.
-    abstr (Genv.globalenv t) skenv_link. rename t into sk_link.  rename Heq into SKLINK.
-    rewrite Midx.in_mapi_iff in *.
+    abstr (Genv.globalenv t) skenv_link. rename t into sk_link. rename Heq into SKLINK.
+    rewrite in_map_iff in *.
     u in *. destruct MODSEM.
     { clarify. des; ss. exfalso. clarify. eapply system_disjoint; eauto using nth_error_In. }
     des; ss.
     { clarify. ss. exfalso. eapply system_disjoint; eauto using nth_error_In. }
     rename MODSEM1 into NTH1. rename H0 into NTH0.
     rename MODSEM0 into MODSME1. rename H into MODSEM0.
-    rename idx0 into idx1. rename idx into idx0.
-    exploit nth_error_In; try eapply NTH0. intro IN0.
-    exploit nth_error_In; try eapply NTH1. intro IN1.
+    (* rename idx0 into idx1. rename idx into idx0. *)
+    (* exploit nth_error_In; try eapply NTH0. intro IN0. *)
+    (* exploit nth_error_In; try eapply NTH1. intro IN1. *)
 
-    rename a into md0. rename a0 into md1. clarify.
+    rename x into md0. rename x0 into md1. clarify.
     destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs.
     rename Heq0 into DEF0. rename Heq into DEF1.
 
-    hexploit (@Mod.get_modsem_projected_sk md0 (S idx0) skenv_link); eauto. intro SPEC0; des.
-    hexploit (@Mod.get_modsem_projected_sk md1 (S idx1) skenv_link); eauto. intro SPEC1; des.
-    remember (ModSem.skenv (Mod.get_modsem md0 (S idx0) skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
-    remember (ModSem.skenv (Mod.get_modsem md1 (S idx1) skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *.
+    hexploit (@Mod.get_modsem_projected_sk md0 skenv_link); eauto. intro SPEC0; des.
+    hexploit (@Mod.get_modsem_projected_sk md1 skenv_link); eauto. intro SPEC1; des.
+    remember (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
+    remember (ModSem.skenv (Mod.get_modsem md1 skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *.
 
     assert(WFSMALL0: skenv_proj0.(SkEnv.wf_proj)).
     { eapply SkEnv.project_spec_preserves_wf; try apply SPEC0; eauto. }
@@ -364,28 +365,19 @@ Section INITDTM.
     rename id1 into id.
 
     clear - SYMBBIG0 WFBIG INCLS DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK NTH0 NTH1.
-    destruct (classic (idx0 = idx1)); ss.
+    destruct (classic (md0 = md1)); ss.
     { clarify. }
 
     exfalso. clear_tac. generalize dependent sk_link.
-    (* revert DEF0 DEF1. generalize idx0 as xx. generalize idx1 as yy. *)
     ginduction p; i; ss. dup SKLINK.
     eapply link_list_cons_inv in SKLINK; cycle 1.
-    { destruct p0; ss.
-      assert(idx0 = 0%nat). { destruct idx0; ss. destruct idx0; ss. }
-      assert(idx1 = 0%nat). { destruct idx1; ss. destruct idx1; ss. }
-      clarify. }
+    { destruct p0; ss. des; clarify. }
     des_safe.
     hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe.
     hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
 
-    rewrite <- Mod.get_modsem_skenv_spec in *; eauto.
-    destruct idx0, idx1; ss; clarify.
-    - eapply link_sk_disjoint; try apply NTH1; try eapply DEFBIG; try apply DEF0; eauto.
-    - eapply link_sk_disjoint; try apply NTH0; try eapply DEFBIG; try apply DEF1; eauto.
-    - assert(T: idx1 <> idx0) by omega.
-      eapply IHp0; try apply T; [eapply DEFS0|eapply DEFS1|eapply DEFBIG|..];
-        try rewrite <- Mod.get_modsem_skenv_spec in *; eauto using nth_error_In.
+    des; clarify; try (by eapply link_sk_disjoint; try eapply DEFBIG; try erewrite Mod.get_modsem_skenv_spec; eauto).
+    - eapply IHp0; try eapply DEFS1; try eapply DEFS0; try eapply DEFBIG; eauto.
 Unshelve.
   Qed.
 

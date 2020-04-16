@@ -20,15 +20,15 @@ Set Implicit Arguments.
 
 (* ownership *)
 Inductive ownership: Type :=
-| privmod (mi: Midx.t)
+| privmod (mi: string)
 | etc
 .
 
-Definition is_privmod (ons: ownership) (mi: option Midx.t): bool :=
+Definition is_privmod (ons: ownership) (mi: Midx.t): bool :=
   match mi with
   | Some mi =>
     match ons with
-    | privmod mj => Midx.eq_dec mi mj
+    | privmod mj => string_dec mi mj
     | _ => false
     end
   | _ => false
@@ -37,24 +37,24 @@ Definition is_privmod (ons: ownership) (mi: option Midx.t): bool :=
 
 Notation partition := (block -> Z -> ownership).
 
-Definition privmods (mi: option Midx.t) (ptt: partition): block -> Z -> bool :=
+Definition privmods (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
   fun b ofs =>
     match mi with
     | Some mi =>
       match (ptt b ofs) with
-      | privmod mj => (Midx.eq_dec mi mj)
+      | privmod mj => (string_dec mi mj)
       | _ => false
       end
     | _ => false
     end
 .
 
-Definition privmod_others (mi: option Midx.t) (ptt: partition): block -> Z -> bool :=
+Definition privmod_others (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
   fun b ofs =>
     match mi with
     | Some mi =>
       match (ptt b ofs) with
-      | privmod mj => negb (Midx.eq_dec mi mj)
+      | privmod mj => negb (string_dec mi mj)
       | _ => false
       end
     | _ => false
@@ -98,7 +98,7 @@ Module SimMem.
         <<INCL: unchanged_on P0 <2= unchanged_on P1>>;
   }.
 
-  Inductive unch `{SM: class} (mi: option Midx.t) (sm0 sm1: t): Prop :=
+  Inductive unch `{SM: class} (mi: Midx.t) (sm0 sm1: t): Prop :=
   | unch_intro
       (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_src)) sm0.(src) sm1.(src))
       (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_tgt)) sm0.(tgt) sm1.(tgt))
@@ -108,7 +108,7 @@ Module SimMem.
           (privmods mj sm0.(ptt_tgt)) <2= (privmods mj sm1.(ptt_tgt)))
   .
 
-  Global Program Instance unch_PreOrder `{SM: class} (mi: option Midx.t): PreOrder (unch mi).
+  Global Program Instance unch_PreOrder `{SM: class} (mi: Midx.t): PreOrder (unch mi).
   Next Obligation.
     ii. econs; eauto; try refl.
   Qed.
@@ -222,7 +222,7 @@ Section SimMemOh.
     wf: t -> Prop;
     le: t -> t -> Prop;
     lepriv: t -> t -> Prop;
-    midx: option Midx.t;
+    midx: Midx.t;
 
     le_PreOrder :> PreOrder le;
     lepriv_PreOrder :> PreOrder lepriv;

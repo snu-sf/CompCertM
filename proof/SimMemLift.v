@@ -336,8 +336,8 @@ Module SimMemOhLift.
 
   End TRANSFORMER.
 
-  Global Program Instance SimMemOhLift_default_transform `{SML: SimMemLift.class} (mi: Midx.t):
-    SimMemOhLift.class (SimMemOh_default SM mi) := @SimMemOhLift_transform _ _ (SimMemOh_default SM mi).
+  Global Program Instance SimMemOhLift_default_transform `{SML: SimMemLift.class}:
+    SimMemOhLift.class (SimMemOh_default SM) := @SimMemOhLift_transform _ _ (SimMemOh_default SM).
 
   Section PROPS.
 

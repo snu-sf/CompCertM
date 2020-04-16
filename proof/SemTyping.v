@@ -25,52 +25,66 @@ Section PRSV.
       p sk_link mss
       (LINK: link_sk p = Some sk_link)
       (MSS: (Sem.sem p).(Smallstep.globalenv)#1 = mss)
+      (UNIQ: Midx.NoDup (map ModSem.midx mss))
     ,
-      (<<NTHIDX: forall
-          n ms
-          (NTH: nth_error mss n = Some ms)
-        ,
-          (<<IDX: ms.(ModSem.midx) = n>>)>>)
-      /\
-      (<<IDXNTH: forall
-          n ms
-          (IN: In ms mss)
-          (IDX: ms.(ModSem.midx) = n)
-        ,
-          (<<NTH: nth_error mss n = Some ms>>)>>)
-      /\
+      (* (<<NTHIDX: forall *)
+      (*     n ms *)
+      (*     (NTH: nth_error mss n = Some ms) *)
+      (*   , *)
+      (*     (<<IDX: ms.(ModSem.midx) = n>>)>>) *)
+      (* /\ *)
+      (* (<<IDXNTH: forall *)
+      (*     n ms *)
+      (*     (IN: In ms mss) *)
+      (*     (IDX: ms.(ModSem.midx) = n) *)
+      (*   , *)
+      (*     (<<NTH: nth_error mss n = Some ms>>)>>) *)
+      (* /\ *)
       (<<UNIQ: forall
-          ms0 ms1
+          ms0 ms1 mi
           (IN0: In ms0 mss)
           (IN1: In ms1 mss)
-          (IDX: ms0.(ModSem.midx) = ms1.(ModSem.midx))
+          (IDX0: ms0.(ModSem.midx) = Some mi)
+          (IDX1: ms1.(ModSem.midx) = Some mi)
         ,
           ms0 = ms1>>)
   .
   Proof.
     ii. dsplits.
-    -
-      ii. des. subst mss. ss. des_ifs.
-      destruct n; ss; clarify.
-      clear - NTH.
-      unfold load_modsems in *.
-      rewrite Midx.nth_error_mapi_iff in *. des. clarify.
-      eapply Mod.get_modsem_midx_spec; ss.
-    -
-      ii. des. subst mss. ss. des_ifs.
-      unfold load_genv, load_modsems in *. ss.
-      destruct (ModSem.midx ms) eqn:T; ss.
-      { des; ss; clarify. rewrite Midx.in_mapi_iff in IN. des; ss. clarify.
-        unfold Mod.modsem in *. rewrite Mod.get_modsem_midx_spec in T. xomega. }
-      des; ss; clarify.
-      rewrite Midx.in_mapi_iff in IN. des; ss. clarify.
-      unfold Mod.modsem in *. rewrite Mod.get_modsem_midx_spec in T. clarify.
-      eapply Midx.nth_error_mapi_iff. esplits; eauto.
-    -
-      ii. des. subst mss. ss. des_ifs.
-      exploit SPLITHINT0; try apply IN0; eauto. intro T0.
-      exploit SPLITHINT0; try apply IN1; eauto. intro T1.
-      des; clarify.
+    (* - *)
+    (*   ii. des. subst mss. ss. des_ifs. *)
+    (*   destruct n; ss; clarify. *)
+    (*   clear - NTH. *)
+    (*   unfold load_modsems in *. *)
+    (*   rewrite Midx.nth_error_mapi_iff in *. des. clarify. *)
+    (*   eapply Mod.get_modsem_midx_spec; ss. *)
+    (* - *)
+    (*   ii. des. subst mss. ss. des_ifs. *)
+    (*   unfold load_genv, load_modsems in *. ss. *)
+    (*   destruct (ModSem.midx ms) eqn:T; ss. *)
+    (*   { des; ss; clarify. rewrite Midx.in_mapi_iff in IN. des; ss. clarify. *)
+    (*     unfold Mod.modsem in *. rewrite Mod.get_modsem_midx_spec in T. xomega. } *)
+    (*   des; ss; clarify. *)
+    (*   rewrite Midx.in_mapi_iff in IN. des; ss. clarify. *)
+    (*   unfold Mod.modsem in *. rewrite Mod.get_modsem_midx_spec in T. clarify. *)
+    (*   eapply Midx.nth_error_mapi_iff. esplits; eauto. *)
+    (* - *)
+    (*   ii. des. subst mss. ss. des_ifs. *)
+    (*   exploit SPLITHINT0; try apply IN0; eauto. intro T0. *)
+    (*   exploit SPLITHINT0; try apply IN1; eauto. intro T1. *)
+    (*   des; clarify. *)
+    - ss. rewrite LINK in *. clear LINK. ss. clarify.
+      ss. des; clarify; eauto. abstr (load_modsems p (Sk.load_skenv sk_link)) mss.
+      unfold Midx.NoDup in *. ss. clear_tac.
+      move ms0 at top. move ms1 at top.
+      ginduction mss; ii; ss. des_ifs.
+      + inv UNIQ. unfold id in *. des; clarify.
+        * exfalso. eapply H1. eapply in_filter_map_iff; eauto. esplits; eauto.
+          rewrite in_map_iff. exists ms1. esplits; eauto. congruence.
+        * exfalso. eapply H1. eapply in_filter_map_iff; eauto. esplits; eauto.
+          rewrite in_map_iff. exists ms0. esplits; eauto.
+        * exploit (IHmss ms0 ms1); eauto.
+      + unfold id in *. des; clarify. eapply IHmss; eauto.
   Qed.
 
   Variable p: program.
@@ -88,34 +102,48 @@ Section PRSV.
   .
 
   Definition sound_state (st: state): Prop :=
+    (* (<<WTY: forall *)
+    (*     n ms *)
+    (*     (NTH: nth_error (sem.(globalenv) #1) n = Some ms) *)
+    (*   , *)
+    (*     (<<TY: projT1 ((get_ohs st) n) = ms.(ModSem.owned_heap)>>)>>) *)
+    (* /\ *)
     (<<WTY: forall
-        n ms
-        (NTH: nth_error (sem.(globalenv) #1) n = Some ms)
+        ms
+        (IN: In ms (sem.(globalenv) #1))
       ,
-        (<<TY: projT1 ((get_ohs st) n) = ms.(ModSem.owned_heap)>>)>>)
+        <<TY: projT1 (Midx.get (get_ohs st) ms.(ModSem.midx)) = ms.(ModSem.owned_heap)>>>>)
     /\
     (<<LINK: exists sk_link, link_sk p = Some sk_link>>)
     /\
     (<<FRAMES: Forall (fun fr => In fr.(Frame.ms) (sem.(globalenv) #1)) (get_frames st)>>)
     /\
-    (<<NTHIDX: forall
-        n ms
-        (NTH: nth_error (sem.(globalenv) #1) n = Some ms)
-      ,
-        (<<IDX: ms.(ModSem.midx) = n>>)>>)
-    /\
-    (<<IDXNTH: forall
-        n ms
-        (IN: In ms (sem.(globalenv) #1))
-        (IDX: ms.(ModSem.midx) = n)
-      ,
-        (<<NTH: nth_error (sem.(globalenv) #1) n = Some ms>>)>>)
-    /\
+    (* (<<NTHIDX: forall *)
+    (*     n ms *)
+    (*     (NTH: nth_error (sem.(globalenv) #1) n = Some ms) *)
+    (*   , *)
+    (*     (<<IDX: ms.(ModSem.midx) = n>>)>>) *)
+    (* /\ *)
+    (* (<<IDXNTH: forall *)
+    (*     n ms *)
+    (*     (IN: In ms (sem.(globalenv) #1)) *)
+    (*     (IDX: ms.(ModSem.midx) = n) *)
+    (*   , *)
+    (*     (<<NTH: nth_error (sem.(globalenv) #1) n = Some ms>>)>>) *)
+    (* /\ *)
+    (* (<<UNIQ: forall *)
+    (*     ms0 ms1 *)
+    (*     (IN0: In ms0 (sem.(globalenv) #1)) *)
+    (*     (IN1: In ms1 (sem.(globalenv) #1)) *)
+    (*     (IDX: ms0.(ModSem.midx) = ms1.(ModSem.midx)) *)
+    (*   , *)
+    (*     ms0 = ms1>>) *)
     (<<UNIQ: forall
-        ms0 ms1
+        ms0 ms1 mi
         (IN0: In ms0 (sem.(globalenv) #1))
         (IN1: In ms1 (sem.(globalenv) #1))
-        (IDX: ms0.(ModSem.midx) = ms1.(ModSem.midx))
+        (IDX0: ms0.(ModSem.midx) = Some mi)
+        (IDX1: ms1.(ModSem.midx) = Some mi)
       ,
         ms0 = ms1>>)
   .
@@ -129,11 +157,13 @@ Section PRSV.
   Proof.
     inv INIT. rr. ss. des_ifs.
     generalize sound_genv; intro SG.
-    exploit SG; ss; eauto.
+    hexploit SG; ss; eauto.
+    { rewrite Heq. ss. }
     intro T. des. des_ifs.
     clear SG.
     esplits; ss; eauto.
-    ii.
+    ii. des; clarify. unfold load_genv. ss. unfold Midx.get. des_ifs; cycle 1.
+    { ss. }
     exploit NTHIDX; eauto. intro T; des. clarify.
     unfold load_owned_heaps. des_ifs; cycle 1.
     {

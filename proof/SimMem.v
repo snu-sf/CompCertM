@@ -24,27 +24,39 @@ Inductive ownership: Type :=
 | etc
 .
 
-Definition is_privmod (ons: ownership) (mi: Midx.t): bool :=
-  match ons with
-  | privmod mj => Nat.eq_dec mi mj
+Definition is_privmod (ons: ownership) (mi: option Midx.t): bool :=
+  match mi with
+  | Some mi =>
+    match ons with
+    | privmod mj => Midx.eq_dec mi mj
+    | _ => false
+    end
   | _ => false
   end
 .
 
 Notation partition := (block -> Z -> ownership).
 
-Definition privmods (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
+Definition privmods (mi: option Midx.t) (ptt: partition): block -> Z -> bool :=
   fun b ofs =>
-    match (ptt b ofs) with
-    | privmod mj => (Nat.eq_dec mi mj)
+    match mi with
+    | Some mi =>
+      match (ptt b ofs) with
+      | privmod mj => (Midx.eq_dec mi mj)
+      | _ => false
+      end
     | _ => false
     end
 .
 
-Definition privmod_others (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
+Definition privmod_others (mi: option Midx.t) (ptt: partition): block -> Z -> bool :=
   fun b ofs =>
-    match (ptt b ofs) with
-    | privmod mj => negb (Nat.eq_dec mi mj)
+    match mi with
+    | Some mi =>
+      match (ptt b ofs) with
+      | privmod mj => negb (Midx.eq_dec mi mj)
+      | _ => false
+      end
     | _ => false
     end
 .
@@ -86,7 +98,7 @@ Module SimMem.
         <<INCL: unchanged_on P0 <2= unchanged_on P1>>;
   }.
 
-  Inductive unch `{SM: class} (mi: Midx.t) (sm0 sm1: t): Prop :=
+  Inductive unch `{SM: class} (mi: option Midx.t) (sm0 sm1: t): Prop :=
   | unch_intro
       (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_src)) sm0.(src) sm1.(src))
       (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_tgt)) sm0.(tgt) sm1.(tgt))
@@ -96,7 +108,7 @@ Module SimMem.
           (privmods mj sm0.(ptt_tgt)) <2= (privmods mj sm1.(ptt_tgt)))
   .
 
-  Global Program Instance unch_PreOrder `{SM: class} (mi: Midx.t): PreOrder (unch mi).
+  Global Program Instance unch_PreOrder `{SM: class} (mi: option Midx.t): PreOrder (unch mi).
   Next Obligation.
     ii. econs; eauto; try refl.
   Qed.
@@ -106,8 +118,8 @@ Module SimMem.
       unfold privmod_others in PR. des_ifs.
       des_sumbool. (**** TODO: fix tactic ****)
       unfold is_true in PR. simpl_bool. des_sumbool.
-      hexploit (LESRC mi0); et. intro U. specialize (U b ofs); ss.
-      hexploit (LESRC0 mi0); et. intro V. specialize (V b ofs); ss.
+      hexploit (LESRC (Some mi)); et. { congruence. } intro U. specialize (U b ofs); ss.
+      hexploit (LESRC0 (Some mi)); et. { congruence. } intro V. specialize (V b ofs); ss.
       clear - PR U V Heq.
       unfold privmods, privmod_others in *. des_ifs_safe.
       exploit U; et. { des_sumbool; ss. } intro W; des_ifs_safe. des_sumbool. clarify.
@@ -116,8 +128,8 @@ Module SimMem.
       unfold privmod_others in PR. des_ifs.
       des_sumbool. (**** TODO: fix tactic ****)
       unfold is_true in PR. simpl_bool. des_sumbool.
-      hexploit (LETGT mi0); et. intro U. specialize (U b ofs); ss.
-      hexploit (LETGT0 mi0); et. intro V. specialize (V b ofs); ss.
+      hexploit (LETGT (Some mi)); et. { congruence. } intro U. specialize (U b ofs); ss.
+      hexploit (LETGT0 (Some mi)); et. { congruence. } intro V. specialize (V b ofs); ss.
       clear - PR U V Heq.
       unfold privmods, privmod_others in *. des_ifs_safe.
       exploit U; et. { des_sumbool; ss. } intro W; des_ifs_safe. des_sumbool. clarify.
@@ -210,7 +222,7 @@ Section SimMemOh.
     wf: t -> Prop;
     le: t -> t -> Prop;
     lepriv: t -> t -> Prop;
-    midx: Midx.t;
+    midx: option Midx.t;
 
     le_PreOrder :> PreOrder le;
     lepriv_PreOrder :> PreOrder lepriv;
@@ -292,7 +304,7 @@ Local Obligation Tactic := try (by econs); try (by ii; ss).
 (*     lepriv := SimMem.lepriv; *)
 (*   } *)
 (* . *)
-Program Definition SimMemOh_default (SM: SimMem.class) (mi: Midx.t): (SimMemOh.class) :=
+Program Definition SimMemOh_default (SM: SimMem.class): (SimMemOh.class) :=
   {|
     SimMemOh.sm := fun x => x;
     SimMemOh.oh_src := fun _ => upcast tt;
@@ -300,7 +312,7 @@ Program Definition SimMemOh_default (SM: SimMem.class) (mi: Midx.t): (SimMemOh.c
     SimMemOh.wf := SimMem.wf;
     SimMemOh.le := SimMem.le;
     SimMemOh.lepriv := SimMem.lepriv;
-    SimMemOh.midx := mi;
+    SimMemOh.midx := None;
   |}
 .
 

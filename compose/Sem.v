@@ -88,7 +88,7 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     args frs ms st_init oh ohs
     (MSFIND: ge.(Ge.find_fptr_owner) (Args.get_fptr args) ms)
     (* (OH: nth_error ohs ms.(ModSem.midx) = Some (existT id _ oh)) *)
-    (OH: (ohs ms.(ModSem.midx)) = upcast oh)
+    (OH: Midx.get ohs ms.(ModSem.midx) = upcast oh)
     (INIT: ms.(ModSem.initial_frame) oh args st_init):
     step ge (Callstate args frs ohs)
          E0 (State ((Frame.mk ms st_init) :: frs) ohs)
@@ -104,7 +104,7 @@ Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
     (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) oh1 retv st0)
     (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh0))
     (* (OH: nth_error ohs1 fr1.(Frame.ms).(ModSem.midx) = Some (existT id _ oh1)): *)
-    (OH: (ohs1 fr1.(Frame.ms).(ModSem.midx)) = upcast oh1):
+    (OH: Midx.get ohs1 fr1.(Frame.ms).(ModSem.midx) = upcast oh1):
     step ge (State (fr0 :: fr1 :: frs) ohs0)
          E0 (State (((Frame.update_st fr1) st0) :: frs) ohs1)
 .
@@ -127,26 +127,21 @@ Section SEMANTICS.
                                       end).
 
   Definition load_system (skenv: SkEnv.t): (ModSem.t * SkEnv.t) :=
-    (System.modsem (O: Midx.t) skenv, (skenv_fill_internals skenv)).
+    (System.modsem skenv, (skenv_fill_internals skenv)).
 
-  Definition load_modsems (skenv: SkEnv.t): list ModSem.t :=
-    Midx.mapi (fun midx md => (Mod.modsem md midx skenv)) p.
+  Definition load_modsems (skenv: SkEnv.t): list ModSem.t := List.map ((flip Mod.modsem) skenv) p.
 
   Definition load_genv (init_skenv: SkEnv.t): Ge.t :=
     let (system, skenv) := load_system init_skenv in
     (system :: (load_modsems init_skenv), init_skenv).
 
   Definition load_owned_heaps (ge: Ge.t): Ohs :=
-    fun midx =>
-      (* match List.find (fun ms => Nat.eqb midx ms.(ModSem.midx)) (fst ge) with *)
-      (* | Some ms => upcast ms.(ModSem.initial_owned_heap) *)
-      (* | _ => upcast tt *)
-      (* end *)
-      match List.nth_error (fst ge) midx with
-      | Some ms => upcast ms.(ModSem.initial_owned_heap)
-      | _ => upcast tt
-      end
-    (* map (fun ms => existT id _ ms.(ModSem.initial_owned_heap)) (fst ge) *)
+    let xs: list (Midx.t * Any) :=
+        filter_map (fun ms => match ms.(ModSem.midx) with
+                              | Some mi => Some (mi, upcast ms.(ModSem.initial_owned_heap))
+                              | _ => None
+                              end) (fst ge) in
+    fold_left (fun s i => Midx.update s (Some (fst i)) (snd i)) xs (fun _ => upcast tt)
   .
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
@@ -159,6 +154,7 @@ Section SEMANTICS.
       (FPTR: fptr_init = (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero))
       (SIG: (Genv.find_funct skenv_link) fptr_init = Some (Internal signature_main))
       (WF: forall md (IN: In md p), <<WF: Sk.wf md>>)
+      (OHSUNIQ: Midx.NoDup (map ModSem.midx (fst ge)))
       (OHS: ohs = load_owned_heaps ge):
       initial_state ge (Callstate (Args.mk fptr_init [] m_init) [] ohs).
 

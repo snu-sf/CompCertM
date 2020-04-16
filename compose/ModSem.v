@@ -9,6 +9,7 @@ Require Import sflib.
 Require Import Skeleton.
 Require Import CoqlibC.
 Require Asm.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -145,7 +146,7 @@ Hint Constructors Args.t Retv.t.
    and I need to exploit (Midx.t == nat) somewhere.
  *)
 (* TODO: move to CoqlibC *)
-Module Midx.
+Module Midx_old.
 Section Midx.
   Definition t: Type := nat.
   (* Definition nat2t: nat -> t := fun n => wrap n. *)
@@ -277,6 +278,99 @@ Section Midx.
   (* Qed. *)
 
 End Midx.
+End Midx_old.
+
+
+(*** TODO: Move to CoqlibC ***)
+Definition option_dec X (dec: forall x0 x1: X, {x0 = x1} + {x0 <> x1})
+           (x0 x1: option X): {x0 = x1} + {x0 <> x1}
+.
+  decide equality.
+Defined.
+
+Fixpoint filter_map A B (f: A -> option B) (l: list A): list B :=
+  match l with
+  | [] => []
+  | hd :: tl =>
+    match (f hd) with
+    | Some b => b :: (filter_map f tl)
+    | _ => filter_map f tl
+    end
+  end
+.
+
+Lemma in_filter_map_iff
+      X Y (f: X -> option Y) xs y
+  :
+    <<IN: In y (filter_map f xs)>> <-> (exists x, <<F: f x = Some y>> /\ <<IN: In x xs>>)
+.
+Proof.
+  split; ii.
+  - ginduction xs; ii; ss. des_ifs; ss; des; clarify; eauto.
+    + exploit IHxs; eauto. i; des. eauto.
+    + exploit IHxs; eauto. i; des. eauto.
+  - des. ginduction xs; ii; ss. des_ifs; ss; des; clarify; eauto.
+    exploit (IHxs _ f y x); eauto.
+Qed.
+
+Lemma nodup_length
+      X (xs: list X) x_dec
+  :
+    <<LEN: (length (nodup x_dec xs) <= length (xs))%nat>>
+.
+Proof.
+  r.
+  ginduction xs; ii; ss. exploit IHxs; et. i; des. des_ifs; ss; try rewrite H; try xomega.
+Qed.
+
+Module Midx.
+
+  Definition t: Type := string.
+
+  (* Definition update X (map: t -> X) (t0: t) (x: X): t -> X := *)
+  (*   fun t1 => if string_dec t0 t1 then x else map t1. *)
+
+  Definition update X (map: t -> X) (t0: option t) (x: X): t -> X :=
+    match t0 with
+    | Some t0 => fun t1 => if string_dec t0 t1 then x else map t1
+    | _ => map
+    end
+  .
+
+  Definition get (map: t -> Any) (t0: option t): Any :=
+    match t0 with
+    | Some t0 => map t0
+    | _ => upcast tt
+    end
+  .
+
+  Definition NoDup (ts: list (option t)): Prop := NoDup (filter_map id ts).
+
+  Definition eq_dec := string_dec.
+
+  (* Definition unique (ts: list (option t)): bool := *)
+  (*   let ts := (filter_map id ts) in *)
+  (*   list_eq_dec string_dec ts (nodup string_dec ts) *)
+  (* . *)
+
+  (* Lemma unique_spec *)
+  (*       ts *)
+  (*       (UNIQ: unique ts) *)
+  (*   : *)
+  (*     <<UNIQ: NoDup (filter_map id ts)>> *)
+  (* . *)
+  (* Proof. *)
+  (*   unfold unique in *. abstr (filter_map id ts) xs. des_sumbool. clear_tac. *)
+  (*   ginduction xs; ii; ss. *)
+  (*   { econs; eauto. } *)
+  (*   des_ifs; et; ss. *)
+  (*   - exfalso. *)
+  (*     hexploit (nodup_length); eauto. intro T. rewrite <- UNIQ in T. ss. des. xomega. *)
+  (*   - econs; eauto. *)
+  (*     rewrite H0. *)
+  (*     eapply NoDup_nodup; et. *)
+  (* Qed. *)
+
 End Midx.
 
 (* TODO: move to CoqlibC? *)
@@ -298,7 +392,7 @@ Module ModSem.
     globalenv: genvtype;
     skenv: SkEnv.t;
     skenv_link: SkEnv.t;
-    midx: Midx.t;
+    midx: option Midx.t;
 
     at_external_dtm: forall st oh0 oh1 args0 args1
         (AT0: at_external st oh0 args0)
@@ -322,7 +416,11 @@ Module ModSem.
     call_step_disjoint: is_call /1\ is_step <1= bot1;
     step_return_disjoint: is_step /1\ is_return <1= bot1;
     call_return_disjoint: is_call /1\ is_return <1= bot1;
+
+    midx_none: midx = None -> owned_heap = unit;
   }.
+
+  Arguments mk [_ _ _].
 
   Ltac tac :=
     try( let TAC := u; esplits; eauto in
@@ -373,7 +471,7 @@ Module ModSem.
 
     Program Definition trans: t :=
       mk step at_external initial_frame final_frame after_external
-         ms.(initial_owned_heap) ms.(globalenv) ms.(skenv) ms.(skenv_link) ms.(midx) _ _ _ _ _ _.
+         ms.(initial_owned_heap) ms.(globalenv) ms.(skenv) ms.(skenv_link) ms.(midx) _ _ _ _ _ _ _.
     Next Obligation. rr in AT0. rr in AT1. des. eapply at_external_dtm; eauto. Qed.
     Next Obligation. rr in FINAL0. rr in FINAL1. des. eapply final_frame_dtm; eauto. Qed.
     Next Obligation.
@@ -395,6 +493,9 @@ Module ModSem.
     Next Obligation.
       ii. des. destruct x0; ss. rr in PR. rr in PR0. ss. des. clarify.
       eapply call_return_disjoint; eauto. esplits; eauto; rr; esplits; eauto.
+    Qed.
+    Next Obligation.
+      eapply ms.(midx_none); et.
     Qed.
 
     Lemma atomic_continue tr0 tr1 st_src0

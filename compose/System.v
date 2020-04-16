@@ -15,7 +15,6 @@ Local Obligation Tactic := ii; des; ss; all_prop_inv; ss.
 
 Section SYSMODSEM.
 
-  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
 
   Definition genvtype: Type := SkEnv.t.
@@ -79,7 +78,7 @@ Section SYSMODSEM.
     ModSem.globalenv:= globalenv;
     ModSem.skenv := skenv;
     ModSem.skenv_link := skenv_link;
-    ModSem.midx := midx;
+    ModSem.midx := None;
   |}.
 
   Lemma modsem_receptive st:receptive_at modsem st.

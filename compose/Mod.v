@@ -26,8 +26,9 @@ Module Mod.
   Record t: Type := mk {
     datatype: Type;
     get_sk: datatype -> Sk.t;
-    get_modsem: Midx.t -> SkEnv.t -> datatype -> ModSem.t;
+    get_modsem: option Midx.t -> SkEnv.t -> datatype -> ModSem.t;
     data: datatype;
+    midx: option Midx.t;
     get_modsem_skenv_spec: forall skenv midx,
         <<PROJECTED: SkEnv.project skenv data.(get_sk) = data.(get_modsem midx skenv).(ModSem.skenv)>>;
     get_modsem_skenv_link_spec: forall skenv_link midx,
@@ -47,7 +48,7 @@ Module Mod.
 
   Definition sk (md: t): Sk.t := md.(get_sk) md.(data).
 
-  Definition modsem (md: t) (midx: Midx.t) (skenv: SkEnv.t): ModSem.t := md.(get_modsem) midx skenv md.(data).
+  Definition modsem (md: t) (skenv: SkEnv.t): ModSem.t := md.(get_modsem) md.(midx) skenv md.(data).
 
   Module Atomic.
   Section Atomic.
@@ -55,7 +56,7 @@ Module Mod.
     Variable m: t.
 
     Program Definition trans: t :=
-      mk m.(get_sk) (fun midx ske dat => ModSem.Atomic.trans (m.(get_modsem) midx ske dat)) m.(data) _ _ _.
+      mk m.(get_sk) (fun midx ske dat => ModSem.Atomic.trans (m.(get_modsem) midx ske dat)) m.(data) m.(midx) _ _ _.
     Next Obligation. exploit get_modsem_skenv_spec; eauto. Qed.
     Next Obligation. exploit get_modsem_skenv_link_spec; eauto. Qed.
     Next Obligation. exploit get_modsem_midx_spec; eauto. Qed.

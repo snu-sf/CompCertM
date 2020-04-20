@@ -136,14 +136,8 @@ Section SEMANTICS.
     (system :: (load_modsems init_skenv), init_skenv).
 
   Definition load_owned_heaps (mss: list ModSem.t): Ohs :=
-    (* let xs: list (Midx.t * Any) := *)
-    (*     filter_map (fun ms => match ms.(ModSem.midx) with *)
-    (*                           | Some mi => Some (mi, upcast ms.(ModSem.initial_owned_heap)) *)
-    (*                           | _ => None *)
-    (*                           end) (fst ge) in *)
-    (* fold_left (fun s i => Midx.update s (Some (fst i)) (snd i)) xs (fun _ => upcast tt) *)
-    fold_left (fun s i => Midx.update s i.(ModSem.midx) (upcast i.(ModSem.initial_owned_heap))) mss
-              (fun _ => upcast tt)
+    Midx.list_to_set (map (fun ms => (ms.(ModSem.midx), upcast ms.(ModSem.initial_owned_heap))) mss)
+                     (upcast tt)
   .
 
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)

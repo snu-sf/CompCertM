@@ -685,8 +685,8 @@ Section SimMemOhUnify.
   Theorem unification_smo
           msps
           (SIM: Forall ModSemPair.sim msps)
-          (* (UNIQ: Midx.NoDup (map ModSem.midx (map ModSemPair.src msps))) *)
-          (UNIQ: Midx.NoDup (map (fun msp => SimMemOh.midx (class := msp.(ModSemPair.SMO))) msps))
+          (UNIQ: Midx.NoDup (map ModSem.midx (map ModSemPair.src msps)))
+          (* (UNIQ: Midx.NoDup (map (fun msp => SimMemOh.midx (class := msp.(ModSemPair.SMO))) msps)) *)
     :
       exists SMOS,
         (<<RESPECTS: forall msp (IN: In msp msps),
@@ -729,13 +729,15 @@ Section SimMemOhUnify.
     { ii. ss. des; clarify.
       - unfold Midx.update in *. des_ifs.
       - unfold Midx.update in *. des_ifs.
-        { clear - UNIQ e NTH MIDXNONE TL.
+        { clear - UNIQ e NTH MIDXNONE TL MIDX MIDX0.
+          rewrite Forall_forall in *. exploit TL; et. intro U.
           rr in UNIQ. unfold id in *. ss. des_ifs.
           + eapply NoDup_cons_iff in UNIQ. des.
             contradict UNIQ. eapply in_filter_map_iff. esplits; try refl.
-            rewrite in_map_iff. eexists msp0. esplits; eauto.
-          + erewrite MIDXNONE; et. rewrite Forall_forall in *. exploit TL; et. intro U. inv U.
-            erewrite MIDXNONE0; et.
+            rewrite in_map_iff. eexists msp0.(ModSemPair.src). inv U. esplits; ec.
+            rewrite in_map_iff. esplits; et.
+          + erewrite MIDXNONE; et. inv U.
+            erewrite MIDXNONE0; ec.
         }
         eapply WTYFST; et.
     }
@@ -757,9 +759,27 @@ Section SimMemOhUnify.
       + rewrite upcast_downcast in *. clarify.
       + eapply WF0; eauto.
     - apply func_ext1. ii. des_ifs_safe.
-      unfold Midx.update in *. destruct (Midx.eq_dec SimMemOh.midx x0); ss; clarify.
-      { rewrite upcast_downcast. rewrite OHSRC0. admit "". }
+      unfold Midx.update in *.
+      destruct (Midx.eq_dec SimMemOh.midx x0); ss; clarify.
+      { rewrite upcast_downcast. rewrite OHSRC0.
+        unfold load_owned_heaps.
+        erewrite Midx.list_to_set_spec2; et.
+        { rewrite map_map; ss. }
+        { ii. rewrite in_map_iff in *. des. clarify. exploit ModSem.midx_none; et. intro T.
+          clear - T.
+          generalize x.(initial_owned_heap). rewrite T. intro u. destruct u; ss.
+        }
+        { rewrite in_map_iff. ss. esplits; ec. f_equal. ec. }
+      }
       exploit WTYSND; et. i; des. clarify. des_ifs.
+      unfold load_owned_heaps.
+      erewrite Midx.list_to_set_spec2; et.
+      { rewrite map_map; ss. }
+      { ii. rewrite in_map_iff in *. des. clarify. exploit ModSem.midx_none; et. intro T.
+        clear - T.
+        generalize x.(initial_owned_heap). rewrite T. intro u. destruct u; ss.
+      }
+      { rewrite in_map_iff. ss. esplits; ec. f_equal. ec. }
     - apply func_ext1. ii.
       destruct x0; ss.
       { rewrite upcast_downcast. ss. }

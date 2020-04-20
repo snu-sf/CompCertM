@@ -226,6 +226,7 @@ Section PRSV.
       <<SS: sound_state st>>
   .
   Proof.
+    set (mss := sem.(globalenv)#1) in *.
     inv INIT. rr. ss. des_ifs.
     generalize sound_genv; intro SG.
     hexploit SG; ss; eauto.
@@ -233,10 +234,27 @@ Section PRSV.
     intro UNIQ. des. des_ifs.
     clear SG.
     esplits; ss; eauto.
-    hexploit (sound_initial_aux [] (Sem.sem p).(Smallstep.globalenv)#1); eauto.
-    { ss. des_ifs. ii. rewrite <- in_rev in *. eauto. }
-    { ii. ss. }
-    intro T. i. exploit (T ms); eauto. { ss. des_ifs. } intro U. rewrite <- U. ss. des_ifs.
+    ii.
+    hexploit (Midx.list_to_set_spec2
+                (map (fun ms => (ms.(ModSem.midx), upcast (ms.(ModSem.initial_owned_heap)))) mss)); et.
+    { rewrite map_map. ss. }
+    { ii. rewrite in_map_iff in *. des_safe. clarify. exploit ModSem.midx_none; et. intro T; des_safe.
+      instantiate (1:= upcast tt).
+      clear - T.
+      remember (ModSem.initial_owned_heap x) as U in *. clear HeqU.
+      remember (ModSem.owned_heap x) as V in *. clear HeqV.
+      subst. destruct U; ss.
+    }
+    { instantiate (1:= upcast ms.(ModSem.initial_owned_heap)).
+      instantiate (1:= ms.(ModSem.midx)).
+      ss. des; clarify; ss; et. right. rewrite in_map_iff. esplits; et.
+    }
+    unfold mss. intro T. unfold load_owned_heaps. subst mss. rewrite T. ss.
+    
+    (* hexploit (sound_initial_aux [] (Sem.sem p).(Smallstep.globalenv)#1); eauto. *)
+    (* { ss. des_ifs. ii. rewrite <- in_rev in *. eauto. } *)
+    (* { ii. ss. } *)
+    (* intro T. i. exploit (T ms); eauto. { ss. des_ifs. } intro U. rewrite <- U. ss. des_ifs. *)
   Qed.
 
   Theorem sound_progress

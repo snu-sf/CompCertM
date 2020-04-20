@@ -37,7 +37,6 @@ Definition get_mem (st: state): option mem :=
 
 Section MODSEM.
 
-  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_function p).
@@ -90,7 +89,7 @@ Section MODSEM.
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
-       ModSem.midx := midx;
+       ModSem.midx := None;
     |}.
 
   Ltac inv_single_events :=
@@ -113,7 +112,9 @@ Section MODULE.
   Variable p: program.
 
   Program Definition module: Mod.t :=
-    {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function ; Mod.get_modsem := modsem; |}.
+    {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function ; Mod.get_modsem := modsem;
+       Mod.midx := None;
+    |}.
 
 End MODULE.
 

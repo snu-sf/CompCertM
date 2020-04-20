@@ -43,7 +43,6 @@ Definition external_state F V (ge: Genv.t F V) (v : val) : bool :=
 
 Section MODSEM.
 
-  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program fn_sig p).
@@ -177,7 +176,7 @@ Section MODSEM.
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
-       ModSem.midx := midx;
+       ModSem.midx := None;
     |}.
   Next Obligation.
     all: split; ss; rewrite RSP in *; clarify; f_equal; eapply Asm.extcall_arguments_determ; eauto.
@@ -212,4 +211,4 @@ End MODSEM.
 
 
 Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; Mod.midx := None; |}.

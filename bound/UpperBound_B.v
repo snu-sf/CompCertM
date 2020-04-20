@@ -99,14 +99,14 @@ Section PRESERVATION.
 
   Inductive match_states : Csem.state -> Sem.state -> nat -> Prop :=
   | match_states_intro
-      fr (st: Csem.state) mi ohs
-      (FRAME: fr = Frame.mk (CsemC.modsem mi skenv_link prog) st):
+      fr (st: Csem.state) ohs
+      (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st):
       match_states st (Sem.State [fr] ohs) 1
   | match_states_call
       fptr tyf vargs k m args fr (st: Csem.state) cconv tres targs n
-      mi ohs
+      ohs
       (STATE: st = (Csem.Callstate fptr tyf vargs k m))
-      (FRAME: fr = Frame.mk (CsemC.modsem mi skenv_link prog) st)
+      (FRAME: fr = Frame.mk (CsemC.modsem skenv_link prog) st)
       (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
                         /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
       (FPTR: (Args.fptr args) = fptr)
@@ -240,16 +240,22 @@ Section PRESERVATION.
       destruct f0; ss. unfold type_of_function in H. ss. inv H. destruct fn_params; ss.
       destruct p. inv H8. }
     esplits; eauto.
-    { econs; et. i. ss. des; ss. clarify. }
-    { econs; et. econs; et. i. ss. des; ss. clarify. unfold tge. repeat f_equal. eapply prog_sk_tgt. }
+    { econs; et.
+      - i. ss. des; ss. clarify.
+      - ss. rr. ss. econs; et.
+    }
+    { econs; et. econs; et.
+      - i. ss. des; ss. clarify.
+      - ss. rr. ss. econs; et.
+    }
   Qed.
 
 (** ********************* transf step  *********************************)
 
   Inductive valid_owner fptr (p: Csyntax.program) : Prop :=
   | valid_owner_intro
-      fd mi
-      (MSFIND: tge.(Ge.find_fptr_owner) fptr (CsemC.modsem mi skenv_link p))
+      fd
+      (MSFIND: tge.(Ge.find_fptr_owner) fptr (CsemC.modsem skenv_link p))
       (FINDF: Genv.find_funct (local_genv p) fptr = Some (Internal fd)).
 
   Lemma find_fptr_owner_determ
@@ -873,7 +879,7 @@ Section PRESERVATION.
         (SAFESRC: Step (semantics prog) st_src tr st_src'):
       (<<CMOD: valid_owner fptr prog>>) \/
       (<<SYSMOD: tge.(Ge.find_fptr_owner)
-                      fptr (System.modsem 0%nat skenv_link)>>).
+                      fptr (System.modsem skenv_link)>>).
   Proof.
     subst.
     destruct (classic (valid_owner (Args.fptr args) prog)); eauto.
@@ -1029,9 +1035,9 @@ Section PRESERVATION.
                          rewrite H0. eauto. }
                        { ss. instantiate (1:= tt).
                          exploit SSTGT; et. { apply star_refl. } intro T; des. rr in T. des.
-                         exploit (WTY 0%nat); ss; et. i; des. clear - H. ss.
-                         hexploit (projT1_upcast (ohs 0%nat)); intro T. des.
-                         abstr (ohs 0%nat) x. destruct x; ss.
+                         exploit (WTY); ss; et. i; des. clear - H. ss.
+                         hexploit (projT1_upcast (ohs None)); intro T. des.
+                         abstr (ohs None) x. destruct x; ss.
                          unfold upcast in *. simpl_depind. clarify. f_equal. destruct t; ss.
                        }
                        { ss. }
@@ -1100,17 +1106,7 @@ Section PRESERVATION.
                            eauto.
                            }
                            { ss. }
-                           { ss. instantiate (1:= tt).
-                             clear - SSTGT.
-                             exploit SSTGT. { eapply star_refl. } i; des.
-                             rr in H. des.
-                             destruct mi; ss. unfold Midx.update. des_ifs.
-                             rewrite Forall_forall in *. ss.
-                             exploit FRAMES; ss; eauto. ss. intro T; des_safe. simpl_depind.
-                             exploit (WTY 1%nat); ss; et. intro U; des. clear - U.
-                             abstr (ohs 1%nat) x. destruct x; ss. clarify. unfold upcast.
-                             f_equal. des_u; ss.
-                           }
+                           { ss. }
                    --- traceEq.
                 ** traceEq.
              ++ right. eapply CIH.
@@ -1167,23 +1163,16 @@ Section PRESERVATION.
                            { inv FINAL. }
                            { red. i. inv H3. auto. }
                        +++ ss. eapply step_init.
-                           { instantiate (1 := modsem mi skenv_link prog). ss.
+                           { instantiate (1 := modsem skenv_link prog). ss.
                              unfold tge in MSFIND.
                              unfold tge, skenv_link, link_sk, link_list in *.
                              des_ifs. inversion Heq. rewrite <- H4 in MSFIND. unfold Args.get_fptr. des_ifs. }
                            { instantiate (1:= tt). ss.
-                             assert(MIDX: mi = 0%nat \/ mi = 1%nat).
-                             { clear - MSFIND. inv MSFIND. ss. des; clarify; eauto.
-                               unfold modsem in *. ss. simpl_depind; eauto.
-                             }
-                             clear - SSTGT MIDX.
+                             clear - SSTGT.
                              exploit SSTGT; eauto. { eapply star_refl. } intro T; des_safe.
                              rr in T. des_safe. ss.
-                             des; clarify.
-                             - exploit (WTY 0%nat); ss; et. intro U; des. clear - U.
-                               abstr (ohs 0%nat) x. destruct x; ss. clarify. des_u. refl.
-                             - exploit (WTY 1%nat); ss; et. intro U; des. clear - U.
-                               abstr (ohs 1%nat) x. destruct x; ss. clarify. des_u. refl.
+                             exploit (WTY); ss; et. intro U; des. clear - U. ss.
+                             abstr (ohs None) x. destruct x; ss. clarify. des_u. refl.
                            }
                            ss. des_ifs.
                            instantiate (1 := (Csem.Callstate (Vptr b Ptrofs.zero) (Tfunction Tnil type_int32s cc_default) [] Kstop m0)).
@@ -1282,7 +1271,7 @@ Section PRESERVATION.
              esplits.
              ++ left. eapply plus_one. unfold fundef in *. rewrite senv_same. eauto.
              ++ right. eapply CIH.
-                { econs; eauto. ss. }
+                { econs; eauto. }
         (* progress *)
         * specialize (SAFESRC _ (star_refl _ _ _ _)). des.
           (* final *)

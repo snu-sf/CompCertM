@@ -20,7 +20,7 @@ Require Import JunkBlock.
 
 Set Implicit Arguments.
 
-Local Obligation Tactic := ii; ss; des; inv_all_once; des; ss; clarify; eauto with congruence.
+Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; des; ss; clarify; eauto with congruence.
 
 Section NEWSTEP.
 
@@ -176,13 +176,14 @@ Section MODSEM.
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step';
-       ModSem.at_external := at_external;
-       ModSem.initial_frame := initial_frame;
-       ModSem.final_frame := final_frame;
-       ModSem.after_external := after_external;
+       ModSem.at_external := coerce at_external;
+       ModSem.initial_frame := coerce initial_frame;
+       ModSem.final_frame := coerce final_frame;
+       ModSem.after_external := coerce after_external;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
+       ModSem.midx := None;
     |}.
   Next Obligation.
     rewrite RSP in *. clarify. determ_tac extcall_arguments_dtm.
@@ -244,4 +245,4 @@ Qed.
 End PROPS.
 
 Program Definition module (p: program) (rao: function -> code -> ptrofs -> Prop): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem rao; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem rao; Mod.midx := None |}.

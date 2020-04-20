@@ -903,3 +903,13 @@ Proof.
   { unfold Midx.update. des_ifs. }
   unfold Midx.update. des_ifs. erewrite IHmss0; eauto.
 Qed.
+
+Lemma load_modsems_midx
+      p skenv
+  :
+    <<EQ: map ModSem.midx (load_modsems p skenv) = map Mod.midx p>>
+.
+Proof.
+  ginduction p; ii; ss.
+  rewrite IHp; et. unfold flip. unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec. ss.
+Qed.

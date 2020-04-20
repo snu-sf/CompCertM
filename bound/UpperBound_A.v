@@ -236,7 +236,6 @@ Section PRESERVATION.
 
   Inductive match_focus: Frame.t -> list Frame.t -> Prop :=
   | match_focus_cons_right
-      mi_src mi_tgt
       cst_src cst_tgt
       tl_tgt k_tl_tgt
       (SUM: sum_cont tl_tgt k_tl_tgt)
@@ -245,8 +244,8 @@ Section PRESERVATION.
       (FOCUS: is_focus cp)
       (WTSRC: wt_state cp_link ge_cp_link cst_src)
       (WTTGT: wt_state cp (geof cp) cst_tgt) :
-      match_focus (Frame.mk (CsemC.modsem mi_src skenv_link cp_link) cst_src)
-                  ((Frame.mk (CsemC.modsem mi_tgt skenv_link cp) cst_tgt) :: tl_tgt).
+      match_focus (Frame.mk (CsemC.modsem skenv_link cp_link) cst_src)
+                  ((Frame.mk (CsemC.modsem skenv_link cp) cst_tgt) :: tl_tgt).
 
   Lemma match_focus_nonnil
         fr frs
@@ -281,13 +280,13 @@ Section PRESERVATION.
 
   Inductive match_states : Sem.state -> Sem.state -> Prop :=
   | match_states_normal
-      frs_src frs_tgt ohs_src ohs_tgt
+      frs_src frs_tgt ohs
       (STK: match_stacks frs_src frs_tgt) :
-      match_states (State frs_src ohs_src) (State frs_tgt ohs_tgt)
+      match_states (State frs_src ohs) (State frs_tgt ohs)
   | match_states_call
-      frs_src frs_tgt args ohs_src ohs_tgt
+      frs_src frs_tgt args ohs
       (STK: match_stacks frs_src frs_tgt) :
-      match_states (Callstate args frs_src ohs_src) (Callstate args frs_tgt ohs_tgt).
+      match_states (Callstate args frs_src ohs) (Callstate args frs_tgt ohs).
 
   Lemma init_fsim
         st_init_src
@@ -300,14 +299,18 @@ Section PRESERVATION.
     esplits; eauto.
     { clarify. econs; ss; eauto.
       (* init *)
-      - des_ifs. econs; ss; eauto.
+      - des_ifs. econs; ss; eauto; cycle 1.
+        { admit "". }
         unfold prog_src in WF. unfold prog_tgt. i. rewrite in_app_iff in IN. des.
         { eapply WF; et. rewrite in_app_iff. et. }
         { rewrite in_map_iff in *. des. clarify. ss. et. }
       (* dtm *)
       - ii. inv INIT0; inv INIT1; ss. f_equal.
         generalize link_sk_match; i. des. clarify. }
-    { econs; ss; eauto. econs; ss; eauto. }
+    { rp; [econs; ss; eauto|..]; try refl.
+      - econs; ss; eauto.
+      - admit "".
+    }
   Qed.
 
   Lemma final_bsim
@@ -802,6 +805,18 @@ Section PRESERVATION.
     exploit assign_loc_dtm. eapply H3. eapply H10. i. subst.
     exploit IHl. eapply H6. eapply H11. i. eauto. Qed.
 
+  Lemma match_stacks_midx
+        fr_src frs_src
+        fr_tgt frs_tgt
+        (MATCH: match_stacks (fr_src :: frs_src) (fr_tgt :: frs_tgt))
+    :
+      <<MIDX: fr_src.(Frame.ms).(ModSem.midx) = fr_tgt.(Frame.ms).(ModSem.midx)>>
+  .
+  Proof.
+    inv MATCH; ss.
+    inv HD. ss. clarify.
+  Qed.
+
   Lemma match_xsim
         st_src0 st_tgt0
         (MATCH: match_states st_src0 st_tgt0) :
@@ -842,6 +857,7 @@ Section PRESERVATION.
             (* receptiveness *)
             { econs. ii. inv H1; ModSem.tac.
               inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
+              { eauto. }
               ii. inv H1; ModSem.tac. ss. omega. }
             eapply plus_one. econs; et.
             (* determ *)
@@ -849,7 +865,7 @@ Section PRESERVATION.
               - ii. ss. des_ifs.
                 clear H0.
                 inv H1; inv H2; ModSem.tac.
-                + split. econs. i. exploit ModSem.at_external_dtm. eapply AT0. eauto. i. subst. auto.
+                + split. econs. i. exploit ModSem.at_external_dtm. eapply AT0. eauto. i. des. subst. auto.
                 + assert (ModSem.is_step (Frame.ms fr_tgt) (Frame.st fr_tgt)).
                   { unfold ModSem.is_step. ss. eauto. }
                   exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto.
@@ -858,10 +874,10 @@ Section PRESERVATION.
                 eapply ModSem.call_return_disjoint. split. eapply H. eauto.
               - ii. inv H1; ss; try omega.
                 exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto. }
-            econs; eauto.
-            instantiate (1:= args).
-            sguard in LINKSRC.
-            inv STK; ss. inv HD; ss. des. clarify. ss.
+            inv STK; ss.
+            { des_ifs. econs; et. }
+            rewrite LINKTGT. inv HD; ss. des. clear LINKSRC0. clarify. ss.
+            econs; ss; et.
             inv AT; ss.
             inv ST; ss.
             econs; ss; et.
@@ -892,7 +908,7 @@ Section PRESERVATION.
                 exploit prog_find_defs_revive_rev; eauto. i. des.
                 unfold fundef in *. rewrite Heq in H1. clarify.
             - rr in H. des. inv H. ss. }
-          { right. eapply CIH; et. econs; et. }
+          { right. eapply CIH; et. rp; [econs|..]; et. eapply match_stacks_midx in STK; et. congruence. }
         (* src step *)
         - inv STK; ss.
           econs; ss; cycle 1.
@@ -1129,7 +1145,7 @@ Section PRESERVATION.
                   + i. inv FINAL.
                   + ii. inv H; inv H3. ss; omega.
                     eapply external_call_trace_length; eauto. }
-              rewrite LINKTGT in *. rpapply step_internal; ss; et. rr. right.
+              rewrite LINKTGT in *. instantiate (2:= oh). rpapply step_internal; ss; et. rr. right.
               econs; ss; et.
               - inv FINDMS. ss. destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
                 rewrite Genv.find_funct_ptr_iff in *. exploit prog_def_same. eauto. i. des_safe.

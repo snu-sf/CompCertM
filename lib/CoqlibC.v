@@ -1434,3 +1434,17 @@ Proof.
   inv UNIQ. eapply IHxs in H2.
   eapply NoDup_snoc; et. rewrite <- in_rev. ss.
 Qed.
+
+Lemma map_ext
+      A B
+      (f g : A -> B)
+      l
+      (EQ: forall a (IN: In a l), <<EQ: f a = g a>>)
+  :
+    map f l = map g l
+.
+Proof.
+  ginduction l; ii; ss.
+  exploit EQ; et. i; des. erewrite IHl; et. congruence.
+Qed.
+

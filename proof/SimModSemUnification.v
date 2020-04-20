@@ -20,6 +20,7 @@ Require Import SmallstepC.
 From Paco Require Import hpattern.
 Require Import SimModSemUnified SimMod SimProg Sem.
 Require Import Any.
+Require Import SemProps.
 
 Set Implicit Arguments.
 
@@ -704,6 +705,11 @@ Section SimMemOhUnify.
               (<<OHTGT: smos.(SimMemOhs.ohs_tgt) = load_owned_heaps (map ModSemPair.tgt msps)>>)>>)
   .
   Proof.
+    assert(UNIQ0: Midx.NoDup (map ModSem.midx (map ModSemPair.tgt msps))).
+    { erewrite f_equal; et.
+      rewrite Forall_forall in *. rewrite ! map_map.
+      eapply map_ext; et. ii. exploit SIM; et. intro T; des. inv T; ec.
+    }
     exists (SimMemOhs_intro msps). ss.
     split.
     { eapply respects_intro; eauto. }
@@ -718,7 +724,10 @@ Section SimMemOhUnify.
     rename a into msp.
     inv SIM. rename H1 into HD. rename H2 into TL.
     inv SIMSKENV. rename H1 into SKEHD. rename H2 into SKETL.
-    exploit IHmsps; eauto. { rr in UNIQ. ss. des_ifs. eapply NoDup_cons_iff in UNIQ; des; et. } i; des.
+    exploit IHmsps; eauto.
+    { rr in UNIQ. ss. des_ifs. eapply NoDup_cons_iff in UNIQ; des; et. }
+    { rr in UNIQ0. ss. des_ifs. eapply NoDup_cons_iff in UNIQ0; des; et. }
+    i; des.
     des_ifs.
     bar. inv HD. move INITOH at top. move MIDXNONE at top. move MIDX at top. move MIDX0 at top.
     clear_until_bar. exploit INITOH; eauto. i; des.
@@ -772,25 +781,32 @@ Section SimMemOhUnify.
         { rewrite in_map_iff. ss. esplits; ec. f_equal. ec. }
       }
       exploit WTYSND; et. i; des. clarify. des_ifs.
+      replace (load_owned_heaps (ModSemPair.src msp :: map ModSemPair.src msps) SimMemOh.midx)
+        with (load_owned_heaps (map ModSemPair.src msps) SimMemOh.midx); cycle 1.
+      { eapply load_owned_heaps_diff; ec. }
+      rewrite <- OHSRC.
       unfold load_owned_heaps.
-      erewrite Midx.list_to_set_spec2; et.
-      { rewrite map_map; ss. }
-      { ii. rewrite in_map_iff in *. des. clarify. exploit ModSem.midx_none; et. intro T.
-        clear - T.
-        generalize x.(initial_owned_heap). rewrite T. intro u. destruct u; ss.
+      unfold ohs_src. des_ifs.
+    - apply func_ext1. ii. des_ifs_safe.
+      unfold Midx.update in *.
+      destruct (Midx.eq_dec SimMemOh.midx x0); ss; clarify.
+      { rewrite upcast_downcast. rewrite OHTGT0.
+        unfold load_owned_heaps.
+        erewrite Midx.list_to_set_spec2; et.
+        { rewrite map_map; ss. }
+        { ii. rewrite in_map_iff in *. des. clarify. exploit ModSem.midx_none; et. intro T.
+          clear - T.
+          generalize x.(initial_owned_heap). rewrite T. intro u. destruct u; ss.
+        }
+        { rewrite in_map_iff. ss. esplits; ec. f_equal. ec. }
       }
-      { rewrite in_map_iff. ss. esplits; ec. f_equal. ec. }
-    - apply func_ext1. ii.
-      destruct x0; ss.
-      { rewrite upcast_downcast. ss. }
-      clear - OHTGT.
-      unfold initial_ohs_tgt in *. ss.
-      unfold ohs_tgt in *.
-      assert(TMP: forall {A B} x (f: A -> B) g, f = g -> f x = g x).
-      { ii; clarify. }
-      eapply (TMP _ _ x0) in OHTGT.
-      erewrite <- OHTGT.
-      des_ifs.
+      exploit WTYSND; et. i; des. clarify. des_ifs.
+      replace (load_owned_heaps (ModSemPair.tgt msp :: map ModSemPair.tgt msps) SimMemOh.midx)
+        with (load_owned_heaps (map ModSemPair.tgt msps) SimMemOh.midx); cycle 1.
+      { eapply load_owned_heaps_diff; ec. }
+      rewrite <- OHTGT.
+      unfold load_owned_heaps.
+      unfold ohs_tgt. des_ifs.
   Qed.
 
 End SimMemOhUnify.

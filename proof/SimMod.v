@@ -43,6 +43,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   (* Advantage: We can unify ord at Mod state. *)
   Inductive sim (mp: t): Prop :=
   | sim_intro
+      (MIDX: mp.(src).(Mod.midx) = mp.(tgt).(Mod.midx))
       (SIMSK: SimSymb.wf mp.(ss))
       (SKSRC: mp.(ss).(SimSymb.src) = (Mod.sk mp.(src)))
       (SKTGT: mp.(ss).(SimSymb.tgt) = (Mod.sk mp.(tgt)))

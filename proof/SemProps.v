@@ -887,3 +887,19 @@ Lemma sk_nwf_improves (mds_src mds_tgt: program)
 Proof.
   eapply bsim_improves. econs. econs; try (i; inv INITSRC; clarify). eapply unit_ord_wf.
 Qed.
+
+Lemma load_owned_heaps_diff
+      ms mss mi
+      (DIFF: mi <> ms.(ModSem.midx))
+  :
+    load_owned_heaps (mss) mi = load_owned_heaps (ms :: mss) mi
+.
+Proof.
+  unfold load_owned_heaps.
+  unfold Midx.list_to_set.
+  rewrite <- ! fold_left_rev_right. rewrite <- ! map_rev. ss.
+  abstr (rev mss) mss0. clear_tac.
+  ginduction mss0; ii; ss.
+  { unfold Midx.update. des_ifs. }
+  unfold Midx.update. des_ifs. erewrite IHmss0; eauto.
+Qed.

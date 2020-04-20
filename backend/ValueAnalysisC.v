@@ -23,7 +23,7 @@ Section PRSV.
 
   Hypothesis INCL: SkEnv.includes skenv_link (Sk.of_program fn_sig p).
 
-  Let modsem := RTLC.modsem midx skenv_link p.
+  Let modsem := RTLC.modsem skenv_link p.
 
   Local Existing Instance Unreach.
 

@@ -179,6 +179,8 @@ Section MATCHSIMFORWARD.
       ModSem.is_step ms_src st_src0.
   Proof. rr. specialize (SAFE _ (star_refl _ _ _ _)). des; ss. eauto. Qed.
 
+  Hypothesis MIDXNONE: SimMemOh.midx = None -> SMO = SimMemOh_default _.
+
   Hypothesis BAR: bar_True.
 
   Theorem match_states_sim: <<SIM: msp.(ModSemPair.sim)>>.

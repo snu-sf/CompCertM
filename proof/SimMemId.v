@@ -90,6 +90,6 @@ Next Obligation.
     { eapply SimSymbId.sim_skenv_equiv; eauto. }
     instantiate (1:= Retv.mk _ _). ss. eauto.
   - instantiate (1:= mk _ _). econs; ss; eauto.
-  - ss.
+  - econs; ii; ss.
   - ss.
 Qed.

@@ -178,6 +178,8 @@ Section MATCHSIMFORWARD.
         (<<OHTGT: smo.(SimMemOh.oh_tgt) = upcast msp.(ModSemPair.tgt).(ModSem.initial_owned_heap)>>)
   .
 
+  Hypothesis MIDXNONE: SimMemOh.midx = None -> SMO = SimMemOh_default _.
+
   Hypothesis BAR: bar_True.
 
   Lemma match_states_lxsim

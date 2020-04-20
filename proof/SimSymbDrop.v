@@ -828,7 +828,7 @@ Next Obligation.
     + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; xomega.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
-  - econs; ss.
+  - econs; ii; ss.
     + eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss.
       eapply SPLITHINT1.
     + eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss.

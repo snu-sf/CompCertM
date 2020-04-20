@@ -51,13 +51,13 @@ Definition privmods (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
 
 Definition privmod_others (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
   fun b ofs =>
-    match mi with
-    | Some mi =>
-      match (ptt b ofs) with
-      | privmod mj => negb (string_dec mi mj)
-      | _ => false
+    match (ptt b ofs) with
+    | privmod mj =>
+      match mi with
+      | Some mi => negb (string_dec mi mj)
+      | _ => true
       end
-    | _ => true
+    | _ => false
     end
 .
 
@@ -115,25 +115,31 @@ Module SimMem.
   Next Obligation.
     ii. inv H. inv H0. econs; eauto; try etrans; et.
     - eapply unchanged_on_monotone; et. intros b ofs ?.
-      unfold privmod_others in PR. des_ifs.
-      des_sumbool. (**** TODO: fix tactic ****)
-      unfold is_true in PR. simpl_bool. des_sumbool.
-      hexploit (LESRC (Some mi)); et. { congruence. } intro U. specialize (U b ofs); ss.
-      hexploit (LESRC0 (Some mi)); et. { congruence. } intro V. specialize (V b ofs); ss.
-      clear - PR U V Heq.
-      unfold privmods, privmod_others in *. des_ifs_safe.
-      exploit U; et. { des_sumbool; ss. } intro W; des_ifs_safe. des_sumbool. clarify.
-      simpl_bool. des_sumbool. ii. clarify.
+      unfold privmod_others in PR. des_ifs; ss; cycle 1.
+      + hexploit (LESRC (Some mi0)); et. { congruence. } intro U. specialize (U b ofs); ss.
+        unfold privmod_others.
+        des_ifs. eapply U. des_sumbool. ss.
+      + des_sumbool. (**** TODO: fix tactic ****)
+        unfold is_true in PR. simpl_bool. des_sumbool.
+        hexploit (LESRC (Some mi0)); et. { congruence. } intro U. specialize (U b ofs); ss.
+        hexploit (LESRC0 (Some mi0)); et. { congruence. } intro V. specialize (V b ofs); ss.
+        clear - PR U V Heq.
+        unfold privmods, privmod_others in *. des_ifs_safe.
+        exploit U; et. { des_sumbool; ss. } intro W; des_ifs_safe. des_sumbool. clarify.
+        simpl_bool. des_sumbool. ii. clarify.
     - eapply unchanged_on_monotone; et. intros b ofs ?.
-      unfold privmod_others in PR. des_ifs.
-      des_sumbool. (**** TODO: fix tactic ****)
-      unfold is_true in PR. simpl_bool. des_sumbool.
-      hexploit (LETGT (Some mi)); et. { congruence. } intro U. specialize (U b ofs); ss.
-      hexploit (LETGT0 (Some mi)); et. { congruence. } intro V. specialize (V b ofs); ss.
-      clear - PR U V Heq.
-      unfold privmods, privmod_others in *. des_ifs_safe.
-      exploit U; et. { des_sumbool; ss. } intro W; des_ifs_safe. des_sumbool. clarify.
-      simpl_bool. des_sumbool. ii. clarify.
+      unfold privmod_others in PR. des_ifs; ss; cycle 1.
+      + hexploit (LETGT (Some mi0)); et. { congruence. } intro U. specialize (U b ofs); ss.
+        unfold privmod_others.
+        des_ifs. eapply U. des_sumbool. ss.
+      + des_sumbool. (**** TODO: fix tactic ****)
+        unfold is_true in PR. simpl_bool. des_sumbool.
+        hexploit (LETGT (Some mi0)); et. { congruence. } intro U. specialize (U b ofs); ss.
+        hexploit (LETGT0 (Some mi0)); et. { congruence. } intro V. specialize (V b ofs); ss.
+        clear - PR U V Heq.
+        unfold privmods, privmod_others in *. des_ifs_safe.
+        exploit U; et. { des_sumbool; ss. } intro W; des_ifs_safe. des_sumbool. clarify.
+        simpl_bool. des_sumbool. ii. clarify.
   Qed.
 
   Lemma sim_val_list_length

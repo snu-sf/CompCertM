@@ -86,5 +86,6 @@ Next Obligation.
   esplits; ss; eauto.
   { eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto. }
-  destruct retv_src; ss. econs; ss; eauto.
+  { destruct retv_src; ss. econs; ss; eauto. }
+  { econs; ii; ss. }
 Qed.

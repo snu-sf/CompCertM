@@ -20,7 +20,6 @@ Set Implicit Arguments.
 
 Section SIMMODSEM.
 
-Variable midx: Midx.t.
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Variables prog tprog: program.
@@ -33,7 +32,7 @@ Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src midx skenv_link) (md_tgt midx skenv_link) (SimSymbId.mk md_src md_tgt) sm_link (SimMemOh_default _ midx).
+  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link (SimMemOh_default _).
 
 Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
@@ -177,11 +176,11 @@ Proof.
     i; des.
     + esplits; eauto.
       * left. eapply spread_dplus; eauto. eapply modsem_determinate; eauto.
-      * econs; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss; try apply MLE.
+      * econs; i; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss; try apply MLE.
       * econs; ss.
     + esplits; eauto.
       * right. subst tr. split. econs. eauto.
-      * econs; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss; try apply MLE.
+      * econs; i; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss; try apply MLE.
       * assert(MCOMPAT: get_mem st_src1 = SimMem.src sm1 /\ get_mem st_tgt0 = SimMem.tgt sm1).
         { inv H1; inv MCOMPAT; ss. }
         des. econs; eauto; ss.

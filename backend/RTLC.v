@@ -14,7 +14,6 @@ Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify.
 
 Section MODSEM.
 
-  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
   Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program fn_sig p).
@@ -69,7 +68,7 @@ Section MODSEM.
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
-       ModSem.midx := midx;
+       ModSem.midx := None;
     |}.
 
   Program Definition modsem2: ModSem.t :=
@@ -81,6 +80,7 @@ Section MODSEM.
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
+       ModSem.midx := None;
     |}.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.
@@ -118,7 +118,7 @@ Section MODSEM.
 End MODSEM.
 
 Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; Mod.midx := None; |}.
 
 Program Definition module2 (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem2; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem2; Mod.midx := None; |}.

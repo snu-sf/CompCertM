@@ -162,13 +162,9 @@ Next Obligation. eapply unlift_wf; eauto. Qed.
 Next Obligation. inv MWF. destruct sm0; ss. econs; ss; et. eapply frozen_refl. Qed.
 Next Obligation. inv MWF. inv MLE. inv MLIFT. econs; ss; et; try congruence. eapply frozen_refl. Qed.
 
-Global Program Instance SimMemInjOhLift (mi: Midx.t): SimMemOhLift.class (@SimMemOh_default SimMemInj mi)
+Global Program Instance SimMemInjOhLift: SimMemOhLift.class (@SimMemOh_default SimMemInj)
   := SimMemOhLift.SimMemOhLift_transform.
 
-Goal forall mi, SimMemOhLift.SimMemOhLift_transform = SimMemOhLift.SimMemOhLift_default_transform mi.
-  ss.
-Qed.
-(* TODO: Remove "SimMemOhLift.SimMemOhLift_default_transform", Coq is smart enough *)
 
 
 
@@ -493,7 +489,7 @@ Next Obligation.
     + eapply frozen_shortened; et.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
-  - econs; ss.
+  - econs; ii; ss.
     + eapply Mem.unchanged_on_implies.
       { eapply Mem_unchanged_on_bot; et. eapply SPLITHINT1. }
       ss.

@@ -260,6 +260,7 @@ Module SimMemOhLift.
       - eapply SimMemLift.lift_wf; eauto.
         eapply SimMemOh.wf_proj; eauto.
       - rewrite SimMemLift.lift_src. refl.
+      - rewrite SimMemLift.lift_tgt. refl.
     Qed.
     Next Obligation.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_src; eauto.
@@ -311,6 +312,7 @@ Module SimMemOhLift.
       - eapply SimMemLift.unlift_wf; try eapply SimMemOh.wf_proj; eauto.
         eapply SimMemOh.le_proj in H1. rewrite SimMemOh.getset_sm in H1. ss.
       - rewrite SimMemLift.unlift_src. refl.
+      - rewrite SimMemLift.unlift_tgt. refl.
     Qed.
     Next Obligation.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_sim_val; eauto.
@@ -336,8 +338,8 @@ Module SimMemOhLift.
 
   End TRANSFORMER.
 
-  Global Program Instance SimMemOhLift_default_transform `{SML: SimMemLift.class}:
-    SimMemOhLift.class (SimMemOh_default SM) := @SimMemOhLift_transform _ _ (SimMemOh_default SM).
+  (* Global Program Instance SimMemOhLift_default_transform `{SML: SimMemLift.class}: *)
+  (*   SimMemOhLift.class (SimMemOh_default SM) := @SimMemOhLift_transform _ _ (SimMemOh_default SM). *)
 
   Section PROPS.
 

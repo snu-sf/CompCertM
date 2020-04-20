@@ -68,6 +68,9 @@ Section SimMemOhUnify.
                      (<<SMEQ: smo0.(SimMemOh.sm) = sm>>) /\
                      (<<MIDX: SimMemOh.midx = mi>>)
     ;
+    (* WTYNONE: anys None = (SimMemOh_default _, @upcast (SimMemOh.t (class := SimMemOh_default _)) sm) *)
+    WTYNONE: anys None = (SimMemOh_default _, upcast sm)
+    ;
   }.
 
   Program Definition set_sm (smos0: t) (sm0: SimMem.t): t :=
@@ -79,6 +82,7 @@ Section SimMemOhUnify.
                  | _ => (SMO, a0)
                  end
       )
+      _
       _
       _
   .
@@ -93,12 +97,16 @@ Section SimMemOhUnify.
     }
     { exploit smos0.(WTYSND); eauto. i; des. esplits; eauto. clarify. }
   Qed.
+  Next Obligation.
+    hexploit smos0.(WTYNONE); et. intro T.
+    ss. des_ifs. rewrite upcast_downcast in *. clarify.
+  Qed.
 
   Inductive le (smos0 smos1: t): Prop :=
   | le_intro
       (LESM: SimMem.le smos0.(sm) smos1.(sm))
       (LESMO: forall
-          mi SMO0 a0 SMO1 a1
+          mi SMO0 SMO1 a0 a1
           (ANY0: smos0.(anys) mi = (SMO0, a0))
           (ANY1: smos1.(anys) mi = (SMO1, a1))
         ,
@@ -283,8 +291,8 @@ Section SimMemOhUnify.
       + ii.
         destruct (anys y mi) eqn:ANY2. rename c into SMO2. rename s into a2.
         exploit WTYSND; eauto. i; des.
-        hexploit (LESMO mi SMO0 a0 SMO2 a2); eauto. i; des.
-        hexploit (LESMO0 mi SMO2 a2 SMO1 a1); eauto. i; des. clarify.
+        hexploit (LESMO mi SMO0 SMO2 a0 a2); eauto. i; des.
+        hexploit (LESMO0 mi SMO2 SMO1 a2 a1); eauto. i; des. clarify.
         esplits; eauto.
         ii.
         etrans.
@@ -329,7 +337,7 @@ Section SimMemOhUnify.
   Next Obligation.
     inv H.
     econs; eauto.
-    ii. exploit (LESMO mi SMO0 a0 SMO1 a1); eauto. i; des. clarify. esplits; eauto.
+    ii. exploit (LESMO mi SMO0 SMO1 a0 a1); eauto. i; des. clarify. esplits; eauto.
     ii. eapply SimMemOh.pub_priv; eauto. eapply LESMO0; eauto.
   Qed.
   Next Obligation.
@@ -377,6 +385,7 @@ Section SimMemOhUnify.
         (*                ) 0%nat (smos0.(anys))) *)
         _
         _
+        _
     .
     Next Obligation.
       des_ifs_safe. exploit WTYFST; eauto. i; clarify.
@@ -395,6 +404,16 @@ Section SimMemOhUnify.
       esplits; eauto.
       { rewrite upcast_downcast. eauto. }
       rewrite SimMemOh.getset_sm; ss.
+    Qed.
+    Next Obligation.
+      rewrite Forall_forall in *. exploit SIM; et. intro T.
+      hexploit smos0.(WTYNONE); et. intro U.
+      des_ifs.
+      - f_equal; ss.
+        inv T. exploit MIDXNONE; et. intro V; clarify. rewrite V in *. ss.
+        clear - V.
+        remember (@ModSemPair.SMO SM SS msp) as X. clear HeqX. subst. ss.
+      - rewrite upcast_downcast in *. ss.
     Qed.
 
   End SETSMO.
@@ -636,35 +655,22 @@ Section SimMemOhUnify.
       ss.
       des_ifs; cycle 1.
       { exploit (WTYSND smos2); eauto. i; des. clarify. }
-      dsplits.
-      { admit "". }
-      des; clarify.
-      ii. rewrite upcast_downcast in *. clarify.
-      rename smo4 into smo_other0.
+
+      inv MLEPUBOHS; eauto.
+      specialize (LESMO mi SMO0 SMO1).
+      exploit smos2.(WTYSND); eauto. i; des. clarify.
+      assert(T := ANY0). eapply WTYSND in T. des. clarify.
+      subst smos3. subst smos1. simpl in LESMO. des_ifs_safe.
+      exploit LESMO; eauto. ii. des. clarify. esplits; eauto.
+      rewrite upcast_downcast in *. ii. clarify.
+      rename smo5 into smo_other0.
       rename t0 into smo_other2.
-
-      (* bar. *)
-      (* exploit (WTY2 smos3); et. i; des. *)
-      (* rename smo4 into smo_other3. *)
-      (* ss. *)
-      (* des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto. clear_tac. *)
-      (* rewrite upcast_downcast in *. clarify. *)
-
-
-
-      assert(T: SimMemOh.le (SimMemOh.set_sm smo_other0 smo1) smo_other2).
-      { inv MLEPUBOHS.
-        exploit (WTY2 smos1 n); et. i; des. clarify.
-        exploit (LESMO n a1 a); et. intro T. ss. clear LESMO.
-        rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto. clear_tac.
-        rewrite upcast_downcast in *. clarify.
-      }
+      exploit LESMO0; eauto. intro T; des.
       eapply SimMemOh.set_sm_le in T.
       + rewrite SimMemOh.setset_sm in T.
         erewrite <- SimMemOh.setget_sm with smo_other0. eauto.
-      + eapply SimMemOh.le_proj in MLEPUB. rp; et.
-        exploit (WTY2 smos0 n); et. i; des. clarify.
-        rewrite SMEQ. erewrite smeq; et.
+      + eapply SimMemOh.le_proj in MLEPUB. rp; try apply MLEPUB; et.
+        rewrite SMEQ0. erewrite <- smeq; et.
   Qed.
 
 End SimMemOhUnify.
@@ -673,45 +679,17 @@ Section SimMemOhUnify.
 
   Context `{SM: SimMem.class} {SU: Sound.class} {SS: SimSymb.class SM}.
 
-  Definition initial_ohs_src (msps: list ModSemPair.t): Sem.Ohs :=
-    (* let ohs_src := map (fun msp => upcast (msp.(ModSemPair.src).(ModSem.initial_owned_heap))) msps in *)
-    (* fun midx => *)
-    (*   match nth_error ohs_src midx with *)
-    (*   | Some oh_src => oh_src *)
-    (*   | None => upcast tt *)
-    (*   end *)
-    fun midx =>
-      match nth_error (map ModSemPair.src msps) midx with
-      | Some ms => upcast ms.(ModSem.initial_owned_heap)
-      | None => upcast tt
-      end
-  .
-
-  Let initial_ohs_tgt (msps: list ModSemPair.t): Sem.Ohs :=
-    (* let ohs_tgt := map (fun msp => upcast (msp.(ModSemPair.tgt).(ModSem.initial_owned_heap))) msps in *)
-    (* fun midx => *)
-    (*   match nth_error ohs_tgt midx with *)
-    (*   | Some oh_tgt => oh_tgt *)
-    (*   | None => upcast tt *)
-    (*   end *)
-    fun midx =>
-      match nth_error (map ModSemPair.tgt msps) midx with
-      | Some ms => upcast ms.(ModSem.initial_owned_heap)
-      | None => upcast tt
-      end
-  .
-
   Local Opaque upcast.
   (** TODO: make it global opaque **)
 
   Theorem unification_smo
           msps
           (SIM: Forall ModSemPair.sim msps)
-          (MIDXWF: forall n msp (NTH: nth_error msps n = Some msp),
-              <<MIDX: msp.(ModSemPair.src).(ModSem.midx) = n>>)
+          (* (UNIQ: Midx.NoDup (map ModSem.midx (map ModSemPair.src msps))) *)
+          (UNIQ: Midx.NoDup (map (fun msp => SimMemOh.midx (class := msp.(ModSemPair.SMO))) msps))
     :
       exists SMOS,
-        (<<RESPECTS: forall n msp (NTH: nth_error msps n = Some msp),
+        (<<RESPECTS: forall msp (IN: In msp msps),
             (<<RESPECTS: respects msp.(ModSemPair.SMO) SMOS>>)>>)
         /\
         (<<INITOH: forall
@@ -722,50 +700,66 @@ Section SimMemOhUnify.
             exists (smos: SimMemOhs.t (class := (SMOS))),
               (<<WF: SimMemOhs.wf smos>>) /\
               (<<SMEQ: smos.(SimMemOhs.sm) = sm>>) /\
-              (<<OHSRC: smos.(SimMemOhs.ohs_src) = initial_ohs_src msps>>) /\
-              (<<OHTGT: smos.(SimMemOhs.ohs_tgt) = initial_ohs_tgt msps>>)>>)
+              (<<OHSRC: smos.(SimMemOhs.ohs_src) = load_owned_heaps (map ModSemPair.src msps)>>) /\
+              (<<OHTGT: smos.(SimMemOhs.ohs_tgt) = load_owned_heaps (map ModSemPair.tgt msps)>>)>>)
   .
   Proof.
     exists (SimMemOhs_intro msps). ss.
     split.
     { eapply respects_intro; eauto. }
-    clear MIDXWF.
     ginduction msps; ii; ss.
-    { unshelve eexists (@mk _ _ [] sm0 [] _ _); ss.
-      { ii. destruct n; ss. }
+    { unshelve eexists (@mk _ _ [] sm0 (fun mi => (SimMemOh_default_aux _ mi, upcast sm0)) _ _ _); ss.
+      { ii. clarify. rewrite upcast_downcast. esplits; eauto. }
       esplits; ss; eauto.
-      - econs; ss. ii. destruct n; ss.
-      - unfold ohs_src. apply func_ext1. intro n. ss. destruct n; ss.
-      - unfold ohs_tgt. apply func_ext1. intro n. ss. destruct n; ss.
+      - econs; ss. ii. clarify. rewrite upcast_downcast in *. clarify.
+      - unfold ohs_src. apply func_ext1. intro n. ss. rewrite upcast_downcast. ss.
+      - unfold ohs_tgt. apply func_ext1. intro n. ss. rewrite upcast_downcast. ss.
     }
+    rename a into msp.
     inv SIM. rename H1 into HD. rename H2 into TL.
     inv SIMSKENV. rename H1 into SKEHD. rename H2 into SKETL.
-    exploit IHmsps; eauto. i; des.
+    exploit IHmsps; eauto. { rr in UNIQ. ss. des_ifs. eapply NoDup_cons_iff in UNIQ; des; et. } i; des.
     des_ifs.
-    bar. inv HD. move INITOH at top. clear_until_bar. exploit INITOH; eauto. i; des.
-    unshelve eexists (@mk _ _ _ smos.(sm) (upcast smo :: smos.(anys)) _ _).
-    { ss. erewrite LEN; eauto. }
-    { ii. destruct n; ss.
-      - clarify. esplits; eauto. rewrite upcast_downcast. refl.
-      - eapply smos.(WTY); et.
+    bar. inv HD. move INITOH at top. move MIDXNONE at top. move MIDX at top. move MIDX0 at top.
+    clear_until_bar. exploit INITOH; eauto. i; des.
+    unshelve eexists (@mk _ _ _ (smos.(sm))
+                          (Midx.update smos.(anys) (SimMemOh.midx (class := msp.(ModSemPair.SMO)))
+                                                   (msp.(ModSemPair.SMO), (upcast smo)))
+                          _ _ _).
+    { ii. ss. des; clarify.
+      - unfold Midx.update in *. des_ifs.
+      - unfold Midx.update in *. des_ifs.
+        { clear - UNIQ e NTH MIDXNONE TL.
+          rr in UNIQ. unfold id in *. ss. des_ifs.
+          + eapply NoDup_cons_iff in UNIQ. des.
+            contradict UNIQ. eapply in_filter_map_iff. esplits; try refl.
+            rewrite in_map_iff. eexists msp0. esplits; eauto.
+          + erewrite MIDXNONE; et. rewrite Forall_forall in *. exploit TL; et. intro U. inv U.
+            erewrite MIDXNONE0; et.
+        }
+        eapply WTYFST; et.
+    }
+    { ii. unfold Midx.update in *. des_ifs.
+      - rewrite upcast_downcast. esplits; eauto.
+      - exploit WTYSND; et.
+    }
+    { ii. unfold Midx.update in *. des_ifs.
+      - f_equal; ss.
+        + remember (@ModSemPair.SMO SM SS msp) as X. clear HeqX. erewrite MIDXNONE; et.
+        + hexploit1 MIDXNONE ;ss.
+          remember (@ModSemPair.SMO SM SS msp) as X. clear HeqX. subst. ss. rewrite SMEQ. ss.
+      - exploit WTYNONE; et.
     }
     unfold ohs_src. unfold ohs_tgt. ss.
     esplits; eauto.
     - econs; ss; eauto.
-      ii. destruct n; ss.
-      + clarify. rewrite upcast_downcast in *. clarify.
+      ii. unfold Midx.update in *. des_ifs.
+      + rewrite upcast_downcast in *. clarify.
       + eapply WF0; eauto.
-    - apply func_ext1. ii.
-      destruct x0; ss.
-      { rewrite upcast_downcast. ss. }
-      clear - OHSRC.
-      unfold initial_ohs_src in *. ss.
-      unfold ohs_src in *.
-      assert(TMP: forall {A B} x (f: A -> B) g, f = g -> f x = g x).
-      { ii; clarify. }
-      eapply (TMP _ _ x0) in OHSRC.
-      erewrite <- OHSRC.
-      des_ifs.
+    - apply func_ext1. ii. des_ifs_safe.
+      unfold Midx.update in *. destruct (Midx.eq_dec SimMemOh.midx x0); ss; clarify.
+      { rewrite upcast_downcast. rewrite OHSRC0. admit "". }
+      exploit WTYSND; et. i; des. clarify. des_ifs.
     - apply func_ext1. ii.
       destruct x0; ss.
       { rewrite upcast_downcast. ss. }

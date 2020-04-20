@@ -1339,3 +1339,98 @@ Proof.
   r.
   ginduction xs; ii; ss. exploit IHxs; et. i; des. des_ifs; ss; try rewrite H; try xomega.
 Qed.
+
+Fixpoint snoc X (xs: list X) (x: X): list X :=
+  match xs with
+  | [] => [x]
+  | hd :: tl => hd :: snoc tl x
+  end
+.
+
+Lemma elim_snoc
+      X (xs: list X)
+  :
+    <<NIL: xs = []>> \/ exists lt dh, <<SNOC: xs = snoc lt dh>>
+.
+Proof.
+  ginduction xs; ii; ss; et.
+  des; clarify; et.
+  - right. exists nil, a. ss.
+  - right. exists (a :: lt), dh. ss.
+Qed.
+
+Lemma rev_snoc
+      X (x: X) lt
+  :
+    <<EQ: rev (snoc lt x) = x :: rev lt>>
+.
+Proof.
+  ginduction lt; ii; ss.
+  erewrite IHlt; et.
+Qed.
+
+Lemma func_app
+      X Y (f: X -> Y)
+      x0 x1
+      (EQ: x0 = x1)
+  :
+    <<EQ: f x0 = f x1>>
+.
+Proof. clarify. Qed.
+Arguments func_app [_] [_].
+
+Lemma snoc_length
+      X (x: X) lt
+  :
+    <<LEN: (length (snoc lt x) = length lt + 1)%nat>>
+.
+Proof.
+  ginduction lt; ii; ss. erewrite IHlt; et.
+Qed.
+
+Lemma rev_cons
+      X (xs: list X) x tl
+      (REV: rev xs = x :: tl)
+  :
+    (<<NTH: nth_error xs (Datatypes.length xs - 1) = Some x>>)
+.
+Proof.
+  ginduction xs; ii; ss.
+  { generalize (elim_snoc xs); intro T.
+    des; clarify.
+    - ss. clarify.
+    - rewrite rev_snoc in *; ss. clarify.
+      exploit IHxs; et. i; des.
+      rewrite snoc_length in *. destruct lt; ss. rewrite Nat.sub_0_r in *; ss.
+  }
+Qed.
+
+Lemma NoDup_snoc
+      X (x: X) xs
+      (NIN: ~In x xs)
+      (NDUP: NoDup xs)
+  :
+    <<NDUP: NoDup (xs ++ [x])>>
+.
+Proof.
+  ginduction xs; ii; ss.
+  - econs; et.
+  - apply not_or_and in NIN. des.
+    eapply NoDup_cons_iff in NDUP; des; ss.
+    econs; et.
+    + rewrite in_app_iff. apply and_not_or. esplits; et.
+      * ss. ii; des; clarify.
+    + eapply IHxs; et.
+Qed.
+
+Lemma NoDup_rev
+      X (xs: list X)
+      (UNIQ: NoDup xs)
+  :
+    <<UNIQ: NoDup (rev xs)>>
+.
+Proof.
+  ginduction xs; ii; ss.
+  inv UNIQ. eapply IHxs in H2.
+  eapply NoDup_snoc; et. rewrite <- in_rev. ss.
+Qed.

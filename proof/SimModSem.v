@@ -186,6 +186,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
       (* (MIDX: (@SimMemOh.midx _ msp.(SMO)) = msp.(src).(midx)) *)
       (MIDX: SimMemOh.midx (class := msp.(SMO)) = msp.(src).(midx))
       (MIDX: msp.(src).(midx) = msp.(tgt).(midx))
+      (MIDXNONE: SimMemOh.midx (class := msp.(SMO)) = None -> msp.(SMO) = SimMemOh_default _)
       (PRSV: local_preservation msp.(src) sound_state_ex)
       (PRSVNOGR: forall (si: sidx), local_preservation_noguarantee msp.(src) (sound_states si))
       (INITOH: forall

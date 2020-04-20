@@ -330,6 +330,135 @@ Module Midx.
 
   Definition NoDup (ts: list t): Prop := NoDup (filter_map id ts).
 
+  Definition list_to_set V (kvs: list (Midx.t * V)) (default: V): Midx.t -> V :=
+    fold_left (fun s '(k, v) => update s k v) kvs
+              (fun _ => default)
+  .
+
+  Lemma filter_map_app
+        X Y xs0 xs1 (f: X -> option Y)
+    :
+      <<EQ: (filter_map f (xs0 ++ xs1)) = (filter_map f xs0) ++ (filter_map f xs1)>>
+  .
+  Proof.
+    ginduction xs0; ii; ss.
+    des_ifs. rewrite IHxs0. ss.
+  Qed.
+
+  Lemma filter_map_rev
+        X Y xs (f: X -> option Y)
+    :
+      <<EQ: rev (filter_map f xs) = filter_map f (rev xs)>>
+  .
+  Proof.
+    ginduction xs; ii; ss. des_ifs.
+    - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs.
+    - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs. rewrite app_nil_r. ss.
+  Qed.
+
+  Lemma NoDup_cons_iff
+        hd tl
+    :
+      <<NODUP: NoDup (hd :: tl)>> <-> ((<<HD: hd = None \/ ~In hd tl>>) /\ (<<TL: NoDup tl>>))
+  .
+  Proof.
+    unfold NoDup, NW. ss. unfold id. des_ifs.
+    { erewrite List.NoDup_cons_iff. split; i; des; esplits; ss; et.
+      - right.
+        ii. eapply H. eapply in_filter_map_iff. esplits; et.
+      - ii. eapply H. eapply in_filter_map_iff in H1. des; clarify.
+    }
+    tauto.
+  Qed.
+
+  Lemma NoDup_rev
+        ts
+        (UNIQ: NoDup ts)
+    :
+      <<UNIQ: NoDup (rev ts)>>
+  .
+  Proof.
+    rr. r in UNIQ.
+    rewrite <- filter_map_rev.
+    eapply NoDup_rev; et.
+  Qed.
+
+  Lemma NoDup_rev2
+        ts
+        (UNIQ: NoDup (rev ts))
+    :
+      <<UNIQ: NoDup ts>>
+  .
+  Proof.
+    r. rewrite <- rev_involutive.
+    eapply NoDup_rev; et.
+  Qed.
+
+  Lemma list_to_set_spec1
+        V (kvs: list (Midx.t * V))
+        (UNIQ: NoDup (map fst kvs))
+        d k v
+        (IN: In (Some k, v) kvs)
+    :
+      <<IN: (list_to_set kvs d) (Some k) = v>>
+  .
+  Proof.
+    unfold list_to_set. rewrite <- fold_left_rev_right. rewrite <- rev_involutive in *.
+    eapply NoDup_rev2 in UNIQ. des. rewrite <- map_rev in UNIQ.
+    fold t in *.
+    abstr (rev kvs) kvs0. clear kvs.
+    ginduction kvs0; ii; ss. des_ifs. rewrite in_app_iff in *. des; ss; des; clarify.
+    { eapply NoDup_cons_iff in UNIQ. des_safe; ss.
+      exploit IHkvs0; eauto. intro T. unfold update. des_ifs.
+      - des; ss. rewrite in_map_iff in *. contradict HD. eexists (_, _); s. esplits; et.
+        rewrite in_rev; et.
+      - rewrite T; ss.
+    }
+    { unfold update. des_ifs. }
+  Qed.
+
+  Lemma list_to_set_spec2_aux
+        V (kvs: list (Midx.t * V)) d
+        (UNIQ: NoDup (map fst kvs))
+        (NONE: forall v (IN: In (None, v) kvs), <<DEFAULT: v = d>>)
+        begin
+    :
+      (forall k v (IN: In (k, v) kvs),
+          <<IN: (fold_right (fun '(k, v) s => update s k v) begin kvs) k = v>>)
+  .
+  Proof.
+    ginduction kvs; ii; ss.
+    eapply NoDup_cons_iff in UNIQ. des_safe; ss. destruct IN; clarify.
+    { ss. unfold update. des_ifs. }
+    exploit IHkvs; eauto. intro T. destruct a; ss. unfold update. des_ifs; ss.
+    - des; ss; clarify.
+      + erewrite (NONE v0); et. erewrite (NONE v); et.
+      + contradict HD. rewrite in_map_iff. eexists (_, _); s. esplits; et.
+    - rewrite T. ss.
+  Qed.
+
+  Lemma list_to_set_spec2
+        V (kvs: list (Midx.t * V)) d
+        (UNIQ: NoDup (map fst kvs))
+        (NONE: forall v (IN: In (None, v) kvs), <<DEFAULT: v = d>>)
+        k v
+        (IN: In (k, v) kvs)
+    :
+      <<IN: (list_to_set kvs d) k = v>>
+  .
+  Proof.
+    (* destruct k. *)
+    (* { eapply list_to_set_spec1; et. } *)
+    unfold list_to_set. rewrite <- fold_left_rev_right. rewrite <- rev_involutive in *.
+    eapply NoDup_rev2 in UNIQ. des. rewrite <- map_rev in UNIQ.
+    fold t in *.
+    assert(NONE2: forall v (IN: In (None, v) (rev kvs)), <<DEFAULT: v = d>>).
+    { ii. eapply NONE. rewrite <- in_rev in *. ss. }
+    clear NONE.
+    abstr (rev kvs) kvs0. clear kvs. rewrite <- in_rev in *.
+    exploit list_to_set_spec2_aux; et. intro T. des; clarify. rewrite <- T.
+    r. f_equal; try refl. apply func_ext2. ii. des_ifs.
+  Qed.
   (* Definition unique (ts: list (option t)): bool := *)
   (*   let ts := (filter_map id ts) in *)
   (*   list_eq_dec string_dec ts (nodup string_dec ts) *)

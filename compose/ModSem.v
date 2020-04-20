@@ -309,47 +309,6 @@ End Midx.
 End Midx_old.
 
 
-(*** TODO: Move to CoqlibC ***)
-Definition option_dec X (dec: forall x0 x1: X, {x0 = x1} + {x0 <> x1})
-           (x0 x1: option X): {x0 = x1} + {x0 <> x1}
-.
-  decide equality.
-Defined.
-
-Fixpoint filter_map A B (f: A -> option B) (l: list A): list B :=
-  match l with
-  | [] => []
-  | hd :: tl =>
-    match (f hd) with
-    | Some b => b :: (filter_map f tl)
-    | _ => filter_map f tl
-    end
-  end
-.
-
-Lemma in_filter_map_iff
-      X Y (f: X -> option Y) xs y
-  :
-    <<IN: In y (filter_map f xs)>> <-> (exists x, <<F: f x = Some y>> /\ <<IN: In x xs>>)
-.
-Proof.
-  split; ii.
-  - ginduction xs; ii; ss. des_ifs; ss; des; clarify; eauto.
-    + exploit IHxs; eauto. i; des. eauto.
-    + exploit IHxs; eauto. i; des. eauto.
-  - des. ginduction xs; ii; ss. des_ifs; ss; des; clarify; eauto.
-    exploit (IHxs _ f y x); eauto.
-Qed.
-
-Lemma nodup_length
-      X (xs: list X) x_dec
-  :
-    <<LEN: (length (nodup x_dec xs) <= length (xs))%nat>>
-.
-Proof.
-  r.
-  ginduction xs; ii; ss. exploit IHxs; et. i; des. des_ifs; ss; try rewrite H; try xomega.
-Qed.
 
 Module Midx.
 

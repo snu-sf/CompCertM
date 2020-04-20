@@ -57,7 +57,7 @@ Definition privmod_others (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
       | privmod mj => negb (string_dec mi mj)
       | _ => false
       end
-    | _ => false
+    | _ => true
     end
 .
 
@@ -101,7 +101,7 @@ Module SimMem.
   Inductive unch `{SM: class} (mi: Midx.t) (sm0 sm1: t): Prop :=
   | unch_intro
       (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_src)) sm0.(src) sm1.(src))
-      (UNCHSRC: unchanged_on (privmod_others mi sm0.(ptt_tgt)) sm0.(tgt) sm1.(tgt))
+      (UNCHTGT: unchanged_on (privmod_others mi sm0.(ptt_tgt)) sm0.(tgt) sm1.(tgt))
       (LESRC: forall mj (NEQ: mi <> mj),
           (privmods mj sm0.(ptt_src)) <2= (privmods mj sm1.(ptt_src)))
       (LETGT: forall mj (NEQ: mi <> mj),
@@ -257,8 +257,10 @@ Section SimMemOh.
         smo0 sm1
         (WF: wf smo0)
         (WF: SimMem.wf sm1)
-        (UNCH: SimMem.unchanged_on (privmods midx smo0.(sm).(SimMem.ptt_src))
-                                   smo0.(sm).(SimMem.src) sm1.(SimMem.src))
+        (UNCHSRC: SimMem.unchanged_on (privmods midx smo0.(sm).(SimMem.ptt_src))
+                                      smo0.(sm).(SimMem.src) sm1.(SimMem.src))
+        (UNCHTGT: SimMem.unchanged_on (privmods midx smo0.(sm).(SimMem.ptt_tgt))
+                                      smo0.(sm).(SimMem.tgt) sm1.(SimMem.tgt))
       ,
         <<WF: wf (set_sm smo0 sm1)>>;
 
@@ -267,6 +269,8 @@ Section SimMemOh.
     setset_sm: forall smo0 sm0 sm1, (set_sm (set_sm smo0 sm0) sm1) = (set_sm smo0 sm1);
     set_sm_oh_src: forall smo0 sm0, oh_src (set_sm smo0 sm0) = oh_src smo0;
     set_sm_oh_tgt: forall smo0 sm0, oh_tgt (set_sm smo0 sm0) = oh_tgt smo0;
+
+    midx_none: midx = None -> t = SimMem.t /\ JMeq.JMeq sm (@id SimMem.t);
   }.
 
   Coercion SimMemOh.sm: SimMemOh.t >-> SimMem.t.
@@ -304,7 +308,7 @@ Local Obligation Tactic := try (by econs); try (by ii; ss).
 (*     lepriv := SimMem.lepriv; *)
 (*   } *)
 (* . *)
-Program Definition SimMemOh_default (SM: SimMem.class): (SimMemOh.class) :=
+Program Definition SimMemOh_default_aux (SM: SimMem.class) (mi: Midx.t): (SimMemOh.class) :=
   {|
     SimMemOh.sm := fun x => x;
     SimMemOh.oh_src := fun _ => upcast tt;
@@ -312,12 +316,12 @@ Program Definition SimMemOh_default (SM: SimMem.class): (SimMemOh.class) :=
     SimMemOh.wf := SimMem.wf;
     SimMemOh.le := SimMem.le;
     SimMemOh.lepriv := SimMem.lepriv;
-    SimMemOh.midx := None;
+    SimMemOh.midx := mi;
   |}
 .
-
 Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.
 
+Program Definition SimMemOh_default (SM: SimMem.class): (SimMemOh.class) := SimMemOh_default_aux _ None.
 
 (* Section TEST. *)
 

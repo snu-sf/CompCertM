@@ -18,7 +18,7 @@ Require Import ModSemProps.
 Require Import Events.
 Require Import SmallstepC.
 From Paco Require Import hpattern.
-Require Import SimModSemUnified SimMod SimProg.
+Require Import SimModSemUnified SimMod SimProg Sem.
 Require Import Any.
 
 Set Implicit Arguments.
@@ -32,86 +32,95 @@ Section SimMemOhUnify.
   Context `{SM: SimMem.class} {SU: Sound.class} {SS: SimSymb.class SM}.
   Variable msps: list ModSemPair.t.
   Hypothesis SIM: Forall ModSemPair.sim msps.
-  Hypothesis MIDXWF: forall n msp (NTH: nth_error msps n = Some msp),
-      <<MIDX: msp.(ModSemPair.src).(ModSem.midx) = n>>.
-  Let MIDXWF2: forall n msp (NTH: nth_error msps n = Some msp),
-      <<MIDX: SimMemOh.midx (class := msp.(ModSemPair.SMO)) = n>>.
-  Proof.
-    ii. r. exploit MIDXWF; et. i; des. clarify. rewrite Forall_forall in *.
-    eapply nth_error_In in NTH. exploit SIM; et. intro T. inv T. congruence.
-  Qed.
+  Hypothesis UNIQ: forall
+      msp0 msp1 mi
+      (IN0: In msp0 msps)
+      (IN1: In msp1 msps)
+      (IDX0: msp0.(ModSemPair.src).(ModSem.midx) = Some mi)
+      (IDX1: msp1.(ModSemPair.src).(ModSem.midx) = Some mi)
+    ,
+      msp0 = msp1
+  .
+  (* Hypothesis MIDXWF: forall n msp (NTH: nth_error msps n = Some msp), *)
+  (*     <<MIDX: msp.(ModSemPair.src).(ModSem.midx) = n>>. *)
+  (* Let MIDXWF2: forall n msp (NTH: nth_error msps n = Some msp), *)
+  (*     <<MIDX: SimMemOh.midx (class := msp.(ModSemPair.SMO)) = n>>. *)
+  (* Proof. *)
+  (*   ii. r. exploit MIDXWF; et. i; des. clarify. rewrite Forall_forall in *. *)
+  (*   eapply nth_error_In in NTH. exploit SIM; et. intro T. inv T. congruence. *)
+  (* Qed. *)
 
   Record t: Type := mk {
     sm:> SimMem.t;
-    anys: list Any;
-    LEN: <<LEN: length anys = length msps>>;
-    WTY: forall n msp a0 (NTH: nth_error msps n = Some msp) (NTH: nth_error anys n = Some a0),
-         exists smo0, (<<DOWNCAST: @downcast (SimMemOh.t (class := msp.(ModSemPair.SMO))) a0 = Some smo0>>)
-                      /\
-                      (<<SMEQ: smo0.(SimMemOh.sm) = sm>>)
+    anys: Midx.t -> (SimMemOh.class * Any);
+    WTYFST: forall
+        msp SMO a0
+        (NTH: In msp msps)
+        (ANY: anys (SimMemOh.midx (class := msp.(ModSemPair.SMO))) = (SMO, a0))
+      ,
+        SMO = msp.(ModSemPair.SMO)
+    ;
+    WTYSND: forall
+        mi SMO a0
+        (ANY: anys mi = (SMO, a0))
+      ,
+        exists smo0, (<<DOWNCAST: @downcast SimMemOh.t a0 = Some smo0>>) /\
+                     (<<SMEQ: smo0.(SimMemOh.sm) = sm>>) /\
+                     (<<MIDX: SimMemOh.midx = mi>>)
     ;
   }.
-
-  Lemma WTY2
-        smos0 n msp
-        (NTH: nth_error msps n = Some msp)
-    :
-      exists a0 smo0, (<<NTH: nth_error smos0.(anys) n = Some a0>>)
-                      /\
-                      (<<DOWNCAST: @downcast (SimMemOh.t (class := msp.(ModSemPair.SMO))) a0 = Some smo0>>)
-                      /\
-                      (<<SMEQ: smo0.(SimMemOh.sm) = smos0.(sm)>>)
-  .
-  Proof.
-    destruct (nth_error smos0.(anys) n) eqn:T.
-    - exploit WTY; eauto. i; des. esplits; eauto.
-    - exfalso. eapply nth_error_None in T. exploit nth_error_Some; eauto. rewrite NTH.
-      i; des. exploit H; ss; et. intro U. rewrite LEN in *. xomega.
-  Qed.
 
   Program Definition set_sm (smos0: t) (sm0: SimMem.t): t :=
     @mk
       sm0
-      (Midx.mapi_aux (fun n a0 =>
-                        match nth_error msps n with
-                        | Some msp =>
-                          match @downcast (SimMemOh.t (class := msp.(ModSemPair.SMO))) a0 with
-                          | Some smo0 => upcast ((SimMemOh.set_sm smo0 sm0): SimMemOh.t)
-                          | _ => upcast tt
-                          end
-                        | _ => upcast tt
-                        end
-                     ) 0%nat (smos0.(anys)))
+      (fun mi => let '(SMO, a0) := smos0.(anys) mi in
+                 match @downcast SimMemOh.t a0 with
+                 | Some smo0 => (SMO, upcast (SimMemOh.set_sm smo0 sm0))
+                 | _ => (SMO, a0)
+                 end
+      )
       _
       _
   .
   Next Obligation.
-    erewrite <- (smos0.(LEN)). rewrite mapi_aux_length. ss.
+    des_ifs_safe. des_ifs; eapply smos0.(WTYFST); eauto.
   Qed.
   Next Obligation.
-    rewrite Midx.nth_error_mapi_aux_iff in *. des.
-    ss. des_ifs_safe.
-    destruct (downcast a) eqn:T.
-    - unfold upcast in *. simpl_depind.
-      des_ifs. unfold eq_rect_r.
-      erewrite <- eq_rect_eq; eauto.
-      esplits; eauto. rewrite SimMemOh.getset_sm; ss.
-    - exfalso. exploit smos0.(WTY); eauto. i; des. clarify.
+    des_ifs_safe. des_ifs.
+    { rewrite upcast_downcast. esplits; eauto.
+      - simpl_depind. clarify. rewrite SimMemOh.getset_sm; ss.
+      - simpl_depind. clarify. exploit WTYSND; eauto. i; des. clarify.
+    }
+    { exploit smos0.(WTYSND); eauto. i; des. esplits; eauto. clarify. }
   Qed.
 
   Inductive le (smos0 smos1: t): Prop :=
   | le_intro
       (LESM: SimMem.le smos0.(sm) smos1.(sm))
       (LESMO: forall
-          n a0 a1 msp (smo0 smo1: SimMemOh.t (class := msp.(ModSemPair.SMO)))
-          (NTH: nth_error msps n = Some msp)
-          (NTH: nth_error smos0.(anys) n = Some a0)
-          (NTH: nth_error smos1.(anys) n = Some a1)
-          (CAST: downcast a0 = Some smo0)
-          (CAST: downcast a1 = Some smo1)
+          mi SMO0 a0 SMO1 a1
+          (ANY0: smos0.(anys) mi = (SMO0, a0))
+          (ANY1: smos1.(anys) mi = (SMO1, a1))
         ,
-          <<LESMO: SimMemOh.le (class := msp.(ModSemPair.SMO)) smo0 smo1>>
+          (<<EQSMO: SMO0 = SMO1>>) /\
+          (<<LESMO:
+             forall
+               smo0 smo1
+               (CAST0: downcast a0 = Some smo0)
+               (CAST1: downcast a1 = Some smo1)
+             ,
+               <<LE: SimMemOh.le (class := SMO0) smo0 smo1>>>>)
       )
+      (* (LESMO: forall *)
+      (*     n a0 a1 msp (smo0 smo1: SimMemOh.t (class := msp.(ModSemPair.SMO))) *)
+      (*     (NTH: nth_error msps n = Some msp) *)
+      (*     (NTH: nth_error smos0.(anys) n = Some a0) *)
+      (*     (NTH: nth_error smos1.(anys) n = Some a1) *)
+      (*     (CAST: downcast a0 = Some smo0) *)
+      (*     (CAST: downcast a1 = Some smo1) *)
+      (*   , *)
+      (*     <<LESMO: SimMemOh.le (class := msp.(ModSemPair.SMO)) smo0 smo1>> *)
+      (* ) *)
   .
 
   (* Definition proj (mi: Midx.t) (msp: ModSemPair.t) (NTH: nth_error msps mi = Some msp) *)
@@ -125,33 +134,29 @@ Section SimMemOhUnify.
   Inductive lepriv (smos0 smos1: t): Prop :=
   | lepriv_intro
       (LEPRIVSM: SimMem.lepriv smos0.(sm) smos1.(sm))
+      (* (LEPRIVSMO: forall *)
+      (*     n a0 a1 msp (smo0 smo1: SimMemOh.t (class := msp.(ModSemPair.SMO))) *)
+      (*     (NTH: nth_error msps n = Some msp) *)
+      (*     (NTH: nth_error smos0.(anys) n = Some a0) *)
+      (*     (NTH: nth_error smos1.(anys) n = Some a1) *)
+      (*     (CAST: downcast a0 = Some smo0) *)
+      (*     (CAST: downcast a1 = Some smo1) *)
+      (*   , *)
+      (*     <<LEPRIVSMO: SimMemOh.lepriv (class := msp.(ModSemPair.SMO)) smo0 smo1>> *)
+      (* ) *)
       (LEPRIVSMO: forall
-          n a0 a1 msp (smo0 smo1: SimMemOh.t (class := msp.(ModSemPair.SMO)))
-          (NTH: nth_error msps n = Some msp)
-          (NTH: nth_error smos0.(anys) n = Some a0)
-          (NTH: nth_error smos1.(anys) n = Some a1)
-          (CAST: downcast a0 = Some smo0)
-          (CAST: downcast a1 = Some smo1)
+          mi SMO0 a0 SMO1 a1
+          (ANY0: smos0.(anys) mi = (SMO0, a0))
+          (ANY1: smos1.(anys) mi = (SMO1, a1))
         ,
-          <<LEPRIVSMO: SimMemOh.lepriv (class := msp.(ModSemPair.SMO)) smo0 smo1>>
-      )
-  .
-
-  Inductive wf_weak (midx: Midx.t) (smos0: t): Prop :=
-  | wf_weak_intro
-      (WFSMO: forall
-          n a0 msp sm0 (smo0: SimMemOh.t (class := msp.(ModSemPair.SMO)))
-          (WFSM: SimMem.wf sm0)
-          (EXCEPT: n <> midx)
-          (NTH: nth_error msps n = Some msp)
-          (NTH: nth_error smos0.(anys) n = Some a0)
-          (CAST: downcast a0 = Some smo0)
-          (UNCH: SimMem.unchanged_on (privmods n smo0.(SimMem.ptt_src))
-                                     smo0.(SimMem.src) sm0.(SimMem.src))
-        ,
-          (<<WFSMO: SimMemOh.wf (class := msp.(ModSemPair.SMO)) (SimMemOh.set_sm smo0 sm0)>>)
-          (* /\ *)
-          (* (<<SMEQ: smo0.(SimMemOh.sm) = smos0.(sm)>>) *)
+          (<<EQSMO: SMO0 = SMO1>>) /\
+          (<<LEPRIVSMO:
+             forall
+               smo0 smo1
+               (CAST0: downcast a0 = Some smo0)
+               (CAST1: downcast a1 = Some smo1)
+             ,
+               <<LE: SimMemOh.lepriv (class := SMO0) smo0 smo1>>>>)
       )
   .
 
@@ -159,23 +164,40 @@ Section SimMemOhUnify.
   | wf_intro
       (WFSM: SimMem.wf smos0.(sm))
       (WFSMO: forall
-          n a0 msp (smo0: SimMemOh.t (class := msp.(ModSemPair.SMO)))
-          (NTH: nth_error msps n = Some msp)
-          (NTH: nth_error smos0.(anys) n = Some a0)
+          mi SMO0 a0 smo0
+          (ANY: smos0.(anys) mi = (SMO0, a0))
           (CAST: downcast a0 = Some smo0)
         ,
-          (<<WFSMO: SimMemOh.wf (class := msp.(ModSemPair.SMO)) smo0>>)
+          (<<WFSMO: SimMemOh.wf smo0>>)
+          (* /\ *)
+          (* (<<SMEQ: smo0.(SimMemOh.sm) = smos0.(sm)>>) *)
+      )
+  .
+
+  Inductive wf_weak (mj: Midx.t) (smos0: t): Prop :=
+  | wf_weak_intro
+      (* (WFSM: SimMem.wf smos0.(sm)) *)
+      (WFSMO: forall
+          mi SMO0 a0 (smo0: SimMemOh.t) sm0
+          (EXCEPT: mi <> mj)
+          (ANY: smos0.(anys) mi = (SMO0, a0))
+          (CAST: downcast a0 = Some smo0)
+          (MWF: SimMem.wf sm0)
+          (UNCHSRC: SimMem.unchanged_on (privmods mi smo0.(SimMem.ptt_src))
+                                        smo0.(SimMem.src) sm0.(SimMem.src))
+          (UNCHTGT: SimMem.unchanged_on (privmods mi smo0.(SimMem.ptt_tgt))
+                                        smo0.(SimMem.tgt) sm0.(SimMem.tgt))
+        ,
+          (<<WFSMO: SimMemOh.wf (SimMemOh.set_sm smo0 sm0)>>)
           (* /\ *)
           (* (<<SMEQ: smo0.(SimMemOh.sm) = smos0.(sm)>>) *)
       )
   .
 
   Lemma wf_weak_wf
-        n smos0 msp a0
-        (WFW: wf_weak n smos0)
-        (NTH0: nth_error msps n = Some msp)
-        (NTH1: nth_error smos0.(anys) n = Some a0)
-        (smo0: SimMemOh.t (class := msp.(ModSemPair.SMO)))
+        mi smos0 SMO0 a0 smo0
+        (WFW: wf_weak mi smos0)
+        (ANY0: smos0.(anys) mi = (SMO0, a0))
         (CAST: downcast a0 = Some smo0)
         (WF: SimMemOh.wf smo0)
     :
@@ -183,105 +205,112 @@ Section SimMemOhUnify.
   .
   Proof.
     assert(WF0: SimMem.wf smos0).
-    { exploit smos0.(WTY); eauto. i; des. clarify.
+    { exploit smos0.(WTYSND); eauto. i; des. clarify.
       rewrite <- SMEQ.
       eapply SimMemOh.wf_proj; eauto.
     }
     econs; eauto. ii.
-    destruct (Nat.eq_dec n n0).
-    - clarify.
+    destruct (Midx.eq_dec mi mi0).
+    - clarify. rewrite ANY in *. clarify.
     - inv WFW.
-      exploit smos0.(WTY); eauto. i; des. clarify.
+      exploit smos0.(WTYSND); eauto. i; des. clarify.
       rewrite <- SMEQ in *.
-      exploit WFSMO; eauto. { refl. } intro T.
+      exploit WFSMO; eauto; try refl. intro T.
       rewrite SimMemOh.setget_sm in T. ss.
   Qed.
 
   Lemma wf_wf_weak
-        n smos0 msp a0
+        smos0 mi
         (WF: wf smos0)
-        (NTH0: nth_error msps n = Some msp)
-        (NTH1: nth_error smos0.(anys) n = Some a0)
-        (smo0: SimMemOh.t (class := msp.(ModSemPair.SMO)))
-        (CAST: downcast a0 = Some smo0)
     :
-      <<WFW: wf_weak n smos0>>
+      <<WFW: wf_weak mi smos0>>
   .
   Proof.
+    inv WF.
     econs; eauto. ii.
-    inv WF. exploit WFSMO; eauto.
-    ii. eapply SimMemOh.set_sm_wf; eauto.
-    rp; et. apply func_ext2. ii. repeat f_equal. apply MIDXWF2; et.
+    exploit WTYSND; eauto. i; des. clarify.
+    eapply SimMemOh.set_sm_wf; eauto.
+    { eapply WFSMO; eauto. }
   Qed.
 
-  Definition ohs_src (smos0: t): Sem.Ohs :=
-    fun mi =>
-      match nth_error msps mi, nth_error smos0.(anys) mi with
-      | Some msp, Some a0 =>
-        match @downcast (SimMemOh.t (class := msp.(ModSemPair.SMO))) a0 with
-        | Some smo0 => SimMemOh.oh_src smo0
-        | _ => upcast tt
-        end
-      | _, _ => upcast tt
-      end
+  Definition ohs_src (smos0: t): Ohs :=
+    fun mi => let '(SMO0, a0) := smos0.(anys) mi in
+              match downcast a0 with
+              | Some smo0 => smo0.(SimMemOh.oh_src)
+              | _ => upcast tt
+              end
   .
+  (* Definition ohs_src (smos0: t): Sem.Ohs := *)
+  (*   fun mi => *)
+  (*     match nth_error msps mi, nth_error smos0.(anys) mi with *)
+  (*     | Some msp, Some a0 => *)
+  (*       match @downcast (SimMemOh.t (class := msp.(ModSemPair.SMO))) a0 with *)
+  (*       | Some smo0 => SimMemOh.oh_src smo0 *)
+  (*       | _ => upcast tt *)
+  (*       end *)
+  (*     | _, _ => upcast tt *)
+  (*     end *)
+  (* . *)
 
-  Definition ohs_tgt (smos0: t): Sem.Ohs :=
-    fun mi =>
-      match nth_error msps mi, nth_error smos0.(anys) mi with
-      | Some msp, Some a0 =>
-        match @downcast (SimMemOh.t (class := msp.(ModSemPair.SMO))) a0 with
-        | Some smo0 => SimMemOh.oh_tgt smo0
-        | _ => upcast tt
-        end
-      | _, _ => upcast tt
-      end
+  Definition ohs_tgt (smos0: t): Ohs :=
+    fun mi => let '(SMO0, a0) := smos0.(anys) mi in
+              match downcast a0 with
+              | Some smo0 => smo0.(SimMemOh.oh_tgt)
+              | _ => upcast tt
+              end
   .
+  (* Definition ohs_tgt (smos0: t): Sem.Ohs := *)
+  (*   fun mi => *)
+  (*     match nth_error msps mi, nth_error smos0.(anys) mi with *)
+  (*     | Some msp, Some a0 => *)
+  (*       match @downcast (SimMemOh.t (class := msp.(ModSemPair.SMO))) a0 with *)
+  (*       | Some smo0 => SimMemOh.oh_tgt smo0 *)
+  (*       | _ => upcast tt *)
+  (*       end *)
+  (*     | _, _ => upcast tt *)
+  (*     end *)
+  (* . *)
 
   Program Instance le_PreOrder: PreOrder le.
   Next Obligation.
     - ii. econs; eauto.
       + refl.
-      + ii. clarify. r. refl.
+      + ii. rewrite ANY0 in *. clarify. esplits; eauto. ii. clarify. refl.
   Qed.
   Next Obligation.
     - ii. inv H. inv H0. econs; eauto.
       + etrans; eauto.
-      + ii. r.
-        rename a0 into ax. rename a1 into az.
-        assert(CASTY: exists ay, nth_error (anys y) n = Some ay).
-        { destruct (nth_error (anys y) n) eqn:T; eauto. exfalso.
-          eapply nth_error_None in T. rewrite y.(LEN) in T.
-          exploit nth_error_Some; eauto.
-          { rewrite NTH. intro Q; ss. des. exploit Q; ss. i. xomega. }
-        }
-        des. exploit y.(WTY); eauto. i; des. rename smo2 into smoy.
-        transitivity smoy.
-        { eapply LESMO; eauto. }
-        { eapply LESMO0; eauto. }
+      + ii.
+        destruct (anys y mi) eqn:ANY2. rename c into SMO2. rename s into a2.
+        exploit WTYSND; eauto. i; des.
+        hexploit (LESMO mi SMO0 a0 SMO2 a2); eauto. i; des.
+        hexploit (LESMO0 mi SMO2 a2 SMO1 a1); eauto. i; des. clarify.
+        esplits; eauto.
+        ii.
+        etrans.
+        { eapply LESMO1; eauto. }
+        { eapply LESMO2; eauto. }
   Qed.
 
   Program Instance lepriv_PreOrder: PreOrder lepriv.
   Next Obligation.
     - ii. econs; eauto.
       + refl.
-      + ii. clarify. r. refl.
+      + ii. rewrite ANY0 in *. clarify. esplits; eauto. ii. clarify. refl.
   Qed.
   Next Obligation.
     - ii. inv H. inv H0. econs; eauto.
       + etrans; eauto.
-      + ii. r.
-        rename a0 into ax. rename a1 into az.
-        assert(CASTY: exists ay, nth_error (anys y) n = Some ay).
-        { destruct (nth_error (anys y) n) eqn:T; eauto. exfalso.
-          eapply nth_error_None in T. rewrite y.(LEN) in T.
-          exploit nth_error_Some; eauto.
-          { rewrite NTH. intro Q; ss. des. exploit Q; ss. i. xomega. }
-        }
-        des. exploit y.(WTY); eauto. i; des. rename smo2 into smoy.
-        transitivity smoy.
-        { eapply LEPRIVSMO; eauto. }
-        { eapply LEPRIVSMO0; eauto. }
+      + ii.
+        destruct (anys y mi) eqn:ANY2. rename c into SMO2. rename s into a2.
+        exploit WTYSND; eauto. i; des.
+        hexploit (LEPRIVSMO mi SMO0 a0 SMO2 a2); eauto. i; des.
+        hexploit (LEPRIVSMO0 mi SMO2 a2 SMO1 a1); eauto. i; des. clarify.
+        esplits; eauto.
+        ii.
+        etrans.
+        { eapply LEPRIVSMO1; eauto. }
+        { eapply LEPRIVSMO2; eauto. }
   Qed.
 
 
@@ -300,7 +329,8 @@ Section SimMemOhUnify.
   Next Obligation.
     inv H.
     econs; eauto.
-    ii. exploit LESMO; eauto.
+    ii. exploit (LESMO mi SMO0 a0 SMO1 a1); eauto. i; des. clarify. esplits; eauto.
+    ii. eapply SimMemOh.pub_priv; eauto. eapply LESMO0; eauto.
   Qed.
   Next Obligation.
     ii. apply PR.
@@ -315,58 +345,68 @@ Section SimMemOhUnify.
   Section SETSMO.
 
     Variable smos0: t.
-    Variable n: Midx.t.
     Variable msp: ModSemPair.t.
-    Hypothesis (NTH: nth_error msps n = Some msp).
+    Hypothesis (IN: In msp msps).
     Variable smo': SimMemOh.t (class := msp.(ModSemPair.SMO)).
     (* Hypothesis (SMMATCH: sm_match (S n) smo' smos0). *)
 
     Program Definition set_smo: t :=
       @mk
         smo'
-        (Midx.mapi_aux (fun m a0 =>
-                          if Nat.eq_dec n m then @upcast SimMemOh.t smo' else
-                            match nth_error msps m with
-                            | Some msp =>
-                              match @downcast (SimMemOh.t (class := msp.(ModSemPair.SMO))) a0 with
-                              | Some smo0 =>
-                                @upcast SimMemOh.t ((SimMemOh.set_sm smo0 smo'.(SimMemOh.sm)): SimMemOh.t)
-                              | _ => upcast tt
-                              end
-                            | _ => upcast tt
-                            end
-                       ) 0%nat (smos0.(anys)))
+        (fun mi =>
+           let '(SMO0, a0) := smos0.(anys) mi in
+           if Midx.eq_dec mi (SimMemOh.midx (class := msp.(ModSemPair.SMO)))
+           then (SMO0, upcast smo')
+           else
+             match downcast a0 with
+             | Some smo0 => (SMO0, upcast (SimMemOh.set_sm smo0 smo'.(SimMemOh.sm)))
+             | _ => (SMO0, a0)
+             end
+        )
+        (* (Midx.mapi_aux (fun m a0 => *)
+        (*                   if Nat.eq_dec n m then @upcast SimMemOh.t smo' else *)
+        (*                     match nth_error msps m with *)
+        (*                     | Some msp => *)
+        (*                       match @downcast (SimMemOh.t (class := msp.(ModSemPair.SMO))) a0 with *)
+        (*                       | Some smo0 => *)
+        (*                         @upcast SimMemOh.t ((SimMemOh.set_sm smo0 smo'.(SimMemOh.sm)): SimMemOh.t) *)
+        (*                       | _ => upcast tt *)
+        (*                       end *)
+        (*                     | _ => upcast tt *)
+        (*                     end *)
+        (*                ) 0%nat (smos0.(anys))) *)
         _
         _
     .
     Next Obligation.
-      erewrite <- (smos0.(LEN)). rewrite mapi_aux_length. ss.
+      des_ifs_safe. exploit WTYFST; eauto. i; clarify.
+      dup Heq. eapply WTYSND in Heq. des.
+      des_ifs.
     Qed.
     Next Obligation.
-      rewrite Midx.nth_error_mapi_aux_iff in *. des.
-      ss. des_ifs_safe.
-      destruct (Nat.eq_dec n n0).
+      des_ifs_safe. destruct (Midx.eq_dec mi SimMemOh.midx).
       { clarify.
-        unfold upcast in *. simpl_depind.
-        des_ifs. unfold eq_rect_r. erewrite <- eq_rect_eq; eauto.
+        exploit WTYFST; eauto. i; clarify.
+        simpl_depind. clarify.
+        rewrite upcast_downcast. esplits; eauto.
       }
-      destruct (downcast a) eqn:T.
-      - unfold upcast in *. simpl_depind.
-        des_ifs. unfold eq_rect_r. erewrite <- eq_rect_eq; eauto.
-        esplits; eauto. rewrite SimMemOh.getset_sm; ss.
-      - exfalso. exploit smos0.(WTY); eauto. i; des. clarify.
+      exploit WTYSND; eauto. i; des; clarify.
+      des_ifs. simpl_depind. clarify.
+      esplits; eauto.
+      { rewrite upcast_downcast. eauto. }
+      rewrite SimMemOh.getset_sm; ss.
     Qed.
 
   End SETSMO.
 
-  Record sm_match (midx: Midx.t) {SMO: SimMemOh.class}
+  Record sm_match {SMO: SimMemOh.class}
          (smo: SimMemOh.t) (smos: SimMemOhs.t): Prop :=
     (* TODO: I want to remove @ *)
     { smeq: (smos.(SimMemOhs.sm) = smo.(SimMemOh.sm));
-      smnth: nth_error smos.(anys) midx = Some (upcast smo);
-      ohsrc: (smos.(SimMemOhs.ohs_src) midx) = smo.(SimMemOh.oh_src);
-      ohtgt: (smos.(SimMemOhs.ohs_tgt) midx) = smo.(SimMemOh.oh_tgt);
-      wfwf: wf_weak midx smos;
+      smnth: smos.(anys) SimMemOh.midx = (SMO, upcast smo);
+      ohsrc: (smos.(SimMemOhs.ohs_src) SimMemOh.midx) = smo.(SimMemOh.oh_src);
+      ohtgt: (smos.(SimMemOhs.ohs_tgt) SimMemOh.midx) = smo.(SimMemOh.oh_tgt);
+      wfwf: wf_weak SimMemOh.midx smos;
       (* oh_src: {oh: Type & oh}; *)
       (* oh_tgt: {oh: Type & oh}; *)
       (* OHSRC: (nth_error smos.(SimMemOhs.ohs_src) (msp.(ModSemPair.src).(midx))) = Some oh_src; *)
@@ -380,203 +420,200 @@ Section SimMemOhUnify.
 
   Theorem respects_intro
     :
-      (<<RESPECTS: forall n msp (NTH: nth_error msps n = Some msp),
+      (<<RESPECTS: forall msp (IN: In msp msps),
           (<<RESPECTS: respects msp.(ModSemPair.SMO) SimMemOhs_intro>>)>>)
   .
   Proof.
-    (* exists SimMemOhs_intro. *)
     ii.
-    exploit MIDXWF2; et. intro Q. des.
-    (* econstructor 1 with (sm_match_strong := @sm_match n); ss; eauto. *)
-    econstructor 1 with (sm_match_strong := @sm_match (SimMemOh.midx) _)
+    econstructor 1 with (sm_match_strong := sm_match)
                         (is_set_smo := fun smos0 mi smo1 smos1 =>
-                                         exists NTH, smos1 = set_smo smos0 n NTH smo1); ss; eauto.
+                                         smos1 = set_smo smos0 msp IN smo1); ss; eauto.
     - ii. inv PR. econs; ec. ii. eapply wf_weak_wf; ec. rewrite upcast_downcast; ss.
-    - ii. exploit (WTY2 smos); et. i; des. exists smo0. esplits; eauto.
+    - ii. inv MWF.
+      destruct (anys smos (SimMemOh.midx (class := msp.(ModSemPair.SMO)))) eqn:T.
+      exploit WTYFST; eauto. i; clarify. exploit WTYSND; eauto. i; des.
+      exists smo0. esplits; eauto.
       + econs; ss; eauto.
-        * inv MWF; ss. exploit WTY; et. i; des; ss. clarify. rp; eauto. f_equal.
-          sym. eapply upcast_downcast_iff; ss.
+        * rewrite T. f_equal; ss. eapply upcast_downcast_iff; eauto.
         * unfold ohs_src. des_ifs.
         * unfold ohs_tgt. des_ifs.
-        * ii. eapply wf_wf_weak; try rewrite Q in *; eauto.
-      + inv MWF. eapply WFSMO; et; ss.
+        * ii. eapply wf_wf_weak; try rewrite Q in *; eauto. econs; eauto.
+      + eapply WFSMO; et; ss.
     - ii.
-      hexploit smos0.(LEN); eauto. intro LEN.
-      eexists (set_smo smos0 n NTH smo1).
+      eexists (set_smo smos0 msp IN smo1).
       esplits; eauto.
       + econs; ss; eauto.
         * replace sm with (SimMemOhs.sm) by ss.
           erewrite SMMATCH.(smeq); eauto.
           eapply SimMemOh.le_proj; eauto.
         * ii; ss.
-          rewrite Midx.nth_error_mapi_aux_iff in *. des. ss. des_ifs_safe.
           des_ifs.
-          { rewrite upcast_downcast in *. clarify.
+          { exploit WTYFST; eauto. i; des. clarify.
+            exploit WTYSND; eauto. i; des. clarify.
             assert(smo0 = smo2).
-            { hexploit SMMATCH.(smnth); ss. intro T. clarify. rewrite upcast_downcast in *. clarify. }
+            { hexploit SMMATCH.(smnth); ss. intro T. rewrite T in *. clarify. rewrite upcast_downcast in *. clarify. }
             clarify.
+            esplits; eauto.
+            ii. rewrite upcast_downcast in *. clarify.
           }
-          rewrite upcast_downcast in *. clarify.
+          rewrite upcast_downcast in *. esplits; eauto. ii. clarify.
           erewrite <- SimMemOh.setget_sm with smo2. erewrite SimMemOh.setset_sm.
           eapply SimMemOh.set_sm_le; try refl; eauto.
           replace sm with (SimMemOhs.sm) by ss.
           eapply SimMemOh.le_proj in LE. etrans; eauto.
           erewrite <- SMMATCH.(smeq); eauto.
-          exploit smos0.(WTY); et. i; des. clarify. rewrite SMEQ. refl.
+          exploit smos0.(WTYSND); et. i; des. clarify. rewrite SMEQ. refl.
       + econs; ss; eauto.
         * ii.
-          rewrite Midx.nth_error_mapi_aux_iff in *. ss. des_ifs_safe.
-          exploit (WTY2 smos0); eauto. i; des. esplits; eauto.
-        * unfold ohs_src; ss. des_ifs_safe.
-          des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          { rewrite upcast_downcast in *. clarify. }
-          { rewrite upcast_downcast in *. clarify. }
-          { eapply nth_error_mapi_none_aux_iff in Heq0. r in Heq0.
-            assert(nth_error msps (SimMemOh.midx (class := msp.(ModSemPair.SMO))) = None).
-            { eapply nth_error_None; eauto. xomega. }
-            clarify.
-          }
-        * unfold ohs_tgt; ss. des_ifs_safe.
-          des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          { rewrite upcast_downcast in *. clarify. }
-          { rewrite upcast_downcast in *. clarify. }
-          { eapply nth_error_mapi_none_aux_iff in Heq0. r in Heq0.
-            assert(nth_error msps (SimMemOh.midx (class := msp.(ModSemPair.SMO))) = None).
-            { eapply nth_error_None; eauto. xomega. }
-            clarify.
-          }
+          des_ifs. exploit WTYFST; eauto. i; des. clarify.
+        * unfold ohs_src; ss. des_ifs_safe. exploit WTYFST; eauto. i; clarify.
+          rewrite upcast_downcast. ss.
+        * unfold ohs_tgt; ss. des_ifs_safe. exploit WTYFST; eauto. i; clarify.
+          rewrite upcast_downcast. ss.
         * ii. hexploit (SMMATCH.(wfwf)); eauto. intro WF; ss.
-          bar. econs. ii. ss.
-          des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          exploit smos0.(WTY); eauto. i; des. clarify.
-          des_ifs.
-          rewrite upcast_downcast in *. clarify. rewrite SimMemOh.setset_sm.
-          eapply WF; eauto. erewrite SimMemOh.getset_sm in UNCH0; et.
-          rewrite SMEQ.
-          inv UNCH.
-          etrans; et.
-          {
-            erewrite <- smeq in UNCHSRC; et. eapply SimMem.unchanged_on_monotone; et.
-            exploit MIDXWF; et. i; des. clarify.
-            clear - EXCEPT.
-            ii. unfold privmods in *. unfold privmod_others in *.
-            des_ifs_safe. des_sumbool. clarify. ss. rewrite Heq. simpl_bool. des_sumbool. ii; clarify.
-            xomega.
+          econs. ii. ss.
+          des_ifs. rewrite upcast_downcast in *. clarify.
+          set (SimMemOh.midx) as mj in *.
+          rewrite SimMemOh.setset_sm.
+          exploit WTYSND; eauto. i; des. clarify.
+          set (SimMemOh.midx (class := SMO0)) as mi in *.
+          eapply WF; eauto.
+          { erewrite SimMemOh.getset_sm in UNCHSRC; et.
+            rewrite SMEQ.
+            inv UNCH.
+            etrans; et.
+            {
+              erewrite <- smeq in UNCHSRC0; et. eapply SimMem.unchanged_on_monotone; et.
+              clear - EXCEPT.
+              ii. unfold privmods in *. unfold privmod_others in *.
+              des_ifs_safe. des_sumbool. clarify. ss. des_ifs. simpl_bool. des_sumbool. ii; clarify.
+            }
+            {
+              eapply SimMem.unchanged_on_monotone; et. intros b ofs.
+              hexploit LESRC; et. intro T. specialize (T b ofs); ss.
+              Fail erewrite smeq; eauto; fail.
+              erewrite (@smeq (@ModSemPair.SMO SM SS msp)). eexact T. et.
+              (* TODO: "erewrite smeq" does not work and I am sure it is a Coq's bug!!!
+                 What an annoying bug... *)
+            }
           }
-          { eapply SimMem.unchanged_on_monotone; et. intros b ofs.
-            hexploit LESRC; et. intro T. specialize (T b ofs); ss.
-            erewrite smeq; et.
+          { erewrite SimMemOh.getset_sm in UNCHTGT; et.
+            rewrite SMEQ.
+            inv UNCH.
+            etrans; et.
+            {
+              erewrite <- smeq in UNCHTGT0; et. eapply SimMem.unchanged_on_monotone; et.
+              clear - EXCEPT.
+              ii. unfold privmods in *. unfold privmod_others in *.
+              des_ifs_safe. des_sumbool. clarify. ss. des_ifs. simpl_bool. des_sumbool. ii; clarify.
+            }
+            {
+              eapply SimMem.unchanged_on_monotone; et. intros b ofs.
+              hexploit LETGT; et. intro T. specialize (T b ofs); ss.
+              Fail erewrite smeq; eauto; fail.
+              erewrite (@smeq (@ModSemPair.SMO SM SS msp)). eexact T. et.
+              (* TODO: "erewrite smeq" does not work and I am sure it is a Coq's bug!!!
+                 What an annoying bug... *)
+            }
           }
       + ii.
         do 2 (unfold ohs_src, ohs_tgt; ss).
-        des_ifs_safe. exploit (WTY2 smos0); eauto. i; des. des_ifs_safe.
-        split.
-        * des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_src. ss. }
-          { rewrite upcast_downcast in *. clarify. }
-          { apply nth_error_mapi_none_aux_iff in Heq2. des.
-            assert(NTH0: nth_error (anys smos0) mj <> None).
-            { destruct (nth_error (anys smos0) mj); ss. }
-            eapply nth_error_Some in NTH0; eauto. xomega.
-          }
-        * des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_tgt. ss. }
-          { rewrite upcast_downcast in *. clarify. }
-          { apply nth_error_mapi_none_aux_iff in Heq2. des.
-            assert(NTH0: nth_error (anys smos0) mj <> None).
-            { destruct (nth_error (anys smos0) mj); ss. }
-            eapply nth_error_Some in NTH0; eauto. xomega.
-          }
+        des_ifs_safe. des_ifs.
+        { rewrite upcast_downcast in *. clarify.
+          rewrite SimMemOh.set_sm_oh_src.
+          rewrite SimMemOh.set_sm_oh_tgt.
+          ss.
+        }
+        { rewrite upcast_downcast in *. clarify. }
     - ii.
-      hexploit smos0.(LEN); eauto. intro LEN.
-      eexists (set_smo smos0 n NTH smo1).
+      eexists (set_smo smos0 msp IN smo1).
       esplits; eauto.
       + econs; ss; eauto.
         * replace sm with (SimMemOhs.sm) by ss.
           erewrite SMMATCH.(smeq); eauto.
           eapply SimMemOh.lepriv_proj; eauto.
         * ii; ss.
-          rewrite Midx.nth_error_mapi_aux_iff in *. des. ss. des_ifs_safe.
           des_ifs.
-          { rewrite upcast_downcast in *. clarify.
+          { exploit WTYFST; eauto. i; des. clarify.
+            exploit WTYSND; eauto. i; des. clarify.
             assert(smo0 = smo2).
-            { hexploit SMMATCH.(smnth); ss. intro T. clarify. rewrite upcast_downcast in *. clarify. }
+            { hexploit SMMATCH.(smnth); ss. intro T. rewrite T in *. clarify. rewrite upcast_downcast in *. clarify. }
             clarify.
+            esplits; eauto.
+            ii. rewrite upcast_downcast in *. clarify.
           }
-          rewrite upcast_downcast in *. clarify.
+          rewrite upcast_downcast in *. esplits; eauto. ii. clarify.
           erewrite <- SimMemOh.setget_sm with smo2. erewrite SimMemOh.setset_sm.
           eapply SimMemOh.set_sm_lepriv; try refl; eauto.
           replace sm with (SimMemOhs.sm) by ss.
           eapply SimMemOh.lepriv_proj in LE. etrans; eauto.
           erewrite <- SMMATCH.(smeq); eauto.
-          exploit smos0.(WTY); et. i; des. clarify. rewrite SMEQ. refl.
+          exploit smos0.(WTYSND); et. i; des. clarify. rewrite SMEQ. refl.
       + econs; ss; eauto.
         * ii.
-          rewrite Midx.nth_error_mapi_aux_iff in *. ss. des_ifs_safe.
-          exploit (WTY2 smos0); eauto. i; des. esplits; eauto.
-        * unfold ohs_src; ss. des_ifs_safe.
-          des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          { rewrite upcast_downcast in *. clarify. }
-          { rewrite upcast_downcast in *. clarify. }
-          { eapply nth_error_mapi_none_aux_iff in Heq0. r in Heq0.
-            assert(nth_error msps (SimMemOh.midx (class := msp.(ModSemPair.SMO))) = None).
-            { eapply nth_error_None; eauto. xomega. }
-            clarify.
-          }
-        * unfold ohs_tgt; ss. des_ifs_safe.
-          des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          { rewrite upcast_downcast in *. clarify. }
-          { rewrite upcast_downcast in *. clarify. }
-          { eapply nth_error_mapi_none_aux_iff in Heq0. r in Heq0.
-            assert(nth_error msps (SimMemOh.midx (class := msp.(ModSemPair.SMO))) = None).
-            { eapply nth_error_None; eauto. xomega. }
-            clarify.
-          }
+          des_ifs. exploit WTYFST; eauto. i; des. clarify.
+        * unfold ohs_src; ss. des_ifs_safe. exploit WTYFST; eauto. i; clarify.
+          rewrite upcast_downcast. ss.
+        * unfold ohs_tgt; ss. des_ifs_safe. exploit WTYFST; eauto. i; clarify.
+          rewrite upcast_downcast. ss.
         * ii. hexploit (SMMATCH.(wfwf)); eauto. intro WF; ss.
-          bar. econs. ii. ss.
-          des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          exploit smos0.(WTY); eauto. i; des. clarify.
-          des_ifs.
-          rewrite upcast_downcast in *. clarify. rewrite SimMemOh.setset_sm.
-          eapply WF; eauto. erewrite SimMemOh.getset_sm in UNCH0; et.
-          rewrite SMEQ.
-          inv UNCH.
-          etrans; et.
-          {
-            erewrite <- smeq in UNCHSRC; et. eapply SimMem.unchanged_on_monotone; et.
-            exploit MIDXWF; et. i; des. clarify.
-            clear - EXCEPT.
-            ii. unfold privmods in *. unfold privmod_others in *.
-            des_ifs_safe. des_sumbool. clarify. ss. rewrite Heq. simpl_bool. des_sumbool. ii; clarify.
-            xomega.
+          econs. ii. ss.
+          des_ifs. rewrite upcast_downcast in *. clarify.
+          set (SimMemOh.midx) as mj in *.
+          rewrite SimMemOh.setset_sm.
+          exploit WTYSND; eauto. i; des. clarify.
+          set (SimMemOh.midx (class := SMO0)) as mi in *.
+          eapply WF; eauto.
+          { erewrite SimMemOh.getset_sm in UNCHSRC; et.
+            rewrite SMEQ.
+            inv UNCH.
+            etrans; et.
+            {
+              erewrite <- smeq in UNCHSRC0; et. eapply SimMem.unchanged_on_monotone; et.
+              clear - EXCEPT.
+              ii. unfold privmods in *. unfold privmod_others in *.
+              des_ifs_safe. des_sumbool. clarify. ss. des_ifs. simpl_bool. des_sumbool. ii; clarify.
+            }
+            {
+              eapply SimMem.unchanged_on_monotone; et. intros b ofs.
+              hexploit LESRC; et. intro T. specialize (T b ofs); ss.
+              Fail erewrite smeq; eauto; fail.
+              erewrite (@smeq (@ModSemPair.SMO SM SS msp)). eexact T. et.
+              (* TODO: "erewrite smeq" does not work and I am sure it is a Coq's bug!!!
+                 What an annoying bug... *)
+            }
           }
-          { eapply SimMem.unchanged_on_monotone; et. intros b ofs.
-            hexploit LESRC; et. intro T. specialize (T b ofs); ss.
-            erewrite smeq; et.
+          { erewrite SimMemOh.getset_sm in UNCHTGT; et.
+            rewrite SMEQ.
+            inv UNCH.
+            etrans; et.
+            {
+              erewrite <- smeq in UNCHTGT0; et. eapply SimMem.unchanged_on_monotone; et.
+              clear - EXCEPT.
+              ii. unfold privmods in *. unfold privmod_others in *.
+              des_ifs_safe. des_sumbool. clarify. ss. des_ifs. simpl_bool. des_sumbool. ii; clarify.
+            }
+            {
+              eapply SimMem.unchanged_on_monotone; et. intros b ofs.
+              hexploit LETGT; et. intro T. specialize (T b ofs); ss.
+              Fail erewrite smeq; eauto; fail.
+              erewrite (@smeq (@ModSemPair.SMO SM SS msp)). eexact T. et.
+              (* TODO: "erewrite smeq" does not work and I am sure it is a Coq's bug!!!
+                 What an annoying bug... *)
+            }
           }
       + ii.
         do 2 (unfold ohs_src, ohs_tgt; ss).
-        des_ifs_safe. exploit (WTY2 smos0); eauto. i; des. des_ifs_safe.
-        split.
-        * des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_src. ss. }
-          { rewrite upcast_downcast in *. clarify. }
-          { apply nth_error_mapi_none_aux_iff in Heq2. des.
-            assert(NTH0: nth_error (anys smos0) mj <> None).
-            { destruct (nth_error (anys smos0) mj); ss. }
-            eapply nth_error_Some in NTH0; eauto. xomega.
-          }
-        * des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
-          { rewrite upcast_downcast in *. clarify. rewrite SimMemOh.set_sm_oh_tgt. ss. }
-          { rewrite upcast_downcast in *. clarify. }
-          { apply nth_error_mapi_none_aux_iff in Heq2. des.
-            assert(NTH0: nth_error (anys smos0) mj <> None).
-            { destruct (nth_error (anys smos0) mj); ss. }
-            eapply nth_error_Some in NTH0; eauto. xomega.
-          }
+        des_ifs_safe. des_ifs.
+        { rewrite upcast_downcast in *. clarify.
+          rewrite SimMemOh.set_sm_oh_src.
+          rewrite SimMemOh.set_sm_oh_tgt.
+          ss.
+        }
+        { rewrite upcast_downcast in *. clarify. }
     - ii; ss. inv SMMATCH0. inv SMMATCH1. ss. des_ifs_safe.
-      exploit (WTY2 smos0); eauto. i; des.
-      exploit (WTY2 smos1); eauto. i; des.
+      exploit (WTYSND smos0); eauto. i; des.
+      exploit (WTYSND smos1); eauto. i; des.
       des_ifs. inv SMLE.
       eapply LESMO; eauto.
       { rewrite upcast_downcast. ss. }
@@ -584,19 +621,25 @@ Section SimMemOhUnify.
     - ii.
       des. clarify.
       (* set msp.(ModSemPair.src).(midx) as n in *. *)
-      set (set_smo smos0 (SimMemOh.midx (class := msp.(ModSemPair.SMO))) NTH1 smo1) as smos1 in *.
-      set (set_smo smos2 (SimMemOh.midx (class := msp.(ModSemPair.SMO))) NTH0 smo3) as smos3 in *.
+      set (set_smo smos0 msp IN smo1) as smos1 in *.
+      set (set_smo smos2 msp IN smo3) as smos3 in *.
       clarify. clear_tac.
       econs; eauto.
       { ss. erewrite smeq; et. eapply SimMemOh.le_proj; et. }
       ii.
-      destruct (classic (n = (SimMemOh.midx (class := msp.(ModSemPair.SMO))))).
-      { clarify. erewrite smnth in *; et. clarify. rewrite upcast_downcast in *. clarify. }
+      destruct (classic (mi = (SimMemOh.midx (class := msp.(ModSemPair.SMO))))).
+      { clarify.
+        Fail erewrite smnth in *.
+        erewrite smnth in ANY0; eauto.
+        erewrite smnth in ANY1; eauto.
+        clarify. esplits; eauto. ii. rewrite upcast_downcast in *. clarify. }
       ss.
-      des_ifs; try rewrite Midx.nth_error_mapi_aux_iff in *; des; ss; des_ifs_safe; eauto.
       des_ifs; cycle 1.
-      { exploit (WTY2 smos2); eauto. i; des. clarify. }
-      rewrite upcast_downcast in *. clarify.
+      { exploit (WTYSND smos2); eauto. i; des. clarify. }
+      dsplits.
+      { admit "". }
+      des; clarify.
+      ii. rewrite upcast_downcast in *. clarify.
       rename smo4 into smo_other0.
       rename t0 into smo_other2.
 

@@ -1192,3 +1192,150 @@ Global Program Instance fun_Coercible A F T `{Coercible F T}:
   { coerce := fun af a => coerce (af a) }.
 
 Ltac des_u := match goal with | [ a: unit |- _ ] => destruct a end.
+
+Definition mapi_aux A B (f: nat -> A -> B) :=
+  let fix rec (cur : nat) (la : list A) {struct la}: list B :=
+      match la with
+      | [] => []
+      | hd :: tl => f cur hd :: rec (S cur) tl
+      end
+  in rec.
+
+Definition mapi A B (f: nat -> A -> B) (la: list A): list B :=
+  mapi_aux f (0%nat) la.
+
+Lemma in_mapi_aux_iff
+      A B (f: nat -> A -> B) la b
+  :
+    forall m,
+      In b (mapi_aux f m la) <->
+      (exists idx a, f (m + idx)%nat a = b /\ nth_error la idx = Some a)
+.
+Proof.
+  ginduction la; split; ii; ss; des; firstorder (subst; auto).
+  - destruct idx; ss.
+  - exists 0%nat. rewrite Nat.add_0_r. esplits; eauto.
+  - exploit IHla; eauto. intros [T _]. exploit T; eauto. i; des. esplits; eauto.
+    { rp; eauto. f_equal. instantiate (1:= (S idx%nat)). omega. }
+    ss.
+  - destruct idx; ss; clarify.
+    { left. f_equal. omega. }
+    right. eapply IHla; eauto. esplits; eauto.
+    { rp; eauto. f_equal. omega. }
+Qed.
+
+(* NOTE: If you give name << >>, rewrite tactic does not work... *)
+(* TODO: FIX IT *)
+Lemma in_mapi_iff
+      A B (f: nat -> A -> B) la b
+  :
+    (* (<<IN: In b (mapi f la)>>) <-> *)
+    (* (<<NTH: (exists idx a, f idx a = b /\ nth_error la idx = Some a)>>) *)
+    In b (mapi f la) <->
+    (exists idx a, f (idx) a = b /\ nth_error la idx = Some a)
+.
+Proof.
+  eapply in_mapi_aux_iff.
+Qed.
+
+Lemma nth_error_mapi_aux_iff
+      A B (f: nat -> A -> B) la b
+  :
+    forall idx m,
+      nth_error (mapi_aux f m la) idx = Some b <->
+      (exists a, f (m + idx)%nat a = b /\ nth_error la idx = Some a)
+.
+Proof.
+  ginduction la; split; ii; ss; des; firstorder (subst; auto).
+  - destruct idx; ss.
+  - destruct idx; ss.
+  - destruct idx; ss; clarify.
+    + esplits; eauto. f_equal; xomega.
+    + exploit IHla; eauto. intros [T _]. eapply T in H. des. clarify.
+      esplits; eauto. ss. f_equal; xomega.
+  - destruct idx; ss; clarify.
+    { repeat f_equal; xomega. }
+    exploit IHla; eauto. intros [_ T]. exploit T; eauto. intro Q; des.
+    replace (m + S idx)%nat with (S m + idx)%nat by xomega.
+    rewrite Q. ss.
+Qed.
+
+Lemma nth_error_mapi_iff
+      A B (f: nat -> A -> B) la b
+  :
+    forall idx,
+      nth_error (mapi f la) idx = Some b <->
+      (exists a, f (idx)%nat a = b /\ nth_error la idx = Some a)
+.
+Proof.
+  split; ii; des.
+  - eapply nth_error_mapi_aux_iff in H; eauto.
+  - eapply nth_error_mapi_aux_iff; eauto.
+Qed.
+
+Lemma mapi_aux_length
+      A B (f: nat -> A -> B) m la
+  :
+    <<LEN: length (mapi_aux f m la) = length la>>
+.
+Proof.
+  ginduction la; ii; ss.
+  erewrite IHla; eauto.
+Qed.
+
+Lemma nth_error_mapi_none_aux_iff
+      A B  (f : nat -> A -> B) la idx m
+  :
+    <<NTH: nth_error (mapi_aux f m la) idx = None>> <->
+           <<LEN: (length la <= idx)%nat>>
+.
+Proof.
+  split; i.
+  - ginduction la; ii; ss; des.
+    + destruct idx; ii; ss. r. xomega.
+    + destruct idx; ii; ss. r. exploit IHla; eauto. i; des. xomega.
+  - ginduction la; ii; ss; des.
+    + destruct idx; ii; ss.
+    + destruct idx; ii; ss. { xomega. } eapply IHla; eauto. r. xomega.
+Qed.
+
+Definition option_dec X (dec: forall x0 x1: X, {x0 = x1} + {x0 <> x1})
+           (x0 x1: option X): {x0 = x1} + {x0 <> x1}
+.
+  decide equality.
+Defined.
+
+Fixpoint filter_map A B (f: A -> option B) (l: list A): list B :=
+  match l with
+  | [] => []
+  | hd :: tl =>
+    match (f hd) with
+    | Some b => b :: (filter_map f tl)
+    | _ => filter_map f tl
+    end
+  end
+.
+
+Lemma in_filter_map_iff
+      X Y (f: X -> option Y) xs y
+  :
+    <<IN: In y (filter_map f xs)>> <-> (exists x, <<F: f x = Some y>> /\ <<IN: In x xs>>)
+.
+Proof.
+  split; ii.
+  - ginduction xs; ii; ss. des_ifs; ss; des; clarify; eauto.
+    + exploit IHxs; eauto. i; des. eauto.
+    + exploit IHxs; eauto. i; des. eauto.
+  - des. ginduction xs; ii; ss. des_ifs; ss; des; clarify; eauto.
+    exploit (IHxs _ f y x); eauto.
+Qed.
+
+Lemma nodup_length
+      X (xs: list X) x_dec
+  :
+    <<LEN: (length (nodup x_dec xs) <= length (xs))%nat>>
+.
+Proof.
+  r.
+  ginduction xs; ii; ss. exploit IHxs; et. i; des. des_ifs; ss; try rewrite H; try xomega.
+Qed.

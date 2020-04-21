@@ -280,13 +280,17 @@ Section PRESERVATION.
 
   Inductive match_states : Sem.state -> Sem.state -> Prop :=
   | match_states_normal
-      frs_src frs_tgt ohs
-      (STK: match_stacks frs_src frs_tgt) :
-      match_states (State frs_src ohs) (State frs_tgt ohs)
+      frs_src frs_tgt ohs_src ohs_tgt
+      (STK: match_stacks frs_src frs_tgt)
+      (OHS: forall mi, ohs_src (Some mi) = ohs_tgt (Some mi))
+    :
+      match_states (State frs_src ohs_src) (State frs_tgt ohs_tgt)
   | match_states_call
-      frs_src frs_tgt args ohs
-      (STK: match_stacks frs_src frs_tgt) :
-      match_states (Callstate args frs_src ohs) (Callstate args frs_tgt ohs).
+      frs_src frs_tgt args ohs_src ohs_tgt
+      (STK: match_stacks frs_src frs_tgt)
+      (OHS: forall mi, ohs_src (Some mi) = ohs_tgt (Some mi))
+    :
+      match_states (Callstate args frs_src ohs_src) (Callstate args frs_tgt ohs_tgt).
 
   Lemma init_fsim
         st_init_src
@@ -834,7 +838,9 @@ Section PRESERVATION.
         econs 1; eauto.
         econs 1; eauto.
         - econs 1; eauto. i. inv STEPSRC.
-        - i. ss. econs. eauto. i. ss. inv FINAL0; inv FINAL1.
+        - i. ss. econs.
+          { ss. inv FINALSRC. }
+          i. ss. inv FINAL0; inv FINAL1.
           i. inv FINAL. }
       rename t into fr_src.
       destruct frs_tgt; ss.
@@ -908,7 +914,9 @@ Section PRESERVATION.
                 exploit prog_find_defs_revive_rev; eauto. i. des.
                 unfold fundef in *. rewrite Heq in H1. clarify.
             - rr in H. des. inv H. ss. }
-          { right. eapply CIH; et. rp; [econs|..]; et. eapply match_stacks_midx in STK; et. congruence. }
+          { right. eapply CIH; et. econs; et. eapply match_stacks_midx in STK; et.
+            ii. unfold Midx.update. des_ifs; try congruence.
+          }
         (* src step *)
         - inv STK; ss.
           econs; ss; cycle 1.
@@ -1260,12 +1268,10 @@ Section PRESERVATION.
                 <<CALLTGT: ModSem.is_call (Frame.ms fr_tgt) (Frame.st fr_tgt)>>).
       { i. inv STK.
         { eapply H in CALLSRC. clarify. }
-        inv HD; ss; clarify. inversion ST; ss; clarify; try (by (inv CALLSRC; inv H0)).
-        inv CALLSRC. red. ss. econs. ss. instantiate (1:= (Args.mk fptr vargs m)).
+        inv HD; ss; clarify. rr in CALLSRC. des.
+        inversion ST; ss; clarify; try (by (inv CALLSRC; inv H0)).
+        rr in CALLSRC. des. inv CALLSRC. rr. ss. exists tt, (Args.mk fptr vargs m).
         inv WTTGT. ss.
-        assert (tyf = (Tfunction tyargs tyres cc)).
-        { unfold classify_fun_strong in CLASSIFY. des_ifs. } subst.
-        inv H0. ss.
         destruct (Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) fptr) eqn:CPEXT.
         { unfold Genv.find_funct in CPEXT, EXTERNAL. des_ifs. rewrite Genv.find_funct_ptr_iff in CPEXT.
           exploit prog_find_defs_revive_rev; eauto. i. des_safe.
@@ -1284,7 +1290,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
         econs; et; cycle 1.
         i. ss. rewrite LINKSRC in *.
 
-        assert(RECEP: receptive_at (sem prog_src) (State (fr_src :: frs_src))).
+        assert(RECEP: receptive_at (sem prog_src) (State (fr_src :: frs_src) ohs_src)).
         { econs.
           - ii. inv H0.
             + exfalso. eapply NCALLSRC. eauto.
@@ -1336,6 +1342,8 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                 - ii. inv H; inv H0. ss. nia. }
               ss. des_ifs.
               unfold Frame.update_st. s.
+              instantiate (2:= tt).
+              instantiate (1:= State _ (Midx.update ohs_tgt None (Any.upcast ()))).
               rpapply step_internal; ss; et.
               right.
               econs; ss; et.
@@ -1382,6 +1390,8 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                   - ss.
                   - ii. inv H1; inv H2. }
                 econs 4; ss; et.
+                { instantiate (1:= oh0). rewrite <- OH. unfold Midx.update. des_ifs; et.
+                  destruct (fr_snd.(Frame.ms).(ModSem.midx)) eqn:T; ss. }
               + right. eapply CIH; eauto. unfold Frame.update_st. econs; ss; et. econs; ss; et.
             (* snd is focus *)
             - hexploit match_focus_nonnil; et. i; des. destruct hds_tgt; ss. clarify.
@@ -1430,11 +1440,15 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                   - inv H1; inv H2; ModSem.tac.
                     split. econs. i. ss.
                     exploit ModSem.final_frame_dtm. eapply FINAL1. eapply FINAL0. i. subst.
+                    des. clarify. rewrite OH0 in *. eapply Any.upcast_inj in OH1. des. clarify.
                     exploit ModSem.after_external_dtm. eapply AFTER0. eapply AFTER1. i. subst.
                     auto.
                   - i. inv FINAL0.
                   - ii. inv H1; ModSem.tac; ss; try nia. }
                 econs 4; ss; et.
+                { rewrite <- OH. unfold Midx.update. des_ifs.
+                  destruct (fr_snd.(Frame.ms).(ModSem.midx)) eqn:T; ss.
+                }
               + right. eapply CIH; eauto. unfold Frame.update_st. econs; ss; et. econs; ss; et.
             (* snd is focus *)
             - hexploit match_focus_nonnil; et. i; des. destruct hds_tgt; ss. clarify.

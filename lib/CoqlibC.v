@@ -1448,3 +1448,34 @@ Proof.
   exploit EQ; et. i; des. erewrite IHl; et. congruence.
 Qed.
 
+Lemma filter_map_none
+      X Y (f: X -> option Y) xs
+      (NONE: forall x (IN: In x xs), f x = None)
+  :
+    <<NIL: filter_map f xs = []>>
+.
+Proof.
+  clear - xs NONE. ginduction xs; ii; ss. exploit IHxs; et. intro T. rewrite T. des_ifs.
+  exploit NONE; et. i; clarify.
+Qed.
+
+Lemma filter_map_app
+      X Y xs0 xs1 (f: X -> option Y)
+  :
+    <<EQ: (filter_map f (xs0 ++ xs1)) = (filter_map f xs0) ++ (filter_map f xs1)>>
+.
+Proof.
+  ginduction xs0; ii; ss.
+  des_ifs. rewrite IHxs0. ss.
+Qed.
+
+Lemma filter_map_rev
+      X Y xs (f: X -> option Y)
+  :
+    <<EQ: rev (filter_map f xs) = filter_map f (rev xs)>>
+.
+Proof.
+  ginduction xs; ii; ss. des_ifs.
+  - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs.
+  - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs. rewrite app_nil_r. ss.
+Qed.

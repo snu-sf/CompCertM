@@ -126,6 +126,8 @@ Section PRSV.
       ,
         (<<TY: projT1 (Midx.get (get_ohs st) ms.(ModSem.midx)) = ms.(ModSem.owned_heap)>>)>>)
     /\
+    (<<WTYNONE: (Midx.get (get_ohs st) None) = upcast tt>>)
+    /\
     (<<LINK: exists sk_link, link_sk p = Some sk_link>>)
     /\
     (<<FRAMES: Forall (fun fr => In fr.(Frame.ms) (sem.(globalenv) #1)) (get_frames st)>>)
@@ -234,23 +236,35 @@ Section PRSV.
     intro UNIQ. des. des_ifs.
     clear SG.
     esplits; ss; eauto.
-    ii.
-    hexploit (Midx.list_to_set_spec2
-                (map (fun ms => (ms.(ModSem.midx), upcast (ms.(ModSem.initial_owned_heap)))) mss)); et.
-    { rewrite map_map. ss. }
-    { ii. rewrite in_map_iff in *. des_safe. clarify. exploit ModSem.midx_none; et. intro T; des_safe.
-      instantiate (1:= upcast tt).
-      clear - T.
-      remember (ModSem.initial_owned_heap x) as U in *. clear HeqU.
-      remember (ModSem.owned_heap x) as V in *. clear HeqV.
-      subst. destruct U; ss.
-    }
-    { instantiate (1:= upcast ms.(ModSem.initial_owned_heap)).
-      instantiate (1:= ms.(ModSem.midx)).
-      ss. des; clarify; ss; et. right. rewrite in_map_iff. esplits; et.
-    }
-    unfold mss. intro T. unfold load_owned_heaps. subst mss. rewrite T. ss.
-    
+    -
+      ii.
+      hexploit (Midx.list_to_set_spec2
+                  (map (fun ms => (ms.(ModSem.midx), upcast (ms.(ModSem.initial_owned_heap)))) mss)); et.
+      { rewrite map_map. ss. }
+      { ii. rewrite in_map_iff in *. des_safe. clarify. exploit ModSem.midx_none; et. intro T; des_safe.
+        instantiate (1:= upcast tt).
+        clear - T.
+        remember (ModSem.initial_owned_heap x) as U in *. clear HeqU.
+        remember (ModSem.owned_heap x) as V in *. clear HeqV.
+        subst. destruct U; ss.
+      }
+      { instantiate (1:= upcast ms.(ModSem.initial_owned_heap)).
+        instantiate (1:= ms.(ModSem.midx)).
+        ss. des; clarify; ss; et. right. rewrite in_map_iff. esplits; et.
+      }
+      unfold mss. intro T. unfold load_owned_heaps. subst mss. rewrite T. ss.
+    -
+      hexploit (Midx.list_to_set_spec2
+                  (map (fun ms => (ms.(ModSem.midx), upcast (ms.(ModSem.initial_owned_heap)))) mss)); et.
+      { rewrite map_map. ss. }
+      { ii. rewrite in_map_iff in *. des_safe. clarify. exploit ModSem.midx_none; et. intro T; des_safe.
+        clear - T.
+        remember (ModSem.initial_owned_heap x) as U in *. clear HeqU.
+        remember (ModSem.owned_heap x) as V in *. clear HeqV.
+        subst. destruct U; ss.
+      }
+      { ss. left. f_equal. }
+
     (* hexploit (sound_initial_aux [] (Sem.sem p).(Smallstep.globalenv)#1); eauto. *)
     (* { ss. des_ifs. ii. rewrite <- in_rev in *. eauto. } *)
     (* { ii. ss. } *)
@@ -274,6 +288,11 @@ Section PRSV.
         { rewrite Forall_forall in *.
           eapply FRAMES; ss; eauto. }
       + eapply WTY; et.
+      + unfold Midx.update. des_ifs; et.
+        exploit ModSem.midx_none; et. intro T; des_safe.
+        clear - T.
+        revert oh.
+        rewrite T. i. des_u; ss.
     - (* init *)
       rr in SS; des. rr; ss; des_ifs.
       esplits; eauto.
@@ -287,6 +306,11 @@ Section PRSV.
     - (* return *)
       rr in SS; des. rr; ss; des_ifs.
       esplits; eauto; cycle 1.
+      { unfold Midx.update. des_ifs.
+        exploit ModSem.midx_none; et. intro T; des_safe.
+        clear - T.
+        revert oh0.
+        rewrite T. i. des_u; ss. }
       { inv FRAMES. inv H2. econs; eauto. }
       ii.
       unfold Midx.update. des_ifs; ss.

@@ -1035,10 +1035,7 @@ Section PRESERVATION.
                          rewrite H0. eauto. }
                        { ss. instantiate (1:= tt).
                          exploit SSTGT; et. { apply star_refl. } intro T; des. rr in T. des.
-                         exploit (WTY); ss; et. i; des. clear - H. ss.
-                         hexploit (projT1_upcast (ohs None)); intro T. des.
-                         abstr (ohs None) x. destruct x; ss.
-                         unfold upcast in *. simpl_depind. clarify. f_equal. destruct t; ss.
+                         exploit (WTY); ss; et.
                        }
                        { ss. }
                 ** inv STEPSRC; inv H.

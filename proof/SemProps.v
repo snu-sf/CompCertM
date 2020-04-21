@@ -913,3 +913,56 @@ Proof.
   ginduction p; ii; ss.
   rewrite IHp; et. unfold flip. unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec. ss.
 Qed.
+
+Lemma load_owned_heaps_same
+      mss0 mss1
+      (NODUP0: Midx.NoDup (map (fun ms => ModSem.midx ms) mss0))
+      (NODUP1: Midx.NoDup (map (fun ms => ModSem.midx ms) mss1))
+      (INITSAME: forall k v,
+          In (k, v) (map (fun ms => (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms))) mss0)
+          <->
+          In (k, v) (map (fun ms => (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms))) mss1))
+  :
+    load_owned_heaps mss0 = load_owned_heaps mss1
+.
+Proof.
+  clear - NODUP0 NODUP1 INITSAME.
+  unfold load_owned_heaps.
+  apply func_ext1.
+  intro mi.
+  destruct (classic (exists v, <<IN: In (mi, v) (map (fun ms => (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms))) mss0)>>)).
+  { des. dup IN.
+    eapply INITSAME in IN0. destruct mi.
+    - exploit Midx.list_to_set_spec1; try apply IN; eauto.
+      { rewrite map_map in *. ss. }
+      intro T.
+      exploit Midx.list_to_set_spec1; try apply IN0; eauto.
+      { rewrite map_map in *. ss. }
+      intro U.
+      rewrite T. rewrite U. ss.
+    - exploit Midx.list_to_set_spec2; try apply IN; eauto.
+      { rewrite map_map in *. ss. }
+      { instantiate (1:= Any.upcast tt). ii. rewrite in_map_iff in *. des. inv IN1.
+        exploit ModSem.midx_none; et. intro U. clear - U.
+        remember (ModSem.initial_owned_heap x) as X. clear HeqX. revert X. rewrite U in *.
+        ii; des_u; ss.
+      }
+      intro T.
+      exploit Midx.list_to_set_spec2; try apply IN0; eauto.
+      { rewrite map_map in *. ss. }
+      { instantiate (1:= Any.upcast tt). ii. rewrite in_map_iff in *. des. inv IN1.
+        exploit ModSem.midx_none; et. intro U. clear - U.
+        remember (ModSem.initial_owned_heap x) as X. clear HeqX. revert X. rewrite U in *.
+        ii; des_u; ss.
+      }
+      intro U.
+      rewrite T. rewrite U. ss.
+  }
+  { apply not_ex_all_not in H.
+    erewrite Midx.list_to_set_spec3; et; cycle 1.
+    { rewrite map_map in *. ss. }
+    erewrite Midx.list_to_set_spec3; et; cycle 1.
+    { intros ? T. eapply INITSAME in T. eapply H; et. }
+    { rewrite map_map in *. ss. }
+  }
+Qed.

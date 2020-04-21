@@ -335,27 +335,6 @@ Module Midx.
               (fun _ => default)
   .
 
-  Lemma filter_map_app
-        X Y xs0 xs1 (f: X -> option Y)
-    :
-      <<EQ: (filter_map f (xs0 ++ xs1)) = (filter_map f xs0) ++ (filter_map f xs1)>>
-  .
-  Proof.
-    ginduction xs0; ii; ss.
-    des_ifs. rewrite IHxs0. ss.
-  Qed.
-
-  Lemma filter_map_rev
-        X Y xs (f: X -> option Y)
-    :
-      <<EQ: rev (filter_map f xs) = filter_map f (rev xs)>>
-  .
-  Proof.
-    ginduction xs; ii; ss. des_ifs.
-    - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs.
-    - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs. rewrite app_nil_r. ss.
-  Qed.
-
   Lemma NoDup_cons_iff
         hd tl
     :
@@ -459,6 +438,33 @@ Module Midx.
     exploit list_to_set_spec2_aux; et. intro T. des; clarify. rewrite <- T.
     r. f_equal; try refl. apply func_ext2. ii. des_ifs.
   Qed.
+
+  Lemma list_to_set_spec3
+        V (kvs: list (Midx.t * V)) d
+        (UNIQ: NoDup (map fst kvs))
+        k
+        (NOTIN: forall v, ~In (k, v) kvs)
+    :
+      <<IN: (list_to_set kvs d) k = d>>
+  .
+  Proof.
+    (* destruct k. *)
+    (* { eapply list_to_set_spec1; et. } *)
+    unfold list_to_set. rewrite <- fold_left_rev_right. rewrite <- rev_involutive in *.
+    eapply NoDup_rev2 in UNIQ. des. rewrite <- map_rev in UNIQ.
+    assert(NOTIN2: forall v, ~In (k, v) (rev kvs)).
+    { ii. rewrite <- in_rev in *; et. eapply NOTIN; et. }
+    clear NOTIN.
+    fold t in *.
+    abstr (rev kvs) kvs0. clear kvs.
+    { r. ginduction kvs0; ii; ss. des_ifs. unfold update. des_ifs.
+      - ss. exploit NOTIN2; et. ii; ss.
+      - erewrite IHkvs0; et.
+        { ss. eapply NoDup_cons_iff in UNIQ. des; ss. }
+        ii. exploit NOTIN2; et.
+    }
+  Qed.
+
   (* Definition unique (ts: list (option t)): bool := *)
   (*   let ts := (filter_map id ts) in *)
   (*   list_eq_dec string_dec ts (nodup string_dec ts) *)

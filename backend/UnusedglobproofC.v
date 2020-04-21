@@ -1,6 +1,6 @@
 Require Import FSets CoqlibC Maps Ordered Iteration Errors.
 Require Import AST Linking.
-Require Import IntegersC ValuesC Memory Globalenvs Events Smallstep.
+Require Import IntegersC ValuesC MemoryC Globalenvs Events Smallstep.
 Require Import Op Registers RTLC.
 Require Import Unusedglob.
 Require Import sflib.
@@ -15,6 +15,7 @@ Require SoundTop.
 Require Import CtypingC.
 Require Import ModSemProps.
 Require Import JunkBlock.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -36,7 +37,7 @@ Let tge := (SkEnv.revive (SkEnv.project skenv_link_tgt (Mod.sk md_tgt)) tprog).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (Mod.modsem (md_src) skenv_link_src) (Mod.modsem (md_tgt) skenv_link_tgt)
                 (SimSymbDrop.mk (((defs prog) -1 (defs tprog) -1 (Pos.eq_dec tprog.(prog_main))): ident -> Prop) md_src md_tgt)
-                sm_link.
+                sm_link (SimMemOh_default _).
 
 Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
@@ -117,14 +118,17 @@ Proof.
   - (* init bsim *)
     (* destruct sm_arg; ss. clarify. *)
     inv INITTGT. des. inv SAFESRC. destruct args_src, args_tgt; ss.
-    inv SIMARGS; ss. clarify.
+    rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     des. eexists.
 
     exploit SimMemInjC.inject_junk_blocks_tgt; et. intro P; des.
-    exists sm1. esplits; eauto; econs; eauto; ss.
-    + inv TYP. folder. ss. inv TYP0.
+    exists sm1. esplits; eauto.
+    + econs; eauto; ss.
+    + econs; i; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss; try apply MLE.
+    + econs; eauto; ss.
+      inv TYP. folder. ss. inv TYP0.
       exploit find_funct_inject; et. i; des. clarify.
       rpapply match_states_call; ss; eauto.
       { econs; ss; et.
@@ -135,7 +139,7 @@ Proof.
       }
       { eapply inject_list_typify_list; eauto. }
       { eapply MWF0. }
-  - des. inv SAFESRC. inv SIMARGS; ss.
+  - des. inv SAFESRC. rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm_arg)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
     exploit find_funct_inject; et. i; des. clarify. inv TYP.
@@ -157,12 +161,12 @@ Proof.
         inv SIMGE. uge0. des_ifs_safe. exploit defs_rev_inject; eauto. i; des. clarify. des_ifs_safe. des_ifs.
       * clear EXTERNAL. des. ss. uge0. des_ifs_safe. psimpl. inv SIMSKENV. inv SIMSKELINK. ss.
         exploit SIMDEF; et. i; des. clarify. des_ifs. esplits; et.
-    + econs; ss; et.
+    + rr. esplits; et. econs; ss; et. ss.
   - (* after fsim *)
     des. clear_tac.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).
     { eapply sim_skenv_meminj_preserves_globals; et. apply SIMSKENV. }
-    inv AFTERSRC. inv SIMRET; ss. exists (SimMemInj.unlift' sm_arg sm_ret).
+    inv AFTERSRC. rr in SIMRET; des. inv SIMRETV; ss; clarify. exists (SimMemInj.unlift' sm_arg sm_ret).
     inv MATCH; ss. inv MATCHST; ss.
     inv HISTORY. ss. clear_tac.
     esplits; try refl; eauto.
@@ -177,7 +181,7 @@ Proof.
 
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. inv STACKS. inv MCOMPAT; ss.
-    eexists sm0. esplits; ss; eauto; try refl. econs; eauto.
+    eexists sm0. esplits; ss; eauto; try refl. rr. clarify. esplits; et; ss. econs; eauto.
   - (* step *)
     left; i.
     assert(SIMGE: meminj_preserves_globals prog tprog (used_set tprog) ge tge (SimMemInj.inj sm0)).
@@ -189,7 +193,9 @@ Proof.
     hexploit (@step_simulation prog tprog (used_set tprog) skenv_link_src skenv_link_tgt); eauto. i; des.
     esplits; eauto.
     + left. apply plus_one. econs; eauto. eapply modsem2_determinate; eauto.
+    + econs; i; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss; try apply MLE.
     + econs; ss; inv H0; ss; inv MCOMPAT; ss.
+  - esplits; et.
 Unshelve.
   all: ss; try (by econs).
 Qed.
@@ -264,7 +270,7 @@ Proof.
       { clarify. apply DROP0. des_sumbool. ss. }
     + inv TRANSL1. eapply NoDup_norepet; et. rewrite Sk.of_program_defs_names; ss.
     + ii. des. eapply H0. des_sumbool. inv TRANSL1. eauto.
-  - ii. eapply sim_modsem; eauto.
+  - ii. eexists. eapply sim_modsem; eauto.
 Unshelve.
   all: ss.
 Qed.

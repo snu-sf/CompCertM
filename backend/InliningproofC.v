@@ -101,7 +101,7 @@ Proof.
     { fold ge in EXTERNAL. clarify. }
     folder. inv MCOMPAT; ss. clear_tac.
     exploit (fsim_external_funct_inject SIMGE); eauto. { ii; clarify; ss. des; ss. } intro EXTTGT.
-    des_u. esplits; ss; eauto.
+    esplits; ss; eauto.
     + econs; eauto.
       * des. clarify. esplits; eauto.
         (* exploit (sim_internal_funct_inject SIMGE); try apply SIG; et. *)

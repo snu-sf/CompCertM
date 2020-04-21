@@ -103,6 +103,20 @@ Lemma upcast_inj
 .
 Proof. unfold upcast in *. simpl_depind. ss. Qed.
 
+Lemma upcast_projT1
+      A (a: A)
+  :
+    <<EQ: projT1 (upcast a) = A>>
+.
+Proof. ss. Qed.
+
+Lemma upcast_projT2
+      A (a: A)
+  :
+    <<EQ: projT2 (upcast a) = a>>
+.
+Proof. ss. Qed.
+
 (* Global Opaque upcast downcast. *)
 
 (* Goal (upcast tt = upcast 0 -> False). *)
@@ -110,3 +124,11 @@ Proof. unfold upcast in *. simpl_depind. ss. Qed.
 (*   Undo 1. *)
 (*   apply_all_once upcast_inj; des. *)
 (* Abort. *)
+
+Ltac clarify := repeat des_u;
+                repeat match goal with
+                       | [ H: upcast ?A = upcast ?B |- _ ] => apply upcast_inj in H; desH H
+                       end; sflib.clarify.
+
+Global Opaque upcast.
+

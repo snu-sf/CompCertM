@@ -363,7 +363,7 @@ Proof.
       * econs; ii; ss.
   - i. clear HISTORY. ss. rr in SIMRET. des. ss.
     eapply upcast_inj in OHSRC. eapply upcast_inj in OHTGT. des. clarify.
-    destruct sm_ret, retv_src, retv_tgt; inv SIMRETV; des; ss; clarify; eexists (SimMemId.mk _ _); esplits; eauto.
+    destruct sm_ret, retv_src, retv_tgt; inv SIMRETV; des; ss; clarify; eexists (SimMemId.mk _ _); esplits; ss; eauto.
     + rp; et. eapply JMeq.JMeq_eq. etrans; et.
     + econs; ii; ss.
     + assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). rp; eauto with congruence.

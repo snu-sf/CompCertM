@@ -24,6 +24,7 @@ Require Import SemProps.
 
 Set Implicit Arguments.
 
+Local Obligation Tactic := ii; ss; des_ifs_safe.
 
 
 
@@ -99,7 +100,7 @@ Section SimMemOhUnify.
     { exploit smos0.(WTYSND); eauto. i; des. esplits; eauto. clarify. }
   Qed.
   Next Obligation.
-    hexploit smos0.(WTYNONE); et. intro T.
+    hexploit smos0.(WTYNONE); et. intro T. rewrite T in *. clarify.
     ss. des_ifs. rewrite upcast_downcast in *. clarify.
   Qed.
 
@@ -409,6 +410,7 @@ Section SimMemOhUnify.
     Next Obligation.
       rewrite Forall_forall in *. exploit SIM; et. intro T.
       hexploit smos0.(WTYNONE); et. intro U.
+      rewrite U in *. clarify.
       des_ifs.
       - f_equal; ss.
         inv T. exploit MIDXNONE; et. intro V; clarify. rewrite V in *. ss.

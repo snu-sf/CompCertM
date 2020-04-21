@@ -884,7 +884,7 @@ Section ADQSTEP.
             revert oh_tgt. revert U.
             generalize (ModSem.owned_heap ms_tgt). i. clarify.
             revert V.
-            generalize (ModSem.owned_heap ms_tgt0). i. clarify. exists tt. destruct oh_tgt; ss.
+            generalize (ModSem.owned_heap ms_tgt0). i. clarify. exists tt. ss.
         - inv FRAMES. clear H1. inv H2.
           exploit WTY; eauto. intro T. ss. clear - T.
           exploit projT1_upcast; eauto. rewrite T. i; des. eauto.
@@ -897,7 +897,8 @@ Section ADQSTEP.
         unfold Midx.update in *.
         destruct (Midx.eq_dec (ModSem.midx ms_src) (ModSem.midx ms_src0)).
         - clear - OHSRC.
-          unfold upcast in *. simpl_depind. eapply upcast_downcast_iff. unfold upcast. ss.
+          clarify. remember (ModSem.owned_heap ms_src) as X. clear HeqX. clarify.
+          rewrite upcast_downcast. clarify.
         - rewrite <- OHSSRC; try eauto. eapply upcast_downcast_iff. ss.
       }
       {
@@ -907,7 +908,8 @@ Section ADQSTEP.
         unfold Midx.update in *.
         destruct (Midx.eq_dec (ModSem.midx ms_tgt) (ModSem.midx ms_tgt0)).
         - clear - OHTGT.
-          unfold upcast in *. simpl_depind. eapply upcast_downcast_iff. unfold upcast. ss.
+          clarify. remember (ModSem.owned_heap ms_tgt) as X. clear HeqX. clarify.
+          rewrite upcast_downcast. clarify.
         - rewrite <- OHSTGT; try eauto. eapply upcast_downcast_iff. ss.
       }
       { etransitivity; eauto. etrans; eauto. }

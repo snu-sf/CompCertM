@@ -434,9 +434,9 @@ Section PRESERVATION.
       cinv (mge_defs b_src); des_ifs.
     Qed.
 
-    Lemma system_receptive_at st frs:
+    Lemma system_receptive_at st frs ohs:
         receptive_at (sem prog)
-                     (State ((Frame.mk (System.modsem skenv_link) st) :: frs)).
+                     (State ((Frame.mk (System.modsem skenv_link) st) :: frs) ohs).
     Proof.
       econs.
       - i. Local Opaque symbolenv.
@@ -1218,7 +1218,7 @@ Section PRESERVATION.
 
   Inductive match_states : Sem.state -> Asm.state -> nat -> Prop :=
   | match_states_intro
-      j fr frs p init_rs rs_src rs_tgt m_src m_tgt n P
+      j fr frs p init_rs rs_src rs_tgt m_src m_tgt n P ohs
       (AGREE: agree j rs_src rs_tgt)
       (INJ: Mem.inject j m_src m_tgt)
       (MEMWF: Mem.unchanged_on (loc_not_writable m_init) m_init m_src)
@@ -1231,10 +1231,12 @@ Section PRESERVATION.
       (PWF: P <2= ~2 (SimMemInj.valid_blocks m_init /2\ loc_not_writable m_init))
       (WFINJ: inj_range_wf skenv_link j m_src P)
       (ORD: n = if (external_state (local_genv p) (rs_src # PC))
-                then (length frs + 2)%nat else 0%nat):
-      match_states (State (fr::frs)) (Asm.State rs_tgt m_tgt) n
+                then (length frs + 2)%nat else 0%nat)
+      (OHS: forall mi, ohs mi = Any.upcast tt)
+    :
+      match_states (State (fr::frs) ohs) (Asm.State rs_tgt m_tgt) n
   | match_states_call
-      j init_rs frs args fptr_arg vs_arg m_arg m_src rs_tgt m_tgt ofs blk sg P n
+      j init_rs frs args fptr_arg vs_arg m_arg m_src rs_tgt m_tgt ofs blk sg P n ohs
       (CSTYLE: args = Args.Cstyle fptr_arg vs_arg m_arg)
       (STACK: match_stack_call j m_src P init_rs frs)
       (PWF: P <2= ~2 (SimMemInj.valid_blocks m_init /2\ loc_not_writable m_init))
@@ -1253,10 +1255,12 @@ Section PRESERVATION.
       (WFINJ: inj_range_wf skenv_link j m_arg P)
       (RAPTR: <<TPTR: Val.has_type (init_rs RA) Tptr>> /\ <<RADEF: init_rs RA <> Vundef>>)
       (FREE: freed_from m_src m_arg blk (Ptrofs.unsigned ofs) (Ptrofs.unsigned (ofs) + 4 * (size_arguments sg)))
-      (ORD: n = 1%nat):
-      match_states (Callstate args frs) (Asm.State rs_tgt m_tgt) n
+      (ORD: n = 1%nat)
+      (OHS: forall mi, ohs mi = Any.upcast tt)
+    :
+      match_states (Callstate args frs ohs) (Asm.State rs_tgt m_tgt) n
   | match_states_call_asmstyle
-      j init_rs frs args m_src rs_tgt m_tgt P n
+      j init_rs frs args m_src rs_tgt m_tgt P n ohs
       (ASMSTYLE: args = Args.Asmstyle init_rs m_src)
       (STACK: match_stack_call j m_src P init_rs frs)
       (PWF: P <2= ~2 (SimMemInj.valid_blocks m_init /2\ loc_not_writable m_init))
@@ -1268,8 +1272,10 @@ Section PRESERVATION.
                         = Some skd /\ Sk.get_csig skd = None)
       (WFINJ: inj_range_wf skenv_link j m_src P)
       (RAPTR: <<TPTR: Val.has_type (init_rs RA) Tptr>> /\ <<RADEF: init_rs RA <> Vundef>>)
-      (ORD: n = 1%nat):
-      match_states (Callstate args frs) (Asm.State rs_tgt m_tgt) n
+      (ORD: n = 1%nat)
+      (OHS: forall mi, ohs mi = Any.upcast tt)
+    :
+      match_states (Callstate args frs ohs) (Asm.State rs_tgt m_tgt) n
   .
 
   Lemma init_volatile_readonly blk
@@ -1321,13 +1327,13 @@ Section PRESERVATION.
   Qed.
 
   Lemma asm_step_init_simulation
-        args frs st_tgt p n
-        (MTCHST: match_states (Callstate args frs) st_tgt n)
+        args frs ohs0 st_tgt p n
+        (MTCHST: match_states (Callstate args frs ohs0) st_tgt n)
         (OWNER: valid_owner (Args.get_fptr args) p)
         (PROGIN: In (AsmC.module p) prog):
-      exists rs m,
+      exists rs m ohs1,
         (AsmC.initial_frame skenv_link p args (AsmC.mkstate rs (Asm.State rs m))) /\
-        (match_states (State ((Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate rs (Asm.State rs m))) :: frs)) st_tgt 0).
+        (match_states (State ((Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate rs (Asm.State rs m))) :: frs) ohs1) st_tgt 0).
   Proof.
 
     inv MTCHST.
@@ -1426,6 +1432,7 @@ Section PRESERVATION.
       exists (assign_junk_blocks
                 (callee_initial_mem' blk ofs m_src m_arg
                                      (fn_sig fd) (typify_list vs_arg (sig_args (fn_sig fd)))) n).
+      eexists.
 
       assert (UNCH: Mem.unchanged_on
                       (fun (b : Values.block) (ofs0 : Z) =>
@@ -1666,7 +1673,8 @@ Section PRESERVATION.
           erewrite <- EQ in Heq0.
           + unfold callee_initial_reg in *. ss. clear JUNKED. des_ifs.
             unfold Genv.find_funct in FINDF. clear - Heq2 FINDF. des_ifs.
-          + clear. ii. ss. des; clarify. } }
+          + clear. ii. ss. des; clarify.
+        - ii. ss. } }
 
     (* asmstyle function *)
     { dup OWNER. inv OWNER.
@@ -1674,7 +1682,7 @@ Section PRESERVATION.
       destruct (callee_initial_junk' init_rs m_src.(Mem.nextblock) j [RA])
         as [[rs_callee n] j_callee] eqn:JUNKED.
       exploit callee_initial_junk_spec; eauto. i. des.
-      exists rs_callee. exists (assign_junk_blocks m_src n).
+      exists rs_callee. exists (assign_junk_blocks m_src n). eexists.
       splits.
       - dup FINDF. eapply local_global_consistent in FINDF; eauto. econs 2; ss.
         + rewrite <- FINDF. unfold Sk.get_csig in *. des_ifs.
@@ -1719,7 +1727,7 @@ Section PRESERVATION.
 (** ********************* transf initial final  *********************************)
 
   Lemma transf_initial_states:
-    forall st1, Sem.initial_state prog st1 ->
+    forall st1, Sem.initial_state prog ge st1 ->
             exists st2, Asm.initial_state tprog st2 /\ match_states st1 st2 1.
   Proof.
     generalize TGT_INIT_MEM.
@@ -1756,6 +1764,33 @@ Section PRESERVATION.
           - clarify. }
         { econs 1; eauto. }
       + clarify. apply init_mem_freed_from.
+      + ii. unfold load_owned_heaps.
+        destruct (classic (exists v, In (mi, v)
+             (map (fun ms => (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms)))
+                  (System.modsem skenv_link :: load_modsems prog skenv_link)))).
+        * des.
+          destruct mi.
+          { exploit Midx.list_to_set_spec1; eauto.
+            { rewrite map_map; ss. }
+            intro T. rewrite T. clear T. ss. rewrite in_map_iff in *. des; ss. clarify. ss.
+            unfold load_modsems, flip in *. rewrite in_map_iff in *. des; ss. clarify.
+            subst prog. rewrite in_map_iff in *. des; clarify.
+          }
+          { exploit Midx.list_to_set_spec2; eauto.
+            { rewrite map_map; ss. }
+            { ii. rewrite in_map_iff in *. des. clarify. ss. instantiate (1:= Any.upcast tt). clear - H3.
+              exploit ModSem.midx_none; et. intro T. remember (ModSem.initial_owned_heap x) as X.
+              clear HeqX. revert X. rewrite T. i. des_u. ss.
+            }
+            intro T. rewrite T. clear T. ss. rewrite in_map_iff in *. des; ss. clarify. ss.
+            unfold load_modsems, flip in *. rewrite in_map_iff in *. des; ss. clarify.
+            subst prog. rewrite in_map_iff in *. des; clarify.
+          }
+        *
+          { eapply not_ex_all_not in H.
+            exploit Midx.list_to_set_spec3; eauto.
+            { rewrite map_map; ss. }
+          }
   Qed.
 
   Lemma transf_final_states:
@@ -1777,15 +1812,15 @@ Section PRESERVATION.
 (** ********************* transf step  *********************************)
 
   Lemma asm_step_internal_simulation
-        st_src0 st_src1 st_tgt0 tr frs p init_rs n0
+        st_src0 st_src1 st_tgt0 tr frs p init_rs n0 ohs0
         (STEP: Asm.step skenv_link (local_genv p) st_src0 tr st_src1)
         (PROGIN: In (AsmC.module p) prog)
         (MTCHST: match_states (State ((Frame.mk (AsmC.modsem skenv_link p)
-                                                (AsmC.mkstate init_rs st_src0))::frs)) st_tgt0 n0):
-      exists st_tgt1 n1,
+                                                (AsmC.mkstate init_rs st_src0))::frs) ohs0) st_tgt0 n0):
+      exists st_tgt1 n1 ohs1,
         Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
         match_states (State ((Frame.mk (AsmC.modsem skenv_link p)
-                                       (AsmC.mkstate init_rs st_src1))::frs)) st_tgt1 n1.
+                                       (AsmC.mkstate init_rs st_src1))::frs) ohs1) st_tgt1 n1.
   Proof.
     inv MTCHST. dup FRAME. dup FRAME.
     apply asm_frame_inj in FRAME0.
@@ -1860,17 +1895,18 @@ Section PRESERVATION.
   Qed.
 
   Lemma step_internal_simulation
-        fr0 frs tr st0 st_tgt0 n0
+        fr0 frs tr st0 st_tgt0 n0 ohs0
         (STEP: fr0.(Frame.ms).(ModSem.step) skenv_link fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
-        (MTCHST: match_states (State (fr0 :: frs)) st_tgt0 n0):
-      exists st_tgt1 n1, Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
-                     match_states (State (((Frame.update_st fr0) st0) :: frs)) st_tgt1 n1.
+        (MTCHST: match_states (State (fr0 :: frs) ohs0) st_tgt0 n0):
+      exists st_tgt1 n1 ohs1, Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
+                     match_states (State (((Frame.update_st fr0) st0) :: frs) ohs1) st_tgt1 n1.
   Proof.
     inv MTCHST. inv STEP.
     exploit asm_step_internal_simulation; ss; eauto.
     - econs; eauto.
     - ii. des. esplits; ss; eauto.
       destruct st0; ss; clarify. eassumption.
+    Unshelve. all: ss.
   Qed.
 
   Lemma Mem_unchanged_on_strengthen P m0 m1:
@@ -1882,11 +1918,11 @@ Section PRESERVATION.
   Qed.
 
   Lemma step_return_simulation
-        fr0 fr1 frs retv st0 st_tgt n0
-        (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) retv)
-        (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) retv st0)
-        (MTCHST: match_states (State (fr0 :: fr1 :: frs)) st_tgt n0):
-      exists n1, match_states (State (((Frame.update_st fr1) st0) :: frs)) st_tgt n1 /\ (n1 < n0)%nat.
+        fr0 fr1 frs retv st0 st_tgt n0 oh0 oh1 ohs0
+        (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) oh0 retv)
+        (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) oh1 retv st0)
+        (MTCHST: match_states (State (fr0 :: fr1 :: frs) ohs0) st_tgt n0):
+      exists n1 ohs1, match_states (State (((Frame.update_st fr1) st0) :: frs) ohs1) st_tgt n1 /\ (n1 < n0)%nat.
   Proof.
     inv MTCHST. inv STACK.
     { ss. inv FINAL; cycle 1.
@@ -1934,13 +1970,14 @@ Section PRESERVATION.
   Qed.
 
   Lemma step_call_simulation
-        fr0 frs args st_tgt n
-        (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) args)
-        (MTCHST: match_states (State (fr0 :: frs)) st_tgt n):
-      match_states (Callstate args (fr0 :: frs)) st_tgt 1%nat.
+        fr0 frs args st_tgt n oh ohs0
+        (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) oh args)
+        (MTCHST: match_states (State (fr0 :: frs) ohs0) st_tgt n):
+      exists ohs1, match_states (Callstate args (fr0 :: frs) ohs1) st_tgt 1%nat.
   Proof.
 
     inv MTCHST. ss. inv AT.
+    eexists.
     { econstructor 2 with (P := (P \2/ brange blk1 (Ptrofs.unsigned ofs) (Ptrofs.unsigned ofs + 4 * size_arguments sg))); ss; eauto.
       - econs; ss; eauto.
       - intros blk ofs0. i. des; eauto. ii.
@@ -1990,8 +2027,9 @@ Section PRESERVATION.
               - destruct IN. clarify. }
           * econs 1; eauto. destruct (WFINJ blk); clarify.
             ii. des; eauto. clarify. unfold brange in *. des. clarify.
-      - eapply free_freed_from; eauto. }
-    { econs 3; eauto. econs 3; eauto. }
+      - eapply free_freed_from; eauto.
+    }
+    { eexists. econs 3; eauto. econs 3; eauto. }
   Qed.
 
   Lemma below_block_is_volatile F V (ge': Genv.t F V) b
@@ -2004,21 +2042,32 @@ Section PRESERVATION.
   Qed.
 
   Lemma step_init_simulation
-        args frs st_tgt p n
-        (MTCHST: match_states (Callstate args frs) st_tgt n)
+        args frs st_tgt p n ohs0
+        (MTCHST: match_states (Callstate args frs ohs0) st_tgt n)
         (OWNER: valid_owner (Args.get_fptr args) p)
         (PROGIN: In (AsmC.module p) prog):
-      exists st_src, step ge (Callstate args frs) E0 st_src /\ match_states st_src st_tgt 0.
+      exists st_src ohs1, step ge (Callstate args frs ohs1) E0 st_src /\ match_states st_src st_tgt 0 /\
+                          ohs0 = ohs1.
   Proof.
     exploit asm_step_init_simulation; eauto. inv OWNER.
     i. des. esplits; try eassumption.
-    econs; eauto.
+    - econs; eauto.
+      { ss. inv H0. et. }
+    - apply func_ext1; et. ii. inv H0; inv MTCHST; et; rewrite OHS; rewrite OHS0; ss.
   Qed.
 
-  Lemma at_external_external p st frs st_tgt n args
+  Lemma func_arg
+        A B (f g: A -> B)
+        (EQ: f = g)
+    :
+      forall x, f x = g x
+  .
+  Proof. ii. clarify. Qed.
+
+  Lemma at_external_external p st frs st_tgt n args ohs0
         (MTCHST: match_states
                    (State
-                      ((Frame.mk (AsmC.modsem skenv_link p) st)::frs))
+                      ((Frame.mk (AsmC.modsem skenv_link p) st)::frs) ohs0)
                    st_tgt n)
         (ATEXTERNAL: at_external skenv_link p st args):
     (1 < n)%nat.
@@ -2033,24 +2082,41 @@ Section PRESERVATION.
         unfold external_state. des_ifs; try omega.
         unfold local_genv, fundef in *. ss. des. des_ifs.
     - apply f_equal with (f := Frame.ms) in FRAME. ss.
-      inv FRAME. apply Eqdep.EqdepTheory.inj_pair2 in H0. auto.
+      inv FRAME. simpl_depind. apply func_ext1. intro x. clear - H0. do 2 eapply func_arg in H0; ss. et.
   Qed.
 
-  Lemma normal_state_fsim_step frs st_src1 st_tgt0 t n0
-        (MTCHST: match_states (State frs) st_tgt0 n0)
-        (STEP: step ge (State frs) t st_src1):
+  Lemma normal_state_fsim_step frs st_src1 st_tgt0 t n0 ohs0
+        (MTCHST: match_states (State frs ohs0) st_tgt0 n0)
+        (STEP: step ge (State frs ohs0) t st_src1):
       (exists st_tgt1 n1, Asm.step skenv_link tge st_tgt0 t st_tgt1 /\ match_states st_src1 st_tgt1 n1) \/
       (exists n1, match_states st_src1 st_tgt0 n1 /\ n1 < n0)%nat /\ (t = E0).
   Proof.
     inv STEP.
     - right. exploit step_call_simulation; eauto.
-      i. esplits; eauto.
-      inv MTCHST; ss.
-      exploit at_external_external; eauto.
-      econs; try eassumption; ss.
+      i. des. esplits; eauto.
+      + rp; et. f_equal.
+        apply func_ext1. intro mi.
+        assert(T: ohs1 mi = Any.upcast tt).
+        { inv H; ss. }
+        rewrite T. inv MTCHST. ss. unfold Midx.update. des_ifs. des_u; ss.
+      + inv MTCHST; ss.
+        exploit at_external_external; eauto.
+        econs; try eassumption; ss.
     - left. exploit step_internal_simulation; eauto.
-      inv MTCHST. ss.
+      { inv MTCHST. ss. rp; et. }
+      i; des. esplits; et.
+      rp; et. f_equal.
+      apply func_ext1. intro mi.
+      assert(T: ohs1 mi = Any.upcast tt).
+      { inv H0; ss. }
+      rewrite T. inv MTCHST. ss.
     - right. exploit step_return_simulation; eauto.
+      i; des. esplits; et.
+      rp; et. f_equal.
+      apply func_ext1. intro mi.
+      assert(T: ohs1 mi = Any.upcast tt).
+      { inv H; ss. }
+      rewrite T. inv MTCHST. ss. unfold Midx.update. des_ifs. repeat des_u; ss. destruct oh0; ss.
   Qed.
 
   Lemma owner_asm_or_system fptr ms
@@ -2080,8 +2146,8 @@ Section PRESERVATION.
       rewrite LINK_SK; eauto.
   Qed.
 
-  Lemma init_case st args frs fptr
-        (STATE: st = Callstate args frs)
+  Lemma init_case st args frs fptr ohs
+        (STATE: st = Callstate args frs ohs)
         (FPTR: fptr = (Args.get_fptr args)):
       (<<ASMMOD: exists p, valid_owner fptr p>>) \/
       (<<SYSMOD: ge.(Ge.find_fptr_owner)
@@ -2098,6 +2164,7 @@ Section PRESERVATION.
       + inv H0. apply H.
         revert MSFIND st_init INIT. intros MSFIND.
         ss. rewrite LINK_SK in *.
+        generalize oh. clear oh OH.
         rewrite <- (find_fptr_owner_determ OWNER MSFIND) in *. i.
         inv INIT. econs; eauto.
         exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
@@ -2112,14 +2179,14 @@ Section PRESERVATION.
       eapply NOOWNER. esplits; et.
   Qed.
 
-  Lemma call_step_noevent ge' args frs st1 tr
-        (STEP: step ge' (Callstate args frs) tr st1):
+  Lemma call_step_noevent ge' args frs st1 tr ohs
+        (STEP: step ge' (Callstate args frs ohs) tr st1):
       E0 = tr.
   Proof. inv STEP. auto. Qed.
 
   Lemma syscall_receptive
-        st_src0 st_src1 st_tgt0 args frs fptr tr0 n0
-        (STATE: st_src0 = Callstate args frs)
+        st_src0 st_src1 st_tgt0 args frs fptr tr0 n0 ohs
+        (STATE: st_src0 = Callstate args frs ohs)
         (FPTR: fptr = (Args.get_fptr args))
         (SYSMOD: ge.(Ge.find_fptr_owner)
                       fptr (System.modsem skenv_link))
@@ -2133,8 +2200,8 @@ Section PRESERVATION.
   Qed.
 
   Lemma syscall_simulation
-        st_src0 st_src1 st_src2 st_tgt0 args frs fptr tr0 tr1 n0
-        (STATE: st_src0 = Callstate args frs)
+        st_src0 st_src1 st_src2 st_tgt0 args frs fptr tr0 tr1 n0 ohs
+        (STATE: st_src0 = Callstate args frs ohs)
         (FPTR: fptr = (Args.get_fptr args))
         (SYSMOD: ge.(Ge.find_fptr_owner)
                       fptr (System.modsem skenv_link))
@@ -2251,6 +2318,7 @@ Section PRESERVATION.
         * tauto.
         * ss.
         * ss.
+        * ii. unfold Midx.update. des_ifs.
         * unfold set_pair. des_ifs; repeat (eapply agree_step; eauto).
           -- unfold regset_after_external.
              intros []; des_ifs; try econs; eauto.
@@ -2275,8 +2343,8 @@ Section PRESERVATION.
       + ss. des_ifs; omega.
   Qed.
 
-  Lemma match_states_call_ord_1 args frs st_tgt n
-        (MTCHST: match_states (Callstate args frs) st_tgt n):
+  Lemma match_states_call_ord_1 args frs ohs st_tgt n
+        (MTCHST: match_states (Callstate args frs ohs) st_tgt n):
       1%nat = n.
   Proof. inv MTCHST; auto. Qed.
 
@@ -2303,12 +2371,12 @@ Section PRESERVATION.
   Proof.
     pcofix CIH. i. pfold. destruct st_src.
     - exploit init_case; ss.
-      instantiate (1:=frs). instantiate (2:=args). i. des.
+      instantiate (2:=frs). instantiate (3:=args). i. des.
       + destruct (match_states_call_ord_1 MTCHST).
         right. econs; i.
         * exploit step_init_simulation; try eassumption.
           { inv ASMMOD. eauto. }
-          i. des. econs 2; ss; eauto. rewrite LINK_SK.
+          i. des. clarify. econs 2; ss; eauto. rewrite LINK_SK.
           split; auto. apply star_one. eauto.
       + left. right. econs. econs 1; et; cycle 1.
         { i. exfalso. inv FINALSRC. }
@@ -2367,6 +2435,7 @@ Section PRESERVATION.
     econs; try apply preservation_top; ss; [apply lt_wf| |i; apply symb_preserved].
     econs. i.
     exploit (transf_initial_states); eauto.
+    { ss. des_ifs. et. }
     i. des. esplits. econs; eauto.
     - i. inv INIT0. inv INIT1. clarify.
     - apply match_state_xsim; eauto.

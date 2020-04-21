@@ -17,6 +17,9 @@ Require Import Any.
 Set Implicit Arguments.
 
 
+
+Local Transparent upcast.
+
 Section PRSV.
 
   Local Open Scope pair_scope.

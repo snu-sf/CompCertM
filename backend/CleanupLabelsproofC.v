@@ -13,6 +13,7 @@ Require SimMemId.
 Require SoundTop.
 Require Import LiftDummy.
 Require Import JunkBlock.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -34,7 +35,7 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog).
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link (SimMemOh_default _).
 
 Inductive match_states
           (idx: nat) (st_src0 st_tgt0: Linear.state) (sm0: SimMem.t): Prop :=
@@ -58,10 +59,11 @@ Proof.
   - instantiate (1:= Nat.lt). apply lt_wf.
   - eapply SoundTop.sound_state_local_preservation.
   - (* init bsim *)
-    inv INITTGT. destruct sm_arg; ss. clarify. inv SIMARGS; ss. clarify.
+    inv INITTGT. destruct sm_arg; ss. clarify. rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des. folder.
     exploit (bsim_internal_funct_id SIMGE); et. i; des.
     destruct fd_src; ss. eexists. eexists (SimMemId.mk _ _). esplits; cycle 2; ss.
+    + econs; ii; ss.
     + econs; eauto; ss.
       * inv TYP. rpapply match_states_call; try eapply Val.lessdef_refl.
         { instantiate (1:= [Linear.dummy_stack (fn_sig fd) ls_init]). econs; eauto; econs; et. econs. inv H.
@@ -72,7 +74,7 @@ Proof.
       rpapply LinearC.initial_frame_intro; revgoals; [ f_equal; et | .. ]; eauto with congruence.
       * folder. rewrite <- SGEQ. ss.
   - (* init progress *)
-    des. inv SAFESRC. inv SIMARGS; ss.
+    des. inv SAFESRC. rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
     exploit (Genv.find_funct_match_genv SIMGE); eauto. i; des. ss. folder. des_ifs. inv TYP.
     unfold transf_function in *. des_ifs.
@@ -92,13 +94,14 @@ Proof.
         intro GE. apply (fsim_external_funct_id GE); ss.
         folder. inv H6; ss.
       * des. esplits; eauto. eapply SimSymb.simskenv_func_fsim; eauto; ss. inv H6; et. inv SIG.
-    + econs; ss; eauto.
+    + rr. esplits; ss; et. econs; ss; eauto.
       * inv H6; et. des. inv SIG.
       * instantiate (1:= SimMemId.mk _ _). ss.
       * ss.
+    + econs; ii; ss.
     + ss.
   - (* after fsim *)
-    inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
+    inv AFTERSRC. rr in SIMRET; des. inv SIMRETV; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto.
@@ -109,15 +112,16 @@ Proof.
         }
       * clear - DUMMYTGT. unfold strong_wf_tgt in *. des. destruct ts; ss. unfold dummy_stack, dummy_function in *.
         des_ifs; ss; clarify; esplits; et.
+    + econs; ii; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv H3; ss. inv H4; ss. destruct sm0; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto; try econs; eauto; ss.
-    rr in DUMMYTGT. des. ss. clarify.
-    assert(sg_init = sg_init0).
-    { inv H1; ss. }
-    clarify.
-    (* repeat f_equal; et. *)
+    + rr in DUMMYTGT. des. ss. clarify.
+      assert(sg_init = sg_init0).
+      { inv H1; ss. }
+      clarify.
+    + econs; et. ss.
   - left; i. esplits; eauto.
     { apply LinearC.modsem_receptive; et. }
     inv MATCH. ii. r in STEPSRC; des. hexploit (@transf_step_correct prog skenv_link skenv_link); eauto.
@@ -136,11 +140,14 @@ Proof.
       intro TT; des. esplits; eauto.
       * left. eapply spread_dplus; eauto.
         { eapply modsem_determinate; eauto. }
+      * econs; ii; ss.
       * instantiate (1:= SimMemId.mk _ _). econs; ss.
     + clarify. esplits; et.
       * right. esplits; et.
         { eapply star_refl. }
+      * econs; ii; ss.
       * instantiate (1:= SimMemId.mk _ _). econs; ss.
+  - esplits; et.
 
 Unshelve.
   all: ss; try (by econs). apply msp.
@@ -164,7 +171,7 @@ Proof.
     ii. destruct f1; ss.
     + clarify. right. esplits; eauto.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
 Unshelve.
   all: ss.
 Qed.

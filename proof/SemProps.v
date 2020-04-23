@@ -787,6 +787,27 @@ Proof.
   i; des. esplits; et.
 Qed.
 
+(** TODO: Put in SkEnv **)
+Lemma load_skenv_wf_mem
+      sk_link m_init
+      (WF: Sk.wf sk_link)
+      (LOADM: Sk.load_mem sk_link = Some m_init):
+    let skenv_link := Sk.load_skenv sk_link in
+    <<WFM: forall sk (IN: linkorder sk sk_link) (WF: Sk.wf sk), SkEnv.wf_mem skenv_link sk m_init>>.
+Proof.
+  econs. i. unfold link_sk in *.
+  rename IN into LO.
+
+  { eapply link_load_skenv_wf_sem_mult; et; try eapply WF; try refl.
+    { eapply WF0; et. }
+    { i. uge. ss. rewrite PTree.gempty. ss. }
+    { econs; et. i. exfalso. clear - LOAD0. eapply Mem.loadbytes_range_perm in LOAD0.
+      exploit (LOAD0 _ofs_fr0). omega. eapply Mem.perm_empty.
+    }
+    { rr. ii. exfalso. clear - H. unfold Genv.find_def in H. rewrite PTree.gempty in H. des_ifs. }
+  }
+Qed.
+
 Lemma link_load_skenv_wf_mem
       p sk_link m_init
       (LINK: link_sk p = Some sk_link)
@@ -795,32 +816,10 @@ Lemma link_load_skenv_wf_mem
     let skenv_link := Sk.load_skenv sk_link in
     <<WFM: forall md (IN: In md p), SkEnv.wf_mem skenv_link md m_init>>.
 Proof.
-  econs. i. unfold link_sk in *.
-  hexploit (link_list_linkorder _ LINK); et. intro LO. des.
-  rewrite Forall_forall in *. exploit LO; et.
-  { rewrite in_map_iff. esplits; et. }
-  clear LO. intro LO.
-  exploit WF; et. clear WF. intro WF; des.
-  assert(NODUP: NoDup (prog_defs_names sk_link)).
-  { clear - LINK IN WF. destruct p; ss. destruct p; ss.
-    - des; ss. clarify. unfold link_list in *. des_ifs. ss. clarify. apply WF.
-    - clear IN WF.
-      exploit (link_list_cons_inv _ LINK); et.
-      { ss. }
-      i; des. clear - HD.
-      Local Transparent Linker_prog. ss. Local Opaque Linker_prog.
-      unfold link_prog in *. des_ifs. apply NoDup_norepet. unfold prog_defs_names. apply PTree.elements_keys_norepet.
-  }
-  clear LINK IN.
-
-
-  { eapply link_load_skenv_wf_sem_mult; et; try eapply WF; try refl.
-    { i. uge. ss. rewrite PTree.gempty. ss. }
-    { econs; et. i. exfalso. clear - LOAD0. eapply Mem.loadbytes_range_perm in LOAD0.
-      exploit (LOAD0 _ofs_fr0). omega. eapply Mem.perm_empty.
-    }
-    { rr. ii. exfalso. clear - H. unfold Genv.find_def in H. rewrite PTree.gempty in H. des_ifs. }
-  }
+  ii. eapply link_load_skenv_wf_mem_aux; et.
+  { eapply link_list_preserves_wf_sk; et. }
+  { unfold link_sk in *. hexploit (link_list_linkorder _ LINK); et. intro T; des.
+    rewrite Forall_forall in T. eapply T; et. rewrite in_map_iff. esplits; et. }
 Qed.
 
 End WFMEM.

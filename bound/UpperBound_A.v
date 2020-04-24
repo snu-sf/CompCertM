@@ -9,6 +9,7 @@ Require Import Equality.
 Require Import CtypingC LinkingC2.
 Require Import UpperBound_AExtra.
 Require Import SemTyping.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -889,6 +890,8 @@ Section PRESERVATION.
         - econs; ss; cycle 1.
           i. unsguard LINKSRC. rewrite LINKSRC in STEPSRC.
           inv STEPSRC; ss; ModSem.tac.
+          set (existT (fun x => x) _ oh) as X.
+          set (Midx.update ohs (ModSem.midx (Frame.ms fr_tgt)) X) as Y.
           esplits; eauto.
           { left. split; cycle 1.
             (* receptiveness *)
@@ -914,9 +917,13 @@ Section PRESERVATION.
 
             inv STK; ss.
             { des_ifs. econs. et.
-              (******************** TODO: BELOW LINE BREAKS QED ***************************)
-              refl.
-              (****************************************************************************)
+              (******************** TODO: Doing "refl" here breaks QED ***************************)
+              (* Is it a bug in Coq? or there is a resaon? *)
+              (* If there is a reason, it would be an interesting problem to prevent it... *)
+              (* refl. *)
+              instantiate (1:= Y).
+              subst X Y. refl.
+              (***********************************************************************************)
             }
             rewrite LINKTGT. inv HD; ss. des. clear LINKSRC0. clarify. ss.
             econs; ss; et.
@@ -951,7 +958,8 @@ Section PRESERVATION.
                 exploit prog_find_defs_revive_rev; eauto. i. des.
                 unfold fundef in *. rewrite Heq in H1. clarify.
             - rr in H. des. inv H. ss. }
-          { right. eapply CIH; et. rp; [econs|..]; et. eapply match_stacks_midx in STK; et. congruence. }
+          { right. eapply CIH; et. rp; [econs|..]; et. eapply match_stacks_midx in STK; et.
+            subst X Y. f_equal. des. congruence. }
           
         (* src step *)
         - inv STK; ss.
@@ -1189,7 +1197,7 @@ Section PRESERVATION.
                   + i. inv FINAL.
                   + ii. inv H; inv H3. ss; omega.
                     eapply external_call_trace_length; eauto. }
-              rewrite LINKTGT in *. instantiate (2:= oh). rpapply step_internal; ss; et. rr. right.
+              rewrite LINKTGT in *. instantiate (2:= tt). rpapply step_internal; ss; et. rr. right.
               econs; ss; et.
               - inv FINDMS. ss. destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
                 rewrite Genv.find_funct_ptr_iff in *. exploit prog_def_same. eauto. i. des_safe.
@@ -1198,11 +1206,11 @@ Section PRESERVATION.
               - unguardH LINKSRC. eapply preservation_alloc; eauto.
               - unguardH LINKSRC. eapply preservation_bind_param; eauto. } }
           { right. eapply CIH; et.
-            assert(U: (Midx.update ohs None (Any.upcast oh)) = ohs).
+            assert(U: (Midx.update ohs None (upcast tt)) = ohs).
             { apply func_ext1. intro mi. unfold Midx.update. des_ifs.
               exploit SSTGT; et. { eapply star_refl. } clear SSTGT. intro SSTGT. rr in SSTGT. des_safe.
-              ss. des_ifs.
-              rewrite WTYNONE; et. des_u; ss.
+              ss. des_ifs. des.
+              rewrite WTYNONE; et. ss.
             }
             rewrite U.
             ss. econs; ss; et.
@@ -1668,7 +1676,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           { instantiate (2:=i). instantiate (1:=fd0). ss. } i. inv H. eauto. }
         Unshelve.
         all: ss.
-  Admitted.
+  Qed.
 
   End WTMODULE.
 

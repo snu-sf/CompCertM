@@ -5,108 +5,12 @@ Require Import ModSem AsmregsC GlobalenvsC MemoryC ASTC.
 Require Import Skeleton SimModSemSR SimMem SimSymb.
 Require Import Sound Preservation.
 Require Import ModSemProps.
-Require Import Any.
+Require Import Any Cast.
 
 Set Implicit Arguments.
 
 
 
-
-
-
-Require Import Program.
-Class LeibEq (A B: Type) := { leibeq: A = B }.
-Arguments LeibEq: clear implicits.
-Definition cast_sigT (a: {ty: Type & ty}) (B: Type) `{LeibEq (projT1 a) B}: B.
-  rewrite <- leibeq. destruct a. simpl. auto.
-Defined.
-(* Global Program Instance LeibEq_rev (A B: Type) `{LeibEq A B}: LeibEq B A. *)
-(* Next Obligation. rewrite leibeq. eauto. Defined. *)
-Program Definition LeibEq_rev (A B: Type) (LEQ: LeibEq A B): LeibEq B A.
-Proof. rewrite leibeq. econstructor. refl. Defined.
-Definition cast (A B: Type) `{LeibEq A B} (a: A): B. rewrite <- leibeq. apply a. Defined.
-Global Program Instance LeibEq_refl (A: Type): LeibEq A A.
-
-Lemma cast_sigT_existT
-      (x: { ty: Type & ty }) X
-      (TY: LeibEq (projT1 x) X)
-  :
-    x = existT id _ (@cast_sigT x X TY)
-.
-Proof.
-  destruct x. destruct TY. ss. clarify.
-Qed.
-
-Lemma cast_sigT_eq
-      Y (x: {ty: Type & ty}) (y: Y)
-      (JMEQ: projT2 x ~= y)
-      (LEIBEQ: LeibEq (projT1 x) Y)
-  :
-    cast_sigT x = y
-.
-Proof.
-  unfold cast_sigT. unfold eq_rect_r. ss. des_ifs. ss.
-  unfold eq_rect. des_ifs.
-Qed.
-
-Lemma cast_sigT_proj
-      Y (x: {ty: Type & ty}) (y: Y)
-      (LEIBEQ: LeibEq (projT1 x) Y)
-      (EQ: cast_sigT x = y)
-  :
-      <<JMEQ: projT2 x ~= y>>
-.
-Proof.
-  unfold cast_sigT in *. ss. des_ifs. ss. unfold eq_rect. des_ifs.
-Qed.
-
-Lemma sigT_eta
-      (a: { A: Type & A})
-      (b: { B: Type & B})
-      (EQTY: projT1 a = projT1 b)
-      (EQVAL: projT2 a ~= projT2 b)
-  :
-    a = b
-.
-Proof.
-  destruct a, b; ss. clarify. apply JMeq_eq in EQVAL. clarify.
-Qed.
-
-Lemma cast_elim
-      A LEQ (a: A)
-  :
-    <<EQ: (@cast A A LEQ a) = a>>
-.
-Proof.
-  r. destruct LEQ.
-  unfold cast. ss.
-  unfold eq_rect. dependent destruction leibeq0. ss.
-Qed.
-
-
-
-
-Lemma upcast_eta
-      A B a b
-      (EQTY: A = B)
-      (EQVAL: a ~= b)
-  :
-    <<EQ: @upcast A a = @upcast B b>>
-.
-Proof.
-  clarify. eapply JMeq_eq in EQVAL. clarify.
-Qed.
-
-Lemma unit_JMeq
-      X (x: X)
-      (TY: X = unit)
-  :
-    <<EQ: x ~= tt>>
-.
-Proof.
-  revert x. rewrite TY.
-  ii. clarify.
-Qed.
 
 
 

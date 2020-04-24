@@ -117,6 +117,30 @@ Lemma upcast_projT2
 .
 Proof. ss. Qed.
 
+Lemma Any_eta
+      (a0 a1: Any)
+      (EQTY: projT1 a0 = projT1 a1)
+      (EQVAL: projT2 a0 ~= projT2 a1)
+  :
+    <<EQ: a0 = a1>>
+.
+Proof.
+  destruct a0, a1; ss.
+  clarify. eapply JMeq_eq in EQVAL. clarify.
+Qed.
+
+Lemma upcast_eta
+      A B a b
+      (EQTY: A = B)
+      (EQVAL: a ~= b)
+  :
+    <<EQ: @upcast A a = @upcast B b>>
+.
+Proof.
+  eapply Any_eta; ss.
+Qed.
+
+
 (* Global Opaque upcast downcast. *)
 
 (* Goal (upcast tt = upcast 0 -> False). *)

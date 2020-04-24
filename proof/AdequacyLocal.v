@@ -772,40 +772,40 @@ Section ADQSTEP.
           { ss. etrans; eauto. rewrite OHSTGT; et. eapply UNCH; eauto with congruence. }
 
     - (* bstep *)
-      admit "SOMEHOW...".
-
-    (* - (* bstep *) *)
-    (*   right. ss. hexploit1 SU0; ss. *)
-    (*   assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src)) *)
-    (*                    -> safe_modsem ms_src lst_src). *)
-    (*   { eapply safe_implies_safe_modsem; eauto. } *)
-    (*   econs; ss; eauto. *)
-    (*   i. exploit SU0; eauto. intro T. clear SU0. inv T. *)
-    (*   + econs 1; eauto; revgoals. *)
-    (*     { ii. des. clear - FINALTGT PROGRESS. inv FINALTGT. ss. ModSem.tac. } *)
-    (*     { ii. right. des. esplits; eauto. eapply lift_step; eauto. } *)
-    (*     ii. inv STEPTGT; ModSem.tac. ss. exploit STEP; eauto. i; des_safe. *)
-    (*     exists i1, (State ((Frame.mk ms_src st_src1) :: tail_src)). *)
-    (*     esplits; eauto. *)
-    (*     { des. *)
-    (*       - left. eapply lift_plus; eauto. *)
-    (*       - right. esplits; eauto. eapply lift_star; eauto. *)
-    (*     } *)
-    (*     pclearbot. right. eapply CIH with (sm0 := sm1); eauto. *)
-    (*     { unsguard SUST. des_safe. destruct H. *)
-    (*       - eapply sound_progress_plus; eauto. eapply lift_plus; eauto. *)
-    (*       - des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto. *)
-    (*     } *)
-    (*     econs; eauto. *)
-    (*     { folder. ss; des_ifs. eapply mfuture_preserves_sim_geU; eauto. apply rtc_once; eauto. } *)
-    (*     etransitivity; eauto. *)
-    (*   + des. pclearbot. econs 2. *)
-    (*     { esplits; eauto. eapply lift_star; eauto. } *)
-    (*     right. eapply CIH; eauto. *)
-    (*     { unsguard SUST. des_safe. eapply sound_progress_star; eauto. eapply lift_star; eauto. } *)
-    (*     instantiate (1:=sm1). econs; eauto. *)
-    (*     { folder. ss; des_ifs. eapply mfuture_preserves_sim_geU; eauto. eapply rtc_once; eauto. } *)
-    (*     { etrans; eauto. } *)
+      right. ss. hexploit1 SU0; ss.
+      assert(SAFESTEP: safe sem_src (State ({| Frame.ms := ms_src; Frame.st := lst_src |} :: tail_src) ohs_src0)
+                       -> safe_modsem ms_src lst_src).
+      { eapply safe_implies_safe_modsem; eauto. }
+      econs; ss; eauto.
+      i. exploit SU0; eauto. intro T. clear SU0. inv T.
+      + econs 1; eauto; revgoals.
+        { ii. des. clear - FINALTGT PROGRESS. inv FINALTGT. ss. ModSem.tac. }
+        { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
+        ii. inv STEPTGT; ModSem.tac. ss. exploit STEP; eauto. i; des_safe.
+        eexists i1, (State ((Frame.mk ms_src st_src1) :: tail_src) _).
+        esplits; eauto.
+        { des.
+          - left. eapply lift_plus; eauto.
+          - right. esplits; eauto. eapply lift_star; eauto.
+        }
+        pclearbot. right. eapply CIH with (sm0 := smos1); eauto.
+        econs; eauto.
+        { folder. ss; des_ifs. eapply mfuture_preserves_sim_geU; eauto. apply rtc_once; eauto.
+          right. eapply SimMemOhs.le_proj; et.
+        }
+        { etransitivity; eauto. }
+        { ii. etrans; try apply UNCH; ss; eauto with congruence. }
+        { ii. etrans; try apply UNCH; ss; eauto with congruence. }
+      + des. pclearbot. econs 2.
+        { esplits; eauto. eapply lift_star; eauto. }
+        right. eapply CIH; eauto.
+        instantiate (1:=smos1). econs; eauto.
+        { folder. ss; des_ifs. eapply mfuture_preserves_sim_geU; eauto. eapply rtc_once; eauto.
+          right. eapply SimMemOhs.le_proj; et.
+        }
+        { etrans; eauto. }
+        { ii. etrans; try apply UNCH; ss; eauto with congruence. }
+        { ii. etrans; try apply UNCH; ss; eauto with congruence. }
 
     - (* call *)
       left. right. econs; eauto. econs; eauto; cycle 1.

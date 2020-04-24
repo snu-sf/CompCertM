@@ -48,6 +48,7 @@ Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. instantiate (1:=(SimSymbId.mk _ _)).
   econs; ss; i. destruct SIMSKENVLINK.
   exploit clight_unreach_local_preservation. i. des.
+  eexists.
   eapply match_states_sim with (match_states := match_states_ext_clight); ss; eauto.
   - apply unit_ord_wf.
   - i. ss. inv INITTGT. inv SAFESRC. inv H.
@@ -86,6 +87,8 @@ Proof.
     ii. exploit clight_step_preserve_extension; eauto.
     { eapply function_entry2_extends. }
     i. des. esplits; eauto. left. apply plus_one. econs; ss; eauto. eapply modsem2_determinate.
+Unshelve.
+  all: ss.
 Qed.
 
 
@@ -99,6 +102,7 @@ Lemma clight_ext_top
 Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. instantiate (1:=(SimSymbId.mk _ _)).
   econs; ss; i. destruct SIMSKENVLINK.
+  eexists.
   eapply match_states_sim with (match_states := match_states_ext_clight); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -141,6 +145,8 @@ Proof.
     ii. exploit clight_step_preserve_extension; eauto.
     { eapply function_entry2_extends. }
     i. des. esplits; eauto. left. apply plus_one. econs; ss; eauto. eapply modsem2_determinate.
+Unshelve.
+  all: ss.
 Qed.
 
 Lemma clight_inj_drop_bot
@@ -154,6 +160,7 @@ Lemma clight_inj_drop_bot
 Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. econs; ss; i.
   { econs; ss; i; clarify. inv WF. auto. }
+  eexists.
   eapply match_states_sim with (match_states := match_states_clight); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -202,6 +209,8 @@ Proof.
       { inv SIMSKENV. ss. eapply SimSymbDrop_symbols_inject; eauto. }
       { inv SIMSKENV. ss. eapply SimSymbDrop_match_globals; eauto. }
       i. des. esplits; eauto. left. apply plus_one. econs; ss; eauto. eapply modsem2_determinate.
+Unshelve.
+  all: ss.
 Qed.
 
 Lemma clight_inj_drop

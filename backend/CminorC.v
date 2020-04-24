@@ -18,7 +18,7 @@ Require Import Skeleton Mod ModSem.
 
 Set Implicit Arguments.
 
-Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
+Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify.
 
 Definition get_mem (st: state): mem :=
   match st with
@@ -67,13 +67,14 @@ Section MODSEM.
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
-       ModSem.at_external := at_external;
-       ModSem.initial_frame := initial_frame;
-       ModSem.final_frame := final_frame;
-       ModSem.after_external := after_external;
+       ModSem.at_external := coerce at_external;
+       ModSem.initial_frame := coerce initial_frame;
+       ModSem.final_frame := coerce final_frame;
+       ModSem.after_external := coerce after_external;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
+       ModSem.midx := None;
     |}.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.
@@ -114,4 +115,4 @@ Section MODSEM.
 End MODSEM.
 
 Program Definition module (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; |}.
+  {| Mod.data := p; Mod.get_sk := Sk.of_program fn_sig; Mod.get_modsem := modsem; Mod.midx := None |}.

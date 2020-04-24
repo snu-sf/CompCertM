@@ -191,7 +191,7 @@ Proof.
     + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. unfold transl_function in *. des_ifs.
       unfold transl_funbody in *. unfold bind in Heq. des_ifs.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. eexists. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

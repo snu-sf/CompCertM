@@ -136,7 +136,9 @@ Proof.
     + clarify. right. inv MATCH. esplits; eauto. inv H2.
       unfold CsemC.signature_of_function, signature_of_function. f_equal; congruence.
     + clarify. left. inv MATCH. esplits; eauto.
-  - ii. inv SIMSKENVLINK. eapply factor_simmodsem_source; eauto.
+  - ii. inv SIMSKENVLINK. eexists. replace sm_init_link with (SimMemOh.sm (cast sm_init_link)); cycle 1.
+    { ss. }
+    eapply factor_simmodsem_source; eauto.
     { ii. ss. hexploit (@modsem_strongly_receptive skenv_link_tgt prog s); eauto. intro SR.
       inv SR. exploit ssr_traces_at; eauto.
     }

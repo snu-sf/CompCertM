@@ -14,6 +14,7 @@ Require SoundTop.
 Require SimMemInjC SimMemInjInvC.
 Require Import Clightdefs.
 Require Import CtypesC.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -210,7 +211,7 @@ Proof.
     + (* zero *)
       clarify.
       econs 2. ii.
-      econs 2.
+      econs 2; et.
       { split.
         - econs 2.
           + ss. econs 1.
@@ -222,7 +223,7 @@ Proof.
 
       left. pfold.
       econs 1. i; des.
-      econs 2.
+      econs 2; et.
 
       * split; cycle 1.
         { apply Ord.lift_idx_spec.
@@ -292,7 +293,7 @@ Proof.
       destruct (zeq (Int.intval i0) 0).
       {
         econs 2. ii.
-        econs 2.
+        econs 2; et.
         { split.
           - econs 2; ss.
             + econs 2; eauto.
@@ -423,7 +424,7 @@ Proof.
 
         * left. pfold. econs 3; et.
           { econs; eauto. }
-          { econs. econs; eauto. }
+          { rr. esplits; et. econs; eauto. }
           ii; des.
           inv ATSRC. ss; clarify.
 
@@ -431,10 +432,10 @@ Proof.
           assert(g_fptr = g_blk).
           { unfold SkEnv.revive in FINDG. rewrite Genv_map_defs_symb in *. clarify. }
           clarify.
-          eexists (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _).
+          eexists tt, (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _).
           exists sm0.
           esplits; ss; eauto.
-          { econs; ss; eauto.
+          { rr. esplits; ss; et. econs; ss; eauto.
             instantiate (1:=Vptr g_blk Ptrofs.zero).
             inv SIMSK. inv SIMSKENV. inv INJECT. ss.
             econs. eapply DOMAIN; eauto.
@@ -444,7 +445,7 @@ Proof.
             rewrite Ptrofs.add_zero_l. ss. }
           { refl. }
           { econs; eauto. }
-          i. inv AFTERSRC. inv SIMRETV; ss; clarify.
+          i. inv AFTERSRC. rr in SIMRETV; des. inv SIMRETV0; ss; clarify.
 
           hexploit Mem.valid_access_store.
           { instantiate (4:=sm_ret.(SimMemInjInv.minj).(SimMemInj.tgt)).
@@ -462,6 +463,7 @@ Proof.
           esplits.
           { econs; eauto. }
           { apply MLE0. }
+          { et. }
 
           left. pfold. econs; eauto. i; des. econs 2; eauto.
           {
@@ -573,7 +575,7 @@ Proof.
       { hexploit VAL; eauto. i. des. clarify.
 
         econs 2. ii.
-        econs 2.
+        econs 2; et.
         { split.
           - econs 2; ss.
             + econs; eauto.
@@ -704,7 +706,9 @@ Proof.
   - (* return *)
     econs 4; ss; eauto.
     + refl.
-    + econs; ss; eauto.
+    + rr. esplits; ss; et. econs; ss; eauto.
+Unshelve.
+  all: ss.
 Qed.
 
 Theorem sim_modsem
@@ -713,22 +717,24 @@ Theorem sim_modsem
 .
 Proof.
   eapply sim_mod_sem_implies.
-  eapply ModSemPair.simL_intro with (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le).
+  eapply ModSemPair.simL_intro with (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le); try (by ss).
   { i. eapply SoundTop.sound_state_local_preservation. }
   { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
   { ii; ss. r. etrans; eauto. }
   { ii. eauto. }
+  { esplits; et. }
   i. ss. esplits; eauto.
 
   - i. des. inv SAFESRC.
     esplits; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true; et.
     + econs; eauto.
     + instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
       inv INITTGT. inv TYP. ss.
       assert (FD: fd = func_f).
       { destruct args_src, args_tgt; ss. clarify.
-        inv SIMARGS; ss. clarify. inv VALS. inv H1. inv H3. inv FPTR. ss.
+        rr in SIMARGS; des. inv SIMARGS0; ss. clarify. inv VALS. inv H1. inv H3. inv FPTR. ss.
         des_ifs.
         inv SIMSKENV. ss. inv SIMSKE. ss. inv INJECT. ss.
         exploit IMAGE; eauto.
@@ -747,7 +753,7 @@ Proof.
         rewrite H in *. clarify.
         destruct ((prog_defmap prog) ! f_id) eqn:DMAP; ss. clarify. } clarify.
 
-      inv SIMARGS; ss. rewrite VS in *. inv VALS.
+      rr in SIMARGS; des. inv SIMARGS0; ss. clarify. inv VALS.
       inv H3. inv H1.
       unfold typify_list, zip, typify. ss. des_ifs; ss.
 
@@ -759,12 +765,12 @@ Proof.
   - (* init progress *)
     i.
     des. inv SAFESRC.
-    inv SIMARGS; ss.
+    rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
 
     esplits; eauto. econs; eauto.
     + instantiate (1:= func_f).
       ss.
-      inv VALS; ss. inv H1. inv H0. inv FPTR0. ss.
+      inv VALS; ss. inv H1. inv H3. inv FPTR0. ss.
       des_ifs.
       inv SIMSKENV. ss. inv SIMSKE. ss. inv INJECT. ss.
       exploit IMAGE; eauto.
@@ -777,9 +783,9 @@ Proof.
       do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
       des_ifs.
       exploit Genv.find_invert_symbol. eauto. i.
-      rewrite H0 in *. clarify.
+      rewrite H in *. clarify.
     + econs; ss. erewrite <- inject_list_length; eauto.
-      rewrite VS. auto.
+      auto.
 Qed.
 
 
@@ -811,5 +817,5 @@ Proof.
       des; clarify.
   - ii. ss.
     inv SIMSKENVLINK. inv SIMSKENV.
-    eapply sim_modsem; eauto.
+    eexists. eapply sim_modsem; eauto.
 Qed.

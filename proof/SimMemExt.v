@@ -48,6 +48,9 @@ Next Obligation.
 Qed.
 Next Obligation. inv H. ss. Qed.
 
+Lemma unch_true: top3 <3= SimMem.unch.
+Proof. econs; ii; ss. Qed.
+Hint Resolve unch_true.
 
 Program Instance SimMemExtLift: SimMemLift.class SimMemExt :=
 { lift := id;
@@ -87,5 +90,4 @@ Next Obligation.
   { eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto. }
   { destruct retv_src; ss. econs; ss; eauto. }
-  { econs; ii; ss. }
 Qed.

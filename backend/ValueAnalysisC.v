@@ -17,7 +17,6 @@ Require Import ModSem.
 
 Section PRSV.
 
-  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
   Variable p: program.
 

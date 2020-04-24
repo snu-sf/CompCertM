@@ -83,13 +83,13 @@ Proof.
     { ii. exploit Cstrategyproof.progress; eauto.
       { instantiate (1:= ModSem.is_call (CsemC.modsem skenv_link prog) \1/
                                         ModSem.is_return (CsemC.modsem skenv_link prog)).
-        ss. intro T. des; inv T; inv H0; ss.
+        ss. intro T. des; inv T; des; inv H0; ss.
       }
       { ii. exploit H; eauto. i; des; eauto. }
       i; des; eauto.
-      - inv H0. contradict NOTRET. rr. esplits. econs; eauto.
-      - inv H0. contradict NOTCALL. rr. esplits. eauto.
-      - inv H0. contradict NOTRET. rr. esplits. eauto.
+      - inv H0. des. contradict NOTRET. rr. esplits. econs; eauto.
+      - inv H0. des. contradict NOTCALL. rr. esplits. eauto.
+      - inv H0. des. contradict NOTRET. rr. esplits. eauto.
     }
     i. folder.
     exploit Cstrategyproof.step_simulation; eauto. i. esplits; eauto.
@@ -112,7 +112,7 @@ Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
   - ii. inv SIMSKENVLINK.
-    eapply factor_simmodsem_target; eauto.
+    eexists. eapply factor_simmodsem_target; eauto.
     { ii. eapply CsemC.single_events_at; eauto. ss. eauto. }
     { ii. ss. hexploit (@modsem_strongly_receptive skenv_link_tgt prog s); eauto. intro SR.
       inv SR. exploit ssr_traces_at; eauto.

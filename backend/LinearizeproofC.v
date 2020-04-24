@@ -66,6 +66,7 @@ Proof.
     generalize (sig_preserved fd_src (Internal fd) MATCH); intro SGEQ. ss.
     destruct fd_src; ss.
     eexists. eexists (SimMemId.mk _ _). esplits; cycle 2.
+    + et.
     + econs; eauto; ss.
       * inv TYP. rpapply match_states_call; eauto.
         { instantiate (1:= [LTL.dummy_stack (fn_sig fd) ls_init]). econs; eauto; econs; et. }
@@ -162,7 +163,7 @@ Proof.
   - r. eapply Sk.match_program_eq; eauto. ii. destruct f1; ss.
     + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. unfold transf_function in *. monadInv Heq. ss.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
 Unshelve.
   all: ss.
 Qed.

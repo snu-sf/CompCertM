@@ -20,6 +20,7 @@ Require Import StoreArguments StoreArgumentsProps.
 Require Import ModSemProps.
 Require Import LiftDummy.
 Require Import JunkBlock.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -948,13 +949,12 @@ Proof.
   - inv EXCL. inv MLEEXCL. econs; ss; eauto.
     inv MWF. eapply frozen_shortened; eauto with xomega.
   - (* init bsim *)
-    { inv INITTGT. inv STORE. folder. rr in SIMARGS; des. inv SIMARGS0; ss.
+    { inv INITTGT. inv STORE. folder. rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
       exploit functions_translated_inject; eauto.
       { eapply make_match_genvs; et. apply SIMSKENV. }
       { apply SIMSKENV. }
       i; des.
       { inv SAFESRC. ss. }
-      apply_all_once Any.upcast_inj. des. clarify.
       destruct fd_src; ss. unfold bind in *. des_ifs.
       hexpl transf_function_sig SG.
       assert(LEN0: length (typify_list vs_src (sig_args (Linear.fn_sig f))) =
@@ -1020,9 +1020,7 @@ Proof.
           erewrite SimMem.sim_val_list_length; try apply VALS0. ss. etrans; eauto with congruence.
       }
       { instantiate (1:= sm2). etrans; eauto. }
-      { econs; i; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss.
-        - etrans; try apply MLE. try apply MLE0.
-        - etrans; try apply MLE. try apply MLE0. }
+      { eauto. }
       { (* match states *)
         assert(INITRS: agree_regs (SimMemInj.inj sm2) ls1 rs).
         { ii. destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (Linear.fn_sig f))))).
@@ -1188,10 +1186,8 @@ Proof.
       * psimpl. zsimpl. des. inv WF. unfold Genv.find_funct in EXTTGT. des_ifs.
         rewrite Genv.find_funct_ptr_iff in EXTTGT. ss. eapply WFPARAM in EXTTGT; eauto. unfold Sk.get_csig in *. des_ifs.
       * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
-    + rr. repeat des_u. esplits; ss; eauto.
-      econs; ss; eauto with congruence.
+    + rr. esplits; ss. econs; ss; eauto with congruence.
     + econs; ss; et. econs; ss; et. u. i. des. clarify. eapply Mem.free_range_perm; et.
-    + { econs; i; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; ss; try apply MLE. }
     + econs; eauto with congruence.
       * rp; eauto.
       * u. ii. des; clarify. specialize (H0 x1). zsimpl. esplits; eauto.
@@ -1223,7 +1219,7 @@ Proof.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
     assert(MCOMPAT0: sm0.(SimMemInj.inj) = j). { inv MCOMPAT; ss. } clarify.
 
-    hexpl match_stacks_sp_ofs RSP. rr in SIMRET; des. inv SIMRETV; ss.
+    hexpl match_stacks_sp_ofs RSP. rr in SIMRET; des. inv SIMRETV; ss. clarify.
 
     assert(VALID: Mem.valid_block (SimMemInj.tgt sm0) sp).
     { inv HISTORY. inv MATCHARG. ss. clarify. eauto with congruence. }
@@ -1234,9 +1230,8 @@ Proof.
     } des.
 
     exploit (@SimMemInjC.unfree_right (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
-    { inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *.
-      apply_all_once Any.upcast_inj. clarify. psimpl. zsimpl.
-      rr in SIMARGS; des. inv SIMARGS0; ss. apply_all_once Any.upcast_inj. des. clarify.
+    { inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl.
+      rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
       assert(sg = sg_arg).
       { des. clarify. inv SIMSKENV. inv SIMSKELINK. ss. r in SIMSKENV.
         exploit fsim_external_inject_eq; et. i. subst tfptr. clarify. }
@@ -1256,17 +1251,14 @@ Proof.
       ii. des_safe. clarify. eapply SPVALID1; eauto.
     } i; des. ss.
 
-    apply_all_once Any.upcast_inj. des; clarify.
-
     assert(EXTTGT: exists skd, Genv.find_funct skenv_link tfptr = Some skd /\ Sk.get_csig skd = Some sg_arg).
     { inv HISTORY. ss. inv MATCHARG. ss. inv SIMSKENV. ss. inv SIMSKELINK. rr in SIMSKENV.
       esplits; et. rpapply SIG.
       { f_equal. clarify. symmetry. eapply fsim_external_inject_eq; et. }
       { clarify. }
     }
-    exists sm1; esplits; eauto; [| |i; split].
+    exists sm1; esplits; eauto; [|i; split].
     + econs; et.
-    + econs; i; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; try apply MLE1; ss.
     + econs; eauto.
       * inv MWFAFTR. ss. etrans; eauto.
         inv MLE. rewrite <- TGTPARENTEQNB. inv SIMSKENV. inv SIMSKELINK. ss. rewrite NBTGT. congruence.
@@ -1423,11 +1415,8 @@ Proof.
     i; des_safe. rename sm1 into sm_ret.
 
     eexists sm_ret, tt, (Retv.mk _ _). esplits; eauto; cycle 1.
-    + inv MCOMPAT. rr. esplits; et.
-      * econs; ss; eauto.
-        rewrite ONE. ss. specialize (AGREGS mr_res). eapply val_inject_incr; try apply MLE; eauto.
-      * des_u; ss.
-    + econs; i; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; try apply MLE; ss.
+    + inv MCOMPAT. rr. esplits; et. econs; ss; eauto.
+      rewrite ONE. ss. specialize (AGREGS mr_res). eapply val_inject_incr; try apply MLE; eauto.
     + inv MCOMPAT. econs; eauto.
       * ii. specialize (AGCSREGS mr). ss. specialize (GOOD mr H). des_safe.
         rewrite <- AGCSREGS in *; ss. destruct (Val.eq (ls0 (R mr)) Vundef).
@@ -1454,7 +1443,6 @@ Proof.
     + left. eapply spread_dplus; et.
       { eapply modsem_determinate; eauto. }
       s. folder. eapply MachC.lift_plus; et.
-    + econs; i; ss; eapply Mem.unchanged_on_implies; try eapply Mem_unchanged_on_bot; try apply MLE; ss.
     + econs; ss; et; try (by inv H0; inv MCOMPAT; ss).
       * esplits; et.
         { eapply LinearC.step_preserves_last_option; et. }
@@ -1489,7 +1477,7 @@ Proof.
   - r. eapply Sk.match_program_eq; eauto. ii. destruct f1; ss.
     + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. erewrite transf_function_sig; eauto.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. inv SIMSKENV. esplits; eauto. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. esplits; et. eapply sim_modsem; eauto.
     i. ss. uge0. des_ifs. unfold SkEnv.revive in *. apply Genv_map_defs_def in Heq. des. ss. gesimpl.
     apply Genv_map_defs_def in FIND. des. unfold o_bind, o_join, o_map in *. des_ifs. ss. clear_tac.
     eapply return_address_offset_exists; et. eapply in_prog_defmap; et.

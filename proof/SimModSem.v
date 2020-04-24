@@ -227,7 +227,7 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 End MODSEMPAIR.
 End ModSemPair.
 
-Arguments ModSemPair.mk [SM] [SS] _ _ _.
+Arguments ModSemPair.mk [SM] [SS] _ _ _ _ [SMO].
 Hint Constructors ModSemPair.sim_skenv.
 
 
@@ -332,8 +332,8 @@ Section FACTORTARGET.
   End LXSIM.
 
   Theorem factor_simmodsem_target
-          (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm SMO)):
-      ModSemPair.sim (ModSemPair.mk ms_src (ModSem.Atomic.trans ms_tgt) ss sm SMO).
+          (SIM: ModSemPair.sim (ModSemPair.mk ms_src ms_tgt ss sm)):
+      ModSemPair.sim (ModSemPair.mk ms_src (ModSem.Atomic.trans ms_tgt) ss sm).
   Proof.
     inv SIM. ss. econs; eauto.
     { ss. ii. eapply INITOH; ss. inv SIMSKENV; ss. econs; eauto. }

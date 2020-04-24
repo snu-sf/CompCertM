@@ -20,7 +20,6 @@ Section MODSEM.
        prog_public := [func_id; main_id];
        prog_main := main_id |}.
 
-  Variable midx: Midx.t.
   Variable skenv_link: SkEnv.t.
   Variable p: unit.
   Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program id prog).
@@ -56,11 +55,11 @@ Section MODSEM.
       ModSem.globalenv := tt;
       ModSem.skenv := skenv;
       ModSem.skenv_link := skenv_link;
-      ModSem.midx := midx;
+      ModSem.midx := None;
     |}
   .
 
 End MODSEM.
 
 Program Definition module: Mod.t :=
-  {| Mod.data := tt; Mod.get_sk := fun _ => prog; Mod.get_modsem := modsem; |}.
+  {| Mod.data := tt; Mod.get_sk := fun _ => prog; Mod.get_modsem := modsem; Mod.midx := None |}.

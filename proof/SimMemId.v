@@ -45,6 +45,9 @@ Next Obligation.
   - ginduction x1; ii; ss. econs; eauto.
 Qed.
 
+Lemma unch_true: top3 <3= SimMem.unch.
+Proof. econs; ii; ss. Qed.
+Hint Resolve unch_true.
 
 
 
@@ -91,5 +94,4 @@ Next Obligation.
     instantiate (1:= Retv.mk _ _). ss. eauto.
   - instantiate (1:= mk _ _). econs; ss; eauto.
   - econs; ii; ss.
-  - ss.
 Qed.

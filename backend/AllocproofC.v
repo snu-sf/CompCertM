@@ -106,6 +106,7 @@ Proof.
     exploit (bsim_internal_funct_id SIMGE); et. i; des.
     exploit (sig_function_translated); eauto. intro SGEQ. ss.
     eexists. eexists (SimMemExt.mk _ _). esplits; cycle 2.
+    + et.
     + econs; eauto; ss.
       * inv TYP. eapply match_states_call; eauto; ss.
         { econs; et. }
@@ -213,7 +214,7 @@ Proof.
     ii. exploit sig_function_translated; et. i. destruct f1; ss.
     + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

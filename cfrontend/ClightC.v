@@ -21,7 +21,7 @@ Require Import Simulation.
 
 Set Implicit Arguments.
 
-Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify; try by (f_equal; determ_tac typify_c_dtm).
+Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify; try by (f_equal; determ_tac typify_c_dtm).
 
 (* copied from Cshmgen *)
 Definition signature_of_function (fd: function) :=
@@ -78,13 +78,14 @@ Section MODSEM.
 
   Program Definition modsem1: ModSem.t :=
     {| ModSem.step := step1;
-       ModSem.at_external := at_external;
-       ModSem.initial_frame := initial_frame1;
-       ModSem.final_frame := final_frame;
-       ModSem.after_external := after_external1;
+       ModSem.at_external := coerce at_external;
+       ModSem.initial_frame := coerce initial_frame1;
+       ModSem.final_frame := coerce final_frame;
+       ModSem.after_external := coerce after_external1;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
+       ModSem.midx := None;
     |}.
 
   Inductive initial_frame2 (args: Args.t): state -> Prop :=
@@ -108,13 +109,14 @@ Section MODSEM.
 
   Program Definition modsem2: ModSem.t :=
     {| ModSem.step := step2;
-       ModSem.at_external := at_external;
-       ModSem.initial_frame := initial_frame2;
-       ModSem.final_frame := final_frame;
-       ModSem.after_external := after_external2;
+       ModSem.at_external := coerce at_external;
+       ModSem.initial_frame := coerce initial_frame2;
+       ModSem.final_frame := coerce final_frame;
+       ModSem.after_external := coerce after_external2;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
+       ModSem.midx := None;
     |}.
 
   Lemma eval_expr_determ:
@@ -200,7 +202,7 @@ End MODSEM.
 
 
 Program Definition module1 (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function; Mod.get_modsem := modsem1; |}.
+  {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function; Mod.get_modsem := modsem1; Mod.midx := None |}.
 
 Program Definition module2 (p: program): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function; Mod.get_modsem := modsem2; |}.
+  {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function; Mod.get_modsem := modsem2; Mod.midx := None |}.

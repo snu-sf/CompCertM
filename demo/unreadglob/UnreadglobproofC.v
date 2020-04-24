@@ -267,6 +267,7 @@ Proof.
     i; des.
     esplits; eauto.
     + left. apply plus_one. econs; eauto. eapply modsem2_determinate; eauto.
+    + eapply SimMemInjInvC.unch_true.
     + econs; ss.
       * inv H0; ss; inv MCOMPAT; ss.
       * inv H0; ss; inv MCOMPAT; ss.
@@ -373,7 +374,7 @@ Proof.
       { clarify. apply DROP0. des_sumbool. ss. }
     + inv TRANSL1. eapply NoDup_norepet; et. rewrite Sk.of_program_defs_names; ss.
     + ii. des. eapply H0. des_sumbool. inv TRANSL1. eauto.
-  - ii. eapply sim_modsem; eauto.
+  - ii. eexists. eapply sim_modsem; eauto.
 Unshelve.
   all: ss.
 Qed.

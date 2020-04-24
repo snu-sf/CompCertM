@@ -98,6 +98,7 @@ Proof.
   esplits; eauto. instantiate (1:=SimMemInjInvC.mk bot1 _ _).
   econs; ss; i.
   { econs; ss; i; clarify. }
+  eexists.
   eapply match_states_sim with (match_states := match_states_a_inv); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -111,6 +112,7 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true.
     + econs; eauto.
       assert (i = i0).
       { subst. inv VALS. inv H2. ss. }
@@ -140,6 +142,7 @@ Proof.
     + econs; ss; eauto.
     + econs; ss; econs; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true.
     + instantiate (1:=top4). ss.
 
   - i. ss. clear SOUND HISTORY.
@@ -149,12 +152,14 @@ Proof.
     + econs; eauto. inv SIMRET; ss. rewrite INT in *. inv RETV. ss.
     + inv SIMRET; ss. econs; eauto. econs; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true.
 
   - i. ss. inv FINALSRC. inv MATCH. inv MATCHST.
     esplits; eauto.
     + econs.
     + econs; eauto. econs.
     + refl.
+    + eapply SimMemInjInvC.unch_true.
 
   - right. ii. des.
     esplits.
@@ -162,16 +167,20 @@ Proof.
       * unfold ModSem.is_step. do 2 eexists. ss. econs; eauto.
       * unfold safe_modsem in H.
         exploit H. eapply star_refl. ii. des; clarify. inv EVSTEP.
-      * ss. exfalso. eapply NOTRET. econs. ss.
+      * ss. exfalso. eapply NOTRET. rr. esplits; et. econs; ss.
     + ii. inv STEPTGT; inv MATCH; inv MATCHST.
       * esplits; eauto.
         { left. eapply plus_one. econs. }
-        refl.
+        { refl. }
+        { eapply SimMemInjInvC.unch_true. }
         econs; eauto. econs.
       * esplits; eauto.
         { left. eapply plus_one. econs 2. eauto. }
-        refl.
+        { refl. }
+        { eapply SimMemInjInvC.unch_true. }
         econs; eauto. econs.
+Unshelve.
+  all: ss.
 Qed.
 
 End INJINV.

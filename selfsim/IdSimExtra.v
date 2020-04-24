@@ -305,96 +305,41 @@ Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto. instantiate (1:=(SimSymbId.mk md md)). econs; ss; i.
   rewrite SIMSKENVLINK in *. inv SIMSKENVLINK. inv SSLE.
-  (* exists (SimMemOh_default_aux _ md.(Mod.midx)). *)
-  exists (SimMemOh_default _).
-  esplits; eauto.
+  eexists.
   eapply MatchSimModSem.match_states_sim; ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
   - unfold Mod.modsem. erewrite Mod.get_modsem_midx_spec; ss.
+  - unfold Mod.modsem. erewrite Mod.get_modsem_midx_spec; ss.
   - instantiate (1:= fun _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
                        (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>)).
-    ss. i. rr in SIMARGS. des.
-    inv SIMARGS0; ss; esplits; ss; swap 2 3; eauto; try congruence; ss.
-    {
-      eapply upcast_inj in OHSRC. eapply upcast_inj in OHTGT. des. clarify.
-      destruct sm_arg; ss; clarify.
-      assert(oh_src = oh_tgt).
-      { eapply JMeq.JMeq_eq. etrans; et. }
-      rpapply_raw INITTGT; ss.
-    }
-    { econs; ii; ss. }
-    {
-      eapply upcast_inj in OHSRC. eapply upcast_inj in OHTGT. des. clarify.
-      destruct sm_arg; ss; clarify.
-      assert(oh_src = oh_tgt).
-      { eapply JMeq.JMeq_eq. etrans; et. }
-      rpapply_raw INITTGT; ss. f_equal.
-      eapply functional_extensionality; r in RS; ss.
-    }
-    { econs; ii; ss. }
-  - ii. rr in SIMARGS; des. ss.
-    eapply upcast_inj in OHSRC. eapply upcast_inj in OHTGT. des. clarify.
-    destruct sm_arg; ss; clarify.
-    assert(oh_src = oh_tgt).
-    { eapply JMeq.JMeq_eq. etrans; et. }
-    destruct args_src, args_tgt; inv SIMARGS0; ss; clarify.
-    + esplits; et.
-    + esplits; et.
-      assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). subst. eauto.
+    ss. i. inv SIMARGS; ss; clarify; esplits; eauto; try congruence; ss.
+    { rp; et. congruence. }
+    assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). congruence.
+  - ii. destruct args_src, args_tgt, sm_arg; inv SIMARGS; ss; clarify.
+    assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). subst. eauto.
   - ii. ss. des. clarify.
-  - i. ss. des. clarify.
-    assert(T: upcast oh_src = upcast tt).
-    { hexploit (@ModSem.midx_none (md skenv_link_tgt)); et.
-      { unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec; ss. }
-      intro T. generalize oh_src. rewrite T in *. intro u. des_u; ss.
-    }
-    sguard in T.
-    destruct args_src, sm0; ss; clarify.
-    + eexists _, _, (SimMemId.mk _ _). ss. esplits; eauto.
-      * rr. esplits; ss; eauto.
-        { econs; ss; eauto. }
-      * econs; ii; ss.
+  - i. ss. des. clarify. destruct args_src, sm0; ss; clarify.
+    + eexists _, (SimMemId.mk _ _). ss. esplits; eauto.
+      * econs; ss; eauto.
       * instantiate (1:=top4). ss.
-    + eexists _, _, (SimMemId.mk _ _). ss. esplits; eauto.
-      * rr. esplits; ss; eauto.
-        { econs 2; ss; eauto. }
-      * econs; ii; ss.
-  - i. clear HISTORY. ss. rr in SIMRET. des. ss.
-    eapply upcast_inj in OHSRC. eapply upcast_inj in OHTGT. des. clarify.
-    destruct sm_ret, retv_src, retv_tgt; inv SIMRETV; des; ss; clarify; eexists (SimMemId.mk _ _); esplits; ss; eauto.
-    + rp; et. eapply JMeq.JMeq_eq. etrans; et.
-    + econs; ii; ss.
-    + assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). rp; eauto with congruence.
-      eapply JMeq.JMeq_eq. etrans; et.
-    + econs; ii; ss.
-  - i. ss. des. destruct sm0. ss. clarify.
-    assert(T: upcast oh_src = upcast tt).
-    { hexploit (@ModSem.midx_none (md skenv_link_tgt)); et.
-      { unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec; ss. }
-      intro T. generalize oh_src. rewrite T in *. intro u. des_u; ss.
-    }
-    destruct retv_src; ss; eexists (SimMemId.mk m m); esplits; eauto.
-    + rr. esplits; ss. econs; ss; eauto.
-    + econs; ii; ss.
-    + rr. esplits; ss. econs 2; ss; eauto.
-    + econs; ii; ss.
+    + eexists _, (SimMemId.mk _ _). ss. esplits; eauto.
+      * econs 2; ss; eauto.
+  - i. clear HISTORY. ss.
+    destruct sm_ret, retv_src, retv_tgt; inv SIMRET; des; ss; clarify; eexists (SimMemId.mk _ _); esplits; eauto; ss.
+    assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). congruence.
+  - i. ss. des. destruct sm0. ss. clarify. destruct retv_src; ss; eexists (SimMemId.mk m m); esplits; eauto.
+    + econs; ss; eauto.
+    + econs 2; ss; eauto.
   - right. ii. des. destruct sm0. ss. clarify. esplits; eauto.
     + i. exploit H; ss.
       * econs 1.
       * i. des; clarify. econs; eauto.
     + i. exists tt, st_tgt1. eexists (SimMemId.mk _ _). ss.
       esplits; eauto.
-      * left. econs; eauto; [econs 1|]. symmetry. apply E0_right.
-      * econs; ii; ss.
-  - ii.
-    hexploit (@ModSem.midx_none (md skenv_link_tgt)); et.
-    { unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec; ss. }
-    intro T.
-    esplits; et; ss.
-    + generalize (ModSem.initial_owned_heap (md skenv_link_tgt)). rewrite T. ii; des_u; ss.
-    + generalize (ModSem.initial_owned_heap (md skenv_link_tgt)). rewrite T. ii; des_u; ss.
+      left. econs; eauto; [econs 1|]. symmetry. apply E0_right.
 Unshelve.
   all: ss.
+  erewrite ModSem.midx_none; et. unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec; ss.
 Qed.

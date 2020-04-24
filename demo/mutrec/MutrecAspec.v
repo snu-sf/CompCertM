@@ -12,7 +12,7 @@ Require Import MutrecA.
 
 Set Implicit Arguments.
 
-Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
+Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify.
 
 Section MODSEM.
 
@@ -92,20 +92,21 @@ Section MODSEM.
   Program Definition modsem: ModSem.t :=
     {|
       ModSem.step := step;
-      ModSem.at_external := at_external;
-      ModSem.initial_frame := initial_frame;
-      ModSem.final_frame := final_frame;
-      ModSem.after_external := after_external;
+      ModSem.at_external := coerce at_external;
+      ModSem.initial_frame := coerce initial_frame;
+      ModSem.final_frame := coerce final_frame;
+      ModSem.after_external := coerce after_external;
       ModSem.globalenv := skenv;
       ModSem.skenv := skenv;
       ModSem.skenv_link := skenv_link;
+      ModSem.midx := None;
     |}
   .
 
 End MODSEM.
 
 Program Definition module: Mod.t :=
-  {| Mod.data := tt; Mod.get_sk := fun _ => CSk.of_program signature_of_function prog; Mod.get_modsem := modsem; |}.
+  {| Mod.data := tt; Mod.get_sk := fun _ => CSk.of_program signature_of_function prog; Mod.get_modsem := modsem; Mod.midx := None |}.
 
 Lemma find_symbol_find_funct_ptr
       skenv_link blk

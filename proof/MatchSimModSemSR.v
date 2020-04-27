@@ -79,13 +79,13 @@ Section MATCHSIMFORWARD.
   Let SMOOHTGT: forall (smo0: SimMemOh.t), SimMemOh.oh_tgt smo0 = upcast tt.
   Proof. rewrite SMOCLASS. ss. Qed.
 
-  Let CASTELIMSRC: forall (oh_src: ms_src.(ModSem.owned_heap)), (cast () = oh_src).
+  Let CASTELIMSRC: forall (oh_src: ms_src.(ModSem.owned_heap)), (cast tt = oh_src).
   Proof.
     remember (ModSem.owned_heap ms_src) as X. clear HeqX. ii. clarify.
     des_u. rewrite cast_elim. ss.
   Qed.
 
-  Let CASTELIMTGT: forall (oh_tgt: ms_tgt.(ModSem.owned_heap)), (cast () = oh_tgt).
+  Let CASTELIMTGT: forall (oh_tgt: ms_tgt.(ModSem.owned_heap)), (cast tt = oh_tgt).
   Proof.
     remember (ModSem.owned_heap ms_tgt) as X. clear HeqX. ii. clarify.
     des_u. rewrite cast_elim. ss.

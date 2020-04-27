@@ -119,6 +119,18 @@ Section MODSEM.
        ModSem.midx := None;
     |}.
 
+  Program Definition modsem2_mi (mi: Midx.t): ModSem.t :=
+    {| ModSem.step := step2;
+       ModSem.at_external := coerce at_external;
+       ModSem.initial_frame := coerce initial_frame2;
+       ModSem.final_frame := coerce final_frame;
+       ModSem.after_external := coerce after_external2;
+       ModSem.globalenv := ge;
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
+       ModSem.midx := mi;
+    |}.
+
   Lemma eval_expr_determ:
     forall e le m a v, eval_expr ge e le m a v -> forall v', eval_expr ge e le m a v' -> v = v'
   with eval_lvalue_determ:
@@ -206,3 +218,7 @@ Program Definition module1 (p: program): Mod.t :=
 
 Program Definition module2 (p: program): Mod.t :=
   {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function; Mod.get_modsem := modsem2; Mod.midx := None |}.
+
+Program Definition module2_mi (p: program) (mi: Midx.t): Mod.t :=
+  {| Mod.data := p; Mod.get_sk := CSk.of_program signature_of_function;
+     Mod.get_modsem := fun ske p => modsem2_mi ske p mi; Mod.midx := mi |}.

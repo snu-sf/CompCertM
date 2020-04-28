@@ -1,6 +1,6 @@
-Require Import CoqlibC Maps Postorder.
+Require Import CoqlibC MapsC Postorder.
 Require Import AST Linking.
-Require Import ValuesC Memory GlobalenvsC Events Smallstep.
+Require Import ValuesC MemoryC GlobalenvsC Events Smallstep.
 Require Import Op Registers ClightC Renumber.
 Require Import CtypesC CtypingC.
 Require Import sflib.
@@ -19,8 +19,11 @@ Set Implicit Arguments.
 
 
 
+
+Global Opaque string_dec. (**** TODO: Put in SimMem ****)
+
+
 Section SMO.
-  Context (SM: SimMem.class).
 
   Record t: Type :=
     mk {
@@ -40,13 +43,19 @@ Section SMO.
           k v
           (SOME: map k = Some v)
         ,
-          (<<SRC: (smo.(SimMem.tgt).(Mem.mem_contents) # k) = (ZMap.init Undef)>>) /\
-          (<<TGT: Mem.load Mint32 smo.(SimMem.tgt) k 0%Z = Some (Vint v)>>))
+          (* (<<SRC: forall o, ZMap.get o (smo.(SimMem.src).(Mem.mem_contents) # k) = Undef>>) /\ *)
+          (<<SRC: Mem_range_noperm smo.(SimMem.src) k 0%Z 4%Z>>) /\
+          (* (<<SRC: (smo.(SimMem.tgt).(Mem.mem_contents) # k) = (ZMap.init Undef)>>) /\ *)
+          (<<TGT: Mem.load Mint32 smo.(SimMem.tgt) k 0%Z = Some (Vint v)>>) /\
+          (<<PMSRC: brange k 0 4 <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_src)>>) /\
+          (<<PMTGT: brange k 0 4 <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_tgt)>>) /\
+          (<<VLSRC: Mem.valid_block smo.(SimMem.src) k>>)
+      )
   .
 
-  Local Obligation Tactic := ii; des; ss.
+  Local Obligation Tactic := try (by ii; des; ss).
 
-  Program Definition SimMemOh: (SimMemOh.class) :=
+  Program Instance SimMemOh: (SimMemOh.class) :=
     {|
       SimMemOh.t := t;
       SimMemOh.sm := sm;
@@ -71,13 +80,18 @@ Section SMO.
   Qed.
   Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.
   Next Obligation.
-    eapply PR.
+    ii. eapply PR.
   Qed.
   Next Obligation.
-    des. esplits; et.
+    ii. inv WF.
+    econs; ss; et.
+    ii. exploit SOME; et. i; des. esplits; ss; et.
+    - eapply Mem_unchanged_noperm; et.
+    - eapply Mem.load_unchanged_on; et. ii. ss. eapply PMTGT0; et.
+    - eapply Mem.valid_block_unchanged_on; et.
   Qed.
   Next Obligation.
-    destruct smo0; ss.
+    ss. ii. destruct smo0; ss.
   Qed.
 
 End SMO.
@@ -97,7 +111,7 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Let ge := (SkEnv.project skenv_link (Mod.sk md_src)).
 Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) prog) prog.(prog_comp_env).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
+  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link SimMemOh.
 
 Inductive match_states_internal: nat -> MutrecAspec.state -> Clight.state -> Prop :=
 | match_callstate_nonzero

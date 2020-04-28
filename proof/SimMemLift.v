@@ -261,6 +261,8 @@ Module SimMemOhLift.
         eapply SimMemOh.wf_proj; eauto.
       - rewrite SimMemLift.lift_src. refl.
       - rewrite SimMemLift.lift_tgt. refl.
+      - rewrite SimMemLift.lift_ptt_src; ss.
+      - rewrite SimMemLift.lift_ptt_tgt; ss.
     Qed.
     Next Obligation.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_src; eauto.
@@ -313,6 +315,8 @@ Module SimMemOhLift.
         eapply SimMemOh.le_proj in H1. rewrite SimMemOh.getset_sm in H1. ss.
       - rewrite SimMemLift.unlift_src. refl.
       - rewrite SimMemLift.unlift_tgt. refl.
+      - rewrite SimMemLift.unlift_ptt_src; ss.
+      - rewrite SimMemLift.unlift_ptt_tgt; ss.
     Qed.
     Next Obligation.
       rewrite SimMemOh.getset_sm. eapply SimMemLift.lift_sim_val; eauto.

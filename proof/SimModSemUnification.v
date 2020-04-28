@@ -197,6 +197,8 @@ Section SimMemOhUnify.
                                         smo0.(SimMem.src) sm0.(SimMem.src))
           (UNCHTGT: SimMem.unchanged_on (privmods mi smo0.(SimMem.ptt_tgt))
                                         smo0.(SimMem.tgt) sm0.(SimMem.tgt))
+          (PMSRC: (privmods mi smo0.(SimMem.ptt_src)) <2= (privmods mi sm0.(SimMem.ptt_src)))
+          (PMTGT: (privmods mi smo0.(SimMem.ptt_tgt)) <2= (privmods mi sm0.(SimMem.ptt_tgt)))
         ,
           (<<WFSMO: SimMemOh.wf (SimMemOh.set_sm smo0 sm0)>>)
           (* /\ *)
@@ -538,6 +540,16 @@ Section SimMemOhUnify.
                  What an annoying bug... *)
             }
           }
+          {
+            ii. eapply PMSRC; et. rewrite SimMemOh.getset_sm.
+            inv UNCH. eapply LESRC; try congruence.
+            erewrite <- smeq; et. rewrite SMEQ in PR. ss.
+          }
+          {
+            ii. eapply PMTGT; et. rewrite SimMemOh.getset_sm.
+            inv UNCH. eapply LETGT; try congruence.
+            erewrite <- smeq; et. rewrite SMEQ in PR. ss.
+          }
       + ii.
         do 2 (unfold ohs_src, ohs_tgt; ss).
         des_ifs_safe. des_ifs.
@@ -623,6 +635,16 @@ Section SimMemOhUnify.
               (* TODO: "erewrite smeq" does not work and I am sure it is a Coq's bug!!!
                  What an annoying bug... *)
             }
+          }
+          {
+            ii. eapply PMSRC; et. rewrite SimMemOh.getset_sm.
+            inv UNCH. eapply LESRC; try congruence.
+            erewrite <- smeq; et. rewrite SMEQ in PR. ss.
+          }
+          {
+            ii. eapply PMTGT; et. rewrite SimMemOh.getset_sm.
+            inv UNCH. eapply LETGT; try congruence.
+            erewrite <- smeq; et. rewrite SMEQ in PR. ss.
           }
       + ii.
         do 2 (unfold ohs_src, ohs_tgt; ss).

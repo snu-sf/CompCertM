@@ -267,6 +267,8 @@ Section SimMemOh.
                                       smo0.(sm).(SimMem.src) sm1.(SimMem.src))
         (UNCHTGT: SimMem.unchanged_on (privmods midx smo0.(sm).(SimMem.ptt_tgt))
                                       smo0.(sm).(SimMem.tgt) sm1.(SimMem.tgt))
+        (PMSRC: (privmods midx smo0.(sm).(SimMem.ptt_src)) <2= (privmods midx sm1.(SimMem.ptt_src)))
+        (PMTGT: (privmods midx smo0.(sm).(SimMem.ptt_tgt)) <2= (privmods midx sm1.(SimMem.ptt_tgt)))
       ,
         <<WF: wf (set_sm smo0 sm1)>>;
 

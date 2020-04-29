@@ -16,6 +16,9 @@ Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify.
 Definition update V (map: block -> option V) (k0: block) (v: V): block -> option V :=
   fun k1 => if eq_block k0 k1 then Some v else map k1.
 
+Definition lo:Z := -8.
+Definition hi:Z := 4.
+
 Section MODSEM.
 
   Variable skenv_link: SkEnv.t.
@@ -79,11 +82,12 @@ Section MODSEM.
 
   Inductive step (se: Senv.t) (ge: SkEnv.t): state -> trace -> state -> Prop :=
   | step_new
-      oh0 m0 oh1 m1 key
-      (ALLOC: Mem.alloc m0 0%Z 4%Z = (m1, key))
+      oh0 m0 oh1 m1 m2 key
+      (ALLOC: Mem.alloc m0 lo hi = (m1, key))
+      (FREE: Mem.free m1 key lo hi = Some m2)
       (OH: update oh0 key Int.zero = oh1)
     :
-      step se ge (CallstateNew oh0 m0) E0 (ReturnstateNew key oh1 m1)
+      step se ge (CallstateNew oh0 m0) E0 (ReturnstateNew key oh1 m2)
   | step_get
       oh m key val
       (GET: oh key = Some val)

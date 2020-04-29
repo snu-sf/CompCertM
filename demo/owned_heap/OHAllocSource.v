@@ -18,6 +18,7 @@ Definition update V (map: block -> option V) (k0: block) (v: V): block -> option
 
 Definition lo:Z := -8.
 Definition hi:Z := 4.
+Hint Unfold lo hi.
 
 Section MODSEM.
 

@@ -744,11 +744,11 @@ Proof.
 Qed.
 
 Lemma store_right_prv
-      sm0 chunk v_tgt ofs blk_tgt delta m_tgt0
+      sm0 chunk v_tgt ofs blk_tgt m_tgt0
       (MWF: wf' sm0)
-      (PRVTGT: brange blk_tgt (ofs + delta) (ofs + delta + size_chunk chunk) <2=
+      (PRVTGT: brange blk_tgt (ofs) (ofs + size_chunk chunk) <2=
               (ons_mem sm0.(ptt_tgt) priv))
-      (STRTGT: Mem.store chunk sm0.(tgt) blk_tgt (ofs + delta) v_tgt = Some m_tgt0)
+      (STRTGT: Mem.store chunk sm0.(tgt) blk_tgt (ofs) v_tgt = Some m_tgt0)
 :
     exists sm1,
       (<<MSRC: sm1.(src) = sm0.(src)>>)
@@ -765,7 +765,7 @@ Proof.
     inv MWF.
     exploit PTTTGT; et.
     { unfold public_tgt, private_tgt. Psimpl. sii X. eapply X; et.
-      instantiate (1:= ofs' + delta0). zsimpl. eauto with mem. }
+      instantiate (1:= ofs' + delta). zsimpl. eauto with mem. }
     intro U. rr in U. rr in T. rewrite U in T. ss. }
   intro U; des.
   eexists (mk _ _ _ _ _ sm0.(ptt_src) sm0.(ptt_tgt)). dsplits; ss; eauto; cycle 1.
@@ -791,11 +791,11 @@ Unshelve.
 Qed.
 
 Lemma store_right_pm
-      mi sm0 chunk v_tgt ofs blk_tgt delta m_tgt0
+      mi sm0 chunk v_tgt ofs blk_tgt m_tgt0
       (MWF: wf' sm0)
-      (PMTGT: brange blk_tgt (ofs + delta) (ofs + delta + size_chunk chunk) <2=
+      (PMTGT: brange blk_tgt (ofs) (ofs + size_chunk chunk) <2=
               (privmods mi sm0.(ptt_tgt)))
-      (STRTGT: Mem.store chunk sm0.(tgt) blk_tgt (ofs + delta) v_tgt = Some m_tgt0)
+      (STRTGT: Mem.store chunk sm0.(tgt) blk_tgt (ofs) v_tgt = Some m_tgt0)
 :
     exists sm1,
       (<<MSRC: sm1.(src) = sm0.(src)>>)
@@ -812,7 +812,7 @@ Proof.
     inv MWF.
     exploit PTTTGT; et.
     { unfold public_tgt, private_tgt. Psimpl. sii X. eapply X; et.
-      instantiate (1:= ofs' + delta0). zsimpl. eauto with mem. }
+      instantiate (1:= ofs' + delta). zsimpl. eauto with mem. }
     intro U. rr in U. des. unfold privmods in T. des_ifs. rewrite U in *. ss. }
   intro U; des.
   eexists (mk _ _ _ _ _ sm0.(ptt_src) sm0.(ptt_tgt)). dsplits; ss; eauto; cycle 1.

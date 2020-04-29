@@ -55,6 +55,23 @@ Ltac econsr :=
      |econstructor  2
      |econstructor  1].
 
+(** TODO: put it MemoryC **)
+
+Lemma Mem_valid_access_unchanged_on
+      m0 m1 chunk b ofs perm
+      (VA: Mem.valid_access m0 chunk b ofs perm)
+      (UNCH: Mem.unchanged_on (brange b ofs (ofs + size_chunk chunk)) m0 m1)
+  :
+    (<<VA: Mem.valid_access m1 chunk b ofs perm>>)
+.
+Proof.
+  rr in VA. des.
+  rr. esplits; et.
+  ii. exploit VA; et. intro T.
+  eapply Mem.perm_unchanged_on; et.
+Qed.
+
+
 
 Section SMO.
 
@@ -83,9 +100,9 @@ Section SMO.
           (<<VLSRC: Mem.valid_block smo.(SimMem.src) k>>) /\
             exists k_tgt,
               (<<SIMVAL: smo.(sm).(SimMemSV.inj) k = Some (k_tgt, 0)>>) /\
-              (* (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt)>>) /\ *)
-              (<<LDTGT: Mem.load Mint32 smo.(SimMem.tgt) k 0%Z = Some (Vint v)>>) /\
-              (<<PMTGT: brange k lo hi <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_tgt)>>)
+              (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt) Mint64 k_tgt (-8) Writable>>) /\
+              (<<LDTGT: Mem.load Mint32 smo.(SimMem.tgt) k_tgt 0%Z = Some (Vint v)>>) /\
+              (<<PMTGT: brange k_tgt lo hi <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_tgt)>>)
       )
   .
 
@@ -124,7 +141,11 @@ Section SMO.
     ii. exploit SOME; et. i; des. esplits; ss; et.
     - eapply Mem_unchanged_noperm; et.
     - eapply Mem.valid_block_unchanged_on; et.
-    - instantiate (1:= k_tgt). eapply MLEPRIV; ss.
+    - eapply MLEPRIV; ss.
+    - eapply Mem_valid_access_unchanged_on; et.
+      eapply Mem.unchanged_on_implies; et; ss. ii.
+      exploit PMTGT0; et.
+      { rr in H. rr. des. esplits; et. u in *. xomega. }
     - eapply Mem.load_unchanged_on; et. ii. ss. eapply PMTGT0; et. rr. unfold lo, hi. esplits; et; xomega.
   Qed.
   Next Obligation.
@@ -256,12 +277,29 @@ Proof.
     + exploit SimMemSV.alloc_parallel; try apply ALLOC; try refl.
       { eapply MWF. }
       i; des. clarify.
-      (* exploit SimMemSV.store_right_pm; et. *)
       (* exploit SimMemSV.free_left; et. i; des. clarify. *)
-      assert(STRTGT: exists m_tgt0,
+
+      alloc + free_left --> partition tgt should be privmod
+      assert(STRTGT0: exists m_tgt0,
                 Mem.store Mint64 (SimMemSV.tgt sm1) blk_tgt (-8) (Vptrofs (Ptrofs.repr 4)) = Some m_tgt0).
-      { edestruct Mem.valid_access_store; et. split; ss. ss.
+      { edestruct Mem.valid_access_store; et.
+        eapply Mem.valid_access_implies with Freeable; eauto with mem.
+        eapply Mem.valid_access_alloc_same; et; u; ss.
+        exists (- 1). xomega.
       }
+      des.
+      exploit SimMemSV.store_right_pm; et.
+      { ii. ss. rr in PR.
+
+      assert(STRTGT1: exists m_tgt1,
+                Mem.store Mint32 m_tgt0 blk_tgt 0 (Vint (Int.repr 0)) = Some m_tgt1).
+      { edestruct Mem.valid_access_store; et.
+        eapply Mem.store_valid_access_1; et.
+        eapply Mem.valid_access_implies with Freeable; eauto with mem.
+        eapply Mem.valid_access_alloc_same; et; u; ss.
+        apply Z.divide_0_r.
+      }
+      des.
 
 
       eexists _, _, _, (mk (SimMemSV.mk _ _ _ _ _ _ _) _ _); ss. esplits; et.
@@ -289,8 +327,7 @@ Proof.
         { econsr; ss; et.
           - folder. des_ifs. instantiate (1:= EF_malloc).
             admit "FINDF".
-          - rr. econs; ss; et. unfold Mptr; des_ifs; ss. psimpl.
-            admit "store_right".
+          - rr. econs; ss; et.
         }
         eapply star_left with (t1 := E0) (t2 := E0); ss.
         { econs; ss; et. }
@@ -305,9 +342,7 @@ Proof.
         eapply star_left with (t1 := E0) (t2 := E0); ss.
         { econs; ss; et. }
         eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et).
-          admit "store_right".
-        }
+        { repeat (econs; ss; et). }
         eapply star_left with (t1 := E0) (t2 := E0); ss.
         { econs; ss; et. }
         eapply star_left with (t1 := E0) (t2 := E0); ss.

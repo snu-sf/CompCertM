@@ -77,12 +77,15 @@ Section SMO.
           (SOME: map k = Some v)
         ,
           (* (<<SRC: forall o, ZMap.get o (smo.(SimMem.src).(Mem.mem_contents) # k) = Undef>>) /\ *)
-          (<<SRC: Mem_range_noperm smo.(SimMem.src) k lo hi>>) /\
+          (<<PERMSRC: Mem_range_noperm smo.(SimMem.src) k lo hi>>) /\
           (* (<<SRC: (smo.(SimMem.tgt).(Mem.mem_contents) # k) = (ZMap.init Undef)>>) /\ *)
-          (<<TGT: Mem.load Mint32 smo.(SimMem.tgt) k 0%Z = Some (Vint v)>>) /\
           (<<PMSRC: brange k lo hi <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_src)>>) /\
-          (<<PMTGT: brange k lo hi <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_tgt)>>) /\
-          (<<VLSRC: Mem.valid_block smo.(SimMem.src) k>>)
+          (<<VLSRC: Mem.valid_block smo.(SimMem.src) k>>) /\
+            exists k_tgt,
+              (<<SIMVAL: smo.(sm).(SimMemSV.inj) k = Some (k_tgt, 0)>>) /\
+              (* (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt)>>) /\ *)
+              (<<LDTGT: Mem.load Mint32 smo.(SimMem.tgt) k 0%Z = Some (Vint v)>>) /\
+              (<<PMTGT: brange k lo hi <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_tgt)>>)
       )
   .
 
@@ -120,8 +123,9 @@ Section SMO.
     econs; ss; et.
     ii. exploit SOME; et. i; des. esplits; ss; et.
     - eapply Mem_unchanged_noperm; et.
-    - eapply Mem.load_unchanged_on; et. ii. ss. eapply PMTGT0; et. rr. unfold lo, hi. esplits; et; xomega.
     - eapply Mem.valid_block_unchanged_on; et.
+    - instantiate (1:= k_tgt). eapply MLEPRIV; ss.
+    - eapply Mem.load_unchanged_on; et. ii. ss. eapply PMTGT0; et. rr. unfold lo, hi. esplits; et; xomega.
   Qed.
   Next Obligation.
     ss. ii. destruct smo0; ss.
@@ -252,9 +256,12 @@ Proof.
     + exploit SimMemSV.alloc_parallel; try apply ALLOC; try refl.
       { eapply MWF. }
       i; des. clarify.
-      exploit SimMemSV.free_left; et. i; des. clarify.
-
-
+      (* exploit SimMemSV.store_right_pm; et. *)
+      (* exploit SimMemSV.free_left; et. i; des. clarify. *)
+      assert(STRTGT: exists m_tgt0,
+                Mem.store Mint64 (SimMemSV.tgt sm1) blk_tgt (-8) (Vptrofs (Ptrofs.repr 4)) = Some m_tgt0).
+      { edestruct Mem.valid_access_store; et. split; ss. ss.
+      }
 
 
       eexists _, _, _, (mk (SimMemSV.mk _ _ _ _ _ _ _) _ _); ss. esplits; et.

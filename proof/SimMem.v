@@ -263,6 +263,7 @@ Section SimMemOh.
         smo0 sm1
         (WF: wf smo0)
         (WF: SimMem.wf sm1)
+        (MLEPRIV: SimMem.lepriv smo0.(sm) sm1)
         (UNCHSRC: SimMem.unchanged_on (privmods midx smo0.(sm).(SimMem.ptt_src))
                                       smo0.(sm).(SimMem.src) sm1.(SimMem.src))
         (UNCHTGT: SimMem.unchanged_on (privmods midx smo0.(sm).(SimMem.ptt_tgt))

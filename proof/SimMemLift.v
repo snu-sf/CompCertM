@@ -259,6 +259,7 @@ Module SimMemOhLift.
       eapply SimMemOh.set_sm_wf; eauto.
       - eapply SimMemLift.lift_wf; eauto.
         eapply SimMemOh.wf_proj; eauto.
+      - eapply SimMemLift.lift_priv; ss. eapply SimMemOh.wf_proj; et.
       - rewrite SimMemLift.lift_src. refl.
       - rewrite SimMemLift.lift_tgt. refl.
       - rewrite SimMemLift.lift_ptt_src; ss.
@@ -313,6 +314,15 @@ Module SimMemOhLift.
       eapply SimMemOh.set_sm_wf; eauto.
       - eapply SimMemLift.unlift_wf; try eapply SimMemOh.wf_proj; eauto.
         eapply SimMemOh.le_proj in H1. rewrite SimMemOh.getset_sm in H1. ss.
+      - eapply SimMemLift.unlift_priv; et.
+        + eapply SimMemOh.wf_proj; et.
+        + instantiate (1:= (SimMemLift.lift mrel0)).
+          eapply SimMemLift.lift_priv; et.
+          eapply SimMemOh.wf_proj; et.
+        + eapply SimMemOh.le_proj in H1.
+          rewrite SimMemOh.getset_sm in H1.
+          ss.
+        + eapply SimMemOh.wf_proj; et.
       - rewrite SimMemLift.unlift_src. refl.
       - rewrite SimMemLift.unlift_tgt. refl.
       - rewrite SimMemLift.unlift_ptt_src; ss.

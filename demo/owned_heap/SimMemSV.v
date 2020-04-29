@@ -103,6 +103,49 @@ Hint Unfold privmod_others.
 
 
 
+Require Import Classical_Pred_Type.
+
+Lemma not_and_or_strong
+      P Q
+      (H: (~ (P /\ Q)))
+  :
+    ((Q /\ ~ P) \/  ~Q)
+.
+Proof.
+  apply not_and_or in H.
+  destruct (classic Q); et.
+  des; clarify; et.
+Qed.
+
+Ltac Psimpl_ :=
+  match goal with
+  | [ H: ~ ~ ?P |- _ ] => apply NNPP in H
+  | [ H: (~?P -> ?P) |- _ ] => apply Peirce in H
+  | [ H: ~ (?P -> ?Q) |- _ ] => apply imply_to_and in H
+  | [ |- ~?P \/ ~?Q ] => apply imply_to_or
+  (* Parameter or_to_imply : forall P Q : Prop, ~ P \/ Q -> P -> Q. *)
+  | [ H: ~(?P /\ ?Q) |- _ ] => apply not_and_or_strong in H
+  | [ |- ~(?P /\ ?Q) ] => apply or_not_and
+  | [ H: ~(?P \/ ?Q) |- _ ] => apply not_or_and in H
+  | [ |- ~(?P \/ ?Q) ] => apply and_not_or
+  | [ H: ~(forall n, ~?P n) |- _ ] => apply not_all_not_ex in H
+  | [ H: ~(forall n, ?P n) |- _ ] => apply not_all_ex_not in H
+  | [ H: ~(exists n, ?P n) |- _ ] => apply not_ex_all_not in H
+  | [ H: ~(exists n, ~?P n) |- _ ] => apply not_ex_not_all in H
+  | [ |- ~(forall n, ?P n) ] => apply ex_not_not_all
+  | [ |- ~(exists n, ?P n) ] => apply all_not_not_ex
+  end
+.
+
+Ltac Psimpl := repeat Psimpl_.
+
+
+
+
+
+
+
+
 
 
 Section FROZEN.
@@ -700,6 +743,100 @@ Proof.
   rewrite <- H1. eauto.
 Qed.
 
+Lemma store_right_prv
+      sm0 chunk v_tgt ofs blk_tgt delta m_tgt0
+      (MWF: wf' sm0)
+      (PRVTGT: brange blk_tgt (ofs + delta) (ofs + delta + size_chunk chunk) <2=
+              (ons_mem sm0.(ptt_tgt) priv))
+      (STRTGT: Mem.store chunk sm0.(tgt) blk_tgt (ofs + delta) v_tgt = Some m_tgt0)
+:
+    exists sm1,
+      (<<MSRC: sm1.(src) = sm0.(src)>>)
+      /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+      /\ (<<UNCH: SimMem.unch None sm0 sm1>>)
+.
+Proof.
+  exploit Mem.store_outside_inject; try apply MWF; eauto.
+  { ii. unfold brange in *. exploit PRVTGT; et.
+    intro T.
+    inv MWF.
+    exploit PTTTGT; et.
+    { unfold public_tgt, private_tgt. Psimpl. sii X. eapply X; et.
+      instantiate (1:= ofs' + delta0). zsimpl. eauto with mem. }
+    intro U. rr in U. rr in T. rewrite U in T. ss. }
+  intro U; des.
+  eexists (mk _ _ _ _ _ sm0.(ptt_src) sm0.(ptt_tgt)). dsplits; ss; eauto; cycle 1.
+  - econs; ss; eauto.
+    + refl.
+    + refl.
+    + inv MWF.
+      eapply Mem.store_unchanged_on; eauto. sii X.
+      exploit PRVTGT; et. intro T. rr in T. rr in X0. rewrite T in X0. ss.
+    + unfold public_src, private_src. ss. ii; des; eauto with mem.
+  - des. econs; ss; eauto.
+    + refl.
+    + eapply Mem.store_unchanged_on; eauto. i.
+      specialize (PRVTGT blk_tgt i). hexploit1 PRVTGT; et. rr in PRVTGT.
+      { ii. unfold privmods, privmod_others in *. des_ifs. rewrite PRVTGT in *. ss. }
+  - econs; ss; eauto; try apply MWF.
+    + inv MWF. etrans; et. erewrite <- Mem.nextblock_store; et. refl.
+    + inv MWF. etrans; try apply PTTTGT; et.
+      unfold public_tgt, private_tgt; ss. ii; des. Psimpl. des; et.
+      eapply PR. u in *. eauto with mem.
+Unshelve.
+  all: try apply sm0.
+Qed.
+
+Lemma store_right_pm
+      mi sm0 chunk v_tgt ofs blk_tgt delta m_tgt0
+      (MWF: wf' sm0)
+      (PMTGT: brange blk_tgt (ofs + delta) (ofs + delta + size_chunk chunk) <2=
+              (privmods mi sm0.(ptt_tgt)))
+      (STRTGT: Mem.store chunk sm0.(tgt) blk_tgt (ofs + delta) v_tgt = Some m_tgt0)
+:
+    exists sm1,
+      (<<MSRC: sm1.(src) = sm0.(src)>>)
+      /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+      /\ (<<UNCH: SimMem.unch mi sm0 sm1>>)
+.
+Proof.
+  exploit Mem.store_outside_inject; try apply MWF; eauto.
+  { ii. unfold brange in *. exploit PMTGT; et.
+    intro T.
+    inv MWF.
+    exploit PTTTGT; et.
+    { unfold public_tgt, private_tgt. Psimpl. sii X. eapply X; et.
+      instantiate (1:= ofs' + delta0). zsimpl. eauto with mem. }
+    intro U. rr in U. des. unfold privmods in T. des_ifs. rewrite U in *. ss. }
+  intro U; des.
+  eexists (mk _ _ _ _ _ sm0.(ptt_src) sm0.(ptt_tgt)). dsplits; ss; eauto; cycle 1.
+  - econs; ss; eauto.
+    + refl.
+    + refl.
+    + inv MWF.
+      eapply Mem.store_unchanged_on; eauto. sii X.
+      exploit PMTGT; et. intro T. unfold privmods in *. des_ifs. rewrite X0 in *. ss.
+    + unfold public_src, private_src. ss. ii; des; eauto with mem.
+  - des. econs; ss; eauto.
+    + refl.
+    + eapply Mem.store_unchanged_on; eauto. i.
+      specialize (PMTGT blk_tgt i). hexploit1 PTTTGT; et.
+      { ii. unfold privmods, privmod_others in *. des_ifs. }
+  - econs; ss; eauto; try apply MWF.
+    + inv MWF. etrans; et. erewrite <- Mem.nextblock_store; et. refl.
+    + inv MWF. etrans; try apply PTTTGT; et.
+      unfold public_tgt, private_tgt; ss. ii; des. Psimpl. des; et.
+      eapply PR. u in *. eauto with mem.
+Unshelve.
+  all: try apply sm0.
+Qed.
+
 Lemma free_parallel
       sm0 lo hi blk_src blk_tgt delta m_src0
       (MWF: wf' sm0)
@@ -807,50 +944,84 @@ Unshelve.
   all: try apply sm0.
 Qed.
 
-(* Lemma free_right *)
-(*       sm0 lo hi blk_tgt m_tgt0 *)
-(*       (MWF: wf' sm0) *)
-(*       (FREETGT: Mem.free sm0.(tgt) blk_tgt lo hi = Some m_tgt0) *)
-(*       (PRIVTGT: forall ofs (BDD: lo <= ofs < hi), (private_tgt sm0) blk_tgt ofs) *)
-(*       (EXTTGT: forall ofs : Z, lo <= ofs < hi -> ~ tgt_external sm0 blk_tgt ofs) *)
-(*   : *)
-(*     exists sm1, *)
-(*       (<<MSRC: sm1.(src) = sm0.(src)>>) *)
-(*       /\ (<<MTGT: sm1.(tgt) = m_tgt0>>) *)
-(*       /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>) *)
-(*       /\ (<<MWF: wf' sm1>>) *)
-(*       /\ (<<MLE: le' sm0 sm1>>) *)
-(*       /\ (<<UNCH: SimMem.unch None sm0 sm1>>) *)
-(* . *)
-(* Proof. *)
-(*   exploit Mem.free_right_inject; try apply MWF; eauto. *)
-(*   { ii. eapply PRIVTGT in H1. red in H1. des. red in H1. eapply H1; eauto. *)
-(*     replace (ofs + delta - delta) with ofs by omega. eauto with mem. *)
-(*   } *)
-(*   i; des. inv MWF. *)
-(*   eexists (mk _ _ _ _ _ _ _ _ _ _ _). dsplits; ss; eauto; cycle 1. *)
-(*   - econs; ss; eauto. *)
-(*     + eapply Mem.unchanged_on_refl. *)
-(*     + eapply Mem.free_unchanged_on; eauto. *)
-(*     + eapply frozen_refl. *)
-(*     + eapply frozen_refl. *)
-(*     + ii. eapply Mem.perm_free_3; eauto. *)
-(*   - econs; ss; eauto. *)
-(*     + eapply Mem.unchanged_on_implies; try apply SPLITHINT3. i. rewrite PRIVSRC. *)
-(*       unfold privmod_others in *. des_ifs. eapply PTTSRC; et. *)
-(*       instantiate (1:= Some mi). ss. des_ifs. des_sumbool. ss. *)
-(*     + eapply Mem.unchanged_on_implies; try apply SPLITHINT3. i. rewrite PRIVTGT0. *)
-(*       unfold privmod_others in *. des_ifs. eapply PTTTGT; et. *)
-(*       instantiate (1:= Some mi). ss. des_ifs. des_sumbool. ss. *)
-(*   - econs; ss; eauto. *)
-(*     + etransitivity; eauto. unfold tgt_private. ss. ii; des. esplits; eauto. *)
-(*       unfold valid_blocks in *. eauto with mem. *)
-(*     + etransitivity; eauto. erewrite <- Mem.nextblock_free; eauto. xomega. *)
-(*     + etransitivity; try apply PTTTGT; eauto. unfold tgt_private. ss. ii; des. esplits; eauto. *)
-(*       unfold valid_blocks in *. eauto with mem. *)
-(* Unshelve. *)
-(*   all: try apply sm0. *)
-(* Qed. *)
+Lemma free_right_prv
+      sm0 lo hi blk_tgt m_tgt0
+      (MWF: wf' sm0)
+      (FREETGT: Mem.free sm0.(tgt) blk_tgt lo hi = Some m_tgt0)
+      (PRVTGT: brange blk_tgt lo hi <2= (ons_mem sm0.(ptt_tgt) priv))
+  :
+    exists sm1,
+      (<<MSRC: sm1.(src) = sm0.(src)>>)
+      /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+      /\ (<<UNCH: SimMem.unch None sm0 sm1>>)
+      /\ (<<PRVSRC: (ons_mem sm0.(ptt_src) priv) = (ons_mem sm1.(ptt_src) priv)>>)
+      /\ (<<PRVTGT: (ons_mem sm0.(ptt_tgt) priv) = (ons_mem sm1.(ptt_tgt) priv)>>)
+.
+Proof.
+  exploit Mem.free_right_inject; try apply MWF; eauto.
+  {
+    ii.
+    exploit PRVTGT; et. intro T. r in T.
+    inv MWF.
+    exploit PTTTGT; et.
+    { unfold public_tgt, private_tgt. sii X; des.
+      eapply X; et. instantiate (1:= ofs + delta). zsimpl. eauto with mem.
+    }
+    intro U. r in U. congruence.
+  }
+  intro U; des. inv MWF.
+  eexists (mk _ _ _ _ _ sm0.(ptt_src) sm0.(ptt_tgt)). dsplits; ss; eauto; cycle 1.
+  - econs; ss; eauto.
+    + refl.
+    + refl.
+    + eapply Mem.free_unchanged_on; eauto. ii. exploit PRVTGT; et. intro V. u in *; congruence.
+    + ii. eapply Mem.perm_free_3; eauto.
+  - econs; ss; eauto.
+    + refl.
+    + eapply Mem.free_unchanged_on; et.
+      sii X.
+      exploit PRVTGT; et. intro Y. u in *; des_ifs. rewrite Y in *; ss.
+  - econs; ss; eauto.
+    + etransitivity; eauto. erewrite <- Mem.nextblock_free; eauto. xomega.
+    + etransitivity; try apply PTTTGT; eauto.
+      unfold public_tgt, private_tgt; ss. ii. Psimpl. des; et. eapply PR; et. u in *. eauto with mem.
+Unshelve.
+  all: try apply sm0.
+Qed.
+
+Lemma free_list_right_prv
+      sm0 rngs m_tgt0 m_tgt1
+      (MTGT: m_tgt0 = sm0.(tgt))
+      (MWF: wf' sm0)
+      (FREETGT: Mem.free_list m_tgt0 rngs = Some m_tgt1)
+      (PRVTGT: forall b lo hi, In (b, lo, hi) rngs -> brange b lo hi <2= (ons_mem sm0.(ptt_tgt) priv))
+  :
+    exists sm1,
+      (<<MSRC: sm1.(src) = sm0.(src)>>)
+      /\ (<<MTGT: sm1.(tgt) = m_tgt1>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+      /\ (<<UNCH: SimMem.unch None sm0 sm1>>)
+      /\ (<<PRVSRC: (ons_mem sm0.(ptt_src) priv) = (ons_mem sm1.(ptt_src) priv)>>)
+      /\ (<<PRVTGT: (ons_mem sm0.(ptt_tgt) priv) = (ons_mem sm1.(ptt_tgt) priv)>>)
+.
+Proof.
+  ginduction rngs; ii; ss.
+  { clarify. esplits; et; try refl. }
+  des_ifs.
+  exploit free_right_prv; et. i; des. clarify.
+  exploit (IHrngs sm1); try apply FREETGT; et.
+  { ii. exploit PRVTGT; et. i. rewrite <- PRVTGT0. ss. }
+  i; des.
+  exists sm2.
+  esplits; ss; et; try congruence.
+  { etrans; et. }
+  { etrans; et. }
+Qed.
 
 Lemma alloc_parallel
       sm0 lo_src hi_src lo_tgt hi_tgt blk_src m_src0
@@ -953,42 +1124,6 @@ Proof.
 Unshelve.
   all: try apply sm0.
 Qed.
-
-Require Import Classical_Pred_Type.
-
-Lemma not_and_or_strong
-      P Q
-      (H: (~ (P /\ Q)))
-  :
-    ((Q /\ ~ P) \/  ~Q)
-.
-Proof.
-  apply not_and_or in H.
-  destruct (classic Q); et.
-  des; clarify; et.
-Qed.
-
-Ltac Psimpl_ :=
-  match goal with
-  | [ H: ~ ~ ?P |- _ ] => apply NNPP in H
-  | [ H: (~?P -> ?P) |- _ ] => apply Peirce in H
-  | [ H: ~ (?P -> ?Q) |- _ ] => apply imply_to_and in H
-  | [ |- ~?P \/ ~?Q ] => apply imply_to_or
-  (* Parameter or_to_imply : forall P Q : Prop, ~ P \/ Q -> P -> Q. *)
-  | [ H: ~(?P /\ ?Q) |- _ ] => apply not_and_or_strong in H
-  | [ |- ~(?P /\ ?Q) ] => apply or_not_and
-  | [ H: ~(?P \/ ?Q) |- _ ] => apply not_or_and in H
-  | [ |- ~(?P \/ ?Q) ] => apply and_not_or
-  | [ H: ~(forall n, ~?P n) |- _ ] => apply not_all_not_ex in H
-  | [ H: ~(forall n, ?P n) |- _ ] => apply not_all_ex_not in H
-  | [ H: ~(exists n, ?P n) |- _ ] => apply not_ex_all_not in H
-  | [ H: ~(exists n, ~?P n) |- _ ] => apply not_ex_not_all in H
-  | [ |- ~(forall n, ?P n) ] => apply ex_not_not_all
-  | [ |- ~(exists n, ?P n) ] => apply all_not_not_ex
-  end
-.
-
-Ltac Psimpl := repeat Psimpl_.
 
 Lemma external_call
       sm0 ef se vargs t vres m_src0 tse vargs' vres' m_tgt0 f'

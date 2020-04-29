@@ -199,6 +199,7 @@ Section SimMemOhUnify.
                                         smo0.(SimMem.tgt) sm0.(SimMem.tgt))
           (PMSRC: (privmods mi smo0.(SimMem.ptt_src)) <2= (privmods mi sm0.(SimMem.ptt_src)))
           (PMTGT: (privmods mi smo0.(SimMem.ptt_tgt)) <2= (privmods mi sm0.(SimMem.ptt_tgt)))
+          (LEPRIV: SimMem.lepriv smo0 sm0)
         ,
           (<<WFSMO: SimMemOh.wf (SimMemOh.set_sm smo0 sm0)>>)
           (* /\ *)
@@ -550,6 +551,10 @@ Section SimMemOhUnify.
             inv UNCH. eapply LETGT; try congruence.
             erewrite <- smeq; et. rewrite SMEQ in PR. ss.
           }
+          {
+            rewrite SimMemOh.getset_sm in LEPRIV. etrans; et. eapply SimMem.pub_priv; et.
+            rewrite SMEQ. eapply SimMemOh.le_proj in LE. erewrite <- smeq in LE; et.
+          }
       + ii.
         do 2 (unfold ohs_src, ohs_tgt; ss).
         des_ifs_safe. des_ifs.
@@ -645,6 +650,10 @@ Section SimMemOhUnify.
             ii. eapply PMTGT; et. rewrite SimMemOh.getset_sm.
             inv UNCH. eapply LETGT; try congruence.
             erewrite <- smeq; et. rewrite SMEQ in PR. ss.
+          }
+          {
+            rewrite SimMemOh.getset_sm in LEPRIV. etrans; et.
+            rewrite SMEQ. eapply SimMemOh.lepriv_proj in LE. erewrite <- smeq in LE; et.
           }
       + ii.
         do 2 (unfold ohs_src, ohs_tgt; ss).

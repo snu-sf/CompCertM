@@ -82,7 +82,8 @@ Proof.
   ii. inv PR. econs; et.
   { eapply Mem.unchanged_on_implies; et. u. ii. des_ifs. }
   { eapply Mem.unchanged_on_implies; et. u. ii. des_ifs. }
-  { ii. destruct mi; ss. exploit LESRC; et. }
+  { ii. destruct mj; try (by ss). exploit LESRC; et. ss. }
+  { ii. destruct mj; try (by ss). exploit LETGT; et. ss. }
 Qed.
 
 
@@ -383,11 +384,18 @@ Proof.
       }
       {
         etrans; et. etrans; et. etrans; et.
-        admit "unch".
+        { eapply unch_implies; et. }
+        { eapply unch_implies; et. }
       }
       {
-        econs 4 ; ss; et.
-        admit "wf".
+        econs 4; ss; et.
+        - instantiate (1:= upcast tt). econs; ss; et.
+          ii. unfold update in *. des_ifs.
+          + admit "hard -- new".
+          + inv MWF. rewrite OH in *. clarify. exploit SOME0; et. i; des.
+            admit "hard -- old".
+        - congruence.
+        - rewrite MINJ1. rewrite MINJ0. rewrite MINJ. econs; et.
       }
     + admit "NOTNOW".
     + admit "NOTNOW".

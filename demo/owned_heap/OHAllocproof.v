@@ -391,9 +391,49 @@ Proof.
         econs 4; ss; et.
         - instantiate (1:= upcast tt). econs; ss; et.
           ii. unfold update in *. des_ifs.
-          + admit "hard -- new".
-          + inv MWF. rewrite OH in *. clarify. exploit SOME0; et. i; des.
-            admit "hard -- old".
+          + (** new **)
+            esplits; et.
+            * rp; et. rp; et. eapply Mem_free_noperm; et.
+            * u. ii. des; clarify.
+              bar.
+              inv MLE2. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE1. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE0. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              TTTTTTTTTTTTTTT
+              ss.
+          + (** old **)
+            inv MWF. rewrite OH in *. clarify. exploit SOME0; et. i; des.
+            esplits; et.
+            * rewrite MSRC0. rewrite MSRC. clear - n PERMSRC FREE ALLOC.
+              admit "ez".
+            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE2 MLE1 MLE0 MLE.
+              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              bar.
+              inv MLE2. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE1. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE0. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              ss.
+            * admit "ez".
+            * rewrite MINJ1. rewrite MINJ0. rewrite MINJ. rewrite INJ0; et.
+            * exploit Mem.valid_access_alloc_other; et. intro T. rewrite <- MTGT in T.
+              eapply Mem.store_valid_access_1; et.
+              eapply Mem.store_valid_access_1; et.
+            * exploit Mem.load_alloc_other; et. intro T.
+              erewrite Mem.load_store_other; try apply STRTGT1; et; cycle 1.
+              { left. admit "ez". }
+              erewrite Mem.load_store_other; try apply STRTGT0; et; cycle 1.
+              { left. admit "ez". }
+              congruence.
+            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE2 MLE1 MLE0 MLE.
+              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              bar.
+              inv MLE2. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE1. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE0. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              ss.
         - congruence.
         - rewrite MINJ1. rewrite MINJ0. rewrite MINJ. econs; et.
       }

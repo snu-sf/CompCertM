@@ -19,6 +19,7 @@ Set Implicit Arguments.
 
 
 
+Hint Unfold privmods privmod_others.
 
 Global Opaque string_dec. (**** TODO: Put in SimMem ****)
 (**** TODO: update CoqlibC ****)
@@ -69,6 +70,19 @@ Proof.
   rr. esplits; et.
   ii. exploit VA; et. intro T.
   eapply Mem.perm_unchanged_on; et.
+Qed.
+
+(*** TODO: move to SimMem ***)
+Lemma unch_implies
+      mi
+  :
+    <<IMPL: SimMem.unch None <2= SimMem.unch mi>>
+.
+Proof.
+  ii. inv PR. econs; et.
+  { eapply Mem.unchanged_on_implies; et. u. ii. des_ifs. }
+  { eapply Mem.unchanged_on_implies; et. u. ii. des_ifs. }
+  { ii. destruct mi; ss. exploit LESRC; et. }
 Qed.
 
 
@@ -277,32 +291,47 @@ Proof.
     + exploit SimMemSV.alloc_parallel; try apply ALLOC; try refl.
       { eapply MWF. }
       i; des. clarify.
-      (* exploit SimMemSV.free_left; et. i; des. clarify. *)
+      exploit (SimMemSV.free_left (SimMemSV.privmod "OHAlloc")); et. i; des. clarify.
 
-      alloc + free_left --> partition tgt should be privmod
       assert(STRTGT0: exists m_tgt0,
-                Mem.store Mint64 (SimMemSV.tgt sm1) blk_tgt (-8) (Vptrofs (Ptrofs.repr 4)) = Some m_tgt0).
+                Mem.store Mint64 (SimMemSV.tgt sm2) blk_tgt (-8) (Vptrofs (Ptrofs.repr 4)) = Some m_tgt0).
       { edestruct Mem.valid_access_store; et.
         eapply Mem.valid_access_implies with Freeable; eauto with mem.
+        rewrite MTGT.
         eapply Mem.valid_access_alloc_same; et; u; ss.
         exists (- 1). xomega.
       }
       des.
-      exploit SimMemSV.store_right_pm; et.
-      { ii. ss. rr in PR.
+
+      exploit (SimMemSV.store_right_pm (Some "OHAlloc")); try apply STRTGT0; et.
+      { u. ii. specialize (PM x0 x1). des; clarify. ss.
+        exploit PM; et.
+        { rr. esplits; et. u. xomega. }
+        u. intro T. rewrite T. ss.
+      }
+      i; des. clarify.
 
       assert(STRTGT1: exists m_tgt1,
-                Mem.store Mint32 m_tgt0 blk_tgt 0 (Vint (Int.repr 0)) = Some m_tgt1).
+                Mem.store Mint32 (SimMemSV.tgt sm3) blk_tgt 0 (Vint (Int.repr 0)) = Some m_tgt1).
       { edestruct Mem.valid_access_store; et.
         eapply Mem.store_valid_access_1; et.
         eapply Mem.valid_access_implies with Freeable; eauto with mem.
+        rewrite MTGT.
         eapply Mem.valid_access_alloc_same; et; u; ss.
         apply Z.divide_0_r.
       }
       des.
 
+      exploit (SimMemSV.store_right_pm (Some "OHAlloc")); try apply STRTGT1; et.
+      { u. ii. specialize (PM x0 x1). des; clarify. ss.
+        exploit PM; et.
+        { rr. esplits; et. u. xomega. }
+        u. intro T. inv MLE1. exploit PMTGT; et. intro U. rewrite U. ss.
+      }
+      i; des. clarify.
 
-      eexists _, _, _, (mk (SimMemSV.mk _ _ _ _ _ _ _) _ _); ss. esplits; et.
+
+      eexists _, _, _, (mk sm4 _ _); ss. esplits; et.
       { apply star_refl. }
       { left.
         eapply ModSemProps.spread_dplus; et.
@@ -327,7 +356,7 @@ Proof.
         { econsr; ss; et.
           - folder. des_ifs. instantiate (1:= EF_malloc).
             admit "FINDF".
-          - rr. econs; ss; et.
+          - rr. econs; ss; et. rewrite <- MTGT. et.
         }
         eapply star_left with (t1 := E0) (t2 := E0); ss.
         { econs; ss; et. }
@@ -350,9 +379,10 @@ Proof.
         apply star_refl.
       }
       {
-        admit "le".
+        etrans; et. etrans; et. etrans; et.
       }
       {
+        etrans; et. etrans; et. etrans; et.
         admit "unch".
       }
       {

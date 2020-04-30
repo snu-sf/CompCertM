@@ -358,8 +358,8 @@ Inductive le' (sm0 sm1: t'): Prop :=
     (* (INCR: inject_incr sm0.(inj) sm1.(inj)) *)
     (UNCHSRC: Mem.unchanged_on (ons_mem sm0.(ptt_src) external) sm0.(src) sm1.(src))
     (UNCHTGT: Mem.unchanged_on (ons_mem sm0.(ptt_tgt) external) sm0.(tgt) sm1.(tgt))
-    (PUBSRC: (ons_mem sm0.(ptt_src) pub) <2= (ons_mem sm1.(ptt_src) pub))
-    (PUBTGT: (ons_mem sm0.(ptt_tgt) pub) <2= (ons_mem sm1.(ptt_tgt) pub))
+    (* (PUBSRC: (ons_mem sm0.(ptt_src) pub) <2= (ons_mem sm1.(ptt_src) pub)) *)
+    (* (PUBTGT: (ons_mem sm0.(ptt_tgt) pub) <2= (ons_mem sm1.(ptt_tgt) pub)) *)
     (EXTSRC: (ons_mem sm0.(ptt_src) external) <2= (ons_mem sm1.(ptt_src) external))
     (EXTTGT: (ons_mem sm0.(ptt_tgt) external) <2= (ons_mem sm1.(ptt_tgt) external))
     (PMSRC: forall mi, (ons_mem sm0.(ptt_src) (privmod mi)) <2= (ons_mem sm1.(ptt_src) (privmod mi)))
@@ -442,10 +442,10 @@ Proof.
   i. inv H; ss. econs; ss; eauto; ii; des; ss.
   - eapply Mem.unchanged_on_implies; eauto. ii. unfold ons_mem in *. ss. unfold lift_ptt. des_ifs.
   - eapply Mem.unchanged_on_implies; eauto. ii. unfold ons_mem in *. ss. unfold lift_ptt. des_ifs.
-  - clear - PUBSRC PR. unfold ons_mem in *. ss. unfold lift_ptt, unlift_ptt in *.
-    specialize (PUBSRC x0 x1). ss. rewrite PR in *. rewrite PUBSRC; ss.
-  - clear - PUBTGT PR. unfold ons_mem in *. ss. unfold lift_ptt, unlift_ptt in *.
-    specialize (PUBTGT x0 x1). ss. rewrite PR in *. rewrite PUBTGT; ss.
+  (* - clear - PUBSRC PR. unfold ons_mem in *. ss. unfold lift_ptt, unlift_ptt in *. *)
+  (*   specialize (PUBSRC x0 x1). ss. rewrite PR in *. rewrite PUBSRC; ss. *)
+  (* - clear - PUBTGT PR. unfold ons_mem in *. ss. unfold lift_ptt, unlift_ptt in *. *)
+  (*   specialize (PUBTGT x0 x1). ss. rewrite PR in *. rewrite PUBTGT; ss. *)
   - clear - EXTSRC PR. unfold ons_mem in *. ss. unfold lift_ptt, unlift_ptt in *.
     specialize (EXTSRC x0 x1). ss. rewrite PR in *. rewrite EXTSRC; ss.
   - clear - EXTTGT PR. unfold ons_mem in *. ss. unfold lift_ptt, unlift_ptt in *.
@@ -549,8 +549,8 @@ Inductive lepriv (sm0 sm1: t'): Prop :=
     (GENBTGT: sm0.(ge_nb_tgt) = sm1.(ge_nb_tgt))
     (* (PUBSRC: (public_src sm0) <2= (public_src sm1)) *)
     (* (PUBTGT: (public_tgt sm0) <2= (public_tgt sm1)) *)
-    (PUBSRC: (ons_mem sm0.(ptt_src) pub) <2= (ons_mem sm1.(ptt_src) pub))
-    (PUBTGT: (ons_mem sm0.(ptt_tgt) pub) <2= (ons_mem sm1.(ptt_tgt) pub))
+    (* (PUBSRC: (ons_mem sm0.(ptt_src) pub) <2= (ons_mem sm1.(ptt_src) pub)) *)
+    (* (PUBTGT: (ons_mem sm0.(ptt_tgt) pub) <2= (ons_mem sm1.(ptt_tgt) pub)) *)
     (PMSRC: forall mi, (ons_mem sm0.(ptt_src) (privmod mi)) <2= (ons_mem sm1.(ptt_src) (privmod mi)))
     (PMTGT: forall mi, (ons_mem sm0.(ptt_tgt) (privmod mi)) <2= (ons_mem sm1.(ptt_tgt) (privmod mi)))
 .
@@ -637,16 +637,16 @@ Next Obligation.
   - refl.
   - ii. unfold ons_mem in *. unfold lift_ptt. des_ifs.
   - ii. unfold ons_mem in *. unfold lift_ptt. des_ifs.
-  - ii. unfold ons_mem in *. unfold lift_ptt. des_ifs.
-  - ii. unfold ons_mem in *. unfold lift_ptt. des_ifs.
+  (* - ii. unfold ons_mem in *. unfold lift_ptt. des_ifs. *)
+  (* - ii. unfold ons_mem in *. unfold lift_ptt. des_ifs. *)
 Qed.
 Next Obligation.
   inv MWF. inv MLE. inv MLIFT. econs; ss; et; try congruence.
   - refl.
   - ii. unfold ons_mem in *. unfold unlift_ptt. des_ifs.
   - ii. unfold ons_mem in *. unfold unlift_ptt. des_ifs.
-  - ii. unfold ons_mem in *. unfold unlift_ptt. des_ifs.
-  - ii. unfold ons_mem in *. unfold unlift_ptt. des_ifs.
+  (* - ii. unfold ons_mem in *. unfold unlift_ptt. des_ifs. *)
+  (* - ii. unfold ons_mem in *. unfold unlift_ptt. des_ifs. *)
 Qed.
 
 Global Program Instance SimMemInjOhLift: SimMemOhLift.class (@SimMemOh_default SimMemSV)
@@ -901,7 +901,7 @@ Unshelve.
 Qed.
 
 Lemma free_left
-      sm0 lo hi blk_src blk_tgt delta m_src0
+      ons sm0 lo hi blk_src blk_tgt delta m_src0
       (MWF: wf' sm0)
       (FREESRC: Mem.free sm0.(src) blk_src lo hi = Some m_src0)
       (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
@@ -913,10 +913,16 @@ Lemma free_left
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
       /\ (<<UNCH: SimMem.unch None sm0 sm1>>)
+      /\ (<<PM: (brange blk_tgt (lo + delta) (hi + delta)) <2= ons_mem sm1.(ptt_tgt) ons>>)
 .
 Proof.
   exploit Mem.free_left_inject; try apply MWF; eauto. i; des. inv MWF.
-  eexists (mk _ _ _ _ _ sm0.(ptt_src) sm0.(ptt_tgt)). dsplits; ss; eauto; cycle 1.
+  eexists (mk _ _ _ _ _ (sm0.(ptt_src))
+              (fun b ofs => if (eq_block b blk_tgt) && ((lo + delta) <=? ofs) && (ofs <? (hi + delta))
+                            then ons
+                            else sm0.(ptt_tgt) b ofs)
+          ).
+  dsplits; ss; eauto; cycle 1.
   - econs; ss; eauto.
     + refl.
     + eapply Mem.free_unchanged_on; eauto. i.
@@ -925,6 +931,24 @@ Proof.
         unfold loc_unmapped. rewrite SIMBLK; ss. }
       rr in PTTSRC. unfold ons_mem. rewrite PTTSRC. ss.
     + refl.
+    + u. ii. des_ifs. bsimpl. des. des_sumbool. clarify.
+      rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
+      exploit PTTTGT; et.
+      { unfold public_tgt, private_tgt. ii. des. eapply H0; et.
+        instantiate (1:= x1). eapply Mem.perm_max; et.
+        eapply Mem.perm_implies with Freeable; [|eauto with mem].
+        eapply Mem.free_range_perm in FREESRC. eapply FREESRC. xomega.
+      }
+      u. i; congruence.
+    + u. ii. des_ifs. exfalso. bsimpl. des. des_sumbool. clarify.
+      rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
+      exploit PTTTGT; et.
+      { unfold public_tgt, private_tgt. ii. des. eapply H0; et.
+        instantiate (1:= x1). eapply Mem.perm_max; et.
+        eapply Mem.perm_implies with Freeable; [|eauto with mem].
+        eapply Mem.free_range_perm in FREESRC. eapply FREESRC. xomega.
+      }
+      u. i; congruence.
     + ii. eapply Mem.perm_free_3; eauto.
   - econs; ss; eauto.
     + eapply Mem.free_unchanged_on; eauto. i.
@@ -933,13 +957,39 @@ Proof.
         unfold loc_unmapped. rewrite SIMBLK; ss. }
       rr in PTTSRC. unfold privmod_others. rewrite PTTSRC. ss.
     + refl.
+    + u. ii. unfold privmods in *. des_ifs_safe; ss. bsimpl. des. des_sumbool. clarify.
+      rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
+      exploit PTTTGT; et.
+      { unfold public_tgt, private_tgt. ii. des. eapply H0; et.
+        instantiate (1:= x1). eapply Mem.perm_max; et.
+        eapply Mem.perm_implies with Freeable; [|eauto with mem].
+        eapply Mem.free_range_perm in FREESRC. eapply FREESRC. xomega.
+      }
+      u. intro T. rewrite T in *. ss.
+  - u. ii. des. clarify. des_ifs. bsimpl. rewrite <- Z.leb_le in *. rewrite <- Z.ltb_lt in *.
+    des; des_sumbool; congruence.
   - econs; ss; eauto.
     + etrans; et. erewrite <- Mem.nextblock_free; et. xomega.
     + etrans; try apply PTTSRC. unfold public_src, private_src; ss.
       ii; des. eapply PR; esplits; et. unfold valid_blocks in *. eauto with mem.
-    + etrans; try apply PTTTGT. unfold public_tgt, private_tgt; ss.
-      ii; des. eapply PR; esplits; et.
-      { unfold loc_out_of_reach in *. ii. eapply H0; et. eauto with mem. }
+    + u. ii. des_ifs.
+      * exfalso. bsimpl. des. des_sumbool. clarify.
+        rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
+        eapply PR. esplits; eauto.
+        { ii. destruct (classic (b0 = blk_src)).
+          { clarify. eapply Mem_free_noperm; et. xomega. }
+          exploit (Mem.mi_no_overlap); try apply H2; et.
+          { eauto with mem. }
+          { eapply Mem.free_range_perm in FREESRC; et.
+            eapply Mem.perm_max. eapply Mem.perm_implies with Freeable; [|eauto with mem].
+            eapply FREESRC; et. instantiate (1:= x1 - delta). xomega.
+          }
+          ii. des; clarify. zsimpl. ss.
+        }
+        eapply Mem.mi_mappedblocks; et.
+      * etrans; try apply PTTTGT; ss. u.
+        ii; des. eapply PR; esplits; et.
+        { unfold loc_out_of_reach in *. ii. eapply H0; et. eauto with mem. }
 Unshelve.
   all: try apply sm0.
 Qed.
@@ -1064,8 +1114,8 @@ Proof.
       * erewrite H3 in NEW0; et. clarify.
     + eapply Mem.alloc_unchanged_on; eauto.
     + eapply Mem.alloc_unchanged_on; eauto.
-    + unfold ons_mem. ii. des_ifs.
-    + unfold ons_mem. ii. des_ifs.
+    (* + unfold ons_mem. ii. des_ifs. *)
+    (* + unfold ons_mem. ii. des_ifs. *)
     + unfold ons_mem. ii. des_ifs.
       exploit (PTTSRC blk_src x1).
       { unfold public_src, private_src. apply or_not_and. right. ii. unfold valid_blocks in *.
@@ -1296,8 +1346,8 @@ Inductive sim_skenv_inj (sm: SimMem.t) (__noname__: SimSymbId.t') (skenv_src ske
     (* (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm.(src_parent_nb)) *)
     (* (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(tgt_parent_nb)) *)
     (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
-    (PTTSRC: forall b ofs (LE: Plt b skenv_src.(Genv.genv_next)), sm.(ptt_src) b ofs = pub)
-    (PTTTGT: forall b ofs (LE: Plt b skenv_tgt.(Genv.genv_next)), sm.(ptt_tgt) b ofs = pub)
+    (* (PTTSRC: forall b ofs (LE: Plt b skenv_src.(Genv.genv_next)), sm.(ptt_src) b ofs = pub) *)
+    (* (PTTTGT: forall b ofs (LE: Plt b skenv_tgt.(Genv.genv_next)), sm.(ptt_tgt) b ofs = pub) *)
     (NBSRC: skenv_src.(Genv.genv_next) = sm.(ge_nb_src))
     (NBTGT: skenv_tgt.(Genv.genv_next) = sm.(ge_nb_tgt))
 .
@@ -1360,8 +1410,8 @@ Next Obligation.
   - ii. exploit DOMAIN; eauto. i. eapply MLE; eauto.
   - ii. inv MLE. inv FINCR. eapply IMAGE; eauto. erewrite frozen_preserves_tgt; eauto.
     eapply Plt_Ple_trans; eauto. rewrite <- NBTGT. rr in SIMSKENV0. clarify. refl.
-  - inv MLE. ii. eapply PUBSRC. r. et.
-  - inv MLE. ii. eapply PUBTGT. r. et.
+  (* - inv MLE. ii. eapply PUBSRC. r. et. *)
+  (* - inv MLE. ii. eapply PUBTGT. r. et. *)
   - inv MLE. eauto with congruence.
   - inv MLE. eauto with congruence.
 Qed.

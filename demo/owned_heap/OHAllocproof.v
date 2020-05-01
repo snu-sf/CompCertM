@@ -400,7 +400,20 @@ Proof.
               inv MLE1. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               inv MLE0. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               inv MLE. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              TTTTTTTTTTTTTTT
+              admit "THIS DOES NOT HOLD".
+            * admit "ez".
+            * rp; et. congruence.
+            * eapply Mem.store_valid_access_1; et.
+              eapply Mem.store_valid_access_1; et.
+              rewrite MTGT.
+              eapply Mem.valid_access_implies with Freeable; [|eauto with mem].
+              eapply Mem.valid_access_alloc_same; et; u; try xomega.
+              exists (- 1). xomega.
+            * erewrite Mem.load_store_same; et. ss.
+            * etrans; et. u. ii.
+              bar.
+              inv MLE2. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              inv MLE1. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               ss.
           + (** old **)
             inv MWF. rewrite OH in *. clarify. exploit SOME0; et. i; des.

@@ -75,6 +75,7 @@ Section MODSEM.
       m blk key val
       (SYMB: Genv.find_symbol skenv _get = Some blk)
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
+      (OHSOME: oh key <> None)
       (VS: (Args.vs args) = [Vptr key Ptrofs.zero ; Vint val])
       (M: (Args.m args) = m)
     :

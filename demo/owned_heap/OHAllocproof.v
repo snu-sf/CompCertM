@@ -119,6 +119,15 @@ Section SMO.
               (<<LDTGT: Mem.load Mint32 smo.(SimMem.tgt) k_tgt 0%Z = Some (Vint v)>>) /\
               (<<PMTGT: brange k_tgt lo hi <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_tgt)>>)
       )
+      (UNIQ: forall
+          k0 k1 blk_tgt0 blk_tgt1
+          (DIFF: k0 <> k1)
+          (SOME0: map k0 <> None)
+          (SOME1: map k1 <> None)
+          (SIMVAL0: smo.(sm).(SimMemSV.inj) k0 = Some (blk_tgt0, 0))
+          (SIMVAL1: smo.(sm).(SimMemSV.inj) k1 = Some (blk_tgt1, 0))
+        ,
+          <<DIFF: blk_tgt0 <> blk_tgt1>>)
   .
 
   Local Obligation Tactic := try (by ii; des; ss).
@@ -152,7 +161,22 @@ Section SMO.
   Qed.
   Next Obligation.
     ii. inv WF.
-    econs; ss; et.
+    econs; [..|M]; Mskip (ss; et).
+    (* TODO: COQ BUG !!!!!!!!! update to 8.11 and see if we can remove M/Mskip *)
+    all: cycle 1.
+    { ii. ss. clarify.
+      destruct (map k0) eqn:T0; ss.
+      destruct (map k1) eqn:T1; ss.
+      destruct (SimMemSV.inj smo0.(sm) k0) eqn:U0; cycle 1.
+      { exploit SOME; try apply T0; et. i; des. clarify. }
+      destruct (SimMemSV.inj smo0.(sm) k1) eqn:U1; cycle 1.
+      { exploit SOME; try apply T1; et. i; des. clarify. }
+      inv MLEPRIV. inv FINCR.
+      destruct p, p0; ss.
+      assert(V0:= U0). assert(V1:= U1).
+      eapply INCR in U0. eapply INCR in U1. clarify.
+      eapply (UNIQ k0 k1); eauto with congruence.
+    }
     ii. exploit SOME; et. i; des. esplits; ss; et.
     - admit "hard - NOT TRUE FOR NOW: strengthen lepriv".
     - eapply Mem.valid_block_unchanged_on; et.
@@ -227,6 +251,7 @@ Inductive match_states: nat -> OHAllocSource.state -> Clight.state -> SimMemOh.t
     blk_src v_src
     (MWF: SimMemOh.wf smo0)
     (OH: smo0.(oh_src) = upcast oh)
+    (OHSOME: oh blk_src <> None)
     (MSRC: m_src = smo0.(SimMem.src))
     (MTGT: m_tgt = smo0.(SimMem.tgt))
     (FINDF: Genv.find_funct tge fptr_tgt = Some (Internal (f_set)))
@@ -485,7 +510,66 @@ Proof.
       }
       {
         econs 4; ss; et.
-        - instantiate (1:= upcast tt). econs; ss; et.
+        - instantiate (1:= upcast tt). econs; ss; et; cycle 1.
+          { bar.
+            (*** TODO: make some good lemma ***)
+            assert(MLEALL: SimMemSV.le' sm0.(sm) sm4).
+            { repeat (etrans; et). }
+            ii. unfold update in *. inv MWF.
+            rewrite OHSRC in *. clarify.
+            destruct (eq_block key k0).
+            - destruct (eq_block key k1); clarify.
+              assert(blk_tgt = blk_tgt1) by congruence; clarify.
+              assert(NVAL: ~Mem.valid_block sm0.(sm).(SimMemSV.tgt) blk_tgt1).
+              { ii. eapply Mem.fresh_block_alloc; et. }
+              assert(VAL: Mem.valid_block sm0.(sm).(SimMemSV.tgt) blk_tgt1).
+              { destruct (oh k1) eqn:W; ss. exploit SOME; et. i; des.
+                assert(k_tgt = blk_tgt1).
+                { clarify.
+                  clear - SIMVAL1 SIMVAL MLEALL.
+                  inv MLEALL. inv FINCR. exploit INCR; et. intro T; des. rewrite T in *. clarify.
+                }
+                clarify.
+                eapply Mem.mi_mappedblocks; try apply MWF4; et.
+              }
+              ss.
+            - destruct (eq_block key k1); clarify.
+              {
+                assert(blk_tgt = blk_tgt1) by congruence; clarify.
+                assert(NVAL: ~Mem.valid_block sm0.(sm).(SimMemSV.tgt) blk_tgt1).
+                { ii. eapply Mem.fresh_block_alloc; et. }
+                assert(VAL: Mem.valid_block sm0.(sm).(SimMemSV.tgt) blk_tgt1).
+                { destruct (oh k0) eqn:W; ss. exploit SOME; et. i; des.
+                  assert(k_tgt = blk_tgt1).
+                  { clarify.
+                    clear - SIMVAL0 SIMVAL MLEALL.
+                    inv MLEALL. inv FINCR. exploit INCR; et. intro T; des. rewrite T in *. clarify.
+                  }
+                  clarify.
+                  eapply Mem.mi_mappedblocks; try apply MWF4; et.
+                }
+                ss.
+              }
+              {
+                assert(LEMMA: forall k (SOME: oh k <> None), k <> key).
+                { admit "". }
+                destruct (oh k0) eqn:W0; ss.
+                destruct (oh k1) eqn:W1; ss.
+                hexploit (LEMMA k0); eauto with congruence. intro X0.
+                hexploit (LEMMA k1); eauto with congruence. intro X1.
+                exploit (SOME k0); et. i; des.
+                assert(k_tgt = blk_tgt1).
+                { clear - MLEALL SIMVAL SIMVAL0.
+                  inv MLEALL. inv FINCR. exploit INCR; et. intro T; des. rewrite T in *. clarify.
+                } clarify.
+                exploit (SOME k1); et. i; des.
+                assert(k_tgt = blk_tgt1).
+                { clear - MLEALL SIMVAL1 SIMVAL2.
+                  inv MLEALL. inv FINCR. exploit INCR; et. intro T; des. rewrite T in *. clarify.
+                } clarify.
+                hexploit (UNIQ k0 k1); eauto with congruence.
+              }
+          }
           ii. unfold update in *. des_ifs.
           + (** new **)
             esplits; et.
@@ -613,7 +697,23 @@ Proof.
       }
       {
         econs 6; ss; et.
-        - instantiate (1:= upcast tt). econs; ss; et.
+        - instantiate (1:= upcast tt).
+          econs; ss; et; cycle 1.
+          { bar.
+            (*** TODO: make some good lemma ***)
+            assert(MLEALL: SimMemSV.le' sm0.(sm) sm1).
+            { ss. }
+            ii. rewrite MINJ in *.
+            unfold update in *. inv MWF.
+            destruct (eq_block blk_src k0).
+            - destruct (eq_block blk_src k1); clarify.
+              destruct (map k1) eqn:W; ss.
+              exploit (UNIQ k0 k1); eauto with congruence.
+            - destruct (eq_block blk_src k1); clarify.
+              + destruct (map k1) eqn:W; ss.
+                exploit (UNIQ k0 k1); eauto with congruence.
+              + exploit (UNIQ k0 k1); eauto with congruence.
+          }
           ii. unfold update in *. des_ifs.
           + (** new **)
             esplits; et.
@@ -635,36 +735,18 @@ Proof.
             * rewrite MINJ. eauto.
             * eauto with mem.
             * eauto with mem.
-            * erewrite Mem.load_store_other; et. left. ii. clarify.
-              assert(blk_src = k).
-              { exploit Mem.mi_no_overlap; try apply n; et.
-                - inv MLE. eapply FINCR; et.
-                - inv MLE. eapply FINCR; et.
-                - eauto with mem. inv MLE. eapply FINCR; et.
-              }
-              ii; des.
-              exploit Mem.load_alloc_other; et. intro T.
-              erewrite Mem.load_store_other; try apply STRTGT1; et; cycle 1.
-              { left. admit "ez - mem". }
-              erewrite Mem.load_store_other; try apply STRTGT0; et; cycle 1.
-              { left. admit "ez - mem". }
-              congruence.
-            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE2 MLE1 MLE0 MLE.
+            * erewrite Mem.load_store_other; et. left. ii; clarify.
+              exploit (UNIQ blk_src k); ss; eauto with congruence.
+            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
               unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
               bar.
-              inv MLE2. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE1. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE0. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               inv MLE. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               ss.
-        - congruence.
-        - rewrite MINJ1. rewrite MINJ0. rewrite MINJ. econs; et.
       }
-      admit "NOTNOW".
   - eexists (mk sm0 _ _); ss. esplits; et. econs; ss; et.
 Unshelve.
   all: ss.
-Qed.
+Admitted. (**** COQ BUG  !!!!!!!!!!!!!!!!!!! ****)
 
 End SIMMODSEM.
 

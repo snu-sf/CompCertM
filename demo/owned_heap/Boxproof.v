@@ -6,7 +6,7 @@ Require Import CtypesC CtypingC.
 Require Import sflib.
 Require Import IntegersC.
 
-Require Import OHAllocSource OHAllocTarget.
+Require Import BoxSource BoxTarget.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift AsmregsC MatchSimModSemExcl.
 Require SoundTop.

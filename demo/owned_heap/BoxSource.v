@@ -7,7 +7,7 @@ Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require Import CtypesC CtypingC.
 Require Import ClightC.
-Require Import OHAllocTarget.
+Require Import BoxTarget.
 
 Set Implicit Arguments.
 

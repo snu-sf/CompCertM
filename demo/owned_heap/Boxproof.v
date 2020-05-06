@@ -205,8 +205,8 @@ Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
-Let md_src: Mod.t := (OHAllocSource.module).
-Let md_tgt: Mod.t := (OHAllocTarget.module).
+Let md_src: Mod.t := (BoxSource.module).
+Let md_tgt: Mod.t := (BoxTarget.module).
 Hypothesis (INCL: SkEnv.includes skenv_link (Mod.sk md_src)).
 Hypothesis (WF: SkEnv.wf skenv_link).
 Let ge := (SkEnv.project skenv_link (Mod.sk md_src)).
@@ -216,7 +216,7 @@ Definition msp: ModSemPair.t :=
 
 Local Existing Instance SimMemOh.
 
-Inductive match_states: nat -> OHAllocSource.state -> Clight.state -> SimMemOh.t -> Prop :=
+Inductive match_states: nat -> BoxSource.state -> Clight.state -> SimMemOh.t -> Prop :=
 | match_callstate_new
     oh m_src m_tgt fptr_tgt tyf vs_tgt (smo0: SimMemOh.t)
     (MWF: SimMemOh.wf smo0)
@@ -654,7 +654,8 @@ Proof.
       }
       {
         econs 5; ss; et.
-        - econs; ss; et.
+        (* - econs; ss; et. *) (**** COQ BUG!!!! ****)
+        eapply wf_intro with (map := map); ss; et.
       }
 
     + (* method: set *)
@@ -746,7 +747,7 @@ Proof.
   - eexists (mk sm0 _ _); ss. esplits; et. econs; ss; et.
 Unshelve.
   all: ss.
-Admitted. (**** COQ BUG  !!!!!!!!!!!!!!!!!!! ****)
+Qed.
 
 End SIMMODSEM.
 
@@ -754,7 +755,7 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Definition mp: ModPair.t := SimSymbId.mk_mp (OHAllocSource.module) (OHAllocTarget.module).
+Definition mp: ModPair.t := SimSymbId.mk_mp (BoxSource.module) (BoxTarget.module).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.

@@ -31,6 +31,7 @@ Section MODSEM.
 
   Inductive state: Type :=
   | CallstateNew
+      (v: int)
       (oh: owned_heap) (m: mem)
   | CallstateGet
       (k: block)
@@ -54,13 +55,13 @@ Section MODSEM.
   Inductive initial_frame (oh: owned_heap) (args: Args.t): state -> Prop :=
   | initial_frame_new
       (WF: oh_wf oh)
-      m blk
+      m blk val
       (SYMB: Genv.find_symbol skenv _new = Some blk)
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
-      (VS: (Args.vs args) = [])
+      (VS: (Args.vs args) = [Vint val])
       (M: (Args.m args) = m)
     :
-      initial_frame oh args (CallstateNew oh m)
+      initial_frame oh args (CallstateNew val oh m)
   | initial_frame_get
       (WF: oh_wf oh)
       m blk key
@@ -84,12 +85,12 @@ Section MODSEM.
 
   Inductive step (se: Senv.t) (ge: SkEnv.t): state -> trace -> state -> Prop :=
   | step_new
-      oh0 m0 oh1 m1 m2 key
+      oh0 m0 oh1 m1 m2 key val
       (ALLOC: Mem.alloc m0 lo hi = (m1, key))
       (FREE: Mem.free m1 key lo hi = Some m2)
-      (OH: update oh0 key Int.zero = oh1)
+      (OH: update oh0 key val = oh1)
     :
-      step se ge (CallstateNew oh0 m0) E0 (ReturnstateNew key oh1 m2)
+      step se ge (CallstateNew val oh0 m0) E0 (ReturnstateNew key oh1 m2)
   | step_get
       oh m key val
       (GET: oh key = Some val)

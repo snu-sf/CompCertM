@@ -218,17 +218,17 @@ Local Existing Instance SimMemOh.
 
 Inductive match_states: nat -> BoxSource.state -> Clight.state -> SimMemOh.t -> Prop :=
 | match_callstate_new
-    oh m_src m_tgt fptr_tgt tyf vs_tgt (smo0: SimMemOh.t)
+    oh m_src m_tgt fptr_tgt tyf vs_tgt v (smo0: SimMemOh.t)
     (MWF: SimMemOh.wf smo0)
     (OH: smo0.(oh_src) = upcast oh)
     (MSRC: m_src = smo0.(SimMem.src))
     (MTGT: m_tgt = smo0.(SimMem.tgt))
     (FINDF: Genv.find_funct tge fptr_tgt = Some (Internal (f_new)))
     (TYF: tyf = (Clight.type_of_function f_new))
-    (VSTGT: vs_tgt = [])
+    (VSTGT: vs_tgt = [Vint v])
   :
     match_states 0%nat
-                 (CallstateNew oh m_src)
+                 (CallstateNew v oh m_src)
                  (Callstate fptr_tgt tyf vs_tgt Kstop m_tgt)
                  smo0
 | match_callstate_get
@@ -322,7 +322,7 @@ Proof.
       { admit "ez - FINDF". }
       ss. clarify.
       econs; et.
-      inv VALS; ss. inv TYP; ss.
+      inv VALS; ss. inv TYP; ss. inv H3; ss. inv H1; ss. rewrite has_type_list_typify; ss.
 
     + (* method: get *)
       destruct args_src; ss. clarify.
@@ -354,7 +354,7 @@ Proof.
     + (* method: new *)
       assert(T: Genv.find_funct (SkEnv.revive ge prog) fptr_tgt = Some (Internal (f_new))).
       { admit "FINDF". }
-      inv VALS.
+      inv VALS. inv H3. inv H1.
       esplits; et. econs; et. ss.
 
     + (* method: get *)
@@ -434,7 +434,7 @@ Proof.
       i; des. clarify.
 
       assert(STRTGT1: exists m_tgt1,
-                Mem.store Mint32 (SimMemSV.tgt sm3) blk_tgt 0 (Vint (Int.repr 0)) = Some m_tgt1).
+                Mem.store Mint32 (SimMemSV.tgt sm3) blk_tgt 0 (Vint v) = Some m_tgt1).
       { edestruct Mem.valid_access_store; et.
         eapply Mem.store_valid_access_1; et.
         eapply Mem.valid_access_implies with Freeable; eauto with mem.
@@ -461,6 +461,7 @@ Proof.
         eapply plus_left with (t1 := E0) (t2 := E0); ss.
         { econs; eauto.
           econs; ss; eauto; try (by repeat (econs; ss; eauto)).
+          unfold _v, _key, _t'1. ii; ss; des; clarify.
         }
         eapply star_left with (t1 := E0) (t2 := E0); ss.
         { econs; et. }

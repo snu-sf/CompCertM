@@ -3,9 +3,11 @@
 
 typedef int T;
 
-void* new() {
+void* new(T v) {
+  /* T *key = malloc(sizeof(T)); */
+  /* *key = 0; */
   T *key = malloc(sizeof(T));
-  *key = 0;
+  *key = v;
   return key;
 }
 
@@ -45,10 +47,12 @@ void delete(void *key) {
 /* void privatize(int *key) { */
 /* } */
 
+
+// A degenerated version of "into_raw"
 void init(void *key) {
-  *(T *)key = 0;
 }
 
+// A degenerated version of "from_raw"
 void fini(void *key) {
 }
 

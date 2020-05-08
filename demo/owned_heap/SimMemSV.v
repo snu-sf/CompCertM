@@ -1042,6 +1042,54 @@ Unshelve.
   all: try apply sm0.
 Qed.
 
+Lemma free_right_pm
+      mi sm0 lo hi blk_tgt m_tgt0
+      (MWF: wf' sm0)
+      (FREETGT: Mem.free sm0.(tgt) blk_tgt lo hi = Some m_tgt0)
+      (PRVTGT: brange blk_tgt lo hi <2= (ons_mem sm0.(ptt_tgt) (privmod mi)))
+  :
+    exists sm1,
+      (<<MSRC: sm1.(src) = sm0.(src)>>)
+      /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
+      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+      /\ (<<UNCH: SimMem.unch (Some mi) sm0 sm1>>)
+      /\ (<<PRVSRC: (ons_mem sm0.(ptt_src) priv) = (ons_mem sm1.(ptt_src) priv)>>)
+      /\ (<<PRVTGT: (ons_mem sm0.(ptt_tgt) priv) = (ons_mem sm1.(ptt_tgt) priv)>>)
+.
+Proof.
+  exploit Mem.free_right_inject; try apply MWF; eauto.
+  {
+    ii.
+    exploit PRVTGT; et. intro T. r in T.
+    inv MWF.
+    exploit PTTTGT; et.
+    { unfold public_tgt, private_tgt. sii X; des.
+      eapply X; et. instantiate (1:= ofs + delta). zsimpl. eauto with mem.
+    }
+    intro U. r in U. congruence.
+  }
+  intro U; des. inv MWF.
+  eexists (mk _ _ _ _ _ sm0.(ptt_src) sm0.(ptt_tgt)). dsplits; ss; eauto; cycle 1.
+  - econs; ss; eauto.
+    + refl.
+    + refl.
+    + eapply Mem.free_unchanged_on; eauto. ii. exploit PRVTGT; et. intro V. u in *; congruence.
+    + ii. eapply Mem.perm_free_3; eauto.
+  - econs; ss; eauto.
+    + refl.
+    + eapply Mem.free_unchanged_on; et.
+      sii X.
+      exploit PRVTGT; et. intro Y. u in *; des_ifs. rewrite Y in *; ss. bsimpl. des_sumbool. clarify.
+  - econs; ss; eauto.
+    + etransitivity; eauto. erewrite <- Mem.nextblock_free; eauto. xomega.
+    + etransitivity; try apply PTTTGT; eauto.
+      unfold public_tgt, private_tgt; ss. ii. Psimpl. des; et. eapply PR; et. u in *. eauto with mem.
+Unshelve.
+  all: try apply sm0.
+Qed.
+
 Lemma free_list_right_prv
       sm0 rngs m_tgt0 m_tgt1
       (MTGT: m_tgt0 = sm0.(tgt))

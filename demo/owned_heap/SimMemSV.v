@@ -117,9 +117,19 @@ Proof.
   des; clarify; et.
 Qed.
 
+Lemma NNPP_rev
+      (P: Prop)
+      (p: P)
+  :
+    ~ ~ P
+.
+Proof. ii. eauto. Qed.
+
 Ltac Psimpl_ :=
   match goal with
   | [ H: ~ ~ ?P |- _ ] => apply NNPP in H
+  | [ H: ~ (NW (fun _ => ~ ?P)) |- _ ] => apply NNPP in H
+  | [ |- ~ ~ ?P ] => apply NNPP_rev
   | [ H: (~?P -> ?P) |- _ ] => apply Peirce in H
   | [ H: ~ (?P -> ?Q) |- _ ] => apply imply_to_and in H
   | [ |- ~?P \/ ~?Q ] => apply imply_to_or
@@ -145,6 +155,12 @@ Ltac Psimpl := repeat Psimpl_.
 
 
 
+
+
+Definition loc_unmapped (f: meminj) (m: mem): block -> Z -> Prop :=
+  fun b ofs => <<NONE: f b = None>> \/ <<NOPERM: ~Mem.perm m b ofs Max Nonempty>>
+.
+Hint Unfold loc_unmapped.
 
 
 
@@ -209,15 +225,20 @@ Lemma frozen_refl: forall f bound_src bound_tgt,
 Proof. econs; eauto. i; des. clarify. Qed.
 
 Lemma loc_unmapped_frozen
-      F F' fbound_src fbound_tgt b ofs
+      F F' fbound_src fbound_tgt b ofs m0 m1
       (FROZEN : frozen F F' fbound_src fbound_tgt)
       (BOUND: Plt b fbound_src)
-      (UNMAPPED: loc_unmapped F b ofs):
-    loc_unmapped F' b ofs.
+      (UNMAPPED: loc_unmapped F m0 b ofs)
+      (MAXPERM: forall b ofs, Plt b fbound_src -> Mem.perm m1 b ofs Max Nonempty ->
+                              Mem.perm m0 b ofs Max Nonempty)
+  :
+    loc_unmapped F' m1 b ofs.
 Proof.
   unfold loc_unmapped in *.
-  destruct (F' b) eqn:T; ss. destruct p; ss.
-  inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. xomega.
+  des.
+  - destruct (F' b) eqn:T; ss; et. destruct p; ss.
+    inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. xomega.
+  - right. ii. et.
 Qed.
 
 Lemma loc_out_of_reach_frozen
@@ -323,7 +344,7 @@ Definition valid_blocks (m: mem): block -> Z -> Prop := fun b _ => (Mem.valid_bl
 Hint Unfold valid_blocks.
 
 Definition private_src (sm: t'): block -> Z -> Prop :=
-  loc_unmapped sm.(inj) /2\ (valid_blocks sm.(src)).
+  loc_unmapped sm.(inj) sm.(src) /2\ (valid_blocks sm.(src)).
 
 Definition private_tgt (sm: t'): block -> Z -> Prop :=
   loc_out_of_reach sm.(inj) sm.(src) /2\ (valid_blocks sm.(tgt)).
@@ -364,12 +385,12 @@ Inductive le' (sm0 sm1: t'): Prop :=
     (EXTTGT: (ons_mem sm0.(ptt_tgt) external) <2= (ons_mem sm1.(ptt_tgt) external))
     (PMSRC: forall mi, (ons_mem sm0.(ptt_src) (privmod mi)) <2= (ons_mem sm1.(ptt_src) (privmod mi)))
     (PMTGT: forall mi, (ons_mem sm0.(ptt_tgt) (privmod mi)) <2= (ons_mem sm1.(ptt_tgt) (privmod mi)))
-    (MAXSRC: forall b ofs
-        (VALID: Mem.valid_block sm0.(src) b),
-        <<MAX: Mem.perm sm1.(src) b ofs Max <1= Mem.perm sm0.(src) b ofs Max>>)
-    (MAXTGT: forall b ofs
-        (VALID: Mem.valid_block sm0.(tgt) b),
-        <<MAX: Mem.perm sm1.(tgt) b ofs Max <1= Mem.perm sm0.(tgt) b ofs Max>>)
+    (* (MAXSRC: forall b ofs *)
+    (*     (VALID: Mem.valid_block sm0.(src) b), *)
+    (*     <<MAX: Mem.perm sm1.(src) b ofs Max <1= Mem.perm sm0.(src) b ofs Max>>) *)
+    (* (MAXTGT: forall b ofs *)
+    (*     (VALID: Mem.valid_block sm0.(tgt) b), *)
+    (*     <<MAX: Mem.perm sm1.(tgt) b ofs Max <1= Mem.perm sm0.(tgt) b ofs Max>>) *)
     (** tried to minimize it (don't require FROZEN),
 but because of volatile condiiton in symbols_inject, I think we need it **)
 .
@@ -390,12 +411,12 @@ Next Obligation.
     eapply Mem.unchanged_on_implies; eauto.
   + etrans; et.
   + etrans; et.
-  + i. r. etransitivity.
-    { eapply MAXSRC0; eauto. eapply Plt_Ple_trans; eauto with mem. }
-    eapply MAXSRC; eauto.
-  + i. r. etransitivity.
-    { eapply MAXTGT0; eauto. eapply Plt_Ple_trans; eauto with mem. }
-    eapply MAXTGT; eauto.
+  (* + i. r. etransitivity. *)
+  (*   { eapply MAXSRC0; eauto. eapply Plt_Ple_trans; eauto with mem. } *)
+  (*   eapply MAXSRC; eauto. *)
+  (* + i. r. etransitivity. *)
+  (*   { eapply MAXTGT0; eauto. eapply Plt_Ple_trans; eauto with mem. } *)
+  (*   eapply MAXTGT; eauto. *)
 Qed.
 
 Definition lift_ptt (ptt: partition): partition :=
@@ -677,7 +698,9 @@ Proof.
     + eapply Mem.store_unchanged_on; eauto. i.
       specialize (PTTSRC blk_src i). hexploit1 PTTSRC; et.
       { unfold public_src, private_src. eapply or_not_and. left.
-        unfold loc_unmapped. rewrite SIMBLK; ss. }
+        unfold loc_unmapped. rewrite SIMBLK; ss. Psimpl. esplits; ss; et. Psimpl.
+        apply Mem.store_valid_access_3 in STRSRC. destruct STRSRC. eauto with mem xomega.
+      }
       rr in PTTSRC. unfold ons_mem. rewrite PTTSRC. ss.
     + eapply Mem.store_unchanged_on; eauto. i.
       specialize (PTTTGT blk_tgt i). hexploit1 PTTTGT; et.
@@ -686,13 +709,15 @@ Proof.
         apply Mem.store_valid_access_3 in STRSRC. destruct STRSRC. eauto with mem xomega.
       }
       rr in PTTTGT. unfold ons_mem. rewrite PTTTGT. ss.
-    + unfold public_src, private_src. ss. ii; des; eauto with mem.
-    + unfold public_tgt, private_tgt. ss. ii; des; eauto with mem.
+    (* + unfold public_src, private_src. ss. ii; des; eauto with mem. *)
+    (* + unfold public_tgt, private_tgt. ss. ii; des; eauto with mem. *)
   - des. econs; ss; eauto.
     + eapply Mem.store_unchanged_on; eauto. i.
       specialize (PTTSRC blk_src i). hexploit1 PTTSRC; et.
       { unfold public_src, private_src. eapply or_not_and. left.
-        unfold loc_unmapped. rewrite SIMBLK; ss. }
+        unfold loc_unmapped. rewrite SIMBLK; ss. Psimpl. esplits; ss; et. Psimpl.
+        apply Mem.store_valid_access_3 in STRSRC. destruct STRSRC. eauto with mem xomega.
+      }
       rr in PTTSRC. unfold privmod_others. rewrite PTTSRC. ss.
     + eapply Mem.store_unchanged_on; eauto. i.
       specialize (PTTTGT blk_tgt i). hexploit1 PTTTGT; et.
@@ -705,7 +730,9 @@ Proof.
     + etrans; et. erewrite <- Mem.nextblock_store; et. xomega.
     + etrans; et. erewrite <- Mem.nextblock_store; et. xomega.
     + etrans; try apply PTTSRC; et. unfold public_src, private_src. ss.
-      unfold valid_blocks. ii. des. eauto with mem.
+      unfold valid_blocks. ii. des. Psimpl. des; eauto with mem.
+      unfold loc_unmapped in *. Psimpl. des; ss. Psimpl.
+      eauto with mem.
     + etrans; try apply PTTTGT; et. unfold public_tgt, private_tgt. ss.
       unfold valid_blocks. ii. des. eapply PR. esplits; eauto with mem.
       { ii. exploit H1; et. eauto with mem. }
@@ -775,7 +802,7 @@ Proof.
     + inv MWF.
       eapply Mem.store_unchanged_on; eauto. sii X.
       exploit PRVTGT; et. intro T. rr in T. rr in X0. rewrite T in X0. ss.
-    + unfold public_src, private_src. ss. ii; des; eauto with mem.
+    (* + unfold public_src, private_src. ss. ii; des; eauto with mem. *)
   - des. econs; ss; eauto.
     + refl.
     + eapply Mem.store_unchanged_on; eauto. i.
@@ -822,7 +849,7 @@ Proof.
     + inv MWF.
       eapply Mem.store_unchanged_on; eauto. sii X.
       exploit PMTGT; et. intro T. unfold privmods in *. des_ifs. rewrite X0 in *. ss.
-    + unfold public_src, private_src. ss. ii; des; eauto with mem.
+    (* + unfold public_src, private_src. ss. ii; des; eauto with mem. *)
   - des. econs; ss; eauto.
     + refl.
     + eapply Mem.store_unchanged_on; eauto. i.
@@ -863,7 +890,9 @@ Proof.
     + eapply Mem.free_unchanged_on; eauto. i.
       specialize (PTTSRC blk_src i). hexploit1 PTTSRC; et.
       { unfold public_src, private_src. eapply or_not_and. left.
-        unfold loc_unmapped. rewrite SIMBLK; ss. }
+        unfold loc_unmapped. rewrite SIMBLK; ss. Psimpl. esplits; ss; et. Psimpl.
+        eapply Mem.free_range_perm in FREESRC. eauto with mem xomega.
+      }
       rr in PTTSRC. unfold ons_mem. rewrite PTTSRC. ss.
     + eapply Mem.free_unchanged_on; eauto. i.
       specialize (PTTTGT blk_tgt i). hexploit1 PTTTGT; et.
@@ -872,13 +901,14 @@ Proof.
         apply Mem.free_range_perm in FREESRC. eauto with mem xomega.
       }
       rr in PTTTGT. unfold ons_mem. rewrite PTTTGT. ss.
-    + ii. eapply Mem.perm_free_3; eauto.
-    + ii. eapply Mem.perm_free_3; eauto.
+    (* + ii. eapply Mem.perm_free_3; eauto. *)
+    (* + ii. eapply Mem.perm_free_3; eauto. *)
   - econs; ss; eauto.
     + eapply Mem.free_unchanged_on; eauto. i.
       specialize (PTTSRC blk_src i). hexploit1 PTTSRC; et.
       { unfold public_src, private_src. eapply or_not_and. left.
-        unfold loc_unmapped. rewrite SIMBLK; ss. }
+        unfold loc_unmapped. rewrite SIMBLK; ss. Psimpl. esplits; ss; et. Psimpl.
+        eapply Mem.free_range_perm in FREESRC. eauto with mem xomega. }
       rr in PTTSRC. unfold privmod_others. rewrite PTTSRC. ss.
     + eapply Mem.free_unchanged_on; eauto. i.
       specialize (PTTTGT blk_tgt i). hexploit1 PTTTGT; et.
@@ -891,7 +921,9 @@ Proof.
     + etrans; et. erewrite <- Mem.nextblock_free; et. xomega.
     + etrans; et. erewrite <- Mem.nextblock_free; et. xomega.
     + etrans; try apply PTTSRC. unfold public_src, private_src; ss.
-      ii; des. eapply PR; esplits; et. unfold valid_blocks in *. eauto with mem.
+      ii; des. Psimpl. des.
+      * unfold loc_unmapped in *. Psimpl. des; ss. Psimpl. eauto with mem.
+      * eapply PR; esplits; et. unfold valid_blocks in *. eauto with mem.
     + etrans; try apply PTTTGT. unfold public_tgt, private_tgt; ss.
       ii; des. eapply PR; esplits; et.
       { unfold loc_out_of_reach in *. ii. eapply H1; et. eauto with mem. }
@@ -900,8 +932,19 @@ Unshelve.
   all: try apply sm0.
 Qed.
 
+Ltac fold_not :=
+  repeat
+    multimatch goal with
+    | H: context [?P -> False] |- _ => fold (~ P) in H
+    | |- context [?P -> False] => fold (~ P)
+    end
+.
+Goal (True -> False) -> (True -> False -> False) -> (True -> False).
+  intros T U. fold_not.
+Abort.
+
 Lemma free_left
-      ons sm0 lo hi blk_src blk_tgt delta m_src0
+      ons_src ons_tgt sm0 lo hi blk_src blk_tgt delta m_src0
       (MWF: wf' sm0)
       (FREESRC: Mem.free sm0.(src) blk_src lo hi = Some m_src0)
       (SIMBLK: sm0.(inj) blk_src = Some (blk_tgt, delta))
@@ -913,13 +956,17 @@ Lemma free_left
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
       /\ (<<UNCH: SimMem.unch None sm0 sm1>>)
-      /\ (<<PM: (brange blk_tgt (lo + delta) (hi + delta)) <2= ons_mem sm1.(ptt_tgt) ons>>)
+      /\ (<<PMSRC: (brange blk_src lo hi) <2= ons_mem sm1.(ptt_src) ons_src>>)
+      /\ (<<PMTGT: (brange blk_tgt (lo + delta) (hi + delta)) <2= ons_mem sm1.(ptt_tgt) ons_tgt>>)
 .
 Proof.
   exploit Mem.free_left_inject; try apply MWF; eauto. i; des. inv MWF.
-  eexists (mk _ _ _ _ _ (sm0.(ptt_src))
+  eexists (mk _ _ _ _ _
+              (fun b ofs => if (eq_block b blk_src) && (lo <=? ofs) && (ofs <? hi)
+                            then ons_src
+                            else sm0.(ptt_src) b ofs)
               (fun b ofs => if (eq_block b blk_tgt) && ((lo + delta) <=? ofs) && (ofs <? (hi + delta))
-                            then ons
+                            then ons_tgt
                             else sm0.(ptt_tgt) b ofs)
           ).
   dsplits; ss; eauto; cycle 1.
@@ -928,13 +975,32 @@ Proof.
     + eapply Mem.free_unchanged_on; eauto. i.
       specialize (PTTSRC blk_src i). hexploit1 PTTSRC; et.
       { unfold public_src, private_src. eapply or_not_and. left.
-        unfold loc_unmapped. rewrite SIMBLK; ss. }
+        unfold loc_unmapped. rewrite SIMBLK; ss. Psimpl. esplits; ss; et. Psimpl.
+        eapply Mem.free_range_perm in FREESRC. eauto with mem xomega. }
       rr in PTTSRC. unfold ons_mem. rewrite PTTSRC. ss.
     + refl.
     + u. ii. des_ifs. bsimpl. des. des_sumbool. clarify.
       rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
+      exploit PTTSRC; et.
+      { unfold public_src, private_src. u. ii. rewrite SIMBLK in *. des; ss; eauto. eapply H0; et.
+        instantiate (1:= x1). eapply Mem.perm_max; et.
+        eapply Mem.perm_implies with Freeable; [|eauto with mem].
+        eapply Mem.free_range_perm in FREESRC. eapply FREESRC. xomega.
+      }
+      u. i; congruence.
+    + u. ii. des_ifs. bsimpl. des. des_sumbool. clarify.
+      rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
       exploit PTTTGT; et.
       { unfold public_tgt, private_tgt. ii. des. eapply H0; et.
+        instantiate (1:= x1). eapply Mem.perm_max; et.
+        eapply Mem.perm_implies with Freeable; [|eauto with mem].
+        eapply Mem.free_range_perm in FREESRC. eapply FREESRC. xomega.
+      }
+      u. i; congruence.
+    + u. ii. des_ifs. bsimpl. des. des_sumbool. clarify.
+      rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
+      exploit PTTSRC; et.
+      { unfold public_src, private_src. u. ii. rewrite SIMBLK in *. des; ss; eauto. eapply H0; et.
         instantiate (1:= x1). eapply Mem.perm_max; et.
         eapply Mem.perm_implies with Freeable; [|eauto with mem].
         eapply Mem.free_range_perm in FREESRC. eapply FREESRC. xomega.
@@ -949,14 +1015,24 @@ Proof.
         eapply Mem.free_range_perm in FREESRC. eapply FREESRC. xomega.
       }
       u. i; congruence.
-    + ii. eapply Mem.perm_free_3; eauto.
+    (* + ii. eapply Mem.perm_free_3; eauto. *)
   - econs; ss; eauto.
     + eapply Mem.free_unchanged_on; eauto. i.
       specialize (PTTSRC blk_src i). hexploit1 PTTSRC; et.
       { unfold public_src, private_src. eapply or_not_and. left.
-        unfold loc_unmapped. rewrite SIMBLK; ss. }
+        unfold loc_unmapped. rewrite SIMBLK; ss. Psimpl. esplits; ss; et. Psimpl.
+        eapply Mem.free_range_perm in FREESRC. eauto with mem xomega. }
       rr in PTTSRC. unfold privmod_others. rewrite PTTSRC. ss.
     + refl.
+    +  u. ii. unfold privmods in *. des_ifs_safe; ss. bsimpl. des. des_sumbool. clarify.
+      rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
+      exploit PTTSRC; et.
+      { unfold public_src, private_src. u. ii. rewrite SIMBLK in *. des; ss; eauto. eapply H0; et.
+        instantiate (1:= x1). eapply Mem.perm_max; et.
+        eapply Mem.perm_implies with Freeable; [|eauto with mem].
+        eapply Mem.free_range_perm in FREESRC. eapply FREESRC. xomega.
+      }
+      u. intro T. rewrite T in *. ss.
     + u. ii. unfold privmods in *. des_ifs_safe; ss. bsimpl. des. des_sumbool. clarify.
       rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
       exploit PTTTGT; et.
@@ -966,12 +1042,25 @@ Proof.
         eapply Mem.free_range_perm in FREESRC. eapply FREESRC. xomega.
       }
       u. intro T. rewrite T in *. ss.
+  - u. ii. des. clarify. rewrite <- Z.leb_le in *. rewrite <- Z.ltb_lt in *. des_ifs.
+    bsimpl. des_sumbool; congruence.
   - u. ii. des. clarify. des_ifs. bsimpl. rewrite <- Z.leb_le in *. rewrite <- Z.ltb_lt in *.
     des; des_sumbool; congruence.
   - econs; ss; eauto.
     + etrans; et. erewrite <- Mem.nextblock_free; et. xomega.
-    + etrans; try apply PTTSRC. unfold public_src, private_src; ss.
-      ii; des. eapply PR; esplits; et. unfold valid_blocks in *. eauto with mem.
+    + u. ii. fold_not. repeat (Psimpl; des).
+      * des_ifs.
+        { bsimpl. des. des_sumbool. clarify. rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
+          exploit Mem_free_noperm; et. intro T. ss.
+        }
+        { exploit PTTSRC; et.
+          u. fold_not. Psimpl. ii. des; ss. eauto with mem. }
+      * des_ifs.
+        { bsimpl. des. des_sumbool. clarify. rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
+          exploit Mem.mi_freeblocks; try apply PR; eauto. intro T; clarify.
+        }
+        { exploit PTTSRC; et.
+          u. fold_not. Psimpl. ii. des; ss; eauto with mem. }
     + u. ii. des_ifs.
       * exfalso. bsimpl. des. des_sumbool. clarify.
         rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
@@ -1028,7 +1117,7 @@ Proof.
     + refl.
     + refl.
     + eapply Mem.free_unchanged_on; eauto. ii. exploit PRVTGT; et. intro V. u in *; congruence.
-    + ii. eapply Mem.perm_free_3; eauto.
+    (* + ii. eapply Mem.perm_free_3; eauto. *)
   - econs; ss; eauto.
     + refl.
     + eapply Mem.free_unchanged_on; et.
@@ -1076,7 +1165,7 @@ Proof.
     + refl.
     + refl.
     + eapply Mem.free_unchanged_on; eauto. ii. exploit PRVTGT; et. intro V. u in *; congruence.
-    + ii. eapply Mem.perm_free_3; eauto.
+    (* + ii. eapply Mem.perm_free_3; eauto. *)
   - econs; ss; eauto.
     + refl.
     + eapply Mem.free_unchanged_on; et.
@@ -1184,10 +1273,10 @@ Proof.
       { unfold public_tgt, private_tgt. apply or_not_and. right. ii. unfold valid_blocks in *.
         eapply Mem.fresh_block_alloc; try eapply H; eauto. }
       unfold ons_mem. intro T. congruence.
-    + ii. eapply Mem.perm_alloc_4; eauto.
-      ii. subst b. eapply Mem.fresh_block_alloc; try eapply ALCSRC; eauto.
-    + ii. eapply Mem.perm_alloc_4; eauto.
-      ii. subst b. eapply Mem.fresh_block_alloc; eauto.
+    (* + ii. eapply Mem.perm_alloc_4; eauto. *)
+    (*   ii. subst b. eapply Mem.fresh_block_alloc; try eapply ALCSRC; eauto. *)
+    (* + ii. eapply Mem.perm_alloc_4; eauto. *)
+    (*   ii. subst b. eapply Mem.fresh_block_alloc; eauto. *)
   - econs; ss; eauto.
     + eapply Mem.alloc_unchanged_on; eauto.
     + eapply Mem.alloc_unchanged_on; eauto.
@@ -1208,7 +1297,9 @@ Proof.
       rewrite PTTSRC; ss. eapply not_and_or in PR. eapply or_not_and.
       unfold valid_blocks in *.
       des.
-      { left. ii. eapply PR. rr. rr in H4. erewrite H3; et. }
+      { left. ii. eapply PR. rr. rr in H4. erewrite H3; et. des; et. right.
+        ii. eauto with mem.
+      }
       { right. ii. eapply PR. eauto with mem. }
     + unfold public_tgt, private_tgt in *. ss. ii. unfold ons_mem. des_ifs.
       rewrite PTTTGT; ss. eapply not_and_or in PR. eapply or_not_and.
@@ -1223,13 +1314,20 @@ Unshelve.
   all: try apply sm0.
 Qed.
 
+Program Instance or_Symmetric: Symmetric or.
+Next Obligation.
+  tauto.
+Qed.
+
+Program Instance and_Symmetric: Symmetric and.
+
 Lemma external_call
       sm0 ef se vargs t vres m_src0 tse vargs' vres' m_tgt0 f'
       (MWF: wf' sm0)
       (EXTCALLSRC: Events.external_call ef se vargs sm0.(src) t vres m_src0)
       (EXTCALLTGT: Events.external_call ef tse vargs' sm0.(tgt) t vres' m_tgt0)
       (MEMINJ: Mem.inject f' m_src0 m_tgt0)
-      (UNCHANGSRC: Mem.unchanged_on (loc_unmapped sm0.(inj)) sm0.(src) m_src0)
+      (UNCHANGSRC: Mem.unchanged_on (loc_unmapped sm0.(inj) sm0.(src)) sm0.(src) m_src0)
       (UNCHANGTGT: Mem.unchanged_on (loc_out_of_reach sm0.(inj) sm0.(src)) sm0.(tgt) m_tgt0)
       (INJINCR: inject_incr sm0.(inj) f')
       (INJSEP: inject_separated sm0.(inj) f' sm0.(src) sm0.(tgt))
@@ -1257,8 +1355,14 @@ Proof.
       unfold public_src, private_src. ss.
       ii. exploit PTTSRC; et. Psimpl. des.
       * unfold public_src, private_src. Psimpl. ii. apply PR0. rr. rr in H.
-        destruct (f' x0) eqn:T; ss. destruct p; ss. exfalso.
-        exploit INJSEP; et. i; des. unfold valid_blocks in *. ss.
+        des.
+        {
+          destruct (f' x0) eqn:T; ss; et. destruct p; ss. exfalso.
+          exploit INJSEP; et. i; des. unfold valid_blocks in *. ss.
+        }
+        {
+          right. ii. eapply external_call_max_perm in H; eauto.
+        }
       *
         unfold public_src, private_src. Psimpl. ii. apply PR. unfold valid_blocks in *.
         eapply Mem.valid_block_unchanged_on; et.
@@ -1277,9 +1381,11 @@ Proof.
   - econs; ss; et.
     + econs; et. eapply inject_separated_frozen in INJSEP. eapply frozen_shortened; et.
     + eapply Mem.unchanged_on_implies; et.
-      ii. rr. destruct (sm0.(inj) b) eqn:T; ss. exfalso. destruct p; ss.
+      ii. rr. destruct (sm0.(inj) b) eqn:T; ss; et. right. ii. destruct p; ss.
       exploit PTTSRC; et.
-      { unfold public_src, private_src. unfold loc_unmapped. rewrite T. Psimpl. ii; clarify. }
+      { unfold public_src, private_src. unfold loc_unmapped. rewrite T. Psimpl. ii; clarify.
+        des; clarify. eauto with mem.
+      }
       i. unfold ons_mem in *. rewrite H in *. clarify.
     + eapply Mem.unchanged_on_implies; et.
       ii. rr. (* destruct (sm0.(inj) b) eqn:T; ss. exfalso. destruct p; ss. *)
@@ -1289,10 +1395,12 @@ Proof.
       i. unfold ons_mem in *. rewrite H in *. clarify.
   - econs; ss; et.
     + eapply Mem.unchanged_on_implies; et.
-      ii. rr. destruct (sm0.(inj) b) eqn:T; ss. exfalso. destruct p; ss.
+      ii. rr. destruct (sm0.(inj) b) eqn:T; ss; et. right. ii. destruct p; ss.
       exploit PTTSRC; et.
-      { unfold public_src, private_src. unfold loc_unmapped. rewrite T. Psimpl. ii; clarify. }
-      i. unfold ons_mem, privmod_others in *. rewrite H1 in *. clarify.
+      { unfold public_src, private_src. unfold loc_unmapped. rewrite T. Psimpl. ii; clarify.
+        des; clarify. eauto with mem.
+      }
+      i. unfold ons_mem, privmod_others in *. rewrite H2 in *. clarify.
     + eapply Mem.unchanged_on_implies; et.
       ii. rr. (* destruct (sm0.(inj) b) eqn:T; ss. exfalso. destruct p; ss. *)
       exploit PTTTGT; et.
@@ -1417,6 +1525,19 @@ End REVIVE.
 
 
 
+Lemma Mem_unchanged_on_or
+      P Q m0 m1
+      (UNCH0: Mem.unchanged_on P m0 m1)
+      (UNCH1: Mem.unchanged_on Q m0 m1)
+  :
+    <<UNCH: Mem.unchanged_on (P \2/ Q) m0 m1>>
+.
+Proof.
+  inv UNCH0. inv UNCH1.
+  econs; et.
+  - ii; des; et.
+  - ii; des; et.
+Qed.
 
 Global Program Instance SimSymbId: SimSymb.class SimMemSV := {
   t := SimSymbId.t';
@@ -1497,7 +1618,20 @@ Next Obligation.
   (* exploit external_call_mem_inject_gen; eauto. *)
   exploit external_call_mem_inject; eauto.
   { eapply skenv_inject_meminj_preserves_globals; eauto. inv SIMSKENV; ss. }
-  i; des. do 2 eexists. dsplits; eauto; ss.
+  i; des.
+  assert(UNCHSRC: Mem.unchanged_on (loc_unmapped inj0 src0) src0 (Retv.m retv_src)).
+  { unfold loc_unmapped. eapply Mem_unchanged_on_or; et.
+    econs; et.
+    - eapply H2.
+    - ii. split; i.
+      { r in H6. contradict H6. eapply Mem.perm_max; eauto with mem. }
+      { eapply Mem.perm_max in H8. eapply external_call_max_perm in H8; eauto.
+        des. eapply Mem.perm_implies with (p2 := Nonempty) in H8; ss. eauto with mem. }
+    - ii.
+      exploit external_call_readonly; try apply SYSSRC; et. intro RO. inv RO.
+      erewrite unchanged_on_contents; et. rr. ii. eauto with mem.
+  }
+  do 2 eexists. dsplits; eauto; ss.
   - instantiate (1:= Retv.mk _ _); ss. eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV.
   - destruct retv_src; ss. instantiate (1:= mk _ _ _ _ _ ptt_src0 ptt_tgt0). econs 1; ss; eauto.
@@ -1505,23 +1639,25 @@ Next Obligation.
   - assert(FROZEN: frozen inj0 f' ge_nb_src0 ge_nb_tgt0).
     { eapply inject_separated_frozen in H5. eapply frozen_shortened; eauto. }
     econs; ss; eauto.
-    + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss. r.
-      destruct (inj0 b) eqn:T; ss. destruct p; ss. exfalso.
+    + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+      destruct (inj0 b) eqn:T; ss; et. destruct p; ss. right. ii.
       exploit PTTSRC; et.
-      { unfold public_src, private_src; ss. intro U. des. r in U. rewrite T in U; ss. }
+      { unfold public_src, private_src; ss. intro U. des. r in U. rewrite T in U; ss.
+        des; ss. eauto. }
       intro U. r in U. rewrite U in *. ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss. r.
       ii as T.
       exploit PTTTGT; et.
       { unfold public_tgt, private_tgt; ss. intro U. des. r in U. exploit U; et. }
       intro U. r in U. rewrite U in *. ss.
-    + ii. eapply external_call_max_perm; eauto.
-    + ii. eapply external_call_max_perm; eauto.
+    (* + ii. eapply external_call_max_perm; eauto. *)
+    (* + ii. eapply external_call_max_perm; eauto. *)
   - econs; ii; ss.
-    + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss. r.
-      destruct (inj0 b) eqn:T; ss. destruct p; ss. exfalso.
+    + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
+      destruct (inj0 b) eqn:T; ss; et. destruct p; ss. right. ii.
       exploit PTTSRC; et.
-      { unfold public_src, private_src; ss. intro U. des. r in U. rewrite T in U; ss. }
+      { unfold public_src, private_src; ss. intro U. des. r in U. rewrite T in U; ss.
+        des; ss. eauto. }
       intro U. r in U. rewrite U in *. ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss. r.
       ii as T.
@@ -1536,6 +1672,7 @@ Next Obligation.
       unfold public_src, private_src; ss. sii T; des.
       eapply PR. esplits; et.
       * eapply loc_unmapped_frozen; et.
+        sii U. eapply external_call_max_perm; et.
       * unfold valid_blocks in *.
         eapply Plt_Ple_trans; et.
         eapply Mem.unchanged_on_nextblock; et.

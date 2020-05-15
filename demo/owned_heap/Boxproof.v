@@ -943,14 +943,10 @@ Proof.
             * rewrite MSRC. eauto with mem.
             * rewrite MINJ. eauto.
             * destruct (eq_block b2 k_tgt).
-              { clarify.
-                admit "".
-              }
+              { exploit (UNIQ blk_src k); eauto with congruence. ii; ss. }
               eapply Mem.valid_access_free_1; eauto.
             * destruct (eq_block b2 k_tgt).
-              { clarify.
-                admit "".
-              }
+              { exploit (UNIQ blk_src k); eauto with congruence. ii; ss. }
               eapply Mem.valid_access_free_1; eauto.
             * erewrite Mem.load_free; et. left. ii; clarify.
               exploit (UNIQ blk_src k); ss; eauto with congruence.

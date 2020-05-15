@@ -942,17 +942,19 @@ Proof.
               ss.
             * rewrite MSRC. eauto with mem.
             * rewrite MINJ. eauto.
-            * eapply Mem.valid_access_free_1; eauto. ss. left.
-              ii. clarify.
-              exploit Mem.mi_no_overlap; try apply n; try apply MWF0; eauto.
-              {
-              exploit Mem.mi_mappedblocks; et. { rewrite MINJ. eauto. } intro U.
-              exploit Mem_load_valid_block; try apply LDTGT; et. intro V.
-              eapply Mem.valid_block_free_1 in V; et.
-              ii; clarify.
+            * destruct (eq_block b2 k_tgt).
+              { clarify.
+                admit "".
               }
-            * eauto with mem.
-            * erewrite Mem.load_store_other; et. left. ii; clarify.
+              eapply Mem.valid_access_free_1; eauto.
+            * destruct (eq_block b2 k_tgt).
+              { clarify.
+                admit "".
+              }
+              eapply Mem.valid_access_free_1; eauto.
+            * erewrite Mem.load_free; et. left. ii; clarify.
+              exploit (UNIQ blk_src k); ss; eauto with congruence.
+            * erewrite Mem.load_free; et. left. ii; clarify.
               exploit (UNIQ blk_src k); ss; eauto with congruence.
             * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
               unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.

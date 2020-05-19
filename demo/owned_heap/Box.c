@@ -2,8 +2,9 @@
 #include <stdlib.h>
 
 typedef int T;
+typedef void* K;
 
-void* new(T v) {
+K new(T v) {
   /* T *key = malloc(sizeof(T)); */
   /* *key = 0; */
   T *key = malloc(sizeof(T));
@@ -11,11 +12,11 @@ void* new(T v) {
   return key;
 }
 
-T get(void *key) {
+T get(K key) {
   return *(T *)key;
 }
 
-void set(void *key, T val) {
+void set(K key, T val) {
   *(T *)key = val;
 }
 
@@ -35,7 +36,7 @@ void set(void *key, T val) {
 
 
 
-void delete(void *key) {
+void delete(K key) {
   free(key);
 }
 
@@ -48,13 +49,25 @@ void delete(void *key) {
 /* } */
 
 
-// A degenerated version of "into_raw"
-void init(void *key) {
+K from_raw(void *ptr) {
+  return ptr;
 }
 
-// A degenerated version of "from_raw"
-void fini(void *key) {
+void* into_raw(K key) {
+  return key;
 }
+
+// A degenerated version of "into_raw"
+/* void init(void *key) { */
+/* } */
+
+// A degenerated version of "from_raw"
+/* void fini(void *key) { */
+/* } */
+
+
+
+
 
 /* typedef int (*int_func_int) (int); */
 

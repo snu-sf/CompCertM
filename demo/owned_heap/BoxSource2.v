@@ -26,7 +26,9 @@ Section MODSEM.
   Variable p: unit.
   Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_function prog).
 
-  Definition owned_heap: Type := block -> option int.
+  Definition key: Type := block * ptrofs.
+
+  Definition owned_heap: Type := key -> option int.
   Definition initial_owned_heap: owned_heap := fun _ => None.
 
   Inductive state: Type :=
@@ -34,17 +36,23 @@ Section MODSEM.
       (v: int)
       (oh: owned_heap) (m: mem)
   | CallstateGet
-      (k: block)
+      (k: key)
       (oh: owned_heap) (m: mem)
   | CallstateSet
-      (k: block)
+      (k: key)
       (v: int)
       (oh: owned_heap) (m: mem)
   | CallstateDelete
-      (k: block)
+      (k: key)
+      (oh: owned_heap) (m: mem)
+  | CallstateFromRaw
+      (k: key)
+      (oh: owned_heap) (m: mem)
+  | CallstateIntoRaw
+      (k: key)
       (oh: owned_heap) (m: mem)
   | ReturnstateNew
-      (k: block)
+      (k: key)
       (oh: owned_heap) (m: mem)
   | ReturnstateGet
       (v: int)
@@ -52,6 +60,12 @@ Section MODSEM.
   | ReturnstateSet
       (oh: owned_heap) (m: mem)
   | ReturnstateDelete
+      (oh: owned_heap) (m: mem)
+  | ReturnstateFromRaw
+      (k: key)
+      (oh: owned_heap) (m: mem)
+  | ReturnstateIntoRaw
+      (k: key)
       (oh: owned_heap) (m: mem)
   .
 
@@ -95,6 +109,24 @@ Section MODSEM.
       (M: (Args.m args) = m)
     :
       initial_frame oh args (CallstateDelete key oh m)
+  | initial_frame_from_raw
+      (WF: oh_wf oh)
+      m blk key
+      (SYMB: Genv.find_symbol skenv _from_raw = Some blk)
+      (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
+      (VS: (Args.vs args) = [Vptr key Ptrofs.zero])
+      (M: (Args.m args) = m)
+    :
+      initial_frame oh args (CallstateFromRaw key oh m)
+  | initial_frame_into_raw
+      (WF: oh_wf oh)
+      m blk key
+      (SYMB: Genv.find_symbol skenv _into_raw = Some blk)
+      (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
+      (VS: (Args.vs args) = [Vptr key Ptrofs.zero])
+      (M: (Args.m args) = m)
+    :
+      initial_frame oh args (CallstateIntoRaw key oh m)
   .
 
   Inductive step (se: Senv.t) (ge: SkEnv.t): state -> trace -> state -> Prop :=
@@ -122,6 +154,22 @@ Section MODSEM.
       (SET: update oh0 key None = oh1)
     :
       step se ge (CallstateDelete key oh0 m) E0 (ReturnstateDelete oh1 m)
+  | step_from_raw
+      oh0 m0 key v oh1 m1
+      (NONE: oh0 key = None)
+      (LOAD: Mem.load Mint32 m0 key 0%Z = Some (Vint v))
+      (FREE: Mem.free m0 key 0%Z hi = Some m1)
+      (SET: update oh0 key (Some v) = oh1)
+    :
+      step se ge (CallstateFromRaw key oh0 m0) E0 (ReturnstateFromRaw key oh1 m1)
+  | step_into_raw
+      oh0 m0 key v m1 oh1 m2
+      (NONE: oh0 key = Some v)
+      (UNFREE: Mem_unfree m0 key 0%Z 4%Z = Some m1)
+      (LOAD: Mem.store Mint32 m1 key 0%Z (Vint v) = Some m2)
+      (SET: update oh0 key None = oh1)
+    :
+      step se ge (CallstateIntoRaw key oh0 m0) E0 (ReturnstateIntoRaw key oh1 m2)
   .
 
   Inductive final_frame: state -> owned_heap -> Retv.t -> Prop :=
@@ -141,6 +189,14 @@ Section MODSEM.
       oh m
     :
       final_frame (ReturnstateDelete oh m) oh (Retv.mk Vundef m)
+  | final_from_raw
+      key oh m
+    :
+      final_frame (ReturnstateFromRaw key oh m) oh (Retv.mk (Vptr key Ptrofs.zero) m)
+  | final_into_raw
+      key oh m
+    :
+      final_frame (ReturnstateIntoRaw key oh m) oh (Retv.mk (Vptr key Ptrofs.zero) m)
   .
 
   Program Definition modsem: ModSem.t :=

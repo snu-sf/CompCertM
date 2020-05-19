@@ -6,11 +6,11 @@ Require Import CtypesC CtypingC.
 Require Import sflib.
 Require Import IntegersC.
 
-Require Import BoxSource BoxTarget.
+Require Import BoxSource2 BoxTarget.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift AsmregsC MatchSimModSemExcl.
 Require SoundTop.
-Require SimMemSV.
+Require SimMemExtSep.
 Require Import Clightdefs.
 Require Import CtypesC.
 Require Import Any.
@@ -80,8 +80,6 @@ Lemma unch_implies
 .
 Proof.
   ii. inv PR. econs; et.
-  { eapply Mem.unchanged_on_implies; et. u. ii. des_ifs. }
-  { eapply Mem.unchanged_on_implies; et. u. ii. des_ifs. }
   { ii. destruct mj; try (by ss). exploit LESRC; et. ss. }
   { ii. destruct mj; try (by ss). exploit LETGT; et. ss. }
 Qed.
@@ -133,15 +131,6 @@ Section SMO.
               (<<LDTGT: Mem.load Mint32 smo.(SimMem.tgt) k_tgt 0%Z = Some (Vint v)>>) /\
               (<<PMTGT: brange k_tgt lo hi <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_tgt)>>)
       )
-      (UNIQ: forall
-          k0 k1 blk_tgt0 blk_tgt1
-          (DIFF: k0 <> k1)
-          (SOME0: map k0 <> None)
-          (SOME1: map k1 <> None)
-          (SIMVAL0: smo.(sm).(SimMemSV.inj) k0 = Some (blk_tgt0, 0))
-          (SIMVAL1: smo.(sm).(SimMemSV.inj) k1 = Some (blk_tgt1, 0))
-        ,
-          <<DIFF: blk_tgt0 <> blk_tgt1>>)
   .
 
   Local Obligation Tactic := try (by ii; des; ss).
@@ -293,6 +282,36 @@ Inductive match_states: nat -> BoxSource.state -> Clight.state -> SimMemOh.t -> 
                  (CallstateDelete blk_src oh m_src)
                  (Callstate fptr_tgt tyf vs_tgt Kstop m_tgt)
                  smo0
+| match_callstate_from_raw
+    oh m_src m_tgt fptr_tgt tyf vs_tgt (smo0: SimMemOh.t)
+    blk_src
+    (MWF: SimMemOh.wf smo0)
+    (OH: smo0.(oh_src) = upcast oh)
+    (MSRC: m_src = smo0.(SimMem.src))
+    (MTGT: m_tgt = smo0.(SimMem.tgt))
+    (FINDF: Genv.find_funct tge fptr_tgt = Some (Internal (f_from_raw)))
+    (TYF: tyf = (Clight.type_of_function f_from_raw))
+    (SIMVS: SimMem.sim_val_list smo0 [Vptr blk_src Ptrofs.zero] vs_tgt)
+  :
+    match_states 0%nat
+                 (CallstateFromRaw blk_src oh m_src)
+                 (Callstate fptr_tgt tyf vs_tgt Kstop m_tgt)
+                 smo0
+| match_callstate_into_raw
+    oh m_src m_tgt fptr_tgt tyf vs_tgt (smo0: SimMemOh.t)
+    blk_src
+    (MWF: SimMemOh.wf smo0)
+    (OH: smo0.(oh_src) = upcast oh)
+    (MSRC: m_src = smo0.(SimMem.src))
+    (MTGT: m_tgt = smo0.(SimMem.tgt))
+    (FINDF: Genv.find_funct tge fptr_tgt = Some (Internal (f_into_raw)))
+    (TYF: tyf = (Clight.type_of_function f_into_raw))
+    (SIMVS: SimMem.sim_val_list smo0 [Vptr blk_src Ptrofs.zero] vs_tgt)
+  :
+    match_states 0%nat
+                 (CallstateIntoRaw blk_src oh m_src)
+                 (Callstate fptr_tgt tyf vs_tgt Kstop m_tgt)
+                 smo0
 | match_returnstate_new
     oh m_src m_tgt blk_src v_tgt (smo0: SimMemOh.t)
     (MWF: SimMemOh.wf smo0)
@@ -337,6 +356,30 @@ Inductive match_states: nat -> BoxSource.state -> Clight.state -> SimMemOh.t -> 
   :
     match_states 0%nat
                  (ReturnstateDelete oh m_src)
+                 (Returnstate v_tgt Kstop m_tgt)
+                 smo0
+| match_returnstate_from_raw
+    oh m_src m_tgt blk_src v_tgt (smo0: SimMemOh.t)
+    (MWF: SimMemOh.wf smo0)
+    (OH: smo0.(oh_src) = upcast oh)
+    (MSRC: m_src = smo0.(SimMem.src))
+    (MTGT: m_tgt = smo0.(SimMem.tgt))
+    (SIMVAL: SimMem.sim_val smo0 (Vptr blk_src Ptrofs.zero) v_tgt)
+  :
+    match_states 0%nat
+                 (ReturnstateFromRaw blk_src oh m_src)
+                 (Returnstate v_tgt Kstop m_tgt)
+                 smo0
+| match_returnstate_into_raw
+    oh m_src m_tgt blk_src v_tgt (smo0: SimMemOh.t)
+    (MWF: SimMemOh.wf smo0)
+    (OH: smo0.(oh_src) = upcast oh)
+    (MSRC: m_src = smo0.(SimMem.src))
+    (MTGT: m_tgt = smo0.(SimMem.tgt))
+    (SIMVAL: SimMem.sim_val smo0 (Vptr blk_src Ptrofs.zero) v_tgt)
+  :
+    match_states 0%nat
+                 (ReturnstateIntoRaw blk_src oh m_src)
                  (Returnstate v_tgt Kstop m_tgt)
                  smo0
 .
@@ -401,6 +444,28 @@ Proof.
       econs; et. ss. inv TYP; ss. inv VALS; ss. inv H3; ss. econs; et. unfold typify. des_ifs.
       { inv H1. ss. }
 
+    + (* method: from_raw *)
+      destruct args_src; ss. clarify.
+      rr in SIMARGS; des. inv SIMARGS0; ss. clarify. folder.
+      esplits; try refl.
+      { econs 5; et. ss. }
+      assert(T: Genv.find_funct tge fptr_tgt = Some (Internal f_from_raw)).
+      { admit "ez - FINDF". }
+      ss. clarify.
+      econs; et. ss. inv TYP; ss. inv VALS; ss. inv H3; ss. econs; et. unfold typify. des_ifs.
+      { inv H1. ss. }
+
+    + (* method: into_raw *)
+      destruct args_src; ss. clarify.
+      rr in SIMARGS; des. inv SIMARGS0; ss. clarify. folder.
+      esplits; try refl.
+      { econs 6; et. ss. }
+      assert(T: Genv.find_funct tge fptr_tgt = Some (Internal f_into_raw)).
+      { admit "ez - FINDF". }
+      ss. clarify.
+      econs; et. ss. inv TYP; ss. inv VALS; ss. inv H3; ss. econs; et. unfold typify. des_ifs.
+      { inv H1. ss. }
+
 
   - des. rr in SIMARGS; des. inv SAFESRC; inv SIMARGS0; ss; clarify.
 
@@ -431,6 +496,19 @@ Proof.
       esplits; et. econs; et. ss.
       inv H3. econs; et.
 
+    + (* method: from_raw *)
+      assert(T: Genv.find_funct (SkEnv.revive ge prog) fptr_tgt = Some (Internal (f_from_raw))).
+      { admit "FINDF". }
+      inv VALS.
+      esplits; et. econs; et. ss.
+      inv H3. econs; et.
+
+    + (* method: into_raw *)
+      assert(T: Genv.find_funct (SkEnv.revive ge prog) fptr_tgt = Some (Internal (f_into_raw))).
+      { admit "FINDF". }
+      inv VALS.
+      esplits; et. econs; et. ss.
+      inv H3. econs; et.
 
   - inv MATCH; ss.
 
@@ -465,6 +543,24 @@ Proof.
       * refl.
 
     + (* method: delete *)
+      esplits; et.
+      * econs; et.
+      * rr. esplits; ss; et.
+        { econs; et; ss. }
+        instantiate (1:= tt). inv MWF. ss.
+      * refl.
+      * refl.
+
+    + (* method: from_raw *)
+      esplits; et.
+      * econs; et.
+      * rr. esplits; ss; et.
+        { econs; et; ss. }
+        instantiate (1:= tt). inv MWF. ss.
+      * refl.
+      * refl.
+
+    + (* method: into_raw *)
       esplits; et.
       * econs; et.
       * rr. esplits; ss; et.
@@ -581,7 +677,7 @@ Proof.
         { eapply unch_implies; et. }
       }
       {
-        econs 5; ss; et.
+        econs 7; ss; et.
         - instantiate (1:= upcast tt). econs; ss; et; cycle 1.
           { bar.
             (*** TODO: make some good lemma ***)
@@ -752,7 +848,7 @@ Proof.
         refl.
       }
       {
-        econs 6; ss; et.
+        econs 8; ss; et.
         (* - econs; ss; et. *) (**** COQ BUG!!!! ****)
         eapply wf_intro with (map := map); ss; et.
       }
@@ -798,7 +894,7 @@ Proof.
         apply star_refl.
       }
       {
-        econs 7; ss; et.
+        econs 9; ss; et.
         - instantiate (1:= upcast tt).
           econs; ss; et; cycle 1.
           { bar.
@@ -917,7 +1013,7 @@ Proof.
         apply star_refl.
       }
       {
-        econs 8; ss; et.
+        econs 10; ss; et.
         - instantiate (1:= upcast tt).
           econs; ss; et; cycle 1.
           { bar.
@@ -925,6 +1021,92 @@ Proof.
             assert(MLEALL: SimMemSV.le' sm0.(sm) sm1).
             { ss. }
             ii. rewrite MINJ in *.
+            unfold update in *. inv MWF. des_ifs. exploit (UNIQ k0 k1); et.
+          }
+          ii. unfold update in *. des_ifs.
+          + (** old **)
+            inv MWF. exploit SOME0; et. i; des.
+            esplits; et.
+            * rewrite MSRC. eauto with mem.
+            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
+              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              bar.
+              inv MLE. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              ss.
+            * rewrite MSRC. eauto with mem.
+            * rewrite MINJ. eauto.
+            * destruct (eq_block b2 k_tgt).
+              { exploit (UNIQ blk_src k); eauto with congruence. ii; ss. }
+              eapply Mem.valid_access_free_1; eauto.
+            * destruct (eq_block b2 k_tgt).
+              { exploit (UNIQ blk_src k); eauto with congruence. ii; ss. }
+              eapply Mem.valid_access_free_1; eauto.
+            * erewrite Mem.load_free; et. left. ii; clarify.
+              exploit (UNIQ blk_src k); ss; eauto with congruence.
+            * erewrite Mem.load_free; et. left. ii; clarify.
+              exploit (UNIQ blk_src k); ss; eauto with congruence.
+            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
+              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              bar.
+              inv MLE. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
+              ss.
+      }
+      
+    + (* method: from_raw *)
+      inv SIMVS. inv H3. inv H1. rename H2 into INJ.
+      inv MWF.
+      rewrite OH in *. clarify. (** TODO: make clarify smarter **)
+      destruct (map blk_src) eqn:T; ss.
+
+      exploit (@SimMemSV.free_left (SimMemSV.privmod "OHAlloc") (SimMemSV.privmod "OHAlloc"));
+        try apply FREETGT0; et.
+      i; des. clarify. zsimpl.
+      Local Opaque Z.add.
+
+
+      eexists _, _, _, (mk sm1 _ _); ss. esplits; et.
+      { apply star_refl. }
+      { left.
+        eapply ModSemProps.spread_dplus; et.
+        { admit "ez - determinate". }
+        eapply plus_left with (t1 := E0) (t2 := E0); ss.
+        { econs; eauto.
+          econs; ss; eauto; try (by repeat (econs; ss; eauto)).
+        }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { econs; eauto.
+          - econs; ss; eauto; try (by repeat (econs; ss; eauto)).
+          - econs; ss; eauto; try (by repeat (econs; ss; eauto)).
+          - repeat (econs; ss; eauto).
+        }
+        psimpl.
+        apply star_refl.
+      }
+      { eapply unch_implies; eauto. }
+      {
+        econs 11; ss; et; cycle 1.
+        - econs; psimpl; et. eapply MLE; et.
+        - instantiate (1:= upcast tt).
+          econs; ss; et; cycle 1.
+          { bar.
+            (*** TODO: make some good lemma ***)
+            assert(MLEALL: SimMemSV.le' sm0.(sm) sm1).
+            { ss. }
+            ii. rewrite MINJ in *. clarify.
+
+            (***
+WTS: new mapping does not overlap with existing mapping.
+Problematic case: existing(s0->t), new(s1->t).
+             ***)
+            unfold update in *. inv MWF.
+            destruct (eq_block blk_src k0).
+            - destruct (eq_block blk_src k1); clarify.
+              destruct (map k1) eqn:W; ss.
+              exploit (UNIQ k0 k1); eauto with congruence.
+            - destruct (eq_block blk_src k1); clarify.
+              + destruct (map k1) eqn:W; ss.
+                exploit (UNIQ k0 k1); eauto with congruence.
+              + exploit (UNIQ k0 k1); eauto with congruence.
             unfold update in *. inv MWF. des_ifs. exploit (UNIQ k0 k1); et.
           }
           ii. unfold update in *. des_ifs.

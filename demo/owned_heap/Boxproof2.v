@@ -111,12 +111,12 @@ Section SMO.
   Inductive wf (smo: t): Prop :=
   | wf_intro
       (MWF: SimMem.wf smo)
-      (map: block -> option int)
+      (map: BoxSource2.owned_heap)
       (OHSRC: smo.(oh_src) = upcast map)
       (OHTGT: smo.(oh_tgt) = upcast tt)
       (SOME: forall
-          k v
-          (SOME: map k = Some v)
+          blk ofs v is_raw
+          (SOME: map (blk, ofs) = Some (v, is_raw))
         ,
           (* (<<SRC: forall o, ZMap.get o (smo.(SimMem.src).(Mem.mem_contents) # k) = Undef>>) /\ *)
           (<<PERMSRC: Mem_range_noperm smo.(SimMem.src) k lo hi>>) /\

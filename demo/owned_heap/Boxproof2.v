@@ -153,11 +153,6 @@ Section SMO.
     |}
   .
   Next Obligation.
-    econs; et.
-    - ii. refl.
-    - ii. etrans; et.
-  Qed.
-  Next Obligation.
     ii. eapply PR.
   Qed.
   Next Obligation.
@@ -378,7 +373,6 @@ Proof.
     eauto; ii; ss; folder.
   - eapply lt_wf.
   - eapply SoundTop.sound_state_local_preservation; et.
-  - r. etrans; et.
 
 
   - des. inv INITTGT. folder. ss.
@@ -656,9 +650,6 @@ Proof.
       }
       {
         etrans; et. etrans; et. etrans; et.
-      }
-      {
-        etrans; et. etrans; et. etrans; et.
         { eapply unch_implies; et. }
         { eapply unch_implies; et. }
       }
@@ -669,81 +660,109 @@ Proof.
           + (** new **)
             esplits; et.
             * rp; et. rp; et. eapply Mem_free_noperm; et.
-            * etrans; et. u. ii.
+            * etrans; et.
               bar.
-              inv MLE2. erewrite (PMLE (Some "OHAlloc")). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE1. erewrite (PMSRC0 "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              ss.
+              assert(T: brange k 0 hi <2= brange k lo hi).
+              { u. ii. des. clarify. eauto with xomega. }
+              etrans; et.
+              etrans; et.
+              rewrite SimMemExtSep.ons_mem_privmods.
+              specialize (PMLE (Some "OHAlloc")). etrans; et.
+              specialize (PMLE0 (Some "OHAlloc")). etrans; et.
             * admit "ez - mem".
-            * rp; et. congruence.
             * eapply Mem.store_valid_access_1; et.
               eapply Mem.store_valid_access_1; et.
               rewrite MTGT.
               eapply Mem.valid_access_implies with Freeable; [|eauto with mem].
               eapply Mem.valid_access_alloc_same; et; u; try xomega.
-              exists (- 1). xomega.
-            * eapply Mem.store_valid_access_1; et.
-              eapply Mem.store_valid_access_1; et.
-              rewrite MTGT.
-              eapply Mem.valid_access_implies with Freeable; [|eauto with mem].
-              eapply Mem.valid_access_alloc_same; et; u; try xomega.
-              eapply Z.divide_0_r.
-            * erewrite Mem.load_store_other; et; cycle 1.
-              { right. ss. left. ss. }
-              erewrite Mem.load_store_same; et. ss.
-            * erewrite Mem.load_store_same; et. ss.
-            * etrans; et. u. ii.
+              exists 0. xomega.
+            * etrans; et.
               bar.
-              inv MLE2. erewrite (PMTGT0 "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE1. erewrite (PMTGT0 "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              ss.
+              assert(T: brange k 0 hi <2= brange k lo hi).
+              { u. ii. des. clarify. eauto with xomega. }
+              etrans; et.
+              etrans; et.
+              rewrite SimMemExtSep.ons_mem_privmods.
+              specialize (PMLE (Some "OHAlloc")). etrans; et.
+              specialize (PMLE0 (Some "OHAlloc")). etrans; et.
+            * erewrite Mem.load_store_same; et. ss.
+            * ii.
+              esplits; eauto.
+              { etrans; et.
+                bar.
+                assert(T: brange k lo 0 <2= brange k lo hi).
+                { u. ii. des. clarify. eauto with xomega. }
+                etrans; et.
+                etrans; et.
+                rewrite SimMemExtSep.ons_mem_privmods.
+                specialize (PMLE (Some "OHAlloc")). etrans; et.
+                specialize (PMLE0 (Some "OHAlloc")). etrans; et.
+              }
+              { eapply Mem.store_valid_access_1; et.
+                eapply Mem.store_valid_access_1; et.
+                rewrite MTGT.
+                eapply Mem.valid_access_implies with Freeable; [|eauto with mem].
+                eapply Mem.valid_access_alloc_same; et; u; try xomega.
+                exists (- 1)%Z. xomega.
+              }
+              { erewrite Mem.load_store_other; et; cycle 1.
+                { right. ss. left. ss. }
+                erewrite Mem.load_store_same; et. ss.
+              }
           + (** old **)
             inv MWF. rewrite OH in *. clarify. exploit SOME0; et. i; des.
             esplits; et.
             * rewrite MSRC0. rewrite MSRC. clear - n PERMSRC FREE ALLOC.
               admit "ez - mem".
-            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE2 MLE1 MLE0 MLE.
-              unfold SimMemExtSep.ownership_to_ownership in *. des_ifs_safe.
+            * clear - PMSRC0 UNCH UNCH0 PMLE PMLE0.
+              etrans; et.
+              specialize (PMLE0 (Some "OHAlloc")). ss. etrans; et.
+              specialize (PMLE (Some "OHAlloc")). ss. etrans; et.
               bar.
-              inv MLE2. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE1. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE0. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              ss.
+              inv UNCH0. specialize (LESRC (Some "OHAlloc")). ss. etrans; try apply LESRC; ss; et.
+              clear_until_bar.
+              inv UNCH. specialize (LESRC (Some "OHAlloc")). ss. etrans; try apply LESRC; ss; et.
             * admit "ez - mem".
-            * rewrite MINJ1. rewrite MINJ0. rewrite MINJ. rewrite INJ0; et.
             * exploit Mem.valid_access_alloc_other; try apply PERMTGT; et. intro T. rewrite <- MTGT in T.
               eapply Mem.store_valid_access_1; et.
               eapply Mem.store_valid_access_1; et.
-            * exploit Mem.valid_access_alloc_other; try apply PERMTGT0; et. intro T. rewrite <- MTGT in T.
-              eapply Mem.store_valid_access_1; et.
-              eapply Mem.store_valid_access_1; et.
+            * clear - PMTGT UNCH UNCH0 PMLE PMLE0.
+              etrans; et.
+              specialize (PMLE0 (Some "OHAlloc")). ss. etrans; et.
+              specialize (PMLE (Some "OHAlloc")). ss. etrans; et.
+              bar.
+              inv UNCH0. specialize (LESRC (Some "OHAlloc")). ss. etrans; try apply LESRC; ss; et.
+              clear_until_bar.
+              inv UNCH. specialize (LESRC (Some "OHAlloc")). ss. etrans; try apply LESRC; ss; et.
             * exploit Mem.load_alloc_other; try apply LDTGT; et. intro T.
               erewrite Mem.load_store_other; try apply STRTGT1; et; cycle 1.
-              { left. admit "ez - mem". }
               erewrite Mem.load_store_other; try apply STRTGT0; et; cycle 1.
-              { left. admit "ez - mem". }
               congruence.
-            * exploit Mem.load_alloc_other; try apply LDTGT0; et. intro T.
-              erewrite Mem.load_store_other; try apply STRTGT1; et; cycle 1.
-              { left. admit "ez - mem". }
-              erewrite Mem.load_store_other; try apply STRTGT0; et; cycle 1.
-              { left. admit "ez - mem". }
-              congruence.
-            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE2 MLE1 MLE0 MLE.
-              unfold SimMemExtSep.ownership_to_ownership in *. des_ifs_safe.
-              bar.
-              inv MLE2. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE1. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE0. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              inv MLE. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              ss.
+            * ii. destruct is_raw; ss. exploit NEW; eauto. bar. intro T; des.
+              esplits; eauto.
+              { clear - PMSRC1 UNCH UNCH0 PMLE PMLE0.
+                etrans; et.
+                specialize (PMLE0 (Some "OHAlloc")). ss. etrans; et.
+                specialize (PMLE (Some "OHAlloc")). ss. etrans; et.
+                bar.
+                inv UNCH0. specialize (LESRC (Some "OHAlloc")). ss. etrans; try apply LESRC; ss; et.
+                clear_until_bar.
+                inv UNCH. specialize (LESRC (Some "OHAlloc")). ss. etrans; try apply LESRC; ss; et.
+              }
+              { exploit Mem.valid_access_alloc_other; try apply PERMTGT0; et. intro T. rewrite <- MTGT in T.
+                eapply Mem.store_valid_access_1; et.
+                eapply Mem.store_valid_access_1; et.
+              }
+              { exploit Mem.load_alloc_other; try apply LDTGT0; et. intro T.
+                erewrite Mem.load_store_other; try apply STRTGT1; et; cycle 1.
+                erewrite Mem.load_store_other; try apply STRTGT0; et; cycle 1.
+                congruence.
+              }
         - congruence.
-        - rewrite MINJ1. rewrite MINJ0. rewrite MINJ. econs; et.
       }
 
     + (* method: get *)
-      inv SIMVS. inv H3. inv H1. rename H2 into INJ.
+      inv SIMVS. inv H3. inv H1.
       inv MWF.
       rewrite OH in *. clarify. (** TODO: make clarify smarter **)
       exploit SOME; et. i; des. clarify.
@@ -776,24 +795,20 @@ Proof.
       }
 
     + (* method: set *)
-      inv SIMVS. inv H3. inv H1. rename H3 into INJ. inv H5. inv H2.
+      inv SIMVS. inv H3. inv H1. inv H5. inv H2.
       inv MWF.
       rewrite OH in *. clarify. (** TODO: make clarify smarter **)
-      destruct (map blk_src) eqn:T; ss.
+      destruct (map blk_src) eqn:T; ss. clarify.
       exploit SOME0; et. i; des. clarify.
 
       assert(STRTGT0: exists m_tgt0,
-                Mem.store Mint32 (SimMem.tgt sm0) b2 0 (Vint v_src) = Some m_tgt0).
+                Mem.store Mint32 (SimMem.tgt sm0) blk_src 0 (Vint v_src) = Some m_tgt0).
       { edestruct Mem.valid_access_store with (chunk := Mint32) (ofs := 0%Z); et.
         eauto with mem.
       }
       des.
 
       exploit (SimMemExtSep.store_right_pm (Some "OHAlloc")); try apply STRTGT0; et.
-      { u. ii. specialize (PMTGT x0 x1). des; clarify. ss.
-        exploit PMTGT; et.
-        { rr. esplits; et. u. xomega. }
-      }
       i; des. clarify.
 
 
@@ -819,87 +834,61 @@ Proof.
         econs 9; ss; et.
         - instantiate (1:= upcast tt).
           econs; ss; et; cycle 1.
-          { bar.
-            (*** TODO: make some good lemma ***)
-            assert(MLEALL: SimMemExtSep.le' sm0.(sm) sm1).
-            { ss. }
-            ii. rewrite MINJ in *.
-            unfold update in *. inv MWF.
-            destruct (eq_block blk_src k0).
-            - destruct (eq_block blk_src k1); clarify.
-              destruct (map k1) eqn:W; ss.
-              exploit (UNIQ k0 k1); eauto with congruence.
-            - destruct (eq_block blk_src k1); clarify.
-              + destruct (map k1) eqn:W; ss.
-                exploit (UNIQ k0 k1); eauto with congruence.
-              + exploit (UNIQ k0 k1); eauto with congruence.
-          }
           ii. unfold update in *. des_ifs.
           + (** new **)
             esplits; et.
             * rp; et.
-            * etrans; et. u. ii.
-              bar.
-              inv MLE. erewrite (PMSRC0 "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              unfold SimMemExtSep.ownership_to_ownership in PR. des_ifs. des_sumbool. clarify.
+            * etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et. 
             * rewrite MSRC. eauto with mem.
-            * rp; et. congruence.
             * eapply Mem.store_valid_access_1; et.
-            * eapply Mem.store_valid_access_1; et.
-            * erewrite Mem.load_store_other; et. right. ss. left; ss.
+            * etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et. 
             * erewrite Mem.load_store_same; et. ss.
-            * etrans; et. u. ii.
-              bar.
-              inv MLE. erewrite (PMTGT0 "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              unfold SimMemExtSep.ownership_to_ownership in PR. des_ifs. des_sumbool. clarify.
+            * ii. destruct is_raw0; ss.
+              exploit NEW; et. i; des.
+              esplits; et.
+              { etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et. }
+              { eapply Mem.store_valid_access_1; et. }
+              { erewrite Mem.load_store_other; et. right. ss. left; ss. }
           + (** old **)
             inv MWF. exploit SOME0; et. i; des.
             esplits; et.
             * rewrite MSRC. eauto with mem.
-            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
-              unfold SimMemExtSep.ownership_to_ownership in *. des_ifs_safe.
-              bar.
-              inv MLE. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              ss.
+            * clear - PMSRC0 PMLE.
+              etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et.
             * rewrite MSRC. eauto with mem.
-            * rewrite MINJ. eauto.
             * eauto with mem.
-            * eauto with mem.
-            * erewrite Mem.load_store_other; et. left. ii; clarify.
-              exploit (UNIQ blk_src k); ss; eauto with congruence.
-            * erewrite Mem.load_store_other; et. left. ii; clarify.
-              exploit (UNIQ blk_src k); ss; eauto with congruence.
-            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
-              unfold SimMemExtSep.ownership_to_ownership in *. des_ifs_safe.
-              bar.
-              inv MLE. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              ss.
+            * clear - PMTGT0 PMLE.
+              etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et.
+            * erewrite Mem.load_store_other; et.
+            * ii. destruct is_raw0; ss.
+              exploit NEW0; et. i; des.
+              esplits; et.
+              { clear - PMSRC1 PMLE.
+                etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et. }
+              { eauto with mem. }
+              { erewrite Mem.load_store_other; et. }
       }
 
     + (* method: delete *)
-      inv SIMVS. inv H3. inv H1. rename H2 into INJ.
+      inv SIMVS. inv H3. inv H1.
       inv MWF.
       rewrite OH in *. clarify. (** TODO: make clarify smarter **)
-      destruct (map blk_src) eqn:T; ss.
+      destruct (map blk_src) eqn:T; ss. clarify.
       exploit SOME0; et. i; des. clarify.
+      exploit NEW; eauto. i; des. clarify.
 
       assert(FREETGT0: exists m_tgt0,
-                Mem.free (SimMem.tgt sm0) b2 lo hi = Some m_tgt0).
+                Mem.free (SimMem.tgt sm0) blk_src lo hi = Some m_tgt0).
       { edestruct Mem.range_perm_free; et. clear - PERMTGT PERMTGT0.
         unfold lo, hi in *.
         ii.
         destruct (classic (ofs < 0)).
-        - eapply PERMTGT. ss. xomega.
         - eapply PERMTGT0. ss. xomega.
+        - eapply PERMTGT. ss. xomega.
       }
       des.
 
-      exploit (@SimMemExtSep.free_right_pm "OHAlloc"); try apply FREETGT0; et.
-      { u. ii. specialize (PMTGT x0 x1). des; clarify. ss.
-        exploit PMTGT; et.
-        { unfold SimMemExtSep.ownership_to_ownership.
-          des_ifs. ii. des_sumbool. clarify. }
-      }
+      exploit (@SimMemExtSep.free_right_pm (Some "OHAlloc")); try apply FREETGT0; et.
       i; des. clarify.
 
 
@@ -938,42 +927,23 @@ Proof.
         econs 10; ss; et.
         - instantiate (1:= upcast tt).
           econs; ss; et; cycle 1.
-          { bar.
-            (*** TODO: make some good lemma ***)
-            assert(MLEALL: SimMemExtSep.le' sm0.(sm) sm1).
-            { ss. }
-            ii. rewrite MINJ in *.
-            unfold update in *. inv MWF. des_ifs. exploit (UNIQ k0 k1); et.
-          }
           ii. unfold update in *. des_ifs.
           + (** old **)
             inv MWF. exploit SOME0; et. i; des.
             esplits; et.
             * rewrite MSRC. eauto with mem.
-            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
-              unfold SimMemExtSep.ownership_to_ownership in *. des_ifs_safe.
-              bar.
-              inv MLE. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              ss.
+            * etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et.
             * rewrite MSRC. eauto with mem.
-            * rewrite MINJ. eauto.
-            * destruct (eq_block b2 k_tgt).
-              { exploit (UNIQ blk_src k); eauto with congruence. ii; ss. }
-              eapply Mem.valid_access_free_1; eauto.
-            * destruct (eq_block b2 k_tgt).
-              { exploit (UNIQ blk_src k); eauto with congruence. ii; ss. }
-              eapply Mem.valid_access_free_1; eauto.
-            * erewrite Mem.load_free; et. left. ii; clarify.
-              exploit (UNIQ blk_src k); ss; eauto with congruence.
-            * erewrite Mem.load_free; et. left. ii; clarify.
-              exploit (UNIQ blk_src k); ss; eauto with congruence.
-            * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
-              unfold SimMemExtSep.ownership_to_ownership in *. des_ifs_safe.
-              bar.
-              inv MLE. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              ss.
+            * eapply Mem.valid_access_free_1; eauto.
+            * etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et.
+            * erewrite Mem.load_free; et.
+            * destruct is_raw; ss. exploit NEW0; et. i; des.
+              esplits; et.
+              { etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et. }
+              { eapply Mem.valid_access_free_1; eauto. }
+              { erewrite Mem.load_free; et. }
       }
-      
+
     + (* method: from_raw *)
       inv SIMVS. inv H3. inv H1. rename H2 into INJ.
       inv MWF.

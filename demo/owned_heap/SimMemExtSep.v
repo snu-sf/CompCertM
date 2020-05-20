@@ -10,6 +10,7 @@ Require Import FSets.
 Require Import Ordered.
 Require Import AST.
 Require Import Integers.
+Require Import AxiomsC.
 
 Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.
@@ -28,6 +29,15 @@ Definition ons_mem (ptt: partition) (ons: ownership): block -> Z -> Prop :=
 .
 Hint Unfold ons_mem.
 Hint Unfold privmods privmod_others.
+
+Lemma ons_mem_privmods
+      ptt mi
+  :
+    ons_mem ptt (privmod mi) = privmods (Some mi) ptt
+.
+Proof.
+  u. apply func_ext2. ii. apply prop_ext. split; i; des_ifs; des_sumbool; clarify; ss.
+Qed.
 
 Definition valid_blocks (m: mem): block -> Z -> Prop := fun b _ => (Mem.valid_block m) b.
 Hint Unfold valid_blocks.
@@ -50,22 +60,9 @@ Inductive wf' (sm0: t'): Prop :=
                           (valid_blocks sm0.(src) /2\ loc_out_of_bounds sm0.(src)))
 .
 
-Inductive le' (sm0 sm1: t'): Prop :=
-| le_intro
-    (PMLE: forall mi, privmods mi sm0.(ptt) <2= privmods mi sm1.(ptt))
-.
-
-Global Program Instance le'_PreOrder: RelationClasses.PreOrder le'.
-Next Obligation.
-  econs; et.
-Qed.
-Next Obligation.
-  econs; et.
-  inv H. inv H0.
-  etrans; et.
-Qed.
 
 
+Definition le': t' -> t' -> Prop := top2.
 
 Program Instance SimMemExtSep : SimMem.class :=
 { t := t';
@@ -130,7 +127,6 @@ Next Obligation.
   { eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto. }
   { destruct retv_src; ss. econs; ss; eauto. }
-  { econs; et. }
   { econs; ss; et.
     - exploit external_call_readonly; try apply SYSSRC; eauto. intro T.
       eapply Mem.unchanged_on_implies; eauto.
@@ -178,7 +174,6 @@ Proof.
   eexists (mk _ _ sm0.(ptt)).
   dsplits; ss; eauto; cycle 1.
   - econs; ss; eauto.
-  - econs; ss; eauto.
     + eapply Mem.alloc_unchanged_on; eauto.
     + eapply Mem.alloc_unchanged_on; eauto.
   - econs; ss; eauto.
@@ -207,14 +202,6 @@ Proof.
                             else sm0.(ptt) b ofs)
           ).
   dsplits; ss; eauto; cycle 1.
-  - econs; ss; eauto.
-    inv SPLITHINT1. ss.
-    ii.
-    exploit PMPERM; et. intro T; des.
-    revert PR. u. ii. des_ifs_safe. bsimpl. des. des_sumbool.
-    rewrite Z.leb_le in *. rewrite Z.ltb_lt in *.
-    clarify.
-    rr in T0. contradict T0. exploit Mem.free_range_perm; eauto. intro PERM. eauto with mem.
   - econs; ss; eauto.
     + eapply Mem.free_unchanged_on; eauto. u. ii.
       des_ifs. exploit (PMPERM (Some mi)); eauto.
@@ -266,23 +253,24 @@ Lemma free_right_pm
       mi sm0 lo hi blk m_tgt0
       (MWF: wf' sm0)
       (FREETGT: Mem.free sm0.(tgt) blk lo hi = Some m_tgt0)
-      (PRVTGT: brange blk lo hi <2= (ons_mem sm0.(ptt) (privmod mi)))
+      (* (PRVTGT: brange blk lo hi <2= (ons_mem sm0.(ptt) (privmod mi))) *)
+      (PMTGT: brange blk lo hi <2= (privmods mi sm0.(ptt)))
   :
     exists sm1,
       (<<MSRC: sm1.(src) = sm0.(src)>>)
       /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
-      /\ (<<UNCH: SimMem.unch (Some mi) sm0 sm1>>)
+      /\ (<<UNCH: SimMem.unch mi sm0 sm1>>)
+      /\ (<<PMLE: forall mi, privmods mi sm0.(ptt) <2= privmods mi sm1.(ptt)>>)
 .
 Proof.
   exploit Mem.free_right_extends; try apply MWF; eauto.
   {
     ii.
-    exploit PRVTGT; et. intro T. r in T.
+    exploit PMTGT; et. intro T. r in T.
     inv MWF.
-    exploit (PMPERM (Some mi) blk ofs); et.
-    { ss. des_ifs. des_sumbool. ss. }
+    exploit (PMPERM mi blk ofs); et.
     intro U. des. r in U0. contradict U0. eauto with mem.
   }
   intro U; des. inv MWF.
@@ -290,9 +278,8 @@ Proof.
   - econs; ss; eauto.
     + refl.
     + eapply Mem.free_unchanged_on; et.
-      u. ii.
-      exploit PRVTGT; et. intro Y. u in *; des_ifs. bsimpl. des_sumbool. ss.
-  - econs; ss; eauto.
+      u. ii. des_ifs_safe.
+      exploit PMTGT; et. intro Y. u in *; des_ifs.
 Unshelve.
   all: ss.
 Qed.
@@ -312,7 +299,6 @@ Lemma free_parallel
 Proof.
   exploit Mem.free_parallel_extends; try apply MWF; eauto. i; des. inv MWF.
   eexists (mk _ _ sm0.(ptt)). dsplits; ss; eauto; cycle 1.
-  - econs; ss; eauto.
   - econs; ss; eauto.
     + eapply Mem.free_unchanged_on; eauto. u. ii.
       des_ifs. exploit (PMPERM (Some mi)); eauto.
@@ -346,7 +332,6 @@ Lemma store_parallel
 Proof.
   exploit Mem.store_within_extends; try apply MWF; eauto. i; des.
   eexists (mk _ _ sm0.(ptt)). dsplits; ss; eauto; cycle 1.
-  - econs; ss; eauto.
   - des. inv MWF.
     econs; ss; eauto.
     + eapply Mem.store_unchanged_on; eauto. u. ii.
@@ -377,6 +362,7 @@ Lemma store_right_pm
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>)
       /\ (<<UNCH: SimMem.unch mi sm0 sm1>>)
+      /\ (<<PMLE: forall mi, privmods mi sm0.(ptt) <2= privmods mi sm1.(ptt)>>)
 .
 Proof.
   exploit Mem.store_outside_extends; try apply MWF; eauto.
@@ -387,7 +373,6 @@ Proof.
   }
   intro U; des.
   eexists (mk _ _ sm0.(ptt)). dsplits; ss; eauto; cycle 1.
-  - econs; ss; eauto.
   - inv MWF.
     econs; ss; eauto.
     + refl.

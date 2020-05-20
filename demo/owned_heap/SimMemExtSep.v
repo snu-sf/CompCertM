@@ -27,7 +27,7 @@ Definition ons_mem (ptt: partition) (ons: ownership): block -> Z -> Prop :=
   fun b ofs => (ptt b ofs) = ons
 .
 Hint Unfold ons_mem.
-Hint Unfold privmods.
+Hint Unfold privmods privmod_others.
 
 Definition valid_blocks (m: mem): block -> Z -> Prop := fun b _ => (Mem.valid_block m) b.
 Hint Unfold valid_blocks.
@@ -78,7 +78,7 @@ Program Instance SimMemExtSep : SimMem.class :=
   lepriv := top2;
   sim_val := fun (_: t') => Val.lessdef;
   sim_val_list := fun (_: t') => Val.lessdef_list;
-  unchanged_on := top3;
+  unchanged_on := Mem.unchanged_on;
 }.
 Next Obligation.
   do 2 (apply Axioms.functional_extensionality; i).
@@ -88,6 +88,7 @@ Next Obligation.
   - induction H; econs; eauto.
 Qed.
 Next Obligation. inv H. ss. Qed.
+Next Obligation. ii. eapply Mem.unchanged_on_implies; et. Qed.
 
 Program Instance SimMemExtSepLift: SimMemLift.class SimMemExtSep :=
 { lift := id;
@@ -130,7 +131,21 @@ Next Obligation.
     eapply SimSymbId.sim_skenv_equiv; eauto. }
   { destruct retv_src; ss. econs; ss; eauto. }
   { econs; et. }
-  { econs; ss; et. }
+  { econs; ss; et.
+    - exploit external_call_readonly; try apply SYSSRC; eauto. intro T.
+      eapply Mem.unchanged_on_implies; eauto.
+      u. ii. des_ifs.
+      inv MWF. ss.
+      exploit (PMPERM (Some mi)); et.
+      { u. rewrite Heq. des_sumbool; ss. }
+      intro U; des. eauto with mem.
+    - eapply Mem.unchanged_on_implies; eauto.
+      u. ii. des_ifs.
+      inv MWF. ss.
+      exploit (PMPERM (Some mi)); et.
+      { u. rewrite Heq. des_sumbool; ss. }
+      intro U; des. eauto with mem.
+  }
   { inv MWF. econs; ss; et. etrans; et.
     bar.
     u. ii. des. esplits; et.
@@ -164,6 +179,8 @@ Proof.
   dsplits; ss; eauto; cycle 1.
   - econs; ss; eauto.
   - econs; ss; eauto.
+    + eapply Mem.alloc_unchanged_on; eauto.
+    + eapply Mem.alloc_unchanged_on; eauto.
   - econs; ss; eauto.
     etrans; et.
     u. ii. des. esplits; eauto with mem.
@@ -199,6 +216,11 @@ Proof.
     clarify.
     rr in T0. contradict T0. exploit Mem.free_range_perm; eauto. intro PERM. eauto with mem.
   - econs; ss; eauto.
+    + eapply Mem.free_unchanged_on; eauto. u. ii.
+      des_ifs. exploit (PMPERM (Some mi)); eauto.
+      { u. rewrite Heq. des_sumbool; ss. }
+      intro T; des. rr in T0. eapply T0. eapply Mem.free_range_perm in FREESRC. eauto with mem xomega.
+    + refl.
     + u. ii. des_ifs_safe. bsimpl; des; des_sumbool.
       rewrite Z.leb_le in *. rewrite Z.ltb_lt in *. clarify.
       exfalso.
@@ -266,6 +288,10 @@ Proof.
   intro U; des. inv MWF.
   eexists (mk _ _ sm0.(ptt)). dsplits; ss; eauto; cycle 1.
   - econs; ss; eauto.
+    + refl.
+    + eapply Mem.free_unchanged_on; et.
+      u. ii.
+      exploit PRVTGT; et. intro Y. u in *; des_ifs. bsimpl. des_sumbool. ss.
   - econs; ss; eauto.
 Unshelve.
   all: ss.
@@ -288,6 +314,14 @@ Proof.
   eexists (mk _ _ sm0.(ptt)). dsplits; ss; eauto; cycle 1.
   - econs; ss; eauto.
   - econs; ss; eauto.
+    + eapply Mem.free_unchanged_on; eauto. u. ii.
+      des_ifs. exploit (PMPERM (Some mi)); eauto.
+      { u. rewrite Heq. des_sumbool; ss. }
+      intro T; des. rr in T0. eapply T0. eapply Mem.free_range_perm in FREESRC. eauto with mem xomega.
+    + eapply Mem.free_unchanged_on; eauto. u. ii.
+      des_ifs. exploit (PMPERM (Some mi)); eauto.
+      { u. rewrite Heq. des_sumbool; ss. }
+      intro T; des. rr in T0. eapply T0. eapply Mem.free_range_perm in FREESRC. eauto with mem xomega.
   - econs; ss; eauto.
     etrans; et.
     u. ii. des. esplits; eauto with mem.
@@ -313,7 +347,18 @@ Proof.
   exploit Mem.store_within_extends; try apply MWF; eauto. i; des.
   eexists (mk _ _ sm0.(ptt)). dsplits; ss; eauto; cycle 1.
   - econs; ss; eauto.
-  - des. econs; ss; eauto.
+  - des. inv MWF.
+    econs; ss; eauto.
+    + eapply Mem.store_unchanged_on; eauto. u. ii.
+      des_ifs. exploit (PMPERM (Some mi)); eauto.
+      { u. rewrite Heq. des_sumbool; ss. }
+      intro T; des. rr in T0. eapply T0.
+      apply Mem.store_valid_access_3 in STRSRC. destruct STRSRC. eauto with mem xomega.
+    + eapply Mem.store_unchanged_on; eauto. u. ii.
+      des_ifs. exploit (PMPERM (Some mi)); eauto.
+      { u. rewrite Heq. des_sumbool; ss. }
+      intro T; des. rr in T0. eapply T0.
+      apply Mem.store_valid_access_3 in STRSRC. destruct STRSRC. eauto with mem xomega.
   - econs; ss; eauto.
     inv MWF.
     etrans; et.
@@ -343,7 +388,12 @@ Proof.
   intro U; des.
   eexists (mk _ _ sm0.(ptt)). dsplits; ss; eauto; cycle 1.
   - econs; ss; eauto.
-  - econs; ss; eauto.
+  - inv MWF.
+    econs; ss; eauto.
+    + refl.
+    + eapply Mem.store_unchanged_on; eauto. ii.
+      exploit PMTGT; et. intro T. unfold privmods in *. des_ifs. des_sumbool. clarify.
+      u in H0. des_ifs. bsimpl. des_sumbool. ss.
   - econs; ss; eauto.
     inv MWF.
     etrans; et.

@@ -13,12 +13,10 @@ Set Implicit Arguments.
 
 Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify.
 
-Definition key: Type := block * ptrofs.
+Definition key: Type := block.
 
 Definition eq_key: forall (x y: key), {x = y} + {x <> y}.
   decide equality.
-  - eapply Ptrofs.eq_dec.
-  - eapply eq_block.
 Defined.
 
 Definition update V (map: key -> option V) (k0: key) (v: option V): key -> option V :=
@@ -97,7 +95,7 @@ we can say that,
       m blk key
       (SYMB: Genv.find_symbol skenv _get = Some blk)
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
-      (VS: (Args.vs args) = [Vptr (fst key) (snd key)])
+      (VS: (Args.vs args) = [Vptr key Ptrofs.zero])
       (M: (Args.m args) = m)
     :
       initial_frame oh args (CallstateGet key oh m)
@@ -107,7 +105,7 @@ we can say that,
       (SYMB: Genv.find_symbol skenv _get = Some blk)
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
       (OHSOME: oh key <> None)
-      (VS: (Args.vs args) = [Vptr (fst key) (snd key) ; Vint val])
+      (VS: (Args.vs args) = [Vptr key Ptrofs.zero ; Vint val])
       (M: (Args.m args) = m)
     :
       initial_frame oh args (CallstateSet key val oh m)
@@ -116,7 +114,7 @@ we can say that,
       m blk key
       (SYMB: Genv.find_symbol skenv _delete = Some blk)
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
-      (VS: (Args.vs args) = [Vptr (fst key) (snd key)])
+      (VS: (Args.vs args) = [Vptr key Ptrofs.zero])
       (M: (Args.m args) = m)
     :
       initial_frame oh args (CallstateDelete key oh m)
@@ -125,7 +123,7 @@ we can say that,
       m blk key
       (SYMB: Genv.find_symbol skenv _from_raw = Some blk)
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
-      (VS: (Args.vs args) = [Vptr (fst key) (snd key)])
+      (VS: (Args.vs args) = [Vptr key Ptrofs.zero])
       (M: (Args.m args) = m)
     :
       initial_frame oh args (CallstateFromRaw key oh m)
@@ -134,7 +132,7 @@ we can say that,
       m blk key
       (SYMB: Genv.find_symbol skenv _into_raw = Some blk)
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
-      (VS: (Args.vs args) = [Vptr (fst key) (snd key)])
+      (VS: (Args.vs args) = [Vptr key Ptrofs.zero])
       (M: (Args.m args) = m)
     :
       initial_frame oh args (CallstateIntoRaw key oh m)
@@ -145,9 +143,9 @@ we can say that,
       oh0 m0 oh1 m1 m2 key val
       (ALLOC: Mem.alloc m0 lo hi = (m1, key))
       (FREE: Mem.free m1 key lo hi = Some m2)
-      (OH: update oh0 (key, Ptrofs.zero) (Some (val, false)) = oh1)
+      (OH: update oh0 key (Some (val, false)) = oh1)
     :
-      step se ge (CallstateNew val oh0 m0) E0 (ReturnstateNew (key, Ptrofs.zero) oh1 m2)
+      step se ge (CallstateNew val oh0 m0) E0 (ReturnstateNew key oh1 m2)
   | step_get
       oh m key val is_raw
       (GET: oh key = Some (val, is_raw))
@@ -167,8 +165,8 @@ we can say that,
       step se ge (CallstateDelete key oh0 m) E0 (ReturnstateDelete oh1 m)
   | step_from_raw
       oh0 m0 key val oh1 m1
-      (LOAD: Mem.load Mint32 m0 (fst key) (Ptrofs.signed (snd key)) = Some (Vint val))
-      (FREE: Mem.free m0 (fst key) (Ptrofs.signed (snd key)) ((Ptrofs.signed (snd key)) + hi) = Some m1)
+      (LOAD: Mem.load Mint32 m0 key 0%Z = Some (Vint val))
+      (FREE: Mem.free m0 key 0%Z hi = Some m1)
       (NONE: oh0 key = None) (*** <- TODO: is it needed? ***)
       (SET: update oh0 key (Some (val, true)) = oh1)
     :
@@ -177,9 +175,8 @@ we can say that,
       oh0 m0 key val m1 oh1 m2
       (*** TODO: we should "GUARANTEE" that store succeeds. ***)
       (SOME: oh0 key = Some (val, true))
-      (UNFREE: Mem_unfree m0 (fst key) (Ptrofs.signed (snd key)) ((Ptrofs.signed (snd key)) + hi)
-               = Some m1)
-      (STORE: Mem.store Mint32 m1 (fst key) (Ptrofs.signed (snd key)) (Vint val) = Some m2)
+      (UNFREE: Mem_unfree m0 key 0%Z hi  = Some m1)
+      (STORE: Mem.store Mint32 m1 key 0%Z (Vint val) = Some m2)
       (SET: update oh0 key None = oh1)
     :
       step se ge (CallstateFromRaw key oh0 m0) E0 (ReturnstateFromRaw key oh1 m1)
@@ -189,7 +186,7 @@ we can say that,
   | final_new
       key oh m
     :
-      final_frame (ReturnstateNew key oh m) oh (Retv.mk (Vptr (fst key) (snd key)) m)
+      final_frame (ReturnstateNew key oh m) oh (Retv.mk (Vptr key Ptrofs.zero) m)
   | final_get
       val oh m
     :
@@ -205,11 +202,11 @@ we can say that,
   | final_from_raw
       key oh m
     :
-      final_frame (ReturnstateFromRaw key oh m) oh (Retv.mk (Vptr (fst key) (snd key)) m)
+      final_frame (ReturnstateFromRaw key oh m) oh (Retv.mk (Vptr key Ptrofs.zero) m)
   | final_into_raw
       key oh m
     :
-      final_frame (ReturnstateIntoRaw key oh m) oh (Retv.mk (Vptr (fst key) (snd key)) m)
+      final_frame (ReturnstateIntoRaw key oh m) oh (Retv.mk (Vptr key Ptrofs.zero) m)
   .
 
   Program Definition modsem: ModSem.t :=

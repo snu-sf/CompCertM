@@ -19,6 +19,14 @@ Set Implicit Arguments.
 
 
 
+(***
+complexity with injection:
+1) inject_incr
+2) frozen
+3) need to strengthen meminj_no_overlap. (for from_raw. we may have workaround but anyway complex)
+***)
+
+
 Hint Unfold privmods privmod_others.
 
 Global Opaque string_dec. (**** TODO: Put in SimMem ****)

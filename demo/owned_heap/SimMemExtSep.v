@@ -550,5 +550,38 @@ Unshelve.
   all: ss.
 Qed.
 
+Lemma load_right_stored_left
+      sm0
+      chunk v b ofs
+      (MWF: wf' sm0)
+      (LDTGT: Mem.load chunk sm0.(tgt) b ofs = Some v)
+      (VALID: Mem.valid_access sm0.(src) chunk b ofs Writable)
+      (* (PERM: Mem.range_perm m_src0 b ofs (ofs + (size_chunk chunk)) Cur Writable) *)
+  :
+    exists sm1,
+      (<<MTGT: sm1.(tgt) = sm0.(tgt)>>)
+      /\ (<<STRSRC: Mem_stored chunk sm0.(src) b ofs v sm1.(src)>>)
+      /\ (<<MWF: wf' sm1>>)
+      /\ (<<MLE: le' sm0 sm1>>)
+      /\ (<<UNCH: SimMem.unch None sm0 sm1>>)
+      /\ (<<PMLE: forall mi, privmods mi sm0.(ptt) <2= privmods mi sm1.(ptt)>>)
+.
+Proof.
+  inv MWF. exploit extends_load_right_stored_left; et. i; des.
+  eexists (mk m_src1 _ _); ss; et. esplits; et.
+  - econs; et.
+    ii. ss. exploit PMPERM; et. inv STRSRC. inv UNCH. u. i; des. esplits; et.
+    + unfold Mem.valid_block in *. congruence.
+    + ii. eapply H0; et. eapply PERM; et.
+  - econs; et.
+  - inv STRSRC. econs; ss; eauto.
+    + eapply Mem.unchanged_on_implies; et.
+      ii. rr in H1. des. clarify. u in H. des_ifs.
+      exploit (PMPERM (Some mi)); et.
+      { ss. rewrite Heq. des_sumbool; ss. }
+      u. intro T; des. eapply T0; et. rr in VALID. des. exploit VALID; et. intro U. eauto with mem.
+    + refl.
+Qed.
+
 End ORIGINALS.
 

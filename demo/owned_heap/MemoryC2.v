@@ -72,7 +72,7 @@ Inductive Mem_stored (chunk: memory_chunk) (m0: mem) (b: block) (ofs: Z) (v: val
 
 
 Local Transparent Mem.load Mem.loadbytes Mem.storebytes.
-Lemma name_it_later
+Lemma extends_load_right_stored_left
       m_src0 m_tgt0
       chunk v b ofs
       (EXT: Mem.extends m_src0 m_tgt0)

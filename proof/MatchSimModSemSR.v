@@ -214,7 +214,8 @@ Section MATCHSIMFORWARD.
       (* (<<PROGRESS: ModSem.is_step ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) *)
       (<<PROGRESS: safe_modsem ms_src st_src0 -> ModSem.is_step ms_tgt st_tgt0>>) /\
       (<<STEPBSIM: forall tr st_tgt1
-             (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1) ,
+             (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1)
+             (SAFESRC: safe_modsem ms_src st_src0),
              exists idx1 st_src1 sm1,
                (<<PLUS: Plus ms_src st_src0 tr st_src1>> \/
                            <<STAR: Star ms_src st_src0 tr st_src1 /\ order idx1 idx0>>)

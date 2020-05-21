@@ -180,7 +180,7 @@ we can say that,
       (STORE: Mem_stored Mint32 m1 key 0%Z (Vint val) m2)
       (SET: update oh0 key None = oh1)
     :
-      step se ge (CallstateFromRaw key oh0 m0) E0 (ReturnstateFromRaw key oh1 m1)
+      step se ge (CallstateIntoRaw key oh0 m0) E0 (ReturnstateIntoRaw key oh1 m2)
   .
 
   Inductive final_frame: state -> owned_heap -> Retv.t -> Prop :=

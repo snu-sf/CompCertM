@@ -300,7 +300,7 @@ Inductive match_states: nat -> BoxSource2.state -> Clight.state -> SimMemOh.t ->
     (TYF: tyf = (Clight.type_of_function f_into_raw))
     (SIMVS: SimMem.sim_val_list smo0 [Vptr blk_src Ptrofs.zero] vs_tgt)
   :
-    match_states 0%nat
+    match_states 1%nat
                  (CallstateIntoRaw blk_src oh m_src)
                  (Callstate fptr_tgt tyf vs_tgt Kstop m_tgt)
                  smo0
@@ -373,6 +373,20 @@ Inductive match_states: nat -> BoxSource2.state -> Clight.state -> SimMemOh.t ->
     match_states 0%nat
                  (ReturnstateIntoRaw blk_src oh m_src)
                  (Returnstate v_tgt Kstop m_tgt)
+                 smo0
+| match_into_raw_intermediate
+    oh m_src m_tgt blk_src le (smo0: SimMemOh.t)
+    (MWF: SimMemOh.wf smo0)
+    (OH: smo0.(oh_src) = upcast oh)
+    (MSRC: m_src = smo0.(SimMem.src))
+    (MTGT: m_tgt = smo0.(SimMem.tgt))
+    (LENV: bind_parameter_temps (Clight.fn_params f_into_raw) [Vptr blk_src Ptrofs.zero]
+                                (create_undef_temps (fn_temps f_into_raw)) = Some le)
+  :
+    match_states 0%nat
+                 (CallstateIntoRaw blk_src oh m_src)
+                 (State f_into_raw (Clight.Sreturn
+                                      (Some (Etempvar _key (tptr tvoid)))) Kstop empty_env le m_tgt)
                  smo0
 .
 
@@ -561,12 +575,14 @@ Proof.
       * refl.
 
 
-  - left.
-    esplits; et.
-    { admit "ez - receptive". }
-    ii. inv MATCH; inv STEPSRC; ss.
-
+  -
+    inv MATCH; try (contradict NOTRET; rr; esplits; et; econs; et).
     + (* method: new *)
+      left.
+      esplits; et.
+      { admit "ez - receptive". }
+      ii. inv STEPSRC; ss.
+
       exploit SimMemExtSep.alloc_parallel; try apply ALLOC; try refl.
       { eapply MWF. }
       i; des. clarify.
@@ -759,6 +775,11 @@ Proof.
       }
 
     + (* method: get *)
+      left.
+      esplits; et.
+      { admit "ez - receptive". }
+      ii. inv STEPSRC; ss.
+
       inv SIMVS. inv H3. inv H1.
       inv MWF.
       rewrite OH in *. clarify. (** TODO: make clarify smarter **)
@@ -792,6 +813,11 @@ Proof.
       }
 
     + (* method: set *)
+      left.
+      esplits; et.
+      { admit "ez - receptive". }
+      ii. inv STEPSRC; ss.
+
       inv SIMVS. inv H3. inv H1. inv H5. inv H2.
       inv MWF.
       rewrite OH in *. clarify. (** TODO: make clarify smarter **)
@@ -864,6 +890,11 @@ Proof.
       }
 
     + (* method: delete *)
+      left.
+      esplits; et.
+      { admit "ez - receptive". }
+      ii. inv STEPSRC; ss.
+
       inv SIMVS. inv H3. inv H1.
       inv MWF.
       rewrite OH in *. clarify. (** TODO: make clarify smarter **)
@@ -942,6 +973,11 @@ Proof.
       }
 
     + (* method: from_raw *)
+      left.
+      esplits; et.
+      { admit "ez - receptive". }
+      ii. inv STEPSRC; ss.
+
       inv SIMVS. inv H3. inv H1.
       inv MWF.
       rewrite OH in *. clarify. (** TODO: make clarify smarter **)
@@ -1008,84 +1044,91 @@ Proof.
               { rewrite MTGT. eauto. }
       }
 
-    + (* method: into_raw *)
-      inv SIMVS. inv H3. inv H1.
-      inv MWF.
-      rewrite OH in *. clarify. (** TODO: make clarify smarter **)
-      destruct (map blk_src) eqn:T; ss. clarify.
-      exploit SOME0; et. i; des. clear NEW.
+    + (* method: into_raw - 1 *)
+      right.
+      esplits; et.
+      { (* safe *)
+        intro S. exploit S; et. { apply star_refl. } i; des; ss.
+        rr. inv SIMVS. inv H3. inv H1. esplits; et. repeat (econs; ss; et).
+      }
+      ii. inv STEPTGT; clarify; ss.
+      esplits; et.
+      { right. esplits; et. apply star_refl. }
+      { refl. }
+      { refl. }
+      { inv H6. inv H2. inv SIMVS. inv H5. inv H7. econs 13; et. }
+    + (* method: into_raw - 2 *)
+      right.
+      esplits; et.
+      { (* safe *)
+        intro S. exploit S; et. { apply star_refl. } i; des; ss.
+        rr. clarify. esplits; et. repeat (econs; ss; et).
+      }
+      ii. inv STEPTGT; clarify; ss.
+
+      exploit SAFESRC; et. { apply star_refl. } i; des; ss.
+      inv EVSTEP. clear STORE m2.
+      inv MWF. ss. rewrite OHSRC in *. clarify.
+      exploit SOME0; et. intro T; des.
 
       exploit (@SimMemExtSep.unfree_left (Some "OHAlloc")); try apply FREETGT0; et.
       { rr in PERMTGT. des. ss. }
       i; des. clarify.
 
-      assert(STRTGT0: exists m_tgt0,
-                Mem.store Mint32 (SimMem.tgt sm0) blk_src 0 (Vint val) = Some m_tgt0).
-      { edestruct Mem.valid_access_store with (chunk := Mint32) (ofs := 0%Z); et.
-        eauto with mem.
-      }
-      des.
+      exploit (@SimMemExtSep.load_right_stored_left sm1); ss; et.
+      { rewrite MTGT. eauto. }
+      { rr. rr in PERMTGT. des. esplits; et. eapply Mem_unfree_perm; et. }
+      i; des.
 
-      ttttttttttt
-      exploit (SimMemExtSep.store_right_pm (Some "OHAlloc")); try apply STRTGT0; et.
-      i; des. clarify.
-      eexists _, _, _, (mk sm1 _ _); ss. esplits; et.
-      { apply star_refl. }
-      { left.
-        eapply ModSemProps.spread_dplus; et.
-        { admit "ez - determinate". }
-        eapply plus_left with (t1 := E0) (t2 := E0); ss.
-        { econs; eauto.
-          econs; ss; eauto; try (by repeat (econs; ss; eauto)).
+      eexists _, _, (mk sm2 _ _); ss.
+      esplits; et.
+      { left. eapply plus_one. econs; et. }
+      { etrans; et. eapply unch_implies; et. }
+      econs 12; ss; et.
+      * econs; ss; et.
+        ii. unfold update in *. des_ifs.
+        exploit SOME0; eauto. i; des.
+        esplits; eauto.
+        { assert(Mem_range_noperm (SimMemExtSep.src sm1) k 0 hi).
+          {
+            clear - PERMSRC0 VLSRC0 UNFREE n.
+            eapply Mem_unchanged_noperm; eauto.
+            eapply Mem.unchanged_on_implies.
+            { apply Mem_unfree_unchanged_on; et. }
+            u. ii. des. clarify.
+          }
+          ii. inv STRSRC. eapply PERM in H0. eapply H; et.
         }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { econs; eauto.
-          - econs; ss; eauto; try (by repeat (econs; ss; eauto)).
-          - econs; ss; eauto; try (by repeat (econs; ss; eauto)).
-          - repeat (econs; ss; eauto).
+        {
+          clear - n PM0 UNCH0 PMEXACT.
+          ii.
+          bar.
+          inv UNCH0. specialize (LESRC (Some "OHAlloc")). ss. exploit LESRC; ss; et.
+          clear_until_bar.
+          rewrite PMEXACT. exploit PM0; et. i. des_ifs; ss. bsimpl; des; des_sumbool. clarify.
+          rr in PR. des. clarify.
         }
-        psimpl.
-        apply star_refl.
-      }
-      { eapply unch_implies; eauto. }
-      {
-        econs 11; ss; et; cycle 1.
-        - instantiate (1:= upcast tt).
-          econs; ss; et; cycle 1.
-          ii. unfold update in *. des_ifs.
-          + (** new **)
-            esplits; et.
-            * rp; et. rp; et. eapply Mem_free_noperm; et.
-            * etrans; et.
-              bar.
-              rewrite SimMemExtSep.ons_mem_privmods. ss.
-            * admit "ez - mem".
-            * rewrite MTGT. eapply Mem.valid_access_extends; try apply MWF0.
-              { rr. esplits; eauto with mem. ss. exists 0. xomega. }
-            * rewrite MTGT. exploit Mem.load_extends; try apply MWF0; et. intro U; des.
-              inv U0. ss.
-            * ss.
-          + (** old **)
-            inv MWF. exploit SOME; et. i; des.
-            esplits; et.
-            * clear - n PERMSRC FREE.
-              admit "ez - mem".
-            * etrans; et.
-              clear - UNCH.
-              bar.
-              inv UNCH. specialize (LESRC (Some "OHAlloc")). ss. etrans; try apply LESRC; ss; et.
-            * admit "ez - mem".
-            * rewrite MTGT. eauto.
-            * rewrite MTGT. eauto.
-            * ii. destruct is_raw; ss. exploit NEW; eauto. bar. intro U; des.
-              esplits; eauto.
-              { etrans; et.
-                bar.
-                inv UNCH. specialize (LESRC (Some "OHAlloc")). ss. etrans; try apply LESRC; ss; et.
-              }
-              { rewrite MTGT. eauto. }
-              { rewrite MTGT. eauto. }
-      }
+        { erewrite Mem_valid_block_unfree in VLSRC0; [|et]. clear - STRSRC VLSRC0. inv STRSRC.
+          unfold Mem.valid_block in *. congruence. }
+        { congruence. }
+        { congruence. }
+        { i. exploit NEW0; et. i; des. esplits; et.
+          {
+            clear - n PMNEW UNCH0 PMEXACT.
+            ii.
+            bar.
+            inv UNCH0. specialize (LESRC (Some "OHAlloc")). ss. exploit LESRC; ss; et.
+            clear_until_bar.
+            rewrite PMEXACT. exploit PMNEW; et. i. des_ifs; ss. bsimpl; des; des_sumbool. clarify.
+            rr in PR. des. clarify.
+          }
+          { congruence. }
+          { congruence. }
+        }
+      * congruence.
+      * clear - H8 H7. inv H7; ss; clarify.
+        { unfold Cop.sem_cast in *. des_ifs. }
+        { inv H. }
 
   - eexists (mk sm0 _ _); ss. esplits; et. econs; ss; et.
 Unshelve.
@@ -1098,12 +1141,12 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Definition mp: ModPair.t := SimSymbId.mk_mp (BoxSource.module) (BoxTarget.module).
+Definition mp: ModPair.t := SimSymbId.mk_mp (BoxSource2.module) (BoxTarget.module).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
-  - ii. inv SIMSKENVLINK. inv SIMSKENV. esplits; eauto. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. esplits; eauto. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

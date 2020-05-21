@@ -505,6 +505,9 @@ Lemma unfree_left
       /\ (<<MLE: le' sm0 sm1>>)
       /\ (<<UNCH: SimMem.unch mi sm0 sm1>>)
       /\ (<<PMSRC: (brange blk lo hi) <2= ons_mem sm1.(ptt) etc>>)
+      /\ (<<PMEXACT: sm1.(ptt) = (fun b ofs => if (eq_block b blk) && (zle lo ofs) && (zlt ofs hi)
+                                               then etc
+                                               else sm0.(ptt) b ofs)>>)
 .
 Proof.
   exploit Mem_unfree_left_extends; try apply MWF; eauto. i; des. inv MWF.
@@ -528,6 +531,9 @@ Proof.
       exploit (PMSRC blk x1); ss. intro T. u in T. des_ifs. des_sumbool. clarify.
   - u. ii. des. clarify. rewrite <- Z.leb_le in *. rewrite <- Z.ltb_lt in *. des_ifs.
     bsimpl. des_sumbool; congruence.
+  - apply func_ext2. ii.
+    des_ifs; bsimpl; des; des_sumbool; ss; try rewrite Z.leb_le in *; try rewrite Z.ltb_lt in *;
+      try rewrite Z.leb_gt in *; try rewrite Z.ltb_ge in *; ss; clarify; try xomega.
   - des. clear_tac.
     econs; ss; eauto.
     intros mj b ofs. specialize (PMPERM mj b ofs). ss.

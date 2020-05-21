@@ -8,6 +8,7 @@ Require Import Skeleton Mod ModSem.
 Require Import CtypesC CtypingC.
 Require Import ClightC.
 Require Import BoxTarget.
+Require Import MemoryC2.
 
 Set Implicit Arguments.
 
@@ -176,7 +177,7 @@ we can say that,
       (*** TODO: we should "GUARANTEE" that store succeeds. ***)
       (SOME: oh0 key = Some (val, true))
       (UNFREE: Mem_unfree m0 key 0%Z hi  = Some m1)
-      (STORE: Mem.store Mint32 m1 key 0%Z (Vint val) = Some m2)
+      (STORE: Mem_stored Mint32 m1 key 0%Z (Vint val) m2)
       (SET: update oh0 key None = oh1)
     :
       step se ge (CallstateFromRaw key oh0 m0) E0 (ReturnstateFromRaw key oh1 m1)

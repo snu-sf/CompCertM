@@ -27,51 +27,51 @@ Set Implicit Arguments.
 
 
 
-Section ANY.
+(* Section ANY. *)
 
-Polymorphic Inductive Any: Type :=
-  Any_intro : forall {A:Type} {x:A}, Any.
+(* Polymorphic Inductive Any: Type := *)
+(*   Any_intro : forall {A:Type} {x:A}, Any. *)
 
-(* Arguments Any [A P]. *)
+(* (* Arguments Any [A P]. *) *)
 
 
-Section UNIV.
-Polymorphic Universe i.
-Polymorphic Definition upcast {T: Type@{i}} (a: T): Any := @Any_intro _ a.
-End UNIV.
+(* Section UNIV. *)
+(* Polymorphic Universe i. *)
+(* Polymorphic Definition upcast {T: Type@{i}} (a: T): Any := @Any_intro _ a. *)
+(* End UNIV. *)
 
-Section UNIV.
+(* Section UNIV. *)
   
-Polymorphic Universe i j.
-Polymorphic Definition downcast (T: Type@{j}) (a: Any@{i}): option T.
-(* Polymorphic Definition downcast (a: Any) (T: Type): option T. *)
-destruct a.
-destruct (ClassicalDescription.excluded_middle_informative (A = T)).
-- subst. apply Some. assumption.
-- apply None.
-Defined.
+(* Polymorphic Universe i j. *)
+(* Polymorphic Definition downcast (T: Type@{j}) (a: Any@{i}): option T. *)
+(* (* Polymorphic Definition downcast (a: Any) (T: Type): option T. *) *)
+(* destruct a. *)
+(* destruct (ClassicalDescription.excluded_middle_informative (A = T)). *)
+(* - subst. apply Some. assumption. *)
+(* - apply None. *)
+(* Defined. *)
 
-Require Import Program.
+(* Require Import Program. *)
 
-Polymorphic Lemma upcast_downcast
-      T (a: T)
-  :
-    downcast T (upcast a) = Some a
-.
-Proof.
-  ss. des_ifs. dependent destruction e. ss.
-Qed.
+(* Polymorphic Lemma upcast_downcast *)
+(*       T (a: T) *)
+(*   : *)
+(*     downcast T (upcast a) = Some a *)
+(* . *)
+(* Proof. *)
+(*   ss. des_ifs. dependent destruction e. ss. *)
+(* Qed. *)
 
-End UNIV.
+(* End UNIV. *)
 
 
-End ANY.
+(* End ANY. *)
 
-Arguments Any_intro {A} x.
-Global Opaque downcast upcast.
-Print downcast.
-Print upcast.
-Print Any.
+(* Arguments Any_intro {A} x. *)
+(* Global Opaque downcast upcast. *)
+(* Print downcast. *)
+(* Print upcast. *)
+(* Print Any. *)
 
 
 
@@ -103,60 +103,106 @@ Variable ms_bot: ModSem.t.
 
 Module ModSem2.
 
-  Variable mss: list ModSem.t.
+  Variable ms0 ms1: ModSem.t.
 
-  Record owned_heap: Type := mk_oh3 {
-    anys: list Any;
-    (* OHWTY: forall *)
-    (*     n any *)
-    (*     (NTHA: nth_error anys n = Some any) *)
-    (*   , *)
-    (*     exists elem, (<<CAST: @downcast (nth n mss ms_bot).(ModSem.owned_heap) any = Some elem>>) *)
-    (* ; *)
-  }
-  .
-  Print Universes.
-  (* ModSem.t.u1 <= owned_heap.u0). *)
+  Definition owned_heap: Type := (ms0.(ModSem.owned_heap) * ms1.(ModSem.owned_heap)).
   
-  Program Definition initial_owned_heap: owned_heap :=
-    @mk_oh3
-      (map (fun ms => upcast (ModSem.initial_owned_heap ms)) mss)
-      (* _ *)
-  .
-  Print Universes.
-  (* Next Obligation. *)
-  (*   i. rewrite list_map_nth in *. unfold option_map in *. des_ifs. *)
-  (*   erewrite nth_error_nth; eauto. *)
-  (*   esplits; eauto. *)
-  (*   rewrite upcast_downcast. et. *)
-  (* Qed. *)
+  Definition initial_owned_heap: owned_heap :=
+    (ms0.(ModSem.initial_owned_heap), ms1.(ModSem.initial_owned_heap)).
 
-  Definition genvtype: Type := unit.
+  Definition genvtype: Type := (ms0.(ModSem.genvtype) * ms1.(ModSem.genvtype)).
 
   Set Printing Universes.
+
+  Inductive stack: Type :=
+  | StackNil
+      (oh: owned_heap)
+  | StackCons
+      (b: bool)
+      (st0: (if b then ms0 else ms1).(ModSem.state))
+      (tl: stack)
+  .
+
+  Definition state: Type := (stack * owned_heap).
+
+  (* Definition ms (b: bool): ModSem.t := (if b then ms0 else ms1). *)
+  Notation ms := (fun (b: bool) => (if b then ms0 else ms1)).
+
+  Definition update A B (b: bool) (x: if b then A else B) (ab: A * B): A * B :=
+    (if b as b0 return ((if b0 then A else B) -> A * B)
+     then fun x => (x, (snd ab))
+     else fun x => ((fst ab), x)) x
+  .
+
+  (***
+Don't want to split call/init step, because we have to define Callstate separately.
+To do this, I will require initial_state to be deterministic.
+   ***)
+
+  Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
+  | step_call
+      (b: bool) st0 st1 tl oh ohs0 ohs1 args
+      (AT: (ms b).(ModSem.at_external) st0 oh args)
+      (OHS: update b oh ohs0 = ohs1)
+    :
+    step se ge ((StackCons b st0 tl), ohs0)
+         E0 ((StackCons b st1 (StackCons b st0 tl)), ohs1)
+  | step_internal
+      (b: bool) st0 tr st1 tl ohs
+      (STEP: ModSem.step (ms b) ((ms b).(ModSem.skenv_link)) ((ms b).(ModSem.globalenv)) st0 tr st1)
+    :
+      step se ge ((StackCons b st0 tl), ohs)
+           tr ((StackCons b st1 tl), ohs)
+  .
+
+
+
+
 
   Inductive state: Type :=
   | StateNil
   | StateCons
-      n
-      (* (st0: (nth n (map (ModSem.state) mss) Empty_set)) *)
-      (st0: (nth n mss ms_bot).(ModSem.state))
+      (* (b: bool) *)
+      (* (st0: (if b then ms0 else ms1).(ModSem.state)) *)
+      (st0: ms0.(ModSem.state) + ms1.(ModSem.state))
       (tl: state)
   .
 
   Inductive find_fptr_owner (fptr: val) (ms: ModSem.t): Prop :=
   | find_fptr_owner_intro
-      (MODSEM: In ms mss)
+      (MODSEM: In ms [ms0 ; ms1])
       if_sig
       (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig)).
 
   Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
-  | step_internal
-      n st0 tr st1 tl
-      (STEP: Step (nth n mss ms_bot) st0 tr st1)
+  (* | step_internal *)
+  (*     (b: bool) (st0 st1: ModSem.state (if b then ms0 else ms1)) tr tl *)
+  (*     (STEP: Smallstep.step (if b then ms0 else ms1) st0 tr st1) *)
+  (*   : *)
+  (*     step se ge (StateCons b st0 tl) *)
+  (*          tr (StateCons b st1 tl) *)
+
+
+  (* | step_internal *)
+  (*     (b: bool) (st0 st1: (if b then ms0.(ModSem.state) else ms1.(ModSem.state))) tr tl *)
+  (*     (STEP: if b then Step ms0 st0 tr st1 else Step ms1 st0 tr st1) *)
+  (*   : *)
+  (*     step se ge (StateCons b st0 tl) *)
+  (*          tr (StateCons b st1 tl) *)
+
+
+  | step_internal_l
+      st0 tr st1 tl
+      (STEP: Step ms0 st0 tr st1)
     :
-      step se ge (StateCons n st0 tl)
-           tr (StateCons n st1 tl)
+      step se ge (StateCons (inl st0) tl)
+           tr (StateCons (inl st1) tl)
+  | step_internal_r
+      st0 tr st1 tl
+      (STEP: Step ms1 st0 tr st1)
+    :
+      step se ge (StateCons (inr st0) tl)
+           tr (StateCons (inr st1) tl)
   .
 
   (* Inductive step' (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop := *)

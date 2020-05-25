@@ -29,48 +29,48 @@ Section CHECK.
 End CHECK.
 
 
+Local Obligation Tactic := idtac.
 
-Section ANY.
+(* Section ANY. *)
 
-(* Variable T : Type@{i}. *)
-Polymorphic Inductive Any: Type :=
-  Any_intro : forall {A:Type} {x:A}, Any.
+(* Polymorphic Inductive Any: Type := *)
+(*   Any_intro : forall {A:Type} {x:A}, Any. *)
 
-(* Arguments Any [A P]. *)
+(* (* Arguments Any [A P]. *) *)
 
-Section UNIV.
+(* Section UNIV. *)
   
-Polymorphic Universe i j.
-Polymorphic Definition downcast (T: Type@{j}) (a: Any@{i}): option T.
-(* Polymorphic Definition downcast (a: Any) (T: Type): option T. *)
-destruct a.
-destruct (ClassicalDescription.excluded_middle_informative (A = T)).
-- subst. apply Some. assumption.
-- apply None.
-Defined.
+(* Polymorphic Universe i j. *)
+(* Polymorphic Definition downcast (T: Type@{j}) (a: Any@{i}): option T. *)
+(* (* Polymorphic Definition downcast (a: Any) (T: Type): option T. *) *)
+(* destruct a. *)
+(* destruct (ClassicalDescription.excluded_middle_informative (A = T)). *)
+(* - subst. apply Some. assumption. *)
+(* - apply None. *)
+(* Defined. *)
 
-End UNIV.
+(* End UNIV. *)
 
-Polymorphic Definition upcast {T} (a: T): Any := @Any_intro _ a.
+(* Polymorphic Definition upcast {T} (a: T): Any := @Any_intro _ a. *)
 
-Require Import Program.
+(* Require Import Program. *)
 
-Lemma upcast_downcast
-      T (a: T)
-  :
-    downcast T (upcast a) = Some a
-.
-Proof.
-  ss. des_ifs. dependent destruction e. ss.
-Qed.
+(* Lemma upcast_downcast *)
+(*       T (a: T) *)
+(*   : *)
+(*     downcast T (upcast a) = Some a *)
+(* . *)
+(* Proof. *)
+(*   ss. des_ifs. dependent destruction e. ss. *)
+(* Qed. *)
 
-End ANY.
+(* End ANY. *)
 
-Arguments Any_intro {A} x.
-Global Opaque downcast upcast.
-Print downcast.
-Print upcast.
-Print Any.
+(* Arguments Any_intro {A} x. *)
+(* Global Opaque downcast upcast. *)
+(* Print downcast. *)
+(* Print upcast. *)
+(* Print Any. *)
 
 
 
@@ -236,7 +236,7 @@ Module ModSem2.
       _
   .
   Next Obligation.
-    rewrite list_map_nth in *. unfold option_map in *. des_ifs.
+    i. rewrite list_map_nth in *. unfold option_map in *. des_ifs.
     esplits; eauto.
     rewrite upcast_downcast. et.
   Qed.
@@ -246,6 +246,8 @@ Module ModSem2.
                                                | _ => Empty_set
                                                end)
   .
+
+  Set Printing Universes.
 
   Inductive state: Type :=
   | Callstate
@@ -285,6 +287,7 @@ Module ModSem2.
     | Callstate _ _ ohs _ _ => ohs
     | State _ ohs _ _ => ohs
     end.
+  Print Universes.
 
   (* Inductive step (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop := *)
   (* | step_internal *)
@@ -307,6 +310,7 @@ Module ModSem2.
       (MODSEM: In ms mss)
       if_sig
       (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig)).
+  Print Universes.
 
   Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
   (* | step_call_inside *)
@@ -347,7 +351,7 @@ Module ModSem2.
       step se ge (State (upcast (n, hd0) :: tl) ohs WTY0 NNIL0)
            tr (State (upcast (n, hd1) :: tl) ohs WTY1 NNIL1)
   .
-  Reset step.
+  (* Reset step. *)
 
   Variable ms_bot: ModSem.t.
 
@@ -366,14 +370,16 @@ Module ModSem2.
             | Some ms =>
               exists (hd0 hd1: ms.(ModSem.state)),
                 <<STK0: hd_error (get_stk st0) = Some (upcast (n, hd0))>> /\
-                <<STK1: hd_error (get_stk st1) = Some (upcast (n, hd1))>> /\
+                (* <<STK0: hd_error (get_stk st0) = Some (upcast (n, hd0))>> /\ *)
+                (* <<STK1: hd_error (get_stk st1) = Some (upcast (n, hd1))>> /\ *)
                 <<OH: get_ohs st0 = get_ohs st1>> /\
                 <<STEP: Step ms hd0 tr hd1>>
             | _ => False
             end
       )
   .
-  (* Reset step'. *)
+  Print Universes.
+  Reset step'.
 
   Variable skenv_link: SkEnv.t.
 
@@ -445,11 +451,13 @@ Module ModSem2.
   (*          E0 (State (((Frame.update_st fr1) st0) :: frs) ohs1) *)
   .
 
+  Print Universes.
+
   Program Definition t': ModSem.t :=
     {|
       ModSem.state := state;
-      ModSem.owned_heap := owned_heap;
-      ModSem.genvtype := genvtype;
+      (* ModSem.owned_heap := owned_heap; *)
+      (* ModSem.genvtype := genvtype; *)
       (* ModSem.step := step; *)
       (* ModSem.at_external := coerce at_external; *)
       (* ModSem.initial_frame := coerce initial_frame; *)

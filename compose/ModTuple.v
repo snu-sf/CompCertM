@@ -53,9 +53,21 @@ End UNIV.
 
 Polymorphic Definition upcast {T} (a: T): Any := @Any_intro _ a.
 
+Require Import Program.
+
+Lemma upcast_downcast
+      T (a: T)
+  :
+    downcast T (upcast a) = Some a
+.
+Proof.
+  ss. des_ifs. dependent destruction e. ss.
+Qed.
+
 End ANY.
 
 Arguments Any_intro {A} x.
+Global Opaque downcast upcast.
 Print downcast.
 Print upcast.
 Print Any.
@@ -147,7 +159,7 @@ End PLAYGROUND0.
 
 
 
-Record alist (tys: forall (n: nat), Type): Type := {
+Record alist (tys: forall (n: nat), Type): Type := mk_alist {
   anys: list Any;
   WTY: forall
       n any
@@ -192,7 +204,42 @@ Module ModSem2.
                                                  end)
   .
 
-  (* Definition owned_heap: Type := Midx.t -> Any. *)
+  Fail Program Definition initial_owned_heap: owned_heap :=
+    @mk_alist (fun n => match nth_error mss n with
+                        | Some ms => ms.(ModSem.owned_heap)
+                        | _ => Empty_set
+                        end)
+              (map (fun ms => upcast (ModSem.initial_owned_heap ms)) mss)
+              _
+  .
+
+  Definition owned_heap2: Type := list Any.
+  Definition initial_owned_heap2: owned_heap2 :=
+    map (fun ms => upcast (ModSem.initial_owned_heap ms)) mss.
+
+  Record owned_heap3: Type := mk_oh3 {
+    anys: list Any;
+    OHWTY: forall
+        n any
+        (NTHA: nth_error anys n = Some any)
+      ,
+        exists elem, (<<CAST: @downcast (match nth_error mss n with
+                                         | Some ms => ms.(ModSem.owned_heap)
+                                         | _ => Empty_set
+                                         end) any = Some elem>>)
+    ;
+  }
+  .
+  Program Definition initial_owned_heap3: owned_heap3 :=
+    @mk_oh3
+      (map (fun ms => upcast (ModSem.initial_owned_heap ms)) mss)
+      _
+  .
+  Next Obligation.
+    rewrite list_map_nth in *. unfold option_map in *. des_ifs.
+    esplits; eauto.
+    rewrite upcast_downcast. et.
+  Qed.
 
   Definition genvtype: Type := alist (fun n => match nth_error mss n with
                                                | Some ms => ms.(ModSem.genvtype)
@@ -204,7 +251,7 @@ Module ModSem2.
   | Callstate
       (args: Args.t)
       (stk: list Any)
-      (oh: owned_heap)
+      (oh: owned_heap3)
       (WTY: forall
           any
           (IN: In any stk)
@@ -215,7 +262,7 @@ Module ModSem2.
 
   | State
       (stk: list Any)
-      (oh: owned_heap)
+      (oh: owned_heap3)
       (WTY: forall
           any
           (IN: In any stk)
@@ -226,6 +273,18 @@ Module ModSem2.
   .
   Arguments Callstate _ stk: clear implicits.
   Arguments State stk: clear implicits.
+
+  Definition get_stk (st: state): list Any :=
+    match st with
+    | Callstate _ stk _ _ _ => stk
+    | State stk _ _ _ => stk
+    end.
+
+  Definition get_ohs (st: state): owned_heap3 :=
+    match st with
+    | Callstate _ _ ohs _ _ => ohs
+    | State _ ohs _ _ => ohs
+    end.
 
   (* Inductive step (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop := *)
   (* | step_internal *)
@@ -250,17 +309,18 @@ Module ModSem2.
       (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig)).
 
   Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
-  | step_call_inside
-      n ms ms_new (hd: ms.(ModSem.state)) tl tr ohs0 ohs1 args oh
-      (NTH: nth_error mss n = Some ms)
+  (* | step_call_inside *)
+  (*     n ms ms_new (hd: ms.(ModSem.state)) tl tr ohs0 ohs1 args oh *)
+  (*     (NTH: nth_error mss n = Some ms) *)
 
-      (AT: ms.(ModSem.at_external) hd oh args)
-      (MSFIND: find_fptr_owner (Args.get_fptr args) ms_new)
-      (* (OHS: ohs1 = Midx.update ohs0 ms.(ModSem.midx) (upcast oh)) *)
-      WTY0 NNIL0 WTY1 NNIL1
-    :
-      step se ge (State (upcast (n, hd) :: tl) ohs0 WTY0 NNIL0)
-           tr (Callstate args (upcast (n, hd) :: tl) ohs1 WTY1 NNIL1)
+  (*     (AT: ms.(ModSem.at_external) hd oh args) *)
+  (*     (MSFIND: find_fptr_owner (Args.get_fptr args) ms_new) *)
+  (*     (* (OHS: ohs1 = Midx.update ohs0 ms.(ModSem.midx) (upcast oh)) *) *)
+  (*     WTY0 NNIL0 WTY1 NNIL1 *)
+  (*   : *)
+  (*     step se ge (State (upcast (n, hd) :: tl) ohs0 WTY0 NNIL0) *)
+  (*          tr (Callstate args (upcast (n, hd) :: tl) ohs1 WTY1 NNIL1) *)
+
   (* | step_call_inside *)
   (*     fr0 frs args oh ohs0 ohs1 ms *)
   (*     (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) oh args) *)
@@ -286,16 +346,34 @@ Module ModSem2.
     :
       step se ge (State (upcast (n, hd0) :: tl) ohs WTY0 NNIL0)
            tr (State (upcast (n, hd1) :: tl) ohs WTY1 NNIL1)
-
-  (* | step_return *)
-  (*     fr0 fr1 frs retv st0 ohs0 ohs1 oh0 oh1 *)
-  (*     (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) oh0 retv) *)
-  (*     (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) oh1 retv st0) *)
-  (*     (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh0)) *)
-  (*     (OH: Midx.get ohs1 fr1.(Frame.ms).(ModSem.midx) = upcast oh1): *)
-  (*     step se ge (State (fr0 :: fr1 :: frs) ohs0) *)
-  (*          E0 (State (((Frame.update_st fr1) st0) :: frs) ohs1) *)
   .
+  Reset step.
+
+  Variable ms_bot: ModSem.t.
+
+  Inductive step' (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop :=
+
+  (* | step'_internal *)
+  (*     n ms (hd0 hd1: ms.(ModSem.state)) tl *)
+  (*     (NTH: nth_error mss n = Some ms) *)
+  (*     (STK0: get_stk st0 = (upcast (n, hd0) :: tl)) *)
+  (*     (STK1: get_stk st1 = (upcast (n, hd1) :: tl)) *)
+  (*     (OH: get_ohs st0 = get_ohs st1) *)
+  (*     (STEP: Step ms hd0 tr hd1) *)
+  | step'_internal
+      n
+      (NTH: match (nth_error mss n) with
+            | Some ms =>
+              exists (hd0 hd1: ms.(ModSem.state)),
+                <<STK0: hd_error (get_stk st0) = Some (upcast (n, hd0))>> /\
+                <<STK1: hd_error (get_stk st1) = Some (upcast (n, hd1))>> /\
+                <<OH: get_ohs st0 = get_ohs st1>> /\
+                <<STEP: Step ms hd0 tr hd1>>
+            | _ => False
+            end
+      )
+  .
+  (* Reset step'. *)
 
   Variable skenv_link: SkEnv.t.
 
@@ -330,6 +408,7 @@ Module ModSem2.
     :
       step2 se ge (mkState (upcast (n, hd) :: tl) ohs0 false WTY0 NNIL0)
            tr (mkState (upcast (n, hd) :: tl) ohs1 true WTY1 NNIL1)
+
   (* | step_call_inside *)
   (*     fr0 frs args oh ohs0 ohs1 ms *)
   (*     (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) oh args) *)
@@ -368,7 +447,7 @@ Module ModSem2.
 
   Program Definition t': ModSem.t :=
     {|
-      ModSem.state := state2;
+      ModSem.state := state;
       ModSem.owned_heap := owned_heap;
       ModSem.genvtype := genvtype;
       (* ModSem.step := step; *)

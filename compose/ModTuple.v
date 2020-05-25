@@ -41,7 +41,7 @@ End CHECK.
 (* Section UNIV. *)
   
 (* Polymorphic Universe i j. *)
-(* Polymorphic Definition downcast (a: Any@{i}) (T: Type@{j}): option T. *)
+(* Polymorphic Definition downcast (T: Type@{j}) (a: Any@{i}): option T. *)
 (* (* Polymorphic Definition downcast (a: Any) (T: Type): option T. *) *)
 (* destruct a. *)
 (* destruct (ClassicalDescription.excluded_middle_informative (A = T)). *)
@@ -169,20 +169,10 @@ Module ModSem2.
   (*       (IN: In any stk) *)
   (*     , *)
   (*       exists n ms st, (<<NTH: nth_error mss n = Some ms>>) /\ *)
-  (*                       (<<CAST: @downcast any (nat * ms.(ModSem.state)) = Some (n, st)>>); *)
+  (*                       (<<CAST: @downcast (nat * ms.(ModSem.state)) any = Some (n, st)>>); *)
   (*   NNIL: stk <> nil; *)
   (* } *)
   (* . *)
-
-  Inductive state: Type :=
-  | Callstate
-      (args: Args.t)
-      (frs: list Frame.t)
-      (ohs: Ohs)
-  | State
-      (frs: list Frame.t)
-      (ohs: Ohs)
-  .
 
   (* Record owned_heap: Type := { *)
   (*   anys: list Any; *)
@@ -196,17 +186,46 @@ Module ModSem2.
   (* } *)
   (* . *)
 
-  Definition owned_heap: Type := alist (fun n => match nth_error mss n with
-                                                 | Some ms => ms.(ModSem.owned_heap)
-                                                 | _ => Empty_set
-                                                 end)
-  .
+  (* Definition owned_heap: Type := alist (fun n => match nth_error mss n with *)
+  (*                                                | Some ms => ms.(ModSem.owned_heap) *)
+  (*                                                | _ => Empty_set *)
+  (*                                                end) *)
+  (* . *)
+
+  Definition owned_heap: Type := Midx.t -> Any.
 
   Definition genvtype: Type := alist (fun n => match nth_error mss n with
                                                | Some ms => ms.(ModSem.genvtype)
                                                | _ => Empty_set
                                                end)
   .
+
+  Inductive state: Type :=
+  | Callstate
+      (args: Args.t)
+      (stk: list Any)
+      (oh: owned_heap)
+      (WTY: forall
+          any
+          (IN: In any stk)
+        ,
+          exists n ms st, (<<NTH: nth_error mss n = Some ms>>) /\
+                          (<<CAST: @downcast (nat * ms.(ModSem.state)) any = Some (n, st)>>))
+      (NNIL: stk <> nil)
+
+  | State
+      (stk: list Any)
+      (oh: owned_heap)
+      (WTY: forall
+          any
+          (IN: In any stk)
+        ,
+          exists n ms st, (<<NTH: nth_error mss n = Some ms>>) /\
+                          (<<CAST: @downcast (nat * ms.(ModSem.state)) any = Some (n, st)>>))
+      (NNIL: stk <> nil)
+  .
+  Arguments Callstate _ stk: clear implicits.
+  Arguments State stk: clear implicits.
 
   (* Inductive step (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop := *)
   (* | step_internal *)
@@ -232,36 +251,50 @@ Module ModSem2.
 
   Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
   | step_call_inside
-      fr0 frs args oh ohs0 ohs1 ms
-      (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) oh args)
-      (MSFIND: find_fptr_owner (Args.get_fptr args) ms)
-      (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh)):
-      step se ge (State (fr0 :: frs) ohs0)
-           E0 (Callstate args (fr0 :: frs) ohs1)
+      n ms ms_new (hd: ms.(ModSem.state)) tl tr ohs0 ohs1 args oh
+      (NTH: nth_error mss n = Some ms)
 
-  | step_init_inside
-      args frs ms st_init oh ohs
-      (MSFIND: find_fptr_owner (Args.get_fptr args) ms)
-      (OH: Midx.get ohs ms.(ModSem.midx) = upcast oh)
-      (INIT: ms.(ModSem.initial_frame) oh args st_init):
-      step se ge (Callstate args frs ohs)
-           E0 (State ((Frame.mk ms st_init) :: frs) ohs)
+      (AT: ms.(ModSem.at_external) hd oh args)
+      (MSFIND: find_fptr_owner (Args.get_fptr args) ms_new)
+      (OHS: ohs1 = Midx.update ohs0 ms.(ModSem.midx) (upcast oh))
+      WTY0 NNIL0 WTY1 NNIL1
+    :
+      step se ge (State (upcast (n, hd) :: tl) ohs0 WTY0 NNIL0)
+           tr (Callstate args (upcast (n, hd) :: tl) ohs1 WTY1 NNIL1)
+  (* | step_call_inside *)
+  (*     fr0 frs args oh ohs0 ohs1 ms *)
+  (*     (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) oh args) *)
+  (*     (MSFIND: find_fptr_owner (Args.get_fptr args) ms) *)
+  (*     (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh)): *)
+  (*     step se ge (State (fr0 :: frs) ohs0) *)
+  (*          E0 (Callstate args (fr0 :: frs) ohs1) *)
+
+  (* | step_init_inside *)
+  (*     args frs ms st_init oh ohs *)
+  (*     (MSFIND: find_fptr_owner (Args.get_fptr args) ms) *)
+  (*     (OH: Midx.get ohs ms.(ModSem.midx) = upcast oh) *)
+  (*     (INIT: ms.(ModSem.initial_frame) oh args st_init): *)
+  (*     step se ge (Callstate args frs ohs) *)
+  (*          E0 (State ((Frame.mk ms st_init) :: frs) ohs) *)
 
   | step_internal
-      fr0 frs tr st0 ohs
-      (STEP: Step (fr0.(Frame.ms)) fr0.(Frame.st) tr st0):
-      step se ge (State (fr0 :: frs) ohs)
-           tr (State (((Frame.update_st fr0) st0) :: frs) ohs)
+      n ms (hd0 hd1: ms.(ModSem.state)) tl tr ohs
+      (NTH: nth_error mss n = Some ms)
 
-  | step_return
-      fr0 fr1 frs retv st0 ohs0 ohs1 oh0 oh1
-      (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) oh0 retv)
-      (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) oh1 retv st0)
-      (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh0))
-      (* (OH: nth_error ohs1 fr1.(Frame.ms).(ModSem.midx) = Some (existT id _ oh1)): *)
-      (OH: Midx.get ohs1 fr1.(Frame.ms).(ModSem.midx) = upcast oh1):
-      step se ge (State (fr0 :: fr1 :: frs) ohs0)
-           E0 (State (((Frame.update_st fr1) st0) :: frs) ohs1)
+      (STEP: Step ms hd0 tr hd1)
+      WTY0 NNIL0 WTY1 NNIL1
+    :
+      step se ge (State (upcast (n, hd0) :: tl) ohs WTY0 NNIL0)
+           tr (State (upcast (n, hd1) :: tl) ohs WTY1 NNIL1)
+
+  (* | step_return *)
+  (*     fr0 fr1 frs retv st0 ohs0 ohs1 oh0 oh1 *)
+  (*     (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) oh0 retv) *)
+  (*     (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) oh1 retv st0) *)
+  (*     (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh0)) *)
+  (*     (OH: Midx.get ohs1 fr1.(Frame.ms).(ModSem.midx) = upcast oh1): *)
+  (*     step se ge (State (fr0 :: fr1 :: frs) ohs0) *)
+  (*          E0 (State (((Frame.update_st fr1) st0) :: frs) ohs1) *)
   .
 
   Variable skenv_link: SkEnv.t.
@@ -271,7 +304,7 @@ Module ModSem2.
   Set Printing Universes.
   Program Definition t': ModSem.t :=
     {|
-      ModSem.state := state;
+      (* ModSem.state := state; *)
       ModSem.owned_heap := owned_heap;
       ModSem.genvtype := genvtype;
       (* ModSem.step := step; *)

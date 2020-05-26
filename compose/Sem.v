@@ -78,7 +78,7 @@ Definition get_ohs (st: state): Ohs :=
 
 Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 | step_call
-    fr0 frs args oh ohs0 ohs1 
+    fr0 frs args oh ohs0 ohs1
     (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) oh args)
     (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh)):
     step ge (State (fr0 :: frs) ohs0)
@@ -167,7 +167,7 @@ Section SEMANTICS.
                     | None => (nil, SkEnv.empty)
                     end) in
     (Semantics_gen (fun _ => step) (initial_state ge) final_state
-                   ge 
+                   ge
                    (* NOTE: The symbolenv here is never actually evoked in our semantics. Putting this value is merely for our convenience. (lifting receptive/determinate) Whole proof should be sound even if we put dummy data here. *)
                    (match link_sk with
                     | Some sk_link => (Sk.load_skenv sk_link)

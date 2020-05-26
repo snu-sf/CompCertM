@@ -51,7 +51,7 @@ Section MATCHSIMFORWARD.
   Local Existing Instance OHTGTCAST_REV.
   Hypothesis MIDXSRC: ms_src.(ModSem.midx) = None.
   Hypothesis MIDXTGT: ms_tgt.(ModSem.midx) = None.
-  
+
   Let SMO := (ModSemPair.SMO msp).
   Local Existing Instance SMO.
   Hypothesis SMOCLASS: SMO = (SimMemOh_default _).

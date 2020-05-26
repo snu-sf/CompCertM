@@ -19,87 +19,6 @@ Set Implicit Arguments.
 
 
 
-
-
-
-
-
-
-
-
-
-(* Section ANY. *)
-
-(* Polymorphic Inductive Any: Type := *)
-(*   Any_intro : forall {A:Type} {x:A}, Any. *)
-
-(* (* Arguments Any [A P]. *) *)
-
-
-(* Section UNIV. *)
-(* Polymorphic Universe i. *)
-(* Polymorphic Definition upcast {T: Type@{i}} (a: T): Any := @Any_intro _ a. *)
-(* End UNIV. *)
-
-(* Section UNIV. *)
-  
-(* Polymorphic Universe i j. *)
-(* Polymorphic Definition downcast (T: Type@{j}) (a: Any@{i}): option T. *)
-(* (* Polymorphic Definition downcast (a: Any) (T: Type): option T. *) *)
-(* destruct a. *)
-(* destruct (ClassicalDescription.excluded_middle_informative (A = T)). *)
-(* - subst. apply Some. assumption. *)
-(* - apply None. *)
-(* Defined. *)
-
-(* Require Import Program. *)
-
-(* Polymorphic Lemma upcast_downcast *)
-(*       T (a: T) *)
-(*   : *)
-(*     downcast T (upcast a) = Some a *)
-(* . *)
-(* Proof. *)
-(*   ss. des_ifs. dependent destruction e. ss. *)
-(* Qed. *)
-
-(* End UNIV. *)
-
-
-(* End ANY. *)
-
-(* Arguments Any_intro {A} x. *)
-(* Global Opaque downcast upcast. *)
-(* Print downcast. *)
-(* Print upcast. *)
-(* Print Any. *)
-
-
-
-
-
-
-
-
-
-
-
-
-Global Unset Transparent Obligations.
-Add Search Blacklist "_obligation_".
-
-Lemma nth_error_nth
-      X
-      (xs: list X) n x
-      (NTH: nth_error xs n = Some x)
-  :
-    forall d, nth n xs d = x
-.
-Proof.
-  ginduction xs; ii; ss; des_ifs; ss; clarify.
-  exploit IHxs; eauto.
-Qed.
-
 Local Obligation Tactic := idtac.
 
 Variable ms_bot: ModSem.t.
@@ -116,7 +35,7 @@ Section MODTUPLE.
   Hypothesis MIDXR: msdr.(ModSem.midx) <> None.
 
   Definition owned_heap: Type := (msdl.(ModSem.owned_heap) * msdr.(ModSem.owned_heap)).
-  
+
   Definition initial_owned_heap: owned_heap :=
     (msdl.(ModSem.initial_owned_heap), msdr.(ModSem.initial_owned_heap)).
 

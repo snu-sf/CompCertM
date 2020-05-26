@@ -114,7 +114,7 @@ Definition global_definitions : list (ident * globdef fundef type) :=
 Definition public_idents : list ident :=
 (_into_raw :: _from_raw :: _delete :: _set :: _get :: _new :: _free :: nil).
 
-Definition prog : Clight.program := 
+Definition prog : Clight.program :=
   mkprogram composites global_definitions public_idents _main Logic.I.
 
 Require Import Mod ClightC.

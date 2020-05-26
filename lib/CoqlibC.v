@@ -1479,3 +1479,15 @@ Proof.
   - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs.
   - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs. rewrite app_nil_r. ss.
 Qed.
+
+Lemma nth_error_nth
+      X
+      (xs: list X) n x
+      (NTH: nth_error xs n = Some x)
+  :
+    forall d, nth n xs d = x
+.
+Proof.
+  ginduction xs; ii; ss; des_ifs; ss; clarify.
+  exploit IHxs; eauto.
+Qed.

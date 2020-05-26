@@ -861,7 +861,7 @@ Proof.
           + (** new **)
             esplits; et.
             * rp; et.
-            * etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et. 
+            * etrans; et. specialize (PMLE (Some "OHAlloc")). etrans; et.
             * rewrite MSRC. eauto with mem.
             * eapply Mem.store_valid_access_1; et.
             * erewrite Mem.load_store_same; et. ss.

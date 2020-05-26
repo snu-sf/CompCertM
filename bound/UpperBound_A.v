@@ -960,7 +960,7 @@ Section PRESERVATION.
             - rr in H. des. inv H. ss. }
           { right. eapply CIH; et. rp; [econs|..]; et. eapply match_stacks_midx in STK; et.
             subst X Y. f_equal. des. congruence. }
-          
+
         (* src step *)
         - inv STK; ss.
           econs; ss; cycle 1.

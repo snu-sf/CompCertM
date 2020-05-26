@@ -642,7 +642,7 @@ Section LXSIM.
                 { unfold Genv.find_funct. des_ifs. eauto. }
                 ss. right. unfold load_modsems. rewrite in_map_iff.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
-              { ss; et. } 
+              { ss; et. }
               econs; ss; eauto.
               - unfold Args.get_fptr in *. des_ifs. ss. clarify.
                 eapply MutrecBspec.find_symbol_find_funct_ptr; et.

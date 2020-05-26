@@ -436,7 +436,7 @@ Proof.
   (*   inv PROJARGS. *)
   (*   rewrite <- OHSRC0 in *. rewrite MIDX in OHTGT0. rewrite <- OHTGT0 in *. clarify. *)
   (* } *)
-  
+
   assert(ARGS: SimMemOh.sim_args (upcast oh_src)
                                  (upcast oh_tgt)
                                  args_src args_tgt sm_arg_proj).

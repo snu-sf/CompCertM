@@ -76,7 +76,7 @@ Section SYSMODSEM.
     ModSem.final_frame := final_frame;
     ModSem.after_external := bot4;
     ModSem.globalenv:= globalenv;
-    ModSem.codeseg := skenv;
+    ModSem.skenv := skenv;
     ModSem.skenv_link := skenv_link;
     ModSem.midx := None;
   |}.

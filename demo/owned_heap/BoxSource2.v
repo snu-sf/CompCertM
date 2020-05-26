@@ -217,7 +217,7 @@ we can say that,
       ModSem.final_frame := final_frame;
       ModSem.after_external := bot4;
       ModSem.globalenv := skenv;
-      ModSem.codeseg := skenv;
+      ModSem.skenv := skenv;
       ModSem.midx := Some "OHAlloc";
       ModSem.skenv_link := skenv_link;
       ModSem.owned_heap := owned_heap;

@@ -105,8 +105,6 @@ Module Sound.
         (MLE: su0.(mle) m0 m1),
         <<SKE: su0.(skenv) m1 ske>>;
 
-    (*** TODO: this one is not used in meta-theory anymore (we changed ModSem.skenv into ModSem.codeseg),
-               so we can remove it ***)
     skenv_project: forall su m0 skenv_link sk skenv0
         (WF: SkEnv.wf skenv_link)
         (WFM: SkEnv.wf_mem skenv_link sk m0)

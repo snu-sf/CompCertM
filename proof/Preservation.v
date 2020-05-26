@@ -30,12 +30,6 @@ Inductive local_preservation (sound_state: Sound.t -> mem -> ms.(state) -> Prop)
     (INIT: forall su_init oh args st_init
         (SUARG: Sound.args su_init args)
         (SKENVLINK: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv_link))
-        (SKENV: SkEnv.wf (ModSem.skenv_link modsem))
-        (SKENV: SkEnv.wf_mem (ModSem.skenv_link modsem))
-
-subgoal 2 (ID 841) is:
- SkEnv.wf_mem (ModSem.skenv_link modsem) (Sk.of_program fn_sig p) (Args.get_m args)
-
         (SKENV: Sound.skenv su_init (Args.get_m args) ms.(ModSem.skenv))
         (INIT: ms.(ModSem.initial_frame) oh args st_init)
       ,

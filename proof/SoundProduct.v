@@ -145,10 +145,12 @@ Section SOUNDPRODUCT.
       split; ss.
       + eapply INIT; eauto.
         { destruct su_init; ss. eapply sound_args_iff in SUARG; eauto. ss; des; ss. }
-        { des; ss. }
+        { destruct su_init; ss. eapply sound_skenv_iff in SKENV; eauto. ss; des; ss. }
+        { destruct su_init; ss. eapply sound_skenv_iff in SKENV; eauto. ss; des; ss. }
       + eapply INIT0; eauto.
         { destruct su_init; ss. eapply sound_args_iff in SUARG; eauto. des. ss. }
-        { des; ss. }
+        { destruct su_init; ss. eapply sound_skenv_iff in SKENV; eauto. ss; des; ss. }
+        { destruct su_init; ss. eapply sound_skenv_iff in SKENV; eauto. ss; des; ss. }
     - clear - STEP STEP0. ii. ss. des.
       specialize (STEP m_arg (fst su0)). specialize (STEP0 m_arg (snd su0)).
       split; ss.

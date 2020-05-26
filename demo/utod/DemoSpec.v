@@ -53,7 +53,7 @@ Section MODSEM.
       ModSem.final_frame := coerce final_frame;
       ModSem.after_external := bot4;
       ModSem.globalenv := tt;
-      ModSem.codeseg := skenv;
+      ModSem.skenv := skenv;
       ModSem.skenv_link := skenv_link;
       ModSem.midx := None;
     |}

@@ -145,7 +145,7 @@ Section MODSEM.
        ModSem.final_frame := coerce final_frame;
        ModSem.after_external := coerce after_external;
        ModSem.globalenv := ge;
-       ModSem.codeseg := skenv;
+       ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;
        ModSem.midx := None;
     |}.

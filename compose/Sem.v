@@ -46,7 +46,8 @@ Module Ge.
   Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=
   | find_fptr_owner_intro
       (MODSEM: In ms (fst ge))
-      (INTERNAL: CodeSeg.find_funct ms.(ModSem.codeseg) fptr).
+      if_sig
+      (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig)).
 
   Inductive disjoint (ge: t): Prop :=
   | disjoint_intro

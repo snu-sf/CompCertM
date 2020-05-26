@@ -31,15 +31,7 @@ Section PRSV.
   Proof.
     econs; eauto.
     { ss. eapply UnreachC.liftspec; et. }
-    - i.
-      exploit Sound.skenv_project; et.
-      { admit "". }
-      { admit "". }
-      { instantiate (1:= SkEnv.project skenv_link (Sk.of_program fn_sig p)).
-        eapply SkEnv.project_impl_spec; et.
-      }
-      intro SKENV.
-      inv INIT. ss. esplits; eauto; cycle 1.
+    - i. inv INIT. ss. esplits; eauto; cycle 1.
       { destruct args; ss. refl. }
       econs; eauto. i.
       set (ge := (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig p)) p)) in *.

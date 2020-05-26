@@ -234,23 +234,8 @@ Module Sk.
   Qed.
 
 End Sk.
+
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
-Hint Resolve Sk.disj_intro.
-
-
-
-Module CodeSeg.
-
-  Definition t: Type := val -> Prop.
-
-  Definition disj (cs0 cs1: t): Prop := (cs0 /1\ cs1) <1= bot1.
-
-  Definition find_funct (cs0: t): val -> Prop := fun fptr => cs0 fptr.
-
-End CodeSeg.
-Hint Unfold CodeSeg.t CodeSeg.disj CodeSeg.find_funct.
-
-
 
 (* Skeleton Genv *)
 Module SkEnv.
@@ -606,47 +591,6 @@ I think "sim_skenv_monotone" should be sufficient.
     inv H2. ss. des_ifs. symmetry in H1. eapply DEFS in H1. des. inv MATCH. inv H1. eauto.
   Qed.
 
-  Definition to_CodeSeg (ske: t): CodeSeg.t :=
-    fun fptr => exists fd, Genv.find_funct ske fptr = Some (Internal fd)
-  .
-
-  Coercion to_CodeSeg: t >-> CodeSeg.t.
-
-  Lemma project_respects_disj
-        sk0 sk1 ske0 ske1 ske_link
-        (DISJ: Sk.disj sk0 sk1)
-        (LOAD0: project ske_link sk0 = ske0)
-        (LOAD1: project ske_link sk1 = ske1)
-    :
-      (<<DISJ: CodeSeg.disj ske0 ske1>>)
-  .
-  Proof.
-    u. ii. des. rr in PR. rr in PR0. des.
-    inv DISJ.
-    uge. des_ifs.
-    unfold project in *. apply_all_once Genv_map_defs_def. des. uge. ss.
-    uo. des_ifs. exploit DISJ0; et.
-  Qed.
-
-  Lemma project_linkorder
-        (skenv_link: SkEnv.t) fptr sk
-        (INCL: SkEnv.includes skenv_link sk)
-        (FINDF: CodeSeg.find_funct (project skenv_link sk) fptr)
-    :
-      <<FINDF: CodeSeg.find_funct skenv_link fptr>>
-  .
-  Proof.
-    unfold project in *.
-    unfold to_CodeSeg in *. u in *. des.
-    uge. des_ifs_safe.
-    apply_all_once Genv_map_defs_def. des. uge. ss. des_ifs_safe. ss.
-    inv INCL. exploit DEFS; et. i; des. uge. clear_tac.
-    apply Genv.invert_find_symbol in Heq1. uge. clarify.
-    inv MATCH. inv H0. et.
-  Qed.
-
 End SkEnv.
 
-Hint Unfold SkEnv.empty SkEnv.to_CodeSeg.
-
-Coercion SkEnv.to_CodeSeg: SkEnv.t >-> CodeSeg.t.
+Hint Unfold SkEnv.empty.

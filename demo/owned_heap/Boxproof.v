@@ -10,7 +10,7 @@ Require Import BoxSource BoxTarget.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift AsmregsC MatchSimModSemExcl.
 Require SoundTop.
-Require SimMemSV.
+Require SimMemInjSep.
 Require Import Clightdefs.
 Require Import CtypesC.
 Require Import Any.
@@ -55,7 +55,7 @@ Section SMO.
           (* (<<SRC: (smo.(SimMem.tgt).(Mem.mem_contents) # k) = (ZMap.init Undef)>>) /\ *)
           (<<VLSRC: Mem.valid_block smo.(SimMem.src) k>>) /\
             exists k_tgt,
-              (<<SIMVAL: smo.(sm).(SimMemSV.inj) k = Some (k_tgt, 0)>>) /\
+              (<<SIMVAL: smo.(sm).(SimMemInjSep.inj) k = Some (k_tgt, 0)>>) /\
               (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt) Mint64 k_tgt (-8) Freeable>>) /\
               (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt) Mint32 k_tgt 0 Freeable>>) /\
               (<<LDTGT: Mem.load Mint64 smo.(SimMem.tgt) k_tgt lo = Some (Vptrofs (Ptrofs.repr hi))>>) /\
@@ -67,8 +67,8 @@ Section SMO.
           (DIFF: k0 <> k1)
           (SOME0: map k0 <> None)
           (SOME1: map k1 <> None)
-          (SIMVAL0: smo.(sm).(SimMemSV.inj) k0 = Some (blk_tgt0, 0))
-          (SIMVAL1: smo.(sm).(SimMemSV.inj) k1 = Some (blk_tgt1, 0))
+          (SIMVAL0: smo.(sm).(SimMemInjSep.inj) k0 = Some (blk_tgt0, 0))
+          (SIMVAL1: smo.(sm).(SimMemInjSep.inj) k1 = Some (blk_tgt1, 0))
         ,
           <<DIFF: blk_tgt0 <> blk_tgt1>>)
   .
@@ -110,9 +110,9 @@ Section SMO.
     { ii. ss. clarify.
       destruct (map k0) eqn:T0; ss.
       destruct (map k1) eqn:T1; ss.
-      destruct (SimMemSV.inj smo0.(sm) k0) eqn:U0; cycle 1.
+      destruct (SimMemInjSep.inj smo0.(sm) k0) eqn:U0; cycle 1.
       { exploit SOME; try apply T0; et. i; des. clarify. }
-      destruct (SimMemSV.inj smo0.(sm) k1) eqn:U1; cycle 1.
+      destruct (SimMemInjSep.inj smo0.(sm) k1) eqn:U1; cycle 1.
       { exploit SOME; try apply T1; et. i; des. clarify. }
       inv MLEPRIV. inv FINCR.
       destruct p, p0; ss.
@@ -409,14 +409,14 @@ Proof.
     ii. inv MATCH; inv STEPSRC; ss.
 
     + (* method: new *)
-      exploit SimMemSV.alloc_parallel; try apply ALLOC; try refl.
+      exploit SimMemInjSep.alloc_parallel; try apply ALLOC; try refl.
       { eapply MWF. }
       i; des. clarify.
-      exploit (SimMemSV.free_left (SimMemSV.privmod "OHAlloc") (SimMemSV.privmod "OHAlloc")); et.
+      exploit (SimMemInjSep.free_left (SimMemInjSep.privmod "OHAlloc") (SimMemInjSep.privmod "OHAlloc")); et.
       i; des. clarify.
 
       assert(STRTGT0: exists m_tgt0,
-                Mem.store Mint64 (SimMemSV.tgt sm2) blk_tgt (-8) (Vptrofs (Ptrofs.repr 4)) = Some m_tgt0).
+                Mem.store Mint64 (SimMemInjSep.tgt sm2) blk_tgt (-8) (Vptrofs (Ptrofs.repr 4)) = Some m_tgt0).
       { edestruct Mem.valid_access_store; et.
         eapply Mem.valid_access_implies with Freeable; eauto with mem.
         rewrite MTGT.
@@ -425,7 +425,7 @@ Proof.
       }
       des.
 
-      exploit (SimMemSV.store_right_pm (Some "OHAlloc")); try apply STRTGT0; et.
+      exploit (SimMemInjSep.store_right_pm (Some "OHAlloc")); try apply STRTGT0; et.
       { u. ii. specialize (PMTGT x0 x1). des; clarify. ss.
         exploit PMTGT; et.
         { rr. esplits; et. u. xomega. }
@@ -434,7 +434,7 @@ Proof.
       i; des. clarify.
 
       assert(STRTGT1: exists m_tgt1,
-                Mem.store Mint32 (SimMemSV.tgt sm3) blk_tgt 0 (Vint v) = Some m_tgt1).
+                Mem.store Mint32 (SimMemInjSep.tgt sm3) blk_tgt 0 (Vint v) = Some m_tgt1).
       { edestruct Mem.valid_access_store; et.
         eapply Mem.store_valid_access_1; et.
         eapply Mem.valid_access_implies with Freeable; eauto with mem.
@@ -444,7 +444,7 @@ Proof.
       }
       des.
 
-      exploit (SimMemSV.store_right_pm (Some "OHAlloc")); try apply STRTGT1; et.
+      exploit (SimMemInjSep.store_right_pm (Some "OHAlloc")); try apply STRTGT1; et.
       { u. ii. specialize (PMTGT x0 x1). des; clarify. ss.
         exploit PMTGT; et.
         { rr. esplits; et. u. xomega. }
@@ -514,16 +514,16 @@ Proof.
         - instantiate (1:= upcast tt). econs; ss; et; cycle 1.
           { bar.
             (*** TODO: make some good lemma ***)
-            assert(MLEALL: SimMemSV.le' sm0.(sm) sm4).
+            assert(MLEALL: SimMemInjSep.le' sm0.(sm) sm4).
             { repeat (etrans; et). }
             ii. unfold update in *. inv MWF.
             rewrite OHSRC in *. clarify.
             destruct (eq_block key k0).
             - destruct (eq_block key k1); clarify.
               assert(blk_tgt = blk_tgt1) by congruence; clarify.
-              assert(NVAL: ~Mem.valid_block sm0.(sm).(SimMemSV.tgt) blk_tgt1).
+              assert(NVAL: ~Mem.valid_block sm0.(sm).(SimMemInjSep.tgt) blk_tgt1).
               { ii. eapply Mem.fresh_block_alloc; et. }
-              assert(VAL: Mem.valid_block sm0.(sm).(SimMemSV.tgt) blk_tgt1).
+              assert(VAL: Mem.valid_block sm0.(sm).(SimMemInjSep.tgt) blk_tgt1).
               { destruct (oh k1) eqn:W; ss. exploit SOME; et. i; des.
                 assert(k_tgt = blk_tgt1).
                 { clarify.
@@ -537,9 +537,9 @@ Proof.
             - destruct (eq_block key k1); clarify.
               {
                 assert(blk_tgt = blk_tgt1) by congruence; clarify.
-                assert(NVAL: ~Mem.valid_block sm0.(sm).(SimMemSV.tgt) blk_tgt1).
+                assert(NVAL: ~Mem.valid_block sm0.(sm).(SimMemInjSep.tgt) blk_tgt1).
                 { ii. eapply Mem.fresh_block_alloc; et. }
-                assert(VAL: Mem.valid_block sm0.(sm).(SimMemSV.tgt) blk_tgt1).
+                assert(VAL: Mem.valid_block sm0.(sm).(SimMemInjSep.tgt) blk_tgt1).
                 { destruct (oh k0) eqn:W; ss. exploit SOME; et. i; des.
                   assert(k_tgt = blk_tgt1).
                   { clarify.
@@ -614,7 +614,7 @@ Proof.
             * rewrite MSRC0. rewrite MSRC. clear - n PERMSRC FREE ALLOC.
               admit "ez - mem".
             * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE2 MLE1 MLE0 MLE.
-              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              unfold SimMemInjSep.ownership_to_ownership in *. des_ifs_safe.
               bar.
               inv MLE2. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               inv MLE1. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
@@ -642,7 +642,7 @@ Proof.
               { left. admit "ez - mem". }
               congruence.
             * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE2 MLE1 MLE0 MLE.
-              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              unfold SimMemInjSep.ownership_to_ownership in *. des_ifs_safe.
               bar.
               inv MLE2. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               inv MLE1. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
@@ -700,7 +700,7 @@ Proof.
       }
       des.
 
-      exploit (SimMemSV.store_right_pm (Some "OHAlloc")); try apply STRTGT0; et.
+      exploit (SimMemInjSep.store_right_pm (Some "OHAlloc")); try apply STRTGT0; et.
       { u. ii. specialize (PMTGT x0 x1). des; clarify. ss.
         exploit PMTGT; et.
         { rr. esplits; et. u. xomega. }
@@ -732,7 +732,7 @@ Proof.
           econs; ss; et; cycle 1.
           { bar.
             (*** TODO: make some good lemma ***)
-            assert(MLEALL: SimMemSV.le' sm0.(sm) sm1).
+            assert(MLEALL: SimMemInjSep.le' sm0.(sm) sm1).
             { ss. }
             ii. rewrite MINJ in *.
             unfold update in *. inv MWF.
@@ -752,7 +752,7 @@ Proof.
             * etrans; et. u. ii.
               bar.
               inv MLE. erewrite (PMSRC0 "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              unfold SimMemSV.ownership_to_ownership in PR. des_ifs. des_sumbool. clarify.
+              unfold SimMemInjSep.ownership_to_ownership in PR. des_ifs. des_sumbool. clarify.
             * rewrite MSRC. eauto with mem.
             * rp; et. congruence.
             * eapply Mem.store_valid_access_1; et.
@@ -762,13 +762,13 @@ Proof.
             * etrans; et. u. ii.
               bar.
               inv MLE. erewrite (PMTGT0 "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
-              unfold SimMemSV.ownership_to_ownership in PR. des_ifs. des_sumbool. clarify.
+              unfold SimMemInjSep.ownership_to_ownership in PR. des_ifs. des_sumbool. clarify.
           + (** old **)
             inv MWF. exploit SOME0; et. i; des.
             esplits; et.
             * rewrite MSRC. eauto with mem.
             * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
-              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              unfold SimMemInjSep.ownership_to_ownership in *. des_ifs_safe.
               bar.
               inv MLE. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               ss.
@@ -781,7 +781,7 @@ Proof.
             * erewrite Mem.load_store_other; et. left. ii; clarify.
               exploit (UNIQ blk_src k); ss; eauto with congruence.
             * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
-              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              unfold SimMemInjSep.ownership_to_ownership in *. des_ifs_safe.
               bar.
               inv MLE. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               ss.
@@ -805,10 +805,10 @@ Proof.
       }
       des.
 
-      exploit (@SimMemSV.free_right_pm "OHAlloc"); try apply FREETGT0; et.
+      exploit (@SimMemInjSep.free_right_pm "OHAlloc"); try apply FREETGT0; et.
       { u. ii. specialize (PMTGT x0 x1). des; clarify. ss.
         exploit PMTGT; et.
-        { unfold SimMemSV.ownership_to_ownership.
+        { unfold SimMemInjSep.ownership_to_ownership.
           des_ifs. ii. des_sumbool. clarify. }
       }
       i; des. clarify.
@@ -851,7 +851,7 @@ Proof.
           econs; ss; et; cycle 1.
           { bar.
             (*** TODO: make some good lemma ***)
-            assert(MLEALL: SimMemSV.le' sm0.(sm) sm1).
+            assert(MLEALL: SimMemInjSep.le' sm0.(sm) sm1).
             { ss. }
             ii. rewrite MINJ in *.
             unfold update in *. inv MWF. des_ifs. exploit (UNIQ k0 k1); et.
@@ -862,7 +862,7 @@ Proof.
             esplits; et.
             * rewrite MSRC. eauto with mem.
             * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
-              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              unfold SimMemInjSep.ownership_to_ownership in *. des_ifs_safe.
               bar.
               inv MLE. erewrite (PMSRC "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               ss.
@@ -879,7 +879,7 @@ Proof.
             * erewrite Mem.load_free; et. left. ii; clarify.
               exploit (UNIQ blk_src k); ss; eauto with congruence.
             * etrans; et. ii. ss. des_ifs_safe. des_sumbool. clarify. clear - Heq MLE.
-              unfold SimMemSV.ownership_to_ownership in *. des_ifs_safe.
+              unfold SimMemInjSep.ownership_to_ownership in *. des_ifs_safe.
               bar.
               inv MLE. erewrite (PMTGT "OHAlloc"). { des_sumbool; ss. } u. clear_until_bar.
               ss.

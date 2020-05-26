@@ -124,8 +124,6 @@ Section MODTUPLE.
 
   Definition globalenv: genvtype := (msdl.(ModSem.globalenv), msdr.(ModSem.globalenv)).
 
-  (* Set Printing Universes. *)
-
   Variant dir: Type :=
   | dl
   | dr
@@ -161,15 +159,6 @@ Section MODTUPLE.
   Qed.
 
   Definition state: Type := (stack * owned_heap).
-
-  (* Definition ms (b: bool): ModSem.t := (if b then msdl else msdr). *)
-  Notation ms := (fun (b: bool) => (if b then msdl else msdr)).
-
-  Definition update A B (b: bool) (x: if b then A else B) (ab: A * B): A * B :=
-    (if b as b0 return ((if b0 then A else B) -> A * B)
-     then fun x => (x, (snd ab))
-     else fun x => ((fst ab), x)) x
-  .
 
   (***
 Don't want to split call/init step, because we have to define Callstate separately.
@@ -394,6 +383,11 @@ To do this, I will require initial_state to be deterministic.
 
 End MODTUPLE.
 
+
+(*** if we put "MODTUPLE" section inside "ModTuple" module, "Print ModTuple" will be very messy ***)
 Module ModTuple.
   Definition t := Eval red in t.
 End ModTuple.
+Print ModTuple.
+Print ModTuple.t.
+

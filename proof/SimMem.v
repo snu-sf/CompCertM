@@ -61,7 +61,20 @@ Definition privmod_others (mi: Midx.t) (ptt: partition): block -> Z -> bool :=
     end
 .
 
+Definition ons_mem (ptt: partition) (ons: ownership): block -> Z -> Prop :=
+  fun b ofs => (ptt b ofs) = ons
+.
 
+Hint Unfold ons_mem privmods privmod_others.
+
+Lemma ons_mem_privmods
+      ptt mi
+  :
+    ons_mem ptt (privmod mi) = privmods (Some mi) ptt
+.
+Proof.
+  u. apply func_ext2. ii. apply AxiomsC.prop_ext. split; i; des_ifs; des_sumbool; clarify; ss.
+Qed.
 
 Module SimMem.
 
@@ -205,10 +218,23 @@ Module SimMem.
     econs; eauto. eapply le_sim_val; et.
   Qed.
 
+  Lemma unch_implies
+        `{SimMem.class}
+        mi
+    :
+      <<IMPL: SimMem.unch None <2= SimMem.unch mi>>
+  .
+  Proof.
+    ii. inv PR. econs; et.
+    { eapply unchanged_on_monotone; et. u. ii. des_ifs. }
+    { eapply unchanged_on_monotone; et. u. ii. des_ifs. }
+    { ii. destruct mj; try (by ss). exploit LESRC; et. ss. }
+    { ii. destruct mj; try (by ss). exploit LETGT; et. ss. }
+  Qed.
+
 End SimMem.
 
 Hint Unfold SimMem.future.
-
 Hint Resolve SimMem.pub_priv.
 
 

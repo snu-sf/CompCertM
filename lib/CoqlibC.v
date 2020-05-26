@@ -991,7 +991,21 @@ Proof. eauto. Qed.
 (* Remark: if econs/econsr gives different goal, at least 2 econs is possible *)
 Ltac econsr :=
   first
-    [ econstructor 16
+    [ econstructor 30
+     |econstructor 29
+     |econstructor 28
+     |econstructor 27
+     |econstructor 26
+     |econstructor 25
+     |econstructor 24
+     |econstructor 23
+     |econstructor 22
+     |econstructor 21
+     |econstructor 20
+     |econstructor 19
+     |econstructor 18
+     |econstructor 17
+     |econstructor 16
      |econstructor 15
      |econstructor 14
      |econstructor 13

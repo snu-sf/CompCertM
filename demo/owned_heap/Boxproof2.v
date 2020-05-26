@@ -582,8 +582,8 @@ Proof.
       }
       {
         etrans; et. etrans; et. etrans; et.
-        { eapply unch_implies; et. }
-        { eapply unch_implies; et. }
+        { eapply SimMem.unch_implies; et. }
+        { eapply SimMem.unch_implies; et. }
       }
       {
         econs 7; ss; et.
@@ -601,7 +601,7 @@ Proof.
               { u. ii. des. clarify. eauto with xomega. }
               etrans; et.
               etrans; et.
-              rewrite SimMemExtSep.ons_mem_privmods.
+              rewrite SimMem.ons_mem_privmods.
               specialize (PMLE (Some "OHAlloc")). etrans; et.
               specialize (PMLE0 (Some "OHAlloc")). etrans; et.
             * admit "ez - mem".
@@ -620,7 +620,7 @@ Proof.
                 { u. ii. des. clarify. eauto with xomega. }
                 etrans; et.
                 etrans; et.
-                rewrite SimMemExtSep.ons_mem_privmods.
+                rewrite SimMem.ons_mem_privmods.
                 specialize (PMLE (Some "OHAlloc")). etrans; et.
                 specialize (PMLE0 (Some "OHAlloc")). etrans; et.
               }
@@ -909,7 +909,7 @@ Proof.
         psimpl.
         apply star_refl.
       }
-      { eapply unch_implies; eauto. }
+      { eapply SimMem.unch_implies; eauto. }
       {
         econs 11; ss; et; cycle 1.
         - instantiate (1:= upcast tt).
@@ -920,7 +920,7 @@ Proof.
             * rp; et. rp; et. eapply Mem_free_noperm; et.
             * etrans; et.
               bar.
-              rewrite SimMemExtSep.ons_mem_privmods. ss.
+              rewrite SimMem.ons_mem_privmods. ss.
             * admit "ez - mem".
             * rewrite MTGT. eapply Mem.valid_access_extends; try apply MWF0.
               { rr. esplits; eauto with mem. ss. exists 0. xomega. }
@@ -988,7 +988,7 @@ Proof.
       eexists _, _, (mk sm2 _ _); ss.
       esplits; et.
       { left. eapply plus_one. econs; et. }
-      { etrans; et. eapply unch_implies; et. }
+      { etrans; et. eapply SimMem.unch_implies; et. }
       econs 12; ss; et.
       * econs; ss; et.
         ii. unfold update in *. des_ifs.

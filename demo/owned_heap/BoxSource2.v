@@ -8,7 +8,6 @@ Require Import Skeleton Mod ModSem.
 Require Import CtypesC CtypingC.
 Require Import ClightC.
 Require Import BoxTarget.
-Require Import MemoryC2.
 
 Set Implicit Arguments.
 

@@ -16,7 +16,6 @@ Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.
 Require SimSymbId.
 Require Import SimMemLift.
-Require Import MemoryC2.
 
 Set Implicit Arguments.
 

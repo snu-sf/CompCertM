@@ -506,8 +506,8 @@ Proof.
       }
       {
         etrans; et. etrans; et. etrans; et.
-        { eapply unch_implies; et. }
-        { eapply unch_implies; et. }
+        { eapply SimMem.unch_implies; et. }
+        { eapply SimMem.unch_implies; et. }
       }
       {
         econs 5; ss; et.

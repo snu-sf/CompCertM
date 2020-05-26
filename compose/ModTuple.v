@@ -27,7 +27,7 @@ Section MODTUPLE.
 
   Variable skenv_link: SkEnv.t.
 
-  Variable link_skenv: SkEnv.t -> SkEnv.t -> SkEnv.t.
+  Variable link_CodeSeg: CodeSeg.t -> CodeSeg.t -> CodeSeg.t.
 
   Variable msdl msdr: ModSem.t.
 
@@ -87,8 +87,7 @@ To do this, I will require initial_state to be deterministic.
   Variant find_fptr_owner (fptr: val) (ms: ModSem.t): Prop :=
   | find_fptr_owner_intro
       (MODSEM: In ms [msdl ; msdr])
-      if_sig
-      (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig)).
+      (INTERNAL: CodeSeg.find_funct ms.(ModSem.codeseg) fptr).
 
   Variant step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
   | step_call_dl
@@ -232,7 +231,7 @@ To do this, I will require initial_state to be deterministic.
       ModSem.after_external := after_external;
       ModSem.initial_owned_heap := initial_owned_heap;
       ModSem.globalenv := globalenv;
-      ModSem.skenv := link_skenv msdl.(ModSem.skenv) msdr.(ModSem.skenv);
+      ModSem.codeseg := link_CodeSeg msdl.(ModSem.codeseg) msdr.(ModSem.codeseg);
       ModSem.skenv_link := skenv_link;
       ModSem.midx := msdl.(ModSem.midx); (*** <-- TODO: prettify later ***)
     |}

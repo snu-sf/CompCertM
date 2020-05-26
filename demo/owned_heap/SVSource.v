@@ -83,7 +83,7 @@ Section MODSEM.
       ModSem.final_frame := final_frame;
       ModSem.after_external := bot4;
       ModSem.globalenv := skenv;
-      ModSem.skenv := skenv;
+      ModSem.codeseg := skenv;
       ModSem.skenv_link := skenv_link;
       ModSem.midx := Some "SV";
       ModSem.owned_heap := owned_heap;

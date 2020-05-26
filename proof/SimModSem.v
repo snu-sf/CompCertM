@@ -167,7 +167,6 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Inductive sim_skenv (msp: t) (sm0: SimMem.t): Prop :=
   | sim_skenv_intro
-    (SIMSKE: SimSymb.sim_skenv sm0 msp.(ss) msp.(src).(ModSem.skenv) msp.(tgt).(ModSem.skenv))
     ss_link
     (SIMSKELINK: SimSymb.sim_skenv sm0 ss_link msp.(src).(ModSem.skenv_link) msp.(tgt).(ModSem.skenv_link)).
 
@@ -201,11 +200,8 @@ Context {SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
             (<<OHTGT: smo.(SimMemOh.oh_tgt) = upcast msp.(tgt).(initial_owned_heap)>>))
       (SIM: forall
           (sm_arg: SimMemOh.t (class := msp.(SMO))) oh_src oh_tgt args_src args_tgt
-          sg_init_src sg_init_tgt
-          (FINDFSRC: (Genv.find_funct msp.(src).(ModSem.skenv)) (Args.get_fptr args_src) =
-                     Some (Internal sg_init_src))
-          (FINDFTGT: (Genv.find_funct msp.(tgt).(ModSem.skenv)) (Args.get_fptr args_tgt) =
-                     Some (Internal sg_init_tgt))
+          (FINDFSRC: CodeSeg.find_funct msp.(src).(ModSem.codeseg) (Args.get_fptr args_src))
+          (FINDFTGT: CodeSeg.find_funct msp.(tgt).(ModSem.codeseg) (Args.get_fptr args_tgt))
           (SIMARGS: SimMemOh.sim_args (upcast oh_src) (upcast oh_tgt) args_src args_tgt sm_arg)
           (SIMSKENV: sim_skenv msp sm_arg)
           (MFUTURE: SimMem.future msp.(sm) sm_arg)

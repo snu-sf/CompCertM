@@ -9,6 +9,7 @@ Require Import sflib.
 Require Import Skeleton.
 Require Import CoqlibC.
 Require Asm.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -135,43 +136,235 @@ End Retv.
 Hint Unfold Args.is_cstyle Args.mk Args.fptr Args.vs Args.m Retv.is_cstyle Retv.mk Retv.v Retv.m.
 Hint Constructors Args.t Retv.t.
 
+
+Global Opaque string_dec.
+
+Module Midx.
+
+  Definition t: Type := option string.
+
+  Definition eq_dec := option_dec string_dec.
+
+  (* Definition update X (map: t -> X) (t0: t) (x: X): t -> X := *)
+  (*   fun t1 => if string_dec t0 t1 then x else map t1. *)
+
+  Definition update X (map: t -> X) (t0: t) (x: X): t -> X :=
+    fun t1 => if eq_dec t0 t1 then x else map t1
+  .
+
+  Notation get := (fun map t0 => map t0).
+  (* Definition get (map: t -> Any) (t0: t): Any := *)
+  (*   map t0 *)
+  (* . *)
+
+  Definition NoDup (ts: list t): Prop := NoDup (filter_map id ts).
+
+  Definition list_to_set V (kvs: list (Midx.t * V)) (default: V): Midx.t -> V :=
+    fold_left (fun s '(k, v) => update s k v) kvs
+              (fun _ => default)
+  .
+
+  Lemma NoDup_cons_iff
+        hd tl
+    :
+      <<NODUP: NoDup (hd :: tl)>> <-> ((<<HD: hd = None \/ ~In hd tl>>) /\ (<<TL: NoDup tl>>))
+  .
+  Proof.
+    unfold NoDup, NW. ss. unfold id. des_ifs.
+    { erewrite List.NoDup_cons_iff. split; i; des; esplits; ss; et.
+      - right.
+        ii. eapply H. eapply in_filter_map_iff. esplits; et.
+      - ii. eapply H. eapply in_filter_map_iff in H1. des; clarify.
+    }
+    tauto.
+  Qed.
+
+  Lemma NoDup_rev
+        ts
+        (UNIQ: NoDup ts)
+    :
+      <<UNIQ: NoDup (rev ts)>>
+  .
+  Proof.
+    rr. r in UNIQ.
+    rewrite <- filter_map_rev.
+    eapply NoDup_rev; et.
+  Qed.
+
+  Lemma NoDup_rev2
+        ts
+        (UNIQ: NoDup (rev ts))
+    :
+      <<UNIQ: NoDup ts>>
+  .
+  Proof.
+    r. rewrite <- rev_involutive.
+    eapply NoDup_rev; et.
+  Qed.
+
+  Lemma list_to_set_spec1
+        V (kvs: list (Midx.t * V))
+        (UNIQ: NoDup (map fst kvs))
+        d k v
+        (IN: In (Some k, v) kvs)
+    :
+      <<IN: (list_to_set kvs d) (Some k) = v>>
+  .
+  Proof.
+    unfold list_to_set. rewrite <- fold_left_rev_right. rewrite <- rev_involutive in *.
+    eapply NoDup_rev2 in UNIQ. des. rewrite <- map_rev in UNIQ.
+    fold t in *.
+    abstr (rev kvs) kvs0. clear kvs.
+    ginduction kvs0; ii; ss. des_ifs. rewrite in_app_iff in *. des; ss; des; clarify.
+    { eapply NoDup_cons_iff in UNIQ. des_safe; ss.
+      exploit IHkvs0; eauto. intro T. unfold update. des_ifs.
+      - des; ss. rewrite in_map_iff in *. contradict HD. eexists (_, _); s. esplits; et.
+        rewrite in_rev; et.
+      - rewrite T; ss.
+    }
+    { unfold update. des_ifs. }
+  Qed.
+
+  Lemma list_to_set_spec2_aux
+        V (kvs: list (Midx.t * V)) d
+        (UNIQ: NoDup (map fst kvs))
+        (NONE: forall v (IN: In (None, v) kvs), <<DEFAULT: v = d>>)
+        begin
+    :
+      (forall k v (IN: In (k, v) kvs),
+          <<IN: (fold_right (fun '(k, v) s => update s k v) begin kvs) k = v>>)
+  .
+  Proof.
+    ginduction kvs; ii; ss.
+    eapply NoDup_cons_iff in UNIQ. des_safe; ss. destruct IN; clarify.
+    { ss. unfold update. des_ifs. }
+    exploit IHkvs; eauto. intro T. destruct a; ss. unfold update. des_ifs; ss.
+    - des; ss; clarify.
+      + erewrite (NONE v0); et. erewrite (NONE v); et.
+      + contradict HD. rewrite in_map_iff. eexists (_, _); s. esplits; et.
+    - rewrite T. ss.
+  Qed.
+
+  Lemma list_to_set_spec2
+        V (kvs: list (Midx.t * V)) d
+        (UNIQ: NoDup (map fst kvs))
+        (NONE: forall v (IN: In (None, v) kvs), <<DEFAULT: v = d>>)
+        k v
+        (IN: In (k, v) kvs)
+    :
+      <<IN: (list_to_set kvs d) k = v>>
+  .
+  Proof.
+    (* destruct k. *)
+    (* { eapply list_to_set_spec1; et. } *)
+    unfold list_to_set. rewrite <- fold_left_rev_right. rewrite <- rev_involutive in *.
+    eapply NoDup_rev2 in UNIQ. des. rewrite <- map_rev in UNIQ.
+    fold t in *.
+    assert(NONE2: forall v (IN: In (None, v) (rev kvs)), <<DEFAULT: v = d>>).
+    { ii. eapply NONE. rewrite <- in_rev in *. ss. }
+    clear NONE.
+    abstr (rev kvs) kvs0. clear kvs. rewrite <- in_rev in *.
+    exploit list_to_set_spec2_aux; et. intro T. des; clarify. rewrite <- T.
+    r. f_equal; try refl. apply func_ext2. ii. des_ifs.
+  Qed.
+
+  Lemma list_to_set_spec3
+        V (kvs: list (Midx.t * V)) d
+        (UNIQ: NoDup (map fst kvs))
+        k
+        (NOTIN: forall v, ~In (k, v) kvs)
+    :
+      <<IN: (list_to_set kvs d) k = d>>
+  .
+  Proof.
+    (* destruct k. *)
+    (* { eapply list_to_set_spec1; et. } *)
+    unfold list_to_set. rewrite <- fold_left_rev_right. rewrite <- rev_involutive in *.
+    eapply NoDup_rev2 in UNIQ. des. rewrite <- map_rev in UNIQ.
+    assert(NOTIN2: forall v, ~In (k, v) (rev kvs)).
+    { ii. rewrite <- in_rev in *; et. eapply NOTIN; et. }
+    clear NOTIN.
+    fold t in *.
+    abstr (rev kvs) kvs0. clear kvs.
+    { r. ginduction kvs0; ii; ss. des_ifs. unfold update. des_ifs.
+      - ss. exploit NOTIN2; et. ii; ss.
+      - erewrite IHkvs0; et.
+        { ss. eapply NoDup_cons_iff in UNIQ. des; ss. }
+        ii. exploit NOTIN2; et.
+    }
+  Qed.
+
+  (* Definition unique (ts: list (option t)): bool := *)
+  (*   let ts := (filter_map id ts) in *)
+  (*   list_eq_dec string_dec ts (nodup string_dec ts) *)
+  (* . *)
+
+  (* Lemma unique_spec *)
+  (*       ts *)
+  (*       (UNIQ: unique ts) *)
+  (*   : *)
+  (*     <<UNIQ: NoDup (filter_map id ts)>> *)
+  (* . *)
+  (* Proof. *)
+  (*   unfold unique in *. abstr (filter_map id ts) xs. des_sumbool. clear_tac. *)
+  (*   ginduction xs; ii; ss. *)
+  (*   { econs; eauto. } *)
+  (*   des_ifs; et; ss. *)
+  (*   - exfalso. *)
+  (*     hexploit (nodup_length); eauto. intro T. rewrite <- UNIQ in T. ss. des. xomega. *)
+  (*   - econs; eauto. *)
+  (*     rewrite H0. *)
+  (*     eapply NoDup_nodup; et. *)
+  (* Qed. *)
+
+End Midx.
+
+
+
 Module ModSem.
 
   Record t: Type := mk {
     state: Type;
+    owned_heap: Type;
     genvtype: Type;
     step (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop;
-    at_external (st0: state) (args: Args.t): Prop;
-    initial_frame (args: Args.t) (st0: state): Prop;
-    final_frame (st0: state) (retv: Retv.t): Prop;
-    after_external (st0: state) (retv: Retv.t) (st1: state): Prop;
+    at_external (st0: state) (oh: owned_heap) (args: Args.t): Prop;
+    initial_frame (oh: owned_heap) (args: Args.t) (st0: state): Prop;
+    final_frame (st0: state) (oh: owned_heap) (retv: Retv.t): Prop;
+    after_external (st0: state) (oh: owned_heap) (retv: Retv.t) (st1: state): Prop;
+    initial_owned_heap: owned_heap;
     globalenv: genvtype;
     skenv: SkEnv.t;
     skenv_link: SkEnv.t;
+    midx: Midx.t;
 
-    at_external_dtm: forall st args0 args1
-        (AT0: at_external st args0)
-        (AT1: at_external st args1),
-        args0 = args1;
+    at_external_dtm: forall st oh0 oh1 args0 args1
+        (AT0: at_external st oh0 args0)
+        (AT1: at_external st oh1 args1),
+        oh0 = oh1 /\ args0 = args1;
 
-    final_frame_dtm: forall st retv0 retv1
-        (FINAL0: final_frame st retv0)
-        (FINAL1: final_frame st retv1),
-        retv0 = retv1;
-    after_external_dtm: forall st_call retv st0 st1
-        (AFTER0: after_external st_call retv st0)
-        (AFTER0: after_external st_call retv st1),
+    final_frame_dtm: forall st oh0 oh1 retv0 retv1
+        (FINAL0: final_frame st oh0 retv0)
+        (FINAL1: final_frame st oh1 retv1),
+        oh0 = oh1 /\ retv0 = retv1;
+    after_external_dtm: forall st_call oh retv st0 st1
+        (AFTER0: after_external st_call oh retv st0)
+        (AFTER0: after_external st_call oh retv st1),
         st0 = st1;
 
 
-    is_call (st0: state): Prop := exists args, at_external st0 args;
+    is_call (st0: state): Prop := exists oh args, at_external st0 oh args;
     is_step (st0: state): Prop := exists tr st1, step skenv_link globalenv st0 tr st1;
-    is_return (st0: state): Prop := exists retv, final_frame st0 retv;
+    is_return (st0: state): Prop := exists oh retv, final_frame st0 oh retv;
 
     call_step_disjoint: is_call /1\ is_step <1= bot1;
     step_return_disjoint: is_step /1\ is_return <1= bot1;
     call_return_disjoint: is_call /1\ is_return <1= bot1;
+
+    midx_none: midx = None -> owned_heap = unit;
   }.
+
+  Arguments mk [_ _ _].
 
   Ltac tac :=
     try( let TAC := u; esplits; eauto in
@@ -192,6 +385,7 @@ Module ModSem.
     Variable ms: t.
 
     Let state := (trace * ms.(state))%type.
+    Let owned_heap := ms.(owned_heap).
 
     Inductive step (se: Senv.t) (ge: ms.(genvtype)): state -> trace -> state -> Prop :=
     | step_silent
@@ -207,21 +401,21 @@ Module ModSem.
         (WBT: output_trace (ev :: tr)):
         step se ge (ev :: tr, st0) [ev] (tr, st0).
 
-    Definition at_external (st0: state) (args: Args.t): Prop :=
-      (fst st0) = [] /\ ms.(at_external) (snd st0) args.
+    Definition at_external (st0: state) (oh: owned_heap) (args: Args.t): Prop :=
+      (fst st0) = [] /\ ms.(at_external) (snd st0) oh args.
 
-    Definition initial_frame (args: Args.t) (st0: state): Prop :=
-      (fst st0) = [] /\ ms.(initial_frame) args (snd st0).
+    Definition initial_frame (oh: owned_heap) (args: Args.t) (st0: state): Prop :=
+      (fst st0) = [] /\ ms.(initial_frame) oh args (snd st0).
 
-    Definition final_frame (st0: state) (retv: Retv.t): Prop :=
-      (fst st0) = [] /\ ms.(final_frame) (snd st0) retv.
+    Definition final_frame (st0: state) (oh: owned_heap) (retv: Retv.t): Prop :=
+      (fst st0) = [] /\ ms.(final_frame) (snd st0) oh retv.
 
-    Definition after_external (st0: state) (retv: Retv.t) (st1: state): Prop :=
-      (fst st0) = [] /\ ms.(after_external) (snd st0) retv (snd st1) /\ (fst st1) = [].
+    Definition after_external (st0: state) (oh: owned_heap) (retv: Retv.t) (st1: state): Prop :=
+      (fst st0) = [] /\ ms.(after_external) (snd st0) oh retv (snd st1) /\ (fst st1) = [].
 
     Program Definition trans: t :=
       mk step at_external initial_frame final_frame after_external
-         ms.(globalenv) ms.(skenv) ms.(skenv_link) _ _ _ _ _ _.
+         ms.(initial_owned_heap) ms.(globalenv) ms.(skenv) ms.(skenv_link) ms.(midx) _ _ _ _ _ _ _.
     Next Obligation. rr in AT0. rr in AT1. des. eapply at_external_dtm; eauto. Qed.
     Next Obligation. rr in FINAL0. rr in FINAL1. des. eapply final_frame_dtm; eauto. Qed.
     Next Obligation.
@@ -243,6 +437,9 @@ Module ModSem.
     Next Obligation.
       ii. des. destruct x0; ss. rr in PR. rr in PR0. ss. des. clarify.
       eapply call_return_disjoint; eauto. esplits; eauto; rr; esplits; eauto.
+    Qed.
+    Next Obligation.
+      eapply ms.(midx_none); et.
     Qed.
 
     Lemma atomic_continue tr0 tr1 st_src0
@@ -276,7 +473,7 @@ Module ModSem.
     Proof.
       ginduction STAR; ii; ss.
       { econs; eauto. }
-      eapply star_trans; eauto. clear - H WBT. exploit atomic_lift_step; eauto.
+      eapply star_trans; eauto. clear - owned_heap H WBT. exploit atomic_lift_step; eauto.
     Qed.
 
   End Atomic.

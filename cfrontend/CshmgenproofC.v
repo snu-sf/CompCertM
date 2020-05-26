@@ -145,7 +145,7 @@ Proof.
     + unfold update_snd. ss. f_equal. destruct f1; inv H1; ss.
       unfold transl_function in H2. unfold bind in *. ss. des_ifs.
     + inv H. ss.
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

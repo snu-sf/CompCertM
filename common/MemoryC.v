@@ -614,3 +614,263 @@ Proof.
   - ii. des; clarify; esplits; et; xomega.
 Qed.
 
+Lemma Mem_valid_access_unchanged_on
+      m0 m1 chunk b ofs perm
+      (VA: Mem.valid_access m0 chunk b ofs perm)
+      (UNCH: Mem.unchanged_on (brange b ofs (ofs + size_chunk chunk)) m0 m1)
+  :
+    (<<VA: Mem.valid_access m1 chunk b ofs perm>>)
+.
+Proof.
+  rr in VA. des.
+  rr. esplits; et.
+  ii. exploit VA; et. intro T.
+  eapply Mem.perm_unchanged_on; et.
+Qed.
+
+Lemma Mem_load_valid_block
+      chunk m b ofs v
+      (LOAD: Mem.load chunk m b ofs = Some v)
+  :
+    <<VALID: Mem.valid_block m b>>
+.
+Proof.
+  eapply Mem.load_valid_access in LOAD. rr in LOAD. des. specialize (LOAD ofs). exploit LOAD; eauto.
+  { generalize (size_chunk_pos chunk); i. xomega. }
+  intro T. eapply Mem.perm_valid_block; et.
+Qed.
+
+Lemma Mem_range_noperm_split
+      m b lo mid hi
+      (PERM: Mem_range_noperm m b lo hi)
+      (LO: lo <= mid)
+      (HI: mid <= hi)
+  :
+    (<<PERM: Mem_range_noperm m b lo mid>>) /\
+    (<<PERM: Mem_range_noperm m b mid hi>>)
+.
+Proof.
+  esplits; et.
+  - ii. eapply (PERM ofs); et. xomega.
+  - ii. eapply (PERM ofs); et. xomega.
+Qed.
+
+(** TODO: move to proper place: MemoryC **)
+Lemma Mem_unfree_left_extends
+      m_src0 m_src1 blk lo hi m_tgt0
+      (EXT: Mem.extends m_src0 m_tgt0)
+      (UNFREESRC: Mem_unfree m_src0 blk lo hi = Some m_src1)
+      (PERMTGT: Mem.range_perm m_tgt0 blk lo hi Cur Freeable)
+  :
+    <<EXT: Mem.extends m_src1 m_tgt0>>
+.
+Proof.
+  unfold Mem_unfree in *. ss. des_ifs.
+  inv EXT; ss. econs; ss; et.
+  - econs; ss; et.
+    + inv mext_inj. ii. unfold Mem.perm in H0. ss.
+      rewrite PMap.gsspec in *. des_ifs.
+      * ss.
+        bsimpl. des. des_sumbool.
+        exploit PERMTGT; et. intro T. unfold Mem.perm in T.
+        unfold inject_id in *. clarify. zsimpl.
+        clear - H0 T.
+        eapply Mem.perm_cur. eapply Mem.perm_implies with Freeable; eauto.
+      * exploit mi_perm; et.
+      * exploit mi_perm; et.
+    + inv mext_inj. ii. unfold Mem.range_perm, Mem.perm in H0. ss.
+      rewrite PMap.gsspec in *. des_ifs.
+      * unfold inject_id in *. clarify. exists 0. xomega.
+      * exploit mi_align; et.
+    + inv mext_inj. ii. unfold Mem.perm in H0. ss.
+      rewrite PMap.gsspec in *. des_ifs.
+      * ss.
+        bsimpl. des. des_sumbool.
+        exploit PERMTGT; et. intro T. unfold Mem.perm in T.
+        unfold inject_id in *. clarify. zsimpl.
+        rewrite Mem_setN_in_repeat; ss.
+        { econs; et. }
+        { rewrite Z2Nat_range. des_ifs; try xomega. }
+      * rewrite Mem.setN_outside; eauto.
+        bsimpl. unfold inject_id in *. clarify.
+        rewrite length_list_repeat.
+        rewrite Z2Nat_range. des_ifs; try xomega.
+        des; des_sumbool; try xomega.
+      * unfold inject_id in *. clarify. exploit mi_memval; et.
+  - ii.
+    exploit mext_perm_inv; et. intro T. des.
+    + left.
+      unfold Mem.perm. ss.
+      rewrite PMap.gsspec in *. des_ifs. bsimpl. des. des_sumbool. ss. econs; et.
+    + destruct (classic (b = blk /\ lo <= ofs < hi)).
+      * left.
+        unfold Mem.perm. ss.
+        rewrite PMap.gsspec in *. des_ifs; bsimpl; des; des_sumbool; ss. econs; et.
+      * right.
+        unfold Mem.perm. ss.
+        rewrite PMap.gsspec in *. des_ifs. bsimpl. des. des_sumbool. ss. ii.
+        apply not_and_or in H0. des; ss. xomega.
+Qed.
+
+Local Transparent Mem.loadbytes.
+Lemma Mem_unfree_loadbytes
+      m0 blk lo hi m1
+      (UNFREE: Mem_unfree m0 blk lo hi = Some m1)
+  :
+    <<UNDEF: Mem.loadbytes m1 blk lo (hi - lo) = Some (list_repeat (Z.to_nat (hi - lo)) Undef)>>
+.
+Proof.
+  hexploit Mem_unfree_perm; eauto. intro PERM.
+  unfold Mem_unfree in *. des_ifs.
+  unfold Mem.loadbytes. ss. des_ifs; cycle 1.
+  { contradict n. ii.
+    exploit (PERM Cur Readable ofs); eauto; ss.
+    xomega.
+  }
+  r. f_equal.
+  rewrite PMap.gsspec. des_ifs.
+  rp; try rewrite Mem.getN_setN_same; eauto.
+  rewrite length_list_repeat. ss.
+Qed.
+Local Opaque Mem.loadbytes.
+
+Definition valid_blocks (m: mem): block -> Z -> Prop := fun b _ => (Mem.valid_block m) b.
+Hint Unfold valid_blocks.
+Hint Unfold loc_out_of_bounds.
+
+Lemma Mem_setN_getN_same_aux
+      n p c0 c1
+      ofs
+      (SAME: ZMap.get ofs c0 = ZMap.get ofs c1)
+  :
+    <<SAME: ZMap.get ofs (Mem.setN (Mem.getN n p c0) p c1) = ZMap.get ofs c0>>
+.
+Proof.
+  ginduction n; ii; ss. des.
+  erewrite IHn; ss.
+  ii. rewrite ZMap.gsspec. des_ifs.
+Qed.
+
+Lemma Mem_setN_getN_same2
+      n p c0 c1
+      ofs
+      (RANGE: p <= ofs < p + Z.of_nat n)
+  :
+    <<SAME: ZMap.get ofs (Mem.setN (Mem.getN n p c0) p c1) = ZMap.get ofs c0>>
+.
+Proof.
+  ginduction n; ii; ss.
+  { xomega. }
+  des.
+  destruct (classic (ofs = p)).
+  - clarify. r. rewrite Mem.setN_outside; ss.
+    { rewrite ZMap.gsspec. des_ifs. }
+    left. xomega.
+  - erewrite IHn; ss.
+    xomega.
+Qed.
+
+Lemma Mem_setN_getN_same
+      n p c
+  :
+    <<SAME: forall ofs, ZMap.get ofs (Mem.setN (Mem.getN n p c) p c) = ZMap.get ofs c>>
+.
+Proof.
+  ii.
+  eapply Mem_setN_getN_same_aux; eauto.
+Qed.
+
+Inductive Mem_stored (chunk: memory_chunk) (m0: mem) (b: block) (ofs: Z) (v: val) (m1: mem): Prop :=
+| Mem_stored_intro
+    (NB: Mem.nextblock m0 = Mem.nextblock m1)
+    (UNCH: Mem.unchanged_on (~2 brange b ofs (ofs + (size_chunk chunk))) m0 m1)
+    (STORED: Mem.load chunk m1 b ofs = Some v)
+    (* (PERM: forall mid (OFS: ofs <= mid < ofs + (size_chunk chunk)) k p, *)
+    (*     Mem.perm m0 b mid k p <-> Mem.perm m1 b mid k p) *)
+    (PERM: forall b0 ofs0 k p,
+        Mem.perm m0 b0 ofs0 k p <-> Mem.perm m1 b0 ofs0 k p)
+.
+
+
+
+Local Transparent Mem.load Mem.loadbytes Mem.storebytes.
+Lemma extends_load_right_stored_left
+      m_src0 m_tgt0
+      chunk v b ofs
+      (EXT: Mem.extends m_src0 m_tgt0)
+      (LDTGT: Mem.load chunk m_tgt0 b ofs = Some v)
+      (VALID: Mem.valid_access m_src0 chunk b ofs Writable)
+      (* (PERM: Mem.range_perm m_src0 b ofs (ofs + (size_chunk chunk)) Cur Writable) *)
+  :
+    exists m_src1, (<<STRSRC: Mem_stored chunk m_src0 b ofs v m_src1>>)
+                   /\ (<<EXT: Mem.extends m_src1 m_tgt0>>)
+.
+Proof.
+  rr in VALID. des.
+  hexploit (Mem.range_perm_loadbytes m_tgt0 b ofs).
+  { ii. eapply Mem.perm_extends; eauto. eapply Mem.perm_implies with Writable; eauto with mem. }
+  intro LDBYTES. des.
+  exploit Mem.loadbytes_length; et. intro LEN.
+  generalize (size_chunk_pos chunk); intro SZC.
+  hexploit (Mem.range_perm_storebytes m_src0 b ofs bytes); eauto.
+  { ii. eapply VALID. rewrite LEN in *. rewrite Z2Nat.id in *; try xomega. }
+  intro STRBYTES. destruct STRBYTES as [m_src1 STRBYTES].
+  exists m_src1.
+  (* inv EXT. *)
+  (* dup LDTGT. unfold Mem.load in LDTGT. des_ifs. *)
+  (* edestruct (Mem.range_perm_storebytes . *)
+  (* esplits. *)
+  (* { econs. et. *)
+  (* } *)
+  dsplits.
+  - econs; eauto with mem.
+    + exploit Mem.nextblock_storebytes; et.
+    + eapply Mem.storebytes_unchanged_on; et. i. intro U. apply U; clear U.
+      rr. esplits; ss; try xomega. rewrite LEN in *. rewrite Z2Nat.id in *; try xomega.
+    + exploit Mem.loadbytes_storebytes_same; eauto. intro LDB.
+      rewrite LEN in *. rewrite Z2Nat.id in *; try xomega.
+      exploit Mem.loadbytes_load; try apply LDB; et. intro LDSRC.
+      exploit Mem.loadbytes_load; try apply LDBYTES; et. intro LDTGT0.
+      clarify.
+  - inv EXT. inv SPLITHINT.
+    econs; et.
+    + congruence.
+    + unfold inject_id in *.
+      inv mext_inj.
+      econs; et.
+      * ii. clarify. eapply mi_perm; eauto. eapply PERM; eauto.
+      * ii. clarify. eapply mi_align; eauto. ii. exploit H0; eauto. intro T. eapply PERM; eauto.
+      * ii; clarify.
+        exploit mi_memval; eauto.
+        { eapply PERM; eauto. }
+        intro INJ.
+        destruct (classic (b2 = b /\ ofs <= ofs0 < ofs + size_chunk chunk)).
+        { (* stored regoion *)
+          rename H into RANGE.
+          des. clarify.
+          unfold Mem.storebytes in STRBYTES. des_ifs. ss.
+          rewrite PMap.gsspec. des_ifs.
+          clear - SZC RANGE0 RANGE1 INJ LDBYTES. unfold Mem.loadbytes in LDBYTES. des_ifs.
+          zsimpl.
+          erewrite Mem_setN_getN_same2; eauto.
+          { refl. }
+          rewrite Z2Nat.id in *; try xomega.
+        }
+        { (* not stored regoion *)
+          inv UNCH.
+          assert(INJ0: memval_inject inject_id (ZMap.get ofs0 (Mem.mem_contents m_src1) !! b2)
+                                     (ZMap.get ofs0 (Mem.mem_contents m_src0) !! b2)).
+          {
+            erewrite unchanged_on_contents; eauto.
+            { refl. }
+            eapply PERM; eauto.
+          }
+          exploit memval_inject_compose; eauto.
+        }
+    + ii. exploit mext_perm_inv; eauto.
+      i; des; eauto.
+      * left. eapply PERM; eauto.
+      * right. ii. eapply H0. eapply PERM; eauto.
+Qed.
+Local Opaque Mem.load Mem.loadbytes Mem.storebytes.
+

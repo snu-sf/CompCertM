@@ -1002,6 +1002,7 @@ Next Obligation.
     + i. des. esplits; eauto.
       * instantiate (1:=Retv.mk vres' m2'). ss.
       * ss. destruct retv_src; ss. econs; ss; eauto.
+      * eapply SimMemInjInvC.unch_true.
 Qed.
 
 End MEMINJ.

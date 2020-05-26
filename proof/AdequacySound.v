@@ -9,7 +9,7 @@ Require Import Integers.
 Require Import Events.
 
 Require Import Skeleton ModSem Mod Sem.
-Require Import SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
+Require Import SimSymb SimMem SimMod SimModSemUnified SimProg.
 Require Import SemProps Ord.
 Require Import Sound Preservation.
 Require Import Memory.
@@ -18,10 +18,24 @@ Set Implicit Arguments.
 
 
 
+(* TODO: Move to CoqlibC !!! *)
+Lemma nth_error_map_some
+      A B (f: A -> B) la n b
+      (NTH: nth_error (map f la) n = Some b)
+  :
+    exists a, <<NTH: nth_error la n = Some a>> /\ <<MAP: f a = b>>
+.
+Proof.
+  ginduction la; ii; ss.
+  { destruct n; ss. }
+  destruct n; ss; clarify.
+  { esplits; eauto. }
+  eapply IHla; eauto.
+Qed.
 
 Section ADQSOUND.
 
-  Context `{SM: SimMem.class}.
+  Context `{SMOS: SimMemOhs.class}.
   Context {SS: SimSymb.class SM}.
   Context `{SU: Sound.class}.
 
@@ -111,11 +125,11 @@ Section ADQSOUND.
                  exists su_gr,
                    (<<ARGS: Sound.args su_gr args>>) /\
                    (<<LE: Sound.lepriv su0 su_gr>>) /\
-                   (<<K: forall retv lst1 su_ret
+                   (<<K: forall oh retv lst1 su_ret
                        (LE: Sound.hle su_gr su_ret)
                        (SURETV: Sound.retv su_ret retv)
                        (MLE: Sound.mle su_gr (Args.get_m args) (Retv.get_m retv))
-                       (AFTER: ms.(ModSem.after_external) lst0 retv lst1),
+                       (AFTER: ms.(ModSem.after_external) lst0 oh retv lst1),
                        (* sound_state_all su0 args.(Args.get_m) lst1>>) *)
                        sound_state_all su0 (Args.get_m args_tail) lst1>>)
              >>)
@@ -128,7 +142,7 @@ Section ADQSOUND.
 
   Inductive sound_state: state -> Prop :=
   | sound_state_normal
-      args_tail tail ms lst0 m_arg
+      args_tail tail ms lst0 m_arg msohs
       (TL: sound_stack args_tail tail)
       (EXSU: exists su_ex, Sound.args su_ex args_tail /\ sound_ge su_ex m_arg)
       (FORALLSU: forall su0
@@ -141,15 +155,15 @@ Section ADQSOUND.
       (EX: exists sound_state_ex, local_preservation ms sound_state_ex)
       (ABCD: (Args.get_m args_tail) = m_arg)
     :
-      sound_state (State ((Frame.mk ms lst0) :: tail))
+      sound_state (State ((Frame.mk ms lst0) :: tail) msohs)
   | sound_state_call
-      m_tail frs args
+      m_tail frs args msohs
       (* (ARGS: Sound.args su0 args) *)
       (STK: sound_stack args frs)
       (* (MLE: Sound.mle su0 m_tail args.(Args.get_m)) *)
       (EQ: (Args.get_m args) = m_tail)
       (EXSU: exists su_ex, Sound.args su_ex args /\ sound_ge su_ex m_tail):
-      sound_state (Callstate args frs).
+      sound_state (Callstate args frs msohs).
 
   Lemma sound_init
         st0
@@ -162,8 +176,9 @@ Section ADQSOUND.
     { eapply SkEnv.load_skenv_wf; et. }
     assert(GE: sound_ge su_init m_init).
     { econs. rewrite Forall_forall. intros ? IN. ss. des_ifs. u in IN.
-      rewrite in_map_iff in IN. des; ss; clarify.
-      + s. split; try eapply Sound.system_skenv; eauto.
+      rewrite in_map_iff in IN.
+      des; ss; clarify.
+      + s. split; ss; try apply Sound.system_skenv; eauto.
       + assert(INCL: SkEnv.includes (Sk.load_skenv sk_link_src) (Mod.sk x0)).
         { unfold p_src in IN0. unfold ProgPair.src in *. rewrite in_map_iff in IN0. des. clarify. eapply INCLSRC; et. }
         split; ss.
@@ -209,7 +224,9 @@ Section ADQSOUND.
           exploit GE; eauto. { ss. des_ifs. eapply MSFIND. } intro T; des. eapply INIT0; et.
       + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *. des; clarify.
         { eapply system_local_preservation. }
-        u in MODSEM. rewrite in_map_iff in MODSEM. des; clarify. rename x into md_src.
+        u in MODSEM.
+        rewrite in_map_iff in MODSEM.
+        des; clarify. rename x into md_src.
         assert(exists mp, In mp pp /\ mp.(ModPair.src) = md_src).
         { clear - MODSEM0. rr in pp. rr in p_src. subst p_src. rewrite in_map_iff in *. des. eauto. }
         des. exploit SIMPROG; eauto. intros MPSIM. inv MPSIM.
@@ -220,7 +237,9 @@ Section ADQSOUND.
         { eapply SkEnv.load_skenv_wf; et. }
         { eapply SSLE; eauto. }
         { eauto. }
-        intro SIM; des. inv SIM. ss. esplits; eauto.
+        intro SIM; des.
+        try by (inv SIM; ss; esplits; eauto).
+        try by (inv SIMMSP; ss; esplits; eauto).
     - (* INTERNAL *)
       inv SUST. ss. esplits; eauto. econs; eauto. i. des.
       exploit FORALLSU; eauto. { eapply local_preservation_noguarantee_weak; eauto. } intro U; des. esplits; eauto. i. ss. inv PRSV.

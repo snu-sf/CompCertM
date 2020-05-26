@@ -164,6 +164,7 @@ Proof.
   econs; ss; i.
   destruct SIMSKENVLINK.
   exploit ab_unreach_local_preservation. i. des.
+  eexists.
   eapply match_states_sim with (match_states := match_states_ext_ab)
                                (match_states_at := top4); ss.
   - apply unit_ord_wf.
@@ -198,6 +199,8 @@ Proof.
       esplits; eauto.
       { left. eapply plus_one. econs. }
       econs; eauto.
+Unshelve.
+  all: ss.
 Qed.
 
 Lemma a_ext_top 
@@ -213,6 +216,7 @@ Proof.
   esplits; eauto. instantiate (1:=SimSymbId.mk _ _).
   econs; ss; i.
   destruct SIMSKENVLINK.
+  eexists.
   eapply match_states_sim with (match_states := match_states_ext_ab)
                                (match_states_at := top4); ss.
   - apply unit_ord_wf.
@@ -247,6 +251,7 @@ Proof.
       esplits; eauto.
       { left. eapply plus_one. econs. }
       econs; eauto.
+Unshelve. all: ss.
 Qed.
 
 Lemma ab_inj_drop_bot
@@ -264,6 +269,7 @@ Proof.
   econs; ss; i.
   { econs; ss; i; clarify.
     inv WF. auto. }
+  eexists.
   eapply match_states_sim with (match_states := match_states_ab)
                                  (match_states_at := top4); ss.
   - apply unit_ord_wf.
@@ -303,6 +309,7 @@ Proof.
       { left. eapply plus_one. econs. }
       { refl. }
       econs; eauto. econs; eauto.
+Unshelve. all: ss.
 Qed.
 
 Lemma ab_inj_drop
@@ -365,6 +372,7 @@ Proof.
   esplits; eauto. instantiate (1:=SimSymbDropInv.mk bot1 _ _).
   econs; ss; i.
   { econs; ss; i; clarify. inv WF. eauto. }
+  eexists.
   eapply match_states_sim with (match_states := match_states_ab_inv)
                                (match_states_at := top4); ss.
   - apply unit_ord_wf.
@@ -374,6 +382,7 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true; et.
     + econs; eauto.
       assert (i = i0).
       { subst. inv VALS. inv H2; ss. inv VS0. ss. }
@@ -392,6 +401,7 @@ Proof.
     + econs.
     + econs; eauto. econs.
     + refl.
+    + eapply SimMemInjInvC.unch_true; et.
 
   - right. ii. des.
     esplits.
@@ -403,7 +413,9 @@ Proof.
       esplits; eauto.
       { left. eapply plus_one. econs. }
       { refl. }
+      { eapply SimMemInjInvC.unch_true; et. }
       econs; eauto. econs; eauto.
+Unshelve. all: ss.
 Qed.
 
 End INJINV.

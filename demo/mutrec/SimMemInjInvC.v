@@ -57,6 +57,8 @@ Section MEMINJINV.
   Global Program Instance SimMemInjInv : SimMem.class :=
     {
       t := t';
+      ptt_src := fun _ _ _ => etc;
+      ptt_tgt := fun _ _ _ => etc;
       src := SimMemInj.src;
       tgt := SimMemInj.tgt;
       wf := wf' P_src P_tgt;
@@ -64,6 +66,7 @@ Section MEMINJINV.
       lepriv := lepriv;
       sim_val := fun (mrel: t') => Val.inject mrel.(SimMemInj.inj);
       sim_val_list := fun (mrel: t') => Val.inject_list mrel.(SimMemInj.inj);
+      unchanged_on := top3;
     }.
   Next Obligation.
     inv H. inv MLE. econs; eauto.
@@ -80,6 +83,9 @@ Section MEMINJINV.
   Next Obligation.
     inv H. ss.
   Qed.
+
+  Lemma unch_true: forall mi sm0 sm1, SimMem.unch mi sm0 sm1.
+  Proof. econs; ii; ss. Qed.
 
   Lemma unchanged_on_mle (sm0: t') m_src1 m_tgt1 j1
         (WF: SimMemInjInv.wf' P_src P_tgt sm0)
@@ -291,7 +297,7 @@ Section MEMINJINV.
   Qed.
 
 End MEMINJINV.
-
+Hint Resolve unch_true.
 
 
 

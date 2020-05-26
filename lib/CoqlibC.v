@@ -991,7 +991,21 @@ Proof. eauto. Qed.
 (* Remark: if econs/econsr gives different goal, at least 2 econs is possible *)
 Ltac econsr :=
   first
-    [ econstructor 16
+    [ econstructor 30
+     |econstructor 29
+     |econstructor 28
+     |econstructor 27
+     |econstructor 26
+     |econstructor 25
+     |econstructor 24
+     |econstructor 23
+     |econstructor 22
+     |econstructor 21
+     |econstructor 20
+     |econstructor 19
+     |econstructor 18
+     |econstructor 17
+     |econstructor 16
      |econstructor 15
      |econstructor 14
      |econstructor 13
@@ -1180,4 +1194,314 @@ Proof.
   i. inv ALL. des.
   - clarify. esplits; eauto. econs. auto.
   - eapply IHla in H3; eauto. des. esplits; eauto. econs 2. auto.
+Qed.
+
+Class Coercible (from to: Type): Type := {
+  coerce: from -> to;
+}.
+Global Program Instance insert_unit_Coercible A: Coercible A (unit -> A) :=
+  { coerce := fun x _ => x }.
+Global Program Instance fun_Coercible A F T `{Coercible F T}:
+  Coercible (A -> F) (A -> T) :=
+  { coerce := fun af a => coerce (af a) }.
+
+Ltac des_u := match goal with | [ a: unit |- _ ] => destruct a end.
+
+Definition mapi_aux A B (f: nat -> A -> B) :=
+  let fix rec (cur : nat) (la : list A) {struct la}: list B :=
+      match la with
+      | [] => []
+      | hd :: tl => f cur hd :: rec (S cur) tl
+      end
+  in rec.
+
+Definition mapi A B (f: nat -> A -> B) (la: list A): list B :=
+  mapi_aux f (0%nat) la.
+
+Lemma in_mapi_aux_iff
+      A B (f: nat -> A -> B) la b
+  :
+    forall m,
+      In b (mapi_aux f m la) <->
+      (exists idx a, f (m + idx)%nat a = b /\ nth_error la idx = Some a)
+.
+Proof.
+  ginduction la; split; ii; ss; des; firstorder (subst; auto).
+  - destruct idx; ss.
+  - exists 0%nat. rewrite Nat.add_0_r. esplits; eauto.
+  - exploit IHla; eauto. intros [T _]. exploit T; eauto. i; des. esplits; eauto.
+    { rp; eauto. f_equal. instantiate (1:= (S idx%nat)). omega. }
+    ss.
+  - destruct idx; ss; clarify.
+    { left. f_equal. omega. }
+    right. eapply IHla; eauto. esplits; eauto.
+    { rp; eauto. f_equal. omega. }
+Qed.
+
+(* NOTE: If you give name << >>, rewrite tactic does not work... *)
+(* TODO: FIX IT *)
+Lemma in_mapi_iff
+      A B (f: nat -> A -> B) la b
+  :
+    (* (<<IN: In b (mapi f la)>>) <-> *)
+    (* (<<NTH: (exists idx a, f idx a = b /\ nth_error la idx = Some a)>>) *)
+    In b (mapi f la) <->
+    (exists idx a, f (idx) a = b /\ nth_error la idx = Some a)
+.
+Proof.
+  eapply in_mapi_aux_iff.
+Qed.
+
+Lemma nth_error_mapi_aux_iff
+      A B (f: nat -> A -> B) la b
+  :
+    forall idx m,
+      nth_error (mapi_aux f m la) idx = Some b <->
+      (exists a, f (m + idx)%nat a = b /\ nth_error la idx = Some a)
+.
+Proof.
+  ginduction la; split; ii; ss; des; firstorder (subst; auto).
+  - destruct idx; ss.
+  - destruct idx; ss.
+  - destruct idx; ss; clarify.
+    + esplits; eauto. f_equal; xomega.
+    + exploit IHla; eauto. intros [T _]. eapply T in H. des. clarify.
+      esplits; eauto. ss. f_equal; xomega.
+  - destruct idx; ss; clarify.
+    { repeat f_equal; xomega. }
+    exploit IHla; eauto. intros [_ T]. exploit T; eauto. intro Q; des.
+    replace (m + S idx)%nat with (S m + idx)%nat by xomega.
+    rewrite Q. ss.
+Qed.
+
+Lemma nth_error_mapi_iff
+      A B (f: nat -> A -> B) la b
+  :
+    forall idx,
+      nth_error (mapi f la) idx = Some b <->
+      (exists a, f (idx)%nat a = b /\ nth_error la idx = Some a)
+.
+Proof.
+  split; ii; des.
+  - eapply nth_error_mapi_aux_iff in H; eauto.
+  - eapply nth_error_mapi_aux_iff; eauto.
+Qed.
+
+Lemma mapi_aux_length
+      A B (f: nat -> A -> B) m la
+  :
+    <<LEN: length (mapi_aux f m la) = length la>>
+.
+Proof.
+  ginduction la; ii; ss.
+  erewrite IHla; eauto.
+Qed.
+
+Lemma nth_error_mapi_none_aux_iff
+      A B  (f : nat -> A -> B) la idx m
+  :
+    <<NTH: nth_error (mapi_aux f m la) idx = None>> <->
+           <<LEN: (length la <= idx)%nat>>
+.
+Proof.
+  split; i.
+  - ginduction la; ii; ss; des.
+    + destruct idx; ii; ss. r. xomega.
+    + destruct idx; ii; ss. r. exploit IHla; eauto. i; des. xomega.
+  - ginduction la; ii; ss; des.
+    + destruct idx; ii; ss.
+    + destruct idx; ii; ss. { xomega. } eapply IHla; eauto. r. xomega.
+Qed.
+
+Definition option_dec X (dec: forall x0 x1: X, {x0 = x1} + {x0 <> x1})
+           (x0 x1: option X): {x0 = x1} + {x0 <> x1}
+.
+  decide equality.
+Defined.
+
+Fixpoint filter_map A B (f: A -> option B) (l: list A): list B :=
+  match l with
+  | [] => []
+  | hd :: tl =>
+    match (f hd) with
+    | Some b => b :: (filter_map f tl)
+    | _ => filter_map f tl
+    end
+  end
+.
+
+Lemma in_filter_map_iff
+      X Y (f: X -> option Y) xs y
+  :
+    <<IN: In y (filter_map f xs)>> <-> (exists x, <<F: f x = Some y>> /\ <<IN: In x xs>>)
+.
+Proof.
+  split; ii.
+  - ginduction xs; ii; ss. des_ifs; ss; des; clarify; eauto.
+    + exploit IHxs; eauto. i; des. eauto.
+    + exploit IHxs; eauto. i; des. eauto.
+  - des. ginduction xs; ii; ss. des_ifs; ss; des; clarify; eauto.
+    exploit (IHxs _ f y x); eauto.
+Qed.
+
+Lemma nodup_length
+      X (xs: list X) x_dec
+  :
+    <<LEN: (length (nodup x_dec xs) <= length (xs))%nat>>
+.
+Proof.
+  r.
+  ginduction xs; ii; ss. exploit IHxs; et. i; des. des_ifs; ss; try rewrite H; try xomega.
+Qed.
+
+Fixpoint snoc X (xs: list X) (x: X): list X :=
+  match xs with
+  | [] => [x]
+  | hd :: tl => hd :: snoc tl x
+  end
+.
+
+Lemma elim_snoc
+      X (xs: list X)
+  :
+    <<NIL: xs = []>> \/ exists lt dh, <<SNOC: xs = snoc lt dh>>
+.
+Proof.
+  ginduction xs; ii; ss; et.
+  des; clarify; et.
+  - right. exists nil, a. ss.
+  - right. exists (a :: lt), dh. ss.
+Qed.
+
+Lemma rev_snoc
+      X (x: X) lt
+  :
+    <<EQ: rev (snoc lt x) = x :: rev lt>>
+.
+Proof.
+  ginduction lt; ii; ss.
+  erewrite IHlt; et.
+Qed.
+
+Lemma func_app
+      X Y (f: X -> Y)
+      x0 x1
+      (EQ: x0 = x1)
+  :
+    <<EQ: f x0 = f x1>>
+.
+Proof. clarify. Qed.
+Arguments func_app [_] [_].
+
+Lemma snoc_length
+      X (x: X) lt
+  :
+    <<LEN: (length (snoc lt x) = length lt + 1)%nat>>
+.
+Proof.
+  ginduction lt; ii; ss. erewrite IHlt; et.
+Qed.
+
+Lemma rev_cons
+      X (xs: list X) x tl
+      (REV: rev xs = x :: tl)
+  :
+    (<<NTH: nth_error xs (Datatypes.length xs - 1) = Some x>>)
+.
+Proof.
+  ginduction xs; ii; ss.
+  { generalize (elim_snoc xs); intro T.
+    des; clarify.
+    - ss. clarify.
+    - rewrite rev_snoc in *; ss. clarify.
+      exploit IHxs; et. i; des.
+      rewrite snoc_length in *. destruct lt; ss. rewrite Nat.sub_0_r in *; ss.
+  }
+Qed.
+
+Lemma NoDup_snoc
+      X (x: X) xs
+      (NIN: ~In x xs)
+      (NDUP: NoDup xs)
+  :
+    <<NDUP: NoDup (xs ++ [x])>>
+.
+Proof.
+  ginduction xs; ii; ss.
+  - econs; et.
+  - apply not_or_and in NIN. des.
+    eapply NoDup_cons_iff in NDUP; des; ss.
+    econs; et.
+    + rewrite in_app_iff. apply and_not_or. esplits; et.
+      * ss. ii; des; clarify.
+    + eapply IHxs; et.
+Qed.
+
+Lemma NoDup_rev
+      X (xs: list X)
+      (UNIQ: NoDup xs)
+  :
+    <<UNIQ: NoDup (rev xs)>>
+.
+Proof.
+  ginduction xs; ii; ss.
+  inv UNIQ. eapply IHxs in H2.
+  eapply NoDup_snoc; et. rewrite <- in_rev. ss.
+Qed.
+
+Lemma map_ext
+      A B
+      (f g : A -> B)
+      l
+      (EQ: forall a (IN: In a l), <<EQ: f a = g a>>)
+  :
+    map f l = map g l
+.
+Proof.
+  ginduction l; ii; ss.
+  exploit EQ; et. i; des. erewrite IHl; et. congruence.
+Qed.
+
+Lemma filter_map_none
+      X Y (f: X -> option Y) xs
+      (NONE: forall x (IN: In x xs), f x = None)
+  :
+    <<NIL: filter_map f xs = []>>
+.
+Proof.
+  clear - xs NONE. ginduction xs; ii; ss. exploit IHxs; et. intro T. rewrite T. des_ifs.
+  exploit NONE; et. i; clarify.
+Qed.
+
+Lemma filter_map_app
+      X Y xs0 xs1 (f: X -> option Y)
+  :
+    <<EQ: (filter_map f (xs0 ++ xs1)) = (filter_map f xs0) ++ (filter_map f xs1)>>
+.
+Proof.
+  ginduction xs0; ii; ss.
+  des_ifs. rewrite IHxs0. ss.
+Qed.
+
+Lemma filter_map_rev
+      X Y xs (f: X -> option Y)
+  :
+    <<EQ: rev (filter_map f xs) = filter_map f (rev xs)>>
+.
+Proof.
+  ginduction xs; ii; ss. des_ifs.
+  - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs.
+  - ss. rewrite IHxs; et. rewrite filter_map_app; ss. des_ifs. rewrite app_nil_r. ss.
+Qed.
+
+Lemma nth_error_nth
+      X
+      (xs: list X) n x
+      (NTH: nth_error xs n = Some x)
+  :
+    forall d, nth n xs d = x
+.
+Proof.
+  ginduction xs; ii; ss; des_ifs; ss; clarify.
+  exploit IHxs; eauto.
 Qed.

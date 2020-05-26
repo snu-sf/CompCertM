@@ -10,7 +10,7 @@ Require Import DemoHeader.
 
 Set Implicit Arguments.
 
-Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify.
+Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify.
 
 Section MODSEM.
 
@@ -48,17 +48,18 @@ Section MODSEM.
       ModSem.state := state;
       ModSem.genvtype := unit;
       ModSem.step := bot5;
-      ModSem.at_external := bot2;
-      ModSem.initial_frame := initial_frame;
-      ModSem.final_frame := final_frame;
-      ModSem.after_external := bot3;
+      ModSem.at_external := bot3;
+      ModSem.initial_frame := coerce initial_frame;
+      ModSem.final_frame := coerce final_frame;
+      ModSem.after_external := bot4;
       ModSem.globalenv := tt;
       ModSem.skenv := skenv;
       ModSem.skenv_link := skenv_link;
+      ModSem.midx := None;
     |}
   .
 
 End MODSEM.
 
 Program Definition module: Mod.t :=
-  {| Mod.data := tt; Mod.get_sk := fun _ => prog; Mod.get_modsem := modsem; |}.
+  {| Mod.data := tt; Mod.get_sk := fun _ => prog; Mod.get_modsem := modsem; Mod.midx := None |}.

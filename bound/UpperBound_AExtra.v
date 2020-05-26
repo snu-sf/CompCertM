@@ -1335,7 +1335,8 @@ Section SIM.
       + destruct k3; destruct k0; ss; clarify; try (by eexists; right; econs; eauto).
         inv SUM. unfold is_call_cont_strong in CALL. des_ifs.
         ss. exfalso. eapply NRETTGT. ss. econs. unfold ModSem.final_frame. ss.
-        Unshelve. all:auto.
+        esplits; eauto. econs; eauto.
+        Unshelve. all: ss.
   Qed.
 
 End SIM.

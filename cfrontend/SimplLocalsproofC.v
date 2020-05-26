@@ -225,7 +225,7 @@ Proof.
     ii. destruct f1; ss.
     + clarify. right. inv MATCH. monadInv H2. esplits; eauto. unfold transf_function in *. des_ifs. monadInv EQ. ss.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. eexists. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

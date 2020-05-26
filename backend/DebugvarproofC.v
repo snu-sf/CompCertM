@@ -10,6 +10,7 @@ Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC Matc
 Require SimMemId.
 Require SoundTop.
 Require Import LiftDummy.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -62,7 +63,7 @@ Proof.
     intro P; des.
     hexploit (@fill_arguments_spec); et. intro Q; des.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    eexists. eexists (SimMemId.mk _ _). esplits; ss; cycle 1.
+    eexists. eexists (SimMemId.mk _ _). esplits; ss; cycle 2.
     + econs; eauto; ss.
       * rpapply match_states_call.
         { econs; eauto.
@@ -83,6 +84,7 @@ Proof.
       { folder; ss. eauto. }
       all: ss.
       unfold transf_function in *. des_ifs.
+    + et.
   - (* init progress *)
     des. inv SAFESRC. inv SIMARGS; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
@@ -172,7 +174,7 @@ Proof.
     ii. destruct f1; ss.
     + clarify. right. unfold Errors.bind, transf_function in *. des_ifs. esplits; eauto.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. esplits; et. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

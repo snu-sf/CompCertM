@@ -1,7 +1,7 @@
 Require Import FSets.
 Require Import CoqlibC Errors Ordered Maps IntegersC Floats.
 Require Import AST Linking.
-Require Import ValuesC Memory GlobalenvsC Events Smallstep.
+Require Import ValuesC MemoryC GlobalenvsC Events Smallstep.
 Require Import Registers Op RTLC.
 Require Import ValueDomain ValueAnalysisC NeedDomain NeedOp Inlining.
 Require Import sflib.
@@ -9,11 +9,11 @@ Require SimMemInj.
 (** newly added **)
 Require Export Inliningproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem MatchSimModSem.
 Require SimMemInjC.
 Require SoundTop.
-Require Import CtypingC.
 Require Import ModSemProps.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -31,7 +31,8 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Hypothesis TRANSL: match_prog prog tprog.
 Let ge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_src)) prog).
 Let tge := (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) tprog).
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
+Definition msp: ModSemPair.t :=
+  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
 Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
@@ -200,7 +201,7 @@ Proof.
     ii. destruct f1; ss.
     + clarify. right. unfold Errors.bind in MATCH. des_ifs. esplits; eauto. unfold transf_function in *. des_ifs.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. esplits; eauto. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

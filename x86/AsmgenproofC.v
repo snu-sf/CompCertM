@@ -294,6 +294,7 @@ Proof.
         -- destruct ra; ss; try inv H0. inv ATLR. ss.
       * inv AG. rewrite agree_sp0. clarify.
     + instantiate (1:= SimMemExt.mk m1 m2'). econs; ss; eauto.
+    + et.
     + ss.
 
   - inv AFTERSRC. ss. des. clarify. destruct st_tgt0, st. inv MATCH. inv MATCHST.
@@ -391,7 +392,7 @@ Proof.
     + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto.
       unfold transf_function, transl_function, bind in *. des_ifs.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

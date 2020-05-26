@@ -30,11 +30,14 @@ Program Instance SimMemId : SimMem.class :=
 { t := t';
   src := src;
   tgt := tgt;
+  ptt_src := fun _ _ _ => etc;
+  ptt_tgt := fun _ _ _ => etc;
   wf := fun (rel: t') => rel.(src) = rel.(tgt);
   le := fun (mrel0 mrel1: t') => True;
   lepriv := top2;
   sim_val := fun (_: t') => eq;
   sim_val_list := fun (_: t') => eq;
+  unchanged_on := top3;
 }.
 Next Obligation.
   do 2 (apply Axioms.functional_extensionality; i). apply prop_ext1. split; i; ss; clarify.
@@ -42,6 +45,9 @@ Next Obligation.
   - ginduction x1; ii; ss. econs; eauto.
 Qed.
 
+Lemma unch_true: top3 <3= SimMem.unch.
+Proof. econs; ii; ss. Qed.
+Hint Resolve unch_true.
 
 
 
@@ -87,5 +93,5 @@ Next Obligation.
     { eapply SimSymbId.sim_skenv_equiv; eauto. }
     instantiate (1:= Retv.mk _ _). ss. eauto.
   - instantiate (1:= mk _ _). econs; ss; eauto.
-  - ss.
+  - econs; ii; ss.
 Qed.

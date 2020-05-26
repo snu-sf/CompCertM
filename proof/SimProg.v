@@ -14,7 +14,7 @@ Require Import Maps.
 Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.
-Require Import SimMem SimModSem SimMod.
+Require Import SimMem SimModSemUnified SimMod.
 Require Import Sound SemProps.
 
 Set Implicit Arguments.
@@ -97,15 +97,3 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Qed.
 
 End SIM.
-
-
-
-
-
-
-
-
-
-
-
-

@@ -20,6 +20,7 @@ Require Import StoreArguments StoreArgumentsProps.
 Require Import ModSemProps.
 Require Import LiftDummy.
 Require Import JunkBlock.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -553,7 +554,7 @@ Hypothesis return_address_offset_deterministic: forall f c ofs ofs',
 
 Let match_stacks := match_stacks skenv_link skenv_link.
 
-Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link (SimMemOh_default _).
 
 Lemma functions_translated_inject
       sm0 fptr_src fd_tgt fptr_tgt
@@ -948,7 +949,7 @@ Proof.
   - inv EXCL. inv MLEEXCL. econs; ss; eauto.
     inv MWF. eapply frozen_shortened; eauto with xomega.
   - (* init bsim *)
-    { inv INITTGT. inv STORE. folder. inv SIMARGS; ss.
+    { inv INITTGT. inv STORE. folder. rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
       exploit functions_translated_inject; eauto.
       { eapply make_match_genvs; et. apply SIMSKENV. }
       { apply SIMSKENV. }
@@ -1019,6 +1020,7 @@ Proof.
           erewrite SimMem.sim_val_list_length; try apply VALS0. ss. etrans; eauto with congruence.
       }
       { instantiate (1:= sm2). etrans; eauto. }
+      { eauto. }
       { (* match states *)
         assert(INITRS: agree_regs (SimMemInj.inj sm2) ls1 rs).
         { ii. destruct (classic (In (R r) (regs_of_rpairs (loc_arguments (Linear.fn_sig f))))).
@@ -1120,7 +1122,7 @@ Proof.
   - (* init progress *)
     des. inv SAFESRC. folder.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des.
-    inv SIMARGS; ss.
+    rr in SIMARGS; des. inv SIMARGS0; ss.
     exploit (fsim_internal_funct_inject SIMGE); et.
     { unfold ge. eapply SimMemInjC.skenv_inject_revive; et. eapply SIMSKENV. }
     i; des. monadInv MATCH. rename x into fd_tgt.
@@ -1184,7 +1186,7 @@ Proof.
       * psimpl. zsimpl. des. inv WF. unfold Genv.find_funct in EXTTGT. des_ifs.
         rewrite Genv.find_funct_ptr_iff in EXTTGT. ss. eapply WFPARAM in EXTTGT; eauto. unfold Sk.get_csig in *. des_ifs.
       * ii. rewrite Ptrofs.unsigned_zero. eapply Z.divide_0_r.
-    + econs; ss; eauto with congruence.
+    + rr. esplits; ss. econs; ss; eauto with congruence.
     + econs; ss; et. econs; ss; et. u. i. des. clarify. eapply Mem.free_range_perm; et.
     + econs; eauto with congruence.
       * rp; eauto.
@@ -1217,7 +1219,7 @@ Proof.
     inv MATCHST; ss. destruct st_tgt0; ss. clarify. ss. clarify.
     assert(MCOMPAT0: sm0.(SimMemInj.inj) = j). { inv MCOMPAT; ss. } clarify.
 
-    hexpl match_stacks_sp_ofs RSP. inv SIMRET; ss.
+    hexpl match_stacks_sp_ofs RSP. rr in SIMRET; des. inv SIMRETV; ss. clarify.
 
     assert(VALID: Mem.valid_block (SimMemInj.tgt sm0) sp).
     { inv HISTORY. inv MATCHARG. ss. clarify. eauto with congruence. }
@@ -1228,7 +1230,8 @@ Proof.
     } des.
 
     exploit (@SimMemInjC.unfree_right (SimMemInj.unlift' sm_arg sm_ret)); try apply UNFR; eauto.
-    { inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl. inv SIMARGS; ss. clarify.
+    { inv HISTORY. inv CALLSRC. inv CALLTGT. rewrite RSP in *. clarify. psimpl. zsimpl.
+      rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
       assert(sg = sg_arg).
       { des. clarify. inv SIMSKENV. inv SIMSKELINK. ss. r in SIMSKENV.
         exploit fsim_external_inject_eq; et. i. subst tfptr. clarify. }
@@ -1411,8 +1414,8 @@ Proof.
     }
     i; des_safe. rename sm1 into sm_ret.
 
-    eexists sm_ret, (Retv.mk _ _). esplits; eauto; cycle 1.
-    + inv MCOMPAT. econs; ss; eauto.
+    eexists sm_ret, tt, (Retv.mk _ _). esplits; eauto; cycle 1.
+    + inv MCOMPAT. rr. esplits; et. econs; ss; eauto.
       rewrite ONE. ss. specialize (AGREGS mr_res). eapply val_inject_incr; try apply MLE; eauto.
     + inv MCOMPAT. econs; eauto.
       * ii. specialize (AGCSREGS mr). ss. specialize (GOOD mr H). des_safe.
@@ -1444,6 +1447,7 @@ Proof.
       * esplits; et.
         { eapply LinearC.step_preserves_last_option; et. }
         { ii. exploit GOOD; et. i; des. esplits; et. eapply val_inject_incr; try apply MLE; et. }
+  - esplits; et.
 
 Unshelve.
   all: ss.
@@ -1473,7 +1477,7 @@ Proof.
   - r. eapply Sk.match_program_eq; eauto. ii. destruct f1; ss.
     + clarify. right. unfold bind in MATCH. des_ifs. esplits; eauto. erewrite transf_function_sig; eauto.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. inv SIMSKENV. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. inv SIMSKENV. esplits; et. eapply sim_modsem; eauto.
     i. ss. uge0. des_ifs. unfold SkEnv.revive in *. apply Genv_map_defs_def in Heq. des. ss. gesimpl.
     apply Genv_map_defs_def in FIND. des. unfold o_bind, o_join, o_map in *. des_ifs. ss. clear_tac.
     eapply return_address_offset_exists; et. eapply in_prog_defmap; et.

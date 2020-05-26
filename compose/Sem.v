@@ -10,6 +10,7 @@ Require Import LinkingC.
 Require Import CoqlibC.
 Require Import sflib.
 
+Require Import Any.
 Require Import ModSem Mod Skeleton System.
 Require Export Syntax.
 
@@ -21,7 +22,8 @@ Set Implicit Arguments.
 
 
 
-
+Definition Ohs := Midx.t -> Any.
+(* Definition Ohs := list Any. *)
 
 Module Frame.
 
@@ -60,34 +62,52 @@ Inductive state: Type :=
 | Callstate
     (args: Args.t)
     (frs: list Frame.t)
+    (* Note: List module does not have update method, *)
+    (* so I use functional style (which is easier to define my own "update" function) *)
+    (ohs: Ohs)
 | State
-    (frs: list Frame.t).
+    (frs: list Frame.t)
+    (ohs: Ohs)
+.
+
+Definition get_ohs (st: state): Ohs :=
+  match st with
+  | Callstate _ _ ohs => ohs
+  | State _ ohs => ohs
+  end.
 
 Inductive step (ge: Ge.t): state -> trace -> state -> Prop :=
 | step_call
-    fr0 frs args
-    (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) args):
-    step ge (State (fr0 :: frs))
-         E0 (Callstate args (fr0 :: frs))
+    fr0 frs args oh ohs0 ohs1
+    (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) oh args)
+    (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh)):
+    step ge (State (fr0 :: frs) ohs0)
+         E0 (Callstate args (fr0 :: frs) ohs1)
 
 | step_init
-    args frs ms st_init
+    args frs ms st_init oh ohs
     (MSFIND: ge.(Ge.find_fptr_owner) (Args.get_fptr args) ms)
-    (INIT: ms.(ModSem.initial_frame) args st_init):
-    step ge (Callstate args frs)
-         E0 (State ((Frame.mk ms st_init) :: frs))
+    (* (OH: nth_error ohs ms.(ModSem.midx) = Some (existT id _ oh)) *)
+    (OH: Midx.get ohs ms.(ModSem.midx) = upcast oh)
+    (INIT: ms.(ModSem.initial_frame) oh args st_init):
+    step ge (Callstate args frs ohs)
+         E0 (State ((Frame.mk ms st_init) :: frs) ohs)
 
 | step_internal
-    fr0 frs tr st0
+    fr0 frs tr st0 ohs
     (STEP: Step (fr0.(Frame.ms)) fr0.(Frame.st) tr st0):
-    step ge (State (fr0 :: frs))
-         tr (State (((Frame.update_st fr0) st0) :: frs))
+    step ge (State (fr0 :: frs) ohs)
+         tr (State (((Frame.update_st fr0) st0) :: frs) ohs)
 | step_return
-    fr0 fr1 frs retv st0
-    (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) retv)
-    (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) retv st0):
-    step ge (State (fr0 :: fr1 :: frs))
-         E0 (State (((Frame.update_st fr1) st0) :: frs)).
+    fr0 fr1 frs retv st0 ohs0 ohs1 oh0 oh1
+    (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) oh0 retv)
+    (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) oh1 retv st0)
+    (OHS: ohs1 = Midx.update ohs0 fr0.(Frame.ms).(ModSem.midx) (upcast oh0))
+    (* (OH: nth_error ohs1 fr1.(Frame.ms).(ModSem.midx) = Some (existT id _ oh1)): *)
+    (OH: Midx.get ohs1 fr1.(Frame.ms).(ModSem.midx) = upcast oh1):
+    step ge (State (fr0 :: fr1 :: frs) ohs0)
+         E0 (State (((Frame.update_st fr1) st0) :: frs) ohs1)
+.
 
 
 
@@ -115,36 +135,45 @@ Section SEMANTICS.
     let (system, skenv) := load_system init_skenv in
     (system :: (load_modsems init_skenv), init_skenv).
 
+  Definition load_owned_heaps (mss: list ModSem.t): Ohs :=
+    Midx.list_to_set (map (fun ms => (ms.(ModSem.midx), upcast ms.(ModSem.initial_owned_heap))) mss)
+                     (upcast tt)
+  .
+
   (* Making dummy_module that calls main? => Then what is sk of it? Memory will be different with physical linking *)
-  Inductive initial_state: state -> Prop :=
+  Inductive initial_state (ge: Ge.t): state -> Prop :=
   | initial_state_intro
-      sk_link skenv_link m_init fptr_init
+      sk_link skenv_link m_init fptr_init ohs
       (INITSK: link_sk = Some sk_link)
       (INITSKENV: (Sk.load_skenv sk_link) = skenv_link)
       (INITMEM: (Sk.load_mem sk_link) = Some m_init)
       (FPTR: fptr_init = (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero))
       (SIG: (Genv.find_funct skenv_link) fptr_init = Some (Internal signature_main))
-      (WF: forall md (IN: In md p), <<WF: Sk.wf md>>):
-      initial_state (Callstate (Args.mk fptr_init [] m_init) []).
+      (WF: forall md (IN: In md p), <<WF: Sk.wf md>>)
+      (OHSUNIQ: Midx.NoDup (map ModSem.midx (fst ge)))
+      (OHS: ohs = load_owned_heaps (fst ge)):
+      initial_state ge (Callstate (Args.mk fptr_init [] m_init) [] ohs).
 
   Inductive final_state: state -> int -> Prop :=
   | final_state_intro
-      fr0 retv i
-      (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) retv)
+      fr0 oh ohs retv i
+      (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) oh retv)
       (INT: (Retv.v retv) = Vint i):
-      final_state (State [fr0]) i.
+      final_state (State [fr0] ohs) i.
 
   Definition sem: semantics :=
-    (Semantics_gen (fun _ => step) initial_state final_state
-                   (match link_sk with
+    let ge := (match link_sk with
                     | Some sk_link => load_genv (Sk.load_skenv sk_link)
                     | None => (nil, SkEnv.empty)
-                    end)
+                    end) in
+    (Semantics_gen (fun _ => step) (initial_state ge) final_state
+                   ge
                    (* NOTE: The symbolenv here is never actually evoked in our semantics. Putting this value is merely for our convenience. (lifting receptive/determinate) Whole proof should be sound even if we put dummy data here. *)
                    (match link_sk with
                     | Some sk_link => (Sk.load_skenv sk_link)
                     | None => SkEnv.empty
                     end)).
+
   (* Note: I don't want to make it option type. If it is option type, there is a problem. *)
   (* I have to state this way:
 ```

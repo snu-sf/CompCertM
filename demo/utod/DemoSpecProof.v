@@ -13,7 +13,7 @@ Require Import MatchSimModSem.
 
 Require DemoSpec.
 Require DemoTarget.
-Require Import DemoHeader.
+Require Import DemoHeader Any.
 
 Require Import Floats Integers IntegersC.
 (* Require Import Fappli_rnd_odd. *)
@@ -193,10 +193,11 @@ Theorem correct
     ModPair.sim mp
 .
 Proof.
-  econs; eauto; ss. i. inv SSLE.
+  econs; eauto; ss. i. eexists. inv SSLE.
   econs; ss; i.
   { i. eapply SoundTop.sound_state_local_preservation. }
   { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
+  { esplits; et. }
 
   assert (FPTRTGT: Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link_tgt (Sk.of_program fn_sig DemoTarget.prog)) DemoTarget.prog)
                                    (Args.get_fptr args_tgt) = Some (AST.Internal (DemoTarget.func))).
@@ -214,20 +215,21 @@ Proof.
     - intros INVSYMB. rewrite INVSYMB. ss. }
 
   esplits; ss; i; cycle 1.
-  { des. inv SAFESRC. clarify. inv SIMARGS. ss.
+  { des. inv SAFESRC. clarify. rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
     eapply asm_initial_frame_succeed; eauto; ss.
     eapply inject_list_length in VALS.
-    rewrite VS in *. ss. ss. }
+    rewrite <- VALS. ss. }
 
   assert (ARGLONG: exists lng, (Args.vs args_src) = [Vlong lng]).
   { inv SAFESRC. inv H. rewrite VS. eauto. }
   inv INITTGT; ss; clarify. inv TYP. ss.
-  inv SIMARGS; ss. clarify. inv VALS; ss. inv H0; ss.
+  rr in SIMARGS; des. inv SIMARGS0; ss. clarify. inv VALS; ss. rename H1 into HD. rename H3 into TL.
+  inv TL; ss.
   ss. clarify. unfold AsmC.store_arguments in *. des.
   dup STORE0. inv STORE0.
   unfold typify_list, zip in *. inv VALS. des_ifs_safe.
   unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs.
-  inv H3.
+  inv H4.
 
   eexists (DemoSpec.mkstate lng (SimMemInj.src sm_arg)). esplits; eauto.
   - refl.
@@ -238,15 +240,15 @@ Proof.
     { instantiate (1:=unit). unfold lxsim. pfold. ss.
       intros _. econs 1. ii. econs 1.
       - split; ii.
-        + inv H0. inv H2.
-        + inv H0. inv H2. ss.
+        + rr in H. des. inv H.
+        + rr in H. des. inv H.
           clear - VEQ SPEC. unfold typify in *. clarify.
           des_ifs. ss.
       - ii. inv STEPSRC.
       - econs; ii; ss. }
 
     dup VEQ. unfold typify, to_mregset in *. ss.
-    unfold Val.floatoflongu in VEQ0. des_ifs; inv H; ss. inv H1.
+    unfold Val.floatoflongu in VEQ0. des_ifs; inv HD; ss. inv H2. inv H0.
     rename H into RDIV.
 
     rewrite Z.mul_0_r in *.
@@ -314,7 +316,9 @@ Proof.
           repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0); des_ifs).
         econs 1; eauto.
       * eauto.
+      * eauto.
       * left. pfold. econs 4; cycle 2; ss.
+        -- et.
         -- econs; ss; eauto.
            ++ rewrite Heq. ss. des_ifs. esplits; eauto.
            ++ unfold nextinstr_nf, nextinstr, undef_regs;
@@ -332,7 +336,7 @@ Proof.
                 repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
            ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
            ++ unfold Conventions1.loc_result. des_ifs.
-        -- instantiate (1:= sm1).
+        -- rr. esplits; ss; et.
            unfold nextinstr_nf, nextinstr, undef_regs;
              repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
            econs; ss; eauto.
@@ -354,7 +358,9 @@ Proof.
               repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0); des_ifs).
         econs 1; eauto.
       * eauto.
+      * et.
       * left. pfold. econs 4; cycle 2; ss.
+        -- et.
         -- econs; ss; eauto.
            ++ rewrite Heq. ss. des_ifs. esplits; eauto.
            ++ unfold nextinstr_nf, nextinstr, undef_regs;
@@ -372,7 +378,7 @@ Proof.
                 repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
            ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
            ++ unfold Conventions1.loc_result. des_ifs.
-        -- instantiate (1:= sm1).
+        -- rr. esplits; ss; et.
            unfold nextinstr_nf, nextinstr, undef_regs;
              repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
            econs; ss; eauto.

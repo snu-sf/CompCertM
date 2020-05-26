@@ -6,9 +6,10 @@ Require Import sflib.
 (** newly added **)
 Require Export Renumberproof.
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem MatchSimModSem.
 Require SimMemId.
 Require SoundTop.
+Require Import Program.
 
 Set Implicit Arguments.
 
@@ -65,7 +66,7 @@ Proof.
     inv MATCH; ss. destruct sm0; ss. clarify. inv CALLSRC. inv MATCHST; ss.
   - (* call fsim *)
     inv MATCH; ss. destruct sm0; ss. clarify.
-    inv CALLSRC. inv MATCHST; ss. folder. esplits; eauto.
+    inv CALLSRC. inv MATCHST; ss. folder. esplits; ss; eauto.
     + econs; eauto.
       * folder. des. r in TRANSL. r in TRANSL.
         exploit (SimSymbId.sim_skenv_revive TRANSL); eauto.
@@ -113,7 +114,7 @@ Proof.
   - r. eapply Sk.match_program_eq; eauto. ii. destruct f1; ss.
     + clarify. right. esplits; eauto.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. esplits; eauto. eapply sim_modsem; eauto.
 Qed.
 
 End SIMMOD.

@@ -113,6 +113,8 @@ Global Program Instance SimMemInj : SimMem.class :=
 { t := t';
   src := src;
   tgt := tgt;
+  ptt_src := fun _ _ _ => etc;
+  ptt_tgt := fun _ _ _ => etc;
   wf := wf';
   le := le';
   (* lift := lift'; *)
@@ -120,6 +122,8 @@ Global Program Instance SimMemInj : SimMem.class :=
   lepriv := lepriv;
   sim_val := fun (mrel: t') => Val.inject mrel.(inj);
   sim_val_list := fun (mrel: t') => Val.inject_list mrel.(inj);
+  unchanged_on := top3;
+  (* unchanged_on := Mem.unchanged_on; *)
 }.
 Next Obligation. rename H into LE. inv LE. econs; et. Qed.
 (* Next Obligation. *)
@@ -141,6 +145,10 @@ Next Obligation.
   - ginduction x1; ii; inv H; ss. econs; eauto.
 Qed.
 Next Obligation. inv H. ss. Qed.
+(* Next Obligation. ii. eapply Mem.unchanged_on_implies; et. Qed. *)
+
+
+
 
 
 
@@ -157,6 +165,11 @@ Next Obligation. eapply unlift_spec; et. Qed.
 Next Obligation. eapply unlift_wf; eauto. Qed.
 Next Obligation. inv MWF. destruct sm0; ss. econs; ss; et. eapply frozen_refl. Qed.
 Next Obligation. inv MWF. inv MLE. inv MLIFT. econs; ss; et; try congruence. eapply frozen_refl. Qed.
+
+Global Program Instance SimMemInjOhLift: SimMemOhLift.class (@SimMemOh_default SimMemInj)
+  := SimMemOhLift.SimMemOhLift_transform.
+
+
 
 
 Section ORIGINALS.
@@ -343,12 +356,12 @@ Qed.
 
 Local Opaque Z.mul.
 
-Require StoreArguments.
-
 End MEMINJ.
 
 Hint Unfold valid_blocks src_private tgt_private range.
-
+Lemma unch_true: top3 <3= SimMem.unch.
+Proof. econs; ii; ss. Qed.
+Hint Resolve unch_true.
 
 
 
@@ -468,7 +481,7 @@ Next Obligation.
   (* exploit external_call_mem_inject_gen; eauto. *)
   exploit external_call_mem_inject; eauto.
   { eapply skenv_inject_meminj_preserves_globals; eauto. inv SIMSKENV; ss. }
-  i; des. do 2 eexists. dsplits; eauto.
+  i; des. do 2 eexists. dsplits; eauto; ss.
   - instantiate (1:= Retv.mk _ _); ss. eapply external_call_symbols_preserved; eauto.
     eapply SimSymbId.sim_skenv_equiv; eauto. eapply SIMSKENV.
   - destruct retv_src; ss. instantiate (1:= mk _ _ _ _ _ _ _ _ _). econs 1; ss; eauto.
@@ -482,6 +495,13 @@ Next Obligation.
     + eapply frozen_shortened; et.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
+  (* - econs; ii; ss. *)
+  (*   + eapply Mem.unchanged_on_implies. *)
+  (*     { eapply Mem_unchanged_on_bot; et. eapply SPLITHINT1. } *)
+  (*     ss. *)
+  (*   + eapply Mem.unchanged_on_implies. *)
+  (*     { eapply Mem_unchanged_on_bot; et. eapply SPLITHINT1. } *)
+  (*     ss. *)
   - apply inject_separated_frozen in H5. econs; ss.
     (* + eapply after_private_src; ss; eauto. *)
     (* + eapply after_private_tgt; ss; eauto. *)
@@ -739,6 +759,9 @@ Proof.
   - ii. ss. des. eapply PRIV; eauto.
 Qed.
 
+Variable mi: Midx.t.
+Let SML := (SimMemInjLift).
+Local Existing Instance SML.
 Lemma external_call_parallel_rule_simmem
       (F V: Type) (ge0: Genv.t F V)
       sm_at sm_after P

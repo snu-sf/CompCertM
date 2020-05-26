@@ -13,6 +13,7 @@ Require SimMemId.
 Require SoundTop.
 Require Import LiftDummy.
 Require Import JunkBlock.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -61,7 +62,7 @@ Proof.
     inv INITTGT. destruct sm_arg; ss. clarify. inv SIMARGS; ss. clarify.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE. des. folder.
     exploit (bsim_internal_funct_id SIMGE); et. i; des.
-    destruct fd_src; ss. eexists. eexists (SimMemId.mk _ _). esplits; cycle 2; ss.
+    destruct fd_src; ss. eexists. eexists (SimMemId.mk _ _). esplits; cycle 3; ss.
     + econs; eauto; ss.
       * inv TYP. rpapply match_states_call; try eapply Val.lessdef_refl.
         { instantiate (1:= [Linear.dummy_stack (fn_sig fd) ls_init]). econs; eauto; econs; et. econs. inv H.
@@ -71,6 +72,7 @@ Proof.
     + assert(SGEQ: fn_sig fd = fn_sig f). { inv MATCH; et. } rewrite SGEQ.
       rpapply LinearC.initial_frame_intro; revgoals; [ f_equal; et | .. ]; eauto with congruence.
       * folder. rewrite <- SGEQ. ss.
+    + et.
   - (* init progress *)
     des. inv SAFESRC. inv SIMARGS; ss.
     exploit make_match_genvs; eauto. { apply SIMSKENV. } intro SIMGE.
@@ -164,7 +166,7 @@ Proof.
     ii. destruct f1; ss.
     + clarify. right. esplits; eauto.
     + clarify. left. esplits; eauto.
-  - ii. inv SIMSKENVLINK. eapply sim_modsem; eauto.
+  - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
 Unshelve.
   all: ss.
 Qed.

@@ -26,6 +26,7 @@ Require Import AsmExtra IdSimExtra IdSimAsmExtra IdSimInvExtra.
 
 Require Import MatchSimModSemExcl2.
 Require Import Conventions1C.
+Require Import Any.
 
 Require Import mktac.
 
@@ -59,6 +60,7 @@ Proof.
   esplits; eauto. instantiate (1:=SimMemInjInvC.mk bot1 _ _).
   econs; ss; i.
   { econs; ss; i; clarify. }
+  eexists.
   eapply MatchSimModSemExcl2.match_states_sim with
       (match_states :=
          @match_states
@@ -72,12 +74,12 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
 
   - (** ******************* initial **********************************)
-    destruct sm_arg as [sm_arg mem_inv_src mem_inv_tgt].
+    destruct smo_arg as [sm_arg mem_inv_src mem_inv_tgt].
     dup MWF. rename MWF0 into MINVWF.
     destruct MWF as [MWF SATSRC SATTGT INVRANGESRC INVRANGETGT]. ss.
     exploit SimSymbIdInv_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
-    inv SIMARGS.
+    rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
     { ss. clarify.
       inv INITTGT; clarify. ss. inv TYP. cinv STORE.
 
@@ -142,6 +144,7 @@ Proof.
           + esplits; eauto. erewrite loc_notin_not_in in n3. tauto. }
 
       { econs; ss; eauto. etrans; eauto. }
+      { eapply SimMemInjInvC.unch_true. }
 
       { assert (AGREE0:
                   AsmStepInj.agree
@@ -224,6 +227,7 @@ Proof.
           exfalso. eapply Plt_lemma; eauto.
         + rewrite MSRC. eapply src_junk_val_junk; eauto.
       - instantiate (1:=SimMemInjInv.mk sm1 _ _). econs; ss.
+      - eapply SimMemInjInvC.unch_true.
       - cinv MWF. econs; eauto; simpl.
         + eapply AsmStepInj.agree_step; eauto.
           * eapply agree_incr; try apply RS; eauto.
@@ -256,14 +260,14 @@ Proof.
     exploit SimSymbIdInv_match_globals.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH. des.
     inv SAFESRC.
-    { inv TYP. inv SIMARGS; clarify. ss.
+    { inv TYP. rr in SIMARGS; des. inv SIMARGS0; ss; clarify. ss.
       eapply asm_initial_frame_succeed; eauto.
       + apply inject_list_length in VALS.
         transitivity (Datatypes.length vs_src); eauto.
       + exploit SkEnv.revive_incl_skenv; try eapply FINDF; eauto.
         i. des. inv WFSRC. eapply WFPARAM in H; eauto.
       + exploit match_globals_find_funct; eauto. }
-    { inv SIMARGS; clarify. ss.
+    { rr in SIMARGS; des. inv SIMARGS0; ss; clarify. ss.
       eapply asm_initial_frame_succeed_asmstyle; eauto.
       exploit match_globals_find_funct; eauto. eapply RS. }
 
@@ -272,7 +276,7 @@ Proof.
   - (** ******************* at external **********************************)
     inv SIMSKENV. inv CALLSRC.
     { inv MATCH.
-      destruct sm0 as [sm0 mem_inv_src mem_inv_tgt].
+      destruct smo0 as [sm0 mem_inv_src mem_inv_tgt].
       dup MWF. rename MWF0 into MINVWF.
       destruct MWF as [MWF SATSRC SATTGT INVRANGESRC INVRANGETGT]. ss.
       des; ss; clarify. des_ifs.
@@ -298,7 +302,7 @@ Proof.
             instantiate (1:=Ptrofs.unsigned ofs + delta). lia.
           + econs. } intros MWFINV0.
 
-      eexists (Args.mk (Vptr b2 _) _ _). eexists (SimMemInjInv.mk sm1 _ _).
+      eexists tt, (Args.mk (Vptr b2 _) _ _). eexists (SimMemInjInv.mk sm1 _ _).
       esplits; eauto; ss; i.
       + econs; auto.
         * eauto.
@@ -346,7 +350,8 @@ Proof.
           -- instantiate (1:=ofs0). instantiate (1:=Ptrofs.unsigned ofs) in RANGE. nia.
           -- i. eapply Mem.perm_cur_max. eapply Mem.perm_implies; eauto. econs.
         * eauto.
-      + inv MLE. econs; s; eauto. rewrite H0. rewrite H1. eauto.
+      + inv MLE. rr. esplits; ss; et. econs; s; eauto. rewrite H0. rewrite H1. eauto.
+      + eapply SimMemInjInvC.unch_true.
     }
     { ss. inv MATCH.
       des; ss; clarify. des_ifs.
@@ -356,7 +361,7 @@ Proof.
         - left. ss. clear - SIG. unfold Genv.find_funct_ptr in *.
           des_ifs. eapply Genv.genv_defs_range; eauto.
         - i. des. eauto. } clarify. psimpl. ss.
-      exists (Args.Asmstyle rs_tgt (SimMemInj.tgt sm0.(SimMemInjInv.minj))). esplits; eauto.
+      exists tt, (Args.Asmstyle rs_tgt (SimMemInj.tgt smo0.(SimMemInjInv.minj))). esplits; eauto.
       - econs 2; eauto.
         + exploit SimSymbIdInv_find_None; try eassumption.
           { ii. rewrite H in *. ss. }
@@ -371,35 +376,38 @@ Proof.
             des_ifs; cinv (AGREE RA); ss; rewrite <- H1 in *; ss. }
           { rename TPTR into TPTR0. unfold Tptr in *.
             des_ifs; cinv (AGREE RA); ss; rewrite <- H1 in *; ss. }
-      - econs 2; eauto.
-      - refl. }
+      - rr. esplits; et. econs 2; eauto.
+      - refl.
+      - eapply SimMemInjInvC.unch_true. }
 
   - (** ******************* after external **********************************)
     exploit SimSymbIdInv_match_globals.
     { inv SIMSKENV. ss. eauto. } instantiate (1:=asm). intros GEMATCH.
     inv MATCH. inv AFTERSRC.
-    { inv SIMRET; clarify. inv HISTORY; clarify.
+    { rr in SIMRET. des. inv SIMRETV; ss; clarify. inv HISTORY; clarify.
       inv CALLSRC; clarify; cycle 1.
       { ss. des. clarify. }
       inv CALLTGT; clarify; cycle 1.
-      { ss. des. clarify. ss. inv SIMARGS; clarify. } inv SIMARGS; clarify.
+      { ss. des. clarify. ss. rr in SIMARGS; des. inv SIMARGS0; clarify. }
+      rr in SIMARGS; des. inv SIMARGS0; ss; clarify.
       rewrite RSRSP in *. des. ss. des_ifs. clarify.
       cinv (AGREE Asm.RSP); rewrite RSRSP in *; ss; clarify; rewrite RSP0 in *; clarify.
 
-      assert (SKD: skd1 = skd).
+      assert (SKD: skd0 = skd).
       { inv SIMSKENV. inv SIMSKELINK. ss. inv INJECT.
         cinv (AGREE PC); rewrite <- H1 in *; clarify. eauto.
         exploit IMAGE; eauto.
-        - left. rewrite <- H0 in *. ss. clear - SIG0. unfold Genv.find_funct_ptr in *.
+        - left. rewrite <- H0 in *. ss. clear - SIG1. unfold Genv.find_funct_ptr in *.
           des_ifs. eapply Genv.genv_defs_range; eauto.
         - i. des. clarify. inv SIMSKENVLINK. inv SIMSKENV. clarify.
           rewrite <- H0 in *. ss. des_ifs. } clarify.
 
-      hexploit (@Mem_unfree_parallel P sm0 sm_arg sm_ret); eauto.
+      hexploit (@Mem_unfree_parallel P smo0 smo_arg smo_ret); eauto.
 
-      i. des. esplits; eauto. i.
+      i. des. esplits; eauto.
+      { eapply SimMemInjInvC.unch_true. }
+      i.
       esplits; ss; eauto.
-
       + econs; ss; eauto.
       + dup MLE2. rename MLE4 into MINVLE2.
         destruct MLE2 as [MLE2 MINVEQSRC2 MINVEQTGT2].
@@ -415,15 +423,17 @@ Proof.
         * inv MLE2. eapply agree_incr; eauto.
         * inv MLE2. i. exploit RSPDELTA; eauto. i. des. esplits; eauto.
     }
-    { inv SIMRET; clarify. inv HISTORY; clarify.
+    { rr in SIMRET; des. inv SIMRETV; ss; clarify. inv HISTORY; clarify.
       inv CALLSRC; clarify.
       { ss. des. clarify. }
       inv CALLTGT; clarify.
-      { ss. des. clarify. ss. inv SIMARGS; clarify. } inv SIMARGS; clarify. ss.
-      exists (SimMemInjInvC.unlift' sm_arg sm_ret).
+      { ss. des. clarify. ss. rr in SIMARGS; des. inv SIMARGS0; ss; clarify. }
+      rr in SIMARGS; des. inv SIMARGS0; ss; clarify. ss.
+      exists (SimMemInjInvC.unlift' smo_arg smo_ret).
       eexists. eexists (AsmC.mkstate _ (Asm.State _ _)). esplits; eauto.
       - etrans; eauto.
       - clear - MLE0. inv MLE0. inv MLE. ss. econs; ss; eauto. eapply SimMemInj.frozen_refl.
+      - eapply SimMemInjInvC.unch_true.
       - i. esplits; eauto.
         + econs 2; eauto.
         + exploit SimMemInjInvC.unlift_wf; try apply MLE0; eauto. i. inv MLE2.
@@ -439,7 +449,7 @@ Proof.
     { inv SIMSKENV. ss. eauto. } intros GEMATCH.
     inv MATCH. inv FINALSRC.
     {
-      destruct sm0 as [sm0 mem_inv_src mem_inv_tgt].
+      destruct smo0 as [sm0 mem_inv_src mem_inv_tgt].
       dup MWF. rename MWF0 into MINVWF.
       destruct MWF as [MWF SATSRC SATTGT INVRANGESRC INVRANGETGT]. ss.
       cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify. psimpl.
@@ -489,11 +499,12 @@ Proof.
           eapply lessdef_commute; eauto.
         * cinv (AGREEINIT RSP); rewrite INITRSP in *; clarify.
           cinv (AGREE RSP); rewrite RSRSP in *; clarify.
-      + econs; ss. eapply val_inject_incr; cycle 1; eauto.
+      + rr. esplits; ss; et. econs; ss. eapply val_inject_incr; cycle 1; eauto.
         inv MLE. eauto.
       + econs; ss; eauto.
+      + eapply SimMemInjInvC.unch_true.
     }
-    { exists sm0. exists (Retv.Asmstyle rs_tgt sm0.(SimMemInjInv.minj).(SimMemInj.tgt)).
+    { exists smo0. exists tt, (Retv.Asmstyle rs_tgt smo0.(SimMemInjInv.minj).(SimMemInj.tgt)).
       esplits; ss; eauto.
       + econs 2; ss; ii; eauto.
         * des. esplits; eauto.
@@ -516,8 +527,9 @@ Proof.
           -- ss. clear RANOTFPTR. des_ifs.
              cinv (AGREEINIT RA); rewrite Heq in *; clarify.
              cinv (AGREE PC); rewrite RSRA in *; clarify.
-      + econs 2; ss.
-      + refl. }
+      + rr. clarify. esplits; ss; et. econs 2; ss.
+      + refl.
+      + eapply SimMemInjInvC.unch_true. }
 
   - (** ******************* step **********************************)
     left; i.
@@ -526,7 +538,7 @@ Proof.
     + exists O.
       { inv STEPSRC. destruct st_src0, st_src1. inv MATCH. ss.
         inv SIMSKENV. destruct st0. ss. clarify.
-        destruct sm0 as [sm0 mem_inv_src mem_inv_tgt].
+        destruct smo0 as [sm0 mem_inv_src mem_inv_tgt].
         dup MWF. rename MWF0 into MINVWF.
         destruct MWF as [MWF SATSRC SATTGT INVRANGESRC INVRANGETGT]. ss.
 
@@ -560,10 +572,12 @@ Proof.
             * apply AsmC.modsem_determinate.
             * econs; ss; eauto.
         - econs; ss; eauto.
+        - eapply SimMemInjInvC.unch_true.
         - econs; ss; eauto.
           + eapply agree_incr; eauto.
           + i. exploit RSPDELTA; eauto. i. des. esplits; eauto.
       }
+  - esplits; ss; et.
 Unshelve. all: apply 0.
 Qed.
 

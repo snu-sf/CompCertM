@@ -73,6 +73,7 @@ Proof.
   econs; ss; i.
   { econs; ss; i; clarify.
     inv WF. auto. }
+  eexists.
   eapply match_states_sim with (match_states := match_states_clight_inv); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -85,6 +86,7 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true.
     + econs; eauto. econs; eauto.
       { inv TYP. inv TYP0. eapply inject_list_typify_list; eauto. }
       econs.
@@ -111,6 +113,7 @@ Proof.
         exploit SIMDEF; eauto. i. des. clarify. des_ifs. esplits; eauto.
     + econs; ss.
     + refl.
+    + eapply SimMemInjInvC.unch_true; et.
     + instantiate (1:=top4). ss.
 
   - i. ss. clear SOUND HISTORY.
@@ -123,12 +126,14 @@ Proof.
       ss. eapply match_cont_incr; try eassumption.
       inv MLE. inv MLE1. inv MLE0. inv MLE. etrans; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true; et.
 
   - i. ss. inv FINALSRC. inv MATCH. inv MATCHST. inv CONT.
     esplits; eauto.
     + econs.
     + econs; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true; et.
 
   - left. i. split.
     + eapply modsem2_receptive.
@@ -146,7 +151,10 @@ Proof.
       * left. apply plus_one. econs; ss; eauto.
         eapply modsem2_determinate.
       * instantiate (1:=SimMemInjInv.mk _ _ _). econs; ss; eauto.
+      * eapply SimMemInjInvC.unch_true; et.
       * econs; ss; eauto.
+Unshelve.
+  all: ss.
 Qed.
 
 End INJINV.

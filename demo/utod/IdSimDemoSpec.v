@@ -137,6 +137,7 @@ Proof.
   econs; ss; i.
   destruct SIMSKENVLINK.
   exploit demo_unreach_local_preservation. i. des.
+  eexists.
   eapply match_states_sim with (match_states := match_states_ext_demo); ss.
   - apply unit_ord_wf.
   - ss. eauto.
@@ -166,7 +167,7 @@ Proof.
       unfold safe_modsem in H.
       exploit H. eapply star_refl. ii. des; clarify.
     + ii. inv STEPTGT; inv MATCH; ss.
-      Unshelve. ss. eapply bot4.
+      Unshelve. all: ss. eapply bot4.
 Qed.
 
 Lemma demo_ext_top
@@ -182,6 +183,7 @@ Proof.
   esplits; eauto. instantiate (1:=SimSymbId.mk _ _).
   econs; ss; i.
   destruct SIMSKENVLINK.
+  eexists.
   eapply match_states_sim with (match_states := match_states_ext_demo); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -211,7 +213,7 @@ Proof.
       unfold safe_modsem in H.
       exploit H. eapply star_refl. ii. des; clarify.
     + ii. inv STEPTGT; inv MATCH; ss.
-      Unshelve. ss. eapply bot4.
+      Unshelve. all: ss. eapply bot4.
 Qed.
 
 Lemma demo_inj_drop_bot
@@ -229,6 +231,7 @@ Proof.
   econs; ss; i.
   { econs; ss; i; clarify.
     inv WF. auto. }
+  eexists.
   eapply match_states_sim with (match_states := match_states_demo); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -260,7 +263,7 @@ Proof.
       unfold safe_modsem in H.
       exploit H. eapply star_refl. ii. des; clarify.
     + ii. inv STEPTGT; inv MATCH; ss.
-      Unshelve. ss. eapply bot4.
+      Unshelve. all: ss. eapply bot4.
 Qed.
 
 Lemma demo_inj_drop
@@ -324,6 +327,7 @@ Proof.
   econs; ss; i.
   { econs; ss; i; clarify.
     inv WF. auto. }
+  eexists.
   eapply match_states_sim with (match_states := match_states_demo_inv); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -333,6 +337,7 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true; ss.
     + destruct x, st_init_tgt. ss.
       rewrite VS, VS0 in VALS. inv VALS. inv H4. inv H2; ss.
       econs; ss; eauto.
@@ -351,13 +356,14 @@ Proof.
     + econs. ss.
     + econs; eauto; ss. clarify.
     + refl.
+    + eapply SimMemInjInvC.unch_true; ss.
   - right. ii. des.
     esplits.
     + i. inv MATCH; ss.
       unfold safe_modsem in H.
       exploit H. eapply star_refl. ii. des; clarify.
     + ii. inv STEPTGT; inv MATCH; ss.
-      Unshelve. ss. eapply bot4.
+      Unshelve. all: ss. eapply bot4.
 Qed.
 
 End INJINV.

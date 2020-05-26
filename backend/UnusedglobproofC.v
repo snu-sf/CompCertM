@@ -1,6 +1,6 @@
 Require Import FSets CoqlibC Maps Ordered Iteration Errors.
 Require Import AST Linking.
-Require Import IntegersC ValuesC Memory Globalenvs Events Smallstep.
+Require Import IntegersC ValuesC MemoryC Globalenvs Events Smallstep.
 Require Import Op Registers RTLC.
 Require Import Unusedglob.
 Require Import sflib.
@@ -15,6 +15,7 @@ Require SoundTop.
 Require Import CtypingC.
 Require Import ModSemProps.
 Require Import JunkBlock.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -264,7 +265,7 @@ Proof.
       { clarify. apply DROP0. des_sumbool. ss. }
     + inv TRANSL1. eapply NoDup_norepet; et. rewrite Sk.of_program_defs_names; ss.
     + ii. des. eapply H0. des_sumbool. inv TRANSL1. eauto.
-  - ii. eapply sim_modsem; eauto.
+  - ii. eexists. eapply sim_modsem; eauto.
 Unshelve.
   all: ss.
 Qed.

@@ -2,6 +2,7 @@ COQMODULE    := compcomp
 # COQTHEORIES  := $(wildcard */*.v) #*/*.v
 COQTHEORIES  := $(shell find . -iname '*.v')
 
+
 .PHONY: all proof proof-quick graph
 
 all:

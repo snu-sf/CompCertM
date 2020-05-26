@@ -18,6 +18,7 @@ Require Import CtypesC.
 Require Import BehaviorsC.
 Require Import LinkingC2.
 Require Import Simulation Sem SemProps LinkingC.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -159,7 +160,7 @@ Proof.
               Local Transparent Linker_def. simpl. des_ifs.
               { unfold link_vardef in *. des_ifs.
                 simpl in Heq14, Heq12, Heq6, Heq8. unfold link_varinit in *.
-                simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. clarify.
+                simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. sflib.clarify.
                 clear -Heq8 Heq6 Heq14 Heq12 Heq11. des_ifs. }
               { unfold link_vardef in *. des_ifs.
                 - simpl in Heq16, Heq13. rewrite andb_true_iff in *.
@@ -579,13 +580,13 @@ Section LXSIM.
   Inductive match_states (i: Z): Sem.state -> Sem.state -> Prop :=
   | match_states_call
       frs_src frs_tgt
-      args
+      args ohs
       (STK: match_stacks true i frs_src frs_tgt):
-      match_states i (Callstate args frs_src) (Callstate args frs_tgt)
+      match_states i (Callstate args frs_src ohs) (Callstate args frs_tgt ohs)
   | match_states_normal
-      frs_src frs_tgt
+      frs_src frs_tgt ohs
       (STK: match_stacks false i frs_src frs_tgt):
-      match_states i (State frs_src) (State frs_tgt).
+      match_states i (State frs_src ohs) (State frs_tgt ohs).
 
   Lemma int_zero_intval: Int.intval Int.zero = 0%Z.
   Proof. unfold Int.intval. ss. Qed.
@@ -600,10 +601,14 @@ Section LXSIM.
 
   Hint Unfold Frame.update_st.
 
+  Require Import SemTyping.
+
   Lemma match_states_xsim
         i st_src0 st_tgt0
         (MATCH: match_states i st_src0 st_tgt0):
-    xsim (sem (ctx1 ++ [module] ++ ctx2)) (sem (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)) (Zwf.Zwf 0) top1 top1 i st_src0 st_tgt0.
+    xsim (sem (ctx1 ++ [module] ++ ctx2))
+         (sem (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)) (Zwf.Zwf 0)
+         (SemTyping.sound_state (ctx1 ++ [module] ++ ctx2)) top1 i st_src0 st_tgt0.
   Proof.
     revert_until SKEWF. pcofix CIH. i.
     inv MATCH.
@@ -628,6 +633,7 @@ Section LXSIM.
                 { unfold Genv.find_funct. des_ifs. eauto. }
                 ss. right. unfold load_modsems. rewrite in_map_iff.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
+              { ss; et. }
               econs; ss; eauto.
               - unfold Args.get_fptr in *. des_ifs. ss. clarify.
                 eapply MutrecAspec.find_symbol_find_funct_ptr; et. }
@@ -636,6 +642,7 @@ Section LXSIM.
                 { unfold Genv.find_funct. des_ifs. eauto. }
                 ss. right. unfold load_modsems. rewrite in_map_iff.
                 esplits; eauto. rewrite in_app_iff. ss. eauto. }
+              { ss; et. }
               econs; ss; eauto.
               - unfold Args.get_fptr in *. des_ifs. ss. clarify.
                 eapply MutrecBspec.find_symbol_find_funct_ptr; et.
@@ -660,6 +667,7 @@ Section LXSIM.
               { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff.
                 ss. eauto. }
               eapply genv_sim. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto. }
+            { ss; et. }
             econs; ss; eauto.
             + eapply genv_sim. destruct args; ss. clarify. exists MutrecAspec.module. esplits; ss; eauto. rr. eauto.
           - right. eapply CIH; eauto. econs; eauto.
@@ -676,6 +684,7 @@ Section LXSIM.
               { ss. right. unfold load_modsems. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff.
                 ss. eauto. }
               eapply genv_sim. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto. }
+            { ss; et. }
             econs; ss; eauto.
             + eapply genv_sim. destruct args; ss. clarify. exists MutrecBspec.module. esplits; ss; eauto. rr. eauto.
           - right. eapply CIH; eauto. econs; eauto.
@@ -792,6 +801,7 @@ Section LXSIM.
                       ** des_ifs. econs; ss.
                          { right. unfold load_modsems. rewrite in_map_iff. esplits; et. rewrite in_app_iff. right. right. ss. eauto. }
                          des_ifs; eauto.
+                      ** ss.
                       ** econs; ss; eauto.
                          { destruct cur,  max. ss. esplits; try omega.
                            exploit Int.Z_mod_modulus_range. instantiate (1:=intval - 1). i. des; auto.
@@ -801,7 +811,12 @@ Section LXSIM.
                            rewrite Int.unsigned_repr. auto. unfold Int.max_unsigned. split; nia. }
                 -- instantiate (1:= 2 * Int.intval cur - 2). rr. esplits; try lia.
                    destruct cur. ss. nia.
-                -- right. eapply CIH. u. econs; eauto.
+                -- right. eapply CIH. u.
+                   instantiate (1:= tt). replace (Midx.update ohs None (upcast tt)) with ohs; cycle 1.
+                   { unfold Midx.update. apply func_ext1. intro mi. des_ifs. ss.
+                     exploit SSSRC0; et. { eapply star_refl. } i; des. rr in H. des. ss.
+                   }
+                   econs; eauto.
                    econs.
                    { f_equal. }
                    { f_equal. rewrite cons_app. rewrite app_assoc. f_equal. }
@@ -883,6 +898,7 @@ Section LXSIM.
                       ** des_ifs. econs; ss.
                          { right. unfold load_modsems. rewrite in_map_iff. esplits; et. rewrite in_app_iff. right. left. ss. }
                          des_ifs; eauto.
+                      ** ss.
                       ** econs; ss; eauto.
                          { destruct cur,  max. ss. esplits; try omega.
                            exploit Int.Z_mod_modulus_range. instantiate (1:=intval - 1). i. des; auto.
@@ -892,7 +908,12 @@ Section LXSIM.
                            rewrite Int.unsigned_repr. auto. unfold Int.max_unsigned. split; nia. }
                 -- instantiate (1:= 2 * Int.intval cur - 2). rr. esplits; try lia.
                    destruct cur. ss. nia.
-                -- right. eapply CIH. u. econs; eauto.
+                -- right. eapply CIH. u.
+                   instantiate (1:= tt). replace (Midx.update ohs None (upcast tt)) with ohs; cycle 1.
+                   { unfold Midx.update. apply func_ext1. intro mi. des_ifs. ss.
+                     exploit SSSRC0; et. { eapply star_refl. } i; des. rr in H. des. ss.
+                   }
+                   econs; eauto.
                    econs.
                    { f_equal. }
                    { f_equal. rewrite cons_app. rewrite app_assoc. f_equal. }
@@ -924,8 +945,10 @@ Section LXSIM.
               { esplits; eauto. econs; ss; eauto. }
             - des_ifs. right. inv SAFESRC; ss.
               { inv STEP. }
-              inv FINAL. esplits; eauto. econs 4; eauto.
-              unsguard TGT. des; clarify. }
+              inv FINAL. unsguard TGT. des; clarify.
+              + esplits; eauto. econs 4; eauto. ss.
+              + esplits; eauto. econs 4; eauto. ss.
+          }
           { i. ss. inv FINALTGT.
             unsguard TGT. des; clarify; ss.
             - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto.
@@ -934,8 +957,21 @@ Section LXSIM.
           { unsguard TGT. des; clarify; inv AT. }
           { unsguard TGT. des; clarify; inv STEP. }
           esplits; eauto.
-          -- left. apply plus_one. econs 4; eauto. ss. unsguard TGT. des; clarify; ss; inv FINAL; econs; eauto.
-          -- right. eapply CIH. econs; eauto. econs; eauto.
+          -- left. apply plus_one.
+             unsguard TGT. des; clarify; inv FINAL; ss; repeat des_u.
+             { econs 4; et; ss. }
+             { econs 4; et; ss. }
+          -- right. eapply CIH. ss.
+             replace (Midx.update ohs (ModSem.midx (Frame.ms hd_tgt)) (upcast oh0)) with ohs; cycle 1.
+             { eapply func_ext1. intro mi. unfold Midx.update. des_ifs.
+               exploit SSSRC; et. { eapply star_refl. } i; des. rr in H. des. ss. des_ifs.
+               unsguard TGT. des; clarify; ss; des_u; ss.
+             }
+             replace (Midx.update ohs None (upcast tt)) with ohs; cycle 1.
+             { eapply func_ext1. intro mi. unfold Midx.update. des_ifs.
+               exploit SSSRC; et. { eapply star_refl. } i; des. rr in H. des. ss.
+             }
+             econs; eauto. econs; eauto.
         * pfold. left. right. econs; eauto.
           unsguard TGT. des; clarify.
           { inv FOCUS; ss.
@@ -960,7 +996,12 @@ Section LXSIM.
                   rewrite Int.add_commut.
                   rewrite Int.sub_add_l. rewrite Int.sub_idem. rewrite Int.add_zero_l. ss.
                 + instantiate (1:= Int.intval max - Int.intval cur - 1). split; try lia.
-              - right. eapply CIH; eauto. unfold Frame.update_st. ss. econs; eauto. econs 3; ss.
+              - right. eapply CIH; eauto. unfold Frame.update_st. ss.
+                instantiate (1:= tt). replace (Midx.update ohs None (upcast tt)) with ohs; cycle 1.
+                { eapply func_ext1. intro mi. unfold Midx.update. des_ifs.
+                  exploit SSSRC; et. { eapply star_refl. } intro T; des. rr in T. des. ss.
+                }
+                econs; eauto. econs 3; ss.
                 + unfold __GUARD__. eauto.
                 + ss.
                 + ss.
@@ -984,7 +1025,12 @@ Section LXSIM.
                   rewrite Int.add_commut.
                   rewrite Int.sub_add_l. rewrite Int.sub_idem. rewrite Int.add_zero_l. ss.
                 + instantiate (1:= Int.intval max - Int.intval cur - 1). split; try lia.
-              - right. eapply CIH; eauto. unfold Frame.update_st. ss. econs; eauto. econs 3; ss.
+              - right. eapply CIH; eauto. unfold Frame.update_st. ss.
+                instantiate (1:= tt). replace (Midx.update ohs None (upcast tt)) with ohs; cycle 1.
+                { eapply func_ext1. intro mi. unfold Midx.update. des_ifs.
+                  exploit SSSRC; et. { eapply star_refl. } intro T; des. rr in T. des. ss.
+                }
+                econs; eauto. econs 3; ss.
                 + unfold __GUARD__. eauto.
                 + ss.
                 + ss.
@@ -1017,7 +1063,12 @@ Section LXSIM.
                   rewrite Int.add_commut.
                   rewrite Int.sub_add_l. rewrite Int.sub_idem. rewrite Int.add_zero_l. ss.
                 + instantiate (1:= Int.intval max - Int.intval cur - 1). split; try lia.
-              - right. eapply CIH; eauto. unfold Frame.update_st. ss. econs; eauto. econs 3; ss.
+              - right. eapply CIH; eauto. unfold Frame.update_st. ss.
+                instantiate (1:= tt). replace (Midx.update ohs None (upcast tt)) with ohs; cycle 1.
+                { eapply func_ext1. intro mi. unfold Midx.update. des_ifs.
+                  exploit SSSRC; et. { eapply star_refl. } intro T; des. rr in T. des. ss.
+                }
+                econs; eauto. econs 3; ss.
                 + unfold __GUARD__. eauto.
                 + ss.
                 + ss.
@@ -1041,7 +1092,12 @@ Section LXSIM.
                   rewrite Int.add_commut.
                   rewrite Int.sub_add_l. rewrite Int.sub_idem. rewrite Int.add_zero_l. ss.
                 + instantiate (1:= Int.intval max - Int.intval cur - 1). split; try lia.
-              - right. eapply CIH; eauto. unfold Frame.update_st. ss. econs; eauto. econs 3; ss.
+              - right. eapply CIH; eauto. unfold Frame.update_st. ss.
+                instantiate (1:= tt). replace (Midx.update ohs None (upcast tt)) with ohs; cycle 1.
+                { eapply func_ext1. intro mi. unfold Midx.update. des_ifs.
+                  exploit SSSRC; et. { eapply star_refl. } intro T; des. rr in T. des. ss.
+                }
+                econs; eauto. econs 3; ss.
                 + unfold __GUARD__. eauto.
                 + ss.
                 + ss.
@@ -1052,10 +1108,31 @@ Section LXSIM.
                   rewrite Int.Z_mod_modulus_eq.
                   rewrite <- Int.unsigned_repr_eq.
                   rewrite Int.unsigned_repr. nia. unfold Int.max_unsigned. split; nia. } }
+  Unshelve.
+    all: ss.
   Qed.
 
 End LXSIM.
 
+
+Lemma nodup_sim
+      ctx1 ctx2 skenv
+      (NODUP: Midx.NoDup
+                   (List.map ModSem.midx (fst (load_genv (ctx1 ++ [module] ++ ctx2) skenv))))
+  :
+    <<NODUP: Midx.NoDup
+      (List.map ModSem.midx
+                (fst
+                   (load_genv (ctx1 ++ [MutrecAspec.module ; MutrecBspec.module] ++ ctx2) skenv)))>>
+.
+Proof.
+  rr. rr in NODUP. ss. erewrite f_equal; et.
+  rewrite cons_app. rewrite cons_app with (xtl := ctx2).
+  rewrite cons_app with (xtl := ctx2).
+  unfold load_modsems.
+  rewrite ! map_app.
+  rewrite ! filter_map_app. ss.
+Qed.
 
 Theorem mutrecABcorrect ctx1 ctx2 :
     (<<REFINE: improves (Sem.sem (ctx1 ++ [(MutrecABspec.module)] ++ ctx2))
@@ -1064,8 +1141,11 @@ Proof.
   eapply bsim_improves.
   eapply mixed_to_backward_simulation.
   econs; eauto.
-  econs; try apply preservation_top; eauto; swap 2 3.
+  econs.
+  { apply SemTyping.preservation; eauto. }
+  { apply preservation_top; eauto. }
   { instantiate (1:= Zwf.Zwf 0%Z). eapply Zwf.Zwf_well_founded. }
+  all: swap 1 2.
   { i; des. ss. inv SAFESRC. rewrite INITSK.
     exploit link_sk_same; ss. i. erewrite H. des_ifs. }
   econs; eauto.
@@ -1080,10 +1160,31 @@ Proof.
         { eapply WF; et. rewrite in_app_iff. ss. et. }
         * eapply wf_module_Aspec; et.
         * eapply wf_module_Bspec; et.
+      + exploit link_sk_same; ss. i. erewrite H. des_ifs. eapply nodup_sim; et.
     - i; ss. inv INIT0. inv INIT1. clarify. }
   eapply match_states_xsim; eauto.
   { ii. eapply WF. ss. eapply in_or_app. auto. }
   { ii. eapply WF. ss. eapply in_or_app. ss. auto. }
   { eapply link_list_preserves_wf_sk; eauto. }
-  econs; eauto. econs; eauto.
+  { exploit link_sk_same; ss. i. erewrite H. des_ifs. set (Sk.load_skenv sk_link) as skenv in *.
+    rewrite cons_app. rewrite cons_app with (xtl := ctx2).
+    rewrite cons_app with (xtl := [MutrecBspec.module] ++ ctx2).
+    Local Opaque app.
+    erewrite load_owned_heaps_same; cycle 1.
+    { ss. }
+    { Local Transparent app. ss. eapply nodup_sim in OHSUNIQ; et. Local Opaque app. }
+    {
+      ss. unfold load_modsems, flip. rewrite ! map_map.
+      split; ii; des; clarify; ss; et.
+      - rewrite in_map_iff in *. des. clarify. rewrite ! in_app_iff in *. des; clarify.
+        { right. esplits; et. rewrite ! in_app_iff in *. et. }
+        { ss. des; clarify. ss. left. et. }
+        { right. esplits; et. rewrite ! in_app_iff in *. et. }
+      - rewrite in_map_iff in *. des. clarify. rewrite ! in_app_iff in *. des; clarify.
+        { right. esplits; et. rewrite ! in_app_iff in *. et. }
+        { ss. des; clarify; ss; left; et. }
+        { right. esplits; et. rewrite ! in_app_iff in *. et. }
+    }
+    econs; eauto. econs; eauto.
+  }
 Qed.

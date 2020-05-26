@@ -8,6 +8,8 @@ Require Import CtypesC CsemC Sem Syntax LinkingC Program SemProps.
 Require Import Equality.
 Require Import CtypingC LinkingC2.
 Require Import UpperBound_AExtra.
+Require Import SemTyping.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -280,42 +282,78 @@ Section PRESERVATION.
 
   Inductive match_states : Sem.state -> Sem.state -> Prop :=
   | match_states_normal
-      frs_src frs_tgt
+      frs_src frs_tgt ohs
       (STK: match_stacks frs_src frs_tgt) :
-      match_states (State frs_src) (State frs_tgt)
+      match_states (State frs_src ohs) (State frs_tgt ohs)
   | match_states_call
-      frs_src frs_tgt args
+      frs_src frs_tgt args ohs
       (STK: match_stacks frs_src frs_tgt) :
-      match_states (Callstate args frs_src) (Callstate args frs_tgt).
+      match_states (Callstate args frs_src ohs) (Callstate args frs_tgt ohs).
 
   Lemma init_fsim
         st_init_src
-        (INIT: initial_state prog_src st_init_src) :
+        (INIT: initial_state prog_src (load_genv prog_src skenv_link) st_init_src) :
       exists (i0: unit) st_init_tgt,
         (<<INIT: Dinitial_state (sem prog_tgt) st_init_tgt>>) /\
         (<<MATCH: match_states st_init_src st_init_tgt>>).
   Proof.
-    exists tt, st_init_src.
+    exists tt. inv INIT.
+    assert(OHSUNIQTGT: Midx.NoDup (map ModSem.midx (fst (load_genv prog_tgt skenv_link)))).
+    { clear - OHSUNIQ. ss.
+      rewrite load_modsems_midx in *. clear - OHSUNIQ. rr in OHSUNIQ. rr. ss.
+      subst prog_src. subst prog_tgt. ss. rewrite map_app in *. ss.
+      rewrite map_map in *. ss.
+      rewrite filter_map_app in *. unfold Midx.t.
+      rewrite filter_map_none with (xs := (map (fun _ => None) cps)); ss.
+      ii. rewrite in_map_iff in *. des; ss.
+    }
     esplits; eauto.
-    { inv INIT. econs; ss; eauto.
+    { clarify.
+      econs; ss; eauto.
       (* init *)
-      - econs; ss; eauto. subst prog_tgt.
-        erewrite <- UpperBound_AExtra.link_sk_match; eauto.
+      - des_ifs. econs; ss; eauto; cycle 1.
         unfold prog_src in WF. unfold prog_tgt. i. rewrite in_app_iff in IN. des.
         { eapply WF; et. rewrite in_app_iff. et. }
         { rewrite in_map_iff in *. des. clarify. ss. et. }
       (* dtm *)
       - ii. inv INIT0; inv INIT1; ss. f_equal.
         generalize link_sk_match; i. des. clarify. }
-    { inv INIT. econs; ss; eauto. econs; ss; eauto. }
+    { rp; [econs; ss; eauto|..]; try refl.
+      - econs; ss; eauto.
+      - rewrite LINKSRC in *. clarify. clear - OHSUNIQ OHSUNIQTGT.
+        assert(INITSAME: forall k v,
+                  In (k, v) (map (fun ms =>
+                                    (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms)))
+                                 (fst (load_genv prog_src skenv_link)))
+                  <->
+                  In (k, v) (map (fun ms =>
+                                    (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms)))
+                                 (fst (load_genv prog_tgt skenv_link)))
+              ).
+        {
+          subst prog_src prog_tgt; ss.
+          split; i; ss; des; clarify; et.
+          - rewrite in_map_iff in *. des. clarify. unfold load_modsems, flip in *.
+            rewrite in_map_iff in *. des. clarify.
+            rewrite in_app_iff in *. des; ss.
+            + right. esplits; eauto. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff. et.
+            + des; clarify. ss. left. ss.
+          - rewrite in_map_iff in *. des. clarify. unfold load_modsems, flip in *.
+            rewrite in_map_iff in *. des. clarify.
+            rewrite in_app_iff in *. des; ss.
+            + right. esplits; eauto. rewrite in_map_iff. esplits; eauto. rewrite in_app_iff. et.
+            + rewrite in_map_iff in *. des. clarify. ss. left. ss.
+        }
+        exploit load_owned_heaps_same; try apply INITSAME; et.
+    }
   Qed.
 
   Lemma final_bsim
-        retv frs_src frs_tgt
-        (MATCH: match_states (State frs_src) (State frs_tgt))
-        (FINAL: final_state (State frs_tgt) retv)
-        (SAFESRC: safe (sem prog_src) (State frs_src)) :
-      <<FINAL: final_state (State frs_src) retv>>.
+        retv ohs_src frs_src ohs_tgt frs_tgt
+        (MATCH: match_states (State frs_src ohs_src) (State frs_tgt ohs_tgt))
+        (FINAL: final_state (State frs_tgt ohs_tgt) retv)
+        (SAFESRC: safe (sem prog_src) (State frs_src ohs_src)) :
+      <<FINAL: final_state (State frs_src ohs_src) retv>>.
   Proof.
     ss. inv FINAL. inv MATCH; ss. inv STK; ss.
     (* ctx *)
@@ -326,15 +364,17 @@ Section PRESERVATION.
       hexploit match_focus_nonnil; et. i; des.
       destruct hds_tgt; ss. destruct tail_tgt; ss; try xomega. destruct hds_tgt; ss. clarify. clear_tac.
       exploit match_stacks_right_nil; et. i; des; clarify.
-      econs; et. inv HD. ss. inv SUM.
+      inv HD. ss.
+      econs; et. ss. inv SUM.
       inv FINAL0; ss. inv ST; ss.
+    Unshelve. all: ss.
   Qed.
 
   Lemma final_fsim
-        retv frs_src frs_tgt
-        (MATCH: match_states (State frs_src) (State frs_tgt))
-        (FINAL: final_state (State frs_src) retv) :
-      <<DFINAL: Dfinal_state (sem prog_tgt) (State frs_tgt) retv>>.
+        retv frs_src frs_tgt ohs_src ohs_tgt
+        (MATCH: match_states (State frs_src ohs_src) (State frs_tgt ohs_tgt))
+        (FINAL: final_state (State frs_src ohs_src) retv) :
+      <<DFINAL: Dfinal_state (sem prog_tgt) (State frs_tgt ohs_tgt) retv>>.
   Proof.
     rr. econs; ss; et.
     { inv FINAL. inv MATCH; ss. inv STK; ss.
@@ -352,6 +392,7 @@ Section PRESERVATION.
       - inv TAIL. inv H; ModSem.tac.
       (* focus *)
       - inv TAIL. rewrite app_nil_r in *. inv FINAL0; ss. inv H; ss; ModSem.tac. }
+    Unshelve. all: ss.
   Qed.
 
   Section WTMODULE.
@@ -545,7 +586,7 @@ Section PRESERVATION.
         if_sig fptr
         (INTERNAL : Genv.find_funct (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) fptr =
                     Some (AST.Internal if_sig)) :
-      exists pgm, is_focus pgm /\ exists sig, Genv.find_funct (ModSem.skenv (modsem skenv_link pgm)) fptr = Some (AST.Internal sig).
+      exists pgm, is_focus pgm /\ exists sig, Genv.find_funct (SkEnv.project skenv_link (CSk.of_program signature_of_function pgm)) fptr = Some (AST.Internal sig).
   Proof.
     unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
     rewrite MapsC.PTree_filter_map_spec in INTERNAL. unfold o_bind in *.
@@ -799,10 +840,25 @@ Section PRESERVATION.
     exploit assign_loc_dtm. eapply H3. eapply H10. i. subst.
     exploit IHl. eapply H6. eapply H11. i. eauto. Qed.
 
+  Lemma match_stacks_midx
+        fr_src frs_src
+        fr_tgt frs_tgt
+        (MATCH: match_stacks (fr_src :: frs_src) (fr_tgt :: frs_tgt))
+    :
+      <<MIDX: fr_src.(Frame.ms).(ModSem.midx) = fr_tgt.(Frame.ms).(ModSem.midx)>>
+  .
+  Proof.
+    inv MATCH; ss.
+    inv HD. ss. clarify.
+  Qed.
+
+  Opaque Any.upcast.
+
   Lemma match_xsim
         st_src0 st_tgt0
         (MATCH: match_states st_src0 st_tgt0) :
-      <<XSIM: xsim (sem prog_src) (sem prog_tgt) (fun _ _ => False) top1 top1 tt st_src0 st_tgt0>>
+      <<XSIM: xsim (sem prog_src) (sem prog_tgt) (fun _ _ => False) top1 (SemTyping.sound_state prog_tgt)
+                   tt st_src0 st_tgt0>>
   .
   Proof.
     revert_until sum_cont. revert INCL_FOCUS INCL.
@@ -822,7 +878,7 @@ Section PRESERVATION.
       destruct frs_tgt; ss.
       { exploit match_stacks_right_nil; et. i; des. clarify. }
       rename t into fr_tgt.
-      ii. clear SSSRC SSTGT.
+      ii. clear SSSRC. ss. rewrite LINKTGT in *.
       destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_call) fr_tgt.(Frame.st))).
       (* tgt call *)
       (* fsim *)
@@ -834,11 +890,14 @@ Section PRESERVATION.
         - econs; ss; cycle 1.
           i. unsguard LINKSRC. rewrite LINKSRC in STEPSRC.
           inv STEPSRC; ss; ModSem.tac.
+          set (existT (fun x => x) _ oh) as X.
+          set (Midx.update ohs (ModSem.midx (Frame.ms fr_tgt)) X) as Y.
           esplits; eauto.
           { left. split; cycle 1.
             (* receptiveness *)
             { econs. ii. inv H1; ModSem.tac.
               inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
+              { eauto. }
               ii. inv H1; ModSem.tac. ss. omega. }
             eapply plus_one. econs; et.
             (* determ *)
@@ -846,7 +905,7 @@ Section PRESERVATION.
               - ii. ss. des_ifs.
                 clear H0.
                 inv H1; inv H2; ModSem.tac.
-                + split. econs. i. exploit ModSem.at_external_dtm. eapply AT0. eauto. i. subst. auto.
+                + split. econs. i. exploit ModSem.at_external_dtm. eapply AT0. eauto. i. des. subst. auto.
                 + assert (ModSem.is_step (Frame.ms fr_tgt) (Frame.st fr_tgt)).
                   { unfold ModSem.is_step. ss. eauto. }
                   exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto.
@@ -855,10 +914,20 @@ Section PRESERVATION.
                 eapply ModSem.call_return_disjoint. split. eapply H. eauto.
               - ii. inv H1; ss; try omega.
                 exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto. }
-            econs; eauto.
-            instantiate (1:= args).
-            sguard in LINKSRC.
-            inv STK; ss. inv HD; ss. des. clarify. ss.
+
+            inv STK; ss.
+            { des_ifs. econs. et.
+              (******************** TODO: Doing "refl" here breaks QED ***************************)
+              (* Is it a bug in Coq? or there is a resaon? *)
+              (* If there is a reason, it would be an interesting problem to prevent it... *)
+              (* refl. *)
+              instantiate (1:= Y).
+              subst X Y. refl.
+              (***********************************************************************************)
+            }
+            rewrite LINKTGT. inv HD; ss. des. clear LINKSRC0. clarify. ss.
+            econs; ss; et.
+
             inv AT; ss.
             inv ST; ss.
             econs; ss; et.
@@ -889,7 +958,9 @@ Section PRESERVATION.
                 exploit prog_find_defs_revive_rev; eauto. i. des.
                 unfold fundef in *. rewrite Heq in H1. clarify.
             - rr in H. des. inv H. ss. }
-          { right. eapply CIH; et. econs; et. }
+          { right. eapply CIH; et. rp; [econs|..]; et. eapply match_stacks_midx in STK; et.
+            subst X Y. f_equal. des. congruence. }
+
         (* src step *)
         - inv STK; ss.
           econs; ss; cycle 1.
@@ -1126,7 +1197,7 @@ Section PRESERVATION.
                   + i. inv FINAL.
                   + ii. inv H; inv H3. ss; omega.
                     eapply external_call_trace_length; eauto. }
-              rewrite LINKTGT in *. rpapply step_internal; ss; et. rr. right.
+              rewrite LINKTGT in *. instantiate (2:= tt). rpapply step_internal; ss; et. rr. right.
               econs; ss; et.
               - inv FINDMS. ss. destruct (Ptrofs.eq_dec Ptrofs.zero Ptrofs.zero); ss.
                 rewrite Genv.find_funct_ptr_iff in *. exploit prog_def_same. eauto. i. des_safe.
@@ -1135,6 +1206,13 @@ Section PRESERVATION.
               - unguardH LINKSRC. eapply preservation_alloc; eauto.
               - unguardH LINKSRC. eapply preservation_bind_param; eauto. } }
           { right. eapply CIH; et.
+            assert(U: (Midx.update ohs None (upcast tt)) = ohs).
+            { apply func_ext1. intro mi. unfold Midx.update. des_ifs.
+              exploit SSTGT; et. { eapply star_refl. } clear SSTGT. intro SSTGT. rr in SSTGT. des_safe.
+              ss. des_ifs. des.
+              rewrite WTYNONE; et. ss.
+            }
+            rewrite U.
             ss. econs; ss; et.
             unfold Frame.update_st. ss.
             rewrite ! app_comm_cons.
@@ -1241,12 +1319,10 @@ Section PRESERVATION.
                 <<CALLTGT: ModSem.is_call (Frame.ms fr_tgt) (Frame.st fr_tgt)>>).
       { i. inv STK.
         { eapply H in CALLSRC. clarify. }
-        inv HD; ss; clarify. inversion ST; ss; clarify; try (by (inv CALLSRC; inv H0)).
-        inv CALLSRC. red. ss. econs. ss. instantiate (1:= (Args.mk fptr vargs m)).
+        inv HD; ss; clarify. rr in CALLSRC. des.
+        inversion ST; ss; clarify; try (by (inv CALLSRC; inv H0)).
+        inv CALLSRC. rr. ss. exists tt, (Args.mk fptr vargs m).
         inv WTTGT. ss.
-        assert (tyf = (Tfunction tyargs tyres cc)).
-        { unfold classify_fun_strong in CLASSIFY. des_ifs. } subst.
-        inv H0. ss.
         destruct (Genv.find_funct (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) fptr) eqn:CPEXT.
         { unfold Genv.find_funct in CPEXT, EXTERNAL. des_ifs. rewrite Genv.find_funct_ptr_iff in CPEXT.
           exploit prog_find_defs_revive_rev; eauto. i. des_safe.
@@ -1265,7 +1341,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
         econs; et; cycle 1.
         i. ss. rewrite LINKSRC in *.
 
-        assert(RECEP: receptive_at (sem prog_src) (State (fr_src :: frs_src))).
+        assert(RECEP: receptive_at (sem prog_src) (State (fr_src :: frs_src) ohs)).
         { econs.
           - ii. inv H0.
             + exfalso. eapply NCALLSRC. eauto.
@@ -1317,10 +1393,17 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                 - ii. inv H; inv H0. ss. nia. }
               ss. des_ifs.
               unfold Frame.update_st. s.
+              instantiate (2:= tt).
               rpapply step_internal; ss; et.
               right.
               econs; ss; et.
           + right. ss. eapply CIH; eauto.
+            assert(U: (Midx.update ohs None (Any.upcast ())) = ohs).
+            { apply func_ext1. intro mi. unfold Midx.update. des_ifs.
+              exploit SSTGT; et. { eapply star_refl. } clear SSTGT. intro SSTGT. rr in SSTGT.
+              des; clarify.
+            }
+            rewrite U.
             econs; ss; et.
             unfold Frame.update_st. ss.
             rewrite app_comm_cons.
@@ -1411,6 +1494,8 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                   - inv H1; inv H2; ModSem.tac.
                     split. econs. i. ss.
                     exploit ModSem.final_frame_dtm. eapply FINAL1. eapply FINAL0. i. subst.
+                    des. clarify.
+                    rewrite OH0 in *. eapply Any.upcast_inj in OH1. des; clarify.
                     exploit ModSem.after_external_dtm. eapply AFTER0. eapply AFTER1. i. subst.
                     auto.
                   - i. inv FINAL0.
@@ -1429,6 +1514,8 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                   - inv H3; inv H2; ModSem.tac.
                     split. econs. i.
                     exploit ModSem.final_frame_dtm. eapply FINAL1. eapply FINAL0. i. subst.
+                    des. clarify.
+                    rewrite OH0 in *. eapply Any.upcast_inj in OH1. des; clarify.
                     exploit ModSem.after_external_dtm. eapply AFTER. eapply AFTER0. i. subst.
                     auto.
                   - i. inv FINAL0.
@@ -1459,19 +1546,19 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
       assert(RETLE: forall (RETSRC: ModSem.is_return (Frame.ms fr_src) (Frame.st fr_src)),
                 <<RETTGT: ModSem.is_return (Frame.ms fr_tgt) (Frame.st fr_tgt)>>).
       { i. inv STK; eauto.
-        inv HD; ss; clarify. inversion ST; ss; clarify; try (by (inv RETSRC; inv H0)).
-        inv RETSRC. red. ss. econs. ss. instantiate (1:= Retv.mk vres m).
-        inv H0. inv WTTGT. inv WTK. econs. ss. }
+        inv HD; ss; clarify. rr in RETSRC. des. inversion ST; ss; clarify; try (by (inv RETSRC; inv H0)).
+        inv RETSRC. rr. exists tt, (Retv.mk vres m). ss.
+        inv WTTGT. inv WTK. econs. ss. }
       rename H into NRETTGT.
       assert(NRETSRC: ~ ModSem.is_return (Frame.ms fr_src) (Frame.st fr_src)).
       { tauto. }
 
       (* src internal && tgt internal *)
       right. econs; et.
-      assert(FINALLEMMA: forall retv, Smallstep.final_state (sem prog_tgt) (State (fr_tgt :: frs_tgt)) retv ->
-                                      safe (sem prog_src) (State (fr_src :: frs_src)) ->
+      assert(FINALLEMMA: forall retv, Smallstep.final_state (sem prog_tgt) (State (fr_tgt :: frs_tgt) ohs) retv ->
+                                      safe (sem prog_src) (State (fr_src :: frs_src) ohs) ->
                                       exists st_src1 : Smallstep.state (sem prog_src),
-                                        <<STAR: Star (sem prog_src) (State (fr_src :: frs_src)) E0 st_src1>> /\
+                                        <<STAR: Star (sem prog_src) (State (fr_src :: frs_src) ohs) E0 st_src1>> /\
                                         <<FINAL: Smallstep.final_state (sem prog_src) st_src1 retv>>).
       { i. exploit final_bsim; et. { econs; et. } i; des. esplits; et. apply star_refl. }
       i.
@@ -1596,11 +1683,13 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
   Theorem upperbound_a_xsim :
       <<XSIM: mixed_simulation (Sem.sem prog_src) (Sem.sem prog_tgt)>>.
   Proof.
-    econs; ss; eauto. econs; try apply preservation_top; ss; eauto.
+    econs; ss; eauto. econs; ss; eauto.
+    { apply preservation_top. }
+    { apply SemTyping.preservation. }
     { eapply unit_ord_wf. }
     { econs 1.
-      ii. inversion INITSRC. exploit init_fsim; eauto. i; des. esplits; eauto.
-      rewrite H.
+      ii. inversion INITSRC. rewrite LINKSRC in *. symmetry in INITSK. clarify.
+      exploit init_fsim; eauto. { econs; et. } i; des. esplits; eauto.
       eapply match_xsim; et.
       inv INIT. ss. inv INIT0. eauto. }
     i; des. des_ifs.

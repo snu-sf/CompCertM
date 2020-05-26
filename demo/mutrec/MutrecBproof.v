@@ -12,6 +12,7 @@ Require SoundTop.
 Require SimMemInjC SimMemInjInv SimMemInjInvC.
 Require Mach.
 Require Import AsmC AsmregsC Conventions1C MemoryC AsmExtra StoreArgumentsProps.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -383,8 +384,8 @@ Proof.
     (* i = Int.zero *)
     + clarify. econs 1. i. econs.
       * split; ii.
-        { inv H. inv H0. }
-        { inv H. inv H0. }
+        { rr in H. des. inv H. }
+        { rr in H. des. inv H. }
       * i. ss. inv STEPSRC; ss.
 
         esplits.
@@ -446,6 +447,7 @@ Proof.
         }
 
         { refl. }
+        { et. }
 
         { right. eapply CIH; eauto. econs 4; eauto.
           - eapply well_saved_keep; eauto.
@@ -524,6 +526,7 @@ Proof.
             * apply star_one. ss. econs 1.
             * eapply Ord.lift_idx_spec. eauto.
           + refl.
+          + et.
           + left. pfold. intros _. econs 1. i. econs 2.
 
             * esplits.
@@ -629,6 +632,7 @@ Proof.
 
             * refl.
 
+            * et.
             * right. eapply CIH; eauto.
               econs 4; eauto.
               { eapply well_saved_keep; eauto.
@@ -650,6 +654,7 @@ Proof.
               unfold Int.eq in H0. des_ifs.
             * eapply Ord.lift_idx_spec. eauto.
           + refl.
+          + et.
           + left. pfold. intros _. econs 1. i. econs 2.
 
             * esplits.
@@ -741,6 +746,7 @@ Proof.
               { eapply Ord.lift_idx_spec. eauto. }
 
             * refl.
+            * et.
 
             * right. eapply CIH; eauto.
               econs 2; eauto.
@@ -779,9 +785,10 @@ Proof.
           * ss.
       - eapply Ord.lift_idx_spec. eauto. }
     { refl. }
+    { et. }
 
     left. pfold. intros _. econs 3; eauto.
-    + econs; eauto. econs; eauto.
+    + rr. esplits; et. econs; eauto.
     + ii.
 
       hexploit Mem.range_perm_free.
@@ -810,10 +817,10 @@ Proof.
       { ii. eapply Mem.perm_free_3; eauto. }
       i. des.
 
-      cinv SAVED. inv ATSRC.
-      eexists (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _).
+      cinv SAVED. inv ATSRC. clarify.
+      eexists tt, (Args.mk _ [Vint (Int.sub i (Int.repr 1))] _).
       esplits; eauto.
-      * econs; ss; eauto.
+      * rr. esplits; ss; et. econs; ss; eauto.
         instantiate (1:=Vptr g_fptr Ptrofs.zero).
         inv SIMSK. inv SIMSKENV. inv INJECT. ss.
         econs. eapply DOMAIN; eauto.
@@ -869,7 +876,7 @@ Proof.
         { ii. apply Z.divide_0_r. }
         { ss. }
 
-      * i. inv AFTERSRC. ss. inv SIMRETV; ss.
+      * i. inv AFTERSRC. ss. rr in SIMRETV; des. inv SIMRETV0; ss. clarify.
         exploit Mem_unfree_suceeds.
         { instantiate (1:=stk).
           instantiate (1:=SimMemInj.tgt sm_ret.(SimMemInjInv.minj)).
@@ -1050,6 +1057,7 @@ Proof.
       * eapply Ord.lift_idx_spec. eauto.
 
     + eauto.
+    + et.
 
     + right. eapply CIH; eauto.
       { exploit SimSymb.mle_preserves_sim_skenv; ss; cycle 1; eauto. }
@@ -1127,6 +1135,7 @@ Proof.
       * eapply Ord.lift_idx_spec. eauto.
 
     + instantiate (1:=SimMemInjInv.mk sm1 _ _). econs; ss; eauto.
+    + et.
 
     + left. pfold. intros _. econs 4; ss.
       * instantiate (1:=SimMemInjInv.mk sm2 _ _). econs; ss; eauto.
@@ -1153,7 +1162,7 @@ Proof.
           ii. specialize (REGSAVED mr).
           des_ifs; eapply Val.lessdef_same; try apply REGSAVED; eauto; clarify. }
         { ss. }
-      * econs; ss.
+      * rr. esplits; ss; et. econs; ss.
         { repeat (rewrite Pregmap.gso; [| clarify; fail]).
           rewrite ARG. econs. }
         { rewrite MSRC0. eauto. }
@@ -1168,19 +1177,21 @@ Theorem sim_modsem
 .
 Proof.
   eapply sim_mod_sem_implies.
-  eapply ModSemPair.simL_intro with (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le).
+  eapply ModSemPair.simL_intro with (has_footprint := top3) (mle_excl := fun _ _ => SimMem.le); try (by ss).
   { i. eapply SoundTop.sound_state_local_preservation. }
   { i. eapply Preservation.local_preservation_noguarantee_weak; eauto. eapply SoundTop.sound_state_local_preservation. }
   { ii; ss. r. etrans; eauto. }
   { ii. eauto. }
+  { esplits; et. }
   i. ss. esplits; eauto.
 
   - i. des. inv SAFESRC. instantiate (1:=unit).
     esplits; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true; et.
     + econs; eauto.
     + instantiate (1:= (Ord.lift_idx lt_wf 15%nat)).
-      inv SIMARGS; ss. inv INITTGT; ss.
+      rr in SIMARGS; des. inv SIMARGS0; ss. clarify. inv INITTGT; ss.
       inv TYP. ss. clarify.
       assert (FD: fd = func_g).
       { inv VALS. inv H1. inv H3. inv FPTR0. ss.
@@ -1324,6 +1335,7 @@ Proof.
         }
         { eapply Ord.lift_idx_spec. eauto. }
       * eauto.
+      * eapply SimMemInjInvC.unch_true; et.
       * left. unfold MutrecBspec.module in *.
         eapply match_states_lxsim; eauto.
         { inv SIMSKENV. eapply SimMemInjInvC.sim_skenv_inj_lepriv; eauto. hexploit SimMem.pub_priv; et. }
@@ -1369,7 +1381,7 @@ Proof.
   - (* init progress *)
     i.
     des. inv SAFESRC.
-    inv SIMARGS; ss. clarify.
+    rr in SIMARGS; des. inv SIMARGS0; ss. clarify.
 
     exploit asm_initial_frame_succeed; eauto.
     + instantiate (1:=func_g). ss.
@@ -1423,5 +1435,5 @@ Proof.
       des; clarify.
   - ii. ss.
     inv SIMSKENVLINK. inv SIMSKENV.
-    eapply sim_modsem; eauto.
+    eexists. eapply sim_modsem; eauto.
 Qed.

@@ -10,6 +10,7 @@ Require Import MemoryC.
 Require Import SmallstepC.
 Require Import Events.
 Require Import Preservation.
+Require Import Any.
 
 Set Implicit Arguments.
 
@@ -123,7 +124,12 @@ Proof.
   { inv SSLE. instantiate (1:=SimSymbDrop.mk bot1 src src).
     econs; ss; try apply Linking.linkorder_refl. i. des. clarify. }
   { instantiate (1:=sm_init_link). exploit SymSymbId_SymSymbDrop_bot; eauto. }
-  i. inv H. ss. econs; try eassumption; eauto; ss. i.
+  i. des. inv SIMMSP. ss. esplits; eauto. econs; try eassumption; eauto; ss.
+  { ii. exploit INITOH; et. inv SIMSKENV. ss. econs; ss.
+    - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKE; eauto.
+    - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKELINK; eauto.
+  }
+  i.
   exploit SIM; eauto. inv SIMSKENV. ss. econs; ss.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKE; eauto.
   - exploit SymSymbId_SymSymbDrop_bot; try apply SIMSKELINK; eauto.
@@ -238,8 +244,58 @@ Qed.
 
 Require MatchSimModSem.
 
+
+Module TODO_UNUSED_MOVESOMEWHERELSE.
+Section SMO.
+  Context (SM: SimMem.class) (owned_heap: Type).
+
+  Record t: Type :=
+    mk {
+      sm :> SimMem.t;
+      oh_src: owned_heap;
+      oh_tgt: owned_heap;
+    }
+  .
+
+  Local Obligation Tactic := ii; des; ss.
+
+  Program Definition SimMemOh_id (mi: string): (SimMemOh.class) :=
+    {|
+      SimMemOh.t := t;
+      SimMemOh.sm := sm;
+      SimMemOh.oh_src := fun smo => upcast smo.(oh_src);
+      SimMemOh.oh_tgt := fun smo => upcast smo.(oh_tgt);
+      SimMemOh.wf := SimMem.wf /1\ fun smo => smo.(oh_src) = smo.(oh_tgt);
+      SimMemOh.le := SimMem.le;
+      SimMemOh.lepriv := SimMem.lepriv;
+      SimMemOh.midx := Some mi;
+      SimMemOh.set_sm := fun smo sm => mk sm smo.(oh_src) smo.(oh_tgt);
+    |}
+  .
+  Next Obligation.
+    econs; et.
+    - ii. refl.
+    - ii. etrans; et.
+  Qed.
+  Next Obligation.
+    econs; et.
+    - ii. refl.
+    - ii. etrans; et.
+  Qed.
+  Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.
+  Next Obligation.
+    des. esplits; et.
+  Qed.
+  Next Obligation.
+    destruct smo0; ss.
+  Qed.
+
+End SMO.
+End TODO_UNUSED_MOVESOMEWHERELSE.
+
 Lemma any_id
       (md: Mod.t)
+      (MIDX: md.(Mod.midx) = None)
       (WF: Sk.wf md):
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
@@ -249,13 +305,17 @@ Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto. instantiate (1:=(SimSymbId.mk md md)). econs; ss; i.
   rewrite SIMSKENVLINK in *. inv SIMSKENVLINK. inv SSLE.
+  eexists.
   eapply MatchSimModSem.match_states_sim; ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
+  - unfold Mod.modsem. erewrite Mod.get_modsem_midx_spec; ss.
+  - unfold Mod.modsem. erewrite Mod.get_modsem_midx_spec; ss.
   - instantiate (1:= fun _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
                        (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>)).
-    ss. i. inv SIMARGS; ss; esplits; eauto; try congruence; ss.
+    ss. i. inv SIMARGS; ss; clarify; esplits; eauto; try congruence; ss.
+    { rp; et. congruence. }
     assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). congruence.
   - ii. destruct args_src, args_tgt, sm_arg; inv SIMARGS; ss; clarify.
     assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). subst. eauto.
@@ -267,7 +327,7 @@ Proof.
     + eexists _, (SimMemId.mk _ _). ss. esplits; eauto.
       * econs 2; ss; eauto.
   - i. clear HISTORY. ss.
-    destruct sm_ret, retv_src, retv_tgt; inv SIMRET; des; ss; clarify; eexists (SimMemId.mk _ _); esplits; eauto.
+    destruct sm_ret, retv_src, retv_tgt; inv SIMRET; des; ss; clarify; eexists (SimMemId.mk _ _); esplits; eauto; ss.
     assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). congruence.
   - i. ss. des. destruct sm0. ss. clarify. destruct retv_src; ss; eexists (SimMemId.mk m m); esplits; eauto.
     + econs; ss; eauto.
@@ -281,4 +341,5 @@ Proof.
       left. econs; eauto; [econs 1|]. symmetry. apply E0_right.
 Unshelve.
   all: ss.
+  erewrite ModSem.midx_none; et. unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec; ss.
 Qed.

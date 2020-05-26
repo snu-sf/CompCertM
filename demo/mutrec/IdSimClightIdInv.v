@@ -29,6 +29,7 @@ Require Import Conventions1C.
 
 Require Import ClightStepInj.
 Require Import IdSimExtra IdSimInvExtra IdSimClightExtra.
+Require Import Any.
 Require Import mktac.
 
 Set Implicit Arguments.
@@ -72,6 +73,7 @@ Proof.
   esplits; eauto.
   econs; ss; i.
   { econs; ss; i; clarify. }
+  eexists.
   eapply match_states_sim with (match_states := match_states_clight_inv); ss.
   - apply unit_ord_wf.
   - eapply SoundTop.sound_state_local_preservation.
@@ -84,6 +86,7 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true.
     + econs; eauto. econs; eauto.
       { inv TYP. inv TYP0. eapply inject_list_typify_list; eauto. }
       econs.
@@ -109,6 +112,7 @@ Proof.
         { i. des. clarify. inv SIMSKENV. des_ifs. esplits; eauto. }
     + econs; ss.
     + refl.
+    + eapply SimMemInjInvC.unch_true.
     + instantiate (1:=top4). ss.
 
   - i. ss. clear SOUND HISTORY.
@@ -121,12 +125,14 @@ Proof.
       ss. eapply match_cont_incr; try eassumption.
       inv MLE. inv MLE1. inv MLE0. inv MLE. etrans; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true.
 
   - i. ss. inv FINALSRC. inv MATCH. inv MATCHST. inv CONT.
     esplits; eauto.
     + econs.
     + econs; eauto.
     + refl.
+    + eapply SimMemInjInvC.unch_true.
 
   - left. i. split.
     + eapply modsem2_receptive.
@@ -149,8 +155,9 @@ Proof.
       * left. apply plus_one. econs; ss; eauto.
         eapply modsem2_determinate.
       * instantiate (1:=SimMemInjInv.mk _ _ _). econs; ss; eauto.
+      * eapply SimMemInjInvC.unch_true.
       * econs; ss; eauto.
-Unshelve. apply 0.
+Unshelve. all: ss. apply 0.
 Qed.
 
 End INJINV.

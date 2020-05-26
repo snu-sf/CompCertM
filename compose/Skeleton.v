@@ -189,6 +189,50 @@ Module Sk.
           (IN: In (id, (Gfun skd)) sk.(prog_defs)),
           4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned).
 
+  Inductive disj (sk0 sk1: t): Prop :=
+  | disj_intro
+      (DISJ: forall
+          i if0 if1
+          (DEF0: (prog_defmap sk0) ! i = Some (Gfun (Internal if0)))
+          (DEF1: (prog_defmap sk1) ! i = Some (Gfun (Internal if1)))
+        ,
+          False)
+  .
+
+  Lemma link_disj
+        (sk0 sk1 sk_link: t)
+        (LINK: link sk0 sk1 = Some sk_link)
+    :
+      (<<DISJ: disj sk0 sk1>>)
+  .
+  Proof.
+    Local Transparent Linker_prog.
+    ss. unfold link_prog in *.
+    Local Opaque Linker_prog.
+    des_ifs. bsimpl; des.
+    econs; eauto.
+    ii.
+    rewrite PTree_Properties.for_all_correct in *. exploit Heq0; et. intro T.
+    unfold link_prog_check in T. des_ifs. bsimpl. ss.
+  Qed.
+
+  Lemma disj_linkorder
+        sk0 sk1 sk_link
+        (DISJ: disj sk0 sk_link)
+        (LINK: linkorder sk1 sk_link)
+    :
+      (<<DISJ: disj sk0 sk1>>)
+  .
+  Proof.
+    inv DISJ. econs; et.
+    ii.
+    Local Transparent Linker_prog.
+    ss.
+    Local Opaque Linker_prog.
+    des. exploit LINK1; et. i; des. inv H0. inv H3.
+    exploit DISJ0; et.
+  Qed.
+
 End Sk.
 
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.

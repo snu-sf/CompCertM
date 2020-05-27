@@ -107,7 +107,7 @@ Section PRESERVATION.
   Let skenv_link := Sk.load_skenv sk.
   Let ge := load_genv prog skenv_link.
   Let tge := Genv.globalenv tprog.
-  Let WFSKLINK: Sk.wf sk. eapply link_list_preserves_wf_sk; et. Qed.
+  Let WFSKLINK: Sk.wf sk. eapply link_sk_preserves_wf_sk; et. Qed.
   Let WFSKELINK: SkEnv.wf skenv_link.
   Proof. eapply SkEnv.load_skenv_wf. ss. Qed.
 

@@ -183,17 +183,26 @@ Proof.
 Qed.
 
 Theorem link_list_preserves_wf_sk
+        (sks: list Sk.t) sk_link
+        (LINK: link_list sks = Some sk_link)
+        (WFSK: forall sk, In sk sks -> <<WF: Sk.wf sk>>):
+    <<WF: Sk.wf sk_link>>.
+Proof.
+  unfold link_sk in *. ginduction sks; ii; ss. unfold link_list in LINK. des_ifs_safe. ss.
+  destruct (link_list_aux sks) eqn:T; ss.
+  { clarify. destruct sks; ss; des_ifs. eapply WFSK. eauto. }
+  des_ifs. rename t into tl. rename a into hd. specialize (IHsks tl). exploit IHsks; eauto.
+  { unfold link_list. des_ifs. }
+  i; des. eapply (@link_preserves_wf_sk hd tl); et. eapply WFSK; et.
+Qed.
+
+Theorem link_sk_preserves_wf_sk
         p sk_link
         (LINK: link_sk p = Some sk_link)
         (WFSK: forall md, In md p -> <<WF: Sk.wf md >>):
     <<WF: Sk.wf sk_link>>.
 Proof.
-  unfold link_sk in *. ginduction p; ii; ss. unfold link_list in LINK. des_ifs_safe. ss.
-  destruct (link_list_aux (map Mod.sk p)) eqn:T; ss.
-  { clarify. destruct p; ss; des_ifs. eapply WFSK. eauto. }
-  des_ifs. rename t into tl. rename a into hd. specialize (IHp tl). exploit IHp; eauto.
-  { unfold link_list. des_ifs. }
-  i; des. eapply (@link_preserves_wf_sk hd tl); et. eapply WFSK; et.
+  eapply link_list_preserves_wf_sk; et. ii. rewrite in_map_iff in *. des; clarify. eapply WFSK; et.
 Qed.
 
 
@@ -345,6 +354,11 @@ Section INITDTM.
       st_init0 = st_init1.
   Proof.
     ss. inv INIT0; inv INIT1; ss. clarify.
+  Qed.
+
+  Theorem genv_disjoint: <<DISJ: sem.(globalenv).(Ge.disjoint)>>.
+  Proof.
+    econs; et. ii. eapply find_fptr_owner_determ; et.
   Qed.
 
 End INITDTM.

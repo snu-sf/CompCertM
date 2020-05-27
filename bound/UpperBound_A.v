@@ -981,7 +981,7 @@ Section PRESERVATION.
             - exfalso.
               unfold Genv.find_funct in FPTR. des_ifs.
               rewrite Genv.find_funct_ptr_iff in FPTR. exploit CSkEnv.project_revive_no_external; eauto.
-              unfold skenv_link. eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; eauto.
+              unfold skenv_link. eapply SkEnv.load_skenv_wf. eapply link_sk_preserves_wf_sk; eauto.
             - ss. unfold incl in *. inv ISCALLTGT.
               unfold Genv.find_funct in FPTR. des_ifs.
               rewrite Genv.find_funct_ptr_iff in *.

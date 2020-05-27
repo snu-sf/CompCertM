@@ -1048,7 +1048,7 @@ Section SIM.
         * unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
           exploit CSkEnv.project_revive_no_external; eauto.
           eapply SkEnv.load_skenv_wf; eauto.
-          { eapply link_list_preserves_wf_sk; eauto. }
+          { eapply link_sk_preserves_wf_sk; eauto. }
           clarify.
         * eapply step_external_function; eauto.
           { instantiate (1:=cc). instantiate (1 := tres). instantiate (1 := targs).
@@ -1226,7 +1226,7 @@ Section SIM.
           - assert (Genv.find_funct skenv_link fptr = Some (AST.Internal (signature_of_function f))).
             { assert (SkEnv.wf skenv_link).
               { eapply SkEnv.load_skenv_wf.
-                eapply link_list_preserves_wf_sk; eauto. }
+                eapply link_sk_preserves_wf_sk; eauto. }
               dup FPTR.
               unfold Genv.find_funct in FPTR. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
               unfold Genv.find_def in FPTR. ss.
@@ -1308,7 +1308,7 @@ Section SIM.
           - assert (Genv.find_funct skenv_link (Vptr b Ptrofs.zero) = Some (AST.External ef)).
             { assert (SkEnv.wf skenv_link).
               { eapply SkEnv.load_skenv_wf.
-                eapply link_list_preserves_wf_sk; eauto. }
+                eapply link_sk_preserves_wf_sk; eauto. }
               unfold Genv.find_def. ss.
               exploit SkEnv.project_impl_spec. eapply INCL_LINKED. i.
               inv H1.

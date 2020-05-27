@@ -1143,7 +1143,7 @@ Proof.
       + exploit link_sk_same; ss. i. erewrite H. des_ifs. eapply nodup_sim; et.
     - i; ss. inv INIT0. inv INIT1. clarify. }
   eapply match_states_xsim; eauto.
-  { eapply link_list_preserves_wf_sk; eauto. }
+  { eapply link_sk_preserves_wf_sk; eauto. }
   { exploit link_sk_same; ss. i. erewrite H. des_ifs. set (Sk.load_skenv sk_link) as skenv in *.
     rewrite cons_app. rewrite cons_app with (xtl := ctx2).
     rewrite cons_app with (xtl := [MutrecBspec.module] ++ ctx2).

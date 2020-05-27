@@ -62,8 +62,8 @@ Section ADQSOUND.
   Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt)).
   Hypothesis SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link.
 
-  Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_list_preserves_wf_sk; et. Qed.
-  Let WFSKLINKTGT: Sk.wf sk_link_tgt. eapply link_list_preserves_wf_sk; et. Qed.
+  Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_sk_preserves_wf_sk; et. Qed.
+  Let WFSKLINKTGT: Sk.wf sk_link_tgt. eapply link_sk_preserves_wf_sk; et. Qed.
 
   (* Let ge: Ge.t := sem_src.(Smallstep.globalenv). *)
 

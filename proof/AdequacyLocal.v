@@ -273,12 +273,12 @@ Section SIMGE.
       set (skenv_tgt := (Sk.load_skenv (SimSymb.tgt ss_link))) in *.
       assert(WFSRC: SkEnv.wf skenv_src).
       { eapply SkEnv.load_skenv_wf; et.
-        eapply (link_list_preserves_wf_sk ((ProgPair.src pp))); et.
+        eapply (link_sk_preserves_wf_sk ((ProgPair.src pp))); et.
         - ii; ss. des; clarify; et. unfold ProgPair.src in *. rewrite in_map_iff in *. des. clarify. et.
       }
       assert(WFTGT: SkEnv.wf skenv_tgt).
       { eapply SkEnv.load_skenv_wf; et.
-        eapply (link_list_preserves_wf_sk ((ProgPair.tgt pp))); et.
+        eapply (link_sk_preserves_wf_sk ((ProgPair.tgt pp))); et.
         - ii; ss. des; clarify; et. unfold ProgPair.tgt in *. rewrite in_map_iff in *. des. clarify. et.
       }
       r in SIMPROG.

@@ -197,6 +197,127 @@ Proof.
 Qed.
 
 
+(*** TODO: Put in SkEnv. ***)
+(*** TODO: fill_internals is not used in CoreRUSC. Update "Sem.v" properly. ***)
+Lemma skenv_fill_internals_preserves_wf
+      skenv0 skenv1
+      (WF: SkEnv.wf skenv0)
+      (FILL: (skenv_fill_internals skenv0) = skenv1):
+  <<WF: SkEnv.wf skenv1>>.
+Proof.
+  inv WF. unfold skenv_fill_internals. econs; i; ss; eauto.
+  - rewrite Genv_map_defs_symb in *. exploit SYMBDEF; eauto. i; des.
+    hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto. rewrite H0; ss.
+  - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs. exploit DEFSYMB; eauto.
+  - unfold Genv_map_defs, Genv.find_def in *; ss. rewrite PTree_filter_map_spec in DEF.
+    destruct ((Genv.genv_defs skenv0) ! blk) eqn:DMAP; ss. unfold o_bind in DEF; ss. des_ifs; eapply WFPARAM in DMAP; eauto.
+Qed.
+
+
+
+Module DtmAux.
+
+  Inductive find_fptr_owner (mss: list ModSem.t) (fptr: val) (ms: ModSem.t): Prop :=
+  | find_fptr_owner_intro
+      (MODSEM: In ms mss)
+      if_sig
+      (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig))
+  .
+
+  Lemma find_fptr_owner_determ
+        mss fptr ms0 ms1
+        (DISJ: SkEnv.disj ms0.(ModSem.skenv) ms1.(ModSem.skenv))
+        (FIND0: find_fptr_owner mss fptr ms0)
+        (FIND1: find_fptr_owner mss fptr ms1):
+      ms0 = ms1.
+  Proof.
+    inv FIND0. inv FIND1. inv DISJ. exploit DISJ0; et. i; des. clarify.
+  Qed.
+
+  Require Import RelationClasses Morphisms.
+  Require Import Relation_Operators.
+  Require Import Relations.
+  Local Open Scope signature_scope.
+
+  Lemma ForallOrdPairs_map
+        X Y (f: X -> Y) rx ry xs
+        (DISJ: ForallOrdPairs rx xs)
+        (RESPECTFUL: (rx ==> ry) f f)
+    :
+      <<DISJ: ForallOrdPairs ry (map f xs)>>
+  .
+  Proof.
+    ginduction xs; ii; ss.
+    { econs; et. }
+    inv DISJ.
+    econs; et.
+    - rewrite Forall_forall in *. ii. rewrite in_map_iff in *. des. clarify. et.
+    - eapply IHxs; et.
+  Qed.
+
+  Definition mod_disj (md0 md1: Mod.t): Prop := Sk.disj (Mod.sk md0) (Mod.sk md1).
+  Definition modsem_disj (ms0 ms1: ModSem.t): Prop := SkEnv.disj (ModSem.skenv ms0) (ModSem.skenv ms1).
+  Lemma modsem_respects_disj: forall skenv,
+      (mod_disj ==> modsem_disj) (flip Mod.modsem skenv) (flip Mod.modsem skenv).
+  Proof.
+    econs; ii. des. unfold Mod.modsem, flip in *. rewrite <- ! Mod.get_modsem_skenv_spec in *.
+    eapply SkEnv.project_respects_disj; et.
+  Qed.
+
+  Lemma link_sk_disjoint
+        p sk_link
+        (LINK: link_sk p = Some sk_link)
+    :
+      <<DISJ: ForallOrdPairs mod_disj p>>
+  .
+  Proof.
+    ginduction p; ii; ss.
+    unfold link_sk in *. ss.
+    destruct (classic (p = [])).
+    { clarify; ss. econs; et. econs; et. }
+    exploit (link_list_cons_inv _ LINK); et.
+    { destruct p; ss. }
+    i; des.
+    exploit IHp; et. intro T; des.
+    econs 2; et.
+    rewrite Forall_forall. i. r.
+    eapply Sk.link_disj in HD.
+    eapply Sk.disj_linkorder; et. hexploit (link_list_linkorder _ TL); et. intro U; des.
+    rewrite Forall_forall in *. eapply U. rewrite in_map_iff; et.
+  Qed.
+
+  Lemma find_fptr_owner_determ_link
+        p sk_link skenv_link fptr ms0 ms1
+        (LINK: link_sk p = Some sk_link)
+        (LOAD: Sk.load_skenv sk_link = skenv_link)
+        (FIND0: Ge.find_fptr_owner (load_genv p skenv_link) fptr ms0)
+        (FIND1: Ge.find_fptr_owner (load_genv p skenv_link) fptr ms1)
+    :
+      ms0 = ms1.
+  Proof.
+    inv FIND0. inv FIND1.
+    exploit link_sk_disjoint; et. intro T; des.
+    set (skenv_link := (Sk.load_skenv sk_link)) in *.
+    eapply (@ForallOrdPairs_map Mod.t ModSem.t (fun md => Mod.modsem md skenv_link)) in T; cycle 1.
+    { eapply modsem_respects_disj; et. }
+    assert(U: ForallOrdPairs modsem_disj (fst (load_genv p skenv_link))).
+    { econs; et. rewrite Forall_forall.
+      econs; ii. ss. unfold System.skenv in *. unfold Genv.find_funct, Genv.find_funct_ptr in FINDF.
+      des_ifs_safe. apply_all_once Genv_map_defs_def. des_safe. des_ifs.
+      unfold load_modsems, flip, Mod.modsem in *. rewrite in_map_iff in *. des_safe. ss.
+      rewrite <- Mod.get_modsem_skenv_spec in FINDF0. unfold Genv.find_funct_ptr in FINDF0. des_ifs.
+      exploit (@SkEnv.project_linkorder skenv_link (Vptr b Ptrofs.zero)); et.
+      { eapply link_includes; et. }
+      { ss. des_ifs. unfold Genv.find_funct_ptr. des_ifs. }
+      { ss. des_ifs. unfold Genv.find_funct_ptr. unfold Mod.sk. des_ifs. }
+    }
+    clear T.
+    exploit ForallOrdPairs_In; [|apply MODSEM|apply MODSEM0|..]; et. ii; des; clarify.
+    - inv H. exploit DISJ; et. i; clarify.
+    - inv H. exploit DISJ; et. i; clarify.
+  Qed.
+
+End DtmAux.
 
 Section INITDTM.
 
@@ -206,191 +327,15 @@ Section INITDTM.
   Hypothesis (WFSK: forall md (IN: In md p), <<WF: Sk.wf md>>).
   Let sem := Sem.sem p.
 
-  Lemma skenv_fill_internals_preserves_wf
-        skenv0 skenv1
-        (WF: SkEnv.wf skenv0)
-        (FILL: (skenv_fill_internals skenv0) = skenv1):
-      <<WF: SkEnv.wf skenv1>>.
-  Proof.
-    inv WF. unfold skenv_fill_internals. econs; i; ss; eauto.
-    - rewrite Genv_map_defs_symb in *. exploit SYMBDEF; eauto. i; des.
-      hexploit Genv_map_defs_def_inv; eauto. i; des. esplits; eauto. rewrite H0; ss.
-    - eapply Genv_map_defs_def in DEF; eauto. des. des_ifs. exploit DEFSYMB; eauto.
-    - unfold Genv_map_defs, Genv.find_def in *; ss. rewrite PTree_filter_map_spec in DEF.
-      destruct ((Genv.genv_defs skenv0) ! blk) eqn:DMAP; ss. unfold o_bind in DEF; ss. des_ifs; eapply WFPARAM in DMAP; eauto.
-  Qed.
-
-  Lemma system_disjoint
-        skenv_link sys_def fptr md md_def
-        (WFBIG: SkEnv.wf skenv_link)
-        (SYSTEM: Genv.find_funct (System.skenv skenv_link) fptr = Some (Internal sys_def))
-        (MOD: In md p)
-        (MODSEM: Genv.find_funct (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) fptr =
-                 Some (Internal md_def))
-        (INCL: SkEnv.includes skenv_link (Mod.sk md)):
-      False.
-  Proof.
-    hexploit (@Mod.get_modsem_projected_sk md skenv_link); eauto. intro SPEC; des.
-    remember (ModSem.skenv (Mod.get_modsem md skenv_link (Mod.data md))) as skenv_proj eqn:T in *.
-    assert(WFSMALL: skenv_proj.(SkEnv.wf_proj)).
-    { eapply SkEnv.project_spec_preserves_wf; eauto. }
-    clarify. des. inv SPEC.
-    exploit Genv.find_funct_inv; eauto. i; des. clarify. ss. des_ifs.
-    unfold Genv.find_funct_ptr in *. des_ifs. inv WFSMALL. exploit DEFSYMB; eauto. intro SYMBSMALL; des.
-    assert((defs (Mod.get_sk md (Mod.data md))) id).
-    { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
-    exploit SYMBKEEP; eauto. intro SYMBBIG; des. rewrite SYMB in *. symmetry in SYMBBIG.
-    exploit DEFKEPT; eauto.
-    { apply Genv.find_invert_symbol; eauto. }
-    i; des. exploit DEFKEEP; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    intro DEFSMALL; des. rewrite Heq in *. symmetry in DEFSMALL0. unfold System.skenv in *. ss.
-    exploit Genv_map_defs_def; eauto. i; des. des_ifs. inv LO. inv H3.
-  Qed.
-
-  Lemma link_sk_disjoint
-        md0 md1 p0 id skenv_link b if_sig if_sig0 restl sk_link gd_big0
-        (IN : In md0 p0)
-        (NOTSAME : md0 <> md1)
-        (DEFS1 : defs (Mod.get_sk md1 (Mod.data md1)) id)
-        (DEFS0 : defs (Mod.get_sk md0 (Mod.data md0)) id)
-        (DEFBIG0 : Genv.find_def skenv_link b = Some gd_big0)
-        (SYMBBIG0 : Genv.find_symbol skenv_link id = Some b)
-        (WFBIG : SkEnv.wf skenv_link)
-        (* (DEF0 : Genv.find_def (ModSem.skenv (Mod.get_modsem md0 md0.(Mod.midx) skenv_link (Mod.data md0))) b = Some (Gfun (Internal if_sig))) *)
-        (* (DEF1 : Genv.find_def (ModSem.skenv (Mod.get_modsem md1 md1.(Mod.midx) skenv_link (Mod.data md1))) b = Some (Gfun (Internal if_sig0))) *)
-        (DEF0 : Genv.find_def (SkEnv.project skenv_link (Mod.get_sk md0 (Mod.data md0))) b = Some (Gfun (Internal if_sig)))
-        (DEF1 : Genv.find_def (SkEnv.project skenv_link (Mod.get_sk md1 (Mod.data md1))) b = Some (Gfun (Internal if_sig0)))
-        (INCLS : forall md : Mod.t, md1 = md \/ In md p0 -> SkEnv.includes skenv_link (Mod.get_sk md (Mod.data md)))
-        (TL : link_list (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0) = Some restl)
-        (HD : link (Mod.get_sk md1 (Mod.data md1)) restl = Some sk_link)
-        (SKLINK : link_list (Mod.get_sk md1 (Mod.data md1) :: map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0) = Some sk_link)
-        (TLORD : Forall (fun x : Sk.t => linkorder x restl) (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0))
-        (HDORD : linkorder (Mod.get_sk md1 (Mod.data md1)) sk_link)
-        (HDORD0 : linkorder restl sk_link):
-      False.
-  Proof.
-    rewrite Forall_forall in TLORD.
-    assert (In (Mod.get_sk md0 (Mod.data md0)) (map (fun md : Mod.t => Mod.get_sk md (Mod.data md)) p0)).
-    { rewrite in_map_iff. exists md0. eauto using nth_error_In. }
-    assert (linkorder (Mod.get_sk md0 (Mod.data md0)) restl).
-    { exploit TLORD; eauto. }
-    Local Transparent Linker_prog.
-
-    exploit (INCLS md0); eauto using nth_error_In. intros INCL0. inversion WFBIG.
-    exploit DEFSYMB; eauto. i. des.
-    exploit SkEnv.project_impl_spec; eauto. i. inv H2.
-    exploit SYMBKEEP; eauto. i.
-
-    assert (INTERN0: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md0 (Mod.data md0))) = Some (Gfun (Internal int_sig))).
-    { rewrite SYMBBIG0 in H2. exploit DEFKEPT. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des. eauto. } des.
-
-    exploit (@prog_defmap_linkorder (fundef signature) unit). eapply H0.
-    instantiate (2:=id).
-    eauto. i. des.
-
-    exploit INCLS. instantiate (1:=md1). auto. intros INCL1.
-    exploit SkEnv.project_impl_spec; eauto. i. inv H5.
-    exploit SYMBKEEP; eauto. i.
-
-    assert (INTERN1: exists int_sig, Maps.PTree.get id (prog_defmap (Mod.get_sk md1 (Mod.data md1))) = Some (Gfun (Internal int_sig))).
-    { rewrite SYMBBIG0 in H5. exploit DEFKEPT0. eapply Genv.find_invert_symbol. eapply SYMBBIG0. eauto. i. des. eauto. } des.
-
-    exploit (@prog_defmap_linkorder (fundef signature) unit). eapply HDORD.
-    instantiate (2:=id).
-    eauto. i. des.
-
-    Local Transparent Linker_def. simpl in *. inv H4. inv H9. Local Transparent Linker_fundef.
-    simpl in *. inv H7. inv H8. inv HD. unfold link_prog in H7. des_ifs.
-    symmetry in Heq. eapply andb_true_eq in Heq. des.
-    symmetry in Heq0. rewrite Maps.PTree_Properties.for_all_correct in Heq0. unfold defs in *. exploit Heq0. eauto. i.
-    unfold link_prog_check in H8. des_ifs. ss. rewrite andb_false_r in H8. clarify.
-  Qed.
-
-  Theorem genv_disjoint: <<DISJ: sem.(globalenv).(Ge.disjoint)>>.
-  Proof.
-    ss. des_ifs; cycle 1.
-    { econs; eauto. ii; ss. inv FIND0. ss. }
-    assert(WFBIG: (Sk.load_skenv t).(SkEnv.wf)).
-    { eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; et. }
-    econs; eauto. ii; ss. inv FIND0; inv FIND1.
-    generalize (link_includes p Heq). intro INCLS.
-    unfold Sk.load_skenv in *. unfold load_genv in *. unfold load_modsems in *. ss.
-    abstr (Genv.globalenv t) skenv_link. rename t into sk_link. rename Heq into SKLINK.
-    rewrite in_map_iff in *.
-    u in *. destruct MODSEM.
-    { clarify. des; ss. exfalso. clarify. eapply system_disjoint; eauto using nth_error_In. }
-    des; ss.
-    { clarify. ss. exfalso. eapply system_disjoint; eauto using nth_error_In. }
-    rename MODSEM1 into NTH1. rename H0 into NTH0.
-    rename MODSEM0 into MODSME1. rename H into MODSEM0.
-    (* rename idx0 into idx1. rename idx into idx0. *)
-    (* exploit nth_error_In; try eapply NTH0. intro IN0. *)
-    (* exploit nth_error_In; try eapply NTH1. intro IN1. *)
-
-    rename x into md0. rename x0 into md1. clarify.
-    destruct fptr; ss. des_ifs. unfold Genv.find_funct_ptr in *. des_ifs.
-    rename Heq0 into DEF0. rename Heq into DEF1.
-
-    hexploit (@Mod.get_modsem_projected_sk md0 skenv_link); eauto. intro SPEC0; des.
-    hexploit (@Mod.get_modsem_projected_sk md1 skenv_link); eauto. intro SPEC1; des.
-    remember (ModSem.skenv (Mod.get_modsem md0 skenv_link (Mod.data md0))) as skenv_proj0 eqn:T0 in *.
-    remember (ModSem.skenv (Mod.get_modsem md1 skenv_link (Mod.data md1))) as skenv_proj1 eqn:T1 in *.
-
-    assert(WFSMALL0: skenv_proj0.(SkEnv.wf_proj)).
-    { eapply SkEnv.project_spec_preserves_wf; try apply SPEC0; eauto. }
-    assert(WFSMALL1: skenv_proj1.(SkEnv.wf_proj)).
-    { eapply SkEnv.project_spec_preserves_wf; try apply SPEC1; eauto. }
-
-    bar. inv WFSMALL0. exploit DEFSYMB; eauto. i; des. inv WFSMALL1. exploit DEFSYMB0; eauto. i; des.
-    rename SYMB0 into SYMB1. rename SYMB into SYMB0. rename id0 into id1. rename id into id0.
-    move SYMB0 at top. move SYMB1 at top. clear_until_bar. inv SPEC0.
-    assert(DEFS0: defs (Mod.get_sk md0 (Mod.data md0)) id0).
-    { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
-    exploit SYMBKEEP; eauto. intro SYMBBIG0; des. rewrite SYMB0 in *. symmetry in SYMBBIG0.
-    exploit DEFKEPT; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    i; des. move SYMBBIG0 at top. move DEFBIG at top. move DEFS0 at top. clear_until_bar.
-
-    inv SPEC1.
-    assert(DEFS1: defs (Mod.get_sk md1 (Mod.data md1)) id1).
-    { apply NNPP. ii. exploit SYMBDROP; eauto. i; des. clarify. }
-    exploit SYMBKEEP; eauto. intro SYMBBIG1; des. rewrite SYMB1 in *. symmetry in SYMBBIG1.
-    exploit DEFKEPT; eauto.
-    { eapply Genv.find_invert_symbol; eauto. }
-    i; des. move SYMBBIG1 at top. move DEFBIG0 at top. move DEFS1 at top. clear_until_bar.
-
-    assert(id0 = id1).
-    { eapply Genv.genv_vars_inj; try eapply SYMBBIG0; eauto. } clarify.
-    rename id1 into id.
-
-    clear - SYMBBIG0 WFBIG INCLS DEF0 DEF1 DEFBIG DEFS0 DEFS1 SKLINK NTH0 NTH1.
-    destruct (classic (md0 = md1)); ss.
-    { clarify. }
-
-    exfalso. clear_tac. generalize dependent sk_link.
-    ginduction p; i; ss. dup SKLINK.
-    eapply link_list_cons_inv in SKLINK; cycle 1.
-    { destruct p0; ss. des; clarify. }
-    des_safe.
-    hexploit (link_list_linkorder _ TL); eauto. intro TLORD; des_safe.
-    hexploit (link_linkorder _ _ _ HD); eauto. intro HDORD; des_safe.
-
-    des; clarify; try (by eapply link_sk_disjoint; try eapply DEFBIG; try erewrite Mod.get_modsem_skenv_spec; eauto).
-    - eapply IHp0; try eapply DEFS1; try eapply DEFS0; try eapply DEFBIG; eauto.
-Unshelve.
-  Qed.
-
   Lemma find_fptr_owner_determ
         fptr ms0 ms1
         (FIND0: Ge.find_fptr_owner sem.(globalenv) fptr ms0)
         (FIND1: Ge.find_fptr_owner sem.(globalenv) fptr ms1):
       ms0 = ms1.
   Proof.
-    inv FIND0; inv FIND1. ss. des_ifs.
-    { unfold load_genv in *. ss. generalize genv_disjoint; i.
-      inv H. eapply DISJOINT; eauto; econs; eauto; ss; des_ifs.
-    }
+    ss. des_ifs; cycle 1.
+    { inv FIND0; ss. }
+    eapply DtmAux.find_fptr_owner_determ_link; et.
   Qed.
 
   Theorem initial_state_determ
@@ -403,6 +348,8 @@ Unshelve.
   Qed.
 
 End INITDTM.
+
+
 
 
 

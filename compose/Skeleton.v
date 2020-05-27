@@ -4,7 +4,7 @@ Require Import Memory.
 Require Export ASTC.
 Require Import MapsC.
 Require Import Values.
-Require Import Linking.
+Require Import LinkingC.
 Require Import Conventions1.
 Require Import Integers.
 
@@ -189,9 +189,54 @@ Module Sk.
           (IN: In (id, (Gfun skd)) sk.(prog_defs)),
           4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned).
 
+  Inductive disj (sk0 sk1: t): Prop :=
+  | disj_intro
+      (DISJ: forall
+          i if0 if1
+          (DEF0: (prog_defmap sk0) ! i = Some (Gfun (Internal if0)))
+          (DEF1: (prog_defmap sk1) ! i = Some (Gfun (Internal if1)))
+        ,
+          False)
+  .
+
+  Lemma link_disj
+        (sk0 sk1 sk_link: t)
+        (LINK: link sk0 sk1 = Some sk_link)
+    :
+      (<<DISJ: disj sk0 sk1>>)
+  .
+  Proof.
+    Local Transparent Linker_prog.
+    ss. unfold link_prog in *.
+    Local Opaque Linker_prog.
+    des_ifs. bsimpl; des.
+    econs; eauto.
+    ii.
+    rewrite PTree_Properties.for_all_correct in *. exploit Heq0; et. intro T.
+    unfold link_prog_check in T. des_ifs. bsimpl. ss.
+  Qed.
+
+  Lemma disj_linkorder
+        sk0 sk1 sk_link
+        (DISJ: disj sk0 sk_link)
+        (LINK: linkorder sk1 sk_link)
+    :
+      (<<DISJ: disj sk0 sk1>>)
+  .
+  Proof.
+    inv DISJ. econs; et.
+    ii.
+    Local Transparent Linker_prog.
+    ss.
+    Local Opaque Linker_prog.
+    des. exploit LINK1; et. i; des. inv H0. inv H3.
+    exploit DISJ0; et.
+  Qed.
+
 End Sk.
 
 Hint Unfold skdef_of_gdef skdefs_of_gdefs Sk.load_skenv Sk.load_mem Sk.empty.
+Hint Constructors Sk.disj.
 
 (* Skeleton Genv *)
 Module SkEnv.
@@ -547,6 +592,93 @@ I think "sim_skenv_monotone" should be sufficient.
     inv H2. ss. des_ifs. symmetry in H1. eapply DEFS in H1. des. inv MATCH. inv H1. eauto.
   Qed.
 
+  Inductive disj (ske0 ske1: t): Prop :=
+  | disj_intro
+      (DISJ: forall
+          fptr f0 f1
+          (FINDF: Genv.find_funct ske0 fptr = Some (Internal f0))
+          (FINDF: Genv.find_funct ske1 fptr = Some (Internal f1))
+        ,
+          False)
+  .
+
+  Lemma project_respects_disj
+        sk0 sk1 ske0 ske1 ske_link
+        (DISJ: Sk.disj sk0 sk1)
+        (LOAD0: project ske_link sk0 = ske0)
+        (LOAD1: project ske_link sk1 = ske1)
+    :
+      (<<DISJ: disj ske0 ske1>>)
+  .
+  Proof.
+    inv DISJ. econs. ii.
+    unfold project in *. uge. des_ifs. apply_all_once Genv_map_defs_def. des; ss.
+    uo. des_ifs. uge. ss.
+    exploit DISJ0; et.
+  Qed.
+
+  Lemma project_linkorder
+        skenv_link fptr sk ef fd
+        (INCL: SkEnv.includes skenv_link sk)
+        (FINDF0: Genv.find_funct skenv_link fptr = Some (External ef))
+        (FINDF1: Genv.find_funct (project skenv_link sk) fptr = Some (Internal fd))
+    :
+      False
+  .
+  Proof.
+    unfold project in *. uge. des_ifs. apply_all_once Genv_map_defs_def. des; ss.
+    uo. des_ifs. uge. ss.
+    clarify.
+    inv INCL. exploit DEFS; et. i; des.
+    apply_all_once Genv.invert_find_symbol.
+    clarify. uge. clarify. inv MATCH. inv H1.
+  Qed.
+
+  Definition link (ske0 ske1: SkEnv.t): SkEnv.t := Genv_link ske0 ske1.
+
+  Lemma link_spec
+        (ske0 ske1: t)
+        (EQ: ske0.(Genv.genv_next) = ske1.(Genv.genv_next))
+        fptr fd
+        (FIND: Genv.find_funct (link ske0 ske1) fptr = Some (Internal fd))
+    :
+      <<FIND: link_option (Genv.find_funct ske0 fptr) (Genv.find_funct ske1 fptr) = Some (Internal fd)>>
+      (* match (Genv.find_funct ske0 fptr), (Genv.find_funct ske1 fptr) with *)
+      (* | Some fd0, Some fd1 => Linking.link fd0 fd1 = Some (Internal fd) *)
+      (* | Some fd0, None => fd0 = fd *)
+      (* end *)
+  .
+  Proof.
+    i.
+    (* pose (Genv.find_funct (link ske0 ske1) fptr) as X. *)
+    (* pose (Genv.find_funct ske0 fptr) as Y. *)
+    (* pose (Genv.find_funct ske1 fptr) as Z. *)
+    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+    unfold link in *. rewrite Genv_link_def in *; ss.
+    unfold combine_fundef in *.
+    uo. des_ifs; ss; des_ifs.
+  Qed.
+
+  Lemma link_spec_inv
+        (ske0 ske1: t)
+        (EQ: ske0.(Genv.genv_next) = ske1.(Genv.genv_next))
+        fptr fd
+        (FIND: link_option (Genv.find_funct ske0 fptr) (Genv.find_funct ske1 fptr) = Some (Internal fd))
+    :
+      <<FIND: Genv.find_funct (link ske0 ske1) fptr = Some (Internal fd)>>
+  .
+  Proof.
+    i.
+    (* pose (Genv.find_funct (link ske0 ske1) fptr) as X. *)
+    (* pose (Genv.find_funct ske0 fptr) as Y. *)
+    (* pose (Genv.find_funct ske1 fptr) as Z. *)
+    unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+    unfold link in *. rewrite Genv_link_def in *; ss.
+    unfold combine_fundef in *.
+    uo. des_ifs; ss; des_ifs.
+  Qed.
+
 End SkEnv.
 
 Hint Unfold SkEnv.empty.
+Hint Constructors SkEnv.disj.

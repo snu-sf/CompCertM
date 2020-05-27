@@ -266,7 +266,6 @@ Section PRESERVATION.
   Proof.
     eapply SemProps.find_fptr_owner_determ; ss;
       try rewrite LINK_SK_TGT; eauto.
-    { ii. ss. des; ss. clarify. ss. unfold link_sk, link_list in *. ss. clarify. }
   Qed.
 
   Lemma alloc_variables_determ

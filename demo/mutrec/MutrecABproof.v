@@ -775,24 +775,14 @@ Section LXSIM.
                                 eapply in_or_app. ss. auto.
                               - ss. des_ifs. eauto. }
                             exploit find_fptr_owner_determ.
-                            instantiate (1 := (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)).
-                            i. eapply in_app_or in IN. ss. des; clarify.
-                            { eapply WFCTX1; eauto. }
-                            { eapply wf_module_Aspec. }
-                            { eapply wf_module_Bspec. }
-                            { eapply WFCTX2; eauto. }
-                            ss. des_ifs. eapply MSFIND.
-                            ss. des_ifs. eapply MSFIND0.
+                            { instantiate (3 := (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)).
+                              ss. des_ifs. eapply MSFIND. }
+                            { ss. des_ifs. eapply MSFIND0. }
                             i. subst ms.
                             exploit find_fptr_owner_determ.
-                            instantiate (1 := (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)).
-                            i. eapply in_app_or in IN. ss. des; clarify.
-                            { eapply WFCTX1; eauto. }
-                            { eapply wf_module_Aspec. }
-                            { eapply wf_module_Bspec. }
-                            { eapply WFCTX2; eauto. }
-                            ss. des_ifs. eapply MSFIND.
-                            ss. des_ifs. eapply H0.
+                            { instantiate (3 := (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)).
+                              ss. des_ifs. eapply MSFIND. }
+                            { ss. des_ifs. eapply H0. }
                             i. subst ms0. ss.
                             inv INIT; inv INIT0. ss. clarify. }
                         - i. inv FINAL; inv STEP.
@@ -872,24 +862,14 @@ Section LXSIM.
                                 eapply in_or_app. ss. auto.
                               - ss. des_ifs. eauto. }
                             exploit find_fptr_owner_determ.
-                            instantiate (1 := (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)).
-                            i. eapply in_app_or in IN. ss. des; clarify.
-                            { eapply WFCTX1; eauto. }
-                            { eapply wf_module_Aspec. }
-                            { eapply wf_module_Bspec. }
-                            { eapply WFCTX2; eauto. }
-                            ss. des_ifs. eapply MSFIND.
-                            ss. des_ifs. eapply MSFIND0.
+                            { instantiate (3 := (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)).
+                              ss. des_ifs. eapply MSFIND. }
+                            { ss. des_ifs. eapply MSFIND0. }
                             i. subst ms.
                             exploit find_fptr_owner_determ.
-                            instantiate (1 := (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)).
-                            i. eapply in_app_or in IN. ss. des; clarify.
-                            { eapply WFCTX1; eauto. }
-                            { eapply wf_module_Aspec. }
-                            { eapply wf_module_Bspec. }
-                            { eapply WFCTX2; eauto. }
-                            ss. des_ifs. eapply MSFIND.
-                            ss. des_ifs. eapply H0.
+                            { instantiate (3 := (ctx1 ++ [MutrecAspec.module; MutrecBspec.module] ++ ctx2)).
+                              ss. des_ifs. eapply MSFIND. }
+                            { ss. des_ifs. eapply H0. }
                             i. subst ms0. ss.
                             inv INIT; inv INIT0. ss. clarify. }
                         - i. inv FINAL; inv STEP.
@@ -1163,8 +1143,6 @@ Proof.
       + exploit link_sk_same; ss. i. erewrite H. des_ifs. eapply nodup_sim; et.
     - i; ss. inv INIT0. inv INIT1. clarify. }
   eapply match_states_xsim; eauto.
-  { ii. eapply WF. ss. eapply in_or_app. auto. }
-  { ii. eapply WF. ss. eapply in_or_app. ss. auto. }
   { eapply link_list_preserves_wf_sk; eauto. }
   { exploit link_sk_same; ss. i. erewrite H. des_ifs. set (Sk.load_skenv sk_link) as skenv in *.
     rewrite cons_app. rewrite cons_app with (xtl := ctx2).

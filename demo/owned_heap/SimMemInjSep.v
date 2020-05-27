@@ -588,7 +588,7 @@ Next Obligation.
   + etrans; et.
 Qed.
 
-Global Program Instance SimMemSV : SimMem.class :=
+Global Program Instance SimMemInjSep : SimMem.class :=
 { t := t';
   src := src;
   tgt := tgt;
@@ -630,7 +630,7 @@ Next Obligation. ii. eapply Mem.unchanged_on_implies; et. Qed.
 
 
 
-Global Program Instance SimMemSVLift : SimMemLift.class SimMemSV :=
+Global Program Instance SimMemInjSepLift : SimMemLift.class SimMemInjSep :=
 { lift := lift';
   unlift := unlift';
 }.
@@ -670,7 +670,7 @@ Next Obligation.
   (* - ii. unfold ons_mem in *. unfold unlift_ptt. des_ifs. *)
 Qed.
 
-Global Program Instance SimMemInjOhLift: SimMemOhLift.class (@SimMemOh_default SimMemSV)
+Global Program Instance SimMemInjOhLift: SimMemOhLift.class (@SimMemOh_default SimMemInjSep)
   := SimMemOhLift.SimMemOhLift_transform.
 
 Section ORIGINALS.
@@ -1539,7 +1539,7 @@ Proof.
   - ii; des; et.
 Qed.
 
-Global Program Instance SimSymbId: SimSymb.class SimMemSV := {
+Global Program Instance SimSymbId: SimSymb.class SimMemInjSep := {
   t := SimSymbId.t';
   src := SimSymbId.src;
   tgt := SimSymbId.tgt;
@@ -1689,13 +1689,13 @@ Unshelve.
   all: ss.
 Qed.
 
-Local Existing Instance SimMemSV.
+Local Existing Instance SimMemInjSep.
 Local Existing Instance SimSymbId.
 
 Lemma sim_skenv_symbols_inject
       sm0 ss0 skenv_src skenv_tgt
       (SIMSKE: SimSymb.sim_skenv sm0 ss0 skenv_src skenv_tgt):
-    symbols_inject sm0.(SimMemSV.inj) skenv_src skenv_tgt.
+    symbols_inject sm0.(inj) skenv_src skenv_tgt.
 Proof.
   inv SIMSKE. inv SIMSKENV. inv INJECT. rr. esplits; ss.
   + i. exploit Genv.genv_symb_range; eauto. intro NB. exploit DOMAIN; eauto. i ;des. clarify.

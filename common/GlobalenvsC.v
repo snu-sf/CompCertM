@@ -1,6 +1,6 @@
 Require Recdef.
 Require Import Zwf.
-Require Import Axioms CoqlibC Errors MapsC ASTC Linking.
+Require Import Axioms CoqlibC Errors MapsC ASTC LinkingC.
 Require Import IntegersC Floats ValuesC Memory.
 Require Import sflib.
 
@@ -218,6 +218,69 @@ Section MAP.
   Proof. apply functional_extensionality. i. ss. Qed.
 
 End MAP.
+
+
+
+Section LINK.
+
+  Variable F V: Type.
+  Context `{Linker F}.
+
+  (*** It is meant to only work for "Genv.find_funct".
+       It is not expected to be used meaningfully in UnreachC.skenv or sth like that.
+   ***)
+  Definition combine_fundef (gd0 gd1: option (globdef F V)): option (globdef F V) :=
+    match gd0, gd1 with
+    | Some (Gfun f0), Some (Gfun f1) => (do f <- link f0 f1 ; Some (Gfun f))
+    | Some (Gfun f0), _ => Some (Gfun f0)
+    | _, Some (Gfun f1) => Some (Gfun f1)
+    | _, _ => None
+    end
+  .
+
+  Program Definition Genv_link (ge0 ge1: Genv.t F V): Genv.t F V :=
+    if eq_block ge0.(Genv.genv_next) ge1.(Genv.genv_next)
+    then
+      (* {| Genv.genv_public := ge0.(Genv.genv_public); *)
+      (*    Genv.genv_symb := ge0.(Genv.genv_symb); *)
+      {| Genv.genv_public := nil;
+         Genv.genv_symb := @PTree.empty _;
+         Genv.genv_defs := (PTree.combine combine_fundef ge0.(Genv.genv_defs) ge1.(Genv.genv_defs));
+         Genv.genv_next := ge0.(Genv.genv_next);
+      |}
+    else
+      (Genv.empty_genv _ _ nil)
+  .
+  (* Next Obligation. eapply Genv.genv_symb_range; eauto. Qed. *)
+  Next Obligation. rewrite PTree.gempty in *. ss. Qed.
+  Next Obligation.
+    rewrite PTree.gcombine in *; ss.
+    unfold combine_fundef in *.
+    des_ifs; try (by eapply Genv.genv_defs_range; et).
+    rewrite H0 in *. eapply Genv.genv_defs_range; et.
+  Qed.
+  (* Next Obligation. eapply Genv.genv_vars_inj; eauto. Qed. *)
+  Next Obligation. rewrite PTree.gempty in *; ss. Qed.
+
+  Lemma Genv_link_def
+        ge0 ge1 blk (EQ: ge0.(Genv.genv_next) = ge1.(Genv.genv_next)):
+    <<FIND: (Genv.find_def (Genv_link ge0 ge1)) blk = (combine_fundef (Genv.find_def ge0 blk)
+                                                                      (Genv.find_def ge1 blk))>>.
+  Proof.
+    unfold Genv.find_def in *. unfold Genv_link in *. ss. des_ifs. ss.
+    rewrite PTree.gcombine; ss.
+  Qed.
+
+  (* Lemma Genv_link_symb_left *)
+  (*       ge0 ge1 (EQ: ge0.(Genv.genv_next) = ge1.(Genv.genv_next)): *)
+  (*     <<FIND: all1 ((Genv.find_symbol (Genv_link ge0 ge1)) =1= (Genv.find_symbol ge0))>> *)
+  (* . *)
+  (* Proof. *)
+  (*   ii. unfold Genv_link. des_ifs. *)
+  (* Qed. *)
+
+End LINK.
+
 
 (* Hint Unfold Genv_update_publics. *)
 Ltac gesimpl := try rewrite Genv_update_publics_def in *;

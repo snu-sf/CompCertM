@@ -197,3 +197,14 @@ Next Obligation. inv H; inv H0; econs; et. Qed.
 Next Obligation.
   pose x as X. pose y as Y. destruct x, y; ss; des_ifs; esplits; eauto; try (econs; et).
 Qed.
+
+
+Definition link_option T `{Linker T} (t0 t1: option T): option T :=
+  match t0, t1 with
+  | Some t0, Some t1 => link t0 t1
+  | Some t0, None => Some t0
+  | None, Some t1 => Some t1
+  | None, None => None
+  end
+.
+Arguments link_option {T} {H}.

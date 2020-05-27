@@ -33,8 +33,8 @@ Module Mod.
         <<PROJECTED: SkEnv.project skenv data.(get_sk) = data.(get_modsem skenv).(ModSem.skenv)>>;
     get_modsem_skenv_link_spec: forall skenv_link,
         <<EQ: data.(get_modsem skenv_link).(ModSem.skenv_link) = skenv_link>>;
-    get_modsem_midx_spec: forall skenv,
-        <<EQ: data.(get_modsem skenv).(ModSem.midx) = midx>>;
+    get_modsem_midx_spec: forall skenv d,
+        <<EQ: d.(get_modsem skenv).(ModSem.midx) = midx>>;
   }.
 
   Lemma get_modsem_projected_sk

@@ -10,6 +10,7 @@ Require Import Integers.
 Require Import ASTC.
 Require Import Maps.
 Require Import AxiomsC.
+Require Import LinkingC.
 
 Require Import Mod Sem ModSem.
 Require Import Any.
@@ -21,18 +22,13 @@ Set Implicit Arguments.
 
 Local Obligation Tactic := idtac.
 
-Variable ms_bot: ModSem.t.
-
-Section MODTUPLE.
-
-  Variable skenv_link: SkEnv.t.
-
-  Variable link_skenv: SkEnv.t -> SkEnv.t -> SkEnv.t.
+Section MODSEMTUPLE.
 
   Variable msdl msdr: ModSem.t.
-
-  Hypothesis MIDXL: msdl.(ModSem.midx) <> None.
-  Hypothesis MIDXR: msdr.(ModSem.midx) <> None.
+  Variable sk: Sk.t.
+  Variable skenv_link: SkEnv.t.
+  Let skenv := SkEnv.project skenv_link sk.
+  Variable midx: string.
 
   Definition owned_heap: Type := (msdl.(ModSem.owned_heap) * msdr.(ModSem.owned_heap)).
 
@@ -232,9 +228,11 @@ To do this, I will require initial_state to be deterministic.
       ModSem.after_external := after_external;
       ModSem.initial_owned_heap := initial_owned_heap;
       ModSem.globalenv := globalenv;
-      ModSem.skenv := link_skenv msdl.(ModSem.skenv) msdr.(ModSem.skenv);
+      (* ModSem.skenv := SkEnv.link msdl.(ModSem.skenv) msdr.(ModSem.skenv); *)
+      ModSem.skenv := skenv;
       ModSem.skenv_link := skenv_link;
-      ModSem.midx := msdl.(ModSem.midx); (*** <-- TODO: prettify later ***)
+      (* ModSem.midx := msdl.(ModSem.midx); (*** <-- TODO: prettify later ***) *)
+      ModSem.midx := Some midx; (*** <-- TODO: prettify later ***)
     |}
   .
   Next Obligation.
@@ -300,13 +298,57 @@ To do this, I will require initial_state to be deterministic.
     i. ss.
   Qed.
 
-End MODTUPLE.
+End MODSEMTUPLE.
 
 
 (*** if we put "MODTUPLE" section inside "ModTuple" module, "Print ModTuple" will be very messy ***)
-Module ModTuple.
+Module ModSemTuple.
   Definition t := Eval red in t.
+End ModSemTuple.
+Print ModSemTuple.
+Print ModSemTuple.t.
+
+
+
+Section MODTUPLE.
+
+  Variable mdl mdr: Mod.t.
+  Variable sk_link: Sk.t.
+  Variable midx: string.
+  (* Hypothesis SKLINK: link (Mod.sk mdl) (Mod.sk mdr) = Some sk_link. *)
+
+  Program Definition t': Mod.t :=
+    {|
+      Mod.datatype := (mdl.(Mod.datatype) * mdr.(Mod.datatype))%type;
+      Mod.get_sk := fun _ => sk_link;
+      (* Mod.get_sk := fun '(l, r) => *)
+      (*                 match link (Mod.get_sk mdl l) (Mod.get_sk mdr r) with *)
+      (*                 | Some sk => sk *)
+      (*                 | None => Sk.empty *)
+      (*                 end; *)
+      Mod.get_modsem := fun ske '(l, r) =>
+                          ModSemTuple.t (Mod.get_modsem mdl ske l) (Mod.get_modsem mdr ske r) sk_link ske midx;
+      Mod.data := (mdl.(Mod.data), mdr.(Mod.data));
+      Mod.midx := Some midx;
+    |}
+  .
+  Next Obligation.
+    ii. ss.
+    (* unfold Mod.sk in *. des_ifs. *)
+  Qed.
+  Next Obligation.
+    ii. ss.
+  Qed.
+  Next Obligation.
+    ii. ss. des_ifs.
+  Qed.
+
+End MODTUPLE.
+
+Module ModTuple.
+  Definition t := Eval red in t'.
 End ModTuple.
-Print ModTuple.
 Print ModTuple.t.
+
+
 

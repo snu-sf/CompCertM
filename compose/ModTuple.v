@@ -607,10 +607,13 @@ Module ModTuple.
                   econs; ss; et. econs; et.
               }
               { (* stk focus *)
+                (* rr in H. des. *)
                 inv AT.
                 - (* left *)
                   remember (StackCons dl st0 tl) as X.
-                  dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify.
+                  dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify. ss.
+                  (* determ_tac ModSem.at_external_dtm. *)
+
                   (* set (upcast oh) as X. *)
                   (* set (Midx.update ohs_tgt (ModSem.midx (Frame.ms fr_tgt)) X) as Y. *)
                   esplits; eauto.
@@ -618,7 +621,7 @@ Module ModTuple.
                     eapply plus_one. econs; et. ss.
                     { des_ifs. econs 1; ss; et. }
                   + right. eapply CIH; et. econs; et.
-                    * econs 3; ss; et.
+                    * eapply match_stacks_focus with (oh_src := (oh0, snd oh_src)); ss; et.
                       { rewrite cons_app. rewrite app_assoc. f_equal. }
                       { econs; et. }
                       { ii. unfold Midx.update. rewrite Mod.get_modsem_midx_spec. rewrite <- MIDXL.

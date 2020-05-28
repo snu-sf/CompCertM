@@ -426,31 +426,49 @@ Module ModTuple.
           WTS: (at least) when synchronization happens, it should coincide
        ***)
 
+      Inductive sim_ohs (ohs_src ohs_tgt: Ohs): Prop :=
+      | sim_ohs_intro
+          (OHS: forall mj (NL: mj <> msdl.(ModSem.midx)) (NR: mj <> msdr.(ModSem.midx)),
+              ohs_src mj = ohs_tgt mj)
+          ohl ohr
+          (OHLR: @downcast ms_link.(ModSem.owned_heap) (ohs_src msdl.(ModSem.midx)) = Some (ohl, ohr))
+          (OHL: @downcast msdl.(ModSem.owned_heap) (ohs_tgt msdl.(ModSem.midx)) = Some ohl)
+          (OHR: @downcast msdr.(ModSem.owned_heap) (ohs_tgt msdr.(ModSem.midx)) = Some ohr)
+      .
+
       (*** ohs_tgt is the latest known global Ohs. src's internal Ohs should be consistent with it ***)
-      Inductive match_stacks (ohs_tgt: Ohs): list Frame.t -> list Frame.t -> Prop :=
+      Inductive match_stacks (ohs_src ohs_tgt: Ohs): list Frame.t -> list Frame.t -> Prop :=
       | match_stacks_nil
         :
-          match_stacks ohs_tgt [] []
+          match_stacks ohs_src ohs_tgt [] []
       | match_stacks_cons_ctx
-          tail_src tail_tgt
-          (TAIL: match_stacks ohs_tgt tail_src tail_tgt) hd :
-          match_stacks ohs_tgt (hd :: tail_src) (hd :: tail_tgt)
+          tail_src tail_tgt old_src old_tgt
+          (TAIL: match_stacks old_src old_tgt tail_src tail_tgt) hd
+          (OHS: sim_ohs ohs_src ohs_tgt)
+          (NL: hd.(Frame.ms).(ModSem.midx) <> msdl.(ModSem.midx))
+          (NR: hd.(Frame.ms).(ModSem.midx) <> msdr.(ModSem.midx))
+        :
+          match_stacks ohs_src ohs_tgt (hd :: tail_src) (hd :: tail_tgt)
       | match_stacks_focus
-          tail_src tail_tgt
-          (TAIL: match_stacks ohs_tgt tail_src tail_tgt)
+          frs_src frs_tgt tail_src tail_tgt old_src old_tgt
           hd_src stk_src oh_src hds_tgt
+          (FRSSRC: frs_src = (hd_src :: tail_src))
+          (FRSTGT: frs_tgt = (hds_tgt ++ tail_tgt))
+          (TAIL: match_stacks old_src old_tgt tail_src tail_tgt)
           (NNIL: stk_src <> StackNil)
           (HD: match_focus_stack stk_src hds_tgt)
           (STK: hd_src = Frame.mk ms_link (stk_src, oh_src))
+          (OHS: forall mj (NL: mj <> msdl.(ModSem.midx)) (NR: mj <> msdr.(ModSem.midx)),
+              ohs_src mj = ohs_tgt mj)
           (OHL: ohs_tgt msdl.(ModSem.midx) = upcast (fst oh_src))
           (OHR: ohs_tgt msdr.(ModSem.midx) = upcast (snd oh_src))
         :
-          match_stacks ohs_tgt (hd_src :: tail_src) (hds_tgt ++ tail_tgt)
+          match_stacks ohs_src ohs_tgt frs_src frs_tgt
       .
 
       Lemma match_stacks_right_nil
-            ohs_tgt frs
-            (STK: match_stacks ohs_tgt frs []) :
+            ohs_src ohs_tgt frs
+            (STK: match_stacks ohs_src ohs_tgt frs []) :
         <<NIL: frs = []>>.
       Proof.
         inv STK; ss. destruct hds_tgt, tail_tgt; ss.
@@ -460,20 +478,15 @@ Module ModTuple.
       Inductive match_states : Sem.state -> Sem.state -> Prop :=
       | match_states_normal
           frs_src frs_tgt ohs_src ohs_tgt
-          (STK: match_stacks ohs_tgt frs_src frs_tgt)
-          (OHS: forall mj (NL: mj <> msdl.(ModSem.midx)) (NR: mj <> msdr.(ModSem.midx)),
-              ohs_src mj = ohs_tgt mj)
+          (STK: match_stacks ohs_src ohs_tgt frs_src frs_tgt)
+          (* (OHS: forall mj (NL: mj <> msdl.(ModSem.midx)) (NR: mj <> msdr.(ModSem.midx)), *)
+          (*     ohs_src mj = ohs_tgt mj) *)
         :
           match_states (State frs_src ohs_src) (State frs_tgt ohs_tgt)
       | match_states_call
           frs_src frs_tgt args ohs_src ohs_tgt
-          (STK: match_stacks ohs_tgt frs_src frs_tgt)
-          (OHS: forall mj (NL: mj <> msdl.(ModSem.midx)) (NR: mj <> msdr.(ModSem.midx)),
-              ohs_src mj = ohs_tgt mj)
-          ohl ohr
-          (OHLR: @downcast ms_link.(ModSem.owned_heap) (ohs_src msdl.(ModSem.midx)) = Some (ohl, ohr))
-          (OHL: @downcast msdl.(ModSem.owned_heap) (ohs_tgt msdl.(ModSem.midx)) = Some ohl)
-          (OHR: @downcast msdr.(ModSem.owned_heap) (ohs_tgt msdr.(ModSem.midx)) = Some ohr)
+          (STK: match_stacks ohs_src ohs_tgt frs_src frs_tgt)
+          (OHS: sim_ohs ohs_src ohs_tgt)
         :
           match_states (Callstate args frs_src ohs_src) (Callstate args frs_tgt ohs_tgt)
       .
@@ -504,9 +517,9 @@ Module ModTuple.
         rr. econs; ss; et.
         { inv FINAL. inv MATCH; ss. inv STK; ss.
           (* ctx *)
-          - inv TAIL. econs; et.
+          - inv TAIL; clarify. econs; et.
           (* focus *)
-          - inv TAIL. rewrite app_nil_r in *. inv FINAL0; ss; clear_tac.
+          - inv TAIL; clarify. rewrite app_nil_r in *. inv FINAL0; ss; clear_tac.
             + remember (StackCons dl st0 StackNil) as X.
               dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify. inv HD.
               econs; ss; et.
@@ -533,7 +546,7 @@ Module ModTuple.
         inv MATCH.
         - (* normal *)
           ss. destruct frs_src; ss.
-          { inv STK. left. right.
+          { inv STK; clarify. left. right.
             econs 1; eauto.
             econs 1; eauto.
             - econs 1; eauto. i. inv STEPSRC.
@@ -548,7 +561,7 @@ Module ModTuple.
           + left. right. econs; et. econs; et; cycle 1.
             { i. eapply final_fsim; et. econs; et. }
             destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
-            { (* src call *)
+            * (* src call *)
               econs; ss; cycle 1.
               i. folder. rewrite LINKSRC in STEPSRC.
               assert(RCPT: receptive_at (sem prog_src) (State (fr_src :: frs_src) ohs_src)).
@@ -566,8 +579,65 @@ Module ModTuple.
                 - ii. inv H1; ss; try omega.
                   exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto. }
               inv STEPSRC; ss; ModSem.tac.
-              set (upcast oh) as X.
-              set (Midx.update ohs_tgt (ModSem.midx (Frame.ms fr_tgt)) X) as Y.
+              inv STK; clarify; ss.
+              { (* stk ctx *)
+                set (upcast oh) as X.
+                set (Midx.update ohs_tgt (ModSem.midx (Frame.ms fr_tgt)) X) as Y.
+                esplits; eauto.
+                - left. split; eauto.
+                  eapply plus_one. econs; et. ss.
+                  { des_ifs. econs; [et|].
+                    (******************** TODO: Doing "refl" here breaks QED ***************************)
+                    (* Is it a bug in Coq? or there is a resaon? *)
+                    (* If there is a reason, it would be an interesting problem to prevent it... *)
+                    (* refl. *)
+                    instantiate (1:= Y).
+                    subst X Y. refl.
+                    (***********************************************************************************)
+                  }
+                - right. eapply CIH; et. subst X Y.
+                  assert(OHS0: sim_ohs skenv_link
+                                       (Midx.update ohs_src (ModSem.midx (Frame.ms fr_tgt)) (upcast oh))
+                                       (Midx.update ohs_tgt (ModSem.midx (Frame.ms fr_tgt)) (upcast oh))).
+                  { inv OHS. econs; et; unfold Midx.update; ii; ss; des_ifs; et. }
+                  econs; ss; et. econs; et.
+              }
+              { (* stk focus *)
+                inv AT.
+                - (* left *)
+                  remember (StackCons dl st0 tl) as X.
+                  dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify.
+                  (* set (upcast oh) as X. *)
+                  (* set (Midx.update ohs_tgt (ModSem.midx (Frame.ms fr_tgt)) X) as Y. *)
+                  esplits; eauto.
+                  + left. split; eauto.
+                    eapply plus_one. econs; et. ss.
+                    { des_ifs. econs 1; ss; et. }
+                  + admit "". - admit "".
+                  } * admit "". + admit "".
+                  - admit "". Unshelve. all: ss. Qed.
+                      (******************** TODO: Doing "refl" here breaks QED ***************************)
+                      (* Is it a bug in Coq? or there is a resaon? *)
+                      (* If there is a reason, it would be an interesting problem to prevent it... *)
+                      (* refl. *)
+                      instantiate (1:= Y).
+                      subst X Y. refl.
+                      (***********************************************************************************)
+                    }
+                - right. eapply CIH; et. subst X Y.
+                  assert(OHS0: sim_ohs skenv_link
+                                       (Midx.update ohs_src (ModSem.midx (Frame.ms fr_tgt)) (upcast oh))
+                                       (Midx.update ohs_tgt (ModSem.midx (Frame.ms fr_tgt)) (upcast oh))).
+                  { inv OHS. econs; et; unfold Midx.update; ii; ss; des_ifs; et. }
+                  econs; ss; et. econs; et.
+              }
+
+                  right. eapply CIH; eauto. econs; ss; et.
+                rewrite LINKTGT. inv HD; ss; clear_tac.
+                - clarify. ss.
+                  econs; ss; et; cycle 1.
+                  { instantiate (1:= oh_src). subst X Y; ss. refl.
+              }
               esplits; eauto.
               { left. split; eauto.
                 eapply plus_one. econs; et.

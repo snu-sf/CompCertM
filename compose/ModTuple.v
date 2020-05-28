@@ -551,31 +551,26 @@ Module ModTuple.
             { (* src call *)
               econs; ss; cycle 1.
               i. folder. rewrite LINKSRC in STEPSRC.
+              assert(RCPT: receptive_at (sem prog_src) (State (fr_src :: frs_src) ohs_src)).
+              { econs. ii. inv H1; ModSem.tac.
+                inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
+                { eauto. }
+                ii. inv H1; ModSem.tac. ss. omega. }
+              assert(DTM: determinate_at (sem prog_tgt) (State (fr_tgt :: frs_tgt) ohs_tgt)).
+              { econs.
+                - ii. ss. des_ifs.
+                  clear H0.
+                  inv H1; inv H2; ModSem.tac.
+                  + split. econs. i. determ_tac ModSem.at_external_dtm.
+                - i. ss. inv FINAL. inv STEP; ModSem.tac.
+                - ii. inv H1; ss; try omega.
+                  exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto. }
               inv STEPSRC; ss; ModSem.tac.
               set (upcast oh) as X.
               set (Midx.update ohs_tgt (ModSem.midx (Frame.ms fr_tgt)) X) as Y.
               esplits; eauto.
-              { left. split; cycle 1.
-                (* receptiveness *)
-                { econs. ii. inv H1; ModSem.tac.
-                  inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
-                  { eauto. }
-                  ii. inv H1; ModSem.tac. ss. omega. }
+              { left. split; eauto.
                 eapply plus_one. econs; et.
-                (* determ *)
-                { econs.
-                  - ii. ss. des_ifs.
-                    clear H0.
-                    inv H1; inv H2; ModSem.tac.
-                    + split. econs. i. exploit ModSem.at_external_dtm. eapply AT0. eauto. i. des. subst. auto.
-                    + assert (ModSem.is_step (Frame.ms fr_tgt) (Frame.st fr_tgt)).
-                      { unfold ModSem.is_step. ss. eauto. }
-                      exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto.
-                    + exfalso; eapply ModSem.call_return_disjoint. split. eauto. eauto.
-                  - i. ss. inv FINAL. inv STEP; ModSem.tac.
-                  - ii. inv H1; ss; try omega.
-                    exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto. }
-
                 inv STK; ss.
                 { des_ifs. econs; [et|].
                   (******************** TODO: Doing "refl" here breaks QED ***************************)

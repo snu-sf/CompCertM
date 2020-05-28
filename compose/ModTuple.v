@@ -426,14 +426,17 @@ Module ModTuple.
           WTS: (at least) when synchronization happens, it should coincide
        ***)
 
+      Let mil: Midx.t := mdl.(Mod.midx).
+      Let mir: Midx.t := mdr.(Mod.midx).
+
       Inductive sim_ohs (ohs_src ohs_tgt: Ohs): Prop :=
       | sim_ohs_intro
-          (OHS: forall mj (NL: mj <> msdl.(ModSem.midx)) (NR: mj <> msdr.(ModSem.midx)),
+          (OHS: forall mj (NL: mj <> mil) (NR: mj <> mir),
               ohs_src mj = ohs_tgt mj)
           ohl ohr
-          (OHLR: @downcast ms_link.(ModSem.owned_heap) (ohs_src msdl.(ModSem.midx)) = Some (ohl, ohr))
-          (OHL: @downcast msdl.(ModSem.owned_heap) (ohs_tgt msdl.(ModSem.midx)) = Some ohl)
-          (OHR: @downcast msdr.(ModSem.owned_heap) (ohs_tgt msdr.(ModSem.midx)) = Some ohr)
+          (OHLR: @downcast ms_link.(ModSem.owned_heap) (ohs_src mil) = Some (ohl, ohr))
+          (OHL: @downcast msdl.(ModSem.owned_heap) (ohs_tgt mil) = Some ohl)
+          (OHR: @downcast msdr.(ModSem.owned_heap) (ohs_tgt mir) = Some ohr)
       .
 
       (*** ohs_tgt is the latest known global Ohs. src's internal Ohs should be consistent with it ***)
@@ -445,8 +448,8 @@ Module ModTuple.
           tail_src tail_tgt old_src old_tgt
           (TAIL: match_stacks old_src old_tgt tail_src tail_tgt) hd
           (OHS: sim_ohs ohs_src ohs_tgt)
-          (NL: hd.(Frame.ms).(ModSem.midx) <> msdl.(ModSem.midx))
-          (NR: hd.(Frame.ms).(ModSem.midx) <> msdr.(ModSem.midx))
+          (NL: hd.(Frame.ms).(ModSem.midx) <> mil)
+          (NR: hd.(Frame.ms).(ModSem.midx) <> mir)
         :
           match_stacks ohs_src ohs_tgt (hd :: tail_src) (hd :: tail_tgt)
       | match_stacks_focus
@@ -458,10 +461,10 @@ Module ModTuple.
           (NNIL: stk_src <> StackNil)
           (HD: match_focus_stack stk_src hds_tgt)
           (STK: hd_src = Frame.mk ms_link (stk_src, oh_src))
-          (OHS: forall mj (NL: mj <> msdl.(ModSem.midx)) (NR: mj <> msdr.(ModSem.midx)),
+          (OHS: forall mj (NL: mj <> mil) (NR: mj <> mir),
               ohs_src mj = ohs_tgt mj)
-          (OHL: ohs_tgt msdl.(ModSem.midx) = upcast (fst oh_src))
-          (OHR: ohs_tgt msdr.(ModSem.midx) = upcast (snd oh_src))
+          (OHL: ohs_tgt mil = upcast (fst oh_src))
+          (OHR: ohs_tgt mir = upcast (snd oh_src))
         :
           match_stacks ohs_src ohs_tgt frs_src frs_tgt
       .
@@ -579,6 +582,7 @@ Module ModTuple.
                 - ii. inv H1; ss; try omega.
                   exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto. }
               inv STEPSRC; ss; ModSem.tac.
+              dup STK.
               inv STK; clarify; ss.
               { (* stk ctx *)
                 set (upcast oh) as X.
@@ -613,9 +617,20 @@ Module ModTuple.
                   + left. split; eauto.
                     eapply plus_one. econs; et. ss.
                     { des_ifs. econs 1; ss; et. }
-                  + admit "". - admit "".
-                  } * admit "". + admit "".
-                  - admit "". Unshelve. all: ss. Qed.
+                  + right. eapply CIH; et. econs; et.
+                    * econs 3; ss; et.
+                      { rewrite cons_app. rewrite app_assoc. f_equal. }
+                      { econs; et. }
+                      { ii. unfold Midx.update. rewrite Mod.get_modsem_midx_spec. rewrite <- MIDXL.
+                        des_ifs; eauto with congruence. }
+                      { unfold Midx.update. rewrite Mod.get_modsem_midx_spec. des_ifs.
+                      }
+                        des_ifs. ss. rewrite MIDXL in *. 
+                        rewrite MIDXL in *.
+                        ss. econs; et. }
+                        instantiate (1:= {| Frame.ms := Mod.get_modsem mdl skenv_link (Mod.data mdl); Frame.st := st_tgt |}).
+                      eapply match_stacks_focus with (frs_src := {| Frame.ms := Mod.get_modsem mdl skenv_link (Mod.data mdl); Frame.st := st_tgt |} :: frs).
+                      econs 3; ss; et.
                       (******************** TODO: Doing "refl" here breaks QED ***************************)
                       (* Is it a bug in Coq? or there is a resaon? *)
                       (* If there is a reason, it would be an interesting problem to prevent it... *)

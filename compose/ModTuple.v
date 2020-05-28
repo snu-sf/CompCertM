@@ -110,7 +110,7 @@ To do this, I will require initial_state to be deterministic.
 
   | step_return_dl
       st_old st0 st1 tl oh0 oh_old ohs0 ohs1 retv
-      (AT: msdl.(ModSem.final_frame) st0 oh0 retv)
+      (RET: msdl.(ModSem.final_frame) st0 oh0 retv)
       (OHS: ohs1 = (oh0, snd ohs0))
 
       (OH: snd ohs1 = oh_old)
@@ -148,7 +148,7 @@ To do this, I will require initial_state to be deterministic.
 
   | step_return_dr
       st_old st0 st1 tl oh0 oh_old ohs0 ohs1 retv
-      (AT: msdr.(ModSem.final_frame) st0 oh0 retv)
+      (RET: msdr.(ModSem.final_frame) st0 oh0 retv)
       (OHS: ohs1 = (fst ohs0, oh0))
 
       (OH: fst ohs1 = oh_old)
@@ -619,10 +619,11 @@ Module ModTuple.
               econs; ss; cycle 1.
               i. folder. rewrite LINKSRC in STEPSRC.
               assert(RCPT: receptive_at (sem prog_src) (State (fr_src :: frs_src) ohs_src)).
-              { econs. ii. inv H1; ModSem.tac.
-                inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
-                { eauto. }
-                ii. inv H1; ModSem.tac. ss. omega. }
+              { econs.
+                - ii. inv H1; ModSem.tac.
+                  inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
+                  { eauto. }
+                - ii. inv H1; ModSem.tac. ss. omega. }
               assert(DTM: determinate_at (sem prog_tgt) (State (fr_tgt :: frs_tgt) ohs_tgt)).
               { econs.
                 - ii. ss. des_ifs.
@@ -710,7 +711,70 @@ Module ModTuple.
                     }
               }
             * (* src step *)
-              admit "".
+              rename H0 into NCALLSRC.
+              i. ss. folder. rewrite LINKSRC in *.
+              inv STEPSRC; ss; swap 2 3.
+              { exfalso. contradict NCALLSRC. rr. eauto. }
+              { exfalso. inv STK; ss. clarify; ss.
+                inv FINAL; ss.
+                - remember (StackCons dl st1 StackNil) as X.
+                  dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
+                  rr in H. des. ModSem.tac.
+                - remember (StackCons dr st1 StackNil) as X.
+                  dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
+                  rr in H. des. ModSem.tac.
+              }
+              dup H. rename H0 into ISCALLTGT.
+              rr in H. des.
+              sguard in LINKSRC.
+              inv STK; ss. clarify. ss.
+              assert(RCPT: receptive_at (sem prog_src)
+                   (State 
+                      ((Frame.mk
+                          (ModSemTuple.t (Mod.get_modsem mdl skenv_link (Mod.data mdl))
+                                         (Mod.get_modsem mdr skenv_link (Mod.data mdr)) sk skenv_link midx)
+                          ((stk_src, oh_src)) :: tail_src)) ohs_src)).
+              { econs.
+                - bar. ii. inv H0; ss; rewrite LINKSRC in *.
+                  + contradict NCALLSRC. rr. ss. esplits; et.
+                  + assert(t1 = E0).
+                    { inv STEP0; ss.
+                      Ltac simpl_md := try rewrite Mod.get_modsem_skenv_link_spec in *;
+                                       try rewrite Mod.get_modsem_midx_spec in *.
+                      simpl_md.
+                    }
+                    contradict NCALLSRC. rr. ss. esplits; et.
+                  + eexists. rewrite LINKSRC in *. eapply step_internal.
+                    remember (StackCons dl st1 tl) as X.
+                    dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
+                    ModSem.tac.
+                  inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
+                  { eauto. }
+                - ii. inv H1; ModSem.tac. ss. omega. }
+              inv STEP; ss.
+              - esplits; eauto.
+                + left. esplits; eauto; cycle 1.
+                admit "".
+              - exfalso. clear - H HD STEP0 FRSTGT.
+                remember (StackCons dl st1 tl) as X.
+                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
+                ModSem.tac.
+                (*********** TODO: use Mod.modsem instead of Mod.get_modsem ***********)
+              - exfalso. clear - H HD RET FRSTGT.
+                remember (StackCons dl st1 (StackCons dr st_old tl)) as X.
+                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
+                ModSem.tac.
+
+              - admit "".
+              - exfalso. clear - H HD STEP0 FRSTGT.
+                remember (StackCons dr st1 tl) as X.
+                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
+                ModSem.tac.
+                (*********** TODO: use Mod.modsem instead of Mod.get_modsem ***********)
+              - exfalso. clear - H HD RET FRSTGT.
+                remember (StackCons dr st1 (StackCons dl st_old tl)) as X.
+                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
+                ModSem.tac.
           }
 
 

@@ -390,12 +390,65 @@ Module ModTuple.
       try eapply WF; ss; try rewrite in_app; ss; eauto.
     Qed.
 
+    Let mil: Midx.t := mdl.(Mod.midx).
+    Let mir: Midx.t := mdr.(Mod.midx).
+
     Section MATCH.
       Variable skenv_link: SkEnv.t.
       Let msdl: ModSem.t := (Mod.get_modsem mdl skenv_link mdl.(Mod.data)).
       Let msdr: ModSem.t := (Mod.get_modsem mdr skenv_link mdr.(Mod.data)).
       Let ms_link: ModSem.t := (ModSemTuple.t (Mod.get_modsem mdl skenv_link mdl.(Mod.data))
                                               (Mod.get_modsem mdr skenv_link mdr.(Mod.data)) sk skenv_link midx).
+
+      Inductive get_latest_focus: Frame.t -> ms_link.(ModSem.owned_heap) -> Prop :=
+      | get_latest_stack_intro
+          stk ohsl ohsr
+        :
+          get_latest_focus (Frame.mk ms_link (stk, (ohsl, ohsr))) (ohsl, ohsr)
+      .
+
+      Inductive get_latest: Smallstep.state (sem prog_src) -> Ohs -> Prop :=
+      | get_latest_call
+          args frs ohs
+        :
+          get_latest (Callstate args frs ohs) ohs
+      | get_latest_normal_ctx
+          hd frs ohs
+          (NFOC: hd.(Frame.ms).(ModSem.midx) <> mil)
+        :
+          get_latest (State (hd :: frs) ohs) ohs
+      | get_latest_normal_focus
+          hd frs ohs oh_link
+          (FOC: hd.(Frame.ms).(ModSem.midx) = mil)
+          (GET: get_latest_focus hd oh_link)
+        :
+          get_latest (State (hd :: frs) ohs) (Midx.update ohs mil (upcast oh_link))
+      .
+
+      (*** TODO: move to CoqlibC ***)
+      Lemma func_app_dep
+            (X: Type) (Y: X -> Type)
+            (f: forall (x: X), Y x)
+            x0 x1
+            (EQ: x0 = x1)
+        :
+          <<EQ: f x0 ~= f x1>>
+      .
+      Proof. clarify. Qed.
+      Arguments func_app_dep [_] [_].
+
+      Lemma get_latest_dtm
+            st_src0 ohs0 ohs1
+            (GET0: get_latest st_src0 ohs0)
+            (GET1: get_latest st_src0 ohs1)
+        :
+          ohs0 = ohs1
+      .
+      Proof.
+        inv GET0; inv GET1; ss.
+        inv GET; inv GET0; ss. do 2 f_equal.
+        apply func_app_dep with (f:= Frame.st) in H. ss. des. apply JMeq_eq in H. clarify.
+      Qed.
 
       Inductive match_focus_stack: (stack msdl msdr) -> list Frame.t -> Prop :=
       | match_focus_stack_nil
@@ -425,9 +478,6 @@ Module ModTuple.
           Note: src synchronizes (update global Ohs) less than target.
           WTS: (at least) when synchronization happens, it should coincide
        ***)
-
-      Let mil: Midx.t := mdl.(Mod.midx).
-      Let mir: Midx.t := mdr.(Mod.midx).
 
       Inductive sim_ohs (ohs_src ohs_tgt: Ohs): Prop :=
       | sim_ohs_intro

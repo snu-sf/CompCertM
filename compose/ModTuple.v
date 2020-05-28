@@ -352,7 +352,7 @@ End MODTUPLE.
 Module ModTuple.
   Definition t := Eval red in t'.
 
-  Section PROPS.
+  Section MERGE.
     Variable mdl mdr: Mod.t.
     Variable sk: Sk.t.
     Variable midx: string.
@@ -366,6 +366,9 @@ Module ModTuple.
     Proof.
       eapply link_preserves_wf_sk in LINKSK; et.
     Qed.
+
+    Let prog_src: program := (ctx1 ++ [mdl] ++ [mdr] ++ ctx2).
+    Let prog_tgt: program := (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2).
 
     Let LINKSAME: forall
         (* (WFL: Sk.wf mdl) *)
@@ -399,15 +402,17 @@ Module ModTuple.
         :
           match_focus_stack StackNil nil
       | match_focus_stack_cons_dl
-          stl0 stk frs
+          st_src st_tgt stk frs
           (TL: match_focus_stack stk frs)
+          (STEQ: st_src = st_tgt)
         :
-          match_focus_stack (StackCons dl stl0 stk) ((Frame.mk msdl stl0) :: frs)
+          match_focus_stack (StackCons dl st_src stk) ((Frame.mk msdl st_tgt) :: frs)
       | match_focus_stack_cons_dr
-          stl0 stk frs
+          st_src st_tgt stk frs
           (TL: match_focus_stack stk frs)
+          (STEQ: st_src = st_tgt)
         :
-          match_focus_stack (StackCons dr stl0 stk) ((Frame.mk msdr stl0) :: frs)
+          match_focus_stack (StackCons dr st_src stk) ((Frame.mk msdr st_tgt) :: frs)
       .
 
       (***
@@ -475,44 +480,166 @@ Module ModTuple.
 
     End MATCH.
 
-    Lemma match_states_xsim
-          skenv_link st_src0 st_tgt0
-          (MATCH: match_states skenv_link st_src0 st_tgt0) :
-      <<XSIM: xsim (sem (ctx1 ++ [mdl] ++ [mdr] ++ ctx2)) (sem (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2))
-                   bot2 top1 top1 tt st_src0 st_tgt0>>
-    .
-    Proof.
-      revert_until LINKSAME.
-      pcofix CIH. i. pfold.
-      inv MATCH.
-      - (* normal *)
-        ss. destruct frs_src; ss.
-        { inv STK. left. right.
-          econs 1; eauto.
-          econs 1; eauto.
-          - econs 1; eauto. i. inv STEPSRC.
-          - i. ss. inv FINALSRC; ss. }
-        rename t into fr_src.
-        destruct frs_tgt; ss.
-        { exploit match_stacks_right_nil; et. i; des. clarify. }
-        rename t into fr_tgt.
-        ii. clear SSSRC. ss. rewrite LINKTGT in *.
-        destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_call) fr_tgt.(Frame.st))).
-        (* tgt call *)
-        (* fsim *)
-        { left. right. econs; et. econs; et; cycle 1.
+    Section SIM.
 
-        inv STK; ss.
-        + destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_call) fr_tgt.(Frame.st))).
-        
-        ii.
-        admit "".
-      - (* call *)
-        admit "".
-    Qed.
+      Variable sk_link: Sk.t.
+      Hypothesis LINKSRC: link_sk prog_src = Some sk_link.
+      Hypothesis WFCTX1: forall md (IN: In md ctx1), <<WF: Sk.wf md>>.
+      Hypothesis WFCTX2: forall md (IN: In md ctx2), <<WF: Sk.wf md>>.
+      Let LINKTGT: link_sk prog_tgt = Some sk_link.
+      Proof.
+        unfold prog_src, prog_tgt in *. unfold link_sk in *.
+        rewrite LINKSAME in *; ss.
+        ii. rewrite in_app_iff in *. des; ss; des; clarify; eauto.
+        - eapply WFCTX1; et.
+        - eapply WFCTX2; et.
+      Qed.
+
+      Lemma final_fsim
+            skenv_link retv frs_src frs_tgt ohs_src ohs_tgt
+            (MATCH: match_states skenv_link (State frs_src ohs_src) (State frs_tgt ohs_tgt))
+            (FINAL: final_state (State frs_src ohs_src) retv) :
+        <<DFINAL: Dfinal_state (sem prog_tgt) (State frs_tgt ohs_tgt) retv>>.
+      Proof.
+        rr. econs; ss; et.
+        { inv FINAL. inv MATCH; ss. inv STK; ss.
+          (* ctx *)
+          - inv TAIL. econs; et.
+          (* focus *)
+          - inv TAIL. rewrite app_nil_r in *. inv FINAL0; ss; clear_tac.
+            + remember (StackCons dl st0 StackNil) as X.
+              dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify. inv HD.
+              econs; ss; et.
+            + remember (StackCons dr st0 StackNil) as X.
+              dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify. inv HD.
+              econs; ss; et.
+        }
+        (*** TODO: put final_state_dtm in SemProps ***)
+        { ii; ss. inv FINAL0; inv FINAL1; ss. determ_tac ModSem.final_frame_dtm. rewrite INT in *. clarify. }
+        {
+          i. inv FINAL0. ii. des_ifs. inv H; ModSem.tac.
+        }
+      Qed.
+
+      Lemma match_states_xsim
+            skenv_link st_src0 st_tgt0
+            (MATCH: match_states skenv_link st_src0 st_tgt0) :
+        <<XSIM: xsim (sem (ctx1 ++ [mdl] ++ [mdr] ++ ctx2)) (sem (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2))
+                     bot2 top1 top1 tt st_src0 st_tgt0>>
+      .
+      Proof.
+        revert_until LINKSAME.
+        pcofix CIH. i. pfold.
+        inv MATCH.
+        - (* normal *)
+          ss. destruct frs_src; ss.
+          { inv STK. left. right.
+            econs 1; eauto.
+            econs 1; eauto.
+            - econs 1; eauto. i. inv STEPSRC.
+            - i. ss. inv FINALSRC; ss. }
+          rename t0 into fr_src.
+          destruct frs_tgt; ss.
+          { exploit match_stacks_right_nil; et. i; des. clarify. }
+          rename t0 into fr_tgt.
+          ii. clear_tac.
+          destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_call) fr_tgt.(Frame.st))).
+          (* tgt call - fsim *)
+          + left. right. econs; et. econs; et; cycle 1.
+            { i. eapply final_fsim; et. econs; et. }
+            destruct (classic (fr_src.(Frame.ms).(ModSem.is_call) fr_src.(Frame.st))).
+            { (* src call *)
+              econs; ss; cycle 1.
+              i. folder. rewrite LINKSRC in STEPSRC.
+              inv STEPSRC; ss; ModSem.tac.
+              set (upcast oh) as X.
+              set (Midx.update ohs_tgt (ModSem.midx (Frame.ms fr_tgt)) X) as Y.
+              esplits; eauto.
+              { left. split; cycle 1.
+                (* receptiveness *)
+                { econs. ii. inv H1; ModSem.tac.
+                  inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
+                  { eauto. }
+                  ii. inv H1; ModSem.tac. ss. omega. }
+                eapply plus_one. econs; et.
+                (* determ *)
+                { econs.
+                  - ii. ss. des_ifs.
+                    clear H0.
+                    inv H1; inv H2; ModSem.tac.
+                    + split. econs. i. exploit ModSem.at_external_dtm. eapply AT0. eauto. i. des. subst. auto.
+                    + assert (ModSem.is_step (Frame.ms fr_tgt) (Frame.st fr_tgt)).
+                      { unfold ModSem.is_step. ss. eauto. }
+                      exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto.
+                    + exfalso; eapply ModSem.call_return_disjoint. split. eauto. eauto.
+                  - i. ss. inv FINAL. inv STEP; ModSem.tac.
+                  - ii. inv H1; ss; try omega.
+                    exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto. }
+
+                inv STK; ss.
+                { des_ifs. econs; [et|].
+                  (******************** TODO: Doing "refl" here breaks QED ***************************)
+                  (* Is it a bug in Coq? or there is a resaon? *)
+                  (* If there is a reason, it would be an interesting problem to prevent it... *)
+                  (* refl. *)
+                  instantiate (1:= Y).
+                  subst X Y. refl.
+                  (***********************************************************************************)
+                }
+                rewrite LINKTGT. inv HD; ss; clear_tac.
+                - clarify. ss.
+                  econs; ss; et; cycle 1.
+                  { instantiate (1:= oh_src). subst X Y; ss. refl.
+
+                inv AT; ss.
+                inv ST; ss.
+                econs; ss; et.
+                - destruct cp_link_precise.
+                  unfold Genv.find_funct in EXTERNAL. destruct fptr_arg; ss. destruct (Ptrofs.eq_dec i Ptrofs.zero); ss.
+                  unfold Genv.find_funct_ptr in EXTERNAL. des_ifs.
+                  (* None or Gvar *)
+                  + unfold Genv.find_funct. des_ifs. unfold Genv.find_funct_ptr. des_ifs.
+                    unfold Genv.find_def in Heq, Heq0. ss. rewrite MapsC.PTree_filter_map_spec in *. rewrite o_bind_ignore in *.
+                    des_ifs.
+                    destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b) eqn:SYMB; ss.
+                    destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b) eqn:SYMB0; ss.
+                    unfold o_bind in Heq, Heq0. ss.
+                    destruct ((prog_defmap cp_link) ! i) eqn:DMAP; ss; clarify.
+                    destruct ((prog_defmap cp) ! i0) eqn:DMAP0; ss; clarify.
+                    assert (i = i0).
+                    { exploit Genv.invert_find_symbol. eauto. i. exploit Genv.invert_find_symbol. eapply SYMB. i.
+                      exploit SkEnv.project_impl_spec. eauto. i. inv H3.
+                      exploit SYMBKEEP; eauto. rewrite <- defs_prog_defmap. eapply defmap_with_signature; eauto. i.
+                      rewrite H3 in H2.
+                      exploit SkEnv.project_impl_spec. eapply INCL_FOCUS. eauto. i. inv H4.
+                      exploit SYMBKEEP0; eauto. rewrite <- defs_prog_defmap. eapply defmap_with_signature; eauto. i.
+                      rewrite H4 in H1.
+                      exploit Genv.find_invert_symbol. eauto. i. exploit Genv.find_invert_symbol. eapply H1. i.
+                      rewrite H5 in H6. clarify. }
+                    subst. exploit prog_defmap_exists_rev; eauto. i. des. clarify.
+                  + unfold Genv.find_funct, Genv.find_funct_ptr. des_ifs.
+                    exploit prog_find_defs_revive_rev; eauto. i. des.
+                    unfold fundef in *. rewrite Heq in H1. clarify.
+                - rr in H. des. inv H. ss. }
+              { right. eapply CIH; et. rp; [econs|..]; et. eapply match_stacks_midx in STK; et.
+                subst X Y. f_equal. des. congruence. }
+
+            }
+
+
+          }
+
+          inv STK; ss.
+          + destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_call) fr_tgt.(Frame.st))).
+            
+            ii.
+            admit "".
+        - (* call *)
+          admit "".
+      Qed.
 
     Theorem merge:
-      <<BEH: improves (sem (ctx1 ++ [mdl] ++ [mdr] ++ ctx2)) (sem (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2))>>
+      <<BEH: improves (sem prog_src) (sem prog_tgt)>>
     .
     Proof.
       eapply bsim_improves; eauto. ss.
@@ -542,7 +669,7 @@ Module ModTuple.
     Unshelve.
       all: try eapply ModSem.initial_owned_heap.
     Qed.
-  End PROPS.
+  End MERGE.
 
 End ModTuple.
 Print ModTuple.t.

@@ -628,6 +628,25 @@ Module ModTuple.
       Ltac simpl_md := try rewrite ! Mod_modsem_skenv_link_spec in *;
                        try rewrite ! Mod_modsem_midx_spec in *.
 
+      Lemma final_bsim
+            retv ohs_src frs_src ohs_tgt frs_tgt
+            (MATCH: match_states skenv_link (State frs_src ohs_src) (State frs_tgt ohs_tgt))
+            (FINAL: final_state (State frs_tgt ohs_tgt) retv)
+            (SAFESRC: safe (sem prog_src) (State frs_src ohs_src)) :
+        <<FINAL: final_state (State frs_src ohs_src) retv>>.
+      Proof.
+        ss. inv FINAL. inv MATCH; ss. inv STK; ss.
+        - (* ctx *)
+          exploit match_stacks_right_nil; eauto. i; des; clarify.
+          econs; eauto.
+        - (* focus *)
+          clarify. destruct hds_tgt, tail_tgt; ss.
+          exploit match_stacks_right_nil; et. i; des; clarify.
+          my_depdes HD; ss.
+          + my_depdes HD; ss. econs; ss; et. rp; econs; et.
+          + my_depdes HD; ss. econs; ss; et. rp; econs; et.
+      Qed.
+
       Lemma final_fsim
             retv frs_src frs_tgt ohs_src ohs_tgt
             (MATCH: match_states skenv_link (State frs_src ohs_src) (State frs_tgt ohs_tgt))
@@ -1017,7 +1036,106 @@ Module ModTuple.
 
 
           (* src internal && tgt internal *)
-          { admit "".
+          { right. econs. ii.
+            inv STK.
+            - (* ctx *)
+              econs; ii; ss; fold_all prog_tgt; fold_all prog_src; try rewrite LINKSRC, LINKTGT in *; cycle 1.
+              + (* progress *)
+                right. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
+                { inv SAFESRC. contradict NRETSRC. rr. et. }
+                rewrite LINKSRC in *.
+                inv SAFESRC; swap 2 3.
+                { contradict NCALLSRC. rr. et. }
+                { contradict NRETSRC. rr. et. }
+                esplits; et. econs 3; et.
+              + (* final *)
+                exploit final_bsim; et.
+                { econs; et. econs; et. }
+                intro T; des. esplits; eauto. eapply star_refl.
+              + (* bsim *)
+                inv STEPTGT; swap 2 3.
+                { contradict NCALLTGT. rr. et. }
+                { contradict NRETTGT. rr. et. }
+                esplits; eauto.
+                * left. apply plus_one. econs; et.
+                * right. eapply CIH. econs; et.
+                  { econs; et. }
+                  { clear - LATEST NL.
+                    (*** TODO: make lemma? ***)
+                    unfold Frame.update_st in *. ss.
+                    inv LATEST; econs; et.
+                    inv GET; ss.
+                  }
+            - (* focus *)
+              clarify; ss. my_depdes HD; ss.
+              { (* left *)
+                econs; ii; ss; fold_all prog_tgt; fold_all prog_src; try rewrite LINKSRC, LINKTGT in *; cycle 1.
+                + (* progress *)
+                  right. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
+                  { inv SAFESRC. contradict NRETSRC. rr. et. }
+                  rewrite LINKSRC in *.
+                  inv SAFESRC; swap 2 3.
+                  { contradict NCALLSRC. rr. et. }
+                  { contradict NRETSRC. rr. et. }
+                  ss. my_depdes STEP; ss; swap 2 3.
+                  { contradict NCALLTGT. rr. et. }
+                  { contradict NRETTGT. rr. et. }
+                  esplits; et. econs 3; ss; et.
+                + (* final *)
+                  exploit final_bsim; et.
+                  { econs; et. econs; et. econs; et. }
+                  intro T; des. esplits; eauto. eapply star_refl.
+                + (* bsim *)
+                  inv STEPTGT; swap 2 3.
+                  { contradict NCALLTGT. rr. et. }
+                  { contradict NRETTGT. rr. et. }
+                  esplits; eauto.
+                  * left. apply plus_one. ss. econs; ss; et. rp; try eapply step_internal_dl; eauto.
+                  * right. eapply CIH. econs; et.
+                    { econs; et. econs; et. ss. }
+                    { ss. clear - LATEST.
+                      (*** TODO: make lemma? ***)
+                      unfold Frame.update_st in *. ss.
+                      inv LATEST; econs; et. ss.
+                      inv GET; ss.
+                      (*** TODO: make frame_inj ***)
+                      apply func_app_dep with (f:= Frame.st) in H; des; ss. apply JMeq_eq in H. clarify.
+                    }
+              }
+              { (* right *)
+                econs; ii; ss; fold_all prog_tgt; fold_all prog_src; try rewrite LINKSRC, LINKTGT in *; cycle 1.
+                + (* progress *)
+                  right. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
+                  { inv SAFESRC. contradict NRETSRC. rr. et. }
+                  rewrite LINKSRC in *.
+                  inv SAFESRC; swap 2 3.
+                  { contradict NCALLSRC. rr. et. }
+                  { contradict NRETSRC. rr. et. }
+                  ss. my_depdes STEP; ss; swap 2 3.
+                  { contradict NCALLTGT. rr. et. }
+                  { contradict NRETTGT. rr. et. }
+                  esplits; et. econs 3; ss; et.
+                + (* final *)
+                  exploit final_bsim; et.
+                  { econs; et. econs; et. econs; et. }
+                  intro T; des. esplits; eauto. eapply star_refl.
+                + (* bsim *)
+                  inv STEPTGT; swap 2 3.
+                  { contradict NCALLTGT. rr. et. }
+                  { contradict NRETTGT. rr. et. }
+                  esplits; eauto.
+                  * left. apply plus_one. ss. econs; ss; et. rp; try eapply step_internal_dr; eauto.
+                  * right. eapply CIH. econs; et.
+                    { econs; et. econs; et. ss. }
+                    { ss. clear - LATEST.
+                      (*** TODO: make lemma? ***)
+                      unfold Frame.update_st in *. ss.
+                      inv LATEST; econs; et. ss.
+                      inv GET; ss.
+                      (*** TODO: make frame_inj ***)
+                      apply func_app_dep with (f:= Frame.st) in H; des; ss. apply JMeq_eq in H. clarify.
+                    }
+              }
           }
 
 

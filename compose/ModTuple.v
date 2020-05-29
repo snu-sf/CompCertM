@@ -22,6 +22,36 @@ Set Implicit Arguments.
 
 
 
+
+
+
+
+
+
+
+
+
+(*** TODO: move to Mod.v ***)
+Lemma Mod_modsem_midx_spec
+      (md: Mod.t) skenv_link
+  :
+    <<EQ: ModSem.midx (md skenv_link) = md.(Mod.midx)>>
+.
+Proof.
+  u. rewrite Mod.get_modsem_midx_spec. ss.
+Qed.
+
+Lemma Mod_modsem_skenv_link_spec
+      (md: Mod.t) skenv_link
+  :
+    <<EQ: ModSem.skenv_link (md skenv_link) = skenv_link>>
+.
+Proof.
+  u. rewrite Mod.get_modsem_skenv_link_spec. ss.
+Qed.
+
+
+
 Local Obligation Tactic := idtac.
 
 Section MODSEMTUPLE.
@@ -82,19 +112,13 @@ Don't want to split call/init step, because we have to define Callstate separate
 To do this, I will require initial_state to be deterministic.
    ***)
 
-  Variant find_fptr_owner (fptr: val) (ms: ModSem.t): Prop :=
-  | find_fptr_owner_intro
-      (MODSEM: In ms [msdl ; msdr])
-      if_sig
-      (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig)).
-
   Variant step (se: Senv.t) (ge: unit): state -> trace -> state -> Prop :=
   | step_call_dl
       st0 st_new tl oh0 oh_new ohs0 ohs1 args
       (AT: msdl.(ModSem.at_external) st0 oh0 args)
       (OHS: ohs1 = (oh0, snd ohs0))
 
-      (MSFIND: find_fptr_owner (Args.get_fptr args) msdr)
+      (MSFIND: DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdr)
       (OH: snd ohs1 = oh_new)
       (INIT: msdr.(ModSem.initial_frame) oh_new args st_new)
     :
@@ -132,7 +156,7 @@ To do this, I will require initial_state to be deterministic.
       (AT: msdr.(ModSem.at_external) st0 oh0 args)
       (OHS: ohs1 = (fst ohs0, oh0))
 
-      (MSFIND: find_fptr_owner (Args.get_fptr args) msdr)
+      (MSFIND: DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdl)
       (OH: fst ohs1 = oh_new)
       (INIT: msdl.(ModSem.initial_frame) oh_new args st_new)
     :
@@ -162,14 +186,14 @@ To do this, I will require initial_state to be deterministic.
   | at_external_dl
       st0 tl oh0 ohs0 args
       (AT: msdl.(ModSem.at_external) st0 oh0 args)
-      (MSFIND: forall msdr, ~find_fptr_owner (Args.get_fptr args) msdr)
+      (MSFIND: forall ms, ~DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) ms)
     :
       at_external ((StackCons dl st0 tl), ohs0) (oh0, snd ohs0) args
 
   | at_external_dr
       st0 tl oh0 ohs0 args
       (AT: msdr.(ModSem.at_external) st0 oh0 args)
-      (MSFIND: forall msdl, ~find_fptr_owner (Args.get_fptr args) msdl)
+      (MSFIND: forall ms, ~DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) ms)
     :
       at_external ((StackCons dr st0 tl), ohs0) (fst ohs0, oh0) args
   .
@@ -177,14 +201,14 @@ To do this, I will require initial_state to be deterministic.
   Variant initial_frame (ohs: owned_heap) (args: Args.t): state -> Prop :=
   | initial_frame_dl
       st0
-      (MSFIND: find_fptr_owner (Args.get_fptr args) msdl)
+      (MSFIND: DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdl)
       (INIT: msdl.(ModSem.initial_frame) (fst ohs) args st0)
     :
       initial_frame ohs args (StackCons dl st0 StackNil, ohs)
 
   | initial_frame_dr
       st0
-      (MSFIND: find_fptr_owner (Args.get_fptr args) msdr)
+      (MSFIND: DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdr)
       (INIT: msdr.(ModSem.initial_frame) (snd ohs) args st0)
     :
       initial_frame ohs args (StackCons dr st0 StackNil, ohs)
@@ -367,8 +391,8 @@ Module ModTuple.
       eapply link_preserves_wf_sk in LINKSK; et.
     Qed.
 
-    Let prog_src: program := (ctx1 ++ [mdl] ++ [mdr] ++ ctx2).
-    Let prog_tgt: program := (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2).
+    Let prog_src: program := (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2).
+    Let prog_tgt: program := (ctx1 ++ [mdl] ++ [mdr] ++ ctx2).
 
     Let LINKSAME: forall
         (* (WFL: Sk.wf mdl) *)
@@ -547,9 +571,23 @@ Module ModTuple.
       Let skenv_link := Sk.load_skenv sk_link.
       Let msdl: ModSem.t := (Mod.modsem mdl skenv_link).
       Let msdr: ModSem.t := (Mod.modsem mdr skenv_link).
+      Hypothesis DTML: forall
+          oh args st0 st1
+          (INIT0: msdl.(ModSem.initial_frame) oh args st0)
+          (INIT1: msdl.(ModSem.initial_frame) oh args st1)
+        ,
+          st0 = st1
+      .
+      Hypothesis DTMR: forall
+          oh args st0 st1
+          (INIT0: msdr.(ModSem.initial_frame) oh args st0)
+          (INIT1: msdr.(ModSem.initial_frame) oh args st1)
+        ,
+          st0 = st1
+      .
       Hypothesis WFCTX1: forall md (IN: In md ctx1), <<WF: Sk.wf md>>.
       Hypothesis WFCTX2: forall md (IN: In md ctx2), <<WF: Sk.wf md>>.
-      Hypothesis MIDIFF: mil <> mir.
+      Hypothesis MIDIFF: Mod.midx mdl <> Mod.midx mdr.
       Let LINKTGT: link_sk prog_tgt = Some sk_link.
       Proof.
         unfold prog_src, prog_tgt in *. unfold link_sk in *.
@@ -575,11 +613,20 @@ Module ModTuple.
           let HX := fresh "HX" in
           remember a as X eqn:HX;
           depdes H; ss; try (apply state_inj in HX; des); clarify
+        | [ H': get_latest_focus ?a ?b |- _ ] =>
+          check_equal H H';
+          let X := fresh "X" in
+          let HX := fresh "HX" in
+          let Y := fresh "Y" in
+          let HY := fresh "HY" in
+          remember a as X eqn:HX; remember b as Y eqn:HY;
+          depdes H; ss; try (apply func_app_dep with (f:= Frame.st) in HX; des; ss; apply JMeq_eq in HX);
+          clarify
         end
       .
 
-      Ltac simpl_md := try rewrite Mod.get_modsem_skenv_link_spec in *;
-                       try rewrite Mod.get_modsem_midx_spec in *.
+      Ltac simpl_md := try rewrite ! Mod_modsem_skenv_link_spec in *;
+                       try rewrite ! Mod_modsem_midx_spec in *.
 
       Lemma final_fsim
             retv frs_src frs_tgt ohs_src ohs_tgt
@@ -606,7 +653,7 @@ Module ModTuple.
       Lemma match_states_xsim
             st_src0 st_tgt0
             (MATCH: match_states skenv_link st_src0 st_tgt0) :
-        <<XSIM: xsim (sem (ctx1 ++ [mdl] ++ [mdr] ++ ctx2)) (sem (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2))
+        <<XSIM: xsim (sem (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2)) (sem (ctx1 ++ [mdl] ++ [mdr] ++ ctx2))
                      bot2 top1 top1 tt st_src0 st_tgt0>>
       .
       Proof.
@@ -674,10 +721,10 @@ Module ModTuple.
                   { inv OHS. inv LATEST.
                     - econs; et; unfold Midx.update in *; ii; ss; des_ifs; et;
                         try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; try rewrite Mod.get_modsem_midx_spec in *; ss.
+                          try rewrite <- MIDXL in *; simpl_md; ss.
                     - econs; et; unfold Midx.update in *; ii; ss; des_ifs; et;
                         try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; try rewrite Mod.get_modsem_midx_spec in *; ss.
+                          try rewrite <- MIDXL in *; simpl_md; ss.
                   }
               }
               { (* stk focus *)
@@ -693,11 +740,11 @@ Module ModTuple.
                       inv LATEST.
                       - econs; et; unfold Midx.update in *; ii; ss; des_ifs; et;
                           try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; try rewrite Mod.get_modsem_midx_spec in *; ss.
+                          try rewrite <- MIDXL in *; simpl_md; ss.
                       - eapply sim_ohs_intro with (ohl := oh0) (ohr := ohr);
                           et; unfold Midx.update in *; ii; ss; des_ifs; et;
                           try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; try rewrite Mod.get_modsem_midx_spec in *; ss.
+                          try rewrite <- MIDXL in *; simpl_md; ss.
                         + erewrite <- OHS0; et. des_ifs.
                         + do 2 f_equal.
                           * inv GET. apply func_app_dep with (f := Frame.st) in H1; ss. des.
@@ -714,11 +761,11 @@ Module ModTuple.
                       inv LATEST.
                       - econs; et; unfold Midx.update in *; ii; ss; des_ifs; et;
                           try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; try rewrite Mod.get_modsem_midx_spec in *; ss.
+                          try rewrite <- MIDXL in *; simpl_md; ss.
                       - eapply sim_ohs_intro with (ohl := ohl) (ohr := oh0);
                           et; unfold Midx.update in *; ii; ss; des_ifs; et;
                           try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; try rewrite Mod.get_modsem_midx_spec in *; ss.
+                          try rewrite <- MIDXL in *; simpl_md; ss.
                         + erewrite <- OHS0; et. des_ifs.
                         + do 2 f_equal.
                           * inv GET. apply func_app_dep with (f := Frame.st) in H1; ss. des.
@@ -744,7 +791,8 @@ Module ModTuple.
 
 
               my_depdes HD.
-              - ss. pose st0 as TTT. my_depdes STEP; ss; revgoals.
+              - (* left *)
+                ss. pose st0 as TTT. my_depdes STEP; ss; revgoals.
                 { ModSem.tac. }
                 { ModSem.tac. }
                 esplits; eauto.
@@ -759,6 +807,16 @@ Module ModTuple.
                     - assert(t0 = E0).
                       { my_depdes H0; ss. ModSem.tac. }
                       clarify. ss. xomega. }
+
+                  (*** TODO: make lemma ***)
+                  assert(MSFIND1: Ge.find_fptr_owner (load_genv prog_tgt (Sk.load_skenv sk_link))
+                                                     (Args.get_fptr args0) (mdr skenv_link)).
+                  { clear - MSFIND.
+                    inv MSFIND. econs; et. ss. right. unfold load_modsems.
+                    rewrite in_map_iff. unfold flip. esplits; et. unfold prog_tgt.
+                    rewrite in_app_iff. right; ss. et.
+                  }
+
                   eapply plus_left with (t1 := E0) (t2 := E0); ss.
                   { econs; et.
                     { (* determinate *)
@@ -773,17 +831,83 @@ Module ModTuple.
                   eapply star_left with (t1 := E0) (t2 := E0); ss.
                   { econs; et.
                     { (* determinate *)
+                      (* NOTE: we exploit DTML/DTMR here *)
                       econs.
                       - ii. inv H0; inv H1.
                         determ_tac find_fptr_owner_determ. clear_tac. ss. rewrite LINKTGT in *.
                         esplits; et.
                         { econs. }
                         ii. f_equal.
+                        (*** TODO: make lemma ***)
                         assert(ms0 = msdl \/ ms0 = msdr).
-                        f_equal.
-                        rewrite LINKTGT in *. 
-                        exploit find_fptr_owner_determ; ss; et.
-                        determ_tac find_fptr_owner_determ.
+                        { exploit (find_fptr_owner_determ prog_tgt).
+                          { ss. rewrite LINKTGT. eapply MSFIND0. }
+                          { ss. rewrite LINKTGT. eapply MSFIND1. }
+                          i; clarify. et.
+                        }
+                        des.
+                        { clarify. repeat f_equal. rewrite OH in *. clarify. eapply DTML; et. }
+                        { clarify. repeat f_equal. rewrite OH in *. clarify. eapply DTMR; et. }
+                      - ii. ss. inv FINAL.
+                      - ii. ss. inv H0. ss. xomega.
+                    }
+                    econs; et.
+                    { ss. rewrite LINKTGT. ss. }
+                    unfold Midx.update. des_ifs.
+                    { folder. subst msdl msdr. simpl_md. ss. }
+                    clear - MIDXL LATEST OHS.
+                    inv LATEST; ss; clarify; try congruence.
+                    inv OHS. simpl_md. folder. eapply upcast_downcast_iff; et. r. ss.
+                    rewrite OHR. f_equal.
+                    unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify.
+                    my_depdes GET.
+                  }
+                  apply star_refl.
+                + right. eapply CIH.
+                  econs; unfold Frame.update_st; ss; et.
+                  { econs; et.
+                    - f_equal. rewrite cons_app. rewrite app_assoc. f_equal.
+                    - ss. econs; et. econs; et.
+                  }
+                  { econs 3; ss; et. }
+                  { inv LATEST; ss; try congruence.
+                    my_depdes GET. inv OHS.
+                    determ_tac ModSem.at_external_dtm.
+                    eapply sim_ohs_intro with (ohl := oh0) (ohr := ohr);
+                      unfold Midx.update in *; ii; ss; des_ifs; et;
+                        try rewrite upcast_downcast in *; clarify;
+                          try rewrite <- MIDXL in *; simpl_md; ss.
+                    - rewrite <- OHS0; ss. des_ifs; ss.
+                  }
+              - (* right *)
+                ss. pose st0 as TTT. my_depdes STEP; ss; revgoals.
+                { ModSem.tac. }
+                { ModSem.tac. }
+                esplits; eauto.
+                + left. esplits; eauto; cycle 1.
+                  { (* receptive *)
+                    eapply lift_receptive_at. ss.
+                    { rewrite LINKSRC. simpl_md. folder. ss. }
+                    econs; ii; ss.
+                    - assert(t1 = E0).
+                      { my_depdes H0; ss. ModSem.tac. }
+                      clarify. inv H1. eauto.
+                    - assert(t0 = E0).
+                      { my_depdes H0; ss. ModSem.tac. }
+                      clarify. ss. xomega. }
+
+                  (*** TODO: make lemma ***)
+                  assert(MSFIND1: Ge.find_fptr_owner (load_genv prog_tgt (Sk.load_skenv sk_link))
+                                                     (Args.get_fptr args0) (mdl skenv_link)).
+                  { clear - MSFIND.
+                    inv MSFIND. econs; et. ss. right. unfold load_modsems.
+                    rewrite in_map_iff. unfold flip. esplits; et. unfold prog_tgt.
+                    rewrite in_app_iff. right; ss. et.
+                  }
+
+                  eapply plus_left with (t1 := E0) (t2 := E0); ss.
+                  { econs; et.
+                    { (* determinate *)
                       eapply lift_determinate_at; ss.
                       { rewrite LINKTGT. simpl_md. folder. ss. }
                       econs; ii; ss.
@@ -792,88 +916,58 @@ Module ModTuple.
                     }
                     econs; eauto.
                   }
-                  {
-                  }
-                  eapply plus_left.
-                  econs; et.
-                left.
-                + admit "".
-                + ModSem.tac.
-                + ModSem.tac.
-(StackCons dl st_tgt stk, oh_src) tr st0
-                   ModSem.at_external msdl st0 oh0 args ->
-                   ohs1 = (oh0, snd ohs0) ->
-                   find_fptr_owner msdl msdr (Args.get_fptr args) msdr ->
-                   snd ohs1 = oh_new ->
-                   ModSem.initial_frame msdr oh_new args st_new ->
-                   step se ge (StackCons dl st0 tl, ohs0) E0 (StackCons dr st_new (StackCons dl st0 tl), ohs1)
-                simpl_md.
-                inv STEP; ss.
-                + admit "".
-                + exfalso. clear - H HD STEP0.
-                  
-                  remember (StackCons dl st1 tl) as X.
-                  dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
-                  ModSem.tac.
-                  ModSem.tac.
-
-              - exfalso. clear - H HD STEP0 FRSTGT.
-                remember (StackCons dl st1 tl) as X.
-                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
-                ModSem.tac.
-                (*********** TODO: use Mod.modsem instead of Mod.get_modsem ***********)
-              - exfalso. clear - H HD RET FRSTGT.
-                remember (StackCons dl st1 (StackCons dr st_old tl)) as X.
-                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
-                ModSem.tac.
-
-
-                  assert(RCPT: receptive_at (sem prog_src)
-                   (State 
-                      ((Frame.mk
-                          (ModSemTuple.t (Mod.get_modsem mdl skenv_link (Mod.data mdl))
-                                         (Mod.get_modsem mdr skenv_link (Mod.data mdr)) sk skenv_link midx)
-                          ((stk_src, oh_src)) :: tail_src)) ohs_src)).
-              { econs.
-                - bar. ii. inv H0; ss; rewrite LINKSRC in *.
-                  + contradict NCALLSRC. rr. ss. esplits; et.
-                  + my_depdes HD.
-                    assert(t1 = E0).
-                    { inv STEP0; ss.
-                      * simpl_md.
+                  eapply star_left with (t1 := E0) (t2 := E0); ss.
+                  { econs; et.
+                    { (* determinate *)
+                      (* NOTE: we exploit DTML/DTMR here *)
+                      econs.
+                      - ii. inv H0; inv H1.
+                        determ_tac find_fptr_owner_determ. clear_tac. ss. rewrite LINKTGT in *.
+                        esplits; et.
+                        { econs. }
+                        ii. f_equal.
+                        (*** TODO: make lemma ***)
+                        assert(ms0 = msdl \/ ms0 = msdr).
+                        { exploit (find_fptr_owner_determ prog_tgt).
+                          { ss. rewrite LINKTGT. eapply MSFIND0. }
+                          { ss. rewrite LINKTGT. eapply MSFIND1. }
+                          i; clarify. et.
+                        }
+                        des.
+                        { clarify. repeat f_equal. rewrite OH in *. clarify. eapply DTML; et. }
+                        { clarify. repeat f_equal. rewrite OH in *. clarify. eapply DTMR; et. }
+                      - ii. ss. inv FINAL.
+                      - ii. ss. inv H0. ss. xomega.
                     }
-                    contradict NCALLSRC. rr. ss. esplits; et.
-                  + eexists. rewrite LINKSRC in *. eapply step_internal.
-                    remember (StackCons dl st1 tl) as X.
-                    dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
-                    ModSem.tac.
-                  inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
-                  { eauto. }
-                - ii. inv H1; ModSem.tac. ss. omega. }
-              inv STEP; ss.
-              - esplits; eauto.
-                + left. esplits; eauto; cycle 1.
-                admit "".
-              - exfalso. clear - H HD STEP0 FRSTGT.
-                remember (StackCons dl st1 tl) as X.
-                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
-                ModSem.tac.
-                (*********** TODO: use Mod.modsem instead of Mod.get_modsem ***********)
-              - exfalso. clear - H HD RET FRSTGT.
-                remember (StackCons dl st1 (StackCons dr st_old tl)) as X.
-                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
-                ModSem.tac.
-
-              - admit "".
-              - exfalso. clear - H HD STEP0 FRSTGT.
-                remember (StackCons dr st1 tl) as X.
-                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
-                ModSem.tac.
-                (*********** TODO: use Mod.modsem instead of Mod.get_modsem ***********)
-              - exfalso. clear - H HD RET FRSTGT.
-                remember (StackCons dr st1 (StackCons dl st_old tl)) as X.
-                dependent destruction HD; ss. apply stack_inj in HeqX. des; clarify; ss.
-                ModSem.tac.
+                    econs; et.
+                    { ss. rewrite LINKTGT. ss. }
+                    unfold Midx.update. des_ifs.
+                    { folder. subst msdl msdr. simpl_md. folder. congruence. }
+                    clear - MIDXL LATEST OHS.
+                    inv LATEST; ss; clarify; try congruence.
+                    inv OHS. simpl_md. folder. eapply upcast_downcast_iff; et. r. ss.
+                    rewrite OHL. f_equal.
+                    unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify.
+                    my_depdes GET.
+                  }
+                  apply star_refl.
+                + right. eapply CIH.
+                  econs; unfold Frame.update_st; ss; et.
+                  { econs; et.
+                    - f_equal. rewrite cons_app. rewrite app_assoc. f_equal.
+                    - ss. econs; et. econs; et.
+                  }
+                  { econs 3; ss; et. }
+                  { inv LATEST; ss; try congruence.
+                    my_depdes GET. inv OHS.
+                    determ_tac ModSem.at_external_dtm.
+                    eapply sim_ohs_intro with (ohl := ohl) (ohr := oh0);
+                      unfold Midx.update in *; ii; ss; des_ifs; et;
+                        try rewrite upcast_downcast in *; clarify;
+                          try rewrite <- MIDXL in *; simpl_md; ss.
+                    - rewrite <- OHS0; ss. des_ifs; ss.
+                    - folder. congruence.
+                  }
           }
 
 
@@ -935,7 +1029,8 @@ Module ModTuple.
           { i. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
             { inv SAFESRC. }
             folder. rewrite LINKSRC in SAFESRC; ss.
-            inv SAFESRC. right. exploit msfind_fsim; eauto. i; des.
+            inv SAFESRC. right. rewrite LINKTGT.
+            exploit msfind_fsim; eauto. i; des.
             - rewrite LINKTGT. esplits; eauto. econs; eauto.
             - rewrite LINKTGT. clarify. ss. inv INIT. ss.  esplits; eauto. econs; eauto. ss. econs; et. ss.
               unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.

@@ -50,44 +50,6 @@ Module Mod.
 
   Definition modsem (md: t) (skenv: SkEnv.t): ModSem.t := md.(get_modsem) skenv md.(data).
 
-  Lemma modsem_skenv_spec
-        (md: Mod.t) skenv
-    :
-      <<EQ: ModSem.skenv (Mod.modsem md skenv) = SkEnv.project skenv (Mod.sk md)>>
-  .
-  Proof.
-    unfold modsem, sk. rewrite Mod.get_modsem_skenv_spec. ss.
-  Qed.
-
-  Lemma modsem_skenv_link_spec
-        (md: Mod.t) skenv_link
-    :
-      <<EQ: ModSem.skenv_link (Mod.modsem md skenv_link) = skenv_link>>
-  .
-  Proof.
-    unfold modsem. rewrite Mod.get_modsem_skenv_link_spec. ss.
-  Qed.
-
-  Lemma modsem_midx_spec
-        (md: Mod.t) skenv_link
-    :
-      <<EQ: ModSem.midx (Mod.modsem md skenv_link) = md.(Mod.midx)>>
-  .
-  Proof.
-    unfold modsem. rewrite Mod.get_modsem_midx_spec. ss.
-  Qed.
-
-  (* modsem -> mod *)
-  Ltac simpl := try rewrite ! Mod.modsem_skenv_spec in *;
-                try rewrite ! Mod.modsem_skenv_link_spec in *;
-                try rewrite ! Mod.modsem_midx_spec in *;
-                try rewrite <- ! Mod.get_modsem_skenv_spec in *;
-                try rewrite ! Mod.get_modsem_skenv_link_spec in *;
-                try rewrite ! Mod.get_modsem_midx_spec in *
-  .
-
-
-
   Module Atomic.
   Section Atomic.
 
@@ -101,24 +63,6 @@ Module Mod.
 
   End Atomic.
   End Atomic.
-
-  Module Dummy.
-  Section DUMMY.
-
-    Variable md: Mod.t.
-    Local Obligation Tactic := ii; des; ss; Mod.simpl; ss.
-    Program Definition trans: Mod.t :=
-      {|
-        Mod.datatype := unit;
-        Mod.get_sk := fun _ => (Mod.sk md);
-        Mod.get_modsem := fun skenv_link _ => ModSem.Dummy.trans (Mod.modsem md skenv_link);
-        Mod.data := tt;
-        Mod.midx := md.(Mod.midx);
-      |}
-    .
-
-  End DUMMY.
-  End Dummy.
 
 End Mod.
 

@@ -479,19 +479,6 @@ Module ModSem.
   End Atomic.
   End Atomic.
 
-
-  Module Dummy.
-  Section DUMMY.
-
-    Variable ms: t.
-    Local Obligation Tactic := ii; des; ss.
-    Program Definition trans: ModSem.t :=
-      @ModSem.mk unit unit unit bot5 bot3 bot3 bot3 bot4 tt tt
-                 (ms.(ModSem.skenv)) (ms.(ModSem.skenv_link)) (ms.(ModSem.midx)) _ _ _ _ _ _ _.
-
-  End DUMMY.
-  End Dummy.
-
 End ModSem.
 
 Hint Unfold ModSem.is_call ModSem.is_step ModSem.is_return.

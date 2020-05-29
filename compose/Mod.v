@@ -102,23 +102,21 @@ Module Mod.
   End Atomic.
   End Atomic.
 
-  Module Dummy.
   Section DUMMY.
-
     Variable md: Mod.t.
     Local Obligation Tactic := ii; des; ss; Mod.simpl; ss.
-    Program Definition trans: Mod.t :=
+    Program Definition dummy: Mod.t :=
       {|
         Mod.datatype := unit;
-        Mod.get_sk := fun _ => (Mod.sk md);
-        Mod.get_modsem := fun skenv_link _ => ModSem.Dummy.trans (Mod.modsem md skenv_link);
+        Mod.get_sk := fun _ => Sk.empty;
+        Mod.get_modsem := fun skenv_link _ => ModSem.dummy skenv_link md.(Mod.midx);
         Mod.data := tt;
         Mod.midx := md.(Mod.midx);
       |}
     .
-
+    Next Obligation.
+    Qed.
   End DUMMY.
-  End Dummy.
 
 End Mod.
 

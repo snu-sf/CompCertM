@@ -480,14 +480,16 @@ Module ModSem.
   End Atomic.
 
 
-  (* Used in Mod.dummy *)
-  Section Dummy.
+  Module Dummy.
+  Section DUMMY.
+
+    Variable ms: t.
     Local Obligation Tactic := ii; des; ss.
-    Variable skenv_link: SkEnv.t.
-    Variable midx: Midx.t.
-    Program Definition dummy: ModSem.t :=
+    Program Definition trans: ModSem.t :=
       @ModSem.mk unit unit unit bot5 bot3 bot3 bot3 bot4 tt tt
-                 SkEnv.empty skenv_link midx _ _ _ _ _ _ _.
+                 (ms.(ModSem.skenv)) (ms.(ModSem.skenv_link)) (ms.(ModSem.midx)) _ _ _ _ _ _ _.
+
+  End DUMMY.
   End Dummy.
 
 End ModSem.

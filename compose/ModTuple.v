@@ -23,35 +23,6 @@ Set Implicit Arguments.
 
 
 
-
-
-
-
-
-
-
-
-(*** TODO: move to Mod.v ***)
-Lemma Mod_modsem_midx_spec
-      (md: Mod.t) skenv_link
-  :
-    <<EQ: ModSem.midx (md skenv_link) = md.(Mod.midx)>>
-.
-Proof.
-  u. rewrite Mod.get_modsem_midx_spec. ss.
-Qed.
-
-Lemma Mod_modsem_skenv_link_spec
-      (md: Mod.t) skenv_link
-  :
-    <<EQ: ModSem.skenv_link (md skenv_link) = skenv_link>>
-.
-Proof.
-  u. rewrite Mod.get_modsem_skenv_link_spec. ss.
-Qed.
-
-
-
 Local Obligation Tactic := idtac.
 
 Section MODSEMTUPLE.
@@ -378,40 +349,17 @@ Module ModTuple.
 
   Section MERGE.
     Variable mdl mdr: Mod.t.
-    Variable sk: Sk.t.
     Variable midx: string.
     Variable ctx1 ctx2: list Mod.t.
-    Hypothesis (LINKSK: link (mdl: Sk.t) mdr = Some sk).
     Hypothesis (MIDXL: mdl.(Mod.midx) = Some midx).
-    Hypothesis (WFL: Sk.wf mdl).
-    Hypothesis (WFR: Sk.wf mdr).
 
-    Let WFLINK: Sk.wf (t mdl mdr sk midx).
-    Proof.
-      eapply link_preserves_wf_sk in LINKSK; et.
-    Qed.
-
-    Let prog_src: program := (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2).
+    Let prog_src: program := (ctx1 ++ [(ModTuple.t mdl mdr mdl midx)] ++ [Mod.Dummy.trans mdr] ++ ctx2).
     Let prog_tgt: program := (ctx1 ++ [mdl] ++ [mdr] ++ ctx2).
 
-    Let LINKSAME: forall
-        (* (WFL: Sk.wf mdl) *)
-        (* (WFR: Sk.wf mdr) *)
-        (* (WF: Sk.wf sk) *)
-        (* (WFCTX1: forall md (IN: In md ctx1), Sk.wf md) *)
-        (* (WFCTX2: forall md (IN: In md ctx2), Sk.wf md) *)
-        (WF: forall md (IN: In md (ctx1 ++ mdl :: mdr :: ctx2)), Sk.wf md)
-      ,
-        <<EQ: link_sk (ctx1 ++ [mdl] ++ [mdr] ++ ctx2) = link_sk (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2)>>.
+    Let LINKSAME: <<EQ: link_sk prog_src = link_sk prog_tgt>>.
     Proof.
-      i. erewrite link_sk_prepend_eq; eauto.
-      { ss. }
-      unfold t. unfold link_sk. ss.
-      replace (Mod.sk mdl :: Mod.sk mdr :: map Mod.sk ctx2)
-        with ([Mod.sk mdl ; Mod.sk mdr] ++ map Mod.sk ctx2) by ss.
-      erewrite link_list_assoc_one; ss; try eapply WF; ss; try rewrite in_app; ss; eauto.
-      ii. rewrite in_map_iff in *. des; clarify; et.
-      try eapply WF; ss; try rewrite in_app; ss; eauto.
+      unfold link_sk. subst prog_src prog_tgt.
+      rewrite ! map_app. ss.
     Qed.
 
     Let mil: Midx.t := mdl.(Mod.midx).
@@ -421,7 +369,7 @@ Module ModTuple.
       Variable skenv_link: SkEnv.t.
       Let msdl: ModSem.t := (Mod.modsem mdl skenv_link).
       Let msdr: ModSem.t := (Mod.modsem mdr skenv_link).
-      Let ms_link: ModSem.t := (ModSemTuple.t msdl msdr sk skenv_link midx).
+      Let ms_link: ModSem.t := (ModSemTuple.t msdl msdr mdl skenv_link midx).
 
       Inductive get_latest_focus: Frame.t -> ms_link.(ModSem.owned_heap) -> Prop :=
       | get_latest_stack_intro
@@ -585,16 +533,11 @@ Module ModTuple.
         ,
           st0 = st1
       .
-      Hypothesis WFCTX1: forall md (IN: In md ctx1), <<WF: Sk.wf md>>.
-      Hypothesis WFCTX2: forall md (IN: In md ctx2), <<WF: Sk.wf md>>.
       Hypothesis MIDIFF: Mod.midx mdl <> Mod.midx mdr.
       Let LINKTGT: link_sk prog_tgt = Some sk_link.
       Proof.
         unfold prog_src, prog_tgt in *. unfold link_sk in *.
         rewrite LINKSAME in *; ss.
-        ii. rewrite in_app_iff in *. des; ss; des; clarify; eauto.
-        - eapply WFCTX1; et.
-        - eapply WFCTX2; et.
       Qed.
 
       Ltac my_depdes H :=
@@ -625,9 +568,6 @@ Module ModTuple.
         end
       .
 
-      Ltac simpl_md := try rewrite ! Mod_modsem_skenv_link_spec in *;
-                       try rewrite ! Mod_modsem_midx_spec in *.
-
       Lemma final_fsim
             retv frs_src frs_tgt ohs_src ohs_tgt
             (MATCH: match_states skenv_link (State frs_src ohs_src) (State frs_tgt ohs_tgt))
@@ -653,10 +593,10 @@ Module ModTuple.
       Lemma match_states_xsim
             st_src0 st_tgt0
             (MATCH: match_states skenv_link st_src0 st_tgt0) :
-        <<XSIM: xsim (sem (ctx1 ++ [(t mdl mdr sk midx)] ++ ctx2)) (sem (ctx1 ++ [mdl] ++ [mdr] ++ ctx2))
-                     bot2 top1 top1 tt st_src0 st_tgt0>>
+        <<XSIM: xsim (sem prog_src) (sem prog_tgt) bot2 top1 top1 tt st_src0 st_tgt0>>
       .
       Proof.
+        sguard in LINKTGT.
         revert_until LINKTGT.
         pcofix CIH. i. pfold.
         inv MATCH.
@@ -721,10 +661,10 @@ Module ModTuple.
                   { inv OHS. inv LATEST.
                     - econs; et; unfold Midx.update in *; ii; ss; des_ifs; et;
                         try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; simpl_md; ss.
+                          try rewrite <- MIDXL in *; Mod.simpl; ss.
                     - econs; et; unfold Midx.update in *; ii; ss; des_ifs; et;
                         try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; simpl_md; ss.
+                          try rewrite <- MIDXL in *; Mod.simpl; ss.
                   }
               }
               { (* stk focus *)
@@ -740,11 +680,11 @@ Module ModTuple.
                       inv LATEST.
                       - econs; et; unfold Midx.update in *; ii; ss; des_ifs; et;
                           try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; simpl_md; ss.
+                          try rewrite <- MIDXL in *; Mod.simpl; ss.
                       - eapply sim_ohs_intro with (ohl := oh0) (ohr := ohr);
                           et; unfold Midx.update in *; ii; ss; des_ifs; et;
                           try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; simpl_md; ss.
+                          try rewrite <- MIDXL in *; Mod.simpl; ss.
                         + erewrite <- OHS0; et. des_ifs.
                         + do 2 f_equal.
                           * inv GET. apply func_app_dep with (f := Frame.st) in H1; ss. des.
@@ -761,11 +701,11 @@ Module ModTuple.
                       inv LATEST.
                       - econs; et; unfold Midx.update in *; ii; ss; des_ifs; et;
                           try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; simpl_md; ss.
+                          try rewrite <- MIDXL in *; Mod.simpl; ss.
                       - eapply sim_ohs_intro with (ohl := ohl) (ohr := oh0);
                           et; unfold Midx.update in *; ii; ss; des_ifs; et;
                           try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; simpl_md; ss.
+                          try rewrite <- MIDXL in *; Mod.simpl; ss.
                         + erewrite <- OHS0; et. des_ifs.
                         + do 2 f_equal.
                           * inv GET. apply func_app_dep with (f := Frame.st) in H1; ss. des.
@@ -799,7 +739,7 @@ Module ModTuple.
                 + left. esplits; eauto; cycle 1.
                   { (* receptive *)
                     eapply lift_receptive_at. ss.
-                    { rewrite LINKSRC. simpl_md. folder. ss. }
+                    { rewrite LINKSRC. Mod.simpl. folder. ss. }
                     econs; ii; ss.
                     - assert(t1 = E0).
                       { my_depdes H0; ss. ModSem.tac. }
@@ -821,7 +761,7 @@ Module ModTuple.
                   { econs; et.
                     { (* determinate *)
                       eapply lift_determinate_at; ss.
-                      { rewrite LINKTGT. simpl_md. folder. ss. }
+                      { rewrite LINKTGT. Mod.simpl. folder. ss. }
                       econs; ii; ss.
                       - ModSem.tac.
                       - ModSem.tac.
@@ -854,10 +794,10 @@ Module ModTuple.
                     econs; et.
                     { ss. rewrite LINKTGT. ss. }
                     unfold Midx.update. des_ifs.
-                    { folder. subst msdl msdr. simpl_md. ss. }
+                    { folder. subst msdl msdr. Mod.simpl. ss. }
                     clear - MIDXL LATEST OHS.
                     inv LATEST; ss; clarify; try congruence.
-                    inv OHS. simpl_md. folder. eapply upcast_downcast_iff; et. r. ss.
+                    inv OHS. Mod.simpl. folder. eapply upcast_downcast_iff; et. r. ss.
                     rewrite OHR. f_equal.
                     unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify.
                     my_depdes GET.
@@ -876,7 +816,7 @@ Module ModTuple.
                     eapply sim_ohs_intro with (ohl := oh0) (ohr := ohr);
                       unfold Midx.update in *; ii; ss; des_ifs; et;
                         try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; simpl_md; ss.
+                          try rewrite <- MIDXL in *; Mod.simpl; ss.
                     - rewrite <- OHS0; ss. des_ifs; ss.
                   }
               - (* right *)
@@ -887,7 +827,7 @@ Module ModTuple.
                 + left. esplits; eauto; cycle 1.
                   { (* receptive *)
                     eapply lift_receptive_at. ss.
-                    { rewrite LINKSRC. simpl_md. folder. ss. }
+                    { rewrite LINKSRC. Mod.simpl. folder. ss. }
                     econs; ii; ss.
                     - assert(t1 = E0).
                       { my_depdes H0; ss. ModSem.tac. }
@@ -909,7 +849,7 @@ Module ModTuple.
                   { econs; et.
                     { (* determinate *)
                       eapply lift_determinate_at; ss.
-                      { rewrite LINKTGT. simpl_md. folder. ss. }
+                      { rewrite LINKTGT. Mod.simpl. folder. ss. }
                       econs; ii; ss.
                       - ModSem.tac.
                       - ModSem.tac.
@@ -942,10 +882,10 @@ Module ModTuple.
                     econs; et.
                     { ss. rewrite LINKTGT. ss. }
                     unfold Midx.update. des_ifs.
-                    { folder. subst msdl msdr. simpl_md. folder. congruence. }
+                    { folder. subst msdl msdr. Mod.simpl. folder. congruence. }
                     clear - MIDXL LATEST OHS.
                     inv LATEST; ss; clarify; try congruence.
-                    inv OHS. simpl_md. folder. eapply upcast_downcast_iff; et. r. ss.
+                    inv OHS. Mod.simpl. folder. eapply upcast_downcast_iff; et. r. ss.
                     rewrite OHL. f_equal.
                     unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify.
                     my_depdes GET.
@@ -964,7 +904,7 @@ Module ModTuple.
                     eapply sim_ohs_intro with (ohl := ohl) (ohr := oh0);
                       unfold Midx.update in *; ii; ss; des_ifs; et;
                         try rewrite upcast_downcast in *; clarify;
-                          try rewrite <- MIDXL in *; simpl_md; ss.
+                          try rewrite <- MIDXL in *; Mod.simpl; ss.
                     - rewrite <- OHS0; ss. des_ifs; ss.
                     - folder. congruence.
                   }

@@ -380,9 +380,11 @@ Module ModTuple.
     Variable mdl mdr: Mod.t.
     Variable sk: Sk.t.
     Variable midx: string.
+    Let md_link: Mod.t := t mdl mdr sk midx.
     Variable ctx1 ctx2: list Mod.t.
     Hypothesis (LINKSK: link (mdl: Sk.t) mdr = Some sk).
     Hypothesis (MIDXL: mdl.(Mod.midx) = Some midx).
+    Hypothesis (MIDXR: mdr.(Mod.midx) <> None).
     Hypothesis (WFL: Sk.wf mdl).
     Hypothesis (WFR: Sk.wf mdr).
 
@@ -571,6 +573,7 @@ Module ModTuple.
       Let skenv_link := Sk.load_skenv sk_link.
       Let msdl: ModSem.t := (Mod.modsem mdl skenv_link).
       Let msdr: ModSem.t := (Mod.modsem mdr skenv_link).
+      Let ms_link: ModSem.t := (Mod.modsem md_link skenv_link).
       Hypothesis DTML: forall
           oh args st0 st1
           (INIT0: msdl.(ModSem.initial_frame) oh args st0)
@@ -596,6 +599,10 @@ Module ModTuple.
         - eapply WFCTX1; et.
         - eapply WFCTX2; et.
       Qed.
+      Let INCLSRC: forall md (IN: In md prog_src), SkEnv.includes skenv_link (md: (Sk.t)).
+      Proof. eapply link_includes; et. Qed.
+      Let INCLTGT: forall md (IN: In md prog_tgt), SkEnv.includes skenv_link (md: (Sk.t)).
+      Proof. eapply link_includes; et. Qed.
 
       Ltac my_depdes H :=
         multimatch goal with
@@ -676,7 +683,7 @@ Module ModTuple.
                      bot2 top1 top1 tt st_src0 st_tgt0>>
       .
       Proof.
-        revert_until LINKTGT.
+        revert_until INCLTGT.
         pcofix CIH. i. pfold.
         inv MATCH.
         - (* normal *)
@@ -858,14 +865,13 @@ Module ModTuple.
                         { econs. }
                         ii. f_equal.
                         (*** TODO: make lemma ***)
-                        assert(ms0 = msdl \/ ms0 = msdr).
+                        assert(ms0 = msdr).
                         { exploit (find_fptr_owner_determ prog_tgt).
                           { ss. rewrite LINKTGT. eapply MSFIND0. }
                           { ss. rewrite LINKTGT. eapply MSFIND1. }
-                          i; clarify. et.
+                          i; clarify.
                         }
                         des.
-                        { clarify. repeat f_equal. rewrite OH in *. clarify. eapply DTML; et. }
                         { clarify. repeat f_equal. rewrite OH in *. clarify. eapply DTMR; et. }
                       - ii. ss. inv FINAL.
                       - ii. ss. inv H0. ss. xomega.
@@ -946,15 +952,14 @@ Module ModTuple.
                         { econs. }
                         ii. f_equal.
                         (*** TODO: make lemma ***)
-                        assert(ms0 = msdl \/ ms0 = msdr).
+                        assert(ms0 = msdl).
                         { exploit (find_fptr_owner_determ prog_tgt).
                           { ss. rewrite LINKTGT. eapply MSFIND0. }
                           { ss. rewrite LINKTGT. eapply MSFIND1. }
-                          i; clarify. et.
+                          i; clarify.
                         }
                         des.
                         { clarify. repeat f_equal. rewrite OH in *. clarify. eapply DTML; et. }
-                        { clarify. repeat f_equal. rewrite OH in *. clarify. eapply DTMR; et. }
                       - ii. ss. inv FINAL.
                       - ii. ss. inv H0. ss. xomega.
                     }
@@ -1144,63 +1149,196 @@ Module ModTuple.
         - right. clear SSSRC SSTGT. econs; ss; et.
           i.
           econs; cycle 1.
-          { i. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
+          { (* SAFE *)
+            i. specialize (SAFESRC _ (star_refl _ _ _ _)). des; ss.
             { inv SAFESRC. }
             folder. rewrite LINKSRC in SAFESRC; ss.
-            inv SAFESRC. right. rewrite LINKTGT.
-            exploit msfind_fsim; eauto. i; des.
-            - rewrite LINKTGT. esplits; eauto. econs; eauto.
-            - rewrite LINKTGT. clarify. ss. inv INIT. ss.  esplits; eauto. econs; eauto. ss. econs; et. ss.
-              unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
-              exploit prog_def_same; eauto. i. des.
-              assert (cp = cp0).
-              { inv MSFIND0. ss. des_ifs. unfold Args.get_fptr, Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
-                ss. clarify. exploit same_prog. eapply H. eapply ISFOCTGT. eauto. eauto. eauto. }
-              subst. eauto. }
-          { i. inv FINALTGT. }
-          i. inv STEPTGT. ss.
-          exploit msfind_bsim; et.
-          { des_ifs. eauto. } i; des.
-          + des_ifs. esplits; eauto.
-            { left. apply plus_one. econs; et. }
-            right. eapply CIH; eauto. econs; et. econs; et.
-          + rewrite LINKSRC in *. rewrite LINKTGT in *.
-            clarify. ss. inv INIT.
-            esplits; eauto.
-            { left. apply plus_one. econs; et.
-              ss. econs; et. ss.
-              unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
-              eapply prog_find_defs_same_rev; eauto. }
-            right. eapply CIH; eauto. econs; et.
-            rewrite cons_app with (xtl := frs_tgt).
-            econs 3; ss; et.
-            econs; ss; et.
-            { econs; ss; et. }
-            { econs; ss; et. }
-            { inv TYP. eapply wt_initial_frame; ss; et.
-              - esplits; et. instantiate (1:= fd).
-                unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
-                eapply prog_find_defs_same_rev; eauto.
-              - i. ss.
-                inv WTPROGLINK.
-                unfold Genv.find_funct in H. des_ifs.
-                rewrite Genv.find_funct_ptr_iff in H.
-                unfold Genv.find_def in H. ss.
-                do 2 rewrite PTree_filter_map_spec, o_bind_ignore in *.
-                des_ifs.
-                destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link))); ss. unfold o_bind in H. ss.
-                destruct ((prog_defmap cp_link) ! i) eqn:DMAP; ss. clarify.
-                exploit in_prog_defmap; eauto. i. exploit H0; eauto. i. inv H2. eauto. }
-            { inv TYP. eapply wt_initial_frame; ss; et.
-              i. Eq. exploit WTPROGS; eauto. i. inv H. ss.
-              unfold Genv.find_funct in FINDF. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
-              unfold Genv.find_def in FINDF. ss. rewrite PTree_filter_map_spec, o_bind_ignore in *. des_ifs.
-              destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b); ss.
-              unfold o_bind in FINDF. ss. destruct ((prog_defmap cp) ! i) eqn:DMAP; ss. clarify.
-              unfold prog_defmap in DMAP. eapply PTree_Properties.in_of_list in DMAP.
-              clear - DMAP H0.
-              exploit H0.
-              { instantiate (2:=i). instantiate (1:=fd0). ss. } i. inv H. eauto. }
+            inv SAFESRC. right. rewrite LINKTGT. folder.
+            set (Args.get_fptr args) as fptr in *.
+            assert(exists ms_tgt,
+                      <<MSFIND: Ge.find_fptr_owner (load_genv prog_tgt skenv_link) fptr ms_tgt>> /\
+                                ((<<CTX: ms_tgt = ms /\ ms.(ModSem.midx) <> mil /\ ms.(ModSem.midx) <> mir>>) \/
+                                 (<<FOCL: ms_tgt = Mod.modsem mdl skenv_link>> /\ <<FOC: ms = ms_link>>) \/
+                                 (<<FOCR: ms_tgt = Mod.modsem mdr skenv_link>> /\ <<FOC: ms = ms_link>>))).
+            { clear - MSFIND ms_link msdl msdr LINKSK skenv_link INCLSRC INCLTGT MIDXL MIDXR.
+              inv MSFIND. ss. des; clarify.
+              { esplits; try left; et. - econs; et. ss. et. - ss. esplits; eauto with congruence. }
+              destruct (classic (ms = ms_link)).
+              - clarify. ss.
+                assert(FIND: Genv.find_funct (SkEnv.project skenv_link mdl) fptr = Some (Internal if_sig)
+                             \/ Genv.find_funct (SkEnv.project skenv_link mdr) fptr = Some (Internal if_sig)).
+                { Local Transparent Linker_prog.
+                  dup LINKSK. apply link_linkorder in LINKSK0. des; ss; des.
+                  Local Opaque Linker_prog.
+                  ss.
+                  assert(DISJ: SkEnv.disj (SkEnv.project skenv_link mdl) (SkEnv.project skenv_link mdr)).
+                  { eapply SkEnv.project_respects_disj; et. eapply Sk.link_disj; et. }
+
+                  exploit (@SkEnv.project_impl_spec skenv_link mdl); et.
+                  { eapply INCLTGT. unfold prog_tgt. rewrite in_app_iff; ss. et. }
+                  intro PROJL.
+                  exploit (@SkEnv.project_impl_spec skenv_link mdr); et.
+                  { eapply INCLTGT. unfold prog_tgt. rewrite in_app_iff; ss. et. }
+                  intro PROJR.
+                  exploit (@SkEnv.project_impl_spec skenv_link md_link); et.
+                  { eapply INCLSRC. unfold prog_src. rewrite in_app_iff; ss. et. }
+                  intro PROJLINK.
+
+                  unfold Genv.find_funct, Genv.find_funct_ptr in *. des_ifs_safe.
+                  destruct (Genv.invert_symbol skenv_link b) eqn:INV.
+                  - inv PROJLINK. exploit DEFKEPT; et. i; des. ss. inv LO. inv H1.
+                    (*** TODO: make lemma ***)
+                    assert(<<LEFT: (prog_defmap (mdl: Sk.t)) ! i = (prog_defmap sk) ! i>> \/
+                                   <<RIGHT: (prog_defmap (mdr: Sk.t)) ! i = (prog_defmap sk) ! i>>).
+                    { clear - PROG LINKSK.
+                      unfold link_prog in *. des_ifs. bsimpl; des; ss; des_sumbool.
+                      unfold prog_defmap in *. ss. rewrite PTree_Properties.of_list_elements in *.
+                      rewrite PTree.gcombine in *; ss. unfold link_prog_merge in PROG. des_ifs; ss; et.
+                      Local Transparent Linker_def.
+                      ss.
+                      Local Opaque Linker_def.
+                      unfold link_def in *. des_ifs. ss.
+                      unfold link_skfundef in *. des_ifs; et.
+                    }
+                    des.
+                    + rewrite PROG in *. inv PROJL. exploit DEFKEEP0; et.
+                      { unfold internals. des_ifs. }
+                      i; des. clarify. left. des_ifs.
+                    + rewrite PROG in *. inv PROJR. exploit DEFKEEP0; et.
+                      { unfold internals. des_ifs. }
+                      i; des. clarify. right. des_ifs.
+                  - inv PROJLINK. exploit DEFORPHAN; et. i; des. ss. clarify.
+                }
+                des.
+                + exists msdl. subst msdl. esplits; et. econs; ss; et.
+                  { right. unfold load_modsems, flip. rewrite in_map_iff. unfold prog_tgt.
+                    exists mdl. esplits; ss; et. rewrite in_app_iff; ss. et. }
+                  unfold Mod.modsem. rewrite <- Mod.get_modsem_skenv_spec. et.
+                + exists msdr. subst msdr. esplits; et. econs; ss; et.
+                  { right. unfold load_modsems, flip. rewrite in_map_iff. unfold prog_tgt.
+                    exists mdr. esplits; ss; et. rewrite in_app_iff; ss. et. }
+                  unfold Mod.modsem. rewrite <- Mod.get_modsem_skenv_spec. et.
+              - esplits; try left; et.
+                + econs; et. ss. right.
+                  unfold load_modsems, flip in *. rewrite in_map_iff in *. unfold prog_src, prog_tgt in *.
+                  des. clarify.
+                  exists x. esplits; ss; et. rewrite in_app_iff in *; ss. des; clarify; et.
+                + admit "medium -- midx".
+            }
+            des; clarify.
+            - esplits; eauto. econs; eauto. inv OHS. exploit OHS0; et. i. congruence.
+            - inv OHS. folder. unfold ms_link in OH. ss. rewrite <- MIDXL in *. rewrite OH in *.
+              rewrite upcast_downcast in *. clarify.
+              inv INIT.
+              + esplits; eauto. econs; eauto.
+                { eapply upcast_downcast_iff; et. r. unfold msdl, Mod.modsem.
+                  rewrite Mod.get_modsem_midx_spec. eauto. }
+              + folder.
+                clear - MSFIND1 MSFIND0 msdl msdr MIDXL MIDXR MIDIFF LINKTGT.
+                (*** TODO: make lemma ***)
+                assert(Ge.find_fptr_owner (load_genv prog_tgt skenv_link) fptr msdr).
+                {
+                  inv MSFIND1. econs; et. ss. unfold load_modsems. des; clarify.
+                  - apply (func_app ModSem.midx) in MODSEM.
+                    rewrite ! Mod.get_modsem_midx_spec in *. des. folder. congruence.
+                  - clear_tac. right. rewrite in_map_iff. unfold flip. exists mdr. esplits; et.
+                    unfold prog_tgt. rewrite in_app_iff; ss; et.
+                }
+                assert(CONTR: msdl = msdr).
+                { eapply (find_fptr_owner_determ prog_tgt); ss; et; des_ifs; et. }
+                apply (func_app ModSem.midx) in CONTR. subst msdl msdr. unfold Mod.modsem in *.
+                rewrite ! Mod.get_modsem_midx_spec in *. des. folder. clarify.
+            - inv OHS. folder. unfold ms_link in OH. ss. rewrite <- MIDXL in *. rewrite OH in *.
+              rewrite upcast_downcast in *. clarify.
+              inv INIT.
+              + folder.
+                clear - MSFIND1 MSFIND0 msdl msdr MIDXL MIDXR MIDIFF LINKTGT.
+                (*** TODO: make lemma ***)
+                assert(Ge.find_fptr_owner (load_genv prog_tgt skenv_link) fptr msdl).
+                {
+                  inv MSFIND1. econs; et. ss. unfold load_modsems. des; clarify.
+                  - clear_tac. right. rewrite in_map_iff. unfold flip. exists mdl. esplits; et.
+                    unfold prog_tgt. rewrite in_app_iff; ss; et.
+                  - apply (func_app ModSem.midx) in MODSEM.
+                    rewrite ! Mod.get_modsem_midx_spec in *. des. folder. congruence.
+                }
+                assert(CONTR: msdl = msdr).
+                { eapply (find_fptr_owner_determ prog_tgt); ss; et; des_ifs; et. }
+                apply (func_app ModSem.midx) in CONTR. subst msdl msdr. unfold Mod.modsem in *.
+                rewrite ! Mod.get_modsem_midx_spec in *. des. folder. clarify.
+              + esplits; eauto. econs; eauto.
+                { eapply upcast_downcast_iff; et. r. unfold msdr, Mod.modsem.
+                  rewrite Mod.get_modsem_midx_spec. eauto. }
+          }
+          { (* FINAL *)
+            i. inv FINALTGT.
+          }
+          { (* BSIM *)
+            repeat fold prog_tgt. repeat fold prog_src.
+            ss. rewrite LINKTGT in *. rewrite LINKSRC in *. fold skenv_link.
+            i. inv STEPTGT.
+            set (Args.get_fptr args) as fptr in *.
+            assert(exists ms_src,
+                      <<MSFIND: Ge.find_fptr_owner (load_genv prog_src skenv_link) fptr ms_src>> /\
+                                ((<<CTX: ms = ms_src /\ ms.(ModSem.midx) <> mil /\ ms.(ModSem.midx) <> mir>>) \/
+                                 (<<FOCL: ms = Mod.modsem mdl skenv_link>> /\ <<FOC: ms_src = ms_link>>) \/
+                                 (<<FOCR: ms = Mod.modsem mdr skenv_link>> /\ <<FOC: ms_src = ms_link>>))).
+            { admit "medium -- bsim ". }
+            inv OHS.
+            des; clarify.
+            - esplits; et.
+              + left. apply plus_one. econs; et. exploit OHS0; et. intro T. rewrite T in *. ss.
+              + right. eapply CIH. econs; ss; et.
+                * econs; ss; et.
+                * econs; ss; et.
+                * econs; ss; et.
+            - esplits; et.
+              + left. apply plus_one. econs; et.
+                * eapply upcast_downcast_iff; et. ss. rewrite <- MIDXL. fold mil. et.
+                * ss. rp; try eapply initial_frame_dl; et; ss.
+                  { (*** TODO: make lemma ***)
+                    inv MSFIND. econs; ss; et.
+                  }
+                  assert(ohl = oh).
+                  { eapply upcast_downcast_iff in OHL.
+                    replace (ModSem.midx (mdl skenv_link)) with mil in OH; cycle 1.
+                    { unfold mil. unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec. ss. }
+                    rewrite OHL in *. clarify. }
+                  clarify. et.
+              + right. eapply CIH. econs; ss; et.
+                * econs 3; ss; et.
+                  { instantiate (1:= nil). ss. }
+                  econs; ss; et.
+                  econs; ss; et.
+                * econs 3; ss; et.
+                * econs; ss; et.
+                  { ii. unfold Midx.update. des_ifs. eapply OHS0; et. }
+                  { unfold Midx.update. des_ifs. rewrite upcast_downcast. ss. }
+            - esplits; et.
+              + left. apply plus_one. econs; et.
+                * eapply upcast_downcast_iff; et. ss. rewrite <- MIDXL. fold mil. et.
+                * ss. rp; try eapply initial_frame_dr; et; ss.
+                  { (*** TODO: make lemma ***)
+                    inv MSFIND. econs; ss; et.
+                  }
+                  assert(ohr = oh).
+                  { eapply upcast_downcast_iff in OHR.
+                    replace (ModSem.midx (mdr skenv_link)) with mir in OH; cycle 1.
+                    { unfold mir. unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec. ss. }
+                    rewrite OHR in *. clarify. }
+                  clarify. et.
+              + right. eapply CIH. econs; ss; et.
+                * econs 3; ss; et.
+                  { instantiate (1:= nil). ss. }
+                  econs; ss; et.
+                  econs; ss; et.
+                * econs 3; ss; et.
+                * econs; ss; et.
+                  { ii. unfold Midx.update. des_ifs. eapply OHS0; et. }
+                  { unfold Midx.update. des_ifs. rewrite upcast_downcast. ss. }
+          }
+      Unshelve.
+        all: ss.
       Qed.
 
     Theorem merge:

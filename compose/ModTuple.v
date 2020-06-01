@@ -759,6 +759,20 @@ Module ModTuple.
           remember a as X eqn:HX; remember b as Y eqn:HY;
           depdes H; ss; try (apply func_app_dep with (f:= Frame.st) in HX; des; ss; apply JMeq_eq in HX);
           clarify
+        | [ H': final_frame ?a _ _ |- _ ] =>
+          check_equal H H';
+          let X := fresh "X" in
+          let HX := fresh "HX" in
+          remember a as X eqn:HX;
+          depdes H; ss; try (apply state_inj in HX; des); clarify
+        | [ H': after_external ?a _ _ ?b |- _ ] =>
+          check_equal H H';
+          let X := fresh "X" in
+          let HX := fresh "HX" in
+          let Y := fresh "Y" in
+          let HY := fresh "HY" in
+          remember a as X eqn:HX; remember b as Y eqn:HY;
+          depdes H; ss; try (apply stack_inj in HX; des); try (apply stack_inj in HY; des); clarify
         end
       .
 
@@ -1335,7 +1349,520 @@ Module ModTuple.
 
           destruct (classic (fr_tgt.(Frame.ms).(ModSem.is_return) fr_tgt.(Frame.st))).
           { (* tgt return *)
-            admit "".
+            left. right. econs; et. econs; et; cycle 1.
+            { i. eapply final_fsim; et. econs; et. }
+            econs; et; cycle 1.
+            i. ss. fold prog_src in STEPSRC. rewrite LINKSRC in *.
+
+            assert(RECEP: receptive_at (sem prog_src) (State (fr_src :: frs_src) ohs_src)).
+            { econs.
+              - ii. inv H0.
+                + exfalso. eapply NCALLSRC. eauto.
+                + ss. rewrite LINKSRC in *.
+                  rr in H. des. ss.
+                  inv STK.
+                  * exfalso; eapply ModSem.step_return_disjoint. split; eauto.
+                  * clarify; ss. my_depdes HD; clarify; ss.
+                    { my_depdes STEP; ss; ModSem.tac. inv H1.
+                      eexists. econs 3; ss. rp; try eapply step_return_dl; eauto. }
+                    { my_depdes STEP; ss; ModSem.tac. inv H1.
+                      eexists. econs 3; ss. rp; try eapply step_return_dr; eauto. }
+                + ss. des_ifs. inv H1. eexists. econs 4; eauto.
+              - ii. ss. rewrite LINKSRC in *. inv H0; ss; try nia.
+                rr in H. des. ss. inv STK.
+                + exfalso; eapply ModSem.step_return_disjoint. split; eauto.
+                + ss. my_depdes HD; clarify; ss.
+                  { my_depdes STEP; ss; ModSem.tac. try xomega. }
+                  { my_depdes STEP; ss; ModSem.tac. try xomega. }
+            }
+
+            inv STEPSRC; ss.
+            { contradict NCALLSRC. rr. et. }
+            - (* src step *)
+              inv STK.
+              { ModSem.tac. }
+              my_depdes HD; ss.
+              { my_depdes STEP; ss; ModSem.tac.
+                my_depdes HD. esplits; eauto.
+                + left. split ;ss. eapply plus_one with (t := E0); ss.
+                  econs; et.
+                  { (* determ *)
+                    econs; ii; ss; folder; try rewrite LINKTGT in *.
+                    - inv H0; ModSem.tac. ss. inv H1; ModSem.tac. ss.
+                      esplits; et.
+                      { econs; et. }
+                      i.
+                      determ_tac ModSem.final_frame_dtm. clear_tac.
+                      determ_tac ModSem.final_frame_dtm. clear_tac.
+                      unfold Midx.update in *.
+                      destruct (Midx.eq_dec (ModSem.midx msdl) (ModSem.midx msdr)).
+                      { (*** TODO: make lemma ***)
+                        contradict MIDIFF. unfold mil, mir. unfold msdl, msdr, Mod.modsem in e.
+                        rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                      rewrite OH in *. clarify.
+                      repeat f_equal.
+                      eapply ModSem.after_external_dtm; et.
+                    - inv FINAL; ss.
+                    - inv H0; ss; ModSem.tac. xomega.
+                  }
+                  ss. fold prog_tgt. rewrite LINKTGT.
+                  econs 4; ss; et.
+                  unfold Midx.update. des_ifs.
+                  { contradict MIDIFF. unfold mil, mir. unfold msdl, msdr, Mod.modsem in e.
+                    rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                  inv LATEST; ss.
+                  { congruence. }
+                  my_depdes GET. ss. inv OHS. replace (ModSem.midx (mdr skenv_link)) with mir; cycle 1.
+                  { unfold mir, Mod.modsem. rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                  unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify.
+                  eapply upcast_downcast_iff; et.
+                + right. eapply CIH. unfold Frame.update_st. ss. econs; ss; et.
+                  { econs; et. econs; et. }
+                  { econs 3; et. ss. }
+                  { inv OHS. inv LATEST; ss; try congruence.
+                    unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify.
+                    econs; ss; et.
+                    - ii. specialize (OHS0 mj). exploit OHS0; et. intro T. des_ifs.
+                      contradict NL. unfold mil. unfold msdl, Mod.modsem.
+                      rewrite ! Mod.get_modsem_midx_spec in *. ss.
+                    - des_ifs; try rewrite upcast_downcast; et.
+                    - des_ifs; try rewrite upcast_downcast; et.
+                      contradict n. unfold mil. unfold msdl, Mod.modsem.
+                      rewrite ! Mod.get_modsem_midx_spec in *. ss.
+                    - des_ifs; try rewrite upcast_downcast; et.
+                      { contradict e0. unfold mir. unfold msdr, Mod.modsem.
+                        rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                      rewrite OHR. my_depdes GET; ss.
+                  }
+              }
+              { my_depdes STEP; ss; ModSem.tac.
+                my_depdes HD. esplits; eauto.
+                + left. split ;ss. eapply plus_one with (t := E0); ss.
+                  econs; et.
+                  { (* determ *)
+                    econs; ii; ss; folder; try rewrite LINKTGT in *.
+                    - inv H0; ModSem.tac. ss. inv H1; ModSem.tac. ss.
+                      esplits; et.
+                      { econs; et. }
+                      i.
+                      determ_tac ModSem.final_frame_dtm. clear_tac.
+                      determ_tac ModSem.final_frame_dtm. clear_tac.
+                      unfold Midx.update in *.
+                      destruct (Midx.eq_dec (ModSem.midx msdl) (ModSem.midx msdr)).
+                      { (*** TODO: make lemma ***)
+                        contradict MIDIFF. unfold mil, mir. unfold msdl, msdr, Mod.modsem in e.
+                        rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                      rewrite OH in *. clarify.
+                      repeat f_equal.
+                      eapply ModSem.after_external_dtm; et.
+                    - inv FINAL; ss.
+                    - inv H0; ss; ModSem.tac. xomega.
+                  }
+                  ss. fold prog_tgt. rewrite LINKTGT.
+                  econs 4; ss; et.
+                  unfold Midx.update. des_ifs.
+                  { contradict MIDIFF. unfold mil, mir. unfold msdl, msdr, Mod.modsem in e.
+                    rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                  inv LATEST; ss.
+                  { congruence. }
+                  my_depdes GET. ss. inv OHS. replace (ModSem.midx (mdl skenv_link)) with mil; cycle 1.
+                  { unfold mil, Mod.modsem. rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                  unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify.
+                  eapply upcast_downcast_iff; et.
+                + right. eapply CIH. unfold Frame.update_st. ss. econs; ss; et.
+                  { econs; et. econs; et. }
+                  { econs 3; et. ss. }
+                  { inv OHS. inv LATEST; ss; try congruence.
+                    unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify.
+                    econs; ss; et.
+                    - ii. specialize (OHS0 mj). exploit OHS0; et. intro T. des_ifs.
+                      contradict NR. unfold mir. unfold msdr, Mod.modsem.
+                      rewrite ! Mod.get_modsem_midx_spec in *. ss.
+                    - des_ifs; try rewrite upcast_downcast; et.
+                    - des_ifs; try rewrite upcast_downcast; et.
+                      { contradict e0. unfold mil. unfold msdr, Mod.modsem.
+                        rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                      rewrite OHL. my_depdes GET; ss.
+                    - des_ifs; try rewrite upcast_downcast; et.
+                      contradict n. unfold mil. unfold msdl, Mod.modsem.
+                      rewrite ! Mod.get_modsem_midx_spec in *. ss.
+                  }
+              }
+            - (* src return *)
+              inv STK; ss; cycle 1.
+              { (* top is focus *)
+                clarify; ss.
+                inv HD; ss; clarify; ss.
+                { my_depdes FINAL. my_depdes TL.
+                  inv TAIL; ss.
+                  - (* snd is focus *)
+                    esplits; et.
+                    + left. esplits; et. eapply plus_one with (t := E0); ss.
+                      econs; et.
+                      { (* determ *)
+                        econs; ii; ss; folder; try rewrite LINKTGT in *.
+                        - inv H0; ModSem.tac. ss. inv H1; ModSem.tac. ss.
+                          esplits; et.
+                          { econs; et. }
+                          i.
+                          determ_tac ModSem.final_frame_dtm. clear_tac.
+                          determ_tac ModSem.final_frame_dtm. clear_tac.
+                          repeat f_equal.
+                          assert(oh3 = oh5).
+                          { rewrite OH0 in *. clarify. }
+                          clarify.
+                          eapply ModSem.after_external_dtm; et.
+                        - inv FINAL0; ss.
+                        - inv H0; ss; ModSem.tac. xomega.
+                      }
+                      { econs 4; ss; et. rewrite <- OH. unfold Midx.update. inv OHS. des_ifs; try congruence.
+                        - contradict n. rewrite <- e. rewrite <- MIDXL. unfold mil, Mod.modsem.
+                          rewrite ! Mod.get_modsem_midx_spec in *. ss.
+                        - rewrite <- OHS0; ss. inv LATEST; ss.
+                          unfold Midx.update in *. des_ifs; ss; eauto with congruence.
+                      }
+                    + right. eapply CIH. econs; et.
+                      { econs; et. }
+                      { econs; et. }
+                      { inv OHS. unfold Midx.update in *. des_ifs; try congruence. econs; et.
+                        - ii. specialize (OHS0 mj). exploit OHS0; et. intro T. des_ifs; eauto with congruence.
+                          { contradict n0. unfold mir. unfold msdr, Mod.modsem.
+                            rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                          { rewrite <- OHS0; et. inv LATEST; ss. my_depdes GET; ss.
+                            unfold Midx.update in *. des_ifs. }
+                        - ii. des_ifs; try congruence. rewrite upcast_downcast; et.
+                        - des_ifs; try rewrite upcast_downcast; et.
+                          { contradict n0. unfold mir. unfold msdr, Mod.modsem.
+                            rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                        - des_ifs; try rewrite upcast_downcast; et.
+                          { contradict e. unfold mil. unfold msdr, Mod.modsem.
+                            rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                          rewrite OHR. inv LATEST; ss; try congruence.
+                          my_depdes GET; ss. unfold Midx.update in *. des_ifs.
+                          rewrite upcast_downcast in *. clarify.
+                      }
+                  - (* snd is ctx *)
+                    clarify. ss. my_depdes AFTER; ss.
+                    + my_depdes HD; ss.
+                      esplits; et.
+                      * left. split; ss.
+                        apply plus_one.
+                        econs; et.
+                        { eapply lift_determinate_at.
+                          - ss. fold prog_tgt. rewrite LINKTGT. unfold Mod.modsem.
+                            rewrite Mod.get_modsem_skenv_link_spec; et.
+                          - econs; et.
+                            + ii. ss. ModSem.tac.
+                            + ii. ss. ModSem.tac. }
+                        econs 4; ss; et. unfold Midx.update in *.
+                        (*** TODO: Change Any; do not use existT. Using "des_ifs" here breaks things ***)
+                        destruct (Midx.eq_dec (Some midx) (Some midx)); ss. clarify. des_ifs.
+                      * right. eapply CIH; eauto. unfold Frame.update_st. destruct ohs1; ss.
+                        econs; ss; et.
+                        { econs; ss; et. econs; ss; et. }
+                        { econs 3; ss; et. }
+                        { inv OHS. unfold Midx.update in *. des_ifs; try congruence. clarify.
+                          apply JMeq_eq in EQ0. clarify.
+                          econs; et.
+                          - ii. specialize (OHS0 mj). exploit OHS0; et. intro T. des_ifs; eauto with congruence.
+                            { contradict n0. unfold mir. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                            { rewrite <- OHS0; et. inv LATEST; ss. my_depdes GET; ss.
+                              unfold Midx.update in *. des_ifs. }
+                          - ii. des_ifs; try congruence. rewrite upcast_downcast; et.
+                          - des_ifs; try rewrite upcast_downcast; et.
+                            { contradict n. unfold mir. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                          - des_ifs; try rewrite upcast_downcast; et.
+                            { contradict e0. unfold mil. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                            rewrite OHR. inv LATEST; ss; try congruence.
+                            my_depdes GET; ss. unfold Midx.update in *. des_ifs.
+                            rewrite upcast_downcast in *. clarify.
+                        }
+                    + my_depdes HD; ss.
+                      esplits; et.
+                      * left. split; ss.
+                        apply plus_one.
+                        econs; et.
+                        { eapply lift_determinate_at.
+                          - ss. fold prog_tgt. rewrite LINKTGT. unfold Mod.modsem.
+                            rewrite Mod.get_modsem_skenv_link_spec; et.
+                          - econs; et.
+                            + ii. ss. ModSem.tac.
+                            + ii. ss. ModSem.tac. }
+                        econs 4; ss; et. unfold Midx.update in *.
+                        (*** TODO: Change Any; do not use existT. Using "des_ifs" here breaks things ***)
+                        destruct (Midx.eq_dec (Some midx) (Some midx)); ss. clarify. ss. des_ifs.
+                        { contradict e0. unfold msdr, Mod.modsem.
+                          rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                        inv OHS. inv LATEST; ss; try congruence. my_depdes GET; ss.
+                        unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec; et. fold mir.
+                        eapply upcast_downcast_iff; et.
+                        unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify.
+                      * right. eapply CIH; eauto. unfold Frame.update_st. destruct ohs1; ss.
+                        econs; ss; et.
+                        { econs; ss; et. econs; ss; et. }
+                        { econs 3; ss; et. }
+                        { inv OHS. unfold Midx.update in *. des_ifs; try congruence. clarify.
+                          apply JMeq_eq in EQ0. clarify.
+                          econs; et.
+                          - ii. specialize (OHS0 mj). exploit OHS0; et. intro T. des_ifs; eauto with congruence.
+                            { contradict n0. unfold mir. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                            { rewrite <- OHS0; et. inv LATEST; ss. my_depdes GET; ss.
+                              unfold Midx.update in *. des_ifs. }
+                          - ii. des_ifs; try congruence. rewrite upcast_downcast; et.
+                          - des_ifs; try rewrite upcast_downcast; et.
+                            { contradict n. unfold mir. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                          - des_ifs; try rewrite upcast_downcast; et.
+                            { contradict e0. unfold mil. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                            rewrite OHR. inv LATEST; ss; try congruence.
+                            my_depdes GET; ss. unfold Midx.update in *. des_ifs.
+                            rewrite upcast_downcast in *. clarify.
+                        }
+                }
+                { my_depdes FINAL. my_depdes TL.
+                  inv TAIL; ss.
+                  - (* snd is focus *)
+                    esplits; et.
+                    + left. esplits; et. eapply plus_one with (t := E0); ss.
+                      econs; et.
+                      { (* determ *)
+                        econs; ii; ss; folder; try rewrite LINKTGT in *.
+                        - inv H0; ModSem.tac. ss. inv H1; ModSem.tac. ss.
+                          esplits; et.
+                          { econs; et. }
+                          i.
+                          determ_tac ModSem.final_frame_dtm. clear_tac.
+                          determ_tac ModSem.final_frame_dtm. clear_tac.
+                          repeat f_equal.
+                          assert(oh3 = oh5).
+                          { rewrite OH0 in *. clarify. }
+                          clarify.
+                          eapply ModSem.after_external_dtm; et.
+                        - inv FINAL0; ss.
+                        - inv H0; ss; ModSem.tac. xomega.
+                      }
+                      { econs 4; ss; et. rewrite <- OH. unfold Midx.update. inv OHS. des_ifs; try congruence.
+                        - contradict NR. rewrite <- e. unfold mil, Mod.modsem.
+                          rewrite ! Mod.get_modsem_midx_spec in *. ss.
+                        - rewrite <- OHS0; ss. inv LATEST; ss.
+                          unfold Midx.update in *. des_ifs; ss; eauto with congruence.
+                      }
+                    + right. eapply CIH. econs; et.
+                      { econs; et. }
+                      { econs; et. }
+                      { inv OHS. unfold Midx.update in *. des_ifs; try congruence. econs; et.
+                        - ii. specialize (OHS0 mj). exploit OHS0; et. intro T. des_ifs; eauto with congruence.
+                          { contradict NR0. unfold mir. unfold msdr, Mod.modsem.
+                            rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                          { rewrite <- OHS0; et. inv LATEST; ss. my_depdes GET; ss.
+                            unfold Midx.update in *. des_ifs. }
+                        - ii. des_ifs; try congruence. rewrite upcast_downcast; et.
+                        - des_ifs; try rewrite upcast_downcast; et.
+                          { contradict e. unfold mil. unfold msdr, Mod.modsem.
+                            rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                          rewrite OHL. inv LATEST; ss; try congruence.
+                          my_depdes GET; ss. unfold Midx.update in *. des_ifs.
+                          rewrite upcast_downcast in *. clarify.
+                        - des_ifs; try rewrite upcast_downcast; et.
+                          { contradict n0. unfold mir. unfold msdr, Mod.modsem.
+                            rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                      }
+                  - (* snd is ctx *)
+                    clarify. ss. my_depdes AFTER; ss.
+                    + my_depdes HD; ss.
+                      esplits; et.
+                      * left. split; ss.
+                        apply plus_one.
+                        econs; et.
+                        { eapply lift_determinate_at.
+                          - ss. fold prog_tgt. rewrite LINKTGT. unfold Mod.modsem.
+                            rewrite Mod.get_modsem_skenv_link_spec; et.
+                          - econs; et.
+                            + ii. ss. ModSem.tac.
+                            + ii. ss. ModSem.tac. }
+                        econs 4; ss; et. unfold Midx.update in *.
+                        (*** TODO: Change Any; do not use existT. Using "des_ifs" here breaks things ***)
+                        destruct (Midx.eq_dec (Some midx) (Some midx)); ss. clarify. ss.
+                        inv LATEST; ss; try congruence. my_depdes GET. ss.
+                        des_ifs.
+                        { contradict e0. unfold mil. unfold msdr, Mod.modsem.
+                          rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                        { inv OHS. eapply upcast_downcast_iff; et. unfold msdr, Mod.modsem.
+                          rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir.
+                          unfold Midx.update in *. des_ifs. rewrite upcast_downcast in *. clarify. }
+                      * right. eapply CIH; eauto. unfold Frame.update_st. destruct ohs1; ss.
+                        econs; ss; et.
+                        { econs; ss; et. econs; ss; et. }
+                        { econs 3; ss; et. }
+                        { inv OHS. unfold Midx.update in *. des_ifs; try congruence. clarify.
+                          apply JMeq_eq in EQ0. clarify.
+                          econs; et.
+                          - ii. specialize (OHS0 mj). exploit OHS0; et. intro T. des_ifs; eauto with congruence.
+                            { contradict NR. unfold mir. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                            { rewrite <- OHS0; et. inv LATEST; ss. my_depdes GET; ss.
+                              unfold Midx.update in *. des_ifs. }
+                          - ii. des_ifs; try congruence. rewrite upcast_downcast; et.
+                          - des_ifs; try rewrite upcast_downcast; et.
+                            { contradict e0. unfold mil. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                            rewrite OHL. inv LATEST; ss; try congruence.
+                            my_depdes GET; ss. unfold Midx.update in *. des_ifs.
+                            rewrite upcast_downcast in *. clarify.
+                          - des_ifs; try rewrite upcast_downcast; et.
+                            { contradict n. unfold mir. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                        }
+                    + my_depdes HD; ss.
+                      esplits; et.
+                      * left. split; ss.
+                        apply plus_one.
+                        econs; et.
+                        { eapply lift_determinate_at.
+                          - ss. fold prog_tgt. rewrite LINKTGT. unfold Mod.modsem.
+                            rewrite Mod.get_modsem_skenv_link_spec; et.
+                          - econs; et.
+                            + ii. ss. ModSem.tac.
+                            + ii. ss. ModSem.tac. }
+                        econs 4; ss; et. unfold Midx.update in *.
+                        (*** TODO: Change Any; do not use existT. Using "des_ifs" here breaks things ***)
+                        destruct (Midx.eq_dec (Some midx) (Some midx)); ss. clarify. ss. des_ifs.
+                      * right. eapply CIH; eauto. unfold Frame.update_st. destruct ohs1; ss.
+                        econs; ss; et.
+                        { econs; ss; et. econs; ss; et. }
+                        { econs 3; ss; et. }
+                        { inv OHS. unfold Midx.update in *. des_ifs; try congruence. clarify.
+                          apply JMeq_eq in EQ0. clarify.
+                          econs; et.
+                          - ii. specialize (OHS0 mj). exploit OHS0; et. intro T. des_ifs; eauto with congruence.
+                            { contradict NR. unfold mir. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                            { rewrite <- OHS0; et. inv LATEST; ss. my_depdes GET; ss.
+                              unfold Midx.update in *. des_ifs. }
+                          - ii. des_ifs; try congruence. rewrite upcast_downcast; et.
+                          - des_ifs; try rewrite upcast_downcast; et.
+                            { contradict e0. unfold mil. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                            rewrite OHL. inv LATEST; ss; try congruence.
+                            my_depdes GET; ss. unfold Midx.update in *. des_ifs.
+                            rewrite upcast_downcast in *. clarify.
+                          - des_ifs; try rewrite upcast_downcast; et.
+                            { contradict n. unfold mir. unfold msdr, Mod.modsem.
+                              rewrite ! Mod.get_modsem_midx_spec in *. ss. }
+                        }
+                }
+              }
+              { (* top is ctx *)
+                inv TAIL; ss; clarify; ss.
+                - (* snd is ctx *)
+                  inv LATEST; try congruence. destruct fr_tgt; ss.
+                  esplits; et.
+                  + left. split; ss.
+                    apply plus_one.
+                    econs; et.
+                    { eapply lift_determinate_at.
+                      - ss. fold prog_tgt. rewrite LINKTGT.
+                        admit "ez - ms ModSem.skenv_link, maybe in SemTyping?".
+                      - econs; et.
+                        + ii. ss. ModSem.tac.
+                        + ii. ss. ModSem.tac. }
+                    econs 4; ss; et. unfold Midx.update in *.
+                    (*** TODO: Change Any; do not use existT. Using "des_ifs" here breaks things ***)
+                    des_ifs. inv OHS. rewrite <- OHS0; ss.
+                  + right. eapply CIH. econs; et.
+                    { econs; et. }
+                    { econs; et. }
+                    { inv OHS. unfold Midx.update in *.
+                      econs; et.
+                      - ii. specialize (OHS0 mj). exploit OHS0; et. intro T.
+                        des_ifs; eauto with congruence.
+                      - ii. destruct (Midx.eq_dec (ModSem.midx ms) mil); ss. et.
+                      - des_ifs; try rewrite upcast_downcast; et.
+                      - des_ifs; try rewrite upcast_downcast; et.
+                    }
+                - (* snd is focus *)
+                  inv LATEST; try congruence. destruct fr_tgt; ss.
+                  my_depdes AFTER; my_depdes HD; ss.
+                  { esplits; et.
+                    + left. split; ss.
+                      apply plus_one.
+                      econs; et.
+                      { eapply lift_determinate_at.
+                        - ss. fold prog_tgt. rewrite LINKTGT.
+                          admit "ez - ms ModSem.skenv_link, maybe in SemTyping?".
+                        - econs; et.
+                          + ii. ss. ModSem.tac.
+                          + ii. ss. ModSem.tac. }
+                      econs 4; ss; et. unfold Midx.update in *.
+                      (*** TODO: Change Any; do not use existT. Using "des_ifs" here breaks things ***)
+                      destruct (Midx.eq_dec (ModSem.midx ms) (ModSem.midx (mdl skenv_link))); ss.
+                      { contradict NL. rewrite e. unfold mil, Mod.modsem.
+                        rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                      destruct (Midx.eq_dec (ModSem.midx ms) (Some midx)); ss.
+                      { congruence. }
+                      inv OHS. rewrite <- MIDXL in *. rewrite OH in *.
+                      rewrite upcast_downcast in *. clarify. ss.
+                      eapply upcast_downcast_iff; et. r. rewrite <- OHL.
+                      repeat f_equal.
+                      unfold mil, Mod.modsem.
+                      rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence.
+                    + right. eapply CIH. unfold Frame.update_st. destruct ohs1; ss. econs; et.
+                      { ss. econs; et. econs; et. }
+                      { econs 3; ss; et. }
+                      { inv OHS. unfold Midx.update in *. rewrite <- MIDXL in *.
+                        destruct (Midx.eq_dec (ModSem.midx ms) mil); ss.
+                        rewrite OH in *. rewrite upcast_downcast in *; clarify.
+                        econs; et.
+                        - ii. specialize (OHS0 mj). exploit OHS0; et. intro T.
+                          des_ifs; eauto with congruence.
+                        - ii. destruct (Midx.eq_dec mil mil); ss. rewrite upcast_downcast; et.
+                        - destruct (Midx.eq_dec (ModSem.midx ms) mil); ss.
+                        - destruct (Midx.eq_dec (ModSem.midx ms) mir); ss.
+                      }
+                  }
+                  { esplits; et.
+                    + left. split; ss.
+                      apply plus_one.
+                      econs; et.
+                      { eapply lift_determinate_at.
+                        - ss. fold prog_tgt. rewrite LINKTGT.
+                          admit "ez - ms ModSem.skenv_link, maybe in SemTyping?".
+                        - econs; et.
+                          + ii. ss. ModSem.tac.
+                          + ii. ss. ModSem.tac. }
+                      econs 4; ss; et. unfold Midx.update in *.
+                      (*** TODO: Change Any; do not use existT. Using "des_ifs" here breaks things ***)
+                      destruct (Midx.eq_dec (ModSem.midx ms) (ModSem.midx (mdl skenv_link))); ss.
+                      { contradict NL. rewrite e. unfold mil, Mod.modsem.
+                        rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. congruence. }
+                      destruct (Midx.eq_dec (ModSem.midx ms) (Some midx)); ss.
+                      { congruence. }
+                      inv OHS. rewrite <- MIDXL in *. rewrite OH in *.
+                      rewrite upcast_downcast in *. clarify. ss.
+                      eapply upcast_downcast_iff; et. r. rewrite <- OHR.
+                      repeat f_equal.
+                      unfold mil, Mod.modsem.
+                      rewrite ! Mod.get_modsem_midx_spec in *. fold mil mir. des_ifs.
+                    + right. eapply CIH. unfold Frame.update_st. destruct ohs1; ss. econs; et.
+                      { ss. econs; et. econs; et. }
+                      { econs 3; ss; et. }
+                      { inv OHS. unfold Midx.update in *. rewrite <- MIDXL in *.
+                        destruct (Midx.eq_dec (ModSem.midx ms) mil); ss.
+                        rewrite OH in *. rewrite upcast_downcast in *; clarify.
+                        econs; et.
+                        - ii. specialize (OHS0 mj). exploit OHS0; et. intro T.
+                          des_ifs; eauto with congruence.
+                        - ii. destruct (Midx.eq_dec mil mil); ss. rewrite upcast_downcast; et.
+                        - destruct (Midx.eq_dec (ModSem.midx ms) mil); ss.
+                        - destruct (Midx.eq_dec (ModSem.midx ms) mir); ss.
+                      }
+                  }
+              }
           }
 
 

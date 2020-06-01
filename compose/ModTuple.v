@@ -484,10 +484,27 @@ Module ModTuple.
     Hypothesis (LINKSK: link (mdl: Sk.t) mdr = Some sk).
     Let mil: Midx.t := mdl.(Mod.midx).
     Let mir: Midx.t := mdr.(Mod.midx).
+    Hypothesis MIDIFF: mil <> mir.
     Hypothesis (MIDXL: mil = Some midx).
     Hypothesis (MIDXR: mir <> None).
     Hypothesis (WFL: Sk.wf mdl).
     Hypothesis (WFR: Sk.wf mdr).
+    Hypothesis DTML: forall
+        skenv_link oh args st0 st1
+        (INIT0: (Mod.modsem mdl skenv_link).(ModSem.initial_frame) oh args st0)
+        (INIT1: (Mod.modsem mdl skenv_link).(ModSem.initial_frame) oh args st1)
+      ,
+        st0 = st1
+    .
+    Hypothesis DTMR: forall
+        skenv_link oh args st0 st1
+        (INIT0: (Mod.modsem mdr skenv_link).(ModSem.initial_frame) oh args st0)
+        (INIT1: (Mod.modsem mdr skenv_link).(ModSem.initial_frame) oh args st1)
+      ,
+        st0 = st1
+    .
+    Hypothesis MICTX1: forall md (IN: In md ctx1), md.(Mod.midx) <> mir.
+    Hypothesis MICTX2: forall md (IN: In md ctx2), md.(Mod.midx) <> mir.
 
     Let WFLINK: Sk.wf (t mdl mdr sk midx).
     Proof.
@@ -672,23 +689,8 @@ Module ModTuple.
       Let msdl: ModSem.t := (Mod.modsem mdl skenv_link).
       Let msdr: ModSem.t := (Mod.modsem mdr skenv_link).
       Let ms_link: ModSem.t := (Mod.modsem md_link skenv_link).
-      Hypothesis DTML: forall
-          oh args st0 st1
-          (INIT0: msdl.(ModSem.initial_frame) oh args st0)
-          (INIT1: msdl.(ModSem.initial_frame) oh args st1)
-        ,
-          st0 = st1
-      .
-      Hypothesis DTMR: forall
-          oh args st0 st1
-          (INIT0: msdr.(ModSem.initial_frame) oh args st0)
-          (INIT1: msdr.(ModSem.initial_frame) oh args st1)
-        ,
-          st0 = st1
-      .
       Hypothesis WFCTX1: forall md (IN: In md ctx1), <<WF: Sk.wf md>>.
       Hypothesis WFCTX2: forall md (IN: In md ctx2), <<WF: Sk.wf md>>.
-      Hypothesis MIDIFF: mil <> mir.
       Let LINKTGT: link_sk prog_tgt = Some sk_link.
       Proof.
         unfold prog_src, prog_tgt in *. unfold link_sk in *.
@@ -701,37 +703,36 @@ Module ModTuple.
       Proof. eapply link_includes; et. Qed.
       Let INCLTGT: forall md (IN: In md prog_tgt), SkEnv.includes skenv_link (md: (Sk.t)).
       Proof. eapply link_includes; et. Qed.
-      Hypothesis MICTX1: forall md (IN: In md ctx1), md.(Mod.midx) <> mir.
-      Hypothesis MICTX2: forall md (IN: In md ctx2), md.(Mod.midx) <> mir.
       Hypothesis NODUPSRC: Midx.NoDup (map Mod.midx prog_src).
-      Let NODUPTGT: Midx.NoDup (map Mod.midx prog_tgt).
-      Proof.
-        clear - NODUPSRC MICTX1 MICTX2 MIDIFF MIDXL MIDXR.
-        unfold prog_src, prog_tgt in *.
-        rewrite ! map_app in *.
-        apply NoDup_app in NODUPSRC. destruct NODUPSRC as [A [B C]]. clear NODUPSRC.
-        apply NoDup_app in B. destruct B as [D [E F]].
-        (* ss. rewrite cons_app with (xtl := map Mod.midx ctx2). *)
-        apply NoDup_app.
-        { esplits; et.
-          - rewrite app_assoc.
-            apply NoDup_app.
-            + esplits; et; ss.
-              * r. folder. rewrite MIDXL. ss. destruct mir eqn:T; ss. econs; ss; et.
-                { ii. des; clarify. }
-                { econs; et. econs; et. }
-              * ii.
-                exploit F; et. intro T. des_safe. des; ss; clarify; eauto.
-                rewrite in_map_iff in *. des; clarify.
-                hexploit MICTX2; et.
-          - ii.
-            destruct (classic (mi1 = mir)).
-            { clarify.
-              left. ii. clarify. rewrite in_map_iff in IN0. des; clarify. ss. exploit MICTX1; et.
-            }
-            exploit C; et. rewrite in_app_iff in *; ss. des; clarify; et.
-        }
-      Qed.
+      Hypothesis NODUPTGT: Midx.NoDup (map Mod.midx prog_tgt).
+      (* Let NODUPTGT: Midx.NoDup (map Mod.midx prog_tgt). *)
+      (* Proof. *)
+      (*   clear - NODUPSRC MICTX1 MICTX2 MIDIFF MIDXL MIDXR. *)
+      (*   unfold prog_src, prog_tgt in *. *)
+      (*   rewrite ! map_app in *. *)
+      (*   apply NoDup_app in NODUPSRC. destruct NODUPSRC as [A [B C]]. clear NODUPSRC. *)
+      (*   apply NoDup_app in B. destruct B as [D [E F]]. *)
+      (*   (* ss. rewrite cons_app with (xtl := map Mod.midx ctx2). *) *)
+      (*   apply NoDup_app. *)
+      (*   { esplits; et. *)
+      (*     - rewrite app_assoc. *)
+      (*       apply NoDup_app. *)
+      (*       + esplits; et; ss. *)
+      (*         * r. folder. rewrite MIDXL. ss. destruct mir eqn:T; ss. econs; ss; et. *)
+      (*           { ii. des; clarify. } *)
+      (*           { econs; et. econs; et. } *)
+      (*         * ii. *)
+      (*           exploit F; et. intro T. des_safe. des; ss; clarify; eauto. *)
+      (*           rewrite in_map_iff in *. des; clarify. *)
+      (*           hexploit MICTX2; et. *)
+      (*     - ii. *)
+      (*       destruct (classic (mi1 = mir)). *)
+      (*       { clarify. *)
+      (*         left. ii. clarify. rewrite in_map_iff in IN0. des; clarify. ss. exploit MICTX1; et. *)
+      (*       } *)
+      (*       exploit C; et. rewrite in_app_iff in *; ss. des; clarify; et. *)
+      (*   } *)
+      (* Qed. *)
 
       Ltac my_depdes H :=
         multimatch goal with
@@ -1584,7 +1585,7 @@ Module ModTuple.
 
     End SIM.
 
-    Theorem merge:
+    Theorem merge_correct:
       <<BEH: improves (sem prog_src) (sem prog_tgt)>>
     .
     Proof.
@@ -1605,27 +1606,63 @@ Module ModTuple.
         - eapply WF. unfold prog_src. rewrite in_app_iff. ss. et.
         - eapply WF. unfold prog_src. rewrite in_app_iff. ss. et.
       }
+      assert(NODUPTGT: Midx.NoDup (None :: map ModSem.midx (load_modsems prog_tgt (Sk.load_skenv sk_link)))).
+      {
+        clear - OHSUNIQ MICTX1 MICTX2 MIDIFF MIDXL MIDXR.
+        ss. unfold prog_src, prog_tgt, load_modsems in *.
+        rewrite ! map_app in *.
+        apply NoDup_app in OHSUNIQ. destruct OHSUNIQ as [A [B C]].
+        rewrite cons_app in B. rewrite ! map_app in *.
+        apply NoDup_app in B. destruct B as [D [E F]].
+        rewrite ! map_map in *.
+        (* ss. rewrite cons_app with (xtl := map Mod.midx ctx2). *)
+        apply NoDup_app.
+        { esplits; et.
+          - replace (mdl :: mdr :: ctx2) with ([mdl ; mdr] ++ ctx2) by ss. rewrite map_app. unfold flip.
+            apply NoDup_app.
+            + esplits; et; ss.
+              * r. folder. ss. unfold id. unfold Mod.modsem.
+                rewrite ! Mod.get_modsem_midx_spec; et. des_ifs_safe. econs; et; ss.
+                { ii; des; clarify. }
+                econs; ss. econs; ss.
+              * ii.
+                exploit F; et. intro T. des_safe. unfold Mod.modsem in IN0.
+                rewrite ! Mod.get_modsem_midx_spec in *. des; ss; clarify; eauto.
+                rewrite in_map_iff in *. des; clarify. unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec.
+                hexploit MICTX2; et.
+          - ii.
+            destruct (classic (mi1 = mir)).
+            { clarify.
+              left. ii. clarify. rewrite in_map_iff in IN0. des; clarify. ss. exploit MICTX1; et.
+              unfold flip, Mod.modsem in *. rewrite Mod.get_modsem_midx_spec in *. et.
+            }
+            exploit C; et. clear - MIDXL IN1 H. ss. rewrite in_map_iff in *.
+            unfold flip, Mod.modsem in *. rewrite ! Mod.get_modsem_midx_spec in *. des; clarify; et.
+        }
+      }
       esplits; et.
       { econs; cycle 1.
         { eapply initial_state_determ; et. }
         ss. unfold prog_tgt. rewrite LINKSAME; et; cycle 1.
         econs; ss; et.
         - rewrite LINKSAME; et.
-        - admit "ez - nodup (add condition)".
+        - fold prog_src. des_ifs.
       }
       eapply match_states_xsim with (sk_link := sk_link); et.
-      { admit "ez - INITDTM (add condition)". }
-      { admit "ez - INITDTM (add condition)". }
       { ii. eapply WF. unfold prog_src. rewrite in_app_iff in *. ss. des; clarify; et. }
       { ii. eapply WF. unfold prog_src. rewrite in_app_iff in *. ss. des; clarify; et. }
-      { admit "ez - nodup". }
-      { admit "ez - nodup". }
-      { admit "ez - nodup". }
       { clear - OHSUNIQ. ss. eapply Midx.NoDup_cons_iff in OHSUNIQ. des_safe; ss. clear HD.
         clearbody prog_src. clear_tac.
         erewrite f_equal with (f := Midx.NoDup); et. (*** TODO: make "rp" smarter? ***)
         clear TL.
         ginduction prog_src; ii; ss. unfold flip, Mod.modsem.
+        rewrite Mod.get_modsem_midx_spec. f_equal. erewrite IHp; et.
+      }
+      { apply Midx.NoDup_cons_iff in NODUPTGT. des_safe.
+        clear - TL. clearbody prog_tgt. clear_tac. 
+        erewrite f_equal with (f := Midx.NoDup); et. (*** TODO: make "rp" smarter? ***)
+        clear TL.
+        ginduction prog_tgt; ii; ss. unfold flip, Mod.modsem.
         rewrite Mod.get_modsem_midx_spec. f_equal. erewrite IHp; et.
       }
       econs; et.

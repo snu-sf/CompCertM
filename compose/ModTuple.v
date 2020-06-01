@@ -1341,6 +1341,8 @@ Module ModTuple.
         all: ss.
       Qed.
 
+    End SIM.
+
     Theorem merge:
       <<BEH: improves (sem prog_src) (sem prog_tgt)>>
     .
@@ -1349,23 +1351,38 @@ Module ModTuple.
       eapply Simulation.mixed_to_backward_simulation; et.
       econs. instantiate (1:= bot2). instantiate (1:= unit).
       econs; ss; try apply preservation_top; et; cycle 1.
-      { ii. des. inv SAFESRC. rewrite <- LINKSAME; et. }
+      { ii. des. inv SAFESRC. folder. rewrite <- LINKSAME; et.
+        { ii. unfold prog_tgt in *. rewrite in_app_iff in *. ss. des; clarify; et.
+          - eapply WF. unfold prog_src. rewrite in_app_iff. ss. et.
+          - eapply WF. unfold prog_src. rewrite in_app_iff. ss. et.
+        }
+      }
       econs 1; ss.
       ii. inv INITSRC; ss. des_ifs.
+      assert(WFTGT: forall md, In md prog_tgt -> Sk.wf md).
+      { ii. unfold prog_tgt in *. rewrite in_app_iff in *. ss. des; clarify; et.
+        - eapply WF. unfold prog_src. rewrite in_app_iff. ss. et.
+        - eapply WF. unfold prog_src. rewrite in_app_iff. ss. et.
+      }
       esplits; et.
       { econs; cycle 1.
         { eapply initial_state_determ; et. }
-        ss. rewrite <- LINKSAME; et.
+        ss. unfold prog_tgt. rewrite LINKSAME; et; cycle 1.
         econs; ss; et.
-        - rewrite <- LINKSAME; et.
-        - i. rewrite in_app_iff in *. ss; des; clarify; try (by eapply WF; ss; try rewrite in_app; ss; et).
-        - admit "ez - nodup".
+        - rewrite LINKSAME; et.
+        - admit "ez - nodup (add condition)".
       }
-      eapply match_states_xsim with (skenv_link := Sk.load_skenv sk_link); et.
-      econs 2; et.
-      - econs; et.
-      - ii. ss.
-        admit "ez - load_owned_heaps".
+      eapply match_states_xsim with (sk_link := sk_link); et.
+      { admit "ez - INITDTM (add condition)". }
+      { admit "ez - INITDTM (add condition)". }
+      { ii. eapply WF. unfold prog_src. rewrite in_app_iff in *. ss. des; clarify; et. }
+      { ii. eapply WF. unfold prog_src. rewrite in_app_iff in *. ss. des; clarify; et. }
+      { admit "ez - nodup". }
+      econs; et.
+      { econs; et. }
+      fold prog_src. rewrite Heq.
+      econs; ss; et.
+      - admit "ez - load_owned_heaps".
       - admit "ez - load_owned_heaps".
       - admit "ez - load_owned_heaps".
       - admit "ez - load_owned_heaps".

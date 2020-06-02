@@ -70,7 +70,7 @@ Section ADQSOUND.
   Inductive sound_ge (su0: Sound.t) (m0: mem): Prop :=
   | sound_ge_intro
       (GE: Forall (fun ms => su0.(Sound.skenv) m0 ms.(ModSem.skenv) /\ su0.(Sound.skenv) m0 ms.(ModSem.skenv_link))
-                  (fst sem_src.(Smallstep.globalenv)))
+                  (sem_src.(Smallstep.globalenv)))
   .
 
   Lemma lepriv_preserves_sound_ge

@@ -226,18 +226,11 @@ Qed.
 
 Module DtmAux.
 
-  Inductive find_fptr_owner (mss: list ModSem.t) (fptr: val) (ms: ModSem.t): Prop :=
-  | find_fptr_owner_intro
-      (MODSEM: In ms mss)
-      if_sig
-      (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig))
-  .
-
   Lemma find_fptr_owner_determ
         mss fptr ms0 ms1
         (DISJ: SkEnv.disj ms0.(ModSem.skenv) ms1.(ModSem.skenv))
-        (FIND0: find_fptr_owner mss fptr ms0)
-        (FIND1: find_fptr_owner mss fptr ms1):
+        (FIND0: Ge.find_fptr_owner mss fptr ms0)
+        (FIND1: Ge.find_fptr_owner mss fptr ms1):
       ms0 = ms1.
   Proof.
     inv FIND0. inv FIND1. inv DISJ. exploit DISJ0; et. i; des. clarify.
@@ -309,9 +302,10 @@ Module DtmAux.
     set (skenv_link := (Sk.load_skenv sk_link)) in *.
     eapply (@ForallOrdPairs_map Mod.t ModSem.t (fun md => Mod.modsem md skenv_link)) in T; cycle 1.
     { eapply modsem_respects_disj; et. }
-    assert(U: ForallOrdPairs modsem_disj (fst (load_genv p skenv_link))).
+    assert(U: ForallOrdPairs modsem_disj (load_genv p skenv_link)).
     { econs; et. rewrite Forall_forall.
-      econs; ii. ss. unfold System.skenv in *. unfold Genv.find_funct, Genv.find_funct_ptr in FINDF.
+      econs; ii. ss. des_safe.
+      unfold Genv.find_funct, Genv.find_funct_ptr in FINDF.
       des_ifs_safe. apply_all_once Genv_map_defs_def. des_safe. des_ifs.
       unfold load_modsems, flip, Mod.modsem in *. rewrite in_map_iff in *. des_safe. ss.
       rewrite <- Mod.get_modsem_skenv_spec in FINDF0. unfold Genv.find_funct_ptr in FINDF0. des_ifs.

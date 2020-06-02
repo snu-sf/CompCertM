@@ -740,7 +740,6 @@ Theorem link_list_assoc_one
       (ctx: list Sk.t) sk0 sk1 sk_link
       (WF0: Sk.wf sk0)
       (WF1: Sk.wf sk1)
-      (WFLINK: Sk.wf sk_link)
       (LINK: link sk0 sk1 = Some sk_link)
       (WFCTX: forall sk, In sk ctx -> Sk.wf sk)
   :
@@ -788,7 +787,6 @@ Qed.
 Lemma link_sk_assoc_one ctx (mA mB mL: Mod.t)
       (WFA: Sk.wf mA)
       (WFB: Sk.wf mB)
-      (WFL: Sk.wf mL)
       (LINK_OK: link (Mod.sk mA) (Mod.sk mB) = Some (Mod.sk mL))
       (WFCTX: forall md : Mod.t, In md ctx -> Sk.wf md)
   : link_sk ([mA; mB] ++ ctx)

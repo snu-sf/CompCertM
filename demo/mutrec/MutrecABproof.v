@@ -18,180 +18,10 @@ Require Import CtypesC.
 Require Import BehaviorsC.
 Require Import LinkingC2.
 Require Import Simulation Sem SemProps LinkingC.
+Require Import LinkingProps.
 Require Import Any.
 
 Set Implicit Arguments.
-
-Lemma link_sk_same_aux1
-      A B C
-      (NOEMPTY: A <> [] /\ B <> [])
-      (SAME: link_sk A = link_sk B):
-    link_sk (C ++ A) = link_sk (C ++ B).
-Proof.
-  ginduction C; ss.
-  ii. unfold link_sk in *. ss.
-  exploit IHC; eauto. i.
-  clear - NOEMPTY H. unfold link_list in H. des_ifs; ss.
-  - unfold link_list. ss. rewrite Heq. rewrite Heq0. ss.
-  - des. eapply link_list_aux_empty_inv in Heq. destruct C; destruct A; ss.
-  - des. eapply link_list_aux_empty_inv in Heq0. destruct C; destruct B; ss.
-  - unfold link_list. ss. rewrite Heq, Heq0. auto.
-  - unfold link_list. ss. rewrite Heq, Heq0. auto.
-Qed.
-
-Lemma link_sk_same_aux2 ctx:
-    link_sk ([(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx)
-    = link_sk ([module] ++ ctx).
-Proof.
-  Local Transparent Linker_prog Linker_def Linker_skfundef Linker_vardef Linker_unit Linker_varinit. ss.
-  assert (LINKSK: link_sk [MutrecAspec.module; MutrecBspec.module] = Some sk_link); ss.
-  destruct (link_list_aux (List.map Mod.sk ctx)) eqn:CTXLINK.
-  - eapply link_list_aux_empty_inv in CTXLINK. rr in CTXLINK.
-    destruct ctx; ss.
-  - unfold link_sk, link_list. ss. rewrite CTXLINK. auto.
-  - unfold link_sk, link_list in LINKSK; ss. des_ifs.
-    unfold link_sk, link_list; ss. rewrite CTXLINK.
-    des_ifs.
-    + clear - Heq0 Heq2 Heq3.
-      hexploit (link_prog_inv _ _ _ Heq0). i. des.
-      hexploit (link_prog_inv _ _ _ Heq2). i. des.
-      dup Heq3.
-      unfold link_prog in Heq3. des_ifs.
-      assert (EQ: (AST.prog_main (Sk.of_program Asm.fn_sig MutrecB.prog)) = (AST.prog_main t)).
-      { rewrite <- H2. rewrite <- H. rewrite H1 in *. ss. }
-      exploit (link_prog_succeeds _ _ EQ).
-      { ii.
-        assert (exists gd, (prog_defmap sk_link) ! id = Some gd).
-        { rewrite H1. rewrite prog_defmap_elements.
-          rewrite PTree.gcombine; cycle 1. ss.
-          exploit prog_defmap_image. eapply H4. i.
-          rr in H6. simpl in H6. des; subst; clarify; simpl; des_ifs; eauto. }
-        des. exploit H3; eauto. i. des; eauto.
-        rewrite H1 in H7. simpl in H7. esplits; eauto.
-        { simpl. des; eauto. }
-        destruct (classic (id = f_id)).
-        { subst. clear H7. rewrite H1 in H6. rewrite prog_defmap_elements, PTree.gcombine in H6; cycle 1.
-          auto. ii. simpl in H6, H4. clarify. des_ifs. simpl in H9. des_ifs. }
-        destruct (classic (id = g_id)).
-        { subst. clear H7. rewrite H1 in H6. rewrite prog_defmap_elements, PTree.gcombine in H6; cycle 1.
-          auto. ii. simpl in H6, H4. clarify. des_ifs. }
-        clear -H7 H10 H11. des; clarify. }
-      i. rewrite H4 in *. clarify.
-    + hexploit (link_prog_inv _ _ _ Heq0). i. des.
-      hexploit (link_prog_inv _ _ _ Heq2). i. des.
-      hexploit (link_prog_inv _ _ _ Heq4). i. des.
-      dup Heq3. unfold link_prog in Heq3.
-      assert (EQ: (AST.prog_main (CSk.of_program signature_of_function MutrecA.prog)) = AST.prog_main t1).
-      { des_ifs. }
-      exploit (link_prog_succeeds _ _ EQ).
-      { ii. assert (exists gd, (prog_defmap sk_link) ! id = Some gd).
-        { rewrite H1. rewrite prog_defmap_elements.
-          rewrite PTree.gcombine; cycle 1. ss.
-          exploit prog_defmap_image. eapply H8. i.
-          rr in H10. simpl in H10. des; subst; clarify; simpl; des_ifs; eauto. }
-        des. simpl. rewrite H7 in H9. rewrite H7.
-        rewrite prog_defmap_elements, PTree.gcombine in H9; cycle 1. auto.
-        unfold link_prog_merge in H9. des_ifs; simpl.
-        - exploit H6; eauto. splits; des; eauto.
-          exploit H3; eauto. i. des. rewrite H1 in H10.
-          rewrite prog_defmap_elements, PTree.gcombine in H10; cycle 1. auto.
-          unfold link_prog_merge in H10. des_ifs.
-          ii. destruct (classic (id = f_id)).
-          { subst. simpl. esplits; eauto.
-            simpl in H8, H10, H11, H14. simpl in Heq8, Heq9. clarify.
-            unfold link_def in H10, H11, H14. des_ifs. simpl in Heq9, Heq8. destruct f0; des_ifs. }
-          destruct (classic (id = g_id)).
-          { subst. simpl. esplits; eauto.
-            simpl in H8, H10, H11, H14. simpl in Heq8, Heq9. clarify.
-            unfold link_def in H10, H11, H14. des_ifs. simpl in Heq9, Heq8. destruct f0; des_ifs. }
-          exploit prog_defmap_image. eapply Heq8. ii. rr in H16. simpl in H16. des; clarify.
-        - exploit H0; eauto. i. des. esplits; eauto.
-          { simpl in H4, H7. des; eauto. clarify. }
-          ii. exploit prog_defmap_image. eapply H8. ii. rr in H12. simpl in H12. des; clarify.
-          simpl in Heq5, H8. clarify. simpl in Heq5, H8. clarify.
-        - ii. exploit prog_defmap_image. eapply H8. ii. rr in H4. simpl in H4. des; clarify.
-          exploit H3; eauto. i. des. rewrite H1 in H4. simpl in H4. des; clarify. }
-      ii. rewrite H8 in *. clarify.
-    + hexploit (link_prog_inv _ _ _ Heq0). i. des.
-      hexploit (link_prog_inv _ _ _ Heq). i. des.
-      hexploit (link_prog_inv _ _ _ Heq4). i. des.
-      dup Heq2. unfold link_prog in Heq2.
-      assert (EQ: (AST.prog_main sk_link) = AST.prog_main t).
-      { rewrite H1. simpl. des_ifs. }
-      exploit (link_prog_succeeds _ _ EQ).
-      { ii. rewrite H1 in H8.
-        rewrite prog_defmap_elements, PTree.gcombine in H8; cycle 1. auto.
-        unfold link_prog_merge in H8. des_ifs.
-        - exploit H3; eauto. i. des. simpl in H4, H7. des; clarify.
-          + esplits. rewrite H1. simpl. auto. simpl. auto.
-            ii. simpl in Heq5, Heq6. clarify. simpl in H8. des_ifs. simpl in H10, H4. des_ifs.
-            exploit H6; eauto. instantiate (2:=f_id). simpl. eauto.
-            rewrite prog_defmap_elements, PTree.gcombine. rewrite H9. simpl. des_ifs. auto. ii. des. simpl in H11. clarify.
-          + esplits. rewrite H1. simpl. auto. simpl. auto.
-            ii. simpl in Heq5, Heq6. clarify. simpl in H8. des_ifs.
-        - exploit prog_defmap_image. eapply Heq5. ii. rr in H4. simpl in H4. des; clarify.
-          exploit H6. eauto.
-          rewrite prog_defmap_elements, PTree.gcombine. rewrite H9. simpl. eauto. auto. ii. des. simpl in H4. des; clarify.
-        - exploit prog_defmap_image. eapply H8. ii. rr in H4. simpl in H4. des; clarify.
-          exploit H3; eauto. ii. des. simpl in H4. des; clarify. }
-      ii. rewrite H8 in *. clarify.
-    + hexploit (link_prog_inv _ _ _ Heq). i. des.
-      hexploit (link_prog_inv _ _ _ Heq0). i. des.
-      hexploit (link_prog_inv _ _ _ Heq2). i. des.
-      hexploit (link_prog_inv _ _ _ Heq3). i. des.
-      rewrite H1 in *. rewrite H4 in *. rewrite H7 in *. rewrite H10 in *.
-      f_equal. f_equal. eapply PTree.elements_extensional. ii.
-      repeat rewrite prog_defmap_elements.
-      repeat rewrite PTree.gcombine; (try by ss).
-      repeat rewrite prog_defmap_elements.
-      repeat rewrite PTree.gcombine; (try by ss).
-      destruct ((prog_defmap (CSk.of_program signature_of_function MutrecA.prog)) ! i) eqn:DMAPA; cycle 1.
-      { destruct ((prog_defmap (Sk.of_program Asm.fn_sig MutrecB.prog)) ! i) eqn: DMAPB; cycle 1.
-        { destruct ((prog_defmap t) ! i) eqn: DMAPC; ss. }
-        { destruct ((prog_defmap t) ! i) eqn: DMAPC; ss. }
-      }
-      destruct ((prog_defmap (Sk.of_program Asm.fn_sig MutrecB.prog)) ! i) eqn: DMAPB; cycle 1.
-      { destruct ((prog_defmap t) ! i) eqn: DMAPC; ss. }
-      { destruct ((prog_defmap t) ! i) eqn: DMAPC.
-        - unfold link_prog_merge. des_ifs.
-          + simpl in Heq1, Heq4. unfold link_def in *. des_ifs.
-            * simpl in Heq4, Heq5. unfold link_skfundef in *. des_ifs.
-            * simpl in Heq4, Heq5. unfold link_vardef in *. des_ifs.
-              Local Transparent Linker_def. simpl. des_ifs.
-              { unfold link_vardef in *. des_ifs.
-                simpl in Heq14, Heq12, Heq6, Heq8. unfold link_varinit in *.
-                simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. sflib.clarify.
-                clear -Heq8 Heq6 Heq14 Heq12 Heq11. des_ifs. }
-              { unfold link_vardef in *. des_ifs.
-                - simpl in Heq16, Heq13. rewrite andb_true_iff in *.
-                  repeat rewrite eqb_true_iff in *. repeat rewrite andb_false_iff in *. repeat rewrite eqb_false_iff in *. des.
-                  rewrite Heq9 in *. clarify. rewrite Heq4 in *. clarify.
-                - simpl in Heq14, Heq12, Heq6, Heq8. unfold link_varinit in *.
-                  simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. clarify.
-                  clear -Heq8 Heq6 Heq14 Heq12 Heq11. des_ifs. }
-              { unfold link_vardef in *. des_ifs.
-                - simpl in Heq15, Heq13. rewrite andb_true_iff in *.
-                  repeat rewrite eqb_true_iff in *. repeat rewrite andb_false_iff in *. repeat rewrite eqb_false_iff in *. des; clarify.
-                - simpl in Heq14, Heq12, Heq6, Heq8. unfold link_varinit in *.
-                  simpl in Heq5, Heq8, Heq9, Heq6. unfold link_varinit in *. destruct u1, u2. des_ifs.
-                  + simpl in n.
-                    destruct (classic (sz1 >= 0)).
-                    { exploit Zmax_left; eauto. i. rewrite H7 in n. rewrite Z.add_0_r in n. nia. }
-                    { eapply Znot_ge_lt in H1. rewrite Z.max_l in n. nia. nia. }
-                  + simpl in n. exploit Zmax_left. eapply init_data_list_size_pos. i. rewrite H1 in n. nia. }
-          + exploit H3; eauto. i. des. clarify.
-          + exploit H0; eauto. i. des. clarify.
-          + exploit H0; eauto. i. des. clarify.
-        - unfold link_prog_merge. des_ifs. }
-Qed.
-
-Lemma link_sk_same ctx1 ctx2 :
-    link_sk (ctx1 ++ [(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2)
-    = link_sk (ctx1 ++ [module] ++ ctx2).
-Proof.
-  assert ([(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2 <> [] /\ [module] ++ ctx2 <> []) by ss.
-  exploit (link_sk_same_aux1 ctx1 H). { eapply link_sk_same_aux2. } i. eauto.
-Qed.
 
 Lemma wf_module_Aspec: Sk.wf MutrecAspec.module.
 Proof.
@@ -215,6 +45,17 @@ Proof.
   - i. ss. des; clarify; inv IN; ss; clarify.
 Qed.
 
+Lemma link_sk_same (ctx1 ctx2: list Mod.t) (WFCTX2: forall md, In md ctx2 -> Sk.wf md):
+    link_sk (ctx1 ++ [(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2)
+    = link_sk (ctx1 ++ [module] ++ ctx2).
+Proof.
+  assert ([(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2 <> [] /\ [module] ++ ctx2 <> []) by ss.
+  exploit (link_sk_prepend_eq ctx1 H).
+  { eapply link_sk_assoc_one; ss.
+    - eapply wf_module_Aspec; et.
+    - eapply wf_module_Bspec; et.
+  } i. eauto.
+Qed.
 Definition is_focus (x: Mod.t) := x = MutrecAspec.module \/ x = MutrecBspec.module.
 
 Section LXSIM.
@@ -224,10 +65,10 @@ Section LXSIM.
   Variable sk_link: Sk.t.
   Let skenv_link: SkEnv.t := (Sk.load_skenv sk_link).
   Hypothesis (LINKSRC: link_sk (ctx1 ++ [module] ++ ctx2) = Some sk_link).
-  Let LINKTGT: link_sk (ctx1 ++ [(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2) = Some sk_link.
-  Proof. rewrite link_sk_same. ss. Qed.
   Hypothesis WFCTX1: forall md : Mod.t, In md ctx1 -> Sk.wf md.
   Hypothesis WFCTX2: forall md : Mod.t, In md ctx2 -> Sk.wf md.
+  Let LINKTGT: link_sk (ctx1 ++ [(MutrecAspec.module) ; (MutrecBspec.module)] ++ ctx2) = Some sk_link.
+  Proof. rewrite link_sk_same; ss. Qed.
 
   Let INCLA: SkEnv.includes skenv_link (CSk.of_program signature_of_function MutrecA.prog).
   Proof.
@@ -256,174 +97,23 @@ Section LXSIM.
       <-> (<<FINDF: exists md, (<<FOCUS: is_focus md>>)
          /\ (<<FINDF: Genv.find_funct (ModSem.skenv (flip Mod.modsem skenv_link md)) fptr = Some (AST.Internal if_sig)>>)>>).
   Proof.
+    destruct (link (MutrecAspec.module: Sk.t) MutrecBspec.module) eqn:T; cycle 1.
+    { exfalso. ss. }
+    exploit SkEnv.project_respects_union; et.
+    { eapply Sk.link_union; et. }
+    intro U; des. inv U.
+    unfold MutrecABspec.sk_link in *. ss. rewrite T in *.
     split; i.
-    - rr in H.
-      unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
-      rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in H.
-      des_ifs.
-      destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss.
-      unfold o_bind in H. ss. des_ifs.
-      destruct ((prog_defmap MutrecABspec.sk_link) ! i) eqn:Hdefmap; ss; clarify.
-      unfold MutrecABspec.sk_link in *. ss. des_ifs.
-
-      Local Transparent Linker_program. ss.
-      unfold link_program in *. des_ifs.
-      Local Transparent Linker_prog. ss.
-
-      exploit Genv.invert_find_symbol; eauto. i.
-      unfold Genv.find_symbol, skenv_link, Sk.load_skenv in H.
-
-      hexploit (link_prog_inv _ _ _ Heq1). i. des.
-      subst p. dup Heq0.
-
-      unfold prog_defmap in Hdefmap. simpl in Hdefmap.
-      rewrite PTree_Properties.of_list_elements in *. des_ifs.
-      simpl in Hdefmap. exploit PTree.elements_correct. eapply Hdefmap. i.
-      unfold PTree.elements, PTree.xelements in H2. simpl in H2. des_ifs.
-      destruct (classic (i = f_id)).
-      { subst. ss.
-        clarify. des; clarify.
-        red. exists (MutrecAspec.module). split.
-        - unfold is_focus. ss. auto.
-        - ss. red. rewrite Genv.find_funct_ptr_iff.
-          des_ifs; clarify. des; clarify. inv H2.
-          exploit SkEnv.project_impl_spec. eapply INCLA. i. inv H. ss.
-          exploit DEFKEEP. eauto. eauto. eauto. i. des. ss. clarify. }
-      destruct (classic (i = g_id)).
-      { subst. ss.
-        clarify. des; clarify.
-        red. exists (MutrecBspec.module). split.
-        - unfold is_focus. ss. auto.
-        - ss. red. rewrite Genv.find_funct_ptr_iff.
-          des_ifs; clarify. des; clarify. inv H2.
-          exploit SkEnv.project_impl_spec. eapply INCLB. i. inv H. ss.
-          exploit DEFKEEP. eauto. eauto. eauto. i. des. ss. clarify. }
-      clarify. ss. des; clarify.
-      inv H2; clarify. inv H5; clarify.
-      inv H2; clarify. inv H5; clarify.
-    - rr in H. des.
-      unfold Genv.find_funct in *. ss. des_ifs. rr. rewrite Genv.find_funct_ptr_iff in *.
-      unfold Genv.find_def in *. ss.
-      unfold Genv.find_funct in *.
-      inv FOCUS; ss.
-      + rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *. des_ifs.
-        destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. unfold o_bind in *. ss.
-        des_ifs; cycle 1.
-        { unfold MutrecABspec.sk_link in Heq0. ss. des_ifs.
-          Local Transparent Linker_program. ss.
-          unfold link_program in *. des_ifs.
-          Local Transparent Linker_prog. ss.
-
-          exploit Genv.invert_find_symbol; eauto. i.
-          unfold Genv.find_symbol, skenv_link, Sk.load_skenv in H.
-
-          hexploit (link_prog_inv _ _ _ Heq2). i. des.
-          subst p. ss.
-          clear -Heq0 Heq1.
-          rewrite CSk.of_program_internals in *.
-          destruct (classic (i = f_id)).
-          { subst. ss. }
-          destruct (classic (i = g_id)).
-          { subst. ss. }
-          unfold internals in *. ss. des_ifs.
-          { unfold MutrecA.prog, prog_defmap in *. ss.
-            unfold MutrecA.global_definitions in *. ss.
-            rewrite PTree_Properties.of_list_elements in *. des_ifs.
-            simpl in Heq. exploit PTree.elements_correct. eapply Heq. i.
-            unfold PTree.elements, PTree.xelements in H1. simpl in H1.
-            inv H1; clarify. ss. des; clarify. }
-          { unfold MutrecA.prog, prog_defmap in *. ss.
-            unfold MutrecA.global_definitions in *. ss.
-            rewrite PTree_Properties.of_list_elements in *. des_ifs.
-            simpl in Heq2. exploit PTree.elements_correct. eapply Heq2. i.
-            unfold PTree.elements, PTree.xelements in H1. simpl in H1.
-            inv H1; clarify. ss. des; clarify. }
-        }
-        destruct ((prog_defmap (CSk.of_program signature_of_function MutrecA.prog)) ! i) eqn:DMAP; ss; clarify.
-        unfold MutrecABspec.sk_link in *. ss. des_ifs.
-        Local Transparent Linker_program. ss.
-        unfold link_program in *. des_ifs.
-        Local Transparent Linker_prog. ss.
-
-        exploit Genv.invert_find_symbol; eauto. i.
-        unfold Genv.find_symbol, skenv_link, Sk.load_skenv in H.
-
-        hexploit (link_prog_inv _ _ _ Heq2). i. des.
-        subst p.
-        destruct (classic (i = f_id)).
-        { subst. ss. }
-        destruct (classic (i = g_id)).
-        { subst. ss. }
-
-        clear -DMAP H2 H3.
-        exfalso.
-        exploit (CSk.of_program_prog_defmap MutrecA.prog signature_of_function).
-        i. inv H; rewrite DMAP in *. clarify.
-        clarify. inv H4. unfold CtypesC.CSk.match_fundef in H6. des_ifs. symmetry in H0.
-        clear DMAP.
-        unfold MutrecA.prog, prog_defmap in *. ss.
-        unfold MutrecA.global_definitions in *. ss.
-        eapply PTree_Properties.in_of_list in H0. ss. simpl in H0.
-        inv H0; clarify. ss. des; clarify.
-      + rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *. des_ifs.
-        destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. unfold o_bind in *. ss.
-        des_ifs; cycle 1.
-        { unfold MutrecABspec.sk_link in Heq0. ss. des_ifs.
-          Local Transparent Linker_program. ss.
-          unfold link_program in *. des_ifs.
-          Local Transparent Linker_prog. ss.
-
-          exploit Genv.invert_find_symbol; eauto. i.
-          unfold Genv.find_symbol, skenv_link, Sk.load_skenv in H.
-
-          hexploit (link_prog_inv _ _ _ Heq2). i. des.
-          subst p. ss.
-          clear -Heq0 Heq1.
-          rewrite Sk.of_program_internals in *.
-          destruct (classic (i = f_id)).
-          { subst. ss. }
-          destruct (classic (i = g_id)).
-          { subst. ss. }
-          unfold internals in *. ss. des_ifs.
-          { unfold MutrecB.prog, prog_defmap in *. ss.
-            unfold MutrecB.global_definitions in *. ss.
-            rewrite PTree_Properties.of_list_elements in *. des_ifs.
-            simpl in Heq. exploit PTree.elements_correct. eapply Heq. i.
-            unfold PTree.elements, PTree.xelements in H1. simpl in H1.
-            inv H1; clarify. ss. des; clarify. }
-          { unfold MutrecB.prog, prog_defmap in *. ss.
-            unfold MutrecA.global_definitions in *. ss.
-            rewrite PTree_Properties.of_list_elements in *. des_ifs.
-            simpl in Heq2. exploit PTree.elements_correct. eapply Heq2. i.
-            unfold PTree.elements, PTree.xelements in H1. simpl in H1.
-            inv H1; clarify. ss. des; clarify. }
-        }
-        destruct ((prog_defmap (Sk.of_program Asm.fn_sig MutrecB.prog)) ! i) eqn:DMAP; ss; clarify.
-        unfold MutrecABspec.sk_link in *. ss. des_ifs.
-        Local Transparent Linker_program. ss.
-        unfold link_program in *. des_ifs.
-        Local Transparent Linker_prog. ss.
-
-        exploit Genv.invert_find_symbol; eauto. i.
-        unfold Genv.find_symbol, skenv_link, Sk.load_skenv in H.
-
-        hexploit (link_prog_inv _ _ _ Heq2). i. des.
-        subst p.
-        destruct (classic (i = f_id)).
-        { subst. ss. }
-        destruct (classic (i = g_id)).
-        { subst. ss. }
-
-        clear -DMAP H2 H3.
-        exfalso.
-        exploit (Sk.of_program_prog_defmap MutrecB.prog Asm.fn_sig).
-        i. inv H; rewrite DMAP in *. clarify.
-        clarify. inv H4. unfold CtypesC.CSk.match_fundef in H6. des_ifs. symmetry in H0.
-        clear DMAP.
-        unfold MutrecA.prog, prog_defmap in *. ss.
-        unfold MutrecA.global_definitions in *. ss.
-        eapply PTree_Properties.in_of_list in H0. ss. simpl in H0.
-        inv H0; clarify. ss. des; clarify.
+    - exploit UGE; et. i. des; et.
+      + esplits; ss; et.
+        { instantiate (1:= MutrecAspec.module). rr. et. }
+        ss.
+      + esplits; ss; et.
+        { instantiate (1:= MutrecBspec.module). rr. et. }
+        ss.
+    - des. rr in FOCUS. des; clarify.
+      + exploit ULE; et.
+      + exploit ULE; et.
   Qed.
 
   Lemma find_f_id :
@@ -1098,12 +788,11 @@ End LXSIM.
 Lemma nodup_sim
       ctx1 ctx2 skenv
       (NODUP: Midx.NoDup
-                   (List.map ModSem.midx (fst (load_genv (ctx1 ++ [module] ++ ctx2) skenv))))
+                   (List.map ModSem.midx (load_genv (ctx1 ++ [module] ++ ctx2) skenv)))
   :
     <<NODUP: Midx.NoDup
       (List.map ModSem.midx
-                (fst
-                   (load_genv (ctx1 ++ [MutrecAspec.module ; MutrecBspec.module] ++ ctx2) skenv)))>>
+                   (load_genv (ctx1 ++ [MutrecAspec.module ; MutrecBspec.module] ++ ctx2) skenv))>>
 .
 Proof.
   rr. rr in NODUP. ss. erewrite f_equal; et.
@@ -1127,24 +816,28 @@ Proof.
   { instantiate (1:= Zwf.Zwf 0%Z). eapply Zwf.Zwf_well_founded. }
   all: swap 1 2.
   { i; des. ss. inv SAFESRC. rewrite INITSK.
-    exploit link_sk_same; ss. i. erewrite H. des_ifs. }
+    exploit link_sk_same; ss.
+    { ii. eapply WF. rewrite in_app_iff. right. right. et. }
+    i. erewrite H. des_ifs. }
   econs; eauto.
   i. ss. inv INITSRC.
+  assert(WF2: forall md, In md ctx2 -> Sk.wf md).
+  { ii. eapply WF. rewrite in_app_iff. right. right. et. }
   esplits; eauto.
   { econs; ss; eauto.
     - econs; eauto.
-      + exploit link_sk_same; ss. i. erewrite H. des_ifs.
+      + exploit link_sk_same; ss; et. i. erewrite H. des_ifs.
       + ii; ss. rewrite in_app_iff in *. des; ss.
         { eapply WF; et. rewrite in_app_iff. et. }
         des; cycle 2; subst.
         { eapply WF; et. rewrite in_app_iff. ss. et. }
         * eapply wf_module_Aspec; et.
         * eapply wf_module_Bspec; et.
-      + exploit link_sk_same; ss. i. erewrite H. des_ifs. eapply nodup_sim; et.
+      + exploit link_sk_same; ss; et. i. erewrite H. des_ifs. eapply nodup_sim; et.
     - i; ss. inv INIT0. inv INIT1. clarify. }
   eapply match_states_xsim; eauto.
   { eapply link_sk_preserves_wf_sk; eauto. }
-  { exploit link_sk_same; ss. i. erewrite H. des_ifs. set (Sk.load_skenv sk_link) as skenv in *.
+  { exploit link_sk_same; ss; et. i. erewrite H. des_ifs. set (Sk.load_skenv sk_link) as skenv in *.
     rewrite cons_app. rewrite cons_app with (xtl := ctx2).
     rewrite cons_app with (xtl := [MutrecBspec.module] ++ ctx2).
     Local Opaque app.

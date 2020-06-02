@@ -50,24 +50,6 @@ Proof.
   u. rewrite Mod.get_modsem_skenv_link_spec. ss.
 Qed.
 
-(*** TODO: move to CoqlibC ***)
-Lemma NoDup_inj_aux
-      X Y (f: X -> Y) xs
-      (NODUP: NoDup (map f xs))
-      x0 x1
-      (NEQ: x0 <> x1)
-      (IN0: In x0 xs)
-      (IN1: In x1 xs)
-  :
-    f x0 <> f x1
-.
-Proof.
-  ginduction xs; i; ss.
-  inv NODUP. des; clarify; et.
-  - intro T. rewrite <- T in *. eapply H1. erewrite in_map_iff. eauto.
-  - intro T. rewrite T in *. eapply H1. erewrite in_map_iff. eauto.
-Qed.
-
 (*** TODO: move to ModSem.Midx ***)
 Lemma NoDup_inj
       (prog: program)
@@ -217,7 +199,7 @@ To do this, I will require initial_state to be deterministic.
       (AT: msdl.(ModSem.at_external) st0 oh0 args)
       (OHS: ohs1 = (oh0, snd ohs0))
 
-      (MSFIND: DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdr)
+      (MSFIND: Ge.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdr)
       (OH: snd ohs1 = oh_new)
       (INIT: msdr.(ModSem.initial_frame) oh_new args st_new)
     :
@@ -255,7 +237,7 @@ To do this, I will require initial_state to be deterministic.
       (AT: msdr.(ModSem.at_external) st0 oh0 args)
       (OHS: ohs1 = (fst ohs0, oh0))
 
-      (MSFIND: DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdl)
+      (MSFIND: Ge.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdl)
       (OH: fst ohs1 = oh_new)
       (INIT: msdl.(ModSem.initial_frame) oh_new args st_new)
     :
@@ -285,14 +267,14 @@ To do this, I will require initial_state to be deterministic.
   | at_external_dl
       st0 tl oh0 ohs0 args
       (AT: msdl.(ModSem.at_external) st0 oh0 args)
-      (MSFIND: forall ms, ~DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) ms)
+      (MSFIND: forall ms, ~Ge.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) ms)
     :
       at_external ((StackCons dl st0 tl), ohs0) (oh0, snd ohs0) args
 
   | at_external_dr
       st0 tl oh0 ohs0 args
       (AT: msdr.(ModSem.at_external) st0 oh0 args)
-      (MSFIND: forall ms, ~DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) ms)
+      (MSFIND: forall ms, ~Ge.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) ms)
     :
       at_external ((StackCons dr st0 tl), ohs0) (fst ohs0, oh0) args
   .
@@ -300,14 +282,14 @@ To do this, I will require initial_state to be deterministic.
   Variant initial_frame (ohs: owned_heap) (args: Args.t): state -> Prop :=
   | initial_frame_dl
       st0
-      (MSFIND: DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdl)
+      (MSFIND: Ge.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdl)
       (INIT: msdl.(ModSem.initial_frame) (fst ohs) args st0)
     :
       initial_frame ohs args (StackCons dl st0 StackNil, ohs)
 
   | initial_frame_dr
       st0
-      (MSFIND: DtmAux.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdr)
+      (MSFIND: Ge.find_fptr_owner [msdl ; msdr] (Args.get_fptr args) msdr)
       (INIT: msdr.(ModSem.initial_frame) (snd ohs) args st0)
     :
       initial_frame ohs args (StackCons dr st0 StackNil, ohs)

@@ -30,7 +30,7 @@ Section SIMGE.
   Context `{SU: Sound.class}.
   Context {SS: SimSymb.class SM}.
 
-  Inductive sim_ge (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
+  Inductive sim_ge (sm0: SimMem.t): (Ge.t * SkEnv.t) -> (Ge.t * SkEnv.t) -> Prop :=
   | sim_ge_src_stuck
       ge_tgt skenv_link_src skenv_link_tgt:
       sim_ge sm0 ([], skenv_link_src) (ge_tgt, skenv_link_tgt)
@@ -51,7 +51,7 @@ Section SIMGE.
 
   Context {SMOS: SimMemOhs.class}.
 
-  Inductive sim_geU (sm0: SimMem.t): Ge.t -> Ge.t -> Prop :=
+  Inductive sim_geU (sm0: SimMem.t): (Ge.t * SkEnv.t) -> (Ge.t * SkEnv.t) -> Prop :=
   | sim_geU_src_stuck
       ge_tgt skenv_link_src skenv_link_tgt:
       sim_geU sm0 ([], skenv_link_src) (ge_tgt, skenv_link_tgt)
@@ -71,10 +71,10 @@ Section SIMGE.
         sm0 ge_src ge_tgt fptr_src fptr_tgt ms_src
         (SIMGE: sim_geU sm0 ge_src ge_tgt)
         (SIMFPTR: SimMem.sim_val sm0 fptr_src fptr_tgt)
-        (FINDSRC: Ge.find_fptr_owner ge_src fptr_src ms_src):
+        (FINDSRC: Ge.find_fptr_owner (fst ge_src) fptr_src ms_src):
       exists msp,
         <<SRC: msp.(ModSemPair.src) = ms_src>>
-        /\ <<FINDTGT: Ge.find_fptr_owner ge_tgt fptr_tgt msp.(ModSemPair.tgt)>>
+        /\ <<FINDTGT: Ge.find_fptr_owner (fst ge_tgt) fptr_tgt msp.(ModSemPair.tgt)>>
         /\ <<SIMMS: ModSemPair.simU msp>>
         /\ <<SIMSKENV: ModSemPair.sim_skenv msp sm0>>
         /\ <<MFUTURE: SimMem.future msp.(ModSemPair.sm) sm0>>.
@@ -191,8 +191,8 @@ Section SIMGE.
           (WFSKTGT: forall mp (IN: In mp pp), Sk.wf (ModPair.tgt mp))
           (LOADSRC: Sk.load_mem ss_link.(SimSymb.src) = Some m_src):
       exists sm_init, <<SIMGE: sim_ge sm_init
-                                      (load_genv p_src (Sk.load_skenv ss_link.(SimSymb.src)))
-                                      (load_genv p_tgt (Sk.load_skenv ss_link.(SimSymb.tgt)))>>
+                                      ((load_genv p_src skenv_link_src), skenv_link_src)
+                                      ((load_genv p_tgt skenv_link_tgt), skenv_link_tgt)>>
          /\ <<MWF: SimMem.wf sm_init>>
          /\ <<LOADTGT: Sk.load_mem ss_link.(SimSymb.tgt) = Some sm_init.(SimMem.tgt)>>
          /\ <<MSRC: sm_init.(SimMem.src) = m_src>>
@@ -346,8 +346,8 @@ Section SIMGE.
     :
       exists SMOS smos_init,
         <<SIMGE: @sim_geU SMOS (smos_init.(SimMemOhs.sm))
-                          (load_genv p_src (Sk.load_skenv ss_link.(SimSymb.src)))
-                          (load_genv p_tgt (Sk.load_skenv ss_link.(SimSymb.tgt)))>>
+                          ((load_genv p_src skenv_link_src), skenv_link_src)
+                          ((load_genv p_tgt skenv_link_tgt), skenv_link_tgt)>>
          /\ <<MWF: SimMemOhs.wf smos_init>>
          /\ <<LOADTGT: Sk.load_mem ss_link.(SimSymb.tgt) = Some smos_init.(SimMem.tgt)>>
          /\ <<MSRC: smos_init.(SimMem.src) = m_src>>
@@ -358,14 +358,14 @@ Section SIMGE.
          /\ (<<MAINSIM: SimMem.sim_val smos_init (Genv.symbol_address skenv_link_src ss_link.(SimSymb.src).(prog_main) Ptrofs.zero)
                                              (Genv.symbol_address skenv_link_tgt ss_link.(SimSymb.tgt).(prog_main) Ptrofs.zero)>>)
          /\ (<<OHSSRC: smos_init.(SimMemOhs.ohs_src)
-                       = load_owned_heaps (fst (load_genv p_src skenv_link_src))>>)
+                       = load_owned_heaps (load_genv p_src skenv_link_src)>>)
          /\ (<<OHSTGT: smos_init.(SimMemOhs.ohs_tgt)
-                       = load_owned_heaps (fst (load_genv p_tgt skenv_link_tgt))>>)
+                       = load_owned_heaps (load_genv p_tgt skenv_link_tgt)>>)
   .
   Proof.
     exploit init_sim_ge; eauto. i; des.
-    set (msps_src := fst (load_genv p_src (Sk.load_skenv (SimSymb.src ss_link)))).
-    set (msps_tgt := fst (load_genv p_tgt (Sk.load_skenv (SimSymb.tgt ss_link)))).
+    set (msps_src := (load_genv p_src (Sk.load_skenv (SimSymb.src ss_link)))).
+    set (msps_tgt := (load_genv p_tgt (Sk.load_skenv (SimSymb.tgt ss_link)))).
     inv SIMGE.
     exploit (unification_modsem); eauto.
     { rewrite <- GESRC. ss. }
@@ -422,7 +422,7 @@ Section ADQMATCH.
       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
       (MIDX: ms_src.(ModSem.midx) = ms_tgt.(ModSem.midx))
       (MWF: SimMemOhs.wf sm_arg)
-      (GE: sim_geU (SimMemOhs.sm sm_at) sem_src.(globalenv) sem_tgt.(globalenv))
+      (GE: sim_geU (SimMemOhs.sm sm_at) (sem_src.(globalenv), skenv_link_src) (sem_tgt.(globalenv), skenv_link_tgt))
       (MLE: SimMemOhs.le tail_sm sm_at)
       (MLE: SimMemOhs.le sm_at sm_arg)
       (MLELIFT: SimMemOhs.lepriv sm_arg sm_arg_lift)
@@ -465,7 +465,7 @@ Section ADQMATCH.
   | lxsim_lift_intro
       sm0 tail_src tail_tgt tail_sm i0 ms_src lst_src ms_tgt lst_tgt sidx ohs_src0 ohs_tgt0
       (MIDX: ms_src.(ModSem.midx) = ms_tgt.(ModSem.midx))
-      (GE: sim_geU (SimMemOhs.sm sm0) sem_src.(globalenv) sem_tgt.(globalenv))
+      (GE: sim_geU (SimMemOhs.sm sm0) (sem_src.(globalenv), skenv_link_src) (sem_tgt.(globalenv), skenv_link_tgt))
 
       (STACK: lxsim_stack tail_sm tail_src tail_tgt)
       (MLE: SimMemOhs.le tail_sm sm0)
@@ -482,7 +482,7 @@ Section ADQMATCH.
       lxsim_lift i0 (State ((Frame.mk ms_src lst_src) :: tail_src) ohs_src0) (State ((Frame.mk ms_tgt lst_tgt) :: tail_tgt) ohs_tgt0) sm0
   | lxsim_lift_callstate
        sm_arg tail_src tail_tgt tail_sm args_src args_tgt ohs_src0 ohs_tgt0
-       (GE: sim_geU (SimMemOhs.sm sm_arg) sem_src.(globalenv) sem_tgt.(globalenv))
+       (GE: sim_geU (SimMemOhs.sm sm_arg) (sem_src.(globalenv), skenv_link_src) (sem_tgt.(globalenv), skenv_link_tgt))
        (STACK: lxsim_stack tail_sm tail_src tail_tgt)
        (MLE: SimMemOhs.le tail_sm sm_arg)
        (MWF: SimMemOhs.wf sm_arg)

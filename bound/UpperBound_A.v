@@ -298,7 +298,7 @@ Section PRESERVATION.
         (<<MATCH: match_states st_init_src st_init_tgt>>).
   Proof.
     exists tt. inv INIT.
-    assert(OHSUNIQTGT: Midx.NoDup (map ModSem.midx (fst (load_genv prog_tgt skenv_link)))).
+    assert(OHSUNIQTGT: Midx.NoDup (map ModSem.midx (load_genv prog_tgt skenv_link))).
     { clear - OHSUNIQ. ss.
       rewrite load_modsems_midx in *. clear - OHSUNIQ. rr in OHSUNIQ. rr. ss.
       subst prog_src. subst prog_tgt. ss. rewrite map_app in *. ss.
@@ -324,11 +324,11 @@ Section PRESERVATION.
         assert(INITSAME: forall k v,
                   In (k, v) (map (fun ms =>
                                     (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms)))
-                                 (fst (load_genv prog_src skenv_link)))
+                                 (load_genv prog_src skenv_link))
                   <->
                   In (k, v) (map (fun ms =>
                                     (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms)))
-                                 (fst (load_genv prog_tgt skenv_link)))
+                                 (load_genv prog_tgt skenv_link))
               ).
         {
           subst prog_src prog_tgt; ss.

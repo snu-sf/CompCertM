@@ -27,7 +27,7 @@ Section PRSV.
   Let sound_genv: forall
       p sk_link mss
       (LINK: link_sk p = Some sk_link)
-      (MSS: (Sem.sem p).(Smallstep.globalenv)#1 = mss)
+      (MSS: (Sem.sem p).(Smallstep.globalenv) = mss)
       (UNIQ: Midx.NoDup (map ModSem.midx mss))
     ,
       (* (<<NTHIDX: forall *)
@@ -59,6 +59,13 @@ Section PRSV.
           (IDX: ms0.(ModSem.midx) = ms1.(ModSem.midx))
         ,
           ms0.(ModSem.owned_heap) = ms1.(ModSem.owned_heap)>>)
+      /\
+      (<<MD: forall
+          ms
+          (IN: In ms mss)
+        ,
+          (<<SYS: ms = System.modsem (Sk.load_skenv sk_link)>>) \/
+          (<<MD: exists md, (<<IN: In md p>>) /\ (<<MS: ms = Mod.modsem md (Sk.load_skenv sk_link)>>)>>)>>)
   .
   Proof.
     ii. dsplits; ii.
@@ -100,6 +107,9 @@ Section PRSV.
       { exploit (SPLITHINT ms0 ms1); et. i; clarify. }
       erewrite ms0.(ModSem.midx_none); eauto with congruence.
       erewrite ms1.(ModSem.midx_none); eauto with congruence.
+    - clarify. ss. des_ifs. ss. des; ss; et.
+      unfold load_modsems, flip in *. rewrite in_map_iff in *. des; clarify.
+      right. esplits; et.
   Qed.
 
   Variable p: program.
@@ -125,7 +135,7 @@ Section PRSV.
     (* /\ *)
     (<<WTY: forall
         ms
-        (IN: In ms (sem.(globalenv) #1))
+        (IN: In ms (sem.(globalenv)))
       ,
         (<<TY: projT1 (Midx.get (get_ohs st) ms.(ModSem.midx)) = ms.(ModSem.owned_heap)>>)>>)
     /\
@@ -133,7 +143,7 @@ Section PRSV.
     /\
     (<<LINK: exists sk_link, link_sk p = Some sk_link>>)
     /\
-    (<<FRAMES: Forall (fun fr => In fr.(Frame.ms) (sem.(globalenv) #1)) (get_frames st)>>)
+    (<<FRAMES: Forall (fun fr => In fr.(Frame.ms) (sem.(globalenv))) (get_frames st)>>)
     /\
     (* (<<NTHIDX: forall *)
     (*     n ms *)
@@ -157,8 +167,8 @@ Section PRSV.
     (*     ms0 = ms1>>) *)
     (<<UNIQ: forall
         ms0 ms1 mi
-        (IN0: In ms0 (sem.(globalenv) #1))
-        (IN1: In ms1 (sem.(globalenv) #1))
+        (IN0: In ms0 (sem.(globalenv)))
+        (IN1: In ms1 (sem.(globalenv)))
         (IDX0: ms0.(ModSem.midx) = Some mi)
         (IDX1: ms1.(ModSem.midx) = Some mi)
       ,
@@ -166,11 +176,19 @@ Section PRSV.
     /\
     (<<UNIQ: forall
           ms0 ms1
-          (IN0: In ms0 (sem.(globalenv) #1))
-          (IN1: In ms1 (sem.(globalenv) #1))
+          (IN0: In ms0 (sem.(globalenv)))
+          (IN1: In ms1 (sem.(globalenv)))
           (IDX: ms0.(ModSem.midx) = ms1.(ModSem.midx))
         ,
           ms0.(ModSem.owned_heap) = ms1.(ModSem.owned_heap)>>)
+    /\
+    (<<MD: forall
+          sk_link ms
+          (IN: In ms (sem.(globalenv)))
+          (LINK: link_sk p = Some sk_link)
+        ,
+          (<<SYS: ms = System.modsem (Sk.load_skenv sk_link)>>) \/
+          (<<MD: exists md, (<<IN: In md p>>) /\ (<<MS: ms = Mod.modsem md (Sk.load_skenv sk_link)>>)>>)>>)
   .
 
   Lemma sound_initial_aux
@@ -231,7 +249,7 @@ Section PRSV.
       <<SS: sound_state st>>
   .
   Proof.
-    set (mss := sem.(globalenv)#1) in *.
+    set (mss := sem.(globalenv)) in *.
     inv INIT. rr. ss. des_ifs.
     generalize sound_genv; intro SG.
     hexploit SG; ss; eauto.
@@ -272,6 +290,7 @@ Section PRSV.
     (* { ss. des_ifs. ii. rewrite <- in_rev in *. eauto. } *)
     (* { ii. ss. } *)
     (* intro T. i. exploit (T ms); eauto. { ss. des_ifs. } intro U. rewrite <- U. ss. des_ifs. *)
+    - ii. exploit MD; et. i; des_safe; et.
   Qed.
 
   Theorem sound_progress

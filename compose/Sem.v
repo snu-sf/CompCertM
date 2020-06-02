@@ -40,12 +40,11 @@ End Frame.
 
 Module Ge.
 
-  (* NOTE: Ge.(snd) is not used in semantics. It seems it is just for convenience in meta theory *)
-  Definition t: Type := (list ModSem.t * SkEnv.t).
+  Definition t: Type := (list ModSem.t).
 
   Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=
   | find_fptr_owner_intro
-      (MODSEM: In ms (fst ge))
+      (MODSEM: In ms ge)
       if_sig
       (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig)).
 
@@ -126,14 +125,11 @@ Section SEMANTICS.
                                       | Gvar gv => gd
                                       end).
 
-  Definition load_system (skenv: SkEnv.t): (ModSem.t * SkEnv.t) :=
-    (System.modsem skenv, (skenv_fill_internals skenv)).
-
   Definition load_modsems (skenv: SkEnv.t): list ModSem.t := List.map ((flip Mod.modsem) skenv) p.
 
   Definition load_genv (init_skenv: SkEnv.t): Ge.t :=
-    let (system, skenv) := load_system init_skenv in
-    (system :: (load_modsems init_skenv), init_skenv).
+    let system := System.modsem init_skenv in
+    (system :: (load_modsems init_skenv)).
 
   Definition load_owned_heaps (mss: list ModSem.t): Ohs :=
     Midx.list_to_set (map (fun ms => (ms.(ModSem.midx), upcast ms.(ModSem.initial_owned_heap))) mss)
@@ -150,8 +146,8 @@ Section SEMANTICS.
       (FPTR: fptr_init = (Genv.symbol_address skenv_link sk_link.(prog_main) Ptrofs.zero))
       (SIG: (Genv.find_funct skenv_link) fptr_init = Some (Internal signature_main))
       (WF: forall md (IN: In md p), <<WF: Sk.wf md>>)
-      (OHSUNIQ: Midx.NoDup (map ModSem.midx (fst ge)))
-      (OHS: ohs = load_owned_heaps (fst ge)):
+      (OHSUNIQ: Midx.NoDup (map ModSem.midx ge))
+      (OHS: ohs = load_owned_heaps ge):
       initial_state ge (Callstate (Args.mk fptr_init [] m_init) [] ohs).
 
   Inductive final_state: state -> int -> Prop :=
@@ -164,7 +160,7 @@ Section SEMANTICS.
   Definition sem: semantics :=
     let ge := (match link_sk with
                     | Some sk_link => load_genv (Sk.load_skenv sk_link)
-                    | None => (nil, SkEnv.empty)
+                    | None => (nil)
                     end) in
     (Semantics_gen (fun _ => step) (initial_state ge) final_state
                    ge

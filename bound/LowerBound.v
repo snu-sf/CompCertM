@@ -107,7 +107,7 @@ Section PRESERVATION.
   Let skenv_link := Sk.load_skenv sk.
   Let ge := load_genv prog skenv_link.
   Let tge := Genv.globalenv tprog.
-  Let WFSKLINK: Sk.wf sk. eapply link_list_preserves_wf_sk; et. Qed.
+  Let WFSKLINK: Sk.wf sk. eapply link_sk_preserves_wf_sk; et. Qed.
   Let WFSKELINK: SkEnv.wf skenv_link.
   Proof. eapply SkEnv.load_skenv_wf. ss. Qed.
 
@@ -1782,7 +1782,7 @@ Section PRESERVATION.
               exploit ModSem.midx_none; et. intro T. remember (ModSem.initial_owned_heap x) as X.
               clear HeqX. revert X. rewrite T. i. des_u. ss.
             }
-            intro T. rewrite T. clear T. ss. rewrite in_map_iff in *. des; ss. clarify. ss.
+            intro T. ss. rewrite T. clear T. ss. rewrite in_map_iff in *. des; ss. clarify. ss.
             unfold load_modsems, flip in *. rewrite in_map_iff in *. des; ss. clarify.
             subst prog. rewrite in_map_iff in *. des; clarify.
           }

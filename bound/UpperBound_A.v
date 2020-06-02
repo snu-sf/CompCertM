@@ -298,7 +298,7 @@ Section PRESERVATION.
         (<<MATCH: match_states st_init_src st_init_tgt>>).
   Proof.
     exists tt. inv INIT.
-    assert(OHSUNIQTGT: Midx.NoDup (map ModSem.midx (fst (load_genv prog_tgt skenv_link)))).
+    assert(OHSUNIQTGT: Midx.NoDup (map ModSem.midx (load_genv prog_tgt skenv_link))).
     { clear - OHSUNIQ. ss.
       rewrite load_modsems_midx in *. clear - OHSUNIQ. rr in OHSUNIQ. rr. ss.
       subst prog_src. subst prog_tgt. ss. rewrite map_app in *. ss.
@@ -324,11 +324,11 @@ Section PRESERVATION.
         assert(INITSAME: forall k v,
                   In (k, v) (map (fun ms =>
                                     (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms)))
-                                 (fst (load_genv prog_src skenv_link)))
+                                 (load_genv prog_src skenv_link))
                   <->
                   In (k, v) (map (fun ms =>
                                     (ModSem.midx ms, Any.upcast (ModSem.initial_owned_heap ms)))
-                                 (fst (load_genv prog_tgt skenv_link)))
+                                 (load_genv prog_tgt skenv_link))
               ).
         {
           subst prog_src prog_tgt; ss.
@@ -981,7 +981,7 @@ Section PRESERVATION.
             - exfalso.
               unfold Genv.find_funct in FPTR. des_ifs.
               rewrite Genv.find_funct_ptr_iff in FPTR. exploit CSkEnv.project_revive_no_external; eauto.
-              unfold skenv_link. eapply SkEnv.load_skenv_wf. eapply link_list_preserves_wf_sk; eauto.
+              unfold skenv_link. eapply SkEnv.load_skenv_wf. eapply link_sk_preserves_wf_sk; eauto.
             - ss. unfold incl in *. inv ISCALLTGT.
               unfold Genv.find_funct in FPTR. des_ifs.
               rewrite Genv.find_funct_ptr_iff in *.

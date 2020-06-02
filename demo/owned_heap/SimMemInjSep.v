@@ -17,137 +17,10 @@ Set Implicit Arguments.
 
 
 
-Lemma iff_eta
-      (P Q: Prop)
-      (EQ: P = Q)
-  :
-    <<EQ: P <-> Q>>
-.
-Proof. clarify. Qed.
-
-Lemma and_eta
-      (P0 P1 Q0 Q1: Prop)
-      (EQ0: P0 = P1)
-      (EQ1: Q0 = Q1)
-  :
-    <<EQ: (P0 /\ Q0) = (P1 /\ Q1)>>
-.
-Proof. clarify. Qed.
-
-Ltac smart_intro T :=
-  intro;
-  let x := match goal with
-           | [ H: _ |- _ ] => H
-           end
-  in
-  (* idtac x; *)
-  on_last_hyp ltac:(fun id => revert id);
-
-  let name := fresh "H" in
-  intro name;
-  let y := match goal with
-           | [ H: _ |- _ ] => H
-           end
-  in
-  (* idtac y; *)
-  on_last_hyp ltac:(fun id => revert id);
-
-  tryif (check_equal x y)
-  then
-    let name := fresh T in intro name
-    (* (tryif check_hyp T *)
-    (*   then (tryif check_hyp "U" *)
-    (*          then (tryif (check_hyp "V") *)
-    (*                 then (let name := (fresh "W") in intro name) *)
-    (*                 else (let name := (fresh "V") in intro name)) *)
-    (*          else (let name := (fresh "U") in intro name)) *)
-    (*   else (let name := (fresh "T") in intro name)) *)
-
-    (* (tryif check_hyp string:("T") *)
-    (*   then (tryif check_hyp string:("U") *)
-    (*          then (tryif (check_hyp string:("V")) *)
-    (*                 then (intro W) *)
-    (*                 else (intro V)) *)
-    (*          else (intro U)) *)
-    (*   else (intro T)) *)
-
-    (* let T := fresh "T" in *)
-    (* let U := fresh "U" in *)
-    (* let V := fresh "V" in *)
-    (* let W := fresh "W" in *)
-    (* (tryif check_hyp T *)
-    (*   then (tryif check_hyp U *)
-    (*          then (tryif (check_hyp V) *)
-    (*                 then (intro W) *)
-    (*                 else (intro V)) *)
-    (*          else (intro U)) *)
-    (*   else (intro T)) *)
-  else intro x
-
-  (* match x with *)
-  (* | y => let name := fresh T in *)
-  (*        intro name *)
-  (* | _ => intro x *)
-  (* end *)
-.
-
-Tactic Notation "ii" "as" ident(a) := repeat (let name := fresh a in intro name).
-(* Ltac sii := repeat (smart_intro "X"). *)
-Tactic Notation "sii" ident(X) := repeat (smart_intro X).
-Goal forall (t: True), True -> forall (u: True), True -> False.
-Proof.
-  sii T.
-  clear t. clear T. clear u. clear T0.
-Abort.
 Hint Unfold privmod_others.
 
 
 
-Require Import Classical_Pred_Type.
-
-Lemma not_and_or_strong
-      P Q
-      (H: (~ (P /\ Q)))
-  :
-    ((Q /\ ~ P) \/  ~Q)
-.
-Proof.
-  apply not_and_or in H.
-  destruct (classic Q); et.
-  des; clarify; et.
-Qed.
-
-Lemma NNPP_rev
-      (P: Prop)
-      (p: P)
-  :
-    ~ ~ P
-.
-Proof. ii. eauto. Qed.
-
-Ltac Psimpl_ :=
-  match goal with
-  | [ H: ~ ~ ?P |- _ ] => apply NNPP in H
-  | [ H: ~ (NW (fun _ => ~ ?P)) |- _ ] => apply NNPP in H
-  | [ |- ~ ~ ?P ] => apply NNPP_rev
-  | [ H: (~?P -> ?P) |- _ ] => apply Peirce in H
-  | [ H: ~ (?P -> ?Q) |- _ ] => apply imply_to_and in H
-  | [ |- ~?P \/ ~?Q ] => apply imply_to_or
-  (* Parameter or_to_imply : forall P Q : Prop, ~ P \/ Q -> P -> Q. *)
-  | [ H: ~(?P /\ ?Q) |- _ ] => apply not_and_or_strong in H
-  | [ |- ~(?P /\ ?Q) ] => apply or_not_and
-  | [ H: ~(?P \/ ?Q) |- _ ] => apply not_or_and in H
-  | [ |- ~(?P \/ ?Q) ] => apply and_not_or
-  | [ H: ~(forall n, ~?P n) |- _ ] => apply not_all_not_ex in H
-  | [ H: ~(forall n, ?P n) |- _ ] => apply not_all_ex_not in H
-  | [ H: ~(exists n, ?P n) |- _ ] => apply not_ex_all_not in H
-  | [ H: ~(exists n, ~?P n) |- _ ] => apply not_ex_not_all in H
-  | [ |- ~(forall n, ?P n) ] => apply ex_not_not_all
-  | [ |- ~(exists n, ?P n) ] => apply all_not_not_ex
-  end
-.
-
-Ltac Psimpl := repeat Psimpl_.
 
 
 
@@ -931,17 +804,6 @@ Proof.
 Unshelve.
   all: try apply sm0.
 Qed.
-
-Ltac fold_not :=
-  repeat
-    multimatch goal with
-    | H: context [?P -> False] |- _ => fold (~ P) in H
-    | |- context [?P -> False] => fold (~ P)
-    end
-.
-Goal (True -> False) -> (True -> False -> False) -> (True -> False).
-  intros T U. fold_not.
-Abort.
 
 Lemma free_left
       ons_src ons_tgt sm0 lo hi blk_src blk_tgt delta m_src0

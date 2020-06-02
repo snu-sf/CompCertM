@@ -189,6 +189,60 @@ Module Sk.
           (IN: In (id, (Gfun skd)) sk.(prog_defs)),
           4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned).
 
+  Inductive union (sk0 sk1 sk_big: t): Prop :=
+  | union_intro
+      (ULE: forall
+          i if_sig
+          (DEF: ((prog_defmap sk0) ! i = Some (Gfun (Internal if_sig))) \/
+                ((prog_defmap sk1) ! i = Some (Gfun (Internal if_sig))))
+        ,
+          <<DEF: (prog_defmap sk_big) ! i = Some (Gfun (Internal if_sig))>>)
+      (UGE: forall
+          i if_sig
+          (DEF: ((prog_defmap sk_big) ! i = Some (Gfun (Internal if_sig))))
+        ,
+          <<DEF: (prog_defmap sk0) ! i = Some (Gfun (Internal if_sig)) \/
+                 (prog_defmap sk1) ! i = Some (Gfun (Internal if_sig))>>)
+  .
+
+  Lemma link_union
+        (sk0 sk1 sk_link: t)
+        (LINK: link sk0 sk1 = Some sk_link)
+    :
+      union sk0 sk1 sk_link
+  .
+  Proof.
+    Local Transparent Linker_prog.
+    ss. unfold link_prog in *.
+    Local Opaque Linker_prog.
+    des_ifs. bsimpl; des; des_sumbool.
+    econs; et; i.
+    - des.
+      + unfold prog_defmap in *. ss. rewrite PTree_Properties.of_list_elements.
+        rewrite PTree_Properties.for_all_correct in Heq0.
+        rewrite PTree.gcombine; ss.
+        exploit Heq0; et. intro T. esplits; et. unfold link_prog_check in T.
+        unfold prog_defmap in *. unfold link_prog_merge. des_ifs; bsimpl; des; des_sumbool; ss.
+        apply link_linkorder in Heq3. des. inv Heq3. inv H0. et.
+      + unfold prog_defmap in *. ss. rewrite PTree_Properties.of_list_elements.
+        rewrite PTree_Properties.for_all_correct in Heq0.
+        rewrite PTree.gcombine; ss.
+        esplits; et.
+        unfold link_prog_merge. des_ifs; bsimpl; des; des_sumbool; ss.
+        * exploit Heq0; et. intro T. unfold link_prog_check in T. unfold prog_defmap in *.
+          des_ifs; bsimpl; des; des_sumbool; ss.
+          apply link_linkorder in Heq2. des. inv Heq4. inv H0. et.
+    - des.
+      unfold prog_defmap in *. ss. rewrite PTree_Properties.of_list_elements in *.
+      rewrite PTree_Properties.for_all_correct in Heq0.
+      rewrite PTree.gcombine in *; ss.
+      unfold link_prog_merge in *. des_ifs; et.
+      exploit Heq0; et. intro T. unfold link_prog_check, prog_defmap in T. des_ifs. bsimpl. des; des_sumbool.
+      Local Transparent Linker_def.
+      ss. unfold link_def in *. des_ifs; et. ss. unfold link_skfundef in *. des_ifs; et.
+      Local Opaque Linker_def.
+  Qed.
+
   Inductive disj (sk0 sk1: t): Prop :=
   | disj_intro
       (DISJ: forall
@@ -211,8 +265,7 @@ Module Sk.
     Local Opaque Linker_prog.
     des_ifs. bsimpl; des.
     econs; eauto.
-    ii.
-    rewrite PTree_Properties.for_all_correct in *. exploit Heq0; et. intro T.
+    ii. rewrite PTree_Properties.for_all_correct in *. exploit Heq0; et. intro T.
     unfold link_prog_check in T. des_ifs. bsimpl. ss.
   Qed.
 
@@ -592,6 +645,65 @@ I think "sim_skenv_monotone" should be sufficient.
     inv H2. ss. des_ifs. symmetry in H1. eapply DEFS in H1. des. inv MATCH. inv H1. eauto.
   Qed.
 
+  Inductive union (ske0 ske1 ske_big: t): Prop :=
+  | union_intro
+      (ULE: forall
+          fptr if_sig
+          (DEF: (Genv.find_funct ske0 fptr = Some (Internal if_sig)) \/
+                (Genv.find_funct ske1 fptr = Some (Internal if_sig)))
+        ,
+          <<DEF: (Genv.find_funct ske_big fptr = Some (Internal if_sig))>>)
+      (UGE: forall
+          fptr if_sig
+          (DEF: (Genv.find_funct ske_big fptr = Some (Internal if_sig)))
+        ,
+          <<DEF: (Genv.find_funct ske0 fptr = Some (Internal if_sig)) \/
+                 (Genv.find_funct ske1 fptr = Some (Internal if_sig))>>)
+  .
+
+  Lemma project_respects_union
+        (sk0 sk1 sk_big: Sk.t) ske_link ske0 ske1 ske_big
+        (* (LINK: link sk0 sk1 = Some sk_big) *)
+        (U: Sk.union sk0 sk1 sk_big)
+        (LOAD0: project ske_link sk0 = ske0)
+        (LOAD1: project ske_link sk1 = ske1)
+        (LOADLINK: project ske_link sk_big = ske_big)
+    :
+      (<<UNION: union ske0 ske1 ske_big>>)
+  .
+  Proof.
+    inv U.
+    econs; i.
+    - destruct fptr; ss; try (by i; des; et).
+      des_ifs; try (by i; des; et).
+      destruct (Genv.invert_symbol ske_link b) eqn:T; cycle 1.
+      { unfold project. uge.
+        - des.
+          + des_ifs_safe. apply_all_once Genv_map_defs_def. des; ss. uo. des_ifs.
+          + des_ifs_safe. apply_all_once Genv_map_defs_def. des; ss. uo. des_ifs.
+      }
+      des.
+      + unfold project in *. unfold ASTC.internals in *. uge. des_ifs_safe.
+        apply_all_once Genv_map_defs_def. des; ss. uo. des_ifs_safe.
+        uge. ss. exploit ULE; et. i; des.
+        esplits; et. rewrite PTree_filter_map_spec. uo. des_ifs.
+      + unfold project in *. unfold ASTC.internals in *. uge. des_ifs_safe.
+        apply_all_once Genv_map_defs_def. des; ss. uo. des_ifs_safe.
+        uge. ss. exploit ULE; et. i; des.
+        esplits; et. rewrite PTree_filter_map_spec. uo. des_ifs.
+    - destruct fptr; ss; try (by i; des; et).
+      des_ifs; try (by i; des; et).
+      destruct (Genv.invert_symbol ske_link b) eqn:T; cycle 1.
+      { unfold project. uge.
+        des_ifs_safe. apply_all_once Genv_map_defs_def. des; ss. uo. des_ifs.
+      }
+      des. unfold project in *. unfold ASTC.internals in *. uge. des_ifs_safe.
+      apply_all_once Genv_map_defs_def. des; ss. uo. des_ifs_safe.
+      uge. ss. exploit UGE; et. i; des.
+      + left. esplits; et. rewrite PTree_filter_map_spec. uo. des_ifs.
+      + right. esplits; et. rewrite PTree_filter_map_spec. uo. des_ifs.
+  Qed.
+
   Inductive disj (ske0 ske1: t): Prop :=
   | disj_intro
       (DISJ: forall
@@ -611,7 +723,7 @@ I think "sim_skenv_monotone" should be sufficient.
       (<<DISJ: disj ske0 ske1>>)
   .
   Proof.
-    inv DISJ. econs. ii.
+    inv DISJ. econs. ii. des.
     unfold project in *. uge. des_ifs. apply_all_once Genv_map_defs_def. des; ss.
     uo. des_ifs. uge. ss.
     exploit DISJ0; et.

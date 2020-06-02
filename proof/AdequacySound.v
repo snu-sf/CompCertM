@@ -62,15 +62,15 @@ Section ADQSOUND.
   Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt)).
   Hypothesis SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link.
 
-  Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_list_preserves_wf_sk; et. Qed.
-  Let WFSKLINKTGT: Sk.wf sk_link_tgt. eapply link_list_preserves_wf_sk; et. Qed.
+  Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_sk_preserves_wf_sk; et. Qed.
+  Let WFSKLINKTGT: Sk.wf sk_link_tgt. eapply link_sk_preserves_wf_sk; et. Qed.
 
   (* Let ge: Ge.t := sem_src.(Smallstep.globalenv). *)
 
   Inductive sound_ge (su0: Sound.t) (m0: mem): Prop :=
   | sound_ge_intro
       (GE: Forall (fun ms => su0.(Sound.skenv) m0 ms.(ModSem.skenv) /\ su0.(Sound.skenv) m0 ms.(ModSem.skenv_link))
-                  (fst sem_src.(Smallstep.globalenv)))
+                  (sem_src.(Smallstep.globalenv)))
   .
 
   Lemma lepriv_preserves_sound_ge

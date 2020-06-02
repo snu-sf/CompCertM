@@ -85,9 +85,9 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
     3: { rewrite SKSRC. eapply HD. }
     all: eauto.
     { rewrite SKSRC. eapply WF; et. }
-    { eapply link_list_preserves_wf_sk; eauto. }
+    { eapply link_sk_preserves_wf_sk; eauto. }
     { eapply SimSymb.wf_preserves_wf; et. rewrite SKSRC. eapply WF; et. }
-    { eapply SimSymb.wf_preserves_wf; et. eapply link_list_preserves_wf_sk; eauto. }
+    { eapply SimSymb.wf_preserves_wf; et. eapply link_sk_preserves_wf_sk; eauto. }
     i; des. esplits; eauto.
     - eapply link_list_cons; eauto.
       rewrite SKTGT in LINKTGT. ss.

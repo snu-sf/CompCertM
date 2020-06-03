@@ -98,17 +98,25 @@ End TMP.
 
 
 
+
+Definition val': Type := val + Any.
+Definition Vabs := (@inr val Any).
+Definition val_to_val': val -> val' := inl.
+Coercion val_to_val': val >-> val'.
+
+
+
 Section OWNEDHEAP.
 Variable owned_heap: Type.
 
 Section EFF.
 
-  Variant LocalE: Type -> Type :=
-  | LGet (x: ident) : LocalE val
-  | LPut (x: ident) (v: val) : LocalE unit
-  | LPush: LocalE unit
-  | LPop: LocalE unit
-  .
+  (* Variant LocalE: Type -> Type := *)
+  (* | LGet (x: ident): LocalE val *)
+  (* | LPut (x: ident) (v: val): LocalE unit *)
+  (* | LPush: LocalE unit *)
+  (* | LPop: LocalE unit *)
+  (* . *)
 
   (*** In shallow embedding, one may directly access globalenv.
        However, we may want to restrict its access (e.g., not allowing sth like "Genv.find_symbol x == 42")
@@ -119,7 +127,8 @@ Section EFF.
   .
 
   Variant InternalCallE: Type -> Type :=
-  | ICall (oh: owned_heap) (name: ident) (vs: list val) (m: mem): InternalCallE (owned_heap * mem * val)
+  | ICall (oh: owned_heap) (name: ident) (vs: list val') (m: mem):
+      InternalCallE (owned_heap * mem * val' * list val')
   .
 
   Variant ExternalCallE: Type -> Type :=
@@ -132,9 +141,8 @@ Section EFF.
   | ESyscall (ef: external_function) (args: list val) (m0: mem): EventE (mem * val)
   .
 
-  Definition eff2: Type -> Type := Eval compute in ExternalCallE +' EventE.
-  Definition eff1: Type -> Type := Eval compute in GlobalE +' eff2.
-  Definition eff0: Type -> Type := Eval compute in LocalE +' eff1.
+  Definition eff1: Type -> Type := Eval compute in ExternalCallE +' EventE.
+  Definition eff0: Type -> Type := Eval compute in GlobalE +' eff1.
   Definition eff: Type -> Type := Eval compute in InternalCallE +' eff0.
 
 End EFF.
@@ -163,8 +171,6 @@ Definition unwrapU {E X} `{EventE -< E} (x: option X): itree E X :=
 
 
 
-(* Definition itr: Type := itree eff val. *)
-(* Definition ktr: Type := ktree eff block val. *)
 
 Record function : Type := mkfunction
   { fn_sig: signature; fn_code: (InternalCallE ~> itree eff); }
@@ -178,9 +184,6 @@ Section DENOTE.
 
   Variable p: program.
   Variable ge: SkEnv.t.
-  (* Set Printing Universes. *)
-  (* Print Universes. *)
-  (* Check (prog_defmap p). *)
 
   Definition denote_function: (InternalCallE ~> itree eff) :=
     fun T ei =>
@@ -189,31 +192,32 @@ Section DENOTE.
       | Some (_, Gfun (Internal f)) =>
       (* match (prog_defmap p) ! func_name with *)
       (* | Some (Gfun (Internal f)) => *)
-        trigger LPush ;;
-                retv <- f.(fn_code) ei ;;
-                trigger LPop ;;
-                Ret retv
+        (f.(fn_code) ei)
+        (* trigger LPush ;; *)
+        (*         retv <- f.(fn_code) ei ;; *)
+        (*         trigger LPop ;; *)
+        (*         Ret retv *)
       | _ => triggerNB "TODO: UB? NB? Which one is useful?"
       end
   .
 
-  Instance lenv_Map: (Map ident val (ident -> option val)) := function_Map val Pos.eq_dec.
-  Definition lenv := list (ident -> option val).
-  Definition handle_LocalE {E: Type -> Type} `{EventE -< E}: LocalE ~> stateT lenv (itree E) :=
-    fun _ e le =>
-      let hd: ident -> option val := hd Maps.empty le in
-      let tl: lenv := tl le in
-      match e with
-      | LGet x => v <- unwrapN (*** TODO: U? N? ***) (Maps.lookup x hd) ;; Ret (le, v)
-      | LPut x v => Ret ((Maps.add x v hd) :: tl, tt)
-      | LPush => Ret (Maps.empty :: hd :: tl, tt)
-      | LPop => Ret (tl, tt)
-      end.
+  (* Instance lenv_Map: (Map ident val (ident -> option val)) := function_Map val Pos.eq_dec. *)
+  (* Definition lenv := list (ident -> option val). *)
+  (* Definition handle_LocalE {E: Type -> Type} `{EventE -< E}: LocalE ~> stateT lenv (itree E) := *)
+  (*   fun _ e le => *)
+  (*     let hd: ident -> option val := hd Maps.empty le in *)
+  (*     let tl: lenv := tl le in *)
+  (*     match e with *)
+  (*     | LGet x => v <- unwrapN (*** TODO: U? N? ***) (Maps.lookup x hd) ;; Ret (le, v) *)
+  (*     | LPut x v => Ret ((Maps.add x v hd) :: tl, tt) *)
+  (*     | LPush => Ret (Maps.empty :: hd :: tl, tt) *)
+  (*     | LPop => Ret (tl, tt) *)
+  (*     end. *)
 
-  Definition interp_LocalE {E A} `{EventE -< E} (t : itree (LocalE +' E) A): stateT lenv (itree E) A :=
-    let t' := State.interp_state (case_ handle_LocalE State.pure_state) t in
-    t'
-  .
+  (* Definition interp_LocalE {E A} `{EventE -< E} (t : itree (LocalE +' E) A): stateT lenv (itree E) A := *)
+  (*   let t' := State.interp_state (case_ handle_LocalE State.pure_state) t in *)
+  (*   t' *)
+  (* . *)
 
   Definition handle_GlobalE {E: Type -> Type} `{EventE -< E}: GlobalE ~> itree E :=
     fun _ e =>
@@ -226,12 +230,15 @@ Section DENOTE.
     interp (case_ (handle_GlobalE) (id_ _)) t
   .
 
-  Definition denote_program: (InternalCallE ~> itree eff2) :=
-    let sem0: (InternalCallE ~> itree eff0) := mrec denote_function in
+  Definition denote_program: (InternalCallE ~> itree eff1) :=
+    (* let sem0: (InternalCallE ~> itree eff0) := mrec denote_function in *)
+    (* fun _ ic => *)
+    (*   let sem1: itree eff1 _ := interp_GlobalE (sem0 _ ic) in *)
+    (*   sem1 *)
     fun _ ic =>
-      let sem1: itree eff1 _ := ret <- (interp_LocalE (sem0 _ ic) []) ;; Ret (snd ret) in
-      let sem2: itree eff2 _ := interp_GlobalE sem1 in
-      sem2
+      let sem0: itree eff0 _ := (mrec denote_function) _ ic in
+      let sem1: itree eff1 _ := interp_GlobalE sem0 in
+      sem1
   .
 
 End DENOTE.
@@ -249,7 +256,7 @@ Section MODSEM.
   Definition genvtype: Type := unit.
   Let ge: genvtype := tt.
 
-  Definition state := itree eff2 (owned_heap * mem * val).
+  Definition state := itree eff1 (owned_heap * mem * val' * list val').
 
   Let denote_program := denote_program p skenv.
 
@@ -260,18 +267,10 @@ Section MODSEM.
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
       (VS: (Args.vs args) = vs)
       (M: (Args.m args) = m0)
-      (DENOTE: denote_program (ICall oh0 fid vs m0) = itr)
+      (DENOTE: denote_program (ICall oh0 fid (List.map val_to_val' vs) m0) = itr)
     :
       initial_frame oh0 args itr
   .
-
-  Goal forall (st0 st1: state), st0 = st1 -> False.
-    i.
-    destruct (observe st0) eqn:T.
-    admit "".
-    admit "".
-    admit "".
-  Abort.
 
   Inductive at_external (st0: state): owned_heap -> Args.t -> Prop :=
   | at_external_intro
@@ -282,7 +281,8 @@ Section MODSEM.
       at_external st0 oh0 args
   .
 
-  Inductive get_k (st0: state): (owned_heap * mem * val -> itree eff2 (owned_heap * mem * val)) -> Prop :=
+  Inductive get_k (st0: state):
+    (owned_heap * mem * val -> itree eff1 (owned_heap * mem * val' * list val')) -> Prop :=
   | get_k_intro
       _oh0 _m0 _fptr _vs k
       (VIS: (observe st0) = VisF (subevent _ (ECall _oh0 _fptr _vs _m0)) k)
@@ -303,10 +303,11 @@ Section MODSEM.
 
   Inductive final_frame (st0: state): owned_heap -> Retv.t -> Prop :=
   | final_frame_intro
-      oh0 m0 rv
-      (RET: (observe st0) = RetF (oh0, m0, rv))
+      oh0 m0 (rv: val) _rvs retv
+      (RET: (observe st0) = RetF (oh0, m0, rv: val', _rvs))
+      (RETV: retv = Retv.mk rv m0)
     :
-      final_frame st0 oh0 (Retv.mk rv m0)
+      final_frame st0 oh0 retv
   .
 
   Inductive step (se: Senv.t) (ge: genvtype) (st0: state): trace -> state -> Prop :=

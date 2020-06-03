@@ -32,7 +32,8 @@ Require Import CoqlibC.
 Require Import ASTC.
 Require Import EventsC.
 Require Import GlobalenvsC.
-Require Import Mod ModSem Any.
+Require Import IntegersC.
+Require Import Mod ModSem Any Skeleton.
 
 Import ITreeNotations.
 Import Monads.
@@ -40,25 +41,86 @@ Import MonadNotation.
 
 
 
+Set Implicit Arguments.
+
+
+(*** Put some other place ***)
+Instance function_Map (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}): (Map K V (K -> option V)) :=
+  Build_Map
+    (fun _ => None)
+    (fun k0 v m => fun k1 => if dec k0 k1 then Some v else m k1)
+    (fun k0 m => fun k1 => if dec k0 k1 then None else m k1)
+    (fun k m => m k)
+    (fun m0 m1 => fun k => match (m0 k) with
+                           | Some v => Some v
+                           | _ => m1 k
+                           end)
+.
+
+
+
+(* Section SCOPE. *)
+(*   Context {eff : Type -> Type}. *)
+(*   Context {HasInternalCall: InternalCallE -< eff}. *)
+(*   Context {HasExternalCall: ExternalCallE -< eff}. *)
+(*   Context {HasLocal: LocalE -< eff}. *)
+(*   Context {HasMem: MemE -< eff}. *)
+(*   Context {HasEvent: EventE -< eff}. *)
+(* End SCOPE. *)
+Section TMP.
+  Local Open Scope sum_scope.
+  Variable A: Type -> Type.
+  Variable B: Type -> Type.
+  Variable C: Type -> Type.
+  Variable D: Type -> Type.
+  Variable E: Type -> Type.
+  Let eff: Type -> Type := A +' B +' C +' D +' E.
+  Check ((A +' B) +' (C +' D)) +' E.
+  Variable a: A unit.
+  Variable c: C unit.
+  Check (a).
+  Check (|a).
+  Check (||a).
+  Check (|||a).
+  Check (|||||||a).
+  Check (a|).
+  (* Check (a||). *)
+  Check (|a|).
+  Check (||a|).
+  Check (||||||a|).
+  (* Check (||||a||). *)
+  Check (trigger c: itree eff unit).
+End TMP.
+
+
+
+Section OWNEDHEAP.
+Variable owned_heap: Type.
 
 Section EFF.
-  Definition var: Set := positive.
 
   Variant LocalE: Type -> Type :=
-  | LGet (x: var) : LocalE val
-  | LSet (x: var) (v: val) : LocalE unit
+  | LGet (x: ident) : LocalE val
+  | LSet (x: ident) (v: val) : LocalE unit
   | LPush: LocalE unit
   | LPop: LocalE unit
   .
 
+  (*** In shallow embedding, one may directly access globalenv.
+       However, we may want to restrict its access (e.g., not allowing sth like "Genv.find_symbol x == 42")
+       so that one may prove commutativity/unusedglob/etc.
+   ***)
   Variant GlobalE: Type -> Type :=
-  | GGet (x: var) : GlobalE val
-  | GSet (x: var) (v: val) : GlobalE unit
+  | GFindS (x: ident) : GlobalE val
   .
 
+  (* Variant OwnedHeapE: Type -> Type := *)
+  (* | OGet: OwnedHeapE Any *)
+  (* | OSet (a: Any): OwnedHeapE unit *)
+  (* . *)
   Variant OwnedHeapE: Type -> Type :=
-  | OGet: OwnedHeapE Any
-  | OSet (a: Any) : OwnedHeapE unit
+  | OGet: OwnedHeapE owned_heap
+  | OSet (oh: owned_heap): OwnedHeapE unit
   .
 
   Variant MemE: Type -> Type :=
@@ -73,7 +135,8 @@ Section EFF.
   .
 
   Variant ExternalCallE: Type -> Type :=
-  | ECall (fptr: val) (args: list val): ExternalCallE val
+  (* | ECall (fptr: val) (args: list val): ExternalCallE (owned_heap * mem * val) *)
+  | ECall (fptr: val) (vs: list val) (m: mem): ExternalCallE (owned_heap * val)
   .
 
   Variant EventE: Type -> Type :=
@@ -82,8 +145,13 @@ Section EFF.
   | ESyscall (ef: external_function) (args: list val): EventE val
   .
 
-  Definition eff0: Type -> Type := ExternalCallE +' LocalE +' GlobalE +' OwnedHeapE +' MemE +' EventE.
-  Definition eff: Type -> Type := InternalCallE +' eff0.
+  Definition eff4: Type -> Type := Eval compute in ExternalCallE +' EventE.
+  Definition eff3: Type -> Type := Eval compute in MemE +' eff4.
+  Definition eff2: Type -> Type := Eval compute in OwnedHeapE +' eff3.
+  Definition eff1: Type -> Type := Eval compute in GlobalE +' eff2.
+  Definition eff0: Type -> Type := Eval compute in LocalE +' eff1.
+  Definition eff: Type -> Type := Eval compute in InternalCallE +' eff0.
+
 End EFF.
 
 Definition triggerUB {E A} `{EventE -< E} (msg: string): itree E A :=
@@ -109,86 +177,174 @@ Definition unwrapU {E X} `{EventE -< E} (x: option X): itree E X :=
 
 
 
-Local Open Scope sum_scope.
 
 (* Definition itr: Type := itree eff val. *)
 (* Definition ktr: Type := ktree eff block val. *)
 
-Definition program: Type := AST.program (InternalCallE ~> itree eff) unit.
-
-Variable p: program.
-Variable func_name: ident.
-Check ((prog_defmap p) ! func_name).
-
-(* Section SCOPE. *)
-(*   Context {eff : Type -> Type}. *)
-(*   Context {HasInternalCall: InternalCallE -< eff}. *)
-(*   Context {HasExternalCall: ExternalCallE -< eff}. *)
-(*   Context {HasLocal: LocalE -< eff}. *)
-(*   Context {HasMem: MemE -< eff}. *)
-(*   Context {HasEvent: EventE -< eff}. *)
-(* End SCOPE. *)
-Section TMP.
-  Variable A: Type -> Type.
-  Variable B: Type -> Type.
-  Variable C: Type -> Type.
-  Variable D: Type -> Type.
-  Variable E: Type -> Type.
-  Let eff: Type -> Type := A +' B +' C +' D +' E.
-  Check ((A +' B) +' (C +' D)) +' E.
-  Variable a: A unit.
-  Variable c: C unit.
-  Check (a).
-  Check (|a).
-  Check (||a).
-  Check (|||a).
-  Check (|||||||a).
-  Check (a|).
-  (* Check (a||). *)
-  Check (|a|).
-  Check (||a|).
-  Check (||||||a|).
-  (* Check (||||a||). *)
-  Check (trigger c: itree eff unit).
-End TMP.
-
-Definition denote_function (p: program): (InternalCallE ~> itree eff) :=
-  fun T ei =>
-    let '(ICall func_name args) := ei in
-    match ((prog_defmap p) ! func_name) with
-    | Some (Gfun f) =>
-      trigger LPush ;;
-      retv <- f _ (ICall 1%positive args) ;;
-      trigger LPop ;;
-      Ret retv
-    | _ => triggerNB "TODO: UB? NB? Which one is useful?"
-    end
+Record function : Type := mkfunction
+  { fn_sig: signature; fn_code: (InternalCallE ~> itree eff); }
 .
 
-Definition denote_program (p: program): (InternalCallE ~> itree eff0) := mrec (denote_function p).
+Definition program: Type := AST.program (fundef function) unit.
+
+
+
+Section DENOTE.
+
+  Variable p: program.
+  Variable ge: SkEnv.t.
+  Set Printing Universes.
+  Check (prog_defmap p).
+
+  Definition denote_function: (InternalCallE ~> itree eff) :=
+    fun T ei =>
+      let '(ICall func_name args) := ei in
+      match ((prog_defmap p) ! func_name) with
+      | Some (Gfun (Internal f)) =>
+        trigger LPush ;;
+                retv <- f.(fn_code) (ICall 1%positive args) ;;
+                trigger LPop ;;
+                Ret retv
+      | _ => triggerNB "TODO: UB? NB? Which one is useful?"
+      end
+  .
+
+  Instance lenv_Map: (Map ident val (ident -> option val)) := function_Map val Pos.eq_dec.
+  Definition lenv := list (ident -> option val).
+  Definition handle_LocalE {E: Type -> Type} `{EventE -< E}: LocalE ~> stateT lenv (itree E) :=
+    fun _ e le =>
+      let hd: ident -> option val := hd Maps.empty le in
+      let tl: lenv := tl le in
+      match e with
+      | LGet x => v <- unwrapN (*** TODO: U? N? ***) (Maps.lookup x hd) ;; Ret (le, v)
+      | LSet x v => Ret ((Maps.add x v hd) :: tl, tt)
+      | LPush => Ret (Maps.empty :: hd :: tl, tt)
+      | LPop => Ret (tl, tt)
+      end.
+
+  Definition interp_LocalE {E A} `{EventE -< E} (t : itree (LocalE +' E) A): stateT lenv (itree E) A :=
+    let t' := State.interp_state (case_ handle_LocalE State.pure_state) t in
+    t'
+  .
+
+  Definition handle_GlobalE {E: Type -> Type} `{EventE -< E}: GlobalE ~> itree E :=
+    fun _ e =>
+      match e with
+      | GFindS x => blk <- unwrapN (Genv.find_symbol ge x) ;; Ret (Vptr blk Ptrofs.zero)
+      end
+  .
+
+  Definition interp_GlobalE {E A} `{EventE -< E} (t : itree (GlobalE +' E) A): itree E A :=
+    interp (case_ (handle_GlobalE) (id_ _)) t
+  .
+
+  Definition handle_OwnedHeapE {E: Type -> Type} `{EventE -< E}: OwnedHeapE ~> stateT owned_heap (itree E) :=
+    fun _ e oh0 =>
+      match e with
+      | OGet => Ret (oh0, oh0)
+      | OSet oh1 => Ret (oh1, tt)
+      end
+  .
+
+  Definition interp_OwnedHeapE {E A} `{EventE -< E} (t: itree (OwnedHeapE +' E) A): stateT owned_heap (itree E) A :=
+    let t' := State.interp_state (case_ handle_OwnedHeapE State.pure_state) t in
+    t'
+  .
+
+  Definition handle_MemE {E: Type -> Type} `{EventE -< E}: MemE ~> stateT mem (itree E) :=
+    fun _ e m0 =>
+      match e with
+      | MLoad chunk blk ofs => v <- unwrapU (Mem.load chunk m0 blk ofs) ;; Ret (m0, v)
+      | MStore chunk blk ofs v => m1 <- unwrapU (Mem.store chunk m0 blk ofs v) ;; Ret (m1, tt)
+      | MAlloc lo hi => let '(m1, blk) := Mem.alloc m0 lo hi in Ret (m1, blk)
+      | MFree blk lo hi => m1 <- unwrapU (Mem.free m0 blk lo hi) ;; Ret (m1, tt)
+      end
+  .
+
+  Definition interp_MemE {E A} `{EventE -< E} (t : itree (MemE +' E) A): stateT mem (itree E) A :=
+    let t' := State.interp_state (case_ handle_MemE State.pure_state) t in
+    t'
+  .
+
+  Definition denote_program (oh: owned_heap) (m0: mem):
+    (forall T, InternalCallE T -> itree eff4 (owned_heap * mem * T)) :=
+    let sem0: (InternalCallE ~> itree eff0) := mrec denote_function in
+    fun _ ic =>
+      let sem1: itree eff1 _ := ret <- (interp_LocalE (sem0 _ ic) []) ;; Ret (snd ret) in
+      let sem2: itree eff2 _ := interp_GlobalE sem1 in
+      let sem3: itree eff3 _ := ret <- (interp_OwnedHeapE sem2 oh) ;; Ret ret in
+      let sem4: itree eff4 _ := ret <- (interp_MemE sem3 m0) ;;
+                                    Ret ((fst (snd ret)), (fst ret), (snd (snd ret))) in
+      sem4
+  .
+
+End DENOTE.
 
 
 
 Section MODSEM.
 
+  Variable skenv_link: SkEnv.t.
   Variable p: program.
-  (* Context {eff : Type -> Type}. *)
-  (* Context {HasLocalE: LocalE -< eff}. *)
-  (* Context {HasMemE: MemE -< eff}. *)
-  (* Context {HasCallE : CallE -< eff}. *)
-  (* Context {HasEventE : EventE -< eff}. *)
+  Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program fn_sig p).
+  (* Let ge: genv := (SkEnv.revive skenv) p. *)
+  Let ge: SkEnv.t := skenv.
 
-  (* Variable itr: sir. *)
-  (* Variable mi: Midx.t. *)
+  Definition state := itree eff4 (owned_heap * mem * val).
+  (* Record state := mk { *)
+  (*   it: itree eff4 val; *)
+  (* } *)
+  (* . *)
+  Let denote_program := denote_program p skenv.
 
-  Record state := mk {
-    it: itree eff0 val;
-    lenv: list (var -> option val);
-    m: mem;
-  }
+  Inductive initial_frame (oh: owned_heap) (args: Args.t): state -> Prop :=
+  | initial_frame_intro
+      fid blk m0 vs itr
+      (SYMB: Genv.find_symbol skenv fid = Some blk)
+      (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
+      (VS: (Args.vs args) = vs)
+      (M: (Args.m args) = m0)
+      (DENOTE: denote_program oh m0 (ICall fid vs) = itr)
+    :
+      initial_frame oh args itr
   .
 
-  (* Check (observe itr): (itreeF eff val (itree eff val)). *)
+  Goal forall (st0 st1: state), st0 = st1 -> False.
+    i.
+    destruct (observe st0) eqn:T.
+    admit "".
+    admit "".
+    admit "".
+  Abort.
+
+  Inductive at_external (st0: state) (oh0: owned_heap): Args.t -> Prop :=
+  | at_external_intro
+      m0 args fptr vs k 
+      (VIS: (observe st0) = VisF (inl1 (ECall fptr vs m0)) k)
+      (* (VIS: (observe st0) = VisF (subevent _ (ECall fptr vs)) k) *)
+      (ARGS: args = Args.mk fptr vs m0)
+    :
+      at_external st0 oh0 args
+  .
+
+  Inductive after_external (st0: state): owned_heap -> Retv.t -> state -> Prop :=
+  | after_external_intro
+      m0 fptr vs k 
+      (VIS: (observe st0) = VisF (inl1 (ECall fptr vs)) k)
+      m0 v0
+      (RETV: retv = Retv.mk m0 v0)
+      (ST: st1 = k v0)
+    :
+      after_external st0 oh0 retv st1
+  .
+
+  Inductive final_frame (st0: state): owned_heap -> Retv.t -> Prop :=
+  | final_frame_intro
+      oh0 m0 v0
+      (RET: (observe st0) = RetF (oh0, m0, v0))
+    :
+      final_frame st0 oh0 (Retv.mk v0 m0)
+  .
 
   Inductive step (se: Senv.t) (ge: unit): state -> trace -> state -> Prop :=
   | step_tau
@@ -196,19 +352,14 @@ Section MODSEM.
       (TAU: (observe st0) = TauF st1)
     :
       step se ge st0 E0 st1
-  | step_local_get
-      (st0: state) (x: var) (k: val -> sir)
-      (LOCAL: (observe st0) = VisF (LGet x|) k)
-    :
-      step se ge st0 E0 st0
   .
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step1;
-       ModSem.at_external := coerce at_external;
-       ModSem.initial_frame := coerce initial_frame1;
-       ModSem.final_frame := coerce final_frame;
-       ModSem.after_external := coerce after_external1;
+       ModSem.at_external := at_external;
+       ModSem.initial_frame := initial_frame;
+       ModSem.final_frame := final_frame;
+       ModSem.after_external := after_external;
        ModSem.globalenv := ge;
        ModSem.skenv := skenv;
        ModSem.skenv_link := skenv_link;

@@ -114,25 +114,41 @@ Section EFF.
   | GFindS (x: ident) : GlobalE val
   .
 
-  (* Variant OwnedHeapE: Type -> Type := *)
-  (* | OGet: OwnedHeapE Any *)
-  (* | OPut (a: Any): OwnedHeapE unit *)
-  (* . *)
-  Definition OwnedHeapE: Type -> Type := State.stateE owned_heap.
+  (* Definition OwnedHeapE: Type -> Type := State.stateE Any *)
+  (* Definition OwnedHeapE: Type -> Type := State.stateE owned_heap. *)
+  Variant OwnedHeapE: Type -> Type :=
+  | OGet: OwnedHeapE owned_heap
+  | OPut (a: owned_heap): OwnedHeapE unit
+  .
 
-  Definition MemE: Type -> Type := State.stateE mem.
+  (* Definition MemE: Type -> Type := State.stateE mem. *)
   (* Variant MemE: Type -> Type := *)
   (* | MGet: MemE mem *)
   (* | MPut (m: mem): MemE unit *)
   (* . *)
-  Set Printing Universes.
-  Print MemE.
-  (* Variant MemE: Type -> Type := *)
-  (* | MLoad (chunk: memory_chunk) (blk: block) (ofs: Z): MemE val *)
-  (* | MStore (chunk: memory_chunk) (blk: block) (ofs: Z) (v: val): MemE unit *)
-  (* | MAlloc (lo hi: Z): MemE block *)
-  (* | MFree (blk: block) (lo hi: Z): MemE unit *)
-  (* . *)
+
+  Section PLAYGROUND.
+    Check (Type -> Type).
+    (* Type@{Top.3861} -> Type@{Top.3862} *)
+    (*   : Type@{max(Top.3861+1,Top.3862+1)} *)
+
+    (*** as you can see (and stated in CPDT) (Type@{a} -> Type@{b})'s universe is simply max(a+1, b+1).
+         If we include "| MPut (m: mem): MemE unit" in MemE
+         --- it dosen't matter if we define it here, or by instantiating State.stateE mem ---
+         Its type becomes "Type@{MemE.u0} -> Type@{max(block.u0,PMap.t.u1)}"
+         --- "Pmap.t.u1" is Mem.mem's universe ---
+         So, MemE's universe becomes "+1" of it. Check (Type@{MemE.u0} -> Type@{max(block.u0,PMap.t.u1)}).
+         This means MemE has bigger universe that usual CompCert, so does my "program",
+         so I cannot use "prog_defmap" which expects usual CompCert-universe.
+     ***)
+  End PLAYGROUND.
+    
+  Variant MemE: Type -> Type :=
+  | MLoad (chunk: memory_chunk) (blk: block) (ofs: Z): MemE val
+  | MStore (chunk: memory_chunk) (blk: block) (ofs: Z) (v: val): MemE unit
+  | MAlloc (lo hi: Z): MemE block
+  | MFree (blk: block) (lo hi: Z): MemE unit
+  .
 
   Variant InternalCallE: Type -> Type :=
   | ICall (name: ident) (args: list val): InternalCallE val
@@ -140,7 +156,7 @@ Section EFF.
 
   Variant ExternalCallE: Type -> Type :=
   (* | ECall (fptr: val) (args: list val): ExternalCallE (owned_heap * val) *)
-  (* | ECall (fptr: val) (vs: list val) (m: mem): ExternalCallE (owned_heap * mem * val) *)
+  | ECall (fptr: val) (vs: list val) (m: mem): ExternalCallE (owned_heap * mem * val)
   .
 
   Variant EventE: Type -> Type :=
@@ -197,15 +213,17 @@ Section DENOTE.
 
   Variable p: program.
   Variable ge: SkEnv.t.
-  Set Printing Universes.
+  (* Set Printing Universes. *)
   (* Print Universes. *)
-  Fail Check (prog_defmap p).
+  (* Check (prog_defmap p). *)
 
   Definition denote_function: (InternalCallE ~> itree eff) :=
     fun T ei =>
       let '(ICall func_name args) := ei in
       match (find (fun nf => ident_eq func_name (fst nf)) p.(prog_defs)) with
       | Some (_, Gfun (Internal f)) =>
+      (* match (prog_defmap p) ! func_name with *)
+      (* | Some (Gfun (Internal f)) => *)
         trigger LPush ;;
                 retv <- f.(fn_code) (ICall 1%positive args) ;;
                 trigger LPop ;;

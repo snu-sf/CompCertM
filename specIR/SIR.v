@@ -317,9 +317,10 @@ Section MODSEM.
     admit "".
   Abort.
 
-  Inductive at_external (st0: state) (oh0: owned_heap): Args.t -> Prop :=
+  Inductive at_external (st0: state): owned_heap -> Args.t -> Prop :=
   | at_external_intro
-      m0 args fptr vs k 
+      oh0 m0 args fptr vs k
+      (*** TODO: oh0 is free ***)
       (VIS: (observe st0) = VisF (inl1 (ECall fptr vs m0)) k)
       (* (VIS: (observe st0) = VisF (subevent _ (ECall fptr vs)) k) *)
       (ARGS: args = Args.mk fptr vs m0)

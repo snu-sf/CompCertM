@@ -101,7 +101,7 @@ Section EFF.
 
   Variant LocalE: Type -> Type :=
   | LGet (x: ident) : LocalE val
-  | LSet (x: ident) (v: val) : LocalE unit
+  | LPut (x: ident) (v: val) : LocalE unit
   | LPush: LocalE unit
   | LPop: LocalE unit
   .
@@ -116,27 +116,31 @@ Section EFF.
 
   (* Variant OwnedHeapE: Type -> Type := *)
   (* | OGet: OwnedHeapE Any *)
-  (* | OSet (a: Any): OwnedHeapE unit *)
+  (* | OPut (a: Any): OwnedHeapE unit *)
   (* . *)
-  Variant OwnedHeapE: Type -> Type :=
-  | OGet: OwnedHeapE owned_heap
-  | OSet (oh: owned_heap): OwnedHeapE unit
-  .
+  Definition OwnedHeapE: Type -> Type := State.stateE owned_heap.
 
-  Variant MemE: Type -> Type :=
-  | MLoad (chunk: memory_chunk) (blk: block) (ofs: Z): MemE val
-  | MStore (chunk: memory_chunk) (blk: block) (ofs: Z) (v: val): MemE unit
-  | MAlloc (lo hi: Z): MemE block
-  | MFree (blk: block) (lo hi: Z): MemE unit
-  .
+  Definition MemE: Type -> Type := State.stateE mem.
+  (* Variant MemE: Type -> Type := *)
+  (* | MGet: MemE mem *)
+  (* | MPut (m: mem): MemE unit *)
+  (* . *)
+  Set Printing Universes.
+  Print MemE.
+  (* Variant MemE: Type -> Type := *)
+  (* | MLoad (chunk: memory_chunk) (blk: block) (ofs: Z): MemE val *)
+  (* | MStore (chunk: memory_chunk) (blk: block) (ofs: Z) (v: val): MemE unit *)
+  (* | MAlloc (lo hi: Z): MemE block *)
+  (* | MFree (blk: block) (lo hi: Z): MemE unit *)
+  (* . *)
 
   Variant InternalCallE: Type -> Type :=
   | ICall (name: ident) (args: list val): InternalCallE val
   .
 
   Variant ExternalCallE: Type -> Type :=
-  (* | ECall (fptr: val) (args: list val): ExternalCallE (owned_heap * mem * val) *)
-  | ECall (fptr: val) (vs: list val) (m: mem): ExternalCallE (owned_heap * val)
+  (* | ECall (fptr: val) (args: list val): ExternalCallE (owned_heap * val) *)
+  (* | ECall (fptr: val) (vs: list val) (m: mem): ExternalCallE (owned_heap * mem * val) *)
   .
 
   Variant EventE: Type -> Type :=
@@ -194,13 +198,14 @@ Section DENOTE.
   Variable p: program.
   Variable ge: SkEnv.t.
   Set Printing Universes.
-  Check (prog_defmap p).
+  (* Print Universes. *)
+  Fail Check (prog_defmap p).
 
   Definition denote_function: (InternalCallE ~> itree eff) :=
     fun T ei =>
       let '(ICall func_name args) := ei in
-      match ((prog_defmap p) ! func_name) with
-      | Some (Gfun (Internal f)) =>
+      match (find (fun nf => ident_eq func_name (fst nf)) p.(prog_defs)) with
+      | Some (_, Gfun (Internal f)) =>
         trigger LPush ;;
                 retv <- f.(fn_code) (ICall 1%positive args) ;;
                 trigger LPop ;;
@@ -217,7 +222,7 @@ Section DENOTE.
       let tl: lenv := tl le in
       match e with
       | LGet x => v <- unwrapN (*** TODO: U? N? ***) (Maps.lookup x hd) ;; Ret (le, v)
-      | LSet x v => Ret ((Maps.add x v hd) :: tl, tt)
+      | LPut x v => Ret ((Maps.add x v hd) :: tl, tt)
       | LPush => Ret (Maps.empty :: hd :: tl, tt)
       | LPop => Ret (tl, tt)
       end.
@@ -242,7 +247,7 @@ Section DENOTE.
     fun _ e oh0 =>
       match e with
       | OGet => Ret (oh0, oh0)
-      | OSet oh1 => Ret (oh1, tt)
+      | OPut oh1 => Ret (oh1, tt)
       end
   .
 

@@ -38,8 +38,7 @@ Require Import GlobalenvsC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton.
 
-Require Import Program.
-
+Require Import Sem.
 
 
 
@@ -256,6 +255,7 @@ Section MODSEM.
   Definition genvtype: Type := unit.
   Let ge: genvtype := tt.
 
+  Set Printing Universes.
   Definition state := itree eff1 (owned_heap * mem * val' * list val').
 
   Let denote_program := denote_program p skenv.
@@ -331,6 +331,187 @@ Section MODSEM.
       step se ge st0 tr st1
   .
 
+  Set Printing Universes.
+  Print Universes.
+
+  Record my_mod: Type := mk {
+    datatype: Type;
+    (* val: datatype; *)
+  }.
+  Definition my_mods_tl (mms: list my_mod): list my_mod := tl mms.
+  Fail Definition boo := tl [(mk (itree void1 (list nat)))].
+  (* Definition my_tree := (itree void1 (list nat)). *)
+  (* Definition my_weird (mt: my_tree): my_tree := rvs <- mt ;; Ret (tl rvs). *)
+  (* Definition boo: my_mod := mk my_tree. *)
+  Definition boo: my_mod := mk (itree void1 unit).
+  Print Universes.
+  Check (itree void1 (list (itree void1 nat))).
+
+"Type@{max(Set,ITree.Core.ITreeDefinition.2,ITree.Core.ITreeDefinition.3,itreeF.u1+1)}" is a subtype of
+"Type@{ModSem.t.u0}").
+
+Error: Universe inconsistency. Cannot enforce
+ITree.Core.ITreeDefinition.3 <= Mod.Mod.t.u0 because
+Mod.Mod.t.u0 < Coq.Lists.List.1 <= option.u0 = ITree.Core.ITreeDefinition.3.
+
+
+                     
+ModSem.t.u0 < Coq.Lists.List.1
+            <= ex.u0
+            < Ge.t.u0
+            <= eq.u0
+            <= eq_ind_r.u0
+            < flip.u0
+            < flip.u2
+            <= f_equal6.u0
+            <= f_equal6.u3
+            <= prod.u1
+            <= f_equal6.u5
+            <= Coq.Init.Datatypes.33
+            <= less1.u0
+            < list.u0
+            < Coq.Lists.List.169
+            < Coq.Lists.List.170
+            <= compcomp.ModSem.278
+            < Smallstep.semantics.u0
+            <= bot1.u0
+            <= bot2.u0
+
+Coq.Lists.List.1 = MonadFix.MonadFix.u0
+Fun.u0 = MonadFix.MonadFix.u0
+MonadFix.MonadFix.u0 < ITree.Basics.CategoryFunctor.1
+                     < ITree.Basics.CategoryOps.1
+                     < ITree.Basics.CategoryTheory.1
+                     < Coq.Relations.Relation_Definitions.1
+                     <= Paco.gpaco2.1
+                     <= Paco.paco2.1
+                     < ITree.Basics.CategoryFunctor.2
+                     <= ITree.Basics.CategoryOps.2
+                     <= ITree.Basics.Monad.2
+                     <= MonadPlus.MonadPlus.u1
+                     <= MonadZero.MonadZero.u1
+                     <= Shallow.inj_pair2.u1
+                     <= sig.u0
+                     <= Paco.gpaco2.2
+                     <= Paco.paco2.2
+                     <= Fun.u2
+                     <= MonadExc.MonadExc.u2
+                     <= skdef_of_gdef.u0
+                     <= compose.u0
+                     <= compose.u1
+                     <= Kleisli.u1
+                     <= update_snd.u1
+                     <= itreeF.u0
+                     < ex.u0
+                     <= compose.u2
+                     <= Kleisli.u4
+                     <= pacotac_internal.paco_eq_JMeq.u0
+                     <= gpaco2_gen_guard.u0
+                     <= pacotac_internal.paco_JMeq_eq.u0
+                     <= gpaco2_gen_guard.u1
+                     <= eq.u0
+                     <= sigT.u0
+                     <= sigT.u1
+                     <= Equality.solution_left.u0
+                     <= Kleisli_apply.u1
+                     < ITree.Basics.CategoryOps.14
+                     <= ITree.Basics.CategoryOps.15
+                     <= eq_ind_r.u0
+                     <= pacotac_internal._paco_pre2.u0
+                     <= flip.u0
+                     <= pacotac_internal._paco_pre2.u1
+                     <= flip.u1
+                     <= eq_rect_r.u0
+                     <= ITree.Core.Subevent.17
+                     <= eq_rect_r.u1
+                     <= gpaco2_gpaco.u0
+                     <= gpaco2_gpaco.u1
+                     < ITree.Basics.CategoryTheory.22
+                     <= app_nil_r.u0
+                     <= globdef.u0
+                     <= app_nil_r.u1
+                     <= app_assoc.u0
+                     <= Equality.simplification_heq.u0
+                     <= app_assoc.u1
+                     <= prod.u0
+                     <= AST.program.u0
+                     <= prod.u1
+                     <= Coq.Classes.Morphisms.30
+                     <= Coq.Init.Datatypes.33
+                     <= Equality.simplification_existT2.u1
+                     <= app_inv_tail.u0
+                     <= Equality.simplification_existT1.u1
+                     <= Equivalence.pointwise_equivalence.u0
+                     <= Equivalence.pointwise_equivalence.u1
+                     < ITree.Basics.CategoryTheory.50
+                     <= Proper_interp_mrec.u4
+                     <= list.u0
+                     <= Coq.Init.Datatypes.62
+                     <= length.u0
+                     <= app.u0
+                     < ITree.Basics.CategoryFacts.68
+                     <= Applicative_itree.u0
+                     <= nth_split.u0
+                     <= Coq.Classes.Morphisms.74
+                     <= flip_clo.u0
+                     <= flip_clo.u1
+                     < ITree.Basics.CategoryOps.80
+                     <= flip_arrow.u0
+                     <= ITree.Basics.CategoryOps.81
+                     <= flip_arrow.u1
+                     <= eq_Handler.u4
+                     <= fundef.u0
+                     <= nth_error_split.u0
+                     <= eutt_Handler.u4
+                     <= euttge_interp_mrec.u4
+                     <= ID.u0
+                     <= respectful_eq_itree.u6
+                     <= respectful_eutt.u6
+                     <= suttF_inv_tau_left.u3
+                     <= suttF_inv_tau_left.u4
+                     <= suttF_inv_tau_left.u5
+                     <= removelast_app.u0
+                     <= eq_itree_apply_IFun.u5
+                     < eq_itree_apply_IFun.u6
+                     <= euttge_interp.u5
+                     <= eutt_apply_IFun.u5
+                     < eutt_apply_IFun.u6
+                     <= eqitC_wcompat.u2
+                     <= eqitC_wcompat.u3
+                     <= eqitC_wcompat.u4
+                     <= eqitC_wcompat.u5
+                     <= eqitC_wcompat.u6
+                     <= eqitC_wcompat.u7
+                     <= eqitC_wcompat.u8
+                     <= eqitC_wcompat.u9
+                     <= transL_closed.u3
+                     <= transL_closed.u4
+                     <= transL_closed.u5
+                     <= transL_closed.u6
+                     <= transL_closed.u7
+                     <= transL_closed.u8
+                     <= transL_closed.u9
+                     <= transL_closed.u10
+                     < ITree.Basics.CategoryTheory.257
+                     <= rcompose.u0
+                     <= rcompose.u2
+                     <= sumor.u0
+                     <= eqit_trans.u9
+                     <= eqit_trans.u10
+                     <= eqit_trans.u11
+                     <= eqit_trans.u12
+                     <= eqit_trans.u13
+                     <= eqit_trans.u14
+                     <= eqit_trans.u15
+                     <= eqit_trans.u16
+                     <= eqit_trans.u17
+                     <= eqit_trans.u18
+                     <= eqit_trans.u19
+                     <= eqit_trans.u20
+                     <= eqit_trans.u21
+                     <= eqit_trans.u22
+                     <= eqit_trans.u23
+                     <= program.u0
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
        ModSem.owned_heap := owned_heap;

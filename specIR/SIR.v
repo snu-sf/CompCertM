@@ -6,21 +6,21 @@ From Coq Require Import
      Setoid
      RelationClasses.
 
-From ExtLib Require Import
+(* From ExtLib Require Import *)
      (* Data.String *)
-     Structures.Monad
-     Structures.Traversable
-     Structures.Foldable
-     Structures.Reducible
-     Structures.Maps
+     (* Structures.Monad *)
+     (* Structures.Traversable *)
+     (* Structures.Foldable *)
+     (* Structures.Reducible *)
+     (* Structures.Maps *)
      (* Data.List *)
-.
+(* . *)
 
-From ITree Require Import
+From ITree Require Export
      ITree
      ITreeFacts
-     Events.MapDefault
-     Events.StateFacts
+     (* Events.MapDefault *)
+     (* Events.StateFacts *)
 .
 
 Import SumNotations.
@@ -49,17 +49,17 @@ Set Implicit Arguments.
 
 
 (*** Put some other place ***)
-Instance function_Map (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}): (Map K V (K -> option V)) :=
-  Build_Map
-    (fun _ => None)
-    (fun k0 v m => fun k1 => if dec k0 k1 then Some v else m k1)
-    (fun k0 m => fun k1 => if dec k0 k1 then None else m k1)
-    (fun k m => m k)
-    (fun m0 m1 => fun k => match (m0 k) with
-                           | Some v => Some v
-                           | _ => m1 k
-                           end)
-.
+(* Instance function_Map (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}): (Map K V (K -> option V)) := *)
+(*   Build_Map *)
+(*     (fun _ => None) *)
+(*     (fun k0 v m => fun k1 => if dec k0 k1 then Some v else m k1) *)
+(*     (fun k0 m => fun k1 => if dec k0 k1 then None else m k1) *)
+(*     (fun k m => m k) *)
+(*     (fun m0 m1 => fun k => match (m0 k) with *)
+(*                            | Some v => Some v *)
+(*                            | _ => m1 k *)
+(*                            end) *)
+(* . *)
 
 
 

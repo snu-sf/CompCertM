@@ -38,40 +38,12 @@ Require Import GlobalenvsC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton.
 
+Require Import Program.
+
 
 
 
 Set Implicit Arguments.
-
-
-
-
-
-
-
-
-
-
-
-Module Ge.
-
-  Definition t: Type := (list ModSem.t).
-
-  Inductive find_fptr_owner (ge: t) (fptr: val) (ms: ModSem.t): Prop :=
-  | find_fptr_owner_intro
-      (MODSEM: In ms ge) <--------------------------------------- this one
-      if_sig
-      (INTERNAL: Genv.find_funct ms.(ModSem.skenv) fptr = Some (Internal if_sig)).
-
-  Inductive disjoint (ge: t): Prop :=
-  | disjoint_intro
-      (DISJOINT: forall fptr ms0 ms1
-          (FIND0: ge.(find_fptr_owner) fptr ms0)
-          (FIND1: ge.(find_fptr_owner) fptr ms1),
-          ms0 = ms1).
-
-End Ge.
-
 
 
 
@@ -284,7 +256,6 @@ Section MODSEM.
   Definition genvtype: Type := unit.
   Let ge: genvtype := tt.
 
-  Set Printing Universes.
   Definition state := itree eff1 (owned_heap * mem * val' * list val').
 
   Let denote_program := denote_program p skenv.
@@ -359,9 +330,6 @@ Section MODSEM.
     :
       step se ge st0 tr st1
   .
-
-  Set Printing Universes.
-  (* Print Universes. *)
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;

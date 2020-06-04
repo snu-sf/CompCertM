@@ -1,29 +1,3 @@
-Set Printing Universes.
-Variable AAA: Type.
-Variable BBB: Type -> Type.
-Check list.
-Check (list AAA).
-Check BBB (list AAA).
-Print Universes.
-Check list (BBB AAA).
-Check (BBB BBB).
-
-
-Require Import Sem.
-Require Import SIR.
-
-
-
-
-
-
-
-
-
-
-
-
-
 Require Import SimMem.
 Require Import Simulation.
 Require Import AST.

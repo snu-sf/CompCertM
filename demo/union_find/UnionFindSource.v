@@ -42,22 +42,34 @@ Definition g_makeSet:
   (ident * globdef (fundef (SIR.function owned_heap)) unit) :=
   (_makeSet, Gfun(Internal f_makeSet)).
 
+Definition assume (P: Prop): itree (eff owned_heap) unit :=
+  if ClassicalDescription.excluded_middle_informative P
+  then Ret tt
+  else triggerUB "assume"
+.
+  
+Definition guarantee (P: Prop): itree (eff owned_heap) unit :=
+  if ClassicalDescription.excluded_middle_informative P
+  then Ret tt
+  else triggerNB "guarantee"
+.
+
 Definition c_find (oh0: owned_heap) (vs: list val) (m0: mem):
   itree (eff owned_heap) (owned_heap * mem * val) :=
   match vs with
   | [Vptr x ofs] =>
-    if Ptrofs.eq_dec ofs Ptrofs.zero
-    then '(p, _) <- unwrapU (oh0 blk) ;;
-         if negb (block_eq p x)
-         then
-           p0 <- trigger (ICall _find oh0 ([Vptr p Ptrofs.zero]) m0) ;;
-           match p0 with
-           | [Vptr p0 ofs] =>
-             if Ptrofs.eq_dec ofs Ptrofs.zero
-             then triggerNB ""
-             else triggerNB ""
-         else triggerNB ""
-    else triggerUB ""
+    assume (Ptrofs.eq_dec ofs Ptrofs.zero) ;;
+    '(p, rx) <- unwrapU (oh0 blk) ;;
+    if negb (block_eq p x)
+    then
+      p0 <- trigger (ICall _find oh0 ([Vptr p Ptrofs.zero]) m0) ;;
+      match p0 with
+      | [Vptr p0 ofs] =>
+        guarantee (Ptrofs.eq_dec ofs Ptrofs.zero) ;;
+        let oh1 := update oh0 x (Some (p0, rx)) in
+        Ret tt
+    else Ret tt;;
+    Ret (
   | _ => triggerUB ""
   end
 .
@@ -67,8 +79,7 @@ struct Node* find(struct Node* x) {
   p = x -> parent;
   if (p != x) {
     p0 = find(p);
-    p = p0;
-    x -> parent = p;
+    x -> parent = p0;
   }
   return p;
 };

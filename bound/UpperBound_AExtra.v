@@ -93,7 +93,8 @@ Section SIM.
   Proof.
     subst_locals.
     unfold link_sk.
-    rewrite ! map_app. ss.
+    rewrite <- PList.map_mono.
+    rewrite ! PList.map_app. ss.
     symmetry. eapply link_list_app_commut; eauto.
 
     clear - FOCUS.

@@ -28,7 +28,7 @@ Section PRSV.
       p sk_link mss
       (LINK: link_sk p = Some sk_link)
       (MSS: (Sem.sem p).(Smallstep.globalenv) = mss)
-      (UNIQ: Midx.NoDup (map ModSem.midx mss))
+      (UNIQ: Midx.NoDup (PList.map ModSem.midx mss))
     ,
       (* (<<NTHIDX: forall *)
       (*     n ms *)
@@ -273,7 +273,9 @@ Section PRSV.
         instantiate (1:= ms.(ModSem.midx)).
         ss. des; clarify; ss; et. right. rewrite in_map_iff. esplits; et.
       }
-      unfold mss. intro T. unfold load_owned_heaps. subst mss. rewrite T. ss.
+      unfold mss. intro T. unfold load_owned_heaps. subst mss.
+      rewrite PList.map_mono in *.
+      rewrite T. ss.
     -
       hexploit (Midx.list_to_set_spec2
                   (map (fun ms => (ms.(ModSem.midx), upcast (ms.(ModSem.initial_owned_heap)))) mss)); et.

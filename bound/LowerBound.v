@@ -57,7 +57,7 @@ Proof.
                      (map Mod.sk (map module progs))) = Some sk).
   { unfold link_sk, link_list in *. des_ifs_safe.
     eapply (@stricter_link_list_aux _ (@Linker_prog (AST.fundef signature) unit (Linking.Linker_fundef signature) Linker_unit) (@Linker_prog (AST.fundef signature) unit Linker_skfundef Linker_unit)) in Heq.
-    - rewrite Heq. auto.
+    - rewrite <- PList.map_mono. rewrite Heq. auto.
     - clear Heq.
       Local Transparent Linker_prog Linker_def Linking.Linker_fundef Linker_skfundef.
       i. ss. unfold link_prog, proj_sumbool, andb in *. des_ifs_safe.
@@ -1782,7 +1782,7 @@ Section PRESERVATION.
               exploit ModSem.midx_none; et. intro T. remember (ModSem.initial_owned_heap x) as X.
               clear HeqX. revert X. rewrite T. i. des_u. ss.
             }
-            intro T. ss. rewrite T. clear T. ss. rewrite in_map_iff in *. des; ss. clarify. ss.
+            intro T. ss. rewrite PList.map_mono. rewrite T. clear T. ss. rewrite in_map_iff in *. des; ss. clarify. ss.
             unfold load_modsems, flip in *. rewrite in_map_iff in *. des; ss. clarify.
             subst prog. rewrite in_map_iff in *. des; clarify.
           }

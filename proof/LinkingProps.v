@@ -780,7 +780,7 @@ Lemma link_sk_prepend_eq
       (SAME: link_sk A = link_sk B):
     link_sk (C ++ A) = link_sk (C ++ B).
 Proof.
-  unfold link_sk in *. rewrite ! map_app. eapply link_list_prepend_eq; et.
+  unfold link_sk in *. rewrite ! PList.map_app. eapply link_list_prepend_eq; et.
   des. destruct A, B; ss.
 Qed.
 
@@ -793,7 +793,7 @@ Lemma link_sk_assoc_one ctx (mA mB mL: Mod.t)
     = link_sk ([mL] ++ ctx).
 Proof.
   unfold link_sk. ss.
-  apply link_list_assoc_one; ss. ii. rewrite in_map_iff in *. des; clarify. et.
+  apply link_list_assoc_one; ss. ii. rewrite PList.map_mono in H. rewrite in_map_iff in *. des; clarify. et.
 Qed.
 
 Lemma link_sk_main_eq

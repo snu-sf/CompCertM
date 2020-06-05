@@ -23,10 +23,10 @@ From ITree Require Export
      (* Events.StateFacts *)
 .
 
-Import SumNotations.
-Import ITreeNotations.
-Import Monads.
-Import MonadNotation.
+Export SumNotations.
+Export ITreeNotations.
+Export Monads.
+Export MonadNotation.
 
 Require Import MapsC.
 Require Import ValuesC.
@@ -40,69 +40,9 @@ Require Import Mod ModSem Any Skeleton.
 
 Require Import Program.
 
-
-
-
 Set Implicit Arguments.
 
 
-
-
-(*** Put some other place ***)
-(* Instance function_Map (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}): (Map K V (K -> option V)) := *)
-(*   Build_Map *)
-(*     (fun _ => None) *)
-(*     (fun k0 v m => fun k1 => if dec k0 k1 then Some v else m k1) *)
-(*     (fun k0 m => fun k1 => if dec k0 k1 then None else m k1) *)
-(*     (fun k m => m k) *)
-(*     (fun m0 m1 => fun k => match (m0 k) with *)
-(*                            | Some v => Some v *)
-(*                            | _ => m1 k *)
-(*                            end) *)
-(* . *)
-
-
-
-(* Section SCOPE. *)
-(*   Context {eff : Type -> Type}. *)
-(*   Context {HasInternalCall: InternalCallE -< eff}. *)
-(*   Context {HasExternalCall: ExternalCallE -< eff}. *)
-(*   Context {HasLocal: LocalE -< eff}. *)
-(*   Context {HasMem: MemE -< eff}. *)
-(*   Context {HasEvent: EventE -< eff}. *)
-(* End SCOPE. *)
-Section TMP.
-  Local Open Scope sum_scope.
-  Variable A: Type -> Type.
-  Variable B: Type -> Type.
-  Variable C: Type -> Type.
-  Variable D: Type -> Type.
-  Variable E: Type -> Type.
-  Let eff: Type -> Type := A +' B +' C +' D +' E.
-  Check ((A +' B) +' (C +' D)) +' E.
-  Variable a: A unit.
-  Variable c: C unit.
-  Check (a).
-  Check (|a).
-  Check (||a).
-  Check (|||a).
-  Check (|||||||a).
-  Check (a|).
-  (* Check (a||). *)
-  Check (|a|).
-  Check (||a|).
-  Check (||||||a|).
-  (* Check (||||a||). *)
-  Check (trigger c: itree eff unit).
-End TMP.
-
-
-
-
-Definition val': Type := val + Any.
-Definition Vabs := (@inr val Any).
-Definition val_to_val': val -> val' := inl.
-Coercion val_to_val': val >-> val'.
 
 
 
@@ -127,8 +67,8 @@ Section EFF.
   .
 
   Variant InternalCallE: Type -> Type :=
-  | ICall (oh: owned_heap) (name: ident) (vs: list val') (m: mem):
-      InternalCallE (owned_heap * mem * val' * list val')
+  | ICall (name: ident) (oh: owned_heap) (vs: list val) (m: mem):
+      InternalCallE (owned_heap * mem * val)
   .
 
   Variant ExternalCallE: Type -> Type :=
@@ -173,7 +113,9 @@ Definition unwrapU {E X} `{EventE -< E} (x: option X): itree E X :=
 
 
 Record function : Type := mkfunction
-  { fn_sig: signature; fn_code: (InternalCallE ~> itree eff); }
+  { fn_sig: signature;
+    fn_code: (forall (oh: owned_heap) (vs: list val) (m: mem),
+                 itree eff (owned_heap * mem * val)); }
 .
 
 Definition program: Type := AST.program (fundef function) unit.
@@ -187,12 +129,12 @@ Section DENOTE.
 
   Definition denote_function: (InternalCallE ~> itree eff) :=
     fun T ei =>
-      let '(ICall oh func_name vs m) := ei in
+      let '(ICall func_name oh vs m) := ei in
       match (find (fun nf => ident_eq func_name (fst nf)) p.(prog_defs)) with
       | Some (_, Gfun (Internal f)) =>
       (* match (prog_defmap p) ! func_name with *)
       (* | Some (Gfun (Internal f)) => *)
-        (f.(fn_code) ei)
+        (f.(fn_code) oh vs m)
         (* trigger LPush ;; *)
         (*         retv <- f.(fn_code) ei ;; *)
         (*         trigger LPop ;; *)
@@ -248,15 +190,15 @@ End DENOTE.
 Section MODSEM.
 
   Variable mi: string.
-  Variable initial_owned_heap: owned_heap.
   Variable skenv_link: SkEnv.t.
+  Variable initial_owned_heap: owned_heap.
   Variable p: program.
   Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program fn_sig p).
   (* Let ge: genv := (SkEnv.revive skenv) p. *)
   Definition genvtype: Type := unit.
   Let ge: genvtype := tt.
 
-  Definition state := itree eff1 (owned_heap * mem * val' * list val').
+  Definition state := itree eff1 (owned_heap * mem * val).
 
   Let denote_program := denote_program p skenv.
 
@@ -267,7 +209,7 @@ Section MODSEM.
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
       (VS: (Args.vs args) = vs)
       (M: (Args.m args) = m0)
-      (DENOTE: denote_program (ICall oh0 fid (List.map val_to_val' vs) m0) = itr)
+      (DENOTE: denote_program (ICall fid oh0 vs m0) = itr)
     :
       initial_frame oh0 args itr
   .
@@ -282,7 +224,7 @@ Section MODSEM.
   .
 
   Inductive get_k (st0: state):
-    (owned_heap * mem * val -> itree eff1 (owned_heap * mem * val' * list val')) -> Prop :=
+    (owned_heap * mem * val -> itree eff1 (owned_heap * mem * val)) -> Prop :=
   | get_k_intro
       _oh0 _m0 _fptr _vs k
       (VIS: (observe st0) = VisF (subevent _ (ECall _oh0 _fptr _vs _m0)) k)
@@ -303,8 +245,8 @@ Section MODSEM.
 
   Inductive final_frame (st0: state): owned_heap -> Retv.t -> Prop :=
   | final_frame_intro
-      oh0 m0 (rv: val) _rvs retv
-      (RET: (observe st0) = RetF (oh0, m0, rv: val', _rvs))
+      oh0 m0 (rv: val) retv
+      (RET: (observe st0) = RetF (oh0, m0, rv: val))
       (RETV: retv = Retv.mk rv m0)
     :
       final_frame st0 oh0 retv
@@ -366,8 +308,10 @@ Section MODSEM.
 
 End MODSEM.
 
-Program Definition module (p: program) (mi: string) (initial_owned_heap: owned_heap): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := (Sk.of_program fn_sig); Mod.get_modsem := modsem mi initial_owned_heap;
+Program Definition module (p: program) (mi: string) (initial_owned_heap: SkEnv.t -> owned_heap): Mod.t :=
+  {| Mod.data := p; Mod.get_sk := (Sk.of_program fn_sig);
+     Mod.get_modsem := fun skenv_link p => modsem mi skenv_link
+                                                  (initial_owned_heap skenv_link) p;
      Mod.midx := Some mi |}
 .
 

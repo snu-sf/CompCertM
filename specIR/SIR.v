@@ -94,6 +94,7 @@ Section EFF.
   | ENB (msg: string): EventE void
   | EUB (msg: string): EventE void
   | ESyscall (ef: external_function) (args: list val): EventE (val)
+  | EDone (v: val): EventE void
   .
 
   Definition eff0: Type -> Type := Eval compute in ExternalCallE +' EventE.
@@ -102,14 +103,20 @@ Section EFF.
   Definition eff3: Type -> Type := Eval compute in GlobalE +' eff2.
   Definition eff4: Type -> Type := Eval compute in LocalE +' eff3.
   Definition eff5: Type -> Type := Eval compute in InternalCallE +' eff4.
+  Definition E := Eval compute in eff5.
 
 End EFF.
 
+(* Q: Why manually match "void" type, not using "embed" or "trigger"?
+   A: It returns arbitrary type "A", not "void" *)
 Definition triggerUB {E A} `{EventE -< E} (msg: string): itree E A :=
   vis (EUB msg) (fun v => match v: void with end)
 .
 Definition triggerNB {E A} `{EventE -< E} (msg: string) : itree E A :=
   vis (ENB msg) (fun v => match v: void with end)
+.
+Definition triggerDone {E A} `{EventE -< E} (v: val): itree E A :=
+  vis (EDone v) (fun v => match v: void with end)
 .
 
 Definition unwrapN {E X} `{EventE -< E} (x: option X): itree E X :=
@@ -302,6 +309,14 @@ Section MODSEM.
       (ST0: st0 = mk itr0 oh0 m0)
       (TR: tr = E0)
       (ST1: st1 = mk (k rv) oh0 m1)
+  | step_done
+      itr0 oh0 m0
+      v k
+      (VIS: (observe st0) = VisF (subevent _ (EDone v)) k)
+
+      (ST0: st0 = mk itr0 oh0 m0)
+      (TR: tr = E0)
+      (ST1: st1 = mk (Ret v) oh0 m0)
   | step_mget
       itr0 oh0 m0
       k

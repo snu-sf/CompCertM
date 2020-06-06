@@ -9,27 +9,35 @@ Require ClightC.
 Require Import UnionFindTarget.
 Require Import SIR.
 
+From ExtLib Require Import
+     OptionMonad
+     Functor FunctorLaws
+.
+Import FunctorNotation.
+
 Set Implicit Arguments.
 
 Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify.
 
-Definition key: Type := block.
+Definition update V (map: block -> option V) (k0: block) (v: option V): block -> option V :=
+  fun k1 => if eq_block k0 k1 then v else map k1.
 
-Definition eq_key: forall (x y: key), {x = y} + {x <> y}.
-  decide equality.
-Defined.
-
-Definition update V (map: key -> option V) (k0: key) (v: option V): key -> option V :=
-  fun k1 => if eq_key k0 k1 then v else map k1.
-
-Definition owned_heap: Type := key -> option (key * int).
+Definition owned_heap: Type := block -> option (block * int).
 Definition initial_owned_heap: SkEnv.t -> owned_heap := fun _ => fun _ => None.
 
 Variable global_definitions:
   list (ident * globdef (fundef (SIR.function owned_heap)) unit).
 
-Definition c_makeSet (oh0: owned_heap) (vs: list val) (m0: mem):
-  itree (eff owned_heap) (owned_heap * mem * val) :=
+Definition c_makeSet (vs: list val): itree (E owned_heap) val :=
+  m0 <- trigger (Get _) ;; oh0 <- trigger (Get _) ;;
+  let '(m1, blk) := (Mem.alloc m0 0%Z 0%Z) in
+  let oh1 := update oh0 blk (Some (blk, Int.zero)) in
+  trigger (Put _ m1) ;; trigger (Put _ oh1) ;;
+  Ret (Vptr blk Ptrofs.zero)
+.
+
+Definition c_makeSet_old (oh0: owned_heap) (vs: list val) (m0: mem):
+  itree (E owned_heap) (owned_heap * mem * val) :=
   let '(m1, blk) := (Mem.alloc m0 0%Z 0%Z) in
   let oh1 := update oh0 blk (Some (blk, Int.zero)) in
   Ret (oh1, m1, (Vptr blk Ptrofs.zero))
@@ -42,17 +50,62 @@ Definition g_makeSet:
   (ident * globdef (fundef (SIR.function owned_heap)) unit) :=
   (_makeSet, Gfun(Internal f_makeSet)).
 
-Definition assume (P: Prop): itree (eff owned_heap) unit :=
+Definition assume (P: Prop): itree (E owned_heap) unit :=
   if ClassicalDescription.excluded_middle_informative P
   then Ret tt
   else triggerUB "assume"
 .
   
-Definition guarantee (P: Prop): itree (eff owned_heap) unit :=
+Definition guarantee (P: Prop): itree (E owned_heap) unit :=
   if ClassicalDescription.excluded_middle_informative P
   then Ret tt
   else triggerNB "guarantee"
 .
+
+Definition unblock (v: val): option block :=
+  match v with
+  | Vptr blk ofs =>
+    if Ptrofs.eq_dec ofs Ptrofs.zero
+    then Some blk
+    else None
+  | _ => None
+  end
+.
+
+Local Open Scope monad_scope.
+
+Definition c_find (vs: list val):
+  itree (E owned_heap) val :=
+  oh0 <- trigger (Get _) ;;
+  x <- unwrapU ((hd_error vs) >>= unblock) ;;
+  '(p, _) <- unwrapU (oh0 x) ;;
+  if negb (eq_block p x)
+  (* then (p0 <- trigger (ICall _find [Vptr p Ptrofs.zero]) ;; *)
+  (*          p0 <- unwrapN (unblock p0);; *)
+  (*         triggerUB "") *)
+  then p0 <- (unblock <$> (trigger (ICall _find [Vptr p Ptrofs.zero])) >>= unwrapN) ;;
+          triggerUB ""
+  else triggerUB ""
+  (* x <- (@bind option Monad_option _ _ (hd_error vs) unblock) ;; *)
+  (* triggerUB "" *)
+.
+Variable E: Type -> Type.
+Variable R: Type.
+Definition trans `{EventE -< E} (itr: itree E (option R)): (itree E R) :=
+  (* r <- itr ;; r <- unwrapN r ;; Ret r *)
+  itr >>= unwrapN
+.
+  
+Variable itr: itree E (option R).
+Definition itr2: option (itree E R).
+MonadIter_optionT
+optionT
+
+  if (p != x) {
+    p0 = find(p);
+    x -> parent = p0;
+  }
+  return p;
 
 Definition c_find (oh0: owned_heap) (vs: list val) (m0: mem):
   itree (eff owned_heap) (owned_heap * mem * val) :=

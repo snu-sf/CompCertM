@@ -72,7 +72,8 @@ Section MODSEM.
       (DENOTE: denote_program3 (ICall fid vs) = itr)
 
       st0
-      (ST: st0 = (mk (Tau itr) nil oh0 m0))
+      (* (ST: st0 = (mk (Tau itr) nil oh0 m0)) *)
+      (ST: st0 = (mk itr nil oh0 m0))
     :
       initial_frame oh0 args st0
   .

@@ -15,9 +15,10 @@ Require Import EventsC.
 Require Import GlobalenvsC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton.
-Require Import SIRCommon.
+Require Export SIRCommon.
 
 Require Import Program.
+Require Import Simulation.
 
 Set Implicit Arguments.
 
@@ -71,7 +72,7 @@ Section MODSEM.
       (DENOTE: denote_program3 (ICall fid vs) = itr)
 
       st0
-      (ST: st0 = (mk itr nil oh0 m0))
+      (ST: st0 = (mk (Tau itr) nil oh0 m0))
     :
       initial_frame oh0 args st0
   .
@@ -245,6 +246,15 @@ Section MODSEM.
   Qed.
   Next Obligation.
     ii. des. inv PR; ss. inv PR0; ss; clarify; try rewrite VIS in *; ss; clarify.
+  Qed.
+
+  Lemma modsem_receptive: forall st, receptive_at modsem st.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Unshelve.
+    all: ss.
   Qed.
 
 End MODSEM.

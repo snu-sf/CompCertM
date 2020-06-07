@@ -13,7 +13,7 @@ Require SimMemExtSep.
 Require Import Clightdefs.
 Require Import CtypesC.
 Require Import Any.
-Require Import SIR.
+Require Import SIR3.
 Require Import UnionFindSource.
 Require Import UnionFindTarget.
 
@@ -159,43 +159,93 @@ Proof.
   admit "ez - FINDF".
 Qed.
 
-Inductive match_states_internal: SIR.state owned_heap -> Clight.state -> Prop :=
+Inductive match_stacks: lenv -> cont -> Prop :=
+| match_stacks_nil
+  :
+    match_stacks nil Kstop
+| match_stacks_cons
+    hd tl
+    fid fdef e te k
+    (TL: match_stacks tl k)
+    (HD: forall x v, hd x = Some v <-> te ! x = Some v)
+  :
+    match_stacks (hd :: tl) (Kcall fid fdef e te k)
+.
+
+Inductive match_states_internal: SIR3.state owned_heap -> Clight.state -> Prop :=
 | match_initial
     itr0 oh0 ty m_src0 vs_src m_tgt0 vs_tgt
     fid fblk fptr_tgt
+    itr1
     (SYMB: Genv.find_symbol ge fid = Some fblk)
     (FPTR: fptr_tgt = (Vptr fblk Ptrofs.zero))
-    (ITR: itr0 = denote_program UnionFindSource.prog ge (ICall fid vs_src))
+    (ITR: itr0 = denote_program3 UnionFindSource.prog ge (ICall fid vs_src))
+    (TAU: observe itr0 = TauF itr1)
   :
-    match_states_internal (SIR.mk itr0 oh0 m_src0)
+    match_states_internal (SIR3.mk itr0 nil oh0 m_src0)
                           (Clight.Callstate fptr_tgt ty vs_tgt Kstop m_tgt0)
 | match_at_external
-    itr0 oh0 m_src0 m_tgt0
+    itr0 le0 oh0 m_src0 m_tgt0
     fptr_src fptr_tgt vs_src vs_tgt
-    k_src k_tgt ty
-    (VIS: observe itr0 = VisF (subevent _ (ECall fptr_src vs_src)) k_src)
+    itr1 k_tgt ty
+    (STK: match_stacks le0 k_tgt)
+    (CALL: observe itr0 = VisF (subevent _ (ECall fptr_src vs_src)) itr1)
     (FPTR: Val.lessdef fptr_src fptr_tgt)
     (VALS: Val.lessdef_list vs_src vs_tgt)
   :
-    match_states_internal (SIR.mk itr0 oh0 m_src0)
+    match_states_internal (SIR3.mk itr0 le0 oh0 m_src0)
                           (Clight.Callstate fptr_tgt ty vs_tgt k_tgt m_tgt0)
-| match_final
-    itr0 oh0 m_src0 v_src m_tgt0 v_tgt
-    (ITR: (observe itr0) = RetF v_src)
+| match_normal
+    itr0 hd tl oh0 m_src0 m_tgt0
+    f s k e te
+    itr1
+    (TAU: observe itr0 = TauF itr1)
+    (ENV: forall x v, hd x = Some v <-> te ! x = Some v)
+    (STK: match_stacks tl k)
   :
-    match_states_internal (SIR.mk itr0 oh0 m_src0) (Clight.Returnstate v_tgt Kstop m_tgt0)
+    match_states_internal (SIR3.mk itr0 (hd :: tl) oh0 m_src0)
+                          (Clight.State f s k e te m_tgt0)
+| match_final
+    itr0 le0 oh0 m_src0 v_src m_tgt0 v_tgt
+    (RET: (observe itr0) = RetF v_src)
+  :
+    match_states_internal (SIR3.mk itr0 le0 oh0 m_src0) (Clight.Returnstate v_tgt Kstop m_tgt0)
 .
 
 Inductive match_states
           (i: nat) (st_src0: state owned_heap) (st_tgt0: Clight.state) (smo0: SimMemOh.t): Prop :=
 | match_states_intro
     (MATCHST: match_states_internal st_src0 st_tgt0)
-    (OH: smo0.(oh_src) = upcast (SIR.oh st_src0))
-    (MSRC: (SIR.m st_src0) = smo0.(SimMem.src))
+    (OH: smo0.(oh_src) = upcast (SIR3.oh st_src0))
+    (MSRC: (SIR3.m st_src0) = smo0.(SimMem.src))
     (MTGT: (ClightC.get_mem st_tgt0) = smo0.(SimMem.tgt))
     (MWF: SimMemOh.wf smo0)
     (IDX: (i >= 100)%nat)
 .
+
+Lemma match_states_lxsim
+      idx st_src0 st_tgt0 sm0
+      (MATCH: match_states idx st_src0 st_tgt0 sm0)
+  :
+    <<XSIM: lxsimL (md_src skenv_link) (md_tgt skenv_link)
+                   (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
+                   top3 (fun _ _ => SimMemOh.le)
+                   (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
+.
+Proof.
+  revert_until tge.
+  pcofix CIH.
+  i.
+  pfold.
+  inv MATCH. subst; ss. ii. clear SUSTAR. inv MATCHST; ss; clarify.
+  - econs 1; eauto. ii. econs 1; eauto; swap 2 3.
+    { esplits; intro T; rr in T; des; inv T; ss; rewrite TAU in *; clarify. }
+    { eapply modsem_receptive; et. }
+    ii. ss. inv STEPSRC; ss; try rewrite TAU in *; clarify.
+    esplits; et; try refl.
+    left.
+  -
+Qed.
 
 Theorem sim_modsem: ModSemPair.sim msp.
 Proof.
@@ -226,7 +276,7 @@ Proof.
     + admit "ez - FINDF".
     + admit "ez - FINDF".
   - ii. inv MATCH. ss.
-  - ii. ss. inv CALLSRC. inv MATCH. esplits; et.
+  - ii. ss. inv CALLSRC. inv MATCH. inv MATCHST; ss. esplits; et.
     + econs; et.
   }
   { }

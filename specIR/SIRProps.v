@@ -54,10 +54,10 @@ Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_
 Print SIR2.state.
 Print SIR3.state.
 
-Theorem sim_modsem: ModSemPair.sim msp.
-Proof.
-  econs; eauto.
-Qed.
+(* Theorem sim_modsem: ModSemPair.sim msp. *)
+(* Proof. *)
+(*   econs; eauto. *)
+(* Qed. *)
 
 End SIMMODSEM.
 
@@ -67,17 +67,17 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Variable prog: program owned_heap.
-Variable mi: string.
+(* Variable prog: program owned_heap. *)
+(* Variable mi: string. *)
 
-Definition mp: ModPair.t := SimSymbId.mk_mp (SIR0.module prog mi initial_owned_heap)
-                                            (SIR2.module prog mi initial_owned_heap).
+(* Definition mp: ModPair.t := SimSymbId.mk_mp (SIR0.module prog mi initial_owned_heap) *)
+(*                                             (SIR2.module prog mi initial_owned_heap). *)
 
-Theorem sim_mod: ModPair.sim mp.
-Proof.
-  econs; ss.
-  - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
-Qed.
+(* Theorem sim_mod: ModPair.sim mp. *)
+(* Proof. *)
+(*   econs; ss. *)
+(*   - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto. *)
+(* Qed. *)
 
 End SIMMOD.
 

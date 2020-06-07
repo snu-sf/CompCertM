@@ -7,18 +7,32 @@ Require Import sflib.
 Require Import IntegersC.
 
 Require Import Simulation.
-Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift MatchSimModSem.
+Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift MatchSimModSemExcl.
 Require SoundTop.
 Require SimMemExtSep.
 Require Import Clightdefs.
 Require Import CtypesC.
 Require Import Any.
-Require Import UnionFindSource UnionFindTarget.
+Require Import SIR.
+Require Import UnionFindSource.
+Require Import UnionFindTarget.
 
 Set Implicit Arguments.
 
 
 
+
+(*** TODO: move to proper place ***)
+Lemma brange_shorten
+      blk lo0 hi0 lo1 hi1
+      (LO: lo1 <= lo0)
+      (HI: hi0 <= hi1)
+  :
+    <<SHORT: brange blk lo0 hi0 <2= brange blk lo1 hi1>>
+.
+Proof.
+  u. ii; des; esplits; et; xomega.
+Qed.
 
 
 
@@ -33,8 +47,6 @@ Section SMO.
     }
   .
 
-  Set Printing Universes.
-
   Inductive wf (smo: t): Prop :=
   | wf_intro
       (MWF: SimMem.wf smo)
@@ -46,21 +58,17 @@ Section SMO.
           (SOME: map k = Some (blk, rk))
         ,
           (<<VLSRC: Mem.valid_block smo.(SimMem.src) k>>) /\
-          (<<PM: (brange k (-8)%Z 12%Z) <2= privmods (Some "OHAlloc") smo.(sm).(SimMem.ptt_src)>>) /\
-          (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt) Mint64 k (-8)%Z Freeable>>) /\
-          (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt) Mint32 k 0%Z Freeable>>) /\
-          (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt) Mint64 k 4%Z Freeable>>) /\
-          (<<LDTGT: Mem.load Mint64 smo.(SimMem.tgt) k (-8)%Z = Some (Vptrofs (Ptrofs.repr 12%Z))>>) /\
-          (<<LDTGT: Mem.load Mint32 smo.(SimMem.tgt) k 0%Z = Some (Vint rk)>>) /\
-          (<<LDTGT: Mem.load Mint32 smo.(SimMem.tgt) k 4%Z = Some (Vptr blk Ptrofs.zero)>>)
+          (<<PM: (brange k (-8) 12) <2= privmods (Some "UF") smo.(sm).(SimMem.ptt_src)>>) /\
+          (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt) Mint64 k (-8) Freeable>>) /\
+          (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt) Mint32 k 0 Freeable>>) /\
+          (<<PERMTGT: Mem.valid_access smo.(SimMem.tgt) Mint64 k 4 Freeable>>) /\
+          (<<LDTGT: Mem.load Mint64 smo.(SimMem.tgt) k (-8) = Some (Vptrofs (Ptrofs.repr 12))>>) /\
+          (<<LDTGT: Mem.load Mint32 smo.(SimMem.tgt) k 0 = Some (Vint rk)>>) /\
+          (<<LDTGT: Mem.load Mint32 smo.(SimMem.tgt) k 4 = Some (Vptr blk Ptrofs.zero)>>)
       )
   .
 
   Local Obligation Tactic := try (by ii; des; ss).
-
-The term "t" has type "Type@{max(t.u0+1,t.u1+1,SimMem.class.u0)}" while it is expected to have type
- "Type@{SimMemOh.class.u0}" (universe inconsistency: Cannot enforce t.u0 < SimMemOh.class.u0 because
-SimMemOh.class.u0 <= upcast.u2 = t.u0).
 
   Program Instance SimMemOh: (SimMemOh.class) :=
     {|
@@ -71,7 +79,7 @@ SimMemOh.class.u0 <= upcast.u2 = t.u0).
       SimMemOh.wf := wf;
       SimMemOh.le := SimMem.le;
       SimMemOh.lepriv := SimMem.lepriv;
-      SimMemOh.midx := Some "OHAlloc";
+      SimMemOh.midx := Some "UF";
       SimMemOh.set_sm := fun smo sm => mk sm smo.(oh_src) smo.(oh_tgt);
     |}
   .
@@ -82,19 +90,28 @@ SimMemOh.class.u0 <= upcast.u2 = t.u0).
     ii. inv WF.
     econs; ss; et.
     ii. exploit SOME; et. i; des. esplits; ss; et.
-    - eapply Mem_unchanged_noperm; eauto.
     - eapply Mem.valid_block_unchanged_on; et.
     - eapply Mem_valid_access_unchanged_on; et.
       eapply Mem.unchanged_on_implies; et; ss. ii.
-      exploit PMTGT; et.
-    - eapply Mem.load_unchanged_on; et. ii. ss. eapply PM; et.
-    - ii.
-      destruct is_raw; ss.
-      exploit NEW; eauto. i; des. esplits; eauto.
-      + eapply Mem_valid_access_unchanged_on; et.
-        eapply Mem.unchanged_on_implies; et; ss. ii.
-        exploit PMTGT; et.
-      + eapply Mem.load_unchanged_on; et. ii. ss. eapply PMNEW; et.
+      erewrite PM; ss.
+      eapply brange_shorten; et; xomega.
+    - eapply Mem_valid_access_unchanged_on; et.
+      eapply Mem.unchanged_on_implies; et; ss. ii.
+      erewrite PM; ss.
+      eapply brange_shorten; et; xomega.
+    - eapply Mem_valid_access_unchanged_on; et.
+      eapply Mem.unchanged_on_implies; et; ss. ii.
+      erewrite PM; ss.
+      eapply brange_shorten; et; xomega.
+    - eapply Mem.load_unchanged_on; et. ii. ss.
+      erewrite PM; ss.
+      eapply brange_shorten; et; xomega.
+    - eapply Mem.load_unchanged_on; et. ii. ss.
+      erewrite PM; ss.
+      eapply brange_shorten; et; xomega.
+    - eapply Mem.load_unchanged_on; et. ii. ss.
+      erewrite PM; ss.
+      eapply brange_shorten; et; xomega.
   Qed.
   Next Obligation.
     ss. ii. destruct smo0; ss.
@@ -103,6 +120,13 @@ SimMemOh.class.u0 <= upcast.u2 = t.u0).
 End SMO.
 
 
+
+Let sk_same: (CSk.of_program signature_of_function prog) =
+             (Sk.of_program (fn_sig (owned_heap:=owned_heap)) UnionFindSource.prog).
+Proof.
+  (*** TODO: generalize lemma and replace CshmgenproofC? ***)
+  unfold CSk.of_program, Sk.of_program. ss.
+Qed.
 
 
 
@@ -121,33 +145,119 @@ Hypothesis (WF: SkEnv.wf skenv_link).
 Let ge := (SkEnv.project skenv_link (Mod.sk md_src)).
 Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) prog) prog.(prog_comp_env).
 Definition msp: ModSemPair.t :=
-  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
+  ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link SimMemOh.
 
-Inductive match_states
-          (idx: nat) (st_src0: SIR.state owned_heap) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
-| match_states_intro
-    (* (MATCHST: match_states_internal idx st_src0 st_tgt0) *)
-    (MCOMPATSRC: (SIR.m st_src0) = sm0.(SimMem.src))
-    (MCOMPATTGT: (ClightC.get_mem st_tgt0) = sm0.(SimMem.tgt))
-    (MWF: SimMem.wf sm0)
+Local Existing Instance SimMemOh.
+
+Lemma unsymb
+      fid fblk
+      (FID: Genv.find_symbol ge fid = Some fblk)
+  :
+    <<FID: fid = _makeSet \/ fid = _find \/ fid = _unionS>>
+.
+Proof.
+  admit "ez - FINDF".
+Qed.
+
+Inductive match_states_internal: SIR.state owned_heap -> Clight.state -> Prop :=
+| match_initial
+    itr0 oh0 ty m_src0 vs_src m_tgt0 vs_tgt
+    fid fblk fptr_tgt
+    (SYMB: Genv.find_symbol ge fid = Some fblk)
+    (FPTR: fptr_tgt = (Vptr fblk Ptrofs.zero))
+    (ITR: itr0 = denote_program UnionFindSource.prog ge (ICall fid vs_src))
+  :
+    match_states_internal (SIR.mk itr0 oh0 m_src0)
+                          (Clight.Callstate fptr_tgt ty vs_tgt Kstop m_tgt0)
+| match_at_external
+    itr0 oh0 m_src0 m_tgt0
+    fptr_src fptr_tgt vs_src vs_tgt
+    k_src k_tgt ty
+    (VIS: observe itr0 = VisF (subevent _ (ECall fptr_src vs_src)) k_src)
+    (FPTR: Val.lessdef fptr_src fptr_tgt)
+    (VALS: Val.lessdef_list vs_src vs_tgt)
+  :
+    match_states_internal (SIR.mk itr0 oh0 m_src0)
+                          (Clight.Callstate fptr_tgt ty vs_tgt k_tgt m_tgt0)
+| match_final
+    itr0 oh0 m_src0 v_src m_tgt0 v_tgt
+    (ITR: (observe itr0) = RetF v_src)
+  :
+    match_states_internal (SIR.mk itr0 oh0 m_src0) (Clight.Returnstate v_tgt Kstop m_tgt0)
 .
 
+Inductive match_states
+          (i: nat) (st_src0: state owned_heap) (st_tgt0: Clight.state) (smo0: SimMemOh.t): Prop :=
+| match_states_intro
+    (MATCHST: match_states_internal st_src0 st_tgt0)
+    (OH: smo0.(oh_src) = upcast (SIR.oh st_src0))
+    (MSRC: (SIR.m st_src0) = smo0.(SimMem.src))
+    (MTGT: (ClightC.get_mem st_tgt0) = smo0.(SimMem.tgt))
+    (MWF: SimMemOh.wf smo0)
+    (IDX: (i >= 100)%nat)
+.
+
+Theorem sim_modsem: ModSemPair.sim msp.
+Proof.
+  eapply match_states_sim with
+      (match_states := match_states) (match_states_at := bot4)
+      (has_footprint := top3) (mle_excl := fun _ _ => SimMemOh.le) (sidx := unit) (order := lt);
+    eauto; ss.
+  { eapply lt_wf. }
+  { i. eapply SoundTop.sound_state_local_preservation. }
+  - (* init bsim *)
+    (*** TODO: init fsim ***)
+    ii. rr in SIMARGS. des. ss. inv INITTGT. rewrite ! sk_same in *. ss. folder.
+    inv SIMARGS0; ss. inv SAFESRC. ss. clarify. folder.
+    esplits; et; try refl.
+    + econs; ss; et.
+    + econs; et. inv FPTR. econs; et.
+  - (* init prog *)
+    ii. des. inv SAFESRC. folder. inv SIMARGS; ss. des. inv H; ss. clarify. inv FPTR0; ss.
+    des_ifs. inv TYP.
+    exploit unsymb; et. intro H.
+    des; clarify.
+    + esplits; et. econs; et.
+      * ss. des_ifs. rewrite sk_same. folder. instantiate (1:= f_makeSet). admit "ez - FINDF".
+      * ss. econs; et.
+        assert(fd = (signature_of_function f_makeSet)).
+        { admit "ez - FINDF". }
+        clarify. rewrite <- LEN. sym. eapply lessdef_list_length; ss.
+    + admit "ez - FINDF".
+    + admit "ez - FINDF".
+  - ii. inv MATCH. ss.
+  - ii. ss. inv CALLSRC. inv MATCH. esplits; et.
+    + econs; et.
+  }
+  { }
+  - ss.
+    ii; ss; folder.
+Qed.
+
 Lemma match_states_lxsim
-      idx st_src0 st_tgt0 sm0
-      (MATCH: match_states idx st_src0 st_tgt0 sm0)
+      idx st_src0 st_tgt0 smo0
+      (MATCH: match_states idx st_src0 st_tgt0 smo0)
   :
     <<XSIM: lxsimL (md_src skenv_link) (md_tgt skenv_link)
                    (fun st => unit -> exists su m_init, SoundTop.sound_state su m_init st)
-                   top3 (fun _ _ => SimMem.le)
-                   (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
+                   top3 (fun _ _ => SimMemOh.le)
+                   (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 smo0>>
 .
 Proof.
   revert_until tge.
   pcofix CIH.
   i.
   pfold.
-  inv MATCH; subst. ss.
+  ii. clear SUSTAR.
+  inv MATCH; subst. inv MATCHST; ss.
   - (* call *)
+    clarify.
+    des; clarify.
+    + (* _makeSet *)
+      econs; et. ii. econs; et.
+      {
+    + (* _find *)
+    + (* _unionS *)
     destruct (classic (i = Int.zero)).
     + (* zero *)
       clarify.

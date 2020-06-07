@@ -47,7 +47,7 @@ void unionS(struct Node* x, struct Node* y) {
 
 /////////////////////////////////////////////////
 
-int same_set(struct Node* x, struct Node *y) {
-  return (find(x) == find(y));
-}
+/* int same_set(struct Node* x, struct Node *y) { */
+/*   return (find(x) == find(y)); */
+/* } */
 

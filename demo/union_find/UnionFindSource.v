@@ -98,10 +98,14 @@ Definition c_find (vs: list val): itree (E owned_heap) val :=
 Definition f_find: function owned_heap :=
   mkfunction (ClightC.signature_of_function f_find) c_find.
 
+Definition c_unionS (vs: list val): itree (E owned_heap) val := triggerUB "".
+Definition f_unionS: function owned_heap :=
+  mkfunction (ClightC.signature_of_function f_unionS) c_unionS.
+
 Definition global_definitions: list (ident * globdef (fundef (SIR.function owned_heap)) unit) :=
 ((_malloc, Gfun(External EF_malloc)) ::
  (_makeSet, Gfun(Internal f_makeSet)) :: (_find, Gfun(Internal f_find)) ::
- (* (_unionS, Gfun(Internal f_unionS)) :: *)
+ (_unionS, Gfun(Internal f_unionS)) ::
  (* (_same_set, Gfun(Internal f_same_set)) :: *)
  nil
 )

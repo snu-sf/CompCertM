@@ -11,7 +11,6 @@ Definition _p : ident := 59%positive.
 Definition _p0 : ident := 60%positive.
 Definition _parent : ident := 3%positive.
 Definition _rank : ident := 1%positive.
-Definition _same_set : ident := 68%positive.
 Definition _unionS : ident := 67%positive.
 Definition _x : ident := 57%positive.
 Definition _xRank : ident := 65%positive.
@@ -160,29 +159,6 @@ Definition f_unionS := {|
                     (Econst_int (Int.repr 1) tint) tuint))))))))))
 |}.
 
-Definition f_same_set := {|
-  fn_return := tint;
-  fn_callconv := cc_default;
-  fn_params := ((_x, (tptr (Tstruct _Node noattr))) ::
-                (_y, (tptr (Tstruct _Node noattr))) :: nil);
-  fn_vars := nil;
-  fn_temps := ((_t'2, (tptr (Tstruct _Node noattr))) ::
-               (_t'1, (tptr (Tstruct _Node noattr))) :: nil);
-  fn_body :=
-(Ssequence
-  (Ssequence
-    (Scall (Some _t'1)
-      (Evar _find (Tfunction (Tcons (tptr (Tstruct _Node noattr)) Tnil)
-                    (tptr (Tstruct _Node noattr)) cc_default))
-      ((Etempvar _x (tptr (Tstruct _Node noattr))) :: nil))
-    (Scall (Some _t'2)
-      (Evar _find (Tfunction (Tcons (tptr (Tstruct _Node noattr)) Tnil)
-                    (tptr (Tstruct _Node noattr)) cc_default))
-      ((Etempvar _y (tptr (Tstruct _Node noattr))) :: nil)))
-  (Sreturn (Some (Ebinop Oeq (Etempvar _t'1 (tptr (Tstruct _Node noattr)))
-                   (Etempvar _t'2 (tptr (Tstruct _Node noattr))) tint))))
-|}.
-
 Definition composites : list composite_definition :=
 (Composite _Node Struct
    ((_rank, tuint) :: (_parent, (tptr (Tstruct _Node noattr))) :: nil)
@@ -192,11 +168,10 @@ Definition global_definitions : list (ident * globdef fundef type) :=
 ((_malloc,
    Gfun(External EF_malloc (Tcons tulong Tnil) (tptr tvoid) cc_default)) ::
  (_makeSet, Gfun(Internal f_makeSet)) :: (_find, Gfun(Internal f_find)) ::
- (_unionS, Gfun(Internal f_unionS)) ::
- (_same_set, Gfun(Internal f_same_set)) :: nil).
+ (_unionS, Gfun(Internal f_unionS)) :: nil).
 
 Definition public_idents : list ident :=
-(_same_set :: _unionS :: _find :: _makeSet :: _malloc :: nil).
+(_unionS :: _find :: _makeSet :: _malloc :: nil).
 
 Definition prog : Clight.program := 
   mkprogram composites global_definitions public_idents _main Logic.I.

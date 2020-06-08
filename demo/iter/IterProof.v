@@ -25,6 +25,16 @@ Local Arguments ModSemPair.mk [SM] [SS] _ _ _ _ [SMO].
 
 
 
+(********* TODO: try the same proof with extension ***************)
+(********* TODO: try the same proof with extension ***************)
+(********* TODO: try the same proof with extension ***************)
+(********* TODO: try the same proof with extension ***************)
+(********* TODO: try the same proof with extension ***************)
+(********* TODO: try the same proof with extension ***************)
+(********* TODO: try the same proof with extension ***************)
+(********* TODO: try the same proof with extension ***************)
+(********* TODO: try the same proof with extension ***************)
+(********* TODO: try the same proof with extension ***************)
 
 
 Lemma eq_eutt
@@ -163,9 +173,37 @@ Proof.
     exploit unsymb; et. intro T. des; clarify.
     exploit symb_def; et. intro DEF; des. ss. des_ifs.
     +
+      remember (interp_program0 IterSource.prog ge [] tt m0 (ICall _iter vs)) as itr0 in *.
+      rename Heqitr0 into V.
+      Ltac des_itr itr :=
+        let name := fresh "V" in
+        destruct (observe itr) eqn:name; sym in name; eapply simpobs in name;
+        eapply bisimulation_is_eq in name; subst itr
+      .
+      rewrite itree_eta_ in V. ss. des_itr itr0; ss. rename V0 into V.
+      rewrite <- itree_eta_ in V. symmetry in V.
+
+      unfold interp_program0 in V. ss.
+      apply eq_eutt in V.
+      unfold interp_OwnedHeapE, interp_MemE, interp_LocalE, interp_GlobalE, ITree.map in V.
+      rewrite mrec_as_interp in V. ss.
+      autorewrite with itree in V. cbn in V.
+      rewrite interp_state_trigger in V.
+      
+      unfold interp_state.
+      rewrite itree_eta_ in V. ss. des_itr itr0; ss. rewrite <- itree_eta_ in V. symmetry in V.
+      rewrite itree_eta_ in V. ss. des_itr t; ss.
+      { rewrite itree_eta_ in V. unfold observe in V. ss. }
+      rewrite <- itree_eta_ in V.
+      rewrite itree_eta_ in I. ss. des_itr itr0; ss.
+      rewrite itree_eta_ in I. ss.
       exploit SAFESRC. { apply star_refl. } intro U; des; ss.
-      { rr in EVCALL. des. ss. inv EVCALL. ss. }
-      { rr in EVRET. des. ss. inv EVRET. ss. }
+      { rr in EVCALL. des. ss. inv EVCALL. ss.
+        rewrite itree_eta_ in VIS at 1. ss.
+      }
+      { rr in EVRET. des. ss. inv EVRET. ss.
+        rewrite itree_eta_ in RET at 1. ss.
+      }
       inv EVSTEP; ss. clarify.
 
       exploit SAFESRC. { apply star_one. econs; eauto. } intro U; des; ss.

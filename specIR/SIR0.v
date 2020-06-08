@@ -221,6 +221,125 @@ End DENOTE.
 
 
 
+
+Section TEST.
+
+Definition _sum := 55%positive.
+  
+Definition c_sum (vs: list val): itree E val :=
+  match vs with
+  | [Vint n] =>
+    if Int.eq n Int.zero
+    then triggerDone (Vint Int.zero)
+    else s <- trigger (ICall _sum [Vint (Int.sub n Int.one)]) ;;
+         Ret (Val.add s (Vint n))
+  | _ => triggerUB "signature"
+  end
+.
+
+Definition f_sum: function :=
+  mkfunction signature_main c_sum
+.
+
+Definition global_definitions: list (ident * globdef (fundef (function)) unit) :=
+  ((_sum, Gfun(Internal f_sum)) :: nil)
+.
+
+Definition p: program := mkprogram global_definitions nil 1%positive.
+
+Variable initial_oh: owned_heap.
+Let one := (interp_program0 p SkEnv.empty nil initial_oh Mem.empty (ICall _sum [Vint (Int.repr 1%Z)])).
+(* Compute (burn 1 five). *)
+
+Lemma one_spec
+  :
+    one ≈ Ret (initial_oh, (Mem.empty, Vint (Int.repr 1%Z)))
+.
+Proof.
+  subst one. unfold interp_program0. ss.
+  unfold interp_OwnedHeapE, interp_MemE, interp_LocalE, interp_GlobalE, ITree.map. ss.
+  rewrite mrec_as_interp. ss. des_ifs.
+  rewrite bind_trigger. rewrite interp_vis. ss.
+  rewrite bind_trigger. rewrite interp_vis. ss.
+  setoid_rewrite tau_eutt.
+  rewrite interp_state_bind.
+  Check ((case_ (handle_GlobalE SkEnv.empty)
+              (id_ (LocalE +' stateE Mem.mem' +' stateE owned_heap +' ExternalCallE +' DoneE +' EventE))
+              _ (resum IFun _ LPush))).
+  assert((case_ (handle_GlobalE SkEnv.empty)
+              (id_ (LocalE +' stateE Mem.mem' +' stateE owned_heap +' ExternalCallE +' DoneE +' EventE))
+              _ (resum IFun _ LPush)) = Vis (LPush|)%sum (fun x : () => Ret x)).
+  { cbn. (* Print Instances ReSum. *) unfold IFun. cbn. unfold resum. cbn.
+    unfold case_. cbn.
+    Print Instances Id_. unfold id_. cbn.
+    unfold Id_Handler. unfold Handler.id_. unfold ITree.trigger. cbn. unfold ReSum_inl.
+    unfold cat. unfold Cat_IFun. unfold inl_. unfold Inl_sum1. unfold resum. unfold ReSum_id.
+    unfold id_. unfold Id_IFun. ss.
+  }
+  cbn.
+  rewrite interp_state_trigger. cbn.
+  autorewrite with itree. ss.
+  rewrite tau_eutt.
+  setoid_rewrite tau_eutt.
+  autorewrite with itree.
+  setoid_rewrite interp_ret.
+  setoid_rewrite bind_ret_l. setoid_rewrite bind_trigger.
+  setoid_rewrite interp_vis. cbn.
+  setoid_rewrite bind_trigger.
+  setoid_rewrite tau_eutt.
+  setoid_rewrite interp_ret.
+  setoid_rewrite interp_vis.
+  setoid_rewrite tau_eutt.
+  setoid_rewrite interp_ret.
+  cbn.
+  repeat rewrite interp_state_bind.
+  autorewrite with itree.
+  setoid_rewrite interp_state_ret.
+  setoid_rewrite interp_state_ret.
+  cbn.
+  setoid_rewrite bind_trigger.
+  repeat setoid_rewrite interp_state_vis.
+  setoid_rewrite tau_eutt.
+  repeat setoid_rewrite interp_state_ret.
+  cbn.
+  setoid_rewrite bind_ret_l.
+  repeat setoid_rewrite interp_state_ret. cbn.
+  setoid_rewrite bind_ret_l. cbn.
+  setoid_rewrite <- map_ret with
+      (f:= fun r => (fst r, (fst (snd r), Val.add (snd (snd (snd r))) (Vint (Int.repr 1))))) at 1.
+  setoid_rewrite <- map_bind.
+  autorewrite with itree.
+  rewrite mrec_as_interp. cbn. des_ifs.
+  autorewrite with itree.
+  repeat setoid_rewrite interp_state_bind. cbn.
+  rewrite interp_trigger. cbn.
+  rewrite interp_state_trigger. cbn.
+  autorewrite with itree.
+  rewrite tau_eutt.
+  repeat rewrite interp_state_ret. cbn.
+  rewrite bind_ret_l. cbn.
+  des_ifs.
+  unfold triggerDone.
+  autorewrite with itree. cbn.
+  autorewrite with itree. cbn.
+  rewrite bind_trigger.
+  setoid_rewrite interp_bind.
+  setoid_rewrite interp_trigger. cbn.
+  setoid_rewrite bind_trigger.
+  setoid_rewrite interp_vis. cbn.
+  setoid_rewrite tau_eutt. cbn.
+  repeat rewrite interp_state_vis. cbn.
+  setoid_rewrite bind_trigger. cbn.
+  repeat setoid_rewrite interp_state_bind. cbn.
+  setoid_rewrite tau_eutt. setoid_rewrite interp_vis. cbn.
+Abort.
+
+End TEST.
+
+
+
+
+
 Section MODSEM.
 
   Variable mi: string.

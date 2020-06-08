@@ -58,17 +58,21 @@ Section EFF.
   .
 
   Variant ExternalCallE: Type -> Type :=
-  | ECall (fptr: val) (oh: owned_heap) (m: mem) (vs: list val): ExternalCallE (val)
+  | ECall (fptr: val) (oh: owned_heap) (m: mem) (vs: list val):
+      ExternalCallE (owned_heap * (mem * val))
   .
 
   Variant EventE: Type -> Type :=
   | ENB (msg: string): EventE void
   | EUB (msg: string): EventE void
   | ESyscall (ef: external_function) (m: mem) (args: list val): EventE (val * mem)
-  | EDone (oh: owned_heap) (v: val) (m: mem): EventE void
   .
 
-  Definition eff0: Type -> Type := Eval compute in ExternalCallE +' EventE.
+  Variant DoneE: Type -> Type :=
+  | EDone (oh: owned_heap) (v: val) (m: mem): DoneE void
+  .
+
+  Definition eff0: Type -> Type := Eval compute in ExternalCallE +' DoneE +' EventE.
   Definition eff1: Type -> Type := Eval compute in OwnedHeapE +' eff0.
   Definition eff2: Type -> Type := Eval compute in MemE +' eff1.
   Definition eff3: Type -> Type := Eval compute in LocalE +' eff2.
@@ -86,7 +90,7 @@ Definition triggerUB {E A} `{EventE -< E} (msg: string): itree E A :=
 Definition triggerNB {E A} `{EventE -< E} (msg: string) : itree E A :=
   vis (ENB msg) (fun v => match v: void with end)
 .
-Definition triggerDone {E A} `{EventE -< E} (oh: owned_heap) (m: mem) (v: val): itree E A :=
+Definition triggerDone {E A} `{DoneE -< E} (oh: owned_heap) (m: mem) (v: val): itree E A :=
   vis (EDone oh v m) (fun v => match v: void with end)
 .
 
@@ -198,25 +202,6 @@ Section DENOTE.
       sem0
   .
 
-  Definition interp_program2: (InternalCallE ~> itree eff2) :=
-    (* let sem0: (InternalCallE ~> itree eff0) := mrec denote_function in *)
-    (* fun _ ic => *)
-    (*   let sem1: itree eff1 _ := interp_GlobalE (sem0 _ ic) in *)
-    (*   sem1 *)
-    fun _ ic =>
-      let sem4: itree eff4 _ := (mrec interp_function) _ ic in
-      let sem3: itree eff3 _ := interp_GlobalE sem4 in
-      let sem2: itree eff2 _ := snd <$> (interp_LocalE sem3 nil) in
-      sem2
-  .
-
-  Definition interp_program3: (InternalCallE ~> itree eff3) :=
-    fun _ ic =>
-      let sem4: itree eff4 _ := (mrec interp_function) _ ic in
-      let sem3: itree eff3 _ := interp_GlobalE sem4 in
-      sem3
-  .
-
 End DENOTE.
 
 
@@ -267,7 +252,8 @@ Section MODSEM.
       at_external st0 oh0 args
   .
 
-  Inductive get_k (st0: state): (val -> itree eff0 (owned_heap * (mem * val))) -> Prop :=
+  Inductive get_k (st0: state):
+    (owned_heap * (mem * val) -> itree eff0 (owned_heap * (mem * val))) -> Prop :=
   | get_k_intro
       _vs _fptr _oh0 _m0 k
       (VIS: (observe st0) = VisF (subevent _ (ECall _fptr _oh0 _m0 _vs)) k)
@@ -281,7 +267,7 @@ Section MODSEM.
       (GETK: get_k st0 k)
       (V: (Retv.v retv) = rv)
       (M: (Retv.m retv) = m0)
-      (KONT: st1 = mk (k rv))
+      (KONT: st1 = mk (k (oh0, (m0, rv))))
     :
       after_external st0 oh0 retv st1
   .

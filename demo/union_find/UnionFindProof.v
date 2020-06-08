@@ -13,7 +13,7 @@ Require SimMemExtSep.
 Require Import Clightdefs.
 Require Import CtypesC.
 Require Import Any.
-Require Import SIR3.
+Require Import SIR0.
 Require Import UnionFindSource.
 Require Import UnionFindTarget.
 
@@ -172,33 +172,16 @@ Inductive match_stacks: lenv -> cont -> Prop :=
     match_stacks (hd :: tl) (Kcall fid fdef e te k)
 .
 
-Inductive match_states_internal: SIR3.state owned_heap -> Clight.state -> Prop :=
+Inductive match_states_internal: SIR0.state owned_heap -> Clight.state -> Prop :=
 | match_initial
     itr0 oh0 ty m_src0 vs_src m_tgt0 vs_tgt
     fid fblk fptr_tgt
     (SYMB: Genv.find_symbol ge fid = Some fblk)
     (FPTR: fptr_tgt = (Vptr fblk Ptrofs.zero))
-    (ITR: itr0 = denote_program3 UnionFindSource.prog ge (ICall fid vs_src))
+    (ITR: itr0 = interp_program0 UnionFindSource.prog ge (ICall fid vs_src))
   :
-    match_states_internal (SIR3.mk itr0 nil oh0 m_src0)
+    match_states_internal (SIR0.mk itr0)
                           (Clight.Callstate fptr_tgt ty vs_tgt Kstop m_tgt0)
-(*** NOTE: we can remove match_at_external for this proof, but to check generality ***)
-(*** NOTE: we can remove match_at_external for this proof, but to check generality ***)
-(*** NOTE: we can remove match_at_external for this proof, but to check generality ***)
-(*** NOTE: we can remove match_at_external for this proof, but to check generality ***)
-(*** NOTE: we can remove match_at_external for this proof, but to check generality ***)
-(*** NOTE: we can remove match_at_external for this proof, but to check generality ***)
-| match_at_external
-    itr0 le0 oh0 m_src0 m_tgt0
-    fptr_src fptr_tgt vs_src vs_tgt
-    itr1 k_tgt ty
-    (STK: match_stacks le0 k_tgt)
-    (CALL: observe itr0 = VisF (subevent _ (ECall fptr_src vs_src)) itr1)
-    (FPTR: Val.lessdef fptr_src fptr_tgt)
-    (VALS: Val.lessdef_list vs_src vs_tgt)
-  :
-    match_states_internal (SIR3.mk itr0 le0 oh0 m_src0)
-                          (Clight.Callstate fptr_tgt ty vs_tgt k_tgt m_tgt0)
 | match_final
     itr0 le0 oh0 m_src0 v_src m_tgt0 v_tgt
     (RET: (observe itr0) = RetF v_src)

@@ -7,7 +7,7 @@ Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require ClightC.
 Require Import UnionFindTarget.
-Require Import SIR3.
+Require Import SIR0.
 
 (* Require Import Clightdefs. *)
 

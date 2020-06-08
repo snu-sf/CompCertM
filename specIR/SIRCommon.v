@@ -24,6 +24,7 @@ From ITree Require Export
      Events.MapDefault
      Events.State
      Events.StateFacts
+     EqAxiom
 .
 
 Export SumNotations.
@@ -60,6 +61,18 @@ Instance function_Map (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}): (Map 
                            | _ => m1 k
                            end)
 .
+
+Program Instance function_MapOk (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}):
+  MapOk eq (function_Map V dec) (K := K) := {| mapsto := fun k v m => m k = Some v |}.
+Next Obligation. des_ifs. Qed.
+Next Obligation. des_ifs. Qed.
+Next Obligation. des_ifs. Qed.
+Next Obligation. des_ifs. Qed.
+
+Notation "` x : t <- t1 ;; t2" := (ITree.bind t1 (fun x : t => t2))
+  (at level 61, t at next level, t1 at next level, x ident, right associativity) : itree_scope.
+
+
 
 Section OWNEDHEAP.
 Variable owned_heap: Type.
@@ -252,4 +265,16 @@ End DENOTE.
 
 
 End OWNEDHEAP.
+
+Definition assume oh (P: Prop): itree (E oh) unit :=
+  if ClassicalDescription.excluded_middle_informative P
+  then Ret tt
+  else triggerUB "assume"
+.
+  
+Definition guarantee oh (P: Prop): itree (E oh) unit :=
+  if ClassicalDescription.excluded_middle_informative P
+  then Ret tt
+  else triggerNB "guarantee"
+.
 

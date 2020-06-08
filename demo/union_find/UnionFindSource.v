@@ -8,45 +8,12 @@ Require Import Skeleton Mod ModSem.
 Require ClightC.
 Require Import UnionFindTarget.
 Require Import SIR0.
-
 (* Require Import Clightdefs. *)
-
-From ExtLib Require Import
-     OptionMonad
-     Functor FunctorLaws
-     Structures.Maps
-.
 
 Set Implicit Arguments.
 
 
-Import FunctorNotation.
-Local Open Scope monad_scope.
-Notation "` x : t <- t1 ;; t2" := (ITree.bind t1 (fun x : t => t2))
-  (at level 61, t at next level, t1 at next level, x ident, right associativity) : itree_scope.
-
-
-Local Obligation Tactic := ii; ss; des; inv_all_once; repeat des_u; ss; clarify.
-
-Program Instance function_MapOk (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}):
-  MapOk eq (function_Map V dec) (K := K) := {| mapsto := fun k v m => m k = Some v |}.
-Next Obligation. des_ifs. Qed.
-Next Obligation. des_ifs. Qed.
-Next Obligation. des_ifs. Qed.
-Next Obligation. des_ifs. Qed.
-
-Definition assume oh (P: Prop): itree (E oh) unit :=
-  if ClassicalDescription.excluded_middle_informative P
-  then Ret tt
-  else triggerUB "assume"
-.
-  
-Definition guarantee oh (P: Prop): itree (E oh) unit :=
-  if ClassicalDescription.excluded_middle_informative P
-  then Ret tt
-  else triggerNB "guarantee"
-.
-
+(*** TODO: move to ValuesC ***)
 Definition unblock (v: val): option block :=
   match v with
   | Vptr blk ofs =>
@@ -56,9 +23,6 @@ Definition unblock (v: val): option block :=
   | _ => None
   end
 .
-
-
-
 
 Definition owned_heap: Type := block -> option (block * int).
 Instance owned_heap_Map: (Map _ _ owned_heap) := function_Map _ eq_block.

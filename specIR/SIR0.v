@@ -18,8 +18,10 @@ Require Import Mod ModSem Any Skeleton.
 Require Export SIRCommon.
 
 Require Import Program.
+Require Import Simulation.
 
 Set Implicit Arguments.
+
 
 
 
@@ -90,8 +92,19 @@ Definition triggerUB {E A} `{EventE -< E} (msg: string): itree E A :=
 Definition triggerNB {E A} `{EventE -< E} (msg: string) : itree E A :=
   vis (ENB msg) (fun v => match v: void with end)
 .
-Definition triggerDone {E A} `{DoneE -< E} (oh: owned_heap) (m: mem) (v: val): itree E A :=
+Definition triggerDone {E A} `{OwnedHeapE -< E} `{MemE -< E} `{DoneE -< E} (v: val): itree E A :=
+  `oh: owned_heap <- trigger (Get _);;
+  `m: mem <- trigger (Get _);;
   vis (EDone oh v m) (fun v => match v: void with end)
+.
+Definition triggerECall {E} `{OwnedHeapE -< E} `{MemE -< E} `{ExternalCallE -< E}
+  (fptr: val) (vs: list val): itree E val :=
+  `oh0: owned_heap <- trigger (Get _);;
+  `m0: mem <- trigger (Get _);;
+  '(oh1, (m1, rv)) <- trigger (ECall fptr oh0 m0 vs);;
+  trigger (Put _ oh1);;
+  trigger (Put _ m1);;
+  Ret rv
 .
 
 Definition unwrapN {E X} `{EventE -< E} (x: option X): itree E X :=
@@ -346,6 +359,15 @@ Section MODSEM.
   Qed.
   Next Obligation.
     ii. des. inv PR; ss. inv PR0; ss; clarify; try rewrite VIS in *; ss; clarify.
+  Qed.
+
+  Lemma modsem_receptive: forall st, receptive_at modsem st.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Unshelve.
+    all: ss.
   Qed.
 
 End MODSEM.

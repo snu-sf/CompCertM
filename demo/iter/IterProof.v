@@ -159,6 +159,32 @@ Proof.
   i.
   pfold.
   inv MATCH. subst; ss. ii. clear SUSTAR. inv MATCHST; ss; clarify.
+  - econs 2; eauto. ii. clear SU.
+    exploit unsymb; et. intro T. des; clarify.
+    exploit symb_def; et. intro DEF; des. ss. des_ifs.
+    +
+      exploit SAFESRC. { apply star_refl. } intro U; des; ss.
+      { rr in EVCALL. des. ss. inv EVCALL. ss. }
+      { rr in EVRET. des. ss. inv EVRET. ss. }
+      inv EVSTEP; ss. clarify.
+
+      (* exploit SAFESRC. { apply star_one. econs; eauto. } intro U; des; ss. *)
+      (* { rr in EVCALL. des. ss. inv EVCALL. ss. } *)
+
+      econs 2; try refl; eauto.
+      { esplits; et; cycle 1.
+        { apply Ord.lift_idx_spec. instantiate (1 := Nat.pred idx). xomega. }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { econs; et. }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { econs; et. }
+        ss. unfold interp_program0. ss.
+        rewrite itree_eta'. f_equal.
+        unfold interp_OwnedHeapE, interp_MemE, interp_LocalE, interp_GlobalE, ITree.map.
+        unfold interp_state.
+        }
+        econs; eauto.
+      }
   - econs 1; eauto. ii. clear SU.
     exploit unsymb; et. intro T. des; clarify.
     exploit symb_def; et. intro DEF; des. ss. des_ifs.

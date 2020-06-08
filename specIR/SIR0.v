@@ -230,7 +230,7 @@ Definition c_sum (vs: list val): itree E val :=
   match vs with
   | [Vint n] =>
     if Int.eq n Int.zero
-    then triggerDone (Vint Int.zero)
+    then Ret (Vint Int.zero)
     else s <- trigger (ICall _sum [Vint (Int.sub n Int.one)]) ;;
          Ret (Val.add s (Vint n))
   | _ => triggerUB "signature"
@@ -249,7 +249,7 @@ Definition p: program := mkprogram global_definitions nil 1%positive.
 
 Variable initial_oh: owned_heap.
 Let one := (interp_program0 p SkEnv.empty nil initial_oh Mem.empty (ICall _sum [Vint (Int.repr 1%Z)])).
-(* Compute (burn 1 five). *)
+(* Compute (burn 1 one). *)
 
 Lemma one_spec
   :
@@ -319,20 +319,18 @@ Proof.
   repeat rewrite interp_state_ret. cbn.
   rewrite bind_ret_l. cbn.
   des_ifs.
-  unfold triggerDone.
   autorewrite with itree. cbn.
   autorewrite with itree. cbn.
-  rewrite bind_trigger.
-  setoid_rewrite interp_bind.
-  setoid_rewrite interp_trigger. cbn.
-  setoid_rewrite bind_trigger.
-  setoid_rewrite interp_vis. cbn.
-  setoid_rewrite tau_eutt. cbn.
+  rewrite bind_trigger. cbn.
   repeat rewrite interp_state_vis. cbn.
-  setoid_rewrite bind_trigger. cbn.
-  repeat setoid_rewrite interp_state_bind. cbn.
-  setoid_rewrite tau_eutt. setoid_rewrite interp_vis. cbn.
-Abort.
+  autorewrite with itree. cbn.
+  rewrite tau_eutt.
+  repeat rewrite interp_state_ret. cbn.
+  rewrite map_ret. cbn.
+  replace (Int.add Int.zero (Int.repr 1)) with (Int.repr 1); cycle 1.
+  { refl. }
+  refl.
+Qed.
 
 End TEST.
 

@@ -57,7 +57,7 @@ Section MODSEM.
     m: mem;
   }.
 
-  Let denote_program3 := denote_program3 p skenv.
+  Let interp_program3 := interp_program3 p skenv.
 
   Inductive initial_frame (oh0: owned_heap) (args: Args.t): state -> Prop :=
   | initial_frame_intro
@@ -69,7 +69,7 @@ Section MODSEM.
       (SYMB: Genv.find_symbol skenv fid = Some blk)
       (FINDF: Genv.find_funct skenv (Vptr blk Ptrofs.zero) = Some (Internal fd))
       (TYP: typecheck (Args.vs args) fd tvs)
-      (DENOTE: denote_program3 (ICall fid vs) = itr)
+      (PROG: interp_program3 (ICall fid vs) = itr)
 
       st0
       (* (ST: st0 = (mk (Tau itr) nil oh0 m0)) *)

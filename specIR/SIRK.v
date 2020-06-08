@@ -6,33 +6,6 @@ From Coq Require Import
      Setoid
      RelationClasses.
 
-From ExtLib Require Export
-     (* Data.String *)
-     (* Structures.Monad *)
-     (* Structures.Traversable *)
-     (* Structures.Foldable *)
-     (* Structures.Reducible *)
-     OptionMonad
-     Functor FunctorLaws
-     Structures.Maps
-     (* Data.List *)
-.
-
-From ITree Require Export
-     ITree
-     ITreeFacts
-     Events.MapDefault
-     Events.State
-     Events.StateFacts
-.
-
-Export SumNotations.
-Export ITreeNotations.
-Export Monads.
-Export MonadNotation.
-Export FunctorNotation.
-Open Scope monad_scope.
-
 Require Import MapsC.
 Require Import ValuesC.
 Require Import MemoryC.
@@ -42,6 +15,7 @@ Require Import EventsC.
 Require Import GlobalenvsC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton.
+Require Export SIRCommon.
 
 Require Import Program.
 
@@ -49,20 +23,14 @@ Set Implicit Arguments.
 
 
 
-Instance function_Map (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}): (Map K V (K -> option V)) :=
-  Build_Map
-    (fun _ => None)
-    (fun k0 v m => fun k1 => if dec k0 k1 then Some v else m k1)
-    (fun k0 m => fun k1 => if dec k0 k1 then None else m k1)
-    (fun k m => m k)
-    (fun m0 m1 => fun k => match (m0 k) with
-                           | Some v => Some v
-                           | _ => m1 k
-                           end)
-.
 
 Section OWNEDHEAP.
+
 Variable owned_heap: Type.
+
+
+
+
 
 Section EFF.
 
@@ -90,13 +58,13 @@ Section EFF.
   .
 
   Variant ExternalCallE: Type -> Type :=
-  | ECall (fptr: val) (vs: list val): ExternalCallE (val)
+  | ECall (fptr: val) (oh: owned_heap) (m: mem) (vs: list val): ExternalCallE (val)
   .
 
   Variant EventE: Type -> Type :=
   | ENB (msg: string): EventE void
   | EUB (msg: string): EventE void
-  | ESyscall (ef: external_function) (args: list val): EventE (val)
+  | ESyscall (ef: external_function) (oh: owned_heap) (m: mem) (args: list val): EventE (val)
   | EDone (v: val): EventE void
   .
 
@@ -140,6 +108,8 @@ Record function : Type := mkfunction
 .
 
 Definition program: Type := AST.program (fundef function) unit.
+
+
 
 
 
@@ -213,7 +183,7 @@ Section DENOTE.
     t' oh0
   .
 
-  Definition interp_program0 (oh0: owned_heap) (m0: mem) (le0: lenv):
+  Definition interp_program0 (le0: lenv) (oh0: owned_heap) (m0: mem):
     (forall T, InternalCallE T -> itree eff0 (owned_heap * (mem * (lenv * T)))) :=
     (* let sem0: (InternalCallE ~> itree eff0) := mrec denote_function in *)
     (* fun _ ic => *)
@@ -250,6 +220,175 @@ Section DENOTE.
 End DENOTE.
 
 
+
+
+
+Section MODSEM.
+
+  Variable mi: string.
+  Variable skenv_link: SkEnv.t.
+  Variable initial_owned_heap: owned_heap.
+  Variable p: program.
+  Let skenv: SkEnv.t := (SkEnv.project skenv_link) (Sk.of_program fn_sig p).
+  (* Let ge: genv := (SkEnv.revive skenv) p. *)
+  Definition genvtype: Type := unit.
+  Let ge: genvtype := tt.
+
+  Record state := mk {
+    ktr:> forall (le0: lenv) (oh0: owned_heap) (m0: mem),
+        itree eff0 (owned_heap * (mem * (lenv * val)));
+    (*** latest observed states ***)
+    le: lenv;
+    oh: owned_heap;
+    m: mem;
+  }.
+
+  (*** This "to_itr" expects states to be **latest**.
+       However, the definitions does not ensure "latest"ness.
+       So, this approach is not working...
+   ***)
+  Definition ITR: Type := (itree eff0 (owned_heap * (mem * (lenv * val)))).
+  Definition to_itr (st0: state): ITR :=
+    st0.(ktr) st0.(le) st0.(oh) st0.(m)
+  .
+  Coercion to_itr: state >-> ITR.
+
+  Let interp_program0 := interp_program0 p skenv.
+
+  Inductive initial_frame (oh0: owned_heap) (args: Args.t): state -> Prop :=
+  | initial_frame_intro
+      ktr fid blk m0 vs fd tvs
+      (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
+      (VS: (Args.vs args) = vs)
+      (M: (Args.m args) = m0)
+
+      (SYMB: Genv.find_symbol skenv fid = Some blk)
+      (FINDF: Genv.find_funct skenv (Vptr blk Ptrofs.zero) = Some (Internal fd))
+      (TYP: typecheck (Args.vs args) fd tvs)
+
+      st0
+      (KTR: ktr = (fun le oh m => interp_program0 le oh m (ICall fid vs)))
+      (ST: st0 = (mk ktr nil oh0 m0))
+    :
+      initial_frame oh0 args st0
+  .
+
+  Inductive at_external (st0: state): owned_heap -> Args.t -> Prop :=
+  | at_external_intro
+      args fptr vs k oh0 m0
+      (VIS: (observe (st0: ITR)) = VisF (subevent _ (ECall fptr oh0 m0 vs)) k)
+      (ARGS: args = Args.mk fptr vs m0)
+    :
+      at_external st0 oh0 args
+  .
+
+  Inductive get_k (st0: state):
+    (* (owned_heap * mem * val -> itree eff0 (owned_heap * (mem * (lenv * val)))) -> Prop := *)
+    (val -> itree eff0 (owned_heap * (mem * (lenv * val)))) -> Prop :=
+  | get_k_intro
+      _vs _fptr _oh0 _m0 k
+      (VIS: (observe (st0: ITR)) = VisF (subevent _ (ECall _fptr _oh0 _m0 _vs)) k)
+    :
+      get_k st0 k
+  .
+
+  Inductive after_external (st0: state) (oh0: owned_heap) (retv: Retv.t): state -> Prop :=
+  | after_external_intro
+      k m0 rv st1
+      (GETK: get_k st0 k)
+      (V: (Retv.v retv) = rv)
+      (M: (Retv.m retv) = m0)
+      (KONT: st1 = mk (fun _ _ _ => (k rv)) st0.(le) oh0 m0)
+    :
+      after_external st0 oh0 retv st1
+  .
+
+  Inductive final_frame (st0: state): owned_heap -> Retv.t -> Prop :=
+  | final_frame_intro
+      oh0 m0 oh1 m1 le1 (rv: val) retv
+      (RET: (observe (st0: ITR)) = RetF (oh1, (m1, (le1, rv))))
+      (RETV: retv = Retv.mk rv m0)
+      (M: m0 = st0.(m))
+      (OH: oh0 = st0.(oh))
+    :
+      final_frame st0 oh0 retv
+  .
+
+  Inductive step (se: Senv.t) (ge: genvtype) (st0: state) (tr: trace) (st1: state): Prop :=
+  | step_tau
+      ktr0 le0 oh0 m0
+      itr1
+      (TAU: (observe (st0: ITR)) = TauF itr1)
+
+      (ST0: st0 = mk ktr0 le0 oh0 m0)
+      (TR: tr = E0)
+      (ST1: st1 = mk (fun _ _ _ => itr1) le0 oh0 m0)
+  (*** ub is stuck, so we don't state anything ***)
+  | step_nb
+      msg k
+      (VIS: (observe (st0: ITR)) = VisF (subevent _ (ENB msg)) k)
+
+      (TR: tr = E0)
+  | step_syscall
+      ktr0 le0 oh0 m0 oh1 m1
+      ef vs rv m2 k
+      (VIS: (observe (st0: ITR)) = VisF (subevent _ (ESyscall ef oh1 m1 vs)) k)
+      (SYSCALL: external_call ef se vs m1 tr rv m2)
+
+      (ST0: st0 = mk ktr0 le0 oh0 m0)
+      (TR: tr = E0)
+      (ST1: st1 = mk (fun _ _ _ => (k rv)) le0 oh1 m2)
+  | step_done
+      ktr0 le0 oh0 m0
+      v k
+      (VIS: (observe (st0: ITR)) = VisF (subevent _ (EDone v)) k)
+
+      (ST0: st0 = mk ktr0 le0 oh0 m0)
+      (TR: tr = E0)
+      (ST1: st1 = mk (fun _ _ _ => (Ret (oh0, (m0, (le0, v))))) le0 oh0 m0)
+  .
+
+  Program Definition modsem: ModSem.t :=
+    {| ModSem.step := step;
+       ModSem.owned_heap := owned_heap;
+       ModSem.at_external := at_external;
+       ModSem.initial_frame := initial_frame;
+       ModSem.final_frame := final_frame;
+       ModSem.after_external := after_external;
+       ModSem.initial_owned_heap := initial_owned_heap;
+       ModSem.globalenv := ge;
+       ModSem.skenv := skenv;
+       ModSem.skenv_link := skenv_link;
+       ModSem.midx := Some mi;
+    |}.
+  Next Obligation.
+    inv AT0. inv AT1. rewrite VIS in *. clarify.
+  Qed.
+  Next Obligation.
+    inv FINAL0. inv FINAL1. rewrite RET in *. clarify.
+  Qed.
+  Next Obligation.
+    inv AFTER0. inv AFTER1. inv GETK. inv GETK0. rewrite VIS in *.
+    ss. clarify. simpl_depind. clarify.
+  Qed.
+  Next Obligation.
+    ii. des. inv PR; ss. inv PR0; ss; clarify; try rewrite VIS in *; ss; clarify.
+  Qed.
+  Next Obligation.
+    ii. des. inv PR0; ss. inv PR; ss; clarify; try rewrite RET in *; ss; clarify.
+  Qed.
+  Next Obligation.
+    ii. des. inv PR; ss. inv PR0; ss; clarify; try rewrite VIS in *; ss; clarify.
+  Qed.
+
+End MODSEM.
+
+Program Definition module (p: program) (mi: string) (initial_owned_heap: SkEnv.t -> owned_heap): Mod.t :=
+  {| Mod.data := p; Mod.get_sk := (Sk.of_program fn_sig);
+     Mod.get_modsem := fun skenv_link p => modsem mi skenv_link
+                                                  (initial_owned_heap skenv_link) p;
+     Mod.midx := Some mi |}
+.
 
 End OWNEDHEAP.
 

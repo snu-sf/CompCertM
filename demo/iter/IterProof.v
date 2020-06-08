@@ -132,7 +132,7 @@ Inductive match_states_internal: SIR0.state owned_heap -> Clight.state -> Prop :
                           (Clight.Callstate fptr_tgt ty vs Kstop m0)
 | match_final
     itr0 m0 v
-    (RET: (observe itr0) = RetF (tt, (m0, v)))
+    (RET: itr0 = Ret (tt, (m0, v)))
   :
     match_states_internal (SIR0.mk itr0) (Clight.Returnstate v Kstop m0)
 .
@@ -168,8 +168,11 @@ Proof.
       { rr in EVRET. des. ss. inv EVRET. ss. }
       inv EVSTEP; ss. clarify.
 
-      (* exploit SAFESRC. { apply star_one. econs; eauto. } intro U; des; ss. *)
-      (* { rr in EVCALL. des. ss. inv EVCALL. ss. } *)
+      exploit SAFESRC. { apply star_one. econs; eauto. } intro U; des; ss.
+      { rr in EVCALL. des. ss. inv EVCALL. ss.
+        sym in VIS. apply simpobs in VIS. apply bisimulation_is_eq in VIS.
+        clarify.
+      }
 
       econs 2; try refl; eauto.
       { esplits; et; cycle 1.

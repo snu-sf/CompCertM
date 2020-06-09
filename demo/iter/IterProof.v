@@ -13,7 +13,7 @@ Require SimMemId.
 Require Import Clightdefs.
 Require Import CtypesC.
 Require Import Any.
-Require Import SIR0.
+Require Import SIRmini.
 Require Import IterSource.
 Require Import IterTarget.
 Require Import ModSemProps.
@@ -36,6 +36,50 @@ Local Arguments ModSemPair.mk [SM] [SS] _ _ _ _ [SMO].
 (********* TODO: try the same proof with extension ***************)
 (********* TODO: try the same proof with extension ***************)
 
+Inductive taus E R: itree E R -> nat -> Prop :=
+| taus_tau
+    itr0 n
+    (TL: taus itr0 n)
+  :
+    taus (Tau itr0) (1 + n)
+| taus_ret
+    r
+  :
+    taus (Ret r) 0
+| taus_vis
+    X (e: E X) k
+  :
+    taus (Vis e k) 0
+.
+
+Definition mtaus E R (itr: itree E R) (n: nat): Prop :=
+  taus itr n /\ ~taus itr (S n)
+.
+
+Theorem case_analysis
+        E R
+        (itr: itree E R)
+  :
+    (<<TAUS: exists (m: nat), (m > 0)%nat /\ mtaus itr m>>)
+    \/ (<<DIVERGE: forall m, ~mtaus itr m>>)
+    \/ (<<CALL: exists X (e: E X) k, itr = Vis e k>>)
+    \/ (<<RET: exists r, itr = Ret r>>)
+.
+Proof.
+  destruct (classic (exists m, (m > 0)%nat /\ mtaus itr m)); et.
+  destruct (classic (mtaus itr 0)); et.
+  - destruct (observe itr) eqn:T; ss; et.
+    + sym in T. apply simpobs in T. apply bisimulation_is_eq in T.
+      subst. right. right. right. et.
+    + sym in T. apply simpobs in T. apply bisimulation_is_eq in T.
+      subst. inv H0. inv H1.
+    + sym in T. apply simpobs in T. apply bisimulation_is_eq in T.
+      subst. right. right. left. et.
+  - right. left.
+    ii. 
+    eapply Classical_Pred_Type.not_ex_all_not with (n:=m) in H. Psimpl.
+    des; et. destruct m; ss. xomega.
+Qed.
 
 Lemma eq_eutt
       E R
@@ -53,6 +97,11 @@ Lemma vis_not_ret
     False
 .
 Proof. ii. punfold EUTT. inv EUTT. Qed.
+
+
+
+
+
 
 Section SIMMODSEM.
 
@@ -129,22 +178,22 @@ Unshelve.
   all: admit "giveup".
 Qed.
 
-Inductive match_states_internal: SIR0.state owned_heap -> Clight.state -> Prop :=
+Inductive match_states_internal: SIRmini.state owned_heap -> Clight.state -> Prop :=
 | match_initial
     itr0 ty m0 vs
     fid fblk fptr_tgt
     (SYMB: Genv.find_symbol ge fid = Some fblk)
     (FPTR: fptr_tgt = (Vptr fblk Ptrofs.zero))
-    (ITR: itr0 = interp_program0 IterSource.prog ge nil tt m0 (ICall fid vs))
+    (ITR: itr0 = interp_program0 IterSource.prog (ICall fid tt m0 vs))
     (TY: ty = Clight.type_of_fundef (Internal f_iter))
   :
-    match_states_internal (SIR0.mk itr0)
+    match_states_internal (SIRmini.mk itr0)
                           (Clight.Callstate fptr_tgt ty vs Kstop m0)
 | match_final
     itr0 m0 v
     (RET: itr0 = Ret (tt, (m0, v)))
   :
-    match_states_internal (SIR0.mk itr0) (Clight.Returnstate v Kstop m0)
+    match_states_internal (SIRmini.mk itr0) (Clight.Returnstate v Kstop m0)
 .
 
 Inductive match_states
@@ -173,13 +222,34 @@ Proof.
     exploit unsymb; et. intro T. des; clarify.
     exploit symb_def; et. intro DEF; des. ss. des_ifs.
     +
-      remember (interp_program0 IterSource.prog ge [] tt m0 (ICall _iter vs)) as itr0 in *.
+      remember (interp_program0 IterSource.prog (ICall _iter tt m0 vs)) as itr0 in *.
       rename Heqitr0 into V.
       Ltac des_itr itr :=
         let name := fresh "V" in
         destruct (observe itr) eqn:name; sym in name; eapply simpobs in name;
         eapply bisimulation_is_eq in name; subst itr
       .
+      unfold interp_program0 in *. rewrite sk_same in *. folder.
+      apply eq_eutt in V.
+      rewrite mrec_as_interp in V.
+      rewrite itree_eta_ in V. ss. des_itr itr0; ss. rename V0 into V.
+      rewrite <- itree_eta_ in V. symmetry in V.
+
+      econs 2; try refl; eauto.
+      { esplits; et; cycle 1.
+        { apply Ord.lift_idx_spec. instantiate (1 := Nat.pred idx). xomega. }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { econs; et. }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { econs; et. }
+        ss. unfold interp_program0. ss.
+        rewrite itree_eta'. f_equal.
+        unfold interp_OwnedHeapE, interp_MemE, interp_LocalE, interp_GlobalE, ITree.map.
+        unfold interp_state.
+        }
+        econs; eauto.
+      }
+
       rewrite itree_eta_ in V. ss. des_itr itr0; ss. rename V0 into V.
       rewrite <- itree_eta_ in V. symmetry in V.
 

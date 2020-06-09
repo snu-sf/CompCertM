@@ -7,7 +7,7 @@ Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require ClightC.
 Require Import IterTarget.
-Require Import SIR0.
+Require Import SIRmini.
 (* Require Import Clightdefs. *)
 
 Set Implicit Arguments.
@@ -17,15 +17,15 @@ Set Implicit Arguments.
 Definition owned_heap: Type := unit.
 Definition initial_owned_heap: SkEnv.t -> owned_heap := fun _ => tt.
 
-Definition c_iter (vs: list val): itree (E owned_heap) val :=
-  m0 <- trigger (Get _) ;; oh0 <- trigger (Get _) ;;
+Definition c_iter (oh0: owned_heap) (m0: mem) (vs: list val):
+  itree (E owned_heap) (owned_heap * (mem * val)) :=
   match vs with
   | [fptr ; Vint n ; x] =>
     if Int.eq n Int.zero
-    then triggerDone x 
-    else `rv: val <- triggerECall fptr [x] ;;
-         trigger (ICall _iter [fptr ; Vint (Int.sub n Int.one) ; rv])
-  | _ => triggerUB "signature"
+    then triggerDone oh0 m0 x
+    else '(oh1, (m1, rv)) <- trigger (ECall fptr oh0 m0 [x]) ;;
+         trigger (ICall _iter oh1 m1 [fptr ; Vint (Int.sub n Int.one) ; rv])
+  | _ => triggerUB (owned_heap := owned_heap)
   end
 .
 

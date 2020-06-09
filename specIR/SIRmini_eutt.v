@@ -15,7 +15,7 @@ Require Import EventsC.
 Require Import GlobalenvsC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton.
-Require Export SIRCommon.
+(* Require Export SIRCommon. *)
 
 Require Import Program.
 Require Import Simulation.
@@ -25,7 +25,52 @@ Set Implicit Arguments.
 
 
 
+
+
+
+
+
+
+
+
+
+From ExtLib Require Export
+     (* Data.String *)
+     (* Structures.Monad *)
+     (* Structures.Traversable *)
+     (* Structures.Foldable *)
+     (* Structures.Reducible *)
+     OptionMonad
+     Functor FunctorLaws
+     Structures.Maps
+     (* Data.List *)
+.
+
+From ITree Require Export
+     ITree
+     ITreeFacts
+     Events.MapDefault
+     Events.State
+     Events.StateFacts
+     EqAxiom
+.
+
+Export SumNotations.
+Export ITreeNotations.
+Export Monads.
+Export MonadNotation.
+Export FunctorNotation.
+Open Scope monad_scope.
 Open Scope itree_scope.
+Notation "` x : t <- t1 ;; t2" := (ITree.bind t1 (fun x : t => t2))
+  (at level 61, t at next level, t1 at next level, x ident, right associativity) : itree_scope.
+
+
+
+
+
+
+
 
 Lemma eq_eutt
       E R
@@ -90,15 +135,11 @@ Section EFF.
   Variant EventE: Type -> Type :=
   | ENB: EventE void
   | EUB: EventE void
-  | ESyscall (ef: external_function) (m: mem) (args: list val): EventE (val * mem)
   | ECall (fptr: val) (oh: owned_heap) (m: mem) (vs: list val): EventE (owned_heap * (mem * val))
+  | EDone (oh: owned_heap) (m: mem) (v: val): EventE void
   .
 
-  Variant DoneE: Type -> Type :=
-  | EDone (oh: owned_heap) (m: mem) (v: val): DoneE void
-  .
-
-  Definition eff0: Type -> Type := Eval compute in ExternalCallE +' DoneE +' EventE.
+  Definition eff0: Type -> Type := Eval compute in EventE.
   Definition eff1: Type -> Type := Eval compute in InternalCallE +' eff0.
   Definition E := Eval compute in eff1.
 
@@ -112,7 +153,7 @@ Definition triggerUB {E A} `{EventE -< E}: itree E A :=
 Definition triggerNB {E A} `{EventE -< E}: itree E A :=
   vis (ENB) (fun v => match v: void with end)
 .
-Definition triggerDone {E A} `{DoneE -< E} (oh: owned_heap) (m: mem) (v: val): itree E A :=
+Definition triggerDone {E A} `{EventE -< E} (oh: owned_heap) (m: mem) (v: val): itree E A :=
   vis (EDone oh m v) (fun v => match v: void with end)
 .
 
@@ -230,20 +271,20 @@ Section MODSEM.
   Definition genvtype: Type := unit.
   Let ge: genvtype := tt.
 
-  Inductive state: Type :=
-  | State
-      (itr: itree eff0 (owned_heap * (mem * val)))
-  | Callstate
-      (fptr: val)
-      (oh0: owned_heap)
-      (m0: mem)
-      (vs: list val)
-      (k: (owned_heap * (mem * val)) -> itree eff0 (owned_heap * (mem * val)))
-  .
+  (* Inductive state: Type := *)
+  (* | State *)
+  (*     (itr: itree eff0 (owned_heap * (mem * val))) *)
+  (* | Callstate *)
+  (*     (fptr: val) *)
+  (*     (oh0: owned_heap) *)
+  (*     (m0: mem) *)
+  (*     (vs: list val) *)
+  (*     (k: (owned_heap * (mem * val)) -> itree eff0 (owned_heap * (mem * val))) *)
+  (* . *)
 
-  (* Record state := mk { *)
-  (*   itr:> itree eff0 (owned_heap * (mem * val)); *)
-  (* }. *)
+  Record state := State {
+    itr:> itree eff0 (owned_heap * (mem * val));
+  }.
 
   Let interp_program0 := interp_program0 p.
 
@@ -265,20 +306,33 @@ Section MODSEM.
       initial_frame oh0 args st0
   .
 
-  Inductive at_external: state -> owned_heap -> Args.t -> Prop :=
+  Inductive at_external (st0: state): owned_heap -> Args.t -> Prop :=
   | at_external_intro
-      fptr vs k oh0 m0
+      args fptr vs k oh0 m0
+      (VIS: st0.(itr) ≈ Vis (subevent _ (ECall fptr oh0 m0 vs)) k)
+      (ARGS: args = Args.mk fptr vs m0)
     :
-      at_external (Callstate fptr oh0 m0 vs k) oh0 (Args.mk fptr vs m0)
+      at_external st0 oh0 args
   .
 
-  Inductive after_external: state -> owned_heap -> Retv.t -> state -> Prop :=
-  | after_external_intro
-      fptr oh0 m0 vs oh1 m1 rv
-      k itr0
-      (KONT: itr0 = (k (oh1, (m1, rv))))
+  Inductive get_k (st0: state):
+    (owned_heap * (mem * val) -> itree eff0 (owned_heap * (mem * val))) -> Prop :=
+  | get_k_intro
+      _vs _fptr _oh0 _m0 k
+      (VIS: st0.(itr) ≈ Vis (subevent _ (ECall _fptr _oh0 _m0 _vs)) k)
     :
-      after_external (Callstate fptr oh0 m0 vs k) oh1 (Retv.mk rv m1) (State itr0)
+      get_k st0 k
+  .
+
+  Inductive after_external (st0: state) (oh0: owned_heap) (retv: Retv.t): state -> Prop :=
+  | after_external_intro
+      k m0 rv st1
+      (GETK: get_k st0 k)
+      (V: (Retv.v retv) = rv)
+      (M: (Retv.m retv) = m0)
+      (KONT: st1 = State (k (oh0, (m0, rv))))
+    :
+      after_external st0 oh0 retv st1
   .
 
   Inductive final_frame: state -> owned_heap -> Retv.t -> Prop :=
@@ -304,18 +358,6 @@ Section MODSEM.
       (VIS: itr0 ≈ Vis (subevent _ (ENB)) k)
     :
       step se ge (State itr0) E0 (State itr0)
-  | step_extcall
-      itr0 k fptr oh0 m0 vs
-      (VIS: itr0 ≈ Vis (subevent _ (ECall fptr oh0 m0 vs)) k)
-    :
-      step se ge (State itr0) E0 (Callstate fptr oh0 m0 vs k)
-  | step_syscall
-      itr0 tr m0 m1
-      ef vs rv k
-      (VIS: itr0 ≈ Vis (subevent _ (ESyscall ef m0 vs)) k)
-      (SYSCALL: external_call ef se vs m0 tr rv m1)
-    :
-      step se ge (State itr0) tr (State (k (rv, m1)))
   | step_done
       itr0
       oh rv m k
@@ -338,22 +380,27 @@ Section MODSEM.
        ModSem.midx := Some mi;
     |}.
   Next Obligation.
-    inv AT0. inv AT1. esplits; et.
+    inv AT0. inv AT1. rewrite VIS in *. eapply eqit_inv_vis in VIS0. des; clarify.
   Qed.
   Next Obligation.
     inv FINAL0. inv FINAL1. rewrite RET in *. apply eqit_inv_ret in RET0. clarify.
   Qed.
   Next Obligation.
     inv AFTER0. inv AFTER1. f_equal.
+    inv GETK. inv GETK0. rewrite VIS in *. apply eqit_inv_vis in VIS0. des. clarify.
+    admit "equiv".
   Qed.
   Next Obligation.
     ii. des. inv PR; ss; inv PR0; ss.
+    - rewrite VIS in *. punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind.
+    - rewrite VIS in *. punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind.
   Qed.
   Next Obligation.
     ii. des. inv PR; ss; inv PR0; ss; try rewrite VIS in RET; exploit vis_not_ret; et.
   Qed.
   Next Obligation.
     ii. des. inv PR; ss; inv PR0; ss.
+    rewrite VIS in *. apply vis_not_ret in RET. ss.
   Qed.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.
@@ -371,12 +418,6 @@ Section MODSEM.
       (EUTT: eutt eq itr0 itr1)
     :
       equiv (State itr0) (State itr1)
-  | equiv_callstate
-      k0 k1
-      fptr oh m vs
-      (EUTT: forall x, eutt eq (k0 x) (k1 x))
-    :
-      equiv (Callstate fptr oh m vs k0) (Callstate fptr oh m vs k1)
   .
 
   Theorem equiv_determ
@@ -394,15 +435,7 @@ Section MODSEM.
     - inv STEP; inv STEP'; ss; esplits; et; try (econs; et);
         try (rewrite EUTT in *;
              rewrite VIS in *; punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind).
-      + econs; et. ii. hexploit (REL x); et. intro T. unfold id in T. pclearbot. et.
-      + try (determ_tac external_call_determ; check_safe).
-        eapply REL.
-      + rewrite EUTT in *.
-        rewrite VIS in *; punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind.
-      + rewrite EUTT in *.
-        rewrite VIS in *; punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind.
-        clarify.
-    esplits; et.
+      + refl.
   Qed.
 
   Lemma modsem_determinate: forall st, determinate_at modsem st.
@@ -411,16 +444,6 @@ Section MODSEM.
     - ii; ss.
       inv H; inv H0; esplits; et; try econs; et;
         try by (rewrite VIS in *; punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind).
-      + rewrite VIS in *. apply eqit_inv_vis in VIS0. des. clarify.
-        esplits; et.
-        admit "relax eq to equiv".
-      + rewrite VIS in *. punfold VIS0. inv VIS0. simpl_depind. subst. simpl_depind.
-        try (determ_tac external_call_determ; check_safe).
-      + rewrite VIS in *. punfold VIS0. inv VIS0. simpl_depind. subst. simpl_depind.
-        ii; clarify. try (determ_tac external_call_determ; check_safe).
-        exploit H0; et. i; des. clarify.
-        f_equal.
-        admit "relax eq to equiv".
     - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Unshelve.
     all: des; ss; try (by exfalso; des; ss).

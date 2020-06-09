@@ -17,6 +17,7 @@ Require Import SIRmini_eutt.
 Require Import IterSource.
 Require Import IterTarget.
 Require Import ModSemProps.
+Require Import Program.
 
 Set Implicit Arguments.
 
@@ -178,30 +179,51 @@ Unshelve.
   all: admit "giveup".
 Qed.
 
-Inductive match_states_internal: SIRmini_eutt.state owned_heap -> Clight.state -> Prop :=
+Inductive match_states_internal (i: nat): SIRmini_eutt.state owned_heap -> Clight.state -> Prop :=
 | match_initial
     itr0 ty m0 vs
     fid fblk fptr_tgt
     (SYMB: Genv.find_symbol ge fid = Some fblk)
     (FPTR: fptr_tgt = (Vptr fblk Ptrofs.zero))
-    (ITR: itr0 = interp_program0 IterSource.prog (ICall fid tt m0 vs))
+    (ITR: itr0 ≈ interp_program0 IterSource.prog (ICall fid tt m0 vs))
     (TY: ty = Clight.type_of_fundef (Internal f_iter))
+    (IDX: (i >= 100)%nat)
   :
-    match_states_internal (SIRmini_eutt.State itr0)
+    match_states_internal i (SIRmini_eutt.State itr0)
                           (Clight.Callstate fptr_tgt ty vs Kstop m0)
 | match_final
     itr0 m0 v
-    (RET: itr0 = Ret (tt, (m0, v)))
+    (RET: itr0 ≈ Ret (tt, (m0, v)))
   :
-    match_states_internal (SIRmini_eutt.State itr0) (Clight.Returnstate v Kstop m0)
+    match_states_internal i (SIRmini_eutt.State itr0) (Clight.Returnstate v Kstop m0)
 .
 
 Inductive match_states
           (i: nat) (st_src0: state owned_heap) (st_tgt0: Clight.state) (smo0: SimMemOh.t): Prop :=
 | match_states_intro
-    (MATCHST: match_states_internal st_src0 st_tgt0)
-    (IDX: (i >= 100)%nat)
+    (MATCHST: match_states_internal i st_src0 st_tgt0)
 .
+
+Lemma bind_ret_map {E R1 R2} (u : itree E R1) (f : R1 -> R2) :
+  (r <- u ;; Ret (f r)) ≅ f <$> u.
+Proof.
+  rewrite <- (bind_ret_r u) at 2. apply eqit_bind.
+  - hnf. intros. apply eqit_Ret. auto.
+  - rewrite bind_ret_r. reflexivity.
+Qed.
+
+Lemma map_vis {E R1 R2 X} (e: E X) (k: X -> itree E R1) (f: R1 -> R2) :
+  (* (f <$> (Vis e k)) ≅ Vis e (fun x => f <$> (k x)). *)
+  ITree.map f (Vis e k) ≅ Vis e (fun x => f <$> (k x)).
+Proof.
+  cbn.
+  unfold ITree.map.
+  autorewrite with itree. refl.
+Qed.
+
+
+
+
 
 Lemma match_states_lxsim
       idx st_src0 st_tgt0 sm0
@@ -222,17 +244,80 @@ Proof.
     exploit unsymb; et. intro T. des; clarify.
     exploit symb_def; et. intro DEF; des. ss. des_ifs.
     +
-      remember (interp_program0 IterSource.prog (ICall _iter tt m0 vs)) as itr0 in *.
-      rename Heqitr0 into V.
       Ltac des_itr itr :=
         let name := fresh "V" in
         destruct (observe itr) eqn:name; sym in name; eapply simpobs in name;
         eapply bisimulation_is_eq in name; subst itr
       .
-      unfold interp_program0 in *. rewrite sk_same in *. folder.
-      apply eq_eutt in V.
+      rename ITR into V.
+      unfold interp_program0 in V. rewrite sk_same in *. folder.
       rewrite mrec_as_interp in V. cbn in V. des_ifs. cbn in V.
       unfold c_iter in V.
+      Ltac vvt H := clear - H; exfalso; punfold H; inv H; simpl_depind; subst; simpl_depind.
+      Ltac f_equiv := first [eapply eqit_VisF|eapply eqit_bind'|Morphisms.f_equiv].
+      unfold unwrapU in *.
+      destruct (classic (exists fptr n x0 x1, vs = [fptr ; Vint n ; x0]
+                                              /\ Cop.sem_cast x0 tint tint m0 = Some x1)); cycle 1.
+      { assert(UB: itr0 ≈ interp (mrecursive (interp_function IterSource.prog))
+                    (triggerUB (owned_heap:=owned_heap))).
+        { des_ifs; ss; try (by contradict H; esplits; et).
+          - rewrite V.
+            unfold triggerUB.
+            f_equiv. autorewrite with itree. f_equiv. ii; ss.
+          - rewrite V.
+            unfold triggerUB.
+            f_equiv. autorewrite with itree. f_equiv. ii; ss.
+        }
+        econs 1; et; swap 2 3.
+        { esplits; intro T; rr in T; des; inv T; ss; rewrite V in *; ss.
+          - rewrite UB in *. unfold triggerUB in VIS. rewrite interp_vis in VIS.
+            cbn in VIS. rewrite bind_trigger in VIS.
+            vvt VIS.
+          - rewrite UB in *. unfold triggerUB in RET. rewrite interp_vis in RET.
+            cbn in RET. rewrite bind_trigger in RET.
+            apply vis_not_ret in RET. ss.
+        }
+        { eapply modsem_receptive; et. }
+        ii. ss. inv STEPSRC.
+        - rewrite UB in *. unfold triggerUB in VIS. rewrite interp_vis in VIS.
+          cbn in VIS. rewrite bind_trigger in VIS.
+          vvt VIS.
+        - rewrite UB in *. unfold triggerUB in VIS. rewrite interp_vis in VIS.
+          cbn in VIS. rewrite bind_trigger in VIS.
+          vvt VIS.
+      }
+      des. subst. clarify. ss. unfold unwrapU in V. des_ifs.
+      * autorewrite with itree in V; cbn in V.
+        econs 2; try refl; eauto.
+        { esplits; eauto; cycle 1.
+          { apply Ord.lift_idx_spec. instantiate (1 := Nat.pred idx). xomega. }
+          eapply spread_dplus; et.
+          { eapply modsem2_mi_determinate; et. }
+          eapply plus_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et). }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et). des_ifs. ss. fold Int.zero. rewrite Heq. ss. }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et). }
+          eapply star_refl.
+        }
+        right. eapply CIH. econs; eauto. econs; eauto.
+      *
+  -
+        econs.
+      destruct vs; ss.
+      { unfold triggerUB in V. (*** TODO: use notation instead ***)
+        rewrite interp_vis in V. cbn in V. rewrite bind_trigger in V.
+        econs 1; et; swap 2 3.
+        { esplits; intro T; rr in T; des; inv T; ss; rewrite V in *; ss.
+          - vvt VIS.
+          - apply vis_not_ret in RET. ss.
+        }
+        { eapply modsem_receptive; et. }
+        ii. ss. inv STEPSRC; rewrite V in *; try (vvt VIS).
+      }
       econs 1; eauto; swap 2 3.
       { esplits; intro T; rr in T; des; inv T; ss. rewrite RET in *.
         des_ifs;

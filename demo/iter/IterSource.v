@@ -21,8 +21,10 @@ Definition c_iter (oh0: owned_heap) (m0: mem) (vs: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
   match vs with
   | [fptr ; Vint n ; x] =>
+    x <- unwrapU (Cop.sem_cast x Clightdefs.tint Clightdefs.tint m0) ;;
     if Int.eq n Int.zero
-    then triggerDone oh0 m0 x
+    then Ret (oh0, (m0, x))
+             (* triggerDone oh0 m0 x *)
     else '(oh1, (m1, rv)) <- trigger (ECall fptr oh0 m0 [x]) ;;
          trigger (ICall _iter oh1 m1 [fptr ; Vint (Int.sub n Int.one) ; rv])
   | _ => triggerUB (owned_heap := owned_heap)

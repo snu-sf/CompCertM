@@ -13,7 +13,7 @@ Require SimMemId.
 Require Import Clightdefs.
 Require Import CtypesC.
 Require Import Any.
-Require Import SIRmini.
+Require Import SIRmini_eutt.
 Require Import IterSource.
 Require Import IterTarget.
 Require Import ModSemProps.
@@ -178,7 +178,7 @@ Unshelve.
   all: admit "giveup".
 Qed.
 
-Inductive match_states_internal: SIRmini.state owned_heap -> Clight.state -> Prop :=
+Inductive match_states_internal: SIRmini_eutt.state owned_heap -> Clight.state -> Prop :=
 | match_initial
     itr0 ty m0 vs
     fid fblk fptr_tgt
@@ -187,13 +187,13 @@ Inductive match_states_internal: SIRmini.state owned_heap -> Clight.state -> Pro
     (ITR: itr0 = interp_program0 IterSource.prog (ICall fid tt m0 vs))
     (TY: ty = Clight.type_of_fundef (Internal f_iter))
   :
-    match_states_internal (SIRmini.mk itr0)
+    match_states_internal (SIRmini_eutt.State itr0)
                           (Clight.Callstate fptr_tgt ty vs Kstop m0)
 | match_final
     itr0 m0 v
     (RET: itr0 = Ret (tt, (m0, v)))
   :
-    match_states_internal (SIRmini.mk itr0) (Clight.Returnstate v Kstop m0)
+    match_states_internal (SIRmini_eutt.State itr0) (Clight.Returnstate v Kstop m0)
 .
 
 Inductive match_states
@@ -218,7 +218,7 @@ Proof.
   i.
   pfold.
   inv MATCH. subst; ss. ii. clear SUSTAR. inv MATCHST; ss; clarify.
-  - econs 2; eauto. ii. clear SU.
+  - econs 1; eauto. ii. clear SU.
     exploit unsymb; et. intro T. des; clarify.
     exploit symb_def; et. intro DEF; des. ss. des_ifs.
     +
@@ -231,6 +231,18 @@ Proof.
       .
       unfold interp_program0 in *. rewrite sk_same in *. folder.
       apply eq_eutt in V.
+      rewrite mrec_as_interp in V. cbn in V. des_ifs. cbn in V.
+      unfold c_iter in V.
+      econs 1; eauto; swap 2 3.
+      { esplits; intro T; rr in T; des; inv T; ss. rewrite RET in *.
+        des_ifs;
+          try (by unfold triggerUB, triggerDone in *; autorewrite with itree in V; cbn in V;
+               rewrite bind_trigger in V; sym in V; eapply vis_not_ret in V; ss).
+      }
+      { eapply modsem_receptive; et. }
+      ii. ss. des_ifs.
+      inv STEPSRC.
+
       rewrite mrec_as_interp in V.
       rewrite itree_eta_ in V. ss. des_itr itr0; ss. rename V0 into V.
       rewrite <- itree_eta_ in V. symmetry in V.

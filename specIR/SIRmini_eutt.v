@@ -315,7 +315,7 @@ Section MODSEM.
       (VIS: itr0 ≈ Vis (subevent _ (ESyscall ef m0 vs)) k)
       (SYSCALL: external_call ef se vs m0 tr rv m1)
     :
-      step se ge (State itr0) E0 (State (k (rv, m1)))
+      step se ge (State itr0) tr (State (k (rv, m1)))
   | step_done
       itr0
       oh rv m k
@@ -365,42 +365,66 @@ Section MODSEM.
     all: ss.
   Qed.
 
-  (* Lemma modsem_determinate: forall st, determinate_at modsem st. *)
-  (* Proof. *)
-  (*   econs; eauto. *)
-  (*   - ii; ss. *)
-  (*     inv H; inv H0; esplits; et; try econs; et; *)
-  (*       try by (rewrite VIS in *; punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind). *)
-  (*     + rewrite VIS in *. apply eqit_inv_vis in VIS0. des. clarify. *)
-  (*       esplits; et. *)
-  (*     + rewrite VIS in *. punfold VIS0. inv VIS0. simpl_depind. subst. simpl_depind. *)
-  (*     + rewrite VIS in *. punfold VIS0. inv VIS0. simpl_depind. subst. simpl_depind. *)
-  (*     + rewrite VIS in *. punfold VIS0. inv VIS0. simpl_depind. subst. simpl_depind. *)
-  (*     + rewrite VIS in *. punfold VIS0. inv VIS0. simpl_depind. subst. simpl_depind. *)
-  (*       exploit empty_nonempty; try apply VIS0. *)
-  (*       { rewrite VIS0. et. *)
-  (*       unfold eutt in *. *)
-  (*       eapply (@eqit_inv_vis eff0 (owned_heap * (mem * val)) (owned_heap * (mem * val)) *)
-  (*                             eq true true *)
-  (*              ) in VIS0. *)
-  (*       eapply (eqit_inv_vis true true (subevent void ENB)) in VIS0. et. *)
-  (*       Set Printing All. *)
-  (*       unfold eutt in VIS0. *)
-  (*       eapply eqit_inv_vis in VIS0. et. *)
-  (*       punfold VIS0. inv VIS0. simpl_depind. subst. simpl_depind. *)
-  (*       eapply eqit_inv_vis in VIS0. et. *)
-  (*     clarify. *)
-  (*     clarify_meq; try (determ_tac eval_expr_determ; check_safe); *)
-  (*               try (determ_tac eval_lvalue_determ; check_safe); try (determ_tac eval_exprlist_determ; check_safe); *)
-  (*                 try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); *)
-  (*                   esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq. *)
-  (*     + inv H4; inv H16; congruence. *)
-  (*     + determ_tac eval_exprlist_determ. *)
-  (*     + inv H1. inv H8. hexploit (alloc_variables_determ H0 H3). i; des; clarify. determ_tac bind_parameters_determ. *)
-  (*   - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega. *)
-  (* Unshelve. *)
-  (*   all: des; ss; try (by exfalso; des; ss). *)
-  (* Qed. *)
+  Inductive equiv: state -> state -> Prop :=
+  | equiv_state
+      itr0 itr1
+      (EUTT: eutt eq itr0 itr1)
+    :
+      equiv (State itr0) (State itr1)
+  | equiv_callstate
+      k0 k1
+      fptr oh m vs
+      (EUTT: forall x, eutt eq (k0 x) (k1 x))
+    :
+      equiv (Callstate fptr oh m vs k0) (Callstate fptr oh m vs k1)
+  .
+
+  Theorem equiv_determ
+          st0 tr st1
+          st'0 tr' st'1
+          (EQ: equiv st0 st'0)
+          (STEP: Step modsem st0 tr st1)
+          (STEP': Step modsem st'0 tr' st'1)
+    :
+      tr = tr' /\ equiv st1 st'1
+  .
+  Proof.
+    ss.
+    inv EQ.
+    - inv STEP; inv STEP'; ss; esplits; et; try (econs; et);
+        try (rewrite EUTT in *;
+             rewrite VIS in *; punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind).
+      + econs; et. ii. hexploit (REL x); et. intro T. unfold id in T. pclearbot. et.
+      + try (determ_tac external_call_determ; check_safe).
+        eapply REL.
+      + rewrite EUTT in *.
+        rewrite VIS in *; punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind.
+      + rewrite EUTT in *.
+        rewrite VIS in *; punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind.
+        clarify.
+    esplits; et.
+  Qed.
+
+  Lemma modsem_determinate: forall st, determinate_at modsem st.
+  Proof.
+    econs; eauto.
+    - ii; ss.
+      inv H; inv H0; esplits; et; try econs; et;
+        try by (rewrite VIS in *; punfold VIS0; inv VIS0; simpl_depind; subst; simpl_depind).
+      + rewrite VIS in *. apply eqit_inv_vis in VIS0. des. clarify.
+        esplits; et.
+        admit "relax eq to equiv".
+      + rewrite VIS in *. punfold VIS0. inv VIS0. simpl_depind. subst. simpl_depind.
+        try (determ_tac external_call_determ; check_safe).
+      + rewrite VIS in *. punfold VIS0. inv VIS0. simpl_depind. subst. simpl_depind.
+        ii; clarify. try (determ_tac external_call_determ; check_safe).
+        exploit H0; et. i; des. clarify.
+        f_equal.
+        admit "relax eq to equiv".
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Unshelve.
+    all: des; ss; try (by exfalso; des; ss).
+  Qed.
 
 End MODSEM.
 

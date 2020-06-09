@@ -16,6 +16,7 @@ Set Implicit Arguments.
 
 Definition owned_heap: Type := unit.
 Definition initial_owned_heap: SkEnv.t -> owned_heap := fun _ => tt.
+Definition sg: signature := (Ctypes.signature_of_type (Ctypes.Tcons Clightdefs.tint Ctypes.Tnil) Clightdefs.tint cc_default).
 
 Definition c_iter (oh0: owned_heap) (m0: mem) (vs: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
@@ -25,7 +26,7 @@ Definition c_iter (oh0: owned_heap) (m0: mem) (vs: list val):
     if Int.eq n Int.zero
     then Ret (oh0, (m0, x))
              (* triggerDone oh0 m0 x *)
-    else '(oh1, (m1, rv)) <- trigger (ECall fptr oh0 m0 [x]) ;;
+    else '(oh1, (m1, rv)) <- trigger (ECall sg fptr oh0 m0 [x]) ;;
          trigger (ICall _iter oh1 m1 [fptr ; Vint (Int.sub n Int.one) ; rv])
   | _ => triggerUB (owned_heap := owned_heap)
   end

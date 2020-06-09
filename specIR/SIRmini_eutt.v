@@ -135,7 +135,8 @@ Section EFF.
   Variant EventE: Type -> Type :=
   | ENB: EventE void
   | EUB: EventE void
-  | ECall (fptr: val) (oh: owned_heap) (m: mem) (vs: list val): EventE (owned_heap * (mem * val))
+  | ECall (sg: signature) (fptr: val)
+          (oh: owned_heap) (m: mem) (vs: list val): EventE (owned_heap * (mem * val))
   | EDone (oh: owned_heap) (m: mem) (v: val): EventE void
   .
 
@@ -308,8 +309,11 @@ Section MODSEM.
 
   Inductive at_external (st0: state): owned_heap -> Args.t -> Prop :=
   | at_external_intro
-      args fptr vs k oh0 m0
-      (VIS: st0.(itr) ≈ Vis (subevent _ (ECall fptr oh0 m0 vs)) k)
+      args sg fptr vs k oh0 m0
+      (VIS: st0.(itr) ≈ Vis (subevent _ (ECall sg fptr oh0 m0 vs)) k)
+      (EXT: Genv.find_funct skenv fptr = None)
+      (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
+                        /\ sg = Sk.get_sig skd)
       (ARGS: args = Args.mk fptr vs m0)
     :
       at_external st0 oh0 args
@@ -318,8 +322,8 @@ Section MODSEM.
   Inductive get_k (st0: state):
     (owned_heap * (mem * val) -> itree eff0 (owned_heap * (mem * val))) -> Prop :=
   | get_k_intro
-      _vs _fptr _oh0 _m0 k
-      (VIS: st0.(itr) ≈ Vis (subevent _ (ECall _fptr _oh0 _m0 _vs)) k)
+      _vs _sg _fptr _oh0 _m0 k
+      (VIS: st0.(itr) ≈ Vis (subevent _ (ECall _sg _fptr _oh0 _m0 _vs)) k)
     :
       get_k st0 k
   .
@@ -328,9 +332,8 @@ Section MODSEM.
   | after_external_intro
       k m0 rv st1
       (GETK: get_k st0 k)
-      (V: (Retv.v retv) = rv)
-      (M: (Retv.m retv) = m0)
       (KONT: st1 = State (k (oh0, (m0, rv))))
+      (RETV: retv = Retv.mk rv m0)
     :
       after_external st0 oh0 retv st1
   .

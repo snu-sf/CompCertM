@@ -119,8 +119,8 @@ Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) p
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
-Let sk_same: (CSk.of_program signature_of_function IterTarget.prog) =
-             (Sk.of_program (fn_sig (owned_heap:=owned_heap)) IterSource.prog).
+Let sk_same: __GUARD__ ((CSk.of_program signature_of_function IterTarget.prog) =
+                        (Sk.of_program (fn_sig (owned_heap:=owned_heap)) IterSource.prog)).
 Proof.
   (*** TODO: generalize lemma and replace CshmgenproofC? ***)
   unfold CSk.of_program, Sk.of_program. ss.
@@ -179,7 +179,42 @@ Unshelve.
   all: admit "giveup".
 Qed.
 
-Inductive match_states_internal (i: nat): SIRmini_eutt.state owned_heap -> Clight.state -> Prop :=
+
+
+
+
+Notation "'_'" := PTree.Leaf (at level 50).
+Notation "a % x % b" := (PTree.Node a x b) (at level 50).
+Notation "a %% b" := (PTree.Node a None b) (at level 50).
+Let te n fptr x0: temp_env :=
+  (PTree.Node
+     (PTree.Node PTree.Leaf None
+                 (PTree.Node
+                    (PTree.Node PTree.Leaf None
+                                (PTree.Node PTree.Leaf None (PTree.Node PTree.Leaf (Some Vundef) PTree.Leaf)))
+                    None
+                    (PTree.Node
+                       (PTree.Node PTree.Leaf None (PTree.Node PTree.Leaf (Some (Vint n)) PTree.Leaf))
+                       None PTree.Leaf))) None
+     (PTree.Node
+        (PTree.Node PTree.Leaf None
+                    (PTree.Node
+                       (PTree.Node PTree.Leaf None (PTree.Node PTree.Leaf (Some fptr) PTree.Leaf)) None
+                       PTree.Leaf)) None
+        (PTree.Node
+           (PTree.Node PTree.Leaf None
+                       (PTree.Node PTree.Leaf None (PTree.Node PTree.Leaf (Some Vundef) PTree.Leaf)))
+           None
+           (PTree.Node (PTree.Node PTree.Leaf None (PTree.Node PTree.Leaf (Some x0) PTree.Leaf))
+                       None PTree.Leaf))))
+.
+
+
+
+
+
+Inductive match_states_internal (i: nat): SIRmini_eutt.state owned_heap -> Clight.state ->
+                                          SimMem.t -> Prop :=
 | match_initial
     itr0 ty m0 vs
     fid fblk fptr_tgt
@@ -190,18 +225,51 @@ Inductive match_states_internal (i: nat): SIRmini_eutt.state owned_heap -> Cligh
     (IDX: (i >= 100)%nat)
   :
     match_states_internal i (SIRmini_eutt.State itr0)
-                          (Clight.Callstate fptr_tgt ty vs Kstop m0)
+                          (Clight.Callstate fptr_tgt ty vs Kstop m0) (SimMemId.mk m0 m0)
+| match_at_external
+    itr0 k
+    fptr m0 x0 x1 n
+    (ITR: itr0 ≈ Vis (subevent _ (ECall sg fptr tt m0 [x1])) k)
+    (KSRC: k = (fun '(oh1, (m1, rv)) =>
+                  interp (mrecursive (interp_function IterSource.prog))
+                         (trigger (ICall _iter oh1 m1 [fptr; Vint (Int.sub n Int.one); rv]))))
+    (* (EXT: Genv.find_funct *)
+    (*         (SkEnv.project skenv_link (Sk.of_program (fn_sig (owned_heap:=owned_heap)) IterSource.prog)) *)
+    (*         fptr = None) *)
+    (CAST: Cop.sem_cast x0 tint tint m0 = Some x1)
+    k_tgt
+    (KTGT: k_tgt =
+           (Kcall (Some _t'1) f_iter empty_env
+                  (te n fptr x0)
+                  (Kseq
+                     (Scall (Some _t'2)
+                            (Clight.Evar
+                               _iter
+                               (Tfunction
+                                  (Tcons (tptr (Tfunction (Tcons tint Tnil) tint cc_default))
+                                         (Tcons tint (Tcons tint Tnil))) tint cc_default))
+                            [Etempvar _fptr (tptr (Tfunction (Tcons tint Tnil) tint cc_default));
+                               Clight.Ebinop Cop.Osub (Etempvar _n tint)
+                                             (Econst_int (Int.repr 1) tint) tint;
+                               Etempvar _t'1 tint])
+                     (Kseq (Clight.Sreturn (Some (Etempvar _t'2 tint))) Kstop))))
+  :
+    match_states_internal i (SIRmini_eutt.State itr0)
+                          (Clight.Callstate fptr (Tfunction (Tcons tint Tnil) tint cc_default)
+                                            [x1] k_tgt m0) (SimMemId.mk m0 m0)
 | match_final
     itr0 m0 v
     (RET: itr0 ≈ Ret (tt, (m0, v)))
   :
     match_states_internal i (SIRmini_eutt.State itr0) (Clight.Returnstate v Kstop m0)
+                          (SimMemId.mk m0 m0)
 .
 
 Inductive match_states
           (i: nat) (st_src0: state owned_heap) (st_tgt0: Clight.state) (smo0: SimMemOh.t): Prop :=
 | match_states_intro
-    (MATCHST: match_states_internal i st_src0 st_tgt0)
+    (MATCHST: match_states_internal i st_src0 st_tgt0 smo0)
+    (MWF: SimMemOh.wf smo0)
 .
 
 Lemma bind_ret_map {E R1 R2} (u : itree E R1) (f : R1 -> R2) :
@@ -220,8 +288,6 @@ Proof.
   unfold ITree.map.
   autorewrite with itree. refl.
 Qed.
-
-
 
 
 
@@ -304,9 +370,60 @@ Proof.
           eapply star_refl.
         }
         right. eapply CIH. econs; eauto. econs; eauto.
-      *
-  -
-        econs.
+      * autorewrite with itree in V; cbn in V.
+        rewrite bind_trigger in V.
+        econs 2; try refl; eauto.
+        { esplits; eauto; cycle 1.
+          { apply Ord.lift_idx_spec. instantiate (1 := Nat.pred idx). xomega. }
+          eapply spread_dplus; et.
+          { eapply modsem2_mi_determinate; et. }
+          eapply plus_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et); ii; repeat (des; ss; clarify).
+            fold Int.zero. rewrite Heq. ss.
+          }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+          apply star_refl.
+        }
+        fold (te n fptr x0). right. eapply CIH.
+        econs; eauto. econs; eauto.
+        { apply func_ext1. ii. des_ifs. }
+  - econs 3; eauto.
+    { rr. esplits; et. econs; et.
+      - admit "change is_call to NSTEP NRET".
+      - admit "change is_call to NSTEP NRET -- or put in match_states && exploit 'safe'". }
+    ii. ss. inv ATSRC. ss.
+    rewrite ITR in *. eapply eqit_inv_vis in VIS. des. clarify.
+    eexists _, _, (SimMemId.mk _ _). ss. esplits; et.
+    { rr. ss. esplits; et. econs; ss; et. }
+    { econs; ss; et.
+      - rewrite sk_same. folder. admit "ez - FINDF".
+      - esplits; et. unfold sg in *. rewrite H4. unfold signature_of_type in *.
+        unfold Sk.get_sig in *. des_ifs. ss. rewrite <- H4. ss. }
+    ii.
+    inv AFTERSRC. inv GETK. ss.
+    rewrite ITR in VIS. apply eqit_inv_vis in VIS. des. clarify.
+    rr in SIMRETV. des. ss. clarify. revert sk_same. clear_tac. i. (*** TODO: update claer_tac ***)
+    inv SIMRETV0; ss. clarify.
+    unfold Retv.mk in *. clarify. destruct sm_ret ;ss. clarify. rename tgt into m0.
+    eexists _, (SimMemId.mk m0 m0). esplits; et.
+    { econs; et. }
+    left.
+    pfold.
+    econs 1; eauto. ii. clear SU.
+    econs 1; eauto.
+    eapply CIH. econs; ss; et. econs; et.
+
       destruct vs; ss.
       { unfold triggerUB in V. (*** TODO: use notation instead ***)
         rewrite interp_vis in V. cbn in V. rewrite bind_trigger in V.

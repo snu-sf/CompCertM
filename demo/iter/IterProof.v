@@ -227,22 +227,47 @@ Let te n fptr x0: temp_env :=
 
 
 
+From ITree Require Export
+     KTree
+     KTreeFacts
+     Basics.CategoryOps
+     Basics.CategoryKleisli
+.
+Import CatNotations.
+Open Scope cat_scope.
+Notation ktr := (ktree (EventE owned_heap) (owned_heap * (mem * val)) (owned_heap * (mem * val))).
+
+Inductive match_stacks: ktr -> cont -> Prop :=
+| match_stacks_nil
+  :
+    match_stacks (fun r => Ret r) Kstop
+| match_stacks_cons
+    tl_src tl_tgt
+    (TL: match_stacks tl_src tl_tgt)
+  :
+    match_stacks
+      (((fun r => Ret r): ktr) >>> tl_src)
+      (Kseq (Clight.Sreturn (Some (Etempvar _t'2 tint))) tl_tgt)
+.
+
+
 
 
 Inductive match_states_internal (i: nat): SIRmini_quotient.state owned_heap -> Clight.state ->
                                           SimMem.t -> Prop :=
 | match_initial
     itr0 ty m0 vs
-    fid fblk fptr_tgt
+    fid fblk fptr_tgt k_src k_tgt
     (SYMB: Genv.find_symbol ge fid = Some fblk)
     (FPTR: fptr_tgt = (Vptr fblk Ptrofs.zero))
     (* (ITR: itr0 ≈ interp_program0 IterSource.prog (ICall fid tt m0 vs)) *)
-    (ITR: itr0 ≈ mrec (interp_function IterSource.prog) (ICall fid tt m0 vs))
+    (ITR: itr0 ≈ 'r <- (mrec (interp_function IterSource.prog) (ICall fid tt m0 vs)) ;; (k_src r))
     (TY: ty = Clight.type_of_fundef (Internal f_iter))
     (IDX: (i >= 100)%nat)
+    (STKS: match_stacks k_src k_tgt)
   :
     match_states_internal i (Eqv.lift itr0)
-                          (Clight.Callstate fptr_tgt ty vs Kstop m0) (SimMemId.mk m0 m0)
+                          (Clight.Callstate fptr_tgt ty vs k_tgt m0) (SimMemId.mk m0 m0)
 | match_at_external
     itr0 k
     fptr m0 x0 x1 n
@@ -328,7 +353,7 @@ Proof.
     { rewrite sk_same. folder. exploit symb_def; et. i; des. ss. des_ifs.
       rewrite sk_same in H. folder. rewrite FPTR. ss. des_ifs. et. }
     { rpapply TYP. admit "ez - findf sig". }
-  - econs; ss; eauto. econs; ss; eauto.
+  - econs; ss; eauto. econs; ss; eauto. econs; ss.
 Qed.
 
 (*** TODO: IDK why but (1) ?UNUSNED is needed (2) "fold" tactic does not work. WHY????? ***)
@@ -463,7 +488,7 @@ Proof.
         eapply star_refl.
       }
       right. eapply CIH. econs; eauto.
-      - econs; eauto.
+      - ss. econs; eauto.
       - ss.
     }
     { autorewrite with itree in V; cbn in V.

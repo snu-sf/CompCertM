@@ -13,7 +13,7 @@ Require SimMemId.
 Require Import Clightdefs.
 Require Import CtypesC.
 Require Import Any.
-Require Import SIRmini_eutt.
+Require Import SIRmini_quotient.
 Require Import IterSource.
 Require Import IterTarget.
 Require Import ModSemProps.
@@ -24,6 +24,11 @@ Set Implicit Arguments.
 Local Existing Instance SimMemOh_default.
 Local Arguments ModSemPair.mk [SM] [SS] _ _ _ _ [SMO].
 
+
+
+(*** TODO: move to CoqlibC ***)
+Global Unset Transparent Obligations.
+Add Search Blacklist "_obligation_".
 
 
 (********* TODO: try the same proof with extension ***************)
@@ -213,7 +218,7 @@ Let te n fptr x0: temp_env :=
 
 
 
-Inductive match_states_internal (i: nat): SIRmini_eutt.state owned_heap -> Clight.state ->
+Inductive match_states_internal (i: nat): SIRmini_quotient.state owned_heap -> Clight.state ->
                                           SimMem.t -> Prop :=
 | match_initial
     itr0 ty m0 vs
@@ -224,7 +229,7 @@ Inductive match_states_internal (i: nat): SIRmini_eutt.state owned_heap -> Cligh
     (TY: ty = Clight.type_of_fundef (Internal f_iter))
     (IDX: (i >= 100)%nat)
   :
-    match_states_internal i (SIRmini_eutt.State itr0)
+    match_states_internal i (Eqv.lift itr0)
                           (Clight.Callstate fptr_tgt ty vs Kstop m0) (SimMemId.mk m0 m0)
 | match_at_external
     itr0 k
@@ -254,14 +259,14 @@ Inductive match_states_internal (i: nat): SIRmini_eutt.state owned_heap -> Cligh
                                Etempvar _t'1 tint])
                      (Kseq (Clight.Sreturn (Some (Etempvar _t'2 tint))) Kstop))))
   :
-    match_states_internal i (SIRmini_eutt.State itr0)
+    match_states_internal i (Eqv.lift itr0)
                           (Clight.Callstate fptr (Tfunction (Tcons tint Tnil) tint cc_default)
                                             [x1] k_tgt m0) (SimMemId.mk m0 m0)
 | match_final
     itr0 m0 v
     (RET: itr0 ≈ Ret (tt, (m0, v)))
   :
-    match_states_internal i (SIRmini_eutt.State itr0) (Clight.Returnstate v Kstop m0)
+    match_states_internal i (Eqv.lift itr0) (Clight.Returnstate v Kstop m0)
                           (SimMemId.mk m0 m0)
 .
 
@@ -336,21 +341,29 @@ Proof.
         }
         econs 1; et; swap 2 3.
         { esplits; intro T; rr in T; des; inv T; ss; rewrite V in *; ss.
-          - rewrite UB in *. unfold triggerUB in VIS. rewrite interp_vis in VIS.
-            cbn in VIS. rewrite bind_trigger in VIS.
-            vvt VIS.
-          - rewrite UB in *. unfold triggerUB in RET. rewrite interp_vis in RET.
-            cbn in RET. rewrite bind_trigger in RET.
-            apply vis_not_ret in RET. ss.
+          - hexploit (Eqv.peek_lift PEEK); et. sii T; des.
+            rewrite V in T. rewrite UB in T. rewrite VIS in T.
+            unfold triggerUB in T. rewrite interp_vis in T.
+            cbn in T. rewrite bind_trigger in T.
+            vvt T.
+          - hexploit (Eqv.peek_lift PEEK); et. sii T; des.
+            rewrite V in T. rewrite UB in T. rewrite RET in T.
+            unfold triggerUB in T. rewrite interp_vis in T.
+            cbn in T. rewrite bind_trigger in T.
+            vvt T.
         }
         { eapply modsem_receptive; et. }
         ii. ss. inv STEPSRC.
-        - rewrite UB in *. unfold triggerUB in VIS. rewrite interp_vis in VIS.
-          cbn in VIS. rewrite bind_trigger in VIS.
-          vvt VIS.
-        - rewrite UB in *. unfold triggerUB in VIS. rewrite interp_vis in VIS.
-          cbn in VIS. rewrite bind_trigger in VIS.
-          vvt VIS.
+        - hexploit (Eqv.peek_lift PEEK); et. sii T; des.
+          rewrite UB in T. rewrite VIS in T.
+          unfold triggerUB in T. rewrite interp_vis in T.
+          cbn in T. rewrite bind_trigger in T.
+          vvt T.
+        - hexploit (Eqv.peek_lift PEEK); et. sii T; des.
+          rewrite UB in T. rewrite VIS in T.
+          unfold triggerUB in T. rewrite interp_vis in T.
+          cbn in T. rewrite bind_trigger in T.
+          vvt T.
       }
       des. subst. clarify. ss. unfold unwrapU in V. des_ifs.
       * autorewrite with itree in V; cbn in V.
@@ -400,6 +413,7 @@ Proof.
         { apply func_ext1. ii. des_ifs. }
   - econs 3; eauto.
     { rr. esplits; et. econs; et.
+      - eapply Eqv.peek_; et. (*** TODO: make Hint Resolve or tactic or sth ***)
       - admit "change is_call to NSTEP NRET".
       - admit "change is_call to NSTEP NRET -- or put in match_states && exploit 'safe'". }
     ii. ss. inv ATSRC. ss.

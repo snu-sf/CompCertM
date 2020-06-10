@@ -7,7 +7,7 @@ Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require ClightC.
 Require Import IterTarget.
-Require Import SIRmini_eutt.
+Require Import SIRmini_quotient.
 (* Require Import Clightdefs. *)
 
 Set Implicit Arguments.

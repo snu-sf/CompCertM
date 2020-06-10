@@ -26,9 +26,6 @@ Local Arguments ModSemPair.mk [SM] [SS] _ _ _ _ [SMO].
 
 
 
-(*** TODO: move to CoqlibC ***)
-Global Unset Transparent Obligations.
-Add Search Blacklist "_obligation_".
 
 
 (********* TODO: try the same proof with extension ***************)

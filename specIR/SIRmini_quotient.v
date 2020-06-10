@@ -25,6 +25,9 @@ Set Implicit Arguments.
 
 
 
+(*** TODO: move to CoqlibC ***)
+Global Unset Transparent Obligations.
+Add Search Blacklist "_obligation_".
 
 
 
@@ -241,6 +244,8 @@ Section EFF.
   | ECall (sg: signature) (fptr: val)
           (oh: owned_heap) (m: mem) (vs: list val): EventE (owned_heap * (mem * val))
   | EDone (oh: owned_heap) (m: mem) (v: val): EventE void
+  | EBP: EventE unit (* breakpoint for better "match_states" *)
+  | EChoose (X: Type): EventE X
   .
 
   Definition eff0: Type -> Type := Eval compute in EventE.
@@ -479,6 +484,18 @@ Section MODSEM.
       (VIS: itr0 ≈ Vis (subevent _ (EDone oh m rv)) k)
     :
       step se ge st0 E0 (Eqv.lift (Ret (oh, (m, rv))))
+  | step_breakpoint
+      itr0 k
+      (IN: st0 itr0)
+      (VIS: itr0 ≈ Vis (subevent _ (EBP)) k)
+    :
+      step se ge st0 E0 (Eqv.lift (k tt))
+  | step_choose
+      itr0 X k (x: X)
+      (IN: st0 itr0)
+      (VIS: itr0 ≈ Vis (subevent _ (EChoose X)) k)
+    :
+      step se ge st0 E0 (Eqv.lift (k x))
   .
 
   Program Definition modsem: ModSem.t :=
@@ -514,9 +531,15 @@ Section MODSEM.
       punfold H; inv H; simpl_depind; subst; simpl_depind.
     - rewrite VIS in *. rewrite VIS0 in *.
       punfold H; inv H; simpl_depind; subst; simpl_depind.
+    - rewrite VIS in *. rewrite VIS0 in *.
+      punfold H; inv H; simpl_depind; subst; simpl_depind.
+    - rewrite VIS in *. rewrite VIS0 in *.
+      punfold H; inv H; simpl_depind; subst; simpl_depind.
   Qed.
   Next Obligation.
     ii. des. inv PR; ss; inv PR0; ss; determ_tac Eqv.in_eqv.
+    - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
+    - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
     - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
     - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
   Qed.
@@ -560,13 +583,20 @@ Section MODSEM.
   (*     + refl. *)
   (* Qed. *)
 
-  Lemma modsem_determinate: forall st, determinate_at modsem st.
+  Lemma modsem_determinate
+        (st0: state)
+        (NCHOOSE: forall X itr0 k (IN: st0 itr0), itr0 ≈ Vis (subevent _ (EChoose X)) k -> False)
+    :
+      determinate_at modsem st0.
   Proof.
     econs; eauto.
     - ii; ss.
       inv H; inv H0; esplits; et; try econs; et; ii; determ_tac Eqv.in_eqv;
         try (by rewrite VIS in *; rewrite VIS0 in *;
              punfold H0; inv H0; simpl_depind; subst; simpl_depind).
+      + rewrite VIS in *. rewrite VIS0 in *. apply eqit_inv_vis in H0. des; clarify.
+        eapply Eqv.eqv_lift; et.
+      + exploit NCHOOSE; eauto. i; ss.
     - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
   Unshelve.
     all: des; ss; try (by exfalso; des; ss).

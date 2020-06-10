@@ -1885,7 +1885,7 @@ Module ModTuple.
                 { econs; et. econs; et. }
                 intro T; des. esplits; eauto. eapply star_refl.
               + (* bsim *)
-                inv STEPTGT; swap 2 3.
+                left. inv STEPTGT; swap 2 3.
                 { contradict NCALLTGT. rr. et. }
                 { contradict NRETTGT. rr. et. }
                 esplits; eauto.
@@ -1918,7 +1918,7 @@ Module ModTuple.
                   { econs; et. econs; et. econs; et. }
                   intro T; des. esplits; eauto. eapply star_refl.
                 + (* bsim *)
-                  inv STEPTGT; swap 2 3.
+                  left. inv STEPTGT; swap 2 3.
                   { contradict NCALLTGT. rr. et. }
                   { contradict NRETTGT. rr. et. }
                   esplits; eauto.
@@ -1952,7 +1952,7 @@ Module ModTuple.
                   { econs; et. econs; et. econs; et. }
                   intro T; des. esplits; eauto. eapply star_refl.
                 + (* bsim *)
-                  inv STEPTGT; swap 2 3.
+                  left. inv STEPTGT; swap 2 3.
                   { contradict NCALLTGT. rr. et. }
                   { contradict NRETTGT. rr. et. }
                   esplits; eauto.
@@ -2033,7 +2033,7 @@ Module ModTuple.
           { (* BSIM *)
             repeat fold prog_tgt. repeat fold prog_src.
             ss. rewrite LINKTGT in *. rewrite LINKSRC in *. fold skenv_link.
-            i. inv STEPTGT.
+            i. left. inv STEPTGT.
             set (Args.get_fptr args) as fptr in *.
             inv OHS.
             exploit msfind_bsim; et. i; des; clarify.

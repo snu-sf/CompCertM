@@ -708,7 +708,7 @@ Section ADQSTEP.
       { rr. ss. }
       { eapply upcast_downcast_iff; eauto. }
       { eapply upcast_downcast_iff; eauto. }
-      i; des.
+      i; des. left.
 
       exploit INITBSIM; eauto. i; des.
 
@@ -781,7 +781,7 @@ Section ADQSTEP.
       + econs 1; eauto; revgoals.
         { ii. des. clear - FINALTGT PROGRESS. inv FINALTGT. ss. ModSem.tac. }
         { ii. right. des. esplits; eauto. eapply lift_step; eauto. }
-        ii. inv STEPTGT; ModSem.tac. ss. exploit STEP; eauto. i; des_safe.
+        ii. left. inv STEPTGT; ModSem.tac. ss. exploit STEP; eauto. i; des_safe.
         eexists i1, (State ((Frame.mk ms_src st_src1) :: tail_src) _).
         esplits; eauto.
         { des.

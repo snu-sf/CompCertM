@@ -1576,7 +1576,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           esplits; et.
           econs 3; et.
         (* bsim *)
-        - i. ss. des_ifs. clear_tac.
+        - i. left. ss. des_ifs. clear_tac.
           inv STEPTGT; swap 2 3.
           { contradict NCALLTGT. rr. et. }
           { contradict NRETTGT. rr. et. }
@@ -1598,7 +1598,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           i. des.
           exists t. eexists. econs. ss. eauto.
         (* bsim *)
-        - i. ss. rewrite LINKTGT in *. ss. clear_tac.
+        - i. left. ss. rewrite LINKTGT in *. ss. clear_tac.
           inv STEPTGT; swap 2 3.
           { contradict NCALLTGT. rr. et. }
           { contradict NRETTGT. rr. et. }
@@ -1631,7 +1631,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
             ss. clarify. exploit same_prog. eapply H. eapply ISFOCTGT. eauto. eauto. eauto. }
           subst. eauto. }
       { i. inv FINALTGT. }
-      i. inv STEPTGT. ss.
+      i. left. inv STEPTGT. ss.
       exploit msfind_bsim; et.
       { des_ifs. eauto. } i; des.
       + des_ifs. esplits; eauto.

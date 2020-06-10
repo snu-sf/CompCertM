@@ -127,20 +127,14 @@ Section Eqv.
     r. etrans; et.
   Qed.
 
-  Inductive peek (t0: t) (x: X): Prop :=
-  | peek_intro
-      (IN: t0.(xs) x)
-  .
-
-  Lemma peek_eqv
-        t0 x0 x1
-        (PEEK0: peek t0 x0)
-        (PEEK1: peek t0 x1)
+  Lemma in_eqv
+        (t0: t) x0 x1
+        (IN0: t0 x0)
+        (IN1: t0 x1)
     :
       <<EQV: eqv x0 x1>>
   .
   Proof.
-    inv PEEK0. inv PEEK1.
     destruct t0; ss. et.
   Qed.
 
@@ -165,18 +159,20 @@ Section Eqv.
     - eapply lift_in.
   Qed.
 
-  Lemma peek_lift
+  Lemma in_lift
         x0 x1
-        (PEEK: peek (lift x0) x1)
+        (IN: (lift x0) x1)
     :
       <<EQV: eqv x0 x1>>
   .
   Proof.
-    inv PEEK. ss.
+    cbn in *. ss.
   Qed.
 
 End Eqv.
 End Eqv.
+
+Coercion Eqv.xs: Eqv.t >-> Funclass.
 
 
 Lemma eq_eutt
@@ -421,7 +417,7 @@ Section MODSEM.
   Inductive at_external (st0: state): owned_heap -> Args.t -> Prop :=
   | at_external_intro
       itr0 args sg fptr vs k oh0 m0
-      (PEEK: Eqv.peek st0 itr0)
+      (IN: st0 itr0)
       (VIS: itr0 ≈ Vis (subevent _ (ECall sg fptr oh0 m0 vs)) k)
       (EXT: Genv.find_funct skenv fptr = None)
       (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
@@ -435,7 +431,7 @@ Section MODSEM.
     (owned_heap * (mem * val) -> itree eff0 (owned_heap * (mem * val))) -> Prop :=
   | get_k_intro
       itr0 _vs _sg _fptr _oh0 _m0 k
-      (PEEK: Eqv.peek st0 itr0)
+      (IN: st0 itr0)
       (VIS: itr0 ≈ Vis (subevent _ (ECall _sg _fptr _oh0 _m0 _vs)) k)
     :
       get_k st0 k
@@ -454,13 +450,13 @@ Section MODSEM.
   Inductive final_frame (st0: state): owned_heap -> Retv.t -> Prop :=
   | final_frame_intro
       itr0 oh0 m0 (rv: val)
-      (PEEK: Eqv.peek st0 itr0)
+      (IN: st0 itr0)
       (RET: itr0 ≈ Ret (oh0, (m0, rv)))
     :
       final_frame st0 oh0 (Retv.mk rv m0)
   .
 
-  Inductive step (se: Senv.t) (ge: genvtype): state -> trace -> state -> Prop :=
+  Inductive step (se: Senv.t) (ge: genvtype) (st0: state): trace -> state -> Prop :=
   (* | step_tau *)
   (*     itr0 *)
   (*     itr1 *)
@@ -471,15 +467,15 @@ Section MODSEM.
   (*     (ST1: st1 = mk itr1) *)
   (*** ub is stuck, so we don't state anything ***)
   | step_nb
-      st0 itr0 k
-      (PEEK: Eqv.peek st0 itr0)
+      itr0 k
+      (IN: st0 itr0)
       (VIS: itr0 ≈ Vis (subevent _ (ENB)) k)
     :
       step se ge st0 E0 st0
   | step_done
-      st0 itr0
+      itr0
       oh rv m k
-      (PEEK: Eqv.peek st0 itr0)
+      (IN: st0 itr0)
       (VIS: itr0 ≈ Vis (subevent _ (EDone oh m rv)) k)
     :
       step se ge st0 E0 (Eqv.lift (Ret (oh, (m, rv))))
@@ -499,33 +495,33 @@ Section MODSEM.
        ModSem.midx := Some mi;
     |}.
   Next Obligation.
-    inv AT0. inv AT1. determ_tac Eqv.peek_eqv.
+    inv AT0. inv AT1. determ_tac Eqv.in_eqv.
     rewrite VIS in *. rewrite VIS0 in *. eapply eqit_inv_vis in H. des; clarify.
   Qed.
   Next Obligation.
-    inv FINAL0. inv FINAL1. determ_tac Eqv.peek_eqv.
+    inv FINAL0. inv FINAL1. determ_tac Eqv.in_eqv.
     rewrite RET in *. rewrite RET0 in *. apply eqit_inv_ret in H. clarify.
   Qed.
   Next Obligation.
     inv AFTER0. inv AFTER1.
-    inv GETK. inv GETK0. determ_tac Eqv.peek_eqv.
+    inv GETK. inv GETK0. determ_tac Eqv.in_eqv.
     rewrite VIS in *. rewrite VIS0 in *. eapply eqit_inv_vis in H. des; clarify.
     eapply Eqv.eqv_lift; et.
   Qed.
   Next Obligation.
-    ii. des. inv PR; ss; inv PR0; ss; determ_tac Eqv.peek_eqv.
+    ii. des. inv PR; ss; inv PR0; ss; determ_tac Eqv.in_eqv.
     - rewrite VIS in *. rewrite VIS0 in *.
       punfold H; inv H; simpl_depind; subst; simpl_depind.
     - rewrite VIS in *. rewrite VIS0 in *.
       punfold H; inv H; simpl_depind; subst; simpl_depind.
   Qed.
   Next Obligation.
-    ii. des. inv PR; ss; inv PR0; ss; determ_tac Eqv.peek_eqv.
+    ii. des. inv PR; ss; inv PR0; ss; determ_tac Eqv.in_eqv.
     - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
     - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
   Qed.
   Next Obligation.
-    ii. des. inv PR; ss; inv PR0; ss. determ_tac Eqv.peek_eqv.
+    ii. des. inv PR; ss; inv PR0; ss. determ_tac Eqv.in_eqv.
     - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
   Qed.
 
@@ -568,7 +564,7 @@ Section MODSEM.
   Proof.
     econs; eauto.
     - ii; ss.
-      inv H; inv H0; esplits; et; try econs; et; ii; determ_tac Eqv.peek_eqv;
+      inv H; inv H0; esplits; et; try econs; et; ii; determ_tac Eqv.in_eqv;
         try (by rewrite VIS in *; rewrite VIS0 in *;
              punfold H0; inv H0; simpl_depind; subst; simpl_depind).
     - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.

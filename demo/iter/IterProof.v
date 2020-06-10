@@ -341,29 +341,25 @@ Proof.
         }
         econs 1; et; swap 2 3.
         { esplits; intro T; rr in T; des; inv T; ss; rewrite V in *; ss.
-          - hexploit (Eqv.peek_lift PEEK); et. sii T; des.
-            rewrite V in T. rewrite UB in T. rewrite VIS in T.
-            unfold triggerUB in T. rewrite interp_vis in T.
-            cbn in T. rewrite bind_trigger in T.
-            vvt T.
-          - hexploit (Eqv.peek_lift PEEK); et. sii T; des.
-            rewrite V in T. rewrite UB in T. rewrite RET in T.
-            unfold triggerUB in T. rewrite interp_vis in T.
-            cbn in T. rewrite bind_trigger in T.
-            vvt T.
+          - rewrite VIS in IN. rewrite UB in IN.
+            unfold triggerUB in IN. rewrite interp_vis in IN.
+            cbn in IN. rewrite bind_trigger in IN.
+            vvt IN.
+          - rewrite RET in IN. rewrite UB in IN.
+            unfold triggerUB in IN. rewrite interp_vis in IN.
+            cbn in IN. rewrite bind_trigger in IN.
+            vvt IN.
         }
         { eapply modsem_receptive; et. }
-        ii. ss. inv STEPSRC.
-        - hexploit (Eqv.peek_lift PEEK); et. sii T; des.
-          rewrite UB in T. rewrite VIS in T.
-          unfold triggerUB in T. rewrite interp_vis in T.
-          cbn in T. rewrite bind_trigger in T.
-          vvt T.
-        - hexploit (Eqv.peek_lift PEEK); et. sii T; des.
-          rewrite UB in T. rewrite VIS in T.
-          unfold triggerUB in T. rewrite interp_vis in T.
-          cbn in T. rewrite bind_trigger in T.
-          vvt T.
+        ii. ss. inv STEPSRC; ss.
+        - rewrite VIS in IN. rewrite UB in IN.
+          unfold triggerUB in IN. rewrite interp_vis in IN.
+          cbn in IN. rewrite bind_trigger in IN.
+          vvt IN.
+        - rewrite VIS in IN. rewrite UB in IN.
+          unfold triggerUB in IN. rewrite interp_vis in IN.
+          cbn in IN. rewrite bind_trigger in IN.
+          vvt IN.
       }
       des. subst. clarify. ss. unfold unwrapU in V. des_ifs.
       * autorewrite with itree in V; cbn in V.

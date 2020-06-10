@@ -149,6 +149,20 @@ Proof.
   (* ss. *)
 Qed.
 
+Lemma symb
+  :
+    exists fblk, <<FID: Genv.find_symbol tge _iter = Some fblk>>
+.
+Proof.
+  Local Opaque _iter.
+  inv INCLSRC. ss.
+  exploit (DEFS _iter); et.
+  { unfold prog_defmap. ss. }
+  i; des. ss. rewrite sk_same. folder.
+  clear - SYMB.
+  subst ge. ss. uge. ss. rewrite MapsC.PTree_filter_key_spec. des_ifs. et.
+Qed.
+
 Lemma symb_def
       fblk
       (SYMB: Genv.find_symbol ge _iter = Some fblk)
@@ -222,7 +236,8 @@ Inductive match_states_internal (i: nat): SIRmini_quotient.state owned_heap -> C
     fid fblk fptr_tgt
     (SYMB: Genv.find_symbol ge fid = Some fblk)
     (FPTR: fptr_tgt = (Vptr fblk Ptrofs.zero))
-    (ITR: itr0 ≈ interp_program0 IterSource.prog (ICall fid tt m0 vs))
+    (* (ITR: itr0 ≈ interp_program0 IterSource.prog (ICall fid tt m0 vs)) *)
+    (ITR: itr0 ≈ mrec (interp_function IterSource.prog) (ICall fid tt m0 vs))
     (TY: ty = Clight.type_of_fundef (Internal f_iter))
     (IDX: (i >= 100)%nat)
   :
@@ -293,6 +308,38 @@ Qed.
 
 
 
+
+
+Lemma init_fsim
+      args st_src0
+      (INIT: ModSem.initial_frame (md_src skenv_link) tt args st_src0)
+  :
+    exists i st_tgt0 smo0,
+      (<<INIT: ModSem.initial_frame (md_tgt skenv_link) tt args st_tgt0>>)
+      /\ (<<MATCH: match_states i st_src0 st_tgt0 smo0>>)
+.
+Proof.
+  inv INIT. ss. des_ifs. folder.
+  unfold interp_program0 in *.
+  exploit unsymb; et. i; des. clarify.
+  eexists _, _, (SimMemId.mk _ _). esplits; eauto.
+  - econs; ss; eauto.
+    { destruct args; ss. }
+    { rewrite sk_same. folder. exploit symb_def; et. i; des. ss. des_ifs.
+      rewrite sk_same in H. folder. rewrite FPTR. ss. des_ifs. et. }
+    { rpapply TYP. admit "ez - findf sig". }
+  - econs; ss; eauto. econs; ss; eauto.
+Qed.
+
+(*** TODO: IDK why but (1) ?UNUSNED is needed (2) "fold" tactic does not work. WHY????? ***)
+Ltac fold_eutt :=
+  repeat multimatch goal with
+         | [ H: eqit eq true true ?A ?B |- ?UNUSED ] =>
+           let name := fresh "tmp" in
+           assert(tmp: eutt eq A B) by apply H; clear H; rename tmp into H
+         end
+.
+
 Lemma match_states_lxsim
       idx st_src0 st_tgt0 sm0
       (MATCH: match_states idx st_src0 st_tgt0 sm0)
@@ -311,106 +358,152 @@ Proof.
   - econs 1; eauto. ii. clear SU.
     exploit unsymb; et. intro T. des; clarify.
     exploit symb_def; et. intro DEF; des. ss. des_ifs.
-    +
-      Ltac des_itr itr :=
-        let name := fresh "V" in
-        destruct (observe itr) eqn:name; sym in name; eapply simpobs in name;
-        eapply bisimulation_is_eq in name; subst itr
-      .
-      rename ITR into V.
-      unfold interp_program0 in V. rewrite sk_same in *. folder.
-      rewrite mrec_as_interp in V. cbn in V. des_ifs. cbn in V.
-      unfold c_iter in V.
-      Ltac vvt H := clear - H; exfalso; punfold H; inv H; simpl_depind; subst; simpl_depind.
-      Ltac f_equiv := first [eapply eqit_VisF|eapply eqit_bind'|Morphisms.f_equiv].
-      unfold unwrapU in *.
-      destruct (classic (exists fptr n x0 x1, vs = [fptr ; Vint n ; x0]
-                                              /\ Cop.sem_cast x0 tint tint m0 = Some x1)); cycle 1.
-      { assert(UB: itr0 ≈ interp (mrecursive (interp_function IterSource.prog))
-                    (triggerUB (owned_heap:=owned_heap))).
-        { des_ifs; ss; try (by contradict H; esplits; et).
-          - rewrite V.
-            unfold triggerUB.
-            f_equiv. autorewrite with itree. f_equiv. ii; ss.
-          - rewrite V.
-            unfold triggerUB.
-            f_equiv. autorewrite with itree. f_equiv. ii; ss.
-        }
-        econs 1; et; swap 2 3.
-        { esplits; intro T; rr in T; des; inv T; ss; rewrite V in *; ss.
-          - rewrite VIS in IN. rewrite UB in IN.
-            unfold triggerUB in IN. rewrite interp_vis in IN.
-            cbn in IN. rewrite bind_trigger in IN.
-            vvt IN.
-          - rewrite RET in IN. rewrite UB in IN.
-            unfold triggerUB in IN. rewrite interp_vis in IN.
-            cbn in IN. rewrite bind_trigger in IN.
-            vvt IN.
-        }
-        { eapply modsem_receptive; et. }
-        ii. ss. inv STEPSRC; ss.
+
+
+    Ltac des_itr itr :=
+      let name := fresh "V" in
+      destruct (observe itr) eqn:name; sym in name; eapply simpobs in name;
+      eapply bisimulation_is_eq in name; subst itr
+    .
+    rename ITR into V.
+    unfold interp_program0 in V. rewrite sk_same in *. folder.
+    rewrite mrec_as_interp in V. cbn in V. des_ifs. cbn in V.
+    (* unfold c_iter in V. *)
+    Ltac vvt H := clear - H; exfalso; punfold H; inv H; simpl_depind; subst; simpl_depind.
+    Ltac f_equiv := first [eapply eqit_VisF|eapply eqit_bind'|Morphisms.f_equiv].
+
+
+    econs 1; et; swap 2 3.
+    { esplits; intro T; rr in T; des; inv T; ss; rewrite V in *; ss.
+      - rewrite VIS in IN. autorewrite with itree in IN. cbn in IN. rewrite bind_trigger in IN.
+        vvt IN.
+      - rewrite RET in IN. autorewrite with itree in IN. cbn in IN. rewrite bind_trigger in IN.
+        vvt IN.
+    }
+    { eapply modsem_receptive; et. }
+    ii. ss. inv STEPSRC; ss; rewrite V in IN; swap 3 4.
+    { rewrite VIS in IN. autorewrite with itree in IN. cbn in IN. rewrite bind_trigger in IN.
+      vvt IN. }
+    { rewrite VIS in IN. autorewrite with itree in IN. cbn in IN. rewrite bind_trigger in IN.
+      vvt IN. }
+    { rewrite VIS in IN. autorewrite with itree in IN. cbn in IN. rewrite bind_trigger in IN.
+      vvt IN. }
+    rewrite VIS in IN. autorewrite with itree in IN. cbn in IN. rewrite bind_trigger in IN.
+    apply eqit_inv_vis in IN. des. specialize (IN0 tt). fold_eutt.
+    rename k into itr2.
+
+    eexists _, _, (SimMemId.mk _ _). esplits; eauto.
+    { right. esplits; try apply star_refl.
+      apply Ord.lift_idx_spec. instantiate (1 := Nat.pred idx). xomega. }
+    left. pfold.
+
+    econs 1; et. intro T. revert sk_same. clear_tac. clear SUSTAR. i.
+    sym in IN0. unfold c_iter in IN0. unfold unwrapU in IN0.
+    clears itr0. clear itr0.
+    clears itr1. clear itr1.
+    rename IN0 into V.
+    destruct (classic (exists fptr n x0 x1, vs = [fptr ; Vint n ; x0]
+                                            /\ Cop.sem_cast x0 tint tint m0 = Some x1)); cycle 1.
+    { assert(UB: itr2 () ≈ interp (mrecursive (interp_function IterSource.prog))
+                      (triggerUB (owned_heap:=owned_heap))).
+      { des_ifs; ss; try (by contradict H; esplits; et).
+        - rewrite V.
+          unfold triggerUB.
+          f_equiv. autorewrite with itree. f_equiv. ii; ss.
+        - rewrite V.
+          unfold triggerUB.
+          f_equiv. autorewrite with itree. f_equiv. ii; ss.
+      }
+      econs 1; et; swap 2 3.
+      { esplits; intro T; rr in T; des; inv T; ss; rewrite V in *; ss.
         - rewrite VIS in IN. rewrite UB in IN.
           unfold triggerUB in IN. rewrite interp_vis in IN.
           cbn in IN. rewrite bind_trigger in IN.
           vvt IN.
-        - rewrite VIS in IN. rewrite UB in IN.
+        - rewrite RET in IN. rewrite UB in IN.
           unfold triggerUB in IN. rewrite interp_vis in IN.
           cbn in IN. rewrite bind_trigger in IN.
           vvt IN.
       }
-      des. subst. clarify. ss. unfold unwrapU in V. des_ifs.
-      * autorewrite with itree in V; cbn in V.
-        econs 2; try refl; eauto.
-        { esplits; eauto; cycle 1.
-          { apply Ord.lift_idx_spec. instantiate (1 := Nat.pred idx). xomega. }
-          eapply spread_dplus; et.
-          { eapply modsem2_mi_determinate; et. }
-          eapply plus_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
-          eapply star_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et). }
-          eapply star_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et). des_ifs. ss. fold Int.zero. rewrite Heq. ss. }
-          eapply star_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et). }
-          eapply star_refl.
+      { eapply modsem_receptive; et. }
+      ii. ss. inv STEPSRC; ss.
+      - rewrite VIS in IN. rewrite UB in IN.
+        unfold triggerUB in IN. rewrite interp_vis in IN.
+        cbn in IN. rewrite bind_trigger in IN.
+        vvt IN.
+      - rewrite VIS in IN. rewrite UB in IN.
+        unfold triggerUB in IN. rewrite interp_vis in IN.
+        cbn in IN. rewrite bind_trigger in IN.
+        vvt IN.
+      - rewrite VIS in IN. rewrite UB in IN.
+        unfold triggerUB in IN. rewrite interp_vis in IN.
+        cbn in IN. rewrite bind_trigger in IN.
+        vvt IN.
+      - rewrite VIS in IN. rewrite UB in IN.
+        unfold triggerUB in IN. rewrite interp_vis in IN.
+        cbn in IN. rewrite bind_trigger in IN.
+        vvt IN.
+    }
+    des. clarify. ss. autorewrite with itree in V. des_ifs_safe. autorewrite with itree in V.
+    des_ifs.
+    { autorewrite with itree in V; cbn in V.
+      econs 2; try refl; eauto.
+      { esplits; eauto; cycle 1.
+        { apply Ord.lift_idx_spec. instantiate (1 := Nat.pred (Nat.pred idx)). xomega. }
+        eapply spread_dplus; et.
+        { eapply modsem2_mi_determinate; et. }
+        eapply plus_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). des_ifs. ss. fold Int.zero. rewrite Heq0. ss. }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_refl.
+      }
+      right. eapply CIH. econs; eauto.
+      - econs; eauto.
+      - ss.
+    }
+    { autorewrite with itree in V; cbn in V.
+      rewrite bind_trigger in V.
+      econs 2; try refl; eauto.
+      { esplits; eauto; cycle 1.
+        { apply Ord.lift_idx_spec. instantiate (1 := Nat.pred (Nat.pred idx)). xomega. }
+        eapply spread_dplus; et.
+        { eapply modsem2_mi_determinate; et. }
+        eapply plus_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et); ii; repeat (des; ss; clarify).
+          fold Int.zero. rewrite Heq0. ss.
         }
-        right. eapply CIH. econs; eauto. econs; eauto.
-      * autorewrite with itree in V; cbn in V.
-        rewrite bind_trigger in V.
-        econs 2; try refl; eauto.
-        { esplits; eauto; cycle 1.
-          { apply Ord.lift_idx_spec. instantiate (1 := Nat.pred idx). xomega. }
-          eapply spread_dplus; et.
-          { eapply modsem2_mi_determinate; et. }
-          eapply plus_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
-          eapply star_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
-          eapply star_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et); ii; repeat (des; ss; clarify).
-            fold Int.zero. rewrite Heq. ss.
-          }
-          eapply star_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
-          eapply star_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
-          eapply star_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
-          eapply star_left with (t1 := E0) (t2 := E0); ss.
-          { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
-          apply star_refl.
-        }
-        fold (te n fptr x0). right. eapply CIH.
-        econs; eauto. econs; eauto.
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+        apply star_refl.
+      }
+      fold (te n fptr x0). right. eapply CIH.
+      econs; eauto.
+      - econs; eauto.
         { apply func_ext1. ii. des_ifs. }
+      - ss.
+    }
   - econs 3; eauto.
     { rr. esplits; et. econs; et.
-      - eapply Eqv.peek_; et. (*** TODO: make Hint Resolve or tactic or sth ***)
+      - refl.
       - admit "change is_call to NSTEP NRET".
       - admit "change is_call to NSTEP NRET -- or put in match_states && exploit 'safe'". }
     ii. ss. inv ATSRC. ss.
-    rewrite ITR in *. eapply eqit_inv_vis in VIS. des. clarify.
+    rewrite ITR in *. rewrite VIS in *. eapply eqit_inv_vis in IN. des. clarify.
     eexists _, _, (SimMemId.mk _ _). ss. esplits; et.
     { rr. ss. esplits; et. econs; ss; et. }
     { econs; ss; et.
@@ -419,16 +512,81 @@ Proof.
         unfold Sk.get_sig in *. des_ifs. ss. rewrite <- H4. ss. }
     ii.
     inv AFTERSRC. inv GETK. ss.
-    rewrite ITR in VIS. apply eqit_inv_vis in VIS. des. clarify.
+    rewrite ITR in *. rewrite VIS0 in *.
+    apply eqit_inv_vis in IN. des. clarify.
     rr in SIMRETV. des. ss. clarify. revert sk_same. clear_tac. i. (*** TODO: update claer_tac ***)
     inv SIMRETV0; ss. clarify.
-    unfold Retv.mk in *. clarify. destruct sm_ret ;ss. clarify. rename tgt into m0.
+    unfold Retv.mk in *. clarify. destruct sm_ret ;ss. clarify.
+    rename tgt into m0. rename v_tgt into rv.
+    specialize (IN1 (tt, (m0, rv))). specialize (IN0 (tt, (m0, rv))). fold_eutt. des_ifs.
+    rewrite IN0 in *.
     eexists _, (SimMemId.mk m0 m0). esplits; et.
     { econs; et. }
     left.
     pfold.
-    econs 1; eauto. ii. clear SU.
-    econs 1; eauto.
+    econs 1; eauto. clear SUSTAR.
+    ii. clear SU.
+    econs 1; et; swap 2 3.
+    { esplits; intro T; rr in T; des; inv T; ss; rewrite <- IN in *; ss.
+      - rewrite <- IN1 in VIS1. rewrite <- IN0 in VIS1. rewrite interp_trigger in VIS1.
+        cbn in VIS1. rewrite mrec_as_interp in VIS1.
+        cbn in VIS1. des_ifs.
+        cbn in VIS1. autorewrite with itree in VIS1.
+        cbn in VIS1. rewrite bind_trigger in VIS1. vvt VIS1.
+      - rewrite <- IN1 in RET. rewrite <- IN0 in RET. rewrite interp_trigger in RET.
+        cbn in RET. rewrite mrec_as_interp in RET.
+        cbn in RET. des_ifs.
+        cbn in RET. autorewrite with itree in RET.
+        cbn in RET. rewrite bind_trigger in RET. vvt RET.
+    }
+    { eapply modsem_receptive; et. }
+    ii. ss. inv STEPSRC; ss; swap 3 4.
+    { rewrite <- IN in VIS1. rewrite <- IN1 in VIS1. rewrite <- IN0 in VIS1.
+      cbn in VIS1. autorewrite with itree in VIS1.
+      cbn in VIS1. rewrite mrec_as_interp in VIS1.
+      cbn in VIS1. des_ifs.
+      cbn in VIS1. autorewrite with itree in VIS1.
+      cbn in VIS1. rewrite bind_trigger in VIS1. vvt VIS1. }
+    { rewrite <- IN in VIS1. rewrite <- IN1 in VIS1. rewrite <- IN0 in VIS1.
+      cbn in VIS1. autorewrite with itree in VIS1.
+      cbn in VIS1. rewrite mrec_as_interp in VIS1.
+      cbn in VIS1. des_ifs.
+      cbn in VIS1. autorewrite with itree in VIS1.
+      cbn in VIS1. rewrite bind_trigger in VIS1. vvt VIS1. }
+    { rewrite <- IN in VIS1. rewrite <- IN1 in VIS1. rewrite <- IN0 in VIS1.
+      cbn in VIS1. autorewrite with itree in VIS1.
+      cbn in VIS1. rewrite mrec_as_interp in VIS1.
+      cbn in VIS1. des_ifs.
+      cbn in VIS1. autorewrite with itree in VIS1.
+      cbn in VIS1. rewrite bind_trigger in VIS1. vvt VIS1. }
+    hexploit symb; et. i; des.
+    eexists _, _, (SimMemId.mk _ _). esplits; eauto.
+    { left.
+      eapply spread_dplus; et.
+      { eapply modsem2_mi_determinate; et. }
+      eapply plus_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { econs; ss; et.
+        { econs; ss; et.
+          - repeat (econsr; ss; et).
+          - econs 2; ss; et.
+        }
+        repeat (econs; ss; et); ii; repeat (des; ss; clarify).
+        - destruct _fptr; ss.
+        - admit "---------------------------type".
+      }
+      apply star_refl.
+    }
+    right. eapply CIH. econs; ss; et. econs; ss; et.
+    {
+    { rewrite VIS in IN. autorewrite with itree in IN. cbn in IN. rewrite bind_trigger in IN.
+      vvt IN. }
+    { rewrite VIS in IN. autorewrite with itree in IN. cbn in IN. rewrite bind_trigger in IN.
+      vvt IN. }
+    { }
     eapply CIH. econs; ss; et. econs; et.
 
       destruct vs; ss.

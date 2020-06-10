@@ -31,9 +31,14 @@ Definition c_iter (oh0: owned_heap) (m0: mem) (vs: list val):
   | _ => triggerUB (owned_heap := owned_heap)
   end
 .
+Compute (burn 100 (c_iter tt Mem.empty [Vint (Int.zero); Vint (Int.zero); Vint (Int.zero)])).
+Compute (burn 100 (c_iter tt Mem.empty [Vint (Int.one); Vint (Int.one); Vint (Int.one)])).
+Compute (burn 100 ((fun oh0 m0 vs => trigger (EBP _) ;; c_iter oh0 m0 vs) tt Mem.empty [Vint (Int.zero); Vint (Int.zero); Vint (Int.zero)])).
+Compute (burn 100 ((fun oh0 m0 vs => trigger (EBP _) ;; c_iter oh0 m0 vs) tt Mem.empty [Vint (Int.one); Vint (Int.one); Vint (Int.one)])).
 
 Definition f_iter: function owned_heap :=
-  mkfunction (ClightC.signature_of_function f_iter) c_iter.
+  mkfunction (ClightC.signature_of_function f_iter)
+             (fun oh0 m0 vs => trigger (EBP _) ;; c_iter oh0 m0 vs).
 
 Definition global_definitions: list (ident * globdef (fundef (function owned_heap)) unit) :=
 ((_iter, Gfun(Internal f_iter)) ::

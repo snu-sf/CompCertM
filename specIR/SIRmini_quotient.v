@@ -412,7 +412,7 @@ Section MODSEM.
       (TYP: typecheck (Args.vs args) fd tvs)
 
       st0
-      (ITR: itr ≈ (interp_program0 (ICall fid oh0 m0 vs)))
+      (ITR: itr ≈ (interp_program0 (ICall fid oh0 m0 tvs)))
       (* (ST: st0 = (State itr)) *)
       (ST: st0 = Eqv.lift itr)
     :

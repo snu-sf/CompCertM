@@ -158,7 +158,7 @@ Notation "'_'" := PTree.Leaf (at level 150).
 Notation "a % x % b" := (PTree.Node a x b) (at level 150).
 Notation "a %% b" := (PTree.Node a None b) (at level 150).
 
-Let te n: temp_env := (@PTree.Node val
+Let te nn: temp_env := (@PTree.Node val
              (@PTree.Node val (@PTree.Leaf val) (@None val)
                 (@PTree.Node val
                    (@PTree.Node val (@PTree.Leaf val) (@None val)
@@ -173,7 +173,7 @@ Let te n: temp_env := (@PTree.Node val
                 (@PTree.Node val (@PTree.Leaf val) (@None val)
                    (@PTree.Node val
                       (@PTree.Node val (@PTree.Leaf val) (@None val)
-                         (@PTree.Node val (@PTree.Leaf val) (@Some val (Vint n)) (@PTree.Leaf val)))
+                         (@PTree.Node val (@PTree.Leaf val) (@Some val (Vint nn)) (@PTree.Leaf val)))
                       (@None val) (@PTree.Leaf val))) (@None val)
                 (@PTree.Node val
                    (@PTree.Node val (@PTree.Leaf val) (@None val)
@@ -185,8 +185,8 @@ Let te n: temp_env := (@PTree.Node val
                          (@PTree.Node val (@PTree.Leaf val) (@Some val Vundef) (@PTree.Leaf val)))
                       (@None val) (@PTree.Leaf val))))).
 
-Let k1 n k_tgt: cont :=
-  (Kcall (Some _t'1) f_fib empty_env (te n)
+Let k1 (nn: int) (k_tgt: cont): cont :=
+  (Kcall (Some _t'1) f_fib empty_env (te nn)
           (Kseq (Sset _y1 (Etempvar _t'1 tint))
              (Kseq
                 (Clight.Ssequence
@@ -199,6 +199,7 @@ Let k1 n k_tgt: cont :=
                       (Some (Clight.Ebinop Cop.Oadd (Etempvar _y1 tint) (Etempvar _y2 tint) tint))))
                 k_tgt))).
 
+Let k2 (nn: int) (k_tgt: cont): cont := (admit "").
 
 
 
@@ -234,34 +235,45 @@ Definition is_call_cont_strong (k0: cont): Prop :=
   | _ => False
   end.
 
-Inductive match_stacks (n: int): ktr -> cont -> Prop :=
+(***
+fib(n) calls fib(n-1) or fib(n-2).
+- match_stacks 0 n k_src k_tgt: if fib(n-2) is returned, it can go continuation and return fib(n).
+- match_stacks 1 n k_src k_tgt: if fib(n-1) is returned, it can go continuation and return fib(n).
+
+- match_stacks e n k_src k_tgt: if fib(e) is returned, it can go continuation and return fib(n).
+ ***)
+Inductive match_stacks (e: int) (n: int): ktr -> cont -> Prop :=
 | match_stacks_nil
   :
-    match_stacks n (fun r => Ret r) Kstop
+    match_stacks e n (fun r => Ret r) Kstop
 | match_stacks_cons1
     (hd_src tl_src: ktr)
     (tl_tgt: cont)
-    (TL: match_stacks (Int.add n Int.one) tl_src tl_tgt)
+    m
+    (TL: match_stacks n m tl_src tl_tgt)
+    k_src k_tgt
+    (KSRC: k_src = (hd_src >>> tl_src))
+    (KTGT: k_tgt = k1 n tl_tgt)
+    (EXPECT: e = Int.sub n (Int.repr 1))
+  :
+    match_stacks e n k_src k_tgt
+| match_stacks_cons2
+    (hd_src tl_src: ktr)
+    (tl_tgt: cont)
+    m
+    (TL: match_stacks n m tl_src tl_tgt)
+    k_src k_tgt
+    (KSRC: k_src = (hd_src >>> tl_src))
+    (KTGT: k_tgt = k2 n tl_tgt)
+    (EXPECT: e = Int.sub n (Int.repr 2))
+  :
+    match_stacks e n k_src k_tgt
+.
     (* n *)
     (* (HDSRC: hd_src = *)
     (*         (fun '(oh1, (m1, y1)) => *)
     (*            '(oh2, (m2, y2)) <- trigger (ICall _sum oh1 m1 [Vint (Int.sub n (Int.repr 1))]) ;; *)
     (*            Ret (oh2, (m2, Val.add y1 y2)))) *)
-    k_src k_tgt
-    (KSRC: k_src = (hd_src >>> tl_src))
-    (KTGT: k_tgt = k1 (Int.add n Int.one) tl_tgt)
-  :
-    match_stacks n k_src k_tgt
-(* | match_stacks_cons2 *)
-(*     (hd_src tl_src: ktr) *)
-(*     (tl_tgt: cont) *)
-(*     (TL: match_stacks (Int.add n (Int.repr 2)) tl_src tl_tgt) *)
-(*     k_src k_tgt *)
-(*     (KSRC: k_src = (hd_src >>> tl_src)) *)
-(*     (KTGT: k_tgt = k1 n tl_tgt) *)
-(*   : *)
-(*     match_stacks n k_src k_tgt *)
-.
 
 
 
@@ -270,10 +282,10 @@ Inductive match_states_internal (i: nat): SIRmini_quotient.state owned_heap -> C
                                           SimMem.t -> Prop :=
 | match_call
     itr0 ty m0 vs n
-    fid fblk fptr_tgt k_src k_tgt
+    fid fblk fptr_tgt k_src k_tgt par
     (VS: vs = [Vint n])
     (* (ITR: itr0 ≈ interp_program0 IterSource.prog (ICall fid tt m0 vs)) *)
-    (STKS: match_stacks n k_src k_tgt)
+    (STKS: match_stacks n par k_src k_tgt)
     (ITR: itr0 ≈ 'r <- (mrec (interp_function FibSource.prog) (ICall fid tt m0 vs)) ;; (k_src r))
     (TY: ty = Clight.type_of_fundef (Internal f_fib))
     (SYMB: Genv.find_symbol ge fid = Some fblk)
@@ -283,8 +295,8 @@ Inductive match_states_internal (i: nat): SIRmini_quotient.state owned_heap -> C
     match_states_internal i (Eqv.lift itr0)
                           (Clight.Callstate fptr_tgt ty vs k_tgt m0) (SimMemId.mk m0 m0)
 | match_return
-    itr0 m0 v k_src k_tgt n
-    (STKS: match_stacks n k_src k_tgt)
+    itr0 m0 v k_src k_tgt n par
+    (STKS: match_stacks n par k_src k_tgt)
     (RET: itr0 ≈ r <- Ret (tt, (m0, v)) ;; (k_src r))
   :
     match_states_internal i (Eqv.lift itr0) (Clight.Returnstate v k_tgt m0)
@@ -375,6 +387,8 @@ Proof.
     + unfold typify_list. ss. unfold typify. des_ifs; ss.
     + econs; ss.
     + cbn. irw. rewrite ITR. unfold typify. des_ifs; ss. refl.
+Unshelve.
+  all: ss.
 Qed.
 
 (* Lemma final_fsim *)
@@ -491,7 +505,8 @@ Proof.
         { rewrite V. instantiate (1:= k_src). irw. refl. }
         { inv STKS.
           - econs; eauto.
-          - econs; eauto. }
+          - econs; eauto.
+          - }
       - ss.
     }
     { apply_all_once Int.same_if_eq. subst.

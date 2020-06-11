@@ -402,17 +402,19 @@ Section MODSEM.
 
   Inductive initial_frame (oh0: owned_heap) (args: Args.t): state -> Prop :=
   | initial_frame_intro
-      itr fid blk m0 vs fd tvs
+      itr fid blk m0 vs fd
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
       (VS: (Args.vs args) = vs)
       (M: (Args.m args) = m0)
 
       (SYMB: Genv.find_symbol skenv fid = Some blk)
       (FINDF: Genv.find_funct skenv (Vptr blk Ptrofs.zero) = Some (Internal fd))
-      (TYP: typecheck (Args.vs args) fd tvs)
+      (TYP: typecheck (Args.vs args) fd (Args.vs args))
+      (* (TYP: Val.has_type_list (Args.vs args) fd.(sig_args)) *)
+      (DEF: Forall (fun v => v <> Vundef) (Args.vs args))
 
       st0
-      (ITR: itr ≈ (interp_program0 (ICall fid oh0 m0 tvs)))
+      (ITR: itr ≈ (interp_program0 (ICall fid oh0 m0 (Args.vs args))))
       (* (ST: st0 = (State itr)) *)
       (ST: st0 = Eqv.lift itr)
     :

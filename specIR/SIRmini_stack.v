@@ -41,7 +41,19 @@ Section MODSEM.
   Definition genvtype: Type := unit.
   Let ge: genvtype := tt.
 
-  Definition state: Type := (@Eqv.t (itree (eff0 owned_heap) (owned_heap * (mem * val))) (eutt eq)).
+  Notation ktr :=
+    (@Eqv.t (ktree (eff1 owned_heap) (owned_heap * (mem * val)) (owned_heap * (mem * val)))
+            eq2)
+  .
+  Notation itr := (@Eqv.t (itree (eff1 owned_heap) (owned_heap * (mem * val))) (eutt eq)).
+
+  Record state: Type := mk {
+    cur: itr;
+    cont: list ktr;
+  }
+  .
+
+  Notation update_cur := (fun (st0: state) (cur0: itr) => mk cur0 st0.(cont)).
 
   Let interp_program0 := interp_program0 p.
 
@@ -59,9 +71,9 @@ Section MODSEM.
       (DEF: Forall (fun v => v <> Vundef) (Args.vs args))
 
       st0
-      (ITR: itr ≈ (interp_program0 (ICall fid oh0 m0 (Args.vs args))))
+      (ITR: itr ≈ (interp_function p (ICall fid oh0 m0 (Args.vs args))))
       (* (ST: st0 = (State itr)) *)
-      (ST: st0 = Eqv.lift itr)
+      (ST: st0 = mk (Eqv.lift itr) nil)
     :
       initial_frame oh0 args st0
   .
@@ -69,7 +81,7 @@ Section MODSEM.
   Inductive at_external (st0: state): owned_heap -> Args.t -> Prop :=
   | at_external_intro
       itr0 args sg fptr vs k oh0 m0
-      (IN: st0 itr0)
+      (IN: st0.(cur) itr0)
       (VIS: itr0 ≈ Vis (subevent _ (ECall sg fptr oh0 m0 vs)) k)
       (EXT: Genv.find_funct skenv fptr = None)
       (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
@@ -80,10 +92,10 @@ Section MODSEM.
   .
 
   Inductive get_k (st0: state):
-    (owned_heap * (mem * val) -> itree (eff0 owned_heap) (owned_heap * (mem * val))) -> Prop :=
+    (owned_heap * (mem * val) -> itree (eff1 owned_heap) (owned_heap * (mem * val))) -> Prop :=
   | get_k_intro
       itr0 _vs _sg _fptr _oh0 _m0 k
-      (IN: st0 itr0)
+      (IN: st0.(cur) itr0)
       (VIS: itr0 ≈ Vis (subevent _ (ECall _sg _fptr _oh0 _m0 _vs)) k)
     :
       get_k st0 k
@@ -93,7 +105,7 @@ Section MODSEM.
   | after_external_intro
       k m0 rv st1
       (GETK: get_k st0 k)
-      (KONT: st1 = Eqv.lift (k (oh0, (m0, rv))))
+      (KONT: st1 = update_cur st0 (Eqv.lift (k (oh0, (m0, rv)))))
       (RETV: retv = Retv.mk rv m0)
     :
       after_external st0 oh0 retv st1
@@ -102,7 +114,8 @@ Section MODSEM.
   Inductive final_frame (st0: state): owned_heap -> Retv.t -> Prop :=
   | final_frame_intro
       itr0 oh0 m0 (rv: val)
-      (IN: st0 itr0)
+      (IN: st0.(cur) itr0)
+      (NCONT: st0.(cont) = nil)
       (RET: itr0 ≈ Ret (oh0, (m0, rv)))
     :
       final_frame st0 oh0 (Retv.mk rv m0)
@@ -120,30 +133,56 @@ Section MODSEM.
   (*** ub is stuck, so we don't state anything ***)
   | step_nb
       itr0 k
-      (IN: st0 itr0)
+      (IN: st0.(cur) itr0)
       (VIS: itr0 ≈ Vis (subevent _ (ENB)) k)
     :
       step se ge st0 E0 st0
   | step_done
       itr0
       oh rv m k
-      (IN: st0 itr0)
+      (IN: st0.(cur) itr0)
       (VIS: itr0 ≈ Vis (subevent _ (EDone oh m rv)) k)
     :
-      step se ge st0 E0 (Eqv.lift (Ret (oh, (m, rv))))
+      step se ge st0 E0 (update_cur st0 (Eqv.lift (Ret (oh, (m, rv)))))
   | step_breakpoint
       itr0 k
-      (IN: st0 itr0)
+      (IN: st0.(cur) itr0)
       (VIS: itr0 ≈ Vis (subevent _ (EBP)) k)
     :
-      step se ge st0 E0 (Eqv.lift (k tt))
+      step se ge st0 E0 (update_cur st0 (Eqv.lift (k tt)))
   | step_choose
       itr0 X k (x: X)
-      (IN: st0 itr0)
+      (IN: st0.(cur) itr0)
       (VIS: itr0 ≈ Vis (subevent _ (EChoose X)) k)
     :
-      step se ge st0 E0 (Eqv.lift (k x))
+      step se ge st0 E0 (update_cur st0 (Eqv.lift (k x)))
+  | step_call
+      (cur: itr) (cont: list ktr) itr0 X k (x: X) next
+      (ST0: st0 = (mk cur cont))
+      fid oh0 m0 vs0
+      (IN: cur itr0)
+      (VIS: itr0 ≈ Vis (subevent _ (ICall fid oh0 m0 vs0)) k)
+      (NEXT: next ≈ interp_function p (ICall fid oh0 m0 vs0))
+    :
+      step se ge st0 E0 (mk (Eqv.lift next) ((Eqv.lift k) :: cont))
+  | step_return
+      (cur: itr) (hd: ktr) (tl: list ktr) itr0 oh0 m0 (rv: val)
+      (ST0: st0 = mk cur (hd :: tl))
+      (IN: cur itr0)
+      (RET: itr0 ≈ Ret (oh0, (m0, rv)))
+      next
+      ktr0
+      (HD: hd ktr0)
+      (NEXT: next ≈ (ktr0 (oh0, (m0, rv))))
+    :
+      step se ge st0 E0 (mk (Eqv.lift next) tl)
   .
+
+  (*** TODO: remove needless "IN" and "itr0"s ***)
+  (*** TODO: remove needless "IN" and "itr0"s ***)
+  (*** TODO: remove needless "IN" and "itr0"s ***)
+  (*** TODO: remove needless "IN" and "itr0"s ***)
+  (*** TODO: remove needless "IN" and "itr0"s ***)
 
   Program Definition modsem: ModSem.t :=
     {| ModSem.step := step;
@@ -170,6 +209,7 @@ Section MODSEM.
     inv AFTER0. inv AFTER1.
     inv GETK. inv GETK0. determ_tac Eqv.in_eqv.
     rewrite VIS in *. rewrite VIS0 in *. eapply eqit_inv_vis in H. des; clarify.
+    f_equal.
     eapply Eqv.eqv_lift; et.
   Qed.
   Next Obligation.
@@ -182,9 +222,14 @@ Section MODSEM.
       punfold H; inv H; simpl_depind; subst; simpl_depind.
     - rewrite VIS in *. rewrite VIS0 in *.
       punfold H; inv H; simpl_depind; subst; simpl_depind.
+    - rewrite VIS in *. rewrite VIS0 in *.
+      punfold H; inv H; simpl_depind; subst; simpl_depind.
+    - rewrite VIS in *. rewrite RET in *.
+      punfold H; inv H; simpl_depind; subst; simpl_depind.
   Qed.
   Next Obligation.
     ii. des. inv PR; ss; inv PR0; ss; determ_tac Eqv.in_eqv.
+    - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
     - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
     - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
     - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
@@ -204,24 +249,24 @@ Section MODSEM.
     all: ss.
   Qed.
 
-  Lemma modsem_determinate
-        (st0: state)
-        (NCHOOSE: forall X itr0 k (IN: st0 itr0), itr0 ≈ Vis (subevent _ (EChoose X)) k -> False)
-    :
-      determinate_at modsem st0.
-  Proof.
-    econs; eauto.
-    - ii; ss.
-      inv H; inv H0; esplits; et; try econs; et; ii; determ_tac Eqv.in_eqv;
-        try (by rewrite VIS in *; rewrite VIS0 in *;
-             punfold H0; inv H0; simpl_depind; subst; simpl_depind).
-      + rewrite VIS in *. rewrite VIS0 in *. apply eqit_inv_vis in H0. des; clarify.
-        eapply Eqv.eqv_lift; et.
-      + exploit NCHOOSE; eauto. i; ss.
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
-  Unshelve.
-    all: des; ss; try (by exfalso; des; ss).
-  Qed.
+  (* Lemma modsem_determinate *)
+  (*       (st0: state) *)
+  (*       (NCHOOSE: forall X itr0 k (IN: st0.(cur) itr0), itr0 ≈ Vis (subevent _ (EChoose X)) k -> False) *)
+  (*   : *)
+  (*     determinate_at modsem st0. *)
+  (* Proof. *)
+  (*   econs; eauto. *)
+  (*   - ii; ss. *)
+  (*     inv H; inv H0; esplits; et; try econs; et; ii; determ_tac Eqv.in_eqv; *)
+  (*       try (by rewrite VIS in *; rewrite VIS0 in *; *)
+  (*            punfold H0; inv H0; simpl_depind; subst; simpl_depind). *)
+  (*     + rewrite VIS in *. rewrite VIS0 in *. apply eqit_inv_vis in H0. des; clarify. *)
+  (*       eapply Eqv.eqv_lift; et. *)
+  (*     + exploit NCHOOSE; eauto. i; ss. *)
+  (*   - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega. *)
+  (* Unshelve. *)
+  (*   all: des; ss; try (by exfalso; des; ss). *)
+  (* Qed. *)
 
 End MODSEM.
 

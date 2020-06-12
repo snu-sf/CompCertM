@@ -35,15 +35,6 @@ Variable initial_owned_heap: SkEnv.t -> owned_heap.
 
 
 Variable prog0 prog1: program owned_heap.
-Variable match_fundef: (fundef (function owned_heap)) -> (fundef (function owned_heap)) -> Prop.
-Fail Hypothesis MATCH: match_program (fun _ => match_fundef) eq prog0 prog1.
-(* Inductive match_prog (prog0 prog1: program owned_heap): Prop := *)
-(* | match_prog_intro *)
-(*     (DEFS: Forall2 (match_ident_globdef (fun _ => match_fundef) eq tt) *)
-(*                    prog0.(prog_defs) prog1.(prog_defs)) *)
-(*     (PUB: prog0.(prog_public) = prog1.(prog_public)) *)
-(*     (MAIN: prog0.(prog_main) = prog1.(prog_main)) *)
-(* . *)
 Hypothesis TRANSL: 
 
 

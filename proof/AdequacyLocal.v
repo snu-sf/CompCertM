@@ -806,6 +806,28 @@ Section ADQSTEP.
         { etrans; eauto. }
         { ii. etrans; try apply UNCH; ss; eauto with congruence. }
         { ii. etrans; try apply UNCH; ss; eauto with congruence. }
+      + econs 1; ss.
+        * i. desf. right.
+          inv STEPTGT.
+          { exfalso.
+            eapply ModSem.call_step_disjoint.
+            split; eauto. }
+          { hexploit STEP; eauto. i. subst.
+            split.
+            { r. unfold trace_intact. ss. eauto. }
+            esplits.
+            - econs 1.
+            - ss.
+          }
+          { exfalso.
+            eapply ModSem.step_return_disjoint.
+            split; eauto. }
+        * i. right. desf.
+          esplits. econs 3; eauto.
+        * i. exfalso.
+          inv FINALTGT.
+          eapply ModSem.step_return_disjoint.
+          split; eauto.
 
     - (* call *)
       left. right. econs; eauto. econs; eauto; cycle 1.

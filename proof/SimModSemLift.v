@@ -80,7 +80,12 @@ Section SIMMODSEM.
       (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
       (MLE: SimMemOh.le sm0 sm1)
       (UNCH: SimMem.unch midx sm0 sm1)
-      (BSIM: bsim i1 st_src1 st_tgt0 sm1).
+      (BSIM: bsim i1 st_src1 st_tgt0 sm1)
+  | bsim_step_pterm
+      (STEP: forall st_tgt1 tr
+               (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1),
+          tr = [Event_pterm])
+      (PROGRESS: <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>).
 
   Inductive _lxsim_pre (lxsim: idx -> state ms_src -> state ms_tgt -> SimMemOh.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (sm0: SimMemOh.t): Prop :=
@@ -162,6 +167,7 @@ Section SIMMODSEM.
     - econs 2; ss. ii. exploit SU; eauto. i; des. inv H.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
+      + econs 3; eauto.
     - econs 3; eauto. ii; ss. exploit SU; eauto. i; des.
       esplits; eauto. ii. exploit K; eauto. i; des. esplits; eauto.
     - econs 4; eauto.
@@ -275,6 +281,8 @@ Section IMPLIES.
     - econs 2; eauto. i. hexploit1 SU0; ss. des. esplits; eauto. i. hexploit SU0; ss. intro T. inv T.
       + econs 1; eauto. i. exploit STEP; eauto. i; des_safe. esplits; et. right. pclearbot. eapply CIH; et.
       + pclearbot. econs 2; eauto.
+      + econs 3; eauto.
+
     - econs 3; et.
       ii. exploit SU0; et. i; des.
       eexists _, _. exists (SimMemOhLift.lift sm_arg).

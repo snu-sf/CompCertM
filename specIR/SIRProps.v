@@ -261,8 +261,7 @@ Proof.
     rr in H. des. ss. inv H. inv MATCH. ss.
     f in SIM.
     rewrite interp_mrec_bind in SIM. rewrite unfold_interp_mrec in SIM.
-    ides (cur: itree (InternalCallE owned_heap +' EventE owned_heap) _);
-      cbn in SIM; autorewrite with itree in SIM.
+    ides cur; cbn in SIM; autorewrite with itree in SIM.
     { (* RET *)
       destruct cont; ss.
       { cbn in SIM. rewrite unfold_interp_mrec in SIM. cbn in SIM. f in SIM. clarify. }
@@ -421,8 +420,7 @@ Proof.
     rr in H. des. ss. inv H. inv MATCH. ss.
     f in SIM.
     rewrite interp_mrec_bind in SIM. rewrite unfold_interp_mrec in SIM.
-    ides (cur: itree (InternalCallE owned_heap +' EventE owned_heap) _);
-      cbn in SIM; autorewrite with itree in SIM.
+    ides cur; cbn in SIM; autorewrite with itree in SIM.
     { (* RET *)
       destruct r0 as [oh0 [m v]]; ss. unfold id in *. clarify.
       inv MWF. inv MWF0. destruct smo0; ss. destruct sm0; ss. clarify.

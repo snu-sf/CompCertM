@@ -235,24 +235,6 @@ Section MODSEM.
   Unshelve.
     all: des; ss; try (by exfalso; des; ss).
   Qed.
-  (* Lemma modsem_determinate *)
-  (*       (st0: state) *)
-  (*       (NCHOOSE: forall X itr0 k (IN: st0.(cur) itr0), itr0 ≈ Vis (subevent _ (EChoose X)) k -> False) *)
-  (*   : *)
-  (*     determinate_at modsem st0. *)
-  (* Proof. *)
-  (*   econs; eauto. *)
-  (*   - ii; ss. *)
-  (*     inv H; inv H0; esplits; et; try econs; et; ii; determ_tac Eqv.in_eqv; *)
-  (*       try (by rewrite VIS in *; rewrite VIS0 in *; *)
-  (*            punfold H0; inv H0; simpl_depind; subst; simpl_depind). *)
-  (*     + rewrite VIS in *. rewrite VIS0 in *. apply eqit_inv_vis in H0. des; clarify. *)
-  (*       eapply Eqv.eqv_lift; et. *)
-  (*     + exploit NCHOOSE; eauto. i; ss. *)
-  (*   - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega. *)
-  (* Unshelve. *)
-  (*   all: des; ss; try (by exfalso; des; ss). *)
-  (* Qed. *)
 
 End MODSEM.
 

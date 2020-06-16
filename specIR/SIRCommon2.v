@@ -125,16 +125,18 @@ Section EFF.
       InternalCallE (owned_heap * (mem * val))
   .
 
+  Variant ExternalCallE: Type -> Type :=
+  | ECall (sg: signature) (fptr: val)
+          (oh: owned_heap) (m: mem) (vs: list val): ExternalCallE (owned_heap * (mem * val))
+  .
+
   Variant EventE: Type -> Type :=
   | ENB: EventE void
   | EUB: EventE void
-  | ECall (sg: signature) (fptr: val)
-          (oh: owned_heap) (m: mem) (vs: list val): EventE (owned_heap * (mem * val))
-  | EDone (oh: owned_heap) (m: mem) (v: val): EventE void
   | EChoose (X: Type): EventE X
   .
 
-  Definition eff0: Type -> Type := Eval compute in EventE.
+  Definition eff0: Type -> Type := Eval compute in ExternalCallE +' EventE.
   Definition eff1: Type -> Type := Eval compute in InternalCallE +' eff0.
   Definition E := Eval compute in eff1.
 
@@ -148,9 +150,9 @@ Definition triggerUB {E A} `{EventE -< E}: itree E A :=
 Definition triggerNB {E A} `{EventE -< E}: itree E A :=
   vis (ENB) (fun v => match v: void with end)
 .
-Definition triggerDone {E A} `{EventE -< E} (oh: owned_heap) (m: mem) (v: val): itree E A :=
-  vis (EDone oh m v) (fun v => match v: void with end)
-.
+(* Definition triggerDone {E A} `{EventE -< E} (oh: owned_heap) (m: mem) (v: val): itree E A := *)
+(*   vis (EDone oh m v) (fun v => match v: void with end) *)
+(* . *)
 
 Definition unwrapN {E X} `{EventE -< E} (x: option X): itree E X :=
   match x with
@@ -264,8 +266,3 @@ Qed.
 End TEST.
 
 End OWNEDHEAP.
-
-
-
-Arguments EChoose {owned_heap}.
-Arguments ENB {owned_heap}.

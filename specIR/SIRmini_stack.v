@@ -132,11 +132,11 @@ Section MODSEM.
       (VIS: st0.(cur) = Vis (subevent _ (ENB)) k)
     :
       step se ge st0 E0 st0
-  | step_done
-      oh rv m k
-      (VIS: st0.(cur) = Vis (subevent _ (EDone oh m rv)) k)
-    :
-      step se ge st0 E0 (update_cur st0 (Ret (oh, (m, rv))))
+  (* | step_done *)
+  (*     oh rv m k *)
+  (*     (VIS: st0.(cur) = Vis (subevent _ (EDone oh m rv)) k) *)
+  (*   : *)
+  (*     step se ge st0 E0 (update_cur st0 (Ret (oh, (m, rv)))) *)
   | step_choose
       X k (x: X)
       (VIS: st0.(cur) = Vis (subevent _ (EChoose X)) k)
@@ -195,14 +195,14 @@ Section MODSEM.
     - rewrite TAU in *. clarify.
     - rewrite VIS in *. rewrite VIS0 in *. simpl_depind.
     - rewrite VIS in *. rewrite VIS0 in *. simpl_depind.
-    - rewrite VIS in *. rewrite VIS0 in *. simpl_depind.
+    (* - rewrite VIS in *. rewrite VIS0 in *. simpl_depind. *)
   Qed.
   Next Obligation.
     ii. des. inv PR; ss; inv PR0; ss.
     - rewrite TAU in *. clarify.
     - rewrite RET in *. rewrite VIS in *. clarify.
     - rewrite RET in *. rewrite VIS in *. clarify.
-    - rewrite RET in *. rewrite VIS in *. clarify.
+    (* - rewrite RET in *. rewrite VIS in *. clarify. *)
   Qed.
   Next Obligation.
     ii. des. inv PR; ss; inv PR0; ss.
@@ -218,6 +218,23 @@ Section MODSEM.
     all: ss.
   Qed.
 
+  Lemma modsem_determinate
+        (st0: state)
+        (NCHOOSE: forall X k, ~(st0.(cur) = Vis (subevent _ (EChoose X)) k))
+    :
+      determinate_at modsem st0.
+  Proof.
+    econs; eauto.
+    - ii; ss. destruct st0; ss.
+      inv H; inv H0; cbn in *; subst; esplits; et; try econs; et; ii;
+        simpl_depind;
+        try (by injection ST0; ii; simpl_depind);
+        try congruence.
+      + simpl_depind. clarify. f_equal. exploit NCHOOSE; et. i; ss.
+    - ii. inv H; ss; try xomega.
+  Unshelve.
+    all: des; ss; try (by exfalso; des; ss).
+  Qed.
   (* Lemma modsem_determinate *)
   (*       (st0: state) *)
   (*       (NCHOOSE: forall X itr0 k (IN: st0.(cur) itr0), itr0 ≈ Vis (subevent _ (EChoose X)) k -> False) *)

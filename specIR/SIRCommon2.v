@@ -1,7 +1,7 @@
 From Coq Require Import
      Arith.PeanoNat
+     (* Strings.String *)
      Lists.List
-     Strings.String
      Morphisms
      Setoid
      RelationClasses.

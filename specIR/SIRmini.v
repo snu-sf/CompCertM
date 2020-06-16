@@ -121,12 +121,12 @@ Section MODSEM.
 
       (TR: tr = E0)
       (ST: st1 = st0)
-  | step_done
-      oh rv m k
-      (VIS: st0 = Vis (subevent _ (EDone oh m rv)) k)
+  (* | step_done *)
+  (*     oh rv m k *)
+  (*     (VIS: st0 = Vis (subevent _ (EDone oh m rv)) k) *)
 
-      (TR: tr = E0)
-      (ST1: st1 = (Ret (oh, (m, rv))))
+  (*     (TR: tr = E0) *)
+  (*     (ST1: st1 = (Ret (oh, (m, rv)))) *)
   | step_choose
       X k (x: X)
       (VIS: st0 = Vis (subevent _ (EChoose X)) k)

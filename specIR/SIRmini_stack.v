@@ -42,10 +42,9 @@ Section MODSEM.
   Let ge: genvtype := tt.
 
   Notation ktr :=
-    (@Eqv.t (ktree (eff1 owned_heap) (owned_heap * (mem * val)) (owned_heap * (mem * val)))
-            eq2)
+    (ktree (eff1 owned_heap) (owned_heap * (mem * val)) (owned_heap * (mem * val)))
   .
-  Notation itr := (@Eqv.t (itree (eff1 owned_heap) (owned_heap * (mem * val))) (eutt eq)).
+  Notation itr := (itree (eff1 owned_heap) (owned_heap * (mem * val))).
 
   Record state: Type := mk {
     cur: itr;
@@ -60,6 +59,7 @@ Section MODSEM.
   Inductive initial_frame (oh0: owned_heap) (args: Args.t): state -> Prop :=
   | initial_frame_intro
       itr fid blk m0 vs fd
+      (CSTYLE: Args.is_cstyle args)
       (FPTR: (Args.fptr args) = Vptr blk Ptrofs.zero)
       (VS: (Args.vs args) = vs)
       (M: (Args.m args) = m0)
@@ -67,22 +67,21 @@ Section MODSEM.
       (SYMB: Genv.find_symbol skenv fid = Some blk)
       (FINDF: Genv.find_funct skenv (Vptr blk Ptrofs.zero) = Some (Internal fd))
       (TYP: typecheck (Args.vs args) fd (Args.vs args))
-      (* (TYP: Val.has_type_list (Args.vs args) fd.(sig_args)) *)
       (DEF: Forall (fun v => v <> Vundef) (Args.vs args))
+      (* (TYP: Val.has_type_list (Args.vs args) fd.(sig_args)) *)
 
       st0
-      (ITR: itr ≈ (interp_function p (ICall fid oh0 m0 (Args.vs args))))
+      (ITR: itr = (interp_function p (ICall fid oh0 m0 (Args.vs args))))
       (* (ST: st0 = (State itr)) *)
-      (ST: st0 = mk (Eqv.lift itr) nil)
+      (ST: st0 = mk itr nil)
     :
       initial_frame oh0 args st0
   .
 
   Inductive at_external (st0: state): owned_heap -> Args.t -> Prop :=
   | at_external_intro
-      itr0 args sg fptr vs k oh0 m0
-      (IN: st0.(cur) itr0)
-      (VIS: itr0 ≈ Vis (subevent _ (ECall sg fptr oh0 m0 vs)) k)
+      args sg fptr vs k oh0 m0
+      (VIS: st0.(cur) = Vis (subevent _ (ECall sg fptr oh0 m0 vs)) k)
       (EXT: Genv.find_funct skenv fptr = None)
       (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
                         /\ sg = Sk.get_sig skd)
@@ -94,18 +93,18 @@ Section MODSEM.
   Inductive get_k (st0: state):
     (owned_heap * (mem * val) -> itree (eff1 owned_heap) (owned_heap * (mem * val))) -> Prop :=
   | get_k_intro
-      itr0 _vs _sg _fptr _oh0 _m0 k
-      (IN: st0.(cur) itr0)
-      (VIS: itr0 ≈ Vis (subevent _ (ECall _sg _fptr _oh0 _m0 _vs)) k)
+      _vs _sg _fptr _oh0 _m0 k
+      (VIS: st0.(cur) = Vis (subevent _ (ECall _sg _fptr _oh0 _m0 _vs)) k)
     :
       get_k st0 k
   .
 
   Inductive after_external (st0: state) (oh0: owned_heap) (retv: Retv.t): state -> Prop :=
   | after_external_intro
+      (CSTYLE: Retv.is_cstyle retv)
       k m0 rv st1
       (GETK: get_k st0 k)
-      (KONT: st1 = update_cur st0 (Eqv.lift (k (oh0, (m0, rv)))))
+      (KONT: st1 = update_cur st0 (k (oh0, (m0, rv))))
       (RETV: retv = Retv.mk rv m0)
     :
       after_external st0 oh0 retv st1
@@ -113,69 +112,52 @@ Section MODSEM.
 
   Inductive final_frame (st0: state): owned_heap -> Retv.t -> Prop :=
   | final_frame_intro
-      itr0 oh0 m0 (rv: val)
-      (IN: st0.(cur) itr0)
+      oh0 m0 (rv: val)
       (NCONT: st0.(cont) = nil)
-      (RET: itr0 ≈ Ret (oh0, (m0, rv)))
+      (RET: st0.(cur) = Ret (oh0, (m0, rv)))
     :
       final_frame st0 oh0 (Retv.mk rv m0)
   .
 
   Inductive step (se: Senv.t) (ge: genvtype) (st0: state): trace -> state -> Prop :=
-  (* | step_tau *)
-  (*     itr0 *)
-  (*     itr1 *)
-  (*     (TAU: st0.(itr) = Tau itr1) *)
+  | step_tau
+      itr0
+      (TAU: st0.(cur) = Tau itr0)
 
-  (*     (ST0: st0 = mk itr0) *)
-  (*     (TR: tr = E0) *)
-  (*     (ST1: st1 = mk itr1) *)
+    :
+      step se ge st0 E0 (update_cur st0 itr0)
   (*** ub is stuck, so we don't state anything ***)
   | step_nb
-      itr0 k
-      (IN: st0.(cur) itr0)
-      (VIS: itr0 ≈ Vis (subevent _ (ENB)) k)
+      k
+      (VIS: st0.(cur) = Vis (subevent _ (ENB)) k)
     :
       step se ge st0 E0 st0
   | step_done
-      itr0
       oh rv m k
-      (IN: st0.(cur) itr0)
-      (VIS: itr0 ≈ Vis (subevent _ (EDone oh m rv)) k)
+      (VIS: st0.(cur) = Vis (subevent _ (EDone oh m rv)) k)
     :
-      step se ge st0 E0 (update_cur st0 (Eqv.lift (Ret (oh, (m, rv)))))
-  | step_breakpoint
-      itr0 k
-      (IN: st0.(cur) itr0)
-      (VIS: itr0 ≈ Vis (subevent _ (EBP)) k)
-    :
-      step se ge st0 E0 (update_cur st0 (Eqv.lift (k tt)))
+      step se ge st0 E0 (update_cur st0 (Ret (oh, (m, rv))))
   | step_choose
-      itr0 X k (x: X)
-      (IN: st0.(cur) itr0)
-      (VIS: itr0 ≈ Vis (subevent _ (EChoose X)) k)
+      X k (x: X)
+      (VIS: st0.(cur) = Vis (subevent _ (EChoose X)) k)
     :
-      step se ge st0 E0 (update_cur st0 (Eqv.lift (k x)))
+      step se ge st0 E0 (update_cur st0 (k x))
   | step_call
-      (cur: itr) (cont: list ktr) itr0 X k (x: X) next
+      (cur: itr) (cont: list ktr) X k (x: X) next
       (ST0: st0 = (mk cur cont))
       fid oh0 m0 vs0
-      (IN: cur itr0)
-      (VIS: itr0 ≈ Vis (subevent _ (ICall fid oh0 m0 vs0)) k)
-      (NEXT: next ≈ interp_function p (ICall fid oh0 m0 vs0))
+      (VIS: cur = Vis (subevent _ (ICall fid oh0 m0 vs0)) k)
+      (NEXT: next = interp_function p (ICall fid oh0 m0 vs0))
     :
-      step se ge st0 E0 (mk (Eqv.lift next) ((Eqv.lift k) :: cont))
+      step se ge st0 E0 (mk next (k :: cont))
   | step_return
-      (cur: itr) (hd: ktr) (tl: list ktr) itr0 oh0 m0 (rv: val)
+      (cur: itr) (hd: ktr) (tl: list ktr) oh0 m0 (rv: val)
       (ST0: st0 = mk cur (hd :: tl))
-      (IN: cur itr0)
-      (RET: itr0 ≈ Ret (oh0, (m0, rv)))
+      (RET: cur = Ret (oh0, (m0, rv)))
       next
-      ktr0
-      (HD: hd ktr0)
-      (NEXT: next ≈ (ktr0 (oh0, (m0, rv))))
+      (NEXT: next = (hd (oh0, (m0, rv))))
     :
-      step se ge st0 E0 (mk (Eqv.lift next) tl)
+      step se ge st0 E0 (mk next tl)
   .
 
   (*** TODO: remove needless "IN" and "itr0"s ***)
@@ -198,46 +180,33 @@ Section MODSEM.
        ModSem.midx := Some mi;
     |}.
   Next Obligation.
-    inv AT0. inv AT1. determ_tac Eqv.in_eqv.
-    rewrite VIS in *. rewrite VIS0 in *. eapply eqit_inv_vis in H. des; clarify.
+    inv AT0. inv AT1. rewrite VIS in *. rewrite VIS0 in *. clarify.
   Qed.
   Next Obligation.
-    inv FINAL0. inv FINAL1. determ_tac Eqv.in_eqv.
-    rewrite RET in *. rewrite RET0 in *. apply eqit_inv_ret in H. clarify.
+    inv FINAL0. inv FINAL1. rewrite RET in *. rewrite RET0 in *. clarify.
   Qed.
   Next Obligation.
     inv AFTER0. inv AFTER1.
-    inv GETK. inv GETK0. determ_tac Eqv.in_eqv.
-    rewrite VIS in *. rewrite VIS0 in *. eapply eqit_inv_vis in H. des; clarify.
-    f_equal.
-    eapply Eqv.eqv_lift; et.
+    inv GETK. inv GETK0. clarify.
+    rewrite VIS in *. rewrite VIS0 in *. clarify. simpl_depind. clarify.
   Qed.
   Next Obligation.
-    ii. des. inv PR; ss; inv PR0; ss; determ_tac Eqv.in_eqv.
-    - rewrite VIS in *. rewrite VIS0 in *.
-      punfold H; inv H; simpl_depind; subst; simpl_depind.
-    - rewrite VIS in *. rewrite VIS0 in *.
-      punfold H; inv H; simpl_depind; subst; simpl_depind.
-    - rewrite VIS in *. rewrite VIS0 in *.
-      punfold H; inv H; simpl_depind; subst; simpl_depind.
-    - rewrite VIS in *. rewrite VIS0 in *.
-      punfold H; inv H; simpl_depind; subst; simpl_depind.
-    - rewrite VIS in *. rewrite VIS0 in *.
-      punfold H; inv H; simpl_depind; subst; simpl_depind.
-    - rewrite VIS in *. rewrite RET in *.
-      punfold H; inv H; simpl_depind; subst; simpl_depind.
+    ii. des. inv PR; ss; inv PR0; ss.
+    - rewrite TAU in *. clarify.
+    - rewrite VIS in *. rewrite VIS0 in *. simpl_depind.
+    - rewrite VIS in *. rewrite VIS0 in *. simpl_depind.
+    - rewrite VIS in *. rewrite VIS0 in *. simpl_depind.
   Qed.
   Next Obligation.
-    ii. des. inv PR; ss; inv PR0; ss; determ_tac Eqv.in_eqv.
-    - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
-    - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
-    - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
-    - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
-    - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
+    ii. des. inv PR; ss; inv PR0; ss.
+    - rewrite TAU in *. clarify.
+    - rewrite RET in *. rewrite VIS in *. clarify.
+    - rewrite RET in *. rewrite VIS in *. clarify.
+    - rewrite RET in *. rewrite VIS in *. clarify.
   Qed.
   Next Obligation.
-    ii. des. inv PR; ss; inv PR0; ss. determ_tac Eqv.in_eqv.
-    - rewrite RET in *. rewrite VIS in *. exploit vis_not_ret; et.
+    ii. des. inv PR; ss; inv PR0; ss.
+    - rewrite RET in *. rewrite VIS in *. clarify.
   Qed.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.

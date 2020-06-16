@@ -21,6 +21,7 @@ Require Import Simulation.
 Require Import AxiomsC.
 
 Set Implicit Arguments.
+Set Universe Polymorphism.
 
 
 
@@ -56,116 +57,12 @@ Export MonadNotation.
 Export FunctorNotation.
 Open Scope monad_scope.
 Open Scope itree_scope.
-Notation "` x : t <- t1 ;; t2" := (ITree.bind t1 (fun x : t => t2))
-  (at level 61, t at next level, t1 at next level, x ident, right associativity) : itree_scope.
+(* Notation "` x : t <- t1 ;; t2" := (ITree.bind t1 (fun x : t => t2)) *)
+(*   (at level 61, t at next level, t1 at next level, x ident, right associativity) : itree_scope. *)
 
 
 
 
-
-Module Eqv.
-Section Eqv.
-
-  Variable X: Type.
-  Context {eqv: X -> X -> Prop} `{Equivalence _ eqv}.
-
-  Record t := mk {
-    xs:> X -> Prop;
-    sound: forall (x0 x1: X) (IN: xs x0) (IN: xs x1), <<EQV: eqv x0 x1>>;
-    cmplt: forall x0 x1 (IN: xs x0) (EQV: eqv x0 x1), <<IN: xs x1>>;
-  }
-  .
-
-  Lemma eta
-        (t0 t1: t)
-        (XS: t0.(xs) = t1.(xs))
-    :
-      <<EQ: t0 = t1>>
-  .
-  Proof.
-    destruct t0, t1; ss. r.
-    subst. f_equal.
-    - eapply proof_irr.
-    - eapply proof_irr.
-  Qed.
-
-  Lemma eqv_eq
-        (t0 t1: t) x0 x1
-        (EQV: eqv x0 x1)
-        (IN0: t0 x0)
-        (IN1: t1 x1)
-    :
-      <<EQ: t0 = t1>>
-  .
-  Proof.
-    destruct t0, t1; ss.
-    eapply eta; ss.
-    apply func_ext1. ii. apply prop_ext. split; i.
-    - assert(eqv x0 x2).
-      { eapply sound0; et. }
-      eapply cmplt1; et. etrans; et. sym. ss.
-    - assert(eqv x1 x2).
-      { eapply sound1; et. }
-      eapply cmplt0; et. etrans; et.
-  Qed.
-
-  Program Definition lift (x0: X): t := {|
-    xs := fun x1 => eqv x0 x1;
-  |}
-  .
-  Next Obligation.
-    r. etrans; et. sym. ss.
-  Qed.
-  Next Obligation.
-    r. etrans; et.
-  Qed.
-
-  Lemma in_eqv
-        (t0: t) x0 x1
-        (IN0: t0 x0)
-        (IN1: t0 x1)
-    :
-      <<EQV: eqv x0 x1>>
-  .
-  Proof.
-    destruct t0; ss. et.
-  Qed.
-
-  Lemma lift_in
-        x0
-    :
-      <<IN: lift x0 x0>>
-  .
-  Proof.
-    unfold lift. ss. r. refl.
-  Qed.
-
-  Lemma eqv_lift
-        x0 x1
-        (EQV: eqv x0 x1)
-    :
-      <<EQ: lift x0 = lift x1>>
-  .
-  Proof.
-    eapply eqv_eq in EQV; et.
-    - eapply lift_in.
-    - eapply lift_in.
-  Qed.
-
-  Lemma in_lift
-        x0 x1
-        (IN: (lift x0) x1)
-    :
-      <<EQV: eqv x0 x1>>
-  .
-  Proof.
-    cbn in *. ss.
-  Qed.
-
-End Eqv.
-End Eqv.
-
-Coercion Eqv.xs: Eqv.t >-> Funclass.
 
 
 Lemma eq_eutt

@@ -1,6 +1,6 @@
 COQMODULE    := compcomp
 # COQTHEORIES  := $(wildcard */*.v) #*/*.v
-COQTHEORIES  := $(shell find . -iname '*.v')
+COQTHEORIES  := $(shell find . -path ./ignored -prune -o -iname '*.v')
 
 
 .PHONY: all proof proof-quick graph

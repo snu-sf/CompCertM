@@ -52,8 +52,9 @@ Section OWNEDHEAP.
 
 Variable owned_heap: Type.
 Variable initial_owned_heap: SkEnv.t -> owned_heap.
-Variable mi: string.
+Variable sk: Sk.t.
 Variable prog: program owned_heap.
+Variable mi: string.
 
 
 
@@ -108,7 +109,6 @@ End SMO.
 
 Section SIMMODSEM.
 
-Variable sk: Sk.t.
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
 Let md_src: Mod.t := (SIRmini.module sk prog mi initial_owned_heap).
@@ -264,96 +264,115 @@ Proof.
     ides (cur: itree (InternalCallE owned_heap +' EventE owned_heap) _);
       cbn in SIM; autorewrite with itree in SIM.
     { (* RET *)
-      exploit unfold_cont_call; eauto. i; des.
-      ginduction CALLS; ii; ss.
-      { cbn in *. rewrite interp_mrec_bind in SIM. rewrite KCALL in *.
-        rewrite unfold_interp_mrec in SIM. cbn in SIM.
-        autorewrite with itree in SIM.
-        f in SIM. csc.
-        (* assert(pair_eta: forall X Y (xy: X * Y), xy = (fst xy, snd xy)). *)
-        (* { i. destruct xy; ss. } *)
-        (* assert(ETA: r0 = (fst r0, (fst (snd r0), (snd (snd r0))))). *)
-        (* { rewrite <- ! pair_eta. ss. } *)
-        destruct r0 as [oh0 [m v]]; ss.
-        econs 1. ii. clear_tac. econs 2; try refl; eauto.
-        { esplits; eauto.
-          - eapply plus_left with (t1 := E0) (t2 := E0); ss.
-            { split; ss.
-              { eapply modsem_determinate; ss; et. }
-              instantiate (1:= SIRmini_stack.mk _ _).
-              eapply step_return; ss; et.
-            }
-            apply star_refl.
-          - eapply Ord.lift_idx_spec; et.
-        }
-
-        right. eapply CIH. econs; ss; eauto.
-        - rewrite KCALL. f.
-          autorewrite with itree. rewrite unfold_interp_mrec. cbn.
-          (* rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. *)
-          Ltac f_equiv :=
-            first [eapply eutt_eq_bind|eapply eqit_VisF|eapply eqit_bind'|Morphisms.f_equiv].
-          f_equiv.
-          ii.
-          autorewrite with itree.
-          f_equiv. f_equiv.
-          rewrite interp_mrec_bind.
-          f. ss.
+      destruct cont; ss.
+      { cbn in SIM. rewrite unfold_interp_mrec in SIM. cbn in SIM. f in SIM. clarify. }
+      destruct r0 as [oh0 [m v]]; ss.
+      econs 1. ii. clear_tac. econs 2; try refl; eauto.
+      { esplits; eauto.
+        - eapply plus_left with (t1 := E0) (t2 := E0); ss.
+          { split; ss.
+            { eapply modsem_determinate; ss; et. }
+            instantiate (1:= SIRmini_stack.mk _ _).
+            eapply step_return; ss; et.
+          }
+          apply star_refl.
+        - eapply Ord.lift_idx_spec; et.
       }
-      move IHCALLS at top.
 
-      cbn in SIM. rewrite interp_mrec_bind in SIM. rewrite KRET in SIM.
-      rewrite unfold_interp_mrec in SIM. cbn in SIM.
-      autorewrite with itree in SIM.
-      exploit IHCALLS; eauto. i; des.
-
-          econs.
-          autorewrite with itree.
-          destruct smo_ret; ss. inv MWF; ss. clarify. destruct sm0; ss. clarify.
-          f.
-          autorewrite with itree.
-          rewrite interp_mrec_bind.
-          f.
-          ss.
-
-
-        econs 3; eauto.
-        { rr. esplits; ss; eauto. econs; ss; eauto. }
-        ii; ss. clear_tac. inv ATSRC. csc.
-        
-        eexists _, (Args.mk _ _ _), (mk (SimMemId.mk _ _) _ _); ss. esplits; eauto.
-        { rr. esplits; ss; eauto. econs; ss; eauto. }
-        { econs; ss. }
-        { econs; ss. }
-        ii. clear_tac.
-        inv AFTERSRC. inv GETK. rr in SIMRETV; des; ss.
-        inv SIMRETV0; ss. csc.
-
-        eexists _, _, (Ord.lift_idx lt_wf (S idx)); ss.
-        esplits; eauto.
-        { econs; eauto. econs; eauto. ss. }
-        left. pfold. ii. clear SUSTAR. econs 2. ii. clear_tac. econs 2; try refl; eauto.
-        { esplits; eauto.
-          - apply star_one. econs; ss; eauto.
-            f. autorewrite with itree. f. eauto.
-          - eapply Ord.lift_idx_spec; et.
-        }
-        right. eapply CIH. econs; ss; eauto.
-        -
-          destruct smo_ret; ss. inv MWF; ss. clarify. destruct sm0; ss. clarify.
-          f.
-          autorewrite with itree.
-          rewrite interp_mrec_bind.
-          f.
-          ss.
-
-
-        esplits; eauto.
-        { rr. esplits; eauto.
-        autorewrite with itree in SIM. cbn in *.
-      }
-      admit "gogogo with index".
+      right. eapply CIH. econs; ss; eauto.
+      f. rewrite SIM. cbn. f. ss.
     }
+    (* { (* RET *) *)
+    (*   exploit unfold_cont_call; eauto. i; des. *)
+    (*   ginduction CALLS; ii; ss. *)
+    (*   { cbn in *. rewrite interp_mrec_bind in SIM. rewrite KCALL in *. *)
+    (*     rewrite unfold_interp_mrec in SIM. cbn in SIM. *)
+    (*     autorewrite with itree in SIM. *)
+    (*     f in SIM. csc. *)
+    (*     (* assert(pair_eta: forall X Y (xy: X * Y), xy = (fst xy, snd xy)). *) *)
+    (*     (* { i. destruct xy; ss. } *) *)
+    (*     (* assert(ETA: r0 = (fst r0, (fst (snd r0), (snd (snd r0))))). *) *)
+    (*     (* { rewrite <- ! pair_eta. ss. } *) *)
+    (*     destruct r0 as [oh0 [m v]]; ss. *)
+    (*     econs 1. ii. clear_tac. econs 2; try refl; eauto. *)
+    (*     { esplits; eauto. *)
+    (*       - eapply plus_left with (t1 := E0) (t2 := E0); ss. *)
+    (*         { split; ss. *)
+    (*           { eapply modsem_determinate; ss; et. } *)
+    (*           instantiate (1:= SIRmini_stack.mk _ _). *)
+    (*           eapply step_return; ss; et. *)
+    (*         } *)
+    (*         apply star_refl. *)
+    (*       - eapply Ord.lift_idx_spec; et. *)
+    (*     } *)
+
+    (*     right. eapply CIH. econs; ss; eauto. *)
+    (*     - rewrite KCALL. f. *)
+    (*       autorewrite with itree. rewrite unfold_interp_mrec. cbn. *)
+    (*       (* rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. *) *)
+    (*       Ltac f_equiv := *)
+    (*         first [eapply eutt_eq_bind|eapply eqit_VisF|eapply eqit_bind'|Morphisms.f_equiv]. *)
+    (*       f_equiv. *)
+    (*       ii. *)
+    (*       autorewrite with itree. *)
+    (*       f_equiv. f_equiv. *)
+    (*       rewrite interp_mrec_bind. *)
+    (*       f. ss. *)
+    (*   } *)
+    (*   move IHCALLS at top. *)
+
+    (*   cbn in SIM. rewrite interp_mrec_bind in SIM. rewrite KRET in SIM. *)
+    (*   rewrite unfold_interp_mrec in SIM. cbn in SIM. *)
+    (*   autorewrite with itree in SIM. *)
+    (*   exploit IHCALLS; eauto. i; des. *)
+
+    (*       econs. *)
+    (*       autorewrite with itree. *)
+    (*       destruct smo_ret; ss. inv MWF; ss. clarify. destruct sm0; ss. clarify. *)
+    (*       f. *)
+    (*       autorewrite with itree. *)
+    (*       rewrite interp_mrec_bind. *)
+    (*       f. *)
+    (*       ss. *)
+
+
+    (*     econs 3; eauto. *)
+    (*     { rr. esplits; ss; eauto. econs; ss; eauto. } *)
+    (*     ii; ss. clear_tac. inv ATSRC. csc. *)
+        
+    (*     eexists _, (Args.mk _ _ _), (mk (SimMemId.mk _ _) _ _); ss. esplits; eauto. *)
+    (*     { rr. esplits; ss; eauto. econs; ss; eauto. } *)
+    (*     { econs; ss. } *)
+    (*     { econs; ss. } *)
+    (*     ii. clear_tac. *)
+    (*     inv AFTERSRC. inv GETK. rr in SIMRETV; des; ss. *)
+    (*     inv SIMRETV0; ss. csc. *)
+
+    (*     eexists _, _, (Ord.lift_idx lt_wf (S idx)); ss. *)
+    (*     esplits; eauto. *)
+    (*     { econs; eauto. econs; eauto. ss. } *)
+    (*     left. pfold. ii. clear SUSTAR. econs 2. ii. clear_tac. econs 2; try refl; eauto. *)
+    (*     { esplits; eauto. *)
+    (*       - apply star_one. econs; ss; eauto. *)
+    (*         f. autorewrite with itree. f. eauto. *)
+    (*       - eapply Ord.lift_idx_spec; et. *)
+    (*     } *)
+    (*     right. eapply CIH. econs; ss; eauto. *)
+    (*     - *)
+    (*       destruct smo_ret; ss. inv MWF; ss. clarify. destruct sm0; ss. clarify. *)
+    (*       f. *)
+    (*       autorewrite with itree. *)
+    (*       rewrite interp_mrec_bind. *)
+    (*       f. *)
+    (*       ss. *)
+
+
+    (*     esplits; eauto. *)
+    (*     { rr. esplits; eauto. *)
+    (*     autorewrite with itree in SIM. cbn in *. *)
+    (*   } *)
+    (*   admit "gogogo with index". *)
+    (* } *)
     { (* TAU *)
       f in SIM.
       clarify.
@@ -397,208 +416,142 @@ Proof.
   rename H into NCALLSRC.
 
 
-
-  destruct (classic (ModSem.is_call ms_tgt st_tgt0)).
-  { (*** tgt extcall ***)
-    rr in H. des. ss. inv H. inv MATCH. ss. clarify.
-    econs 3; ss; eauto.
-    { rr. esplits; eauto. ss. econs; eauto.
-      f.
-      rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. autorewrite with itree.
-      f.
-      reflexivity.
-    }
-    ii. clear_tac. inv ATSRC.
-    f in VIS.
-    rewrite interp_mrec_bind in VIS. rewrite unfold_interp_mrec in VIS.
-    cbn in VIS. autorewrite with itree in VIS.
-    f in VIS.
-    csc.
-    inv MWF. ss. destruct smo0; ss. destruct sm0; ss. clarify.
-    eexists _, (Args.mk _ _ _), (mk (SimMemId.mk _ _) _ _); ss. esplits; eauto.
-    { rr. esplits; ss; eauto. econs; ss; eauto. }
-    { econs; ss. }
-    { econs; ss. }
-    ii. clear_tac.
-    inv AFTERSRC. inv GETK. rr in SIMRETV; des; ss.
-    inv SIMRETV0; ss. clarify.
-
-    f in VIS.
-    rewrite interp_mrec_bind in VIS. rewrite unfold_interp_mrec in VIS.
-    cbn in VIS. autorewrite with itree in VIS.
-    f in VIS.
-    csc.
-
-    (* assert(RMT: forall E R (t: itree E R), Tau t = t). *)
-    (* { admit "remove later". } *)
-
-    eexists _, _, (Ord.lift_idx lt_wf (S idx)); ss.
-    esplits; eauto.
-    { econs; eauto. econs; eauto. ss. }
-    left. pfold. ii. clear SUSTAR. econs 2. ii. clear_tac. econs 2; try refl; eauto.
-    { esplits; eauto.
-      - apply star_one. econs; ss; eauto.
-        f. autorewrite with itree. f. eauto.
-      - eapply Ord.lift_idx_spec; et.
-    }
-    right. eapply CIH. econs; ss; eauto.
-    -
-      destruct smo_ret; ss. inv MWF; ss. clarify. destruct sm0; ss. clarify.
-      f.
-      autorewrite with itree.
-      rewrite interp_mrec_bind.
-      f.
-      ss.
-  }
-  rename H into NCALLTGT.
-
-
-
-  destruct (classic (ModSem.is_return ms_tgt st_tgt0)).
-  { (*** tgt return ***)
-    rr in H. des. ss. inv H. inv MATCH. ss. clarify.
-    econs 4; ss; eauto.
-    { econs; eauto.
-      f.
-      rewrite unfold_interp_mrec. cbn.
-      f.
-      reflexivity.
-    }
-    cbn in SYNC. exploit SYNC; et.
-    { f. rewrite unfold_interp_mrec. cbn. f. reflexivity. }
-    i; des. clarify.
-    inv MWF. rewrite <- OH in *. clarify. destruct smo0; ss. destruct sm0; ss. clarify.
-    rr; ss. esplits; ss; eauto.
-    { econs; ss; eauto. }
-  }
-  rename H into NRETTGT.
-
-
-
-  destruct (classic (ModSem.is_call ms_src st_src0)).
-  {
-    rr in H. des. ss. inv H. inv MATCH. ss.
-    f in SIM.
-    rewrite interp_mrec_bind in SIM. rewrite unfold_interp_mrec in SIM.
-    ides (cur: itree (InternalCallE owned_heap +' EventE owned_heap) _);
-      cbn in SIM; autorewrite with itree in SIM.
-    { (* RET *)
-      exploit unfold_cont_call; eauto. i; des.
-      admit "gogogo with index".
-    }
-    { (* TAU *)
-      f in SIM.
-      clarify.
-    }
-    { (* CALL *)
-      des_ifs.
-      { autorewrite with itree in SIM. f in SIM. clarify. }
-      autorewrite with itree in SIM. f in SIM. csc.
-      econs 3; ss; eauto.
-      { rr. esplits; ss; eauto. econs; ss; eauto. }
-      ii. clear_tac. inv ATSRC; ss.
-      csc.
-      inv MWF. ss. destruct smo0; ss. destruct sm0; ss. clarify.
-      eexists _, (Args.mk _ _ _), (mk (SimMemId.mk _ _) _ _); ss. esplits; eauto.
-      { rr. esplits; ss; eauto. econs; ss; eauto. }
-      { econs; ss. }
-      { econs; ss. }
-      ii. clear_tac.
-      inv AFTERSRC. inv GETK. rr in SIMRETV; des; ss.
-      inv SIMRETV0; ss. csc.
-      assert(RMT: forall E R (t: itree E R), Tau t = t).
-      { admit "remove later". }
-
-      esplits; eauto.
-      { econs; eauto. econs; eauto. ss. }
-      right. eapply CIH. econs; ss; eauto.
-      -
-        destruct smo_ret; ss. inv MWF; ss. clarify. destruct sm0; ss. clarify.
-        f.
-        autorewrite with itree.
-        rewrite RMT.
-        rewrite RMT.
-        rewrite interp_mrec_bind.
-        f.
-        ss.
-      - ii.
-        f in RET. autorewrite with itree in RET. f in RET. clarify.
-    }
-  }
-  rename H into NCALLSRC.
-
-
-
   destruct (classic (ModSem.is_return ms_src st_src0)).
-  {
+  { (*** src return ***)
     rr in H. des. ss. inv H. inv MATCH. ss.
     f in SIM.
     rewrite interp_mrec_bind in SIM. rewrite unfold_interp_mrec in SIM.
     ides (cur: itree (InternalCallE owned_heap +' EventE owned_heap) _);
       cbn in SIM; autorewrite with itree in SIM.
     { (* RET *)
-      exploit SYNC; eauto. i ;des. clarify.
-      
+      destruct r0 as [oh0 [m v]]; ss. unfold id in *. clarify.
+      inv MWF. inv MWF0. destruct smo0; ss. destruct sm0; ss. clarify.
+
+      destruct cont; ss.
+      { cbn in SIM. rewrite unfold_interp_mrec in SIM. cbn in SIM. f in SIM. clarify.
+        econstructor 4 with (smo_ret := mk (SimMemId.mk m m) (upcast oh0) (upcast oh0)); ss; eauto.
+        { econs; ss; et. }
+        { econs; ss; et. }
+        { rr; ss. esplits; ss; et. econs; ss; et. }
+      }
+
+      econs 1. ii. clear_tac. econs 2; try refl; eauto.
+      { esplits; eauto.
+        - eapply plus_left with (t1 := E0) (t2 := E0); ss.
+          { split; ss.
+            { eapply modsem_determinate; ss; et. }
+            instantiate (1:= SIRmini_stack.mk _ _).
+            eapply step_return; ss; et.
+          }
+          apply star_refl.
+        - eapply Ord.lift_idx_spec; et.
+      }
+
+      right. eapply CIH. econs; ss; eauto.
+      { f. rewrite SIM. cbn. f. ss. }
+      { econs; ss; et. }
     }
     { (* TAU *)
-      f in SIM.
-      clarify.
+      f in SIM. clarify.
     }
-    { (* CALL *)
-      des_ifs.
-      { autorewrite with itree in SIM. f in SIM. clarify. }
-      autorewrite with itree in SIM. f in SIM. csc.
-      econs 3; ss; eauto.
-      { rr. esplits; ss; eauto. econs; ss; eauto. }
-      ii. clear_tac. inv ATSRC; ss.
-      csc.
-      inv MWF. ss. destruct smo0; ss. destruct sm0; ss. clarify.
-      eexists _, (Args.mk _ _ _), (mk (SimMemId.mk _ _) _ _); ss. esplits; eauto.
-      { rr. esplits; ss; eauto. econs; ss; eauto. }
-      { econs; ss. }
-      { econs; ss. }
-      ii. clear_tac.
-      inv AFTERSRC. inv GETK. rr in SIMRETV; des; ss.
-      inv SIMRETV0; ss. csc.
-      assert(RMT: forall E R (t: itree E R), Tau t = t).
-      { admit "remove later". }
-
-      esplits; eauto.
-      { econs; eauto. econs; eauto. ss. }
-      right. eapply CIH. econs; ss; eauto.
-      -
-        destruct smo_ret; ss. inv MWF; ss. clarify. destruct sm0; ss. clarify.
-        f.
-        autorewrite with itree.
-        rewrite RMT.
-        rewrite RMT.
-        rewrite interp_mrec_bind.
-        f.
-        ss.
-      - ii.
-        f in RET. autorewrite with itree in RET. f in RET. clarify.
+    { (* VIS *)
+      des_ifs; autorewrite with itree in SIM; f in SIM; clarify.
     }
   }
-
-  assert(NCALLSRC: ~ModSem.is_call ms_src st_src0).
-  {
-    ii. rr in H. des. ss. inv H. inv MATCH. ss.
-    f in SIM.
-    rewrite interp_mrec_bind in SIM. rewrite unfold_interp_mrec in SIM.
-    ides (cur: itree (InternalCallE owned_heap +' EventE owned_heap) _);
-      cbn in SIM; autorewrite with itree in SIM.
-    - contradict NCALLTGT. rr. esplits; ss; et. econs; ss; et.
-  }
+  rename H into NRETSRC.
 
 
 
   econs 2; eauto. ii. clear_tac.
   econs 1; eauto; cycle 1.
-  { ss. exploit SAFESRC; ss; try eapply star_refl; ss. i. des.
+  { (* bsim progress *)
+    ss. exploit SAFESRC; ss; try eapply star_refl; ss. i; des; ModSem.tac.
+    inv MATCH. ss.
+    ides cur.
+    - (* RET *)
+      destruct r0 as [oh0 [m v]]; ss.
+      destruct cont; ss.
+      { contradict NRETSRC. rr; ss. esplits; et. econs; et.
+        f. autorewrite with itree. rewrite unfold_interp_mrec. cbn. f. ss. }
+      esplits; et.
+      eapply step_return; ss; et.
+    - (* TAU *)
+      esplits; et. esplits; et. econs; ss; et.
+    - (* VIS *)
+      (* remember (interp_mrec (interp_function prog) *)
+      (*           (` rvs : owned_heap * (mem * val) <- Vis e k;; fold_cont cont rvs)) as st0. *)
+      (* depdes EVSTEP; ss; clarify. *)
+      inv EVSTEP; ss.
+      + (* SRCTAU *)
+        f in TAU. autorewrite with itree in TAU. rewrite unfold_interp_mrec in TAU. cbn in TAU.
+        f in TAU. des_ifs; simpl_depind.
+        destruct i; ss.
+        esplits; et. eapply step_call; ss; et.
+      + (* SRCNB *)
+        f in VIS. rewrite interp_mrec_bind in VIS. rewrite unfold_interp_mrec in VIS. cbn in VIS.
+        des_ifs; autorewrite with itree in VIS; f in VIS; csc.
+        esplits; eauto. eapply step_nb; ss; et.
+      + (* SRCCHOOSE *)
+        f in VIS. rewrite interp_mrec_bind in VIS. rewrite unfold_interp_mrec in VIS. cbn in VIS.
+        des_ifs; autorewrite with itree in VIS; f in VIS; csc.
+        esplits; eauto. eapply step_choose; ss; et.
   }
-  - ii. ss. inv STEPTGT; ss.
+  inv MATCH; ss. ii; ss.
+  inv STEPTGT.
+  - (* TGTTAU *)
+    ss; clarify.
+    esplits; ss; et.
+    + left. apply plus_one. eapply SIRmini.step_tau; ss; et. f.
+      rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. autorewrite with itree.
+      f. ss.
+    + right. eapply CIH. econs; ss; et.
+      f. rewrite interp_mrec_bind. f. ss.
+  - (* TGTNB *)
+    ss; clarify.
+    esplits; ss; et.
+    + left. apply plus_one. eapply SIRmini.step_nb; ss; et. f.
+      rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. autorewrite with itree.
+      f. ss.
+    + right. eapply CIH. econs; ss; et.
+  - (* TGTCHOOSE *)
+    ss; clarify.
+    exists (Ord.lift_idx lt_wf (S idx)). esplits; ss; et.
+    + left. apply plus_one. eapply SIRmini.step_choose; ss; et. f.
+      rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. autorewrite with itree.
+      f. ss.
+    + left. pfold. ii. clear SUSTAR. econs 2. ii. clear_tac. econs 2; try refl; eauto.
+      { esplits; eauto.
+        - apply star_one. econs; ss; eauto.
+          f. autorewrite with itree. f. eauto.
+        - eapply (Ord.lift_idx_spec lt_wf); et.
+      }
+      right. eapply CIH. econs; ss; et.
+      f. rewrite interp_mrec_bind. autorewrite with itree. f. ss.
+  - (* TGTCALL *)
+    ss; clarify.
+    esplits; ss; et.
+    + left. apply plus_one. eapply SIRmini.step_tau; ss; et. f.
+      rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. autorewrite with itree.
+      f. ss.
+    + right. eapply CIH. econs; ss; et.
+      f. rewrite interp_mrec_bind. autorewrite with itree. cbn.
+      rewrite interp_mrec_bind.
+      f_equiv. ii. ss.
+      rewrite interp_mrec_bind. f. ss.
+  - (* TGTRET *)
+    ss; clarify.
+    esplits; ss; et.
+    + right. esplits; et.
+      { apply star_refl. }
+      { eapply Ord.lift_idx_spec; et. }
+    + right. eapply CIH. econs; ss; et. cbn.
+      f. rewrite interp_mrec_bind. rewrite interp_mrec_bind.
+      rewrite unfold_interp_mrec. cbn. autorewrite with itree.
+      rewrite interp_mrec_bind. f. ss.
+  Unshelve.
+    all: ss.
 Qed.
-
+    
 Theorem sim_modsem: ModSemPair.sim msp.
 Proof.
   econstructor 1 with (sidx := unit) (sound_states := top4); eauto;
@@ -608,92 +561,32 @@ Proof.
   }
   { ii. ss. eexists (mk _ _ _); ss. esplits; eauto. econs; ss; eauto. }
   ii. ss. esplits; eauto.
-  - ii. des. esplits; eauto. eapply match_states_lxsim; eauto.
-    admit "".
-  - admit "".
-Qed.
-
-
-
-
-
-
-
-
-
-Theorem sim_modsem: ModSemPair.sim msp.
-Proof.
-  eapply match_states_sim with
-      (match_states := match_states) (match_states_at := top4)
-      (has_footprint := top3) (mle_excl := fun _ _ => SimMemOh.le) (sidx := unit)
-      (order:= bot2);
-    eauto; ii; ss; folder.
-  - eapply SoundTop.sound_state_local_preservation; et.
-  - des. inv INITTGT. inv SAFESRC. ss. des_ifs_safe.
-    rr in SIMARGS. des. ss.  inv SIMARGS0; ss. clarify.
-    assert(fid = fid0).
-    { apply_all_once Genv.find_invert_symbol. clarify. }
-    clarify.
+  - ii. des. inv INITTGT. inv SAFESRC. ss. des_ifs_safe.
     esplits; eauto.
-    { econs; eauto. ss. }
-    ss.
-    econs; eauto.
-    + cbn. unfold interp_program0, mrec. cbn.
-      Fail brewrite bind_ret_r. (*** <---- TODO: fix this !!!!!!!!! ***)
-      eapply bisim_is_eq; erewrite bind_ret_r; [eapply eq_is_bisim|..].
-      inv MWF. destruct sm_arg; ss. destruct sm0; ss.
-      rewrite OHSRC0 in *. rewrite OHTGT0 in *. clarify.
-  - des. inv SAFESRC. ss. des_ifs.
-    rr in SIMARGS. des. ss.  inv SIMARGS0; ss. clarify. inv MWF. destruct sm_arg; ss.
-    esplits; eauto.
-    econs; ss; eauto.
-  - inv MATCH. ss.
-  - inv MATCH. ss. inv CALLSRC.
-    eapply eq_is_bisim in VIS; erewrite interp_mrec_bind in VIS; eapply bisim_is_eq in VIS.
-
-    (********* TGT SHOULD TAKE SOME TAU STEPS *********)
-    destruct (observe cur) eqn:T; sym in T; apply simpobs in T; apply bisim_is_eq in T; clarify.
-    { cbn in *.
-      eapply eq_is_bisim in VIS.
-      rewrite unfold_interp_mrec in VIS. cbn in VIS.
-      autorewrite with itree in VIS.
-    }
-      unfold interp_mrec in VIS at 2. cbn in VIS.
-      Erewrite  in VIS; eapply bisim_is_eq in VIS.
-    esplits; eauto.
-    + econs; ss; eauto.
-    
-    exploit eq_itree_inv_vis; eauto.
-    { }
-    destruct (observe (interp_mrec (interp_function prog) cur)) eqn:T.
-    + rewrite itree_eta_ in VIS at 1. cbn in VIS.
-      unfold_bind
-        simpobs
-      rewrite itree_eta in VIS.
-      Set Printing All. rewrite T in VIS.
-    esplits; eauto.
-    + econs; ss; eauto.
+    { econs; ss; et. }
+    eapply match_states_lxsim; eauto.
+    econs; ss; et.
+    f. unfold interp_program0. unfold mrec. cbn. autorewrite with itree. f.
+    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm0; ss. clarify.
+    inv MWF; ss. clarify.
+    apply_all_once Genv.find_invert_symbol. clarify.
+  - i; des. inv SAFESRC. ss. des_ifs.
+    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm0; ss. clarify.
+    esplits; et. econs; ss; et.
 Qed.
 
 End SIMMODSEM.
 
-
-
-
-
 Section SIMMOD.
 
-(* Variable prog: program owned_heap. *)
-(* Variable mi: string. *)
+Definition mp: ModPair.t := SimSymbId.mk_mp (SIRmini.module sk prog mi initial_owned_heap)
+                                            (SIRmini_stack.module sk prog mi initial_owned_heap).
 
-(* Definition mp: ModPair.t := SimSymbId.mk_mp (SIR0.module prog mi initial_owned_heap) *)
-(*                                             (SIR2.module prog mi initial_owned_heap). *)
-
-(* Theorem sim_mod: ModPair.sim mp. *)
-(* Proof. *)
-(*   econs; ss. *)
-(*   - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto. *)
-(* Qed. *)
+Theorem sim_mod: ModPair.sim mp.
+Proof.
+  econs; ss.
+  - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
+Qed.
 
 End SIMMOD.
 

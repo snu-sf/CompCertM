@@ -32,14 +32,14 @@ Definition f_fib := {|
       (Ssequence
         (Scall (Some _t'1)
           (Evar _fib (Tfunction (Tcons tint Tnil) tint cc_default))
-          ((Ebinop Osub (Etempvar _n tint) (Econst_int (Int.repr 1) tint)
+          ((Ebinop Osub (Etempvar _n tint) (Econst_int (Int.repr 2) tint)
              tint) :: nil))
         (Sset _y1 (Etempvar _t'1 tint)))
       (Ssequence
         (Ssequence
           (Scall (Some _t'2)
             (Evar _fib (Tfunction (Tcons tint Tnil) tint cc_default))
-            ((Ebinop Osub (Etempvar _n tint) (Econst_int (Int.repr 2) tint)
+            ((Ebinop Osub (Etempvar _n tint) (Econst_int (Int.repr 1) tint)
                tint) :: nil))
           (Sset _y2 (Etempvar _t'2 tint)))
         (Sreturn (Some (Ebinop Oadd (Etempvar _y1 tint) (Etempvar _y2 tint)

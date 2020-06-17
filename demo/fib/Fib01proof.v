@@ -1,8 +1,6 @@
 Require Import CoqlibC Maps Postorder.
 Require Import AST Linking.
 Require Import ValuesC MemoryC GlobalenvsC Events Smallstep.
-Require Import Op ClightC.
-Require Import CtypesC CtypingC.
 Require Import sflib.
 Require Import IntegersC.
 
@@ -10,14 +8,15 @@ Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift MatchSimModSemExcl.
 Require SoundTop.
 Require SimMemId.
-Require Import Clightdefs.
-Require Import CtypesC.
-Require Import Any.
-Require Import SIRmini_quotient.
-Require Import FibSource.
-Require Import FibTarget.
 Require Import ModSemProps.
 Require Import Program.
+Require Import Any.
+
+Require Import SIRProps.
+Require Import SIRmini_stack.
+Require Import Clightdefs Op ClightC CtypesC CtypingC.
+Require Import Fib1.
+Require Import Fib0.
 
 Set Implicit Arguments.
 
@@ -65,23 +64,16 @@ Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
-Let md_src: Mod.t := (FibSource.module).
-Let md_tgt: Mod.t := (FibTarget.module).
-Hypothesis (INCLSRC: SkEnv.includes skenv_link (Mod.sk md_src)).
-Let INCLTGT: SkEnv.includes skenv_link (Mod.sk md_tgt).
-Proof. ss. Qed.
+Let md_src: Mod.t := (Fib1.module).
+Let md_tgt: Mod.t := (Fib0.module).
+Hypothesis (INCL: SkEnv.includes skenv_link (Mod.sk md_src)).
+(* Let INCLTGT: SkEnv.includes skenv_link (Mod.sk md_tgt). *)
+(* Proof. ss. Qed. *)
 Hypothesis (WF: SkEnv.wf skenv_link).
 Let ge := (SkEnv.project skenv_link (Mod.sk md_src)).
 Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) prog) prog.(prog_comp_env).
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
-
-Let sk_same: __GUARD__ ((CSk.of_program signature_of_function FibTarget.prog) =
-                        (Sk.of_program (fn_sig (owned_heap:=owned_heap)) FibSource.prog)).
-Proof.
-  (*** TODO: generalize lemma and replace CshmgenproofC? ***)
-  unfold CSk.of_program, Sk.of_program. ss.
-Qed.
 
 Lemma unsymb
       fid fblk
@@ -110,10 +102,10 @@ Lemma symb
 .
 Proof.
   Local Opaque _fib.
-  inv INCLSRC. ss.
+  inv INCL. ss.
   exploit (DEFS _fib); et.
   { unfold prog_defmap. ss. }
-  i; des. ss. rewrite sk_same. folder.
+  i; des. ss. folder.
   clear - SYMB.
   subst ge. ss. uge. ss. rewrite MapsC.PTree_filter_key_spec. des_ifs. et.
 Qed.
@@ -125,27 +117,9 @@ Lemma symb_def
     <<DEF: Genv.find_funct tge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal f_fib)>>
 .
 Proof.
-  exploit (SkEnv.project_impl_spec); try apply INCLSRC. intro SPECSRC.
-  exploit (SkEnv.project_impl_spec); try apply INCLTGT. intro SPECTGT.
+  exploit (SkEnv.project_impl_spec); try apply INCL. intro SPEC.
   des.
   exploit SkEnv.project_revive_precise; et.
-  { unfold md_tgt in SPECTGT. ss. rewrite sk_same in *.
-    (* instantiate (1:= (SkEnv.project skenv_link *)
-    (*              (Sk.of_program (fn_sig (owned_heap:=owned_heap)) FibSource.prog))). *)
-    (* instantiate (3:= skenv_link). *)
-    (* instantiate (2:= (fn_sig (owned_heap:=owned_heap))). *)
-    (* instantiate (1:= FibSource.prog). *)
-    Fail eapply SPECTGT.
-    admit "universe".
-  }
-  { unfold md_tgt in INCLTGT. ss. rewrite sk_same in *. Fail eapply INCLTGT. admit "universe". }
-  i. inv H.
-  assert((prog_defmap FibTarget.prog) ! _fib = Some (Gfun (Internal f_fib))).
-  { ss. }
-  exploit P2GE; et.
-  { Fail eapply H.
-    admit "maybe universe". }
-  admit "giveup".
 Unshelve.
   all: admit "giveup".
 Qed.
@@ -158,7 +132,7 @@ Notation "'_'" := PTree.Leaf (at level 150).
 Notation "a % x % b" := (PTree.Node a x b) (at level 150).
 Notation "a %% b" := (PTree.Node a None b) (at level 150).
 
-Let te nn: temp_env := (@PTree.Node val
+Definition te1 nn: temp_env := (@PTree.Node val
              (@PTree.Node val (@PTree.Leaf val) (@None val)
                 (@PTree.Node val
                    (@PTree.Node val (@PTree.Leaf val) (@None val)
@@ -185,21 +159,56 @@ Let te nn: temp_env := (@PTree.Node val
                          (@PTree.Node val (@PTree.Leaf val) (@Some val Vundef) (@PTree.Leaf val)))
                       (@None val) (@PTree.Leaf val))))).
 
-Let k1 (nn: int) (k_tgt: cont): cont :=
-  (Kcall (Some _t'1) f_fib empty_env (te nn)
+Definition k1 (nn: int) (k_tgt: cont): cont :=
+  (Kcall (Some _t'1) f_fib empty_env (te1 nn)
           (Kseq (Sset _y1 (Etempvar _t'1 tint))
              (Kseq
                 (Clight.Ssequence
                    (Clight.Ssequence
                       (Scall (Some _t'2)
                          (Clight.Evar _fib (Tfunction (Tcons tint Tnil) tint cc_default))
-                         [Clight.Ebinop Cop.Osub (Etempvar _n tint) (Econst_int (Int.repr 2) tint)
+                         [Clight.Ebinop Cop.Osub (Etempvar _n tint) (Econst_int (Int.repr 1) tint)
                             tint]) (Sset _y2 (Etempvar _t'2 tint)))
                    (Clight.Sreturn
                       (Some (Clight.Ebinop Cop.Oadd (Etempvar _y1 tint) (Etempvar _y2 tint) tint))))
                 k_tgt))).
 
-Let k2 (nn: int) (k_tgt: cont): cont := (admit "").
+Definition te2 (rv: val) (nn: int) := (@PTree.Node val
+          (@PTree.Node val (@PTree.Leaf val) (@None val)
+             (@PTree.Node val
+                (@PTree.Node val (@PTree.Leaf val) (@None val)
+                   (@PTree.Node val (@PTree.Leaf val) (@None val)
+                      (@PTree.Node val (@PTree.Leaf val) (Some rv) (@PTree.Leaf val))))
+                (@None val)
+                (@PTree.Node val
+                   (@PTree.Node val (@PTree.Leaf val) (@None val)
+                      (@PTree.Node val (@PTree.Leaf val) (Some rv) (@PTree.Leaf val)))
+                   (@None val) (@PTree.Leaf val)))) (@None val)
+          (@PTree.Node val
+             (@PTree.Node val (@PTree.Leaf val) (@None val)
+                (@PTree.Node val
+                   (@PTree.Node val (@PTree.Leaf val) (@None val)
+                      (@PTree.Node val (@PTree.Leaf val) (Some (Vint nn)) (@PTree.Leaf val)))
+                   (@None val) (@PTree.Leaf val))) (@None val)
+             (@PTree.Node val
+                (@PTree.Node val (@PTree.Leaf val) (@None val)
+                   (@PTree.Node val (@PTree.Leaf val) (@None val)
+                      (@PTree.Node val (@PTree.Leaf val) (Some Vundef) (@PTree.Leaf val))))
+                (@None val)
+                (@PTree.Node val
+                   (@PTree.Node val (@PTree.Leaf val) (@None val)
+                      (@PTree.Node val (@PTree.Leaf val) (Some Vundef) (@PTree.Leaf val)))
+                   (@None val) (@PTree.Leaf val))))).
+
+Definition k2 (rv: val) (nn: int) (k_tgt: cont): cont :=
+  (Kcall (Some _t'2) f_fib empty_env
+         (te2 rv nn)
+         (Kseq (Sset _y2 (Etempvar _t'2 tint))
+               (Kseq
+                  (Clight.Sreturn
+                     (Some (Clight.Ebinop Cop.Oadd (Etempvar _y1 tint) (Etempvar _y2 tint) tint)))
+                  k_tgt)))
+.
 
 
 
@@ -227,7 +236,10 @@ Qed.
 
 Import CatNotations.
 Open Scope cat_scope.
-Notation ktr := (ktree (EventE owned_heap) (owned_heap * (mem * val)) (owned_heap * (mem * val))).
+Notation ktr :=
+  (ktree (eff1 owned_heap) (owned_heap * (mem * val)) (owned_heap * (mem * val)))
+.
+Notation itr := (itree (eff1 owned_heap) (owned_heap * (mem * val))).
 
 Definition is_call_cont_strong (k0: cont): Prop :=
   match k0 with
@@ -235,79 +247,86 @@ Definition is_call_cont_strong (k0: cont): Prop :=
   | _ => False
   end.
 
-(***
-fib(n) calls fib(n-1) or fib(n-2).
-- match_stacks 0 n k_src k_tgt: if fib(n-2) is returned, it can go continuation and return fib(n).
-- match_stacks 1 n k_src k_tgt: if fib(n-1) is returned, it can go continuation and return fib(n).
+  (* | step_returnstate: forall v optid f e le k m, *)
+  (*     step (Returnstate v (Kcall optid f e le k) m) *)
+  (*       E0 (State f Sskip k e (set_opttemp optid v le) m). *)
 
-- match_stacks e n k_src k_tgt: if fib(e) is returned, it can go continuation and return fib(n).
- ***)
-Inductive match_stacks (e: int) (n: int): ktr -> cont -> Prop :=
+
+
+(* Inductive match_cont (hd_src: ktr) optid f e le: Prop := *)
+(* | match_cont_intro *)
+(*     (SIM: forall *)
+(*         m v *)
+(*       , *)
+(*         hd_src (tt, (m, v)) *)
+(*         (State f Sskip Kstop e (set_opttemp optid v le) m)) *)
+(* . *)
+
+
+
+Inductive match_stacks (k_src: list ktr) (k_tgt: Clight.cont): Prop :=
 | match_stacks_nil
-  :
-    match_stacks e n (fun r => Ret r) Kstop
+    (KSRC: k_src = nil)
+    (KTGT: k_tgt = Kstop)
 | match_stacks_cons1
-    (hd_src tl_src: ktr)
-    (tl_tgt: cont)
-    m
-    (TL: match_stacks n m tl_src tl_tgt)
-    k_src k_tgt
-    (KSRC: k_src = (hd_src >>> tl_src))
+    tl_src tl_tgt
+    (STKS: match_stacks tl_src tl_tgt)
+    hd_src n
+    (HDSRC: hd_src =
+            fun '(oh0, (m0, v0)) =>
+              '(oh1, (m1, v1)) <- trigger (ICall _fib oh0 m0 [Vint (Int.sub n (Int.repr 1))]) ;;
+              Ret (oh1, (m1, Val.add v0 v1)))
+    (KSRC: k_src = hd_src :: tl_src)
     (KTGT: k_tgt = k1 n tl_tgt)
-    (EXPECT: e = Int.sub n (Int.repr 1))
-  :
-    match_stacks e n k_src k_tgt
 | match_stacks_cons2
-    (hd_src tl_src: ktr)
-    (tl_tgt: cont)
-    m
-    (TL: match_stacks n m tl_src tl_tgt)
-    k_src k_tgt
-    (KSRC: k_src = (hd_src >>> tl_src))
-    (KTGT: k_tgt = k2 n tl_tgt)
-    (EXPECT: e = Int.sub n (Int.repr 2))
-  :
-    match_stacks e n k_src k_tgt
+    tl_src tl_tgt
+    (STKS: match_stacks tl_src tl_tgt)
+    hd_src rv n
+    (HDSRC: hd_src = fun '(oh1, (m1, v1)) => Ret (oh1, (m1, Val.add rv v1)))
+    (KSRC: k_src = hd_src :: tl_src)
+    (KTGT: k_tgt = k2 rv n tl_tgt)
 .
-    (* n *)
-    (* (HDSRC: hd_src = *)
-    (*         (fun '(oh1, (m1, y1)) => *)
-    (*            '(oh2, (m2, y2)) <- trigger (ICall _sum oh1 m1 [Vint (Int.sub n (Int.repr 1))]) ;; *)
-    (*            Ret (oh2, (m2, Val.add y1 y2)))) *)
 
 
 
-
-Inductive match_states_internal (i: nat): SIRmini_quotient.state owned_heap -> Clight.state ->
-                                          SimMem.t -> Prop :=
+Inductive match_states_internal: SIRmini_stack.state owned_heap -> Clight.state -> Prop :=
 | match_call
     itr0 ty m0 vs n
-    fid fblk fptr_tgt k_src k_tgt par
+    fid fblk fptr_tgt k_src k_tgt
+    (STKS: match_stacks k_src k_tgt)
+    (ITR: itr0 = (interp_function Fib1.prog (ICall _fib tt m0 vs)))
+
     (VS: vs = [Vint n])
-    (* (ITR: itr0 ≈ interp_program0 IterSource.prog (ICall fid tt m0 vs)) *)
-    (STKS: match_stacks n par k_src k_tgt)
-    (ITR: itr0 ≈ 'r <- (mrec (interp_function FibSource.prog) (ICall fid tt m0 vs)) ;; (k_src r))
     (TY: ty = Clight.type_of_fundef (Internal f_fib))
+
     (SYMB: Genv.find_symbol ge fid = Some fblk)
     (FPTR: fptr_tgt = (Vptr fblk Ptrofs.zero))
-    (IDX: (i >= 100)%nat)
   :
-    match_states_internal i (Eqv.lift itr0)
-                          (Clight.Callstate fptr_tgt ty vs k_tgt m0) (SimMemId.mk m0 m0)
+    match_states_internal (mk itr0 k_src)
+                          (Clight.Callstate fptr_tgt ty vs k_tgt m0)
 | match_return
-    itr0 m0 v k_src k_tgt n par
-    (STKS: match_stacks n par k_src k_tgt)
-    (RET: itr0 ≈ r <- Ret (tt, (m0, v)) ;; (k_src r))
+    itr0 m0 v k_src k_tgt
+    (STKS: match_stacks k_src k_tgt)
+    (ITR: itr0 = Ret (tt, (m0, v)))
   :
-    match_states_internal i (Eqv.lift itr0) (Clight.Returnstate v k_tgt m0)
-                          (SimMemId.mk m0 m0)
+    match_states_internal (mk itr0 k_src)
+                          (Clight.Returnstate v (call_cont k_tgt) m0)
+(* | match_return *)
+(*     itr0 m0 v k_src k_tgt n par *)
+(*     (STKS: match_stacks n par k_src k_tgt) *)
+(*     (RET: itr0 ≈ r <- Ret (tt, (m0, v)) ;; (k_src r)) *)
+(*   : *)
+(*     match_states_internal i (Eqv.lift itr0) (Clight.Returnstate v k_tgt m0) *)
+(*                           (SimMemId.mk m0 m0) *)
 .
 
 Inductive match_states
-          (i: nat) (st_src0: state owned_heap) (st_tgt0: Clight.state) (smo0: SimMemOh.t): Prop :=
+          (i: nat) (st_src0: SIRmini_stack.state owned_heap) (st_tgt0: Clight.state)
+          (smo0: SimMemOh.t): Prop :=
 | match_states_intro
-    (MATCHST: match_states_internal i st_src0 st_tgt0 smo0)
+    (MATCHST: match_states_internal st_src0 st_tgt0)
     (MWF: SimMemOh.wf smo0)
+    (IDX: (i >= 100)%nat)
 .
 
 Lemma bind_ret_map {E R1 R2} (u : itree E R1) (f : R1 -> R2) :
@@ -371,22 +390,21 @@ Lemma init_fsim
       /\ (<<MATCH: match_states i st_src0 st_tgt0 smo0>>)
 .
 Proof.
-  inv INIT. ss. des_ifs. folder.
+  inv INIT. ss. des_ifs_safe. folder.
   unfold interp_program0 in *.
-  exploit unsymb; et. i; des. clarify.
+  exploit unsymb; et. i; des. clarify. des_ifs.
   assert(SIG: fd = signature_of_function f_fib).
   { admit "ez - findf sig". }
-  clarify. destruct args; ss. inv TYP. ss. destruct vs; ss. destruct vs; ss.
-  inv DEF. clear H2. unfold typify_list, typify in *; ss. des_ifs. destruct v; ss.
-  revert sk_same. revert INCLTGT. clear_tac. i.
+  destruct args; ss. inv TYP. ss. destruct vs; ss. destruct vs; ss.
+  inv DEF. clear H2. unfold typify_list, typify in *; ss. des_ifs. destruct v; ss. clear_tac. i.
   eexists _, _, (SimMemId.mk _ _). esplits; eauto.
   - econs; ss; eauto.
-    { rewrite sk_same. folder. exploit symb_def; et. }
+    { des_ifs. folder. exploit symb_def; et. }
     { ss. }
   - econs; ss; eauto. econs; ss; eauto.
-    + unfold typify_list. ss. unfold typify. des_ifs; ss.
     + econs; ss.
-    + cbn. irw. rewrite ITR. unfold typify. des_ifs; ss. refl.
+    + unfold typify_list. ss. unfold typify. des_ifs; ss.
+    + cbn. unfold typify. des_ifs; ss.
 Unshelve.
   all: ss.
 Qed.
@@ -424,28 +442,314 @@ Lemma match_states_lxsim
                    (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 sm0>>
 .
 Proof.
-  revert_until idx. revert idx.
-  pcofix CIH.
+  revert_until idx. revert idx. pcofix CIH.
   i.
   pfold.
   inv MATCH. subst; ss. ii. clear SUSTAR. inv MATCHST; ss; clarify.
   - econs 1; eauto. ii. clear SU.
     exploit unsymb; et. intro T. des; clarify.
     exploit symb_def; et. intro DEF; des. ss. des_ifs.
+    rename Heq into V. cbn in V. des_ifs. clear_tac.
 
-    rename ITR into V.
-    unfold interp_program0 in V. rewrite sk_same in *. folder.
-    rewrite mrec_as_interp in V. cbn in V. des_ifs. cbn in V.
-    (* unfold c_iter in V. *)
 
 
     econs 1; et; swap 2 3.
-    { esplits; intro T; rr in T; des; inv T; ss; rewrite V in *; ss.
-      - rewrite VIS in IN. irw in IN. vvt IN.
-      - rewrite RET in IN. irw in IN. vvt IN.
-    }
+    { esplits; intro T; rr in T; des; inv T; ss. }
     { eapply modsem_receptive; et. }
-    ii. ss. inv STEPSRC; ss; rewrite V in IN; swap 3 4.
+    ii. ss. inv STEPSRC; ss. unfold Fib1.f_fib in TAU. clarify.
+    destruct (classic (Int.eq n Int.zero)).
+    { apply_all_once Int.same_if_eq. clarify.
+      eexists _, _, (SimMemId.mk _ _). esplits; eauto.
+      { left. eapply spread_dplus; et.
+        { eapply modsem2_mi_determinate; et. }
+        eapply plus_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). ii; ss; des; ss; clarify. }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_refl.
+      }
+      { right. eapply CIH.
+        econs; ss; et. econs; ss; et.
+      }
+    }
+    rename H into NZERO.
+
+
+
+    destruct (classic (Int.eq n Int.one)).
+    { apply_all_once Int.same_if_eq. clarify.
+      eexists _, _, (SimMemId.mk _ _). esplits; eauto.
+      { left. eapply spread_dplus; et.
+        { eapply modsem2_mi_determinate; et. }
+        eapply plus_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). ii; ss; des; ss; clarify. }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_refl.
+      }
+      { right. eapply CIH.
+        econs; ss; et. econs; ss; et.
+      }
+    }
+    rename H into NONE.
+
+
+
+    rewrite Int.eq_false; cycle 1.
+    { ii; clarify. }
+    rewrite Int.eq_false; cycle 1.
+    { ii; clarify. }
+    eexists (Ord.lift_idx lt_wf (S idx)), _, (SimMemId.mk _ _). esplits; eauto.
+    { left. eapply spread_dplus; et.
+      { eapply modsem2_mi_determinate; et. }
+      eapply plus_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). ii; ss; des; ss; clarify. }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). ss. rewrite Int.eq_false; ss. ii; clarify. }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). ss. rewrite Int.eq_false; ss. ii; clarify. }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { econsr; ss; et.
+        - econsr; ss; et.
+          + econsr; ss; et.
+          + econs 2; ss; et.
+        - repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+      eapply star_refl.
+    }
+    left. pfold. ii. clear SUSTAR. ss. econs 2; et. ii. clear_tac.
+    econs 2; ss; et.
+    { esplits; try eapply Ord.lift_idx_spec; et.
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { eapply SIRmini_stack.step_call; ss; et. f. irw. f. ss. }
+      unfold Fib1.prog. ss. des_ifs_safe.
+      apply star_refl.
+    }
+    instantiate (1:= SimMemId.mk _ _). right. eapply CIH.
+    econs; ss; et. econs; ss; et. econs 2; ss; et.
+  - inv STKS.
+    + ss. econs 4; ss.
+      { instantiate (1:= SimMemId.mk m0 m0). et. }
+      { ss. }
+      rr. esplits; ss; et. econs; ss; et.
+    + econs 1; eauto. ii. clear SU.
+      hexploit symb; et. i; des.
+      econs 1; et; swap 2 3.
+      { esplits; intro T; rr in T; des; inv T; ss. }
+      { eapply modsem_receptive; et. }
+      ii. ss. inv STEPSRC; ss. clarify. ss.
+      eexists (Ord.lift_idx lt_wf (S idx)), _, (SimMemId.mk _ _). esplits; eauto.
+      { left. eapply spread_dplus; et.
+        { eapply modsem2_mi_determinate; et. }
+        eapply plus_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { econsr; ss; et.
+          - econsr; ss; et.
+            + econsr; ss; et.
+            + econs 2; ss; et.
+          - repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+        eapply star_refl.
+      }
+      left. pfold. ii. clear SUSTAR. ss. econs 2; et. ii. clear_tac.
+      econs 2; ss; et.
+      { esplits; try eapply Ord.lift_idx_spec; et.
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { eapply SIRmini_stack.step_call; ss; et. f. irw. f. ss. }
+        unfold Fib1.prog. ss. des_ifs_safe.
+        apply star_refl.
+      }
+      instantiate (1:= SimMemId.mk _ _). right. eapply CIH.
+      econs; ss; et. econs; ss; et. econs 3; ss; et.
+    + econs 1; eauto. ii. clear SU.
+      econs 1; et; swap 2 3.
+      { esplits; intro T; rr in T; des; inv T; ss. }
+      { eapply modsem_receptive; et. }
+      ii. ss. inv STEPSRC; ss. clarify. ss.
+      assert(exists rvi rvi0, rv = Vint rvi /\ rv0 = Vint rvi0).
+      { admit "". }
+      des; clarify.
+      eexists (Ord.lift_idx lt_wf (S idx)), _, (SimMemId.mk _ _). esplits; eauto.
+      { left. eapply spread_dplus; et.
+        { eapply modsem2_mi_determinate; et. }
+        eapply plus_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_refl.
+      }
+      right. eapply CIH.
+      econs; ss; et. econs; ss; et.
+Unshelve.
+  all: ss.
+Qed.
+    + 
+      { right. eapply CIH.
+        econs; ss; et. econs; ss; et.
+        - econs 3; ss; et.
+      }
+      esplits; et.
+      { 
+      destruct (classic (Int.eq n Int.zero)).
+      { apply_all_once Int.same_if_eq. clarify.
+        eexists _, _, (SimMemId.mk _ _). esplits; eauto.
+        { left. eapply spread_dplus; et.
+          { eapply modsem2_mi_determinate; et. }
+          eapply plus_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et). ii; ss; des; ss; clarify. }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et). }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et). }
+          eapply star_left with (t1 := E0) (t2 := E0); ss.
+          { repeat (econs; ss; et). }
+          eapply star_refl.
+        }
+        { right. eapply CIH.
+          econs; ss; et. econs; ss; et.
+        }
+      }
+      rename H into NZERO.
+
+
+
+    destruct (classic (Int.eq n Int.one)).
+    { apply_all_once Int.same_if_eq. clarify.
+      eexists _, _, (SimMemId.mk _ _). esplits; eauto.
+      { left. eapply spread_dplus; et.
+        { eapply modsem2_mi_determinate; et. }
+        eapply plus_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). ii; ss; des; ss; clarify. }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_left with (t1 := E0) (t2 := E0); ss.
+        { repeat (econs; ss; et). }
+        eapply star_refl.
+      }
+      { right. eapply CIH.
+        econs; ss; et. econs; ss; et.
+      }
+    }
+    rename H into NONE.
+
+
+
+    rewrite Int.eq_false; cycle 1.
+    { ii; clarify. }
+    rewrite Int.eq_false; cycle 1.
+    { ii; clarify. }
+    eexists (Ord.lift_idx lt_wf (S idx)), _, (SimMemId.mk _ _). esplits; eauto.
+    { left. eapply spread_dplus; et.
+      { eapply modsem2_mi_determinate; et. }
+      eapply plus_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). ii; ss; des; ss; clarify. }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). ss. rewrite Int.eq_false; ss. ii; clarify. }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). ss. rewrite Int.eq_false; ss. ii; clarify. }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { repeat (econs; ss; et). }
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { econsr; ss; et.
+        - econsr; ss; et.
+          + econsr; ss; et.
+          + econs 2; ss; et.
+        - repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
+      eapply star_refl.
+    }
+    left. pfold. ii. clear SUSTAR. ss. econs 2; et. ii. clear_tac.
+    econs 2; ss; et.
+    { esplits; try eapply Ord.lift_idx_spec; et.
+      (* eapply spread_dstar; et. *)
+      (* { eapply modsem2_mi_determinate; et. } *)
+      (* eapply plus_left with (t1 := E0) (t2 := E0); ss. *)
+      (* { repeat (econs; ss; et). ii; ss; des; ss; clarify. } *)
+      eapply star_left with (t1 := E0) (t2 := E0); ss.
+      { eapply SIRmini_stack.step_call; ss; et. f. irw. f. ss. }
+      unfold Fib1.prog. ss. des_ifs_safe.
+      apply star_refl.
+    }
+    { instantiate (1:= SimMemId.mk _ _). right. eapply CIH.
+      econs; ss; et. econs; ss; et.
+      - econs 2; ss; et.
+    }
+
+  -
+
+
+    (* { esplits; intro T; rr in T; des; inv T; ss. *)
+    (*   - f in VIS. irw in VIS. f in VIS. csc. *)
+    (*   - f in RET. irw in RET. f in RET. csc. } *)
+    { eapply modsem_receptive; et. }
+    ii.
+    { }
+    { right. eapply CIH.
+      econs; ss; et. econs; ss; et.
+      - econs 2; try refl. ss; et.
+    }
+
+
+
+    destruct n; ss.
     { rewrite VIS in IN. irw in IN. vvt IN. }
     { rewrite VIS in IN. irw in IN. vvt IN. }
     { rewrite VIS in IN. irw in IN. vvt IN. }

@@ -35,7 +35,7 @@ From ExtLib Require Export
      (* Structures.Traversable *)
      (* Structures.Foldable *)
      (* Structures.Reducible *)
-     OptionMonad
+     (* OptionMonad *)
      Functor FunctorLaws
      Structures.Maps
      (* Data.List *)
@@ -63,6 +63,17 @@ Open Scope itree_scope.
 
 
 
+Instance function_Map (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}): (Map K V (K -> option V)) :=
+  Build_Map
+    (fun _ => None)
+    (fun k0 v m => fun k1 => if dec k0 k1 then Some v else m k1)
+    (fun k0 m => fun k1 => if dec k0 k1 then None else m k1)
+    (fun k m => m k)
+    (fun m0 m1 => fun k => match (m0 k) with
+                           | Some v => Some v
+                           | _ => m1 k
+                           end)
+.
 
 
 Lemma eq_eutt
@@ -177,18 +188,7 @@ Definition function: Type := (forall (oh: owned_heap) (m: mem) (vs: list val),
                                  itree E (owned_heap * (mem * val))).
 Definition program: Type := ident -> option function.
 
-Instance function_Map (K V: Type) (dec: forall k0 k1, {k0=k1} + {k0<>k1}): (Map K V (K -> option V)) :=
-  Build_Map
-    (fun _ => None)
-    (fun k0 v m => fun k1 => if dec k0 k1 then Some v else m k1)
-    (fun k0 m => fun k1 => if dec k0 k1 then None else m k1)
-    (fun k m => m k)
-    (fun m0 m1 => fun k => match (m0 k) with
-                           | Some v => Some v
-                           | _ => m1 k
-                           end)
-.
-Instance program_Map: (Map _ _ _) := (@function_Map ident function ident_eq).
+Global Instance program_Map: (Map _ _ _) := (@function_Map ident function ident_eq).
 
 
 
@@ -266,3 +266,23 @@ Qed.
 End TEST.
 
 End OWNEDHEAP.
+
+
+
+Lemma eq_is_bisim: forall E R (t1 t2 : itree E R), t1 = t2 -> t1 ≅ t2.
+Proof. ii. clarify. reflexivity. Qed.
+Lemma bisim_is_eq: forall E R (t1 t2 : itree E R), t1 ≅ t2 -> t1 = t2.
+Proof. ii. eapply bisimulation_is_eq; eauto. Qed.
+
+
+
+Ltac f := first [eapply bisim_is_eq|eapply eq_is_bisim].
+Tactic Notation "f" "in" hyp(H) := first [eapply bisim_is_eq in H|eapply eq_is_bisim in H].
+Ltac ides itr :=
+  let T := fresh "T" in
+  destruct (observe itr) eqn:T;
+  sym in T; apply simpobs in T; apply bisim_is_eq in T; rewrite T in *; clarify.
+Ltac csc := clarify; simpl_depind; clarify.
+
+Notation "tau ;; t2" := (Tau t2)
+  (at level 61, right associativity) : itree_scope.

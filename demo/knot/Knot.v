@@ -7,6 +7,62 @@ Require Import Skeleton Mod ModSem.
 Require Import SIRmini.
 
 Set Implicit Arguments.
+(* Set Universe Polymorphism. *)
+
+
+
+
+(* Set Printing Universes. *)
+(* Record my_mod: Type := mk { *)
+(*   datatype: Type; *)
+(* }. *)
+(* Definition my_mods_uses_option (md: option my_mod): option my_mod := option_map id md. *)
+(* Polymorphic Variant void1 : Type -> Type := . *)
+(* Definition boo: my_mod := mk (itree void1 unit). *)
+
+(* my_mod.u0 < option_map.u0 <= option.u0 = ITree.Core.ITreeDefinition.2 *)
+
+(* Found: ITree.Core.ITreeDefinition.1 = sum1.u0 <= interleaved.u2 <= bind_tau.u0 <= bind_tau_.u0 <= option.u0 = owned_heap.u0  *)
+
+(* Record my_record: Type := mk { *)
+(*   my_ty: Type; *)
+(* } *)
+(* . *)
+(* Definition foo: my_record := mk (option nat). *)
+(* Definition bar: Type := (itree void1 my_record). *)
+(* Definition baz: option my_record := Some (mk Empty_set). *)
+(* Definition dog (mr: my_record): option Type := Some mr.(my_ty). *)
+
+(* itree > option *)
+
+
+
+
+
+
+(* Section TTTTTTTTTT. *)
+(*   Definition owned_heap: Type := itree EventE nat. *)
+(*   Set Printing Universes. *)
+(*   Print Universes. *)
+(*   (* Definition ok: itree EventE (itree void1 nat) := *) *)
+(*   (*   Tau (Ret (Ret 0%nat)) *) *)
+(*   (* . *) *)
+(*   (* Definition ok: itree EventE (itree void1 nat) := *) *)
+(*   (*   triggerUB *) *)
+(*   (* . *) *)
+(*   Definition not_ok: itree EventE (itree void1 owned_heap) := *)
+(*     (triggerUB) *)
+(*     (* vis (ENB) (fun v => match v: void with end) *) *)
+(*     (* vis (EUB) (fun _ => (Ret (Ret 0%nat))) *) *)
+(*   . *)
+(*   Set Printing Universes. *)
+(*   Print Universes. *)
+(* End TTTTTTTTTT. *)
+
+
+
+
+
 
 
 (* From ITree Require Export *)
@@ -63,6 +119,8 @@ Definition knot (g: ktree EventE nat nat -> ktree EventE nat nat)
 (*   in *)
 (*   landins_knot g *)
 Definition _factorial := 150%positive.
+Set Printing Universes.
+(* Print Universes. *)
 Definition factorial (oh0: owned_heap): ktree EventE nat (owned_heap * nat) :=
   let g: ktree EventE nat nat -> ktree EventE nat nat
       := fun f x =>

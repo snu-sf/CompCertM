@@ -159,11 +159,6 @@ Hint Unfold fold_cont.
 
 
 
-Lemma eq_is_bisim: forall E R (t1 t2 : itree E R), t1 = t2 -> t1 ≅ t2.
-Proof. ii. clarify. reflexivity. Qed.
-Lemma bisim_is_eq: forall E R (t1 t2 : itree E R), t1 ≅ t2 -> t1 = t2.
-Proof. ii. eapply bisimulation_is_eq; eauto. Qed.
-
 Inductive match_states (idx: nat): SIRmini.state owned_heap ->
           SIRmini_stack.state owned_heap -> SimMemOh.t -> Prop :=
 | match_states_intro
@@ -177,16 +172,6 @@ Inductive match_states (idx: nat): SIRmini.state owned_heap ->
     match_states idx itr0 (SIRmini_stack.mk cur cont) smo0
 .
 
-Ltac brewrite H := eapply bisim_is_eq; erewrite H; [eapply eq_is_bisim|..].
-(* Tactic Notation "sym" "in" hyp(H) := symmetry in H. *)
-
-Ltac f := first [eapply bisim_is_eq|eapply eq_is_bisim].
-Tactic Notation "f" "in" hyp(H) := first [eapply bisim_is_eq in H|eapply eq_is_bisim in H].
-Ltac ides itr :=
-  let T := fresh "T" in
-  destruct (observe itr) eqn:T;
-  sym in T; apply simpobs in T; apply bisim_is_eq in T; rewrite T in *; clarify.
-Ltac csc := clarify; simpl_depind; clarify.
 
 
 

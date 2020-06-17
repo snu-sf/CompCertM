@@ -19,6 +19,7 @@ Definition initial_owned_heap: SkEnv.t -> owned_heap := fun _ => tt.
 
 Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
+  tau ;;
   match vs with
   | [Vint n] =>
     if Int.eq n Int.zero
@@ -28,7 +29,7 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
       then Ret (oh0, (m0, (Vint Int.one)))
       else
         '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 [Vint (Int.sub n (Int.repr 2))]) ;;
-        '(oh2, (m2, y2)) <- trigger (ICall _fib oh0 m0 [Vint (Int.sub n (Int.repr 1))]) ;;
+        '(oh2, (m2, y2)) <- trigger (ICall _fib oh1 m1 [Vint (Int.sub n (Int.repr 1))]) ;;
         Ret (oh2, (m2, Val.add y1 y2))
   | _ => triggerUB
   end

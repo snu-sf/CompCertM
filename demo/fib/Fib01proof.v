@@ -674,3 +674,7 @@ Unshelve.
 Qed.
 
 End SIMMODSEM.
+
+Definition mp: ModPair.t := SimSymbId.mk_mp (Fib1.module) (Fib0.module).
+Theorem sim_mod: ModPair.sim mp.
+Proof. econs; ss. - ii. inv SIMSKENVLINK. esplits; eauto. eapply sim_modsem; eauto. Qed.

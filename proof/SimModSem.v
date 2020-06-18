@@ -74,7 +74,12 @@ Section SIMMODSEM.
       (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
       (MLE: SimMemOh.le smo0 smo1)
       (UNCH: SimMem.unch midx smo0 smo1)
-      (BSIM: bsim i1 st_src1 st_tgt0 smo1).
+      (BSIM: bsim i1 st_src1 st_tgt0 smo1)
+  | bsim_step_pterm
+      (STEP: forall st_tgt1 tr
+               (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1),
+          tr = [Event_pterm])
+      (PROGRESS: <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>).
 
 
   Inductive _lxsim_pre (lxsim: idx -> state ms_src -> state ms_tgt -> SimMemOh.t -> Prop)
@@ -140,6 +145,7 @@ Section SIMMODSEM.
       inv H.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
+      + econs 3; eauto.
     - econs 3; eauto. ii; ss. exploit SU; eauto. i; des.
       esplits; eauto. ii. exploit K; eauto. i; des. esplits; eauto.
     - econs 4; eauto.
@@ -321,6 +327,13 @@ Section FACTORTARGET.
                { right. esplits; eauto; ss. eapply star_inv in P0. des; clarify; ss. eauto. }
                eauto.
         + econs 2; eauto. pclearbot. right. eapply CIH; eauto. econs; eauto.
+        + econs 3.
+          * i. inv STEPTGT.
+            { hexploit STEP; eauto. }
+            hexploit STEP; eauto. inversion 1; ss.
+          * des. hexploit STEP; eauto. i. subst.
+            exists [Event_pterm]. eexists (_, st_tgt1).
+            ss. econs 2; eauto.
       - econs 3; eauto. ii. exploit SU; eauto. i; des. esplits; eauto.
         { rr. ss. }
         i. exploit K; eauto. i; des. eexists (_, _). esplits; eauto.
@@ -346,5 +359,3 @@ Section FACTORTARGET.
   Qed.
 
 End FACTORTARGET.
-
-

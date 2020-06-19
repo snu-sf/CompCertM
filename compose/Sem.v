@@ -13,7 +13,6 @@ Require Import sflib.
 Require Import Any.
 Require Import ModSem Mod Skeleton System.
 Require Export Syntax.
-Require Import PList.
 
 Set Implicit Arguments.
 
@@ -116,7 +115,7 @@ Section SEMANTICS.
 
   Variable p: program.
 
-  Definition link_sk: option Sk.t := link_list (PList.map Mod.sk p).
+  Definition link_sk: option Sk.t := link_list (List.map Mod.sk p).
 
   Definition skenv_fill_internals (skenv: SkEnv.t): SkEnv.t :=
     (Genv_map_defs skenv) (fun _ gd => Some
@@ -126,7 +125,7 @@ Section SEMANTICS.
                                       | Gvar gv => gd
                                       end).
 
-  Definition load_modsems (skenv: SkEnv.t): list ModSem.t := PList.map ((flip Mod.modsem) skenv) p.
+  Definition load_modsems (skenv: SkEnv.t): list ModSem.t := List.map ((flip Mod.modsem) skenv) p.
 
   Definition load_genv (init_skenv: SkEnv.t): Ge.t :=
     let system := System.modsem init_skenv in

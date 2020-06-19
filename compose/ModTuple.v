@@ -509,10 +509,10 @@ Module ModTuple.
       i. erewrite link_sk_prepend_eq; eauto.
       { ss. }
       unfold t. unfold link_sk. ss.
-      replace (Mod.sk mdl :: Mod.sk mdr :: PList.map Mod.sk ctx2)
-        with ([Mod.sk mdl ; Mod.sk mdr] ++ PList.map Mod.sk ctx2) by ss.
+      replace (Mod.sk mdl :: Mod.sk mdr :: map Mod.sk ctx2)
+        with ([Mod.sk mdl ; Mod.sk mdr] ++ map Mod.sk ctx2) by ss.
       erewrite link_list_assoc_one; ss; try eapply WF; ss; try rewrite in_app; ss; eauto.
-      ii. rewrite PList.map_mono in *. rewrite in_map_iff in *. des; clarify; et.
+      ii. rewrite in_map_iff in *. des; clarify; et.
       try eapply WF; ss; try rewrite in_app; ss; eauto.
     Qed.
 

@@ -577,13 +577,11 @@ Section ADQINIT.
         replace (map ModSem.midx (load_modsems p_tgt skenv_tgt)) with (map Mod.midx p_tgt) in *; cycle 1.
         { clearbody p_tgt. clear - p_tgt. ginduction p_tgt; ii; ss.
           unfold flip. unfold Mod.modsem. rewrite Mod.get_modsem_midx_spec in *. des; ec. }
-        assert((PList.map ModSem.midx (load_modsems p_src skenv_src))
-               = (PList.map ModSem.midx (load_modsems p_tgt skenv_tgt))).
+        assert((map Mod.midx p_src) = (map Mod.midx p_tgt)).
         { clear TL. ginduction pp; ii; ss.
-          inv SIMPROG. inv H1. f_equal; ec. unfold flip, Mod.modsem.
-          rewrite ! Mod.get_modsem_midx_spec in *. ec.
+          inv SIMPROG. inv H1. f_equal; ec.
         }
-        rewrite <- H. ec.
+        ec.
       }
       apply_all_once SimSymb.sim_skenv_func_bisim. des. inv SIMSKENV.
       exploit FUNCFSIM; eauto.

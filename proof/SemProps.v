@@ -16,7 +16,6 @@ Require Import SimSymb SimMem.
 Require Import ModSemProps.
 Require Import Program.
 Require Import Any.
-Require PList.
 
 Set Implicit Arguments.
 
@@ -50,9 +49,8 @@ Proof.
   (* Arguments link_list_linkorder [_]. *)
   (* Arguments link_list_linkorder: default implicits. *)
   hexploit (link_list_linkorder _ LINK); et. intro LOS; des.
-  apply PList.Forall_mono in LOS.
-  rewrite PList.Forall_forall in *. exploit (LOS md); et.
-  { rewrite PList.in_map_iff. esplits; et. }
+  rewrite Forall_forall in *. exploit (LOS md); et.
+  { rewrite in_map_iff. esplits; et. }
   intro LO.
   Local Transparent Linker_prog. ss. des. Local Opaque Linker_prog.
   econs; et.
@@ -204,7 +202,7 @@ Theorem link_sk_preserves_wf_sk
         (WFSK: forall md, In md p -> <<WF: Sk.wf md >>):
     <<WF: Sk.wf sk_link>>.
 Proof.
-  eapply link_list_preserves_wf_sk; et. ii. apply PList.In_mono in H. rewrite PList.in_map_iff in *. des; clarify. eapply WFSK; et.
+  eapply link_list_preserves_wf_sk; et. ii. rewrite in_map_iff in *. des; clarify. eapply WFSK; et.
 Qed.
 
 
@@ -287,7 +285,7 @@ Module DtmAux.
     rewrite Forall_forall. i. r.
     eapply Sk.link_disj in HD.
     eapply Sk.disj_linkorder; et. hexploit (link_list_linkorder _ TL); et. intro U; des.
-    rewrite Forall_forall in *. eapply U. rewrite <- PList.In_mono. rewrite PList.in_map_iff; et.
+    rewrite Forall_forall in *. eapply U. rewrite in_map_iff; et.
   Qed.
 
   Lemma find_fptr_owner_determ_link
@@ -779,7 +777,7 @@ Proof.
   econs. i. unfold link_sk in *.
   hexploit (link_list_linkorder _ LINK); et. intro LO. des.
   rewrite Forall_forall in *. exploit LO; et.
-  { rewrite <- PList.In_mono. rewrite PList.in_map_iff. esplits; et. }
+  { rewrite in_map_iff. esplits; et. }
   clear LO. intro LO.
   exploit WF; et. clear WF. intro WF; des.
   assert(NODUP: NoDup (prog_defs_names sk_link)).
@@ -913,8 +911,7 @@ Proof.
         ii; des_u; ss.
       }
       intro U.
-      rewrite PList.map_mono.
-      rewrite T. rewrite PList.map_mono. rewrite U. ss.
+      rewrite T. rewrite U. ss.
   }
   { apply not_ex_all_not in H.
     erewrite Midx.list_to_set_spec3; et; cycle 1.

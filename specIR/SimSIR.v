@@ -100,14 +100,6 @@ Inductive _sim_itr (sim_itr: itr0 -> itr1 -> Prop): itr0 -> itr1 -> Prop :=
     k0 i1
   :
     _sim_itr sim_itr (Vis (subevent _ (ENB)) k0) i1
-(* | sim_choose_both *)
-(*     X0 X1 *)
-(*     k0 k1 *)
-(*     (SIM: forall x1, exists x0, sim_itr (k0 x0) (k1 x1)) *)
-(*   : *)
-(*     _sim_itr sim_itr *)
-(*              (Vis (subevent _ (EChoose X0)) k0) *)
-(*              (Vis (subevent _ (EChoose X1)) k1) *)
 | sim_choose_src
     X0
     k0 i1
@@ -202,8 +194,105 @@ Section SMO.
 
 End SMO.
 
+
+
+Variable p0: program owned_heap0.
+Variable p1: program owned_heap1.
+Variable ioh0: SkEnv.t -> owned_heap0.
+Variable ioh1: SkEnv.t -> owned_heap1.
+Hypothesis (SIMP: sim_prog p0 p1).
+Hypothesis (SIMO: forall skenv, SO (ioh0 skenv) (ioh1 skenv)).
+Variable sk: Sk.t.
+Let md_src: Mod.t := (SIRmini.module sk p0 mi ioh0).
+Let md_tgt: Mod.t := (SIRmini.module sk p1 mi ioh1).
+
+
+
+Section SIMMODSEM.
+
+Variable skenv_link: SkEnv.t.
+Variable sm_link: SimMem.t.
+Let ms_src: ModSem.t := (Mod.modsem md_src skenv_link).
+Let ms_tgt: ModSem.t := (Mod.modsem md_tgt skenv_link).
+Hypothesis (INCL: SkEnv.includes skenv_link (Mod.sk md_src)).
+Hypothesis (WF: SkEnv.wf skenv_link).
+
 Local Existing Instance SimMemOh.
 Local Arguments ModSemPair.mk [SM] [SS] _ _ _ _ [SMO].
+
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link)
+                                              (SimSymbId.mk md_src md_tgt) sm_link.
+
+Inductive match_states (idx: nat): SIRmini.state owned_heap0 ->
+                                   SIRmini.state owned_heap1 -> SimMemOh.t -> Prop :=
+| match_states_intro
+    st0 st1 smo0
+    fid m vs oh0 oh1
+    (O: SO oh0 oh1)
+    (ST0: st0 = (interp_program0 p0 (ICall fid oh0 m vs)))
+    (ST1: st1 = (interp_program0 p1 (ICall fid oh1 m vs)))
+    (MWF: SimMemOh.wf smo0)
+  :
+    match_states idx st0 st1 smo0
+.
+
+(*** TODO: move to SIRCommon2 ***)
+Lemma unfold_interp_mrec :
+forall (D E : Type -> Type) (ctx : forall T : Type, D T -> itree (D +' E) T) 
+  (R : Type) (t : itree (D +' E) R), interp_mrec ctx t = _interp_mrec ctx (observe t).
+Proof.
+  i. f. eapply unfold_interp_mrec; et.
+Qed.
+
+Lemma match_states_lxsim
+      idx st_src0 st_tgt0 smo0
+      (MATCH: match_states idx st_src0 st_tgt0 smo0)
+  :
+    <<XSIM: lxsim (md_src skenv_link) (md_tgt skenv_link)
+                  (fun _ => () -> exists (_ : ()) (_ : mem), True)
+                  (Ord.lift_idx lt_wf idx) st_src0 st_tgt0 smo0>>
+.
+Proof.
+  revert_until idx. revert idx.
+  pcofix CIH. i. pfold.
+  ii. clear SUSTAR.
+
+  inv MATCH. ss.
+  hexploit (SIMP fid); et. intro R.
+  unfold interp_program0, mrec in *.
+  (* f in ST0. rewrite unfold_interp_mrec in ST0. ss. *)
+  inv R; des_ifs; ss.
+  { des_ifs. rewrite ! unfold_interp_mrec. ss. econs 2; eauto. ii. econs 3; et.
+    { ss. ii. inv STEPTGT; ss. }
+    { esplits; ss; et. by (econs; ss). }
+  }
+  des_ifs.
+  rename H1 into SK.
+  exploit (SK m vs); et. intro SI. des.
+  rewrite ! unfold_interp_mrec. rename f0 into f1. rename f into f0.
+  punfold SI. inv SI.
+  - (* RET *)
+    econstructor 4 with (smo_ret := mk (SimMemId.mk m0 m0) (upcast oh2) (upcast oh3)); ss; eauto.
+    { econs; ss; et. }
+    { econs; ss; et. }
+    { econs; ss; et. }
+    { rr. esplits; ss; et. econs; ss; et. }
+  - (* TAU *)
+    econs 1; ss; et. ii. clear SU.
+    econs 1; ss; et; swap 2 3.
+    { split; intro T; rr in T; des; ss; inv T; ss. }
+    { eapply modsem_receptive; et. }
+    ii. inv STEPSRC; ss; clarify. esplits; ss; et.
+    { left. apply plus_one. econs; ss; et.
+      { eapply modsem_determinate; ss; et. }
+      econs; ss; et.
+    }
+    right. eapply CIH. econs; ss; et.
+Qed.
+
+
+
+End SIMMODSEM.
 
 Theorem sim_mod
         p0 p1
@@ -211,12 +300,12 @@ Theorem sim_mod
         (SIMP: sim_prog p0 p1)
         (SIMO: forall skenv, SO (ioh0 skenv) (ioh1 skenv))
   :
-    forall sk mi,
+    forall sk,
       ModPair.sim (SimSymbId.mk_mp (SIRmini.module sk p0 mi ioh0) (SIRmini.module sk p1 mi ioh1))
 .
 Proof.
   ii. econs; ss; eauto.
-  ii. esplits; ss; et.
+  ii. esplits; ss; et. econs; ss; et.
 Qed.
 
 End OWNEDHEAP.

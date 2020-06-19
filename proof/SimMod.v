@@ -14,7 +14,7 @@ Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.
 Require Import Sound.
-Require Import SimSymb SimMem SimModSemUnified.
+Require Import SimSymb SimMem SimModSem.
 
 Set Implicit Arguments.
 
@@ -37,7 +37,7 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   Definition to_msp (skenv_link_src skenv_link_tgt: SkEnv.t) (sm: SimMem.t) (mp: t) SMO: ModSemPair.t
     := ModSemPair.mk (Mod.modsem (mp.(src)) skenv_link_src)
-                     (Mod.modsem (mp.(tgt)) skenv_link_tgt) mp.(ss) sm (SMO).
+                     (Mod.modsem (mp.(tgt)) skenv_link_tgt) mp.(ss) sm (SMO := (SMO)).
 
   (* TODO: Actually, ModPair can have idx/ord and transfer it to ModSemPair. *)
   (* Advantage: We can unify ord at Mod state. *)

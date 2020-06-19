@@ -16,7 +16,9 @@ Require Import GlobalenvsC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton.
 Require Import SimMem SimSymb Sound.
-Require Export SIRCommon2.
+Require SimSymbId SoundTop.
+Require Import SimMod SimModSem.
+Require Import SIRCommon2 SIRmini.
 
 Require Import Program.
 Require Import Simulation.
@@ -92,33 +94,50 @@ Inductive _sim_itr (sim_itr: itr0 -> itr1 -> Prop): itr0 -> itr1 -> Prop :=
     _sim_itr sim_itr
              (Vis (subevent _ (ECall sg fptr0 oh0 m0 vs0)) k0)
              (Vis (subevent _ (ECall sg fptr1 oh1 m1 vs1)) k1)
-| sim_choose_both
-    X0 X1
-    k0 k1
-    (SIM: forall x1, exists x0, sim_itr (k0 x0) (k1 x1))
+| sim_nb
+    i0 k1
   :
-    _sim_itr sim_itr
-             (Vis (subevent _ (EChoose X0)) k0)
-             (Vis (subevent _ (EChoose X1)) k1)
+    _sim_itr sim_itr i0 (Vis (subevent _ (ENB)) k1)
+| sim_ub
+    k0 i1
+  :
+    _sim_itr sim_itr (Vis (subevent _ (ENB)) k0) i1
+(* | sim_choose_both *)
+(*     X0 X1 *)
+(*     k0 k1 *)
+(*     (SIM: forall x1, exists x0, sim_itr (k0 x0) (k1 x1)) *)
+(*   : *)
+(*     _sim_itr sim_itr *)
+(*              (Vis (subevent _ (EChoose X0)) k0) *)
+(*              (Vis (subevent _ (EChoose X1)) k1) *)
 | sim_choose_src
-    X0 X1
-    k0 k1
-    (SIM: forall x1, exists x0, sim_itr (k0 x0) (k1 x1))
+    X0
+    k0 i1
+    (SIM: exists x0, sim_itr (k0 x0) i1)
   :
     _sim_itr sim_itr
              (Vis (subevent _ (EChoose X0)) k0)
-             Tau 
+             (Tau i1)
+| sim_choose_tgt
+    X1
+    k1 i0
+    (SIM: forall x1, sim_itr i0 (k1 x1))
+  :
+    _sim_itr sim_itr
+             (Tau i0)
+             (Vis (subevent _ (EChoose X1)) k1)
 .
-
-EventE
 
 Definition sim_itr: itr0 -> itr1 -> Prop := paco2 _sim_itr bot2.
 
 Lemma sim_itr_mon: monotone2 _sim_itr.
 Proof.
+  ii. inv IN; try econs; et.
+  des. esplits; et.
+Unshelve.
 Qed.
-Hint Unfold lxsim.
-Hint Resolve lxsim_mon: paco.
+Hint Unfold sim_itr.
+Hint Resolve sim_itr_mon: paco.
 
 Definition sim_ktr (k0: ktr0) (k1: ktr1): Prop := forall
     oh0 oh1 m0 m1 vs0 vs1
@@ -187,6 +206,53 @@ Next Obligation.
   destruct smo0; ss.
 Qed.
 
+Program Instance SimSymbId: SimSymb.class SimMem := {
+  t := SimSymbId.t';
+  src := SimSymbId.src;
+  tgt := SimSymbId.tgt;
+  le := SimSymbId.le;
+  wf := SimSymbId.wf;
+  sim_skenv (_: SimMem.t) (_: SimSymbId.t') := SimSymbId.sim_skenv;
+}.
+Next Obligation. rr in SIMSK. r. congruence. Qed.
+Next Obligation. eapply SimSymbId.wf_link; eauto. Qed.
+Next Obligation. rr in SIMSKE. clarify. Qed.
+Next Obligation.
+  exploit SimSymbId.wf_load_sim_skenv; eauto. i; des.
+  eexists. eexists (mk' _ _). esplits; ss; eauto.
+  - admit "".
+  - rr in SIMSK. rewrite SIMSK in *. clarify. admit "".
+Qed.
+Next Obligation. eapply SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto. Qed.
+Next Obligation. rr. eapply SimSymbId.sim_skenv_func_bisim; eauto. Qed.
+Next Obligation. esplits; eauto. eapply SimSymbId.system_sim_skenv; eauto. Qed.
+Next Obligation.
+  inv ARGS; ss. clarify. destruct sm0; ss. clarify.
+  destruct retv_src; ss.
+  esplits; eauto.
+  - eapply external_call_symbols_preserved; eauto.
+    { eapply SimSymbId.sim_skenv_equiv; eauto. }
+    instantiate (1:= Retv.mk _ _). ss. eauto.
+  - instantiate (1:= mk _ _). econs; ss; eauto.
+  - econs; ii; ss.
+Qed.
+
+
+
+Definition sim_prog (p0: program owned_heap0) (p1: program owned_heap1): Prop :=
+  forall fname, <<SIM: option_rel sim_ktr (p0 fname) (p1 fname)>>
+.
+
+Theorem sim_mod
+        p0 p1
+        ioh0 ioh1
+        (SIMP: sim_prog p0 p1)
+        (SIMO: forall skenv, SO (ioh0 skenv) (ioh1 skenv))
+  :
+    forall sk mi,
+      ModPair.sim
+        (SimSymbId.mk_mp (SIRmini.module sk p0 mi ioh0) (SIRmini.module sk p0 mi ioh1))
+.
 End OWNEDHEAP.
 
 

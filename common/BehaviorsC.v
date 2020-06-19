@@ -82,7 +82,7 @@ Proof.
       apply Classical_Pred_Type.not_all_ex_not in H0. des.
       repeat (apply_all_once Classical_Prop.imply_to_and; des).
       apply Classical_Prop.not_or_and in H1. des.
-      econs 4; eauto.
+      econs 5; eauto; ss.
       ii. eapply H2; eauto.
     - eapply behavior_improves_bot; eauto.
   }

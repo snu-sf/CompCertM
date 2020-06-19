@@ -130,7 +130,12 @@ Section SIMMODSEM.
       (STAR: Star ms_src st_src0 nil st_src1 /\ ord i1 i0)
       (MLE: SimMemOhs.le smos0 smos1)
       (UNCH: SimMemOhs.unch midx_src smos0 smos1)
-      (BSIM: bsim i1 st_src1 st_tgt0 smos1).
+      (BSIM: bsim i1 st_src1 st_tgt0 smos1)
+  | bsim_step_pterm
+      (STEP: forall st_tgt1 tr
+               (STEPTGT: Step ms_tgt st_tgt0 tr st_tgt1),
+          tr = [Event_pterm])
+      (PROGRESS: <<STEPTGT: exists tr st_tgt1, Step ms_tgt st_tgt0 tr st_tgt1>>).
 
   Inductive _lxsim_pre (lxsim: idx -> state ms_src -> state ms_tgt -> SimMemOhs.t -> Prop)
             (i0: idx) (st_src0: ms_src.(state)) (st_tgt0: ms_tgt.(state)) (smos0: SimMemOhs.t): Prop :=
@@ -206,6 +211,7 @@ Section SIMMODSEM.
       inv H.
       + econs 1; eauto. i; des_safe. exploit STEP; eauto. i; des_safe. esplits; eauto.
       + econs 2; eauto.
+      + econs 3; eauto.
     - econs 3; eauto. ii; ss. exploit SU; eauto. i; des.
       esplits; eauto. ii. exploit K; eauto. i; des. esplits; eauto.
     - econs 4; eauto.
@@ -497,6 +503,7 @@ Proof.
         esplits; ec. pclearbot. right. eapply CIH; eauto.
       * exploit (SMSIM smos0); ec. i; des.
         econs 2; ec. pclearbot. right. eapply CIH; eauto.
+      * econs 3; eauto.
     + econs 3; eauto.
       { eapply wfwf; eauto. }
       ii. exploit SU0; eauto. i; des. exploit SMSIMPRIV; ec. i; des.

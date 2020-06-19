@@ -340,7 +340,7 @@ Section LXSIM.
             { esplits; eauto. econs; eauto. econs; eauto. ss. right. unfold load_modsems.
               rewrite in_map_iff. esplits; eauto. rewrite in_app_iff; eauto. ss. auto. } }
         { i; ss. des_ifs. inv FINALTGT. }
-        i. ss. rewrite LINKSRC, LINKTGT in *. inv STEPTGT. inv MSFIND. ss.
+        i. left. ss. rewrite LINKSRC, LINKTGT in *. inv STEPTGT. inv MSFIND. ss.
         unfold load_modsems in *. des; clarify.
         { esplits; eauto.
           - left. apply plus_one. econs; eauto. econs; eauto. ss. eauto.
@@ -405,7 +405,7 @@ Section LXSIM.
             { esplits; eauto. econs 3; eauto. }
             { esplits; eauto. econs 4; eauto. } }
         { ii; ss. inv FINALTGT. des_ifs. esplits; eauto. { apply star_refl. } econs; eauto. }
-        i. ss. des_ifs.
+        i. left. ss. des_ifs.
         inv STEPTGT; ss.
         * esplits; eauto.
           { left. apply plus_one. econs 1; eauto. }
@@ -426,7 +426,7 @@ Section LXSIM.
               unsguard TGT. des; clarify; ss; esplits; eauto; econs 3; ss; eauto; econs; eauto.
             + unsguard TGT. des; clarify; ss; inv FINAL. }
         { ii; ss. inv FINALTGT. unsguard TGT. des; clarify; ss; inv FINAL. }
-        i. inv STEPTGT; ss; swap 2 3.
+        i. left. inv STEPTGT; ss; swap 2 3.
         { unsguard TGT; des; clarify; inv AT. }
         { unsguard TGT; des; clarify; inv FINAL. }
         unsguard TGT; des; clarify; ss.
@@ -531,7 +531,7 @@ Section LXSIM.
                 econs 2; eauto; esplits.
                 -- eapply plus_two with (t1 := []) (t2 := []); ss.
                    ++ econs; eauto.
-                      { 
+                      {
                         eapply lift_determinate_at; ss; des_ifs; eauto.
                         econs; eauto.
                         - ii; ss. inv H; inv H0; ss.
@@ -623,7 +623,7 @@ Section LXSIM.
             unsguard TGT. des; clarify; ss.
             - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto.
             - inv FINAL. ss. clarify. esplits; eauto. { apply star_refl. } econs; ss; eauto. }
-          i. ss. des_ifs. inv STEPTGT; ss.
+          i. left. ss. des_ifs. inv STEPTGT; ss.
           { unsguard TGT. des; clarify; inv AT. }
           { unsguard TGT. des; clarify; inv STEP. }
           esplits; eauto.

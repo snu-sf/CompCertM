@@ -108,6 +108,7 @@ Lemma determ_atomic_determ
       (ms: ModSem.t) st0 tr
       (* (WBT: well_behaved_traces ms) *)
       (DTM: determinate_at ms st0)
+      (TR_INTACT: trace_intact tr)
       (WBT: output_trace tr):
     <<DTM: determinate_at (ModSem.Atomic.trans ms) (tr, st0)>>.
 Proof.
@@ -118,7 +119,12 @@ Proof.
   - determ_tac sd_determ_at. esplits; eauto.
     { inv H; econs; eauto. }
     i; des. clarify. exploit H0; inv H; i; des; clarify; eauto.
-  - esplits; eauto. ss. des. destruct ev; ss; econs; eauto.
+  - esplits; eauto. ss. des.
+    destruct ev; ss.
+    + rr in TR_INTACT. ss.
+      exfalso. eauto.
+    + econs; eauto.
+    + econs; eauto.
 Qed.
 
 
@@ -128,6 +134,7 @@ Qed.
 Lemma output_trace_determinate_at
       (ms: ModSem.t)
       ev tr st0
+      (EV_NOT_PTERM: ev <> Event_pterm)
       (WBT: output_event ev):
     determinate_at (ModSem.Atomic.trans ms) (ev :: tr, st0).
 Proof.
@@ -136,6 +143,7 @@ Qed.
 
 Lemma atomic_dstep_continue_dstar
     (ms: ModSem.t) st0 tr
+    (TR_INTACT: trace_intact tr)
     (WBT: output_trace tr):
     <<STEP: DStar (ModSem.Atomic.trans ms) (tr, st0) tr ([], st0)>>.
 Proof.
@@ -144,13 +152,39 @@ Proof.
   (* exploit determ_atomic_determ; eauto. *)
   (* { instantiate (1:= []). ss. } *)
   (* intro DTM0; des. *)
+  rr in TR_INTACT.
   econs; eauto.
   { rr. des. esplits; eauto.
     - eapply output_trace_determinate_at; eauto.
+      ss. eauto.
     - econs; eauto. ss.
   }
-  { eapply IHtr; eauto. des; ss. }
+  { eapply IHtr; eauto.
+    - ii. ss. eauto.
+    - des; ss. }
   ss.
+Qed.
+
+Lemma DStep_trace_intact
+      (ms: ModSem.t) st0 tr st1
+      (STEP: DStep ms st0 tr st1):
+  <<TR_INTACT: trace_intact tr>>.
+Proof.
+  rr in STEP. destruct STEP as [DET STEP].
+  inv DET. ii.
+  rr in  sd_traces_at. hexploit sd_traces_at; eauto. i.
+
+  cut (tr = [Event_pterm]).
+  { i. subst.
+    hexploit sd_determ_at; et.
+    clear. intro MATCH. inv MATCH.
+    rename H into MATCH_TRACES.
+    inv MATCH_TRACES. }
+
+  destruct tr; ss.
+  destruct tr; ss.
+  { des; subst; ss. }
+  { nia. }
 Qed.
 
 Lemma dstep_atomic_dstep
@@ -163,12 +197,19 @@ Proof.
   rr in STEP. des.
   exploit determ_atomic_determ; eauto.
   { instantiate (1:= []). ss. }
+  { ss. }
+
+  hexploit DStep_trace_intact.
+  { econs; eauto. }
+  intro TR_INTACT.
   intro DTM; des. destruct tr.
   { apply plus_one. econs; eauto. econs; eauto. }
   s. econs; eauto; swap 2 3.
   { rr. split; ss. instantiate (1:= (_, _)). econs 2; eauto. }
   { ss. }
-  eapply atomic_dstep_continue_dstar; eauto. exploit WBT; eauto.
+  eapply atomic_dstep_continue_dstar; eauto.
+  - rr in TR_INTACT. ss. ii. eauto.
+  - exploit WBT; eauto.
 Qed.
 
 Lemma dstar_atomic_dstar

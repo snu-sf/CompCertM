@@ -62,9 +62,11 @@ Section BACKWARD_SIM.
       (STEP: forall st_tgt1 tr
           (STEPTGT: Step L2 st_tgt0 tr st_tgt1)
           (SAFESRC: safe L1 st_src0),
-          exists i1 st_src1,
-            (<<PLUS: Plus L1 st_src0 tr st_src1>> \/ <<STAR: Star L1 st_src0 tr st_src1 /\ order i1 i0>>)
-            /\ <<BSIM: bsim i1 st_src1 st_tgt1>>)
+          (exists i1 st_src1,
+              (<<PLUS: Plus L1 st_src0 tr st_src1>> \/ <<STAR: Star L1 st_src0 tr st_src1 /\ order i1 i0>>)
+              /\ <<BSIM: bsim i1 st_src1 st_tgt1>>) \/
+          (<<PTERM: ~trace_intact tr >> /\ exists st_src1 tr',
+               <<STAR: Star L1 st_src0 tr' st_src1>> /\ <<SUB: exists tl, tr' = (trace_cut_pterm tr) ** tl>>))
       (PROGRESS: forall
          (SAFESRC: safe L1 st_src0),
           <<FINAL: exists retv, final_state L2 st_tgt0 retv>> \/
@@ -74,7 +76,8 @@ Section BACKWARD_SIM.
 
   Lemma bsim_mon: monotone3 _bsim.
   Proof.
-    ii. inv IN. econs; eauto. i. exploit STEP; eauto. i; des_safe. esplits; eauto.
+    ii. inv IN. econs; eauto. i. exploit STEP; eauto.
+    i; des; [left | left | right]; esplits; eauto.
   Qed.
 
 End BACKWARD_SIM.
@@ -119,7 +122,8 @@ Proof.
   - (* progress *)
     i. rename H into BSIM. rename H0 into SAFE. punfold BSIM. inv BSIM. exploit PROGRESS; eauto.
   - i. rename H into STEP. rename H0 into BSIM. rename H1 into SAFE.
-    punfold BSIM. inv BSIM. exploit STEP0; eauto. i; des_safe. esplits; eauto. pclearbot. ss.
+    punfold BSIM. inv BSIM. exploit STEP0; eauto.
+    i; des; [left | left | right]; pclearbot; esplits; eauto.
 Qed.
 
 End NOSTUTTER.
@@ -138,9 +142,11 @@ Section BACKWARD_SIM.
   | bsim_step_step
       (STEP: forall st_tgt1 tr
           (STEPTGT: Step L2 st_tgt0 tr st_tgt1),
-          exists i1 st_src1,
-            (<<PLUS: Plus L1 st_src0 tr st_src1>> \/ <<STAR: Star L1 st_src0 tr st_src1 /\ order i1 i0>>)
-            /\ <<BSIM: bsim i1 st_src1 st_tgt1>>)
+          (exists i1 st_src1,
+              (<<PLUS: Plus L1 st_src0 tr st_src1>> \/ <<STAR: Star L1 st_src0 tr st_src1 /\ order i1 i0>>)
+              /\ <<BSIM: bsim i1 st_src1 st_tgt1>>) \/
+          (<<PTERM: ~trace_intact tr >> /\ exists st_src1 tr',
+               <<STAR: Star L1 st_src0 tr' st_src1>> /\ <<SUB: exists tl, tr' = (trace_cut_pterm tr) ** tl>>))
       (PROGRESS: forall
          (SAFESRC: safe L1 st_src0),
           <<FINAL: exists retv, final_state L2 st_tgt0 retv>> \/
@@ -165,7 +171,8 @@ Section BACKWARD_SIM.
   Lemma bsim_mon: monotone3 _bsim.
   Proof.
     ii. inv IN. econs; eauto. i. exploit STEP; eauto. i; des_safe. inv H.
-    - eleft; eauto. i. exploit STEP0; eauto. i; des_safe. esplits; eauto.
+    - eleft; eauto. i. exploit STEP0; eauto.
+      i; des; [left | left | right]; esplits; eauto.
     - eright; eauto.
   Qed.
 
@@ -218,16 +225,27 @@ Proof.
   - generalize dependent st_src0. generalize dependent st_tgt0. pattern i0.
     eapply (well_founded_ind WF); eauto. i. rename H into IH.
     punfold BSIM. inv BSIM. exploit STEP; eauto. i; des_safe. inv H.
-    + exploit STEP0; eauto. i; des_safe. pclearbot. esplits; eauto. des.
-      * left; ss.
-      * right; ss. esplits; eauto.
+
+    + exploit STEP0; eauto. i. des1.
+      * left. des_safe. pclearbot. esplits; eauto. des.
+        -- left; ss.
+        -- right; ss. esplits; eauto.
+      * right. ss.
     + pclearbot. des. specialize (IH _ STAR0).
       exploit IH; eauto.
       { ii. eapply SAFESRC. eapply star_trans; eauto. }
-      i; des_safe. esplits; eauto. des.
-      * left. eapply star_plus_trans; eauto.
-      * right. esplits; eauto. eapply star_trans; eauto.
-        apply clos_trans_tn1_iff. econs 2; eauto. apply clos_trans_tn1_iff. ss.
+      i; des_safe.
+      des1.
+      { left. des_safe.
+        esplits; eauto. des.
+        * left. eapply star_plus_trans; eauto.
+        * right. esplits; eauto. eapply star_trans; eauto.
+          apply clos_trans_tn1_iff. econs 2; eauto. apply clos_trans_tn1_iff. ss. }
+      { right. des_safe.
+        esplits.
+        * eauto.
+        * eapply star_trans; eauto.
+        * ss. }
   - generalize dependent BSIM. generalize dependent st_src0. generalize dependent st_tgt0. pattern i0.
     eapply (well_founded_ind WF); eauto. i. rename H into IH. clear i0.
     punfold BSIM. inv BSIM. specialize (STEP SAFESRC). inv STEP.
@@ -524,7 +542,10 @@ Section MIXED_SIM.
   Lemma _xsim_backward_mon: monotone3 (_xsim_backward).
   Proof.
     ii. inv IN. econs; eauto. i. exploit STEP; eauto. i; des_safe. inv H.
-    - eleft; eauto. i. exploit STEP0; eauto. i; des_safe. esplits; eauto.
+    - eleft; eauto. i. exploit STEP0; eauto.
+      i. des1.
+      + left. des_safe. esplits; eauto.
+      + right. ss.
     - eright; eauto.
   Qed.
 
@@ -664,8 +685,12 @@ Lemma _xsim_backward_mon_x2b
     <<BSIM: _xsim_backward L1 L2 x2b_order x2b_match_states (X2BI_after 0 i0) st_src0 st_tgt0>>.
 Proof.
   red. inv BSIM. econs; eauto. i. exploit STEP; eauto. i; des. inv H.
-  - econs 1; eauto. i. exploit STEP0; eauto. i; des; pclearbot; esplits; eauto.
-    econs; eauto. right. esplits; eauto. econs 3; eauto. econs; eauto.
+  - econs 1; eauto. i. exploit STEP0; eauto. i. des1.
+    + left. des; pclearbot; esplits; eauto.
+      * econs; eauto.
+      * right. esplits; eauto. econs 3; eauto.
+      * econs; eauto.
+    + right. ss.
   - pclearbot. des. econs 2; eauto. esplits; eauto. econs 3; eauto. econs; eauto.
 Qed.
 
@@ -720,8 +745,12 @@ Proof.
     inv STEP.
     - econs 1; eauto.
       + i. exploit STEP0; eauto. i; des.
-        { esplits; eauto. left. eapply star_plus_trans; eauto. }
-        { esplits; eauto. right. split. eapply star_trans; eauto. inv STAR0; econs; eauto. eapply t_trans; eauto. }
+        { left. esplits; eauto. left. eapply star_plus_trans; eauto. }
+        { left. esplits; eauto. right. split. eapply star_trans; eauto. inv STAR0; econs; eauto. eapply t_trans; eauto. }
+        { right. esplits.
+          - eauto.
+          - eapply star_trans; eauto.
+          - eauto. }
       + { i. eapply PROGRESS. eapply star_safe; eauto. }
       + i. exploit FINAL; eauto. ii. des. esplits; try eapply FINALSRC; eauto. eapply star_trans; eauto.
     - econs 2; try apply BSIM; eauto. des. esplits; eauto. { eapply star_trans; eauto. } inv STAR0; econs; eauto.
@@ -883,14 +912,14 @@ Proof.
       + destruct (silent_or_not_silent t2).
         * (* 1.2.1.1  L1 makes a silent transition too: perform transition now and go to "after" state *)
           subst. simpl in *. destruct (star_starN H5) as [n STEPS2].
-          exists (X2BI_after n i''); exists s1''; split.
+          left. exists (X2BI_after n i''); exists s1''; split.
           left. eapply plus_right; eauto. right. eapply CIH.
           { ii. eapply SSSRC; eauto. eapply star_trans; eauto. eapply star_left; eauto. }
           { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
           eapply x2b_match_after'; eauto. eapply DStarN_E0_SDStarN; eauto.
         * (* 1.2.1.2 L1 makes a non-silent transition: keep it for later and go to "before" state *)
           subst. simpl in *. destruct (star_starN H5) as [n STEPS2].
-          exists (X2BI_before n); exists s1'; split. right; split. auto. constructor. right. eapply CIH.
+          left. exists (X2BI_before n); exists s1'; split. right; split. auto. constructor. right. eapply CIH.
           { ii. eapply SSSRC; eauto. eapply star_trans; eauto. }
           { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
           econstructor. eauto. auto. apply star_one; eauto. eauto. eauto.
@@ -916,7 +945,7 @@ Proof.
         subst t0. simpl in *. intros. elim NOT2. destruct H9. eapply mt_nil_right in H9. clarify.
         subst t2. rewrite E0_right in *. intros [_ TRACES]. assert (s0 = st_tgt1). symmetry. eapply TRACES. auto. subst s0.
         (* Perform transition now and go to "after" state *)
-        destruct (star_starN H7) as [n STEPS2]. exists (X2BI_after n i''''); exists s1'''; split. left. eapply plus_right; eauto.
+        destruct (star_starN H7) as [n STEPS2]. left. exists (X2BI_after n i''''); exists s1'''; split. left. eapply plus_right; eauto.
         right. eapply CIH.
         { ii. eapply SSSRC; eauto. eapply star_trans; eauto. eapply star_left; eauto. }
         { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
@@ -927,13 +956,13 @@ Proof.
       - destruct t1, t2; ss. clear_tac.
         exploit ssd_determ_at. apply H4. apply H4. apply STEPTGT. i; des. clarify.
         destruct H4. clear_tac. destruct (star_starN H5) as [n STEPS2]. destruct n.
-        + inv STEPS2. ss. exists (X2BI_after 0 i''). esplits; eauto.
+        + inv STEPS2. ss. left. exists (X2BI_after 0 i''). esplits; eauto.
           * right. esplits; eauto. econs; eauto. eapply clos_t_rt; eauto.
           * right. eapply CIH.
             { ii. eapply SSSRC; eauto. eapply star_trans; eauto. }
             { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
             econs; eauto.
-        + exists (X2BI_after (S n) i''). esplits; eauto.
+        + left. exists (X2BI_after (S n) i''). esplits; eauto.
           * right. esplits; eauto. econs; eauto. eapply clos_t_rt; eauto.
           * right. eapply CIH.
             { ii. eapply SSSRC; eauto. eapply star_trans; eauto. }
@@ -942,11 +971,12 @@ Proof.
     }
     { (* backward *)
       inv BSIM. exploit STEP; eauto. i. inv H0.
-      - econs 1; eauto. i. exploit STEP0; eauto. i; des_safe.
-        esplits; eauto. right. eapply CIH; eauto.
-        { ii. eapply SSSRC; eauto. des.
-          - eapply plus_star. eapply plus_star_trans; eauto. - eapply star_trans; eauto. }
-        { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
+      - econs 1; eauto. i. exploit STEP0; eauto. i; des1.
+        + des_safe. left. esplits; eauto. right. eapply CIH; eauto.
+          { ii. eapply SSSRC; eauto. des.
+            - eapply plus_star. eapply plus_star_trans; eauto. - eapply star_trans; eauto. }
+          { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
+        + des_safe. right. esplits; eauto.
       - econs 2; eauto.
         right. eapply CIH; et.
         { ii. eapply SSSRC; eauto. des. eapply star_trans; eauto. }
@@ -958,7 +988,7 @@ Proof.
     exploit determinacy_inv. eauto. eexact H5. eexact STEPTGT.
     intros [[EQ1 [EQ2 EQ3]] | [NOT1 [NOT2 MT]]].
     + (* 2.1 L2 makes a silent transition: remain in "before" state *)
-      subst. simpl in *. exists (X2BI_before n0); exists st_src0; split.
+      subst. simpl in *. left. exists (X2BI_before n0); exists st_src0; split.
       right; split. apply star_refl. constructor. omega. right. eapply CIH; et.
       { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
       econstructor; eauto. eapply star_right; eauto.
@@ -981,7 +1011,7 @@ Proof.
       subst. rewrite E0_right in *.  destruct H7.
       assert (s2 = st_tgt1). eapply sd_determ_at; eauto. subst s2.
       (* Perform transition now and go to "after" state *)
-      destruct (star_starN H8) as [n STEPS2]. exists (X2BI_after n i'''); exists s1'''; split.
+      destruct (star_starN H8) as [n STEPS2]. left. exists (X2BI_after n i'''); exists s1'''; split.
       left. apply plus_one; auto. right. eapply CIH; et.
       { ii. eapply SSSRC; eauto. eapply star_left; eauto. }
       { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
@@ -991,7 +1021,7 @@ Proof.
     econs 1; ss; eauto.
     i. inv H. exploit Eapp_E0_inv; eauto. intros [EQ1 EQ2]; subst.
     destruct H2. exploit ssd_determ_at. eapply H. eexact H1. eexact STEPTGT. i; des. clarify.
-    exists (X2BI_after n i); exists st_src0; split.
+    left. exists (X2BI_after n i); exists st_src0; split.
     right; split. apply star_refl. constructor. constructor; omega. right. eapply CIH; et.
     { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
     eapply x2b_match_after'; eauto.
@@ -1005,7 +1035,9 @@ Lemma bsim_to_xsim
 Proof.
   generalize dependent i0. generalize dependent st_src0. generalize dependent st_tgt0. pcofix CIH. i.
   pfold. right. punfold BSIM. inv BSIM. econs; eauto. i. exploit STEP; eauto. i; des. inv H.
-  - econs 1; eauto. i. exploit STEP0; eauto. i; des_safe. pclearbot. esplits; eauto.
+  - econs 1; eauto. i. exploit STEP0; eauto. i; des1.
+    + left. des_safe. pclearbot. esplits; eauto.
+    + right. ss.
   - econs 2; eauto. pclearbot. eauto.
 Qed.
 
@@ -1212,7 +1244,9 @@ Section MIXED_SIM.
   Lemma _xsim_backward_mon: monotone3 (_xsim_backward).
   Proof.
     ii. inv IN. econs; eauto. i. exploit STEP; eauto. i; des_safe. inv H.
-    - eleft; eauto. i. exploit STEP0; eauto. i; des_safe. esplits; eauto.
+    - eleft; eauto. i. exploit STEP0; eauto. i; des1.
+      + left. des_safe. esplits; eauto.
+      + right. ss.
     - eright; eauto.
   Qed.
 
@@ -1371,7 +1405,9 @@ Proof.
       * esplits; eauto.
     + pclearbot. econs 2; eauto. des. esplits; eauto. eapply DPlus_E0_SDPlus; eauto.
   - right. inv XSIM. econs; eauto. i. exploit STEP; eauto. i; des. inv H.
-    + econs 1; eauto. i. exploit STEP0; eauto. i; des_safe. pclearbot. esplits; eauto.
+    + econs 1; eauto. i. exploit STEP0; eauto. i; des1.
+      * left. des_safe. pclearbot. esplits; eauto.
+      * right. ss.
     + pclearbot. econs 2; eauto.
 Qed.
 

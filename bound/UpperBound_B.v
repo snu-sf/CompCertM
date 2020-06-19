@@ -1251,7 +1251,7 @@ Section PRESERVATION.
     - right. econs; i; ss.
       + econs; i.
         (* step *)
-        * inv MTCHST; cycle 1.
+        * left. inv MTCHST; cycle 1.
           { inv INITTGT. }
           inv STEPTGT; ss.
           (* step_call *)

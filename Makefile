@@ -1,6 +1,6 @@
 COQMODULE    := compcomp
 # COQTHEORIES  := $(wildcard */*.v) #*/*.v
-COQTHEORIES  := $(shell find . -iname '*.v')
+COQTHEORIES  := $(shell find . -path ./ignored -prune -o -path ./demo/union_find -prune -o -path ./demo/iter -prune -o -path ./demo/knot -prune -o -iname '*.v')
 
 
 .PHONY: all proof proof-quick graph
@@ -47,6 +47,7 @@ Makefile.coq: Makefile $(COQTHEORIES)
    echo "-R proof $(COQMODULE)"; \
    echo "-R demo $(COQMODULE)"; \
    echo "-R selfsim $(COQMODULE)"; \
+   echo "-R specIR $(COQMODULE)"; \
    echo $(COQTHEORIES)) > _CoqProject
 	coq_makefile -f _CoqProject -o Makefile.coq
 

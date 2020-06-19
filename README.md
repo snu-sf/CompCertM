@@ -6,7 +6,9 @@
 CompCertM is based on [CompCertR](https://github.com/snu-sf/CompCertR) which is a refactored version of CompCert. In order to build CompCertM, you need to build CompCertR first.
 1) Clone https://github.com/snu-sf/CompCertR and follow the [installation instructions](https://github.com/snu-sf/CompCertR#installation-instructions).  
 
-2) **Go to the CompCertR directory** and issue the following commands: <pre>
+2) Clone https://github.com/snu-sf/InteractionTrees and  `opam pin coq-itree <<CLONED_PATH>>`.
+
+3) **Go to the CompCertR directory** and issue the following commands: <pre>
 git clone https://github.com/snu-sf/CompCertM.git
 cd CompCertM
 make -j[N]</pre>

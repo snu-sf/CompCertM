@@ -210,6 +210,21 @@ Section MODSEM.
     all: des; ss; try (by exfalso; des; ss).
   Qed.
 
+  Lemma modsem2_mi_determinate: forall mi st, determinate_at (modsem2_mi mi) st.
+  Proof.
+    econs; eauto.
+    - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_expr_determ; check_safe);
+                try (determ_tac eval_lvalue_determ; check_safe); try (determ_tac eval_exprlist_determ; check_safe);
+                  try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe);
+                    esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
+      + inv H4; inv H16; congruence.
+      + determ_tac eval_exprlist_determ.
+      + inv H1. inv H8. hexploit (alloc_variables_determ H3 H7). i; des; clarify.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+  Unshelve.
+    all: des; ss; try (by exfalso; des; ss).
+  Qed.
+
 End MODSEM.
 
 

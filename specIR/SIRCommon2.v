@@ -286,3 +286,51 @@ Ltac csc := clarify; simpl_depind; clarify.
 
 Notation "tau ;; t2" := (Tau t2)
   (at level 61, right associativity) : itree_scope.
+
+
+
+(*** COPIED FROM MASTER BRANCH. REMOVE LATER ***)
+(*** COPIED FROM MASTER BRANCH. REMOVE LATER ***)
+(*** COPIED FROM MASTER BRANCH. REMOVE LATER ***)
+Lemma eutt_eq_bind : forall E R U (t1 t2: itree E U) (k1 k2: U -> itree E R), t1 ≈ t2 -> (forall u, k1 u ≈ k2 u) -> ITree.bind t1 k1 ≈ ITree.bind t2 k2.
+Proof.
+  intros.
+  eapply eutt_clo_bind with (UU := Logic.eq); [eauto |].
+  intros ? ? ->. apply H0.
+Qed.
+Ltac f_equiv := first [eapply eutt_eq_bind|eapply eqit_VisF|Morphisms.f_equiv].
+(* eapply eqit_bind'| *)
+
+Hint Rewrite @bind_trigger : itree.
+Hint Rewrite @tau_eutt : itree.
+Hint Rewrite @bind_tau : itree.
+
+Tactic Notation "irw" "in" ident(H) := repeat (autorewrite with itree in H; cbn in H).
+Tactic Notation "irw" := repeat (autorewrite with itree; cbn).
+
+(*** TODO: IDK why but (1) ?UNUSNED is needed (2) "fold" tactic does not work. WHY????? ***)
+Ltac fold_eutt :=
+  repeat multimatch goal with
+         | [ H: eqit eq true true ?A ?B |- ?UNUSED ] =>
+           let name := fresh "tmp" in
+           assert(tmp: eutt eq A B) by apply H; clear H; rename tmp into H
+         end
+.
+
+Lemma bind_ret_map {E R1 R2} (u : itree E R1) (f : R1 -> R2) :
+  (r <- u ;; Ret (f r)) ≅ f <$> u.
+Proof.
+  rewrite <- (bind_ret_r u) at 2. apply eqit_bind.
+  - hnf. intros. apply eqit_Ret. auto.
+  - rewrite bind_ret_r. reflexivity.
+Qed.
+
+Lemma map_vis {E R1 R2 X} (e: E X) (k: X -> itree E R1) (f: R1 -> R2) :
+  (* (f <$> (Vis e k)) ≅ Vis e (fun x => f <$> (k x)). *)
+  ITree.map f (Vis e k) ≅ Vis e (fun x => f <$> (k x)).
+Proof.
+  cbn.
+  unfold ITree.map.
+  autorewrite with itree. refl.
+Qed.
+

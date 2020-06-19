@@ -27,19 +27,18 @@ Require Import SmallstepC.
 
 Set Implicit Arguments.
 
-
-
-
-
-
-
-
-
-
-
-
 Import CatNotations.
 Open Scope cat_scope.
+
+
+
+
+
+
+
+
+
+
 
 
 

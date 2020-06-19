@@ -25,41 +25,6 @@ Local Arguments ModSemPair.mk [SM] [SS] _ _ _ _ [SMO].
 
 
 
-
-
-(********* TODO: try the same proof with extension ***************)
-(********* TODO: try the same proof with extension ***************)
-(********* TODO: try the same proof with extension ***************)
-(********* TODO: try the same proof with extension ***************)
-(********* TODO: try the same proof with extension ***************)
-(********* TODO: try the same proof with extension ***************)
-(********* TODO: try the same proof with extension ***************)
-(********* TODO: try the same proof with extension ***************)
-(********* TODO: try the same proof with extension ***************)
-(********* TODO: try the same proof with extension ***************)
-
-Lemma eq_eutt
-      E R
-      (a b: itree E R)
-      (EQ: a = b)
-  :
-    eutt eq a b
-.
-Proof. i. clarify. refl. Qed.
-
-Lemma vis_not_ret
-      E R (r: R) X (e: E X) k
-      (EUTT: Vis e k ≈ Ret r)
-  :
-    False
-.
-Proof. ii. punfold EUTT. inv EUTT. Qed.
-
-
-
-
-
-
 Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
@@ -84,16 +49,6 @@ Lemma unsymb
 Proof.
   subst ge. ss. uge. ss. rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
   unfold defs in *. des_sumbool. ss. des; ss.
-  (*** TODO: strengthen "spec" !!!!!!!!!!! ***)
-  (*** TODO: strengthen "spec" !!!!!!!!!!! ***)
-  (*** TODO: strengthen "spec" !!!!!!!!!!! ***)
-  (* exploit (SkEnv.project_impl_spec); et. intro SPEC. *)
-  (* inv SPEC. *)
-  (* exploit (SYMBKEEP _iter); et. intro T. ss. folder. rewrite <- T in *. *)
-  (* exploit DEFKEEP; et. *)
-  (* assert(defs (md_src: Sk.t) _iter). *)
-  (* { ss. } *)
-  (* ss. *)
 Qed.
 
 Lemma symb
@@ -220,22 +175,11 @@ From ITree Require Export
      Basics.CategoryKleisli
 .
 
-(*** COPIED FROM MASTER BRANCH. REMOVE LATER ***)
-(*** COPIED FROM MASTER BRANCH. REMOVE LATER ***)
-(*** COPIED FROM MASTER BRANCH. REMOVE LATER ***)
-Lemma eutt_eq_bind : forall E R U (t1 t2: itree E U) (k1 k2: U -> itree E R), t1 ≈ t2 -> (forall u, k1 u ≈ k2 u) -> ITree.bind t1 k1 ≈ ITree.bind t2 k2.
-Proof.
-  intros.
-  eapply eutt_clo_bind with (UU := Logic.eq); [eauto |].
-  intros ? ? ->. apply H0.
-Qed.
 
 
 
 
 
-Import CatNotations.
-Open Scope cat_scope.
 Notation ktr :=
   (ktree (eff1 owned_heap) (owned_heap * (mem * val)) (owned_heap * (mem * val)))
 .
@@ -246,23 +190,6 @@ Definition is_call_cont_strong (k0: cont): Prop :=
   | Kcall _ _ _ _ _ => True
   | _ => False
   end.
-
-  (* | step_returnstate: forall v optid f e le k m, *)
-  (*     step (Returnstate v (Kcall optid f e le k) m) *)
-  (*       E0 (State f Sskip k e (set_opttemp optid v le) m). *)
-
-
-
-(* Inductive match_cont (hd_src: ktr) optid f e le: Prop := *)
-(* | match_cont_intro *)
-(*     (SIM: forall *)
-(*         m v *)
-(*       , *)
-(*         hd_src (tt, (m, v)) *)
-(*         (State f Sskip Kstop e (set_opttemp optid v le) m)) *)
-(* . *)
-
-
 
 Inductive match_stacks (k_src: list ktr) (k_tgt: Clight.cont): Prop :=
 | match_stacks_nil
@@ -331,58 +258,9 @@ Inductive match_states
     (IDX: (i >= 100)%nat)
 .
 
-Lemma bind_ret_map {E R1 R2} (u : itree E R1) (f : R1 -> R2) :
-  (r <- u ;; Ret (f r)) ≅ f <$> u.
-Proof.
-  rewrite <- (bind_ret_r u) at 2. apply eqit_bind.
-  - hnf. intros. apply eqit_Ret. auto.
-  - rewrite bind_ret_r. reflexivity.
-Qed.
-
-Lemma map_vis {E R1 R2 X} (e: E X) (k: X -> itree E R1) (f: R1 -> R2) :
-  (* (f <$> (Vis e k)) ≅ Vis e (fun x => f <$> (k x)). *)
-  ITree.map f (Vis e k) ≅ Vis e (fun x => f <$> (k x)).
-Proof.
-  cbn.
-  unfold ITree.map.
-  autorewrite with itree. refl.
-Qed.
 
 
-
-
-
-
-(*** TODO: IDK why but (1) ?UNUSNED is needed (2) "fold" tactic does not work. WHY????? ***)
-Ltac fold_eutt :=
-  repeat multimatch goal with
-         | [ H: eqit eq true true ?A ?B |- ?UNUSED ] =>
-           let name := fresh "tmp" in
-           assert(tmp: eutt eq A B) by apply H; clear H; rename tmp into H
-         end
-.
-
-Ltac des_itr itr :=
-  let name := fresh "V" in
-  destruct (observe itr) eqn:name; sym in name; eapply simpobs in name;
-  eapply bisimulation_is_eq in name; subst itr
-.
-
-Ltac vvt H := clear - H; exfalso; punfold H; inv H; simpl_depind; subst; simpl_depind.
-Ltac f_equiv := first [eapply eutt_eq_bind|eapply eqit_VisF|eapply eqit_bind'|Morphisms.f_equiv].
-
-Hint Rewrite @bind_trigger : itree.
-Hint Rewrite @tau_eutt : itree.
-Tactic Notation "irw" "in" ident(H) := repeat (autorewrite with itree in H; cbn in H).
-Tactic Notation "irw" := repeat (autorewrite with itree; cbn).
-
-
-
-
-
-
-
-
+(*** TODO: it is unused for now. use this later ***)
 Lemma init_fsim
       args st_src0
       (INIT: ModSem.initial_frame (md_src skenv_link) tt args st_src0)

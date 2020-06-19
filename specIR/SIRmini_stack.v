@@ -131,7 +131,7 @@ Section MODSEM.
       k
       (VIS: st0.(cur) = Vis (subevent _ (ENB)) k)
     :
-      step se ge st0 E0 st0
+      step se ge st0 [Event_pterm] st0
   (* | step_done *)
   (*     oh rv m k *)
   (*     (VIS: st0.(cur) = Vis (subevent _ (EDone oh m rv)) k) *)
@@ -221,6 +221,7 @@ Section MODSEM.
   Lemma modsem_determinate
         (st0: state)
         (NCHOOSE: forall X k, ~(st0.(cur) = Vis (subevent _ (EChoose X)) k))
+        (NNB: forall k, ~(st0.(cur) = Vis (subevent _ ENB) k))
     :
       determinate_at modsem st0.
   Proof.
@@ -230,6 +231,7 @@ Section MODSEM.
         simpl_depind;
         try (by injection ST0; ii; simpl_depind);
         try congruence.
+      + simpl_depind. exploit NNB; et. i; ss.
       + simpl_depind. clarify. f_equal. exploit NCHOOSE; et. i; ss.
     - ii. inv H; ss; try xomega.
   Unshelve.

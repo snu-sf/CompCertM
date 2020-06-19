@@ -119,7 +119,7 @@ Section MODSEM.
       k
       (VIS: st0 = Vis (subevent _ (ENB)) k)
 
-      (TR: tr = E0)
+      (TR: tr = [Event_pterm])
       (ST: st1 = st0)
   (* | step_done *)
   (*     oh rv m k *)
@@ -179,13 +179,15 @@ Section MODSEM.
   Lemma modsem_determinate
         (st0: state)
         (NCHOOSE: forall X k, ~(st0 = Vis (subevent _ (EChoose X)) k))
+        (NNB: forall k, ~(st0 = Vis (subevent _ ENB) k))
     :
       determinate_at modsem st0.
   Proof.
     econs; eauto.
     - ii; ss.
       inv H; inv H0; esplits; et; try econs; et; ii; clarify.
-      simpl_depind. clarify. exploit NCHOOSE; et. i; ss.
+      + simpl_depind. exploit NNB; et. i; ss.
+      + simpl_depind. clarify. exploit NCHOOSE; et. i; ss.
     - ii. inv H; ss; try xomega.
   Unshelve.
     all: des; ss; try (by exfalso; des; ss).

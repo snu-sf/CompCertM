@@ -24,6 +24,11 @@ Set Implicit Arguments.
 
 
 
+(* Global Unset Transparent Obligations. *)
+Add Search Blacklist "_obligation_".
+
+
+
 Ltac determ_tac LEMMA :=
   let tac := eauto in
   let x := rev_all ltac:(fun f => apply f) in

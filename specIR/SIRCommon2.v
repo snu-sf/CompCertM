@@ -23,12 +23,6 @@ Require Import AxiomsC.
 Set Implicit Arguments.
 Set Universe Polymorphism.
 
-
-
-(*** TODO: move to CoqlibC ***)
-Global Unset Transparent Obligations.
-Add Search Blacklist "_obligation_".
-
 From ExtLib Require Export
      (* Data.String *)
      (* Structures.Monad *)

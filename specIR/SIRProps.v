@@ -20,7 +20,6 @@ Require Import Sound SoundTop SimMem SimMemId SimSymb.
 Require Import SIRCommon2.
 Require Import SIRmini.
 Require Import SIRmini_stack.
-Require Import MatchSimModSemExcl.
 
 Require Import Program.
 Require Import SmallstepC.

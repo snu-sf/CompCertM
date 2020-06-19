@@ -188,7 +188,7 @@ Inductive cont_calls sg fptr oh m0 vs (r0: owned_heap * (mem * val)): list ktr -
     (KRET: kret r0 = Ret r1)
     (TL: cont_calls sg fptr oh m0 vs r1 cont_r n)
   :
-    cont_calls sg fptr oh m0 vs r0 (kret :: cont_r) (S n) 
+    cont_calls sg fptr oh m0 vs r0 (kret :: cont_r) (S n)
 .
 
 Lemma unfold_cont_call
@@ -323,7 +323,7 @@ Proof.
     (*     econs 3; eauto. *)
     (*     { rr. esplits; ss; eauto. econs; ss; eauto. } *)
     (*     ii; ss. clear_tac. inv ATSRC. csc. *)
-        
+
     (*     eexists _, (Args.mk _ _ _), (mk (SimMemId.mk _ _) _ _); ss. esplits; eauto. *)
     (*     { rr. esplits; ss; eauto. econs; ss; eauto. } *)
     (*     { econs; ss. } *)
@@ -534,7 +534,7 @@ Proof.
   Unshelve.
     all: ss.
 Qed.
-    
+
 Theorem sim_modsem: ModSemPair.sim msp.
 Proof.
   econstructor 1 with (sidx := unit) (sound_states := top4); eauto;

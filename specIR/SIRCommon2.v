@@ -224,7 +224,7 @@ End DENOTE.
 Section TEST.
 
 Definition _sum := 55%positive.
-  
+
 Definition c_sum (oh: owned_heap) (m: mem) (vs: list val): itree E (owned_heap * (mem * val)) :=
   match vs with
   | [Vint n] =>

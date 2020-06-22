@@ -23,4 +23,4 @@ Set Implicit Arguments.
 
 Definition mp: ModPair.t := SimSymbId.mk_mp (Fib2.module) (Fib1.module).
 Theorem sim_mod: ModPair.sim mp.
-Proof. eapply SIRProps.sim_mod. Qed.
+Proof. eapply SIRstackproof.sim_mod. Qed.

@@ -38,7 +38,7 @@ Definition hrespectful_respectful A B (RA: relation A) (RB: relation B):
   @hrespectful A A B B RA RB = @respectful A B RA RB.
 Proof. ss. Qed.
 
-Notation " R **> R' " := (@hrespectful _ _ _ _ (R%signature) (R'%signature))
+Notation " R !-> R' " := (@hrespectful _ _ _ _ (R%signature) (R'%signature))
                            (right associativity, at level 55).
                          (* : signature_scope. *)
 
@@ -48,12 +48,6 @@ Program Instance HProper_Proper A RA (a: A) (P: HProper RA a a): Proper RA a.
 
 Hint Unfold hrespectful.
 Hint Unfold HProper.
-(**
-Ltac uh := unfold hrespectful in *; unfold HProper in *.
-Tactic Notation "uh" "in" hyp(H) := repeat (autounfold with * in H; cbn in H).
-Tactic Notation "u" := repeat (autounfold with *; cbn).
-Tactic Notation "u" "in" "*" := repeat (autounfold with * in *; cbn in * ).
-**)
 
 
 
@@ -130,7 +124,7 @@ Inductive _sim_itr (sim_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt -> 
     oh_src k_src
     oh_tgt k_tgt
     (O: SO oh_src oh_tgt)
-    (SIM: HProper (SALL **> sim_itr) k_src k_tgt)
+    (SIM: HProper (SALL !-> sim_itr) k_src k_tgt)
     (* (SIM: forall *)
     (*     mr vr *)
     (*     ohr_src *)
@@ -146,7 +140,7 @@ Inductive _sim_itr (sim_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt -> 
     oh_src k_src
     oh_tgt k_tgt
     (O: SO oh_src oh_tgt)
-    (SIM: HProper (SALL **> sim_itr) k_src k_tgt)
+    (SIM: HProper (SALL !-> sim_itr) k_src k_tgt)
     (* (SIM: forall *)
     (*     mr vr *)
     (*     ohr_src ohr_tgt *)
@@ -196,11 +190,10 @@ Hint Resolve sim_itr_mon: paco.
 
 
 
-(*** sim fn ***)
 Let fn_src := function owned_heap_src.
 Let fn_tgt := function owned_heap_tgt.
 
-(*** TODO: curry "function", and we can state "SALL **> sim_itr ***)
+(*** TODO: curry "function", and we can state "SALL --> sim_itr" ***)
 (*** TODO: give better name than SALL ***)
 Definition sim_fn (k_src: fn_src) (k_tgt: fn_tgt): Prop := forall
     m vs
@@ -229,7 +222,7 @@ Inductive bindC (r: itr_src -> itr_tgt -> Prop) : itr_src -> itr_tgt -> Prop :=
     i_src i_tgt
     (SIM: sim_itr i_src i_tgt)
     k_src k_tgt
-    (SIMK: HProper (SALL **> r) k_src k_tgt)
+    (SIMK: HProper (SALL !-> r) k_src k_tgt)
     (* (SIMK: forall *)
     (*     oh_src oh_tgt m vs *)
     (*     (O: SO oh_src oh_tgt) *)
@@ -267,7 +260,7 @@ Proof.
 Qed.
 
 Global Instance sim_itr_bind :
-  HProper ((SALL **> sim_itr) **> sim_itr **> sim_itr) ITree.bind' ITree.bind'
+  HProper ((SALL !-> sim_itr) !-> sim_itr !-> sim_itr) ITree.bind' ITree.bind'
 .
 Proof.
   red. ginit.
@@ -314,7 +307,7 @@ Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :
     oh_src k_src
     oh_tgt k_tgt
     (O: SO oh_src oh_tgt)
-    (SIM: HProper (SALL **> sim_st) k_src k_tgt)
+    (SIM: HProper (SALL !-> sim_st) k_src k_tgt)
   :
     _sim_st sim_st
              (Vis (subevent _ (ECall sg fptr oh_src m vs)) k_src)
@@ -647,4 +640,3 @@ Section SIM.
 End SIM.
 
 End OWNEDHEAP.
-

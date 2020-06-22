@@ -208,8 +208,8 @@ Definition sim_fn (k_src: fn_src) (k_tgt: fn_tgt): Prop := forall
 
 
 (*** sim prog ***)
-Definition sim_prog (p_src: program owned_heap_src) (p_tgt: program owned_heap_tgt): Prop :=
-  forall fname, option_rel sim_fn (p_src fname) (p_tgt fname)
+Definition sim_prog: program owned_heap_src -> program owned_heap_tgt -> Prop :=
+  eq !-> option_rel sim_fn
 .
 
 
@@ -386,7 +386,7 @@ Section SIM.
     - pclearbot. gstep. econs; et. gbase.
       eapply CIH. eapply sim_itr_bind.
       { u. ii. repeat spc SIM0. pclearbot. eauto. }
-      hexploit (SIMP fname); et. intro T.
+      exploit (@SIMP fname); et. intro T.
       inv T.
       { pfold. econs; et. }
       exploit H1; et.
@@ -414,7 +414,7 @@ Section SIM.
     {
       ii.
       eapply sim_prog_sim_st; ss.
-      hexploit (SIMP fname); et. intro T. inv T; ss.
+      hexploit (@SIMP fname); et. intro T. inv T; ss.
       { pfold. econs; et. }
       repeat (spc H1). des. ss.
     }
@@ -617,7 +617,7 @@ Section SIM.
         assert(fid0 = fid).
         { apply_all_once Genv.find_invert_symbol. clarify. }
         clarify.
-        repeat spc SIMP. inv SIMP; ss.
+        rr in SIMP. repeat spc SIMP. hexploit1 SIMP; et. inv SIMP; ss.
         { pfold. econs; et. }
         { eapply H1; et. }
       - i; des. inv SAFESRC. ss. des_ifs.

@@ -278,8 +278,8 @@ Ltac ides itr :=
   sym in T; apply simpobs in T; apply bisim_is_eq in T; rewrite T in *; clarify.
 Ltac csc := clarify; simpl_depind; clarify.
 
-Notation "tau ;; t2" := (Tau t2)
-  (at level 61, right associativity) : itree_scope.
+Notation "tau;; t2" := (Tau t2)
+  (at level 200, right associativity) : itree_scope.
 
 
 
@@ -328,3 +328,21 @@ Proof.
   autorewrite with itree. refl.
 Qed.
 
+
+Definition assumeK E X `{EventE -< E} (P: X -> Prop): ktree E X X :=
+  fun x =>
+    if ClassicalDescription.excluded_middle_informative (P x)
+    then Ret x
+    else triggerUB
+.
+
+Definition assume E `{EventE -< E} (P: Prop): itree E unit := Eval red in assumeK (fun _ => P) tt.
+
+Definition guaranteeK E X `{EventE -< E} (P: X -> Prop): ktree E X X :=
+  fun x =>
+    if ClassicalDescription.excluded_middle_informative (P x)
+    then Ret x
+    else triggerNB
+.
+
+Definition guarantee E `{EventE -< E} (P: Prop): itree E unit := Eval red in guaranteeK (fun _ => P) tt.

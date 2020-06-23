@@ -19,7 +19,7 @@ Definition initial_owned_heap: SkEnv.t -> owned_heap := fun _ => tt.
 
 Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
-  tau ;;
+  tau;;
   match vs with
   | [Vint n] =>
     if Int.eq n Int.zero

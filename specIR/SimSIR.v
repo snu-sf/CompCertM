@@ -640,3 +640,8 @@ Section SIM.
 End SIM.
 
 End OWNEDHEAP.
+Hint Unfold sim_itr.
+Hint Resolve sim_itr_mon: paco.
+Hint Constructors bindC: core.
+Hint Unfold sim_st.
+Hint Resolve sim_st_mon: paco.

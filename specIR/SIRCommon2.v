@@ -195,7 +195,7 @@ Section DENOTE.
   Definition interp_function: (InternalCallE ~> itree E) :=
     fun T ei =>
       let '(ICall func_name oh m vs) := ei in
-      match (p func_name) with
+      match (lookup func_name p) with
       | Some (f) => (f oh m vs)
       | _ => triggerNB
       end

@@ -78,43 +78,13 @@ Definition precond (vs: list val): option nat :=
 Hint Unfold precond.
 Coercion is_some_coercion {X}: (option X) -> bool := is_some.
 
-Definition _fib_inner := 57%positive.
-
-Definition f_fib_inner (oh0: owned_heap) (m0: mem) (vs: list val):
+Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
   tau;;
   n <- (unwrapU (precond vs)) ;;
-    match n with
-    | O => Ret (oh0, (m0, (Vint Int.zero)))
-    | S O => Ret (oh0, (m0, (Vint Int.one)))
-    | S (S m) =>
-      (* '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 [Vint (of_nat m)]) ;; *)
-      let vs0 := [Vint (of_nat m)] in
-      unwrapN (precond vs0) ;;
-      '(oh1, (m1, y1)) <- trigger (ICall _fib_inner oh0 m0 vs0) ;;
-      (assume (<<OH: oh0 = oh1>> /\ <<M: m0 = m1>> /\ <<V: y1 = Vint (of_nat (fib_nat m))>>)) ;;
-
-      let vs1 := [Vint (of_nat (S m))] in
-      unwrapN (precond vs1) ;;
-      '(oh2, (m2, y2)) <- trigger (ICall _fib_inner oh1 m1 vs1) ;;
-      (assume (<<OH: oh1 = oh2>> /\ <<M: m1 = m2>> /\ <<V: y2 = Vint (of_nat (fib_nat (S m)))>>)) ;;
-
-      Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
-      (* match y1, y2 with *)
-      (* | Vint y1, Vint y2 => Ret (oh2, (m2, Vint (of_nat (Nat.add (to_nat y1) (to_nat y2))))) *)
-      (* | _, _ => triggerUB *)
-      (* end *)
-    end
-  >>=
-  guaranteeK (fun '(ohr, (mr, vr)) => (<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: vr = Vint (of_nat (fib_nat n))>>))
-.
-
-Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
-  itree (E owned_heap) (owned_heap * (mem * val)) :=
-  n <- unwrapU (precond vs) ;;
-  trigger (ICall _fib_inner oh0 m0 vs)
-  >>=
-  guaranteeK (fun '(ohr, (mr, vr)) => (<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: vr = Vint (of_nat (fib_nat n))>>))
+  tau;;
+  tau;;
+  Ret (oh0, (m0, (Vint (of_nat (fib_nat n)))))
 .
 (*     else *)
 (*       if Nat.eqb n 0%nat *)
@@ -147,16 +117,3 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
 Definition prog: program owned_heap := (Maps.add _fib f_fib Maps.empty).
 
 Definition module: Mod.t := module (Fib0.module) prog "fib"%string initial_owned_heap.
-
-Goal forall oh0 m0 vs,
-    exists (body: nat -> itree (E owned_heap) (owned_heap * (mem * val)),
-      f_fib_inner oh0 m0 vs =
-      tau;;
-      n <- (unwrapU (precond vs)) ;;
-      (body n)
-      >>=
-      guaranteeK (fun '(ohr, (mr, vr)) => (<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: vr = Vint (of_nat (fib_nat n))>>))
-.
-Proof.
-  i. unfold f_fib_inner. eexists (fun _ => _). et.
-Qed.

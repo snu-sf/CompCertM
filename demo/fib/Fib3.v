@@ -69,7 +69,7 @@ Definition fib_spec fun_id :=
      SEP ().
 ***)
 
-Definition precond (vs: list val): option nat :=
+Definition precond (oh0: owned_heap) (m0: mem) (vs: list val): option nat :=
   match vs with
   | [Vint n] => (to_nat_opt n)
   | _ => None
@@ -78,33 +78,34 @@ Definition precond (vs: list val): option nat :=
 Hint Unfold precond.
 Coercion is_some_coercion {X}: (option X) -> bool := is_some.
 
+Definition postcond (oh0: owned_heap) (m0: mem) (n: nat): (owned_heap * (mem * val)) -> Prop :=
+  fun '(ohr, (mr, vr)) => (<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: vr = Vint (of_nat (fib_nat n))>>)
+.
+Hint Unfold postcond.
+
 Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
   tau;;
-  n <- (unwrapU (precond vs)) ;;
+  n <- (unwrapU (precond oh0 m0 vs)) ;;
     match n with
     | O => Ret (oh0, (m0, (Vint Int.zero)))
     | S O => Ret (oh0, (m0, (Vint Int.one)))
     | S (S m) =>
       (* '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 [Vint (of_nat m)]) ;; *)
       let vs0 := [Vint (of_nat m)] in
-      unwrapN (precond vs0) ;;
+      x0 <- unwrapN (precond oh0 m0 vs0) ;;
       '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 vs0) ;;
-      (assume (<<OH: oh0 = oh1>> /\ <<M: m0 = m1>> /\ <<V: y1 = Vint (of_nat (fib_nat m))>>)) ;;
+      (assume (postcond oh0 m0 x0 (oh1, (m1, y1)))) ;;
 
       let vs1 := [Vint (of_nat (S m))] in
-      unwrapN (precond vs1) ;;
+      x1 <- unwrapN (precond oh1 m1 vs1) ;;
       '(oh2, (m2, y2)) <- trigger (ICall _fib oh1 m1 vs1) ;;
-      (assume (<<OH: oh1 = oh2>> /\ <<M: m1 = m2>> /\ <<V: y2 = Vint (of_nat (fib_nat (S m)))>>)) ;;
+      (assume (postcond oh1 m1 x1 (oh2, (m2, y2)))) ;;
 
       Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
-      (* match y1, y2 with *)
-      (* | Vint y1, Vint y2 => Ret (oh2, (m2, Vint (of_nat (Nat.add (to_nat y1) (to_nat y2))))) *)
-      (* | _, _ => triggerUB *)
-      (* end *)
     end
   >>=
-  guaranteeK (fun '(ohr, (mr, vr)) => (<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: vr = Vint (of_nat (fib_nat n))>>))
+  guaranteeK (postcond oh0 m0 n)
 .
 (*     else *)
 (*       if Nat.eqb n 0%nat *)

@@ -149,6 +149,26 @@ Local Opaque fib_nat.
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.
+  assert(AA: forall x, (Z.of_nat x <= Int.max_signed)
+                         (* (0 <= Int.signed (Int.repr (Z.of_nat x))) *)
+                       -> to_nat_opt (of_nat x) = Some x).
+  { i. unfold to_nat_opt, of_nat.
+    generalize Int.min_signed_neg; i.
+    generalize (Int.signed_range (Int.repr (Z.of_nat x))); i.
+    rewrite Int.signed_repr in *; try lia. des_ifs; try lia.
+    rewrite Nat2Z.id; ss.
+  }
+  (*** TODO: make lemma ***)
+  assert(SUCPRED: forall x y, x = S y <-> ((x - 1)%nat = y /\ (1 <= x)%nat)).
+  {
+    split.
+    - ginduction x; ii; ss. clarify. split; try xomega. clear - y. ginduction y; ii; ss. et.
+    - ginduction x; ii; des; clarify; ss; try xomega. f_equal. rewrite Nat.sub_0_r. ss.
+  }
+
+
+
+
   eapply SimSIR.sim_mod with (SO := eq); ss.
   ii. clarify. unfold Fib3.prog, prog. ss. des_ifs; econs; et.
   ii. clarify. unfold Fib3.owned_heap in *. des_u. ss.
@@ -157,7 +177,7 @@ Proof.
   { i. eapply cpn2_wcompat; eauto with paco. }
   gcofix CIH. ii.
   step.
-  destruct (precond vs) eqn:T; cycle 1.
+  destruct (precond () m vs) eqn:T; cycle 1.
   { cbn. unfold triggerUB. rewrite bind_vis. step. }
   cbn. rewrite bind_ret_l. unfold precond in *. des_ifs_safe. unfold to_nat_opt in T. set n as x. des_ifs_safe.
   destruct x eqn:T.
@@ -187,30 +207,32 @@ Proof.
     step.
   }
   Fail rewrite bind_unwrapN. (*** <---------- TODO: FIXIT ***)
-  destruct (to_nat_opt (of_nat n0)) eqn:W; cbn; cycle 1.
-  { exfalso. unfold to_nat_opt in *. des_ifs. psimpl. unfold of_nat in *. rewrite Int.signed_repr in *; ss.
-    - xomega.
-    - generalize (Nat2Z.is_nonneg n0); i. generalize Int.min_signed_neg; i.
-      generalize (Int.signed_range i); i. subst x.
-      split; try xomega.
-      assert(Z.of_nat (S (S n0)) <= Int.max_signed).
-      { rewrite <- T. rewrite Z2Nat.id; ss. xomega. }
-      xomega.
+  assert(R: Int.min_signed <= Z.of_nat n0 <= Int.max_signed).
+  { generalize (Nat2Z.is_nonneg n0); i. generalize Int.min_signed_neg; i.
+    generalize (Int.signed_range i); i. subst x.
+    split; try xomega.
+    assert(Z.of_nat (S (S n0)) <= Int.max_signed).
+    { rewrite <- T. rewrite Z2Nat.id; ss. xomega. }
+    xomega.
   }
+  assert(R0: Int.min_signed <= Z.of_nat (S n0) <= Int.max_signed).
+  { generalize (Nat2Z.is_nonneg n0); i. generalize Int.min_signed_neg; i.
+    generalize (Int.signed_range i); i. subst x.
+    split; try xomega.
+    assert(Z.of_nat (S (S n0)) <= Int.max_signed).
+    { rewrite <- T. rewrite Z2Nat.id; ss. xomega. }
+    xomega.
+  }
+  (* destruct (to_nat_opt (of_nat n0)) eqn:W; cbn; cycle 1. *)
+  (* { exfalso. unfold to_nat_opt in *. des_ifs. psimpl. unfold of_nat in *. rewrite Int.signed_repr in *; ss. xomega. } *)
   assert(~Int.eq i Int.zero).
   { ii. apply_all_once Int.same_if_eq. clarify. }
   assert(~Int.eq i Int.one).
   { ii. apply_all_once Int.same_if_eq. clarify. }
   des_ifs_safe.
+  rewrite ! AA; try lia. cbn.
   rewrite bind_ret_l.
   rewrite bind_bind. rewrite ! bind_trigger.
-  (*** TODO: make lemma ***)
-  assert(SUCPRED: forall x y, x = S y <-> ((x - 1)%nat = y /\ (1 <= x)%nat)).
-  { clear - r. clear r.
-    split.
-    - ginduction x; ii; ss. clarify. split; try xomega. clear - y. ginduction y; ii; ss. et.
-    - ginduction x; ii; des; clarify; ss; try xomega. f_equal. rewrite Nat.sub_0_r. ss.
-  }
   assert(U: of_nat n0 = Int.sub i (Int.repr 2)).
   { unfold of_nat. subst x.
     eapply SUCPRED in T; des.
@@ -269,20 +291,7 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
     rewrite Nat2Z.inj_sub; ss.
     rewrite <- Int_sub_repr. f_equal. rewrite Z2Nat.id; ss. rewrite Int.repr_signed; ss.
   }
-  rewrite V.
-  step_unwrapN.
-  { exfalso. unfold to_nat_opt in *. des_ifs.
-    rewrite Int.signed_eq in *. des_sumbool. ss.
-    rewrite <- (@Int.repr_signed i) in g.
-    rewrite Int_sub_repr in *.
-    rewrite Int.signed_repr in *; ss.
-    - assert(Int.signed i = 0).
-      { xomega. }
-      ss.
-    - generalize (Int.signed_range i); i.
-      generalize Int.min_signed_neg; i. split; i; try lia.
-  }
-  cbn. rewrite bind_ret_l. rewrite ! bind_bind. rewrite ! bind_trigger. step.
+  cbn. rewrite bind_ret_l. rewrite ! bind_bind. rewrite ! bind_trigger. rewrite V. step.
   sii S. r in S. des_ifs_safe; des; clarify.
   rewrite bind_bind.
   step_assume.
@@ -302,9 +311,9 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
                          destruct (ClassicalDescription.excluded_middle_informative P); cycle 1
                        end
   .
-  unfold guaranteeK. des_ifs; cycle 1.
+  unfold postcond, guaranteeK. des_ifs; cycle 1.
   { unfold NW in *. repeat (Psimpl; des; ss; et). }
   des; clarify.
   rewrite fib_nat_recurse.
-  unfold of_nat. rewrite Int_add_repr. rewrite Nat2Z.inj_add. step.
+  unfold of_nat. rewrite Int_add_repr. rewrite Nat2Z.inj_add. clear_tac. step.
 Qed.

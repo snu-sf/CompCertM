@@ -82,6 +82,13 @@ Proof.
   i. f. eapply bind_vis.
 Qed.
 
+Lemma bind_trigger: forall (E : Type -> Type) (R U : Type) (e : E U) (k : U -> itree E R),
+    ` x : _ <- ITree.trigger e;; k x = Vis e (fun x : U => k x).
+Proof. i. f. eapply bind_trigger. Qed.
+
+Lemma bind_bind : forall (E : Type -> Type) (R S T : Type) (s : itree E R) (k : R -> itree E S) (h : S -> itree E T),
+    ` x : _ <- (` x : _ <- s;; k x);; h x = ` r : R <- s;; ` x : _ <- k r;; h x.
+Proof. i. f. eapply bind_bind. Qed.
 
 
 
@@ -133,8 +140,10 @@ Inductive _sim_itr (sim_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt -> 
     (*     sim_itr (k_src (ohr_src, (mr, vr))) (k_tgt (ohr_tgt, (mr, vr)))) *)
   :
     _sim_itr sim_itr
-             (Vis (subevent _ (ICall fname oh_src m vs)) k_src)
-             (Vis (subevent _ (ICall fname oh_tgt m vs)) k_tgt)
+             (trigger (ICall fname oh_src m vs) >>= k_src)
+             (trigger (ICall fname oh_tgt m vs) >>= k_tgt)
+             (* (Vis (subevent _ (ICall fname oh_src m vs)) k_src) *)
+             (* (Vis (subevent _ (ICall fname oh_tgt m vs)) k_tgt) *)
 | sim_ecall
     sg m vs fptr
     oh_src k_src
@@ -246,9 +255,7 @@ Proof.
   - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
     (* gfinal. left. eapply CIH. econstructor; eauto. *)
     debug eauto with paco.
-  - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot.
-    (* gfinal. left. eapply CIH. econs. { et. } uh. ii. eapply SIMK. et. *)
-    eauto with paco.
+  - rewrite ! bind_bind. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot. eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot.
     eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto.
@@ -385,7 +392,7 @@ Section SIM.
     - pclearbot. gstep. econs; et. gbase. et.
     - pclearbot. gstep. econs; et. gbase.
       eapply CIH. eapply sim_itr_bind.
-      { u. ii. repeat spc SIM0. pclearbot. eauto. }
+      { u. ii. repeat spc SIM0. pclearbot. rewrite ! bind_ret_l. eauto. }
       exploit (@SIMP fname); et. intro T.
       inv T.
       { pfold. econs; et. }

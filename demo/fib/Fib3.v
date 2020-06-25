@@ -69,43 +69,52 @@ Definition fib_spec fun_id :=
      SEP ().
 ***)
 
-Definition precond (oh0: owned_heap) (m0: mem) (vs: list val): option nat :=
-  match vs with
+Definition parse_arg (oh0: owned_heap) (m0: mem) (vs0: list val): option nat :=
+  match vs0 with
   | [Vint n] => (to_nat_opt n)
   | _ => None
   end
 .
-Hint Unfold precond.
-Coercion is_some_coercion {X}: (option X) -> bool := is_some.
+Hint Unfold parse_arg.
 
-Definition postcond (oh0: owned_heap) (m0: mem) (n: nat): (owned_heap * (mem * val)) -> Prop :=
-  fun '(ohr, (mr, vr)) => (<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: vr = Vint (of_nat (fib_nat n))>>)
+Coercion is_some_coercion {X}: (option X) -> bool := is_some.
+Definition precond (oh0: owned_heap) (m0: mem) (vs0: list val) := exists n, parse_arg oh0 m0 vs0 = Some n.
+
+Definition postcond (oh0: owned_heap) (m0: mem) (vs0: list val): (owned_heap * (mem * val)) -> Prop :=
+  fun '(ohr, (mr, vr)) => 
+    match parse_arg oh0 m0 vs0 with
+    | Some n => (<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: vr = Vint (of_nat (fib_nat n))>>)
+    | _ => False
+    end
 .
 Hint Unfold postcond.
 
-Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
+Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
   tau;;
-  n <- (unwrapU (precond oh0 m0 vs)) ;;
+  assume (precond oh0 m0 vs0) ;;
+
+  `n: nat <- (unwrapN (parse_arg oh0 m0 vs0)) ;;
     match n with
     | O => Ret (oh0, (m0, (Vint Int.zero)))
     | S O => Ret (oh0, (m0, (Vint Int.one)))
     | S (S m) =>
-      (* '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 [Vint (of_nat m)]) ;; *)
       let vs0 := [Vint (of_nat m)] in
-      x0 <- unwrapN (precond oh0 m0 vs0) ;;
+
+      guarantee (precond oh0 m0 vs0) ;;
       '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 vs0) ;;
-      (assume (postcond oh0 m0 x0 (oh1, (m1, y1)))) ;;
+      (assume (postcond oh0 m0 vs0 (oh1, (m1, y1)))) ;;
 
       let vs1 := [Vint (of_nat (S m))] in
-      x1 <- unwrapN (precond oh1 m1 vs1) ;;
+
+      guarantee (precond oh1 m1 vs1) ;;
       '(oh2, (m2, y2)) <- trigger (ICall _fib oh1 m1 vs1) ;;
-      (assume (postcond oh1 m1 x1 (oh2, (m2, y2)))) ;;
+      (assume (postcond oh1 m1 vs1 (oh2, (m2, y2)))) ;;
 
       Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
     end
-  >>=
-  guaranteeK (postcond oh0 m0 n)
+
+  >>= guaranteeK (postcond oh0 m0 vs0)
 .
 (*     else *)
 (*       if Nat.eqb n 0%nat *)

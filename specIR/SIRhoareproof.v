@@ -27,9 +27,19 @@ Set Implicit Arguments.
 
 
 
+
+
+
+
+
+
+
+
 Local Obligation Tactic := ii; ss; eauto.
 
 (*** TODO: move to SIRCommon ***)
+Open Scope signature_scope.
+
 Lemma unfold_interp_mrec :
 forall (D E : Type -> Type) (ctx : forall T : Type, D T -> itree (D +' E) T) 
   (R : Type) (t : itree (D +' E) R), interp_mrec ctx t = _interp_mrec ctx (observe t).
@@ -60,6 +70,14 @@ Proof.
   i. f. eapply bind_vis.
 Qed.
 
+Lemma bind_trigger: forall (E : Type -> Type) (R U : Type) (e : E U) (k : U -> itree E R),
+    ` x : _ <- ITree.trigger e;; k x = Vis e (fun x : U => k x).
+Proof. i. f. eapply bind_trigger. Qed.
+
+Lemma bind_bind : forall (E : Type -> Type) (R S T : Type) (s : itree E R) (k : R -> itree E S) (h : S -> itree E T),
+    ` x : _ <- (` x : _ <- s;; k x);; h x = ` r : R <- s;; ` x : _ <- k r;; h x.
+Proof. i. f. eapply bind_bind. Qed.
+
 
 
 
@@ -68,12 +86,22 @@ Section OWNEDHEAP.
 
 Variable mi: string.
 Variable owned_heap: Type.
-Variable X: Type.
-Variable precond: forall (oh0: owned_heap) (m0: mem) (vs: list val), option X.
-Variable postcond: forall (oh0: owned_heap) (m0: mem) (vs: list val) (x: X), (owned_heap * (mem * val)) -> Prop.
+Variable precond: owned_heap -> mem -> list val -> Prop.
+Variable postcond: owned_heap -> mem -> list val -> (owned_heap * (mem * val)) -> Prop.
 
 
 
+
+Goal forall fname (oh0: owned_heap) m0 vs0 (k: (owned_heap * (mem * val)) -> itree (E owned_heap) (owned_heap * (mem * val))),
+    (trigger (ICall fname oh0 m0 vs0) >>= assumeK (postcond oh0 m0 vs0) >>= k)
+    = ohmv <- trigger (ICall fname oh0 m0 vs0) ;; assume (postcond oh0 m0 vs0 ohmv) ;; k ohmv.
+Proof.
+  i.
+  rewrite bind_bind. f. f_equiv. ii. f.
+  unfold assumeK, assume. des_ifs; et.
+  - rewrite ! bind_ret_l. ss.
+  - unfold triggerUB. rewrite ! bind_vis. f. f_equiv. ii. ss.
+Qed.
 
 (*** sim syntax ***)
 Section SYNTAX.
@@ -93,14 +121,24 @@ Inductive _sim_itr (sim_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
   :
     _sim_itr sim_itr (Tau i_src) (Tau i_tgt)
 | sim_icall
-    fname oh m vs
-    k_src
-    k_tgt
+    fname oh0 m0 vs0 k_src k_tgt
     (SIM: (eq ==> sim_itr)%signature k_src k_tgt)
   :
     _sim_itr sim_itr
-             (Vis (subevent _ (ICall fname oh m vs)) k_src)
-             (Vis (subevent _ (ICall fname oh m vs)) k_tgt)
+             (* (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src) *)
+             (trigger (ICall fname oh0 m0 vs0) >>= k_src)
+             (guarantee (precond oh0 m0 vs0) ;;
+              ohmv <- trigger (ICall fname oh0 m0 vs0) ;;
+              assume (postcond oh0 m0 vs0 ohmv) ;;
+              k_tgt ohmv
+              (*** we can write in point-free style but ***)
+              (* trigger (ICall fname oh0 m0 vs0) *)
+              (* >>= assumeK (postcond oh0 m0 vs0) *)
+              (* >>= k_tgt *)
+             )
+      (* guarantee (precond oh0 m0 vs0) ;; *)
+      (* '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 vs0) ;; *)
+      (* (assume (postcond oh0 m0 vs0 (oh1, (m1, y1)))) ;; *)
 | sim_ecall
     sg oh m vs fptr
     k_src
@@ -138,41 +176,54 @@ Qed.
 Hint Unfold sim_itr.
 Hint Resolve sim_itr_mon: paco.
 
+Section PROG.
 
-
-Let fn_src := function owned_heap_src.
-Let fn_tgt := function owned_heap_tgt.
-
-(*** TODO: curry "function", and we can state "SALL --> sim_itr" ***)
-(*** TODO: give better name than SALL ***)
-Definition sim_fn (k_src: fn_src) (k_tgt: fn_tgt): Prop := forall
-    m vs
-    oh_src oh_tgt
-    (O: SO oh_src oh_tgt)
-  ,
-    <<SIM: sim_itr (k_src oh_src m vs) (k_tgt oh_tgt m vs)>>
+Variable _fn_ru: ident.
+Definition fn_src (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_heap) (owned_heap * (mem * val)) :=
+  assume (precond oh0 m0 vs0) ;;
+  _I_DONT_USE_THIS__RUDIMENT_ORGAN_ <- trigger (ICall _fn_ru oh0 m0 vs0) ;;
+  trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) >>= (fun x => Ret (proj1_sig x))
 .
 
-
-
-
-
-(*** sim prog ***)
-Definition sim_prog: program owned_heap_src -> program owned_heap_tgt -> Prop :=
-  eq !-> option_rel sim_fn
+Inductive sim_fn (fn_ru fn_tgt: function owned_heap): Prop :=
+| sim_fn_intro
+    fn_tgt_inner
+    (SIM: (eq ==> eq ==> eq ==> sim_itr) fn_ru fn_tgt_inner)
+    (TGT: fn_tgt = fun oh0 m0 vs0 =>
+                     assume (precond oh0 m0 vs0) ;;
+                     (fn_tgt_inner oh0 m0 vs0)
+                     >>= guaranteeK (postcond oh0 m0 vs0)
+    )
 .
+
+Inductive sim_prog (p_src p_tgt: program owned_heap): Prop :=
+| sim_prog_intro
+    _fn
+    fn_ru (* rudiment *) fn_tgt
+    (FNSRC: p_src _fn = Some fn_src)
+    (FNTGT: p_tgt _fn = Some fn_tgt)
+    (RDSRC: p_src _fn_ru = Some fn_ru)
+    (RDTGT: p_tgt _fn_ru = None)
+    (SIMFN: sim_fn fn_ru fn_tgt)
+    (OTHERS: forall _fm (NEQ: _fm <> _fn) (NEQ: _fm <> _fn_ru), p_src _fm = p_tgt _fm)
+  :
+    sim_prog p_src p_tgt
+.
+
+End PROG.
+
 
 
 
 
 (*** useful lemma for below proof ***)
 (*** copied from "eqit_bind_clo" in itree repo - Eq.v ***)
-Inductive bindC (r: itr_src -> itr_tgt -> Prop) : itr_src -> itr_tgt -> Prop :=
+Inductive bindC (r: itr -> itr -> Prop) : itr -> itr -> Prop :=
 | bindC_intro
     i_src i_tgt
     (SIM: sim_itr i_src i_tgt)
     k_src k_tgt
-    (SIMK: HProper (SALL !-> r) k_src k_tgt)
+    (SIMK: (eq ==> r) k_src k_tgt)
     (* (SIMK: forall *)
     (*     oh_src oh_tgt m vs *)
     (*     (O: SO oh_src oh_tgt) *)
@@ -192,25 +243,31 @@ Lemma bindC_spec
 Proof.
   gcofix CIH. intros. destruct PR.
   punfold SIM. inv SIM.
-  - rewrite ! bind_ret_l. gbase. eapply SIMK; et. rr; et.
+  - rewrite ! bind_ret_l. gbase. eapply SIMK; et.
   - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
     (* gfinal. left. eapply CIH. econstructor; eauto. *)
     debug eauto with paco.
-  - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot.
+  - rewrite ! bind_bind. gstep.
+    erewrite f_equal3; try eapply sim_icall; revgoals.
+    { f. f_equiv. ii. f_equiv. ii. f. des_u.
+      rewrite bind_bind. refl. }
+    { refl. }
+    { refl. }
+    ii. clarify.
+    exploit (SIM0 y); eauto. intro R. pclearbot.
+    (* gbase. apply CIH. econs; eauto. *)
+    eauto with paco.
+  - rewrite ! bind_vis. gstep. econs; eauto. u. ii. clarify. exploit (SIM0 y); eauto. intro T. pclearbot.
     (* gfinal. left. eapply CIH. econs. { et. } uh. ii. eapply SIMK. et. *)
     eauto with paco.
-  - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot.
-    eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto.
   - rewrite ! bind_vis. gstep. econs; eauto.
-  - rewrite ! bind_vis. rewrite ! bind_tau.
-    gstep. econs; eauto. des. pclearbot. eauto with paco.
-  - rewrite ! bind_vis. rewrite ! bind_tau.
-    gstep. econs; eauto. ii. pclearbot. eauto with paco.
+  - rewrite ! bind_vis. gstep. econs; eauto.
+    ii. clarify. exploit (SIM0 y); eauto. intro R. pclearbot. eauto with paco.
 Qed.
 
 Global Instance sim_itr_bind :
-  HProper ((SALL !-> sim_itr) !-> sim_itr !-> sim_itr) ITree.bind' ITree.bind'
+  Proper ((eq ==> sim_itr) ==> sim_itr ==> sim_itr) ITree.bind'
 .
 Proof.
   red. ginit.
@@ -237,8 +294,7 @@ Hint Resolve sim_itr_mon: paco.
 Section SEMANTICS.
 
 (*** sim states ***)
-Let st_src := (SIRmini.state owned_heap_src).
-Let st_tgt := (SIRmini.state owned_heap_tgt).
+Let st := (SIRmini.state owned_heap).
 
 Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :=
 | sim_st_ret

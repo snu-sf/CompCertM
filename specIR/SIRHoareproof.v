@@ -18,7 +18,7 @@ Require Import Mod ModSem Any Skeleton.
 Require Import SimMem SimSymb Sound.
 Require SimMemId SimSymbId SoundTop.
 Require Import SimMod SimModSem.
-Require Import SIRCommon SIR.
+Require Import SIRCommon2 SIR.
 
 Require Import Program.
 Require Import Simulation.
@@ -40,6 +40,43 @@ Local Obligation Tactic := ii; ss; eauto.
 (*** TODO: move to SIRCommon ***)
 Open Scope signature_scope.
 
+Lemma unfold_interp_mrec :
+forall (D E : Type -> Type) (ctx : forall T : Type, D T -> itree (D +' E) T) 
+  (R : Type) (t : itree (D +' E) R), interp_mrec ctx t = _interp_mrec ctx (observe t).
+Proof.
+  i. f. eapply unfold_interp_mrec; et.
+Qed.
+
+Lemma bind_ret_l : forall (E : Type -> Type) (R S : Type) (r : R) (k : R -> itree E S),
+    ` x : _ <- Ret r;; k x = k r.
+Proof.
+  i. f. eapply bind_ret_l.
+Qed.
+
+Lemma bind_ret_r : forall (E : Type -> Type) (R : Type) (s : itree E R), ` x : R <- s;; Ret x = s.
+Proof.
+  i. f. eapply bind_ret_r.
+Qed.
+
+Lemma bind_tau : forall (E : Type -> Type) (R U : Type) (t : itree E U) (k : U -> itree E R),
+  ` x : _ <- Tau t;; k x = Tau (` x : _ <- t;; k x).
+Proof.
+  i. f. eapply bind_tau.
+Qed.
+
+Lemma bind_vis: forall (E : Type -> Type) (R U V : Type) (e : E V) (ek : V -> itree E U) (k : U -> itree E R),
+  ` x : _ <- Vis e ek;; k x = Vis e (fun x : V => ` x : _ <- ek x;; k x).
+Proof.
+  i. f. eapply bind_vis.
+Qed.
+
+Lemma bind_trigger: forall (E : Type -> Type) (R U : Type) (e : E U) (k : U -> itree E R),
+    ` x : _ <- ITree.trigger e;; k x = Vis e (fun x : U => k x).
+Proof. i. f. eapply bind_trigger. Qed.
+
+Lemma bind_bind : forall (E : Type -> Type) (R S T : Type) (s : itree E R) (k : R -> itree E S) (h : S -> itree E T),
+    ` x : _ <- (` x : _ <- s;; k x);; h x = ` r : R <- s;; ` x : _ <- k r;; h x.
+Proof. i. f. eapply bind_bind. Qed.
 
 
 
@@ -54,13 +91,12 @@ Variable postcond: owned_heap -> mem -> list val -> (owned_heap * (mem * val)) -
 
 
 
-(*** these two representations are equal, but proving it is tedious ***)
+
 Goal forall fname (oh0: owned_heap) m0 vs0 (k: (owned_heap * (mem * val)) -> itree (E owned_heap) (owned_heap * (mem * val))),
     (trigger (ICall fname oh0 m0 vs0) >>= assumeK (postcond oh0 m0 vs0) >>= k)
     = ohmv <- trigger (ICall fname oh0 m0 vs0) ;; assume (postcond oh0 m0 vs0 ohmv) ;; k ohmv.
 Proof.
   i.
-  Fail reflexivity.
   rewrite bind_bind. f. f_equiv. ii. f.
   unfold assumeK, assume. des_ifs; et.
   - rewrite ! bind_ret_l. ss.

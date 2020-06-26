@@ -71,7 +71,7 @@ Section MODSEM.
   Inductive at_external (st0: state): owned_heap -> Args.t -> Prop :=
   | at_external_intro
       args sg fptr vs k oh0 m0
-      (VIS: st0 = trigger (ECall sg fptr oh0 m0 vs) >>= k)
+      (VIS: st0 = Vis (subevent _ (ECall sg fptr oh0 m0 vs)) k)
       (EXT: Genv.find_funct skenv fptr = None)
       (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
                         /\ sg = Sk.get_sig skd)
@@ -84,7 +84,7 @@ Section MODSEM.
     (owned_heap * (mem * val) -> itree (eff0 owned_heap) (owned_heap * (mem * val))) -> Prop :=
   | get_k_intro
       _vs _sg _fptr _oh0 _m0 k
-      (VIS: st0 = trigger (ECall _sg _fptr _oh0 _m0 _vs) >>= k)
+      (VIS: st0 = Vis (subevent _ (ECall _sg _fptr _oh0 _m0 _vs)) k)
     :
       get_k st0 k
   .
@@ -116,7 +116,8 @@ Section MODSEM.
       (TR: tr = E0)
   (*** ub is stuck, so we don't state anything ***)
   | step_nb
-      (VIS: st0 = triggerNB)
+      k
+      (VIS: st0 = Vis (subevent _ (ENB)) k)
 
       (TR: tr = [Event_pterm])
       (ST: st1 = st0)
@@ -128,7 +129,7 @@ Section MODSEM.
   (*     (ST1: st1 = (Ret (oh, (m, rv)))) *)
   | step_choose
       X k (x: X)
-      (VIS: st0 = trigger (EChoose X) >>= k)
+      (VIS: st0 = Vis (subevent _ (EChoose X)) k)
       (TR: tr = E0)
       (ST: st1 = k x)
   .
@@ -147,17 +148,17 @@ Section MODSEM.
        ModSem.midx := Some mi;
     |}.
   Next Obligation.
-    inv AT0. inv AT1. rewrite ! bind_trigger in *. clarify.
+    inv AT0. inv AT1. clarify.
   Qed.
   Next Obligation.
     inv FINAL0. inv FINAL1. clarify.
   Qed.
   Next Obligation.
-    inv AFTER0. inv AFTER1. inv GETK. inv GETK0. rewrite ! bind_trigger in *. csc.
-    pattern k. rewrite H1. ss.
+    inv AFTER0. inv AFTER1. inv GETK. inv GETK0. clarify.
+    simpl_depind. clarify.
   Qed.
   Next Obligation.
-    ii. des. inv PR; ss. rewrite bind_trigger in *. inv PR0; ss.
+    ii. des. inv PR; ss. inv PR0; ss.
   Qed.
   Next Obligation.
     ii. des. inv PR0; ss. inv PR; ss; clarify; try rewrite RET in *; ss; clarify.

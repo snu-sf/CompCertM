@@ -68,23 +68,23 @@ Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :
     (SIM: HProper (SALL !-> sim_st) k_src k_tgt)
   :
     _sim_st sim_st
-            (trigger (ECall sg fptr oh_src m vs) >>= k_src)
-            (trigger (ECall sg fptr oh_tgt m vs) >>= k_tgt)
+             (Vis (subevent _ (ECall sg fptr oh_src m vs)) k_src)
+             (Vis (subevent _ (ECall sg fptr oh_tgt m vs)) k_tgt)
 | sim_st_nb
-    i_src
+    i_src k_tgt
   :
-    _sim_st sim_st i_src triggerNB
+    _sim_st sim_st i_src (Vis (subevent _ (ENB)) k_tgt)
 | sim_st_ub
-    i_tgt
+    k_src i_tgt
   :
-    _sim_st sim_st triggerUB i_tgt
+    _sim_st sim_st (Vis (subevent _ (EUB)) k_src) i_tgt
 | sim_st_choose_src
     X_src
     k_src i_tgt
     (SIM: exists x_src, sim_st (k_src x_src) i_tgt)
   :
     _sim_st sim_st
-            (trigger (EChoose X_src) >>= k_src)
+            (Vis (subevent _ (EChoose X_src)) k_src)
             (Tau i_tgt)
 | sim_st_choose_tgt
     X_tgt
@@ -94,7 +94,7 @@ Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :
   :
     _sim_st sim_st
             (Tau i_src)
-            (trigger (EChoose X_tgt) >>= k_tgt)
+            (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 .
 
 Definition sim_st: st_src -> st_tgt -> Prop := paco2 _sim_st bot2.

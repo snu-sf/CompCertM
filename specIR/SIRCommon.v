@@ -54,14 +54,13 @@ Section EFF.
 
 End EFF.
 
-Definition absurd {E A}: void -> itree E A := (fun v => match v: void with end).
 (* Q: Why manually match "void" type, not using "embed" or "trigger"?
    A: It returns arbitrary type "A", not "void" *)
 Definition triggerUB {E A} `{EventE -< E}: itree E A :=
-  (trigger EUB >>= absurd)
+  vis (EUB) (fun v => match v: void with end)
 .
 Definition triggerNB {E A} `{EventE -< E}: itree E A :=
-  (trigger ENB >>= absurd)
+  vis (ENB) (fun v => match v: void with end)
 .
 (* Definition triggerDone {E A} `{EventE -< E} (oh: owned_heap) (m: mem) (v: val): itree E A := *)
 (*   vis (EDone oh m v) (fun v => match v: void with end) *)

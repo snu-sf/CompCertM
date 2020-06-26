@@ -11,8 +11,8 @@ Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift Match
 Require SoundTop.
 Require SimMemId.
 Require Import Any.
-Require Import SIRmini.
-Require Import SIRmini_stack.
+Require Import SIR.
+Require Import SIRStack.
 Require Import Fib4.
 Require Import Fib3.
 Require Import ModSemProps.

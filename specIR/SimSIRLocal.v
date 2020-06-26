@@ -18,7 +18,7 @@ Require Import Mod ModSem Any Skeleton.
 Require Import SimMem SimSymb Sound.
 Require SimMemId SimSymbId SoundTop.
 Require Import SimMod SimModSem.
-Require Import SIRcommon SIRmini SimSIR.
+Require Import SIRCommon SIR SimSIR.
 
 Require Import Program.
 Require Import Simulation.
@@ -286,11 +286,11 @@ Section SIM.
   Variable ioh_tgt: SkEnv.t -> owned_heap_tgt.
   Hypothesis (SIMO: forall skenv, SO (ioh_src skenv) (ioh_tgt skenv)).
   Variable sk: Sk.t.
-  Let md_src: Mod.t := (SIRmini.module sk p_src mi ioh_src).
-  Let md_tgt: Mod.t := (SIRmini.module sk p_tgt mi ioh_tgt).
+  Let md_src: Mod.t := (SIR.module sk p_src mi ioh_src).
+  Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh_tgt).
 
-  Theorem sim_mod: ModPair.sim (SimSymbId.mk_mp (SIRmini.module sk p_src mi ioh_src)
-                                                (SIRmini.module sk p_tgt mi ioh_tgt)).
+  Theorem sim_mod: ModPair.sim (SimSymbId.mk_mp (SIR.module sk p_src mi ioh_src)
+                                                (SIR.module sk p_tgt mi ioh_tgt)).
   Proof.
     ii. econs; ss; eauto.
     ii. rr in SIMSKENVLINK. clarify. esplits. eapply sim_modsem; et.

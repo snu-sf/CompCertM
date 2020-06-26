@@ -11,8 +11,8 @@ Require Import Skeleton Mod ModSem SimMod SimModSemLift SimSymb SimMemLift Match
 Require SoundTop.
 Require SimMemId.
 Require Import Any.
-Require Import SIRmini.
-Require Import SIRmini_stack.
+Require Import SIR.
+Require Import SIRStack.
 Require Import Fib2.
 Require Import Fib1.
 Require Import ModSemProps.
@@ -23,4 +23,4 @@ Set Implicit Arguments.
 
 Definition mp: ModPair.t := SimSymbId.mk_mp (Fib2.module) (Fib1.module).
 Theorem sim_mod: ModPair.sim mp.
-Proof. eapply SIRstackproof.sim_mod. Qed.
+Proof. eapply SIRStackproof.sim_mod. Qed.

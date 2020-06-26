@@ -13,7 +13,7 @@ Require Import Program.
 Require Import Any.
 
 Require Import SIRProps.
-Require Import SIRmini_stack.
+Require Import SIR SIRStack.
 Require Import Clightdefs Op ClightC CtypesC CtypingC.
 Require Import Fib1.
 Require Import Fib0.
@@ -217,7 +217,7 @@ Inductive match_stacks (k_src: list ktr) (k_tgt: Clight.cont): Prop :=
 
 
 
-Inductive match_states_internal: SIRmini_stack.state owned_heap -> Clight.state -> Prop :=
+Inductive match_states_internal: SIRStack.state owned_heap -> Clight.state -> Prop :=
 | match_call
     itr0 ty m0 vs n
     fid fblk fptr_tgt k_src k_tgt
@@ -250,7 +250,7 @@ Inductive match_states_internal: SIRmini_stack.state owned_heap -> Clight.state 
 .
 
 Inductive match_states
-          (i: nat) (st_src0: SIRmini_stack.state owned_heap) (st_tgt0: Clight.state)
+          (i: nat) (st_src0: SIRStack.state owned_heap) (st_tgt0: Clight.state)
           (smo0: SimMemOh.t): Prop :=
 | match_states_intro
     (MATCHST: match_states_internal st_src0 st_tgt0)
@@ -271,7 +271,7 @@ Lemma init_fsim
 .
 Proof.
   inv INIT. ss. des_ifs_safe. folder.
-  unfold interp_program0 in *.
+  unfold interp_program in *.
   exploit unsymb; et. i; des. clarify. des_ifs.
   assert(SIG: fd = signature_of_function f_fib).
   { admit "ez - findf sig". }
@@ -426,7 +426,7 @@ Proof.
     econs 2; ss; et.
     { esplits; try eapply Ord.lift_idx_spec; et.
       eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { eapply SIRmini_stack.step_call; ss; et. f. irw. f. ss. }
+      { eapply SIRStack.step_call; ss; et. f. irw. f. ss. }
       unfold Fib1.prog. ss. des_ifs_safe.
       apply star_refl.
     }
@@ -470,7 +470,7 @@ Proof.
       econs 2; ss; et.
       { esplits; try eapply Ord.lift_idx_spec; et.
         eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { eapply SIRmini_stack.step_call; ss; et. f. irw. f. ss. }
+        { eapply SIRStack.step_call; ss; et. f. irw. f. ss. }
         unfold Fib1.prog. ss. des_ifs_safe.
         apply star_refl.
       }

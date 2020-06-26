@@ -7,7 +7,7 @@ Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require ClightC.
 Require Import Fib0.
-Require Import SIRmini_stack.
+Require Import SIRStack.
 (* Require Import Clightdefs. *)
 
 Set Implicit Arguments.

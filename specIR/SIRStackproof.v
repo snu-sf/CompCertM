@@ -17,9 +17,9 @@ Require Import LinkingC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton SimMod SimModSem.
 Require Import Sound SoundTop SimMem SimMemId SimSymb.
-Require Import SIRcommon.
-Require Import SIRmini.
-Require Import SIRmini_stack.
+Require Import SIRCommon.
+Require Import SIR.
+Require Import SIRStack.
 
 Require Import Program.
 Require Import SmallstepC.
@@ -95,8 +95,8 @@ Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
-Let md_src: Mod.t := (SIRmini.module sk prog mi initial_owned_heap).
-Let md_tgt: Mod.t := (SIRmini_stack.module sk prog mi initial_owned_heap).
+Let md_src: Mod.t := (SIR.module sk prog mi initial_owned_heap).
+Let md_tgt: Mod.t := (SIRStack.module sk prog mi initial_owned_heap).
 Let ms_src: ModSem.t := (Mod.modsem md_src skenv_link).
 Let ms_tgt: ModSem.t := (Mod.modsem md_tgt skenv_link).
 Hypothesis (INCLSRC: SkEnv.includes skenv_link (Mod.sk md_src)).
@@ -143,8 +143,8 @@ Hint Unfold fold_cont.
 
 
 
-Inductive match_states (idx: nat): SIRmini.state owned_heap ->
-          SIRmini_stack.state owned_heap -> SimMemOh.t -> Prop :=
+Inductive match_states (idx: nat): SIR.state owned_heap ->
+          SIRStack.state owned_heap -> SimMemOh.t -> Prop :=
 | match_states_intro
     itr0 cur cont smo0
     itr1
@@ -153,7 +153,7 @@ Inductive match_states (idx: nat): SIRmini.state owned_heap ->
     (MWF: SimMemOh.wf smo0)
     (IDX: (idx >= 2 + List.length cont)%nat)
   :
-    match_states idx itr0 (SIRmini_stack.mk cur cont) smo0
+    match_states idx itr0 (SIRStack.mk cur cont) smo0
 .
 
 
@@ -240,7 +240,7 @@ Proof.
         - eapply plus_left with (t1 := E0) (t2 := E0); ss.
           { split; ss.
             { eapply modsem_determinate; ss; et. }
-            instantiate (1:= SIRmini_stack.mk _ _).
+            instantiate (1:= SIRStack.mk _ _).
             eapply step_return; ss; et.
           }
           apply star_refl.
@@ -267,7 +267,7 @@ Proof.
     (*       - eapply plus_left with (t1 := E0) (t2 := E0); ss. *)
     (*         { split; ss. *)
     (*           { eapply modsem_determinate; ss; et. } *)
-    (*           instantiate (1:= SIRmini_stack.mk _ _). *)
+    (*           instantiate (1:= SIRStack.mk _ _). *)
     (*           eapply step_return; ss; et. *)
     (*         } *)
     (*         apply star_refl. *)
@@ -407,7 +407,7 @@ Proof.
         - eapply plus_left with (t1 := E0) (t2 := E0); ss.
           { split; ss.
             { eapply modsem_determinate; ss; et. }
-            instantiate (1:= SIRmini_stack.mk _ _).
+            instantiate (1:= SIRStack.mk _ _).
             eapply step_return; ss; et.
           }
           apply star_refl.
@@ -468,7 +468,7 @@ Proof.
   - (* TGTTAU *)
     ss; clarify.
     esplits; ss; et.
-    + left. apply plus_one. eapply SIRmini.step_tau; ss; et. f.
+    + left. apply plus_one. eapply SIR.step_tau; ss; et. f.
       rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. autorewrite with itree.
       f. ss.
     + right. eapply CIH. econs; ss; et.
@@ -476,14 +476,14 @@ Proof.
   - (* TGTNB *)
     ss; clarify.
     esplits; ss; et.
-    + left. apply plus_one. eapply SIRmini.step_nb; ss; et. f.
+    + left. apply plus_one. eapply SIR.step_nb; ss; et. f.
       rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. autorewrite with itree.
       f. ss.
     + right. eapply CIH. econs; ss; et.
   - (* TGTCHOOSE *)
     ss; clarify.
     exists (Ord.lift_idx lt_wf (S idx)). esplits; ss; et.
-    + left. apply plus_one. eapply SIRmini.step_choose; ss; et. f.
+    + left. apply plus_one. eapply SIR.step_choose; ss; et. f.
       rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. autorewrite with itree.
       f. ss.
     + left. pfold. ii. clear SUSTAR. econs 2. ii. clear_tac. econs 2; try refl; eauto.
@@ -497,7 +497,7 @@ Proof.
   - (* TGTCALL *)
     ss; clarify.
     esplits; ss; et.
-    + left. apply plus_one. eapply SIRmini.step_tau; ss; et. f.
+    + left. apply plus_one. eapply SIR.step_tau; ss; et. f.
       rewrite interp_mrec_bind. rewrite unfold_interp_mrec. cbn. autorewrite with itree.
       f. ss.
     + right. eapply CIH. econs; ss; et.
@@ -546,8 +546,8 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Definition mp: ModPair.t := SimSymbId.mk_mp (SIRmini.module sk prog mi initial_owned_heap)
-                                            (SIRmini_stack.module sk prog mi initial_owned_heap).
+Definition mp: ModPair.t := SimSymbId.mk_mp (SIR.module sk prog mi initial_owned_heap)
+                                            (SIRStack.module sk prog mi initial_owned_heap).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.

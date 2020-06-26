@@ -18,7 +18,7 @@ Require Import Mod ModSem Any Skeleton.
 Require Import SimMem SimSymb Sound.
 Require SimMemId SimSymbId SoundTop.
 Require Import SimMod SimModSem.
-Require Import SIRcommon SIRmini.
+Require Import SIRCommon SIR.
 
 Require Import Program.
 Require Import Simulation.
@@ -45,8 +45,8 @@ Definition SALL: (owned_heap_src * (mem * val)) -> (owned_heap_tgt * (mem * val)
 Section SEMANTICS.
 
 (*** sim states ***)
-Let st_src := (SIRmini.state owned_heap_src).
-Let st_tgt := (SIRmini.state owned_heap_tgt).
+Let st_src := (SIR.state owned_heap_src).
+Let st_tgt := (SIR.state owned_heap_tgt).
 
 Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :=
 | sim_st_ret
@@ -184,8 +184,8 @@ Section SIM.
   Variable ioh_tgt: SkEnv.t -> owned_heap_tgt.
   Hypothesis (SIMO: forall skenv, SO (ioh_src skenv) (ioh_tgt skenv)).
   Variable sk: Sk.t.
-  Let md_src: Mod.t := (SIRmini.module sk p_src mi ioh_src).
-  Let md_tgt: Mod.t := (SIRmini.module sk p_tgt mi ioh_tgt).
+  Let md_src: Mod.t := (SIR.module sk p_src mi ioh_src).
+  Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh_tgt).
 
 
 
@@ -205,8 +205,8 @@ Section SIM.
     Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link)
                                                   (SimSymbId.mk md_src md_tgt) sm_link.
 
-    Inductive match_states (idx: nat): SIRmini.state owned_heap_src ->
-                                       SIRmini.state owned_heap_tgt -> SimMemOh.t -> Prop :=
+    Inductive match_states (idx: nat): SIR.state owned_heap_src ->
+                                       SIR.state owned_heap_tgt -> SimMemOh.t -> Prop :=
     | match_states_intro
         st_src st_tgt smo0
         (SIM: sim_st st_src st_tgt)
@@ -339,8 +339,8 @@ Section SIM.
 
   End SIMMODSEM.
 
-  Theorem sim_mod: ModPair.sim (SimSymbId.mk_mp (SIRmini.module sk p_src mi ioh_src)
-                                                (SIRmini.module sk p_tgt mi ioh_tgt)).
+  Theorem sim_mod: ModPair.sim (SimSymbId.mk_mp (SIR.module sk p_src mi ioh_src)
+                                                (SIR.module sk p_tgt mi ioh_tgt)).
   Proof.
     ii. econs; ss; eauto.
     ii. rr in SIMSKENVLINK. clarify. esplits. eapply sim_modsem; et.

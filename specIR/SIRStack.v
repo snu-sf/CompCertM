@@ -15,7 +15,7 @@ Require Import EventsC.
 Require Import GlobalenvsC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton.
-Require Export SIRcommon.
+Require Export SIRCommon.
 
 Require Import Program.
 Require Import Simulation.

@@ -64,18 +64,12 @@ Inductive _sim_itr (sim_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt -> 
     oh_tgt k_tgt
     (O: SO oh_src oh_tgt)
     (SIM: HProper (SALL !-> sim_itr) k_src k_tgt)
-    (* (SIM: forall *)
-    (*     mr vr *)
-    (*     ohr_src *)
-    (*     ohr_tgt *)
-    (*   , *)
-    (*     sim_itr (k_src (ohr_src, (mr, vr))) (k_tgt (ohr_tgt, (mr, vr)))) *)
   :
     _sim_itr sim_itr
-             (trigger (ICall fname oh_src m vs) >>= k_src)
-             (trigger (ICall fname oh_tgt m vs) >>= k_tgt)
-             (* (Vis (subevent _ (ICall fname oh_src m vs)) k_src) *)
-             (* (Vis (subevent _ (ICall fname oh_tgt m vs)) k_tgt) *)
+             (* (trigger (ICall fname oh_src m vs) >>= k_src) *)
+             (* (trigger (ICall fname oh_tgt m vs) >>= k_tgt) *)
+             (Vis (subevent _ (ICall fname oh_src m vs)) k_src)
+             (Vis (subevent _ (ICall fname oh_tgt m vs)) k_tgt)
 | sim_ecall
     sg m vs fptr
     oh_src k_src
@@ -187,7 +181,7 @@ Proof.
   - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
     (* gfinal. left. eapply CIH. econstructor; eauto. *)
     debug eauto with paco.
-  - rewrite ! bind_bind. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot. eauto with paco.
+  - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot. eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot.
     eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto.
@@ -246,7 +240,7 @@ Section SIM.
     - pclearbot. gstep. econs; et. gbase. et.
     - pclearbot. gstep. econs; et. gbase.
       eapply CIH. eapply sim_itr_bind.
-      { u. ii. repeat spc SIM0. pclearbot. rewrite ! bind_ret_l. eauto. }
+      { u. ii. repeat spc SIM0. pclearbot. eauto. }
       exploit (@SIMP fname); et. intro T.
       inv T.
       { pfold. econs; et. }

@@ -314,7 +314,7 @@ Proof.
     rewrite Nat2Z.inj_sub; ss. rewrite Nat2Z.inj_sub; ss. rewrite <- Z.sub_add_distr; ss.
     rewrite <- Int_sub_repr. f_equal. rewrite Z2Nat.id; ss. rewrite Int.repr_signed; ss.
   }
-  rewrite <- U. step.
+  rewrite <- U. rewrite ! bind_trigger. step.
   sii S. r in S. des_ifs_safe. des. clarify.
   rewrite bind_bind.
   (* unfold assume at 2. *)
@@ -333,7 +333,7 @@ Proof.
   cbn.
   step_guarantee.
   { eapply Classical_Pred_Type.not_ex_all_not in T0. contradict T0; eauto. }
-  rewrite bind_ret_l. rewrite ! bind_bind. rewrite V. step.
+  rewrite bind_ret_l. rewrite ! bind_trigger. rewrite bind_vis. rewrite V. step.
   sii S. r in S. des_ifs_safe; des; clarify.
   rewrite bind_bind.
   step_assume.

@@ -15,7 +15,7 @@ Require Import EventsC.
 Require Import GlobalenvsC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton.
-Require Export SIRCommon2.
+Require Export ITreelib SIRcommon.
 
 Require Import Program.
 Require Import Simulation.
@@ -47,7 +47,7 @@ Section MODSEM.
   (*   itr:> itree eff0 (owned_heap * (mem * val)); *)
   (* }. *)
 
-  Let interp_program0 := interp_program0 p.
+  Let interp_program0 := interp_program p.
 
   Inductive initial_frame (oh0: owned_heap) (args: Args.t): state -> Prop :=
   | initial_frame_intro

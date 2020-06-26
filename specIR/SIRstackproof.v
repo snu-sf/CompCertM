@@ -17,7 +17,7 @@ Require Import LinkingC.
 Require Import IntegersC.
 Require Import Mod ModSem Any Skeleton SimMod SimModSem.
 Require Import Sound SoundTop SimMem SimMemId SimSymb.
-Require Import SIRCommon2.
+Require Import SIRcommon.
 Require Import SIRmini.
 Require Import SIRmini_stack.
 
@@ -25,20 +25,6 @@ Require Import Program.
 Require Import SmallstepC.
 
 Set Implicit Arguments.
-
-Import CatNotations.
-Open Scope cat_scope.
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -547,7 +533,7 @@ Proof.
     { econs; ss; et. }
     eapply match_states_lxsim; eauto.
     econs; ss; et.
-    f. unfold interp_program0. unfold mrec. cbn. autorewrite with itree. f.
+    f. unfold interp_program. unfold mrec. cbn. autorewrite with itree. f.
     rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm0; ss. clarify.
     inv MWF; ss. clarify.
     apply_all_once Genv.find_invert_symbol. clarify.

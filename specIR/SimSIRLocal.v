@@ -18,16 +18,12 @@ Require Import Mod ModSem Any Skeleton.
 Require Import SimMem SimSymb Sound.
 Require SimMemId SimSymbId SoundTop.
 Require Import SimMod SimModSem.
-Require Import SIRCommon2 SIRmini SimSIR.
+Require Import SIRcommon SIRmini SimSIR.
 
 Require Import Program.
 Require Import Simulation.
 
 Set Implicit Arguments.
-
-
-
-Local Obligation Tactic := ii; ss; eauto.
 
 
 
@@ -272,8 +268,8 @@ Section SIM.
       (fname: ident) m vs oh_src oh_tgt
       (O: SO oh_src oh_tgt)
     ,
-      (<<SIM: sim_st (interp_program0 p_src (ICall fname oh_src m vs))
-                     (interp_program0 p_tgt (ICall fname oh_tgt m vs))
+      (<<SIM: sim_st (interp_program p_src (ICall fname oh_src m vs))
+                     (interp_program p_tgt (ICall fname oh_tgt m vs))
                      >>)
   .
   Proof.

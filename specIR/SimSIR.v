@@ -18,78 +18,12 @@ Require Import Mod ModSem Any Skeleton.
 Require Import SimMem SimSymb Sound.
 Require SimMemId SimSymbId SoundTop.
 Require Import SimMod SimModSem.
-Require Import SIRCommon2 SIRmini.
+Require Import SIRcommon SIRmini.
 
 Require Import Program.
 Require Import Simulation.
 
 Set Implicit Arguments.
-
-
-
-Local Obligation Tactic := ii; ss; eauto.
-
-Definition hrespectful A0 A1 B0 B1 (RA: A0 -> A1 -> Prop) (RB: B0 -> B1 -> Prop):
-  (A0 -> B0) -> (A1 -> B1) -> Prop :=
-  fun f0 f1 => forall a0 a1, RA a0 a1 -> RB (f0 a0) (f1 a1)
-.
-
-Definition hrespectful_respectful A B (RA: relation A) (RB: relation B):
-  @hrespectful A A B B RA RB = @respectful A B RA RB.
-Proof. ss. Qed.
-
-Notation " R !-> R' " := (@hrespectful _ _ _ _ (R%signature) (R'%signature))
-                           (right associativity, at level 55).
-                         (* : signature_scope. *)
-
-Class HProper A0 A1 (R : A0 -> A1 -> Prop) (a0: A0) (a1: A1) : Prop := hproper_prf : R a0 a1.
-
-Program Instance HProper_Proper A RA (a: A) (P: HProper RA a a): Proper RA a.
-
-Hint Unfold hrespectful.
-Hint Unfold HProper.
-
-
-
-(*** TODO: move to SIRCommon ***)
-Lemma unfold_interp_mrec :
-forall (D E : Type -> Type) (ctx : forall T : Type, D T -> itree (D +' E) T) 
-  (R : Type) (t : itree (D +' E) R), interp_mrec ctx t = _interp_mrec ctx (observe t).
-Proof.
-  i. f. eapply unfold_interp_mrec; et.
-Qed.
-
-Lemma bind_ret_l : forall (E : Type -> Type) (R S : Type) (r : R) (k : R -> itree E S),
-    ` x : _ <- Ret r;; k x = k r.
-Proof.
-  i. f. eapply bind_ret_l.
-Qed.
-
-Lemma bind_ret_r : forall (E : Type -> Type) (R : Type) (s : itree E R), ` x : R <- s;; Ret x = s.
-Proof.
-  i. f. eapply bind_ret_r.
-Qed.
-
-Lemma bind_tau : forall (E : Type -> Type) (R U : Type) (t : itree E U) (k : U -> itree E R),
-  ` x : _ <- Tau t;; k x = Tau (` x : _ <- t;; k x).
-Proof.
-  i. f. eapply bind_tau.
-Qed.
-
-Lemma bind_vis: forall (E : Type -> Type) (R U V : Type) (e : E V) (ek : V -> itree E U) (k : U -> itree E R),
-  ` x : _ <- Vis e ek;; k x = Vis e (fun x : V => ` x : _ <- ek x;; k x).
-Proof.
-  i. f. eapply bind_vis.
-Qed.
-
-Lemma bind_trigger: forall (E : Type -> Type) (R U : Type) (e : E U) (k : U -> itree E R),
-    ` x : _ <- ITree.trigger e;; k x = Vis e (fun x : U => k x).
-Proof. i. f. eapply bind_trigger. Qed.
-
-Lemma bind_bind : forall (E : Type -> Type) (R S T : Type) (s : itree E R) (k : R -> itree E S) (h : S -> itree E T),
-    ` x : _ <- (` x : _ <- s;; k x);; h x = ` r : R <- s;; ` x : _ <- k r;; h x.
-Proof. i. f. eapply bind_bind. Qed.
-
 
 
 
@@ -193,8 +127,8 @@ Section SIM.
       (fname: ident) m vs oh_src oh_tgt
       (O: SO oh_src oh_tgt)
     ,
-      (<<SIM: sim_st (interp_program0 p_src (ICall fname oh_src m vs))
-                     (interp_program0 p_tgt (ICall fname oh_tgt m vs))
+      (<<SIM: sim_st (interp_program p_src (ICall fname oh_src m vs))
+                     (interp_program p_tgt (ICall fname oh_tgt m vs))
                      >>)
   .
 

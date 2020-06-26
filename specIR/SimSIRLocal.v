@@ -130,7 +130,7 @@ Let fn_tgt := function owned_heap_tgt.
 
 (*** TODO: curry "function", and we can state "SALL --> sim_itr" ***)
 (*** TODO: give better name than SALL ***)
-Definition sim_fn (k_src: fn_src) (k_tgt: fn_tgt): Prop := forall
+Definition match_fn (k_src: fn_src) (k_tgt: fn_tgt): Prop := forall
     m vs
     oh_src oh_tgt
     (O: SO oh_src oh_tgt)
@@ -143,8 +143,8 @@ Definition sim_fn (k_src: fn_src) (k_tgt: fn_tgt): Prop := forall
 
 
 (*** sim prog ***)
-Definition sim_prog: program owned_heap_src -> program owned_heap_tgt -> Prop :=
-  eq !-> option_rel sim_fn
+Definition match_prog: program owned_heap_src -> program owned_heap_tgt -> Prop :=
+  eq !-> option_rel match_fn
 .
 
 

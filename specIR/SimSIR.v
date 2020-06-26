@@ -123,7 +123,7 @@ Section SIM.
 
   Variable p_src: program owned_heap_src.
   Variable p_tgt: program owned_heap_tgt.
-  Variable adequacy_local_local: forall
+  Variable sim_prog: forall
       (fname: ident) m vs oh_src oh_tgt
       (O: SO oh_src oh_tgt)
     ,
@@ -328,7 +328,7 @@ Section SIM.
         assert(fid0 = fid).
         { apply_all_once Genv.find_invert_symbol. clarify. }
         clarify.
-        eapply adequacy_local_local; et.
+        eapply sim_prog; et.
       - i; des. inv SAFESRC. ss. des_ifs.
         rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm0; ss. clarify.
         esplits; et. econs; ss; et.

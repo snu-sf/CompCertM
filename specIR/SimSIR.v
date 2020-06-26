@@ -618,15 +618,12 @@ Section SIM.
         { econs; ss; et. }
         eapply match_states_lxsim; eauto.
         econs; ss; et.
-        eapply sim_prog_sim_st; et.
         rr in SIMARGS. des. inv SIMARGS0; ss. clarify. inv MWF. ss. destruct sm_arg; ss.
         destruct sm0; ss. subst. clarify. clear_tac.
         assert(fid0 = fid).
         { apply_all_once Genv.find_invert_symbol. clarify. }
         clarify.
-        rr in SIMP. repeat spc SIMP. hexploit1 SIMP; et. inv SIMP; ss.
-        { pfold. econs; et. }
-        { eapply H1; et. }
+        eapply adequacy_local_local; et.
       - i; des. inv SAFESRC. ss. des_ifs.
         rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm0; ss. clarify.
         esplits; et. econs; ss; et.

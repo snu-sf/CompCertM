@@ -143,8 +143,8 @@ Hint Rewrite @bind_trigger : itree.
 Hint Rewrite @tau_eutt : itree.
 Hint Rewrite @bind_tau : itree.
 
-Tactic Notation "irw" "in" ident(H) := repeat (autorewrite with itree in H; cbn in H).
-Tactic Notation "irw" := repeat (autorewrite with itree; cbn).
+(* Tactic Notation "irw" "in" ident(H) := repeat (autorewrite with itree in H; cbn in H). *)
+(* Tactic Notation "irw" := repeat (autorewrite with itree; cbn). *)
 
 (*** TODO: IDK why but (1) ?UNUSNED is needed (2) "fold" tactic does not work. WHY????? ***)
 Ltac fold_eutt :=
@@ -156,8 +156,9 @@ Ltac fold_eutt :=
 .
 
 Lemma bind_ret_map {E R1 R2} (u : itree E R1) (f : R1 -> R2) :
-  (r <- u ;; Ret (f r)) ≅ f <$> u.
+  (r <- u ;; Ret (f r)) = f <$> u.
 Proof.
+  f.
   rewrite <- (bind_ret_r u) at 2. apply eqit_bind.
   - hnf. intros. apply eqit_Ret. auto.
   - rewrite bind_ret_r. reflexivity.
@@ -165,8 +166,9 @@ Qed.
 
 Lemma map_vis {E R1 R2 X} (e: E X) (k: X -> itree E R1) (f: R1 -> R2) :
   (* (f <$> (Vis e k)) ≅ Vis e (fun x => f <$> (k x)). *)
-  ITree.map f (Vis e k) ≅ Vis e (fun x => f <$> (k x)).
+  ITree.map f (Vis e k) = Vis e (fun x => f <$> (k x)).
 Proof.
+  f.
   cbn.
   unfold ITree.map.
   autorewrite with itree. refl.
@@ -213,3 +215,14 @@ Proof. i. f. eapply bind_trigger. Qed.
 Lemma bind_bind : forall (E : Type -> Type) (R S T : Type) (s : itree E R) (k : R -> itree E S) (h : S -> itree E T),
     ` x : _ <- (` x : _ <- s;; k x);; h x = ` r : R <- s;; ` x : _ <- k r;; h x.
 Proof. i. f. eapply bind_bind. Qed.
+
+
+Hint Rewrite unfold_interp_mrec : itree_axiom.
+Hint Rewrite bind_ret_l : itree_axiom.
+Hint Rewrite bind_ret_r : itree_axiom.
+Hint Rewrite bind_tau : itree_axiom.
+Hint Rewrite bind_vis : itree_axiom.
+Hint Rewrite bind_trigger : itree_axiom.
+Hint Rewrite bind_bind : itree_axiom.
+Tactic Notation "irw" "in" ident(H) := repeat (autorewrite with itree_axiom in H; cbn in H).
+Tactic Notation "irw" := repeat (autorewrite with itree_axiom; cbn).

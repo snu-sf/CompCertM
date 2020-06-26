@@ -29,6 +29,7 @@ Set Implicit Arguments.
 
 
 
+
 Lemma bind_unwrapU
       E `{EventE -< E} R S
       (r: option R) r'
@@ -247,7 +248,7 @@ Proof.
   gcofix CIH. ii.
   step.
   step_assume.
-  cbn. rewrite bind_ret_l. unfold precond, parse_arg in *. des. des_ifs_safe. rewrite T. cbn. rewrite bind_ret_l.
+  unfold precond, parse_arg in *. des. des_ifs_safe. irw. rewrite T. irw.
   destruct n eqn:U.
   { rewrite bind_ret_l. clarify.
     assert(i = Int.zero).

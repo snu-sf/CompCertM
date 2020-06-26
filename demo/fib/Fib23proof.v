@@ -51,12 +51,6 @@ Proof.
   rewrite SOME. cbn. eapply bind_ret_l.
 Qed.
 
-Lemma bind_bind : forall (E : Type -> Type) (R S T : Type) (s : itree E R) (k : R -> itree E S) (h : S -> itree E T),
-    ` x : _ <- (` x : _ <- s;; k x);; h x = ` r : R <- s;; ` x : _ <- k r;; h x.
-Proof.
-  i. f. eapply bind_bind.
-Qed.
-
 Lemma bind_assume
       E `{EventE -< E} R
       (P: Prop)
@@ -208,10 +202,6 @@ Proof.
   - apply Int.eqm_sub; apply Int.eqm_unsigned_repr.
 Qed.
 
-Lemma bind_trigger: forall (E : Type -> Type) (R U : Type) (e : E U) (k : U -> itree E R),
-    ` x : _ <- ITree.trigger e;; k x = Vis e (fun x : U => k x).
-Proof. i. f. eapply bind_trigger. Qed.
-
 Local Opaque ident_eq.
 Local Opaque Z.of_nat.
 
@@ -248,7 +238,7 @@ Proof.
 
 
 
-  eapply SimSIR.sim_mod with (SO := eq); ss.
+  eapply SimSIRLocal.sim_mod with (SO := eq); ss.
   ii. clarify. unfold Fib3.prog, prog. ss. des_ifs; econs; et.
   ii. clarify. unfold Fib3.owned_heap in *. des_u. ss.
   revert m vs.
@@ -315,7 +305,7 @@ Proof.
   }
   clear_tac. clear T0.
   rewrite bind_ret_l.
-  rewrite bind_bind. rewrite ! bind_trigger.
+  rewrite bind_bind.
   assert(U: of_nat n1 = Int.sub i (Int.repr 2)).
   { unfold to_nat_opt in *. des_ifs. unfold of_nat.
     eapply SUCPRED in H0; des.
@@ -343,7 +333,7 @@ Proof.
   cbn.
   step_guarantee.
   { eapply Classical_Pred_Type.not_ex_all_not in T0. contradict T0; eauto. }
-  rewrite bind_ret_l. rewrite ! bind_bind. rewrite ! bind_trigger. rewrite V. step.
+  rewrite bind_ret_l. rewrite ! bind_bind. rewrite V. step.
   sii S. r in S. des_ifs_safe; des; clarify.
   rewrite bind_bind.
   step_assume.

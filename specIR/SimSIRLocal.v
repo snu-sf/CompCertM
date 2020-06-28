@@ -46,96 +46,96 @@ Section SYNTAX.
 Let itr_src := itree (E owned_heap_src) (owned_heap_src * (mem * val)).
 Let itr_tgt := itree (E owned_heap_tgt) (owned_heap_tgt * (mem * val)).
 
-Inductive _sim_itr (sim_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt -> Prop :=
-| sim_ret
+Inductive _match_itr (match_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt -> Prop :=
+| match_ret
     oh_src oh_tgt m v
     (O: SO oh_src oh_tgt)
   :
-    _sim_itr sim_itr (Ret (oh_src, (m, v))) (Ret (oh_tgt, (m, v)))
-| sim_tau
+    _match_itr match_itr (Ret (oh_src, (m, v))) (Ret (oh_tgt, (m, v)))
+| match_tau
     i_src
     i_tgt
-    (SIM: sim_itr i_src i_tgt)
+    (MATCH: match_itr i_src i_tgt)
   :
-    _sim_itr sim_itr (Tau i_src) (Tau i_tgt)
-| sim_icall
+    _match_itr match_itr (Tau i_src) (Tau i_tgt)
+| match_icall
     fname m vs
     oh_src k_src
     oh_tgt k_tgt
     (O: SO oh_src oh_tgt)
-    (SIM: HProper (SALL !-> sim_itr) k_src k_tgt)
+    (MATCH: HProper (SALL !-> match_itr) k_src k_tgt)
   :
-    _sim_itr sim_itr
+    _match_itr match_itr
              (* (trigger (ICall fname oh_src m vs) >>= k_src) *)
              (* (trigger (ICall fname oh_tgt m vs) >>= k_tgt) *)
              (Vis (subevent _ (ICall fname oh_src m vs)) k_src)
              (Vis (subevent _ (ICall fname oh_tgt m vs)) k_tgt)
-| sim_ecall
+| match_ecall
     sg m vs fptr
     oh_src k_src
     oh_tgt k_tgt
     (O: SO oh_src oh_tgt)
-    (SIM: HProper (SALL !-> sim_itr) k_src k_tgt)
-    (* (SIM: forall *)
+    (MATCH: HProper (SALL !-> match_itr) k_src k_tgt)
+    (* (MATCH: forall *)
     (*     mr vr *)
     (*     ohr_src ohr_tgt *)
     (*   , *)
-    (*     sim_itr (k_src (ohr_src, (mr, vr))) (k_tgt (ohr_tgt, (mr, vr)))) *)
+    (*     match_itr (k_src (ohr_src, (mr, vr))) (k_tgt (ohr_tgt, (mr, vr)))) *)
   :
-    _sim_itr sim_itr
+    _match_itr match_itr
              (Vis (subevent _ (ECall sg fptr oh_src m vs)) k_src)
              (Vis (subevent _ (ECall sg fptr oh_tgt m vs)) k_tgt)
-| sim_nb
+| match_nb
     i_src k_tgt
   :
-    _sim_itr sim_itr i_src (Vis (subevent _ (ENB)) k_tgt)
-| sim_ub
+    _match_itr match_itr i_src (Vis (subevent _ (ENB)) k_tgt)
+| match_ub
     k_src i_tgt
   :
-    _sim_itr sim_itr (Vis (subevent _ (EUB)) k_src) i_tgt
-| sim_choose_src
+    _match_itr match_itr (Vis (subevent _ (EUB)) k_src) i_tgt
+| match_choose_src
     X_src
     k_src i_tgt
-    (SIM: exists x_src, sim_itr (k_src x_src) i_tgt)
+    (MATCH: exists x_src, match_itr (k_src x_src) i_tgt)
   :
-    _sim_itr sim_itr
+    _match_itr match_itr
              (Vis (subevent _ (EChoose X_src)) k_src)
              (Tau (Tau i_tgt))
-| sim_choose_tgt
+| match_choose_tgt
     X_tgt
     k_tgt i_src
-    (SIM: forall x_tgt, sim_itr i_src (k_tgt x_tgt))
+    (MATCH: forall x_tgt, match_itr i_src (k_tgt x_tgt))
     (INHAB: inhabited X_tgt)
   :
-    _sim_itr sim_itr
+    _match_itr match_itr
              (Tau (Tau i_src))
              (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 .
 
-Definition sim_itr: itr_src -> itr_tgt -> Prop := paco2 _sim_itr bot2.
+Definition match_itr: itr_src -> itr_tgt -> Prop := paco2 _match_itr bot2.
 
-Lemma sim_itr_mon: monotone2 _sim_itr.
+Lemma match_itr_mon: monotone2 _match_itr.
 Proof.
   ii. inv IN; try econs; et; rr; et.
   des. esplits; et.
 Unshelve.
 Qed.
-Hint Unfold sim_itr.
-Hint Resolve sim_itr_mon: paco.
+Hint Unfold match_itr.
+Hint Resolve match_itr_mon: paco.
 
 
 
 Let fn_src := function owned_heap_src.
 Let fn_tgt := function owned_heap_tgt.
 
-(*** TODO: curry "function", and we can state "SALL --> sim_itr" ***)
+(*** TODO: curry "function", and we can state "SALL --> match_itr" ***)
 (*** TODO: give better name than SALL ***)
 Definition match_fn (k_src: fn_src) (k_tgt: fn_tgt): Prop := forall
     m vs
     oh_src oh_tgt
     (O: SO oh_src oh_tgt)
   ,
-    <<SIM: sim_itr (k_src oh_src m vs) (k_tgt oh_tgt m vs)>>
+    <<SIM: match_itr (k_src oh_src m vs) (k_tgt oh_tgt m vs)>>
 .
 
 
@@ -155,7 +155,7 @@ Definition match_prog: program owned_heap_src -> program owned_heap_tgt -> Prop 
 Inductive bindC (r: itr_src -> itr_tgt -> Prop) : itr_src -> itr_tgt -> Prop :=
 | bindC_intro
     i_src i_tgt
-    (SIM: sim_itr i_src i_tgt)
+    (SIM: match_itr i_src i_tgt)
     k_src k_tgt
     (SIMK: HProper (SALL !-> r) k_src k_tgt)
     (* (SIMK: forall *)
@@ -172,7 +172,7 @@ Hint Constructors bindC: core.
 Lemma bindC_spec
       simC
   :
-    bindC <3= gupaco2 (_sim_itr) (simC)
+    bindC <3= gupaco2 (_match_itr) (simC)
 .
 Proof.
   gcofix CIH. intros. destruct PR.
@@ -181,8 +181,8 @@ Proof.
   - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
     (* gfinal. left. eapply CIH. econstructor; eauto. *)
     debug eauto with paco.
-  - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot. eauto with paco.
-  - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc SIM0. pclearbot.
+  - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc MATCH. pclearbot. eauto with paco.
+  - rewrite ! bind_vis. gstep. econs; eauto. u. ii. repeat spc MATCH. pclearbot.
     eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto.
   - rewrite ! bind_vis. gstep. econs; eauto.
@@ -192,8 +192,8 @@ Proof.
     gstep. econs; eauto. ii. pclearbot. eauto with paco.
 Qed.
 
-Global Instance sim_itr_bind :
-  HProper ((SALL !-> sim_itr) !-> sim_itr !-> sim_itr) ITree.bind' ITree.bind'
+Global Instance match_itr_bind :
+  HProper ((SALL !-> match_itr) !-> match_itr !-> match_itr) ITree.bind' ITree.bind'
 .
 Proof.
   red. ginit.
@@ -205,8 +205,8 @@ Proof.
 Qed.
 
 End SYNTAX.
-Hint Unfold sim_itr.
-Hint Resolve sim_itr_mon: paco.
+Hint Unfold match_itr.
+Hint Resolve match_itr_mon: paco.
 
 
 
@@ -220,11 +220,11 @@ Section SIM.
 
   Variable p_src: program owned_heap_src.
   Variable p_tgt: program owned_heap_tgt.
-  Hypothesis (SIMP: sim_prog p_src p_tgt).
+  Hypothesis (SIMP: match_prog p_src p_tgt).
 
   Lemma sim_prog_sim_st
         i_src i_tgt
-        (SIM: sim_itr i_src i_tgt)
+        (SIM: match_itr i_src i_tgt)
     :
       sim_st (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
@@ -239,13 +239,13 @@ Section SIM.
     - gstep. econs; et.
     - pclearbot. gstep. econs; et. gbase. et.
     - pclearbot. gstep. econs; et. gbase.
-      eapply CIH. eapply sim_itr_bind.
-      { u. ii. repeat spc SIM0. pclearbot. eauto. }
+      eapply CIH. eapply match_itr_bind.
+      { u. ii. repeat spc MATCH. pclearbot. eauto. }
       exploit (@SIMP fname); et. intro T.
       inv T.
       { pfold. econs; et. }
       exploit H1; et.
-    - gstep. econs; et. u in *. gstep. econs; et. repeat spc SIM0. specialize (SIM0 H0).
+    - gstep. econs; et. u in *. gstep. econs; et. repeat spc MATCH. specialize (MATCH H0).
       des; ss. gbase. eapply CIH.
       eauto with paco.
     - gstep. econs; et.
@@ -294,8 +294,6 @@ Section SIM.
 End SIM.
 
 End OWNEDHEAP.
-Hint Unfold sim_itr.
-Hint Resolve sim_itr_mon: paco.
+Hint Unfold match_itr.
+Hint Resolve match_itr_mon: paco.
 Hint Constructors bindC: core.
-Hint Unfold sim_st.
-Hint Resolve sim_st_mon: paco.

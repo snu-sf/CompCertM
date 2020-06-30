@@ -137,13 +137,13 @@ Definition match_itr: itr -> itr -> Prop := paco2 _match_itr bot2.
 Lemma match_itr_mon: monotone2 _match_itr.
 Proof.
   ii. inv IN; try econs; et; rr; et.
-  des. esplits; et.
-Unshelve.
 Qed.
 Hint Unfold match_itr.
 Hint Resolve match_itr_mon: paco.
 
-Hint Constructors match_itr.
+
+
+
 
 Section PROG.
 
@@ -153,7 +153,7 @@ Definition fn_src (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_he
   trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) >>= (fun x => Ret (proj1_sig x))
 .
 
-Inductive match_fn (fn_ru fn_tgt: function owned_heap): Prop :=
+Inductive match_fn_focus (fn_ru fn_tgt: function owned_heap): Prop :=
 | match_fn_intro
     fn_tgt_inner
     (SIM: (eq ==> eq ==> eq ==> match_itr) fn_ru fn_tgt_inner)
@@ -164,6 +164,10 @@ Inductive match_fn (fn_ru fn_tgt: function owned_heap): Prop :=
     )
 .
 
+Definition match_fn (fn_src fn_tgt: function owned_heap): Prop :=
+  (eq ==> eq ==> eq ==> match_itr) fn_src fn_tgt
+.
+
 Inductive match_prog (p_src p_tgt: program owned_heap): Prop :=
 | match_prog_intro
     fn_ru (* rudiment *) fn_tgt
@@ -171,8 +175,9 @@ Inductive match_prog (p_src p_tgt: program owned_heap): Prop :=
     (FNTGT: p_tgt _fn = Some fn_tgt)
     (RDSRC: p_src _fn_ru = Some fn_ru)
     (RDTGT: p_tgt _fn_ru = None)
-    (SIMFN: match_fn fn_ru fn_tgt)
-    (OTHERS: forall _fm (NEQ: _fm <> _fn) (NEQ: _fm <> _fn_ru), p_src _fm = p_tgt _fm)
+    (FOCUS: match_fn_focus fn_ru fn_tgt)
+    (OTHERS: forall _fm (NEQ: _fm <> _fn) (NEQ: _fm <> _fn_ru),
+        option_rel match_fn (p_src _fm) (p_tgt _fm))
   :
     match_prog p_src p_tgt
 .
@@ -183,50 +188,131 @@ End PROG.
 
 
 
+(*** useful lemma for below proof ***)
+(*** copied from "eqit_bind_clo" in itree repo - Eq.v ***)
+Inductive bindC (r: itr -> itr -> Prop) : itr -> itr -> Prop :=
+| bindC_intro
+    i_src i_tgt
+    (SIM: match_itr i_src i_tgt)
+    k_src k_tgt
+    (SIMK: (eq ==> r) k_src k_tgt)
+  :
+    bindC r (ITree.bind i_src k_src) (ITree.bind i_tgt k_tgt)
+.
+
+Hint Constructors bindC: core.
+
+Lemma bindC_spec
+      simC
+  :
+    bindC <3= gupaco2 (_match_itr) (simC)
+.
+Proof.
+  gcofix CIH. intros. destruct PR.
+  punfold SIM. inv SIM.
+  - rewrite ! bind_ret_l. gbase. eapply SIMK; et.
+  - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
+    (* gfinal. left. eapply CIH. econstructor; eauto. *)
+    debug eauto with paco.
+  - rewrite ! bind_vis. gstep. econs; eauto. ii. clarify.
+    repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
+  - rewrite ! bind_bind. gstep.
+    erewrite f_equal2; try eapply match_icall_fn; try refl; cycle 1.
+    { irw. f. f_equiv. ii. f_equiv. ii. f. irw. refl. }
+    ii. clarify.
+    repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
+  - rewrite ! bind_vis. gstep. econs; eauto. ii. clarify.
+    repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
+  - rewrite ! bind_vis. gstep. econs; eauto.
+  - rewrite ! bind_vis. gstep. econs; eauto.
+  - rewrite ! bind_vis. gstep. econs; eauto. ii. clarify.
+    repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
+Qed.
+
 Global Instance match_itr_bind :
   Proper ((eq ==> match_itr) ==> match_itr ==> match_itr) ITree.bind'
 .
 Proof.
-  red. ii.
-  gen x y.
-  induction H0 using match_itr_ind; i; try (by irw; et; econs; et; ii; eapply H; et).
-  - rewrite ! bind_bind.
-    erewrite f_equal2; try eapply match_icall_fn; try reflexivity; revgoals.
-    { irw. f. f_equiv. ii. f_equiv. ii. f. rewrite bind_bind. reflexivity. }
-    ii. clarify. et.
+  red. ginit.
+  { intros. eapply cpn2_wcompat; eauto with paco. }
+  guclo bindC_spec. ii. econs; et.
+  u. ii.
+  exploit H0; et.
+  intro T. eauto with paco.
 Qed.
 
-(* Global Instance match_itr_bind_strong : *)
-(*   Proper ((eq ==> (match_itr \2/ eq)) ==> (match_itr \2/ eq) ==> (match_itr \2/ eq)) ITree.bind' *)
-(* . *)
-(* Proof. *)
-(*   red. ii. *)
-(*   gen x y. *)
-(*   des. *)
-(*   { *)
-(*     induction H0 using match_itr_ind; i; try (by irw; et; econs; et; ii; eapply H; et). *)
-(*     - ii. irw; et. exploit IHmatch_itr; et. intro T. des. *)
-(*       + left. econs; et. *)
-(*       + right. do 2 f_equal; et. *)
-(*     - left. irw. econs; et. ii. clarify. exploit H; et. intro T. instantiate (1:= y0) in T. des; ss. *)
-(*       ii. irw; et. exploit H; et. intro T. des. *)
-(*       + left. econs; et. ii. clarify. instantiate (1:= y0) in T. eapply T. *)
-(*       + right. do 2 f_equal; et. *)
-(*     - *)
-(*     - rewrite ! bind_bind. *)
-(*       erewrite f_equal2; try eapply match_icall_fn; try reflexivity; revgoals. *)
-(*       { irw. f. f_equiv. ii. f_equiv. ii. f. rewrite bind_bind. reflexivity. } *)
-(*       ii. clarify. et. *)
-(*   } *)
-(* Qed. *)
-
 End SYNTAX.
-Hint Constructors match_itr.
+Hint Unfold match_itr.
+Hint Resolve match_itr_mon: paco.
 
 
 
 
 
+Ltac step := gstep; econs; et.
+Ltac step_guarantee := match goal with
+                    | |- context[guarantee ?P ;; _] =>
+                      (*** I want to unfold only the "first" guarantee.
+Maybe we should use notation instead, so that we can avoid this weird "unfold"? ***)
+                      first[
+                          unfold guarantee at 5|
+                          unfold guarantee at 4|
+                          unfold guarantee at 3|
+                          unfold guarantee at 2|
+                          unfold guarantee at 1|
+                          unfold guarantee at 0
+                        ];
+                      let name := fresh "T" in
+                      destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
+                        unfold triggerNB; rewrite bind_vis (*** <---------- this is counter-intuitive. Any good idea? ***);
+                        try step|]
+                    end
+.
+Ltac step_assume := match goal with
+                    | |- context[assume ?P ;; _] =>
+                      (*** I want to unfold only the "first" assume.
+Maybe we should use notation instead, so that we can avoid this weird "unfold"? ***)
+                      first[
+                          unfold assume at 5|
+                          unfold assume at 4|
+                          unfold assume at 3|
+                          unfold assume at 2|
+                          unfold assume at 1|
+                          unfold assume at 0
+                        ];
+                      let name := fresh "T" in
+                      destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
+                        unfold triggerUB; rewrite bind_vis (*** <---------- this is counter-intuitive. Any good idea? ***);
+                        try step|]
+                    end
+.
+Ltac step_guaranteeK := match goal with
+                        | |- context[guaranteeK ?P ;; _] =>
+                          (*** I want to unfold only the "first" assume.
+Maybe we should use notation instead, so that we can avoid this weird "unfold"? ***)
+                          first[
+                              unfold guaranteeK at 5|
+                              unfold guaranteeK at 4|
+                              unfold guaranteeK at 3|
+                              unfold guaranteeK at 2|
+                              unfold guaranteeK at 1|
+                              unfold guaranteeK at 0
+                            ];
+                          destruct (ClassicalDescription.excluded_middle_informative P); cycle 1
+                        | |- context[guaranteeK ?P ?Q] =>
+                          (*** I want to unfold only the "first" assume.
+Maybe we should use notation instead, so that we can avoid this weird "unfold"? ***)
+                          first[
+                              unfold guaranteeK at 5|
+                              unfold guaranteeK at 4|
+                              unfold guaranteeK at 3|
+                              unfold guaranteeK at 2|
+                              unfold guaranteeK at 1|
+                              unfold guaranteeK at 0
+                            ];
+                          destruct (ClassicalDescription.excluded_middle_informative (P Q)); cycle 1
+                        end
+.
 
 
 
@@ -239,7 +325,7 @@ Section SIM.
 
   Lemma sim_prog_sim_st
         i_src i_tgt
-        (SIM: match_itr i_src i_tgt \/ i_src = i_tgt)
+        (SIM: match_itr i_src i_tgt)
     :
       sim_st (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
@@ -250,56 +336,39 @@ Section SIM.
     { intros. eapply cpn2_wcompat; et. eauto with paco. }
     gcofix CIH.
     i. rewrite ! unfold_interp_mrec.
-    des; cycle 1.
-    { clarify.
-      gstep.
-      Hint Unfold E. u. (*** <-- TODO: remove E, or use as a notation, or ... ***)
-      ides i_tgt.
-      (* destruct (observe i_tgt) eqn:T; u in T; rewrite T; cbn. *)
-      - destruct r0; ss. destruct p; ss. econs; et.
-      - econs; et. gbase. et.
-      - cbn. des_ifs.
-        + econs; et. gbase. eapply CIH.
-          destruct i.
-          destruct (eq_block name _fn).
-          { clarify. unfold interp_function. inv SIMP. cbn. des_ifs_safe.
-            inv SIMFN. left. eapply match_itr_bind; et.
-            { ii. clarify. rename k into kk.
-              admit "". }
-            { admit "". }
-          }
-          destruct (eq_block name _fn_ru).
-          {
-            admit "".
-          }
-          right. f_equal.
-    }
-    inv SIM; cbn.
+    punfold SIM. inv SIM; cbn.
     - gstep. econs; et.
-    - gstep. econs; et. gbase. et.
+    - gstep. econs; et. gbase. pclearbot. et.
     - gstep. econs; et. gbase.
       eapply CIH. eapply match_itr_bind; et.
+      { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
       inv SIMP.
-      exploit OTHERS; et. intro T. des_ifs; cycle 1.
-      { econs; et. }
-      econs; et.
-
-      eapply CIH. eapply match_itr_bind.
-      { u. ii. repeat spc MATCH. pclearbot. eauto. }
-
-      exploit (@MATCH fname); et. intro T.
-      inv T.
+      exploit OTHERS; et. intro T. inv T.
       { pfold. econs; et. }
       exploit H1; et.
-    - gstep. econs; et. u in *. gstep. econs; et. repeat spc MATCH. specialize (MATCH H0).
-      des; ss. gbase. eapply CIH.
-      eauto with paco.
+    - step_guarantee. irw. step.
+      rewrite <- ! unfold_interp_mrec.
+      gbase. eapply CIH.
+      inv SIMP.
+      des_ifs_safe. inv FOCUS. irw.
+      step_assume; ss. irw.
+      eapply match_itr_bind; et.
+      { ii. clarify. step_guaranteeK; ss.
+        (*** TODO: fix step_guaranteeK ***)
+        { pfold. unfold triggerNB. rewrite bind_vis. econs; et. }
+        irw. step_assume; ss.
+        irw. exploit MATCH; et. intro U. pclearbot. eauto.
+      }
+      exploit SIM; et.
+    - gstep. econs; et. u in *. gstep. econs; et.
+      assert(a0 = a1).
+      { rr in H0. des_ifs. des. clarify. }
+      clarify.
+      repeat spc MATCH. hexploit1 MATCH; ss. pclearbot.
+      gbase. eapply CIH. eauto with paco.
     - gstep. econs; et.
     - gstep. econs; et.
-    - gstep. des. pclearbot. econs; et. esplits; et. gstep.
-      rewrite (unfold_interp_mrec _ (Tau i_tgt0)). cbn. econs; et. eauto with paco.
-    - gstep. pclearbot. econs; et. ii. repeat spc SIM0. gstep.
-      rewrite (unfold_interp_mrec _ (Tau i_src0)). cbn. econs; et. eauto with paco.
+    - gstep. admit "choose".
   Qed.
 
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)

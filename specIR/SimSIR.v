@@ -95,6 +95,15 @@ Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :
     _sim_st sim_st
             (Tau i_src)
             (Vis (subevent _ (EChoose X_tgt)) k_tgt)
+| sim_st_choose_both
+    X_src X_tgt
+    k_src k_tgt
+    (INHAB: inhabited X_tgt)
+    (SIM: forall x_tgt, exists x_src, sim_st (k_src x_src) (k_tgt x_tgt))
+  :
+    _sim_st sim_st
+            (Vis (subevent _ (EChoose X_src)) k_src)
+            (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 .
 
 Definition sim_st: st_src -> st_tgt -> Prop := paco2 _sim_st bot2.
@@ -102,7 +111,8 @@ Definition sim_st: st_src -> st_tgt -> Prop := paco2 _sim_st bot2.
 Lemma sim_st_mon: monotone2 _sim_st.
 Proof.
   ii. inv IN; try econs; et.
-  des. esplits; et.
+  - des. esplits; et.
+  - i. exploit SIM; et. i; des. esplits; et.
 Unshelve.
 Qed.
 Hint Unfold sim_st.
@@ -302,6 +312,17 @@ Section SIM.
         { esplits; ss; et. econs 3; ss; et. }
         { ii. inv STEPTGT; ss; csc. esplits; et.
           + left. eapply plus_one. econs; ss; et.
+          + gbase. eapply CIH. econs; et.
+        }
+      - (* CHOOSE BOTH *)
+        inv INHAB.
+        econs 2; ss; et. ii.
+        econs 1; ss; et; cycle 1.
+        { esplits; ss; et. econs 3; ss; et. }
+        { ii. inv STEPTGT; ss; csc.
+          hexpl SIM0; et. pclearbot.
+          esplits; et.
+          + left. eapply plus_one. econs 3; ss; et.
           + gbase. eapply CIH. econs; et.
         }
     Unshelve.

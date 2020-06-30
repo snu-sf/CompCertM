@@ -81,9 +81,9 @@ Let itr := itree (E owned_heap) (owned_heap * (mem * val)).
 
 Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
 | match_ret
-    oh m v
+    ohmv
   :
-    _match_itr match_itr (Ret (oh, (m, v))) (Ret (oh, (m, v)))
+    _match_itr match_itr (Ret ohmv) (Ret ohmv)
 | match_tau
     i_src
     i_tgt
@@ -127,6 +127,7 @@ Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
 | match_choose
     X
     k_src k_tgt
+    (INHAB: inhabited X)
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
     _match_itr match_itr
@@ -148,10 +149,16 @@ Hint Resolve match_itr_mon: paco.
 
 Section PROG.
 
-Definition fn_src (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_heap) (owned_heap * (mem * val)) :=
+Definition fn_src_ignorant (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_heap) (owned_heap * (mem * val)) :=
   assume (precond oh0 m0 vs0) ;;
   _I_DONT_USE_THIS__RUDIMENT_ORGAN_ <- trigger (ICall _fn_ru oh0 m0 vs0) ;;
   trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) >>= (fun x => Ret (proj1_sig x))
+.
+
+Definition fn_src (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_heap) (owned_heap * (mem * val)) :=
+  assume (precond oh0 m0 vs0) ;;
+  trigger (ICall _fn_ru oh0 m0 vs0)
+  >>= guaranteeK (postcond oh0 m0 vs0)
 .
 
 Inductive match_fn_focus (fn_ru fn_tgt: function owned_heap): Prop :=
@@ -226,7 +233,7 @@ Proof.
     repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto.
   - rewrite ! bind_vis. gstep. econs; eauto.
-  - gstep. irw. econsr. ii. clarify.
+  - gstep. irw. econsr; ss. ii. clarify.
     repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
 Qed.
 
@@ -338,7 +345,7 @@ Section SIM.
     gcofix CIH.
     i. rewrite ! unfold_interp_mrec.
     punfold SIM. inv SIM; cbn.
-    - gstep. econs; et.
+    - gstep. destruct ohmv as [oh [m v]]. econs; et.
     - gstep. econs; et. gbase. pclearbot. et.
     - gstep. econs; et. gbase.
       eapply CIH. eapply match_itr_bind; et.
@@ -369,7 +376,8 @@ Section SIM.
       gbase. eapply CIH. eauto with paco.
     - gstep. econs; et.
     - gstep. econs; et.
-    - gstep. eapply sim_st_choose_tgt. admit "choose".
+    - irw. step. step. ii. esplits; et. step.
+      exploit MATCH; et. intro T. pclearbot. eauto with paco.
   Qed.
 
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)
@@ -383,67 +391,56 @@ Section SIM.
   .
   Proof.
     {
-      ginit.
-      { intros. eapply cpn2_wcompat; et. eauto with paco. }
-      gcofix CIH.
-      ii. inv SIMP.
+      ii.
       destruct (eq_block fname _fn).
       {
-        unfold interp_program, interp_function, mrec. irw.
-        clarify. des_ifs_safe.
-        unfold fn_src.
-        admit "".
+        clarify.
+        dup SIMP. inv SIMP0.
+        unfold interp_program, interp_function, mrec.
+        irw. des_ifs. inv FOCUS.
+        unfold fn_src. cbn.
+        unfold assume. des_ifs; cycle 1.
+        { irw. pfold. unfold triggerUB. irw. econs; et. }
+        rewrite ! bind_ret_l.
+        irw.
+        assert(tau: forall E R (a: itree E R), (tau;; a) = a).
+        { admit "backdoor --- relax sim_st to allow tau* before each progress". }
+        rewrite tau. des_ifs.
+        rewrite <- ! unfold_interp_mrec.
+        eapply sim_prog_sim_st; ss.
+        eapply match_itr_bind.
+        { ii. clarify. step_guaranteeK.
+          - pfold. econs; et.
+          - unfold guaranteeK. des_ifs. pfold. econs; et.
+        }
+        eapply SIM; et.
       }
-      destruct (eq_block fname _fn_ru).
-      {
-        unfold interp_program, interp_function, mrec. irw.
-        clarify. des_ifs_safe.
-        gstep. econs.
-      }
-      unfold interp_program, interp_function, mrec. irw.
-      exploit OTHERS; et. intro T. rewrite <- T. des_ifs; irw; cycle 1.
-      { gstep. econs; et. }
-      gcofix CIH0.
-      (*** TODO: FIXIT. Maybe by removing "E" and "eff1" // changing to notation ***)
-      Check ((observe (f oh m vs)): itree' (E owned_heap) (owned_heap * (mem * val))).
-      remember (@observe (sum1 (InternalCallE owned_heap) (sum1 (ExternalCallE owned_heap) EventE)) _ (f oh m vs)) as itr in *.
-      u.
-      remember (observe (f oh m vs)) as itr in *.
-      gcofix CIH0.
-      gfinal. right. clear_until CIH. pcofix CIH2.
-      revert_until CIH. pcofix CIH2.
-      gstep. econs.
-      irw.
-      des_ifs_safe. gstep.
-    }
-    {
-      ii.
       eapply sim_prog_sim_st; ss.
-      hexploit (@SIMP fname); et. intro T. inv T; ss.
+      inv SIMP.
+      destruct (eq_block fname _fn_ru).
+      { des_ifs. pfold. econs; et. }
+      exploit OTHERS; et. intro T.
+      inv T; ss.
       { pfold. econs; et. }
-      repeat (spc H1). des. ss.
+      exploit H1; et.
     }
   Qed.
 
-  Variable ioh_src: SkEnv.t -> owned_heap_src.
-  Variable ioh_tgt: SkEnv.t -> owned_heap_tgt.
-  Hypothesis (SIMO: forall skenv, SO (ioh_src skenv) (ioh_tgt skenv)).
+  Variable ioh: SkEnv.t -> owned_heap.
   Variable sk: Sk.t.
-  Let md_src: Mod.t := (SIR.module sk p_src mi ioh_src).
-  Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh_tgt).
+  Let md_src: Mod.t := (SIR.module sk p_src mi ioh).
+  Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh).
 
-  Theorem sim_mod: ModPair.sim (SimSymbId.mk_mp (SIR.module sk p_src mi ioh_src)
-                                                (SIR.module sk p_tgt mi ioh_tgt)).
+  Theorem sim_mod: ModPair.sim (SimSymbId.mk_mp (SIR.module sk p_src mi ioh)
+                                                (SIR.module sk p_tgt mi ioh)).
   Proof.
     ii. econs; ss; eauto.
-    ii. rr in SIMSKENVLINK. clarify. esplits. eapply sim_modsem; et.
-    eapply adequacy_local_local.
+    ii. rr in SIMSKENVLINK. clarify. esplits. eapply sim_modsem with (SO:=eq); et.
+    ii. clarify. eapply adequacy_local_local.
   Qed.
 
 End SIM.
 End OWNEDHEAP.
-Hint Unfold sim_itr.
-Hint Resolve sim_itr_mon: paco.
+Hint Unfold match_itr.
+Hint Resolve match_itr_mon: paco.
 Hint Constructors bindC: core.
-Hint Unfold sim_st.
-Hint Resolve sim_st_mon: paco.

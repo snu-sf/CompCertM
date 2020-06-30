@@ -36,12 +36,25 @@ Local Open Scope signature_scope.
 
 
 
+Inductive is_finite {E : Type -> Type} {t : Type} : itree E t -> Prop :=
+| is_finite_ret {x}: is_finite (Ret x)
+| is_finite_tau {tr} (TL: is_finite tr): is_finite (Tau tr)
+| is_finite_vis {u e k} {x: u} (TL: is_finite (k x)): is_finite (Vis e k).
 
+Inductive wf_prog owned_heap (p: program owned_heap): Prop :=
+| wf_prog_intro
+    (WF: forall
+        fname fn
+        (SOME: p fname = Some fn)
+      ,
+        <<RET: forall oh m vs, is_finite (fn oh m vs)>>)
+.
 
 Section OWNEDHEAP.
 
 Variable mi: string.
 Variable owned_heap: Type.
+Variable _fn _fn_ru: ident.
 Variable precond: owned_heap -> mem -> list val -> Prop.
 Variable postcond: owned_heap -> mem -> list val -> (owned_heap * (mem * val)) -> Prop.
 Let sim_st := sim_st (@eq owned_heap).
@@ -65,85 +78,62 @@ Section SYNTAX.
 
 (*** sim itree ***)
 Let itr := itree (E owned_heap) (owned_heap * (mem * val)).
-Variable _fn _fn_ru: ident.
 
-(*** TODO: We don't have to define these in coinductive manner. Try inductive style instead? SimSIRLocal also. ***)
-(*** TODO: However, if we want to add loop, we may need coinductive...? Q: Why loop and recursion is treated differently? ***)
-Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
+Inductive match_itr: itr -> itr -> Prop :=
 | match_ret
     oh m v
   :
-    _match_itr match_itr (Ret (oh, (m, v))) (Ret (oh, (m, v)))
+    match_itr (Ret (oh, (m, v))) (Ret (oh, (m, v)))
 | match_tau
     i_src
     i_tgt
     (MATCH: match_itr i_src i_tgt)
   :
-    _match_itr match_itr (Tau i_src) (Tau i_tgt)
+    match_itr (Tau i_src) (Tau i_tgt)
 | match_icall
     fname oh0 m0 vs0 k_src k_tgt
     (NEQ: fname <> _fn)
     (NEQ: fname <> _fn_ru)
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    _match_itr match_itr
-             (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src)
-             (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_tgt)
+    match_itr (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src)
+              (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_tgt)
 | match_icall_fn
     oh0 m0 vs0 k_src k_tgt
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    _match_itr match_itr
-             (* (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src) *)
-             (trigger (ICall _fn_ru oh0 m0 vs0) >>= k_src)
-             (guarantee (precond oh0 m0 vs0) ;;
-              ohmv <- trigger (ICall _fn oh0 m0 vs0) ;;
-              assume (postcond oh0 m0 vs0 ohmv) ;;
-              k_tgt ohmv
-              (*** we can write in point-free style but ***)
-              (* trigger (ICall fname oh0 m0 vs0) *)
-              (* >>= assumeK (postcond oh0 m0 vs0) *)
-              (* >>= k_tgt *)
-             )
-      (* guarantee (precond oh0 m0 vs0) ;; *)
-      (* '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 vs0) ;; *)
-      (* (assume (postcond oh0 m0 vs0 (oh1, (m1, y1)))) ;; *)
+    match_itr (trigger (ICall _fn_ru oh0 m0 vs0) >>= k_src)
+              (guarantee (precond oh0 m0 vs0) ;;
+               ohmv <- trigger (ICall _fn oh0 m0 vs0) ;;
+               assume (postcond oh0 m0 vs0 ohmv) ;;
+               k_tgt ohmv
+              )
 | match_ecall
     sg oh m vs fptr
     k_src
     k_tgt
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    _match_itr match_itr
-             (Vis (subevent _ (ECall sg fptr oh m vs)) k_src)
-             (Vis (subevent _ (ECall sg fptr oh m vs)) k_tgt)
+    match_itr (Vis (subevent _ (ECall sg fptr oh m vs)) k_src)
+              (Vis (subevent _ (ECall sg fptr oh m vs)) k_tgt)
 | match_nb
     i_src k_tgt
   :
-    _match_itr match_itr i_src (Vis (subevent _ (ENB)) k_tgt)
+    match_itr i_src (Vis (subevent _ (ENB)) k_tgt)
 | match_ub
     k_src i_tgt
   :
-    _match_itr match_itr (Vis (subevent _ (EUB)) k_src) i_tgt
+    match_itr (Vis (subevent _ (EUB)) k_src) i_tgt
 | match_choose
     X
     k_src k_tgt
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    _match_itr match_itr
-             (Vis (subevent _ (EChoose X)) k_src)
-             (Vis (subevent _ (EChoose X)) k_tgt)
+    match_itr (Vis (subevent _ (EChoose X)) k_src)
+              (Vis (subevent _ (EChoose X)) k_tgt)
 .
 
-Definition match_itr: itr -> itr -> Prop := paco2 _match_itr bot2.
-
-Lemma match_itr_mon: monotone2 _match_itr.
-Proof.
-  ii. inv IN; try econs; et; rr; et.
-Unshelve.
-Qed.
-Hint Unfold match_itr.
-Hint Resolve match_itr_mon: paco.
+Hint Constructors match_itr.
 
 Section PROG.
 
@@ -183,79 +173,45 @@ End PROG.
 
 
 
-(*** useful lemma for below proof ***)
-(*** copied from "eqit_bind_clo" in itree repo - Eq.v ***)
-Inductive bindC (r: itr -> itr -> Prop) : itr -> itr -> Prop :=
-| bindC_intro
-    i_src i_tgt
-    (SIM: match_itr i_src i_tgt)
-    k_src k_tgt
-    (SIMK: (eq ==> r) k_src k_tgt)
-    (* (SIMK: forall *)
-    (*     oh_src oh_tgt m vs *)
-    (*     (O: SO oh_src oh_tgt) *)
-    (*   , *)
-    (*     <<SIM: r (k_src (oh_src, (m, vs))) (k_tgt (oh_tgt, (m, vs)))>>) *)
-  :
-    bindC r (ITree.bind i_src k_src) (ITree.bind i_tgt k_tgt)
-.
-
-Hint Constructors bindC: core.
-
-Lemma bindC_spec
-      simC
-  :
-    bindC <3= gupaco2 (_match_itr) (simC)
-.
-Proof.
-  gcofix CIH. intros. destruct PR.
-  punfold SIM. inv SIM.
-  - rewrite ! bind_ret_l. gbase. eapply SIMK; et.
-  - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
-    (* gfinal. left. eapply CIH. econstructor; eauto. *)
-    debug eauto with paco.
-  - irw. gstep; econs; et. ii. clarify. exploit (MATCH y); eauto. intro R. pclearbot.
-    eauto with paco.
-  - rewrite ! bind_bind. gstep. erewrite f_equal2; [eapply match_icall_fn|..]; try refl; cycle 1.
-    { f. f_equiv. ii. f_equiv. ii. f. instantiate (1:= k_src0 >>> k_src). irw.
-      f. f_equiv. ii. f_equiv; eauto. ii.
-    match_icall_fn
-    econs; eauto. u. ii. clarify. exploit (MATCH y); eauto. intro T. pclearbot.
-    (* gfinal. left. eapply CIH. econs. { et. } uh. ii. eapply SIMK. et. *)
-    eauto with paco.
-
-    
-             (trigger (ICall _fn_ru oh0 m0 vs0) >>= k_src)
-             (guarantee (precond oh0 m0 vs0) ;;
-              ohmv <- trigger (ICall _fn oh0 m0 vs0) ;;
-              assume (postcond oh0 m0 vs0 ohmv) ;;
-              k_tgt ohmv
-              (*** we can write in point-free style but ***)
-              (* trigger (ICall fname oh0 m0 vs0) *)
-              (* >>= assumeK (postcond oh0 m0 vs0) *)
-              (* >>= k_tgt *)
-             )
-  - rewrite ! bind_vis. gstep. econs; eauto.
-  - rewrite ! bind_vis. gstep. econs; eauto.
-  - rewrite ! bind_vis. gstep. econs; eauto.
-    ii. clarify. exploit (MATCH y); eauto. intro R. pclearbot. eauto with paco.
-Qed.
-
 Global Instance match_itr_bind :
   Proper ((eq ==> match_itr) ==> match_itr ==> match_itr) ITree.bind'
 .
 Proof.
-  red. ginit.
-  { intros. eapply cpn2_wcompat; eauto with paco. }
-  guclo bindC_spec. ii. econs; et.
-  u. ii.
-  exploit H0; et.
-  intro T. eauto with paco.
+  red. ii.
+  gen x y.
+  induction H0 using match_itr_ind; i; try (by irw; et; econs; et; ii; eapply H; et).
+  - rewrite ! bind_bind.
+    erewrite f_equal2; try eapply match_icall_fn; try reflexivity; revgoals.
+    { irw. f. f_equiv. ii. f_equiv. ii. f. rewrite bind_bind. reflexivity. }
+    ii. clarify. et.
 Qed.
 
+(* Global Instance match_itr_bind_strong : *)
+(*   Proper ((eq ==> (match_itr \2/ eq)) ==> (match_itr \2/ eq) ==> (match_itr \2/ eq)) ITree.bind' *)
+(* . *)
+(* Proof. *)
+(*   red. ii. *)
+(*   gen x y. *)
+(*   des. *)
+(*   { *)
+(*     induction H0 using match_itr_ind; i; try (by irw; et; econs; et; ii; eapply H; et). *)
+(*     - ii. irw; et. exploit IHmatch_itr; et. intro T. des. *)
+(*       + left. econs; et. *)
+(*       + right. do 2 f_equal; et. *)
+(*     - left. irw. econs; et. ii. clarify. exploit H; et. intro T. instantiate (1:= y0) in T. des; ss. *)
+(*       ii. irw; et. exploit H; et. intro T. des. *)
+(*       + left. econs; et. ii. clarify. instantiate (1:= y0) in T. eapply T. *)
+(*       + right. do 2 f_equal; et. *)
+(*     - *)
+(*     - rewrite ! bind_bind. *)
+(*       erewrite f_equal2; try eapply match_icall_fn; try reflexivity; revgoals. *)
+(*       { irw. f. f_equiv. ii. f_equiv. ii. f. rewrite bind_bind. reflexivity. } *)
+(*       ii. clarify. et. *)
+(*   } *)
+(* Qed. *)
+
 End SYNTAX.
-Hint Unfold match_itr.
-Hint Resolve match_itr_mon: paco.
+Hint Constructors match_itr.
 
 
 
@@ -269,10 +225,11 @@ Section SIM.
   Variable p_src: program owned_heap.
   Variable p_tgt: program owned_heap.
   Hypothesis (SIMP: match_prog p_src p_tgt).
+  (* Hypothesis (WFSRC: wf_prog p_src). *)
 
   Lemma sim_prog_sim_st
         i_src i_tgt
-        (SIM: match_itr i_src i_tgt)
+        (SIM: match_itr i_src i_tgt \/ i_src = i_tgt)
     :
       sim_st (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
@@ -283,13 +240,44 @@ Section SIM.
     { intros. eapply cpn2_wcompat; et. eauto with paco. }
     gcofix CIH.
     i. rewrite ! unfold_interp_mrec.
-    punfold SIM. inv SIM; cbn.
+    des; cycle 1.
+    { clarify.
+      gstep.
+      Hint Unfold E. u. (*** <-- TODO: remove E, or use as a notation, or ... ***)
+      ides i_tgt.
+      (* destruct (observe i_tgt) eqn:T; u in T; rewrite T; cbn. *)
+      - destruct r0; ss. destruct p; ss. econs; et.
+      - econs; et. gbase. et.
+      - cbn. des_ifs.
+        + econs; et. gbase. eapply CIH.
+          destruct i.
+          destruct (eq_block name _fn).
+          { clarify. unfold interp_function. inv SIMP. cbn. des_ifs_safe.
+            inv SIMFN. left. eapply match_itr_bind; et.
+            { ii. clarify. rename k into kk.
+              admit "". }
+            { admit "". }
+          }
+          destruct (eq_block name _fn_ru).
+          {
+            admit "".
+          }
+          right. f_equal.
+    }
+    inv SIM; cbn.
     - gstep. econs; et.
-    - pclearbot. gstep. econs; et. gbase. et.
-    - pclearbot. gstep. econs; et. gbase.
+    - gstep. econs; et. gbase. et.
+    - gstep. econs; et. gbase.
+      eapply CIH. eapply match_itr_bind; et.
+      inv SIMP.
+      exploit OTHERS; et. intro T. des_ifs; cycle 1.
+      { econs; et. }
+      econs; et.
+
       eapply CIH. eapply match_itr_bind.
       { u. ii. repeat spc MATCH. pclearbot. eauto. }
-      exploit (@SIMP fname); et. intro T.
+
+      exploit (@MATCH fname); et. intro T.
       inv T.
       { pfold. econs; et. }
       exploit H1; et.
@@ -307,14 +295,47 @@ Section SIM.
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)
   Theorem adequacy_local_local:
     forall
-      (fname: ident) m vs oh_src oh_tgt
-      (O: SO oh_src oh_tgt)
+      (fname: ident) m vs oh
     ,
-      (<<SIM: sim_st (interp_program p_src (ICall fname oh_src m vs))
-                     (interp_program p_tgt (ICall fname oh_tgt m vs))
+      (<<SIM: sim_st (interp_program p_src (ICall fname oh m vs))
+                     (interp_program p_tgt (ICall fname oh m vs))
                      >>)
   .
   Proof.
+    {
+      ginit.
+      { intros. eapply cpn2_wcompat; et. eauto with paco. }
+      gcofix CIH.
+      ii. inv SIMP.
+      destruct (eq_block fname _fn).
+      {
+        unfold interp_program, interp_function, mrec. irw.
+        clarify. des_ifs_safe.
+        unfold fn_src.
+        admit "".
+      }
+      destruct (eq_block fname _fn_ru).
+      {
+        unfold interp_program, interp_function, mrec. irw.
+        clarify. des_ifs_safe.
+        gstep. econs.
+      }
+      unfold interp_program, interp_function, mrec. irw.
+      exploit OTHERS; et. intro T. rewrite <- T. des_ifs; irw; cycle 1.
+      { gstep. econs; et. }
+      gcofix CIH0.
+      (*** TODO: FIXIT. Maybe by removing "E" and "eff1" // changing to notation ***)
+      Check ((observe (f oh m vs)): itree' (E owned_heap) (owned_heap * (mem * val))).
+      remember (@observe (sum1 (InternalCallE owned_heap) (sum1 (ExternalCallE owned_heap) EventE)) _ (f oh m vs)) as itr in *.
+      u.
+      remember (observe (f oh m vs)) as itr in *.
+      gcofix CIH0.
+      gfinal. right. clear_until CIH. pcofix CIH2.
+      revert_until CIH. pcofix CIH2.
+      gstep. econs.
+      irw.
+      des_ifs_safe. gstep.
+    }
     {
       ii.
       eapply sim_prog_sim_st; ss.

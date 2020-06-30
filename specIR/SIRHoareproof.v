@@ -79,59 +79,69 @@ Section SYNTAX.
 (*** sim itree ***)
 Let itr := itree (E owned_heap) (owned_heap * (mem * val)).
 
-Inductive match_itr: itr -> itr -> Prop :=
+Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
 | match_ret
     oh m v
   :
-    match_itr (Ret (oh, (m, v))) (Ret (oh, (m, v)))
+    _match_itr match_itr (Ret (oh, (m, v))) (Ret (oh, (m, v)))
 | match_tau
     i_src
     i_tgt
     (MATCH: match_itr i_src i_tgt)
   :
-    match_itr (Tau i_src) (Tau i_tgt)
+    _match_itr match_itr (Tau i_src) (Tau i_tgt)
 | match_icall
     fname oh0 m0 vs0 k_src k_tgt
     (NEQ: fname <> _fn)
     (NEQ: fname <> _fn_ru)
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    match_itr (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src)
-              (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_tgt)
+    _match_itr match_itr (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src)
+               (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_tgt)
 | match_icall_fn
     oh0 m0 vs0 k_src k_tgt
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    match_itr (trigger (ICall _fn_ru oh0 m0 vs0) >>= k_src)
-              (guarantee (precond oh0 m0 vs0) ;;
-               ohmv <- trigger (ICall _fn oh0 m0 vs0) ;;
-               assume (postcond oh0 m0 vs0 ohmv) ;;
-               k_tgt ohmv
-              )
+    _match_itr match_itr (trigger (ICall _fn_ru oh0 m0 vs0) >>= k_src)
+               (guarantee (precond oh0 m0 vs0) ;;
+                ohmv <- trigger (ICall _fn oh0 m0 vs0) ;;
+                assume (postcond oh0 m0 vs0 ohmv) ;;
+                k_tgt ohmv
+               )
 | match_ecall
     sg oh m vs fptr
     k_src
     k_tgt
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    match_itr (Vis (subevent _ (ECall sg fptr oh m vs)) k_src)
+    _match_itr match_itr (Vis (subevent _ (ECall sg fptr oh m vs)) k_src)
               (Vis (subevent _ (ECall sg fptr oh m vs)) k_tgt)
 | match_nb
     i_src k_tgt
   :
-    match_itr i_src (Vis (subevent _ (ENB)) k_tgt)
+    _match_itr match_itr i_src (Vis (subevent _ (ENB)) k_tgt)
 | match_ub
     k_src i_tgt
   :
-    match_itr (Vis (subevent _ (EUB)) k_src) i_tgt
+    _match_itr match_itr (Vis (subevent _ (EUB)) k_src) i_tgt
 | match_choose
     X
     k_src k_tgt
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    match_itr (Vis (subevent _ (EChoose X)) k_src)
+    _match_itr match_itr (Vis (subevent _ (EChoose X)) k_src)
               (Vis (subevent _ (EChoose X)) k_tgt)
 .
+
+Definition match_itr: itr -> itr -> Prop := paco2 _match_itr bot2.
+Lemma match_itr_mon: monotone2 _match_itr.
+Proof.
+  ii. inv IN; try econs; et; rr; et.
+  des. esplits; et.
+Unshelve.
+Qed.
+Hint Unfold match_itr.
+Hint Resolve match_itr_mon: paco.
 
 Hint Constructors match_itr.
 

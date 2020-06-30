@@ -118,14 +118,11 @@ Definition f_fib_ru (oh0: owned_heap) (m0: mem) (vs0: list val):
 Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
   assume (precond oh0 m0 vs0) ;;
-  trigger (ICall _fib_ru oh0 m0 vs0)
-  >>= guaranteeK (postcond oh0 m0 vs0)
+  _I_DONT_USE_THIS__RUDIMENT_ORGAN_ <- trigger (ICall _fib_ru oh0 m0 vs0) ;;
+  trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) >>= (fun x => Ret (proj1_sig x))
+  (* ohmv <- trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) ;; *)
+  (* Ret (proj1_sig ohmv) *)
 .
-
-Let m := ({ n: nat | (n >= 5)%nat }).
-(* Set Printing All. *)
-(* Print m. *)
-
 
 
 

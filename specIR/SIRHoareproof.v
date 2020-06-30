@@ -149,11 +149,11 @@ Hint Resolve match_itr_mon: paco.
 
 Section PROG.
 
-Definition fn_src_ignorant (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_heap) (owned_heap * (mem * val)) :=
-  assume (precond oh0 m0 vs0) ;;
-  _I_DONT_USE_THIS__RUDIMENT_ORGAN_ <- trigger (ICall _fn_ru oh0 m0 vs0) ;;
-  trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) >>= (fun x => Ret (proj1_sig x))
-.
+(* Definition fn_src_ignorant (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_heap) (owned_heap * (mem * val)) := *)
+(*   assume (precond oh0 m0 vs0) ;; *)
+(*   _I_DONT_USE_THIS__RUDIMENT_ORGAN_ <- trigger (ICall _fn_ru oh0 m0 vs0) ;; *)
+(*   trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) >>= (fun x => Ret (proj1_sig x)) *)
+(* . *)
 
 Definition fn_src (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_heap) (owned_heap * (mem * val)) :=
   assume (precond oh0 m0 vs0) ;;

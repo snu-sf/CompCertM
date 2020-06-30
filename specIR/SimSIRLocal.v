@@ -100,7 +100,8 @@ Inductive _match_itr (match_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt
   :
     _match_itr match_itr
              (Vis (subevent _ (EChoose X_src)) k_src)
-             (Tau (Tau i_tgt))
+             i_tgt
+             (* (Tau (Tau i_tgt)) *)
 | match_choose_tgt
     X_tgt
     k_tgt i_src
@@ -108,8 +109,9 @@ Inductive _match_itr (match_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt
     (INHAB: inhabited X_tgt)
   :
     _match_itr match_itr
-             (Tau (Tau i_src))
-             (Vis (subevent _ (EChoose X_tgt)) k_tgt)
+             (* (Tau (Tau i_src)) *)
+               i_src
+               (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 .
 
 Definition match_itr: itr_src -> itr_tgt -> Prop := paco2 _match_itr bot2.
@@ -186,9 +188,9 @@ Proof.
     eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto.
   - rewrite ! bind_vis. gstep. econs; eauto.
-  - rewrite ! bind_vis. rewrite ! bind_tau.
+  - irw.
     gstep. econs; eauto. des. pclearbot. eauto with paco.
-  - rewrite ! bind_vis. rewrite ! bind_tau.
+  - irw.
     gstep. econs; eauto. ii. pclearbot. eauto with paco.
 Qed.
 
@@ -226,13 +228,13 @@ Section SIM.
         i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
-      sim_st (interp_mrec (interp_function p_src) i_src)
+      sim_st 0 (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
   .
   Proof.
     revert_until SIMP.
     ginit.
-    { intros. eapply cpn2_wcompat; et. eauto with paco. }
+    { intros. eapply cpn3_wcompat; et. eauto with paco. }
     gcofix CIH.
     i. rewrite ! unfold_interp_mrec.
     punfold SIM. inv SIM; cbn.

@@ -48,58 +48,65 @@ Section SEMANTICS.
 Let st_src := (SIR.state owned_heap_src).
 Let st_tgt := (SIR.state owned_heap_tgt).
 
-Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :=
+Let idx := nat.
+Let ord := Nat.lt.
+
+Inductive _sim_st (sim_st: idx -> st_src -> st_tgt -> Prop) (i0: idx): st_src -> st_tgt -> Prop :=
 | sim_st_ret
     oh_src oh_tgt m v
     (O: SO oh_src oh_tgt)
   :
-    _sim_st sim_st (Ret (oh_src, (m, v))) (Ret (oh_tgt, (m, v)))
+    _sim_st sim_st i0 (Ret (oh_src, (m, v))) (Ret (oh_tgt, (m, v)))
 | sim_st_tau
-    i_src
-    i_tgt
-    (SIM: sim_st i_src i_tgt)
+    i1
+    itr_src
+    itr_tgt
+    (SIM: sim_st i1 itr_src itr_tgt)
   :
-    _sim_st sim_st (Tau i_src) (Tau i_tgt)
+    _sim_st sim_st i0 (Tau itr_src) (Tau itr_tgt)
 | sim_st_ecall
+    i1
     sg m vs fptr
     oh_src k_src
     oh_tgt k_tgt
     (O: SO oh_src oh_tgt)
-    (SIM: HProper (SALL !-> sim_st) k_src k_tgt)
+    (SIM: HProper (SALL !-> sim_st i1) k_src k_tgt)
   :
-    _sim_st sim_st
+    _sim_st sim_st i0
              (Vis (subevent _ (ECall sg fptr oh_src m vs)) k_src)
              (Vis (subevent _ (ECall sg fptr oh_tgt m vs)) k_tgt)
 | sim_st_nb
-    i_src k_tgt
+    itr_src k_tgt
   :
-    _sim_st sim_st i_src (Vis (subevent _ (ENB)) k_tgt)
+    _sim_st sim_st i0 itr_src (Vis (subevent _ (ENB)) k_tgt)
 | sim_st_ub
-    k_src i_tgt
+    k_src itr_tgt
   :
-    _sim_st sim_st (Vis (subevent _ (EUB)) k_src) i_tgt
+    _sim_st sim_st i0 (Vis (subevent _ (EUB)) k_src) itr_tgt
 | sim_st_choose_src
-    X_src
-    k_src i_tgt
-    (SIM: exists x_src, sim_st (k_src x_src) i_tgt)
+    i1 X_src
+    k_src itr_tgt
+    (SIM: exists x_src, sim_st i1 (k_src x_src) itr_tgt)
+    (ORD: ord i1 i0)
   :
-    _sim_st sim_st
+    _sim_st sim_st i0
             (Vis (subevent _ (EChoose X_src)) k_src)
-            (Tau i_tgt)
+            itr_tgt
 | sim_st_choose_tgt
-    X_tgt
-    k_tgt i_src
+    i1 X_tgt
+    k_tgt itr_src
     (INHAB: inhabited X_tgt)
-    (SIM: forall x_tgt, sim_st i_src (k_tgt x_tgt))
+    (SIM: forall x_tgt, sim_st i1 itr_src (k_tgt x_tgt))
+    (ORD: ord i1 i0)
   :
-    _sim_st sim_st
-            (Tau i_src)
+    _sim_st sim_st i0
+            itr_src
             (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 .
 
-Definition sim_st: st_src -> st_tgt -> Prop := paco2 _sim_st bot2.
+Definition sim_st: idx -> st_src -> st_tgt -> Prop := paco3 _sim_st bot3.
 
-Lemma sim_st_mon: monotone2 _sim_st.
+Lemma sim_st_mon: monotone3 _sim_st.
 Proof.
   ii. inv IN; try econs; et.
   des. esplits; et.
@@ -127,9 +134,10 @@ Section SIM.
       (fname: ident) m vs oh_src oh_tgt
       (O: SO oh_src oh_tgt)
     ,
-      (<<SIM: sim_st (interp_program p_src (ICall fname oh_src m vs))
-                     (interp_program p_tgt (ICall fname oh_tgt m vs))
-                     >>)
+      exists i,
+        (<<SIM: sim_st i (interp_program p_src (ICall fname oh_src m vs))
+                       (interp_program p_tgt (ICall fname oh_tgt m vs))
+                       >>)
   .
 
   (*** lifting above proof into small-step semantics ***)
@@ -209,7 +217,7 @@ Section SIM.
                                        SIR.state owned_heap_tgt -> SimMemOh.t -> Prop :=
     | match_states_intro
         st_src st_tgt smo0
-        (SIM: sim_st st_src st_tgt)
+        (SIM: sim_st idx st_src st_tgt)
         (MWF: SimMemOh.wf smo0)
       :
         match_states idx st_src st_tgt smo0
@@ -289,19 +297,21 @@ Section SIM.
       - (* CHOOSE SRC *)
         des. pclearbot.
         econs 2; ss; et. ii.
-        econs 1; ss; et; cycle 1.
-        { esplits; ss; et. econs; ss; et. }
-        { ii. inv STEPTGT; ss; clarify. esplits; et.
-          + left. eapply plus_one. econs 3; ss; et.
-          + gbase. eapply CIH. econs; et.
+        econs 2; ss; et.
+        { esplits; et.
+          { apply star_one. econs 3; ss; et. }
+          eapply Ord.lift_idx_spec; et.
         }
+        { gbase. eapply CIH. econs; et. }
       - (* CHOOSE TGT *)
         des. pclearbot. inv INHAB.
         econs 2; ss; et. ii.
         econs 1; ss; et; cycle 1.
         { esplits; ss; et. econs 3; ss; et. }
         { ii. inv STEPTGT; ss; csc. esplits; et.
-          + left. eapply plus_one. econs; ss; et.
+          + right. esplits; et.
+            * apply star_refl.
+            * eapply Ord.lift_idx_spec; et.
           + gbase. eapply CIH. econs; et.
         }
     Unshelve.
@@ -317,20 +327,30 @@ Section SIM.
         apply SoundTop.sound_state_local_preservation; et.
       }
       { ii. ss. eexists (mk _ _ _); ss. esplits; eauto. econs; ss; eauto. }
-      ii. ss. esplits; eauto.
+      ii. ss.
+      rr in SIMARGS. des. inv SIMARGS0; ss; cycle 1.
+      { (* asm style *)
+        esplits; ii; ss.
+        - inv INITTGT; ss.
+        - des. inv SAFESRC; ss.
+      }
+      clarify. inv MWF. ss. destruct sm_arg; ss. destruct sm0; ss.
+      rewrite OHSRC0 in *. rewrite OHTGT0 in *. clarify. clear_tac.
+      rename tgt into m0. rename vs_tgt into vs. rename fptr_tgt into fptr.
+      (* exploit sim_prog; et. i; des. *)
+      esplits; eauto.
       - ii. des. inv INITTGT. inv SAFESRC. ss. des_ifs_safe.
+        assert(fid0 = fid).
+        { apply_all_once Genv.find_invert_symbol. clarify. }
+        clarify.
+        exploit (sim_prog fid m0 vs); et. i; des.
         esplits; eauto.
         { econs; ss; et. }
         eapply match_states_lxsim; eauto.
         econs; ss; et.
-        rr in SIMARGS. des. inv SIMARGS0; ss. clarify. inv MWF. ss. destruct sm_arg; ss.
-        destruct sm0; ss. subst. clarify. clear_tac.
-        assert(fid0 = fid).
-        { apply_all_once Genv.find_invert_symbol. clarify. }
-        clarify.
-        eapply sim_prog; et.
+        instantiate (1:= (mk (SimMemId.mk _ _) _ _)).
+        econs; ss; et.
       - i; des. inv SAFESRC. ss. des_ifs.
-        rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm0; ss. clarify.
         esplits; et. econs; ss; et.
     Unshelve.
       all: ss.

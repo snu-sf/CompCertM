@@ -129,14 +129,15 @@ Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
     k_src k_tgt
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    _match_itr match_itr (Vis (subevent _ (EChoose X)) k_src)
-              (Vis (subevent _ (EChoose X)) k_tgt)
+    _match_itr match_itr
+               (tau;; (Vis (subevent _ (EChoose X)) k_src))
+               (tau;; (Vis (subevent _ (EChoose X)) k_tgt))
 .
 
 Definition match_itr: itr -> itr -> Prop := paco2 _match_itr bot2.
 Lemma match_itr_mon: monotone2 _match_itr.
 Proof.
-  ii. inv IN; try econs; et; rr; et.
+  ii. inv IN; try (by econs; et; rr; et).
 Qed.
 Hint Unfold match_itr.
 Hint Resolve match_itr_mon: paco.
@@ -225,7 +226,7 @@ Proof.
     repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto.
   - rewrite ! bind_vis. gstep. econs; eauto.
-  - rewrite ! bind_vis. gstep. econs; eauto. ii. clarify.
+  - gstep. irw. econsr. ii. clarify.
     repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
 Qed.
 
@@ -368,7 +369,7 @@ Section SIM.
       gbase. eapply CIH. eauto with paco.
     - gstep. econs; et.
     - gstep. econs; et.
-    - gstep. admit "choose".
+    - gstep. eapply sim_st_choose_tgt. admit "choose".
   Qed.
 
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)

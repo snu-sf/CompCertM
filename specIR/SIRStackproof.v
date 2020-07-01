@@ -42,53 +42,9 @@ Variable mi: string.
 
 
 
+Let SimMemOh: SimMemOh.class := Simple.class (@eq owned_heap) mi.
+Local Existing Instance SimMemOh.
 
-
-Section SMO.
-
-  Record t: Type :=
-    mk {
-      sm :> SimMem.t;
-      oh_src: Any;
-      oh_tgt: Any;
-    }
-  .
-
-  Inductive wf (smo: t): Prop :=
-  | wf_intro
-      (oh: owned_heap)
-      (MWF: SimMem.wf smo)
-      (OHSRC: smo.(oh_src) = upcast oh)
-      (OHTGT: smo.(oh_tgt) = upcast oh)
-  .
-
-  Local Obligation Tactic := try (by ii; des; ss).
-
-  Program Instance SimMemOh: (SimMemOh.class) :=
-    {|
-      SimMemOh.t := t;
-      SimMemOh.sm := sm;
-      SimMemOh.oh_src := oh_src;
-      SimMemOh.oh_tgt := oh_tgt;
-      SimMemOh.wf := wf;
-      SimMemOh.le := SimMem.le;
-      SimMemOh.lepriv := SimMem.lepriv;
-      SimMemOh.midx := Some mi;
-      SimMemOh.set_sm := fun smo sm => mk sm smo.(oh_src) smo.(oh_tgt);
-    |}
-  .
-  Next Obligation.
-    ii. eapply PR.
-  Qed.
-  Next Obligation.
-    ii. inv WF.
-    econs; ss; et.
-  Qed.
-  Next Obligation.
-    ss. ii. destruct smo0; ss.
-  Qed.
-
-End SMO.
 
 
 Section SIMMODSEM.
@@ -353,13 +309,14 @@ Proof.
       { rr. esplits; ss; eauto. econs; ss; eauto. }
       ii. clear_tac. inv ATSRC; ss.
       csc.
-      inv MWF. ss. destruct smo0; ss. destruct sm0; ss. clarify.
-      eexists _, (Args.mk _ _ _), (mk (SimMemId.mk _ _) _ _); ss. esplits; eauto.
+      inv MWF. ss. destruct smo0; ss. destruct sm; ss. clarify.
+      eexists _, (Args.mk _ _ _), (Simple.mk (SM:=SimMemId.SimMemId) (SimMemId.mk _ _) _ _); ss.
+      esplits; eauto.
       { rr. esplits; ss; eauto. econs; ss; eauto. }
       { econs; ss. }
       { econs; ss. }
       ii. clear_tac.
-      inv AFTERSRC. inv GETK. rr in SIMRETV; des; ss.
+      inv AFTERSRC. inv GETK. rr in SIMRETV; des; ss. revert VIS. clarify. i.
       inv SIMRETV0; ss. csc.
 
       eexists _, _, (Ord.lift_idx lt_wf (S idx)); ss.
@@ -373,7 +330,7 @@ Proof.
       }
       right. eapply CIH. econs; ss; eauto.
       -
-        destruct smo_ret; ss. inv MWF; ss. clarify. destruct sm0; ss. clarify.
+        destruct smo_ret; ss. inv MWF; ss. clarify. destruct sm; ss. clarify.
         f.
         autorewrite with itree.
         rewrite interp_mrec_bind.
@@ -392,12 +349,12 @@ Proof.
     ides cur; cbn in SIM; autorewrite with itree in SIM.
     { (* RET *)
       destruct r0 as [oh0 [m v]]; ss. unfold id in *. clarify.
-      inv MWF. inv MWF0. destruct smo0; ss. destruct sm0; ss. clarify.
+      inv MWF. inv MWF0. destruct smo0; ss. destruct sm; ss. clarify.
 
       destruct cont; ss.
       { cbn in SIM. rewrite unfold_interp_mrec in SIM. cbn in SIM. f in SIM. clarify.
-        econstructor 4 with (smo_ret := mk (SimMemId.mk m m) (upcast oh0) (upcast oh0)); ss; eauto.
-        { econs; ss; et. }
+        econstructor 4 with
+            (smo_ret := Simple.mk (SM:=SimMemId.SimMemId) (SimMemId.mk m m) oh0 oh0); ss; eauto.
         { econs; ss; et. }
         { rr; ss. esplits; ss; et. econs; ss; et. }
       }
@@ -416,7 +373,6 @@ Proof.
 
       right. eapply CIH. econs; ss; eauto.
       { f. rewrite SIM. cbn. f. ss. }
-      { econs; ss; et. }
     }
     { (* TAU *)
       f in SIM. clarify.
@@ -526,7 +482,7 @@ Proof.
   { ii. eapply Preservation.local_preservation_noguarantee_weak.
     apply sound_state_local_preservation; et.
   }
-  { ii. ss. eexists (mk _ _ _); ss. esplits; eauto. econs; ss; eauto. }
+  { ii. ss. eexists (Simple.mk _ _ _); ss. esplits; eauto. econs; ss; eauto. }
   ii. ss. esplits; eauto.
   - ii. des. inv INITTGT. inv SAFESRC. ss. des_ifs_safe.
     esplits; eauto.
@@ -534,11 +490,11 @@ Proof.
     eapply match_states_lxsim; eauto.
     econs; ss; et.
     f. unfold interp_program. unfold mrec. cbn. autorewrite with itree. f.
-    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm0; ss. clarify.
+    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm; ss. clarify.
     inv MWF; ss. clarify.
     apply_all_once Genv.find_invert_symbol. clarify.
   - i; des. inv SAFESRC. ss. des_ifs.
-    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm0; ss. clarify.
+    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm; ss. clarify.
     esplits; et. econs; ss; et.
 Qed.
 

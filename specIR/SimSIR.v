@@ -168,52 +168,8 @@ Section SIM.
   .
 
   (*** lifting above proof into small-step semantics ***)
-  Section SMO.
-
-    Record t: Type :=
-      mk {
-          sm :> SimMem.t;
-          oh_src: Any;
-          oh_tgt: Any;
-        }
-    .
-
-    Inductive wf (smo: t): Prop :=
-    | wf_intro
-        (o_src: owned_heap_src) (o_tgt: owned_heap_tgt)
-        (MWF: SimMem.wf smo)
-        (OHSRC: smo.(oh_src) = upcast o_src)
-        (OHTGT: smo.(oh_tgt) = upcast o_tgt)
-        (O: SO o_src o_tgt)
-    .
-
-    Local Obligation Tactic := try (by ii; des; ss).
-
-    Program Instance SimMemOh: (SimMemOh.class) :=
-      {|
-      SimMemOh.t := t;
-      SimMemOh.sm := sm;
-      SimMemOh.oh_src := oh_src;
-      SimMemOh.oh_tgt := oh_tgt;
-      SimMemOh.wf := wf;
-      SimMemOh.le := SimMem.le;
-      SimMemOh.lepriv := SimMem.lepriv;
-      SimMemOh.midx := Some mi;
-      SimMemOh.set_sm := fun smo sm => mk sm smo.(oh_src) smo.(oh_tgt);
-      |}
-    .
-    Next Obligation.
-      ii. eapply PR.
-    Qed.
-    Next Obligation.
-      ii. inv WF.
-      econs; ss; et.
-    Qed.
-    Next Obligation.
-      ss. ii. destruct smo0; ss.
-    Qed.
-
-  End SMO.
+  Let SimMemOh: SimMemOh.class := Simple.class SO mi.
+  Local Existing Instance SimMemOh.
 
   Variable ioh_src: SkEnv.t -> owned_heap_src.
   Variable ioh_tgt: SkEnv.t -> owned_heap_tgt.
@@ -268,10 +224,9 @@ Section SIM.
       inv MATCH. ss.
       punfold SIM. inv SIM.
       - assert(U:=MWF).
-        inv MWF. inv MWF0. destruct smo_src; ss. destruct sm0; ss. clarify.
-        econstructor 4 with (smo_ret := mk (SimMemId.mk m m)
-                                           (upcast oh_src0) (upcast oh_tgt0)); ss; eauto.
-        + econs; ss; et.
+        inv MWF. inv MWF0. destruct smo_src; ss. destruct sm; ss. clarify.
+        econstructor 4 with (smo_ret := Simple.mk (SM:=SimMemId.SimMemId) (SimMemId.mk m m)
+                                                  oh_src oh_tgt); ss; eauto.
         + econs; ss; et.
         + econs; ss; et.
         + rr. ss. esplits; ss; et.
@@ -291,21 +246,20 @@ Section SIM.
         econs 3; et.
         { admit "TODO: fix -- ~step, ~ret should suffice". }
         ii; ss. inv ATSRC. csc.
-        eexists _, _, (mk (SimMemId.mk m0 m0) (upcast oh_src1) (upcast oh_tgt0)); ss.
+        eexists _, _, (Simple.mk (SM:=SimMemId.SimMemId)
+                                 (SimMemId.mk m0 m0) oh_src0 oh_tgt); ss.
         esplits; ss; et.
         { rr. ss. esplits; ss; et. econs; ss; et. }
         { econs; ss; et. }
-        { econs; ss; et. }
         ii. des. inv AFTERSRC; ss. inv GETK; ss. csc.
-        rename oh_src0 into oh_src1.
         rename _oh0 into oh_src0.
         rr in SIMRETV. des; ss. inv SIMRETV0; ss. clarify.
-        inv MWF0. ss. destruct smo_ret; ss. destruct sm0; ss. subst. clarify. clear_tac.
+        inv MWF0. ss. destruct smo_ret; ss. destruct sm; ss. subst. clarify. clear_tac.
         esplits; et.
         { econs; ss; et. econs; ss; et. }
         u in SIM0.
         hexploit SIM0; et.
-        { instantiate (2:= (o_src, (_, _))). instantiate (1:= (o_tgt, (_, _))). ss. }
+        { instantiate (2:= (oh_src, (_, _))). instantiate (1:= (oh_tgt0, (_, _))). ss. }
         intro T. des; ss.
         gbase. eapply CIH. econs; et.
       - (* NB *)
@@ -379,14 +333,14 @@ Section SIM.
       { ii. eapply Preservation.local_preservation_noguarantee_weak.
         apply SoundTop.sound_state_local_preservation; et.
       }
-      { ii. ss. eexists (mk _ _ _); ss. esplits; eauto. econs; ss; eauto. }
+      { ii. ss. eexists (Simple.mk _ _ _); ss. esplits; eauto. econs; ss; eauto. }
       ii. ss. esplits; eauto.
       - ii. des. inv INITTGT. inv SAFESRC. ss. des_ifs_safe.
         rr in SIMARGS. des. inv SIMARGS0; ss. clarify. inv MWF. ss. destruct sm_arg; ss.
-        destruct sm0; ss. subst. clarify. clear_tac.
+        destruct sm; ss. subst. clarify. clear_tac.
         rename tgt into m0. rename vs_tgt into vs0.
         exploit (sim_prog fid0 m0 vs0); et. i; des.
-        eexists _, (mk (SimMemId.mk _ _) _ _), _. esplits; eauto.
+        eexists _, (Simple.mk (SM:=SimMemId.SimMemId) (SimMemId.mk _ _) _ _), _. esplits; eauto.
         { econs; ss; et. }
         eapply match_states_lxsim; eauto.
         econs; ss; et.
@@ -395,7 +349,7 @@ Section SIM.
           clarify. eauto.
         + econs; ss; et.
       - i; des. inv SAFESRC. ss. des_ifs.
-        rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm0; ss. clarify.
+        rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm; ss. clarify.
         esplits; et. econs; ss; et.
     Unshelve.
       all: ss.

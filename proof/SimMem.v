@@ -358,6 +358,74 @@ Next Obligation. i. eapply SimMem.pub_priv; eauto. Qed.
 
 Program Definition SimMemOh_default (SM: SimMem.class): (SimMemOh.class) := SimMemOh_default_aux _ None.
 
+
+
+
+Module Simple.
+Section SIMPLE.
+
+  Context `{SM: SimMem.class}.
+  Variable owned_heap_src owned_heap_tgt: Type.
+  Variable sim_oh: owned_heap_src -> owned_heap_tgt -> Prop.
+  Variable mi: string.
+
+  Record t: Type :=
+    mk {
+        sm :> SimMem.t;
+        oh_src: owned_heap_src;
+        oh_tgt: owned_heap_tgt;
+      }
+  .
+
+  Inductive wf (smo: t): Prop :=
+  | wf_intro
+      (MWF: SimMem.wf smo)
+      (O: sim_oh smo.(oh_src) smo.(oh_tgt))
+  .
+
+  Local Obligation Tactic := try (by ii; des; ss).
+
+  Program Instance class: (SimMemOh.class) :=
+    {|
+    SimMemOh.t := t;
+    SimMemOh.sm := sm;
+    (* SimMemOh.oh_src := upcast <*> oh_src; *)
+    (* SimMemOh.oh_tgt := upcast <*> oh_tgt; *)
+    SimMemOh.oh_src := fun smo => upcast smo.(oh_src);
+    SimMemOh.oh_tgt := fun smo => upcast smo.(oh_tgt);
+    SimMemOh.wf := wf;
+    SimMemOh.le := SimMem.le;
+    SimMemOh.lepriv := SimMem.lepriv;
+    SimMemOh.midx := Some mi;
+    SimMemOh.set_sm := fun smo sm => mk sm smo.(oh_src) smo.(oh_tgt);
+    |}
+  .
+  Next Obligation.
+    econs.
+    - ii. refl.
+    - ii. etrans; et.
+  Qed.
+  Next Obligation.
+    econs.
+    - ii. refl.
+    - ii. etrans; et.
+  Qed.
+  Next Obligation.
+    ss. ii. eauto.
+  Qed.
+  Next Obligation.
+    ii. inv PR. ss.
+  Qed.
+  Next Obligation.
+    ss. ii. econs; ss. inv WF; ss.
+  Qed.
+  Next Obligation.
+    ss. ii. destruct smo0; ss.
+  Qed.
+
+End SIMPLE.
+End Simple.
+
 (* Section TEST. *)
 
 (*   Variable A B: Type. *)

@@ -226,7 +226,7 @@ Section SIM.
         i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
-      sim_st tt (interp_mrec (interp_function p_src) i_src)
+      sim_st bot2 tt (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
   .
   Proof.
@@ -264,7 +264,7 @@ Section SIM.
       (fname: ident) m vs oh_src oh_tgt
       (O: SO oh_src oh_tgt)
     ,
-      (<<SIM: sim_st tt (interp_program p_src (ICall fname oh_src m vs))
+      (<<SIM: sim_st bot2 tt (interp_program p_src (ICall fname oh_src m vs))
                      (interp_program p_tgt (ICall fname oh_tgt m vs))
                      >>)
   .

@@ -83,6 +83,15 @@ Inductive _sim_st (sim_st: idx -> st_src -> st_tgt -> Prop) (i0: idx): st_src ->
     k_src it_tgt
   :
     _sim_st sim_st i0 (Vis (subevent _ (EUB)) k_src) it_tgt
+| sim_st_choose
+    i1 X_src X_tgt
+    k_src k_tgt
+    (INHAB: inhabited X_tgt)
+    (SIM: forall x_tgt, exists x_src, sim_st i1 (k_src x_src) (k_tgt x_tgt))
+  :
+    _sim_st sim_st i0
+            (Vis (subevent _ (EChoose X_src)) k_src)
+            (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 | sim_st_choose_src
     i1 X_src
     k_src it_tgt
@@ -100,15 +109,20 @@ Inductive _sim_st (sim_st: idx -> st_src -> st_tgt -> Prop) (i0: idx): st_src ->
     _sim_st sim_st i0
             (Tau it_src)
             (Vis (subevent _ (EChoose X_tgt)) k_tgt)
-| sim_st_choose_both
-    i1 X_src X_tgt
-    k_src k_tgt
-    (INHAB: inhabited X_tgt)
-    (SIM: forall x_tgt, exists x_src, sim_st i1 (k_src x_src) (k_tgt x_tgt))
+| sim_st_tau_src
+    i1
+    it_src it_tgt
+    (SIM: sim_st i1 it_src it_tgt)
+    (ORD: ord i1 i0)
   :
-    _sim_st sim_st i0
-            (Vis (subevent _ (EChoose X_src)) k_src)
-            (Vis (subevent _ (EChoose X_tgt)) k_tgt)
+    _sim_st sim_st i0 (Tau it_src) (it_tgt)
+| sim_st_tau_tgt
+    i1
+    it_src it_tgt
+    (SIM: sim_st i1 it_src it_tgt)
+    (ORD: ord i1 i0)
+  :
+    _sim_st sim_st i0 (it_src) (Tau it_tgt)
 .
 
 Definition sim_st: idx -> st_src -> st_tgt -> Prop := paco3 _sim_st bot3.
@@ -116,8 +130,8 @@ Definition sim_st: idx -> st_src -> st_tgt -> Prop := paco3 _sim_st bot3.
 Lemma sim_st_mon: monotone3 _sim_st.
 Proof.
   ii. inv IN; try econs; et.
-  - des. esplits; et.
   - i. exploit SIM; et. i; des. esplits; et.
+  - des. esplits; et.
 Unshelve.
 Qed.
 Hint Unfold sim_st.
@@ -139,6 +153,8 @@ Section SIM.
   Variable idx: Type.
   Variable ord: idx -> idx -> Prop.
   Hypothesis wf_ord: well_founded ord.
+  Let sim_st := sim_st ord.
+
   Variable p_src: program owned_heap_src.
   Variable p_tgt: program owned_heap_tgt.
   Variable sim_prog: forall
@@ -305,6 +321,17 @@ Section SIM.
         + rr in EVCALL. des; ss. inv EVCALL; ss.
         + rr in EVRET. des; ss. inv EVRET; ss.
         + inv EVSTEP; ss.
+      - (* CHOOSE BOTH *)
+        inv INHAB.
+        econs 2; ss; et. ii.
+        econs 1; ss; et; cycle 1.
+        { esplits; ss; et. econs 3; ss; et. }
+        { ii. inv STEPTGT; ss; csc.
+          hexpl SIM0; et. pclearbot.
+          esplits; et.
+          + left. eapply plus_one. econs 3; ss; et.
+          + gbase. eapply CIH. econs; et.
+        }
       - (* CHOOSE SRC *)
         des. pclearbot.
         econs 2; ss; et. ii.
@@ -321,19 +348,25 @@ Section SIM.
         { esplits; ss; et. econs 3; ss; et. }
         { ii. inv STEPTGT; ss; csc. esplits; et.
           + left. eapply plus_one. econs; ss; et.
-          + gbase. eapply CIH. econs; et.
+          + gbase. eapply CIH. econs; et. r; et.
         }
-      - (* CHOOSE BOTH *)
-        inv INHAB.
+      - (* TAU SRC *)
+        pclearbot.
+        econs 1; ss; et. ii.
+        econs 1; ss; et; swap 2 3.
+        { split; intro T; rr in T; des; ss; inv T; ss. }
+        { eapply modsem_receptive; et. }
+        ii. inv STEPSRC; csc. esplits; et.
+        { right. esplits; try apply star_refl. eapply Ord.lift_idx_spec; et. }
+        { gbase. eapply CIH. econs; et. }
+      - (* TAU TGT *)
+        pclearbot.
         econs 2; ss; et. ii.
         econs 1; ss; et; cycle 1.
-        { esplits; ss; et. econs 3; ss; et. }
-        { ii. inv STEPTGT; ss; csc.
-          hexpl SIM0; et. pclearbot.
-          esplits; et.
-          + left. eapply plus_one. econs 3; ss; et.
-          + gbase. eapply CIH. econs; et.
-        }
+        { esplits; et. econs; et. }
+        ii. inv STEPTGT; csc. esplits; et.
+        { right. esplits; try apply star_refl. eapply Ord.lift_idx_spec; et. }
+        { gbase. eapply CIH. econs; et. }
     Unshelve.
       all: ss.
       all: try (econsby ss).

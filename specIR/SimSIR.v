@@ -22,88 +22,8 @@ Require Import SIRCommon SIR.
 
 Require Import Program.
 Require Import Simulation.
-Require Import ITreelib.
 
 Set Implicit Arguments.
-
-
-
-Section BENIGN.
-
-  Variable owned_heap: Type.
-
-  Inductive benign_tgt: itree (eff0 owned_heap) (owned_heap * (mem * val)) -> Prop :=
-  | bengin_tgt_ret x: benign_tgt (Ret x)
-  | bengin_tgt_tau itr (TL: benign_tgt itr): benign_tgt (Tau itr)
-  | bengin_tgt_NB x ktr (TL: benign_tgt (ktr x)): benign_tgt (Vis (subevent _ ENB) ktr)
-  | bengin_tgt_choose
-      X x ktr
-      (INHAB: inhabited X)
-      (TL: benign_tgt (ktr x))
-    :
-      benign_tgt (Vis (subevent _ (EChoose X)) ktr)
-  .
-
-  Inductive benign_tgtN: nat -> itree (eff0 owned_heap) (owned_heap * (mem * val)) -> Prop :=
-  | bengin_tgtN_ret x: benign_tgtN 0%nat (Ret x)
-  | bengin_tgtN_tau n itr (TL: benign_tgtN n itr): benign_tgtN (S n) (Tau itr)
-  | bengin_tgtN_NB
-      n x ktr
-      (TL: benign_tgtN n (ktr x))
-    :
-      benign_tgtN (S n) (Vis (subevent _ ENB) ktr)
-  | bengin_tgtN_choose
-      n X x ktr
-      (INHAB: inhabited X)
-      (TL: benign_tgtN n (ktr x))
-    :
-      benign_tgtN (S n) (Vis (subevent _ (EChoose X)) ktr)
-  .
-
-  Theorem count_benign_tgt
-          itr
-          (B: benign_tgt itr)
-    :
-      exists n, benign_tgtN n itr
-  .
-  Proof. induction B; ii; des; ss; esplits; et; econs; et. Qed.
-
-  Inductive benign_src: itree (eff0 owned_heap) (owned_heap * (mem * val)) -> Prop :=
-  | bengin_src_ret x: benign_src (Ret x)
-  | bengin_src_tau itr (TL: benign_src itr): benign_src (Tau itr)
-  | bengin_src_UB x ktr (TL: benign_src (ktr x)): benign_src (Vis (subevent _ EUB) ktr)
-  | bengin_src_choose
-      X x ktr
-      (TL: benign_src (ktr x))
-    :
-      benign_src (Vis (subevent _ (EChoose X)) ktr)
-  .
-
-  Inductive benign_srcN: nat -> itree (eff0 owned_heap) (owned_heap * (mem * val)) -> Prop :=
-  | bengin_srcN_ret x: benign_srcN 0%nat (Ret x)
-  | bengin_srcN_tau n itr (TL: benign_srcN n itr): benign_srcN (S n) (Tau itr)
-  | bengin_srcN_UB
-      n x ktr
-      (TL: benign_srcN n (ktr x))
-    :
-      benign_srcN (S n) (Vis (subevent _ EUB) ktr)
-  | bengin_srcN_choose
-      n X x ktr
-      (INHAB: inhabited X)
-      (TL: benign_srcN n (ktr x))
-    :
-      benign_srcN (S n) (Vis (subevent _ (EChoose X)) ktr)
-  .
-
-  Theorem count_benign_src
-          itr
-          (B: benign_src itr)
-    :
-      exists n, benign_srcN n itr
-  .
-  Proof. induction B; ii; des; ss; esplits; et; econs; et. Qed.
-
-End BENIGN.
 
 
 
@@ -184,12 +104,6 @@ Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :
     _sim_st sim_st
             (Vis (subevent _ (EChoose X_src)) k_src)
             (Vis (subevent _ (EChoose X_tgt)) k_tgt)
-| sim_st_benign
-    ru_src ru_tgt i_src i_tgt 
-    (BSRC: benign_src ru_src)
-    (BTGT: benign_tgt ru_tgt)
-  :
-    _sim_st sim_st (ru_src;; i_src) (ru_tgt;; i_tgt)
 .
 
 Definition sim_st: st_src -> st_tgt -> Prop := paco2 _sim_st bot2.
@@ -301,26 +215,26 @@ Section SIM.
     Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link)
                                                   (SimSymbId.mk md_src md_tgt) sm_link.
 
-    Inductive match_states: SIR.state owned_heap_src ->
-                            SIR.state owned_heap_tgt -> SimMemOh.t -> Prop :=
+    Inductive match_states (idx: nat): SIR.state owned_heap_src ->
+                                       SIR.state owned_heap_tgt -> SimMemOh.t -> Prop :=
     | match_states_intro
         st_src st_tgt smo0
         (SIM: sim_st st_src st_tgt)
         (MWF: SimMemOh.wf smo0)
       :
-        match_states st_src st_tgt smo0
+        match_states idx st_src st_tgt smo0
     .
 
     Lemma match_states_lxsim
-          st_src st_tgt_src smo_src
-          (MATCH: match_states st_src st_tgt_src smo_src)
+          idx st_src_src st_tgt_src smo_src
+          (MATCH: match_states idx st_src_src st_tgt_src smo_src)
       :
         <<XSIM: lxsim (md_src skenv_link) (md_tgt skenv_link)
                       (fun _ => () -> exists (_ : ()) (_ : mem), True)
-                      (Ord.lift_idx lt_wf (42%nat)) st_src st_tgt_src smo_src>>
+                      (Ord.lift_idx lt_wf idx) st_src_src st_tgt_src smo_src>>
     .
     Proof.
-      revert_until st_src. revert st_src.
+      revert_until idx. revert idx.
       ginit.
       { intros. eapply cpn4_wcompat; eauto with paco. }
       gcofix CIH. i. gstep.
@@ -410,25 +324,6 @@ Section SIM.
           esplits; et.
           + left. eapply plus_one. econs 3; ss; et.
           + gbase. eapply CIH. econs; et.
-        }
-      - (* BENIGN *)
-        (* apply  count_benign_src in BSRC. apply  count_benign_tgt in BTGT. des. *)
-        (* rename n0 into n_src. rename n into n_tgt. *)
-        induction BTGT; ii; ss.
-        { admit "somehow". }
-        { econs 2. ii. econs 1; ss; et.
-          { i. inv STEPTGT; cycle 1.
-            { irw in VIS. clarify. }
-            { irw in VIS. clarify. }
-            irw in TAU. clarify.
-            esplits; eauto.
-            { right. esplits; try apply star_refl. eapply Ord.lift_idx_spec; et. }
-            gstep.
-            { hexploit lxsim_mon; et. }
-            rr. ii.
-            replace 41%nat with 42%nat.
-            eapply IHBTGT.
-          gbase. eapply CIH.
         }
     Unshelve.
       all: ss.

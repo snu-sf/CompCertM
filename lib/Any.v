@@ -3,43 +3,24 @@ Require Import Program.
 Require Import ClassicalDescription EquivDec.
 
 Set Implicit Arguments.
+Set Universe Polymorphism.
 
-Notation Any := { ty: Type & ty }.
-(* Definition Any := { ty: Type & ty }. *)
-(* Hint Unfold Any. *)
+
+
+Inductive Any: Type :=
+  Any_intro : forall {A:Type} {x:A}, Any.
+(* Arguments Any [A P]. *)
 
 Definition downcast {T: Type} (a: Any): option T.
-  destruct a.
-  destruct (excluded_middle_informative (x = T)).
-  - subst. apply Some. assumption.
-  - apply None.
+destruct a.
+destruct (excluded_middle_informative (A = T)).
+- subst. apply Some. assumption.
+- apply None.
 Defined.
 
-Definition upcast {T} (a: T): Any := existT (fun x => x) _ a.
-(* Hint Unfold downcast upcast. *)
+Definition upcast {T} (a: T): Any := @Any_intro _ a.
 
-Lemma downcast_spec
-      a T (t: T)
-      (CAST: downcast a = Some t)
-  :
-    <<TY: projT1 a = T>> /\ <<VAL: projT2 a ~= t>>
-.
-Proof.
-  unfold downcast in *. des_ifs. ss.
-  simpl_depind. eauto.
-Qed.
-
-Lemma downcast_intro
-      a T (t: T)
-      (TY: projT1 a = T)
-      (VAL: projT2 a ~= t)
-  :
-    <<CAST: downcast a = Some t>>
-.
-Proof.
-  unfold downcast in *. des_ifs. ss.
-  dependent destruction e. ss.
-Qed.
+Arguments Any_intro {A} x.
 
 Lemma upcast_downcast
       T (a: T)
@@ -47,25 +28,25 @@ Lemma upcast_downcast
     downcast (upcast a) = Some a
 .
 Proof.
-  eapply downcast_intro; ss.
+  cbn. des_ifs. dependent destruction e. cbn. eauto.
 Qed.
 
-Lemma projT1_upcast
+Lemma unfold_up
       (a: Any)
   :
-    <<CAST: exists t: projT1 a, a = upcast t>>
+    <<CAST: exists T (t: T), a = upcast t>>
 .
 Proof.
   unfold upcast in *. dependent destruction a. ss. eauto.
 Qed.
 
-Lemma upcast_intro
+Lemma unfold_down
       (a: Any)
   :
-    <<CAST: a = upcast (projT2 a)>>
+    <<CAST: exists T (t: T), downcast a = Some t>>
 .
 Proof.
-  unfold upcast in *. dependent destruction a. ss.
+  unfold downcast in *. destruct a. esplits. des_ifs. dependent destruction e. ss.
 Qed.
 
 Lemma upcast_downcast_iff
@@ -76,17 +57,15 @@ Lemma upcast_downcast_iff
 Proof.
   split; ii; des.
   - clarify. rewrite upcast_downcast. ss.
-  - apply downcast_spec in H. des. r.
-    rewrite upcast_intro with a. unfold upcast. simpl_depind. f_equal. ss.
+  - destruct a; ss. des_ifs. cbn in *. clarify.
 Qed.
 
 Definition Any_dec (a0 a1: Any): {a0=a1} + {a0<>a1}.
   destruct a0, a1.
-  simpl_depind.
-  destruct (excluded_middle_informative (x = x0)).
+  destruct (excluded_middle_informative (A = A0)).
   - clarify.
-    destruct (excluded_middle_informative (p = p0)).
-    + clarify. left. rewrite sigT_eta. ss.
+    destruct (excluded_middle_informative (x = x0)).
+    + clarify. left. ss.
     + right. ii. simpl_depind. clarify.
   - right. ii. simpl_depind.
 Defined.
@@ -103,32 +82,6 @@ Lemma upcast_inj
 .
 Proof. unfold upcast in *. simpl_depind. ss. Qed.
 
-Lemma upcast_projT1
-      A (a: A)
-  :
-    <<EQ: projT1 (upcast a) = A>>
-.
-Proof. ss. Qed.
-
-Lemma upcast_projT2
-      A (a: A)
-  :
-    <<EQ: projT2 (upcast a) = a>>
-.
-Proof. ss. Qed.
-
-Lemma Any_eta
-      (a0 a1: Any)
-      (EQTY: projT1 a0 = projT1 a1)
-      (EQVAL: projT2 a0 ~= projT2 a1)
-  :
-    <<EQ: a0 = a1>>
-.
-Proof.
-  destruct a0, a1; ss.
-  clarify. eapply JMeq_eq in EQVAL. clarify.
-Qed.
-
 Lemma upcast_eta
       A B a b
       (EQTY: A = B)
@@ -137,7 +90,7 @@ Lemma upcast_eta
     <<EQ: @upcast A a = @upcast B b>>
 .
 Proof.
-  eapply Any_eta; ss.
+  clarify. eapply JMeq_eq in EQVAL. clarify.
 Qed.
 
 
@@ -155,4 +108,5 @@ Ltac clarify := repeat des_u;
                        end; sflib.clarify.
 
 Global Opaque upcast.
+Global Opaque downcast.
 

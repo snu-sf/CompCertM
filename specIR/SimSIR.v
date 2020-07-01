@@ -22,76 +22,8 @@ Require Import SIRCommon SIR.
 
 Require Import Program.
 Require Import Simulation.
-Require Import Lexicographic_Product.
-Require Import Relation_Operators.
 
 Set Implicit Arguments.
-
-
-
-
-
-
-
-
-
-
-
-
-(*** TODO: Move to Ord.v ***)
-Section LEXICO.
-
-  Variable (idxh idxl: Type) (ordh: idxh -> idxh -> Prop) (ordl: idxl -> idxl -> Prop).
-
-  Definition idx_prod := (idxh * idxl)%type.
-
-  Inductive ord_prod: idx_prod -> idx_prod -> Prop :=
-  | ord_prod_high
-      idxh0 idxh1 idxl0 idxl1
-      (ORDH: ordh idxh0 idxh1):
-      ord_prod (idxh0, idxl0) (idxh1, idxl1)
-  | ord_prod_low
-      idxh idxl0 idxl1
-      (ORDL: ordl idxl0 idxl1):
-      ord_prod (idxh, idxl0) (idxh, idxl1).
-
-  Theorem ord_prod_wf
-          (WF0: well_founded ordl)
-          (WF1: well_founded ordh):
-      <<WF: well_founded ord_prod>>.
-  Proof.
-    assert(ACC: forall h, Acc ordh h -> forall l, Acc ordl l -> Acc ord_prod (h, l)).
-    {
-      induction 1.
-      induction 1.
-      econs. i. inv H3.
-      - eauto.
-      - eauto.
-    }
-    rr. i. destruct a. eapply ACC; eauto.
-  Qed.
-
-End LEXICO.
-
-
-
-(* Inductive silent_taus E R: itree E R -> nat -> Prop := *)
-(* | taus_ret *)
-(*     r *)
-(*   : *)
-(*     silent_taus (Ret r) 0%nat *)
-(* | taus_tau *)
-(*     itr0 n *)
-(*     (REC: silent_taus itr0 n) *)
-(*   : *)
-(*     silent_taus (Tau itr0) (S n) *)
-(* | taus_vis *)
-(*     X (e: E X) ktr0 *)
-(*   : *)
-(*     silent_taus (Vis e ktr0) 0%nat *)
-(* . *)
-
-
 
 
 
@@ -116,36 +48,6 @@ Section SEMANTICS.
 Let st_src := (SIR.state owned_heap_src).
 Let st_tgt := (SIR.state owned_heap_tgt).
 
-(***
-In the definition of choose_src/choose_tgt...
-
-Approach A (more flexible):
-  Don't enforce tau. use coinductive-inductive definition
-  (recurse with "_sim_st sim_st")
-Approach B (not flexible but not that problematic):
-  Enforce tau and just use coinductive definition.
-  This auxiliary tau can be removed later by another translation,
-  and this should not be a pain point because we have transitivity for free.
-
-
-I tried approach A, but it is harder than I thought.
-When proving soundness of this definition (i.e, SimSIR => SimModSem)
-I need to know how many inductive steps it will take (so that I can give a proper index).
-However, in case of choose_tgt, the recursion occurs under the forall quantifier.
-I cannot predict the number of steps!
-(In other words, non-determinism is the problem)
-So, let's just go for the approach B.
-
-
-Philosophy: "Tau" is the only one that is coinductive-inductively defined.
-            All other cases should make progress, and auxiliary tau can be removed later.
-
-            Some pain point is it is hard to combine choose_src/choose_tgt to get choose_both.
-            Let's just put explicit choose_both constructor for now, and see what happens.
-
-TODO: why does itree needs transitivity? is this difference an interesting point?
-TODO: why itree has both `EqTauL/EqTauR` and `EqTau`? merely for convenience?
-***)
 Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :=
 | sim_st_ret
     oh_src oh_tgt m v
@@ -176,23 +78,10 @@ Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :
     k_src i_tgt
   :
     _sim_st sim_st (Vis (subevent _ (EUB)) k_src) i_tgt
-| sim_st_choose
-    X_src X_tgt
-    k_src k_tgt
-    (INHAB: inhabited X_tgt)
-    (SIM: forall x_tgt, exists x_src, sim_st (k_src x_src) (k_tgt x_tgt))
-  :
-    _sim_st sim_st
-            (Vis (subevent _ (EChoose X_src)) k_src)
-            (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 | sim_st_choose_src
     X_src
     k_src i_tgt
-    (* (SIM: exists x_src, _sim_st sim_st (k_src x_src) i_tgt) *)
-    (*** looks good, but induction hypothesis becomes stupid. Can we fix that? ***)
-    x_src
-    (* (SIM: _sim_st sim_st (k_src x_src) i_tgt) *)
-    (SIM: sim_st (k_src x_src) i_tgt)
+    (SIM: exists x_src, sim_st (k_src x_src) i_tgt)
   :
     _sim_st sim_st
             (Vis (subevent _ (EChoose X_src)) k_src)
@@ -201,57 +90,29 @@ Inductive _sim_st (sim_st: st_src -> st_tgt -> Prop): st_src -> st_tgt -> Prop :
     X_tgt
     k_tgt i_src
     (INHAB: inhabited X_tgt)
-    (* (SIM: forall x_tgt, _sim_st sim_st i_src (k_tgt x_tgt)) *)
     (SIM: forall x_tgt, sim_st i_src (k_tgt x_tgt))
-    (*** cannot count the depth because of forall quantifier (it may different case by case) ***)
-    (*** let's just put Tau and enforce progress here ... ***)
   :
     _sim_st sim_st
             (Tau i_src)
             (Vis (subevent _ (EChoose X_tgt)) k_tgt)
-| sim_st_tau_src
-    i_src i_tgt
-    (SIM: _sim_st sim_st i_src i_tgt)
+| sim_st_choose_both
+    X_src X_tgt
+    k_src k_tgt
+    (INHAB: inhabited X_tgt)
+    (SIM: forall x_tgt, exists x_src, sim_st (k_src x_src) (k_tgt x_tgt))
   :
-    _sim_st sim_st (Tau i_src) i_tgt
-| sim_st_tau_tgt
-    i_src i_tgt
-    (SIM: _sim_st sim_st i_src i_tgt)
-  :
-    _sim_st sim_st i_src (Tau i_tgt)
+    _sim_st sim_st
+            (Vis (subevent _ (EChoose X_src)) k_src)
+            (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 .
-
-(* Section DEPTH. *)
-(*   Variable (sim_st: st_src -> st_tgt -> Prop). *)
-(*   Inductive depth: forall i_src i_tgt, _sim_st sim_st i_src i_tgt -> nat -> Prop := *)
-(*   (* | depth_tau_src *) *)
-(*   (*     (i_src0: st_src) (i_tgt0: st_tgt) *) *)
-(*   (*     (SIM: _sim_st sim_st i_src0 i_tgt0) m *) *)
-(*   (*     (REC: @depth i_src0 i_tgt0 SIM m) *) *)
-(*   (*   : *) *)
-(*   (*     @depth (Tau i_src0) i_tgt0 (@sim_st_tau_src sim_st i_src0 i_tgt0 SIM) (S m) *) *)
-(*   | depth_tau_src *)
-(*       (i_src0: st_src) (i_tgt0: st_tgt) *)
-(*       (SIM: _sim_st sim_st i_src0 i_tgt0) m *)
-(*       (REC: depth SIM m) *)
-(*     : *)
-(*       depth (sim_st_tau_src SIM) (S m) *)
-(*   | depth_tau_tgt *)
-(*       (i_src0: st_src) (i_tgt0: st_tgt) *)
-(*       (SIM: _sim_st sim_st i_src0 i_tgt0) m *)
-(*       (REC: depth SIM m) *)
-(*     : *)
-(*       depth (sim_st_tau_tgt SIM) (S m) *)
-(*   . *)
-(* End DEPTH. *)
-
 
 Definition sim_st: st_src -> st_tgt -> Prop := paco2 _sim_st bot2.
 
 Lemma sim_st_mon: monotone2 _sim_st.
 Proof.
-  ii. induction IN; try (by econs; et).
-  - econs; et. i. exploit SIM; et. i; des. esplits; et.
+  ii. inv IN; try econs; et.
+  - des. esplits; et.
+  - i. exploit SIM; et. i; des. esplits; et.
 Unshelve.
 Qed.
 Hint Unfold sim_st.
@@ -354,28 +215,23 @@ Section SIM.
     Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link)
                                                   (SimSymbId.mk md_src md_tgt) sm_link.
 
-    Inductive match_states: SIR.state owned_heap_src ->
-                            SIR.state owned_heap_tgt -> SimMemOh.t -> Prop :=
+    Inductive match_states (idx: nat): SIR.state owned_heap_src ->
+                                       SIR.state owned_heap_tgt -> SimMemOh.t -> Prop :=
     | match_states_intro
         st_src st_tgt smo0
         (SIM: sim_st st_src st_tgt)
         (MWF: SimMemOh.wf smo0)
       :
-        match_states st_src st_tgt smo0
+        match_states idx st_src st_tgt smo0
     .
 
-    (*** lexicographic ***)
-    Let idx: Type := (nat * nat).
-    Let ord: idx -> idx -> Prop := ord_prod lt lt.
-    Let wf_ord: well_founded ord := ord_prod_wf lt_wf lt_wf.
-
     Lemma match_states_lxsim
-          st_src_src st_tgt_src smo_src
-          (MATCH: match_states st_src_src st_tgt_src smo_src)
+          idx st_src_src st_tgt_src smo_src
+          (MATCH: match_states idx st_src_src st_tgt_src smo_src)
       :
         <<XSIM: lxsim (md_src skenv_link) (md_tgt skenv_link)
                       (fun _ => () -> exists (_ : ()) (_ : mem), True)
-                      (Ord.lift_idx wf_ord (1%nat, 0%nat)) st_src_src st_tgt_src smo_src>>
+                      (Ord.lift_idx lt_wf idx) st_src_src st_tgt_src smo_src>>
     .
     Proof.
       revert_until idx. revert idx.
@@ -440,22 +296,11 @@ Section SIM.
         + rr in EVCALL. des; ss. inv EVCALL; ss.
         + rr in EVRET. des; ss. inv EVRET; ss.
         + inv EVSTEP; ss.
-      - (* CHOOSE BOTH *)
-        inv INHAB.
-        econs 2; ss; et. ii.
-        econs 1; ss; et; cycle 1.
-        { esplits; ss; et. econsby (ss; et). }
-        { ii. inv STEPTGT; ss; csc.
-          hexpl SIM0; et. pclearbot.
-          esplits; et.
-          + left. eapply plus_one. econs 3; ss; et.
-          + gbase. eapply CIH. econs; et.
-        }
       - (* CHOOSE SRC *)
         des. pclearbot.
         econs 2; ss; et. ii.
         econs 1; ss; et; cycle 1.
-        { esplits; ss; et. econsby (ss; et). }
+        { esplits; ss; et. econs; ss; et. }
         { ii. inv STEPTGT; ss; clarify. esplits; et.
           + left. eapply plus_one. econs 3; ss; et.
           + gbase. eapply CIH. econs; et.
@@ -464,16 +309,22 @@ Section SIM.
         des. pclearbot. inv INHAB.
         econs 2; ss; et. ii.
         econs 1; ss; et; cycle 1.
-        { esplits; ss; et. econsby (ss; et). }
+        { esplits; ss; et. econs 3; ss; et. }
         { ii. inv STEPTGT; ss; csc. esplits; et.
           + left. eapply plus_one. econs; ss; et.
           + gbase. eapply CIH. econs; et.
         }
-      - (* TAU L *)
-        silent_taus
-        econs. ii. clear_tac.
-        
-
+      - (* CHOOSE BOTH *)
+        inv INHAB.
+        econs 2; ss; et. ii.
+        econs 1; ss; et; cycle 1.
+        { esplits; ss; et. econs 3; ss; et. }
+        { ii. inv STEPTGT; ss; csc.
+          hexpl SIM0; et. pclearbot.
+          esplits; et.
+          + left. eapply plus_one. econs 3; ss; et.
+          + gbase. eapply CIH. econs; et.
+        }
     Unshelve.
       all: ss.
       all: try (econsby ss).

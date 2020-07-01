@@ -226,13 +226,13 @@ Section SIM.
         i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
-      sim_st (interp_mrec (interp_function p_src) i_src)
+      sim_st tt (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
   .
   Proof.
     revert_until SIMP.
     ginit.
-    { intros. eapply cpn2_wcompat; et. eauto with paco. }
+    { intros. eapply cpn3_wcompat; et. eauto with paco. }
     gcofix CIH.
     i. rewrite ! unfold_interp_mrec.
     punfold SIM. inv SIM; cbn.
@@ -254,6 +254,8 @@ Section SIM.
       rewrite (unfold_interp_mrec _ (Tau i_tgt0)). cbn. econs; et. eauto with paco.
     - gstep. pclearbot. econs; et. ii. repeat spc SIM0. gstep.
       rewrite (unfold_interp_mrec _ (Tau i_src0)). cbn. econs; et. eauto with paco.
+  Unshelve.
+    all: ss.
   Qed.
 
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)
@@ -262,7 +264,7 @@ Section SIM.
       (fname: ident) m vs oh_src oh_tgt
       (O: SO oh_src oh_tgt)
     ,
-      (<<SIM: sim_st (interp_program p_src (ICall fname oh_src m vs))
+      (<<SIM: sim_st tt (interp_program p_src (ICall fname oh_src m vs))
                      (interp_program p_tgt (ICall fname oh_tgt m vs))
                      >>)
   .
@@ -288,7 +290,8 @@ Section SIM.
   Proof.
     ii. econs; ss; eauto.
     ii. rr in SIMSKENVLINK. clarify. esplits. eapply sim_modsem; et.
-    eapply adequacy_local_local.
+    { eapply unit_ord_wf. }
+    ii. esplits. eapply adequacy_local_local; et.
   Qed.
 
 End SIM.

@@ -321,13 +321,13 @@ Section SIM.
         i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
-      sim_st (interp_mrec (interp_function p_src) i_src)
+      sim_st tt (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
   .
   Proof.
     revert_until SIMP.
     ginit.
-    { intros. eapply cpn2_wcompat; et. eauto with paco. }
+    { intros. eapply cpn3_wcompat; et. eauto with paco. }
     gcofix CIH.
     i. rewrite ! unfold_interp_mrec.
     punfold SIM. inv SIM; cbn.
@@ -364,6 +364,8 @@ Section SIM.
     - gstep. econs; et.
     - irw. step. step. ii. esplits; et. step.
       exploit MATCH; et. intro T. pclearbot. eauto with paco.
+  Unshelve.
+    all: ss.
   Qed.
 
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)
@@ -371,7 +373,7 @@ Section SIM.
     forall
       (fname: ident) m vs oh
     ,
-      (<<SIM: sim_st (interp_program p_src (ICall fname oh m vs))
+      (<<SIM: sim_st tt (interp_program p_src (ICall fname oh m vs))
                      (interp_program p_tgt (ICall fname oh m vs))
                      >>)
   .
@@ -422,7 +424,8 @@ Section SIM.
   Proof.
     ii. econs; ss; eauto.
     ii. rr in SIMSKENVLINK. clarify. esplits. eapply sim_modsem with (SO:=eq); et.
-    ii. clarify. eapply adequacy_local_local.
+    { eapply unit_ord_wf. }
+    ii. clarify. esplits; et. eapply adequacy_local_local.
   Qed.
 
 End SIM.

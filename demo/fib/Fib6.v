@@ -7,7 +7,7 @@ Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require ClightC.
 Require Import Fib0.
-Require Import SIRmini.
+Require Import SIR.
 (* Require Import Clightdefs. *)
 
 Set Implicit Arguments.
@@ -69,23 +69,37 @@ Definition fib_spec fun_id :=
      SEP ().
 ***)
 
-Definition precond (vs: list val): option nat :=
-  match vs with
+Definition parse_arg (oh0: owned_heap) (m0: mem) (vs0: list val): option nat :=
+  match vs0 with
   | [Vint n] => (to_nat_opt n)
   | _ => None
   end
 .
-Hint Unfold precond.
-Coercion is_some_coercion {X}: (option X) -> bool := is_some.
+Hint Unfold parse_arg.
 
-Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
-  itree (E owned_heap) (owned_heap * (mem * val)) :=
-  tau;;
-  n <- (unwrapU (precond vs)) ;;
-  tau;;
-  tau;;
-  Ret (oh0, (m0, (Vint (of_nat (fib_nat n)))))
+Coercion is_some_coercion {X}: (option X) -> bool := is_some.
+Definition precond (oh0: owned_heap) (m0: mem) (vs0: list val) := exists n, parse_arg oh0 m0 vs0 = Some n.
+
+Definition postcond (oh0: owned_heap) (m0: mem) (vs0: list val): (owned_heap * (mem * val)) -> Prop :=
+  fun '(ohr, (mr, vr)) => 
+    match parse_arg oh0 m0 vs0 with
+    | Some n => (<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: vr = Vint (of_nat (fib_nat n))>>)
+    | _ => False
+    end
 .
+Hint Unfold postcond.
+
+Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
+  itree (E owned_heap) (owned_heap * (mem * val)) :=
+  assume (precond oh0 m0 vs0) ;;
+  trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) >>= (fun x => Ret (proj1_sig x))
+  (* ohmv <- trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) ;; *)
+  (* Ret (proj1_sig ohmv) *)
+.
+
+
+
+
 (*     else *)
 (*       if Nat.eqb n 0%nat *)
 (* Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val): *)
@@ -114,6 +128,20 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
 (*   (fun '(ohr, (mr, vr)) => guarantee(<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: True>>) ;; Ret (ohr, (mr, vr))) *)
 (* . *)
 
-Definition prog: program owned_heap := (Maps.add _fib f_fib Maps.empty).
+Definition prog: program owned_heap :=
+  (Maps.add _fib f_fib Maps.empty).
 
 Definition module: Mod.t := module (Fib0.module) prog "fib"%string initial_owned_heap.
+
+(* Goal forall oh0 m0 vs, *)
+(*     exists (body: nat -> itree (E owned_heap) (owned_heap * (mem * val)), *)
+(*       f_fib_inner oh0 m0 vs = *)
+(*       tau;; *)
+(*       n <- (unwrapU (precond vs)) ;; *)
+(*       (body n) *)
+(*       >>= *)
+(*       guaranteeK (fun '(ohr, (mr, vr)) => (<<OH: oh0 = ohr>> /\ <<M: m0 = mr>> /\ <<V: vr = Vint (of_nat (fib_nat n))>>)) *)
+(* . *)
+(* Proof. *)
+(*   i. unfold f_fib_inner. eexists (fun _ => _). et. *)
+(* Qed. *)

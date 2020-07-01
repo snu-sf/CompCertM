@@ -36,20 +36,6 @@ Local Open Scope signature_scope.
 
 
 
-Inductive is_finite {E : Type -> Type} {t : Type} : itree E t -> Prop :=
-| is_finite_ret {x}: is_finite (Ret x)
-| is_finite_tau {tr} (TL: is_finite tr): is_finite (Tau tr)
-| is_finite_vis {u e k} {x: u} (TL: is_finite (k x)): is_finite (Vis e k).
-
-Inductive wf_prog owned_heap (p: program owned_heap): Prop :=
-| wf_prog_intro
-    (WF: forall
-        fname fn
-        (SOME: p fname = Some fn)
-      ,
-        <<RET: forall oh m vs, is_finite (fn oh m vs)>>)
-.
-
 Section OWNEDHEAP.
 
 Variable mi: string.

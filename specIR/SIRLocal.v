@@ -119,23 +119,13 @@ Inductive _match_itr (match_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt
     _match_itr match_itr
              (Tau (Tau i_src))
              (Vis (subevent _ (EChoose X_tgt)) k_tgt)
-| match_itr_tau_src
-    it_src it_tgt
-    (SIM: _match_itr match_itr it_src it_tgt)
-  :
-    _match_itr match_itr (Tau it_src) (it_tgt)
-| match_itr_tau_tgt
-    it_src it_tgt
-    (SIM: _match_itr match_itr it_src it_tgt)
-  :
-    _match_itr match_itr (it_src) (Tau it_tgt)
 .
 
 Definition match_itr: itr_src -> itr_tgt -> Prop := paco2 _match_itr bot2.
 
 Lemma match_itr_mon: monotone2 _match_itr.
 Proof.
-  ii. induction IN; try econs; et; rr; et.
+  ii. inv IN; try econs; et; rr; et.
   - i. exploit SIM; et. i; des_safe. esplits; et.
   - des. esplits; et.
 Unshelve.
@@ -189,69 +179,14 @@ Inductive bindC (r: itr_src -> itr_tgt -> Prop) : itr_src -> itr_tgt -> Prop :=
 
 Hint Constructors bindC: core.
 
-Lemma match_itr_tau_src'
-      i_src i_tgt
-      (MATCH: match_itr i_src i_tgt)
-  :
-    <<MATCH: match_itr (Tau i_src) i_tgt>>
-.
-Proof.
-  pfold. econs; et. punfold MATCH.
-Qed.
-
-Inductive TauC (r: itr_src -> itr_tgt -> Prop) : itr_src -> itr_tgt -> Prop :=
-| TauC_base
-    i_src i_tgt
-    (REL: r i_src i_tgt)
-  :
-    TauC r i_src i_tgt
-| TauC_left
-    i_src i_tgt
-    (REL: TauC r i_src i_tgt)
-  :
-    TauC r (Tau i_src) i_tgt
-| TauC_right
-    i_src i_tgt
-    (REL: TauC r i_src i_tgt)
-  :
-    TauC r i_src (Tau i_tgt)
-.
-Hint Constructors TauC.
-
-Lemma TauC_wcompat
-  :
-    wcompatible2 _match_itr TauC.
-Proof.
-  constructor.
-  - intros x0 x1 r r' IN LE. induction IN; subst; eauto.
-  - intros. induction PR; subst.
-    + eauto with paco.
-    + eapply match_itr_mon.
-      { econs; eauto. }
-      intros. eauto with paco.
-    + eapply match_itr_mon.
-      { econs; eauto. }
-      intros. eauto with paco.
-Qed.
-
-Lemma TauC_spec
-  :
-    TauC <3= gupaco2 (_match_itr) (TauC)
-.
-Proof.
-  ii. induction PR.
-  - gclo. econstructor 1; eauto with paco.
-  - gclo. econstructor 2; eauto with paco.
-  - gclo. econstructor 3; eauto with paco.
-Qed.
-
 Lemma bindC_spec
+      simC
   :
-    bindC <3= gupaco2 (_match_itr) (TauC)
+    bindC <3= gupaco2 (_match_itr) (simC)
 .
 Proof.
   gcofix CIH. intros. destruct PR.
-  punfold SIM. revert_until SIM. induction SIM; i.
+  punfold SIM. inv SIM.
   - rewrite ! bind_ret_l. gbase. eapply SIMK; et. rr; et.
   - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
     (* gfinal. left. eapply CIH. econstructor; eauto. *)
@@ -262,13 +197,11 @@ Proof.
   - rewrite ! bind_vis. gstep. econs; eauto.
   - rewrite ! bind_vis. gstep. econs; eauto.
   - rewrite ! bind_vis.
-    gstep. econs; eauto. ii. exploit SIM; et. intro T; des_safe. pclearbot. eauto with paco.
+    gstep. econs; eauto. ii. exploit SIM0; et. intro T; des_safe. pclearbot. eauto with paco.
   - rewrite ! bind_vis. rewrite ! bind_tau.
     gstep. econs; eauto. des. pclearbot. eauto with paco.
   - rewrite ! bind_vis. rewrite ! bind_tau.
     gstep. econs; eauto. ii. pclearbot. eauto with paco.
-  - exploit IHSIM; et. intro T. irw. guclo TauC_spec.
-  - exploit IHSIM; et. intro T. irw. guclo TauC_spec.
 Qed.
 
 Global Instance match_itr_bind :
@@ -276,7 +209,7 @@ Global Instance match_itr_bind :
 .
 Proof.
   red. ginit.
-  { intros. eapply TauC_wcompat; et. }
+  { intros. eapply cpn2_wcompat; eauto with paco. }
   guclo bindC_spec. ii. econs; et.
   u. ii.
   exploit H0; et.
@@ -334,8 +267,6 @@ Section SIM.
       rewrite (unfold_interp_mrec _ (Tau i_tgt0)). cbn. econs; et. eauto with paco.
     - gstep. pclearbot. econs; et. ii. repeat spc SIM0. gstep.
       rewrite (unfold_interp_mrec _ (Tau i_src0)). cbn. econs; et. eauto with paco.
-    - admit "RESOLVE LATER".
-    - admit "RESOLVE LATER".
   Unshelve.
     all: ss.
   Qed.

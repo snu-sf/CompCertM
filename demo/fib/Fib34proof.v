@@ -104,36 +104,3 @@ Proof.
     Local Opaque ident_eq.
     r. unfold Fib4.prog, prog. ss. des_ifs; ss.
 Qed.
-
-Require Import RUSC AdequacyLocal IdSimExtra.
-
-Let rel_default := (mkPR SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top).
-Theorem eutt_proof
-        owned_heap
-        (p_src p_tgt: program owned_heap)
-        (SIM: (eq ==> (option_rel (eq ==> eq ==> eq ==> eutt eq)))%signature p_src p_tgt)
-        sk mi init_oh
-  :
-    rusc (eq rel_default) [SIR.module sk p_src mi init_oh]
-         [SIR.module sk p_tgt mi init_oh]
-.
-Proof.
-Admitted.
-
-Theorem rusc_format
-  :
-    rusc (eq rel_default) [Fib4.module] [Fib3.module]
-.
-Proof.
-  unfold Fib4.module, Fib3.module.
-  rewrite eutt_proof; cycle 1.
-  { ii. clarify. unfold Fib4.prog.
-    instantiate (1:= (add _fib_ru (fun _ _ _ => _) (add Fib0._fib (fun _ _ _ => _) empty))).
-    ss. des_ifs.
-    - ii. clarify. unfold f_fib_ru. rewrite tau_eutt. refl.
-    - ii. clarify. refl.
-  }
-  eapply (@relate_single_rusc (eq rel_default) SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top).
-  - ii. exists mp. esplits; ss; et. eapply sim_mod.
-  - ss.
-Qed.

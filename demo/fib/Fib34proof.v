@@ -13,6 +13,7 @@ Require SimMemId.
 Require Import Any.
 Require Import SIR.
 Require Import SIRStack.
+Require Import FibHeader.
 Require Import Fib4.
 Require Import Fib3.
 Require Import ModSemProps.
@@ -81,7 +82,6 @@ Proof.
       rewrite bind_bind.
       refl.
     + ii. clarify. unfold f_fib_ru. rewrite tau.
-      replace Fib4.parse_arg with parse_arg by ss.
       pfold. step_unwrapN.
       { cbn. des_ifs_safe.
         unfold triggerNB. irw. econs; et. }

@@ -13,6 +13,7 @@ Require SimMemId.
 Require Import Any.
 Require Import SIR.
 Require Import SIRStack.
+Require Import FibHeader.
 Require Import Fib3.
 Require Import Fib2.
 Require Import ModSemProps.
@@ -165,83 +166,18 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 
-Lemma eta
-      i j
-      (EQ: i.(Int.intval) = j.(Int.intval))
-  :
-    <<EQ: i = j>>
-.
-Proof.
-  r. destruct i, j; ss. clarify. f_equal. eapply Axioms.proof_irr.
-Qed.
-
-(* Lemma signed_inj *)
-(*       i j *)
-(*       (EQ: Int.signed i = Int.signed j) *)
-(*   : *)
-(*     <<EQ: i = j>> *)
-(* . *)
-(* Proof. *)
-(*   unfold Int.signed in *. des_ifs. *)
-(*   - r. eapply eta. ss. *)
-(*   - r. eapply eta. ss. *)
-(* Qed. *)
-
-Lemma Int_add_repr: forall x y,
-    <<EQ: (Int.add (Int.repr x) (Int.repr y)) = Int.repr (x + y)>>.
-Proof.
-  i. apply Int.eqm_repr_eq. eapply Int.eqm_sym. eapply Int.eqm_trans.
-  - apply Int.eqm_sym. apply Int.eqm_unsigned_repr.
-  - apply Int.eqm_add; apply Int.eqm_unsigned_repr.
-Qed.
-
-Lemma Int_sub_repr: forall x y,
-    <<EQ: (Int.sub (Int.repr x) (Int.repr y)) = Int.repr (x - y)>>.
-Proof.
-  i. apply Int.eqm_repr_eq. eapply Int.eqm_sym. eapply Int.eqm_trans.
-  - apply Int.eqm_sym. apply Int.eqm_unsigned_repr.
-  - apply Int.eqm_sub; apply Int.eqm_unsigned_repr.
-Qed.
-
-Local Opaque ident_eq.
-Local Opaque Z.of_nat.
-
-Definition mp: ModPair.t := SimSymbId.mk_mp (Fib3.module) (Fib2.module).
 
 (* Hint Unfold assume guarantee assumeK guaranteeK triggerUB triggerNB unwrapU unwrapN. *)
-Hint Unfold of_nat to_nat of_nat_opt to_nat_opt.
-
-Lemma fib_nat_0: (fib_nat 0 = 0)%nat. Proof. ss. Qed.
-Lemma fib_nat_1: (fib_nat 1 = 1)%nat. Proof. ss. Qed.
-Lemma fib_nat_recurse: forall n, ((fib_nat (S (S n))) = (fib_nat n) + fib_nat (S n))%nat.
-Proof. reflexivity. Qed.
-Local Opaque fib_nat.
+Definition mp: ModPair.t := SimSymbId.mk_mp (Fib3.module) (Fib2.module).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.
-  assert(AA: forall x, (Z.of_nat x <= Int.max_signed)
-                         (* (0 <= Int.signed (Int.repr (Z.of_nat x))) *)
-                       -> to_nat_opt (of_nat x) = Some x).
-  { i. unfold to_nat_opt, of_nat.
-    generalize Int.min_signed_neg; i.
-    generalize (Int.signed_range (Int.repr (Z.of_nat x))); i.
-    rewrite Int.signed_repr in *; try lia. des_ifs; try lia.
-    rewrite Nat2Z.id; ss.
-  }
-  (*** TODO: make lemma ***)
-  assert(SUCPRED: forall x y, x = S y <-> ((x - 1)%nat = y /\ (1 <= x)%nat)).
-  {
-    split.
-    - ginduction x; ii; ss. clarify. split; try xomega. clear - y. ginduction y; ii; ss. et.
-    - ginduction x; ii; des; clarify; ss; try xomega. f_equal. rewrite Nat.sub_0_r. ss.
-  }
-
-
-
+  assert(AA := range_to_nat).
+  assert(SUCPRED := succ_pred).
 
   eapply SimSIRLocal.sim_mod with (SO := eq); ss.
   ii. clarify. unfold Fib3.prog, prog. ss. des_ifs; econs; et.
-  ii. clarify. unfold Fib3.owned_heap in *. des_u. ss.
+  ii. clarify. unfold owned_heap in *. des_u.
   revert m vs.
   ginit.
   { i. eapply cpn2_wcompat; eauto with paco. }

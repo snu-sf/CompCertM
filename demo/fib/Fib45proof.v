@@ -130,7 +130,6 @@ Proof.
   { i. eapply cpn2_wcompat; eauto with paco. }
   ii; clarify.
   unfold Fib5.f_fib, f_fib.
-  replace Fib5.precond with precond by ss.
   step_assume.
   { unfold assume. des_ifs. unfold triggerUB. irw. step. }
   unfold assume. des_ifs.

@@ -110,16 +110,11 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 
-
-
-Definition mp: ModPair.t := SimSymbId.mk_mp (Fib5.module) (Fib4.module).
-
-Local Opaque ident_eq.
-Theorem sim_mod: ModPair.sim mp.
+Theorem correct: rusc defaultR [Fib5.module] [Fib4.module].
 Proof.
   assert(tau: forall E R (a: itree E R), (tau;; a) = a).
   { admit "backdoor --- relax sim_st to allow tau* before each progress". }
-  eapply SIRLocal.sim_mod with (SO := eq); ss.
+  eapply SIRLocal.correct with (SO := eq); ss.
   ii. clarify. unfold Fib5.prog, prog. ss. des_ifs; econs; et.
   { r. ii. clarify.
     assert(EQ: (Fib5.f_fib_ru oh_tgt m vs) = (f_fib_ru oh_tgt m vs)).

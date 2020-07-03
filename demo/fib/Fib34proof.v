@@ -64,12 +64,11 @@ Definition option_rel A B (r: A -> B -> Prop): option A -> option B -> Prop :=
     end
 .
 
-Definition mp: ModPair.t := SimSymbId.mk_mp (Fib4.module) (Fib3.module).
-Theorem sim_mod: ModPair.sim mp.
+Theorem correct: rusc defaultR [Fib4.module] [Fib3.module].
 Proof.
   assert(tau: forall E R (a: itree E R), (tau;; a) = a).
   { admit "backdoor --- relax sim_st to allow tau* before each progress". }
-  eapply (SIRHoare.sim_mod).
+  eapply (SIRHoare.correct).
   instantiate (1:= postcond).
   instantiate (1:= precond).
   instantiate (1:= _fib_ru).

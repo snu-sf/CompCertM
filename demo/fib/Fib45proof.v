@@ -119,7 +119,7 @@ Theorem sim_mod: ModPair.sim mp.
 Proof.
   assert(tau: forall E R (a: itree E R), (tau;; a) = a).
   { admit "backdoor --- relax sim_st to allow tau* before each progress". }
-  eapply SimSIRLocal.sim_mod with (SO := eq); ss.
+  eapply SIRLocal.sim_mod with (SO := eq); ss.
   ii. clarify. unfold Fib5.prog, prog. ss. des_ifs; econs; et.
   { r. ii. clarify.
     assert(EQ: (Fib5.f_fib_ru oh_tgt m vs) = (f_fib_ru oh_tgt m vs)).

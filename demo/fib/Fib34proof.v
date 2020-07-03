@@ -69,7 +69,7 @@ Theorem sim_mod: ModPair.sim mp.
 Proof.
   assert(tau: forall E R (a: itree E R), (tau;; a) = a).
   { admit "backdoor --- relax sim_st to allow tau* before each progress". }
-  eapply (SIRHoareproof.sim_mod).
+  eapply (SIRHoare.sim_mod).
   instantiate (1:= postcond).
   instantiate (1:= precond).
   instantiate (1:= _fib_ru).

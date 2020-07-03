@@ -175,7 +175,7 @@ Proof.
   assert(AA := range_to_nat).
   assert(SUCPRED := succ_pred).
 
-  eapply SimSIRLocal.sim_mod with (SO := eq); ss.
+  eapply SIRLocal.sim_mod with (SO := eq); ss.
   ii. clarify. unfold Fib3.prog, prog. ss. des_ifs; econs; et.
   ii. clarify. unfold owned_heap in *. des_u.
   revert m vs.

@@ -1,4 +1,4 @@
 Require Export SIRStackproof.
-Require Export SIRHoareproof.
+Require Export SIRHoare.
 Require Export SimSIR.
-Require Export SimSIRLocal.
+Require Export SIRLocal.

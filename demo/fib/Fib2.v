@@ -17,7 +17,6 @@ Set Implicit Arguments.
 
 Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
-  tau;;
   match vs0 with
   | [Vint n] =>
     if Int.eq n Int.zero

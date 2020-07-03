@@ -20,6 +20,7 @@ Require Import Program.
 Require Import Simulation.
 Require Import AxiomsC.
 Require Export ITreelib.
+Require Export AuxBuffer.
 
 Set Implicit Arguments.
 Set Universe Polymorphism.

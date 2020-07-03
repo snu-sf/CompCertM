@@ -337,9 +337,9 @@ Section SIM.
       eapply CIH. eapply match_itr_bind; et.
       { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
       inv SIMP.
-      exploit OTHERS; et. intro T. inv T.
+      exploit OTHERS; et. intro T. rr in T. des_ifs; cycle 1.
       { pfold. econs; et. }
-      exploit H1; et.
+      exploit T; et.
     - step_guarantee. irw. step.
       rewrite <- ! unfold_interp_mrec.
       gbase. eapply CIH.
@@ -407,10 +407,9 @@ Section SIM.
       inv SIMP.
       destruct (eq_block fname _fn_ru).
       { des_ifs. pfold. econs; et. }
-      exploit OTHERS; et. intro T.
-      inv T; ss.
+      exploit OTHERS; et. intro T. rr in T. des_ifs; cycle 1.
       { pfold. econs; et. }
-      exploit H1; et.
+      exploit T; et.
     }
   Qed.
 

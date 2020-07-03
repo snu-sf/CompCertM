@@ -55,14 +55,6 @@ Tactic Notation "irw" "in" ident(H) := repeat (autorewrite with itree_axiom2 in 
 Tactic Notation "irw" := repeat (autorewrite with itree_axiom2; cbn).
 
 
-Definition option_rel A B (r: A -> B -> Prop): option A -> option B -> Prop :=
-  fun oa ob =>
-    match oa, ob with
-    | Some a, Some b => <<REL: r a b>>
-    | None, None => True
-    | _, _ => False
-    end
-.
 
 Theorem correct: rusc defaultR [Fib4.module] [Fib3.module].
 Proof.
@@ -98,8 +90,5 @@ Proof.
       { f. f_equiv. ii. f_equiv. ii. des_ifs_safe. f_equiv. ii. f.
         instantiate (1:= fun '(oh, (m, v)) => _). refl. }
       ii. des_ifs_safe. left. pfold. econs; et.
-  - ii. replace Coqlib.option_rel with option_rel; cycle 1.
-    { admit "change the definition itself". }
-    Local Opaque ident_eq.
-    r. unfold Fib4.prog, prog. ss. des_ifs; ss.
+  - ii. r. unfold Fib4.prog, prog. ss. des_ifs; ss.
 Qed.

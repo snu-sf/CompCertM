@@ -96,3 +96,14 @@ Proof.
 Qed.
 
 
+
+
+(*** option ***)
+Definition option_rel A B (r: A -> B -> Prop): option A -> option B -> Prop :=
+  fun oa ob =>
+    match oa, ob with
+    | Some a, Some b => <<REL: r a b>>
+    | None, None => True
+    | _, _ => False
+    end
+.

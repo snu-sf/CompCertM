@@ -241,10 +241,9 @@ Section SIM.
     - pclearbot. gstep. econs; et. gbase.
       eapply CIH. eapply match_itr_bind.
       { u. ii. repeat spc MATCH. pclearbot. eauto. }
-      exploit (@SIMP fname); et. intro T.
-      inv T.
+      exploit (@SIMP fname); et. intro T. rr in T. des_ifs; cycle 1.
       { pfold. econs; et. }
-      exploit H1; et.
+      exploit T; et.
     - gstep. econs; et. u in *. gstep. econs; et. repeat spc MATCH. specialize (MATCH H0).
       des; ss. gbase. eapply CIH.
       eauto with paco.
@@ -272,9 +271,9 @@ Section SIM.
     {
       ii.
       eapply match_prog_sim_st; ss.
-      hexploit (@SIMP fname); et. intro T. inv T; ss.
+      hexploit (@SIMP fname); et. intro T. rr in T. des_ifs; cycle 1.
       { pfold. econs; et. }
-      repeat (spc H1). des. ss.
+      repeat (spc T). des. ss.
     }
   Qed.
 

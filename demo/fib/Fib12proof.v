@@ -21,6 +21,13 @@ Require Import SIRProps.
 
 Set Implicit Arguments.
 
-Definition mp: ModPair.t := SimSymbId.mk_mp (Fib2.module) (Fib1.module).
-Theorem sim_mod: ModPair.sim mp.
-Proof. eapply SIRStackproof.sim_mod. Qed.
+Theorem correct: rusc defaultR [Fib2.module] [Fib1.module].
+Proof.
+  etrans; cycle 1.
+  { eapply SIRStackproof.correct. }
+  { eapply SIREutt.correct.
+    unfold Fib2.prog, prog.
+    ii. clarify. rr. ss. des_ifs; ss. ii. clarify. r.
+    unfold Fib2.f_fib, f_fib. rewrite tau_eutt. refl.
+  }
+Qed.

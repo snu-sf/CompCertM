@@ -17,8 +17,6 @@ Set Implicit Arguments.
 
 Definition f_fib_ru (oh0: owned_heap) (m0: mem) (vs0: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
-  tau;;
-
   `n: nat <- (unwrapN (parse_arg oh0 m0 vs0)) ;;
     match n with
     | O => Ret (oh0, (m0, (Vint Int.zero)))

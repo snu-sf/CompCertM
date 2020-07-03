@@ -319,9 +319,9 @@ Section SIM.
   Proof.
     eapply Proper_interp_mrec; eauto.
     ii.
-    destruct a. cbn. rr in SIMP. exploit (@SIMP name); et. intro R. inv R.
+    destruct a. cbn. rr in SIMP. repeat spc SIMP. hexploit1 SIMP; ss. des_ifs.
+    - eapply SIMP; ss.
     - refl.
-    - eapply H1; ss.
   Qed.
 
   Lemma glued_sim_st
@@ -421,9 +421,9 @@ Section SIM.
     {
       ii.
       eapply match_prog_sim_st; ss.
-      hexploit (@SIMP fname); et. intro T. inv T; ss.
+      hexploit (@SIMP fname); et. intro T. rr in T. des_ifs; cycle 1.
       { r. refl. }
-      repeat (spc H1). exploit H1; ss; et.
+      repeat (spc T). exploit T; ss; et.
     }
   Qed.
 

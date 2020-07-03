@@ -112,30 +112,46 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 Theorem correct: rusc defaultR [Fib5.module] [Fib4.module].
 Proof.
-  assert(tau: forall E R (a: itree E R), (tau;; a) = a).
-  { admit "backdoor --- relax sim_st to allow tau* before each progress". }
-  eapply SIRLocal.correct with (SO := eq); ss.
-  ii. clarify. unfold Fib5.prog, prog. ss. des_ifs.
-  { r. ii. clarify.
-    assert(EQ: (Fib5.f_fib_ru oh_tgt m vs) = (f_fib_ru oh_tgt m vs)).
+  etrans; cycle 1.
+  { eapply SIREutt.correct; ss.
+    unfold prog.
+    instantiate (1:= add FibHeader._fib_ru (fun _ _ _ => _)
+                         (add Fib0._fib (fun _ _ _ => _) empty)).
+    ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.
     { refl. }
-    admit "refl".
+    unfold f_fib.
+    unfold guaranteeK.
+    instantiate (1:= assume (FibHeader.precond y y0 y1);;
+    ` x : _ <- trigger (ICall FibHeader._fib_ru y y0 y1);;
+     (if ClassicalDescription.excluded_middle_informative (FibHeader.postcond y y0 y1 x)
+     then tau;; tau;; Ret x
+     else triggerNB)).
+    f_equiv. { refl. } ii.
+    f_equiv. { refl. } ii.
+    des_ifs.
+    { rewrite ! tau_eutt. refl. }
+    refl.
   }
-  ginit.
-  { i. eapply cpn2_wcompat; eauto with paco. }
-  ii; clarify.
-  unfold Fib5.f_fib, f_fib.
-  step_assume.
-  { unfold assume. des_ifs. unfold triggerUB. irw. step. }
-  unfold assume. des_ifs.
-  irw. step.
-  ii. rr in H. des_ifs. des. clarify.
-  unfold guaranteeK. des_ifs; cycle 1.
-  { step. }
+  {
+    eapply SIRLocal.correct with (SO := eq); ss.
+    unfold Fib5.prog.
+    ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.
+    { refl. }
+    ginit.
+    { i. eapply cpn2_wcompat; eauto with paco. }
+    ii; clarify.
+    unfold Fib5.f_fib, f_fib.
+    step_assume.
+    { unfold assume. des_ifs. unfold triggerUB. irw. step. }
+    unfold assume. des_ifs.
+    irw. step.
+    ii. rr in H. des_ifs; des; clarify; cycle 1.
+    { step. }
 
-  rewrite <- tau. rewrite <- tau.
-  step. eexists (exist _ _ _). cbn.
-  step.
-Unshelve.
-  cbn. des_ifs.
+    gstep. econsr.
+    eexists (exist _ _ _). cbn.
+    step.
+    Unshelve.
+    cbn. des_ifs.
+  }
 Qed.

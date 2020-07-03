@@ -58,8 +58,6 @@ Tactic Notation "irw" := repeat (autorewrite with itree_axiom2; cbn).
 
 Theorem correct: rusc defaultR [Fib4.module] [Fib3.module].
 Proof.
-  assert(tau: forall E R (a: itree E R), (tau;; a) = a).
-  { admit "backdoor --- relax sim_st to allow tau* before each progress". }
   eapply (SIRHoare.correct).
   instantiate (1:= postcond).
   instantiate (1:= precond).
@@ -69,10 +67,9 @@ Proof.
   - econs; ss; cycle 1.
     + unfold f_fib.
       eapply func_ext3. ii.
-      rewrite tau.
       rewrite bind_bind.
       refl.
-    + ii. clarify. unfold f_fib_ru. rewrite tau.
+    + ii. clarify. unfold f_fib_ru.
       pfold. step_unwrapN.
       { cbn. des_ifs_safe.
         unfold triggerNB. irw. econs; et. }

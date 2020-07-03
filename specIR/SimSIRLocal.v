@@ -46,112 +46,78 @@ Section SYNTAX.
 Let itr_src := itree (E owned_heap_src) (owned_heap_src * (mem * val)).
 Let itr_tgt := itree (E owned_heap_tgt) (owned_heap_tgt * (mem * val)).
 
-Variable idx: Type.
-Variable ord: idx -> idx -> Prop.
-Hypothesis wf_ord: well_founded ord.
-
-Inductive _match_itr (match_itr: idx -> itr_src -> itr_tgt -> Prop) (i0: idx):
-  itr_src -> itr_tgt -> Prop :=
+Inductive _match_itr (match_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt -> Prop :=
 | match_ret
     oh_src oh_tgt m v
     (O: SO oh_src oh_tgt)
   :
-    _match_itr match_itr i0 (Ret (oh_src, (m, v))) (Ret (oh_tgt, (m, v)))
+    _match_itr match_itr (Ret (oh_src, (m, v))) (Ret (oh_tgt, (m, v)))
 | match_tau
-    i1
-    i_src i_tgt
-    (MATCH: match_itr i1 i_src i_tgt)
+    i_src
+    i_tgt
+    (MATCH: match_itr i_src i_tgt)
   :
-    _match_itr match_itr i0 (Tau i_src) (Tau i_tgt)
+    _match_itr match_itr (Tau i_src) (Tau i_tgt)
 | match_icall
-    i1
     fname m vs
     oh_src k_src
     oh_tgt k_tgt
     (O: SO oh_src oh_tgt)
-    (MATCH: HProper (SALL !-> match_itr i1) k_src k_tgt)
+    (MATCH: HProper (SALL !-> match_itr) k_src k_tgt)
   :
     _match_itr match_itr
-               i0
-               (* (trigger (ICall fname oh_src m vs) >>= k_src) *)
-               (* (trigger (ICall fname oh_tgt m vs) >>= k_tgt) *)
-               (Vis (subevent _ (ICall fname oh_src m vs)) k_src)
-               (Vis (subevent _ (ICall fname oh_tgt m vs)) k_tgt)
+             (* (trigger (ICall fname oh_src m vs) >>= k_src) *)
+             (* (trigger (ICall fname oh_tgt m vs) >>= k_tgt) *)
+             (Vis (subevent _ (ICall fname oh_src m vs)) k_src)
+             (Vis (subevent _ (ICall fname oh_tgt m vs)) k_tgt)
 | match_ecall
-    i1
     sg m vs fptr
     oh_src k_src
     oh_tgt k_tgt
     (O: SO oh_src oh_tgt)
-    (MATCH: HProper (SALL !-> match_itr i1) k_src k_tgt)
+    (MATCH: HProper (SALL !-> match_itr) k_src k_tgt)
     (* (MATCH: forall *)
     (*     mr vr *)
     (*     ohr_src ohr_tgt *)
     (*   , *)
     (*     match_itr (k_src (ohr_src, (mr, vr))) (k_tgt (ohr_tgt, (mr, vr)))) *)
   :
-    _match_itr match_itr i0
-               (Vis (subevent _ (ECall sg fptr oh_src m vs)) k_src)
-               (Vis (subevent _ (ECall sg fptr oh_tgt m vs)) k_tgt)
+    _match_itr match_itr
+             (Vis (subevent _ (ECall sg fptr oh_src m vs)) k_src)
+             (Vis (subevent _ (ECall sg fptr oh_tgt m vs)) k_tgt)
 | match_nb
     i_src k_tgt
   :
-    _match_itr match_itr i0 i_src (Vis (subevent _ (ENB)) k_tgt)
+    _match_itr match_itr i_src (Vis (subevent _ (ENB)) k_tgt)
 | match_ub
     k_src i_tgt
   :
-    _match_itr match_itr i0 (Vis (subevent _ (EUB)) k_src) i_tgt
-| match_choose
-    i1 X_src X_tgt
-    k_src k_tgt
-    (INHAB: inhabited X_tgt)
-    (SIM: forall x_tgt, exists x_src, match_itr i1 (k_src x_src) (k_tgt x_tgt))
-  :
-    _match_itr match_itr i0
-               (Vis (subevent _ (EChoose X_src)) k_src)
-               (Vis (subevent _ (EChoose X_tgt)) k_tgt)
+    _match_itr match_itr (Vis (subevent _ (EUB)) k_src) i_tgt
 | match_choose_src
-    i1 X_src
+    X_src
     k_src i_tgt
-    (MATCH: exists x_src, match_itr i1 (k_src x_src) i_tgt)
-    (ORD: ord i1 i0)
+    (MATCH: exists x_src, match_itr (k_src x_src) i_tgt)
   :
-    _match_itr match_itr i0
+    _match_itr match_itr
              (Vis (subevent _ (EChoose X_src)) k_src)
-             (i_tgt)
+             (Tau (Tau i_tgt))
 | match_choose_tgt
-    i1 X_tgt
+    X_tgt
     k_tgt i_src
-    (MATCH: forall x_tgt, match_itr i1 i_src (k_tgt x_tgt))
+    (MATCH: forall x_tgt, match_itr i_src (k_tgt x_tgt))
     (INHAB: inhabited X_tgt)
-    (ORD: ord i1 i0)
   :
-    _match_itr match_itr i0
-               (i_src)
-               (Vis (subevent _ (EChoose X_tgt)) k_tgt)
-| match_tau_src
-    i1
-    it_src it_tgt
-    (MATCH: match_itr i1 it_src it_tgt)
-    (ORD: ord i1 i0)
-  :
-    _match_itr match_itr i0 (Tau it_src) (it_tgt)
-| match_tau_tgt
-    i1
-    it_src it_tgt
-    (MATCH: match_itr i1 it_src it_tgt)
-    (ORD: ord i1 i0)
-  :
-    _match_itr match_itr i0 (it_src) (Tau it_tgt)
+    _match_itr match_itr
+             (Tau (Tau i_src))
+             (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 .
 
-Definition match_itr: idx -> itr_src -> itr_tgt -> Prop := paco3 _match_itr bot3.
+Definition match_itr: itr_src -> itr_tgt -> Prop := paco2 _match_itr bot2.
 
-Lemma match_itr_mon: monotone3 _match_itr.
+Lemma match_itr_mon: monotone2 _match_itr.
 Proof.
   ii. inv IN; try econs; et; rr; et.
-  - i. exploit SIM; et. i; des. esplits; et.
-  - des. esplits; et.
+  des. esplits; et.
 Unshelve.
 Qed.
 Hint Unfold match_itr.
@@ -169,7 +135,7 @@ Definition match_fn (k_src: fn_src) (k_tgt: fn_tgt): Prop := forall
     oh_src oh_tgt
     (O: SO oh_src oh_tgt)
   ,
-    exists (i0: idx), <<SIM: match_itr i0 (k_src oh_src m vs) (k_tgt oh_tgt m vs)>>
+    <<SIM: match_itr (k_src oh_src m vs) (k_tgt oh_tgt m vs)>>
 .
 
 
@@ -186,19 +152,19 @@ Definition match_prog: program owned_heap_src -> program owned_heap_tgt -> Prop 
 
 (*** useful lemma for below proof ***)
 (*** copied from "eqit_bind_clo" in itree repo - Eq.v ***)
-Inductive bindC (r: idx -> itr_src -> itr_tgt -> Prop) : idx -> itr_src -> itr_tgt -> Prop :=
+Inductive bindC (r: itr_src -> itr_tgt -> Prop) : itr_src -> itr_tgt -> Prop :=
 | bindC_intro
-    i0 i_src i_tgt
-    (SIM: match_itr i0 i_src i_tgt)
+    i_src i_tgt
+    (SIM: match_itr i_src i_tgt)
     k_src k_tgt
-    (SIMK: forall i1, HProper (SALL !-> r i1) k_src k_tgt)
+    (SIMK: HProper (SALL !-> r) k_src k_tgt)
     (* (SIMK: forall *)
     (*     oh_src oh_tgt m vs *)
     (*     (O: SO oh_src oh_tgt) *)
     (*   , *)
     (*     <<SIM: r (k_src (oh_src, (m, vs))) (k_tgt (oh_tgt, (m, vs)))>>) *)
   :
-    bindC r i0 (ITree.bind i_src k_src) (ITree.bind i_tgt k_tgt)
+    bindC r (ITree.bind i_src k_src) (ITree.bind i_tgt k_tgt)
 .
 
 Hint Constructors bindC: core.
@@ -206,7 +172,7 @@ Hint Constructors bindC: core.
 Lemma bindC_spec
       simC
   :
-    bindC <4= gupaco3 (_match_itr) (simC)
+    bindC <3= gupaco2 (_match_itr) (simC)
 .
 Proof.
   gcofix CIH. intros. destruct PR.
@@ -220,14 +186,10 @@ Proof.
     eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto.
   - rewrite ! bind_vis. gstep. econs; eauto.
-  - rewrite ! bind_vis.
-    gstep. econs; eauto. i. spc SIM0. des. pclearbot. eauto with paco.
-  - rewrite ! bind_vis.
+  - rewrite ! bind_vis. rewrite ! bind_tau.
     gstep. econs; eauto. des. pclearbot. eauto with paco.
-  - rewrite ! bind_vis.
+  - rewrite ! bind_vis. rewrite ! bind_tau.
     gstep. econs; eauto. ii. pclearbot. eauto with paco.
-  - gstep. rewrite bind_tau. econs; eauto. pclearbot. eauto with paco.
-  - gstep. rewrite bind_tau. econs; eauto. pclearbot. eauto with paco.
 Qed.
 
 Global Instance match_itr_bind :

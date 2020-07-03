@@ -205,7 +205,7 @@ Proof.
 Qed.
 
 End SYNTAX.
-Hint Unfold match_itr.
+Hint Unfold match_itr match_fn match_prog.
 Hint Resolve match_itr_mon: paco.
 
 
@@ -222,7 +222,7 @@ Section SIM.
   Variable p_tgt: program owned_heap_tgt.
   Hypothesis (SIMP: match_prog p_src p_tgt).
 
-  Lemma sim_prog_sim_st
+  Lemma match_prog_sim_st
         i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
@@ -271,7 +271,7 @@ Section SIM.
   Proof.
     {
       ii.
-      eapply sim_prog_sim_st; ss.
+      eapply match_prog_sim_st; ss.
       hexploit (@SIMP fname); et. intro T. inv T; ss.
       { pfold. econs; et. }
       repeat (spc H1). des. ss.
@@ -297,6 +297,6 @@ Section SIM.
 End SIM.
 
 End OWNEDHEAP.
-Hint Unfold match_itr.
+Hint Unfold match_itr match_fn match_prog.
 Hint Resolve match_itr_mon: paco.
 Hint Constructors bindC: core.

@@ -317,7 +317,7 @@ Section SIM.
   Hypothesis (SIMP: match_prog p_src p_tgt).
   (* Hypothesis (WFSRC: wf_prog p_src). *)
 
-  Lemma sim_prog_sim_st
+  Lemma match_prog_sim_st
         i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
@@ -395,7 +395,7 @@ Section SIM.
         { admit "backdoor --- relax sim_st to allow tau* before each progress". }
         rewrite tau. des_ifs.
         rewrite <- ! unfold_interp_mrec.
-        eapply sim_prog_sim_st; ss.
+        eapply match_prog_sim_st; ss.
         eapply match_itr_bind.
         { ii. clarify. step_guaranteeK.
           - pfold. econs; et.
@@ -403,7 +403,7 @@ Section SIM.
         }
         eapply SIM; et.
       }
-      eapply sim_prog_sim_st; ss.
+      eapply match_prog_sim_st; ss.
       inv SIMP.
       destruct (eq_block fname _fn_ru).
       { des_ifs. pfold. econs; et. }
@@ -430,6 +430,7 @@ Section SIM.
 
 End SIM.
 End OWNEDHEAP.
-Hint Unfold match_itr.
+Hint Unfold match_itr match_fn.
+Hint Constructors match_fn_focus match_prog.
 Hint Resolve match_itr_mon: paco.
 Hint Constructors bindC: core.

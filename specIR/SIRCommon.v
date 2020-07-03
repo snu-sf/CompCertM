@@ -187,3 +187,8 @@ Definition guaranteeK E X `{EventE -< E} (P: X -> Prop): ktree E X X :=
 .
 
 Definition guarantee E `{EventE -< E} (P: Prop): itree E unit := Eval red in guaranteeK (fun _ => P) tt.
+
+Require Export AdequacyLocal RUSC.
+Require Import SimMemId SoundTop.
+Definition defaultR: program_relation.t -> Prop := eq (mkPR SimMemId SimSymbId Top).
+Hint Unfold defaultR.

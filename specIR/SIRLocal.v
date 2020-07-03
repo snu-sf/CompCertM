@@ -284,15 +284,17 @@ Section SIM.
   Variable sk: Sk.t.
   Let md_src: Mod.t := (SIR.module sk p_src mi ioh_src).
   Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh_tgt).
+  Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
 
-  Theorem sim_mod: ModPair.sim (SimSymbId.mk_mp (SIR.module sk p_src mi ioh_src)
-                                                (SIR.module sk p_tgt mi ioh_tgt)).
+  Theorem sim_mod: ModPair.sim mp.
   Proof.
-    ii. econs; ss; eauto.
-    ii. rr in SIMSKENVLINK. clarify. esplits. eapply sim_modsem; et.
+    eapply SimSIR.sim_mod; eauto.
     { eapply unit_ord_wf. }
-    ii. esplits. eapply adequacy_local_local; et.
+    ii. clarify. esplits. eapply adequacy_local_local; et.
   Qed.
+
+  Theorem correct: rusc defaultR [md_src] [md_tgt].
+  Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.
 
 End SIM.
 

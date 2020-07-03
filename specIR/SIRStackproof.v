@@ -502,14 +502,18 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Definition mp: ModPair.t := SimSymbId.mk_mp (SIR.module sk prog mi initial_owned_heap)
-                                            (SIRStack.module sk prog mi initial_owned_heap).
+Let md_src: Mod.t := (SIR.module sk prog mi initial_owned_heap).
+Let md_tgt: Mod.t := (SIRStack.module sk prog mi initial_owned_heap).
+Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
   - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
 Qed.
+
+Theorem correct: rusc defaultR [md_src] [md_tgt].
+Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.
 
 End SIMMOD.
 

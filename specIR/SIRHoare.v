@@ -318,10 +318,10 @@ Section SIM.
   (* Hypothesis (WFSRC: wf_prog p_src). *)
 
   Lemma match_prog_sim_st
-        i_src i_tgt
+        idx i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
-      sim_st bot2 tt (interp_mrec (interp_function p_src) i_src)
+      sim_st lt idx (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
   .
   Proof.
@@ -366,6 +366,7 @@ Section SIM.
       exploit MATCH; et. intro T. pclearbot. eauto with paco.
   Unshelve.
     all: ss.
+    all: try (by econs).
   Qed.
 
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)
@@ -373,7 +374,7 @@ Section SIM.
     forall
       (fname: ident) m vs oh
     ,
-      (<<SIM: sim_st bot2 tt (interp_program p_src (ICall fname oh m vs))
+      (<<SIM: sim_st lt 1%nat (interp_program p_src (ICall fname oh m vs))
                      (interp_program p_tgt (ICall fname oh m vs))
                      >>)
   .
@@ -391,9 +392,8 @@ Section SIM.
         { irw. pfold. unfold triggerUB. irw. econs; et. }
         rewrite ! bind_ret_l.
         irw.
-        assert(tau: forall E R (a: itree E R), (tau;; a) = a).
-        { admit "backdoor --- relax sim_st to allow tau* before each progress". }
-        rewrite tau. des_ifs.
+        pfold. econs; et. left.
+        des_ifs.
         rewrite <- ! unfold_interp_mrec.
         eapply match_prog_sim_st; ss.
         eapply match_itr_bind.
@@ -422,7 +422,7 @@ Section SIM.
   Theorem sim_mod: ModPair.sim mp.
   Proof.
     eapply SimSIR.sim_mod with (SO:=eq); eauto.
-    { eapply unit_ord_wf. }
+    { eapply lt_wf. }
     ii. clarify. esplits. eapply adequacy_local_local; et.
   Qed.
 

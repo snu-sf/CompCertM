@@ -93,6 +93,15 @@ Inductive _match_itr (match_itr: itr_src -> itr_tgt -> Prop): itr_src -> itr_tgt
     k_src i_tgt
   :
     _match_itr match_itr (Vis (subevent _ (EUB)) k_src) i_tgt
+| match_choose
+    X_src X_tgt
+    k_src k_tgt
+    (INHAB: inhabited X_tgt \/ X_src = X_tgt)
+    (SIM: forall x_tgt, exists x_src, match_itr (k_src x_src) (k_tgt x_tgt))
+  :
+    _match_itr match_itr
+               (Vis (subevent _ (EChoose X_src)) k_src)
+               (Vis (subevent _ (EChoose X_tgt)) k_tgt)
 | match_choose_src
     X_src
     k_src i_tgt
@@ -117,7 +126,8 @@ Definition match_itr: itr_src -> itr_tgt -> Prop := paco2 _match_itr bot2.
 Lemma match_itr_mon: monotone2 _match_itr.
 Proof.
   ii. inv IN; try econs; et; rr; et.
-  des. esplits; et.
+  - i. exploit SIM; et. i; des_safe. esplits; et.
+  - des. esplits; et.
 Unshelve.
 Qed.
 Hint Unfold match_itr.
@@ -186,6 +196,8 @@ Proof.
     eauto with paco.
   - rewrite ! bind_vis. gstep. econs; eauto.
   - rewrite ! bind_vis. gstep. econs; eauto.
+  - rewrite ! bind_vis.
+    gstep. econs; eauto. ii. exploit SIM0; et. intro T; des_safe. pclearbot. eauto with paco.
   - rewrite ! bind_vis. rewrite ! bind_tau.
     gstep. econs; eauto. des. pclearbot. eauto with paco.
   - rewrite ! bind_vis. rewrite ! bind_tau.
@@ -249,6 +261,8 @@ Section SIM.
       eauto with paco.
     - gstep. econs; et.
     - gstep. econs; et.
+    - gstep. econs; et. ii. exploit SIM0; et. i; des_safe. pclearbot. esplits.
+      gstep. econs; et. eauto with paco.
     - gstep. des. pclearbot. econs; et. esplits; et. gstep.
       rewrite (unfold_interp_mrec _ (Tau i_tgt0)). cbn. econs; et. eauto with paco.
     - gstep. pclearbot. econs; et. ii. repeat spc SIM0. gstep.
@@ -301,3 +315,34 @@ End OWNEDHEAP.
 Hint Unfold match_itr match_fn match_prog.
 Hint Resolve match_itr_mon: paco.
 Hint Constructors bindC: core.
+
+
+Section REFL.
+  Variable owned_heap: Type.
+  Global Program Instance match_itr_Reflexive: Reflexive (match_itr (@eq owned_heap)).
+  Next Obligation.
+    rr. revert x.
+    ginit.
+    { intros. eapply cpn2_wcompat; eauto with paco. }
+    gcofix CIH. ii. gstep.
+    ides x.
+    - destruct r0 as [oh [m vs]]. econs; et.
+    - econs; et. eauto with paco.
+    - destruct e.
+      + destruct i. econs; et. ii. rr in H. des_ifs. des; clarify. eauto with paco.
+      + destruct s.
+        * destruct e. econs; et. ii. rr in H. des_ifs. des; clarify. eauto with paco.
+        * destruct e; try econs; et. ii. esplits; et. eauto with paco.
+  Qed.
+  
+  Global Program Instance match_fn_Reflexive: Reflexive (match_fn (@eq owned_heap)).
+  Next Obligation.
+    ii. clarify. r. refl.
+  Qed.
+
+  Global Program Instance match_prog_Reflexive: Reflexive (match_prog (@eq owned_heap)).
+  Next Obligation.
+    ii. clarify. r. des_ifs. r. refl.
+  Qed.
+
+End REFL.

@@ -308,7 +308,7 @@ Section SIM.
   Variable p_tgt: program owned_heap.
   Hypothesis (SIMP: match_prog p_src p_tgt).
 
-  Lemma match_prog_weave
+  Lemma match_itr_glue
         i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
@@ -322,7 +322,7 @@ Section SIM.
     - eapply H1; ss.
   Qed.
 
-  Lemma sim_prog_sim_st
+  Lemma glued_sim_st
         (i_src i_tgt: itree (eff0 owned_heap) (owned_heap * (mem * val)))
         (SIM: i_src ≈ i_tgt)
     :
@@ -346,11 +346,14 @@ Section SIM.
        (fun (_ : idx_lex nat nat) (_ : SIR.state owned_heap) => SIR.state owned_heap)) as q.
       i.
 
-      replace (2%nat, 0%nat) with (1%nat, m) by admit "Add stuttering".
+      gstep. econsr; cycle 1.
+      { instantiate (1:= (1%nat, m)). econs; et. }
       move m at top.
       revert_until CIH.
       induction m; i.
-      + replace (1%nat, 0%nat) with (0%nat, m0) by admit "Add stuttering".
+      +
+        gstep. econsr; cycle 1.
+        { instantiate (1:= (0%nat, m0)). econs; et. }
         move m0 at top.
         revert_until CIH.
         induction m0; i.
@@ -369,7 +372,7 @@ Section SIM.
               + gstep. econs; eauto.
               + gstep. econs; eauto.
               + gstep. eapply sim_st_choose.
-                { admit "If we stick in eutt style, we should fix it". }
+                { right. ss. }
                 ii. hexploit (REL x_tgt); et. i. pclearbot.
                 esplits; eauto with paco.
           }
@@ -388,81 +391,55 @@ Section SIM.
       rewrite unfold_spin. gstep. econs; eauto. gbase. eauto.
   Qed.
 
-    Lemma sim_prog_sim_st
+  Lemma match_prog_sim_st
         i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
-      sim_st eq bot2 tt (interp_mrec (interp_function p_src) i_src)
+      sim_st eq (ord_lex lt lt) (2%nat, 0%nat)
+             (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
   .
   Proof.
-    revert_until SIMP.
-    ginit.
-    { intros. eapply cpn3_wcompat; et. eauto with paco. }
-    gcofix CIH.
-    i. rewrite ! unfold_interp_mrec.
-    punfold SIM. inv SIM; cbn.
-    - gstep. econs; et.
-    - pclearbot. gstep. econs; et. gbase. et.
-    - pclearbot. gstep. econs; et. gbase.
-      eapply CIH. eapply match_itr_bind.
-      { u. ii. repeat spc MATCH. pclearbot. eauto. }
-      exploit (@SIMP fname); et. intro T.
-      inv T.
-      { pfold. econs; et. }
-      exploit H1; et.
-    - gstep. econs; et. u in *. gstep. econs; et. repeat spc MATCH. specialize (MATCH H0).
-      des; ss. gbase. eapply CIH.
-      eauto with paco.
-    - gstep. econs; et.
-    - gstep. econs; et.
-    - gstep. des. pclearbot. econs; et. esplits; et. gstep.
-      rewrite (unfold_interp_mrec _ (Tau i_tgt0)). cbn. econs; et. eauto with paco.
-    - gstep. pclearbot. econs; et. ii. repeat spc SIM0. gstep.
-      rewrite (unfold_interp_mrec _ (Tau i_src0)). cbn. econs; et. eauto with paco.
-  Unshelve.
-    all: ss.
+    eapply match_itr_glue in SIM.
+    eapply glued_sim_st in SIM.
+    eauto.
   Qed.
 
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)
   Theorem adequacy_local_local:
     forall
-      (fname: ident) m vs oh_src oh_tgt
-      (O: SO oh_src oh_tgt)
+      (fname: ident) m vs oh
     ,
-      (<<SIM: sim_st bot2 tt (interp_program p_src (ICall fname oh_src m vs))
-                     (interp_program p_tgt (ICall fname oh_tgt m vs))
+      (<<SIM: sim_st eq (ord_lex lt lt) (2%nat, 0%nat)
+                     (interp_program p_src (ICall fname oh m vs))
+                     (interp_program p_tgt (ICall fname oh m vs))
                      >>)
   .
   Proof.
     {
       ii.
-      eapply sim_prog_sim_st; ss.
+      eapply match_prog_sim_st; ss.
       hexploit (@SIMP fname); et. intro T. inv T; ss.
-      { pfold. econs; et. }
-      repeat (spc H1). des. ss.
+      { r. refl. }
+      repeat (spc H1). exploit H1; ss; et.
     }
   Qed.
 
-  Variable ioh_src: SkEnv.t -> owned_heap_src.
-  Variable ioh_tgt: SkEnv.t -> owned_heap_tgt.
-  Hypothesis (SIMO: forall skenv, SO (ioh_src skenv) (ioh_tgt skenv)).
+  Variable ioh: SkEnv.t -> owned_heap.
   Variable sk: Sk.t.
-  Let md_src: Mod.t := (SIR.module sk p_src mi ioh_src).
-  Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh_tgt).
+  Let md_src: Mod.t := (SIR.module sk p_src mi ioh).
+  Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh).
 
-  Theorem sim_mod: ModPair.sim (SimSymbId.mk_mp (SIR.module sk p_src mi ioh_src)
-                                                (SIR.module sk p_tgt mi ioh_tgt)).
+  Theorem sim_mod: ModPair.sim (SimSymbId.mk_mp (SIR.module sk p_src mi ioh)
+                                                (SIR.module sk p_tgt mi ioh)).
   Proof.
     ii. econs; ss; eauto.
-    ii. rr in SIMSKENVLINK. clarify. esplits. eapply sim_modsem; et.
-    { eapply unit_ord_wf. }
-    ii. esplits. eapply adequacy_local_local; et.
+    ii. rr in SIMSKENVLINK. clarify. esplits. eapply sim_modsem with (SO:=eq); et.
+    { eapply ord_lex_wf; eapply lt_wf. }
+    ii. clarify. esplits. eapply adequacy_local_local; et.
   Qed.
 
 End SIM.
 
 End OWNEDHEAP.
-Hint Unfold match_itr.
-Hint Resolve match_itr_mon: paco.
-Hint Constructors bindC: core.
+Hint Unfold match_itr match_fn match_prog.

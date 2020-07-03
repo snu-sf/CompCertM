@@ -86,7 +86,7 @@ Inductive _sim_st (sim_st: idx -> st_src -> st_tgt -> Prop) (i0: idx): st_src ->
 | sim_st_choose
     i1 X_src X_tgt
     k_src k_tgt
-    (INHAB: inhabited X_tgt)
+    (INHAB: inhabited X_tgt \/ X_src = X_tgt)
     (SIM: forall x_tgt, exists x_src, sim_st i1 (k_src x_src) (k_tgt x_tgt))
   :
     _sim_st sim_st i0
@@ -123,6 +123,13 @@ Inductive _sim_st (sim_st: idx -> st_src -> st_tgt -> Prop) (i0: idx): st_src ->
     (ORD: ord i1 i0)
   :
     _sim_st sim_st i0 (it_src) (Tau it_tgt)
+| sim_st_stutter
+    i1
+    it_src it_tgt
+    (SIM: sim_st i1 it_src it_tgt)
+    (ORD: ord i1 i0)
+  :
+    _sim_st sim_st i0 (it_src) (it_tgt)
 .
 
 Definition sim_st: idx -> st_src -> st_tgt -> Prop := paco3 _sim_st bot3.
@@ -130,7 +137,7 @@ Definition sim_st: idx -> st_src -> st_tgt -> Prop := paco3 _sim_st bot3.
 Lemma sim_st_mon: monotone3 _sim_st.
 Proof.
   ii. inv IN; try econs; et.
-  - i. exploit SIM; et. i; des. esplits; et.
+  - i. exploit SIM; et. i; des_safe. esplits; et.
   - des. esplits; et.
 Unshelve.
 Qed.
@@ -276,16 +283,31 @@ Section SIM.
         + rr in EVRET. des; ss. inv EVRET; ss.
         + inv EVSTEP; ss.
       - (* CHOOSE BOTH *)
-        inv INHAB.
-        econs 2; ss; et. ii.
-        econs 1; ss; et; cycle 1.
-        { esplits; ss; et. econs 3; ss; et. }
-        { ii. inv STEPTGT; ss; csc.
-          hexpl SIM0; et. pclearbot.
-          esplits; et.
-          + left. eapply plus_one. econs 3; ss; et.
-          + gbase. eapply CIH. econs; et.
-        }
+        des; clarify.
+        + inv INHAB.
+          econs 2; ss; et. ii.
+          econs 1; ss; et; cycle 1.
+          { esplits; ss; et. econs 3; ss; et. }
+          { ii. inv STEPTGT; ss; csc.
+            hexpl SIM0; et. pclearbot.
+            esplits; et.
+            + left. eapply plus_one. econs 3; ss; et.
+            + gbase. eapply CIH. econs; et.
+          }
+        +
+          econs 2; ss; et. ii.
+          exploit SAFESRC; try apply star_refl. i; des.
+          { rr in EVCALL. des. inv EVCALL; ss. }
+          { rr in EVRET. des. inv EVRET; ss. }
+          inv EVSTEP; ss. csc.
+          econs 1; ss; et; cycle 1.
+          { esplits; ss; et. econs 3; ss; et. }
+          { ii. inv STEPTGT; ss; csc.
+            hexpl SIM0; et. pclearbot.
+            esplits; et.
+            + left. eapply plus_one. econs 3; ss; et.
+            + gbase. eapply CIH. econs; et.
+          }
       - (* CHOOSE SRC *)
         des. pclearbot.
         econs 2; ss; et. ii.
@@ -321,6 +343,13 @@ Section SIM.
         ii. inv STEPTGT; csc. esplits; et.
         { right. esplits; try apply star_refl. eapply Ord.lift_idx_spec; et. }
         { gbase. eapply CIH. econs; et. }
+      - (* STUTTER *)
+        pclearbot.
+        econs 2; eauto.
+        econs 2; eauto.
+        { esplits; try apply star_refl.
+          eapply Ord.lift_idx_spec; et. }
+        gbase. eapply CIH. econs; et.
     Unshelve.
       all: ss.
       all: try (econsby ss).

@@ -63,13 +63,16 @@ Qed.
 Section SYNTAX.
 
 (*** sim itree ***)
-Let itr := itree (E owned_heap) (owned_heap * (mem * val)).
+Section REL.
+
+Context `{S: Type}.
+Let itr := itree (E owned_heap) S.
 
 Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
 | match_ret
-    ohmv
+    s
   :
-    _match_itr match_itr (Ret ohmv) (Ret ohmv)
+    _match_itr match_itr (Ret s) (Ret s)
 | match_tau
     i_src
     i_tgt
@@ -126,6 +129,7 @@ Lemma match_itr_mon: monotone2 _match_itr.
 Proof.
   ii. inv IN; try (by econs; et; rr; et).
 Qed.
+End REL.
 Hint Unfold match_itr.
 Hint Resolve match_itr_mon: paco.
 
@@ -151,11 +155,10 @@ Inductive match_fn_focus (fn_ru fn_tgt: function owned_heap): Prop :=
 | match_fn_intro
     fn_tgt_inner
     (SIM: (eq ==> eq ==> eq ==> match_itr) fn_ru fn_tgt_inner)
-    (TGT: fn_tgt = fun oh0 m0 vs0 =>
-                     assume (precond oh0 m0 vs0) ;;
-                     (fn_tgt_inner oh0 m0 vs0)
-                     >>= guaranteeK (postcond oh0 m0 vs0)
-    )
+    (TGT: forall oh0 m0 vs0,
+        fn_tgt oh0 m0 vs0 = assume (precond oh0 m0 vs0) ;;
+                            (fn_tgt_inner oh0 m0 vs0)
+                            >>= guaranteeK (postcond oh0 m0 vs0))
 .
 
 Definition match_fn (fn_src fn_tgt: function owned_heap): Prop :=
@@ -180,16 +183,31 @@ End PROG.
 
 
 
-
+(*** NOTE:
+`Global Instance match_itr_Reflexive : Reflexive match_itr.`
+`Global Instance bindC_Reflexive r (REFL: Reflexive r) : Reflexive (bindC r).`
+does not hold.
+Also,
+```
+Global Instance match_itr_bind_ k :
+  Proper (eq ==> match_itr)
+         (@ITree._bind _ (owned_heap * (mem * val)) _ k (@ITree.bind' _ _ _ k)).
+```
+(copied from `eqit_bind_`) does not seem to be true (it requires reflexivity)
+ ***)
 
 (*** useful lemma for below proof ***)
 (*** copied from "eqit_bind_clo" in itree repo - Eq.v ***)
+
+Context `{S : Type}.
+Let itr := itree (E owned_heap) S.
 Inductive bindC (r: itr -> itr -> Prop) : itr -> itr -> Prop :=
 | bindC_intro
+    U
     i_src i_tgt
     (SIM: match_itr i_src i_tgt)
     k_src k_tgt
-    (SIMK: (eq ==> r) k_src k_tgt)
+    (SIMK: ((@eq U) ==> r) k_src k_tgt)
   :
     bindC r (ITree.bind i_src k_src) (ITree.bind i_tgt k_tgt)
 .
@@ -223,16 +241,15 @@ Proof.
     repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
 Qed.
 
-Global Instance match_itr_bind :
-  Proper ((eq ==> match_itr) ==> match_itr ==> match_itr) ITree.bind'
+Global Instance match_itr_bind T :
+  Proper ((eq ==> match_itr) ==> (match_itr) ==> (match_itr)) (ITree.bind' (T:=T) (U:=S))
 .
 Proof.
   red. ginit.
   { intros. eapply cpn2_wcompat; eauto with paco. }
   guclo bindC_spec. ii. econs; et.
   u. ii.
-  exploit H0; et.
-  intro T. eauto with paco.
+  exploit H0; et. i. eauto with paco.
 Qed.
 
 End SYNTAX.
@@ -331,7 +348,7 @@ Section SIM.
     gcofix CIH.
     i. rewrite ! unfold_interp_mrec.
     punfold SIM. inv SIM; cbn.
-    - gstep. destruct ohmv as [oh [m v]]. econs; et.
+    - gstep. destruct s as [oh [m v]]. econs; et.
     - gstep. econs; et. gbase. pclearbot. et.
     - gstep. econs; et. gbase.
       eapply CIH. eapply match_itr_bind; et.
@@ -344,7 +361,7 @@ Section SIM.
       rewrite <- ! unfold_interp_mrec.
       gbase. eapply CIH.
       inv SIMP.
-      des_ifs_safe. inv FOCUS. irw.
+      des_ifs_safe. inv FOCUS. rewrite TGT. irw.
       step_assume; ss. irw.
       eapply match_itr_bind; et.
       { ii. clarify. step_guaranteeK; ss.
@@ -386,7 +403,7 @@ Section SIM.
         clarify.
         dup SIMP. inv SIMP0.
         unfold interp_program, interp_function, mrec.
-        irw. des_ifs. inv FOCUS.
+        irw. des_ifs. inv FOCUS. rewrite TGT.
         unfold fn_src. cbn.
         unfold assume. des_ifs; cycle 1.
         { irw. pfold. unfold triggerUB. irw. econs; et. }

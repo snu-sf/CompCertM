@@ -216,6 +216,12 @@ Lemma bind_bind : forall (E : Type -> Type) (R S T : Type) (s : itree E R) (k : 
     ` x : _ <- (` x : _ <- s;; k x);; h x = ` r : R <- s;; ` x : _ <- k r;; h x.
 Proof. i. f. eapply bind_bind. Qed.
 
+Lemma unfold_bind :
+forall (E : Type -> Type) (R S : Type) (t : itree E R) (k : R -> itree E S),
+` x : _ <- t;; k x = ITree._bind k (fun t0 : itree E R => ` x : _ <- t0;; k x) (observe t).
+Proof. i. f. apply unfold_bind. Qed.
+
+
 
 Hint Rewrite unfold_interp_mrec : itree_axiom.
 Hint Rewrite bind_ret_l : itree_axiom.

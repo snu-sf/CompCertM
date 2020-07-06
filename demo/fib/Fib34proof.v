@@ -55,29 +55,32 @@ Tactic Notation "irw" "in" ident(H) := repeat (autorewrite with itree_axiom2 in 
 Tactic Notation "irw" := repeat (autorewrite with itree_axiom2; cbn).
 
 
+Ltac iby TAC :=
+  first [
+      instantiate (1:= fun _ _ _ => _); irw; TAC|
+      instantiate (1:= fun _ _ _ => _ <- _ ;; _); irw; TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- _ ;; _) ;; _); irw; TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- _ ;; _) ;; _) ;; _); irw; TAC|
+      fail
+    ]
+.
 
 Theorem correct: rusc defaultR [Fib4.module] [Fib3.module].
 Proof.
-  eapply (SIRHoare.correct).
-  instantiate (1:= postcond).
-  instantiate (1:= precond).
-  instantiate (1:= _fib_ru).
-  instantiate (1:= Fib0._fib).
+  eapply SIRHoare.correct with (_fn:=Fib0._fib) (_fn_ru:=_fib_ru)
+                               (precond:=precond) (postcond:=postcond).
   econs; ss; et.
   - econs; ss; cycle 1.
-    + unfold f_fib.
-      eapply func_ext3. ii.
-      rewrite bind_bind.
-      refl.
+    + ii. iby refl.
+    (* + ii. rewrite bind_bind. refl. *)
     + ii. clarify. unfold f_fib_ru.
-      pfold. step_unwrapN.
-      { cbn. des_ifs_safe.
-        unfold triggerNB. irw. econs; et. }
-      destruct n.
+      f_equiv; cycle 1.
+      { pfold. unfold unwrapN. des_ifs; econs; et. }
+      ii; clarify.
+      pfold. des_ifs.
       { irw. econs; ss; et. }
-      destruct n.
       { irw. econs; ss; et. }
-      cbn. rewrite ! bind_ret_l. irw.
+      cbn.
       erewrite f_equal; try eapply match_icall_fn; cycle 1.
       { f. f_equiv. ii. f_equiv. ii. des_ifs_safe. f_equiv. ii. f.
         instantiate (1:= fun '(oh, (m, v)) => _). refl. }
@@ -86,6 +89,8 @@ Proof.
       erewrite f_equal; try eapply match_icall_fn; cycle 1.
       { f. f_equiv. ii. f_equiv. ii. des_ifs_safe. f_equiv. ii. f.
         instantiate (1:= fun '(oh, (m, v)) => _). refl. }
-      ii. des_ifs_safe. left. pfold. econs; et.
+      ii. des_ifs_safe. left.
+      pfold.
+      econs; et.
   - ii. r. unfold Fib4.prog, prog. ss. des_ifs; ss.
 Qed.

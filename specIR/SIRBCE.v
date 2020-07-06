@@ -29,6 +29,58 @@ Set Implicit Arguments.
 
 
 
+(*** TODO: move ***)
+Lemma bind_ignore
+      E R S
+      (X: itree E R) (Y: itree E S)
+  :
+  Y = X ;; Y
+.
+Proof.
+  f. revert_until S. ginit. gcofix CIH. ii.
+  ides X.
+  - irw. gstep. refl.
+  - irw.
+Abort.
+
+Lemma bind_ignore
+      E R S
+      (X: itree E R) (Y: itree E S)
+  :
+  Y ≈ X ;; Y
+.
+Proof.
+  revert_until S. ginit. gcofix CIH. ii.
+  (* guclo eqit_clo_bind. *)
+  ides X.
+  - irw. gstep. refl.
+  - irw. gstep. econs; et.
+Abort.
+
+
+
+Section WFPROJ.
+
+  Variable idxa: Type.
+  Variable orda: idxa -> idxa -> Prop.
+  Hypothesis WF: well_founded orda.
+
+  Variable idxb: Type.
+  Variable f: idxb -> idxa.
+  Let ordb (b0 b1: idxb): Prop := orda (f b0) (f b1).
+
+  Theorem wf_proj: well_founded ordb.
+  Proof.
+    ii. rename a into b.
+    remember (f b) as a. generalize dependent b.
+    pattern a. eapply well_founded_ind; et. clear a; i.
+    clarify. econs; et.
+  Qed.
+
+End WFPROJ.
+
+
+
 
 Section LEXSTK.
   (** exponential? **)
@@ -37,76 +89,49 @@ Section LEXSTK.
   Variable ord: idx -> idx -> Prop.
   Hypothesis WF: well_founded ord.
 
-  Definition eidx: Type := list idx.
-
-  Inductive eord: eidx -> eidx -> Prop :=
-  | eord_hd
+  Definition idx_stk := list idx.
+  Inductive ord_stk: idx_stk -> idx_stk -> Prop :=
+  | ord_stk_hd
       hd0 hd1
       (ORD: ord hd0 hd1)
       tl
     :
-      eord (hd0 :: tl) (hd1 :: tl)
-  | eord_call
+      ord_stk (hd0 :: tl) (hd1 :: tl)
+  | ord_stk_call
       hd0 hd1
       (ORD: ord hd0 hd1)
       tl
     :
-      eord (hd0 :: hd0 :: tl) (hd1 :: tl)
-  | eord_ret
+      ord_stk (hd0 :: hd0 :: tl) (hd1 :: tl)
+  | ord_stk_ret
       hd tl
     :
-      eord tl (hd :: tl)
+      ord_stk tl (hd :: tl)
   .
 
-  Theorem ord_lex_wf: <<WF: well_founded eord>>.
+  Theorem ord_stk_wf: <<WF: well_founded ord_stk>>.
   Proof.
-    assert(ACC0: forall n, (forall x, (List.length x < n)%nat -> Acc eord x) ->
-                           (forall x, (List.length x = n)%nat -> Acc eord x)
-          ).
+    assert(ACC: forall xs, Acc ord_stk xs).
     {
-      induction 0.
-      { ii. destruct x; ss. econs; et. ii. inv H1. }
-      ii. destruct x; ss. clarify.
-      econs; et. ii. inv H0.
-      - econs. ii. inv H0.
+      induction 0; i; ss.
+      { econs; et. ii. inv H. }
+
+      generalize dependent xs. pattern a. eapply well_founded_ind.
+      { eapply WF. }
+      i. clear a.
+
+      econs. ii. inv H0.
+      - eapply H; et.
+      - eapply H; et.
+      - ss.
     }
-    assert(ACC0: forall x, Acc ord x -> Acc eord [x] -> Acc eord [x ; x]).
-    {
-      induction 1. induction 1.
-      econs; et. ii. inv H3; et.
-      - et.
-    }
-    assert(ACC: forall a xs, Acc ord a -> Acc eord xs -> Acc eord (a :: xs)).
-    {
-      induction 0.
-      { i. clear H0. induction H. econs; et. ii. inv H1; et.
-        - exploit H; et. intro T.
-          exploit H0; et. intro U. clear H H0 ORD.
-        induction 1. induction 1.
-        econs; et. ii. inv H3; et.
-        ii.
-        ii. econs; et. ii. inv H1; ss.
-        - econs; et.
-    }
-    assert(ACC: forall xs, (forall x (IN: In x xs), Acc ord x) -> Acc eord xs).
-    {
-      induction 0.
-      { ii; ss. econs; et. ii; ss. inv H0. }
-      induction 0.
-      - ii. econs. ii. inv H2.
-        +
-      econs; et.
-      ii. inv H0.
-      - econs; et.
-      induction 0.
-      econs. i. inv H3.
-      - eauto.
-      - eauto.
-    }
-    rr. i. destruct a. eapply ACC; eauto.
+    et.
   Qed.
 
-End LEXICO.
+End LEXSTK.
+
+
+
 
 
 
@@ -143,114 +168,6 @@ Section REL.
 Context `{S: Type}.
 Let itr := itree (E owned_heap) S.
 
-(* Inductive _pure (pure: idx -> itr -> Prop) (i0: idx): itr -> Prop := *)
-(* | pure_ret *)
-(*     s *)
-(*   : *)
-(*     _pure pure i0 (Ret s) *)
-(* | pure_tau *)
-(*     i1 *)
-(*     (ORD: ord i1 i0) *)
-(*     itr *)
-(*     (PURE: pure i1 itr) *)
-(*   : *)
-(*     _pure pure i0 (Tau itr) *)
-(* | pure_icall *)
-(*     fname oh0 m0 vs0 ktr *)
-(*     (PURE: forall ohmv, exists i1, <<ORD: ord i1 i0>> /\ <<PURE: pure i1 (ktr ohmv)>>) *)
-(*   : *)
-(*     _pure pure i0 (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr) *)
-(* | pure_nb *)
-(*     ktr *)
-(*   : *)
-(*     _pure pure i0 (Vis (subevent _ (ENB)) ktr) *)
-(* . *)
-
-(* Definition pure: idx -> itr -> Prop := paco2 _pure bot2. *)
-(* Lemma pure_mon: monotone2 _pure. *)
-(* Proof. *)
-(*   ii. inv IN; try (by econs; et; rr; et). *)
-(*   -  econs; et. i. exploit PURE; et. i; des. esplits; et. *)
-(* Qed. *)
-(* Hint Unfold pure. *)
-(* Hint Resolve pure_mon: paco. *)
-
-
-
-(* Theorem pure_bind *)
-(*         a itr ktr T *)
-(*         (PURE: pure a itr) *)
-(*         (PURE: forall x, exists b, pure b (ktr x)) *)
-(*         b *)
-(*   : *)
-(*     <<PURE: pure (a + b) (x <- itr ;; ktr)>> *)
-(* . *)
-(* Proof. *)
-(*   red. ginit. *)
-(*   { intros. eapply cpn2_wcompat; eauto with paco. } *)
-(*   guclo bindC_spec. ii. econs; et. *)
-(*   u. ii. *)
-(*   exploit H0; et. i. eauto with paco. *)
-(* Qed. *)
-
-Inductive pure (i0: idx): itr -> Prop :=
-| pure_ret
-    s
-  :
-    pure i0 (Ret s)
-| pure_tau
-    i1
-    (ORD: ord i1 i0)
-    itr
-    (PURE: pure i1 itr)
-  :
-    pure i0 (Tau itr)
-| pure_icall
-    fname oh0 m0 vs0 ktr
-    (PURE: forall ohmv, exists i1, <<ORD: ord i1 i0>> /\ <<PURE: pure i1 (ktr ohmv)>>)
-  :
-    pure i0 (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr)
-| pure_nb
-    ktr
-  :
-    pure i0 (Vis (subevent _ (ENB)) ktr)
-.
-Hint Constructors pure.
-
-(* Inductive pureN (i0: idx): itr -> nat -> Prop := *)
-(* | pureN_ret *)
-(*     s *)
-(*   : *)
-(*     pureN i0 (Ret s) (0%nat) *)
-(* | pureN_tau *)
-(*     i1 *)
-(*     (ORD: ord i1 i0) *)
-(*     n itr *)
-(*     (PURE: pureN i1 itr n) *)
-(*   : *)
-(*     pureN i0 (Tau itr) (1 + n)%nat *)
-(* | pureN_icall *)
-(*     fname oh0 m0 vs0 ktr n *)
-(*     (PURE: forall ohmv, exists i1, <<ORD: ord i1 i0>> /\ <<PURE: pureN i1 (ktr ohmv) n>>) *)
-(*   : *)
-(*     pureN i0 (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr) (1 + n) *)
-(* | pureN_nb *)
-(*     ktr *)
-(*   : *)
-(*     pureN i0 (Vis (subevent _ (ENB)) ktr) 0%nat *)
-(* . *)
-(* Hint Constructors pureN. *)
-
-(* Theorem pure_pureN *)
-
-
-
-
-
-
-
-
-
 Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
 | match_ret
     s
@@ -273,8 +190,8 @@ Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
     (MATCH: match_itr i_src i_tgt)
   :
     _match_itr match_itr
-               (trigger (ICall fname oh0 m0 vs0) >>= (fun _ => i_src))
-               (tau;; i_tgt)
+               (tau;; i_src)
+               (trigger (ICall fname oh0 m0 vs0) >>= (fun _ => i_tgt))
 .
 
 Definition match_itr: itr -> itr -> Prop := paco2 _match_itr bot2.
@@ -285,13 +202,58 @@ Qed.
 
 End REL.
 
-Hint Unfold pure.
-Hint Resolve pure_mon: paco.
+(* Hint Unfold pure. *)
+(* Hint Resolve pure_mon: paco. *)
 Hint Unfold match_itr.
 Hint Resolve match_itr_mon: paco.
 
 
 
+
+
+
+
+Section PURE.
+
+Variable p: program owned_heap.
+Variable manifesto: ident -> option (owned_heap -> mem -> list val -> idx).
+
+Let itr := itree (E owned_heap) (owned_heap * (mem * val)).
+
+(*** NOTE: we have idx, so we are able to define in coinductive. What could be the difference? ***)
+Inductive pure (i0: idx): itr -> Prop :=
+| pure_ret
+    s
+  :
+    pure i0 (Ret s)
+| pure_tau
+    i1
+    (ORD: ord i1 i0)
+    itr
+    (PURE: pure i1 itr)
+  :
+    pure i0 (Tau itr)
+| pure_icall
+    fname oh0 m0 vs0 ktr
+    (K: forall ohmv, exists i1, <<ORD: ord i1 i0>> /\ <<PURE: pure i1 (ktr ohmv)>>)
+
+
+    (* i1 *)
+    (* (ORD: ord i1 i0) *)
+    (* (CALL: pure i1 (interp_function p (ICall fname oh0 m0 vs0))) *)
+    (*** NOTE: let's not obligate the user mutual induction ***)
+    (CALL: forall mf (MF: manifesto fname = Some mf),
+        ord (mf oh0 m0 vs0) i0)
+  :
+    pure i0 (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr)
+| pure_nb
+    ktr
+  :
+    pure i0 (Vis (subevent _ (ENB)) ktr)
+.
+Hint Constructors pure.
+
+End PURE.
 
 
 
@@ -307,12 +269,15 @@ Definition match_fn: relation (function owned_heap) := (eq ==> eq ==> eq ==> mat
 
 Inductive match_prog (p_src p_tgt: program owned_heap): Prop :=
 | match_prog_intro
+    manifesto
     (PURES: forall
-        _fn fn
+        _fn
         (PURE: _pures _fn)
-        (SOME: p_tgt _fn = Some fn)
       ,
-        forall oh m vs, exists i, pure i (fn oh m vs))
+        exists fn mf,
+          (<<FN: p_tgt _fn = Some fn>>) /\
+          (<<MF: manifesto _fn = Some mf>>) /\
+          (<<PURE: forall oh m vs, pure manifesto (mf oh m vs) (fn oh m vs)>>))
     (MATCH: (eq ==> option_rel match_fn) p_src p_tgt)
 .
 
@@ -388,11 +353,43 @@ Section SIM.
   Hypothesis (SIMP: match_prog p_src p_tgt).
   (* Hypothesis (WFSRC: wf_prog p_src). *)
 
+  Global Instance match_itr_Reflexive S: Reflexive (@match_itr S).
+  Proof.
+    ginit.
+    { intros. eapply cpn2_wcompat; et. eauto with paco. }
+    gcofix CIH. ii. ides x.
+    - gstep. econs; et.
+    - gstep. econs; et. eauto with paco.
+    - gstep. econs; et. ii. clarify. eauto with paco.
+  Qed.
+
+  Lemma match_itr_glue
+        i_src i_tgt
+        (SIM: match_itr (S:=owned_heap * (mem * val)) i_src i_tgt)
+    :
+      (interp_mrec (interp_function p_src) i_src) ≈ (interp_mrec (interp_function p_tgt) i_tgt)
+  .
+  Proof.
+    ginit.
+    revert_until SIMP.
+    gcofix CIH.
+    i. punfold SIM. inv SIM; irw.
+    - gstep. econs; et.
+    - gstep. econs; et. pclearbot. gbase. rewrite <- ! unfold_interp_mrec. eapply CIH. et.
+    - des_ifs.
+      + gstep. econs; et. destruct i. irw. inv SIMP.
+        specialize (MATCH0 name name eq_refl). r in MATCH0. des_ifs; cycle 1.
+        { irw. gstep. econs; et. ii; ss. }
+        guclo eqit_clo_bind. rr in MATCH0.
+        hexploit (@MATCH0 oh oh eq_refl m m eq_refl vs vs eq_refl); et. intro T.
+        unfold _interp_mrec. des_ifs.
+  Abort.
+
   Lemma match_prog_sim_st
         i0 i_src i_tgt
         (SIM: match_itr i_src i_tgt)
     :
-      sim_st lt i0 (interp_mrec (interp_function p_src) i_src)
+      sim_st (ord_stk ord) i0 (interp_mrec (interp_function p_src) i_src)
              (interp_mrec (interp_function p_tgt) i_tgt)
   .
   Proof.
@@ -424,10 +421,27 @@ Section SIM.
             esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot.
             gstep. econs; et.
             eauto with paco. }
-    - pclearbot.
-      des_ifs; cycle 1.
-      { admit "ez -- add more condition". }
-      inv SIMP. exploit (MATCH0 fname); et. intro T. rr in T. des_ifs. des.
+    - pclearbot. inv SIMP.
+      exploit PURES; et. i; des.
+      exploit (MATCH0 fname); et. intro T. r in T.
+      des_ifs.
+      gstep. econs; et.
+      irw.
+      rr in T. hexploit (T oh0 _ eq_refl m0 _ eq_refl vs0 _ eq_refl); et. intro U.
+      gbase. rewrite <- ! unfold_interp_mrec. eapply CIH.
+
+      (*** TODO: make lemma ***)
+      rewrite <- bind_bind. rewrite bind_ret_r.
+      repeat spc PURE0.
+      rename f into fff.
+
+
+      replace (i_src0) with (i_src0 >>= (@id_ _)). refl. rewrite  f. f_equiv. ii. f. irw. ss. }
+      eapply match_itr_bind.
+      right.
+
+
+      exploit (MATCH0 fname); et. intro T. rr in T. des_ifs. des.
       exploit PURES; et. i; des.
       gstep. econs; et.
       irw.

@@ -242,8 +242,9 @@ Inductive pure (i0: idx): itr -> Prop :=
     (* (ORD: ord i1 i0) *)
     (* (CALL: pure i1 (interp_function p (ICall fname oh0 m0 vs0))) *)
     (*** NOTE: let's not obligate the user mutual induction ***)
-    (CALL: forall mf (MF: manifesto fname = Some mf),
-        ord (mf oh0 m0 vs0) i0)
+    mf
+    (MF: manifesto fname = Some mf)
+    (CALL: ord (mf oh0 m0 vs0) i0)
   :
     pure i0 (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr)
 | pure_nb
@@ -334,6 +335,23 @@ Proof.
   exploit H0; et. i. eauto with paco.
 Qed.
 
+
+
+
+Theorem pure_bind
+        itr ktr
+        (PURE: pure manifesto i0 itr)
+        (K : forall ohmv: owned_heap * (mem * val),
+            exists i1, <<ORD: ord i1 i0 >> /\ <<PURE: pure manifesto i1 (ktr ohmv)>>)
+  :
+    exists i1, pure manifesto (itr;; ktr
+.
+Proof.
+Qed.
+
+
+
+
 End SYNTAX.
 Hint Unfold match_itr.
 Hint Resolve match_itr_mon: paco.
@@ -404,6 +422,226 @@ Section SIM.
     - gstep. des_ifs.
       + econs; et. gbase.
         eapply CIH. eapply match_itr_bind; et.
+        { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
+        destruct i.
+        inv SIMP.
+        exploit (MATCH0 name); et. intro T. rr in T. cbn. des_ifs; cycle 1.
+        { pfold. econs; et. ii; ss. }
+        exploit T; et.
+      + destruct s.
+        * destruct e. econs; et. ii. rr in H. des_ifs. des; clarify.
+          gstep; econs; et. exploit (MATCH (o0, (m1, v0))); et. intro T. pclearbot.
+          eauto with paco.
+        * destruct e.
+          { econs; et. }
+          { econs; et. }
+          { econs; et. ii.
+            esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot.
+            gstep. econs; et.
+            eauto with paco. }
+    - pclearbot. inv SIMP.
+      exploit PURES; et. i; des.
+      exploit (MATCH0 fname); et. intro T. r in T.
+      des_ifs.
+      gstep. econs; et.
+      irw.
+      rr in T. hexploit (T oh0 _ eq_refl m0 _ eq_refl vs0 _ eq_refl); et. intro U.
+      gbase. rewrite <- ! unfold_interp_mrec. eapply CIH.
+
+      (*** TODO: make lemma ***)
+      rewrite <- bind_bind. rewrite bind_ret_r.
+      repeat spc PURE0.
+      rename f into fff.
+  Abort.
+
+
+
+
+  Lemma match_prog_sim_st
+        manifesto i0
+        i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val)))
+        (PURE: pure manifesto i0 d_tgt)
+        (SIM: match_itr i_src (d_tgt ;; i_tgt))
+    :
+      sim_st (ord_stk ord) [i0] (interp_mrec (interp_function p_src) i_src)
+             (interp_mrec (interp_function p_tgt) i_tgt)
+  .
+  Proof.
+    revert_until SIMP.
+    ginit.
+    { intros. eapply cpn3_wcompat; et. eauto with paco. }
+    gcofix CIH.
+    i. rewrite ! unfold_interp_mrec.
+    punfold SIM. inv SIM; cbn.
+    - gstep. destruct s as [oh [m v]].
+      ides d_tgt; irw in H1; clarify. econs; et.
+    - gstep. pclearbot. ides d_tgt; irw in H1; clarify.
+      + (* ret *)
+        econs; et. gbase. eapply CIH; et. irw. et.
+      + (* tau *)
+        inv PURE.
+        econs; et.
+        { gbase. rewrite <- ! unfold_interp_mrec. eapply CIH; et. }
+        econs; et.
+    - ides d_tgt; ss; irw in H1; clarify.
+      + (* ret *)
+        des_ifs.
+        * gstep. econs; et. gbase. eapply CIH; et. irw. eapply match_itr_bind; et.
+          { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
+          destruct i.
+          inv SIMP.
+          exploit (MATCH0 name); et. intro T. rr in T. cbn. des_ifs; cycle 1.
+          { pfold. econs; et. ii; ss. }
+          exploit T; et.
+        * destruct s.
+          -- destruct e. gstep. econs; et. ii. rr in H. des_ifs. des; clarify.
+             gstep; econs; et. exploit (MATCH (o0, (m1, v0))); et. intro T. pclearbot.
+             eauto with paco. gbase. eapply CIH; et. irw; et.
+          -- gstep. destruct e.
+             { econs; et. }
+             { econs; et. }
+             { econs; et. ii.
+               esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot.
+               gstep. econs; et.
+               gbase. eapply CIH; et. irw.
+               eauto with paco. }
+      + (* vis *)
+        csc.
+  Abort.
+
+  Lemma sim_st_upto_pure
+        manifesto
+        i0 tl i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val)))
+        (PURE: pure manifesto i0 d_tgt)
+        (SIM: sim_st (ord_stk ord) tl (interp_mrec (interp_function p_src) i_src)
+                     (interp_mrec (interp_function p_tgt) i_tgt))
+    :
+      (<<SIM: sim_st (ord_stk ord) (i0 :: tl) (interp_mrec (interp_function p_src) i_src)
+                     (interp_mrec (interp_function p_tgt) (d_tgt ;; i_tgt))>>)
+  .
+  Proof.
+    revert_until manifesto.
+    ginit.
+    { intros. eapply cpn3_wcompat; et. eauto with paco. }
+    gcofix CIH.
+    i.
+    induction PURE.
+    - (* pure-ret *)
+      irw. gstep. rewrite <- ! unfold_interp_mrec. econs; et.
+      { rr in SIM. gfinal. right. eapply paco3_mon; eauto. ii; ss. }
+      econs; et.
+    - (* pure-tau *)
+      irw. gstep. rewrite <- ! unfold_interp_mrec. econs; et.
+      { eauto with paco. }
+      econs; et.
+    - (* pure-icall *)
+      irw. des_ifs; cycle 1.
+      { admit "corner case handling". }
+      gstep.
+      econs; et.
+      { rewrite <- ! unfold_interp_mrec.
+        gbase. rewrite <- bind_bind. eapply CIH; et.
+        admit "".
+      }
+      admit "put radix".
+    - (* pure-nb *)
+    - irw. r. rr. pfold. rewrite <- ! unfold_interp_mrec.
+      des_ifs.
+      + irw. rewrite <- ! unfold_interp_mrec. econs; et.
+        inv SIMP. exploit PURES; et.
+        exploit CALL; et.
+        { inv SIMP.  econs; et.
+        { left. econs; et.
+  Qed.
+
+  Lemma match_prog_sim_st
+        manifesto i0
+        i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val)))
+        (PURE: pure manifesto i0 d_tgt)
+        (SIM: match_itr i_src i_tgt)
+    :
+      sim_st (ord_stk ord) [i0] (interp_mrec (interp_function p_src) i_src)
+             (interp_mrec (interp_function p_tgt) (d_tgt ;; i_tgt))
+  .
+  Proof.
+    revert_until SIMP.
+    ginit.
+    { intros. eapply cpn3_wcompat; et. eauto with paco. }
+    gcofix CIH.
+    i. rewrite ! unfold_interp_mrec.
+    induction PURE; irw.
+    { punfold SIM. inv SIM; cbn.
+      - (* ret *) gstep. destruct s0 as [oh [m v]]. econs; et.
+      - (* tau *) admit "".
+      - (* vis *) admit "".
+      - (* pure call *) admit "".
+    }
+    { }
+    punfold SIM. inv SIM; cbn.
+    - gstep. destruct s as [oh [m v]]. econs; et.
+    - gstep. econs; et. gbase. pclearbot. et.
+    - gstep. des_ifs.
+      + econs; et. gbase.
+        eapply CIH. eapply match_itr_bind; et.
+        { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
+        destruct i.
+        inv SIMP.
+        exploit (MATCH0 name); et. intro T. rr in T. cbn. des_ifs; cycle 1.
+        { pfold. econs; et. ii; ss. }
+        exploit T; et.
+      + destruct s.
+        * destruct e. econs; et. ii. rr in H. des_ifs. des; clarify.
+          gstep; econs; et. exploit (MATCH (o0, (m1, v0))); et. intro T. pclearbot.
+          eauto with paco.
+        * destruct e.
+          { econs; et. }
+          { econs; et. }
+          { econs; et. ii.
+            esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot.
+            gstep. econs; et.
+            eauto with paco. }
+    - pclearbot. inv SIMP.
+      exploit PURES; et. i; des.
+      exploit (MATCH0 fname); et. intro T. r in T.
+      des_ifs.
+      gstep. econs; et.
+      irw.
+      rr in T. hexploit (T oh0 _ eq_refl m0 _ eq_refl vs0 _ eq_refl); et. intro U.
+      gbase. rewrite <- ! unfold_interp_mrec. eapply CIH.
+
+      (*** TODO: make lemma ***)
+      rewrite <- bind_bind. rewrite bind_ret_r.
+      repeat spc PURE0.
+      rename f into fff.
+  Qed.
+        * gstep. econs; et. gbase. eapply CIH; et. irw. eapply match_itr_bind; et.
+          { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
+          destruct i.
+          inv SIMP.
+          exploit (MATCH0 name); et. intro T. rr in T. cbn. des_ifs; cycle 1.
+          { pfold. econs; et. ii; ss. }
+          exploit T; et.
+        * destruct s.
+          -- destruct e. gstep. econs; et. ii. rr in H. des_ifs. des; clarify.
+             gstep; econs; et. exploit (MATCH (o0, (m1, v0))); et. intro T. pclearbot.
+             eauto with paco. gbase. eapply CIH; et. irw; et.
+          -- gstep. destruct e.
+             { econs; et. }
+             { econs; et. }
+             { econs; et. ii.
+               esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot.
+               gstep. econs; et.
+               gbase. eapply CIH; et. irw.
+               eauto with paco. }
+        * gstep. econs; et.
+          
+      + (* vis *)
+      gstep. des_ifs.
+      + destruct i. irw. inv SIMP.
+        des_ifs. econs; et.
+        { gbase. irw. rewrite <- ! unfold_interp_mrec.
+          eapply CIH; et. ides d_tgt; ss; irw in H1; clarify.
+          - irw. eapply match_itr_bind; et.
         { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
         destruct i.
         inv SIMP.

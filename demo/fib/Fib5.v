@@ -24,15 +24,11 @@ Definition f_fib_ru (oh0: owned_heap) (m0: mem) (vs0: list val):
     | S (S m) =>
       let vs0 := [Vint (of_nat m)] in
 
-      _I_DONT_USE_THIS__RUDIMENT_ORGAN_ <- trigger (ICall _fib_ru oh0 m0 vs0) ;;
-      'ohmv <- trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) ;;
-      let '(oh1, (m1, y1)) := proj1_sig ohmv in
+      '(oh1, (m1, y1)) <- trigger (ICall _fib_ru oh0 m0 vs0) ;;
 
       let vs1 := [Vint (of_nat (S m))] in
 
-      _I_DONT_USE_THIS__RUDIMENT_ORGAN_ <- trigger (ICall _fib_ru oh1 m1 vs1) ;;
-      'ohmv <- trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh1 m1 vs1 ohmv }) ;;
-      let '(oh2, (m2, y2)) := proj1_sig ohmv in
+      '(oh2, (m2, y2)) <- trigger (ICall _fib_ru oh1 m1 vs1) ;;
 
       Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
     end

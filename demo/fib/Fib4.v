@@ -25,12 +25,10 @@ Definition f_fib_ru (oh0: owned_heap) (m0: mem) (vs0: list val):
       let vs0 := [Vint (of_nat m)] in
 
       '(oh1, (m1, y1)) <- trigger (ICall _fib_ru oh0 m0 vs0) ;;
-      (guarantee (postcond oh0 m0 vs0 (oh1, (m1, y1)))) ;;
 
       let vs1 := [Vint (of_nat (S m))] in
 
       '(oh2, (m2, y2)) <- trigger (ICall _fib_ru oh1 m1 vs1) ;;
-      (guarantee (postcond oh1 m1 vs1 (oh2, (m2, y2)))) ;;
 
       Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
     end

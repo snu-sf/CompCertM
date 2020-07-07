@@ -153,15 +153,12 @@ Definition fn_src (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_he
 
 Inductive match_fn_focus (fn_ru fn_tgt: function owned_heap): Prop :=
 | match_fn_intro
-    fn_ru_inner fn_tgt_inner
-    (SRC: forall oh0 m0 vs0,
-        fn_ru oh0 m0 vs0 = (fn_ru_inner oh0 m0 vs0)
-                            >>= guaranteeK (postcond oh0 m0 vs0))
+    fn_tgt_inner
+    (SIM: (eq ==> eq ==> eq ==> match_itr) fn_ru fn_tgt_inner)
     (TGT: forall oh0 m0 vs0,
         fn_tgt oh0 m0 vs0 = assume (precond oh0 m0 vs0) ;;
                             (fn_tgt_inner oh0 m0 vs0)
                             >>= guaranteeK (postcond oh0 m0 vs0))
-    (SIM: (eq ==> eq ==> eq ==> match_itr) fn_ru_inner fn_tgt_inner)
 .
 
 Definition match_fn (fn_src fn_tgt: function owned_heap): Prop :=
@@ -365,13 +362,12 @@ Section SIM.
       gbase. eapply CIH.
       inv SIMP.
       des_ifs_safe. inv FOCUS. rewrite TGT. irw.
-      step_assume; ss. irw. rewrite SRC. irw.
+      step_assume; ss. irw.
       eapply match_itr_bind; et.
       { ii. clarify. step_guaranteeK; ss.
         (*** TODO: fix step_guaranteeK ***)
         { pfold. unfold triggerNB. rewrite bind_vis. econs; et. }
         irw. step_assume; ss.
-        irw. step_guaranteeK; ss.
         irw. exploit MATCH; et. intro U. pclearbot. eauto.
       }
       exploit SIM; et.
@@ -417,11 +413,10 @@ Section SIM.
         des_ifs.
         rewrite <- ! unfold_interp_mrec.
         eapply match_prog_sim_st; ss.
-        rewrite SRC. irw.
         eapply match_itr_bind.
         { ii. clarify. step_guaranteeK.
-          { pfold. econs; et. }
-          unfold guaranteeK. des_ifs. irw. des_ifs. pfold. econs; et.
+          - pfold. econs; et.
+          - unfold guaranteeK. des_ifs. pfold. econs; et.
         }
         eapply SIM; et.
       }

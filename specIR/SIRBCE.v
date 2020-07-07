@@ -251,6 +251,11 @@ Let wf_gord: well_founded gord.
 Proof. eapply well_founded_clos_trans. eapply ord_stk_wf. eapply ord_lex_wf; et. eapply lt_wf. Qed.
 
 
+Ltac tc_left := eapply t_trans; [apply t_step|].
+Ltac tc_right := eapply t_trans; [|apply t_step]; cycle 1.
+
+Let grord := rtc (ord_stk (ord_lex ord lt)).
+
 
 (*** sim syntax ***)
 Section SYNTAX.
@@ -437,19 +442,122 @@ Inductive _gpure (gpure: gidx -> itr -> Prop): gidx -> itr -> Prop :=
     i0 ktr
   :
     _gpure gpure i0 (Vis (subevent _ (ENB)) ktr)
-(* | gpure_stutter *)
-(*     i0 i1 *)
-(*     itr *)
-(*     (GPURE: gpure i1 itr) *)
-(*     (ORD: (rtc (ord_stk (ord_lex ord lt))) i1 i0) *)
-(*   : *)
-(*     _gpure gpure i0 itr *)
+| gpure_stutter
+    i0 i1
+    itr
+    (ORD: (tc (ord_stk (ord_lex ord lt))) i1 i0)
+    (GPURE: gpure i1 itr)
+  :
+    _gpure gpure i0 itr
 .
 Definition gpure: gidx -> itr -> Prop := paco2 _gpure bot2.
 Lemma gpure_mon: monotone2 _gpure.
 Proof.
   ii. inv IN; try (by econs; et; rr; et).
   econs; et. ii. exploit K; et. i; des. esplits; et.
+Qed.
+
+Hint Unfold gpure.
+Hint Resolve gpure_mon: paco.
+
+Inductive gpure_bindC (r: gidx -> itr -> Prop) : gidx -> itr -> Prop :=
+| gpure_bindC_intro
+    hd0 itr
+    (PURE: gpure [hd0] itr)
+    hd1 tl ktr
+    (K: forall ohmv, exists i0, <<ORD: ord_lex ord lt i0 (hd1, 1%nat)>> /\
+                                       <<PURE: r (i0 :: tl) (ktr ohmv)>>)
+  :
+    gpure_bindC r ([hd0; (hd1, 0%nat)] ++ tl) (ITree.bind itr ktr)
+.
+
+Hint Constructors gpure_bindC: core.
+
+Lemma gpure_bindC_spec
+      simC
+  :
+    gpure_bindC <3= gupaco2 (_gpure) (simC)
+.
+Proof.
+  gcofix CIH. intros. destruct PR.
+  punfold PURE. inv PURE.
+  - (* ret *)
+    irw. spc K. des.
+    gstep.
+    destruct (classic (i0 = (hd1, 0%nat))).
+    + clarify. econsr.
+      { econs. econsr. }
+      eauto with paco.
+    + destruct i0.
+      assert(ord i hd1).
+      { inv ORD; ss. destruct n; ss. destruct n; ss; xomega. }
+      econsr.
+      { tc_right.
+        { econsr. }
+        econs; et. econs; et. econs; et.
+      }
+      eauto with paco.
+  - (* tau *)
+    irw. pclearbot.
+    gstep. econs; et.
+    gbase. eapply CIH. econs; et.
+  - (* call *)
+    irw. gstep. econs; et.
+    i. spc K0. des. pclearbot.
+    { esplits; cycle 1.
+      - gbase. eapply CIH. econs; et.
+      - ss.
+    }
+  - (* nb *)
+    irw. gstep. econs; et.
+  - (* stutter *)
+    irw. pclearbot.
+    gstep. econs; et.
+    { instantiate (1:= i1 ++ [(hd1, 0%nat)] ++ tl).
+      admit "this might hold...".
+    }
+    gbase. eapply CIH.
+    econs; et.
+    eauto with paco.
+    gfinal. right.
+    destruct (classic (i1 = [hd0])).
+    + clarify.
+      gstep. econs; et.
+      econs; et.
+    gstep. econsr.
+    { eapply rtc_once. econs; et. }
+    et. eauto with paco.
+    gfinal. right.
+    eapply paco2_mon.
+    gstep. econs; et.
+    assert(rtc (ord_lex ord lt) i0 (hd1, 0%nat)).
+    {
+      eapply rtc_n1; et.
+      { eapply rtc_once; et.
+      destruct i0.
+      - etrans. inv ORD.
+    }
+    econsr.
+    { eapply rtc_n1; cycle 1.
+      { econsr. }
+      eapply rtc_n1; cycle 1.
+      { econs 1. instantiate (1:= i0).
+        inv ORD; ss; try xomega.
+        - econs; et.
+        -
+    }
+    gstep.
+    eauto with paco.
+    rewrite ! bind_ret_l. gbase. eapply SIMK; et.
+  - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
+    (* gfinal. left. eapply CIH. econstructor; eauto. *)
+    debug eauto with paco.
+  - rewrite ! bind_vis. gstep. econs; eauto. ii. clarify.
+    repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
+  - rewrite ! bind_bind. gstep.
+    erewrite f_equal2; try eapply match_icall_pure; try refl; ss.
+    { pclearbot. eauto with paco. }
+    irw. ss.
 Qed.
 
 End GPURE.
@@ -482,33 +590,34 @@ Unshelve.
   all: ss.
 Qed.
 
-(* Theorem gpure_bind *)
-(*         i0hd i0tl itr *)
-(*         (GPURE: gpure (i0hd :: i0tl) itr) *)
-(*         ktr *)
-(*         (K: forall ohmv, exists i1, (<<ORD: gord [i1] [i0hd]>>) /\ *)
-(*                                     (<<GPURE: upaco2 _gpure bot2 [i1] (ktr ohmv)>>)) *)
-(*   : *)
-(*     gpure (i0hd :: i0hd :: i0tl) (itr >>= ktr) *)
-(* . *)
-(* Proof. *)
-(*   revert_until i0hd. revert i0hd. *)
-(*   ginit. *)
-(*   { intros. eapply cpn2_wcompat; eauto with paco. } *)
-(*   gcofix CIH. i. *)
-(*   punfold GPURE. inv GPURE; irw. *)
-(*   - exploit K; et. i; des. pclearbot. admit "somehow". *)
-(*   - pclearbot. *)
-(*     gstep. econs; et. *)
-(*     { econs; et. } *)
-(*     pclearbot. eauto with paco. *)
-(*   - gstep. econs; et. *)
-(*     + ii. exploit K; et. i; des. pclearbot. esplits; et. *)
-(*       { econs; et. } *)
-(*       eauto with paco. *)
-(*     + econs; et. *)
-(*   - gstep. econs; et. *)
-(* Qed. *)
+Theorem gpure_bind
+        hd0 hd1 itr tl ktr
+        (PURE: gpure [hd0] itr)
+        (K: forall ohmv, exists i0, <<ORD: ord_lex ord lt i0 (hd1, 1%nat)>> /\
+                                           <<PURE: upaco2 _gpure bot2 (i0 :: tl) (ktr ohmv)>>)
+  :
+    <<PURE: gpure ([hd0; (hd1, 0%nat)] ++ tl) (itr >>= ktr)>>
+.
+Proof.
+  ss.
+Qed.
+  revert_until i0hd. revert i0hd.
+  ginit.
+  { intros. eapply cpn2_wcompat; eauto with paco. }
+  gcofix CIH. i.
+  punfold GPURE. inv GPURE; irw.
+  - exploit K; et. i; des. pclearbot. admit "somehow".
+  - pclearbot.
+    gstep. econs; et.
+    { econs; et. }
+    pclearbot. eauto with paco.
+  - gstep. econs; et.
+    + ii. exploit K; et. i; des. pclearbot. esplits; et.
+      { econs; et. }
+      eauto with paco.
+    + econs; et.
+  - gstep. econs; et.
+Qed.
 
 
 
@@ -810,11 +919,6 @@ Section SIM.
   Unshelve.
     all: ss.
   Qed.
-
-  Ltac tc_left := eapply t_trans; [apply t_step|].
-  Ltac tc_right := eapply t_trans; [|apply t_step]; cycle 1.
-
-  Let grord := rtc (ord_stk (ord_lex ord lt)).
 
   Lemma rtc_tc
         X (r: X -> X -> Prop)

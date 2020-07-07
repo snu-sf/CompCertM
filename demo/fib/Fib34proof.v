@@ -70,7 +70,8 @@ Proof.
   eapply SIRHoare.correct with (_fn:=Fib0._fib) (_fn_ru:=_fib_ru)
                                (precond:=precond) (postcond:=postcond).
   econs; ss; et.
-  - econs; ss; cycle 1.
+  - econs; ss.
+    + ii. iby refl.
     + ii. iby refl.
     (* + ii. rewrite bind_bind. refl. *)
     + ii. clarify. unfold f_fib_ru.

@@ -241,7 +241,7 @@ Inductive pure (i0: idx): itr -> Prop :=
     (* i1 *)
     (* (ORD: ord i1 i0) *)
     (* (CALL: pure i1 (interp_function p (ICall fname oh0 m0 vs0))) *)
-    (*** NOTE: let's not obligate the user mutual induction ***)
+    (*** NOTE: let's not obligate the user mutual induction. That is the point of manifesto ***)
     mf
     (MF: manifesto fname = Some mf)
     (CALL: ord (mf oh0 m0 vs0) i0)
@@ -338,16 +338,20 @@ Qed.
 
 
 
-Theorem pure_bind
-        itr ktr
-        (PURE: pure manifesto i0 itr)
-        (K : forall ohmv: owned_heap * (mem * val),
-            exists i1, <<ORD: ord i1 i0 >> /\ <<PURE: pure manifesto i1 (ktr ohmv)>>)
-  :
-    exists i1, pure manifesto (itr;; ktr
-.
-Proof.
-Qed.
+(* Theorem pure_bind *)
+(*         manifesto *)
+(*         i0 it ktr *)
+(*         (PURE: pure manifesto i0 it) *)
+(*         (K : forall ohmv: owned_heap * (mem * val), *)
+(*             exists i1, <<ORD: ord i1 i0 >> /\ <<PURE: pure manifesto i1 (ktr ohmv)>>) *)
+(*   : *)
+(*     exists i1, pure manifesto i1 (it >>= ktr) *)
+(* . *)
+(* Proof. *)
+(*   induction PURE. *)
+(*   - irw. exploit K; et. i; des. esplits; et. *)
+(*   - irw. exploit IHPURE; et. exploit K; et. i; des. esplits; et. *)
+(* Qed. *)
 
 
 
@@ -541,17 +545,13 @@ Section SIM.
       econs; et.
       { rewrite <- ! unfold_interp_mrec.
         gbase. rewrite <- bind_bind. eapply CIH; et.
-        admit "".
+        admit "we should put radix".
       }
       admit "put radix".
     - (* pure-nb *)
-    - irw. r. rr. pfold. rewrite <- ! unfold_interp_mrec.
-      des_ifs.
-      + irw. rewrite <- ! unfold_interp_mrec. econs; et.
-        inv SIMP. exploit PURES; et.
-        exploit CALL; et.
-        { inv SIMP.  econs; et.
-        { left. econs; et.
+      irw. gstep. econs; et.
+  Unshelve.
+    all: ss.
   Qed.
 
   Lemma match_prog_sim_st

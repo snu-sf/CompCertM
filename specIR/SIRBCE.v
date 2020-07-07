@@ -130,6 +130,89 @@ Section LEXSTK.
 
 End LEXSTK.
 
+(*** TODO: Move to Ord.v ***)
+Section LEXICO.
+
+  Variable (idxh idxl: Type) (ordh: idxh -> idxh -> Prop) (ordl: idxl -> idxl -> Prop).
+
+  Definition idx_lex := (idxh * idxl)%type.
+
+  Inductive ord_lex: idx_lex -> idx_lex -> Prop :=
+  | ord_lex_high
+      idxh0 idxh1 idxl0 idxl1
+      (ORDH: ordh idxh0 idxh1):
+      ord_lex (idxh0, idxl0) (idxh1, idxl1)
+  | ord_lex_low
+      idxh idxl0 idxl1
+      (ORDL: ordl idxl0 idxl1):
+      ord_lex (idxh, idxl0) (idxh, idxl1).
+
+  Theorem ord_lex_wf
+          (WF0: well_founded ordl)
+          (WF1: well_founded ordh):
+      <<WF: well_founded ord_lex>>.
+  Proof.
+    assert(ACC: forall h, Acc ordh h -> forall l, Acc ordl l -> Acc ord_lex (h, l)).
+    {
+      induction 1.
+      induction 1.
+      econs. i. inv H3.
+      - eauto.
+      - eauto.
+    }
+    rr. i. destruct a. eapply ACC; eauto.
+  Qed.
+
+End LEXICO.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -139,20 +222,24 @@ End LEXSTK.
 
 Local Obligation Tactic := ii; ss; eauto.
 
+(*** TODO: move to CoqlibC ***)
 Local Open Scope signature_scope.
 
+(*** TODO: move to CoqlibC ***)
+Coercion is_some_coercion {X}: (option X) -> bool := is_some.
 
 
 Section OWNEDHEAP.
 
 Variable mi: string.
 Variable owned_heap: Type.
-Variable _pures: ident -> Prop.
+(* Variable _pures: ident -> Prop. *)
 (* Let idx := nat. *)
 (* Let ord := lt. *)
 Variable idx: Type.
 Variable ord: idx -> idx -> Prop.
 Hypothesis wf_ord: well_founded ord.
+Variable manifesto: ident -> option (owned_heap -> mem -> list val -> idx).
 Let sim_st := sim_st (@eq owned_heap).
 
 
@@ -186,7 +273,7 @@ Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
     _match_itr match_itr (Vis e k_src) (Vis e k_tgt)
 | match_icall_pure
     fname oh0 m0 vs0 i_src i_tgt
-    (PURE: _pures fname)
+    (PURE: manifesto fname)
     (MATCH: match_itr i_src i_tgt)
   :
     _match_itr match_itr
@@ -213,31 +300,70 @@ Hint Resolve match_itr_mon: paco.
 
 
 
+(* Section PURE. *)
+
+(* Variable p: program owned_heap. *)
+
+(* Let itr := itree (E owned_heap) (owned_heap * (mem * val)). *)
+
+(* (*** NOTE: we have idx, so we are able to define in coinductive. What could be the difference? ***) *)
+(* Inductive pure (i0: idx): itr -> Prop := *)
+(* | pure_ret *)
+(*     s *)
+(*   : *)
+(*     pure i0 (Ret s) *)
+(* | pure_tau *)
+(*     i1 *)
+(*     (ORD: ord i1 i0) *)
+(*     itr *)
+(*     (PURE: pure i1 itr) *)
+(*   : *)
+(*     pure i0 (Tau itr) *)
+(* | pure_icall *)
+(*     fname oh0 m0 vs0 ktr *)
+(*     (K: forall ohmv, exists i1, <<ORD: ord i1 i0>> /\ <<PURE: pure i1 (ktr ohmv)>>) *)
+(*     (* i1 *) *)
+(*     (* (ORD: ord i1 i0) *) *)
+(*     (* (CALL: pure i1 (interp_function p (ICall fname oh0 m0 vs0))) *) *)
+(*     (*** NOTE: let's not obligate the user mutual induction. That is the point of manifesto ***) *)
+(*     mf *)
+(*     (MF: manifesto fname = Some mf) *)
+(*     (CALL: ord (mf oh0 m0 vs0) i0) *)
+(*   : *)
+(*     pure i0 (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr) *)
+(* | pure_nb *)
+(*     ktr *)
+(*   : *)
+(*     pure i0 (Vis (subevent _ (ENB)) ktr) *)
+(* . *)
+
+(* End PURE. *)
+(* Hint Constructors pure. *)
+
+
+
 Section PURE.
 
 Variable p: program owned_heap.
-Variable manifesto: ident -> option (owned_heap -> mem -> list val -> idx).
 
 Let itr := itree (E owned_heap) (owned_heap * (mem * val)).
 
 (*** NOTE: we have idx, so we are able to define in coinductive. What could be the difference? ***)
-Inductive pure (i0: idx): itr -> Prop :=
+Inductive _pure (pure: idx -> itr -> Prop) (i0: idx): itr -> Prop :=
 | pure_ret
     s
   :
-    pure i0 (Ret s)
+    _pure pure i0 (Ret s)
 | pure_tau
     i1
     (ORD: ord i1 i0)
     itr
     (PURE: pure i1 itr)
   :
-    pure i0 (Tau itr)
+    _pure pure i0 (Tau itr)
 | pure_icall
     fname oh0 m0 vs0 ktr
     (K: forall ohmv, exists i1, <<ORD: ord i1 i0>> /\ <<PURE: pure i1 (ktr ohmv)>>)
-
-
     (* i1 *)
     (* (ORD: ord i1 i0) *)
     (* (CALL: pure i1 (interp_function p (ICall fname oh0 m0 vs0))) *)
@@ -246,15 +372,129 @@ Inductive pure (i0: idx): itr -> Prop :=
     (MF: manifesto fname = Some mf)
     (CALL: ord (mf oh0 m0 vs0) i0)
   :
-    pure i0 (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr)
+    _pure pure i0 (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr)
 | pure_nb
     ktr
   :
-    pure i0 (Vis (subevent _ (ENB)) ktr)
+    _pure pure i0 (Vis (subevent _ (ENB)) ktr)
 .
-Hint Constructors pure.
+Definition pure: idx -> itr -> Prop := paco2 _pure bot2.
+Lemma pure_mon: monotone2 _pure.
+Proof.
+  ii. inv IN; try (by econs; et; rr; et).
+  econs; et. ii. exploit K; et. i; des. esplits; et.
+Qed.
 
 End PURE.
+Hint Unfold pure.
+Hint Resolve pure_mon: paco.
+
+
+
+Let gidx := idx_stk idx.
+Let gord := ord_stk ord.
+Let gord_wf: well_founded gord. eapply ord_stk_wf; et. Qed.
+
+Section GPURE.
+
+Variable p: program owned_heap.
+
+Let itr := itree (E owned_heap) (owned_heap * (mem * val)).
+
+(*** NOTE: we have idx, so we are able to define in coinductive. What could be the difference? ***)
+Inductive _gpure (gpure: gidx -> itr -> Prop): gidx -> itr -> Prop :=
+| gpure_ret
+    i0 s
+  :
+    _gpure gpure i0 (Ret s)
+| gpure_tau
+    i0 i1
+    (ORD: gord i1 i0)
+    itr
+    (GPURE: gpure i1 itr)
+  :
+    _gpure gpure i0 (Tau itr)
+| gpure_icall
+    i0hd i0tl
+    fname oh0 m0 vs0 ktr
+    (K: forall ohmv, exists i1, <<ORD: gord [i1] [i0hd]>> /\ <<GPURE: gpure [i1] (ktr ohmv)>>)
+    (* i1 *)
+    (* (ORD: ord i1 i0) *)
+    (* (CALL: gpure i1 (interp_function p (ICall fname oh0 m0 vs0))) *)
+    (*** NOTE: let's not obligate the user mutual induction. That is the point of manifesto ***)
+    mf
+    (MF: manifesto fname = Some mf)
+    (CALL: gord [mf oh0 m0 vs0] [i0hd])
+  :
+    _gpure gpure (i0hd :: i0tl) (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr)
+| gpure_nb
+    i0 ktr
+  :
+    _gpure gpure i0 (Vis (subevent _ (ENB)) ktr)
+.
+Definition gpure: gidx -> itr -> Prop := paco2 _gpure bot2.
+Lemma gpure_mon: monotone2 _gpure.
+Proof.
+  ii. inv IN; try (by econs; et; rr; et).
+  econs; et. ii. exploit K; et. i; des. esplits; et.
+Qed.
+
+End GPURE.
+Hint Unfold gpure.
+Hint Resolve gpure_mon: paco.
+
+
+Theorem pure_gpure
+        i0 itr
+        (PURE: pure i0 itr)
+  :
+    <<GPURE: gpure [i0] itr>>
+.
+Proof.
+  revert_until i0. revert i0.
+  ginit.
+  { intros. eapply cpn2_wcompat; eauto with paco. }
+  gcofix CIH. i.
+  punfold PURE. inv PURE.
+  - gstep. econs; et.
+  - gstep. econs; et.
+    { econs; et. }
+    pclearbot. eauto with paco.
+  - gstep. econs; et.
+    + ii. exploit K; et. i; des. pclearbot. esplits; et.
+      { econs; et. }
+      eauto with paco.
+    + econs; et.
+  - gstep. econs; et.
+Qed.
+
+(* Theorem gpure_bind *)
+(*         i0hd i0tl itr *)
+(*         (GPURE: gpure (i0hd :: i0tl) itr) *)
+(*         ktr *)
+(*         (K: forall ohmv, exists i1, (<<ORD: gord [i1] [i0hd]>>) /\ *)
+(*                                     (<<GPURE: upaco2 _gpure bot2 [i1] (ktr ohmv)>>)) *)
+(*   : *)
+(*     gpure (i0hd :: i0hd :: i0tl) (itr >>= ktr) *)
+(* . *)
+(* Proof. *)
+(*   revert_until i0hd. revert i0hd. *)
+(*   ginit. *)
+(*   { intros. eapply cpn2_wcompat; eauto with paco. } *)
+(*   gcofix CIH. i. *)
+(*   punfold GPURE. inv GPURE; irw. *)
+(*   - exploit K; et. i; des. pclearbot. admit "somehow". *)
+(*   - pclearbot. *)
+(*     gstep. econs; et. *)
+(*     { econs; et. } *)
+(*     pclearbot. eauto with paco. *)
+(*   - gstep. econs; et. *)
+(*     + ii. exploit K; et. i; des. pclearbot. esplits; et. *)
+(*       { econs; et. } *)
+(*       eauto with paco. *)
+(*     + econs; et. *)
+(*   - gstep. econs; et. *)
+(* Qed. *)
 
 
 
@@ -270,15 +510,13 @@ Definition match_fn: relation (function owned_heap) := (eq ==> eq ==> eq ==> mat
 
 Inductive match_prog (p_src p_tgt: program owned_heap): Prop :=
 | match_prog_intro
-    manifesto
     (PURES: forall
-        _fn
-        (PURE: _pures _fn)
+        _fn mf
+        (PURE: manifesto _fn = Some mf)
       ,
-        exists fn mf,
+        exists fn,
           (<<FN: p_tgt _fn = Some fn>>) /\
-          (<<MF: manifesto _fn = Some mf>>) /\
-          (<<PURE: forall oh m vs, pure manifesto (mf oh m vs) (fn oh m vs)>>))
+          (<<PURE: forall oh m vs, pure (mf oh m vs) (fn oh m vs)>>))
     (MATCH: (eq ==> option_rel match_fn) p_src p_tgt)
 .
 
@@ -359,6 +597,8 @@ Qed.
 End SYNTAX.
 Hint Unfold match_itr.
 Hint Resolve match_itr_mon: paco.
+Hint Unfold pure.
+Hint Resolve pure_mon: paco.
 
 
 
@@ -447,76 +687,80 @@ Section SIM.
       exploit PURES; et. i; des.
       exploit (MATCH0 fname); et. intro T. r in T.
       des_ifs.
-      gstep. econs; et.
-      irw.
-      rr in T. hexploit (T oh0 _ eq_refl m0 _ eq_refl vs0 _ eq_refl); et. intro U.
-      gbase. rewrite <- ! unfold_interp_mrec. eapply CIH.
+      (* gstep. econs; et. *)
+      (* irw. *)
+      (* rr in T. hexploit (T oh0 _ eq_refl m0 _ eq_refl vs0 _ eq_refl); et. intro U. *)
+      (* gbase. rewrite <- ! unfold_interp_mrec. eapply CIH. *)
 
-      (*** TODO: make lemma ***)
-      rewrite <- bind_bind. rewrite bind_ret_r.
-      repeat spc PURE0.
-      rename f into fff.
+      (* (*** TODO: make lemma ***) *)
+      (* rewrite <- bind_bind. rewrite bind_ret_r. *)
+      (* repeat spc PURE0. *)
+      (* rename f into fff. *)
   Abort.
 
 
 
 
-  Lemma match_prog_sim_st
-        manifesto i0
-        i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val)))
-        (PURE: pure manifesto i0 d_tgt)
-        (SIM: match_itr i_src (d_tgt ;; i_tgt))
-    :
-      sim_st (ord_stk ord) [i0] (interp_mrec (interp_function p_src) i_src)
-             (interp_mrec (interp_function p_tgt) i_tgt)
-  .
-  Proof.
-    revert_until SIMP.
-    ginit.
-    { intros. eapply cpn3_wcompat; et. eauto with paco. }
-    gcofix CIH.
-    i. rewrite ! unfold_interp_mrec.
-    punfold SIM. inv SIM; cbn.
-    - gstep. destruct s as [oh [m v]].
-      ides d_tgt; irw in H1; clarify. econs; et.
-    - gstep. pclearbot. ides d_tgt; irw in H1; clarify.
-      + (* ret *)
-        econs; et. gbase. eapply CIH; et. irw. et.
-      + (* tau *)
-        inv PURE.
-        econs; et.
-        { gbase. rewrite <- ! unfold_interp_mrec. eapply CIH; et. }
-        econs; et.
-    - ides d_tgt; ss; irw in H1; clarify.
-      + (* ret *)
-        des_ifs.
-        * gstep. econs; et. gbase. eapply CIH; et. irw. eapply match_itr_bind; et.
-          { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
-          destruct i.
-          inv SIMP.
-          exploit (MATCH0 name); et. intro T. rr in T. cbn. des_ifs; cycle 1.
-          { pfold. econs; et. ii; ss. }
-          exploit T; et.
-        * destruct s.
-          -- destruct e. gstep. econs; et. ii. rr in H. des_ifs. des; clarify.
-             gstep; econs; et. exploit (MATCH (o0, (m1, v0))); et. intro T. pclearbot.
-             eauto with paco. gbase. eapply CIH; et. irw; et.
-          -- gstep. destruct e.
-             { econs; et. }
-             { econs; et. }
-             { econs; et. ii.
-               esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot.
-               gstep. econs; et.
-               gbase. eapply CIH; et. irw.
-               eauto with paco. }
-      + (* vis *)
-        csc.
-  Abort.
+  (* Lemma match_prog_sim_st *)
+  (*       i0 *)
+  (*       i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val))) *)
+  (*       (PURE: pure i0 d_tgt) *)
+  (*       (SIM: match_itr i_src (d_tgt ;; i_tgt)) *)
+  (*   : *)
+  (*     sim_st (ord_stk ord) [i0] (interp_mrec (interp_function p_src) i_src) *)
+  (*            (interp_mrec (interp_function p_tgt) i_tgt) *)
+  (* . *)
+  (* Proof. *)
+  (*   revert_until SIMP. *)
+  (*   ginit. *)
+  (*   { intros. eapply cpn3_wcompat; et. eauto with paco. } *)
+  (*   gcofix CIH. *)
+  (*   i. rewrite ! unfold_interp_mrec. *)
+  (*   punfold SIM. inv SIM; cbn. *)
+  (*   - gstep. destruct s as [oh [m v]]. *)
+  (*     ides d_tgt; irw in H1; clarify. econs; et. *)
+  (*   - gstep. pclearbot. ides d_tgt; irw in H1; clarify. *)
+  (*     + (* ret *) *)
+  (*       econs; et. gbase. eapply CIH; et. irw. et. *)
+  (*     + (* tau *) *)
+  (*       inv PURE. *)
+  (*       econs; et. *)
+  (*       { gbase. rewrite <- ! unfold_interp_mrec. eapply CIH; et. } *)
+  (*       econs; et. *)
+  (*   - ides d_tgt; ss; irw in H1; clarify. *)
+  (*     + (* ret *) *)
+  (*       des_ifs. *)
+  (*       * gstep. econs; et. gbase. eapply CIH; et. irw. eapply match_itr_bind; et. *)
+  (*         { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. } *)
+  (*         destruct i. *)
+  (*         inv SIMP. *)
+  (*         exploit (MATCH0 name); et. intro T. rr in T. cbn. des_ifs; cycle 1. *)
+  (*         { pfold. econs; et. ii; ss. } *)
+  (*         exploit T; et. *)
+  (*       * destruct s. *)
+  (*         -- destruct e. gstep. econs; et. ii. rr in H. des_ifs. des; clarify. *)
+  (*            gstep; econs; et. exploit (MATCH (o0, (m1, v0))); et. intro T. pclearbot. *)
+  (*            eauto with paco. gbase. eapply CIH; et. irw; et. *)
+  (*         -- gstep. destruct e. *)
+  (*            { econs; et. } *)
+  (*            { econs; et. } *)
+  (*            { econs; et. ii. *)
+  (*              esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot. *)
+  (*              gstep. econs; et. *)
+  (*              gbase. eapply CIH; et. irw. *)
+  (*              eauto with paco. } *)
+  (*     + (* vis *) *)
+  (*       csc. *)
+  (* Abort. *)
+
+  (* Let gidx: Type := idx_stk (idx_lex nat idx). *)
+  (* Let gord: gidx -> gidx -> Prop := ord_stk (ord_lex lt ord). *)
+  (* Let wf_gord: well_founded gord. *)
+  (* Proof. eapply ord_stk_wf. eapply ord_lex_wf; et. eapply lt_wf. Qed. *)
 
   Lemma sim_st_upto_pure
-        manifesto
         i0 tl i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val)))
-        (PURE: pure manifesto i0 d_tgt)
+        (PURE: pure i0 d_tgt)
         (SIM: sim_st (ord_stk ord) tl (interp_mrec (interp_function p_src) i_src)
                      (interp_mrec (interp_function p_tgt) i_tgt))
     :
@@ -527,27 +771,73 @@ Section SIM.
     revert_until manifesto.
     ginit.
     { intros. eapply cpn3_wcompat; et. eauto with paco. }
-    gcofix CIH.
+    i. revert_until i0. revert i0. gcofix CIH.
     i.
-    induction PURE.
+    punfold PURE. inv PURE.
     - (* pure-ret *)
       irw. gstep. rewrite <- ! unfold_interp_mrec. econs; et.
       { rr in SIM. gfinal. right. eapply paco3_mon; eauto. ii; ss. }
       econs; et.
     - (* pure-tau *)
-      irw. gstep. rewrite <- ! unfold_interp_mrec. econs; et.
+      irw. gstep. rewrite <- ! unfold_interp_mrec. pclearbot. econs; et.
       { eauto with paco. }
       econs; et.
     - (* pure-icall *)
-      irw. des_ifs; cycle 1.
-      { admit "corner case handling". }
-      gstep.
-      econs; et.
+      irw.
+      inv SIMP. exploit PURES; et. i; des. des_ifs.
+      gstep. econs; et.
       { rewrite <- ! unfold_interp_mrec.
         gbase. rewrite <- bind_bind. eapply CIH; et.
+        repeat spc PURE.
+        instantiate (1:= (mf oh0 m0 vs0)).
+        clear - K PURE.
         admit "we should put radix".
       }
-      admit "put radix".
+      econs; et.
+    - (* pure-nb *)
+      irw. gstep. econs; et.
+  Unshelve.
+    all: ss.
+  Qed.
+
+  Lemma sim_st_upto_gpure
+        i0 tl i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val)))
+        (PURE: gpure i0 d_tgt)
+        (SIM: sim_st (ord_stk ord) tl (interp_mrec (interp_function p_src) i_src)
+                     (interp_mrec (interp_function p_tgt) i_tgt))
+    :
+      (<<SIM: sim_st (ord_stk ord) (i0 ++ tl) (interp_mrec (interp_function p_src) i_src)
+                     (interp_mrec (interp_function p_tgt) (d_tgt ;; i_tgt))>>)
+  .
+  Proof.
+    revert_until manifesto.
+    ginit.
+    { intros. eapply cpn3_wcompat; et. eauto with paco. }
+    i. revert_until i0. revert i0. gcofix CIH.
+    i.
+    punfold PURE. inv PURE.
+    - (* pure-ret *)
+      irw. gstep. rewrite <- ! unfold_interp_mrec. econs; et.
+      { rr in SIM. gfinal. right. eapply paco3_mon; eauto. ii; ss. }
+      admit "ez".
+    - (* pure-tau *)
+      irw. gstep. rewrite <- ! unfold_interp_mrec. pclearbot. econs; et.
+      { gbase. eapply CIH; eauto with paco. }
+      admit "ez".
+    - (* pure-icall *)
+      irw.
+      inv SIMP. exploit PURES; et. i; des. des_ifs.
+      gstep. econs; et.
+      { rewrite <- ! unfold_interp_mrec.
+        gbase. rewrite <- bind_bind. eapply CIH; et.
+        repeat spc PURE.
+        eapply pure_gpure in PURE. des.
+        instantiate (1:= [mf oh0 m0 vs0 ; i0hd]).
+        (** we should had (i0hd, 1) and we should put (i0hd, 0) **)
+        clear - K PURE.
+        admit "we should put radix".
+      }
+      econs; et.
     - (* pure-nb *)
       irw. gstep. econs; et.
   Unshelve.
@@ -557,7 +847,7 @@ Section SIM.
   Lemma match_prog_sim_st
         manifesto i0
         i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val)))
-        (PURE: pure manifesto i0 d_tgt)
+        (PURE: pure i0 d_tgt)
         (SIM: match_itr i_src i_tgt)
     :
       sim_st (ord_stk ord) [i0] (interp_mrec (interp_function p_src) i_src)

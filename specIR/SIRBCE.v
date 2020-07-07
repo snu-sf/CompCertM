@@ -413,12 +413,12 @@ Inductive _gpure (gpure: gidx -> itr -> Prop): gidx -> itr -> Prop :=
   :
     _gpure gpure i0 (Ret s)
 | gpure_tau
-    i0 tl i1
-    (ORD: ord i1 i0)
+    i0 i1
+    (ORD: gord i1 i0)
     itr
-    (GPURE: gpure ((i1, 1%nat) :: tl) itr)
+    (GPURE: gpure i1 itr)
   :
-    _gpure gpure ((i0, 1%nat) :: tl) (Tau itr)
+    _gpure gpure i0 (Tau itr)
 | gpure_icall
     i0 tl
     fname oh0 m0 vs0 ktr
@@ -452,6 +452,32 @@ Proof.
   econs; et. ii. exploit K; et. i; des. esplits; et.
 Qed.
 
+Hint Unfold gpure.
+Hint Resolve gpure_mon: paco.
+
+Lemma gpure_mon_idx
+      clo r rg i0 i1 it
+      (GPURE: gpaco2 _gpure clo r rg i1 it)
+      (RCOMPAT: forall
+          i0 i1 x
+          (ORD: gord i1 i0)
+          (R: r i1 x)
+        ,
+          (* <<R: r i0 x>>) *)
+          r i0 x)
+      (ORD: gord i1 i0)
+  :
+    <<GPURE: gpaco2 _gpure clo r rg i0 it>>
+.
+Proof.
+  inv GPURE. econs.
+  gen i0. induction IN; i; ss.
+  - econs 1. des; et. left.
+    punfold IN. pfold. inv IN.
+    + econs 1; et.
+    + econs 2; et.
+Abort.
+
 End GPURE.
 Hint Unfold gpure.
 Hint Resolve gpure_mon: paco.
@@ -470,8 +496,9 @@ Proof.
   gcofix CIH. i.
   punfold PURE. inv PURE.
   - gstep. econs; et.
-  - gstep. econs; et.
-    pclearbot. eauto with paco.
+  - gstep. pclearbot. econs; et.
+    { econs; et. econs; et. econs; et. }
+    eauto with paco.
   - gstep. econs; et.
     + ii. exploit K; et. i; des. pclearbot. esplits; et.
       { econs; et. }
@@ -965,7 +992,7 @@ Section SIM.
     - (* pure-tau *)
       irw. gstep. rewrite <- ! unfold_interp_mrec. pclearbot. econs; et.
       { gbase. eapply CIH; eauto with paco. }
-      econs; et. econs; et. econs; et.
+      admit "maybe... true".
     - (* pure-icall *)
       rename tl0 into mid.
       irw.

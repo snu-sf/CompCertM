@@ -587,7 +587,7 @@ Inductive _gpure (gpure: gidx -> itr -> Prop): gidx -> itr -> Prop :=
 | gpure_icall
     i0 tl
     fname oh0 m0 vs0 ktr
-    (K: forall ohmv, exists i1, (<<ORD: (ord_lex ord lt) i1 (i0, 1%nat)>>)
+    (K: forall ohmv, exists i1, (<<ORD: (ord_lex ord lt) i1 (i0, 0%nat)>>)
                                 /\ (<<GPURE: gpure (i1 :: tl) (ktr ohmv)>>))
     (* i1 *)
     (* (ORD: ord i1 i0) *)
@@ -602,13 +602,13 @@ Inductive _gpure (gpure: gidx -> itr -> Prop): gidx -> itr -> Prop :=
     i0 ktr
   :
     _gpure gpure i0 (Vis (subevent _ (ENB)) ktr)
-(* | gpure_stutter *)
-(*     i0 i1 *)
-(*     itr *)
-(*     (ORD: (tc (ord_stk (ord_lex ord lt))) i1 i0) *)
-(*     (GPURE: gpure i1 itr) *)
-(*   : *)
-(*     _gpure gpure i0 itr *)
+| gpure_stutter
+    i0 i1
+    itr
+    (ORD: (tc (ord_stk (ord_lex ord lt))) i1 i0)
+    (GPURE: gpure i1 itr)
+  :
+    _gpure gpure i0 itr
 .
 Definition gpure: gidx -> itr -> Prop := paco2 _gpure bot2.
 Lemma gpure_mon: monotone2 _gpure.
@@ -682,10 +682,10 @@ Abort.
 Inductive gpure_bindC (r: gidx -> itr -> Prop) : gidx -> itr -> Prop :=
 | gpure_bindC_intro
     hd0 itr
-    (NNIL: hd0 <> nil)
+    (* (NNIL: hd0 <> nil) *)
     (PURE: gpure hd0 itr)
     hd1 tl ktr
-    (K: forall ohmv, exists i0, <<ORD: ord_lex ord lt i0 (hd1, 1%nat)>> /\
+    (K: forall ohmv, exists i0, <<ORD: ord_lex ord lt i0 (hd1, 0%nat)>> /\
                                        <<PURE: r (i0 :: tl) (ktr ohmv)>>)
   :
     gpure_bindC r (hd0 ++ (hd1, 0%nat) :: tl) (ITree.bind itr ktr)
@@ -704,80 +704,27 @@ Proof.
   - (* ret *)
     irw. spc K. des.
     gstep.
-    destruct (classic (i0 = (hd1, 0%nat))).
-    + clarify. econsr.
-      { eapply gord_app_l; et. }
-      eauto with paco.
-    + destruct i0.
-      assert(ord i hd1).
-      { inv ORD; ss. destruct n; ss. destruct n; ss; xomega. }
-      econsr.
-      { econs 2; cycle 1.
-        { eapply gord_app_l; et. }
-        econs; et. econs; et. econs; et.
-      }
-      eauto with paco.
+    econsr.
+    { instantiate (1:= i0 :: tl). admit "this should hold". }
+    eauto with paco.
   - (* tau *)
     irw. pclearbot.
     gstep. econs; et.
-    gbase. eapply CIH. rewrite cons_app. rewrite app_assoc. econs; et. ss.
+    gbase. eapply CIH. rewrite cons_app. rewrite app_assoc. econs; et.
   - (* call *)
     irw. gstep. econs; et.
     i. spc K0. des. pclearbot.
     { esplits.
       - eapply ORD.
-      - gbase. eapply CIH. rewrite cons_app. rewrite app_assoc. econs; et. ss.
+      - gbase. eapply CIH. rewrite cons_app. rewrite app_assoc. econs; et.
     }
   - (* nb *)
     irw. gstep. econs; et.
   - (* stutter *)
     irw. pclearbot.
-    gstep. econs; et.
-    { instantiate (1:= i1 ++ [(hd1, 0%nat)] ++ tl).
-      admit "this might hold...".
-    }
-    gbase. eapply CIH.
-    econs; et.
-    eauto with paco.
-    gfinal. right.
-    destruct (classic (i1 = [hd0])).
-    + clarify.
-      gstep. econs; et.
-      econs; et.
     gstep. econsr.
-    { eapply rtc_once. econs; et. }
-    et. eauto with paco.
-    gfinal. right.
-    eapply paco2_mon.
-    gstep. econs; et.
-    assert(rtc (ord_lex ord lt) i0 (hd1, 0%nat)).
-    {
-      eapply rtc_n1; et.
-      { eapply rtc_once; et.
-      destruct i0.
-      - etrans. inv ORD.
-    }
-    econsr.
-    { eapply rtc_n1; cycle 1.
-      { econsr. }
-      eapply rtc_n1; cycle 1.
-      { econs 1. instantiate (1:= i0).
-        inv ORD; ss; try xomega.
-        - econs; et.
-        -
-    }
-    gstep.
+    { instantiate (1:= (i1 ++ (hd1, 0%nat) :: tl)). admit "this ... should hold". }
     eauto with paco.
-    rewrite ! bind_ret_l. gbase. eapply SIMK; et.
-  - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
-    (* gfinal. left. eapply CIH. econstructor; eauto. *)
-    debug eauto with paco.
-  - rewrite ! bind_vis. gstep. econs; eauto. ii. clarify.
-    repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
-  - rewrite ! bind_bind. gstep.
-    erewrite f_equal2; try eapply match_icall_pure; try refl; ss.
-    { pclearbot. eauto with paco. }
-    irw. ss.
 Qed.
 
 End GPURE.
@@ -813,30 +760,16 @@ Qed.
 Theorem gpure_bind
         hd0 hd1 itr tl ktr
         (PURE: gpure [hd0] itr)
-        (K: forall ohmv, exists i0, <<ORD: ord_lex ord lt i0 (hd1, 1%nat)>> /\
+        (K: forall ohmv, exists i0, <<ORD: ord_lex ord lt i0 (hd1, 0%nat)>> /\
                                            <<PURE: upaco2 _gpure bot2 (i0 :: tl) (ktr ohmv)>>)
   :
     <<PURE: gpure ([hd0; (hd1, 0%nat)] ++ tl) (itr >>= ktr)>>
 .
 Proof.
-  ss.
-Qed.
-  revert_until i0hd. revert i0hd.
   ginit.
   { intros. eapply cpn2_wcompat; eauto with paco. }
-  gcofix CIH. i.
-  punfold GPURE. inv GPURE; irw.
-  - exploit K; et. i; des. pclearbot. admit "somehow".
-  - pclearbot.
-    gstep. econs; et.
-    { econs; et. }
-    pclearbot. eauto with paco.
-  - gstep. econs; et.
-    + ii. exploit K; et. i; des. pclearbot. esplits; et.
-      { econs; et. }
-      eauto with paco.
-    + econs; et.
-  - gstep. econs; et.
+  guclo gpure_bindC_spec.
+  ss. rewrite cons_app. econs; et. ii. spc K. des. esplits; et. pclearbot. eauto with paco.
 Qed.
 
 
@@ -1179,7 +1112,7 @@ Section SIM.
         instantiate (1:= [(mf oh0 m0 vs0, 1%nat) ; (i1, 0%nat)] ++ mid).
         (** we should had (i0hd, 1) and we should put (i0hd, 0) **)
         clear - K PURE.
-        admit "we should put radix".
+        eapply gpure_bind; et.
       }
       ss. r.
       tc_right.
@@ -1191,9 +1124,14 @@ Section SIM.
       { xomega. }
     - (* pure-nb *)
       irw. gstep. econs; et.
+    - (* pure-stutter *)
+      irw. pclearbot. gstep. econs; cycle 1.
+      { instantiate (1:= i2 ++ tl). admit "this should hold". }
+      rewrite <- ! unfold_interp_mrec. eauto with paco.
   Unshelve.
     all: ss.
   Qed.
+  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT
 
   Lemma match_prog_sim_st
         manifesto i0

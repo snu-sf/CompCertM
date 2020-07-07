@@ -423,7 +423,7 @@ Inductive _gpure (gpure: gidx -> itr -> Prop): gidx -> itr -> Prop :=
     i0 tl
     fname oh0 m0 vs0 ktr
     (K: forall ohmv, exists i1, (<<ORD: (ord_lex ord lt) i1 (i0, 1%nat)>>)
-                                /\ (<<GPURE: gpure [i1] (ktr ohmv)>>))
+                                /\ (<<GPURE: gpure (i1 :: tl) (ktr ohmv)>>))
     (* i1 *)
     (* (ORD: ord i1 i0) *)
     (* (CALL: gpure i1 (interp_function p (ICall fname oh0 m0 vs0))) *)
@@ -437,13 +437,13 @@ Inductive _gpure (gpure: gidx -> itr -> Prop): gidx -> itr -> Prop :=
     i0 ktr
   :
     _gpure gpure i0 (Vis (subevent _ (ENB)) ktr)
-| gpure_stutter
-    i0 i1
-    itr
-    (GPURE: gpure i1 itr)
-    (ORD: (rtc (ord_stk (ord_lex ord lt))) i1 i0)
-  :
-    _gpure gpure i0 itr
+(* | gpure_stutter *)
+(*     i0 i1 *)
+(*     itr *)
+(*     (GPURE: gpure i1 itr) *)
+(*     (ORD: (rtc (ord_stk (ord_lex ord lt))) i1 i0) *)
+(*   : *)
+(*     _gpure gpure i0 itr *)
 .
 Definition gpure: gidx -> itr -> Prop := paco2 _gpure bot2.
 Lemma gpure_mon: monotone2 _gpure.
@@ -967,6 +967,7 @@ Section SIM.
       { gbase. eapply CIH; eauto with paco. }
       econs; et. econs; et. econs; et.
     - (* pure-icall *)
+      rename tl0 into mid.
       irw.
       inv SIMP. exploit PURES; et. i; des. des_ifs.
       gstep. econs; et.
@@ -974,7 +975,7 @@ Section SIM.
         gbase. rewrite <- bind_bind. eapply CIH; et.
         repeat spc PURE.
         eapply pure_gpure in PURE. des.
-        instantiate (1:= [(mf oh0 m0 vs0, 1%nat) ; (i1, 0%nat)]).
+        instantiate (1:= [(mf oh0 m0 vs0, 1%nat) ; (i1, 0%nat)] ++ mid).
         (** we should had (i0hd, 1) and we should put (i0hd, 0) **)
         clear - K PURE.
         admit "we should put radix".
@@ -982,7 +983,11 @@ Section SIM.
       ss. r.
       tc_right.
       { eapply ord_stk_call. econs 2; et. }
-      econs; et. admit "ez".
+      econs; et. econs; et.
+      clear - CALL.
+      inv CALL; ss.
+      { econs; et. }
+      { xomega. }
     - (* pure-nb *)
       irw. gstep. econs; et.
   Unshelve.

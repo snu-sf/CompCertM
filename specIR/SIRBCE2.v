@@ -21,7 +21,7 @@ Require Import SimMod SimModSem.
 Require Import SIRCommon SimSIR SIR.
 
 Require Import Program.
-Require Import Simulation Ord.
+Require Import Simulation.
 Require Import Relation_Operators.
 
 Set Implicit Arguments.
@@ -1345,17 +1345,6 @@ Inductive match_states (mi : string) (owned_heap_src owned_heap_tgt : Type@{comp
 >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
   gidx := idx_stk (idx_lex idx nat) : Type@{compcomp.SIRBCE2.1616}
 
-
-
----------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------
----------------------------------------------------------------------------------------
-
-compcomp.SimSIR.253 <= fsim_step.u0 < mixed_simulation.u0 <= compcomp.Simulation.1074 <=
-NOSTUTTER.backward_simulation.u0 <= Smallstep.backward_simulation.u0 <=
-compcert.common.Smallstep.1926 <= compcert.lib.Coqlib.458 <= prod.u0 <= cons_app.u0 <=
-app.u0 <= list.u0 <= compcomp.SIRBCE2.49 
 
   Theorem correct: rusc defaultR [md_src] [md_tgt].
   Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.

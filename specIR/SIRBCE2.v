@@ -28,6 +28,22 @@ Set Implicit Arguments.
 
 
 
+(*** TODO: move to CoqlibC ***)
+Lemma app_inj
+      X (hd0 hd1 tl: list X)
+      (EQ: hd0 ++ tl = hd1 ++ tl)
+  :
+    <<EQ: hd0 = hd1>>
+.
+Proof.
+  ginduction hd0; ii; ss.
+  - apply (@func_app _ _ (@List.length _)) in EQ; des. rewrite app_length in *. destruct hd1; ss. xomega.
+  - dup EQ.
+    apply (@func_app _ _ (@List.length _)) in EQ; des. ss. rewrite ! app_length in *. destruct hd1; ss; try xomega.
+    clarify. erewrite IHhd0; et.
+Qed.
+
+
 
 
 (*** TODO: move ***)
@@ -271,6 +287,19 @@ Proof.
   - tc_left; et. eapply IHRTC. ss.
 Qed.
 
+Lemma tc_rtc
+      X (r: X -> X -> Prop)
+      x0 x1
+      (TC: tc r x0 x1)
+  :
+    <<RTC: rtc r x0 x1>>
+.
+Proof.
+  induction TC; ss.
+  - econs; et.
+  - r. etrans; et.
+Qed.
+
 Lemma rtc_tc_trans
       X (r: X -> X -> Prop)
       x0 x1 x2
@@ -299,6 +328,13 @@ Proof.
   r. econs 2; et. eapply IHRTC. et.
 Qed.
 
+Global Instance well_founded_irreflexive X (r: X -> X -> Prop) (WF: well_founded r): Irreflexive r.
+Proof.
+  r in WF.
+  ii. hexploit (WF x); et. intro T. induction T.
+  eapply H1; et.
+Qed.
+
 Lemma grord_app_l
       hd tl
   :
@@ -317,13 +353,70 @@ Lemma gord_app_l
       hd tl
       (NNIL: hd <> nil)
   :
-    <<ORD :gord tl (hd ++ tl)>>
+    <<ORD: gord tl (hd ++ tl)>>
 .
 Proof.
   eapply rtc_tc; ss.
   { ii. apply (@func_app _ _ (@List.length _)) in H. destruct hd; ss.
     rewrite app_length in *. ss. des. xomega. }
   eapply grord_app_l.
+Qed.
+
+Lemma grord_postfix_aux_once
+      hd0 hd1 tl
+      (ORD: ord_stk (ord_lex ord lt) hd0 hd1)
+  :
+    <<ORD: ord_stk (ord_lex ord lt) (hd0 ++ [tl]) (hd1 ++ [tl])>>
+.
+Proof.
+  inv ORD; econs; et.
+Qed.
+
+Lemma grord_postfix_aux
+      hd0 hd1 tl
+      (ORD: ord_stk (ord_lex ord lt) hd0 hd1)
+  :
+    <<ORD: ord_stk (ord_lex ord lt) (hd0 ++ tl) (hd1 ++ tl)>>
+.
+Proof.
+  gen hd0 hd1.
+  induction tl; ii; ss.
+  { rewrite ! app_nil_r. et. }
+  rewrite cons_app. rewrite ! app_assoc. eapply IHtl.
+  eapply grord_postfix_aux_once; et.
+Qed.
+
+Lemma grord_postfix
+      hd0 hd1 tl
+      (ORD: grord hd0 hd1)
+  :
+    <<ORD: grord (hd0 ++ tl) (hd1 ++ tl)>>
+.
+Proof.
+  revert tl.
+  induction ORD; ii; ss.
+  { rr. refl. }
+  rr. etrans; cycle 1.
+  { eapply IHORD. }
+  eapply rtc_once.
+  eapply grord_postfix_aux; et.
+Qed.
+
+Lemma gord_postfix
+      hd0 hd1 tl
+      (* (NNIL: hd0 <> nil) *)
+      (ORD: gord hd0 hd1)
+  :
+    <<ORD: gord (hd0 ++ tl) (hd1 ++ tl)>>
+.
+Proof.
+  eapply rtc_tc; ss.
+  { ii.
+    exploit app_inj; et. i; des; clarify.
+    eapply well_founded_irreflexive in ORD; ss.
+  }
+  eapply grord_postfix; et.
+  eapply tc_rtc; et.
 Qed.
 
 (* Lemma grord_cons_r *)
@@ -705,7 +798,11 @@ Proof.
     irw. spc K. des.
     gstep.
     econsr.
-    { instantiate (1:= i0 :: tl). admit "this should hold". }
+    { instantiate (1:= i0 :: tl). rewrite cons_app. rewrite cons_app with (xtl:=tl). rewrite app_assoc.
+      eapply tc_rtc_trans; cycle 1.
+      { eapply grord_postfix; et. eapply grord_app_l. }
+      ss. econs; et. econs; et.
+    }
     eauto with paco.
   - (* tau *)
     irw. pclearbot.
@@ -723,7 +820,7 @@ Proof.
   - (* stutter *)
     irw. pclearbot.
     gstep. econsr.
-    { instantiate (1:= (i1 ++ (hd1, 0%nat) :: tl)). admit "this ... should hold". }
+    { instantiate (1:= (i1 ++ (hd1, 0%nat) :: tl)). rewrite cons_app. eapply gord_postfix; et. }
     eauto with paco.
 Qed.
 
@@ -1071,7 +1168,7 @@ Section SIM.
       irw. gstep. econs; et.
   Unshelve.
     all: ss.
-  Qed.
+  Abort.
 
   Lemma sim_st_upto_gpure
         i0 tl i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val)))
@@ -1111,7 +1208,6 @@ Section SIM.
         eapply pure_gpure in PURE. des.
         instantiate (1:= [(mf oh0 m0 vs0, 1%nat) ; (i1, 0%nat)] ++ mid).
         (** we should had (i0hd, 1) and we should put (i0hd, 0) **)
-        clear - K PURE.
         eapply gpure_bind; et.
       }
       ss. r.
@@ -1126,7 +1222,7 @@ Section SIM.
       irw. gstep. econs; et.
     - (* pure-stutter *)
       irw. pclearbot. gstep. econs; cycle 1.
-      { instantiate (1:= i2 ++ tl). admit "this should hold". }
+      { instantiate (1:= i2 ++ tl). eapply gord_postfix; et. }
       rewrite <- ! unfold_interp_mrec. eauto with paco.
   Unshelve.
     all: ss.

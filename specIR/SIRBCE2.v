@@ -1326,11 +1326,20 @@ Section SIM.
   Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh).
   Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
 
+  Print Universes.
+  Set Printing Universes.
   Theorem sim_mod: ModPair.sim mp.
   Proof.
     eapply SimSIR.sim_mod with (ord:=gord) (SO:=eq). eauto.
     ii. clarify. esplits. eapply adequacy_local_local; et.
   Qed.
+Unable to unify "Type@{compcomp.SIRBCE2.1616}" with "Type@{compcomp.SimSIR.253}".
+
+compcomp.SimSIR.253 <= compcomp.Ord.66 <= Ord.idx.u0 = Ord.ord.u0 < mixed_simulation.u0 <=
+compcomp.Simulation.1074 <= NOSTUTTER.backward_simulation.u0 <= Smallstep.backward_simulation.u0 <=
+compcert.common.Smallstep.1926 <= compcert.lib.Coqlib.458 <= prod.u0 <= app_inj.u0 <= app.u0 <=
+list.u0 <= compcomp.SIRBCE2.1616 
+
 
   Theorem correct: rusc defaultR [md_src] [md_tgt].
   Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.

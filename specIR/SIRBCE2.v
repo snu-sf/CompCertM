@@ -1338,7 +1338,12 @@ Unable to unify "Type@{compcomp.SIRBCE2.1616}" with "Type@{compcomp.SimSIR.253}"
 compcomp.SimSIR.253 <= compcomp.Ord.66 <= Ord.idx.u0 = Ord.ord.u0 < mixed_simulation.u0 <=
 compcomp.Simulation.1074 <= NOSTUTTER.backward_simulation.u0 <= Smallstep.backward_simulation.u0 <=
 compcert.common.Smallstep.1926 <= compcert.lib.Coqlib.458 <= prod.u0 <= app_inj.u0 <= app.u0 <=
-list.u0 <= compcomp.SIRBCE2.1616 
+list.u0 <= compcomp.SIRBCE2.1616
+
+Inductive match_states (mi : string) (owned_heap_src owned_heap_tgt : Type@{compcomp.SimSIR.3})
+(SO : owned_heap_src -> owned_heap_tgt -> Prop) (idx : Type@{compcomp.SimSIR.253}) (ord : idx -> idx -> Prop)
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  gidx := idx_stk (idx_lex idx nat) : Type@{compcomp.SIRBCE2.1616}
 
 
   Theorem correct: rusc defaultR [md_src] [md_tgt].

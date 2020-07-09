@@ -26,8 +26,8 @@ Next Obligation.
 Qed.
 
 Lemma bsim_improves
-      L1 L2
-      (BSIM: backward_simulation L1 L2):
+      L1 L2 idx (ord: idx -> idx -> Prop)
+      (BSIM: backward_simulation L1 L2 ord):
     <<IMRPV: improves L1 L2>>.
 Proof.
   ii. eapply backward_simulation_behavior_improves; eauto.

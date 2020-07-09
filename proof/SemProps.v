@@ -823,7 +823,7 @@ Proof.
 Qed.
 
 
-Lemma backward_simulation_refl: forall SEM, backward_simulation SEM SEM.
+Lemma backward_simulation_refl: forall SEM, backward_simulation SEM SEM (bot2: unit->unit->Prop).
 Proof.
   i. eapply (@Backward_simulation _ _ unit bot2). econs; eauto.
   { apply unit_ord_wf. }

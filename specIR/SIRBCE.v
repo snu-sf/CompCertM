@@ -23,6 +23,7 @@ Require Import SIRCommon SimSIR SIR.
 Require Import Program.
 Require Import Simulation.
 Require Import Relation_Operators.
+Require Import Ord.
 
 Set Implicit Arguments.
 

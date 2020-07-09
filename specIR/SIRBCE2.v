@@ -1326,12 +1326,8 @@ Section SIM.
   Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh).
   Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
 
-  Set Printing Universes.
   Print Universes.
-  (* fsim_step *)
-  (* GENMT.fsim_step *)
-  (* SimModSem.fsim_step *)
-  (* SimModSemUnified.fsim_step *)
+  Set Printing Universes.
   Theorem sim_mod: ModPair.sim mp.
   Proof.
     eapply SimSIR.sim_mod with (ord:=gord) (SO:=eq). eauto.

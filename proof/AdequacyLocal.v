@@ -1011,9 +1011,9 @@ Section ADQSIM.
   Hypothesis (WFSKSRC: forall md (IN: In md (ProgPair.src pp)), <<WF: Sk.wf md >>).
   Hypothesis (WFSKTGT: forall md (IN: In md (ProgPair.tgt pp)), <<WF: Sk.wf md >>).
 
-  Theorem adequacy_local_sim: mixed_simulation sem_src sem_tgt ord.
+  Theorem adequacy_local_sim: mixed_simulation sem_src sem_tgt.
   Proof.
-    subst_locals. econs. generalize wf_ord; intro WF.
+    subst_locals. econstructor 1 with (order := ord); eauto. generalize wf_ord; intro WF.
     econstructor; eauto.
     - eapply AdequacySound.preservation; eauto.
     - eapply SemTyping.preservation.

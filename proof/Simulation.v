@@ -101,16 +101,18 @@ Record bsim_properties (L1 L2: semantics) (index: Type)
 
 Arguments bsim_properties: clear implicits.
 
-Inductive backward_simulation (L1 L2: semantics) (index: Type) (order: relation index): Prop :=
-  Backward_simulation (props: bsim_properties L1 L2 index order).
+Inductive backward_simulation (L1 L2: semantics) : Prop :=
+  Backward_simulation (index: Type)
+                     (order: index -> index -> Prop)
+                     (props: bsim_properties L1 L2 index order).
 
 Arguments Backward_simulation {L1 L2 index} order props.
 
 
 
 Lemma to_compcert_backward_simulation
-      L1 L2 idx (ord: relation idx)
-      (BSIM: backward_simulation L1 L2 ord):
+      L1 L2
+      (BSIM: backward_simulation L1 L2):
     <<BSIM: Smallstep.backward_simulation L1 L2>>.
 Proof.
   inv BSIM. inv props.
@@ -195,8 +197,10 @@ Record bsim_properties (L1 L2: semantics) (index: Type)
 
 Arguments bsim_properties: clear implicits.
 
-Inductive backward_simulation (L1 L2: semantics) (index: Type) (order: relation index): Prop :=
-  Backward_simulation (props: bsim_properties L1 L2 index order).
+Inductive backward_simulation (L1 L2: semantics) : Prop :=
+  Backward_simulation (index: Type)
+                     (order: index -> index -> Prop)
+                     (props: bsim_properties L1 L2 index order).
 
 Arguments Backward_simulation {L1 L2 index} order props.
 
@@ -250,20 +254,20 @@ Proof.
 Qed.
 
 Lemma backward_to_nostutter_backward_simulation
-      L1 L2 idx (ord: relation idx)
-      (BS: backward_simulation L1 L2 ord):
-    <<BS: NOSTUTTER.backward_simulation L1 L2 (clos_trans _ ord)>>.
+      L1 L2
+      (BS: backward_simulation L1 L2):
+    <<BS: NOSTUTTER.backward_simulation L1 L2>>.
 Proof.
   inv BS. inv props. econs; eauto.
-  econs; eauto.
+  instantiate (1:= (clos_trans _ order)). econs; eauto.
   { eapply well_founded_clos_trans. eauto. }
   i. exploit bsim_match_initial_states0; eauto. i; des.
   esplits; eauto. eapply bsim_to_nostutter_bsim; eauto.
 Qed.
 
 Lemma backward_to_compcert_backward_simulation
-      L1 L2 idx (ord: relation idx)
-      (BSIM: backward_simulation L1 L2 ord):
+      L1 L2
+      (BSIM: backward_simulation L1 L2):
     <<BSIM: Smallstep.backward_simulation L1 L2>>
 .
 Proof.
@@ -591,8 +595,10 @@ Record xsim_properties (L1 L2: semantics) (index: Type)
 
 Arguments xsim_properties: clear implicits.
 
-Inductive mixed_simulation (L1 L2: semantics) (index: Type) (order: relation index): Prop :=
-  Mixed_simulation (props: xsim_properties L1 L2 index order).
+Inductive mixed_simulation (L1 L2: semantics) : Prop :=
+  Mixed_simulation (index: Type)
+                   (order: index -> index -> Prop)
+                   (props: xsim_properties L1 L2 index order).
 
 Arguments Mixed_simulation {L1 L2 index} order props.
 
@@ -1039,11 +1045,11 @@ End MIXED_TO_BACKWARD.
 
 (** The backward simulation *)
 
-Lemma mixed_to_backward_simulation: forall L1 L2 idx (ord: relation idx),
-  mixed_simulation L1 L2 ord -> backward_simulation L1 L2 (x2b_order ord).
+Lemma mixed_to_backward_simulation: forall L1 L2,
+  mixed_simulation L1 L2 -> backward_simulation L1 L2.
 Proof.
-  intros L1 L2 ? ? XSIM. inversion XSIM.
-  apply Backward_simulation. constructor.
+  intros L1 L2 XSIM. inversion XSIM.
+  apply Backward_simulation with (order0 := x2b_order order). constructor.
   - eapply wf_x2b_order. apply props.
   - inv props. inv xsim_initial_states_sim0; eauto.
     i. exploit INITSIM; eauto. i; des. inv INITTGT. eauto.
@@ -1062,17 +1068,17 @@ Proof.
 Qed.
 
 Lemma mixed_to_compcert_backward_simulation
-      L1 L2 idx (ord: relation idx)
-      (XSIM: mixed_simulation L1 L2 ord):
+      L1 L2
+      (XSIM: mixed_simulation L1 L2):
     <<BSIM: Smallstep.backward_simulation L1 L2>>.
 Proof.
   eapply backward_to_compcert_backward_simulation; eauto. eapply mixed_to_backward_simulation; eauto.
 Qed.
 
 Lemma backward_to_mixed_simulation
-      L1 L2 idx (ord: relation idx)
-      (BSIM: backward_simulation L1 L2 ord):
-    <<XSIM: mixed_simulation L1 L2 ord>>.
+      L1 L2
+      (BSIM: backward_simulation L1 L2):
+    <<XSIM: mixed_simulation L1 L2>>.
 Proof.
   inv BSIM. inv props. econs; eauto. econs; eauto.
   { eapply preservation_top. }
@@ -1295,8 +1301,10 @@ Record xsim_properties (L1 L2: semantics) (index: Type)
 
 Arguments xsim_properties: clear implicits.
 
-Inductive mixed_simulation (L1 L2: semantics) (index: Type) (order: relation index): Prop :=
-  Mixed_simulation (props: xsim_properties L1 L2 index order).
+Inductive mixed_simulation (L1 L2: semantics) : Prop :=
+  Mixed_simulation (index: Type)
+                   (order: index -> index -> Prop)
+                   (props: xsim_properties L1 L2 index order).
 
 Arguments Mixed_simulation {L1 L2 index} order props.
 
@@ -1403,10 +1411,10 @@ Proof.
     + pclearbot. econs 2; eauto.
 Qed.
 
-Lemma mixed_to_generalized_mixed_simulation: forall L1 L2 idx (ord: relation idx),
-  mixed_simulation L1 L2 ord -> GENMT.mixed_simulation L1 L2 ord.
+Lemma mixed_to_generalized_mixed_simulation: forall L1 L2,
+  mixed_simulation L1 L2 -> GENMT.mixed_simulation L1 L2.
 Proof.
-  intros L1 L2 ? ? XSIM. inversion XSIM.
+  intros L1 L2 XSIM. inversion XSIM.
   inv props. econs. econs; eauto. inv xsim_initial_states_sim.
   - econs 1; eauto. i. exploit INITSIM; eauto. i; des. esplits; eauto.
     eapply xsim_to_generalized_xsim; eauto. i. exploit xsim_public_preserved0; eauto.
@@ -1415,9 +1423,9 @@ Proof.
 Qed.
 
 Lemma mixed_to_backward_simulation
-      L1 L2 idx (ord: relation idx)
-      (XSIM: mixed_simulation L1 L2 ord):
-    <<BSIM: backward_simulation L1 L2 (GENMT.x2b_order ord)>>.
+      L1 L2
+      (XSIM: mixed_simulation L1 L2):
+    <<BSIM: backward_simulation L1 L2>>.
 Proof.
   eapply GENMT.mixed_to_backward_simulation; eauto. eapply mixed_to_generalized_mixed_simulation; eauto.
 Qed.

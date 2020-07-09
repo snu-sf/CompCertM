@@ -46,33 +46,7 @@ Qed.
 
 
 
-(*** TODO: move ***)
-Lemma bind_ignore
-      E R S
-      (X: itree E R) (Y: itree E S)
-  :
-  Y = X ;; Y
-.
-Proof.
-  f. revert_until S. ginit. gcofix CIH. ii.
-  ides X.
-  - irw. gstep. refl.
-  - irw.
-Abort.
 
-Lemma bind_ignore
-      E R S
-      (X: itree E R) (Y: itree E S)
-  :
-  Y ≈ X ;; Y
-.
-Proof.
-  revert_until S. ginit. gcofix CIH. ii.
-  (* guclo eqit_clo_bind. *)
-  ides X.
-  - irw. gstep. refl.
-  - irw. gstep. econs; et.
-Abort.
 
 
 
@@ -182,6 +156,71 @@ Section LEXICO.
 
 End LEXICO.
 
+Ltac tc_left := eapply t_trans; [apply t_step|].
+Ltac tc_right := eapply t_trans; [|apply t_step]; cycle 1.
+
+Lemma rtc_tc
+      X (r: X -> X -> Prop)
+      x0 x1
+      (NEQ: x0 <> x1)
+      (RTC: rtc r x0 x1)
+  :
+    <<TC: tc r x0 x1>>
+.
+Proof.
+  induction RTC; ss.
+  destruct (classic (y = z)).
+  - clarify. et.
+  - tc_left; et. eapply IHRTC. ss.
+Qed.
+
+Lemma tc_rtc
+      X (r: X -> X -> Prop)
+      x0 x1
+      (TC: tc r x0 x1)
+  :
+    <<RTC: rtc r x0 x1>>
+.
+Proof.
+  induction TC; ss.
+  - econs; et.
+  - r. etrans; et.
+Qed.
+
+Lemma rtc_tc_trans
+      X (r: X -> X -> Prop)
+      x0 x1 x2
+      (RTC: rtc r x0 x1)
+      (TC: tc r x1 x2)
+  :
+    <<TC: tc r x0 x2>>
+.
+Proof.
+  gen x2.
+  induction RTC; i; ss.
+  r. econs 2; et. eapply IHRTC. et.
+Qed.
+
+Lemma tc_rtc_trans
+      X (r: X -> X -> Prop)
+      x0 x1 x2
+      (TC: tc r x0 x1)
+      (RTC: rtc r x1 x2)
+  :
+    <<TC: tc r x0 x2>>
+.
+Proof.
+  gen x0.
+  induction RTC; i; ss.
+  r. econs 2; et. eapply IHRTC. et.
+Qed.
+
+Global Instance well_founded_irreflexive X (r: X -> X -> Prop) (WF: well_founded r): Irreflexive r.
+Proof.
+  r in WF.
+  ii. hexploit (WF x); et. intro T. induction T.
+  eapply H1; et.
+Qed.
 
 
 
@@ -267,73 +306,7 @@ Let wf_gord: well_founded gord.
 Proof. eapply well_founded_clos_trans. eapply ord_stk_wf. eapply ord_lex_wf; et. eapply lt_wf. Qed.
 
 
-Ltac tc_left := eapply t_trans; [apply t_step|].
-Ltac tc_right := eapply t_trans; [|apply t_step]; cycle 1.
-
 Let grord := rtc (ord_stk (ord_lex ord lt)).
-
-Lemma rtc_tc
-      X (r: X -> X -> Prop)
-      x0 x1
-      (NEQ: x0 <> x1)
-      (RTC: rtc r x0 x1)
-  :
-    <<TC: tc r x0 x1>>
-.
-Proof.
-  induction RTC; ss.
-  destruct (classic (y = z)).
-  - clarify. et.
-  - tc_left; et. eapply IHRTC. ss.
-Qed.
-
-Lemma tc_rtc
-      X (r: X -> X -> Prop)
-      x0 x1
-      (TC: tc r x0 x1)
-  :
-    <<RTC: rtc r x0 x1>>
-.
-Proof.
-  induction TC; ss.
-  - econs; et.
-  - r. etrans; et.
-Qed.
-
-Lemma rtc_tc_trans
-      X (r: X -> X -> Prop)
-      x0 x1 x2
-      (RTC: rtc r x0 x1)
-      (TC: tc r x1 x2)
-  :
-    <<TC: tc r x0 x2>>
-.
-Proof.
-  gen x2.
-  induction RTC; i; ss.
-  r. econs 2; et. eapply IHRTC. et.
-Qed.
-
-Lemma tc_rtc_trans
-      X (r: X -> X -> Prop)
-      x0 x1 x2
-      (TC: tc r x0 x1)
-      (RTC: rtc r x1 x2)
-  :
-    <<TC: tc r x0 x2>>
-.
-Proof.
-  gen x0.
-  induction RTC; i; ss.
-  r. econs 2; et. eapply IHRTC. et.
-Qed.
-
-Global Instance well_founded_irreflexive X (r: X -> X -> Prop) (WF: well_founded r): Irreflexive r.
-Proof.
-  r in WF.
-  ii. hexploit (WF x); et. intro T. induction T.
-  eapply H1; et.
-Qed.
 
 Lemma grord_app_l
       hd tl
@@ -419,87 +392,6 @@ Proof.
   eapply tc_rtc; et.
 Qed.
 
-(* Lemma grord_cons_r *)
-(*       hd x *)
-(*   : *)
-(*     <<ORD: grord hd (hd ++ [x])>> *)
-(* . *)
-(* Proof. *)
-(*   induction hd; ii; ss. *)
-(*   - econs; et. econs; et. *)
-(*   - econs; et. econs; et. *)
-(* Qed. *)
-
-(* Lemma grord_app_r *)
-(*       hd tl *)
-(*   : *)
-(*     <<ORD: grord hd (hd ++ tl)>> *)
-(* . *)
-(* Proof. *)
-(*   revert hd. *)
-(*   induction tl; ii; ss. *)
-(*   - rewrite app_nil_r. rr. refl. *)
-(*   - rr. etrans; cycle 1. *)
-(*     { rewrite cons_app. rewrite app_assoc. eapply IHtl. } *)
-(*     ss. *)
-(*     { eapply rtc_once. econsr; et. } *)
-(*     eapply IHhd. *)
-(* Qed. *)
-
-(* Lemma grord_cons_distr *)
-(*       hd0 hd1 tl0 tl1 *)
-(*       (ORDH: grord [hd0] [hd1]) *)
-(*       (ORDT: grord tl0 tl1) *)
-(*   : *)
-(*     <<ORD: grord (hd0 :: tl0) (hd1 :: tl1)>> *)
-(* . *)
-(* Proof. *)
-(*   gen hd0 hd1 tl1. *)
-(*   induction tl0; ii; ss. *)
-(*   { rr. etrans. *)
-(*     { et. } *)
-(*     eapply  *)
-(*     etrans; cycle 1. *)
-(*     { eapply rtc_once. econsr; et. } *)
-
-(*     econs; et. rr in ORDT. inv ORDT. *)
-(*   revert_until hd0. *)
-(*   induction hd0; ii; ss. *)
-(*   - rr. refl. *)
-(*   - rr. etrans; cycle 1. *)
-(*     { eapply rtc_once. econsr; et. } *)
-(*     eapply IHhd. *)
-(* Qed. *)
-
-(* Lemma grord_drop *)
-(*       x y z *)
-(*   : *)
-(*     <<ORD :grord (x ++ z) (x ++ y ++ z)>> *)
-(* . *)
-(* Proof. *)
-(*   gen y z. *)
-(*   induction x; ii; ss. *)
-(*   - eapply grord_app_l; et. *)
-(*   - exploit (IHx y); et. intro T. tc_right. *)
-(*     { econsr; et. } *)
-(*     eapply IHhd; ss. *)
-(* Qed. *)
-
-(* Lemma gord_drop *)
-(*       x y z *)
-(*       (NNIL: y <> nil) *)
-(*   : *)
-(*     <<ORD :gord (x ++ z) (x ++ y ++ z)>> *)
-(* . *)
-(* Proof. *)
-(*   gen y z. *)
-(*   induction x; ii; ss. *)
-(*   - eapply gord_prefix; et. *)
-(*   - exploit (IHx y); et. intro T. tc_right. *)
-(*     { econsr; et. } *)
-(*     eapply IHhd; ss. *)
-(* Qed. *)
-
 
 
 
@@ -561,48 +453,6 @@ Hint Resolve match_itr_mon: paco.
 
 
 
-
-
-
-(* Section PURE. *)
-
-(* Variable p: program owned_heap. *)
-
-(* Let itr := itree (E owned_heap) (owned_heap * (mem * val)). *)
-
-(* (*** NOTE: we have idx, so we are able to define in coinductive. What could be the difference? ***) *)
-(* Inductive pure (i0: idx): itr -> Prop := *)
-(* | pure_ret *)
-(*     s *)
-(*   : *)
-(*     pure i0 (Ret s) *)
-(* | pure_tau *)
-(*     i1 *)
-(*     (ORD: ord i1 i0) *)
-(*     itr *)
-(*     (PURE: pure i1 itr) *)
-(*   : *)
-(*     pure i0 (Tau itr) *)
-(* | pure_icall *)
-(*     fname oh0 m0 vs0 ktr *)
-(*     (K: forall ohmv, exists i1, <<ORD: ord i1 i0>> /\ <<PURE: pure i1 (ktr ohmv)>>) *)
-(*     (* i1 *) *)
-(*     (* (ORD: ord i1 i0) *) *)
-(*     (* (CALL: pure i1 (interp_function p (ICall fname oh0 m0 vs0))) *) *)
-(*     (*** NOTE: let's not obligate the user mutual induction. That is the point of manifesto ***) *)
-(*     mf *)
-(*     (MF: manifesto fname = Some mf) *)
-(*     (CALL: ord (mf oh0 m0 vs0) i0) *)
-(*   : *)
-(*     pure i0 (Vis (subevent _ (ICall fname oh0 m0 vs0)) ktr) *)
-(* | pure_nb *)
-(*     ktr *)
-(*   : *)
-(*     pure i0 (Vis (subevent _ (ENB)) ktr) *)
-(* . *)
-
-(* End PURE. *)
-(* Hint Constructors pure. *)
 
 
 
@@ -712,65 +562,6 @@ Qed.
 
 Hint Unfold gpure.
 Hint Resolve gpure_mon: paco.
-
-Lemma gpure_mon_idx
-      clo r rg i0 i1 it
-      (GPURE: gpaco2 _gpure clo r rg i1 it)
-      (RCOMPAT: forall
-          i0 i1 x
-          (ORD: gord i1 i0)
-          (R: r i1 x)
-        ,
-          (* <<R: r i0 x>>) *)
-          r i0 x)
-      (ORD: gord i1 i0)
-  :
-    <<GPURE: gpaco2 _gpure clo r rg i0 it>>
-.
-Proof.
-  (* revert_until i0. revert i0. *)
-  (* gcofix CIH. *)
-  (* i. *)
-
-  (* gunfold GPURE. *)
-  (* econs. *)
-  inv GPURE. econs.
-  gen i0. induction IN; i; ss.
-  - econs 1. des; et. left.
-    punfold IN. pfold. inv IN.
-    + econs 1; et.
-    + unfold Basics.compose.
-Abort.
-
-Inductive gpure_ordC (r: gidx -> itr -> Prop) : gidx -> itr -> Prop :=
-| gpure_ordC_intro
-    i0 i1 itr
-    (ORD: gord i1 i0)
-    (GPURE: r i1 itr)
-  :
-    gpure_ordC r i0 itr
-.
-
-Hint Constructors gpure_ordC: core.
-
-Lemma gpure_ordC_spec
-      simC
-  :
-    gpure_ordC <3= gupaco2 (_gpure) (simC)
-.
-Proof.
-  gcofix CIH. intros. destruct PR.
-  gclo.
-Abort.
-
-Lemma ordC_wcompat
-  :
-    wcompatible2 _gpure gpure_ordC.
-Proof.
-  constructor.
-  - intros x0 x1 r r' IN LE. induction IN; subst; eauto.
-  - intros. inv PR.
-Abort.
 
 Inductive gpure_bindC (r: gidx -> itr -> Prop) : gidx -> itr -> Prop :=
 | gpure_bindC_intro
@@ -946,27 +737,6 @@ Proof.
   exploit H0; et. i. eauto with paco.
 Qed.
 
-
-
-
-(* Theorem pure_bind *)
-(*         manifesto *)
-(*         i0 it ktr *)
-(*         (PURE: pure manifesto i0 it) *)
-(*         (K : forall ohmv: owned_heap * (mem * val), *)
-(*             exists i1, <<ORD: ord i1 i0 >> /\ <<PURE: pure manifesto i1 (ktr ohmv)>>) *)
-(*   : *)
-(*     exists i1, pure manifesto i1 (it >>= ktr) *)
-(* . *)
-(* Proof. *)
-(*   induction PURE. *)
-(*   - irw. exploit K; et. i; des. esplits; et. *)
-(*   - irw. exploit IHPURE; et. exploit K; et. i; des. esplits; et. *)
-(* Qed. *)
-
-
-
-
 End SYNTAX.
 Hint Unfold match_itr.
 Hint Resolve match_itr_mon: paco.
@@ -999,176 +769,6 @@ Section SIM.
     - gstep. econs; et. eauto with paco.
     - gstep. econs; et. ii. clarify. eauto with paco.
   Qed.
-
-  Lemma match_itr_glue
-        i_src i_tgt
-        (SIM: match_itr (S:=owned_heap * (mem * val)) i_src i_tgt)
-    :
-      (interp_mrec (interp_function p_src) i_src) ≈ (interp_mrec (interp_function p_tgt) i_tgt)
-  .
-  Proof.
-    ginit.
-    revert_until SIMP.
-    gcofix CIH.
-    i. punfold SIM. inv SIM; irw.
-    - gstep. econs; et.
-    - gstep. econs; et. pclearbot. gbase. rewrite <- ! unfold_interp_mrec. eapply CIH. et.
-    - des_ifs.
-      + gstep. econs; et. destruct i. irw. inv SIMP.
-        specialize (MATCH0 name name eq_refl). r in MATCH0. des_ifs; cycle 1.
-        { irw. gstep. econs; et. ii; ss. }
-        guclo eqit_clo_bind. rr in MATCH0.
-        hexploit (@MATCH0 oh oh eq_refl m m eq_refl vs vs eq_refl); et. intro T.
-        unfold _interp_mrec. des_ifs.
-  Abort.
-
-  Lemma match_prog_sim_st
-        i0 i_src i_tgt
-        (SIM: match_itr i_src i_tgt)
-    :
-      sim_st (ord_stk ord) i0 (interp_mrec (interp_function p_src) i_src)
-             (interp_mrec (interp_function p_tgt) i_tgt)
-  .
-  Proof.
-    revert_until SIMP.
-    ginit.
-    { intros. eapply cpn3_wcompat; et. eauto with paco. }
-    gcofix CIH.
-    i. rewrite ! unfold_interp_mrec.
-    punfold SIM. inv SIM; cbn.
-    - gstep. destruct s as [oh [m v]]. econs; et.
-    - gstep. econs; et. gbase. pclearbot. et.
-    - gstep. des_ifs.
-      + econs; et. gbase.
-        eapply CIH. eapply match_itr_bind; et.
-        { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
-        destruct i.
-        inv SIMP.
-        exploit (MATCH0 name); et. intro T. rr in T. cbn. des_ifs; cycle 1.
-        { pfold. econs; et. ii; ss. }
-        exploit T; et.
-      + destruct s.
-        * destruct e. econs; et. ii. rr in H. des_ifs. des; clarify.
-          gstep; econs; et. exploit (MATCH (o0, (m1, v0))); et. intro T. pclearbot.
-          eauto with paco.
-        * destruct e.
-          { econs; et. }
-          { econs; et. }
-          { econs; et. ii.
-            esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot.
-            gstep. econs; et.
-            eauto with paco. }
-    - pclearbot. inv SIMP.
-      exploit PURES; et. i; des.
-      exploit (MATCH0 fname); et. intro T. r in T.
-      des_ifs.
-      (* gstep. econs; et. *)
-      (* irw. *)
-      (* rr in T. hexploit (T oh0 _ eq_refl m0 _ eq_refl vs0 _ eq_refl); et. intro U. *)
-      (* gbase. rewrite <- ! unfold_interp_mrec. eapply CIH. *)
-
-      (* (*** TODO: make lemma ***) *)
-      (* rewrite <- bind_bind. rewrite bind_ret_r. *)
-      (* repeat spc PURE0. *)
-      (* rename f into fff. *)
-  Abort.
-
-
-
-
-  (* Lemma match_prog_sim_st *)
-  (*       i0 *)
-  (*       i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val))) *)
-  (*       (PURE: pure i0 d_tgt) *)
-  (*       (SIM: match_itr i_src (d_tgt ;; i_tgt)) *)
-  (*   : *)
-  (*     sim_st (ord_stk ord) [i0] (interp_mrec (interp_function p_src) i_src) *)
-  (*            (interp_mrec (interp_function p_tgt) i_tgt) *)
-  (* . *)
-  (* Proof. *)
-  (*   revert_until SIMP. *)
-  (*   ginit. *)
-  (*   { intros. eapply cpn3_wcompat; et. eauto with paco. } *)
-  (*   gcofix CIH. *)
-  (*   i. rewrite ! unfold_interp_mrec. *)
-  (*   punfold SIM. inv SIM; cbn. *)
-  (*   - gstep. destruct s as [oh [m v]]. *)
-  (*     ides d_tgt; irw in H1; clarify. econs; et. *)
-  (*   - gstep. pclearbot. ides d_tgt; irw in H1; clarify. *)
-  (*     + (* ret *) *)
-  (*       econs; et. gbase. eapply CIH; et. irw. et. *)
-  (*     + (* tau *) *)
-  (*       inv PURE. *)
-  (*       econs; et. *)
-  (*       { gbase. rewrite <- ! unfold_interp_mrec. eapply CIH; et. } *)
-  (*       econs; et. *)
-  (*   - ides d_tgt; ss; irw in H1; clarify. *)
-  (*     + (* ret *) *)
-  (*       des_ifs. *)
-  (*       * gstep. econs; et. gbase. eapply CIH; et. irw. eapply match_itr_bind; et. *)
-  (*         { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. } *)
-  (*         destruct i. *)
-  (*         inv SIMP. *)
-  (*         exploit (MATCH0 name); et. intro T. rr in T. cbn. des_ifs; cycle 1. *)
-  (*         { pfold. econs; et. ii; ss. } *)
-  (*         exploit T; et. *)
-  (*       * destruct s. *)
-  (*         -- destruct e. gstep. econs; et. ii. rr in H. des_ifs. des; clarify. *)
-  (*            gstep; econs; et. exploit (MATCH (o0, (m1, v0))); et. intro T. pclearbot. *)
-  (*            eauto with paco. gbase. eapply CIH; et. irw; et. *)
-  (*         -- gstep. destruct e. *)
-  (*            { econs; et. } *)
-  (*            { econs; et. } *)
-  (*            { econs; et. ii. *)
-  (*              esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot. *)
-  (*              gstep. econs; et. *)
-  (*              gbase. eapply CIH; et. irw. *)
-  (*              eauto with paco. } *)
-  (*     + (* vis *) *)
-  (*       csc. *)
-  (* Abort. *)
-
-  Lemma sim_st_upto_pure
-        i0 tl i_src i_tgt (d_tgt: itree (E owned_heap) (owned_heap * (mem * val)))
-        (PURE: pure i0 d_tgt)
-        (SIM: sim_st (ord_stk ord) tl (interp_mrec (interp_function p_src) i_src)
-                     (interp_mrec (interp_function p_tgt) i_tgt))
-    :
-      (<<SIM: sim_st (ord_stk ord) (i0 :: tl) (interp_mrec (interp_function p_src) i_src)
-                     (interp_mrec (interp_function p_tgt) (d_tgt ;; i_tgt))>>)
-  .
-  Proof.
-    revert_until manifesto.
-    ginit.
-    { intros. eapply cpn3_wcompat; et. eauto with paco. }
-    i. revert_until i0. revert i0. gcofix CIH.
-    i.
-    punfold PURE. inv PURE.
-    - (* pure-ret *)
-      irw. gstep. rewrite <- ! unfold_interp_mrec. econs; et.
-      { rr in SIM. gfinal. right. eapply paco3_mon; eauto. ii; ss. }
-      econs; et.
-    - (* pure-tau *)
-      irw. gstep. rewrite <- ! unfold_interp_mrec. pclearbot. econs; et.
-      { eauto with paco. }
-      econs; et.
-    - (* pure-icall *)
-      irw.
-      inv SIMP. exploit PURES; et. i; des. des_ifs.
-      gstep. econs; et.
-      { rewrite <- ! unfold_interp_mrec.
-        gbase. rewrite <- bind_bind. eapply CIH; et.
-        repeat spc PURE.
-        instantiate (1:= (mf oh0 m0 vs0)).
-        clear - K PURE.
-        admit "we should put radix".
-      }
-      econs; et.
-    - (* pure-nb *)
-      irw. gstep. econs; et.
-  Unshelve.
-    all: ss.
-  Abort.
 
   Let _sim_st0: (gidx -> (relation (state owned_heap))) -> (gidx -> (relation (state owned_heap))) := _sim_st eq gord.
   Let sim_st0: (gidx -> (relation (state owned_heap))) := sim_st gord.
@@ -1326,25 +926,11 @@ Section SIM.
   Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh).
   Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
 
-  Print Universes.
-  Set Printing Universes.
   Theorem sim_mod: ModPair.sim mp.
   Proof.
-    eapply SimSIR.sim_mod with (ord:=gord) (SO:=eq). eauto.
+    eapply SimSIR.sim_mod with (ord:=gord) (SO:=eq); eauto.
     ii. clarify. esplits. eapply adequacy_local_local; et.
   Qed.
-Unable to unify "Type@{compcomp.SIRBCE2.1616}" with "Type@{compcomp.SimSIR.253}".
-
-compcomp.SimSIR.253 <= compcomp.Ord.66 <= Ord.idx.u0 = Ord.ord.u0 < mixed_simulation.u0 <=
-compcomp.Simulation.1074 <= NOSTUTTER.backward_simulation.u0 <= Smallstep.backward_simulation.u0 <=
-compcert.common.Smallstep.1926 <= compcert.lib.Coqlib.458 <= prod.u0 <= app_inj.u0 <= app.u0 <=
-list.u0 <= compcomp.SIRBCE2.1616
-
-Inductive match_states (mi : string) (owned_heap_src owned_heap_tgt : Type@{compcomp.SimSIR.3})
-(SO : owned_heap_src -> owned_heap_tgt -> Prop) (idx : Type@{compcomp.SimSIR.253}) (ord : idx -> idx -> Prop)
->>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
-  gidx := idx_stk (idx_lex idx nat) : Type@{compcomp.SIRBCE2.1616}
-
 
   Theorem correct: rusc defaultR [md_src] [md_tgt].
   Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.
@@ -1352,6 +938,6 @@ Inductive match_states (mi : string) (owned_heap_src owned_heap_tgt : Type@{comp
 End SIM.
 End OWNEDHEAP.
 Hint Unfold match_itr match_fn.
-Hint Constructors match_fn_focus match_prog.
+Hint Constructors match_prog.
 Hint Resolve match_itr_mon: paco.
-Hint Constructors bindC: core.
+Hint Constructors gpure_bindC gpureC bindC: core.

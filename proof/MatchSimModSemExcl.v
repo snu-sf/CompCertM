@@ -212,7 +212,7 @@ Section MATCHSIMFORWARD.
       (* <<LXSIM: lxsim ms_src ms_tgt (sound_state su0) sm_init i0.(to_idx WFORD) st_src0 st_tgt0 sm0>> *)
       <<LXSIM: lxsimL ms_src ms_tgt (fun st => forall si, exists su0 m_init, sound_states si su0 m_init st)
                       has_footprint mle_excl
-                      (Ord.lift_idx (wf_lex_ord WFORD lt_wf) (i0, 1%nat)) st_src0 st_tgt0 sm0>>.
+                      (Ord.lift_idx (Ord.ord_lex_wf WFORD lt_wf) (i0, 1%nat)) st_src0 st_tgt0 sm0>>.
   Proof.
     (* move su0 at top. *)
     revert_until BAR. pcofix CIH. i. pfold. ii.

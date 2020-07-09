@@ -13,6 +13,7 @@ Require SimMemId.
 Require Import Any.
 Require Import SIR.
 Require Import SIRStack.
+Require Import FibHeader.
 Require Import Fib6.
 Require Import Fib5.
 Require Import ModSemProps.
@@ -109,47 +110,127 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 
+(*** TODO: update Ord.v ***)
+Section WFMAP.
+
+  Variable idx: Type.
+  Variable ord: idx -> idx -> Prop.
+  Hypothesis WF: well_founded ord.
+
+  Variable idx_map: Type.
+  Variable f: idx_map -> idx.
+  Definition ord_map (b0 b1: idx_map): Prop := ord (f b0) (f b1).
+
+  Theorem wf_map: well_founded ord_map.
+  Proof.
+    ii. rename a into b.
+    remember (f b) as a. generalize dependent b.
+    pattern a. eapply well_founded_ind; et. clear a; i.
+    clarify. econs; et.
+  Qed.
+
+End WFMAP.
+
+Section WFOPTION.
+
+  Variable idx: Type.
+  Variable ord: idx -> idx -> Prop.
+  Hypothesis WF: well_founded ord.
+
+  Let idx_option: Type := option idx.
+  Inductive ord_option: idx_option -> idx_option -> Prop :=
+  | ord_option_some
+      i0 i1
+      (ORD: ord i0 i1)
+    :
+      ord_option (Some i0) (Some i1)
+  .
+
+  Theorem wf_option: well_founded ord_option.
+  Proof.
+    ii.
+    induction a; ii; ss.
+    { pattern a. eapply well_founded_ind; et. clear a; i.
+      econs; et. ii. inv H0. eapply H; et. }
+    { econs. ii. inv H. }
+  Qed.
+
+End WFOPTION.
+
+Section WFPMAP.
+
+  Variable idx: Type.
+  Variable ord: idx -> idx -> Prop.
+  Hypothesis WF: well_founded ord.
+
+  Variable idx_pmap: Type.
+  Variable f: idx_pmap -> option idx.
+  Definition ord_pmap (b0 b1: idx_pmap): Prop := (ord_map (ord_option ord) f) b0 b1.
+
+  Theorem wf_pmap: well_founded ord_pmap.
+  Proof.
+    eapply wf_map. eapply wf_option. assumption.
+  Qed.
+
+End WFPMAP.
+
+
 
 
 
 Definition mp: ModPair.t := SimSymbId.mk_mp (Fib6.module) (Fib5.module).
 
+Require Import SIRBCE. (*** TODO: export in SIRProps ***)
 Local Opaque ident_eq.
+
+(*** TODO: use prop instead of option ***)
+Let idx := option nat.
+Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> idx) :=
+  if ident_eq fname _fib_ru
+  then Some (fun oh m vs => parse_arg oh m vs)
+  else None
+.
 Theorem sim_mod: ModPair.sim mp.
 Proof.
-  assert(tau: forall E R (a: itree E R), (tau;; a) = a).
-  { admit "backdoor --- relax sim_st to allow tau* before each progress". }
-  eapply SimSIR.sim_mod with (SO := eq); ss.
-  ii. clarify. r.
-  unfold Fib6.prog, prog. ss.
-  unfold interp_program, mrec. irw.
-  des_ifs; cycle 1.
-  { irw. pfold. admit "lack of function is NB". }
-  { irw. pfold. econs; et. }
-  ides
-  irw.
-  rewrite unfold_interp_mrec. irw. des_ifs. econs; et.
-  { r. ii. clarify.
-    assert(EQ: (Fib5.f_fib_ru oh_tgt m vs) = (f_fib_ru oh_tgt m vs)).
-    { refl. }
-    admit "refl".
+  eapply SIRBCE.sim_mod with (manifesto:=manifesto).
+  { eapply wf_option. eapply lt_wf. }
+  econs; et; cycle 1.
+  { unfold prog, Fib6.prog.
+    ii; clarify; rr; ss; des_ifs; ss; ii; clarify.
+    - refl.
+    - unfold Fib6.f_fib, f_fib. irw.
+      step_assume. Undo 1.
+      unfold assume. des_ifs; irw; cycle 1.
+      { unfold triggerUB. irw. pfold. econs; et. ii; ss. }
+      pfold. rewrite <- ! bind_trigger. eapply match_icall_pure; et.
+      left. pfold. irw. econs; et. ii; ss. clarify.
+      left. pfold. irw. econs; et.
   }
-  ginit.
-  { i. eapply cpn2_wcompat; eauto with paco. }
-  ii; clarify.
-  unfold Fib5.f_fib, f_fib.
-  replace Fib5.precond with precond by ss.
-  step_assume.
-  { unfold assume. des_ifs. unfold triggerUB. irw. step. }
-  unfold assume. des_ifs.
-  irw. step.
-  ii. rr in H. des_ifs. des. clarify.
-  unfold guaranteeK. des_ifs; cycle 1.
-  { step. }
-
-  rewrite <- tau. rewrite <- tau.
-  step. eexists (exist _ _ _). cbn.
-  step.
-Unshelve.
-  cbn. des_ifs.
+  { ii. unfold manifesto in PURE. des_ifs.
+    esplits; et.
+    { unfold prog. ss. }
+    ii. unfold f_fib_ru.
+    pfold. unfold unwrapN. des_ifs; irw; cycle 1.
+    { unfold triggerNB. irw. econs; et. }
+    des_ifs; try econs; et. irw. econs; ss; et; cycle 1.
+    { cbn. rewrite range_to_nat; cycle 1.
+      { assert(precond oh m [Vint (of_nat n)]).
+        { admit "G -- guarantee here". }
+        rr in H. des. ss. unfold to_nat_opt in *. des_ifs.
+        admit "G -- maybe we need stronger guarantee".
+      }
+      econs; et.
+    }
+    ii. exists (Some (S n)). esplits; et.
+    { econs; et. }
+    left. pfold. des_ifs. irw. econs; ss; et; cycle 1.
+    { cbn. rewrite range_to_nat; cycle 1.
+      { admit "G -- we might need guarantee here". }
+      econs; et.
+      admit "we need radix".
+    }
+    ii. exists (Some n). esplits ;et.
+    { econs; et. }
+    left. pfold. des_ifs. econs; et.
+  }
 Qed.

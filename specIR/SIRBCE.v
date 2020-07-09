@@ -357,6 +357,8 @@ Variable p: program owned_heap.
 
 Let itr := itree (E owned_heap) (owned_heap * (mem * val)).
 
+
+(*** TODO: Add choose event ***)
 (*** NOTE: we have idx, so we are able to define in coinductive. What could be the difference? ***)
 Inductive _pure (pure: idx -> itr -> Prop) (i0: idx): itr -> Prop :=
 | pure_ret

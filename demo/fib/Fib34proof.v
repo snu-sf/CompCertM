@@ -77,14 +77,21 @@ Proof.
       f_equiv; cycle 1.
       { pfold. unfold unwrapN. des_ifs; econs; et. }
       ii; clarify.
-      pfold. des_ifs.
-      { irw. econs; ss; et. }
-      { irw. econs; ss; et. }
+      des_ifs.
+      { pfold. irw. econs; ss; et. }
+      { pfold. irw. econs; ss; et. }
       cbn.
+      f_equiv; cycle 1.
+      { unfold guarantee, triggerNB. pfold. des_ifs; econs; et. }
+      ii. clarify.
+      pfold.
       erewrite f_equal; try eapply match_icall_fn; cycle 1.
       { f. f_equiv. ii. f_equiv. ii. des_ifs_safe. f_equiv. ii. f.
         instantiate (1:= fun '(oh, (m, v)) => _). refl. }
       ii. des_ifs_safe. left.
+      f_equiv; cycle 1.
+      { unfold guarantee, triggerNB. pfold. des_ifs; econs; et. }
+      ii. clarify.
       pfold.
       erewrite f_equal; try eapply match_icall_fn; cycle 1.
       { f. f_equiv. ii. f_equiv. ii. des_ifs_safe. f_equiv. ii. f.

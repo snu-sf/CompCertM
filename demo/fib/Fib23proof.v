@@ -233,12 +233,14 @@ Proof.
   des_ifs_safe.
   rewrite ! AA; try lia. cbn.
   step_guarantee.
+  { clear - R T0. u in T0. des_ifs. lia. }
+  irw.
+  step_guarantee.
   { Psimpl. (*** TODO: fixit ***)
-    eapply Classical_Pred_Type.not_ex_all_not in T0. contradict T0; eauto.
+    eapply Classical_Pred_Type.not_ex_all_not in T1. contradict T1; eauto.
   }
+  irw.
   clear_tac. clear T0.
-  rewrite bind_ret_l.
-  rewrite bind_bind.
   assert(U: of_nat n1 = Int.sub i (Int.repr 2)).
   { unfold to_nat_opt in *. des_ifs. unfold of_nat.
     eapply SUCPRED in H0; des.
@@ -247,14 +249,14 @@ Proof.
     rewrite Nat2Z.inj_sub; ss. rewrite Nat2Z.inj_sub; ss. rewrite <- Z.sub_add_distr; ss.
     rewrite <- Int_sub_repr. f_equal. rewrite Z2Nat.id; ss. rewrite Int.repr_signed; ss.
   }
-  rewrite <- U. rewrite ! bind_trigger. step.
+  rewrite <- U. step.
   sii S. r in S. des_ifs_safe. des. clarify.
   rewrite bind_bind.
   (* unfold assume at 2. *)
   step_assume. des. clarify.
   rewrite bind_ret_l.
   rewrite bind_bind.
-  assert(V: of_nat (S n1) = Int.sub i (Int.repr 1)).
+  assert(V: of_nat (S n) = Int.sub i (Int.repr 1)).
   { unfold to_nat_opt in *. des_ifs. unfold of_nat.
     eapply SUCPRED in H0; des.
     eapply SUCPRED in H0; des. ss. clarify.
@@ -265,12 +267,15 @@ Proof.
   }
   cbn.
   step_guarantee.
-  { eapply Classical_Pred_Type.not_ex_all_not in T0. contradict T0; eauto. }
-  rewrite bind_ret_l. rewrite ! bind_trigger. rewrite bind_vis. rewrite V. step.
+  { clear - R1 T0. u in T0. des_ifs. lia. }
+  irw.
+  step_guarantee.
+  { eapply Classical_Pred_Type.not_ex_all_not in T1. contradict T1; eauto. }
+  irw. rewrite V. step.
   sii S. r in S. des_ifs_safe; des; clarify.
-  rewrite bind_bind.
+  irw.
   step_assume.
-  des; des_ifs_safe. rewrite bind_ret_l. rewrite bind_ret_l.
+  des; des_ifs_safe. irw.
   step_guaranteeK.
   { unfold postcond, parse_arg in *. unfold NW in *. des_ifs. repeat (Psimpl; des; ss; et). }
   rewrite fib_nat_recurse.

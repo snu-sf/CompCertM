@@ -26,12 +26,14 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
     | S (S m) =>
       let vs0 := [Vint (of_nat m)] in
 
+      guarantee (of_nat_opt m) ;;
       guarantee (precond oh0 m0 vs0) ;;
       '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 vs0) ;;
       (assume (postcond oh0 m0 vs0 (oh1, (m1, y1)))) ;;
 
       let vs1 := [Vint (of_nat (S m))] in
 
+      guarantee (of_nat_opt (S m)) ;;
       guarantee (precond oh1 m1 vs1) ;;
       '(oh2, (m2, y2)) <- trigger (ICall _fib oh1 m1 vs1) ;;
       (assume (postcond oh1 m1 vs1 (oh2, (m2, y2)))) ;;

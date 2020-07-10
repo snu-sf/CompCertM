@@ -57,6 +57,16 @@ Proof.
   - apply Int.eqm_sub; apply Int.eqm_unsigned_repr.
 Qed.
 
+Lemma max_signed_modulus: Int.max_signed < Int.modulus.
+Proof.
+  generalize Int.modulus_pos; i.
+  unfold Int.max_signed, Int.half_modulus.
+  etrans; et.
+  { eapply Z.lt_sub_pos; try lia. }
+  { eapply Z.div_lt; try lia. }
+Qed.
+
+
 
 
 
@@ -74,7 +84,7 @@ Definition to_nat_opt (i: int): option nat :=
 .
 
 Definition of_nat_opt (n: nat): option int :=
-  if zlt (Z.of_nat n) Int.modulus
+  if zle (Z.of_nat n) Int.max_signed
   then Some (Int.repr (Z.of_nat n))
   else None
 .
@@ -94,6 +104,24 @@ Proof.
     rewrite Nat2Z.id; ss.
   }
 Qed.
+
+Module Nat2Int.
+
+  Lemma id
+        n n0
+        (SOME: (do x <- (of_nat_opt n) ; to_nat_opt x) = Some n0)
+  :
+    n = n0
+  .
+  Proof.
+    ss. des_ifs. u in *. des_ifs.
+    generalize Int.min_signed_neg; i.
+    rewrite Int.signed_repr.
+    - rewrite Nat2Z.id; ss.
+    - split; try lia.
+  Qed.
+
+End Nat2Int.
 
 
 

@@ -184,16 +184,16 @@ Require Import SIRBCE. (*** TODO: export in SIRProps ***)
 Local Opaque ident_eq.
 
 (*** TODO: use prop instead of option ***)
-Let idx := option nat.
+Let idx := option (nat * nat).
 Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> idx) :=
   if ident_eq fname _fib_ru
-  then Some (fun oh m vs => parse_arg oh m vs)
+  then Some (fun oh m vs => option_map (fun n => (n, 1%nat)) (parse_arg oh m vs))
   else None
 .
 Theorem sim_mod: ModPair.sim mp.
 Proof.
   eapply SIRBCE.sim_mod with (manifesto:=manifesto).
-  { eapply wf_option. eapply lt_wf. }
+  { eapply wf_option. eapply ord_lex_wf; eapply lt_wf. }
   econs; et; cycle 1.
   { unfold prog, Fib6.prog.
     ii; clarify; rr; ss; des_ifs; ss; ii; clarify.
@@ -212,25 +212,30 @@ Proof.
     ii. unfold f_fib_ru.
     pfold. unfold unwrapN. des_ifs; irw; cycle 1.
     { unfold triggerNB. irw. econs; et. }
-    des_ifs; try econs; et. irw. econs; ss; et; cycle 1.
-    { cbn. rewrite range_to_nat; cycle 1.
-      { assert(precond oh m [Vint (of_nat n)]).
-        { admit "G -- guarantee here". }
-        rr in H. des. ss. unfold to_nat_opt in *. des_ifs.
-        admit "G -- maybe we need stronger guarantee".
-      }
-      econs; et.
-    }
-    ii. exists (Some (S n)). esplits; et.
+    des_ifs; try econs; et. irw.
+    step_guarantee.
     { econs; et. }
-    left. pfold. des_ifs. irw. econs; ss; et; cycle 1.
+    irw.
+    econs; ss; et; cycle 1.
     { cbn. rewrite range_to_nat; cycle 1.
-      { admit "G -- we might need guarantee here". }
-      econs; et.
-      admit "we need radix".
+      { u in T. des_ifs. }
+      cbn. econs; et. econs; et.
     }
-    ii. exists (Some n). esplits ;et.
+    ii. esplits; et.
+    { econs; et. econs 2; et. }
+    left. pfold. des_ifs. irw.
+    step_guarantee.
     { econs; et. }
+    irw.
+    econs; ss; et; cycle 1.
+    { cbn. rewrite range_to_nat; cycle 1.
+      { u in T0. des_ifs. }
+      econs; et. econs; et.
+    }
+    ii. esplits; et.
+    { econs; et. econs; et. }
     left. pfold. des_ifs. econs; et.
   }
+Unshelve.
+  all: ss.
 Qed.

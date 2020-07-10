@@ -190,9 +190,9 @@ Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> id
   then Some (fun oh m vs => option_map (fun n => (n, 1%nat)) (parse_arg oh m vs))
   else None
 .
-Theorem sim_mod: ModPair.sim mp.
+Theorem correct: rusc defaultR [Fib6.module] [Fib5.module].
 Proof.
-  eapply SIRBCE.sim_mod with (manifesto:=manifesto).
+  eapply SIRBCE.correct with (manifesto:=manifesto).
   { eapply wf_option. eapply ord_lex_wf; eapply lt_wf. }
   econs; et; cycle 1.
   { unfold prog, Fib6.prog.

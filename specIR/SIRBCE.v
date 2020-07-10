@@ -317,11 +317,14 @@ Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
     (MATCH: match_itr i_src i_tgt)
   :
     _match_itr match_itr (Tau i_src) (Tau i_tgt)
-| match_vis
-    X (e: (E owned_heap) X) k_src k_tgt
-    (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
+| match_icall
+    fname oh0 m0 vs0 k_src k_tgt
+    (PURE: manifesto fname = None)
+    (MATCH: (eq ==> match_itr) k_src k_tgt)
   :
-    _match_itr match_itr (Vis e k_src) (Vis e k_tgt)
+    _match_itr match_itr
+               (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src)
+               (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_tgt)
 | match_icall_pure
     fname oh0 m0 vs0 i_src i_tgt
     (PURE: manifesto fname)
@@ -330,6 +333,36 @@ Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
     _match_itr match_itr
                (tau;; i_src)
                (trigger (ICall fname oh0 m0 vs0) >>= (fun _ => i_tgt))
+| match_ecall
+    sg oh m vs fptr
+    k_src
+    k_tgt
+    (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
+  :
+    _match_itr match_itr (Vis (subevent _ (ECall sg fptr oh m vs)) k_src)
+              (Vis (subevent _ (ECall sg fptr oh m vs)) k_tgt)
+| match_nb
+    i_src k_tgt
+  :
+    _match_itr match_itr i_src (Vis (subevent _ (ENB)) k_tgt)
+| match_ub
+    k_src i_tgt
+  :
+    _match_itr match_itr (Vis (subevent _ (EUB)) k_src) i_tgt
+| match_choose
+    X
+    k_src k_tgt
+    (INHAB: inhabited X)
+    (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
+  :
+    _match_itr match_itr
+               (tau;; (Vis (subevent _ (EChoose X)) k_src))
+               (tau;; (Vis (subevent _ (EChoose X)) k_tgt))
+(* | match_vis *)
+(*     X (e: (E owned_heap) X) k_src k_tgt *)
+(*     (MATCH: (eq ==> match_itr)%signature k_src k_tgt) *)
+(*   : *)
+(*     _match_itr match_itr (Vis e k_src) (Vis e k_tgt) *)
 .
 
 Definition match_itr: itr -> itr -> Prop := paco2 _match_itr bot2.
@@ -576,9 +609,14 @@ Inductive match_prog (p_src p_tgt: program owned_heap): Prop :=
         (PURE: manifesto _fn = Some mf)
       ,
         exists fn,
-          (<<FN: p_tgt _fn = Some fn>>) /\
+          (<<FNSRC: p_src _fn = None>>) /\
+          (<<FNTGT: p_tgt _fn = Some fn>>) /\
           (<<PURE: forall oh m vs, pure (mf oh m vs) (fn oh m vs)>>))
-    (MATCH: (eq ==> option_rel match_fn) p_src p_tgt)
+    (MATCH: forall
+        _fn
+        (NPURE: manifesto _fn = None)
+      ,
+        option_rel match_fn (p_src _fn) (p_tgt _fn))
 .
 
 End PROG.
@@ -615,12 +653,15 @@ Proof.
   - rewrite ! bind_tau. gstep. econs; eauto. pclearbot.
     (* gfinal. left. eapply CIH. econstructor; eauto. *)
     debug eauto with paco.
-  - rewrite ! bind_vis. gstep. econs; eauto. ii. clarify.
-    repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
+  - irw. gstep. econs; et. ii. clarify. exploit MATCH; et. intro T. pclearbot. eauto with paco.
   - rewrite ! bind_bind. gstep.
     erewrite f_equal2; try eapply match_icall_pure; try refl; ss.
     { pclearbot. eauto with paco. }
     irw. ss.
+  - irw. gstep. econs; et. ii. clarify. exploit MATCH; et. intro T. pclearbot. eauto with paco.
+  - irw. gstep. econs; et.
+  - irw. gstep. econs; et.
+  - irw. gstep. econsr; et. ii. clarify. exploit MATCH; et. intro T. pclearbot. eauto with paco.
 Qed.
 
 Global Instance match_itr_bind T :
@@ -656,16 +697,6 @@ Section SIM.
   Variable p_tgt: program owned_heap.
   Hypothesis (SIMP: match_prog p_src p_tgt).
   (* Hypothesis (WFSRC: wf_prog p_src). *)
-
-  Global Instance match_itr_Reflexive S: Reflexive (@match_itr S).
-  Proof.
-    ginit.
-    { intros. eapply cpn2_wcompat; et. eauto with paco. }
-    gcofix CIH. ii. ides x.
-    - gstep. econs; et.
-    - gstep. econs; et. eauto with paco.
-    - gstep. econs; et. ii. clarify. eauto with paco.
-  Qed.
 
   Let _sim_st0: (gidx -> (relation (state owned_heap))) -> (gidx -> (relation (state owned_heap))) := _sim_st eq gord.
   Let sim_st0: (gidx -> (relation (state owned_heap))) := sim_st gord.
@@ -763,34 +794,36 @@ Section SIM.
     i. irw. punfold SIM. inv SIM.
     - gstep. destruct s as [oh [m v]]. irw. econs; et.
     - gstep. econs; et. gbase. pclearbot. et.
-    - gstep. ss. des_ifs.
-      + econs; et. gbase.
-        eapply CIH. eapply match_itr_bind; et.
-        { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
-        destruct i.
-        inv SIMP.
-        exploit (MATCH0 name); et. intro T. rr in T. cbn. des_ifs; cycle 1.
-        { pfold. econs; et. ii; ss. }
-        exploit T; et.
-      + destruct s.
-        * destruct e. econs; et. ii. rr in H. des_ifs. des; clarify.
-          gstep; econs; et. exploit (MATCH (o0, (m1, v0))); et. intro T. pclearbot.
-          eauto with paco.
-        * destruct e.
-          { econs; et. }
-          { econs; et. }
-          { econs; et. ii.
-            esplits; et. exploit (MATCH x_tgt); et. intro T. pclearbot.
-            gstep. econs; et.
-            eauto with paco. }
+    - gstep. ss.
+      inv SIMP. exploit MATCH0; et.
+      Hint Unfold option_rel.
+      u. i. des_ifs; irw; cycle 1.
+      { econs; et. gstep. econs; et. }
+      econs; et.
+      rewrite <- ! unfold_interp_mrec.
+      gbase. eapply CIH.
+      eapply match_itr_bind; eauto.
+      + ii. clarify. exploit MATCH; et. i; des. pclearbot. eauto with paco.
+      + eapply H; et.
     - pclearbot. dup SIMP. inv SIMP0. destruct (manifesto fname) eqn:PURE0; ss.
       exploit PURES; et. i; des.
-      exploit (MATCH0 fname); et. intro T. r in T.
-      des_ifs.
       gstep. irw. econs; et. des_ifs.
-      rr in T. hexploit (T oh0 _ eq_refl m0 _ eq_refl vs0 _ eq_refl); et. intro U.
       guclo gpureC_spec. rewrite <- ! unfold_interp_mrec. econs; et.
       { eapply pure_gpure. et. }
+      eauto with paco.
+    - gstep. irw. econs; et. ii. rr in H. des_ifs. des; clarify.
+      gstep. irw. econs; et.
+      exploit MATCH; et. intro T. pclearbot.
+      rewrite <- ! unfold_interp_mrec.
+      eauto with paco.
+    - gstep. irw. econs; et.
+    - gstep. irw. econs; et.
+    - gstep. irw. econs; et.
+      gstep. irw. econs; et.
+      ii. esplits; et.
+      gstep. irw. econs; et.
+      rewrite <- ! unfold_interp_mrec.
+      exploit MATCH; et. intro T. pclearbot.
       eauto with paco.
   Unshelve.
     all: ss.
@@ -800,7 +833,7 @@ Section SIM.
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)
   Theorem adequacy_local_local:
     forall
-      (fname: ident) m vs oh
+      (fname: ident) (NPURE: manifesto fname = None) m vs oh
     ,
       (<<SIM: sim_st gord nil (interp_program p_src (ICall fname oh m vs))
                      (interp_program p_tgt (ICall fname oh m vs))
@@ -810,9 +843,10 @@ Section SIM.
     {
       ii.
       dup SIMP.
-      inv SIMP0. repeat spc MATCH. hexploit1 MATCH; et. rr in MATCH. des_ifs; cycle 1.
-      { unfold interp_program, mrec. irw. des_ifs. pfold. econs; et. }
-      { exploit MATCH; et. intro T. unfold interp_program, mrec. irw. des_ifs. rewrite <- ! unfold_interp_mrec.
+      inv SIMP0. repeat spc MATCH. r in MATCH.
+      unfold interp_program, mrec. irw. des_ifs; cycle 1.
+      { pfold. econs; et. }
+      { exploit MATCH; et. intro T. rewrite <- ! unfold_interp_mrec.
         eapply match_prog_sim_st. et. }
     }
   Qed.

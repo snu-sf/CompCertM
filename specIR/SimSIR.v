@@ -166,6 +166,7 @@ Section SIM.
   Variable p_tgt: program owned_heap_tgt.
   Variable sim_prog: forall
       (fname: ident) m vs oh_src oh_tgt
+      (SRCEX: is_some (p_src fname))
       (O: SO oh_src oh_tgt)
     ,
       exists (i0: idx),
@@ -368,7 +369,9 @@ Section SIM.
         rr in SIMARGS. des. inv SIMARGS0; ss. clarify. inv MWF. ss. destruct sm_arg; ss.
         destruct sm; ss. subst. clarify. clear_tac.
         rename tgt into m0. rename vs_tgt into vs0.
-        exploit (sim_prog fid0 m0 vs0); et. i; des.
+        exploit (sim_prog fid0 m0 vs0); et.
+        { }
+        i; des.
         eexists _, (Simple.mk (SM:=SimMemId.SimMemId) (SimMemId.mk _ _) _ _), _. esplits; eauto.
         { econs; ss; et. }
         eapply match_states_lxsim; eauto.

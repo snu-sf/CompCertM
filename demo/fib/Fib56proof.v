@@ -190,9 +190,9 @@ Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> id
   then Some (fun oh m vs => parse_arg oh m vs)
   else None
 .
-Theorem correct: rusc defaultR [Fib6.module] [Fib5.module].
+Theorem sim_mod: ModPair.sim mp.
 Proof.
-  eapply SIRBCE.correct with (manifesto:=manifesto).
+  eapply SIRBCE.sim_mod with (manifesto:=manifesto).
   { eapply wf_option. eapply lt_wf. }
   econs; et; cycle 1.
   { unfold prog, Fib6.prog.
@@ -212,22 +212,11 @@ Proof.
     ii. unfold f_fib_ru.
     pfold. unfold unwrapN. des_ifs; irw; cycle 1.
     { unfold triggerNB. irw. econs; et. }
-    des_ifs; try econs; et. irw.
-    unfold guarantee. des_ifs; irw; cycle 1.
-    { unfold triggerNB. irw. econs; et. }
-    econs; ss; et; cycle 1.
-    { cbn. r in p. des; ss.
-      assert(n = n0).
-      { clear - p. u in p. des_ifs.
-        hexploit (Int.signed_range (Int.repr (Z.of_nat n))); et. intro U; des.
-        rewrite Int.signed_repr; ss.
-        { rewrite Nat2Z.id; ss. }
-        generalize Int.min_signed_neg; i.
-        split; try xomega.
-      }
-      rewrite p. econs; et. unfold to_nat_opt. des_ifs.
-      { rewrite range_to_nat. econs; et. }
-      { rr in p. des. ss. unfold to_nat_opt in *. des_ifs.
+    des_ifs; try econs; et. irw. econs; ss; et; cycle 1.
+    { cbn. rewrite range_to_nat; cycle 1.
+      { assert(precond oh m [Vint (of_nat n)]).
+        { admit "G -- guarantee here". }
+        rr in H. des. ss. unfold to_nat_opt in *. des_ifs.
         admit "G -- maybe we need stronger guarantee".
       }
       econs; et.

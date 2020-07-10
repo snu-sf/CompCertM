@@ -11,6 +11,7 @@ Set Implicit Arguments.
 
 
 
+
 (*** nat ***)
 Lemma succ_pred
       x y
@@ -63,9 +64,8 @@ Qed.
 
 
 (*** nat && int ***)
-(* Definition to_nat (i: int): nat := Z.to_nat (Int.signed i). *)
-(* Definition of_nat (n: nat): int := Int.repr (Z.of_nat n). *)
-(* Hint Unfold of_nat to_nat. *)
+Definition to_nat (i: int): nat := Z.to_nat (Int.signed i).
+Definition of_nat (n: nat): int := Int.repr (Z.of_nat n).
 
 Definition to_nat_opt (i: int): option nat :=
   if zle 0 (Int.signed i)
@@ -74,45 +74,26 @@ Definition to_nat_opt (i: int): option nat :=
 .
 
 Definition of_nat_opt (n: nat): option int :=
-  if zle (Z.of_nat n) Int.max_signed
+  if zlt (Z.of_nat n) Int.modulus
   then Some (Int.repr (Z.of_nat n))
   else None
 .
-Hint Unfold of_nat_opt to_nat_opt.
+Hint Unfold of_nat to_nat of_nat_opt to_nat_opt.
 
-Module Nat2Int.
-
-  Lemma range_some
-        (n: nat)
-        (RANGE: Z.of_nat n <= Int.max_signed)
+Lemma range_to_nat
+      x
+      (RANGE: Z.of_nat x <= Int.max_signed)
   :
-    (do n <- (of_nat_opt n) ; to_nat_opt n) = Some n
-    (* (of_nat_opt n) >>= to_nat_opt = Some n *)
-  .
-  Proof.
-    { uo. i. unfold to_nat_opt, of_nat_opt.
-      generalize Int.min_signed_neg; i.
-      generalize (Int.signed_range (Int.repr (Z.of_nat n))); i.
-      cbn.
-      des_ifs; try rewrite Int.signed_repr in *; try lia. rewrite Nat2Z.id; ss.
-    }
-  Qed.
-
-  Lemma id
-        n n0
-        (SOME: (do x <- (of_nat_opt n) ; to_nat_opt x) = Some n0)
-    :
-      n = n0
-  .
-  Proof.
-    ss. des_ifs. u in *. des_ifs.
+    to_nat_opt (of_nat x) = Some x
+.
+Proof.
+  { i. unfold to_nat_opt, of_nat.
     generalize Int.min_signed_neg; i.
-    rewrite Int.signed_repr.
-    - rewrite Nat2Z.id; ss.
-    - split; try lia.
-  Qed.
-
-End Nat2Int.
+    generalize (Int.signed_range (Int.repr (Z.of_nat x))); i.
+    rewrite Int.signed_repr in *; try lia. des_ifs; try lia.
+    rewrite Nat2Z.id; ss.
+  }
+Qed.
 
 
 

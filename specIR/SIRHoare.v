@@ -91,10 +91,7 @@ Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
     oh0 m0 vs0 k_src k_tgt
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
-    _match_itr match_itr
-               (guarantee (precond oh0 m0 vs0) ;;
-                trigger (ICall _fn_ru oh0 m0 vs0) >>=
-                k_src)
+    _match_itr match_itr (trigger (ICall _fn_ru oh0 m0 vs0) >>= k_src)
                (guarantee (precond oh0 m0 vs0) ;;
                 ohmv <- trigger (ICall _fn oh0 m0 vs0) ;;
                 assume (postcond oh0 m0 vs0 ohmv) ;;
@@ -360,7 +357,7 @@ Section SIM.
       exploit OTHERS; et. intro T. rr in T. des_ifs; cycle 1.
       { pfold. econs; et. }
       exploit T; et.
-    - step_guarantee. unfold guarantee. des_ifs. irw. step.
+    - step_guarantee. irw. step.
       rewrite <- ! unfold_interp_mrec.
       gbase. eapply CIH.
       inv SIMP.

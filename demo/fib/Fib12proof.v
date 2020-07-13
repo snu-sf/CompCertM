@@ -21,12 +21,12 @@ Require Import SIRProps.
 
 Set Implicit Arguments.
 
+
+
 Theorem correct: rusc defaultR [Fib2.module: Mod.t] [Fib1.module: Mod.t].
 Proof.
   etrans; cycle 1.
-  { instantiate (1:= [_]).
-    instantiate (1:= SIR.SMod.mk Fib0.module _ "fib" FibHeader.initial_owned_heap _).
-    eapply SIRStackproof.correct; ss; et. }
+  { mimic. eapply SIRStackproof.correct; ss; et. }
   { eapply SIREutt.correct; ss; et.
     unfold Fib2.prog, prog.
     ii. clarify. rr. ss. des_ifs; ss. ii. clarify. r.

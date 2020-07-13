@@ -112,10 +112,7 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 Theorem correct: rusc defaultR [Fib5.module: Mod.t] [Fib4.module: Mod.t].
 Proof.
   etrans; cycle 1.
-  { instantiate (1:= [_]).
-    instantiate (1:= SMod.mk Fib0.module _ "fib" FibHeader.initial_owned_heap _).
-    instantiate (2:= add FibHeader._fib_ru (fun _ _ _ => _)
-                         (add Fib0._fib (fun _ _ _ => _) empty)).
+  { mimic.
     eapply SIREutt.correct; ss.
     unfold prog.
     ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.

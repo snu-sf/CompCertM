@@ -192,11 +192,7 @@ Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> id
 Theorem correct: rusc defaultR [Fib6.module: Mod.t] [Fib5.module: Mod.t].
 Proof.
   etrans.
-  { instantiate (1:= [_]).
-    instantiate (1:= SMod.mk Fib0.module _ "fib" FibHeader.initial_owned_heap _).
-    instantiate (2:= (add Fib0._fib (fun _ _ _ => _) empty)).
-    eapply SIREutt.correct; ss.
-    unfold Fib6.prog.
+  { mimic. eapply SIREutt.correct; ss.
     ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.
     unfold Fib6.f_fib. setoid_rewrite <- tau_eutt at 2. refl.
   }

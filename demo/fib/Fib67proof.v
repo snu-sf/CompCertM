@@ -26,11 +26,7 @@ Set Implicit Arguments.
 Theorem correct: rusc defaultR [Fib7.module: Mod.t] [Fib6.module: Mod.t].
 Proof.
   etrans.
-  {
-    instantiate (1:= [_]).
-    instantiate (1:= SMod.mk Fib0.module _ "fib" FibHeader.initial_owned_heap _).
-    instantiate (2:= (add Fib0._fib (fun _ _ _ => _) empty)).
-    eapply SIREutt.correct; ss; et.
+  { mimic. eapply SIREutt.correct; ss; et.
     cbn. ii; clarify; rr; ss; des_ifs; ss; ii; clarify.
     r. unfold Fib7.f_fib. do 2 setoid_rewrite <- tau_eutt at 2. refl.
   }

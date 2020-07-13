@@ -223,3 +223,32 @@ Section SMOD.
 End SMOD.
 End SMod. 
 Coercion SMod.to_module: SMod.t >-> Mod.t.
+
+(*** From "SIR", build "SIR"***)
+Ltac mimic :=
+  match goal with
+  | [ |- context[SMod.to_module ?A] ] =>
+    unfold A;
+    match goal with
+    | [ |- context[SMod.mk ?sk ?prog ?mi ?ioh ?sk_icl] ] =>
+      instantiate (1:= [_]);
+      instantiate (1:= SIR.SMod.mk sk _ mi ioh _); cycle 2;
+      unfold prog;
+      match goal with
+      | [ |- context[add ?_j _ (add ?_i _ (add ?_h _ (add ?_g _ (add ?_f _ empty))))] ] =>
+        instantiate (2:= add _j (fun _ _ _ => _) (add _i (fun _ _ _ => _) (add _h (fun _ _ _ => _)
+                             (add _g (fun _ _ _ => _) (add _f (fun _ _ _ => _) empty)))))
+      | [ |- context[add ?_i _ (add ?_h _ (add ?_g _ (add ?_f _ empty)))] ] =>
+        instantiate (2:= add _i (fun _ _ _ => _) (add _h (fun _ _ _ => _)
+                             (add _g (fun _ _ _ => _) (add _f (fun _ _ _ => _) empty))))
+      | [ |- context[add ?_h _ (add ?_g _ (add ?_f _ empty))] ] =>
+        instantiate (2:= add _h (fun _ _ _ => _)
+                             (add _g (fun _ _ _ => _) (add _f (fun _ _ _ => _) empty)))
+      | [ |- context[add ?_g _ (add ?_f _ empty)] ] =>
+        instantiate (2:= add _g (fun _ _ _ => _) (add _f (fun _ _ _ => _) empty))
+      | [ |- context[add ?_f _ empty] ] =>
+        instantiate (2:= add _f (fun _ _ _ => _) empty)
+      end
+    end
+  end
+.

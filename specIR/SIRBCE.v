@@ -352,12 +352,11 @@ Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
 | match_choose
     X
     k_src k_tgt
-    (INHAB: inhabited X)
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
     _match_itr match_itr
-               (tau;; (Vis (subevent _ (EChoose X)) k_src))
-               (tau;; (Vis (subevent _ (EChoose X)) k_tgt))
+               (Vis (subevent _ (EChoose X)) k_src)
+               (Vis (subevent _ (EChoose X)) k_tgt)
 (* | match_vis *)
 (*     X (e: (E owned_heap) X) k_src k_tgt *)
 (*     (MATCH: (eq ==> match_itr)%signature k_src k_tgt) *)
@@ -693,10 +692,13 @@ Hint Resolve gpure_mon: paco.
 
 Section SIM.
 
-  Variable p_src: program owned_heap.
-  Variable p_tgt: program owned_heap.
+  Variable md_src: SMod.t owned_heap.
+  Variable md_tgt: SMod.t owned_heap.
+  Let p_src := md_src.(SMod.prog).
+  Let p_tgt := md_tgt.(SMod.prog).
+  Let mi_src := md_src.(SMod.midx).
+  Let mi_tgt := md_tgt.(SMod.midx).
   Hypothesis (SIMP: match_prog p_src p_tgt).
-  (* Hypothesis (WFSRC: wf_prog p_src). *)
 
   Let _sim_st0: (gidx -> (relation (state owned_heap))) -> (gidx -> (relation (state owned_heap))) := _sim_st eq gord.
   Let sim_st0: (gidx -> (relation (state owned_heap))) := sim_st gord.
@@ -819,7 +821,6 @@ Section SIM.
     - gstep. irw. econs; et.
     - gstep. irw. econs; et.
     - gstep. irw. econs; et.
-      gstep. irw. econs; et.
       ii. esplits; et.
       gstep. irw. econs; et.
       rewrite <- ! unfold_interp_mrec.
@@ -851,19 +852,23 @@ Section SIM.
     }
   Qed.
 
-  Variable ioh: SkEnv.t -> owned_heap.
-  Variable sk: Sk.t.
-  Let md_src: Mod.t := (SIR.module sk p_src mi ioh).
-  Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh).
+  Hypothesis (SIMMI: mi_src = mi_tgt).
+  Hypothesis (SIMO: forall skenv, (md_src.(SMod.initial_owned_heap) skenv)
+                                  = (md_tgt.(SMod.initial_owned_heap) skenv)).
+  Hypothesis (SIMSK: md_src.(SMod.sk) = md_tgt.(SMod.sk)).
   Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
 
   Theorem sim_mod: ModPair.sim mp.
   Proof.
-    eapply SimSIR.sim_mod with (ord:=gord) (SO:=eq); eauto.
+    eapply SimSIR.sim_mod; eauto.
+    econs; et.
     ii. clarify. esplits. eapply adequacy_local_local; et.
+    { inv SIMP. destruct (manifesto fname) eqn:T; ss.
+      exploit PURES; et. i; des. unfold p_src in FNSRC. rewrite FNSRC in *; ss.
+    }
   Qed.
 
-  Theorem correct: rusc defaultR [md_src] [md_tgt].
+  Theorem correct: rusc defaultR [md_src: Mod.t] [md_tgt: Mod.t].
   Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.
 
 End SIM.

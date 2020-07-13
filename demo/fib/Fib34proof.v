@@ -12,7 +12,6 @@ Require SoundTop.
 Require SimMemId.
 Require Import Any.
 Require Import SIR.
-Require Import SIRStack.
 Require Import FibHeader.
 Require Import Fib4.
 Require Import Fib3.
@@ -65,10 +64,10 @@ Ltac iby TAC :=
     ]
 .
 
-Theorem correct: rusc defaultR [Fib4.module] [Fib3.module].
+Theorem correct: rusc defaultR [Fib4.module: Mod.t] [Fib3.module: Mod.t].
 Proof.
   eapply SIRHoare.correct with (_fn:=Fib0._fib) (_fn_ru:=_fib_ru)
-                               (precond:=precond) (postcond:=postcond).
+                               (precond:=precond) (postcond:=postcond); et.
   econs; ss; et.
   - econs; ss; cycle 1.
     + ii. iby refl.

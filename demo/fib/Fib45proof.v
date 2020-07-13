@@ -12,7 +12,6 @@ Require SoundTop.
 Require SimMemId.
 Require Import Any.
 Require Import SIR.
-Require Import SIRStack.
 Require Import Fib5.
 Require Import Fib4.
 Require Import ModSemProps.
@@ -110,13 +109,15 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 
-Theorem correct: rusc defaultR [Fib5.module] [Fib4.module].
+Theorem correct: rusc defaultR [Fib5.module: Mod.t] [Fib4.module: Mod.t].
 Proof.
   etrans; cycle 1.
-  { eapply SIREutt.correct; ss.
-    unfold prog.
-    instantiate (1:= add FibHeader._fib_ru (fun _ _ _ => _)
+  { instantiate (1:= [_]).
+    instantiate (1:= SMod.mk Fib0.module _ "fib" FibHeader.initial_owned_heap _).
+    instantiate (2:= add FibHeader._fib_ru (fun _ _ _ => _)
                          (add Fib0._fib (fun _ _ _ => _) empty)).
+    eapply SIREutt.correct; ss.
+    unfold prog.
     ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.
     { refl. }
     unfold f_fib.
@@ -151,7 +152,8 @@ Proof.
     gstep. econsr.
     eexists (exist _ _ _). cbn.
     step.
-    Unshelve.
-    cbn. des_ifs.
   }
+  Unshelve.
+  - try (by ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).
+  - ss.
 Qed.

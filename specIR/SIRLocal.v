@@ -230,8 +230,12 @@ Hint Resolve match_itr_mon: paco.
 
 Section SIM.
 
-  Variable p_src: program owned_heap_src.
-  Variable p_tgt: program owned_heap_tgt.
+  Variable md_src: SMod.t owned_heap_src.
+  Variable md_tgt: SMod.t owned_heap_tgt.
+  Let p_src := md_src.(SMod.prog).
+  Let p_tgt := md_tgt.(SMod.prog).
+  Let mi_src := md_src.(SMod.midx).
+  Let mi_tgt := md_tgt.(SMod.midx).
   Hypothesis (SIMP: match_prog p_src p_tgt).
 
   Lemma match_prog_sim_st
@@ -253,7 +257,7 @@ Section SIM.
     - pclearbot. gstep. econs; et. gbase.
       eapply CIH. eapply match_itr_bind.
       { u. ii. repeat spc MATCH. pclearbot. eauto. }
-      exploit (@SIMP fname); et. intro T. rr in T. des_ifs; cycle 1.
+      exploit (@SIMP fname); et. intro T. r in T. des_ifs; cycle 1.
       { pfold. econs; et. }
       exploit T; et.
     - gstep. econs; et. u in *. gstep. econs; et. repeat spc MATCH. specialize (MATCH H0).
@@ -285,28 +289,27 @@ Section SIM.
     {
       ii.
       eapply match_prog_sim_st; ss.
-      hexploit (@SIMP fname); et. intro T. rr in T. des_ifs; cycle 1.
+      hexploit (@SIMP fname); et. intro T. r in T. des_ifs; cycle 1.
       { pfold. econs; et. }
       repeat (spc T). des. ss.
     }
   Qed.
 
-  Variable ioh_src: SkEnv.t -> owned_heap_src.
-  Variable ioh_tgt: SkEnv.t -> owned_heap_tgt.
-  Hypothesis (SIMO: forall skenv, SO (ioh_src skenv) (ioh_tgt skenv)).
-  Variable sk: Sk.t.
-  Let md_src: Mod.t := (SIR.module sk p_src mi ioh_src).
-  Let md_tgt: Mod.t := (SIR.module sk p_tgt mi ioh_tgt).
+  Hypothesis (SIMMI: mi_src = mi_tgt).
+  Hypothesis (SIMO: forall skenv, SO (md_src.(SMod.initial_owned_heap) skenv)
+                                     (md_tgt.(SMod.initial_owned_heap) skenv)).
+  Hypothesis (SIMSK: md_src.(SMod.sk) = md_tgt.(SMod.sk)).
   Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
 
   Theorem sim_mod: ModPair.sim mp.
   Proof.
     eapply SimSIR.sim_mod; eauto.
+    econs; et.
     { eapply unit_ord_wf. }
     ii. clarify. esplits. eapply adequacy_local_local; et.
   Qed.
 
-  Theorem correct: rusc defaultR [md_src] [md_tgt].
+  Theorem correct: rusc defaultR [md_src: Mod.t] [md_tgt: Mod.t].
   Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.
 
 End SIM.

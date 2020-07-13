@@ -6,6 +6,7 @@ Require Import SmallstepC.
 Require Export Simulation.
 Require Import Skeleton Mod ModSem.
 Require ClightC.
+Require Import FibHeader.
 Require Import Fib0.
 Require Import SIRStack.
 (* Require Import Clightdefs. *)
@@ -13,9 +14,6 @@ Require Import SIRStack.
 Set Implicit Arguments.
 
 
-
-Definition owned_heap: Type := unit.
-Definition initial_owned_heap: SkEnv.t -> owned_heap := fun _ => tt.
 
 Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
@@ -37,4 +35,4 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
 
 Definition prog: program owned_heap := (Maps.add _fib f_fib Maps.empty).
 
-Definition module: Mod.t := module (Fib0.module) prog "fib"%string initial_owned_heap.
+Program Definition module: SMod.t _ := SMod.mk (Fib0.module) prog "fib"%string initial_owned_heap _.

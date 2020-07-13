@@ -35,14 +35,21 @@ Set Implicit Arguments.
 Section OWNEDHEAP.
 
 Variable owned_heap: Type.
-Variable initial_owned_heap: SkEnv.t -> owned_heap.
-Variable sk: Sk.t.
-Variable prog: program owned_heap.
-Variable mi: string.
+Variable md_src: SIR.SMod.t owned_heap.
+Variable md_tgt: SMod.t owned_heap.
+Let p_src := md_src.(SIR.SMod.prog).
+Let p_tgt := md_tgt.(SMod.prog).
+Let mi_src := md_src.(SIR.SMod.midx).
+Let mi_tgt := md_tgt.(SMod.midx).
+Hypothesis (SIMP: p_src = p_tgt).
+Hypothesis (SIMMI: mi_src = mi_tgt).
+Hypothesis (SIMO: forall skenv, (md_src.(SIR.SMod.initial_owned_heap) skenv)
+                                = (md_tgt.(SMod.initial_owned_heap) skenv)).
+Hypothesis (SIMSK: md_src.(SIR.SMod.sk) = md_tgt.(SMod.sk)).
 
 
 
-Let SimMemOh: SimMemOh.class := Simple.class (@eq owned_heap) mi.
+Let SimMemOh: SimMemOh.class := Simple.class (@eq owned_heap) mi_src.
 Local Existing Instance SimMemOh.
 
 
@@ -51,8 +58,6 @@ Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
-Let md_src: Mod.t := (SIR.module sk prog mi initial_owned_heap).
-Let md_tgt: Mod.t := (SIRStack.module sk prog mi initial_owned_heap).
 Let ms_src: ModSem.t := (Mod.modsem md_src skenv_link).
 Let ms_tgt: ModSem.t := (Mod.modsem md_tgt skenv_link).
 Hypothesis (INCLSRC: SkEnv.includes skenv_link (Mod.sk md_src)).
@@ -105,7 +110,7 @@ Inductive match_states (idx: nat): SIR.state owned_heap ->
     itr0 cur cont smo0
     itr1
     (FOLD: itr1 = (rvs <- cur ;; (fold_cont cont) rvs))
-    (SIM: itr0 = interp_mrec (interp_function prog) itr1)
+    (SIM: itr0 = interp_mrec (interp_function p_src) itr1)
     (MWF: SimMemOh.wf smo0)
     (IDX: (idx >= 2 + List.length cont)%nat)
   :
@@ -137,7 +142,7 @@ Lemma unfold_cont_call
       (cont: list ktr)
       (r0: owned_heap * (mem * val))
       (SIM: Vis (subevent (owned_heap * (mem * val)) (ECall sg fptr oh m0 vs)) k
-                ≅ interp_mrec (interp_function prog) (fold_cont cont r0))
+                ≅ interp_mrec (interp_function p_src) (fold_cont cont r0))
   :
     exists n, <<CALLS: cont_calls sg fptr oh m0 vs r0 cont n>>
 .
@@ -368,7 +373,9 @@ Proof.
     + right. eapply CIH. econs; ss; et.
       f. rewrite interp_mrec_bind. autorewrite with itree. cbn.
       rewrite interp_mrec_bind.
-      f_equiv. ii. ss.
+      f_equiv; cycle 1.
+      { f. rewrite SIMP. unfold p_tgt. ss. }
+      ii. ss.
       rewrite interp_mrec_bind. f. ss.
   - (* TGTRET *)
     ss; clarify.
@@ -388,6 +395,7 @@ Theorem sim_modsem: ModSemPair.sim msp.
 Proof.
   econstructor 1 with (sidx := unit) (sound_states := top4); eauto;
     try apply sound_state_local_preservation; et; try (by ii; ss).
+  { ss. folder. congruence. }
   { ii. eapply Preservation.local_preservation_noguarantee_weak.
     apply sound_state_local_preservation; et.
   }
@@ -401,9 +409,11 @@ Proof.
     f. unfold interp_program. unfold mrec. cbn. autorewrite with itree. f.
     rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm; ss. clarify.
     inv MWF; ss. clarify.
-    apply_all_once Genv.find_invert_symbol. clarify.
+    apply_all_once Genv.find_invert_symbol. rewrite <- SIMSK in *. clarify.
+    fold p_src p_tgt. rewrite SIMP. ss.
   - i; des. inv SAFESRC. ss. des_ifs.
     rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm; ss. clarify.
+    folder. rewrite <- SIMSK in *. clarify.
     esplits; et. econs; ss; et.
 Qed.
 
@@ -411,17 +421,16 @@ End SIMMODSEM.
 
 Section SIMMOD.
 
-Let md_src: Mod.t := (SIR.module sk prog mi initial_owned_heap).
-Let md_tgt: Mod.t := (SIRStack.module sk prog mi initial_owned_heap).
 Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
+  { folder. congruence. }
   - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
 Qed.
 
-Theorem correct: rusc defaultR [md_src] [md_tgt].
+Theorem correct: rusc defaultR [md_src: Mod.t] [md_tgt: Mod.t].
 Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.
 
 End SIMMOD.

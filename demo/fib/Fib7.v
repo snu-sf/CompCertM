@@ -17,9 +17,8 @@ Set Implicit Arguments.
 
 Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
-  assume (precond oh0 m0 vs0) ;;
-  ohmv <- trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) ;;
-  Ret (proj1_sig ohmv)
+  n <- unwrapU (parse_arg oh0 m0 vs0) ;;
+  Ret (oh0, (m0, Vint (of_nat (fib_nat n))))
 .
 
 Definition prog: program owned_heap :=

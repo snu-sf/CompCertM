@@ -24,8 +24,6 @@ Set Implicit Arguments.
 
 
 
-
-
 Section OWNEDHEAP.
 
 Variable owned_heap: Type.
@@ -195,12 +193,33 @@ Section MODSEM.
 
 End MODSEM.
 
-Program Definition module (sk: Sk.t) (p: program _) (mi: string)
-        (initial_owned_heap: SkEnv.t -> owned_heap): Mod.t :=
-  {| Mod.data := p; Mod.get_sk := fun _ => sk;
-     Mod.get_modsem := fun skenv_link p => modsem mi sk skenv_link
-                                                  (initial_owned_heap skenv_link) p;
-     Mod.midx := Some mi |}
-.
-
 End OWNEDHEAP.
+
+
+
+Module SMod.
+Section SMOD.
+
+  Variable owned_heap: Type.
+  Coercion is_some_coercion {X}: (option X) -> bool := is_some.
+  Record t: Type := mk {
+    sk: Sk.t;
+    prog: program owned_heap;
+    midx: string;
+    initial_owned_heap: SkEnv.t -> owned_heap;
+    sk_incl: (internals sk) <1= prog;
+  }
+  .
+  
+  Program Definition to_module (smd: t): Mod.t :=
+  {|
+    Mod.data := smd.(prog); Mod.get_sk := fun _ => smd.(sk);
+    Mod.get_modsem :=
+      fun skenv_link p => modsem (smd.(midx)) (smd.(sk)) skenv_link
+                                 (smd.(initial_owned_heap) skenv_link) (smd.(prog));
+    Mod.midx := Some smd.(midx);
+  |}.
+
+End SMOD.
+End SMod. 
+Coercion SMod.to_module: SMod.t >-> Mod.t.

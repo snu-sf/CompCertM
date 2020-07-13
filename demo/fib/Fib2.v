@@ -34,4 +34,4 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
 
 Definition prog: program owned_heap := (Maps.add _fib f_fib Maps.empty).
 
-Definition module: Mod.t := module (Fib0.module) prog "fib"%string initial_owned_heap.
+Program Definition module: SMod.t _ := SMod.mk (Fib0.module) prog "fib"%string initial_owned_heap _.

@@ -12,7 +12,6 @@ Require SoundTop.
 Require SimMemId.
 Require Import Any.
 Require Import SIR.
-Require Import SIRStack.
 Require Import FibHeader.
 Require Import Fib6.
 Require Import Fib5.
@@ -190,18 +189,25 @@ Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> id
   then Some (fun oh m vs => option_map (fun n => (n, 1%nat)) (parse_arg oh m vs))
   else None
 .
-Theorem correct: rusc defaultR [Fib6.module] [Fib5.module].
+Theorem correct: rusc defaultR [Fib6.module: Mod.t] [Fib5.module: Mod.t].
 Proof.
-  eapply SIRBCE.correct with (manifesto:=manifesto).
+  etrans.
+  { instantiate (1:= [_]).
+    instantiate (1:= SMod.mk Fib0.module _ "fib" FibHeader.initial_owned_heap _).
+    instantiate (2:= (add Fib0._fib (fun _ _ _ => _) empty)).
+    eapply SIREutt.correct; ss.
+    unfold Fib6.prog.
+    ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.
+    unfold Fib6.f_fib. setoid_rewrite <- tau_eutt at 2. refl.
+  }
+  eapply SIRBCE.correct with (manifesto:=manifesto); et.
   { eapply wf_option. eapply ord_lex_wf; eapply lt_wf. }
   econs; et; cycle 1.
-  { unfold prog, Fib6.prog.
-    ii; clarify; rr; ss; des_ifs; ss; ii; clarify.
-    - refl.
+  { cbn. ii; clarify; rr; ss; des_ifs; ss; ii; clarify.
     - unfold Fib6.f_fib, f_fib. irw.
       step_assume. Undo 1.
       unfold assume. des_ifs; irw; cycle 1.
-      { unfold triggerUB. irw. pfold. econs; et. ii; ss. }
+      { unfold triggerUB. irw. pfold. econs; et. }
       pfold. rewrite <- ! bind_trigger. eapply match_icall_pure; et.
       left. pfold. irw. econs; et. ii; ss. clarify.
       left. pfold. irw. econs; et.
@@ -238,4 +244,5 @@ Proof.
   }
 Unshelve.
   all: ss.
+  all: (by ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).
 Qed.

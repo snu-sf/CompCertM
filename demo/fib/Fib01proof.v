@@ -15,6 +15,7 @@ Require Import Any.
 Require Import SIRProps.
 Require Import SIR SIRStack.
 Require Import Clightdefs Op ClightC CtypesC CtypingC.
+Require Import FibHeader.
 Require Import Fib1.
 Require Import Fib0.
 

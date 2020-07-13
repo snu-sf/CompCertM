@@ -12,7 +12,6 @@ Require SoundTop.
 Require SimMemId.
 Require Import Any.
 Require Import SIR.
-Require Import SIRStack.
 Require Import FibHeader.
 Require Import Fib3.
 Require Import Fib2.
@@ -166,7 +165,7 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 (* Hint Unfold assume guarantee assumeK guaranteeK triggerUB triggerNB unwrapU unwrapN. *)
-Theorem correct: rusc defaultR [Fib3.module] [Fib2.module].
+Theorem correct: rusc defaultR [Fib3.module: Mod.t] [Fib2.module: Mod.t].
 Proof.
   assert(AA := range_to_nat).
   assert(SUCPRED := succ_pred).

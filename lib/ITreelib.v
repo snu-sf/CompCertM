@@ -232,3 +232,15 @@ Hint Rewrite bind_trigger : itree_axiom.
 Hint Rewrite bind_bind : itree_axiom.
 Tactic Notation "irw" "in" ident(H) := repeat (autorewrite with itree_axiom in H; cbn in H).
 Tactic Notation "irw" := repeat (autorewrite with itree_axiom; cbn).
+
+Ltac iby TAC :=
+  first [
+      instantiate (1:= fun _ _ _ => _); irw; TAC|
+      instantiate (1:= fun _ _ _ => _ <- _ ;; _); irw; TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- _ ;; _) ;; _); irw; TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- _ ;; _) ;; _) ;; _); irw; TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _); irw; TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _) ;; _); irw; TAC|
+      fail
+    ]
+.

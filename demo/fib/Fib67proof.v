@@ -26,12 +26,11 @@ Set Implicit Arguments.
 Theorem correct: rusc defaultR [Fib7.module: Mod.t] [Fib6.module: Mod.t].
 Proof.
   etrans.
-  { mimic. eapply SIREutt.correct; ss; et.
-    cbn. ii; clarify; rr; ss; des_ifs; ss; ii; clarify.
-    r. unfold Fib7.f_fib. do 2 setoid_rewrite <- tau_eutt at 2. refl.
+  { mimic. eapply SIREutt.correct; ss; et. prog_tac.
+    unfold Fib7.f_fib. do 2 setoid_rewrite <- tau_eutt at 2. refl.
   }
   eapply SIRLocal.correct; ss; et.
-  cbn. ii; clarify; rr; ss; des_ifs; ss; ii; clarify.
+  prog_tac.
   unfold Fib7.f_fib, f_fib.
   unfold unwrapU. des_ifs; irw; cycle 1.
   { unfold triggerUB. irw. pfold. econs; et. }
@@ -42,5 +41,5 @@ Proof.
   { eexists. eexists (_, (_, _)). ss. des_ifs. }
   ii. destruct x_tgt; ss. destruct x as [ohr [mr vr]]. ss. des_ifs. des; clarify. left. pfold. econs; et.
 Unshelve.
-  all: (by ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).
+  all: try (by sk_incl_tac).
 Qed.

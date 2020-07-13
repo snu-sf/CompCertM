@@ -27,11 +27,9 @@ Theorem correct: rusc defaultR [Fib2.module: Mod.t] [Fib1.module: Mod.t].
 Proof.
   etrans; cycle 1.
   { mimic. eapply SIRStackproof.correct; ss; et. }
-  { eapply SIREutt.correct; ss; et.
-    unfold Fib2.prog, prog.
-    ii. clarify. rr. ss. des_ifs; ss. ii. clarify. r.
+  { eapply SIREutt.correct; ss; et. prog_tac.
     unfold Fib2.f_fib, f_fib. rewrite tau_eutt. refl.
   }
 Unshelve.
-  try (by ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).
+  sk_incl_tac.
 Qed.

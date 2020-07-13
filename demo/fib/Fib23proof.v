@@ -163,7 +163,6 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 
-
 (* Hint Unfold assume guarantee assumeK guaranteeK triggerUB triggerNB unwrapU unwrapN. *)
 Theorem correct: rusc defaultR [Fib3.module: Mod.t] [Fib2.module: Mod.t].
 Proof.
@@ -171,12 +170,11 @@ Proof.
   assert(SUCPRED := succ_pred).
 
   eapply SIRLocal.correct with (SO := eq); ss.
-  ii. clarify. unfold Fib3.prog, prog. ss. des_ifs; ss.
-  ii. clarify. unfold owned_heap in *. des_u.
+  prog_tac.
   revert m vs.
   ginit.
   { i. eapply cpn2_wcompat; eauto with paco. }
-  gcofix CIH. ii.
+  ii.
   unfold Fib3.f_fib, f_fib.
   step_assume.
   unfold precond, parse_arg in *. des. des_ifs_safe. irw. rewrite T. irw.

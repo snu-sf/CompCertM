@@ -189,17 +189,18 @@ Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> id
   then Some (fun oh m vs => option_map (fun n => (n, 1%nat)) (parse_arg oh m vs))
   else None
 .
+
 Theorem correct: rusc defaultR [Fib6.module: Mod.t] [Fib5.module: Mod.t].
 Proof.
   etrans.
   { mimic. eapply SIREutt.correct; ss.
-    ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.
+    prog_tac.
     unfold Fib6.f_fib. setoid_rewrite <- tau_eutt at 2. refl.
   }
   eapply SIRBCE.correct with (manifesto:=manifesto); et.
   { eapply wf_option. eapply ord_lex_wf; eapply lt_wf. }
   econs; et; cycle 1.
-  { cbn. ii; clarify; rr; ss; des_ifs; ss; ii; clarify.
+  { prog_tac.
     - unfold Fib6.f_fib, f_fib. irw.
       step_assume. Undo 1.
       unfold assume. des_ifs; irw; cycle 1.
@@ -240,5 +241,5 @@ Proof.
   }
 Unshelve.
   all: ss.
-  all: (by ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).
+  all: try (by sk_incl_tac).
 Qed.

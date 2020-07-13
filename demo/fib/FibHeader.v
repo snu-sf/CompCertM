@@ -75,5 +75,4 @@ Global Opaque Z.of_nat.
 
 Definition _fib_ru := 57%positive.
 
-Global Obligation Tactic :=
-  try (by ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).
+Global Obligation Tactic := sk_incl_tac.

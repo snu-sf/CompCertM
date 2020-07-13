@@ -98,5 +98,5 @@ Proof.
       ii. des_ifs_safe. left.
       pfold.
       econs; et.
-  - ii. r. unfold Fib4.prog, prog. ss. des_ifs; ss.
+  - prog_tac.
 Qed.

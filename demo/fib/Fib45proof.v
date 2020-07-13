@@ -108,14 +108,12 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 
-
 Theorem correct: rusc defaultR [Fib5.module: Mod.t] [Fib4.module: Mod.t].
 Proof.
   etrans; cycle 1.
   { mimic.
     eapply SIREutt.correct; ss.
-    unfold prog.
-    ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.
+    prog_tac.
     { refl. }
     unfold f_fib.
     unfold guaranteeK.
@@ -132,8 +130,7 @@ Proof.
   }
   {
     eapply SIRLocal.correct with (SO := eq); ss.
-    unfold Fib5.prog.
-    ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.
+    prog_tac.
     { refl. }
     ginit.
     { i. eapply cpn2_wcompat; eauto with paco. }
@@ -151,6 +148,6 @@ Proof.
     step.
   }
   Unshelve.
-  - try (by ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).
+  - sk_incl_tac.
   - ss.
 Qed.

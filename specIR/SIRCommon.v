@@ -188,6 +188,9 @@ Definition guaranteeK E X `{EventE -< E} (P: X -> Prop): ktree E X X :=
 .
 
 Definition guarantee E `{EventE -< E} (P: Prop): itree E unit := Eval red in guaranteeK (fun _ => P) tt.
+(* Hint Unfold assume guarantee assumeK guaranteeK triggerUB triggerNB unwrapU unwrapN. *)
+
+
 
 Require Export AdequacyLocal RUSC.
 Require Import SimMemId SoundTop.

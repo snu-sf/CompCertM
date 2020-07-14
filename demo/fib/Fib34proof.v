@@ -40,19 +40,19 @@ Ltac iby1 TAC :=
 .
 
 Ltac step :=
-  repeat match goal with
-         | [ |- (_ ==> _)%signature _ _ ] => ii; clarify
-         | [ |- SIRHoare.match_itr _ _ _ _ (_ <- _ ;; _) (_ <- _ ;; _) ] => f_equiv; cycle 1
-         | [ |- SIRHoare.match_itr _ _ _ _ (unwrapN _) (unwrapN _) ] => 
-           pfold; unfold unwrapN; des_ifs; try (by econs; et)
-         | [ |- SIRHoare.match_itr _ _ _ _
-                                   (match _ with _ => _ end)
-                                   (match _ with _ => _ end) ] => des_ifs
-         | [ |- SIRHoare.match_itr _ _ _ _ (Ret _) (Ret _) ] =>
-           pfold; try (by econs; et)
-         | [ |- SIRHoare.match_itr _ _ _ _ (guarantee _) (guarantee _) ] => 
-           pfold; unfold guarantee; des_ifs; try (by econs; et)
-         end
+  match goal with
+  | [ |- (_ ==> _)%signature _ _ ] => ii; clarify
+  | [ |- SIRHoare.match_itr _ _ _ _ (_ <- _ ;; _) (_ <- _ ;; _) ] => f_equiv; cycle 1
+  | [ |- SIRHoare.match_itr _ _ _ _ (unwrapN _) (unwrapN _) ] => 
+    pfold; unfold unwrapN; des_ifs; try (by econs; et)
+  | [ |- SIRHoare.match_itr _ _ _ _
+                            (match _ with _ => _ end)
+                            (match _ with _ => _ end) ] => des_ifs
+  | [ |- SIRHoare.match_itr _ _ _ _ (Ret _) (Ret _) ] =>
+    pfold; try (by econs; et)
+  | [ |- SIRHoare.match_itr _ _ _ _ (guarantee _) (guarantee _) ] => 
+    pfold; unfold guarantee; des_ifs; try (by econs; et)
+  end
 .
 (*** TODO: change unwrapU/unwrapN/assume/guarantee into notation?
      ---> It does not work well. I didn't type "parse only" but it works only for parsing.

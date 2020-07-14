@@ -27,6 +27,22 @@ Set Universe Polymorphism.
 
 
 
+Variant ident: Type :=
+| Id (id: AST.ident)
+| Ru (id: AST.ident)
+.
+
+Definition ident_eq (x y: ident): {x = y} + {x <> y}.
+  decide equality.
+  - eapply ident_eq.
+  - eapply ident_eq.
+Qed.
+
+Definition id_to_id (id: AST.ident): ident := Id id.
+Definition id_to_id2 (id: positive): ident := Id id.
+Coercion id_to_id: AST.ident >-> ident.
+Coercion id_to_id2: positive >-> ident.
+
 Section OWNEDHEAP.
 
 Variable owned_heap: Type.
@@ -141,10 +157,10 @@ Definition c_sum (oh: owned_heap) (m: mem) (vs: list val): itree E (owned_heap *
 Definition f_sum: function := c_sum.
 
 Definition global_definitions: list (ident * globdef (fundef (function)) unit) :=
-  ((_sum, Gfun(Internal f_sum)) :: nil)
+  ((Id _sum, Gfun(Internal f_sum)) :: nil)
 .
 
-Definition p: program := Maps.add _sum c_sum (Maps.empty).
+Definition p: program := Maps.add (Id _sum) c_sum (Maps.empty).
 
 Variable initial_oh: owned_heap.
 Let one := (interp_program p (ICall _sum initial_oh Mem.empty [Vint (Int.repr 1%Z)])).

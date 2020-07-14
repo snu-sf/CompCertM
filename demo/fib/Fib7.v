@@ -21,7 +21,6 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
   Ret (oh0, (m0, Vint (of_nat (fib_nat n))))
 .
 
-Definition prog: program owned_heap :=
-  (Maps.add _fib f_fib Maps.empty).
+Definition prog: program owned_heap := (Maps.add (Id _fib) f_fib Maps.empty).
 
 Program Definition module: SMod.t _ := SMod.mk (Fib0.module) prog "fib"%string initial_owned_heap _.

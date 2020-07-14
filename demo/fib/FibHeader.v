@@ -73,6 +73,6 @@ Global Opaque ident_eq.
 Global Opaque Z.of_nat.
 
 
-Definition _fib_ru := 57%positive.
+(* Definition _fib_ru := 57%positive. *)
 
 Global Obligation Tactic := sk_incl_tac.

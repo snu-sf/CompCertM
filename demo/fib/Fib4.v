@@ -25,12 +25,12 @@ Definition f_fib_ru (oh0: owned_heap) (m0: mem) (vs0: list val):
       let vs0 := [Vint (of_nat m)] in
 
       guarantee (of_nat_opt m) ;;
-      '(oh1, (m1, y1)) <- trigger (ICall (Ru _fib) oh0 m0 vs0) ;;
+      '(oh1, (m1, y1)) <- trigger (ICall _fib_ru oh0 m0 vs0) ;;
 
       let vs1 := [Vint (of_nat (S m))] in
 
       guarantee (of_nat_opt (S m)) ;;
-      '(oh2, (m2, y2)) <- trigger (ICall (Ru _fib) oh1 m1 vs1) ;;
+      '(oh2, (m2, y2)) <- trigger (ICall _fib_ru oh1 m1 vs1) ;;
 
       Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
     end
@@ -39,11 +39,11 @@ Definition f_fib_ru (oh0: owned_heap) (m0: mem) (vs0: list val):
 Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
   assume (precond oh0 m0 vs0) ;;
-  trigger (ICall (Ru _fib) oh0 m0 vs0)
+  trigger (ICall _fib_ru oh0 m0 vs0)
   >>= guaranteeK (postcond oh0 m0 vs0)
 .
 
 Definition prog: program owned_heap :=
-  (Maps.add (Ru _fib) f_fib_ru (Maps.add (Id _fib) f_fib Maps.empty)).
+  (Maps.add _fib_ru f_fib_ru (Maps.add _fib f_fib Maps.empty)).
 
 Program Definition module: SMod.t _ := SMod.mk (Fib0.module) prog "fib"%string initial_owned_heap _.

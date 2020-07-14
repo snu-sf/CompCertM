@@ -401,7 +401,7 @@ Section SIM.
   Proof.
     {
       ii.
-      destruct (ident_eq fname _fn).
+      destruct (eq_block fname _fn).
       {
         clarify.
         dup SIMP. inv SIMP0.
@@ -425,7 +425,7 @@ Section SIM.
       }
       eapply match_prog_sim_st; ss.
       inv SIMP.
-      destruct (ident_eq fname _fn_ru).
+      destruct (eq_block fname _fn_ru).
       { des_ifs. pfold. econs; et. }
       exploit OTHERS; et. intro T. r in T. des_ifs; cycle 1.
       { pfold. econs; et. }

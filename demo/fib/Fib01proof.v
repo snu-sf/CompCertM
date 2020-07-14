@@ -273,7 +273,7 @@ Lemma init_fsim
 Proof.
   inv INIT. ss. des_ifs_safe. folder.
   unfold interp_program in *.
-  exploit unsymb; et. i; des. clarify. cbn; des_ifs.
+  exploit unsymb; et. i; des. clarify. des_ifs.
   assert(SIG: fd = signature_of_function f_fib).
   { admit "ez - findf sig". }
   destruct args; ss. inv TYP. ss. destruct vs; ss. destruct vs; ss.
@@ -284,7 +284,7 @@ Proof.
     { ss. }
   - econs; ss; eauto. econs; ss; eauto.
     + econs; ss.
-    + unfold typify_list. ss. unfold typify. cbn; des_ifs; ss.
+    + unfold typify_list. ss. unfold typify. des_ifs; ss.
     + cbn. unfold typify. des_ifs; ss.
 Unshelve.
   all: ss.
@@ -330,7 +330,6 @@ Proof.
   - econs 1; eauto. ii. clear SU.
     exploit unsymb; et. intro T. des; clarify.
     exploit symb_def; et. intro DEF; des. ss. des_ifs.
-    TTTTTTTTTTTTTTTTTTTTTTTT
     rename Heq into V. cbn in V. des_ifs. clear_tac.
 
 

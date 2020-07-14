@@ -263,4 +263,4 @@ Ltac prog_tac :=
   cbn; ii; clarify; rr; ss; des_ifs; ss; ii; clarify; r.
 
 Ltac sk_incl_tac :=
-  (cbn; ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).
+  (ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).

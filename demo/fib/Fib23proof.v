@@ -171,10 +171,7 @@ Proof.
 
   eapply SIRLocal.correct with (SO := eq); ss.
   prog_tac.
-  revert m vs.
-  ginit.
-  { i. eapply cpn2_wcompat; eauto with paco. }
-  ii.
+  ginit. { i. eapply cpn2_wcompat; eauto with paco. }
   unfold Fib3.f_fib, f_fib.
   step_assume.
   unfold precond, parse_arg in *. des. des_ifs_safe. irw. rewrite T. irw.

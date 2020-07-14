@@ -54,8 +54,11 @@ Ltac step :=
            pfold; unfold guarantee; des_ifs; try (by econs; et)
          end
 .
-(*** TODO: change unwrapU/unwrapN/assume/guarantee into notation? ***)
-(*** TODO: generalize "Hoare" like "BCE" --> put manifesto ***)
+(*** TODO: change unwrapU/unwrapN/assume/guarantee into notation?
+     ---> It does not work well. I didn't type "parse only" but it works only for parsing.
+          In other words, it does not work in printing, which results in unreadable code during the proof
+ ***)
+(*** TODO: generalize "Hoare" like "BCE" --> put manifesto. Maybe this is better for automation too ***)
 
 Theorem correct: rusc defaultR [Fib4.module: Mod.t] [Fib3.module: Mod.t].
 Proof.

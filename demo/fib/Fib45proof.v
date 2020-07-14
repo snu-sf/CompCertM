@@ -135,13 +135,12 @@ Proof.
   { mimic. eapply SIREutt.correct; ss. prog_tac.
     { refl. }
     unfold f_fib.
+
     replace SIRCommon.guaranteeK with guaranteeK; cycle 1.
     { unfold guaranteeK, SIRCommon.guaranteeK. unfold myif.
       repeat (eapply functional_extensionality_dep; ii). des_ifs. }
-    unfold guaranteeK.
-    setoid_rewrite <- tau_eutt at 4.
-    setoid_rewrite <- tau_eutt at 4.
-    refl.
+
+    unfold guaranteeK. do 2 setoid_rewrite <- tau_eutt at 4. refl.
   }
   {
     eapply SIRLocal.correct with (SO := eq); ss.

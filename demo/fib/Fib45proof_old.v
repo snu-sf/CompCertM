@@ -12,9 +12,8 @@ Require SoundTop.
 Require SimMemId.
 Require Import Any.
 Require Import SIR.
-Require Import FibHeader.
-Require Import Fib6.
-Require Import Fib5.
+Require Import Fib5_old.
+Require Import Fib4_old.
 Require Import ModSemProps.
 Require Import Program.
 Require Import SIRProps.
@@ -109,137 +108,60 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 
-(*** TODO: update Ord.v ***)
-Section WFMAP.
-
-  Variable idx: Type.
-  Variable ord: idx -> idx -> Prop.
-  Hypothesis WF: well_founded ord.
-
-  Variable idx_map: Type.
-  Variable f: idx_map -> idx.
-  Definition ord_map (b0 b1: idx_map): Prop := ord (f b0) (f b1).
-
-  Theorem wf_map: well_founded ord_map.
-  Proof.
-    ii. rename a into b.
-    remember (f b) as a. generalize dependent b.
-    pattern a. eapply well_founded_ind; et. clear a; i.
-    clarify. econs; et.
-  Qed.
-
-End WFMAP.
-
-Section WFOPTION.
-
-  Variable idx: Type.
-  Variable ord: idx -> idx -> Prop.
-  Hypothesis WF: well_founded ord.
-
-  Let idx_option: Type := option idx.
-  Inductive ord_option: idx_option -> idx_option -> Prop :=
-  | ord_option_some
-      i0 i1
-      (ORD: ord i0 i1)
-    :
-      ord_option (Some i0) (Some i1)
-  .
-
-  Theorem wf_option: well_founded ord_option.
-  Proof.
-    ii.
-    induction a; ii; ss.
-    { pattern a. eapply well_founded_ind; et. clear a; i.
-      econs; et. ii. inv H0. eapply H; et. }
-    { econs. ii. inv H. }
-  Qed.
-
-End WFOPTION.
-
-Section WFPMAP.
-
-  Variable idx: Type.
-  Variable ord: idx -> idx -> Prop.
-  Hypothesis WF: well_founded ord.
-
-  Variable idx_pmap: Type.
-  Variable f: idx_pmap -> option idx.
-  Definition ord_pmap (b0 b1: idx_pmap): Prop := (ord_map (ord_option ord) f) b0 b1.
-
-  Theorem wf_pmap: well_founded ord_pmap.
-  Proof.
-    eapply wf_map. eapply wf_option. assumption.
-  Qed.
-
-End WFPMAP.
-
-
-
-
-
-Definition mp: ModPair.t := SimSymbId.mk_mp (Fib6.module) (Fib5.module).
-
-Require Import SIRBCE. (*** TODO: export in SIRProps ***)
-Local Opaque ident_eq.
-
-(*** TODO: use prop instead of option ***)
-Let idx := option (nat * nat).
-Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> idx) :=
-  if ident_eq fname _fib_ru
-  then Some (fun oh m vs => option_map (fun n => (n, 1%nat)) (parse_arg oh m vs))
-  else None
+Definition myif X (c: bool) (l r: X): X := if c then l else r.
+Hint Unfold myif.
+Definition guaranteeK E X `{EventE -< E} (P: X -> Prop): ktree E X X :=
+  fun x =>
+    myif (ClassicalDescription.excluded_middle_informative (P x))
+         (Ret x)
+         (triggerNB)
 .
 
-Theorem correct: rusc defaultR [Fib6.module: Mod.t] [Fib5.module: Mod.t].
+Require Import 
+     Morphisms
+     Setoid
+     RelationClasses
+.
+Global Instance eutt_myif {E R} (rr: R -> R -> Prop) :
+  Proper (eq ==> eutt rr ==> eutt rr ==> eutt rr) (@myif (itree E R))
+.
 Proof.
-  etrans.
-  { mimic. eapply SIREutt.correct; ss.
+  ii. clarify. unfold myif. des_ifs.
+Qed.
+
+Theorem correct: rusc defaultR [Fib5_old.module: Mod.t] [Fib4_old.module: Mod.t].
+Proof.
+  etrans; cycle 1.
+  { mimic. eapply SIREutt.correct; ss. prog_tac.
+    { refl. }
+    unfold f_fib.
+
+    replace SIRCommon.guaranteeK with guaranteeK; cycle 1.
+    { unfold guaranteeK, SIRCommon.guaranteeK. unfold myif.
+      repeat (eapply functional_extensionality_dep; ii). des_ifs. }
+
+    unfold guaranteeK. do 2 setoid_rewrite <- tau_eutt at 4. refl.
+  }
+  {
+    eapply SIRLocal.correct with (SO := eq); ss.
     prog_tac.
-    unfold Fib6.f_fib. setoid_rewrite <- tau_eutt at 2. refl.
+    { refl. }
+    ginit.
+    { i. eapply cpn2_wcompat; eauto with paco. }
+    ii; clarify.
+    unfold Fib5_old.f_fib, f_fib.
+    step_assume.
+    { unfold assume. des_ifs. unfold triggerUB. irw. step. }
+    unfold assume. des_ifs.
+    irw. step.
+    ii. rr in H. unfold myif. des_ifs; des; clarify; cycle 1.
+    { step. }
+
+    gstep. econsr.
+    eexists (exist _ _ _). cbn.
+    step.
   }
-  eapply SIRBCE.correct with (manifesto:=manifesto); et.
-  { eapply wf_option. eapply ord_lex_wf; eapply lt_wf. }
-  econs; et; cycle 1.
-  { prog_tac.
-    - unfold Fib6.f_fib, f_fib. irw.
-      step_assume. Undo 1.
-      unfold assume. des_ifs; irw; cycle 1.
-      { unfold triggerUB. irw. pfold. econs; et. }
-      pfold. rewrite <- ! bind_trigger. eapply match_icall_pure; et.
-      left. pfold. irw. econs; et. ii; ss. clarify.
-      left. pfold. irw. econs; et.
-  }
-  { ii. unfold manifesto in PURE. des_ifs.
-    esplits; et.
-    { unfold prog. ss. }
-    ii. unfold f_fib_ru.
-    pfold. unfold unwrapN. des_ifs; irw; cycle 1.
-    { unfold triggerNB. irw. econs; et. }
-    des_ifs; try econs; et. irw.
-    step_guarantee.
-    { econs; et. }
-    irw.
-    econs; ss; et; cycle 1.
-    { cbn. rewrite range_to_nat; cycle 1.
-      { u in T. des_ifs. }
-      cbn. econs; et. econs; et.
-    }
-    ii. esplits; et.
-    { econs; et. econs 2; et. }
-    left. pfold. des_ifs. irw.
-    step_guarantee.
-    { econs; et. }
-    irw.
-    econs; ss; et; cycle 1.
-    { cbn. rewrite range_to_nat; cycle 1.
-      { u in T0. des_ifs. }
-      econs; et. econs; et.
-    }
-    ii. esplits; et.
-    { econs; et. econs; et. }
-    left. pfold. des_ifs. econs; et.
-  }
-Unshelve.
-  all: ss.
-  all: try (by sk_incl_tac).
+  Unshelve.
+  - sk_incl_tac.
+  - ss. des_sumbool. des_ifs.
 Qed.

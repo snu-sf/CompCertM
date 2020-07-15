@@ -13,8 +13,8 @@ Require SimMemId.
 Require Import Any.
 Require Import SIR.
 Require Import FibHeader.
-Require Import Fib4.
-Require Import Fib3.
+Require Import Fib4_old.
+Require Import Fib3_old.
 Require Import ModSemProps.
 Require Import Program.
 Require Import SIRProps.
@@ -40,7 +40,7 @@ Definition manifesto (fname: ident): option (funspec owned_heap) :=
 .
 Definition images: ident -> bool := ident_eq _fib_ru.
 
-Theorem correct: rusc defaultR [Fib4.module: Mod.t] [Fib3.module: Mod.t].
+Theorem correct: rusc defaultR [Fib4_old.module: Mod.t] [Fib3_old.module: Mod.t].
 Proof.
   eapply SIRHoare2.correct with (manifesto:=manifesto) (images:=images); et.
   { unfold images, manifesto. images_tac. }

@@ -17,23 +17,24 @@ Set Implicit Arguments.
 
 Definition f_fib_ru (oh0: owned_heap) (m0: mem) (vs0: list val):
   itree (E owned_heap) (owned_heap * (mem * val)) :=
-  `n: nat <- (unwrapN (parse_arg oh0 m0 vs0)) ;;
-    match n with
-    | O => Ret (oh0, (m0, (Vint Int.zero)))
-    | S O => Ret (oh0, (m0, (Vint Int.one)))
-    | S (S m) =>
-      let vs0 := [Vint (of_nat m)] in
+  match vs0 with
+  | [Vint n] =>
+    if Int.eq n Int.zero
+    then Ret (oh0, (m0, (Vint Int.zero)))
+    else
+      if Int.eq n Int.one
+      then Ret (oh0, (m0, (Vint Int.one)))
+      else
+        let vs0 := [Vint (Int.sub n (Int.repr 2))] in
+        guarantee (precond oh0 m0 vs0) ;;
+        '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 vs0) ;;
 
-      guarantee (of_nat_opt m) ;;
-      '(oh1, (m1, y1)) <- trigger (ICall _fib_ru oh0 m0 vs0) ;;
-
-      let vs1 := [Vint (of_nat (S m))] in
-
-      guarantee (of_nat_opt (S m)) ;;
-      '(oh2, (m2, y2)) <- trigger (ICall _fib_ru oh1 m1 vs1) ;;
-
-      Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
-    end
+        let vs1 := [Vint (Int.sub n (Int.repr 1))] in
+        guarantee (precond oh1 m1 vs1) ;;
+        '(oh2, (m2, y2)) <- trigger (ICall _fib oh1 m1 vs1) ;;
+        Ret (oh2, (m2, Val.add y1 y2))
+  | _ => triggerUB
+  end
 .
 
 Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
@@ -45,5 +46,6 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
 
 Definition prog: program owned_heap :=
   (Maps.add _fib_ru f_fib_ru (Maps.add _fib f_fib Maps.empty)).
+
 
 Program Definition module: SMod.t _ := SMod.mk (Fib0.module) prog "fib"%string initial_owned_heap _.

@@ -79,197 +79,157 @@ Qed.
 
 
 
-
-Ltac step := gstep; econs; et.
-Ltac step_assume := match goal with
-                    | |- context[assume ?P ;; _] =>
-                      (*** I want to unfold only the "first" assume.
-Maybe we should use notation instead, so that we can avoid this weird "unfold"? ***)
-                      first[
-                          unfold assume at 5|
-                          unfold assume at 4|
-                          unfold assume at 3|
-                          unfold assume at 2|
-                          unfold assume at 1|
-                          unfold assume at 0
-                        ];
-                      let name := fresh "T" in
-                      destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
-                        unfold triggerUB; rewrite bind_vis (*** <---------- this is counter-intuitive. Any good idea? ***);
-                        try step|]
-                    end
-.
-Ltac step_unwrapN := match goal with
-                     | |- context[unwrapN ?ox ;; _] =>
-                       (*** I want to unfold only the "first" assume.
-Maybe we should use notation instead, so that we can avoid this weird "unfold"? ***)
-                       first[
-                           unfold unwrapN at 5|
-                           unfold unwrapN at 4|
-                           unfold unwrapN at 3|
-                           unfold unwrapN at 2|
-                           unfold unwrapN at 1|
-                           unfold unwrapN at 0
-                         ];
-                       let name := fresh "T" in
-                       destruct ox eqn:name; cycle 1
-                     end
-.
-Ltac step_guaranteeK := match goal with
-                        | |- context[guaranteeK ?P ;; _] =>
-                          (*** I want to unfold only the "first" assume.
-Maybe we should use notation instead, so that we can avoid this weird "unfold"? ***)
-                          first[
-                              unfold guaranteeK at 5|
-                              unfold guaranteeK at 4|
-                              unfold guaranteeK at 3|
-                              unfold guaranteeK at 2|
-                              unfold guaranteeK at 1|
-                              unfold guaranteeK at 0
-                            ];
-                          destruct (ClassicalDescription.excluded_middle_informative P); cycle 1
-                        | |- context[guaranteeK ?P ?Q] =>
-                          (*** I want to unfold only the "first" assume.
-Maybe we should use notation instead, so that we can avoid this weird "unfold"? ***)
-                          first[
-                              unfold guaranteeK at 5|
-                              unfold guaranteeK at 4|
-                              unfold guaranteeK at 3|
-                              unfold guaranteeK at 2|
-                              unfold guaranteeK at 1|
-                              unfold guaranteeK at 0
-                            ];
-                          destruct (ClassicalDescription.excluded_middle_informative (P Q)); cycle 1
-                        end
-.
-Ltac step_guarantee := match goal with
-                    | |- context[guarantee ?P ;; _] =>
-                      (*** I want to unfold only the "first" guarantee.
-Maybe we should use notation instead, so that we can avoid this weird "unfold"? ***)
-                      first[
-                          unfold guarantee at 5|
-                          unfold guarantee at 4|
-                          unfold guarantee at 3|
-                          unfold guarantee at 2|
-                          unfold guarantee at 1|
-                          unfold guarantee at 0
-                        ];
-                      let name := fresh "T" in
-                      destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
-                        unfold triggerNB; rewrite bind_vis (*** <---------- this is counter-intuitive. Any good idea? ***);
-                        try step|]
-                    end
+Ltac unfoldr term :=
+  first[
+      unfold term at 10|
+      unfold term at 9|
+      unfold term at 8|
+      unfold term at 7|
+      unfold term at 6|
+      unfold term at 5|
+      unfold term at 4|
+      unfold term at 3|
+      unfold term at 2|
+      unfold term at 1|
+      unfold term at 0
+    ]
 .
 
+Ltac step :=
+  match goal with
+  | [ |- SIRLocal.match_itr eq (assume _ ;; _) (assume _ ;; _) ] =>
+    fail "implement it. unfoldr assume; remember LHS as tmp; unfoldr assume; subst tmp"
+  | [ |- SIRLocal.match_itr eq (guarantee _ ;; _) (guarantee _ ;; _) ] =>
+    fail "implement it. unfoldr guarantee; remember LHS as tmp; unfoldr guarantee; subst tmp"
+  | [ |- SIRLocal.match_itr eq (assume ?P ;; _) _ ] =>
+    unfoldr assume;
+    let name := fresh "_ASSUME" in
+    destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
+      unfold triggerUB;
+      rewrite bind_vis (*** <---------- this is counter-intuitive. Any good idea? ***);
+      pfold; by (econs; eauto)|irw]
+  | [ |- SIRLocal.match_itr eq (guarantee ?P ;; _) _ ] =>
+    unfoldr guarantee;
+    let name := fresh "_GUARANTEE" in
+    destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
+      contradict name|irw]
+  | [ |- SIRLocal.match_itr eq ((match ?x with _ => _ end) >>= guaranteeK _)
+                            (match ?y with _ => _ end) ] =>
+    tryif (check_equal x y)
+    then let name := fresh "_DES" in
+         destruct x eqn:name; clarify; irw
+    else fail
+  | [ |- SIRLocal.match_itr eq (triggerUB >>= _) _ ] =>
+    unfold triggerUB; irw;
+    pfold; by (econs; eauto)
+  | [ |- SIRLocal.match_itr eq _ (triggerNB >>= _) ] =>
+    unfold triggerNB; irw;
+    pfold; by (econs; eauto)
+  | [ |- SIRLocal.match_itr eq (guaranteeK ?P ?x) _ ] =>
+    unfold guaranteeK;
+    let name := fresh "_GUARANTEEK" in
+    destruct (ClassicalDescription.excluded_middle_informative (P x)) as [name|name]; cycle 1; [
+      contradict name|irw]
+  | [ |- SIRLocal.match_itr eq (Ret _) (Ret _) ] =>
+    pfold; try (by econs; eauto)
+  | [ |- SIRLocal.match_itr eq (Vis (subevent _ (ICall _ _ _ _)) _)
+                            (Vis (subevent _ (ICall _ _ _ _)) _) ] =>
+    pfold; eapply match_icall; ss; et
+  | [ |- HProper _ _ _ ] => ii
+  | [ H: SALL _ _ _ |- _ ] => r in H; des_ifs_safe; des; clarify
+  | [ |- upaco2 (_match_itr ?SO) bot2 _ _ ] =>
+    left;
+    replace (paco2 (_match_itr SO) bot2) with (SIRLocal.match_itr (@eq owned_heap)) by ss;
+    irw
+  end
+.
 
+(*** TODO: make setoid rewrite under "Int.repr" or "Int.eqm" ***)
+Lemma Int_repr_signed_repr
+      x
+  :
+    Int.repr (Int.signed (Int.repr x)) = Int.repr x
+.
+Proof.
+  eapply Int.eqm_samerepr.
+  eapply Int.eqm_trans.
+  { eapply Int.eqm_signed_unsigned. }
+  eapply Int.eqm_sym.
+  eapply Int.eqm_unsigned_repr.
+Qed.
 
-(* Hint Unfold assume guarantee assumeK guaranteeK triggerUB triggerNB unwrapU unwrapN. *)
+(*** NOTE: Current automation has some drawbacks.
+Consider the following scenario.
+```
+guarantee P;;
+guarantee Q;;
+```
+In the course of proving "P", we may prove some knowledge "R".
+However, such knowledge is lost when it comes to prove "Q".
+
+Possible solutions:
+(1) For each intermediate knowledge "R", put explicit "guarantee".
+(2) Make tactic to stop before each "guarantee".
+(3) User manuallys controls "step" tactic (not just "repeat"ing it)
+ ***)
 Theorem correct: rusc defaultR [Fib3.module: Mod.t] [Fib2.module: Mod.t].
 Proof.
-  assert(AA := range_to_nat).
-  assert(SUCPRED := succ_pred).
-
   eapply SIRLocal.correct with (SO := eq); ss.
   prog_tac.
-  ginit. { i. eapply cpn2_wcompat; eauto with paco. }
+  (* replace (f_fib oh_tgt m vs) with (f_fib oh_tgt m vs >>= (fun x => Ret x)); cycle 1. *)
+  (* { irw. ss. } *)
   unfold Fib3.f_fib, f_fib.
-  step_assume.
-  unfold precond, parse_arg in *. des. des_ifs_safe. irw. rewrite T. irw.
-  destruct n eqn:U.
-  { rewrite bind_ret_l. clarify.
-    assert(i = Int.zero).
-    { unfold to_nat_opt in *. des_ifs.
-      assert((Int.signed i) = 0).
-      { apply Z2Nat.inj; ss. }
-      apply func_app with (f:=Int.repr) in H. rewrite Int.repr_signed in H. ss.
-    }
-    clarify. rewrite Int.eq_true. step_guaranteeK.
-    { unfold postcond, NW in *. des_ifs; repeat (Psimpl; des; ss; et). clarify. }
-    step.
-  }
-  destruct n0 eqn:V.
-  { rewrite bind_ret_l. u.
-    assert(i = Int.one).
-    { unfold to_nat_opt in *. des_ifs.
-      assert((Int.signed i) = 1).
-      { apply Z2Nat.inj; ss. }
-      apply func_app with (f:=Int.repr) in H. rewrite Int.repr_signed in H. ss.
-    }
-    clarify. rewrite Int.eq_true. step_guaranteeK.
-    { des_ifs; repeat (Psimpl; des; ss; et). }
-    step.
-  }
-  Fail rewrite bind_unwrapN. (*** <---------- TODO: FIXIT ***)
-  assert(R: Int.min_signed <= Z.of_nat n0 <= Int.max_signed).
-  { unfold to_nat_opt in *. des_ifs.
-    generalize (Nat2Z.is_nonneg (S n1)); i. generalize Int.min_signed_neg; i.
-    generalize (Int.signed_range i); i.
-    split; try xomega.
-    assert(Z.of_nat (S (S n1)) <= Int.max_signed).
-    { rewrite <- H0. rewrite Z2Nat.id; ss. xomega. }
+  repeat step.
+  { r in _ASSUME. r. des. des_ifs. esplits; et.
+    apply_all_once Int.same_if_eq. clarify. ss. u in *. des_ifs. }
+  { r in _ASSUME. r. des. des_ifs. esplits; et.
+    apply_all_once Int.same_if_eq. clarify. ss. u in *. des_ifs. }
+  { r in _ASSUME. r. des. ss. u in *. des_ifs; et. exfalso.
+    (*** TODO: automate integer reasoning ***)
+    rewrite Int.eq_signed in *. des_ifs. clear_tac.
+    rewrite Int.signed_zero in *. rewrite Int.signed_one in *; ss.
+    rewrite Int.sub_signed in *; rewrite (Int.signed_repr 2) in *; ss.
+    rewrite Int.signed_repr in *; cycle 1.
+    { generalize (Int.signed_range i); i. generalize Int.min_signed_neg; i. split; try xomega. }
     xomega.
   }
-  assert(R0: Int.min_signed <= Z.of_nat n <= Int.max_signed).
-  { unfold to_nat_opt in *. des_ifs.
-    generalize (Nat2Z.is_nonneg (S n1)); i. generalize Int.min_signed_neg; i.
-    generalize (Int.signed_range i); i.
-    split; try xomega.
-    assert(Z.of_nat (S (S n1)) <= Int.max_signed).
-    { rewrite <- H0. rewrite Z2Nat.id; ss. xomega. }
-    xomega.
+  { des_ifs. des. clarify. r in _ASSUME. r in _GUARANTEE. r. des. u in *. des_ifs; et. exfalso.
+    (*** TODO: automate integer reasoning ***)
+    rewrite Int.eq_signed in *. des_ifs. clear_tac.
+    rewrite Int.signed_zero in *. rewrite Int.signed_one in *; ss.
+    rewrite Int.sub_signed in *.
+    generalize (Int.signed_range i); i. generalize Int.min_signed_neg; i.
+    rewrite (Int.signed_repr 1) in *; ss; try (by xomega).
+    rewrite (Int.signed_repr 2) in *; ss; try (by xomega).
+    rewrite (Int.signed_repr) in *; ss; try (by xomega).
   }
-  (* destruct (to_nat_opt (of_nat n0)) eqn:W; cbn; cycle 1. *)
-  (* { exfalso. unfold to_nat_opt in *. des_ifs. psimpl. unfold of_nat in *. rewrite Int.signed_repr in *; ss. xomega. } *)
-  assert(~Int.eq i Int.zero).
-  { ii. apply_all_once Int.same_if_eq. clarify. }
-  assert(~Int.eq i Int.one).
-  { ii. apply_all_once Int.same_if_eq. clarify. }
-  des_ifs_safe.
-  rewrite ! AA; try lia. cbn.
-  step_guarantee.
-  { clear - R T0. u in T0. des_ifs. lia. }
-  irw.
-  step_guarantee.
-  { Psimpl. contradict T1; eauto. }
-  irw.
-  clear_tac. clear T0.
-  assert(U: of_nat n1 = Int.sub i (Int.repr 2)).
-  { unfold to_nat_opt in *. des_ifs. unfold of_nat.
-    eapply SUCPRED in H0; des.
-    eapply SUCPRED in H0; des. ss. clarify.
-    (* rewrite <- Nat.sub_add_distr. ss. *)
-    rewrite Nat2Z.inj_sub; ss. rewrite Nat2Z.inj_sub; ss. rewrite <- Z.sub_add_distr; ss.
-    rewrite <- Int_sub_repr. f_equal. rewrite Z2Nat.id; ss. rewrite Int.repr_signed; ss.
+  { des_ifs_safe. des; clarify. ss. unfold precond, postcond in *.
+    u in *. des. des_ifs_safe. clear_tac. esplits; et.
+    f_equal. rewrite Int.add_signed.
+    (*** TODO: automate integer reasoning ***)
+    rewrite Int.eq_signed in *. des_ifs. clear_tac.
+    rewrite Int.signed_zero in *. rewrite Int.signed_one in *; ss.
+    rewrite ! Int.sub_signed in *.
+    generalize (Int.signed_range i); i. generalize Int.min_signed_neg; i.
+    rewrite (Int.signed_repr 1) in *; ss; try (by xomega).
+    rewrite (Int.signed_repr 2) in *; ss; try (by xomega).
+    rewrite (Int.signed_repr (Int.signed i - 2)) in *; ss; try (by xomega).
+    rewrite (Int.signed_repr (Int.signed i - 1)) in *; ss; try (by xomega).
+
+    assert(T: exists m,
+              Z.to_nat (Int.signed i - 2) = m /\
+              Z.to_nat (Int.signed i - 1) = S m /\
+              Z.to_nat (Int.signed i) = S (S m)
+          ).
+    { destruct (Z.to_nat (Int.signed i)) eqn:T; ss.
+      { rewrite <- Nat2Z.id in T. eapply Z2Nat.inj in T; ss. }
+      destruct n1 eqn:U; ss.
+      { rewrite <- Nat2Z.id in T. eapply Z2Nat.inj in T; ss. }
+      esplits; eauto.
+      - rewrite ! Z2Nat.inj_sub; ss. xomega.
+      - rewrite ! Z2Nat.inj_sub; ss. xomega.
+    }
+    des. rewrite T. rewrite T0. rewrite T1. rewrite fib_nat_recurse.
+    rewrite Nat2Z.inj_add. rewrite <- ! Int_add_repr. rewrite ! Int_repr_signed_repr. ss.
   }
-  rewrite <- U. step.
-  sii S. r in S. des_ifs_safe. des. clarify.
-  rewrite bind_bind.
-  (* unfold assume at 2. *)
-  step_assume. des. clarify.
-  rewrite bind_ret_l.
-  rewrite bind_bind.
-  assert(V: of_nat (S n) = Int.sub i (Int.repr 1)).
-  { unfold to_nat_opt in *. des_ifs. unfold of_nat.
-    eapply SUCPRED in H0; des.
-    eapply SUCPRED in H0; des. ss. clarify.
-    rewrite Nat.sub_1_r. rewrite Nat.succ_pred; ss; cycle 1.
-    { intro X. rewrite X in *. inv H2. }
-    rewrite Nat2Z.inj_sub; ss.
-    rewrite <- Int_sub_repr. f_equal. rewrite Z2Nat.id; ss. rewrite Int.repr_signed; ss.
-  }
-  cbn.
-  step_guarantee.
-  { clear - R1 T0. u in T0. des_ifs. lia. }
-  irw.
-  step_guarantee.
-  { eapply Classical_Pred_Type.not_ex_all_not in T1. contradict T1; eauto. }
-  irw. rewrite V. step.
-  sii S. r in S. des_ifs_safe; des; clarify.
-  irw.
-  step_assume.
-  des; des_ifs_safe. irw.
-  step_guaranteeK.
-  { unfold postcond, parse_arg in *. unfold NW in *. des_ifs. repeat (Psimpl; des; ss; et). }
-  rewrite fib_nat_recurse.
-  unfold of_nat. rewrite Int_add_repr. rewrite Nat2Z.inj_add. clear_tac. step.
 Qed.

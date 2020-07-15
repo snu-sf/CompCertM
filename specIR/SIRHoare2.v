@@ -40,24 +40,19 @@ Section OWNEDHEAP.
 
 Variable mi: string.
 Variable owned_heap: Type.
-Variable _fn _fn_ru: ident.
-Variable precond: owned_heap -> mem -> list val -> Prop.
-Variable postcond: owned_heap -> mem -> list val -> (owned_heap * (mem * val)) -> Prop.
+
+Record funspec: Type := mk {
+  ru: ident;
+  precond: owned_heap -> mem -> list val -> Prop;
+  postcond: owned_heap -> mem -> list val -> (owned_heap * (mem * val)) -> Prop;
+}
+.
+
+Variable manifesto: ident -> option funspec.
+
 Let sim_st := sim_st (@eq owned_heap).
 
 
-
-
-Goal forall fname (oh0: owned_heap) m0 vs0 (k: (owned_heap * (mem * val)) -> itree (E owned_heap) (owned_heap * (mem * val))),
-    (trigger (ICall fname oh0 m0 vs0) >>= assumeK (postcond oh0 m0 vs0) >>= k)
-    = ohmv <- trigger (ICall fname oh0 m0 vs0) ;; assume (postcond oh0 m0 vs0 ohmv) ;; k ohmv.
-Proof.
-  i.
-  rewrite bind_bind. f. f_equiv. ii. f.
-  unfold assumeK, assume. des_ifs; et.
-  - rewrite ! bind_ret_l. ss.
-  - unfold triggerUB. rewrite ! bind_vis. f. f_equiv. ii. ss.
-Qed.
 
 (*** sim syntax ***)
 Section SYNTAX.
@@ -81,19 +76,21 @@ Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
     _match_itr match_itr (Tau i_src) (Tau i_tgt)
 | match_icall
     fname oh0 m0 vs0 k_src k_tgt
-    (NEQ: fname <> _fn)
+    (NFOC: manifesto fname = None)
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
     _match_itr match_itr (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src)
                (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_tgt)
 | match_icall_fn
+    _fn _fn_ru pre post
     oh0 m0 vs0 k_src k_tgt
+    (FOC: manifesto _fn = Some (mk _fn_ru pre post))
     (MATCH: (eq ==> match_itr)%signature k_src k_tgt)
   :
     _match_itr match_itr (trigger (ICall _fn_ru oh0 m0 vs0) >>= k_src)
-               (guarantee (precond oh0 m0 vs0) ;;
+               (guarantee (pre oh0 m0 vs0) ;;
                 ohmv <- trigger (ICall _fn oh0 m0 vs0) ;;
-                assume (postcond oh0 m0 vs0 ohmv) ;;
+                assume (post oh0 m0 vs0 ohmv) ;;
                 k_tgt ohmv
                )
 | match_ecall
@@ -144,20 +141,20 @@ Section PROG.
 (*   trigger (EChoose { ohmv: (owned_heap * (mem * val)) | postcond oh0 m0 vs0 ohmv }) >>= (fun x => Ret (proj1_sig x)) *)
 (* . *)
 
-Definition fn_src (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_heap) (owned_heap * (mem * val)) :=
-  assume (precond oh0 m0 vs0) ;;
-  trigger (ICall _fn_ru oh0 m0 vs0)
-  >>= guaranteeK (postcond oh0 m0 vs0)
+Definition fn_src (fspec: funspec) (oh0: owned_heap) (m0: mem) (vs0: list val): itree (E owned_heap) (owned_heap * (mem * val)) :=
+  assume (fspec.(precond) oh0 m0 vs0) ;;
+  trigger (ICall fspec.(ru) oh0 m0 vs0)
+  >>= guaranteeK (fspec.(postcond) oh0 m0 vs0)
 .
 
-Inductive match_fn_focus (fn_ru fn_tgt: function owned_heap): Prop :=
+Inductive match_fn_focus (fspec: funspec) (fn_ru fn_tgt: function owned_heap): Prop :=
 | match_fn_intro
     fn_tgt_inner
     (SIM: (eq ==> eq ==> eq ==> match_itr) fn_ru fn_tgt_inner)
     (TGT: forall oh0 m0 vs0,
-        fn_tgt oh0 m0 vs0 = assume (precond oh0 m0 vs0) ;;
+        fn_tgt oh0 m0 vs0 = assume (fspec.(precond) oh0 m0 vs0) ;;
                             (fn_tgt_inner oh0 m0 vs0)
-                            >>= guaranteeK (postcond oh0 m0 vs0))
+                            >>= guaranteeK (fspec.(postcond) oh0 m0 vs0))
 .
 
 Definition match_fn (fn_src fn_tgt: function owned_heap): Prop :=
@@ -166,13 +163,18 @@ Definition match_fn (fn_src fn_tgt: function owned_heap): Prop :=
 
 Inductive match_prog (p_src p_tgt: program owned_heap): Prop :=
 | match_prog_intro
-    fn_ru (* rudiment *) fn_tgt
-    (FNSRC: p_src _fn = Some fn_src)
-    (FNTGT: p_tgt _fn = Some fn_tgt)
-    (RDSRC: p_src _fn_ru = Some fn_ru)
-    (RDTGT: p_tgt _fn_ru = None)
-    (FOCUS: match_fn_focus fn_ru fn_tgt)
-    (OTHERS: forall _fm (NEQ: _fm <> _fn) (NEQ: _fm <> _fn_ru),
+    (HOARES: forall
+        _fn fspec
+        (HOARE: manifesto _fn = Some fspec)
+      ,
+        exists fn_ru fn_tgt,
+          (<<FNSRC: p_src _fn = Some (fn_src fspec)>>) /\
+          (<<FNTGT: p_tgt _fn = Some (fn_tgt)>>) /\
+          (<<RUSRC: p_src fspec.(ru) = Some (fn_ru)>>) /\
+          (<<RUTGT: p_tgt fspec.(ru) = None>>) /\
+          (<<FOCUS: match_fn_focus fspec fn_ru fn_tgt>>)
+    )
+    (OTHERS: forall _fm (OTHER: manifesto _fm = None),
         option_rel match_fn (p_src _fm) (p_tgt _fm))
   :
     match_prog p_src p_tgt
@@ -228,7 +230,7 @@ Proof.
   - rewrite ! bind_vis. gstep. econs; eauto. ii. clarify.
     repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
   - rewrite ! bind_bind. gstep.
-    erewrite f_equal2; try eapply match_icall_fn; try refl; cycle 1.
+    erewrite f_equal2; try eapply match_icall_fn; try refl; et; cycle 1.
     { irw. f. f_equiv. ii. f_equiv. ii. f. irw. refl. }
     ii. clarify.
     repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. eauto with paco.
@@ -356,15 +358,13 @@ Section SIM.
       eapply CIH. eapply match_itr_bind; et.
       { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
       inv SIMP.
-      destruct (ident_eq fname _fn_ru).
-      { clarify. des_ifs_safe. pfold. econs; et. }
       exploit OTHERS; et. intro T. r in T. des_ifs; cycle 1.
       { pfold. econs; et. }
       exploit T; et.
     - step_guarantee. irw. step.
       rewrite <- ! unfold_interp_mrec.
       gbase. eapply CIH.
-      inv SIMP.
+      inv SIMP. exploit HOARES; et. i; des. ss.
       des_ifs_safe. inv FOCUS. rewrite TGT. irw.
       step_assume; ss. irw.
       eapply match_itr_bind; et.
@@ -402,10 +402,10 @@ Section SIM.
   Proof.
     {
       ii.
-      destruct (eq_block fname _fn).
+      dup SIMP. inv SIMP0.
+      destruct (manifesto fname) eqn:T.
       {
-        clarify.
-        dup SIMP. inv SIMP0.
+        exploit HOARES; et. i; des.
         unfold interp_program, interp_function, mrec.
         irw. des_ifs. inv FOCUS. rewrite TGT.
         unfold fn_src. cbn.
@@ -425,12 +425,9 @@ Section SIM.
         eapply SIM; et.
       }
       eapply match_prog_sim_st; ss.
-      inv SIMP.
-      destruct (eq_block fname _fn_ru).
-      { des_ifs. pfold. econs; et. }
-      exploit OTHERS; et. intro T. r in T. des_ifs; cycle 1.
+      exploit OTHERS; et. intro U. r in U. des_ifs; cycle 1.
       { pfold. econs; et. }
-      exploit T; et.
+      exploit U; et.
     }
   Qed.
 

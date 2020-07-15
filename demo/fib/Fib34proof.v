@@ -19,6 +19,7 @@ Require Import ModSemProps.
 Require Import Program.
 Require Import SIRProps.
 Require Import ITreelib.
+Require Import SIRHoare2.
 From Coq Require Import
      Morphisms RelationClasses.
 (*** TODO: export in in SIRCommon or somewhere ***)
@@ -27,67 +28,26 @@ Set Implicit Arguments.
 
 
 
-Ltac iby1 TAC :=
-  first [
-      instantiate (1:= fun '(_, (_, _)) => _); irw; TAC|
-      instantiate (1:= fun '(_, (_, _)) => _ <- _ ;; _); irw; TAC|
-      instantiate (1:= fun '(_, (_, _)) => _ <- (_ <- _ ;; _) ;; _); irw; TAC|
-      instantiate (1:= fun '(_, (_, _)) => _ <- (_ <- (_ <- _ ;; _) ;; _) ;; _); irw; TAC|
-      instantiate (1:= fun '(_, (_, _)) => _ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _); irw; TAC|
-      instantiate (1:= fun '(_, (_, _)) => _ <- (_ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _) ;; _); irw; TAC|
-      fail
-    ]
-.
-
-Ltac step :=
-  match goal with
-  | [ |- (_ ==> _)%signature _ _ ] => ii; clarify
-  | [ |- SIRHoare.match_itr _ _ _ _ (_ <- _ ;; _) (_ <- _ ;; _) ] => f_equiv; cycle 1
-  | [ |- SIRHoare.match_itr _ _ _ _ (unwrapN _) (unwrapN _) ] => 
-    pfold; unfold unwrapN; des_ifs; try (by econs; et)
-  | [ |- SIRHoare.match_itr _ _ _ _
-                            (match _ with _ => _ end)
-                            (match _ with _ => _ end) ] => des_ifs
-  | [ |- SIRHoare.match_itr _ _ _ _ (Ret _) (Ret _) ] =>
-    pfold; try (by econs; et)
-  | [ |- SIRHoare.match_itr _ _ _ _ (guarantee _) (guarantee _) ] => 
-    pfold; unfold guarantee; des_ifs; try (by econs; et)
-  end
-.
 (*** TODO: change unwrapU/unwrapN/assume/guarantee into notation?
      ---> It does not work well. I didn't type "parse only" but it works only for parsing.
           In other words, it does not work in printing, which results in unreadable code during the proof
  ***)
-(*** TODO: generalize "Hoare" like "BCE" --> put manifesto. Maybe this is better for automation too ***)
+
+Definition manifesto (fname: ident): option (funspec owned_heap) :=
+  if (ident_eq fname Fib0._fib: bool)
+  then Some (mk _fib_ru FibHeader.precond FibHeader.postcond)
+  else None
+.
+Definition images: ident -> bool := ident_eq _fib_ru.
 
 Theorem correct: rusc defaultR [Fib4.module: Mod.t] [Fib3.module: Mod.t].
 Proof.
-  eapply SIRHoare.correct with (_fn:=Fib0._fib) (_fn_ru:=_fib_ru)
-                               (precond:=precond) (postcond:=postcond); et.
+  eapply SIRHoare2.correct with (manifesto:=manifesto) (images:=images); et.
+  { unfold images, manifesto. images_tac. }
   econs; ss; et.
-  - econs; ss; cycle 1.
-    + ii. iby refl.
-    (* + ii. rewrite bind_bind. refl. *)
-    + unfold f_fib_ru.
-
-      repeat step.
-
-      pfold.
-      erewrite f_equal; try eapply match_icall_fn; cycle 1.
-      { f. f_equiv. ii. f_equiv. ii. des_ifs_safe. f_equiv. ii. f.
-        instantiate (1:= fun '(oh, (m, v)) => _). refl. }
-
-      ii. clarify. des_ifs_safe. left.
-      f_equiv; cycle 1.
-      { unfold guarantee, triggerNB. pfold. des_ifs; econs; et. }
-
-      ii. clarify. pfold.
-      erewrite f_equal; try eapply match_icall_fn; cycle 1.
-      { f. f_equiv. ii. f_equiv. ii. des_ifs_safe. f_equiv. ii. f.
-        instantiate (1:= fun '(oh, (m, v)) => _). refl. }
-
-      ii. clarify. des_ifs_safe. left.
-
-      pfold. econs; et.
+  - ii; ss. dup HOARE. unfold manifesto in HOARE. des_ifs; des_sumbool; clarify; ss. esplits; ss; eauto.
+    econs; ss; et; cycle 1.
+    + ii. iby3 ltac:(irw; refl).
+    + unfold f_fib_ru. repeat step.
   - prog_tac.
 Qed.

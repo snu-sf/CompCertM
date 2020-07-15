@@ -49,6 +49,13 @@ Record funspec: Type := mk {
 .
 
 Variable manifesto: ident -> option funspec.
+Variable images: ident -> bool.
+Hypothesis WFIMGS: forall
+    _fn
+  ,
+    (<<IMAGE: images _fn>>) <->
+    exists _fm pre post, manifesto _fm = Some (mk _fn pre post)
+.
 
 Let sim_st := sim_st (@eq owned_heap).
 
@@ -65,6 +72,8 @@ Let itr := itree (E owned_heap) S.
 
 Inductive _match_itr (match_itr: itr -> itr -> Prop): itr -> itr -> Prop :=
 | match_ret
+    (*** I want "_match_itr" to carry "images", so here goes the trick ***)
+    (__MARKER__: images = images)
     s
   :
     _match_itr match_itr (Ret s) (Ret s)
@@ -174,8 +183,18 @@ Inductive match_prog (p_src p_tgt: program owned_heap): Prop :=
           (<<RUTGT: p_tgt fspec.(ru) = None>>) /\
           (<<FOCUS: match_fn_focus fspec fn_ru fn_tgt>>)
     )
-    (OTHERS: forall _fm (OTHER: manifesto _fm = None),
-        option_rel match_fn (p_src _fm) (p_tgt _fm))
+    (OTHERS: forall
+        _fn
+        (DOMAIN: manifesto _fn = None)
+        (IMAGE: images _fn = false)
+        (* (IMAGE: forall _fm, match manifesto _fm with *)
+        (*                     | Some (mk _fn _ _) => False *)
+        (*                     |  _ => True *)
+        (*                     end) *)
+        (* (IMAGE: forall _fm pre post, manifesto _fm <> Some (mk _fn pre post)) *)
+        (* (IMAGE: ~exists _fm pre post, manifesto _fm = Some (mk _fn pre post)) *)
+      ,
+        option_rel match_fn (p_src _fn) (p_tgt _fn))
   :
     match_prog p_src p_tgt
 .
@@ -358,6 +377,11 @@ Section SIM.
       eapply CIH. eapply match_itr_bind; et.
       { ii. clarify. repeat spc MATCH. hexploit1 MATCH; ss. pclearbot. et. }
       inv SIMP.
+      destruct (images fname) eqn:U.
+      {
+        eapply WFIMGS in U. des.
+        exploit HOARES; et. i; des. ss. des_ifs_safe. pfold. econs; et.
+      }
       exploit OTHERS; et. intro T. r in T. des_ifs; cycle 1.
       { pfold. econs; et. }
       exploit T; et.
@@ -425,9 +449,14 @@ Section SIM.
         eapply SIM; et.
       }
       eapply match_prog_sim_st; ss.
-      exploit OTHERS; et. intro U. r in U. des_ifs; cycle 1.
+      destruct (images fname) eqn:U.
+      {
+        eapply WFIMGS in U. des.
+        exploit HOARES; et. i; des. ss. des_ifs_safe. pfold. econs; et.
+      }
+      exploit OTHERS; et. intro V. r in V. des_ifs; cycle 1.
       { pfold. econs; et. }
-      exploit U; et.
+      exploit V; et.
     }
   Qed.
 
@@ -454,3 +483,47 @@ Hint Unfold match_itr match_fn.
 Hint Constructors match_fn_focus match_prog.
 Hint Resolve match_itr_mon: paco.
 Hint Constructors bindC: core.
+
+
+(*** tactics ***)
+Ltac in_images images _fn :=
+  let name := fresh "TMP" in
+  let name2 := fresh "TMP" in
+  let y := ltac:(eval compute in (images _fn)) in pose y as name;
+  repeat multimatch goal with
+         | [ H:= context[ident_eq ?A ?B] |- _ ] =>
+           check_equal H name;
+           destruct (ident_eq A B) as [name2|name2]; [|ss; fail 2]
+         end;
+  clear name; clear name2
+.
+
+Ltac step :=
+  multimatch goal with
+  | [ |- (_ ==> _)%signature _ _ ] => ii; clarify
+  | [ |- SIRHoare2.match_itr _ _ (_ <- _ ;; _) (_ <- _ ;; _) ] => f_equiv; cycle 1
+  | [ |- SIRHoare2.match_itr _ _ (unwrapN _) (unwrapN _) ] => 
+    pfold; unfold unwrapN; des_ifs; try (by econs; et)
+  | [ |- SIRHoare2.match_itr _ _ (match _ with _ => _ end) (match _ with _ => _ end) ] => des_ifs
+  | [ |- SIRHoare2.match_itr _ _ (Ret _) (Ret _) ] =>
+    pfold; try (by econs; et)
+  | [ |- SIRHoare2.match_itr _ _ (guarantee _) (guarantee _) ] => 
+    pfold; unfold guarantee; des_ifs; try (by econs; et)
+  | [ |- SIRHoare2.match_itr _ ?images (_ <- trigger (ICall ?_fn_ru _ _ _);; _) _ ] =>
+    (in_images images _fn_ru);
+    pfold; erewrite f_equal; try eapply match_icall_fn; et; [|iby1 grind]
+  | [ |- upaco2 (@SIRHoare2._match_itr _ ?manifesto ?images ?S) bot2 _ _ ] =>
+    left;
+    replace (paco2 (_match_itr manifesto images) bot2) with
+        (@SIRHoare2.match_itr _ manifesto images S) by ss
+  end
+.
+
+Lemma ident_eq_refl: forall x, ident_eq x x.
+Proof. i. des_sumbool. ss. Qed.
+
+Ltac images_tac :=
+  split; ii; ss;
+  [unfold NW in *; repeat (bsimpl; des; des_sumbool; clarify); cbn; esplits; erewrite ident_eq_refl; et
+  |des; des_ifs]
+.

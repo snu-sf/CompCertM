@@ -1596,8 +1596,8 @@ Ltac Psimpl_ :=
   | [ H: ~(?P \/ ?Q) |- _ ] => apply not_or_and in H
   | [ |- ~(?P \/ ?Q) ] => apply and_not_or
   | [ H: ~(forall n, ~?P n) |- _ ] => apply not_all_not_ex in H
-  | [ H: ~(forall n, ?P n) |- _ ] => apply not_all_ex_not in H
-  | [ H: ~(exists n, ?P n) |- _ ] => apply not_ex_all_not in H
+  | [ H: ~(forall n, ?P) |- _ ] => apply not_all_ex_not in H; destruct H as [n H]
+  | [ H: ~(exists n, ?P) |- _ ] => apply CoqlibC.not_ex_all_not in H; unfold NW in H
   | [ H: ~(exists n, ~?P n) |- _ ] => apply not_ex_not_all in H
   | [ |- ~(forall n, ?P n) ] => apply ex_not_not_all
   | [ |- ~(exists n, ?P n) ] => apply all_not_not_ex
@@ -1605,6 +1605,14 @@ Ltac Psimpl_ :=
 .
 
 Ltac Psimpl := repeat Psimpl_.
+
+Goal (~ forall (mm: nat), mm = 0%nat) -> exists n, n <> 0%nat.
+  ii. Psimpl. exists mm. assumption.
+Qed.
+
+Goal (~ exists (mm: nat), mm = 0%nat) -> forall mm, mm <> 0%nat.
+  intro H. Psimpl. assumption.
+Qed.
 
 Lemma iff_eta
       (P Q: Prop)

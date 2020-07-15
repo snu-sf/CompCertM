@@ -230,9 +230,7 @@ Proof.
   { clear - R T0. u in T0. des_ifs. lia. }
   irw.
   step_guarantee.
-  { Psimpl. (*** TODO: fixit ***)
-    eapply Classical_Pred_Type.not_ex_all_not in T1. contradict T1; eauto.
-  }
+  { Psimpl. contradict T1; eauto. }
   irw.
   clear_tac. clear T0.
   assert(U: of_nat n1 = Int.sub i (Int.repr 2)).

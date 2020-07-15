@@ -233,14 +233,28 @@ Hint Rewrite bind_bind : itree_axiom.
 Tactic Notation "irw" "in" ident(H) := repeat (autorewrite with itree_axiom in H; cbn in H).
 Tactic Notation "irw" := repeat (autorewrite with itree_axiom; cbn).
 
-Ltac iby TAC :=
+Ltac iby3 TAC :=
   first [
-      instantiate (1:= fun _ _ _ => _); irw; TAC|
-      instantiate (1:= fun _ _ _ => _ <- _ ;; _); irw; TAC|
-      instantiate (1:= fun _ _ _ => _ <- (_ <- _ ;; _) ;; _); irw; TAC|
-      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- _ ;; _) ;; _) ;; _); irw; TAC|
-      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _); irw; TAC|
-      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _) ;; _); irw; TAC|
+      instantiate (1:= fun _ _ _ => _); TAC|
+      instantiate (1:= fun _ _ _ => _ <- _ ;; _); TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- _ ;; _) ;; _); TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- _ ;; _) ;; _) ;; _); TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _); TAC|
+      instantiate (1:= fun _ _ _ => _ <- (_ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _) ;; _); TAC|
       fail
     ]
 .
+
+Ltac iby1 TAC :=
+  first [
+      instantiate (1:= fun '(_, (_, _)) => _); TAC|
+      instantiate (1:= fun '(_, (_, _)) => _ <- _ ;; _); TAC|
+      instantiate (1:= fun '(_, (_, _)) => _ <- (_ <- _ ;; _) ;; _); TAC|
+      instantiate (1:= fun '(_, (_, _)) => _ <- (_ <- (_ <- _ ;; _) ;; _) ;; _); TAC|
+      instantiate (1:= fun '(_, (_, _)) => _ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _); TAC|
+      instantiate (1:= fun '(_, (_, _)) => _ <- (_ <- (_ <- (_ <- (_ <- _ ;; _) ;; _) ;; _) ;; _) ;; _); TAC|
+      fail
+    ]
+.
+
+Ltac grind :=  f; repeat (f_equiv; ii; des_ifs_safe); f.

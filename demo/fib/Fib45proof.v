@@ -35,16 +35,8 @@ Proof.
     prog_tac.
     { refl. }
     unfold Fib5.f_fib, f_fib.
-
-    {
-      eapply match_itr_bind_assume.
-      eapply match_itr_bind; cycle 1.
-      { refl. }
-      ii. rr in H. des_ifs_safe; des; clarify. repeat autorewrite with itree_axiom.
-      pfold. des_ifs.
-      { r in p. des_ifs; des; clarify. econs; et. eexists (exist _ _ _); cbn. left. pfold. econs; et. }
-      econs; et.
-    }
+    repeat step. des_ifs; irw; try (pfold; econs; et). des; clarify.
+    eexists (exist _ _ _); cbn. left. pfold. econs; et.
   }
   Unshelve.
   - sk_incl_tac.

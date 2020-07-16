@@ -404,9 +404,9 @@ Ltac unfoldr term :=
 Ltac step :=
   match goal with
   | [ |- SIRLocal.match_itr eq (assume _ ;; _) (assume _ ;; _) ] =>
-    fail "implement it. unfoldr assume; remember LHS as tmp; unfoldr assume; subst tmp"
+    eapply match_itr_bind_assume; irw
   | [ |- SIRLocal.match_itr eq (guarantee _ ;; _) (guarantee _ ;; _) ] =>
-    fail "implement it. unfoldr guarantee; remember LHS as tmp; unfoldr guarantee; subst tmp"
+    eapply match_itr_bind_guarantee; irw
   | [ |- SIRLocal.match_itr eq (assume ?P ;; _) _ ] =>
     unfoldr assume;
     let name := fresh "_ASSUME" in

@@ -115,7 +115,7 @@ Proof.
   (* replace (f_fib oh_tgt m vs) with (f_fib oh_tgt m vs >>= (fun x => Ret x)); cycle 1. *)
   (* { irw. ss. } *)
   unfold Fib3.f_fib, f_fib.
-  repeat step.
+  repeat step; try (by r in _ASSUME; des; ss).
   { r in _ASSUME. r. des. des_ifs. esplits; et.
     apply_all_once Int.same_if_eq. clarify. ss. u in *. des_ifs. }
   { r in _ASSUME. r. des. des_ifs. esplits; et.

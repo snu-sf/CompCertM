@@ -37,7 +37,7 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
         '(oh2, (m2, y2)) <- trigger (ICall _fib oh1 m1 vs1) ;;
         (assume (postcond oh1 m1 vs1 (oh2, (m2, y2)))) ;;
         Ret (oh2, (m2, Val.add y1 y2))
-  | _ => triggerUB
+  | _ => triggerNB (*** <---- NOTE: In Fib2, it was UB. This proof obligation is needed for BCE ***)
   end
 
   >>= guaranteeK (postcond oh0 m0 vs0)

@@ -22,9 +22,6 @@ Set Implicit Arguments.
 
 
 
-
-
-
 Ltac step := gstep; econs; et.
 Ltac step_assume := match goal with
                     | |- context[assume ?P ;; _] =>
@@ -108,27 +105,21 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 
-Theorem correct: rusc defaultR [Fib5_old.module: Mod.t] [Fib4_old.module: Mod.t].
+Theorem correct: rusc defaultR [Fib5.module: Mod.t] [Fib4.module: Mod.t].
 Proof.
   etrans; cycle 1.
   { mimic. eapply SIREutt.correct; ss. prog_tac.
     { refl. }
-    unfold f_fib.
-
-    replace SIRCommon.guaranteeK with guaranteeK; cycle 1.
-    { unfold guaranteeK, SIRCommon.guaranteeK. unfold myif.
-      repeat (eapply functional_extensionality_dep; ii). des_ifs. }
-
-    unfold guaranteeK. do 2 setoid_rewrite <- tau_eutt at 4. refl.
+    unfold f_fib. rewrite guaranteeK2_spec. unfold guaranteeK2. do 2 setoid_rewrite <- tau_eutt at 4.
+    refl.
   }
   {
     eapply SIRLocal.correct with (SO := eq); ss.
     prog_tac.
     { refl. }
-    ginit.
-    { i. eapply cpn2_wcompat; eauto with paco. }
-    ii; clarify.
-    unfold Fib5_old.f_fib, f_fib.
+    unfold Fib5.f_fib, f_fib.
+    eapply match_itr_bind.
+    ginit. { i. eapply cpn2_wcompat; eauto with paco. } ii; clarify.
     step_assume.
     { unfold assume. des_ifs. unfold triggerUB. irw. step. }
     unfold assume. des_ifs.
@@ -142,5 +133,5 @@ Proof.
   }
   Unshelve.
   - sk_incl_tac.
-  - ss. des_sumbool. des_ifs.
+  - ss.
 Qed.

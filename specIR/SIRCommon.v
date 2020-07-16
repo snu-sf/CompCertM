@@ -192,6 +192,33 @@ Definition guarantee E `{EventE -< E} (P: Prop): itree E unit := Eval red in gua
 
 
 
+
+(*** for setoid rewrites ***)
+Definition assumeK2 E X `{EventE -< E} (P: X -> Prop): ktree E X X :=
+  fun x =>
+    mymatch (ClassicalDescription.excluded_middle_informative (P x))
+            (Ret x)
+            triggerUB
+.
+
+Definition assume2 E `{EventE -< E} (P: Prop): itree E unit := Eval red in assumeK2 (fun _ => P) tt.
+
+Definition guaranteeK2 E X `{EventE -< E} (P: X -> Prop): ktree E X X :=
+  fun x =>
+    mymatch (ClassicalDescription.excluded_middle_informative (P x))
+            (Ret x)
+            triggerNB
+.
+
+Definition guarantee2 E `{EventE -< E} (P: Prop): itree E unit := Eval red in guaranteeK2 (fun _ => P) tt.
+
+Lemma assumeK2_spec: assumeK = assumeK2. reflexivity. Qed.
+Lemma assume2_spec: assume = assume2. reflexivity. Qed.
+Lemma guaranteeK2_spec: guaranteeK = guaranteeK2. reflexivity. Qed.
+Lemma guarantee2_spec: guarantee = guarantee2. reflexivity. Qed.
+
+
+
 Require Export AdequacyLocal RUSC.
 Require Import SimMemId SoundTop.
 Definition defaultR: program_relation.t -> Prop := eq (mkPR SimMemId SimSymbId Top).

@@ -258,3 +258,25 @@ Ltac iby1 TAC :=
 .
 
 Ltac grind :=  f; repeat (f_equiv; ii; des_ifs_safe); f.
+
+Definition myif X (c: bool) (l r: X): X := if c then l else r.
+Hint Unfold myif.
+
+Definition mymatch C1 C2 X (c: {C1} + {C2}) (l r: X): X := if c then l else r.
+Hint Unfold mymatch.
+
+Global Instance eutt_myif {E R} (rr: R -> R -> Prop) :
+  Proper (eq ==> eutt rr ==> eutt rr ==> eutt rr) (@myif (itree E R))
+.
+Proof.
+  ii. clarify. unfold myif. des_ifs.
+Qed.
+
+Global Instance eutt_mymatch C1 C2 {E R} (rr: R -> R -> Prop) :
+  Proper (eq ==> eutt rr ==> eutt rr ==> eutt rr) (@mymatch C1 C2 (itree E R))
+.
+Proof.
+  ii. clarify. unfold mymatch. des_ifs.
+Qed.
+
+Ltac des_ifs := unfold mymatch, myif in *; sflib.des_ifs.

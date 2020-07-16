@@ -108,39 +108,13 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 
 
 
-Definition myif X (c: bool) (l r: X): X := if c then l else r.
-Hint Unfold myif.
-Definition guaranteeK E X `{EventE -< E} (P: X -> Prop): ktree E X X :=
-  fun x =>
-    myif (ClassicalDescription.excluded_middle_informative (P x))
-         (Ret x)
-         (triggerNB)
-.
-
-Require Import 
-     Morphisms
-     Setoid
-     RelationClasses
-.
-Global Instance eutt_myif {E R} (rr: R -> R -> Prop) :
-  Proper (eq ==> eutt rr ==> eutt rr ==> eutt rr) (@myif (itree E R))
-.
-Proof.
-  ii. clarify. unfold myif. des_ifs.
-Qed.
-
 Theorem correct: rusc defaultR [Fib5_old.module: Mod.t] [Fib4_old.module: Mod.t].
 Proof.
   etrans; cycle 1.
   { mimic. eapply SIREutt.correct; ss. prog_tac.
     { refl. }
-    unfold f_fib.
-
-    replace SIRCommon.guaranteeK with guaranteeK; cycle 1.
-    { unfold guaranteeK, SIRCommon.guaranteeK. unfold myif.
-      repeat (eapply functional_extensionality_dep; ii). des_ifs. }
-
-    unfold guaranteeK. do 2 setoid_rewrite <- tau_eutt at 4. refl.
+    unfold f_fib. rewrite guaranteeK2_spec. unfold guaranteeK2. do 2 setoid_rewrite <- tau_eutt at 4.
+    refl.
   }
   {
     eapply SIRLocal.correct with (SO := eq); ss.
@@ -163,5 +137,5 @@ Proof.
   }
   Unshelve.
   - sk_incl_tac.
-  - ss. des_sumbool. des_ifs.
+  - ss.
 Qed.

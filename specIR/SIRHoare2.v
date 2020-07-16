@@ -500,6 +500,8 @@ Ltac in_images images _fn :=
 
 Ltac step :=
   multimatch goal with
+  | [ |- SIRHoare2.match_itr _ _ triggerUB triggerUB ] => unfold triggerUB; pfold; by (econs; et)
+  | [ |- SIRHoare2.match_itr _ _ triggerNB triggerNB ] => unfold triggerNB; pfold; by (econs; et)
   | [ |- (_ ==> _)%signature _ _ ] => ii; clarify
   | [ |- SIRHoare2.match_itr _ _ (_ <- _ ;; _) (_ <- _ ;; _) ] => f_equiv; cycle 1
   | [ |- SIRHoare2.match_itr _ _ (unwrapN _) (unwrapN _) ] => 

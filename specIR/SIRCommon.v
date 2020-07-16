@@ -23,7 +23,6 @@ Require Export ITreelib.
 Require Export AuxBuffer.
 
 Set Implicit Arguments.
-Set Universe Polymorphism.
 
 
 

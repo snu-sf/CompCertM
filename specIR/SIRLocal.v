@@ -312,6 +312,38 @@ Section SIM.
   Theorem correct: rusc defaultR [md_src: Mod.t] [md_tgt: Mod.t].
   Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.
 
+  Lemma match_itr_bind_assume
+        P x y
+        (MATCH: match_itr x y)
+    :
+      <<MATCH: match_itr (assume P ;; x) (assume P ;; y)>>
+  .
+  Proof.
+    Fail eapply match_itr_bind.
+    Fail progress f_equiv.
+    (*** Like in SIRHoare, we need to parameterize "match_itr" in order to do this.
+         However, we can't do that for arbitrary type S. (because it is not leibniz equality)
+         TODO: current design is somewhat unsatisfactory. Probably what we want is following:
+           - SIRLocalStrong: src/tgt can have different value/mem/owned_heap,
+                             but weak match_itr_bind
+           - SIRLocalWeak: src/tgt should have (leibniz) equal value/mem/owned_heap,
+                           but strong match_itr_bind
+     ***)
+    unfold assume. des_ifs; irw; ss.
+    unfold triggerUB. irw. pfold; econs; et.
+  Qed.
+
+  Lemma match_itr_bind_guarantee
+        P x y
+        (MATCH: match_itr x y)
+    :
+      <<MATCH: match_itr (guarantee P ;; x) (guarantee P ;; y)>>
+  .
+  Proof.
+    unfold guarantee. des_ifs; irw; ss.
+    unfold triggerNB. irw. pfold; econs; et.
+  Qed.
+
 End SIM.
 
 End OWNEDHEAP.
@@ -349,3 +381,71 @@ Section REFL.
   Qed.
 
 End REFL.
+
+
+
+(*** TODO: move to CoqlibC ***)
+Ltac unfoldr term :=
+  first[
+      unfold term at 10|
+      unfold term at 9|
+      unfold term at 8|
+      unfold term at 7|
+      unfold term at 6|
+      unfold term at 5|
+      unfold term at 4|
+      unfold term at 3|
+      unfold term at 2|
+      unfold term at 1|
+      unfold term at 0
+    ]
+.
+
+Ltac step :=
+  match goal with
+  | [ |- SIRLocal.match_itr eq (assume _ ;; _) (assume _ ;; _) ] =>
+    fail "implement it. unfoldr assume; remember LHS as tmp; unfoldr assume; subst tmp"
+  | [ |- SIRLocal.match_itr eq (guarantee _ ;; _) (guarantee _ ;; _) ] =>
+    fail "implement it. unfoldr guarantee; remember LHS as tmp; unfoldr guarantee; subst tmp"
+  | [ |- SIRLocal.match_itr eq (assume ?P ;; _) _ ] =>
+    unfoldr assume;
+    let name := fresh "_ASSUME" in
+    destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
+      unfold triggerUB;
+      rewrite bind_vis (*** <---------- this is counter-intuitive. Any good idea? ***);
+      pfold; by (econs; eauto)|irw]
+  | [ |- SIRLocal.match_itr eq (guarantee ?P ;; _) _ ] =>
+    unfoldr guarantee;
+    let name := fresh "_GUARANTEE" in
+    destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
+      contradict name|irw]
+  | [ |- SIRLocal.match_itr eq ((match ?x with _ => _ end) >>= guaranteeK _)
+                            (match ?y with _ => _ end) ] =>
+    tryif (check_equal x y)
+    then let name := fresh "_DES" in
+         destruct x eqn:name; clarify; irw
+    else fail
+  | [ |- SIRLocal.match_itr eq (triggerUB >>= _) _ ] =>
+    unfold triggerUB; irw;
+    pfold; by (econs; eauto)
+  | [ |- SIRLocal.match_itr eq _ (triggerNB >>= _) ] =>
+    unfold triggerNB; irw;
+    pfold; by (econs; eauto)
+  | [ |- SIRLocal.match_itr eq (guaranteeK ?P ?x) _ ] =>
+    unfold guaranteeK;
+    let name := fresh "_GUARANTEEK" in
+    destruct (ClassicalDescription.excluded_middle_informative (P x)) as [name|name]; cycle 1; [
+      contradict name|irw]
+  | [ |- SIRLocal.match_itr eq (Ret _) (Ret _) ] =>
+    pfold; try (by econs; eauto)
+  | [ |- SIRLocal.match_itr eq (Vis (subevent _ (ICall _ _ _ _)) _)
+                            (Vis (subevent _ (ICall _ _ _ _)) _) ] =>
+    pfold; eapply match_icall; ss; et
+  | [ |- HProper _ _ _ ] => ii
+  | [ H: SALL _ _ _ |- _ ] => r in H; des_ifs_safe; des; clarify
+  | [ |- upaco2 (_match_itr ?SO) bot2 _ _ ] =>
+    left;
+    replace (paco2 (_match_itr SO) bot2) with (SIRLocal.match_itr SO) by ss;
+    irw
+  end
+.

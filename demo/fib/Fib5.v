@@ -26,11 +26,11 @@ Definition f_fib_ru (oh0: owned_heap) (m0: mem) (vs0: list val):
       then Ret (oh0, (m0, (Vint Int.one)))
       else
         let vs0 := [Vint (Int.sub n (Int.repr 2))] in
-        guarantee (Int.lt (Int.sub n (Int.repr 2)) n) ;;
+        guarantee (Int.ltu (Int.sub n (Int.repr 2)) n) ;;
         '(oh1, (m1, y1)) <- trigger (ICall _fib_ru oh0 m0 vs0) ;;
 
         let vs1 := [Vint (Int.sub n (Int.repr 1))] in
-        guarantee (Int.lt (Int.sub n (Int.repr 1)) n) ;;
+        guarantee (Int.ltu (Int.sub n (Int.repr 1)) n) ;;
         '(oh2, (m2, y2)) <- trigger (ICall _fib_ru oh1 m1 vs1) ;;
         Ret (oh2, (m2, Val.add y1 y2))
   | _ => triggerNB

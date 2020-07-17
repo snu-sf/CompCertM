@@ -184,173 +184,20 @@ Proof.
     ii. unfold f_fib_ru.
     des_ifs; try (by pfold; unfold triggerNB; irw; econs; et).
     irw. unfoldr guarantee. des_ifs; [irw|pfold; unfold triggerNB; irw; econs; et].
-    pfold. econs; et.
-    irw.
-    {
-      assert(0 <= (Int.signed i)).
-      { admit "". }
-      assert(0 <= (Int.signed (Int.sub i (Int.repr 2)))).
-      { admit "". }
-      unfold to_nat_opt.
-      des_ifs.
-      econs; et. econs; et.
-      cbn. rewrite range_to_nat; cycle 1.
-      { u in T. des_ifs. }
-      cbn. econs; et. econs; et.
-    }
-    {
-    des_ifs_safe.
-    des_ifs; irw; cycle 1.
-    { unfold triggerNB. irw. econs; et. }
-    des_ifs; try econs; et. irw.
-    step_guarantee.
-    { econs; et. }
-    irw.
-    econs; ss; et; cycle 1.
-    { cbn. rewrite range_to_nat; cycle 1.
-      { u in T. des_ifs. }
-      cbn. econs; et. econs; et.
-    }
+    pfold. econs; ss; et; cycle 1.
+    { econs; et. econs; et. }
     ii. esplits; et.
     { econs; et. econs 2; et. }
-    left. pfold. des_ifs. irw.
-    step_guarantee.
-    { econs; et. }
-    irw.
-    econs; ss; et; cycle 1.
-    { cbn. rewrite range_to_nat; cycle 1.
-      { u in T0. des_ifs. }
-      econs; et. econs; et.
-    }
-    ii. esplits; et.
+    left. des_ifs_safe.
+    irw. unfoldr guarantee. des_ifs; [irw|pfold; unfold triggerNB; irw; econs; et].
+    pfold. econs; ss; et; cycle 1.
     { econs; et. econs; et. }
-    left. pfold. des_ifs. econs; et.
+    ii. esplits; et.
+    { econs; et. instantiate (1:= (_, 0%nat)). econs 1; et. }
+    left. pfold. des_ifs. (*** WHY LONG? ***)
+    econs; et.
   }
 Unshelve.
   all: ss.
   all: try (by sk_incl_tac).
-Qed.
-
-Theorem lt_wf: well_founded Int.lt.
-Proof.
-  (* replace (fun x y => is_true (Int.lt x y)) with (fun x y => Z.lt (Int.signed x) (Int.signed y)); cycle 1. *)
-  (* { unfold Int.lt. apply func_ext2. ii. des_ifs. *)
-  (*   - apply AxiomsC.prop_ext. split; i; ss. *)
-  (*   - apply AxiomsC.prop_ext. split; i; ss. *)
-  (* } *)
-  (* replace (fun x y => Z.lt (Int.signed x) (Int.signed y)) with (ord_map Z.lt Int.signed); cycle 1. *)
-  (* { ss. } *)
-  (* eapply wf_map with (f:=Int.signed). *)
-  (* eapply Z.lt_wf. *)
-  assert(ACC: forall x: Z, 0 <= x < Int.modulus -> (Acc Int.lt (Int.repr x))).
-  {
-    intro x. pattern x.
-    eapply well_founded_ind.
-    { eapply Z.lt_wf. }
-    clear x.
-    i. ss.
-    econs; et. ii.
-    destruct (classic (x = 0)).
-    - exfalso. clarify. unfold Int.lt in H1. des_ifs.
-      rewrite Int.signed_repr in *; ss.
-      destruct y; ss. unfold Int.signed in *. ss. des_ifs; try xomega.
-      xomega.
-      xomega.
-    eapply H.
-  }
-  assert(ACC: forall x: Z, 0 <= x -> (forall i, Int.signed i = x -> Acc Int.lt i)).
-  { i. eapply Z_lt_induction; et. ii.
-    destruct (classic (0 < x0 )).
-    { eapply H1. instantiate (1:= x0 - 1). xomega. }
-    
-  }
-  ii. destruct a.
-  pattern (Int.signed a).
-  eapply well_founded_ind.
-  { eapply Z.lt_wf. }
-  i.
-Z_lt_abs_induction:
-  forall P : Z -> Prop,
-  (forall n : Z, (forall m : Z, Z.abs m < Z.abs n -> P m) -> P n) -> forall n : Z, P n
-Z_lt_induction:
-  forall P : Z -> Prop,
-  (forall x : Z, (forall y : Z, 0 <= y < x -> P y) -> P x) -> forall x : Z, 0 <= x -> P x
-Z.bi_induction:
-  forall P : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful Z.eq iff) P ->
-  P 0 -> (forall x : Z, P x <-> P (Z.succ x)) -> forall z : Z, P z
-Z.central_induction:
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z, A z -> (forall n : Z, A n <-> A (Z.succ n)) -> forall n : Z, A n
-Z.right_induction:
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z, A z -> (forall n : Z, z <= n -> A n -> A (Z.succ n)) -> forall n : Z, z <= n -> A n
-Z.right_induction':
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z,
-  (forall n : Z, n <= z -> A n) -> (forall n : Z, z <= n -> A n -> A (Z.succ n)) -> forall n : Z, A n
-Z.left_induction:
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z, A z -> (forall n : Z, n < z -> A (Z.succ n) -> A n) -> forall n : Z, n <= z -> A n
-Z.left_induction':
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z,
-  (forall n : Z, z <= n -> A n) -> (forall n : Z, n < z -> A (Z.succ n) -> A n) -> forall n : Z, A n
-Z.strong_right_induction:
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z,
-  (forall n : Z, z <= n -> (fun n0 : Z => forall m : Z, z <= m -> m < n0 -> A m) n -> A n) ->
-  forall n : Z, z <= n -> A n
-Z.strong_left_induction:
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z,
-  (forall n : Z, n <= z -> (fun n0 : Z => forall m : Z, m <= z -> n0 <= m -> A m) (Z.succ n) -> A n) ->
-  forall n : Z, n <= z -> A n
-Z.order_induction:
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z,
-  A z ->
-  (forall n : Z, z <= n -> A n -> A (Z.succ n)) ->
-  (forall n : Z, n < z -> A (Z.succ n) -> A n) -> forall n : Z, A n
-Z.order_induction':
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z,
-  A z ->
-  (forall n : Z, z <= n -> A n -> A (Z.succ n)) ->
-  (forall n : Z, n <= z -> A n -> A (Z.pred n)) -> forall n : Z, A n
-Z.order_induction'_0:
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  A 0 ->
-  (forall n : Z, 0 <= n -> A n -> A (Z.succ n)) ->
-  (forall n : Z, n <= 0 -> A n -> A (Z.pred n)) -> forall n : Z, A n
-Z.strong_right_induction':
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z,
-  (forall n : Z, n <= z -> A n) ->
-  (forall n : Z, z <= n -> (fun n0 : Z => forall m : Z, z <= m -> m < n0 -> A m) n -> A n) ->
-  forall n : Z, A n
-Z.order_induction_0:
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  A 0 ->
-  (forall n : Z, 0 <= n -> A n -> A (Z.succ n)) ->
-  (forall n : Z, n < 0 -> A (Z.succ n) -> A n) -> forall n : Z, A n
-Z.strong_left_induction':
-  forall A : Z -> Prop,
-  Morphisms.Proper (Morphisms.respectful eq iff) A ->
-  forall z : Z,
-  (forall n : Z, z <= n -> A n) ->
-  (forall n : Z, n <= z -> (fun n0 : Z => forall m : Z, m <= z -> n0 <= m -> A m) (Z.succ n) -> A n) ->
-  forall n : Z, A n
 Qed.

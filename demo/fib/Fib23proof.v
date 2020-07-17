@@ -138,16 +138,6 @@ Proof.
     apply_all_once Int.same_if_eq. clarify. ss. u in *. des_ifs. }
   { r in _ASSUME. r. des. ss. u in *. des_ifs; et.
     (*** TODO: automate integer reasoning ***)
-    rewrite Int.eq_signed in *. des_ifs. clear_tac.
-    rewrite Int.signed_zero in *. rewrite Int.signed_one in *; ss.
-    rewrite Int.sub_signed in *; rewrite (Int.signed_repr 2) in *; ss.
-    unfold Int.lt. des_ifs. exfalso.
-    rewrite Int.signed_repr in *; cycle 1.
-    { generalize (Int.signed_range i); i. generalize Int.min_signed_neg; i. split; try xomega. }
-    xomega.
-  }
-  { r in _ASSUME. r. des. ss. u in *. des_ifs; et.
-    (*** TODO: automate integer reasoning ***)
     unfold Int.eq in *. des_ifs. clear_tac.
     rewrite Int.unsigned_zero in *. rewrite Int.unsigned_one in *; ss.
 
@@ -161,18 +151,6 @@ Proof.
     rewrite Int.signed_zero in *. rewrite Int.signed_one in *; ss.
     rewrite Int.sub_signed in *; rewrite (Int.signed_repr 2) in *; ss.
     rewrite Int.signed_repr in *; cycle 1.
-    { generalize (Int.signed_range i); i. generalize Int.min_signed_neg; i. split; try xomega. }
-    xomega.
-  }
-  { r in _ASSUME. r. des. ss. u in *. des_ifs; et. des; clarify.
-    (*** TODO: automate integer reasoning ***)
-    rewrite Int.eq_signed in *. des_ifs. clear_tac.
-    rewrite Int.signed_zero in *. rewrite Int.signed_one in *; ss.
-    rewrite Int.sub_signed in *; rewrite (Int.signed_repr 2) in *; ss.
-    unfold Int.lt. des_ifs.
-    rewrite Int.signed_repr with (z:=1) in *; ss.
-    rewrite Int.signed_repr in *; ss; cycle 1.
-    { generalize (Int.signed_range i); i. generalize Int.min_signed_neg; i. split; try xomega. }
     { generalize (Int.signed_range i); i. generalize Int.min_signed_neg; i. split; try xomega. }
     xomega.
   }

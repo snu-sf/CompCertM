@@ -94,16 +94,69 @@ End WFPMAP.
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Theorem Int_ltu_wf: well_founded Int.ltu.
+Proof.
+  assert(ACC0: forall x: Z, 0 <= x < Int.modulus -> (Acc Int.ltu (Int.repr x))).
+  {
+    intro x. pattern x. eapply well_founded_ind. { eapply Z.lt_wf. } clear x. i. ss.
+    instantiate (1:= 0) in H.
+    econs. ii.
+    generalize (Int.unsigned_range y); i.
+    destruct (classic (x = 0)).
+    - clarify. exfalso.
+      unfold Int.ltu in *. des_ifs. ss. rewrite Int.unsigned_repr in *; ss.
+      lia.
+    - exploit (H (Int.unsigned y)); et.
+      { unfold Int.ltu in H1. des_ifs.
+        split; try lia.
+        rewrite Int.unsigned_repr in *; try lia. unfold Int.max_unsigned. lia.
+      }
+      intro T. rewrite Int.repr_unsigned in *. ss.
+  }
+  assert(ACC1: forall x: Int.int, 0 <= (Int.unsigned x) < Int.modulus -> (Acc Int.ltu x)).
+  {
+    i. exploit ACC0; et. intro T. rp; et. rewrite Int.repr_unsigned; ss.
+  }
+  ii.
+  eapply ACC1; et. generalize (Int.unsigned_range a). i. xomega.
+Qed.
+
+
+
+
+
+
+
+
+
+
+
+
 Definition mp: ModPair.t := SimSymbId.mk_mp (Fib6.module) (Fib5.module).
 
 Require Import SIRBCE. (*** TODO: export in SIRProps ***)
 Local Opaque ident_eq.
 
 (*** TODO: use prop instead of option ***)
-Let idx := option (nat * nat).
+Let idx := option (Int.int * nat).
 Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> idx) :=
   if ident_eq fname _fib_ru
-  then Some (fun oh m vs => option_map (fun n => (n, 1%nat)) (parse_arg oh m vs))
+  then Some (fun oh m vs => match vs with | [Vint n] => Some (n, 1%nat) | _ => None end)
   else None
 .
 
@@ -115,7 +168,7 @@ Proof.
     unfold Fib6.f_fib. setoid_rewrite <- tau_eutt at 2. refl.
   }
   eapply SIRBCE.correct with (manifesto:=manifesto); et.
-  { eapply wf_option. eapply ord_lex_wf; eapply lt_wf. }
+  { eapply wf_option. eapply ord_lex_wf; try apply lt_wf; try apply Int_ltu_wf. }
   econs; et; cycle 1.
   { prog_tac.
     - unfold Fib6.f_fib, f_fib. irw.
@@ -129,8 +182,10 @@ Proof.
     esplits; et.
     { unfold prog. ss. }
     ii. unfold f_fib_ru.
-    pfold. des_ifs; try (by unfold triggerNB; irw; econs; et).
-    irw. econs; ss; et; ss; cycle 1.
+    des_ifs; try (by pfold; unfold triggerNB; irw; econs; et).
+    irw. unfoldr guarantee. des_ifs; [irw|pfold; unfold triggerNB; irw; econs; et].
+    pfold. econs; et.
+    irw.
     {
       assert(0 <= (Int.signed i)).
       { admit "". }

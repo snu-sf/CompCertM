@@ -32,8 +32,8 @@ Proof.
   eapply SIRLocal.correct; ss; et.
   prog_tac.
   unfold Fib7.f_fib, f_fib.
-  unfold unwrapU. des_ifs; irw; cycle 1.
-  { unfold triggerUB. irw. pfold. econs; et. }
+  repeat step. (*** <-- TODO: fixit ***)
+  unfold unwrapU. des_ifs; repeat step.
   unfold assume, precond. des_ifs; cycle 1.
   { contradict n0. eauto. }
   des; clarify.

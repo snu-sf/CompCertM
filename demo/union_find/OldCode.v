@@ -1,16 +1,4 @@
-Require Import CoqlibC Maps.
-Require Import ASTC Integers ValuesC EventsC MemoryC Globalenvs.
-Require Import Op Registers.
-Require Import sflib.
-Require Import SmallstepC.
-Require Export Simulation.
-Require Import Skeleton Mod ModSem.
-Require ClightC.
-Require Import UnionFindTarget.
-Require Import SIR0.
-(* Require Import Clightdefs. *)
 
-Set Implicit Arguments.
 
 
 (*** TODO: move to ValuesC ***)

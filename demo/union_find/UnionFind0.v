@@ -5,13 +5,13 @@ Local Open Scope Z_scope.
 Definition _Node : ident := 2%positive.
 Definition _find : ident := 61%positive.
 Definition _main : ident := 69%positive.
-Definition _makeSet : ident := 58%positive.
+Definition _new : ident := 58%positive.
 Definition _malloc : ident := 56%positive.
 Definition _p : ident := 59%positive.
 Definition _p0 : ident := 60%positive.
 Definition _parent : ident := 3%positive.
 Definition _rank : ident := 1%positive.
-Definition _unionS : ident := 67%positive.
+Definition _union : ident := 67%positive.
 Definition _x : ident := 57%positive.
 Definition _xRank : ident := 65%positive.
 Definition _xRoot : ident := 63%positive.
@@ -21,7 +21,7 @@ Definition _yRoot : ident := 64%positive.
 Definition _t'1 : ident := 70%positive.
 Definition _t'2 : ident := 71%positive.
 
-Definition f_makeSet := {|
+Definition f_new := {|
   fn_return := (tptr (Tstruct _Node noattr));
   fn_callconv := cc_default;
   fn_params := nil;
@@ -87,7 +87,7 @@ Definition f_find := {|
     (Sreturn (Some (Etempvar _p (tptr (Tstruct _Node noattr)))))))
 |}.
 
-Definition f_unionS := {|
+Definition f_union := {|
   fn_return := tvoid;
   fn_callconv := cc_default;
   fn_params := ((_x, (tptr (Tstruct _Node noattr))) ::
@@ -165,13 +165,13 @@ Definition composites : list composite_definition :=
    noattr :: nil).
 
 Definition global_definitions : list (ident * globdef fundef type) :=
-((_malloc,
-   Gfun(External EF_malloc (Tcons tulong Tnil) (tptr tvoid) cc_default)) ::
- (_makeSet, Gfun(Internal f_makeSet)) :: (_find, Gfun(Internal f_find)) ::
- (_unionS, Gfun(Internal f_unionS)) :: nil).
+((* (_malloc, *)
+ (*   Gfun(External EF_malloc (Tcons tulong Tnil) (tptr tvoid) cc_default)) :: *)
+ (_new, Gfun(Internal f_new)) :: (_find, Gfun(Internal f_find)) ::
+ (_union, Gfun(Internal f_union)) :: nil).
 
 Definition public_idents : list ident :=
-(_unionS :: _find :: _makeSet :: _malloc :: nil).
+(_union :: _find :: _new :: _malloc :: nil).
 
 Definition prog : Clight.program := 
   mkprogram composites global_definitions public_idents _main Logic.I.

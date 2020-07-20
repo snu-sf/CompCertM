@@ -6,7 +6,7 @@ struct Node {
   struct Node * parent;
 };
 
-struct Node* makeSet() {
+struct Node* new() {
   struct Node * x;
   x = (struct Node *) malloc (sizeof (struct Node));
   x -> parent = x;
@@ -25,7 +25,7 @@ struct Node* find(struct Node* x) {
   return p;
 };
 
-void unionS(struct Node* x, struct Node* y) {
+void union(struct Node* x, struct Node* y) {
   struct Node *xRoot, *yRoot;
   unsigned int xRank, yRank;
   xRoot = find(x);

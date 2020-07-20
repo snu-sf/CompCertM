@@ -186,12 +186,6 @@ Notation ktr :=
 .
 Notation itr := (itree (eff1 owned_heap) (owned_heap * (mem * val))).
 
-Definition is_call_cont_strong (k0: cont): Prop :=
-  match k0 with
-  | Kcall _ _ _ _ _ => True
-  | _ => False
-  end.
-
 Inductive match_stacks (k_src: list ktr) (k_tgt: Clight.cont): Prop :=
 | match_stacks_nil
     (KSRC: k_src = nil)
@@ -261,35 +255,6 @@ Inductive match_states
 
 
 
-(*** TODO: it is unused for now. use this later ***)
-Lemma init_fsim
-      args st_src0
-      (INIT: ModSem.initial_frame (md_src skenv_link) tt args st_src0)
-  :
-    exists i st_tgt0 smo0,
-      (<<INIT: ModSem.initial_frame (md_tgt skenv_link) tt args st_tgt0>>)
-      /\ (<<MATCH: match_states i st_src0 st_tgt0 smo0>>)
-.
-Proof.
-  inv INIT. ss. des_ifs_safe. folder.
-  unfold interp_program in *.
-  exploit unsymb; et. i; des. clarify. des_ifs.
-  assert(SIG: fd = signature_of_function f_fib).
-  { admit "ez - findf sig". }
-  destruct args; ss. inv TYP. ss. destruct vs; ss. destruct vs; ss.
-  inv DEF. clear H2. unfold typify_list, typify in *; ss. des_ifs. destruct v; ss. clear_tac. i.
-  eexists _, _, (SimMemId.mk _ _). esplits; eauto.
-  - econs; ss; eauto.
-    { des_ifs. folder. exploit symb_def; et. }
-    { ss. }
-  - econs; ss; eauto. econs; ss; eauto.
-    + econs; ss.
-    + unfold typify_list. ss. unfold typify. des_ifs; ss.
-    + cbn. unfold typify. des_ifs; ss.
-Unshelve.
-  all: ss.
-Qed.
-
 (* Lemma final_fsim *)
 (*       i st_src0 st_tgt0 smo0 retv *)
 (*       (MATCH: match_states i st_src0 st_tgt0 smo0) *)
@@ -343,15 +308,7 @@ Proof.
       eexists _, _, (SimMemId.mk _ _). esplits; eauto.
       { left. eapply spread_dplus; et.
         { eapply modsem2_mi_determinate; et. }
-        eapply plus_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). ii; ss; des; ss; clarify. }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_refl.
+        step. ss. apply star_refl.
       }
       { right. eapply CIH.
         econs; ss; et. econs; ss; et.
@@ -366,21 +323,7 @@ Proof.
       eexists _, _, (SimMemId.mk _ _). esplits; eauto.
       { left. eapply spread_dplus; et.
         { eapply modsem2_mi_determinate; et. }
-        eapply plus_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). ii; ss; des; ss; clarify. }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_refl.
+        step. ss. apply star_refl.
       }
       { right. eapply CIH.
         econs; ss; et. econs; ss; et.
@@ -397,31 +340,13 @@ Proof.
     eexists (Ord.lift_idx lt_wf (S idx)), _, (SimMemId.mk _ _). esplits; eauto.
     { left. eapply spread_dplus; et.
       { eapply modsem2_mi_determinate; et. }
-      eapply plus_left with (t1 := E0) (t2 := E0); ss.
-      { repeat (econs; ss; et). ii; ss; des; ss; clarify. }
-      eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { repeat (econs; ss; et). }
+      step.
       eapply star_left with (t1 := E0) (t2 := E0); ss.
       { repeat (econs; ss; et). ss. rewrite Int.eq_false; ss. ii; clarify. }
-      eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { repeat (econs; ss; et). }
-      eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { repeat (econs; ss; et). }
+      step.
       eapply star_left with (t1 := E0) (t2 := E0); ss.
       { repeat (econs; ss; et). ss. rewrite Int.eq_false; ss. ii; clarify. }
-      eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { repeat (econs; ss; et). }
-      eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { repeat (econs; ss; et). }
-      eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { repeat (econs; ss; et). }
-      eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { econsr; ss; et.
-        - econsr; ss; et.
-          + econsr; ss; et.
-          + econs 2; ss; et.
-        - repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
-      eapply star_refl.
+      step. ss. apply star_refl.
     }
     left. pfold. ii. clear SUSTAR. ss. econs 2; et. ii. clear_tac.
     econs 2; ss; et.
@@ -447,25 +372,7 @@ Proof.
       eexists (Ord.lift_idx lt_wf (S idx)), _, (SimMemId.mk _ _). esplits; eauto.
       { left. eapply spread_dplus; et.
         { eapply modsem2_mi_determinate; et. }
-        eapply plus_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { econsr; ss; et.
-          - econsr; ss; et.
-            + econsr; ss; et.
-            + econs 2; ss; et.
-          - repeat (econs; ss; et); ii; repeat (des; ss; clarify). }
-        eapply star_refl.
+        step. ss. eapply star_refl.
       }
       left. pfold. ii. clear SUSTAR. ss. econs 2; et. ii. clear_tac.
       econs 2; ss; et.
@@ -486,20 +393,38 @@ Proof.
       eexists (Ord.lift_idx lt_wf (S idx)), _, (SimMemId.mk _ _). esplits; eauto.
       { left. eapply spread_dplus; et.
         { eapply modsem2_mi_determinate; et. }
-        eapply plus_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et). }
-        eapply star_refl.
+        step. ss. eapply star_refl.
       }
       right. eapply CIH.
       econs; ss; et. econs; ss; et.
+Unshelve.
+  all: ss.
+Qed.
+
+Lemma init_fsim
+      args st_src0
+      (INIT: ModSem.initial_frame (md_src skenv_link) tt args st_src0)
+  :
+    exists i st_tgt0 smo0,
+      (<<INIT: ModSem.initial_frame (md_tgt skenv_link) tt args st_tgt0>>)
+      /\ (<<MATCH: match_states i st_src0 st_tgt0 smo0>>)
+.
+Proof.
+  inv INIT. ss. des_ifs_safe. folder.
+  unfold interp_program in *.
+  exploit unsymb; et. i; des. clarify. des_ifs.
+  assert(SIG: fd = signature_of_function f_fib).
+  { admit "ez - findf sig". }
+  destruct args; ss. inv TYP. ss. destruct vs; ss. destruct vs; ss.
+  inv DEF. clear H2. unfold typify_list, typify in *; ss. des_ifs. destruct v; ss. clear_tac. i.
+  eexists _, _, (SimMemId.mk _ _). esplits; eauto.
+  - econs; ss; eauto.
+    { des_ifs. folder. exploit symb_def; et. }
+    { ss. }
+  - econs; ss; eauto. econs; ss; eauto.
+    + econs; ss.
+    + unfold typify_list. ss. unfold typify. des_ifs; ss.
+    + cbn. unfold typify. des_ifs; ss.
 Unshelve.
   all: ss.
 Qed.
@@ -514,39 +439,23 @@ Proof.
   }
   { ii. ss. eexists (SimMemId.mk _ _); ss. esplits; eauto. destruct sm; ss. }
   ii. ss. esplits; eauto.
-  - ii. des. inv INITTGT. inv SAFESRC. ss. des_ifs_safe.
-    rr in SIMARGS. des. ss. clarify. inv SIMARGS0; ss. clarify.
-    destruct sm_arg; ss. clarify. des_ifs.
-    assert(SG: sg_init_src = signature_of_function fd).
-    { folder. admit "ez - FINDF". }
+  - i; des. unfold owned_heap in *. repeat des_u.
+    assert(args_src = args_tgt).
+    { rr in SIMARGS. des; ss; clarify. clear_tac.
+      inv SAFESRC. ss. des_ifs. inv SIMARGS0; ss; clarify. clear_tac. destruct sm_arg; ss. clarify. }
     clarify.
-    assert(TY: Clight.type_of_function fd = Clight.type_of_function f_fib).
-    { admit "ez - findf sig". }
-    assert(SIG: signature_of_function fd = signature_of_function f_fib).
-    { clear - TY. unfold signature_of_function, Clight.type_of_function in *.
-      destruct fd, f_fib; ss. clarify. f_equal.
-      clear - H2. ginduction fn_params; ii; ss.
-      { destruct fn_params0; ss. des_ifs; ss. }
-      des_ifs; ss. destruct fn_params0; ss. des_ifs; ss. f_equal; et.
-    }
-    dup TYP0.
-    rewrite SIG in *. inv TYP. ss. destruct vs_tgt; ss. destruct vs_tgt; ss.
-    inv DEF. inv TYP0. ss. cbn in TYP. unfold typify in *.
-    revert TY. (*** TODO: FIXTHIS: des_ifs drops some information, "SIG" and "TY" hyp ***)
-    des_ifs; ss. destruct v; ss. clear_tac. i.
-
-    eexists _, (SimMemId.mk _ _), _. esplits; ss; eauto.
-    { econs; ss; et. econs; ss; et. }
-    eapply match_states_lxsim; eauto.
-    econs; ss; et. econs; ss; et.
-    { econs; ss; et. }
-    { cbn. exploit unsymb; et. i; des. clarify. des_ifs. f_equal. cbv. des_ifs; ss. }
-    { cbv. des_ifs; ss; et. }
-  - i; des. inv SAFESRC. ss. des_ifs.
-    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. clarify.
-    esplits; et. econs; ss; et.
-    { des_ifs. folder. admit "ez - FINDF". }
-    admit "ez - typecheck".
+    exploit init_fsim; et. i; des. ss.
+    assert(st_tgt0 = st_init_tgt).
+    { clear - INIT INITTGT. inv INIT. inv INITTGT. ss. clarify. inv TYP. inv TYP0. ss. }
+    clarify.
+    esplits; et.
+    eapply match_states_lxsim; et.
+  - i; des. unfold owned_heap in *. repeat des_u.
+    assert(args_src = args_tgt).
+    { rr in SIMARGS. des; ss; clarify. clear_tac.
+      inv SAFESRC. ss. des_ifs. inv SIMARGS0; ss; clarify. clear_tac. destruct sm_arg; ss. clarify. }
+    clarify.
+    exploit init_fsim; et. i; des. ss. esplits; et.
 Unshelve.
   all: ss.
   all: repeat econs; et.

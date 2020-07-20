@@ -298,3 +298,36 @@ Ltac mimic :=
     end
   end
 .
+
+Ltac _step :=
+  by (repeat match goal with
+             | [ |- Clight.eval_lvalue _ _ _ _ (Clight.Evar _ _) _ _ ] => idtac "EVAR" ; econsby (ss; et)
+             | [ |- Clight.deref_loc _ _ _ _ _ ] => idtac "DEREF" ; econsby (ss; et)
+             | [ |- list_disjoint _ _ ] => ii; ss; by (repeat des; ss; clarify)
+             | _ => econs; ss; et
+             end)
+.
+
+Ltac is_state st := match st with
+                    | Clight.State _ _ _ _ _ _ => idtac
+                    | _ => fail
+                    end
+.
+
+Ltac step :=
+  repeat match goal with
+(*** TODO: More precisely, what I want is as follows.
+(1) Basically, we don't progress on Callstate.
+(2) However, if it is the beginning, we allow it. (the only exception)
+
+Coincidently, "Star" and "Plus" only appears in the beginning, so I defined as below.
+***)
+         | [ |- Plus _ _ E0 _ ] =>
+           eapply plus_left with (t1 := E0) (t2 := E0); ss; [_step|]
+         | [ |- Star _ _ E0 _ ] =>
+           eapply star_left with (t1 := E0) (t2 := E0); ss; [_step|]
+         | [ |- star Clight.step2 _ _ ?st E0 _ ] =>
+           is_state st; eapply star_left with (t1 := E0) (t2 := E0); ss; [_step|]
+         | [ |- list_disjoint _ _ ] => ii; ss; try (by repeat des; ss; clarify)
+         end
+.

@@ -132,35 +132,281 @@ Qed.
 (*       * destruct body1; ss. eapply kle_find_label. *)
 (* Qed. *)
 
+Definition get_cont (st: state): cont :=
+  match st with
+  | State _ _ k _ _ _ => k
+  | Callstate _ _ _ k _ => k
+  | Returnstate _ k _ => k
+  end
+.
+
+Definition set_cont (st: state) (k1: cont): state :=
+  match st with
+  | State fd s k0 e te m0 => State fd s k1 e te m0
+  | Callstate fptr ty args k0 m0 => Callstate fptr ty args k1 m0
+  | Returnstate res k0 m0 => Returnstate res k1 m0
+  end
+.
+
 Lemma step_step
       se ge st_bot0 tr st_bot1 st0
       (NOGOTO: True)
       (STEP: step2 se ge st_bot0 tr st_bot1)
       (LE: state_le st_bot0 st0)
+      (CALL: is_call_cont (get_cont st0))
   :
     exists st1, <<STEP: step2 se ge st0 tr st1>> /\ <<LE: state_le st_bot1 st1>>
 .
 Proof.
   inv STEP; inv LE; try inv LE0; ss; try (by esplits; repeat (econs; ss; eauto using kle_call_cont)).
-  - esplits; et.
-    + econs; ss; et. TTTTTTTTTTTTTTTTTTT <--------- this does not hold. Kbot is not really bot.
   - admit "goto".
   - admit "goto".
-  - admit "goto".
-  - admit "goto".
-Qed.
+Abort.
 
 Lemma plus_plus
       se ge st_bot0 tr st_bot1 st0
       (NOGOTO: True)
       (STEP: plus step2 se ge st_bot0 tr st_bot1)
       (LE: state_le st_bot0 st0)
+      (CALL: is_call_cont (get_cont st0))
   :
     exists st1, <<STEP: plus step2 se ge st0 tr st1>> /\ <<LE: state_le st_bot1 st1>>
 .
 Proof.
-  admit "ez".
-Admitted.
+  ginduction STEP; ii; ss. clarify.
+  (* exploit step_step; et. i; des. *)
+  (* esplits; et. *)
+  (* { econs; et. ss. *)
+Abort.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+(*** copy-pasted from UBD_Aextra and modified ***)
+Fixpoint app_cont (k0 k1: cont) {struct k0}: cont :=
+  match k0 with
+  | Kstop => k1
+  | Kseq s k => Kseq s (app_cont k k1)
+  | Kloop1 e s k => Kloop1 e s (app_cont k k1)
+  | Kloop2 e s k => Kloop2 e s (app_cont k k1)
+  | Kswitch k =>  Kswitch (app_cont k k1)
+  | Kcall f e em ty k => Kcall f e em ty (app_cont k k1)
+  end.
+
+Lemma app_cont_stop_right
+      k0:
+    <<EQ: app_cont k0 Kstop = k0>>.
+Proof.
+  ginduction k0; ii; ss; des; clarify; ss; r; f_equal; ss.
+Qed.
+
+Lemma app_cont_stop_left
+      k0:
+    <<EQ: app_cont Kstop k0 = k0>>.
+Proof.
+  ginduction k0; ii; ss; des; clarify; ss; r; f_equal; ss.
+Qed.
+
+Lemma app_cont_kstop_inv
+      k0 k1
+      (APP: app_cont k0 k1 = Kstop):
+    k0 = Kstop /\ k1 = Kstop.
+Proof. destruct k0; ss. Qed.
+
+Definition is_call_cont_strong (k0: cont): Prop :=
+  match k0 with
+  | Kcall _ _ _ _ _ => True
+  | _ => False
+  end.
+
+Lemma call_cont_app_cont
+      k k0
+      (* tl_tgt *)
+      (* (SUM: sum_cont tl_tgt k0) *)
+      (CALL: is_call_cont k0)
+  :
+  (app_cont (call_cont k) k0) = call_cont (app_cont k k0).
+Proof.
+  assert(CASE: k0 = Kstop \/ is_call_cont_strong k0).
+  { destruct k0; ss; et. }
+  des.
+  { clarify. repeat rewrite app_cont_stop_right. ss. }
+  { rr in CASE. des_ifs. clear_tac. clear - c.
+    ginduction k; ii; ss; des; repeat rewrite app_cont_stop_right; ss; clarify. }
+Qed.
+
+Lemma app_cont_is_call_cont
+      k k0
+      (CALL0: is_call_cont k)
+      (CALL1: is_call_cont k0)
+  :
+    is_call_cont (app_cont k k0)
+.
+Proof. destruct k; ss. Qed.
+
+Lemma is_call_cont_strong_weaken: is_call_cont_strong <1= is_call_cont.
+Proof. ii. destruct x0; ss. Qed.
+(* Hint Resolve is_call_cont_strong_weaken. *)
+
+Lemma step_step
+      se ge st0 tr st1
+      (STEP: step2 se ge (set_cont st0 Kbot) tr st1)
+  :
+    <<STEP: step2 se ge st0 tr (set_cont st1 (app_cont (get_cont st1) (get_cont st0)))>>
+.
+Proof.
+  (* unfold set_cont in STEP. *)
+  inv STEP; ss; destruct st0; ss; clarify; try (by econs; ss; et).
+  - r. ss.
+Abort.
+
+Definition app_cont_state (st0: state) (k0: cont): state :=
+  set_cont st0 (app_cont (get_cont st0) k0)
+.
+
+Scheme statement_ind2 := Induction for statement Sort Prop
+  with labeled_statements_ind2 := Induction for labeled_statements Sort Prop.
+Combined Scheme statement_labeled_statements_ind from statement_ind2, labeled_statements_ind2.
+
+Lemma find_label_none:
+  (forall body,
+      (forall lbl
+              k0 k1
+              (LBL: find_label lbl body k0 = None)
+        ,
+          <<LBL: find_label lbl body k1 = None>>))
+  /\ (forall body,
+         (forall lbl
+                 k0 k1
+                 (LBL: find_label_ls lbl body k0 = None)
+           ,
+             <<LBL: find_label_ls lbl body k1 = None>>))
+.
+Proof.
+  eapply statement_labeled_statements_ind; i; ss.
+  - des_ifs_safe. exploit H0; et. intro U. rewrite U in *. des_ifs.
+    exploit H; et. intro T. rewrite T in *. ss.
+  - des_ifs_safe. exploit H0; et. intro U. rewrite U in *. des_ifs.
+    exploit H; et. intro T. rewrite T in *. ss.
+  - des_ifs_safe. exploit H0; et. intro U. rewrite U in *. des_ifs.
+    exploit H; et. intro T. rewrite T in *. ss.
+  - exploit H; et.
+  - des_ifs. exploit H; et.
+  - des_ifs_safe. exploit H0; et. intro U. rewrite U in *. des_ifs.
+    exploit H; et. intro T. rewrite T in *. ss.
+Qed.
+
+Lemma find_label_app_cont:
+  (forall body,
+      (forall lbl
+              k0 k1 s kres
+              (LBL: find_label lbl body k0 = Some (s, kres))
+        ,
+          <<LBL: find_label lbl body (app_cont k0 k1) = Some (s, app_cont kres k1)>>))
+  /\ (forall body,
+         (forall lbl
+                 k0 k1 s kres
+                 (LBL: find_label_ls lbl body k0 = Some (s, kres))
+           ,
+             <<LBL: find_label_ls lbl body (app_cont k0 k1) = Some (s, app_cont kres k1)>>))
+.
+Proof.
+  generalize find_label_none. intros [A B].
+  eapply statement_labeled_statements_ind; i; ss.
+  - destruct (find_label lbl s (Kseq s0 k0)) eqn:T; clarify.
+    + exploit H; et. intro U. ss. rewrite U in *. ss.
+    + exploit H0; et. intro U. ss. rewrite U in *. des_ifs.
+      exfalso. exploit A; et. intro V. rewrite V in *. ss.
+  - destruct (find_label lbl s k0) eqn:T; clarify.
+    + exploit H; et. intro U. ss. rewrite U in *. ss.
+    + exploit H0; et. intro U. ss. rewrite U in *. des_ifs.
+      exfalso. exploit A; et. intro V. rewrite V in *. ss.
+  - destruct (find_label lbl s (Kloop1 s s0 k0)) eqn:T; clarify.
+    + exploit H; et. intro U. ss. rewrite U in *. ss.
+    + exploit H0; et. intro U. ss. rewrite U in *. des_ifs.
+      exfalso. exploit A; et. intro V. rewrite V in *. ss.
+  - exploit H; et.
+  - des_ifs. exploit H; et.
+  - destruct (find_label lbl s (Kseq (seq_of_labeled_statement l) k0)) eqn:T; clarify.
+    + exploit H; et. intro U. ss. rewrite U in *. ss.
+    + exploit H0; et. intro U. ss. rewrite U in *. des_ifs.
+      exfalso. exploit A; et. intro V. rewrite V in *. ss.
+Qed.
+
+Lemma step_step
+      se ge st0 tr st1
+      (STEP: step2 se ge st0 tr st1)
+  :
+    <<STEP: forall k0 (CALL: is_call_cont k0),
+      step2 se ge (app_cont_state st0 k0) tr (app_cont_state st1 k0)>>
+.
+Proof.
+  (* unfold set_cont in STEP. *)
+  ii.
+  inv STEP; ss; clarify; try (by econs; ss; et).
+  - erewrite f_equal2; try econs; ss; et.
+    f_equal. eapply call_cont_app_cont; et.
+  - erewrite f_equal2; try econs; ss; et.
+    f_equal. eapply call_cont_app_cont; et.
+  - erewrite f_equal2; try econs; ss; et.
+    eapply app_cont_is_call_cont; et.
+  - erewrite f_equal2; try econs; ss; et.
+    clear_tac.
+    rewrite <- call_cont_app_cont; et. eapply find_label_app_cont; et.
+Qed.
+
+Lemma star_star
+      se ge st0 tr st1
+      (STEP: star step2 se ge st0 tr st1)
+  :
+    <<STEP: forall k0 (CALL: is_call_cont k0),
+      star step2 se ge (app_cont_state st0 k0) tr (app_cont_state st1 k0)>>
+.
+Proof.
+  ginduction STEP; ii; ss.
+  { apply star_refl. }
+  clarify.
+  econs; et.
+  { eapply step_step; et. }
+Qed.
+
+Lemma plus_plus
+      se ge st0 tr st1
+      (STEP: plus step2 se ge st0 tr st1)
+  :
+    <<STEP: forall k0 (CALL: is_call_cont k0),
+      plus step2 se ge (app_cont_state st0 k0) tr (app_cont_state st1 k0)>>
+.
+Proof.
+  destruct STEP; ii; ss.
+  clarify. econs; ss; et.
+  { eapply step_step; ss; et. }
+  { eapply star_star; ss; et. }
+Qed.
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -285,6 +531,16 @@ Inductive match_stack: list ktr -> cont -> Prop :=
     match_stack (hd :: tl) (Kcall oid fd e te ktl)
 .
 
+Lemma match_stack_is_call_cont
+      stk_src k_tgt
+      (MATCH: match_stack stk_src k_tgt)
+  :
+    <<CALL: is_call_cont k_tgt>>
+.
+Proof.
+  induction MATCH; ii; ss.
+Qed.
+
 Inductive match_states: SIRStack.state unit -> state -> Prop :=
 | match_states_intro
     cur_src cont_src
@@ -381,13 +637,14 @@ Proof.
       { split; intro T; rr in T; des; ss; inv T; ss. }
       { eapply modsem_receptive; et. }
       ii. inv STEPSRC; ss. clarify. substs.
-      exploit plus_plus; et.
-      { instantiate (1:= Callstate fptr ty vs ktl m0). econs; et. econs; et.
       esplits; et.
       * left. eapply ModSemProps.spread_dplus.
         { eapply modsem2_mi_determinate; et. }
         ss; et.
-      * right. eapply CIH. econs; ss; et.
+        change (Callstate fptr ty vs ktl m0) with (app_cont_state (Callstate fptr ty vs Kbot m0) ktl).
+        eapply plus_plus; et.
+        eapply match_stack_is_call_cont; et.
+      * left. eapply CIH. econs; ss; et.
 Qed.
 
 

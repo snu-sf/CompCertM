@@ -544,11 +544,11 @@ Qed.
 Inductive match_states: SIRStack.state unit -> state -> Prop :=
 | match_states_intro
     cur_src cont_src
-    fptr ty vs ktl m0
-    (CUR: match_fr cur_src (Callstate fptr ty vs Kbot m0))
-    (CONT: match_stack cont_src ktl)
+    st0
+    (CUR: match_fr cur_src (set_cont st0 Kbot))
+    (CONT: match_stack cont_src (get_cont st0))
   :
-    match_states (mk cur_src cont_src) (Callstate fptr ty vs ktl m0)
+    match_states (mk cur_src cont_src) st0
 .
 
 Inductive match_func: SIRCommon.function unit -> function -> Prop :=
@@ -632,6 +632,20 @@ Proof.
   ii. clear SUSTAR.
   inv MATCH.
   punfold CUR. inv CUR.
+  - ss. destruct st_tgt0; ss. clarify. substs.
+    inv CONT.
+    + econs 4; ss; et.
+      * instantiate (1:= SimMemId.mk _ _). ss.
+      * rr. esplits; ss; et. econs; ss.
+    + econs 1. ii. econs 1; swap 2 3.
+      { split; intro T; rr in T; des; ss; inv T; ss. }
+      { eapply modsem_receptive; et. }
+      ii. inv STEPSRC; ss; csc.
+      esplits; et.
+      * left. eapply ModSemProps.spread_dplus.
+        { eapply modsem2_mi_determinate; et. }
+        eapply plus_one. econs; ss; et.
+      * right. eapply CIH. econs; ss; et.
   - pclearbot.
     + ss. econs 1. ii. econs 1; swap 2 3.
       { split; intro T; rr in T; des; ss; inv T; ss. }
@@ -644,7 +658,7 @@ Proof.
         change (Callstate fptr ty vs ktl m0) with (app_cont_state (Callstate fptr ty vs Kbot m0) ktl).
         eapply plus_plus; et.
         eapply match_stack_is_call_cont; et.
-      * left. eapply CIH. econs; ss; et.
+      * right. eapply CIH. econs; ss; et.
 Qed.
 
 

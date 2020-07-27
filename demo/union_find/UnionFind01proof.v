@@ -15,9 +15,9 @@ Require Import Any.
 Require Import SIRProps.
 Require Import SIR SIRStack.
 Require Import Clightdefs Op ClightC CtypesC CtypingC.
-Require Import FibHeader.
-Require Import Fib1.
-Require Import Fib0.
+Require Import UnionFindHeader.
+Require Import UnionFind1.
+Require Import UnionFind0.
 
 Set Implicit Arguments.
 
@@ -30,8 +30,8 @@ Section SIMMODSEM.
 
 Variable skenv_link: SkEnv.t.
 Variable sm_link: SimMem.t.
-Let md_src: Mod.t := (Fib1.module).
-Let md_tgt: Mod.t := (Fib0.module).
+Let md_src: Mod.t := (UnionFind1.module).
+Let md_tgt: Mod.t := (UnionFind0.module).
 Hypothesis (INCL: SkEnv.includes skenv_link (Mod.sk md_src)).
 (* Let INCLTGT: SkEnv.includes skenv_link (Mod.sk md_tgt). *)
 (* Proof. ss. Qed. *)
@@ -41,37 +41,54 @@ Let tge := Build_genv (SkEnv.revive (SkEnv.project skenv_link (Mod.sk md_tgt)) p
 Definition msp: ModSemPair.t :=
   ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link) (SimSymbId.mk md_src md_tgt) sm_link.
 
-(*** TODO: move to Fib0 ***)
-Global Opaque _fib.
 Lemma unsymb
       fid fblk
       (FID: Genv.find_symbol ge fid = Some fblk)
   :
-    <<FID: fid = _fib>>
+    <<FID: fid = _new \/ fid = _find \/ fid = _union>>
 .
 Proof.
   subst ge. ss. uge. ss. rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
-  unfold defs in *. des_sumbool. ss. des; ss.
+  unfold defs in *. des_sumbool. ss. des; ss; et.
 Qed.
 
-Lemma symb_fib
-  :
-    exists fblk, <<FID: Genv.find_symbol tge _fib = Some fblk>>
-.
+(*** TODO: move to UnionFind0 ***)
+Global Opaque _new _find _union.
+Lemma symb_new: exists fblk, <<FID: Genv.find_symbol tge _new = Some fblk>>.
 Proof.
   inv INCL. ss.
-  exploit (DEFS _fib); et.
+  exploit (DEFS _new); et.
   { unfold prog_defmap. ss. }
   i; des. ss. folder.
   clear - SYMB.
   subst ge. ss. uge. ss. rewrite MapsC.PTree_filter_key_spec. des_ifs. et.
 Qed.
 
-Lemma fib_def
+Lemma symb_find: exists fblk, <<FID: Genv.find_symbol tge _find = Some fblk>>.
+Proof.
+  inv INCL. ss.
+  exploit (DEFS _find); et.
+  { unfold prog_defmap. ss. }
+  i; des. ss. folder.
+  clear - SYMB.
+  subst ge. ss. uge. ss. rewrite MapsC.PTree_filter_key_spec. des_ifs. et.
+Qed.
+
+Lemma symb_union: exists fblk, <<FID: Genv.find_symbol tge _union = Some fblk>>.
+Proof.
+  inv INCL. ss.
+  exploit (DEFS _union); et.
+  { unfold prog_defmap. ss. }
+  i; des. ss. folder.
+  clear - SYMB.
+  subst ge. ss. uge. ss. rewrite MapsC.PTree_filter_key_spec. des_ifs. et.
+Qed.
+
+Lemma new_def
       fblk
-      (SYMB: Genv.find_symbol ge _fib = Some fblk)
+      (SYMB: Genv.find_symbol ge _new = Some fblk)
   :
-    <<DEF: Genv.find_funct tge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal f_fib)>>
+    <<DEF: Genv.find_funct tge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal f_new)>>
 .
 Proof.
   exploit (SkEnv.project_impl_spec); try apply INCL. intro SPEC.
@@ -84,7 +101,53 @@ Proof.
   assert(fblk = b).
   { clear - SPEC SYMB SYMB0 U. (*** TODO: this is too extensional ***) uge. ss. clarify. }
   clarify.
-  exploit (prog_defmap_norepet prog _fib); ss; et.
+  exploit (prog_defmap_norepet prog _new); ss; et.
+  { repeat (econs; ss; et; [ii; des; ss|]); repeat econs; ss; et. }
+  intro T. clarify. ss.
+  unfold Genv.find_funct_ptr. unfold Clight.fundef. rewrite DEF. ss.
+Qed.
+
+Lemma find_def
+      fblk
+      (SYMB: Genv.find_symbol ge _find = Some fblk)
+  :
+    <<DEF: Genv.find_funct tge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal f_find)>>
+.
+Proof.
+  exploit (SkEnv.project_impl_spec); try apply INCL. intro SPEC.
+  des. subst tge. ss. des_ifs. clear_tac.
+  exploit CSkEnv.project_revive_precise; et. intro T. inv T.
+  exploit SYMB2P; et. intro U. dup U. unfold NW, defs in U0. des_sumbool.
+  exploit prog_defmap_dom; et. intro V; des.
+  exploit P2GE; et. intro W; des.
+  folder.
+  assert(fblk = b).
+  { clear - SPEC SYMB SYMB0 U. (*** TODO: this is too extensional ***) uge. ss. clarify. }
+  clarify.
+  exploit (prog_defmap_norepet prog _find); ss; et.
+  { repeat (econs; ss; et; [ii; des; ss|]); repeat econs; ss; et. }
+  intro T. clarify. ss.
+  unfold Genv.find_funct_ptr. unfold Clight.fundef. rewrite DEF. ss.
+Qed.
+
+Lemma union_def
+      fblk
+      (SYMB: Genv.find_symbol ge _union = Some fblk)
+  :
+    <<DEF: Genv.find_funct tge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal f_union)>>
+.
+Proof.
+  exploit (SkEnv.project_impl_spec); try apply INCL. intro SPEC.
+  des. subst tge. ss. des_ifs. clear_tac.
+  exploit CSkEnv.project_revive_precise; et. intro T. inv T.
+  exploit SYMB2P; et. intro U. dup U. unfold NW, defs in U0. des_sumbool.
+  exploit prog_defmap_dom; et. intro V; des.
+  exploit P2GE; et. intro W; des.
+  folder.
+  assert(fblk = b).
+  { clear - SPEC SYMB SYMB0 U. (*** TODO: this is too extensional ***) uge. ss. clarify. }
+  clarify.
+  exploit (prog_defmap_norepet prog _union); ss; et.
   { repeat (econs; ss; et; [ii; des; ss|]); repeat econs; ss; et. }
   intro T. clarify. ss.
   unfold Genv.find_funct_ptr. unfold Clight.fundef. rewrite DEF. ss.
@@ -98,92 +161,8 @@ Notation "'_'" := PTree.Leaf (at level 150).
 Notation "a % x % b" := (PTree.Node a x b) (at level 150).
 Notation "a %% b" := (PTree.Node a None b) (at level 150).
 
-Definition te1 nn: temp_env := (@PTree.Node val
-             (@PTree.Node val (@PTree.Leaf val) (@None val)
-                (@PTree.Node val
-                   (@PTree.Node val (@PTree.Leaf val) (@None val)
-                      (@PTree.Node val (@PTree.Leaf val) (@None val)
-                         (@PTree.Node val (@PTree.Leaf val) (@Some val Vundef) (@PTree.Leaf val))))
-                   (@None val)
-                   (@PTree.Node val
-                      (@PTree.Node val (@PTree.Leaf val) (@None val)
-                         (@PTree.Node val (@PTree.Leaf val) (@Some val Vundef) (@PTree.Leaf val)))
-                      (@None val) (@PTree.Leaf val)))) (@None val)
-             (@PTree.Node val
-                (@PTree.Node val (@PTree.Leaf val) (@None val)
-                   (@PTree.Node val
-                      (@PTree.Node val (@PTree.Leaf val) (@None val)
-                         (@PTree.Node val (@PTree.Leaf val) (@Some val (Vint nn)) (@PTree.Leaf val)))
-                      (@None val) (@PTree.Leaf val))) (@None val)
-                (@PTree.Node val
-                   (@PTree.Node val (@PTree.Leaf val) (@None val)
-                      (@PTree.Node val (@PTree.Leaf val) (@None val)
-                         (@PTree.Node val (@PTree.Leaf val) (@Some val Vundef) (@PTree.Leaf val))))
-                   (@None val)
-                   (@PTree.Node val
-                      (@PTree.Node val (@PTree.Leaf val) (@None val)
-                         (@PTree.Node val (@PTree.Leaf val) (@Some val Vundef) (@PTree.Leaf val)))
-                      (@None val) (@PTree.Leaf val))))).
 
-Definition k1 (nn: int) (k_tgt: cont): cont :=
-  (Kcall (Some _t'1) f_fib empty_env (te1 nn)
-          (Kseq (Sset _y1 (Etempvar _t'1 tint))
-             (Kseq
-                (Clight.Ssequence
-                   (Clight.Ssequence
-                      (Scall (Some _t'2)
-                         (Clight.Evar _fib (Tfunction (Tcons tint Tnil) tint cc_default))
-                         [Clight.Ebinop Cop.Osub (Etempvar _n tint) (Econst_int (Int.repr 1) tint)
-                            tint]) (Sset _y2 (Etempvar _t'2 tint)))
-                   (Clight.Sreturn
-                      (Some (Clight.Ebinop Cop.Oadd (Etempvar _y1 tint) (Etempvar _y2 tint) tint))))
-                k_tgt))).
-
-Definition te2 (rv: val) (nn: int) := (@PTree.Node val
-          (@PTree.Node val (@PTree.Leaf val) (@None val)
-             (@PTree.Node val
-                (@PTree.Node val (@PTree.Leaf val) (@None val)
-                   (@PTree.Node val (@PTree.Leaf val) (@None val)
-                      (@PTree.Node val (@PTree.Leaf val) (Some rv) (@PTree.Leaf val))))
-                (@None val)
-                (@PTree.Node val
-                   (@PTree.Node val (@PTree.Leaf val) (@None val)
-                      (@PTree.Node val (@PTree.Leaf val) (Some rv) (@PTree.Leaf val)))
-                   (@None val) (@PTree.Leaf val)))) (@None val)
-          (@PTree.Node val
-             (@PTree.Node val (@PTree.Leaf val) (@None val)
-                (@PTree.Node val
-                   (@PTree.Node val (@PTree.Leaf val) (@None val)
-                      (@PTree.Node val (@PTree.Leaf val) (Some (Vint nn)) (@PTree.Leaf val)))
-                   (@None val) (@PTree.Leaf val))) (@None val)
-             (@PTree.Node val
-                (@PTree.Node val (@PTree.Leaf val) (@None val)
-                   (@PTree.Node val (@PTree.Leaf val) (@None val)
-                      (@PTree.Node val (@PTree.Leaf val) (Some Vundef) (@PTree.Leaf val))))
-                (@None val)
-                (@PTree.Node val
-                   (@PTree.Node val (@PTree.Leaf val) (@None val)
-                      (@PTree.Node val (@PTree.Leaf val) (Some Vundef) (@PTree.Leaf val)))
-                   (@None val) (@PTree.Leaf val))))).
-
-Definition k2 (rv: val) (nn: int) (k_tgt: cont): cont :=
-  (Kcall (Some _t'2) f_fib empty_env
-         (te2 rv nn)
-         (Kseq (Sset _y2 (Etempvar _t'2 tint))
-               (Kseq
-                  (Clight.Sreturn
-                     (Some (Clight.Ebinop Cop.Oadd (Etempvar _y1 tint) (Etempvar _y2 tint) tint)))
-                  k_tgt)))
-.
-
-
-
-
-
-
-
-
-
+Variable k1: Values.block -> val -> cont.
 
 Notation ktr :=
   (ktree (eff1 owned_heap) (owned_heap * (mem * val)) (owned_heap * (mem * val)))
@@ -194,28 +173,40 @@ Inductive match_stacks (k_src: list ktr) (k_tgt: Clight.cont): Prop :=
 | match_stacks_nil
     (KSRC: k_src = nil)
     (KTGT: k_tgt = Kstop)
-| match_stacks_cons1
+| match_stacks_find
     tl_src tl_tgt
     (STKS: match_stacks tl_src tl_tgt)
     hd_src
     (*** local variables ***)
-    n
+    x p
     (HDSRC: hd_src =
             fun '(oh0, (m0, v0)) =>
-              '(oh1, (m1, v1)) <- trigger (ICall _fib oh0 m0 [Vint (Int.sub n (Int.repr 1))]) ;;
-              Ret (oh1, (m1, Val.add v0 v1)))
+              '(oh1, (m1, p0)) <- trigger (ICall _find oh0 m0 [p]) ;;
+              m2 <- unwrapU (Mem.store Mptr m1 x 4 p0) ;;
+              Ret (oh1, (m2, p0)))
     (KSRC: k_src = hd_src :: tl_src)
-    (KTGT: k_tgt = k1 n tl_tgt)
-| match_stacks_cons2
+    (KTGT: k_tgt = k1 x p)
+| match_stacks_union1
     tl_src tl_tgt
     (STKS: match_stacks tl_src tl_tgt)
     hd_src
     (*** local variables ***)
-    rv n
-    (ISINT: exists rvi, rv = Vint rvi)
-    (HDSRC: hd_src = fun '(oh1, (m1, v1)) => Ret (oh1, (m1, Val.add rv v1)))
+    x p
+    (HDSRC: hd_src =
+            fun '(oh0, (m0, v0)) =>
+              '(oh1, (m1, p0)) <- trigger (ICall _find oh0 m0 [p]) ;;
+              m2 <- unwrapU (Mem.store Mptr m1 x 4 p0) ;;
+              Ret (oh1, (m2, p0)))
     (KSRC: k_src = hd_src :: tl_src)
-    (KTGT: k_tgt = k2 rv n tl_tgt)
+    (KTGT: k_tgt = k1 x p)
+(* | match_stacks_cons2 *)
+(*     tl_src tl_tgt *)
+(*     (STKS: match_stacks tl_src tl_tgt) *)
+(*     hd_src rv n *)
+(*     (ISINT: exists rvi, rv = Vint rvi) *)
+(*     (HDSRC: hd_src = fun '(oh1, (m1, v1)) => Ret (oh1, (m1, Val.add rv v1))) *)
+(*     (KSRC: k_src = hd_src :: tl_src) *)
+(*     (KTGT: k_tgt = k2 rv n tl_tgt) *)
 .
 
 

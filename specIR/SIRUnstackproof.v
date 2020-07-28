@@ -418,7 +418,9 @@ Variable p_tgt: program.
 Let p_src := SMod.prog md_src.
 Let md_tgt := module2_mi p_tgt (Some mi).
 Hypothesis (MISRC: md_src.(SMod.midx) = mi).
+(* Hypothesis (WF: list_norepet (prog_defs_names p_tgt)). *)
 Variable skenv_link: SkEnv.t.
+Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p_tgt)).
 Let ms_src := md_src skenv_link.
 Let ms_tgt := md_tgt skenv_link.
 
@@ -458,14 +460,27 @@ Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Pr
     (SYMB: Genv.find_symbol ge fname = Some fblk)
     (FINDF: Genv.find_funct ge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal fd))
     (TY: type_of_fundef (Ctypes.Internal fd) = ty)
-
+    (CANSTEP: exists e le m1, function_entry2 ge fd vs0 m0 e le m1)
     k_src
-    (* (SIM: match_fr st_src0 st_tgt0) *)
-    (* (TGT: Plus ms_tgt st_tgt0 E0 st_tgt1) *)
+    oid f e le k
+    (AFTER: forall oh1 m1 v1, match_fr (k_src (oh1, (m1, v1)))
+                                       (State f Sskip k e (set_opttemp oid v1 le) m1))
   :
     _match_fr match_fr
               (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src)
-              (Callstate (Vptr fblk Ptrofs.zero) ty vs0 Kbot m0)
+              (Callstate (Vptr fblk Ptrofs.zero) ty vs0 (Kcall oid f e le k) m0)
+  (* | step_call : forall (f : function) (optid : option ident) (a : expr) (al : list expr)  *)
+  (*                 (k : cont) (e : env) (le : temp_env) (m : mem) (tyargs : typelist)  *)
+  (*                 (tyres : type) (cconv : calling_convention) (vf : val) (vargs : list val), *)
+  (*               Cop.classify_fun (typeof a) = Cop.fun_case_f tyargs tyres cconv -> *)
+  (*               eval_expr ge e le m a vf -> *)
+  (*               eval_exprlist ge e le m al tyargs vargs -> *)
+  (*               Coqlib.DUMMY_PROP -> *)
+  (*               Coqlib.DUMMY_PROP -> *)
+  (*               step se ge function_entry (State f (Scall optid a al) k e le m) E0 *)
+  (*                 (Callstate vf (Tfunction tyargs tyres cconv) vargs (Kcall optid f e le k) m) *)
+  (*               step se ge function_entry (Returnstate v (Kcall optid f e le k) m) E0 *)
+  (*                 (State f Sskip k e (set_opttemp optid v le) m) *)
 | match_fr_ub
     kt st0
   :
@@ -479,10 +494,13 @@ Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Pr
     (SG: (signature_of_type targs tres cconv) = sg)
     (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
                       /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
+    oid f e le k
+    (AFTER: forall oh1 m1 v1, match_fr (k_src (oh1, (m1, v1)))
+                                       (State f Sskip k e (set_opttemp oid v1 le) m1))
   :
     _match_fr match_fr
               (Vis (subevent _ (ECall sg fptr oh0 m0 vs0)) k_src)
-              (Callstate fptr (Tfunction targs tres cconv) vs0 Kbot m0)
+              (Callstate fptr (Tfunction targs tres cconv) vs0 (Kcall oid f e le k) m0)
 .
 
 Definition match_fr: _ -> _ -> Prop := paco2 _match_fr bot2.
@@ -522,13 +540,13 @@ Inductive match_stack: list ktr -> cont -> Prop :=
     match_stack [] Kstop
 | match_stack_cons
     hd tl
-    oid fd e te ktl
+    oid fd e te khd ktl
     (TL: match_stack tl ktl)
     (HD: forall oh0 m0 r0,
         match_fr (hd (oh0, (m0, r0)))
-                 (State fd Sskip ktl e (set_opttemp oid r0 te) m0))
+                 (State fd Sskip khd e (set_opttemp oid r0 te) m0))
   :
-    match_stack (hd :: tl) (Kcall oid fd e te ktl)
+    match_stack (hd :: tl) (Kcall oid fd e te (app_cont khd ktl))
 .
 
 Lemma match_stack_is_call_cont
@@ -545,8 +563,10 @@ Inductive match_states: SIRStack.state unit -> state -> Prop :=
 | match_states_intro
     cur_src cont_src
     st0
-    (CUR: match_fr cur_src (set_cont st0 Kbot))
-    (CONT: match_stack cont_src (get_cont st0))
+    khd ktl
+    (CUR: match_fr cur_src (set_cont st0 khd))
+    (CONT: match_stack cont_src ktl)
+    (STCONT: get_cont st0 = app_cont khd ktl)
   :
     match_states (mk cur_src cont_src) st0
 .
@@ -569,12 +589,11 @@ Inductive match_prog: (SIRCommon.program unit) -> program -> Prop :=
 | match_prog_intro
     p_src p_tgt
     (PROG: forall
-        id
-        (SRC: is_some (p_src id))
+        (id: ident)
       ,
-        <<TGT: is_some ((prog_defmap (program_of_program p_tgt)) ! id)>>)
+        (<<SAME: is_some (p_src id) = is_some ((prog_defmap (program_of_program p_tgt)) ! id)>>))
     (SIM: forall
-        id f_src f_tgt
+        (id: ident) f_src f_tgt
         (SRC: p_src id = Some f_src)
         (TGT: ((prog_defmap (program_of_program p_tgt)) ! id) = Some (Gfun (Internal f_tgt)))
       ,
@@ -618,8 +637,11 @@ Tactic Notation "substs" :=
 
 Ltac inv H := inversion H; clear H; substs.
 
+Hypothesis (SIMP: match_prog p_src p_tgt).
+
 Lemma match_states_lxsim
       st_src0 st_tgt0 smo0
+      (WF: SimMem.wf smo0)
       (MATCH: match_states st_src0 st_tgt0)
   :
     <<XSIM: lxsim ms_src ms_tgt 
@@ -627,16 +649,18 @@ Lemma match_states_lxsim
                   (Ord.lift_idx unit_ord_wf tt) st_src0 st_tgt0 smo0>>
 .
 Proof.
-  revert_until SMO.
+  revert_until SIMP.
   pcofix CIH. i. pfold.
   ii. clear SUSTAR.
   inv MATCH.
   punfold CUR. inv CUR.
-  - ss. destruct st_tgt0; ss. clarify. substs.
+  - (* return *)
+    ss. destruct st_tgt0; ss. clarify. substs.
     inv CONT.
-    + econs 4; ss; et.
-      * instantiate (1:= SimMemId.mk _ _). ss.
+    + econs 4; ss; cycle 1.
+      { instantiate (1:= SimMemId.mk _ _); ss. }
       * rr. esplits; ss; et. econs; ss.
+      * et.
     + econs 1. ii. econs 1; swap 2 3.
       { split; intro T; rr in T; des; ss; inv T; ss. }
       { eapply modsem_receptive; et. }
@@ -645,8 +669,11 @@ Proof.
       * left. eapply ModSemProps.spread_dplus.
         { eapply modsem2_mi_determinate; et. }
         eapply plus_one. econs; ss; et.
-      * right. eapply CIH. econs; ss; et.
-  - pclearbot.
+      * right. eapply CIH.
+        { instantiate (1:= SimMemId.mk _ _); ss. }
+        econs; ss; et.
+  - (* tau/plus *)
+    pclearbot.
     + ss. econs 1. ii. econs 1; swap 2 3.
       { split; intro T; rr in T; des; ss; inv T; ss. }
       { eapply modsem_receptive; et. }
@@ -655,10 +682,101 @@ Proof.
       * left. eapply ModSemProps.spread_dplus.
         { eapply modsem2_mi_determinate; et. }
         ss; et.
-        change (Callstate fptr ty vs ktl m0) with (app_cont_state (Callstate fptr ty vs Kbot m0) ktl).
+        replace st_tgt0 with (app_cont_state (set_cont st_tgt0 khd) ktl); cycle 1.
+        { (*** TODO: make lemma ***) clear - STCONT. destruct st_tgt0; ss; clarify. }
         eapply plus_plus; et.
         eapply match_stack_is_call_cont; et.
-      * right. eapply CIH. econs; ss; et.
+      * right. eapply CIH.
+        { instantiate (1:= SimMemId.mk _ _); ss. }
+        econs; ss; et.
+        { rr. instantiate (1:= get_cont st_tgt2).
+          replace (set_cont (app_cont_state st_tgt2 ktl) (get_cont st_tgt2)) with st_tgt2; cycle 1.
+          { (*** TODO: make lemma ***) clear - st_tgt2. destruct st_tgt2; ss. }
+          ss.
+        }
+        { (*** TODO: make lemma ***) clear - st_tgt2. destruct st_tgt2; ss. }
+  - (* icall *)
+    pclearbot.
+    destruct st_tgt0; ss. csc. des_ifs. des. clear_tac.
+    + ss. econs 1. ii. econs 1; swap 2 3.
+      { split; intro T; rr in T; des; ss; inv T; ss. }
+      { eapply modsem_receptive; et. }
+      ii. inv STEPSRC; ss. clarify. simpl_depind. substs. clear_tac.
+      esplits; et.
+      * left. eapply ModSemProps.spread_dplus.
+        { eapply modsem2_mi_determinate; et. }
+        ss; et.
+        apply plus_one.
+        econs; ss; et.
+      * right. eapply CIH.
+        { instantiate (1:= SimMemId.mk _ _); ss. }
+        econs; ss; et.
+        { fold p_src.
+          assert(T: (prog_defmap p_tgt) ! fid = Some (Gfun (Internal fd))).
+          {
+            clear - SYMB FINDF INCL.
+            exploit (SkEnv.project_impl_spec); try apply INCL. intro SPEC.
+            exploit CSkEnv.project_revive_precise; et. intro T. inv T.
+            exploit SYMB2P; et. intro U. dup U. unfold NW, defs in U0. des_sumbool.
+            exploit prog_defmap_dom; et. intro V; des.
+            exploit P2GE; et. intro W; des.
+            folder.
+            assert(fblk = b).
+            { clear - SPEC SYMB SYMB0 U. (*** TODO: this is too extensional ***) uge. ss. clarify. }
+            clarify.
+            unfold Genv.find_funct_ptr in *. unfold Clight.fundef in *. rewrite DEF in *. des_ifs.
+          }
+          des_ifs; cycle 1.
+          { (*** TODO: make lemma ***)
+            exfalso. clear - T SYMB SIMP Heq.
+            inv SIMP. spc PROG. rewrite Heq in *. ss. rewrite T in *. ss.
+          }
+          inv SIMP.
+          exploit SIM; et. intro U. inv U.
+          eapply SIM0; et.
+        }
+        { econs; ss; et. }
+  - (* ub *)
+    + ss. econs 1. ii. econs 1; swap 2 3.
+      { split; intro T; rr in T; des; ss; inv T; ss. }
+      { eapply modsem_receptive; et. }
+      ii. inv STEPSRC; ss.
+  - (* ecall *)
+    pclearbot.
+    des. ss. destruct st_tgt0; ss. clarify. csc.
+    econs 3; ss.
+    { rr. esplits; ss. econs; ss; et.
+      - admit "".
+      - esplits; et. (*** TODO: make lemma ***) unfold Sk.get_csig in *. des_ifs.
+    }
+    ii. des_u. inv ATSRC; ss. csc. clear_tac. substs.
+    eexists _, _, (SimMemId.mk m0 m0). esplits; ss; et.
+    + rr. esplits; ss; et. econs; ss; et.
+    + econs; ss; et.
+    + ii. inv AFTERSRC. ss. clarify. rr in SIMRETV. des. ss. clear_tac.
+      inv SIMRETV0; ss. clarify. substs. destruct smo_ret; ss. substs.
+      inv GETK. ss. csc. substs.
+      esplits; et.
+      * econs; ss; et.
+      * left. pfold.
+        ss. econs 1. ii. econs 2; ss; et.
+        { split.
+          { eapply ModSemProps.spread_dplus.
+            { eapply modsem2_mi_determinate; et. }
+            apply plus_one. econs; ss; et.
+          }
+          admit "ORD".
+        }
+        right. eapply CIH.
+        { instantiate (1:= SimMemId.mk _ _); ss. }
+        econs; ss; et.
+        specialize (AFTER tt tgt v_tgt).
+        assert((typify v_tgt (typ_of_type tres)) = v_tgt).
+        { admit "typify". }
+        rewrite H. ss.
+Unshelve.
+  all: ss.
+  all: admit "".
 Qed.
 
 

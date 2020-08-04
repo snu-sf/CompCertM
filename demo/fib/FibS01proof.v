@@ -22,6 +22,42 @@ Require Import SIRProps.
 Set Implicit Arguments.
 
 
+
+
+(*** TODO: remove redundancy with Fib56proof ***)
+(* Section WFOPTION. *)
+
+(*   Variable idx: Type. *)
+(*   Variable ord: idx -> idx -> Prop. *)
+(*   Hypothesis WF: well_founded ord. *)
+
+(*   Let idx_option: Type := option idx. *)
+(*   Inductive ord_option: idx_option -> idx_option -> Prop := *)
+(*   | ord_option_some *)
+(*       i0 i1 *)
+(*       (ORD: ord i0 i1) *)
+(*     : *)
+(*       ord_option (Some i0) (Some i1) *)
+(*   . *)
+
+(*   Theorem wf_option: well_founded ord_option. *)
+(*   Proof. *)
+(*     ii. *)
+(*     induction a; ii; ss. *)
+(*     { pattern a. eapply well_founded_ind; et. clear a; i. *)
+(*       econs; et. ii. inv H0. eapply H; et. } *)
+(*     { econs. ii. inv H. } *)
+(*   Qed. *)
+
+(* End WFOPTION. *)
+
+
+
+
+
+
+
+
 (* Axiom sim_st_trans: forall *)
 (*     owned_heap *)
 (*     st0 st1 st2 (i0 i1 i2: unit) *)
@@ -30,9 +66,15 @@ Set Implicit Arguments.
 (*   , *)
 (*     <<SIM: sim_st (@eq owned_heap) bot2 i2 st1 st2>> *)
 (* . *)
+(* Local Existing Instance sim_st_trans. *)
+
+(* Let sim_st: option nat -> state owned_heap -> state owned_heap -> Prop := *)
+(*   (sim_st (@eq owned_heap) (option_rel lt)). *)
+
 Let sim_st: nat -> state owned_heap -> state owned_heap -> Prop := (sim_st (@eq owned_heap) lt).
-Axiom sim_st_trans: Transitive (sim_st 0%nat).
-Local Existing Instance sim_st_trans.
+
+
+(* Axiom sim_st_trans: Transitive (sim_st 0%nat). *)
 Require Import Morphisms.
 Local Open Scope signature_scope.
 
@@ -119,14 +161,6 @@ Ltac my_tac :=
          end
 .
 
-Lemma interp_bind: forall (E F : Type -> Type) (R S : Type) (f : forall T : Type, E T -> itree F T) 
-                          (t : itree E R) (k : R -> itree E S),
-    interp f (` x : _ <- t;; k x) = ` r : R <- interp f t;; interp f (k r)
-.
-Proof.
-  ii. f. apply interp_bind.
-Qed.
-
 Lemma interp_mrec_bind: forall (D E : Type -> Type) (ctx : forall T : Type, D T -> itree (D +' E) T) 
                                (U T : Type) (t : itree (D +' E) U) (k : U -> itree (D +' E) T),
     interp_mrec ctx (` x : _ <- t;; k x) = ` x : U <- interp_mrec ctx t;; interp_mrec ctx (k x)
@@ -137,165 +171,6 @@ Qed.
 
 
 
-Lemma unfold_fib: forall oh0 m0 vs0,
-    (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0))
-      ≈
-      (`n: nat <- (unwrapU (parse_arg oh0 m0 vs0)) ;;
-    match n with
-    | O => Ret (oh0, (m0, (Vint Int.zero)))
-    | S O => Ret (oh0, (m0, (Vint Int.one)))
-    | S (S m) =>
-      let vs0 := [Vint (of_nat m)] in
-      guarantee (parse_arg oh0 m0 vs0) ;;
-      '(oh1, (m1, y1)) <- (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0)) ;;
-
-      let vs1 := [Vint (of_nat (S m))] in
-      guarantee (parse_arg oh1 m1 vs1) ;;
-      '(oh2, (m2, y2)) <-  (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh1 m1 vs1)) ;;
-
-      Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
-    end
-      )
-.
-Proof.
-  {
-    i. irw.
-    unfold FibS0.f_fib at 2. irw.
-    unfold unwrapU. des_ifs; cycle 1.
-    { unfold triggerUB. irw. ITreelib.f_equiv. ii. ss. }
-    irw. destruct n.
-    { irw. refl. }
-    destruct n.
-    { irw. refl. }
-    destruct (to_nat_opt (of_nat n)) eqn:T; ss; cycle 1.
-    { unfold guarantee. des_ifs_safe. irw. unfold triggerNB. irw. ITreelib.f_equiv. ii; ss. }
-    unfold guarantee. des_ifs_safe. irw. rewrite tau_eutt.
-    des_ifs_safe.
-    rewrite <- ! unfold_interp_mrec.
-    rewrite interp_mrec_bind. ITreelib.f_equiv.
-    (*** TODO: I just want to use "f_equiv". The problem here is that I added
-`Require Import Morphisms.` after importing `ITreelib`.
-Solution is to import `Morphisms` inside ITreelib.
-***)
-    { refl. }
-    ii. des_ifs; cycle 1.
-    { irw. unfold triggerNB. irw. ITreelib.f_equiv. ii; ss. }
-    rewrite ! bind_ret_l.
-    rewrite interp_mrec_bind. ITreelib.f_equiv.
-    { irw. rewrite tau_eutt. des_ifs. refl. }
-    { ii. des_ifs. irw. refl. }
-  }
-Qed.
-
-
-
-Goal forall oh0 m0 vs0,
-    (interp_mrec (interp_function prog) (f_fib oh0 m0 vs0)) ≈
-    (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0))
-.
-Proof.
-  ii.
-  destruct (parse_arg oh0 m0 vs0) eqn:T; cycle 1.
-  { unfold f_fib, FibS0.f_fib. ss.
-    unfold unwrapU. des_ifs. unfold triggerUB. irw. r.
-    ITreelib.f_equiv. ii. ss. (*** !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! nice ***)
-  }
-  move n at top. revert_until n.
-  pattern n. eapply well_founded_ind.
-  { eapply lt_wf. }
-  clear n. intros.
-  rename x into n.
-  destruct n; ss.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
-  destruct n.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
-  unfold parse_arg in T. des_ifs.
-  rewrite unfold_fib. unfold unwrapU, parse_arg. rewrite T. ss. rewrite bind_ret_l.
-  assert(U: to_nat_opt (of_nat n) = Some n).
-  { admit "should be derived from guarantee". }
-  unfoldr guarantee. rewrite U. ss. des_ifs_safe. rewrite bind_ret_l.
-  assert(V: to_nat_opt (of_nat (S n)) = Some (S n)).
-  { admit "should be derived from guarantee". }
-  des_ifs. unfold guarantee. rewrite V. ss. des_ifs.
-
-
-  unfold f_fib. unfold unwrapU. rewrite unfold_interp_mrec. ss. des_ifs. rewrite ! bind_ret_l. ss.
-  rewrite <- H; cycle 1.
-  { instantiate (1:= n). eauto. }
-  { ss. }
-  unfold f_fib. unfold unwrapU. rewrite unfold_interp_mrec. ss. des_ifs. repeat (rewrite bind_ret_l; ss).
-  rewrite <- H; cycle 1.
-  { instantiate (1:= S n). eauto. }
-  { ss. }
-  unfold f_fib. ss. unfold unwrapU. des_ifs. ss. rewrite bind_ret_l.
-  rewrite unfold_interp_mrec. ss. rewrite bind_ret_l.
-  refl.
-Qed.
-
-(* Lemma unfold_fib: forall oh0 m0 vs0, *)
-(*     (mrec (interp_function FibS0.prog) (ICall Fib0._fib oh0 m0 vs0)) *)
-(*       ≈ *)
-(*       (`n: nat <- (unwrapU (parse_arg oh0 m0 vs0)) ;; *)
-(*     match n with *)
-(*     | O => Ret (oh0, (m0, (Vint Int.zero))) *)
-(*     | S O => Ret (oh0, (m0, (Vint Int.one))) *)
-(*     | S (S m) => *)
-(*       let vs0 := [Vint (of_nat m)] in *)
-(*       guarantee (parse_arg oh0 m0 vs0) ;; *)
-(*       '(oh1, (m1, y1)) <- (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0)) ;; *)
-
-(*       let vs1 := [Vint (of_nat (S m))] in *)
-(*       guarantee (parse_arg oh1 m1 vs1) ;; *)
-(*       '(oh2, (m2, y2)) <-  (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0)) ;; *)
-
-(*       Ret (oh2, (m2, Vint (of_nat (fib_nat n)))) *)
-(*     end *)
-(*       ) *)
-(* . *)
-(* Proof. *)
-(*   { *)
-(*     i. rewrite mrec_as_interp. irw. *)
-(*     unfold FibS0.f_fib at 2. irw. *)
-(*     unfold unwrapU. des_ifs; cycle 1. *)
-(*     { unfold triggerUB. irw. f_equiv. ii. ss. } *)
-(*     irw. destruct n. *)
-(*     { irw. refl. } *)
-(*     destruct n. *)
-(*     { irw. refl. } *)
-(*     destruct (to_nat_opt (of_nat n)) eqn:T; ss; cycle 1. *)
-(*     { unfold guarantee. des_ifs_safe. irw. unfold triggerNB. irw. f_equiv. ii; ss. } *)
-(*     unfold guarantee. des_ifs_safe. irw. rewrite tau_eutt. *)
-(*     des_ifs_safe. *)
-(*     rewrite <- unfold_interp_mrec. *)
-(*     Fail rewrite interp_bind. *)
-(*   } *)
-(* Qed. *)
-
-Goal forall oh0 m0 vs0,
-    (interp_mrec (interp_function prog) (f_fib oh0 m0 vs0)) ≈
-    (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0))
-.
-Proof.
-  ii.
-  destruct (parse_arg oh0 m0 vs0) eqn:T; cycle 1.
-  { unfold f_fib, FibS0.f_fib. ss.
-    unfold unwrapU. des_ifs. unfold triggerUB. irw. r.
-    ITreelib.f_equiv. ii. ss. (*** !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! nice ***)
-  }
-  ginduction n; ii; ss.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
-  destruct n.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
-  unfold parse_arg in T. des_ifs.
-  unfold f_fib, FibS0.f_fib. ss. rewrite T. ss. irw.
-  assert(U: to_nat_opt (of_nat n)).
-  { admit "should be derived from guarantee". }
-  unfoldr guarantee. des_ifs_safe. irw.
-  rewrite tau_eutt. des_ifs.
-  exploit (IHn oh0 m0 [Vint (of_nat n)]); eauto.
-  { admit "should be derived from guarantee". }
-  intro IH0. unfold f_fib in IH0. irw in IH0. unfold unwrapU in IH0. des_ifs. irw in IH0. clear_tac.
-Abort.
 
 
 
@@ -412,28 +287,6 @@ Proof.
   }
 Qed.
 
-Theorem correct: rusc defaultR [FibS1.module: Mod.t] [FibS0.module: Mod.t].
-Proof.
-  eapply SIREutt.correct; ss.
-  ii. clarify. rr.
-  unfold FibS0.prog in *. ss. des_ifs.
-  ii. clarify.
-  rename y into oh0. rename y0 into m0. rename y1 into vs0.
-  destruct (parse_arg oh0 m0 vs0) eqn:T; cycle 1.
-  { unfold f_fib, FibS0.f_fib. ss.
-    unfold unwrapU. des_ifs. unfold triggerUB. irw. r.
-    ITreelib.f_equiv. ii. ss. (*** !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! nice ***)
-  }
-  ginduction n; ii; ss.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
-  destruct n.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
-  unfold parse_arg in T. des_ifs.
-  unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw.
-  assert(U: to_nat_opt (of_nat n)).
-  { admit "should be derived from guarantee". }
-  unfoldr guarantee. des_ifs_safe. irw.
-Abort.
 
 
 
@@ -452,19 +305,124 @@ Abort.
 
 
 
+
+
+Theorem lemma_aux
+        m vs oh n
+        (T: parse_arg oh m vs = Some n)
+  :
+    sim_st 0%nat (interp_mrec (interp_function prog) (f_fib oh m vs))
+           (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh m vs))
+.
+Proof.
+  move n at top. revert_until n.
+  pattern n. eapply well_founded_ind.
+  { eapply lt_wf. }
+  clear n. intros.
+  rename x into n.
+
+  rewrite unfold_fib3.
+  unfold f_fib. ss.
+
+  Local Opaque prog FibS0.prog.
+  assert(BDOOR: forall E R (it: itree E R), (tau;; it) = it).
+  { admit "". }
+
+  destruct n.
+  { unfold parse_arg in *. des_ifs.
+    rewrite T. ss.  irw. pfold.
+    rewrite <- BDOOR.
+    eapply sim_st_choose_src. exists 0%nat. ss. left. pfold. econs; et.
+    irw. Fail refl. left. pfold. econs; et. }
+  destruct n.
+  { unfold parse_arg in *. des_ifs.
+    rewrite T. ss.  irw. pfold.
+    rewrite <- BDOOR.
+    eapply sim_st_choose_src. exists 0%nat. ss. left. pfold. econs; et.
+    irw. Fail refl. left. pfold. econs; et. }
+
+  unfold parse_arg in T. des_ifs.
+  ss. rewrite ! T. ss. irw.
+  unfold guarantee.
+  destruct (to_nat_opt (of_nat n)) eqn:U; cycle 1.
+  { des_ifs_safe. unfold triggerNB. irw. pfold. econs; et. }
+  ss. des_ifs_safe. irw.
+  ------------------------------------
+  pfold.
+  irw.
+  ss.
+  destruct (to_nat_opt (of_nat n)) eqn:U; cycle 1.
+  { des_ifs_safe. unfold triggerNB. irw. pfold. econs; et. }
+  
+  unfold guarantee. des_ifs.
+  unfold unwrapU, parse_arg. rewrite T. ss. rewrite bind_ret_l.
+  unfold guarantee. destruct (to_nat_opt (of_nat n)) eqn:U; cycle 1.
+  { des_ifs_safe. unfold triggerNB. irw. pfold. econs; et. }
+  ss. des_ifs_safe. rewrite bind_ret_l.
+  assert(n = n0).
+  { unfold to_nat_opt, of_nat in U. des_ifs. rewrite Int.signed_repr.
+    - rewrite Nat2Z.id. ss.
+    - admit "more integer reasoning from below facts needed".
+  }
+  subst.
+  rewrite fib_nat_recurse.
+  eapply rtc_n1; cycle 1.
+  { right. rewrite ! tau_eutt. refl. }
+  fold rel_trans.
+
+
+  unfold f_fib. unfold unwrapU. rewrite unfold_interp_mrec. ss. des_ifs_safe. rewrite ! bind_ret_l. ss.
+  rewrite <- H; cycle 1.
+  { instantiate (1:= n). eauto. }
+  { ss. }
+  unfold f_fib. unfold unwrapU. rewrite unfold_interp_mrec. ss. des_ifs. repeat (rewrite bind_ret_l; ss).
+  rewrite <- H; cycle 1.
+  { instantiate (1:= S n). eauto. }
+  { ss. }
+  unfold f_fib. ss. unfold unwrapU. des_ifs. ss. rewrite bind_ret_l.
+  rewrite unfold_interp_mrec. ss. rewrite bind_ret_l.
+  refl.
+
+
+
+
+
+  unfold f_fib. unfold unwrapU. des_ifs.rewrite unfold_interp_mrec. ss. des_ifs; cycle 1.
+  { irw. eapply rtc_once. left. unfold triggerNB. irw. pfold. econs; et. }
+  rewrite ! bind_ret_l. ss.
+  rewrite <- H; cycle 1.
+  { instantiate (1:= n). eauto. }
+  { ss. }
+  unfold f_fib. unfold unwrapU. rewrite unfold_interp_mrec. ss. des_ifs. repeat (rewrite bind_ret_l; ss).
+  rewrite <- H; cycle 1.
+  { instantiate (1:= S n). eauto. }
+  { ss. }
+  unfold f_fib. ss. unfold unwrapU. des_ifs. ss. rewrite bind_ret_l.
+  rewrite unfold_interp_mrec. ss. rewrite bind_ret_l.
+  refl.
+  econs.
+  pfold.
+Qed.
+
 Theorem lemma
         m vs oh
   :
-    rel_trans (interp_program prog (ICall Fib0._fib oh m vs))
-              (interp_program FibS0.prog (ICall Fib0._fib oh m vs))
+    sim_st 0%nat
+           (* (match parse_arg oh m vs with *)
+           (*  | Some n => fib_nat n *)
+           (*  | _ => 0%nat *)
+           (*  end) *)
+           (interp_program prog (ICall Fib0._fib oh m vs))
+           (interp_program FibS0.prog (ICall Fib0._fib oh m vs))
 .
 Proof.
   destruct (parse_arg oh m vs) eqn:T; cycle 1.
   { unfold interp_program, mrec. irw. des_ifs.
     unfold f_fib at 2. unfold FibS0.f_fib at 2.
-    unfold unwrapU. des_ifs. irw. eapply rtc_once; left. pfold; econs; et.
+    unfold unwrapU. des_ifs. irw. pfold; econs; et.
   }
   clear_tac.
+  eapply lemma_aux; et.
 
   move n at top. revert_until n.
   pattern n. eapply well_founded_ind.
@@ -476,18 +434,18 @@ Proof.
   { unfold parse_arg in *. des_ifs.
     unfold interp_program, mrec. ss. des_ifs. cbn in Heq, Heq0. des_ifs. clear_tac.
     rewrite ! unfold_interp_mrec.
-    unfold f_fib, FibS0.f_fib. ss. rewrite T. ss. irw. refl. }
+    unfold f_fib, FibS0.f_fib. ss. rewrite T. ss. irw. Fail refl. pfold. econs; et. }
   destruct n.
   { unfold parse_arg in *. des_ifs.
     unfold interp_program, mrec. ss. des_ifs. cbn in Heq, Heq0. des_ifs. clear_tac.
     rewrite ! unfold_interp_mrec.
-    unfold f_fib, FibS0.f_fib. ss. rewrite T. ss. irw. refl. }
+    unfold f_fib, FibS0.f_fib. ss. rewrite T. ss. irw. Fail refl. pfold. econs; et. }
 
   unfold parse_arg in T. des_ifs.
   unfold interp_program, mrec. ss. des_ifs. cbn in Heq, Heq0. des_ifs. clear_tac.
   rewrite unfold_fib3. unfold unwrapU, parse_arg. rewrite T. ss. rewrite bind_ret_l.
   unfold guarantee. destruct (to_nat_opt (of_nat n)) eqn:U; cycle 1.
-  { des_ifs_safe. unfold triggerNB. irw. eapply rtc_once; left. pfold. econs; et. }
+  { des_ifs_safe. unfold triggerNB. irw. pfold. econs; et. }
   ss. des_ifs_safe. rewrite bind_ret_l.
   assert(n = n0).
   { unfold to_nat_opt, of_nat in U. des_ifs. rewrite Int.signed_repr.
@@ -495,6 +453,7 @@ Proof.
     - admit "more integer reasoning from below facts needed".
   }
   subst.
+  rewrite fib_nat_recurse.
   eapply rtc_n1; cycle 1.
   { right. rewrite ! tau_eutt. refl. }
   fold rel_trans.

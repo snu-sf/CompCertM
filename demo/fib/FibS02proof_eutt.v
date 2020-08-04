@@ -106,11 +106,13 @@ Proof.
   { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
   unfold parse_arg in T. des_ifs.
   rewrite unfold_fib. unfold unwrapU, parse_arg. rewrite T. ss. rewrite bind_ret_l.
+  assert(W: Z.of_nat (S (S n)) <= Int.max_signed).
+  { unfold to_nat_opt in *. des_ifs. rewrite <- H1. rewrite Z2Nat.id; ss. apply Int.signed_range. }
   assert(U: to_nat_opt (of_nat n) = Some n).
-  { admit "should be derived from guarantee". }
+  { rewrite range_to_nat; ss. xomega. (*** "should be derived from guarantee". ***) }
   unfoldr guarantee. rewrite U. ss. des_ifs_safe. rewrite bind_ret_l.
   assert(V: to_nat_opt (of_nat (S n)) = Some (S n)).
-  { admit "should be derived from guarantee". }
+  { rewrite range_to_nat; ss. xomega. (*** "should be derived from guarantee". ***) }
   des_ifs. unfold guarantee. rewrite V. ss. des_ifs.
 
 

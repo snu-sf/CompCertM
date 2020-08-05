@@ -29,109 +29,6 @@ Set Implicit Arguments.
 
 Definition Kbot := Kstop.
 
-Inductive kle: cont -> cont -> Prop :=
-(* | kle_refl *)
-(*     k *)
-(*   : *)
-(*     kle k k *)
-| kle_bot
-    k
-  :
-    kle Kbot k
-| Kseq_le
-    st
-    k0 k1
-    (LE: kle k0 k1)
-  :
-    kle (Kseq st k0) (Kseq st k1)
-| Kloop1_le
-    cond body
-    k0 k1
-    (LE: kle k0 k1)
-  :
-    kle (Kloop1 cond body k0) (Kloop1 cond body k1)
-| Kloop2_le
-    cond body
-    k0 k1
-    (LE: kle k0 k1)
-  :
-    kle (Kloop2 cond body k0) (Kloop2 cond body k1)
-| Kswitch_le
-    k0 k1
-    (LE: kle k0 k1)
-  :
-    kle (Kswitch k0) (Kswitch k1)
-| Kcall_le
-    oid fd e te
-    k0 k1
-    (LE: kle k0 k1)
-  :
-    kle (Kcall oid fd e te k0) (Kcall oid fd e te k1)
-.
-
-Program Instance kle_Reflexive: Reflexive kle.
-Next Obligation.
-  induction x; ii; ss; try (by econs; et).
-Qed.
-
-Lemma kle_refl k: kle k k. Proof. refl. Qed.
-Hint Resolve kle_refl.
-
-Inductive state_le: state -> state -> Prop :=
-| State_le
-    fd st e le m
-    k0 k1
-    (LE: kle k0 k1)
-  :
-    state_le (State fd st k0 e le m) (State fd st k1 e le m)
-| Callstate_le
-    fptr ty vs m
-    k0 k1
-    (LE: kle k0 k1)
-  :
-    state_le (Callstate fptr ty vs k0 m) (Callstate fptr ty vs k1 m)
-| Returnstate_le
-    v m k0 k1
-    (LE: kle k0 k1)
-  :
-    state_le (Returnstate v k0 m) (Returnstate v k1 m)
-.
-
-Lemma kle_call_cont
-      k0 k1
-      (LE: kle k0 k1)
-  :
-    kle (call_cont k0) (call_cont k1)
-.
-Proof.
-  ginduction k0; ii; ss; try inv LE; try econs; et; ss; et.
-Qed.
-
-(* Lemma kle_find_label: forall *)
-(*       lbl body res *)
-(*       k0 k1 *)
-(*       (KLE: kle k0 k1) *)
-(*       (LBL: find_label lbl body k0 = Some res) *)
-(*   , *)
-(*     <<LBL: find_label lbl body k1 = Some res>> *)
-(* with *)
-(* kle_find_label_ls: forall *)
-(*     lbl body res *)
-(*     k0 k1 *)
-(*     (KLE: kle k0 k1) *)
-(*     (LBL: find_label_ls lbl body k0 = Some res) *)
-(*   , *)
-(*     <<LBL: find_label_ls lbl body k1 = Some res>> *)
-(* . *)
-(* Proof. *)
-(*   - ii. destruct body; ss. *)
-(*     + des_ifs; et. *)
-(*       * *)
-(*   - ii. move body at top. revert_until kle_find_label_ls. induction body; ii; ss. *)
-(*     + destruct body1; ss; et. *)
-(*       * destruct body1; ss. eapply kle_find_label. *)
-(* Qed. *)
-
 Definition get_cont (st: state): cont :=
   match st with
   | State _ _ k _ _ _ => k
@@ -147,54 +44,6 @@ Definition set_cont (st: state) (k1: cont): state :=
   | Returnstate res k0 m0 => Returnstate res k1 m0
   end
 .
-
-Lemma step_step
-      se ge st_bot0 tr st_bot1 st0
-      (NOGOTO: True)
-      (STEP: step2 se ge st_bot0 tr st_bot1)
-      (LE: state_le st_bot0 st0)
-      (CALL: is_call_cont (get_cont st0))
-  :
-    exists st1, <<STEP: step2 se ge st0 tr st1>> /\ <<LE: state_le st_bot1 st1>>
-.
-Proof.
-  inv STEP; inv LE; try inv LE0; ss; try (by esplits; repeat (econs; ss; eauto using kle_call_cont)).
-  - admit "goto".
-  - admit "goto".
-Abort.
-
-Lemma plus_plus
-      se ge st_bot0 tr st_bot1 st0
-      (NOGOTO: True)
-      (STEP: plus step2 se ge st_bot0 tr st_bot1)
-      (LE: state_le st_bot0 st0)
-      (CALL: is_call_cont (get_cont st0))
-  :
-    exists st1, <<STEP: plus step2 se ge st0 tr st1>> /\ <<LE: state_le st_bot1 st1>>
-.
-Proof.
-  ginduction STEP; ii; ss. clarify.
-  (* exploit step_step; et. i; des. *)
-  (* esplits; et. *)
-  (* { econs; et. ss. *)
-Abort.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 (*** copy-pasted from UBD_Aextra and modified ***)
 Fixpoint app_cont (k0 k1: cont) {struct k0}: cont :=
@@ -257,22 +106,6 @@ Lemma app_cont_is_call_cont
     is_call_cont (app_cont k k0)
 .
 Proof. destruct k; ss. Qed.
-
-Lemma is_call_cont_strong_weaken: is_call_cont_strong <1= is_call_cont.
-Proof. ii. destruct x0; ss. Qed.
-(* Hint Resolve is_call_cont_strong_weaken. *)
-
-Lemma step_step
-      se ge st0 tr st1
-      (STEP: step2 se ge (set_cont st0 Kbot) tr st1)
-  :
-    <<STEP: step2 se ge st0 tr (set_cont st1 (app_cont (get_cont st1) (get_cont st0)))>>
-.
-Proof.
-  (* unfold set_cont in STEP. *)
-  inv STEP; ss; destruct st0; ss; clarify; try (by econs; ss; et).
-  - r. ss.
-Abort.
 
 Definition app_cont_state (st0: state) (k0: cont): state :=
   set_cont st0 (app_cont (get_cont st0) k0)
@@ -416,9 +249,8 @@ End CTYPESC.
 
 
 
-
-
-
+Notation ktr := (ktree (eff1 unit) (unit * (mem * val)) (unit * (mem * val))).
+Notation itr := (itree (eff1 unit) (unit * (mem * val))).
 
 Section OWNEDHEAP.
 
@@ -428,7 +260,6 @@ Variable p_tgt: program.
 Let p_src := SMod.prog md_src.
 Let md_tgt := module2_mi p_tgt (Some mi).
 Hypothesis (MISRC: md_src.(SMod.midx) = mi).
-(* Hypothesis (WF: list_norepet (prog_defs_names p_tgt)). *)
 Variable skenv_link: SkEnv.t.
 Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p_tgt)).
 Let ms_src := md_src skenv_link.
@@ -438,10 +269,6 @@ Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_fu
 Let ge: genv := Build_genv (SkEnv.revive (skenv) p_tgt) p_tgt.(prog_comp_env).
 Hypothesis SK: (SMod.sk) md_src = (Mod.sk) md_tgt.
 
-Notation ktr :=
-  (ktree (eff1 unit) (unit * (mem * val)) (unit * (mem * val)))
-.
-Notation itr := (itree (eff1 unit) (unit * (mem * val))).
 
 
 
@@ -937,224 +764,36 @@ Qed.
 
 End SIMMODSEM.
 
-
-
-
-
-
-
-Section SIM.
-
-  Hypothesis (SIMP: match_prog p_src p_tgt).
-
-  Lemma match_prog_sim_st
-        i_src i_tgt
-        (SIM: match_itr i_src i_tgt)
-    :
-      sim_st bot2 tt (interp_mrec (interp_function p_src) i_src)
-             (interp_mrec (interp_function p_tgt) i_tgt)
-  .
-  Proof.
-    revert_until SIMP.
-    ginit.
-    { intros. eapply cpn3_wcompat; et. eauto with paco. }
-    gcofix CIH.
-    i. rewrite ! unfold_interp_mrec.
-    punfold SIM. inv SIM; cbn.
-    - gstep. econs; et.
-    - pclearbot. gstep. econs; et. gbase. et.
-    - pclearbot. gstep. econs; et. gbase.
-      eapply CIH. eapply match_itr_bind.
-      { u. ii. repeat spc MATCH. pclearbot. eauto. }
-      exploit (@SIMP fname); et. intro T. r in T. des_ifs; cycle 1.
-      { pfold. econs; et. }
-      exploit T; et.
-    - gstep. econs; et. u in *. gstep. econs; et. repeat spc MATCH. specialize (MATCH H0).
-      des; ss. gbase. eapply CIH.
-      eauto with paco.
-    - gstep. econs; et.
-    - gstep. econs; et.
-    - gstep. econs; et. ii. exploit SIM0; et. i; des_safe. pclearbot. esplits.
-      gstep. econs; et. eauto with paco.
-    - gstep. des. pclearbot. econs; et. esplits; et. gstep.
-      rewrite (unfold_interp_mrec _ (Tau i_tgt0)). cbn. econs; et. eauto with paco.
-    - gstep. pclearbot. econs; et. ii. repeat spc SIM0. gstep.
-      rewrite (unfold_interp_mrec _ (Tau i_src0)). cbn. econs; et. eauto with paco.
-  Unshelve.
-    all: ss.
-  Qed.
-
-  (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)
-  Theorem adequacy_local_local:
-    forall
-      (fname: ident) m vs oh_src oh_tgt
-      (O: SO oh_src oh_tgt)
-    ,
-      (<<SIM: sim_st bot2 tt (interp_program p_src (ICall fname oh_src m vs))
-                     (interp_program p_tgt (ICall fname oh_tgt m vs))
-                     >>)
-  .
-  Proof.
-    {
-      ii.
-      eapply match_prog_sim_st; ss.
-      hexploit (@SIMP fname); et. intro T. r in T. des_ifs; cycle 1.
-      { pfold. econs; et. }
-      repeat (spc T). des. ss.
-    }
-  Qed.
-
-  Hypothesis (SIMMI: mi_src = mi_tgt).
-  Hypothesis (SIMO: forall skenv, SO (md_src.(SMod.initial_owned_heap) skenv)
-                                     (md_tgt.(SMod.initial_owned_heap) skenv)).
-  Hypothesis (SIMSK: md_src.(SMod.sk) = md_tgt.(SMod.sk)).
-  Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
-
-  Theorem sim_mod: ModPair.sim mp.
-  Proof.
-    eapply SimSIR.sim_mod; eauto.
-    econs; et.
-    { eapply unit_ord_wf. }
-    ii. clarify. esplits. eapply adequacy_local_local; et.
-  Qed.
-
-  Theorem correct: rusc defaultR [md_src: Mod.t] [md_tgt: Mod.t].
-  Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.
-
-  Lemma match_itr_bind_assume
-        P x y
-        (MATCH: match_itr x y)
-    :
-      <<MATCH: match_itr (assume P ;; x) (assume P ;; y)>>
-  .
-  Proof.
-    Fail eapply match_itr_bind.
-    Fail progress f_equiv.
-    (*** Like in SIRHoare, we need to parameterize "match_itr" in order to do this.
-         However, we can't do that for arbitrary type S. (because it is not leibniz equality)
-         TODO: current design is somewhat unsatisfactory. Probably what we want is following:
-           - SIRLocalStrong: src/tgt can have different value/mem/owned_heap,
-                             but weak match_itr_bind
-           - SIRLocalWeak: src/tgt should have (leibniz) equal value/mem/owned_heap,
-                           but strong match_itr_bind
-     ***)
-    unfold assume. des_ifs; irw; ss.
-    unfold triggerUB. irw. pfold; econs; et.
-  Qed.
-
-  Lemma match_itr_bind_guarantee
-        P x y
-        (MATCH: match_itr x y)
-    :
-      <<MATCH: match_itr (guarantee P ;; x) (guarantee P ;; y)>>
-  .
-  Proof.
-    unfold guarantee. des_ifs; irw; ss.
-    unfold triggerNB. irw. pfold; econs; et.
-  Qed.
-
-End SIM.
-
 End OWNEDHEAP.
-Hint Unfold match_itr match_fn match_prog.
-Hint Resolve match_itr_mon: paco.
-Hint Constructors bindC: core.
-
-
-Section REFL.
-  Variable owned_heap: Type.
-  Global Program Instance match_itr_Reflexive: Reflexive (match_itr (@eq owned_heap)).
-  Next Obligation.
-    rr. revert x.
-    ginit.
-    { intros. eapply cpn2_wcompat; eauto with paco. }
-    gcofix CIH. ii. gstep.
-    ides x.
-    - destruct r0 as [oh [m vs]]. econs; et.
-    - econs; et. eauto with paco.
-    - destruct e.
-      + destruct i. econs; et. ii. rr in H. des_ifs. des; clarify. eauto with paco.
-      + destruct s.
-        * destruct e. econs; et. ii. rr in H. des_ifs. des; clarify. eauto with paco.
-        * destruct e; try econs; et. ii. esplits; et. eauto with paco.
-  Qed.
-  
-  Global Program Instance match_fn_Reflexive: Reflexive (match_fn (@eq owned_heap)).
-  Next Obligation.
-    ii. clarify. r. refl.
-  Qed.
-
-  Global Program Instance match_prog_Reflexive: Reflexive (match_prog (@eq owned_heap)).
-  Next Obligation.
-    ii. clarify. r. des_ifs. r. refl.
-  Qed.
-
-End REFL.
 
 
 
-(*** TODO: move to CoqlibC ***)
-Ltac unfoldr term :=
-  first[
-      unfold term at 10|
-      unfold term at 9|
-      unfold term at 8|
-      unfold term at 7|
-      unfold term at 6|
-      unfold term at 5|
-      unfold term at 4|
-      unfold term at 3|
-      unfold term at 2|
-      unfold term at 1|
-      unfold term at 0
-    ]
-.
 
-Ltac step :=
-  match goal with
-  | [ |- SIRLocal.match_itr eq (assume _ ;; _) (assume _ ;; _) ] =>
-    eapply match_itr_bind_assume; irw
-  | [ |- SIRLocal.match_itr eq (guarantee _ ;; _) (guarantee _ ;; _) ] =>
-    eapply match_itr_bind_guarantee; irw
-  | [ |- SIRLocal.match_itr eq (assume ?P ;; _) _ ] =>
-    unfoldr assume;
-    let name := fresh "_ASSUME" in
-    destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
-      unfold triggerUB;
-      rewrite bind_vis (*** <---------- this is counter-intuitive. Any good idea? ***);
-      pfold; by (econs; eauto)|irw]
-  | [ |- SIRLocal.match_itr eq (guarantee ?P ;; _) _ ] =>
-    unfoldr guarantee;
-    let name := fresh "_GUARANTEE" in
-    destruct (ClassicalDescription.excluded_middle_informative P) as [name|name]; cycle 1; [
-      contradict name|irw]
-  | [ |- SIRLocal.match_itr eq ((match ?x with _ => _ end) >>= guaranteeK _)
-                            (match ?y with _ => _ end) ] =>
-    tryif (check_equal x y)
-    then let name := fresh "_DES" in
-         destruct x eqn:name; clarify; irw
-    else fail
-  | [ |- SIRLocal.match_itr eq (triggerUB >>= _) _ ] =>
-    unfold triggerUB; irw;
-    pfold; by (econs; eauto)
-  | [ |- SIRLocal.match_itr eq _ (triggerNB >>= _) ] =>
-    unfold triggerNB; irw;
-    pfold; by (econs; eauto)
-  | [ |- SIRLocal.match_itr eq (guaranteeK ?P ?x) _ ] =>
-    unfold guaranteeK;
-    let name := fresh "_GUARANTEEK" in
-    destruct (ClassicalDescription.excluded_middle_informative (P x)) as [name|name]; cycle 1; [
-      contradict name|irw]
-  | [ |- SIRLocal.match_itr eq (Ret _) (Ret _) ] =>
-    pfold; try (by econs; eauto)
-  | [ |- SIRLocal.match_itr eq (Vis (subevent _ (ICall _ _ _ _)) _)
-                            (Vis (subevent _ (ICall _ _ _ _)) _) ] =>
-    pfold; eapply match_icall; ss; et
-  | [ |- HProper _ _ _ ] => ii
-  | [ H: SALL _ _ _ |- _ ] => r in H; des_ifs_safe; des; clarify
-  | [ |- upaco2 (_match_itr ?SO) bot2 _ _ ] =>
-    left;
-    replace (paco2 (_match_itr SO) bot2) with (SIRLocal.match_itr SO) by ss;
-    irw
-  end
-.
+
+
+
+Section SIMMOD.
+
+Variable mi: string.
+Variable md_src: SMod.t unit.
+Variable p_tgt: program.
+Let p_src := SMod.prog md_src.
+Let md_tgt := module2_mi p_tgt (Some mi).
+Hypothesis (MISRC: md_src.(SMod.midx) = mi).
+Hypothesis SK: (SMod.sk) md_src = (Mod.sk) md_tgt.
+
+Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
+
+Hypothesis (SIMP: match_prog mi p_src p_tgt).
+
+Theorem sim_mod: ModPair.sim mp.
+Proof.
+  econs; ss.
+  { folder. congruence. }
+  - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
+Qed.
+
+Theorem correct: rusc defaultR [md_src: Mod.t] [md_tgt: Mod.t].
+Proof. eapply AdequacyLocal.relate_single_rusc; try exists mp; esplits; eauto using sim_mod. Qed.
+
+End SIMMOD.

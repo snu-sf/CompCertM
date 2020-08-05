@@ -661,6 +661,39 @@ Proof.
   unfold Genv.find_funct_ptr in *. unfold Clight.fundef in *. rewrite DEF in *. des_ifs.
 Qed.
 
+Lemma external_bsim
+      fptr
+      (EXTERNAL: Genv.find_funct (SkEnv.revive skenv p_tgt) fptr = None)
+      skd
+      (SIG: Genv.find_funct skenv_link fptr = Some skd)
+  :
+    <<EXTERNAL: Genv.find_funct (SkEnv.project skenv_link (SMod.sk md_src)) fptr = None>>
+.
+Proof.
+  rewrite SK in *. folder.
+  unfold SkEnv.revive in *. uge. ss. des_ifs_safe.
+  rewrite PTree_filter_map_spec in *. des_ifs.
+  + uo. des_ifs_safe.
+    rewrite PTree_filter_map_spec in *. uo. des_ifs. clear_tac.
+    generalize (CSk.of_program_prog_defmap p_tgt signature_of_function i); intro T.
+    assert(i0 = i).
+    { clear - Heq3 Heq5. subst_locals. apply_all_once Genv.invert_find_symbol. uge. ss.
+      rewrite PTree_filter_key_spec in *. des_ifs.
+      eapply Genv.genv_vars_inj; et. } subst.
+    rewrite Heq6 in *. rewrite Heq2 in *. inv T. inv H1.
+  + uo. des_ifs_safe.
+    rewrite PTree_filter_map_spec in *. uo. des_ifs_safe. clear_tac.
+    assert(Genv.invert_symbol skenv b = Some i).
+    { clear - Heq2 Heq Heq0. subst_locals. apply_all_once Genv.invert_find_symbol.
+      apply Genv.find_invert_symbol. uge. ss.
+      rewrite PTree_filter_key_spec in *. des_ifs.
+      unfold defs in *. des_sumbool. contradict Heq1. eapply prog_defmap_image; et.
+    }
+    des_ifs. clear_tac.
+    generalize (CSk.of_program_prog_defmap p_tgt signature_of_function i); intro T.
+    rewrite Heq5 in *. rewrite Heq2 in *. inv T.
+Qed.
+
 
 
 Let SMO := SimMemOh_default_aux _ (Some mi).
@@ -772,32 +805,7 @@ Proof.
     des. ss. destruct st_tgt0; ss. clarify. csc.
     econs 3; ss.
     { rr. esplits; ss. econs; ss; et.
-      - clear - EXTERNAL INCL SIG SK.
-        {
-          (*** TODO: MAKE LEMMA ***)
-          rewrite SK in *. folder.
-          unfold SkEnv.revive in *. uge. ss. des_ifs_safe.
-          rewrite PTree_filter_map_spec in *. des_ifs.
-          + uo. des_ifs_safe.
-            rewrite PTree_filter_map_spec in *. uo. des_ifs. clear_tac.
-            generalize (CSk.of_program_prog_defmap p_tgt signature_of_function i); intro T.
-            assert(i0 = i).
-            { clear - Heq3 Heq5. subst_locals. apply_all_once Genv.invert_find_symbol. uge. ss.
-              rewrite PTree_filter_key_spec in *. des_ifs.
-              eapply Genv.genv_vars_inj; et. } subst.
-            rewrite Heq6 in *. rewrite Heq2 in *. inv T. inv H1.
-          + uo. des_ifs_safe.
-            rewrite PTree_filter_map_spec in *. uo. des_ifs_safe. clear_tac.
-            assert(Genv.invert_symbol skenv b = Some i).
-            { clear - Heq2 Heq Heq0. subst_locals. apply_all_once Genv.invert_find_symbol.
-              apply Genv.find_invert_symbol. uge. ss.
-              rewrite PTree_filter_key_spec in *. des_ifs.
-              unfold defs in *. des_sumbool. contradict Heq1. eapply prog_defmap_image; et.
-            }
-            des_ifs. clear_tac.
-            generalize (CSk.of_program_prog_defmap p_tgt signature_of_function i); intro T.
-            rewrite Heq5 in *. rewrite Heq2 in *. inv T.
-        }
+      - eapply external_bsim; et.
       - esplits; et. (*** TODO: make lemma ***) unfold Sk.get_csig in *. des_ifs.
     }
     ii. des_u. inv ATSRC; ss. csc. clear_tac. substs.

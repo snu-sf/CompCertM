@@ -254,20 +254,20 @@ Notation itr := (itree (eff1 unit) (unit * (mem * val))).
 
 Section OWNEDHEAP.
 
-Variable mi: string.
-Variable md_src: SMod.t unit.
-Variable p_tgt: program.
-Let p_src := SMod.prog md_src.
-Let md_tgt := module2_mi p_tgt (Some mi).
-Hypothesis (MISRC: md_src.(SMod.midx) = mi).
-Variable skenv_link: SkEnv.t.
-Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p_tgt)).
-Let ms_src := md_src skenv_link.
-Let ms_tgt := md_tgt skenv_link.
+(* Variable md_src: SMod.t unit. *)
+(* Variable p_tgt: program. *)
+(* Let p_src := SMod.prog md_src. *)
+(* Let md_tgt := module2_mi p_tgt (Some mi). *)
+(* Hypothesis (MISRC: md_src.(SMod.midx) = mi). *)
+(* Variable skenv_link: SkEnv.t. *)
+(* Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p_tgt)). *)
+(* Let ms_src := md_src skenv_link. *)
+(* Let ms_tgt := md_tgt skenv_link. *)
 
-Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_function p_tgt).
-Let ge: genv := Build_genv (SkEnv.revive (skenv) p_tgt) p_tgt.(prog_comp_env).
-Hypothesis SK: (SMod.sk) md_src = (Mod.sk) md_tgt.
+(* Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_function p_tgt). *)
+(* Let ge: genv := Build_genv (SkEnv.revive (skenv) p_tgt) p_tgt.(prog_comp_env). *)
+(* Hypothesis SK: (SMod.sk) md_src = (Mod.sk) md_tgt. *)
+
 
 
 
@@ -281,6 +281,9 @@ Let fr_tgt := Clight.state.
 
 Section FRAME.
 
+Variable skenv_link: SkEnv.t.
+Variable ge: genv.
+
 Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Prop :=
 | match_fr_ret
     oh0 m0 v0
@@ -289,7 +292,7 @@ Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Pr
 | match_fr_tau
     st_src0 st_tgt0 st_tgt1
     (SIM: match_fr st_src0 st_tgt1)
-    (TGT: Plus ms_tgt st_tgt0 E0 st_tgt1)
+    (TGT: plus step2 skenv_link ge st_tgt0 E0 st_tgt1)
   :
     _match_fr match_fr (tau;; st_src0) (st_tgt0)
 | match_fr_icall
@@ -348,31 +351,6 @@ Proof.
   ii. destruct IN; try (by econs; et; rr; et).
 Qed.
 
-End FRAME.
-Hint Unfold match_fr.
-Hint Resolve match_fr_mon: paco.
-
-
-
-
-
-
-(*** I don't use record style in order not to contaminate namespace ***)
-(* Inductive stack: Type := *)
-(* | mk_stack *)
-(*     (optid: option ident) *)
-(*     (fd: Clight.function) *)
-(*     (e: env) *)
-(*     (le: temp_env) *)
-(* . *)
-
-(***
-[ktr] [ktr] [tau ;; Ret 10]
-let k0 := Kcall _ _ Kbot in
-let k1 := Kcall _ _ k1 in
-Callstate k1
-***)
-
 Inductive match_stack: list ktr -> cont -> Prop :=
 | match_stack_nil
   :
@@ -398,6 +376,22 @@ Proof.
   induction MATCH; ii; ss.
 Qed.
 
+(*** I don't use record style in order not to contaminate namespace ***)
+(* Inductive stack: Type := *)
+(* | mk_stack *)
+(*     (optid: option ident) *)
+(*     (fd: Clight.function) *)
+(*     (e: env) *)
+(*     (le: temp_env) *)
+(* . *)
+
+(***
+[ktr] [ktr] [tau ;; Ret 10]
+let k0 := Kcall _ _ Kbot in
+let k1 := Kcall _ _ k1 in
+Callstate k1
+***)
+
 Inductive match_states: SIRStack.state unit -> state -> Prop :=
 | match_states_intro
     cur_src cont_src
@@ -419,8 +413,17 @@ Inductive match_func: SIRCommon.function unit -> val -> type -> Prop :=
         match_fr (kt oh0 m0 vs0) (Callstate fptr ty vs0 Kbot m0))
   :
     match_func kt fptr ty
-
 .
+
+End FRAME.
+Hint Unfold match_fr.
+Hint Resolve match_fr_mon: paco.
+
+
+
+
+
+
 
 Inductive match_prog: (SIRCommon.program unit) -> program -> Prop :=
 | match_prog_intro
@@ -430,12 +433,18 @@ Inductive match_prog: (SIRCommon.program unit) -> program -> Prop :=
       ,
         (<<SAME: is_some (p_src id) = (internal_funs p_tgt id)>>))
     (SIM: forall
-        (id: ident) f_src f_tgt fblk
+        (id: ident)
+        skenv_link ge
+        (GE: ge = Build_genv (SkEnv.revive ((SkEnv.project skenv_link)
+                                              (CSk.of_program signature_of_function p_tgt)) p_tgt)
+                             (p_tgt.(prog_comp_env))
+        )
+        f_src f_tgt fblk
         (SRC: p_src id = Some f_src)
         (TGT: ((prog_defmap (program_of_program p_tgt)) ! id) = Some (Gfun (Internal f_tgt)))
-        (SYMB: Genv.find_symbol (SkEnv.revive skenv p_tgt) id = Some fblk)
+        (SYMB: Genv.find_symbol ge id = Some fblk)
       ,
-        <<SIM: match_func f_src (Vptr fblk Ptrofs.zero) (type_of_function f_tgt)>>)
+        <<SIM: match_func skenv_link ge f_src (Vptr fblk Ptrofs.zero) (type_of_function f_tgt)>>)
   :
     match_prog p_src p_tgt
 .
@@ -466,6 +475,31 @@ Hint Resolve match_fr_mon: paco.
 
 
 
+
+
+
+
+
+
+
+
+Section SIMMODSEM.
+
+Variable md_src: SMod.t unit.
+Let mi := md_src.(SMod.midx).
+Variable p_tgt: program.
+Let p_src := SMod.prog md_src.
+Let md_tgt := module2_mi p_tgt (Some mi).
+Variable skenv_link: SkEnv.t.
+Hypothesis (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p_tgt)).
+Let ms_src := md_src skenv_link.
+Let ms_tgt := md_tgt skenv_link.
+
+Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_function p_tgt).
+Let ge: genv := Build_genv (SkEnv.revive (skenv) p_tgt) p_tgt.(prog_comp_env).
+Hypothesis SK: (SMod.sk) md_src = (Mod.sk) md_tgt.
+
+Let match_states := match_states skenv_link ge.
 
 Lemma find_defmap
       fid fblk fd
@@ -532,9 +566,6 @@ Tactic Notation "substs" :=
 Ltac inv H := inversion H; clear H; substs.
 
 Hypothesis (SIMP: match_prog p_src p_tgt).
-
-
-Section SIMMODSEM.
 
 Lemma match_states_lxsim
       st_src0 st_tgt0 smo0
@@ -672,8 +703,6 @@ Theorem sim_modsem: ModSemPair.sim msp.
 Proof.
   econstructor 1 with (sidx := unit) (sound_states := top4); eauto;
     try apply SoundTop.sound_state_local_preservation; et; try (by ii; ss).
-  { unfold msp. cbn. rewrite MISRC. ss. }
-  { unfold msp. cbn. rewrite MISRC. ss. }
   { ii. eapply Preservation.local_preservation_noguarantee_weak.
     apply SoundTop.sound_state_local_preservation; et.
   }
@@ -689,7 +718,7 @@ Proof.
     spc PROG. des.
     assert(T: internal_funs p_tgt fid).
     { unfold Genv.find_funct_ptr, Genv.find_funct in *. des_ifs. substs.
-      clear - Heq1 SYMB INCL.
+      clear - Heq Heq0 SYMB INCL.
       exploit SkEnv.project_impl_spec; et. intro SPEC. folder.
       exploit CSkEnv.project_revive_precise; et. intro T.
       inv T.
@@ -705,7 +734,7 @@ Proof.
     assert(f1 = fd).
     { exploit find_defmap; et. intro U. rewrite U in *. clarify. }
     substs. clear_tac.
-    exploit (SIM fid); et. intro SIMF. inv SIMF.
+    exploit (SIM fid skenv_link ge); et. intro SIMF. inv SIMF.
     hexploit (SIM0 tt m0 vs0); et. intro T.
     assert(sg_init_tgt = (signature_of_function fd)).
     {
@@ -731,6 +760,7 @@ Proof.
     + econs; ss; et.
     + des_ifs. substs. eapply match_states_lxsim; et.
       { instantiate (1:=SimMemId.mk m0 m0). ss. }
+      { econs; ss; et. }
   - i; des. inv SAFESRC. ss. des_ifs.
     rr in SIMARGS. des. ss. clarify. clear_tac. inv SIMARGS0; ss. substs.
     assert(fd = sg_init_tgt).
@@ -774,22 +804,20 @@ End OWNEDHEAP.
 
 Section SIMMOD.
 
-Variable mi: string.
 Variable md_src: SMod.t unit.
+Let mi := md_src.(SMod.midx).
 Variable p_tgt: program.
 Let p_src := SMod.prog md_src.
 Let md_tgt := module2_mi p_tgt (Some mi).
-Hypothesis (MISRC: md_src.(SMod.midx) = mi).
 Hypothesis SK: (SMod.sk) md_src = (Mod.sk) md_tgt.
 
 Let mp: ModPair.t := (SimSymbId.mk_mp md_src md_tgt).
 
-Hypothesis (SIMP: match_prog mi p_src p_tgt).
+Hypothesis (SIMP: match_prog p_src p_tgt).
 
 Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
-  { folder. congruence. }
   - ii. inv SIMSKENVLINK. eexists. eapply sim_modsem; eauto.
 Qed.
 

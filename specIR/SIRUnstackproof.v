@@ -583,17 +583,15 @@ Inductive match_states: SIRStack.state unit -> state -> Prop :=
     match_states (mk cur_src cont_src) st0
 .
 
-Inductive match_func: SIRCommon.function unit -> function -> Prop :=
+Inductive match_func: SIRCommon.function unit -> val -> type -> Prop :=
 | match_func_intro
-    kt fd
+    kt fptr ty
     (SIM: forall
         oh0 m0 vs0
-        e le m1
-        (ENTRY: function_entry2 ge fd vs0 m0 e le m1)
       ,
-        match_fr (kt oh0 m0 vs0) (State fd fd.(fn_body) Kbot e le m1))
+        match_fr (kt oh0 m0 vs0) (Callstate fptr ty vs0 Kbot m0))
   :
-    match_func kt fd
+    match_func kt fptr ty
 
 .
 
@@ -605,11 +603,12 @@ Inductive match_prog: (SIRCommon.program unit) -> program -> Prop :=
       ,
         (<<SAME: is_some (p_src id) = (internal_funs p_tgt id)>>))
     (SIM: forall
-        (id: ident) f_src f_tgt
+        (id: ident) f_src f_tgt fblk
         (SRC: p_src id = Some f_src)
         (TGT: ((prog_defmap (program_of_program p_tgt)) ! id) = Some (Gfun (Internal f_tgt)))
+        (SYMB: Genv.find_symbol (SkEnv.revive skenv p_tgt) id = Some fblk)
       ,
-        <<SIM: match_func f_src f_tgt>>)
+        <<SIM: match_func f_src (Vptr fblk Ptrofs.zero) (type_of_function f_tgt)>>)
   :
     match_prog p_src p_tgt
 .
@@ -774,11 +773,10 @@ Proof.
       { eapply modsem_receptive; et. }
       ii. inv STEPSRC; ss. clarify. simpl_depind. substs. clear_tac.
       esplits; et.
-      * left. eapply ModSemProps.spread_dplus.
-        { eapply modsem2_mi_determinate; et. }
-        ss; et.
-        apply plus_one.
-        econs; ss; et.
+      * right.
+        esplits; et.
+        { apply star_refl. }
+        { admit "idx". }
       * right. eapply CIH.
         { instantiate (1:= SimMemId.mk _ _); ss. }
         econs; ss; et.
@@ -881,59 +879,60 @@ Proof.
     { exploit find_defmap; et. intro U. rewrite U in *. clarify. }
     substs. clear_tac.
     exploit (SIM fid); et. intro SIMF. inv SIMF.
-    assert(exists e le m1, function_entry2 ge fd vs0 m0 e le m1).
+    hexploit (SIM0 tt m0 vs0); et. intro T.
+    assert(sg_init_tgt = (signature_of_function fd)).
+    {
+      (*** TODO: make lemma ***)
+      clear - FINDF FINDF0.
+      unfold SkEnv.revive in *. uge. ss. des_ifs_safe.
+      rewrite ! PTree_filter_map_spec in *. uo. des_ifs.
+      assert(i = i0).
+      { apply_all_once Genv.invert_find_symbol. subst skenv.
+        uge. ss. rewrite PTree_filter_key_spec in *. des_ifs.
+        eapply Genv.genv_vars_inj; et.
+      } subst.
+      exploit CSk.of_program_prog_defmap; et. intro T. rewrite Heq4 in *.
+      inv T; ss. inv H1. r in H4. des_ifs. rewrite <- H in *. clarify.
+    }
+    substs.
+    assert(tvs = vs0).
     { clear - TYP TYP0.
-      esplits; et.
-      econs; ss; et.
-      - admit "add wf cond".
-      - admit "add wf cond".
-      - admit "add wf cond".
-      - admit "???".
-      - admit "???".
-    } des.
-    exploit (SIM0 tt m0 vs0); et. intro T.
+      (*** TODO: make determ lemma ***)
+      inv TYP. inv TYP0. ss.
+    }
     esplits; et.
     + econs; ss; et.
     + des_ifs. substs. eapply match_states_lxsim; et.
-      { instantiate (1:=SimMemId.mk _ _). ss. }
-      econs; ss; et; cycle 1.
-      { instantiate (1:= Kstop). ss. }
-      admit "????".
-  - admit "".
-Qed.
-
-
-    exploit SIM; et.
-    exploit (SIM fid m0 vs0); et.
-    { exploit SkEnv.project_impl_spec; et. intro T. inv T.
-      destruct (internals (md_src: Sk.t) fid0) eqn:T.
-      - exploit SMod.sk_incl; ss; et.
-      -
-        assert(SYMB1: Genv.find_symbol skenv_link fid0 = Some blk).
-        { destruct (defs (md_src: Sk.t) fid0) eqn:U.
-          - exploit SYMBKEEP; et. intro V. rewrite V in *. ss.
-          - exploit SYMBDROP; ss; et. { rewrite U. ss. } intro V. rewrite V in *. ss.
-        }
-        exploit Genv.find_invert_symbol; et. intro U.
-        unfold Genv.find_funct_ptr in *. des_ifs.
-        exploit DEFKEPT; et. i; des. ss. rewrite T in *. ss.
-    }
-    i; des.
-    eexists _, (Simple.mk (SM:=SimMemId.SimMemId) (SimMemId.mk _ _) _ _), _. esplits; eauto.
-    { econs; ss; et. }
-    eapply match_states_lxsim; eauto.
-    econs; ss; et.
-    + assert(fid0 = fid).
-      { apply_all_once Genv.find_invert_symbol. folder. congruence. }
-      clarify. eauto.
-    + econs; ss; et.
+      { instantiate (1:=SimMemId.mk m0 m0). ss. }
   - i; des. inv SAFESRC. ss. des_ifs.
-    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm; ss. clarify.
-    des_ifs. folder. rewrite <- SIMSK in *.
+    rr in SIMARGS. des. ss. clarify. clear_tac. inv SIMARGS0; ss. substs.
+    assert(fd = sg_init_tgt).
+    { (*** TODO: make lemma ***)
+      clear - SK FINDFTGT FINDF. uge. des_ifs. ss. rewrite PTree_filter_map_spec in *. uo. des_ifs.
+      rewrite SK in *. clarify. }
+    substs. ss. des_ifs. substs.
+    assert(CFINDF: exists fd_tgt,
+             Genv.find_funct_ptr
+               (SkEnv.revive
+                  (SkEnv.project skenv_link (CSk.of_program signature_of_function p_tgt)) p_tgt) blk =
+             Some (Internal fd_tgt) /\ (signature_of_function fd_tgt) = sg_init_src).
+    { (*** TODO: make lemma ***)
+      clear - FINDF FINDFTGT SYMB SK.
+      rewrite SK in *. ss. des_ifs.
+      unfold Genv.find_funct_ptr in *. des_ifs_safe. clear_tac.
+      uge. ss. rewrite ! PTree_filter_map_spec in *. rewrite ! PTree_filter_key_spec in *.
+      uo. des_ifs_safe.
+      assert(DEFS: defs (CSk.of_program signature_of_function p_tgt) i).
+      { unfold defs. des_sumbool. eapply prog_defmap_image; et. }
+      assert(Genv.invert_symbol
+               (SkEnv.project skenv_link (CSk.of_program signature_of_function p_tgt)) blk = Some i).
+      { apply Genv.find_invert_symbol. apply_all_once Genv.invert_find_symbol.
+        uge. ss. rewrite ! PTree_filter_key_spec in *. des_ifs. }
+      des_ifs_safe.
+      exploit CSk.of_program_prog_defmap; et. intro T. rewrite Heq3 in *.
+      inv T; ss. inv H1. r in H4. des_ifs. et. }
+    des. substs.
     esplits; et. econs; ss; et.
-    Unshelve.
-    all: ss.
-    all: try (econsby ss).
 Qed.
 
 End SIMMODSEM.

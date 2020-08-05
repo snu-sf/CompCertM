@@ -640,6 +640,29 @@ Hint Resolve match_fr_mon: paco.
 
 
 
+
+Lemma find_defmap
+      fid fblk fd
+      (SYMB: Genv.find_symbol (SkEnv.revive skenv p_tgt) fid = Some fblk)
+      (FINDF: Genv.find_funct_ptr (SkEnv.revive skenv p_tgt) fblk = Some (Internal fd))
+  :
+    <<DEFMAP: (prog_defmap p_tgt) ! fid = Some (Gfun (Internal fd))>>
+.
+Proof.
+  exploit (SkEnv.project_impl_spec); try apply INCL. intro SPEC.
+  exploit CSkEnv.project_revive_precise; et. intro T. inv T.
+  exploit SYMB2P; et. intro U. dup U. unfold NW, defs in U0. des_sumbool.
+  exploit prog_defmap_dom; et. intro V; des.
+  exploit P2GE; et. intro W; des.
+  folder.
+  assert(fblk = b).
+  { clear - SPEC SYMB SYMB0 U. (*** TODO: this is too extensional ***) uge. ss. clarify. }
+  clarify.
+  unfold Genv.find_funct_ptr in *. unfold Clight.fundef in *. rewrite DEF in *. des_ifs.
+Qed.
+
+
+
 Let SMO := SimMemOh_default_aux _ (Some mi).
 Local Existing Instance SMO.
 
@@ -726,21 +749,9 @@ Proof.
       * right. eapply CIH.
         { instantiate (1:= SimMemId.mk _ _); ss. }
         econs; ss; et.
-        { fold p_src.
+        { fold p_src. 
           assert(T: (prog_defmap p_tgt) ! fid = Some (Gfun (Internal fd))).
-          {
-            clear - SYMB FINDF INCL.
-            exploit (SkEnv.project_impl_spec); try apply INCL. intro SPEC.
-            exploit CSkEnv.project_revive_precise; et. intro T. inv T.
-            exploit SYMB2P; et. intro U. dup U. unfold NW, defs in U0. des_sumbool.
-            exploit prog_defmap_dom; et. intro V; des.
-            exploit P2GE; et. intro W; des.
-            folder.
-            assert(fblk = b).
-            { clear - SPEC SYMB SYMB0 U. (*** TODO: this is too extensional ***) uge. ss. clarify. }
-            clarify.
-            unfold Genv.find_funct_ptr in *. unfold Clight.fundef in *. rewrite DEF in *. des_ifs.
-          }
+          { eapply find_defmap; et. }
           des_ifs; cycle 1.
           { (*** TODO: make lemma ***)
             exfalso. clear - T SYMB SIMP Heq.
@@ -859,23 +870,7 @@ Proof.
       unfold internal_funs. des_ifs. }
     rewrite T in *. unfold is_some in PROG. des_ifs. substs. unfold internal_funs in *. des_ifs. substs.
     assert(f1 = fd).
-    { clear - FINDF Heq0 SYMB FINDF0 Heq INCL. unfold Genv.find_funct_ptr in *. des_ifs.
-      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
-      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
-      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
-      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
-      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
-      exploit (SkEnv.project_impl_spec); try apply INCL. intro SPEC.
-      exploit CSkEnv.project_revive_precise; et. intro T. inv T.
-      exploit SYMB2P; et. intro U. dup U. unfold NW, defs in U0. des_sumbool.
-      exploit prog_defmap_dom; et. intro V; des.
-      exploit P2GE; et. intro W; des.
-      folder.
-      assert(blk = b).
-      { clear - SPEC SYMB SYMB0 U. (*** TODO: this is too extensional ***) uge. ss. clarify. }
-      clarify.
-      unfold Genv.find_funct_ptr in *. unfold Clight.fundef in *. rewrite DEF in *. des_ifs.
-    }
+    { exploit find_defmap; et. intro U. rewrite U in *. clarify. }
     substs. clear_tac.
     exploit (SIM fid); et. intro SIMF. inv SIMF.
     assert(exists e le m1, function_entry2 ge fd vs0 m0 e le m1).

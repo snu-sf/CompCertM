@@ -402,6 +402,16 @@ Qed.
 
 
 
+(*** MOVE TO PROPER PLACE ***)
+Section CTYPESC.
+  Context {F: Type}.
+  Variable p: Ctypes.program F.
+  Definition internal_funs: ident -> bool :=
+    fun id => match (prog_defmap p)!id with
+              | Some (Gfun (Ctypes.Internal fd)) => true
+              | _ => false
+              end.
+End CTYPESC.
 
 
 
@@ -426,6 +436,7 @@ Let ms_tgt := md_tgt skenv_link.
 
 Let skenv: SkEnv.t := (SkEnv.project skenv_link) (CSk.of_program signature_of_function p_tgt).
 Let ge: genv := Build_genv (SkEnv.revive (skenv) p_tgt) p_tgt.(prog_comp_env).
+Hypothesis SK: (SMod.sk) md_src = (Mod.sk) md_tgt.
 
 Notation ktr :=
   (ktree (eff1 unit) (unit * (mem * val)) (unit * (mem * val)))
@@ -493,10 +504,11 @@ Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Pr
     (EXTERNAL: Genv.find_funct ge fptr = None)
     (SG: (signature_of_type targs tres cconv) = sg)
     (SIG: exists skd, (Genv.find_funct skenv_link) fptr = Some skd
-                      /\ Some (signature_of_type targs tres cconv) = Sk.get_csig skd)
+                      /\ Some sg = Sk.get_csig skd)
     oid f e le k
-    (AFTER: forall oh1 m1 v1, match_fr (k_src (oh1, (m1, v1)))
-                                       (State f Sskip k e (set_opttemp oid v1 le) m1))
+    (AFTER: forall oh1 m1 v1,
+        match_fr (k_src (oh1, (m1, v1)))
+                 (State f Sskip k e (set_opttemp oid v1 le) m1))
   :
     _match_fr match_fr
               (Vis (subevent _ (ECall sg fptr oh0 m0 vs0)) k_src)
@@ -587,11 +599,11 @@ Inductive match_func: SIRCommon.function unit -> function -> Prop :=
 
 Inductive match_prog: (SIRCommon.program unit) -> program -> Prop :=
 | match_prog_intro
-    p_src p_tgt
+    (p_src: (SIRCommon.program unit)) (p_tgt: program)
     (PROG: forall
         (id: ident)
       ,
-        (<<SAME: is_some (p_src id) = is_some ((prog_defmap (program_of_program p_tgt)) ! id)>>))
+        (<<SAME: is_some (p_src id) = (internal_funs p_tgt id)>>))
     (SIM: forall
         (id: ident) f_src f_tgt
         (SRC: p_src id = Some f_src)
@@ -639,6 +651,9 @@ Ltac inv H := inversion H; clear H; substs.
 
 Hypothesis (SIMP: match_prog p_src p_tgt).
 
+
+Section SIMMODSEM.
+
 Lemma match_states_lxsim
       st_src0 st_tgt0 smo0
       (WF: SimMem.wf smo0)
@@ -646,7 +661,7 @@ Lemma match_states_lxsim
   :
     <<XSIM: lxsim ms_src ms_tgt 
                   (fun _ => () -> exists (_ : ()) (_ : mem), True)
-                  (Ord.lift_idx unit_ord_wf tt) st_src0 st_tgt0 smo0>>
+                  (Ord.lift_idx lt_wf 42%nat) st_src0 st_tgt0 smo0>>
 .
 Proof.
   revert_until SIMP.
@@ -729,7 +744,7 @@ Proof.
           des_ifs; cycle 1.
           { (*** TODO: make lemma ***)
             exfalso. clear - T SYMB SIMP Heq.
-            inv SIMP. spc PROG. rewrite Heq in *. ss. rewrite T in *. ss.
+            inv SIMP. spc PROG. rewrite Heq in *. ss. unfold internal_funs in *. rewrite T in *. ss.
           }
           inv SIMP.
           exploit SIM; et. intro U. inv U.
@@ -746,7 +761,32 @@ Proof.
     des. ss. destruct st_tgt0; ss. clarify. csc.
     econs 3; ss.
     { rr. esplits; ss. econs; ss; et.
-      - admit "".
+      - clear - EXTERNAL INCL SIG SK.
+        {
+          (*** TODO: MAKE LEMMA ***)
+          rewrite SK in *. folder.
+          unfold SkEnv.revive in *. uge. ss. des_ifs_safe.
+          rewrite PTree_filter_map_spec in *. des_ifs.
+          + uo. des_ifs_safe.
+            rewrite PTree_filter_map_spec in *. uo. des_ifs. clear_tac.
+            generalize (CSk.of_program_prog_defmap p_tgt signature_of_function i); intro T.
+            assert(i0 = i).
+            { clear - Heq3 Heq5. subst_locals. apply_all_once Genv.invert_find_symbol. uge. ss.
+              rewrite PTree_filter_key_spec in *. des_ifs.
+              eapply Genv.genv_vars_inj; et. } subst.
+            rewrite Heq6 in *. rewrite Heq2 in *. inv T. inv H1.
+          + uo. des_ifs_safe.
+            rewrite PTree_filter_map_spec in *. uo. des_ifs_safe. clear_tac.
+            assert(Genv.invert_symbol skenv b = Some i).
+            { clear - Heq2 Heq Heq0. subst_locals. apply_all_once Genv.invert_find_symbol.
+              apply Genv.find_invert_symbol. uge. ss.
+              rewrite PTree_filter_key_spec in *. des_ifs.
+              unfold defs in *. des_sumbool. contradict Heq1. eapply prog_defmap_image; et.
+            }
+            des_ifs. clear_tac.
+            generalize (CSk.of_program_prog_defmap p_tgt signature_of_function i); intro T.
+            rewrite Heq5 in *. rewrite Heq2 in *. inv T.
+        }
       - esplits; et. (*** TODO: make lemma ***) unfold Sk.get_csig in *. des_ifs.
     }
     ii. des_u. inv ATSRC; ss. csc. clear_tac. substs.
@@ -756,6 +796,7 @@ Proof.
     + ii. inv AFTERSRC. ss. clarify. rr in SIMRETV. des. ss. clear_tac.
       inv SIMRETV0; ss. clarify. substs. destruct smo_ret; ss. substs.
       inv GETK. ss. csc. substs.
+      eexists _, _, (Ord.lift_idx lt_wf 43%nat).
       esplits; et.
       * econs; ss; et.
       * left. pfold.
@@ -765,20 +806,134 @@ Proof.
             { eapply modsem2_mi_determinate; et. }
             apply plus_one. econs; ss; et.
           }
-          admit "ORD".
+          eapply Ord.lift_idx_spec. instantiate (1:= 42%nat). xomega.
         }
         right. eapply CIH.
         { instantiate (1:= SimMemId.mk _ _); ss. }
         econs; ss; et.
-        specialize (AFTER tt tgt v_tgt).
-        assert((typify v_tgt (typ_of_type tres)) = v_tgt).
-        { admit "typify". }
-        rewrite H. ss.
+        assert(U: (proj_sig_res (signature_of_type targs tres cconv)) = (typ_of_type tres)).
+        { (*** TODO: make lemma ***)
+          clear - tres. destruct tres; ss.
+        }
+        rewrite U. ss.
 Unshelve.
   all: ss.
-  all: admit "".
+  all: try (by apply Mem.empty).
 Qed.
 
+Variable sm_link: SimMem.t.
+Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_link)
+                                              (SimSymbId.mk md_src md_tgt) sm_link _.
+Theorem sim_modsem: ModSemPair.sim msp.
+Proof.
+  econstructor 1 with (sidx := unit) (sound_states := top4); eauto;
+    try apply SoundTop.sound_state_local_preservation; et; try (by ii; ss).
+  { unfold msp. cbn. rewrite MISRC. ss. }
+  { unfold msp. cbn. rewrite MISRC. ss. }
+  { ii. eapply Preservation.local_preservation_noguarantee_weak.
+    apply SoundTop.sound_state_local_preservation; et.
+  }
+  { ii. ss. destruct sm; ss. substs. eexists (SimMemId.mk _ _); ss. esplits; eauto.
+    destruct (SMod.initial_owned_heap md_src skenv_link) eqn:T. ss. }
+  ii. ss. esplits; eauto.
+  - ii. des. inv INITTGT. inv SAFESRC. ss. des_ifs_safe.
+    rr in SIMARGS. des. inv SIMARGS0; ss. substs. clarify. clear_tac. inv MWF. ss. destruct sm_arg; ss.
+    substs. des_ifs. clear_tac. substs.
+    rename tgt into m0. rename vs_tgt into vs0.
+    folder. rewrite SK in *. folder.
+    dup SIMP. inv SIMP0.
+    spc PROG. des.
+    assert(T: internal_funs p_tgt fid).
+    { unfold Genv.find_funct_ptr, Genv.find_funct in *. des_ifs. substs.
+      clear - Heq1 SYMB INCL.
+      exploit SkEnv.project_impl_spec; et. intro SPEC. folder.
+      exploit CSkEnv.project_revive_precise; et. intro T.
+      inv T.
+      exploit GE2P; et. i; des. ss.
+      assert(id = fid).
+      { (*** TODO: strengthen revive spec ***)
+        clear - SYMB SYMB0. unfold SkEnv.revive in *. uge. ss.
+        rewrite PTree_filter_key_spec in *. des_ifs.
+        eapply Genv.genv_vars_inj; et. }
+      clarify.
+      unfold internal_funs. des_ifs. }
+    rewrite T in *. unfold is_some in PROG. des_ifs. substs. unfold internal_funs in *. des_ifs. substs.
+    assert(f1 = fd).
+    { clear - FINDF Heq0 SYMB FINDF0 Heq INCL. unfold Genv.find_funct_ptr in *. des_ifs.
+      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
+      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
+      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
+      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
+      (****** TODO: we have exactly the same proof above. make it as a lemma *******)
+      exploit (SkEnv.project_impl_spec); try apply INCL. intro SPEC.
+      exploit CSkEnv.project_revive_precise; et. intro T. inv T.
+      exploit SYMB2P; et. intro U. dup U. unfold NW, defs in U0. des_sumbool.
+      exploit prog_defmap_dom; et. intro V; des.
+      exploit P2GE; et. intro W; des.
+      folder.
+      assert(blk = b).
+      { clear - SPEC SYMB SYMB0 U. (*** TODO: this is too extensional ***) uge. ss. clarify. }
+      clarify.
+      unfold Genv.find_funct_ptr in *. unfold Clight.fundef in *. rewrite DEF in *. des_ifs.
+    }
+    substs. clear_tac.
+    exploit (SIM fid); et. intro SIMF. inv SIMF.
+    assert(exists e le m1, function_entry2 ge fd vs0 m0 e le m1).
+    { clear - TYP TYP0.
+      esplits; et.
+      econs; ss; et.
+      - admit "add wf cond".
+      - admit "add wf cond".
+      - admit "add wf cond".
+      - admit "???".
+      - admit "???".
+    } des.
+    exploit (SIM0 tt m0 vs0); et. intro T.
+    esplits; et.
+    + econs; ss; et.
+    + des_ifs. substs. eapply match_states_lxsim; et.
+      { instantiate (1:=SimMemId.mk _ _). ss. }
+      econs; ss; et; cycle 1.
+      { instantiate (1:= Kstop). ss. }
+      admit "????".
+  - admit "".
+Qed.
+
+
+    exploit SIM; et.
+    exploit (SIM fid m0 vs0); et.
+    { exploit SkEnv.project_impl_spec; et. intro T. inv T.
+      destruct (internals (md_src: Sk.t) fid0) eqn:T.
+      - exploit SMod.sk_incl; ss; et.
+      -
+        assert(SYMB1: Genv.find_symbol skenv_link fid0 = Some blk).
+        { destruct (defs (md_src: Sk.t) fid0) eqn:U.
+          - exploit SYMBKEEP; et. intro V. rewrite V in *. ss.
+          - exploit SYMBDROP; ss; et. { rewrite U. ss. } intro V. rewrite V in *. ss.
+        }
+        exploit Genv.find_invert_symbol; et. intro U.
+        unfold Genv.find_funct_ptr in *. des_ifs.
+        exploit DEFKEPT; et. i; des. ss. rewrite T in *. ss.
+    }
+    i; des.
+    eexists _, (Simple.mk (SM:=SimMemId.SimMemId) (SimMemId.mk _ _) _ _), _. esplits; eauto.
+    { econs; ss; et. }
+    eapply match_states_lxsim; eauto.
+    econs; ss; et.
+    + assert(fid0 = fid).
+      { apply_all_once Genv.find_invert_symbol. folder. congruence. }
+      clarify. eauto.
+    + econs; ss; et.
+  - i; des. inv SAFESRC. ss. des_ifs.
+    rr in SIMARGS. des. inv SIMARGS0; ss. clarify. destruct sm_arg; ss. destruct sm; ss. clarify.
+    des_ifs. folder. rewrite <- SIMSK in *.
+    esplits; et. econs; ss; et.
+    Unshelve.
+    all: ss.
+    all: try (econsby ss).
+Qed.
+
+End SIMMODSEM.
 
 
 

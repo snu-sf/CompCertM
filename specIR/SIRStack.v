@@ -89,20 +89,21 @@ Section MODSEM.
   .
 
   Inductive get_k (st0: state):
+    signature ->
     (owned_heap * (mem * val) -> itree (eff1 owned_heap) (owned_heap * (mem * val))) -> Prop :=
   | get_k_intro
-      _vs _sg _fptr _oh0 _m0 k
-      (VIS: st0.(cur) = Vis (subevent _ (ECall _sg _fptr _oh0 _m0 _vs)) k)
+      _vs sg _fptr _oh0 _m0 k
+      (VIS: st0.(cur) = Vis (subevent _ (ECall sg _fptr _oh0 _m0 _vs)) k)
     :
-      get_k st0 k
+      get_k st0 sg k
   .
 
   Inductive after_external (st0: state) (oh0: owned_heap) (retv: Retv.t): state -> Prop :=
   | after_external_intro
       (CSTYLE: Retv.is_cstyle retv)
-      k m0 rv st1
-      (GETK: get_k st0 k)
-      (KONT: st1 = update_cur st0 (k (oh0, (m0, rv))))
+      sg k m0 rv st1
+      (GETK: get_k st0 sg k)
+      (KONT: st1 = update_cur st0 (k (oh0, (m0, (typify rv (proj_sig_res sg))))))
       (RETV: retv = Retv.mk rv m0)
     :
       after_external st0 oh0 retv st1

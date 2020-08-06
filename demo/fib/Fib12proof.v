@@ -28,7 +28,8 @@ Proof.
   etrans; cycle 1.
   { mimic. eapply SIRStackproof.correct; ss; et. }
   { eapply SIREutt.correct; ss; et. prog_tac.
-    unfold Fib2.f_fib, f_fib. rewrite tau_eutt. refl.
+    unfold Fib2.f_fib, f_fib.
+    repeat (f_equiv; ii; des_ifs; try rewrite ! tau_eutt).
   }
 Unshelve.
   sk_incl_tac.

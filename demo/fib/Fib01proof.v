@@ -46,8 +46,6 @@ Proof.
   econs; ss; et.
   - ii. u. des_ifs. unfold internal_funs. des_ifs. exploit prog_defmap_image; et. ss. ii; des; ss.
   - ii.
-    assert(INCL: SkEnv.includes skenv_link (Mod.sk Fib0.module)).
-    { admit "ez". }
     (*** THIS SHOULD BE PROVIDED FROM META THEORY ***)
     assert(exists fblk, <<SYMB: Genv.find_symbol (geof skenv_link prog) _fib = Some fblk>>).
     {
@@ -102,7 +100,7 @@ Proof.
       ii; ss; try (by repeat des; ss; clarify).
     }
     assert(exists n, v = Vint n).
-    { admit "stronger typecheck (not allowing undef)". }
+    { inv DEF0. unfold typify in H0. des_ifs. destruct v; ss; et. }
     des. clarify. clear H0.
     destruct (classic (Int.eq n Int.zero)).
     { apply_all_once Int.same_if_eq. clarify.
@@ -116,7 +114,7 @@ Proof.
         { _step. }
         apply star_refl.
       }
-      { des_ifs. left. pfold. econs; ss; et. }
+      { des_ifs. left. pfold. econs; ss; et. econs; ss; et. }
     }
     rename H into NZERO.
     destruct (classic (Int.eq n Int.one)).
@@ -137,7 +135,7 @@ Proof.
         { _step. }
         apply star_refl.
       }
-      { des_ifs. left. pfold. econs; ss; et. }
+      { des_ifs. left. pfold. econs; ss; et. econs; ss; et. }
     }
     rename H into NONE.
 
@@ -166,6 +164,7 @@ Proof.
       des_ifs. rewrite bind_trigger.
       left. pfold. econs; ss; et.
       { econs; ss; et. cbn. unfold typify. des_ifs; ss. }
+      { econs; ss. }
       ii.
       left. pfold. econs; ss; et; cycle 1.
       { eapply plus_left with (t1 := E0) (t2 := E0); ss.
@@ -186,7 +185,8 @@ Proof.
       rewrite bind_trigger.
       econs; ss; et.
       { econs; ss; et. cbn. unfold typify. des_ifs; ss. }
-      ii.
+      { econs; ss; et. }
+      ii. inv TYP; ss. inv TYP0; ss. clear_tac.
       left. pfold. econs; ss; et; cycle 1.
       { eapply plus_left with (t1 := E0) (t2 := E0); ss.
         { _step. }
@@ -195,58 +195,11 @@ Proof.
         eapply star_left with (t1 := E0) (t2 := E0); ss.
         { _step. }
         eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { repeat (econs; ss; et).
-          -
-          - }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
-        { _step. }
-        eapply star_left with (t1 := E0) (t2 := E0); ss.
         { _step. }
         apply star_refl.
       }
-      {
-      { left. pfold. econs; ss; et. des_ifs; et. unfold Genv.find_funct_ptr.
-
-      step.
-      eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { repeat (econs; ss; et). ss. rewrite Int.eq_false; ss. ii; clarify. }
-      step. ss. apply star_refl.
-      }
-      { des_ifs. left. pfold. econs; ss; et. }
+      { left. pfold. econs; ss; et. econs; ss; et. }
     }
-
-
-    destruct (classic (Int.eq n Int.one)).
-    { apply_all_once Int.same_if_eq. clarify.
-      eexists _, _, (SimMemId.mk _ _). esplits; eauto.
-      { left. eapply spread_dplus; et.
-        { eapply modsem2_mi_determinate; et. }
-        step. ss. apply star_refl.
-      }
-      { right. eapply CIH.
-        econs; ss; et. econs; ss; et.
-      }
-    }
-    rename H into NONE.
-
-
-    esplits; et.
-    { repeat (econs; ss; et).
-      ii; ss; try (by repeat des; ss; clarify).
-    }
-    pfold. econs; ss; et; cycle 1.
-    { eapply plus_left with (t1 := E0) (t2 := E0); ss.
-      { _step. }
-
-
-      eapply star_left with (t1 := E0) (t2 := E0); ss.
-      { repeat (econs; ss; et).
-        - ss. rewrite Int.eq_false; ss. ii; clarify. }
-        econs; ss; et. _step.
-      }
-    }
-Unshelve.
-  sk_incl_tac.
 Qed.
 
 Program Instance SMO: SimMemOh.class := (SimMemOh_default_aux _ (Some "fib")).

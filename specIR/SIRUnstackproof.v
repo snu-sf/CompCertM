@@ -308,6 +308,7 @@ Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Pr
     (FINDF: Genv.find_funct ge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal fd))
     (TY: type_of_fundef (Ctypes.Internal fd) = ty)
     (TYP: typecheck vs0 (signature_of_function fd) vs0)
+    (DEF: Forall (fun v => v <> Vundef) vs0)
     (* (CANSTEP: exists e le m1, function_entry2 ge fd vs0 m0 e le m1) *)
     k_src
     oid e le k
@@ -434,6 +435,7 @@ Inductive match_func: SIRCommon.function unit -> function -> Prop :=
     (SIM: forall
         oh0 m0 vs0
         (TYP: typecheck vs0 (signature_of_function fd) vs0)
+        (DEF: Forall (fun v => v <> Vundef) vs0)
       ,
         exists e le m1, (<<ENTRY: function_entry2 ge fd vs0 m0 e le m1>>) /\
                         (<<SIM: match_fr fd.(fn_return) (kt oh0 m0 vs0)
@@ -466,6 +468,7 @@ Inductive match_prog: (SIRCommon.program unit) -> program -> Prop :=
     (SIM: forall
         (id: ident)
         skenv_link
+        (INCL: SkEnv.includes skenv_link (CSk.of_program signature_of_function p_tgt))
         f_src f_tgt
         (SRC: p_src id = Some f_src)
         (TGT: ((prog_defmap (program_of_program p_tgt)) ! id) = Some (Gfun (Internal f_tgt)))

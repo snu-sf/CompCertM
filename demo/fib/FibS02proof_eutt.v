@@ -42,11 +42,9 @@ Lemma unfold_fib: forall oh0 m0 vs0,
     | S O => Ret (oh0, (m0, (Vint Int.one)))
     | S (S m) =>
       let vs0 := [Vint (of_nat m)] in
-      guarantee (parse_arg oh0 m0 vs0) ;;
       '(oh1, (m1, y1)) <- (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0)) ;;
 
       let vs1 := [Vint (of_nat (S m))] in
-      guarantee (parse_arg oh1 m1 vs1) ;;
       '(oh2, (m2, y2)) <-  (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh1 m1 vs1)) ;;
 
       Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
@@ -63,9 +61,7 @@ Proof.
     { irw. refl. }
     destruct n.
     { irw. refl. }
-    destruct (to_nat_opt (of_nat n)) eqn:T; ss; cycle 1.
-    { unfold guarantee. des_ifs_safe. irw. unfold triggerNB. irw. ITreelib.f_equiv. ii; ss. }
-    unfold guarantee. des_ifs_safe. irw. rewrite tau_eutt.
+    irw. rewrite tau_eutt.
     des_ifs_safe.
     rewrite <- ! unfold_interp_mrec.
     rewrite interp_mrec_bind. ITreelib.f_equiv.
@@ -74,9 +70,7 @@ Proof.
 Solution is to import `Morphisms` inside ITreelib.
 ***)
     { refl. }
-    ii. des_ifs; cycle 1.
-    { irw. unfold triggerNB. irw. ITreelib.f_equiv. ii; ss. }
-    rewrite ! bind_ret_l.
+    ii. des_ifs.
     rewrite interp_mrec_bind. ITreelib.f_equiv.
     { irw. rewrite tau_eutt. des_ifs. refl. }
     { ii. des_ifs. irw. refl. }
@@ -111,10 +105,8 @@ Proof.
   { unfold to_nat_opt in *. des_ifs. rewrite <- H1. rewrite Z2Nat.id; ss. apply Int.signed_range. }
   assert(U: to_nat_opt (of_nat n) = Some n).
   { rewrite range_to_nat; ss. xomega. (*** "should be derived from guarantee". ***) }
-  unfoldr guarantee. rewrite U. ss. des_ifs_safe. rewrite bind_ret_l.
   assert(V: to_nat_opt (of_nat (S n)) = Some (S n)).
   { rewrite range_to_nat; ss. xomega. (*** "should be derived from guarantee". ***) }
-  des_ifs. unfold guarantee. rewrite V. ss. des_ifs.
 
 
   unfold f_fib. unfold unwrapU. rewrite unfold_interp_mrec. ss. des_ifs. rewrite ! bind_ret_l. ss.

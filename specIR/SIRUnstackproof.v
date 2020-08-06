@@ -279,14 +279,20 @@ Section SYNTAX.
 Let fr_src := itree (E unit) (unit * (mem * val)).
 Let fr_tgt := Clight.state.
 
-Section FRAME.
+Section MATCH.
 
 Variable skenv_link: SkEnv.t.
 Variable ge: genv.
 
+Section FRAME.
+
+(*** guaranteed to return this type ***)
+Variable rty: type.
+
 Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Prop :=
 | match_fr_ret
     oh0 m0 v0
+    (TYP: Cop.val_casted v0 rty)
   :
     _match_fr match_fr (Ret (oh0, (m0, v0))) (Returnstate v0 Kbot m0)
 | match_fr_tau
@@ -301,15 +307,20 @@ Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Pr
     (SYMB: Genv.find_symbol ge fname = Some fblk)
     (FINDF: Genv.find_funct ge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal fd))
     (TY: type_of_fundef (Ctypes.Internal fd) = ty)
+    (TYP: typecheck vs0 (signature_of_function fd) vs0)
     (* (CANSTEP: exists e le m1, function_entry2 ge fd vs0 m0 e le m1) *)
     k_src
-    oid f e le k
-    (AFTER: forall oh1 m1 v1, match_fr (k_src (oh1, (m1, v1)))
-                                       (State f Sskip k e (set_opttemp oid v1 le) m1))
+    oid e le k
+    (AFTER: forall
+        oh1 m1 v1
+        (TYP: Cop.val_casted v1 (fn_return fd))
+      ,
+        match_fr (k_src (oh1, (m1, v1)))
+                 (State fd Sskip k e (set_opttemp oid v1 le) m1))
   :
     _match_fr match_fr
               (Vis (subevent _ (ICall fname oh0 m0 vs0)) k_src)
-              (Callstate (Vptr fblk Ptrofs.zero) ty vs0 (Kcall oid f e le k) m0)
+              (Callstate (Vptr fblk Ptrofs.zero) ty vs0 (Kcall oid fd e le k) m0)
   (* | step_call : forall (f : function) (optid : option ident) (a : expr) (al : list expr)  *)
   (*                 (k : cont) (e : env) (le : temp_env) (m : mem) (tyargs : typelist)  *)
   (*                 (tyres : type) (cconv : calling_convention) (vf : val) (vargs : list val), *)
@@ -351,24 +362,37 @@ Proof.
   ii. destruct IN; try (by econs; et; rr; et).
 Qed.
 
-Inductive match_stack: list ktr -> cont -> Prop :=
+End FRAME.
+
+(* Definition get_call_cont_ty (ktl: cont): type := *)
+(*   match ktl with *)
+(*   | Kcall _ fd _ _ _ => (fn_return fd) *)
+(*   | _ => Tvoid *)
+(*   end *)
+(* . *)
+
+(*** assuming this type ***)
+Inductive match_stack (ety: type): list ktr -> cont -> Prop :=
 | match_stack_nil
   :
-    match_stack [] Kstop
+    match_stack ety [] Kstop
 | match_stack_cons
     hd tl
-    oid fd e te khd ktl
-    (TL: match_stack tl ktl)
-    (HD: forall oh0 m0 r0,
-        match_fr (hd (oh0, (m0, r0)))
+    oid fd e te khd ktl rty
+    (TL: match_stack rty tl ktl)
+    (HD: forall
+        oh0 m0 r0
+        (TYP: Cop.val_casted r0 ety)
+      ,
+        match_fr rty (hd (oh0, (m0, r0)))
                  (State fd Sskip khd e (set_opttemp oid r0 te) m0))
   :
-    match_stack (hd :: tl) (Kcall oid fd e te (app_cont khd ktl))
+    match_stack ety (hd :: tl) (Kcall oid fd e te (app_cont khd ktl))
 .
 
 Lemma match_stack_is_call_cont
-      stk_src k_tgt
-      (MATCH: match_stack stk_src k_tgt)
+      ety stk_src k_tgt
+      (MATCH: match_stack ety stk_src k_tgt)
   :
     <<CALL: is_call_cont k_tgt>>
 .
@@ -396,9 +420,9 @@ Inductive match_states: SIRStack.state unit -> state -> Prop :=
 | match_states_intro
     cur_src cont_src
     st0
-    khd ktl
-    (CUR: match_fr cur_src (set_cont st0 khd))
-    (CONT: match_stack cont_src ktl)
+    khd ktl rty
+    (CUR: match_fr rty cur_src (set_cont st0 khd))
+    (CONT: match_stack rty cont_src ktl)
     (STCONT: get_cont st0 = app_cont khd ktl)
   :
     match_states (mk cur_src cont_src) st0
@@ -409,14 +433,16 @@ Inductive match_func: SIRCommon.function unit -> function -> Prop :=
     kt fd
     (SIM: forall
         oh0 m0 vs0
+        (TYP: typecheck vs0 (signature_of_function fd) vs0)
       ,
         exists e le m1, (<<ENTRY: function_entry2 ge fd vs0 m0 e le m1>>) /\
-                        (<<SIM: match_fr (kt oh0 m0 vs0) (State fd fd.(fn_body) Kbot e le m1)>>))
+                        (<<SIM: match_fr fd.(fn_return) (kt oh0 m0 vs0)
+                                                        (State fd fd.(fn_body) Kbot e le m1)>>))
   :
     match_func kt fd
 .
 
-End FRAME.
+End MATCH.
 Hint Unfold match_fr.
 Hint Resolve match_fr_mon: paco.
 
@@ -650,7 +676,9 @@ Proof.
         econs; ss; et.
       * right. eapply CIH.
         { instantiate (1:= SimMemId.mk _ _); ss. }
-        econs; ss; et.
+        econs; ss; et; ss.
+        econs; ss; et. 
+        { ii. exploit AFTER; et. intro U. pclearbot. et. }
   - (* ub *)
     + ss. econs 1. ii. econs 1; swap 2 3.
       { split; intro T; rr in T; des; ss; inv T; ss. }
@@ -734,8 +762,6 @@ Proof.
     assert(f1 = fd).
     { exploit find_defmap; et. intro U. rewrite U in *. clarify. }
     substs. clear_tac.
-    exploit (SIM fid skenv_link); et. intro SIMF. inv SIMF. folder.
-    hexploit (SIM0 tt m0 vs0); et. intro T. des.
     assert(sg_init_tgt = (signature_of_function fd)).
     {
       (*** TODO: make lemma ***)
@@ -756,6 +782,9 @@ Proof.
       (*** TODO: make determ lemma ***)
       inv TYP. inv TYP0. ss.
     }
+    exploit (SIM fid skenv_link); et. intro SIMF. inv SIMF. folder.
+    hexploit (SIM0 tt m0 vs0); et. intro T. des.
+
     eexists _, _, (Ord.lift_idx lt_wf 43%nat).
     esplits; et.
     + econs; ss; et.

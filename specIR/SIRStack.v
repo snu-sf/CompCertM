@@ -142,7 +142,7 @@ Section MODSEM.
     :
       step se ge st0 E0 (update_cur st0 (k x))
   | step_call
-      (cur: itr) (cont: list ktr) X k (x: X) next
+      (cur: itr) (cont: list ktr) k next
       (ST0: st0 = (mk cur cont))
       fid oh0 m0 vs0
       (VIS: cur = Vis (subevent _ (ICall fid oh0 m0 vs0)) k)

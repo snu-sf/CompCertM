@@ -27,7 +27,9 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs: list val):
       then Ret (oh0, (m0, (Vint Int.one)))
       else
         '(oh1, (m1, y1)) <- trigger (ICall _fib oh0 m0 [Vint (Int.sub n (Int.repr 2))]) ;;
+        tau;;
         '(oh2, (m2, y2)) <- trigger (ICall _fib oh1 m1 [Vint (Int.sub n (Int.repr 1))]) ;;
+        tau;;
         Ret (oh2, (m2, Val.add y1 y2))
   | _ => triggerUB
   end

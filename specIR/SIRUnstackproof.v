@@ -301,7 +301,7 @@ Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Pr
     (SYMB: Genv.find_symbol ge fname = Some fblk)
     (FINDF: Genv.find_funct ge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal fd))
     (TY: type_of_fundef (Ctypes.Internal fd) = ty)
-    (CANSTEP: exists e le m1, function_entry2 ge fd vs0 m0 e le m1)
+    (* (CANSTEP: exists e le m1, function_entry2 ge fd vs0 m0 e le m1) *)
     k_src
     oid f e le k
     (AFTER: forall oh1 m1 v1, match_fr (k_src (oh1, (m1, v1)))
@@ -404,15 +404,16 @@ Inductive match_states: SIRStack.state unit -> state -> Prop :=
     match_states (mk cur_src cont_src) st0
 .
 
-Inductive match_func: SIRCommon.function unit -> val -> type -> Prop :=
+Inductive match_func: SIRCommon.function unit -> function -> Prop :=
 | match_func_intro
-    kt fptr ty
+    kt fd
     (SIM: forall
         oh0 m0 vs0
       ,
-        match_fr (kt oh0 m0 vs0) (Callstate fptr ty vs0 Kbot m0))
+        exists e le m1, (<<ENTRY: function_entry2 ge fd vs0 m0 e le m1>>) /\
+                        (<<SIM: match_fr (kt oh0 m0 vs0) (State fd fd.(fn_body) Kbot e le m1)>>))
   :
-    match_func kt fptr ty
+    match_func kt fd
 .
 
 End FRAME.
@@ -423,7 +424,11 @@ Hint Resolve match_fr_mon: paco.
 
 
 
-
+Notation "'geof'" :=
+  (fun skenv_link p_tgt =>
+     Build_genv (SkEnv.revive ((SkEnv.project skenv_link)
+                                 (CSk.of_program signature_of_function p_tgt)) p_tgt)
+                (p_tgt.(prog_comp_env))) (at level 50).
 
 Inductive match_prog: (SIRCommon.program unit) -> program -> Prop :=
 | match_prog_intro
@@ -434,17 +439,12 @@ Inductive match_prog: (SIRCommon.program unit) -> program -> Prop :=
         (<<SAME: is_some (p_src id) = (internal_funs p_tgt id)>>))
     (SIM: forall
         (id: ident)
-        skenv_link ge
-        (GE: ge = Build_genv (SkEnv.revive ((SkEnv.project skenv_link)
-                                              (CSk.of_program signature_of_function p_tgt)) p_tgt)
-                             (p_tgt.(prog_comp_env))
-        )
-        f_src f_tgt fblk
+        skenv_link
+        f_src f_tgt
         (SRC: p_src id = Some f_src)
         (TGT: ((prog_defmap (program_of_program p_tgt)) ! id) = Some (Gfun (Internal f_tgt)))
-        (SYMB: Genv.find_symbol ge id = Some fblk)
       ,
-        <<SIM: match_func skenv_link ge f_src (Vptr fblk Ptrofs.zero) (type_of_function f_tgt)>>)
+        <<SIM: match_func skenv_link (geof skenv_link p_tgt) f_src f_tgt>>)
   :
     match_prog p_src p_tgt
 .
@@ -630,27 +630,27 @@ Proof.
       { split; intro T; rr in T; des; ss; inv T; ss. }
       { eapply modsem_receptive; et. }
       ii. inv STEPSRC; ss. clarify. simpl_depind. substs. clear_tac.
+
+      fold p_src. 
+      assert(T: (prog_defmap p_tgt) ! fid = Some (Gfun (Internal fd))).
+      { eapply find_defmap; et. }
+      des_ifs; cycle 1.
+      { (*** TODO: make lemma ***)
+        exfalso. clear - T SYMB SIMP Heq.
+        inv SIMP. spc PROG. rewrite Heq in *. ss. unfold internal_funs in *. rewrite T in *. ss.
+      }
+      inv SIMP.
+      exploit (SIM fid skenv_link); et. intro U. folder. inv U.
+      hexploit (SIM0 tt m0 vs0); et. i; des.
       esplits; et.
-      * right.
-        esplits; et.
-        { apply star_refl. }
-        { admit "idx". }
+      * left. eapply ModSemProps.spread_dplus.
+        { eapply modsem2_mi_determinate; et. }
+        ss; et.
+        apply plus_one.
+        econs; ss; et.
       * right. eapply CIH.
         { instantiate (1:= SimMemId.mk _ _); ss. }
         econs; ss; et.
-        { fold p_src. 
-          assert(T: (prog_defmap p_tgt) ! fid = Some (Gfun (Internal fd))).
-          { eapply find_defmap; et. }
-          des_ifs; cycle 1.
-          { (*** TODO: make lemma ***)
-            exfalso. clear - T SYMB SIMP Heq.
-            inv SIMP. spc PROG. rewrite Heq in *. ss. unfold internal_funs in *. rewrite T in *. ss.
-          }
-          inv SIMP.
-          exploit SIM; et. intro U. inv U.
-          eapply SIM0; et.
-        }
-        { econs; ss; et. }
   - (* ub *)
     + ss. econs 1. ii. econs 1; swap 2 3.
       { split; intro T; rr in T; des; ss; inv T; ss. }
@@ -734,8 +734,8 @@ Proof.
     assert(f1 = fd).
     { exploit find_defmap; et. intro U. rewrite U in *. clarify. }
     substs. clear_tac.
-    exploit (SIM fid skenv_link ge); et. intro SIMF. inv SIMF.
-    hexploit (SIM0 tt m0 vs0); et. intro T.
+    exploit (SIM fid skenv_link); et. intro SIMF. inv SIMF. folder.
+    hexploit (SIM0 tt m0 vs0); et. intro T. des.
     assert(sg_init_tgt = (signature_of_function fd)).
     {
       (*** TODO: make lemma ***)
@@ -756,11 +756,20 @@ Proof.
       (*** TODO: make determ lemma ***)
       inv TYP. inv TYP0. ss.
     }
+    eexists _, _, (Ord.lift_idx lt_wf 43%nat).
     esplits; et.
     + econs; ss; et.
-    + des_ifs. substs. eapply match_states_lxsim; et.
+    + des_ifs.
+      pfold. econs 1. econs 2; ss; et.
+      { esplits; et.
+        - eapply ModSemProps.spread_dplus.
+          { eapply modsem2_mi_determinate; et. }
+          eapply plus_one. econs; ss; et.
+        - eapply Ord.lift_idx_spec; et. }
+      left.
+      eapply match_states_lxsim; et.
       { instantiate (1:=SimMemId.mk m0 m0). ss. }
-      { econs; ss; et. }
+      econs; ss; et; cycle 1.
   - i; des. inv SAFESRC. ss. des_ifs.
     rr in SIMARGS. des. ss. clarify. clear_tac. inv SIMARGS0; ss. substs.
     assert(fd = sg_init_tgt).
@@ -790,6 +799,8 @@ Proof.
       inv T; ss. inv H1. r in H4. des_ifs. et. }
     des. substs.
     esplits; et. econs; ss; et.
+Unshelve.
+  all: ss.
 Qed.
 
 End SIMMODSEM.

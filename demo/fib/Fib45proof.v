@@ -25,7 +25,7 @@ Set Implicit Arguments.
 Theorem correct: rusc defaultR [Fib5.module: Mod.t] [Fib4.module: Mod.t].
 Proof.
   etrans; cycle 1.
-  { mimic. eapply SIREutt.correct; ss. prog_tac.
+  { mimic. eapply SIREuttLocal.correct; ss. prog_tac.
     { refl. }
     unfold f_fib. rewrite guaranteeK2_spec. unfold guaranteeK2. do 2 setoid_rewrite <- tau_eutt at 4.
     refl.

@@ -26,7 +26,7 @@ Set Implicit Arguments.
 Theorem correct: rusc defaultR [Fib7.module: Mod.t] [Fib6.module: Mod.t].
 Proof.
   etrans.
-  { mimic. eapply SIREutt.correct; ss; et. prog_tac.
+  { mimic. eapply SIREuttLocal.correct; ss; et. prog_tac.
     unfold Fib7.f_fib. do 2 setoid_rewrite <- tau_eutt at 2. refl.
   }
   eapply SIRLocal.correct; ss; et.

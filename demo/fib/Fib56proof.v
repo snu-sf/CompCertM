@@ -163,7 +163,7 @@ Definition manifesto (fname: ident): option (owned_heap -> mem -> list val -> id
 Theorem correct: rusc defaultR [Fib6.module: Mod.t] [Fib5.module: Mod.t].
 Proof.
   etrans.
-  { mimic. eapply SIREutt.correct; ss.
+  { mimic. eapply SIREuttLocal.correct; ss.
     prog_tac.
     unfold Fib6.f_fib. setoid_rewrite <- tau_eutt at 2. refl.
   }

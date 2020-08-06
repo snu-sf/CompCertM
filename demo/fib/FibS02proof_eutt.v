@@ -22,6 +22,7 @@ Require Import SIRProps.
 Set Implicit Arguments.
 
 
+(*** TODO: move to CoqlibC ***)
 Lemma interp_mrec_bind: forall (D E : Type -> Type) (ctx : forall T : Type, D T -> itree (D +' E) T) 
                                (U T : Type) (t : itree (D +' E) U) (k : U -> itree (D +' E) T),
     interp_mrec ctx (` x : _ <- t;; k x) = ` x : U <- interp_mrec ctx t;; interp_mrec ctx (k x)
@@ -82,9 +83,9 @@ Solution is to import `Morphisms` inside ITreelib.
   }
 Qed.
 
-
-
-Goal forall oh0 m0 vs0,
+Theorem match_itr
+        oh0 m0 vs0
+  :
     (interp_mrec (interp_function prog) (f_fib oh0 m0 vs0)) ≈
     (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0))
 .
@@ -131,23 +132,9 @@ Qed.
 
 Theorem correct: rusc defaultR [FibS2.module: Mod.t] [FibS0.module: Mod.t].
 Proof.
-  eapply SIREutt.correct; ss.
-  ii. clarify. rr.
-  unfold FibS0.prog in *. ss. des_ifs.
-  ii. clarify.
-  rename y into oh0. rename y0 into m0. rename y1 into vs0.
-  destruct (parse_arg oh0 m0 vs0) eqn:T; cycle 1.
-  { unfold f_fib, FibS0.f_fib. ss.
-    unfold unwrapU. des_ifs. unfold triggerUB. irw. r.
-    ITreelib.f_equiv. ii. ss. (*** !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! nice ***)
-  }
-  ginduction n; ii; ss.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
-  destruct n.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
-  unfold parse_arg in T. des_ifs.
-  unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw.
-  assert(U: to_nat_opt (of_nat n)).
-  { admit "should be derived from guarantee". }
-  unfoldr guarantee. des_ifs_safe. irw.
-Abort.
+  eapply SIREuttGlobal.correct; ss.
+  ii. destruct icall; ss. unfold interp_program, mrec. ss.
+  cbn. des_ifs.
+  - eapply match_itr; et.
+  - irw. f_equiv. ii; ss.
+Qed.

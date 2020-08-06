@@ -282,19 +282,15 @@ Variable owned_heap: Type.
 (*** sim syntax ***)
 Section SYNTAX.
 
-(*** sim itree ***)
-Let itr := itree (E owned_heap) (owned_heap * (mem * val)).
-
-Definition match_itr: relation itr := fun i_src i_tgt => i_src ≈ i_tgt.
-
-Let fn := function owned_heap.
-
-Definition match_fn: relation (function owned_heap) := (eq ==> eq ==> eq ==> match_itr).
-
-Definition match_prog: relation (program owned_heap) := (eq ==> option_rel match_fn).
+Definition match_prog: relation (program owned_heap) :=
+  fun p_src p_tgt =>
+    (* (eq ==> eq ==> (eutt eq)) (interp_program p_src) (interp_program p_tgt) *)
+    forall T (icall: InternalCallE owned_heap T),
+      ((interp_program p_src) T icall) ≈ ((interp_program p_tgt) T icall)
+.
 
 End SYNTAX.
-Hint Unfold match_itr match_fn match_prog.
+Hint Unfold match_prog.
 
 
 
@@ -314,21 +310,7 @@ Section SIM.
   Let mi_tgt := md_tgt.(SMod.midx).
   Hypothesis (SIMP: match_prog p_src p_tgt).
 
-  Lemma match_itr_glue
-        i_src i_tgt
-        (SIM: match_itr i_src i_tgt)
-    :
-      (interp_mrec (interp_function p_src) i_src) ≈ (interp_mrec (interp_function p_tgt) i_tgt)
-  .
-  Proof.
-    eapply Proper_interp_mrec; eauto.
-    ii.
-    destruct a. cbn. r in SIMP. repeat spc SIMP. hexploit1 SIMP; ss. des_ifs.
-    - eapply SIMP; ss.
-    - refl.
-  Qed.
-
-  Lemma glued_sim_st
+  Lemma match_state_sim_st
         (i_src i_tgt: itree (eff0 owned_heap) (owned_heap * (mem * val)))
         (SIM: i_src ≈ i_tgt)
     :
@@ -397,20 +379,6 @@ Section SIM.
       rewrite unfold_spin. gstep. econs; eauto. gbase. eauto.
   Qed.
 
-  Lemma match_prog_sim_st
-        i_src i_tgt
-        (SIM: match_itr i_src i_tgt)
-    :
-      sim_st eq (ord_lex lt lt) (2%nat, 0%nat)
-             (interp_mrec (interp_function p_src) i_src)
-             (interp_mrec (interp_function p_tgt) i_tgt)
-  .
-  Proof.
-    eapply match_itr_glue in SIM.
-    eapply glued_sim_st in SIM.
-    eauto.
-  Qed.
-
   (*** The result that we wanted -- allows reasoning each function "locally" and then compose ***)
   Theorem adequacy_local_local:
     forall
@@ -424,10 +392,7 @@ Section SIM.
   Proof.
     {
       ii.
-      eapply match_prog_sim_st; ss.
-      hexploit (@SIMP fname); et. intro T. r in T. des_ifs; cycle 1.
-      { r. refl. }
-      repeat (spc T). exploit T; ss; et.
+      eapply match_state_sim_st; et.
     }
   Qed.
 
@@ -451,4 +416,4 @@ Section SIM.
 End SIM.
 
 End OWNEDHEAP.
-Hint Unfold match_itr match_fn match_prog.
+Hint Unfold match_prog.

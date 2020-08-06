@@ -111,7 +111,7 @@ Maybe we should use notation instead, so that we can avoid this weird "unfold"? 
 Theorem correct: rusc defaultR [Fib5_old.module: Mod.t] [Fib4_old.module: Mod.t].
 Proof.
   etrans; cycle 1.
-  { mimic. eapply SIREutt.correct; ss. prog_tac.
+  { mimic. eapply SIREuttLocal.correct; ss. prog_tac.
     { refl. }
     unfold f_fib. rewrite guaranteeK2_spec. unfold guaranteeK2. do 2 setoid_rewrite <- tau_eutt at 4.
     refl.

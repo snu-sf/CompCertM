@@ -13,8 +13,8 @@ Require SimMemId.
 Require Import Any.
 Require Import SIR.
 Require Import FibHeader.
-Require Import FibS0.
-Require Import FibS2.
+Require Import FibS3.
+Require Import FibS4.
 Require Import ModSemProps.
 Require Import Program.
 Require Import SIRProps.
@@ -34,7 +34,7 @@ Qed.
 
 
 Lemma unfold_fib: forall oh0 m0 vs0,
-    (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0))
+    (interp_mrec (interp_function FibS3.prog) (FibS3.f_fib oh0 m0 vs0))
       ≈
       (`n: nat <- (unwrapU (parse_arg oh0 m0 vs0)) ;;
     match n with
@@ -42,19 +42,19 @@ Lemma unfold_fib: forall oh0 m0 vs0,
     | S O => Ret (oh0, (m0, (Vint Int.one)))
     | S (S m) =>
       let vs0 := [Vint (of_nat m)] in
-      '(oh1, (m1, y1)) <- (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0)) ;;
+      '(oh1, (m1, y1)) <- (interp_mrec (interp_function FibS3.prog) (FibS3.f_fib oh0 m0 vs0)) ;;
 
       let vs1 := [Vint (of_nat (S m))] in
-      '(oh2, (m2, y2)) <-  (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh1 m1 vs1)) ;;
+      '(oh2, (m2, y2)) <-  (interp_mrec (interp_function FibS3.prog) (FibS3.f_fib oh1 m1 vs1)) ;;
 
-      Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
+      Ret (oh2, (m2, Val.add y1 y2))
     end
       )
 .
 Proof.
   {
     i. irw.
-    unfold FibS0.f_fib at 2. irw.
+    unfold FibS3.f_fib at 2. irw.
     unfold unwrapU. des_ifs; cycle 1.
     { unfold triggerUB. irw. ITreelib.f_equiv. ii. ss. }
     irw. destruct n.
@@ -81,12 +81,12 @@ Theorem match_itr
         oh0 m0 vs0
   :
     (interp_mrec (interp_function prog) (f_fib oh0 m0 vs0)) ≈
-    (interp_mrec (interp_function FibS0.prog) (FibS0.f_fib oh0 m0 vs0))
+    (interp_mrec (interp_function FibS3.prog) (FibS3.f_fib oh0 m0 vs0))
 .
 Proof.
   ii.
   destruct (parse_arg oh0 m0 vs0) eqn:T; cycle 1.
-  { unfold f_fib, FibS0.f_fib. ss.
+  { unfold f_fib, FibS3.f_fib. ss.
     unfold unwrapU. des_ifs. unfold triggerUB. irw. r.
     ITreelib.f_equiv. ii. ss. (*** !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! nice ***)
   }
@@ -96,9 +96,9 @@ Proof.
   clear n. intros.
   rename x into n.
   destruct n; ss.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
+  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS3.f_fib. ss. r. rewrite T. ss. irw. refl. }
   destruct n.
-  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS0.f_fib. ss. r. rewrite T. ss. irw. refl. }
+  { unfold parse_arg in *. des_ifs. unfold f_fib, FibS3.f_fib. ss. r. rewrite T. ss. irw. refl. }
   unfold parse_arg in T. des_ifs.
   rewrite unfold_fib. unfold unwrapU, parse_arg. rewrite T. ss. rewrite bind_ret_l.
   assert(W: Z.of_nat (S (S n)) <= Int.max_signed).
@@ -119,10 +119,10 @@ Proof.
   { ss. }
   unfold f_fib. ss. unfold unwrapU. des_ifs. ss. rewrite bind_ret_l.
   rewrite unfold_interp_mrec. ss. rewrite bind_ret_l.
-  refl.
+  rewrite fib_nat_recurse. unfold of_nat. rewrite Int_add_repr. rewrite Nat2Z.inj_add. refl.
 Qed.
 
-Theorem correct: rusc defaultR [FibS2.module: Mod.t] [FibS0.module: Mod.t].
+Theorem correct: rusc defaultR [FibS4.module: Mod.t] [FibS3.module: Mod.t].
 Proof.
   eapply SIREuttGlobal.correct; ss.
   ii. destruct icall; ss. unfold interp_program, mrec. ss.

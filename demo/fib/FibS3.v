@@ -27,7 +27,7 @@ Definition f_fib (oh0: owned_heap) (m0: mem) (vs0: list val):
       let vs1 := [Vint (of_nat (S m))] in
       '(oh2, (m2, y2)) <- trigger (ICall _fib oh1 m1 vs1) ;;
 
-      Ret (oh2, (m2, Vint (of_nat (fib_nat n))))
+      Ret (oh2, (m2, Val.add y1 y2))
     end
 .
 

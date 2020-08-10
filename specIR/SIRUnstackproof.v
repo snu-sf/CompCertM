@@ -303,18 +303,18 @@ Inductive _match_fr (match_fr: fr_src -> fr_tgt -> Prop): fr_src -> fr_tgt -> Pr
     _match_fr match_fr (tau;; st_src0) (st_tgt0)
 | match_fr_icall
     fname oh0 m0 vs0
-    fblk ty fd
+    fblk ty fd fd_callee
     (SYMB: Genv.find_symbol ge fname = Some fblk)
-    (FINDF: Genv.find_funct ge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal fd))
-    (TY: type_of_fundef (Ctypes.Internal fd) = ty)
-    (TYP: typecheck vs0 (signature_of_function fd) vs0)
+    (FINDF: Genv.find_funct ge (Vptr fblk Ptrofs.zero) = Some (Ctypes.Internal fd_callee))
+    (TY: type_of_fundef (Ctypes.Internal fd_callee) = ty)
+    (TYP: typecheck vs0 (signature_of_function fd_callee) vs0)
     (DEF: Forall (fun v => v <> Vundef) vs0)
     (* (CANSTEP: exists e le m1, function_entry2 ge fd vs0 m0 e le m1) *)
     k_src
     oid e le k
     (AFTER: forall
         oh1 m1 v1
-        (TYP: Cop.val_casted v1 (fn_return fd))
+        (TYP: Cop.val_casted v1 (fn_return fd_callee))
       ,
         match_fr (k_src (oh1, (m1, v1)))
                  (State fd Sskip k e (set_opttemp oid v1 le) m1))
@@ -661,7 +661,7 @@ Proof.
       ii. inv STEPSRC; ss. clarify. simpl_depind. substs. clear_tac.
 
       fold p_src. 
-      assert(T: (prog_defmap p_tgt) ! fid = Some (Gfun (Internal fd))).
+      assert(T: (prog_defmap p_tgt) ! fid = Some (Gfun (Internal fd_callee))).
       { eapply find_defmap; et. }
       des_ifs; cycle 1.
       { (*** TODO: make lemma ***)

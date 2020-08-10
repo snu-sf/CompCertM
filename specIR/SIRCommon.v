@@ -26,6 +26,19 @@ Set Implicit Arguments.
 
 
 
+(*** TODO: MOVE TO PROPER PLACE ***)
+(*** TODO: remove redundancy with SIRUnstackproof ***)
+Section SKEL.
+  Variable sk: Sk.t.
+  Definition internal_funs: ident -> bool :=
+    fun id => match (prog_defmap sk) ! id with
+              | Some (Gfun (Internal _)) => true
+              | _ => false
+              end.
+End SKEL.
+
+
+
 Section OWNEDHEAP.
 
 Variable owned_heap: Type.

@@ -208,7 +208,7 @@ Section SMOD.
     prog: program owned_heap;
     midx: string;
     initial_owned_heap: SkEnv.t -> owned_heap;
-    sk_incl: (internals sk) <1= prog;
+    sk_incl: (internal_funs sk) <1= prog;
   }
   .
   
@@ -264,4 +264,6 @@ Ltac prog_tac :=
   cbn; ii; clarify; rr; ss; des_ifs; ss; ii; clarify; try r.
 
 Ltac sk_incl_tac :=
-  (ii; ss; unfold internals in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify).
+  (ii; ss; unfold internal_funs in *; des_ifs; exploit in_prog_defmap; et; intro T; ss;
+   unfold update_snd in *; ss; des; clarify; ss).
+  (* (ii; ss; unfold internal_funs in *; des_ifs; eapply_all_once prog_defmap_image; ss; des; clarify). *)

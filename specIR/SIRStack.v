@@ -253,7 +253,7 @@ Section SMOD.
     prog: program owned_heap;
     midx: string;
     initial_owned_heap: SkEnv.t -> owned_heap;
-    sk_incl: (internals sk) <1= prog;
+    sk_incl: (internal_funs sk) <1= prog;
   }
   .
   

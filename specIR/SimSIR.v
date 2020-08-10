@@ -389,7 +389,7 @@ Section SIMSIR.
         rename tgt into m0. rename vs_tgt into vs0.
         exploit (SIMPROG fid0 m0 vs0); et.
         { exploit SkEnv.project_impl_spec; et. intro T. inv T.
-          destruct (internals (md_src: Sk.t) fid0) eqn:T.
+          destruct (internal_funs (md_src: Sk.t) fid0) eqn:T.
           - exploit SMod.sk_incl; ss; et.
           -
             assert(SYMB1: Genv.find_symbol skenv_link fid0 = Some blk).
@@ -399,7 +399,10 @@ Section SIMSIR.
             }
             exploit Genv.find_invert_symbol; et. intro U.
             unfold Genv.find_funct_ptr in *. des_ifs.
-            exploit DEFKEPT; et. i; des. ss. rewrite T in *. ss.
+            exploit DEFKEPT; et. i; des. ss.
+            exploit DEFKEEP; et. i; des. clarify. ss. clear_tac.
+            clear - LO T H DEFBIG Heq0 U PROG0 DEFSMALL.
+            inv LO; ss. inv H1; ss. unfold internals, internal_funs in *. des_ifs; ss.
         }
         i; des.
         eexists _, (Simple.mk (SM:=SimMemId.SimMemId) (SimMemId.mk _ _) _ _), _. esplits; eauto.

@@ -346,6 +346,18 @@ End ARGPASSING.
 Definition brange (blk: block) (lo hi: Z): block -> Z -> Prop := fun b ofs => b= blk /\ lo <= ofs < hi. (* TODO: Use Notation instead *)
 Hint Unfold brange.
 
+(*** TODO: move to proper place ***)
+Lemma brange_shorten
+      blk lo0 hi0 lo1 hi1
+      (LO: lo1 <= lo0)
+      (HI: hi0 <= hi1)
+  :
+    <<SHORT: brange blk lo0 hi0 <2= brange blk lo1 hi1>>
+.
+Proof.
+  u. ii; des; esplits; et; xomega.
+Qed.
+
 Section UNFREE.
 
 Definition Mem_range_noperm (m: mem) (b: block) (lo hi: Z) :=

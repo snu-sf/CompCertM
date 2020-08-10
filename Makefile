@@ -1,7 +1,7 @@
 COQMODULE    := compcomp
 # COQTHEORIES  := $(wildcard */*.v) #*/*.v
 COQTHEORIES  := $(shell find . -path ./ignored -prune -o -path ./demo/iter -prune -o $\
-  -path ./demo/knot -prune -o -path ./demo/union_find -prune -o -iname '*.v')
+  -path ./demo/knot -prune -o -iname '*.v')
 
 
 .PHONY: all proof proof-quick graph

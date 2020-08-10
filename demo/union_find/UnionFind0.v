@@ -165,8 +165,8 @@ Definition composites : list composite_definition :=
    noattr :: nil).
 
 Definition global_definitions : list (ident * globdef fundef type) :=
-((* (_malloc, *)
- (*   Gfun(External EF_malloc (Tcons tulong Tnil) (tptr tvoid) cc_default)) :: *)
+((_malloc,
+   Gfun(External EF_malloc (Tcons tulong Tnil) (tptr tvoid) cc_default)) ::
  (_new, Gfun(Internal f_new)) :: (_find, Gfun(Internal f_find)) ::
  (_union, Gfun(Internal f_union)) :: nil).
 

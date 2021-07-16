@@ -109,9 +109,9 @@ Proof.
     + econs; eauto; ss.
       * inv TYP. eapply match_states_call; eauto; ss.
         { econs; et. }
-        { rewrite <- TYP0. eapply lessdef_list_typify_list; try apply VALS; et. xomega. }
+        { rewrite <- TYP0. eapply lessdef_list_typify_list; try apply VALS; et. extlia. }
         { eapply JunkBlock.assign_junk_block_extends; eauto. }
-        { eapply typify_has_type_list; et. xomega. }
+        { eapply typify_has_type_list; et. extlia. }
       * rr. ss. esplits; et.
     + inv SAFESRC. folder. hexploit (find_funct_lessdef ge FINDF0 FPTR); et. intro FEQ. rewrite <- FEQ in *. clarify.
       rpapply RTLC.initial_frame2_intro; et. f_equal; ss.

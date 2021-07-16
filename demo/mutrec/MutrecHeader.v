@@ -39,24 +39,24 @@ Proof.
   - apply Z.eqb_eq in Heq. destruct i; ss. clarify. unfold sum. ss.
     rewrite fold_rec_equation. des_ifs. zsimpl. rewrite fold_rec_equation. des_ifs.
   - destruct i; ss. apply Z.eqb_neq in Heq.
-    assert(intval >= 1) by xomega.
+    assert(intval >= 1) by extlia.
     unfold Int.sub. ss.
     unfold sum at 1.
-    rewrite fold_rec_equation. ss. des_ifs; try xomega.
+    rewrite fold_rec_equation. ss. des_ifs; try extlia.
     assert(exists j, j.(Int.intval) = intval - 1).
     { unshelve eexists (Int.mkint _ _); simpl; try reflexivity.
-      xomega.
+      extlia.
     }
     des.
     rewrite Int.unsigned_one.
     unfold sum.
     assert(MOD0: Int.Z_mod_modulus intval = intval).
     { rewrite Int.Z_mod_modulus_eq.
-      symmetry. eapply Z.mod_unique_pos with (q := 0%Z); try xomega.
+      symmetry. eapply Z.mod_unique_pos with (q := 0%Z); try extlia.
     }
     assert(MOD1: Int.Z_mod_modulus (intval - 1) = intval - 1).
     { rewrite Int.Z_mod_modulus_eq.
-      symmetry. eapply Z.mod_unique_pos with (q := 0%Z); try xomega.
+      symmetry. eapply Z.mod_unique_pos with (q := 0%Z); try extlia.
     }
     replace {| Int.intval := intval; Int.intrange := conj intrange intrange0 |} with
         (Int.repr intval); cycle 1.

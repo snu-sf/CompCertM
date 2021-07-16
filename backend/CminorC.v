@@ -80,7 +80,7 @@ Section MODSEM.
   Proof.
     econs; eauto.
     - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
   Let eval_expr_determ:
@@ -108,7 +108,7 @@ Section MODSEM.
       + clear H1. determ_tac eval_expr_determ.
       + inv H2; inv H13; ss.
       + inv H2; inv H14; ss.
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
 End MODSEM.

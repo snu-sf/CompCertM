@@ -58,23 +58,23 @@ Proof.
         subst b. eapply Mem.perm_cur. eapply Mem.perm_implies. eapply Mem.perm_alloc_2; eauto. econs.
       }
     + etransitivity; try apply MWF; eauto. unfold tgt_private. ss. u. ii; des. esplits; eauto with congruence.
-      unfold Mem.valid_block in *. rewrite <- NB in *. eauto with xomega.
+      unfold Mem.valid_block in *. rewrite <- NB in *. eauto with extlia.
     + etransitivity; try apply MWF; eauto with mem congruence. rewrite <- NB. lia.
   - econs; ss; try eapply frozen_refl.
-    + eauto with mem xomega.
+    + eauto with mem extlia.
     + inv MWF. etrans.
       { eapply Mem.alloc_unchanged_on; eauto. }
       eapply Mem.unchanged_on_implies; eauto. i. ss. des_ifs. apply TGTEXT in H0. u in H0. des.
       exfalso. eapply Mem.fresh_block_alloc; eauto.
-    + ii. eauto with mem xomega.
+    + ii. eauto with mem extlia.
     + i. r. etrans; cycle 1.
       { ii. eapply Mem.perm_alloc_4; et. }
       { ii. eapply Mem.perm_unchanged_on_2; et.
-        - ss. des_ifs. unfold Mem.valid_block in *. xomega.
-        - unfold Mem.valid_block in *. xomega.
+        - ss. des_ifs. unfold Mem.valid_block in *. extlia.
+        - unfold Mem.valid_block in *. extlia.
       }
   - ii. u. esplits; eauto.
     + ii. exploit Mem.mi_perm; try apply MWF; eauto. i.
       zsimpl. hexpl Mem_alloc_fresh_perm. eapply NOPERM; eauto.
-    + unfold Mem.valid_block. rewrite <- NB. ss. eauto with xomega.
+    + unfold Mem.valid_block. rewrite <- NB. ss. eauto with extlia.
 Qed.

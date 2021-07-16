@@ -57,14 +57,14 @@ Lemma Pstar_non_E0_split'_strong
     end.
 Proof.
   ginduction STAR; ii; ss. des_ifs.
-  { destruct t1; ss. clarify. rr in H. des. exploit SINGLE; eauto. i; des. ss. destruct t1; ss; try xomega.
+  { destruct t1; ss. clarify. rr in H. des. exploit SINGLE; eauto. i; des. ss. destruct t1; ss; try extlia.
     esplits; try (right; ss).
     { eapply plus_star_trans; eauto; traceEq. apply plus_one. rr. eauto. }
   }
   exploit IHSTAR; eauto. i; des_safe. destruct t1; ss; clarify.
   - esplits; eauto.
     + eapply star_plus_trans; eauto. apply star_one; eauto. traceEq.
-  - rr in H. des_safe. exploit SINGLE; eauto. i. ss. destruct t1; ss; try xomega. esplits; eauto.
+  - rr in H. des_safe. exploit SINGLE; eauto. i. ss. destruct t1; ss; try extlia. esplits; eauto.
     + eapply plus_one; eauto. rr. eauto.
     + des.
       * left. split; ss. eapply plus_star_trans; eauto. eapply plus_star; eauto. ss.
@@ -118,11 +118,11 @@ Lemma starN_plus_iff
     (exists n, starN step se ge n st0 tr st1 /\ (n > 0)%nat) <-> plus step se ge st0 tr st1.
 Proof.
   split; i; des.
-  - destruct n; ss; try xomega. ginduction H; ii; ss; try xomega. clarify. inv H0.
+  - destruct n; ss; try extlia. ginduction H; ii; ss; try extlia. clarify. inv H0.
     + eapply plus_star_trans; et; try eapply star_refl. apply plus_one; et.
     + eapply plus_trans; et.
       { apply plus_one; et. }
-      eapply IHstarN; et. xomega.
-  - inv H. apply star_starN in H1. des. exists (Datatypes.S n). esplits; et; try xomega. econs; et.
+      eapply IHstarN; et. extlia.
+  - inv H. apply star_starN in H1. des. exists (Datatypes.S n). esplits; et; try extlia. econs; et.
 Qed.
 

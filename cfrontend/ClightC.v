@@ -156,7 +156,7 @@ Section MODSEM.
   Proof.
     econs; eauto.
     - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
   Lemma modsem1_determinate: forall st, determinate_at modsem1 st.
@@ -169,7 +169,7 @@ Section MODSEM.
       + inv H4; inv H16; congruence.
       + determ_tac eval_exprlist_determ.
       + inv H1. inv H8. hexploit (alloc_variables_determ H0 H3). i; des; clarify. determ_tac bind_parameters_determ.
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Unshelve.
     all: des; ss; try (by exfalso; des; ss).
   Qed.
@@ -178,7 +178,7 @@ Section MODSEM.
   Proof.
     econs; eauto.
     - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
   Lemma modsem2_determinate: forall st, determinate_at modsem2 st.
@@ -191,7 +191,7 @@ Section MODSEM.
       + inv H4; inv H16; congruence.
       + determ_tac eval_exprlist_determ.
       + inv H1. inv H8. hexploit (alloc_variables_determ H3 H7). i; des; clarify.
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Unshelve.
     all: des; ss; try (by exfalso; des; ss).
   Qed.

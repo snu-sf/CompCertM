@@ -39,11 +39,11 @@ Lemma Mem_unchanged_on_trans_strong
       (UNCH1: Mem.unchanged_on (P /2\ (fun b _ => Mem.valid_block m0 b)) m1 m2):
     <<UNCH2: Mem.unchanged_on P m0 m2>>.
 Proof.
-  inv UNCH0. inv UNCH1. econs; i; try xomega.
+  inv UNCH0. inv UNCH1. econs; i; try extlia.
   - etransitivity.
     { eapply unchanged_on_perm; eauto. }
     eapply unchanged_on_perm0; eauto.
-    { unfold Mem.valid_block in *. xomega. }
+    { unfold Mem.valid_block in *. extlia. }
   - erewrite <- unchanged_on_contents; eauto.
     dup H0. apply Mem.perm_valid_block in H1. unfold Mem.valid_block in *.
     erewrite <- unchanged_on_contents0; eauto. eapply unchanged_on_perm; eauto.
@@ -82,7 +82,7 @@ Lemma Mem_alloc_fresh_perm
     /\ <<NOPERM: forall ofs (OUTSIDE: ~ lo <= ofs < hi) p k, ~Mem.perm m1 blk ofs p k>>.
 Proof.
   ii. exploit Mem.alloc_result; eauto. i; clarify. esplits; eauto.
-  - ii. exploit (Mem.nextblock_noaccess m0 m0.(Mem.nextblock)); eauto with mem; try xomega.
+  - ii. exploit (Mem.nextblock_noaccess m0 m0.(Mem.nextblock)); eauto with mem; try extlia.
     i. unfold Mem.perm in *. rewrite H0 in *. ss.
   - ii. exploit (Mem.nextblock_noaccess m0 m0.(Mem.nextblock)); eauto with mem.
 Unshelve.
@@ -106,11 +106,11 @@ Proof.
   right. clarify. exploit Mem.alloc_result; eauto. i; clarify. des_ifs; ss; cycle 1.
   - ii. exploit Mem.perm_alloc_3; eauto. i.
     exploit PRIVTGT; try apply H3; eauto; cycle 1.
-    replace (ofs2 + delta2 - delta1) with ofs1 by xomega. eauto with mem.
+    replace (ofs2 + delta2 - delta1) with ofs1 by extlia. eauto with mem.
   - exploit OVERLAP; [|apply H0|apply H1|..]; eauto with mem. ii; des; ss.
   - ii. exploit Mem.perm_alloc_3; eauto. i.
     exploit PRIVTGT; try apply H3; eauto; cycle 1.
-    replace (ofs1 + delta1 - delta2) with ofs2 by xomega. eauto with mem.
+    replace (ofs1 + delta1 - delta2) with ofs2 by extlia. eauto with mem.
 Qed.
 
 
@@ -263,7 +263,7 @@ Lemma Mem_alloc_left_inject
                            else j0 blk) m_src1 m_tgt.
 Proof.
   exploit alloc_left_mapped_inject; eauto.
-  { split; try xomega. eapply max_unsigned_zero. }
+  { split; try extlia. eapply max_unsigned_zero. }
   { ii. rewrite Z.add_0_r. eapply TGTPERM; eauto. }
   { hnf. ii. apply Z.divide_0_r. }
   { ii. rewrite ! Z.add_0_r in *. eapply TGTPRIV; eauto. rewrite Z.add_simpl_r. eauto with mem. }
@@ -283,7 +283,7 @@ Lemma Mem_alloc_left_inject_empty
 Proof.
 (* NOTE: "alloc_left_mapped_inject" is not good enough. *)
   assert(NOPERM: forall ofs p k, ~Mem.perm m_src1 blk_src ofs k p).
-  { ii; clarify. exploit Mem.perm_alloc_3; eauto. i; xomega. }
+  { ii; clarify. exploit Mem.perm_alloc_3; eauto. i; extlia. }
 
   assert(PERM: all4 (Mem.perm m_src0 -4> Mem.perm m_src1) /\ all4 (Mem.perm m_src1 -4> Mem.perm m_src0)).
   { split; ii.
@@ -298,7 +298,7 @@ Proof.
     + ii. des_ifs; try (eapply INJ; eauto). exfalso. eapply NOPERM; eauto.
     + ii. des_ifs; eauto.
       { exfalso. eapply NOPERM. eapply H0; eauto. instantiate (1:= ofs).
-        generalize (size_chunk_pos chunk); intro. xomega. }
+        generalize (size_chunk_pos chunk); intro. extlia. }
       eapply INJ; eauto. ii. apply PERM0. eapply H0; eauto.
     + ii. des_ifs; eauto.
       { exfalso. eapply NOPERM; eauto. }
@@ -422,8 +422,8 @@ Proof.
   - ii. rewrite PMap.gsspec. des_ifs. rewrite Mem.setN_outside; ss. rewrite length_list_repeat.
     apply NNPP; ii. apply not_or_and in H1. des. eapply RANGE; eauto.
     u. esplits; eauto; try lia. destruct (classic (0 <= hi - lo)).
-    + rewrite Z2Nat.id in *; ss. xomega.
-    + abstr (hi - lo) x. destruct x; try xomega. rewrite Z2Nat.inj_neg in *. xomega.
+    + rewrite Z2Nat.id in *; ss. extlia.
+    + abstr (hi - lo) x. destruct x; try extlia. rewrite Z2Nat.inj_neg in *. extlia.
 Qed.
 
 Lemma Mem_unfree_unchanged_on
@@ -439,7 +439,7 @@ Lemma Mem_unfree_perm
 Proof.
   ii. unfold Mem_unfree in *. des_ifs. unfold Mem.perm. ss. rewrite PMap.gss. des_ifs.
   - ss. eauto with mem.
-  - bsimpl. des; des_sumbool; try xomega.
+  - bsimpl. des; des_sumbool; try extlia.
 Qed.
 
 Lemma Mem_unfree_suceeds
@@ -463,8 +463,8 @@ Proof.
         unfold Mem.perm. rewrite Heq. econs; eauto.
       * rewrite Mem.setN_other; try refl. ii. rewrite length_list_repeat in *. clarify.
         destruct (classic (0 <= hi - lo)).
-        { rewrite Z2Nat.id in *; ss. xomega. }
-        { abstr (hi - lo) x. destruct x; try xomega. rewrite Z2Nat.inj_neg in *. xomega. }
+        { rewrite Z2Nat.id in *; ss. extlia. }
+        { abstr (hi - lo) x. destruct x; try extlia. rewrite Z2Nat.inj_neg in *. extlia. }
   - ii. rewrite PMap.gsspec in *. des_ifs; bsimpl; des; ss; des_sumbool; clarify; eauto with mem.
 Qed.
 
@@ -530,12 +530,12 @@ Lemma delta_range
 Proof.
   unfold NW. split.
   - exploit Mem.mi_representable; eauto; cycle 1.
-    { instantiate (1:= Ptrofs.zero). rewrite Ptrofs.unsigned_zero. xomega. }
-    left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max. perm_impl_tac. eapply PERM. split; try xomega.
+    { instantiate (1:= Ptrofs.zero). rewrite Ptrofs.unsigned_zero. extlia. }
+    left. rewrite Ptrofs.unsigned_zero. eapply Mem.perm_cur_max. perm_impl_tac. eapply PERM. split; try extlia.
   - exploit Mem.mi_representable; try apply MWF; eauto; cycle 1.
-    { instantiate (1:= (Ptrofs.repr sz)). rewrite Ptrofs.unsigned_repr; try xomega. }
-    right. rewrite Ptrofs.unsigned_repr; try xomega.
-    eapply Mem.perm_cur_max. perm_impl_tac. eapply PERM. split; try xomega.
+    { instantiate (1:= (Ptrofs.repr sz)). rewrite Ptrofs.unsigned_repr; try extlia. }
+    right. rewrite Ptrofs.unsigned_repr; try extlia.
+    eapply Mem.perm_cur_max. perm_impl_tac. eapply PERM. split; try extlia.
 Qed.
 
 Lemma Mem_unchanged_on_bot
@@ -553,7 +553,7 @@ Lemma Mem_loadbytes_succeeds
     Mem.loadbytes m0 blk ofs 1 = Some [mv].
 Proof.
   Local Transparent Mem.loadbytes.
-  unfold Mem.loadbytes. des_ifs. exfalso. apply n. r. ii. assert(ofs0 = ofs) by xomega. clarify.
+  unfold Mem.loadbytes. des_ifs. exfalso. apply n. r. ii. assert(ofs0 = ofs) by extlia. clarify.
   Local Opaque Mem.loadbytes.
 Qed.
 
@@ -610,7 +610,7 @@ Proof.
   apply AxiomsC.prop_ext. unfold brange. split.
   - ii. des; clarify. destruct (classic (x1 < mid)).
     + left. esplits; et.
-    + right. esplits; et. xomega.
-  - ii. des; clarify; esplits; et; xomega.
+    + right. esplits; et. extlia.
+  - ii. des; clarify; esplits; et; extlia.
 Qed.
 

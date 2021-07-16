@@ -111,7 +111,7 @@ Lemma determ_atomic_determ
       (WBT: output_trace tr):
     <<DTM: determinate_at (ModSem.Atomic.trans ms) (tr, st0)>>.
 Proof.
-  ii. inv DTM. econs; eauto; ii; ss; inv H; ss; try xomega; inv H0.
+  ii. inv DTM. econs; eauto; ii; ss; inv H; ss; try extlia; inv H0.
   - determ_tac sd_determ_at. esplits; eauto. i. exploit H0; eauto. i; des. clarify.
   - determ_tac sd_determ_at. inv H.
   - determ_tac sd_determ_at. inv H.
@@ -131,7 +131,7 @@ Lemma output_trace_determinate_at
       (WBT: output_event ev):
     determinate_at (ModSem.Atomic.trans ms) (ev :: tr, st0).
 Proof.
-  econs; eauto; ii; ss; inv H; ss; try xomega. inv H0. split; ss. destruct ev; ss; econs; eauto.
+  econs; eauto; ii; ss; inv H; ss; try extlia. inv H0. split; ss. destruct ev; ss; econs; eauto.
 Qed.
 
 Lemma atomic_dstep_continue_dstar
@@ -198,11 +198,11 @@ Qed.
 
 Lemma atomic_single_events_at: forall (ms: ModSem.t),
     <<SINGLE: forall st, single_events_at (ModSem.Atomic.trans ms) st>>.
-Proof. ii. inv H; ss. xomega. Qed.
+Proof. ii. inv H; ss. extlia. Qed.
 
 Lemma atomic_single_evnents: forall (ms: ModSem.t),
     <<SINGLE: single_events (ModSem.Atomic.trans ms)>>.
-Proof. ii. inv H; ss. xomega. Qed.
+Proof. ii. inv H; ss. extlia. Qed.
 
 Lemma atomic_receptive_at
       (ms: ModSem.t) st0
@@ -213,7 +213,7 @@ Proof.
   inv SSR. econs; ss.
   { ii. ss. destruct t1; ss.
     { inv H. inv H0. esplits; eauto. econs; eauto. }
-    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try xomega. destruct t2; ss.
+    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try extlia. destruct t2; ss.
     { inv H0. }
     destruct t2; ss; cycle 1.
     { inv H0. }
@@ -231,7 +231,7 @@ Proof.
   i. generalize (@atomic_single_evnents ms); eauto. intro SINGLE. ii. econs; ss.
   { ii. ss. destruct t1; ss.
     { inv H. }
-    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try xomega. destruct t2; ss.
+    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try extlia. destruct t2; ss.
     { inv H0. }
     destruct t2; ss; cycle 1.
     { inv H0. }
@@ -250,7 +250,7 @@ Proof.
   inv SSR. econs; ss.
   { ii. ss. destruct t1; ss.
     { inv H. inv H0. esplits; eauto. econs; eauto. }
-    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try xomega.
+    exploit SINGLE; eauto. intro LEN. ss. destruct t1; ss; try extlia.
     destruct t2; ss.
     { inv H0. }
     destruct t2; ss; cycle 1.

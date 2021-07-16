@@ -276,7 +276,7 @@ Proof.
       inv STORE. inv STORE0. inv H1. rewrite <- NB0. rewrite <- NB in *.
       erewrite Mem.nextblock_alloc; eauto.
       erewrite (Mem.nextblock_alloc src) in H0; eauto.
-      inv MWF. rewrite <- mext_next. des; esplits; eauto; try xomega.
+      inv MWF. rewrite <- mext_next. des; esplits; eauto; try extlia.
   - inv MATCH; ss. destruct st_src0, st_tgt0, sm0. ss. inv MATCHST; ss.
 
   - ss. inv CALLSRC. inv MATCH. inv INITDATA. inv MATCHST. ss. destruct st_tgt0. ss. clarify. des.

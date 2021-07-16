@@ -272,8 +272,8 @@ Proof.
           * destruct p. erewrite INCR0 in NEW0; et. clarify. eapply FROZEN. split; eauto.
           * eapply SimMemInj.inject_separated_frozen in FROZEN0. exploit FROZEN0; eauto. i. des.
             rewrite SRCPARENTEQNB, TGTPARENTEQNB. unfold Mem.valid_block in *. clear - H H0 SRCLE1 TGTLE1.
-            assert(Ple (Mem.nextblock (SimMemInj.src sm_arg)) b_src) by xomega.
-            assert(Ple (Mem.nextblock (SimMemInj.tgt sm_arg)) b_tgt) by xomega.
+            assert(Ple (Mem.nextblock (SimMemInj.src sm_arg)) b_src) by extlia.
+            assert(Ple (Mem.nextblock (SimMemInj.tgt sm_arg)) b_tgt) by extlia.
             split; eapply Pos.le_trans; eauto.
       }
       econs; ss; eauto.

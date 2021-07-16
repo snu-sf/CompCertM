@@ -326,7 +326,7 @@ Proof.
         rewrite H1; ss.
       * des_ifs; simp.
         eapply Mem.perm_cur. eapply Mem.perm_implies with Freeable; eauto with mem.
-        eapply PERM; eauto with xomega.
+        eapply PERM; eauto with extlia.
     + destruct (WFINJ b1); clarify.
       destruct (eq_block b1 blk_src); clarify.
       { eapply ALIGN.
@@ -349,20 +349,20 @@ Proof.
         destruct (classic (0 <= hi - lo)); cycle 1.
         { assert(NEG: exists n, hi - lo = Z.neg n).
           { assert(Z.sgn (hi - lo) = - 1).
-            { eapply Z.sgn_neg. xomega. }
+            { eapply Z.sgn_neg. extlia. }
             unfold Z.sgn in *. des_ifs. eauto. }
           des. rewrite NEG. rewrite Z2Nat.inj_neg. ss.
           eapply mi_memval; eauto. }
         rewrite Mem.setN_other; ss.
         { eapply mi_memval; eauto. }
         ii. rewrite length_list_repeat in *. simp.
-        { rewrite Z2Nat.id in *; ss. xomega. }
+        { rewrite Z2Nat.id in *; ss. extlia. }
       * simp. rewrite PMap.gsspec. des_ifs.
         destruct (classic (0 <= hi - lo)); cycle 1.
-        { rewrite PMap.gsspec in *. des_ifs; simp. xomega. }
+        { rewrite PMap.gsspec in *. des_ifs; simp. extlia. }
         rewrite Mem_setN_in_repeat; ss.
         { econs; eauto. }
-        rewrite Z2Nat.id; ss. xomega.
+        rewrite Z2Nat.id; ss. extlia.
   - clear_until mi_no_overlap.
     rr. unfold Mem.perm; ss. ii.
     destruct (peq b1 blk_src && zle lo ofs1 && zlt ofs1 hi) eqn:T1; clarify.
@@ -373,7 +373,7 @@ Proof.
       eapply not_and_or. ii. des. clarify.
       eapply PRVT; try apply H1; eauto; cycle 1.
       { instantiate (1:= ofs2 + delta2). zsimpl. eauto. }
-      { rr. xomega. } }
+      { rr. extlia. } }
     destruct (peq b2 blk_src && zle lo ofs2 && zlt ofs2 hi) eqn:T2; clarify.
     { sguard in T1. simp. clear mi_no_overlap.
       rewrite PMap.gss in *. des_ifs; simp. clear H3.
@@ -382,7 +382,7 @@ Proof.
       eapply not_and_or. ii. des. clarify.
       eapply PRVT; try apply H0; eauto; cycle 1.
       { instantiate (1:= ofs1 + delta1). zsimpl. eauto. }
-      { rr. xomega. }
+      { rr. extlia. }
     }
     specialize (mi_no_overlap b1 b1' delta1 b2 b2' delta2 ofs1 ofs2).
     do 3 (hexploit1 mi_no_overlap; ss).

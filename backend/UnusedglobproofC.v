@@ -129,9 +129,9 @@ Proof.
       rpapply match_states_call; ss; eauto.
       { econs; ss; et.
         - inv SIMSKENV. ss. eapply SimSymbDrop.sim_skenv_symbols_inject; et.
-        - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite NBSRC. xomega.
+        - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite NBSRC. extlia.
         - inv SIMSKENV. inv MWF. inv SIMSKELINK. ss. rewrite assign_junk_blocks_nextblock.
-          rewrite NBTGT. des_ifs; xomega.
+          rewrite NBTGT. des_ifs; extlia.
       }
       { eapply inject_list_typify_list; eauto. }
       { eapply MWF0. }

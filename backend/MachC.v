@@ -199,7 +199,7 @@ Section MODSEM.
     econs; eauto.
     - ii; ss. inv H. destruct st0; ss. destruct s1; ss. clarify.
       inv STEP; try (exploit external_call_receptive; eauto; check_safe; intro T; des); try by (inv_match_traces; (eexists (mkstate _ _ _); econs; [econs| | |]; eauto)).
-    - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
   Lemma modsem_determinate: forall st, determinate_at modsem st.
@@ -209,7 +209,7 @@ Section MODSEM.
       inv STEP; inv STEP0; clarify_meq; try (determ_tac rao_dtm; check_safe); try (determ_tac extcall_arguments_dtm; check_safe);
         try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe);
           esplits; eauto; try (econs; eauto); try (by rewrite Genv.find_funct_find_funct_ptr in *; congruence); ii; eq_closure_tac; clarify_meq.
-    - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H. inv STEP; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
 End MODSEM.

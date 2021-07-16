@@ -153,14 +153,14 @@ Section MODSEM.
   Proof.
     econs; eauto.
     - ii; ss. inv H; inv H0. inv H1; inv H; clarify_meq; try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe); esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
-    - ii. inv H. inv H0; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H. inv H0; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
   Lemma modsem_receptive: forall st, receptive_at modsem st.
   Proof.
     econs; eauto.
     - ii; ss. inv H. inv H1; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; [econs; eauto|]; eauto).
-    - ii. inv H. inv H0; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H. inv H0; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
 End MODSEM.

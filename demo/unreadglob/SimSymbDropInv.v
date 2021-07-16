@@ -656,7 +656,7 @@ Next Obligation.
   esplits; et. eauto.
   { econs; ss; cycle 1.
     { i. exploit INV; eauto. i. des. split; eauto. }
-    econs; ss; try xomega. constructor; intros.
+    econs; ss; try extlia. constructor; intros.
     { intros; constructor; intros.
       - exploit init_meminj_invert_strong; eauto. intros (A & id & gd & B & C & D & E).
         exploit (Genv.init_mem_characterization_gen ss.(src)); eauto.
@@ -689,7 +689,7 @@ Next Obligation.
           rewrite H3, H4. eapply bytes_of_init_inject; et.
           { ii. inv SIMSK. eapply NOREF; et. eapply Genv.find_def_symbol. eexists. split; et. }
           omega.
-          rewrite Z2Nat.id; try xomega.
+          rewrite Z2Nat.id; try extlia.
     }
     - destruct ((init_meminj ss.(src) ss.(tgt)) b) as [[b' delta]|] eqn:INJ; auto.
       elim H. exploit init_meminj_invert; eauto. intros (A & id & B & C & D).
@@ -731,7 +731,7 @@ Next Obligation.
   { i. destruct (SimMemInj.inj sm0 b) eqn:T; ss.
     - destruct p; ss. exploit INCR; eauto. i; clarify.
     - inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
-      unfold Mem.valid_block in *. rewrite <- NBSRC in *. xomega. }
+      unfold Mem.valid_block in *. rewrite <- NBSRC in *. extlia. }
   apply sim_skenv_splittable_spec.
   rr.
   dsplits; eauto; try congruence; [..|M|M]; Mskip ii.
@@ -746,12 +746,12 @@ Next Obligation.
     exfalso.
     inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
     exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac.
-    exploit Genv.genv_symb_range; eauto. i. unfold Mem.valid_block in *. rewrite <- NBTGT in *. xomega.
+    exploit Genv.genv_symb_range; eauto. i. unfold Mem.valid_block in *. rewrite <- NBTGT in *. extlia.
   - ii. eapply SIMDEFINV; eauto.
     destruct (SimMemInj.inj sm0 blk_src) as [[b1 delta1] | ] eqn: J.
     + exploit INCR; eauto. congruence.
     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
-      exploit Genv.genv_defs_range; eauto. i. unfold Mem.valid_block in *. rewrite <- NBTGT in *. xomega.
+      exploit Genv.genv_defs_range; eauto. i. unfold Mem.valid_block in *. rewrite <- NBTGT in *. extlia.
 Qed.
 Next Obligation.
   set (SkEnv.project skenv_link_src ss.(src)) as skenv_src.

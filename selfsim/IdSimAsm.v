@@ -212,8 +212,8 @@ Section LOCALPRIV.
         { rewrite NB. eapply Plt_Ple_trans.
           - instantiate (1:=Mem.nextblock m0).
             inv H. eapply Mem.nextblock_alloc in ALC.
-            rewrite <- NB0. rewrite ALC. xomega.
-          - rewrite JunkBlock.assign_junk_blocks_nextblock. des_ifs; xomega. }
+            rewrite <- NB0. rewrite ALC. extlia.
+          - rewrite JunkBlock.assign_junk_blocks_nextblock. des_ifs; extlia. }
 
         esplits; ss.
         + econs; ss. split; ss. apply Plt_Ple; auto.
@@ -323,7 +323,7 @@ Section LOCALPRIV.
                 + assert (VALID: Mem.valid_block m_arg blk).
                   { apply Mem.perm_valid_block in PERM. unfold Mem.valid_block in *.
                     inv H. rewrite <- NB0 in *. eapply Mem.nextblock_alloc in ALC.
-                    rewrite ALC in *. clear - PERM n0. xomega. }
+                    rewrite ALC in *. clear - PERM n0. extlia. }
                   exploit store_arguments_unchanged_on; eauto. intros UNCH0.
                   erewrite Mem.unchanged_on_contents; eauto.
                   * ii. ss. eapply SOUNDIMPLY. eapply SOUND; eauto.
@@ -381,7 +381,7 @@ Section LOCALPRIV.
         - unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs. esplits; eauto.
         - inv SUST. esplits; eauto. des_ifs.
           + eapply Genv.genv_symb_range in FINDSRC. ss.
-            exfalso. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
+            exfalso. inv WF. eapply WFLO in Heq. rewrite SKE in *. extlia.
           + eapply Genv.genv_symb_range in FINDSRC. ss. exfalso. apply n.
             inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto. }
       { inv SUST. eapply symbols_inject_weak_imply.
@@ -389,7 +389,7 @@ Section LOCALPRIV.
         - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs; ss.
         - unfold UnreachC.to_inj, Mem.flat_inj. ii. esplits; eauto. des_ifs.
           + eapply Genv.genv_symb_range in H0. ss.
-            exfalso. ss. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
+            exfalso. ss. inv WF. eapply WFLO in Heq. rewrite SKE in *. extlia.
           + eapply Genv.genv_symb_range in H0. ss. exfalso. apply n.
             inv MEM. rewrite SKE in *. eapply Plt_Ple_trans; eauto.
         - unfold UnreachC.to_inj, Mem.flat_inj. ii. des_ifs.
@@ -415,7 +415,7 @@ Section LOCALPRIV.
         - destruct p. dup BEQ. eapply INCR in BEQ0. des_ifs.
         - destruct (j1 blk) as [[]|] eqn: BEQ0.
           + specialize (SEP _ _ _ BEQ BEQ0). des. des_ifs.
-          + unfold Mem.flat_inj, proj_sumbool in *. des_ifs. xomega. }
+          + unfold Mem.flat_inj, proj_sumbool in *. des_ifs. extlia. }
       assert (SOUNDV: forall v_src v_tgt (INJ: Val.inject j1 v_src v_tgt),
                  UnreachC.val' (Unreach.mk
                                   (fun blk => if j1 blk then false else plt blk (Mem.nextblock m0))
@@ -451,7 +451,7 @@ Section LOCALPRIV.
             destruct (if Unreach.unreach su0 x0
                       then None else Mem.flat_inj (Mem.nextblock m) x0) as [[]|]eqn:EQ.
             - apply INCR in EQ. clarify.
-            - unfold Mem.flat_inj in *. des_ifs; eauto. etrans; eauto. xomega. }
+            - unfold Mem.flat_inj in *. des_ifs; eauto. etrans; eauto. extlia. }
           { i. unfold proj_sumbool in *. des_ifs; eauto. }
       + econs; ss; eauto; i.
         * exploit asm_step_max_perm; try apply STEP0; eauto.
@@ -579,7 +579,7 @@ Section LOCALPRIV.
               - i.
                 destruct (classic (Unreach.unreach su_ret blk0)); cycle 1.
                 { hexploit SOUND; eauto. i.
-                  eapply UnreachC.memval_le; et. unfold su1. ss. Unreach.nb_tac. xomega.
+                  eapply UnreachC.memval_le; et. unfold su1. ss. Unreach.nb_tac. extlia.
                 }
                 rename H into SURET.
                 des_ifs.
@@ -615,7 +615,7 @@ Section LOCALPRIV.
           { (* WF *)
             inv WF. unfold su1. econs; ss; et.
             - i. des_ifs; et.
-              inv MEM. xomega.
+              inv MEM. extlia.
             - i. des_ifs; et.
               { clear - p FREE MLE. inv MLE. eapply Plt_Ple_trans; eauto.
                 etrans; eapply Mem.unchanged_on_nextblock; eauto.

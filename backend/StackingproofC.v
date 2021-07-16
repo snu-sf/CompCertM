@@ -90,7 +90,7 @@ Proof.
     inv STACKS; ss; cycle 1.
     { inv STK; ss. }
     des; cycle 1.
-    { apply tailcall_size in LE. xomega. }
+    { apply tailcall_size in LE. extlia. }
     clarify.
   - Local Transparent sepconj. cbn.
     left. left. right. left. split; [ss|].
@@ -99,7 +99,7 @@ Proof.
     unfold fe_ofs_arg. rewrite ! Z.add_0_l in *.
     inv STACKS; ss. des_ifs_safe. des.
     rewrite Ptrofs.unsigned_zero in *.
-    esplits; eauto; try xomega.
+    esplits; eauto; try extlia.
 Qed.
 
 Lemma arguments_perm
@@ -118,12 +118,12 @@ Proof.
     inv STACKS; ss; cycle 1.
     { inv STK; ss. }
     des; cycle 1.
-    { apply tailcall_size in LE. xomega. }
+    { apply tailcall_size in LE. extlia. }
     clarify. eapply H4; eauto.
   - apply sep_pick1 in MATCH. unfold frame_contents in *.
     ss. des_ifs. des. apply sep_pick2 in MATCH.
     unfold fe_ofs_arg in *. inv MATCH. des; ss. eapply H2; eauto.
-    inv STACKS; ss. rewrite ! Z.add_0_l in *. xomega.
+    inv STACKS; ss. rewrite ! Z.add_0_l in *. extlia.
 Qed.
 
 Lemma contains_locations_range: forall j sp lo hi k rs,
@@ -183,7 +183,7 @@ Next Obligation.
   esplits; et.
   { ii. eapply Mem.perm_unchanged_on; et. }
   ii. exploit H3; et. i; des. esplits; et. eapply Mem.load_unchanged_on; et.
-  ii. des. esplits; et; try xomega. rewrite typesize_chunk in *. rr. esplits; et; xomega.
+  ii. des. esplits; et; try extlia. rewrite typesize_chunk in *. rr. esplits; et; extlia.
 Qed.
 Next Obligation.
   r in H0. des. clarify. exploit H2; et. i. eapply Mem.perm_valid_block; et.
@@ -198,12 +198,12 @@ Proof.
   Local Transparent sepconj.
   (* unfold contains_locations. *)
   - econs; ss.
-    + ii. des. esplits; eauto with xomega; ss.
-      { ii. eauto with xomega mem. }
-      { ii. eauto with xomega mem. }
+    + ii. des. esplits; eauto with extlia; ss.
+      { ii. eauto with extlia mem. }
+      { ii. eauto with extlia mem. }
       unfold disjoint_footprint.
-      ss. ii. des. clarify. rr in H5. des. clarify. xomega.
-    + ii. u in H. des; clarify; esplits; et; try xomega.
+      ss. ii. des. clarify. rr in H5. des. clarify. extlia.
+    + ii. u in H. des; clarify; esplits; et; try extlia.
 Qed.
 
 Lemma contains_locations_split_m_footprint
@@ -215,7 +215,7 @@ Proof.
   apply func_ext2. i. apply prop_ext. split; i.
   - ss. des. clarify. destruct (classic (x1 < pos + 4 * lo)).
     + left. esplits; et.
-    + right. rr. split; et. xomega.
+    + right. rr. split; et. extlia.
   - eapply contains_locations_split; et.
 Qed.
 
@@ -247,22 +247,22 @@ Proof.
   { clear SEP. ss. ii. left. ss. }
   { ss. des. esplits; et.
     - ii. destruct (classic (ofs < pos + 4 * sz)).
-      + eapply PERM; try xomega.
+      + eapply PERM; try extlia.
       + eapply Mem.perm_unchanged_on; et.
         { u. ii. des; clarify. }
-        eapply SEP5; try xomega.
+        eapply SEP5; try extlia.
     - ii. destruct (classic (sz <= ofs)).
       + exploit SEP6; et. i; des. esplits; et.
-        eapply Mem.load_unchanged_on; et. u. ii. des. xomega.
-      + assert(BDD: ofs < sz) by xomega.
+        eapply Mem.load_unchanged_on; et. u. ii. des. extlia.
+      + assert(BDD: ofs < sz) by extlia.
         assert(LD: exists v, Mem.load (chunk_of_type ty) m1 sp (pos + 4 * ofs) = Some v).
         { exploit Mem.valid_access_load; et. rr. esplits; et.
           - eapply Mem.range_perm_implies with (p1 := Freeable); eauto with mem.
             ii. destruct (classic (ofs0 < pos + 4 * sz)).
-            + eapply PERM; et. xomega.
+            + eapply PERM; et. extlia.
             + eapply Mem.perm_unchanged_on; et.
-              { u. ii; des. xomega. }
-              eapply SEP5; et. rewrite typesize_chunk in *. split; try xomega.
+              { u. ii; des. extlia. }
+              eapply SEP5; et. rewrite typesize_chunk in *. split; try extlia.
           - rewrite align_type_chunk. eapply Z.divide_add_r.
             + etrans; et. eapply typealign_divide_8.
             + apply Z.mul_divide_mono_l. ss.
@@ -272,7 +272,7 @@ Proof.
   { ss. des. ii. des; clarify.
     destruct (classic (x1 < pos + 4 * sz)).
     - left. rr. esplits; et.
-    - right. rr. esplits; et. xomega.
+    - right. rr. esplits; et. extlia.
   }
 Qed.
 
@@ -365,9 +365,9 @@ Proof.
     Local Transparent sepconj.
     ss. ii. des. clarify. destruct (classic (4 * size_arguments sg <= x3)).
     + right. esplits; et.
-    + left. rr. esplits; et. xomega.
+    + left. rr. esplits; et. extlia.
   - right. eapply sepconj_footprint_le; try apply H; et. clear H.
-    ss. ii. unfold brange in *. des; clarify; esplits; et; try xomega.
+    ss. ii. unfold brange in *. des; clarify; esplits; et; try extlia.
 Qed.
 
 Lemma stack_contents_at_external_m_footprint
@@ -379,22 +379,22 @@ Proof.
   apply func_ext2. i. apply prop_ext.
   generalize size_arguments_above; intro SZARG.
   inv STACKS; ss.
-  { ss. u. split; i; des; clarify; esplits; et; psimpl; zsimpl; try xomega.
+  { ss. u. split; i; des; clarify; esplits; et; psimpl; zsimpl; try extlia.
     { exploit tailcall_size; eauto. i. omega. }
     { specialize (SZARG sg). omega. }
     { destruct (classic (4 * size_arguments sg <= x1)).
       - right. esplits; et.
-      - left. esplits; et. xomega.
+      - left. esplits; et. extlia.
     }
   }
   Local Opaque frame_contents frame_contents_at_external.
   inv STK; ss.
-  { psimpl. zsimpl. rewrite <- frame_contents_at_external_m_footprint; ss; try xomega.
-    - split; try xomega. specialize (SZARG sg). omega.
+  { psimpl. zsimpl. rewrite <- frame_contents_at_external_m_footprint; ss; try extlia.
+    - split; try extlia. specialize (SZARG sg). omega.
     - eapply bound_outgoing_stack_data; et.
   }
   { rewrite <- frame_contents_at_external_m_footprint ;ss.
-    - split; try xomega. specialize (SZARG sg). omega.
+    - split; try extlia. specialize (SZARG sg). omega.
     - eapply bound_outgoing_stack_data; et.
   }
 Qed.
@@ -639,7 +639,7 @@ Proof.
         red. esplits; eauto.
         * erewrite Stackingproof.size_type_chunk in *. rewrite Stackingproof.typesize_typesize in *.
           ii. eapply Mem.perm_implies.
-          { eapply PERM. xomega. }
+          { eapply PERM. extlia. }
           eauto with mem.
         * rewrite Stackingproof.align_type_chunk. eapply Z.mul_divide_mono_l; eauto.
   }
@@ -657,7 +657,7 @@ Proof.
   { ss. }
   eapply SimMemInjC.sim_skenv_inj_globalenv_inject; et.
   { eapply SimSymb.mle_preserves_sim_skenv in SIMSKE; et. etrans; et. }
-  { rewrite assign_junk_blocks_nextblock. ss. des_ifs; xomega. }
+  { rewrite assign_junk_blocks_nextblock. ss. des_ifs; extlia. }
 Unshelve. all: eauto.
 Qed.
 
@@ -696,9 +696,9 @@ Proof.
   intro UNCH.
 
   {{ assert(SZARG: 0 <= size_arguments sg <= bound_outgoing (function_bounds f)).
-     { inv STACKS; ss. esplits; et. generalize (size_arguments_above sg). i. xomega. }
+     { inv STACKS; ss. esplits; et. generalize (size_arguments_above sg). i. extlia. }
      assert(SZARG0: 4 * size_arguments sg <= fe_stack_data (make_env (function_bounds f))).
-     { generalize (bound_outgoing_stack_data (function_bounds f)); i. xomega. }
+     { generalize (bound_outgoing_stack_data (function_bounds f)); i. extlia. }
      assert(UNCH0: Mem.unchanged_on
                      (~2 m_footprint
                        (contains_locations (SimMemInj.inj sm0) sp fe_ofs_arg
@@ -709,7 +709,7 @@ Proof.
        destruct (eq_block b sp); clarify; et. right.
        intro CONTR. clear - SZARG CONTR FOOT. ss.
        repeat (apply_all_once not_and_or). des; ss.
-       eapply FOOT; et. unfold fe_ofs_arg in *. xomega.
+       eapply FOOT; et. unfold fe_ofs_arg in *. extlia.
      }
      assert(UNCH1: Mem.unchanged_on (~2 m_footprint (frame_contents f (SimMemInj.inj sm0)
                                                                     sp rs rs0 sp2 retaddr0))
@@ -736,11 +736,11 @@ Proof.
            s.
            Local Opaque sepconj.
            u. ii. unfold fe_ofs_arg in *. zsimpl.
-           des; clarify; esplits; et; try xomega.
+           des; clarify; esplits; et; try extlia.
          }
          apply sep_pick1 in SEP.
          eapply contains_locations_split with (lo := (size_arguments sg)) in SEP; cycle 1.
-         { xomega. }
+         { extlia. }
          eapply sepconj_isolated_mutation_revisited; et; swap 2 3.
          { apply sep_pick1 in SEP.
            eapply free_freed_contains_locations with (CTX := pure True); et.
@@ -752,12 +752,12 @@ Proof.
          }
        - clear SEP.
          apply range_split with (mid := (4 * size_arguments sg)) in SEP0; cycle 1.
-         { esplits; et. xomega. }
+         { esplits; et. extlia. }
          sep_simpl_tac. eapply sepconj_isolated_mutation_revisited; et.
          { eapply Mem.unchanged_on_implies; try apply UNCH.
            ii. ss. apply not_and_or in H. des; et.
          }
-         { ss. unfold fe_ofs_arg. zsimpl. esplits; et; try xomega.
+         { ss. unfold fe_ofs_arg. zsimpl. esplits; et; try extlia.
            + apply sep_pick1 in SEP0. ss. des. ss.
            + i. inv STACKS. des. eapply Mem.valid_block_free_1; et.
          }
@@ -799,13 +799,13 @@ Proof.
     ss. unfold dummy_frame_contents.
     Local Opaque stack_contents_args.
     psimpl. zsimpl.
-    esplits; try xomega.
+    esplits; try extlia.
     + eapply Z.divide_0_r.
     + clear - SEP. inv SEP. des. inv H0. des. eauto.
     + des; clarify.
       exploit tailcall_size; et. intro ZERO; des. rewrite ZERO in *. zsimpl.
       clear - SEP UNCH.
-      apply sep_drop in SEP. ss. des. ii. eapply Mem.perm_unchanged_on; et. u. i. des. xomega.
+      apply sep_drop in SEP. ss. des. ii. eapply Mem.perm_unchanged_on; et. u. i. des. extlia.
     + i. zsimpl.
       assert(exists v, Mem.load (chunk_of_type ty) (SimMemInj.tgt sm_after) sp (4 * ofs) = Some v).
       { eapply Mem.valid_access_load. rr.
@@ -813,10 +813,10 @@ Proof.
         split; ss.
         - rewrite typesize_chunk in *. ii.
           destruct (classic (ofs0 < (4 * size_arguments sg))).
-          + eapply PERM; et. split; try xomega.
+          + eapply PERM; et. split; try extlia.
           + eapply Mem.perm_unchanged_on; et.
-            * u. i. des_safe. xomega.
-            * clear - SEP SZLE H0 H2 H3. apply sep_drop in SEP. ss. des. eapply SEP1; et. split; try xomega.
+            * u. i. des_safe. extlia.
+            * clear - SEP SZLE H0 H2 H3. apply sep_drop in SEP. ss. des. eapply SEP1; et. split; try extlia.
         - eapply Z.mul_divide_mono_l. eauto.
       }
       des_safe. esplits; et.
@@ -830,7 +830,7 @@ Proof.
       rewrite <- frame_contents_at_external_m_footprint; ss.
       + bar. u. ii. des; clarify. right.
         Local Transparent sepconj.
-        s. left. esplits; et. xomega.
+        s. left. esplits; et. extlia.
       + split; ss. eapply Z.ge_le. eapply size_arguments_above.
     - apply sep_pick1 in SEP.
 
@@ -848,13 +848,13 @@ Proof.
           eauto.
         * s. ii. des. clarify. u. unfold fe_ofs_arg in *. zsimpl.
           destruct (classic (x1 < 4 * size_arguments sg)); et.
-          right. split; et. xomega.
+          right. split; et. extlia.
       + eapply sepconj_isolated_mutation_revisited; try apply SEP; et.
         * u. ii. des_safe. unfold fe_ofs_arg. et.
         * apply sep_pick1 in SEP0. eapply unfree_freed_range; et.
         * s. ii. des. clarify. u. unfold fe_ofs_arg in *. zsimpl.
           destruct (classic (x1 < 4 * size_arguments sg)); et.
-          right. split; et. xomega.
+          right. split; et. extlia.
     - rewrite <- frame_contents_at_external_m_footprint; et.
       { split; et. eapply Z.ge_le. eapply size_arguments_above. }
       { eapply bound_outgoing_stack_data; et. }
@@ -946,7 +946,7 @@ Proof.
     eapply wt_prog; eauto.
   - inv FOOT. inv MLEEXCL. rewrite RSP in *. clarify. des. clarify. eapply SimMemInjC.foot_excl; et.
   - inv EXCL. inv MLEEXCL. econs; ss; eauto.
-    inv MWF. eapply frozen_shortened; eauto with xomega.
+    inv MWF. eapply frozen_shortened; eauto with extlia.
   - (* init bsim *)
     { inv INITTGT. inv STORE. folder. inv SIMARGS; ss.
       exploit functions_translated_inject; eauto.
@@ -965,7 +965,7 @@ Proof.
           erewrite extcall_arguments_length; eauto with congruence.
           assert((length targs) = (length (sig_args (fn_sig fd)))).
           { erewrite <- extcall_arguments_length; eauto. erewrite loc_arguments_length; eauto. }
-          inv TYP. xomega.
+          inv TYP. extlia.
       }
       exploit (LocationsC.fill_arguments_progress
                  (locset_copy ((SimMemInj.src sm_arg).(Mem.nextblock).(Zpos) - m0.(Mem.nextblock).(Zpos)) rs)
@@ -1000,7 +1000,7 @@ Proof.
                                     apply_all_once Pos.compare_eq; clarify; try lia.
             replace (Z.pos b + Z.pos_sub m_src y) with (Z.pos_sub b y + Z.pos m_src); try nia; cycle 1.
             { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
-            split; ss; try xomega.
+            split; ss; try extlia.
             * ii. rewrite Z2Pos.inj_add in *; ss; try lia.
               rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
               rewrite Z.pos_sub_diag in *. zsimpl. rewrite Pos2Z.id in *. lia.
@@ -1053,7 +1053,7 @@ Proof.
             { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
             destruct (peq b y) eqn: EQ.
             { clarify. rewrite Z.pos_sub_diag. zsimpl. rewrite Pos2Z.id.
-              des_ifs; bsimpl; des; des_sumbool; try xomega; cycle 1.
+              des_ifs; bsimpl; des; des_sumbool; try extlia; cycle 1.
               replace (m_src + y - m_src)%positive with y; ss.
               rewrite Pos.add_comm. rewrite Pos.add_sub. ss.
             }
@@ -1066,7 +1066,7 @@ Proof.
               rewrite Pos2Z.id. rewrite Pos.add_sub_assoc; ss. rewrite Pos.add_comm. rewrite Pos.add_sub. ss.
             }
             assert(COND0: negb (plt (Z.to_pos (Z.pos_sub b y) + m_src) m_src)).
-            { bsimpl. des_sumbool. ii. unfold Plt in *. xomega. }
+            { bsimpl. des_sumbool. ii. unfold Plt in *. extlia. }
             (* des_ifs. *)
             (* { unfold block. do 2 f_equal. bsimpl; des; des_sumbool; try lia. *)
             rewrite COND0 in *.
@@ -1088,12 +1088,12 @@ Proof.
             * rewrite DEF. rewrite SM. s. unfold Mem.valid_block. rewrite assign_junk_blocks_nextblock. rewrite <- NB.
               exploit Mem.nextblock_alloc; et. i. rewrite H.
               clear - ALC NB MWF. esplits.
-              { des_ifs; xomega. }
-              { inv MWF. etrans; et. xomega. }
+              { des_ifs; extlia. }
+              { inv MWF. etrans; et. extlia. }
               { (* TODO: make lemma *)
                 ii. inv MWF; ss. eapply TGTEXT in H.
                 rr in H; ss. des. r in H0. unfold Mem.valid_block in *.
-                exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. xomega. }
+                exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. extlia. }
           + eapply val_inject_incr; try apply MLE0; eauto. eapply val_inject_incr; try apply MLE; eauto.
           + psimpl. zsimpl. rewrite SG.
             exploit (@init_match_frame_contents sm_arg); try apply MLE; try apply MLE0; eauto.
@@ -1104,7 +1104,7 @@ Proof.
             { rewrite <- SG. ss. eauto. }
             { rewrite DEF, SM. s. f_equal; eauto. }
             { inv SIMSKENV. ss. inv SIMSKE. ss.
-              - etrans; try apply MWF0. ss. etrans; try apply MWF. rewrite NBTGT. xomega. }
+              - etrans; try apply MWF0. ss. etrans; try apply MWF. rewrite NBTGT. extlia. }
             intro SEP.
             eapply dummy_frame_contents_incr; try apply MLE0; eauto. eapply dummy_frame_contents_incr; try apply MLE; eauto.
             subst; ss.
@@ -1299,7 +1299,7 @@ Proof.
           i. inv SIMSKENV. ss. inv MLE2. clear MAXSRC MAXTGT. destruct (SimMemInj.inj sm0 b1) eqn:T; ss.
           - destruct p. exploit INCR; et. i; des. clarify.
           - inv FROZENLO. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. inv SIMSKELINK. inv INJECT.
-            inv SIMSKENV. rewrite <- NBTGT in *. xomega.
+            inv SIMSKENV. rewrite <- NBTGT in *. extlia.
         }
         eapply match_stacks_le; try apply STACKS; et.
         { intros ? ? ? VALID0 MAP0. rewrite MINJ in *.
@@ -1310,7 +1310,7 @@ Proof.
           { exfalso.
             inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
             clear - VALID0 OUTSIDE_TGT MLE. inv MLE.
-            unfold Mem.valid_block in *. inv TGTUNCHANGED. xomega.
+            unfold Mem.valid_block in *. inv TGTUNCHANGED. extlia.
           }
         }
         { intros b_src b_tgt delta ofs VALID0 MAP0 PERM.
@@ -1327,7 +1327,7 @@ Proof.
             }
             inv MLE0. inv FROZEN.
             exploit NEW_IMPLIES_OUTSIDE; ss; eauto. i; des.
-            unfold Mem.valid_block in *. rewrite NB in *. xomega.
+            unfold Mem.valid_block in *. rewrite NB in *. extlia.
           }
           inv MLE2. eapply MAXSRC; et.
         }
@@ -1396,7 +1396,7 @@ Proof.
     Local Transparent stack_contents_args dummy_frame_contents.
     ss. unfold dummy_frame_contents in *. psimpl. clarify.
     hexploit (Mem.range_perm_free sm0.(SimMemInj.tgt) sp 0 (4 * (size_arguments init_sg))); eauto.
-    { inv MCOMPAT. clear - SEP. apply sep_pick1 in SEP. rr in SEP. des. zsimpl. eauto with xomega. }
+    { inv MCOMPAT. clear - SEP. apply sep_pick1 in SEP. rr in SEP. des. zsimpl. eauto with extlia. }
     intros (sm_tgt1 & FREETGT).
 
     assert(j = sm0.(SimMemInj.inj)).

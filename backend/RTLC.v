@@ -85,14 +85,14 @@ Section MODSEM.
   Proof.
     econs; eauto.
     - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
   Lemma modsem2_receptive: forall st, receptive_at modsem2 st.
   Proof.
     econs; eauto.
     - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
   Lemma modsem_determinate: forall st, determinate_at modsem st.
@@ -101,7 +101,7 @@ Section MODSEM.
     - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_builtin_args_determ; check_safe);
                 try (determ_tac external_call_determ; check_safe);
                 esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
   Lemma modsem2_determinate: forall st, determinate_at modsem2 st.
@@ -110,7 +110,7 @@ Section MODSEM.
     - ii; ss. inv H; inv H0; clarify_meq; try (determ_tac eval_builtin_args_determ; check_safe);
                 try (determ_tac external_call_determ; check_safe);
                 esplits; eauto;try (econs; eauto); ii; eq_closure_tac; clarify_meq.
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
 End MODSEM.

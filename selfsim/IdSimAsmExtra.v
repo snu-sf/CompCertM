@@ -56,8 +56,8 @@ Section MEMORYLEMMA.
   Proof.
     ii. unfold Plt in *.
     erewrite <- Pos.compare_lt_iff in H. erewrite <- Pos.add_compare_mono_r in H. instantiate (1:=b) in H.
-    erewrite Pos.sub_add in H; [|xomega]. rewrite Pos.add_comm in H. apply LE.
-    erewrite -> Pos.compare_lt_iff in H. xomega.
+    erewrite Pos.sub_add in H; [|extlia]. rewrite Pos.add_comm in H. apply LE.
+    erewrite -> Pos.compare_lt_iff in H. extlia.
   Qed.
 
   Lemma Plt_lemma2 a b c d
@@ -73,9 +73,9 @@ Section MEMORYLEMMA.
       erewrite -> Pos.compare_lt_iff in LT.
       rpapply LT. replace (b + d + c)%positive with (c + d + b)%positive.
       + rewrite Pos.add_sub. auto.
-      + clear. xomega.
-    - clear LT. xomega.
-    - clear. xomega.
+      + clear. extlia.
+    - clear LT. extlia.
+    - clear. extlia.
   Qed.
 
   Lemma Z2Nat_range n:
@@ -288,8 +288,8 @@ Section MEMORYLEMMA.
             * destruct p. erewrite INCR0 in NEW0; et. clarify. eapply FROZEN. split; eauto.
             * eapply SimMemInj.inject_separated_frozen in FROZEN0. exploit FROZEN0; eauto. i. des.
               rewrite SRCPARENTEQNB, TGTPARENTEQNB. unfold Mem.valid_block in *. clear - H H0 SRCLE1 TGTLE1.
-              assert(Ple (Mem.nextblock (SimMemInj.src sm_arg)) b_src) by xomega.
-              assert(Ple (Mem.nextblock (SimMemInj.tgt sm_arg)) b_tgt) by xomega.
+              assert(Ple (Mem.nextblock (SimMemInj.src sm_arg)) b_src) by extlia.
+              assert(Ple (Mem.nextblock (SimMemInj.tgt sm_arg)) b_tgt) by extlia.
               split; eapply Pos.le_trans; eauto.
         }
         econs; ss; eauto.
@@ -348,7 +348,7 @@ Proof.
     + apply Plt_lemma in p0; eauto. clarify.
     + instantiate (1:=0).
       replace (b + Mem.nextblock m_src0 - Mem.nextblock m_tgt0 + Mem.nextblock m_tgt0 - Mem.nextblock m_src0)%positive with b; auto.
-      clear - n0. rewrite Pos.sub_add; try xomega. rewrite Pos.add_sub. auto.
+      clear - n0. rewrite Pos.sub_add; try extlia. rewrite Pos.add_sub. auto.
     + exfalso. rewrite JunkBlock.assign_junk_blocks_nextblock in *. des_ifs. apply n2. eapply Plt_lemma2 in p; eauto.
   - symmetry. eapply Ptrofs.add_zero.
 Qed.
@@ -446,7 +446,7 @@ Lemma store_arguments_nextblock
       (STORE: store_arguments m0 rs vs sg m1):
     Plt (Mem.nextblock m0) (Mem.nextblock m1).
 Proof.
-  inv STORE. rewrite <- NB. eapply Mem.nextblock_alloc in ALC. erewrite ALC. xomega.
+  inv STORE. rewrite <- NB. eapply Mem.nextblock_alloc in ALC. erewrite ALC. extlia.
 Qed.
 
 Lemma store_arguments_max_perm

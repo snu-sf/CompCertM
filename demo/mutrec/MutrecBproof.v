@@ -865,7 +865,7 @@ Proof.
           - econs. }
         { zsimpl. psimpl. inv WF.
           rewrite Genv.find_funct_ptr_iff in FINDF1.
-          eapply WFPARAM in FINDF1. generalize (size_arguments_above (Sk.get_sig skd)); i. etrans; eauto. xomega. }
+          eapply WFPARAM in FINDF1. generalize (size_arguments_above (Sk.get_sig skd)); i. etrans; eauto. extlia. }
         { ii. apply Z.divide_0_r. }
         { ss. }
 
@@ -1352,7 +1352,7 @@ Proof.
           - ii. inv MWF. ss. inv WF0. exploit INVRANGETGT; eauto.
             i. des. eapply (Plt_strict stk). eapply Plt_Ple_trans; eauto.
             etrans; eauto. clear - STKOUTSIDE0.
-            unfold Mem.valid_block in *. xomega.
+            unfold Mem.valid_block in *. extlia.
           - unfold nextinstr_nf, undef_regs, nextinstr.
             repeat rewrite Pregmap.gss.
             repeat (rewrite Pregmap.gso; [| clarify; fail]).

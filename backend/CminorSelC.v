@@ -79,7 +79,7 @@ Section MODSEM.
   Proof.
     econs; eauto.
     - ii; ss. inv H; try (exploit external_call_receptive; eauto; check_safe; intro T; des); inv_match_traces; try (by esplits; eauto; econs; eauto).
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
   Lemma eval_expr_determ:
@@ -140,7 +140,7 @@ Section MODSEM.
                     try (determ_tac eval_exitexpr_determ; check_safe); try (determ_tac eval_builtin_args_determ; check_safe);
                       try (determ_tac external_call_determ; check_safe);
                       esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
-    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try xomega.
+    - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
   Qed.
 
 End MODSEM.

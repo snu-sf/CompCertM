@@ -64,9 +64,9 @@ Proof.
       + ss. r in GE. ss. des. r in mmatch_below.
         apply NNPP. ii. apply Pos.lt_nle in H.
         exploit GE0; eauto. i; des.
-        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des. xomega.
+        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des. extlia.
     - econs; ss; i; des_ifs. r in GE. des. ss. des_sumbool. apply NNPP. ii.
-      exploit (GE0 x0); eauto. { xomega. } i; des. congruence.
+      exploit (GE0 x0); eauto. { extlia. } i; des. congruence.
   }
 Qed.
 
@@ -109,11 +109,11 @@ Proof.
       + ss. r in GE. ss. des. r in mmatch_below.
         apply NNPP. ii. apply Pos.lt_nle in H.
         exploit GE0; eauto. i; des.
-        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des. xomega.
+        exploit mmatch_below; eauto. { rewrite H0; ss. } i; des. extlia.
     - econs; eauto; ss; i; des_ifs. des_sumbool.
       rr in GE. des. apply NNPP. ii.
       exploit (GE0 x0); eauto.
-      { unfold fundef in *. xomega. }
+      { unfold fundef in *. extlia. }
       i; des. congruence.
   }
 Qed.

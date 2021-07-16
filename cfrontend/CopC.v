@@ -42,4 +42,4 @@ Proof. i. ginduction itys; ii; ss; des_ifs; ss. f_equal. ss. Qed.
 
 Lemma typelist_to_listtype_length: forall itys,
     length (typelist_to_listtype (type_of_params itys)) = length (map typ_of_type (map snd itys)).
-Proof. i. ginduction itys; ii; ss; des_ifs; ss. xomega. Qed.
+Proof. i. ginduction itys; ii; ss; des_ifs; ss. extlia. Qed.

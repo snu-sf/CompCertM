@@ -40,7 +40,7 @@ Proof.
       rewrite Int64.half_modulus_power in *. ss. rewrite two_power_pos_correct in *.
       rewrite Z.pow_pos_fold in *.
       etrans; eauto.
-      eapply Z.pow_lt_mono_r; try xomega.
+      eapply Z.pow_lt_mono_r; try extlia.
     }
     assert(T0: Int64.unsigned l <= Z.pow_pos 2 53).
     {
@@ -48,14 +48,14 @@ Proof.
       apply Z.lt_le_incl in H.
       rewrite Z.pow_pos_fold in *.
       etrans; eauto.
-      eapply Z.pow_le_mono_r; try xomega.
+      eapply Z.pow_le_mono_r; try extlia.
     }
     assert(T1: Z.abs (Int64.signed l) <= Z.pow_pos 2 53).
     {
       unfold Z.abs, Int64.signed. des_ifs; try congruence.
       generalize (Zlt_neg_0 p); i.
       generalize (Int64.unsigned_range l); i.
-      xomega.
+      extlia.
     }
     des_ifs. do 2 f_equal.
     apply Float.of_longu_of_long_1.
@@ -71,7 +71,7 @@ Proof.
       ss.
       rewrite Z.pow_pos_fold in *.
       etrans; eauto.
-      eapply Z.pow_le_mono_r; try xomega.
+      eapply Z.pow_le_mono_r; try extlia.
     }
     assert(T1: Z.pow_pos 2 36 <= Z.abs (Int64.signed l)).
     {
@@ -275,7 +275,7 @@ Proof.
         + eapply MemoryC.private_unchanged_inject; eauto.
         + etrans; eauto.
           unfold SimMemInj.tgt_private. ss. ii. des. split; eauto.
-          unfold SimMemInj.valid_blocks, Mem.valid_block in *. xomega.
+          unfold SimMemInj.valid_blocks, Mem.valid_block in *. extlia.
         + etrans; eauto.
       - esplits; eauto. econs; ss; eauto.
         + refl.

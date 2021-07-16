@@ -127,8 +127,8 @@ Proof.
         { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
           econs; eauto.
           - eapply SimMemInjC.sim_skenv_symbols_inject; et.
-          - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBSRC. xomega.
-          - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBTGT. xomega.
+          - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBSRC. extlia.
+          - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBTGT. extlia.
         }
         { econs; et. }
         { apply MWF. }

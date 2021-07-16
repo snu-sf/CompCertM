@@ -519,14 +519,14 @@ Section CLIGHTSOUND.
       { instantiate (1:=skenv_link). unfold UnreachC.to_inj.
         unfold symbols_inject. esplits; ss; eauto; ii; try by des_ifs.
         - ii. exists b1; esplit; eauto. inv WF. des_ifs.
-          + exfalso. erewrite SKE in WFLO. eapply WFLO in Heq. eapply Genv.genv_symb_range in H0. xomega.
+          + exfalso. erewrite SKE in WFLO. eapply WFLO in Heq. eapply Genv.genv_symb_range in H0. extlia.
           + eapply Genv.genv_symb_range in H0. ss. exfalso. apply n.
             inv MEM. rewrite SKE in *. rewrite NB in *. eapply Plt_Ple_trans; eauto.
       }
       { unfold UnreachC.to_inj, Mem.flat_inj in *. econs; ss; i.
         - unfold UnreachC.to_inj, Mem.flat_inj in *. des_ifs. esplits; eauto.
         - esplits; eauto. eapply Genv.genv_symb_range in FINDSRC. ss. des_ifs.
-          + exfalso. inv WF. eapply WFLO in Heq. rewrite SKE in *. xomega.
+          + exfalso. inv WF. eapply WFLO in Heq. rewrite SKE in *. extlia.
           + exfalso. apply n. inv MEM. rewrite SKE in *. rewrite NB in *.
             eapply Plt_Ple_trans; eauto. }
       { cinv MEM. rewrite NB. eapply UnreachC.to_inj_mem; eauto. }
@@ -551,7 +551,7 @@ Section CLIGHTSOUND.
             - destruct p0. eapply INCR in BLK. clarify.
             - unfold UnreachC.to_inj in BLK. des_ifs.
               + eapply WFLO; eauto.
-              + rewrite SKE. etrans; eauto. clear - n. xomega. }
+              + rewrite SKE. etrans; eauto. clear - n. extlia. }
           { i. des_ifs. }
         * eapply UnreachC.mem_to_su; eauto. etrans; eauto. inv MEM. rewrite NB. eapply Mem.unchanged_on_nextblock; eauto.
         * etrans; eauto. inv MEM. rewrite NB. eapply Mem.unchanged_on_nextblock; eauto.

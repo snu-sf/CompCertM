@@ -31,7 +31,7 @@ Section PROPS.
     ginduction n; ii; ss. des_ifs. split; i; cycle 1.
     - erewrite IHn. eauto with mem.
     - erewrite IHn in H. destruct (peq x0 b).
-      { clarify. exploit Mem.perm_alloc_3; eauto. xomega. }
+      { clarify. exploit Mem.perm_alloc_3; eauto. extlia. }
       eapply Mem.perm_alloc_4; eauto.
   Qed.
 
@@ -40,7 +40,7 @@ Section PROPS.
   Proof.
     i. unfold NW. ginduction n; ii; ss. des_ifs_safe.
     erewrite IHn; eauto. erewrite Mem.nextblock_alloc; eauto. rewrite ! Pplus_one_succ_r; ss.
-    des_ifs; try xomega. rewrite <- Pos.add_assoc. rewrite Pos.add_comm with (p := 1%positive). ss.
+    des_ifs; try extlia. rewrite <- Pos.add_assoc. rewrite Pos.add_comm with (p := 1%positive). ss.
   Qed.
 
   Lemma assign_junk_blocks_nextblock'

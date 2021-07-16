@@ -419,9 +419,9 @@ Section ASMSTEP.
   Proof.
     rewrite Ptrofs.add_unsigned. replace (Ptrofs.unsigned (Ptrofs.repr delta)) with delta.
     * eapply Ptrofs.unsigned_repr; eauto. des. splits; eauto.
-    * symmetry. eapply Ptrofs.unsigned_repr; eauto. des. splits; [xomega|].
-      assert (Ptrofs.unsigned ofs >= 0); [|xomega].
-      set (Ptrofs.unsigned_range ofs). des. xomega.
+    * symmetry. eapply Ptrofs.unsigned_repr; eauto. des. splits; [extlia|].
+      assert (Ptrofs.unsigned ofs >= 0); [|extlia].
+      set (Ptrofs.unsigned_range ofs). des. extlia.
   Qed.
 
   Lemma cmplu_inject j rs_src rs_tgt v1_src v2_src v1_tgt v2_tgt m_src m_tgt c
@@ -441,16 +441,16 @@ Section ASMSTEP.
               [left; eapply Mem.perm_max; eauto| i; erewrite unsigned_add; eauto]).
     all: try (by exploit mi_perm; eauto; exploit mi_representable; eauto;
                 [left; eapply Mem.perm_max; eauto|
-                 i; erewrite Ptrofs.unsigned_repr; des; split; try xomega; set (Ptrofs.unsigned_range ofs); des; xomega]).
+                 i; erewrite Ptrofs.unsigned_repr; des; split; try extlia; set (Ptrofs.unsigned_range ofs); des; extlia]).
     - exfalso. eapply n0.
       exploit mi_perm; eauto. i.
       exploit mi_representable; eauto.
       + right; eapply Mem.perm_max; eauto.
-      + i. erewrite unsigned_add; eauto. rp; eauto. xomega.
+      + i. erewrite unsigned_add; eauto. rp; eauto. extlia.
     - exploit mi_perm; eauto. i.
       exploit mi_representable; eauto.
       + right. eapply Mem.perm_max; eauto.
-      + i. erewrite Ptrofs.unsigned_repr; des; split; try xomega. set (Ptrofs.unsigned_range ofs). des. xomega.
+      + i. erewrite Ptrofs.unsigned_repr; des; split; try extlia. set (Ptrofs.unsigned_range ofs). des. extlia.
     - exploit mi_no_overlap; eauto using Mem.perm_max.
       + i. erewrite unsigned_add; eauto; cycle 1.
         { exploit mi_representable; cycle 1; eauto. left. eapply Mem.perm_max; eauto. }

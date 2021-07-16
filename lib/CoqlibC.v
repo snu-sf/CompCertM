@@ -567,18 +567,18 @@ Section ALIGN.
     { rewrite Z.eqb_eq in T. clarify. }
     rewrite Z.eqb_neq in T. red. unfold align.
     replace ((x + x - 1) / x) with 1.
-    { xomega. }
+    { extlia. }
     replace (x + x - 1) with (1 * x + (1 * x + (- 1))); cycle 1.
-    { xomega. }
+    { extlia. }
     rewrite Z.div_add_l; try eassumption.
     rewrite Z.div_add_l; try eassumption.
     replace (Z.div (Zneg xH) x) with (Zneg xH).
-    { xomega. }
+    { extlia. }
     destruct x; ss. clear - p. unfold Z.div. des_ifs. ginduction p; i; ss; des_ifs.
   Qed.
 
   Lemma align_zero: forall x, <<ALIGN: align x 0 = 0>>.
-  Proof. i. unfold align. red. ss. xomega. Qed.
+  Proof. i. unfold align. red. ss. extlia. Qed.
 
   Lemma align_divisible
         z y
@@ -590,12 +590,12 @@ Section ALIGN.
     replace ((z + y - 1) / y) with (z / y + (y - 1) / y); cycle 1.
     { unfold Z.divide in *. des. clarify. rewrite Z_div_mult; ss.
       replace (z0 * y + y - 1) with (z0 * y + (y - 1)); cycle 1.
-      { xomega. }
-      rewrite Z.div_add_l with (b := y); ss. xomega.
+      { extlia. }
+      rewrite Z.div_add_l with (b := y); ss. extlia.
     }
     replace ((y - 1) / y) with 0; cycle 1.
-    { erewrite Zdiv_small; ss. xomega. }
-    unfold Z.divide in *. des. clarify. rewrite Z_div_mult; ss. rewrite Z.add_0_r. xomega.
+    { erewrite Zdiv_small; ss. extlia. }
+    unfold Z.divide in *. des. clarify. rewrite Z_div_mult; ss. rewrite Z.add_0_r. extlia.
   Qed.
 
   Lemma align_idempotence
@@ -691,7 +691,7 @@ Lemma Forall2_length
       X Y (P: X -> Y -> Prop) xs ys
       (FORALL2: Forall2 P xs ys):
     length xs = length ys.
-Proof. ginduction FORALL2; ii; ss. xomega. Qed.
+Proof. ginduction FORALL2; ii; ss. extlia. Qed.
 
 Ltac hexpl_aux H NAME :=
   let n := fresh NAME in
@@ -719,7 +719,7 @@ Goal forall (mytt: unit) (HH: unit -> (True -> True /\ True)), False.
   i. hexpl HH ABC. hexpl HH.
 Abort.
 
-Hint Extern 997 => xomega : xomega.
+Hint Extern 997 => extlia : extlia.
 
 Hint Rewrite
      Z.add_0_l Z.add_0_r Z.add_assoc Z.add_simpl_l Z.add_simpl_r Z.add_opp_r Z.add_opp_l
@@ -776,7 +776,7 @@ Lemma rev_nil
       (NIL: rev xs = []):
     xs = [].
 Proof.
-  generalize (f_equal (@length _) NIL). i. ss. destruct xs; ss. rewrite app_length in *. ss. xomega.
+  generalize (f_equal (@length _) NIL). i. ss. destruct xs; ss. rewrite app_length in *. ss. extlia.
 Qed.
 
 Fixpoint last_opt X (xs: list X): option X :=
@@ -825,7 +825,7 @@ Fixpoint zip X Y Z (f: X -> Y -> Z) (xs: list X) (ys: list Y): list Z :=
 Lemma zip_length
       X Y Z (f: X -> Y -> Z) xs ys:
     length (zip f xs ys) = min xs.(length) ys.(length).
-Proof. ginduction xs; ii; ss. des_ifs. ss. rewrite IHxs. xomega. Qed.
+Proof. ginduction xs; ii; ss. des_ifs. ss. rewrite IHxs. extlia. Qed.
 
 Lemma in_zip_iff
       X Y Z (f: X -> Y -> Z) xs ys z:
@@ -1057,14 +1057,14 @@ Lemma ple_elim_succ
     <<SUCC: Ple (Pos.succ p) q>>.
 Proof.
   revert_until p. pattern p. apply Pos.peano_ind; clear p; i.
-  { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto. right. r. xomega. }
+  { hexploit (pos_elim_succ q); eauto. i. des; clarify; eauto. right. r. extlia. }
   hexploit (pos_elim_succ q); eauto. i. des; clarify.
-  { left. xomega. }
+  { left. extlia. }
   exploit H; eauto.
-  { it q0. xomega. }
+  { it q0. extlia. }
   i; des; clarify.
-  - left. r. xomega.
-  - right. r. xomega.
+  - left. r. extlia.
+  - right. r. extlia.
 Qed.
 
 Section FLIPS.
@@ -1105,8 +1105,8 @@ Proof.
   ginduction l; ii; ss.
   - destruct ((Z.to_nat z)); ss.
   - des_ifs. destruct (Z.to_nat) eqn:T; ss.
-    + destruct z; ss. destruct p; ss. xomega.
-    + rewrite IHl; ss; eauto; try xomega. rewrite Z2Nat.inj_pred. rewrite T. ss.
+    + destruct z; ss. destruct p; ss. extlia.
+    + rewrite IHl; ss; eauto; try extlia. rewrite Z2Nat.inj_pred. rewrite T. ss.
 Qed.
 Local Opaque list_nth_z.
 
@@ -1116,11 +1116,11 @@ Lemma list_nth_z_firstn
       list_nth_z (firstn (Z.to_nat (n + 1)) l) n = Some x.
 Proof.
   exploit list_nth_z_range; eauto. intro RANGE; des.
-  rewrite list_nth_z_eq in *; try xomega. rewrite Z2Nat.inj_add; ss. rewrite Pos2Nat.inj_1. rewrite Nat.add_comm.
+  rewrite list_nth_z_eq in *; try extlia. rewrite Z2Nat.inj_add; ss. rewrite Pos2Nat.inj_1. rewrite Nat.add_comm.
   exploit nth_error_Some; et. intro X. rewrite T in X. des.
   exploit X; eauto. { ss. } intro Y.
   erewrite <- (firstn_skipn (1 + (Z.to_nat n)) l) in T.
-  rewrite nth_error_app1 in T; eauto. rewrite firstn_length. xomega.
+  rewrite nth_error_app1 in T; eauto. rewrite firstn_length. extlia.
 Qed.
 
 Lemma firstn_S
@@ -1150,7 +1150,7 @@ Lemma list_nth_z_map
     list_nth_z (map f l) n = Some (f x).
 Proof.
   exploit list_nth_z_range; eauto. intro RANGE; des.
-  rewrite list_nth_z_eq in *; try xomega. rewrite list_map_nth in *. rewrite NTH. ss.
+  rewrite list_nth_z_eq in *; try extlia. rewrite list_map_nth in *. rewrite NTH. ss.
 Qed.
 
 Lemma tail_In A l0 l1 (a: A)

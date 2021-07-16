@@ -148,9 +148,9 @@ Module _FillArgsParallel.
   Proof.
     rewrite Ptrofs.add_unsigned. replace (Ptrofs.unsigned (Ptrofs.repr delta)) with delta.
     * eapply Ptrofs.unsigned_repr; eauto. des. splits; eauto.
-    * symmetry. eapply Ptrofs.unsigned_repr; eauto. des. splits; [xomega|].
-      assert (Ptrofs.unsigned ofs >= 0); [|xomega].
-      set (Ptrofs.unsigned_range ofs). des. xomega.
+    * symmetry. eapply Ptrofs.unsigned_repr; eauto. des. splits; [extlia|].
+      assert (Ptrofs.unsigned ofs >= 0); [|extlia].
+      set (Ptrofs.unsigned_range ofs). des. extlia.
   Qed.
 
   Definition copy_memval (v: val) (mv: memval) : memval :=
@@ -735,8 +735,8 @@ Section STOREARGPRARALLEL.
           apply Plt_succ. }
 
       { ii. des_ifs; ss; clarify.
-        - left. ii. clarify. exploit mi_mappedblocks; eauto. unfold Mem.valid_block. xomega.
-        - left. ii. clarify. exploit mi_mappedblocks; eauto. unfold Mem.valid_block. xomega.
+        - left. ii. clarify. exploit mi_mappedblocks; eauto. unfold Mem.valid_block. extlia.
+        - left. ii. clarify. exploit mi_mappedblocks; eauto. unfold Mem.valid_block. extlia.
         - eapply mi_no_overlap with (b1 := b1) (b2 := b2); eauto.
           + unfold Mem.perm in *. ss. rewrite PMap.gsspec in *. des_ifs; ss.
           + unfold Mem.perm in *. ss. rewrite PMap.gsspec in *. des_ifs; ss. }

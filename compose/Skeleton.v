@@ -232,7 +232,7 @@ Module SkEnv.
       + destruct (peq id0 id).
         { subst id0. rewrite PTree.gss in SYMB. inv SYMB. exists g. eapply PTree.gss. }
         { rewrite PTree.gso in SYMB; eauto. exploit H; eauto. i. inv H1.
-          exists x. rewrite PTree.gso; eauto. exploit Genv.genv_symb_range; eauto. i. xomega. }
+          exists x. rewrite PTree.gso; eauto. exploit Genv.genv_symb_range; eauto. i. extlia. }
       + rewrite PTree.gempty in SYMB. inv SYMB.
     - intros blk skd.
       set (P := fun ge => Genv.find_def ge blk = Some skd -> exists id, Genv.find_symbol ge id = Some blk).

@@ -324,7 +324,7 @@ Section PRESERVATION.
     (* focus *)
     - exploit app_length; try rewrite H1; eauto. intro LEN; ss.
       hexploit match_focus_nonnil; et. i; des.
-      destruct hds_tgt; ss. destruct tail_tgt; ss; try xomega. destruct hds_tgt; ss. clarify. clear_tac.
+      destruct hds_tgt; ss. destruct tail_tgt; ss; try extlia. destruct hds_tgt; ss. clarify. clear_tac.
       exploit match_stacks_right_nil; et. i; des; clarify.
       econs; et. inv HD. ss. inv SUM.
       inv FINAL0; ss. inv ST; ss.

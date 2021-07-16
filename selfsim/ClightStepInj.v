@@ -696,11 +696,11 @@ Section CLIGHTINJ.
                (Mem.nextblock m_tgt0) 1%positive 1%positive).
     assert (SYMBINJ: symbols_inject (SimMemInj.inj sm) se_src se_tgt) by eauto.
     exploit clight_step_preserve_injection; eauto; ss.
-    - econs; eauto. econs; ss; eauto; try refl; try xomega.
+    - econs; eauto. econs; ss; eauto; try refl; try extlia.
     - i. des. destruct sm1.
       inv MATCH0. inv MLE. inv MWF. ss. esplits; eauto; try (eapply Mem.unchanged_on_implies; eauto; ii; ss).
       + inv FROZEN. ii. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des.
-        unfold Mem.valid_block. clear - OUTSIDE_SRC OUTSIDE_TGT. xomega.
+        unfold Mem.valid_block. clear - OUTSIDE_SRC OUTSIDE_TGT. extlia.
   Qed.
 
 End CLIGHTINJ.

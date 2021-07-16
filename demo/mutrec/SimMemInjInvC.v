@@ -124,15 +124,15 @@ Section MEMINJINV.
     split.
     - assert(FROZEN: SimMemInj.frozen (SimMemInj.inj sm0) j1 (SimMemInj.src_parent_nb sm0) (SimMemInj.tgt_parent_nb sm0)).
       { + econs. ii. des. exploit SEP; eauto. i. des. inv WF. inv WF0. split.
-          * clear - H SRCLE. unfold Mem.valid_block in *. red. xomega.
-          * clear - H0 TGTLE. unfold Mem.valid_block in *. red. xomega.
+          * clear - H SRCLE. unfold Mem.valid_block in *. red. extlia.
+          * clear - H0 TGTLE. unfold Mem.valid_block in *. red. extlia.
       }
       econs; ss; eauto. econs; ss; eauto.
       + eapply Mem.unchanged_on_implies; eauto. inv WF. inv WF0.
         ii. eapply SRCEXT; eauto.
       + eapply Mem.unchanged_on_implies; eauto. inv WF. inv WF0.
         ii. eapply TGTEXT; eauto.
-      + inv WF. inv WF0. eapply SimMemInj.frozen_shortened; eauto; try xomega.
+      + inv WF. inv WF0. eapply SimMemInj.frozen_shortened; eauto; try extlia.
     - inv WF. inv WF0. econs; ss; eauto.
       + econs; ss; eauto.
         * etransitivity; eauto.
@@ -227,8 +227,8 @@ Section MEMINJINV.
       + ii. des. destruct PR. split; ss.
       + reflexivity.
       + reflexivity.
-      + xomega.
-      + xomega.
+      + extlia.
+      + extlia.
     - ii. exploit INVRANGESRC; eauto. i. des. splits; eauto.
       + ii. des. clarify.
       + eapply Plt_Ple_trans; eauto.
@@ -531,7 +531,7 @@ Section SIMSYMBINV.
           { eapply H1; eauto. }
           { zsimpl. rewrite Z2Nat.id.
             - eapply H1; eauto.
-            - hexploit (init_data_list_size_pos (gvar_init v)); eauto. i. xomega. }
+            - hexploit (init_data_list_size_pos (gvar_init v)); eauto. i. extlia. }
     - i. des_ifs.
     - i. des_ifs.
     - ii. des_ifs. eapply mi_no_overlap; eauto; des_ifs.

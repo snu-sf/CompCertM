@@ -26,7 +26,7 @@ Let size_arguments_loc_arguments_aux: forall
     exists base ty, (<<IN: In (S Outgoing base ty) (regs_of_rpairs (loc_arguments_64 tys x y z))>>)
                /\ (<<RANGE: base <= ofs < base + (Memdata.size_chunk (chunk_of_type ty))>>).
 Proof.
-  i. ginduction tys; ii; ss; try xomega.
+  i. ginduction tys; ii; ss; try extlia.
   destruct a; ss; des_ifs; ss; try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto);
     des; destruct (classic (z + 2 <= ofs)); try (exploit IHtys; eauto; []; i; des; []); try (by esplits; eauto); esplits; eauto; ss; lia.
 Qed.

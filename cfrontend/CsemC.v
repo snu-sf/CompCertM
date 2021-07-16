@@ -94,13 +94,13 @@ Section MODSEM.
   Ltac inv_single_events :=
     repeat
       match goal with
-      | [H: _ |- _ ] => try (exploit external_call_trace_length; eauto; check_safe; intro T; des); inv H; ss; try xomega
+      | [H: _ |- _ ] => try (exploit external_call_trace_length; eauto; check_safe; intro T; des); inv H; ss; try extlia
       end.
 
   Lemma single_events_at: forall st, single_events_at modsem st.
   Proof.
     ii. inv H.
-    - inv H0; ss; try xomega. clear - H. inv_single_events.
+    - inv H0; ss; try extlia. clear - H. inv_single_events.
     - inv_single_events.
   Qed.
 

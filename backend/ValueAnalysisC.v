@@ -70,7 +70,7 @@ Section PRSV.
       }
       eapply sound_call_state with (bc:= bc); eauto.
       + econs; eauto; cycle 1.
-        { inv MEM; ss. rewrite NB0. xomega. }
+        { inv MEM; ss. rewrite NB0. extlia. }
       + ii. repeat spc VALS. destruct v; econs; eauto. econs; eauto. rewrite IMG. inv TYP. ss.
         apply in_zip_iff in H0. des. unfold typify in *. des_ifs.
         hexploit1 VALS.
@@ -144,7 +144,7 @@ Section PRSV.
       + assert(BCSU: forall b, bc b <> BCinvalid -> ~ su_init b).
         { intros ? BC. rewrite IMG in BC.
           destruct (plt b (Genv.genv_next skenv_link)).
-          - inv SKENV. ss. inv WF. ii. hexploit WFLO; eauto. i. Unreach.nb_tac. xomega.
+          - inv SKENV. ss. inv WF. ii. hexploit WFLO; eauto. i. Unreach.nb_tac. extlia.
           - des_ifs. bsimpl. des. ii. congruence.
         }
         assert(SUBC: forall b (VALID: Plt b (Mem.nextblock (Args.m args))), ~ su_init b -> bc b <> BCinvalid).
@@ -172,13 +172,13 @@ Section PRSV.
         econs; s; eauto.
         * rewrite IMG. ii. des_ifs; ss.
         * rewrite IMG. ii. des_ifs; ss. rewrite PTree.gempty in *. ss.
-        * intros ? A. rewrite IMG in A. inv SKENV. ss. des_ifs; try xomega. bsimpl. des. des_sumbool. xomega.
+        * intros ? A. rewrite IMG in A. inv SKENV. ss. des_ifs; try extlia. bsimpl. des. des_sumbool. extlia.
       + r. rewrite IMG. i. des_ifs.
       + rr. ss. inv MEM. inv SKENV. ss. rewrite NB0. esplits; eauto.
-        * i. des_ifs; try xomega. rewrite IMG. rewrite <- PUB. inv WF.
+        * i. des_ifs; try extlia. rewrite IMG. rewrite <- PUB. inv WF.
           destruct (su_init blk) eqn:T; des_sumbool.
-          { hexploit WFLO; eauto. i. des_ifs; try xomega. bsimpl. ss. }
-          des_ifs. bsimpl. exfalso. des_sumbool. xomega.
+          { hexploit WFLO; eauto. i. des_ifs; try extlia. bsimpl. ss. }
+          des_ifs. bsimpl. exfalso. des_sumbool. extlia.
         * refl.
     - ii; ss. eapply sound_step with (se := skenv_link); eauto.
       eapply SkEnv.senv_genv_compat; eauto.
@@ -234,7 +234,7 @@ Section PRSV.
           assert(NB: Ple (Mem.nextblock m_arg) (Mem.nextblock (Retv.m retv))).
           { inv AT; ss. rewrite Retv.get_m_m in *; ss. inv MLE. inv RO0. ss. }
           esplits; ss.
-          - i. des_ifs. xomega.
+          - i. des_ifs. extlia.
         }
 
         assert(GRARGS: Sound.args su_gr args).
@@ -248,7 +248,7 @@ Section PRSV.
           assert(NBC: ~ (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) b).
           { ii. ss. r in BCLE1. des. exploit PRIV; eauto. des_ifs. }
           ss. des. inv MEM. rr in GRARGS. inv AT; ss. des. inv MEM. ss.
-          rewrite NB0 in *. des_ifs; try xomega.
+          rewrite NB0 in *. des_ifs; try extlia.
           intro BC. unfold bc2su in *. ss. rewrite BC in *. ss.
         }
         assert (VMTOP: forall v, val' su_ret v -> vmatch bc' v Vtop).
@@ -328,8 +328,8 @@ Section PRSV.
                 Local Transparent Mem.loadbytes.
                 unfold Mem.loadbytes in *. des_ifs.
                 exploit (SOUND b ofs); eauto.
-                { eapply r. xomega. }
-                i; des. ss. Unreach.nb_tac. xomega.
+                { eapply r. extlia. }
+                i; des. ss. Unreach.nb_tac. extlia.
               }
               eapply mem'_loadbytes_val'; eauto.
               des_ifs; des; ss.

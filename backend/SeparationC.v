@@ -413,8 +413,8 @@ Proof.
   destruct (classic (i < mid)).
   - eapply Mem_unfree_perm; et.
   - eapply Mem.perm_unchanged_on; et.
-    + u. ii. des. xomega.
-    + eapply SEP3; et. xomega.
+    + u. ii. des. extlia.
+    + eapply SEP3; et. extlia.
 Qed.
 
 Local Opaque sepconj.

@@ -487,7 +487,7 @@ Section PRESERVATION.
   Proof.
     unfold Genv.init_mem in *.
     eapply Genv.alloc_globals_unchanged with (P:=top2) in INIT; eauto.
-    eapply Mem.unchanged_on_nextblock in INIT. ss. xomega.
+    eapply Mem.unchanged_on_nextblock in INIT. ss. extlia.
   Qed.
 
   Lemma update_agree j rs_src rs_tgt pr v
@@ -685,7 +685,7 @@ Section PRESERVATION.
   Proof.
     assert (~ Plt
               (Mem.nextblock m)
-              (Genv.genv_next skenv_link)); [|xomega].
+              (Genv.genv_next skenv_link)); [|extlia].
     ii. inv GEINJECT. exploit DOMAIN; eauto. i.
     eapply Mem.valid_block_inject_1 in H0; eauto.
     eapply Plt_strict; eauto.
@@ -918,9 +918,9 @@ Section PRESERVATION.
         Local Opaque Mem.alloc.
     - ii. unfold Mem.valid_block in *. rewrite callee_initial_mem_nextblock in *.
       unfold callee_initial_inj'. des_ifs.
-      + exfalso. clear - H. xomega.
+      + exfalso. clear - H. extlia.
       + eapply Mem.mi_freeblocks; eauto.
-        unfold Mem.valid_block. rewrite <- freed_from_nextblock. xomega.
+        unfold Mem.valid_block. rewrite <- freed_from_nextblock. extlia.
 
     - ii. unfold callee_initial_inj' in H. des_ifs.
       + eapply Mem.mi_mappedblocks; eauto.
@@ -1098,7 +1098,7 @@ Section PRESERVATION.
         - econs; [econs|..]; i; try erewrite assign_junk_blocks_perm in *.
           + des_ifs.
             * exfalso. eapply Mem.perm_valid_block in H0. clear - H0.
-              unfold pos_nat_add, Mem.valid_block in *. des_ifs; xomega.
+              unfold pos_nat_add, Mem.valid_block in *. des_ifs; extlia.
             * eapply Mem.mi_perm; try apply INJECT0; eauto.
               erewrite assign_junk_blocks_perm in *. auto.
           + des_ifs.
@@ -1106,12 +1106,12 @@ Section PRESERVATION.
               { instantiate (1:=ofs0). set (size_chunk_pos chunk). lia. }
               erewrite assign_junk_blocks_perm. i.
               eapply Mem.perm_valid_block in H1.
-              clear - H1. unfold pos_nat_add, Mem.valid_block in *. des_ifs; xomega.
+              clear - H1. unfold pos_nat_add, Mem.valid_block in *. des_ifs; extlia.
             * eapply Mem.mi_align; try apply INJECT0; eauto.
               unfold Mem.range_perm in *. try erewrite assign_junk_blocks_perm in *. eauto.
           + des_ifs.
             * exfalso. eapply Mem.perm_valid_block in H0.
-              clear - H0. unfold pos_nat_add, Mem.valid_block in *. des_ifs; xomega.
+              clear - H0. unfold pos_nat_add, Mem.valid_block in *. des_ifs; extlia.
             * replace (ZMap.get ofs0 (Mem.mem_contents (assign_junk_blocks m_src (Datatypes.S n0))) !! b1) with (ZMap.get ofs0 (Mem.mem_contents (assign_junk_blocks m_src n0)) !! b1).
               { exploit Mem.mi_memval; try apply INJECT0; eauto.
                 - try erewrite assign_junk_blocks_perm in *. eauto.
@@ -1121,12 +1121,12 @@ Section PRESERVATION.
                 - eapply Mem.perm_valid_block; eauto. }
           + des_ifs.
             * unfold pos_nat_add, Mem.valid_block in *. rewrite assign_junk_blocks_nextblock in *.
-              exfalso. apply H. clear. ss. des_ifs; try xomega.
+              exfalso. apply H. clear. ss. des_ifs; try extlia.
             * eapply Mem.mi_freeblocks; try apply INJECT0. ii. apply H.
               unfold Mem.valid_block in *.
               rewrite assign_junk_blocks_nextblock in *.
               clear - H0. eapply Plt_Ple_trans; eauto. unfold Zerob.zerob in *. ss.
-              des_ifs; try xomega.
+              des_ifs; try extlia.
           + des_ifs.
             * eapply Mem.mi_mappedblocks; try apply INJECT0; eauto.
             * eapply Mem.mi_mappedblocks; try apply INJECT0; eauto.
@@ -1134,28 +1134,28 @@ Section PRESERVATION.
             eapply Mem.mi_no_overlap; try apply INJECT0; eauto.
             * clear H1. des_ifs. exfalso.
               eapply Mem.perm_valid_block in H2. clear - H2.
-              unfold pos_nat_add, Mem.valid_block in *. des_ifs; xomega.
+              unfold pos_nat_add, Mem.valid_block in *. des_ifs; extlia.
             * clear H2. des_ifs. exfalso.
               eapply Mem.perm_valid_block in H3. clear - H3.
-              unfold pos_nat_add, Mem.valid_block in *. des_ifs; xomega.
+              unfold pos_nat_add, Mem.valid_block in *. des_ifs; extlia.
             * erewrite assign_junk_blocks_perm in *. auto.
             * erewrite assign_junk_blocks_perm in *. auto.
           + des_ifs.
             * exfalso. des.
               { eapply Mem.perm_valid_block in H0. clear - H0.
-                unfold pos_nat_add, Mem.valid_block in *. des_ifs; xomega. }
+                unfold pos_nat_add, Mem.valid_block in *. des_ifs; extlia. }
               { eapply Mem.perm_valid_block in H0. clear - H0.
-                unfold pos_nat_add, Mem.valid_block in *. des_ifs; xomega. }
+                unfold pos_nat_add, Mem.valid_block in *. des_ifs; extlia. }
             * eapply Mem.mi_representable; try eapply INJECT0; eauto.
               try erewrite assign_junk_blocks_perm in *. eauto.
           + des_ifs.
             * right. ii. eapply Mem.perm_valid_block in H1. clear - H1.
-              unfold pos_nat_add, Mem.valid_block in *. des_ifs; xomega.
+              unfold pos_nat_add, Mem.valid_block in *. des_ifs; extlia.
             * exploit Mem.mi_perm_inv; try apply INJECT0; eauto. i.
               try erewrite assign_junk_blocks_perm in *. eauto.
 
         - ii. unfold Mem.valid_block in *. des_ifs.
-          + clear - H. unfold pos_nat_add in *. des_ifs; xomega.
+          + clear - H. unfold pos_nat_add in *. des_ifs; extlia.
           + exploit SEP; eauto.
 
         - des_ifs. etrans; eauto.
@@ -1163,14 +1163,14 @@ Section PRESERVATION.
         - ii. des.
           + clarify. rewrite Pregmap.gss. unfold is_junk_value, Mem.valid_block.
             rewrite assign_junk_blocks_nextblock. split.
-            * clear. unfold pos_nat_add. des_ifs; xomega.
-            * clear. unfold pos_nat_add. ss. des_ifs; xomega.
+            * clear. unfold pos_nat_add. des_ifs; extlia.
+            * clear. unfold pos_nat_add. ss. des_ifs; extlia.
 
           + exploit JUNK; eauto. i. unfold is_junk_value, Mem.valid_block in *.
             rewrite assign_junk_blocks_nextblock in *.
             unfold Pregmap.set.
-            clear - H Heq0. unfold pos_nat_add. ss. des_ifs; split; try xomega.
-            des. destruct n0; clarify; ss; xomega.
+            clear - H Heq0. unfold pos_nat_add. ss. des_ifs; split; try extlia.
+            des. destruct n0; clarify; ss; extlia.
 
         - ii. unfold Pregmap.set. des_ifs.
           + cinv (SAME a).
@@ -1458,7 +1458,7 @@ Section PRESERVATION.
             unfold Mem.valid_block. eapply Plt_Ple_trans; eauto.
             erewrite callee_initial_mem_nextblock.
             hexploit skenv_inject_memory; eauto. i.
-            inv FREE. rewrite freed_from_nextblock in *. ss. clear - H2. xomega.
+            inv FREE. rewrite freed_from_nextblock in *. ss. clear - H2. extlia.
 
         - erewrite <- EQ.
           + unfold callee_initial_reg. ss.
@@ -1584,7 +1584,7 @@ Section PRESERVATION.
                     destruct (Genv.block_is_volatile skenv_link (Mem.nextblock m_arg)) eqn: VEQ1; auto.
                     apply Genv.block_is_volatile_below in VEQ1.
                     hexploit skenv_inject_memory; try eassumption. i.
-                    inv FREE. rewrite freed_from_nextblock in *. clear - VEQ1 H1. xomega.
+                    inv FREE. rewrite freed_from_nextblock in *. clear - VEQ1 H1. extlia.
                   + right. exists (Ptrofs.unsigned ofs + ofs0).
                     eapply Mem.perm_cur. eapply Mem.perm_implies.
                     * inv FREE. eapply freed_from_perm.
@@ -1593,7 +1593,7 @@ Section PRESERVATION.
 
                 - hexploit SEP; try eassumption. i.
                   unfold Mem.valid_block in *. rewrite callee_initial_mem_nextblock in *.
-                  clear - H1. xomega. }
+                  clear - H1. extlia. }
               { destruct (callee_initial_inj' blk ofs j m_arg b1) as [[]|] eqn:DELTA.
                 - unfold callee_initial_inj' in DELTA. des_ifs.
                   dup DELTA. eapply INCR in DELTA. eapply INCR0 in DELTA. clarify.
@@ -1602,7 +1602,7 @@ Section PRESERVATION.
                 - hexploit SEP; try eassumption. i.
                   unfold Mem.valid_block in *. rewrite callee_initial_mem_nextblock in *.
                   eapply Mem.perm_valid_block in PERM. exfalso. apply H0.
-                  unfold Mem.valid_block in PERM. clear - PERM. xomega. }
+                  unfold Mem.valid_block in PERM. clear - PERM. extlia. }
 
         - ss.
 
@@ -1623,7 +1623,7 @@ Section PRESERVATION.
                   unfold Mem.valid_block. ss.
                   hexploit skenv_inject_memory; eauto. i.
                   inv FREE. rewrite freed_from_nextblock in *.
-                  eapply Plt_Ple_trans; eauto. clear - H2. xomega. }
+                  eapply Plt_Ple_trans; eauto. clear - H2. extlia. }
               { etrans; try eapply SAME0.
                 unfold callee_initial_reg. ss. refl. }
               { etrans; try eapply SAME0.
@@ -1685,7 +1685,7 @@ Section PRESERVATION.
           * exploit JUNK; eauto. i. rewrite RAVAL in *. ss.
           * rewrite Pregmap.gss in *. clarify.
             hexploit skenv_inject_memory; eauto. i. clear - H H0.
-            unfold pos_nat_add in *. des_ifs. xomega.
+            unfold pos_nat_add in *. des_ifs. extlia.
         + eapply JUNK; eauto.
         + extensionality pr. unfold Pregmap.set. des_ifs; eauto.
           symmetry. eapply EQ. ii. des; clarify.

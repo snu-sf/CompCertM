@@ -76,8 +76,8 @@ Proof.
       { i. inv SIMSKENV. inv SIMSKE. ss. inv INJECT. ss.
         econs; eauto.
         - eapply SimMemInjC.sim_skenv_symbols_inject; et.
-        - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBSRC. xomega.
-        - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBTGT. xomega.
+        - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBSRC. extlia.
+        - etrans; try apply MWF. ss. etrans; try apply MWF. rewrite NBTGT. extlia.
       }
       { econs; et. }
       { inv TYP0. eapply inject_list_typify_list; eauto. }
@@ -140,7 +140,7 @@ Proof.
       rpapply match_returnstate; ss; eauto; ss.
       { eapply MWFAFTR. }
       { eapply match_callstack_le; eauto. eapply match_callstack_incr_bound; try eapply Mem.unchanged_on_nextblock; eauto.
-        eapply match_callstack_external_call; try eapply MCS; et; try xomega.
+        eapply match_callstack_external_call; try eapply MCS; et; try extlia.
         - eapply SkEnv.senv_genv_compat; ss.
         - eapply SkEnv.senv_genv_compat; ss.
         - eapply Mem.unchanged_on_implies; try eassumption. ss.

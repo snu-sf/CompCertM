@@ -125,8 +125,8 @@ Next Obligation. rename H into LE. inv LE. econs; et. Qed.
 (* Next Obligation. *)
 (*   rename H into VALID. *)
 (*   inv VALID. econs; ss; eauto; ii; des; ss; eauto. *)
-(*   - eapply Pos.compare_gt_iff in H. xomega. *)
-(*   - eapply Pos.compare_gt_iff in H. xomega. *)
+(*   - eapply Pos.compare_gt_iff in H. extlia. *)
+(*   - eapply Pos.compare_gt_iff in H. extlia. *)
 (* Qed. *)
 (* Next Obligation. *)
 (*   eapply unlift_spec; eauto. *)
@@ -151,7 +151,7 @@ Global Program Instance SimMemInjLift : SimMemLift.class SimMemInj :=
   unlift := unlift';
 }.
 Next Obligation.
-  rename H into VALID. inv VALID. econs; ss; eauto; ii; des; ss; eauto; eapply Pos.compare_gt_iff in H; xomega.
+  rename H into VALID. inv VALID. econs; ss; eauto; ii; des; ss; eauto; eapply Pos.compare_gt_iff in H; extlia.
 Qed.
 Next Obligation. eapply unlift_spec; et. Qed.
 Next Obligation. eapply unlift_wf; eauto. Qed.
@@ -231,7 +231,7 @@ Proof.
   { - clear - FROZEN FROZEN0 INCR0 SRCPARENTEQNB TGTPARENTEQNB.
       inv FROZEN. inv FROZEN0. econs. i. des. destruct (inj sm1 b_src) eqn:T.
       + destruct p; ss. exploit INCR0; et. i; clarify. exploit NEW_IMPLIES_OUTSIDE; et.
-      + exploit NEW_IMPLIES_OUTSIDE0; et. i; des. esplits; eauto with congruence xomega. }
+      + exploit NEW_IMPLIES_OUTSIDE0; et. i; des. esplits; eauto with congruence extlia. }
   econs; et; try (by etrans; et).
   - etrans; et. rewrite SRCPARENTEQ. ss.
   - etrans; et. rewrite TGTPARENTEQ. ss.
@@ -274,7 +274,7 @@ Lemma parallel_gen sm0 m_src1 m_tgt1 j1
 Proof.
   inv WF. split.
   - assert(FROZEN: frozen (inj sm0) j1 (src_parent_nb sm0) (tgt_parent_nb sm0)).
-    { econs. ii. des. exploit SEP; eauto. i. des. split; unfold Mem.valid_block in *; red; xomega. }
+    { econs. ii. des. exploit SEP; eauto. i. des. split; unfold Mem.valid_block in *; red; extlia. }
     econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. ii. eapply SRCEXT; eauto.
     + eapply Mem.unchanged_on_implies; eauto. ii. eapply TGTEXT; eauto.
@@ -318,18 +318,18 @@ Proof.
   * econs; ss; eauto.
     - eapply Mem_alloc_left_inject; eauto. ii. eapply TGTPRIV; eauto.
     - etransitivity; eauto. u. ii; ss. des. esplits; eauto.
-      + hnf. des_ifs. exfalso. unfold Mem.valid_block in *. xomega.
+      + hnf. des_ifs. exfalso. unfold Mem.valid_block in *. extlia.
       + eauto with mem.
     - u. ii; ss. dup PR. eapply TGTEXT in PR0. u in PR0. des. esplits; eauto. hnf. hnf in PR0. ii. des_ifs; eauto.
       + eapply TGTNOTEXT; eauto. esplits; eauto. u. rewrite Z.sub_0_r in *.
         apply NNPP. ii. eapply Mem_alloc_fresh_perm; eauto.
       + eapply PR0; eauto. eauto with mem.
-    - etransitivity; eauto. exploit Mem.nextblock_alloc; eauto. i. rewrite H. xomega.
+    - etransitivity; eauto. exploit Mem.nextblock_alloc; eauto. i. rewrite H. extlia.
   * assert(FROZEN: frozen (inj sm0)
        (fun blk => if eq_block blk (Mem.nextblock (src sm0)) then Some (blk_tgt, 0) else inj sm0 blk)
        (src_parent_nb sm0) (tgt_parent_nb sm0)).
     { econs; eauto. ii; ss. des; ss. des_ifs. }
-    econs; cbn; eauto with mem; try xomega.
+    econs; cbn; eauto with mem; try extlia.
     - ii; ss. des_ifs; ss. exfalso.
       exploit Mem.mi_freeblocks; try apply MWF; eauto.
       { eauto with mem. }
@@ -419,7 +419,7 @@ Next Obligation.
       * unfold Mem.flat_inj in *. erewrite ! Genv.init_mem_genv_next in *; eauto. des_ifs.
     + ss. erewrite ! Genv.init_mem_genv_next; eauto.
     + ss. erewrite ! Genv.init_mem_genv_next; eauto.
-  - econs; ss; try xomega; ii; des; ss; eauto. eapply Genv.initmem_inject; eauto; (u in *; eauto).
+  - econs; ss; try extlia; ii; des; ss; eauto. eapply Genv.initmem_inject; eauto; (u in *; eauto).
   - rewrite MAINSIM. unfold Genv.symbol_address. des_ifs. unfold Mem.flat_inj. econs; eauto.
     + des_ifs. exfalso. apply n. eapply Plt_Ple_trans.
       { eapply Genv.genv_symb_range; et. }
@@ -475,7 +475,7 @@ Next Obligation.
     instantiate (1:= (Retv.m retv_src)). ss.
   - assert(FROZEN: frozen inj f' src_parent_nb tgt_parent_nb).
     { eapply inject_separated_frozen in H5. inv H5. econs; eauto. i.
-      exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; xomega. }
+      exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; extlia. }
     econs; ss; eauto.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss. eapply SRCEXT in H6. unfold src_private in *. ss. des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss. eapply TGTEXT in H6. unfold tgt_private in *. ss. des; ss.
@@ -487,16 +487,16 @@ Next Obligation.
     (* + eapply after_private_tgt; ss; eauto. *)
     + etrans; eauto. unfold src_private. ss. ii. des. esplits; eauto.
       * rr. rr in PR. destruct (f' x0) eqn:T; ss. destruct p; ss. inv H5.
-        exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *. unfold Mem.valid_block in *. xomega.
+        exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *. unfold Mem.valid_block in *. extlia.
       * r. eapply Mem.valid_block_unchanged_on; et.
     + etrans; eauto. unfold tgt_private. ss. ii. des. esplits; eauto.
       * rr. rr in PR. ii. destruct (inj b0) eqn:T; ss.
         -- destruct p; ss. exploit H4; eauto. i; clarify.
            eapply PR; et. eapply external_call_max_perm; et. eapply Mem.valid_block_inject_1; try apply T; et.
-        -- inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *. unfold Mem.valid_block in *. xomega.
+        -- inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *. unfold Mem.valid_block in *. extlia.
       * r. eapply Mem.valid_block_unchanged_on; et.
-    + inv H2. xomega.
-    + inv H3. xomega.
+    + inv H2. extlia.
+    + inv H3. extlia.
 Qed.
 
 Local Existing Instance SimMemInj.
@@ -544,8 +544,8 @@ Proof.
     + clear - PUBLIC. destruct sm0; ss. clear_tac. ginduction n; ii; ss. des_ifs.
       eapply IHn; eauto. eapply Mem.alloc_right_inject; eauto.
     + etrans; eauto. clear - n. unfold tgt_private. ss. ii. des. esplits; et.
-      unfold valid_blocks, Mem.valid_block in *. rewrite assign_junk_blocks_nextblock. des_ifs. xomega.
-    + etrans; eauto. rewrite assign_junk_blocks_nextblock. des_ifs; xomega.
+      unfold valid_blocks, Mem.valid_block in *. rewrite assign_junk_blocks_nextblock. des_ifs. extlia.
+    + etrans; eauto. rewrite assign_junk_blocks_nextblock. des_ifs; extlia.
   - clarify. econs; ss; eauto.
     + refl.
     + eapply Mem.unchanged_on_implies; try eapply assign_junk_blocks_unchanged_on; et. ss.
@@ -553,7 +553,7 @@ Proof.
     + econs; eauto. ii. des. des_ifs.
     + i. rewrite assign_junk_blocks_perm. ss.
   - clarify. clear - n. unfold tgt_private. ss. ii. des. esplits; et.
-    unfold valid_blocks, Mem.valid_block in *. rewrite assign_junk_blocks_nextblock. des_ifs. xomega.
+    unfold valid_blocks, Mem.valid_block in *. rewrite assign_junk_blocks_nextblock. des_ifs. extlia.
 Qed.
 
 Definition inject_junk_blocks (m_src0 m_tgt0: mem) (n: nat) (j: meminj): meminj :=
@@ -592,36 +592,36 @@ Proof.
         { des_ifs.
           - bsimpl. des. des_sumbool.
             exploit (Plt_succ_inv x0 (Mem.nextblock src)); eauto.
-            { Local Transparent Pos.of_nat. unfold Pos.of_nat in *. xomega. Local Opaque Pos.of_nat. }
-            intro R. des; clarify; try xomega. rewrite Q2. repeat f_equal; ss. xomega.
-          - rewrite Q3; ss. ii; clarify. bsimpl; des; des_sumbool; xomega.
+            { Local Transparent Pos.of_nat. unfold Pos.of_nat in *. extlia. Local Opaque Pos.of_nat. }
+            intro R. des; clarify; try extlia. rewrite Q2. repeat f_equal; ss. extlia.
+          - rewrite Q3; ss. ii; clarify. bsimpl; des; des_sumbool; extlia.
         }
         destruct (classic (x0 = (Mem.nextblock src))).
-        { clarify. des_ifs; bsimpl; des; des_sumbool; ss; try xomega.
-          rewrite Q2. repeat f_equal. xomega.
+        { clarify. des_ifs; bsimpl; des; des_sumbool; ss; try extlia.
+          rewrite Q2. repeat f_equal. extlia.
         }
         destruct (classic (x0 = Pos.succ (Mem.nextblock src))).
-        { clarify. des_ifs; bsimpl; des; des_sumbool; ss; try xomega.
-          - do 2 f_equal. xomega.
-          - exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try xomega. Local Opaque Pos.of_nat.
+        { clarify. des_ifs; bsimpl; des; des_sumbool; ss; try extlia.
+          - do 2 f_equal. extlia.
+          - exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try extlia. Local Opaque Pos.of_nat.
         }
-        des_ifs; bsimpl; des; des_sumbool; ss; try xomega.
-        { do 2 f_equal. xomega. }
-        { exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try xomega. Local Opaque Pos.of_nat. }
-        { exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try xomega. Local Opaque Pos.of_nat. }
+        des_ifs; bsimpl; des; des_sumbool; ss; try extlia.
+        { do 2 f_equal. extlia. }
+        { exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try extlia. Local Opaque Pos.of_nat. }
+        { exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try extlia. Local Opaque Pos.of_nat. }
         { rewrite Q3; ss. }
         { rewrite Q3; ss. }
     + etrans; eauto.
       clear - n. unfold src_private. ss. unfold valid_blocks, Mem.valid_block in *. ii. des. esplits; et.
-      * des_ifs. rr. rr in PR. des_ifs. destruct n; ss. bsimpl; des; des_sumbool; try xomega.
-      * rewrite assign_junk_blocks_nextblock. des_ifs. xomega.
+      * des_ifs. rr. rr in PR. des_ifs. destruct n; ss. bsimpl; des; des_sumbool; try extlia.
+      * rewrite assign_junk_blocks_nextblock. des_ifs. extlia.
     + etrans; eauto.
       clear - n. unfold tgt_private. ss. unfold valid_blocks, Mem.valid_block in *. ii. des. esplits; et.
       * ii. rewrite assign_junk_blocks_perm in *. rr in PR. des_ifs; eauto.
-        destruct n; ss. bsimpl; des; des_sumbool; clarify. xomega.
-      * rewrite assign_junk_blocks_nextblock. des_ifs. xomega.
-    + etrans; eauto. rewrite assign_junk_blocks_nextblock. des_ifs; xomega.
-    + etrans; eauto. rewrite assign_junk_blocks_nextblock. des_ifs; xomega.
+        destruct n; ss. bsimpl; des; des_sumbool; clarify. extlia.
+      * rewrite assign_junk_blocks_nextblock. des_ifs. extlia.
+    + etrans; eauto. rewrite assign_junk_blocks_nextblock. des_ifs; extlia.
+    + etrans; eauto. rewrite assign_junk_blocks_nextblock. des_ifs; extlia.
   - econs; ss; eauto.
     + ii. des_ifs. bsimpl. des. des_sumbool. inv MWF. inv PUBLIC.
       exploit mi_freeblocks; eauto. i; clarify.
@@ -631,23 +631,23 @@ Proof.
     + clarify. eapply Mem.unchanged_on_implies.
       { eapply assign_junk_blocks_unchanged_on; et. }
       ii. ss.
-    + econs; eauto. ii. des. des_ifs. bsimpl. des. des_sumbool. inv MWF. esplits; eauto with xomega.
-    + econs; eauto. ii. des. des_ifs. bsimpl. des. des_sumbool. inv MWF. esplits; eauto with xomega.
+    + econs; eauto. ii. des. des_ifs. bsimpl. des. des_sumbool. inv MWF. esplits; eauto with extlia.
+    + econs; eauto. ii. des. des_ifs. bsimpl. des. des_sumbool. inv MWF. esplits; eauto with extlia.
     + i. rewrite assign_junk_blocks_perm. ss.
     + i. clarify. rewrite assign_junk_blocks_perm. ss.
   - ss. repeat (apply func_ext1; i). apply AxiomsC.prop_ext.
     unfold src_private, loc_unmapped, valid_blocks in *. ss. inv MWF. split; i; des.
-    + unfold Mem.valid_block in *. destruct n; ss. des_ifs; bsimpl; des; des_sumbool; try xomega.
+    + unfold Mem.valid_block in *. destruct n; ss. des_ifs; bsimpl; des; des_sumbool; try extlia.
       esplits; eauto. rewrite assign_junk_blocks_nextblock; ss.
-      erewrite Mem.nextblock_alloc; eauto. destruct n; ss; try xomega.
-    + destruct n; ss. unfold Mem.valid_block in *. des_ifs; bsimpl; des; des_sumbool; try xomega; split; ss.
-      rewrite assign_junk_blocks_nextblock in *; ss. erewrite Mem.nextblock_alloc in H0; eauto. des_ifs; try xomega.
-      contradict Heq0. Local Transparent Pos.of_nat. ss. des_ifs; try xomega. Local Opaque Pos.of_nat.
+      erewrite Mem.nextblock_alloc; eauto. destruct n; ss; try extlia.
+    + destruct n; ss. unfold Mem.valid_block in *. des_ifs; bsimpl; des; des_sumbool; try extlia; split; ss.
+      rewrite assign_junk_blocks_nextblock in *; ss. erewrite Mem.nextblock_alloc in H0; eauto. des_ifs; try extlia.
+      contradict Heq0. Local Transparent Pos.of_nat. ss. des_ifs; try extlia. Local Opaque Pos.of_nat.
   - ii. unfold tgt_private, loc_out_of_reach, valid_blocks in *. ss. inv MWF.
     + unfold Mem.valid_block in *. split; ss; cycle 1.
-      * rewrite assign_junk_blocks_nextblock in *; ss. des_ifs; xomega.
+      * rewrite assign_junk_blocks_nextblock in *; ss. des_ifs; extlia.
       * i. rewrite assign_junk_blocks_perm. (* TODO: change lemma into symmetric version *)
-        des_ifs; bsimpl; des; des_sumbool; et; try xomega.
+        des_ifs; bsimpl; des; des_sumbool; et; try extlia.
 Qed.
 
 End JUNK.

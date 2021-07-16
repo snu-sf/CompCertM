@@ -128,7 +128,7 @@ Proof.
         }
       + eapply Loc_cons_right_disjoint; eauto.
         { exploit list_nth_z_range; et. intro RANGE.
-          destruct fr; try xomega; ss.
+          destruct fr; try extlia; ss.
           exploit (firstn_S float_param_regs). i; desH H.
           - rewrite <- H0. replace (Pos.to_nat p + 1)%nat with (Pos.to_nat (p + 1)); try nia. eauto.
           - replace (Z.to_nat (Z.pos p + 1)) with (Pos.to_nat p + 1)%nat in *; cycle 1.
@@ -159,7 +159,7 @@ Proof.
         eapply list_nth_z_in. eapply list_nth_z_firstn; et.
       + eapply Loc_cons_right_disjoint; eauto.
         { exploit list_nth_z_range; et. intro RANGE.
-          destruct ir; try xomega; ss.
+          destruct ir; try extlia; ss.
           exploit (firstn_S int_param_regs). i; desH H.
           - rewrite <- H0. replace (Pos.to_nat p + 1)%nat with (Pos.to_nat (p + 1)); try nia. eauto.
           - replace (Z.to_nat (Z.pos p + 1)) with (Pos.to_nat p + 1)%nat in *; cycle 1.

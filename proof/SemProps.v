@@ -552,7 +552,7 @@ Lemma Genv_bytes_of_init_data_length
       F V (ge: Genv.t F V) a:
     Datatypes.length (Genv.bytes_of_init_data ge a) = Z.to_nat (init_data_size a).
 Proof.
-  clear - a. destruct a; ss; des_ifs. rewrite length_list_repeat. rewrite Z2Nat.inj_max. ss. xomega.
+  clear - a. destruct a; ss; des_ifs. rewrite length_list_repeat. rewrite Z2Nat.inj_max. ss. extlia.
 Qed.
 
 Inductive wf_mem_weak (skenv ge0: SkEnv.t) (sk: Sk.t) (m0: mem): Prop :=
@@ -632,7 +632,7 @@ Proof.
     rename b into blk. unfold Genv.find_symbol, Genv.add_global in SYMB. ss. rewrite PTree.gsspec in *. des_ifs; cycle 1.
     + assert(blk <> blk_fr).
       { ii; clarify. clear - WFMB Heq SYMB. exploit GlobalenvsC.Genv_update_publics_obligation_1; eauto. i.
-        eapply Mem.alloc_result in Heq. subst. rewrite WFMB in H. xomega. }
+        eapply Mem.alloc_result in Heq. subst. rewrite WFMB in H. extlia. }
       inv WFM. exploit WFPTR; et.
       assert(VAL: Mem.valid_block m0 blk_fr).
       { clear - Heq WFMB FREETHM0 H LOAD. rewrite WFMB in FREETHM0. exploit Mem.alloc_result; eauto. i. subst blk.
@@ -674,20 +674,20 @@ Proof.
         destruct (classic (0 <= _ofs_fr < init_data_list_size dts)); cycle 1.
         { hexploit Mem.loadbytes_range_perm; try apply LOAD; et. intro PERM.
           exploit FREETHM1; et.
-          { r in PERM. eapply PERM; et. instantiate (1:= _ofs_fr). xomega. }
-          i; des. xomega.
+          { r in PERM. eapply PERM; et. instantiate (1:= _ofs_fr). extlia. }
+          i; des. extlia.
         }
         rename H into RANGE. clear FREETHM1.
-        assert(POS: 0 <= 0) by xomega.
+        assert(POS: 0 <= 0) by extlia.
         change (init_data_list_size dts) with (0 + init_data_list_size dts) in RANGE.
         revert_until skenv_link. generalize 0 at 1 2 3 5 as ofs. i.
         (* generalize 0 at 1 2 4 as ofs. i. *)
-        ginduction dts; ii; ss; try xomega. try rewrite Z.add_assoc in *.
+        ginduction dts; ii; ss; try extlia. try rewrite Z.add_assoc in *.
         assert(LOADB: Mem.loadbytes m1 blk (ofs + init_data_size a) (init_data_list_size dts) =
                       Some (Genv.bytes_of_init_data_list skenv_link dts) /\
                       <<LOADC: Mem.loadbytes m1 blk ofs (init_data_size a) =
                                Some (Genv.bytes_of_init_data skenv_link a)>>).
-        { exploit Mem.loadbytes_split; et; try xomega.
+        { exploit Mem.loadbytes_split; et; try extlia.
           { eapply init_data_size_pos. }
           { eapply init_data_list_size_pos. }
           i; des.
@@ -712,7 +712,7 @@ Proof.
           try replace 7 with (1 + 1 + 1 + 1 + 1 + 1 + 1) in * by omega.
 
         destruct (classic ((ofs + init_data_size a) <= _ofs_fr)).
-        - exploit IHdts; et; try xomega.
+        - exploit IHdts; et; try extlia.
           { eapply OMEGA2; eauto. eapply Z.ge_le. eapply init_data_size_pos. }
           i; des. esplits; et.
         - clear IHdts LOADB LOADA. rename a into aa. clear RANGE0.
@@ -725,13 +725,13 @@ Proof.
                  assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
                         \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
                         \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by omega;
-                 des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss).
+                 des; subst; try extlia; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss).
 
           + exfalso. unfold Mem.loadbytes in *. des_ifs. rename H0 into P. rename H1 into Q. clear - P Q T RANGE POS.
             abstr ((Mem.mem_contents m1) !! blk) MC. clear_tac.
-            assert(POS0: 0 <= Z.max z 0) by xomega.
+            assert(POS0: 0 <= Z.max z 0) by extlia.
             exploit (@Mem.getN_in MC ofs_mid (Z.to_nat (Z.max z 0)) ofs_bound); eauto.
-            { split; try xomega. rewrite Z2Nat.id; ss. }
+            { split; try extlia. rewrite Z2Nat.id; ss. }
             intro R. rewrite Q in *. unfold Z.to_nat in *. rewrite P in *. clear - R. apply in_list_repeat in R. ss.
 
           + des_ifs; cycle 1.
@@ -739,7 +739,7 @@ Proof.
               assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
                      \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
                      \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by omega.
-              des; subst; try xomega; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H8 in *; ss.
+              des; subst; try extlia; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H8 in *; ss.
             }
             esplits; et. unfold inj_value in *. ss. unfold Mem.loadbytes in *. des_ifs.
             assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2

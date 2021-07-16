@@ -25,7 +25,7 @@ Proof.
   red.
   assert(4 * a / 4 = a).
   { rewrite Z.mul_comm. rewrite Z.div_mul; ss. }
-  rewrite <- H. eapply Z_div_le; eauto. xomega.
+  rewrite <- H. eapply Z_div_le; eauto. extlia.
 Qed.
 
 Lemma Z2Nat_range n:
@@ -36,4 +36,4 @@ Hint Rewrite Ptrofs.unsigned_zero Ptrofs.add_zero Ptrofs.add_zero_l
      Ptrofs.repr_unsigned Ptrofs_add_repr : psimpl.
 
 Ltac psimpl := repeat (autorewrite with psimpl in *;
-                       try (rewrite Ptrofs.unsigned_repr in *; ss; try xomega; [])).
+                       try (rewrite Ptrofs.unsigned_repr in *; ss; try extlia; [])).

@@ -311,8 +311,8 @@ Proof.
   - ii. inv SIMSK. apply CLOSED in H. unfold privs in *. apply andb_true_iff in H. des.
     apply negb_true_iff in H0. unfold Sk.load_skenv in *. rewrite Genv.globalenv_public in PR. des_sumbool. ss.
   - inv SIMSK. unfold Sk.load_skenv. do 2 rewrite Genv.globalenv_public. ss.
-  (* - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega. *)
-  (* - inv SIMSK. erewrite Genv.init_mem_genv_next; et. xomega. *)
+  (* - inv SIMSK. erewrite Genv.init_mem_genv_next; et. extlia. *)
+  (* - inv SIMSK. erewrite Genv.init_mem_genv_next; et. extlia. *)
 Qed.
 
 Lemma init_meminj_invert_strong
@@ -536,7 +536,7 @@ Next Obligation.
   exploit init_meminj_simskenv; try eapply SIMSK; et. intros SIMSKENV.
   eexists m_tgt. exists (SimMemInj.mk m_src m_tgt (init_meminj ss.(src) ss.(tgt)) bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_tgt) (Mem.nextblock m_src) (Mem.nextblock m_tgt)).
   esplits; et.
-  { econs; ss; try xomega. constructor; intros.
+  { econs; ss; try extlia. constructor; intros.
     { intros; constructor; intros.
       - exploit init_meminj_invert_strong; eauto. intros (A & id & gd & B & C & D & E).
         exploit (Genv.init_mem_characterization_gen ss.(src)); eauto.
@@ -560,7 +560,7 @@ Next Obligation.
           rewrite Z.add_0_r. apply Mem_getN_forall2 with (p := 0) (n := Z.to_nat (init_data_list_size (gvar_init v))); try omega.
           rewrite H3, H4. eapply bytes_of_init_inject; et.
           { ii. inv SIMSK. eapply NOREF; et. eapply Genv.find_def_symbol. eexists. split; et. }
-          rewrite Z2Nat.id; try xomega.
+          rewrite Z2Nat.id; try extlia.
     }
     - destruct ((init_meminj ss.(src) ss.(tgt)) b) as [[b' delta]|] eqn:INJ; auto.
       elim H. exploit init_meminj_invert; eauto. intros (A & id & B & C & D).
@@ -605,12 +605,12 @@ Next Obligation.
     { destruct p; ss. exploit INCR; et. i; clarify. }
     exfalso. inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
     exploit SPLITHINT; try apply SYMBSRC; eauto. i; des. clear_tac.
-    exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT NBTGT. rewrite NBTGT in *. xomega.
+    exploit Genv.genv_symb_range; eauto. i. clear - H OUTSIDE_TGT NBTGT. rewrite NBTGT in *. extlia.
   - i. eapply SIMDEFINV; eauto.
     destruct (inj sm0 blk_src) as [[b1 delta1] | ] eqn: J.
     + exploit INCR; eauto. congruence.
     + inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des.
-      exploit Genv.genv_defs_range; eauto. i. rewrite NBTGT in *. xomega.
+      exploit Genv.genv_defs_range; eauto. i. rewrite NBTGT in *. extlia.
 Qed.
 Next Obligation.
   set (SkEnv.project skenv_link_src ss.(src)) as skenv_src.
@@ -824,15 +824,15 @@ Next Obligation.
       eapply SRCEXT in H6. unfold src_private in *. ss. des; ss.
     + eapply Mem.unchanged_on_implies; eauto. u. i; des; ss.
       eapply TGTEXT in H6. unfold tgt_private in *. ss. des; ss.
-    + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; xomega.
-    + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; xomega.
+    + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; extlia.
+    + eapply inject_separated_frozen in H5. inv H5. econs; eauto. i. exploit NEW_IMPLIES_OUTSIDE; eauto. i; des. esplits; extlia.
     + ii. eapply external_call_max_perm; eauto.
     + ii. eapply external_call_max_perm; eauto.
   - apply inject_separated_frozen in H5. econs; ss.
     + etrans; eauto. unfold src_private. ss. ii. des. esplits; eauto.
       * rr. rr in PR. destruct (f' x0) eqn:T; ss. destruct p; ss.
         inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
-        unfold Mem.valid_block in *. xomega.
+        unfold Mem.valid_block in *. extlia.
       * r. eapply Mem.valid_block_unchanged_on; et.
     + etrans; eauto. unfold tgt_private. ss. ii. des. esplits; eauto.
       * rr. rr in PR. ii. destruct (inj b0) eqn:T; ss.
@@ -840,10 +840,10 @@ Next Obligation.
            eapply PR; et. eapply external_call_max_perm; et.
            eapply Mem.valid_block_inject_1; try apply T; et.
         -- inv H5. exploit NEW_IMPLIES_OUTSIDE; eauto. i. des. unfold valid_blocks in *.
-           unfold Mem.valid_block in *. xomega.
+           unfold Mem.valid_block in *. extlia.
       * r. eapply Mem.valid_block_unchanged_on; et.
-    + inv H2. xomega.
-    + inv H3. xomega.
+    + inv H2. extlia.
+    + inv H3. extlia.
 Qed.
 
 End MEMINJ.

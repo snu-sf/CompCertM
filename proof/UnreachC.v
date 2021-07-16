@@ -207,19 +207,19 @@ Let J_injective: forall
 Proof.
   i. eapply eta; ss. apply func_ext1.
   revert_until fuel. pattern fuel. eapply Pos.peano_ind; clear fuel; i.
-  - eapply BDD; eauto. xomega.
-  - inv J0; inv J1; ss; try xomega.
+  - eapply BDD; eauto. extlia.
+  - inv J0; inv J1; ss; try extlia.
     + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
       assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
       clarify. clear_tac.
-      assert(n = n0) by xomega. clarify.
+      assert(n = n0) by extlia. clarify.
       exploit H; [exact PRED|exact PRED0|..]; eauto.
       { i. eapply ple_elim_succ in H0. des; clarify. eapply BDD; eauto.
       }
     + assert(p = fuel) by (eapply Pos.succ_inj; eauto).
       assert(p = fuel0) by (eapply Pos.succ_inj; eauto).
       clarify. clear_tac.
-      assert(n = n0) by xomega. clarify.
+      assert(n = n0) by extlia. clarify.
       exploit H; [exact PRED|exact PRED0|..]; eauto.
       { i. eapply ple_elim_succ in H0. des; clarify. eapply BDD; eauto. }
 Qed.
@@ -241,22 +241,22 @@ Let J_bound: forall fuel x n
     (n <= 3 ^ (Pos.to_nat fuel))%nat.
 Proof.
   intro fuel. pattern fuel. eapply Pos.peano_ind; clear fuel; i.
-  { inv J0; try xomega. }
+  { inv J0; try extlia. }
   generalize (Pos2Nat.is_pos p); intro POS.
-  inv J0; try xomega; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
+  inv J0; try extlia; exploit Pos.succ_inj; eauto; i; clarify; clear_tac; hexploit H; eauto; i.
   - ss. rewrite Pos2Nat.inj_succ. ss. rewrite ! Nat.add_0_r. rewrite Nat.add_assoc.
     destruct (classic (n0 = 0)).
-    { clarify. ss. assert(1 <= Pos.to_nat p) by xomega.
+    { clarify. ss. assert(1 <= Pos.to_nat p) by extlia.
       assert(1 < 3 ^ Pos.to_nat p).
-      { eapply Nat.pow_gt_1; eauto. xomega. }
-      xomega.
+      { eapply Nat.pow_gt_1; eauto. extlia. }
+      extlia.
     }
-    xomega.
+    extlia.
   - ss. rewrite Pos2Nat.inj_succ. ss.
     rewrite ! Nat.add_0_r. rewrite Nat.add_assoc.
     destruct (classic (n0 = 0)).
-    { clarify. ss. xomega. }
-    xomega.
+    { clarify. ss. extlia. }
+    extlia.
 Qed.
 
 Let to_inj (su: t) (bound: positive): meminj :=
@@ -296,7 +296,7 @@ Proof.
       { des_ifs. exploit MV; eauto. i; des. rewrite NB in *. ss. }
       rewrite Ptrofs.add_zero. ss.
   - split.
-    + eauto with xomega.
+    + eauto with extlia.
     + eapply Ptrofs.unsigned_range_2; eauto.
 Qed.
 
@@ -395,7 +395,7 @@ Lemma romatch_ske_unchanged_on
 Proof.
   ii. exploit ROMATCH; et. i; des.
   assert(VAL: Mem.valid_block m0 b).
-  { ss. des_ifs. unfold Mem.valid_block. xomega. }
+  { ss. des_ifs. unfold Mem.valid_block. extlia. }
   esplits; et.
   - eapply bmatch_ext; et. i. erewrite <- Mem.loadbytes_unchanged_on_1; et. ii. eapply H1; et.
   - ii. eapply H1; et. eapply Mem.perm_unchanged_on_2; et. ii. eapply H1; et.
@@ -574,8 +574,8 @@ Proof.
             forall (blk : block) (ofs : ptrofs), v = Vptr blk ofs -> exists id : ident, bc2 blk = BCglob (Some id)).
   { i. subst. eapply Mem.load_loadbytes in H. des.
     assert(exists x, size_chunk chunk = (1 + x)%Z /\ (x >= 0)%Z).
-    { destruct chunk; ss; try (exists 0%Z; xomega); try (exists 1%Z; xomega); try (exists 3%Z; xomega); try (exists 7%Z; xomega). }
-    des. rewrite H1 in H. eapply Mem.loadbytes_split in H; try xomega. des. subst.
+    { destruct chunk; ss; try (exists 0%Z; extlia); try (exists 1%Z; extlia); try (exists 3%Z; extlia); try (exists 7%Z; extlia). }
+    des. rewrite H1 in H. eapply Mem.loadbytes_split in H; try extlia. des. subst.
     exploit (Mem.loadbytes_length m b ofs_); et. i.
     assert(AUX1: exists l i q n, bytes1 ++ bytes2 = [Fragment (Vptr blk i) q n] ++ l).
     { unfold decode_val, Val.load_result, proj_value in *. des_ifs; do 4 eexists; ss. }
@@ -610,7 +610,7 @@ Next Obligation.
   rr in HLE. des. rewrite <- OLD; eauto.
 Qed.
 Next Obligation.
-  rr in HLE. des. rr in VAL. rr. ii. clarify. exploit VAL; eauto. i; des. esplits; eauto; try xomega.
+  rr in HLE. des. rr in VAL. rr. ii. clarify. exploit VAL; eauto. i; des. esplits; eauto; try extlia.
   rewrite <- OLD; ss.
 Qed.
 Next Obligation.
@@ -731,8 +731,8 @@ Next Obligation.
   exploit (@external_call_mem_inject_gen ef skenv0 skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret
                                          (to_inj su0 (Args.m args0).(Mem.nextblock)) (Args.m args0) (Args.vs args0)); eauto.
   { unfold to_inj. r. esplits; ii; ss; des_ifs; eauto.
-    - exfalso. inv SKE. exploit Genv.genv_symb_range; eauto. i. rewrite <- PUB in H1. inv WF. eapply WFLO in Heq. xomega.
-    - exfalso. apply n; clear n. eapply Genv.genv_symb_range in H0. inv SKE. xomega.
+    - exfalso. inv SKE. exploit Genv.genv_symb_range; eauto. i. rewrite <- PUB in H1. inv WF. eapply WFLO in Heq. extlia.
+    - exfalso. apply n; clear n. eapply Genv.genv_symb_range in H0. inv SKE. extlia.
   }
   { eapply to_inj_mem; eauto. }
   { inv MEM. clear - NB VALS. abstr (Args.vs args0) vs_arg.
@@ -747,13 +747,13 @@ Next Obligation.
   esplits; eauto.
   - eapply hle_old_hle. r. s. unfold to_inj in AX4, AX5. r in AX4. r in AX5. esplits; eauto.
     + ii. inv MEM. exploit BOUND; eauto. i. des_ifs; cycle 1.
-      { unfold Mem.valid_block in *. inv AX2. xomega. }
+      { unfold Mem.valid_block in *. inv AX2. extlia. }
       destruct p0; ss. exploit AX5; eauto.
       { des_ifs. }
       i; des. ss.
     + ii. des. des_ifs. rename x0 into bb. apply NNPP. ii.
       exploit (AX4 bb bb); eauto; i; clarify.
-      des_ifs. exfalso. eapply n. eapply Plt_Ple_trans; et. inv MEM. rewrite NB. xomega.
+      des_ifs. exfalso. eapply n. eapply Plt_Ple_trans; et. inv MEM. rewrite NB. extlia.
     + inv MEM. rewrite NB. inv AX2; ss.
   - r. s. esplits; eauto.
     + s. r. ii; ss. clarify. inv AX0. des_ifs.
@@ -773,7 +773,7 @@ Next Obligation.
         exploit (AX4 x0); eauto. i. clarify. }
       unfold to_inj in H. des_ifs.
       { inv WF. eauto. }
-      inv MEM. etrans; eauto. xomega.
+      inv MEM. etrans; eauto. extlia.
     + i. des_ifs.
   - econs; eauto.
     + ii; ss. eapply external_call_max_perm; try apply EXT; eauto.
@@ -825,8 +825,8 @@ Proof.
       { unfold le' in *. des. congruence. }
       { congruence. }
       ii. u in BOUND. u in BOUND0. destruct (x0 blk) eqn:T0, (x1 blk) eqn:T1; ss.
-      { hexploit BOUND0; eauto. i. r in H4. xomega. }
-      { hexploit BOUND; eauto. i. r in H4. xomega. }
+      { hexploit BOUND0; eauto. i. r in H4. extlia. }
+      { hexploit BOUND; eauto. i. r in H4. extlia. }
     + ii. eapply J_func.
     + i. exists (3 ^ (Pos.to_nat (m.(Mem.nextblock))))%nat. i. eapply J_bound; eauto.
   - ii. eapply lubclosed; try apply LUB; eauto.
@@ -900,7 +900,7 @@ Lemma mem'_loadbytes_val'
 Proof.
   inv MEM. unfold Mem.loadbytes in *. des_ifs. ii. clarify.
   hexploit (SOUND blk ofs); eauto.
-  { eapply r. xomega. }
+  { eapply r. extlia. }
   intro MV; des. rewrite H0 in *. exploit MV; eauto.
 Qed.
 
@@ -913,7 +913,7 @@ Lemma val_le
 Proof.
   ii. clarify. exploit SU; eauto. i; des. esplits; eauto.
   - ii. eapply H. rr in LE. des. eapply PRIV; eauto.
-  - rr in LE. des. xomega.
+  - rr in LE. des. extlia.
 Qed.
 
 Lemma memval_le
@@ -925,7 +925,7 @@ Lemma memval_le
 Proof.
   ii. clarify. exploit SU; eauto. i; des. esplits; eauto.
   - ii. eapply H. rr in LE. des. eapply PRIV; eauto.
-  - rr in LE. des. xomega.
+  - rr in LE. des. extlia.
 Qed.
 
 Lemma unreach_to_inj_val: forall su v,

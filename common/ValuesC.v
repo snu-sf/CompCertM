@@ -132,7 +132,7 @@ Lemma lessdef_list_length
       xs ys
       (LD: Val.lessdef_list xs ys):
     <<LEN: xs.(length) = ys.(length)>>.
-Proof. ginduction LD; ii; ss. des. red. xomega. Qed.
+Proof. ginduction LD; ii; ss. des. red. extlia. Qed.
 
 Lemma inject_list_typify_list
       inj xs ys tys
@@ -150,7 +150,7 @@ Lemma inject_list_length
       j xs ys
       (INJ: Val.inject_list j xs ys):
     <<LEN: xs.(length) = ys.(length)>>.
-Proof. ginduction INJ; ii; ss. des. red. xomega. Qed.
+Proof. ginduction INJ; ii; ss. des. red. extlia. Qed.
 
 Lemma typify_has_type_list
       vs tys

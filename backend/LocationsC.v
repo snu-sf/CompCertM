@@ -101,16 +101,16 @@ Lemma loc_arguments_norepet_aux
       tys (ir fr ofs: Z) locs
       (LOCS: (regs_of_rpairs (loc_arguments_elf64 tys ir fr ofs)) = locs):
     (<<NOREP: Loc.norepet locs>>)
-    /\ (<<NOTINIR: Loc.disjoint (map R (List.firstn (Z.to_nat ir) int_param_regs)) locs>>)
-    /\ (<<NOTINFR: Loc.disjoint (map R (List.firstn (Z.to_nat fr) float_param_regs)) locs>>).
+    /\ (<<NOTINIR: Loc.disjoint (map R (List.firstn (Z.to_nat ir) int_param_regs_elf64)) locs>>)
+    /\ (<<NOTINFR: Loc.disjoint (map R (List.firstn (Z.to_nat fr) float_param_regs_elf64)) locs>>).
 Proof.
   ginduction tys; ii; clarify.
   { esplits; ii; ss; econs. }
-  assert(TTT: Loc.disjoint (map R int_param_regs) (map R float_param_regs)).
+  assert(TTT: Loc.disjoint (map R int_param_regs_elf64) (map R float_param_regs_elf64)).
   { ii; ss. des; subst; ss. }
   destruct (classic (a = Tfloat \/ a = Tsingle)).
   { assert(loc_arguments_elf64 (a :: tys) ir fr ofs =
-           match list_nth_z float_param_regs fr with
+           match list_nth_z float_param_regs_elf64 fr with
            | Some freg => One (R freg) :: loc_arguments_elf64 tys ir (fr + 1) ofs
            | None => One (S Outgoing ofs a) :: loc_arguments_elf64 tys ir fr (ofs + 2)
            end).
@@ -129,10 +129,10 @@ Proof.
       + eapply Loc_cons_right_disjoint; eauto.
         { exploit list_nth_z_range; et. intro RANGE.
           destruct fr; try extlia; ss.
-          exploit (firstn_S float_param_regs). i; desH H.
+          exploit (firstn_S float_param_regs_elf64). i; desH H.
           - rewrite <- H0. replace (Pos.to_nat p + 1)%nat with (Pos.to_nat (p + 1)); try nia. eauto.
           - replace (Z.to_nat (Z.pos p + 1)) with (Pos.to_nat p + 1)%nat in *; cycle 1.
-            { clear. rewrite Z2Nat.inj_add; try nia. ss. }
+            { clear. rewrite Z2Nat.inj_add; try nia. }
             rewrite H0 in NOTINFR. rewrite list_append_map in NOTINFR; ss. eapply disjoint_concat; et.
         }
         { clear - Heq. rewrite map_firstn. eapply norepet_nth_notin; try do 9 (econs; ss).
@@ -147,7 +147,7 @@ Proof.
   { assert(a = Tint \/ a = Tlong \/ a = Tany32 \/ a = Tany64).
     { eapply not_or_and in H. des. destruct a; des_ifs; et. }
     assert(loc_arguments_elf64 (a :: tys) ir fr ofs =
-           match list_nth_z int_param_regs ir with
+           match list_nth_z int_param_regs_elf64 ir with
            | Some ireg => One (R ireg) :: loc_arguments_elf64 tys (ir + 1) fr ofs
            | None => One (S Outgoing ofs a) :: loc_arguments_elf64 tys ir fr (ofs + 2)
            end).
@@ -160,10 +160,10 @@ Proof.
       + eapply Loc_cons_right_disjoint; eauto.
         { exploit list_nth_z_range; et. intro RANGE.
           destruct ir; try extlia; ss.
-          exploit (firstn_S int_param_regs). i; desH H.
+          exploit (firstn_S int_param_regs_elf64). i; desH H.
           - rewrite <- H0. replace (Pos.to_nat p + 1)%nat with (Pos.to_nat (p + 1)); try nia. eauto.
           - replace (Z.to_nat (Z.pos p + 1)) with (Pos.to_nat p + 1)%nat in *; cycle 1.
-            { clear. rewrite Z2Nat.inj_add; try nia. ss. }
+            { clear. rewrite Z2Nat.inj_add; try nia. }
             rewrite H0 in NOTINIR. rewrite list_append_map in NOTINIR; ss. eapply disjoint_concat; et.
         }
         { clear - Heq. rewrite map_firstn. eapply norepet_nth_notin; try do 7 (econs; ss).

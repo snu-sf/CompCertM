@@ -28,7 +28,7 @@ Makefile.coq: Makefile $(COQTHEORIES)
    echo "-R ../backend compcert.backend"; \
    echo "-R ../cfrontend compcert.cfrontend"; \
    echo "-R ../driver compcert.driver"; \
-   echo "-R ../flocq compcert.flocq"; \
+   echo "-R ../flocq Flocq"; \
    echo "-R ../exportclight compcert.exportclight"; \
    echo "-R ../cparser compcert.cparser"; \
    echo "-R ../demo compcert.demo"; \

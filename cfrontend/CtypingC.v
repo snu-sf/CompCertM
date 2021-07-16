@@ -6,7 +6,6 @@ Require Import CtypesC Cop Csyntax Csem ValuesC.
 Require Import sflib.
 (** newly added **)
 Require Export Ctyping.
-Require Import Skeleton.
 (* Require Import AxiomsC. *)
 
 Local Open Scope error_monad_scope.

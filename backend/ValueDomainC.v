@@ -113,7 +113,7 @@ Proof.
     - econs; eauto; ss; i; des_ifs. des_sumbool.
       rr in GE. des. apply NNPP. ii.
       exploit (GE0 x0); eauto.
-      { unfold fundef in *. extlia. }
+      { extlia. }
       i; des. congruence.
   }
 Qed.

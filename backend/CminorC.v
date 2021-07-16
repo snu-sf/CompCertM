@@ -10,8 +10,8 @@ Require Import Globalenvs.
 Require Import SmallstepC.
 Require Import Switch.
 (** newly added **)
-Require Export Simulation Cminor.
-Require Import Skeleton Mod ModSem.
+Require Import Simulation Skeleton Mod ModSem.
+Require Export Cminor.
 (* Require Import AsmregsC. *)
 (* Require Import Conventions. *)
 (* Require Import Locations. *)

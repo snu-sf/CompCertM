@@ -3,10 +3,10 @@ Require Import ASTC Integers Floats Values MemoryC EventsC Globalenvs Smallstep.
 Require Import Locations Stacklayout Conventions.
 (** newly added **)
 Require Import Mach Simulation ValuesC.
-Require Export Asm.
 Require Import Skeleton ModSem Mod sflib.
 Require Import LocationsC AsmregsC StoreArguments.
 Require Import JunkBlock.
+Require Export Asm.
 
 Set Implicit Arguments.
 

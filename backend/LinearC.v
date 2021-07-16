@@ -2,10 +2,10 @@ Require Import CoqlibC.
 Require Import ASTC Integers ValuesC MemoryC EventsC GlobalenvsC Smallstep.
 Require Import Op LocationsC LTL Conventions.
 (** newly added **)
-Require Export Linear.
 Require Import Skeleton Mod ModSem.
 Require Import Simulation AsmregsC.
 Require Import JunkBlock.
+Require Export Linear.
 
 Set Implicit Arguments.
 

@@ -2,8 +2,8 @@ Require Import CoqlibC MapsC.
 Require Import ASTC Integers ValuesC EventsC Memory Globalenvs Smallstep.
 Require Import Op Locations Conventions.
 (** newly added **)
-Require Export LTL.
 Require Import Simulation Skeleton Mod ModSem.
+Require Export LTL.
 Require Import JunkBlock.
 
 Set Implicit Arguments.

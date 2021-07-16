@@ -12,11 +12,11 @@ Require Import LocationsC.
 Require Import Conventions.
 Require Stacklayout.
 (** newly added **)
-Require Export Mach.
-Require Import StoreArguments.
 Require Import Skeleton Mod ModSem.
+Require Import StoreArguments.
 Require Import Simulation Integers.
 Require Import JunkBlock.
+Require Export Mach.
 
 Set Implicit Arguments.
 

@@ -17,11 +17,11 @@ Require Import Csyntax.
 Require Import CsemC.
 Require Import sflib.
 (** newly added **)
-Require Export Simulation Cstrategy CopC Ctypes Ctyping Csyntax Cexec.
-Require Import Skeleton Mod ModSem.
+Require Import Simulation Skeleton Mod ModSem.
 Require Import CtypesC.
 Require Import Conventions.
 Require Import CtypingC.
+Require Export CopC Ctypes Ctyping Csyntax Cexec Cstrategy CsemC.
 
 Set Implicit Arguments.
 

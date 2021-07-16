@@ -11,10 +11,9 @@ Require Import Switch.
 Require Cminor.
 Require Import Smallstep.
 (** newly added **)
-Require Export Csharpminor.
 Require Import sflib.
-Require Export Simulation Csharpminor.
-Require Import Skeleton Mod ModSem.
+Require Import Simulation Skeleton Mod ModSem.
+Require Export Csharpminor.
 
 Set Implicit Arguments.
 

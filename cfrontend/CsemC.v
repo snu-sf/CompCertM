@@ -4,11 +4,11 @@ Require Import Op Registers.
 Require Import sflib.
 Require Import SmallstepC.
 (** newly added **)
-Require Export Simulation Csem CopC Ctypes Ctyping Csyntax.
-Require Import Skeleton Mod ModSem.
+Require Import Simulation Skeleton Mod ModSem.
 Require Import AsmregsC CtypesC.
 Require Import Conventions.
 Require Import CtypingC.
+Require Export Csem CopC Ctypes Ctyping Csyntax.
 
 Set Implicit Arguments.
 
@@ -23,7 +23,7 @@ Definition is_call_cont_strong (k0: cont): Prop :=
 (* copied from Cshmgen *)
 Definition signature_of_function (fd: function) :=
   {| sig_args := map typ_of_type (map snd (fn_params fd));
-     sig_res  := opttyp_of_type (fn_return fd);
+     sig_res  := rettype_of_type (fn_return fd);
      sig_cc   := fn_callconv fd ; sig_cstyle := true |}.
 
 Definition get_mem (st: state): option mem :=

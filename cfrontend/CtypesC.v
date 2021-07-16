@@ -2,12 +2,12 @@ Require Import Axioms CoqlibC MapsC Errors.
 Require Import AST Linking.
 Require Archi.
 (** newly added **)
-Require Export Ctypes Csyntax.
 (* Csem Csyntax ASTC. *)
 Require Import Errors.
 Require Import Values.
 Require Import sflib.
 Require Import Skeleton ASTC.
+Require Export Ctypes Csyntax.
 
 Set Implicit Arguments.
 

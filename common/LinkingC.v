@@ -13,8 +13,8 @@ Inductive link_res (A: Type): Type :=
 | fail
 | success: A -> link_res A.
 
-Arguments empty [A].
-Arguments fail [A].
+Arguments empty {A}.
+Arguments fail {A}.
 
 Fixpoint link_list_aux X `{Linker X} (xs: list X): link_res X :=
   match xs with

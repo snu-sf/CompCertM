@@ -114,7 +114,6 @@ Lemma to_compcert_backward_simulation
 Proof.
   inv BSIM. inv props.
   econs. econs; eauto.
-  - i. exploit bsim_initial_states_exist0; eauto. exploit bsim_match_initial_states0; eauto.
   - i. punfold H. inv H. exploit FINAL; eauto.
   - (* progress *)
     i. rename H into BSIM. rename H0 into SAFE. punfold BSIM. inv BSIM. exploit PROGRESS; eauto.

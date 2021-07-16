@@ -377,7 +377,7 @@ Qed.
 Program Definition Mem_unfree (m: mem) (b: block) (lo hi: Z): option mem :=
   if plt b m.(Mem.nextblock)
   then Some (Mem.mkmem
-               (PMap.set b (Mem.setN (list_repeat (Z.to_nat (hi-lo)) Undef) lo ((Mem.mem_contents m) # b))
+               (PMap.set b (Mem.setN (repeat Undef (Z.to_nat (hi-lo))) lo ((Mem.mem_contents m) # b))
                          (Mem.mem_contents m))
                (PMap.set b
                          (fun ofs k => if zle lo ofs && zlt ofs hi then Some Freeable else m.(Mem.mem_access)#b ofs k)
@@ -419,11 +419,9 @@ Lemma Mem_unfree_unchanged_on0
 Proof.
   unfold Mem_unfree in *. des_ifs; ss. econs; ss; eauto; try refl.
   - ii. unfold Mem.perm. ss. rewrite PMap.gsspec. des_ifs. exfalso. simpl_bool. des. des_sumbool. eapply RANGE; eauto.
-  - ii. rewrite PMap.gsspec. des_ifs. rewrite Mem.setN_outside; ss. rewrite length_list_repeat.
+  - ii. rewrite PMap.gsspec. des_ifs. rewrite Mem.setN_outside; ss. rewrite repeat_length.
     apply NNPP; ii. apply not_or_and in H1. des. eapply RANGE; eauto.
-    u. esplits; eauto; try lia. destruct (classic (0 <= hi - lo)).
-    + rewrite Z2Nat.id in *; ss. extlia.
-    + abstr (hi - lo) x. destruct x; try extlia. rewrite Z2Nat.inj_neg in *. extlia.
+    u. esplits; eauto; try lia.
 Qed.
 
 Lemma Mem_unfree_unchanged_on
@@ -461,10 +459,10 @@ Proof.
     + zsimpl. rewrite PMap.gsspec. des_ifs; try refl. destruct (classic (lo <= ofs < hi)).
       * exfalso. red in H0. des_ifs. eapply NOPERM; eauto. eapply Mem.perm_cur_max; eauto.
         unfold Mem.perm. rewrite Heq. econs; eauto.
-      * rewrite Mem.setN_other; try refl. ii. rewrite length_list_repeat in *. clarify.
+      * rewrite Mem.setN_other; try refl. ii. rewrite repeat_length in *. clarify.
         destruct (classic (0 <= hi - lo)).
         { rewrite Z2Nat.id in *; ss. extlia. }
-        { abstr (hi - lo) x. destruct x; try extlia. rewrite Z2Nat.inj_neg in *. extlia. }
+        { abstr (hi - lo) x. destruct x; try extlia. }
   - ii. rewrite PMap.gsspec in *. des_ifs; bsimpl; des; ss; des_sumbool; clarify; eauto with mem.
 Qed.
 
@@ -481,11 +479,11 @@ Local Ltac simp := repeat (bsimpl; des; des_sumbool; ss; clarify).
 Lemma Mem_setN_in_repeat
       n v p q c
       (IN: p <= q < p + (Z.of_nat n)):
-    (ZMap.get q (Mem.setN (list_repeat n v) p c)) = v.
+    (ZMap.get q (Mem.setN (repeat v n) p c)) = v.
 Proof.
-  exploit (Mem.setN_in (list_repeat n v) p q c); eauto.
-  { ss. rewrite length_list_repeat. ss. }
-  i. apply in_list_repeat in H. ss.
+  exploit (Mem.setN_in (repeat v n) p q c); eauto.
+  { ss. rewrite repeat_length. ss. }
+  i. apply repeat_spec in H. ss.
 Qed.
 
 Theorem Mem_unfree_parallel_extends m1 m2 b lo hi m1'
@@ -505,7 +503,7 @@ Proof.
     + unfold Mem.perm, proj_sumbool, inject_id in *. ss. clarify. zsimpl.
       repeat rewrite PMap.gsspec in *. des_ifs.
       * rewrite Mem_setN_in_repeat; eauto; [econs|]. rewrite Z2Nat.id; nia.
-      * repeat rewrite Mem.setN_outside; try (by right; rewrite length_list_repeat; rewrite Z2Nat_range; des_ifs; try nia).
+      * repeat rewrite Mem.setN_outside; try (by right; rewrite repeat_length; rewrite Z2Nat_range; des_ifs; try nia).
         exploit mi_memval; eauto; i; zsimpl; ss.
       * repeat rewrite Mem.setN_outside; try (by left; nia). exploit mi_memval; eauto; i; zsimpl; ss.
       * repeat rewrite Mem.setN_outside; try by (left; nia). exploit mi_memval; eauto; i; zsimpl; ss.

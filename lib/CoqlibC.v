@@ -857,7 +857,7 @@ Lemma f_equal_h
       (ARG: x1 ~= x2)
       (TYPY: Y1 = Y2): (* Do we need this? *)
     f1 x1 ~= f2 x2.
-Proof. subst. eapply JMeq_eq in ARG. subst. ss. Qed.
+Proof. subst. subst. ss. Qed.
 
 Lemma f_equal_hr
       X1 X2 Y (f1: X1 -> Y) (f2: X2 -> Y) x1 x2

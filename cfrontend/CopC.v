@@ -16,7 +16,7 @@ Inductive typecheck (vs: list val) (tys: typelist): Prop :=
 | typecheck_intro
     (TYP: Forall2 (val_casted) vs (typelist_to_listtype tys))
     (NVOID: Forall (fun ty => ty <> Tvoid) (typelist_to_listtype tys))
-    (SZ: 4 * Conventions1.size_arguments_64 (typlist_of_typelist tys) 0 0 0 <= Ptrofs.max_unsigned).
+    (SZ: 4 * Conventions1.size_arguments_elf64 (typlist_of_typelist tys) 0 0 0 <= Ptrofs.max_unsigned).
 
 Lemma val_casted_has_type
       v ty

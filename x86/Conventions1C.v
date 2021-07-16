@@ -8,7 +8,7 @@ Set Implicit Arguments.
 
 
 Lemma loc_arguments_length_aux: forall tys ir fr ofs,
-    <<LEN: length (loc_arguments_64 tys ir fr ofs) = length tys>>.
+    <<LEN: length (loc_arguments_elf64 tys ir fr ofs) = length tys>>.
 Proof. i. ginduction tys; ii; ss. des_ifs; s; rewrite IHtys; ss. Qed.
 
 Lemma loc_arguments_length: forall sg,
@@ -22,8 +22,8 @@ Local Opaque list_nth_z.
 
 Let size_arguments_loc_arguments_aux: forall
     tys ofs x y z
-    (IN: z <= ofs < size_arguments_64 tys x y z),
-    exists base ty, (<<IN: In (S Outgoing base ty) (regs_of_rpairs (loc_arguments_64 tys x y z))>>)
+    (IN: z <= ofs < size_arguments_elf64 tys x y z),
+    exists base ty, (<<IN: In (S Outgoing base ty) (regs_of_rpairs (loc_arguments_elf64 tys x y z))>>)
                /\ (<<RANGE: base <= ofs < base + (Memdata.size_chunk (chunk_of_type ty))>>).
 Proof.
   i. ginduction tys; ii; ss; try extlia.

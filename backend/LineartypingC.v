@@ -27,18 +27,18 @@ Lemma ls_init_has_type
       ls_init sg vs
       (LEN: length vs = length sg)
       ir fr ofs
-      (LOCSET: typify_list vs sg = map (fun p => Locmap.getpair p ls_init) (loc_arguments_64 sg ir fr ofs))
+      (LOCSET: typify_list vs sg = map (fun p => Locmap.getpair p ls_init) (loc_arguments_elf64 sg ir fr ofs))
       sl pos ty
-      (IN: In (S sl pos ty) (regs_of_rpairs (loc_arguments_64 sg ir fr ofs)))
-      (ONES: forall lp, In lp (loc_arguments_64 sg ir fr ofs) -> is_one lp):
+      (IN: In (S sl pos ty) (regs_of_rpairs (loc_arguments_elf64 sg ir fr ofs)))
+      (ONES: forall lp, In lp (loc_arguments_elf64 sg ir fr ofs) -> is_one lp):
     <<TY: Val.has_type (ls_init (S sl pos ty)) ty>>.
 Proof.
-  remember (loc_arguments_64 sg ir fr ofs) as locs in *.
+  remember (loc_arguments_elf64 sg ir fr ofs) as locs in *.
   Local Opaque Z.add Z.mul Z.sub Z.div.
-  Local Opaque loc_arguments_64.
+  Local Opaque loc_arguments_elf64.
   ginduction locs; ii; ss. destruct vs; ss. destruct sg; ss. clarify. unfold typify_list in *.
   exploit ONES; eauto. i. destruct a; ss. clarify. des; cycle 1.
-  - Local Transparent loc_arguments_64.
+  - Local Transparent loc_arguments_elf64.
     ss. des_ifs; eapply IHlocs; eauto.
   - clarify. rewrite <- H3.
     assert(t = ty).

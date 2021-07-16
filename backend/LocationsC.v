@@ -91,7 +91,7 @@ Qed.
 Lemma notin_regs_of_rpairs
       ofs tys ir fr ofs2 T
       (LT:ofs + 2 <= ofs2):
-    Loc.notin (S Outgoing ofs T) (regs_of_rpairs (loc_arguments_64 tys ir fr ofs2)).
+    Loc.notin (S Outgoing ofs T) (regs_of_rpairs (loc_arguments_elf64 tys ir fr ofs2)).
 Proof.
   ginduction tys; ss; i.
   des_ifs; destruct T; econs; ss; et; try nia; eapply IHtys; try nia.
@@ -99,7 +99,7 @@ Qed.
 
 Lemma loc_arguments_norepet_aux
       tys (ir fr ofs: Z) locs
-      (LOCS: (regs_of_rpairs (loc_arguments_64 tys ir fr ofs)) = locs):
+      (LOCS: (regs_of_rpairs (loc_arguments_elf64 tys ir fr ofs)) = locs):
     (<<NOREP: Loc.norepet locs>>)
     /\ (<<NOTINIR: Loc.disjoint (map R (List.firstn (Z.to_nat ir) int_param_regs)) locs>>)
     /\ (<<NOTINFR: Loc.disjoint (map R (List.firstn (Z.to_nat fr) float_param_regs)) locs>>).
@@ -109,10 +109,10 @@ Proof.
   assert(TTT: Loc.disjoint (map R int_param_regs) (map R float_param_regs)).
   { ii; ss. des; subst; ss. }
   destruct (classic (a = Tfloat \/ a = Tsingle)).
-  { assert(loc_arguments_64 (a :: tys) ir fr ofs =
+  { assert(loc_arguments_elf64 (a :: tys) ir fr ofs =
            match list_nth_z float_param_regs fr with
-           | Some freg => One (R freg) :: loc_arguments_64 tys ir (fr + 1) ofs
-           | None => One (S Outgoing ofs a) :: loc_arguments_64 tys ir fr (ofs + 2)
+           | Some freg => One (R freg) :: loc_arguments_elf64 tys ir (fr + 1) ofs
+           | None => One (S Outgoing ofs a) :: loc_arguments_elf64 tys ir fr (ofs + 2)
            end).
     { desH H; subst; ss. }
     rewrite H0. clear H H0. des_ifs.
@@ -146,10 +146,10 @@ Proof.
   }
   { assert(a = Tint \/ a = Tlong \/ a = Tany32 \/ a = Tany64).
     { eapply not_or_and in H. des. destruct a; des_ifs; et. }
-    assert(loc_arguments_64 (a :: tys) ir fr ofs =
+    assert(loc_arguments_elf64 (a :: tys) ir fr ofs =
            match list_nth_z int_param_regs ir with
-           | Some ireg => One (R ireg) :: loc_arguments_64 tys (ir + 1) fr ofs
-           | None => One (S Outgoing ofs a) :: loc_arguments_64 tys ir fr (ofs + 2)
+           | Some ireg => One (R ireg) :: loc_arguments_elf64 tys (ir + 1) fr ofs
+           | None => One (S Outgoing ofs a) :: loc_arguments_elf64 tys ir fr (ofs + 2)
            end).
     { desH H0; subst; ss. }
     rewrite H1. clear H H0 H1. des_ifs.

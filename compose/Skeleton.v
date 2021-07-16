@@ -5,7 +5,7 @@ Require Export ASTC.
 Require Import MapsC.
 Require Import Values.
 Require Import Linking.
-Require Import Conventions1.
+Require Import Conventions Conventions1.
 Require Import Integers.
 
 Set Implicit Arguments.

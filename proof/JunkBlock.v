@@ -40,7 +40,7 @@ Section PROPS.
   Proof.
     i. unfold NW. ginduction n; ii; ss. des_ifs_safe.
     erewrite IHn; eauto. erewrite Mem.nextblock_alloc; eauto. rewrite ! Pplus_one_succ_r; ss.
-    des_ifs; try extlia. rewrite <- Pos.add_assoc. rewrite Pos.add_comm with (p := 1%positive). ss.
+    des_ifs; try extlia.
   Qed.
 
   Lemma assign_junk_blocks_nextblock'

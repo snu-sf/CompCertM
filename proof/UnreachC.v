@@ -388,7 +388,15 @@ Definition romatch_ske (bc: block_classification) (m: mem) (rm: ident -> option 
 
 Lemma romatch_ske_unchanged_on
       (ske: SkEnv.t) m0 m1 rm
-      (RO: Mem.unchanged_on (loc_not_writable m0) m0 m1)
+      (* (RO: Mem.unchanged_on (loc_not_writable m0) m0 m1) *)
+      (RO: forall b ofs n bytes
+                  (RO: forall i, (ofs <= i < ofs + n)%Z -> ~ Mem.perm m0 b i Max Writable)
+                  (VALID: Mem.valid_block m0 b)
+                  (LB: Mem.loadbytes m1 b ofs n = Some bytes),
+          (<<LB: Mem.loadbytes m0 b ofs n = Some bytes>>))
+    (PERM: forall blk ofs
+        (VALID: (Mem.valid_block m0) blk),
+        (Mem.perm m1) blk ofs Max <1= (Mem.perm m0) blk ofs Max)
       (NB: Ple (Genv.genv_next ske) (Mem.nextblock m0))
       (ROMATCH: romatch_ske (ske2bc ske) m0 rm):
     <<ROMATCH: romatch_ske (ske2bc ske) m1 rm>>.
@@ -397,8 +405,8 @@ Proof.
   assert(VAL: Mem.valid_block m0 b).
   { ss. des_ifs. unfold Mem.valid_block. extlia. }
   esplits; et.
-  - eapply bmatch_ext; et. i. erewrite <- Mem.loadbytes_unchanged_on_1; et. ii. eapply H1; et.
-  - ii. eapply H1; et. eapply Mem.perm_unchanged_on_2; et. ii. eapply H1; et.
+  - eapply bmatch_ext; et. i. eapply RO; et.
+  - ii. eapply PERM in H2; et. eapply H1; et.
 Qed.
 
 Definition romem_for_ske (ske: SkEnv.t): ident -> option ablock :=

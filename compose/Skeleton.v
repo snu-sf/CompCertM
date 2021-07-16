@@ -5,7 +5,8 @@ Require Export ASTC.
 Require Import MapsC.
 Require Import Values.
 Require Import Linking.
-Require Import Conventions Conventions1.
+Require Import Conventions1.
+Require Conventions.
 Require Import Integers.
 
 Set Implicit Arguments.
@@ -187,7 +188,7 @@ Module Sk.
       (* The sum of the sizes of the function parameters must be less than INT_MAX. *)
       (WFPARAM: forall id skd
           (IN: In (id, (Gfun skd)) sk.(prog_defs)),
-          4 * size_arguments (get_sig skd) <= Ptrofs.max_unsigned).
+          4 * Conventions.size_arguments (get_sig skd) <= Ptrofs.max_unsigned).
 
 End Sk.
 
@@ -208,7 +209,7 @@ Module SkEnv.
        <<SYMB: exists id, (Genv.find_symbol skenv) id = Some blk>>)
     (WFPARAM: forall blk skd
         (DEF: (Genv.find_def skenv) blk = Some (Gfun skd)),
-        <<SIZE: 4 * size_arguments (Sk.get_sig skd) <= Ptrofs.max_unsigned>>).
+        <<SIZE: 4 * Conventions.size_arguments (Sk.get_sig skd) <= Ptrofs.max_unsigned>>).
 
   Inductive wf_mem (skenv: t) (sk: Sk.t) (m0: mem): Prop :=
   | wf_mem_intro

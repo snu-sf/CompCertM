@@ -19,7 +19,7 @@ Require Import LocationsC Conventions.
 Require Import MatchSimModSem.
 Require Import mktac.
 Require Import IntegersC.
-Require Import IdSimExtra ClightStepInj.
+Require Import IdSimExtra Clight ClightStepInj.
 
 Set Implicit Arguments.
 
@@ -508,7 +508,7 @@ Section CLIGHTSOUND.
         econs; eauto; try econs.
         * eapply UnreachC.unreach_to_inj_val; eauto.
         * inv TYP. unfold typify_list. revert VALS.
-          generalize (sig_args (signature_of_function fd)). clear.
+          generalize (AST.sig_args (signature_of_function fd)). clear.
           induction vs; ss. i. inv VALS. des_ifs. econs; eauto.
           unfold typify. des_ifs. eapply UnreachC.unreach_to_inj_val; eauto.
       + refl.

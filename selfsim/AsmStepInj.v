@@ -60,7 +60,7 @@ Qed.
 
 Lemma asm_step_readonly se ge_src rs0 rs1 m0 m1 tr
       (STEP: Asm.step ge_src se (Asm.State rs0 m0) tr (Asm.State rs1 m1)):
-    Mem.unchanged_on (loc_not_writable m0) m0 m1.
+    unchanged_ro m0 m1.
 Proof.
   replace m1 with (st_m (Asm.State rs1 m1)); eauto.
   replace m0 with (st_m (Asm.State rs0 m0)); eauto.
@@ -68,12 +68,14 @@ Proof.
   generalize dependent (Asm.State rs1 m1).
   i. ginduction STEP; i; ss.
   - unfold exec_instr, goto_label in *; des_ifs; ss; clarify; try refl;
-      (all_once_fast ltac:(fun H=> try (eapply exec_load_mem_equal in H; clarify; try refl; fail))); try (exploit exec_store_readonly; eauto; fail).
+      try (eapply unchanged_unchanged_ro; exploit exec_store_readonly; eauto; fail);
+      try (eapply unchanged_unchanged_ro;
+           (all_once_fast ltac:(fun H=> try (eapply exec_load_mem_equal in H; clarify; try refl; fail)))).
     + eapply mem_readonly_trans; [eapply mem_alloc_readonly; eauto|].
       eapply mem_readonly_trans; eapply mem_store_readonly; eauto.
     + eapply mem_free_readonly; eauto.
-  - eapply external_call_readonly; eauto.
-  - eapply external_call_readonly; eauto.
+  - ii. eapply external_call_readonly; eauto.
+  - ii. eapply external_call_readonly; eauto.
 Qed.
 
 Ltac tac_p := ss; try (symmetry; eapply Ptrofs.add_zero; fail);

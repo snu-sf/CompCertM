@@ -27,14 +27,15 @@ Local Opaque Z.mul Z.add Z.sub Z.div.
 
 Lemma clight_step_readonly se ge st0 st1 tr
       (STEP: step se ge (function_entry2 ge) st0 tr st1):
-    Mem.unchanged_on (loc_not_writable (get_mem st0)) (get_mem st0) (get_mem st1).
+    unchanged_ro (get_mem st0) (get_mem st1).
 Proof.
-  inv STEP; ss; try refl; try (by eapply mem_free_list_readonly; eauto); try (by eapply external_call_readonly; eauto).
-  - inv H2.
+  inv STEP; ss; try refl; try (by eapply unchanged_unchanged_ro; eapply mem_free_list_readonly; eauto);
+    try (by ii; eapply external_call_readonly; eauto).
+  - eapply unchanged_unchanged_ro. inv H2.
     + unfold Mem.storev in *. eapply mem_store_readonly; eauto.
     + eapply Mem.storebytes_unchanged_on; eauto. ii. unfold loc_not_writable in *.
       eapply H9. eapply Mem.perm_cur. eapply Mem.storebytes_range_perm; eauto.
-  - inv H. eapply alloc_variables_unchanged_on; eauto.
+  - eapply unchanged_unchanged_ro. inv H. eapply alloc_variables_unchanged_on; eauto.
 Qed.
 
 Definition match_env (j: meminj) (env_src env_tgt: env) :=
@@ -182,12 +183,11 @@ Section CLIGHTINJ.
           omega. congruence. } subst.
         destruct (Mem.range_perm_storebytes (SimMemInj.tgt sm0) blk_tgt (Ptrofs.unsigned (Ptrofs.add ofs_src (Ptrofs.repr delta0))) nil)
           as [tm' SB].
-        { simpl. red; intros; omegaContradiction. }
+        { simpl. red; intros; lia. }
         eexists (SimMemInj.mk _ tm' _ _ _ _ _ _ _); ss. esplits; cycle 3; eauto.
         * econs; ss; eauto; try (eapply Mem.storebytes_unchanged_on; eauto; i; ss; omega);
             try (ii; eapply Mem.perm_storebytes_2; eauto); try (econs; i; des; clarify).
-       * econs 2; eauto; i; try omegaContradiction.
-          { rewrite e; right; omega. }
+       * econs 2; eauto; i; try lia.
           { apply Mem.loadbytes_empty. omega. }
         * inv MWF. econs; ss; eauto; try (erewrite Mem.nextblock_storebytes; eauto).
           { eapply Mem.storebytes_empty_inject; eauto. }

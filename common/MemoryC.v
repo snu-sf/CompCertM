@@ -26,7 +26,22 @@ Require Export Memory.
 
 
 
+Definition unchanged_ro (m0 m1: mem): Prop :=
+  (forall b ofs n bytes
+          (RO: forall i, ofs <= i < ofs + n -> ~ Mem.perm m0 b i Max Writable)
+          (VALID: Mem.valid_block m0 b)
+          (LB: Mem.loadbytes m1 b ofs n = Some bytes),
+      (<<LB: Mem.loadbytes m0 b ofs n = Some bytes>>)).
 
+Lemma unchanged_unchanged_ro
+      m0 m1
+      (UNCH: Mem.unchanged_on (loc_not_writable m0) m0 m1)
+  :
+    <<UNCH: unchanged_ro m0 m1>>
+.
+Proof.
+  ii. erewrite <- Mem.loadbytes_unchanged_on_1; et.
+Qed.
 
 Global Program Instance mem_unchanged_on_PreOrder P: RelationClasses.PreOrder (Mem.unchanged_on P).
 Next Obligation. ii; ss. eapply Mem.unchanged_on_refl. Qed.

@@ -552,7 +552,7 @@ Lemma Genv_bytes_of_init_data_length
       F V (ge: Genv.t F V) a:
     Datatypes.length (Genv.bytes_of_init_data ge a) = Z.to_nat (init_data_size a).
 Proof.
-  clear - a. destruct a; ss; des_ifs. rewrite length_list_repeat. rewrite Z2Nat.inj_max. ss. extlia.
+  clear - a. destruct a; ss; des_ifs. rewrite repeat_length. rewrite Z2Nat.inj_max. ss. extlia.
 Qed.
 
 Inductive wf_mem_weak (skenv ge0: SkEnv.t) (sk: Sk.t) (m0: mem): Prop :=
@@ -731,8 +731,8 @@ Proof.
             abstr ((Mem.mem_contents m1) !! blk) MC. clear_tac.
             assert(POS0: 0 <= Z.max z 0) by extlia.
             exploit (@Mem.getN_in MC ofs_mid (Z.to_nat (Z.max z 0)) ofs_bound); eauto.
-            { split; try extlia. rewrite Z2Nat.id; ss. }
-            intro R. rewrite Q in *. unfold Z.to_nat in *. rewrite P in *. clear - R. apply in_list_repeat in R. ss.
+            { split; try extlia. }
+            intro R. rewrite Q in *. unfold Z.to_nat in *. rewrite P in *. clear - R. apply repeat_spec in R. ss.
 
           + des_ifs; cycle 1.
             { exfalso. unfold Mem.loadbytes in *. des_ifs.

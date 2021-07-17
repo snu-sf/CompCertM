@@ -17,7 +17,7 @@ Proof.
   des_ifs. etrans; cycle 1.
   { eapply align_le; eauto. lia. }
   etrans; cycle 1.
-  { generalize (bound_local_pos b); i. instantiate (1:= align (size_callee_save_area b (align (4 * bound_outgoing b) 8 + 8)) 8). lia. }
+  { generalize (bound_local_pos b); i. instantiate (1:= align (size_callee_save_area b (align (4 * bound_outgoing b) 8 + 8)) 8). unfold fe_ofs_arg. des_ifs. rewrite Z.add_0_l. lia. }
   etrans; cycle 1.
   { eapply align_le; eauto. lia. }
   etrans; cycle 1.

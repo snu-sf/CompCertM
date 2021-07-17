@@ -164,7 +164,7 @@ Module _FillArgsParallel.
 
   Lemma copy_list_memval_decode_undef vl vl'
         (COPY: copy_list_memval Vundef vl = vl'):
-      vl' = list_repeat (List.length vl) Undef.
+      vl' = repeat Undef (List.length vl).
   Proof.
     revert vl' COPY. induction vl; ss; i; clarify. f_equal. eapply IHvl; eauto.
   Qed.
@@ -454,14 +454,14 @@ Module _FillArgsParallel.
   Qed.
 
   Definition encode_val' (chunk: memory_chunk) (v: val) : list memval :=
-    if Val.eq v Vundef then list_repeat (size_chunk_nat chunk) Undef
+    if Val.eq v Vundef then repeat Undef (size_chunk_nat chunk)
     else encode_val chunk v.
 
   Lemma encode_val_length' chunk v:
       Datatypes.length (encode_val' chunk v) = size_chunk_nat chunk.
   Proof.
     unfold encode_val'. des_ifs.
-    - eapply length_list_repeat.
+    - eapply repeat_length.
     - eapply encode_val_length.
   Qed.
 
@@ -550,7 +550,7 @@ Module _FillArgsParallel.
           rewrite LEQ at 1. rewrite Mem.getN_setN_same.
           instantiate (1:=fill_args_blk (ZMap.init Undef) 0 args locs). i.
           destruct (classic (v = Vundef)).
-          { clarify. unfold encode_val' in *. des_ifs. eapply in_list_repeat in H1. rewrite H1. left. econs. }
+          { clarify. unfold encode_val' in *. des_ifs. eapply repeat_spec in H1. rewrite H1. left. econs. }
           { right. des. esplits; eauto.
             - ss. eauto.
             - rewrite size_chunk_conv in *. auto.

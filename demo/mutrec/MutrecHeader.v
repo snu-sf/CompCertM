@@ -77,5 +77,5 @@ Qed.
 
 Require AST.
 
-Definition fg_sig: AST.signature := (AST.mksignature [AST.Tint] (Some AST.Tint) AST.cc_default true).
+Definition fg_sig: AST.signature := (AST.mksignature [AST.Tint] (AST.Tret AST.Tint) AST.cc_default).
 

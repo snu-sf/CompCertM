@@ -603,12 +603,9 @@ Proof.
         destruct (classic (x0 = Pos.succ (Mem.nextblock src))).
         { clarify. des_ifs; bsimpl; des; des_sumbool; ss; try extlia.
           - do 2 f_equal. extlia.
-          - exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try extlia. Local Opaque Pos.of_nat.
         }
         des_ifs; bsimpl; des; des_sumbool; ss; try extlia.
         { do 2 f_equal. extlia. }
-        { exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try extlia. Local Opaque Pos.of_nat. }
-        { exfalso. Local Transparent Pos.of_nat. ss. des_ifs; try extlia. Local Opaque Pos.of_nat. }
         { rewrite Q3; ss. }
         { rewrite Q3; ss. }
     + etrans; eauto.

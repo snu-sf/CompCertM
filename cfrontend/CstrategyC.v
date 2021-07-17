@@ -21,7 +21,7 @@ Require Import Simulation Skeleton Mod ModSem.
 Require Import CtypesC.
 Require Import Conventions.
 Require Import CtypingC.
-Require Export CopC Ctypes Ctyping Csyntax Cexec Cstrategy CsemC.
+Require Export CopC Ctypes Ctyping Csyntax Cexec Csem Cstrategy.
 
 Set Implicit Arguments.
 
@@ -161,13 +161,13 @@ Section MODSEM.
         exploit external_call_trace_length; eauto. destruct t1; simpl; intros.
         exploit external_call_receptive; eauto. intros [vres2 [m2 EC2]].
         econstructor; econstructor. left; eapply step_builtin; eauto.
-        omegaContradiction.
+        lia.
       + (* external calls *)
         inv H1.
         exploit external_call_trace_length; eauto. destruct t1; simpl; intros.
         exploit external_call_receptive; eauto. intros [vres2 [m2 EC2]].
         exists (Returnstate vres2 k m2); exists E0; right; econstructor; eauto.
-        omegaContradiction.
+        lia.
     - red; intros. inv H; inv H0; ss.
       + (* valof volatile *)
         exploit deref_loc_trace; eauto. destruct t; auto. destruct t; tauto.
@@ -189,10 +189,10 @@ Section MODSEM.
         exploit deref_loc_trace; eauto. destruct t; auto. destruct t; tauto.
       + (* builtins *)
         exploit external_call_trace_length; eauto.
-        destruct t; simpl; auto. destruct t; simpl; auto. intros; omegaContradiction.
+        destruct t; simpl; auto. destruct t; simpl; auto. intros; lia.
       + (* external calls *)
         exploit external_call_trace_length; eauto.
-        destruct t; simpl; auto. destruct t; simpl; auto. intros; omegaContradiction.
+        destruct t; simpl; auto. destruct t; simpl; auto. intros; lia.
   Qed.
 
 End MODSEM.

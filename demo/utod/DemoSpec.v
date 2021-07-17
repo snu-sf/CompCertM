@@ -16,7 +16,7 @@ Section MODSEM.
 
   Definition prog : AST.program (AST.fundef (signature)) unit :=
     {| prog_defs :=
-         [(func_id, Gfun (Internal ((mksignature [Tlong] (Some Tfloat) cc_default true))))];
+         [(func_id, Gfun (Internal ((mksignature [Tlong] (Tret Tfloat) cc_default))))];
        prog_public := [func_id; main_id];
        prog_main := main_id |}.
 

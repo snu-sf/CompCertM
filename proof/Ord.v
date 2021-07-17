@@ -153,13 +153,13 @@ Inductive ord (x0 x1: idx): Prop :=
 Theorem wf_ord: well_founded ord.
 Proof.
   econs; eauto. ii. inv H. destruct a, y; ss. clarify.
-  apply JMeq_eq in EQORD. clarify. clear_tac. unfold eq_rect in *.
+  clarify. clear_tac. unfold eq_rect in *.
   swapname elem1 elem0. clear ORD. clear_tac.
   { pattern elem0. eapply well_founded_ind; try eassumption. ii. clear_tac.
     econs; eauto. ii. destruct y; ss. inv H0. ss. clarify.
     (* eapply H. Undo 1. (* IDK why but apply acts in weird way. *) *)
     specialize (H elem0). unfold eq_rect in *. specialize (H ORD).
-    apply JMeq_eq in EQORD. clarify. clear_tac.
+    clarify. clear_tac.
     generalize proof_irr. intro IRR. unfold ClassicalFacts.proof_irrelevance in *.
     specialize (IRR _ wf_local_ord0 wf_local_ord1). clarify.
   }

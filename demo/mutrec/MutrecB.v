@@ -49,7 +49,7 @@ Definition code: list instruction :=
      Pleal RDI (Addrmode (Some RBX) None (inl (- 1)));
      (* leal    -1(%ebx), %edi *)
 
-     Pcall_s f_id (mksignature [Tint] (Some Tint) cc_default true);
+     Pcall_s f_id (mksignature [Tint] (Tret Tint) cc_default);
      (* call    f *)
 
      Pleal RAX (Addrmode (Some RAX) (Some (RBX, 1)) (inl 0));
@@ -77,13 +77,13 @@ Definition code: list instruction :=
  ].
 
 Definition func_g: function :=
-  mkfunction (mksignature [Tint] (Some Tint) cc_default true) code
+  mkfunction (mksignature [Tint] (Tret Tint) cc_default) code
 .
 
 Definition global_definitions : list (ident * globdef fundef unit) :=
 ((f_id,
    Gfun(External (EF_external "f"
-                   (mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default true)))) :: (_memoized, Gvar v_memoized) ::
+                   (mksignature (AST.Tint :: nil) (Tret AST.Tint) cc_default)))) :: (_memoized, Gvar v_memoized) ::
  (g_id, Gfun(Internal func_g)) :: nil).
 
 Definition public_idents : list ident :=

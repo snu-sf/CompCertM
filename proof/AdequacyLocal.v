@@ -8,7 +8,7 @@ Require Import SmallstepC.
 Require Import Integers.
 Require Import Events.
 
-Require Import Skeleton ModSem Mod Sem.
+Require Import ASTC Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem SimMod SimModSem SimProg SimProg.
 Require Import ModSemProps SemProps Ord.
 Require Import Sound Preservation AdequacySound.

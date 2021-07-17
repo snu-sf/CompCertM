@@ -1,5 +1,5 @@
 Require Import FSets CoqlibC Maps Ordered Iteration Errors.
-Require Import AST Linking.
+Require Import ASTC Linking.
 Require Import IntegersC ValuesC Memory Globalenvs Events Smallstep.
 Require Import Op Registers RTLC.
 Require Import Unusedglob.

@@ -8,7 +8,7 @@ Require Import Simulation.
 Require Import Integers.
 Require Import EventsC.
 Require Import MapsC.
-Require Import BehaviorsC.
+Require Import ASTC BehaviorsC.
 
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem.

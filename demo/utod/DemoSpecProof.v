@@ -1,5 +1,5 @@
 Require Import CoqlibC Maps Postorder.
-Require Import AST Linking.
+Require Import ASTC Linking.
 Require Import ValuesC Memory Globalenvs Events Smallstep.
 Require Import Csyntax AsmC AsmExtra.
 Require Import sflib.
@@ -226,7 +226,7 @@ Proof.
   ss. clarify. unfold AsmC.store_arguments in *. des.
   dup STORE0. inv STORE0.
   unfold typify_list, zip in *. inv VALS. des_ifs_safe.
-  unfold Conventions1.loc_arguments, Conventions1.size_arguments in *. ss. des_ifs.
+  unfold Conventions1.loc_arguments, Conventions.size_arguments in *. ss. des_ifs.
   inv H3.
 
   eexists (DemoSpec.mkstate lng (SimMemInj.src sm_arg)). esplits; eauto.
@@ -330,7 +330,7 @@ Proof.
            ++ ii. unfold Conventions1.is_callee_save in *.
               des_ifs; unfold nextinstr_nf, nextinstr, undef_regs;
                 repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
-           ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
+           ++ unfold Conventions.size_arguments. des_ifs. ss. zsimpl. eauto.
            ++ unfold Conventions1.loc_result. des_ifs.
         -- instantiate (1:= sm1).
            unfold nextinstr_nf, nextinstr, undef_regs;
@@ -370,7 +370,7 @@ Proof.
            ++ ii. unfold Conventions1.is_callee_save in *.
               des_ifs; unfold nextinstr_nf, nextinstr, undef_regs;
                 repeat ((try (rewrite Pregmap.gso by clarify));(try rewrite Pregmap.gss)); (repeat rewrite RDI0); (repeat rewrite SF0); (repeat rewrite RA0); (repeat rewrite NEXT0).
-           ++ unfold Conventions1.size_arguments. des_ifs. ss. zsimpl. eauto.
+           ++ unfold Conventions.size_arguments. des_ifs. ss. zsimpl. eauto.
            ++ unfold Conventions1.loc_result. des_ifs.
         -- instantiate (1:= sm1).
            unfold nextinstr_nf, nextinstr, undef_regs;

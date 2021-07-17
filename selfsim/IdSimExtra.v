@@ -2,7 +2,7 @@ Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem S
 Require SimMemId SimMemExt SimMemInj.
 Require SoundTop SimSymbId SimSymbDrop.
 Require Import CoqlibC.
-Require Import ValuesC.
+Require Import ASTC ValuesC.
 Require Import MapsC.
 Require Import AxiomsC.
 Require Import Ord.

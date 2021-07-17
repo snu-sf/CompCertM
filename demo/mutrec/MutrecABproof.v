@@ -1,5 +1,5 @@
 Require Import CoqlibC Maps Postorder.
-Require Import AST Linking.
+Require Import ASTC Linking.
 Require Import ValuesC Memory GlobalenvsC Events Smallstep.
 Require Import Op Registers ClightC Renumber.
 Require Import CtypesC CtypingC.

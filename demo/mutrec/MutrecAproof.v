@@ -174,7 +174,6 @@ Proof.
     exploit DEFS; eauto. i; des.
     assert(blk = g_blk).
     { inv PROJ. exploit SYMBKEEP; et.
-      - instantiate (1:= g_id). unfold defs. des_sumbool. ss. et.
       - i. rewrite SYMB0 in *. clear - SYMB H. unfold SkEnv.revive in *. rewrite Genv_map_defs_symb in *. ss.
         rewrite SYMB in *. des. clarify.
     }

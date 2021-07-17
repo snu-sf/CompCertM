@@ -7,7 +7,7 @@ Require Import Globalenvs.
 Require Import AST.
 
 Require Import IntegersC SimMemLift SimMemInjC.
-Require Import Conventions1.
+Require Import Conventions.
 Require Export SimMemInj.
 Require StoreArguments.
 
@@ -68,7 +68,7 @@ Proof.
       exfalso. eapply Mem.fresh_block_alloc; eauto.
     + ii. eauto with mem extlia.
     + i. r. etrans; cycle 1.
-      { ii. eapply Mem.perm_alloc_4; et. }
+      { ii. eapply Mem.perm_alloc_4; et. eauto with mem. }
       { ii. eapply Mem.perm_unchanged_on_2; et.
         - ss. des_ifs. unfold Mem.valid_block in *. extlia.
         - unfold Mem.valid_block in *. extlia.

@@ -1,5 +1,5 @@
 Require Import CoqlibC Maps Postorder.
-Require Import AST Linking.
+Require Import ASTC Linking.
 Require Import ValuesC Memory GlobalenvsC Events Smallstep.
 Require Import Op Registers ClightC Renumber.
 Require Import sflib.
@@ -285,7 +285,7 @@ Lemma f_blk_exists
                   f_blk = None>>)
       /\
       (<<FINDF: exists skd, Genv.find_funct_ptr skenv_link f_blk = Some skd /\
-                            Some (mksignature (AST.Tint :: nil) (Some AST.Tint) cc_default true) = Sk.get_csig skd>>)
+                            Some (mksignature (AST.Tint :: nil) (Tret AST.Tint) cc_default) = Sk.get_csig skd>>)
 .
 Proof.
   exploit (prog_defmap_norepet prog f_id); eauto.
@@ -314,7 +314,6 @@ Proof.
     exploit DEFS; eauto. i; des.
     assert(blk = f_blk).
     { inv PROJ. exploit SYMBKEEP; et.
-      - instantiate (1:= f_id). unfold defs. des_sumbool. ss. et.
       - i. rewrite SYMB0 in *. clear - SYMB H. unfold SkEnv.revive in *. rewrite Genv_map_defs_symb in *. ss.
         rewrite SYMB in *. des. clarify.
     }
@@ -865,7 +864,7 @@ Proof.
           - econs. }
         { zsimpl. psimpl. inv WF.
           rewrite Genv.find_funct_ptr_iff in FINDF1.
-          eapply WFPARAM in FINDF1. generalize (size_arguments_above (Sk.get_sig skd)); i. etrans; eauto. extlia. }
+          eapply WFPARAM in FINDF1. generalize (Conventions.size_arguments_above (Sk.get_sig skd)); i. etrans; eauto. extlia. }
         { ii. apply Z.divide_0_r. }
         { ss. }
 
@@ -899,7 +898,7 @@ Proof.
                       m1 _ _ _ _ _ _ _) _ _).
         esplits; ss.
         { econs; ss; eauto.
-          - instantiate (1:=mksignature [AST.Tint] (Some AST.Tint) cc_default true).
+          - instantiate (1:=mksignature [AST.Tint] (Tret AST.Tint) cc_default).
             assert (SYMBREV: Genv.find_symbol
                                (SkEnv.revive (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) prog) f_id = Some g_fptr) by ss.
             unfold Genv.symbol_address. rewrite SYMBREV. ss. des_ifs.
@@ -908,7 +907,7 @@ Proof.
             { rewrite <- defs_prog_defmap. eauto. }
             exploit SkEnv.project_impl_spec. eapply INCL. i. inv H.
             inv INCL. exploit DEFS; eauto.
-          - unfold size_arguments. des_ifs. ss. psimpl. eauto. }
+          - unfold Conventions.size_arguments. des_ifs. ss. psimpl. eauto. }
         { etrans; eauto. refl. }
         { right. eapply CIH; eauto.
           { exploit SimSymb.mle_preserves_sim_skenv; ss; cycle 1; eauto.

@@ -68,7 +68,7 @@ Proof.
         { econs; eauto. }
         inv SAFESRC. folder. inv TYP.
         exploit (Genv.find_funct_match_genv SIMGE); eauto. intro TFPTR; des. ss.
-        f_equal; ss. inv TFPTR0; ss. inv H0; ss. unfold Csyntax.type_of_function. unfold type_of_function.
+        f_equal; ss. inv TFPTR0; ss. inv H0; ss. unfold Csyntax.type_of_function, Clight.type_of_function.
         f_equal; try congruence.
     + des. inv SAFESRC. ss.
   - (* init progress *)

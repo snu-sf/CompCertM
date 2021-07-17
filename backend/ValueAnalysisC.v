@@ -353,37 +353,9 @@ Section PRSV.
           inv AT. ss. inv MLE. eapply romatch_ext; et; i.
           { assert(RANGE_PERM: Mem.range_perm (Retv.m retv) b ofs (ofs + n) Cur Readable).
             { eapply Mem.loadbytes_range_perm; et. }
-            erewrite <- Mem.loadbytes_unchanged_on_1; try eapply RO0; et.
-            - admit "".
+            eapply RO0; et.
+            - clear - RO ROMEM H. des. r in RO. exploit RO; et. i; des. eauto.
             - eapply mmatch_below; et. congruence.
-            - i. inv SKENV. ss. rr in ROMATCH. des.
-              exploit (romem_for_consistent cunit); eauto. intro X; des.
-
-              inv GE. hexploit (H3 id b); eauto. intro Y. des.
-              hexploit1 Y0; eauto.
-
-              eapply (ROMATCH b id); eauto.
-              + unfold ske2bc. s. rename b into blk. exploit Genv.genv_symb_range; et. intro BNB. des_ifs_safe.
-                dup Y0. unfold SkEnv.revive in Y1. ss. rewrite Genv_map_defs_symb in Y1.
-                exploit Genv.find_invert_symbol; et. intro INV. rewrite INV. ss.
-              + eapply romem_for_ske_complete; et. clear - LO X INCL Y0 X2. inv INCL.
-                exploit (prog_defmap_linkorder cunit); et. intro Z; des.
-                hexploit (Sk.of_program_prog_defmap p fn_sig id); et. intro REL.
-                unfold fundef in *. rewrite Z in REL. inv REL. symmetry in H0.
-                exploit DEFS; et. intro W; des.
-                assert(b = blk).
-                { clear - Y0 SYMB. unfold SkEnv.revive, SkEnv.project in *. uge. ss.
-                  rewrite MapsC.PTree_filter_key_spec in *. des_ifs.
-                  (* TODO: make lemma *)
-                } clarify.
-                unfold SkEnv.project. ss. unfold Genv.find_var_info.
-                erewrite Genv_map_defs_def_inv; et; cycle 1.
-                exploit Genv.find_invert_symbol; et. intro INV.
-                rewrite INV. unfold o_bind. s. rewrite H0. s. unfold internals. rewrite H0. s.
-                inv Z0. inv H1. ss. inv H2. inv H3. inv MATCH. inv H3. inv H9. destruct info1, i3; ss. repeat f_equal; ss.
-
-                (* TODO: make lemma *)
-                clear - X2 H1. unfold ValueAnalysis.definitive_initializer in *. des_ifs; inv H1; ss.
           }
           { apply PERM; et. eapply mmatch_below; et. congruence. }
         * { constructor; simpl; intros.

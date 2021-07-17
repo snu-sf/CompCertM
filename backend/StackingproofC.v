@@ -382,10 +382,6 @@ Proof.
   { ss. u. split; i; des; clarify; esplits; et; psimpl; zsimpl; try extlia.
     { exploit tailcall_size; eauto. i. omega. }
     { specialize (SZARG sg). omega. }
-    { destruct (classic (4 * size_arguments sg <= x1)).
-      - right. esplits; et.
-      - left. esplits; et. extlia.
-    }
   }
   Local Opaque frame_contents frame_contents_at_external.
   inv STK; ss.
@@ -479,6 +475,19 @@ Definition strong_wf_tgt (st_tgt0: Mach.state): Prop :=
   exists parent_sp parent_ra, last_option (MachC.get_stack st_tgt0) = Some (Mach.dummy_stack parent_sp parent_ra).
 
 
+Lemma align_dist
+      (x y m: Z)
+      (DIV: (m | y))
+  :
+    align (x + y) m = align x m + y
+.
+Proof.
+  unfold align. r in DIV. des. subst.
+  destruct (classic (m = 0)).
+  { subst. lia. }
+  replace (x + z * m + m - 1) with (x + m - 1 + (z * m)) by lia. rewrite Z.div_add; try lia.
+Qed.
+
 Local Transparent make_env sepconj.
 Lemma contains_callee_saves_footprint
       j sp b rs0 ofs
@@ -501,6 +510,7 @@ Proof.
   }
   abstr (align (4 * bound_outgoing) 8 + 8) initofs.
   clear bound_outgoing_pos bound_stack_data_pos bound_local_pos. clear_tac.
+  unfold fe_ofs_arg in *. des_ifs. rewrite Z.add_0_l in *.
   ginduction used_callee_save; ii; ss.
   assert((4 | (AST.typesize (mreg_type a))) /\
          ((AST.typesize (mreg_type a)) | 8) /\ 0 < (AST.typesize (mreg_type a))).
@@ -511,14 +521,21 @@ Proof.
     + eapply Z.lt_le_trans; eauto. etrans; cycle 1.
       { eapply size_callee_save_area_rec_incr; eauto. }
       rewrite ! size_type_chunk. refl.
-  - exploit IHused_callee_save; revgoals; cycle 1; swap 1 3; eauto.
-    { esplits; eauto.
-      - des. eapply Z.add_pos_pos; eauto. eapply Z.lt_le_trans. eapply H0. eapply align_le. omega.
-      - des. eapply Z.divide_add_r; eauto. eapply Z.divide_trans. eapply H1. eapply align_divides. omega.
+  - rewrite mreg_type_any in *. ss. des.
+    exploit IHused_callee_save; revgoals; cycle 1; swap 1 3; eauto.
+    { rp; et. f_equal. instantiate (1:= bound_outgoing + 2).
+      rewrite Z.mul_add_distr_l. replace (4 * 2) with 8; ss. rewrite ! align_dist; ss. f_equal.
+      rewrite align_idempotence; ss.
     }
+    (*   - des. eapply Z.add_pos_pos; eauto. eapply Z.lt_le_trans. eapply H0. eapply align_le. omega. *)
+    (*   - des. eapply Z.divide_add_r; eauto. eapply Z.divide_trans. eapply H1. eapply align_divides. omega. *)
+    (* } *)
     { inv used_callee_save_norepet. ss. }
     { ss. i; des. split; eauto.
-      des. assert(initofs <= align initofs (AST.typesize (mreg_type a))). eapply align_le; omega. omega.
+      { etrans; et. rewrite Z.mul_add_distr_l. replace (4 * 2) with 8; ss. rewrite ! align_dist; ss. lia. }
+      eapply Z.lt_le_trans; et.
+      rewrite Z.mul_add_distr_l. replace (4 * 2) with 8; ss. rewrite ! align_dist; ss.
+      rewrite align_idempotence; ss. lia.
     }
 Qed.
 Local Opaque make_env sepconj.
@@ -709,7 +726,7 @@ Proof.
        destruct (eq_block b sp); clarify; et. right.
        intro CONTR. clear - SZARG CONTR FOOT. ss.
        repeat (apply_all_once not_and_or). des; ss.
-       eapply FOOT; et. unfold fe_ofs_arg in *. extlia.
+       eapply FOOT; et. unfold fe_ofs_arg in *. des_ifs. extlia.
      }
      assert(UNCH1: Mem.unchanged_on (~2 m_footprint (frame_contents f (SimMemInj.inj sm0)
                                                                     sp rs rs0 sp2 retaddr0))
@@ -757,7 +774,7 @@ Proof.
          { eapply Mem.unchanged_on_implies; try apply UNCH.
            ii. ss. apply not_and_or in H. des; et.
          }
-         { ss. unfold fe_ofs_arg. zsimpl. esplits; et; try extlia.
+         { ss. unfold fe_ofs_arg. des_ifs. zsimpl. esplits; et; try extlia.
            + apply sep_pick1 in SEP0. ss. des. ss.
            + i. inv STACKS. des. eapply Mem.valid_block_free_1; et.
          }

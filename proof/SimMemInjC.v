@@ -4,7 +4,7 @@ Require Import Values.
 Require Import Maps.
 Require Import Events.
 Require Import Globalenvs.
-Require Import AST.
+Require Import ASTC.
 
 Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.

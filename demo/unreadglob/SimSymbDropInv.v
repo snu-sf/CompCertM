@@ -464,7 +464,7 @@ Lemma Mem_getN_forall2:
   P (ZMap.get i c1) (ZMap.get i c2).
 Proof.
   induction n; simpl Mem.getN; intros.
-- simpl in H1. omegaContradiction.
+- simpl in H1. lia.
 - inv H. rewrite Nat2Z.inj_succ in H1. destruct (zeq i p).
 + congruence.
 + apply IHn with (p + 1); auto. omega. omega.

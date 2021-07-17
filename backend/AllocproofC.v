@@ -60,7 +60,7 @@ Lemma getpair_equal
       sg_init sg ls
       (SAMERES : sig_res sg_init = sig_res sg):
   Locmap.getpair (map_rpair R (loc_result sg_init)) ls = Locmap.getpair (map_rpair R (loc_result sg)) ls.
-Proof. do 2 f_equal. unfold loc_result. des_ifs. unfold loc_result_64. des_ifs. Qed.
+Proof. do 2 f_equal. unfold loc_result. des_ifs. unfold loc_result_64. unfold proj_sig_res. rewrite SAMERES. ss. Qed.
 
 Section SIMMODSEM.
 

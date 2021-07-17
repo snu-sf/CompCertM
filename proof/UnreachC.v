@@ -8,7 +8,7 @@ Require Import sflib.
 Require Import RelationClasses.
 Require Import FSets.
 Require Import Ordered.
-Require Import AST.
+Require Import ASTC.
 Require Import Integers.
 
 Require Import ModSem Skeleton.

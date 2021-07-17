@@ -150,7 +150,7 @@ Proof.
     { exploit SOUND; eauto. { apply tt. } i; des. ss. }
     i; des_safe. folder. des.
     + esplits; eauto; try apply star_refl.
-      * left. apply plus_one. ss. unfold DStep in *. des; ss. esplits; eauto. apply modsem_determinate; et.
+      * left. eapply ModSemProps.spread_dplus; et. apply modsem_determinate; et.
       * instantiate (1:= (SimMemExt.mk _ _)). ss.
     + clarify. esplits; eauto; try apply star_refl.
       * right. esplits; eauto. { apply star_refl. }

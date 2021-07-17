@@ -184,8 +184,7 @@ Proof.
       inv MLE0; ss. inv MCOMPAT. clear_tac.
       rpapply match_return_state; ss; eauto; ss.
       { ss. ii.
-        eapply match_cont_incr_bounds; eauto; swap 2 4.
-        { instantiate (1:= tge). ss. esplits; eauto. }
+        eapply match_cont_incr_bounds; eauto; revgoals.
         { eauto with mem. }
         { eauto with mem. }
         eapply match_cont_extcall with (ge := ge) (tge := tge); eauto; try refl.

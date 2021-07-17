@@ -1,6 +1,6 @@
 Require Import FunInd.
 Require Import CoqlibC Maps Integers Floats Lattice Kildall.
-Require Import Compopts AST Linking.
+Require Import Compopts ASTC Linking.
 Require Import ValuesC MemoryC Globalenvs Events.
 Require Import Registers Op RTLC.
 Require Import ValueDomainC ValueAOp Liveness.
@@ -27,7 +27,7 @@ Section PRSV.
   Local Existing Instance Unreach.
 
   Theorem sound_state_preservation:
-    local_preservation_strong modsem get_mem le' (sound_state p modsem.(globalenv)).
+    local_preservation_strong modsem get_mem le' (sound_state p modsem.(ModSem.globalenv)).
   Proof.
     econs; eauto.
     { ss. eapply UnreachC.liftspec; et. }
@@ -177,7 +177,7 @@ Section PRSV.
       + rr. ss. inv MEM. inv SKENV. ss. rewrite NB0. esplits; eauto.
         * i. des_ifs; try extlia. rewrite IMG. rewrite <- PUB. inv WF.
           destruct (su_init blk) eqn:T; des_sumbool.
-          { hexploit WFLO; eauto. i. des_ifs; try extlia. bsimpl. ss. }
+          { hexploit WFLO; eauto. i. des_ifs; try extlia. }
           des_ifs. bsimpl. exfalso. des_sumbool. extlia.
         * refl.
     - ii; ss. eapply sound_step with (se := skenv_link); eauto.
@@ -232,7 +232,7 @@ Section PRSV.
                                      (bc2su bc' (Genv.genv_next skenv_link) (Mem.nextblock (Retv.m retv)))).
         { rr. ss. rewrite IMG. unfold f.
           assert(NB: Ple (Mem.nextblock m_arg) (Mem.nextblock (Retv.m retv))).
-          { inv AT; ss. rewrite Retv.get_m_m in *; ss. inv MLE. inv RO0. ss. }
+          { inv AT; ss. rewrite Retv.get_m_m in *; ss. inv MLE. inv PRIV. ss. }
           esplits; ss.
           - i. des_ifs. extlia.
         }
@@ -354,6 +354,7 @@ Section PRSV.
           { assert(RANGE_PERM: Mem.range_perm (Retv.m retv) b ofs (ofs + n) Cur Readable).
             { eapply Mem.loadbytes_range_perm; et. }
             erewrite <- Mem.loadbytes_unchanged_on_1; try eapply RO0; et.
+            - admit "".
             - eapply mmatch_below; et. congruence.
             - i. inv SKENV. ss. rr in ROMATCH. des.
               exploit (romem_for_consistent cunit); eauto. intro X; des.

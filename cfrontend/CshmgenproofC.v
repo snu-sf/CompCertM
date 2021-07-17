@@ -24,7 +24,8 @@ Lemma proj_sig_res_type
     proj_sig_res (signature_of_type targs0 tres0 cconv0) = typ_of_type tres0
 .
 Proof.
-  destruct tres0; ss.
+  pose tres0 as X.
+  destruct tres0; cbv delta; ss; des_ifs.
 Qed.
 
 
@@ -47,7 +48,7 @@ Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_
 Inductive match_states
           (idx: nat) (st_src0: Clight.state) (st_tgt0: Csharpminor.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: Cshmgenproof.match_states prog ge st_src0 st_tgt0)
+    (MATCHST: Cshmgenproof.match_states prog ge tge st_src0 st_tgt0)
     (MCOMPATSRC: (ClightC.get_mem st_src0) = sm0.(SimMem.src))
     (MCOMPATTGT: (CsharpminorC.get_mem st_tgt0) = sm0.(SimMem.tgt)).
 

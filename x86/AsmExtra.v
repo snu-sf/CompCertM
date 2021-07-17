@@ -1,6 +1,6 @@
 Require Import Skeleton ModSem .
 Require Import Integers.
-Require Import CoqlibC ValuesC MemoryC.
+Require Import ASTC CoqlibC ValuesC MemoryC.
 Require Import LocationsC Conventions AsmregsC.
 Require Import AsmC StoreArguments StoreArgumentsProps.
 

@@ -1,7 +1,7 @@
 Require Import CoqlibC.
 Require Export GlobalenvsC.
 Require Import Memory.
-Require Export ASTC.
+Require Import ASTC.
 Require Import MapsC.
 Require Import Values.
 Require Import Linking.

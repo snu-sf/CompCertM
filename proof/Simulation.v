@@ -1,4 +1,4 @@
-Require Export Smallstep.
+Require Import Smallstep.
 Require Import Values.
 Require Import Globalenvs.
 Require Import Memory.

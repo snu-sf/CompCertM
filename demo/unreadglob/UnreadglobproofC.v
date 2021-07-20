@@ -248,7 +248,7 @@ Proof.
         eapply match_stacks_incr; et.
         { i. inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; et. }
       }
-      { eapply inject_typify; et. }
+      { eapply inject_rettypify; et. }
       { eapply MWF. }
 
   - (* final fsim *)

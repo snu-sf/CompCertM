@@ -345,7 +345,7 @@ Section PRSV.
           i. inv MLE. inv AT. ss.
           eapply Mem.loadbytes_unchanged_on_1; try apply PRIV; eauto.
           u. i. eapply BCLE1; et. ss. des_ifs. des_sumbool. ss.
-        * eapply VMTOP; et. unfold typify. des_ifs. des; ss.
+        * eapply VMTOP; et. unfold rettypify. des_ifs. des; ss.
         * eapply romatch_exten; cycle 1.
           { instantiate (1 := bc). rewrite IMG. subst f. split; i; try by des_ifs.
             des_ifs_safe. exfalso. eapply n. eapply mmatch_below. eauto. congruence.

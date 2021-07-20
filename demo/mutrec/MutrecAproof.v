@@ -485,7 +485,7 @@ Proof.
               econs; eauto. econs; eauto.
               - econs; eauto. ss.
               - econs; eauto. ss.
-              - inv RETV. ss. unfold typify. des_ifs. }
+              - inv RETV. ss. unfold rettypify. des_ifs. }
 
             eapply star_left with (t1 := E0) (t2 := E0); ss.
             { econs; eauto.

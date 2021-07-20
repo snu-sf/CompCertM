@@ -148,7 +148,7 @@ Proof.
         }
         eapply locmap_setpair_lessdef; et.
         { eapply locmap_undef_caller_save_regs_lessdef; et. }
-        { eapply lessdef_typify; et. }
+        { eapply lessdef_rettypify; et. }
       * clear - DUMMYTGT. unfold strong_wf_tgt in *. des. destruct ts; ss. unfold dummy_stack, dummy_function in *. des_ifs; ss; clarify; esplits; et.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.

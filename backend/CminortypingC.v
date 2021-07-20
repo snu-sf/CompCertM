@@ -46,7 +46,7 @@ Section LPRSV.
       esplits. eapply in_prog_defmap; eauto.
     - esplits; eauto.
       { rr. esplits; ss; eauto. des_ifs. esplits; ss. rr. rewrite Forall_forall. ii; ss. }
-      ii. inv AFTER. inv SUST. econs; et. apply typify_has_type.
+      ii. inv AFTER. inv SUST. econs; et. apply Val.has_proj_rettype. apply rettypify_has_rettype.
     - esplits; eauto. rr. des_ifs.
   Unshelve.
     all: ss.

@@ -117,7 +117,7 @@ Proof.
     esplits; eauto. i. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto. econs; eauto.
-      eapply lessdef_typify; ss.
+      eapply lessdef_rettypify; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. rr in MC. destruct sm0; ss. clarify.
     inv MC.

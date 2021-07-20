@@ -579,7 +579,7 @@ Section CLIGHTSOUND.
           { rewrite <- GENB. auto. }
           { etrans; eauto. }
           { econs; eauto.
-            - eapply UnreachC.unreach_to_inj_val. unfold typify. des_ifs.
+            - eapply UnreachC.unreach_to_inj_val. unfold rettypify. des_ifs.
             - eapply match_cont_incr; cycle 1; eauto. unfold UnreachC.to_inj. ii. des_ifs.
               + ss. erewrite OLD in *; eauto. clarify.
               + exfalso. eapply n. eapply Plt_Ple_trans; eauto. }

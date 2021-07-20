@@ -1353,7 +1353,7 @@ Proof.
       eapply match_states_return with (j:= sm_ret.(SimMemInj.inj)); eauto.
       * econs; ss; eauto.
       * eapply agree_regs_set_pair; cycle 1.
-        { unfold typify. des_ifs. }
+        { unfold rettypify. des_ifs. }
         (* TODO: Remove Mach.regset_after_external *)
         change regset_after_external with undef_caller_save_regs.
         eapply agree_regs_undef_caller_save_regs; eauto.

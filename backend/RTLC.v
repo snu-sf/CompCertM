@@ -54,7 +54,7 @@ Section MODSEM.
   | after_external_intro
       stack fptr_arg sg_arg vs_arg m_arg retv tv
       (CSTYLE: Retv.is_cstyle retv)
-      (TYP: typify (Retv.v retv) (proj_sig_res sg_arg) = tv):
+      (TYP: rettypify (Retv.v retv) (sig_res sg_arg) = tv):
       after_external (Callstate stack fptr_arg sg_arg vs_arg m_arg)
                      retv
                      (Returnstate stack tv (Retv.m retv)).

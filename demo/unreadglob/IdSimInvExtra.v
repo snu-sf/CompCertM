@@ -12,6 +12,8 @@ Require Import Events.
 Require Import Preservation.
 Require Import IdSimExtra.
 
+Require Import AST ASTC.
+
 Set Implicit Arguments.
 
 Section INJINVDROP.

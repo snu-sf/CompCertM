@@ -111,7 +111,7 @@ Proof.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto. econs; eauto.
-      eapply lessdef_typify; ss.
+      eapply lessdef_rettypify; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv MS. destruct sm0; ss. clarify.

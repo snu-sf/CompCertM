@@ -97,7 +97,7 @@ Proof.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto. clarify. econs; eauto.
-      eapply lessdef_typify; ss.
+      eapply lessdef_rettypify; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. inv STACKS; ss. destruct sm0; ss. clarify.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto. econs; et.

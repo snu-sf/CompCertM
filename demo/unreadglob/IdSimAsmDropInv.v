@@ -29,6 +29,7 @@ Require Import Conventions1C.
 
 Require Import mktac.
 
+Require Import AST ASTC.
 
 Set Implicit Arguments.
 

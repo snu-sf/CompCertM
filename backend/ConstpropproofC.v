@@ -89,7 +89,7 @@ Proof.
     inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
-    + econs; ss; eauto. clarify. econs; eauto. eapply lessdef_typify; ss.
+    + econs; ss; eauto. clarify. econs; eauto. eapply lessdef_rettypify; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     clarify. inv STACKS. destruct sm0; ss. clarify.

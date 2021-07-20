@@ -98,7 +98,7 @@ Proof.
     esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto. econs; eauto.
-      eapply lessdef_typify; ss.
+      eapply lessdef_rettypify; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     inv STACK; ss. destruct sm0; ss. clarify.

@@ -18,15 +18,15 @@ Set Implicit Arguments.
 
 
 
-Lemma proj_sig_res_type
-      targs0 tres0 cconv0
-  :
-    proj_sig_res (signature_of_type targs0 tres0 cconv0) = typ_of_type tres0
-.
-Proof.
-  pose tres0 as X.
-  destruct tres0; cbv delta; ss; des_ifs.
-Qed.
+(* Lemma proj_sig_res_type *)
+(*       targs0 tres0 cconv0 *)
+(*   : *)
+(*     proj_sig_res (signature_of_type targs0 tres0 cconv0) = typ_of_type tres0 *)
+(* . *)
+(* Proof. *)
+(*   pose tres0 as X. *)
+(*   destruct tres0; cbv delta; ss; des_ifs. *)
+(* Qed. *)
 
 
 Section SIMMODSEM.
@@ -109,7 +109,8 @@ Proof.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto.
     + econs; eauto.
     + econs; ss; eauto. clarify.
-      rpapply match_returnstate; eauto. repeat f_equal. rewrite proj_sig_res_type. ss.
+      rpapply match_returnstate. eauto.
+      unfold rettypify. des_ifs; try econs. eapply has_rettype_wt_val; et.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. inv MK; ss. destruct sm0; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto. econs; ss; eauto.

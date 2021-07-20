@@ -164,9 +164,9 @@ Proof.
     + econs; ss; eauto. econs; eauto.
       * eapply match_stackframes_after; et.
       * hexploit (loc_result_one sg_arg); et. i. des. rewrite ONE. ss.
-        rewrite Locmap.gss. eapply lessdef_typify; et.
+        rewrite Locmap.gss. eapply lessdef_rettypify; et.
       * eapply agree_callee_save_after; et. eapply match_stackframes_not_nil; et.
-      * eapply typify_has_type; et.
+      * eapply Val.has_proj_rettype. eapply rettypify_has_rettype; et.
       * rr. rr in DUMMYTGT. des. ss. destruct ts; ss. des_ifs_safe; ss. destruct ts; ss; et.
         unfold undef_outgoing_slots. unfold dummy_stack in *. clarify. esplits; et.
   - (* final fsim *)

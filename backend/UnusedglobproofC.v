@@ -172,7 +172,7 @@ Proof.
       rpapply match_states_return; ss; eauto; ss.
       { eapply match_stacks_bound; eauto with mem. eapply match_stacks_incr; et.
         i. inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; et. }
-      { eapply inject_typify; et. }
+      { eapply inject_rettypify; et. }
       { eapply MWFAFTR. }
 
   - (* final fsim *)

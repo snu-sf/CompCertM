@@ -28,6 +28,7 @@ Require Import Conventions1C.
 
 Require Import mktac.
 
+Require Import AST.
 
 Set Implicit Arguments.
 
@@ -147,17 +148,17 @@ Section MEMORYLEMMA.
         * rewrite Mem_setN_in_repeat; eauto; [econs|]. rewrite Z2Nat.id; nia.
         * zsimpl. destruct (zlt 0 sz).
           { repeat rewrite Mem.setN_outside; cycle 1; eauto.
-            { right. rewrite length_list_repeat.
+            { right. rewrite repeat_length.
               rewrite Z2Nat_range. des_ifs; try nia. erewrite unsigned_add in *; eauto; try lia; eapply REPRESENTABLE; lia. }
-            { rewrite length_list_repeat. rewrite Z2Nat_range. des_ifs; try lia. } }
-          { repeat rewrite Mem.setN_outside; cycle 1; eauto; rewrite length_list_repeat; rewrite Z2Nat_range; des_ifs; try nia. }
+            { rewrite repeat_length. rewrite Z2Nat_range. des_ifs; try lia. } }
+          { repeat rewrite Mem.setN_outside; cycle 1; eauto; rewrite repeat_length; rewrite Z2Nat_range; des_ifs; try nia. }
         * zsimpl. destruct (zlt 0 sz).
           { repeat rewrite Mem.setN_outside; cycle 1; eauto.
             { left. erewrite unsigned_add in *; eauto; try lia; eapply REPRESENTABLE; lia. }
-            { rewrite length_list_repeat. rewrite Z2Nat_range. des_ifs; try lia. } }
-          { repeat rewrite Mem.setN_outside; cycle 1; eauto; rewrite length_list_repeat; rewrite Z2Nat_range; des_ifs; try nia. }
-        * repeat rewrite Mem.setN_outside; cycle 1; eauto; rewrite length_list_repeat; rewrite Z2Nat_range; des_ifs; try nia.
-        * repeat rewrite Mem.setN_outside; cycle 1; eauto. rewrite length_list_repeat. rewrite Z2Nat_range. des_ifs; try nia.
+            { rewrite repeat_length. rewrite Z2Nat_range. des_ifs; try lia. } }
+          { repeat rewrite Mem.setN_outside; cycle 1; eauto; rewrite repeat_length; rewrite Z2Nat_range; des_ifs; try nia. }
+        * repeat rewrite Mem.setN_outside; cycle 1; eauto; rewrite repeat_length; rewrite Z2Nat_range; des_ifs; try nia.
+        * repeat rewrite Mem.setN_outside; cycle 1; eauto. rewrite repeat_length. rewrite Z2Nat_range. des_ifs; try nia.
           apply NNPP. ii. exploit NOOVERLAP; eauto. erewrite unsigned_add in *; eauto; try lia; eapply REPRESENTABLE; lia.
 
     - exploit Mem.mi_freeblocks; eauto.
@@ -348,7 +349,7 @@ Proof.
     + apply Plt_lemma in p0; eauto. clarify.
     + instantiate (1:=0).
       replace (b + Mem.nextblock m_src0 - Mem.nextblock m_tgt0 + Mem.nextblock m_tgt0 - Mem.nextblock m_src0)%positive with b; auto.
-      clear - n0. rewrite Pos.sub_add; try extlia. rewrite Pos.add_sub. auto.
+      clear - n0. rewrite Pos.sub_add; try extlia.
     + exfalso. rewrite JunkBlock.assign_junk_blocks_nextblock in *. des_ifs. apply n2. eapply Plt_lemma2 in p; eauto.
   - symmetry. eapply Ptrofs.add_zero.
 Qed.

@@ -355,7 +355,7 @@ Proof.
           eapply mi_memval; eauto. }
         rewrite Mem.setN_other; ss.
         { eapply mi_memval; eauto. }
-        ii. rewrite length_list_repeat in *. simp.
+        ii. rewrite repeat_length in *. simp.
         { rewrite Z2Nat.id in *; ss. extlia. }
       * simp. rewrite PMap.gsspec. des_ifs.
         destruct (classic (0 <= hi - lo)); cycle 1.

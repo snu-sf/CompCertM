@@ -78,7 +78,46 @@ Section TYPIFY.
 
 End TYPIFY.
 
-Hint Unfold typify typify_list.
+Section RETTYPIFY.
+
+  Lemma Val_has_rettype_dec: forall v ty,
+    {Val.has_rettype v ty} + {~ Val.has_rettype v ty}.
+  Proof.
+    destruct v, ty; ss; eauto; try eapply Int.eq_dec; try by (destruct t; ss; et).
+  Qed.
+
+  Definition rettypify (v: val) (ty: rettype): val :=
+    if Val_has_rettype_dec v ty then v else Vundef.
+
+  Lemma rettypify_has_rettype: forall v ty,
+      <<TYP: Val.has_rettype (rettypify v ty) ty>>.
+  Proof. i. unfold rettypify. des_ifs. r. unfold Val.has_rettype. destruct ty; ss. Qed.
+
+  Definition rettypify_list (vs: list val) (tys: list rettype): list val :=
+    zip rettypify vs tys.
+
+  (* Definition typify_list (vs: list val) (tys: list typ): option (list val) := *)
+  (*   if Nat.eqb vs.(length) tys.(length) *)
+  (*   then Some (zip typify vs tys) *)
+  (*   else None *)
+  (* . *)
+
+  (* Definition typify_opt (v: val) (ty: option typ): val := *)
+  (*   match ty with *)
+  (*   | None => v *)
+  (*   | Some ty => typify v ty *)
+  (*   end *)
+  (* . *)
+
+  Lemma rettypify_list_length: forall vs tys,
+      length (rettypify_list vs tys) = Nat.min (length vs) (length tys).
+  Proof.
+    i. ginduction vs; ii; ss. destruct tys; ss. rewrite IHvs; ss.
+  Qed.
+
+End RETTYPIFY.
+
+Hint Unfold typify typify_list rettypify rettypify_list.
 (* Hint Unfold typify_. *)
 
 Lemma lessdef_typify
@@ -87,11 +126,23 @@ Lemma lessdef_typify
     <<LD: Val.lessdef (typify x ty) (typify y ty)>>.
 Proof. unfold typify. des_ifs. inv LD; ss. Qed.
 
+Lemma lessdef_rettypify
+      x y ty
+      (LD: Val.lessdef x y):
+    <<LD: Val.lessdef (rettypify x ty) (rettypify y ty)>>.
+Proof. unfold rettypify. des_ifs. inv LD; ss. Qed.
+
 Lemma inject_typify
       j x y ty
       (INJ: Val.inject j x y):
     <<INJ: Val.inject j (typify x ty) (typify y ty)>>.
 Proof. unfold typify. des_ifs. inv INJ; ss. Qed.
+
+Lemma inject_rettypify
+      j x y ty
+      (INJ: Val.inject j x y):
+    <<INJ: Val.inject j (rettypify x ty) (rettypify y ty)>>.
+Proof. unfold rettypify. des_ifs. inv INJ; ss. Qed.
 
 Lemma lessdef_list_typify_list
       xs ys tys
@@ -170,6 +221,12 @@ Lemma has_type_typify
       (TY: Val.has_type v ty):
     <<TY: (typify v ty) = v>>.
 Proof. rr. unfold typify. des_ifs. Qed.
+
+Lemma has_rettype_rettypify
+      v ty
+      (TY: Val.has_rettype v ty):
+    <<TY: (rettypify v ty) = v>>.
+Proof. rr. unfold rettypify. des_ifs. Qed.
 
 Lemma has_type_list_typify
       vs tys

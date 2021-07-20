@@ -89,7 +89,7 @@ Proof.
   - (* after fsim *)
     inv AFTERSRC. inv SIMRET; ss. exists sm_ret. destruct sm_ret; ss. clarify.
     inv MATCH; ss. inv MATCHST; ss. esplits; econs; ss; eauto.
-    + econs; ss; eauto. eapply lessdef_typify; ss.
+    + econs; ss; eauto. eapply lessdef_rettypify; ss.
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss. inv H2. destruct sm0; ss. clarify.
     eexists (SimMemExt.mk _ _). esplits; ss; eauto. econs; eauto.

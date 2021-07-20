@@ -145,7 +145,7 @@ Proof.
         - eapply SimMemInj.inject_separated_frozen; et.
         - refl.
       }
-      { eapply inject_typify; eauto. }
+      { eapply inject_rettypify; eauto. }
       { eapply MWFAFTR. }
     + refl.
   - (* final fsim *)

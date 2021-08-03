@@ -1,12 +1,13 @@
 Require Import CoqlibC MapsC.
 Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
 Require Import Locations Stacklayout Conventions Linking.
+Require Import Simulation Memory ValuesC.
 Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
-Require Import Simulation Memory ValuesC LinkingC2.
 Require Import Skeleton ModSem Mod sflib.
 Require Import CtypesC CsemC Sem Syntax LinkingC Program SemProps.
 Require Import Equality.
 Require Import CtypingC.
+Require Import LinkingC2.
 
 Set Implicit Arguments.
 
@@ -126,10 +127,10 @@ Section SIM.
         clear - Heq2 CHK0 H1 H4. des_ifs. inv H1; inv H4; ss.
         - unfold CtypesC.CSk.match_fundef in *. des_ifs; ss; des_ifs; bsimpl; des; des_sumbool; clarify.
           + unfold signature_of_function in *. ss. unfold signature_of_type in *.
-            eapply n. f_equal. rewrite Heq3.
+            unfold mksignature in n. eapply n. f_equal. rewrite Heq3.
             clear. ginduction t. ss. ss. rewrite IHt. eauto.
           + unfold signature_of_function in *. ss. unfold signature_of_type in *.
-            eapply n. f_equal. rewrite Heq3.
+            unfold mksignature in n. eapply n. f_equal. rewrite Heq3.
             clear. ginduction t. ss. ss. rewrite IHt. eauto.
         - des_ifs. inv H; inv H0; ss. unfold link_vardef in *. ss. des_ifs. }
       bsimpl. des. des_sumbool.
@@ -153,9 +154,9 @@ Section SIM.
       - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef in *; des_ifs; ss;
           unfold fundef_of_fundef in *; des_ifs; bsimpl; des; des_sumbool; clarify.
         + exfalso. unfold signature_of_function in *. ss. unfold signature_of_type in *.
-          eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
+          unfold mksignature in n. eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
         + exfalso. unfold signature_of_function in *. ss. unfold signature_of_type in *.
-          eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
+          unfold mksignature in n. eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
         + destruct g; ss. unfold link_vardef in *. des_ifs. ss. bsimpl. des. rewrite eqb_true_iff in *.
           f_equal. destruct gvar_info; ss. f_equal; ss. f_equal; ss. clarify.
         + exfalso.
@@ -1257,6 +1258,7 @@ Section SIM.
               esplits; eauto. ss.
               unfold signature_of_function. unfold signature_of_type. ss.
               f_equal. remember (fn_params f) as l. clear Heql. clear.
+              unfold mksignature. ss.
               induction l. ss. ss. destruct a. ss. clarify. rewrite H0. ss.
           - inv WTTGT. ss. inv WTK; ss.
             exploit WTKS.

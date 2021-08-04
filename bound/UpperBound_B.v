@@ -935,6 +935,7 @@ Section PRESERVATION.
         unfold Genv.symbol_address in *.
         des_ifs. erewrite <- H5. eauto.
       + set (if_sig := (mksignature (typlist_of_typelist targs) (Some (typ_of_type tres)) cc true)).
+        (typlist_of_typelist (type_of_params (fn_params f)))
         econs; ss; auto.
         instantiate (1:= if_sig). des_ifs.
   Qed.

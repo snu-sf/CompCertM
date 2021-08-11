@@ -73,7 +73,7 @@ Section MODSEM.
       fptr_arg vs_arg m_arg k retv tv targs tres cconv
       (CSTYLE: Retv.is_cstyle retv)
       (* tyf *)
-      (TYP: typify_c (Retv.v retv) tres tv):
+      (TYP: tv = rettypify (Retv.v retv) (rettype_of_type tres)):
       after_external (Callstate fptr_arg (Tfunction targs tres cconv) vs_arg k m_arg)
                      retv
                      (Returnstate tv k (Retv.m retv)).

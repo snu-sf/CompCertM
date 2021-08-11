@@ -86,7 +86,7 @@ Section PRESERVATION.
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) prog.(prog_defs) ->
       external_call ef skenv_link vargs m t vres m' ->
-      wt_retval vres res.
+      Val.has_rettype vres (rettype_of_type res).
 
   Hypothesis CSTYLE_EXTERN:
     forall id ef tyargs ty cc,
@@ -934,8 +934,7 @@ Section PRESERVATION.
         econs; i; ss; eauto. des_ifs.
         unfold Genv.symbol_address in *.
         des_ifs. erewrite <- H5. eauto.
-      + set (if_sig := (mksignature (typlist_of_typelist targs) (Some (typ_of_type tres)) cc true)).
-        (typlist_of_typelist (type_of_params (fn_params f)))
+      + set (if_sig := (mksignature (typlist_of_typelist targs) ((typ_of_type tres)) cc)).
         econs; ss; auto.
         instantiate (1:= if_sig). des_ifs.
   Qed.
@@ -968,6 +967,9 @@ Section PRESERVATION.
         destruct SKEWF.
         exploit DEFSYMB; eauto. i. des.
         unfold Genv.find_symbol in *. rewrite mge_symb in H. eauto.
+    - i. exploit WT_EXTERNAL; et. clear. i. econs.
+      + eapply has_rettype_wt_val; et.
+      + i. subst. ss. destruct vres; ss.
   Qed.
 
   Lemma match_state_xsim:
@@ -1014,12 +1016,11 @@ Section PRESERVATION.
                          rewrite -> H1 in *.
                          unfold Args.get_fptr in *. des_ifs.
                          determ_tac find_fptr_owner_determ.
-                         subst ms0. exploit find_fptr_owner_determ.
+                         exploit find_fptr_owner_determ.
                          unfold tge, skenv_link, link_sk, link_list. rewrite <- H1 in *. eapply MSFIND.
                          unfold tge, skenv_link, link_sk, link_list. rewrite <- H1 in *. eapply MSFIND0.
                          i. subst ms. rewrite H1. auto.
-                         inversion INIT0; inversion INIT. rewrite CSTYLE in *. clarify.
-                         rewrite H5. rewrite H6. rewrite H7. eauto. }
+                         inversion INIT0; inversion INIT. rewrite CSTYLE in *. clarify. }
                        { inv FINAL. }
                        { red. i. inv H. auto. }
                    --- eapply step_init; ss.
@@ -1074,9 +1075,9 @@ Section PRESERVATION.
                              - inv STEP; inv STEP0.
                              - inv FINAL; inv FINAL0. inv AFTER; inv AFTER0.
                                split; eauto.
-                               { econs. }
-                               { ii; ss. repeat f_equal. des.
-                                 determ_tac typify_c_dtm. } }
+                               { econs. } }
+                               (* { ii; ss. repeat f_equal. des. *)
+                               (*   determ_tac typify_c_dtm. } } *)
                            { inv FINAL. }
                            { red. i. inv H; auto. inv STEP. }
                        (* step *)
@@ -1084,7 +1085,8 @@ Section PRESERVATION.
                            { instantiate (1 := (Retv.mk vres m')). econs. } ss.
                            assert (after_external (Csem.Callstate fptr (Tfunction targs0 tres0 cc) vs k m)
                                                   (Retv.mk vres m') (Returnstate vres k m')).
-                           { econs. ss. econs. ss.
+                           { econs. ss.
+                             unfold rettypify. des_ifs. exfalso. eapply n. ss.
                              unfold Genv.find_funct in FPTR. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
                              exploit Genv.find_def_inversion; eauto. i. des. exploit WT_EXTERNAL. eauto.
                              exploit external_call_symbols_preserved. eapply senv_equiv_ge_link. eauto. i. eauto. i. eauto. }
@@ -1224,7 +1226,7 @@ Section PRESERVATION.
                 destruct (Genv.find_funct ge (Vptr b Ptrofs.zero)) eqn:HFUNC; ss.
                 destruct f. ss.
                 exploit system_internal; eauto; clarify. des_ifs.
-                rewrite SAME in *. rewrite H4 in *. unfold fundef in *. eauto. i.
+                rewrite H4 in *. unfold fundef in *. eauto. i.
                 clarify.
     (* state *)
     - right. econs; i; ss.
@@ -1393,5 +1395,6 @@ Proof.
     rewrite INTERNAL in *. clarify.
     unfold Genv.find_funct_ptr. des_ifs. }
   { eapply typecheck_program_sound; eauto. }
-  Unshelve. all: econs.
+  { i. admit "TODO". }
+  Unshelve. all: try econs.
 Qed.

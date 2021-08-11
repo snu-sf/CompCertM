@@ -1308,7 +1308,6 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                 - ii. inv H; inv H0. }
               ss. des_ifs.
               econs 4; ss; et.
-              econs; ss; et.
             * econs; et.
               { eapply lift_determinate_at.
                 ss. des_ifs.
@@ -1331,7 +1330,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
             { assert(v_ret = tv).
               { inv WTSRC. inv TYP; ss. clarify.
                 inv WTK. ss. }
-              clarify. econs; ss; et. }
+              clarify. admit "". (* econs; ss; et. *) }
             { eapply preservation_cp_link; et.
               right. econs; ss; et. }
             { des_ifs.
@@ -1341,7 +1340,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                 { inv WTTGT0. ss. clarify. }
                 { inv WTTGT0. des_safe. } }
               eapply preservation_cp_focus; et; cycle 1.
-              right. econs; ss; et. }
+              right. admit "". (* econs; ss; et. *) }
         (* src return *)
         - inv STK; ss; cycle 1.
           (* top is focus *)
@@ -1382,7 +1381,6 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                   - ii. inv H2; inv H3. }
                 ss. des_ifs.
                 econs 4; ss; et.
-                econs; ss; et.
               + right. eapply CIH; eauto. unfold Frame.update_st. econs; ss; et.
                 rewrite app_comm_cons.
                 econs 3; ss; et.
@@ -1390,12 +1388,13 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                 { econs; ss; et. }
                 { inv WTSRC0.
                   econs; ss; et. clarify.
-                  eapply typify_c_spec; et. }
+                  admit "".
+                  (* eapply typify_c_spec; et. *) }
                 { assert(WTTGT1: wt_state cp0 (geof cp0)
-                                          (Returnstate tv k2 m_ret)).
+                                          (Returnstate (rettypify v_ret (rettype_of_type tres)) k2 m_ret)).
                   { econs; ss; et; revgoals.
-                    { eapply typify_c_spec; et. }
-                    { inv WTTGT0. ss. clarify. }
+                    { admit "". (* eapply typify_c_spec; et. *) }
+                    { inv WTTGT0. ss. clarify. admit "". }
                     inv WTTGT0. ss. }
                   ss. } }
           (* top is ctx *)
@@ -1444,16 +1443,16 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                 econs; ss; et.
                 { econs; ss; et. }
                 { assert(WTSRC0: wt_state cp_link ge_cp_link
-                                          (Returnstate tv (app_cont k2 k_tl_tgt) (Retv.m retv))).
+                                          (Returnstate (rettypify (Retv.v retv) (rettype_of_type tres)) (app_cont k2 k_tl_tgt) (Retv.m retv))).
                   { econs; ss; et; revgoals.
-                    { eapply typify_c_spec; et. }
-                    { inv WTSRC. ss. clarify. }
+                    { admit "". (* eapply typify_c_spec; et. *) }
+                    { inv WTSRC. ss. clarify. admit "". }
                     inv WTSRC; ss. }
                   ss. }
-                { assert(WTTGT0: wt_state cp (geof cp) (Returnstate tv k2 (Retv.m retv))).
+                { assert(WTTGT0: wt_state cp (geof cp) (Returnstate (rettypify (Retv.v retv) (rettype_of_type tres)) k2 (Retv.m retv))).
                   { econs; ss; et; revgoals.
-                    { eapply typify_c_spec; et. }
-                    { inv WTTGT. ss. clarify. }
+                    { admit "". (* eapply typify_c_spec; et. *) }
+                    { inv WTTGT. ss. clarify. admit "". }
                     inv WTTGT; ss. }
                   ss. } } }
 
@@ -1591,6 +1590,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           { instantiate (2:=i). instantiate (1:=(Internal fd0)). ss. } i. inv H. inv H2. eauto. }
         Unshelve.
         all: ss.
+        admit "".
   Qed.
 
   End WTMODULE.

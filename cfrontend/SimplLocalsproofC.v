@@ -192,49 +192,7 @@ Proof.
         { eapply SimMemInj.inject_separated_frozen; et. }
       }
       { eapply MWFAFTR. }
-      { Set Nested Proofs Allowed.
-
-Lemma typify_inject
-      v_src ty tv_src v_tgt j
-      (TYP: typify_c v_src ty tv_src)
-      (INJ: Val.inject j v_src v_tgt):
-    <<INJ: Val.inject j tv_src (typify v_tgt (typ_of_type ty))>>.
-Proof.
-  inv TYP.
-  - exploit wt_retval_has_type; eauto. i; des. unfold typify. des_ifs. inv INJ; ss.
-  - ss.
-Qed.
-
-Lemma wt_retval_has_rettype
-      v ty
-      (WT: wt_retval v ty):
-    <<TY: Val.has_rettype v (rettype_of_type ty)>>.
-Proof.
-  clear - WT.
-  inv WT; ss. inv WTV; ss; try erewrite NVOID; ss.
-  - unfold Val.has_rettype. des_ifs.
-  - admit "TODO".
-  - admit "".
-  - admit "".
-  - admit "".
-  - admit "".
-  - unfold Val.has_rettype. des_ifs.
-Qed.
-
-
-Lemma rettypify_inject
-      v_src ty tv_src v_tgt j
-      (TYP: typify_c v_src ty tv_src)
-      (INJ: Val.inject j v_src v_tgt):
-    <<INJ: Val.inject j tv_src (rettypify v_tgt (rettype_of_type ty))>>.
-Proof.
-  inv TYP.
-  - exploit wt_retval_has_rettype; eauto. i; des. unfold rettypify. des_ifs. inv INJ; ss.
-  - ss.
-Qed.
-
-        
-        eapply rettypify_inject; et. }
+      { eapply inject_rettypify; et. }
   - (* final fsim *)
     inv MATCH. inv FINALSRC; inv MATCHST; ss.
     specialize (MCONT VSet.empty). inv MCONT. inv MCOMPAT; ss.

@@ -28,6 +28,7 @@ Require Import IdSimAsmExtra.
 
 Require Import mktac.
 
+Require Import AST.
 
 Set Implicit Arguments.
 
@@ -172,12 +173,11 @@ Section LOCALPRIV.
           * eapply PERM; et.
             eapply PERM0; et.
             eapply Mem.valid_block_unchanged_on; et.
-        + des_ifs. clear_tac.
-          eapply Mem_unchanged_on_trans_strong; et.
-          eapply Mem.unchanged_on_implies; try apply RO0; et.
-          i. des.
-          esplits; et.
-          { u. i; des; clarify. r in H. eapply H. eapply Mem.perm_implies with Freeable; eauto with mem. }
+        + i. r. eapply RO; et.
+          erewrite <- Mem.loadbytes_unchanged_on_1; et.
+          * eapply Mem.valid_block_unchanged_on; et.
+          * ii. inv H0. eapply RO0; et. eapply Mem.perm_cur.
+            eapply Mem.perm_implies with Freeable; eauto with mem.
         + eapply Mem_unchanged_on_trans_strong; et.
           eapply Mem.unchanged_on_implies; try apply PRIV0; et.
           u. i; des; clarify; ss.
@@ -340,7 +340,7 @@ Section LOCALPRIV.
           * inv SKENV. ss.
         + econs; ss.
           * i. eapply Mem.unchanged_on_perm; eauto. ss.
-          * eapply Mem.unchanged_on_implies; eauto. ss.
+          * i. erewrite <- Mem.loadbytes_unchanged_on_1; et. i. ss.
           * eapply Mem.unchanged_on_implies; eauto. ss.
       }
       { set (su_new := Unreach.mk
@@ -369,7 +369,7 @@ Section LOCALPRIV.
           + inv SKENV. ss.
         - ss. econs; eauto.
           + rewrite JunkBlock.assign_junk_blocks_perm in *. eauto.
-          + eapply Mem.unchanged_on_implies; eauto; ss.
+          + i. erewrite <- Mem.loadbytes_unchanged_on_1; et. i. ss.
           + eapply Mem.unchanged_on_implies; eauto; ss. }
 
     (* step *)

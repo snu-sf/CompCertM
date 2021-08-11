@@ -4,10 +4,10 @@ Require Import Locations Stacklayout Conventions Linking.
 Require Import Simulation Memory ValuesC.
 Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
 Require Import Skeleton ModSem Mod sflib.
-Require Import CtypesC CsemC Sem Syntax LinkingC Program SemProps.
 Require Import Equality.
 Require Import CtypingC.
 Require Import LinkingC2.
+Require Import Syntax Sem CtypesC CsemC LinkingC SemProps.
 
 Set Implicit Arguments.
 
@@ -112,7 +112,7 @@ Section SIM.
       Local Transparent Linker_prog Linker_program Linker_fundef Linker_types Linker_varinit
             Linker_vardef Linker_def Linking.Linker_fundef. ss.
       rename a into p0. rename restl into p1. fold Csyntax.program in *.
-      unfold link_program in *. des_ifs. ss.
+      unfold LinkingC2.link_program in *. des_ifs. ss.
       clear - Heq. unfold link_prog in *. ss. des_ifs_safe. bsimpl. des. des_sumbool.
       des_ifs; cycle 1.
       { exfalso. bsimpl. des; des_sumbool; ss.
@@ -126,11 +126,11 @@ Section SIM.
         bsimpl. des; des_sumbool; ss; clarify.
         clear - Heq2 CHK0 H1 H4. des_ifs. inv H1; inv H4; ss.
         - unfold CtypesC.CSk.match_fundef in *. des_ifs; ss; des_ifs; bsimpl; des; des_sumbool; clarify.
-          + unfold signature_of_function in *. ss. unfold signature_of_type in *.
-            unfold mksignature in n. eapply n. f_equal. rewrite Heq3.
+          + unfold signature_of_function in *. ss. unfold signature_of_type, mksignature in *.
+            eapply n. f_equal. rewrite Heq3.
             clear. ginduction t. ss. ss. rewrite IHt. eauto.
-          + unfold signature_of_function in *. ss. unfold signature_of_type in *.
-            unfold mksignature in n. eapply n. f_equal. rewrite Heq3.
+          + unfold signature_of_function in *. ss. unfold signature_of_type, mksignature in *.
+            eapply n. f_equal. rewrite Heq3.
             clear. ginduction t. ss. ss. rewrite IHt. eauto.
         - des_ifs. inv H; inv H0; ss. unfold link_vardef in *. ss. des_ifs. }
       bsimpl. des. des_sumbool.
@@ -153,10 +153,10 @@ Section SIM.
           des_ifs; ss; des_ifs; bsimpl; des; des_sumbool; clarify.
       - destruct g, g0; ss; unfold skdef_of_gdef, fundef_of_fundef in *; des_ifs; ss;
           unfold fundef_of_fundef in *; des_ifs; bsimpl; des; des_sumbool; clarify.
-        + exfalso. unfold signature_of_function in *. ss. unfold signature_of_type in *.
-          unfold mksignature in n. eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
-        + exfalso. unfold signature_of_function in *. ss. unfold signature_of_type in *.
-          unfold mksignature in n. eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
+        + exfalso. unfold signature_of_function in *. ss. unfold signature_of_type, mksignature in *.
+          eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
+        + exfalso. unfold signature_of_function in *. ss. unfold signature_of_type, mksignature in *.
+          eapply n. f_equal. rewrite Heq1. clear. ginduction t. ss. ss. rewrite IHt. eauto.
         + destruct g; ss. unfold link_vardef in *. des_ifs. ss. bsimpl. des. rewrite eqb_true_iff in *.
           f_equal. destruct gvar_info; ss. f_equal; ss. f_equal; ss. clarify.
         + exfalso.
@@ -450,7 +450,7 @@ Section SIM.
 
   Lemma field_offset_same
         cp f0 co delta
-        (FOC : linkorder_program cp cp_link)
+        (FOC : LinkingC2.linkorder_program cp cp_link)
         (EXTENDS : forall id cmp, (prog_comp_env cp) ! id = Some cmp -> (prog_comp_env cp_link) ! id = Some cmp)
         (COMPLETE : complete_members (prog_comp_env cp) (co_members co) = true) :
       field_offset (prog_comp_env cp) f0 (co_members co) = Errors.OK delta <->
@@ -906,10 +906,10 @@ Section SIM.
       eapply B. ss. auto. i. inv H1. des_ifs.
       do 2 eexists. econs 4; eauto; ss.
       erewrite field_offset_same; eauto. exploit EXTENDS; eauto. i. Eq. eauto.
-      unfold linkorder_program. split; eauto.
+      unfold LinkingC2.linkorder_program. split; eauto.
       exploit link_list_linkorder; eauto. i. rr in H1. rewrite Forall_forall in H1.
       exploit H1; eauto. i. clear - H2. unfold linkorder_program in *. ss.
-      unfold linkorder_program in H2. ss. des; eauto.
+      unfold LinkingC2.linkorder_program in H2. ss. des; eauto.
       hexploit (prog_comp_env_eq cp); et. intro X.
       exploit build_composite_env_consistent; et. intro Y.
       exploit co_consistent_complete; et.
@@ -1256,7 +1256,7 @@ Section SIM.
               exploit DEFKEPT; eauto. i. des.
               inv LO. inv H6.  eauto. }
               esplits; eauto. ss.
-              unfold signature_of_function. unfold signature_of_type. ss.
+              unfold signature_of_function. unfold signature_of_type, mksignature. ss.
               f_equal. remember (fn_params f) as l. clear Heql. clear.
               unfold mksignature. ss.
               induction l. ss. ss. destruct a. ss. clarify. rewrite H0. ss.

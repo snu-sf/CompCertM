@@ -17,7 +17,7 @@ Theorem separate_compilation_correct
     exists tgt_link, <<LINK: link_list tgts = Some tgt_link>> /\
                      <<IMPROVES: improves (Csem.semantics src_link) (Asm.semantics tgt_link)>>.
 Proof.
-  hexploit upperbound_b_correct; eauto. { des. esplits; et. } intro A.
+  hexploit upperbound_b_correct; eauto. intro A.
   hexploit upperbound_a_correct; eauto. instantiate (1:= []). ss. intro B; des.
   hexploit compiler_correct_full; eauto.
   { do 2 instantiate (1:= []). ss. }

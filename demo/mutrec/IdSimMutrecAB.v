@@ -22,6 +22,8 @@ Require Import IdSimExtra.
 Require Import CopC.
 Require Import sflib.
 
+Require Import MutrecABspec.
+
 Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.

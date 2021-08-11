@@ -33,6 +33,8 @@ Require Import Conventions1C.
 Require Import IdSimExtra IdSimInvExtra IdSimClightExtra.
 Require Import mktac.
 
+Require Import MutrecAspec.
+
 Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.

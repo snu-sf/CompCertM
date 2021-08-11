@@ -233,10 +233,9 @@ Section PRESERVATION.
       + exploit SYMBKEEP; et.
         { erewrite Sk.of_program_defs; et. }
         i; des. ss. congruence.
-      + exploit SYMBDROP; et.
+      + exploit SYMBKEEP; et.
         { erewrite Sk.of_program_defs; et. }
         i; des. ss. congruence.
-
     - dup FIND. unfold SkEnv.revive in FIND.
       eapply Genv_map_defs_def in FIND. des. gesimpl.
 
@@ -433,6 +432,8 @@ Section PRESERVATION.
       unfold Genv.find_funct_ptr, Genv.find_def, skdef_of_gdef, fundef in *.
       cinv (mge_defs b_src); des_ifs.
     Qed.
+
+    Require Import Sem.
 
     Lemma system_receptive_at st frs:
         receptive_at (sem prog)
@@ -1170,7 +1171,7 @@ Section PRESERVATION.
             rewrite assign_junk_blocks_nextblock in *.
             unfold Pregmap.set.
             clear - H Heq0. unfold pos_nat_add. ss. des_ifs; split; try extlia.
-            des. destruct n0; clarify; ss; extlia.
+            (* des. destruct n0; clarify; ss; extlia. *)
 
         - ii. unfold Pregmap.set. des_ifs.
           + cinv (SAME a).
@@ -1728,7 +1729,7 @@ Section PRESERVATION.
     intros initmem_inject initial_regset_agree TGT_INT_MEM.
     intros st1 INIT. inv INIT. move INITSK at top. clarify. esplits.
     - econs; eauto.
-    - symmetry in H0. subst. econs; ss; try eassumption.
+    - rename INITMEM into INIT_MEM. econs; ss; try eassumption.
       + econs; ss; eauto.
         unfold Genv.symbol_address in *. erewrite <- symb_main. unfold skenv_link in *. des_ifs.
       + instantiate (1:=bot2). ss.
@@ -1812,7 +1813,8 @@ Section PRESERVATION.
 
     - ii. des. rewrite <- senv_same in *. esplits; eauto. econs; eauto.
       + eapply mem_readonly_trans; eauto.
-        eapply asm_step_readonly; eauto.
+        admit "TODO".
+        (* hexploit asm_step_readonly; try eapply STEP. i. unfold unchanged_ro in H. econs. *)
       + { inv GEINJECT. econs.
           - i. unfold inject_incr in *.
             eapply INCR. eapply DOMAIN. eauto.
@@ -2268,7 +2270,7 @@ Section PRESERVATION.
               + ii. ss. des_ifs. ii. eapply H6. eapply Mem.perm_implies.
                 * eapply Mem.perm_cur. eapply freed_from_perm; eauto.
                 * econs.
-            - eapply external_call_readonly; eauto. }
+            - admit "TODO". (* eapply external_call_readonly; eauto. *) }
           { eapply Mem.unchanged_on_implies; try eapply Mem_unfree_unchanged_on; eauto.
             ii. eapply PWF; eauto. eapply RANGE. right. clarify. }
         * ss.

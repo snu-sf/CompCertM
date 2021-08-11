@@ -23,6 +23,8 @@ Require Import CtypingC.
 Require Import CopC.
 Require Import sflib.
 
+Require Import DemoSpec.
+
 Set Implicit Arguments.
 
 Local Opaque Z.mul Z.add Z.sub Z.div.

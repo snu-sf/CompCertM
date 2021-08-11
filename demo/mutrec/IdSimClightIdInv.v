@@ -117,7 +117,7 @@ Proof.
     esplits; eauto.
     + econs; eauto. inv SIMRET; ss.
     + inv SIMRET; ss. econs; eauto. econs; eauto.
-      { eapply inject_typify; et. }
+      { eapply inject_rettypify; et. }
       ss. eapply match_cont_incr; try eassumption.
       inv MLE. inv MLE1. inv MLE0. inv MLE. etrans; eauto.
     + refl.

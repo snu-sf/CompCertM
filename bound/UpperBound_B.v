@@ -86,7 +86,7 @@ Section PRESERVATION.
     forall id ef args res cc vargs m t vres m',
       In (id, Gfun (External ef args res cc)) prog.(prog_defs) ->
       external_call ef skenv_link vargs m t vres m' ->
-      Val.has_rettype vres (rettype_of_type res).
+      wt_retval vres res.
 
   Hypothesis CSTYLE_EXTERN:
     forall id ef tyargs ty cc,
@@ -967,9 +967,6 @@ Section PRESERVATION.
         destruct SKEWF.
         exploit DEFSYMB; eauto. i. des.
         unfold Genv.find_symbol in *. rewrite mge_symb in H. eauto.
-    - i. exploit WT_EXTERNAL; et. clear. i. econs.
-      + eapply has_rettype_wt_val; et.
-      + i. subst. ss. destruct vres; ss.
   Qed.
 
   Lemma match_state_xsim:
@@ -1076,8 +1073,6 @@ Section PRESERVATION.
                              - inv FINAL; inv FINAL0. inv AFTER; inv AFTER0.
                                split; eauto.
                                { econs. } }
-                               (* { ii; ss. repeat f_equal. des. *)
-                               (*   determ_tac typify_c_dtm. } } *)
                            { inv FINAL. }
                            { red. i. inv H; auto. inv STEP. }
                        (* step *)
@@ -1087,9 +1082,10 @@ Section PRESERVATION.
                                                   (Retv.mk vres m') (Returnstate vres k m')).
                            { econs. ss.
                              unfold rettypify. des_ifs. exfalso. eapply n. ss.
+                             eapply wt_retval_has_rettype.
                              unfold Genv.find_funct in FPTR. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
-                             exploit Genv.find_def_inversion; eauto. i. des. exploit WT_EXTERNAL. eauto.
-                             exploit external_call_symbols_preserved. eapply senv_equiv_ge_link. eauto. i. eauto. i. eauto. }
+                             exploit Genv.find_def_inversion; eauto. i. des. eapply WT_EXTERNAL. eauto.
+                             eapply external_call_symbols_preserved. eapply senv_equiv_ge_link. eauto. }
                            eauto.
                    --- traceEq.
                 ** traceEq.
@@ -1395,6 +1391,5 @@ Proof.
     rewrite INTERNAL in *. clarify.
     unfold Genv.find_funct_ptr. des_ifs. }
   { eapply typecheck_program_sound; eauto. }
-  { i. admit "TODO". }
   Unshelve. all: try econs.
 Qed.

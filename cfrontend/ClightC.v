@@ -21,7 +21,7 @@ Require Export Clight.
 
 Set Implicit Arguments.
 
-Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify; try by (f_equal; determ_tac typify_c_dtm).
+Local Obligation Tactic := ii; ss; des; inv_all_once; ss; clarify; try by f_equal.
 
 (* copied from Cshmgen *)
 Definition signature_of_function (fd: function) :=

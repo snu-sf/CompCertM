@@ -1295,7 +1295,6 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           rr in STEP. des; inv STEP; ss.
           inv SUM; ss.
           rr in CALL. destruct k0; ss. ss. clarify.
-          hexploit (typify_c_ex v_ret _tres). i; des.
           esplits; eauto.
           + left. split; ss.
             eapply plus_two with (t1 := E0) (t2 := E0); ss.
@@ -1323,24 +1322,28 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
               econs; ss; et.
           + right. ss. eapply CIH; eauto.
             econs; ss; et.
+            replace (rettypify v_ret (rettype_of_type _tres)) with v_ret; cycle 1.
+            { desH K0. inv K0. inv WTSRC. inv WTK.
+              unfold rettypify. des_ifs; ss.
+              exfalso. eapply n. eapply wt_retval_has_rettype. et.
+            }
             unfold Frame.update_st. ss.
             rewrite app_comm_cons.
             econs 3; ss; et.
             econs; ss; et.
-            { assert(v_ret = tv).
-              { inv WTSRC. inv TYP; ss. clarify.
-                inv WTK. ss. }
-              clarify. admit "". (* econs; ss; et. *) }
+            { unfold rettypify. des_ifs.
+              - econs; ss; et.
+            }
             { eapply preservation_cp_link; et.
               right. econs; ss; et. }
             { des_ifs.
-              assert(WTTGT1: wt_state cp0 (geof cp0) (Returnstate tv (Kcall _f _e _C _tres _k) (m_ret))).
+              assert(WTTGT1: wt_state cp0 (geof cp0) (Returnstate v_ret (Kcall f0 e0 e1 t k0) (m_ret))).
               { econs; ss; et; revgoals.
-                { eapply typify_c_spec; et. }
+                { desH K0. inv K0. inv WTSRC. inv WTK. et. }
                 { inv WTTGT0. ss. clarify. }
                 { inv WTTGT0. des_safe. } }
               eapply preservation_cp_focus; et; cycle 1.
-              right. admit "". (* econs; ss; et. *) }
+              right. econs; ss; et. }
         (* src return *)
         - inv STK; ss; cycle 1.
           (* top is focus *)
@@ -1386,15 +1389,12 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                 econs 3; ss; et.
                 econs; ss; et.
                 { econs; ss; et. }
-                { inv WTSRC0.
-                  econs; ss; et. clarify.
-                  admit "".
-                  (* eapply typify_c_spec; et. *) }
+                { inv WTSRC0. econs; ss; et. clarify. eapply rettypify_wt_ret_val. }
                 { assert(WTTGT1: wt_state cp0 (geof cp0)
                                           (Returnstate (rettypify v_ret (rettype_of_type tres)) k2 m_ret)).
                   { econs; ss; et; revgoals.
-                    { admit "". (* eapply typify_c_spec; et. *) }
-                    { inv WTTGT0. ss. clarify. admit "". }
+                    { eapply rettypify_wt_ret_val. }
+                    { inv WTTGT0. ss. clarify. }
                     inv WTTGT0. ss. }
                   ss. } }
           (* top is ctx *)
@@ -1445,14 +1445,14 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
                 { assert(WTSRC0: wt_state cp_link ge_cp_link
                                           (Returnstate (rettypify (Retv.v retv) (rettype_of_type tres)) (app_cont k2 k_tl_tgt) (Retv.m retv))).
                   { econs; ss; et; revgoals.
-                    { admit "". (* eapply typify_c_spec; et. *) }
-                    { inv WTSRC. ss. clarify. admit "". }
+                    { eapply rettypify_wt_ret_val. }
+                    { inv WTSRC. ss. clarify. }
                     inv WTSRC; ss. }
                   ss. }
                 { assert(WTTGT0: wt_state cp (geof cp) (Returnstate (rettypify (Retv.v retv) (rettype_of_type tres)) k2 (Retv.m retv))).
                   { econs; ss; et; revgoals.
-                    { admit "". (* eapply typify_c_spec; et. *) }
-                    { inv WTTGT. ss. clarify. admit "". }
+                    { eapply rettypify_wt_ret_val. }
+                    { inv WTTGT. ss. clarify. }
                     inv WTTGT; ss. }
                   ss. } } }
 
@@ -1590,7 +1590,6 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
           { instantiate (2:=i). instantiate (1:=(Internal fd0)). ss. } i. inv H. inv H2. eauto. }
         Unshelve.
         all: ss.
-        admit "".
   Qed.
 
   End WTMODULE.

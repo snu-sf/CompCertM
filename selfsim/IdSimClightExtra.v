@@ -65,26 +65,6 @@ Lemma wt_retval_inject j v_src v_tgt ty
     wt_retval v_src ty.
 Proof.
   inv TYP; inv WTV; inv INJ; clarify; try by repeat (econs; eauto).
-  exploit NVOID; eauto. clarify.
-Qed.
-
-Lemma typify_c_inject j retv_src retv_tgt tres tv_src
-      (TYP: typify_c retv_src tres tv_src)
-      (INJ: Val.inject j retv_src retv_tgt):
-    exists tv_tgt,
-      (<<TYP: typify_c retv_tgt tres tv_tgt>>) /\
-      (<<INJ: Val.inject j tv_src tv_tgt>>).
-Proof.
-  inv TYP.
-  - destruct (classic (wt_retval retv_tgt tres)).
-    + esplits; eauto. econs; eauto.
-    + exists Vundef. esplits; eauto.
-      * econs 2. eauto.
-      * assert (tv_src = Vundef); clarify; eauto.
-        inv INJ; inv WT; inv WTV; clarify;
-          exfalso; eapply H; econs; clarify; try (econs; eauto).
-        exploit NVOID; eauto. clarify.
-  - exists Vundef. esplits; eauto. econs 2. ii. exploit wt_retval_inject; eauto.
 Qed.
 
 Lemma vals_casted_inject j vals_src vals_tgt tys

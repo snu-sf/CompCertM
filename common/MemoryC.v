@@ -26,12 +26,26 @@ Require Export Memory.
 
 
 
-Definition unchanged_ro (m0 m1: mem): Prop :=
-  (forall b ofs n bytes
-          (RO: forall i, ofs <= i < ofs + n -> ~ Mem.perm m0 b i Max Writable)
-          (VALID: Mem.valid_block m0 b)
-          (LB: Mem.loadbytes m1 b ofs n = Some bytes),
-      (<<LB: Mem.loadbytes m0 b ofs n = Some bytes>>)).
+Record unchanged_ro (m0 m1: mem): Prop := mk_unchanged_ro {
+
+  (* from ec_valid_block *)
+  unchanged_ro_nextblock:
+    (<<LE: Ple (Mem.nextblock m0) (Mem.nextblock m1)>>);
+
+  (* from ec_max_perm *)
+  unchanged_ro_perm:
+    forall b ofs
+    (VALID: Mem.valid_block m0 b)
+    (RO: ~ Mem.perm m0 b ofs Max Writable),
+    (<<RO: ~ Mem.perm m1 b ofs Max Writable>>);
+
+  unchanged_ro_readonly:
+    forall b ofs n bytes
+    (RO: forall i, ofs <= i < ofs + n -> ~ Mem.perm m0 b i Max Writable)
+    (VALID: Mem.valid_block m0 b)
+    (LB: Mem.loadbytes m1 b ofs n = Some bytes),
+    (<<LB: Mem.loadbytes m0 b ofs n = Some bytes>>);
+}.
 
 Lemma unchanged_unchanged_ro
       m0 m1
@@ -40,13 +54,48 @@ Lemma unchanged_unchanged_ro
     <<UNCH: unchanged_ro m0 m1>>
 .
 Proof.
-  ii. erewrite <- Mem.loadbytes_unchanged_on_1; et.
+  ii. econs.
+  - eapply Mem.unchanged_on_nextblock; et.
+  - ii. exploit Mem.unchanged_on_perm; et. i.
+    erewrite <- H0 in H. clarify.
+  - ii. erewrite <- Mem.loadbytes_unchanged_on_1; et.
 Qed.
 
+Lemma unchanged_ro_refl
+      m0
+  :
+    <<UNCH: unchanged_ro m0 m0>>
+.
+Proof. ii; econs. apply Ple_refl. tauto. tauto. Qed.
+
+Lemma unchanged_ro_trans
+      m0 m1 m2
+      (UNCH0: unchanged_ro m0 m1)
+      (UNCH1: unchanged_ro m1 m2)
+  :
+    <<UNCH: unchanged_ro m0 m2>>
+.
+Proof. 
+  ii. econs.
+  - eapply Ple_trans; et; eapply unchanged_ro_nextblock; et.
+  - i. eapply unchanged_ro_perm; et.
+    { eapply unchanged_ro_nextblock in UNCH0.
+      eapply Plt_Ple_trans; et. }
+    eapply unchanged_ro_perm; et.
+  - ii. eapply unchanged_ro_readonly; et.
+    eapply unchanged_ro_readonly; et.
+    + i. eapply RO in H. eapply unchanged_ro_perm; et.
+    + eapply unchanged_ro_nextblock in UNCH0.
+      eapply Plt_Ple_trans; et.
+Qed.
+    
 Global Program Instance mem_unchanged_on_PreOrder P: RelationClasses.PreOrder (Mem.unchanged_on P).
 Next Obligation. ii; ss. eapply Mem.unchanged_on_refl. Qed.
 Next Obligation. ii; ss. eapply Mem.unchanged_on_trans; eauto. Qed.
 
+Global Program Instance mem_unchanged_ro_PreOrder: RelationClasses.PreOrder unchanged_ro.
+Next Obligation. ii; ss. eapply unchanged_ro_refl. Qed.
+Next Obligation. ii; ss. eapply unchanged_ro_trans; et. Qed.
 
 Lemma Mem_unchanged_on_trans_strong
       P m0 m1 m2

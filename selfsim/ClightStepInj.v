@@ -35,7 +35,9 @@ Proof.
     + unfold Mem.storev in *. eapply mem_store_readonly; eauto.
     + eapply Mem.storebytes_unchanged_on; eauto. ii. unfold loc_not_writable in *.
       eapply H9. eapply Mem.perm_cur. eapply Mem.storebytes_range_perm; eauto.
-  - eapply unchanged_unchanged_ro. inv H. eapply alloc_variables_unchanged_on; eauto.
+  - eapply unchanged_unchanged_ro. inv H.
+    
+  eapply alloc_variables_unchanged_on; eauto.
 Qed.
 
 Definition match_env (j: meminj) (env_src env_tgt: env) :=

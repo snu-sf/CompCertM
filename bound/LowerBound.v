@@ -1222,7 +1222,7 @@ Section PRESERVATION.
       j fr frs p init_rs rs_src rs_tgt m_src m_tgt n P
       (AGREE: agree j rs_src rs_tgt)
       (INJ: Mem.inject j m_src m_tgt)
-      (MEMWF: Mem.unchanged_on (loc_not_writable m_init) m_init m_src)
+      (MEMWF: unchanged_ro m_init m_src)
       (GELE: genv_le (local_genv p) tge)
       (PROGIN: In (AsmC.module p) prog)
       (GEINJECT: skenv_inject skenv_link j m_src)
@@ -1241,7 +1241,7 @@ Section PRESERVATION.
       (PWF: P <2= ~2 (SimMemInj.valid_blocks m_init /2\ loc_not_writable m_init))
       (AGREE: agree j init_rs rs_tgt)
       (INJECT: Mem.inject j m_src m_tgt)
-      (MEMWF: Mem.unchanged_on (loc_not_writable m_init) m_init m_src)
+      (MEMWF: unchanged_ro m_init m_src)
       (GEINJECT: skenv_inject skenv_link j m_src)
       (FPTR: fptr_arg = init_rs # PC)
       (ARGRANGE: Ptrofs.unsigned ofs + 4 * size_arguments sg <= Ptrofs.max_unsigned)
@@ -1263,7 +1263,7 @@ Section PRESERVATION.
       (PWF: P <2= ~2 (SimMemInj.valid_blocks m_init /2\ loc_not_writable m_init))
       (AGREE: agree j init_rs rs_tgt)
       (INJECT: Mem.inject j m_src m_tgt)
-      (MEMWF: Mem.unchanged_on (loc_not_writable m_init) m_init m_src)
+      (MEMWF: unchanged_ro m_init m_src)
       (GEINJECT: skenv_inject skenv_link j m_src)
       (SIG: exists skd, (Genv.find_funct skenv_link) (init_rs # PC)
                         = Some skd /\ Sk.get_csig skd = None)
@@ -1285,8 +1285,8 @@ Section PRESERVATION.
     ii. eapply H0 in H3. unfold Genv.perm_globvar in *. des_ifs. des. inv H4.
   Qed.
 
-  Lemma volatile_readonly m blk
-        (MEMWF: Mem.unchanged_on (loc_not_writable m_init) m_init m)
+  (* Lemma volatile_readonly m blk
+        (MEMWF: unchanged_ro m_init m)
         (VOL: Genv.block_is_volatile skenv_link blk)
         ofs:
       loc_not_writable m blk ofs.
@@ -1294,9 +1294,8 @@ Section PRESERVATION.
     dup INIT_MEM. unfold Sk.load_mem in INIT_MEM0.
     dup VOL. eapply init_volatile_readonly in VOL0.
     ii. eapply Mem.perm_unchanged_on_2 in H; eauto.
-    eapply Genv.block_is_volatile_below in VOL.
-    unfold Mem.valid_block. erewrite <- Genv.init_mem_genv_next; eauto; ss.
-  Qed.
+    admit "".
+  Qed. *)
 
   Lemma inj_range_wf_step j0 j1 m0 m1 P
         (MEMPERM: forall blk ofs p, Mem.perm m1 blk ofs Max p -> Mem.perm m0 blk ofs Max p \/ j0 blk = None)
@@ -1544,6 +1543,10 @@ Section PRESERVATION.
         - eapply AGREE0.
         - eapply INJECT1.
         - clear JUNKED.
+          eapply Mem.unchanged_on _readonly in UNCH.
+          inv UNCH.
+          unfold unchanged_ro. i.
+          Search unchanged_ro.
           apply mem_readonly_trans with m_src; eauto.
           apply mem_readonly_trans with m_arg.
           { inv FREE. eapply Mem.unchanged_on_implies; eauto.
@@ -1813,6 +1816,12 @@ Section PRESERVATION.
 
     - ii. des. rewrite <- senv_same in *. esplits; eauto. econs; eauto.
       + eapply mem_readonly_trans; eauto.
+        Print Mem.unchanged_on.
+        Print loc_not_writable.
+        Print unchanged_ro.
+        Check asm_step_readonly.
+        Search unchanged_ro.
+        Locate asm_step_readonly.
         admit "TODO".
         (* hexploit asm_step_readonly; try eapply STEP. i. unfold unchanged_ro in H. econs. *)
       + { inv GEINJECT. econs.

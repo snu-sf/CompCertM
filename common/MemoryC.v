@@ -88,7 +88,20 @@ Proof.
     + eapply unchanged_ro_nextblock in UNCH0.
       eapply Plt_Ple_trans; et.
 Qed.
-    
+
+Lemma external_call_unchanged_ro
+      ef se vargs m tr vres m'
+      (EXTCALL: external_call ef se vargs m tr vres m')
+  :
+    <<UNCH: unchanged_ro m m'>>
+.
+Proof.
+  econs.
+  - eapply external_call_nextblock; et.
+  - ii. eapply RO. eapply external_call_max_perm; et.
+  - i. eapply external_call_readonly; et.
+Qed.
+
 Global Program Instance mem_unchanged_on_PreOrder P: RelationClasses.PreOrder (Mem.unchanged_on P).
 Next Obligation. ii; ss. eapply Mem.unchanged_on_refl. Qed.
 Next Obligation. ii; ss. eapply Mem.unchanged_on_trans; eauto. Qed.

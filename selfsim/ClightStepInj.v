@@ -30,16 +30,12 @@ Lemma clight_step_readonly se ge st0 st1 tr
     unchanged_ro (get_mem st0) (get_mem st1).
 Proof.
   inv STEP; ss; try refl; try (by eapply unchanged_unchanged_ro; eapply mem_free_list_readonly; eauto);
-    try (by ii; eapply external_call_readonly; eauto).
+    try (by ii; eapply external_call_unchanged_ro; eauto).
   - eapply unchanged_unchanged_ro. inv H2.
     + unfold Mem.storev in *. eapply mem_store_readonly; eauto.
     + eapply Mem.storebytes_unchanged_on; eauto. ii. unfold loc_not_writable in *.
       eapply H9. eapply Mem.perm_cur. eapply Mem.storebytes_range_perm; eauto.
-  - eapply unchanged_unchanged_ro. inv H.
-    + admit "ez".
-    + admit "ez".
-  - admit "ez".
-  - admit "ez".
+  - eapply unchanged_unchanged_ro. eapply alloc_variables_unchanged_on. inv H. et.
 Qed.
 
 Definition match_env (j: meminj) (env_src env_tgt: env) :=

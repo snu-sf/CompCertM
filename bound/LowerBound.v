@@ -1873,12 +1873,21 @@ Section PRESERVATION.
       destruct st0; ss; clarify. eassumption.
   Qed.
 
-  Lemma Mem_unchanged_on_strengthen P m0 m1:
-      Mem.unchanged_on P m0 m1 <-> Mem.unchanged_on (SimMemInj.valid_blocks m0 /2\ P) m0 m1.
+  Lemma unchanged_ro_aux
+        m0 m1 m2
+        (UNCH1: unchanged_ro m0 m1)
+        (UNCH2: Mem.unchanged_on (SimMemInj.valid_blocks m0 /2\ loc_not_writable m0) m1 m2)
+    :
+      unchanged_ro m0 m2.
   Proof.
-    split; i.
-    - eapply Mem.unchanged_on_implies; eauto. i. des. auto.
-    - eapply Mem.unchanged_on_implies; eauto. ss.
+    inv UNCH1. inversion UNCH2. econs.
+    - r. etrans; et.
+    - ii. eapply unchanged_ro_perm; et. eapply unchanged_on_perm; et.
+      eapply Plt_Ple_trans; et.
+    - ii. eapply unchanged_ro_readonly; et.
+      erewrite <- Mem.loadbytes_unchanged_on_1; et.
+      + eapply Plt_Ple_trans; et.
+      + i. ss. splits; ss. eapply RO; et.
   Qed.
 
   Lemma step_return_simulation
@@ -1914,36 +1923,11 @@ Section PRESERVATION.
       - econs; unfold Frame.update_st; simpl; cycle 5; eauto.
         + eapply inj_range_wf_le; eauto.
         + eapply callee_save_agree; eauto.
-        + admit "".
-          (* Set Nested Proofs Allowed. *)
-
-          (* Lemma unch_ro2 *)
-          (*       m0 m1 m2 *)
-          (*       (UNCH11: unchanged_ro m0 m1) *)
-          (*       (UNCH22: Mem.unchanged_on (loc_not_writable m0) m1 m2) *)
-          (*   : *)
-          (*     unchanged_ro m0 m2. *)
-          (* Proof. *)
-          (*   etrans; et. inv UNCH22. econs; et. *)
-          (*   - ii. eapply RO. eapply unchanged_on_perm; et. *)
-          (*     unfold loc_not_writable. ii. *)
-          (* Qed. *)
-
-          (* transitivity m2. *)
-
-
-          (* eapply unchanged_ro2 with (m1 := retv_m). *)
-          (* * etrans; et. eapply unchanged_unchanged_ro. *)
-          (*   eapply mem_free_readonly; eauto. *)
-          (* * eapply Mem.unchanged_on_implies; try eapply Mem_unfree_unchanged_on; eauto. *)
-          (*   ii. eapply PWF; eauto. *)
-
-
-          (* etrans; et. eapply unchanged_unchanged_ro. rewrite Mem_unchanged_on_strengthen. transitivity retv_m. *)
-          (* * rewrite <- Mem_unchanged_on_strengthen. eapply mem_free_readonly; eauto. *)
-          (* * eapply Mem.unchanged_on_implies; try eapply Mem_unfree_unchanged_on; eauto. *)
-          (*   ii. eapply PWF; eauto. *)
-
+        + eapply unchanged_ro_aux with (m1 := retv_m).
+          * etrans; et. eapply unchanged_unchanged_ro.
+            eapply mem_free_readonly; eauto.
+          * eapply Mem.unchanged_on_implies; try eapply Mem_unfree_unchanged_on; eauto.
+            ii. eapply PWF; eauto.
       - des_ifs; lia. }
     { ss. inv FINAL.
       { exfalso. des. eapply local_global_consistent in INITSIG; eauto.
@@ -2284,20 +2268,18 @@ Section PRESERVATION.
           -- eapply Val.hiword_inject; eauto.
           -- eapply Val.loword_inject; eauto.
         * tauto.
-        * etrans; et. transitivity retv_m.
-          { etrans.
+        * eapply unchanged_ro_aux with (m1 := retv_m).
+          { etrans; et. etrans.
             - eapply unchanged_unchanged_ro. eapply Mem.unchanged_on_implies.
               + eapply freed_from_unchanged; eauto.
               + ii. ss. des_ifs. ii. eapply H6. eapply Mem.perm_implies.
                 * eapply Mem.perm_cur. eapply freed_from_perm; eauto.
                 * econs.
             - eapply external_call_unchanged_ro; eauto. }
-          { eapply unchanged_unchanged_ro. rewrite Mem_unchanged_on_strengthen.
-            eapply Mem.unchanged_on_implies; try eapply Mem_unfree_unchanged_on; eauto.
+          { eapply Mem.unchanged_on_implies; try eapply Mem_unfree_unchanged_on; eauto.
             ii. eapply PWF; eauto.
             - eapply RANGE. right.
-              rewrite SIG1 in SIG2. inv SIG2. rewrite SIG3 in SIG4. inv SIG4. et.
-            - admit "". }
+              rewrite SIG1 in SIG2. inv SIG2. rewrite SIG3 in SIG4. inv SIG4. et. }
         * ss.
       + ss. des_ifs; omega.
   Qed.

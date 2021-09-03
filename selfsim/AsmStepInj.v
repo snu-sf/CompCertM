@@ -74,8 +74,8 @@ Proof.
     + eapply mem_readonly_trans; [eapply mem_alloc_readonly; eauto|].
       eapply mem_readonly_trans; eapply mem_store_readonly; eauto.
     + eapply mem_free_readonly; eauto.
-  - ii. eapply external_call_readonly; eauto.
-  - ii. eapply external_call_readonly; eauto.
+  - admit "ez".
+  - admit "ez". 
 Qed.
 
 Ltac tac_p := ss; try (symmetry; eapply Ptrofs.add_zero; fail);

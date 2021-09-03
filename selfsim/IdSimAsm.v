@@ -456,6 +456,7 @@ Section LOCALPRIV.
       + econs; ss; eauto; i.
         * exploit asm_step_max_perm; try apply STEP0; eauto.
         * exploit asm_step_readonly; try apply STEP0; eauto.
+          i. eapply unchanged_ro_readonly; et.
         * eapply Mem.unchanged_on_implies; eauto.
           ii. unfold flip in *. ss. esplits; eauto.
           unfold loc_unmapped. unfold UnreachC.to_inj. des_ifs.

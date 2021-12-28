@@ -5,9 +5,9 @@ Require Export List.
 Require Export Bool.
 
 (** newly added **)
-Require Export Coqlib.
+From compcertr Require Export Coqlib.
 Ltac check_safe := let n := numgoals in guard n < 2.
-Require Export sflib.
+From compcertr Require Export sflib.
 From Paco Require Export paco.
 Require Export Basics.
 

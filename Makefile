@@ -21,19 +21,7 @@ proof: Makefile.coq $(COQTHEORIES)
 	$(MAKE) -f Makefile.coq $(patsubst %.v,%.vo,$(COQTHEORIES))
 
 Makefile.coq: Makefile $(COQTHEORIES)
-	(echo "-R ../lib compcert.lib"; \
-   echo "-R ../common compcert.common"; \
-   echo "-R ../x86 compcert.x86"; \
-   echo "-R ../x86_64 compcert.x86_64"; \
-   echo "-R ../backend compcert.backend"; \
-   echo "-R ../cfrontend compcert.cfrontend"; \
-   echo "-R ../driver compcert.driver"; \
-   echo "-R ../flocq Flocq"; \
-   echo "-R ../exportclight compcert.exportclight"; \
-   echo "-R ../cparser compcert.cparser"; \
-   echo "-R ../demo compcert.demo"; \
-			\
-   echo "-R lib $(COQMODULE)"; \
+	(echo "-R lib $(COQMODULE)"; \
    echo "-R common $(COQMODULE)"; \
    echo "-R x86 $(COQMODULE)"; \
    echo "-R x86_64 $(COQMODULE)"; \

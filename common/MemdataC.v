@@ -1,10 +1,11 @@
-Require Import Coqlib.
-Require Archi.
-Require Import AST.
-Require Import Integers.
-Require Import Floats.
-Require Import Values.
-Require Import Memdata.
+From compcertr Require Import
+     Coqlib
+     AST
+     Integers
+     Floats
+     Values
+     Memdata.
+From compcert Require Archi.
 
 Require Import CoqlibC.
 

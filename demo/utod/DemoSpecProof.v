@@ -1,10 +1,13 @@
-Require Import CoqlibC Maps Postorder.
-Require Import ASTC Linking.
-Require Import ValuesC Memory Globalenvs Events Smallstep.
-Require Import Csyntax AsmC AsmExtra.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import Maps Postorder Linking.
+Require Import ASTC.
+Require Import ValuesC.
+From compcertr Require Import Memory Globalenvs Events Smallstep.
+From compcertr Require Import Csyntax.
+Require Import AsmC AsmExtra.
+From compcertr Require Import sflib.
 
-Require Export Renumberproof.
+From compcertr Require Export Renumberproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemInjC.
@@ -15,7 +18,8 @@ Require DemoSpec.
 Require DemoTarget.
 Require Import DemoHeader.
 
-Require Import Floats Integers IntegersC.
+From compcertr Require Import Floats Integers.
+Require Import IntegersC.
 (* Require Import Fappli_rnd_odd. *)
 Definition round_to_odd (v: val): val := Val.orl (Val.shrlu v (Vint Int.one)) (Val.andl v (Vlong Int64.one)).
 

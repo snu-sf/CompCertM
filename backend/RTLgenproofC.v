@@ -1,10 +1,14 @@
-Require Import Wellfounded CoqlibC Maps AST Linking.
-Require Import Integers ValuesC Memory Events Smallstep Globalenvs.
-Require Import Switch Registers Cminor Op CminorSelC RTLC.
-Require Import RTLgen RTLgenspec.
-Require Import sflib.
+Require Import Wellfounded CoqlibC.
+From compcertr Require Import
+     Maps AST Linking
+     Integers Memory Events Smallstep Globalenvs
+     sflib.
+Require Import ValuesC.
+From compcertr Require Import Switch Registers Cminor Op.
+Require Import CminorSelC RTLC.
+From compcertr Require Import RTLgen RTLgenspec.
 (** newly added **)
-Require Export RTLgenproof.
+From compcertr Require Export RTLgenproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemExt.

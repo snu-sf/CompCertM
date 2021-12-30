@@ -1,11 +1,22 @@
-Require Import CoqlibC Errors.
-Require Import Integers Floats AST Linking.
-Require Import ValuesC Memory Events Globalenvs Smallstep.
-Require Import Op Locations MachC Conventions ConventionsC AsmC.
-Require Import Asmgen Asmgenproof0.
-Require Import sflib.
+Require Import CoqlibC ValuesC.
+From compcertr Require Import
+     Errors
+     Integers
+     Floats
+     AST
+     Linking
+     Memory
+     Events
+     Globalenvs
+     Smallstep
+     Op
+     Locations
+     Conventions
+     sflib.
+Require Import MachC ConventionsC AsmC.
+From compcertr Require Import Asmgen Asmgenproof0.
 (* newly added *)
-Require Export Asmgenproof.
+From compcertr Require Export Asmgenproof.
 Require Import SimModSem SimMemExt SimSymbId MemoryC ValuesC MemdataC LocationsC StoreArguments Conventions1C.
 
 Require Import Skeleton Mod ModSem SimMod SimSymb SimMem AsmregsC MatchSimModSem.

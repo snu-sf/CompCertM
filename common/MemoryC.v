@@ -1,18 +1,19 @@
 Require Import Zwf.
-Require Import Axioms.
+From compcertr Require Import Axioms.
 Require Import CoqlibC.
-Require Intv.
+From compcertr Require Intv.
 Require Import MapsC.
-Require Archi.
+From compcertr Require Archi.
 Require Import ASTC.
 Require Import IntegersC.
-Require Import Floats.
+From compcertr Require Import Floats.
 Require Import ValuesC.
-Require Export Memdata MemdataC.
-Require Export Memtype.
-Require Import sflib.
+From compcertr Require Export Memdata.
+Require Export MemdataC.
+From compcertr Require Export Memtype.
+From compcertr Require Import sflib.
 Require Import Lia.
-Require Import Events.
+From compcertr Require Import Events.
 Require Import Classical_Pred_Type.
 Require Import Coq.Logic.FunctionalExtensionality.
 
@@ -21,7 +22,7 @@ Local Notation "a # b" := (PMap.get b a) (at level 1).
 (** Above is exactly copied from Memory.v **)
 
 (* newly added *)
-Require Export Memory.
+From compcertr Require Export Memory.
 
 
 

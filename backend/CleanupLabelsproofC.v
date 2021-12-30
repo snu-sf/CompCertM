@@ -1,12 +1,14 @@
 Require Import FSets.
-Require Import CoqlibC Ordered Integers.
-Require Import AST Linking.
-Require Import ValuesC Memory Events Globalenvs Smallstep.
-Require Import Op Locations LinearC.
-Require Import CleanupLabels.
-Require Import sflib.
+Require Import CoqlibC.
+Require Import ValuesC.
+From compcertr Require Import
+     Ordered Integers AST Linking
+     Memory Events Globalenvs Smallstep
+     Op Locations sflib.
+Require Import LinearC.
+From compcertr Require Import CleanupLabels.
 (** newly added **)
-Require Export CleanupLabelsproof.
+From compcertr Require Export CleanupLabelsproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem ModSemProps.
 Require SimMemId.

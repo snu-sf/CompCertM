@@ -1,14 +1,15 @@
-Require Import Events.
-Require Import Values.
-Require Import AST.
-Require Import Memory.
-Require Import Globalenvs.
-Require Import Smallstep.
+From compcertr Require Import
+     Events
+     Values
+     AST
+     Memory
+     Globalenvs
+     Smallstep
+     Integers
+     Maps.
 Require Import CoqlibC.
 Require Import Skeleton.
-Require Import Integers.
 Require Import ASTC.
-Require Import Maps.
 
 Require Import ModSem.
 

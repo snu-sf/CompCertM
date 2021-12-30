@@ -1,27 +1,29 @@
-Require Import Axioms.
 Require Import Classical.
 Require Import CoqlibC.
-Require Import Errors.
 Require Import MapsC.
 Require Import IntegersC.
-Require Import Floats.
 Require Import ValuesC.
 Require Import ASTC.
 Require Import MemoryC.
 Require Import EventsC.
-Require Import Globalenvs.
-Require Import Smallstep.
-Require Import Ctypes.
-Require Import Cop.
-Require Import Csyntax.
+From compcertr Require Import
+     Axioms
+     Errors
+     Floats
+     Globalenvs
+     Smallstep
+     Ctypes
+     Cop
+     Csyntax.
 Require Import CsemC.
-Require Import sflib.
+From compcertr Require Import sflib.
 (** newly added **)
 Require Import Simulation Skeleton Mod ModSem.
 Require Import CtypesC.
-Require Import Conventions.
+From compcertr Require Import Conventions.
 Require Import CtypingC.
-Require Export CopC Ctypes Ctyping Csyntax Cexec Csem Cstrategy.
+Require Export CopC.
+From compcertr Require Export Ctypes Ctyping Csyntax Cexec Csem Cstrategy.
 
 Set Implicit Arguments.
 

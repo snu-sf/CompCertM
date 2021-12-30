@@ -1,12 +1,17 @@
-Require Import CoqlibC Maps Integers Floats Lattice Kildall.
-Require Import AST Linking.
-Require Import ValuesC Events Memory Globalenvs Smallstep.
-Require Compopts Machregs.
-Require Import Op Registers RTLC.
-Require Import Liveness ValueDomain ValueAOp ValueAnalysisC.
-Require Import ConstpropOp ConstpropOpproof Constprop.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Integers Floats Lattice Kildall
+     AST Linking
+     Events Memory Globalenvs Smallstep
+     Op Registers
+     Liveness ValueDomain ValueAOp.
+Require Import ValuesC.
+From compcertr Require Compopts Machregs.
+Require Import RTLC.
+Require Import ValueAnalysisC.
+From compcertr Require Import ConstpropOp ConstpropOpproof Constprop.
 (** newly added **)
-Require Export Constpropproof.
+From compcertr Require Export Constpropproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemExt.

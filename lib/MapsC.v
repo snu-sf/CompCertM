@@ -1,9 +1,10 @@
 Require Import LinkingC.
-Require Import CoqlibC Maps Errors ASTC.
-Require Import sflib.
+Require Import CoqlibC ASTC.
+From compcertr Require Import Maps Errors.
+From compcertr Require Import sflib.
 Require Import RelationClasses.
 
-Require Export Maps.
+From compcertr Require Export Maps.
 
 Set Implicit Arguments.
 

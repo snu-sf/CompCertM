@@ -1,12 +1,16 @@
 Require Import FSets.
-Require Import CoqlibC Errors Ordered Maps IntegersC Floats.
-Require Import AST Linking.
-Require Import ValuesC Memory GlobalenvsC Events Smallstep.
-Require Import CtypesC CopC ClightC SimplLocals.
-Require Import sflib.
-Require SimMemInj.
+Require Import CoqlibC IntegersC.
+From compcertr Require Import
+     Errors Ordered Maps Floats
+     AST Linking
+     Memory Events Smallstep
+     sflib.
+Require Import ValuesC GlobalenvsC.
+Require Import CtypesC CopC ClightC.
+From compcertr Require Import SimplLocals.
+From compcertr Require SimMemInj.
 (** newly added **)
-Require Export SimplLocalsproof.
+From compcertr Require Export SimplLocalsproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemInjC.

@@ -1,14 +1,15 @@
-Require Import Smallstep.
-Require Import Values.
-Require Import Globalenvs.
-Require Import Memory.
-Require Import Integers.
-Require Import Events.
-Require Import AST.
+From compcertr Require Import
+     Smallstep
+     Values
+     Globalenvs
+     Memory
+     Integers
+     Events
+     AST
+     sflib
+     Axioms.
 From Paco Require Import paco.
-Require Import sflib.
 Require Import CoqlibC.
-Require Import Axioms.
 Require Import Relations.
 Require Import Wellfounded.
 Require Import Program.Equality.

@@ -1,13 +1,14 @@
 Require Import CoqlibC.
 Require Export GlobalenvsC.
-Require Import Memory.
 Require Import ASTC.
 Require Import MapsC.
-Require Import Values.
-Require Import Linking.
-Require Import Conventions1.
-Require Conventions.
-Require Import Integers.
+From compcertr Require Import
+     Memory
+     Values
+     Linking
+     Conventions1.
+From compcertr Require Conventions.
+From compcertr Require Import Integers.
 
 Set Implicit Arguments.
 

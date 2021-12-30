@@ -1,11 +1,13 @@
-Require Import CoqlibC Maps.
+Require Import CoqlibC.
+From compcertr Require Import Maps.
 Require Import ValuesC.
-Require Import LocationsC Stacklayout Conventions.
-Require Import MemoryC Integers AST.
+Require Import LocationsC.
+From compcertr Require Import Stacklayout Conventions Integers AST.
+Require Import MemoryC.
 (** newly added **)
-Require Import Asm.
-Require Import Locations.
-Require Mach.
+From compcertr Require Import Asm.
+From compcertr Require Import Locations.
+From compcertr Require Mach.
 
 Set Implicit Arguments.
 

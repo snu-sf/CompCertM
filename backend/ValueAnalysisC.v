@@ -1,13 +1,19 @@
 Require Import FunInd.
-Require Import CoqlibC Maps Integers Floats Lattice Kildall.
-Require Import Compopts ASTC Linking.
-Require Import ValuesC MemoryC Globalenvs Events.
-Require Import Registers Op RTLC.
-Require Import ValueDomainC ValueAOp Liveness.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Integers Floats Lattice Kildall
+     Compopts Linking Globalenvs Events
+     Registers Op.
+Require Import ASTC.
+Require Import ValuesC MemoryC.
+Require Import RTLC.
+Require Import ValueDomainC.
+From compcertr Require Import
+     ValueAOp Liveness
+     sflib.
 (** copied && added C **)
 Require Import Skeleton.
-Require Export ValueAnalysis.
+From compcertr Require Export ValueAnalysis.
 Require Import Preservation.
 Require Import UnreachC.
 Require Import Sound.

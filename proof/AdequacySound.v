@@ -2,17 +2,18 @@ Require Import CoqlibC.
 Require Import Simulation.
 Require Import LinkingC.
 Require Import Skeleton.
-Require Import Values.
+From compcertr Require Import Values.
 Require Import JMeq.
-Require Import Smallstep.
-Require Import Integers.
-Require Import Events.
+From compcertr Require Import
+     Smallstep
+     Integers
+     Events.
 
 Require Import Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem SimMod SimModSem SimProg (* SimLoad *) SimProg.
 Require Import SemProps Ord.
 Require Import Sound Preservation.
-Require Import Memory.
+From compcertr Require Import Memory.
 
 Set Implicit Arguments.
 

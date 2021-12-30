@@ -1,7 +1,8 @@
 (** Libraries. *)
 Require Import String.
-Require Import CoqlibC Errors ErrorsC.
-Require Import AST Linking Smallstep.
+From compcertr Require Import Errors.
+Require Import CoqlibC ErrorsC.
+From compcertr Require Import AST Linking Smallstep.
 (** newly added **)
 Require Import BehaviorsC Sem.
 

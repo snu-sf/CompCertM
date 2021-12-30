@@ -1,76 +1,81 @@
 (** Libraries. *)
 Require Import String.
-Require Import CoqlibC Errors ErrorsC.
-Require Import AST Linking Smallstep.
+Require Import CoqlibC ErrorsC.
+From compcertr Require Import Errors AST Linking Smallstep.
 (** Languages (syntax and semantics). *)
-Require Ctypes Csyntax CsemC Cstrategy Cexec.
-Require Clight.
-Require Csharpminor.
+From compcertr Require Ctypes Csyntax Cstrategy Cexec.
+Require CsemC.
+From compcertr Require Clight.
+From compcertr Require Csharpminor.
 Require CminorC.
-Require CminorSel.
+From compcertr Require CminorSel.
 Require RTLC.
-Require LTL.
-Require Linear.
-Require Mach.
+From compcertr Require LTL.
+From compcertr Require Linear.
+From compcertr Require Mach.
 Require AsmC.
 (** Translation passes. *)
-Require Initializers.
-Require SimplExpr.
-Require SimplLocals.
-Require Cshmgen.
-Require Cminorgen.
-Require Selection.
-Require RTLgen.
-Require Tailcall.
-Require Inlining.
-Require Renumber.
-Require Constprop.
-Require CSE.
-Require Deadcode.
-Require Unreadglob.
-Require Unusedglob.
-Require Allocation.
-Require Tunneling.
-Require Linearize.
-Require CleanupLabels.
-Require Debugvar.
-Require Stacking.
-Require Asmgen.
+From compcertr Require
+     Initializers
+     SimplExpr
+     SimplLocals
+     Cshmgen
+     Cminorgen
+     Selection
+     RTLgen
+     Tailcall
+     Inlining
+     Renumber
+     Constprop
+     CSE
+     Deadcode
+     Unreadglob
+     Unusedglob
+     Allocation
+     Tunneling
+     Linearize
+     CleanupLabels
+     Debugvar
+     Stacking
+     Asmgen.
 (** Proofs of semantic preservation. *)
-Require SimplExprproof.
-Require SimplLocalsproof.
-Require Cshmgenproof.
-Require Cminorgenproof.
-Require Selectionproof.
-Require RTLgenproof.
-Require Tailcallproof.
-Require Inliningproof.
+From compcertr Require
+     SimplExprproof
+     SimplLocalsproof
+     Cshmgenproof
+     Cminorgenproof
+     Selectionproof
+     RTLgenproof
+     Tailcallproof
+     Inliningproof.
 (**
 (** nothing **)
 (** SimMemId **)
 **)
-Require Renumberproof.
-Require Constpropproof.
-Require CSEproof.
-Require Deadcodeproof.
-Require Unusedglobproof.
-Require Allocproof.
-Require Tunnelingproof.
-Require Linearizeproof.
-Require CleanupLabelsproof.
-Require Debugvarproof.
-Require Stackingproof.
-Require Asmgenproof.
+From compcertr Require
+     Renumberproof
+     Constpropproof
+     CSEproof
+     Deadcodeproof
+     Unusedglobproof
+     Allocproof
+     Tunnelingproof
+     Linearizeproof
+     CleanupLabelsproof
+     Debugvarproof
+     Stackingproof
+     Asmgenproof.
 (** Command-line flags. *)
-Require Import Compopts.
+From compcertr Require Import Compopts.
 (** newly added **)
 Require Import BehaviorsC.
-Require Export Compiler.
+From compcertr Require Export Compiler.
 Require Import Simulation.
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
 Require Import SemProps AdequacyLocal.
 
-Require SimMemInj SoundTop SimSymbDrop SimSymbDropInv.
+From compcertr Require SimMemInj.
+Require SoundTop SimSymbDrop SimSymbDropInv.
 Require IdSim.
 
 Require Import RUSC.

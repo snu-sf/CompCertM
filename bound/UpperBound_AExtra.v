@@ -1,9 +1,15 @@
 Require Import CoqlibC MapsC.
-Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
-Require Import Locations Stacklayout Conventions Linking.
-Require Import Simulation Memory ValuesC.
-Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
-Require Import Skeleton ModSem Mod sflib.
+Require Import ASTC.
+Require Import MemoryC.
+Require Import Simulation.
+Require Import ValuesC.
+Require Import Skeleton ModSem Mod.
+From compcertr Require Import
+     Integers Floats Values
+     Events Globalenvs Smallstep
+     Locations Stacklayout Conventions Linking Memory
+     Csem Cop Ctypes Ctyping Csyntax Cexec
+     sflib.
 Require Import Equality.
 Require Import CtypingC.
 Require Import LinkingC2.

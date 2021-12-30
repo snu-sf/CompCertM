@@ -1,19 +1,20 @@
 Require Import CoqlibC.
 Require Import ASTC.
-Require Import Integers.
 Require Import ValuesC.
 Require Import GlobalenvsC.
-Require Import Memory.
-Require Import Events.
-Require Import Op.
-Require Import Machregs.
 Require Import LocationsC.
-Require Import Conventions.
-Require Import LTL.
-Require Import Linear.
-Require Import sflib.
+From compcertr Require Import
+     Integers
+     Memory
+     Events
+     Op
+     Machregs
+     Conventions
+     LTL
+     Linear
+     sflib.
 (** newly added **)
-Require Export Lineartyping.
+From compcertr Require Export Lineartyping.
 Require SoundTop.
 Require Import Preservation.
 Require Import ModSem.

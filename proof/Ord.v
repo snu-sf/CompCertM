@@ -87,7 +87,7 @@ End LINK_WFO.
 
 
 Require Import Program.
-Require Import Axioms.
+From compcertr Require Import Axioms.
 
 
 Record idx := mk { local_idx: Type;

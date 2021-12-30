@@ -1,11 +1,14 @@
 Require Import String.
-Require Import CoqlibC Maps Integers Floats Errors.
-Require Import AST Linking.
-Require Import Values Memory Globalenvs Events.
-Require Import CtypesC Cop Csyntax Csem ValuesC.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Integers Floats Errors
+     AST Linking
+     Values Memory Globalenvs Events
+     Cop Csyntax Csem
+     sflib.
+Require Import CtypesC ValuesC.
 (** newly added **)
-Require Export Ctyping.
+From compcertr Require Export Ctyping.
 (* Require Import AxiomsC. *)
 
 Local Open Scope error_monad_scope.

@@ -5,7 +5,7 @@ From compcertr Require Import
      Floats
      Values
      Memdata.
-From compcert Require Archi.
+From compcertr Require Archi.
 
 Require Import CoqlibC.
 

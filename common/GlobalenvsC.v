@@ -1,12 +1,16 @@
 Require Recdef.
-Require Import Zwf.
-Require Import Axioms CoqlibC Errors MapsC ASTC Linking.
-Require Import IntegersC Floats ValuesC Memory.
-Require Import sflib.
+Require Import Zwf CoqlibC MapsC ASTC.
+From compcertr Require Import
+     Axioms
+     Errors
+     Linking
+     Floats
+     Memory
+     sflib.
+Require Import IntegersC ValuesC.
 
-Require Export Globalenvs.
+From compcertr Require Export Globalenvs.
 
-Require Import sflib.
 From Paco Require Import paco.
 
 Notation "s #1" := (fst s) (at level 9, format "s '#1'") : pair_scope.

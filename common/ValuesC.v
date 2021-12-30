@@ -17,13 +17,13 @@
   semantics of all our intermediate languages. *)
 
 Require Import CoqlibC.
-Require Import AST.
-Require Import Integers.
-Require Import Floats.
-Require Import sflib.
-(** newly added **)
-Require Export Values.
-Require Import Conventions1.
+From compcertr Require Import
+     AST
+     Integers
+     Floats
+     sflib
+     Conventions1.
+From compcertr Require Export Values.
 
 Set Implicit Arguments.
 

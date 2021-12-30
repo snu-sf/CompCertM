@@ -1,12 +1,17 @@
-Require Import CoqlibC Maps Errors Integers Floats Lattice Kildall.
-Require Import AST Linking.
-Require Import ValuesC Memory Events Globalenvs Smallstep.
-Require Import Op Registers RTLC.
-Require Import ValueDomain ValueAOp ValueAnalysisC.
-Require Import CSEdomain CombineOp CombineOpproof CSE.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Errors Integers Floats Lattice Kildall
+     AST Linking
+     Memory Events Globalenvs Smallstep
+     Op Registers
+     ValueDomain ValueAOp
+     sflib.
+Require Import ValuesC.
+Require Import RTLC.
+Require Import ValueAnalysisC.
+From compcertr Require Import CSEdomain CombineOp CombineOpproof CSE.
 (** newly added **)
-Require Export CSEproof.
+From compcertr Require Export CSEproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemExt.

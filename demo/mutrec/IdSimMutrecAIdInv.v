@@ -1,7 +1,8 @@
 Require Import Program.
 
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
-Require Import Cop Ctypes ClightC.
+From compcertr Require Import Cop Ctypes.
+Require Import ClightC.
 Require Import AsmC.
 Require SimMemInjInvC.
 Require Import MutrecA MutrecAspec MutrecAproof.
@@ -13,10 +14,9 @@ Require Import AxiomsC.
 Require Import Ord.
 Require Import MemoryC.
 Require Import SmallstepC.
-Require Import Events.
+From compcertr Require Import Events Integers Conventions.
 Require Import Preservation.
-Require Import Integers.
-Require Import LocationsC Conventions.
+Require Import LocationsC.
 Require Import Conventions1C.
 
 Require Import AsmregsC.

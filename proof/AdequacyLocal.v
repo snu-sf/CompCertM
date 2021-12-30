@@ -2,11 +2,11 @@ Require Import CoqlibC.
 Require Import Simulation.
 Require Import LinkingC.
 Require Import Skeleton.
-Require Import Values.
+From compcertr Require Import Values.
 Require Import JMeq.
 Require Import SmallstepC.
-Require Import Integers.
-Require Import Events.
+From compcertr Require Import Integers.
+From compcertr Require Import Events.
 
 Require Import ASTC Skeleton ModSem Mod Sem.
 Require Import SimSymb SimMem SimMod SimModSem SimProg SimProg.

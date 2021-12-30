@@ -1,11 +1,15 @@
-Require Import CoqlibC Maps.
-Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
-Require Import Locations Stacklayout Conventions Linking.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Integers Floats Values Events Globalenvs Smallstep
+     Locations Stacklayout Conventions Linking Memory
+     SimMemInj
+     sflib.
+Require Import ASTC MemoryC.
 (** newly added **)
-Require Export Asm.
-Require Import Simulation Memory ValuesC.
-Require Import Skeleton ModSem Mod sflib Sem Syntax LinkingC Program SemProps.
-Require Import GlobalenvsC Lia IntegersC SimMemInj AsmStepInj.
+From compcertr Require Export Asm.
+Require Import Simulation ValuesC.
+Require Import Skeleton ModSem Mod Sem Syntax LinkingC Program SemProps.
+Require Import GlobalenvsC Lia IntegersC AsmStepInj.
 Require Import mktac.
 Set Implicit Arguments.
 

@@ -1,4 +1,6 @@
-Require Import CoqlibC Maps Errors AST Linking LinkingC sflib.
+Require Import CoqlibC.
+From compcertr Require Import Maps Errors AST Linking sflib.
+Require Import LinkingC.
 
 Local Obligation Tactic := idtac.
 

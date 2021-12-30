@@ -1,6 +1,8 @@
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
-Require Import Simulation Ctypes Cop Ctyping Csyntax ClightC.
-Require SimMemId SimMemExt SimMemInj.
+Require Import Simulation ClightC.
+From compcertr Require Import Ctypes Cop Ctyping Csyntax.
+Require SimMemId SimMemExt.
+From compcertr Require Import SimMemInj.
 Require SoundTop UnreachC.
 Require SimSymbId SimSymbDrop.
 Require Import CoqlibC.
@@ -11,15 +13,17 @@ Require Import AxiomsC.
 Require Import Ord.
 Require Import MemoryC.
 Require Import SmallstepC.
-Require Import Events.
+From compcertr Require Import Events.
 Require Import Preservation.
-Require Import Integers.
-Require Import LocationsC Conventions.
+From compcertr Require Import Integers.
+Require Import LocationsC.
+From compcertr Require Import Conventions.
 
 Require Import MatchSimModSem.
 Require Import mktac.
 Require Import IntegersC.
-Require Import IdSimExtra Clight ClightStepInj.
+Require Import IdSimExtra ClightStepInj.
+From compcertr Require Import Clight.
 
 Set Implicit Arguments.
 

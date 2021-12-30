@@ -1,8 +1,11 @@
-Require Import CoqlibC Decidableplus.
-Require Import ASTC Machregs Locations.
+Require Import CoqlibC ASTC.
+From compcertr Require Import
+     Decidableplus
+     Machregs
+     Locations.
 (** newly added **)
-Require Export Conventions1.
-Require Conventions.
+From compcertr Require Export Conventions1.
+From compcertr Require Conventions.
 
 Set Implicit Arguments.
 

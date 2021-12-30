@@ -1,20 +1,21 @@
 Require Import CoqlibC.
-Require Import Memory.
-Require Import Values.
-Require Import Maps.
-Require Import Events.
-Require Import Globalenvs.
-Require Import sflib.
+From compcertr Require Import
+     Memory
+     Values
+     Maps
+     Events
+     Globalenvs
+     sflib.
 Require Import RelationClasses.
 Require Import FSets.
-Require Import Ordered.
+From compcertr Require Import Ordered.
 Require Import ASTC.
-Require Import Integers.
+From compcertr Require Import Integers.
 
 Require Import ModSem Skeleton.
 
 Require Import Sound.
-Require Unreach.
+From compcertr Require Unreach.
 Import Unreach.
 Require Import SemiLattice.
 Require Import FinFun.
@@ -377,7 +378,7 @@ Definition definitive_initializer (init: list init_data) : bool :=
   | _ => true
   end.
 
-Require Import ValueAnalysis ValueDomain.
+From compcertr Require Import ValueAnalysis ValueDomain.
 
 
 Definition romatch_ske (bc: block_classification) (m: mem) (rm: ident -> option ablock): Prop :=

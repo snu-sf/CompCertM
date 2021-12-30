@@ -1,13 +1,19 @@
 Require Import FSets.
-Require Import CoqlibC Errors Ordered Maps IntegersC Floats.
-Require Import AST Linking.
-Require Import ValuesC Memory GlobalenvsC Events Smallstep.
-Require Import Registers Op RTLC.
-Require Import ValueDomain ValueAnalysisC NeedDomain NeedOp Inlining.
-Require Import sflib.
-Require SimMemInj.
+Require Import CoqlibC.
+From compcertr Require Import
+     Errors Ordered Maps Floats
+     AST Linking
+     Memory Events Smallstep
+     Registers Op
+     sflib.
+Require Import IntegersC.
+Require Import ValuesC GlobalenvsC.
+Require Import RTLC.
+From compcertr Require Import ValueDomain NeedDomain NeedOp Inlining.
+Require Import ValueAnalysisC.
+From compcertr Require SimMemInj.
 (** newly added **)
-Require Export Inliningproof.
+From compcertr Require Export Inliningproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemInjC.

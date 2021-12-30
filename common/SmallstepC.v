@@ -1,12 +1,12 @@
 Require Import Relations.
 Require Import Wellfounded.
 Require Import CoqlibC.
-Require Import Events.
-Require Import Globalenvs.
-Require Import Integers.
+From compcertr Require Import Events.
+From compcertr Require Import Globalenvs.
+From compcertr Require Import Integers.
 Require Import AxiomsC.
 (** newly added **)
-Require Export Smallstep.
+From compcertr Require Export Smallstep.
 
 Set Implicit Arguments.
 

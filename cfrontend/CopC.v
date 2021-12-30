@@ -1,15 +1,16 @@
 Require Import CoqlibC.
-Require Import AST.
-Require Import Integers.
-Require Import Floats.
-Require Import Values.
-Require Import Memory.
-Require Import Ctypes.
-Require Archi.
+From compcertr Require Import
+     AST
+     Integers
+     Floats
+     Values
+     Memory
+     Ctypes.
+From compcertr Require Archi.
 (** newly added **)
-Require Export Cop.
-Require Import sflib.
-Require Conventions Conventions1.
+From compcertr Require Export Cop.
+From compcertr Require Import sflib.
+From compcertr Require Conventions Conventions1.
 
 
 Inductive typecheck (vs: list val) (tys: typelist): Prop :=

@@ -1,15 +1,17 @@
 Require Import CoqlibC.
-Require Import Memory.
-Require Import Values.
-Require Import Maps.
-Require Import Events.
-Require Import Globalenvs.
-Require Import sflib.
+From compcertr Require Import
+     Memory
+     Values
+     Maps
+     Events
+     Globalenvs
+     sflib.
 Require Import RelationClasses.
 Require Import FSets.
-Require Import Ordered.
-Require Import AST.
-Require Import Integers.
+From compcertr Require Import
+     Ordered
+     AST
+     Integers.
 
 Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.

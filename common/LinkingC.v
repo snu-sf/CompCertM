@@ -1,10 +1,13 @@
 (** copied && added "C" **)
-Require Import CoqlibC Maps Errors ASTC.
+Require Import CoqlibC ASTC.
+From compcertr Require Import
+     Maps
+     Errors.
 
 (** newly added **)
-Require Export Linking.
-Require Import Axioms.
-Require Import sflib.
+From compcertr Require Export Linking.
+From compcertr Require Import Axioms.
+From compcertr Require Import sflib.
 
 Set Implicit Arguments.
 

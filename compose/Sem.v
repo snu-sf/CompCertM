@@ -1,14 +1,15 @@
-Require Import Maps.
-Require Import AST.
-Require Import Integers.
-Require Import Values.
-Require Import Memory.
-Require Import Events.
-Require Import Smallstep.
+From compcertr Require Import
+     Maps
+     AST
+     Integers
+     Values
+     Memory
+     Events
+     Smallstep.
 Require Import GlobalenvsC.
 Require Import LinkingC.
 Require Import CoqlibC.
-Require Import sflib.
+From compcertr Require Import sflib.
 
 Require Import ModSem Mod Skeleton System.
 Require Export Syntax.

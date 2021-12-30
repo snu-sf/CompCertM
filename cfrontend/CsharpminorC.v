@@ -1,19 +1,19 @@
 Require Import CoqlibC.
-Require Import Maps.
-Require Import AST.
-Require Import Integers.
-Require Import Floats.
 Require Import ValuesC.
-Require Import Memory.
 Require Import EventsC.
-Require Import Globalenvs.
-Require Import Switch.
-Require Cminor.
-Require Import Smallstep.
+From compcertr Require Import Maps
+     AST
+     Integers
+     Floats
+     Memory
+     Globalenvs
+     Switch
+     Smallstep.
+From compcertr Require Cminor.
 (** newly added **)
-Require Import sflib.
+From compcertr Require Import sflib.
 Require Import Simulation Skeleton Mod ModSem.
-Require Export Csharpminor.
+From compcertr Require Export Csharpminor.
 
 Set Implicit Arguments.
 

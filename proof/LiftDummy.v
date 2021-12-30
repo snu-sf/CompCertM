@@ -1,8 +1,20 @@
 Require Import FSets.
-Require Import CoqlibC Maps Ordered Errors Lattice Kildall Integers.
-Require Import AST Linking.
-Require Import Values Memory Events Globalenvs SmallstepC.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps
+     Ordered
+     Errors
+     Lattice
+     Kildall
+     Integers
+     AST
+     Linking
+     Values
+     Memory
+     Events
+     Globalenvs
+     sflib.
+Require Import SmallstepC.
 
 
 

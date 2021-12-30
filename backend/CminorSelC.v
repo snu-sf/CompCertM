@@ -1,17 +1,18 @@
 Require Import CoqlibC.
-Require Import Maps.
+From compcertr Require Import
+     Maps
+     Floats
+     Memory
+     Globalenvs
+     Switch.
 Require Import ASTC.
 Require Import IntegersC.
-Require Import Floats.
 Require Import EventsC.
 Require Import ValuesC.
-Require Import Memory.
-Require Import Globalenvs.
 Require Import SmallstepC.
-Require Import Switch.
 (** newly added **)
 Require Import Simulation Skeleton Mod ModSem.
-Require Export CminorSel.
+From compcertr Require Export CminorSel.
 (* Require Import AsmregsC. *)
 (* Require Import Conventions. *)
 (* Require Import Locations. *)

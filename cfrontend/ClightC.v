@@ -1,23 +1,24 @@
+From compcertr Require Import
+     Errors
+     Maps
+     Integers
+     Floats
+     AST
+     Memory
+     Globalenvs
+     Smallstep
+     sflib.
 Require Import CoqlibC.
-Require Import Errors.
-Require Import Maps.
-Require Import Integers.
-Require Import Floats.
 Require Import ValuesC.
-Require Import AST.
-Require Import Memory.
 Require Import EventsC.
-Require Import Globalenvs.
-Require Import Smallstep.
 Require Import CtypesC.
 Require Import CopC.
 (** newly added **)
-Require Import sflib.
 Require Import Skeleton Mod ModSem.
 Require Import CtypesC.
 Require Import CtypingC.
 Require Import Simulation.
-Require Export Clight.
+From compcertr Require Export Clight.
 
 Set Implicit Arguments.
 

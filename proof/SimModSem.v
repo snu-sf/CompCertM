@@ -1,12 +1,13 @@
 Require Import SimMem.
 Require Import Simulation.
-Require Import AST.
 From Paco Require Import paco.
-Require Import sflib.
 Require Import Basics.
 Require Import CoqlibC.
-Require Import Values Integers.
-Require Import Globalenvs.
+From compcertr Require Import
+     AST
+     sflib
+     Values Integers
+     Globalenvs.
 Require Import Program.
 Require Import MemoryC.
 
@@ -15,7 +16,7 @@ Require Import ModSem.
 Require Import Sound Preservation.
 Import ModSem.
 Require Import ModSemProps.
-Require Import Events.
+From compcertr Require Import Events.
 Require Import SmallstepC.
 
 Set Implicit Arguments.

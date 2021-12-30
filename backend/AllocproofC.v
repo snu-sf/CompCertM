@@ -1,14 +1,18 @@
 Require Import FunInd.
 Require Import FSets.
-Require Import CoqlibC Ordered Maps Errors IntegersC Floats.
-Require Import AST Linking Lattice Kildall.
-Require Import ValuesC MemoryC Globalenvs Events Smallstep.
-Require Archi.
-Require Import Op Registers RTLC LocationsC Conventions RTLtypingC LTLC.
-Require Import Allocation.
-Require Import sflib.
+Require Import CoqlibC IntegersC.
+From compcertr Require Import
+     Ordered Maps Errors Floats
+     AST Linking Lattice Kildall
+     Globalenvs Events Smallstep
+     Op Registers Conventions
+     sflib.
+Require Import ValuesC MemoryC.
+From compcertr Require Archi.
+Require Import RTLC LocationsC RTLtypingC LTLC.
+From compcertr Require Import Allocation.
 (** newly added **)
-Require Export Allocproof.
+From compcertr Require Export Allocproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require Import ModSemProps.

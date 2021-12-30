@@ -1,9 +1,11 @@
-Require Import Events.
-Require Import Values.
-Require Import AST.
+From compcertr Require Import
+     Events
+     Values
+     AST.
 Require Import MemoryC.
-Require Import Globalenvs.
-Require Import Smallstep.
+From compcertr Require Import
+     Globalenvs
+     Smallstep.
 Require Import CoqlibC.
 Require Import Skeleton.
 Require Import IntegersC.

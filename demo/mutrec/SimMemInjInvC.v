@@ -1,16 +1,17 @@
 Require Import CoqlibC.
 Require Import MemoryC.
-Require Import Values.
-Require Import Maps.
-Require Import Events.
-Require Import Globalenvs.
+From compcertr Require Import
+     Values
+     Maps
+     Events
+     Globalenvs.
 Require Import ASTC.
 
 Require Import IntegersC LinkingC.
 Require Import SimSymb Skeleton Mod ModSem.
 Require Import SimMem SimMemLift.
 Require SimSymbId.
-Require Export SimMemInjInv.
+From compcertr Require Export SimMemInjInv.
 Require Import Coq.Logic.FunctionalExtensionality.
 Require Import Coq.Logic.ClassicalChoice.
 Require Import Coq.Logic.ChoiceFacts.

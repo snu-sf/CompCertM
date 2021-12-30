@@ -1,15 +1,21 @@
-Require Import CoqlibC Errors.
-Require Import IntegersC ASTC Linking.
-Require Import ValuesC MemoryC SeparationC Events GlobalenvsC Smallstep.
-Require Import LTL Op LocationsC LinearC MachC MachExtra.
-Require Import Bounds ConventionsC StacklayoutC LineartypingC.
-Require Import Stacking.
+Require Import CoqlibC.
+From compcertr Require Import
+     Errors
+     Linking
+     Events
+     Smallstep.
+Require Import IntegersC ASTC.
+Require Import ValuesC MemoryC SeparationC GlobalenvsC.
+From compcertr Require Import LTL Op Bounds.
+Require Import LocationsC LinearC MachC MachExtra.
+Require Import ConventionsC StacklayoutC LineartypingC.
+From compcertr Require Import Stacking.
 
 Local Open Scope string_scope.
 Local Open Scope sep_scope.
 
 (* newly added *)
-Require Export Stackingproof.
+From compcertr Require Export Stackingproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMemLift AsmregsC MatchSimModSemExcl.
 Require Import Conventions1C.

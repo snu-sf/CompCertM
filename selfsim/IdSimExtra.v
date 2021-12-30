@@ -1,5 +1,6 @@
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
-Require SimMemId SimMemExt SimMemInj.
+Require SimMemId SimMemExt.
+From compcertr Require SimMemInj.
 Require SoundTop SimSymbId SimSymbDrop.
 Require Import CoqlibC.
 Require Import ASTC ValuesC.
@@ -8,7 +9,7 @@ Require Import AxiomsC.
 Require Import Ord.
 Require Import MemoryC.
 Require Import SmallstepC.
-Require Import Events.
+From compcertr Require Import Events.
 Require Import Preservation.
 
 Set Implicit Arguments.

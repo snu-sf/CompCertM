@@ -1,9 +1,16 @@
 Require Import Setoid Program.Basics.
-Require Import CoqlibC Decidableplus.
-Require Import AST Integers Values MemoryC Events Globalenvs.
+Require Import CoqlibC.
+From compcertr Require Import
+     Decidableplus
+     AST
+     Integers
+     Values
+     Events
+     Globalenvs.
+Require Import MemoryC.
 (** newly added **)
 Require Import AxiomsC.
-Require Export Separation.
+From compcertr Require Export Separation.
 Require Import JunkBlock.
 
 Local Open Scope sep_scope.

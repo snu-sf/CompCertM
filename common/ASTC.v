@@ -1,12 +1,17 @@
 (** copied && added "C" **)
 Require Import String.
-Require Import CoqlibC Maps Errors Integers Floats.
-Require Archi.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps
+     Errors
+     Integers
+     Floats.
+From compcertr Require Archi.
 
 (** newly added **)
-Require Export AST.
-Require Import Errors.
-Require Import sflib.
+From compcertr Require Export AST.
+From compcertr Require Import Errors.
+From compcertr Require Import sflib.
 
 Set Implicit Arguments.
 

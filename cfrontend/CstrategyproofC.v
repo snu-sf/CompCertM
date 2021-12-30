@@ -1,10 +1,12 @@
-Require Import Axioms.
+From compcertr Require Import
+     Axioms
+     Floats
+     sflib.
 Require Import Classical.
 Require Import CoqlibC.
 Require Import ErrorsC.
 Require Import MapsC.
 Require Import IntegersC.
-Require Import Floats.
 Require Import ValuesC.
 Require Import ASTC.
 Require Import MemoryC.
@@ -13,10 +15,10 @@ Require Import GlobalenvsC.
 Require Import SmallstepC.
 Require Import CtypesC.
 Require Import CopC.
-Require Import Csyntax.
+From compcertr Require Import Csyntax.
 Require Import CsemC.
-Require Import sflib.
-Require Import CstrategyC Cstrategyproof.
+Require Import CstrategyC.
+From compcertr Require Import Cstrategyproof.
 (** newly added *)
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.

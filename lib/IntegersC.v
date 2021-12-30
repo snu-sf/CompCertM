@@ -1,8 +1,8 @@
 Require Import Eqdep_dec Zquot Zwf.
 Require Import CoqlibC.
-Require Archi.
+From compcertr Require Archi.
 (** newly added **)
-Require Export Integers.
+From compcertr Require Export Integers.
 
 Lemma Ptrofs_add_repr: forall x y,
     <<EQ: (Ptrofs.add (Ptrofs.repr x) (Ptrofs.repr y)) = Ptrofs.repr (x + y)>>.

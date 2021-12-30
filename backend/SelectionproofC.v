@@ -1,12 +1,14 @@
 Require Import FunInd.
-Require Import CoqlibC Maps.
-Require Import ASTC LinkingC Errors Integers ValuesC Memory Events Globalenvs Smallstep.
-Require Import Switch CminorC Op CminorSelC CminortypingC.
-Require Import SelectOp SelectDiv SplitLong SelectLong Selection.
-Require Import SelectOpproof SelectDivproof SplitLongproof SelectLongproof.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import Maps Errors Integers Memory Events Globalenvs Smallstep.
+Require Import ASTC LinkingC ValuesC.
+From compcertr Require Import Switch Op.
+Require Import CminorC CminorSelC CminortypingC.
+From compcertr Require Import SelectOp SelectDiv SplitLong SelectLong Selection.
+From compcertr Require Import SelectOpproof SelectDivproof SplitLongproof SelectLongproof.
+From compcertr Require Import sflib.
 (* newly added *)
-Require Export Selectionproof.
+From compcertr Require Export Selectionproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSemExcl.
 Require SimMemExt.

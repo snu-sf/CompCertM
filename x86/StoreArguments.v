@@ -1,18 +1,20 @@
 Require Import CoqlibC.
-Require Import Maps.
-Require Import AST.
-Require Import Integers.
+From compcertr Require Import
+     Maps
+     AST
+     Integers.
 Require Import ValuesC.
 Require Import MemoryC.
-Require Import Globalenvs.
-Require Import Events.
-Require Import Smallstep.
-Require Import Op.
+From compcertr Require Import
+     Globalenvs
+     Events
+     Smallstep
+     Op
+     Conventions.
 Require Import LocationsC.
-Require Import Conventions.
-Require Stacklayout.
+From compcertr Require Stacklayout.
 (** newly added **)
-Require Import Mach.
+From compcertr Require Import Mach.
 
 Definition only_args (m: mem) (blk: block) (lo: ptrofs) (locs: list loc) :=
   forall ofs,

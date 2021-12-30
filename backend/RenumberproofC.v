@@ -1,10 +1,14 @@
-Require Import CoqlibC Maps Postorder.
-Require Import AST Linking.
-Require Import ValuesC Memory Globalenvs Events Smallstep.
-Require Import Op Registers RTLC Renumber.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Postorder
+     AST Linking
+     Memory Globalenvs Events Smallstep
+     Op Registers sflib.
+Require Import ValuesC.
+Require Import RTLC.
+From compcertr Require Import Renumber.
 (** newly added **)
-Require Export Renumberproof.
+From compcertr Require Export Renumberproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemId.

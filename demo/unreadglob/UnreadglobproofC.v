@@ -1,12 +1,15 @@
-Require Import FSets CoqlibC Maps Ordered Iteration Errors.
-Require Import ASTC Linking.
-Require Import IntegersC ValuesC Memory Globalenvs Events Smallstep.
-Require Import Op Registers RTLC.
-Require Import Unreadglob.
-Require Import sflib.
-Require SimMemInjInv.
+Require Import FSets CoqlibC.
+From compcertr Require Import
+     Maps Ordered Iteration Errors Linking
+     Memory Globalenvs Events Smallstep
+     Op Registers sflib.
+Require Import ASTC.
+Require Import IntegersC ValuesC.
+Require Import RTLC.
+From compcertr Require Import Unreadglob.
+From compcertr Require SimMemInjInv.
 (** newly added **)
-Require Export Unreadglobproof.
+From compcertr Require Export Unreadglobproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemInjInvC.

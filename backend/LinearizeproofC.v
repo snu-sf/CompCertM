@@ -1,12 +1,15 @@
 Require Import FSets.
-Require Import CoqlibC Maps Ordered Errors Lattice Kildall Integers.
-Require Import AST Linking.
-Require Import Values Memory Events Globalenvs Smallstep.
-Require Import Op Locations LTLC LinearC.
-Require Import Linearize.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Ordered Errors Lattice Kildall Integers
+     AST Linking
+     Values Memory Events Globalenvs Smallstep
+     Op Locations
+     sflib.
+Require Import LTLC LinearC.
+From compcertr Require Import Linearize.
 (** newly added **)
-Require Export Linearizeproof.
+From compcertr Require Export Linearizeproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem ModSemProps.
 Require SimMemId.

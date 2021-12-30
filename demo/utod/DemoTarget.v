@@ -1,6 +1,4 @@
-Require Import AST Coqlib.
-Require Import Asm.
-Require Import sflib.
+From compcertr Require Import AST Coqlib Asm sflib.
 Require Import AsmC Mod.
 Require Import DemoHeader.
 

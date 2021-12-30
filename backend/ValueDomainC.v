@@ -1,11 +1,14 @@
 Require Import FunInd.
-Require Import Zwf CoqlibC Maps Integers Floats Lattice.
-Require Import Compopts AST.
-Require Import Values MemoryC Globalenvs Events.
-Require Import Registers RTL.
-Require Import sflib.
+Require Import Zwf CoqlibC.
+From compcertr Require Import
+     Maps Integers Floats Lattice
+     Compopts AST
+     Values Globalenvs Events
+     Registers RTL
+     sflib.
+Require Import MemoryC.
 (** newly added **)
-Require Export ValueDomain.
+From compcertr Require Export ValueDomain.
 Require Import Skeleton.
 Require Import Sound UnreachC.
 Require Import ModSem.

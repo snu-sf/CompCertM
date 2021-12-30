@@ -1,13 +1,17 @@
-Require Import Axioms CoqlibC MapsC Errors.
-Require Import AST Linking.
-Require Archi.
+Require Import CoqlibC MapsC.
+From compcertr Require Import
+     Axioms
+     AST
+     Linking.
+From compcertr Require Archi.
 (** newly added **)
 (* Csem Csyntax ASTC. *)
-Require Import Errors.
-Require Import Values.
-Require Import sflib.
+From compcertr Require Import
+     Errors
+     Values
+     sflib.
 Require Import Skeleton ASTC.
-Require Export Ctypes Csyntax.
+From compcertr Require Export Ctypes Csyntax.
 
 Set Implicit Arguments.
 

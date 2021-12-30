@@ -1,10 +1,13 @@
-Require Import CoqlibC Maps UnionFind.
-Require Import AST Linking.
-Require Import ValuesC Memory Events Globalenvs Smallstep.
-Require Import Op LocationsC LTLC.
-Require Import Tunneling.
+From compcertr Require Import
+     Maps UnionFind
+     AST Linking
+     Memory Events Globalenvs Smallstep Op.
+Require Import CoqlibC.
+Require Import ValuesC.
+Require Import LocationsC LTLC.
+From compcertr Require Import Tunneling.
 (* newly added *)
-Require Export Tunnelingproof.
+From compcertr Require Export Tunnelingproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require Import ConventionsC.

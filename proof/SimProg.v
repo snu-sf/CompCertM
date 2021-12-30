@@ -1,16 +1,17 @@
-Require Import Events.
-Require Import Values.
-Require Import AST.
-Require Import Memory.
-Require Import Globalenvs.
-Require Import Smallstep.
+From compcertr Require Import
+     Events
+     Values
+     AST
+     Memory
+     Globalenvs
+     Smallstep.
 Require Import CoqlibC.
 Require Import Skeleton.
 Require Import ModSem.
 Require Import SimSymb.
-Require Import Integers.
+From compcertr Require Import Integers.
 Require Import ASTC.
-Require Import Maps.
+From compcertr Require Import Maps.
 Require Import LinkingC.
 
 Require Import Syntax Sem Mod ModSem.

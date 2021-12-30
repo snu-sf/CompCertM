@@ -1,10 +1,10 @@
 Require Import CoqlibC.
-Require Import AST Memory Separation.
-Require Import Bounds.
+From compcertr Require Import AST Memory Separation.
+From compcertr Require Import Bounds.
 
 Local Open Scope sep_scope.
 (** newly added **)
-Require Export Stacklayout.
+From compcertr Require Export Stacklayout.
 Require Import Lia.
 
 

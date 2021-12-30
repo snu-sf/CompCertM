@@ -1,12 +1,12 @@
 (** Libraries. *)
 Require Import String.
-Require Import CoqlibC Errors ErrorsC.
-Require Import AST Linking Smallstep.
+Require Import CoqlibC ErrorsC.
+From compcertr Require Import Errors AST Linking Smallstep.
 (** Command-line flags. *)
-Require Import Compopts.
+From compcertr Require Import Compopts.
 (** newly added **)
 Require Import BehaviorsC.
-Require Export Compiler.
+From compcertr Require Export Compiler.
 Require Import Simulation.
 Require Import Sem SimProg Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem Sound SimSymb.
 Require Import SemProps AdequacyLocal.

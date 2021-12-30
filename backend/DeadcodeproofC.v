@@ -1,12 +1,17 @@
 Require Import FunInd.
-Require Import CoqlibC Maps Errors Integers Floats Lattice Kildall.
-Require Import AST Linking.
-Require Import ValuesC Memory Globalenvs Events Smallstep.
-Require Import Registers Op RTLC.
-Require Import ValueDomain ValueAnalysisC NeedDomain NeedOp Deadcode.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Errors Integers Floats Lattice Kildall
+     AST Linking
+     Memory Globalenvs Events Smallstep
+     Registers Op
+     sflib.
+Require Import ValuesC.
+Require Import RTLC.
+Require Import ValueAnalysisC.
+From compcertr Require Import ValueDomain NeedDomain NeedOp Deadcode.
 (** newly added **)
-Require Export Deadcodeproof.
+From compcertr Require Export Deadcodeproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemExt.

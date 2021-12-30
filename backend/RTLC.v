@@ -1,11 +1,18 @@
-Require Import CoqlibC Maps.
-Require Import ASTC Integers ValuesC EventsC Memory Globalenvs.
-Require Import Op Registers.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps
+     Integers
+     Memory
+     Globalenvs
+     Op
+     Registers
+     sflib.
+Require Import ASTC ValuesC EventsC.
 Require Import SmallstepC.
 (** newly added **)
 Require Import Skeleton Mod ModSem.
-Require Export Simulation RTL.
+Require Export Simulation.
+From compcertr Require Export RTL.
 Require Import JunkBlock.
 
 Set Implicit Arguments.

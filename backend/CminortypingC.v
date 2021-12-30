@@ -11,13 +11,16 @@
 (*                                                                     *)
 (* *********************************************************************)
 
-Require Import CoqlibC Maps Errors.
-Require Import AST Integers Floats ValuesC Memory Globalenvs Events Smallstep.
-Require Import Cminor.
-Require Import Unityping.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Errors
+     AST Integers Floats Memory Globalenvs Events Smallstep
+     sflib.
+Require Import ValuesC.
+From compcertr Require Import Cminor.
+From compcertr Require Import Unityping.
 (** newly added **)
-Require Export Cminortyping.
+From compcertr Require Export Cminortyping.
 Require Import Skeleton ModSem Preservation.
 Require Import SoundTop.
 Require Import CminorC.

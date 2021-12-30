@@ -1,7 +1,12 @@
-Require Import CoqlibC Maps.
-Require Import ASTC Integers ValuesC EventsC MemoryC Globalenvs.
-Require Import Op Registers.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps
+     Integers
+     Globalenvs
+     Op
+     Registers
+     sflib.
+Require Import ASTC ValuesC EventsC MemoryC.
 Require Import SmallstepC.
 
 Set Implicit Arguments.

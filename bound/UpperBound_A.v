@@ -1,13 +1,14 @@
 From Paco Require Import paco.
 Require Import CoqlibC MapsC.
-Require Import ASTC Integers Floats Values MemoryC Events Globalenvs Smallstep.
-Require Import Locations Stacklayout Conventions Linking.
-Require Import Simulation Memory ValuesC.
-Require Import Skeleton ModSem Mod sflib.
+Require Import ASTC MemoryC.
+From compcertr Require Import Integers Floats Values Events Globalenvs Smallstep.
+From compcertr Require Import Locations Stacklayout Conventions Linking Memory sflib.
+Require Import Simulation ValuesC.
+Require Import Skeleton ModSem Mod.
 Require Import CtypesC CsemC.
 Require Import Equality.
 Require Import UpperBound_AExtra.
-Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
+From compcertr Require Export Csem Cop Ctypes Ctyping Csyntax Cexec.
 Require Import Sem Syntax LinkingC Program SemProps.
 Require Import CtypingC LinkingC2.
 

@@ -1,11 +1,16 @@
 Require Import FunInd.
-Require Import CoqlibC Maps Errors IntegersC.
+Require Import CoqlibC IntegersC.
 Require Import ASTC LinkingC.
-Require Import ValuesC MemoryC EventsC GlobalenvsC Smallstep.
-Require Import Ctypes Cop Csyntax Csem CstrategyC ClightC.
-Require Import SimplExpr SimplExprspec.
+Require Import ValuesC MemoryC EventsC GlobalenvsC.
+From compcertr Require Import
+     Maps Errors
+     Smallstep
+     Ctypes Cop Csyntax Csem
+     sflib.
+Require Import CstrategyC ClightC.
+From compcertr Require Import SimplExpr SimplExprspec.
 (** newly added **)
-Require Export SimplExprproof.
+From compcertr Require Export SimplExprproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSemSR SimSymb SimMem MatchSimModSemSR.
 Require Import ModSemProps.
@@ -13,7 +18,6 @@ Require Import CtypesC.
 Require Import CtypingC.
 Require SimMemId.
 Require SoundTop.
-Require Import sflib.
 
 Set Implicit Arguments.
 

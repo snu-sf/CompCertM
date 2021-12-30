@@ -1,11 +1,14 @@
-Require Import CoqlibC Errors Maps Integers Floats.
-Require Import AST Linking.
-Require Import ValuesC Events Memory Globalenvs Smallstep.
-Require Import CtypesC Cop ClightC Cminor CsharpminorC.
-Require Import Cshmgen.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Errors Maps Integers Floats
+     AST Linking
+     Events Memory Globalenvs Smallstep
+     sflib.
+Require Import ValuesC.
+From compcertr Require Import Cop Cminor Cshmgen.
+Require Import CtypesC ClightC CsharpminorC.
 (** newly added **)
-Require Export Cshmgenproof.
+From compcertr Require Export Cshmgenproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemId.

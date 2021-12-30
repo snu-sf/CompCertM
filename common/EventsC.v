@@ -1,14 +1,15 @@
 Require Import String.
 Require Import CoqlibC.
-Require Intv.
-Require Import AST.
-Require Import Integers.
-Require Import Floats.
-Require Import Values.
-Require Import Memory.
-Require Import Globalenvs.
+From compcertr Require Intv.
+From compcertr Require Import
+     AST
+     Integers
+     Floats
+     Values
+     Memory
+     Globalenvs.
 (** newly added **)
-Require Export Events.
+From compcertr Require Export Events.
 
 Set Implicit Arguments.
 

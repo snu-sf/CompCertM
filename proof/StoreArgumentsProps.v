@@ -1,18 +1,21 @@
 Require Import CoqlibC.
-Require Import Maps.
-Require Import AST.
-Require Import Integers.
+From compcertr Require Import
+     Maps
+     AST
+     Integers.
 Require Import ValuesC.
 Require Import MemoryC.
-Require Import Globalenvs.
-Require Import Events.
-Require Import Smallstep.
-Require Import Op.
+From compcertr Require Import
+     Globalenvs
+     Events
+     Smallstep
+     Op.
 Require Import LocationsC.
-Require Import Conventions.
-Require Import SimMemInj.
-Require Stacklayout.
-Require Import Asm Mach mktac MemdataC AsmregsC StoreArguments.
+From compcertr Require Import Conventions.
+From compcertr Require Import SimMemInj.
+From compcertr Require Stacklayout.
+From compcertr Require Import Asm Mach.
+Require Import mktac MemdataC AsmregsC StoreArguments.
 
 
 Definition agree (j: meminj) (rs0 rs1: Mach.regset) : Prop :=

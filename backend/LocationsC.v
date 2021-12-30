@@ -1,13 +1,13 @@
 Require Import OrderedType.
 Require Import CoqlibC.
-Require Import Maps.
-Require Import Ordered.
-Require Import AST.
-Require Import Values.
-Require Export Machregs.
+From compcertr Require Import Maps.
+From compcertr Require Import Ordered.
+From compcertr Require Import AST.
+From compcertr Require Import Values.
+From compcertr Require Export Machregs.
 (** newly added **)
-Require Export Locations.
-Require Import Conventions Integers Memory.
+From compcertr Require Export Locations.
+From compcertr Require Import Conventions Integers Memory.
 Require Import List.
 
 Set Implicit Arguments.

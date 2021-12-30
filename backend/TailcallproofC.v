@@ -1,9 +1,13 @@
-Require Import CoqlibC Maps Integers AST Linking.
-Require Import ValuesC Memory Events Globalenvs Smallstep.
-Require Import Op Registers RTLC Conventions Tailcall.
-Require Import sflib.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Integers AST Linking
+     Memory Events Globalenvs Smallstep
+     Op Registers Conventions sflib.
+Require Import ValuesC.
+Require Import RTLC.
+From compcertr Require Import Tailcall.
 (** newly added **)
-Require Export Tailcallproof.
+From compcertr Require Export Tailcallproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemExt.

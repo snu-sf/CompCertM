@@ -1,4 +1,5 @@
-Require Import CoqlibC Errors Compiler.
+Require Import CoqlibC.
+From compcertr Require Import Errors Compiler.
 
 Lemma mmap_app A B (f: A -> res B) l0 l1:
     mmap f (l0 ++ l1) =

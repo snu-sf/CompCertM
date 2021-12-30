@@ -3,7 +3,7 @@ Require Import CoqlibC.
 Require Import Zwf.
 Require Coq.Program.Wf.
 Require Import Recdef.
-Require Import Intv.
+From compcertr Require Import Intv.
 Require Import AxiomsC.
 
 Definition main_id := (77%positive).
@@ -75,7 +75,7 @@ Proof.
     rewrite MOD1. lia.
 Qed.
 
-Require AST.
+From compcertr Require AST.
 
 Definition fg_sig: AST.signature := (AST.mksignature [AST.Tint] (AST.Tret AST.Tint) AST.cc_default).
 

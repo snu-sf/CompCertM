@@ -1,9 +1,13 @@
-Require Import CoqlibC Maps Postorder.
-Require Import ASTC Linking.
-Require Import ValuesC Memory GlobalenvsC Events Smallstep.
-Require Import Op Registers ClightC Renumber.
+Require Import CoqlibC.
+From compcertr Require Import
+     Maps Postorder Linking
+     Memory Events Smallstep
+     Op Registers Renumber
+     sflib.
+Require Import ASTC.
+Require Import ValuesC GlobalenvsC.
+Require Import ClightC.
 Require Import CtypesC CtypingC.
-Require Import sflib.
 Require Import IntegersC.
 
 Require Import MutrecHeader.
@@ -13,7 +17,7 @@ Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC Matc
 (* Require SimMemInjC. *)
 Require SimMemId.
 Require SoundTop.
-Require Import Clightdefs.
+From compcertr Require Import Clightdefs.
 Require Import CtypesC.
 Require Import BehaviorsC.
 Require Import LinkingC2.

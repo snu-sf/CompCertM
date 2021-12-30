@@ -1,22 +1,20 @@
 Require Import CoqlibC.
-Require Import Maps.
-Require Import AST.
-Require Import Integers.
-Require Import ValuesC.
-Require Import MemoryC.
-Require Import Globalenvs.
-Require Import EventsC.
-Require Import Smallstep.
-Require Import Op.
-Require Import LocationsC.
-Require Import Conventions.
-Require Stacklayout.
+From compcertr Require Import
+     Maps
+     AST
+     Integers
+     Globalenvs
+     Smallstep
+     Op
+     Conventions.
+Require Import ValuesC MemoryC EventsC LocationsC.
+From compcertr Require Stacklayout.
 (** newly added **)
 Require Import Skeleton Mod ModSem.
 Require Import StoreArguments.
-Require Import Simulation Integers.
+Require Import Simulation.
 Require Import JunkBlock.
-Require Export Mach.
+From compcertr Require Export Mach.
 
 Set Implicit Arguments.
 

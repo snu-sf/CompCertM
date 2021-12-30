@@ -1,12 +1,13 @@
 Require Import Classical.
 Require Import ClassicalEpsilon.
 Require Import CoqlibC.
-Require Import Events.
-Require Import Globalenvs.
-Require Import Integers.
-Require Import Smallstep.
+From compcertr Require Import
+     Events
+     Globalenvs
+     Integers
+     Smallstep.
 (** newly added **)
-Require Export Behaviors.
+From compcertr Require Export Behaviors.
 Require Import Simulation.
 
 Set Implicit Arguments.

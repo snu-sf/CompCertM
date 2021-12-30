@@ -1,11 +1,14 @@
 Require Import CoqlibC.
-Require Import ASTC Integers ValuesC MemoryC EventsC GlobalenvsC Smallstep.
-Require Import Op LocationsC LTL Conventions.
+Require Import ASTC ValuesC MemoryC EventsC GlobalenvsC.
+From compcertr Require Import
+     Integers Smallstep
+     Op LTL Conventions.
+Require Import LocationsC.
 (** newly added **)
 Require Import Skeleton Mod ModSem.
 Require Import Simulation AsmregsC.
 Require Import JunkBlock.
-Require Export Linear.
+From compcertr Require Export Linear.
 
 Set Implicit Arguments.
 

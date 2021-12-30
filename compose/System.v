@@ -1,9 +1,11 @@
 Require Import EventsC.
-Require Import Values.
-Require Import AST.
-Require Import Memory.
-Require Import Globalenvs.
-Require Import Smallstep Simulation.
+From compcertr Require Import
+     Values
+     AST
+     Memory
+     Globalenvs
+     Smallstep.
+Require Import Simulation.
 Require Import CoqlibC.
 
 Require Import Mod ModSem Skeleton.

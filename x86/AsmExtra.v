@@ -1,7 +1,8 @@
-Require Import Skeleton ModSem .
-Require Import Integers.
+Require Import Skeleton ModSem.
+From compcertr Require Import Integers.
 Require Import ASTC CoqlibC ValuesC MemoryC.
-Require Import LocationsC Conventions AsmregsC.
+Require Import LocationsC AsmregsC.
+From compcertr Require Import Conventions.
 Require Import AsmC StoreArguments StoreArgumentsProps.
 
 Set Implicit Arguments.

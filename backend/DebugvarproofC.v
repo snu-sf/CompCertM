@@ -1,10 +1,14 @@
-Require Import Axioms CoqlibC Maps Iteration (* Errors *).
-Require Import Integers Floats AST Linking.
-Require Import ValuesC Memory Events Globalenvs Smallstep.
-Require Import Machregs LocationsC Conventions Op LinearC.
-Require Import Debugvar.
+From compcertr Require Import
+        Axioms Maps Iteration
+        Integers Floats AST Linking
+        Memory Events Globalenvs Smallstep
+        Machregs Conventions Op.
+Require Import CoqlibC.
+Require Import ValuesC.
+Require Import LocationsC LinearC.
+From compcertr Require Import Debugvar.
 (** newly added **)
-Require Export Debugvarproof.
+From compcertr Require Export Debugvarproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemId.

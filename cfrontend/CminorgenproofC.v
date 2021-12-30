@@ -1,14 +1,18 @@
 Require Import Coq.Program.Equality FSets Permutation.
 Require Import FSets FSetAVL Orders Mergesort.
-Require Import CoqlibC Maps Ordered Errors IntegersC Floats.
-Require Intv.
-Require Import AST Linking.
-Require Import ValuesC Memory Events GlobalenvsC Smallstep.
-Require Import CsharpminorC Switch CminorC Cminorgen.
-Require Import sflib.
-Require SimMemInj.
+Require Import CoqlibC IntegersC.
+From compcertr Require Import
+     Maps Ordered Errors Floats
+     AST Linking
+     Memory Events Smallstep
+     sflib.
+From compcertr Require Intv.
+Require Import ValuesC GlobalenvsC.
+Require Import CsharpminorC CminorC.
+From compcertr Require Import Switch Cminorgen.
+From compcertr Require SimMemInj.
 (** newly added **)
-Require Export Cminorgenproof.
+From compcertr Require Export Cminorgenproof.
 Require Import Simulation.
 Require Import Skeleton Mod ModSem SimMod SimModSem SimSymb SimMem AsmregsC MatchSimModSem.
 Require SimMemInjC.

@@ -13,22 +13,23 @@
 (** Typing rules and a type inference algorithm for RTL. *)
 
 Require Import CoqlibC.
-Require Import Errors.
-Require Import Unityping.
-Require Import Maps.
-Require Import AST.
-Require Import Op.
-Require Import Registers.
-Require Import Globalenvs.
+From compcertr Require Import
+     Errors
+     Unityping
+     Maps
+     AST
+     Op
+     Registers
+     Globalenvs
+     Events
+     sflib.
 Require Import ValuesC.
 Require Import IntegersC.
 Require Import MemoryC.
-Require Import Events.
 Require Import RTLC.
 Require Import ConventionsC.
-Require Import sflib.
 (** newly added **)
-Require Export RTLtyping.
+From compcertr Require Export RTLtyping.
 Require Import Skeleton ModSem Preservation.
 Require Import SoundTop.
 Require Import RTLC.

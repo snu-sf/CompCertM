@@ -1,14 +1,15 @@
-Require Import Events.
-Require Import Values.
-Require Import AST.
-Require Import Memory.
-Require Import Globalenvs.
-Require Import Smallstep.
+From compcertr Require Import
+     Events
+     Values
+     AST
+     Memory
+     Globalenvs
+     Smallstep.
 From Paco Require Import paco.
-Require Import sflib.
+From compcertr Require Import sflib.
 Require Import Skeleton.
 Require Import CoqlibC.
-Require Asm.
+From compcertr Require Asm.
 
 Set Implicit Arguments.
 

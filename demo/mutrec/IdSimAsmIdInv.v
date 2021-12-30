@@ -11,10 +11,9 @@ Require Import AxiomsC.
 Require Import Ord.
 Require Import MemoryC.
 Require Import SmallstepC.
-Require Import Events.
+From compcertr Require Import Events Integers Conventions.
 Require Import Preservation.
-Require Import Integers.
-Require Import LocationsC Conventions.
+Require Import LocationsC.
 Require Import Conventions1C.
 
 Require Import AsmregsC.
@@ -29,7 +28,7 @@ Require Import Conventions1C.
 
 Require Import mktac.
 
-Require Import AST.
+From compcertr Require Import AST.
 
 Set Implicit Arguments.
 

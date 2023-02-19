@@ -32,10 +32,10 @@ Module SimMemLift.
     unlift: SimMem.t -> SimMem.t -> SimMem.t;
 
     lift_wf: forall mrel, SimMem.wf mrel -> SimMem.wf (lift mrel);
-    lift_src: forall mrel, (lift mrel).(SimMem.src) = mrel.(SimMem.src);
-    lift_tgt: forall mrel, (lift mrel).(SimMem.tgt) = mrel.(SimMem.tgt);
-    unlift_src: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.src) = mrel1.(SimMem.src);
-    unlift_tgt: forall mrel0 mrel1, (unlift mrel0 mrel1).(SimMem.tgt) = mrel1.(SimMem.tgt);
+    lift_src: forall mrel, (SimMem.src (lift mrel)) = (SimMem.src mrel);
+    lift_tgt: forall mrel, (SimMem.tgt (lift mrel)) = (SimMem.tgt mrel);
+    unlift_src: forall mrel0 mrel1, (SimMem.src (unlift mrel0 mrel1)) = (SimMem.src mrel1);
+    unlift_tgt: forall mrel0 mrel1, (SimMem.tgt (unlift mrel0 mrel1)) = (SimMem.tgt mrel1);
     lift_spec: forall mrel0 mrel1, SimMem.le (lift mrel0) mrel1 -> SimMem.wf mrel0 -> SimMem.le mrel0 (unlift mrel0 mrel1);
     unlift_wf: forall mrel0 mrel1,
         SimMem.wf mrel0 -> SimMem.wf mrel1 -> SimMem.le (lift mrel0) mrel1 -> SimMem.wf (unlift mrel0 mrel1);

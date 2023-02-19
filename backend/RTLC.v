@@ -39,7 +39,7 @@ Section MODSEM.
       (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (FINDF: Genv.find_funct ge (Args.fptr args) = Some (Internal fd))
       (TYP: typecheck (Args.vs args) fd.(fn_sig) tvs)
-      (LEN: (Args.vs args).(length) = fd.(fn_sig).(sig_args).(length)):
+      (LEN: (length (Args.vs args)) = (length fd.(fn_sig).(sig_args))):
       initial_frame args (Callstate [] (Args.fptr args) fd.(fn_sig) tvs (Args.m args)).
 
   Inductive initial_frame2 (args: Args.t): state -> Prop :=
@@ -48,7 +48,7 @@ Section MODSEM.
       (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (FINDF: Genv.find_funct ge (Args.fptr args) = Some (Internal fd))
       (TYP: typecheck (Args.vs args) fd.(fn_sig) tvs)
-      (LEN: (Args.vs args).(length) = fd.(fn_sig).(sig_args).(length))
+      (LEN: length (Args.vs args) = length fd.(fn_sig).(sig_args))
       (JUNK: assign_junk_blocks (Args.m args) n = m0):
       initial_frame2 args (Callstate [] (Args.fptr args) fd.(fn_sig) tvs m0).
 

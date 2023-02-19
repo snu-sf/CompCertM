@@ -36,8 +36,8 @@ Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Tailcallproof.match_states st_src0 st_tgt0)
-    (MCOMPATSRC: (get_mem st_src0) = sm0.(SimMem.src))
-    (MCOMPATTGT: (get_mem st_tgt0) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: (get_mem st_src0) = (SimMem.src sm0))
+    (MCOMPATTGT: (get_mem st_tgt0) = (SimMem.tgt sm0))
     (MCOMPATIDX: idx = Tailcallproof.measure st_src0).
 
 Theorem make_match_genvs :

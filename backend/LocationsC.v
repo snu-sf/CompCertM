@@ -347,7 +347,7 @@ Lemma arguments_loc sg sl delta ty
 Proof.
   generalize (loc_arguments_acceptable_2 _ _ IN). i. ss. des_ifs.
   set (loc_arguments_bounded _ _ _ IN).
-  splits; eauto; [omega|]. unfold typesize in *. des_ifs; ss; lia.
+  splits; eauto; [lia|]. unfold typesize in *. des_ifs; ss; lia.
 Qed.
 
 Lemma regs_of_rpair_In A (l: list (rpair A)):

@@ -90,6 +90,27 @@ Module CSk.
     - inv H0. ss.
   Qed.
 
+  Lemma match_program_gen_eq
+        F1 F2 (match_fundef: Ctypes.program _ -> Ctypes.fundef _ -> Ctypes.fundef _ -> Prop)
+        match_varinfo fn_sig1 fn_sig2
+        (p1: Ctypes.program F1)
+        (p2: Ctypes.program F2)
+        (MATCH: match_program_gen match_fundef match_varinfo p1 p1 p2)
+        (WF: wf_match_fundef match_fundef fn_sig1 fn_sig2):
+      <<EQ: CSk.of_program fn_sig1 p1 = CSk.of_program fn_sig2 p2>>.
+  Proof.
+    rr in MATCH. des.
+    unfold of_program. r. f_equal; ss.
+    revert MATCH. generalize p1 at 1 as CTX. i.
+    destruct p1, p2; ss. clear - MATCH WF.
+    ginduction prog_defs; ii; ss; inv MATCH; ss.
+    erewrite IHprog_defs; eauto. f_equal; eauto.
+    inv H1. destruct a, b1; ss. clarify. inv H0; ss.
+    - unfold update_snd. exploit WF; eauto. i; des; clarify; ss.
+      + repeat f_equal. exploit WF; et.
+    - inv H. ss.
+  Qed.
+
   Lemma of_program_prog_defmap: forall F (p: Ctypes.program F) (get_sg: F -> signature),
       <<SIM: forall id, option_rel (@Linking.match_globdef unit _ _ _ _ _
                                                            (@match_fundef _ _ (get_sg))

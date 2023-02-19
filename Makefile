@@ -34,6 +34,19 @@ Makefile.coq: Makefile $(COQTHEORIES)
    echo "-R proof $(COQMODULE)"; \
    echo "-R demo $(COQMODULE)"; \
    echo "-R selfsim $(COQMODULE)"; \
+	\
+   echo "-R ../lib compcertr.lib"; \
+   echo "-R ../common compcertr.common"; \
+   echo "-R ../x86 compcertr.x86"; \
+   echo "-R ../x86_64 compcertr.x86_64"; \
+   echo "-R ../backend compcertr.backend"; \
+   echo "-R ../cfrontend compcertr.cfrontend"; \
+   echo "-R ../driver compcertr.driver"; \
+   echo "-R ../export compcertr.export"; \
+   echo "-R ../cparser compcertr.cparser"; \
+   echo "-R ../demo compcertr.demo"; \
+   echo "-R ../flocq Flocq"; \
+	\
    echo $(COQTHEORIES)) > _CoqProject
 	coq_makefile -f _CoqProject -o Makefile.coq
 

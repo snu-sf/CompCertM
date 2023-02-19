@@ -162,14 +162,14 @@ Lemma freed_from_out_of_reach j m_src0 m_src1 m_tgt blk lo hi blk' delta ofs
     loc_out_of_reach j m_src1 blk' ofs.
 Proof.
   ii. destruct (eq_block b0 blk).
-  - clarify. eapply freed_from_noperm; eauto. omega.
+  - clarify. eapply freed_from_noperm; eauto. lia.
   - exploit Mem.inject_no_overlap; eauto.
     + eapply freed_from_perm_le; eauto.
     + eapply Mem.perm_cur.
       eapply Mem.perm_implies.
       eapply freed_from_perm; eauto.
-      instantiate (1 := ofs - delta). omega. econs.
-    + i. des; eauto. omega.
+      instantiate (1 := ofs - delta). lia. econs.
+    + i. des; eauto. lia.
 Qed.
 
 Lemma freed_from_perm_greater m0 m1 blk lo hi
@@ -204,7 +204,7 @@ Qed.
 Lemma init_mem_freed_from m_init:
     freed_from m_init m_init 1%positive 0 0.
 Proof.
-  econs; ii; auto; try omega.
+  econs; ii; auto; try lia.
   econs; eauto. refl.
 Qed.
 

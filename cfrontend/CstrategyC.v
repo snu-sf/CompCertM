@@ -108,11 +108,11 @@ Section MODSEM.
         inv H10. exploit deref_loc_receptive; eauto. intros [EQ [v1' A]]. subst t0.
         destruct (sem_binary_operation ge op v1' (typeof l) v2 (typeof r) m) as [v3'|] eqn:?.
         destruct (sem_cast v3' tyres (typeof l) m) as [v4'|] eqn:?.
-        destruct (classic (exists t2', exists m'', assign_loc skenv_link ge (typeof l) m b ofs v4' t2' m'')).
-        destruct H1 as [t2' [m'' P]].
+        destruct (classic (exists t2', exists m'', exists v'', assign_loc skenv_link ge (typeof l) m b ofs bf v4' t2' m'' v'')).
+        destruct H1 as [t2' [m'' [v'' P]]].
         econstructor; econstructor. left; eapply step_assignop with (v1 := v1'); eauto. simpl; reflexivity.
         econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
-        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t0; exists m'0; auto.
+        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t0; exists m'0; exists v'0; auto.
         econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
         rewrite Heqo; rewrite Heqo0; auto.
         econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
@@ -121,11 +121,11 @@ Section MODSEM.
         exploit deref_loc_receptive; eauto. intros [EQ [v1' A]]. subst t1.
         destruct (sem_binary_operation ge op v1' (typeof l) v2 (typeof r) m) as [v3'|] eqn:?.
         destruct (sem_cast v3' tyres (typeof l) m) as [v4'|] eqn:?.
-        destruct (classic (exists t2', exists m'', assign_loc skenv_link ge (typeof l) m b ofs v4' t2' m'')).
-        destruct H1 as [t2' [m'' P]].
+        destruct (classic (exists t2', exists m'', exists v'', assign_loc skenv_link ge (typeof l) m b ofs bf v4' t2' m'' v'')).
+        destruct H1 as [t2' [m'' [ v'' P]]].
         econstructor; econstructor. left; eapply step_assignop with (v1 := v1'); eauto. simpl; reflexivity.
         econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
-        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t2; exists m'; auto.
+        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t2; exists m'; eexists; eauto.
         econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
         rewrite Heqo; rewrite Heqo0; auto.
         econstructor; econstructor. left; eapply step_assignop_stuck with (v1 := v1'); eauto.
@@ -137,11 +137,11 @@ Section MODSEM.
         inv H9. exploit deref_loc_receptive; eauto. intros [EQ [v1' A]]. subst t0.
         destruct (sem_incrdecr ge id v1' (typeof l) m) as [v2'|] eqn:?.
         destruct (sem_cast v2' (incrdecr_type (typeof l)) (typeof l) m) as [v3'|] eqn:?.
-        destruct (classic (exists t2', exists m'', assign_loc skenv_link ge (typeof l) m b ofs v3' t2' m'')).
-        destruct H1 as [t2' [m'' P]].
+        destruct (classic (exists t2', exists m'', exists v'', assign_loc skenv_link ge (typeof l) m b ofs bf v3' t2' m'' v'')).
+        destruct H1 as [t2' [m'' [v'' P]]].
         econstructor; econstructor. left; eapply step_postincr with (v1 := v1'); eauto. simpl; reflexivity.
         econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
-        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t0; exists m'0; auto.
+        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t0; exists m'0; eauto.
         econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
         rewrite Heqo; rewrite Heqo0; auto.
         econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
@@ -150,11 +150,11 @@ Section MODSEM.
         exploit deref_loc_receptive; eauto. intros [EQ [v1' A]]. subst t1.
         destruct (sem_incrdecr ge id v1' (typeof l) m) as [v2'|] eqn:?.
         destruct (sem_cast v2' (incrdecr_type (typeof l)) (typeof l) m) as [v3'|] eqn:?.
-        destruct (classic (exists t2', exists m'', assign_loc skenv_link ge (typeof l) m b ofs v3' t2' m'')).
-        destruct H1 as [t2' [m'' P]].
+        destruct (classic (exists t2', exists m'', exists v'', assign_loc skenv_link ge (typeof l) m b ofs bf v3' t2' m'' v'')).
+        destruct H1 as [t2' [m'' [v'' P]]].
         econstructor; econstructor. left; eapply step_postincr with (v1 := v1'); eauto. simpl; reflexivity.
         econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
-        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t2; exists m'; auto.
+        rewrite Heqo; rewrite Heqo0. intros; red; intros; elim H1. exists t2; exists m'; eauto.
         econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.
         rewrite Heqo; rewrite Heqo0; auto.
         econstructor; econstructor. left; eapply step_postincr_stuck with (v1 := v1'); eauto.

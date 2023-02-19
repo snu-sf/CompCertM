@@ -37,8 +37,8 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
 
   (* Definition ss_link (pp: t): option SimSymb.t := link_list (List.map ModPair.ss pp). *)
   (* ############ TODO: *)
-  (* ModPair.wf mp0 /\ ModPair.wf mp1 /\ link mp0.(src) mp1.(src) = Some /\ link mp1.(tgt) mp1.(tgt) = Some *)
-  (* =================> link mp0.(ss) mp1.(ss) suceeds. *)
+  (* ModPair.wf mp0 /\ ModPair.wf mp1 /\ link (src mp0) (src mp1) = Some /\ link (tgt mp1) (tgt mp1) = Some *)
+  (* =================> link (ss mp0) (ss mp1) suceeds. *)
   (* Move ModPair.wf into SimSymb and obligate its proof? *)
 
 End PROGPAIR.
@@ -69,9 +69,9 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
       exists ss_link sk_link_tgt,
         <<LOADTGT: (link_sk p_tgt) = Some sk_link_tgt>>
         /\ <<SIMSK: SimSymb.wf ss_link>>
-        /\ <<SKSRC: ss_link.(SimSymb.src) = sk_link_src>>
-        /\ <<SKTGT: ss_link.(SimSymb.tgt) = sk_link_tgt>>
-        /\ <<LE: Forall (fun mp => (SimSymb.le mp.(ModPair.ss) ss_link)) pp>>.
+        /\ <<SKSRC: (SimSymb.src ss_link) = sk_link_src>>
+        /\ <<SKTGT: (SimSymb.tgt ss_link) = sk_link_tgt>>
+        /\ <<LE: Forall (fun mp => (SimSymb.le (ModPair.ss mp) ss_link)) pp>>.
   Proof.
     u. subst_locals. ginduction pp; ii; ss. destruct a; ss.
     unfold ProgPair.src in *. unfold link_sk in *. ss. destruct (classic (t = [])).

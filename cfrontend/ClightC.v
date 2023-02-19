@@ -122,15 +122,17 @@ Section MODSEM.
   Lemma eval_expr_determ:
     forall e le m a v, eval_expr ge e le m a v -> forall v', eval_expr ge e le m a v' -> v = v'
   with eval_lvalue_determ:
-    forall e le m a loc ofs, eval_lvalue ge e le m a loc ofs -> forall loc' ofs', eval_lvalue ge e le m a loc' ofs' -> loc = loc' /\ ofs = ofs'.
+    forall e le m a loc ofs bf, eval_lvalue ge e le m a loc ofs bf -> forall loc' ofs' bf', eval_lvalue ge e le m a loc' ofs' bf' -> loc = loc' /\ ofs = ofs' /\ bf = bf'.
   Proof.
     - induction 1; intros v' EV; inv EV;
         try (by determ_tac eval_expr_determ); try (by determ_tac eval_lvalue_determ);
           try congruence; try by inv H; try by inv H0; try by inv H1; try by inv H2.
       + determ_tac eval_expr_determ. clear H. determ_tac eval_expr_determ.
       + determ_tac eval_lvalue_determ. inv H0; inv H2; try congruence.
-    - induction 1; intros loc' ofs' EV; inv EV; des_ifs; try (by determ_tac eval_expr_determ); try congruence.
-      + determ_tac eval_expr_determ. rewrite H0 in H7. des_ifs. rewrite H2 in H11. des_ifs.
+        inv H3; inv H8. congruence.
+    - induction 1; intros loc' ofs' bf' EV; inv EV; des_ifs; try (by determ_tac eval_expr_determ); try congruence.
+      + determ_tac eval_expr_determ. rewrite H0 in H7. des_ifs. rewrite H2 in H12. des_ifs.
+      + determ_tac eval_expr_determ. rewrite H0 in H7. des_ifs. rewrite H2 in H12. des_ifs.
   Qed.
 
   Let eval_exprlist_determ:
@@ -168,7 +170,7 @@ Section MODSEM.
                 try (determ_tac eval_lvalue_determ; check_safe); try (determ_tac eval_exprlist_determ; check_safe);
                   try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe);
                     esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
-      + inv H4; inv H16; congruence.
+      + inv H4; inv H16; try congruence. inv H; inv H8. congruence.
       + determ_tac eval_exprlist_determ.
       + inv H1. inv H8. hexploit (alloc_variables_determ H0 H3). i; des; clarify. determ_tac bind_parameters_determ.
     - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.
@@ -190,7 +192,7 @@ Section MODSEM.
                 try (determ_tac eval_lvalue_determ; check_safe); try (determ_tac eval_exprlist_determ; check_safe);
                   try (determ_tac eval_builtin_args_determ; check_safe); try (determ_tac external_call_determ; check_safe);
                     esplits; eauto; try (econs; eauto); ii; eq_closure_tac; clarify_meq.
-      + inv H4; inv H16; congruence.
+      + inv H4; inv H16; try congruence. inv H; inv H8. congruence.
       + determ_tac eval_exprlist_determ.
       + inv H1. inv H8. hexploit (alloc_variables_determ H3 H7). i; des; clarify.
     - ii. inv H; try (exploit external_call_trace_length; eauto; check_safe; intro T; des); ss; try extlia.

@@ -204,7 +204,7 @@ Section MEMORYLEMMA.
 
   Lemma Mem_unfree_parallel
         sm0 sm_arg sm_ret blk_src ofs_src ofs_tgt sz blk_tgt delta m_src1
-        (DELTA: sm0.(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
+        (DELTA: (SimMemInj.inj sm0) blk_src = Some (blk_tgt, delta))
         (VAL: ofs_tgt = Ptrofs.add ofs_src (Ptrofs.repr delta))
         (MLE0: SimMemInj.le' sm0 sm_arg)
         (FREESRC: Mem.free
@@ -224,12 +224,12 @@ Section MEMORYLEMMA.
                       (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned ofs_src + sz) =
                     Some m_src1):
       exists sm1,
-        (<<MSRC: sm1.(SimMemInj.src) = m_src1>>)
-        /\ (<<MINJ: sm1.(SimMemInj.inj) = sm_ret.(SimMemInj.inj)>>)
+        (<<MSRC: (SimMemInj.src sm1) = m_src1>>)
+        /\ (<<MINJ: (SimMemInj.inj sm1) = (SimMemInj.inj sm_ret)>>)
         /\ (<<FREETGT: Mem_unfree
                          (SimMemInj.tgt sm_ret) blk_tgt
                          (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned ofs_tgt + sz)
-                       = Some sm1.(SimMemInj.tgt)>>)
+                       = Some (SimMemInj.tgt sm1)>>)
         /\ (<<MWF: SimMemInj.wf' sm1>>)
         /\ (<<MLE: SimMemInj.le' sm0 sm1>>)
         /\ (<<MLEPRIV: SimMemInjC.lepriv sm_ret sm1>>).
@@ -423,9 +423,9 @@ Qed.
 Lemma assign_junk_blocks_parallel n sm0
       (MWF: SimMemInj.wf' sm0):
     exists sm1,
-      (<<MSRC: sm1.(SimMemInj.src) = JunkBlock.assign_junk_blocks (SimMemInj.src sm0) n>>)
-      /\ (<<MTGT: sm1.(SimMemInj.tgt) = JunkBlock.assign_junk_blocks (SimMemInj.tgt sm0) n>>)
-      /\ (<<MINJ: sm1.(SimMemInj.inj) = junk_inj (SimMemInj.src sm0) (SimMemInj.tgt sm0) (SimMemInj.inj sm0) n>>)
+      (<<MSRC: (SimMemInj.src sm1) = JunkBlock.assign_junk_blocks (SimMemInj.src sm0) n>>)
+      /\ (<<MTGT: (SimMemInj.tgt sm1) = JunkBlock.assign_junk_blocks (SimMemInj.tgt sm0) n>>)
+      /\ (<<MINJ: (SimMemInj.inj sm1) = junk_inj (SimMemInj.src sm0) (SimMemInj.tgt sm0) (SimMemInj.inj sm0) n>>)
       /\ (<<MWF: SimMemInj.wf' sm1>>)
       /\ (<<MLE: SimMemInj.le' sm0 sm1>>)
 .
@@ -465,19 +465,19 @@ Qed.
 
 Lemma store_arguments_parallel
       sm0 m_tgt1 rs_tgt vs vs' sg
-      (ARGSRC: store_arguments sm0.(SimMemInj.tgt) rs_tgt vs' sg m_tgt1)
+      (ARGSRC: store_arguments (SimMemInj.tgt sm0) rs_tgt vs' sg m_tgt1)
       (TYP: Val.has_type_list vs' sg.(sig_args))
       (SZ: 4 * size_arguments sg <= Ptrofs.max_unsigned)
-      (VALINJ: Val.inject_list sm0.(SimMemInj.inj) vs vs')
+      (VALINJ: Val.inject_list (SimMemInj.inj sm0) vs vs')
       (MWF: SimMemInj.wf' sm0):
     exists sm1 rs_src,
-      (<<ARGTGT: store_arguments sm0.(SimMemInj.src) rs_src vs sg sm1.(SimMemInj.src)>>) /\
-      (<<INJ: sm1.(SimMemInj.inj) = (update_meminj sm0.(SimMemInj.inj) (Mem.nextblock sm0.(SimMemInj.src)) (Mem.nextblock sm0.(SimMemInj.tgt)) 0)>>) /\
+      (<<ARGTGT: store_arguments (SimMemInj.src sm0) rs_src vs sg (SimMemInj.src sm1)>>) /\
+      (<<INJ: (SimMemInj.inj sm1) = (update_meminj (SimMemInj.inj sm0) (Mem.nextblock (SimMemInj.src sm0)) (Mem.nextblock (SimMemInj.tgt sm0)) 0)>>) /\
       (<<MWF: SimMemInj.wf' sm1>>) /\
       (<<MLE: SimMemInj.le' sm0 sm1>>) /\
-      (<<MTGT: sm1.(SimMemInj.tgt) = m_tgt1>>) /\
+      (<<MTGT: (SimMemInj.tgt sm1) = m_tgt1>>) /\
       (<<AGREE: StoreArgumentsProps.agree
-                  (update_meminj sm0.(SimMemInj.inj) (Mem.nextblock sm0.(SimMemInj.src)) (Mem.nextblock sm0.(SimMemInj.tgt)) 0)
+                  (update_meminj (SimMemInj.inj sm0) (Mem.nextblock (SimMemInj.src sm0)) (Mem.nextblock (SimMemInj.tgt sm0)) 0)
                   rs_src
                   rs_tgt>>).
 Proof.
@@ -543,8 +543,8 @@ Inductive match_states_ext
     (AGREE: AsmStepExt.agree rs_src rs_tgt)
     (AGREEINIT: AsmStepExt.agree init_rs_src init_rs_tgt)
     (* (INJ: Mem.extends m_src m_tgt) *)
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     fd
     (FINDF: Genv.find_funct ge_src (init_rs_src PC) = Some (Internal fd))

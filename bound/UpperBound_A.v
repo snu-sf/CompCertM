@@ -777,15 +777,30 @@ Section PRESERVATION.
     exploit IHl. eapply H6. eapply H9. i. des. subst. split; eauto.
   Qed.
 
-  Lemma assign_loc_dtm:
-        forall senv genv ty m3 b ofs v1 tr m1,
-        assign_loc senv genv ty m3 b ofs v1 tr m1 ->
-        forall m0, assign_loc senv genv ty m3 b ofs v1 tr m0 -> m1 = m0.
+
+  Lemma store_bitfield_dtm
+    ty sz sg pos w m addr i m1 v1 m1' v1'
+    (STORE1: store_bitfield ty sz sg pos w m addr i m1 v1)
+    (STORE2: store_bitfield ty sz sg pos w m addr i m1' v1')
+    : m1 = m1' /\ v1 = v1'.
+  Proof. inv STORE1. inv STORE2. clarify. Qed.
+
+  Lemma assign_loc_dtm
+        senv g ty m b
+        ofs bf v tr m1 m1' v1 v1'
+        (ASSIGN1: assign_loc senv g ty m b ofs bf v tr m1 v1)
+        (ASSIGN2: assign_loc senv g ty m b ofs bf v tr m1' v1'):
+      m1 = m1' /\ v1 = v1'.
   Proof.
-    induction 1; intros m0 EV; inv EV; f_equal; Eq; clarify.
-    clear -H1 H4.
-    revert H4. revert m0.
-    induction H1; intros m0 EV; inv EV; f_equal; Eq; clarify.
+    generalize dependent g.
+    generalize dependent m1'.
+    generalize dependent v1'.
+    induction 1; i.
+    - inv ASSIGN2; split; Eq; auto.
+    - inv ASSIGN2; split; Eq; auto.
+      inv H1; inv H4. inv H5; inv H15; try congruence. Eq. auto.
+    - inv ASSIGN2; split; Eq; auto.
+    - inv ASSIGN2. eapply store_bitfield_dtm; eauto.
   Qed.
 
   Lemma bind_param_dtm
@@ -799,7 +814,7 @@ Section PRESERVATION.
     induction l.
     i. inv BPARAM1. inv BPARAM2. auto.
     i. inv BPARAM1. inv BPARAM2. auto. Eq.
-    exploit assign_loc_dtm. eapply H3. eapply H10. i. subst.
+    exploit assign_loc_dtm. eapply H3. eapply H10. intros [? ?]. subst.
     exploit IHl. eapply H6. eapply H11. i. eauto. Qed.
 
   Lemma match_xsim
@@ -842,7 +857,7 @@ Section PRESERVATION.
             (* receptiveness *)
             { econs. ii. inv H1; ModSem.tac.
               inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
-              ii. inv H1; ModSem.tac. ss. omega. }
+              ii. inv H1; ModSem.tac. ss. lia. }
             eapply plus_one. econs; et.
             (* determ *)
             { econs.
@@ -856,7 +871,7 @@ Section PRESERVATION.
                 + exfalso; eapply ModSem.call_return_disjoint. split. eauto. eauto.
               - i. ss. inv FINAL.
                 eapply ModSem.call_return_disjoint. split. eapply H. eauto.
-              - ii. inv H1; ss; try omega.
+              - ii. inv H1; ss; try lia.
                 exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto. }
             econs; eauto.
             instantiate (1:= args).
@@ -1014,7 +1029,7 @@ Section PRESERVATION.
                 { inv H1. eexists. econs 2. econs; eauto. }
                 { exfalso. ss. des_ifs.
                   rewrite Genv.find_funct_ptr_iff in *. rewrite Heq in FPTR. clarify. }
-              - ii. inv H; inv H1; ss; try omega.
+              - ii. inv H; inv H1; ss; try lia.
                 eapply external_call_trace_length; eauto. }
             eapply plus_left with (t1 := E0) (t2 := E0); ss.
             { econs; et.
@@ -1027,7 +1042,7 @@ Section PRESERVATION.
                   exploit external_call_match_traces. eapply H12. eapply H11. i. split; auto. i.
                   subst. exploit external_call_deterministic. eapply H12. eapply H11. i. des; subst. auto. auto.
                 - i. ss.
-                - ii. inv H; inv H1; ss; try omega.
+                - ii. inv H; inv H1; ss; try lia.
                   exploit external_call_trace_length; eauto. }
               econs 1; ss; et.
               econs; ss; et.
@@ -1043,7 +1058,7 @@ Section PRESERVATION.
                   exploit find_fptr_owner_determ. eapply MSFIND. eauto. i. subst ms. subst ms0.
                   ss. inv INIT; inv INIT0. ss. des_ifs.
                 - i. ss. des_ifs. inv FINAL.
-                - ii. inv H. ss. omega.
+                - ii. inv H. ss. lia.
               }
               econs 2; ss; et.
               { des_ifs. folder. eauto. }
@@ -1128,7 +1143,7 @@ Section PRESERVATION.
                     exploit external_call_match_traces. eapply H13. eapply H14. i. split; auto. i.
                     subst. exploit external_call_deterministic. eapply H13. eapply H14. i. des; subst. auto. auto.
                   + i. inv FINAL.
-                  + ii. inv H2; inv H3. ss; omega.
+                  + ii. inv H2; inv H3. ss; lia.
                     eapply external_call_trace_length; eauto. }
               rewrite LINKTGT in *. rpapply step_internal; ss; et. rr. right.
               econs; ss; et.

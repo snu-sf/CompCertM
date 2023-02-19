@@ -39,21 +39,21 @@ Module SimSymb.
       wf: t -> Prop;
       wf_preserves_wf: forall ss0
           (SIMSK: wf ss0)
-          (WFSRC: Sk.wf ss0.(src)),
-          <<WFTGT: Sk.wf ss0.(tgt)>>;
+          (WFSRC: Sk.wf (src ss0)),
+          <<WFTGT: Sk.wf (tgt ss0)>>;
 
       wf_link: forall ss0 ss1 sk_src
           (SIMSK: wf ss0)
           (SIMSK: wf ss1)
-          (LINKSRC: link ss0.(src) ss1.(src) = Some sk_src)
-          (WFSRC0: Sk.wf ss0.(src))
-          (WFSRC1: Sk.wf ss1.(src))
-          (WFTGT0: Sk.wf ss0.(tgt))
-          (WFTGT1: Sk.wf ss1.(tgt)),
+          (LINKSRC: link (src ss0) (src ss1) = Some sk_src)
+          (WFSRC0: Sk.wf (src ss0))
+          (WFSRC1: Sk.wf (src ss1))
+          (WFTGT0: Sk.wf (tgt ss0))
+          (WFTGT1: Sk.wf (tgt ss1)),
           exists ss sk_tgt,
-            <<LINKTGT: link ss0.(tgt) ss1.(tgt) = Some sk_tgt>> /\
-            <<SKSRC: ss.(src) = sk_src>> /\
-            <<SKTGT: ss.(tgt) = sk_tgt>> /\
+            <<LINKTGT: link (tgt ss0) (tgt ss1) = Some sk_tgt>> /\
+            <<SKSRC: (src ss) = sk_src>> /\
+            <<SKTGT: (tgt ss) = sk_tgt>> /\
             <<LE0: le ss0 ss>> /\
             <<LE1: le ss1 ss>> /\
             <<SIMSK: wf ss>>;
@@ -66,17 +66,17 @@ Module SimSymb.
 
       wf_load_sim_skenv: forall ss skenv_src skenv_tgt m_src
           (SIMSK: wf ss)
-          (LOADSRC: (Sk.load_skenv ss.(src)) = skenv_src)
-          (LOADTGT: (Sk.load_skenv ss.(tgt)) = skenv_tgt)
-          (LOADMEMSRC: (Sk.load_mem ss.(src)) = Some m_src),
+          (LOADSRC: (Sk.load_skenv (src ss)) = skenv_src)
+          (LOADTGT: (Sk.load_skenv (tgt ss)) = skenv_tgt)
+          (LOADMEMSRC: (Sk.load_mem (src ss)) = Some m_src),
           exists m_tgt sm,
-            (<<LOADMEMTGT: (Sk.load_mem ss.(tgt)) = Some m_tgt>>) /\
+            (<<LOADMEMTGT: (Sk.load_mem (tgt ss)) = Some m_tgt>>) /\
             (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
-            (<<MEMSRC: sm.(SimMem.src) = m_src>>) /\
-            (<<MEMTGT: sm.(SimMem.tgt) = m_tgt>>) /\
-            (<<MWF: sm.(SimMem.wf)>>) /\
-            (<<MAINSIM: SimMem.sim_val sm (Genv.symbol_address skenv_src ss.(src).(prog_main) Ptrofs.zero)
-                                       (Genv.symbol_address skenv_tgt ss.(tgt).(prog_main) Ptrofs.zero)>>);
+            (<<MEMSRC: (SimMem.src sm) = m_src>>) /\
+            (<<MEMTGT: (SimMem.tgt sm) = m_tgt>>) /\
+            (<<MWF: (SimMem.wf sm)>>) /\
+            (<<MAINSIM: SimMem.sim_val sm (Genv.symbol_address skenv_src (src ss).(prog_main) Ptrofs.zero)
+                                       (Genv.symbol_address skenv_tgt (tgt ss).(prog_main) Ptrofs.zero)>>);
 
       mlepriv_preserves_sim_skenv: forall sm0 sm1 ss skenv_src skenv_tgt
           (MLE: SimMem.lepriv sm0 sm1)
@@ -91,15 +91,15 @@ Module SimSymb.
           (SIMSKENV: sim_skenv sm ss_link skenv_link_src skenv_link_tgt)
           (SIMSK: wf ss)
           (LE: le ss ss_link)
-          (INCLSRC: SkEnv.includes skenv_link_src ss.(src))
-          (INCLTGT: SkEnv.includes skenv_link_tgt ss.(tgt))
-          (LESRC: SkEnv.project skenv_link_src ss.(src) = skenv_src)
-          (LETGT: SkEnv.project skenv_link_tgt ss.(tgt) = skenv_tgt),
+          (INCLSRC: SkEnv.includes skenv_link_src (src ss))
+          (INCLTGT: SkEnv.includes skenv_link_tgt (tgt ss))
+          (LESRC: SkEnv.project skenv_link_src (src ss) = skenv_src)
+          (LETGT: SkEnv.project skenv_link_tgt (tgt ss) = skenv_tgt),
           <<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>;
 
       sim_skenv_func_bisim: forall sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt),
-          <<DEF: skenv_func_bisim sm.(SimMem.sim_val) skenv_src skenv_tgt>>;
+          <<DEF: skenv_func_bisim (SimMem.sim_val sm) skenv_src skenv_tgt>>;
 
       system_sim_skenv: forall sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt),
@@ -148,7 +148,7 @@ Module SimSymb.
         `{SM: SimMem.class} `{SS: @class SM}
         ss0 sm0 skd v_src v_tgt skenv_link_src skenv_link_tgt
         (SIMSKENV: sim_skenv sm0 ss0 skenv_link_src skenv_link_tgt)
-        (SIMV: sm0.(SimMem.sim_val) v_src v_tgt)
+        (SIMV: (SimMem.sim_val sm0) v_src v_tgt)
         (FIND: Genv.find_funct skenv_link_src v_src = Some skd):
       Genv.find_funct skenv_link_tgt v_tgt = Some skd.
   Proof. exploit SimSymb.sim_skenv_func_bisim; eauto. i; des. inv H. exploit FUNCFSIM; eauto. i; des. clarify. Qed.

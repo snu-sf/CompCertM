@@ -33,8 +33,8 @@ Inductive match_states_ext_clight
   : unit -> state -> state -> SimMemExt.t' -> Prop :=
 | match_ext_State
     fn stmt K_src K_tgt env_src env_tgt tenv_src tenv_tgt m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemExt.src))
-    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWFSRC: m_src = (SimMemExt.src sm0))
+    (MWFTGT: m_tgt = (SimMemExt.tgt sm0))
     (MWF: Mem.extends m_src m_tgt)
     (ENV: match_env inject_id env_src env_tgt)
     (TENV: match_temp_env inject_id tenv_src tenv_tgt)
@@ -46,8 +46,8 @@ Inductive match_states_ext_clight
       sm0
 | match_ext_Callstate
     fptr_src fptr_tgt ty args_src args_tgt K_src K_tgt m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemExt.src))
-    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWFSRC: m_src = (SimMemExt.src sm0))
+    (MWFTGT: m_tgt = (SimMemExt.tgt sm0))
     (MWF: Mem.extends m_src m_tgt)
     (INJ: Val.lessdef fptr_src fptr_tgt)
     (VALS: Val.lessdef_list args_src args_tgt)
@@ -59,8 +59,8 @@ Inductive match_states_ext_clight
       sm0
 | match_ext_Returnstate
     retv_src retv_tgt K_src K_tgt m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemExt.src))
-    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWFSRC: m_src = (SimMemExt.src sm0))
+    (MWFTGT: m_tgt = (SimMemExt.tgt sm0))
     (MWF: Mem.extends m_src m_tgt)
     (INJ: Val.lessdef retv_src retv_tgt)
     (CONT: match_cont inject_id K_src K_tgt):
@@ -108,12 +108,12 @@ Section CLIGHTEXT.
       esplits; eauto. econs; eauto.
   Qed.
 
-  Lemma assign_loc_extends ce ty m_src0 m_tgt0 v_src v_tgt m_src1 blk ofs
-        (ASSIGN: assign_loc ce ty m_src0 blk ofs v_src m_src1)
+  Lemma assign_loc_extends ce ty m_src0 m_tgt0 v_src v_tgt m_src1 blk ofs bf
+        (ASSIGN: assign_loc ce ty m_src0 blk ofs bf v_src m_src1)
         (VAL: Val.lessdef v_src v_tgt)
         (MWF: Mem.extends m_src0 m_tgt0):
       exists m_tgt1,
-        (<<ASSIGN: assign_loc ce ty m_tgt0 blk ofs v_tgt m_tgt1>>) /\
+        (<<ASSIGN: assign_loc ce ty m_tgt0 blk ofs bf v_tgt m_tgt1>>) /\
         (<<MWF: Mem.extends m_src1 m_tgt1>>).
   Proof.
     inv ASSIGN.
@@ -122,6 +122,12 @@ Section CLIGHTEXT.
       exploit Mem.loadbytes_extends; eauto. i. des_safe.
       exploit Mem.storebytes_within_extends; eauto. i. des_safe.
       esplits; eauto. econs 2; eauto.
+    - inv H. inv VAL.
+      exploit Mem.storev_extends; eauto. i. des. esplits; eauto. econs 3; eauto.
+      econs; et.
+      exploit Mem.loadv_extends. 2: eauto. 1: eauto.
+      { econs. }
+      intros (? & ? & LD). inv LD. auto.
   Qed.
 
   Lemma match_env_inject_id en:
@@ -232,17 +238,18 @@ Section CLIGHTEXT.
     - i. des. esplits; eauto. eapply val_inject_id; eauto.
   Qed.
 
-  Lemma deref_loc_extends ty m_src m_tgt blk ofs v_src
-        (DEREF: deref_loc ty m_src blk ofs v_src)
+  Lemma deref_loc_extends ty m_src m_tgt blk ofs bf v_src
+        (DEREF: deref_loc ty m_src blk ofs bf v_src)
         (EXT: Mem.extends m_src m_tgt):
       exists v_tgt,
-        (<<DEREF: deref_loc ty m_tgt blk ofs v_tgt>>) /\
+        (<<DEREF: deref_loc ty m_tgt blk ofs bf v_tgt>>) /\
         (<<VAL: Val.lessdef v_src v_tgt>>).
   Proof.
     inv DEREF.
     - exploit Mem.loadv_extends; eauto. i. des. esplits; eauto. econs 1; eauto.
     - esplits; eauto. econs 2; eauto.
     - esplits; eauto. econs 3; eauto.
+    - inv H. exploit Mem.loadv_extends; eauto. intros (? & ? & LD). inv LD. esplits; eauto. econs 4; eauto. econs; et.
   Qed.
 
   Lemma eval_expr_lvalue_extends en_src en_tgt tenv_src tenv_tgt m_src m_tgt
@@ -254,9 +261,9 @@ Section CLIGHTEXT.
           exists v_tgt,
             (<<EVAL: eval_expr ge en_tgt tenv_tgt m_tgt exp v_tgt>>) /\
             (<<LESS: Val.lessdef v_src v_tgt>>)) /\
-      (forall exp blk ofs
-          (EVAL: eval_lvalue ge en_src tenv_src m_src exp blk ofs),
-          eval_lvalue ge en_tgt tenv_tgt m_tgt exp blk ofs).
+      (forall exp blk ofs bf
+          (EVAL: eval_lvalue ge en_src tenv_src m_src exp blk ofs bf),
+          eval_lvalue ge en_tgt tenv_tgt m_tgt exp blk ofs bf).
   Proof.
     apply eval_expr_lvalue_ind; i; try by (esplits; eauto; econs; eauto).
     - cinv (TENV id); rewrite H in *; clarify.
@@ -269,7 +276,7 @@ Section CLIGHTEXT.
     - cinv (ENV id); des; clarify. econs 2; eauto.
     - des. cinv LESS. econs; eauto.
     - des. cinv LESS. econs; eauto.
-    - des. cinv LESS. econs; eauto.
+    - des. cinv LESS. econs 5; eauto.
   Qed.
 
   Lemma eval_expr_extends en_src en_tgt tenv_src tenv_tgt m_src m_tgt
@@ -307,9 +314,9 @@ Section CLIGHTEXT.
         (ENV: match_env inject_id en_src en_tgt)
         (TENV: match_temp_env inject_id tenv_src tenv_tgt)
         (EXT: Mem.extends m_src m_tgt)
-        exp blk ofs
-        (EVAL: eval_lvalue ge en_src tenv_src m_src exp blk ofs):
-      eval_lvalue ge en_tgt tenv_tgt m_tgt exp blk ofs.
+        exp blk ofs bf
+        (EVAL: eval_lvalue ge en_src tenv_src m_src exp blk ofs bf):
+      eval_lvalue ge en_tgt tenv_tgt m_tgt exp blk ofs bf.
   Proof.
     eapply eval_expr_lvalue_extends; eauto.
   Qed.
@@ -484,9 +491,9 @@ Section CLIGHTSOUNDSTATE.
       st j m
       (WF: Sound.wf su)
       (MEM: UnreachC.mem' su m)
-      (INJ: j = UnreachC.to_inj su su.(Unreach.nb))
+      (INJ: j = UnreachC.to_inj su (Unreach.nb su))
       (SKE: su.(Unreach.ge_nb) = skenv_link.(Genv.genv_next))
-      (SKLE: Ple skenv_link.(Genv.genv_next) su.(Unreach.nb))
+      (SKLE: Ple skenv_link.(Genv.genv_next) (Unreach.nb su))
       (MATCHST: match_states_clight_internal st st j m m):
       sound_state_clight st.
 

@@ -481,7 +481,7 @@ Proof.
       { eapply match_traces_preserved; try apply H0. i. s. congruence. }
       i; des. esplits; eauto. econs; eauto.
     + inv H0. esplits; eauto. econs 4; eauto.
-  - inv H; s; try omega. exploit sr_traces_at; eauto.
+  - inv H; s; try lia. exploit sr_traces_at; eauto.
 Qed.
 
 Lemma lift_determinate_at
@@ -503,7 +503,7 @@ Proof.
       { econs; et. }
       i. repeat f_equal. determ_tac ModSem.final_frame_dtm. eapply ModSem.after_external_dtm; et.
   - ss. inv FINAL. ss. inv STEP; ss; ModSem.tac.
-  - inv H; s; try omega. exploit sd_traces_at; eauto.
+  - inv H; s; try lia. exploit sd_traces_at; eauto.
 Qed.
 
 (* Lemma callstate_receptive_at *)
@@ -517,7 +517,7 @@ Qed.
 (*   - ii. ss. des_ifs. *)
 (*     + inv H. inv H0. esplits; eauto. econs; eauto. *)
 (*     + inv H. inv MSFIND. ss. *)
-(*   - ii. inv H. ss. omega. *)
+(*   - ii. inv H. ss. lia. *)
 (* Qed. *)
 
 (* Lemma callstate_determinate_at *)
@@ -541,7 +541,7 @@ Qed.
 (*   - ii. ss. des_ifs. *)
 (*     + inv FINAL. *)
 (*     + inv FINAL. *)
-(*   - ii. inv H. ss. omega. *)
+(*   - ii. inv H. ss. lia. *)
 (* Qed. *)
 
 Require Import MemoryC.
@@ -591,13 +591,13 @@ Proof.
     assert(VALID: Mem.valid_block m0 blk_fr).
     { assert(NEQ: blk_fr <> b).
       { ii. clarify. clear - LOAD LOADM Heq. eapply Mem_alloc_fresh_perm in Heq. des.
-        eapply Mem.loadbytes_range_perm in LOAD. unfold Mem.range_perm in LOAD. exploit (LOAD _ofs_fr). omega. i.
+        eapply Mem.loadbytes_range_perm in LOAD. unfold Mem.range_perm in LOAD. exploit (LOAD _ofs_fr). lia. i.
         destruct (zeq _ofs_fr 0).
-        - subst. exploit Mem.perm_drop_2. eauto. instantiate (1 := 0). omega. eauto. i. inv H0.
-        - eapply NOPERM0. instantiate (1 := _ofs_fr). omega. eapply Mem.perm_drop_4; eauto.
+        - subst. exploit Mem.perm_drop_2. eauto. instantiate (1 := 0). lia. eauto. i. inv H0.
+        - eapply NOPERM0. instantiate (1 := _ofs_fr). lia. eapply Mem.perm_drop_4; eauto.
       }
       assert(VAL: Mem.valid_block m1 blk_fr).
-      { clear - LOAD. exploit (Mem.loadbytes_range_perm); eauto. split. eapply Z.le_refl. omega. eapply Mem.perm_valid_block. }
+      { clear - LOAD. exploit (Mem.loadbytes_range_perm); eauto. split. eapply Z.le_refl. lia. eapply Mem.perm_valid_block. }
       clear - Heq LOADM NEQ VAL. exploit Mem.drop_perm_valid_block_2; eauto. i.
       exploit Mem.valid_block_alloc_inv; eauto. i; des; des_ifs.
     }
@@ -615,12 +615,12 @@ Proof.
       assert(VAL: Mem.valid_block m0 blk_fr).
       { assert(NEQ: blk_fr <> b).
         { ii. clarify. clear - LOAD LOADM Heq. eapply Mem_alloc_fresh_perm in Heq. des.
-        eapply Mem.loadbytes_range_perm in LOAD. unfold Mem.range_perm in LOAD. exploit (LOAD _ofs_fr). omega. i.
+        eapply Mem.loadbytes_range_perm in LOAD. unfold Mem.range_perm in LOAD. exploit (LOAD _ofs_fr). lia. i.
         destruct (zeq _ofs_fr 0).
-        - subst. exploit Mem.perm_drop_2. eauto. instantiate (1 := 0). omega. eauto. i. inv H0.
-        - eapply NOPERM0. instantiate (1 := _ofs_fr). omega. eapply Mem.perm_drop_4; eauto. }
+        - subst. exploit Mem.perm_drop_2. eauto. instantiate (1 := 0). lia. eauto. i. inv H0.
+        - eapply NOPERM0. instantiate (1 := _ofs_fr). lia. eapply Mem.perm_drop_4; eauto. }
         assert(VAL: Mem.valid_block m1 blk_fr).
-        { clear - LOAD. exploit (Mem.loadbytes_range_perm); eauto. split. eapply Z.le_refl. omega. eapply Mem.perm_valid_block. }
+        { clear - LOAD. exploit (Mem.loadbytes_range_perm); eauto. split. eapply Z.le_refl. lia. eapply Mem.perm_valid_block. }
         clear - Heq LOADM NEQ VAL. exploit Mem.drop_perm_valid_block_2; eauto. i.
         exploit Mem.valid_block_alloc_inv; eauto. i; des; des_ifs.
       }
@@ -637,7 +637,7 @@ Proof.
       inv WFM. exploit WFPTR; et.
       assert(VAL: Mem.valid_block m0 blk_fr).
       { clear - Heq WFMB FREETHM0 H LOAD. rewrite WFMB in FREETHM0. exploit Mem.alloc_result; eauto. i. subst blk.
-        eapply Mem.loadbytes_range_perm in LOAD. exploit Mem.perm_valid_block. eapply LOAD. instantiate (1 := _ofs_fr). omega. i.
+        eapply Mem.loadbytes_range_perm in LOAD. exploit Mem.perm_valid_block. eapply LOAD. instantiate (1 := _ofs_fr). lia. i.
         unfold Mem.valid_block in *. rewrite <- FREETHM0 in H0. exploit Plt_succ_inv; eauto. i. des; des_ifs. }
       assert(NVAL: ~ Mem.valid_block m0 blk).
       { clear - Heq. eauto with mem. }
@@ -705,12 +705,12 @@ Proof.
         des.
 
         Ltac break_Z :=
-          try replace 2 with (1 + 1) in * by omega;
-          try replace 3 with (1 + 1 + 1) in * by omega;
-          try replace 4 with (1 + 1 + 1 + 1) in * by omega;
-          try replace 5 with (1 + 1 + 1 + 1 + 1) in * by omega;
-          try replace 6 with (1 + 1 + 1 + 1 + 1 + 1) in * by omega;
-          try replace 7 with (1 + 1 + 1 + 1 + 1 + 1 + 1) in * by omega.
+          try replace 2 with (1 + 1) in * by lia;
+          try replace 3 with (1 + 1 + 1) in * by lia;
+          try replace 4 with (1 + 1 + 1 + 1) in * by lia;
+          try replace 5 with (1 + 1 + 1 + 1 + 1) in * by lia;
+          try replace 6 with (1 + 1 + 1 + 1 + 1 + 1) in * by lia;
+          try replace 7 with (1 + 1 + 1 + 1 + 1 + 1 + 1) in * by lia.
 
         destruct (classic ((ofs + init_data_size a) <= _ofs_fr)).
         - exploit IHdts; et; try extlia.
@@ -719,13 +719,13 @@ Proof.
         - clear IHdts LOADB LOADA. rename a into aa. clear RANGE0.
           Local Opaque Z.add. Local Transparent Mem.loadbytes.
           rename ofs into ofs_bound. rename _ofs_fr into ofs_mid.
-          assert(T: ofs_mid < ofs_bound + init_data_size aa) by omega. clear H.
+          assert(T: ofs_mid < ofs_bound + init_data_size aa) by lia. clear H.
 
           destruct aa; ss;
             try (by exfalso; unfold Mem.loadbytes in *; des_ifs;
                  assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
                         \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                        \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by omega;
+                        \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by lia;
                  des; subst; try extlia; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H0 in *; ss).
 
           + exfalso. unfold Mem.loadbytes in *. des_ifs. rename H0 into P. rename H1 into Q. clear - P Q T RANGE POS.
@@ -739,13 +739,13 @@ Proof.
             { exfalso. unfold Mem.loadbytes in *. des_ifs.
               assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
                      \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                     \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by omega.
+                     \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by lia.
               des; subst; try extlia; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H8 in *; ss.
             }
             esplits; et. unfold inj_value in *. ss. unfold Mem.loadbytes in *. des_ifs.
             assert(ofs_mid = ofs_bound \/ ofs_mid = ofs_bound + 1 \/ ofs_mid = ofs_bound + 2
                    \/ ofs_mid = ofs_bound + 3 \/ ofs_mid = ofs_bound + 4 \/ ofs_mid = ofs_bound + 5
-                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by omega.
+                   \/ ofs_mid = ofs_bound + 6 \/ ofs_mid = ofs_bound + 7) by lia.
             des; subst; break_Z; try rewrite ! Z.add_assoc in *; try rewrite H8 in *; congruence.
           Local Opaque Mem.loadbytes.
       }
@@ -816,10 +816,7 @@ Proof.
 
 
   { eapply link_load_skenv_wf_sem_mult; et; try eapply WF; try refl.
-    { i. uge. ss. rewrite PTree.gempty. ss. }
-    { econs; et. i. exfalso. clear - LOAD0. eapply Mem.loadbytes_range_perm in LOAD0.
-      exploit (LOAD0 _ofs_fr0). omega. eapply Mem.perm_empty.
-    }
+    { i. uge. ss. }
     { rr. ii. exfalso. clear - H. unfold Genv.find_def in H. rewrite PTree.gempty in H. des_ifs. }
   }
 Qed.

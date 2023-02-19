@@ -52,8 +52,8 @@ Inductive match_states
           (idx: nat) (st_src0: Clight.state) (st_tgt0: Csharpminor.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Cshmgenproof.match_states prog ge tge st_src0 st_tgt0)
-    (MCOMPATSRC: (ClightC.get_mem st_src0) = sm0.(SimMem.src))
-    (MCOMPATTGT: (CsharpminorC.get_mem st_tgt0) = sm0.(SimMem.tgt)).
+    (MCOMPATSRC: (ClightC.get_mem st_src0) = (SimMem.src sm0))
+    (MCOMPATTGT: (CsharpminorC.get_mem st_tgt0) = (SimMem.tgt sm0)).
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link (Mod.sk md_src)) (SkEnv.project skenv_link (Mod.sk md_tgt)) ->

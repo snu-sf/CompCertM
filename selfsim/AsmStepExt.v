@@ -592,6 +592,8 @@ Section ASMSTEP.
         esplits; eauto.
         * econs; eauto; ss. rewrite <- H4. ss. rewrite H1. rewrite H8. rewrite H. ss.
         * eapply nextinstr_agree. repeat eapply agree_step; eauto.
+      + tac_cal AGREE.
+      + tac_cal AGREE.
 
     - exploit eval_builtin_args_extends; eauto. i. des.
       exploit ec_mem_extends; eauto.

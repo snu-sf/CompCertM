@@ -28,7 +28,7 @@ Lemma SimSymbDropInv_match_globals F `{HasExternal F} V sm0 sk_src sk_tgt skenv_
       eq
       (SkEnv.revive skenv_src p)
       (SkEnv.revive skenv_tgt p)
-      (SimMemInj.inj sm0.(SimMemInjInv.minj)).
+      (SimMemInj.inj (SimMemInjInv.minj sm0)).
 Proof.
   inv SIMSKE. econs.
   - i. unfold SkEnv.revive in *. exists d_src.
@@ -53,7 +53,7 @@ Lemma SimSymbDropInv_find_None F `{HasExternal F} V (p: AST.program F V)
       sm0 sk_src sk_tgt skenv_src skenv_tgt fptr_src fptr_tgt
       (FINDSRC: Genv.find_funct (SkEnv.revive skenv_src p) fptr_src = None)
       (SIMSKE: SimSymbDropInv.sim_skenv sm0 (SimSymbDropInv.mk bot1 sk_src sk_tgt) skenv_src skenv_tgt)
-      (FPTR: Val.inject (SimMemInj.inj sm0.(SimMemInjInv.minj)) fptr_src fptr_tgt)
+      (FPTR: Val.inject (SimMemInj.inj (SimMemInjInv.minj sm0)) fptr_src fptr_tgt)
       (FPTRDEF: fptr_src <> Vundef)
   :
     Genv.find_funct (SkEnv.revive skenv_tgt p) fptr_tgt = None.
@@ -91,7 +91,7 @@ Lemma SimSymbIdInv_match_globals F `{HasExternal F} V sm0 sk_src sk_tgt skenv_sr
       eq
       (SkEnv.revive skenv_src p)
       (SkEnv.revive skenv_tgt p)
-      (SimMemInj.inj sm0.(SimMemInjInv.minj)).
+      (SimMemInj.inj (SimMemInjInv.minj sm0)).
 Proof.
   inv SIMSKE. inv INJECT. inv SIMSKENV. econs; ss; eauto.
   - ii. exploit IMAGE; eauto.
@@ -106,7 +106,7 @@ Lemma SimSymbIdInv_find_None F `{HasExternal F} V (p: AST.program F V)
       sm0 sk_src sk_tgt skenv_src skenv_tgt fptr_src fptr_tgt
       (FINDSRC: Genv.find_funct (SkEnv.revive skenv_src p) fptr_src = None)
       (SIMSKE: SimMemInjInvC.sim_skenv_inj sm0 (SimMemInjInvC.mk bot1 sk_src sk_tgt) skenv_src skenv_tgt)
-      (FPTR: Val.inject (SimMemInj.inj sm0.(SimMemInjInv.minj)) fptr_src fptr_tgt)
+      (FPTR: Val.inject (SimMemInj.inj (SimMemInjInv.minj sm0)) fptr_src fptr_tgt)
       (FPTRDEF: fptr_src <> Vundef)
   :
     Genv.find_funct (SkEnv.revive skenv_tgt p) fptr_tgt = None.
@@ -137,7 +137,7 @@ Local Instance SimMemInvP : SimMem.class := SimMemInjInvC.SimMemInjInv SimMemInj
 Lemma Mem_unfree_parallel
       (sm0 sm_arg sm_ret: SimMem.t) blk_src ofs_src ofs_tgt sz blk_tgt delta
       m_src1
-      (DELTA: sm0.(SimMemInjInv.minj).(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
+      (DELTA: (SimMemInjInv.minj sm0).(SimMemInj.inj) blk_src = Some (blk_tgt, delta))
       (VAL: ofs_tgt = Ptrofs.add ofs_src (Ptrofs.repr delta))
       (MLE0: SimMemInjInv.le' sm0 sm_arg)
       (FREESRC: Mem.free
@@ -158,12 +158,12 @@ Lemma Mem_unfree_parallel
                   Some m_src1)
   :
     exists sm1,
-      (<<MSRC: sm1.(SimMem.src) = m_src1>>)
-      /\ (<<MINJ: sm1.(SimMemInjInv.minj).(SimMemInj.inj) = sm_ret.(SimMemInjInv.minj).(SimMemInj.inj)>>)
+      (<<MSRC: (SimMem.src sm1) = m_src1>>)
+      /\ (<<MINJ: (SimMemInjInv.minj sm1).(SimMemInj.inj) = (SimMemInjInv.minj sm_ret).(SimMemInj.inj)>>)
       /\ (<<FREETGT: Mem_unfree
                        (SimMem.tgt sm_ret) blk_tgt
                        (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned ofs_tgt + sz)
-                     = Some sm1.(SimMem.tgt)>>)
+                     = Some (SimMem.tgt sm1)>>)
       /\ (<<MWF: SimMem.wf sm1>>)
       /\ (<<MLE: SimMem.le sm0 sm1>>)
       /\ (<<MLEPRIV: SimMem.lepriv sm_ret sm1>>).
@@ -329,9 +329,9 @@ Inductive match_states P0 P1
     (sm0 : SimMemInjInv.t')
     (AGREE: AsmStepInj.agree j rs_src rs_tgt)
     (AGREEINIT: AsmStepInj.agree j init_rs_src init_rs_tgt)
-    (MCOMPATSRC: m_src = sm0.(SimMemInjInv.minj).(SimMemInj.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMemInjInv.minj).(SimMemInj.tgt))
-    (MCOMPATINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
+    (MCOMPATSRC: m_src = (SimMemInjInv.minj sm0).(SimMemInj.src))
+    (MCOMPATTGT: m_tgt = (SimMemInjInv.minj sm0).(SimMemInj.tgt))
+    (MCOMPATINJ: j = (SimMemInjInv.minj sm0).(SimMemInj.inj))
     (MWF: @SimMemInjInv.wf' P0 P1 sm0)
     fd
     (FINDF: Genv.find_funct ge_src (init_rs_src PC) = Some (Internal fd))

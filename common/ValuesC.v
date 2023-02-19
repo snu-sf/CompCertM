@@ -58,7 +58,7 @@ Section TYPIFY.
     zip typify vs tys.
 
   (* Definition typify_list (vs: list val) (tys: list typ): option (list val) := *)
-  (*   if Nat.eqb vs.(length) tys.(length) *)
+  (*   if Nat.eqb (length vs) (length tys) *)
   (*   then Some (zip typify vs tys) *)
   (*   else None *)
   (* . *)
@@ -97,7 +97,7 @@ Section RETTYPIFY.
     zip rettypify vs tys.
 
   (* Definition typify_list (vs: list val) (tys: list typ): option (list val) := *)
-  (*   if Nat.eqb vs.(length) tys.(length) *)
+  (*   if Nat.eqb (length vs) (length tys) *)
   (*   then Some (zip typify vs tys) *)
   (*   else None *)
   (* . *)
@@ -182,7 +182,7 @@ Qed.
 Lemma lessdef_list_length
       xs ys
       (LD: Val.lessdef_list xs ys):
-    <<LEN: xs.(length) = ys.(length)>>.
+    <<LEN: (length xs) = (length ys)>>.
 Proof. ginduction LD; ii; ss. des. red. extlia. Qed.
 
 Lemma inject_list_typify_list
@@ -200,7 +200,7 @@ Qed.
 Lemma inject_list_length
       j xs ys
       (INJ: Val.inject_list j xs ys):
-    <<LEN: xs.(length) = ys.(length)>>.
+    <<LEN: (length xs) = (length ys)>>.
 Proof. ginduction INJ; ii; ss. des. red. extlia. Qed.
 
 Lemma typify_has_type_list

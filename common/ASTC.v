@@ -43,7 +43,6 @@ Proof.
   rewrite <- ! fold_left_rev_right in *. rewrite <- map_rev.  unfold PTree.elt.
   abstr (rev defs) xs. clear_tac.  generalize id.
   induction xs; ii; try rewrite PTree.gempty in *; ss.
-  { unfold option_map. rewrite PTree.gempty in *; ss. }
   destruct a; ss.
   rewrite PTree.gsspec. des_ifs.
   { unfold option_map. rewrite PTree.gsspec. des_ifs. }

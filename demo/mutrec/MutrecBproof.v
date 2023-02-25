@@ -38,21 +38,21 @@ Definition symbol_memoized: ident -> Prop := eq _memoized.
 Lemma memoized_inv_store_le i v_ind v_sum blk ofs0 ofs1 m_tgt0 m_tgt1
       (sm0 sm1: SimMemInjInv.t')
       (MWF: SimMem.wf sm0)
-      (INVAR: sm0.(SimMemInjInv.mem_inv_tgt) blk)
+      (INVAR: (SimMemInjInv.mem_inv_tgt sm0) blk)
       (OFSI: ofs0 = 0)
       (OFSV: ofs1 = size_chunk Mint32)
       (INDEX: v_ind = Vint i)
       (SUM: v_sum = Vint (sum i))
-      (STR0: Mem.store Mint32 sm0.(SimMemInjInv.minj).(SimMemInj.tgt) blk ofs0 v_ind = Some m_tgt0)
+      (STR0: Mem.store Mint32 (SimMemInjInv.minj sm0).(SimMemInj.tgt) blk ofs0 v_ind = Some m_tgt0)
       (STR1: Mem.store Mint32 m_tgt0 blk ofs1 v_sum = Some m_tgt1)
       (MREL: sm1 = SimMemInjInv.mk
                      (SimMemInjC.update
-                        (sm0.(SimMemInjInv.minj))
-                        (sm0.(SimMemInjInv.minj).(SimMemInj.src))
+                        ((SimMemInjInv.minj sm0))
+                        ((SimMemInjInv.minj sm0).(SimMemInj.src))
                         m_tgt1
-                        (sm0.(SimMemInjInv.minj).(SimMemInj.inj)))
-                     sm0.(SimMemInjInv.mem_inv_src)
-                     sm0.(SimMemInjInv.mem_inv_tgt))
+                        ((SimMemInjInv.minj sm0).(SimMemInj.inj)))
+                     (SimMemInjInv.mem_inv_src sm0)
+                     (SimMemInjInv.mem_inv_tgt sm0))
   :
     (<<MLE: SimMem.le sm0 sm1>>) /\
     (<<MWF: SimMem.wf sm1>>).
@@ -187,18 +187,18 @@ Inductive match_states
 | match_states_initial
     idx m_src sm0
     i stk initstk init_rs rs m_tgt
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
            blk_src blk_tgt delta
-           (DETLA: sm0.(SimMemInjInv.minj).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
+           (DETLA: (SimMemInjInv.minj sm0).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
            blk_tgt <> stk)
     (NOTEXT: forall
         ofs,
-        ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
-    (NINV: ~ sm0.(SimMemInjInv.mem_inv_tgt) stk)
+        ~ (SimMemInjInv.minj sm0).(SimMemInj.tgt_external) stk ofs)
+    (NINV: ~ (SimMemInjInv.mem_inv_tgt sm0) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 2))
     (ARG: rs RDI = Vint i)
     (RANGE: 0 <= i.(Int.intval) < MAX)
@@ -210,18 +210,18 @@ Inductive match_states
 | match_states_at_external
     idx m_src sm0
     i stk initstk init_rs rs m_tgt
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
            blk_src blk_tgt delta
-           (DETLA: sm0.(SimMemInjInv.minj).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
+           (DETLA: (SimMemInjInv.minj sm0).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
            blk_tgt <> stk)
     (NOTEXT: forall
         ofs,
-        ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
-    (NINV: ~ sm0.(SimMemInjInv.mem_inv_tgt) stk)
+        ~ (SimMemInjInv.minj sm0).(SimMemInj.tgt_external) stk ofs)
+    (NINV: ~ (SimMemInjInv.mem_inv_tgt sm0) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 12))
     (ARG: rs RBX = Vint i)
     (FARG: rs RDI = Vint (Int.sub i (Int.repr 1)))
@@ -234,18 +234,18 @@ Inductive match_states
 | match_states_after_external
     idx m_src sm0
     i stk initstk init_rs rs m_tgt
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
         blk_src blk_tgt delta
-        (DETLA: sm0.(SimMemInjInv.minj).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
+        (DETLA: (SimMemInjInv.minj sm0).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
         blk_tgt <> stk)
     (NOTEXT: forall
         ofs,
-        ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
-    (NINV: ~ sm0.(SimMemInjInv.mem_inv_tgt) stk)
+        ~ (SimMemInjInv.minj sm0).(SimMemInj.tgt_external) stk ofs)
+    (NINV: ~ (SimMemInjInv.mem_inv_tgt sm0) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 13))
     (ARG: rs RBX = Vint i)
     (SUM: rs RAX = Vint (sum (Int.sub i Int.one)))
@@ -258,18 +258,18 @@ Inductive match_states
 | match_states_final
     idx m_src sm0
     i stk initstk init_rs rs m_tgt
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
         blk_src blk_tgt delta
-        (DETLA: sm0.(SimMemInjInv.minj).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
+        (DETLA: (SimMemInjInv.minj sm0).(SimMemInj.inj) blk_src = Some (blk_tgt, delta)),
         blk_tgt <> stk)
     (NOTEXT: forall
         ofs,
-        ~ sm0.(SimMemInjInv.minj).(SimMemInj.tgt_external) stk ofs)
-    (NINV: ~ sm0.(SimMemInjInv.mem_inv_tgt) stk)
+        ~ (SimMemInjInv.minj sm0).(SimMemInj.tgt_external) stk ofs)
+    (NINV: ~ (SimMemInjInv.mem_inv_tgt sm0) stk)
     (CURRPC: curr_pc (rs PC) (Ptrofs.repr 20))
     (ARG: rs RAX = Vint i)
     (IDX: (idx >= 2)%nat)
@@ -325,8 +325,8 @@ Proof.
     clarify. inv MATCH.
     esplits; eauto.
     - unfold Genv.find_funct_ptr. rewrite DEF0. et.
-    - ss. des_ifs. clear - H. inv H; ss.
-    - ss.
+    - ss. des_ifs. apply proj_sumbool_true in H2. subst.
+      clear - H1. inv H1; ss.
   }
 Qed.
 
@@ -376,7 +376,7 @@ Proof.
     assert (CMP: compare_ints
                    (Val.and (rs RDI) (rs RDI)) Vzero
                    (rs # RBX <- (rs RDI)) # PC <- (Vptr blk (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one))
-                   (SimMemInj.tgt sm0.(SimMemInjInv.minj)) ZF = if (Int.eq_dec i Int.zero) then Vtrue else Vfalse).
+                   (SimMemInj.tgt (SimMemInjInv.minj sm0)) ZF = if (Int.eq_dec i Int.zero) then Vtrue else Vfalse).
     { unfold compare_ints, nextinstr, Val.cmpu.
       repeat (rewrite Pregmap.gso; [| clarify; fail]).
       repeat rewrite Pregmap.gss.
@@ -487,24 +487,24 @@ Proof.
                         (((compare_ints (Val.and (rs RDI) (rs RDI)) Vzero
                                         (rs # RBX <- (rs RDI)) # PC <-
                                         (Vptr blk (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one))
-                                        (SimMemInj.tgt sm0.(SimMemInjInv.minj))) # PC <-
+                                        (SimMemInj.tgt (SimMemInjInv.minj sm0))) # PC <-
                                                                 (Vptr blk (Ptrofs.add (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one) Ptrofs.one)))
                            # PC <- (Vptr blk (Ptrofs.repr 8))) # RAX <- (Vint x) RBX)
                      (nextinstr_nf
                         (((compare_ints (Val.and (rs RDI) (rs RDI)) Vzero
                                         (rs # RBX <- (rs RDI)) # PC <-
                                         (Vptr blk (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one))
-                                        (SimMemInj.tgt sm0.(SimMemInjInv.minj))) # PC <-
+                                        (SimMemInj.tgt (SimMemInjInv.minj sm0))) # PC <-
                                                                 (Vptr blk (Ptrofs.add (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one) Ptrofs.one)))
                            # PC <- (Vptr blk (Ptrofs.repr 8))) # RAX <- (Vint x) RAX)
                      (nextinstr_nf
                         (((compare_ints (Val.and (rs RDI) (rs RDI)) Vzero
                                         (rs # RBX <- (rs RDI)) # PC <-
                                         (Vptr blk (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one))
-                                        (SimMemInj.tgt sm0.(SimMemInjInv.minj))) # PC <-
+                                        (SimMemInj.tgt (SimMemInjInv.minj sm0))) # PC <-
                                                                 (Vptr blk (Ptrofs.add (Ptrofs.add (Ptrofs.repr 2) Ptrofs.one) Ptrofs.one)))
                            # PC <- (Vptr blk (Ptrofs.repr 8))) # RAX <- (Vint x))
-                     (SimMemInj.tgt sm0.(SimMemInjInv.minj))) ZF =
+                     (SimMemInj.tgt (SimMemInjInv.minj sm0))) ZF =
                 if (Int.eq_dec x i) then Vtrue else Vfalse).
       { unfold compare_ints at 1.
         unfold nextinstr_nf, undef_regs, nextinstr.
@@ -642,7 +642,7 @@ Proof.
                 - refl. }
               { unfold nextinstr_nf, nextinstr.
                 repeat rewrite Pregmap.gss. ss. econs; eauto. }
-              { omega. }
+              { lia. }
       }
 
       (* not memoized *)
@@ -770,7 +770,7 @@ Proof.
               { exploit Int.eq_false. eapply H. i.
                 unfold Int.eq in H0.
                 rewrite Int.unsigned_zero in H0.
-                des_ifs. split; eauto. destruct i. ss. omega. }
+                des_ifs. split; eauto. destruct i. ss. lia. }
       }
 
   - intros _. inv CURRPC.
@@ -799,18 +799,18 @@ Proof.
       cinv MWF.
       hexploit (@SimMemInjInvC.unchanged_on_mle
                   SimMemInjInv.top_inv memoized_inv sm0
-                  sm0.(SimMemInjInv.minj).(SimMemInj.src) m_tgt sm0.(SimMemInjInv.minj).(SimMemInj.inj)); ss; eauto.
+                  (SimMemInjInv.minj sm0).(SimMemInj.src) m_tgt (SimMemInjInv.minj sm0).(SimMemInj.inj)); ss; eauto.
       { eapply private_unchanged_inject; eauto.
         - cinv WF0. eauto.
         - instantiate (1:=~2
                         loc_out_of_reach (SimMemInj.inj (SimMemInjInv.minj sm0))
                         (SimMemInj.src (SimMemInjInv.minj sm0))).
           eapply Mem.free_unchanged_on; eauto.
-          ii. omega.
+          ii. lia.
         - ss. }
       { ii. clarify. }
       { refl. }
-      { eapply Mem.free_unchanged_on; eauto. ii. omega. }
+      { eapply Mem.free_unchanged_on; eauto. ii. lia. }
       { ii. eapply Mem.perm_free_3; eauto. }
       i. des.
 
@@ -857,6 +857,7 @@ Proof.
           exploit DEFS; eauto. i. des.
           exploit SYMBKEEP; eauto. i. rr in H.
           rewrite H in *. rewrite FINDG in *. ss. clarify.
+          cbn in DMAP. do 2 rewrite PTree.gso in DMAP by ss. rewrite PTree.gss in DMAP. clarify.
           inv MATCH. ss. inv H1; des_ifs; esplits; try rewrite Genv.find_funct_ptr_iff; eauto; ss. }
         { split; ss.
           - repeat (rewrite Pregmap.gso; [| clarify; fail]).
@@ -876,7 +877,7 @@ Proof.
       * i. inv AFTERSRC. ss. inv SIMRETV; ss.
         exploit Mem_unfree_suceeds.
         { instantiate (1:=stk).
-          instantiate (1:=SimMemInj.tgt sm_ret.(SimMemInjInv.minj)).
+          instantiate (1:=SimMemInj.tgt (SimMemInjInv.minj sm_ret)).
           inv MLE0. inv MLE1. ss.
           unfold Mem.valid_block. eapply Plt_Ple_trans; eauto.
           - eapply Mem.perm_valid_block; eauto.
@@ -899,7 +900,7 @@ Proof.
         eexists.
         eexists (SimMemInjInv.mk
                    (SimMemInj.mk
-                      (SimMemInj.src sm_ret.(SimMemInjInv.minj))
+                      (SimMemInj.src (SimMemInjInv.minj sm_ret))
                       m1 _ _ _ _ _ _ _) _ _).
         esplits; ss.
         { econs; ss; eauto.
@@ -1023,7 +1024,7 @@ Proof.
                 with (Vint (sum i)); cycle 1.
               { rewrite sum_recurse with (i := i). des_ifs; cycle 1.
                 - unfold Val.add. rewrite Int.add_zero. auto.
-                - rewrite Z.eqb_eq in Heq0. omega. }
+                - rewrite Z.eqb_eq in Heq0. lia. }
               rewrite STR1. ss. }
 
         econs 2; eauto.
@@ -1078,7 +1079,7 @@ Proof.
       instantiate (1:=0).
       instantiate (1:=initstk).
       instantiate (1:=m2).
-      ii. omega. } intros [m4 FREE2].
+      ii. lia. } intros [m4 FREE2].
 
     cinv MWF. destruct sm0 as [sm0 minv_src minv_tgt].
     exploit SimMemInj.free_right; eauto.
@@ -1204,7 +1205,8 @@ Proof.
         unfold o_bind in FINDF. ss.
         exploit Genv.find_invert_symbol. eauto. i.
         rewrite H in *. clarify.
-        destruct ((prog_defmap prog) ! g_id) eqn:DMAP; ss. clarify. } clarify.
+        destruct ((prog_defmap prog) ! g_id) eqn:DMAP; ss.
+        cbn in DMAP. rewrite PTree.gss in DMAP. clarify. } clarify.
 
       unfold Genv.find_funct in FINDF. des_ifs.
 
@@ -1248,7 +1250,7 @@ Proof.
         { eapply store_arguments_unchanged_on; eauto. }
         { eapply JunkBlock.assign_junk_blocks_unchanged_on; eauto. } }
 
-      assert (STKOUTSIDE0: ~ Mem.valid_block sm_arg.(SimMemInj.tgt) stk).
+      assert (STKOUTSIDE0: ~ Mem.valid_block (SimMemInj.tgt sm_arg) stk).
       { ii. eapply Mem.fresh_block_alloc in ALLOC. eapply ALLOC.
         eapply Mem.valid_block_unchanged_on; eauto. }
 
@@ -1263,7 +1265,7 @@ Proof.
         { eapply Mem.store_unchanged_on; eauto. } refl. }
 
       assert (STKOUTSIDE1: forall blk_src blk_tgt ofs_src,
-                 sm_arg.(SimMemInj.inj) blk_src = Some (blk_tgt, ofs_src)
+                 (SimMemInj.inj sm_arg) blk_src = Some (blk_tgt, ofs_src)
                  -> blk_tgt <> stk).
       { inv MWF. inv WF0. ss.
         ii. clarify. exploit Mem.valid_block_inject_2; eauto. }
@@ -1368,7 +1370,7 @@ Proof.
             ss. des_ifs; ss. inv VALS0.
             unfold loc_arguments in *. des_ifs. inv H5. inv H3; ss.
             inv H; ss. clarify.
-          - omega. }
+          - lia. }
 
   - (* init progress *)
     i.

@@ -26,12 +26,12 @@ Section MEMINJINV.
 
   Inductive lepriv (sm0 sm1: t'): Prop :=
   | lepriv_intro
-      (INCR: inject_incr sm0.(SimMemInj.inj) sm1.(SimMemInj.inj))
-      (SRCGENB: sm0.(SimMemInj.src_ge_nb) = sm1.(SimMemInj.src_ge_nb))
-      (TGTGENB: sm0.(SimMemInj.tgt_ge_nb) = sm1.(SimMemInj.tgt_ge_nb))
-      (FROZEN: SimMemInj.frozen sm0.(SimMemInj.inj) sm1.(SimMemInj.inj) (sm0.(SimMemInj.src_ge_nb)) (sm0.(SimMemInj.tgt_ge_nb)))
-      (INVSRC: sm0.(mem_inv_src) = sm1.(mem_inv_src))
-      (INVTGT: sm0.(mem_inv_tgt) = sm1.(mem_inv_tgt))
+      (INCR: inject_incr (SimMemInj.inj sm0) (SimMemInj.inj sm1))
+      (SRCGENB: (SimMemInj.src_ge_nb sm0) = (SimMemInj.src_ge_nb sm1))
+      (TGTGENB: (SimMemInj.tgt_ge_nb sm0) = (SimMemInj.tgt_ge_nb sm1))
+      (FROZEN: SimMemInj.frozen (SimMemInj.inj sm0) (SimMemInj.inj sm1) ((SimMemInj.src_ge_nb sm0)) ((SimMemInj.tgt_ge_nb sm0)))
+      (INVSRC: (mem_inv_src sm0) = (mem_inv_src sm1))
+      (INVTGT: (mem_inv_tgt sm0) = (mem_inv_tgt sm1))
   .
 
   Global Program Instance lepriv_PreOrder: RelationClasses.PreOrder lepriv.
@@ -85,24 +85,24 @@ Section MEMINJINV.
   Lemma unchanged_on_mle (sm0: t') m_src1 m_tgt1 j1
         (WF: SimMemInjInv.wf' P_src P_tgt sm0)
         (INJECT: Mem.inject j1 m_src1 m_tgt1)
-        (INCR: inject_incr sm0.(SimMemInj.inj) j1)
-        (SEP: inject_separated sm0.(SimMemInj.inj) j1 sm0.(SimMemInj.src) sm0.(SimMemInj.tgt))
+        (INCR: inject_incr (SimMemInj.inj sm0) j1)
+        (SEP: inject_separated (SimMemInj.inj sm0) j1 (SimMemInj.src sm0) (SimMemInj.tgt sm0))
         (UNCHSRC: Mem.unchanged_on
-                    (loc_unmapped sm0.(SimMemInj.inj))
-                    sm0.(SimMemInj.src) m_src1)
+                    (loc_unmapped (SimMemInj.inj sm0))
+                    (SimMemInj.src sm0) m_src1)
         (UNCHTGT: Mem.unchanged_on
-                    (loc_out_of_reach sm0.(SimMemInj.inj) sm0.(SimMemInj.src))
-                    sm0.(SimMemInj.tgt) m_tgt1)
+                    (loc_out_of_reach (SimMemInj.inj sm0) (SimMemInj.src sm0))
+                    (SimMemInj.tgt sm0) m_tgt1)
         (MAXSRC: forall
             b ofs
-            (VALID: Mem.valid_block sm0.(SimMemInj.src) b)
+            (VALID: Mem.valid_block (SimMemInj.src sm0) b)
           ,
-            <<MAX: Mem.perm m_src1 b ofs Max <1= Mem.perm sm0.(SimMemInj.src) b ofs Max>>)
+            <<MAX: Mem.perm m_src1 b ofs Max <1= Mem.perm (SimMemInj.src sm0) b ofs Max>>)
         (MAXTGT: forall
             b ofs
-            (VALID: Mem.valid_block sm0.(SimMemInj.tgt) b)
+            (VALID: Mem.valid_block (SimMemInj.tgt sm0) b)
           ,
-            <<MAX: Mem.perm m_tgt1 b ofs Max <1= Mem.perm sm0.(SimMemInj.tgt) b ofs Max>>)
+            <<MAX: Mem.perm m_tgt1 b ofs Max <1= Mem.perm (SimMemInj.tgt sm0) b ofs Max>>)
     :
       (<<MLE: SimMemInjInv.le' sm0 (mk (SimMemInj.mk
                                        m_src1 m_tgt1 j1
@@ -111,7 +111,7 @@ Section MEMINJINV.
                                        (SimMemInj.src_parent_nb sm0)
                                        (SimMemInj.tgt_parent_nb sm0)
                                        (SimMemInj.src_ge_nb sm0)
-                                       (SimMemInj.tgt_ge_nb sm0)) sm0.(mem_inv_src) sm0.(mem_inv_tgt))>>) /\
+                                       (SimMemInj.tgt_ge_nb sm0)) (mem_inv_src sm0) (mem_inv_tgt sm0))>>) /\
       (<<MWF: SimMemInjInv.wf' P_src P_tgt
                                (mk (SimMemInj.mk
                                    m_src1 m_tgt1 j1
@@ -120,7 +120,7 @@ Section MEMINJINV.
                                    (SimMemInj.src_parent_nb sm0)
                                    (SimMemInj.tgt_parent_nb sm0)
                                    (SimMemInj.src_ge_nb sm0)
-                                   (SimMemInj.tgt_ge_nb sm0)) sm0.(mem_inv_src) sm0.(mem_inv_tgt))>>).
+                                   (SimMemInj.tgt_ge_nb sm0)) (mem_inv_src sm0) (mem_inv_tgt sm0))>>).
   Proof.
     split.
     - assert(FROZEN: SimMemInj.frozen (SimMemInj.inj sm0) j1 (SimMemInj.src_parent_nb sm0) (SimMemInj.tgt_parent_nb sm0)).
@@ -318,9 +318,9 @@ Section SIMSYMBINV.
           id
           (IN: (ss1 -1 ss0) id)
         ,
-          <<OUTSIDESRC: ~ (defs ss0.(src)) id>> /\ <<OUTSIDETGT: ~ (defs ss0.(tgt)) id>>)
-    (SKLESRC: linkorder ss0.(src) ss1.(src))
-    (SKLETGT: linkorder ss0.(tgt) ss1.(tgt))
+          <<OUTSIDESRC: ~ (defs (src ss0)) id>> /\ <<OUTSIDETGT: ~ (defs (tgt ss0)) id>>)
+    (SKLESRC: linkorder (src ss0) (src ss1))
+    (SKLETGT: linkorder (tgt ss0) (tgt ss1))
   .
 
   Global Program Instance le_PreOrder: PreOrder le.
@@ -361,16 +361,16 @@ Section SIMSYMBINV.
 
   Inductive wf (ss: t'): Prop :=
   | sim_sk_intro
-      (SKSAME: ss.(src) = ss.(tgt))
+      (SKSAME: (src ss) = (tgt ss))
       (CLOSED: forall id (SS: ss id),
           exists g,
-            (<<DEF: (prog_defmap ss.(tgt)) ! id = Some g>>) /\
+            (<<DEF: (prog_defmap (tgt ss)) ! id = Some g>>) /\
             (<<INV: invariant_globvar g>>) /\
-            (<<PRVT: ~ In id (prog_public ss.(tgt))>>))
-      (NOMAIN: ~ ss ss.(src).(prog_main))
+            (<<PRVT: ~ In id (prog_public (tgt ss))>>))
+      (NOMAIN: ~ ss (src ss).(prog_main))
       (NOREF: forall
           id gv
-          (PROG: (prog_defmap ss.(tgt)) ! id  = Some (Gvar gv))
+          (PROG: (prog_defmap (tgt ss)) ! id  = Some (Gvar gv))
         ,
           <<NOREF: forall id_drop (DROP: ss id_drop), ~ ref_init gv.(gvar_init) id_drop>>)
   .
@@ -392,18 +392,18 @@ Section SIMSYMBINV.
   Inductive sim_skenv_inj (sm: SimMemInjInv.t') (ss: t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
   | sim_skenv_inj_intro
       (INVCOMPAT: forall id blk (FIND: (Genv.find_symbol skenv_tgt) id = Some blk),
-          ss id <-> sm.(mem_inv_tgt) blk)
+          ss id <-> (mem_inv_tgt sm) blk)
       (PUBKEPT: (fun id => In id skenv_src.(Genv.genv_public)) <1= ~1 ss)
-      (INJECT: skenv_inject skenv_src sm.(SimMemInj.inj) sm.(mem_inv_tgt))
+      (INJECT: skenv_inject skenv_src (SimMemInj.inj sm) (mem_inv_tgt sm))
       (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
-      (NBSRC: skenv_src.(Genv.genv_next) = sm.(SimMemInj.src_ge_nb))
-      (NBTGT: skenv_tgt.(Genv.genv_next) = sm.(SimMemInj.tgt_ge_nb))
+      (NBSRC: skenv_src.(Genv.genv_next) = (SimMemInj.src_ge_nb sm))
+      (NBTGT: skenv_tgt.(Genv.genv_next) = (SimMemInj.tgt_ge_nb sm))
   .
 
   Lemma skenv_inject_symbols_inject sm ss skenv_src skenv_tgt
         (SKENVINJ: sim_skenv_inj sm ss skenv_src skenv_tgt)
     :
-      symbols_inject sm.(SimMemInj.inj) skenv_src skenv_tgt.
+      symbols_inject (SimMemInj.inj sm) skenv_src skenv_tgt.
   Proof.
     inv SKENVINJ. inv SIMSKENV. inv INJECT. econs; ss. splits.
     - i. exploit IMAGE; eauto.
@@ -450,17 +450,17 @@ Section SIMSYMBINV.
     - simpl in H1. lia.
     - inv H. rewrite Nat2Z.inj_succ in H1. destruct (zeq i p).
       + congruence.
-      + apply IHn with (p + 1); auto. omega. omega.
+      + apply IHn with (p + 1); auto. lia. lia.
   Qed.
 
   Lemma init_mem_inject ss j m
         (SIMSK: wf ss)
-        (LOADMEM: Genv.init_mem ss.(src) = Some m)
+        (LOADMEM: Genv.init_mem (src ss) = Some m)
         (SS: forall id, {ss id} + {~ ss id})
         (J: j = fun blk : positive =>
                   if plt blk (Mem.nextblock m)
                   then
-                    match Genv.invert_symbol (Genv.globalenv ss.(src)) blk with
+                    match Genv.invert_symbol (Genv.globalenv (src ss)) blk with
                     | Some id => if SS id then None else Some (blk, 0)
                     | None => None
                     end
@@ -498,7 +498,7 @@ Section SIMSYMBINV.
                          (fun blk : positive =>
                             if plt blk (Mem.nextblock m)
                             then
-                              match Genv.invert_symbol (Genv.globalenv ss.(src)) blk with
+                              match Genv.invert_symbol (Genv.globalenv (src ss)) blk with
                               | Some id => if SS id then None else Some (blk, 0)
                               | None => None
                               end
@@ -581,18 +581,18 @@ Section SIMSYMBINV.
   Next Obligation.
     inv SIMSK. inv SIMSK0. eexists (mk (ss0 \1/ ss1) _ _).
     rewrite <- SKSAME in *. rewrite <- SKSAME0 in *.
-    exploit (link_linkorder ss0.(src)); eauto. intro LO; des. ss.
-    hexploit (link_prog_inv ss0.(src) ss1.(src)); eauto. i. des. clarify.
+    exploit (link_linkorder (src ss0)); eauto. intro LO; des. ss.
+    hexploit (link_prog_inv (src ss0) (src ss1)); eauto. i. des. clarify.
     esplits; ss; eauto.
     - econs; ss; eauto with congruence. i. des; clarify.
       exploit CLOSED0; eauto. i. des.
-      rewrite SKSAME. assert (~ defs ss0.(tgt) id); eauto.
+      rewrite SKSAME. assert (~ defs (tgt ss0) id); eauto.
       unfold defs, proj_sumbool. des_ifs.
       eapply prog_defmap_dom in i. des.
       exploit H0; eauto. { rewrite SKSAME; et. } i. des. clarify.
     - econs; ss; eauto with congruence. i. des; clarify.
       exploit CLOSED; eauto. i. des.
-      rewrite SKSAME0. assert (~ defs ss1.(tgt) id); eauto.
+      rewrite SKSAME0. assert (~ defs (tgt ss1) id); eauto.
       unfold defs, proj_sumbool. des_ifs.
       eapply prog_defmap_dom in i. des.
       exploit H0; eauto. { rewrite SKSAME0; et. } i. des. clarify.
@@ -600,7 +600,7 @@ Section SIMSYMBINV.
       econs; ss; eauto.
       + i. des.
         * exploit CLOSED; eauto. i. des.
-          destruct ((prog_defmap ss1.(tgt)) ! id) eqn:NONE.
+          destruct ((prog_defmap (tgt ss1)) ! id) eqn:NONE.
           { exploit H0; eauto. i. des. clarify. }
           esplits; ss; eauto.
           { erewrite prog_defmap_elements.
@@ -610,7 +610,7 @@ Section SIMSYMBINV.
             inv WFSRC1. eapply PUBINCL in H1.
             eapply prog_defmap_spec in H1. des. clarify. }
         * exploit CLOSED0; eauto. i. des.
-          destruct ((prog_defmap ss0.(tgt)) ! id) eqn:NONE.
+          destruct ((prog_defmap (tgt ss0)) ! id) eqn:NONE.
           { exploit H0; eauto. i. des. clarify. }
           esplits; ss; eauto.
           { erewrite prog_defmap_elements.
@@ -622,8 +622,8 @@ Section SIMSYMBINV.
       + ii. rewrite H in *. des; clarify.
 
       + ii.
-        assert(T: (In (id, Gvar gv) (prog_defs ss0.(tgt)))
-                  \/ (In (id, Gvar gv) (prog_defs ss1.(tgt)))).
+        assert(T: (In (id, Gvar gv) (prog_defs (tgt ss0)))
+                  \/ (In (id, Gvar gv) (prog_defs (tgt ss1)))).
         { unfold prog_defmap in PROG. ss.
           rewrite PTree_Properties.of_list_elements in *.
           rewrite PTree.gcombine in *; ss.
@@ -661,7 +661,7 @@ Section SIMSYMBINV.
       - i. destruct (classic (ss x)); eauto.
       - i. des. esplits; eauto. } destruct H as [SS].
     set (j := fun blk => if (plt blk (Mem.nextblock m_src))
-                         then match Genv.invert_symbol (Sk.load_skenv ss.(src)) blk with
+                         then match Genv.invert_symbol (Sk.load_skenv (src ss)) blk with
                               | Some id =>
                                 if (SS id) then None else Some (blk, 0)
                               | None => None
@@ -669,7 +669,7 @@ Section SIMSYMBINV.
                          else None).
     eexists (SimMemInjInv.mk (SimMemInj.mk _ _ j bot2 bot2 (Mem.nextblock m_src) (Mem.nextblock m_src) _ _) _ _). ss.
     instantiate (1:=fun blk => exists id,
-                        (<<FIND: (Genv.find_symbol (Sk.load_skenv ss.(tgt))) id = Some blk>>) /\
+                        (<<FIND: (Genv.find_symbol (Sk.load_skenv (tgt ss))) id = Some blk>>) /\
                         (<<SINV: ss id>>)).
     unfold Sk.load_mem, Sk.load_skenv in *. dup LOADMEMSRC.
     apply Genv.init_mem_genv_next in LOADMEMSRC.
@@ -741,11 +741,11 @@ Section SIMSYMBINV.
       i. inv H.
       econs; ss; eauto.
       + i. eapply DOMAIN; eauto. instantiate (1:=i).
-        destruct (classic (defs ss.(src) i)).
+        destruct (classic (defs (src ss) i)).
         * rewrite <- SYMBKEEP; eauto.
         * rewrite SYMBDROP in SYMB; eauto. clarify.
       + i. eapply NDOMAIN; eauto. instantiate (1:=i).
-        destruct (classic (defs ss.(src) i)).
+        destruct (classic (defs (src ss) i)).
         * rewrite <- SYMBKEEP; eauto.
         * rewrite SYMBDROP in SYMB; eauto. clarify.
     - inv SIMSKENV0. inv SIMSK. r. congruence.

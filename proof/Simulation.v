@@ -960,7 +960,7 @@ Proof.
     intros [[EQ1 [EQ2 EQ3]] | [NOT1 [NOT2 MT]]].
     + (* 2.1 L2 makes a silent transition: remain in "before" state *)
       subst. simpl in *. exists (X2BI_before n0); exists st_src0; split.
-      right; split. apply star_refl. constructor. omega. right. eapply CIH; et.
+      right; split. apply star_refl. constructor. lia. right. eapply CIH; et.
       { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
       econstructor; eauto. eapply star_right; eauto.
     + (* 2.2 L2 make a non-silent transition *)
@@ -993,7 +993,7 @@ Proof.
     i. inv H. exploit Eapp_E0_inv; eauto. intros [EQ1 EQ2]; subst.
     destruct H2. exploit ssd_determ_at. eapply H. eexact H1. eexact STEPTGT. i; des. clarify.
     exists (X2BI_after n i); exists st_src0; split.
-    right; split. apply star_refl. constructor. constructor; omega. right. eapply CIH; et.
+    right; split. apply star_refl. constructor. constructor; lia. right. eapply CIH; et.
     { ii. eapply SSTGT; eauto. eapply star_left; eauto. }
     eapply x2b_match_after'; eauto.
   }
@@ -1018,7 +1018,7 @@ Lemma mixed_to_backward_simulation: forall L1 L2,
   mixed_simulation L1 L2 -> backward_simulation L1 L2.
 Proof.
   intros L1 L2 XSIM. inversion XSIM.
-  apply Backward_simulation with (order0 := x2b_order order). constructor.
+  apply Backward_simulation with (order := x2b_order order). constructor.
   - eapply wf_x2b_order. apply props.
   - inv props. inv xsim_initial_states_sim0; eauto.
     i. exploit INITSIM; eauto. i; des. inv INITTGT. eauto.

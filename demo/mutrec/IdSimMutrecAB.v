@@ -33,8 +33,8 @@ Inductive match_states_ext_ab
   : unit -> state -> state -> SimMemExt.t' -> Prop :=
 | match_ext_Callstate
     i m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemExt.src))
-    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWFSRC: m_src = (SimMemExt.src sm0))
+    (MWFTGT: m_tgt = (SimMemExt.tgt sm0))
     (MWF: Mem.extends m_src m_tgt)
   :
     match_states_ext_ab
@@ -44,8 +44,8 @@ Inductive match_states_ext_ab
       sm0
 | match_return_Callstate
     i m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemExt.src))
-    (MWFTGT: m_tgt = sm0.(SimMemExt.tgt))
+    (MWFSRC: m_src = (SimMemExt.src sm0))
+    (MWFTGT: m_tgt = (SimMemExt.tgt sm0))
     (MWF: Mem.extends m_src m_tgt)
   :
     match_states_ext_ab
@@ -131,9 +131,9 @@ Inductive match_states_ab
   : unit -> state -> state -> SimMemInj.t' -> Prop :=
 | match_states_ab_intro
     st_src st_tgt j m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemInj.src))
-    (MWFTGT: m_tgt = sm0.(SimMemInj.tgt))
-    (MWFINJ: j = sm0.(SimMemInj.inj))
+    (MWFSRC: m_src = (SimMemInj.src sm0))
+    (MWFTGT: m_tgt = (SimMemInj.tgt sm0))
+    (MWFINJ: j = (SimMemInj.inj sm0))
     (MATCHST: match_states_ab_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMemInj.wf' sm0)
   :
@@ -146,8 +146,8 @@ Lemma a_id
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (MutrecABspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecABspec.module)>>)
+      /\ (<<SRC: (ModPair.src mp) = (MutrecABspec.module)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (MutrecABspec.module)>>)
 .
 Proof.
   eapply any_id; auto.
@@ -158,8 +158,8 @@ Lemma a_ext_unreach
  :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (MutrecABspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecABspec.module)>>)
+      /\ (<<SRC: (ModPair.src mp) = (MutrecABspec.module)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (MutrecABspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -208,8 +208,8 @@ Lemma a_ext_top
  :
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (MutrecABspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecABspec.module)>>)
+      /\ (<<SRC: (ModPair.src mp) = (MutrecABspec.module)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (MutrecABspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -257,9 +257,9 @@ Lemma ab_inj_drop_bot
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (MutrecABspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecABspec.module)>>)
-      /\ (<<SSBOT: mp.(ModPair.ss) = SimSymbDrop.mk bot1 (MutrecABspec.module) (MutrecABspec.module)>>)
+      /\ (<<SRC: (ModPair.src mp) = (MutrecABspec.module)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (MutrecABspec.module)>>)
+      /\ (<<SSBOT: (ModPair.ss mp) = SimSymbDrop.mk bot1 (MutrecABspec.module) (MutrecABspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -313,8 +313,8 @@ Lemma ab_inj_drop
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (MutrecABspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecABspec.module)>>)
+      /\ (<<SRC: (ModPair.src mp) = (MutrecABspec.module)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (MutrecABspec.module)>>)
 .
 Proof.
   exploit ab_inj_drop_bot; eauto. i. des. eauto.
@@ -325,8 +325,8 @@ Lemma ab_inj_id
   :
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (MutrecABspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecABspec.module)>>)
+      /\ (<<SRC: (ModPair.src mp) = (MutrecABspec.module)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (MutrecABspec.module)>>)
 .
 Proof.
   eapply sim_inj_drop_bot_id. apply ab_inj_drop_bot; auto.
@@ -345,9 +345,9 @@ Inductive match_states_ab_inv
   : unit -> state -> state -> SimMem.t -> Prop :=
 | match_states_ab_inv_intro
     st_src st_tgt j m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMem.src))
-    (MWFTGT: m_tgt = sm0.(SimMem.tgt))
-    (MWFINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
+    (MWFSRC: m_src = (SimMem.src sm0))
+    (MWFTGT: m_tgt = (SimMem.tgt sm0))
+    (MWFINJ: j = (SimMemInjInv.minj sm0).(SimMemInj.inj))
     (MATCHST: match_states_ab_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMem.wf sm0)
   :
@@ -360,8 +360,8 @@ Lemma ab_inj_inv_id
   :
     exists mp,
       (<<SIM: ModPair.sim mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (MutrecABspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecABspec.module)>>)
+      /\ (<<SRC: (ModPair.src mp) = (MutrecABspec.module)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (MutrecABspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.

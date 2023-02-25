@@ -42,7 +42,7 @@ Local Open Scope nat.
 
 
 Definition val' (su: Unreach.t) (v: val): Prop :=
-  forall blk ofs (PTR: v = Vptr blk ofs), ~su blk /\ (blk < su.(nb))%positive.
+  forall blk ofs (PTR: v = Vptr blk ofs), ~su blk /\ (blk < (nb su))%positive.
 
 Definition memval' (su: Unreach.t) (mv: memval): Prop :=
   forall v q n (PTR: mv = Fragment v q n), (val' su) v.
@@ -54,10 +54,10 @@ Inductive mem': Unreach.t -> Memory.mem -> Prop :=
         (PUB: ~ su blk)
         (PERM: Mem.perm m0 blk ofs Cur Readable), (* <------------ Cur? *)
         (memval' su) (ZMap.get ofs (Mem.mem_contents m0) !! blk))
-    (BOUND: su.(Unreach.unreach) <1= (Mem.valid_block m0))
-    (* (BOUND: Ple su.(Unreach.nb) m0.(Mem.nextblock)) *)
+    (BOUND: (Unreach.unreach su) <1= (Mem.valid_block m0))
+    (* (BOUND: Ple (Unreach.nb su) m0.(Mem.nextblock)) *)
     (GENB: Ple su.(Unreach.ge_nb) m0.(Mem.nextblock))
-    (NB: su.(Unreach.nb) = m0.(Mem.nextblock)):
+    (NB: (Unreach.nb su) = m0.(Mem.nextblock)):
     mem' su m0.
 
 Hint Unfold val' memval'.
@@ -79,13 +79,13 @@ Definition args' (su: Unreach.t) (args0: Args.t) :=
   /\ (<<VALS: List.Forall (val' (su)) (Args.vs args0)>>)
   /\ (<<MEM: mem' su (Args.m args0)>>)
   (* /\ (<<WF: forall blk (PRIV: su blk) (PUB: Plt blk su.(ge_nb)), False>>) *)
-  (* /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>) *)
+  (* /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple (nb su) blk), False>>) *)
   /\ (<<WF: wf su>>).
 
 Definition retv' (su: Unreach.t) (retv0: Retv.t) :=
   (<<VAL: val' su (Retv.v retv0)>>)
   /\ (<<MEM: mem' su (Retv.m retv0)>>)
-  /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple su.(nb) blk), False>>).
+  /\ (<<WF: forall blk (PRIV: su blk) (PUB: Ple (nb su) blk), False>>).
 
 Lemma finite_map
       X (P: X -> Prop) Y
@@ -634,7 +634,7 @@ Next Obligation.
       u in MEM. exploit Genv.initmem_inject; eauto. i. inv H.
       exploit Mem.mi_memval; et.
       { exploit Mem.perm_valid_block; et. unfold Mem.valid_block, Mem.flat_inj. des_ifs. }
-      i. replace (ofs + 0)%Z with ofs in H by omega. rewrite PTR in H. inv H. inv H1. eapply mi_mappedblocks; et.
+      i. replace (ofs + 0)%Z with ofs in H by lia. rewrite PTR in H. inv H. inv H1. eapply mi_mappedblocks; et.
     + ii; ss.
     + ss. u in *. erewrite <- Genv.init_mem_genv_next; eauto. folder. refl.
   - econs; eauto; ss.
@@ -816,7 +816,7 @@ Qed.
 Lemma greatest_ex: forall
     su0 args0
     (CSTYLE: Args.is_cstyle args0)
-    (INHAB: exists (inhab: Sound.t), <<LE: le' su0 inhab>> /\ <<ARGS: inhab.(Sound.args) args0>>)
+    (INHAB: exists (inhab: Sound.t), <<LE: le' su0 inhab>> /\ <<ARGS: (Sound.args inhab) args0>>)
   ,
     exists su_gr, <<GR: get_greatest su0 args0 su_gr>>.
 Proof.

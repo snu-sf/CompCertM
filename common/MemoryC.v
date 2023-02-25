@@ -76,7 +76,7 @@ Lemma unchanged_ro_trans
   :
     <<UNCH: unchanged_ro m0 m2>>
 .
-Proof. 
+Proof.
   ii. econs.
   - eapply Ple_trans; et; eapply unchanged_ro_nextblock; et.
   - i. eapply unchanged_ro_perm; et.
@@ -275,7 +275,7 @@ Proof.
     unfold f'; intros. destruct (eq_block b0 b1); eauto.
       inversion H8. subst b0 b3 delta0.
       elim (fresh_block_alloc _ _ _ _ _ H0).
-      eapply perm_valid_block with (ofs := ofs). apply H9. generalize (size_chunk_pos chunk); omega.
+      eapply perm_valid_block with (ofs := ofs). apply H9. generalize (size_chunk_pos chunk); lia.
     unfold f'; intros. destruct (eq_block b0 b1).
       inversion H8. subst b0 b3 delta0.
       elim (fresh_block_alloc _ _ _ _ _ H0). eauto with mem.
@@ -295,27 +295,27 @@ Proof.
   destruct (eq_block b0 b1); destruct (eq_block b3 b1); eauto; try congruence.
   inversion H10; subst b0 b1' delta1.
     destruct (eq_block b2 b2'); auto. subst b2'. right; red; intros.
-    eapply H6; eauto. omega.
+    eapply H6; eauto. lia.
   inversion H11; subst b3 b2' delta2.
     destruct (eq_block b1' b2); auto. subst b1'. right; red; intros.
-    eapply H6; eauto. omega.
+    eapply H6; eauto. lia.
 (* representable *)
   unfold f'; intros. destruct (eq_block b b1).
    subst. injection H9; intros; subst b' delta0. destruct H10.
     exploit perm_alloc_inv; eauto; rewrite dec_eq_true; intro.
     { generalize (Ptrofs.unsigned_range_2 ofs). i.
       exploit H3. apply H4 with (k := Max) (p := Nonempty); eauto. i.
-      omega. }
+      lia. }
    exploit perm_alloc_inv; eauto; rewrite dec_eq_true; intro.
    { generalize (Ptrofs.unsigned_range_2 ofs). i.
      exploit H3. apply H4 with (k := Max) (p := Nonempty); eauto. i.
-     omega. }
+     lia. }
   eapply mi_representable0; try eassumption.
   destruct H10; eauto using perm_alloc_4.
 (* perm inv *)
   intros. unfold f' in H9; destruct (eq_block b0 b1).
   inversion H9; clear H9; subst b0 b3 delta0.
-  assert (EITHER: lo <= ofs < hi \/ ~(lo <= ofs < hi)) by omega.
+  assert (EITHER: lo <= ofs < hi \/ ~(lo <= ofs < hi)) by lia.
   destruct EITHER.
   left. apply perm_implies with Freeable; auto with mem. eapply perm_alloc_2; eauto.
   right; intros A. eapply perm_alloc_inv in A; eauto. rewrite dec_eq_true in A. tauto.
@@ -689,4 +689,3 @@ Proof.
     + right. esplits; et. extlia.
   - ii. des; clarify; esplits; et; extlia.
 Qed.
-

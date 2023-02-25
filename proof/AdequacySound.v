@@ -45,9 +45,9 @@ Section ADQSOUND.
   Variable ss_link: SimSymb.t.
   Hypothesis (SIMSKENV: exists sm, SimSymb.sim_skenv sm ss_link skenv_link_src skenv_link_tgt).
 
-  Hypothesis INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src)).
-  Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt)).
-  Hypothesis SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link.
+  Hypothesis INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk (ModPair.src mp)).
+  Hypothesis INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk (ModPair.tgt mp)).
+  Hypothesis SSLE: forall mp (IN: In mp pp), SimSymb.le (ModPair.ss mp) ss_link.
 
   Let WFSKLINKSRC: Sk.wf sk_link_src. eapply link_list_preserves_wf_sk; et. Qed.
   Let WFSKLINKTGT: Sk.wf sk_link_tgt. eapply link_list_preserves_wf_sk; et. Qed.
@@ -56,7 +56,7 @@ Section ADQSOUND.
 
   Inductive sound_ge (su0: Sound.t) (m0: mem): Prop :=
   | sound_ge_intro
-      (GE: Forall (fun ms => su0.(Sound.skenv) m0 ms.(ModSem.skenv) /\ su0.(Sound.skenv) m0 ms.(ModSem.skenv_link))
+      (GE: Forall (fun ms => (Sound.skenv su0) m0 ms.(ModSem.skenv) /\ (Sound.skenv su0) m0 ms.(ModSem.skenv_link))
                   (fst sem_src.(Smallstep.globalenv)))
   .
 
@@ -211,7 +211,7 @@ Section ADQSOUND.
       + inv MSFIND. ss. rr in SIMPROG. rewrite Forall_forall in *. des; clarify.
         { eapply system_local_preservation. }
         u in MODSEM. rewrite in_map_iff in MODSEM. des; clarify. rename x into md_src.
-        assert(exists mp, In mp pp /\ mp.(ModPair.src) = md_src).
+        assert(exists mp, In mp pp /\ (ModPair.src mp) = md_src).
         { clear - MODSEM0. rr in pp. rr in p_src. subst p_src. rewrite in_map_iff in *. des. eauto. }
         des. exploit SIMPROG; eauto. intros MPSIM. inv MPSIM.
         destruct SIMSKENV. exploit SIMMS.

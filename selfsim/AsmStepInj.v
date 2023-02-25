@@ -216,7 +216,7 @@ Section ASMSTEP.
         * econs.
   Qed.
 
-  
+
   Lemma exec_load_inject
         j ge_src ge_tgt chunk m_src0 m_tgt0 m_src1 a rd rs_src0 rs_tgt0 rs_src1
         (SYMBLE: forall i b_src
@@ -1120,6 +1120,8 @@ tac_cal AGREE.
           rewrite FREE. ss.
         * eapply nextinstr_agree. repeat eapply agree_step; eauto.
         * eapply inject_separated_refl.
+      + tac_cal AGREE.
+      + tac_cal AGREE.
     - exploit eval_builtin_args_inject; eauto. i. des.
       exploit ec_mem_inject_weak; eauto.
       { apply external_call_spec. }

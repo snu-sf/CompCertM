@@ -235,7 +235,6 @@ Module SkEnv.
         { subst id0. rewrite PTree.gss in SYMB. inv SYMB. exists g. eapply PTree.gss. }
         { rewrite PTree.gso in SYMB; eauto. exploit H; eauto. i. inv H1.
           exists x. rewrite PTree.gso; eauto. exploit Genv.genv_symb_range; eauto. i. extlia. }
-      + rewrite PTree.gempty in SYMB. inv SYMB.
     - intros blk skd.
       set (P := fun ge => Genv.find_def ge blk = Some skd -> exists id, Genv.find_symbol ge id = Some blk).
       assert(REC: forall l ge, P ge -> NoDup (map fst l) ->
@@ -254,9 +253,9 @@ Module SkEnv.
           + ii. subst. inv H0; eauto.
       }
       eapply REC.
-      { unfold P, Genv.find_def. i. ss. rewrite PTree.gempty in H. inv H. }
+      { unfold P, Genv.find_def. i. ss. }
       { inv WF. eauto. }
-      { i. unfold Genv.find_symbol. ss. eapply PTree.gempty. }
+      { i. unfold Genv.find_symbol. ss. }
     - inv WF. i. eapply Genv.find_def_inversion in DEF. des. eapply WFPARAM in DEF. eauto.
   Qed.
 

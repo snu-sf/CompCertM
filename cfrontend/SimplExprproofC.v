@@ -40,14 +40,14 @@ Definition msp: ModSemPair.t := ModSemPair.mk (md_src skenv_link) (md_tgt skenv_
 Inductive match_states
           (idx: nat) (st_src0: Csem.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
-    (MATCHST: SimplExprproof.match_states tge st_src0 st_tgt0)
+    (MATCHST: SimplExprproof.match_states prog tge st_src0 st_tgt0)
     (MWF: SimMem.wf sm0)
     (MEASURE: measure st_src0 = idx).
 
 Theorem make_match_genvs :
   SimSymbId.sim_skenv (SkEnv.project skenv_link (Mod.sk md_src))
                       (SkEnv.project skenv_link (Mod.sk md_tgt)) ->
-  Genv.match_genvs (match_globdef (fun (ctx : AST.program Csyntax.fundef type) f tf => tr_fundef f tf) eq prog) ge tge /\ prog_comp_env prog = prog_comp_env tprog.
+  Genv.match_genvs (match_globdef tr_fundef eq prog) ge tge /\ prog_comp_env prog = prog_comp_env tprog.
 Proof.
   subst_locals. ss. rr in TRANSL. destruct TRANSL. r in H. esplits.
   - eapply SimSymbId.sim_skenv_revive; eauto.
@@ -102,12 +102,15 @@ Proof.
     inv MATCH; ss. inv MATCHST; ss. esplits; eauto; econs; ss; eauto.
     clarify. econs; eauto.
   - (* final fsim *)
-    inv MATCH. inv FINALSRC; inv MATCHST; ss. inv H3. destruct sm0; ss. clarify.
+    inv MATCH. inv FINALSRC; inv MATCHST; ss. (* inv H3. *)
+    specialize (MK (prog_comp_env prog)). inv MK.
+    destruct sm0; ss. clarify.
     eexists (SimMemId.mk _ _). esplits; ss; eauto. econs; ss; eauto.
   - left; i. esplits; eauto.
     { apply modsem_strongly_receptive; et. }
     inv MATCH. ii. hexploit (@simulation prog skenv_link skenv_link); eauto.
     { inv SIMSKENV. ss. }
+    { i. cbn. auto. }
     { exploit make_match_genvs; eauto. { eapply SIMSKENV. } intro T; des. esplits; eauto. }
     i. des_safe. esplits; eauto.
     + des.
@@ -135,7 +138,7 @@ Definition mp: ModPair.t := SimSymbId.mk_mp (Mod.Atomic.trans (CstrategyC.module
 Theorem sim_mod: ModPair.sim mp.
 Proof.
   econs; ss.
-  - r. inv TRANSL. eapply CSk.match_program_eq; et.
+  - r. inv TRANSL. eapply CSk.match_program_gen_eq; et.
     ii. destruct f1; ss.
     + clarify. right. inv MATCH. esplits; eauto. inv H2.
       unfold CsemC.signature_of_function, signature_of_function. f_equal; congruence.

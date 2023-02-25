@@ -288,17 +288,29 @@ Section PRESERVATION.
   Notation "'rred'" := (rred skenv_link) (only parsing).
   Notation "'estep'" := (estep skenv_link) (only parsing).
 
+  Lemma store_bitfield_determ
+    ty sz sg pos w m addr i m1 v1 m1' v1'
+    (STORE1: store_bitfield ty sz sg pos w m addr i m1 v1)
+    (STORE2: store_bitfield ty sz sg pos w m addr i m1' v1')
+    : m1 = m1' /\ v1 = v1'.
+  Proof. inv STORE1. inv STORE2. clarify. Qed.
+
   Lemma assign_loc_determ
         g ty m b
-        ofs v tr m1 m1'
-        (ASSIGN1: assign_loc g ty m b ofs v tr m1)
-        (ASSIGN2: assign_loc g ty m b ofs v tr m1'):
-      m1 = m1'.
+        ofs bf v tr m1 m1' v1 v1'
+        (ASSIGN1: assign_loc g ty m b ofs bf v tr m1 v1)
+        (ASSIGN2: assign_loc g ty m b ofs bf v tr m1' v1'):
+      m1 = m1' /\ v1 = v1'.
   Proof.
     generalize dependent g.
     generalize dependent m1'.
-    induction 1; i; inv ASSIGN2; f_equal; Eq; auto.
-    inv H1; inv H4. inv H5; inv H15; try congruence. Eq. auto.
+    generalize dependent v1'.
+    induction 1; i.
+    - inv ASSIGN2; split; Eq; auto.
+    - inv ASSIGN2; split; Eq; auto.
+      inv H1; inv H4. inv H5; inv H15; try congruence. Eq. auto.
+    - inv ASSIGN2; split; Eq; auto.
+    - inv ASSIGN2. eapply store_bitfield_determ; eauto.
   Qed.
 
   Lemma bind_parameters_determ
@@ -530,9 +542,9 @@ Section PRESERVATION.
       exploit volatile_load_preserved; eauto. eapply Senv_equiv2. eapply Senv_equiv1.
   Qed.
 
-  Lemma deref_loc_same ty m' b ofs tr v:
-    deref_loc {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} ty m' b ofs tr v
-    <-> deref_loc (globalenv prog) ty m' b ofs tr v.
+  Lemma deref_loc_same ty m' b ofs bf tr v:
+    deref_loc {| genv_genv := (local_genv prog); genv_cenv := prog_comp_env prog |} ty m' b ofs bf tr v
+    <-> deref_loc (globalenv prog) ty m' b ofs bf tr v.
   Proof.
     destruct match_ge_skenv_link.
     split; intro DEREF;
@@ -552,11 +564,11 @@ Section PRESERVATION.
       exploit volatile_store_preserved; eauto. eapply Senv_equiv2. eapply Senv_equiv1.
   Qed.
 
-  Lemma assign_loc_same ty m b ofs v tr m':
+  Lemma assign_loc_same ty m b ofs bf v tr m' v':
       assign_loc
         {| genv_genv := (local_genv prog);
-           genv_cenv := prog_comp_env prog |} ty m b ofs v tr m'
-      <-> assign_loc (globalenv prog) ty m b ofs v tr m'.
+           genv_cenv := prog_comp_env prog |} ty m b ofs bf v tr m' v'
+      <-> assign_loc (globalenv prog) ty m b ofs bf v tr m' v'.
   Proof.
     destruct match_ge_skenv_link.
     split; intro ASSIGN;

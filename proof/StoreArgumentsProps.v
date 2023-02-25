@@ -329,7 +329,7 @@ Module _FillArgsParallel.
               + exploit H5; eauto. i. rewrite H8. eauto.
               + rewrite LEQ at 2. symmetry. eapply Mem.getN_setN_same.
               + rewrite Mem.getN_length.
-                exploit size_chunk_nat_pos. intros SZ. des. rewrite SZ. compute. omega. }
+                exploit size_chunk_nat_pos. intros SZ. des. rewrite SZ. compute. lia. }
         * specialize (ONLY ofs). des.
           { left. erewrite Mem.setN_other; eauto. unfold copy_list_memval. erewrite map_length.
             erewrite Mem.getN_length. ii. clarify. }

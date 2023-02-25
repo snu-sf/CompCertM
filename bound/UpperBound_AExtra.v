@@ -468,21 +468,25 @@ Section SIM.
     revert cp delta f0 n.
     induction (co_members co) as [| mhd mtl]; try (by ss); i.
     ss. destruct mhd.
-    assert (ALIGN: (align n (alignof (prog_comp_env cp) t)) = (align n (alignof (prog_comp_env cp_link) t))).
-    { clear -COMPLETE EXTENDS.
-      revert t n cp cp_link COMPLETE EXTENDS.
-      induction t; ss; i; unfold align_attr; des_ifs; auto.
-      - exploit EXTENDS; eauto. i. Eq. auto.
-      - exploit EXTENDS; eauto. i. Eq.
-      - exploit EXTENDS; eauto. i. Eq. auto.
-      - exploit EXTENDS; eauto. i. Eq. }
-    des_ifs.
-    - rewrite ALIGN. auto.
-    - rewrite ALIGN in *.
-      eapply andb_prop in COMPLETE. des; auto.
-      exploit IHmtl; eauto.
-      intros. erewrite H.
-      erewrite <- sizeof_stable; eauto.
+    { assert (ALIGN: (align n (alignof (prog_comp_env cp) t * 8)) = (align n (alignof (prog_comp_env cp_link) t * 8))).
+      { clear -COMPLETE EXTENDS.
+        revert t n cp cp_link COMPLETE EXTENDS.
+        induction t; ss; i; unfold align_attr; des_ifs; auto.
+        - exploit EXTENDS; eauto. i. Eq. auto.
+        - exploit EXTENDS; eauto. i. Eq.
+        - exploit EXTENDS; eauto. i. Eq. auto.
+        - exploit EXTENDS; eauto. i. Eq. }
+      assert (BALIGN: (align n (bitalignof (prog_comp_env cp) t)) = (align n (bitalignof (prog_comp_env cp_link) t))).
+      { unfold bitalignof. apply ALIGN. }
+      des_ifs.
+      - cbn. rewrite BALIGN. auto.
+      - cbn. rewrite BALIGN in *.
+        eapply andb_prop in COMPLETE. des; auto.
+        exploit IHmtl; eauto.
+        intros. erewrite H.
+        unfold bitsizeof.
+        erewrite <- sizeof_stable; eauto. }
+    { des_ifs. eauto. }
   Qed.
 
   Lemma sem_add_ptr_int_same1
@@ -889,6 +893,7 @@ Section SIM.
   Hypothesis WFSRC: forall md : Mod.t, In md prog_src -> Sk.wf md.
   Hypothesis WFTGT: forall md : Mod.t, In md prog_tgt -> Sk.wf md.
 
+
   Lemma lred_progress
         cp f C a k3 k0 e m a' m'
         (FOC: is_focus cp)
@@ -921,8 +926,14 @@ Section SIM.
       exploit co_consistent_complete; et.
     - exploit types_of_context1; eauto. intros [tys [A B]].
       inv WTTGT. ss. exploit (WTYE (Tunion id a0)).
-      eapply B. ss. auto. i. inv H0. des_ifs.
-      do 2 eexists. econs 5; eauto.
+      eapply B. ss. auto. i. inv H1. des_ifs.
+      do 2 eexists. econs 5; et.
+
+      cbn. eapply EXTENDS in Heq as EXTENDS'. clarify.
+      erewrite <- union_field_offset_stable; et.
+      apply co_consistent_complete.
+      eapply build_composite_env_consistent; eauto.
+      apply prog_comp_env_eq.
   Qed.
 
   Lemma match_focus_state_bsim
@@ -965,6 +976,12 @@ Section SIM.
           exploit build_composite_env_consistent; et. intro Y.
           exploit co_consistent_complete; et. intro Z.
           erewrite <- field_offset_same; eauto.
+        * econs; et. cbn in *.
+          apply EXTENDS in H1 as EXTENDS'.
+          erewrite union_field_offset_stable; et.
+          apply co_consistent_complete.
+          eapply build_composite_env_consistent; eauto.
+          apply prog_comp_env_eq.
       (* rred *)
       + left. econs; eauto.
         rename C into CC.
@@ -1021,7 +1038,9 @@ Section SIM.
               + erewrite wt_type_sizeof_stable; eauto.
                 exploit (WTYE ty1); eauto. eapply B. ss. auto.
               + erewrite wt_type_sizeof_stable; eauto.
-                exploit (WTYE ty1); eauto. eapply B. ss. auto. }
+                exploit (WTYE ty1); eauto. eapply B. ss. auto.
+            - econs; eauto.
+          }
         * econs 5; eauto.
     - right.
       inv STEP; inv ST; try (by econs; eauto).
@@ -1122,7 +1141,7 @@ Section SIM.
         * econs 2; eauto.
         * inv H2.
           { econs 3; eauto.
-            instantiate (1:= m'). instantiate (1:=(Eloc b Ptrofs.zero ty)). econs; eauto. }
+            instantiate (1:= m'). instantiate (1:=(Eloc b Ptrofs.zero Full ty)). econs; eauto. }
           { ss. econs 3; eauto. econs 2; eauto. ss.
             instantiate (1 := b).
             unfold Genv.find_symbol in *. ss.
@@ -1151,7 +1170,13 @@ Section SIM.
             exploit types_of_context1; eauto. intros [tys [A B]].
             inv WTTGT. ss. exploit (WTYE (Tunion id a)).
             eapply B. ss. auto. i. inv H4. des_ifs.
-            econs 3; eauto. ss. econs 5; eauto. }
+            econs 3; eauto. ss. econs 5; eauto.
+            des_ifs.
+            apply EXTENDS in Heq as EXTENDS'.
+            erewrite union_field_offset_stable; et.
+            apply co_consistent_complete.
+            eapply build_composite_env_consistent; eauto.
+            apply prog_comp_env_eq. }
         * inv H2; try (by (econs 4; eauto; econs; eauto)).
           { econs 4; eauto. econs 4; eauto. ss. unfold sem_binary_operation in *. des_ifs; eauto.
             - exploit context_compose. eapply H. eapply H3. i.
@@ -1171,7 +1196,8 @@ Section SIM.
               + erewrite <- wt_type_sizeof_stable; eauto.
                 exploit (WTYE ty1); eauto. eapply B. ss. auto.
               + erewrite <- wt_type_sizeof_stable; eauto.
-                exploit (WTYE ty1); eauto. eapply B. ss. auto. }
+                exploit (WTYE ty1); eauto. eapply B. ss. auto.
+            - econs; eauto. }
         * econs 5; eauto.
     - ss. inversion STEP; subst; inv ST; ss; try (by eexists; right; econs; eauto);
             (try by (destruct k3; destruct k0; ss; clarify; try (by  eexists; right; econs; eauto);

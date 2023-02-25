@@ -220,12 +220,12 @@ Definition link_program (p1 p2: program): option (program) :=
   | Some p =>
       match lift_option (link p1.(prog_types) p2.(prog_types)) with
       | inright _ => None
-      | inleft (exist typs EQ) =>
+      | inleft (exist _ typs EQ) =>
           match link_build_composite_env
                    p1.(prog_types) p2.(prog_types) typs
                    p1.(prog_comp_env) p2.(prog_comp_env)
                    p1.(prog_comp_env_eq) p2.(prog_comp_env_eq) EQ with
-          | exist env (conj P Q) =>
+          | exist _ env (conj P Q) =>
               Some {| prog_defs := p.(AST.prog_defs);
                       prog_public := p.(AST.prog_public);
                       prog_main := p.(AST.prog_main);
@@ -245,14 +245,14 @@ Program Instance Linker_program: Linker (program) := {
   linkorder := linkorder_program
 }.
 Next Obligation.
-- intros; split. apply linkorder_refl. auto. 
+- intros; split. apply linkorder_refl. auto.
 Defined.
 Next Obligation.
 - intros. destruct H, H0. split. eapply linkorder_trans; eauto.
   intros; auto.
 Defined.
 Next Obligation.
-- intros until z. unfold link_program. 
+- intros until z. unfold link_program.
   destruct (link (program_of_program x) (program_of_program y)) as [p|] eqn:LP; try discriminate.
   destruct (lift_option (link (prog_types x) (prog_types y))) as [[typs EQ]|EQ]; try discriminate.
   destruct (link_build_composite_env (prog_types x) (prog_types y) typs

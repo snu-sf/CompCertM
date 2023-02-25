@@ -35,7 +35,10 @@ Proof.
     + unfold Mem.storev in *. eapply mem_store_readonly; eauto.
     + eapply Mem.storebytes_unchanged_on; eauto. ii. unfold loc_not_writable in *.
       eapply H9. eapply Mem.perm_cur. eapply Mem.storebytes_range_perm; eauto.
-  - eapply unchanged_unchanged_ro. eapply alloc_variables_unchanged_on. inv H. et.
+    + match goal with H: store_bitfield _ _ _ _ _ _ _ _ _ _ |- _ => inv H end.
+      unfold Mem.storev in *. eapply mem_store_readonly; eauto.
+  - eapply unchanged_unchanged_ro.  inv H.
+    eapply alloc_variables_unchanged_on; et.
 Qed.
 
 Definition match_env (j: meminj) (env_src env_tgt: env) :=
@@ -111,9 +114,9 @@ Inductive match_states_clight
   : unit -> state -> state -> SimMemInj.t' -> Prop :=
 | match_states_clight_intro
     st_src st_tgt j m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMemInj.src))
-    (MWFTGT: m_tgt = sm0.(SimMemInj.tgt))
-    (MWFINJ: j = sm0.(SimMemInj.inj))
+    (MWFSRC: m_src = (SimMemInj.src sm0))
+    (MWFTGT: m_tgt = (SimMemInj.tgt sm0))
+    (MWFINJ: j = (SimMemInj.inj sm0))
     (MATCHST: match_states_clight_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMemInj.wf' sm0):
     match_states_clight tt st_src st_tgt sm0.
@@ -128,15 +131,15 @@ Section CLIGHTINJ.
              (function_entry: genv -> function -> list val -> mem -> env -> temp_env -> mem -> Prop) :=
       forall fn vs_src vs_tgt sm0 env_src tenv_src m_src1
         (MWF: SimMemInj.wf' sm0)
-        (VALS: Val.inject_list sm0.(SimMemInj.inj) vs_src vs_tgt)
-        (ENTRY: function_entry ge_src fn vs_src sm0.(SimMemInj.src) env_src tenv_src m_src1),
+        (VALS: Val.inject_list (SimMemInj.inj sm0) vs_src vs_tgt)
+        (ENTRY: function_entry ge_src fn vs_src (SimMemInj.src sm0) env_src tenv_src m_src1),
       exists env_tgt tenv_tgt sm1,
         (<<MEMSRC: SimMemInj.src sm1 = m_src1>>) /\
         (<<MWF: SimMemInj.wf' sm1>>) /\
-        (<<ENV: match_env sm1.(SimMemInj.inj) env_src env_tgt>>) /\
-        (<<TENV: match_temp_env sm1.(SimMemInj.inj) tenv_src tenv_tgt>>) /\
+        (<<ENV: match_env (SimMemInj.inj sm1) env_src env_tgt>>) /\
+        (<<TENV: match_temp_env (SimMemInj.inj sm1) tenv_src tenv_tgt>>) /\
         (<<MLE: SimMemInj.le' sm0 sm1>>) /\
-        (<<ENTRY: function_entry ge_tgt fn vs_tgt sm0.(SimMemInj.tgt) env_tgt tenv_tgt sm1.(SimMemInj.tgt)>>).
+        (<<ENTRY: function_entry ge_tgt fn vs_tgt (SimMemInj.tgt sm0) env_tgt tenv_tgt (SimMemInj.tgt sm1)>>).
 
   Lemma alloc_variables_inject sm0 idl e_src0 e_tgt0 e_src1 m_src1
         (ALLOC: alloc_variables ge_src e_src0 (SimMemInj.src sm0) idl e_src1 m_src1)
@@ -163,13 +166,13 @@ Section CLIGHTINJ.
       i. des. clarify. esplits; eauto; try etrans; eauto. econs; eauto. rewrite <- CENV. auto.
   Qed.
 
- Lemma assign_loc_inject ce ty sm0 blk_src blk_tgt ofs_src ofs_tgt v_src v_tgt m_src1
-        (ASSIGN: assign_loc ce ty sm0.(SimMemInj.src) blk_src ofs_src v_src m_src1)
-        (INJ: Val.inject sm0.(SimMemInj.inj) (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
-        (VAL: Val.inject sm0.(SimMemInj.inj) v_src v_tgt)
+ Lemma assign_loc_inject ce ty sm0 blk_src blk_tgt ofs_src ofs_tgt bf v_src v_tgt m_src1
+        (ASSIGN: assign_loc ce ty (SimMemInj.src sm0) blk_src ofs_src bf v_src m_src1)
+        (INJ: Val.inject (SimMemInj.inj sm0) (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
+        (VAL: Val.inject (SimMemInj.inj sm0) v_src v_tgt)
         (MWF: SimMemInj.wf' sm0):
       exists sm1,
-        (<<ASSIGN: assign_loc ce ty sm0.(SimMemInj.tgt) blk_tgt ofs_tgt v_tgt sm1.(SimMemInj.tgt)>>) /\
+        (<<ASSIGN: assign_loc ce ty (SimMemInj.tgt sm0) blk_tgt ofs_tgt bf v_tgt (SimMemInj.tgt sm1)>>) /\
         (<<MEMSRC: SimMemInj.src sm1 = m_src1>>) /\
         (<<MWF: SimMemInj.wf' sm1>>) /\
         (<<MLE: SimMemInj.le' sm0 sm1>>).
@@ -180,15 +183,15 @@ Section CLIGHTINJ.
       + cinv VAL. cinv INJ.
         assert (bytes = nil).
         { exploit (Mem.loadbytes_empty (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') (sizeof ce ty)).
-          omega. congruence. } subst.
+          lia. congruence. } subst.
         destruct (Mem.range_perm_storebytes (SimMemInj.tgt sm0) blk_tgt (Ptrofs.unsigned (Ptrofs.add ofs_src (Ptrofs.repr delta0))) nil)
           as [tm' SB].
         { simpl. red; intros; lia. }
         eexists (SimMemInj.mk _ tm' _ _ _ _ _ _ _); ss. esplits; cycle 3; eauto.
-        * econs; ss; eauto; try (eapply Mem.storebytes_unchanged_on; eauto; i; ss; omega);
+        * econs; ss; eauto; try (eapply Mem.storebytes_unchanged_on; eauto; i; ss; lia);
             try (ii; eapply Mem.perm_storebytes_2; eauto); try (econs; i; des; clarify).
        * econs 2; eauto; i; try lia.
-          { apply Mem.loadbytes_empty. omega. }
+          { apply Mem.loadbytes_empty. lia. }
         * inv MWF. econs; ss; eauto; try (erewrite Mem.nextblock_storebytes; eauto).
           { eapply Mem.storebytes_empty_inject; eauto. }
           { unfold SimMemInj.src_private, SimMemInj.valid_blocks, Mem.valid_block. ss.
@@ -199,7 +202,7 @@ Section CLIGHTINJ.
             des_safe. split; eauto. ii.
             eapply H5; eauto. eapply Mem.perm_storebytes_2; eauto. }
       + assert (SZPOS: sizeof ce ty > 0).
-        { generalize (sizeof_pos ce ty); omega. }
+        { generalize (sizeof_pos ce ty); lia. }
         cinv VAL. cinv INJ.
         assert (RPSRC: Mem.range_perm (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') (Ptrofs.unsigned ofs' + sizeof ce ty) Cur Nonempty).
         { eapply Mem.range_perm_implies; try eapply perm_any_N. eapply Mem.loadbytes_range_perm; eauto. }
@@ -207,9 +210,9 @@ Section CLIGHTINJ.
         { replace (sizeof ce ty) with (Z.of_nat (List.length bytes)).
           - eapply Mem.range_perm_implies; try eapply perm_any_N. eapply Mem.storebytes_range_perm; eauto.
           - exploit Mem.loadbytes_length; try apply H3; eauto. intros LEN.
-            rewrite LEN. rewrite Z2Nat.id; try omega. }
-        assert (PSRC: Mem.perm (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') Cur Nonempty) by (apply RPSRC; omega).
-        assert (PDST: Mem.perm (SimMemInj.src sm0) blk_src (Ptrofs.unsigned ofs_src) Cur Nonempty) by (apply RPDST; omega).
+            rewrite LEN. rewrite Z2Nat.id; try lia. }
+        assert (PSRC: Mem.perm (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') Cur Nonempty) by (apply RPSRC; lia).
+        assert (PDST: Mem.perm (SimMemInj.src sm0) blk_src (Ptrofs.unsigned ofs_src) Cur Nonempty) by (apply RPDST; lia).
         exploit Mem.address_inject; try apply PSRC; eauto. intros EQ1.
         exploit Mem.address_inject; try apply PDST; eauto. intros EQ2.
         exploit Mem.loadbytes_inject; eauto. intros [bytes2 [A B]].
@@ -222,6 +225,9 @@ Section CLIGHTINJ.
           { apply alignof_blockcopy_1248. }
           { apply sizeof_alignof_blockcopy_compat. }
         *  eapply Mem.disjoint_or_equal_inject with (m := SimMemInj.src sm0); eauto; apply Mem.range_perm_max with Cur; auto.
+    - inv H. exploit SimMemInj.storev_mapped; eauto. i. des. clarify. esplits; eauto.
+      inv VAL. exploit Mem.loadv_inject; eauto. i. des. inv H6.
+      econs 3; eauto. econs; eauto.
   Qed.
 
   Lemma call_cont_match j K_src K_tgt
@@ -336,16 +342,18 @@ Section CLIGHTINJ.
   Variable function_entry: genv -> function -> list val -> mem -> env -> temp_env -> mem -> Prop.
   Hypothesis FUNCTIONENTRY: function_entry_inject function_entry.
 
-  Lemma deref_loc_inject j ty m_src m_tgt blk_src blk_tgt ofs_src ofs_tgt v_src
-        (DEREF: deref_loc ty m_src blk_src ofs_src v_src)
+  Lemma deref_loc_inject j ty m_src m_tgt blk_src blk_tgt ofs_src ofs_tgt bf v_src
+        (DEREF: deref_loc ty m_src blk_src ofs_src bf v_src)
         (INJECT: Mem.inject j m_src m_tgt)
         (VAL: Val.inject j (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt)):
       exists v_tgt,
-        (<<DEREF: deref_loc ty m_tgt blk_tgt ofs_tgt v_tgt>>) /\
+        (<<DEREF: deref_loc ty m_tgt blk_tgt ofs_tgt bf v_tgt>>) /\
         (<<VAL: Val.inject j v_src v_tgt>>).
   Proof.
     inv DEREF; try (by esplits; eauto; econs; eauto).
-    exploit Mem.loadv_inject; eauto. i. des. esplits; eauto. econs 1; eauto.
+    - exploit Mem.loadv_inject; eauto. i. des. esplits; eauto. econs 1; eauto.
+    - inv H. exploit Mem.loadv_inject; eauto. i. des. esplits; eauto. econs 4; eauto.
+      econs; eauto. inv H3. auto.
   Qed.
 
   Lemma eval_expr_lvalue_inject j env_src env_tgt tenv_src tenv_tgt m_src m_tgt
@@ -358,13 +366,13 @@ Section CLIGHTINJ.
           exists v_tgt,
             (<<EVAL: eval_expr ge_tgt env_tgt tenv_tgt m_tgt exp v_tgt>>) /\
             (<<INJ: Val.inject j v_src v_tgt>>)) /\
-      (forall exp blk_src ofs_src
-          (EVAL: eval_lvalue ge_src env_src tenv_src m_src exp blk_src ofs_src),
+      (forall exp blk_src ofs_src bf
+          (EVAL: eval_lvalue ge_src env_src tenv_src m_src exp blk_src ofs_src bf),
           forall (ENV: match_env j env_src env_tgt)
             (TENV: match_temp_env j tenv_src tenv_tgt)
             (INJECT: Mem.inject j m_src m_tgt),
           exists blk_tgt ofs_tgt,
-            (<<EVAL: eval_lvalue ge_tgt env_tgt tenv_tgt m_tgt exp blk_tgt ofs_tgt>>) /\
+            (<<EVAL: eval_lvalue ge_tgt env_tgt tenv_tgt m_tgt exp blk_tgt ofs_tgt bf>>) /\
             (<<INJ: Val.inject j (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt)>>)).
   Proof.
     apply eval_expr_lvalue_ind; i; try (by esplits; eauto; econs; eauto).
@@ -388,7 +396,9 @@ Section CLIGHTINJ.
     - exploit H0; eauto. i. des. cinv INJ. rewrite CENV in *. esplits.
       + econs 4; eauto.
       + econs; eauto. repeat rewrite Ptrofs.add_assoc. f_equal. apply Ptrofs.add_commut.
-    - exploit H0; eauto. i. des. cinv INJ. rewrite CENV in *. esplits; eauto. econs 5; eauto.
+    - exploit H0; eauto. i. des. cinv INJ. rewrite CENV in *. esplits; eauto.
+      rewrite Ptrofs.add_assoc. rewrite Ptrofs.add_commut. rewrite Ptrofs.add_assoc. rewrite Ptrofs.add_commut.
+      econs 5; et. rewrite Ptrofs.add_commut. auto.
   Qed.
 
   Lemma eval_expr_inject j env_src env_tgt tenv_src tenv_tgt m_src m_tgt exp v_src
@@ -423,14 +433,14 @@ Section CLIGHTINJ.
       exists (tv :: vs_tgt). esplits; eauto. econs; eauto.
   Qed.
 
-  Lemma eval_lvalue_inject j env_src env_tgt tenv_src tenv_tgt m_src m_tgt exp blk_src ofs_src
-        (EVAL: eval_lvalue ge_src env_src tenv_src m_src exp blk_src ofs_src)
+  Lemma eval_lvalue_inject j env_src env_tgt tenv_src tenv_tgt m_src m_tgt exp blk_src ofs_src bf
+        (EVAL: eval_lvalue ge_src env_src tenv_src m_src exp blk_src ofs_src bf)
         (GENV: meminj_match_globals eq ge_src ge_tgt j)
         (ENV: match_env j env_src env_tgt)
         (TENV: match_temp_env j tenv_src tenv_tgt)
         (INJECT: Mem.inject j m_src m_tgt):
       exists blk_tgt ofs_tgt,
-        (<<EVAL: eval_lvalue ge_tgt env_tgt tenv_tgt m_tgt exp blk_tgt ofs_tgt>>) /\
+        (<<EVAL: eval_lvalue ge_tgt env_tgt tenv_tgt m_tgt exp blk_tgt ofs_tgt bf>>) /\
         (<<INJ: Val.inject j (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt)>>).
   Proof.
     exploit eval_expr_lvalue_inject; eauto. i. des. eauto.

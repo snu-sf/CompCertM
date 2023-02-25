@@ -45,8 +45,8 @@ Lemma asm_id
       (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
+      /\ (<<SRC: (ModPair.src mp) = (AsmC.module asm)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (AsmC.module asm)>>).
 Proof.
   eapply any_id; eauto.
 Qed.
@@ -76,7 +76,7 @@ Section LOCALPRIV.
                                 (Ptrofs.unsigned (ofs) + 4 * (size_arguments sg))
                                 Cur Freeable)
       (VALID: Mem.valid_block m1 blk1)
-      (PUB: ~ su0.(Unreach.unreach) blk1):
+      (PUB: ~ (Unreach.unreach su0) blk1):
       has_footprint (mkstate init_rs (State rs0 m_unused)) su0 m1
   | has_footprint_asmstyle
       su0 init_rs (rs0: regset) m_unused m1
@@ -344,7 +344,7 @@ Section LOCALPRIV.
           * eapply Mem.unchanged_on_implies; eauto. ss.
       }
       { set (su_new := Unreach.mk
-                         su_arg.(Unreach.unreach) su_arg.(Unreach.ge_nb) (Mem.nextblock (JunkBlock.assign_junk_blocks m_arg n))).
+                         (Unreach.unreach su_arg) su_arg.(Unreach.ge_nb) (Mem.nextblock (JunkBlock.assign_junk_blocks m_arg n))).
         set (UNCH := JunkBlock.assign_junk_blocks_unchanged_on m_arg n).
         assert (HLE: Unreach.hle su_arg su_new).
         { unfold su_new. ss. unfold Unreach.hle. esplits; ss; eauto.
@@ -516,8 +516,8 @@ Section LOCALPRIV.
           { eapply Unreach.hle_hle_old; et. rr in GRARGS. des. ss. }
           set (su1 := Unreach.mk (fun blk =>
                                     if plt blk (Mem.nextblock m0)
-                                    then su0.(Unreach.unreach) blk
-                                    else su_ret.(Unreach.unreach) blk
+                                    then (Unreach.unreach su0) blk
+                                    else (Unreach.unreach su_ret) blk
                                  )
                                  su0.(Unreach.ge_nb) m2.(Mem.nextblock)).
           exists su1.
@@ -660,8 +660,8 @@ Lemma asm_ext_unreach
       (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends UnreachC.Unreach mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
+      /\ (<<SRC: (ModPair.src mp) = (AsmC.module asm)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (AsmC.module asm)>>).
 Proof.
   eexists (ModPair.mk _ _ _); s.
   assert(PROGSKEL: match_program (fun _ => eq) eq (Sk.of_program fn_sig asm) (Sk.of_program fn_sig asm)).
@@ -950,8 +950,8 @@ Lemma asm_ext_top
       (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemExt.SimMemExt SimMemExt.SimSymbExtends SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
+      /\ (<<SRC: (ModPair.src mp) = (AsmC.module asm)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (AsmC.module asm)>>).
 Proof.
   eexists (ModPair.mk _ _ _); s.
   assert(PROGSKEL: match_program (fun _ => eq) eq (Sk.of_program fn_sig asm) (Sk.of_program fn_sig asm)).
@@ -1253,9 +1253,9 @@ Inductive match_states
     (sm0 : @SimMem.t SimMemInjC.SimMemInj)
     (AGREE: AsmStepInj.agree j rs_src rs_tgt)
     (AGREEINIT: AsmStepInj.agree j init_rs_src init_rs_tgt)
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
-    (MCOMPATINJ: j = sm0.(SimMemInj.inj))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
+    (MCOMPATINJ: j = (SimMemInj.inj sm0))
     (MWF: SimMem.wf sm0)
     fd
     (FINDF: Genv.find_funct ge_src (init_rs_src PC) = Some (Internal fd))
@@ -1276,9 +1276,9 @@ Lemma asm_inj_drop_bot
       (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>)
-      /\ (<<SSBOT: mp.(ModPair.ss) = (SimSymbDrop.mk bot1 (module asm) (module asm))>>).
+      /\ (<<SRC: (ModPair.src mp) = (AsmC.module asm)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (AsmC.module asm)>>)
+      /\ (<<SSBOT: (ModPair.ss mp) = (SimSymbDrop.mk bot1 (module asm) (module asm))>>).
 Proof.
   eexists (ModPair.mk _ _ _); s. esplits; eauto. econs; ss; i.
   { econs; ss; i; clarify. inv WF. auto. }
@@ -1676,7 +1676,7 @@ Proof.
       + econs; ss. eapply val_inject_incr; cycle 1; eauto.
         inv MLE. eauto.
     }
-    { exists sm0. exists (Retv.Asmstyle rs_tgt sm0.(SimMemInj.tgt)).
+    { exists sm0. exists (Retv.Asmstyle rs_tgt (SimMemInj.tgt sm0)).
       esplits; ss; eauto.
       + econs 2; ss; ii; eauto.
         * des. esplits; eauto.
@@ -1750,8 +1750,8 @@ Lemma asm_inj_drop
       (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
+      /\ (<<SRC: (ModPair.src mp) = (AsmC.module asm)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (AsmC.module asm)>>).
 Proof.
   exploit asm_inj_drop_bot; eauto. i. des. eauto.
 Qed.
@@ -1761,8 +1761,8 @@ Lemma asm_inj_id
       (WF: Sk.wf (module asm)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>).
+      /\ (<<SRC: (ModPair.src mp) = (AsmC.module asm)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (AsmC.module asm)>>).
 Proof.
   eapply sim_inj_drop_bot_id; eauto. apply asm_inj_drop_bot; auto.
 Qed.

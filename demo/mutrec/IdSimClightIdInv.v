@@ -48,9 +48,9 @@ Inductive match_states_clight_inv
   : unit -> Clight.state -> Clight.state -> SimMem.t -> Prop :=
 | match_states_clight_intro
     st_src st_tgt j m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMem.src))
-    (MWFTGT: m_tgt = sm0.(SimMem.tgt))
-    (MWFINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
+    (MWFSRC: m_src = (SimMem.src sm0))
+    (MWFTGT: m_tgt = (SimMem.tgt sm0))
+    (MWFINJ: j = (SimMemInjInv.minj sm0).(SimMemInj.inj))
     (MATCHST: match_states_clight_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMem.wf sm0)
   :
@@ -64,8 +64,8 @@ Lemma clight_inj_inv_id
   :
     exists mp,
       (<<SIM: ModPair.sim mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (module2 clight)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (module2 clight)>>)
+      /\ (<<SRC: (ModPair.src mp) = (module2 clight)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (module2 clight)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s. instantiate (3:= (SimMemInjInvC.mk bot1 _ _)).

@@ -105,13 +105,13 @@ Lemma sim_inj_drop_bot_id
       sk_src sk_tgt src
       (DROP: exists mp,
           (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimSymbDrop.SimSymbDrop SoundTop.Top mp>>)
-          /\ (<<SRC: mp.(ModPair.src) = src>>)
-          /\ (<<TGT: mp.(ModPair.tgt) = src>>)
-          /\ (<<SSBOT: mp.(ModPair.ss) = (SimSymbDrop.mk bot1 sk_src sk_tgt)>>)):
+          /\ (<<SRC: (ModPair.src mp) = src>>)
+          /\ (<<TGT: (ModPair.tgt mp) = src>>)
+          /\ (<<SSBOT: (ModPair.ss mp) = (SimSymbDrop.mk bot1 sk_src sk_tgt)>>)):
     exists mp,
       (<<SIM: @ModPair.sim SimMemInjC.SimMemInj SimMemInjC.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = src>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = src>>).
+      /\ (<<SRC: (ModPair.src mp) = src>>)
+      /\ (<<TGT: (ModPair.tgt mp) = src>>).
 Proof.
   des. clarify. destruct mp eqn: EQ. ss. clarify. inv SIM. ss.
   unfold ModPair.to_msp in *. ss.
@@ -244,8 +244,8 @@ Lemma any_id
       (WF: Sk.wf md):
     exists mp,
       (<<SIM: @ModPair.sim SimMemId.SimMemId SimMemId.SimSymbId SoundTop.Top mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = md>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = md>>).
+      /\ (<<SRC: (ModPair.src mp) = md>>)
+      /\ (<<TGT: (ModPair.tgt mp) = md>>).
 Proof.
   eexists (ModPair.mk _ _ _); s.
   esplits; eauto. instantiate (1:=(SimSymbId.mk md md)). econs; ss; i.
@@ -255,7 +255,7 @@ Proof.
   - eapply SoundTop.sound_state_local_preservation.
   - instantiate (1:= fun _ st_src st_tgt sm0 =>
                        (<<EQ: st_src = st_tgt>>) /\
-                       (<<MWF: sm0.(SimMemId.src) = sm0.(SimMemId.tgt)>>)).
+                       (<<MWF: (SimMemId.src sm0) = (SimMemId.tgt sm0)>>)).
     ss. i. inv SIMARGS; ss; esplits; eauto; try congruence; ss.
     assert(rs_tgt = rs_src) by (eapply functional_extensionality; r in RS; ss). congruence.
   - ii. destruct args_src, args_tgt, sm_arg; inv SIMARGS; ss; clarify.

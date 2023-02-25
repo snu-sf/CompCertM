@@ -130,7 +130,7 @@ Section SIMMODSEM.
       (*     (FINALTGT: ms_tgt.(final_frame) rs_init_tgt st_tgt0 rs_ret_tgt m_ret_tgt) *)
       (*   , *)
       (*     exists rs_ret_src m_ret_src, *)
-      (*       (<<RSREL: sm0.(SimMem.sim_regset) rs_ret_src rs_ret_tgt>>) *)
+      (*       (<<RSREL: (SimMem.sim_regset sm0) rs_ret_src rs_ret_tgt>>) *)
       (*       /\ (<<FINALSRC: ms_src.(final_frame) rs_init_src st_src0 rs_ret_src m_ret_src>>)) *)
       (FINALSRC: ms_src.(final_frame) st_src0 retv_src)
       (FINALTGT: ms_tgt.(final_frame) st_tgt0 retv_tgt)

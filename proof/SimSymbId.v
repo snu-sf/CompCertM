@@ -39,7 +39,7 @@ Record t' := mk {
   tgt: Sk.t;
 }.
 
-Definition wf (ss: t'): Prop := ss.(src) = ss.(tgt).
+Definition wf (ss: t'): Prop := (src ss) = (tgt ss).
 
 Definition le: t' -> t' -> Prop := top2.
 
@@ -48,11 +48,11 @@ Global Program Instance le_PreOrder: PreOrder le.
 Lemma wf_link: forall ss0 ss1 sk_src
           (SIMSK: wf ss0)
           (SIMSK: wf ss1)
-          (LINKSRC: link ss0.(src) ss1.(src) = Some sk_src),
+          (LINKSRC: link (src ss0) (src ss1) = Some sk_src),
           exists ss sk_tgt,
-            <<LINKTGT: link ss0.(tgt) ss1.(tgt) = Some sk_tgt>> /\
-            <<SKSRC: ss.(src) = sk_src>> /\
-            <<SKTGT: ss.(tgt) = sk_tgt>> /\
+            <<LINKTGT: link (tgt ss0) (tgt ss1) = Some sk_tgt>> /\
+            <<SKSRC: (src ss) = sk_src>> /\
+            <<SKTGT: (tgt ss) = sk_tgt>> /\
             <<LE0: le ss0 ss>> /\
             <<LE1: le ss1 ss>> /\
             <<SIMSK: wf ss>>.
@@ -64,13 +64,13 @@ Qed.
 
 Lemma wf_load_sim_skenv: forall ss skenv_src skenv_tgt m_src
           (SIMSK: wf ss)
-          (LOADSRC: (Sk.load_skenv ss.(src)) = skenv_src)
-          (LOADTGT: (Sk.load_skenv ss.(tgt)) = skenv_tgt)
-          (LOADMEMSRC: (Sk.load_mem ss.(src)) = Some m_src),
-            (<<LOADMEMTGT: (Sk.load_mem ss.(tgt)) = Some m_src>>) /\
+          (LOADSRC: (Sk.load_skenv (src ss)) = skenv_src)
+          (LOADTGT: (Sk.load_skenv (tgt ss)) = skenv_tgt)
+          (LOADMEMSRC: (Sk.load_mem (src ss)) = Some m_src),
+            (<<LOADMEMTGT: (Sk.load_mem (tgt ss)) = Some m_src>>) /\
             (<<SIMSKENV: sim_skenv skenv_src skenv_tgt>>) /\
-            (<<MAINSIM: (Genv.symbol_address skenv_src (prog_main ss.(src)) Ptrofs.zero)
-                        = (Genv.symbol_address skenv_tgt (prog_main ss.(tgt)) Ptrofs.zero)>>).
+            (<<MAINSIM: (Genv.symbol_address skenv_src (prog_main (src ss)) Ptrofs.zero)
+                        = (Genv.symbol_address skenv_tgt (prog_main (tgt ss)) Ptrofs.zero)>>).
 Proof. i. u in *. inv SIMSK. esplits; eauto with congruence. Qed.
 
 Lemma sim_skenv_monotone: forall ss_link skenv_link_src skenv_link_tgt ss skenv_src skenv_tgt
@@ -79,8 +79,8 @@ Lemma sim_skenv_monotone: forall ss_link skenv_link_src skenv_link_tgt ss skenv_
           (SIMSKENV: sim_skenv skenv_link_src skenv_link_tgt)
           (SIMSK: wf ss)
           (LE: le ss ss_link)
-          (LESRC: SkEnv.project skenv_link_src ss.(src) = skenv_src)
-          (LETGT: SkEnv.project skenv_link_tgt ss.(tgt) = skenv_tgt),
+          (LESRC: SkEnv.project skenv_link_src (src ss) = skenv_src)
+          (LETGT: SkEnv.project skenv_link_tgt (tgt ss) = skenv_tgt),
           <<SIMSKENV: sim_skenv skenv_src skenv_tgt>>.
 Proof. i. clarify. rr. inv SIMSK. inv SIMSKENV. ss. Qed.
 

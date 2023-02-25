@@ -824,7 +824,7 @@ Fixpoint zip X Y Z (f: X -> Y -> Z) (xs: list X) (ys: list Y): list Z :=
 
 Lemma zip_length
       X Y Z (f: X -> Y -> Z) xs ys:
-    length (zip f xs ys) = min xs.(length) ys.(length).
+    length (zip f xs ys) = min (length xs) (length ys).
 Proof. ginduction xs; ii; ss. des_ifs. ss. rewrite IHxs. extlia. Qed.
 
 Lemma in_zip_iff
@@ -1037,7 +1037,7 @@ Global Program Instance top2_PreOrder X: PreOrder (top2: X -> X -> Prop).
 Lemma app_eq_inv
       A (x0 x1 y0 y1: list A)
       (EQ: x0 ++ x1 = y0 ++ y1)
-      (LEN: x0.(length) = y0.(length)):
+      (LEN: (length x0) = (length y0)):
     x0 = y0 /\ x1 = y1.
 Proof.
   ginduction x0; ii; ss.
@@ -1128,11 +1128,11 @@ Lemma firstn_S
       (le (Datatypes.length l) n /\ firstn (n + 1) l = firstn n l)
     \/ (lt n (Datatypes.length l) /\ exists x, firstn (n + 1) l = (firstn n l) ++ [x]).
 Proof.
-  ginduction l; i; try by (left; do 2 rewrite firstn_nil; split; ss; omega). destruct n.
-  { right. ss. split; try omega. eauto. }
+  ginduction l; i; try by (left; do 2 rewrite firstn_nil; split; ss; lia). destruct n.
+  { right. ss. split; try lia. eauto. }
   specialize (IHl n). ss. des.
-  - left. split; try omega. rewrite IHl0. ss.
-  - right. split; try omega. rewrite IHl0. eauto.
+  - left. split; try lia. rewrite IHl0. ss.
+  - right. split; try lia. rewrite IHl0. eauto.
 Qed.
 
 Lemma map_firstn

@@ -21,20 +21,20 @@ Set Implicit Arguments.
 Section MEMINJ.
 
 Definition update (sm0: t') (src tgt: mem) (inj: meminj): t' :=
-  mk src tgt inj sm0.(src_external) sm0.(tgt_external) sm0.(src_parent_nb) sm0.(tgt_parent_nb)
-                                                       sm0.(src_ge_nb) sm0.(tgt_ge_nb).
+  mk src tgt inj (src_external sm0) (tgt_external sm0) (src_parent_nb sm0) (tgt_parent_nb sm0)
+                                                       (src_ge_nb sm0) (tgt_ge_nb sm0).
 Hint Unfold update.
-(* Notation "sm0 '.(update_tgt)' tgt" := (sm0.(update) sm0.(src) tgt sm0.(inj)) (at level 50). *)
-(* Definition update_tgt (sm0: t') (tgt: mem) := (sm0.(update) sm0.(src) tgt sm0.(inj)). *)
-(* Definition update_src (sm0: t') (src: mem) := (sm0.(update) src sm0.(tgt) sm0.(inj)). *)
+(* Notation "sm0 '.(update_tgt)' tgt" := ((update sm0) (src sm0) tgt (inj sm0)) (at level 50). *)
+(* Definition update_tgt (sm0: t') (tgt: mem) := ((update sm0) (src sm0) tgt (inj sm0)). *)
+(* Definition update_src (sm0: t') (src: mem) := ((update sm0) src (tgt sm0) (inj sm0)). *)
 (* Hint Unfold update_src update_tgt. *)
 
 Hint Unfold src_private tgt_private valid_blocks.
 
 Lemma update_src_private
       sm0 sm1
-      (INJ: sm0.(inj) = sm1.(inj))
-      (SRC: sm0.(src).(Mem.nextblock) = sm1.(src).(Mem.nextblock)):
+      (INJ: (inj sm0) = (inj sm1))
+      (SRC: (src sm0).(Mem.nextblock) = (src sm1).(Mem.nextblock)):
     (src_private sm0) = (src_private (sm1)).
 Proof.
   repeat (apply Axioms.functional_extensionality; i). apply prop_ext1.
@@ -43,9 +43,9 @@ Qed.
 
 Lemma update_tgt_private
       sm0 sm1
-      (SRC: sm0.(src) = sm1.(src))
-      (TGT: sm0.(tgt).(Mem.nextblock) = sm1.(tgt).(Mem.nextblock))
-      (INJ: sm0.(inj) = sm1.(inj)):
+      (SRC: (src sm0) = (src sm1))
+      (TGT: (tgt sm0).(Mem.nextblock) = (tgt sm1).(Mem.nextblock))
+      (INJ: (inj sm0) = (inj sm1)):
     (tgt_private sm0) = (tgt_private sm1).
 Proof.
   repeat (apply Axioms.functional_extensionality; i). apply prop_ext1.
@@ -56,9 +56,9 @@ Qed.
 
 (* Lemma update_src_private *)
 (*       sm0 m_src *)
-(*       (NB: sm0.(src).(Mem.nextblock) = m_src.(Mem.nextblock)) *)
+(*       (NB: (src sm0).(Mem.nextblock) = m_src.(Mem.nextblock)) *)
 (*   : *)
-(*     sm0.(src_private) = (sm0.(update_src) m_src).(src_private) *)
+(*     (src_private sm0) = ((update_src sm0) m_src).(src_private) *)
 (* . *)
 (* Proof. *)
 (*   repeat (apply Axioms.functional_extensionality; i). apply prop_ext. *)
@@ -67,9 +67,9 @@ Qed.
 
 (* Lemma update_tgt_private *)
 (*       sm0 m_tgt *)
-(*       (NB: sm0.(tgt).(Mem.nextblock) = m_tgt.(Mem.nextblock)) *)
+(*       (NB: (tgt sm0).(Mem.nextblock) = m_tgt.(Mem.nextblock)) *)
 (*   : *)
-(*     sm0.(tgt_private) = (sm0.(update_tgt) m_tgt).(tgt_private) *)
+(*     (tgt_private sm0) = ((update_tgt sm0) m_tgt).(tgt_private) *)
 (* . *)
 (* Proof. *)
 (*   repeat (apply Axioms.functional_extensionality; i). apply prop_ext. *)
@@ -83,20 +83,20 @@ Qed.
 
 Inductive lepriv (sm0 sm1: SimMemInj.t'): Prop :=
 | lepriv_intro
-    (INCR: inject_incr sm0.(inj) sm1.(inj))
-    (* (SRCUNCHANGED: Mem.unchanged_on sm0.(src_external) sm0.(src) sm1.(src)) *)
-    (* (TGTUNCHANGED: Mem.unchanged_on sm0.(tgt_external) sm0.(tgt) sm1.(tgt)) *)
-    (* (SRCPARENTEQ: sm0.(src_external) = sm1.(src_external)) *)
-    (* (TGTPARENTEQ: sm0.(tgt_external) = sm1.(tgt_external)) *)
-    (* (SRCPARENTEQNB: (sm0.(src_parent_nb) <= sm1.(src_parent_nb))%positive) *)
-    (* (TGTPARENTEQNB: (sm0.(tgt_parent_nb) <= sm1.(tgt_parent_nb))%positive) *)
+    (INCR: inject_incr (inj sm0) (inj sm1))
+    (* (SRCUNCHANGED: Mem.unchanged_on (src_external sm0) (src sm0) (src sm1)) *)
+    (* (TGTUNCHANGED: Mem.unchanged_on (tgt_external sm0) (tgt sm0) (tgt sm1)) *)
+    (* (SRCPARENTEQ: (src_external sm0) = (src_external sm1)) *)
+    (* (TGTPARENTEQ: (tgt_external sm0) = (tgt_external sm1)) *)
+    (* (SRCPARENTEQNB: ((src_parent_nb sm0) <= (src_parent_nb sm1))%positive) *)
+    (* (TGTPARENTEQNB: ((tgt_parent_nb sm0) <= (tgt_parent_nb sm1))%positive) *)
 
 
-    (* (SRCPARENTNB: (sm0.(src_ge_nb) <= sm1.(src_parent_nb))%positive) *)
-    (* (TGTPARENTNB: (sm0.(tgt_ge_nb) <= sm1.(tgt_parent_nb))%positive) *)
-    (SRCGENB: sm0.(src_ge_nb) = sm1.(src_ge_nb))
-    (TGTGENB: sm0.(tgt_ge_nb) = sm1.(tgt_ge_nb))
-    (FROZEN: frozen sm0.(inj) sm1.(inj) (sm0.(src_ge_nb)) (sm0.(tgt_ge_nb))).
+    (* (SRCPARENTNB: ((src_ge_nb sm0) <= (src_parent_nb sm1))%positive) *)
+    (* (TGTPARENTNB: ((tgt_ge_nb sm0) <= (tgt_parent_nb sm1))%positive) *)
+    (SRCGENB: (src_ge_nb sm0) = (src_ge_nb sm1))
+    (TGTGENB: (tgt_ge_nb sm0) = (tgt_ge_nb sm1))
+    (FROZEN: frozen (inj sm0) (inj sm1) ((src_ge_nb sm0)) ((tgt_ge_nb sm0))).
 
 Global Program Instance lepriv_PreOrder: RelationClasses.PreOrder lepriv.
 Next Obligation.
@@ -188,26 +188,26 @@ Inductive has_footprint (excl_src excl_tgt: block -> Z -> Prop) (sm0: t'): Prop 
 | has_footprint_intro
     (FOOTSRC: forall blk ofs
         (EXCL: excl_src blk ofs),
-        <<PERM: Mem.perm sm0.(src) blk ofs Cur Freeable>>)
+        <<PERM: Mem.perm (src sm0) blk ofs Cur Freeable>>)
     (FOOTTGT: forall blk ofs
         (EXCL: excl_tgt blk ofs),
-        <<PERM: Mem.perm sm0.(tgt) blk ofs Cur Freeable>>).
+        <<PERM: Mem.perm (tgt sm0) blk ofs Cur Freeable>>).
 
 Lemma unfree_right
       sm0 lo hi blk m_tgt0
       (MWF: wf' sm0)
-      (NOPERM: Mem_range_noperm sm0.(tgt) blk lo hi)
-      (UNFR: Mem_unfree sm0.(tgt) blk lo hi = Some m_tgt0)
-      (RANGE: brange blk lo hi <2= ~2 sm0.(tgt_external)):
+      (NOPERM: Mem_range_noperm (tgt sm0) blk lo hi)
+      (UNFR: Mem_unfree (tgt sm0) blk lo hi = Some m_tgt0)
+      (RANGE: brange blk lo hi <2= ~2 (tgt_external sm0)):
     exists sm1,
-      (* (<<EXACT: sm1 = sm0.(update_tgt) m_tgt0>>) *)
-      (<<MSRC: sm1.(src) = sm0.(src)>>)
-      /\ (<<MTGT: sm1.(tgt) = m_tgt0>>)
-      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
+      (* (<<EXACT: sm1 = (update_tgt sm0) m_tgt0>>) *)
+      (<<MSRC: (src sm1) = (src sm0)>>)
+      /\ (<<MTGT: (tgt sm1) = m_tgt0>>)
+      /\ (<<MINJ: (inj sm1) = (inj sm0)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le_excl bot2 (brange blk lo hi) sm0 sm1>>).
 Proof.
-  exists (update (sm0) sm0.(src) m_tgt0 sm0.(inj)).
+  exists (update (sm0) (src sm0) m_tgt0 (inj sm0)).
   exploit Mem_unfree_unchanged_on; et. intro UNCH. esplits; u; ss; eauto.
   - econs; ss; eauto; try (by inv MWF; ss).
     + inv MWF. eapply Mem_unfree_right_inject; eauto.
@@ -250,20 +250,20 @@ End ORIGINALS.
 Lemma parallel_gen sm0 m_src1 m_tgt1 j1
       (WF: wf' sm0)
       (INJECT: Mem.inject j1 m_src1 m_tgt1)
-      (INCR: inject_incr sm0.(inj) j1)
-      (SEP: inject_separated sm0.(inj) j1 sm0.(src) sm0.(tgt))
+      (INCR: inject_incr (inj sm0) j1)
+      (SEP: inject_separated (inj sm0) j1 (src sm0) (tgt sm0))
       (UNCHSRC: Mem.unchanged_on
-                  (loc_unmapped sm0.(inj))
-                  sm0.(src) m_src1)
+                  (loc_unmapped (inj sm0))
+                  (src sm0) m_src1)
       (UNCHTGT: Mem.unchanged_on
-                  (loc_out_of_reach sm0.(inj) sm0.(src))
-                  sm0.(tgt) m_tgt1)
+                  (loc_out_of_reach (inj sm0) (src sm0))
+                  (tgt sm0) m_tgt1)
       (MAXSRC: forall b ofs
-          (VALID: Mem.valid_block sm0.(src) b),
-          <<MAX: Mem.perm m_src1 b ofs Max <1= Mem.perm sm0.(src) b ofs Max>>)
+          (VALID: Mem.valid_block (src sm0) b),
+          <<MAX: Mem.perm m_src1 b ofs Max <1= Mem.perm (src sm0) b ofs Max>>)
       (MAXTGT: forall b ofs
-          (VALID: Mem.valid_block sm0.(tgt) b),
-          <<MAX: Mem.perm m_tgt1 b ofs Max <1= Mem.perm sm0.(tgt) b ofs Max>>):
+          (VALID: Mem.valid_block (tgt sm0) b),
+          <<MAX: Mem.perm m_tgt1 b ofs Max <1= Mem.perm (tgt sm0) b ofs Max>>):
   (<<MLE: le' sm0 (mk m_src1 m_tgt1 j1
                      (src_external sm0) (tgt_external sm0)
                      (src_parent_nb sm0) (tgt_parent_nb sm0)
@@ -298,18 +298,18 @@ Qed.
 Lemma alloc_left_zero_simmem
       sm0 blk_src sz m_src1 blk_tgt
       (MWF: SimMem.wf sm0)
-      (ALLOC: Mem.alloc sm0.(SimMem.src) 0 sz = (m_src1, blk_src))
+      (ALLOC: Mem.alloc (SimMem.src sm0) 0 sz = (m_src1, blk_src))
       (TGTPRIV: (range 0 sz) <1= (tgt_private sm0) blk_tgt)
-      (TGTNOTEXT: ((range 0 sz) /1\ sm0.(tgt_external) blk_tgt) <1= bot1)
-      (TGTPERM: forall ofs k p (BOUND: 0 <= ofs < sz), Mem.perm sm0.(SimMem.tgt) blk_tgt ofs k p)
+      (TGTNOTEXT: ((range 0 sz) /1\ (tgt_external sm0) blk_tgt) <1= bot1)
+      (TGTPERM: forall ofs k p (BOUND: 0 <= ofs < sz), Mem.perm (SimMem.tgt sm0) blk_tgt ofs k p)
       (* (SZPOS: 0 < sz) *)
-      (VALID: Mem.valid_block sm0.(tgt) blk_tgt)
-      (PARENT: (sm0.(tgt_parent_nb) <= blk_tgt)%positive):
-    let sm1 := (mk m_src1 sm0.(tgt)
-                   (fun blk => if eq_block blk blk_src then Some (blk_tgt, 0) else sm0.(inj) blk)
-                   sm0.(src_external) sm0.(tgt_external)
-                   sm0.(src_parent_nb) sm0.(tgt_parent_nb)
-                   sm0.(src_ge_nb) sm0.(tgt_ge_nb)
+      (VALID: Mem.valid_block (tgt sm0) blk_tgt)
+      (PARENT: ((tgt_parent_nb sm0) <= blk_tgt)%positive):
+    let sm1 := (mk m_src1 (tgt sm0)
+                   (fun blk => if eq_block blk blk_src then Some (blk_tgt, 0) else (inj sm0) blk)
+                   (src_external sm0) (tgt_external sm0)
+                   (src_parent_nb sm0) (tgt_parent_nb sm0)
+                   (src_ge_nb sm0) (tgt_ge_nb sm0)
                ) in
     <<MWF: SimMem.wf sm1>> /\
     <<MLE: SimMem.le sm0 sm1>>.
@@ -373,13 +373,13 @@ Qed.
 
 Inductive sim_skenv_inj (sm: SimMem.t) (__noname__: SimSymbId.t') (skenv_src skenv_tgt: SkEnv.t): Prop :=
 | sim_skenv_inj_intro
-    (INJECT: skenv_inject skenv_src sm.(inj))
+    (INJECT: skenv_inject skenv_src (inj sm))
     (* NOW BELOW IS DERIVABLE FROM WF *)
-    (* (BOUNDSRC: Ple skenv_src.(Genv.genv_next) sm.(src_parent_nb)) *)
-    (* (BOUNDTGT: Ple skenv_src.(Genv.genv_next) sm.(tgt_parent_nb)) *)
+    (* (BOUNDSRC: Ple skenv_src.(Genv.genv_next) (src_parent_nb sm)) *)
+    (* (BOUNDTGT: Ple skenv_src.(Genv.genv_next) (tgt_parent_nb sm)) *)
     (SIMSKENV: SimSymbId.sim_skenv skenv_src skenv_tgt)
-    (NBSRC: skenv_src.(Genv.genv_next) = sm.(src_ge_nb))
-    (NBTGT: skenv_tgt.(Genv.genv_next) = sm.(tgt_ge_nb)).
+    (NBSRC: skenv_src.(Genv.genv_next) = (src_ge_nb sm))
+    (NBTGT: skenv_tgt.(Genv.genv_next) = (tgt_ge_nb sm)).
 
 Section REVIVE.
 
@@ -442,9 +442,9 @@ Qed.
 (*   - etransitivity; try apply TGTLE; eauto. *)
 (* Qed. *)
 Next Obligation.
-  set (SkEnv.project skenv_link_src ss.(SimSymbId.src)) as skenv_proj_src.
+  set (SkEnv.project skenv_link_src (SimSymbId.src ss)) as skenv_proj_src.
   generalize (SkEnv.project_impl_spec INCLSRC); intro LESRC.
-  set (SkEnv.project skenv_link_tgt ss.(SimSymbId.tgt)) as skenv_proj_tgt.
+  set (SkEnv.project skenv_link_tgt (SimSymbId.tgt ss)) as skenv_proj_tgt.
   generalize (SkEnv.project_impl_spec INCLTGT); intro LETGT.
   exploit SimSymbId.sim_skenv_monotone; try apply SIMSKENV; eauto. i; des.
   inv SIMSKENV. inv LESRC. inv LETGT. econs; eauto. inv INJECT. econs; ii; eauto.
@@ -506,7 +506,7 @@ Local Existing Instance SimSymbId.
 Lemma sim_skenv_symbols_inject
       sm0 ss0 skenv_src skenv_tgt
       (SIMSKE: SimSymb.sim_skenv sm0 ss0 skenv_src skenv_tgt):
-    symbols_inject sm0.(SimMemInj.inj) skenv_src skenv_tgt.
+    symbols_inject (SimMemInj.inj sm0) skenv_src skenv_tgt.
 Proof.
   inv SIMSKE. inv SIMSKENV. inv INJECT. rr. esplits; ss.
   + i. exploit Genv.genv_symb_range; eauto. intro NB. exploit DOMAIN; eauto. i ;des. clarify.
@@ -532,9 +532,9 @@ Section JUNK.
 Lemma inject_junk_blocks_tgt
       sm0 n m_tgt0
       (MWF: SimMem.wf sm0)
-      (JUNKTGT: assign_junk_blocks sm0.(SimMem.tgt) n = m_tgt0):
+      (JUNKTGT: assign_junk_blocks (SimMem.tgt sm0) n = m_tgt0):
     exists sm1,
-      (<<DEF: sm1 = update sm0 sm0.(SimMem.src) m_tgt0 sm0.(SimMemInj.inj)>>) /\
+      (<<DEF: sm1 = update sm0 (SimMem.src sm0) m_tgt0 (SimMemInj.inj sm0)>>) /\
       (<<MWF: SimMem.wf sm1>>) /\
       (<<MLE: SimMem.le sm0 sm1>>) /\
       (<<PRIVSRC: (SimMemInj.src_private sm0) = (SimMemInj.src_private sm1)>>) /\
@@ -567,10 +567,10 @@ Definition inject_junk_blocks (m_src0 m_tgt0: mem) (n: nat) (j: meminj): meminj 
 Lemma inject_junk_blocks_parallel
       sm0 n m_tgt0
       (MWF: SimMem.wf sm0)
-      (JUNKTGT: assign_junk_blocks sm0.(SimMem.tgt) n = m_tgt0):
+      (JUNKTGT: assign_junk_blocks (SimMem.tgt sm0) n = m_tgt0):
     exists sm1,
-      (<<DEF: sm1 = update sm0 (assign_junk_blocks sm0.(SimMem.src) n) m_tgt0
-                           (inject_junk_blocks sm0.(SimMem.src) sm0.(SimMem.tgt) n sm0.(SimMemInj.inj))>>) /\
+      (<<DEF: sm1 = update sm0 (assign_junk_blocks (SimMem.src sm0) n) m_tgt0
+                           (inject_junk_blocks (SimMem.src sm0) (SimMem.tgt sm0) n (SimMemInj.inj sm0))>>) /\
       (<<MWF: SimMem.wf sm1>>) /\
       (<<MLE: SimMem.le sm0 sm1>>) /\
       (<<PRIVSRC: (SimMemInj.src_private sm0) = (SimMemInj.src_private sm1)>>) /\
@@ -653,12 +653,12 @@ End JUNK.
 Lemma Mem_free_parallel'
       sm0 blk_src blk_tgt ofs_src ofs_tgt sz m_src0
       (MWF: wf' sm0)
-      (VAL: Val.inject sm0.(inj) (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
-      (FREESRC: Mem.free sm0.(src) blk_src (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned (ofs_src) + sz) = Some m_src0):
+      (VAL: Val.inject (inj sm0) (Vptr blk_src ofs_src) (Vptr blk_tgt ofs_tgt))
+      (FREESRC: Mem.free (src sm0) blk_src (Ptrofs.unsigned ofs_src) (Ptrofs.unsigned (ofs_src) + sz) = Some m_src0):
     exists sm1,
-      (<<MSRC: sm1.(src) = m_src0>>)
-      /\ (<<MINJ: sm1.(inj) = sm0.(inj)>>)
-      /\ (<<FREETGT: Mem.free sm0.(tgt) blk_tgt (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned (ofs_tgt) + sz) = Some sm1.(tgt)>>)
+      (<<MSRC: (src sm1) = m_src0>>)
+      /\ (<<MINJ: (inj sm1) = (inj sm0)>>)
+      /\ (<<FREETGT: Mem.free (tgt sm0) blk_tgt (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned (ofs_tgt) + sz) = Some (tgt sm1)>>)
       /\ (<<MWF: wf' sm1>>)
       /\ (<<MLE: le' sm0 sm1>>).
 Proof.
@@ -740,8 +740,8 @@ Qed.
 Lemma external_call_parallel_rule_simmem
       (F V: Type) (ge0: Genv.t F V)
       sm_at sm_after P
-      (SEP: sm_at.(SimMem.tgt) |= (minjection sm_at.(SimMemInj.inj) sm_at.(SimMem.src))
-                             ** globalenv_inject ge0 sm_at.(SimMemInj.inj) ** P)
+      (SEP: (SimMem.tgt sm_at) |= (minjection (SimMemInj.inj sm_at) (SimMem.src sm_at))
+                             ** globalenv_inject ge0 (SimMemInj.inj sm_at) ** P)
       sm_arg sm_ret
       (MWF: SimMem.wf sm_at)
       (MWF0: SimMem.wf sm_arg)
@@ -756,8 +756,8 @@ Lemma external_call_parallel_rule_simmem
       (PRIV1: (SimMemInj.tgt_private sm_ret) = (SimMemInj.tgt_private sm_after))
       (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg))
       (UNCH1: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_ret) (SimMemInj.tgt sm_after)):
-    <<SEP: sm_after.(SimMem.tgt) |= (minjection sm_after.(SimMemInj.inj) sm_after.(SimMem.src))
-                            ** globalenv_inject ge0 sm_at.(SimMemInj.inj) ** P>>.
+    <<SEP: (SimMem.tgt sm_after) |= (minjection (SimMemInj.inj sm_after) (SimMem.src sm_after))
+                            ** globalenv_inject ge0 (SimMemInj.inj sm_at) ** P>>.
 Proof.
   (* See external_call_parallel_rule *)
   destruct SEP as (A & B & C). simpl in A.

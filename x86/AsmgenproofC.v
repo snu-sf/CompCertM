@@ -110,8 +110,8 @@ Inductive match_states
                  init_sp init_ra st_src0.(MachC.init_rs) st_src0.(init_sg) st_tgt0.(init_rs))
     (MATCHST: Asmgenproof.match_states ge st_src0.(MachC.st) st_tgt0)
     (* (SPPTR: ValuesC.is_real_ptr (st_tgt0.(init_rs) RSP)) *)
-    (MCOMPATSRC: (MachC.get_mem st_src0.(MachC.st)) = sm0.(SimMem.src))
-    (MCOMPATTGT: (get_mem st_tgt0) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: (MachC.get_mem st_src0.(MachC.st)) = (SimMem.src sm0))
+    (MCOMPATTGT: (get_mem st_tgt0) = (SimMem.tgt sm0))
     (IDX: measure st_src0.(MachC.st) = idx).
 
 Lemma asm_step_dstep init_rs st0 st1 tr

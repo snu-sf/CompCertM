@@ -38,8 +38,8 @@ Inductive match_states
           (idx: nat * nat) (st_src0: CminorSel.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: RTLgenproof.match_states st_src0 st_tgt0)
-    (MCOMPATSRC: (CminorSelC.get_mem st_src0) = sm0.(SimMem.src))
-    (MCOMPATTGT: (get_mem st_tgt0) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: (CminorSelC.get_mem st_src0) = (SimMem.src sm0))
+    (MCOMPATTGT: (get_mem st_tgt0) = (SimMem.tgt sm0))
     (MEASRUE: idx = measure_state st_src0).
 
 Theorem make_match_genvs :

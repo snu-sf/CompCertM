@@ -48,7 +48,7 @@ Section MODSEM.
       (CSTYLE: Args.is_cstyle args /\ fd.(fn_sig).(sig_cstyle) = true)
       (FINDF: Genv.find_funct ge (Args.fptr args) = Some (Internal fd))
       (TYP: typecheck (Args.vs args) fd.(fn_sig) tvs)
-      (LEN: (Args.vs args).(length) = fd.(fn_sig).(sig_args).(length))
+      (LEN: (length (Args.vs args)) = (length fd.(fn_sig).(sig_args)))
     :
       initial_frame args (Callstate (Args.fptr args) fd.(fn_sig) tvs Kstop (Args.m args)).
 

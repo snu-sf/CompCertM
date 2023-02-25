@@ -33,7 +33,7 @@ Require Import Conventions1C.
 Require Import IdSimExtra IdSimInvExtra.
 Require Import mktac.
 
-Require Import MutrecBspec. 
+Require Import MutrecBspec.
 
 Set Implicit Arguments.
 
@@ -77,9 +77,9 @@ Inductive match_states_b_inv
   : unit -> state -> state -> SimMem.t -> Prop :=
 | match_states_a_intro
     st_src st_tgt j m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMem.src))
-    (MWFTGT: m_tgt = sm0.(SimMem.tgt))
-    (MWFINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
+    (MWFSRC: m_src = (SimMem.src sm0))
+    (MWFTGT: m_tgt = (SimMem.tgt sm0))
+    (MWFINJ: j = SimMemInj.inj (SimMemInjInv.minj sm0))
     (MATCHST: match_states_b_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMem.wf sm0)
   :
@@ -92,8 +92,8 @@ Lemma b_inj_inv_id
   :
     exists mp,
       (<<SIM: ModPair.sim mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (MutrecBspec.module)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (MutrecBspec.module)>>)
+      /\ (<<SRC: (ModPair.src mp) = (MutrecBspec.module)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (MutrecBspec.module)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.

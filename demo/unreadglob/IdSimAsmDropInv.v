@@ -51,8 +51,8 @@ Lemma asm_inj_inv_drop
   :
     exists mp,
       (<<SIM: ModPair.sim mp>>)
-      /\ (<<SRC: mp.(ModPair.src) = (AsmC.module asm)>>)
-      /\ (<<TGT: mp.(ModPair.tgt) = (AsmC.module asm)>>)
+      /\ (<<SRC: (ModPair.src mp) = (AsmC.module asm)>>)
+      /\ (<<TGT: (ModPair.tgt mp) = (AsmC.module asm)>>)
 .
 Proof.
   eexists (ModPair.mk _ _ _); s.
@@ -338,7 +338,7 @@ Proof.
       { clear EXTERNAL. rewrite <- H0 in *. ss.
         unfold Genv.find_funct_ptr in *. des_ifs.
         inv SIMSKELINK. exploit SIMDEF; eauto. i. des. eauto. } clarify. psimpl. ss.
-      exists (Args.Asmstyle rs_tgt (SimMemInj.tgt sm0.(SimMemInjInv.minj))). esplits; eauto.
+      exists (Args.Asmstyle rs_tgt (SimMemInj.tgt (SimMemInjInv.minj sm0))). esplits; eauto.
       - econs 2; eauto.
         + exploit SimSymbDropInv_find_None; try eassumption.
           { ii. rewrite H in *. ss. }
@@ -478,7 +478,7 @@ Proof.
         inv MLE. eauto.
       + econs; ss; eauto.
     }
-    { exists sm0. exists (Retv.Asmstyle rs_tgt sm0.(SimMemInjInv.minj).(SimMemInj.tgt)).
+    { exists sm0. exists (Retv.Asmstyle rs_tgt (SimMemInjInv.minj sm0).(SimMemInj.tgt)).
       esplits; ss; eauto.
       + econs 2; ss; ii; eauto.
         * des. esplits; eauto.

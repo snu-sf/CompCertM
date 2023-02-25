@@ -177,7 +177,7 @@ Section PRSV.
         }
         econs; s; eauto.
         * rewrite IMG. ii. des_ifs; ss.
-        * rewrite IMG. ii. des_ifs; ss. rewrite PTree.gempty in *. ss.
+        * rewrite IMG. ii. des_ifs; ss.
         * intros ? A. rewrite IMG in A. inv SKENV. ss. des_ifs; try extlia. bsimpl. des. des_sumbool. extlia.
       + r. rewrite IMG. i. des_ifs.
       + rr. ss. inv MEM. inv SKENV. ss. rewrite NB0. esplits; eauto.
@@ -213,7 +213,7 @@ Section PRSV.
       ii. r in RETV. des. esplits; eauto; cycle 1.
       { inv AT; inv AFTER; ss. rewrite Retv.get_m_m; ss. refl. }
       + econs; eauto. intros cunit LO. specialize (H cunit LO). inv AFTER; ss. inv H; ss.
-        assert(BCARGS: (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)).(Sound.args) args).
+        assert(BCARGS: Sound.args (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock)) args).
         { ss. inv AT; ss. s. des. rpapply sound_state_sound_args; eauto. }
         assert(BCLE0: le' su0 (bc2su bc (Genv.genv_next skenv_link) m_arg.(Mem.nextblock))).
         { eapply UnreachC.hle_lift; eauto. }

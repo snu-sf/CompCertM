@@ -50,10 +50,10 @@ Module Sound.
         <<MLE: mle su0 m0 m1>>;
 
     val: t -> Values.val -> Prop;
-    vals: t -> list Values.val -> Prop := fun su vs => Forall su.(val) vs;
+    vals: t -> list Values.val -> Prop := fun su vs => Forall (val su) vs;
     mem: t -> mem -> Prop;
 
-    regset: t -> Asm.regset -> Prop := fun su rs => forall pr, su.(val) (rs pr);
+    regset: t -> Asm.regset -> Prop := fun su rs => forall pr, (val su) (rs pr);
     args: t -> Args.t -> Prop :=
       fun su args =>
         match args with
@@ -93,39 +93,39 @@ Module Sound.
         (MEM: Sk.load_mem sk_link = Some m_init)
         (SKE: Sk.load_skenv sk_link = skenv_link),
         exists su_init,
-          (<<SUARGS: su_init.(args) (Args.mk (Genv.symbol_address skenv_link (prog_main sk_link) Ptrofs.zero) [] m_init)>>) /\
-          (<<SUSKE: su_init.(skenv) m_init skenv_link>>);
+          (<<SUARGS: (args su_init) (Args.mk (Genv.symbol_address skenv_link (prog_main sk_link) Ptrofs.zero) [] m_init)>>) /\
+          (<<SUSKE: (skenv su_init) m_init skenv_link>>);
 
     skenv_lepriv: forall m0 su0 su1 ske
-        (SKE: su0.(skenv) m0 ske)
+        (SKE: (skenv su0) m0 ske)
         (LE: lepriv su0 su1),
-        <<SKE: su1.(skenv) m0 ske>>;
+        <<SKE: (skenv su1) m0 ske>>;
 
     skenv_mle: forall m0 m1 su0 ske
-        (SKE: su0.(skenv) m0 ske)
-        (MLE: su0.(mle) m0 m1),
-        <<SKE: su0.(skenv) m1 ske>>;
+        (SKE: (skenv su0) m0 ske)
+        (MLE: (mle su0) m0 m1),
+        <<SKE: (skenv su0) m1 ske>>;
 
     skenv_project: forall su m0 skenv_link sk skenv0
         (WF: SkEnv.wf skenv_link)
         (WFM: SkEnv.wf_mem skenv_link sk m0)
-        (SKE: su.(skenv) m0 skenv_link)
+        (SKE: (skenv su) m0 skenv_link)
         (LE: SkEnv.project_spec skenv_link sk skenv0)
         (INCL: SkEnv.includes skenv_link sk),
-        <<SKE: su.(skenv) m0 skenv0>>;
+        <<SKE: (skenv su) m0 skenv0>>;
 
     system_skenv: forall su m0 skenv_link
-        (SKELINK: su.(skenv) m0 skenv_link),
-        <<SKE: su.(skenv) m0 (System.skenv skenv_link)>>;
+        (SKELINK: (skenv su) m0 skenv_link),
+        <<SKE: (skenv su) m0 (System.skenv skenv_link)>>;
 
     system_axiom: forall
         ef skenv0 su0 args0
         tr v_ret m_ret
         (CSTYLE: Args.is_cstyle args0)
-        (ARGS: su0.(args) args0)
+        (ARGS: (args su0) args0)
         (SKE: skenv su0 (Args.m args0) skenv0)
         (EXT: (external_call ef) skenv0 (Args.vs args0) (Args.m args0) tr v_ret m_ret),
-        exists su1, <<LE: hle su0 su1>> /\ <<RETV: su1.(retv) (Retv.mk v_ret m_ret)>> /\ <<MLE: su0.(mle) (Args.m args0) m_ret>>;
+        exists su1, <<LE: hle su0 su1>> /\ <<RETV: (retv su1) (Retv.mk v_ret m_ret)>> /\ <<MLE: (mle su0) (Args.m args0) m_ret>>;
   }.
 
   Section SOUND.
@@ -133,9 +133,9 @@ Module Sound.
 
   Lemma skenv_hle: forall m0 su0 su1 ske
       (WF: Sound.wf su0)
-      (SKE: su0.(skenv) m0 ske)
+      (SKE: (skenv su0) m0 ske)
       (MLE: hle su0 su1),
-      <<SKE: su1.(skenv) m0 ske>>.
+      <<SKE: (skenv su1) m0 ske>>.
   Proof.
     i. eapply skenv_lepriv; eauto. eapply hle_lepriv; eauto.
   Qed.

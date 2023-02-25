@@ -124,7 +124,9 @@ Proof.
   clarify.
   hexploit (SkEnv.project_impl_spec INCL); eauto. intro PROJ.
   exploit SkEnv.project_spec_preserves_wf; eauto. intro WFSMALL.
-  inv INCL. specialize (DEFS f_id). ss. exploit DEFS; eauto. i; des.
+  inv INCL. specialize (DEFS f_id). ss. exploit DEFS; eauto.
+  { cbn. rewrite PTree.gss. eauto. }
+  i; des.
   inv MATCH. inv H0.
   inv PROJ. exploit (SYMBKEEP f_id); eauto. intro T; des. rewrite T in *.
   exploit DEFKEEP; eauto.

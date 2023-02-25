@@ -76,8 +76,8 @@ Makefile.coq: Makefile $(COQTHEORIES)
 #    echo "-R ../../backend compcert.backend"; \
 #    echo "-R ../../cfrontend compcert.cfrontend"; \
 #    echo "-R ../../driver compcert.driver"; \
-#    echo "-R ../../flocq compcert.flocq"; \
-#    echo "-R ../../exportclight compcert.exportclight"; \
+#    echo "-R ../../flocq Flocq"; \
+#    echo "-R ../../export compcert.export"; \
 #    echo "-R ../../cparser compcert.cparser"; \
 #    echo $(COQTHEORIES)) > _CoqProject
 # 	coq_makefile -f _CoqProject -o Makefile.coq-rsync

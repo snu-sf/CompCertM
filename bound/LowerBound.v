@@ -2036,10 +2036,10 @@ Section PRESERVATION.
     replace (at_external skenv_link p) with (at_external skenv_link p0) in *.
     - inv ATEXTERNAL.
       + apply asm_frame_inj in FRAME. clarify.
-        unfold external_state. des_ifs; try omega.
+        unfold external_state. des_ifs; try lia.
         unfold local_genv, fundef in *. ss. des. des_ifs.
       + apply asm_frame_inj in FRAME. clarify.
-        unfold external_state. des_ifs; try omega.
+        unfold external_state. des_ifs; try lia.
         unfold local_genv, fundef in *. ss. des. des_ifs.
     - apply f_equal with (f := Frame.ms) in FRAME. ss.
       inv FRAME. apply Eqdep.EqdepTheory.inj_pair2 in H0. auto.
@@ -2215,8 +2215,8 @@ Section PRESERVATION.
           - eapply Mem.mi_mappedblocks; eauto.
           - intros PERM. eapply PERM.
             exploit Mem.perm_inject; eauto.
-            + eapply freed_from_perm; eauto. instantiate (1:=ofs-delta). omega.
-            + i. replace ofs with (ofs - delta + delta); [auto|omega]. }
+            + eapply freed_from_perm; eauto. instantiate (1:=ofs-delta). lia.
+            + i. replace ofs with (ofs - delta + delta); [auto|lia]. }
         { intros delta' BOUND. eapply separated_out_of_reach; cycle 2; eauto.
           - eapply Mem.mi_mappedblocks; eauto.
           - eapply freed_from_out_of_reach; eauto.
@@ -2281,7 +2281,7 @@ Section PRESERVATION.
             - eapply RANGE. right.
               rewrite SIG1 in SIG2. inv SIG2. rewrite SIG3 in SIG4. inv SIG4. et. }
         * ss.
-      + ss. des_ifs; omega.
+      + ss. des_ifs; lia.
   Qed.
 
   Lemma match_states_call_ord_1 args frs st_tgt n
@@ -2300,10 +2300,10 @@ Section PRESERVATION.
       eapply modsem_receptive.
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
-      + ii. inv H. ss. omega.
+      + ii. inv H. ss. lia.
     - econs; i.
       + set (STEP := H). inv STEP. inv H0. eexists. eauto.
-      + ii. inv H. ss. omega.
+      + ii. inv H. ss. lia.
   Qed.
 
   Lemma match_state_xsim:

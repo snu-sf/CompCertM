@@ -29,12 +29,12 @@ Module Sound.
     t: Type;
 
     mle: t -> Memory.mem -> Memory.mem -> Prop;
-    mle_PreOrder su0 :> PreOrder (mle su0);
+    mle_PreOrder su0 :: PreOrder (mle su0);
 
     hle: t -> t -> Prop;
-    hle_PreOrder :> PreOrder hle;
+    hle_PreOrder :: PreOrder hle;
     lepriv: t -> t -> Prop;
-    lepriv_PreOrder :> PreOrder lepriv;
+    lepriv_PreOrder :: PreOrder lepriv;
     wf: t -> Prop;
 
     hle_lepriv: forall su0 su1
@@ -132,13 +132,17 @@ Module Sound.
 
   Lemma skenv_hle: forall m0 su0 su1 ske
       (WF: Sound.wf su0)
-      (SKE: su0.(skenv) m0 ske)
+      (SKE: (skenv su0) m0 ske)
       (MLE: hle su0 su1),
-      <<SKE: su1.(skenv) m0 ske>>.
+      <<SKE: (skenv su1) m0 ske>>.
   Proof.
     i. eapply skenv_lepriv; eauto. eapply hle_lepriv; eauto.
   Qed.
 
   End SOUND.
+
+  Global Existing Instance mle_PreOrder.
+  Global Existing Instance hle_PreOrder.
+  Global Existing Instance lepriv_PreOrder.
 
 End Sound.

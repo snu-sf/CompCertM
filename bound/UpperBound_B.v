@@ -371,7 +371,8 @@ Section PRESERVATION.
     rewrite Genv.find_var_info_iff in *.
     unfold Genv.find_def in *. ss.
     repeat rewrite MapsC.PTree_filter_map_spec.
-    rewrite o_bind_ignore.
+    erewrite o_bind_ignore.
+    2:{ eapply genv. }
     specialize (mge_defs blk). inv mge_defs.
     { rewrite VAR in H0. inv H0. }
     symmetry in H0.
@@ -420,7 +421,7 @@ Section PRESERVATION.
     rewrite Genv.find_var_info_iff in *. dup VAR.
     unfold Genv.find_def in VAR. ss.
     repeat rewrite MapsC.PTree_filter_map_spec in VAR.
-    rewrite o_bind_ignore in VAR. des_ifs.
+    erewrite o_bind_ignore in VAR. 2:{ eapply genv. } des_ifs.
     destruct ((Genv.genv_defs skenv_link) ! blk) eqn:LINKDEF; cycle 1.
     { unfold o_bind in *; ss. }
     unfold o_bind in Heq; ss.
@@ -636,7 +637,7 @@ Section PRESERVATION.
     destruct proj_wf. destruct skenv_link_wf.
     ss. unfold Genv.find_def in DEF. ss.
     repeat rewrite MapsC.PTree_filter_map_spec in DEF.
-    rewrite o_bind_ignore in DEF.
+    erewrite o_bind_ignore in DEF. 2:{ eapply genv. }
     des_ifs. o_bind_b.
     destruct ((prog_defmap prog)! i) eqn:PROGDEF; ss. des_ifs. ss.
     exploit (SYMBKEEP i).
@@ -684,7 +685,7 @@ Section PRESERVATION.
     specialize (mge_defs b). inv mge_defs.
     { rewrite FUNC in H0. clarify. }
     repeat rewrite MapsC.PTree_filter_map_spec.
-    rewrite o_bind_ignore. des_ifs; cycle 1.
+    erewrite o_bind_ignore. 2:{ eapply genv. } des_ifs; cycle 1.
     { rewrite FUNC in H. inv H. rewrite <- H0 in Heq.
       unfold o_bind in Heq; ss.
       destruct (Genv.invert_symbol skenv_link b) eqn:SYMB; ss.
@@ -1168,7 +1169,7 @@ Section PRESERVATION.
                              exploit (@not_external_function_find_same (Internal f) (Vptr b Ptrofs.zero)); eauto. }
                            { unfold type_of_function in *. clarify.
                              destruct (fn_params f) eqn:T; ss; des_ifs.
-                             econs; ss. }
+                             (* econs; ss. *) }
                        (* step_internal *)
                        +++ econs; i.
                            (* determ *)

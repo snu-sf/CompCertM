@@ -129,25 +129,25 @@ Section SIMGE.
           (PTGT: p_tgt = (ProgPair.tgt pp))
           (SSLE: Forall (fun mp => SimSymb.le (ModPair.ss mp) ss_link) pp)
           (SIMSK: SimSymb.wf ss_link)
-          (SKSRC: link_sk p_src = Some ss_link.(SimSymb.src))
-          (SKTGT: link_sk p_tgt = Some ss_link.(SimSymb.tgt))
-          (SKENVSRC: Sk.load_skenv ss_link.(SimSymb.src) = skenv_link_src)
-          (SKENVTGT: Sk.load_skenv ss_link.(SimSymb.tgt) = skenv_link_tgt)
+          (SKSRC: link_sk p_src = Some (SimSymb.src ss_link))
+          (SKTGT: link_sk p_tgt = Some (SimSymb.tgt ss_link))
+          (SKENVSRC: Sk.load_skenv (SimSymb.src ss_link) = skenv_link_src)
+          (SKENVTGT: Sk.load_skenv (SimSymb.tgt ss_link) = skenv_link_tgt)
           (WFSKSRC: forall mp (IN: In mp pp), Sk.wf (ModPair.src mp))
           (WFSKTGT: forall mp (IN: In mp pp), Sk.wf (ModPair.tgt mp))
-          (LOADSRC: Sk.load_mem ss_link.(SimSymb.src) = Some m_src):
+          (LOADSRC: Sk.load_mem (SimSymb.src ss_link) = Some m_src):
       exists sm_init, <<SIMGE: sim_ge sm_init
-                                      (load_genv p_src (Sk.load_skenv ss_link.(SimSymb.src)))
-                                      (load_genv p_tgt (Sk.load_skenv ss_link.(SimSymb.tgt)))>>
+                                      (load_genv p_src (Sk.load_skenv (SimSymb.src ss_link)))
+                                      (load_genv p_tgt (Sk.load_skenv (SimSymb.tgt ss_link)))>>
          /\ <<MWF: SimMem.wf sm_init>>
-         /\ <<LOADTGT: Sk.load_mem ss_link.(SimSymb.tgt) = Some sm_init.(SimMem.tgt)>>
-         /\ <<MSRC: sm_init.(SimMem.src) = m_src>>
+         /\ <<LOADTGT: Sk.load_mem (SimSymb.tgt ss_link) = Some (SimMem.tgt sm_init)>>
+         /\ <<MSRC: (SimMem.src sm_init) = m_src>>
          /\ (<<SIMSKENV: SimSymb.sim_skenv sm_init ss_link skenv_link_src skenv_link_tgt>>)
          /\ (<<INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))>>)
          /\ (<<INCLTGT: forall mp (IN: In mp pp), SkEnv.includes skenv_link_tgt (Mod.sk mp.(ModPair.tgt))>>)
          /\ (<<SSLE: forall mp (IN: In mp pp), SimSymb.le mp.(ModPair.ss) ss_link>>)
-         /\ (<<MAINSIM: SimMem.sim_val sm_init (Genv.symbol_address skenv_link_src ss_link.(SimSymb.src).(prog_main) Ptrofs.zero)
-                                             (Genv.symbol_address skenv_link_tgt ss_link.(SimSymb.tgt).(prog_main) Ptrofs.zero)>>).
+         /\ (<<MAINSIM: SimMem.sim_val sm_init (Genv.symbol_address skenv_link_src (SimSymb.src ss_link).(prog_main) Ptrofs.zero)
+                                             (Genv.symbol_address skenv_link_tgt (SimSymb.tgt ss_link).(prog_main) Ptrofs.zero)>>).
   Proof.
     assert(INCLSRC: forall mp (IN: In mp pp), SkEnv.includes skenv_link_src (Mod.sk mp.(ModPair.src))).
     { ii. clarify. eapply link_includes; eauto.
@@ -160,8 +160,8 @@ Section SIMGE.
     { rewrite Forall_forall in *. eauto. }
     unfold load_genv in *. ss. bar.
     assert(exists msp_sys,
-              (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem (Sk.load_skenv ss_link.(SimSymb.src))>>)
-              /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem (Sk.load_skenv ss_link.(SimSymb.tgt))>>)
+              (<<SYSSRC: msp_sys.(ModSemPair.src) = System.modsem (Sk.load_skenv (SimSymb.src ss_link))>>)
+              /\ (<<SYSTGT: msp_sys.(ModSemPair.tgt) = System.modsem (Sk.load_skenv (SimSymb.tgt ss_link))>>)
               /\ <<SYSSIM: ModSemPair.sim msp_sys>> /\ <<SIMSKENV: ModSemPair.sim_skenv msp_sys sm_init>>
               /\ (<<MFUTURE: SimMem.future msp_sys.(ModSemPair.sm) sm_init>>)).
     { exploit SimSymb.system_sim_skenv; eauto. i; des.
@@ -190,8 +190,8 @@ Section SIMGE.
         { ss. }
         { ss. }
         i; des.
-        assert(SIMGE: SimSymb.sim_skenv sm_arg ss_link (System.globalenv (Sk.load_skenv ss_link.(SimSymb.src)))
-                                        (System.globalenv (Sk.load_skenv ss_link.(SimSymb.tgt)))).
+        assert(SIMGE: SimSymb.sim_skenv sm_arg ss_link (System.globalenv (Sk.load_skenv (SimSymb.src ss_link)))
+                                        (System.globalenv (Sk.load_skenv (SimSymb.tgt ss_link)))).
         { eapply SimSymb.mfuture_preserves_sim_skenv; eauto. }
         hexpl SimSymb.sim_skenv_func_bisim SIMGE0.
         inv SIMGE0. exploit FUNCFSIM; eauto. i; des. clarify.
@@ -433,9 +433,9 @@ Section ADQINIT.
     i; des. clarify. ss. des_ifs.
 
     set(Args.mk (Genv.symbol_address (Sk.load_skenv (SimSymb.src ss_link)) (prog_main (SimSymb.src ss_link)) Ptrofs.zero)
-                [] sm_init.(SimMem.src)) as args_src in *.
+                [] (SimMem.src sm_init)) as args_src in *.
     set(Args.mk (Genv.symbol_address (Sk.load_skenv (SimSymb.tgt ss_link)) (prog_main (SimSymb.tgt ss_link)) Ptrofs.zero)
-                [] sm_init.(SimMem.tgt)) as args_tgt in *.
+                [] (SimMem.tgt sm_init)) as args_tgt in *.
     assert(SIMARGS: SimMem.sim_args args_src args_tgt sm_init).
     { econs; ss; eauto.
       - rewrite <- SimMem.sim_val_list_spec. econs; eauto. }

@@ -38,14 +38,14 @@ Local Opaque list_nth_z.
 
 Definition typ_dec: forall x y: typ, {x = y} + {x <> y}. decide equality. Defined.
 
-Let Fixpoint num_fregs (tys: list typ): nat :=
+#[local] Fixpoint num_fregs (tys: list typ): nat :=
   match tys with
   | [] => 0
   | Tfloat as ty :: tys | Tsingle as ty :: tys => (num_fregs tys) + 1
   | _ :: tys => num_fregs tys
   end
 .
-Let Fixpoint num_iregs (tys: list typ): nat :=
+#[local] Fixpoint num_iregs (tys: list typ): nat :=
   match tys with
   | [] => 0
   | Tint as ty :: tys | Tlong as ty :: tys | Tany32 as ty :: tys | Tany64 as ty :: tys => (num_iregs tys) + 1
@@ -57,10 +57,10 @@ Let Fixpoint num_iregs (tys: list typ): nat :=
 (* Let num_iregs (tys: list typ): nat := *)
 (*   count_occ typ_dec tys Tint + count_occ typ_dec tys Tlong + *)
 (*   count_occ typ_dec tys Tany32 + count_occ typ_dec tys Tany64. *)
-Let is_enough (tys: list typ) (ir fr: nat): Prop :=
+#[local] Definition is_enough (tys: list typ) (ir fr: nat): Prop :=
   ((num_iregs tys = 0 \/ (num_iregs tys + ir <= length int_param_regs_elf64))%nat /\
    (num_fregs tys = 0 \/ (num_fregs tys + fr <= length float_param_regs_elf64))%nat).
-Let max_outgoing_lemma
+#[local] Definition max_outgoing_lemma
     tys ir fr ofs
     (POS: 0 <= ir)
     (POS0: 0 <= fr)
@@ -86,7 +86,7 @@ Proof.
       rewrite ! Z.max_r; try lia.
 Qed.
 
-Let size_arguments_loc_arguments_aux: forall
+#[local] Definition size_arguments_loc_arguments_aux: forall
     tys ofs x y z
     (POSx: 0 <= x)
     (POSy: 0 <= y)

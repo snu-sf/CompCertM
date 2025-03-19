@@ -43,8 +43,8 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
   Inductive sim (mp: t): Prop :=
   | sim_intro
       (SIMSK: SimSymb.wf mp.(ss))
-      (SKSRC: mp.(ss).(SimSymb.src) = (Mod.sk mp.(src)))
-      (SKTGT: mp.(ss).(SimSymb.tgt) = (Mod.sk mp.(tgt)))
+      (SKSRC: (SimSymb.src mp.(ss)) = (Mod.sk mp.(src)))
+      (SKTGT: (SimSymb.tgt mp.(ss)) = (Mod.sk mp.(tgt)))
       (SIMMS: forall skenv_link_src skenv_link_tgt ss_link sm_init_link
           (INCLSRC: SkEnv.includes skenv_link_src (Mod.sk mp.(src)))
           (INCLTGT: SkEnv.includes skenv_link_tgt (Mod.sk mp.(tgt)))

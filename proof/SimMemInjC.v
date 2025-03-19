@@ -297,10 +297,10 @@ Qed.
 Lemma alloc_left_zero_simmem
       sm0 blk_src sz m_src1 blk_tgt
       (MWF: SimMem.wf sm0)
-      (ALLOC: Mem.alloc sm0.(SimMem.src) 0 sz = (m_src1, blk_src))
+      (ALLOC: Mem.alloc (SimMem.src sm0) 0 sz = (m_src1, blk_src))
       (TGTPRIV: (range 0 sz) <1= (tgt_private sm0) blk_tgt)
       (TGTNOTEXT: ((range 0 sz) /1\ sm0.(tgt_external) blk_tgt) <1= bot1)
-      (TGTPERM: forall ofs k p (BOUND: 0 <= ofs < sz), Mem.perm sm0.(SimMem.tgt) blk_tgt ofs k p)
+      (TGTPERM: forall ofs k p (BOUND: 0 <= ofs < sz), Mem.perm (SimMem.tgt sm0) blk_tgt ofs k p)
       (* (SZPOS: 0 < sz) *)
       (VALID: Mem.valid_block sm0.(tgt) blk_tgt)
       (PARENT: (sm0.(tgt_parent_nb) <= blk_tgt)%positive):
@@ -531,9 +531,9 @@ Section JUNK.
 Lemma inject_junk_blocks_tgt
       sm0 n m_tgt0
       (MWF: SimMem.wf sm0)
-      (JUNKTGT: assign_junk_blocks sm0.(SimMem.tgt) n = m_tgt0):
+      (JUNKTGT: assign_junk_blocks (SimMem.tgt sm0) n = m_tgt0):
     exists sm1,
-      (<<DEF: sm1 = update sm0 sm0.(SimMem.src) m_tgt0 sm0.(SimMemInj.inj)>>) /\
+      (<<DEF: sm1 = update sm0 (SimMem.src sm0) m_tgt0 sm0.(SimMemInj.inj)>>) /\
       (<<MWF: SimMem.wf sm1>>) /\
       (<<MLE: SimMem.le sm0 sm1>>) /\
       (<<PRIVSRC: (SimMemInj.src_private sm0) = (SimMemInj.src_private sm1)>>) /\
@@ -566,10 +566,10 @@ Definition inject_junk_blocks (m_src0 m_tgt0: mem) (n: nat) (j: meminj): meminj 
 Lemma inject_junk_blocks_parallel
       sm0 n m_tgt0
       (MWF: SimMem.wf sm0)
-      (JUNKTGT: assign_junk_blocks sm0.(SimMem.tgt) n = m_tgt0):
+      (JUNKTGT: assign_junk_blocks (SimMem.tgt sm0) n = m_tgt0):
     exists sm1,
-      (<<DEF: sm1 = update sm0 (assign_junk_blocks sm0.(SimMem.src) n) m_tgt0
-                           (inject_junk_blocks sm0.(SimMem.src) sm0.(SimMem.tgt) n sm0.(SimMemInj.inj))>>) /\
+      (<<DEF: sm1 = update sm0 (assign_junk_blocks (SimMem.src sm0) n) m_tgt0
+                           (inject_junk_blocks (SimMem.src sm0) (SimMem.tgt sm0) n sm0.(SimMemInj.inj))>>) /\
       (<<MWF: SimMem.wf sm1>>) /\
       (<<MLE: SimMem.le sm0 sm1>>) /\
       (<<PRIVSRC: (SimMemInj.src_private sm0) = (SimMemInj.src_private sm1)>>) /\
@@ -739,7 +739,7 @@ Qed.
 Lemma external_call_parallel_rule_simmem
       (F V: Type) (ge0: Genv.t F V)
       sm_at sm_after P
-      (SEP: sm_at.(SimMem.tgt) |= (minjection sm_at.(SimMemInj.inj) sm_at.(SimMem.src))
+      (SEP: (SimMem.tgt sm_at) |= (minjection sm_at.(SimMemInj.inj) (SimMem.src sm_at))
                              ** globalenv_inject ge0 sm_at.(SimMemInj.inj) ** P)
       sm_arg sm_ret
       (MWF: SimMem.wf sm_at)
@@ -755,7 +755,7 @@ Lemma external_call_parallel_rule_simmem
       (PRIV1: (SimMemInj.tgt_private sm_ret) = (SimMemInj.tgt_private sm_after))
       (UNCH0: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_at) (SimMemInj.tgt sm_arg))
       (UNCH1: Mem.unchanged_on (SimMemInj.tgt_private sm_arg) (SimMemInj.tgt sm_ret) (SimMemInj.tgt sm_after)):
-    <<SEP: sm_after.(SimMem.tgt) |= (minjection sm_after.(SimMemInj.inj) sm_after.(SimMem.src))
+    <<SEP: (SimMem.tgt sm_after) |= (minjection sm_after.(SimMemInj.inj) (SimMem.src sm_after))
                             ** globalenv_inject ge0 sm_at.(SimMemInj.inj) ** P>>.
 Proof.
   (* See external_call_parallel_rule *)

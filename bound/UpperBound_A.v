@@ -451,7 +451,8 @@ Section PRESERVATION.
     des. exploit defmap_with_signature_internal; eauto. i. des.
     exists if_sig2.
     rewrite Genv.find_funct_ptr_iff. unfold Genv.find_def. ss.
-    rewrite MapsC.PTree_filter_map_spec. rewrite o_bind_ignore. rewrite Hdefs. rewrite Hsymb.
+    rewrite MapsC.PTree_filter_map_spec. erewrite o_bind_ignore. 2:{ eapply genv. }
+    rewrite Hdefs. rewrite Hsymb.
     unfold o_bind. ss. exploit internals_linking; eauto. i. rewrite H3.
     rewrite H2. ss.
   Qed.
@@ -462,14 +463,17 @@ Section PRESERVATION.
         (FIND: Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) b = Some (Gfun func)) :
       exists func', Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) cp_link) b = Some (Gfun func').
   Proof.
-    unfold Genv.find_def in FIND. ss. rewrite MapsC.PTree_filter_map_spec in FIND. rewrite o_bind_ignore in FIND. des_ifs.
+    unfold Genv.find_def in FIND. ss. rewrite MapsC.PTree_filter_map_spec in FIND. erewrite o_bind_ignore in FIND.
+    2:{ eapply genv. }
+    des_ifs.
     destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b) eqn:SYMB; ss.
     unfold o_bind in FIND. ss. destruct ((prog_defmap cp) ! i) eqn:DMAP; ss. clarify.
-    rewrite MapsC.PTree_filter_map_spec in Heq. rewrite o_bind_ignore in Heq. destruct ((Genv.genv_defs skenv_link) ! b) eqn:GENVDEF; ss.
+    rewrite MapsC.PTree_filter_map_spec in Heq. erewrite o_bind_ignore in Heq. 2:{ eapply genv. }
+    destruct ((Genv.genv_defs skenv_link) ! b) eqn:GENVDEF; ss.
     destruct (Genv.invert_symbol skenv_link b) eqn:SYMBSKENV; ss. unfold o_bind in Heq. ss. des_ifs.
     exploit invert_symbol_lemma1; eauto. rewrite <- defs_prog_defmap. eapply defmap_with_signature; eauto. i. subst.
     unfold Genv.find_def. ss. do 2 rewrite MapsC.PTree_filter_map_spec.
-    do 2 rewrite o_bind_ignore. rewrite GENVDEF. rewrite SYMBSKENV. unfold o_bind. ss.
+    do 2 (erewrite o_bind_ignore; [|eapply genv]). rewrite GENVDEF. rewrite SYMBSKENV. unfold o_bind. ss.
     exploit prog_defmap_exists_rev; eauto. i. des_safe.
     exists func'. des_ifs; cycle 1.
     - exploit defmap_with_signature; eauto. i. des_safe. rewrite H0 in Heq1. ss.
@@ -505,13 +509,13 @@ Section PRESERVATION.
       exists cp, is_focus cp /\ Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) b = Some (Gfun (Internal if_sig)).
   Proof.
     unfold Genv.find_def in *. ss.
-    rewrite MapsC.PTree_filter_map_spec in *. rewrite o_bind_ignore in *. des_ifs.
+    rewrite MapsC.PTree_filter_map_spec in *. erewrite o_bind_ignore in *; [|eapply genv]. des_ifs.
     destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b) eqn:SYMB; ss.
     unfold o_bind in FIND. ss.
     destruct ((prog_defmap cp_link) ! i) eqn:DMAP; ss. clarify.
     exploit prog_defmap_exists; eauto. i. des.
     exists pgm. split; eauto.
-    rewrite MapsC.PTree_filter_map_spec in *. rewrite o_bind_ignore in *.
+    rewrite MapsC.PTree_filter_map_spec in *. erewrite o_bind_ignore in *; [|eapply genv|eapply genv].
     des_ifs. destruct (Genv.invert_symbol skenv_link b) eqn:SYMBSKENV; ss.
     unfold o_bind in *. ss.
     assert (i = i0).
@@ -529,7 +533,7 @@ Section PRESERVATION.
     rewrite H1. ss. rewrite H0. ss.
     (* contradiction *)
     { destruct (Genv.invert_symbol skenv_link b) eqn:SYMBSKENV; ss.
-      rewrite MapsC.PTree_filter_map_spec in *. rewrite o_bind_ignore in *.
+      rewrite MapsC.PTree_filter_map_spec in *. erewrite o_bind_ignore in *; [|eapply genv].
       des_ifs.
       assert (i = i0).
       { exploit SkEnv.project_impl_spec. eapply INCL; eauto. i. inv H1.
@@ -576,8 +580,8 @@ Section PRESERVATION.
     subst.
 
     subst. unfold Genv.find_def in DEF. ss. rewrite MapsC.PTree_filter_map_spec in DEF.
-    rewrite o_bind_ignore in DEF. des_ifs. rewrite MapsC.PTree_filter_map_spec in Heq1.
-    rewrite o_bind_ignore in Heq1. rewrite Hdefs in Heq1. rewrite Hsymb in Heq1. ss.
+    erewrite o_bind_ignore in DEF; [|eapply genv]. des_ifs. rewrite MapsC.PTree_filter_map_spec in Heq1.
+    erewrite o_bind_ignore in Heq1; [|eapply genv]. rewrite Hdefs in Heq1. rewrite Hsymb in Heq1. ss.
 
     unfold o_bind in Heq1. ss. des_ifs. ss.
     unfold internals in Heq2. des_ifs.
@@ -592,7 +596,8 @@ Section PRESERVATION.
       - rewrite Heq3 in H3. clarify.
       - rewrite H0 in H1. rewrite Heq3 in H2. clarify. inv H3. inv H5. }
     clarify. exists s. rewrite Genv.find_funct_ptr_iff.
-    unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. rewrite o_bind_ignore. rewrite Hdefs. rewrite Hsymb.
+    unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. erewrite o_bind_ignore; [|eapply genv].
+    rewrite Hdefs. rewrite Hsymb.
     unfold o_bind. ss. unfold internals. rewrite Heq3. simpl. ss.
   Qed.
 
@@ -616,7 +621,7 @@ Section PRESERVATION.
       cp2 = cp_top.
   Proof.
     unfold Genv.find_def in *; ss.
-    do 2 rewrite PTree_filter_map_spec, o_bind_ignore in *.
+    do 2 (erewrite PTree_filter_map_spec, o_bind_ignore in *); try eapply genv.
     des_ifs. destruct (Genv.invert_symbol skenv_link blk) eqn:SYMBSKENV; ss.
     destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp2)) blk) eqn:SYMB1; ss.
     unfold o_bind in *. ss.
@@ -677,8 +682,8 @@ Section PRESERVATION.
       subst.
 
       subst. unfold Genv.find_def in DEF. ss. rewrite MapsC.PTree_filter_map_spec in DEF.
-      rewrite o_bind_ignore in DEF. des_ifs. rewrite MapsC.PTree_filter_map_spec in Heq1.
-      rewrite o_bind_ignore in Heq1. rewrite Hdefs in Heq1. rewrite Hsymb in Heq1. ss.
+      erewrite o_bind_ignore in DEF; [|eapply genv]. des_ifs. rewrite MapsC.PTree_filter_map_spec in Heq1.
+      erewrite o_bind_ignore in Heq1; [|eapply genv]. rewrite Hdefs in Heq1. rewrite Hsymb in Heq1. ss.
 
       unfold o_bind in Heq1. ss. des_ifs. ss.
       unfold internals in Heq2. des_ifs.
@@ -699,7 +704,8 @@ Section PRESERVATION.
         rewrite in_app_iff; right. rewrite in_map_iff. esplits; eauto.
       - des_ifs.
         rewrite Genv.find_funct_ptr_iff.
-        unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. rewrite o_bind_ignore. rewrite Hdefs. rewrite Hsymb.
+        unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. erewrite o_bind_ignore; [|eapply genv].
+        rewrite Hdefs. rewrite Hsymb.
         unfold o_bind. ss. unfold internals. rewrite Heq3. ss. }
   Qed.
 
@@ -840,7 +846,7 @@ Section PRESERVATION.
             (* receptiveness *)
             { econs. ii. inv H1; ModSem.tac.
               inv H2. eexists. eapply step_call. instantiate (1:=args). eauto.
-              ii. inv H1; ModSem.tac. ss. omega. }
+              ii. inv H1; ModSem.tac. ss. lia. }
             eapply plus_one. econs; et.
             (* determ *)
             { econs.
@@ -854,7 +860,7 @@ Section PRESERVATION.
                 + exfalso; eapply ModSem.call_return_disjoint. split. eauto. eauto.
               - i. ss. inv FINAL.
                 eapply ModSem.call_return_disjoint. split. eapply H. eauto.
-              - ii. inv H1; ss; try omega.
+              - ii. inv H1; ss; try lia.
                 exfalso; eapply ModSem.call_step_disjoint. split. eapply H. eauto. }
             econs; eauto.
             instantiate (1:= args).
@@ -868,7 +874,7 @@ Section PRESERVATION.
               unfold Genv.find_funct_ptr in EXTERNAL. des_ifs.
               (* None or Gvar *)
               + unfold Genv.find_funct. des_ifs. unfold Genv.find_funct_ptr. des_ifs.
-                unfold Genv.find_def in Heq, Heq0. ss. rewrite MapsC.PTree_filter_map_spec in *. rewrite o_bind_ignore in *.
+                unfold Genv.find_def in Heq, Heq0. ss. rewrite MapsC.PTree_filter_map_spec in *. erewrite o_bind_ignore in *; [|eapply genv|eapply genv].
                 des_ifs.
                 destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b) eqn:SYMB; ss.
                 destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b) eqn:SYMB0; ss.
@@ -915,7 +921,7 @@ Section PRESERVATION.
             - ss. unfold incl in *. inv ISCALLTGT.
               unfold Genv.find_funct in FPTR. des_ifs.
               rewrite Genv.find_funct_ptr_iff in *.
-              unfold Genv.find_def in FPTR. ss. do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in FPTR.
+              unfold Genv.find_def in FPTR. ss. do 2 (erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in FPTR; try eapply genv).
               des_ifs. unfold o_bind in FPTR. ss.
               destruct ((Genv.invert_symbol
                            (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) b)) eqn:SYMB; ss.
@@ -980,7 +986,7 @@ Section PRESERVATION.
             exploit (CSk.of_program_prog_defmap cp_link signature_of_function).
             i. inv H10. rewrite PROG in *. clarify. eauto. i.
             exploit SYMBKEEP. rewrite <- defs_prog_defmap. eauto. i. rewrite H10 in *.
-            unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. rewrite o_bind_ignore.
+            unfold Genv.find_def. ss. rewrite MapsC.PTree_filter_map_spec. erewrite o_bind_ignore; [|eapply genv].
             rewrite Genv.find_funct_ptr_iff in SIG.
             unfold Genv.find_def in SIG. rewrite SIG.
             exploit Genv.find_invert_symbol. eapply H6. i. rewrite H14. unfold o_bind. ss.
@@ -989,7 +995,7 @@ Section PRESERVATION.
           assert(SYMB: exists id, Genv.find_symbol (geof cp_top) id = Some blk).
           { inv FINDMS. ss. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
             unfold Genv.find_def in INTERNAL. ss.
-            rewrite MapsC.PTree_filter_map_spec in *. rewrite o_bind_ignore in *.
+            rewrite MapsC.PTree_filter_map_spec in *. erewrite o_bind_ignore in *; [|eapply genv].
             des_ifs. destruct (Genv.invert_symbol skenv_link blk) eqn:SYMBSKENV; ss.
             unfold o_bind in INTERNAL. ss. des_ifs.
             destruct ((prog_defmap (CSk.of_program signature_of_function cp_top)) ! i) eqn:DMAP; ss. clarify.
@@ -999,7 +1005,7 @@ Section PRESERVATION.
             exists i. unfold SkEnv.revive. ss. } des.
           inversion FINDMS. ss. des_ifs. rewrite Genv.find_funct_ptr_iff in INTERNAL.
           unfold Genv.find_def in INTERNAL. ss. rewrite MapsC.PTree_filter_map_spec in INTERNAL.
-          rewrite o_bind_ignore in INTERNAL. des_ifs.
+          erewrite o_bind_ignore in INTERNAL; [|eapply genv]. des_ifs.
           destruct (Genv.invert_symbol skenv_link blk) eqn:SYMBSKENV; ss.
           eapply Genv.invert_find_symbol in SYMBSKENV. clear INTERNAL.
 
@@ -1012,7 +1018,7 @@ Section PRESERVATION.
                 { inv H1. eexists. econs 2. econs; eauto. }
                 { exfalso. ss. des_ifs.
                   rewrite Genv.find_funct_ptr_iff in *. rewrite Heq in FPTR. clarify. }
-              - ii. inv H; inv H1; ss; try omega.
+              - ii. inv H; inv H1; ss; try lia.
                 eapply external_call_trace_length; eauto. }
             eapply plus_left with (t1 := E0) (t2 := E0); ss.
             { econs; et.
@@ -1025,7 +1031,7 @@ Section PRESERVATION.
                   exploit external_call_match_traces. eapply H12. eapply H11. i. split; auto. i.
                   subst. exploit external_call_deterministic. eapply H12. eapply H11. i. des; subst. auto. auto.
                 - i. ss.
-                - ii. inv H; inv H1; ss; try omega.
+                - ii. inv H; inv H1; ss; try lia.
                   exploit external_call_trace_length; eauto. }
               econs 1; ss; et.
               econs; ss; et.
@@ -1041,7 +1047,7 @@ Section PRESERVATION.
                   exploit find_fptr_owner_determ. eapply MSFIND. eauto. i. subst ms. subst ms0.
                   ss. inv INIT; inv INIT0. ss. des_ifs.
                 - i. ss. des_ifs. inv FINAL.
-                - ii. inv H. ss. omega.
+                - ii. inv H. ss. lia.
               }
               econs 2; ss; et.
               { des_ifs. folder. eauto. }
@@ -1056,7 +1062,7 @@ Section PRESERVATION.
                 + inv WTTGT. ss. unfold type_of_function in *. clarify.
                 + des_ifs.
                   unfold Genv.find_def in Heq. ss.
-                  do 2 rewrite PTree_filter_map_spec, o_bind_ignore in *.
+                  do 2 (erewrite PTree_filter_map_spec, o_bind_ignore in *; try eapply genv).
                   des_ifs.
                   destruct (Genv.invert_symbol
                               (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) blk); ss.
@@ -1082,7 +1088,7 @@ Section PRESERVATION.
                 exploit SkEnv.project_impl_spec. eapply INCL_FOCUS. eauto. i. inv H5.
                 exploit SYMBKEEP.
                 inv FINDMS. ss. des_ifs. rewrite Genv.find_funct_ptr_iff in INTERNAL. unfold Genv.find_def in INTERNAL. ss.
-                rewrite MapsC.PTree_filter_map_spec in INTERNAL. rewrite o_bind_ignore in INTERNAL. des_ifs.
+                rewrite MapsC.PTree_filter_map_spec in INTERNAL. erewrite o_bind_ignore in INTERNAL; [|eapply genv]. des_ifs.
                 rewrite H4 in INTERNAL. unfold o_bind in INTERNAL. ss. des_ifs.
                 destruct ((prog_defmap (CSk.of_program signature_of_function cp_top)) ! i) eqn:DMAP; ss. clarify.
                 rewrite <- defs_prog_defmap. eauto. i. rewrite SYMBSKENV in H5.
@@ -1090,8 +1096,8 @@ Section PRESERVATION.
 
               assert (Haux: In (id, Gfun (Internal f)) (prog_defs cp_top)).
               { inv FINDMS. ss. des_ifs. rewrite Genv.find_funct_ptr_iff in INTERNAL. ss.
-                unfold Genv.find_def in Heq. ss. rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in Heq. des_ifs.
-                rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in Heq2. des_ifs.
+                unfold Genv.find_def in Heq. ss. erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in Heq; [|eapply genv]. des_ifs.
+                erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in Heq2; [|eapply genv]. des_ifs.
                 exploit Genv.find_invert_symbol. eauto. i. rewrite H2 in Heq2. unfold o_bind in Heq2. ss. des_ifs.
                 destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) blk) eqn:SYMBLINK; ss.
                 unfold o_bind in Heq. ss.
@@ -1103,7 +1109,7 @@ Section PRESERVATION.
                   exploit Genv.find_invert_symbol. eapply SYMBSKENV. i.
                   exploit Genv.find_invert_symbol. eapply H6. i. Eq. auto. } subst.
                 destruct ((prog_defmap cp_link) ! id) eqn:DMAP; ss. clarify.
-                unfold Genv.find_def in INTERNAL. ss. rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in INTERNAL. des_ifs.
+                unfold Genv.find_def in INTERNAL. ss. erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in INTERNAL; [|eapply genv]. des_ifs.
                 rewrite H2 in INTERNAL. unfold o_bind in INTERNAL. ss. des_ifs.
                 destruct ((prog_defmap (CSk.of_program signature_of_function cp_top)) ! id) eqn:DMAP0; ss. clarify.
 
@@ -1126,7 +1132,7 @@ Section PRESERVATION.
                     exploit external_call_match_traces. eapply H13. eapply H14. i. split; auto. i.
                     subst. exploit external_call_deterministic. eapply H13. eapply H14. i. des; subst. auto. auto.
                   + i. inv FINAL.
-                  + ii. inv H2; inv H3. ss; omega.
+                  + ii. inv H2; inv H3. ss; lia.
                     eapply external_call_trace_length; eauto. }
               rewrite LINKTGT in *. rpapply step_internal; ss; et. rr. right.
               econs; ss; et.
@@ -1161,7 +1167,7 @@ Section PRESERVATION.
                 exploit Genv.find_invert_symbol. eapply SYMBSKENV. i.
                 exploit SkEnv.project_impl_spec. eapply INCL_FOCUS. eauto. i. inv H5. exploit SYMBKEEP.
                 inv FINDMS. ss. des_ifs. rewrite Genv.find_funct_ptr_iff in INTERNAL. unfold Genv.find_def in INTERNAL. ss.
-                rewrite MapsC.PTree_filter_map_spec in INTERNAL. rewrite o_bind_ignore in INTERNAL. des_ifs.
+                rewrite MapsC.PTree_filter_map_spec in INTERNAL. erewrite o_bind_ignore in INTERNAL; [|eapply genv]. des_ifs.
                 rewrite H4 in INTERNAL. unfold o_bind in INTERNAL. ss. des_ifs.
                 destruct ((prog_defmap (CSk.of_program signature_of_function cp_top)) ! i) eqn:DMAP; ss. clarify.
                 rewrite <- defs_prog_defmap. eauto. i. rewrite SYMBSKENV in H5.
@@ -1169,8 +1175,8 @@ Section PRESERVATION.
 
               assert (Haux: In (id, Gfun (Internal f)) (prog_defs cp_top)).
               { inv FINDMS. ss. des_ifs. rewrite Genv.find_funct_ptr_iff in INTERNAL. ss.
-                unfold Genv.find_def in Heq. ss. rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in Heq. des_ifs.
-                rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in Heq2. des_ifs.
+                unfold Genv.find_def in Heq. ss. erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in Heq; [|eapply genv]. des_ifs.
+                erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in Heq2; [|eapply genv]. des_ifs.
                 exploit Genv.find_invert_symbol. eauto. i. rewrite H2 in Heq2. unfold o_bind in Heq2. ss. des_ifs.
                 destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link)) blk) eqn:SYMBLINK; ss.
                 unfold o_bind in Heq. ss.
@@ -1182,7 +1188,7 @@ Section PRESERVATION.
                   exploit Genv.find_invert_symbol. eapply SYMBSKENV. i.
                   exploit Genv.find_invert_symbol. eapply H6. i. Eq. auto. } subst.
                 destruct ((prog_defmap cp_link) ! id) eqn:DMAP; ss. clarify.
-                unfold Genv.find_def in INTERNAL. ss. rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in INTERNAL. des_ifs.
+                unfold Genv.find_def in INTERNAL. ss. erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in INTERNAL; [|eapply genv]. des_ifs.
                 rewrite H2 in INTERNAL. unfold o_bind in INTERNAL. ss. des_ifs.
                 destruct ((prog_defmap (CSk.of_program signature_of_function cp_top)) ! id) eqn:DMAP0; ss. clarify.
 
@@ -1215,7 +1221,7 @@ Section PRESERVATION.
                 assert (exists f, Genv.find_funct_ptr (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_top)) cp_top) blk = Some (Internal f)).
                 { unfold Genv.find_funct_ptr in INTERNAL. des_ifs.
                   assert (exists f, Genv.find_def (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_top)) cp_top) blk = Some (Gfun(Internal f))).
-                  { unfold Genv.find_def in Heq2. ss. rewrite MapsC.PTree_filter_map_spec in Heq2. rewrite o_bind_ignore in Heq2. des_ifs.
+                  { unfold Genv.find_def in Heq2. ss. rewrite MapsC.PTree_filter_map_spec in Heq2. erewrite o_bind_ignore in Heq2; [|eapply genv]. des_ifs.
                     exploit Genv.find_invert_symbol. eapply SYMBSKENV. intros INVSKENV. rewrite INVSKENV in Heq2.
                     unfold o_bind in Heq2. ss. des_ifs. ss.
                     destruct ((prog_defmap (CSk.of_program signature_of_function cp_top)) ! id) eqn:DMAP; ss. clarify.
@@ -1573,7 +1579,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
             unfold Genv.find_funct in H. des_ifs.
             rewrite Genv.find_funct_ptr_iff in H.
             unfold Genv.find_def in H. ss.
-            do 2 rewrite PTree_filter_map_spec, o_bind_ignore in *.
+            do 2 (erewrite PTree_filter_map_spec, o_bind_ignore in *; try eapply genv).
             des_ifs.
             destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp_link))); ss. unfold o_bind in H. ss.
             destruct ((prog_defmap cp_link) ! i) eqn:DMAP; ss. clarify.
@@ -1581,7 +1587,7 @@ i. des_safe. inv H0. unfold is_call_cont_strong. auto. }
         { inv TYP. eapply wt_initial_frame; ss; et.
           i. Eq. exploit WTPROGS; eauto. i. inv H. ss.
           unfold Genv.find_funct in FINDF. des_ifs. rewrite Genv.find_funct_ptr_iff in *.
-          unfold Genv.find_def in FINDF. ss. rewrite PTree_filter_map_spec, o_bind_ignore in *. des_ifs.
+          unfold Genv.find_def in FINDF. ss. erewrite PTree_filter_map_spec, o_bind_ignore in *; try eapply genv. des_ifs.
           destruct (Genv.invert_symbol (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) b); ss.
           unfold o_bind in FINDF. ss. destruct ((prog_defmap cp) ! i) eqn:DMAP; ss. clarify.
           unfold prog_defmap in DMAP. eapply PTree_Properties.in_of_list in DMAP.
@@ -1611,7 +1617,7 @@ End PRESERVATION.
 
 Require Import BehaviorsC.
 
-Let geof := fun skenv_link (cp: Csyntax.program) =>
+#[local] Definition geof := fun skenv_link (cp: Csyntax.program) =>
               (Build_genv (SkEnv.revive (SkEnv.project skenv_link (CSk.of_program signature_of_function cp)) cp) cp.(prog_comp_env)).
 
 Theorem upperbound_a_correct

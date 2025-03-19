@@ -68,8 +68,8 @@ Context `{SM: SimMem.class} {SS: SimSymb.class SM} {SU: Sound.class}.
       exists ss_link sk_link_tgt,
         <<LOADTGT: (link_sk p_tgt) = Some sk_link_tgt>>
         /\ <<SIMSK: SimSymb.wf ss_link>>
-        /\ <<SKSRC: ss_link.(SimSymb.src) = sk_link_src>>
-        /\ <<SKTGT: ss_link.(SimSymb.tgt) = sk_link_tgt>>
+        /\ <<SKSRC: (SimSymb.src ss_link) = sk_link_src>>
+        /\ <<SKTGT: (SimSymb.tgt ss_link) = sk_link_tgt>>
         /\ <<LE: Forall (fun mp => (SimSymb.le mp.(ModPair.ss) ss_link)) pp>>.
   Proof.
     u. subst_locals. ginduction pp; ii; ss. destruct a; ss.

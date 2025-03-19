@@ -185,8 +185,8 @@ Proof.
       rpapply match_return_state; ss; eauto; ss.
       { ss. ii.
         eapply match_cont_incr_bounds; eauto; revgoals.
-        { eauto with mem. }
-        { eauto with mem. }
+        { eapply Mem.unchanged_on_nextblock; et. }
+        { eapply Mem.unchanged_on_nextblock; et. }
         eapply match_cont_extcall with (ge := ge) (tge := tge); eauto; try refl.
         { eapply Mem.unchanged_on_implies; try eassumption. ii. rr. esplits; eauto. }
         { eapply SimMemInj.inject_separated_frozen; et. }

@@ -26,7 +26,7 @@ Record t' := mk {
   tgt: mem;
 }.
 
-Program Instance SimMemExt : SimMem.class :=
+Global Program Instance SimMemExt : SimMem.class :=
 { t := t';
   src := src;
   tgt := tgt;
@@ -46,7 +46,7 @@ Qed.
 Next Obligation. inv H. ss. Qed.
 
 
-Program Instance SimMemExtLift: SimMemLift.class SimMemExt :=
+Global Program Instance SimMemExtLift: SimMemLift.class SimMemExt :=
 { lift := id;
   unlift := fun _ => id;
 }.

@@ -19,7 +19,7 @@ Class FSL: Type := {
   t: Type;
   finite: Finite t;
   le: t -> t -> Prop;
-  le_PreOrder :> PreOrder le;
+  le_PreOrder :: PreOrder le;
   lub: t -> t -> t;
   lub_spec: forall x y ,
       (<<LE: le x (lub x y)>>) /\ (<<LE: le y (lub x y)>>);
@@ -88,7 +88,7 @@ Module FSL.
 (* Finite Semi-Lattice *)
 Class class (t: Type) (le: t -> t -> Prop) (lub: t -> t -> t): Type := {
   (* finite: Finite t; *)
-  le_PreOrder :> PreOrder le;
+  le_PreOrder :: PreOrder le;
   lub_spec: forall x y,
       (<<LE: le x (lub x y)>>) /\ (<<LE: le y (lub x y)>>);
   greatest P := greatest le P;

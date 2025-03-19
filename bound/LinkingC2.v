@@ -218,12 +218,12 @@ Definition link_program (p1 p2: program): option (program) :=
   | Some p =>
       match lift_option (link p1.(prog_types) p2.(prog_types)) with
       | inright _ => None
-      | inleft (exist typs EQ) =>
+      | inleft (exist _ typs EQ) =>
           match link_build_composite_env
                    p1.(prog_types) p2.(prog_types) typs
                    p1.(prog_comp_env) p2.(prog_comp_env)
                    p1.(prog_comp_env_eq) p2.(prog_comp_env_eq) EQ with
-          | exist env (conj P Q) =>
+          | exist _ env (conj P Q) =>
               Some {| prog_defs := p.(AST.prog_defs);
                       prog_public := p.(AST.prog_public);
                       prog_main := p.(AST.prog_main);

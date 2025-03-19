@@ -80,7 +80,7 @@ Module Sk.
     - inv H1. ss.
   Qed.
 
-  Let match_fundef F0 F1 (get_sig: F0 -> F1) (_: unit): AST.fundef F0 -> AST.fundef F1 -> Prop :=
+  #[local] Definition match_fundef F0 F1 (get_sig: F0 -> F1) (_: unit): AST.fundef F0 -> AST.fundef F1 -> Prop :=
     fun f0 f1 =>
       match f0, f1 with
       | Internal func1, Internal func2 => get_sig func1 = func2
@@ -450,7 +450,7 @@ I think "sim_skenv_monotone" should be sufficient.
       { unfold proj_sumbool. des_ifs; ss. exfalso. apply n. eapply prog_defmap_spec; eauto. }
       i; des. des_ifs_safe. esplits; eauto.
       unfold SkEnv.revive. u. unfold Genv.find_def, Genv_map_defs. cbn. rewrite PTree_filter_map_spec. clear_tac.
-      rewrite o_bind_ignore. exploit Genv.find_invert_symbol; et. intro INV.
+      rewrite o_bind_ignore with (Z:= globdef (fundef F) V). 2:{ eapply g. } exploit Genv.find_invert_symbol; et. intro INV.
       bar. inv PROJ. inv INCL. bar.
       assert(defs (Sk.of_program get_sg prog) id).
       { apply NNPP. ii. exploit SYMBDROP; et. i; des. clarify. }

@@ -114,7 +114,10 @@ Section REVIVE.
       <<SIMGE: Genv.match_genvs (match_globdef match_fundef match_varinfo ctx) ge_src ge_tgt>>.
   Proof.
     clarify. inv SIMSKENV. econs; eauto. ii. ss.
-    rewrite ! MapsC.PTree_filter_map_spec. rewrite ! o_bind_ignore.
+    rewrite ! MapsC.PTree_filter_map_spec.
+    destruct ((Genv.genv_defs skenv_proj_tgt) ! b) eqn:GDEF; ss.
+    2:{ unfold o_bind. ss. econs. }
+    unfold o_bind. ss.
     unfold Genv.find_def in *. des_ifs; try (by econs).
     destruct (Genv.invert_symbol skenv_proj_tgt b) eqn:T; cbn; try (by econs; eauto).
     apply match_program_defmap with (id := i) in MATCHPROG.

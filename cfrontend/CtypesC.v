@@ -49,7 +49,7 @@ Module CSk.
     rewrite map_map. rewrite map_map. ss.
   Qed.
 
-  Let match_fundef F0 F1 (get_sig: F0 -> F1) (_: unit): Ctypes.fundef F0 -> AST.fundef F1 -> Prop :=
+  #[local] Definition match_fundef F0 F1 (get_sig: F0 -> F1) (_: unit): Ctypes.fundef F0 -> AST.fundef F1 -> Prop :=
     fun f0 f1 =>
       match f0, f1 with
       | Internal func0, AST.Internal func1 => get_sig func0 = func1
@@ -164,7 +164,7 @@ Module CSkEnv.
       { unfold proj_sumbool. des_ifs; ss. exfalso. apply n. eapply prog_defmap_spec; eauto. }
       i; des. des_ifs_safe. esplits; eauto.
       unfold SkEnv.revive. u. unfold Genv.find_def, Genv_map_defs. cbn. rewrite PTree_filter_map_spec.
-      clear_tac. rewrite o_bind_ignore.
+      clear_tac. rewrite o_bind_ignore with (Z:=globdef (Ctypes.fundef F) type);et.
       exploit Genv.find_invert_symbol; et. intro INV.
       bar. inv PROJ. inv INCL. bar.
       assert(defs (CSk.of_program get_sg prog) id).

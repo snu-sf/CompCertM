@@ -33,7 +33,7 @@ Module SimSymb.
       src: t -> Sk.t;
       tgt: t -> Sk.t;
 
-      le_PreOrder :> PreOrder le;
+      le_PreOrder :: PreOrder le;
 
       wf: t -> Prop;
       wf_preserves_wf: forall ss0
@@ -71,9 +71,9 @@ Module SimSymb.
           exists m_tgt sm,
             (<<LOADMEMTGT: (Sk.load_mem ss.(tgt)) = Some m_tgt>>) /\
             (<<SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt>>) /\
-            (<<MEMSRC: sm.(SimMem.src) = m_src>>) /\
-            (<<MEMTGT: sm.(SimMem.tgt) = m_tgt>>) /\
-            (<<MWF: sm.(SimMem.wf)>>) /\
+            (<<MEMSRC: (SimMem.src sm) = m_src>>) /\
+            (<<MEMTGT: (SimMem.tgt sm) = m_tgt>>) /\
+            (<<MWF: (SimMem.wf sm)>>) /\
             (<<MAINSIM: SimMem.sim_val sm (Genv.symbol_address skenv_src ss.(src).(prog_main) Ptrofs.zero)
                                        (Genv.symbol_address skenv_tgt ss.(tgt).(prog_main) Ptrofs.zero)>>);
 
@@ -98,7 +98,7 @@ Module SimSymb.
 
       sim_skenv_func_bisim: forall sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt),
-          <<DEF: skenv_func_bisim sm.(SimMem.sim_val) skenv_src skenv_tgt>>;
+          <<DEF: skenv_func_bisim (SimMem.sim_val sm) skenv_src skenv_tgt>>;
 
       system_sim_skenv: forall sm ss skenv_src skenv_tgt
           (SIMSKENV: sim_skenv sm ss skenv_src skenv_tgt),
@@ -122,6 +122,8 @@ Module SimSymb.
             /\ (<<MLE0: SimMem.le sm0 sm1>>)
             /\ (<<MWF: SimMem.wf sm1>>);
     }.
+
+  Global Existing Instance le_PreOrder.
 
   Lemma mle_preserves_sim_skenv: forall
       `{SM: SimMem.class} `{SS: @class SM}
@@ -147,7 +149,7 @@ Module SimSymb.
         `{SM: SimMem.class} `{SS: @class SM}
         ss0 sm0 skd v_src v_tgt skenv_link_src skenv_link_tgt
         (SIMSKENV: sim_skenv sm0 ss0 skenv_link_src skenv_link_tgt)
-        (SIMV: sm0.(SimMem.sim_val) v_src v_tgt)
+        (SIMV: (SimMem.sim_val sm0) v_src v_tgt)
         (FIND: Genv.find_funct skenv_link_src v_src = Some skd):
       Genv.find_funct skenv_link_tgt v_tgt = Some skd.
   Proof. exploit SimSymb.sim_skenv_func_bisim; eauto. i; des. inv H. exploit FUNCFSIM; eauto. i; des. clarify. Qed.

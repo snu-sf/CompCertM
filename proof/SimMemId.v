@@ -26,7 +26,7 @@ Record t' := mk {
   tgt: mem;
 }.
 
-Program Instance SimMemId : SimMem.class :=
+Global Program Instance SimMemId : SimMem.class :=
 { t := t';
   src := src;
   tgt := tgt;
@@ -46,7 +46,7 @@ Qed.
 
 
 
-Program Instance SimMemIdLift: SimMemLift.class SimMemId :=
+Global Program Instance SimMemIdLift: SimMemLift.class SimMemId :=
 { lift := id;
   unlift := fun _ => id;
 }.

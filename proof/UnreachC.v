@@ -188,7 +188,7 @@ Inductive J: positive -> Unreach.t -> nat -> Prop :=
     (FALSE: su fuel = false):
     J (Pos.succ fuel) su (2 * n).
 
-Let eta
+#[local] Definition eta
       x0 x1
       (FIELD0: x0.(unreach) = x1.(unreach))
       (FIELD1: x0.(ge_nb) = x1.(ge_nb))
@@ -196,7 +196,7 @@ Let eta
     <<EQ: x0 = x1>>.
 Proof. destruct x0, x1; ss. clarify. Qed.
 
-Let J_injective: forall
+#[local] Definition J_injective: forall
     fuel x0 x1 n
     (J0: J fuel x0 n)
     (J1: J fuel x1 n)
@@ -224,7 +224,7 @@ Proof.
       { i. eapply ple_elim_succ in H0. des; clarify. eapply BDD; eauto. }
 Qed.
 
-Let J_func: forall fuel x,
+#[local] Definition J_func: forall fuel x,
     exists n, J fuel x n.
 Proof.
   intro fuel. pattern fuel.
@@ -236,7 +236,7 @@ Proof.
     + esplits; eauto. econsr; eauto.
 Qed.
 
-Let J_bound: forall fuel x n
+#[local] Definition J_bound: forall fuel x n
     (J: J fuel x n),
     (n <= 3 ^ (Pos.to_nat fuel))%nat.
 Proof.
@@ -259,13 +259,13 @@ Proof.
     extlia.
 Qed.
 
-Let to_inj (su: t) (bound: positive): meminj :=
+#[local] Definition to_inj (su: t) (bound: positive): meminj :=
   fun blk =>
     if (su blk)
     then None
     else (if plt blk bound then Some (blk, 0%Z) else None).
 
-Let to_su (j: meminj) (ge_nb: block) (bound: positive): t :=
+#[local] Definition to_su (j: meminj) (ge_nb: block) (bound: positive): t :=
   mk
     (fun blk =>
        if plt blk bound
@@ -276,7 +276,7 @@ Let to_su (j: meminj) (ge_nb: block) (bound: positive): t :=
        else false)
     ge_nb bound.
 
-Let to_inj_mem: forall su m
+#[local] Definition to_inj_mem: forall su m
     (SUM: mem' su m),
     Mem.inject (to_inj su m.(Mem.nextblock)) m m.
 Proof.
@@ -633,7 +633,7 @@ Next Obligation.
       u in MEM. exploit Genv.initmem_inject; eauto. i. inv H.
       exploit Mem.mi_memval; et.
       { exploit Mem.perm_valid_block; et. unfold Mem.valid_block, Mem.flat_inj. des_ifs. }
-      i. replace (ofs + 0)%Z with ofs in H by omega. rewrite PTR in H. inv H. inv H1. eapply mi_mappedblocks; et.
+      i. replace (ofs + 0)%Z with ofs in H by lia. rewrite PTR in H. inv H. inv H1. eapply mi_mappedblocks; et.
     + ii; ss.
     + ss. u in *. erewrite <- Genv.init_mem_genv_next; eauto. folder. refl.
   - econs; eauto; ss.
@@ -652,7 +652,7 @@ Next Obligation.
 Qed.
 Next Obligation.
   inv MLE. inv SKE. econs; eauto; cycle 1.
-  { etrans; eauto. eauto with mem. }
+  { etrans. eauto. eapply Mem.unchanged_on_nextblock; et. }
   eapply romatch_ske_unchanged_on; et.
 Qed.
 Next Obligation.
@@ -815,7 +815,7 @@ Qed.
 Lemma greatest_ex: forall
     su0 args0
     (CSTYLE: Args.is_cstyle args0)
-    (INHAB: exists (inhab: Sound.t), <<LE: le' su0 inhab>> /\ <<ARGS: inhab.(Sound.args) args0>>)
+    (INHAB: exists (inhab: Sound.t), <<LE: le' su0 inhab>> /\ <<ARGS: (Sound.args inhab) args0>>)
   ,
     exists su_gr, <<GR: get_greatest su0 args0 su_gr>>.
 Proof.

@@ -188,7 +188,7 @@ Inductive linkorder_skfundef: AST.fundef signature -> AST.fundef signature -> Pr
   | linkorder_fundef_ext_ext: forall name0 name1 sg, linkorder_skfundef (External (EF_external name0 sg)) (External (EF_external name1 sg))
   | linkorder_skfundef_ext_int: forall id sg, linkorder_skfundef (External (EF_external id sg)) (Internal sg).
 
-Program Instance Linker_skfundef: Linker (AST.fundef signature) :=
+Global Program Instance Linker_skfundef: Linker (AST.fundef signature) :=
 {| link := link_skfundef;
    linkorder := linkorder_skfundef;
 |}.

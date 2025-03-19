@@ -31,12 +31,10 @@ Global Program Instance Top: Sound.class := {
   wf := top1;
   val := top2;
   mem := top2;
+  hle := top2;
   mle := top3;
   skenv := top3;
 }.
-(* Next Obligation. *)
-  (* destruct su_gr0, su_gr1; ss. *)
-(* Qed. *)
 Next Obligation. esplits; eauto. econs; eauto. Qed.
 Next Obligation. esplits; eauto. Qed.
 

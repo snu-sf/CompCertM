@@ -543,8 +543,8 @@ Inductive match_states_ext
     (AGREE: AsmStepExt.agree rs_src rs_tgt)
     (AGREEINIT: AsmStepExt.agree init_rs_src init_rs_tgt)
     (* (INJ: Mem.extends m_src m_tgt) *)
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     fd
     (FINDF: Genv.find_funct ge_src (init_rs_src PC) = Some (Internal fd))

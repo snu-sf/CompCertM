@@ -265,7 +265,7 @@ Proof.
         - eapply store_arguments_unchanged_on; eauto.
         - etrans.
           + eapply JunkBlock.assign_junk_blocks_unchanged_on.
-          + eapply Mem.free_unchanged_on; eauto. ii. omega. }
+          + eapply Mem.free_unchanged_on; eauto. ii. lia. }
       dup UNCH0. eapply Mem.unchanged_on_nextblock in UNCH0.
       exists (SimMemInjC.update
                     sm_arg (SimMemInj.src sm_arg) m (SimMemInj.inj sm_arg)).
@@ -280,7 +280,9 @@ Proof.
       - esplits; eauto. econs; ss; eauto.
         + refl.
         + eapply Mem.unchanged_on_implies; eauto.
-        + econs. ii. des. clarify. + econs. ii. des. clarify.
+        + econs. ii. des. clarify.
+        + econs. ii. des. clarify.
+        + ii. ss.
         + ii. eapply Mem.perm_unchanged_on_2; eauto. } des.
 
     assert (NEXT0: (compare_longs (Val.andl (rs RDI) (rs RDI)) (Vlong Int64.zero) rs (JunkBlock.assign_junk_blocks m0 n)) PC

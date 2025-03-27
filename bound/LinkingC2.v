@@ -19,7 +19,7 @@ Proof.
   - des_ifs; clarify; inv H; des_ifs; eauto.
 Qed.
 
-Instance TransfPartialContextualLink_rev
+Global Instance TransfPartialContextualLink_rev
            {A B C V: Type} {LV: Linker V}
            (tr_fun: C -> A -> res B)
            (ctx_for: program (fundef B) V -> C):
@@ -34,7 +34,7 @@ Proof.
 - intros; subst. exists v; auto.
 Qed.
 
-Instance TransfPartialLink_rev
+Global Instance TransfPartialLink_rev
            {A B V: Type} {LV: Linker V}
            (tr_fun: A -> res B):
   TransfLink (fun (p2: program (fundef B) V) (p1: program (fundef A) V) =>
@@ -48,7 +48,7 @@ Proof.
 - intros; subst. exists v; auto.
 Qed.
 
-Instance TransfTotallContextualLink_rev
+Global Instance TransfTotallContextualLink_rev
            {A B C V: Type} {LV: Linker V}
            (tr_fun: C -> A -> B)
            (ctx_for: program (fundef B) V -> C):
@@ -67,7 +67,7 @@ Proof.
 - intros; subst. exists v; auto.
 Qed.
 
-Instance TransfTotalLink_rev
+Global Instance TransfTotalLink_rev
            {A B V: Type} {LV: Linker V}
            (tr_fun: A -> B):
   TransfLink (fun (p2: program (fundef B) V) (p1: program (fundef A) V) =>
@@ -194,7 +194,7 @@ Inductive linkorder_fundef: fundef -> fundef -> Prop :=
   | linkorder_fundef_ext_int: forall f id sg targs tres cc,
       linkorder_fundef (External (EF_external id sg) targs tres cc) (Internal f).
 
-Program Instance Linker_fundef: Linker (fundef) := {
+Global Program Instance Linker_fundef: Linker (fundef) := {
   link := link_fundef;
   linkorder := linkorder_fundef
 }.
@@ -238,7 +238,7 @@ Definition linkorder_program (p1 p2: program) : Prop :=
      linkorder (program_of_program p1) (program_of_program p2)
   /\ (forall id co, p1.(prog_comp_env)!id = Some co -> p2.(prog_comp_env)!id = Some co).
 
-Program Instance Linker_program: Linker (program) := {
+Global Program Instance Linker_program: Linker (program) := {
   link := link_program;
   linkorder := linkorder_program
 }.

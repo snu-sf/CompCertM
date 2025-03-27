@@ -302,8 +302,8 @@ Inductive match_states_demo_inv
   : unit -> state -> state -> SimMem.t -> Prop :=
 | match_states_demo_inv_intro
     st_src st_tgt j m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMem.src))
-    (MWFTGT: m_tgt = sm0.(SimMem.tgt))
+    (MWFSRC: m_src = (SimMem.src sm0))
+    (MWFTGT: m_tgt = (SimMem.tgt sm0))
     (MWFINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
     (MATCHST: match_states_demo_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMem.wf sm0)

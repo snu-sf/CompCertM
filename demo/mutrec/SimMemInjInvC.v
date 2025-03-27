@@ -449,7 +449,7 @@ Section SIMSYMBINV.
     - simpl in H1. lia.
     - inv H. rewrite Nat2Z.inj_succ in H1. destruct (zeq i p).
       + congruence.
-      + apply IHn with (p + 1); auto. omega. omega.
+      + apply IHn with (p + 1); auto. lia. lia.
   Qed.
 
   Lemma init_mem_inject ss j m

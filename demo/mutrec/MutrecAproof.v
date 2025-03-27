@@ -65,7 +65,9 @@ Proof.
     + eapply Mem.store_unchanged_on; eauto.
       ii. inv WF. exploit INVRANGETGT; eauto. i. des.
       exfalso. eauto.
-    + eapply SimMemInj.frozen_refl. + eapply SimMemInj.frozen_refl.
+    + eapply SimMemInj.frozen_refl.
+    + eapply SimMemInj.frozen_refl.
+    + i. eapply SimMemInj.less1_PreOrder.  
     + ii. eapply Mem.perm_store_2; eauto.
   - inv WF. econs; ss; eauto.
     + unfold SimMemInjC.update. econs; ss; eauto.
@@ -89,7 +91,7 @@ Proof.
           - clarify. exists (sum (Int.repr ind0)).
             esplits; eauto. erewrite Mem.load_store_same; eauto. ss.
           - exists i. erewrite Mem.load_store_other; eauto.
-            right. clear - n. ss. omega. }
+            right. clear - n. ss. lia. }
         { exists i. erewrite Mem.load_store_other; eauto. }
 Qed.
 
@@ -129,8 +131,8 @@ Inductive match_states
           (idx: nat) (st_src0: MutrecAspec.state) (st_tgt0: Clight.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: match_states_internal idx st_src0 st_tgt0)
-    (MCOMPATSRC: (get_mem st_src0) = sm0.(SimMem.src))
-    (MCOMPATTGT: (ClightC.get_mem st_tgt0) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: (get_mem st_src0) = (SimMem.src sm0))
+    (MCOMPATTGT: (ClightC.get_mem st_tgt0) = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
 .
 
@@ -367,7 +369,7 @@ Proof.
                   { lia. }
                   repeat rewrite Ptrofs.unsigned_repr. auto.
                   all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power;
-                  unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega. } eauto. }
+                  unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; lia. } eauto. }
 
           eapply star_left with (t1 := E0) (t2 := E0); ss.
           { econs; eauto.
@@ -516,7 +518,7 @@ Proof.
                   { lia. }
                   repeat rewrite Ptrofs.unsigned_repr. auto.
                   all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power;
-                    unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega.
+                    unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; lia.
                 + f_equal.
                   rewrite Int.repr_unsigned.
                   rewrite sum_recurse with (i := i). des_ifs.
@@ -645,7 +647,7 @@ Proof.
                   { lia. }
                   repeat rewrite Ptrofs.unsigned_repr. auto.
                   all : unfold Ptrofs.max_unsigned; rewrite Ptrofs.modulus_power;
-                  unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; omega. } eauto. }
+                  unfold Ptrofs.zwordsize, Ptrofs.wordsize, Wordsize_Ptrofs.wordsize; des_ifs; ss; lia. } eauto. }
 
           eapply star_left with (t1 := E0) (t2 := E0); ss.
           { econs; eauto.
@@ -737,7 +739,7 @@ Proof.
 
         rewrite Genv.find_funct_ptr_iff in FINDF.
         unfold Genv.find_def in FINDF. ss.
-        do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+        (do 2 erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *); try eapply genv.
         des_ifs.
         destruct (Genv.invert_symbol
                     (SkEnv.project skenv_link (CSk.of_program signature_of_function prog)) b2) eqn:SKENVSYMB; ss.
@@ -753,7 +755,7 @@ Proof.
       eapply match_states_lxsim; ss.
       * inv SIMSKENV; eauto.
       * econs; eauto.
-        { econs; eauto. omega. }
+        { econs; eauto. lia. }
 
   - (* init progress *)
     i.
@@ -773,7 +775,8 @@ Proof.
 
       rewrite Genv.find_funct_ptr_iff in *.
       unfold Genv.find_def in *; ss.
-      do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+      erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *; try eapply genv.
+      erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *; try eapply genv.
       des_ifs.
       exploit Genv.find_invert_symbol. eauto. i.
       rewrite H0 in *. clarify.

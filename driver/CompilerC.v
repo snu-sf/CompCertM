@@ -607,7 +607,7 @@ Proof.
   next Renumber1_correct. next CSE_correct. next Deadcode_correct. next Unreadglob_correct.
   next Unusedglob_correct. next Allocation_correct. next Tunneling_correct. next Linearize_correct.
   next CleanupLabels_correct. next Debugvar_correct. next Stacking_correct.
-  { eexists. eapply transf_program_match; eauto. }
+  { eexists. eapply Asmgenproof.transf_program_match; eauto. }
   next Asmgen_correct. refl.
 Qed.
 

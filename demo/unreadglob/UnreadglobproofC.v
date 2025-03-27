@@ -48,8 +48,8 @@ Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: RTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Unreadglobproof.match_states prog tprog (used_set tprog) skenv_link_src skenv_link_tgt ge tge st_src0 st_tgt0 sm0)
-    (MCOMPATSRC: (RTL.get_mem st_src0) = sm0.(SimMem.src))
-    (MCOMPATTGT: (RTL.get_mem st_tgt0) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: (RTL.get_mem st_src0) = (SimMem.src sm0))
+    (MCOMPATTGT: (RTL.get_mem st_tgt0) = (SimMem.tgt sm0))
 .
 
 Lemma find_funct_inject
@@ -243,8 +243,8 @@ Proof.
       inv MCOMPAT. clear_tac.
       rpapply match_states_return; ss; eauto; ss.
       { eapply match_stacks_bound; et; cycle 1.
-        { eauto with mem. }
-        { eauto with mem. }
+        { eapply Mem.unchanged_on_nextblock; et. }
+        { eapply Mem.unchanged_on_nextblock; et. }
         eapply match_stacks_incr; et.
         { i. inv FROZEN. exploit NEW_IMPLIES_OUTSIDE; et. }
       }

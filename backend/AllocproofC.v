@@ -82,8 +82,8 @@ Inductive match_states
           (idx: nat) (st_src0: RTL.state) (st_tgt0: LTL.state) (sm0: SimMem.t): Prop :=
 | match_states_intro
     (MATCHST: Allocproof.match_states skenv_link tge st_src0 st_tgt0)
-    (MCOMPATSRC: (RTL.get_mem st_src0) = sm0.(SimMem.src))
-    (MCOMPATTGT: (LTLC.get_mem st_tgt0) = sm0.(SimMem.tgt))
+    (MCOMPATSRC: (RTL.get_mem st_src0) = (SimMem.src sm0))
+    (MCOMPATTGT: (LTLC.get_mem st_tgt0) = (SimMem.tgt sm0))
     (DUMMYTGT: strong_wf_tgt st_tgt0).
 
 Theorem make_match_genvs :
@@ -129,7 +129,7 @@ Proof.
                                      (loc_arguments f.(fn_sig))); eauto.
     { rewrite <- sig_args_length. rewrite SGEQ.
       unfold typify_list. rewrite zip_length. rewrite <- LEN.
-      erewrite <- lessdef_list_length; et. eapply Min.min_idempotent.
+      erewrite <- lessdef_list_length; et. eapply Nat.min_id.
     }
     i; des. rename ls1 into ls_init.
     exploit fill_arguments_spec; et. i; des.

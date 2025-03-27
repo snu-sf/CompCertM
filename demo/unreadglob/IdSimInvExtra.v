@@ -158,12 +158,12 @@ Lemma Mem_unfree_parallel
                   Some m_src1)
   :
     exists sm1,
-      (<<MSRC: sm1.(SimMem.src) = m_src1>>)
+      (<<MSRC: (SimMem.src sm1) = m_src1>>)
       /\ (<<MINJ: sm1.(SimMemInjInv.minj).(SimMemInj.inj) = sm_ret.(SimMemInjInv.minj).(SimMemInj.inj)>>)
       /\ (<<FREETGT: Mem_unfree
                        (SimMem.tgt sm_ret) blk_tgt
                        (Ptrofs.unsigned ofs_tgt) (Ptrofs.unsigned ofs_tgt + sz)
-                     = Some sm1.(SimMem.tgt)>>)
+                     = Some (SimMem.tgt sm1)>>)
       /\ (<<MWF: SimMem.wf sm1>>)
       /\ (<<MLE: SimMem.le sm0 sm1>>)
       /\ (<<MLEPRIV: SimMem.lepriv sm_ret sm1>>).

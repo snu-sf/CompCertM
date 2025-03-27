@@ -1233,7 +1233,7 @@ Section PRESERVATION.
       (WFINJ: inj_range_wf skenv_link j m_src P)
       (ORD: n = if (external_state (local_genv p) (rs_src # PC))
                 then (length frs + 2)%nat else 0%nat):
-      match_states (State (fr::frs)) (Asm.State rs_tgt m_tgt) n
+      match_states (Sem.State (fr::frs)) (Asm.State rs_tgt m_tgt) n
   | match_states_call
       j init_rs frs args fptr_arg vs_arg m_arg m_src rs_tgt m_tgt ofs blk sg P n
       (CSTYLE: args = Args.Cstyle fptr_arg vs_arg m_arg)
@@ -1328,7 +1328,7 @@ Section PRESERVATION.
         (PROGIN: In (AsmC.module p) prog):
       exists rs m,
         (AsmC.initial_frame skenv_link p args (AsmC.mkstate rs (Asm.State rs m))) /\
-        (match_states (State ((Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate rs (Asm.State rs m))) :: frs)) st_tgt 0).
+        (match_states (Sem.State ((Frame.mk (AsmC.modsem skenv_link p) (AsmC.mkstate rs (Asm.State rs m))) :: frs)) st_tgt 0).
   Proof.
 
     inv MTCHST.
@@ -1781,11 +1781,11 @@ Section PRESERVATION.
         st_src0 st_src1 st_tgt0 tr frs p init_rs n0
         (STEP: Asm.step skenv_link (local_genv p) st_src0 tr st_src1)
         (PROGIN: In (AsmC.module p) prog)
-        (MTCHST: match_states (State ((Frame.mk (AsmC.modsem skenv_link p)
+        (MTCHST: match_states (Sem.State ((Frame.mk (AsmC.modsem skenv_link p)
                                                 (AsmC.mkstate init_rs st_src0))::frs)) st_tgt0 n0):
       exists st_tgt1 n1,
         Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
-        match_states (State ((Frame.mk (AsmC.modsem skenv_link p)
+        match_states (Sem.State ((Frame.mk (AsmC.modsem skenv_link p)
                                        (AsmC.mkstate init_rs st_src1))::frs)) st_tgt1 n1.
   Proof.
     inv MTCHST. dup FRAME. dup FRAME.
@@ -1862,9 +1862,9 @@ Section PRESERVATION.
   Lemma step_internal_simulation
         fr0 frs tr st0 st_tgt0 n0
         (STEP: fr0.(Frame.ms).(ModSem.step) skenv_link fr0.(Frame.ms).(ModSem.globalenv) fr0.(Frame.st) tr st0)
-        (MTCHST: match_states (State (fr0 :: frs)) st_tgt0 n0):
+        (MTCHST: match_states (Sem.State (fr0 :: frs)) st_tgt0 n0):
       exists st_tgt1 n1, Asm.step skenv_link tge st_tgt0 tr st_tgt1 /\
-                     match_states (State (((Frame.update_st fr0) st0) :: frs)) st_tgt1 n1.
+                     match_states (Sem.State (((Frame.update_st fr0) st0) :: frs)) st_tgt1 n1.
   Proof.
     inv MTCHST. inv STEP.
     exploit asm_step_internal_simulation; ss; eauto.
@@ -1894,8 +1894,8 @@ Section PRESERVATION.
         fr0 fr1 frs retv st0 st_tgt n0
         (FINAL: fr0.(Frame.ms).(ModSem.final_frame) fr0.(Frame.st) retv)
         (AFTER: fr1.(Frame.ms).(ModSem.after_external) fr1.(Frame.st) retv st0)
-        (MTCHST: match_states (State (fr0 :: fr1 :: frs)) st_tgt n0):
-      exists n1, match_states (State (((Frame.update_st fr1) st0) :: frs)) st_tgt n1 /\ (n1 < n0)%nat.
+        (MTCHST: match_states (Sem.State (fr0 :: fr1 :: frs)) st_tgt n0):
+      exists n1, match_states (Sem.State (((Frame.update_st fr1) st0) :: frs)) st_tgt n1 /\ (n1 < n0)%nat.
   Proof.
     inv MTCHST. inv STACK.
     { ss. inv FINAL; cycle 1.
@@ -1945,7 +1945,7 @@ Section PRESERVATION.
   Lemma step_call_simulation
         fr0 frs args st_tgt n
         (AT: fr0.(Frame.ms).(ModSem.at_external) fr0.(Frame.st) args)
-        (MTCHST: match_states (State (fr0 :: frs)) st_tgt n):
+        (MTCHST: match_states (Sem.State (fr0 :: frs)) st_tgt n):
       match_states (Callstate args (fr0 :: frs)) st_tgt 1%nat.
   Proof.
 
@@ -2017,7 +2017,7 @@ Section PRESERVATION.
         (MTCHST: match_states (Callstate args frs) st_tgt n)
         (OWNER: valid_owner (Args.get_fptr args) p)
         (PROGIN: In (AsmC.module p) prog):
-      exists st_src, step ge (Callstate args frs) E0 st_src /\ match_states st_src st_tgt 0.
+      exists st_src, Sem.step ge (Callstate args frs) E0 st_src /\ match_states st_src st_tgt 0.
   Proof.
     exploit asm_step_init_simulation; eauto. inv OWNER.
     i. des. esplits; try eassumption.
@@ -2026,7 +2026,7 @@ Section PRESERVATION.
 
   Lemma at_external_external p st frs st_tgt n args
         (MTCHST: match_states
-                   (State
+                   (Sem.State
                       ((Frame.mk (AsmC.modsem skenv_link p) st)::frs))
                    st_tgt n)
         (ATEXTERNAL: at_external skenv_link p st args):
@@ -2046,8 +2046,8 @@ Section PRESERVATION.
   Qed.
 
   Lemma normal_state_fsim_step frs st_src1 st_tgt0 t n0
-        (MTCHST: match_states (State frs) st_tgt0 n0)
-        (STEP: step ge (State frs) t st_src1):
+        (MTCHST: match_states (Sem.State frs) st_tgt0 n0)
+        (STEP: Sem.step ge (Sem.State frs) t st_src1):
       (exists st_tgt1 n1, Asm.step skenv_link tge st_tgt0 t st_tgt1 /\ match_states st_src1 st_tgt1 n1) \/
       (exists n1, match_states st_src1 st_tgt0 n1 /\ n1 < n0)%nat /\ (t = E0).
   Proof.
@@ -2122,7 +2122,7 @@ Section PRESERVATION.
   Qed.
 
   Lemma call_step_noevent ge' args frs st1 tr
-        (STEP: step ge' (Callstate args frs) tr st1):
+        (STEP: Sem.step ge' (Callstate args frs) tr st1):
       E0 = tr.
   Proof. inv STEP. auto. Qed.
 

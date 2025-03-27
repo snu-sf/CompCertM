@@ -258,7 +258,7 @@ Section LXSIM.
     split; i.
     - rr in H.
       unfold Genv.find_funct in *. des_ifs. rewrite Genv.find_funct_ptr_iff in *. unfold Genv.find_def in *. ss.
-      rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in H.
+      erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in H. 2:{ eapply genv. }
       des_ifs.
       destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss.
       unfold o_bind in H. ss. des_ifs.
@@ -305,7 +305,7 @@ Section LXSIM.
       unfold Genv.find_def in *. ss.
       unfold Genv.find_funct in *.
       inv FOCUS; ss.
-      + rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *. des_ifs.
+      + erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *; [|eapply genv|eapply genv]. des_ifs.
         destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. unfold o_bind in *. ss.
         des_ifs; cycle 1.
         { unfold MutrecABspec.sk_link in Heq0. ss. des_ifs.
@@ -364,7 +364,7 @@ Section LXSIM.
         unfold MutrecA.global_definitions in *. ss.
         eapply PTree_Properties.in_of_list in H0. ss. simpl in H0.
         inv H0; clarify. ss. des; clarify.
-      + rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *. des_ifs.
+      + erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *; [|eapply genv|eapply genv]. des_ifs.
         destruct (Genv.invert_symbol skenv_link b) eqn:Hsymb; ss. unfold o_bind in *. ss.
         des_ifs; cycle 1.
         { unfold MutrecABspec.sk_link in Heq0. ss. des_ifs.
@@ -517,7 +517,7 @@ Section LXSIM.
     rewrite Int.Z_mod_modulus_eq.
     unfold Int.Z_mod_modulus. des_ifs.
     rewrite <- Int.unsigned_repr_eq.
-    rewrite Int.unsigned_repr. auto. split; omega.
+    rewrite Int.unsigned_repr. auto. split; lia.
   Qed.
 
   Lemma match_focus_over_nil
@@ -531,13 +531,13 @@ Section LXSIM.
     - exfalso.
       assert (Int.intval (Int.add max Int.one) = (Int.intval max) + 1); destruct max.
       { rewrite add_one_same; ss.
-        unfold MAX, Int.max_unsigned in *; ss. split; omega. }
-      ss. rewrite H in LE. omega.
+        unfold MAX, Int.max_unsigned in *; ss. split; lia. }
+      ss. rewrite H in LE. lia.
     - exfalso.
       assert (Int.intval (Int.add max Int.one) = (Int.intval max) + 1); destruct max.
       { rewrite add_one_same; ss.
-        unfold MAX, Int.max_unsigned in *; ss. split; omega. }
-      ss. rewrite H in LE. omega.
+        unfold MAX, Int.max_unsigned in *; ss. split; lia. }
+      ss. rewrite H in LE. lia.
   Qed.
 
   Inductive match_stacks (fromcall: bool) (idx: Z): list Frame.t -> list Frame.t -> Prop :=
@@ -668,7 +668,7 @@ Section LXSIM.
             { unfold __GUARD__. eauto. }
             { econs; eauto.
               rewrite add_one_same. nia.
-              unfold MAX, Int.max_unsigned in *; ss. omega. }
+              unfold MAX, Int.max_unsigned in *; ss. lia. }
             { des; ss. } }
         { inv INIT. ss. esplits; eauto.
           - left. apply plus_one. econs.
@@ -684,7 +684,7 @@ Section LXSIM.
             { unfold __GUARD__. eauto. }
             { econs; eauto.
               rewrite add_one_same. nia.
-              unfold MAX, Int.max_unsigned in *; ss. omega. }
+              unfold MAX, Int.max_unsigned in *; ss. lia. }
             { des; ss. } }
         { esplits; eauto.
           - left. apply plus_one. econs; eauto. econs; eauto. ss. right.
@@ -739,7 +739,7 @@ Section LXSIM.
               * right. esplits; eauto.
                 { apply star_refl. }
                 { instantiate (1:= 2 * (Int.intval cur) - 1). rr. esplits; eauto; try lia.
-                  destruct cur. ss. omega. }
+                  destruct cur. ss. lia. }
               * left. pfold. left. right. econs; eauto.
                 hexploit find_g_id; eauto. i; des.
                 hexploit (MutrecBspec.find_symbol_find_funct_ptr); eauto. instantiate (1:= blk). i; des.
@@ -793,7 +793,7 @@ Section LXSIM.
                          { right. unfold load_modsems. rewrite in_map_iff. esplits; et. rewrite in_app_iff. right. right. ss. eauto. }
                          des_ifs; eauto.
                       ** econs; ss; eauto.
-                         { destruct cur,  max. ss. esplits; try omega.
+                         { destruct cur,  max. ss. esplits; try lia.
                            exploit Int.Z_mod_modulus_range. instantiate (1:=intval - 1). i. des; auto.
                            assert (intval - 1 < MAX) by nia.
                            rewrite Int.Z_mod_modulus_eq.
@@ -806,7 +806,7 @@ Section LXSIM.
                    { f_equal. }
                    { f_equal. rewrite cons_app. rewrite app_assoc. f_equal. }
                    { unfold __GUARD__. eauto. }
-                   { destruct cur,  max. ss. esplits; try omega.
+                   { destruct cur,  max. ss. esplits; try lia.
                      assert (intval - 1 < MAX) by nia.
                      rewrite Int.Z_mod_modulus_eq.
                      rewrite <- Int.unsigned_repr_eq.
@@ -828,7 +828,7 @@ Section LXSIM.
               * right. esplits; eauto.
                 { apply star_refl. }
                 { instantiate (1:= 2 * (Int.intval cur) - 1). rr. esplits; eauto; try lia.
-                  destruct cur. ss. omega. }
+                  destruct cur. ss. lia. }
               * left. pfold. left. right. econs; eauto.
                 hexploit find_f_id; eauto. i; des.
                 hexploit (MutrecAspec.find_symbol_find_funct_ptr); eauto. instantiate (1:= blk). i; des.
@@ -884,7 +884,7 @@ Section LXSIM.
                          { right. unfold load_modsems. rewrite in_map_iff. esplits; et. rewrite in_app_iff. right. left. ss. }
                          des_ifs; eauto.
                       ** econs; ss; eauto.
-                         { destruct cur,  max. ss. esplits; try omega.
+                         { destruct cur,  max. ss. esplits; try lia.
                            exploit Int.Z_mod_modulus_range. instantiate (1:=intval - 1). i. des; auto.
                            assert (intval - 1 < MAX) by nia.
                            rewrite Int.Z_mod_modulus_eq.
@@ -897,7 +897,7 @@ Section LXSIM.
                    { f_equal. }
                    { f_equal. rewrite cons_app. rewrite app_assoc. f_equal. }
                    { unfold __GUARD__. eauto. }
-                   { destruct cur,  max. ss. esplits; try omega.
+                   { destruct cur,  max. ss. esplits; try lia.
                      assert (intval - 1 < MAX) by nia.
                      rewrite Int.Z_mod_modulus_eq.
                      rewrite <- Int.unsigned_repr_eq.

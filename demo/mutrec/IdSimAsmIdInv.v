@@ -95,6 +95,7 @@ Proof.
                             (Asm.State _ _)).
     hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv P sm_arg sm0); eauto.
     { etrans; eauto. }
+    { eapply SimMemInjInv.top_inv_satisfied_always. }
     { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
       - ii. exploit INVRANGETGT; eauto. i. des. inv MWF. eapply Plt_Ple_trans; eauto.
       - eapply Mem.unchanged_on_implies with (P:=top2); ss. etrans.
@@ -235,6 +236,7 @@ Proof.
             rewrite MINJ. eapply junk_inj_incr; eauto.
           * rewrite MINJ. eapply src_junk_val_inj; eauto.
         + hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv P sm_arg sm1); eauto.
+          { eapply SimMemInjInv.top_inv_satisfied_always. }
           eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
           { ii. exploit INVRANGETGT; eauto. i. des. inv MWF. eapply Plt_Ple_trans; eauto. }
           { eapply Mem.unchanged_on_implies with (P:=top2); ss. rewrite MTGT.
@@ -290,6 +292,7 @@ Proof.
 
       exploit SimMemInjC.Mem_free_parallel'; eauto. i. des.
       hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv P sm0 sm1); eauto.
+      { eapply SimMemInjInv.top_inv_satisfied_always. }
       { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
         - ii. exploit INVRANGETGT; eauto. i. des. inv MWF. eapply Plt_Ple_trans; eauto.
         - eapply Mem.free_unchanged_on; eauto. ii.
@@ -448,6 +451,7 @@ Proof.
       { instantiate (3:=Ptrofs.zero). zsimpl. psimpl. eauto. }
       i. des.
       hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv P sm0 sm1); eauto.
+      { eapply SimMemInjInv.top_inv_satisfied_always. }
       { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
         - ii. exploit INVRANGETGT; eauto. i. des. inv MWF. eapply Plt_Ple_trans; eauto.
         - eapply Mem.free_unchanged_on; eauto.
@@ -547,6 +551,7 @@ Proof.
         { ii. eapply asm_step_max_perm; eauto. }
         i. des.
         hexploit SimMemInjInv.le_inj_wf_wf; eauto.
+        { eapply SimMemInjInv.top_inv_satisfied_always. }
         { eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
           - ii. exploit INVRANGETGT; eauto. i. des. inv MWF. eapply Plt_Ple_trans; eauto.
           - eapply Mem.unchanged_on_implies; eauto.

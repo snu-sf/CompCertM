@@ -467,7 +467,7 @@ Proof.
 - simpl in H1. lia.
 - inv H. rewrite Nat2Z.inj_succ in H1. destruct (zeq i p).
 + congruence.
-+ apply IHn with (p + 1); auto. omega. omega.
++ apply IHn with (p + 1); auto. lia. lia.
 Qed.
 
 Lemma SimSymbDropInv_func_bisim sm ss skenv_src skenv_tgt
@@ -668,7 +668,7 @@ Next Obligation.
         + intros (P2 & Q2 & R2 & S2) (P1 & Q1 & R1 & S1).
           apply Q1 in H0. destruct H0. subst.
           apply Mem.perm_cur. eapply Mem.perm_implies; eauto.
-          apply P2. omega.
+          apply P2. lia.
       - exploit init_meminj_invert; eauto. intros (A & id & B & C).
         subst delta. apply Z.divide_0_r.
       - exploit init_meminj_invert_strong; eauto. intros (A & id & gd & B & C & D & E).
@@ -688,7 +688,7 @@ Next Obligation.
           apply Mem_getN_forall2 with (p := 0) (n := Z.to_nat (init_data_list_size (gvar_init v))).
           rewrite H3, H4. eapply bytes_of_init_inject; et.
           { ii. inv SIMSK. eapply NOREF; et. eapply Genv.find_def_symbol. eexists. split; et. }
-          omega.
+          lia.
           rewrite Z2Nat.id; try extlia.
     }
     - destruct ((init_meminj ss.(src) ss.(tgt)) b) as [[b' delta]|] eqn:INJ; auto.
@@ -701,18 +701,18 @@ Next Obligation.
       exploit init_meminj_invert; try eapply H1; et. intros (A2 & id2 & B2 & C2 & D2).
       destruct (ident_eq id1 id2). congruence. left; eapply Genv.global_addresses_distinct; eauto.
     - exploit init_meminj_invert; eauto. intros (A & id & B & C & D). subst delta.
-      split. omega. generalize (Ptrofs.unsigned_range_2 ofs). omega.
+      split. lia. generalize (Ptrofs.unsigned_range_2 ofs). lia.
     - exploit init_meminj_invert_strong; eauto. intros (A & id & gd & B & C & D & E).
       exploit (Genv.init_mem_characterization_gen ss.(src)); eauto.
       exploit (Genv.init_mem_characterization_gen ss.(tgt)); eauto.
       destruct gd as [f|v].
       + intros (P2 & Q2) (P1 & Q1).
-        apply Q2 in H0. destruct H0. subst. replace ofs with 0 by omega.
+        apply Q2 in H0. destruct H0. subst. replace ofs with 0 by lia.
         left; apply Mem.perm_cur; auto.
       + intros (P2 & Q2 & R2 & S2) (P1 & Q1 & R1 & S1).
         apply Q2 in H0. destruct H0. subst.
         left. apply Mem.perm_cur. eapply Mem.perm_implies; eauto.
-        apply P1. omega.
+        apply P1. lia.
   }
   {
     ss. inv SIMSK. rewrite <- MAIN. unfold init_meminj.

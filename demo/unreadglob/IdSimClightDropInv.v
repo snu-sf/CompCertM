@@ -48,8 +48,8 @@ Inductive match_states_clight_inv
   : unit -> Clight.state -> Clight.state -> SimMem.t -> Prop :=
 | match_states_clight_inv_intro
     st_src st_tgt j m_src m_tgt sm0
-    (MWFSRC: m_src = sm0.(SimMem.src))
-    (MWFTGT: m_tgt = sm0.(SimMem.tgt))
+    (MWFSRC: m_src = (SimMem.src sm0))
+    (MWFTGT: m_tgt = (SimMem.tgt sm0))
     (MWFINJ: j = sm0.(SimMemInjInv.minj).(SimMemInj.inj))
     (MATCHST: match_states_clight_internal st_src st_tgt j m_src m_tgt)
     (MWF: SimMem.wf sm0)
@@ -140,7 +140,7 @@ Proof.
       { inv SIMSKENV. exploit SimSymbDropInv.sim_skenv_symbols_inject; eauto. }
       { inv SIMSKENV. ss. rpapply SimSymbDropInv_match_globals; eauto. } i. des.
       exploit SimMemInjC.parallel_gen; eauto. i. des.
-      hexploit SimMemInjInv.le_inj_wf_wf; eauto. intros MWFINV0.
+      hexploit SimMemInjInv.le_inj_wf_wf; eauto; ss. intros MWFINV0.
 
       esplits; eauto.
       * left. apply plus_one. econs; ss; eauto.

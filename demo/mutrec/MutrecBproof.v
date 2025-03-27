@@ -63,7 +63,9 @@ Proof.
       * eapply Mem.store_unchanged_on; eauto.
         ii. exploit INVRANGETGT; eauto. i. des.
         exfalso. eauto.
-    + eapply SimMemInj.frozen_refl. + eapply SimMemInj.frozen_refl.
+    + eapply SimMemInj.frozen_refl.
+    + eapply SimMemInj.frozen_refl.
+    + i. eapply SimMemInj.less1_PreOrder.
     + ii. eapply Mem.perm_store_2; eauto. eapply Mem.perm_store_2; eauto.
   - econs; ss; eauto.
     + econs; ss; eauto.
@@ -182,8 +184,8 @@ Inductive match_states
 | match_states_initial
     idx m_src sm0
     i stk initstk init_rs rs m_tgt
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
@@ -205,8 +207,8 @@ Inductive match_states
 | match_states_at_external
     idx m_src sm0
     i stk initstk init_rs rs m_tgt
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
@@ -229,8 +231,8 @@ Inductive match_states
 | match_states_after_external
     idx m_src sm0
     i stk initstk init_rs rs m_tgt
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
@@ -253,8 +255,8 @@ Inductive match_states
 | match_states_final
     idx m_src sm0
     i stk initstk init_rs rs m_tgt
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MWF: SimMem.wf sm0)
     (SAVED: well_saved initstk stk init_rs rs m_tgt)
     (PRIV: forall
@@ -637,7 +639,7 @@ Proof.
                 - refl. }
               { unfold nextinstr_nf, nextinstr.
                 repeat rewrite Pregmap.gss. ss. econs; eauto. }
-              { omega. }
+              { lia. }
       }
 
       (* not memoized *)
@@ -765,7 +767,7 @@ Proof.
               { exploit Int.eq_false. eapply H. i.
                 unfold Int.eq in H0.
                 rewrite Int.unsigned_zero in H0.
-                des_ifs. split; eauto. destruct i. ss. omega. }
+                des_ifs. split; eauto. destruct i. ss. lia. }
       }
 
   - intros _. inv CURRPC.
@@ -801,11 +803,11 @@ Proof.
                         loc_out_of_reach (SimMemInj.inj (SimMemInjInv.minj sm0))
                         (SimMemInj.src (SimMemInjInv.minj sm0))).
           eapply Mem.free_unchanged_on; eauto.
-          ii. omega.
+          ii. lia.
         - ss. }
       { ii. clarify. }
       { refl. }
-      { eapply Mem.free_unchanged_on; eauto. ii. omega. }
+      { eapply Mem.free_unchanged_on; eauto. ii. lia. }
       { ii. eapply Mem.perm_free_3; eauto. }
       i. des.
 
@@ -829,7 +831,7 @@ Proof.
         { unfold Genv.find_funct. des_ifs.
           unfold Genv.find_funct_ptr. des_ifs.
           unfold Genv.find_def in Heq. ss.
-          do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+          do 2 erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *; try eapply genv.
           des_ifs.
           exploit Genv.find_invert_symbol. eauto. i. rewrite H in *.
           unfold o_bind in Heq. ss. clarify.
@@ -1018,7 +1020,7 @@ Proof.
                 with (Vint (sum i)); cycle 1.
               { rewrite sum_recurse with (i := i). des_ifs; cycle 1.
                 - unfold Val.add. rewrite Int.add_zero. auto.
-                - rewrite Z.eqb_eq in Heq0. omega. }
+                - rewrite Z.eqb_eq in Heq0. lia. }
               rewrite STR1. ss. }
 
         econs 2; eauto.
@@ -1073,7 +1075,7 @@ Proof.
       instantiate (1:=0).
       instantiate (1:=initstk).
       instantiate (1:=m2).
-      ii. omega. } intros [m4 FREE2].
+      ii. lia. } intros [m4 FREE2].
 
     cinv MWF. destruct sm0 as [sm0 minv_src minv_tgt].
     exploit SimMemInj.free_right; eauto.
@@ -1192,7 +1194,7 @@ Proof.
         unfold Genv.find_funct in FINDF. ss. des_ifs.
         rewrite Genv.find_funct_ptr_iff in FINDF.
         unfold Genv.find_def in FINDF. ss.
-        do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+        do 2 erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *; try eapply genv.
         des_ifs.
         destruct (Genv.invert_symbol
              (SkEnv.project skenv_link (Sk.of_program fn_sig prog)) b) eqn:SKENVSYMB; ss.
@@ -1277,7 +1279,9 @@ Proof.
       { econs; ss; eauto. econs; ss; eauto.
         - refl.
         - eapply Mem.unchanged_on_implies; eauto; ss.
-        - eapply SimMemInj.frozen_refl. - eapply SimMemInj.frozen_refl.
+        - eapply SimMemInj.frozen_refl.
+        - eapply SimMemInj.frozen_refl.
+        - ii; ss.
         - ii. eapply Mem.perm_unchanged_on_2; eauto; ss. }
 
       assert (MWF1: SimMem.wf sm1).
@@ -1288,6 +1292,7 @@ Proof.
           + ii. clarify.
           + refl.
           + eapply Mem.unchanged_on_implies; eauto; ss.
+          + ii. ss.
           + ii. eapply Mem.perm_unchanged_on_2; eauto; ss.
           + i. des. eauto.
         - eapply SimMemInjInv.private_unchanged_on_invariant; eauto.
@@ -1363,7 +1368,7 @@ Proof.
             ss. des_ifs; ss. inv VALS0.
             unfold loc_arguments in *. des_ifs. inv H5. inv H3; ss.
             inv H; ss. clarify.
-          - omega. }
+          - lia. }
 
   - (* init progress *)
     i.
@@ -1385,7 +1390,8 @@ Proof.
 
       rewrite Genv.find_funct_ptr_iff in *.
       unfold Genv.find_def in *; ss.
-      do 2 rewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *.
+      erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *; try eapply genv.
+      erewrite MapsC.PTree_filter_map_spec, o_bind_ignore in *; try eapply genv.
       des_ifs.
       exploit Genv.find_invert_symbol. eauto. i.
       rewrite H in *. clarify.

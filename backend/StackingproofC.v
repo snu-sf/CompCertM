@@ -380,17 +380,17 @@ Proof.
   generalize size_arguments_above; intro SZARG.
   inv STACKS; ss.
   { ss. u. split; i; des; clarify; esplits; et; psimpl; zsimpl; try extlia.
-    { exploit tailcall_size; eauto. i. omega. }
-    { specialize (SZARG sg). omega. }
+    { exploit tailcall_size; eauto. i. lia. }
+    { specialize (SZARG sg). lia. }
   }
   Local Opaque frame_contents frame_contents_at_external.
   inv STK; ss.
   { psimpl. zsimpl. rewrite <- frame_contents_at_external_m_footprint; ss; try extlia.
-    - split; try extlia. specialize (SZARG sg). omega.
+    - split; try extlia. specialize (SZARG sg). lia.
     - eapply bound_outgoing_stack_data; et.
   }
   { rewrite <- frame_contents_at_external_m_footprint ;ss.
-    - split; try extlia. specialize (SZARG sg). omega.
+    - split; try extlia. specialize (SZARG sg). lia.
     - eapply bound_outgoing_stack_data; et.
   }
 Qed.
@@ -501,7 +501,7 @@ Proof.
   destruct b; ss. des_ifs.
   unfold size_callee_save_area. ss. clear_tac.
   assert(4 | 8).
-  { econs. instantiate (1:=2). omega. }
+  { econs. instantiate (1:=2). lia. }
   assert(0 < align (4 * bound_outgoing) 8 + 8 /\ (4 | align (4 * bound_outgoing) 8 + 8)).
   { hexploit (align_le (4 * bound_outgoing) 8); try lia. i. split; try lia.
     eapply Z.divide_add_r; try lia; ss.
@@ -527,8 +527,8 @@ Proof.
       rewrite Z.mul_add_distr_l. replace (4 * 2) with 8; ss. rewrite ! align_dist; ss. f_equal.
       rewrite align_idempotence; ss.
     }
-    (*   - des. eapply Z.add_pos_pos; eauto. eapply Z.lt_le_trans. eapply H0. eapply align_le. omega. *)
-    (*   - des. eapply Z.divide_add_r; eauto. eapply Z.divide_trans. eapply H1. eapply align_divides. omega. *)
+    (*   - des. eapply Z.add_pos_pos; eauto. eapply Z.lt_le_trans. eapply H0. eapply align_le. lia. *)
+    (*   - des. eapply Z.divide_add_r; eauto. eapply Z.divide_trans. eapply H1. eapply align_divides. lia. *)
     (* } *)
     { inv used_callee_save_norepet. ss. }
     { ss. i; des. split; eauto.
@@ -898,8 +898,8 @@ Inductive match_states
 Inductive match_states_at
           (st_src0: Linear.state) (st_tgt0: MachC.state) (sm_at sm_arg: SimMem.t): Prop :=
 | match_states_at_intro
-    (INJ: sm_at.(SimMemInj.inj) = sm_arg.(SimMemInj.inj))
-    (INJ: sm_at.(SimMem.src) = sm_arg.(SimMem.src))
+    (INJ: (SimMemInj.inj sm_at) = (SimMemInj.inj sm_arg))
+    (INJ: (SimMem.src sm_at) = (SimMem.src sm_arg))
     init_rs init_sg cs' tfptr rs sp skd fptr cs ls sig
     (SIGEQ: Sk.get_csig skd = Some sig)
     (SRCST: st_src0 = Linear.Callstate cs fptr sig ls (SimMemInj.src sm_arg))
@@ -908,7 +908,7 @@ Inductive match_states_at
     (PRIV: brange sp 0 (4 * size_arguments sig) <2= (SimMemInj.tgt_private sm_arg))
     (SIG: Genv.find_funct skenv_link fptr = Some skd)
     (VALID: Mem.valid_block (SimMemInj.tgt sm_arg) sp)
-    (NB: sm_at.(SimMem.tgt).(Mem.nextblock) = sm_arg.(SimMem.tgt).(Mem.nextblock))
+    (NB: (SimMem.tgt sm_at).(Mem.nextblock) = (SimMem.tgt sm_arg).(Mem.nextblock))
     (SEP: SimMemInj.tgt sm_arg |= stack_contents_at_external (SimMemInj.inj sm_arg) cs cs' sig
                         ** minjection (SimMemInj.inj sm_arg) (SimMemInj.src sm_arg) **
                         globalenv_inject ge (SimMemInj.inj sm_arg)).
@@ -1018,19 +1018,17 @@ Proof.
             replace (Z.pos b + Z.pos_sub m_src y) with (Z.pos_sub b y + Z.pos m_src); try nia; cycle 1.
             { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
             split; ss; try extlia.
-            * ii. rewrite Z2Pos.inj_add in *; ss; try lia.
-              rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
-              rewrite Z.pos_sub_diag in *. zsimpl. rewrite Pos2Z.id in *. lia.
+            (* * ii. rewrite Z2Pos.inj_add in *; ss; try lia. *)
+            (*   rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. *)
+            (*   rewrite Z.pos_sub_diag in *. zsimpl. rewrite Pos2Z.id in *. lia. *)
             * destruct (peq b y); ss.
-              { clarify. rewrite Z.pos_sub_diag. zsimpl. rewrite Pos2Z.id in *. des_ifs; lia. }
+              { clarify. replace (Z.pos y + (Z.pos m_src - Z.pos y)) with (Z.pos m_src); try lia.
+                rewrite Pos2Z.id. zsimpl. des_ifs; lia. }
+              rewrite Z.add_sub_assoc, Z.add_comm, <- Z.add_sub_assoc.
               rewrite Z2Pos.inj_add in *; ss; try lia; cycle 1.
-              { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
-              replace (Z.pos_sub b y) with (b.(Zpos) - y.(Zpos))%Z; cycle 1.
-              { ss. }
-              rewrite Z2Pos.inj_sub; ss; try lia.
-              des_ifs; lia.
+              rewrite Z2Pos.inj_sub; ss; try lia. des_ifs; lia.
           + rewrite OUT0 in *. ss.
-        - ii. hexpl OUT.
+        (* - ii. hexpl OUT. *)
         - esplits; ss. clear - Heq CSTYLE0. unfold transf_function in Heq. des_ifs.
         - inv TYP. econs; eauto with congruence.
           erewrite SimMem.sim_val_list_length; try apply VALS0. ss. etrans; eauto with congruence.
@@ -1069,28 +1067,28 @@ Proof.
             replace (Z.pos b + Z.pos_sub m_src y) with (Z.pos_sub b y + Z.pos m_src); try nia; cycle 1.
             { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
             destruct (peq b y) eqn: EQ.
-            { clarify. rewrite Z.pos_sub_diag. zsimpl. rewrite Pos2Z.id.
+            { clarify.
+              rewrite Z.add_sub_assoc, Z.add_comm, <- Z.add_sub_assoc.
+              rewrite Z.sub_diag. zsimpl. rewrite Pos2Z.id.
               des_ifs; bsimpl; des; des_sumbool; try extlia; cycle 1.
               replace (m_src + y - m_src)%positive with y; ss.
               rewrite Pos.add_comm. rewrite Pos.add_sub. ss.
             }
-            rewrite Z2Pos.inj_add; ss; cycle 1.
-            { rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac. }
+            rewrite Z.add_sub_assoc, Z.add_comm, <- Z.add_sub_assoc.
+            rewrite Z2Pos.inj_add; ss; try extlia.
             des_ifs.
             { bsimpl; des; des_sumbool. unfold Plt in *.
-              rewrite Pos.add_comm. rewrite Pos.add_assoc. rewrite Pos.add_sub.
-              rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
-              rewrite Pos2Z.id. rewrite Pos.add_sub_assoc; ss. rewrite Pos.add_comm. rewrite Pos.add_sub. ss.
+              rewrite Pos.add_comm. rewrite Pos.add_assoc.
+              rewrite Z2Pos.inj_sub; try extlia. do 2 rewrite Pos2Z.id.
+              replace (y + m_src + (b - y) - m_src)%positive with b; et. lia.
             }
-            assert(COND0: negb (plt (Z.to_pos (Z.pos_sub b y) + m_src) m_src)).
+            assert(COND0: negb (plt (m_src + Z.to_pos (Z.pos b - Z.pos y)) m_src)).
             { bsimpl. des_sumbool. ii. unfold Plt in *. extlia. }
             (* des_ifs. *)
-            (* { unfold block. do 2 f_equal. bsimpl; des; des_sumbool; try lia. *)
+            (* { unfold block. do 2 f_equal. bsimpl; des; des_sumbool; try lia.  *)
             rewrite COND0 in *.
-            assert(COND1: plt (Z.to_pos (Z.pos_sub b y) + m_src) (m_src + Pos.of_nat n)).
-            { bsimpl. des_sumbool. ii. unfold Plt in *. rewrite ! Z.pos_sub_spec. des_ifs; Pos_compare_tac.
-              destruct n; ss; try lia.
-            }
+            assert(COND1: plt (m_src + Z.to_pos (Z.pos b - Z.pos y)) (m_src + Pos.of_nat n)).
+            { bsimpl. des_sumbool. ii. unfold Plt in *. extlia. }
             rewrite COND1 in *. ss.
         }
         rename targs into targs_tgt. rename TYP into TYPTGT.
@@ -1113,11 +1111,11 @@ Proof.
                 exploit Mem.nextblock_alloc; et. i. rewrite NB in *. rewrite H1 in *. extlia. }
           + eapply val_inject_incr; try apply MLE0; eauto. eapply val_inject_incr; try apply MLE; eauto.
           + psimpl. zsimpl. rewrite SG.
-            exploit (@init_match_frame_contents sm_arg); try apply MLE; try apply MLE0; eauto.
+            exploit (@init_match_frame_contents sm_arg (fn_sig fd)); try apply MLE; try apply MLE0; eauto.
             { apply SIMSKENV. }
             { inv TYPTGT. econs; eauto. }
             { exploit SkEnv.revive_incl_skenv; try eapply INCLTGT; eauto. i. des. inv WF.
-              eapply WFPARAM in H; ss. unfold Ptrofs.max_unsigned in H. red in H. omega. }
+              eapply WFPARAM in H; ss. unfold Ptrofs.max_unsigned in H. red in H. lia. }
             { rewrite <- SG. ss. eauto. }
             { rewrite DEF, SM. s. f_equal; eauto. }
             { inv SIMSKENV. ss. inv SIMSKE. ss.

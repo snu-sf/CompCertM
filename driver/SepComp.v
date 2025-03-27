@@ -18,9 +18,10 @@ Theorem separate_compilation_correct
                      <<IMPROVES: improves (Csem.semantics src_link) (Asm.semantics tgt_link)>>.
 Proof.
   hexploit upperbound_b_correct; eauto. intro A.
-  hexploit upperbound_a_correct; eauto. instantiate (1:= []). ss. intro B; des.
+  hexploit upperbound_a_correct; eauto. ss. instantiate (1:=[]). intro B; des.
   hexploit compiler_correct_full; eauto.
   { do 2 instantiate (1:= []). ss. }
+  { eapply RUSC.empty_self_related. }
   instantiate (1:= []). ss. rewrite ! app_nil_r. intro C; des.
   hexploit (lower_bound_correct tgts); eauto. intro D. des.
   { left.

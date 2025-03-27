@@ -180,15 +180,15 @@ Section CLIGHTINJ.
       + cinv VAL. cinv INJ.
         assert (bytes = nil).
         { exploit (Mem.loadbytes_empty (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') (sizeof ce ty)).
-          omega. congruence. } subst.
+          lia. congruence. } subst.
         destruct (Mem.range_perm_storebytes (SimMemInj.tgt sm0) blk_tgt (Ptrofs.unsigned (Ptrofs.add ofs_src (Ptrofs.repr delta0))) nil)
           as [tm' SB].
         { simpl. red; intros; lia. }
         eexists (SimMemInj.mk _ tm' _ _ _ _ _ _ _); ss. esplits; cycle 3; eauto.
-        * econs; ss; eauto; try (eapply Mem.storebytes_unchanged_on; eauto; i; ss; omega);
+        * econs; ss; eauto; try (eapply Mem.storebytes_unchanged_on; eauto; i; ss; lia);
             try (ii; eapply Mem.perm_storebytes_2; eauto); try (econs; i; des; clarify).
        * econs 2; eauto; i; try lia.
-          { apply Mem.loadbytes_empty. omega. }
+          { apply Mem.loadbytes_empty. lia. }
         * inv MWF. econs; ss; eauto; try (erewrite Mem.nextblock_storebytes; eauto).
           { eapply Mem.storebytes_empty_inject; eauto. }
           { unfold SimMemInj.src_private, SimMemInj.valid_blocks, Mem.valid_block. ss.
@@ -199,7 +199,7 @@ Section CLIGHTINJ.
             des_safe. split; eauto. ii.
             eapply H5; eauto. eapply Mem.perm_storebytes_2; eauto. }
       + assert (SZPOS: sizeof ce ty > 0).
-        { generalize (sizeof_pos ce ty); omega. }
+        { generalize (sizeof_pos ce ty); lia. }
         cinv VAL. cinv INJ.
         assert (RPSRC: Mem.range_perm (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') (Ptrofs.unsigned ofs' + sizeof ce ty) Cur Nonempty).
         { eapply Mem.range_perm_implies; try eapply perm_any_N. eapply Mem.loadbytes_range_perm; eauto. }
@@ -207,9 +207,9 @@ Section CLIGHTINJ.
         { replace (sizeof ce ty) with (Z.of_nat (List.length bytes)).
           - eapply Mem.range_perm_implies; try eapply perm_any_N. eapply Mem.storebytes_range_perm; eauto.
           - exploit Mem.loadbytes_length; try apply H3; eauto. intros LEN.
-            rewrite LEN. rewrite Z2Nat.id; try omega. }
-        assert (PSRC: Mem.perm (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') Cur Nonempty) by (apply RPSRC; omega).
-        assert (PDST: Mem.perm (SimMemInj.src sm0) blk_src (Ptrofs.unsigned ofs_src) Cur Nonempty) by (apply RPDST; omega).
+            rewrite LEN. rewrite Z2Nat.id; try lia. }
+        assert (PSRC: Mem.perm (SimMemInj.src sm0) b' (Ptrofs.unsigned ofs') Cur Nonempty) by (apply RPSRC; lia).
+        assert (PDST: Mem.perm (SimMemInj.src sm0) blk_src (Ptrofs.unsigned ofs_src) Cur Nonempty) by (apply RPDST; lia).
         exploit Mem.address_inject; try apply PSRC; eauto. intros EQ1.
         exploit Mem.address_inject; try apply PDST; eauto. intros EQ2.
         exploit Mem.loadbytes_inject; eauto. intros [bytes2 [A B]].

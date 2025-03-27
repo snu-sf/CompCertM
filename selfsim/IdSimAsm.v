@@ -354,7 +354,8 @@ Section LOCALPRIV.
           + i. unfold Pregmap.set; des_ifs; eauto.
             * ii. clarify. ss. hexploit RANOTFPTR; eauto. i. des. split; ss.
               ii. des. inv WF. eapply WFHI in H0. inv MEM. rewrite NB in *. eauto.
-            * hexploit Sound.hle_val; eauto.
+            * hexploit Sound.hle_val; eauto. i.
+              subst su_new. ss. eauto.
           + inv MEM. econs; ss.
             * i. rewrite JunkBlock.assign_junk_blocks_perm in *.
               erewrite Mem.unchanged_on_contents; eauto; ss.
@@ -1253,8 +1254,8 @@ Inductive match_states
     (sm0 : @SimMem.t SimMemInjC.SimMemInj)
     (AGREE: AsmStepInj.agree j rs_src rs_tgt)
     (AGREEINIT: AsmStepInj.agree j init_rs_src init_rs_tgt)
-    (MCOMPATSRC: m_src = sm0.(SimMem.src))
-    (MCOMPATTGT: m_tgt = sm0.(SimMem.tgt))
+    (MCOMPATSRC: m_src = (SimMem.src sm0))
+    (MCOMPATTGT: m_tgt = (SimMem.tgt sm0))
     (MCOMPATINJ: j = sm0.(SimMemInj.inj))
     (MWF: SimMem.wf sm0)
     fd

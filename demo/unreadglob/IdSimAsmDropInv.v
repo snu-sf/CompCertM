@@ -95,6 +95,8 @@ Proof.
                             (Asm.State _ _)).
     hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv SimMemInjInv.top_inv sm_arg sm0); eauto.
     { etrans; eauto. }
+    { eapply SimMemInjInv.top_inv_satisfied_always. }
+    { eapply SimMemInjInv.top_inv_satisfied_always. }
 
     eexists (SimMemInjInv.mk sm0 _ _). esplits; eauto.
       { econs; ss; eauto.
@@ -229,6 +231,8 @@ Proof.
             rewrite MINJ. eapply junk_inj_incr; eauto.
           * rewrite MINJ. eapply src_junk_val_inj; eauto.
         + hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv SimMemInjInv.top_inv sm_arg sm1); eauto.
+          eapply SimMemInjInv.top_inv_satisfied_always.
+          eapply SimMemInjInv.top_inv_satisfied_always.
         + rewrite Pregmap.gso; clarify.
           inv SAFESRC; clarify. ss. des.
           exploit match_globals_find_funct; eauto.
@@ -279,6 +283,7 @@ Proof.
 
       exploit SimMemInjC.Mem_free_parallel'; eauto. i. des.
       hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv SimMemInjInv.top_inv sm0 sm1); eauto.
+      eapply SimMemInjInv.top_inv_satisfied_always. eapply SimMemInjInv.top_inv_satisfied_always.
 
       eexists (Args.mk (Vptr b2 _) _ _). eexists (SimMemInjInv.mk sm1 _ _).
       esplits; eauto; ss; i.
@@ -427,6 +432,7 @@ Proof.
       { instantiate (3:=Ptrofs.zero). zsimpl. psimpl. eauto. }
       i. des.
       hexploit (@SimMemInjInv.le_inj_wf_wf SimMemInjInv.top_inv SimMemInjInv.top_inv sm0 sm1); eauto.
+      eapply SimMemInjInv.top_inv_satisfied_always. eapply SimMemInjInv.top_inv_satisfied_always.
 
       assert (delta = 0).
       { rewrite FINDF in *. clarify. exploit RSPDELTA; eauto. i. des. clarify. }
@@ -543,7 +549,9 @@ Proof.
         { ii. eapply asm_step_max_perm; eauto. }
         { ii. eapply asm_step_max_perm; eauto. }
         i. des.
-        hexploit SimMemInjInv.le_inj_wf_wf; eauto. intros MWFINV0.
+        hexploit SimMemInjInv.le_inj_wf_wf; eauto.
+        { ss. } { ss. }
+        intros MWFINV0.
         eexists (SimMemInjInv.mk _ _ _).
 
         esplits; eauto.
